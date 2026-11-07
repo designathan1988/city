@@ -24,6 +24,8 @@ interface BakedTexture {
   readonly size: number;
   readonly layers: readonly Uint8Array[];
   readonly alphaRef?: number;
+  /** Each layer's own use for its mipmaps (an array of normals and roughness: `bake/catalogue.ts` roadArrays); the texture's `use` else. */
+  readonly layerUses?: readonly TextureUse[];
 }
 
 interface ManifestEntry {
@@ -72,10 +74,10 @@ async function bake(root: string, hash: string, log: (message: string) => void):
   let bytes = 0;
   for (const texture of module.bakeCatalogue()) {
     // levels[level][layer], rows bottom first as the canvas bakes were uploaded (`flipY`)
-    const chains = texture.layers.map((layer) => mipChain(flipRows(layer, texture.size), texture.size, texture.use, texture.alphaRef));
+    const chains = texture.layers.map((layer, i) => mipChain(flipRows(layer, texture.size), texture.size, texture.layerUses?.[i] ?? texture.use, texture.alphaRef));
     const levels = chains[0]!.map((_, level) => chains.map((chain) => chain[level]!));
     const file = `${texture.name.replace(/:/g, '.')}.ktx2`;
-    const data = CODEC === 'uastc' ? await uastcKtx2(levels, texture.size, texture.use) : rgbaKtx2(levels, texture.size, texture.use);
+    const data = CODEC === 'uastc' ? await uastcKtx2(levels, texture.size, texture.use, texture.layerUses) : rgbaKtx2(levels, texture.size, texture.use);
     fs.writeFileSync(path.join(staging, file), data);
     bytes += data.byteLength;
     textures.push({ name: texture.name, file, use: texture.use });

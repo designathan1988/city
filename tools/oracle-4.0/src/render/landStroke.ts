@@ -18,6 +18,8 @@ export interface LevelsJob {
   readonly flip: Uint8Array;
   /** The levels as the page holds them, every node measured (`LandLevels.data`). */
   readonly levels: Float32Array;
+  /** The cut cells' error in each node of level 0, as the page holds them (`LandLevels.seams`). */
+  readonly seams: Float32Array;
   readonly box: StrokeBox;
 }
 
@@ -96,8 +98,9 @@ export function shoreLevelsInto(levels: Float32Array, position: ArrayLike<number
 }
 
 /** The levels' nodes after `job.box` moved, as the page's `LandLevels` measures them (`markBox`, `measure`). */
-export function measureLevels(job: LevelsJob): Float32Array {
+function measureLevels(job: LevelsJob): Float32Array {
   const levels = new LandLevels(job.seg);
+  levels.seams.set(job.seams);
   levels.take(job.levels);
   levels.markBox(job.box[0], job.box[1], job.box[2], job.box[3]);
   levels.measure(job.heights, job.flip);
@@ -108,7 +111,7 @@ export function measureLevels(job: LevelsJob): Float32Array {
 export interface LandStrokeScratch { woods: Float32Array | null }
 
 /** The cells of the base `job.rect` reaches, as the page works them out (`woodsBaseInto` on the plate's natural land, `terrain.ts` sampleGrid). */
-export function woodsBlock(job: WoodsJob, scratch: LandStrokeScratch = { woods: null }): WoodsBlock {
+function woodsBlock(job: WoodsJob, scratch: LandStrokeScratch = { woods: null }): WoodsBlock {
   const { n, cell, half, natural, flip, outside } = job;
   const grid = { n, cell, half };
   let next = 0;

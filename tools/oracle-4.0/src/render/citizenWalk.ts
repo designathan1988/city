@@ -115,18 +115,6 @@ export function clipTransferFor(rig: Object3D, mesh: SkinnedMesh, clip: LibraryC
   return transferOnto(rig, mesh, clip.source, amplitude);
 }
 
-/** Where each bone of a capture's avatar stands in its bind pose, metres, world: the posture every transfer measures from. */
-export function captureBind(sex: WalkSex): ReadonlyMap<string, Vector3> {
-  const file = SOURCES[sex].file;
-  return new Map(file.bones.map((name, i) => [name, vector(file.bind[i]?.p ?? [0, 0, 0])]));
-}
-
-/** The same avatar's bind ROTATIONS, world, by bone name: each bone's own axes. */
-export function captureBindRotations(sex: WalkSex): ReadonlyMap<string, Quaternion> {
-  const file = SOURCES[sex].file;
-  return new Map(file.bones.map((name, i) => [name, quaternion(file.bind[i]?.q ?? [0, 0, 0, 1])]));
-}
-
 /** The neutral walk of one sex as a transfer source, for `strideShare`. */
 export const walkSource = (sex: WalkSex): Source => SOURCES[sex];
 
@@ -167,7 +155,9 @@ function transferOnto(rig: Object3D, mesh: SkinnedMesh, from: Source, amplitude:
   const bones = mesh.skeleton.bones;
   // The converted citizens keep their bind pose in the source FBX's own space (Z up, centimetres, identity bind matrix)
   const bindWorld = (index: number): Matrix4 =>
-    mesh.matrixWorld.clone().multiply(mesh.bindMatrix)
+    // The mesh's world now, back through its bind (three's skinning: bindMatrixInverse), to the bone at bind. DO NOT multiply by `bindMatrix`: a cooked
+    // body's mesh carries its dequantising scale and offset in both, and the hips came out at 2.2 m (the walk lifted every cooked person off the ground).
+    mesh.matrixWorld.clone().multiply(mesh.bindMatrixInverse)
       .multiply(mesh.skeleton.boneInverses[index]!.clone().invert());
 
   interface Link { bone: Object3D; source: number; bind: Quaternion; depth: number; swing: number }

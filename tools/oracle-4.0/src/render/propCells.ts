@@ -10,6 +10,7 @@ import {
   Matrix4,
   Sphere,
   Vector3,
+  Vector4,
   type Camera,
   type Frustum,
   type OrthographicCamera,
@@ -20,11 +21,13 @@ import type { ChangeJournal, ChangeKind, ChangeRect } from '@world/changes';
 import { CELL } from '@world/cells';
 import { m } from '@world/units';
 import { ViewCells, type CellKey } from '@world/viewCells';
-import { HYSTERESIS, batchMesh, createCellInstances, releaseBatchMesh, screenHalf, type CellInstances, type KindMesh, type KindSpec, type Pack } from './cellInstances';
+import { HYSTERESIS, batchMesh, createCellInstances, releaseBatchMesh, screenHalf, warmMesh, type CellInstances, type KindLevels, type KindMesh, type KindSpec, type Pack } from './cellInstances';
 import { NEAR_SQUARE, YAW_POSE, nearCode } from './instanceRuns';
+import { createFarBands, showLadder, type Banded, type FarLadder, type FarRung } from './farLadders';
 import { gpuOnlyAttributes } from './mesh/gpuOnly';
 import { PICTURE_PX, type PlantImpostors } from './plantImpostors';
 import { castBySize } from './shadowCasters';
+import { type PropPlacement, createPropAsks } from './propAsks';
 
 /**
  * THE PROPS HELD ROUND THE VIEW, NOT FOR THE MAP: the gardens' plants, the street furniture and its plants (`gardens.ts`,
@@ -127,18 +130,14 @@ function reachFor(v: PropView, size: number, px: number): number {
 export interface PropSquare { readonly cx: number; readonly cy: number; readonly k: number }
 
 /** The square round the view's point holding every plant `largest` across (world units) big enough to be drawn whole there (`PICTURE_PX`, less the band it keeps its level in). */
-export function nearSquareOf(v: PropView, largest: number): PropSquare {
+function nearSquareOf(v: PropView, largest: number): PropSquare {
   const reach = reachFor(v, largest, PICTURE_PX * (1 - HYSTERESIS));
   const cx = Math.floor(v.x / PROP_CELL), cy = Math.floor(v.y / PROP_CELL);
   return { cx, cy, k: reach < 0 ? -1 : Math.min(MOST_NEAR, Math.ceil(reach / PROP_CELL)) };
 }
 
-/** The things a layer stands about a rectangle (at least every one whose pose stands in it), by kind, poses in `YAW_POSE`. */
-export interface PropPlacement {
-  readonly packs: ReadonlyMap<number, Pack>;
-  /** Whether any of them changes with the city's hour (a plant still growing). */
-  readonly growing: boolean;
-}
+// What a layer stands about a rectangle (`propAsks.ts`, where its asks off the page are kept).
+export type { PropPlacement } from './propAsks';
 
 export interface PropLayerSpec {
   readonly name: string;
@@ -154,8 +153,15 @@ export interface PropLayerSpec {
   /** The plants' pictures, and each kind's picture in them (null: a kind drawn far by its own meshes). */
   readonly pictures: PlantImpostors | null;
   readonly pictureOf: readonly (number | null)[];
+  /** The still pictures its kinds' far meshes draw (`plantImpostors.ts` propPictures): their far batches sized by the view each cull is for. */
+  readonly stills?: readonly PlantImpostors[];
   /** The things standing about a rectangle, from the document as it is: a pure function of the rectangle and the document. */
   place(rect: ChangeRect): PropPlacement;
+  /** The same placing worked out off the page (a job, `gardens.ts`): its answer to come; null where it cannot be asked now (placed on the page then).
+   *  None: placed on the page, within the frame's time. */
+  ask?(rect: ChangeRect): Promise<PropPlacement> | null;
+  /** A placement asked off the page came: what the view wants may be drawn now (a frame asked). */
+  arrived?(): void;
   /** Budgets: the near cells' CPU bytes, the far blocks' CPU bytes before their upload and their GPU bytes. */
   readonly nearBytes?: number;
   readonly farBytes?: number;
@@ -174,11 +180,27 @@ interface FarBlock {
   readonly group: Group;
   /** Its plants' pictures' batch, under `group`: shown once the pictures are taken. */
   readonly pictured: Group;
+  /** Its kinds drawn by their ladders: their levels chosen each frame (`show`). */
+  readonly ladders: FarLadder[];
+  /** Its batches of a kind faded out past `beyond` from the eye (`KindLevels.fadesAt`): hidden while all of the batch stands past it. */
+  readonly fading: readonly { readonly mesh: InstancedMesh; readonly beyond: number }[];
   readonly meshes: InstancedMesh[];
   readonly uncast: (() => void)[];
   readonly growing: boolean;
   waiting: number;
   readonly gpu: number;
+  /** The ladders of its kinds whose simplified models were not made when it was (their band drawn by the whole model): made again once they are. */
+  readonly unsimplified: readonly KindLevels[];
+}
+
+/** Whether all of `mesh` (its bounding sphere) stands past `beyond` world units from the eye of `view` (a view-projection): its sphere's
+ *  nearest depth (clip w, never more than the distance) past it. A view from above (w 1) fades nothing. */
+function fadedOut(mesh: InstancedMesh, beyond: number, view: Matrix4): boolean {
+  const s = mesh.boundingSphere;
+  if (!s) return false;
+  const e = view.elements;
+  const w = e[3]! * s.center.x + e[7]! * s.center.y + e[11]! * s.center.z + e[15]!;
+  return w - s.radius * Math.hypot(e[3]!, e[7]!, e[11]!) > beyond;
 }
 
 /** The far classes: the plants' pictures and the things drawn at every size reach the horizon; the small things drawn down to a pixel (`KindLevels.least`) only where they are. */
@@ -200,13 +222,18 @@ export interface PropLayer {
   readonly busy: boolean;
   /** The diary's changes since the last look: the cells and blocks they reached dropped, placed again as the view asks. */
   follow(journal: ChangeJournal): void;
-  /** The cells and blocks with a thing that grows with the hour dropped (a new city hour). */
+  /** The cells and blocks with a thing that grows with the hour dropped, and the placements come with one not yet taken (a new city hour). */
   forgetGrowing(): void;
+  /** Every placement asked off the page let go, its answer never taken (the layer placed from another document). */
+  forgetAsked(): void;
   /** The near cells of the square's rings placed (within the frame's time), up to `k`: the rings in. */
   ringsIn(square: PropSquare, deadline: number): number;
   /** The square drawn near: the cells within `k` of its middle put in the cells' instances, the rest taken out; then the far blocks the view wants placed (within the frame's time). */
   show(square: PropSquare, view: PropView, deadline: number): void;
   setMap(map: boolean): void;
+  /** A mesh of each far ladder's rung as the far blocks draw it (its band's materials, `farLadders.ts`), one slot each: what compiles their
+   *  programs ahead (`streetFurnitureLayer.ts` warm); the near cells' own are their stores'. */
+  warm(): InstancedMesh[];
   cull(frustum: Frustum, view: Matrix4): void;
   dispose(): void;
 }
@@ -252,15 +279,21 @@ const packBytes = (packs: ReadonlyMap<number, Pack>): number => {
 
 /** A layer of things held round the view. */
 export function createPropLayer(spec: PropLayerSpec): PropLayer {
+  /** What is asked off the page (`propAsks.ts`): a cell derived once its placement came. */
+  const { ready, placementFor, prune, follow: followOff, forgetGrowing: forgetGrowingAsked, clear: clearAsked } = createPropAsks(spec);
   const group = new Group();
   group.name = spec.name;
   const cells: CellInstances = createCellInstances(spec.kinds, YAW_POSE, spec.margin);
+  /** The far ladders' rungs' materials (`farLadders.ts`), sized by the view the cells are culled for. */
+  const bands = createFarBands();
   const classOf = spec.kinds.map((k, i) => (spec.pictureOf[i] === null && k.levels?.least !== undefined ? FarClass.small : FarClass.wide));
   /** The largest plant placed so far (a street tree's before any). */
   let largestPicture = FIRST_LARGEST;
   /** The largest of the small kinds' things placed so far, world units across: from their models at their own size until some are placed. */
   let largestSmall = 0;
   spec.kinds.forEach((k, i) => { if (classOf[i] === FarClass.small) largestSmall = Math.max(largestSmall, 2 * k.levels!.reach); });
+  /** The fewest pixels a small kind is drawn at (`KindLevels.least`): a block whose things are all under it holds nothing to draw. */
+  const leastSmall = spec.kinds.reduce((least, k, i) => (classOf[i] === FarClass.small ? Math.min(least, k.levels!.least!) : least), Infinity);
   const note = (packs: ReadonlyMap<number, Pack>): void => {
     for (const [kind, pack] of packs) {
       const picture = spec.pictureOf[kind];
@@ -283,7 +316,7 @@ export function createPropLayer(spec: PropLayerSpec): PropLayer {
     name: `${spec.name} near`, version: spec.version, side: PROP_CELL, reach: 0,
     cpuBudget: spec.nearBytes ?? 48 * 1048576, kinds: spec.changes, pad: spec.pad,
     derive(key, rect) {
-      const placed = spec.place(rect);
+      const placed = placementFor(near, key, rect);
       const cx = columnOf(key), cy = rowOf(key);
       const packs = within(placed.packs, cx, cy, cx, cy);
       note(packs);
@@ -302,23 +335,58 @@ export function createPropLayer(spec: PropLayerSpec): PropLayer {
   farGroup.name = `${spec.name}-far`;
   group.add(farGroup);
   const growingFar = [new Set<CellKey>(), new Set<CellKey>()];
+  /** Each class's blocks made before some of their kinds' simplified models (`FarBlock.unsimplified`). */
+  const unsimplifiedFar = [new Map<CellKey, readonly KindLevels[]>(), new Map<CellKey, readonly KindLevels[]>()];
   /** Each class's held blocks, by key. */
   const heldFar = [new Map<CellKey, FarBlock>(), new Map<CellKey, FarBlock>()];
   const pictureKinds = spec.kinds.map((_, i) => spec.pictureOf[i] !== null && spec.pictureOf[i] !== undefined);
 
+  /** A laddered kind's geometric rungs in a far block (`farLadders.ts`): each one's bodies, drawn under their own name and the band's materials,
+   *  the band (the near cells' bars, no hysteresis: a far thing's level is its size's, frame by frame), its lowest bar while the pictures are
+   *  not taken (the cut: it draws their band too), and whether it is its model's shadow alone (`KindLevels.shadowNear`, a lamp: cast by its
+   *  model at every level). `midMade`: its simplified models made when the block is (else its model draws their band). */
+  const rungsOf = (kindSpec: KindSpec, midMade: boolean): {
+    readonly bodies: readonly KindMesh[]; readonly band: Banded; readonly floor: number; readonly floorUnpictured: number; readonly shadowAlone: boolean;
+    drawn(body: KindMesh): KindMesh; casts(body: KindMesh): boolean;
+  }[] => {
+    const levels = kindSpec.levels!;
+    const least = levels.least ?? 0, far = levels.far!, top = Number.MAX_VALUE, mid = midMade ? levels.mid! : null;
+    const castsNear = levels.shadowNear === true;
+    const nears = kindSpec.meshes.filter((s) => !s.far && !s.mid && !s.cards);
+    const rung = (bodies: readonly KindMesh[], role: string, lo: number, hi: number, floorUnpictured: number, shadowAlone: boolean) => {
+      const band = bands.of(bodies[0]!.material, role, levels.reach, lo, hi);
+      return {
+        bodies, band, floor: lo, floorUnpictured, shadowAlone,
+        // Named for its rung: its programs compiled ahead under that name (`warm`).
+        drawn: (body: KindMesh): KindMesh => ({ ...body, name: `${body.name}-${role}` }),
+        casts: (body: KindMesh): boolean => body.castShadow && (shadowAlone || !castsNear),
+      };
+    };
+    const out = [rung(nears, mid !== null ? 'near' : 'near-unsimplified', mid ?? far, top, mid ?? least, false)];
+    if (mid !== null) out.push(rung(kindSpec.meshes.filter((s) => s.mid), 'mid', far, mid, least, false));
+    // Its shadow by its model near, by its simplified model below (`mid`). DO NOT cast far lamps whole: 1.2 M triangles in the cascades (F7, 2026-10-27).
+    if (castsNear) out.push(rung(nears.filter((s) => s.castShadow), 'shadow', mid ?? least, top, mid ?? least, true));
+    if (castsNear && mid !== null) out.push(rung(kindSpec.meshes.filter((s) => s.mid && s.castShadow), 'shadow-mid', least, mid, least, true));
+    return out;
+  };
+  /** Whether a kind is drawn far by its ladder (a street prop: `KindLevels.far` and a picture of its own). */
+  const laddered = (kindSpec: KindSpec): boolean => kindSpec.levels?.far !== undefined && kindSpec.meshes.some((s) => s.far);
+
   /** A far block's batches of one class: the meshes, from its things (codes set), with their arrays let go once uploaded. */
-  const batches = (cls: FarClass, key: CellKey, rect: ChangeRect, onUploaded: () => void): { block: FarBlock; arrays: number } => {
+  const batches = (cls: FarClass, key: CellKey, rect: ChangeRect, first: PropPlacement, onUploaded: () => void): { block: FarBlock; arrays: number } => {
     const bx = columnOf(key), by = rowOf(key);
     const cx0 = bx * FAR_CELLS, cy0 = by * FAR_CELLS;
-    const make = (): { packs: Map<number, Pack>; growing: boolean } => {
-      const placed = spec.place(rect);
+    const pick = (placed: PropPlacement): { packs: Map<number, Pack>; growing: boolean } => {
       const packs = within(placed.packs, cx0, cy0, cx0 + FAR_CELLS - 1, cy0 + FAR_CELLS - 1, nearCode);
       for (const kind of [...packs.keys()]) if (classOf[kind] !== cls) packs.delete(kind);
       return { packs, growing: placed.growing };
     };
-    const { packs, growing } = make();
+    // Its arrays made again (a context restored, `gpuOnlyAttributes`): placed on the page from the document as it is.
+    const make = (): { packs: Map<number, Pack>; growing: boolean } => pick(spec.place(rect));
+    const { packs, growing } = pick(first);
     note(packs);
     const meshes: InstancedMesh[] = [], uncast: (() => void)[] = [];
+    const fading: { mesh: InstancedMesh; beyond: number }[] = [];
     let arrays = 0, waiting = 0;
     const stride = YAW_POSE.stride;
     const own = (mesh: InstancedMesh, buffers: Record<string, BufferAttribute | InterleavedBuffer>, again: () => Record<string, Float32Array>): void => {
@@ -402,7 +470,12 @@ export function createPropLayer(spec: PropLayerSpec): PropLayer {
       uncast.push(castBySize({ mesh, casts: true, radius: () => largest }));
       meshes.push(mesh);
     }
-    // The rest, a batch a kind, drawn by the kind's own near meshes.
+    // The rest, a batch a kind, drawn by the kind's own near meshes; a kind with a ladder (a street prop) by its meshes at each level, each
+    // thing at the level its size calls for (`bandOf`). DO NOT draw a far block's bins and benches whole: 3,400 bins of 182 triangles and 3,600
+    // benches of 164 a few pixels across were 1.2 M triangles of the district's view (`npm run diagnose`, 2026-10-24); DO NOT draw them as the
+    // box round them either (837f1866): their pictures are the same model.
+    const ladders: FarLadder[] = [];
+    const unsimplified: KindLevels[] = [];
     for (const [kind, pack] of packs) {
       if (pictureKinds[kind]) continue;
       const kindSpec = spec.kinds[kind]!;
@@ -414,25 +487,58 @@ export function createPropLayer(spec: PropLayerSpec): PropLayer {
       const filled = fill(packs);
       const poses = new InstancedInterleavedBuffer(filled.poses!, stride);
       const tints = filled.tints ? new InstancedBufferAttribute(filled.tints, 3) : null;
-      const bodies = kindSpec.meshes.filter((s) => !s.far && !s.cards);
-      let holder: InstancedMesh | null = null;
-      for (const body of bodies) {
+      const levels = kindSpec.levels;
+      // Its simplified models drawn only once made (a batch holds its model's attributes as they were, `cellInstances.ts` posedGeometry).
+      const midMade = levels?.mid !== undefined && (levels.midReady?.() ?? true);
+      if (levels?.mid !== undefined && !midMade && laddered(kindSpec)) unsimplified.push(levels);
+      const batch = (body: KindMesh, casts: boolean, shadowAlone = false, band: Banded | null = null): InstancedMesh => {
         if (!body.geometry.boundingSphere) body.geometry.computeBoundingSphere();
         const s = body.geometry.boundingSphere!;
         const { sphere, largest } = boundsOf([{ pack, radius: s.radius, centre: s.center.length() }]);
-        const mesh = batchMesh({ ...body, name: `${body.name}-far-cells` }, body.geometry, poses, tints, pack.count, sphere, YAW_POSE);
-        uncast.push(castBySize({ mesh, casts: body.castShadow, radius: () => largest }));
+        // A rung's batch made casting as it casts between the passes (`castBySize`: its maker's `casts`), as its programs are compiled ahead
+        // (`warm`); the others as their store's mesh (`streetFurnitureLayer.ts` warm).
+        const drawn: KindMesh = band ? { ...body, castShadow: casts, material: band.material, depth: band.depth } : body;
+        const mesh = batchMesh({ ...drawn, name: `${body.name}-far-cells` }, body.geometry, poses, tints, pack.count, sphere, YAW_POSE);
+        const count = pack.count;
+        // A shadow alone: none of it drawn in the colour pass (`castBySize` counts), every one in the cascades.
+        uncast.push(castBySize({ mesh, casts, radius: () => largest, ...(shadowAlone ? { counts: { colour: () => 0, shadow: () => count } } : {}) }));
         meshes.push(mesh);
-        holder ??= mesh;
+        return mesh;
+      };
+      const nears = kindSpec.meshes.filter((s) => !s.far && !s.mid && !s.cards);
+      if (!levels || !laddered(kindSpec)) {
+        const made = nears.map((body) => batch(body, body.castShadow));
+        if (levels?.fadesAt !== undefined) for (const mesh of made) fading.push({ mesh, beyond: levels.fadesAt });
+        if (made[0]) own(made[0], tints ? { poses, tints } : { poses }, () => fill(make().packs));
+        continue;
       }
-      if (holder) own(holder, tints ? { poses, tints } : { poses }, () => fill(make().packs));
+      const rungs: FarRung[] = [];
+      for (const r of rungsOf(kindSpec, midMade)) {
+        const made = r.bodies.map((body) => batch(r.drawn(body), r.casts(body), r.shadowAlone, r.band));
+        if (!r.shadowAlone) rungs.push({ meshes: made, band: r.band.band, floor: r.floor, floorUnpictured: r.floorUnpictured });
+      }
+      const least = levels.least ?? 0, castsNear = levels.shadowNear === true;
+      const farBodies = kindSpec.meshes.filter((s) => s.far);
+      const pictureRung: FarRung | null = farBodies.length
+        ? { meshes: farBodies.map((body) => batch(body, body.castShadow && !castsNear)), band: new Vector4(least, levels.far, 0, 0), floor: least, floorUnpictured: least }
+        : null;
+      const feet = new Box3();
+      let most = 0, fewest = Infinity;
+      for (let i = 0; i < pack.count; i++) {
+        feet.expandByPoint(corner.set(pack.data[i * stride]!, pack.data[i * stride + 1]!, pack.data[i * stride + 2]!));
+        most = Math.max(most, pack.scales[i]!);
+        fewest = Math.min(fewest, pack.scales[i]!);
+      }
+      for (const r of [...rungs, ...(pictureRung ? [pictureRung] : [])]) for (const mesh of r.meshes) mesh.visible = false;
+      ladders.push({ levels, feet, largest: 2 * levels.reach * most, smallest: 2 * levels.reach * fewest, rungs, pictures: pictureRung });
+      own(rungs[0]!.meshes[0] ?? pictureRung!.meshes[0]!, tints ? { poses, tints } : { poses }, () => fill(make().packs));
     }
     const holder = new Group(), pictured = new Group();
     holder.name = `${spec.name}-far-block`;
     pictured.name = `${spec.name}-far-pictures`;
     holder.add(pictured);
     for (const mesh of meshes) (mesh.material === spec.pictures?.material ? pictured : holder).add(mesh);
-    return { block: { group: holder, pictured, meshes, uncast, growing, waiting, gpu: arrays }, arrays };
+    return { block: { group: holder, pictured, ladders, fading, meshes, uncast, growing, waiting, gpu: arrays, unsimplified }, arrays };
   };
 
   const far = [FarClass.wide, FarClass.small].map((cls) => {
@@ -441,7 +547,7 @@ export function createPropLayer(spec: PropLayerSpec): PropLayer {
       cpuBudget: spec.farBytes ?? 24 * 1048576, gpuBudget: spec.gpuBytes ?? 192 * 1048576, kinds: spec.changes, pad: spec.pad,
       derive(key, rect) {
         let block: FarBlock | null = null;
-        const made = batches(cls, key, rect, () => {
+        const made = batches(cls, key, rect, placementFor(cellsOf, key, rect), () => {
           // Every array of the block on the GPU: what it holds is the GPU's now.
           if (!block || --block.waiting > 0) return;
           cellsOf.account(key, FAR_OVERHEAD * block.meshes.length + FAR_OVERHEAD, block.gpu);
@@ -452,10 +558,12 @@ export function createPropLayer(spec: PropLayerSpec): PropLayer {
         for (const mesh of block.meshes) farMeshes.add(mesh);
         if (block.meshes.length) meshList = null;
         if (block.growing) growingFar[cls]!.add(key);
+        if (block.unsimplified.length) unsimplifiedFar[cls]!.set(key, block.unsimplified);
         return { value: block, cpuBytes: made.arrays + FAR_OVERHEAD * (block.meshes.length + 1) };
       },
       release(key, block) {
         growingFar[cls]!.delete(key);
+        unsimplifiedFar[cls]!.delete(key);
         heldFar[cls]!.delete(key);
         farGroup.remove(block.group);
         for (const off of block.uncast) off();
@@ -492,7 +600,32 @@ export function createPropLayer(spec: PropLayerSpec): PropLayer {
     return out.sort((a, b) => a.d - b.d || a.key - b.key).map((w) => w.key);
   };
 
-  const inSquare = (key: CellKey, s: PropSquare): boolean => s.k >= 0 && Math.max(Math.abs(columnOf(key) - s.cx), Math.abs(rowOf(key) - s.cy)) <= s.k;
+  /** Each class's last choice of blocks and the view it was made for: what `wantedBlocks` reads (the view's matrix, its frustum's planes,
+   *  its point, its ground) and the reach. A view that stands asks the same blocks: DO NOT walk them again every frame - at the city's whole
+   *  view a class's reach (the camera's far plane, ~18 km) spans ~2,300 blocks of 1 km, each measured and tested against the frustum, four
+   *  times a frame with the gardens and the furniture (the Lab's Diagnosis, 2026-10-25: `wantedBlocks` a CPU cause at rest). */
+  const SEEN = 16 + 24 + 4;
+  const asked = far.map(() => ({ seen: new Float64Array(SEEN).fill(NaN), keys: [] as CellKey[], set: new Set<CellKey>() }));
+  const scratch = new Float64Array(SEEN);
+  /** The blocks class `cls` wants for view `v`: the last choice when the view and the reach are those it was made for (`fresh` false). */
+  const blocksFor = (cls: number, v: PropView, reach: number): { keys: readonly CellKey[]; set: ReadonlySet<CellKey>; fresh: boolean } => {
+    const last = asked[cls]!;
+    scratch.set(v.view.elements, 0);
+    for (let i = 0; i < 6; i++) {
+      const plane = v.frustum.planes[i]!;
+      scratch[16 + i * 4] = plane.normal.x; scratch[17 + i * 4] = plane.normal.y; scratch[18 + i * 4] = plane.normal.z; scratch[19 + i * 4] = plane.constant;
+    }
+    scratch[40] = v.x; scratch[41] = v.y; scratch[42] = v.ground; scratch[43] = reach;
+    let same = true;
+    for (let i = 0; i < SEEN && same; i++) same = scratch[i] === last.seen[i];
+    if (same) return { keys: last.keys, set: last.set, fresh: false };
+    last.seen.set(scratch);
+    last.keys = wantedBlocks(v, reach);
+    last.set = new Set(last.keys);
+    return { keys: last.keys, set: last.set, fresh: true };
+  };
+
+  const inSquare =(key: CellKey, s: PropSquare): boolean => s.k >= 0 && Math.max(Math.abs(columnOf(key) - s.cx), Math.abs(rowOf(key) - s.cy)) <= s.k;
   let busy = false;
   /** Whether the last `ringsIn` left rings of the square it was asked for unplaced. */
   let ringsShort = false;
@@ -509,10 +642,13 @@ export function createPropLayer(spec: PropLayerSpec): PropLayer {
     get largestPicture() { return largestPicture; },
     get busy() { return busy; },
     follow(journal) {
+      followOff(journal);
       near.follow(journal);
       for (const f of far) f.follow(journal);
     },
+    forgetAsked() { clearAsked(); },
     forgetGrowing() {
+      forgetGrowingAsked();
       near.forget([...growingNear]);
       far.forEach((f, cls) => f.forget([...growingFar[cls]!]));
     },
@@ -527,6 +663,8 @@ export function createPropLayer(spec: PropLayerSpec): PropLayer {
         }
       }
       near.want(keys);
+      // Every cell of the square asked off the page at once (nearest first in the queue), whatever the frame's time: asking costs nothing here.
+      for (const key of keys) if (!near.has(key)) ready(near, key);
       let ring = -1, at = 0;
       for (let r = 0; r <= square.k; r++) {
         const n = r === 0 ? 1 : 8 * r;
@@ -534,6 +672,8 @@ export function createPropLayer(spec: PropLayerSpec): PropLayer {
         for (let i = at; i < at + n; i++) {
           const key = keys[i]!;
           if (near.has(key)) continue;
+          // Its placement not come from off the page yet: the ring not in, its other cells derived meanwhile.
+          if (!ready(near, key)) { whole = false; continue; }
           if (r > 0 && performance.now() > deadline) { whole = false; break; }
           near.ensure(key);
         }
@@ -568,35 +708,76 @@ export function createPropLayer(spec: PropLayerSpec): PropLayer {
         for (const mesh of cells.update({ removed, added })) { group.add(mesh); meshList = null; }
       }
       // The far blocks: the wide ones to the view's reach, the small things only where a pixel or more.
-      const reaches = [view.reach, largestSmall > 0 ? reachFor(view, largestSmall, 1 - HYSTERESIS) : -1];
+      const reaches = [view.reach, largestSmall > 0 ? reachFor(view, largestSmall, leastSmall * (1 - HYSTERESIS)) : -1];
       busy = ringsShort;
       far.forEach((f, cls) => {
-        f.want(wantedBlocks(view, reaches[cls]!));
+        // A block made before its kinds' simplified models: made again once they are. DO NOT keep it: the 10 km city's far blocks came before the
+        // ladder made its models (one a frame) and drew every far bin and lamp whole, 2.7 M triangles at a street's view (the F7 lab, 2026-10-27).
+        const stale = unsimplifiedFar[cls]!, remade: CellKey[] = [];
+        for (const [key, kinds] of stale) if (kinds.every((l) => l.midReady?.() ?? true)) remade.push(key);
+        if (remade.length) { for (const key of remade) stale.delete(key); f.forget(remade); }
+        // The same blocks as last frame: the cache's wanted list is the one it was given then (nothing else gives it one).
+        const blocks = blocksFor(cls, view, reaches[cls]!);
+        if (blocks.fresh) f.want(blocks.keys);
         let first = true;
         for (const key of f.wantedKeys) {
           if (f.has(key)) continue;
+          // Its placement asked off the page and not come: the next one derived meanwhile.
+          if (!ready(f, key)) { busy = true; continue; }
           if (!first && performance.now() > deadline) { busy = true; break; }
           f.ensure(key);
           first = false;
         }
         f.trim(null);
         // A block held but not wanted (out of the reach, out of the frustum) draws nothing.
-        const wanted = new Set(f.wantedKeys);
+        const wanted = blocks.set;
         // Pictures not taken yet would be blank (the near cells draw their plants whole meanwhile).
         const pictured = !spec.pictures || spec.pictures.ready();
-        for (const [key, block] of heldFar[cls]!) { block.group.visible = wanted.has(key); block.pictured.visible = pictured; }
+        for (const [key, block] of heldFar[cls]!) {
+          block.group.visible = wanted.has(key);
+          block.pictured.visible = pictured;
+          if (block.group.visible) for (const ladder of block.ladders) showLadder(ladder, view.view, view.perUnitAtOne, square, PROP_CELL);
+          // A batch its material fades out whole from here: none of it drawn (its sphere's nearest depth, never more than its distance, past it).
+          if (block.group.visible) for (const f of block.fading) f.mesh.visible = !fadedOut(f.mesh, f.beyond, view.view);
+        }
       });
+      prune();
     },
     setMap(map) { cells.setMap(map); },
+    warm() {
+      const out: InstancedMesh[] = [];
+      for (const kindSpec of spec.kinds) {
+        if (!laddered(kindSpec)) continue;
+        // Its rungs with its simplified models made or not (a block made before they were draws its model in their band).
+        const seen = new Set<string>();
+        for (const midMade of [true, false]) {
+          if (midMade && kindSpec.levels!.mid === undefined) continue;
+          for (const r of rungsOf(kindSpec, midMade)) {
+            for (const body of r.bodies) {
+              const drawn = r.drawn(body);
+              if (seen.has(drawn.name)) continue;
+              seen.add(drawn.name);
+              out.push(warmMesh({ ...drawn, material: r.band.material, depth: r.band.depth, castShadow: r.casts(body) }, kindSpec.tinted, YAW_POSE));
+            }
+          }
+        }
+      }
+      return out;
+    },
     cull(frustum, view) {
       // The pictures thin by the view culled for (`plantImpostors.ts` setView): told here too, for the far batches, whatever the near cells hold.
       spec.pictures?.setView(view, screenHalf());
+      for (const still of spec.stills ?? []) still.setView(view, screenHalf());
+      // The far ladders' bands (`bandOf`): the same view.
+      bands.setView(view, screenHalf());
       cells.cull(frustum, view);
     },
     dispose() {
+      clearAsked();
       near.clear();
       for (const f of far) f.clear();
       cells.dispose();
+      bands.dispose();
       group.clear();
     },
   };

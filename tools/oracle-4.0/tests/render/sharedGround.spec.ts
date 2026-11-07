@@ -28,7 +28,9 @@ describe('the ground in shared memory', () => {
   it('reads a made plate as its corners are drawn and the others off the relief, as the page does', () => {
     const share = new GroundShare(N, CELL, HALF, BASE);
     share.setRelief(RELIEF_NATURAL);
+    // The origin's plate: from the origin to (PLATE_SIZE, PLATE_SIZE), the plates' edges on multiples of their side (`world/bounds.ts`).
     const centre = plateOf(0, 0);
+    const own = plateRegion(centre);
     const plate = share.open(centre)!;
     expect(plate).not.toBeNull();
     fill(plate.rendered, plate.flip, 0);
@@ -51,13 +53,13 @@ describe('the ground in shared memory', () => {
     }
     expect(onPlate).toBeGreaterThan(100);
     // Its edges and corners, read on the plate itself.
-    for (const [x, y] of [[-HALF, -HALF], [HALF, HALF], [-HALF, HALF], [0, HALF], [HALF, 0]] as const) {
-      expect(reads.groundAt(x, y)).toBe(page(false, x, y));
+    for (const [lx, ly] of [[-HALF, -HALF], [HALF, HALF], [-HALF, HALF], [0, HALF], [HALF, 0]] as const) {
+      expect(reads.groundAt(own.cx + lx, own.cy + ly)).toBe(page(false, own.cx + lx, own.cy + ly));
     }
     // A corner written after the job was handed over: the worker reads it at once (one memory, no message).
     const middle = (N - 1) / 2;
     plate.rendered[middle + middle * N] = plate.rendered[middle + middle * N]! + 2;
-    expect(reads.groundAt(0, 0)).toBe(plate.rendered[middle + middle * N]);
+    expect(reads.groundAt(own.cx, own.cy)).toBe(plate.rendered[middle + middle * N]);
     // The plate let go: the next job reads the relief there, as the page does.
     share.close(centre);
     expect(sharedGroundReaders(share.current!).groundAt(10, 20)).toBe(BASE + reliefHeight(RELIEF_NATURAL, 10, 20));

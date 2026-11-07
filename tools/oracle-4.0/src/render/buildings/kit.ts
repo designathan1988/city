@@ -11,10 +11,11 @@ import {
   MeshBasicMaterial,
   MeshStandardMaterial,
   PlaneGeometry,
+  Vector3,
 } from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { weldGeometry } from '../mesh/weld';
-import { dropHiddenFaces } from '../mesh/hiddenFaces';
+import { dropBuried, dropHiddenFaces } from '../mesh/hiddenFaces';
 
 import type { Finish } from '@world/buildings/materials';
 import { SHELL_NORMAL_GLSL, createFarShellMaterial, createShellMaterial, finishAlbedo } from './finishes';
@@ -27,14 +28,15 @@ import { posePart } from './partPose';
 import { type FacadePanes, createFacadeMaterial } from './facadeLevel';
 import { CARD, CARD_ATTRIBUTE, prefilterThinParts, twoSided } from './thinParts';
 import { roomBehindGlass } from './glassRoom';
-import { FACADE_PROP_KINDS, SHADOWED_PROPS, THIN_PROPS } from './facadeProps';
+import { SHADOWED_PROPS, THIN_PROPS } from './facadeProps';
 import type { PartKind } from './chunk';
 import { LOUVRE_BOX_HALF, LOUVRE_BOX_Z0, LOUVRE_BOX_Z1, LOUVRE_FRAME, louvreMaterial } from './louvreSlats';
 import { AC_FRONT_GLSL, AC_FRONT_Z, acFarGeometry, createFacadePropGeometries } from './facadePropModels';
-import { MeshoptSimplifier } from 'meshoptimizer';
 import { m } from '@world/units';
 import { pullTowardEye } from '../depthConvention';
 import { SHELL_PART_FACES, SHELL_PART_KINDS, type ShellPartFace, type ShellPartKind } from './shellParts';
+import { simplerLevels, trianglesOf } from './partSimplify';
+import { PICTURE_PX, type PartPicture, type PartPictures, createPartPictures } from './partPictures';
 
 /** Share of people awake, by hour from midnight: 100 % less the share asleep in the American Time Use Survey 2007-11 */
 const AWAKE_BY_HOUR = [
@@ -60,36 +62,17 @@ const tvClock = { value: 0 };
 /** Everything the buildings layer draws with, built ONCE per renderer. */
 
 export type { PartKind } from './chunk';
+import { PART_KINDS } from './partKinds';
 
-export const PART_KINDS: readonly PartKind[] = [
-  'glass',
-  'frame',
-  'concrete',
-  'door',
-  'shutter',
-  'railing',
-  'roofRailing',
-  'awning',
-  'column',
-  'glassDark',
-  'water',
-  'lamp',
-  'wash',
-  'fin',
-  'louvre',
-  'glassRail',
-  'brise',
-  ...FACADE_PROP_KINDS,
-  ...SHELL_PART_KINDS,
-];
+export { PART_KINDS } from './partKinds';
+import { PORCH_LAMP } from './partKinds';
 
 /** The lantern beside a front door: a warm lamp behind frosted glass. */
 const PORCH_LIGHT = 0xffd49a;
 /** A lit room's mean brightness over the glass */
 const ROOM_LIT_MEAN = 0.9;
 
-/** The lantern beside a front door: width, height and depth out of the wall; its gap from the door's edge. */
-export const PORCH_LAMP = { w: m(0.16), h: m(0.26), d: m(0.12), gap: m(0.4) } as const;
+export { PORCH_LAMP } from './partKinds';
 /** How far the wash of its light (the `wash` part, placed at the lantern's centre) stands out of the wall. */
 const WASH_OUT = m(0.01);
 /** Outside lights after dark. 43 % of homes leave one on all night */
@@ -123,6 +106,11 @@ function scheduleOutsideLight(material: Material, key: string, after: string, ap
 /** Three lengths along a part model's own axes (x along the wall, y up, z out of it): metres once scaled by an instance's matrix. */
 export type Axes = readonly [number, number, number];
 
+/** Pixels a coarser level's error may span before a finer one is drawn (`partCells.ts` levelAt). 1.5, not 1: the parts were 47 % of the district's
+ *  triangles (9.3 M of 20 M, `npm run diagnose`, 2026-10-22), and the full-resolution occlusion of the top tier is paid from them. Whether a part
+ *  is drawn at all is still judged by a pixel (`levelAt`). */
+export const PART_ERROR_PX = 1.5;
+
 /** A part's geometry at one level of detail. */
 export interface PartLevel {
   readonly geometry: BufferGeometry;
@@ -131,6 +119,10 @@ export interface PartLevel {
   readonly card?: true;
   /** What it leaves out of the finest, along the model's axes: its error, the largest axis once scaled. */
   readonly error: Axes;
+  /** A simplified level's (`SIMPLIFIED`) two-sided distance from the finest, measured (`propLevels.ts` surfaceOff both ways), model units. */
+  readonly measured?: number;
+  /** Its far picture, its last level (`partPictures.ts`): drawn by its set's material, casting nothing (its coarsest model level casts for it). */
+  readonly picture?: PartPicture;
 }
 
 /** How a part kind is drawn by the error on the screen (`partCells.ts`). */
@@ -145,6 +137,12 @@ export interface PartScreen {
 
 export interface BuildingKit {
   readonly geometry: Readonly<Record<PartKind, BufferGeometry>>;
+  /** Each part kind as a solid piece of a ruin (`fracture.ts`): the faces the drawn model leaves out because the wall hides them (a balcony
+   *  railing's side rails' ends) kept, as a piece thrown clear shows them. */
+  readonly whole: Readonly<Record<PartKind, BufferGeometry>>;
+  /** Settles once the small props' simplified levels are in their kinds' `screen` levels (`SIMPLIFIED`, made off the frame's path once the
+   *  simplifier has loaded), or once making them failed (logged): the catalogue lists each kind's levels once it has (`src/lab/catalog/kits.ts`). */
+  readonly levelsReady: Promise<void>;
   /** Each part kind's levels of detail, its size and its shadow's (`partCells.ts`). */
   readonly screen: Readonly<Record<PartKind, PartScreen>>;
   readonly material: Readonly<Record<PartKind, Material>>;
@@ -168,8 +166,12 @@ export interface BuildingKit {
   readonly massingBase: MeshStandardMaterial;
   /** The facade level (L1): the shells with their openings drawn by the shader, every finish (`facadeLevel.ts`). */
   readonly facade: MeshStandardMaterial;
+  /** The detail level's runs of bays: the near shell's maps and wear, its openings closed by their own panes (`facadeLevel.ts` `covered`). */
+  readonly facadeNear: MeshStandardMaterial;
   /** Parts that cast shadows; the small ones do not, to spare the shadow pass. */
   readonly castsShadow: ReadonlySet<PartKind>;
+  /** The small props' far pictures (`PICTURED`), each its kind's last level once `levelsReady` settles. */
+  readonly pictures: PartPictures;
   /** The furniture models, built the first time an interior is drawn. */
   furniture(): { readonly geometry: Readonly<Record<FurnitureKind, BufferGeometry>>; readonly material: MeshStandardMaterial };
   setGhostValid(valid: boolean): void;
@@ -181,44 +183,9 @@ export interface BuildingKit {
 /** The props given simplified levels by meshoptimizer (`simplerLevels`): modelled in metres, their curves and leaves reducible. */
 // Not the louvres and brises: boxes of slats the simplifier cannot reduce within the error (measured); they have levels of their own.
 const SIMPLIFIED: readonly PartKind[] = ['bike', 'foliage', 'bush', 'airer', 'table', 'dish', 'pot', 'chair', 'lounger'];
-/** The errors those levels are asked at, metres (meshoptimizer's absolute error); one is kept only if it draws a quarter fewer triangles. */
-// And 15 cm: at the district's view a metre spans a few pixels, and the coarsest at 6 cm still drew a chair in ~95 triangles, a dish in ~150,
-// the building parts 9.3 M triangles of the frame's 20 (`npm run diagnose`, 2026-10-22); a level is taken only where its error is under a pixel.
-const SIMPLIFIED_ERRORS = [0.01, 0.025, 0.06, 0.15];
-const FEWER = 0.75;
-
-const trianglesOf = (g: BufferGeometry): number => (g.index ? g.index.count : g.getAttribute('position').count) / 3;
-
-/** The coarser levels of a prop: welded, then simplified at each error with its normals and tones weighed in (meshoptimizer README, `simplifyWithAttributes`) */
-async function simplerLevels(source: BufferGeometry, finest: number): Promise<PartLevel[]> {
-  await MeshoptSimplifier.ready;
-  const welded = weldGeometry(source.clone(), 1e-4);
-  const index = welded.getIndex(), position = welded.getAttribute('position'), normal = welded.getAttribute('normal'), colour = welded.getAttribute('color');
-  if (!index || !normal) return [];
-  const count = position.count;
-  const positions = new Float32Array(count * 3), attributes = new Float32Array(count * 6);
-  for (let i = 0; i < count; i++) {
-    positions[i * 3] = position.getX(i); positions[i * 3 + 1] = position.getY(i); positions[i * 3 + 2] = position.getZ(i);
-    attributes[i * 6] = normal.getX(i); attributes[i * 6 + 1] = normal.getY(i); attributes[i * 6 + 2] = normal.getZ(i);
-    attributes[i * 6 + 3] = colour ? colour.getX(i) : 1; attributes[i * 6 + 4] = colour ? colour.getY(i) : 1; attributes[i * 6 + 5] = colour ? colour.getZ(i) : 1;
-  }
-  const indices = Uint32Array.from(index.array as ArrayLike<number>);
-  const out: PartLevel[] = [];
-  let was = finest;
-  for (const error of SIMPLIFIED_ERRORS) {
-    // Pruned: a piece smaller than the error (the soil, a spoke) goes whole.
-    const [kept, reached] = MeshoptSimplifier.simplifyWithAttributes(indices, positions, 3, attributes, 6, [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], null, 3, error, ['ErrorAbsolute', 'Prune']);
-    if (kept.length === 0 || kept.length / 3 > was * FEWER) continue;
-    const g = welded.clone();
-    g.setIndex(new BufferAttribute(kept, 1));
-    g.computeBoundingBox();
-    g.computeBoundingSphere();
-    out.push({ geometry: g, triangles: kept.length / 3, error: [reached, reached, reached] });
-    was = kept.length / 3;
-  }
-  welded.dispose();
-  return out;
-}
+/** The props drawn from afar as their pictures (`partPictures.ts`): every kind whose coarsest model is over 24 triangles, the shell's parts and
+ *  the bars aside (a pot's 14, an awning's or a column's 24 kept; the levels measured after `levelsReady`, 2026-10-25). */
+const PICTURED = ['acUnit', 'foliage', 'bush', 'chair', 'table', 'airer', 'dish', 'lounger', 'bike'] as const;
 
 /** A box's top face alone, its sides left out: a unit square at y = 0.5 facing up, for a thin plate seen from afar. */
 function topFaceGeometry(): BufferGeometry {
@@ -241,6 +208,7 @@ const BOX_FACES = ['+x', '-x', '+y', '-y', '+z', '-z'] as const;
 /** A box without the faces another piece covers in the same plane: never drawn, and never two surfaces in one plane (`coplanar.spec.ts`). */
 function boxWithout(w: number, h: number, d: number, x: number, y: number, z: number, covered: readonly (typeof BOX_FACES)[number][]): BufferGeometry {
   const g = box(w, h, d, x, y, z);
+  if (covered.length === 0) return g;
   const index = g.getIndex()!;
   const kept: number[] = [];
   g.clearGroups();
@@ -250,15 +218,28 @@ function boxWithout(w: number, h: number, d: number, x: number, y: number, z: nu
     g.addGroup(kept.length, 6, k);
     for (let i = 6 * k; i < 6 * k + 6; i++) kept.push(index.getX(i));
   });
-  g.setIndex(kept);
+  // Only the corners the faces kept use (three's box lays four a face): DO NOT keep the left-out faces' corners, every instance drew them.
+  const remap = new Int32Array(g.getAttribute('position').count).fill(-1);
+  let used = 0;
+  for (const v of kept) if (remap[v] === -1) remap[v] = used++;
+  for (const [name, attribute] of Object.entries(g.attributes)) {
+    const size = attribute.itemSize, array = new Float32Array(used * size);
+    for (let v = 0; v < remap.length; v++) if (remap[v]! >= 0) for (let c = 0; c < size; c++) array[remap[v]! * size + c] = attribute.array[v * size + c]!;
+    g.setAttribute(name, new BufferAttribute(array, size));
+  }
+  g.setIndex(kept.map((v) => remap[v]!));
   return g;
 }
 
 /** Parts merged into one model, the faces another part covers taken out first (`mesh/hiddenFaces.ts`); the parts let go. */
 function mergedParts(parts: readonly BufferGeometry[]): BufferGeometry {
   dropHiddenFaces(parts, false);
-  const merged = mergeGeometries([...parts]) as BufferGeometry;
+  dropBuried(parts);
+  const joined = mergeGeometries([...parts]) as BufferGeometry;
   for (const p of parts) p.dispose();
+  // Welded whole (`weldGeometry`): a corner its parts share drawn once (the model audit, 2026-10-27).
+  const merged = weldGeometry(joined);
+  joined.dispose();
   return merged;
 }
 
@@ -267,6 +248,8 @@ const FRAME_BAR = 0.045;
 
 /** Window frame: outer border, a mullion and a transom, in a unit square */
 // The sides', the mullion's and the transom's ends lie in the border's outer faces: left out, 60 triangles where 72 drew the same.
+// DO NOT leave the bars' backs (-z) out: a gourmet's post (`emitBay`) stands 20 cm off the wall, its back seen across the balcony, and the
+// sun's shadow is drawn by the faces the light leaves (three r186 `WebGLShadowMap`, `shadowSide`).
 function frameGeometry(): BufferGeometry {
   const t = FRAME_BAR;
   const parts = [
@@ -281,7 +264,10 @@ function frameGeometry(): BufferGeometry {
 }
 
 /** A balcony railing: top rail and balusters on three sides, z from 0 (wall) to 1. */
-function railingGeometry(): BufferGeometry {
+// The side rails' ends at the wall (z 0) lie on it (`emitBay` balcony: the railing 15 cm in from the bay's edges, the opening at least
+// 45 cm in): left out once the parts are merged, nothing else touched (`whole`, a ruin's piece, keeps them: `fracture.ts`). DO NOT run the
+// front or the bottom rail on past the side rails or the corner balusters, nor end a piece short: the corners they filled were open.
+function railingGeometry(whole = false): BufferGeometry {
   const parts: BufferGeometry[] = [
     box(1, 0.06, 0.05, 0, 0.97, 1),
     box(0.05, 0.06, 1, -0.5, 0.97, 0.5),
@@ -293,7 +279,32 @@ function railingGeometry(): BufferGeometry {
     parts.push(box(0.015, 0.94, 0.015, -0.5, 0.5, i / 4));
     parts.push(box(0.015, 0.94, 0.015, 0.5, 0.5, i / 4));
   }
-  return mergedParts(parts);
+  const merged = mergedParts(parts);
+  return whole ? merged : withoutTriangles(merged, (a, b, c) => Math.abs(a.z) < 1e-6 && Math.abs(b.z) < 1e-6 && Math.abs(c.z) < 1e-6);
+}
+
+/** `g` without the triangles `drop` picks (by its three corners), the corners only they used with them. */
+function withoutTriangles(g: BufferGeometry, drop: (a: Vector3, b: Vector3, c: Vector3) => boolean): BufferGeometry {
+  const position = g.getAttribute('position');
+  const index = g.getIndex()!;
+  const a = new Vector3(), b = new Vector3(), c = new Vector3();
+  const kept: number[] = [];
+  for (let k = 0; k < index.count; k += 3) {
+    a.fromBufferAttribute(position, index.getX(k)); b.fromBufferAttribute(position, index.getX(k + 1)); c.fromBufferAttribute(position, index.getX(k + 2));
+    if (!drop(a, b, c)) kept.push(index.getX(k), index.getX(k + 1), index.getX(k + 2));
+  }
+  const remap = new Int32Array(position.count).fill(-1);
+  let used = 0;
+  for (const v of kept) if (remap[v] === -1) remap[v] = used++;
+  const out = new BufferGeometry();
+  for (const [name, attribute] of Object.entries(g.attributes)) {
+    const size = attribute.itemSize, array = new Float32Array(used * size);
+    for (let v = 0; v < remap.length; v++) if (remap[v]! >= 0) for (let q = 0; q < size; q++) array[remap[v]! * size + q] = attribute.array[v * size + q]!;
+    out.setAttribute(name, new BufferAttribute(array, size, attribute.normalized));
+  }
+  out.setIndex(kept.map((v) => remap[v]!));
+  g.dispose();
+  return out;
 }
 
 /** A flat quad facing `axis` ('z' out of the wall, 'x' along it), centred at (x, y, z). */
@@ -330,6 +341,7 @@ function railingCardGeometry(): BufferGeometry {
 
 
 /** A straight railing along a roof edge, centred at z = 0. */
+// DO NOT drop the post at a piece's end as the next piece's first: the last piece of a run ends on its own, and its post stands 1 cm past the rails' end.
 function roofRailingGeometry(): BufferGeometry {
   const parts: BufferGeometry[] = [box(1, 0.06, 0.05, 0, 0.97, 0), box(1, 0.04, 0.03, 0, 0.45, 0)];
   for (let i = 0; i <= 4; i++) parts.push(box(0.02, 0.94, 0.02, -0.5 + i / 4, 0.5, 0));
@@ -337,6 +349,8 @@ function roofRailingGeometry(): BufferGeometry {
 }
 
 /** A door leaf in the component frame */
+// DO NOT leave the leaf's back out: a double door's stands 36 cm into the wall, past a cut-open storey's inner face (`emitBuilding`
+// cutaway, 25 cm), and it casts the leaf's shadow.
 function doorGeometry(): BufferGeometry {
   const parts: BufferGeometry[] = [box(1, 1, 0.6, 0, 0, -0.2)];
   for (const x of [-0.24, 0.24]) {
@@ -355,7 +369,8 @@ function doorGeometry(): BufferGeometry {
  *  model the nine slats: ~90 triangles a leaf, ~110 thousand in a district view (the polygon audit, 2026-10-22), for what the box's 12 draw. */
 function louvreGeometry(): BufferGeometry {
   const t = LOUVRE_FRAME;
-  // The stiles' ends lie in the rails' outer faces, the middle rail's in the stiles': left out (`boxWithout`).
+  // The stiles' ends lie in the rails' outer faces, the middle rail's in the stiles': left out (`boxWithout`). DO NOT leave the frame's back
+  // out: the leaf stands 3 cm off the wall (`emitBay` shutteredWindow), and its shadow on the wall is drawn by the faces the sun leaves.
   const parts: BufferGeometry[] = [
     box(1, t, 1, 0, 0.5 - t / 2, 0), box(1, t, 1, 0, -0.5 + t / 2, 0),
     boxWithout(t, 1, 1, 0.5 - t / 2, 0, 0, ['+y', '-y']), boxWithout(t, 1, 1, -0.5 + t / 2, 0, 0, ['+y', '-y']),
@@ -374,6 +389,12 @@ function glassRailGeometry(): BufferGeometry {
   const merged = mergeGeometries([pane]) as BufferGeometry;
   pane.dispose();
   return merged;
+}
+
+/** A glass parapet from afar: the pane's middle plane alone, seen from both sides (its material draws front faces only: from the balcony's
+ *  side the box's back face was drawn, one layer of glass either way, as here). Its 2 cm depth left out: 4 triangles where the box drew 12. */
+function glassRailFarGeometry(): BufferGeometry {
+  return twoSided(quad(1, 0.92, 0, 0.48, 0));
 }
 
 /** A bay's rack of sun fins: six vertical blades across the unit width, the storey's height, standing out of the wall */
@@ -403,6 +424,8 @@ function doorFarGeometry(): BufferGeometry {
 }
 
 function awningGeometry(): BufferGeometry {
+  // DO NOT leave the canvas's front edge or the valance's top out: each stands 2 mm out of the other (the edge's upper corner over the
+  // valance's top, the valance's outer top edge past the canvas's end).
   const canvas = new BoxGeometry(1, 0.04, 1.08);
   canvas.rotateX(Math.atan2(0.75, 1));
   canvas.translate(0, -0.38, 0.5);
@@ -472,6 +495,9 @@ diffuseColor.rgb *= (vAcFront > 0.5 ? acFrontTone(vAcLocal) : 1.0) * acLidTone(v
 
 /** `anisotropy`: the tier's taps for the facades' maps (`quality.ts`), as the ground's: at 4 a wall seen along the street blurred into its mean. */
 export function createBuildingKit(anisotropy = 4): BuildingKit {
+  // DO NOT leave a box part's back (-z) out: a canopy's slab over a low door's head, a balcony's over an arcade, a roller shutter 3 cm
+  // off its glass, a loggia's cap and a gourmet's drip stand with their backs clear of the wall, seen there and casting from them (the
+  // shadow pass draws the faces the sun leaves, three r186 `shadowSide`).
   const unitBox = new BoxGeometry(1, 1, 1);
   const glassPlane = new PlaneGeometry(1, 1);
   const geometry: Record<PartKind, BufferGeometry> = {
@@ -557,6 +583,8 @@ export function createBuildingKit(anisotropy = 4): BuildingKit {
   prefilterThinParts(own, THIN_PROPS);
   scheduleOutsideLight(own.lamp, 'outside-lamp-lot', '#include <emissivemap_fragment>', 'totalEmissiveRadiance *= step(vLampLot, outsideOn);');
   scheduleOutsideLight(own.wash, 'outside-wash-lot', '#include <color_fragment>', 'diffuseColor.a *= step(vLampLot, outsideOn);');
+  // Taken with their near materials as they stand when the pictures are taken (every patch on, `posePart` last).
+  const pictures = createPartPictures(PICTURED, geometry, own);
   // The furniture's models, made once
   const furnitureGeometry = createFurnitureGeometries();
   const tones = furnitureTones(furnitureGeometry);
@@ -613,7 +641,11 @@ objectNormal = shellUnfold(${SHELL_NORMAL});
   const panes = { glass: material.glass, glassDark: material.glassDark, door: material.door, shutter: material.shutter, frame: material.frame } as FacadePanes;
   // The facade level stands past the detail's reach (`massCells.ts` FINE_PIXELS, ~280 m at 1080p), where a finish's 15 cm features are half a pixel: its walls drawn by the shell's far program, its windows, frames and panes as they are. DO NOT give it the near program: its maps, normal frame and wear weighed on every wall of every facade cell of the view for texture no pixel resolved.
   const facade = createFacadeMaterial(createShellMaterial({ far: true }, anisotropy), panes, { roomsAwake, massingNight, roomDaylight });
-  const unique = new Set<Material>([...Object.values(material), shell, ruinShell, farShell, dimShell, facade, ghostShell, ghostParts, dimParts, massing, massingBase]);
+  // The detail level's walls laid as runs of bays (`emitFacadeRuns` near): the near shell's own program under the window grid, its openings closed by their panes.
+  const facadeNear = createFacadeMaterial(createShellMaterial({}, anisotropy), panes, { roomsAwake, massingNight, roomDaylight }, 'building-facade-near');
+  // A ruin's pieces: the drawn models with what the wall or the next piece hid put back (`BuildingKit.whole`).
+  const whole: Record<PartKind, BufferGeometry> = { ...geometry, railing: railingGeometry(true) };
+  const unique = new Set<Material>([...Object.values(material), shell, ruinShell, farShell, dimShell, facade, facadeNear, ghostShell, ghostParts, dimParts, massing, massingBase]);
   // LEVELS OF DETAIL: each kind's finest, then lighter ones by what they leave out (a frame's depth, a blade's thickness)
   const levels = {} as Record<PartKind, PartLevel[]>;
   for (const kind of PART_KINDS) levels[kind] = [{ geometry: geometry[kind], triangles: trianglesOf(geometry[kind]), error: [0, 0, 0] }];
@@ -625,6 +657,8 @@ objectNormal = shellUnfold(${SHELL_NORMAL});
   // The case and its arms: the grille's rings, the coil's louvres and the lines into the wall left out (4.4 cm the thickest).
   coarser('acUnit', acFarGeometry(), [0.045, 0.045, 0.045]);
   coarser('brise', briseFarGeometry(), [BRISE_BLADE, 0, 0]);
+  // The glass's two faces 1 cm either side of its middle plane: that is the error (model z, the part put 1 deep, `emitBay`).
+  coarser('glassRail', glassRailFarGeometry(), [0, 0, 0.01]);
   // A leaf of slats from afar is a box: the slats' pitch and their depth in the frame left out.
   coarser('louvre', unitBox, [0, 0.105, 0.6]);
   coarser('door', doorFarGeometry(), [0, 0, 1.6]);
@@ -636,7 +670,8 @@ objectNormal = shellUnfold(${SHELL_NORMAL});
   for (const kind of SHELL_PART_KINDS) coarser(kind, shellPartGeometry(SHELL_PART_FACES[kind].filter((f) => f.n[2] > 0)), [0, 0.5, 0]);
   // A sill, a facade fin, a pool's water: a thin horizontal plate whose sides are centimetres high, under a pixel from afar.
   // Its top alone draws it (2 triangles, not 12); the error is half its height. A fin standing on edge (a storey tall) keeps
-  // its box: that error is metres, well over a pixel.
+  // its box: that error is metres, well over a pixel. Near, the water is its whole box: nothing
+  // holds the ground round a pool up to its coping, so its sides may show past it.
   const topFace = topFaceGeometry();
   for (const kind of ['concrete', 'fin', 'water'] as const) coarser(kind, topFace, [0, 0.5, 0]);
   const extentOf = (g: BufferGeometry): Axes => {
@@ -656,20 +691,32 @@ objectNormal = shellUnfold(${SHELL_NORMAL});
     const extent = extentOf(geometry[kind]);
     screen[kind] = { levels: levels[kind], extent, pieces: pieces[kind] ?? [extent] };
   }
-  const geometries = new Set<BufferGeometry>(Object.values(levels).flatMap((list) => list.map((l) => l.geometry)));
+  const geometries = new Set<BufferGeometry>([...Object.values(levels).flatMap((list) => list.map((l) => l.geometry)), ...Object.values(whole)]);
   // The small props' simplified levels, made off the frame's path once the simplifier has loaded.
-  void Promise.all(SIMPLIFIED.map(async (kind) => {
+  // Never waited on to draw: a kind is drawn at the levels it has until these land.
+  // Levels landing after the kit is let go are let go too (`dispose`): DO NOT add them to the set it already emptied.
+  let disposed = false;
+  const levelsReady = Promise.all(SIMPLIFIED.map(async (kind) => {
     for (const level of await simplerLevels(geometry[kind], levels[kind][0]!.triangles)) {
+      if (disposed) { level.geometry.dispose(); continue; }
       levels[kind].push(level);
       geometries.add(level.geometry);
     }
-  })).then(() => {}, (error: unknown) => { console.error('Simplified prop levels failed', error); });
+  })).then(() => {}, (error: unknown) => { console.error('Simplified prop levels failed', error); }).then(() => {
+    // Their pictures last, whatever the simplifier made: drawn where a picture spans under `PICTURE_PX`, its error that share of `PART_ERROR_PX` there.
+    for (const [kind, picture] of pictures.of) {
+      const error = (picture.across * PART_ERROR_PX) / PICTURE_PX;
+      if (!disposed) levels[kind].push({ geometry: picture.quad, triangles: trianglesOf(picture.quad), error: [error, error, error], picture });
+    }
+  });
   let furniture: { geometry: Record<FurnitureKind, BufferGeometry>; material: MeshStandardMaterial } | null = null;
 
   // DO NOT give the parts' instanced meshes three's matrices: every material a part is drawn with makes it from the part's pose, after all its own patches (`partPose.ts`); its meshes that are not instanced draw as before.
   for (const m of new Set<Material>([...Object.values(material), farShell, ghostParts, dimParts, dimShell])) posePart(m);
   return {
     geometry,
+    whole,
+    levelsReady,
     screen,
     material,
     shellMaterial: shell,
@@ -682,10 +729,12 @@ objectNormal = shellUnfold(${SHELL_NORMAL});
     massing,
     massingBase,
     facade,
+    facadeNear,
     finishTone: finishAlbedo(),
     // Glass, doors and shutters close the openings for the sun
     // And the shell's parts, as the shell they were laid in casts.
     castsShadow: new Set<PartKind>(['glass', 'glassDark', 'frame', 'door', 'shutter', 'concrete', 'railing', 'awning', 'column', 'roofRailing', 'fin', 'louvre', 'brise', ...SHADOWED_PROPS, ...SHELL_PART_KINDS]),
+    pictures,
     furniture() {
       if (!furniture) {
         furniture = { geometry: furnitureGeometry, material: posePart(createFurnitureMaterial()) };
@@ -722,8 +771,10 @@ objectNormal = shellUnfold(${SHELL_NORMAL});
       }
     },
     dispose() {
+      disposed = true;
       for (const g of geometries) g.dispose();
       for (const m of unique) m.dispose();
+      pictures.dispose();
     },
   };
 }

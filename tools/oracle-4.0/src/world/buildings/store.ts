@@ -7,7 +7,8 @@ import { ForkMap } from '@core/forkMap';
 import { inheritStoredBounds, storedBounds } from './geometry';
 import { BuildingGrid } from './grid';
 import { BuildingItems } from './items';
-import type { RecordRef } from './recordTable';
+import type { RecordRef, RecordTable } from './recordTable';
+import { SUMMARY_BUILT_AT, SUMMARY_WIDTH } from './summary';
 import type { TableRows } from './tableRows';
 import { type BuildingSections, itemsOfSections, sectionsOf } from './sections';
 import { SpilledItems } from './spilledItems';
@@ -21,6 +22,9 @@ function sameButWear(a: Building, b: Building): boolean {
   for (const k in y) if (k !== 'decay' && x[k] === undefined && y[k] !== undefined) return false;
   return true;
 }
+
+/** The field a building's wear is written as over its table's row (`BuildingStore.wear`, `TableItems.writeField`). */
+const WEAR = 'decay';
 
 /** DO NOT answer null for it: one such record made the whole entry (every building of an edit) the whole map. */
 function rectOf(b: Building): ChangeRect {
@@ -129,19 +133,133 @@ export class BuildingStore {
     return this.items.keys();
   }
 
+  /** The buildings by id as a read-only map (the save walks their ids, `editor/chunkedSave.ts`): a working copy's the original's while it wrote nothing. */
+  itemsOf(): ReadonlyMap<BuildingId, Building> {
+    return this.items;
+  }
+
+  /** Where a building stands: the table's columns for one of the table (nothing decoded), its record's x and y else; undefined when it is not here. */
+  placeOf(id: BuildingId): { readonly x: number; readonly y: number } | undefined {
+    if (this.items instanceof BuildingItems) return this.items.placeOf(id);
+    const b = this.items.get(id);
+    return b ? { x: b.x, y: b.y } : undefined;
+  }
+
+  /**
+   * Each building for a reader that keeps its numbers (`render/buildings/townColumns.ts`, `decayWatch.ts`): a row of the table with its summary
+   * columns as `row` (`buildings/summary.ts`: its id, place, box and summary read there, and the wear written over it, NaN: none - nothing
+   * decoded), any other as its record (`record`: one written on the page, or a row of a table written before these summary columns).
+   */
+  eachSummarised(row: (id: BuildingId, table: RecordTable, at: number, wear: number) => void, record: (b: Building) => void): void {
+    if (this.below) { this.below.eachSummarised(row, record); return; }
+    const items = this.items;
+    if (!(items instanceof BuildingItems)) { for (const b of items.values()) record(b); return; }
+    items.eachRow((rows, r, wear) => {
+      // Its columns in its own table (a square's, `TableRows.tableOf`), at its row there.
+      const table = rows.tableOf(r), at = rows.localRow(r);
+      if (table.summaryWidth === SUMMARY_WIDTH && table.boxes) row(table.ids[at]! as BuildingId, table, at, wear);
+      else record(items.get(table.ids[at]! as BuildingId)!);
+    }, record);
+  }
+
+  /** Each building's place: a row of the table from its place columns (`TableItems.eachPlace`), nothing decoded. */
+  eachPlace(visit: (x: number, y: number) => void): void {
+    if (this.below) { this.below.eachPlace(visit); return; }
+    if (this.items instanceof BuildingItems) { this.items.eachPlace(visit); return; }
+    for (const b of this.items.values()) visit(b.x, b.y);
+  }
+
   /** The buildings whose box (or anchor) may reach the rectangle, in the order of `all()` */
   near(minX: number, minY: number, maxX: number, maxY: number): Building[] {
     if (this.below) return this.below.near(minX, minY, maxX, maxY);
-    this.grid ??= new BuildingGrid(this.items.values(), (b) => storedBounds(b));
+    this.grid ??= this.gridOf();
     return this.grid.near(minX, minY, maxX, maxY).map((id) => this.items.get(id)!);
+  }
+
+  /** The ids of the buildings whose box (or anchor) may reach the rectangle, in the order of `all()`, no record decoded (the grid files the table's rows from their box columns). */
+  nearIds(minX: number, minY: number, maxX: number, maxY: number): BuildingId[] {
+    if (this.below) return this.below.nearIds(minX, minY, maxX, maxY);
+    this.grid ??= this.gridOf();
+    return this.grid.near(minX, minY, maxX, maxY);
+  }
+
+  /** Each building's box as the store files it (`storedBounds`): a row of the table from its box columns (`TableItems.eachBox`), nothing decoded. */
+  eachBox(visit: (minX: number, minY: number, maxX: number, maxY: number) => void): void {
+    if (this.below) { this.below.eachBox(visit); return; }
+    const items = this.items;
+    if (items instanceof BuildingItems) { items.eachBox((b) => storedBounds(b), visit); return; }
+    for (const b of items.values()) { const box = storedBounds(b); visit(box.minX, box.minY, box.maxX, box.maxY); }
+  }
+
+  /** Each building as it stands: a row of the table as its table and row (`row`, nothing decoded), a record written on the page as itself (`record`). */
+  eachStanding(row: (id: BuildingId, table: TableRows, at: number) => void, record: (b: Building) => void): void {
+    if (this.below) { this.below.eachStanding(row, record); return; }
+    const items = this.items;
+    if (!(items instanceof BuildingItems)) { for (const b of items.values()) record(b); return; }
+    items.eachRow((rows, at) => row(rows.idAt(at), rows, at), record);
+  }
+
+  /** The table's row a building reads as its own (its record not written on the page), nothing decoded; null otherwise. */
+  standing(id: BuildingId): { readonly table: TableRows; readonly row: number } | null {
+    if (this.below) return this.below.standing(id);
+    const items = this.items;
+    if (!(items instanceof BuildingItems) || !items.table) return null;
+    const row = items.standing(id);
+    return row ? { table: items.table, row: row.row } : null;
+  }
+
+  /** The table's row `b` stands as, only when `b` is the very record this store reads for it (`TableItems.holdsRow`): what is kept of a building by
+   *  its row is kept while the row stands (`floors.ts`). Null for a record written on the page, a copy of one (a preview), or not here. */
+  recordRow(b: Building): { readonly table: TableRows; readonly row: number } | null {
+    if (this.below) return this.below.recordRow(b);
+    const items = this.items;
+    if (!(items instanceof BuildingItems) || !items.table) return null;
+    const row = items.standing(b.id);
+    return row && items.holdsRow(row.row, b) ? { table: items.table, row: row.row } : null;
+  }
+
+  /** The table's row a building stands as (its record the table's own, not written on the page), nothing decoded; null otherwise. */
+  standingRow(id: BuildingId): { readonly table: TableRows; readonly row: number } | null {
+    if (this.below) return this.below.standingRow(id);
+    const items = this.items;
+    if (!(items instanceof BuildingItems) || !items.table) return null;
+    const row = items.standing(id);
+    return row ? { table: items.table, row: row.row } : null;
   }
 
   /** The buildings `meets` keeps for one of `rects`, asked of those within `pad` of it, each once, in the store's order */
   nearAny(rects: readonly (readonly [number, number, number, number])[], pad: number,
     meets: (b: Building, rect: readonly [number, number, number, number]) => boolean): Building[] {
     if (this.below) return this.below.nearAny(rects, pad, meets);
-    this.grid ??= new BuildingGrid(this.items.values(), (b) => storedBounds(b));
+    this.grid ??= this.gridOf();
     return this.grid.nearAny(rects, pad, (id, rect) => meets(this.items.get(id)!, rect)).map((id) => this.items.get(id)!);
+  }
+
+  /**
+   * @rebuild The buildings by place, filed once after a whole-store change (`grid` null): every record of the store in its order - a row of
+   * the table from its columns (its anchor and the box its table keeps, `TableRows.boxAt`), no record decoded; a record written on the page
+   * from itself (`storedBounds`). DO NOT decode the table to file it: the whole city as objects at the first question by place. A row of a
+   * table written before the box columns (format 1) is decoded for its box alone.
+   */
+  private gridOf(): BuildingGrid<Building> {
+    const grid = new BuildingGrid<Building>([], (b) => storedBounds(b));
+    const items = this.items;
+    const table = items instanceof BuildingItems ? items.table : null;
+    if (!(items instanceof BuildingItems) || !table) {
+      for (const b of items.values()) grid.insert(b);
+      return grid;
+    }
+    const { gone, replaced, added } = items.writes();
+    for (let row = 0; row < table.size; row++) {
+      const id = table.idAt(row);
+      if (gone.has(id)) continue;
+      const over = replaced.get(id);
+      if (over) { grid.insert(over); continue; }
+      const box = table.boxAt(row);
+      if (box) { const at = table.placeAt(row); grid.insertBox(id, at.x, at.y, box.minX, box.minY, box.maxX, box.maxY); } else grid.insert(table.record(row));
+    }
+    for (const b of added.values()) grid.insert(b);
+    return grid;
   }
 
   /** The id the next `add` will hand out. */
@@ -175,16 +293,61 @@ export class BuildingStore {
     this.changed([was, now], 'replaced');
   }
 
-  /** @perItem DO NOT write a wear change with `put` */
+  /** @perItem DO NOT write a wear change with `put`. A row of the table worn as its field (`TableItems.writeField`), its record left in the table; a record written on the page written again with its wear. */
   wear(id: BuildingId, decay: number): void {
-    const was = this.items.get(id);
-    if (!was || (was.decay ?? 0) === decay) return;
-    const now = settleBuilding({ ...was, decay }, this.settled, was, this.internShared);
+    if (!this.items.has(id) || this.decayOf(id) === decay) return;
     this.leaveBelow();
-    this.items.set(id, now);
+    const items = this.items;
+    const row = items instanceof BuildingItems ? items.standing(id) : null;
+    // The row's box from the table's columns (the wear moves nothing), nothing decoded.
+    const box = row && items instanceof BuildingItems ? items.table?.boxAt(row.row) ?? null : null;
+    if (box && items instanceof BuildingItems && items.writeField(WEAR, id, decay)) {
+      this.journal.record('buildingWear', [[box.minX, box.minY, box.maxX, box.maxY]], { ids: [id as number] });
+      return;
+    }
+    const was = items.get(id)!;
+    const now = settleBuilding({ ...was, decay }, this.settled, was, this.internShared);
+    items.set(id, now);
     // DO NOT file it again in the grid: the grid holds ids and the wear moves nothing; its box the record's before it (PRD-02).
     inheritStoredBounds(was, now);
     this.journal.record('buildingWear', [rectOf(now)], { ids: [id as number] });
+  }
+
+  /**
+   * Where a building's summary is read without its record (`eachSummarised`'s `row`, for one building): its table, its row and the wear written
+   * over it (NaN: none); null for a record written on the page, a table without these summary columns, or one not here.
+   */
+  summaryOf(id: BuildingId): { readonly table: RecordTable; readonly at: number; readonly wear: number } | null {
+    if (this.below) return this.below.summaryOf(id);
+    const items = this.items;
+    if (!(items instanceof BuildingItems) || !items.table) return null;
+    const row = items.standing(id);
+    if (!row) return null;
+    // Its own table (a square's, `TableRows.tableOf`), at its row there.
+    const table = items.table.tableOf(row.row);
+    if (table.summaryWidth !== SUMMARY_WIDTH || !table.boxes) return null;
+    return { table, at: items.table.localRow(row.row), wear: row.field };
+  }
+
+  /** A building's wear, its record not decoded where it is a row of the table: the wear written over the row, else the row's own field (`TableRows.field`); 0 when it has none or is not here. */
+  decayOf(id: BuildingId): number {
+    if (this.below) return this.below.decayOf(id);
+    const items = this.items;
+    const row = items instanceof BuildingItems ? items.standing(id) : null;
+    if (row && items instanceof BuildingItems && items.table) {
+      if (!Number.isNaN(row.field)) return row.field;
+      const decay = items.table.field(row.row, WEAR);
+      return typeof decay === 'number' ? decay : 0;
+    }
+    return items.get(id)?.decay ?? 0;
+  }
+
+  /** The minute a building was built (its wear's clock), its record not decoded where it is a row of a table with its summary (`SUMMARY_BUILT_AT`); undefined when it has none or is not here. */
+  builtAtOf(id: BuildingId): number | undefined {
+    const row = this.summaryOf(id);
+    if (!row) return this.items.get(id)?.builtAt;
+    const builtAt = row.table.summary![SUMMARY_BUILT_AT * row.table.rows + row.at]!;
+    return Number.isNaN(builtAt) ? undefined : builtAt;
   }
 
   /** Puts back a building as it was, or takes it away (`undefined`): undo and redo (`world/docImage.ts`). */
@@ -207,15 +370,13 @@ export class BuildingStore {
     this.changed(was ? [was, now] : [now], 'restored');
   }
 
-  /** A tile's buildings put in the page's document, or taken out (`RoadDoc.loadTile`): one diary entry for all of them. */
-  /** `plain`: read from a tile's table (`recordTable.ts` `tableRecords`), plain and their shared members one object already: DO NOT walk and hash them again in the frame the tile is put in. */
-  placeAll(list: readonly Building[], plain = false): void {
+  /** A tile's buildings put in the page's document (`RoadDoc.loadTile`): one diary entry for all of them. */
+  placeAll(list: readonly Building[]): void {
     const placed: Building[] = [];
     this.leaveBelow();
     for (const value of list) {
       if (this.items.has(value.id)) continue;
-      if (plain) this.settled.add(value);
-      const now = plain ? value : settleBuilding(value, this.settled, undefined, this.internShared);
+      const now = settleBuilding(value, this.settled, undefined, this.internShared);
       this.items.set(now.id, now);
       this.grid?.insert(now);
       placed.push(now);
@@ -384,7 +545,7 @@ export class BuildingStore {
     this.below = null;
     // A copy of a copy that wrote nothing: the store that answers for both.
     while (below.below) below = below.below;
-    below.grid ??= new BuildingGrid(below.items.values(), (b) => storedBounds(b));
+    below.grid ??= below.gridOf();
     this.grid = BuildingGrid.over(below.grid);
   }
 
@@ -404,6 +565,13 @@ export class BuildingStore {
     const take = (id: BuildingId): void => {
       // One table under both, the record written by neither: the very same, known without decoding it.
       if (shared && mine.sameUnwritten(theirs, id)) return;
+      // A row of that table in both, its wear alone differing: the wear written over it as the source has it, no record of its own.
+      if (shared && mine.sameButField(theirs, id)) {
+        this.leaveBelow();
+        mine.writeField(WEAR, id, theirs.fieldOf(WEAR, id) ?? Number.NaN);
+        worn.push(mine.get(id)!);
+        return;
+      }
       const was = this.items.get(id);
       const now = source.items.get(id);
       if (was === now) return;

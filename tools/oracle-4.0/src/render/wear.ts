@@ -27,7 +27,7 @@ export const RANGE_STRIDE = 4;
 
 export interface WearField {
   readonly texture: Texture;
-  /** The window's low corner (world x, y) and side, for the shader (`applyWear`). */
+  /** The window's low corner (world x, y) and side, for the shader (`applyRoadWear`). */
   readonly window: { readonly value: Vector3 };
   /** A vehicle at (x, y) heading `angle`, `width` across its wheels, for `dt` seconds. */
   wheels(x: number, y: number, angle: number, width: number, dt: number): void;
@@ -135,12 +135,30 @@ export function createWearField(seed = 0x9e3779b9): WearField {
   };
 }
 
-/** Makes a road surface material show the wear field: `channel` 0 reads the wheels */
-export function applyWear(material: Material, field: WearField, channel: 0 | 1, key: string): void {
-  const previous = material.onBeforeCompile.bind(material);
-  const previousKey = material.customProgramCacheKey.bind(material);
-  material.onBeforeCompile = (shader: WebGLProgramParametersWithUniforms, renderer) => {
-    previous(shader, renderer);
+/**
+ * The field read through a cubic B-spline, four bilinear reads (Sigg and Hadwiger, "Fast Third-Order Texture Filtering", GPU Gems 2 ch. 20,
+ * https://developer.nvidia.com/gpugems/gpugems2/part-iii-high-quality-rendering/chapter-20-fast-third-order-texture-filtering). DO NOT read it
+ * bilinearly: a texel is 5 m, and the wheels' wear came out as dark squares on the world's grid, diamonds on a road at 45 degrees, every lane
+ * blotched (the owner: the roads' texture looked strange, 2026-10-26).
+ */
+const WEAR_CUBIC = `
+        vec4 wearCubic(vec2 uv) {
+          vec2 size = vec2(textureSize(uWear, 0));
+          vec2 st = uv * size - 0.5;
+          vec2 i = floor(st), f = st - i;
+          vec2 f2 = f * f, f3 = f2 * f;
+          vec2 w0 = (1.0 - 3.0 * f + 3.0 * f2 - f3) / 6.0;
+          vec2 w1 = (4.0 - 6.0 * f2 + 3.0 * f3) / 6.0;
+          vec2 w2 = (1.0 + 3.0 * f + 3.0 * f2 - 3.0 * f3) / 6.0;
+          vec2 w3 = f3 / 6.0;
+          vec2 g0 = w0 + w1, g1 = w2 + w3;
+          vec2 h0 = (i - 0.5 + w1 / g0) / size, h1 = (i + 1.5 + w3 / g1) / size;
+          return g0.y * (g0.x * texture(uWear, h0) + g1.x * texture(uWear, vec2(h1.x, h0.y)))
+            + g1.y * (g0.x * texture(uWear, vec2(h0.x, h1.y)) + g1.x * texture(uWear, h1));
+        }`;
+
+/** The wear's texture and window, its world position from the vertex shader and its noise (`applyRoadWear`). */
+function wearDeclared(shader: WebGLProgramParametersWithUniforms, field: WearField): void {
     Object.assign(shader.uniforms, { uWear: { value: field.texture }, uWearWindow: field.window });
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vWearWorld;')
@@ -155,14 +173,21 @@ export function applyWear(material: Material, field: WearField, channel: 0 | 1, 
           vec2 i = floor(p), f = fract(p);
           f = f * f * (3.0 - 2.0 * f);
           return mix(mix(wearHash(i), wearHash(i + vec2(1.0, 0.0)), f.x), mix(wearHash(i + vec2(0.0, 1.0)), wearHash(i + vec2(1.0, 1.0)), f.x), f.y);
-        }`)
-      .replace('#include <color_fragment>', `#include <color_fragment>
-        {
+        }${WEAR_CUBIC}`);
+}
+
+
+/** Where the pixel is in the wear's window, and whether it is in it. */
+const WEAR_AT = `
           // World (x, y) over the window's side: the texture repeats, the window's texels where it wraps (\`torusWindow.ts\`); none off it.
           vec2 wearAt = vec2(vWearWorld.x, -vWearWorld.z);
           vec2 wearLocal = (wearAt - uWearWindow.xy) / uWearWindow.z;
-          float wearOn = step(0.0, wearLocal.x) * step(wearLocal.x, 1.0) * step(0.0, wearLocal.y) * step(wearLocal.y, 1.0);
-          float wear = texture2D(uWear, wearAt / uWearWindow.z)[${channel}] * wearOn;
+          float wearOn = step(0.0, wearLocal.x) * step(wearLocal.x, 1.0) * step(0.0, wearLocal.y) * step(wearLocal.y, 1.0);`;
+
+/** A channel's wear read and inked: 0 the wheels' on a carriageway, 1 the feet's on a footway. */
+function wearInk(channel: 0 | 1): string {
+  return `
+          float wear = wearCubic(wearAt / uWearWindow.z)[${channel}] * wearOn;
           ${channel === 0 ? `
           // Tyre rubber darkens the tracks; hard-used, the surface breaks up.
           diffuseColor.rgb *= 1.0 - 0.38 * smoothstep(0.0, 0.8, wear);
@@ -180,8 +205,24 @@ export function applyWear(material: Material, field: WearField, channel: 0 | 1, 
           if (wear > 0.0) {
             float stain = smoothstep(0.0, 0.9, wear) * (0.6 + 0.4 * wearNoise(vWearWorld.xz * 0.8));
             diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.62, 0.6, 0.55), stain);
-          }`}
+          }`}`;
+}
+
+/** The wear on one material of several surfaces (`mesh/roadEdges.ts` applyRoadSurface): each channel where its GLSL test holds (the carriageway's
+ *  codes the wheels', the footway's the feet's), each channel read and inked by `wearInk`. */
+export function applyRoadWear(material: Material, field: WearField, channels: readonly { readonly when: string; readonly channel: 0 | 1 }[]): void {
+  const previous = material.onBeforeCompile.bind(material);
+  const previousKey = material.customProgramCacheKey.bind(material);
+  const inks = channels.map(({ when, channel }, i) => `
+          ${i ? 'else ' : ''}if (${when}) {${wearInk(channel)}
+          }`).join('');
+  material.onBeforeCompile = (shader: WebGLProgramParametersWithUniforms, renderer) => {
+    previous(shader, renderer);
+    // The field's declarations and position (`wearDeclared`), the channels each on its own surfaces.
+    wearDeclared(shader, field);
+    shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+        {${WEAR_AT}${inks}
         }`);
   };
-  material.customProgramCacheKey = () => `${previousKey()}-wear-${key}`;
+  material.customProgramCacheKey = () => `${previousKey()}-wear-road`;
 }

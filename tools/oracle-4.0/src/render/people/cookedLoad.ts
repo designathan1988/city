@@ -1,63 +1,39 @@
-import type { Group } from 'three';
+import type { Group, Texture } from 'three';
+import FILES from 'virtual:model-urls/citizens/people?ext=bin,ktx2';
 import { uncookInWorker } from '../bakePool';
-import { assemblePerson, uncookPerson } from './cookedPerson';
+import type { Ktx2Reader } from '../ktx2Texture';
+import { assemblePerson, decodeCookedPerson, type CookedHeader } from './cookedPerson';
 
-/** The people cooked for this build, read back (`cookedPerson.ts`): the manifest, and each person read in a worker */
+/** THE CAST'S PEOPLE, READ (`cookedPerson.ts`): the sixteen ready files of `public/models/citizens/people`, a body (`<id>.bin`, its levels
+ *  in it) and its atlas (`<id>.ktx2`) each, served as they are and read on demand, the body in a worker, the atlas as a KTX2 texture. */
 
-declare const __PEOPLE_COOK_HASH__: string | undefined;
-/** The fingerprint of how people are built in this build (`cook-plugin.ts`); null in tests. */
-const COOK_HASH = typeof __PEOPLE_COOK_HASH__ !== 'undefined' ? __PEOPLE_COOK_HASH__ : null;
-let manifest: Promise<ReadonlySet<string> | null> | null = null;
-/** A missing or stale cook is looked for again a little later */
-function lookAgain(): void {
-  if (typeof setTimeout === 'function') setTimeout(() => { manifest = null; }, 20_000);
+/** A file of the folder (`model-urls-plugin.ts`): a build gives it a URL named by its bytes' hash, so a changed file is never read from a stale cache. */
+function fileUrl(name: string): string {
+  const url = FILES[name];
+  if (!url) throw new Error(`public/models/citizens/people/${name} is not in this build`);
+  return new URL(url, location.href).href;
 }
 
-/** The ids cooked for this build, or null when there are none (or another build's). */
-function cookedIds(): Promise<ReadonlySet<string> | null> {
-  manifest ??= (async () => {
-    if (!COOK_HASH || typeof fetch === 'undefined') return null;
-    if (typeof location !== 'undefined' && new URLSearchParams(location.search).has('nocook')) return null;
-    try {
-      const response = await fetch(`${import.meta.env.BASE_URL}cooked/people/manifest.json`, { cache: 'no-cache' });
-      if (!response.ok) {
-        console.warn(`No cooked people for this build (fingerprint ${COOK_HASH}): every person is built during play, which stutters. Run "npm run cook:people".`);
-        lookAgain();
-        return null;
-      }
-      const m = (await response.json()) as { hash?: string; ids?: string[] };
-      if (m.hash !== COOK_HASH) {
-        // Named rather than silent: a stale cook is how a rebuild turned into a stutter nobody could explain.
-        console.warn(`The cooked people are stale: they were cooked under ${m.hash ?? '(no hash)'}, this build fingerprints ${COOK_HASH}. Every person is built during play until "npm run cook:people" is run again.`);
-        lookAgain();
-        return null;
-      }
-      return Array.isArray(m.ids) ? new Set(m.ids) : null;
-    } catch (error) {
-      // Unreadable - an HTML page served in its place, as when the path missed the build's base
-      console.error(`The cooked people's manifest could not be read (${String(error)}): every person is built during play, which stutters.`);
-      return null;
-    }
+/** A person as read: the scene with its bones and skinned mesh, what the file says of it, and its atlas. */
+export interface CookedPersonLoaded {
+  readonly scene: Group;
+  readonly header: CookedHeader;
+  readonly atlas: Texture;
+}
+
+/** Person `id` of the cast, read; its atlas by `reader` (its owner's: `riggedCitizens.ts`). */
+export async function loadCookedPerson(id: string, reader: Ktx2Reader): Promise<CookedPersonLoaded> {
+  const url = fileUrl(`${id}.bin`);
+  // Read in a worker, its arrays moved here; read here only where no worker can.
+  const decoded = await uncookInWorker(url) ?? await (async () => {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`${url}: ${response.status}`);
+    return decodeCookedPerson(await response.arrayBuffer()).person;
   })();
-  return manifest;
+  const header = decoded.header;
+  const atlasResponse = await fetch(fileUrl(header.atlas.file));
+  if (!atlasResponse.ok) throw new Error(`${header.atlas.file}: ${atlasResponse.status}`);
+  const atlas = await reader.read(await atlasResponse.arrayBuffer(), header.atlas.codec, 'color');
+  atlas.name = `person-atlas-${id}`;
+  return { scene: assemblePerson(decoded), header, atlas };
 }
-
-/** The person cooked for this build, read back; null when it was not cooked (it is built instead). */
-export async function loadCookedPerson(id: string): Promise<Group | null> {
-  const ids = await cookedIds();
-  if (!ids?.has(id)) return null;
-  const path = `${import.meta.env.BASE_URL}cooked/people/${id}.bin`;
-  try {
-    // Read in a worker, its arrays moved here; read here only where no worker can.
-    const decoded = await uncookInWorker(new URL(path, location.href).href);
-    if (decoded) return assemblePerson(decoded);
-    const response = await fetch(path);
-    if (!response.ok) return null;
-    return uncookPerson(await response.arrayBuffer());
-  } catch {
-    return null;
-  }
-}
-
-/** This build's fingerprint, for the cook to stamp its manifest with. */
-export const peopleCookHash = (): string | null => COOK_HASH;

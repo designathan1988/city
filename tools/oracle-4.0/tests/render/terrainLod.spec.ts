@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { PerspectiveCamera } from 'three';
 import { cellDiagonal, cellHeight } from '@world/groundPatch';
-import { LOD_LEVELS, LOD_PATCH, LandLevels } from '@render/terrainLevels';
+import { LOD_LEVELS, LOD_NODE, LOD_PATCH, LandLevels } from '@render/terrainLevels';
 import { LandLod, lodFragmentGlsl, lodVertexGlsl } from '@render/terrainLod';
+import { TERRAIN_CELL, TERRAIN_HALF, TERRAIN_SEGMENTS } from '@render/terrainGrid';
 
-/** A TERRAIN PLATE DRAWN BY ITS DISTANCE (`render/terrainLod.ts`, Strugar's CDLOD) */
-const seg = 320, n = seg + 1, cell = 6.4, half = 1024;
+/** A TERRAIN PLATE DRAWN BY ITS DISTANCE (`render/terrainLod.ts`, Strugar's CDLOD): the game's plate, 200 cells of 10 m under a root of 256 that reaches past it */
+const seg = TERRAIN_SEGMENTS, n = seg + 1, cell = TERRAIN_CELL, half = TERRAIN_HALF;
+/** The root's side, cells: past the plate's far edges. */
+const ROOT = LOD_NODE << (LOD_LEVELS - 1);
 
 /** A plate's corners from a field of its corner indices, and their diagonals (`cellDiagonal`). */
 function plate(field: (i: number, j: number) => number): { heights: Float64Array; flip: Uint8Array; diagonals(): void } {
@@ -40,10 +43,12 @@ describe('a plate\'s levels', () => {
       // A dense sample of the plate: every quarter cell.
       for (let y = 0; y <= seg; y += 0.25) {
         for (let x = 0; x <= seg; x += 0.25) {
-          const cx = Math.min(seg / step - 1, Math.floor(x / step)), cy = Math.min(seg / step - 1, Math.floor(y / step));
-          const x0 = cx * step, y0 = cy * step;
-          const a = heights[x0 + y0 * n]!, b = heights[x0 + (y0 + step) * n]!, c = heights[x0 + step + (y0 + step) * n]!, d = heights[x0 + step + y0 * n]!;
-          const u = (x - x0) / step, v = (y - y0) / step;
+          // The level's cell under the point; one across the plate's far edge drawn from its corners held on the edge (`landCorner`).
+          const last = Math.ceil(seg / step) - 1;
+          const cx = Math.min(last, Math.floor(x / step)), cy = Math.min(last, Math.floor(y / step));
+          const x0 = cx * step, y0 = cy * step, x1 = Math.min(seg, x0 + step), y1 = Math.min(seg, y0 + step);
+          const a = heights[x0 + y0 * n]!, b = heights[x0 + y1 * n]!, c = heights[x1 + y1 * n]!, d = heights[x1 + y0 * n]!;
+          const u = (x - x0) / (x1 - x0), v = (y - y0) / (y1 - y0);
           const h = fine(x, y);
           most = Math.max(most, Math.abs(cellHeight(a, b, c, d, u, v, 0) - h), Math.abs(cellHeight(a, b, c, d, u, v, 1) - h));
         }
@@ -96,13 +101,14 @@ describe('the patches chosen for a camera', () => {
     const d = Math.hypot(p.x - camera.position.x, p.y - camera.position.y, p.z - camera.position.z);
     return Math.min(1, Math.max(0, (d - lod.morph[level * 2]!) * lod.morph[level * 2 + 1]!));
   };
-  /** Each cell's level, -1 where no patch was drawn (out of view); no cell drawn twice. */
+  /** Each cell's level, -1 where no patch was drawn (out of view); no cell drawn twice, no patch wholly past the plate (its cells past the far edge are held on it, none drawn). */
   const levelsOf = (patches: readonly Patch[]): Int8Array => {
     const at = new Int8Array(seg * seg).fill(-1);
     for (const p of patches) {
       const span = LOD_PATCH * p.step;
-      for (let j = p.y; j < p.y + span; j++) {
-        for (let i = p.x; i < p.x + span; i++) {
+      expect(p.x < seg && p.y < seg, `patch at ${p.x},${p.y} past the plate`).toBe(true);
+      for (let j = p.y; j < Math.min(seg, p.y + span); j++) {
+        for (let i = p.x; i < Math.min(seg, p.x + span); i++) {
           expect(at[i + j * seg]).toBe(-1);
           at[i + j * seg] = p.level;
         }
@@ -136,7 +142,8 @@ describe('the patches chosen for a camera', () => {
   const views: readonly (readonly [string, readonly [number, number, number], readonly [number, number, number], number])[] = [
     ['over the plate', [-700, 260, 500], [-700, 0, 500], 170],
     ['low over the ground, looking across', [-900, 40, 900], [600, 0, -700], 35],
-    ['far off the plate', [3000, 600, -2500], [0, 0, 0], 35],
+    // Off the plate (it spans 1 km each way), near enough for two levels to meet (from 3 km off, 600 m up, the plate of 10 m cells is one level).
+    ['far off the plate', [2400, 500, -1900], [0, 0, 0], 35],
   ];
   for (const [name, eye, at, fov] of views) {
     it(`meet without a crack, ${name}: one level apart, the finer morphed whole and the coarser not at all along their edge (Strugar)`, () => {
@@ -189,8 +196,102 @@ describe('the patches chosen for a camera', () => {
 
   it('hang a rim only on the plate\'s own edges', () => {
     const { patches } = look([-700, 260, 500], [-700, 0, 500], 170);
-    // One rim a side of the plate a patch lies on (a corner patch two).
-    const onEdge = patches.reduce((n, p) => n + [p.x === 0, p.y === 0, p.x + LOD_PATCH * p.step === seg, p.y + LOD_PATCH * p.step === seg].filter(Boolean).length, 0);
+    // One rim a side of the plate a patch lies on (a corner patch two); a patch reaching past the far edge lies on it.
+    const onEdge = patches.reduce((n, p) => n + [p.x === 0, p.y === 0, p.x + LOD_PATCH * p.step >= seg, p.y + LOD_PATCH * p.step >= seg].filter(Boolean).length, 0);
     expect(lod.rimGeometry.instanceCount).toBe(onEdge);
+  });
+});
+
+describe('a plate of 200 cells under a root of 256 (CDLOD past the raster, Strugar)', () => {
+  /** A corner of a patch as the vertex shader places it (`landCorner`): its index on the plate, held on the far edge, moved by `k` onto the even corner
+   *  before it when odd, that corner held on the plate too (CDLOD's clamp, `getBaseVertexPos`). */
+  const placed = (origin: number, g: number, step: number, k: number): number => {
+    const c = Math.min(origin + g * step, seg);
+    const to = Math.min(origin + (g - (g & 1)) * step, seg);
+    return c + (to - c) * k;
+  };
+  /** The corners along a side a level draws with its patches from the plate's low edge to its far one, at morph `k`, as indices on the plate (each once). */
+  const sideCorners = (level: number, k: number): number[] => {
+    const step = 1 << level, out = new Set<number>();
+    for (let origin = 0; origin < seg; origin += LOD_PATCH * step) for (let g = 0; g <= LOD_PATCH; g++) out.add(placed(origin, g, step, k));
+    return [...out].sort((a, b) => a - b);
+  };
+
+  it('holds a corner past the plate\'s far edge on it in the shader, and where it morphs to', () => {
+    const glsl = lodVertexGlsl({ seg, cell, half });
+    expect(glsl).toContain(`ivec2 landOnPlate(ivec2 c) { return min(c, ivec2(${seg})); }`);
+    expect(glsl).toContain('ivec2 c = landOnPlate(origin + g * step);');
+    expect(glsl).toContain('ivec2 to = landOnPlate(origin + (g - odd) * step);');
+  });
+
+  it('keeps every level\'s corners on the plate and in their order, its two edges drawn at any morph, and a level morphed whole the next one\'s corners', () => {
+    for (let level = 0; level < LOD_LEVELS; level++) {
+      const step = 1 << level;
+      for (const k of [0, 0.25, 0.5, 1]) {
+        const corners = sideCorners(level, k);
+        expect(corners[0]).toBe(0);
+        expect(corners.at(-1)).toBe(seg);
+        for (const c of corners) expect(c >= 0 && c <= seg).toBe(true);
+        // A patch's corners never cross: its triangles never fold over, the one across the far edge included.
+        for (let origin = 0; origin < seg; origin += LOD_PATCH * step) {
+          for (let g = 1; g <= LOD_PATCH; g++) expect(placed(origin, g, step, k)).toBeGreaterThanOrEqual(placed(origin, g - 1, step, k));
+        }
+      }
+      // Morphed whole, a level is the next one (the edges included): no crack where a level meets the next, at the far edge too.
+      if (level + 1 < LOD_LEVELS) expect(sideCorners(level, 1)).toEqual(sideCorners(level + 1, 0));
+    }
+  });
+
+  it('meets the next plate on the same world points at the same level and morph: the corners on its east edge are the next plate\'s on its west edge', () => {
+    // Plate (0, 0) and plate (1, 0), a plate apart (`world/bounds.ts`): one line of the world between them, x = half.
+    const a = 0, b = 2 * half;
+    for (let level = 0; level < LOD_LEVELS; level++) {
+      const step = 1 << level, span = LOD_PATCH * step;
+      for (const k of [0, 0.25, 0.5, 1]) {
+        const east = new Set<string>(), west = new Set<string>();
+        for (let oy = 0; oy < seg; oy += span) {
+          for (let gy = 0; gy <= LOD_PATCH; gy++) {
+            const y = (placed(oy, gy, step, k) * cell - half).toFixed(6);
+            // Plate a: the corners of its last patch along x that lie on its far edge; plate b: its first patch's first corner, on its low edge.
+            const ox = Math.floor((seg - 1) / span) * span;
+            for (let gx = 0; gx <= LOD_PATCH; gx++) {
+              const x = placed(ox, gx, step, k);
+              if (x === seg) east.add(`${(a - half + x * cell).toFixed(6)},${y}`);
+            }
+            west.add(`${(b - half + placed(0, 0, step, k) * cell).toFixed(6)},${y}`);
+          }
+        }
+        expect(east.size).toBeGreaterThan(0);
+        expect([...east].sort(), `level ${level}, morph ${k}`).toEqual([...west].sort());
+      }
+    }
+  });
+
+  it('draws a far plate with as many patches as a plate of the root\'s own side: four at its coarsest level', () => {
+    const flat = (side: number): { heights: Float64Array; flip: Uint8Array } => ({ heights: new Float64Array((side + 1) ** 2), flip: new Uint8Array(side * side) });
+    const far = (side: number): number => {
+      const { heights, flip } = flat(side);
+      const levels = new LandLevels(side);
+      levels.markAll();
+      levels.measure(heights, flip);
+      const lod = new LandLod(levels, { seg: side, cell, half: (side * cell) / 2 }, { x: 0, y: 0 }, { west: true, east: true, north: true, south: true });
+      const camera = new PerspectiveCamera(35, 16 / 9, 1, 1_000_000);
+      camera.position.set(40_000, 9_000, -30_000);
+      camera.lookAt(0, 0, 0);
+      camera.updateMatrixWorld();
+      const count = lod.select(camera, 1080);
+      const data = lod.geometry.getAttribute('aLodPatch').array as Float32Array;
+      for (let k = 0; k < count; k++) expect(data[k * 4 + 3]).toBe(LOD_LEVELS - 1);
+      return count * LOD_PATCH * LOD_PATCH * 2;
+    };
+    // The plate of 256 cells (the root's side, the grid of 2,560 m plates of 10 m) and the plate of 200: the same triangles from afar.
+    expect(far(ROOT)).toBe(4 * LOD_PATCH * LOD_PATCH * 2);
+    expect(far(seg)).toBe(far(ROOT));
+  });
+
+  it('refuses a plate that is not whole level-0 patches under one root', () => {
+    expect(() => new LandLevels(seg + 4)).toThrow();
+    expect(() => new LandLevels(ROOT + LOD_PATCH)).toThrow();
+    expect(() => new LandLevels(seg)).not.toThrow();
   });
 });

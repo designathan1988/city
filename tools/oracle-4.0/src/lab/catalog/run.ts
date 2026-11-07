@@ -7,13 +7,16 @@ import { buildingBounds } from '@world/buildings/geometry';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { primeSurfaceBake, startSurfaceBake } from '../../render/surfaceBakeClient';
 import { surfaceMaps } from '../../render/surfaceTextures';
-import { measureItem, type CatalogRow, type ItemSpec } from './items';
+import { measureItem, type CatalogRow, type ItemSpec, type PieceSpec } from './items';
 import { buildingKitItems, effectItems, elementItems, groundCoverItems, miscItems, sceneryItems, treeItems, vehicleItems } from './kits';
-import { peopleAssetItems, peopleItems } from './people';
+import { peopleItems } from './people';
 import { layoutItems, terrainItems } from './layout';
+import { groundRoadItems } from './groundRoads';
 import { barrierItems, farCarItems, farForestItems, farNetworkItems, flagItems, signalItems, signItems, transitItems, waterItems } from './layers';
 import { engineBuildingFarItems, engineBuildingItems } from './engineBuildings';
 import { shellPieceItems } from './shellPieces';
+import { vehicleLevelItems } from './vehicleLevelItems';
+import { propLevelItems } from './propLevels';
 import { buildingItems, cityCounts, destructionPeak, drawCallsByGroup, previewItems, probe, sceneSnapshot, signatureOf, type BuildingMeasure, type CountEntry, type SceneLayer, type SceneSeen } from './city';
 
 /** THE CATALOGUE'S RUN IN THE GAME'S PAGE: the kits, then the test city, then the counts and shadows put together (`scripts/model-catalog.mjs` drives it). */
@@ -21,6 +24,8 @@ import { buildingItems, cityCounts, destructionPeak, drawCallsByGroup, previewIt
 interface State {
   rows: CatalogRow[];
   objects: Map<string, Object3D>;
+  /** Each object's pieces as its builder gave them (their levels of detail with them). */
+  pieces: Map<string, readonly PieceSpec[]>;
   signatures: Map<string, string[]>;
   gaps: string[];
   counts: Map<string, CountEntry>;
@@ -35,7 +40,7 @@ interface State {
 
 const state = (): State => {
   const w = window as unknown as { __catalogue?: State };
-  w.__catalogue ??= { rows: [], objects: new Map(), signatures: new Map(), gaps: [], counts: new Map(), seen: { bySignature: new Map(), layers: new Map(), cast: new Map(), views: 0, batches: new Map() }, drawCalls: null, destruction: null, buildings: [], saving: Promise.resolve(), saved: 0 };
+  w.__catalogue ??= { rows: [], objects: new Map(), pieces: new Map(), signatures: new Map(), gaps: [], counts: new Map(), seen: { bySignature: new Map(), layers: new Map(), cast: new Map(), views: 0, batches: new Map() }, drawCalls: null, destruction: null, buildings: [], saving: Promise.resolve(), saved: 0 };
   return w.__catalogue;
 };
 
@@ -52,9 +57,11 @@ function add(spec: ItemSpec): void {
     const { row, object } = measureItem(spec, id);
     s.rows.push(row);
     s.objects.set(id, object);
+    s.pieces.set(id, spec.pieces);
     s.signatures.set(id, spec.pieces.map((p) => signatureOf(p.geometry)));
-    // Saved as soon as it is measured: its sheet, its 3D file and its numbers in the catalogue's folder, one object after another.
-    s.saving = s.saving.then(() => saveRow(row));
+    // Saved as soon as it is measured: its sheet, its 3D file and its numbers in the catalogue's folder, one object after another; not when the
+    // optimisation sheets only build the objects to draw them their own way (`src/lab/optimization/sheet.ts`).
+    if (!(window as unknown as { __catalogueNoSave?: boolean }).__catalogueNoSave) s.saving = s.saving.then(() => saveRow(row));
   } catch (error) {
     recordGap(`${base}: measuring failed: ${String(error)}`);
   }
@@ -64,13 +71,17 @@ function add(spec: ItemSpec): void {
 async function saveRow(row: CatalogRow): Promise<void> {
   const s = state();
   const name = `${String(++s.saved).padStart(4, '0')}-${row.id.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').slice(0, 80)}`;
+  // The script's `--panel` and `--no-models` (`scripts/model-catalog.mjs`).
+  const options = window as unknown as { __cataloguePanel?: number; __catalogueNoModels?: boolean };
   try {
-    const png = await catalogueSheet(row.id, 480);
+    const png = await catalogueSheet(row.id, options.__cataloguePanel ?? 480);
     if (png) { await writeFile(`images/${name}.png`, Uint8Array.from(atob(png), (c) => c.charCodeAt(0)).buffer); row.sheet = `images/${name}.png`; }
     else recordGap(`${row.id}: no sheet (nothing drawable: no geometry with readable arrays)`);
   } catch (error) { recordGap(`${row.id}: its sheet could not be drawn (${String(error)})`); }
-  const [model] = await catalogueModels([{ id: row.id, file: `models/${name}.glb` }]);
-  if (model && !model.error && model.bytes) row.model = `models/${name}.glb`;
+  if (!options.__catalogueNoModels) {
+    const [model] = await catalogueModels([{ id: row.id, file: `models/${name}.glb` }]);
+    if (model && !model.error && model.bytes) row.model = `models/${name}.glb`;
+  }
   await writeFile(`rows/${name}.json`, new TextEncoder().encode(JSON.stringify(row, null, 1)).buffer);
 }
 
@@ -83,9 +94,8 @@ async function group(name: string, run: () => void | Promise<void>): Promise<voi
   await state().saving;
 }
 
-/** Every kit, each object and variation built on its own; `proxies` the garment and hair files, `targetBytes` the shape targets' files;
- *  `only` (a pattern) the groups to build, every group when empty. */
-export async function catalogueKits(proxies: readonly string[], targetBytes: number, only = '', savedBefore = 0): Promise<number> {
+/** Every kit, each object and variation built on its own; `only` (a pattern) the groups to build, every group when empty. */
+export async function catalogueKits(only = '', savedBefore = 0): Promise<number> {
   (window as unknown as { __catalogueOnly?: RegExp | null }).__catalogueOnly = only ? new RegExp(only, 'i') : null;
   // Numbered after what the folder already holds (`--append`).
   state().saved = savedBefore;
@@ -95,6 +105,7 @@ export async function catalogueKits(proxies: readonly string[], targetBytes: num
   await group('buildings (engine generators)', () => engineBuildingItems(add));
   await group('roads, structures, poles (engine layouts)', () => layoutItems(add));
   await group('terrain (engine ground)', () => terrainItems(add));
+  await group('ground round roads (engine layouts)', () => groundRoadItems(add));
   await group('signs', () => signItems(add, new Map()));
   await group('barriers', () => barrierItems(add, new Map()));
   await group('flags', () => flagItems(add, new Map()));
@@ -110,11 +121,13 @@ export async function catalogueKits(proxies: readonly string[], targetBytes: num
   await group('trees', () => treeItems(add));
   await group('landscape elements (glTF)', () => elementItems(add));
   await group('vehicles', () => vehicleItems(add));
+  await group('vehicle levels', () => vehicleLevelItems(add));
+  await group('vehicle levels as whole', () => vehicleLevelItems(add, true));
   await group('held props, trains, sky', () => miscItems(add));
   await group('effects', () => effectItems(add));
   await group('editor previews', () => previewItems(add));
-  await group('people: base body and garments', () => peopleAssetItems(add, proxies, targetBytes));
   await group('people: cast and crowd', () => peopleItems(add));
+  await group('street prop levels', () => propLevelItems(add));
   return state().rows.length;
 }
 
@@ -137,6 +150,7 @@ export async function catalogueExtent(zoom: number, elevation: number): Promise<
   const { doc } = probe();
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   const take = (x: number, y: number): void => { minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y); };
+  // @rebuild Walks the whole map: the lab's sheet, never the game's frame.
   for (const node of doc.nodes.values()) take(node.x, node.y);
   for (const id of doc.buildings.idList()) { const b = doc.buildings.get(id); if (b) { const r = buildingBounds(b); take(r.minX, r.minY); take(r.maxX, r.maxY); } }
   catalogueView((minX + maxX) / 2, (minY + maxY) / 2, zoom, 0, elevation);
@@ -346,6 +360,13 @@ export async function catalogueModels(entries: readonly { id: string; file: stri
     out.push({ id, bytes: data.byteLength });
   }
   return out;
+}
+
+/** One built object, its measures and its pieces, by id; null when no group built it. */
+export function catalogueEntry(id: string): { row: CatalogRow; object: Object3D; pieces: readonly PieceSpec[] } | null {
+  const s = state();
+  const object = s.objects.get(id), row = s.rows.find((r) => r.id === id);
+  return object && row ? { row, object, pieces: s.pieces.get(id) ?? [] } : null;
 }
 
 /** Every row's id, costliest first (the order the sheets are numbered in). */

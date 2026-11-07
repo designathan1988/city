@@ -3,14 +3,14 @@ import { Frustum, Matrix4, OrthographicCamera } from 'three';
 import { createBuildingKit } from '@render/buildings/kit';
 import { cellMass } from '@render/buildings/cellArrays';
 import { createMassCells } from '@render/buildings/massCells';
-import { emitMassing } from '@render/buildings/massing';
+import { massesOf } from './support/masses';
 import { BLUEPRINTS } from '@world/buildings/blueprints';
 import type { Building } from '@world/buildings/types';
 import { m } from '@world/units';
+import { CELL } from '@world/cells';
 
 /** THE DETAIL DRAWN WITHIN ITS BYTES (`massCells.ts` `cap`, the brief: detail residency capped in bytes, falling back to L1) */
 
-const CELL = m(256);
 
 /** Five cells in a row east of the origin, each with a building's masses, chosen near and at full detail from an eye over the first. */
 function row(): ReturnType<typeof createMassCells> {
@@ -18,7 +18,7 @@ function row(): ReturnType<typeof createMassCells> {
   for (let i = 0; i < 5; i++) {
     const bp = BLUEPRINTS[0]!;
     const b = { ...JSON.parse(JSON.stringify(bp.body)), id: i + 1, x: (i + 0.5) * CELL, y: CELL / 2, rotation: 0 } as Building;
-    cells.land(`${i},0`, cellMass([emitMassing(b, () => 0)!]));
+    cells.land(`${i},0`, cellMass([massesOf(b, () => 0)!]));
   }
   // From above, 10 px a metre: every cell's detail is wanted.
   cells.choose(CELL / 2, CELL / 2, m(300), 1000, 10, false, Infinity);
@@ -54,7 +54,7 @@ describe('the detail drawn', () => {
     const cells = createMassCells(createBuildingKit(), CELL);
     for (const i of [-1, 0, 1]) {
       const b = { ...JSON.parse(JSON.stringify(BLUEPRINTS[0]!.body)), id: i + 2, x: (i + 0.5) * CELL, y: CELL / 2, rotation: 0 } as Building;
-      cells.land(`${i},0`, cellMass([emitMassing(b, () => 0)!]));
+      cells.land(`${i},0`, cellMass([massesOf(b, () => 0)!]));
     }
     // A perspective eye over the middle cell: the two others the same distance off, west and east.
     cells.choose(CELL / 2, CELL / 2, m(120), 1000, null, false, Infinity);
@@ -107,7 +107,7 @@ describe('the detail and the view', () => {
     const cells = createMassCells(createBuildingKit(), CELL);
     for (let i = 0; i < 5; i++) {
       const b = { ...JSON.parse(JSON.stringify(BLUEPRINTS[0]!.body)), id: i + 1, x: (i + 0.5) * CELL, y: CELL / 2, rotation: 0 } as Building;
-      cells.land(`${i},0`, cellMass([emitMassing(b, () => 0)!]));
+      cells.land(`${i},0`, cellMass([massesOf(b, () => 0)!]));
     }
     // Straight down over the first cell, 200 m across (three's axes: map y is -z).
     const camera = new OrthographicCamera(-100, 100, 100, -100, 1, 2000);
@@ -125,7 +125,7 @@ describe('the detail and the view', () => {
     const cells = createMassCells(createBuildingKit(), CELL);
     for (let i = 0; i < 5; i++) {
       const b = { ...JSON.parse(JSON.stringify(BLUEPRINTS[0]!.body)), id: i + 1, x: (i + 0.5) * CELL, y: CELL / 2, rotation: 0 } as Building;
-      cells.land(`${i},0`, cellMass([emitMassing(b, () => 0)!]));
+      cells.land(`${i},0`, cellMass([massesOf(b, () => 0)!]));
     }
     const camera = new OrthographicCamera(-100, 100, 100, -100, 1, 2000);
     camera.position.set(CELL / 2, 1000, -CELL / 2);

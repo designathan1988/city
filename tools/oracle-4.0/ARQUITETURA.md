@@ -87,8 +87,7 @@ cidade pequena e contando tudo o que as vistas de bairro e de rua desenhariam. O
 
 ## Armadilha conhecida: o carimbo da cidade cozida
 
-`cooked/cities/manifest.json` só vale se o hash bater com o código do gerador, e esse código inclui arquivos
-de pessoas (`public/models/people/proxies/community.json`, `src/people/wardrobe*.json`). Com o carimbo velho,
+`cooked/cities/manifest.json` só vale se o hash bater com o código do gerador. Com o carimbo velho,
 o jogo descarta a cidade cozida e gera a cidade na hora. Rode `npm run cook:cities` depois de mudar qualquer
 um deles. Antes, a cidade gerada na hora abria sem as árvores da paisagem (`nature` nulo); corrigido em
 f925948c, e a semente do ecossistema agora é a da própria cidade.

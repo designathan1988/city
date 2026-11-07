@@ -38,7 +38,6 @@ const FIELDS: Readonly<Record<Field, FieldSpec>> = {
   occupantZoom: { system: 'vehicles', kind: 'number', title: 'Occupant zoom', what: 'The zoom from which the people inside vehicles are drawn.', affects: ['layer:people', 'name:person'] },
   vehicleErrorPixels: { system: 'vehicles', kind: 'number', title: 'Vehicle part screen error', what: 'Pixels of error the level of each part accepts.', affects: ['layer:people'] },
   vehicleWholeCap: { system: 'vehicles', kind: 'number', title: 'Whole vehicles', what: 'How many vehicles are drawn whole, at most.', affects: ['layer:people'] },
-  hairStrandPeople: { system: 'people', kind: 'number', title: 'People with hair strands', what: 'How many of the nearest get strands.', affects: ['layer:people', 'name:procedural-people'] },
   cloudShadows: { system: 'post', kind: 'bool', title: 'Cloud shadows', what: 'Builds the cloud pass (together with "Sky clouds").', affects: ['post', 'pass:clouds'] },
   vegetationDistance: { system: 'vegetation', kind: 'number', unread: true, title: 'Vegetation range', what: "Distance of the ecosystem's vegetation.", affects: ['layer:vegetation'] },
   impostors: { system: 'vegetation', kind: 'bool', unread: true, title: 'Plant impostors', what: 'Distant plants as impostors.', affects: ['layer:vegetation'] },

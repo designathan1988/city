@@ -4,8 +4,8 @@ import type { GraphChange, Lanelet, LaneletGraph, LaneletId } from '@world/lanel
 import type { ChangeRect } from '@world/changes';
 import { m } from '@world/units';
 
-/** Cell of the lanes' grid, world units. */
-const LANE_CELL = m(30);
+/** Cell of the lanes' grid, world units: a tenth of a world cell (`world/cells.ts` CELL). */
+const LANE_CELL = m(25);
 
 const cellKey = (gx: number, gy: number): number => (gx + 32768) * 65536 + (gy + 32768);
 

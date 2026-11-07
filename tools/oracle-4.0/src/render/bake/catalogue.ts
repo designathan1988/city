@@ -1,8 +1,8 @@
 import { FINISHES } from '@world/buildings/materials';
-import { surfaceTexels, type SurfaceRecipe } from '../mesh/textureBaker';
+import { surfaceTexels } from '../mesh/textureBaker';
 import { detailTexels } from './detailRecipes';
 import { FINISH_LAYER_SIZE, LOOKS, finishTiles } from './finishRecipes';
-import { roadRecipes } from './roadRecipes';
+import { ROAD_COLOUR_LAYERS, ROAD_DETAIL_LAYERS, ROAD_LAYER_SIZE, ROAD_RELIEF_LAYERS, roadRecipes } from './roadRecipes';
 import { terrainRecipes } from './terrainRecipes';
 
 /** Every texture the game bakes, run at build time by `scripts/vite/surface-bake-plugin.ts` (never during play) and loaded by `surfaceBakeClient.ts` */
@@ -11,7 +11,7 @@ import { terrainRecipes } from './terrainRecipes';
 type TextureUse = 'color' | 'normal' | 'data';
 
 interface BakedTexture {
-  /** Its name in the game (`surfaceTextures.ts`): `<surface>:map`, `:normal`, `:rough`, `<kind>:detail`, `:detail-normal`. */
+  /** Its name in the game (`surfaceTextures.ts`): `<surface>:map`, `:normal`, `:rough`, or an array's own (`road-surfaces:map`, `road-details`). */
   readonly name: string;
   readonly use: TextureUse;
   readonly size: number;
@@ -19,15 +19,8 @@ interface BakedTexture {
   readonly layers: readonly Uint8Array[];
   /** Alpha-tested (0..1): its mipmaps keep the share of texels that pass (`ktx2.ts` `mipChain`). */
   readonly alphaRef?: number;
-}
-
-/** A surface's three maps, or its colour alone. */
-function* surface(key: string, recipe: SurfaceRecipe, mapOnly = false): Generator<BakedTexture> {
-  const texels = surfaceTexels(recipe);
-  yield { name: `${key}:map`, use: 'color', size: texels.size, layers: [texels.map] };
-  if (mapOnly) return;
-  yield { name: `${key}:normal`, use: 'normal', size: texels.size, layers: [texels.normal] };
-  yield { name: `${key}:rough`, use: 'data', size: texels.size, layers: [texels.rough] };
+  /** Each layer's own use for its mipmaps where an array holds several (a normal map's layers beside a roughness map's): the file's `use` else. */
+  readonly layerUses?: readonly TextureUse[];
 }
 
 /** A square of texels repeated `tiles` times each way: its mip chain is its own chain repeated, level by level (a 2 x 2 box never straddles two copies). */
@@ -58,25 +51,46 @@ function* finishArrays(): Generator<BakedTexture> {
   yield { name: 'building-finishes:rough', use: 'data', size: FINISH_LAYER_SIZE, layers: layers.map((l) => l.rough) };
 }
 
+/**
+ * The street surfaces as one material reads them (`bake/roadRecipes.ts` ROAD_COLOUR_LAYERS, `mesh/roadEdges.ts` applyRoadSurface): their colours in
+ * one array, their normals and roughness in another, each smaller surface repeated in its layer (`tiledTexels`); the footway's colour, and its
+ * normal and roughness as two layers, at its own size; and the close-zoom layer's families as one array, their colours then their normals. The
+ * structures' concrete reads the deck's layers and the concrete family's (`mesh/roadEdges.ts` applyRoadLayers).
+ */
+function* roadArrays(): Generator<BakedTexture> {
+  const texels = new Map(roadRecipes().map(({ key, recipe }) => [key, surfaceTexels(recipe)] as const));
+  const of = (key: string): ReturnType<typeof surfaceTexels> => texels.get(key)!;
+  const size = ROAD_LAYER_SIZE;
+  const tiled = (key: string, pick: (t: ReturnType<typeof surfaceTexels>) => Uint8Array): Uint8Array => tiledTexels(pick(of(key)), of(key).size, size / of(key).size);
+  yield { name: 'road-surfaces:map', use: 'color', size, layers: ROAD_COLOUR_LAYERS.map((key) => tiled(key, (t) => t.map)) };
+  yield {
+    name: 'road-surfaces:relief', use: 'data', size,
+    layers: [...ROAD_RELIEF_LAYERS.map((key) => tiled(key, (t) => t.normal)), ...ROAD_RELIEF_LAYERS.map((key) => tiled(key, (t) => t.rough))],
+    layerUses: [...ROAD_RELIEF_LAYERS.map((): TextureUse => 'normal'), ...ROAD_RELIEF_LAYERS.map((): TextureUse => 'data')],
+  };
+  const footway = of('footway');
+  yield { name: 'road-footway:map', use: 'color', size: footway.size, layers: [footway.map] };
+  yield { name: 'road-footway:relief', use: 'data', size: footway.size, layers: [footway.normal, footway.rough], layerUses: ['normal', 'data'] };
+  const details = ROAD_DETAIL_LAYERS.map((kind) => detailTexels(kind));
+  yield {
+    name: 'road-details', use: 'data', size: details[0]!.size, layers: [...details.map((d) => d.map), ...details.map((d) => d.normal)],
+    layerUses: [...details.map((): TextureUse => 'data'), ...details.map((): TextureUse => 'normal')],
+  };
+}
+
 /** One texture at a time, so the build holds one recipe's texels at once (the finishes' arrays: their layers). */
 export function* bakeCatalogue(): Generator<BakedTexture> {
-  for (const { key, recipe, mapOnly } of roadRecipes()) yield* surface(key, recipe, mapOnly === true);
+  // The street surfaces in the road material's arrays (`roadArrays`), the structures' concrete too (`mesh/roadEdges.ts` applyRoadLayers). DO NOT
+  // bake a surface's own maps besides: no material reads them, the same texels twice in the download and on the GPU.
+  yield* roadArrays();
   yield* finishArrays();
   // The land reads the grass's colour and relief (`terrain.ts` `terrainBakes`)
   const land = terrainRecipes();
   const grass = surfaceTexels(land.grass);
   yield { name: 'terrain-grass:map', use: 'color', size: grass.size, layers: [grass.map] };
   yield { name: 'terrain-grass:normal', use: 'normal', size: grass.size, layers: [grass.normal] };
-  // The close-up layers on the street surfaces (`mesh/detailLayer.ts`)
-  for (const kind of ['asphalt', 'concrete'] as const) {
-    const detail = detailTexels(kind);
-    yield { name: `${kind}:detail`, use: 'data', size: detail.size, layers: [detail.map] };
-    yield { name: `${kind}:detail-normal`, use: 'normal', size: detail.size, layers: [detail.normal] };
-  }
   const grassDetail = detailTexels('grass');
   const soilDetail = detailTexels('soil');
-  yield { name: 'grass:detail', use: 'data', size: grassDetail.size, layers: [grassDetail.map] };
-  yield { name: 'grass:detail-normal', use: 'normal', size: grassDetail.size, layers: [grassDetail.normal] };
   // DO NOT give the land a texture unit per family: its program ran out of the 16 a fragment shader has
   const rocks = land.rocks.map(surfaceTexels);
   const dirt = surfaceTexels(land.dirt);

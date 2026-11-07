@@ -1,10 +1,11 @@
 import type { ChangeRect } from './changes';
 import { m } from './units';
 
-/** THE WORLD'S TILES: an unbounded grid of 1,024 m squares, the unit the world is generated, kept, loaded and drawn by (CLAUDE.md, "Streaming world") */
+/** THE WORLD'S TILES: an unbounded grid of 1,000 m squares, the unit the world is generated, kept, loaded and drawn by (CLAUDE.md, "Streaming world") */
 
-/** A tile's side. The tiles' edges lie on multiples of it, so a tile nests in a 2,048 m plate (`bounds.ts`) and holds 16 cells of 256 m. */
-export const TILE = m(1_024);
+/** A tile's side, 100 cells of the universal grid (`grid.ts` GRID_CELL). The tiles' edges lie on multiples of it, so a tile nests in a 2,000 m plate
+ *  (`bounds.ts`, 2 x 2 tiles) and holds 4 x 4 cells of 250 m (`cells.ts`). */
+export const TILE = m(1_000);
 
 /** Tiles each way from the origin a key can name (2^15): about 33,000 km, far past any map, so a key and an id stay exact doubles. */
 const TILE_REACH = 1 << 15;
@@ -33,7 +34,7 @@ export function tileOfKey(key: number): TileIJ {
 }
 
 /** The key of the tile a point lies in. */
-export const tileKeyAt = (x: number, y: number): number => {
+const tileKeyAt = (x: number, y: number): number => {
   const { i, j } = tileIJ(x, y);
   return tileKey(i, j);
 };
@@ -42,15 +43,20 @@ export const tileKeyAt = (x: number, y: number): number => {
 export const tileRect = (i: number, j: number): ChangeRect => [i * TILE, j * TILE, (i + 1) * TILE, (j + 1) * TILE];
 
 /** The ids a tile hands out: each tile its own range, so a tile is made, kept and loaded alone and two tiles never name one record alike */
-export const TILE_IDS = 1 << 20;
+const TILE_IDS = 1 << 19;
 
-/** The first id of a tile's range; the ids under `TILE_IDS` are a map's from before the tiles (kept as they were, never handed out again). */
-export const tileIdBase = (key: number): number => (key + 1) * TILE_IDS;
+/** Where the ranges of the tiles of 1,000 m start: past every range the tiles of 1,024 m handed out ((key + 1) x 2^20 for keys under 2^32: up to
+ *  2^52 + 2^20), so a record of a map made on the old tiles keeps its id and a tile of now never hands it out again; the last range ends under
+ *  2^53 (2^52 + 2^20 + 2^32 x 2^19 < 2^53), every id an exact double. The ids under 2^20 are a map's from before the tiles (never handed out again either). */
+const TILE_IDS_FROM = 2 ** 52 + 2 ** 20;
+
+/** The first id of a tile's range (`TILE_IDS_FROM`). */
+export const tileIdBase = (key: number): number => TILE_IDS_FROM + key * TILE_IDS;
 
 /** The ids a tile counts out one by one (its own records); the upper half of its range is its edge's nodes' (`edgeNodeId`). */
-export const TILE_COUNTED = 1 << 19;
+export const TILE_COUNTED = 1 << 18;
 
-/** Steps an edge node's place is told in along its edge: a centimetre (an edge is 102,400 of them, under 2^17). */
+/** Steps an edge node's place is told in along its edge: a centimetre (an edge is 100,000 of them, under 2^17). */
 const EDGE_STEP = m(0.01);
 
 /** A node on a tile's edge: the same id from both tiles that lay it (each makes it alone, from the seed and the place, `cityGen/wholeMap.ts`)
@@ -63,20 +69,6 @@ export function edgeNodeId(x: number, y: number): number | null {
   const along = onX ? y - j * TILE : x - i * TILE;
   const step = Math.round(along / EDGE_STEP);
   return tileIdBase(tileKey(i, j)) + TILE_COUNTED + (onX ? 0 : 1 << 17) + step;
-}
-
-/** The tiles within `radius` tiles of the tile at (`i`, `j`), the nearest first (a square ring by ring). */
-export function tilesAround(i: number, j: number, radius: number): TileIJ[] {
-  const out: TileIJ[] = [{ i, j }];
-  for (let r = 1; r <= radius; r++) {
-    for (let di = -r; di <= r; di++) {
-      out.push({ i: i + di, j: j - r }, { i: i + di, j: j + r });
-    }
-    for (let dj = -r + 1; dj <= r - 1; dj++) {
-      out.push({ i: i - r, j: j + dj }, { i: i + r, j: j + dj });
-    }
-  }
-  return out;
 }
 
 export const OWNER = {

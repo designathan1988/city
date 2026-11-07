@@ -15,7 +15,6 @@ const LOADERS: Readonly<Record<JobService, () => Promise<{ serve: Serve }>>> = {
   ecology: () => import('./render/ecology.worker'),
   flatGround: () => import('./render/flatGround.worker'),
   groundShape: () => import('./render/groundShape.worker'),
-  garmentPadding: () => import('./render/people/garmentPadding.worker'),
   peopleLod: () => import('./render/people/lodWorker'),
   roadTiles: () => import('./render/roadTile.worker'),
   // The road blocks' far levels (`roadTilePool.ts` coarsen): the same worker, on the page's own workers.
@@ -27,11 +26,27 @@ const LOADERS: Readonly<Record<JobService, () => Promise<{ serve: Serve }>>> = {
   cityGen: () => import('./cityGen.worker'),
   // A city's network solved while its curtain is up, taken by the page's build (`networkBake.worker.ts`).
   networkBake: () => import('./networkBake.worker'),
+  // A tile's junctions and ribbons solved as the view comes to it (`world/networkWindow.ts`).
+  roadBake: () => import('./roadBake.worker'),
+  // A tile's roads at the far level, the map's far level made tile by tile (`render/networkFarTile.ts`).
+  roadFarTile: () => import('./render/networkFarTile.worker'),
+  // A cell of the buildings' cover, what the plants stand clear of (`render/buildings/coverJobs.ts`).
+  coverCells: () => import('./render/buildings/coverCell.worker'),
+  // The gardens about a near cell or a far block of the props, placed (`render/gardens.ts`).
+  gardenCells: () => import('./render/gardenCell.worker'),
+  // The camera's solids of some buildings, on no floor (`render/buildings/solidJobs.ts`).
+  cameraSolids: () => import('./render/buildings/cameraSolid.worker'),
+  // The street furniture about a near cell or a far block, placed with the roads round it (`render/streetFurnitureLayer.ts`).
+  furnitureCells: () => import('./render/furnitureCell.worker'),
+  // A city's tiles grown many at once, and joined (`editor/cityTiles.ts`).
+  cityGrowth: () => import('./cityGrowth.worker'),
   terrainLight: () => import('./render/terrainLight.worker'),
   // A dab's work on a plate: its levels, its woods, its shore (`render/landStroke.ts`).
   landStroke: () => import('./render/landStroke.worker'),
   derivedWriter: () => import('./render/derivedWriter.worker'),
   save: () => import('./editor/save.worker'),
+  // A saved map's squares decoded and its tables joined, off the page (`editor/squaresDecode.ts`).
+  saveRead: () => import('./editor/squaresRead.worker'),
 };
 
 const host = self as unknown as { onmessage: ((e: MessageEvent<ToJob | AdoptLane | CloseLane>) => void) | null; postMessage(message: FromJob, transfer?: Transferable[]): void };

@@ -1,14 +1,14 @@
 import { IdSlots, grown } from '@core/idSlots';
 import type { ChangeJournal } from '@world/changes';
-import { m } from '@world/units';
+import { CELL } from '@world/cells';
 import type { TrafficBuildings, TrafficFacts } from '../agents/trafficBuildings';
 import { CARS, busy, type Mix } from '../ambient/demand';
 import { buildingsChangedSince, cellKey } from '../ambient/ambientIndex';
 
-/** WHAT THE LAND USE PUTS ON THE STREETS, BY THE WORLD'S 256 m CELL: the meso traffic's trips start and end where the buildings are */
+/** WHAT THE LAND USE PUTS ON THE STREETS, BY THE WORLD'S 250 m CELL: the meso traffic's trips start and end where the buildings are */
 
-/** The world's cell (CLAUDE.md, one grid). */
-export const DEMAND_CELL = m(256);
+/** The world's cell (CLAUDE.md, one grid; `world/cells.ts`). */
+const DEMAND_CELL = CELL;
 /** Buildings in a cell at which its streets carry the ambient's full density (`ambient/demand.ts` CARS); fewer, in proportion. */
 const FULL_CELL = 24;
 const KINDS: readonly (keyof Mix)[] = ['home', 'shop', 'work', 'civic'];
@@ -27,7 +27,7 @@ export class DemandCells {
   private readonly byBuilding = new IdSlots(256);
   private cellAt = new Int32Array(16);
   private kindAt = new Uint8Array(16);
-  /** Each cell key's dense index; indexes are never given back (a cell is a 256 m square: a city has a few thousand). */
+  /** Each cell key's dense index; indexes are never given back (a cell is a 250 m square: a city has a few thousand). */
   private readonly index = new Map<number, number>();
   private counts = new Float64Array(64 * STRIDE);
   /** The cells' busyness of the hour (`busy`), by kind, set by `atHour`. */

@@ -1,25 +1,50 @@
 import { CELL } from '@world/cells';
 import { m } from '@world/units';
 import type { CellArrays, PartBanding, PartBandings } from './cellArrays';
-import { PART_KINDS, type PartKind, type PartScreen } from './kit';
+import type { PartKind, PartScreen } from './kit';
+import { PART_KINDS } from './partKinds';
 import { POSE_FLOATS } from './partPose';
 import { LOOK_FLOATS, SHELL_PARTS, shellPartError } from './shellParts';
 
 /** A CELL'S PARTS FILED BY BAND AND SUB-CELL WHERE THE CELL IS MADE (`cellWork.ts`): the page is handed each band's buffers ready, never an instance to read (`partCells.ts` draws them) */
 
-export type { PartBanding, PartBandings } from './cellArrays';
+export type { PartBandings } from './cellArrays';
 
-/** Side of the sub-cells a cell's parts are filed by (four a side): each part kind's level is chosen per sub-cell, or per quadrant or cell where they agree (`partCells.ts`). DO NOT read it of `layerCells.ts`: that module reaches the shells, which reach the filing. */
-export const DETAIL_CELL = m(64);
-/** Sub-cells a side of a cell (the world's one grid, `layerCells.ts` BATCH_CELL): four, as `morton` is made for. */
+/** Side of the sub-cells a cell's parts are filed by (five a side, 5 cells of the universal grid each, `world/grid.ts`): each part kind's level is chosen per sub-cell, or per run of sub-cells or the cell where they agree (`partCells.ts`). DO NOT read it of `layerCells.ts`: that module reaches the shells, which reach the filing. */
+export const DETAIL_CELL = m(50);
+/** Sub-cells a side of a cell (the world's one grid, `layerCells.ts` BATCH_CELL): five, a whole number of them a cell. */
 export const SIDE = Math.round(CELL / DETAIL_CELL);
-if (SIDE !== 4) throw new Error(`[buildings] a cell's parts are filed four sub-cells a side, not ${SIDE}`);
+if (SIDE * DETAIL_CELL !== CELL) throw new Error(`[buildings] a cell of ${CELL} m is not whole sub-cells of ${DETAIL_CELL} m`);
 export const LEAVES = SIDE * SIDE;
 /** What a draw is taken to cost in triangles: a band is kept apart only if it draws as much (three's per-object work on the page, `projectObject`/`renderObject`, outweighs this many triangles on the GPU). */
 export const DRAW_TRIANGLES = 16384;
 
-/** A sub-cell's index in Morton order from its column and row in the cell. */
-export const morton = (u: number, v: number): number => (u & 1) | ((v & 1) << 1) | ((u & 2) << 1) | ((v & 2) << 2);
+/** The Morton code of a column and row (their bits interleaved, column first): sub-cells near in it are near on the ground. */
+function mortonCode(u: number, v: number): number {
+  let code = 0;
+  for (let bit = 0; bit < 8; bit++) code |= (((u >> bit) & 1) << (2 * bit)) | (((v >> bit) & 1) << (2 * bit + 1));
+  return code;
+}
+/** Each sub-cell's place in the cell's order (`u + v * SIDE`): its Morton code's rank among the cell's sub-cells, so the order is 0 to LEAVES - 1 with
+ *  no gap whatever the side (five is no power of two: the codes of a 5 x 5 square run to 51) and keeps Morton's locality, a run of the order a compact patch. */
+const MORTON_RANK: Uint8Array = (() => {
+  const cells = Array.from({ length: LEAVES }, (_, k) => k).sort((a, b) => mortonCode(a % SIDE, Math.floor(a / SIDE)) - mortonCode(b % SIDE, Math.floor(b / SIDE)));
+  const rank = new Uint8Array(LEAVES);
+  cells.forEach((k, r) => { rank[k] = r; });
+  return rank;
+})();
+
+/** A sub-cell's index in the cell's Morton order from its column and row in the cell (`MORTON_RANK`). */
+export const morton = (u: number, v: number): number => MORTON_RANK[u + v * SIDE]!;
+
+/** The shells' piece a point's sub-cell belongs to along one axis: the cell's halves by whole sub-cells (the lower one the larger: 3 + 2 of five,
+ *  150 + 100 m; 2 + 2 of four), two a side, so a cell draws its shells in four pieces (`cellWork.ts`, `cellArrays.ts` groups). */
+export function shellHalf(v: number): number {
+  const sub = Math.floor(v / DETAIL_CELL), cell = Math.floor(sub / SIDE);
+  return cell * 2 + Math.floor(((sub - cell * SIDE) * 2) / SIDE);
+}
+/** The shells' piece of a point (`shellHalf` on both axes), as `cellArrays` groups key it. */
+export const shellPieceOf = (x: number, y: number): string => `${shellHalf(x)},${shellHalf(y)}`;
 
 /** Each kind's banding off the kit's screens as they are now (a small prop's simplified levels come in once the simplifier has loaded). */
 export function partBandings(screens: Readonly<Record<PartKind, PartScreen>>): PartBandings {
@@ -30,7 +55,7 @@ export function partBandings(screens: Readonly<Record<PartKind, PartScreen>>): P
 }
 
 /** One band of a kind's instances in the cell, by sub-cell in Morton order. */
-export interface FiledBand {
+interface FiledBand {
   readonly kind: PartKind;
   /** Each sub-cell's first instance; the last entry is the band's count. */
   readonly start: Uint32Array;

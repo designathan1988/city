@@ -179,13 +179,23 @@ describe('the job system', () => {
     expect(hostOf(jobPort('save'))).toBe(save);
   });
 
+  it("runs no queued job on the derived cache writer's worker: the kept tiles' reads the opening waits for never wait behind a job", async () => {
+    const { jobPort, submitJob } = await import('@/jobs/jobPool');
+    const writer = hostOf(jobPort('derivedWriter'));
+    // With the save's lane: one worker kept clear for both.
+    expect(hostOf(jobPort('save'))).toBe(writer);
+    for (let k = 0; k < 8; k++) submitJob({ service: 'coverCells', key: null, priority: k, write: () => ({ data: k, transfer: [] }), done: () => {}, failed: () => {} });
+    expect(FakeWorker.made[writer]!.asked.filter((m) => m.seq !== undefined)).toEqual([]);
+  });
+
   it("makes a side's workers where the maker says, the page's Worker where it says nothing", async () => {
     const { jobPort, setJobWorkerMaker } = await import('@/jobs/jobPool');
     const made: boolean[] = [];
     setJobWorkerMaker((long) => { made.push(long); return long ? new FakeWorker() as unknown as Worker : null; });
     const before = FakeWorker.made.length;
     jobPort('growth');
-    jobPort('roadCoarse');
+    // A lane the page keeps (its IndexedDB): `roadCoarse` went to the job processes (`PROCESS_LANES`, 2026-10-26).
+    jobPort('derivedWriter');
     expect(made).toEqual([true, false]);
     expect(FakeWorker.made.length).toBe(before + 2);
     setJobWorkerMaker(null);
@@ -201,6 +211,51 @@ describe('the job system', () => {
     expect([...remote].map(queued)).toEqual(new Array(remote.size).fill(0));
     expect(FakeWorker.made.filter((w) => !remote.has(w)).map(queued)).toEqual([1, 1]);
     setJobWorkerMaker(null);
+  });
+
+  it('sends a job fit to cross to an idle job process while the jobs before it wait for the page\'s workers', async () => {
+    const { setJobWorkerMaker, submitJob } = await import('@/jobs/jobPool');
+    const remote = new Set<FakeWorker>();
+    setJobWorkerMaker((long) => { if (!long) return null; const w = new FakeWorker(); remote.add(w); return w as unknown as Worker; });
+    // The page's workers all busy with the first jobs, more of them waiting: only the page's threads run them.
+    for (const name of ['a', 'b', 'c', 'd', 'e', 'f']) submitJob({ service: 'cells', key: null, priority: 1, write: () => ({ data: name, transfer: [] }), done: () => {}, failed: () => {} });
+    const sent = (w: FakeWorker): string[] => w.asked.flatMap((m) => (typeof m.data === 'string' ? [m.data] : []));
+    const page = FakeWorker.made.filter((w) => !remote.has(w));
+    expect(page.flatMap(sent).length).toBeLessThan(6);
+    // Asked after them, ranked after them: it runs now, in a job process, not behind them.
+    submitJob({ service: 'furnitureCells', key: null, priority: 9, crosses: true, write: () => ({ data: 'away', transfer: [] }), done: () => {}, failed: () => {} });
+    expect([...remote].flatMap(sent)).toEqual(['away']);
+    expect(page.flatMap(sent)).not.toContain('away');
+    setJobWorkerMaker(null);
+  });
+
+  it('keeps the road tiles lanes on workers of their own in the job processes, no lane of another kind beside them', async () => {
+    const { jobPort, setJobWorkerMaker } = await import('@/jobs/jobPool');
+    setJobWorkerMaker((long) => (long ? new FakeWorker() as unknown as Worker : null), 12);
+    // The other kinds' lanes first, on the workers they take.
+    const others = ['bays', 'conflicts', 'flatGround', 'peopleLod', 'roadCoarse', 'terrainLight'].map((kind) => hostOf(jobPort(kind as never)));
+    const tiles = [0, 1, 2].map(() => hostOf(jobPort('roadTiles')));
+    for (const host of tiles) expect(others).not.toContain(host);
+    expect(new Set(tiles).size).toBe(3);
+    // And a lane of another kind made after them goes elsewhere.
+    expect(tiles).not.toContain(hostOf(jobPort('ecology')));
+    setJobWorkerMaker(null);
+  });
+
+  it('gives no queued job to the worker of a lane that goes first, even idle between its messages, while another can take it', async () => {
+    const { jobPort, laneFirst, submitJob } = await import('@/jobs/jobPool');
+    const tiles = hostOf(jobPort('roadTiles'));
+    laneFirst('roadTiles', true);
+    const sent: string[] = [];
+    for (const name of ['a', 'b', 'c', 'd', 'e', 'f']) submitJob({ service: 'cells', key: null, priority: 1, write: () => { sent.push(name); return { data: name, transfer: [] }; }, done: () => {}, failed: () => {} });
+    const queued = (w: FakeWorker): number => w.asked.filter((m) => typeof m.data === 'string').length;
+    // The tiles' worker, its lane idle, took none: its next share never waits behind a job.
+    expect(sent.length).toBeGreaterThan(0);
+    expect(queued(FakeWorker.made[tiles]!)).toBe(0);
+    // The lane no longer first: a job waiting given to its worker at once.
+    const waiting = 6 - sent.length;
+    laneFirst('roadTiles', false);
+    if (waiting > 0) expect(queued(FakeWorker.made[tiles]!)).toBe(1);
   });
 
   it('gives a waiting job out when a lane let go frees its worker (JOB-16)', async () => {

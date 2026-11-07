@@ -87,7 +87,7 @@ export const PT_BR: Dictionary = {
 
   'hint.sampleTown': 'Vila construída · o mapa anterior volta com Ctrl+Z',
   'action.newMap': 'Novo mapa',
-  'action.newWorld': 'Nova cidade (10 km × 10 km)',
+  'action.newWorld': 'Nova cidade (20 km × 20 km)',
   'action.newLargeWorld': 'Nova metrópole (cidade grande)',
   'action.saveMap': 'Salvar mapa',
   'action.openMap': 'Abrir mapa',
@@ -312,7 +312,7 @@ export const PT_BR: Dictionary = {
 
   'confirm.clearTerrain': 'Aplainar todo o terreno? Esta ação pode ser desfeita.',
   'confirm.newMap': 'Criar um novo mapa? O mapa atual já foi salvo automaticamente.',
-  'confirm.newWorld': 'Criar uma nova cidade no mapa inteiro de 10 km × 10 km? O mapa atual já foi salvo automaticamente.',
+  'confirm.newWorld': 'Criar uma nova cidade no mapa inteiro de 20 km × 20 km? O mapa atual já foi salvo automaticamente.',
   'confirm.newLargeWorld': 'Criar uma cidade grande planejada (a cidade pequena em tamanho grande, cerca de 2,7 km)? Ela abre num distrito; o resto da cidade chega depois da cortina.',
 
   'tool.road': 'Via',
@@ -368,6 +368,8 @@ export const PT_BR: Dictionary = {
   'pole.lamps.alternate': 'Luz em postes alternados',
   'pole.lamps.all': 'Luz em todos os postes',
   'pole.mode.build': 'Construir rede',
+  'pole.kind.urban': 'Poste urbano: cruzeta sobre a rua',
+  'pole.kind.rural': 'Poste rural: cruzeta centralizada',
   'pole.mode.remove': 'Remover postes',
   'help.tool.poleRemove': 'Clique num poste para removê-lo, com os fios. Shift+clique faz o mesmo enquanto constrói.',
   'tool.pole': 'Postes',
@@ -1333,6 +1335,7 @@ export const PT_BR: Dictionary = {
   'v2.row.sign': 'Placa',
   'v2.row.text': 'Texto',
   'v2.row.lights': 'Luzes',
+  'v2.row.poleKind': 'Poste',
   'v2.row.cut': 'Corte',
   'v2.row.parts': 'Partes',
   'v2.map': 'Mapa inteiro',

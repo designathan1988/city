@@ -13,7 +13,7 @@ export class ClearingCells {
   /** Clearings filed and let go since made: the work, for the specs. */
   work = 0;
 
-  constructor(private readonly cell = m(64)) {}
+  constructor(private readonly cell = m(80)) {}
 
   /** The filing brought up to `list`, the clearings of `owner` (a document), oldest first. */
   follow(owner: object, list: readonly TreeClearing[]): void {

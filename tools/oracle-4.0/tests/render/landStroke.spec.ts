@@ -69,6 +69,12 @@ describe("a dab's levels", () => {
   it('are measured in the worker as the page measures them', () => {
     const land = plate(m(3_000), m(-1_000));
     const levels = new LandLevels(TERRAIN_SEGMENTS);
+    // Cells cut by the surfaces laid on the plate (`terrainSeams.ts`), each standing off the grid by its error (`LandLevels.setSeams`): one under
+    // the first dab, one under the third, one on the plate's edge. The job carries them as the page holds them (`LevelsJob.seams`).
+    const cell = (ix: number, iy: number): number => ix + iy * TERRAIN_SEGMENTS;
+    const underCell = (x: number, y: number): number => cell(Math.floor((x + TERRAIN_HALF) / TERRAIN_CELL), Math.floor((TERRAIN_HALF - y) / TERRAIN_CELL));
+    levels.setSeams([underCell(m(120), m(-80)), underCell(m(128), m(128)), cell(0, 7)], [m(0.4), m(0.15), m(0.9)]);
+    expect(levels.seams.some((v) => v > 0)).toBe(true);
     levels.markAll();
     levels.measure(land.heights, land.flip);
     // Dabs in the plate, on its edge and across a node's seam, one after another as a stroke lays them.
@@ -79,7 +85,7 @@ describe("a dab's levels", () => {
     ];
     for (const stamp of stamps) {
       const box = land.dab(stamp);
-      const job: LandStrokeJob = { kind: 'levels', seg: TERRAIN_SEGMENTS, heights: land.heights.slice(), flip: land.flip.slice(), levels: levels.data.slice(), box };
+      const job: LandStrokeJob = { kind: 'levels', seg: TERRAIN_SEGMENTS, heights: land.heights.slice(), flip: land.flip.slice(), levels: levels.data.slice(), seams: levels.seams.slice(), box };
       // The page as it did it: the box marked, the marked nodes measured.
       levels.markBox(box[0], box[1], box[2], box[3]);
       levels.measure(land.heights, land.flip);

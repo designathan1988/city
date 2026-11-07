@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import { type Material, ShaderLib, Texture, UniformsUtils, type WebGLProgramParametersWithUniforms, type WebGLRenderer } from 'three';
 import { createMaterials } from '@render/materials';
-import { type WearField, applyWear } from '@render/wear';
+import { ROAD_CODE, ROAD_WEAR } from '@render/mesh/roadEdges';
+import { type WearField, applyRoadWear } from '@render/wear';
 
 /** The baked textures as plain ones (not in Node): a texture is a uniform, nothing of the source nor the key. */
 vi.mock('@render/surfaceTextures', async (actual) => ({
   ...(await actual<typeof import('@render/surfaceTextures')>()),
   surfaceTexture: () => new Texture(),
-  requireSurfaceMaps: () => ({ map: new Texture(), normalMap: new Texture(), roughnessMap: new Texture() }),
 }));
 
 /** THE ROADS' SURFACES THAT DRAW FROM THE SAME SOURCE SHARE ONE PROGRAM (r186 `WebGLPrograms.getProgramCacheKey`: the material's kind, its parameters and `customProgramCacheKey`; each material still runs its own `onBeforeCompile` and keeps its own uniforms, `WebGLRenderer.getProgram`) */
@@ -25,28 +25,31 @@ function compiled(material: Material): { vertex: string; fragment: string; unifo
 
 describe("the roads' programs", () => {
   const m = createMaterials(1);
-  // The wear the renderer puts on the carriageway and the footway (`renderer.ts`): their sources then differ from the raised asphalt's.
+  // The wear the renderer puts on the carriageway and the footway (`renderer.ts`): on the one road material, by the surface's code.
   const wear = { texture: new Texture(), window: { value: null } } as unknown as WearField;
-  applyWear(m.asphalt, wear, 0, 'asphalt');
-  applyWear(m.footway, wear, 1, 'footway');
+  applyRoadWear(m.road, wear, ROAD_WEAR);
   const roads = { asphalt: m.asphalt, asphaltRaised: m.asphaltRaised, footway: m.footway, kerb: m.kerb, verge: m.verge, deck: m.deck, parapet: m.parapet };
 
-  it('key a surface by what its source is, never by its name: one program for the kerb, the verge and the deck', () => {
+  it('key a surface by what its source is, never by its name: one program for every road surface, the parapet its own', () => {
     const key = (x: Material): string => x.customProgramCacheKey();
-    // The kerb, the verge and the deck: the same detail and lot patches, their textures and numbers as uniforms.
+    // Every road surface (the carriageway, its raised crossings, the footway, the kerb, the verge, the deck's edge): one material, one source, one key.
     const kerb = compiled(m.kerb);
-    for (const other of [m.verge, m.deck]) {
+    for (const other of [m.asphalt, m.asphaltRaised, m.footway, m.verge, m.deck]) {
       const out = compiled(other);
       expect(out.vertex).toBe(kerb.vertex);
       expect(out.fragment).toBe(kerb.fragment);
       expect(key(other)).toBe(key(m.kerb));
-      // Each its own detail map and repeat.
-      expect(out.uniforms['uDetailMap']).toBeDefined();
+      // Each surface's own close-zoom layer and numbers: its row of the look table, by the code its vertices carry (`mesh/roadEdges.ts`).
+      expect(out.uniforms['uRoadDetails']).toBeDefined();
+      expect(out.uniforms['uRoadLooks']).toBeDefined();
     }
-    expect(compiled(m.verge).uniforms['uMacroTile']!.value).not.toBe(kerb.uniforms['uMacroTile']!.value);
-    // A source that differs keeps its own key: the carriageway's wear and edges, the footway's, the parapet without the lots.
+    // The macro tile of each surface's close-zoom layer (row B, z): the verge's not the kerb's.
+    const macroTile = (code: number): number => (kerb.uniforms['uRoadLooks']!.value as Float32Array)[code * 12 + 6]!;
+    expect(macroTile(ROAD_CODE.planting)).not.toBe(macroTile(ROAD_CODE.kerb));
+    // A source that differs keeps its own key: the roads' one material, and the parapet without the road's surfaces, lots and wear.
     const distinct = new Set(Object.values(roads).map(key));
-    expect(distinct.size).toBe(5);
+    expect(distinct.size).toBe(2);
+    expect(key(m.parapet)).not.toBe(key(m.road));
     // And the same key never stands for two sources.
     const byKey = new Map<string, string>();
     for (const material of Object.values(roads)) {

@@ -1,7 +1,7 @@
-import { gaitSpeed, type BodyPart, type PersonAgeClass, type Severable } from '@sim/people/view';
 import { fitInstances } from './instanceBounds';
 import { simplified } from './mesh/simplify';
-import { createPanelJoiner, panelGeometry, panelPaint, type JoinedPanels } from './vehiclePanels';
+import { KIND, createPanelJoiner, panelGeometry, panelPaint, type JoinedPanels } from './vehiclePanels';
+import { joinSoups, soupOf } from './vehicleSeen';
 import { WINDOW_DROP, windowGlass, windowGlassMaterial } from './vehicleWindows';
 import {
   BoxGeometry,
@@ -33,7 +33,7 @@ import {
   type VehicleShape,
 } from '@sim/vehicles/archetypes';
 import type { SimClient, VehicleView as SimVehicle } from '@sim/host/simClient';
-import type { FleetCell, GroundBox } from '@sim/host/fleetGrid';
+import { FLEET_CELL, type FleetCell, type GroundBox } from '@sim/host/fleetGrid';
 import type { Network } from '@world/network';
 import type { SegmentId } from '@world/ids';
 import type { ChangeKind } from '@world/changes';
@@ -41,13 +41,8 @@ import { ChangeSweep } from '@world/derived';
 import { m, perM } from '@world/units';
 import { hypot2 } from '@core/scalar';
 import { DT, FLEET_CEILING, PED_CEILING } from '@sim/params';
-import { STAGGER_FROM, STAGGER_TIME, staggerSpeed } from '@sim/agents/walk';
 import { buildCarModel, carStyleOf, carStylesFor } from './carBody';
 import { CROWD_IDS, createRiggedCitizens, type CitizenClipKey, type ClipIdentity } from './riggedCitizens';
-import { createProceduralCrowd, type ProcClip, type ProceduralPerson } from './people/proceduralCrowd';
-import { randomPerson } from '@people/spec';
-import { ageFromYears } from '@people/body/macro';
-import { PLAYER_ID } from '@sim/ambient/playerId';
 import type { RagdollCitizens } from './ragdoll';
 import type { Company } from './citizenCasting';
 import { kerbTransfer, seatAgeClass, seatPersonInto, type KerbStop, type SeatPerson } from '@sim/vehicles/kerbStops';
@@ -63,17 +58,16 @@ import { HELMET_SEGMENTS, STEER_FULL } from './riderPoses';
 import { NIGHT_LUMINANCE, nightGain } from './lightLevels';
 import { DOOR_SWING, createKerbFigure, kerbFigure, occupantPlays, type Play } from './occupants';
 import { blobInto, blobMesh } from './blobShadows';
-import { ERROR_PIXELS, LEVELS, LEVEL_ERRORS, levelFor, partLevels, type Weld } from './vehicleLevels';
+import { ERROR_PIXELS, LEVELS, LEVEL_ERRORS, PartLevelMaker, SHED, levelFor, type Weld } from './vehicleLevels';
+import { lodPool } from './people/lodPool';
+import { withoutHidden } from './vehicleHidden';
+import { type FarCarBody, LEAST_CAR_PX } from './farCarPictures';
 import { VEHICLE_WHOLE_CAP, type QualitySettings } from './quality';
 import { jobPort } from '../jobs/jobPool';
 import { provideLanes } from './pagePorts';
-import { lodPool } from './people/lodPool';
-import { providePeopleLod } from './people/lodPort';
 
-// The page that draws people and vehicles hands their bakes, garments and levels' simplifier the job system's lanes (`pagePorts.ts`, `lodPort.ts`): the cooked bodies' code imports neither.
+// The page that draws people hands their bakes the job system's lanes (`pagePorts.ts`): the cooked bodies' code does not import it.
 provideLanes('citizenBake', () => jobPort('citizenBake'));
-provideLanes('garmentPadding', () => jobPort('garmentPadding'));
-providePeopleLod(lodPool);
 
 /** Vehicles and riders use the original instanced batches. */
 
@@ -93,7 +87,7 @@ const OCCUPANT_ZOOM = perM(3);
 
 /** Each vehicle's own level, by the screen's scale where it stands */
 const VEHICLE_HYSTERESIS = 0.1;
-/** A car's length, for the smallest scale anything is drawn at (2 px). */
+/** A car's length, for the smallest scale anything is drawn at (`LEAST_CAR_PX` device pixels long, as the far traffic's). */
 const CAR_LENGTH = m(4.5);
 /** At most this many vehicles whole at once: past it, the smallest on the screen are drawn a level down. */
 const VEHICLE_NEAR_CAP = VEHICLE_WHOLE_CAP;
@@ -101,8 +95,7 @@ const VEHICLE_NEAR_CAP = VEHICLE_WHOLE_CAP;
 const CULL_REUSE = m(24);
 const CULL_GRADE = 0.35;
 const CULL_GROWTH = 1.5;
-/** The side of the client's cells of parked cars (`fleetGrid.ts`), and half their diagonal. */
-const FLEET_CELL = m(64);
+/** Half the diagonal of the client's cells of parked cars (`fleetGrid.ts` FLEET_CELL). */
 const CELL_HALF_DIAGONAL = FLEET_CELL * Math.SQRT1_2;
 /** Relative slack of the screen's scale worked out from its field (`depthField`) against the asked one: a cell at a level's edge is walked. */
 const FIELD_SLACK = 1e-6;
@@ -146,14 +139,14 @@ interface AgentRenderOptions {
   /** Zoom from which vehicle cabins and occupants are drawn. */
   readonly occupantZoom?: number;
   /** The tier's vehicle and people detail (`quality.ts`): none given, what every tier but the weak one draws. */
-  readonly tier?: Pick<QualitySettings, 'vehicleErrorPixels' | 'vehicleWholeCap' | 'hairStrandPeople'>;
+  readonly tier?: Pick<QualitySettings, 'vehicleErrorPixels' | 'vehicleWholeCap'>;
   /** Each motor vehicle drawn: where its tail smoke leaves from (`exhaust.ts`). */
   readonly exhaust?: (x: number, y: number, z: number, angle: number, length: number, speed: number, dusty: boolean) => void;
   /** The bodies of people killed by a blow (`ragdoll.ts`), drawn with the crowd's own meshes. */
   readonly ragdolls?: (citizens: RagdollCitizens) => void;
   /** Somebody whose own body lies on the ground (`ragdoll.ts`): not drawn standing as well. */
   readonly hiddenPed?: (id: number) => boolean;
-  /** Where the camera is: the people nearest it get their hair's strands (`?bodies=proc`). */
+  /** Where the camera is: what the vehicles' levels are measured from. */
   readonly eye?: Vector3;
   /** How tall something `height` high standing at (x, y, z) is on the screen, pixels */
   readonly personPixels?: (x: number, y: number, z: number, height: number) => number;
@@ -167,6 +160,9 @@ interface AgentRenderOptions {
 
 export interface AgentMeshes {
   readonly meshes: readonly Object3D[];
+  /** Each body the traffic is drawn with and its far model (`VehicleModel.far`, as made: not its simplified level): what the far traffic's
+   *  pictures are taken of (`farCarPictures.ts`), so a car past the micro window looks as one a few pixels long inside it. */
+  readonly farBodies: readonly FarCarBody[];
   /** Whether the last `sync` switched the two-wheelers between casting into the shadow map and a soft disc under them */
   readonly castersChanged: boolean;
   /** Whether the last `sync` drew anything into the shadow map (vehicles, two-wheelers, people): the map's moving casters. */
@@ -178,19 +174,13 @@ export interface AgentMeshes {
   census(): ReturnType<ReturnType<typeof createRiggedCitizens>['census']>;
   /** The burnt-out shell of this vehicle's own body */
   carcass(vehicle: { readonly id: number; readonly archetype: Archetype }, intact?: boolean): BufferGeometry | null;
-  /** How far each procedural person's drawn skeleton is from a body (the weapons lab's mesh probe) */
-  meshProbe(): { id: number; stretch: number; stretchBone: string; scale: number; scaleBone: string; held: boolean; clip: string }[];
-  /** What is posing a procedural person now (the weapons lab): the baked clip played */
-  animProbe(id: number): { clip: string; time: number; duration: number; weight: number; paused: boolean; layers: string[]; source: 'animation' | 'physics' } | null;
-  /** Plays `clip` on a person whatever they are doing (the lab's clip check); null gives them back. */
-  forceClip(id: number, clip: ProcClip | null): void;
   /** The body a vehicle's driver or rider is drawn with, for their body when they are thrown out (`Occupant.index`). */
   driverBody(vehicle: SimVehicle, x: number, y: number): number | null;
   /** Called for each walker drawn bleeding (a limb lost), to drip blood where they go. */
   setBleed(fn: (id: number, x: number, y: number, z: number) => void): void;
   /** Lamps burn brighter than white after dark, so headlights and tail lights glow. */
   setNight(dark: number): void;
-  /** The people's skeletons (procedural and cooked), worked out on the GPU: once a frame, after `sync`, before the scene is drawn. */
+  /** The people's skeletons, worked out on the GPU: once a frame, after `sync`, before the scene is drawn. */
   renderPalettes(renderer: WebGLRenderer): void;
   /** Every body of the vehicles' people loaded now and kept loaded (`riggedCitizens.keepAll`): asked once the page has a scene to draw. */
   keepPeople(): void;
@@ -242,10 +232,6 @@ const DESTINATION = 0xffb13b;
 /** A contrasting black roof panel (`VehicleLook.blackRoof`). */
 const BLACK_ROOF = 0x15171a;
 
-/** Seconds a change of a person's clip cross-fades over: about half a step at a walk */
-const CLIP_FADE = 0.3;
-/** The gaits, whose phase is the ground covered (one stride a cycle) and runs on from one into another. */
-const gaitClip = (c: ProcClip): boolean => c === 'walk' || c === 'run' || c === 'sprint' || c === 'hurtWalk' || c === 'hurtRun';
 const HEADLAMP = 0xfff3c4;
 const TAILLAMP = 0xff3b2f;
 /** A parked car's lamps, switched off: clear and red lenses, unlit. */
@@ -517,6 +503,9 @@ function instanced(
 interface Ladder {
   readonly parts: readonly Part[];
   readonly route: number[];
+  /** Asks for the coarser levels (`vehicleLevels.ts`), the first time one is drawn (`rung`); null once asked. A part never drawn but whole (a
+   *  door that never opened, a body never seen far off) costs the levels' worker nothing. */
+  ask: (() => void) | null;
 }
 
 /** The largest scale a road wheel's unit tyre and rim are drawn at (`placeWheels`): their levels are chosen by it. */
@@ -527,10 +516,10 @@ const levelsKey = (plan: BodyPlan, pixels: number): number =>
   levelFor(pixels) + LEVELS * (levelFor(pixels * tyreSize(plan)) + LEVELS * levelFor(pixels * rimSize(plan)));
 
 /** The screen scales (CSS pixels a unit) over which a standing vehicle drawn at `own` from `pixels` keeps its own level and its parts' (`levelsKey`): the open range [out.lo, out.hi]; none for a whole one (the cap's). */
-function standingRange(plan: BodyPlan, own: number, pixels: number, ratio: number, occupantZoom: number, out: { lo: number; hi: number }): void {
+function standingRange(plan: BodyPlan, own: number, pixels: number, ratio: number, occupantZoom: number, least: number, out: { lo: number; hi: number }): void {
   if (own >= 2) { out.lo = Infinity; out.hi = -Infinity; return; }
   // The hysteresis of `sync`'s own level: up at the next edge grown by a tenth, down at its own edge.
-  let lo = own === 1 ? FAR_BODY_ZOOM : 2 / CAR_LENGTH;
+  let lo = own === 1 ? FAR_BODY_ZOOM : least;
   let hi = (own === 1 ? occupantZoom : FAR_BODY_ZOOM) * (1 + VEHICLE_HYSTERESIS);
   // DO NOT make an array of the three sizes per car: three passes, one a part's scale.
   for (let k = 0; k < 3; k++) {
@@ -544,6 +533,7 @@ function standingRange(plan: BodyPlan, own: number, pixels: number, ratio: numbe
 
 /** The part of `ladder` for `level`; null when nothing of it is left to draw there. */
 function rung(ladder: Ladder, level: number): Part | null {
+  if (level > 0 && ladder.ask) { const ask = ladder.ask; ladder.ask = null; ask(); }
   const at = ladder.route[level]!;
   return at < 0 ? null : ladder.parts[at]!;
 }
@@ -552,17 +542,22 @@ function rung(ladder: Ladder, level: number): Part | null {
 export function createAgentMeshes(elevationAt: ElevationAt, onAssetsReady: () => void = () => {},
   groundAt?: (x: number, y: number) => number,
   lotAt?: (building: number, x: number, y: number) => number,
-  roughGroundAt?: (x: number, y: number) => number): AgentMeshes {
+  roughGroundAt?: (x: number, y: number) => number,
+  // Every part's levels, made once for whoever owns the maker (`vehicleLevels.ts`): these meshes by default, or a run that makes them again.
+  levelMaker: PartLevelMaker = new PartLevelMaker()): AgentMeshes {
   // Paint, trim and the cabin read a vertex colour that multiplies the instance colour
   const paint = new MeshPhysicalMaterial({
     roughness: 0.38, metalness: 0.28, clearcoat: 1, clearcoatRoughness: 0.07,
     envMapIntensity: 1.35, vertexColors: true,
   });
-  // The paint of a body joined with its panel (`vehiclePanels.ts`): the same numbers, the panel's colour its own. Made next, so its id is
-  // the paint's next: three sorts the opaque by material id and keeps the later of two equal depths (LessEqualDepth), and the joined bodies
-  // must be drawn where the paint's shells and roofs were, before the lamps, trim and cabin that touch them.
-  const joinedPaint = panelPaint(paint);
-  const trim = new MeshStandardMaterial({ roughness: 0.45, metalness: 0.35, vertexColors: true });
+  // The trim's and the cabin's material numbers: their own materials', and the joined body's on their vertices (`vehiclePanels.ts`).
+  const TRIM_LOOK = { roughness: 0.45, metalness: 0.35, envMapIntensity: 1 } as const;
+  const CABIN_LOOK = { roughness: 0.9, metalness: 0.02, envMapIntensity: 1 } as const;
+  // The paint of a body joined with its panel, trim and cabin (`vehiclePanels.ts`): the paint's numbers, the panel's colour its own, the trim's
+  // and the cabin's numbers on theirs. Made next, so its id is the paint's next: three sorts the opaque by material id and keeps the later of
+  // two equal depths (LessEqualDepth), and the joined bodies must be drawn where the paint's shells and roofs were, before the lamps that touch them.
+  const joinedPaint = panelPaint(paint, TRIM_LOOK, CABIN_LOOK);
+  const trim = new MeshStandardMaterial({ roughness: TRIM_LOOK.roughness, metalness: TRIM_LOOK.metalness, envMapIntensity: TRIM_LOOK.envMapIntensity, vertexColors: true });
   const glassMaterial = new MeshStandardMaterial({
     color: 0x7896a2,
     roughness: 0.12,
@@ -580,7 +575,7 @@ export function createAgentMeshes(elevationAt: ElevationAt, onAssetsReady: () =>
   // The shut glazing, its door windows lowered by each car's drop (`vehicleWindows.ts`).
   const windowMaterial = windowGlassMaterial(glassMaterial);
   // The cabin: seats, dashboard, wheel.
-  const cabinMaterial = new MeshStandardMaterial({ roughness: 0.9, metalness: 0.02, vertexColors: true });
+  const cabinMaterial = new MeshStandardMaterial({ roughness: CABIN_LOOK.roughness, metalness: CABIN_LOOK.metalness, envMapIntensity: CABIN_LOOK.envMapIntensity, vertexColors: true });
   const rubber = new MeshStandardMaterial({ roughness: 0.92, metalness: 0.05 });
   // Unlit, so a lamp stays bright inside a shadow — the only thing in the scene for which that is correct.
   const lampMaterial = new MeshBasicMaterial({ toneMapped: false });
@@ -596,6 +591,21 @@ export function createAgentMeshes(elevationAt: ElevationAt, onAssetsReady: () =>
   };
   lampMaterial.customProgramCacheKey = () => 'vehicle-lamp-glow';
 
+  /** Each part as it is drawn: without the triangles no one can see (`vehicleHidden.ts`; glass, `opaque` false, only those without area),
+   *  made once a geometry. The models keep their own: a wreck is bent from them (`carcass`), and a triangle buried in a solid need not stay
+   *  buried once the solid is dented. */
+  const drawnParts = new Map<BufferGeometry, BufferGeometry>();
+  const drawnGeometries: BufferGeometry[] = [];
+  const drawnOf = (geometry: BufferGeometry, opaque = true): BufferGeometry => {
+    let drawn = drawnParts.get(geometry);
+    if (!drawn) {
+      drawn = withoutHidden(geometry, opaque).geometry;
+      drawnParts.set(geometry, drawn);
+      if (drawn !== geometry) drawnGeometries.push(drawn);
+    }
+    return drawn;
+  };
+
   const unitBox = new BoxGeometry(1, 1, 1);
   const wheelGeometry = tyreGeometry();
   const hubGeometry = rimGeometry();
@@ -603,17 +613,21 @@ export function createAgentMeshes(elevationAt: ElevationAt, onAssetsReady: () =>
   const thinTyreGeometry = tyreGeometry(0.035);
   const spokedGeometry = spokedRimGeometry();
 
-  const wheels = instanced('vehicle-wheels', wheelGeometry, rubber);
-  const hubs = instanced('vehicle-hubs', hubGeometry, trim, false);
-  const thinWheels = instanced('bicycle-wheels', thinTyreGeometry, rubber);
-  const spokes = instanced('bicycle-spokes', spokedGeometry, trim, false);
+  const wheels = instanced('vehicle-wheels', drawnOf(wheelGeometry), rubber);
+  const hubs = instanced('vehicle-hubs', drawnOf(hubGeometry), trim, false);
+  const thinWheels = instanced('bicycle-wheels', drawnOf(thinTyreGeometry), rubber);
+  const spokes = instanced('bicycle-spokes', drawnOf(spokedGeometry), trim, false);
   const lamps = instanced('vehicle-lamps', unitBox, lampMaterial, false);
   /** Each lamp's glow (`LAMP_GAIN`): a per-instance attribute of the lamps' box, replaced when they grow (`growPart`). */
   let lampGlow = new InstancedBufferAttribute(new Float32Array(PART_CAPACITY), 1);
   lampGlow.setUsage(DynamicDrawUsage);
   unitBox.setAttribute('glow', lampGlow);
-  // A motorcyclist's helmet: a smooth shell, glossy like paint.
-  const helmetGeometry = merge([new SphereGeometry(0.5, HELMET_SEGMENTS.width, HELMET_SEGMENTS.height)]);
+  // A motorcyclist's helmet: a smooth shell, glossy like paint, 12 x 8 facets (168 triangles, not 720: a helmet is a dozen pixels across).
+  // Its shape (`riderPoses.helmetShape`) pads the ellipsoid for HELMET_SEGMENTS facets: the shell is widened by the ratio of the facets'
+  // depths, so its flatter facets still hold the head the shape holds.
+  const HELMET_FACETS = { width: 12, height: 8 } as const;
+  const facetDepth = (s: { readonly width: number; readonly height: number }): number => Math.cos(Math.PI / s.height) * Math.cos(Math.PI / s.width);
+  const helmetGeometry = merge([new SphereGeometry(0.5 * facetDepth(HELMET_SEGMENTS) / facetDepth(HELMET_FACETS), HELMET_FACETS.width, HELMET_FACETS.height)]);
   const helmets = instanced('rider-helmets', helmetGeometry, paint);
 
   const parts: readonly Part[] = [wheels, hubs, thinWheels, spokes, lamps, helmets];
@@ -624,13 +638,13 @@ export function createAgentMeshes(elevationAt: ElevationAt, onAssetsReady: () =>
     readonly shell: Ladder;
     readonly glass: Ladder;
     readonly interior: Ladder;
-    /** The same while a door moves: the pieces, and each leaf on its own. */
-    readonly openShell: Part;
-    readonly openGlass: Part;
-    readonly openInterior: Part;
-    readonly doors: readonly Part[];
-    readonly doorGlass: readonly Part[];
-    readonly doorCards: readonly (Part | null)[];
+    /** The same while a door moves: the pieces, and each leaf on its own, each at its level as the shut ones. */
+    readonly openShell: Ladder;
+    readonly openGlass: Ladder;
+    readonly openInterior: Ladder;
+    readonly doors: readonly Ladder[];
+    readonly doorGlass: readonly Ladder[];
+    readonly doorCards: readonly (Ladder | null)[];
     readonly trim: Ladder;
     /** The roof panel in paint, or in glass on a car with a panoramic roof. */
     readonly roof: Ladder | null;
@@ -641,10 +655,11 @@ export function createAgentMeshes(elevationAt: ElevationAt, onAssetsReady: () =>
     readonly roofLite: Ladder | null;
     readonly accentLite: Ladder | null;
     readonly far: Part;
-    readonly steering: Part | null;
-    /** The body and its panel (the roof, or else the accent) in one draw, doors shut (`vehiclePanels.ts`); null for a body with no panel. */
-    readonly panel: Ladder | null;
-    readonly panelLite: Ladder | null;
+    /** The steering wheel, at the level its size in the driver's hands allows. */
+    readonly steering: Ladder | null;
+    /** The body, its panel (the roof, or else the accent), its trim and (`body`, from the cabin's band) its cabin in one draw, doors shut (`vehiclePanels.ts`); null when they cannot be joined. */
+    readonly body: Ladder | null;
+    readonly bodyLite: Ladder | null;
   }
   const carParts = new Map<string, CarParts>();
   /** Which body a vehicle is drawn with: its class and, for a car, the style its id picks. */
@@ -656,34 +671,38 @@ export function createAgentMeshes(elevationAt: ElevationAt, onAssetsReady: () =>
   };
   const modelGeometries: BufferGeometry[] = [];
   /** Each source geometry's levels, made once (off the main thread) and shared by every ladder drawn from it. */
-  const levelsOf = new Map<BufferGeometry, Promise<(BufferGeometry | null)[]>>();
+  const levelsOf = new Map<BufferGeometry, Promise<BufferGeometry[]>>();
   /** Moves when levels arrive: a parked car's kept instances name the parts it was drawn with (`VehicleDraw` kept). */
   let levelsVersion = 0;
   const ladderParts: Part[] = [];
-  /** The levels of `source`, made once; `copies` of it on a vehicle (`partLevels`). */
-  const levelsFor = (source: BufferGeometry, weld: Weld, copies = 1): Promise<(BufferGeometry | null)[]> => {
+  /** Every ladder made: its levels asked once every part is made (after `allParts`). */
+  const ladders: Ladder[] = [];
+  /** The levels of `source`, made once; `copies` of it on a vehicle (`PartLevelMaker`); `occluders`, for a part that casts no shadow, the
+   *  vehicle's opaque triangles its levels are seen past (`vehicleSeen.ts`), worked out when first asked. */
+  const levelsFor = (source: BufferGeometry, weld: Weld, copies = 1, occluders: (() => Float64Array) | null = null): Promise<BufferGeometry[]> => {
     let levels = levelsOf.get(source);
     if (!levels) {
-      levels = partLevels(source, weld, copies);
+      levels = levelMaker.levels(source, weld, copies, occluders ? occluders() : null);
       levelsOf.set(source, levels);
-      void levels.then((all) => { for (const g of new Set(all)) if (g && g !== source) modelGeometries.push(g); });
+      void levels.then((all) => { for (const g of new Set(all)) if (g !== source) modelGeometries.push(g); });
     }
     return levels;
   };
-  /** `base` and a part per coarser level, empty until drawn (they grow, `growPart`), routed to `base` until the levels are made. */
-  const ladder = (base: Part, weld: Weld, copies = 1): Ladder => {
+  /** `base` and a part per coarser level, empty until drawn (they grow, `growPart`), routed to `base` until the levels are made (asked the first
+   *  time a coarser one is drawn, `rung`). */
+  const ladder = (base: Part, weld: Weld, copies = 1, occluders: (() => Float64Array) | null = null): Ladder => {
     const parts = [base];
     for (let k = 1; k < LEVELS; k++) {
       const part = instanced(`${base.mesh.name}@${k}`, base.mesh.geometry, base.mesh.material as Material, base.mesh.castShadow);
       parts.push(part);
       ladderParts.push(part);
     }
-    const made: Ladder = { parts, route: new Array<number>(LEVELS).fill(0) };
-    void levelsFor(base.mesh.geometry, weld, copies).then((all) => {
+    const made: Ladder = { parts, route: new Array<number>(LEVELS).fill(0), ask: null };
+    ladders.push(made);
+    made.ask = () => void levelsFor(base.mesh.geometry, weld, copies, occluders).then((all) => {
       for (let k = 1; k < all.length; k++) {
-        const geometry = all[k];
-        if (!geometry) made.route[k] = -1;
-        else if (geometry === all[k - 1]) made.route[k] = made.route[k - 1]!;
+        const geometry = all[k]!;
+        if (geometry === all[k - 1]) made.route[k] = made.route[k - 1]!;
         else {
           parts[k]!.mesh.geometry = geometry;
           // A level's own geometry carries its own part's drops (the base's is the model's).
@@ -699,42 +718,60 @@ export function createAgentMeshes(elevationAt: ElevationAt, onAssetsReady: () =>
   };
   const joinPanels = createPanelJoiner();
   const panelParts: Part[] = [];
-  /** Bodies whose panel could not be joined at some level: drawn as two parts, as before. */
+  /** Each joined body's corners that cast (`JoinedPanels.casting`), by its geometry. */
+  const castingOf = new WeakMap<BufferGeometry, number>();
+  /** Bodies whose parts could not be joined at some level: drawn apart, as before. */
   const panelsApart = new Set<Ladder>();
   const panelPart = (name: string, joined: JoinedPanels, casts: boolean): Part => {
     const colours = new InstancedBufferAttribute(new Float32Array(PART_CAPACITY * 3).fill(1), 3);
     colours.setUsage(DynamicDrawUsage);
     const geometry = panelGeometry(joined, colours);
+    castingOf.set(geometry, joined.casting);
     modelGeometries.push(geometry);
     const part = instanced(name, geometry, joinedPaint, casts);
+    if (casts) {
+      // The shadow of the body and the panel only, their triangles first in the index (`vehiclePanels.ts`): the trim and the cabin cast none,
+      // as in their own draws. three draws the shadow with the geometry's draw range (WebGLShadowMap renderObject, between onBeforeShadow and
+      // onAfterShadow), the paint's program and side as before.
+      part.mesh.onBeforeShadow = (_renderer, _object, _camera, _shadowCamera, g) => { g.setDrawRange(0, castingOf.get(g)!); };
+      part.mesh.onAfterShadow = (_renderer, _object, _camera, _shadowCamera, g) => { g.setDrawRange(0, Infinity); };
+    }
     part.panel = colours;
     part.tinted = true;
     panelParts.push(part);
     return part;
   };
-  /** A body and its panel joined at every level: each level the body's and the panel's own (`vehicleLevels.ts`), null without a panel. */
-  const panelLadder = (name: string, body: BufferGeometry, panel: BufferGeometry | null, casts: boolean): Ladder | null => {
-    if (!panel) return null;
-    const base = joinPanels(body, panel);
-    if (!base) { console.error(`[vehicles] ${name}: body and panel not joined, drawn apart`); return null; }
+  /** A part of a joined body (`vehiclePanels.ts` KIND, its place in `bodyLadder`'s list): its geometry as drawn, how its levels are made. */
+  interface BodyPart { readonly geometry: BufferGeometry; readonly weld: Weld; readonly occluders: (() => Float64Array) | null }
+  /** A body's parts joined at every level, one draw (`vehiclePanels.ts`): each level the parts' own (`vehicleLevels.ts`), made with no SHED of
+   *  their own (`copies` SHED: a part drawn in the body sheds for the body), and a level of the body its own draw only where the body sheds
+   *  SHED triangles (the finer one again otherwise). `parts[k]` the part of KIND k, null where the body has none. */
+  const bodyLadder = (name: string, bodyParts: readonly (BodyPart | null)[], casts: boolean): Ladder | null => {
+    const base = joinPanels(bodyParts.map((p) => p?.geometry ?? null));
+    if (!base) { console.error(`[vehicles] ${name}: the body's parts not joined, drawn apart`); return null; }
     const parts: Part[] = [];
     for (let k = 0; k < LEVELS; k++) parts.push(panelPart(k ? `${name}@${k}` : name, base, casts));
-    const made: Ladder = { parts, route: new Array<number>(LEVELS).fill(0) };
-    void Promise.all([levelsFor(body, 'smooth'), levelsFor(panel, 'smooth')]).then(([bodies, panels]) => {
-      // A part whose levels were not made is drawn whole at every level (`ladder`).
-      const at = (all: readonly (BufferGeometry | null)[], k: number): BufferGeometry | null => (k < all.length ? all[k]! : all[0]!);
+    const made: Ladder = { parts, route: new Array<number>(LEVELS).fill(0), ask: null };
+    ladders.push(made);
+    made.ask = () => void Promise.all(bodyParts.map((p) => (p ? levelsFor(p.geometry, p.weld, SHED, p.occluders) : Promise.resolve(null)))).then((all) => {
+      const at = (k: number): (BufferGeometry | null)[] => all.map((levels) => (levels ? levels[Math.min(k, levels.length - 1)]! : null));
+      const trianglesAt = (k: number): number => at(k).reduce((n, g) => n + (g ? (g.index ? g.index.count : g.getAttribute('position').count) / 3 : 0), 0);
+      let finer = trianglesAt(0);
       for (let k = 1; k < LEVELS; k++) {
-        const b = at(bodies, k), p = at(panels, k);
-        if (b === at(bodies, k - 1) && p === at(panels, k - 1)) { made.route[k] = made.route[k - 1]!; continue; }
-        const joined = joinPanels(b, p);
+        const triangles = trianglesAt(k);
+        if (finer - triangles < SHED) { made.route[k] = made.route[k - 1]!; continue; }
+        const joined = joinPanels(at(k));
         if (!joined) {
-          if (b || p) { panelsApart.add(made); console.error(`[vehicles] ${name}@${k}: body and panel not joined, drawn apart`); }
-          made.route[k] = -1;
+          panelsApart.add(made);
+          console.error(`[vehicles] ${name}@${k}: the body's parts not joined, drawn apart`);
+          made.route[k] = made.route[k - 1]!;
           continue;
         }
         parts[k]!.mesh.geometry = panelGeometry(joined, parts[k]!.panel!);
+        castingOf.set(parts[k]!.mesh.geometry, joined.casting);
         modelGeometries.push(parts[k]!.mesh.geometry);
         made.route[k] = k;
+        finer = triangles;
       }
       levelsVersion++;
       onAssetsReady();
@@ -754,17 +791,35 @@ export function createAgentMeshes(elevationAt: ElevationAt, onAssetsReady: () =>
   // A car's four tyres and rims: what a level sheds, it sheds four times a car.
   const wheelLevels = ladder(wheels, 'boxes', 4);
   const hubLevels = ladder(hubs, 'boxes', 4);
+  // A bicycle's two hoops and spoked wheels, the same way.
+  const thinWheelLevels = ladder(thinWheels, 'boxes', 2);
+  const spokeLevels = ladder(spokes, 'boxes', 2);
   // One set per class and body style: a sedan may be drawn as an estate and an SUV as a pick-up
-  const bodies: { key: string; model: VehicleModel }[] = [];
+  const bodies: { key: string; archetype: Archetype; model: VehicleModel }[] = [];
   for (const archetype of ARCHETYPES) {
     if (archetype.shape === 'car') {
-      for (const style of carStylesFor(archetype)) bodies.push({ key: `${archetype.id}:${style}`, model: buildCarModel(archetype, style) });
-    } else if (archetype.shape === 'bus') bodies.push({ key: `${archetype.id}:bus`, model: buildBusModel(archetype) });
-    else if (archetype.shape === 'truck') bodies.push({ key: `${archetype.id}:truck`, model: buildTruckModel(archetype) });
+      for (const style of carStylesFor(archetype)) bodies.push({ key: `${archetype.id}:${style}`, archetype, model: buildCarModel(archetype, style) });
+    } else if (archetype.shape === 'bus') bodies.push({ key: `${archetype.id}:bus`, archetype, model: buildBusModel(archetype) });
+    else if (archetype.shape === 'truck') bodies.push({ key: `${archetype.id}:truck`, archetype, model: buildTruckModel(archetype) });
   }
   for (const { key, model } of bodies) {
     const id = key.replace(':', '-');
     const glazed = windowGlass(model);
+    // What each part draws (`drawnOf`): the same geometry everywhere it is drawn, so its levels and its joined panel are made once.
+    const shellOf = drawnOf(model.shell), roofOf = model.roof ? drawnOf(model.roof) : null, accentOf = model.accent ? drawnOf(model.accent) : null;
+    const trimOf = drawnOf(model.trim), interiorOf = drawnOf(model.interior);
+    // The shut body's opaque triangles, what its trim and cabin are seen past (`vehicleSeen.ts`): worked out once, when their levels are asked.
+    let occluding: Float64Array | null = null;
+    const occluders = (): Float64Array => (occluding ??= joinSoups([shellOf, roofOf, accentOf, trimOf, interiorOf].flatMap((g) => (g ? [soupOf(g)] : []))));
+    const panelOf = roofOf ?? accentOf;
+    const bodyParts = (cabin: boolean): (BodyPart | null)[] => {
+      const out: (BodyPart | null)[] = [null, null, null, null];
+      out[KIND.body] = { geometry: shellOf, weld: 'smooth', occluders: null };
+      out[KIND.panel] = panelOf ? { geometry: panelOf, weld: 'smooth', occluders: null } : null;
+      out[KIND.trim] = { geometry: trimOf, weld: 'boxes', occluders };
+      out[KIND.cabin] = cabin ? { geometry: interiorOf, weld: 'boxes', occluders } : null;
+      return out;
+    };
     const own = new Set<BufferGeometry>([model.shell, model.glass, glazed, model.interior, model.openShell, model.openGlass,
       model.openInterior, model.trim, model.far, ...model.doors.flatMap((d) => [d.panel, d.glass, ...(d.card ? [d.card] : [])])]);
     if (model.roof) own.add(model.roof);
@@ -773,27 +828,28 @@ export function createAgentMeshes(elevationAt: ElevationAt, onAssetsReady: () =>
     modelGeometries.push(...own);
     carParts.set(key, {
       model,
-      shell: ladder(instanced(`car-${id}-shell`, model.shell, paint), 'smooth'),
-      glass: glazing(instanced(`car-${id}-glass`, glazed, windowMaterial, false)),
-      interior: ladder(instanced(`car-${id}-interior`, model.interior, cabinMaterial, false), 'boxes'),
-      openShell: instanced(`car-${id}-openshell`, model.openShell, paint),
-      openGlass: instanced(`car-${id}-openglass`, model.openGlass, glassMaterial, false),
-      openInterior: instanced(`car-${id}-openinterior`, model.openInterior, cabinMaterial, false),
-      doors: model.doors.map((d, i) => instanced(`car-${id}-door${i}`, d.panel, paint)),
-      doorGlass: model.doors.map((d, i) => instanced(`car-${id}-doorglass${i}`, d.glass, glassMaterial, false)),
-      doorCards: model.doors.map((d, i) => d.card ? instanced(`car-${id}-doorcard${i}`, d.card, cabinMaterial, false) : null),
-      trim: ladder(instanced(`car-${id}-trim`, model.trim, trim, false), 'boxes'),
-      roof: model.roof ? ladder(instanced(`car-${id}-roof`, model.roof, paint), 'smooth') : null,
-      roofGlass: model.roof ? instanced(`car-${id}-roofglass`, model.roof, glassMaterial, false) : null,
-      accent: model.accent ? ladder(instanced(`car-${id}-accent`, model.accent, paint), 'smooth') : null,
-      shellLite: ladder(instanced(`car-${id}-shell-lite`, model.shell, paint, false), 'smooth'),
-      roofLite: model.roof ? ladder(instanced(`car-${id}-roof-lite`, model.roof, paint, false), 'smooth') : null,
-      accentLite: model.accent ? ladder(instanced(`car-${id}-accent-lite`, model.accent, paint, false), 'smooth') : null,
+      shell: ladder(instanced(`car-${id}-shell`, shellOf, paint), 'smooth', SHED),
+      glass: glazing(instanced(`car-${id}-glass`, drawnOf(glazed, false), windowMaterial, false)),
+      interior: ladder(instanced(`car-${id}-interior`, interiorOf, cabinMaterial, false), 'boxes', SHED, occluders),
+      openShell: ladder(instanced(`car-${id}-openshell`, drawnOf(model.openShell), paint), 'smooth'),
+      openGlass: ladder(instanced(`car-${id}-openglass`, drawnOf(model.openGlass, false), glassMaterial, false), 'smooth'),
+      openInterior: ladder(instanced(`car-${id}-openinterior`, drawnOf(model.openInterior), cabinMaterial, false), 'boxes'),
+      doors: model.doors.map((d, i) => ladder(instanced(`car-${id}-door${i}`, drawnOf(d.panel), paint), 'smooth')),
+      doorGlass: model.doors.map((d, i) => ladder(instanced(`car-${id}-doorglass${i}`, drawnOf(d.glass, false), glassMaterial, false), 'smooth')),
+      doorCards: model.doors.map((d, i) => d.card ? ladder(instanced(`car-${id}-doorcard${i}`, drawnOf(d.card), cabinMaterial, false), 'smooth') : null),
+      trim: ladder(instanced(`car-${id}-trim`, trimOf, trim, false), 'boxes', SHED, occluders),
+      roof: roofOf ? ladder(instanced(`car-${id}-roof`, roofOf, paint), 'smooth', SHED) : null,
+      // The same roof in glass: of it only what has no area goes.
+      roofGlass: model.roof ? instanced(`car-${id}-roofglass`, drawnOf(model.roof, false), glassMaterial, false) : null,
+      accent: accentOf ? ladder(instanced(`car-${id}-accent`, accentOf, paint), 'smooth', SHED) : null,
+      shellLite: ladder(instanced(`car-${id}-shell-lite`, shellOf, paint, false), 'smooth', SHED),
+      roofLite: roofOf ? ladder(instanced(`car-${id}-roof-lite`, roofOf, paint, false), 'smooth', SHED) : null,
+      accentLite: accentOf ? ladder(instanced(`car-${id}-accent-lite`, accentOf, paint, false), 'smooth', SHED) : null,
       // A car under twelve pixels: its shadow is the soft disc under it.
-      far: instanced(`car-${id}-far`, model.far, paint, false),
-      steering: model.steering ? instanced(`car-${id}-wheel`, model.steering.geometry, cabinMaterial, false) : null,
-      panel: panelLadder(`car-${id}-body`, model.shell, model.roof ?? model.accent, true),
-      panelLite: panelLadder(`car-${id}-body-lite`, model.shell, model.roof ?? model.accent, false),
+      far: instanced(`car-${id}-far`, drawnOf(model.far), paint, false),
+      steering: model.steering ? ladder(instanced(`car-${id}-wheel`, drawnOf(model.steering.geometry), cabinMaterial, false), 'boxes') : null,
+      body: bodyLadder(`car-${id}-body`, bodyParts(true), true),
+      bodyLite: bodyLadder(`car-${id}-body-lite`, bodyParts(false), false),
     });
   }
   // The far proxy is drawn under FAR_BODY_ZOOM, a car under nine pixels long
@@ -807,10 +863,10 @@ export function createAgentMeshes(elevationAt: ElevationAt, onAssetsReady: () =>
   }
   // Each ladder's own level (its `parts[0]`); the coarser ones are in `ladderParts`.
   const carPartList: Part[] = [...carParts.values()].flatMap((c) => [
-    c.shell.parts[0]!, c.glass.parts[0]!, c.interior.parts[0]!, c.openShell, c.openGlass, c.openInterior, ...c.doors, ...c.doorGlass,
-    ...c.doorCards.filter((p): p is Part => p !== null), c.trim.parts[0]!, c.far, c.shellLite.parts[0]!,
-    ...[c.roofGlass, c.steering].filter((p): p is Part => p !== null),
-    ...[c.roof, c.accent, c.roofLite, c.accentLite].flatMap((l) => (l ? [l.parts[0]!] : [])),
+    c.shell.parts[0]!, c.glass.parts[0]!, c.interior.parts[0]!, c.trim.parts[0]!, c.far, c.shellLite.parts[0]!,
+    ...(c.roofGlass ? [c.roofGlass] : []),
+    ...[c.openShell, c.openGlass, c.openInterior, ...c.doors, ...c.doorGlass, ...c.doorCards, c.steering, c.roof, c.accent, c.roofLite, c.accentLite]
+      .flatMap((l) => (l ? [l.parts[0]!] : [])),
   ]);
 
   /** A two-wheeler's parts, each at the level its size on the screen allows (`vehicleLevels.ts`), as a car's. */
@@ -829,342 +885,33 @@ export function createAgentMeshes(elevationAt: ElevationAt, onAssetsReady: () =>
     modelGeometries.push(model.body, model.trim, model.steering, ...(model.cranks ? [model.cranks] : []));
     twoWheelerParts.set(id, {
       model,
-      body: ladder(instanced(`bike-${id}-body`, model.body, paint), 'smooth'),
-      trim: ladder(instanced(`bike-${id}-trim`, model.trim, trim), 'boxes'),
-      steering: ladder(instanced(`bike-${id}-steering`, model.steering, trim, false), 'boxes'),
-      cranks: model.cranks ? ladder(instanced(`bike-${id}-cranks`, model.cranks, trim, false), 'boxes') : null,
+      body: ladder(instanced(`bike-${id}-body`, drawnOf(model.body), paint), 'smooth'),
+      trim: ladder(instanced(`bike-${id}-trim`, drawnOf(model.trim), trim), 'boxes'),
+      steering: ladder(instanced(`bike-${id}-steering`, drawnOf(model.steering), trim, false), 'boxes'),
+      cranks: model.cranks ? ladder(instanced(`bike-${id}-cranks`, drawnOf(model.cranks), trim, false), 'boxes') : null,
     });
   }
   const twoWheelerPartList: Part[] = [...twoWheelerParts.values()].flatMap((t) =>
     [t.body.parts[0]!, t.trim.parts[0]!, t.steering.parts[0]!, ...(t.cranks ? [t.cranks.parts[0]!] : [])]);
   const allParts: readonly Part[] = [...parts, ...carPartList, ...twoWheelerPartList, ...ladderParts, ...panelParts];
+  // EVERY PART'S LEVELS ASKED NOW, in the levels' worker (`lodPool.ts`), not the first time a car is drawn at a coarser one (`rung`): until a
+  // ladder's levels come, every level of it draws the whole model, and the worker is one queue with the people's. DO NOT wait for the first
+  // coarse draw: the near cars' bodies (`car-*-body`, ~12,000 triangles) still drew whole at every level after a long session, hundreds of cars
+  // at their full model, and again in the shadows (the F7 audit's capture, 6.76 M triangles of vehicles downtown, 2026-10-25). Only off the
+  // page: with no levels' worker (`lodPool` null) every level is made on the page, and all at once they held it for seconds - there they are
+  // made as they are first drawn.
+  if (lodPool()) for (const l of ladders) rung(l, 1);
 
   // The scenery's people: the few bodies of the scenery cast
   const pedestrians = createRiggedCitizens(CROWD_IDS, onAssetsReady);
-  // The walkers drawn as procedural people (`people/proceduralCrowd.ts`, the player's choice of 2026-10-06)
-  const procedural = typeof location !== 'undefined' && new URLSearchParams(location.search).get('bodies') === 'cooked'
-    ? null : createProceduralCrowd({ unit: m(1) });
-  /** Each walker's person; a person whose walker left (at the end of a road) waits in `procSpare` for the next one. */
-  const procPeople = new Map<number, { person: ProceduralPerson | null; seen: number; at?: Matrix4; age?: PersonAgeClass; cover?: number }>();
-  /** Whether a body suits a walker's age (the simulation's child, adult or elder: their pace, their company) */
-  const procSuits = (person: ProceduralPerson, age: PersonAgeClass | undefined): boolean =>
-    age === undefined || (age === 'child' ? person.band === 'child' : age === 'elder' ? person.band === 'senior'
-      : person.band === 'young' || person.band === 'adult');
-  /** A spare body of that age, taken out of the pool; null when there is none. */
-  const procSpareFor = (age: PersonAgeClass | undefined): ProceduralPerson | null => {
-    const i = procSpare.findIndex((p) => procSuits(p, age));
-    return i >= 0 ? procSpare.splice(i, 1)[0]! : null;
-  };
-  const procSpare: ProceduralPerson[] = [];
-  const PROC_CAP = PED_CEILING;
-  /** Walkers waiting for a body of their own. */
-  const procWaiting: number[] = [];
-  /** One body made at a time: its vertices baked in a worker (`crowdBodies.ts`), DO NOT space them out on a clock. */
-  let procBuilding = false;
-  // Two spare bodies built while the map opens, drawn hidden
-  if (procedural) {
-    for (const seed of [0x51a7e, 0x2b0d1]) {
-      void procedural.add(randomPerson(-seed, seed)).then((person) => {
-        person.matrix.makeScale(0, 0, 0);
-        procSpare.push(person);
-      }, () => {});
-    }
-    // And the rest of the classes while the map is still opening, before the first walkers come in (`warmClasses`).
-    void procedural.warmClasses().catch(() => {});
-  }
-  const procBuildNext = (): void => {
-    if (procBuilding || !procWaiting.length) return;
-    // A walker who got a freed body meanwhile, or left, needs none.
-    let id: number | undefined;
-    while (procWaiting.length) {
-      const next = procWaiting.shift()!;
-      const e = procPeople.get(next);
-      if (e && !e.person) { id = next; break; }
-    }
-    if (id === undefined) return;
-    const target = id;
-    procBuilding = true;
-    // Bodies of the other ages left over in the pool: the oldest given back
-    while (procSpare.length > 12) procedural!.ragdoll.untwin(procSpare.shift()!);
-    // Of the walker's age: a child 5 to 13, an elder 66 to 88, an adult between.
-    const age = procPeople.get(target)?.age;
-    const roll = ((Math.imul(target ^ 0x9e37, 2246822519) >>> 0) % 1000) / 1000;
-    const years = age === 'child' ? 5 + roll * 8 : age === 'elder' ? 66 + roll * 22 : 18 + roll * 42;
-    void procedural!.add(randomPerson(target, (Math.imul(target, 2654435761) >>> 0) + 1, age ? { body: { age: ageFromYears(years) } } : {})).then((person) => {
-      const e = procPeople.get(target);
-      if (e && !e.person) e.person = person;
-      else { person.matrix.makeScale(0, 0, 0); procSpare.push(person); }
-    }, () => { procPeople.delete(target); }).finally(() => { procBuilding = false; });
-  };
-  let procFrame = 0;
-  /** This frame's measure of a person on the screen (`AgentRenderOptions.personPixels`). */
-  let procPixels: AgentRenderOptions['personPixels'] | null = null;
-  const procMatrix = new Matrix4(), procTurn = new Matrix4(), procSize = new Matrix4();
-  /** A person drawn this frame: their pose picked (`procPose`), and a change of clip made a cross-fade. */
-  const procDraw = (id: number, x: number, y: number, heading: number, deck: number, speed: number, walking: boolean, dt: number, activity?: string,
-    lost?: readonly Severable[], act?: { readonly t: number; readonly hold: number },
-    wound?: { readonly part: BodyPart; readonly grave: boolean }, age?: PersonAgeClass): void => {
-    const before = procPeople.get(id)?.person ?? null;
-    const was = before?.clip;
-    const wasPhase = before?.phase ?? 0;
-    procPose(id, x, y, heading, deck, speed, walking, dt, activity, lost, act, wound, age);
-    const person = procPeople.get(id)?.person ?? null;
-    // Somebody new in this body this frame starts as they are: nothing to fade from.
-    if (!person || person !== before || was === undefined) return;
-    const metres = speed / m(1);
-    const out = person.fade;
-    if (out) {
-      out.phase += gaitClip(out.clip) ? dt * metres / Math.max(0.1, procedural!.stride(person, out.clip))
-        : dt / procedural!.clipDuration(person, out.clip);
-      out.weight -= dt / CLIP_FADE;
-      if (out.weight <= 0) person.fade = undefined;
-    }
-    // One gait into another goes on through the same stride (`procPose`): no fade.
-    if (person.clip !== was && !(gaitClip(was) && gaitClip(person.clip))) {
-      person.fade = { clip: was, phase: wasPhase, weight: 1 };
-    }
-  };
-  const procPose = (id: number, x: number, y: number, heading: number, deck: number, speed: number, walking: boolean, dt: number, activity?: string,
-    lost?: readonly Severable[], act?: { readonly t: number; readonly hold: number },
-    wound?: { readonly part: BodyPart; readonly grave: boolean }, age?: PersonAgeClass): void => {
-    let entry = procPeople.get(id);
-    if (!entry) {
-      const spare = procSpareFor(age);
-      if (spare) {
-        // Somebody new in that body: none of the last one's wounds.
-        procedural?.ragdoll.heal(spare);
-        entry = { person: spare, seen: procFrame, ...(age ? { age } : {}) };
-        procPeople.set(id, entry);
-      } else {
-        if (procPeople.size >= PROC_CAP) return;
-        entry = { person: null, seen: procFrame, ...(age ? { age } : {}) };
-        procPeople.set(id, entry);
-        procWaiting.push(id);
-      }
-    }
-    entry.seen = procFrame;
-    const person = entry.person;
-    if (!person) return;
-    procMatrix.makeTranslation(x, deck, -y)
-      .multiply(procTurn.makeRotationY(heading + Math.PI / 2))
-      .multiply(procSize.makeScale(m(1), m(1), m(1)));
-    person.matrix.copy(procMatrix);
-    // How tall they stand on the screen: the level they are drawn at (`crowdLod.ts`).
-    person.pixels = procPixels ? procPixels(x, y, deck, m(person.height)) : undefined;
-    // Where they were last drawn: a ragdoll takes them from there when they drop out of the street
-    (entry.at ??= new Matrix4()).copy(procMatrix);
-    person.activity = activity;
-    person.lost = lost;
-    const forced = procForced.get(id);
-    if (forced) {
-      if (person.clip !== forced) { person.clip = forced; person.phase = 0; }
-      person.phase += dt / procedural!.clipDuration(person);
-      return;
-    }
-    procFrozen.delete(id);
-    if (activity === 'flinch' && act) {
-      // A first wound (`walk.ts` FLINCH), as GTA's shot peds take it
-      person.activity = 'hurt';
-      // The hit itself first, as captured (Quaternius Hit_Chest, a third of a second); then knocked back
-      const hitFor = procedural!.ragdoll.duration(person, 'hit');
-      const back = staggerSpeed(act.t) / m(1);
-      if (act.t < hitFor) {
-        if (person.clip !== 'hit') person.clip = 'hit';
-        person.phase = Math.min(0.999, act.t / hitFor);
-      } else if (back > 0.05) {
-        // Knocked back: steps back as captured (CMU 76_11), played over the stagger.
-        if (person.clip !== 'staggerBack') person.clip = 'staggerBack';
-        person.phase = Math.min(0.999, (act.t - STAGGER_FROM) / STAGGER_TIME * 0.85);
-      } else {
-        if (person.clip !== 'idle') { person.clip = 'idle'; person.phase = 0; }
-        person.phase += dt / procedural!.clipDuration(person);
-      }
-      const k = Math.min(1, Math.max(0, (act.t - 0.12) / 0.3));
-      procedural!.ragdoll.posture(person, { hunch: (wound?.grave ? 0.55 : 0.42) * k, reach: Math.min(1, Math.max(0, (act.t - 0.2) / 0.35)), part: wound?.part ?? 'torso' });
-      return;
-    }
-    if ((activity === 'crouch' || activity === 'mourn') && act && !wound) {
-      // Crouching in fear (a `crouch` act): down into it (the crouch-down clip), held, and up again before the act ends
-      const down = 0.5, up = 0.9;
-      const next: ProcClip = act.t < down ? 'duck' : act.t > act.hold - up ? 'getUp' : 'cower';
-      if (person.clip !== next) { person.clip = next; person.phase = 0; }
-      if (next === 'duck') person.phase = Math.min(0.999, act.t / down);
-      else if (next === 'getUp') person.phase = Math.min(0.999, (act.t - (act.hold - up)) / up);
-      else person.phase += dt / procedural!.clipDuration(person);
-      // Both hands over the head while down (GTA's cower), on as they duck; grieving beside somebody they walked with
-      if (activity === 'mourn') {
-        person.activity = 'cry';
-        entry.cover = 0;
-        procedural!.ragdoll.posture(person, null);
-        return;
-      }
-      entry.cover = Math.min(1, act.t / 0.4) * Math.min(1, Math.max(0, (act.hold - act.t) / 0.5));
-      procedural!.ragdoll.posture(person, { hunch: 0, reach: 0, part: 'torso', cover: entry.cover });
-      return;
-    }
-    if (activity === 'crawl') {
-      // Dragging themself off, gravely hurt: the captured crawl (CMU 111_03), stepped by the ground covered.
-      person.activity = 'hurt';
-      if (person.clip !== 'crawl') { person.clip = 'crawl'; person.phase = 0; }
-      person.phase += dt * (speed / m(1)) / Math.max(0.05, procedural!.stride(person));
-      entry.cover = 0;
-      procedural!.ragdoll.posture(person, null);
-      return;
-    }
-    if (activity === 'look' && act && !wound) {
-      // A bystander's first moment after a shot (`walk.ts` frighten): turned to it, standing scared
-      if (person.clip !== 'nervous') { person.clip = 'nervous'; person.phase = 0; }
-      person.phase += dt / procedural!.clipDuration(person);
-      entry.cover = 0;
-      procedural!.ragdoll.posture(person, null);
-      return;
-    }
-    // Hurt: a hand pressed to the wound over the captured hurt gaits - the injured run while they flee, the limp after
-    const metres = speed / m(1);
-    const hurtRun = wound !== undefined && walking && metres > (person.clip === 'hurtRun' ? 1.3 : 1.7);
-    // Fleeing in panic: both hands over the head as they run
-    const panicRun = !wound && activity === 'panic' && walking && metres > 1.6;
-    entry.cover = (entry.cover ?? 0) + ((panicRun ? 1 : 0) - (entry.cover ?? 0)) * Math.min(1, dt * 5);
-    procedural!.ragdoll.posture(person, wound ? { hunch: wound.grave ? 0.5 : walking && metres > 0.15 ? 0.08 : 0.42, reach: 1, part: wound.part }
-      : entry.cover > 0.02 ? { hunch: 0, reach: 0, part: 'torso', cover: entry.cover } : null);
-    if (wound) person.activity = 'hurt';
-    // Running from danger runs, past a brisk walk; struck with fear
-    if (activity === 'fall') {
-      if (person.clip !== 'idle') { person.clip = 'idle'; person.phase = 0; }
-      procedural!.ragdoll.posture(person, null);
-      return;
-    }
-    const was = person.clip;
-    const moving = walking && metres > 0.15;
-    const sprint = metres > (was === 'sprint' ? 3.6 : 4.2);
-    const run = metres > (was === 'run' || was === 'sprint' ? 2.1 : 2.6);
-    const clip: ProcClip = activity === 'photo' && !moving ? 'photo'
-      : moving ? (wound ? (hurtRun ? 'hurtRun' : 'hurtWalk') : sprint ? 'sprint' : run ? 'run' : 'walk') : 'idle';
-    // Walk, run and sprint all start on the same foot: the stride goes on through a change of pace.
-    if (person.clip !== clip) {
-      if (!(gaitClip(was) && gaitClip(clip))) person.phase = 0;
-      person.clip = clip;
-    }
-    if (gaitClip(clip)) person.phase += dt * metres / Math.max(0.1, procedural!.stride(person));
-    else person.phase += dt / procedural!.clipDuration(person);
-  };
   /** The cooked bodies as the ragdolls ask for them: no captured getting-up off the ground (the key poses then). */
   const riggedRagdoll: RagdollCitizens = Object.assign(Object.create(pedestrians) as typeof pedestrians, {
     clipPose: (index: number, key: 'crouchUp' | 'idle' | 'getUpFront' | 'getUpBack' | 'crawl', phase: number) =>
       key === 'getUpFront' || key === 'getUpBack' || key === 'crawl' ? null : pedestrians.clipPose(index, key, phase),
   });
-  /** Gone from the street: hidden; gone a second, its person freed for the next walker. */
-  const procFinish = (eye: Vector3 | undefined, live: ReadonlySet<number>): void => {
-    for (const [id, entry] of procPeople) {
-      if (entry.seen === procFrame) continue;
-      // Those a ragdoll holds (struck, down, or dead) keep their person.
-      if (!entry.person) { if (!live.has(id) && !procHeld.has(id)) procPeople.delete(id); continue; }
-      if (procHeld.has(id)) continue;
-      entry.person.matrix.makeScale(0, 0, 0);
-      // Kept a few frames off the street
-      if (!live.has(id) && procFrame - entry.seen > 3) { procPeople.delete(id); procSpare.push(entry.person); }
-    }
-    // A freed body goes at once to a walker still waiting for one.
-    for (let i = 0; i < procWaiting.length && procSpare.length; i++) {
-      const e = procPeople.get(procWaiting[i]!);
-      if (!e || e.person) continue;
-      const spare = procSpareFor(e.age);
-      if (spare) { procedural?.ragdoll.heal(spare); e.person = spare; procWaiting.splice(i--, 1); }
-    }
-    procBuildNext();
-    // `procedural.update` runs after the ragdolls have posed those they hold (`sync`).
-    void eye;
-    procFrame++;
-  };
-  /** The ragdolls' view of the people (`ragdoll.ts` RagdollCitizens) */
-  const procHeld = new Set<number>(), procHeldNow = new Set<number>();
-  /** The walkers of the simulation this frame (`sync`), one set for every frame. */
-  const procLive = new Set<number>();
-  /** The tick `procLive` was gathered for, and how many walkers it had. */
-  let procLiveTick = -1, procLiveViews = -1;
-  /** People made to play a clip (`forceClip`), and those whose clip did not move this frame. */
-  const procForced = new Map<number, ProcClip>();
-  const procFrozen = new Set<number>();
-  /** Drips blood where a wounded walker drawn procedurally goes (`setBleed`). */
-  let procBleed: ((id: number, x: number, y: number, z: number) => void) | null = null;
-  /** Pieces torn off procedural people, drawn apart (`RagdollCitizens.twin`): indices from `TWIN_BASE` down. */
-  const procTwins = new Map<number, ProceduralPerson>();
-  const TWIN_BASE = -1_000_000_000;
-  let procTwinNext = 0;
-  const procOf = (index: number): ProceduralPerson | null => (index <= TWIN_BASE ? procTwins.get(index) ?? null
-    : index < 0 ? procPeople.get(-1 - index)?.person ?? null : null);
-  const procScale = new Matrix4();
-  const procRagdoll: RagdollCitizens = {
-    capturedPose(id) {
-      const entry = procPeople.get(id);
-      const person = entry?.person;
-      const palette = person && entry.at && procedural ? procedural.ragdoll.pose(person) : null;
-      if (!person || !palette || !entry.at) return pedestrians.capturedPose(id);
-      return { index: -1 - id, palette, transform: entry.at.clone().multiply(procScale.makeScale(person.scale, person.scale, person.scale)) };
-    },
-    skeletonOf(index) {
-      const person = procOf(index);
-      return person && procedural ? procedural.ragdoll.skeleton(person) : pedestrians.skeletonOf(index);
-    },
-    drawPalette(index, palette, instance, charred, alive) {
-      const person = procOf(index);
-      if (!person || !procedural) { pedestrians.drawPalette(index, palette, instance, charred); return; }
-      // On the ground: in pain if alive, slack if not.
-      person.activity = alive ? 'hurt' : 'dead';
-      if (index <= TWIN_BASE) {
-        person.matrix.copy(instance).multiply(procScale.makeScale(1 / person.scale, 1 / person.scale, 1 / person.scale));
-        procedural.ragdoll.hold(person, palette);
-        return;
-      }
-      // The first piece of the body is the person; pieces torn off are their twins (`twin`).
-      const id = -1 - index;
-      if (procHeldNow.has(id)) return;
-      procHeldNow.add(id);
-      person.matrix.copy(instance).multiply(procScale.makeScale(1 / person.scale, 1 / person.scale, 1 / person.scale));
-      procedural.ragdoll.hold(person, palette);
-    },
-    clipPose(index, key, phase) {
-      const person = procOf(index);
-      if (!person || !procedural) return key === 'crawl' ? null : pedestrians.clipPose(index, key === 'getUpFront' || key === 'getUpBack' ? 'crouchUp' : key, phase);
-      const clip = key === 'crouchUp' ? 'getUp' : key === 'getUpFront' ? 'riseFront' : key === 'getUpBack' ? 'riseBack' : key === 'crawl' ? 'crawl' : 'idle';
-      const palette = procedural.ragdoll.standing(person, phase, clip);
-      return palette ? { palette, duration: clip === 'idle' ? 1.2 : procedural.ragdoll.duration(person, clip) } : null;
-    },
-    loadedIndices: () => pedestrians.loadedIndices(),
-    twin(index) {
-      const person = procOf(index);
-      // A cooked body draws as many palettes as it has pieces.
-      if (!person || !procedural) return index >= 0 ? index : null;
-      const twin = procedural.ragdoll.twin(person);
-      if (!twin) return null;
-      const key = TWIN_BASE - procTwinNext++;
-      procTwins.set(key, twin);
-      return key;
-    },
-    untwin(index) {
-      const twin = procTwins.get(index);
-      if (!twin || !procedural) return;
-      procedural.ragdoll.untwin(twin);
-      procTwins.delete(index);
-    },
-    char(index) {
-      const person = procOf(index);
-      if (person && procedural) procedural.ragdoll.char(person, true);
-    },
-    wound(index, part) {
-      const person = procOf(index);
-      if (!person || !procedural) return;
-      procedural.ragdoll.wound(person, part);
-      // The jerk of the hit is the captured one now (the `hit` clip, `procDraw` flinch), not a turn of the spine laid over the clip.
-    },
-    drench(index) {
-      const person = procOf(index);
-      if (person && procedural) procedural.ragdoll.drench(person);
-    },
-  };
   /** The soft shadow under a vehicle below the whole level (`blobShadows.ts`): a part like the others, a parked car's kept with it. */
   const blobs = partOf(blobMesh('vehicle-shadows', MAX_VEHICLES, 0.4));
-  const meshes = [...allParts.map((part) => part.mesh), blobs.mesh, pedestrians.group, ...(procedural ? [procedural.group] : [])];
+  const meshes = [...allParts.map((part) => part.mesh), blobs.mesh, pedestrians.group];
 
   const object = new Object3D();
   // Yaw outermost, so the third Euler component becomes a rotation about the agent's own lateral axis
@@ -1256,9 +1003,6 @@ export function createAgentMeshes(elevationAt: ElevationAt, onAssetsReady: () =>
   let casting = false;
   let suspensionClock = typeof performance !== 'undefined' ? performance.now() : 0;
   let suspensionDt = 0;
-  /** The simulation's own time between two frames drawn (tick and interpolation) */
-  let gaitClock = -1;
-  let gaitDt = 0;
   let suspensionFrame = 0;
 
   /** The parts written this frame or drawn last frame: DO NOT walk every part of every body and level each frame (a thousand of them) to reset and send them. */
@@ -1470,8 +1214,10 @@ export function createAgentMeshes(elevationAt: ElevationAt, onAssetsReady: () =>
       // Only the front axle steers; every hub turns with the distance driven
       const steer = axle === 0 ? lamp.steer : 0;
       if (plan.shape === 'bicycle') {
-        place(thinWheels, along, 0, plan.wheelRadius, d, d, plan.tread, T_RUBBER, 0, steer);
-        place(spokes, along, 0, plan.wheelRadius, d, d, plan.tread, T_CHROME, lamp.spin, steer);
+        // Drawn d across (its unit diameter scaled by the wheel's): its level by the pixels a unit covers there.
+        const hoop = rung(thinWheelLevels, levelFor(frame[FRAME_PIXELS]! * d)), spoked = rung(spokeLevels, levelFor(frame[FRAME_PIXELS]! * d));
+        if (hoop) place(hoop, along, 0, plan.wheelRadius, d, d, plan.tread, T_RUBBER, 0, steer);
+        if (spoked) place(spoked, along, 0, plan.wheelRadius, d, d, plan.tread, T_CHROME, lamp.spin, steer);
         continue;
       }
       if (plan.axleSide === 0) {
@@ -1546,8 +1292,8 @@ export function createAgentMeshes(elevationAt: ElevationAt, onAssetsReady: () =>
     const detail = levelFor(frame[FRAME_PIXELS]!);
     // Real shadows from the whole vehicle only; the middle level's is a soft disc (`sync`).
     const shell = band >= 2 ? car.shell : car.shellLite;
-    // Doors shut, the body and its panel (a painted roof, or the accent) in one draw (`vehiclePanels.ts`).
-    const panels = band >= 2 ? car.panel : car.panelLite;
+    // Doors shut, the body, its panel (a painted roof, or the accent), its trim and its cabin in one draw (`vehiclePanels.ts`).
+    const panels = band >= 2 ? car.body : car.bodyLite;
     const joined = !doorsMoving && panels && !panelsApart.has(panels) && !(car.roof && look.glassRoof) ? panels : null;
     const panelTint = car.roof ? (look.blackRoof ? T_BLACK_ROOF : paint) : s.accent;
     const doors = model.doors;
@@ -1557,24 +1303,26 @@ export function createAgentMeshes(elevationAt: ElevationAt, onAssetsReady: () =>
       // The shut glazing, a window down lowered into its door by the glass's own program (`vehicleWindows.ts`).
       wholeGlass(car.glass, detail, (look.windowsDown & 1) !== 0 ? look.windowDrop : 0, (look.windowsDown & 2) !== 0 ? look.windowDrop : 0);
     } else {
-      placeWhole(car.openShell, paint);
-      placeWhole(car.openGlass, null);
+      // The body in pieces and each leaf, at the level the shut body would be drawn at (the same scale, the same error).
+      wholeAt(car.openShell, detail, paint);
+      wholeAt(car.openGlass, detail, null);
       for (let i = 0; i < doors.length; i++) {
         const door = doors[i]!;
         const open = doorOpening(vehicle, door.index);
+        const leaf = rung(car.doors[i]!, detail), pane = rung(car.doorGlass[i]!, detail);
         if (door.kind === 'slide') {
           // A plug door: out a little, then along the body.
           const out = Math.min(1, open * 4) * m(0.07);
           const along = door.hingeX + door.slide * smooth01((open - 0.15) / 0.85);
           const across = -(door.hingeZ + door.side * out);
-          place(car.doors[i]!, along, across, 0, 1, 1, 1, paint);
-          place(car.doorGlass[i]!, along, across, 0, 1, 1, 1, null);
+          if (leaf) place(leaf, along, across, 0, 1, 1, 1, paint);
+          if (pane) place(pane, along, across, 0, 1, 1, 1, null);
           continue;
         }
         // Swung about the hinge, outwards on its own side.
         const swing = open * DOOR_SWING;
-        place(car.doors[i]!, door.hingeX, -door.hingeZ, 0, 1, 1, 1, paint, 0, door.side * swing);
-        place(car.doorGlass[i]!, door.hingeX, -door.hingeZ, 0, 1, 1, 1, null, 0, door.side * swing);
+        if (leaf) place(leaf, door.hingeX, -door.hingeZ, 0, 1, 1, 1, paint, 0, door.side * swing);
+        if (pane) place(pane, door.hingeX, -door.hingeZ, 0, 1, 1, 1, null, 0, door.side * swing);
       }
     }
     const roof = band >= 2 ? car.roof : car.roofLite;
@@ -1586,7 +1334,8 @@ export function createAgentMeshes(elevationAt: ElevationAt, onAssetsReady: () =>
     if (!joined || roof) wholeAt(accent, detail, s.accent);
     placeWheels(s.plan, band);
 
-    wholeAt(car.trim, detail, null);
+    // The trim and, from the cabin's band, the cabin are drawn in the joined body (`vehiclePanels.ts`).
+    if (!joined) wholeAt(car.trim, detail, null);
     for (const l of model.headlamps) place(lamps, l.x, -l.z, l.y, l.sx, l.sy, l.sz, lamp.head);
     for (const l of model.taillamps) place(lamps, l.x, -l.z, l.y, l.sx, l.sy, l.sz, lamp.tail);
     for (const l of model.indicators) {
@@ -1596,11 +1345,12 @@ export function createAgentMeshes(elevationAt: ElevationAt, onAssetsReady: () =>
       }
     }
     if (band < 2) return;
-    if (!doorsMoving) wholeAt(car.interior, detail, null);
+    if (!doorsMoving) { if (!joined) wholeAt(car.interior, detail, null); }
     else {
-      placeWhole(car.openInterior, null);
+      wholeAt(car.openInterior, detail, null);
       for (let i = 0; i < doors.length; i++) {
-        const door = doors[i]!, card = car.doorCards[i];
+        const door = doors[i]!, cards = car.doorCards[i];
+        const card = cards ? rung(cards, detail) : null;
         if (!card || door.kind !== 'hinge') continue;
         place(card, door.hingeX, -door.hingeZ, 0, 1, 1, 1, null, 0, door.side * doorOpening(vehicle, door.index) * DOOR_SWING);
       }
@@ -1678,8 +1428,12 @@ export function createAgentMeshes(elevationAt: ElevationAt, onAssetsReady: () =>
       const seat = model.seats[model.steering.seat]!;
       const wheel = model.steering.wheel;
       const s = driverScale > 0 ? driverScale / m(1) : 1;
-      placeSteeringWheel(car.steering, seat.x + m(wheel.forward) * s, -seat.z, seat.hipY + m(wheel.up) * s,
-        wheel.tilt, Math.max(-1.6, Math.min(1.6, lamp.steer * 5)), s);
+      // Drawn at the driver's size: its level by the pixels a unit of it covers there.
+      const steering = rung(car.steering, levelFor(frame[FRAME_PIXELS]! * s));
+      if (steering) {
+        placeSteeringWheel(steering, seat.x + m(wheel.forward) * s, -seat.z, seat.hipY + m(wheel.up) * s,
+          wheel.tilt, Math.max(-1.6, Math.min(1.6, lamp.steer * 5)), s);
+      }
     }
     const stop = vehicle.kerbStop;
     if (stop) placeKerbPerson(vehicle, model, stop);
@@ -2017,72 +1771,11 @@ export function createAgentMeshes(elevationAt: ElevationAt, onAssetsReady: () =>
 
   return {
     meshes,
+    farBodies: bodies.map(({ key, archetype, model }) => ({ key, archetype, far: model.far })),
     get castersChanged() { return castersChanged; },
     get casting() { return casting; },
-    get held() { return { vehicles: draws.size, cells: cellsDrawn.size, kept: keptList.length, people: procPeople.size }; },
+    get held() { return { vehicles: draws.size, cells: cellsDrawn.size, kept: keptList.length, people: pedestrians.remembered }; },
     census: () => pedestrians.census(),
-    meshProbe() {
-      const out: { id: number; stretch: number; stretchBone: string; scale: number; scaleBone: string; held: boolean; clip: string }[] = [];
-      if (!procedural) return out;
-      const inv = new Matrix4();
-      for (const [id, entry] of procPeople) {
-        const person = entry.person;
-        if (!person) continue;
-        const pal = procedural.ragdoll.pose(person);
-        const sk = procedural.ragdoll.skeleton(person);
-        if (!pal || !sk) continue;
-        // At this person's own joints (`skeleton` gives the binds moved to them).
-        const bind = sk.inverses.map((m4) => { const e = inv.copy(m4).invert().elements; return [e[12]!, e[13]!, e[14]!] as const; });
-        // Measured against the same person standing (their own proportions, `refit`)
-        const rest = procedural.ragdoll.standing(person, 0);
-        if (!rest) continue;
-        const atIn = (m: Float32Array, b: number): [number, number, number] => {
-          const o = b * 16, [x, y, z] = bind[b]!;
-          return [m[o]! * x + m[o + 4]! * y + m[o + 8]! * z + m[o + 12]!, m[o + 1]! * x + m[o + 5]! * y + m[o + 9]! * z + m[o + 13]!,
-            m[o + 2]! * x + m[o + 6]! * y + m[o + 10]! * z + m[o + 14]!];
-        };
-        const at = (b: number): [number, number, number] => atIn(pal, b);
-        const norm = (b: number): number => Math.max(Math.hypot(pal[b * 16]!, pal[b * 16 + 1]!, pal[b * 16 + 2]!),
-          Math.hypot(pal[b * 16 + 4]!, pal[b * 16 + 5]!, pal[b * 16 + 6]!), Math.hypot(pal[b * 16 + 8]!, pal[b * 16 + 9]!, pal[b * 16 + 10]!));
-        let stretch = 1, stretchBone = '', scale = 0, scaleBone = '';
-        let longest = 0;
-        for (let b = 0; b < sk.parents.length; b++) {
-          const p = sk.parents[b]!;
-          if (p >= 0) longest = Math.max(longest, Math.hypot(bind[b]![0] - bind[p]![0], bind[b]![1] - bind[p]![1], bind[b]![2] - bind[p]![2]));
-        }
-        for (let b = 0; b < sk.parents.length; b++) {
-          const name = sk.names[b] ?? '';
-          if (/Finger|Toe|Nub|_end|twist/i.test(name)) continue;
-          const n = norm(b);
-          if (n > scale) { scale = n; scaleBone = name; }
-          const p = sk.parents[b]!;
-          // Not against the root (it stays at the feet: a crouch lowers the pelvis to it, no skin between).
-          if (p < 0 || sk.parents[p]! < 0 || n < 0.5 || norm(p) < 0.5) continue;
-          const ra = atIn(rest, b), rc = atIn(rest, p);
-          const l0 = Math.hypot(ra[0] - rc[0], ra[1] - rc[1], ra[2] - rc[2]);
-          // Bones of real length only: a few millimetres between the spine and the pelvis made a 3x from nothing.
-          if (l0 < longest * 0.12) continue;
-          const a = at(b), c = at(p);
-          const r = Math.hypot(a[0] - c[0], a[1] - c[1], a[2] - c[2]) / l0;
-          if (Math.abs(r - 1) > Math.abs(stretch - 1)) { stretch = r; stretchBone = `${name}<${sk.names[p]} ${(l0 * 100).toFixed(1)}cm ${person.sex}-${person.band}`; }
-        }
-        out.push({ id, stretch, stretchBone, scale, scaleBone, held: procHeld.has(id), clip: person.clip });
-      }
-      return out;
-    },
-    animProbe(id) {
-      const person = procPeople.get(id)?.person;
-      if (!person || !procedural) return null;
-      const duration = procedural.ragdoll.duration(person, person.clip);
-      const held = procHeld.has(id);
-      return {
-        clip: person.clip, time: (person.phase - Math.floor(person.phase)) * duration, duration, weight: held ? 0 : 1,
-        paused: procFrozen.has(id), layers: procedural.ragdoll.layers(person), source: held ? 'physics' : 'animation',
-      };
-    },
-    forceClip(id, clip) {
-      if (clip) procForced.set(id, clip); else procForced.delete(id);
-    },
     driverBody(vehicle, x, y) {
       return pedestrians.indexFor(seatIdentity(vehicle, seatPersonInto(vehicle, 0, seated), false), vehicle.archetype.shape === 'motorcycle', x, y);
     },
@@ -2144,11 +1837,11 @@ export function createAgentMeshes(elevationAt: ElevationAt, onAssetsReady: () =>
       merged.computeVertexNormals();
       return merged;
     },
-    setBleed: (fn) => { pedestrians.onBleed = fn; procBleed = fn; },
+    setBleed: (fn) => { pedestrians.onBleed = fn; },
     setNight: (dark) => {
       lampDark.value = dark;
     },
-    renderPalettes(renderer) { procedural?.renderPalettes(renderer); pedestrians.renderPalettes(renderer); },
+    renderPalettes(renderer) { pedestrians.renderPalettes(renderer); },
     keepPeople: () => pedestrians.keepAll(),
     sync(world, net, alpha, detailed, zoom = Number.POSITIVE_INFINITY, options = {}) {
       // A new document has a journal of its own: the sweep follows the one the world stands on.
@@ -2159,15 +1852,11 @@ export function createAgentMeshes(elevationAt: ElevationAt, onAssetsReady: () =>
       const now = typeof performance !== 'undefined' ? performance.now() : suspensionClock + 16;
       suspensionDt = Math.min(0.1, Math.max(0, (now - suspensionClock) / 1000));
       suspensionClock = now;
-      const simNow = world.time + alpha * DT;
-      gaitDt = gaitClock < 0 ? 0 : Math.min(0.5, Math.max(0, simNow - gaitClock));
-      gaitClock = simNow;
       suspensionFrame++;
       // A vehicle not drawn for two seconds: its record let go (a kept one's instances went the frame it was not drawn).
       if (suspensionFrame % 600 === 0) for (const [id, s] of draws) if (suspensionFrame - s.seen > 120 && s.keptAt < 0) draws.delete(id);
       forgetCast(world);
       pedestrians.begin(options.pedestrianDetail ?? 2, zoom, options.personPixels ?? null, options.pixelRatio ?? 1);
-      procPixels = options.personPixels ?? null;
       // This frame's instances start after the parked cars' kept ones.
       for (const part of live) part.n = part.kept;
       const band = !detailed ? 0 : zoom >= NEAR_DETAIL_ZOOM ? 2 : 1;
@@ -2181,6 +1870,9 @@ export function createAgentMeshes(elevationAt: ElevationAt, onAssetsReady: () =>
       const pixelRatio = options.pixelRatio ?? 1;
       // A part's level by its error in pixels drawn, against the tier's pixels (`levelFor` is against `ERROR_PIXELS`): one where the tier draws as every tier did.
       const levelRatio = pixelRatio * (ERROR_PIXELS / (options.tier?.vehicleErrorPixels ?? ERROR_PIXELS));
+      // The least screen scale (CSS pixels a unit) a vehicle is drawn at: a car `LEAST_CAR_PX` device pixels long, where the far traffic's go too
+      // (`densityCars.ts`): DO NOT let the two stop at other sizes, the near cars were gone at the window's centre while the far ones still stood round it.
+      const leastScale = LEAST_CAR_PX / (CAR_LENGTH * pixelRatio);
       const nearCap = options.tier?.vehicleWholeCap ?? VEHICLE_NEAR_CAP;
       const softShadows = options.shadows !== false;
       let whole = 0;
@@ -2206,7 +1898,7 @@ export function createAgentMeshes(elevationAt: ElevationAt, onAssetsReady: () =>
       const keepsCells = !!options.vehicleInside && !!screenScale;
       const standsIn = (record: CellRecord, plan: BodyPlan, own: number, pixels: number, onScreen: boolean, x: number, y: number, radius: number): void => {
         if (!keepsCells) return;
-        standingRange(plan, own, pixels, levelRatio, occupantZoom, range);
+        standingRange(plan, own, pixels, levelRatio, occupantZoom, leastScale, range);
         if (range.lo > record.rangeLo) record.rangeLo = range.lo;
         if (range.hi < record.rangeHi) record.rangeHi = range.hi;
         if (!onScreen) record.onScreen = false;
@@ -2259,7 +1951,7 @@ export function createAgentMeshes(elevationAt: ElevationAt, onAssetsReady: () =>
         const was = s.lod;
         let own = -1;
         for (let level = 2; level >= 0; level--) {
-          const edge = level === 2 ? occupantZoom : level === 1 ? FAR_BODY_ZOOM : 2 / CAR_LENGTH;
+          const edge = level === 2 ? occupantZoom : level === 1 ? FAR_BODY_ZOOM : leastScale;
           if (pixels >= (level > was ? edge * (1 + VEHICLE_HYSTERESIS) : edge)) { own = level; break; }
         }
         if (own < 0) return;
@@ -2327,9 +2019,13 @@ export function createAgentMeshes(elevationAt: ElevationAt, onAssetsReady: () =>
         s.deck = want.deck;
         s.seen = suspensionFrame;
         s.lod = own;
-        frameAt(pose.p.x, pose.p.y, pose.angle, s.deck,
-          twoWheeled ? leanOf(vehicle, s) + (fit ? fit.stopTilt * (1 - riderMoving(vehicle)) : 0) : 0,
-          s.pitch, s.roll);
+        // Stopped, it tilts as far as its rider's leg asks to reach the road (`riderPoses.stopTiltFor`: the rider's body's own once made, the fit's
+        // until then).
+        const stopping = fit ? 1 - riderMoving(vehicle) : 0;
+        const stopTilt = fit && stopping > 0
+          ? pedestrians.stopTiltFor(seatIdentity(vehicle, seatPersonInto(vehicle, 0, seated), false), vehicle.archetype.shape === 'motorcycle', pose.p.x, pose.p.y) ?? fit.stopTilt
+          : 0;
+        frameAt(pose.p.x, pose.p.y, pose.angle, s.deck, twoWheeled ? leanOf(vehicle, s) + stopTilt * stopping : 0, s.pitch, s.roll);
         occupantBand = twoWheeled ? vehicleBand : level;
         frame[FRAME_CLOCK] = vehicle.age;
 
@@ -2500,52 +2196,20 @@ export function createAgentMeshes(elevationAt: ElevationAt, onAssetsReady: () =>
           const rise = open ? m(0.04) : footwayRiseAt(net, pose.p.x, pose.p.y) * walkingRise(net, pose.p.x, pose.p.y, ped.ground !== 'crossing',
             segment === undefined ? 'ground' : net.doc.segment(segment)?.structure ?? 'ground');
           const deck = (open && roughGroundAt ? land(pose.p.x, pose.p.y) : below) + rise;
-          // (No vehicle frame worked out for a walker: both bodies are drawn from the pose and the deck alone.)
-          if (procedural && ped.id !== PLAYER_ID) {
-            // What they are doing shows before the fright on their face (a photo held up, a crouch, a fall).
-            const doing = ped.gesture?.kind;
-            // Shot and still going: the pain on their face over the fright.
-            const shown = doing === 'photo' || doing === 'crouch' || doing === 'fall' || doing === 'flinch' || doing === 'look' || doing === 'mourn' || doing === 'crawl' ? doing : ped.bleeding ? 'hurt' : ped.panic ? 'panic' : doing;
-            if (ped.bleeding || ped.lost?.length) procBleed?.(ped.id, pose.p.x, pose.p.y, deck);
-            // The gait at the body's real speed: a step aside is steps, not a glide.
-            const gait = gaitSpeed(ped);
-            procDraw(ped.id, pose.p.x, pose.p.y, pose.angle, deck, gait, ped.walking || gait > m(0.15), gaitDt, shown,
-              ped.lost ?? (ped.maimed ? [ped.maimed] : undefined), ped.gesture ? { t: ped.gesture.t, hold: ped.gesture.hold ?? 0 } : undefined, ped.wound, ped.ageClass);
-          }
-          else {
-            // The rise is the same on both sides of the difference, so the gradient is the road's own under the walker.
-            const ground = groundGradient(land,
-              pose.p.x, pose.p.y, deck - rise);
-            pedestrians.draw(ped, pose.p.x, pose.p.y, pose.angle, deck, alpha, ground);
-          }
+          // (No vehicle frame worked out for a walker: the body is drawn from the pose and the deck alone.)
+          // The rise is the same on both sides of the difference, so the gradient is the road's own under the walker.
+          const ground = groundGradient(land, pose.p.x, pose.p.y, deck - rise);
+          pedestrians.draw(ped, pose.p.x, pose.p.y, pose.angle, deck, alpha, ground);
           pedCount++;
         }
       }
 
-      if (procedural) {
-        // The walkers of the simulation, gathered once a tick (DO NOT add every walker of the region to a set each frame: they change only when a tick is read).
-        if (procLiveTick !== world.tick || procLiveViews !== world.pedViews.length) {
-          procLiveTick = world.tick; procLiveViews = world.pedViews.length;
-          procLive.clear();
-          for (const ped of world.pedViews) procLive.add(ped.id);
-        }
-        procFinish(options.eye, procLive);
-      }
-      // The ragdolls draw the procedural people as themselves (`procRagdoll`), the rest as cooked bodies.
-      procHeldNow.clear();
-      options.ragdolls?.(procedural ? procRagdoll : riggedRagdoll);
-      if (procedural) {
-        // Let go of those the ragdolls no longer hold (up again).
-        for (const id of procHeld) if (!procHeldNow.has(id)) { const p = procPeople.get(id)?.person; if (p) procedural.ragdoll.hold(p, null); }
-        procHeld.clear();
-        for (const id of procHeldNow) procHeld.add(id);
-        procedural.update(options.eye, gaitClock < 0 ? undefined : gaitClock, options.shadows !== false, options.tier?.hairStrandPeople);
-      }
+      options.ragdolls?.(riggedRagdoll);
       pedestrians.finish();
 
       // Send only what changed: this frame's instances, and the kept ones moved or written since the GPU last took them.
       // DO NOT call the shadow map's casters moving for what stands still: only a casting part with instances written, moved or gone this frame (a parked car kept is none).
-      casting = pedestrians.casting || (procedural ? procedural.casting : false);
+      casting = pedestrians.casting;
       let drawn = 0;
       for (let i = 0; i < live.length; i++) {
         const part = live[i]!, mesh = part.mesh, n = part.n;
@@ -2588,6 +2252,7 @@ export function createAgentMeshes(elevationAt: ElevationAt, onAssetsReady: () =>
         geometry.dispose();
       }
       for (const geometry of modelGeometries) geometry.dispose();
+      for (const geometry of drawnGeometries) geometry.dispose();
       for (const material of [paint, joinedPaint, trim, glassMaterial, rubber, lampMaterial, cabinMaterial]) {
         material.dispose();
       }

@@ -3,12 +3,15 @@ import type { SegmentId } from '@world/ids';
 import { type FieldData, PointHeights, fieldOf } from '@world/roadField';
 import { type CurbRamp, rampGrid, rampRiseIn } from '@world/rampRise';
 import { type FlushData, flushShareOf } from '@world/roads/footwayRise';
-import type { SurfaceShape, TileRect } from './mesh/tileShape';
-import { meshTileShape, type Tile } from './mesh/tileMesh';
-import { type PassDesc, type RoadLook, type SurfaceRead, type SurfaceReads, passSurfaces, tileSpecOf } from './roadSurfaceReads';
-import { type TilePolys, tileShapes } from './roadTileShape';
+import type { Tile, TileRect } from './mesh/tileMesh';
+import { type SlotPieces, slotSurfaces } from './mesh/tilePieces';
+import { farTileName } from './roads/pieceMesh';
+import { type PassDesc, type RoadLook, type SurfaceRead, type SurfaceReads, passSurfaces } from './roadSurfaceReads';
+import type { PieceReach } from './roads/pieceGeom';
+import { pieceBundle } from './roads/pieceMesh';
 
-/** THE ROADS' SURFACE TILES MADE WHOLE OFF THE PAGE (`roadTile.worker.ts`): each tile's bands shaped */
+/** THE ROADS' SURFACE PIECES MADE WHOLE OFF THE PAGE (`roadTile.worker.ts`): each piece (a road, a junction) meshed from its strips and fans
+ *  (`roads/pieceMesh.ts`), handed back finished */
 
 /** Everything a share of a pass's tiles reads besides the ground: the roads near them, as typed arrays and small records. */
 export interface SurfaceData {
@@ -20,14 +23,18 @@ export interface SurfaceData {
   readonly flush: FlushData;
   /** The dropped kerbs filed in the cells of the tiles, of the pass's structure. */
   readonly ramps: readonly CurbRamp[];
-  /** The footways' outer edges in the cells of the tiles (`footwayEdgeCell`), four numbers an edge. */
-  readonly edges: { readonly keys: Float64Array; readonly ends: Uint32Array; readonly xy: Float64Array };
 }
 
-/** What a share of a pass's tiles is made from. */
+/** One piece as a worker is asked for it: its box (what it reads, `SurfaceInputs.rectOf`) and its shapes by surface. */
+export interface PartAsk {
+  readonly rect: TileRect;
+  readonly into: PieceReach;
+}
+
+/** What a share of a pass's parts is made from. */
 export interface MeshAsk {
   readonly pass: PassDesc;
-  readonly tiles: readonly { readonly rect: TileRect; readonly into: TilePolys }[];
+  readonly tiles: readonly PartAsk[];
   readonly data: SurfaceData;
 }
 
@@ -54,14 +61,6 @@ function readsOf(data: SurfaceData, heights: PointHeights, missing: number[]): S
   const looks = new Map(data.looks);
   const footwayShare = flushShareOf(data.flush);
   const ramps = rampGrid(data.ramps);
-  const edges = new Map<number, Float64Array>();
-  {
-    let at = 0;
-    for (let i = 0; i < data.edges.keys.length; i++) {
-      edges.set(data.edges.keys[i]!, data.edges.xy.subarray(at, data.edges.ends[i]!));
-      at = data.edges.ends[i]!;
-    }
-  }
   return {
     field,
     terrainAt,
@@ -69,14 +68,12 @@ function readsOf(data: SurfaceData, heights: PointHeights, missing: number[]): S
     look: (id) => looks.get(id),
     footwayShare,
     walkingRise: (x, y, structure) => rampRiseIn(ramps, x, y, true, structure),
-    footwayEdges: (key) => edges.get(key),
   };
 }
 
-/** One share of a pass's tiles, made whole: `need` the ground's heights at the points it reads, `give` them, `run` */
+/** One share of a pass's parts, made whole: `need` the ground's heights at the points it reads, `give` them, `run` */
 export class TileMesher {
   private readonly heights = new PointHeights();
-  private readonly shapes: Map<string, SurfaceShape>[];
   private readonly made: (TileMeshes | null)[];
   private ran = false;
   /** The surfaces and the points they found missing; made again after a round that missed some (its field remembered NaN). */
@@ -84,31 +81,31 @@ export class TileMesher {
   private missing: number[] = [];
   private reads: SurfaceReads;
 
+  /** Whose each slot of its looks is (`RoadLook.paint`, `ends`): a road's or a node's id, what its tiles are kept with (`tilePieces.ts` keptForm). */
+  get slots(): SlotPieces {
+    const owners = new Map<number, { readonly kind: 0 | 1; readonly id: number }>();
+    for (const [id, look] of this.ask.data.looks) {
+      if (look.paint !== undefined) owners.set(look.paint, { kind: 0, id });
+      if (look.ends && look.endIds) { owners.set(look.ends[0], { kind: 1, id: look.endIds[0] }); owners.set(look.ends[1], { kind: 1, id: look.endIds[1] }); }
+    }
+    return { pieceOf: (slot) => owners.get(slot) };
+  }
+
+  /** The surfaces whose tiles carry the paint's slots (`slotSurfaces`). */
+  get carrying(): ReadonlySet<string> {
+    return slotSurfaces(this.specs, farTileName);
+  }
+
   constructor(private readonly ask: MeshAsk) {
     this.reads = readsOf(ask.data, this.heights, this.missing);
     this.specs = passSurfaces(ask.pass, this.reads);
-    const tileSpecs = this.specs.map(tileSpecOf);
-    this.shapes = ask.tiles.map((tile) => tileShapes(tile.into, tile.rect, tileSpecs));
     this.made = ask.tiles.map(() => null);
   }
 
-  /** The points of the surfaces that read the ground at every vertex (the verge on the ground), each once: x, y. */
+  /** The ground's points asked before a first run: none (no surface reads the ground at its every vertex: the terrain meets the roads, `terrainSeams.ts`);
+   *  a point the field reads the ground at (a road the solve left) comes back from `run`'s `need`. */
   need(): Float64Array {
-    const seen = new PointHeights();
-    const out: number[] = [];
-    const take = (x: number, y: number): void => { if (!seen.add(x, y, 0)) out.push(x, y); };
-    for (const shapes of this.shapes) {
-      for (const spec of this.specs) {
-        if (!spec.ground) continue;
-        const shape = shapes.get(spec.options.name);
-        if (!shape) continue;
-        for (const piece of shape.pieces) for (let i = 0; i < piece.xy.length; i += 2) take(piece.xy[i]!, piece.xy[i + 1]!);
-        for (const ring of shape.skirts ?? []) {
-          for (let e = 0; e < ring.edges.length; e += 4) { take(ring.edges[e]!, ring.edges[e + 1]!); take(ring.edges[e + 2]!, ring.edges[e + 3]!); }
-        }
-      }
-    }
-    return Float64Array.from(out);
+    return new Float64Array(0);
   }
 
   /** The ground's heights at `points` (x, y each), as the page reads it. */
@@ -129,17 +126,14 @@ export class TileMesher {
   /** Meshes every tile not made yet: the tiles, or the points still missing (`give` them, then `run` again). */
   run(beat?: () => void): { tiles: TileMeshes[] } | { need: Float64Array } {
     this.ran = true;
-    for (let k = 0; k < this.shapes.length; k++) {
+    for (let k = 0; k < this.ask.tiles.length; k++) {
       if (this.made[k]) continue;
       const before = this.missing.length;
-      const shapes = this.shapes[k]!;
-      const tile: TileMeshes = [];
-      // Every point of the tile remembered while its vertices are read (`RoadReads.remembering`).
+      const part = this.ask.tiles[k]!;
+      let tile: TileMeshes = [];
+      // Every point of the part remembered while its vertices are read (`RoadReads.remembering`).
       this.reads.field.remembering!(() => {
-        for (const spec of this.specs) {
-          const shape = shapes.get(spec.options.name);
-          if (shape) tile.push([spec.options.name, meshTileShape(shape, spec.options)]);
-        }
+        tile = [...pieceBundle(part.into, this.specs)];
       });
       if (this.missing.length === before) this.made[k] = tile;
       else this.renew();

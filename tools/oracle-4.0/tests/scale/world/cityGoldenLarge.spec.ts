@@ -18,10 +18,13 @@ describe('city golden, the large city', () => {
   it('the large city of seed 7 is made exactly as before', () => {
     const doc = buildLargeCityMap(7);
     const text = JSON.stringify(doc);
+    // 2026-10-25: 2774247772 and 60,395,033 before the world's cells became 250 m (`cells.ts`, 256 m before): the pole runs are routed over
+    // regions of whole cells (`editor/poles.ts`), and the contours cut at other lines put 32 of the 4,590 poles at most 4.5e-13 m elsewhere
+    // along x, nothing else of the city changed (the old number again with the regions at 256 m).
     expect({ hash: hashText(text), length: text.length }).toMatchInlineSnapshot(`
       {
-        "hash": 2774247772,
-        "length": 60395033,
+        "hash": 3558793498,
+        "length": 60394987,
       }
     `);
   }, 180_000);

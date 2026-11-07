@@ -14,15 +14,18 @@ import {
   Vector3,
 } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { weldGeometry } from './mesh/weld';
 
 import { cylinderWith } from './mesh/cylinder';
 import { dropHiddenFaces } from './mesh/hiddenFaces';
 
 import { Rng } from '@core/rng';
+import type { BushKind, TreeSpecies } from './plantKinds';
 import { lowPolyTreeParts, type LowPolyKind, type LowPolyParts } from './lowPolyTrees';
 import { m } from '@world/units';
 import { TREE_PIT } from '@world/streetFurniture';
 import { CURB_BAND, FOOTWAY_RISE } from '@world/roadTypes';
+import { LAMP_HEIGHT, LAMP_OUTREACH } from './lampMeasures';
 
 /** Procedural geometry for everything that stands on the ground. */
 
@@ -100,9 +103,12 @@ function merge(parts: BufferGeometry[], floor = true): BufferGeometry {
   }), false);
   for (const geometry of parts) geometry.dispose();
   if (!merged) throw new Error('prop parts could not be merged');
-  merged.computeBoundingSphere();
-  merged.computeBoundingBox();
-  return merged;
+  // Welded whole (`weldGeometry`): a corner its parts share drawn once. DO NOT leave the parts' shared corners apart: every instance drew them twice (the model audit, 2026-10-27).
+  const welded = weldGeometry(merged);
+  merged.dispose();
+  welded.computeBoundingSphere();
+  welded.computeBoundingBox();
+  return welded;
 }
 
 /** A box with the faces of `drop` left out (three's BoxGeometry groups: +x, -x, +y, -y, +z, -z): its ends sunk in a housing, its top under a dome. */
@@ -141,8 +147,8 @@ function faceNoise(p: Vector3, seed: number): number {
 
 // ------------------------------------------------------------------ species
 
-export type TreeSpecies = 'broadleaf' | 'broadleafTall' | 'conifer' | 'ipeYellow' | 'ipePink';
-export const TREE_SPECIES: readonly TreeSpecies[] = ['broadleaf', 'broadleafTall', 'conifer', 'ipeYellow', 'ipePink'];
+// The kinds themselves, without the models (`plantKinds.ts`): what the jobs placing plants read.
+export { TREE_SPECIES, BUSH_KINDS, type TreeSpecies, type BushKind } from './plantKinds';
 
 /** Each street and garden species as the game's one tree style grows it (`lowPolyTrees.ts`). */
 const TREE_KIND: Readonly<Record<TreeSpecies, LowPolyKind>> = {
@@ -154,8 +160,6 @@ export function treeParts(species: TreeSpecies): LowPolyParts {
   return lowPolyTreeParts(TREE_KIND[species], 0x7ee + species.length * 131 + species.charCodeAt(3));
 }
 
-export type BushKind = 'bush' | 'bushFlowering' | 'hedge';
-export const BUSH_KINDS: readonly BushKind[] = ['bush', 'bushFlowering', 'hedge'];
 
 /** A bush's or hedge's body and its foliage cards (`lowPolyTrees.ts`). */
 export function bushParts(kind: BushKind): LowPolyParts {
@@ -229,9 +233,8 @@ export function wildflowerGeometry(): BufferGeometry {
 
 // ---------------------------------------------------------------- furniture
 
-/** A residential lighting column is 8 to 10 m with a 1.5 to 2.5 m outreach. */
-export const LAMP_HEIGHT = m(9);
-export const LAMP_OUTREACH = m(2.1);
+// A lamp's column and outreach (`lampMeasures.ts`): what the furniture is placed by, on the page and off it.
+export { LAMP_HEIGHT, LAMP_OUTREACH };
 /** Galvanised grey, not near-black. */
 const LAMP_METAL = rgb(0x8a918e);
 const LAMP_PLINTH = rgb(0x5d6461);
@@ -386,19 +389,78 @@ export function phoneGeometry(): BufferGeometry {
   const inner = rgb(0xd9d4c8);
   const post = rgb(0x5d6366);
   const dark = rgb(0x1d2124);
+  // The hood: a stretched cap of a sphere round its +Y pole, turned so its open side faces +Z; the lining a smaller cap inside it.
+  const hood = (radius: number, width: number, height: number, open: number, scale: readonly [number, number, number], back: number) => ({
+    width, height, open, radius,
+    placement: { at: [0, m(1.62), back] as const, scale, rotate: [-Math.PI / 2 + 0.25, 0, 0] as const },
+  });
+  const outside = hood(m(0.5), 16, 10, Math.PI * 0.62, [0.9, 1.25, 0.82], 0);
+  const lining = hood(m(0.47), 14, 8, Math.PI * 0.6, [0.88, 1.22, 0.8], -m(0.01));
+  const cap = (h: typeof outside): SphereGeometry => new SphereGeometry(h.radius, h.width, h.height, 0, Math.PI * 2, 0, h.open);
   return merge([
     // The post's foot in the ground; its head is seen inside the open hood.
     part(cylinderWith(m(0.05), m(0.06), m(1.55), 8, { top: true, bottom: false }), post, { at: [0, m(0.775), -m(0.18)] }),
-    // The shell: a stretched half-sphere, open toward +Z.
-    part(new SphereGeometry(m(0.5), 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.62), shell, {
-      at: [0, m(1.62), 0], scale: [0.9, 1.25, 0.82], rotate: [-Math.PI / 2 + 0.25, 0, 0],
-    }),
-    part(new SphereGeometry(m(0.47), 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.6), inner, {
-      at: [0, m(1.62), -m(0.01)], scale: [0.88, 1.22, 0.8], rotate: [-Math.PI / 2 + 0.25, 0, 0],
-    }),
+    // The shell, seen from outside.
+    part(cap(outside), shell, outside.placement),
+    // The lining, seen from inside the hood (from its open side). DO NOT build it facing out like the shell: every face seen through the
+    // opening was a back face, culled, and the hood was see-through (the face audit, `src/lab/propHoleSheet.ts`, 2026-10-25).
+    part(inward(cap(lining)), inner, lining.placement),
+    // The shell's edge: the ring between the shell's rim and the lining's, facing the opening, so neither one's back shows there.
+    part(rimBetween(cap(outside), outside.placement, outside.width, cap(lining), lining.placement, lining.width), shell),
     part(new BoxGeometry(m(0.2), m(0.32), m(0.1)), rgb(0x2f5fa0), { at: [0, m(1.45), -m(0.2)] }),
     part(new BoxGeometry(m(0.06), m(0.2), m(0.06)), dark, { at: [m(0.06), m(1.5), -m(0.13)] }),
   ]);
+}
+
+/** A surface turned inside out, to be seen from within (a hood's lining): its triangles' winding reversed and its normals turned in. */
+function inward(geometry: BufferGeometry): BufferGeometry {
+  const index = geometry.index!;
+  for (let i = 0; i < index.count; i += 3) {
+    const b = index.getX(i + 1);
+    index.setX(i + 1, index.getX(i + 2));
+    index.setX(i + 2, b);
+  }
+  const normal = geometry.getAttribute('normal');
+  for (let v = 0; v < normal.count; v++) normal.setXYZ(v, -normal.getX(v), -normal.getY(v), -normal.getZ(v));
+  return geometry;
+}
+
+/**
+ * The ring joining two sphere caps' rims (their last row of vertices, three's `SphereGeometry` order: `width + 1` a row, the first again
+ * last), each placed as `part` places it: its corners those rims' own, joined in order round the axis, every triangle facing the side the
+ * caps are open to (their placed -Y pole's way). The caps' geometries are only read.
+ */
+function rimBetween(outer: BufferGeometry, outerAt: Placement, outerWidth: number, inner: BufferGeometry, innerAt: Placement, innerWidth: number): BufferGeometry {
+  const matrixOf = (p: Placement): Matrix4 => new Matrix4().compose(
+    new Vector3(...(p.at ?? [0, 0, 0])), new Quaternion().setFromEuler(new Euler(...(p.rotate ?? [0, 0, 0]))), new Vector3(...(p.scale ?? [1, 1, 1])),
+  );
+  const loop = (g: BufferGeometry, at: Placement, width: number): Vector3[] => {
+    const position = g.getAttribute('position'), matrix = matrixOf(at);
+    const first = position.count - (width + 1);
+    return Array.from({ length: width }, (_, i) => new Vector3().fromBufferAttribute(position, first + i).applyMatrix4(matrix));
+  };
+  const a = loop(outer, outerAt, outerWidth), b = loop(inner, innerAt, innerWidth);
+  // The way the caps are open: their -Y pole, turned as the outer one is placed.
+  const open = new Vector3(0, -1, 0).applyQuaternion(new Quaternion().setFromEuler(new Euler(...(outerAt.rotate ?? [0, 0, 0])))).normalize();
+  const corners: number[] = [];
+  const add = (p: Vector3, q: Vector3, r: Vector3): void => {
+    const n = new Vector3().subVectors(q, p).cross(new Vector3().subVectors(r, p));
+    // Facing the opening: the winding turned where it faced into the hood.
+    const [u, v] = n.dot(open) >= 0 ? [q, r] : [r, q];
+    corners.push(p.x, p.y, p.z, u.x, u.y, u.z, v.x, v.y, v.z);
+  };
+  // Round the axis by the share of the turn each rim's corner stands at: always step the rim whose next corner comes first.
+  let i = 0, j = 0;
+  while (i < a.length || j < b.length) {
+    const ta = (i + 1) / a.length, tb = (j + 1) / b.length;
+    if (j >= b.length || (i < a.length && ta <= tb)) { add(a[i % a.length]!, a[(i + 1) % a.length]!, b[j % b.length]!); i++; }
+    else { add(b[j % b.length]!, b[(j + 1) % b.length]!, a[i % a.length]!); j++; }
+  }
+  const ring = new BufferGeometry();
+  ring.setAttribute('position', new Float32BufferAttribute(corners, 3));
+  // Each triangle its own corners: its face's normal (`computeVertexNormals` of an unindexed geometry).
+  ring.computeVertexNormals();
+  return ring;
 }
 
 /** A kerb inlet ("boca de lobo"): an iron grate in the gutter, in front of a dark mouth cut into the kerb. */

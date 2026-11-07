@@ -21,6 +21,13 @@ function readingAll(): MeshBasicMaterial {
 
 /** DO NOT update these digests to make a change pass: a different digest is a different road on screen. */
 /** Set again for eight tiles a mesh (27029a71, `CHUNK` 4 -> 8): the meshes regrouped, every triangle of every surface the same as before, attribute for attribute (checked 2026-10-20). */
+/** Set again for the roads built piece by piece as the owner's road tool builds them (`roads/pieceMesh.ts`): no verge, every corner curved, the
+ *  paint drawn by the carriageway's shader, 500 m blocks from the origin. Each layout of the lab's catalogue looked at against the build before,
+ *  on the optimisation sheets and drawn with the game's own materials and baked textures (2026-10-25). The mesh counts here are this stand-in
+ *  material's (one material a surface): with the game's one road material the grid fixture draws 12 meshes where it drew 43.
+ *  Set again for 31d60513 (every lane line drawn, every junction corner paved, the asphalt without its lattice of squares: the roads as the
+ *  owner's tool draws them, on purpose), whose bytes every build since has made the same (bisected over the copies of each commit, 2026-10-26);
+ *  the digests had stood at the build before it, unrun. */
 const materials = new Proxy({}, {
   get: (_target, key) => key === 'scale' ? new Proxy({}, { get: () => 4 }) : readingAll(),
 }) as unknown as SceneMaterials;
@@ -45,23 +52,23 @@ function bytesOf(root: Object3D): string {
 }
 
 describe('road surface reads', () => {
-  for (const [name, make, plain, onTerrain] of [
+  for (const [name, make, plain] of [
     ['the grid and bends fixture',
       () => RoadDoc.fromJSON(JSON.parse(readFileSync('tests/fixtures/grid-and-bends.json', 'utf8')).document),
-      '75 32e7abb668a6e0481cb12572b1a0a41b9860aa6221deab6305d38b98a16dd3eb',
-      '75 5462bdfd991b37afdd84f3c39b460c5bb226fc7e4619334da0f7c1d42a8aff8e'],
+      '46 18eafa80e274ecbc457c18ed515b055f69303b13f85f488f55fb654aa959ccb3'],
     ['a generated city',
       () => layCity(planCity({ ...DEFAULT_CITY, seed: 2, size: 'small', radius: 640 })),
-      '36 8de0eb395f75ee872f213b1425817ae5f7ea944bd41e95be4f6702d8b5c3c8ad',
-      '36 8f80b80fe113155a4535783337f4c511c76b7891f0302c0bd45b9efde0f0ccc4'],
+      '64 cc13aaaae352e132e89390fd432663f043c032212d3c520044966c8ec49f75ef'],
   ] as const) it(`build ${name} byte for byte as before`, () => {
     const net = new Network(make());
     net.rebuild();
     const elevation = buildRoadElevation(net, ground);
     const own = buildRoadSurfaces(net, elevation, materials, ground);
     expect(bytesOf(own.group)).toBe(plain);
-    const terrain = buildRoadSurfaces(net, elevation, materials, ground, undefined, readingAll());
-    expect(bytesOf(terrain.group)).toBe(onTerrain);
+    // Built again, the same bytes (the verge drawn on the terrain's material, once the second digest here, went with the verge: the terrain meets
+    // the footway's outer edge, `terrainSeams.ts`).
+    const again = buildRoadSurfaces(net, elevation, materials, ground);
+    expect(bytesOf(again.group)).toBe(bytesOf(own.group));
     // Remembered only while a tile is read: the same point asked afterwards is searched again, and agrees.
     expect(elevation.at(10.5, 20.25)).toBe(elevation.remembering!(() => elevation.at(10.5, 20.25)));
   });

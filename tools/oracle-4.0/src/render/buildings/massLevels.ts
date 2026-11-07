@@ -1,12 +1,13 @@
 import type { CellMass } from './cellArrays';
 import type { CellEnv, CellPool } from './cellPool';
 import { type CellEntry, type PackedEntries, samePacked, unpack } from './chunk';
+import type { CellSpan } from './cellWork';
 import type { JobKind } from './cellWork';
 import { type MassLevel, baseOf, cellIndex, levelCells, plateOf, tileOf } from './levelKeys';
 import type { BaseMass } from './massBase';
 import { warmFull } from '../uploads';
 
-/** THE BUILDINGS' LEVELS ABOVE THE CELLS: a 1,024 m tile (L2) and a 2,048 m plate (L3) of masses, one mesh each (`massCells.ts` chooses them), and the base over each plate's square (the top level, `massBase.ts`): asked at once, before every other, never let go */
+/** THE BUILDINGS' LEVELS ABOVE THE CELLS: a 1,000 m tile (L2) and a 2,000 m plate (L3) of masses, one mesh each (`massCells.ts` chooses them), and the base over each plate's square (the top level, `massBase.ts`): asked at once, before every other, never let go */
 
 const KIND: Readonly<Record<MassLevel, JobKind>> = { tile: 'massTile', plate: 'massPlate', base: 'massBase' };
 /** DO NOT ask every plate of the map at once (the opening, a town filed whole): each job holds its entries (an object a building) until it is answered, so the whole city's were alive together. At most this many plates asked and not answered, nearest the eye first (`away`), the rest waiting in `stale`. */
@@ -69,9 +70,9 @@ export class MassLevels {
       }
       this.plan(key);
       // THE BASE AT ONCE, whatever the view and the upload queue: it is what stands where no finer level is (`massBase.ts`).
-      if (key[0] === 'b') { this.ask(key, this.listOf(key), env); continue; }
+      if (key[0] === 'b') { this.ask(key, env); continue; }
       // The upload queue full (`uploads.ts` warmFull): left stale, asked by `pump` once it drains. A plate not edited waits its turn (`pump`).
-      if ((key[0] === 'p' || this.wanted(key)) && (this.edited.has(key) || (key[0] !== 'p' && !warmFull() && !this.deferred(key)))) this.ask(key, this.listOf(key), env);
+      if ((key[0] === 'p' || this.wanted(key)) && (this.edited.has(key) || (key[0] !== 'p' && !warmFull() && !this.deferred(key)))) this.ask(key, env);
       else {
         // Its old masses, if any, are no longer its buildings': asked again once a view wants it.
         const was = this.asked.get(key);
@@ -92,8 +93,7 @@ export class MassLevels {
       if (key[0] === 'p' && !this.edited.has(key)) { if (!this.deferred(key)) plates.push(key); continue; }
       if (key[0] !== 'p' && (!this.wanted(key) || (this.deferred(key) && !this.edited.has(key)))) continue;
       this.stale.delete(key);
-      const list = this.listOf(key);
-      if (list.length) this.ask(key, list, env);
+      if (this.hasAny(key)) this.ask(key, env);
     }
     if (!plates.length) return;
     let flying = 0;
@@ -104,9 +104,8 @@ export class MassLevels {
     for (const key of plates) {
       if (flying >= PLATES_IN_FLIGHT) break;
       this.stale.delete(key);
-      const list = this.listOf(key);
-      if (!list.length) continue;
-      this.ask(key, list, env);
+      if (!this.hasAny(key)) continue;
+      this.ask(key, env);
       if (this.asked.has(key)) flying++;
     }
   }
@@ -120,14 +119,18 @@ export class MassLevels {
     this.changed();
   }
 
-  /** A level's buildings, its cells' in order: entries made now, for the job asked. */
-  private listOf(key: string): CellEntry[] {
+  /** A level's buildings, its cells' in order (column by column): entries made now, for the job asked; `cells`, each cell's count of them (the
+   *  job joins its cells' slices, `cellPool.ts` SliceStore). */
+  private listOf(key: string, cells?: CellSpan[]): CellEntry[] {
     const { i0, j0, n } = levelCells(key);
     const list: CellEntry[] = [];
     for (let i = i0; i < i0 + n; i++) {
       for (let j = j0; j < j0 + n; j++) {
         const some = this.entries.get(`${i},${j}`);
-        if (some) unpack(some, list);
+        if (!some) continue;
+        const from = list.length;
+        unpack(some, list);
+        cells?.push({ cell: `${i},${j}`, count: list.length - from });
       }
     }
     return list;
@@ -140,8 +143,10 @@ export class MassLevels {
     return false;
   }
 
-  /** A level asked of the workers, the older ask of it cancelled. */
-  private ask(key: string, list: readonly CellEntry[], env: CellEnv): void {
+  /** A level asked of the workers, made of its cells' buildings (`listOf`), the older ask of it cancelled. */
+  private ask(key: string, env: CellEnv): void {
+    const cells: CellSpan[] = [];
+    const list = this.listOf(key, cells);
     const was = this.asked.get(key);
     if (was !== undefined) { this.pool.cancel(was); this.asked.delete(key); }
     const kind = KIND[levelCells(key).level];
@@ -153,7 +158,7 @@ export class MassLevels {
       this.changed();
       if (key[0] === 'b') this.landBase(key, result.base ?? null);
       else this.land(key, result.mass ?? null);
-    }, `${kind}|${key}`, edited, key[0] === 'b' || this.hole(key));
+    }, `${kind}|${key}`, edited, key[0] === 'b' || this.hole(key), false, cells);
     if (this.pool.isRunning(id)) this.asked.set(key, id);
   }
 

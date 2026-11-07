@@ -2,21 +2,21 @@ import { describe, expect, it } from 'vitest';
 
 import { layCity } from '@editor/cityGenerator';
 import { growOnLot } from '@world/growth/zoning';
-import { type BlockDigestAsk, type GroundJob, type GroundShapeAsk, type PlateShapeAnswer, askPlate, blockDigest, cornerBoxes, runGroundJob } from '@render/groundShape';
+import { type BlockDigestAsk, type GroundJob, type GroundShapeAsk, type NaturalPlate, type PlateShapeAnswer, askPlate, blockDigest, cornerBoxes, runGroundJob } from '@render/groundShape';
 import { type CornerGrid, type TerrainRegion, type TerrainShaper, boxRegion, sampleCorners, shapeBoth, shapeCorners } from '@render/terrainShaping';
-import { storedBounds } from '@world/buildings/geometry';
 import { siteGrading } from '@world/buildings/siteGrading';
-import type { Building } from '@world/buildings/types';
 import { DEFAULT_CITY, planCity } from '@world/cityGen/plan';
 import type { RoadDoc } from '@world/doc';
 import { buildRoadElevation } from '@world/elevation';
-import { PLATE_SIZE, plateOf } from '@world/bounds';
+import { PLATE_SIZE, plateOf, plateRegion } from '@world/bounds';
 import { applyLots, planLots, zoneLots } from '@world/lots';
 import { Network } from '@world/network';
 import { m } from '@world/units';
+import { TERRAIN_SEGMENTS } from '@render/terrainGrid';
 
 /** THE CORNERS A SHAPING PASS ASKS (`terrainShaping.ts`, `terrain.ts` `shapeToRoads`): with regions */
-const SEGMENTS = 320;
+/** The game's plate grid (`terrainGrid.ts`): 200 cells of 10 m. */
+const SEGMENTS = TERRAIN_SEGMENTS;
 const N = SEGMENTS + 1;
 const CELL = PLATE_SIZE / SEGMENTS;
 const HALF = PLATE_SIZE / 2;
@@ -74,11 +74,7 @@ describe('a shaping pass over regions', () => {
   const elevation = buildRoadElevation(net, groundAt);
   // As the renderer grades them (`renderer.ts` `sitesGraded`, `bankBox`, `regionOf`).
   const reach = CELL * 1.5 + m(40) + CELL;
-  const bank = (b: Building): readonly [number, number, number, number] => {
-    const r = storedBounds(b, reach);
-    return [r.minX, r.minY, r.maxX, r.maxY];
-  };
-  const sites = siteGrading(groundAt, undefined, CELL * 1.5, bank);
+  const sites = siteGrading(groundAt, undefined, CELL * 1.5, reach);
   const changed = sites.changedSites(doc.buildings) ?? [];
   sites.rebuild(doc.buildings);
   const pads = sites.pads!;
@@ -147,11 +143,7 @@ describe('a shaping pass off the page', () => {
   net.rebuild();
   const elevation = buildRoadElevation(net, groundAt);
   const reach = CELL * 1.5 + m(40) + CELL;
-  const bank = (b: Building): readonly [number, number, number, number] => {
-    const r = storedBounds(b, reach);
-    return [r.minX, r.minY, r.maxX, r.maxY];
-  };
-  const sites = siteGrading(groundAt, undefined, CELL * 1.5, bank);
+  const sites = siteGrading(groundAt, undefined, CELL * 1.5, reach);
   const changed = sites.changedSites(doc.buildings) ?? [];
   sites.rebuild(doc.buildings);
   const pads = sites.pads!;
@@ -202,13 +194,25 @@ describe('a shaping pass off the page', () => {
     // The land raised under a part of the town: the roads there solved again.
     const raised = (x: number, y: number): number => groundAt(x, y) + (Math.hypot(x - m(150), y + m(100)) < m(260) ? m(2.5) : 0);
     const other = buildRoadElevation(net, raised);
-    const diagonals = new Uint8Array(SEGMENTS * SEGMENTS);
-    for (let k = 0; k < diagonals.length; k += 3) diagonals[k] = 1;
-    const naturalAt = (x: number, y: number): number =>
-      x >= -HALF && x <= HALF && y >= -HALF && y <= HALF ? sampleCorners(grid, natural, diagonals, x, y) : groundAt(x, y);
-    const BLOCK = 160;
+    // The four plates round the origin, the town at their corner (`world/bounds.ts`: the plates' edges on multiples of PLATE_SIZE), each its own corners.
+    const plates: NaturalPlate[] = [];
+    for (const [px, py] of [[-1, -1], [0, -1], [-1, 0], [0, 0]] as const) {
+      const r = plateRegion(plateOf((px + 0.5) * PLATE_SIZE, (py + 0.5) * PLATE_SIZE));
+      const corners = new Float64Array(N * N);
+      for (let i = 0; i < N * N; i++) corners[i] = groundAt(r.cx + xs[i]!, r.cy + ys[i]!);
+      const diagonals = new Uint8Array(SEGMENTS * SEGMENTS);
+      for (let k = 0; k < diagonals.length; k += 3) diagonals[k] = 1;
+      plates.push({ index: r.key, cx: r.cx, cy: r.cy, n: N, cell: CELL, half: HALF, natural: corners, diagonals });
+    }
+    const byKey = new Map(plates.map((p) => [p.index, p]));
+    const naturalAt = (x: number, y: number): number => {
+      const p = byKey.get(plateOf(x, y));
+      return p ? sampleCorners(grid, p.natural, p.diagonals, x - p.cx, y - p.cy) : groundAt(x, y);
+    };
+    // The page's blocks (`renderer.ts` SHAPE_BLOCK): laid from each plate's corner, ten a plate side.
+    const BLOCK = PLATE_SIZE / 10;
     const blocks: number[] = [];
-    for (let x = -HALF; x < HALF; x += BLOCK) for (let y = -HALF; y < HALF; y += BLOCK) blocks.push(x, y);
+    for (const p of plates) for (let x = p.cx - HALF; x < p.cx + HALF; x += BLOCK) for (let y = p.cy - HALF; y < p.cy + HALF; y += BLOCK) blocks.push(x, y);
     const rects = (): [number, number, number, number][] => {
       const out: [number, number, number, number][] = [];
       for (let k = 0; k < blocks.length; k += 2) out.push([blocks[k]! - 1, blocks[k + 1]! - 1, blocks[k]! + BLOCK + 1, blocks[k + 1]! + BLOCK + 1]);
@@ -216,7 +220,7 @@ describe('a shaping pass off the page', () => {
     };
     const ask: BlockDigestAsk = {
       solves: [elevation, other].map((solve) => ({ roads: solve.shapeCut!(rects()), blocks: Float64Array.from(blocks) })),
-      plates: [{ index: plateOf(0, 0), cx: 0, cy: 0, n: N, cell: CELL, half: HALF, natural, diagonals }],
+      plates,
       block: BLOCK, cell: CELL, half: HALF,
     };
     const answers = structuredClone(runGroundJob(structuredClone<GroundJob>({ kind: 'blocks', ask })).answer) as Float64Array[];
@@ -226,13 +230,15 @@ describe('a shaping pass off the page', () => {
     for (let s = 0; s < 2; s++) {
       page[s]!.forEach((digest, k) => {
         const off = answers[s]![k]!;
-        // Past the plate's edge the land's own field is read: the page digests that block itself.
+        // Past the plates handed over the land's own field is read: the page digests that block itself.
         if (Number.isNaN(off)) { offPlate++; return; }
         if (off !== digest) expect.fail(`solve ${s}, block ${k}: ${off} against ${digest}`);
       });
     }
-    // The last row and column of blocks reach past the plate; the others are all off the page.
-    expect(offPlate).toBeLessThanOrEqual(2 * 25 * 2);
+    // The blocks tile the plates handed over; those on their east and north edges read the corners on them, the next plates' (a point on an edge is the
+    // plate's whose low edge it is): the last column and row of the four plates' 20 x 20 blocks, in each solve. Every other block off the page.
+    const side = (2 * PLATE_SIZE) / BLOCK;
+    expect(offPlate).toBe(2 * (2 * side - 1));
     const differ = page[0]!.filter((d, k) => d !== page[1]![k]).length;
     expect(differ).toBeGreaterThan(3);
   });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Box3, type BufferGeometry } from 'three';
 
-import { ERROR_PIXELS, LEVEL_ERRORS, LEVELS, levelFor, partLevels } from '@render/vehicleLevels';
+import { ERROR_PIXELS, LEVEL_ERRORS, LEVELS, PartLevelMaker, levelFor } from '@render/vehicleLevels';
 import { levelBuffers, partLevelArrays } from '@render/partLevelsWork';
 import { buildCarModel } from '@render/carBody';
 import { tyreGeometry } from '@render/vehicleModels';
@@ -34,7 +34,7 @@ describe('vehicle part levels', () => {
       }, weld);
       // The part's own arrays untouched; the levels the page puts together are the same ones.
       expect(geometry.getAttribute('position').array).toBe(position);
-      const levels = await partLevels(geometry, weld);
+      const levels = await new PartLevelMaker().levels(geometry, weld);
       made.levels.forEach((l, i) => {
         const level = levels[i + 1];
         if (l === null) expect(level).toBeNull();
@@ -52,7 +52,7 @@ describe('vehicle part levels', () => {
 
   it('simplifies a car body within each error, fewer triangles at each coarser level', async () => {
     const model = buildCarModel(archetypeById('hatch'), 'hatch');
-    const levels = await partLevels(model.shell, 'smooth');
+    const levels = await new PartLevelMaker().levels(model.shell, 'smooth');
     expect(levels).toHaveLength(LEVELS);
     expect(levels[0]).toBe(model.shell);
     const whole = new Box3().setFromBufferAttribute(model.shell.getAttribute('position') as never);
@@ -72,7 +72,8 @@ describe('vehicle part levels', () => {
 
   it('simplifies a welded box assembly (a tyre) and gives it normals again', async () => {
     const tyre = tyreGeometry();
-    const levels = await partLevels(tyre, 'boxes');
+    // Four a car, as the game draws them (`agents.ts` wheelLevels): what a level sheds is counted for the four (`SHED`).
+    const levels = await new PartLevelMaker().levels(tyre, 'boxes', 4);
     const coarse = levels[levels.length - 1]!;
     expect(triangles(coarse)).toBeLessThan(triangles(tyre) * 0.2);
     expect(coarse.getAttribute('normal')).toBeDefined();
@@ -81,8 +82,9 @@ describe('vehicle part levels', () => {
 
   it('draws a coarser level of its own only where each vehicle sheds a draw worth of triangles', async () => {
     const model = buildCarModel(archetypeById('hatch'), 'hatch');
+    const maker = new PartLevelMaker();
     for (const [geometry, weld] of [[model.shell, 'smooth'], [model.glass, 'smooth'], [model.trim, 'boxes'], [model.interior, 'boxes'], [tyreGeometry(), 'boxes']] as const) {
-      const levels = await partLevels(geometry, weld);
+      const levels = await maker.levels(geometry, weld);
       let finer = triangles(levels[0]!);
       for (let k = 1; k < levels.length; k++) {
         const level = levels[k];
@@ -91,8 +93,12 @@ describe('vehicle part levels', () => {
         finer = triangles(level);
       }
     }
-    // A car's glazing: the whole and one coarse level, not six levels a few triangles apart.
-    const glass = await partLevels(model.glass, 'smooth');
-    expect(new Set(glass.filter((g) => g)).size).toBe(2);
+    // A car's glazing: the whole, a level within 1.25 cm and at most one coarser one, each a draw's worth fewer (above), not six levels a
+    // few triangles apart; the coarsest a tenth of the whole at most. The count of them follows the glazing's own triangles (its corners
+    // the weld closed up left out, `weldGeometry`; its stations those its shape needs, `carBody.ts` stationsFor).
+    const glass = await maker.levels(model.glass, 'smooth');
+    expect(new Set(glass).size).toBeGreaterThanOrEqual(2);
+    expect(new Set(glass).size).toBeLessThanOrEqual(3);
+    expect(triangles(glass[glass.length - 1]!)).toBeLessThanOrEqual(triangles(model.glass) * 0.1);
   });
 });

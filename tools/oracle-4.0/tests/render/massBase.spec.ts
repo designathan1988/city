@@ -4,15 +4,16 @@ import type { Mesh } from 'three';
 import { cellMass } from '@render/buildings/cellArrays';
 import { createBuildingKit } from '@render/buildings/kit';
 import { createMassCells } from '@render/buildings/massCells';
-import { BASE_CELL_STRIDE, BaseWriter, emitBase, paint } from '@render/buildings/massBase';
+import { BASE_CELL_STRIDE, BaseWriter, paint } from '@render/buildings/massBase';
+import { writeBaseOf } from './support/masses';
 import { baseOf, levelCells } from '@render/buildings/levelKeys';
-import { emitMassing } from '@render/buildings/massing';
+import { massesOf } from './support/masses';
 import { BLUEPRINTS } from '@world/buildings/blueprints';
 import type { Building } from '@world/buildings/types';
 import { m } from '@world/units';
+import { CELL } from '@world/cells';
 
 /** THE BUILDINGS' TOP LEVEL (`massBase.ts`): the prisms of every building of a plate's square, drawn under the cells nothing finer draws */
-const CELL = m(256);
 const flat = (): number => 0;
 
 function building(index: number, x: number, y: number): Building {
@@ -24,7 +25,7 @@ function building(index: number, x: number, y: number): Building {
 function town(): { buildings: Building[]; base: NonNullable<ReturnType<BaseWriter['done']>> } {
   const buildings = [0, 1, 2].flatMap((i) => [building(i, m(10) + i * m(40), m(20)), building(i + 3, CELL + m(10) + i * m(40), m(20))]);
   const writer = new BaseWriter();
-  for (const b of buildings) emitBase(writer.cellOf(b), b, 0, flat, false);
+  for (const b of buildings) writeBaseOf(writer.cellOf(b), b, 0, flat);
   return { buildings, base: writer.done(levelCells(baseOf(0, 0)))! };
 }
 
@@ -59,7 +60,7 @@ describe('the base', () => {
     expect(mesh().geometry.groups).toEqual([{ start: 0, count: base.pieces[0]!.index.length, materialIndex: 0 }]);
     expect([...far.census().values()]).toEqual(['base', 'base']);
     // Cell 0,0's own masses come: the base draws 1,0 alone.
-    far.land('0,0', cellMass(buildings.filter((b) => b.x < CELL).map((b) => emitMassing(b, flat)!))!);
+    far.land('0,0', cellMass(buildings.filter((b) => b.x < CELL).map((b) => massesOf(b, flat)!))!);
     far.syncBases();
     const cells = base.pieces[0]!.cells;
     expect(mesh().geometry.groups).toEqual([{ start: cells[6], count: cells[7], materialIndex: 0 }]);

@@ -5,7 +5,8 @@ import { addLine, addStop, addTrack, emptyTransit } from '@world/transit';
 import type { SignalFeed } from '@sim/host/simClient';
 import { createFlagLayer } from '../../render/buildings/flagLayer';
 import { createSignalHeads } from '../../render/signals';
-import { carGeometry } from '../../render/densityCars';
+import { buildCarModel } from '../../render/carBody';
+import { archetypeById } from '@sim/vehicles/archetypes';
 import { createTransit } from '../../render/transit';
 import { TERRAIN_BASE, unifiedWaterGeometry } from '../../render/terrain';
 import { createWaterSurface } from '../../render/water';
@@ -14,9 +15,10 @@ import { BufferGeometry as BufferGeometryClass, DoubleSide, InstancedMesh, type 
 import { REGIONS } from '@world/ecology';
 import { ROAD_TYPES } from '@world/roadTypes';
 import { BufferAttribute, Group } from 'three';
-import { farRoadInput } from '../../render/networkFarRoads';
-import { buildFarRoadCells } from '../../render/networkFarRoadsBuild';
-import { TILE, TILE_ORIGIN } from '../../render/roadSurfaceEntries';
+import { farLayerMaterial, pageSlots } from '../../render/networkFarRoads';
+import { farRoadInput } from '../../render/networkFarInput';
+import { FAR_CARRIAGEWAY, FAR_SECTION, buildFarRoadCells } from '../../render/networkFarRoadsBuild';
+import { CELL as ROAD_BLOCK } from '../../render/roadSurfaceEntries';
 import type { PieceSpec } from './items';
 import { RELIEF_FLAT } from '@world/terrain';
 import { createFarForest } from '../../render/farForest';
@@ -42,7 +44,7 @@ const LEG = m(70);
 
 /** A layer's instances culled as a camera close by sees them (`renderer.ts` crowdFrustum, crowdProjection): a run's copies are written only by its cull,
  *  each at the level its size on the screen picks; this camera, 60 m off and 40 m up looking at the centre, sees the whole layout up close. */
-export function cullClose(layer: { cull(frustum: Frustum, view: Matrix4): void }): void {
+function cullClose(layer: { cull(frustum: Frustum, view: Matrix4): void }): void {
   const camera = new PerspectiveCamera(90, 16 / 9, m(0.1), m(2000));
   camera.position.set(0, m(40), m(60));
   camera.lookAt(0, 0, 0);
@@ -68,6 +70,7 @@ function oneRoad(extra: (doc: RoadDoc, net: Network) => void, junction = false):
 
 /** Where the footway of the road across runs (the document's first road): its middle, metres from the road's centre line. */
 function footwayOut(net: Network): number {
+  // @rebuild Walks the whole map: the lab's sheet, never the game's frame.
   const first = net.doc.segments.keys().next().value!;
   const ribbon = net.ribbons.get(first)!;
   return ribbon.road.width / 2 + ribbon.road.sidewalk / 2;
@@ -78,7 +81,12 @@ export function signItems(add: Add, cache: BatchCache): void {
   const one = (name: string, variation: string, extra: (doc: RoadDoc, net: Network) => void, junction = false): void => {
     const { net } = oneRoad(extra, junction);
     const layer = createSignLayer();
-    layer.sync(net, buildRoadElevation(net, flat));
+    // The signs' cells round the origin (the one road's), every one stood (a few a sync).
+    const elevation = buildRoadElevation(net, flat);
+    for (let i = 0; i < 20; i++) {
+      layer.sync(net, elevation, { x: 0, y: 0 });
+      if (layer.cells.wantedKeys.every((key) => layer.cells.has(key))) break;
+    }
     cullClose(layer);
     add({ group: 'Signs', name, variation, origin: 'kit', source: 'src/render/signLayer.ts (createSignLayer, sync)', build: 'instanced',
       pieces: piecesOf(layer.group), object: shown(layer.group, cache), countKey: `sign:${name}`,
@@ -117,6 +125,7 @@ export function flagItems(add: Add, cache: BatchCache): void {
  *  each way across), one stage, every head green. */
 export function signalItems(add: Add, cache: BatchCache): void {
   const { net } = oneRoad(() => {}, true);
+  // @rebuild Walks the whole map: the lab's sheet, never the game's frame.
   const centre = [...net.doc.nodes.values()].find((n) => n.incident.length === 4)!;
   const incident = centre.incident;
   const feed: SignalFeed = {
@@ -133,14 +142,14 @@ export function signalItems(add: Add, cache: BatchCache): void {
     notes: ['one head on each approach of a signal group, where the world stands its post (signalPostPlace); the frame (post, arm, housing) one geometry an instance'] });
 }
 
-/** A far car as the far traffic draws it (`densityCars.ts`): a body and a cabin, placed along its road and coloured by the vertex shader. */
+/** A far car as the far traffic draws it (`densityCars.ts`): the picture of the near traffic's far model (`farCarPictures.ts`), here the sedan's model itself, painted. */
 export function farCarItems(add: Add): void {
-  const geometry = carGeometry();
-  const mesh = new Mesh(geometry, new MeshStandardMaterial({ color: 0x8a8f96, roughness: 0.6 }));
+  const geometry = buildCarModel(archetypeById('sedan'), 'sedan').far;
+  const mesh = new Mesh(geometry, new MeshStandardMaterial({ color: 0x5f8fca, roughness: 0.38, metalness: 0.28, vertexColors: true }));
   mesh.name = 'density-car';
-  add({ group: 'Vehicles', name: 'far car (far traffic)', variation: '4.3 x 1.8 m, body and cabin', origin: 'kit', source: 'src/render/densityCars.ts (carGeometry)', build: 'instanced',
+  add({ group: 'Vehicles', name: 'far car (far traffic)', variation: 'the sedan far model (body, dark glass, wheels)', origin: 'kit', source: 'src/render/farCarPictures.ts (createFarCarPictures)', build: 'instanced',
     pieces: [{ label: 'car', geometry, material: mesh.material }], object: mesh, countKey: 'far-cars',
-    notes: ['one instance a car of the far traffic, placed along its road and given its colour in the vertex shader'] });
+    notes: ['one picture an instance (8 x 8 directions, 2 triangles) of the far model the near traffic draws, placed along its road in the vertex shader and painted from the palette of its class; under 1.5 px long, none'] });
 }
 
 /** The water as the ground lays it (`terrain.ts` unifiedWaterGeometry): a lake from one stamp in a basin, a river along a course; its material the game's (`water.ts`). */
@@ -207,7 +216,7 @@ export function farNetworkItems(add: Add): void {
       } else doc.addSegment(doc.addNode({ x: -LEG, y: 0 }).id, doc.addNode({ x: LEG, y: 0 }).id, t);
       const net = new Network(doc);
       net.rebuild();
-      const { input } = farRoadInput(net, buildRoadElevation(net, flat), flat, 8 * TILE, TILE_ORIGIN, null);
+      const { input } = farRoadInput(net, buildRoadElevation(net, flat), flat, ROAD_BLOCK, null, pageSlots(net));
       const group = new Group();
       group.name = 'road-far-network';
       const pieces: PieceSpec[] = [];
@@ -216,9 +225,11 @@ export function farNetworkItems(add: Add): void {
         const g = new BufferGeometryClass();
         g.setAttribute('position', new BufferAttribute(cell.positions, 3));
         g.setAttribute('color', new BufferAttribute(cell.colors, 3));
+        // The carriageway's section, its paint inked as the game inks it (`networkFarRoads.ts` farLayerMaterial).
+        if (cell.layer === FAR_CARRIAGEWAY) g.setAttribute('roadSection', new BufferAttribute(cell.sections, FAR_SECTION));
         g.setIndex(new BufferAttribute(cell.indices, 1));
         g.computeVertexNormals();
-        const material = new MeshStandardMaterial({ vertexColors: true, roughness: 0.9 });
+        const material = farLayerMaterial(cell.layer === FAR_CARRIAGEWAY ? 1 : 0);
         const label = cell.layer === 0 ? 'casing (footways and kerbs)' : 'carriageway';
         pieces.push({ label: `${label}, cell ${cell.key}`, geometry: g, material });
         const mesh = new Mesh(g, material);
@@ -255,6 +266,7 @@ export function transitItems(add: Add, cache: BatchCache): void {
     doc.setTransit(addLine(stop.data, 'metro', [stop.id]).data);
   });
   lay('bus stop', 'on the footway\'s edge', (doc, net) => {
+    // @rebuild Walks the whole map: the lab's sheet, never the game's frame.
     const segment = net.doc.segments.keys().next().value!;
     const stop = addStop(emptyTransit(), { mode: 'bus', x: 0, y: footwayOut(net), segment });
     doc.setTransit(addLine(stop.data, 'bus', [stop.id]).data);

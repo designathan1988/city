@@ -72,15 +72,16 @@ const ground: Twin = {
     const start = ivec2(patch.xy), step = int(patch.z);
     // A patch's level, and a rim's side above it (`terrainLod.ts` `LandLod.add`).
     const level = int(patch.w).bitAnd(int(15)), side = int(patch.w).shiftRight(int(4));
-    /** A corner of the patch, moved towards the next level's by its own distance (`landCorner`). */
+    /** A corner of the patch held on the plate, moved towards the next level's (held on the plate too) by its own distance (`landCorner`). */
+    const onPlate = (c: Node<'ivec2'>): Node<'ivec2'> => clampCorner(c, ivec2(0, 0), ivec2(grid.seg, grid.seg));
     const corner = (g: Node<'ivec2'>): { p: Node<'vec3'>; n: Node<'vec3'>; k: Node<'float'> } => {
-      const c = start.add(g.mul(step));
+      const c = onPlate(start.add(g.mul(step)));
       const t = texel(c);
       const p = point(c, t.w);
       const slot = level.mul(2);
       const k = clamp(distance(p.add(origin), cameraPosition).sub(morphs.element(slot) as unknown as Node<'float'>).mul(morphs.element(slot.add(1)) as unknown as Node<'float'>), 0, 1);
       const odd = integerAnd(g, ivec2(1, 1));
-      const to = start.add(g.sub(odd).mul(step));
+      const to = onPlate(start.add(g.sub(odd).mul(step)));
       const next = texel(to);
       const moved = select(odd.x.add(odd.y).greaterThan(int(0)), k, float(0));
       return { p: mix(p, point(to, next.w), moved), n: mix(normalOf(t), normalOf(next), moved), k };

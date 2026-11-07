@@ -1,6 +1,6 @@
 import { nameFor } from '@world/roads/streetNames';
 import { layPowerLines } from './roads/powerLine';
-import { type FurnitureSet, furnitureFor } from '@world/roads/furnitureSets';
+import { CELL as FURNITURE_CELL, type FurnitureSet, furnitureFor } from '@world/roads/furnitureSets';
 import type { Vec2 } from '@core/vec2';
 import { dist } from '@core/vec2';
 import { clamp } from '@core/scalar';
@@ -579,9 +579,6 @@ function landscapeAlong(doc: RoadDoc, net: Network, laid: readonly SegmentId[]):
   }
   return [...out.values()].sort((a, b) => a.id - b.id);
 }
-
-/** The side of `furnitureFor`'s cells (`world/roads/furnitureSets.ts` CELL). */
-const FURNITURE_CELL = m(40);
 
 /** A draft's numbers as it is judged (`RoadTool.draftKey`): the same array while none of them moved. */
 type DraftKey = readonly (string | number | null)[];

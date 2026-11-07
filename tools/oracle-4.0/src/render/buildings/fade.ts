@@ -1,6 +1,7 @@
 import type { InstancedMesh, Material, Mesh, Object3D } from 'three';
 import { SHELL_MESH } from './cellArrays';
-import { type BuildingKit, PART_KINDS, type PartKind } from './kit';
+import type { BuildingKit, PartKind } from './kit';
+import { PART_KINDS } from './partKinds';
 import { SHELL_PARTS } from './shellParts';
 
 /** DO NOT emit the town again to fade it */
@@ -20,7 +21,7 @@ export function fadeMeshes(root: Object3D, kit: BuildingKit, faded: boolean): vo
     if (name === SHELL_MESH) {
       const mesh = o as Mesh;
       // The facade level's shells (their window grid) back to their own material (`facadeLevel.ts`).
-      const solid = mesh.geometry.hasAttribute('facadeCell') ? kit.facade : kit.shellMaterial;
+      const solid = mesh.geometry.hasAttribute('facadeCell') ? (mesh.userData['facadeNear'] === true ? kit.facadeNear : kit.facade) : kit.shellMaterial;
       mesh.material = faded ? kit.dimShell : solid;
       mesh.renderOrder = faded ? 1 : 0;
       return;

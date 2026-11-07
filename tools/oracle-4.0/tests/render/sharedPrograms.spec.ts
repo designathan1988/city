@@ -32,7 +32,11 @@ describe("the buildings' programs", () => {
       expect(out.uniforms['thinBehind']!.value, kind).toBe(Number(behind.toFixed(3)));
     }
     // Nothing of a kind's own written in the source.
-    expect(first.fragment).toContain('thinBar / metresPerPixel');
+    // The tone is the one shared function (`THIN_TONE_GLSL`, also the pictures'): the bar's share of the metres a pixel spans, from fwidth
+    // of the world position, mixed with the tone behind; called with the bar and the tone as the uniforms above.
+    expect(first.fragment).toContain('float thinMetresPerPixel(vec3 world) { return max(length(fwidth(world)) * 0.7071, 1e-4); }');
+    expect(first.fragment).toContain('mix(vec3(behind), colour, clamp(bar / metresPerPixel, 0.0, 1.0))');
+    expect(first.fragment).toContain('thinTone(diffuseColor.rgb, thinBar, thinBehind, thinMetresPerPixel(vThinWorld))');
   });
 
   it('make the clear and the dark panes one source and one key', () => {

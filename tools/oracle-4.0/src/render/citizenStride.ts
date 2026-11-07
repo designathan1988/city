@@ -13,19 +13,24 @@ export function directionalWalkFor(rig: Object3D, mesh: SkinnedMesh, clip: Libra
   // Use the source sample count so both feet's centres are independent of the animation phase at which a particular body
   const samples = clip.source.file.frames.length;
   const feet: Vector3[][] = [];
+  const soles = footVertices(rig);
+  // How far each drawn foot reaches inward of its own bone, the most over the clip: a sole is not centred on its ankle, and it turns.
+  const inward = [0, 0];
   for (let i = 0; i < samples; i++) {
     walk.pose(i * clip.duration / samples);
     const positions = legs.map(leg => leg.foot.getWorldPosition(new Vector3()));
     positions.forEach((p, j) => legs[j]!.mean.add(p));
     feet.push(positions);
+    const reach = inwardReach(soles, positions[0]!.x, positions[1]!.x);
+    inward[0] = Math.max(inward[0]!, reach[0]); inward[1] = Math.max(inward[1]!, reach[1]);
   }
   for (const leg of legs) leg.mean.multiplyScalar(1 / samples);
   const sin = Math.sin(angle), cos = Math.cos(angle);
   const origins = legs.map(leg => leg.mean.clone());
   let strideScale = 1;
   if (Math.abs(sin) > Math.abs(cos)) {
+    const clearance = inward[0]! + inward[1]!;
     walk.pose(0);
-    const clearance = soleClearance(rig);
     const hips = Math.abs(legs[0]!.thigh.getWorldPosition(new Vector3()).x - legs[1]!.thigh.getWorldPosition(new Vector3()).x);
     const centre = (origins[0]!.x + origins[1]!.x) / 2;
     // A side step needs room for the following foot.
@@ -62,16 +67,17 @@ export function directionalWalkFor(rig: Object3D, mesh: SkinnedMesh, clip: Libra
   };
 }
 
-/** Sum of the inward half-widths of both drawn feet, including shoe meshes. */
-function soleClearance(rig: Object3D): number {
-  const bounds = [[Infinity, -Infinity], [Infinity, -Infinity]];
-  const point = new Vector3();
+/** The drawn feet's vertices, shoe meshes included: each weighted more than half to a foot or its toes, and its side (0 left, 1 right). */
+interface Soles { readonly meshes: readonly { readonly mesh: SkinnedMesh; readonly vertices: readonly number[]; readonly sides: readonly number[] }[] }
+
+function footVertices(rig: Object3D): Soles {
+  const meshes: { mesh: SkinnedMesh; vertices: number[]; sides: number[] }[] = [];
   rig.traverse(o => {
     if (!(o instanceof SkinnedMesh)) return;
     const skin = o.geometry.attributes['skinIndex'], weight = o.geometry.attributes['skinWeight'];
     if (!skin || !weight) return;
-    o.skeleton.update();
     const sides = o.skeleton.bones.map(b => /Bip01_L_(Foot|Toe)/.test(b.name) ? 0 : /Bip01_R_(Foot|Toe)/.test(b.name) ? 1 : -1);
+    const found = { mesh: o, vertices: [] as number[], sides: [] as number[] };
     for (let i = 0; i < skin.count; i++) {
       const shares = [0, 0];
       for (let k = 0; k < 4; k++) {
@@ -79,14 +85,29 @@ function soleClearance(rig: Object3D): number {
         if (side >= 0) shares[side]! += weight.getComponent(i, k);
       }
       const side = shares[0]! > 0.5 ? 0 : shares[1]! > 0.5 ? 1 : -1;
-      if (side < 0) continue;
-      o.getVertexPosition(i, point); o.localToWorld(point);
-      bounds[side]![0] = Math.min(bounds[side]![0]!, point.x);
-      bounds[side]![1] = Math.max(bounds[side]![1]!, point.x);
+      if (side >= 0) { found.vertices.push(i); found.sides.push(side); }
     }
+    meshes.push(found);
   });
-  if (bounds.some(b => !b.every(Number.isFinite))) throw new Error('Citizen has no weighted foot surface for lateral stride');
-  return bounds.reduce((width, b) => width + (b[1]! - b[0]!) / 2, 0);
+  if (![0, 1].every(side => meshes.some(m => m.sides.includes(side)))) throw new Error('Citizen has no weighted foot surface for lateral stride');
+  return { meshes };
+}
+
+/** How far each drawn foot reaches past its own bone towards the other foot across x, in the posed rig: the left sole's least x under
+ *  the left foot bone's, the right sole's greatest x over the right one's. DO NOT halve the feet's widths instead: a sole is not centred
+ *  on its ankle, and the side step put the two shoes 0.5 mm into each other. */
+function inwardReach(soles: Soles, leftFootX: number, rightFootX: number): [number, number] {
+  const reach: [number, number] = [-Infinity, -Infinity];
+  const point = new Vector3();
+  for (const { mesh, vertices, sides } of soles.meshes) {
+    mesh.skeleton.update();
+    vertices.forEach((v, i) => {
+      mesh.getVertexPosition(v, point); mesh.localToWorld(point);
+      if (sides[i] === 0) reach[0] = Math.max(reach[0], leftFootX - point.x);
+      else reach[1] = Math.max(reach[1], point.x - rightFootX);
+    });
+  }
+  return reach;
 }
 
 function aim(bone: Object3D, child: Vector3, target: Vector3): void {

@@ -74,6 +74,20 @@ function writeSettings() {
 // A look run's own Chromium switches, 'name=value' space-separated (a backend's presentation compared): never read outside a look run.
 if (process.env.ROADCRAFT_LOOK === '1') for (const sw of (process.env.ROADCRAFT_SWITCHES ?? '').split(' ').filter(Boolean)) { const at = sw.indexOf('='); if (at > 0) app.commandLine.appendSwitch(sw.slice(0, at), sw.slice(at + 1)); else app.commandLine.appendSwitch(sw); }
 
+/**
+ * THE GAME WHILE IT IS BEING WORKED ON (never packaged): `ROADCRAFT_DEV_URL` the project's Vite server on this machine (`npm run dev`, its own
+ * port), loaded in place of the built game, so every change of the code reloads the window the owner watches (Vite's full reload); the job and
+ * simulation threads keep reading `dist/desktop-jobs` (`npm run desktop:dev` rebuilds it as the code changes, each page's threads made anew).
+ * `ROADCRAFT_DEBUG_PORT`: Chromium's remote debugging on that port of this machine only (Electron command-line switches,
+ * https://www.electronjs.org/docs/latest/api/command-line-switches: "Enables remote debugging over HTTP on the specified port"), so the checks
+ * run in that same open window (`scripts/inGame.mjs`), never in another one.
+ */
+const DEV_URL = !app.isPackaged && /^http:\/\/(127\.0\.0\.1|localhost):\d{2,5}\/$/.test(process.env.ROADCRAFT_DEV_URL ?? '') ? process.env.ROADCRAFT_DEV_URL : null;
+if (DEV_URL && /^\d{4,5}$/.test(process.env.ROADCRAFT_DEBUG_PORT ?? '')) {
+  app.commandLine.appendSwitch('remote-debugging-port', process.env.ROADCRAFT_DEBUG_PORT);
+  app.commandLine.appendSwitch('remote-debugging-address', '127.0.0.1');
+}
+
 // VSync off: frames as fast as the GPU draws them (Chromium `--disable-gpu-vsync`, `--disable-frame-rate-limit`); read at start, so a change waits for the next one.
 if (!settings.vsync) {
   app.commandLine.appendSwitch('disable-gpu-vsync');
@@ -119,6 +133,8 @@ protocol.registerSchemesAsPrivileged([
 /** The built game: beside the executable when packaged, `dist/` when run from the project. */
 const GAME = app.isPackaged ? path.join(process.resourcesPath, 'game') : path.join(__dirname, '..', 'dist');
 const ORIGIN = 'app://roadcraft/';
+/** Where the game's page is loaded from: the built game, or the project's server while it is worked on (`DEV_URL`). */
+const PAGE_ORIGIN = DEV_URL ?? ORIGIN;
 
 /** A run of `scripts/look.mjs --electron`: the window never shown, the game drawn at 1920x1080 all the same (`paintWhenInitiallyHidden`). */
 const LOOK = process.env.ROADCRAFT_LOOK === '1';
@@ -179,11 +195,11 @@ function createWindow() {
   window.on('leave-full-screen', keepFullscreen);
   // A look run may ask for a renderer of its own (`scripts/look.mjs` plan "gpu"), never kept in the settings.
   const gpu = LOOK && GPU_BACKENDS.includes(process.env.ROADCRAFT_LOOK_GPU ?? '') ? process.env.ROADCRAFT_LOOK_GPU : settings.gpu;
-  void window.loadURL(`${ORIGIN}index.html${gpu === 'webgpu' ? '?gpu=webgpu' : ''}`);
+  void window.loadURL(`${PAGE_ORIGIN}${DEV_URL ? '' : 'index.html'}${gpu === 'webgpu' ? '?gpu=webgpu' : ''}`);
 }
 
 /** Only the game's own page may ask (Electron security checklist: validate the sender of every IPC message). */
-const fromGame = (event) => typeof event.senderFrame?.url === 'string' && event.senderFrame.url.startsWith(ORIGIN);
+const fromGame = (event) => typeof event.senderFrame?.url === 'string' && event.senderFrame.url.startsWith(PAGE_ORIGIN);
 const NAME = /^[A-Za-z0-9_.-]{1,128}$/;
 /** A lab report's two files together, characters (a long recording's frames fit well under it). */
 const LAB_REPORT_MAX = 64 * 1024 * 1024;
@@ -244,12 +260,21 @@ function serveIpc() {
     }
   });
   // A long job worker's own line to a thread of a job process (`jobs.cjs`, `src/desktopJobs.ts`), as the saves' is: the processes taken in turn.
+  // The job threads the page's pool may make (`JOB_THREADS`), asked once as the page starts (`preload.cjs`).
+  ipcMain.on('jobs:threads', (event) => { event.returnValue = fromGame(event) ? JOB_THREADS : 0; });
   ipcMain.on('jobs:connect', (event) => {
     if (!fromGame(event) || !event.senderFrame) return;
     const at = nextJobs++ % JOB_PROCESSES;
     const { port1, port2 } = new MessageChannelMain();
     jobsProcess(at).postMessage(null, [port2]);
     event.senderFrame.postMessage('jobs:port', at, [port1]);
+  });
+  // The simulation's own line to a thread of the simulation process (`jobs.cjs` run with the simulation host, `src/desktopSim.ts`): the whole map's traffic graphs in a V8 cage of their own.
+  ipcMain.on('sim:connect', (event) => {
+    if (!fromGame(event) || !event.senderFrame) return;
+    const { port1, port2 } = new MessageChannelMain();
+    simProcess().postMessage(null, [port2]);
+    event.senderFrame.postMessage('sim:port', null, [port1]);
   });
   // The page's own line to the saves' writer (Electron, "MessagePorts": a `MessageChannelMain` between the page and a utility process; nothing of a save passes through here).
   ipcMain.on('saves:connect', (event) => {
@@ -260,8 +285,20 @@ function serveIpc() {
   });
 }
 
-/** THE JOB PROCESSES (`jobs.cjs`): the page's long job workers (the tiles' maker, the growth) as threads of utility processes, each process a V8 cage of its own (Electron `utilityProcess`; V8 pointer compression, one cage a process): a 20 km map's tile workers no longer fill the page's. Two, the long workers shared between them. */
-const JOB_PROCESSES = 2;
+/** A job thread at its busiest, bytes (a tile's or a city's growth worker, 450-650 MB of V8 heap measured on the 10 km city, `src/jobs/jobPool.ts` PAGE_WORKER_PEAK_BYTES). */
+const JOB_THREAD_PEAK = 600 * 2 ** 20;
+/** Of the machine's memory, what the job threads may take at their busiest together: the page, the GPU's buffers, the simulation and the system keep the rest. */
+const JOB_RAM_SHARE = 0.35;
+/** Threads a job process holds: its V8 cage is 4 GB (pointer compression, one cage a process), four threads at their peak and room for its collections. */
+const THREADS_PER_PROCESS = 4;
+/**
+ * THE JOB THREADS THIS MACHINE RUNS (`src/jobs/jobPool.ts` setJobWorkerMaker, handed to the page by `jobs:threads`): its cores less the
+ * page's and the simulation's, within its memory. DO NOT size them by the page's V8 cage: the job threads are in processes of their own,
+ * and the 10 km city's opening ran every lane on one worker of the page while 22 cores stood idle (2026-10-26).
+ */
+const JOB_THREADS = Math.max(1, Math.min(os.availableParallelism() - 2, Math.floor((os.totalmem() * JOB_RAM_SHARE) / JOB_THREAD_PEAK)));
+/** THE JOB PROCESSES (`jobs.cjs`): the page's job workers as threads of utility processes, each process a V8 cage of its own (Electron `utilityProcess`; V8 pointer compression, one cage a process), `THREADS_PER_PROCESS` threads each: a 20 km map's workers no longer fill the page's. */
+const JOB_PROCESSES = Math.max(1, Math.ceil(JOB_THREADS / THREADS_PER_PROCESS));
 /** The job threads' code, built for Node beside the game (`scripts/vite/desktop-jobs.config.ts`). */
 const JOB_HOST = path.join(GAME, 'desktop-jobs', 'jobHost.mjs');
 const jobs = [];
@@ -276,6 +313,22 @@ function jobsProcess(at) {
     for (const window of BrowserWindow.getAllWindows()) if (!window.isDestroyed()) window.webContents.send('jobs:lost', at);
   });
   jobs[at] = child;
+  return child;
+}
+
+/** THE SIMULATION PROCESS (`jobs.cjs` with the simulation host, `src/nodeSimHost.ts`): the page's simulation worker as a thread of a utility process of its own, a V8 cage of its own (one cage a process): a 10 km city's lane graph, walkways and network of the simulation no longer fill the page's. One process, one thread a page. */
+const SIM_HOST = path.join(GAME, 'desktop-jobs', 'simHost.mjs');
+let simulation = null;
+function simProcess() {
+  if (simulation) return simulation;
+  const child = utilityProcess.fork(path.join(__dirname, 'jobs.cjs'), [SIM_HOST], { serviceName: 'Roadcraft simulation' });
+  // Gone (a crash, a cage full): the page's simulation client fails as its worker would, and the game says so (`src/desktopSim.ts`).
+  child.once('exit', (code) => {
+    console.error('the simulation process stopped', code);
+    if (simulation === child) simulation = null;
+    for (const window of BrowserWindow.getAllWindows()) if (!window.isDestroyed()) window.webContents.send('sim:lost');
+  });
+  simulation = child;
   return child;
 }
 

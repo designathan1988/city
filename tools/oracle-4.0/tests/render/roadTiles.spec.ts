@@ -54,7 +54,6 @@ function reuseFor(elevation: () => RoadElevation): SurfaceReuse {
     tiles: new Map(),
     // The ground here is a fixed function, so the roads are all there is to digest.
     dependsOn: (minX, minY, maxX, maxY) => elevation().digest(minX, minY, maxX, maxY),
-    paint: new Map(),
     chunks: new Map(),
     inputs: new SurfaceInputs(),
   };
@@ -303,7 +302,7 @@ describe('road surface tiles', () => {
     const fresh = buildRoadSurfaces(net, elevation, materials, ground, reuseFor(() => elevation));
     expect(fingerprint(after.group)).toBe(fingerprint(fresh.group));
     // No tile kept between builds holds its arrays.
-    for (const state of (reuse.passes as Map<string, { tiles: Map<number, { bundle: unknown }> }>).values()) {
+    for (const state of (reuse.passes as Map<string, { tiles: Map<string, { bundle: unknown }> }>).values()) {
       for (const tile of state.tiles.values()) expect(tile.bundle).toBeNull();
     }
   });

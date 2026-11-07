@@ -8,7 +8,7 @@ import {
   moveLotCorner, onLand, setLotFront, splitLot, zoneLots, type Lot, type LotPlan,
 } from '@world/lots';
 import { LotStore, lotBox } from '@world/lotStore';
-import { CellFiling } from '@world/cells';
+import { CellFiling, grow } from '@world/cells';
 import { solidFootprints } from '@world/buildings/geometry';
 import type { BuildingId } from '@world/buildings/types';
 import { JournalCursor } from '@world/derived';
@@ -46,7 +46,7 @@ export interface LotToolHost {
 }
 
 /** What the scene draws of the lots, a group at a time (the shape of `render/lotOverlay.ts` `LotOverlayShapes`), and the labels. */
-export interface LotOverlay {
+interface LotOverlay {
   /** `built`: a lot with a building, whose yard's paving is coloured too. */
   readonly polygons: { corners: readonly Vec2[]; fill: number | null; fillAlpha: number; line: number; lineAlpha: number; width: number; built?: boolean }[];
   readonly lines: { a: Vec2; b: Vec2; colour: number; dashed: boolean; width: number }[];
@@ -57,7 +57,7 @@ export interface LotOverlay {
 
 const ZONE_COLOURS: Readonly<Record<ZoneUse, number>> = { residential: 0x56bb73, commercial: 0x5da9e9, industrial: 0xd9b254 };
 /** Side of the grid the proposed lots are filed in for the pointer (`proposedAt`): a few lots wide, as the planner files them. */
-const PROPOSAL_CELL = m(64);
+const PROPOSAL_CELL = m(50);
 /** Drawing ranks of the overlay's groups (`render/lotOverlay.ts`, under 2^29): the lots by their order, then the proposal, then the gesture. */
 const PROPOSAL_RANK = 2 ** 28;
 const GESTURE_RANK = PROPOSAL_RANK + 1;
@@ -65,6 +65,43 @@ const GESTURE_RANK = PROPOSAL_RANK + 1;
 const NO_PROPOSAL: readonly (readonly Vec2[])[] = [];
 /** How near a dragged corner the corners it moves are (`drawLot`). */
 const DRAG_REACH = m(0.8);
+/** Side of the cells of the ground the lots' groups are made for (`LotTool.moveWindow`): a world cell. */
+const WINDOW_CELL = m(250);
+/** How far past the ground the view sees a cell's lots are drawn, and how far they are kept once drawn: a view moved back and forth draws nothing again. */
+const WINDOW_REACH = m(100);
+const WINDOW_KEEP = m(500);
+const windowKey = (i: number, j: number): number => (i + 32768) * 65536 + (j + 32768);
+const windowCellRect = (key: number): ChangeRect => {
+  const i = Math.floor(key / 65536) - 32768, j = (key % 65536) - 32768;
+  return [i * WINDOW_CELL, j * WINDOW_CELL, (i + 1) * WINDOW_CELL, (j + 1) * WINDOW_CELL];
+};
+/** Each cell of the window a box reaches. */
+function forWindowCells(box: ChangeRect, visit: (key: number) => void): void {
+  for (let i = Math.floor(box[0] / WINDOW_CELL); i <= Math.floor(box[2] / WINDOW_CELL); i++) {
+    for (let j = Math.floor(box[1] / WINDOW_CELL); j <= Math.floor(box[3] / WINDOW_CELL); j++) visit(windowKey(i, j));
+  }
+}
+
+/** A rectangle of the window's cells, both ends in: [i0, j0, i1, j1]. */
+type CellRange = readonly [number, number, number, number];
+const cellRange = (box: ChangeRect): CellRange =>
+  [Math.floor(box[0] / WINDOW_CELL), Math.floor(box[1] / WINDOW_CELL), Math.floor(box[2] / WINDOW_CELL), Math.floor(box[3] / WINDOW_CELL)];
+const sameRange = (a: CellRange | null, b: CellRange | null): boolean => !!a && !!b && a[0] === b[0] && a[1] === b[1] && a[2] === b[2] && a[3] === b[3];
+/** Each cell of `range` outside `minus` (null: every cell of it), a strip at a time: the cells a moved window came to or left, never the
+ *  window's every cell again. */
+function forCellsOutside(range: CellRange, minus: CellRange | null, visit: (key: number) => void): void {
+  const [i0, j0, i1, j1] = range;
+  const strip = (a0: number, b0: number, a1: number, b1: number): void => {
+    for (let i = a0; i <= a1; i++) for (let j = b0; j <= b1; j++) visit(windowKey(i, j));
+  };
+  if (!minus || minus[0] > i1 || minus[2] < i0 || minus[1] > j1 || minus[3] < j0) { strip(i0, j0, i1, j1); return; }
+  // Below and above it, then left and right of it between them.
+  strip(i0, j0, i1, Math.min(j1, minus[1] - 1));
+  strip(i0, Math.max(j0, minus[3] + 1), i1, j1);
+  const jLo = Math.max(j0, minus[1]), jHi = Math.min(j1, minus[3]);
+  strip(i0, jLo, Math.min(i1, minus[0] - 1), jHi);
+  strip(Math.max(i0, minus[2] + 1), jLo, i1, jHi);
+}
 
 /** What a lot's group is drawn with besides the lot itself (`LotTool.drawLot`): -1 for no lot. */
 interface LotDecor {
@@ -152,8 +189,9 @@ export class LotTool {
     const store = this.doc.lotStore;
     const changed = store.changedFor(this.zonedCursor);
     if (changed === null) {
+      // The lots of the table from their columns (`LotStore.eachNumbers`), nothing decoded.
       this.zonedIds.clear();
-      for (const lot of store.all()) if (lot.use) this.zonedIds.add(lot.id);
+      store.eachNumbers((id, _x, _y, zoned) => { if (zoned) this.zonedIds.add(id); });
     } else {
       for (const id of changed) { if (store.get(id)?.use) this.zonedIds.add(id); else this.zonedIds.delete(id); }
     }
@@ -177,8 +215,11 @@ export class LotTool {
     const delta = this.refusedNet === null ? null : net.changesSince(this.refusedNet);
     this.refusedNet = net.state;
     if (delta === null) { this.refused.clear(); return this.refused; }
+    // By their ids alone (a superset of the lots the change reaches: one let go needlessly is only tried again). DO NOT decode the lots of the
+    // change's rectangles: the network's window moves a tile of 1 km at a time under a moving camera, and every lot of it was decoded (2026-10-27).
+    if (this.refused.size === 0) return this.refused;
     for (const r of delta.rects) {
-      for (const lot of this.doc.lotsIn([r[0] - REFUSED_REACH, r[1] - REFUSED_REACH, r[2] + REFUSED_REACH, r[3] + REFUSED_REACH])) this.refused.delete(lot.id);
+      for (const id of this.doc.lotIdsNear([r[0] - REFUSED_REACH, r[1] - REFUSED_REACH, r[2] + REFUSED_REACH, r[3] + REFUSED_REACH])) this.refused.delete(id);
     }
     return this.refused;
   }
@@ -617,8 +658,9 @@ export class LotTool {
 
   // ------------------------------------------------------------ drawing
 
-  /** The lots as the scene draws them (`render/lotOverlay.ts`), brought up to date: in the Zoning tool (`editing`), or the faint zones */
-  overlay(editing: boolean): LotOverlayBook {
+  /** The lots as the scene draws them (`render/lotOverlay.ts`), brought up to date: in the Zoning tool (`editing`), or the faint zones; `viewed`: the ground the view sees (the scene's `groundSeen`), whose lots alone have their groups - null: every lot of the map (a test). */
+  overlay(editing: boolean, viewed: ChangeRect | null = null): LotOverlayBook {
+    this.seen = viewed;
     const gesture = this.polygon.length > 0 || this.drawn !== null || this.cutLine !== null || this.curve !== null;
     // A faint hint, not the tool: held while a city grows lot by lot
     if (!editing && !gesture && this.held && this.drawnWith?.editing === false) return this.book;
@@ -634,6 +676,17 @@ export class LotTool {
 
   /** The overlay by group (`overlay`), and what its lots' groups were last made with. */
   private readonly book = new LotOverlayBook();
+  /**
+   * The ground the view sees (`overlay`), and the cells of `WINDOW_CELL` it reaches whose lots have their groups, with the lots drawn there
+   * (a group, or none for a lot not shown). DO NOT make every lot's group: the 10 km map's 111,000 lots were read and laid in the overlay at
+   * every change of the tool's mode or zone, the zones shown far past the view's far plane (2026-10-26).
+   */
+  private seen: ChangeRect | null = null;
+  private readonly windowCells = new Set<number>();
+  /** The cells the window was last drawn over and kept over (`moveWindow`): every cell of `windowCells` is within the kept one. */
+  private drawnRange: CellRange | null = null;
+  private keptRange: CellRange | null = null;
+  private readonly drawnLots = new Set<number>();
   private drawnWith: LotDecor | null = null;
   private readonly lotsCursor = LotStore.cursor();
   /** The buildings' entries: a lot built on or cleared is drawn otherwise. */
@@ -679,23 +732,76 @@ export class LotTool {
       this.drawnFrom = c ? { x: c.from.x, y: c.from.y } : null;
     }
     dirty.delete(-1);
+    let moved = false;
     if (all) this.drawAllLots(d);
-    else for (const id of dirty) this.drawLot(id, d);
-    if (all || dirty.size) this.lotsSeen++;
+    else {
+      for (const id of dirty) this.drawLot(id, d);
+      moved = this.moveWindow(d);
+    }
+    if (all || dirty.size || moved) this.lotsSeen++;
     return this.lotsSeen;
+  }
+
+  /**
+   * The view moved over the ground: the lots of the cells it came to drawn, those of the cells it left behind (past `WINDOW_KEEP`) let go;
+   * whether any was. Only the cells that came into or left the window are looked at (`forCellsOutside`). DO NOT walk the window's every cell
+   * each frame: from the Home view of the 10 km map it reaches the far plane, ~20,000 cells looked up in every frame the zones are shown, the
+   * view still or not (556 ms of a road's edit, 2026-10-27).
+   */
+  private moveWindow(d: LotDecor): boolean {
+    const seen = this.seen;
+    if (!seen) return false;
+    const drawn = cellRange(grow(seen, WINDOW_REACH)), kept = cellRange(grow(seen, WINDOW_KEEP));
+    if (sameRange(drawn, this.drawnRange) && sameRange(kept, this.keptRange)) return false;
+    let moved = false;
+    forCellsOutside(drawn, this.drawnRange, (key) => {
+      if (this.windowCells.has(key)) return;
+      this.windowCells.add(key);
+      for (const lot of this.doc.lotsIn(windowCellRect(key))) if (!this.drawnLots.has(lot.id)) { this.drawLot(lot.id, d); moved = true; }
+    });
+    // The cells kept before and no longer: every cell of the window stood in the range kept before.
+    const left: number[] = [];
+    if (this.keptRange) forCellsOutside(this.keptRange, kept, (key) => { if (this.windowCells.has(key)) left.push(key); });
+    this.drawnRange = drawn;
+    this.keptRange = kept;
+    for (const key of left) {
+      const rect = windowCellRect(key);
+      this.windowCells.delete(key);
+      for (const lot of this.doc.lotsIn(rect)) {
+        if (!this.drawnLots.has(lot.id) || this.inWindow(lotBox(lot))) continue;
+        this.book.put(`l${lot.id}`, null);
+        this.drawnLots.delete(lot.id);
+        moved = true;
+      }
+    }
+    return moved;
+  }
+
+  /** Whether a box meets a cell of the window. */
+  private inWindow(box: ChangeRect): boolean {
+    let found = false;
+    forWindowCells(box, (key) => { if (this.windowCells.has(key)) found = true; });
+    return found;
   }
   private drawnFrom: Vec2 | null = null;
 
-  /** @rebuild Every lot's group made again: the first frame, another mode or zone colour, a map loaded, a change the diary cannot place. */
+  /** @rebuild Every lot's group the view sees made again: the first frame, another mode or zone colour, a map loaded, a change the diary cannot place - the window's cells filled again (`moveWindow`); every lot of the map without a view (`seen` null, a test). */
   private drawAllLots(d: LotDecor): void {
     for (const name of [...this.book.groups.keys()]) if (name.startsWith('l')) this.book.put(name, null);
-    for (const lot of this.doc.lotStore.all()) this.drawLot(lot.id, d);
+    this.drawnLots.clear();
+    this.windowCells.clear();
+    this.drawnRange = this.keptRange = null;
+    if (!this.seen) { for (const lot of this.doc.lotStore.all()) this.drawLot(lot.id, d); return; }
+    this.moveWindow(d);
   }
 
   /** One lot's group: its outline and fill, its front and arrow, its corners (none where nothing of it is drawn). */
   private drawLot(id: number, d: LotDecor): void {
     const { doc } = this;
     const l = doc.lotStore.get(id);
+    // Out of the window the view sees (`moveWindow`): no group, whatever it is.
+    if (this.seen && (!l || !this.inWindow(lotBox(l)))) { this.book.put(`l${id}`, null); this.drawnLots.delete(id); return; }
+    this.drawnLots.add(id);
     const built = !!l && l.building !== undefined && doc.buildings.has(l.building as BuildingId);
     if (!l || (!d.editing && (!l.use || built))) { this.book.put(`l${id}`, null); return; }
     const corner = this.corner;

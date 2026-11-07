@@ -82,17 +82,19 @@ vCardPoint = position;
   vThinWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;
 #endif`);
       shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', `#include <common>\nvarying vec3 vThinWorld;\nuniform float thinBar;\nuniform float thinBehind;\nvarying float vCard;\nvarying vec3 vCardPoint;\n${CARD_GLSL}`)
+        .replace('#include <common>', `#include <common>\nvarying vec3 vThinWorld;\nuniform float thinBar;\nuniform float thinBehind;\nvarying float vCard;\nvarying vec3 vCardPoint;\n${CARD_GLSL}\n${THIN_TONE_GLSL}`)
         .replace('#include <color_fragment>', `#include <color_fragment>
   // A card: its face drawn on its bars only.
   if (vCard > 0.5 && !cardOn(int(vCard + 0.5), vCardPoint)) discard;
-  {
-    // Metres a pixel spans here, and the bar's share of it.
-    float metresPerPixel = max(length(fwidth(vThinWorld)) * 0.7071, 1e-4);
-    float cover = clamp(thinBar / metresPerPixel, 0.0, 1.0);
-    diffuseColor.rgb = mix(vec3(thinBehind), diffuseColor.rgb, cover);
-  }`);
+  diffuseColor.rgb = thinTone(diffuseColor.rgb, thinBar, thinBehind, thinMetresPerPixel(vThinWorld));`);
     };
     thin.customProgramCacheKey = () => 'thin-part-prefiltered-v3-cards';
   }
 }
+
+/** GLSL: a thin part's tone (`prefilterThinParts`), for every shader that draws one - its mesh's and its picture's (`plantImpostors.ts`): the
+ *  metres a pixel spans at a point (its world position's change across the pixel), and the colour mixed with the tone behind by the bar's share
+ *  of that pixel. */
+export const THIN_TONE_GLSL = /* glsl */ `
+float thinMetresPerPixel(vec3 world) { return max(length(fwidth(world)) * 0.7071, 1e-4); }
+vec3 thinTone(vec3 colour, float bar, float behind, float metresPerPixel) { return mix(vec3(behind), colour, clamp(bar / metresPerPixel, 0.0, 1.0)); }`;

@@ -52,7 +52,8 @@ export class CellRequests {
   }
 
   /** `cell`'s batches made of `entries`, once landed and (with `upload`) on the GPU; null while they are made */
-  want(kind: BatchKind, cell: string, entries: readonly CellEntry[], env: CellEnv, upload: boolean, edited = false, hole = false): LandedCell | null {
+  /** `pair`: the cell steps between its levels as the eye moves (`massCells.ts` PAIR_REACH): its job walks each building for both, kept together (`cellWork.ts` CellJob.pair). */
+  want(kind: BatchKind, cell: string, entries: readonly CellEntry[], env: CellEnv, upload: boolean, edited = false, hole = false, pair = false): LandedCell | null {
     const key = `${kind}|${cell}`;
     const got = this.landed.get(key);
     if (got && sameEntries(got.entries, entries)) return got.uploads > 0 ? null : got;
@@ -77,7 +78,7 @@ export class CellRequests {
       this.onSummaries(result.summaries, entries, env);
       const landing = this.land(kind, cell, entries, result, upload);
       if (landing) this.landed.set(key, landing);
-    }, key, edited);
+    }, key, edited, false, pair);
     // Where no worker runs the job is done by now.
     const now = this.landed.get(key);
     return now && now.entries === entries && now.uploads === 0 ? now : null;

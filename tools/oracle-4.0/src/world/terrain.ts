@@ -46,8 +46,8 @@ export const terrainInfluence = (unit: number): number => unit * unit * (3 - 2 *
 
 /** The narrowest share of its radius a hard dab's edge falls over (`TerrainStamp.hardness`). */
 const MIN_HARD_RIM = 0.08;
-/** The narrowest a hard dab's wall is: two cells of the drawn terrain grid (6.4 m). */
-const MIN_HARD_WALL = m(12.8);
+/** The narrowest a hard dab's wall is: two cells of the drawn terrain grid (10 m). */
+const MIN_HARD_WALL = m(20);
 
 /** A natural river dab carves this share of the old canyon's depth. */
 const RIVER_BED_DEPTH = 0.42;
@@ -208,7 +208,7 @@ export class TerrainIndex {
 }
 
 /** Side of the stamp index's cells, world units. */
-const STAMP_CELL = m(64);
+const STAMP_CELL = m(50);
 /** A cell's key from its column and row: exact, no two cells share one (a hash of them could). */
 const stampCellKey = (i: number, j: number): number => (i + 32768) * 65536 + (j + 32768);
 

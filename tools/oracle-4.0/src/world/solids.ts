@@ -22,7 +22,7 @@ const FURNITURE: Readonly<Partial<Record<LandscapeKind, number>>> = {
   postbox: m(0.3), phone: m(0.5), sign: m(0.08), streetname: m(0.08),
 };
 const POLE = m(0.15);
-const CELL = m(16);
+const CELL = m(25);
 
 export interface Solids {
   /** Every solid whose box comes within `reach` of (x, y). */

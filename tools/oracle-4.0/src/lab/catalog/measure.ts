@@ -3,7 +3,7 @@ import type { BufferAttribute, BufferGeometry, InterleavedBufferAttribute, Mater
 /** THE MEASURES OF ONE PIECE OF GEOMETRY AND ITS MATERIAL, as the catalogue of the engine's objects reports them (`scripts/model-catalog.mjs`). */
 
 /** One vertex attribute: its name, its components and what one vertex of it weighs. */
-export interface AttributeMeasure {
+interface AttributeMeasure {
   readonly name: string;
   readonly itemSize: number;
   readonly type: string;
@@ -91,7 +91,7 @@ export function measureGeometry(g: BufferGeometry): GeometryMeasure {
   return { triangles, roomTriangles: room, vertices, indexed, attributes, bytesPerVertex, bytes, morphBytes, morphTargets, released, size };
 }
 
-export interface TextureMeasure {
+interface TextureMeasure {
   readonly slot: string;
   readonly name: string;
   readonly type: string;
@@ -123,7 +123,7 @@ const PLAIN_FORMATS: Readonly<Record<number, readonly [string, number]>> = {
 /** Bytes a channel of a type takes (three r186 constants). */
 const TYPE_BYTES: Readonly<Record<number, number>> = { 1009: 1, 1010: 1, 1011: 2, 1012: 2, 1013: 4, 1014: 4, 1015: 4, 1016: 2, 1017: 2, 1018: 2, 1020: 4 };
 
-export function measureTexture(slot: string, t: Texture): TextureMeasure {
+function measureTexture(slot: string, t: Texture): TextureMeasure {
   const image = (t.image ?? {}) as { width?: number; height?: number; depth?: number };
   const mipmaps = (t as { mipmaps?: { width: number; height: number }[] }).mipmaps ?? [];
   const width = image.width ?? mipmaps[0]?.width ?? 0;
@@ -211,7 +211,7 @@ export interface SolidsMeasure {
   readonly count: number;
   /** How many of each shape: box, quad, open prism, closed cylinder, other. */
   readonly byShape: Readonly<Record<string, number>>;
-  /** Triangles no one sees: their centre strictly inside another convex closed solid of the geometry, or pressed face to face against another triangle. */
+  /** Triangles no one sees: their centre strictly inside another convex solid of the geometry (closed, or open along one plane only), or pressed face to face against another triangle. */
   readonly hidden: number;
 }
 
@@ -271,29 +271,64 @@ export function measureSolids(g: BufferGeometry): SolidsMeasure | null {
     for (let d = 0; d < 3; d++) { centres[t * 3 + d] = (p[0]![d]! + p[1]![d]! + p[2]![d]!) / 3; planes[t * 4 + d] = n[d]! / length; }
     planes[t * 4 + 3] = -(planes[t * 4]! * p[0]![0]! + planes[t * 4 + 1]! * p[0]![1]! + planes[t * 4 + 2]! * p[0]![2]!);
   }
-  // The convex closed solids that can hide another's faces: their triangles' planes (a box, a closed cylinder, any small closed convex part).
+  // The convex solids that can hide another's faces: closed (every edge shared by exactly two of its triangles), or open along one plane only
+  // (a box with no bottom, a box with no back against a wall), that plane then one of its faces. An open strip (a leaf arching) hides nothing.
   const trianglesOf = new Map<number, number[]>();
   for (let t = 0; t < triangles; t++) { const r = solidOf[t]!; const l = trianglesOf.get(r); if (l) l.push(t); else trianglesOf.set(r, [t]); }
   const eps = 1e-4;
-  const convex: { root: number; min: number[]; max: number[]; tris: number[] }[] = [];
+  /** Each solid's faces, every plane turned so its inside is negative: the corners' (welded) ids' places. */
+  const convex: { root: number; min: number[]; max: number[]; planes: number[] }[] = [];
+  const placeOf = new Map<number, [number, number, number]>();
+  for (let t = 0; t < triangles; t++) for (let k = 0; k < 3; k++) { const i = vertexAt(t, k); placeOf.set(corners[t]![k]!, [position.getX(i), position.getY(i), position.getZ(i)]); }
   for (const [root, s] of solids) {
     const tris = trianglesOf.get(root)!;
     // Fewer than four faces encloses nothing.
     if (tris.length < 4) continue;
-    // Convex: every vertex of the solid on the same side of every face's plane (or on it).
-    const verts = new Set<number>();
-    for (const t of tris) for (let k = 0; k < 3; k++) verts.add(vertexAt(t, k));
-    let sign = 0, ok = true;
-    for (const t of tris) {
-      for (const i of verts) {
-        const d = planes[t * 4]! * position.getX(i) + planes[t * 4 + 1]! * position.getY(i) + planes[t * 4 + 2]! * position.getZ(i) + planes[t * 4 + 3]!;
+    const verts = [...s.vertices].map((id) => placeOf.get(id)!);
+    const own: number[] = [];
+    for (const t of tris) own.push(planes[t * 4]!, planes[t * 4 + 1]!, planes[t * 4 + 2]!, planes[t * 4 + 3]!);
+    // Its open edges, those one triangle of it alone has.
+    const edges = new Map<string, number>();
+    for (const t of tris) for (let k = 0; k < 3; k++) { const a = corners[t]![k]!, b = corners[t]![(k + 1) % 3]!; const key = a < b ? `${a},${b}` : `${b},${a}`; edges.set(key, (edges.get(key) ?? 0) + 1); }
+    let manifold = true;
+    const open = new Set<number>();
+    for (const [key, n] of edges) {
+      if (n > 2) { manifold = false; break; }
+      if (n === 1) for (const id of key.split(',')) open.add(Number(id));
+    }
+    if (!manifold) continue;
+    if (open.size > 0) {
+      // All on one plane: its normal from the open corners farthest apart, every one of them within `eps` of it.
+      const pts = [...open].map((id) => placeOf.get(id)!);
+      const p0 = pts[0]!;
+      let p1 = p0, far = 0;
+      for (const p of pts) { const d = Math.hypot(p[0] - p0[0], p[1] - p0[1], p[2] - p0[2]); if (d > far) { far = d; p1 = p; } }
+      let n: number[] | null = null, best = 0;
+      for (const p of pts) {
+        const u = [p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]], w = [p[0] - p0[0], p[1] - p0[1], p[2] - p0[2]];
+        const c = [u[1]! * w[2]! - u[2]! * w[1]!, u[2]! * w[0]! - u[0]! * w[2]!, u[0]! * w[1]! - u[1]! * w[0]!];
+        const l = Math.hypot(c[0]!, c[1]!, c[2]!);
+        if (l > best) { best = l; n = c.map((x) => x / l); }
+      }
+      if (!n || best < 1e-9) continue;
+      const d0 = -(n[0]! * p0[0] + n[1]! * p0[1] + n[2]! * p0[2]);
+      if (pts.some((p) => Math.abs(n![0]! * p[0] + n![1]! * p[1] + n![2]! * p[2] + d0) > eps)) continue;
+      own.push(n[0]!, n[1]!, n[2]!, d0);
+    }
+    // Convex: every corner of the solid on one side of every face's plane (or on it); each plane turned so that side is negative.
+    let ok = true;
+    for (let f = 0; f < own.length && ok; f += 4) {
+      let sign = 0;
+      for (const p of verts) {
+        const d = own[f]! * p[0] + own[f + 1]! * p[1] + own[f + 2]! * p[2] + own[f + 3]!;
         if (Math.abs(d) < eps) continue;
         const sd = Math.sign(d);
         if (sign === 0) sign = sd; else if (sd !== sign) { ok = false; break; }
       }
-      if (!ok) break;
+      if (sign === 0) ok = false;
+      if (ok && sign > 0) for (let k = 0; k < 4; k++) own[f + k] = -own[f + k]!;
     }
-    if (ok && sign !== 0) convex.push({ root, min: s.min, max: s.max, tris });
+    if (ok) convex.push({ root, min: s.min, max: s.max, planes: own });
   }
   // A grid over the convex solids' bounds: each triangle tests only the solids whose bounds hold its centre's cell.
   const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
@@ -312,7 +347,7 @@ export function measureSolids(g: BufferGeometry): SolidsMeasure | null {
       if (l) l.push(k); else grid.set(key, [k]);
     }
   });
-  // Hidden: a triangle whose centre lies strictly inside another convex closed solid, or one pressed face to face against another triangle.
+  // Hidden: a triangle whose centre lies strictly inside another convex solid (closed, or open along one plane only), or one pressed face to face against another triangle.
   const faces = new Map<string, number[]>();
   let hidden = 0;
   for (let t = 0; t < triangles; t++) {
@@ -321,13 +356,11 @@ export function measureSolids(g: BufferGeometry): SolidsMeasure | null {
     for (const k of [...(grid.get(cellKey(cx, cy, cz)) ?? []), ...wide]) {
       const s = convex[k]!;
       if (s.root === solidOf[t]) continue;
-      if (cx <= s.min[0]! || cx >= s.max[0]! || cy <= s.min[1]! || cy >= s.max[1]! || cz <= s.min[2]! || cz >= s.max[2]!) continue;
-      let sign = 0, inside = true;
-      for (const f of s.tris) {
-        const d = planes[f * 4]! * cx + planes[f * 4 + 1]! * cy + planes[f * 4 + 2]! * cz + planes[f * 4 + 3]!;
-        if (Math.abs(d) < eps) { inside = false; break; }
-        const sd = Math.sign(d);
-        if (sign === 0) sign = sd; else if (sd !== sign) { inside = false; break; }
+      if (cx <= s.min[0]! + eps || cx >= s.max[0]! - eps || cy <= s.min[1]! + eps || cy >= s.max[1]! - eps || cz <= s.min[2]! + eps || cz >= s.max[2]! - eps) continue;
+      // Strictly inside: under every face's plane by more than `eps` (one lying on a face, the open one too, is not inside).
+      let inside = true;
+      for (let f = 0; f < s.planes.length; f += 4) {
+        if (s.planes[f]! * cx + s.planes[f + 1]! * cy + s.planes[f + 2]! * cz + s.planes[f + 3]! > -eps) { inside = false; break; }
       }
       if (inside) { buried = true; break; }
     }

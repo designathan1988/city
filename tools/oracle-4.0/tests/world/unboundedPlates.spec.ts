@@ -12,6 +12,8 @@ import { gpuLedger } from '@render/gpuLedger';
 
 /** THE WORLD HAS NO SIZE: an unbounded grid of plates (`world/bounds.ts`), made on demand near the view (`render/flatAtlas.ts`) */
 
+/** The plate holding the origin, as the atlas names a plate it made (its centre): the plates' edges on multiples of PLATE_SIZE (`world/bounds.ts`). */
+const FIRST = `${PLATE_SIZE / 2},${PLATE_SIZE / 2}`;
 /** What each plate stands in for on the GPU. */
 const PLATE_BYTES = 10 * 2 ** 20;
 /** The plates the atlas made and has not let go, by centre, and the far woods' book (the far ring's plates). */
@@ -63,19 +65,20 @@ describe('the plates of an unbounded world', () => {
     expect(r.key).toBe(key);
     expect(Math.abs(x - r.cx)).toBeLessThanOrEqual(PLATE_SIZE / 2);
     expect(Math.abs(y - r.cy)).toBeLessThanOrEqual(PLATE_SIZE / 2);
-    expect(r.cx % PLATE_SIZE).toBe(0);
+    // A plate's centre half a plate off the plates' edges, which lie on multiples of its side.
+    expect((r.cx - PLATE_SIZE / 2) % PLATE_SIZE === 0).toBe(true);
     expect(plateOfKey(key)).toEqual(plateIJ(x, y));
     expect(plateRegion(key)).toEqual(r);
     // Two far points a plate apart are two plates (a map's clamp made them one).
     expect(plateOf(x + PLATE_SIZE, y)).not.toBe(key);
-    expect(plateOf(m(40_000), 0)).not.toBe(plateOf(m(42_048), 0));
+    expect(plateOf(m(40_000), 0)).not.toBe(plateOf(m(40_000) + PLATE_SIZE, 0));
   });
 
-  it('centres plate (pi, pj) on (pi, pj) x PLATE_SIZE, a point on an edge the plate whose low edge it is', () => {
-    expect(regionAt(0, 0)).toMatchObject({ cx: 0, cy: 0, half: PLATE_SIZE / 2 });
-    expect(regionAt(PLATE_SIZE / 2, 0).cx).toBe(PLATE_SIZE);
-    expect(regionAt(-PLATE_SIZE / 2, 0).cx).toBe(0);
-    expect(regionAt(PLATE_SIZE * 3 - 1, -PLATE_SIZE * 7).cx).toBe(PLATE_SIZE * 3);
+  it('lays plate (pi, pj) from (pi, pj) x PLATE_SIZE, a point on an edge the plate whose low edge it is', () => {
+    expect(regionAt(0, 0)).toMatchObject({ cx: PLATE_SIZE / 2, cy: PLATE_SIZE / 2, half: PLATE_SIZE / 2 });
+    expect(regionAt(PLATE_SIZE, 0).cx).toBe(PLATE_SIZE * 1.5);
+    expect(regionAt(m(-0.5), 0).cx).toBe(-PLATE_SIZE / 2);
+    expect(regionAt(PLATE_SIZE * 3 - 1, -PLATE_SIZE * 7)).toMatchObject({ cx: PLATE_SIZE * 2.5, cy: -PLATE_SIZE * 6.5 });
     // Every key its own plate, and back.
     for (const [pi, pj] of [[0, 0], [-1, 0], [0, -1], [5000, -16_000], [-16_000, 16_000]] as const) {
       expect(plateOfKey(plateKey(pi, pj))).toEqual({ pi, pj });
@@ -83,9 +86,11 @@ describe('the plates of an unbounded world', () => {
   });
 
   it('lists the plates a rectangle reaches and those round a plate, never a world of them', () => {
-    expect(platesOver([m(-10), m(-10), m(10), m(10)])).toEqual([plateKey(0, 0)]);
-    const over = platesOver([PLATE_SIZE * 99.6, PLATE_SIZE * -3.2, PLATE_SIZE * 101.2, PLATE_SIZE * -2.9]);
-    // Columns 100 and 101 (99.6 lies on plate 100, past its low edge at 99.5), row -3.
+    expect(platesOver([PLATE_SIZE / 2 - m(10), PLATE_SIZE / 2 - m(10), PLATE_SIZE / 2 + m(10), PLATE_SIZE / 2 + m(10)])).toEqual([plateKey(0, 0)]);
+    // Round the origin, the corner of four plates: the four, row by row.
+    expect(platesOver([m(-10), m(-10), m(10), m(10)])).toEqual([plateKey(-1, -1), plateKey(0, -1), plateKey(-1, 0), plateKey(0, 0)]);
+    const over = platesOver([PLATE_SIZE * 100.1, PLATE_SIZE * -2.9, PLATE_SIZE * 101.2, PLATE_SIZE * -2.1]);
+    // Columns 100 and 101 (100.1 lies on plate 100, past its low edge at 100), row -3.
     expect(over).toEqual([plateKey(100, -3), plateKey(101, -3)]);
     const ring = platesAround(700, -40, 3);
     expect(ring).toHaveLength(49);
@@ -123,16 +128,16 @@ describe('the ground of the map', () => {
     seen.live.clear();
     seen.made = 0;
     const atlas = createFlatAtlas(1);
-    // The first plate, at the origin (its materials lent to the verges), and nothing else.
-    expect([...seen.live]).toEqual(['0,0']);
+    // The first plate, the origin's (its materials lent to the verges), and nothing else.
+    expect([...seen.live]).toEqual([FIRST]);
     // At the map's north-east corner: the plates round it on the map, none past its edge.
     const x = MAP_HALF - m(300), y = MAP_HALF - m(200);
     for (let frame = 0; frame < 12; frame++) atlas.focus!(x, y, m(300));
-    // The plate under the corner: the last plate centre inside the map (2 on the 10-tile map, 3 on the 14-tile one).
-    const last = Math.round((MAP_HALF - PLATE_SIZE / 2) / PLATE_SIZE) * PLATE_SIZE;
+    // The plate under the corner: the last plate inside the map, its centre half a plate in from the map's edge (9 km on the 20-tile map).
+    const last = MAP_HALF - PLATE_SIZE / 2;
     const under = `${last},${last}`;
     expect(seen.live.has(under)).toBe(true);
-    const far = [...seen.live].filter((k) => k !== '0,0');
+    const far = [...seen.live].filter((k) => k !== FIRST);
     expect(far.length).toBeGreaterThan(0);
     expect(far.length).toBeLessThanOrEqual(9);
     for (const k of far) {
@@ -140,7 +145,7 @@ describe('the ground of the map', () => {
       const [cx, cy] = k.split(',').map(Number) as [number, number];
       expect(onMap(cx, cy), `plate ${k} past the map's edge`).toBe(true);
     }
-    // The far ground is the map's plates round the camera, and coarser nodes of 2 x 2 plates far from it (`farGround.ts` farNodesFor): on the 10-tile map all 25 plates, on the 14-tile map the far corner's four in one node.
+    // The far ground is the map's plates round the camera, and coarser nodes of 2 x 2 plates far from it (`farGround.ts` farNodesFor): on the 20-tile map the far side's plates in nodes of four.
     const ring = [...seen.book!.plates.values()];
     expect(ring.length).toBeGreaterThanOrEqual(25);
     expect(ring.length).toBeLessThanOrEqual((Math.round((2 * MAP_HALF) / PLATE_SIZE)) ** 2);
@@ -193,13 +198,13 @@ describe('the ground of the map', () => {
   });
 
   it('holds as many plates as its tier: fewer for a weak machine in a district view and after a walk, the strong tier as before', () => {
-    /** The plates made and not let go in a district's view at the map's middle (3 x 3 plates within its reach), then after a walk and in the map's view. */
+    /** The plates made and not let go in a district's view at the middle of the plate by the map's middle (3 x 3 plates within its reach), then after a walk and in the map's view. */
     const held = (plates?: readonly [number, number]): { district: number; map: number } => {
       seen.live.clear();
       const atlas = createFlatAtlas(1);
       if (plates) atlas.setPlates!(plates[0], plates[1]);
-      for (let frame = 0; frame < 12; frame++) atlas.focus!(0, 0, m(800));
-      // The first plate, at the origin, is one of the 3 x 3.
+      for (let frame = 0; frame < 12; frame++) atlas.focus!(PLATE_SIZE / 2, PLATE_SIZE / 2, m(800));
+      // The first plate, the origin's, is one of the 3 x 3.
       const district = seen.live.size;
       for (let x = -MAP_HALF + m(600); x < MAP_HALF - m(600); x += m(512)) for (let frame = 0; frame < 3; frame++) atlas.focus!(x, m(2048), m(800));
       // The map's view: no plate in full, the ones kept made.
@@ -223,13 +228,13 @@ describe('the ground of the map', () => {
     seen.made = 0;
     const atlas = createFlatAtlas(1);
     // No workers here: every corner read on the page, every plate wanted made at once.
-    // Between four plates: each centre within the view's reach.
-    atlas.focus!(PLATE_SIZE / 2, PLATE_SIZE / 2, m(300));
-    const wanted = [...seen.live].filter((k) => k !== '0,0');
+    // Between four plates (their corner, the plates' edges on multiples of PLATE_SIZE): each centre within the view's reach.
+    atlas.focus!(PLATE_SIZE, PLATE_SIZE, m(300));
+    const wanted = [...seen.live].filter((k) => k !== FIRST);
     expect(wanted.length).toBe(3);
     // A second frame makes none more.
     const made = seen.made;
-    atlas.focus!(PLATE_SIZE / 2, PLATE_SIZE / 2, m(300));
+    atlas.focus!(PLATE_SIZE, PLATE_SIZE, m(300));
     expect(seen.made).toBe(made);
     atlas.dispose();
   });
@@ -243,17 +248,17 @@ describe('the ground of the map', () => {
     let wholes = 0;
     const all = doc.buildings.all.bind(doc.buildings);
     doc.buildings.all = () => { wholes++; return all(); };
-    // Trees put on plate (2, 0): it holds content, drawn in full.
+    // Trees put on plate (1, 0), from x = PLATE_SIZE: it holds content, drawn in full.
     const square = [PLATE_SIZE * 1.6, m(10), PLATE_SIZE * 1.9, m(300)] as const;
     doc.changes.record('trees', [square]);
     atlas.updatePaint(doc);
-    expect(atlas.parts.some((p) => p.cx === PLATE_SIZE * 2)).toBe(true);
+    expect(atlas.parts.some((p) => p.cx === PLATE_SIZE * 1.5)).toBe(true);
     // Its tile let go: that plate holds nothing more, and nothing else was read.
     doc.changes.causeNext(TILE_UNLOADED);
     doc.changes.record('trees', [square]);
     atlas.updatePaint(doc);
     expect(wholes).toBe(0);
-    expect(atlas.parts.some((p) => p.cx === PLATE_SIZE * 2)).toBe(false);
+    expect(atlas.parts.some((p) => p.cx === PLATE_SIZE * 1.5)).toBe(false);
     atlas.dispose();
   });
 
@@ -262,8 +267,8 @@ describe('the ground of the map', () => {
     seen.made = 0;
     const atlas = createFlatAtlas(1);
     for (let frame = 0; frame < 30; frame++) atlas.focus!(0, 0, m(5_000));
-    // Nothing in full but the first plate; the far ground the map's plates (25 on the 10-tile map, 49 on the 14-tile one).
-    expect([...seen.live]).toEqual(['0,0']);
+    // Nothing in full but the first plate; the far ground the map's plates (100 on the 20-tile map).
+    expect([...seen.live]).toEqual([FIRST]);
     expect(seen.made).toBe(1);
     expect(seen.book!.plates.size).toBe((Math.round((2 * MAP_HALF) / PLATE_SIZE)) ** 2);
     atlas.dispose();

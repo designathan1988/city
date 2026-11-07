@@ -2,11 +2,13 @@ import type { MeshStandardMaterial } from 'three';
 import { m } from '@world/units';
 import { PULSE_GLSL, ROOM_SEEN_GLSL, type MassingUniforms } from './massingMaterial';
 import { ROOM_LAMP_GLSL } from './roomLamps';
+import { MACRO_SCALE, SHELL_NOISE_GLSL } from './shellParts';
 
 /** THE BUILDINGS' FAR LEVEL (L1): the same building emitted again with its walls as runs of bays (`emitChunk` `far`) */
 
 /** How the far level's shader fills a bay's opening (`buildingMesh.ts` `facadeKind` writes the same numbers), after `emitBay`'s panes */
-export const FACADE_KIND = { none: 0, window: 1, clear: 2, darkQuarter: 3, darkFifth: 4, door: 5, shutterDoor: 6 } as const;
+export const FACADE_KIND = { none: 0, window: 1, clear: 2, darkQuarter: 3, darkFifth: 4, door: 5, shutterDoor: 6, covered: 7 } as const;
+// `covered`: the detail level's opening closed by its own pane (`glazedRecessed`): the run draws the wall round it and its streak alone.
 /** Added to a vertex's kind where its run's bays go against its face's own horizontal (`shellUv`'s t): the shader turns the derived direction round. */
 export const FACADE_FLIP = 8;
 /** Its run's rain streak times this added to a vertex's kind (`buildingMesh.ts` `streakOf`): the shader darkens the wall under each sill as `emitStreak` does. */
@@ -52,6 +54,7 @@ float facadeStreak = 1.0;
 vec3 facadeLamp = vec3(1.0);
 ${ROOM_LAMP_GLSL}
 ${PULSE_GLSL('facade')}
+${SHELL_NOISE_GLSL}
 // buildingMesh.ts bayHash, to the bit: Math.imul is a uint product, >>> a uint shift.
 uint facadeBayHash(int volume, int level, int side, int index, int x7, int y7) {
   uint h = (uint(volume + 1) * 0x27d4eb2du) ^ (uint(level + 7) * 0x165667b1u) ^ (uint(side + 3) * 0x3c6ef372u) ^ (uint(index + 11) * 0x85ebca6bu);
@@ -77,19 +80,23 @@ float facadeSub = smoothstep(0.25, 0.5, max(facadeFoot.x, facadeFoot.y));
 int facadeRaw = int(vFacadeKey.x + 0.5);
 int facadeKind = facadeRaw & ${FACADE_FLIP - 1};
 uint facadeHash = 0u;
+// The wall's drift of tone over the facade (\`Shell.face\` lays it on every other vertex, \`macroTone\`): a run spans many bays, so per pixel.
+float facadeTone = 0.97 + shellMacroNoise(vec3(vFacadeWorld.x, -vFacadeWorld.z, vFacadeWorld.y) / ${num(MACRO_SCALE)}) * 0.06;
+if (facadeKind == ${K.none}) diffuseColor.rgb *= facadeTone;
 if (facadeKind > ${K.none}) {
   vec2 cell = vFacadeGrid.xy;
   float bayW = max(vFacadeGrid.z, 0.01), storeyH = max(vFacadeGrid.w, 0.01);
   vec4 o = vFacadeOpening;
   float fu = ${num(FRAME)} / bayW, fh = ${num(FRAME)} / storeyH;
-  float paneAcross = facadePulse(cell.x, facadeFoot.x, o.x + fu, o.y - fu);
-  float hole = facadePulse(cell.x, facadeFoot.x, o.x, o.y) * facadePulse(cell.y, facadeFoot.y, o.z, o.w);
-  float pane = paneAcross * facadePulse(cell.y, facadeFoot.y, o.z + fh, o.w - fh);
   // The bay under the pixel: its centre on the plan (the piece's middle on its facade line), and its pick.
   float index = floor(cell.x), level = floor(cell.y);
   vec2 centre = vec2(vFacadeWorld.x, -vFacadeWorld.z) + vFacadeKey.zw * (bayW * (index + 0.5 - cell.x));
   int key = int(vFacadeKey.y + 0.5);
   facadeHash = facadeBayHash(key / 4, int(level), key - (key / 4) * 4, int(index), int(floor(centre.x * 7.0 + 0.5)), int(floor(centre.y * 7.0 + 0.5)));
+  if (facadeKind != ${K.covered}) {
+  float paneAcross = facadePulse(cell.x, facadeFoot.x, o.x + fu, o.y - fu);
+  float hole = facadePulse(cell.x, facadeFoot.x, o.x, o.y) * facadePulse(cell.y, facadeFoot.y, o.z, o.w);
+  float pane = paneAcross * facadePulse(cell.y, facadeFoot.y, o.z + fh, o.w - fh);
   float darkNear = facadeKind == ${K.window} ? (facadeHash % 20u < 5u ? 1.0 : 0.0)
     : facadeKind == ${K.darkQuarter} ? (facadeHash % 4u == 0u ? 1.0 : 0.0)
     : facadeKind == ${K.darkFifth} ? (facadeHash % 5u == 0u ? 1.0 : 0.0) : 0.0;
@@ -117,6 +124,7 @@ if (facadeKind > ${K.none}) {
     facadeGlass = max(pane - facadeSolid, 0.0);
   }
   facadeWall = 1.0 - facadeFrame - facadeGlass - facadeSolid;
+  }
   // The rain streak under the sill (\`emitStreak\`): two bays in three, darkest at the sill, fading down its reach.
   int streak = facadeRaw / ${FACADE_STREAK};
   if (streak > 0) {
@@ -133,7 +141,7 @@ if (facadeKind > ${K.none}) {
   // The pane scatters next to nothing, as the detail's (\`glassRoom.ts\`: its albedo times 0.06): its sky reflection and the room behind it show (emissive). DO NOT draw it its base colour: black glass read pale blue at this level (the player, 2026-10-20).
   vec3 glassColour = mix(FACADE_GLASS, FACADE_GLASS_DARK, facadeDark) * 0.06;
   vec3 solidColour = mix(FACADE_DOOR, FACADE_SHUTTER, facadeShutter);
-  diffuseColor.rgb = diffuseColor.rgb * facadeWall * facadeStreak + vFacadeTrim.rgb * facadeFrame + glassColour * facadeGlass + solidColour * facadeSolid;
+  diffuseColor.rgb = diffuseColor.rgb * facadeTone * facadeWall * facadeStreak +vFacadeTrim.rgb * facadeFrame + glassColour * facadeGlass + solidColour * facadeSolid;
   // Its room lit at night: the share awake once the window is under a pixel, its lamp from the mix the detailed panes draw from.
   // By day (\`massingNight\` 0, a uniform: every pixel takes the same branch) no window glows, so none is worked out.
   if (massingNight > 0.0) {
@@ -148,9 +156,10 @@ if (facadeKind > ${K.none}) {
 }
 
 /** Made once with the kit: the far level's material, the shell's own (`finishes.ts`: every finish's maps, weathering, lots), its openings drawn from the window grid with the panes' looks and the massing's night uniforms */
-export function createFacadeMaterial(base: MeshStandardMaterial, p: FacadePanes, uniforms: MassingUniforms): MeshStandardMaterial {
+/** `name`: the far level's ('building-facade', the far shell under it) or the detail level's ('building-facade-near', the near shell's maps and wear under it, its openings `covered` by their panes). */
+export function createFacadeMaterial(base: MeshStandardMaterial, p: FacadePanes, uniforms: MassingUniforms, name = 'building-facade'): MeshStandardMaterial {
   const material = base.clone();
-  material.name = 'building-facade';
+  material.name = name;
   const baseCompile = base.onBeforeCompile.bind(base);
   const baseKey = base.customProgramCacheKey.bind(base);
   const solid = (k: 'roughness' | 'metalness' | 'envMapIntensity'): string =>
@@ -205,6 +214,6 @@ totalEmissiveRadiance += (facadeLamp * massingNight * facadeLit + ${ROOM_SEEN_GL
     // The shell's own after: each of its additions lands right after its chunk, so before these (its finish's map, roughness, metalness and relief first).
     baseCompile(shader, renderer);
   };
-  material.customProgramCacheKey = () => `${baseKey()}-facade-level-v7`;
+  material.customProgramCacheKey = () => `${baseKey()}-facade-level-v8`;
   return material;
 }

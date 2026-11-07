@@ -7,7 +7,7 @@ import type { ShellChunk } from '@render/buildings/chunk';
 import {
   COLOUR_RANGE, FACADE_BYTES, FACADE_FLOATS, FACADE_GRID, FINISH_ATTRIBUTE, NORMAL_UNIT, PAINT_UNIT, WEAR_STEPS, cellArrays, cellBytes, octDecode, paintShort,
 } from '@render/buildings/cellArrays';
-import { FACADE_FLIP, FACADE_STREAK } from '@render/buildings/facadeLevel';
+import { FACADE_FLIP, FACADE_KIND, FACADE_STREAK } from '@render/buildings/facadeLevel';
 import { shellUv } from '@render/buildings/shellParts';
 import { PART_KINDS, type PartKind, createBuildingKit } from '@render/buildings/kit';
 import { GROUND_ATTRIBUTE, LOOK_FLOATS, NO_GROUND, SHELL_PARTS, SHELL_PART_KINDS } from '@render/buildings/shellParts';
@@ -128,7 +128,11 @@ describe('the buildings\' far level', () => {
         for (let i = 2; i < s.grid.length; i += FACADE_GRID) expect(s.grid[i]! & (FACADE_FLIP - 1)).toBeGreaterThan(0);
       }
       for (const s of [...Object.values(l1.shells), ...Object.values(detail.shells)]) expect('facade' in s).toBe(false);
-      expect(detail.runs).toBeUndefined();
+      // The detail's walls laid as runs too (`emitFacadeRuns` near): every opening of them closed by its own pane (`covered`), or a plain wall.
+      for (const s of Object.values(detail.runs ?? {})) {
+        expect(s.near).toBe(true);
+        for (let i = 2; i < s.grid.length; i += FACADE_GRID) expect([FACADE_KIND.none, FACADE_KIND.covered]).toContain(s.grid[i]! & (FACADE_FLIP - 1));
+      }
       near += triangles(detail);
       far += triangles(l1);
     }
@@ -436,8 +440,12 @@ describe('the shell\'s compact vertex', () => {
         const vertices = p.length / 3;
         // None left twice: the weld found every vertex alike in place, normal, wear, paint and finish.
         const seen = new Set<string>();
+        // A run's vertex also by its window grid (`RunChunk`): two runs meeting at a corner are two vertices there, their grids apart.
+        const run = 'facade' in s ? s as unknown as { facade: Uint16Array; grid: Int16Array; opening: Uint8Array } : null;
         for (let v = 0; v < vertices; v++) {
-          seen.add([...p.subarray(v * 3, v * 3 + 3), ...nd.subarray(v * 2, v * 2 + 2), ...paint.subarray(v * 4, v * 4 + 4)].join());
+          const key = [...p.subarray(v * 3, v * 3 + 3), ...nd.subarray(v * 2, v * 2 + 2), ...paint.subarray(v * 4, v * 4 + 4)];
+          if (run) key.push(...run.facade.subarray(v * FACADE_FLOATS, (v + 1) * FACADE_FLOATS), ...run.grid.subarray(v * FACADE_GRID, (v + 1) * FACADE_GRID), ...run.opening.subarray(v * FACADE_BYTES, (v + 1) * FACADE_BYTES));
+          seen.add(key.join());
         }
         expect(seen.size).toBe(vertices);
         // The walls (normal level): their triangles and the vertices they use.

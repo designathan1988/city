@@ -5,10 +5,10 @@ import { compileCopy, shadowStandIn } from '@render/uploads';
 import { createBuildingKit } from '@render/buildings/kit';
 import { cellMass } from '@render/buildings/cellArrays';
 import { createMassCells } from '@render/buildings/massCells';
-import { emitMassing } from '@render/buildings/massing';
+import { massesOf } from './support/masses';
 import { refillArrays } from '@render/mesh/gpuOnly';
 import type { Tile } from '@render/mesh/surfaceMesh';
-import { mergeTiles } from '@render/mesh/surfaceTiles';
+import { TABLE_SLOTS, mergeTiles } from '@render/mesh/surfaceTiles';
 import { BLUEPRINTS } from '@world/buildings/blueprints';
 import type { Building } from '@world/buildings/types';
 import { m } from '@world/units';
@@ -64,7 +64,7 @@ describe('meshes that live on the GPU', () => {
 
   it('a road block lets its arrays go once uploaded, and takes them back the same', () => {
     const tiles = [tile(0), tile(2), tile(5)];
-    const mesh = mergeTiles(tiles, { name: 'asphalt', material: new MeshBasicMaterial() }, () => tiles)!;
+    const mesh = mergeTiles(tiles, { name: 'asphalt', material: new MeshBasicMaterial() }, () => tiles, TABLE_SLOTS)!;
     checks(mesh, mesh);
   });
 
@@ -74,7 +74,7 @@ describe('meshes that live on the GPU', () => {
     const masses = [0, 1, 2].map((i) => {
       const bp = BLUEPRINTS[i]!;
       const b = { ...JSON.parse(JSON.stringify(bp.body)), id: i + 1, x: i * m(30), y: m(10), rotation: 0 } as Building;
-      return emitMassing(b, () => 0)!;
+      return massesOf(b, () => 0)!;
     });
     cells.land('0,0', cellMass(masses));
     const mesh = cells.group.children.find((o) => o.name === 'building-massing') as Mesh;

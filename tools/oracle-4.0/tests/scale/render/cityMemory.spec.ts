@@ -80,10 +80,10 @@ interface WorkerHeld { readonly table: number; readonly held: number; readonly r
 
 async function heldBy(name: string): Promise<{ buildings: number; page: Held; worker: WorkerHeld }> {
   const doc = cooked(name);
-  const table = doc.buildings.table!.table;
+  const table = doc.buildings.table!;
   let sx = 0, sy = 0;
-  for (let row = 0; row < table.rows; row++) { sx += table.xs[row]!; sy += table.ys[row]!; }
-  const eye = { x: sx / table.rows, y: sy / table.rows };
+  for (let row = 0; row < table.size; row++) { sx += table.xs[row]!; sy += table.ys[row]!; }
+  const eye = { x: sx / table.size, y: sy / table.size };
   const keep: unknown[] = [];
   const page: Held = {};
   let last = await heap();
@@ -121,7 +121,7 @@ async function heldBy(name: string): Promise<{ buildings: number; page: Held; wo
 
   // The sites' grading on level land: every site read and the town's platforms put together.
   const floors = buildingFloors(flat, undefined, (b: Building) => { const r = storedBounds(b, m(1)); return [r.minX, r.minY, r.maxX, r.maxY]; }, m(1));
-  const sites = siteGrading(flat, undefined, m(3), (b) => { const r = storedBounds(b, m(50)); return [r.minX, r.minY, r.maxX, r.maxY]; }, floors);
+  const sites = siteGrading(flat, undefined, m(3), m(50), floors);
   sites.changedSites(doc.buildings);
   sites.rebuild(doc.buildings);
   keep.push(sites, floors);

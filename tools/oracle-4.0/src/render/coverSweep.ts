@@ -1,4 +1,4 @@
-import { PLATE_SIZE } from '@world/bounds';
+import { PLATE_SIZE, plateCentre } from '@world/bounds';
 import type { ChangeRect } from '@world/changes';
 import { m } from '@world/units';
 import { KEEP_CELL, keepCellKey } from './candidateKeep';
@@ -6,7 +6,6 @@ import { keepCellAt, keepCellRect } from './cellKeeps';
 import type { ForestSpecies } from './groundCover';
 import { seedOfKind } from './natureTrees';
 import { PlateFollow, type ShownPlate } from './plateFollow';
-import { TERRAIN_HALF } from './terrainGrid';
 
 /** THE PAINTED COVERS' AND THE RIVERS' PLACES, ONE KEEP CELL AT A TIME (`cellKeeps.ts`) */
 
@@ -48,6 +47,9 @@ export const SHORE_SWEEP_PAD = SHORE_REACH + RIVER_ROCK_SPACING;
 /** How far a dab's change of the covers reaches a place: a cover cell (8 m, `terrain.ts` FOREST_RES) and the widest jitter */
 export const COVER_SWEEP_PAD = m(8) + FOREST_SPACING * 0.45;
 
+/** Where the covers' lattices start: plate 0's low corner, on the lines of every plate's edges (`world/bounds.ts`: the plates' edges on multiples of their side). */
+const LATTICE_ORIGIN = 0;
+
 /** A cell's hash in 0..1: the same wherever a placement asks it, so an edit elsewhere never moves a plant. */
 export const cellHash = (a: number, b: number, salt: number): number => {
   let h = Math.imul(a | 0, 374_761_393) ^ Math.imul(b | 0, 668_265_263) ^ Math.imul(salt, 2_246_822_519);
@@ -74,19 +76,19 @@ function scrubClump(x: number, y: number): number {
 
 /** Whether lattice cell (i, j) of `spacing` lies whole inside one plate: the painted covers' lattice stops at each plate's edge. */
 function insidePlate(i: number, j: number, spacing: number): boolean {
-  const x0 = -TERRAIN_HALF + i * spacing, y0 = -TERRAIN_HALF + j * spacing;
+  const x0 = LATTICE_ORIGIN + i * spacing, y0 = LATTICE_ORIGIN + j * spacing;
   // The plate under the cell's middle (`world/bounds.ts`): its centre worked out, no object a cell.
-  const cx = Math.floor((x0 + spacing / 2) / PLATE_SIZE + 0.5) * PLATE_SIZE, cy = Math.floor((y0 + spacing / 2) / PLATE_SIZE + 0.5) * PLATE_SIZE;
+  const cx = plateCentre(x0 + spacing / 2), cy = plateCentre(y0 + spacing / 2);
   const half = PLATE_SIZE / 2;
   return x0 >= cx - half && x0 + spacing <= cx + half
     && y0 >= cy - half && y0 + spacing <= cy + half;
 }
 
-/** The lattice cells of `spacing` (anchored at -TERRAIN_HALF) a rectangle reaches: [i0, i1, j0, j1]. */
+/** The lattice cells of `spacing` (anchored at `LATTICE_ORIGIN`) a rectangle reaches: [i0, i1, j0, j1]. */
 function latticeOver(rect: ChangeRect, spacing: number): [number, number, number, number] {
   return [
-    Math.floor((rect[0] + TERRAIN_HALF) / spacing), Math.floor((rect[2] + TERRAIN_HALF) / spacing),
-    Math.floor((rect[1] + TERRAIN_HALF) / spacing), Math.floor((rect[3] + TERRAIN_HALF) / spacing),
+    Math.floor((rect[0] - LATTICE_ORIGIN) / spacing), Math.floor((rect[2] - LATTICE_ORIGIN) / spacing),
+    Math.floor((rect[1] - LATTICE_ORIGIN) / spacing), Math.floor((rect[3] - LATTICE_ORIGIN) / spacing),
   ];
 }
 
@@ -98,7 +100,7 @@ export function forestIn(key: number, field: CoverField): Candidate[] {
   const [i0, i1, j0, j1] = latticeOver(cell, FOREST_SPACING);
   for (let j = j0; j <= j1; j++) {
     for (let i = i0; i <= i1; i++) {
-      const cx = -TERRAIN_HALF + (i + 0.5) * FOREST_SPACING, cy = -TERRAIN_HALF + (j + 0.5) * FOREST_SPACING;
+      const cx = LATTICE_ORIGIN + (i + 0.5) * FOREST_SPACING, cy = LATTICE_ORIGIN + (j + 0.5) * FOREST_SPACING;
       const density = field.forestAt(cx, cy);
       if (density < 0.04 || cellHash(i, j, 1) > density * 0.92) continue;
       const x = cx + (cellHash(i, j, 2) - 0.5) * FOREST_SPACING * 0.9, y = cy + (cellHash(i, j, 3) - 0.5) * FOREST_SPACING * 0.9;
@@ -121,7 +123,7 @@ export function scrubIn(key: number, field: CoverField): Candidate[] {
   const [i0, i1, j0, j1] = latticeOver(cell, SCRUB_SPACING);
   for (let j = j0; j <= j1; j++) {
     for (let i = i0; i <= i1; i++) {
-      const cx = -TERRAIN_HALF + (i + 0.5) * SCRUB_SPACING, cy = -TERRAIN_HALF + (j + 0.5) * SCRUB_SPACING;
+      const cx = LATTICE_ORIGIN + (i + 0.5) * SCRUB_SPACING, cy = LATTICE_ORIGIN + (j + 0.5) * SCRUB_SPACING;
       const density = field.coverAt('scrub', cx, cy);
       if (density < 0.04) continue;
       const clump = 0.35 + 0.65 * Math.max(0, Math.min(1, (scrubClump(cx, cy) + 0.15) * 1.6));
@@ -141,7 +143,7 @@ export function rocksIn(key: number, field: CoverField): Candidate[] {
   const [i0, i1, j0, j1] = latticeOver(cell, ROCK_SPACING);
   for (let j = j0; j <= j1; j++) {
     for (let i = i0; i <= i1; i++) {
-      const cx = -TERRAIN_HALF + (i + 0.5) * ROCK_SPACING, cy = -TERRAIN_HALF + (j + 0.5) * ROCK_SPACING;
+      const cx = LATTICE_ORIGIN + (i + 0.5) * ROCK_SPACING, cy = LATTICE_ORIGIN + (j + 0.5) * ROCK_SPACING;
       const density = field.coverAt('rocks', cx, cy);
       if (density < 0.04 || cellHash(i, j, 41) > Math.sqrt(density) * 0.7) continue;
       const x = cx + (cellHash(i, j, 42) - 0.5) * ROCK_SPACING * 0.9, y = cy + (cellHash(i, j, 43) - 0.5) * ROCK_SPACING * 0.9;
@@ -165,13 +167,13 @@ export function shoreIn(key: number, field: CoverField, water: WaterBox | null):
   const cell = keepCellRect(key);
   // The lattice over the water's box (and a reach round it), as far as this cell takes in.
   const s = RIVER_ROCK_SPACING;
-  const i0 = Math.max(Math.floor((water.minX - SHORE_REACH + TERRAIN_HALF) / s), Math.floor((cell[0] + TERRAIN_HALF) / s) - 1);
-  const i1 = Math.min(Math.ceil((water.maxX + SHORE_REACH + TERRAIN_HALF) / s), Math.floor((cell[2] + TERRAIN_HALF) / s));
-  const j0 = Math.max(Math.floor((water.minY - SHORE_REACH + TERRAIN_HALF) / s), Math.floor((cell[1] + TERRAIN_HALF) / s) - 1);
-  const j1 = Math.min(Math.ceil((water.maxY + SHORE_REACH + TERRAIN_HALF) / s), Math.floor((cell[3] + TERRAIN_HALF) / s));
+  const i0 = Math.max(Math.floor((water.minX - SHORE_REACH - LATTICE_ORIGIN) / s), Math.floor((cell[0] - LATTICE_ORIGIN) / s) - 1);
+  const i1 = Math.min(Math.ceil((water.maxX + SHORE_REACH - LATTICE_ORIGIN) / s), Math.floor((cell[2] - LATTICE_ORIGIN) / s));
+  const j0 = Math.max(Math.floor((water.minY - SHORE_REACH - LATTICE_ORIGIN) / s), Math.floor((cell[1] - LATTICE_ORIGIN) / s) - 1);
+  const j1 = Math.min(Math.ceil((water.maxY + SHORE_REACH - LATTICE_ORIGIN) / s), Math.floor((cell[3] - LATTICE_ORIGIN) / s));
   for (let j = j0; j <= j1; j++) {
     for (let i = i0; i <= i1; i++) {
-      const x = -TERRAIN_HALF + (i + cellHash(i, j, 51)) * s, y = -TERRAIN_HALF + (j + cellHash(i, j, 52)) * s;
+      const x = LATTICE_ORIGIN + (i + cellHash(i, j, 51)) * s, y = LATTICE_ORIGIN + (j + cellHash(i, j, 52)) * s;
       if (keepCellAt(x, y) !== key) continue;
       const level = field.shoreLevelAt(x, y);
       if (level === null) continue;

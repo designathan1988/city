@@ -2,7 +2,7 @@ import { BufferAttribute, BufferGeometry, type Mesh } from 'three';
 import type { BlockArrays } from './roadLodPure';
 import type { GeometryArrays } from './gpuOnly';
 
-export { blockBuffers, coarseArrays, type BlockArrays } from './roadLodPure';
+export { coarseArrays, type BlockArrays, type BlockLock } from './roadLodPure';
 
 /** DO NOT draw a far block at full detail: nothing there is resolved. */
 
@@ -13,7 +13,8 @@ export function coarseGeometry(arrays: BlockArrays): BufferGeometry {
   geometry.setAttribute('normal', new BufferAttribute(arrays.normal, 3));
   geometry.setAttribute('uv', new BufferAttribute(arrays.uv, 2));
   if (arrays.color) geometry.setAttribute('color', new BufferAttribute(arrays.color, 3));
-  if (arrays.roadSection) geometry.setAttribute('roadSection', new BufferAttribute(arrays.roadSection, 3));
+  // Its section's numbers a vertex: the three a tile carries and its surface's code (`surfaceTiles.ts` SECTION_SIZE), or three in arrays made by hand.
+  if (arrays.roadSection) geometry.setAttribute('roadSection', new BufferAttribute(arrays.roadSection, arrays.roadSection.length / (arrays.position.length / 3)));
   geometry.setIndex(new BufferAttribute(arrays.index, 1));
   return geometry;
 }
@@ -38,14 +39,10 @@ export interface BlockLevels {
   seenAt?: number;
   /** Its full level's bytes on the GPU as last measured: what bringing it near costs. */
   nearBytes?: number;
-  /** The road block's cell it lies in (`roadSurfaces.ts` CHUNK, the network's far level's cell, `networkFarRoads.ts`): its levels go and come back with the cell's (`roadResidency.ts`). */
+  /** The road block's cell it lies in (`roadSurfaces.ts` CHUNK, the network's far level's cell, `networkFarRoads.ts`): the view takes and lets go the cell with every block in it (`roadResidency.ts`). */
   cell?: string;
   /** Whether its far level is being made (`roadSurfaces.ts`): its cell keeps its levels till it lands. */
   pending?: boolean;
-  /** Whether its far level was let go with its cell's, the network's far level drawing the cell (`roadResidency.ts` dropCell). */
-  dropped?: boolean;
-  /** Its far level made again off the page (the full level's arrays from the kept tiles, simplified by the workers): what a dropped cell is brought back with. */
-  remake?: (() => Promise<BlockArrays | null>) | null;
 }
 
 export const LOD_KEY = 'lod';

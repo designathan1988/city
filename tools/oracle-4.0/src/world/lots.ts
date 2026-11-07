@@ -6,6 +6,7 @@ import { Level, type SurfaceLevel, halfWidth } from './roadTypes';
 import type { NodeId, SegmentId } from './ids';
 import type { Junction } from './junction/build';
 import type { NetworkDelta } from './networkDelta';
+import type { JournalCursor } from './derived';
 import type { SegmentRibbon } from './ribbons';
 import { type MultiPoly, difference, union } from '@core/clipper';
 import { levelRingsOf } from './surfaces';
@@ -17,6 +18,7 @@ import { markPaved, pavedTester, quadsOverlap } from './zoneGrid';
 import type { ZoneDensity, ZoneUse } from './zones';
 import { rectAround, type Change, type ChangeRect } from './changes';
 import { CellFiling, grow } from './cells';
+import { TILE as WORLD_TILE } from './tiles';
 import { lotBox } from './lotStore';
 import { LAND, NEAR, PAVED } from './rasterGrid';
 import type { BuildingId } from './buildings/types';
@@ -25,7 +27,7 @@ import { insideLot, type Lot } from './lotRecord';
 /** Lots: the land cut into plots the player zones and buildings grow on, as a town's cadastre is. - A closed block */
 
 /** Depth of a lot along an open street. */
-export const LOT_DEPTH = m(32);
+const LOT_DEPTH = m(32);
 /** The frontage a lot aims at: a block's rows and a street's strip are cut into equal lots of about this width */
 const LOT_FRONTAGE = m(22);
 /** A block deeper than this is cut in two rows, back to back. */
@@ -33,7 +35,7 @@ const TWO_ROWS = m(44);
 const MIN_LOT = m(10);
 const RASTER = m(2);
 
-export { lotCentre } from './lotRings';
+export { lotBounds, lotCentre } from './lotRings';
 export { insideLot, type Lot } from './lotRecord';
 
 export function lotArea(l: Pick<Lot, 'corners'>): number {
@@ -162,11 +164,11 @@ export function forgetLotPlans(net: Network): void {
 /** The work of the lots' plans: raster tiles made, land cells flooded, blocks and streets planned. A count for the scale specs. */
 export const lotPlanWork = { tiles: 0, cells: 0, planned: 0 };
 
-/** Side of a tile of the land's raster, in raster cells (128 m). */
-const TILE = 64;
+/** Side of a tile of the land's raster, in raster cells (250 m: a world cell, `cells.ts` CELL; four to a tile of the world's grid, `tiles.ts`). */
+const TILE = 125;
 const TILE_SIDE = TILE * RASTER;
-/** Land wider or deeper than this is open land, never a block: it bounds every flood of the land (a tile of the world's grid). */
-const MAX_BLOCK = m(1024);
+/** Land wider or deeper than this is open land, never a block: it bounds every flood of the land (a tile of the world's grid, `tiles.ts`). */
+const MAX_BLOCK = WORLD_TILE;
 /** How far round a street's box its land is asked whether it is paved: a lot's depth and a street's width more. */
 const PAD = LOT_DEPTH + m(20);
 /** How far past a street's filed bounds its strip reads the land and the lots (`streetPlan`'s reach, with a margin). */
@@ -176,7 +178,7 @@ const SMALL_PIECE = (MIN_LOT * MIN_LOT * 2) / RASTER;
 /** A cell's four neighbours. */
 const SIDES = [[1, 0], [-1, 0], [0, 1], [0, -1]] as const;
 /** Side of the grid the proposed lots are filed in: a few lots wide. */
-const FIT_CELL = m(64);
+const FIT_CELL = m(50);
 
 const tileKey = (ti: number, tj: number): number => (ti + 32768) * 65536 + (tj + 32768);
 const tileRect = (key: number): ChangeRect => {
@@ -271,7 +273,8 @@ class LandPaving {
     if (near) {
       const steps = markPaved(doc, net, { minX, minY, W: TILE, H: TILE, step: RASTER }, label);
       while (!steps.next().done) { /* the whole tile at once */ }
-      bits = new Uint8Array((TILE * TILE) >> 3);
+      // A bit a cell, every cell of the tile: DO NOT size it by (TILE * TILE) >> 3 - a tile of 125 x 125 cells has 15,625, its last one left out (read as land).
+      bits = new Uint8Array(Math.ceil((TILE * TILE) / 8));
       for (let k = 0; k < label.length; k++) if (label[k] === PAVED) bits[k >> 3]! |= 1 << (k & 7);
     }
     this.tiles.set(key, bits);
@@ -467,6 +470,8 @@ class LotPlanner {
     const entries = this.seen < 0 ? null : this.doc.changes.since(this.seen, ['lots', 'lotKeys']);
     this.seen = this.doc.changes.version;
     if (delta === null || entries === null || entries.some((e) => e.rects === null || (e.kind === 'lots' && !e.ids))) this.planAll();
+    // The roads held moved, no edit (`NetworkDelta.scopeOnly`: the page's network holding the tiles near the view): the land did not change, nothing planned again for it. DO NOT plan a tile's blocks for its coming into view.
+    else if (delta.scopeOnly) { if (entries.length) this.planChanged({ segments: new Set(), nodes: new Set(), rects: [] }, entries); }
     else if (delta.segments.size || delta.nodes.size || delta.rects.length || entries.length) this.planChanged(delta, entries);
     return this.result();
   }
@@ -1065,11 +1070,33 @@ const PAVING_MARGIN = m(2);
 /** Area a road takes off a lot under which it counts as crossing it: less is the paving's own outline round the lot, not a road through it. */
 const CROSSED_AREA = m(1) * m(1);
 
-/** A ROAD EDIT CUTS THE LOTS IT CROSSES (`main.ts` mutateBuilt, beside the buildings it razes): each lot the changed paving (`rects`; null, every lot) takes land from is replaced by the pieces of it left on land, each a lot of its zone where it is big enough, the rest let go - DO NOT leave a lot whole over a new road (its zone painted over the asphalt and nothing grown there, 2026-10-18). In the edit's own undo step. The lots cut. */
-export function cutLotsByRoads(doc: RoadDoc, net: Network, rects: readonly ChangeRect[] | null): number {
-  if (!net.ribbons.size || rects?.length === 0) return 0;
+/**
+ * Where a road edit moved the paving (`cutLotsByRoads`): what the network built again (`delta`), or, where it was built from nothing
+ * (`NetworkBuild.rebuild` null), where the edit's own road entries say the roads were and are (`roads`: a cursor of the roads read before
+ * the edit) - a segment's rectangle holds its casing (`RoadDoc.segmentRect`), an entry with no rectangle the paving of the segments and the
+ * junctions it names. DO NOT answer the whole map: every lot of the 10 km map was cut against the paving on the page for one road (2026-10-26).
+ */
+export function roadEditRects(doc: RoadDoc, net: Network, roads: JournalCursor, delta: NetworkDelta | null): ChangeRect[] {
+  if (delta) return [...delta.rects];
+  const entries = roads.read(doc.changes);
+  if (entries === null) {
+    console.error('[lots] the entries of the road edit are gone from the diary: no lot cut by it');
+    return [];
+  }
+  const out: ChangeRect[] = [];
+  for (const e of entries) {
+    if (e.rects) { out.push(...e.rects); continue; }
+    for (const id of e.segments ?? []) { const r = net.segmentCells.rectOf(id as SegmentId) ?? doc.segmentRect(id as SegmentId); if (r) out.push(r); }
+    for (const id of e.nodes ?? []) { const r = net.junctionCells.rectOf(id as NodeId) ?? doc.nodeRect(id as NodeId); if (r) out.push(r); }
+  }
+  return out;
+}
+
+/** A ROAD EDIT CUTS THE LOTS IT CROSSES (`main.ts` mutateBuilt, beside the buildings it razes): each lot the changed paving (`rects`, `roadEditRects`) takes land from is replaced by the pieces of it left on land, each a lot of its zone where it is big enough, the rest let go - DO NOT leave a lot whole over a new road (its zone painted over the asphalt and nothing grown there, 2026-10-18). In the edit's own undo step. The lots cut. */
+export function cutLotsByRoads(doc: RoadDoc, net: Network, rects: readonly ChangeRect[]): number {
+  if (!net.ribbons.size || rects.length === 0) return 0;
   const seen = new Set<number>();
-  const lots = rects === null ? [...doc.lotStore.all()] : rects.flatMap((r) => doc.lotsIn(r));
+  const lots = rects.flatMap((r) => doc.lotsIn(r));
   let cut = 0;
   for (const lot of lots) {
     if (seen.has(lot.id)) continue;

@@ -1,49 +1,49 @@
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { CITIZEN_LEVEL_ERROR, citizenBandAt, citizenLevelAt, citizenLevelFor, citizenLevelOfFigure } from '@render/riggedCitizens';
+import { IMPOSTOR_PIXELS } from '@render/people/personImpostor';
+import { LEVEL_TRIANGLES } from '@render/people/cookedPerson';
+import { citizenBandAt, citizenLevelFor, citizenLevelOf, citizenLevelOfFigure } from '@render/riggedCitizens';
 import { m, perM } from '@world/units';
 
+/** The level a body is drawn at: by its own levels' errors (shares of its height, measured into its file) and its size on the screen. */
+
+/** A body's levels as its file holds them: each coarser one a larger error. */
+const ERRORS = [0.005, 0.025];
+
 describe('the level a body is drawn at', () => {
-  it('knows the error every level of a body was simplified to', () => {
-    // `LOD_LEVELS` is in the cook's fingerprinted folder, so it is read, not imported.
-    const source = readFileSync('src/render/people/personRig.ts', 'utf8');
-    const table = /const LOD_LEVELS[^=]*=\s*(\[[^;]*\]);/.exec(source)?.[1];
-    expect(table).toBeDefined();
-    const errors = [...table!.matchAll(/\[\s*[\d.]+\s*,\s*([\d.]+)/g)].map((hit) => Number(hit[1]));
-    expect([0, ...errors]).toEqual([...CITIZEN_LEVEL_ERROR]);
+  it('has one error per mesh level of the file, and the card past them', () => {
+    expect(ERRORS.length).toBe(LEVEL_TRIANGLES.length);
+    expect(citizenLevelOf(ERRORS, 1)).toBe(ERRORS.length);
   });
 
-  it('is the coarsest whose error stays under a pixel', () => {
-    const tall = m(1.9);
-    for (let zoom = 0.1; zoom < 80; zoom *= 1.07) {
-      const level = citizenLevelAt(zoom);
-      expect(CITIZEN_LEVEL_ERROR[level]! * tall * zoom).toBeLessThanOrEqual(1);
-      if (level > 0) expect(CITIZEN_LEVEL_ERROR[level - 1]! * tall * zoom).toBeLessThanOrEqual(1);
-      if (level < CITIZEN_LEVEL_ERROR.length - 1) expect(CITIZEN_LEVEL_ERROR[level + 1]! * tall * zoom).toBeGreaterThan(1);
+  it('is the coarsest whose error stays under a pixel, the card under a few pixels', () => {
+    for (let pixels = 2; pixels < 4000; pixels *= 1.07) {
+      const level = citizenLevelOf(ERRORS, pixels);
+      if (pixels < IMPOSTOR_PIXELS) { expect(level).toBe(ERRORS.length); continue; }
+      expect(level).toBeLessThan(ERRORS.length);
+      if (level > 0) expect(ERRORS[level]! * pixels).toBeLessThanOrEqual(1);
+      if (level < ERRORS.length - 1) expect(ERRORS[level + 1]! * pixels).toBeGreaterThan(1);
     }
   });
 
   it('of one figure is the level of the zoom that draws a body its size on the screen', () => {
     for (const ratio of [1, 1.5, 2]) for (let zoom = 0.1; zoom < 80; zoom *= 1.07) {
-      expect(citizenLevelOfFigure(zoom * m(1.9) * ratio, ratio)).toBe(citizenLevelFor(zoom));
+      expect(citizenLevelOfFigure(ERRORS, zoom * m(1.9) * ratio, ratio, zoom)).toBe(citizenLevelFor(ERRORS, zoom));
     }
   });
 
-  it('never gets finer as the camera pulls back', () => {
+  it('never gets finer as the figure shrinks', () => {
     let last = 0;
-    for (let zoom = 80; zoom > 0.1; zoom /= 1.05) {
-      const level = citizenLevelAt(zoom);
+    for (let pixels = 4000; pixels > 1; pixels /= 1.05) {
+      const level = citizenLevelOf(ERRORS, pixels);
       expect(level).toBeGreaterThanOrEqual(last);
       last = level;
     }
   });
 
-  it('keeps the whole body wherever the face is drawn, and is never finer than it was by the fixed zooms', () => {
-    const fixed = (zoom: number): number => zoom >= 8 ? 0 : zoom >= 2 ? 1 : zoom >= 1.2 ? 2 : 3;
+  it('keeps the whole body wherever the face is drawn', () => {
     for (let zoom = 0.1; zoom < 80; zoom *= 1.07) {
-      if (citizenBandAt(zoom) === 0) expect(citizenLevelFor(zoom)).toBe(0);
-      else expect(citizenLevelFor(zoom)).toBe(citizenLevelAt(zoom));
-      expect(citizenLevelFor(zoom)).toBeGreaterThanOrEqual(fixed(zoom));
+      if (citizenBandAt(zoom) === 0) expect(citizenLevelFor(ERRORS, zoom)).toBe(0);
+      else expect(citizenLevelFor(ERRORS, zoom)).toBe(citizenLevelOf(ERRORS, m(1.9) * zoom));
     }
   });
 

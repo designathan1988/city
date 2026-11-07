@@ -1,8 +1,44 @@
 import { type Stream, doubles, indices as indexStream } from './stream';
-import type { PieceShape, SkirtRing, SurfaceShape } from './tileShape';
+import type { Sampler } from './stripShape';
 import { hypot2 } from '@core/hypot';
+import { m } from '@world/units';
 
-/** ONE TILE OF A ROAD SURFACE MESHED FROM ITS SHAPE (`tileShape.ts`) */
+/** How far a surface may stand off its triangles: a pixel at the nearest street view (`cameraProfile.ts`). */
+export const HEIGHT_TOL = m(0.01);
+/** How far a tint may stand off its triangle's blend before a vertex is put where it changes (a class's colour against another at a junction). */
+const TINT_TOL = 0.04;
+/** The least edge a tint's or a mark's change is resolved to: the grid of half a terrain cell it was drawn on before (`roadSurfacePass.ts`). */
+const MARK_EDGE = m(3.2);
+
+/** A ROAD PIECE'S SURFACE MESHED FROM ITS SHAPE (`roads/pieceMesh.ts`) */
+
+/** An axis-aligned rectangle, [minX, minY, maxX, maxY]: a piece's box, a block's square (`roadSurfaceEntries.ts` CELL). */
+export type TileRect = readonly [number, number, number, number];
+
+/** One run of triangles: its vertices, its triangles, and whether they run clockwise. */
+export interface PieceShape {
+  readonly xy: Float64Array;
+  readonly tris: Uint32Array;
+  readonly flip: boolean;
+  /** A junction's plate: off every road's section (`TileMeshOptions.plateOffRoad`). */
+  readonly plate?: boolean;
+  /** Each vertex's place across its road written in place of the section's first number (`TileMeshOptions.section`): a junction's footway corner's
+   *  distance from its kerb's line, which no road's frame reads (`roads/pieceMesh.ts`). */
+  readonly across?: Float64Array;
+}
+/** One ring of an outline's walls: its edges [ax, ay, bx, by, ...], with its polygon's winding (the outside on an edge's right when not `flip`). */
+export interface SkirtRing {
+  readonly flip: boolean;
+  readonly edges: Float64Array;
+  /** The way each edge's two ends face on the plan (nx, ny at a, then at b: four numbers an edge; NaN: the edge's own): a kerb's return lit round,
+   *  each of its quads' ends facing out from the return's centre as the owner's road tool lights it (`normalAt`). None: each edge its own. */
+  readonly normals?: Float64Array;
+}
+/** A surface's shape: its runs of triangles and, for a surface with a bottom, its walls. */
+export interface SurfaceShape {
+  readonly pieces: readonly PieceShape[];
+  readonly skirts: readonly SkirtRing[] | null;
+}
 
 export type HeightFn = (x: number, y: number) => number;
 /** `u` runs across the surface and `v` along it, both in world units. */
@@ -19,19 +55,53 @@ export interface TileMeshOptions {
   /** Height of the bottom face of the skirt drawn down from the boundary. */
   readonly bottom?: HeightFn;
   readonly uv: UvFn;
-  /** Keeps every triangle inside ONE texture frame. */
+  /** Keeps every triangle inside ONE texture frame: the frame of the road nearest its middle (`meshPiece`). */
   readonly uvFrame?: UvFrameFn;
-  readonly uvWorld?: number;
   /** Per-vertex tint, multiplied into the material's colour. */
   readonly tint?: TintFn;
-  /** Per-vertex place in the road's cross-section, for the material's marks along its edges */
+  /** Per-vertex place in the road's cross-section, for the material's marks along its edges; its third number -1 off any road. */
   readonly section?: TintFn;
+  /** `section` in the frame of the road nearest (pickX, pickY): a triangle whose corners read different roads is read all of it on one. */
+  readonly sectionFrame?: (x: number, y: number, pickX: number, pickY: number, out: [number, number, number]) => void;
   /** Extra UV scale for the skirt, so its texture is not stretched. */
   readonly skirtUvScale?: number;
+  /** The shortest stretch a rise of the surface is resolved to (`stripShape.ts` stationsOf). */
+  readonly leastEdge: number;
+  /** A junction's plate is off every road's section (the carriageway: its marks stop at the mouth line): written so, not read. */
+  readonly plateOffRoad?: boolean;
+  /** What a plate's vertices are written with instead of off every road (`plateOffRoad`): its node's place in the paint's table, for the marks
+   *  painted on it (`roadSurfaceReads.ts` asphaltPlate, `roadMarks.ts`). */
+  readonly plateSection?: TintFn;
+  /** Drawn as a raised deck: its shapes' deck walls stand (`roads/pieceGeom.ts` deckWalls), and a ground road's outer edge is a deck's side. */
+  readonly deck?: boolean;
+  /** Chains a strip of it is cut into across (`roads/pieceMesh.ts`): a surface whose height is not a plane between its two edges;
+   *  the same count for every piece, so a road's band and the junction's meet with the same vertices across their mouth. None: one. */
+  readonly across?: number;
+}
+
+/** What a surface varies in (`stripShape.ts` stationsOf): its height; whether its section is on a road (where its edge marks start); its tint; on its outline
+ *  the foot of its skirt (the side of a deck is seen from below and beside: its foot follows the soffit as its top follows the surface). */
+export function surfaceSampler(options: TileMeshOptions): Sampler {
+  const { top, section, tint, bottom } = options;
+  const size = 1 + (section ? 1 : 0) + (tint ? 3 : 0) + (bottom ? 1 : 0);
+  const tolerance = [HEIGHT_TOL, ...(section ? [0.25] : []), ...(tint ? [TINT_TOL, TINT_TOL, TINT_TOL] : []), ...(bottom ? [HEIGHT_TOL] : [])];
+  const floor = [options.leastEdge, ...(section ? [MARK_EDGE] : []), ...(tint ? [MARK_EDGE, MARK_EDGE, MARK_EDGE] : []), ...(bottom ? [options.leastEdge] : [])];
+  const outline = [false, ...(section ? [false] : []), ...(tint ? [false, false, false] : []), ...(bottom ? [true] : [])];
+  const cut: [number, number, number] = [0, -1, -1], rgb: [number, number, number] = [1, 1, 1];
+  return {
+    size, tolerance, floor, outline,
+    sample(x, y, out) {
+      out[0] = top(x, y);
+      let k = 1;
+      if (section) { section(x, y, cut); out[k++] = cut[2] >= 0 ? 1 : 0; }
+      if (tint) { tint(x, y, rgb); out[k++] = rgb[0]; out[k++] = rgb[1]; out[k++] = rgb[2]; }
+      if (bottom) out[k] = bottom(x, y);
+    },
+  };
 }
 
 /** Vertex and index streams of a mesh under construction: the attributes as the doubles they are computed in (the float32 the mesh stores is taken when it is welded, `weldVertices`). */
-export interface Streams {
+interface Streams {
   readonly positions: Stream<Float64Array>;
   readonly normals: Stream<Float64Array>;
   readonly uvs: Stream<Float64Array>;
@@ -40,16 +110,16 @@ export interface Streams {
   readonly indices: Stream<Uint32Array>;
 }
 
-export const streams = (): Streams => ({ positions: doubles(), normals: doubles(), uvs: doubles(), colors: doubles(), sections: doubles(), indices: indexStream() });
+const streams = (): Streams => ({ positions: doubles(), normals: doubles(), uvs: doubles(), colors: doubles(), sections: doubles(), indices: indexStream() });
 
 /** The streams' arrays as written (`Stream.view`). */
-export function streamArrays(out: Streams): { positions: Float64Array; normals: Float64Array; uvs: Float64Array; colors: Float64Array; sections: Float64Array; indices: Uint32Array } {
+function streamArrays(out: Streams): { positions: Float64Array; normals: Float64Array; uvs: Float64Array; colors: Float64Array; sections: Float64Array; indices: Uint32Array } {
   return { positions: out.positions.view(), normals: out.normals.view(), uvs: out.uvs.view(), colors: out.colors.view(), sections: out.sections.view(), indices: out.indices.view() };
 }
 
 /** One build's options and the scratch its callbacks write into. */
-export interface Context {
-  /** Its polygons are not read here: their shape is (`tileShape.ts`). */
+interface Context {
+  /** Its polygons are not read here: their shape is (`roads/pieceMesh.ts`). */
   readonly options: TileMeshOptions;
   readonly uv: [number, number];
   /** White until a tint writes it, so an untinted surface is written white. */
@@ -58,8 +128,8 @@ export interface Context {
   readonly cut: [number, number, number];
 }
 
-/** The top face of one compact piece (`tileShape.ts` `pieceShape`) */
-export function meshPiece(piece: PieceShape, context: Context, out: Streams): void {
+/** The top face of one run of triangles (`roads/pieceMesh.ts`) */
+function meshPiece(piece: PieceShape, context: Context, out: Streams): void {
   const { options, uv: scratch, rgb, cut } = context;
   const { top, uv, tint, section } = options;
   const { positions, normals, uvs, colors, sections, indices } = out;
@@ -74,14 +144,24 @@ export function meshPiece(piece: PieceShape, context: Context, out: Streams): vo
     normals.push3(0, 1, 0);
     // A surface with no tint nor section carries neither: one value everywhere, filled where a material reads it (`surfaceTiles.ts` tileArrays).
     if (tint) { tint(x, y, rgb); colors.push3(rgb[0], rgb[1], rgb[2]); }
-    if (section) { section(x, y, cut); sections.push3(cut[0], cut[1], cut[2]); }
+    if (section) {
+      if (piece.plate && options.plateOffRoad) {
+        if (options.plateSection) { options.plateSection(x, y, cut); sections.push3(cut[0], cut[1], cut[2]); } else sections.push3(0, -1, -1);
+      }
+      else { section(x, y, cut); sections.push3(piece.across ? piece.across[i]! : cut[0], cut[1], cut[2]); }
+    }
   }
   // World Y is mirrored into three's Z.
   for (let i = 0; i < tris.length; i += 3) {
     let a = base + (tris[i] as number);
     let b = base + (tris[i + 1] as number);
     let c = base + (tris[i + 2] as number);
-    if (options.uvFrame && options.uvWorld && !uvConsistent(positions.data, uvs.data, a, b, c, options.uvWorld)) {
+    const uvApart = !!options.uvFrame && !inOneFrame(positions.data, uvs.data, a, b, c, options.uvFrame, context.uv);
+    // Corners on different roads (their third section numbers, the road's place in the paint's table, differ).
+    const q = sections.data;
+    const ra = q[a * 3 + 2]!, rb = q[b * 3 + 2]!, rc = q[c * 3 + 2]!;
+    const roadsApart = !!options.sectionFrame && ((ra >= 0 && rb >= 0 && ra !== rb) || (rb >= 0 && rc >= 0 && rb !== rc) || (ra >= 0 && rc >= 0 && ra !== rc));
+    if (uvApart || roadsApart) {
       const p = positions.data;
       const cx = (p[a * 3]! + p[b * 3]! + p[c * 3]!) / 3;
       const cy = -(p[a * 3 + 2]! + p[b * 3 + 2]! + p[c * 3 + 2]!) / 3;
@@ -103,23 +183,24 @@ function copyCorner(v: number, cx: number, cy: number, context: Context, out: St
   const x = positions.data[v * 3]!;
   const y = -positions.data[v * 3 + 2]!;
   positions.push3(x, positions.data[v * 3 + 1]!, -y);
-  options.uvFrame!(x, y, cx, cy, scratch);
-  uvs.push2(scratch[0], scratch[1]);
+  if (options.uvFrame) { options.uvFrame(x, y, cx, cy, scratch); uvs.push2(scratch[0], scratch[1]); }
+  else uvs.push2(uvs.data[v * 2]!, uvs.data[v * 2 + 1]!);
   normals.push3(0, 1, 0);
   if (options.tint) colors.push3(colors.data[v * 3]!, colors.data[v * 3 + 1]!, colors.data[v * 3 + 2]!);
-  if (options.section) sections.push3(sections.data[v * 3]!, sections.data[v * 3 + 1]!, sections.data[v * 3 + 2]!);
+  if (options.sectionFrame && sections.data[v * 3 + 2]! >= 0) { options.sectionFrame(x, y, cx, cy, context.cut); sections.push3(context.cut[0], context.cut[1], context.cut[2]); }
+  else if (options.section) sections.push3(sections.data[v * 3]!, sections.data[v * 3 + 1]!, sections.data[v * 3 + 2]!);
   return positions.length / 3 - 1;
 }
 
-/** The walls hung from a surface's outline down to `bottom`, along the edges of its shape (`tileShape.ts` `skirtShape`). */
-export function meshSkirts(skirts: readonly SkirtRing[], context: Context, out: Streams): void {
+/** The walls hung from a surface's outline down to `bottom`, along the edges of its shape (`roads/pieceMesh.ts`). */
+function meshSkirts(skirts: readonly SkirtRing[], context: Context, out: Streams): void {
   const { options, rgb } = context;
   const { top, tint, section } = options;
   const bottom = options.bottom;
   if (!bottom) return;
   const { positions, normals, uvs, colors, sections, indices } = out;
   const scale = options.skirtUvScale ?? 1;
-  for (const { flip, edges } of skirts) {
+  for (const { flip, edges, normals: facing } of skirts) {
     let run = 0;
     for (let e = 0; e < edges.length; e += 4) {
       const ax = edges[e] as number;
@@ -132,15 +213,19 @@ export function meshSkirts(skirts: readonly SkirtRing[], context: Context, out: 
       const nz = (sign * (bx - ax)) / span;
       const topA = top(ax, ay);
       const topB = top(bx, by);
-      const lowA = bottom(ax, ay);
-      const lowB = bottom(bx, by);
+      // A tolerance lower than its foot: the surface it stands on may be refined at other points of the edge and lie that much under this chord.
+      const lowA = bottom(ax, ay) - HEIGHT_TOL;
+      const lowB = bottom(bx, by) - HEIGHT_TOL;
       const side = positions.length / 3;
       positions.push3(ax, topA, -ay); positions.push3(bx, topB, -by); positions.push3(bx, lowB, -by); positions.push3(ax, lowA, -ay);
       if (tint) { tint((ax + bx) / 2, (ay + by) / 2, rgb); for (let n = 0; n < 4; n++) colors.push3(rgb[0], rgb[1], rgb[2]); }
       // A skirt has no place in the section: none (written only for a surface whose top carries one).
-      if (section) for (let n = 0; n < 4; n++) sections.push3(0, -1, 0);
-      // Written rather than averaged, so a kerb keeps its hard edge instead of smearing into the surface above it.
-      for (let n = 0; n < 4; n++) normals.push3(nx, 0, nz);
+      if (section) for (let n = 0; n < 4; n++) sections.push3(0, -1, -1);
+      // Written rather than averaged, so a kerb keeps its hard edge instead of smearing into the surface above it; a return's ends as it gives them
+      // (`SkirtRing.normals`, on the plan: three's z is -y), its top and its foot alike.
+      const fa = facing && !Number.isNaN(facing[e]!) ? [facing[e]!, -facing[e + 1]!] : [nx, nz];
+      const fb = facing && !Number.isNaN(facing[e + 2]!) ? [facing[e + 2]!, -facing[e + 3]!] : [nx, nz];
+      normals.push3(fa[0]!, 0, fa[1]!); normals.push3(fb[0]!, 0, fb[1]!); normals.push3(fb[0]!, 0, fb[1]!); normals.push3(fa[0]!, 0, fa[1]!);
       const u0 = run / scale;
       const u1 = (run + span) / scale;
       uvs.push2(u0, topA / scale); uvs.push2(u1, topB / scale); uvs.push2(u1, lowB / scale); uvs.push2(u0, lowA / scale);
@@ -159,25 +244,37 @@ export interface Tile {
   readonly positions: Float32Array;
   readonly normals: Float32Array;
   readonly uvs: Float32Array;
-  /** Empty for a surface with no tint (one colour, white) or no section (none: 0, -1, 0): filled where a material reads it (`surfaceTiles.ts` tileArrays). */
+  /** Empty for a surface with no tint (one colour, white) or no section (none: 0, -1, -1): filled where a material reads it (`surfaceTiles.ts` tileArrays). */
   readonly colors: Float32Array;
   readonly sections: Float32Array;
   /** Local to the tile. */
   readonly indices: Uint32Array;
   /** The tile's box, [minX, minY, minZ, maxX, maxY, maxZ] of its positions, made with it (in the worker) */
   readonly box?: Float32Array;
+  /** The surface's code in the road material (`mesh/roadEdges.ts` ROAD_CODE), written in its vertices' section as a block is merged
+   *  (`surfaceTiles.ts`): given by the block that merges it, never by its piece (a tile is meshed, kept and handed over without it). */
+  readonly code?: number;
+  /** A tile as kept between sessions (`tilePieces.ts`): the roads and nodes its sections name, kind and id each, its sections holding indices
+   *  into it in place of slots; none in a session's tile. */
+  readonly pieces?: Float64Array;
 }
 
-/** One tile of a surface from its shape (`tileShape.ts`, made here or by a worker, `roadTile.worker.ts`) */
-export function meshTileShape(shape: SurfaceShape, options: TileMeshOptions): Tile {
-  const context: Context = { options, uv: [0, 0], rgb: [1, 1, 1], cut: [0, -1, 0] };
+/** One part of a surface from its shape (`roads/pieceMesh.ts`, made here or by a worker, `roadTile.worker.ts`): its top faces, then its walls. */
+export function meshShape(shape: SurfaceShape, options: TileMeshOptions): Tile {
+  const context: Context = { options, uv: [0, 0], rgb: [1, 1, 1], cut: [0, -1, -1] };
   const out = streams();
   for (const piece of shape.pieces) meshPiece(piece, context, out);
-  // No vertex is shared with another tile, so the smoothing is the one the whole mesh would get.
+  // No vertex is shared with another part, so the smoothing is the one the whole mesh would get.
   smoothTopNormals(out.positions.view(), out.normals.view(), out.indices.view());
   if (shape.skirts) meshSkirts(shape.skirts, context, out);
   const welded = weldVertices(streamArrays(out));
   return { ...welded, box: boxOf(welded.positions) };
+}
+
+/** A surface's options without its section (`TileMeshOptions.plateOffRoad`: what its junctions' plates are fitted to). */
+export function withoutSection(options: TileMeshOptions): TileMeshOptions {
+  const { section: _section, sectionFrame: _frame, ...rest } = options;
+  return rest;
 }
 
 /** DO NOT leave the vertices a triangle at a time: a copy per corner is what an unindexed mesh is. */
@@ -242,30 +339,29 @@ function boxOf(positions: Float32Array): Float32Array {
   return box;
 }
 
-/** Whether a triangle's UV edges have the lengths its world edges say they should. */
-function uvConsistent(
-  positions: ArrayLike<number>,
-  uvs: ArrayLike<number>,
-  a: number,
-  b: number,
-  c: number,
-  uvWorld: number,
-): boolean {
-  return uvEdgeConsistent(positions, uvs, a, b, uvWorld) && uvEdgeConsistent(positions, uvs, b, c, uvWorld) &&
-    uvEdgeConsistent(positions, uvs, c, a, uvWorld);
+/** How far a corner's UV may stand off its UV in the triangle's frame and be in it. */
+const FRAME_EPS = 1e-6;
+
+/**
+ * Whether a triangle's corners all carry their UV in the frame of the road nearest its middle (`TileMeshOptions.uvFrame`). DO NOT tell it by how
+ * stretched its UV edges are against its world edges: a road's piece is a few large triangles (a junction's plate a fan from its middle), and a
+ * triangle across two roads' frames stretched its texture by a third yet passed a test of half to twice (`tests/render/pieceMesh.spec.ts`).
+ */
+function inOneFrame(positions: ArrayLike<number>, uvs: ArrayLike<number>, a: number, b: number, c: number, uvFrame: UvFrameFn, scratch: [number, number]): boolean {
+  const cx = (positions[a * 3]! + positions[b * 3]! + positions[c * 3]!) / 3;
+  const cy = -(positions[a * 3 + 2]! + positions[b * 3 + 2]! + positions[c * 3 + 2]!) / 3;
+  return onFrame(positions, uvs, a, cx, cy, uvFrame, scratch) && onFrame(positions, uvs, b, cx, cy, uvFrame, scratch)
+    && onFrame(positions, uvs, c, cx, cy, uvFrame, scratch);
 }
 
-/** One edge of `uvConsistent`: a function of its own, not a closure made per triangle. */
-function uvEdgeConsistent(positions: ArrayLike<number>, uvs: ArrayLike<number>, p: number, q: number, uvWorld: number): boolean {
-  const world = hypot2(positions[p * 3]! - positions[q * 3]!, positions[p * 3 + 2]! - positions[q * 3 + 2]!);
-  if (world < 1e-3) return true;
-  const texture = hypot2(uvs[p * 2]! - uvs[q * 2]!, uvs[p * 2 + 1]! - uvs[q * 2 + 1]!) * uvWorld;
-  const ratio = texture / world;
-  return ratio > 0.5 && ratio < 2;
+/** One corner of `inOneFrame`: a function of its own, not a closure made per triangle. */
+function onFrame(positions: ArrayLike<number>, uvs: ArrayLike<number>, v: number, cx: number, cy: number, uvFrame: UvFrameFn, scratch: [number, number]): boolean {
+  uvFrame(positions[v * 3]!, -positions[v * 3 + 2]!, cx, cy, scratch);
+  return Math.abs(scratch[0] - uvs[v * 2]!) <= FRAME_EPS && Math.abs(scratch[1] - uvs[v * 2 + 1]!) <= FRAME_EPS;
 }
 
 /** Recomputes normals for the up-facing vertices only, in place. */
-export function smoothTopNormals(
+function smoothTopNormals(
   positions: ArrayLike<number>,
   normals: { [index: number]: number; readonly length: number },
   indices: ArrayLike<number>,

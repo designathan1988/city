@@ -1,34 +1,32 @@
-import { BufferAttribute, BufferGeometry, Group, type Material, Mesh } from 'three';
+import { BufferAttribute, BufferGeometry, Group, Mesh } from 'three';
 import type { SceneMaterials } from './materials';
 import { readsRoadSection } from './mesh/roadEdges';
-import { PAINT_COLOURS } from './paintQuads';
 import { surfaceLook } from './roadSurfaces';
-import type { TileSource } from './roadTileShape';
+import type { TileSource } from './roadSurfaceReads';
 
-/** Every surface a block of the roads can draw, for its programs' stand-ins: each band, each median part, each paint colour of the catalogue. */
+/** Every surface a block of the roads can draw, for its programs' stand-ins: each band, each median part (its paint is the carriageway's own shader's, `roadMarks.ts`). */
 const LOOK_SOURCES: readonly TileSource[] = [
-  ...(['verge', 'footway', 'curbRamp', 'kerb', 'asphalt'] as const).map((band): TileSource => ({ kind: 'band', band })),
+  ...(['deckEdge', 'footway', 'curbRamp', 'kerb', 'asphalt'] as const).map((band): TileSource => ({ kind: 'band', band })),
   ...(['kerb', 'planting', 'paved'] as const).map((part): TileSource => ({ kind: 'median', part })),
-  ...PAINT_COLOURS.map((color): TileSource => ({ kind: 'paint', color })),
 ];
 
 /** Each vertex's place in no road's section (`tileMesh.ts`: a surface without one). */
 function noSection(vertices: number): Float32Array {
   const out = new Float32Array(vertices * 3);
-  for (let v = 0; v < vertices; v++) out[v * 3 + 1] = -1;
+  for (let v = 0; v < vertices; v++) { out[v * 3 + 1] = -1; out[v * 3 + 2] = -1; }
   return out;
 }
 
 /** THE ROADS' PROGRAMS AMONG THE WORLD'S, never drawn: one invisible triangle per look of a road surface (`surfaceLook`), raised and not (a raised surface casts: its depth program too), so the opening's catalogue (`shaderCatalogue.ts`, it walks the scene, the hidden too) builds every program a block of the roads can be drawn with before the curtain lifts.
- *  DO NOT leave them to their first draw: the opening's district met only some of them, and every other one (the decks, the raised asphalt, a paint colour, their shadows) was built in the frame it first came into view, one after the other, behind the curtain (2026-10-21: ~10 s more of curtain once the far roads, which carried these stand-ins, were deleted). */
-export function roadProgramStandIns(materials: SceneMaterials, groundMaterial: Material | undefined, paintFor: (color: string) => Material): { readonly group: Group; dispose(): void } {
+ *  DO NOT leave them to their first draw: the opening's district met only some of them, and every other one (the decks, the raised asphalt, their shadows) was built in the frame it first came into view, one after the other, behind the curtain (2026-10-21: ~10 s more of curtain once the far roads, which carried these stand-ins, were deleted). */
+export function roadProgramStandIns(materials: SceneMaterials): { readonly group: Group; dispose(): void } {
   const group = new Group();
   group.name = 'roads-program-stand-ins';
   group.visible = false;
   const seen = new Set<string>();
   for (const raised of [false, true]) {
     for (const source of LOOK_SOURCES) {
-      const look = surfaceLook(source, raised, materials, groundMaterial, paintFor);
+      const look = surfaceLook(source, raised, materials);
       const reads = readsRoadSection(look.material);
       const key = `${look.material.uuid}|${look.castShadow ?? false}|${reads}`;
       if (seen.has(key)) continue;

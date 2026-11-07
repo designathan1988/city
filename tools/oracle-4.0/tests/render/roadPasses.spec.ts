@@ -32,13 +32,13 @@ function fingerprint(root: Object3D): number {
 }
 
 const reuseFor = (elevation: () => RoadElevation, passes: boolean): SurfaceReuse => ({
-  tiles: new Map(), depends: new Map(), paint: new Map(), chunks: new Map(), inputs: new SurfaceInputs(),
+  tiles: new Map(), depends: new Map(), chunks: new Map(), inputs: new SurfaceInputs(),
   dependsOn: (minX, minY, maxX, maxY) => elevation().digest(minX, minY, maxX, maxY),
   ...(passes ? { passes: new Map(), withinMoved: [] } : {}),
 });
 
 function build(net: Network, elevation: RoadElevation, reuse: SurfaceReuse, changed: (readonly [number, number, number, number])[] | null, stopAfter = Infinity): RoadSurfaces | null {
-  const steps = roadSurfaceSteps(net, elevation, materials, ground, reuse, undefined, null, changed);
+  const steps = roadSurfaceSteps(net, elevation, materials, ground, reuse, null, changed);
   for (let n = 0; ; n++) {
     if (n >= stopAfter) return null;
     const step = steps.next();

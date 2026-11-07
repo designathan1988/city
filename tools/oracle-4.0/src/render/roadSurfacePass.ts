@@ -1,4 +1,3 @@
-import type { Poly } from '@core/clipper';
 import type { SegmentId } from '@world/ids';
 import type { Network } from '@world/network';
 import type { RoadReads } from '@world/roadField';
@@ -6,29 +5,22 @@ import { Level, laneWidth } from '@world/roadTypes';
 import { footwayRiseShare } from '@world/roads/footwayRise';
 import { walkingRise } from '@world/curbRamps';
 import { RAISED_LIFT, isRaised, roadStructure } from '@world/structures';
-import { RELIEF_FLAT } from '@world/terrain';
-import type { Input } from './roadSurfaceRings';
-import type { Reach, SurfaceInputs, SurfacePass } from './roadSurfaceInputs';
+import type { Reach, SurfacePass } from './roadSurfaceInputs';
 import type { PassDesc, RoadLook, SurfaceReads } from './roadSurfaceReads';
-import { tileSpecOf } from './roadSurfaceReads';
-import { type TilePolys, type TileSource, tileShapes } from './roadTileShape';
-import { type Tile, type TileMeshOptions, meshTileShape } from './mesh/tileMesh';
-import type { TileRect } from './mesh/tileShape';
-import { PAINT_RISE } from './paintQuads';
-import { TERRAIN_CELL } from './terrainGrid';
+import type { Tile } from './mesh/tileMesh';
+import type { Geom, PieceReach } from './roads/pieceGeom';
+import { type MeshedSurface, pieceBundle } from './roads/pieceMesh';
+import { roadAlongPaint } from './roadMarks';
+import { roadPaint } from './roadPaint';
 
 /** ONE PASS OF THE ROADS' SURFACES AS PLAIN DATA (`roadSurfaces.ts` on the page, `nearRoadTiles.ts` in a worker): what it reads, how it is described and each of its tiles' surfaces, the same code on both sides */
 
-/** Longest triangle edge on a road at grade. */
-export const GROUND_MAX_EDGE = TERRAIN_CELL / 2;
-/** A raised deck follows nothing, so it needs vertices only for its shading. */
-export const RAISED_MAX_EDGE = TERRAIN_CELL;
-/** Whether a road at grade has ground to follow: on a new map's level ground (`RELIEF_FLAT`, no stamp) it follows nothing either, and is laid as a deck is (`RAISED_MAX_EDGE`). DO NOT refine it to half a terrain cell there: a large city's streets drew 6 M triangles of a flat plane, a quarter of the frame's (2026-10-20). */
-const followsGround = (net: Network): boolean => net.doc.terrainRelief !== RELIEF_FLAT || net.doc.terrainStamps.length > 0;
+/** DO NOT refine a surface to a grid of some edge (half a terrain cell on the ground, a cell raised): its vertices are its pieces' strips and fans,
+ *  stationed where the ground leaves their chords (`mesh/stripShape.ts` stationsOf); a large city's flat streets drew 6 M triangles of a plane on
+ *  that grid (2026-10-20). */
 
-/** The page's constants a pass is drawn with: its materials' texture scales, whether the ground verge wears the terrain's material, the carriageway's tints (made on the page with three's colour management); numbers, handed to a worker as they are. */
+/** The page's constants a pass is drawn with: its materials' texture scales, the carriageway's tints (made on the page with three's colour management); numbers, handed to a worker as they are. */
 export interface PassLook {
-  readonly groundMaterial: boolean;
   readonly scale: PassDesc['scale'];
   readonly classTint: readonly number[];
   readonly referenceTint: readonly [number, number, number];
@@ -38,17 +30,26 @@ export interface PassLook {
 /** The road a surface reads beside the field, as a pass sees it (`RoadLook`): its paving, widths and mouths. */
 export function lookOf(net: Network, id: SegmentId): RoadLook | undefined {
   const ribbon = net.ribbons.get(id);
-  if (!ribbon) return undefined;
+  const segment = net.doc.segment(id);
+  if (!ribbon || !segment) return undefined;
   const trims = net.trims.get(id);
   const materials = ribbon.road.materials;
+  const lane = laneWidth(ribbon.road);
   return {
     width: ribbon.road.width,
-    lane: laneWidth(ribbon.road),
+    lane,
+    // Its lines along it and its widths in the carriageway shader's table, at its slot (`roadPaint.ts`); its ends' plates' slots, for a plate's vertices.
+    paint: roadPaint.set(net.doc, id, roadAlongPaint(net, ribbon), ribbon.road.width / 2, lane),
+    ends: [roadPaint.nodeSlot(net.doc, segment.a), roadPaint.nodeSlot(net.doc, segment.b)],
+    id,
+    endIds: [segment.a, segment.b],
     from: trims?.a[Level.Asphalt] ?? 0,
     to: ribbon.full.length - (trims?.b[Level.Asphalt] ?? 0),
     carriageway: materials?.carriageway,
     footwayLeft: materials?.footwayLeft,
     footwayRight: materials?.footwayRight,
+    flushLeft: ribbon.road.flushLeft,
+    flushRight: ribbon.road.flushRight,
   };
 }
 
@@ -66,14 +67,8 @@ export function passRaised(net: Network, pass: SurfacePass, elevation: Pick<Road
   });
 }
 
-/** What a pass's surfaces read where the network is at hand (the page's, or a worker's own): the solved field, the ground as drawn, each road's look and line, the footways' rise and edges (made once a pass). */
-export function passReads(net: Network, elevation: RoadReads, terrainAt: (x: number, y: number) => number, inputs: SurfaceInputs, passId: string): SurfaceReads {
-  // DO NOT merge every footway of the pass: the union of a town's footways is one ring round the whole town
-  const footwayEdges = new Map<number, number[] | undefined>();
-  const edgesAt = (key: number): number[] | undefined => {
-    if (!footwayEdges.has(key)) footwayEdges.set(key, inputs.footwayEdges(passId, key));
-    return footwayEdges.get(key);
-  };
+/** What a pass's surfaces read where the network is at hand (the page's, or a worker's own): the solved field, the ground as drawn, each road's look and line, the footways' rise (made once a pass). */
+export function passReads(net: Network, elevation: RoadReads, terrainAt: (x: number, y: number) => number): SurfaceReads {
   /** Each road's look, asked per vertex: made once a pass. */
   const looks = new Map<SegmentId, RoadLook | undefined>();
   const look = (id: SegmentId): RoadLook | undefined => {
@@ -87,12 +82,11 @@ export function passReads(net: Network, elevation: RoadReads, terrainAt: (x: num
     look,
     footwayShare: (x, y) => footwayRiseShare(net, x, y),
     walkingRise: (x, y, at) => walkingRise(net, x, y, true, at),
-    footwayEdges: edgesAt,
   };
 }
 
 /** The pass as its surfaces read it, plain data: the same on the page and in a worker (`roadSurfaceReads.ts`). */
-export function passDesc(net: Network, pass: SurfacePass, raised: boolean, look: PassLook, paint: readonly string[]): PassDesc {
+export function passDesc(net: Network, pass: SurfacePass, raised: boolean, look: PassLook): PassDesc {
   const structure = roadStructure(pass.structure);
   return {
     id: pass.id,
@@ -101,42 +95,22 @@ export function passDesc(net: Network, pass: SurfacePass, raised: boolean, look:
     ...(pass.chain !== undefined ? { chain: pass.chain } : {}),
     rootType: pass.segment === undefined ? 0 : net.doc.segment(pass.segment)?.type ?? 0,
     raised,
-    maxEdge: raised || !followsGround(net) ? RAISED_MAX_EDGE : GROUND_MAX_EDGE,
-    groundMaterial: look.groundMaterial,
     scale: { asphalt: look.scale.asphalt, footway: look.scale.footway, kerb: look.scale.kerb, verge: look.scale.verge, deck: look.scale.deck },
-    paint,
-    paintLift: 0.02 + PAINT_RISE,
     classTint: look.classTint,
     referenceTint: look.referenceTint,
     pavingTint: look.pavingTint,
   };
 }
 
-/** A tile's rings without their digests: what its shapes are cut from. */
-export function polysOf(into: Reach): TilePolys {
-  const polys = (list: readonly Input[]): Poly[] => list.map((input) => input.poly);
-  return {
-    levels: { casing: polys(into.levels.casing), sidewalk: polys(into.levels.sidewalk), curb: polys(into.levels.curb), asphalt: polys(into.levels.asphalt) },
-    medians: { kerb: polys(into.medians.kerb), planting: polys(into.medians.planting), paved: polys(into.medians.paved) },
-    ramps: polys(into.ramps),
-    ribbons: polys(into.ribbons),
-    quads: new Map([...into.quads].map(([color, list]) => [color, polys(list)])),
-  };
+/** A part's shapes without their boxes and digests, by surface: what a worker meshes it from (`roads/pieceMesh.ts`). */
+export function geomsOf(into: Reach): PieceReach {
+  const out = new Map<string, readonly Geom[]>();
+  for (const [slot, inputs] of into) out.set(slot, inputs.map((input) => input.geom));
+  return out;
 }
 
-/** A surface of a pass as a tile is made of it: what it is cut from and how it is meshed. */
-interface MeshedSurface {
-  readonly source: TileSource;
-  readonly options: TileMeshOptions & { readonly name: string; readonly maxEdge: number };
-}
-
-/** Every surface of one tile, from the rings that reach it, each vertex read here (`meshTileShape`): by surface name, in the order of `specs`. */
-export function tileBundle(into: Reach, rect: TileRect, specs: readonly MeshedSurface[]): Map<string, Tile> {
-  const shapes = tileShapes(polysOf(into), rect, specs.map(tileSpecOf));
-  const bundle = new Map<string, Tile>();
-  for (const spec of specs) {
-    const shape = shapes.get(spec.options.name);
-    if (shape) bundle.set(spec.options.name, meshTileShape(shape, spec.options));
-  }
-  return bundle;
+/** Every surface of a piece, meshed whole from its shapes, each vertex read here: by surface name, in the order of `specs`; `only`, those named
+ *  alone (`pieceBundle`). */
+export function tileBundle(into: Reach, specs: readonly MeshedSurface[], only?: ReadonlySet<string>): Map<string, Tile> {
+  return pieceBundle(geomsOf(into), specs, only);
 }

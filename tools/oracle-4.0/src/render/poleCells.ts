@@ -1,17 +1,20 @@
 import { Box3, type BufferAttribute, type Camera, type Frustum, type InterleavedBuffer } from 'three';
 
 import type { ChangeJournal, ChangeRect } from '@world/changes';
-import type { PoleId } from '@world/ids';
+import type { PoleId, SegmentId, SpanId } from '@world/ids';
+import { tilesMeeting } from '@world/networkWindow';
+import { acrossJunction, lineEnd } from '@world/lineEnds';
 import type { Network } from '@world/network';
 import { m } from '@world/units';
-import type { PoleArms, UtilityPole } from '@world/utilities';
+import type { PoleArms, UtilityPole, UtilitySpan } from '@world/utilities';
 import { ViewCells, type CellKey } from '@world/viewCells';
 import type { KeptFrustum } from './cellInstances';
 import { gpuOnlyAttributes } from './mesh/gpuOnly';
 import { framePole, wireEnd } from './poleBake';
-import { BLOCK, type Block, POLE_REACH, PartStore, ScreenScale, ViewedRoot, WireStore, docPoles, screen } from './poleLayer';
+import { BLOCK, type Block, POLE_REACH, ViewedRoot, docPoles } from './poleLayer';
+import { PartStore, ScreenScale, WireStore, screen } from './poleStores';
 import type { SceneryKit } from './scenery';
-import { POLE_PART_COUNT, type Placement, type PolePartSpec, type Utilities, placePole, polePartSpecs, wireScreen } from './utilities';
+import { POLE_PART_COUNT, type Placement, type PolePartSpec, type SpanEnd, type Utilities, placePole, polePartSpecs, wireScreen } from './utilities';
 
 /** What moves a pole or its parts: the poles and wires, the roads (its kerb), the roads' heights and the ground under it. */
 const POLE_CHANGES = ['utilities', 'roads', 'elevation', 'ground', 'terrain'] as const;
@@ -28,7 +31,12 @@ const BLOCK_OVERHEAD = 4096;
 interface HeldBlock {
   readonly block: Block;
   waiting: number;
+  /** Framed while a tile round it was not held by the network (`networkWindow.ts`): its poles' kerbs not all known. */
+  readonly partial: boolean;
 }
+
+/** How far from a pole its kerb is looked for (`framePole`, `kerbward`): the tiles round a block it may reach into. */
+const KERB_REACH = m(6);
 
 /** What a view reaches on the ground (`propCells.ts` PropView): where from, how far, the ground's height there, its frustum. */
 export interface PoleView {
@@ -51,6 +59,10 @@ export class PoleCells implements Utilities {
   readonly cells: ViewCells<HeldBlock>;
   private readonly specs: readonly PolePartSpec[];
   private readonly live = new Set<Block>();
+  /** The camera (its matrices, the screen's height) and the lights' brightness the held blocks were last viewed from (`view`). */
+  private seenFrom: number[] = [];
+  /** The blocks viewed from it. */
+  private viewed = new WeakSet<Block>();
   private readonly scale = new ScreenScale();
   private readonly scratch: Placement[][] = Array.from({ length: POLE_PART_COUNT }, () => []);
   private from: { net: Network; groundAt: (x: number, y: number) => number } | null = null;
@@ -87,9 +99,39 @@ export class PoleCells implements Utilities {
     this.from = { net, groundAt };
   }
 
-  /** The diary's changes since the last look: the blocks they reached dropped, made again as the view asks. */
+  /** The network's state the blocks were last brought up to (`Network.changesSince`). */
+  private netState: object | null = null;
+
+  /** Whether a tile a block's kerbs may lie in is not held by the network now (a tile's roads come and go whole, its first one asked). */
+  private partial(rect: ChangeRect): boolean {
+    const net = this.from?.net;
+    if (!net || net.scope === null) return false;
+    for (const tile of tilesMeeting([rect[0] - KERB_REACH, rect[1] - KERB_REACH, rect[2] + KERB_REACH, rect[3] + KERB_REACH])) {
+      for (const id of net.doc.tileRoads(tile).segments) { if (!net.holds(id as SegmentId)) return true; break; }
+    }
+    return false;
+  }
+
+  /** The diary's changes since the last look, and the roads the network came to hold or let go: the blocks they reached dropped, made again as
+   *  the view asks. A pole's way to the street is its kerb in the network (`framePole`, `kerbward`), which holds the roads near the view alone
+   *  (`networkWindow.ts`). DO NOT keep a block framed before its streets were held: its poles had found the kerb of the street behind the
+   *  block or none at all, their lamps turned to the buildings, and kept so as the camera came to them (the player, 2026-10-27). */
   follow(journal: ChangeJournal): void {
     this.cells.follow(journal);
+    const net = this.from?.net;
+    if (!net) return;
+    const delta = this.netState === null ? null : net.changesSince(this.netState);
+    this.netState = net.state;
+    // The roads held moved: the blocks framed without some of them, where they came or went, framed again. DO NOT drop every block the
+    // window's move reached: each is a kilometre of poles, every one's kerb read again, at each tile the camera brings in. An edit's
+    // rebuild is the diary's (`follow` above).
+    if (!delta?.scopeOnly || !delta.rects.length) return;
+    const stale = new Set<CellKey>();
+    const pad = POLE_REACH;
+    for (const r of delta.rects) {
+      this.cells.forCellsOver([r[0] - pad, r[1] - pad, r[2] + pad, r[3] + pad], (key) => { if (this.cells.peek(key)?.partial) stale.add(key); });
+    }
+    if (stale.size) this.cells.forget(stale);
   }
 
   /** The blocks a view wants (in its reach, in its frustum or the margin round it), nearest first, made while the frame has time (one at least). */
@@ -136,7 +178,7 @@ export class PoleCells implements Utilities {
   /** A block made from the document, its buffers let go once on the GPU (and given back after a lost context: the block made again). */
   private derive(key: CellKey, rect: ChangeRect): { value: HeldBlock; cpuBytes: number } {
     const block = this.build(rect);
-    const held: HeldBlock = { block, waiting: 0 };
+    const held: HeldBlock = { block, waiting: 0, partial: this.partial(rect) };
     const buffers: (BufferAttribute | InterleavedBuffer)[] = [];
     // The parts' matrices stay on the page (tens of KB a block): the sun's shadow stores are drawn again under each pole that came, went or moved (`renderer.ts` casterChanges reads the matrices), not thrown away for a block of a kilometre coming into view. The wires' instances go to the GPU alone.
     for (const part of block.parts) {
@@ -204,7 +246,19 @@ export class PoleCells implements Utilities {
         if (span.a !== pole.id) continue;
         const other = doc.poles.get(span.b);
         if (!other) continue;
-        block.wires.add(span, wireEnd(span, frameOf(pole)), wireEnd(span, frameOf(other)));
+        block.wires.add(span, wireEnd(span, frameOf(pole), pole.kind), wireEnd(span, frameOf(other), other.kind));
+      }
+      // Its line carried across the junction it stops at (`lineEnds.ts`): drawn by the block of the lower pole, each end's arm its line's.
+      const across = acrossJunction(doc, pole.id);
+      const other = across && across.id > pole.id ? doc.poles.get(across.id) : undefined;
+      const mine = other ? lineEnd(doc, pole.id) : null;
+      if (other && mine) {
+        const strung: UtilitySpan = { id: -1 as SpanId, a: pole.id, b: other.id };
+        const end = (at: UtilityPole, line: SpanId): SpanEnd => {
+          const framed = frameOf(at);
+          return wireEnd({ ...strung, id: line }, framed, at.kind);
+        };
+        block.wires.add(strung, end(pole, mine.span), end(other, across!.span));
       }
     }
     for (const part of block.parts) part.flush();
@@ -218,15 +272,27 @@ export class PoleCells implements Utilities {
     this.live.delete(block);
   }
 
-  /** Each held block's nearest corner as this camera sees it, each time three draws the layer: what its parts fade and coarsen by. */
+  /** Each held block's nearest corner as this camera sees it, each time three draws the layer: what its parts fade and coarsen by. A camera that
+   *  has not moved since the last view sees every piece as it did: only the blocks made since are viewed. DO NOT view every piece of every
+   *  held block at every draw of a still view: it was the most of a street's frame (1.35 s of the city tour's 3.8 min in `PoleStore.view`, the
+   *  lab's tour, 2026-10-27). */
   private view(camera: Camera): void {
+    const seen = this.seenFrom;
+    // A light's pieces are shown by its brightness too (dusk lights them): a change of it is a new view.
+    const brightness = new Set<number>();
+    for (const block of this.live) for (const part of block.parts) brightness.add(part.brightness);
+    const now = [...camera.matrixWorld.elements, ...camera.projectionMatrix.elements, screen.halfHeight, ...[...brightness].sort((a, b) => a - b)];
+    const still = seen.length === now.length && now.every((v, i) => v === seen[i]);
+    if (!still) { this.seenFrom = now; this.viewed = new WeakSet(); }
     this.scale.set(camera);
     wireScreen.uWirePixels.value = screen.halfHeight;
     for (const block of this.live) {
+      if (still && this.viewed.has(block)) continue;
+      this.viewed.add(block);
       let nearest = -Infinity;
       for (const part of block.parts) if (part.count > 0) nearest = Math.max(nearest, this.scale.atBox(part.box));
       if (block.wires.count > 0) nearest = Math.max(nearest, this.scale.atBox(block.wires.box));
-      for (const part of block.parts) part.view(this.scale, nearest);
+      for (const part of block.parts) part.view(this.scale);
       block.wires.view(this.scale, nearest);
     }
   }

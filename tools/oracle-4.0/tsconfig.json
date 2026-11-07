@@ -31,7 +31,8 @@
       "@editor/*": ["./src/editor/*"],
       "@ui/*": ["./src/ui/*"],
       "@people/*": ["./src/people/*"],
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@kninnug/constrainautor": ["./src/render/constrainautor.d.ts"]
     }
   },
   "include": ["src", "tests", "vite.config.ts", "vitest.config.ts", "scripts/vite/*.ts"],

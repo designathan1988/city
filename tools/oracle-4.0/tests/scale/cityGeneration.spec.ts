@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { buildCityTableOf } from '@editor/smallCityMap';
 import type { PreparedCity } from '@editor/preparedCity';
-import { RecordTable } from '@world/buildings/recordTable';
+import { RecordTable, tableRecords } from '@world/buildings/recordTable';
 import { m } from '@world/units';
 
 setFlagsFromString('--expose_gc');
@@ -16,9 +16,11 @@ function hashText(text: string, h = 0x811c9dc5): number {
   return h >>> 0;
 }
 
-/** A prepared city as the page reads it: its data's text and every record of its table decoded, one number. */
+/** A prepared city as the page reads it: its data's text (the landscaping, the lots, the poles and the wires read back from their tables into their places, as the data held them before 2026-10-26) and every record of its buildings' table decoded, one number. */
 function cityHash(city: PreparedCity): number {
-  let h = hashText(JSON.stringify(city.data));
+  const back = (buffer: ArrayBufferLike | null): unknown[] => (buffer ? tableRecords(buffer) : []);
+  const data = { ...city.data, landscape: back(city.landscape), lots: back(city.lots), poles: back(city.poles), poleSpans: back(city.spans) };
+  let h = hashText(JSON.stringify(data));
   const table = new RecordTable(city.buildings), reader = table.reader();
   for (let row = 0; row < table.rows; row++) h = hashText(JSON.stringify(reader.record(row)), h);
   return h;
@@ -39,7 +41,10 @@ describe('a city generated off the page', () => {
   // The city of ~25,000 buildings: its data and decoded records hashed as the page reads them, the number taken on the generator before the buildings were spilled to tables (the old `prepareCity(buildLargeCityMap(7, m(2800)))`, 2026-10-22).
   it('makes the city of 25,000 buildings exactly as before', () => {
     const city = buildCityTableOf('large', 7, m(2_800));
-    expect({ buildings: new RecordTable(city.buildings).rows, hash: cityHash(city) }).toEqual({ buildings: 25_086, hash: 1_179_907_917 });
+    // 2026-10-25: 1,179,907,917 before the world's cells became 250 m (`cells.ts`, 256 m before): the pole runs are routed over regions of
+    // whole cells (`editor/poles.ts`), and the contours cut at other lines put some poles a few 1e-13 m elsewhere (the old number again with
+    // the regions at 256 m; `world/cityGoldenLarge.spec.ts` measures them).
+    expect({ buildings: new RecordTable(city.buildings).rows, hash: cityHash(city) }).toEqual({ buildings: 25_086, hash: 1_007_381_481 });
   }, 600_000);
 
   // The city of ~70,000 buildings: the live memory after each step (a collection at each) stays far below the cage; it was ~2.5 GB live (2.6 GB before collections) before (2026-10-22).

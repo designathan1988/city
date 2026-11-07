@@ -82,6 +82,11 @@ function rampsAt(net: Network, nodeId: NodeId): CurbRamp[] {
     const road = roadProfile(segment.type, segment.lanes, segment.direction, segment.section, segment.parking);
     if (!carriesPedestrians(road) || road.sidewalk <= 0) return;
     const frame = orientedPolyline(net.doc, segment, nodeId).sampleAt(at);
+    // The flare towards the node ends on the junction's mouth where that is nearer than a flare's length: past it the junction's corner does not
+    // drop, and a flare cut there by the road's end left the ramp's surface and the corner's meeting off each other's vertices. A road's own end
+    // (`at` 0) has no junction past it.
+    const room = at - half - net.mouthDistance(segmentId, nodeId);
+    const near = at > 0 ? Math.min(FLARE_RUN, Math.max(0, room)) : FLARE_RUN;
     const tx = frame.t.x, ty = frame.t.y;
     for (const side of [-1, 1] as const) {
       const nx = -ty * side, ny = tx * side;
@@ -90,6 +95,7 @@ function rampsAt(net: Network, nodeId: NodeId): CurbRamp[] {
         tx, ty, nx, ny, half,
         run: Math.min(RAMP_RUN, road.sidewalk),
         flare: FLARE_RUN,
+        near,
         segment: segmentId,
         structure: segment.structure,
       }));
@@ -120,7 +126,8 @@ function place(net: Network, state: RampState, nodeId: NodeId): void {
       if (list.length === 0) state.grid.delete(key);
     });
   }
-  if (!net.doc.node(nodeId)) { state.byNode.delete(nodeId); state.placed.delete(nodeId); return; }
+  // A node gone, or one the network does not hold whole (`Network.complete`: a road of its outside the roads held): no ramp of its.
+  if (!net.doc.node(nodeId) || !net.complete(nodeId)) { state.byNode.delete(nodeId); state.placed.delete(nodeId); return; }
   state.placed.add(nodeId);
   const ramps = rampsAt(net, nodeId);
   if (ramps.length) state.byNode.set(nodeId, ramps); else state.byNode.delete(nodeId);
@@ -147,7 +154,7 @@ function rampState(net: Network): RampState {
 }
 
 /** The network rebuilt or taken back (`Network.afterRebuild`, registered with its ramps' state): its ramps, where they are kept, brought up to it in that step, never while a walker reads them (`walkingRise`). */
-export function followRamps(net: Network): void {
+function followRamps(net: Network): void {
   const state = cache.get(net);
   if (state) bring(net, state);
 }
@@ -192,12 +199,4 @@ export function rampsMeeting(net: Network, rect: readonly [number, number, numbe
     }
   }
   return out;
-}
-
-/** A ramp's outline, its flares included, for cutting the footway and the kerb (rings of [x, y]). */
-export function rampOutline(r: CurbRamp): [number, number][] {
-  const u = r.half + r.flare;
-  const v0 = -m(0.02), v1 = r.run;
-  const at = (a: number, b: number): [number, number] => [r.x + r.tx * a + r.nx * b, r.y + r.ty * a + r.ny * b];
-  return [at(-u, v0), at(u, v0), at(u, v1), at(-u, v1)];
 }

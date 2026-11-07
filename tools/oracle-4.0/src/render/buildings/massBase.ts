@@ -9,6 +9,7 @@ import { m } from '@world/units';
 import { CELL } from '@world/cells';
 import { type Bounds, type MassSquare, type ShellGrid, indexArray, massGrid, shellBounds } from './cellArrays';
 import { BURY, LOT_COLOURS, type Rgb, TERRACE_RGB, massColours, rgbOf } from './massing';
+import type { MassRecorder, ProgramStage } from './program';
 
 /**
  * THE BUILDINGS' TOP LEVEL (the base, above the plates): every building of a plate's square as the prisms of its real blocks - each
@@ -87,7 +88,7 @@ function ringArea(xs: readonly number[], ys: readonly number[]): number {
 }
 
 /** A flat ring at `z` (plan points, anticlockwise), its triangles facing up; returns its first vertex. */
-function slab(w: CellWriter, xs: readonly number[], ys: readonly number[], z: number, colour: number): number {
+function slab(w: CellWriter, xs: ArrayLike<number>, ys: ArrayLike<number>, z: number, colour: number): number {
   const base = w.vertices;
   const flat: number[] = [];
   for (let i = 0; i < xs.length; i++) { w.vertex(xs[i]!, ys[i]!, z, colour); flat.push(xs[i]!, ys[i]!); }
@@ -102,7 +103,7 @@ function slab(w: CellWriter, xs: readonly number[], ys: readonly number[], z: nu
 }
 
 /** A block's prism: its roof (`top`, the ring shared with the walls' heads) in its colour, its walls in theirs from their foot ring. */
-function prism(w: CellWriter, xs: readonly number[], ys: readonly number[], bottom: number, top: number, wall: number, roof: number): void {
+function prism(w: CellWriter, xs: ArrayLike<number>, ys: ArrayLike<number>, bottom: number, top: number, wall: number, roof: number): void {
   const high = slab(w, xs, ys, top, roof);
   const n = xs.length;
   const low = w.vertices;
@@ -114,22 +115,25 @@ function prism(w: CellWriter, xs: readonly number[], ys: readonly number[], bott
   }
 }
 
-/** A building's blocks and paved lots into its cell's writer; `floor` as its masses' (`massFloor`), undefined with no closed block. */
-export function emitBase(w: CellWriter, b: Building, floor: number | undefined, groundAt: GroundAt, signature: boolean,
+/** A block's ring on the plan, anticlockwise. */
+function ringOf(b: Building, v: Volume): { xs: number[]; ys: number[] } {
+  const f = buildingFrame(b);
+  const xs: number[] = [], ys: number[] = [];
+  for (const p of localFootprint(v)) { xs.push(frameX(f, p.x, p.y)); ys.push(frameY(f, p.x, p.y)); }
+  if (ringArea(xs, ys) < 0) { xs.reverse(); ys.reverse(); }
+  return { xs, ys };
+}
+
+/** The base's shapes of a building's body, written into its program by the building's walk (`buildingMesh.ts` emitProgram): each closed
+ *  block's prism (its footprint stood from its foot to its eaves, a pitched roof flat at half its rise) on `floor`, the floor the walk stood
+ *  it on (the program keeps them over it); a signature building's body is drawn by its own meshes at every distance (`signature.ts`). */
+export function recordBase(rec: MassRecorder, b: Building, floor: number | undefined, signature: boolean,
   tone?: Readonly<Record<Finish, readonly [number, number, number]>>): void {
   const resolved = resolveBlocks(b);
-  const f = buildingFrame(b);
-  const ring = (v: Volume): { xs: number[]; ys: number[] } => {
-    const xs: number[] = [], ys: number[] = [];
-    for (const p of localFootprint(v)) { xs.push(frameX(f, p.x, p.y)); ys.push(frameY(f, p.x, p.y)); }
-    if (ringArea(xs, ys) < 0) { xs.reverse(); ys.reverse(); }
-    return { xs, ys };
-  };
-  // A signature building's body is drawn by its own meshes at every distance (`signature.ts`), as its masses leave it out.
   if (floor !== undefined && !signature) {
     const rgb = massColours(b, tone);
     for (const v of closedBlocks(resolved.volumes)) {
-      const { xs, ys } = ring(v);
+      const { xs, ys } = ringOf(b, v);
       if (xs.length < 3) continue;
       const pitched = v.roof !== 'flat' && v.roof !== 'terrace';
       const eaves = floor + volumeHeight(b, v);
@@ -138,10 +142,16 @@ export function emitBase(w: CellWriter, b: Building, floor: number | undefined, 
       const spec = wallMaterial(b, v, 0);
       const wall = mix(rgb(spec), GLASS, spec.finish === 'glass' ? CURTAIN_GLASS : WALL_GLASS);
       const roof = v.roof === 'terrace' ? TERRACE_RGB : rgb(roofMaterial(b, v));
-      prism(w, xs, ys, bottom, top, paint(wall), paint(roof));
+      rec.prisms.push({ xs: Float64Array.from(xs), ys: Float64Array.from(ys), bottom, top, wall: paint(wall), roof: paint(roof) });
     }
   }
-  // The paved lots, flat at the building's floor (or over the highest ground under them), as the masses lay them.
+}
+
+/** The base's paved lots of a building (its lots part, `LotsProgram`): flat at the building's floor, or over the highest ground under them
+ *  with no closed block (`floor` undefined), as the masses lay them. */
+export function recordBaseLots(rec: MassRecorder, b: Building, floor: number | undefined, groundAt: GroundAt): void {
+  const resolved = resolveBlocks(b);
+  const f = buildingFrame(b);
   const lots = resolved.volumes.filter((v) => v.open && v.open !== 'grass' && v.w * v.d >= LOT_AREA);
   if (!lots.length) return;
   let level = floor;
@@ -151,14 +161,36 @@ export function emitBase(w: CellWriter, b: Building, floor: number | undefined, 
     level = ground + LOT_LIFT;
   }
   for (const v of lots) {
-    const { xs, ys } = ring(v);
-    if (xs.length >= 3) slab(w, xs, ys, level, paint(rgbOf(LOT_COLOURS[v.open as keyof typeof LOT_COLOURS])));
+    const { xs, ys } = ringOf(b, v);
+    if (xs.length >= 3) rec.slabs.push({ xs: Float64Array.from(xs), ys: Float64Array.from(ys), level, paint: paint(rgbOf(LOT_COLOURS[v.open as keyof typeof LOT_COLOURS])) });
   }
 }
 
-/** A square's base put together from its cells' writers (each building into its own cell's, `cellOf`), on the square's grid; null with no cell. */
+/** A building's base into its cell's writer: a filter over its program (`program.ts`), the shapes its walk wrote (`recordBase`,
+ *  `recordBaseLots`), its body put on its lots' floor. */
+export function writeBase(w: CellWriter, p: ProgramStage): void {
+  const floor = p.lots.floor ?? 0;
+  for (const q of p.mass.prisms) prism(w, q.xs, q.ys, q.bottom + floor, q.top + floor, q.wall, q.roof);
+  for (const q of p.lots.slabs) slab(w, q.xs, q.ys, q.level, q.paint);
+}
+
+/** A cell's base as it is kept between jobs (`cellPool.ts` slices): its writer's arrays, its buildings' prisms and lots in their order. */
+export interface BaseSlice {
+  readonly position: Float64Array;
+  readonly paint: Uint16Array;
+  readonly index: Uint32Array;
+}
+
+/** A cell's arrays as a square's base reads them: a writer's, or a slice's. */
+interface BaseCell {
+  readonly position: ArrayLike<number>;
+  readonly paint: ArrayLike<number>;
+  readonly index: ArrayLike<number>;
+}
+
+/** A square's base put together from its cells' writers (each building into its own cell's, `cellOf`), or their slices kept (`put`), on the square's grid; null with no cell. */
 export class BaseWriter {
-  private readonly cells = new Map<string, { readonly i: number; readonly j: number; readonly w: CellWriter }>();
+  private readonly cells = new Map<string, { readonly i: number; readonly j: number; readonly w: BaseCell }>();
 
   /** The writer of the cell a building stands in (its position, as `layer.ts` cellOf files it). */
   cellOf(b: Building): CellWriter {
@@ -166,7 +198,21 @@ export class BaseWriter {
     const key = `${i},${j}`;
     let cell = this.cells.get(key);
     if (!cell) this.cells.set(key, cell = { i, j, w: new CellWriter() });
+    if (!(cell.w instanceof CellWriter)) throw new Error(`[buildings] a building walked into cell ${key}, whose base was put from its slice`);
     return cell.w;
+  }
+
+  /** A cell's base as kept (`sliceOf`), its buildings not walked. */
+  put(cell: string, slice: BaseSlice): void {
+    const comma = cell.indexOf(',');
+    this.cells.set(cell, { i: Number(cell.slice(0, comma)), j: Number(cell.slice(comma + 1)), w: slice });
+  }
+
+  /** A cell's base as its buildings wrote it, to keep (`put` reads it back the same); null where none of its buildings was written. */
+  sliceOf(cell: string): BaseSlice | null {
+    const w = this.cells.get(cell)?.w;
+    if (!w) return null;
+    return { position: Float64Array.from(w.position), paint: Uint16Array.from(w.paint), index: Uint32Array.from(w.index) };
   }
 
   done(square: MassSquare): BaseMass | null {
@@ -193,22 +239,22 @@ export class BaseWriter {
     let at = 0;
     while (at < list.length) {
       let end = at, vertices = 0, indices = 0;
-      do { vertices += list[end]!.w.vertices; indices += list[end]!.w.index.length; end++; }
-      while (end < list.length && vertices + list[end]!.w.vertices <= PIECE_VERTICES);
+      do { vertices += list[end]!.w.paint.length; indices += list[end]!.w.index.length; end++; }
+      while (end < list.length && vertices + list[end]!.w.paint.length <= PIECE_VERTICES);
       const out = new Uint16Array(vertices * BASE_VERTEX), floats = new Float32Array(vertices * 3), index = indexArray(vertices, indices);
       const cells = new Int32Array((end - at) * BASE_CELL_STRIDE);
       let v = 0, n = 0;
       for (let k = at; k < end; k++) {
         const { i, j, w } = list[k]!;
         const p = w.position;
-        for (let t = 0; t < w.vertices; t++) {
+        for (let t = 0; t < w.paint.length; t++) {
           const o = (v + t) * BASE_VERTEX;
           out[o] = q(p[t * 3]!, place.x); out[o + 1] = q(p[t * 3 + 1]!, place.y); out[o + 2] = q(p[t * 3 + 2]!, place.z); out[o + 3] = w.paint[t]!;
           floats[(v + t) * 3] = p[t * 3]!; floats[(v + t) * 3 + 1] = p[t * 3 + 1]!; floats[(v + t) * 3 + 2] = p[t * 3 + 2]!;
         }
         for (let t = 0; t < w.index.length; t++) index[n + t] = w.index[t]! + v;
         cells.set([i, j, n, w.index.length], (k - at) * BASE_CELL_STRIDE);
-        v += w.vertices;
+        v += w.paint.length;
         n += w.index.length;
       }
       pieces.push({ vertices: out, index, cells, bounds: vertices ? shellBounds(floats) : Float64Array.of(place.x, lowest, place.z, place.x, lowest, place.z, place.x, lowest, place.z, 0) });
@@ -221,6 +267,3 @@ export class BaseWriter {
 /** Every buffer of a base: handed over, not copied. */
 export const baseBuffers = (base: BaseMass): ArrayBuffer[] =>
   base.pieces.flatMap((piece) => [piece.vertices, piece.index, piece.cells, piece.bounds].map((a) => a.buffer as ArrayBuffer));
-
-/** The bytes a base holds on the GPU: its vertices and indices. */
-export const baseBytes = (base: BaseMass): number => base.pieces.reduce((sum, piece) => sum + piece.vertices.byteLength + piece.index.byteLength, 0);

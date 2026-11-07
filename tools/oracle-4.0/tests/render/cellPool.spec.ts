@@ -4,6 +4,7 @@ import { BoxGeometry, Mesh, MeshBasicMaterial, type WebGLRenderer } from 'three'
 import type { KitBoxes } from '@render/buildings/cellArrays';
 import type { CellJob } from '@render/buildings/cellWork';
 import { GroundShare } from '@render/sharedGround';
+import { CELL } from '@world/cells';
 import { cancelWarm, drainWarm, warmLooseAhead } from '@render/uploads';
 import type { ToJob } from '@/jobs/jobScope';
 
@@ -127,7 +128,8 @@ describe('a cell job no longer wanted', () => {
     const id = pool.run('cell', '0,0', [], { ...env, pavedAt }, () => landed++);
     const worker = FakeWorker.made[0]!;
     answer(worker, { kind: 'wider', job: id, rect: [-500, -500, 500, 500] });
-    expect(rects).toEqual([[-64, -64, 320, 320], [-500, -500, 500, 500]]);
+    // Cell 0,0's square (`world/cells.ts` CELL) and the paving's reach round it (`cellPool.ts` PAVING_REACH, 64 m), then the wider one asked.
+    expect(rects).toEqual([[-64, -64, CELL + 64, CELL + 64], [-500, -500, 500, 500]]);
     expect(started(worker)).toEqual([id, id]);
     answer(worker, empty(id));
     expect(landed).toBe(1);

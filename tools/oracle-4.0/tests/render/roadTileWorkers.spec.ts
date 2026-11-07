@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { RoadDoc } from '@world/doc';
 import { m } from '@world/units';
 import { Network } from '@world/network';
-import { buildRoadElevation } from '@world/elevation';
+import { buildRoadElevation, type RoadElevation, type SolveScope } from '@world/elevation';
 import { planCity, DEFAULT_CITY } from '@world/cityGen/plan';
 import { layCity } from '@editor/cityGenerator';
 import type { SceneMaterials } from '@render/materials';
@@ -18,6 +18,7 @@ import type { Building } from '@world/buildings/types';
 import { TileMesher, type TileMeshes } from '@render/roadTileMesh';
 import type { RoadTiler, TileJob } from '@render/roadTilePool';
 import { marksRoadSection } from '@render/mesh/roadEdges';
+import { roadMarks } from '@render/roadMarks';
 
 /** A stand-in material that reads every attribute a road surface may carry: the digests cover all of them. */
 function readingAll(): MeshBasicMaterial {
@@ -95,9 +96,8 @@ function authored(): RoadDoc {
   return RoadDoc.fromJSON(file.document as never);
 }
 
-async function stepped(net: Network, tiler: RoadTiler, groundMaterial?: MeshBasicMaterial): Promise<RoadSurfaces> {
-  const elevation = buildRoadElevation(net, ground);
-  const steps = roadSurfaceSteps(net, elevation, materials, ground, undefined, groundMaterial, tiler);
+async function stepped(net: Network, elevation: RoadElevation, tiler: RoadTiler): Promise<RoadSurfaces> {
+  const steps = roadSurfaceSteps(net, elevation, materials, ground, undefined, tiler);
   for (;;) {
     const step = steps.next();
     if (step.done) { step.value.adopt(); return step.value; }
@@ -107,39 +107,50 @@ async function stepped(net: Network, tiler: RoadTiler, groundMaterial?: MeshBasi
 }
 
 describe('road surface tiles made off the page', () => {
-  for (const [name, make, lawn] of [
-    ['the grid and bends fixture', () => RoadDoc.fromJSON(JSON.parse(readFileSync('tests/fixtures/grid-and-bends.json', 'utf8')).document), false],
-    ['a generated city', () => layCity(planCity({ ...DEFAULT_CITY, seed: 2, size: 'small' })), true],
-    ['the fixture with a road at authored heights, a flush footway and paving', authored, false],
+  for (const [name, make] of [
+    ['the grid and bends fixture', () => RoadDoc.fromJSON(JSON.parse(readFileSync('tests/fixtures/grid-and-bends.json', 'utf8')).document)],
+    ['a generated city', () => layCity(planCity({ ...DEFAULT_CITY, seed: 2, size: 'small' }))],
+    ['the fixture with a road at authored heights, a flush footway and paving', authored],
   ] as const) it(`build ${name} as the page does, byte for byte`, async () => {
     const doc = make();
     const net = new Network(doc);
     net.rebuild();
     if (make === authored) expect(net.flushCells.size).toBeGreaterThan(0);
-    // The ground verge on the terrain's own material (its UV in world x, y) in one of the two.
-    const groundMaterial = lawn ? readingAll() : undefined;
-    const here = buildRoadSurfaces(net, buildRoadElevation(net, ground), materials, ground, undefined, groundMaterial);
-    const tiler = workerTiler();
-    const off = await stepped(net, tiler, groundMaterial);
-    expect(tiler.asked).toBeGreaterThan(20);
-    // Every tile made off the page, the ground read on the page only where a worker asked.
-    expect(off.built).toBe(tiler.asked);
-    expect(tiler.groundAsked).toBeGreaterThan(0);
-    expect(bytesOf(off.group)).toBe(bytesOf(here.group));
-    // Each block bounded by its tiles' boxes (`surfaceTiles.ts`): the box its vertices give, a sphere holding them.
-    let blocks = 0;
-    const p = new Vector3();
-    off.group.traverse((object) => {
-      const geometry = (object as { geometry?: BufferGeometry }).geometry;
-      if (!geometry) return;
-      blocks++;
-      const position = geometry.getAttribute('position');
-      const exact = new Box3().setFromBufferAttribute(position as never);
-      expect(geometry.boundingBox!.equals(exact), object.name).toBe(true);
-      const sphere = geometry.boundingSphere!;
-      for (let i = 0; i < position.count; i++) expect(sphere.distanceToPoint(p.fromBufferAttribute(position as never, i))).toBeLessThanOrEqual(1e-3);
-    });
-    expect(blocks).toBeGreaterThan(0);
+    // Every road solved; and the roads of the west half alone (`SolveScope`, a scoped opening's), the rest left for a later solve: those lie on
+    // the ground (`roadField.ts` onSegment), the one thing a worker reads of it, asked of the page (`TileMesher` need).
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (const n of doc.nodes.values()) { x0 = Math.min(x0, n.x); x1 = Math.max(x1, n.x); y0 = Math.min(y0, n.y); y1 = Math.max(y1, n.y); }
+    const west: SolveScope = { region: [x0 - 1, y0 - 1, (x0 + x1) / 2, y1 + 1] };
+    for (const scope of [null, west]) {
+      const elevation = buildRoadElevation(net, ground, null, undefined, null, scope);
+      if (scope) expect(elevation.pendingRoads?.() ?? []).not.toHaveLength(0);
+      const here = buildRoadSurfaces(net, elevation, materials, ground);
+      const tiler = workerTiler();
+      const off = await stepped(net, elevation, tiler);
+      expect(tiler.asked).toBeGreaterThan(20);
+      // Every tile made off the page, the ground read on the page only where a worker asked: no surface reads it at its every vertex (the
+      // terrain meets the roads, `terrainSeams.ts`), a road the solve left does.
+      expect(off.built).toBe(tiler.asked);
+      if (scope) expect(tiler.groundAsked).toBeGreaterThan(0);
+      else expect(tiler.groundAsked).toBe(0);
+      expect(bytesOf(off.group)).toBe(bytesOf(here.group));
+      // Each block bounded by its tiles' boxes (`surfaceTiles.ts`): the box its vertices give, a sphere holding them.
+      let blocks = 0;
+      const p = new Vector3();
+      off.group.traverse((object) => {
+        const geometry = (object as { geometry?: BufferGeometry }).geometry;
+        if (!geometry) return;
+        blocks++;
+        const position = geometry.getAttribute('position');
+        const exact = new Box3().setFromBufferAttribute(position as never);
+        expect(geometry.boundingBox!.equals(exact), object.name).toBe(true);
+        const sphere = geometry.boundingSphere!;
+        for (let i = 0; i < position.count; i++) expect(sphere.distanceToPoint(p.fromBufferAttribute(position as never, i))).toBeLessThanOrEqual(1e-3);
+      });
+      expect(blocks).toBeGreaterThan(0);
+      here.dispose();
+      off.dispose();
+    }
   });
 });
 
@@ -161,7 +172,6 @@ describe('road surface inputs kept between builds', () => {
   const reuse: SurfaceReuse = {
     tiles: new Map(),
     dependsOn: (minX, minY, maxX, maxY) => elevation.digest(minX, minY, maxX, maxY),
-    paint: new Map(),
     chunks: new Map(),
     inputs: new SurfaceInputs(),
   };
@@ -222,7 +232,11 @@ describe('road surface inputs kept between builds', () => {
     const out = ribbon.road.width / 2 + m(6);
     const lot = { ...generateBody('residential', 30, 30, 2), x: mid.p.x + mid.n.x * out, y: mid.p.y + mid.n.y * out, rotation: 0,
       elements: [{ id: 1, kind: 'parking', x: 0, y: 0, facing: 0, w: m(8), d: m(8), z: 0, h: 0 }] } as unknown as Building;
-    expect(after(() => { doc.buildings.add(lot); }).built).toBeGreaterThan(0);
+    // Its bays keep clear of the lot's gate: the street's parking placed again. They are marks the carriageway's shader draws (`roadMarks.ts`), no
+    // polygon of a road's tile: the street's marks change, and the warm build is still the fresh one byte for byte (`after`).
+    const filed = roadMarks.filedDigest(doc, { kind: 'segment', id: street.id });
+    after(() => { doc.buildings.add(lot); });
+    expect(roadMarks.filedDigest(doc, { kind: 'segment', id: street.id })).not.toBe(filed);
   });
 });
 
@@ -236,9 +250,9 @@ describe('the road tiles kept for a later session by their workers', () => {
     const budget = new WriteBudget(1024);
     // Something else holds the ceiling: the tiles wait for it, none is dropped.
     const held = await budget.take(1024);
-    const tile = (n: number): TileMeshes => [['asphalt', { positions: new Float32Array(n) } as unknown as TileMeshes[number][1]]];
+    const tile = (n: number): TileMeshes => [['asphalt', { positions: new Float32Array(n), sections: new Float32Array(0) } as unknown as TileMeshes[number][1]]];
     let kept: number[] | null = null;
-    void keepTiles([tile(300), tile(300), tile(300)], { prefix: 'p:', keys: ['a', null, 'c'] }, budget).then((k) => { kept = k; });
+    void keepTiles([tile(300), tile(300), tile(300)], { prefix: 'p:', keys: ['a', null, 'c'] }, { pieceOf: () => undefined }, new Set(), budget).then((k) => { kept = k; });
     await new Promise((done) => setTimeout(done, 0));
     expect(kept).toBeNull();
     held();
@@ -250,8 +264,8 @@ describe('the road tiles kept for a later session by their workers', () => {
 
   it('says none kept where there is no store (a desktop job process): the page keeps them', async () => {
     const { keepTiles } = await import('@render/roadTile.worker');
-    const tile: TileMeshes = [['asphalt', { positions: new Float32Array(3) } as unknown as TileMeshes[number][1]]];
-    expect(await keepTiles([tile, tile], { prefix: 'p:', keys: ['a', 'b'] })).toEqual([]);
+    const tile: TileMeshes = [['asphalt', { positions: new Float32Array(3), sections: new Float32Array(0) } as unknown as TileMeshes[number][1]]];
+    expect(await keepTiles([tile, tile], { prefix: 'p:', keys: ['a', 'b'] }, { pieceOf: () => undefined }, new Set())).toEqual([]);
   });
 
   it('leaves the page nothing to keep of a tile its worker kept: the key marked, no arrays held', async () => {
@@ -268,11 +282,11 @@ describe('the road tiles kept for a later session by their workers', () => {
     const keptKeys: string[] = [];
     let pageKept = 0;
     const reuse = {
-      tiles: new Map(), dependsOn: () => 0, paint: new Map(), chunks: new Map(),
+      tiles: new Map(), dependsOn: () => 0, chunks: new Map(),
       workersKeep: 'roadtiles:test:', kept: (key: string) => { keptKeys.push(key); }, keep: () => { pageKept++; },
     } as unknown as Parameters<typeof roadSurfaceSteps>[4];
     const elevation = buildRoadElevation(net, ground);
-    const steps = roadSurfaceSteps(net, elevation, materials, ground, reuse, undefined, tiler);
+    const steps = roadSurfaceSteps(net, elevation, materials, ground, reuse, tiler);
     for (;;) {
       const step = steps.next();
       if (step.done) break;

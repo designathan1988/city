@@ -39,7 +39,7 @@ export interface PoleLines {
 /** The edges of a set of contours filed by place: each edge (contour, index) in every bucket its bounds reach. */
 interface ContourEdges { readonly buckets: ReadonlyMap<number, readonly number[]>; readonly scratch: ContourScratch }
 /** Bucket edge of the contour index, world units: about the reach of the questions asked of it. */
-const EDGE_BUCKET = m(8);
+const EDGE_BUCKET = m(10);
 const edgeBucket = (bx: number, by: number): number => (bx + 1048576) * 2097152 + (by + 1048576);
 
 function contourEdges(contours: readonly Polyline[]): ContourEdges {

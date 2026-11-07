@@ -11,6 +11,7 @@ import {
   Vector4,
   type WebGLRenderer,
 } from 'three';
+import { PLATE_SIZE } from '@world/bounds';
 import type { NatureSettings } from '@world/ecology';
 import type { ReliefVersion } from '@world/terrain';
 import { takeWaitingPictures } from './plantImpostors';
@@ -21,8 +22,9 @@ import { fillArrays, gpuOnlyAttributes } from './mesh/gpuOnly';
 
 /** DO NOT go back to one mesh of the map: its 102,400 instances */
 
-/** Most trees a plate draws: its budget at the map's scale with room (`farWoods.ts` HEADROOM). */
-const SLOT = 4_096;
+/** Most trees a plate draws: its budget at the map's scale with room (`farWoods.ts` HEADROOM), over the plate's area (`world/bounds.ts` PLATE_SIZE:
+ *  the 4,096 of a plate of 2,048 m, as many to the square metre: 3,907 on a plate of 2,000 m). */
+const SLOT = Math.ceil(4_096 * (PLATE_SIZE / 2_048) ** 2);
 /** How long after a plate's own trees could grow its far ones start to go, and how long they take, seconds. */
 const NEAR_GROWS = 0.7;
 const DISSOLVE = 0.6;

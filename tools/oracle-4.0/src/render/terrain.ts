@@ -47,8 +47,9 @@ import type { PlateMesh } from './plateMesh';
 import { stageTexels, type StagedTexels, type TexelBox } from './stagedTexels';
 import { cancelUploads } from './uploads';
 import { ecologyCornersInto, groundCornersInto, landTexelsInto, lightLayerInto, type CornerCover, type CornerStore } from './plateTexels';
-import { LOD_LEVELS, LandLevels } from './terrainLevels';
-import { LandLod, lodFragmentGlsl, lodVertexGlsl, type LandGrid } from './terrainLod';
+import { LOD_LEVELS, LOD_PATCH, LandLevels } from './terrainLevels';
+import { LandLod, lodFragmentGlsl, lodVertexGlsl, seamVertexGlsl, type LandGrid } from './terrainLod';
+import { type JoinedSeams, type PlateSeams, type SeamGrid, type SeamOutline, type SeamSource, joinSeams, plateSeams, seamHeightAt } from './terrainSeams';
 import type { ChangeJournal } from '@world/changes';
 import {
   MAX_TERRAIN_STAMPS,
@@ -92,8 +93,8 @@ const WATER_SPREAD = 1.6;
 const WATER_FILL = 0.45;
 /** How far under the ground the surface stays, so its rim is never left dry. */
 const WATER_MARGIN = m(0.16);
-/** Grid resolution of the unified river surface. */
-const WATER_CELL = m(1.6);
+/** Grid resolution of the unified river surface: the universal grid's step (`world/grid.ts` GRID_STEP). */
+const WATER_CELL = m(1);
 
 
 
@@ -107,7 +108,7 @@ const plateGrid = { n: GRID, cell: TERRAIN_CELL, half: TERRAIN_HALF } as const;
 /** A plate's grid as its patches read it (`terrainLod.ts`). */
 const LAND_GRID: LandGrid = { seg: TERRAIN_SEGMENTS, cell: TERRAIN_CELL, half: TERRAIN_HALF };
 /** The ground's place in three's opaque order (`renderOrder`): after the layers standing on it, whose order is 0 (a faded building 1, a ghost 2). */
-export const GROUND_AFTER = 10;
+const GROUND_AFTER = 10;
 
 /** Where the grass field stands this frame (`grassField.ts`): world x, y, how far it reaches, and 1 when it is drawn. */
 const GRASS_FIELD: { value: [number, number, number, number] } = { value: [0, 0, 0, 0] };
@@ -188,6 +189,15 @@ export interface TerrainSurface {
   rectOf(region: TerrainRegion): readonly [number, number, number, number];
   /** The plates the ground is made of, each with its own surface (`TerrainPart`). */
   readonly parts: readonly TerrainPart[];
+  /** The surfaces laid on a plate's ground, its own frame (`terrainSeams.ts`): the cells their edges cut drawn conformed to them, in place of the
+   *  grid's. `rect`: the box of the plate they changed in (none: anywhere). */
+  setSeams?(outline: SeamOutline | null, rect?: readonly [number, number, number, number] | null): void;
+  /** Where the surfaces laid on the ground are read from, world coordinates (the atlas: each plate asks for its own box as it is made). */
+  seamSource?(source: SeamSource | null): void;
+  /** The surfaces laid on the ground changed in these world boxes (null: anywhere): the plates they reach cut again. */
+  seamsMoved?(rects: readonly (readonly [number, number, number, number])[] | null): void;
+  /** A digest of the cut cells' terrain inside a rectangle: what `renderedHeightAt` reads there besides the grid (`digest`). */
+  seamDigest?(minX: number, minY: number, maxX: number, maxY: number): number;
   /** The highest corner of the drawn ground, when the surface keeps it as its ground moves (the atlas, from its plates') */
   highest?(): number;
   /** Told each time the levels of the drawn ground land after a dab or a shaping pass (`highest` to read again): they are measured off the page and come after it (`landStroke.ts`). */
@@ -270,8 +280,8 @@ const LAND_ROCK = 2;
 const LAND_DIRT = 8;
 
 /** The terrain material: three surfaces blended by slope, height and noise. */
-/** Texels across a plate in each painted-ground weight texture. */
-const PAINT_RES = 1024;
+/** Texels across a plate in each painted-ground weight texture: 2 m a texel over its 2,000 m (`world/bounds.ts` PLATE_SIZE). */
+const PAINT_RES = 1000;
 
 /** Lays one biome dab on the terrain's corners: within its radius the painted biome weights move towards the dab's biome */
 function rasterBiome(weights: Float32Array, dab: PaintDab): void {
@@ -301,8 +311,10 @@ function rasterBiome(weights: Float32Array, dab: PaintDab): void {
 const PAINT_LAYERS = 3;
 /** The array layer holding the corners' ecology (RGB) and the land's slope (A, `terrainLightCompute.ts`), corner by corner */
 const LIGHT_LAYER = 2;
-/** The side of the painted ground's array before anything is painted on it: the land's light layer */
-const PAINT_START_RES = Math.min(PAINT_RES, 2 ** Math.ceil(Math.log2(TERRAIN_SEGMENTS + 1)));
+/** The side of the painted ground's array before anything is painted on it, and a painted plate's far from the view (`paintDetail`): half the full side,
+ *  4 m a texel over the plate (as 512 over the 2,048 m plates were), never under the corners its light layer holds one by one. DO NOT take the power of
+ *  two over the corners (256 for 201): the far plates' paint at 7.8 m a texel. */
+const PAINT_START_RES = Math.max(GRID, PAINT_RES / 2);
 /** The painted ground's array, its texels on the page only while sent (`stageTexels`). */
 function paintLayers(res = PAINT_START_RES): DataArrayTexture {
   const texture = new DataArrayTexture(null, res, res, PAINT_LAYERS);
@@ -391,8 +403,9 @@ interface TerrainLodShader {
   readonly uniforms: Record<string, { value: unknown }>;
 }
 
-/** The land's material: on an ordinary mesh of the ground (`lod` null: the far patches, the verges), or on a plate's patches (`terrainLod.ts`). */
-function terrainMaterial(bakes: TerrainBakes, data: TerrainData, lod: TerrainLodShader | null): MeshStandardMaterial {
+/** The land's material: on an ordinary mesh of the ground (`lod` null: the far patches, a structure's backfill), on a plate's patches (`terrainLod.ts`),
+ *  or on its cut cells (`seam`: `terrainSeams.ts`, placed by `seamVertexGlsl`). */
+function terrainMaterial(bakes: TerrainBakes, data: TerrainData, lod: TerrainLodShader | null, seam = false): MeshStandardMaterial {
   const material = new MeshStandardMaterial({
     color: 0xffffff,
     map: bakes.grass.map,
@@ -406,14 +419,14 @@ function terrainMaterial(bakes: TerrainBakes, data: TerrainData, lod: TerrainLod
   material.normalScale.set(0.8, 0.8);
   material.userData = data.userData;
   // The shadow's normal offset reads the patches' own normals (three defines it only for a `normal` attribute: `shadowmap_vertex`).
-  if (lod) material.defines = { HAS_NORMAL: '' };
+  if (lod && !seam) material.defines = { HAS_NORMAL: '' };
   const uniforms = lod ? { ...data.uniforms, ...lod.uniforms } : data.uniforms;
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
-    landShader(shader, lod?.grid ?? null);
+    landShader(shader, lod?.grid ?? null, seam);
   };
   // A changed program key forces three to compile this variant separately from any other standard material in the scene.
-  material.customProgramCacheKey = () => (lod ? 'terrain-splat-v35-lod' : 'terrain-splat-v35');
+  material.customProgramCacheKey = () => (lod ? (seam ? 'terrain-splat-v36-seam' : 'terrain-splat-v36-lod') : 'terrain-splat-v36');
   // The lots coloured into the land (`lotOverlay.ts`), at its world position.
   applyLotOverlay(material, { world: 'vTerrainAtlas' });
   return material;
@@ -516,15 +529,17 @@ function swap(source: string, chunk: string, by: string): string {
   return source.replace(chunk, by);
 }
 
-/** The land's shaders: splatting by slope, rock and paint; on a plate's patches (`grid`), the ground read from the land's texels (`terrainLod.ts`). */
-function landShader(shader: WebGLProgramParametersWithUniforms, grid: LandGrid | null): void {
+/** The land's shaders: splatting by slope, rock and paint; on a plate's patches (`grid`), the ground read from the land's texels (`terrainLod.ts`);
+ *  on its cut cells (`seam`), their own mesh placed as the patches round it are (`seamVertexGlsl`) and shaded from its own vertices. */
+function landShader(shader: WebGLProgramParametersWithUniforms, grid: LandGrid | null, seam = false): void {
+  const own = 'varying vec3 vTerrainWorld;\nvarying vec3 vTerrainAtlas;\nvarying vec3 vTerrainNormal;';
   {
     let vertex = swap(shader.vertexShader, '#include <common>', `#include <common>
          uniform vec3 uTileOrigin;
-         ${grid ? lodVertexGlsl(grid) : 'varying vec3 vTerrainWorld;\nvarying vec3 vTerrainAtlas;\nvarying vec3 vTerrainNormal;'}`);
+         ${grid ? (seam ? `${seamVertexGlsl(grid)}\n${own}` : lodVertexGlsl(grid)) : own}`);
     if (grid) {
-      // The patch placed and morphed first: the uvs, the normal and the position read it (`terrainLod.ts` landVertex).
-      vertex = swap(vertex, '#include <uv_vertex>', `landVertex();
+      // The patch placed and morphed first: the uvs, the normal and the position read it (`terrainLod.ts` landVertex, seamVertex).
+      vertex = swap(vertex, '#include <uv_vertex>', `${seam ? 'seamVertex();' : 'landVertex();'}
          #ifdef USE_MAP
            vMapUv = (mapTransform * vec3(landUv, 1.0)).xy;
          #endif
@@ -533,7 +548,10 @@ function landShader(shader: WebGLProgramParametersWithUniforms, grid: LandGrid |
          #endif`);
       vertex = swap(vertex, '#include <beginnormal_vertex>', 'vec3 objectNormal = landN;');
       vertex = swap(vertex, '#include <begin_vertex>', 'vec3 transformed = landP;');
-      vertex = swap(vertex, '#include <worldpos_vertex>', `#include <worldpos_vertex>
+      vertex = swap(vertex, '#include <worldpos_vertex>', seam ? `#include <worldpos_vertex>
+         vTerrainAtlas = (modelMatrix * vec4(transformed, 1.0)).xyz;
+         vTerrainWorld = vTerrainAtlas - uTileOrigin;
+         vTerrainNormal = normalize(mat3(modelMatrix) * objectNormal);` : `#include <worldpos_vertex>
          vLandAtlas = (modelMatrix * vec4(transformed, 1.0)).xyz;`);
     } else {
       vertex = swap(vertex, '#include <worldpos_vertex>', `#include <worldpos_vertex>
@@ -544,7 +562,7 @@ function landShader(shader: WebGLProgramParametersWithUniforms, grid: LandGrid |
     }
     shader.vertexShader = vertex;
   }
-  if (grid) {
+  if (grid && !seam) {
     // Every point shaded as the full ground under it: the level that drew it moves it by under a pixel, never its colour.
     shader.fragmentShader = swap(shader.fragmentShader, 'void main() {', 'void main() {\n  landSurface();');
     shader.fragmentShader = swap(shader.fragmentShader, '#include <normal_fragment_begin>',
@@ -555,7 +573,7 @@ function landShader(shader: WebGLProgramParametersWithUniforms, grid: LandGrid |
       .replace(
         '#include <common>',
         `#include <common>
-         ${grid ? lodFragmentGlsl(grid) : 'varying vec3 vTerrainWorld;\nvarying vec3 vTerrainAtlas;\nvarying vec3 vTerrainNormal;'}
+         ${grid && !seam ? lodFragmentGlsl(grid) : own}
          // The land's colours and normals, two arrays (\`LAND_ROCK\`, \`LAND_DIRT\`)
          uniform sampler2DArray uLandMaps;
          uniform sampler2DArray uLandNormals;
@@ -1326,9 +1344,10 @@ export function wallMaterial(anisotropy: number): MeshStandardMaterial {
   return material;
 }
 
-/** One plate of the ground (`flatAtlas.ts`); `heights`, the shared arrays it keeps its corners in, read by the workers (`sharedGround.ts`). */
+/** One plate of the ground (`flatAtlas.ts`); `heights`, the shared arrays it keeps its corners in, read by the workers (`sharedGround.ts`), and
+ *  `shareSeams`, told of its cut cells each time they are cut again, for the workers to read the ground as drawn there too. */
 export function createTerrainSurface(anisotropy: number, origin: { readonly x: number; readonly y: number }, plate: number, prebuilt: PlateMesh | null = null,
-  heights: PlateHeights | null = null): PlateSurface {
+  heights: PlateHeights | null = null, shareSeams: ((seams: JoinedSeams | null) => void) | null = null): PlateSurface {
   const bakes = terrainBakes(anisotropy);
   // DO NOT keep a CPU copy of what the GPU holds: each texture's texels are worked out from their truth when three sends them (`stagedTexels.ts`).
   let paintArray = paintLayers();
@@ -1362,8 +1381,16 @@ export function createTerrainSurface(anisotropy: number, origin: { readonly x: n
   const levels = new LandLevels(TERRAIN_SEGMENTS);
   // A skirt on every side: the world goes on past each edge (a far patch or another plate meets it there).
   const lod = new LandLod(levels, LAND_GRID, origin, { west: true, east: true, north: true, south: true });
-  const lodUniforms = { uLand: { value: land as Texture }, uLodMorph: { value: lod.morph }, uLodSkirt: { value: lod.skirt } };
+  // THE CUT CELLS (`terrainSeams.ts`): a byte a cell (255 cut), the patches leave them out at the nearest level (`terrainLod.ts` uSeamCells) and
+  // their own mesh draws them (`seamMesh`).
+  const seamCells = new DataTexture(new Uint8Array(TERRAIN_SEGMENTS * TERRAIN_SEGMENTS), TERRAIN_SEGMENTS, TERRAIN_SEGMENTS, RedFormat, UnsignedByteType);
+  seamCells.magFilter = NearestFilter;
+  seamCells.minFilter = NearestFilter;
+  seamCells.generateMipmaps = false;
+  seamCells.needsUpdate = true;
+  const lodUniforms = { uLand: { value: land as Texture }, uLodMorph: { value: lod.morph }, uLodSkirt: { value: lod.skirt }, uSeamCells: { value: seamCells as Texture } };
   const groundMaterial = terrainMaterial(bakes, data, { grid: LAND_GRID, uniforms: lodUniforms });
+  const seamMaterial = terrainMaterial(bakes, data, { grid: LAND_GRID, uniforms: { ...lodUniforms, uSeamPatches: { value: lod.seamPatches } } }, true);
   /** The plate's patches (`lod.geometry`) and its rim's (`lod.rimGeometry`), placed each frame by `lookFrom`. */
   const patchMesh = (geometry: BufferGeometry, name: string): Mesh => {
     const mesh = new Mesh(geometry, groundMaterial);
@@ -1384,6 +1411,18 @@ export function createTerrainSurface(anisotropy: number, origin: { readonly x: n
     return mesh;
   };
   const ground = patchMesh(lod.geometry, 'terrain-ground');  const rim = patchMesh(lod.rimGeometry, 'terrain-rim');
+  /** The cut cells' mesh (`recut`): drawn as the patches are, a patch's triangles while it is drawn at the nearest level (`seamVertexGlsl`). */
+  const seamMesh = new Mesh(new BufferGeometry(), seamMaterial);
+  seamMesh.name = 'terrain-seams';
+  seamMesh.receiveShadow = true;
+  seamMesh.castShadow = false;
+  // Culled patch by patch with the patches (`LandLod.seamPatches`).
+  seamMesh.frustumCulled = false;
+  seamMesh.renderOrder = GROUND_AFTER;
+  seamMesh.matrixAutoUpdate = false;
+  seamMesh.position.set(origin.x, 0, -origin.y);
+  seamMesh.updateMatrix();
+  seamMesh.visible = false;
 
   /** The woods' base made off the page with the first build (`woodsBase`), while it holds. */
   let woods: Float32Array | null = null;
@@ -1475,6 +1514,8 @@ export function createTerrainSurface(anisotropy: number, origin: { readonly x: n
     const held = landTexels.held;
     if (held) landTexelsInto(grid, flip, GRID, TERRAIN_HALF, TERRAIN_CELL, held, { x0: x0 - 1, x1: x1 + 1, y0: y0 - 1, y1: y1 + 1 });
     levelsBox = unionBox(levelsBox, [x0, x1, y0, y1]);
+    // The cut cells among them cut again: their errors and their edges' normals read the corners (their corners' heights the shader reads itself).
+    recutCorners(x0, x1, y0, y1);
     measureMoved();
   };
   /** THE LEVELS OFF THE PAGE: the corners moved since the levels were last measured, the one job measuring them (`landStroke.ts`), and the drawing it stands for. */
@@ -1499,8 +1540,8 @@ export function createTerrainSurface(anisotropy: number, origin: { readonly x: n
     levelsBox = null;
     if (!landStrokeOffPage()) { measureOnPage(box); return; }
     const generation = levelsGeneration;
-    const job: LevelsJob = { kind: 'levels', seg: TERRAIN_SEGMENTS, heights: grid.slice(), flip: flip.slice(), levels: levels.data.slice(), box };
-    levelsJob = askLandStroke(job, [job.heights.buffer, job.flip.buffer, job.levels.buffer], (data) => {
+    const job: LevelsJob = { kind: 'levels', seg: TERRAIN_SEGMENTS, heights: grid.slice(), flip: flip.slice(), levels: levels.data.slice(), seams: levels.seams.slice(), box };
+    levelsJob = askLandStroke(job, [job.heights.buffer, job.flip.buffer, job.levels.buffer, job.seams.buffer], (data) => {
       levelsJob = null;
       if (disposed) return;
       // Nothing else wrote the levels meanwhile (a whole measure moves the generation): the worker's are the page's own, measured.
@@ -1526,6 +1567,7 @@ export function createTerrainSurface(anisotropy: number, origin: { readonly x: n
     rediagonal(0, GRID - 1, 0, GRID - 1);
     landTexels.hold(null);
     levelsMeasuredWhole();
+    if (seamCut.size) recut(new Set(seamCut.keys()), false);
     levels.markAll();
     levels.measure(grid, flip);
     sendAllLand();
@@ -1588,7 +1630,16 @@ export function createTerrainSurface(anisotropy: number, origin: { readonly x: n
     return sampleCorners(plateGrid, corners, diagonals, x, y);
   };
 
-  const renderedHeightAt = (x: number, y: number): number => sampleGrid(grid, flip, x, y);
+  /** The cut cells as last cut, one mesh (`recut`): null while none is. */
+  let joined: JoinedSeams | null = null;
+  const renderedHeightAt = (x: number, y: number): number => {
+    // In a cut cell, the terrain drawn there (`terrainSeams.ts`); under a road and everywhere else, the grid.
+    if (joined && x >= -TERRAIN_HALF && x <= TERRAIN_HALF && y >= -TERRAIN_HALF && y <= TERRAIN_HALF) {
+      const h = seamHeightAt(joined, plateGrid, (i) => grid[i]!, x, y);
+      if (h !== undefined) return h;
+    }
+    return sampleGrid(grid, flip, x, y);
+  };
   const naturalRenderedHeightAt = (x: number, y: number): number => sampleGrid(natural, naturalFlip, x, y);
 
   /** Where a corner stands, the plate's own (x, y): as its mesh held it (float32), so the heights read there are the ones always read. */
@@ -1605,6 +1656,73 @@ export function createTerrainSurface(anisotropy: number, origin: { readonly x: n
       }
     }
     chooseDiagonals(natural, naturalFlip, x0, x1, y0, y1);
+  };
+
+  /** THE SURFACES LAID ON THE PLATE (its own frame, `setSeams`) as last given, the patches their edges cut (`plateSeams`), by patch. */
+  let seamOutline: SeamOutline | null = null;
+  let seamCut: PlateSeams = new Map();
+  const seamGrid: SeamGrid = { n: GRID, cell: TERRAIN_CELL, half: TERRAIN_HALF, corner: (i) => grid[i]!, diagonal: (c) => flip[c]! };
+  /** The patches (`px + py * patches`) whose cells a box of corners (inclusive) touches, a cell round. */
+  const patchesOfCorners = (x0: number, x1: number, y0: number, y1: number): Set<number> => {
+    const side = TERRAIN_SEGMENTS / LOD_PATCH;
+    const out = new Set<number>();
+    const px0 = Math.max(0, Math.floor((x0 - 1) / LOD_PATCH)), px1 = Math.min(side - 1, Math.floor(x1 / LOD_PATCH));
+    const py0 = Math.max(0, Math.floor((y0 - 1) / LOD_PATCH)), py1 = Math.min(side - 1, Math.floor(y1 / LOD_PATCH));
+    for (let py = py0; py <= py1; py++) for (let px = px0; px <= px1; px++) out.add(px + py * side);
+    return out;
+  };
+  /**
+   * The patches `only` (null: every one an edge touches) cut again from the outline as it stands, their mesh, the cells the patches leave out and the
+   * levels' errors with them; `measure`, the levels measured now (a caller about to measure says false).
+   */
+  const recut = (only: ReadonlySet<number> | null, measure = true): void => {
+    const at = performance.now();
+    const fresh = seamOutline ? plateSeams(seamGrid, seamOutline, LOD_PATCH, only) : new Map() as PlateSeams;
+    if (only) {
+      for (const p of only) seamCut.delete(p);
+      for (const [p, s] of fresh) seamCut.set(p, s);
+    } else seamCut = fresh;
+    const was = joined;
+    joined = seamCut.size ? joinSeams(seamCut, plateGrid) : null;
+    const geometry = new BufferGeometry();
+    if (joined) {
+      geometry.setAttribute('position', new BufferAttribute(joined.positions, 3));
+      geometry.setAttribute('normal', new BufferAttribute(joined.normals, 3));
+      geometry.setAttribute('aSeam', new BufferAttribute(joined.seam, 3));
+      geometry.setIndex(new BufferAttribute(joined.index, 1));
+    }
+    // A new geometry a cut, the old one freed (its buffers with it: an attribute replaced in place keeps its GPU buffer till the geometry goes).
+    seamMesh.geometry.dispose();
+    seamMesh.geometry = geometry;
+    const mask = seamCells.image.data as Uint8Array;
+    if (was) for (const c of was.cells) mask[c] = 0;
+    if (joined) for (const c of joined.cells) mask[c] = 255;
+    seamCells.needsUpdate = true;
+    // Every coarser level draws the grid: off by what the cut cells stand off it (`LandLevels.setSeams`), measured over the patches cut.
+    levels.setSeams(joined?.cells ?? null, joined?.errors ?? null);
+    const side = TERRAIN_SEGMENTS / LOD_PATCH;
+    for (const p of only ?? new Set([...(was ? patchesOfCells(was.cells) : []), ...seamCut.keys()])) {
+      const px = p % side, py = (p - px) / side;
+      levelsBox = unionBox(levelsBox, [px * LOD_PATCH, (px + 1) * LOD_PATCH, py * LOD_PATCH, (py + 1) * LOD_PATCH]);
+    }
+    if (measure) measureMoved();
+    shareSeams?.(joined);
+    measureHitch('hitch:terrain/seams cut', at);
+  };
+  /** The patches a list of cells lie in. */
+  const patchesOfCells = (cells: ArrayLike<number>): Set<number> => {
+    const side = TERRAIN_SEGMENTS / LOD_PATCH, out = new Set<number>();
+    for (let k = 0; k < cells.length; k++) {
+      const c = cells[k]!, ix = c % TERRAIN_SEGMENTS, iy = (c - ix) / TERRAIN_SEGMENTS;
+      out.add(Math.floor(ix / LOD_PATCH) + Math.floor(iy / LOD_PATCH) * side);
+    }
+    return out;
+  };
+  /** The corners of a box moved: the patches cut among those its cells lie in cut again (no cell is cut or left whole by it: an edge cuts them). */
+  const recutCorners = (x0: number, x1: number, y0: number, y1: number): void => {
+    if (!seamOutline || seamCut.size === 0) return;
+    const only = new Set([...patchesOfCorners(x0, x1, y0, y1)].filter((p) => seamCut.has(p)));
+    if (only.size) recut(only, false);
   };
 
   /** Pulls the ground towards the roads */
@@ -2250,8 +2368,34 @@ export function createTerrainSurface(anisotropy: number, origin: { readonly x: n
       paintNear = near;
       fitPaint();
     },
-    meshes: [ground, rim, water],
+    meshes: [ground, rim, seamMesh, water],
     parts,
+    setSeams(outline, rect = null) {
+      seamOutline = outline;
+      if (!rect || !outline) { recut(null); return; }
+      // The patches of the box, a cell round, and those cut before (an outline gone from the box leaves them whole).
+      const region = surface.regionOf(rect);
+      recut(patchesOfCorners(region[0], region[1], region[2], region[3]));
+    },
+    seamDigest(minX, minY, maxX, maxY) {
+      const digest = new Digest();
+      if (!joined) return digest.value();
+      const region = surface.regionOf([minX, minY, maxX, maxY]);
+      const seams = joined;
+      for (let k = 0; k < seams.cells.length; k++) {
+        const c = seams.cells[k]!, ix = c % TERRAIN_SEGMENTS, iy = (c - ix) / TERRAIN_SEGMENTS;
+        if (ix < region[0] - 1 || ix > region[1] || iy < region[2] - 1 || iy > region[3]) continue;
+        digest.add(c);
+        for (let t = seams.cellStart[k]!; t < seams.cellStart[k + 1]!; t++) {
+          const tri = seams.cellTris[t]!;
+          for (let v = 0; v < 3; v++) {
+            const o = seams.index[tri * 3 + v]! * 3;
+            digest.add(Math.round(seams.positions[o]! * 1000)).add(Math.round(seams.positions[o + 1]! * 1000)).add(Math.round(seams.positions[o + 2]! * 1000));
+          }
+        }
+      }
+      return digest.value();
+    },
     regionOf(box) {
       const last = TERRAIN_SEGMENTS;
       const clamp = (v: number): number => Math.max(0, Math.min(last, v));
@@ -2301,11 +2445,11 @@ export function createTerrainSurface(anisotropy: number, origin: { readonly x: n
       return level > NO_WATER / 2 ? level : null;
     },
     waterArea: () => waterBox,
-    textures: () => [land, paintArray, shoreLevel, shore, groundTexture],
+    textures: () => [land, paintArray, shoreLevel, shore, groundTexture, seamCells],
     gpuBytes() {
-      // The corners (RGBA floats), the water's levels (floats) and the covers (RGBA 16 bits), the water's ground (floats), the paint array at its size; the patches' grids and the water's mesh.
-      const textures = GRID * GRID * (16 + 4 + 8 + 4) + paintRes * paintRes * 4 * PAINT_LAYERS;
-      return textures + geometryCost(lod.geometry).bytes + geometryCost(lod.rimGeometry).bytes + geometryCost(water.geometry).bytes;
+      // The corners (RGBA floats), the water's levels (floats) and the covers (RGBA 16 bits), the water's ground (floats), the paint array at its size, the cut cells' bytes; the patches' grids, the cut cells' and the water's meshes.
+      const textures = GRID * GRID * (16 + 4 + 8 + 4) + paintRes * paintRes * 4 * PAINT_LAYERS + TERRAIN_SEGMENTS * TERRAIN_SEGMENTS;
+      return textures + geometryCost(lod.geometry).bytes + geometryCost(lod.rimGeometry).bytes + geometryCost(seamMesh.geometry).bytes + geometryCost(water.geometry).bytes;
     },
     waterChanges,
     heightAt,
@@ -2445,6 +2589,7 @@ export function createTerrainSurface(anisotropy: number, origin: { readonly x: n
       const shown = lod.select(camera, pixels) > 0;
       ground.visible = shown;
       rim.visible = shown && lod.rimGeometry.instanceCount > 0;
+      seamMesh.visible = shown && joined !== null;
     },
     highest: () => levels.hi(LOD_LEVELS - 1, 0, 0),
     onLevels: null,
@@ -2458,6 +2603,9 @@ export function createTerrainSurface(anisotropy: number, origin: { readonly x: n
       lod.dispose();
       land.dispose();
       groundMaterial.dispose();
+      seamMesh.geometry.dispose();
+      seamMaterial.dispose();
+      seamCells.dispose();
       material.dispose();
       // DO NOT leave them: plates come and go as the camera crosses the map
       vergeMaterial.dispose();
@@ -2511,12 +2659,12 @@ function waterCell(key: WaterKey): readonly [number, number] {
   return [Number(x), Number(y)];
 }
 
-/** Most cells one body of water may spread over into a basin: about 400 m square. */
-const MAX_FLOOD_CELLS = 40_000;
+/** Most cells one body of water may spread over into a basin: about 320 m square (the 40,000 cells of 1.6 m it was). */
+const MAX_FLOOD_CELLS = 102_400;
 
 /** Water runs into the hollow beside it and fills it to its own level. */
-/** How many water cells (24 units, about 10 m) of an over-large flood stay, so a river meets its own banks. */
-const SHORE_BAND = 6;
+/** How many water cells (about 10 m) of an over-large flood stay, so a river meets its own banks. */
+const SHORE_BAND = 10;
 function floodBasins(
   vertices: Map<WaterKey, WaterVertex>,
   groundAt: (x: number, y: number) => number,

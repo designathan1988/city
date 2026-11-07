@@ -72,11 +72,13 @@ describe('a batch as arrays', () => {
   });
 
   it('cuts its shell into pieces of whole buildings with 16-bit indices, every triangle kept', () => {
-    const verticesOf = (list: typeof chunks): number => list.reduce((n, c) => n + Object.values(c.shells).reduce((k, s) => k + s.position.length / 3, 0), 0);
+    // Every fragment the batch takes: the plain faces and the walls laid as runs of bays (`emitFacadeRuns`).
+    const fragmentsOf = (c: (typeof chunks)[number]): { position: Float32Array; index: Uint32Array }[] => [...Object.values(c.shells), ...Object.values(c.runs ?? {})];
+    const verticesOf = (list: typeof chunks): number => list.reduce((n, c) => n + fragmentsOf(c).reduce((k, s) => k + s.position.length / 3, 0), 0);
     // Enough buildings to pass two pieces' vertices.
     const many = Array.from({ length: Math.ceil((SHELL_PIECE * 2) / verticesOf(chunks)) + 1 }, () => chunks).flat();
     const made = verticesOf(many);
-    const triangles = many.reduce((n, c) => n + Object.values(c.shells).reduce((k, s) => k + s.index.length / 3, 0), 0);
+    const triangles = many.reduce((n, c) => n + fragmentsOf(c).reduce((k, s) => k + s.index.length / 3, 0), 0);
     expect(made).toBeGreaterThan(SHELL_PIECE * 2);
     const pieces = cellArrays(many, { parts: [], shells: true, furniture: false, ghost: false, dim: false }, kitBoxes(kit)).shells;
     expect(pieces.length).toBeGreaterThan(1);

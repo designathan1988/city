@@ -26,7 +26,8 @@ describe("the town's shells", () => {
     const chunks = [emitChunk(placed(0), () => 0), emitChunk(placed(1), () => 0)];
     const meshes = assembleBuildingMeshes(chunks, kit);
     const shells = meshes.group.children.filter((m) => m.name === 'building-shell') as Mesh[];
-    expect(shells.length).toBe(1);
+    // Its plain faces and its walls laid as runs of bays (`emitFacadeRuns`): one mesh each, whatever the buildings.
+    expect(shells.length).toBe(2);
     const before = shells.map((m) => uploads(m).map((a) => Array.from(a.array!)));
     // The renderer's upload (WebGLAttributes calls it after bufferData).
     for (const m of shells) for (const a of uploads(m)) a.onUploadCallback();

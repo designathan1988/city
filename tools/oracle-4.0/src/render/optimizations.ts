@@ -5,7 +5,7 @@ import type { QualitySettings } from './quality';
 /** THE OPTIMISATIONS THE GAME DOES NOT MAKE (the lab's "Optimisations" tab, `lab/optimizations/`): each one chosen alone, live, to measure what it gains and what it costs the picture. Its first value is the game as it draws today: every one at its first value, nothing differs (`isDefaultOptimizations`). Applied in the renderer (`optimizationsApply.ts`), the tier's settings (`withOptimizations`) and the frame (`main.ts` population). */
 
 export { OPT_SYSTEM_TITLES } from './optimizationTypes';
-export type { OptChoice, OptSystem, OptValue } from './optimizationTypes';
+export type { OptSystem, OptValue } from './optimizationTypes';
 
 /** An optimisation as written below, before what it affects is given it. */
 interface BaseSpec {
@@ -99,6 +99,18 @@ const BASE = [
     tradeoff: 'Disc: no cascade redraws for whatever moves; generic shadow.',
     choices: [{ value: 'cast', label: 'in the cascades' }, { value: 'disc', label: 'disc' }],
   },
+  {
+    id: 'shadowShapes', system: 'shadows', title: 'Plants and props cast by their lighter shapes',
+    what: 'A plant, a street prop or a stone casts into each cascade the lightest of its shapes off by under that cascade\'s texel (shadowLevels.ts), as today. "Model": its full model in every cascade.',
+    tradeoff: 'Model: the shadow passes draw the plants\' and props\' full models for the same shadow.',
+    choices: [{ value: 'texel', label: 'by texel' }, { value: 'model', label: 'full model' }],
+  },
+  {
+    id: 'farStride', system: 'terrain', title: 'Far ground drawn at the stride its relief allows',
+    what: 'Each far patch of the ground drawn every 2nd, 4th... 32nd corner where its relief strays under half a pixel from its full grid (farGround.ts strideFor), as today. "Full grid": every patch at its 32 x 32 quads.',
+    tradeoff: 'Full grid: thousands of triangles a flat patch for the same ground.',
+    choices: [{ value: 'relief', label: 'by relief' }, { value: 'full', label: 'full grid' }],
+  },
   // ---- post
   {
     id: 'postChain', system: 'post', title: 'Whole post chain',
@@ -188,12 +200,6 @@ const BASE = [
     choices: [TIER, { value: 2, label: '2' }, { value: 1, label: '1' }, { value: 0, label: '0' }],
   },
   {
-    id: 'hairStrands', system: 'people', title: 'People with hair strands',
-    what: 'How many of the nearest people get hair strands (QualitySettings.hairStrandPeople).',
-    tradeoff: 'Fewer hair meshes; block hair.',
-    choices: [TIER, { value: 4, label: '4' }, { value: 2, label: '2' }, { value: 0, label: '0' }],
-  },
-  {
     id: 'vehicleError', system: 'vehicles', title: 'Vehicle screen error',
     what: 'Pixels of error the level of each vehicle part accepts (QualitySettings.vehicleErrorPixels, 0.5 px today).',
     tradeoff: 'Coarser parts sooner: fewer triangles; simplified cars closer in.',
@@ -251,6 +257,8 @@ const AFFECTS: Readonly<Record<(typeof BASE)[number]['id'], readonly string[]>> 
   castMasses: ['shadows', 'layer:buildings', 'name:building-*'],
   castTexel: ['shadows', 'layer:buildings', 'name:building-*'],
   agentShadows: ['shadows', 'layer:people', 'name:procedural-people', 'name:person'],
+  shadowShapes: ['shadows', 'layer:vegetation', 'layer:furniture', 'name:garden-*', 'name:street-*', 'name:nature-tree-*'],
+  farStride: ['layer:terrain', 'name:flat-world-far'],
   postChain: ['post', 'pass:ambientOcclusion', 'pass:canyonLight', 'pass:bloom', 'pass:clouds', 'pass:smaa', 'pass:sharpen'],
   msaa: ['post', 'all'],
   aoResolution: ['post', 'pass:ambientOcclusion'],
@@ -264,8 +272,7 @@ const AFFECTS: Readonly<Record<(typeof BASE)[number]['id'], readonly string[]>> 
   vegetation: ['layer:vegetation', 'name:far-forest*'],
   detailProps: ['layer:furniture'],
   detailCutoff: ['layer:people', 'layer:furniture', 'layer:roads', 'layer:signals'],
-  pedestrianDetail: ['layer:people', 'name:procedural-people', 'name:person'],
-  hairStrands: ['layer:people', 'name:procedural-people'],
+  pedestrianDetail: ['layer:people', 'name:person'],
   vehicleError: ['layer:people'],
   vehicleWhole: ['layer:people'],
   occupants: ['layer:people', 'name:person'],
@@ -301,12 +308,8 @@ export function optimizationChoice(id: string, value: unknown): OptValue | undef
   return spec.choices.find((c) => c.value === value || String(c.value) === String(value))?.value;
 }
 
-export function isDefaultOptimizations(values: Optimizations): boolean {
-  return OPTIMIZATIONS.every((spec) => values[spec.id] === spec.choices[0]!.value);
-}
-
 /** The tier's settings that the optimisations change. */
-const QUALITY_OPTIONS: readonly OptId[] = ['shadowMapSize', 'postChain', 'msaa', 'aoResolution', 'cloudPass', 'vegetation', 'detailProps', 'detailCutoff', 'pedestrianDetail', 'hairStrands', 'vehicleError', 'vehicleWhole', 'occupants',
+const QUALITY_OPTIONS: readonly OptId[] = ['shadowMapSize', 'postChain', 'msaa', 'aoResolution', 'cloudPass', 'vegetation', 'detailProps', 'detailCutoff', 'pedestrianDetail', 'vehicleError', 'vehicleWhole', 'occupants',
   // q.anisotropy is applied to the textures directly (`optimizationsApply.ts`): no tier rebuilt for it.
   ...QUALITY_FIELD_OPTIONS.filter((spec) => spec.field !== 'anisotropy').map((spec) => spec.id)];
 
@@ -335,7 +338,6 @@ export function withOptimizations(settings: QualitySettings, o: Optimizations): 
     detailProps: o.detailProps === 'off' ? false : settings.detailProps,
     detailCutoffZoom: settings.detailCutoffZoom * num(o.detailCutoff, 1),
     pedestrianDetail: typeof o.pedestrianDetail === 'number' ? (o.pedestrianDetail as 0 | 1 | 2) : settings.pedestrianDetail,
-    hairStrandPeople: num(o.hairStrands, settings.hairStrandPeople),
     vehicleErrorPixels: num(o.vehicleError, settings.vehicleErrorPixels),
     vehicleWholeCap: num(o.vehicleWhole, settings.vehicleWholeCap),
     occupantZoom: o.occupants === 'never' ? Infinity : o.occupants === 'x2' ? settings.occupantZoom * 2 : settings.occupantZoom,

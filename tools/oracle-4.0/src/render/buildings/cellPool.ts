@@ -1,18 +1,19 @@
-import { canQueueJobs, type JobTicket, submitJob, warmJobWorkers } from '../../jobs/jobPool';
+import { canQueueJobs, type JobTicket, jobPort, submitJob, warmJobWorkers } from '../../jobs/jobPool';
 import type { GroundAt } from '@world/buildings/foundation';
 import type { Finish } from '@world/buildings/materials';
 import type { PavingSource } from '@world/paving';
-import type { RecordRef } from '@world/buildings/recordTable';
+import { RecordTable, type RecordRef, TableWriter, tableBytes } from '@world/buildings/recordTable';
 import { m } from '@world/units';
 import type { SharedGroundAt } from '../sharedGround';
 import { BATCH_CELL } from './layerCells';
 import type { KitBoxes } from './cellArrays';
-import { type CellEntry, type CellJob, type CellResult, type JobKind, type WorkReply, runCellJob } from './cellWork';
-import { levelCells } from './levelKeys';
+import { type CellEntry, type CellJob, type CellResult, type CellSlice, type CellSpan, type JobKind, type KeptSlice, type WorkReply, runCellJob } from './cellWork';
+import { levelCells, squareKeyOf } from './levelKeys';
 import { groundAround } from '../sharedGround';
 import { Digest } from '../../core/digest';
 import { IdSlots, grown } from '../../core/idSlots';
-import { forgetOtherDerived, keepDerivedNow, readDerived, readDerivedKeys } from '../derivedCache';
+import { bytesOf, forgetDerivedKeys, forgetOtherDerived, keepDerivedNow, readDerivedKeys, readDerivedSome } from '../derivedCache';
+import { DerivedWriterLane, transferCopy } from '../derivedWriterLane';
 
 declare const __CELL_WORK_HASH__: string | undefined;
 /** The cells' jobs kept from one session to the next, by this build's fingerprint of their code (`cook-plugin.ts` DERIVED). */
@@ -27,6 +28,69 @@ let keptKeys: Promise<Set<string>> | null = null;
 const keptCellKeys = (): Promise<Set<string>> => (keptKeys ??= CELL_PREFIX
   ? readDerivedKeys(CELL_PREFIX).then((keys) => new Set([...keys].map((k) => CELL_PREFIX + k)), () => new Set<string>())
   : Promise.resolve(new Set<string>()));
+
+/** WHERE A CELL'S SLICES OF ITS SQUARE'S LEVELS ARE KEPT (`cellWork.ts` CellSlice): read when a tile's, a plate's or a base's job is asked, its
+ *  cells kept handed to it as they are (their buildings not sent, not walked), written when a job hands back the slices it made. */
+export interface SliceStore {
+  /** The slices kept of these keys, by key. */
+  read(keys: readonly string[]): Promise<Map<string, CellSlice>>;
+  /** A slice kept under `key`, cloned now (its arrays may be let go after); `was`, the key of the cell's slice it replaces, forgotten. */
+  keep(key: string, slice: CellSlice, was: string | null): void;
+}
+
+/** Where the cells' results and slices are kept: the store's entries of these keys under a prefix, by key; a value kept under its whole key, its
+ *  arrays copied now (they are the layer's after), false when it cannot be kept (the store not open: made again next time). */
+interface KeptStore {
+  read<T>(prefix: string, keys: readonly string[]): Promise<Map<string, T>>;
+  keep(key: string, value: unknown): boolean;
+}
+
+/** Bytes of writes handed to the cells' writer and not committed: past it a result waits on the page for room (`DerivedWriterLane.keep`), never dropped. */
+const KEPT_WRITES_BYTES = 96 * 2 ** 20;
+
+/**
+ * THE CELLS' KEPT RESULTS AND SLICES READ AND WRITTEN OFF THE PAGE (the derived cache's writer, `derivedWriter.worker.ts`): read there, their
+ * arrays handed over; written there, a copy of their arrays handed to it (`transferCopy`). On the page where no job queue runs (tests). DO NOT
+ * read nor write them on the page: IndexedDB rebuilds every value where it is read and serialises it where it is put, and a 10 km city's masses,
+ * far levels and slices took 770 ms read in every few seconds of the open city, and 3.7 s written in every ten while it made them again
+ * (`request.onsuccess`, `put`, two F7 profiles, 2026-10-26).
+ */
+function keptStore(workers: boolean): KeptStore {
+  if (!workers || !canQueueJobs() || typeof Worker === 'undefined') return { read: readDerivedSome, keep: keepDerivedNow };
+  const lane = new DerivedWriterLane(jobPort('derivedWriter'), KEPT_WRITES_BYTES);
+  return {
+    read: (prefix, keys) => lane.read(prefix, keys),
+    keep(key, value) {
+      const transfer: Transferable[] = [];
+      const copy = transferCopy(value, transfer);
+      void lane.keep('', [[key, copy]], transfer, bytesOf(copy));
+      return true;
+    },
+  };
+}
+
+/** The slices in the derived cache (IndexedDB, `core/derivedCache.ts`) under this build's fingerprint of the cells' code, beside the jobs' results
+ *  kept (`CELL_PREFIX`): never in the page's memory between jobs. None without a fingerprint: every building of a level walked, as before slices. */
+function derivedSlices(prefix: string | null, store: KeptStore = { read: readDerivedSome, keep: keepDerivedNow }): SliceStore | null {
+  if (prefix === null) return null;
+  return {
+    read: async (keys) => {
+      // Only the keys kept (`keptCellKeys`, read once at the start): a level none of whose cells is kept asks the store nothing.
+      const kept = await keptCellKeys();
+      const some = keys.filter((key) => kept.has(prefix + key));
+      return some.length ? store.read<CellSlice>(prefix, some) : new Map<string, CellSlice>();
+    },
+    keep: (key, slice, was) => {
+      if (store.keep(prefix + key, slice)) void keptCellKeys().then((keys) => keys.add(prefix + key));
+      if (was === null || was === key) return;
+      forgetDerivedKeys(prefix, [was]);
+      void keptCellKeys().then((keys) => keys.delete(prefix + was));
+    },
+  };
+}
+
+/** The kinds joined from their cells' slices (`CellJob.spans`). */
+const SLICED_KINDS: ReadonlySet<JobKind> = Object.freeze(new Set<JobKind>(['massTile', 'massPlate', 'massBase']));
 
 /** THE PAGE'S SIDE OF THE CELLS PUT TOGETHER IN WORKERS (`cellWork.ts`, `cell.worker.ts`), through the job system's one queue (`jobPool.ts` `submitJob`) */
 
@@ -47,15 +111,21 @@ export const TIER_SPAN = m(10_000_000);
 const DETAIL_LATER = 4;
 /** THE FAR LEVELS' BAND (`farLevels.ts`, `farRoads.ts`): before every other kind - a far node the view wants and has not is a hole on the screen (nothing under it drawn), and a hole comes before any refinement of what is drawn (Cesium loads the coarse levels first). After the far levels in the band, the map view a moment after the opening showed the outer districts empty for seconds behind the region's detail (2026-10-16). */
 export const FAR_TIER = -0.5;
-/** The near products' band anchor (`nearTiles.ts` PRODUCT_TIER): after the buildings' masses (2-2.75). The roads' near level is no longer here: it goes in the cells' band (`farRoads.ts` farRoadPriority), the street under the eye stood in its far level behind every cell of the district (2026-10-17). */
-export const NEAR_TIER = 2.9;
 /** WHAT THE PLAYER JUST EDITED (a building cut open, a tile's near roads baked from the page's records): before anything - it is what the player looks at. Behind the cells a road drawn was not on the screen 4 s after it was built (`conferencia` 40-road-4s, 2026-10-17). */
-export const EDIT_TIER = -1;
+const EDIT_TIER = -1;
 /** A cell job's place in the queue (lower first): a building cut open before anything, else its kind's band (`TIER`, the detail put back past the coarse levels while the town is unseen, `coarseFirst`), nearest the eye first within it. */
 export function cellPriority(kind: JobKind, away: number, cutOpen: boolean, coarseFirst: boolean): number {
   if (cutOpen) return EDIT_TIER * TIER_SPAN;
   const later = coarseFirst && (kind === 'cell' || kind === 'facade') ? DETAIL_LATER : 0;
   return (TIER[kind] + later) * TIER_SPAN + away;
+}
+
+/** The worker a job goes to, as the job system keeps it (`jobPool.ts` JobSpec.affinity): the buildings' programs a worker keeps (`cellWork.ts`)
+ *  read there by the next job of the same buildings. The masses (a cell's, its tile's, its plate's, its base's) and the summaries by the base's
+ *  square they stand in: every level of a building's masses one walk on one worker. A cell's detail and facade level by the cell: the pair walked
+ *  together (`CellJob.pair`), the other level read there as the eye steps between them. */
+export function affinityOf(kind: JobKind, cell: string): string {
+  return kind === 'cell' || kind === 'facade' ? `cell:${cell}` : `square:${squareKeyOf(cell)}`;
 }
 
 /** Times a job is asked again over wider roads (`wider`) before the page puts it together. */
@@ -81,9 +151,16 @@ interface Asked {
   readonly id: number;
   readonly kind: JobKind;
   readonly cell: string;
-  readonly entries: readonly CellEntry[];
+  /** Its buildings; a level joined from its cells' slices, those of its cells not kept only (`send`). */
+  entries: readonly CellEntry[];
   /** Where each record is read, taken when the job is sent (its tile's shared table: posted as a handle, never copied). */
-  readonly writers: readonly (() => RecordRef)[];
+  writers: readonly (() => RecordRef)[];
+  /** A tile's, a plate's or a base's cells, the entries of each in order (`MassLevels`), till their slices are looked up (`send`); then null. */
+  cells: readonly CellSpan[] | null;
+  /** The cells whose slice is not kept (made by the job) and the slices kept of the others (`CellJob.spans`, `slices`), with each cell's key. */
+  spans: readonly CellSpan[] | null;
+  slices: readonly KeptSlice[] | null;
+  sliceKeys: ReadonlyMap<string, string> | null;
   readonly env: CellEnv;
   readonly done: (result: CellResult) => void;
   readonly key: string | null;
@@ -100,6 +177,8 @@ interface Asked {
   rect: [number, number, number, number] | null;
   widened: number;
   ticket: JobTicket | null;
+  /** A cell's detail or facade level asked with the other (`CellJob.pair`). */
+  readonly pair: boolean;
 }
 
 /** A building's ground floor as a job measured it, and what it was measured on: its record, its ground (`CellEntry`) and whether the paving was read. */
@@ -182,13 +261,23 @@ export class CellPool {
   }
   private coarse = false;
 
+  /** Each cell's slice kept now, by level and cell: forgotten in the store once another replaces it (`SliceStore.keep`). */
+  private readonly cellSlices = new Map<string, string>();
+
   /** `workers`: false does every job on the page (tests). `tone`: each finish's colour from afar, for the masses (`kit.ts`). */
-  /** `text`: where an entry's record is read (`recordTable.ts`), taken when the job is sent. */
+  /** `text`: where an entry's record is read (`recordTable.ts`), taken when the job is sent. `slices`: where the cells' slices of their levels are kept (`SliceStore`). */
   constructor(private readonly boxes: () => KitBoxes, private readonly text: (entry: CellEntry) => () => RecordRef, private readonly workers = true,
-    private readonly tone?: Readonly<Record<Finish, readonly [number, number, number]>>) {
+    private readonly tone?: Readonly<Record<Finish, readonly [number, number, number]>>, slices?: SliceStore | null) {
+    this.kept = keptStore(workers);
+    this.slices = slices === undefined ? derivedSlices(CELL_PREFIX, this.kept) : slices;
     // The kept keys read now, at the start, before the town's writes come (`keptCellKeys`).
     if (workers && canQueueJobs()) void keptCellKeys();
   }
+
+  /** Where the cells' results and slices are kept and read (`keptStore`): off the page where jobs run. */
+  private readonly kept: KeptStore;
+  /** Where the cells' slices of their levels are kept (`SliceStore`). */
+  private readonly slices: SliceStore | null;
 
   /** Jobs asked and not answered. */
   get running(): number {
@@ -197,7 +286,10 @@ export class CellPool {
 
   /** A cell's job: its batches ('cell'), its far level ('facade'), its masses ('mass') or its buildings' summaries; `key`, what a newer job replaces */
   /** `hole`: nothing stands where it draws (a plate of the map with no masses yet): in the far levels' band (`FAR_TIER`), before the view's detail - a hole on the screen comes before any refinement of what is drawn. */
-  run(kind: JobKind, cell: string, entries: readonly CellEntry[], env: CellEnv, done: (result: CellResult) => void, key: string | null = null, edited = false, hole = false): number {
+  /** `pair`: a cell's detail or facade level walked with the other, both kept by the worker (`CellJob.pair`). `cells`: a tile's, a plate's or a
+   *  base's cells, the entries of each in order (`MassLevels`): joined from their slices kept, those not kept made by the job (`SliceStore`). */
+  run(kind: JobKind, cell: string, entries: readonly CellEntry[], env: CellEnv, done: (result: CellResult) => void, key: string | null = null, edited = false, hole = false, pair = false,
+    cells: readonly CellSpan[] | null = null): number {
     if (key !== null) { const older = this.byKey.get(key); if (older) this.cancel(older.id); }
     const at = squareOf(cell);
     // Its band; its distance to the view is the queue's, as the view moves (`JobSpec.at`). A building the player cut open goes first: what the click asked for (`layer.ts` `entryFor`).
@@ -208,24 +300,78 @@ export class CellPool {
     const offPage = this.offPage(env);
     const asked: Asked = {
       id: this.nextId++, kind, cell, entries, writers: entries.map((e) => this.text(e)), env, done, key, priority, first, sent: false, place,
-      stored: offPage && !first ? this.storedKey(kind, cell, entries, env) : null, rect: pavingRect(cell), widened: 0, ticket: null,
+      stored: offPage && !first ? this.storedKey(kind, cell, entries, env) : null, rect: pavingRect(cell), widened: 0, ticket: null, pair,
+      cells: offPage && this.slices !== null && SLICED_KINDS.has(kind) ? cells : null, spans: null, slices: null, sliceKeys: null,
     };
     if (!offPage) { this.onPage(asked); return asked.id; }
     this.asked.set(asked.id, asked);
     if (key !== null) this.byKey.set(key, asked);
-    if (asked.stored === null) { this.submit(asked); return asked.id; }
+    if (asked.stored === null) { this.send(asked); return asked.id; }
     // Kept by an earlier session: taken as its job would answer it, the job never asked.
     const stored = asked.stored;
     void keptCellKeys().then((keys) => {
       if (this.asked.get(asked.id) !== asked) return undefined;
-      if (!keys.has(stored)) { this.submit(asked); return undefined; }
-      return readDerived<CellResult>(stored).catch(() => undefined).then((kept) => {
+      if (!keys.has(stored)) { this.send(asked); return undefined; }
+      return this.kept.read<CellResult>(CELL_PREFIX!, [stored.slice(CELL_PREFIX!.length)]).then((got) => got.values().next().value, () => undefined).then((kept) => {
         if (this.asked.get(asked.id) !== asked) return;
         if (kept && typeof kept === 'object' && 'summaries' in kept) { this.forget(asked); this.learn(asked, kept); asked.done(kept); return; }
-        this.submit(asked);
+        this.send(asked);
       });
-    }, () => this.submit(asked));
+    }, () => this.send(asked));
     return asked.id;
+  }
+
+  /** A job into the queue; a tile's, a plate's or a base's after its cells' slices are looked up (`SliceStore`): those kept handed with it, their
+   *  buildings not sent; the others' buildings sent, their slices made by the job (`CellJob.spans`). Its priority is the one `run` gave it. */
+  private send(asked: Asked): void {
+    const cells = asked.cells, store = this.slices;
+    if (!cells || !store) { this.submit(asked); return; }
+    asked.cells = null;
+    const keys = new Map<string, string>();
+    let from = 0;
+    for (const { cell, count } of cells) {
+      keys.set(cell, this.sliceKey(asked.kind, cell, asked.entries.slice(from, from + count), asked.env));
+      from += count;
+    }
+    void store.read([...keys.values()]).catch((error: unknown) => {
+      // Every cell of the level made by its job, as with no slice kept.
+      console.error("[buildings] the cells' slices could not be read; the level made of all its buildings", error);
+      return new Map<string, CellSlice>();
+    }).then((kept) => {
+      if (this.asked.get(asked.id) !== asked) return;
+      const spans: CellSpan[] = [], slices: KeptSlice[] = [], entries: CellEntry[] = [], writers: (() => RecordRef)[] = [];
+      let at = 0;
+      for (const { cell, count } of cells) {
+        const key = keys.get(cell)!;
+        const slice = kept.get(key);
+        if (slice) {
+          slices.push({ cell, slice });
+          this.cellSlices.set(`${asked.kind}|${cell}`, key);
+        } else {
+          spans.push({ cell, count });
+          for (let k = at; k < at + count; k++) { entries.push(asked.entries[k]!); writers.push(asked.writers[k]!); }
+        }
+        at += count;
+      }
+      asked.entries = entries;
+      asked.writers = writers;
+      asked.spans = spans;
+      asked.slices = slices;
+      asked.sliceKeys = keys;
+      this.submit(asked);
+    });
+  }
+
+  /** Where a cell's slice of a level is kept: the level's kind, the cell and all its slice is made of - its buildings' records, the ground under
+   *  them and the floors they are handed (`floorKnown`: a floor measured since is another slice), whether paving is read, the kit's boxes and tones. */
+  private sliceKey(kind: JobKind, cell: string, entries: readonly CellEntry[], env: CellEnv): string {
+    const paved = env.pavedAt !== undefined;
+    const d = new Digest().add(this.kitDigest()).add(paved ? 1 : 0).add(env.naturalAt === env.groundAt ? 1 : 0);
+    for (const e of entries) {
+      const floor = this.floorKnown(e, paved);
+      d.addText(e.key).add(e.sig).add(e.digest).add(floor === undefined ? 0 : floor === null ? 1 : 2).add(floor ?? 0);
+    }
+    return `slice|${kind}|${cell}|${d.value()}`;
   }
 
   /** The job system's workers made now, ahead of the first job. */
@@ -271,6 +417,7 @@ export class CellPool {
       ...(asked.place ? { at: asked.place } : {}),
       // Fit for a job process: its ground cut to the plates around it there (`write`).
       crosses: true,
+      affinity: affinityOf(asked.kind, asked.cell),
       write: (to) => { asked.sent = true; return this.write(asked, to.sharesMemory); },
       done: (answer) => this.answer(asked, answer as WorkReply),
       failed: (message) => this.failed(asked, message),
@@ -286,12 +433,32 @@ export class CellPool {
     const ground = around ? groundAround(whole, around) : whole;
     const packed = asked.env.pavedAt && asked.rect ? asked.env.pavedAt.pack!(asked.rect) : null;
     if (asked.env.pavedAt && asked.rect && !packed) throw new Error('[buildings] the paving cannot be handed to a worker');
+    const base = this.base(asked);
+    // A worker in another process gets its buildings' rows in a table of their own (`ownRows`). DO NOT name the map's table there: a 10 km
+    // city's table of 249,122 buildings went whole to each of the 18 job threads, its first job each (`ProcessWorker` kept), the view's
+    // buildings waiting behind the copies (2026-10-26).
     const job: CellJob = {
-      ...this.base(asked), ground, ...(around ? { around } : {}),
+      ...base, ...(sharesMemory ? {} : { entries: this.ownRows(base.entries) }), ground, ...(around ? { around } : {}),
       ...(asked.env.naturalAt === asked.env.groundAt ? { naturalIsGround: true } : {}),
       ...(packed ? { paving: packed.data } : {}),
     };
     return { data: job, transfer: packed?.transfer ?? [] };
+  }
+
+  /** The record tables the jobs' rows are copied from (`ownRows`), read once each. */
+  private readonly sources = new WeakMap<ArrayBufferLike, RecordTable>();
+
+  /** A job's entries with their records' rows copied into a table of their own (`TableWriter.copyRows`: no record decoded), in a plain buffer: what a worker in another process reads, the job's buildings alone. */
+  private ownRows(entries: CellJob['entries']): CellJob['entries'] {
+    const writer = new TableWriter(false);
+    for (const e of entries) {
+      let table = this.sources.get(e.record.buffer);
+      if (!table) this.sources.set(e.record.buffer, table = new RecordTable(e.record.buffer));
+      writer.copyRows(table, [e.record.row]);
+    }
+    const buffer = tableBytes(writer.finish().buffer);
+    // The field written over a row (a building's wear, `RecordRef.field`) goes with it: the row copied is the table's.
+    return entries.map((e, row) => ({ ...e, record: e.record.field ? { buffer, row, field: e.record.field } : { buffer, row } }));
   }
 
   /** What every job carries, on the page or off it. */
@@ -303,6 +470,8 @@ export class CellPool {
         return { ...e, ...(floor !== undefined ? { floor } : {}), record: asked.writers[i]!() };
       }),
       ...(this.tone ? { tone: this.tone } : {}),
+      ...(asked.pair && (asked.kind === 'cell' || asked.kind === 'facade') ? { pair: true } : {}),
+      ...(asked.spans && asked.slices ? { spans: asked.spans, slices: asked.slices } : {}),
     };
   }
 
@@ -317,9 +486,17 @@ export class CellPool {
     }
     this.forget(asked);
     if (reply.kind === 'done') {
-      // Kept before it is handed on: the store clones it now, its arrays are the layer's after (`keepDerivedNow`).
+      // Kept before it is handed on: its arrays copied now, they are the layer's after (`KeptStore.keep`).
       const stored = asked.stored;
-      if (stored !== null && keepDerivedNow(stored, reply.result)) void keptCellKeys().then((keys) => keys.add(stored));
+      if (stored !== null && this.kept.keep(stored, reply.result)) void keptCellKeys().then((keys) => keys.add(stored));
+      // The slices it made of its cells, kept; each cell's slice before them forgotten.
+      for (const { cell, slice } of reply.result.slices ?? []) {
+        const key = asked.sliceKeys?.get(cell);
+        if (key === undefined || !this.slices) continue;
+        const was = `${asked.kind}|${cell}`;
+        this.slices.keep(key, slice, this.cellSlices.get(was) ?? null);
+        this.cellSlices.set(was, key);
+      }
       this.learn(asked, reply.result);
       asked.done(reply.result);
       return;

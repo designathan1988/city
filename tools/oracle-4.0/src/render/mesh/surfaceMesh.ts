@@ -4,20 +4,15 @@ import {
   type Material,
 } from 'three';
 
-import type { MultiPoly } from '@core/clipper';
 import type { TileMeshOptions } from './tileMesh';
 
-export {  type TileRect } from './tileShape';
-export { meshTileShape,  type Tile,     } from './tileMesh';
+export type { Tile, TileRect } from './tileMesh';
 
 /** Turns a clipped surface band into a solid */
 
 export interface SurfaceMeshOptions extends TileMeshOptions {
   readonly name: string;
-  readonly polygons: MultiPoly;
   readonly material: Material;
-  /** Longest triangle edge, in world units, before it is refined. */
-  readonly maxEdge: number;
   readonly castShadow?: boolean;
   readonly receiveShadow?: boolean;
 }

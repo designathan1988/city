@@ -9,10 +9,10 @@ export const COUNT_BUDGETS = {
   kerbEdgesPerAsk: { max: 260, level: 'error', why: 'the kerb pruning (208.6; without it the whole city)' },
   /** Cells of the default town's crossing surface (21 297). */
   townWalkableCells: { max: 30_000, level: 'error', why: 'crossing grids of the default town (21 297)' },
-  /** Triangles of the road surfaces of `tests/fixtures/grid-and-bends.json` (275 691): neither bloated nor stripped of detail. */
-  fixtureRoadTriangles: { min: 120_000, max: 150_000, level: 'error', why: 'road surfaces of the fixed scene (133 500, the same since this budget was moved in 22248754: the 275 691 it was set to was never what this scene draws)' },
-  /** Meshes (draw calls) of the same surfaces (134). */
-  fixtureRoadMeshes: { max: 160, level: 'error', why: 'surface meshes of the fixed scene (134)' },
+  /** Triangles of the road surfaces of `tests/fixtures/grid-and-bends.json` (6,896): neither bloated nor stripped of detail. */
+  fixtureRoadTriangles: { min: 6_200, max: 7_700, level: 'error', why: 'road surfaces of the fixed scene (6 896, 2026-10-25: one quad a band, the lines drawn by the shader of the carriageway, no verge; 42 794 at db9da0c7, 133 500 before the strips)' },
+  /** Meshes (draw calls) of the same surfaces (46). */
+  fixtureRoadMeshes: { max: 55, level: 'error', why: 'surface meshes of the fixed scene (46, 2026-10-25: no verge and no marking meshes; 64 at db9da0c7)' },
 } as const satisfies Readonly<Record<string, Budget>>;
 
 /** Whether a value keeps its budget. */
@@ -41,38 +41,45 @@ export const TIER_HEAP_MARGIN = 0.15;
  * (the weak machine's tier) and raised a tier at a time on the same scene (`setQuality`, as `graphicsWiring.ts` applies a tier), each
  * view settled. Budget: each count times 1 + `TIER_MARGIN`. A change made on purpose updates them in the same commit, and says why.
  * `heapMB`: the JS heap the opened city keeps on that tier after a full collection, over the heap before it was opened.
+ * 2026-10-25, measured against db9da0c7 (whose counts were already past these on low's street, 353 draws). Triangles: fewer on every district
+ * and street view but low's street (district on low 4,367,022 -> 3,870,100, on medium 4,821,438 -> 3,946,816) and on ultra's map; more on
+ * the maps of low (1,228,898 -> 1,427,515: more of the buildings' parts drawn, 40,570 -> 52,340 concrete ones), medium and high (1,630,006 ->
+ * 1,660,247) and on low's street (3,680,203 -> 3,770,192). Draws: low's street 353 -> 342; the maps' up (low 183 -> 222): the null GPU has no
+ * `WEBGL_multi_draw`, so each piece of a batched mesh is a call of its own (`renderBufferDirect` called 163 times on that view, 164 here), and
+ * the far roads are their pieces now, filed by owner block (`networkFarRoads.ts`: 8 drawn -> 32), the shells' far batches 29 -> 33 and 28 -> 32.
+ * The heap on low 133.6 -> 141.1 MB.
  */
 export const TIER_COUNTS: Readonly<Record<QualityLevel, { readonly views: Readonly<Record<TierView, TierViewCounts>>; readonly heapMB: number }>> = {
   low: {
     views: {
-      map: { draws: 216, triangles: 1_937_803, peakDraws: 216, peakTriangles: 1_937_803 },
-      district: { draws: 234, triangles: 4_391_460, peakDraws: 234, peakTriangles: 4_391_460 },
-      street: { draws: 306, triangles: 4_349_604, peakDraws: 396, peakTriangles: 7_884_909 },
+      map: { draws: 222, triangles: 1_427_515, peakDraws: 222, peakTriangles: 1_514_298 },
+      district: { draws: 225, triangles: 3_870_100, peakDraws: 231, peakTriangles: 3_870_100 },
+      street: { draws: 342, triangles: 3_770_192, peakDraws: 401, peakTriangles: 4_910_896 },
     },
-    heapMB: 140,
+    heapMB: 141.1,
   },
   medium: {
     views: {
-      map: { draws: 262, triangles: 2_418_649, peakDraws: 526, peakTriangles: 3_917_989 },
-      district: { draws: 240, triangles: 4_484_404, peakDraws: 456, peakTriangles: 7_882_209 },
-      street: { draws: 353, triangles: 4_692_185, peakDraws: 712, peakTriangles: 12_402_144 },
+      map: { draws: 250, triangles: 1_660_247, peakDraws: 432, peakTriangles: 2_989_079 },
+      district: { draws: 246, triangles: 3_946_816, peakDraws: 421, peakTriangles: 6_708_066 },
+      street: { draws: 355, triangles: 3_841_010, peakDraws: 393, peakTriangles: 4_089_892 },
     },
-    heapMB: 146.3,
+    heapMB: 145.2,
   },
   high: {
     views: {
-      map: { draws: 270, triangles: 2_418_657, peakDraws: 523, peakTriangles: 3_937_481 },
-      district: { draws: 248, triangles: 4_484_412, peakDraws: 495, peakTriangles: 8_360_571 },
-      street: { draws: 361, triangles: 4_692_193, peakDraws: 758, peakTriangles: 10_589_682 },
+      map: { draws: 258, triangles: 1_660_255, peakDraws: 502, peakTriangles: 3_541_638 },
+      district: { draws: 254, triangles: 3_946_824, peakDraws: 469, peakTriangles: 7_107_978 },
+      street: { draws: 363, triangles: 3_841_018, peakDraws: 442, peakTriangles: 5_265_936 },
     },
-    heapMB: 148,
+    heapMB: 146.2,
   },
   ultra: {
     views: {
-      map: { draws: 281, triangles: 2_751_151, peakDraws: 558, peakTriangles: 5_285_751 },
-      district: { draws: 248, triangles: 4_484_412, peakDraws: 496, peakTriangles: 8_371_803 },
-      street: { draws: 361, triangles: 4_692_193, peakDraws: 760, peakTriangles: 10_598_811 },
+      map: { draws: 270, triangles: 1_732_163, peakDraws: 537, peakTriangles: 4_324_334 },
+      district: { draws: 254, triangles: 3_946_824, peakDraws: 469, peakTriangles: 7_107_978 },
+      street: { draws: 363, triangles: 3_841_018, peakDraws: 442, peakTriangles: 5_265_936 },
     },
-    heapMB: 148.7,
+    heapMB: 147.2,
   },
 };

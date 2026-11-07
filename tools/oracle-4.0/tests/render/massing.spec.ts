@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { emitChunk } from '@render/buildings/buildingMesh';
-import { emitMassing } from '@render/buildings/massing';
+import { massesOf } from './support/masses';
 import { drawsSignature } from '@render/buildings/signature';
 import { m } from '@world/units';
 import { growCity } from '../world/cityAudit';
@@ -84,12 +84,14 @@ describe('the far level of a building', () => {
       // Its blocks: its lots and their parts left out
       if (drawsSignature(whole)) continue;
       const b = { ...whole, volumes: whole.volumes.filter((v) => !v.open), elements: [] };
-      const mass = emitMassing(b, () => 0);
+      const mass = massesOf(b, () => 0);
       if (!mass) continue;
       const far: number[] = [], fineFar: number[] = [], near: number[] = [];
       samples(mass.position, mass.index, far);
       samples(mass.position, mass.index, fineFar, FINE);
-      for (const shell of Object.values(emitChunk(b, () => 0).shells)) if (shell) samples(shell.position, shell.index, near);
+      // The detailed building whole: its plain faces and its walls laid as runs of bays (`emitFacadeRuns` near).
+      const detail = emitChunk(b, () => 0);
+      for (const shell of [...Object.values(detail.shells), ...Object.values(detail.runs ?? {})]) if (shell) samples(shell.position, shell.index, near);
       // The detailed shells are many small faces, their samples dense; the far level is sampled finer to measure against.
       const farOff = strays(far, bucket(near), FAR_ERROR + SLACK), nearOff = strays(near, bucket(fineFar), FAR_ERROR + SLACK);
       checked++;

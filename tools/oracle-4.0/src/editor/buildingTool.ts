@@ -2678,7 +2678,7 @@ function stripId(b: Building & { id?: BuildingId }): Omit<Building, 'id'> {
 }
 
 /** How far along the map a step of the pick's walk reaches (the store's grid cell, `world/buildings/grid.ts`). */
-const PICK_STEP = m(64);
+const PICK_STEP = m(50);
 /** How far round the ray's track a step looks: a building is picked on its own volumes, inside its stored box. */
 const PICK_PAD = m(2);
 /** How far along the ground the ray is walked: the deepest ground a view takes in (a low view zoomed out, `isoViewport.ts`), the world having no edge to stop it. */

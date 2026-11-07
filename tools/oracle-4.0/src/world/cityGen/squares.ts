@@ -59,12 +59,13 @@ function blocks(lots: readonly Lot[]): Lot[][] {
 }
 
 /** Side of the cells the main roads are filed in (`mainRoadsNear`). */
-const MAIN_CELL = m(64);
+const MAIN_CELL = m(50);
 
 /** DO NOT measure every road of the city for each lot of each block: it was lots x roads on a generated city. */
 function mainRoadsNear(doc: RoadDoc): (p: Vec2, reach: number) => boolean {
   const main = new Set(['avenue', 'urban', 'boulevard'].map((id) => ROAD_TYPES.findIndex((t) => t.id === id)));
   const cells = new Map<string, [Vec2, Vec2][]>();
+  // @rebuild Walks the whole map: the generator lays the whole city, once.
   for (const s of doc.segments.values()) {
     if (!main.has(s.type)) continue;
     const a = doc.node(s.a), b = doc.node(s.b);

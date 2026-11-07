@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BoxGeometry, Frustum, Matrix4, MeshStandardMaterial, PerspectiveCamera, Quaternion, type InstancedMesh, Vector3 } from 'three';
 
+import { KEEP_CELL } from '@render/candidateKeep';
 import { drawnMatrices } from '@render/cellInstances';
 import { keepCellAt, keepCellRect } from '@render/cellKeeps';
 import { createElementLayer, type ElementKit, type ElementSource } from '@render/elements';
@@ -33,9 +34,9 @@ function sourceOf(items: ElementItem[]): ElementSource & { read: number; wholeRe
   return source;
 }
 
-/** `cells` cells along a row, ten stones in each. */
+/** `cells` keep cells along a row (`candidateKeep.ts` KEEP_CELL), ten stones in each, 4 m apart from 5 m into it. */
 const row = (cells: number): ElementItem[] => Array.from({ length: cells * 10 }, (_, k) => ({
-  kind: 'stones' as const, x: Math.floor(k / 10) * 64 + 5 + (k % 10) * 5, y: 10, size: 1, yaw: 0, seed: (k % 7) / 7,
+  kind: 'stones' as const, x: Math.floor(k / 10) * KEEP_CELL + 5 + (k % 10) * 4, y: 10, size: 1, yaw: 0, seed: (k % 7) / 7,
 }));
 
 const flat = (): number => 0;
@@ -50,7 +51,7 @@ describe('the elements kept cell by cell', () => {
       expect(layer.sync(null, source, flat)).toBe(true);
       expect(source.wholeReads).toBe(1);
       // One stone laid in the middle cell.
-      const at = { kind: 'stones' as const, x: Math.floor(cells / 2) * 64 + 33, y: 40, size: 1, yaw: 0, seed: 0.5 };
+      const at = { kind: 'stones' as const, x: Math.floor(cells / 2) * KEEP_CELL + 33, y: 40, size: 1, yaw: 0, seed: 0.5 };
       items.push(at);
       source.read = 0;
       expect(layer.sync(new Set([keepCellAt(at.x, at.y)]), source, flat)).toBe(true);
@@ -125,9 +126,9 @@ describe('the elements by their size on the screen', () => {
       layer.cull(new Frustum().setFromProjectionMatrix(view), view);
       return (layer.group.children as InstancedMesh[]).reduce((n, mesh) => n + (mesh.isInstancedMesh ? mesh.count : 0), 0);
     };
-    // 0.09 m across: 0.07 px at 1,500 m, 1.7 px at 60 m.
+    // 0.05 m across by its box (`propLevels.ts` propMeasure): 0.04 px at 1,500 m, 1.9 px at 30 m; nothing under the owner's 1.5 px (PROP_LEAST_PX).
     expect(drawnFrom(1500)).toBe(0);
-    expect(drawnFrom(60)).toBe(1);
+    expect(drawnFrom(30)).toBe(1);
     layer.dispose();
   });
 });

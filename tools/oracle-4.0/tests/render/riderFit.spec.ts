@@ -1,8 +1,8 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { Matrix4, Vector3, type Object3D } from 'three';
 import {
-  BIKE_FIT, HELMET_SEGMENTS, MOTO_FIT, NO_HELMET, RIDER_CLIPS, STEER_FULL, gripPoint, headPoints, helmetShape, pedalPoint,
-  type RiderClipKey, type TwoWheelerFit,
+  BIKE_FIT, HEAD_UP, HELMET_SEGMENTS, MOTO_FIT, NO_HELMET, RIDER_CLIPS, STEER_FULL, STOP_TILT_MOST, gripPoint, headPoints, helmetShape, pedalPoint,
+  stopTiltFor, type RiderClipKey, type TwoWheelerFit,
 } from '@render/riderPoses';
 import { CROWD } from '@render/citizenCasting';
 import { buildTwoWheelerModel } from '@render/vehicleModels';
@@ -73,9 +73,10 @@ describe('two-wheeler riders', () => {
       expect(NO_HELMET.has(name), `${name}: ${largest.toFixed(2)} m`).toBe(largest > HELMET_MAX);
       if (NO_HELMET.has(name)) continue;
       for (const d of [size.x, size.y, size.z]) expect(d, name).toBeGreaterThan(0.2);
-      // Its centre within 8 cm of the middle of the skull.
+      // Its centre within 8 cm of the middle of the skull: 9 cm above the head bone's joint and half a centimetre ahead of it (the cast's bones in
+      // the model's axes, in metres: `riderPoses.ts` HEAD_UP).
       const centre = new Vector3().setFromMatrixPosition(world);
-      const skull = head.localToWorld(new Vector3(9, 0.5, 0));
+      const skull = head.localToWorld(HEAD_UP.clone().multiplyScalar(0.09).add(new Vector3(0, 0, 0.005)));
       expect(centre.distanceTo(skull), name).toBeLessThan(0.08);
     }
   });
@@ -107,8 +108,11 @@ describe('two-wheeler riders', () => {
 
   it('a stopped rider has a foot down on the road, the machine tilted onto it', async () => {
     for (const [key, fit] of [['motoStop', MOTO_FIT], ['bikeStop', BIKE_FIT]] as const) {
-      const t = fit.stopTilt;
       for (const name of ADULTS) {
+        // The tilt the machine is drawn at under this body (`agents.ts`): the fit's own, or more where the leg is short of the road.
+        const t = stopTiltFor(await citizenRig(name), fit);
+        expect(t, `${name} ${key} tilt`).toBeGreaterThanOrEqual(fit.stopTilt);
+        expect(t, `${name} ${key} tilt`).toBeLessThanOrEqual(STOP_TILT_MOST);
         const { at } = await posed(name, key);
         const ankle = at('Bip01_L_Foot');
         // Rolled onto the left about the tyres' line on the road (`agents.frameAt`).

@@ -2,7 +2,19 @@ import { DIV_EPS } from './scalar';
 /** The four words of an `Rng`'s state (`Rng.state`). */
 export type RngState = readonly [number, number, number, number];
 
-/** Deterministic RNG: xoshiro128** seeded through splitmix32. */
+/** splitmix32's step from `x` (already advanced): one seed word. */
+function mix(x: number): number {
+  let z = x;
+  z = Math.imul(z ^ (z >>> 16), 0x21f0aaad) >>> 0;
+  z = Math.imul(z ^ (z >>> 15), 0x735a2d97) >>> 0;
+  return (z ^ (z >>> 15)) >>> 0;
+}
+
+/** A 32-bit word rotated left by `k`. */
+const rot = (v: number, k: number): number => ((v << k) | (v >>> (32 - k))) >>> 0;
+
+/** Deterministic RNG: xoshiro128** seeded through splitmix32. DO NOT make a closure in the constructor or in `u32`: one a stream and one a draw,
+ *  millions of a flight over the city (the gardens' placing, DevTools heap sampling, 2026-10-24); the same words, drawn the same. */
 export class Rng {
   private s0: number;
   private s1: number;
@@ -10,18 +22,11 @@ export class Rng {
   private s3: number;
 
   constructor(seed: number) {
-    let x = seed >>> 0;
-    const next = (): number => {
-      x = (x + 0x9e3779b9) >>> 0;
-      let z = x;
-      z = Math.imul(z ^ (z >>> 16), 0x21f0aaad) >>> 0;
-      z = Math.imul(z ^ (z >>> 15), 0x735a2d97) >>> 0;
-      return (z ^ (z >>> 15)) >>> 0;
-    };
-    this.s0 = next();
-    this.s1 = next();
-    this.s2 = next();
-    this.s3 = next();
+    const x = seed >>> 0;
+    this.s0 = mix((x + 0x9e3779b9) >>> 0);
+    this.s1 = mix((x + 2 * 0x9e3779b9) >>> 0);
+    this.s2 = mix((x + 3 * 0x9e3779b9) >>> 0);
+    this.s3 = mix((x + 4 * 0x9e3779b9) >>> 0);
     // Guard against the all-zero state.
     if ((this.s0 | this.s1 | this.s2 | this.s3) === 0) this.s0 = 1;
   }
@@ -39,7 +44,6 @@ export class Rng {
   }
 
   u32(): number {
-    const rot = (v: number, k: number): number => ((v << k) | (v >>> (32 - k))) >>> 0;
     const result = (Math.imul(rot(Math.imul(this.s1, 5) >>> 0, 7), 9) >>> 0) >>> 0;
     const t = (this.s1 << 9) >>> 0;
 

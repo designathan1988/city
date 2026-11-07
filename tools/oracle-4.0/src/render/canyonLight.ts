@@ -20,8 +20,10 @@ import { DEPTH_GLSL } from './depthConvention';
 
 /** DO NOT lay the window again at every building */
 
-/** The field's side, world units, and its cell. */
-const WINDOW = m(2048);
+/** The field's side, world units (a multiple of the universal grid's cell, `world/grid.ts`), and its cell (whole steps of its subgrid). */
+const WINDOW = m(2_000);
+/** The side of the window the canyon light reads the solids over, round the view's target (`followTown`). */
+export const CANYON_WINDOW = WINDOW;
 const CELL = m(4);
 const SIDE = Math.round(WINDOW / CELL);
 /** Heights stored in 16 bits: (h + OFFSET) / STEP. */
@@ -29,8 +31,9 @@ const STEP = m(0.05);
 const OFFSET = m(100);
 /** The window's corner moves in steps of this many cells: what a step brings in is a strip, laid in the frame it comes in. */
 const SNAP = 32;
-/** The field is a torus: world cell (i, j) is texel (i & MASK, j & MASK), so a window moved keeps every cell it still holds. */
-const MASK = SIDE - 1;
+/** The field is a torus: world cell (i, j) is texel (i, j) modulo the side, so a window moved keeps every cell it still holds (the side is no power of
+ *  two: the window is a multiple of the universal grid's cell, `WINDOW`). */
+const wrap = (v: number): number => ((v % SIDE) + SIDE) % SIDE;
 /** Past this many rows written, the whole field goes up in one call (three sends one call a row of ranges). */
 const WHOLE_ROWS = SIDE / 8;
 
@@ -75,7 +78,7 @@ const FRAGMENT = /* glsl */ `
   float heightAt(vec2 p) {
     vec2 c = (p - uWindow.xy) / uWindow.z;
     if (c.x < 0.0 || c.y < 0.0 || c.x >= uWindow.w || c.y >= uWindow.w) return -1e4;
-    // The field wraps (canyonLight.ts MASK): a world cell's texel is its index modulo the side.
+    // The field wraps (canyonLight.ts wrap): a world cell's texel is its index modulo the side.
     vec4 t = texelFetch(uHeights, ivec2(mod(floor(p / uWindow.z), uWindow.w)), 0);
     float v = t.r * 65280.0 + t.g * 255.0;
     return v < 0.5 ? -1e4 : v * ${STEP.toFixed(4)} - ${OFFSET.toFixed(1)};
@@ -281,13 +284,13 @@ export function createCanyonLight(camera: Camera, depthOf: () => Texture | null,
     const i0 = Math.max(gx, Math.floor(minX / CELL)), i1 = Math.min(gx + SIDE - 1, Math.floor(maxX / CELL));
     const j0 = Math.max(gy, Math.floor(minY / CELL)), j1 = Math.min(gy + SIDE - 1, Math.floor(maxY / CELL));
     for (let j = j0; j <= j1; j++) {
-      const row = j & MASK;
+      const row = wrap(j);
       for (let k = i0; k <= i1; k++) {
         // The cell's centre in the building's frame, inside the volume's box.
         const dx = (k + 0.5) * CELL - bx, dy = (j + 0.5) * CELL - by;
         const lx = dx * c + dy * s, ly = -dx * s + dy * c;
         if (lx < lx0 || lx > lx1 || ly < ly0 || ly > ly1) continue;
-        const at = (row * SIDE + (k & MASK)) * 4;
+        const at = (row * SIDE + wrap(k)) * 4;
         const was = data[at]! * 256 + data[at + 1]!;
         if (v > was) { data[at] = v >> 8; data[at + 1] = v & 255; markRow(row); }
       }
@@ -299,11 +302,11 @@ export function createCanyonLight(camera: Camera, depthOf: () => Texture | null,
     i0 = Math.max(i0, gx); i1 = Math.min(i1, gx + SIDE - 1);
     j0 = Math.max(j0, gy); j1 = Math.min(j1, gy + SIDE - 1);
     if (i0 > i1 || j0 > j1) return null;
-    const from = i0 & MASK, count = i1 - i0 + 1;
+    const from = wrap(i0), count = i1 - i0 + 1;
     // A span that wraps round the torus is two runs of the row.
     const first = Math.min(count, SIDE - from);
     for (let j = j0; j <= j1; j++) {
-      const row = j & MASK;
+      const row = wrap(j);
       data.fill(0, (row * SIDE + from) * 4, (row * SIDE + from + first) * 4);
       if (first < count) data.fill(0, row * SIDE * 4, (row * SIDE + count - first) * 4);
       markRow(row);

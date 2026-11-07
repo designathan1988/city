@@ -1,4 +1,5 @@
-import { BoxGeometry, Group, type Frustum, type Material, type Matrix4, MeshStandardMaterial } from 'three';
+import { BoxGeometry, BufferAttribute, type BufferGeometry, Group, type Frustum, type Material, Matrix4, MeshStandardMaterial } from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 import { BARRIER_SIZE, type Barrier } from '@world/barriers';
 import type { Change, ChangeJournal, ChangeKind, ChangeRect } from '@world/changes';
@@ -6,7 +7,7 @@ import { CellFiling } from '@world/cells';
 import { Derived, type DerivedSpec } from '@world/derived';
 import type { RoadDoc } from '@world/doc';
 import { m } from '@world/units';
-import { createInstanceRuns, RunBuilder, sameRun, type Run, type RunStore } from './instanceRuns';
+import { createInstanceRuns, RunBuilder, sameRun, yawMatrixInto, type Run, type RunStore } from './instanceRuns';
 
 /** DO NOT build every barrier of the map again for one placed or for the ground moved under one */
 export interface Barriers {
@@ -254,4 +255,34 @@ function placeKerbBarrier(barrier: Barrier, groundAt: (x: number, y: number) => 
       }
     }
   }
+}
+
+/** One barrier of `kind` along `length` world units of flat ground, as the layer draws it (`placeBarrier`): every piece its unit box placed, in
+ *  its part's colour, as one geometry. What a sheet of a barrier looks at (its faces, `src/lab/propHoleSheet.ts`). */
+export function barrierModel(kind: Barrier['kind'], length: number): BufferGeometry {
+  const parts = Object.fromEntries(KINDS.map((k) => [k, []])) as unknown as PartList;
+  placeBarrier({ id: 0, kind, points: [{ x: 0, y: 0 }, { x: length, y: 0 }] }, () => 0, parts);
+  const { unit, material } = PARTS;
+  const colourOf: Record<(typeof KINDS)[number], Material> = {
+    walls: material.wall, copings: material.coping, posts: material.post, rails: material.rail, hedges: material.hedge,
+    steelPosts: material.guardrailPost, beams: material.guardrailBeam, railPosts: material.railingPost, railBars: material.railingBar,
+  };
+  const boxes: BufferGeometry[] = [];
+  const matrix = new Matrix4(), out = new Float32Array(16);
+  for (const kindOf of KINDS) {
+    const colour = (colourOf[kindOf] as MeshStandardMaterial).color;
+    for (const b of parts[kindOf]) {
+      // As the layer's pose places it (`barrierInto`: world y is three's -z).
+      yawMatrixInto(out, 0, b.x, b.z + b.height / 2, -b.y, b.yaw, b.length, b.height, b.width);
+      const box = unit.clone().applyMatrix4(matrix.fromArray(out));
+      box.deleteAttribute('uv');
+      const n = box.getAttribute('position').count;
+      box.setAttribute('color', new BufferAttribute(new Float32Array(n * 3).map((_, i) => (i % 3 === 0 ? colour.r : i % 3 === 1 ? colour.g : colour.b)), 3));
+      boxes.push(box);
+    }
+  }
+  const merged = mergeGeometries(boxes)!;
+  for (const box of boxes) box.dispose();
+  merged.computeBoundingBox();
+  return merged;
 }

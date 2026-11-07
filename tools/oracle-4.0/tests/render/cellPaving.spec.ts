@@ -5,8 +5,9 @@ import { describe, expect, it } from 'vitest';
 import { emitChunk, kitBoxes } from '@render/buildings/buildingMesh';
 import { type CellArrays, cellArrays } from '@render/buildings/cellArrays';
 import { type CellJob, type WorkReply, runCellJob } from '@render/buildings/cellWork';
+import { shellPieceOf } from '@render/buildings/partFiling';
 import { PART_KINDS, createBuildingKit } from '@render/buildings/kit';
-import { BATCH_CELL, COARSE_PARTS, DETAIL_CELL } from '@render/buildings/layerCells';
+import { BATCH_CELL, COARSE_PARTS } from '@render/buildings/layerCells';
 import { growOnLot } from '@world/growth/zoning';
 import type { Building } from '@world/buildings/types';
 import { RoadDoc } from '@world/doc';
@@ -117,8 +118,8 @@ describe('the paving read by a building cell worker', () => {
     // The cell's buildings as one another's neighbours, as the job reads them (`partyWalls.ts`).
     const party = new PartyWalls(buildings, naturalAt, paved);
     const chunks = buildings.map((b) => emitChunk(b, ground, paved, naturalAt, undefined, false, true, party));
-    // The shells pieced by quadrant (two detail cells a side), as the job pieces them (`cellWork.ts`, `cellArrays` groups).
-    const groups = buildings.map((b) => `${Math.floor(b.x / (2 * DETAIL_CELL))},${Math.floor(b.y / (2 * DETAIL_CELL))}`);
+    // The shells pieced by the cell's halves (whole detail cells, `partFiling.ts` shellPieceOf), as the job pieces them (`cellWork.ts`, `cellArrays` groups).
+    const groups = buildings.map((b) => shellPieceOf(b.x, b.y));
     const coarse = cellArrays(chunks, { parts: PART_KINDS.filter((k) => COARSE_PARTS.has(k)), shells: true, furniture: true, ghost: false, dim: false }, kitBoxes(kit), groups);
     expect(bytes(reply.result.batch)).toBe(bytes(coarse));
     expect(bytes(pass.result.batch)).toBe(bytes(coarse));

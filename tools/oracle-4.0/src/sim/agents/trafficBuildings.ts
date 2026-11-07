@@ -5,7 +5,6 @@ import { type RoadDoc, type SerializedDoc, savedNode, savedSegment } from '@worl
 import type { ChangeJournal, ChangeRect } from '@world/changes';
 import { CELL } from '@world/cells';
 import { hasTransit } from '@world/transit';
-import type { Lot } from '@world/lots';
 import { METERS_PER_UNIT, m } from '@world/units';
 import { solidFootprints, storedBounds } from '@world/buildings/geometry';
 import { streetDoors, type StreetDoor } from '@world/buildings/streetDoors';
@@ -13,7 +12,7 @@ import { lorryDocks, type LorryDock } from '@world/buildings/docks';
 import { entrancesOf } from '@world/buildingGates';
 import type { Building, BuildingElement, BuildingFunction, BuildingId, BuildingUse, Volume } from '@world/buildings/types';
 import { type RecordRef, RecordTable, type TableReader, eachRecord, refOf } from '@world/buildings/recordTable';
-import { type BuildingSections, eachSectionRef, sectionsSize } from '@world/buildings/sections';
+import { type BuildingSections, type TableSections, eachSectionRef, sectionsSize } from '@world/buildings/sections';
 import { type Mix, kindOf } from '../ambient/demand';
 import type { LotPart } from './lotNav';
 import { LANE_REACH, gatedProperty, personGates } from './lotBays';
@@ -81,7 +80,7 @@ export const trafficBuilding: (b: Building) => TrafficBuilding = project;
 // ------------------------------------------------------------------ what is read of every building without its traffic record
 
 /** The kinds of place a building is (`ambient/demand.ts` kindOf), in the order of the draws' classes and of `LotPlaces`' trees. */
-export const TRAFFIC_KINDS: readonly (keyof Mix)[] = ['home', 'shop', 'work', 'civic'];
+const TRAFFIC_KINDS: readonly (keyof Mix)[] = ['home', 'shop', 'work', 'civic'];
 /** A building with a `parking` element: a lot whose stalls are bays (`parking.ts`). */
 export const TRAIT_PARKING = 1;
 /** A gated lot with docks: a lorry's yard (`lorryTraffic.ts`). */
@@ -102,7 +101,7 @@ export interface TrafficFacts {
 }
 
 /** The most frontage a building's way on foot can have (`lotDoors.ts`): its blocks' width along its widest people's gate, or along its facade with none, 6 m at the least. */
-export function frontageBound(b: Pick<TrafficBuilding, 'volumes' | 'elements'>): number {
+function frontageBound(b: Pick<TrafficBuilding, 'volumes' | 'elements'>): number {
   const gates = personGates(b);
   if (!gates.length) {
     let lo = Infinity, hi = -Infinity;
@@ -192,6 +191,7 @@ export function docBuildings(doc: RoadDoc): TrafficBuildings {
       return b ? trafficBuilding(b) : undefined;
     },
     *all() {
+      // @rebuild Walks the whole map: the map handed to the simulation whole when it opens.
       for (const b of doc.buildings.all()) yield trafficBuilding(b);
     },
     ids: () => doc.buildings.idList(),
@@ -223,7 +223,7 @@ export function docBuildings(doc: RoadDoc): TrafficBuildings {
 export const BATCH_DETAIL = 'batch:';
 export const BATCH_GONE = 'g';
 export const BATCH_KEPT = 'k';
-export const BATCH_NEW = 'n';
+const BATCH_NEW = 'n';
 
 /** A building of the page changed, as the worker is told it: its traffic record now and where its record is read (`RecordRef`), null when it is gone. */
 export interface BuildingChange {
@@ -246,7 +246,7 @@ const cellKey = (cx: number, cy: number): number => (cx + 32768) * 65536 + (cy +
  * THE BUILDINGS IN THE SIMULATION'S WORKER AS NUMBERS IN COLUMNS, NOT AS OBJECTS (report "Arquitetura para cidades grandes", "colunas
  * binárias"): each building at a slot (`IdSlots`) with its place, boxes, kind and traits, its entrances and footprints in runs of one
  * typed array each (`RunPool`), its row (where its record is read again), and its place in the store's order; the slots filed by the
- * world's 256 m cells in typed lists. A traffic record is worked out again from its row when asked (`get`), the last asked held
+ * world's 250 m cells in typed lists. A traffic record is worked out again from its row when asked (`get`), the last asked held
  * (`HELD_RECORDS`) and any still held elsewhere found again (`WeakRef`, MDN): a record asked twice is one object while anyone holds it.
  * DO NOT keep every building's traffic record: ~10.7 KB of the worker's heap a building (2.1 GB at 200,000, 2026-10-21).
  */
@@ -694,24 +694,27 @@ export interface BuildingSent {
   readonly ref: RecordRef | null;
 }
 
-/** What the worker's copy of the map is made of: the roads and the transit, the lots and their keys, the buildings as the document's own buffers (`BuildingSections`: its table, shared, and the records written over it). */
+/** What the worker's copy of the map is made of: the roads and the transit, the lots (as their table, shared, and the records written over it, `TableSections`) and their keys, the buildings as the document's own buffers likewise. */
 export interface TrafficMap {
   readonly doc: SerializedDoc;
-  readonly lots: readonly Lot[];
+  readonly lots: TableSections;
   readonly lotKeys: readonly string[];
   readonly buildings: BuildingSections;
 }
 
-/** The page's map as the worker is sent it whole (a map opened, generated, new): no terrain, paint or scenery, no building's record - the buildings' table posted as a handle (shared memory), never copied record by record. */
+/** The page's map as the worker is sent it whole (a map opened, generated, new): no terrain, paint or scenery, no building's or lot's record - the tables posted as handles (shared memory), never copied record by record. */
 export function trafficMapOf(doc: RoadDoc): TrafficMap {
   return {
     doc: {
       version: 1, unit: METERS_PER_UNIT,
+      // @rebuild Walks the whole map: the map handed to the simulation whole when it opens.
       nodes: [...doc.nodes.values()].map(savedNode),
+      // @rebuild Walks the whole map: the map handed to the simulation whole when it opens.
       segments: [...doc.segments.values()].map(savedSegment),
       ...(hasTransit(doc.transit) ? { transit: doc.transit } : {}),
     },
-    lots: doc.lotStore.toJSON(),
+    // DO NOT copy every lot as text for the worker (111,000 of a 10 km city): the table itself, and the few records written over it.
+    lots: doc.lotStore.sections(),
     lotKeys: [...doc.lotStore.keys],
     // DO NOT decode every building to send where it is read (`refOf` of each record): the table itself, and the few records written over it.
     buildings: doc.buildings.sections(),
@@ -740,7 +743,7 @@ export function trafficChangesOf(sent: readonly BuildingSent[]): BuildingChange[
 /** The worker's copy made from a map sent whole (`trafficMapOf`), each building read from its row and worked out here. */
 export function takeTrafficMap(doc: RoadDoc, buildings: TrafficBuildingTable, map: TrafficMap): void {
   doc.replaceFromJSON(map.doc, { repair: false });
-  // DO NOT leave the lots to `fromJSON`: it keeps a lot's building only when the document holds it, and this one holds none.
-  doc.lotStore.load(map.lots, map.lotKeys);
+  // DO NOT leave the lots to `fromJSON`: it keeps a lot's building only when the document holds it, and this one holds none. Their records as they were sent, read when asked.
+  doc.lotStore.loadSections(map.lots, map.lotKeys);
   buildings.load(map.buildings);
 }

@@ -15,7 +15,8 @@ describe('a cell\'s index array', () => {
   it('is what the cells\' masses and shells make', () => {
     const source = readFileSync('src/render/buildings/cellArrays.ts', 'utf8');
     expect(source).not.toMatch(/new Uint32Array\(indices\)[;,]/);
-    expect(source.match(/indexArray\(vertices, indices\)/g)).toHaveLength(2);
+    // The masses merged (`mergedMass`), a square's masses joined from its cells' slices (`joinMass`) and a shell's piece.
+    expect(source.match(/indexArray\(vertices, indices\)/g)).toHaveLength(3);
   });
 });
 

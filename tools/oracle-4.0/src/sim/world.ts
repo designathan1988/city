@@ -5,7 +5,10 @@ import type { RoadDoc } from '@world/doc';
 import type { Network } from '@world/network';
 import { type Connector, type GraphChange, type JunctionTopology, type Lanelet, type LaneletId, LaneletGraph } from '@world/lanelets';
 import { ChangeLog } from '@core/changeLog';
-import { NetworkLength } from '@world/networkLength';
+import { DocRoadLength } from '@world/docLength';
+import { TILE, tileKey } from '@world/tiles';
+import type { NetworkBake } from '@world/network';
+import { WAITING as WAIT, answered } from '@world/waiting';
 import { LaneGrid, lanesNearInto } from './agents/laneGrid';
 import { LaneReaches } from './routing/laneReach';
 import { RouteIndex } from './routing/routeIndex';
@@ -24,6 +27,7 @@ import { hasDownstreamStorage } from './intersections/spillback';
 import { CrossingSpans } from './intersections/crossingSpans';
 import { m } from '@world/units';
 import { CellFiling } from '@world/cells';
+import { segmentMiddle } from '@world/geometry';
 import { vehiclePose } from './pose';
 import { DT } from './params';
 
@@ -32,7 +36,7 @@ const BUS_REACH = m(90);
 /** The micro simulation's window (`keepMicroWindow`): a junction this near a vehicle has its conflicts; 15 s ahead of a car at 70 km/h. */
 const VEHICLE_WINDOW = m(300);
 /** The cells the vehicles are gathered by for the window (`keepMicroWindow`): a cell's square reaches `VEHICLE_WINDOW` past it. */
-const WINDOW_CELL = m(100);
+const WINDOW_CELL = m(125);
 /** The most of the window round the focus, where the scenery's cars are made (`AmbientWorld.traffic`). */
 const FOCUS_WINDOW = m(600);
 /** How far a vehicle's pose can lie outside its lane's bounds (`vehiclesNear`): the longest body (its rear axle still on the lane behind) and a lane change's sideways reach. */
@@ -144,10 +148,22 @@ const NO_RUNTIME: LaneletRuntime = Object.freeze({
 export interface MesoTraffic {
   step(w: SimWorld, traffic: boolean): void;
   reset(): void;
-  /** Whether a point is inside its micro window (the flows at a junction are counted there). */
-  insideWindow(x: number, y: number): boolean;
+  /** Whether a point is inside its micro window (the flows at a junction are counted there), grown by `pad`. */
+  insideWindow(x: number, y: number, pad?: number): boolean;
   /** The micro window as it stands (null before it stands anywhere): the parked cars stand only inside it (`ambient.ts`). */
   microWindow(): { readonly x: number; readonly y: number; readonly r: number } | null;
+  /** The world moves the window (`SimWorld.useMeso`): the roads of the window are the lane graph's, built before the meso hands its cars to them (`moveWindowSteps`). */
+  driven: boolean;
+  /** Where it would move its window to (null: nowhere): the world moves the roads there first, then tells it (`windowMoved`). */
+  wantedWindow(): { readonly x: number; readonly y: number; readonly r: number } | null;
+  /** The roads of `to` are the lane graph's now: the window moves there, its links' cars handed to the micro simulation and taken back. */
+  windowMoved(w: SimWorld, to: { readonly x: number; readonly y: number; readonly r: number }): void;
+  /** Whoever drives on these roads is the meso's again, counted on its links (the roads leave the window's: `SimWorld.rescopeSteps`). */
+  takeBackFrom(w: SimWorld, segments: ReadonlySet<SegmentId>): void;
+  /** Where a trip begun at `start` ends: a lane just past the window's edge (null: none reachable), `routing/destination.ts`. */
+  handoffDestination(w: SimWorld, start: LaneletId, body: BodyClass): LaneletId | null;
+  /** The lane past the window's edge nearest a point beyond it that `start` reaches (null: none): a bus's way out towards a stop beyond the window (`transit.ts`). */
+  handoffTowards(w: SimWorld, start: LaneletId, body: BodyClass, x: number, y: number): LaneletId | null;
 }
 
 export class SimWorld {
@@ -178,6 +194,18 @@ export class SimWorld {
   private windowFleet = 0;
   /** The window the focus and the vehicles ask for, not moved to yet (`moveWindowSteps`). */
   private windowWanted: Set<NodeId> | null = null;
+  /**
+   * THE ROADS OF THE MICRO WINDOW (`useMeso`): the lane graphs and the walkways hold these alone (`LaneletGraph.scope`, `Walkways.scope`),
+   * the roads whose middle lies in the meso's window and every road at their ends (where the meso hands its cars over and takes them
+   * back); null, every road of the map (a spec, a world without the meso). Moved with the window off the step (`rescopeSteps`).
+   */
+  private microScope: Set<SegmentId> | null = null;
+  /** The window the meso asks for, its roads not held yet (`moveWindowSteps`); the window whose roads are held now; the roads' diary read for a road drawn in it (`keepMicroWindow`). */
+  private scopeWanted: { readonly x: number; readonly y: number; readonly r: number } | null = null;
+  private scopeCircle: { readonly x: number; readonly y: number; readonly r: number } | null = null;
+  private readonly scopeRoads = new JournalCursor(['roads']);
+  /** Who solves the roads that come into the window for this network (the page, whose network holds the whole map solved: `simHost.ts` bakeAsk); null: solved here. */
+  bakeSource: ((nodes: readonly NodeId[], segments: readonly SegmentId[]) => Promise<NetworkBake | null>) | null = null;
   /** What moves the people (`people/engine.ts`); everything else reaches them through it. */
   pedEngine: PedestrianEngine = NO_PEDESTRIANS;
   /** The vehicle model: Drive v2 (`drive/*`), the only one (the plain-IDM legacy model was taken out on 2026-10-08). */
@@ -229,8 +257,8 @@ export class SimWorld {
   nextVehicleId = 1;
   /** The next person's id, kept by the world as the vehicles' are */
   nextPersonId = 1;
-  /** The summed length of the roads, kept by what each rebuild changed (`world/networkLength.ts`). */
-  readonly roadLength = new NetworkLength();
+  /** The summed length of the map's roads, kept by the diary (`world/docLength.ts`): the whole map's, whatever roads the network holds. */
+  readonly roadLength = new DocRoadLength();
   /** The lanes by place, kept by what each build of the lane graph changed (`agents/laneGrid.ts`). */
   readonly laneGrid = new LaneGrid();
   /** The road ends each lane reaches, per body class, kept by what each edit changed (`routing/laneReach.ts`). */
@@ -322,6 +350,10 @@ export class SimWorld {
     // What was built from the graph is gone: the next rebuild builds it whole, as a new world's first.
     this.graph.forget();
     this.prepGraph?.forget();
+    // Another map's roads: the window's roads are found again when the meso asks its window (`keepMicroWindow`).
+    if (this.microScope) this.setScope(new Set());
+    this.scopeWanted = null;
+    this.scopeCircle = null;
     // The kerbs and zebras of the old map
     this.sidewalks.clear();
     this.walkSeen = null;
@@ -642,7 +674,7 @@ export class SimWorld {
 
   /** @rebuild The slow half of `rebuildVehicleTopology` ahead of time, in steps */
   *prepareVehicleTopology(measurer?: PairMeasurer): Generator<void | typeof WAITING, void> {
-    const graph = this.prepGraph ??= new LaneletGraph();
+    const graph = this.prepGraph ??= this.newPrepGraph();
     // DO NOT sweep them here: a generated city's turns held one frame 25 s (2026-10-15).
     const left = graph.turnPlan;
     if (left) left.recording = measurer?.chooseTurns !== undefined;
@@ -686,9 +718,16 @@ export class SimWorld {
     return this.walkways.update(this.net);
   }
 
+  /** A preparation graph holding the roads the graph holds (`microScope`). */
+  private newPrepGraph(): LaneletGraph {
+    const graph = new LaneletGraph();
+    graph.scope = this.graph.scope;
+    return graph;
+  }
+
   /** Builds the preparation graph with a map's load, so its first edit does not build it from nothing. */
   warmTopologyPrep(): void {
-    const graph = this.prepGraph ??= new LaneletGraph();
+    const graph = this.prepGraph ??= this.newPrepGraph();
     if (graph.current(this.net)) return;
     // A preparation's stand-in turns left (`prepareVehicleTopology`) are chosen here: no workers are asked.
     if (graph.turnPlan) graph.turnPlan.recording = false;
@@ -719,15 +758,140 @@ export class SimWorld {
     this.windowMoved(this.conflicts.setWindow(this.graph, new Set()));
   }
 
-  /** The window moved to the one asked for: the pairs of the junctions it reaches measured off the thread first (`measurer`, `conflictPool.ts`), then the swap (`TopologyCatchUp.stepWindow`). */
-  *moveWindowSteps(measurer?: PairMeasurer): Generator<void | typeof WAITING, void> {
+  /**
+   * The meso traffic drives the whole map (`meso/meso.ts`); with the micro window on (`useMicroWindow`) the lane graphs and the walkways
+   * hold the window's roads alone (`microScope`): DO NOT build the lanes, junctions, footways and kerbs of a 10 km city for the street
+   * in view. The meso's window is moved by the world then (`MesoTraffic.driven`), once its roads are held.
+   */
+  useMeso(meso: MesoTraffic): void {
+    this.meso = meso;
+    if (!this.microWindow) return;
+    meso.driven = true;
+    this.setScope(new Set());
+  }
+
+  /** Whether the lane graphs and the walkways hold the micro window's roads alone (`useMeso`). */
+  get microScoped(): boolean {
+    return this.microScope !== null;
+  }
+
+  /** The window's roads held (`microScope`); null: every road of the map. */
+  get microRoads(): ReadonlySet<SegmentId> | null {
+    return this.microScope;
+  }
+
+  /** The footway ends at the window's edge (`Walkways.edgeEnds`): where the scenery's people come in and go out, as at a road's end. */
+  walkEdgeEnds(): readonly { readonly node: NodeId; readonly x: number; readonly y: number }[] {
+    return this.walkways.edgeEnds();
+  }
+
+  /** The window's roads, as the network, the graphs and the walkways hold them (`microScope`). */
+  private setScope(scope: Set<SegmentId>): void {
+    this.microScope = scope;
+    this.net.scope = scope;
+    this.graph.scope = scope;
+    if (this.prepGraph) this.prepGraph.scope = scope;
+    this.walkways.scope = scope;
+  }
+
+  /** The roads of a window: those whose middle lies in its circle (the meso's own test, `segmentMiddle`), found by the document's tiles (`RoadDoc.tileRoads`: a road is its tile's by the middle of its ends, within half a road of its line's middle), and every road at their ends, so each junction of the window has its legs and each road out of it is there to hand a car over on. */
+  private scopeOf(win: { readonly x: number; readonly y: number; readonly r: number }): Set<SegmentId> {
+    const inside = new Set<SegmentId>();
+    const reach = win.r + TILE / 2;
+    for (let i = Math.floor((win.x - reach) / TILE); i <= Math.floor((win.x + reach) / TILE); i++) {
+      for (let j = Math.floor((win.y - reach) / TILE); j <= Math.floor((win.y + reach) / TILE); j++) {
+        for (const id of this.doc.tileRoads(tileKey(i, j)).segments) {
+          const seg = this.doc.segment(id as SegmentId);
+          if (!seg) continue;
+          const mid = segmentMiddle(this.doc, seg);
+          if (Math.hypot(mid.x - win.x, mid.y - win.y) < win.r) inside.add(id as SegmentId);
+        }
+      }
+    }
+    const out = new Set(inside);
+    for (const id of inside) {
+      const seg = this.doc.segment(id)!;
+      for (const node of [seg.a, seg.b]) for (const other of this.doc.node(node)?.incident ?? []) out.add(other);
+    }
+    return out;
+  }
+
+  /** The network's roads moved to `next`: the roads and junctions that come asked of the page as solved (`bakeSource`, `Network.offerBake`), and the network rebuilt to hold `next` (`Network.rescope`); its changes name what came and went. */
+  private *rescopeNetwork(next: ReadonlySet<SegmentId>): Generator<void | typeof WAIT, void> {
+    const held = this.net.scope;
+    if (this.bakeSource) {
+      const segments: SegmentId[] = [];
+      const ends = new Set<NodeId>();
+      for (const id of next) {
+        if (held?.has(id)) continue;
+        const seg = this.doc.segment(id);
+        if (!seg) continue;
+        segments.push(id);
+        ends.add(seg.a);
+        ends.add(seg.b);
+      }
+      // The nodes with every road held once the window moved, and not before: their junctions are solved for the first time.
+      const nodes: NodeId[] = [];
+      for (const node of ends) {
+        const incident = this.doc.node(node)?.incident ?? [];
+        if (incident.every((seg) => next.has(seg)) && !incident.every((seg) => held?.has(seg))) nodes.push(node);
+      }
+      if (segments.length) {
+        const bake = yield* answered(this.bakeSource(nodes, segments), 'the window\'s roads are solved');
+        if (bake) this.net.offerBake(bake);
+      }
+    }
+    this.net.rescope(next);
+  }
+
+  /** The window moved to the one asked for: the pairs of the junctions it reaches measured off the thread first (`measurer`, `conflictPool.ts`), then the swap (`TopologyCatchUp.stepWindow`). True when the roads held changed (the agents are to be rebound). */
+  *moveWindowSteps(measurer?: PairMeasurer): Generator<void | typeof WAITING, boolean> {
+    let rescoped = false;
+    const circle = this.scopeWanted;
+    if (circle) {
+      this.scopeWanted = null;
+      rescoped = yield* this.rescopeSteps(circle, measurer);
+      // The junctions asked for, asked again of the roads held now.
+      this.windowWanted = this.junctionsWanted();
+    }
     const next = this.windowWanted;
-    if (!next) return;
+    if (!next) return rescoped;
     this.windowWanted = null;
     const entering = this.conflicts.entering(this.graph, next);
     // DO NOT build them here unprepared: each new pair measured on the simulation's thread held it for minutes on a large city.
     if (entering.size) yield* this.conflicts.prepare(this.graph, measurer, entering, next);
     this.windowMoved(this.conflicts.setWindow(this.graph, next));
+    return rescoped;
+  }
+
+  /**
+   * The roads held moved to the meso's window (`scopeOf`): whoever drives on a road that leaves is the meso's again (the buses their
+   * timetable's), the lane graph takes the roads that left out and builds those that came (their junctions off the thread, `measurer`),
+   * what follows the graph follows (`topologyChanged`), the walkways and the kerbs likewise, then the meso's window moves there.
+   */
+  private *rescopeSteps(circle: { readonly x: number; readonly y: number; readonly r: number }, measurer?: PairMeasurer): Generator<void | typeof WAITING, boolean> {
+    const meso = this.meso!;
+    const next = this.scopeOf(circle);
+    const leaving = new Set<SegmentId>();
+    for (const seg of this.graph.segmentsHeld()) if (!next.has(seg)) leaving.add(seg);
+    if (leaving.size) {
+      this.city.transit.takeOff(this, leaving);
+      meso.takeBackFrom(this, leaving);
+    }
+    // The network first: the roads that came solved by the page where it holds them solved (`bakeSource`), then built here with their trims, which the lanes and the footways are made from.
+    yield* this.rescopeNetwork(next);
+    const changed = yield* this.graph.rescopeSteps(this.doc, this.net, next, measurer ?? null);
+    this.microScope = next;
+    this.prepGraph?.followScope(this.graph, this.doc, this.net);
+    if (changed) {
+      this.topologyLog.push(changed);
+      this.topologyChanged(changed);
+    }
+    yield* this.walkways.rescopeSteps(this.net, next, measurer);
+    this.rebuildWalkTopology();
+    this.scopeCircle = circle;
+    meso.windowMoved(this, circle);
+    return changed !== null;
   }
 
   /** The junctions whose conflict pairs came into the index or left it: claims on pairs gone dropped, and their signals planned again, now from the pairs or from the approaches' geometry (`planInputsOf`). */
@@ -738,26 +902,47 @@ export class SimWorld {
     if (signalled.size) this.syncControllers(signalled);
   }
 
-  /** Whether a point lies within the micro window's reach round the view (`keepMicroWindow`'s focus square), grown by `pad`; true with no window or no view (everything is micro then). */
+  /** Whether a point lies within the micro window's reach round the view, grown by `pad`: `keepMicroWindow`'s focus square; with the roads held the meso's window alone (`useMeso`), the meso's window itself and no margin, since past it there is no road to drive on; true with no window or no view (everything is micro then). */
   inFocusReach(x: number, y: number, pad = 0): boolean {
+    if (this.microScope && this.meso) return this.meso.insideWindow(x, y);
     const focus = this.focus;
     if (!this.microWindow || !focus) return true;
     const r = Math.min(FOCUS_WINDOW, Math.max(focus.r * 1.35, m(200)) * 1.15 + m(100)) + pad;
     return Math.abs(x - focus.x) <= r && Math.abs(y - focus.y) <= r;
   }
 
+  /** Whether the window's roads are held as the document has them now: the roads changed (one drawn, moved or taken in the window) since they were held, and they are found again (`scopeOf`, a road drawn in the window held with it) by the next move; false meanwhile, and while a move is under way. For whoever reads the window's roads off the network (`simHost.ts` lotPlan: asked again). */
+  windowRoadsHeld(): boolean {
+    if (!this.microScope) return true;
+    const roads = this.scopeRoads.read(this.doc.changes);
+    if (this.scopeCircle && (roads === null || roads.length > 0)) this.scopeWanted = this.scopeCircle;
+    return this.scopeWanted === null && this.scopeCircle !== null;
+  }
+
   /** Whether a window move is asked for. */
   get windowMoving(): boolean {
-    return this.windowWanted !== null;
+    return this.windowWanted !== null || this.scopeWanted !== null;
   }
 
   /** Stage 2 (`pipeline.ts`): the window asked for with the focus and the vehicles, each half second or when vehicles were made; moved off the step (`moveWindowSteps`). */
   keepMicroWindow(): void {
     if (!this.microWindow) return;
+    // The meso asks its window moved: its roads are held first (`rescopeSteps`), then it moves.
+    if (this.microScope && this.meso) {
+      const want = this.meso.wantedWindow();
+      if (want) this.scopeWanted = want;
+      else this.windowRoadsHeld();
+    }
     const tick = this.clock.tick;
     if (tick - this.windowTick < Math.round(WINDOW_EVERY / DT) && this.vehicles.size <= this.windowFleet) return;
     this.windowTick = tick;
     this.windowFleet = this.vehicles.size;
+    const next = this.junctionsWanted();
+    this.windowWanted = this.conflicts.holdsWindow(next) ? null : next;
+  }
+
+  /** The junctions the focus and the vehicles ask the conflicts of (`keepMicroWindow`). */
+  private junctionsWanted(): Set<NodeId> {
     const next = new Set<NodeId>();
     const take = (x: number, y: number, r: number): void => {
       for (const node of this.junctionFiling.idsMeeting([x - r, y - r, x + r, y + r])) next.add(node);
@@ -774,7 +959,7 @@ export class SimWorld {
       const x0 = (Math.floor(cell / 2 ** 21) - 2 ** 20) * WINDOW_CELL, y0 = ((cell % 2 ** 21) - 2 ** 20) * WINDOW_CELL;
       for (const node of this.junctionFiling.idsMeeting([x0 - VEHICLE_WINDOW, y0 - VEHICLE_WINDOW, x0 + WINDOW_CELL + VEHICLE_WINDOW, y0 + WINDOW_CELL + VEHICLE_WINDOW])) next.add(node);
     }
-    this.windowWanted = this.conflicts.holdsWindow(next) ? null : next;
+    return next;
   }
 
   /** @rebuild Called when the network's traffic revision moved. */
@@ -783,6 +968,14 @@ export class SimWorld {
     const prep = this.prepGraph;
     const changed = prep?.current(this.net) ? this.graph.adopt(prep, this.doc, this.net) : this.graph.update(this.doc, this.net);
     this.topologyLog.push(changed);
+    this.topologyChanged(changed);
+    this.vehicleTopologyRevision = this.net.trafficRevision;
+    // The preparation graph holds the window's roads as the graph does, so an edit's preparation finds them there (`followScope`).
+    if (this.microScope) prep?.followScope(this.graph, this.doc, this.net);
+  }
+
+  /** What follows a change of the lane graph (an edit's, `rebuildVehicleTopology`; the window's, `rescopeSteps`): the reaches, the junctions' filing, the conflicts, the claims, the controllers, the lanes' runtimes, the flows and their advisor. */
+  private topologyChanged(changed: GraphChange | null): void {
     // Each body's reach of the road ends follows the graph here, with the topology, not in the tick of the next vehicle made (`LaneReaches.follow`).
     this.laneReaches.follow(this);
     // What the next rebind looks at: nothing while no vehicle is out, as a vehicle made later is made on this graph.
@@ -797,7 +990,6 @@ export class SimWorld {
       rebuildWork.lanes++;
       if (!this.doc.segment(segment as SegmentId)) this.segmentVolume.delete(segment);
     }
-    this.vehicleTopologyRevision = this.net.trafficRevision;
     // DO NOT leave this to stage 7: the mark only ever went on, and a lane given back would stay dead to routes, bays
     for (const id of changed ? changed.lanelets : this.runtime.keys()) {
       const rt = this.runtime.get(id);

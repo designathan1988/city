@@ -26,57 +26,89 @@ export function levelFor(pixelsPerUnit: number): number {
   return level;
 }
 
+/** A key for what a part's levels are made of, number by number: its positions, colours and index, what it is, what it is seen past. */
+function keyOf(part: PartArrays, weld: Weld): string {
+  // FNV-1a over the numbers' bits, two ways (32 bits each: a collision of both is not met among a few hundred parts).
+  let h1 = 0x811c9dc5, h2 = 0x01000193;
+  const mix = (a: ArrayLike<number> & { buffer: ArrayBufferLike; byteOffset: number; byteLength: number }): void => {
+    const words = new Uint32Array(a.buffer, a.byteOffset, a.byteLength >> 2);
+    for (let i = 0; i < words.length; i++) { h1 = Math.imul(h1 ^ words[i]!, 0x01000193); h2 = Math.imul(h2 ^ words[i]!, 0x9e3779b1) ^ (h2 >>> 15); }
+    h1 = Math.imul(h1 ^ a.byteLength, 0x01000193);
+  };
+  for (const a of [part.position.array, part.color?.array, part.normal?.array, part.index, part.occluders]) if (a) mix(a as Float32Array);
+  return `${weld}:${part.position.array.length}:${part.index?.length ?? 0}:${part.occluders?.length ?? 0}:${(h1 >>> 0).toString(36)}:${(h2 >>> 0).toString(36)}`;
+}
+
 /** A copy of an attribute's numbers, to be moved to the worker (the part keeps its own). */
 const copyOf = (geometry: BufferGeometry, name: string): ArrayOf | null => {
   const a = geometry.getAttribute(name) as BufferAttribute | undefined;
   return a ? { array: a.array.slice(), itemSize: a.itemSize, normalized: a.normalized } : null;
 };
 
-/** The levels of `source` (0 is `source` itself; null: nothing left to draw at that level): welded, simplified and creased in the levels' worker (`partLevelsWork.ts`), the page only putting the geometries together.
- *  `copies`: how many a vehicle draws (a car's four tyres), for what a level sheds a vehicle (`SHED`). */
-export async function partLevels(source: BufferGeometry, weld: Weld, copies = 1): Promise<(BufferGeometry | null)[]> {
-  try {
-    await MeshoptSimplifier.ready;
-  } catch (error) {
-    // Said, not swallowed: the part is then drawn whole at every size.
-    console.error('[vehicles] meshoptimizer did not load; parts are drawn unsimplified', error);
-    return [source];
-  }
-  const index = source.getIndex();
-  const part: PartArrays = {
-    position: copyOf(source, 'position')!, color: copyOf(source, 'color'), normal: copyOf(source, 'normal'),
-    index: index ? (index.array as Uint32Array | Uint16Array).slice() : null,
-  };
-  const pool = lodPool();
-  const made: PartLevels = pool ? await pool.part(part, weld) : partLevelArrays(part, weld);
-  const shared = made.shared ? {
-    position: attributeOf(made.shared.position), color: attributeOf(made.shared.color), normal: made.shared.normal ? attributeOf(made.shared.normal) : null,
-  } : null;
-  const levels: (BufferGeometry | null)[] = [source];
-  for (const l of made.levels) {
-    if (l === 'same') { levels.push(levels[levels.length - 1]!); continue; }
-    if (l === null) { levels.push(null); continue; }
-    const level = new BufferGeometry();
-    if (l.position) {
-      level.setAttribute('position', attributeOf(l.position));
-      level.setAttribute('color', attributeOf(l.color!));
-      level.setAttribute('normal', attributeOf(l.normal!));
-    } else if (shared) {
-      level.setAttribute('position', shared.position);
-      level.setAttribute('color', shared.color);
-      if (shared.normal) level.setAttribute('normal', shared.normal);
+/** THE VEHICLES' PARTS' LEVELS, each made once for whoever owns this (`agents.ts`'s vehicle meshes; a sheet's run, `vehicleLevelItems.ts`): by
+ *  what they were made from (`keyOf`), so the same part made again (another body style) takes the levels already made. */
+export class PartLevelMaker {
+  private readonly made = new Map<string, Promise<PartLevels>>();
+  /** The coarser levels' geometries, by what they were made from (`keyOf`): one geometry a level however many parts are made of the same
+   *  numbers. DO NOT make them again for each: the hatch's, the sedan's, the wagon's, the SUV's and the pickup's identical wheels were five
+   *  copies of every level on the GPU (the lab's waste scan, 2026-10-27). */
+  private readonly built = new Map<string, Promise<(BufferGeometry | null)[]>>();
+
+  /** The levels of `source` (0 is `source` itself): welded, simplified and measured in the levels' worker (`partLevelsWork.ts`), the page
+   *  only putting the geometries together. `copies`: how many a vehicle draws (a car's four tyres), for what a level sheds a vehicle (`SHED`).
+   *  `occluders`: the vehicle's opaque triangles in its frame (`vehicleSeen.ts` soupOf), for a part that casts no shadow: its levels are of
+   *  what is seen of it. */
+  async levels(source: BufferGeometry, weld: Weld, copies = 1, occluders: Float64Array | null = null): Promise<BufferGeometry[]> {
+    try {
+      await MeshoptSimplifier.ready;
+    } catch (error) {
+      // Said, not swallowed: the part is then drawn whole at every size.
+      console.error('[vehicles] meshoptimizer did not load; parts are drawn unsimplified', error);
+      return [source];
     }
-    if (l.index) level.setIndex(new BufferAttribute(l.index, 1));
-    level.boundingSphere = new Sphere(new Vector3(l.sphere[0], l.sphere[1], l.sphere[2]), l.sphere[3]);
-    levels.push(level);
+    const index = source.getIndex();
+    const part: PartArrays = {
+      position: copyOf(source, 'position')!, color: copyOf(source, 'color'), normal: copyOf(source, 'normal'),
+      index: index ? (index.array as Uint32Array | Uint16Array).slice() : null, occluders,
+    };
+    // The same part, made again, takes the levels already made.
+    const key = keyOf(part, weld);
+    let making = this.made.get(key);
+    if (!making) {
+      const pool = lodPool();
+      making = pool ? pool.part(part, weld) : Promise.resolve(partLevelArrays(part, weld));
+      this.made.set(key, making);
+    }
+    // The coarser levels as geometries, made once for every part of the same numbers (`built`); a level the same as the one before is that one.
+    let geometries = this.built.get(key);
+    if (!geometries) {
+      geometries = making.then((made) => {
+        const out: (BufferGeometry | null)[] = [];
+        for (const l of made.levels) {
+          if (l === 'same') { out.push(out[out.length - 1] ?? null); continue; }
+          const level = new BufferGeometry();
+          level.setAttribute('position', attributeOf(l.position));
+          level.setAttribute('color', attributeOf(l.color));
+          level.setAttribute('normal', attributeOf(l.normal));
+          level.setIndex(new BufferAttribute(l.index, 1));
+          level.boundingSphere = new Sphere(new Vector3(l.sphere[0], l.sphere[1], l.sphere[2]), l.sphere[3]);
+          out.push(level);
+        }
+        return out;
+      });
+      this.built.set(key, geometries);
+    }
+    // A level null is its source again (level 0 the same as the one before it): each part's own source stands there.
+    const levels: BufferGeometry[] = [source];
+    for (const g of await geometries) levels.push(g ?? levels[levels.length - 1]!);
+    // A level that sheds too little a vehicle is the finer one again: one draw fewer for every body style.
+    let finer = trianglesOf(source);
+    for (let k = 1; k < levels.length; k++) {
+      const level = levels[k]!, before = levels[k - 1]!;
+      if (level === before) continue;
+      if ((finer - trianglesOf(level)) * copies < SHED) { levels[k] = before; continue; }
+      finer = trianglesOf(level);
+    }
+    return levels;
   }
-  // A level that sheds too little a vehicle is the finer one again: one draw fewer for every body style.
-  let finer = trianglesOf(source);
-  for (let k = 1; k < levels.length; k++) {
-    const level = levels[k], before = levels[k - 1];
-    if (!level || level === before) continue;
-    if (before && (finer - trianglesOf(level)) * copies < SHED) { levels[k] = before; continue; }
-    finer = trianglesOf(level);
-  }
-  return levels;
 }

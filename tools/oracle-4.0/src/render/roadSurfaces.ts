@@ -8,36 +8,43 @@ import type { CarriagewayMaterial } from '@world/roadSection';
 import { packFlush } from '@world/roads/footwayRise';
 import { rampsMeeting } from '@world/curbRamps';
 import { type CurbRamp, rampData } from '@world/rampRise';
-import { roadStructure } from '@world/structures';
+import { TUNNEL_BORE, TUNNEL_ROOF, isSunken, roadStructure } from '@world/structures';
 import { type RoadElevation, SURFACE_READ_REACH } from '@world/elevation';
-import { LANE_LINE } from '@world/roadTypes';
-import { type Reach, SurfaceInputs, TILE, TILE_BIAS, TILE_ORIGIN } from './roadSurfaceInputs';
+import { type PartKey, SurfaceInputs, TILE_REACH, byPart, cellOfPart, cellRectOfPart } from './roadSurfaceInputs';
 import type { SceneMaterials } from './materials';
-import { type PassLook, passDesc, passRaised, passReads, polysOf, tileBundle } from './roadSurfacePass';
-import { attachFarLevel, blockArraysOf, blockBox, cloneBlock, concat, joinBlocks, memberSizes, mergeTiles, splitBlock, tilesOnGpu } from './mesh/surfaceTiles';
+import { roadPaint } from './roadPaint';
+import { type PieceSlots, keptForm, sessionForm, slotSurfaces } from './mesh/tilePieces';
+import { roadMarks } from './roadMarks';
+import { type PassLook, geomsOf, passDesc, passRaised, passReads, tileBundle } from './roadSurfacePass';
+import {
+  type DrawGroup, type KeptTile, type PassState, type PassTile, type SurfaceSpec, type TileBundle, coded, concatSeams, drawGroups, ringsReader, sameTiles,
+  farSurfaceSource, surfaceSource, tileSignature,
+} from './roadSurfaceBlocks';
+import { ROAD_CODE, type RoadCode } from './mesh/roadEdges';
+import { attachFarLevel, blockArraysOf, blockBox, cloneBlock, joinBlocks, memberSizes, mergeTiles, splitBlock, tilesOnGpu } from './mesh/surfaceTiles';
 import { cancelWarm, warmLooseAhead } from './uploads';
 import type { FarBlockBatches } from './mesh/farBlockBatches';
-import { type BlockArrays, levelsOf } from './mesh/roadLod';
+import { type BlockArrays, type BlockLock, levelsOf } from './mesh/roadLod';
+import { FOOTPRINT, farLocksOf, farTileName, seamsOf } from './roads/pieceMesh';
+import type { RoadFootprints } from './roadFootprints';
 import { ASPHALT_REFERENCE, CARRIAGEWAY_COLOUR } from './roadTones';
-import type { TileSource } from './roadTileShape';
 import type { RoadTiler, TileJob } from './roadTilePool';
 import type { SurfaceData } from './roadTileMesh';
 import {
-  FOOTWAY_EDGE_CELL,
   passSurfaces,
   type PassDesc,
   type RoadLook,
   type SurfaceRead,
+  type TileSource,
 } from './roadSurfaceReads';
-import type { SegmentId } from '@world/ids';
+import type { NodeId, SegmentId } from '@world/ids';
 import {
   disposeMesh,
-  type SurfaceMeshOptions,
   type Tile,
   type TileRect,
 } from './mesh/surfaceMesh';
 
-export { TERRAIN_UV } from './roadSurfaceReads';
+export type { TileBundle } from './roadSurfaceBlocks';
 
 /** The road network's surface bands */
 
@@ -46,18 +53,16 @@ export interface SurfaceReuse {
   /** DO NOT keep a tile's arrays here */
   readonly tiles: Map<string, Map<number, KeptTile>>;
   /** What each tile's ground and heights digested to at the last build (`dependsOn`), by pass and tile key: a tile no changed block reaches keeps it (DO NOT digest every tile of the region at every build: ~6,600 digests, 700 ms on the page at each tile a streamed world put in, 2026-10-16). */
-  readonly depends?: Map<string, Map<number, number>>;
+  readonly depends?: Map<string, Map<PartKey, number>>;
   /** A digest of everything the height field and the texture frames read in a rectangle */
   readonly dependsOn: (minX: number, minY: number, maxX: number, maxY: number) => number;
-  /** The paint materials, by colour: made once, not on every rebuild. */
-  readonly paint: Map<string, Material>;
   /** The meshes of each block of tiles */
   readonly chunks: Map<string, { readonly parts: readonly number[]; readonly mesh: Mesh }>;
   /** Block meshes replaced but maybe still drawn: freed by the owner once the new roads are in. */
   readonly retired?: Mesh[];
   /** Whether a block at (x, y), world units, is near the camera: made at full detail, its far level hidden */
   readonly near?: (x: number, y: number) => boolean;
-  /** Whether a tile of the roads is built here at all (the opening's view, `renderer.ts` openingWithin): a tile left out is built by a later build. None: every tile. */
+  /** Whether a tile of the roads is built here at all (its cell taken by the view, `mesh/roadResidency.ts`): a tile left out is drawn by the network's far level until the view takes its cell. None: every tile. */
   within?: (rect: TileRect) => boolean;
   /** Where `within`'s answer changed since the last build finished; null: it cannot say (every tile visited). */
   withinMoved?: (readonly [number, number, number, number])[] | null;
@@ -76,6 +81,9 @@ export interface SurfaceReuse {
   readonly kept?: (key: string) => void;
   /** The batches the blocks' far levels are drawn in, one a look (`farBlockBatches.ts`). None: each far level a mesh of its own. */
   readonly farBatches?: FarBlockBatches;
+  /** Each part's footprint on the ground, staged as a build makes it and put in place with it (`adopt`): what the terrain is cut along
+   *  (`roadFootprints.ts`, `terrainSeams.ts`). None: none kept. */
+  readonly footprints?: RoadFootprints;
 }
 
 /** A block into the group with its far level, which waits hidden beside it (`mesh/roadLod.ts`). */
@@ -86,10 +94,10 @@ function addBlock(group: Group, mesh: Mesh): void {
 }
 
 /** The name a tile is kept under between sessions: its pass, its place and its digest (a new digest at the same place replaces the old). */
-export const storedKey = (pass: string, tile: number, digest: number): string => `${pass}|${tile}|${digest}`;
+const storedKey = (pass: string, tile: PartKey, digest: number): string => `${pass}|${tile}|${digest}`;
 
 /** The tiles kept off the page (`derivedCache.ts`) */
-export interface StoredTiles {
+interface StoredTiles {
   /** Whether a tile is kept. */
   has(key: string): boolean;
   /** The kept tiles of these keys, read from the store: never the whole of it. */
@@ -99,10 +107,9 @@ export interface StoredTiles {
 /** Frees what a `SurfaceReuse` holds on the GPU. */
 export function disposeSurfaceReuse(reuse: SurfaceReuse): void {
   dropSurfaceBlocks(reuse);
-  for (const material of reuse.paint.values()) material.dispose();
 }
 
-/** The blocks a `SurfaceReuse` holds freed, its paint kept. */
+/** The blocks a `SurfaceReuse` holds freed. */
 function dropSurfaceBlocks(reuse: SurfaceReuse): void {
   for (const { mesh } of reuse.chunks?.values() ?? []) disposeMesh(mesh);
   reuse.chunks?.clear();
@@ -112,91 +119,8 @@ function dropSurfaceBlocks(reuse: SurfaceReuse): void {
   reuse.depends?.clear();
   if (reuse.withinMoved !== undefined) reuse.withinMoved = null;
   for (const mesh of reuse.retired?.splice(0) ?? []) disposeMesh(mesh);
-}
-
-/** Every surface of one tile, by mesh name. */
-export type TileBundle = ReadonlyMap<string, Tile>;
-/** A tile kept between builds: the names of the surfaces it has. Its digest is its key. */
-type KeptTile = readonly string[];
-
-/** One tile of a pass in a build: its digest and block, its surfaces and arrays once known. DO NOT keep its rings with it: read from the
- *  inputs when it is built (`SurfaceInputs.reachOf`, held round the view), a tile kept in the pass's state held them for good, and the
- *  fill after a large city's opening every tile of the map's until it was over. */
-interface PassTile {
-  /** Its key among the pass's tiles (`roadSurfaceInputs.ts` tileKey). */
-  readonly key: number;
-  readonly value: number;
-  /** Its name in the store (`storedKey`). */
-  readonly stored: string;
-  readonly chunk: string;
-  readonly rect: TileRect;
-  surfaces: KeptTile | null;
-  bundle: TileBundle | null;
-}
-
-/** A pass of the surfaces as the last build left it (`roadSurfaceSteps`): the constants it was built with, its inputs' birth, its tiles by key (no arrays), the tiles of each block and, for each surface, its blocks by the first tile holding it (the order a fresh build draws them in). */
-export interface PassState {
-  readonly salt: number;
-  readonly born: number;
-  readonly tiles: Map<number, PassTile>;
-  readonly chunkTiles: Map<string, Set<number>>;
-  readonly blocks: Map<string, Map<string, number>>;
-  /** Blocks whose tiles changed and that a build replaced halfway did not merge yet: merged by the next. */
-  readonly pending: Set<string>;
-}
-
-/** A block's tiles by digest, surface by surface of its group (a surface after the first marked by minus its place: digests are never negative). */
-function tileSignature(lists: readonly (readonly PassTile[])[]): number[] {
-  return lists.flatMap((list, i) => [...(i ? [-i] : []), ...list.map((tile) => tile.value)]);
-}
-
-/** Whether a block's tiles are the ones its mesh was merged from, by digest. */
-function sameTiles(parts: readonly number[], lists: readonly (readonly PassTile[])[]): boolean {
-  const now = tileSignature(lists);
-  return parts.length === now.length && now.every((value, i) => value === parts[i]);
-}
-
-/** Surfaces drawn alike - one material, order and shadows - drawn as one mesh a block (`drawGroups`): its name, theirs joined by `+`. */
-interface DrawGroup {
-  readonly name: string;
-  readonly specs: readonly SurfaceSpec[];
-  readonly options: SurfaceSpec['options'];
-  readonly renderOrder?: number;
-}
-
-/** DO NOT draw a mesh a surface where surfaces are drawn alike (the footway and its ramps, a kerb and a median's kerb: one material each): a
- *  draw call a surface a block. The pass's surfaces grouped by how they are drawn, in the order each group's first surface comes; each
- *  surface keeps its own tiles, and its own far level (`attachFarLevel`). */
-function drawGroups(specs: readonly SurfaceSpec[]): DrawGroup[] {
-  const byLook = new Map<string, SurfaceSpec[]>();
-  for (const spec of specs) {
-    const o = spec.options;
-    const look = `${o.material.uuid}|${spec.renderOrder ?? ''}|${o.castShadow ?? false}|${o.receiveShadow ?? true}`;
-    const list = byLook.get(look);
-    if (list) list.push(spec); else byLook.set(look, [spec]);
-  }
-  return [...byLook.values()].map((members) => {
-    const name = members.map((spec) => spec.options.name).join('+');
-    const lead = members[0]!;
-    return { name, specs: members, options: { ...lead.options, name }, ...(lead.renderOrder !== undefined ? { renderOrder: lead.renderOrder } : {}) };
-  });
-}
-
-/** One surface's tiles in a block, built again from their rings (a lost WebGL context, `mesh/gpuOnly.ts`), read again off the inputs
- *  then (`ringsOf`): DO NOT hold every block's rings for it, the whole map's roads kept on the CPU. A tile its pass no longer has is gone
- *  from the network since, its block built again by the next build: left out. */
-function surfaceSource(spec: SurfaceSpec, tiles: readonly { readonly rect: TileRect; readonly key: number }[],
-  reading: <T>(work: () => T) => T, ringsOf: (key: number) => Reach | null): () => Tile[] {
-  return () => tiles.flatMap(({ rect, key }) => {
-    const into = ringsOf(key);
-    return into ? [reading(() => tileBundle(into, rect, [spec]).get(spec.options.name)!)] : [];
-  });
-}
-
-/** A pass's rings by tile key (`surfaceSource`, the build), made here: DO NOT make it in the build's pass loop, whose closures share one
- *  context (V8): kept by every block's source, it held the pass's every tile of the build with it. */
-function ringsReader(inputs: SurfaceInputs, pass: string): (key: number) => Reach | null {
-  return (key) => (inputs.visits(pass, key) ? inputs.reachOf(pass, key).reach : null);
+  // No road drawn: no ground cut for one.
+  reuse.footprints?.clear();
 }
 
 export interface RoadSurfaces {
@@ -217,8 +141,13 @@ export interface RoadSurfaces {
   dispose(): void;
 }
 
-/** Tiles a side of one mesh: eight tiles of 76.8 m, a mesh a surface over 614 m of roads. An edit re-merges its block's tiles, never builds them again (kept by digest). */
-const CHUNK = 8;
+/** The version of how a piece is made (`roads/`): a part's digest holds it, so the parts kept by an older base (the store, `derivedCache.ts`)
+ *  are never read for this one. 3: a part's bundle carries its footprint (`roads/pieceMesh.ts` FOOTPRINT). 4: a corner's footway closed on one back
+ *  point (`junctionPiece.ts` footwayOf), a road's strip carrying its slot past its mouths (`roadSurfaceReads.ts` asphaltSection). */
+const SURFACE_BASE = 4;
+/** How far over a tunnel's road the ground may stand for its footprint to cut it (the middle of the band where the shaping lets the hill close
+ *  over it, `world/elevation.ts` roadShapeAt): past it the road bores under the hill and the terrain is left whole over it. */
+const TUNNEL_OPEN = (TUNNEL_ROOF + TUNNEL_BORE) / 2;
 /** Tiles a batch asked of the workers at once (`roadTilePool.ts`) */
 const SHAPE_BATCH = 64;
 /** Batches of tiles asked of the workers ahead of the one being taken (`buildAll`): each worker's next share waits in its queue. */
@@ -245,34 +174,22 @@ const PAVING_TINTS: Readonly<Record<string, readonly [number, number, number]>> 
   Object.entries(CARRIAGEWAY_TINT).map(([name, tint]) => [name, againstReference(tint)]));
 
 /** The page's constants the roads are drawn with (`PassLook`): what a road bake in a worker is handed to draw them alike (`nearRoadTiles.ts`). */
-export function passLook(materials: SceneMaterials, groundMaterial: Material | undefined): PassLook {
+function passLook(materials: SceneMaterials): PassLook {
   return {
-    groundMaterial: groundMaterial !== undefined,
     scale: { asphalt: materials.scale.asphalt, footway: materials.scale.footway, kerb: materials.scale.kerb, verge: materials.scale.verge, deck: materials.scale.deck },
     classTint: CLASS_TINTS,
     referenceTint: REFERENCE_TINT,
     pavingTint: PAVING_TINTS,
   };
 }
-/** What each surface of a tile is made from (`roadTileShape.ts`). */
-type Source = TileSource;
-
-/** One surface of a structural level: how it is meshed, and from what. */
-interface SurfaceSpec {
-  readonly source: Source;
-  readonly options: Omit<SurfaceMeshOptions, 'polygons'>;
-  readonly renderOrder?: number;
-}
-
 export function buildRoadSurfaces(
   net: Network,
   elevation: RoadElevation,
   materials: SceneMaterials,
   terrainAt: (x: number, y: number) => number,
   reuse?: SurfaceReuse,
-  groundMaterial?: Material,
 ): RoadSurfaces {
-  const steps = roadSurfaceSteps(net, elevation, materials, terrainAt, reuse, groundMaterial);
+  const steps = roadSurfaceSteps(net, elevation, materials, terrainAt, reuse);
   let step = steps.next();
   while (!step.done) step = steps.next();
   step.value.adopt();
@@ -286,7 +203,6 @@ export function* roadSurfaceSteps(
   materials: SceneMaterials,
   terrainAt: (x: number, y: number) => number,
   reuse?: SurfaceReuse,
-  groundMaterial?: Material,
   /** Shapes the tiles off the page (`roadTilePool.ts`); then the steps yield 'wait' while it works. None: all here. */
   tiler?: RoadTiler | null,
   /** The blocks whose ground or heights changed since the last build (`renderer.ts` `compareSolves`), world units: only the tiles within the elevation's read reach of one are digested again; null, every tile (the land moved, or nothing is known). */
@@ -312,26 +228,23 @@ export function* roadSurfaceSteps(
   let built = 0;
   let reused = 0;
   const rebuilt: TileRect[] = [];
-  // The paint of every colour, made at load (`paintCatalogue`): read here, never made.
-  const paint = reuse?.paint;
-  const paintFor = (color: string): Material => paint?.get(color) ?? paint?.get(LANE_LINE) ?? materials.asphalt;
 
   const reading = <T>(work: () => T): T => elevation.remembering ? elevation.remembering(work) : work();
   // The inputs of every pass, kept road by road and node by node and brought up to the network by its change
   const inputs = reuse?.inputs ?? new SurfaceInputs();
   inputs.refresh(net);
+  // Where the document's slots are in the paint's table: what a block's vertices are given, its tiles carrying the document's own (`roadPaint.ts`).
+  const tableSlots = roadPaint.resolverOf(net.doc);
   // Roads at authored heights are drawn on their own, each from its own deck
   const passes = inputs.passList();
   if (reuse) {
     const current = new Set(passes.map((pass) => pass.id));
-    for (const id of reuse.tiles.keys()) if (!current.has(id)) reuse.tiles.delete(id);
+    for (const id of reuse.tiles.keys()) if (!current.has(id)) { reuse.tiles.delete(id); reuse.footprints?.dropPass(id); }
   }
-  // Every pass may paint in every colour of the catalogue: a colour with no line in a tile draws nothing there
-  const paintColours = inputs.paintColours();
   /** The tiles of the active region's edge that moved, as read now: taken off `withinMoved` only once this build is over (a build replaced halfway leaves them for the next). */
   const moved = reuse?.withinMoved === undefined ? [] : reuse.withinMoved === null ? null : reuse.withinMoved.slice();
   /** The dirty tiles each pass was visited with: settled once this build is over, for the same reason. */
-  const settleLater: { pass: string; born: number; keys: number[] }[] = [];
+  const settleLater: { pass: string; born: number; keys: PartKey[] }[] = [];
   for (const pass of passes) {
     yield;
     const structure = roadStructure(pass.structure);
@@ -339,32 +252,42 @@ export function* roadSurfaceSteps(
     if (!present) {
       reuse?.tiles.delete(pass.id);
       reuse?.passes?.delete(pass.id);
+      reuse?.footprints?.dropPass(pass.id);
       continue;
     }
 
     const raised = passRaised(net, pass, elevation, terrainAt);
 
     /** What this pass's surfaces read on the page: the network and the solved field (in a worker, `SurfaceData`). */
-    const pageReads = passReads(net, elevation, terrainAt, inputs, pass.id);
+    const pageReads = passReads(net, elevation, terrainAt);
     const look = (id: SegmentId): RoadLook | undefined => pageReads.look(id);
-    const edgesAt = (key: number): ArrayLike<number> | undefined => pageReads.footwayEdges(key);
+    /** This session's slots of a kept tile's roads and nodes (`sessionForm`), each road's paint written in the table as it is looked at (`lookOf`). */
+    const sessionSlots: PieceSlots = {
+      road: (id) => { look(id as SegmentId); return roadPaint.roadSlot(net.doc, id as SegmentId); },
+      node: (id) => roadPaint.nodeSlot(net.doc, id as NodeId),
+    };
+    /** Kept tiles read off the store (`reuse.stored`), each bundle given this session's slots once (the reads in flight are shared, `renderer.ts` fetchTiles). */
+    const fetchKept = (keys: readonly string[]): Promise<ReadonlyMap<string, TileBundle>> => reuse!.stored!.fetch(keys).then((map) => {
+      for (const bundle of map.values()) sessionForm(bundle as Map<string, Tile>, sessionSlots);
+      return map;
+    });
     net.crossingSurface();
     yield;
     /** The pass as its surfaces read it, plain data: the same on the page and in a worker (`roadSurfaceReads.ts`). */
-    const desc: PassDesc = passDesc(net, pass, raised, passLook(materials, groundMaterial), paintColours);
-    const specs = passSurfaces(desc, pageReads).map((read) => dress(read, raised, materials, groundMaterial, paintFor));
+    const desc: PassDesc = passDesc(net, pass, raised, passLook(materials));
+    const specs = passSurfaces(desc, pageReads).map((read) => dress(read, raised, materials));
+    /** The surfaces whose tiles carry the paint's slots: kept with their roads and nodes by id (`tilePieces.ts`). */
+    const carrying = slotSurfaces(specs, farTileName);
     const groups = drawGroups(specs);
 
     // Everything a tile's build reads besides its rings and its surroundings
-    const specSalt = (spec: SurfaceSpec): number => new Digest().addText(spec.options.name).add(spec.options.maxEdge)
-      .add(spec.options.uvWorld ?? 0).add(spec.options.skirtUvScale ?? 0).add(spec.options.bottom ? 1 : 0)
+    const specSalt = (spec: SurfaceSpec): number => new Digest().addText(spec.options.name).add(spec.options.leastEdge)
+      .add(spec.options.skirtUvScale ?? 0).add(spec.options.bottom ? 1 : 0).add(spec.options.across ?? 1)
       .add(spec.options.tint ? 1 : 0).value();
-    const salt = new Digest().addText(pass.id);
-    const paintSalt = new Map<string, number>();
-    for (const spec of specs) {
-      if (spec.source.kind === 'paint') paintSalt.set(spec.source.color, specSalt(spec));
-      else salt.add(specSalt(spec));
-    }
+    // The materials' texture scales (the UVs), and the base the pieces are made by: a part kept by a build of another is never taken.
+    const salt = new Digest().addText(pass.id).add(SURFACE_BASE)
+      .add(desc.scale.asphalt).add(desc.scale.footway).add(desc.scale.kerb).add(desc.scale.verge).add(desc.scale.deck);
+    for (const spec of specs) salt.add(specSalt(spec));
     const saltValue = salt.value();
     // What the pass's blocks are kept under besides their tiles: each surface's name, material and order (`keyOf`). DO NOT keep a pass's state across a change of them: its standing blocks would be looked for under keys no longer made.
     const passSalt = new Digest().add(saltValue);
@@ -377,55 +300,47 @@ export function* roadSurfaceSteps(
     const before = reuse?.passes?.get(pass.id);
     const incremental = before !== undefined && dirtyNow !== null && before.salt === passSaltValue && before.born === dirtyNow.born
       && changed !== null && moved !== null;
+    // Its tiles visited, built or let go, are the cells the view takes and lets go (`reuse.within`, `withinMoved`: `mesh/roadResidency.ts`): DO NOT visit the map's tiles for a cell that came or went.
     const state: PassState = incremental ? before : { salt: passSaltValue, born: dirtyNow?.born ?? -1, tiles: new Map(), chunkTiles: new Map(), blocks: new Map(), pending: new Set() };
     if (dirtyNow) settleLater.push({ pass: pass.id, born: dirtyNow.born, keys: [...dirtyNow.keys] });
     const kept = incremental && previous ? previous : new Map<number, KeptTile>();
     const knownDepends = reuse?.depends?.get(pass.id);
-    const depends = incremental && knownDepends ? knownDepends : new Map<number, number>();
+    const depends = incremental && knownDepends ? knownDepends : new Map<PartKey, number>();
     const reach = SURFACE_READ_REACH + 1;
     const reached = (rect: TileRect): boolean => changed === null
       || changed.some((b) => b[0] <= rect[2] + reach && b[2] >= rect[0] - reach && b[1] <= rect[3] + reach && b[3] >= rect[1] - reach);
     /** The tiles to look at, in tile order (a mesh is laid out the same however it was reached). */
-    let visit: number[];
+    let visit: PartKey[];
     if (incremental) {
-      const keys = new Set<number>(dirtyNow!.keys);
-      const over = (r: readonly number[], grow: number): void => {
-        for (let ix = Math.floor((r[0]! - grow - TILE_ORIGIN) / TILE); ix <= Math.floor((r[2]! + grow - TILE_ORIGIN) / TILE); ix++) {
-          for (let iy = Math.floor((r[1]! - grow - TILE_ORIGIN) / TILE); iy <= Math.floor((r[3]! + grow - TILE_ORIGIN) / TILE); iy++) {
-            const key = (ix + TILE_BIAS) * 0x1_0000 + (iy + TILE_BIAS);
-            if (state.tiles.has(key) || inputs.hasTile(pass.id, key)) keys.add(key);
-          }
-        }
-      };
-      for (const b of changed!) over(b, reach);
-      for (const r of moved!) over(r, 0);
-      visit = [...keys].sort((p, q) => p - q);
+      // The parts whose inputs changed (one gone among them), those whose piece a changed block reaches, and those of the pieces in a block that
+      // came into the active region or left it (a rounding round it: a piece is filed in a block its box comes within `TILE_REACH` of).
+      const keys = new Set<PartKey>(dirtyNow!.keys);
+      const grow = (r: readonly number[], by: number): number[] => [r[0]! - by, r[1]! - by, r[2]! + by, r[3]! + by];
+      for (const key of inputs.partsMeeting(pass.id, changed!.map((b) => grow(b, reach)))) keys.add(key);
+      for (const key of inputs.partsMeeting(pass.id, moved!.map((r) => grow(r, TILE_REACH)))) keys.add(key);
+      visit = [...keys].sort(byPart);
     } else visit = inputs.tileKeys(pass.id);
     /** The blocks a visited tile came into, changed in or left: merged again; every other block stands as it is. */
     const affected = new Set<string>();
     /** The visited tiles that are new, changed (the tile) or gone (null): put in the pass's state only once built (DO NOT write them in as they are visited: a build replaced before building them left them as kept, never built). */
-    const changes = new Map<number, PassTile | null>();
+    const changes = new Map<PartKey, PassTile | null>();
     /** The tiles visited and new or changed: kept from before (its surfaces known, its arrays not), read from the store, or to build. */
     const tiles: PassTile[] = [];
     /** The tiles to read from the store, by their place in `tiles`. */
     const fromStore: number[] = [];
     for (const key of visit) {
-      const ix = Math.floor(key / 0x1_0000) - TILE_BIAS;
-      const iy = (key % 0x1_0000) - TILE_BIAS;
-      const rect: TileRect = [
-        ix * TILE + TILE_ORIGIN, iy * TILE + TILE_ORIGIN, (ix + 1) * TILE + TILE_ORIGIN, (iy + 1) * TILE + TILE_ORIGIN,
-      ];
+      const cell: TileRect = cellRectOfPart(key);
       const old = state.tiles.get(key);
       // A tile gone, or of the kept ring: not built, not digested; the far roads draw it (its block loses it, or goes). One built here has its inputs derived first (`visits`, held round the view).
-      if ((reuse?.within && !reuse.within(rect)) || !inputs.visits(pass.id, key)) {
-        if (old) { changes.set(key, null); affected.add(old.chunk); }
+      if ((reuse?.within && !reuse.within(cell)) || !inputs.visits(pass.id, key)) {
+        if (old) { changes.set(key, null); affected.add(old.chunk); reuse?.footprints?.drop(pass.id, key); }
         depends.delete(key);
         continue;
       }
-      const { digest: read, colours } = inputs.reachOf(pass.id, key);
-      // A paint colour's constants in the keys of the tiles that hold lines of that colour alone.
-      const digest = new Digest().add(saltValue).add(key).add(read);
-      for (const color of colours) digest.add(paintSalt.get(color) ?? 0);
+      const rect: TileRect = inputs.rectOf(key);
+      const { digest: read } = inputs.reachOf(pass.id, key);
+      // DO NOT put the paint's slots in the key: a kept tile names its roads and nodes by their ids (`tilePieces.ts`), given this session's slots as it is read.
+      const digest = new Digest().add(saltValue).addText(key).add(read);
       if (reuse) {
         const known = knownDepends?.get(key);
         const depend = known !== undefined && !reached(rect) ? known : reuse.dependsOn(rect[0] - 1, rect[1] - 1, rect[2] + 1, rect[3] + 1);
@@ -436,9 +351,10 @@ export function* roadSurfaceSteps(
       if (old && old.value === value) continue;
       const surfaces = previous?.get(value);
       const stored = storedKey(pass.id, key, value);
-      const chunk = `${Math.floor(ix / CHUNK)},${Math.floor(iy / CHUNK)}`;
+      const [cx, cy] = cellOfPart(key);
+      const chunk = `${cx},${cy}`;
       if (!surfaces && reuse?.stored?.has(stored)) fromStore.push(tiles.length);
-      const tile: PassTile = { key, value, stored, chunk, rect, surfaces: surfaces ?? null, bundle: null };
+      const tile: PassTile = { key, value, stored, chunk, rect, cell, surfaces: surfaces ?? null, bundle: null };
       tiles.push(tile);
       changes.set(key, tile);
       affected.add(chunk);
@@ -447,7 +363,7 @@ export function* roadSurfaceSteps(
     // The kept tiles this build uses, read off the store now (one transaction), never the whole store at the opening.
     if (fromStore.length && reuse?.stored) {
       let got: ReadonlyMap<string, TileBundle> | null = null;
-      reuse.stored.fetch(fromStore.map((k) => tiles[k]!.stored)).then((map) => { got = map; }, () => { got = new Map(); });
+      fetchKept(fromStore.map((k) => tiles[k]!.stored)).then((map) => { got = map; }, (error: unknown) => { console.warn('[roads] the stored road tiles could not be read: they are made again', error); got = new Map(); });
       while (got === null) yield 'wait';
       const read: ReadonlyMap<string, TileBundle> = got;
       for (const k of fromStore) {
@@ -474,24 +390,10 @@ export function* roadSurfaceSteps(
         if (found) lookList.push([id, found]);
       }
       const ramps = new Set<CurbRamp>();
-      const edgeKeys = new Set<number>();
-      for (const rect of around) {
-        for (const r of rampsMeeting(net, rect)) if (r.structure === structure.id) ramps.add(r);
-        if (raised) continue;
-        for (let cx = Math.floor(rect[0] / FOOTWAY_EDGE_CELL); cx <= Math.floor(rect[2] / FOOTWAY_EDGE_CELL); cx++) {
-          for (let cy = Math.floor(rect[1] / FOOTWAY_EDGE_CELL); cy <= Math.floor(rect[3] / FOOTWAY_EDGE_CELL); cy++) {
-            const key = (cx + 32768) * 65536 + (cy + 32768);
-            if (edgesAt(key)) edgeKeys.add(key);
-          }
-        }
-      }
+      for (const rect of around) for (const r of rampsMeeting(net, rect)) if (r.structure === structure.id) ramps.add(r);
       const flush = packFlush(net, around);
       transfer.push(...flush.transfer);
-      const edgeLists = [...edgeKeys].map((key) => Float64Array.from(edgesAt(key)!));
-      const joined = concat(edgeLists);
-      const edgeData = { keys: Float64Array.from(edgeKeys), ends: joined.lineEnds, xy: joined.lines };
-      for (const array of [edgeData.keys, edgeData.ends, edgeData.xy]) transfer.push(array.buffer as ArrayBuffer);
-      return { data: { field, looks: lookList, flush: flush.data, ramps: [...ramps].map(rampData), edges: edgeData }, transfer };
+      return { data: { field, looks: lookList, flush: flush.data, ramps: [...ramps].map(rampData) }, transfer };
     };
     /** A tile's rings, read off the inputs as it is built (held round the view: its cells derived again if they were let go); null for a tile the pass no longer has. */
     const ringsOf = ringsReader(inputs, pass.id);
@@ -507,7 +409,7 @@ export function* roadSurfaceSteps(
         const prefix = reuse?.workersKeep;
         const request: TileJob = {
           pass: desc,
-          tiles: batch.map((t) => ({ rect: t.rect, into: polysOf(ringsOf(t.key)!) })),
+          tiles: batch.map((t) => ({ rect: t.rect, into: geomsOf(ringsOf(t.key)!) })),
           dataFor,
           terrainAt,
           // Kept by the workers that make them, with a ceiling of their own on what is not committed: DO NOT post them back to be kept (past the page's ceiling a tile was dropped).
@@ -544,7 +446,7 @@ export function* roadSurfaceSteps(
           const tile = list[k]!;
           const tileAt = performance.now();
           // Made off the page: taken as it is.
-          const bundle = made ? made[k - from]! : reading(() => tileBundle(ringsOf(tile.key)!, tile.rect, specs));
+          const bundle = made ? made[k - from]! : reading(() => tileBundle(ringsOf(tile.key)!, specs));
           tile.bundle = bundle;
           tile.surfaces = [...bundle.keys()];
           tilesMs += performance.now() - tileAt;
@@ -564,6 +466,24 @@ export function* roadSurfaceSteps(
       rebuilt.push(tile.rect);
       fresh.push(tile);
     });
+    // Each part made or read: its footprint staged, put in place with the build (`RoadFootprints.commit`). A part kept from the build before
+    // whose footprint is not known (its surfaces kept, not its arrays) read off the store, or made again, for it.
+    const footprints = reuse?.footprints;
+    if (footprints) {
+      // A tunnel's footprint where its cutting is open (the ground as drawn there, the hill's own where it bores: never cut by the road).
+      const keep = isSunken(structure.id) ? (x: number, y: number, h: number): boolean => terrainAt(x, y) - h < TUNNEL_OPEN : undefined;
+      const unprinted = tiles.filter((t) => !t.bundle && !footprints.has(pass.id, t.key, t.value));
+      const stored = reuse.stored ? unprinted.filter((t) => reuse.stored!.has(t.stored)) : [];
+      if (stored.length) {
+        let got: ReadonlyMap<string, TileBundle> | null = null;
+        fetchKept(stored.map((t) => t.stored)).then((map) => { got = map; }, (error: unknown) => { console.warn('[roads] the stored road tiles could not be read: they are made again', error); got = new Map(); });
+        while (got === null) yield 'wait';
+        const read: ReadonlyMap<string, TileBundle> = got;
+        for (const tile of stored) { const bundle = read.get(tile.stored); if (bundle) tile.bundle = bundle; }
+      }
+      yield* buildAll(unprinted.filter((t) => !t.bundle), () => { remade++; });
+      for (const tile of tiles) if (tile.bundle) footprints.stage(pass.id, tile.key, tile.value, tile.bundle.get(FOOTPRINT), keep);
+    }
     // Built: the changes into the pass's state, their blocks to merge (with those a build replaced halfway left unmerged) until merged.
     for (const chunk of state.pending) affected.add(chunk);
     for (const [key, tile] of changes) {
@@ -589,7 +509,7 @@ export function* roadSurfaceSteps(
     const parts = new Map<string, Map<string, PassTile[][]>>();
     for (const group of groups) parts.set(group.name, new Map());
     for (const chunk of affected) {
-      const inChunk = [...(state.chunkTiles.get(chunk) ?? [])].sort((p, q) => p - q).map((key) => state.tiles.get(key)!);
+      const inChunk = [...(state.chunkTiles.get(chunk) ?? [])].sort(byPart).map((key) => state.tiles.get(key)!);
       if (inChunk.length === 0) state.chunkTiles.delete(chunk);
       for (const group of groups) {
         const lists = group.specs.map((spec) => inChunk.filter((tile) => tile.surfaces!.includes(spec.options.name)));
@@ -615,7 +535,7 @@ export function* roadSurfaceSteps(
       const stored = [...again].filter((t) => reuse.stored!.has(t.stored));
       if (stored.length) {
         let got: ReadonlyMap<string, TileBundle> | null = null;
-        reuse.stored.fetch(stored.map((t) => t.stored)).then((map) => { got = map; }, () => { got = new Map(); });
+        fetchKept(stored.map((t) => t.stored)).then((map) => { got = map; }, (error: unknown) => { console.warn('[roads] the stored road tiles could not be read: they are made again', error); got = new Map(); });
         while (got === null) yield 'wait';
         const read: ReadonlyMap<string, TileBundle> = got;
         for (const tile of stored) {
@@ -639,43 +559,60 @@ export function* roadSurfaceSteps(
         const members = group.specs.flatMap((spec, i) => (lists[i]!.length ? [{ spec, list: lists[i]! }] : []));
         let mesh: Mesh | null;
         // DO NOT let the mesh hold its tiles for it: a second copy of every road on the GPU, kept on the CPU
-        const sources = members.map(({ spec, list: tiles }) => surfaceSource(spec, tiles.map((tile) => ({ rect: tile.rect, key: tile.key })), reading, ringsOf));
+        const sources = members.map(({ spec, list: tiles }) => surfaceSource(spec, specs, tiles.map((tile) => tile.key), reading, ringsOf));
         const source = sources.length === 1 ? sources[0]! : (): Tile[] => sources.flatMap((s) => s());
         if (known && sameTiles(known.parts, lists)) {
           mesh = known.mesh;
           // Bound to this build's rings: the build that made it lets go of its own.
-          tilesOnGpu(mesh, source);
+          tilesOnGpu(mesh, source, tableSlots);
           chunksKept++;
         } else {
           if (known) retire(known.mesh);
-          // The block's box and centre, to lock its edge in the far level and to tell near from far (`roadLod.ts`).
-          // Each surface's own: its block was its tiles' box, a surface of a group keeps it (its far level locked to it, near by it).
+          // The block's box and its pieces' seams (`roads/pieceMesh.ts` seamsOf: where they meet the pieces of the blocks round it), kept where
+          // they are in the far level (`roadLodPure.ts` BlockLock); the box's centre tells near from far (`roadLod.ts`). Each surface's own: a
+          // surface of a group keeps its own box (near by it) and its own seams.
           const coarsen = reuse?.near && tiler?.coarsen ? tiler.coarsen.bind(tiler) : null;
-          const locks = coarsen ? members.map(({ list: tiles }) => blockBox(tiles.map((tile) => tile.rect))) : null;
+          // And every point of a junction's shapes drawn coarser at the far level (`farLocksOf`): that level is its own already.
+          const locks: BlockLock[] | null = coarsen ? members.map(({ list: tiles }) => ({
+            box: blockBox(tiles.map((tile) => tile.rect)),
+            seams: concatSeams(tiles.flatMap((tile) => { const reach = geomsOf(ringsOf(tile.key) ?? new Map()); return [seamsOf(reach), farLocksOf(reach)]; })),
+          })) : null;
           const lock = locks?.[0] ?? null;
-          const near = locks ? locks.some((b) => reuse!.near!((b[0] + b[2]) / 2, (b[1] + b[3]) / 2)) : true;
-          const memberTiles = members.map(({ spec, list: tiles }) => tiles.map((tile) => tile.bundle!.get(spec.options.name)!));
+          const near = locks ? locks.some(({ box: b }) => reuse!.near!((b[0] + b[2]) / 2, (b[1] + b[3]) / 2)) : true;
+          const memberTiles = members.map(({ spec, list: tiles }) => coded(tiles.map((tile) => tile.bundle!.get(spec.options.name)!), spec));
           // DO NOT name `memberTiles` in a closure here: every closure of this block shares one context (V8), and `levels.bring`, kept as long as the block, held through it every tile's arrays (174 MB in a large city, a heap snapshot of 2026-10-20). The far level cuts by their sizes alone.
           const shares = memberSizes(memberTiles);
-          mesh = mergeTiles(memberTiles.flat(), group.options, source,
+          // The far level made from the pieces' own far tiles where some are drawn coarser there (a junction's kerb returns at the owner's road tool's
+          // L1, `roads/pieceMesh.ts` farTileName), each surface's arrays; let go once the far level is started (the closures of this block share them).
+          const coarser = members.some(({ spec, list: tiles }) => tiles.some((tile) => tile.bundle!.has(farTileName(spec.options.name))));
+          let farPieces: BlockArrays[] | null = coarser && lock
+            ? members.map(({ spec, list: tiles }) => blockArraysOf(coded(tiles.map((tile) => tile.bundle!.get(farTileName(spec.options.name)) ?? tile.bundle!.get(spec.options.name)!), spec), group.options.material, tableSlots)!)
+            : null;
+          const farSources = coarser ? members.map(({ spec, list: tiles }) => farSurfaceSource(spec, specs, tiles.map((tile) => tile.key), reading, ringsOf)) : null;
+          mesh = mergeTiles(memberTiles.flat(), group.options, source, tableSlots,
             lock ? {
-              lock, near, also: locks!.slice(1), cell: chunk,
+              lock, near, also: locks!.slice(1).map((l) => l.box), cell: chunk,
               start: (block, arrays) => {
                 coarsening++;
                 levelsOf(block)!.pending = true;
                 // Each surface simplified on its own, as when it was a block of its own; one too small to gain is drawn whole in the far level.
-                const pieces = shares.length === 1 ? [cloneBlock(arrays)] : splitBlock(arrays, shares);
-                const whole = shares.length === 1 ? [] : splitBlock(arrays, shares);
+                const far = farPieces;
+                farPieces = null;
+                const pieces = far ? far.map(cloneBlock) : shares.length === 1 ? [cloneBlock(arrays)] : splitBlock(arrays, shares);
+                const whole = far ?? (shares.length === 1 ? [cloneBlock(arrays)] : splitBlock(arrays, shares));
                 Promise.all(pieces.map((piece, i) => coarsen!(piece, locks![i]!))).then((made) => {
                   // The block may have been built again meanwhile: its far level is of the one it was made for.
                   if (chunks?.get(key)?.mesh !== block) return;
-                  if (made.some((m) => m !== null)) {
-                    const coarse = made.length === 1 ? made[0]! : joinBlocks(made.map((m, i) => m ?? whole[i]!));
-                    const level = attachFarLevel(block, coarse, group.options, sources.map((s, i) => ({ source: s, lock: locks![i]! })), near);
+                  // A far level even where nothing simplifies (a block too small to gain): its own arrays, so it is drawn in its look's far batch.
+                  // DO NOT leave such a block without one: it was drawn loose, a draw call a block, and the roads refined where they leave their
+                  // chords made many more of them (district 265 -> 288 draws, street 356 -> 381, measured 2026-10-24).
+                  {
+                    const coarse = made.length === 1 ? made[0] ?? whole[0]! : joinBlocks(made.map((m, i) => m ?? whole[i]!));
+                    const level = attachFarLevel(block, coarse, group.options, sources.map((s, i) => ({ source: s, slots: tableSlots, lock: locks![i]!, ...(farSources ? { far: farSources[i]! } : {}) })), near);
                     // Drawn by its look's batch (`farBlockBatches.ts`): copied there, never uploaded on its own.
                     if (reuse?.farBatches) reuse.farBatches.adopt(level);
                     else if (!near) void warmLooseAhead([level]);
-                  } else if (!near) void warmLooseAhead([block]);
+                  }
                 }).catch((error: unknown) => {
                   // No far level for this block: it stays at full detail, sent to the GPU.
                   console.warn('[roads] the far level of a block could not be made', error);
@@ -686,34 +623,22 @@ export function* roadSurfaceSteps(
           // Its full level, when it comes back near, copied from the kept tiles (`reuse.stored`): DO NOT cut and triangulate the block's tiles on the page again (`roadResidency.ts` makeNear).
           const levels = mesh && lock ? levelsOf(mesh) : undefined;
           if (mesh && levels && reuse?.stored) {
-            const stored = reuse.stored, material = group.options.material;
-            const wanted = members.map(({ spec, list: tiles }) => ({ name: spec.options.name, keys: tiles.map((tile) => tile.stored) }));
+            const material = group.options.material;
+            const wanted = members.map(({ spec, list: tiles }) => ({ name: spec.options.name, code: spec.code ?? 0, keys: tiles.map((tile) => tile.stored) }));
             levels.bring = async (): Promise<BlockArrays | null> => {
-              const got = await stored.fetch(wanted.flatMap((w) => w.keys));
+              const got = await fetchKept(wanted.flatMap((w) => w.keys));
               const read: Tile[] = [];
-              for (const { name, keys } of wanted) {
+              for (const { name, code, keys } of wanted) {
                 for (const k of keys) {
                   const tile = got.get(k)?.get(name);
                   if (!tile) return null;
-                  read.push(tile);
+                  read.push({ ...tile, code });
                 }
               }
-              return blockArraysOf(read, material);
+              return blockArraysOf(read, material, tableSlots);
             };
           }
-          // Its far level made again when its cell comes back from the network's far level (`roadResidency.ts`): the full level's arrays (kept tiles, else cut here) simplified by the workers, a surface at a time as `start` does.
-          if (mesh && levels && coarsen) {
-            const material = group.options.material;
-            levels.remake = async (): Promise<BlockArrays | null> => {
-              const full = ((await levels.bring?.()) as BlockArrays | null | undefined) ?? blockArraysOf(sources.flatMap((s) => s()), material);
-              if (!full) return null;
-              const whole = shares.length === 1 ? [] : splitBlock(full, shares);
-              const pieces = shares.length === 1 ? [full] : splitBlock(full, shares);
-              const made = await Promise.all(pieces.map((piece, i) => coarsen(piece, locks![i]!)));
-              if (made.every((m) => m === null)) return null;
-              return made.length === 1 ? made[0]! : joinBlocks(made.map((m, i) => m ?? whole[i]!));
-            };
-          }
+          // A cell the view lets go is retired whole and built again from the kept tiles when wanted (`roadResidency.ts`): no level is made again on its own.
           if (mesh && group.renderOrder !== undefined) mesh.renderOrder = group.renderOrder;
           // DO NOT wait for the camera to frame it: a block out of view was never uploaded and kept its copy on the CPU
           if (mesh && !(lock && !near)) void warmLooseAhead([mesh]);
@@ -726,7 +651,7 @@ export function* roadSurfaceSteps(
         if (!order) state.blocks.set(group.name, order = new Map());
         if (!mesh) { order.delete(chunk); continue; }
         // Where a fresh build draws it: by its first tile holding a surface of the group.
-        order.set(chunk, Math.min(...members.map((member) => member.list[0]!.key)));
+        order.set(chunk, members.map((member) => member.list[0]!.key).reduce((p, q) => (byPart(p, q) <= 0 ? p : q)));
         if (!chunks) own.set(key, mesh);
       }
     }
@@ -734,7 +659,7 @@ export function* roadSurfaceSteps(
     for (const drawn of groups) {
       const order = state.blocks.get(drawn.name);
       if (!order) continue;
-      for (const [chunk] of [...order].sort((p, q) => p[1] - q[1])) {
+      for (const [chunk] of [...order].sort((p, q) => byPart(p[1], q[1]))) {
         const key = keyOf(drawn, chunk);
         const mesh = chunks?.get(key)?.mesh ?? own.get(key);
         if (!mesh) continue;
@@ -752,7 +677,8 @@ export function* roadSurfaceSteps(
     // Kept for a later session only now, every block merged
     for (const tile of fresh) {
       if (keptByWorker.has(tile)) reuse?.kept?.(tile.stored);
-      else reuse?.keep?.(tile.stored, tile.bundle!);
+      // As kept between sessions: its roads and nodes by their ids, never this session's slots (`tilePieces.ts`).
+      else reuse?.keep?.(tile.stored, keptForm(tile.bundle!, { pieceOf: (slot) => roadPaint.pieceOfSlot(net.doc, slot) }, carrying));
     }
     for (const tile of tiles) tile.bundle = null;
     // And the kept tiles read or built again for a merge: their arrays are the blocks' now (VIA-02: held for good, 50-300 MB over an editing session).
@@ -784,6 +710,10 @@ export function* roadSurfaceSteps(
     adopt() {
       // Every block, in the order it was built: the order a fresh build draws them in.
       for (const mesh of meshes) addBlock(group, mesh);
+      // The ground cut along the roads put in place now (`terrainSeams.ts`), never along a build not drawn.
+      reuse?.footprints?.commit();
+      // The marks painted on the roads put in place with them (`roadMarks.ts`): the blocks drawn until now never show the next build's.
+      roadMarks.commit(net.doc);
     },
     dispose() {
       // Meshes the cache keeps are freed by `disposeSurfaceReuse`.
@@ -793,14 +723,24 @@ export function* roadSurfaceSteps(
   };
 }
 
-/** How a surface is drawn: its material, whether it casts a shadow, its order among the roads' meshes (the paint over the deck) - the region's (`dress`) and a tile's near roads baked off the page (`farRoads.ts` near level) alike. */
-export function surfaceLook(source: TileSource, raised: boolean, materials: SceneMaterials, groundMaterial: Material | undefined,
-  paintFor: (color: string) => Material): { readonly material: Material; readonly castShadow?: boolean; readonly renderOrder?: number } {
-  if (source.kind === 'paint') return { material: paintFor(source.color), renderOrder: 3 };
+/** A surface's code in the road material (`mesh/roadEdges.ts` ROAD_CODE): the look its own material had (the footway's for its ramps and a median's
+ *  paving, the kerb's for a median's kerb, the planting's for a median's soil). */
+export function roadCodeOf(source: TileSource, raised: boolean): RoadCode {
+  if (source.kind === 'median') return source.part === 'kerb' ? ROAD_CODE.kerb : source.part === 'planting' ? ROAD_CODE.planting : ROAD_CODE.footway;
+  switch (source.band) {
+    case 'deckEdge': return ROAD_CODE.deck;
+    case 'footway': case 'curbRamp': return ROAD_CODE.footway;
+    case 'kerb': return ROAD_CODE.kerb;
+    case 'asphalt': return raised ? ROAD_CODE.raised : ROAD_CODE.carriageway;
+  }
+}
+
+/** How a surface is drawn: its material, whether it casts a shadow - the region's (`dress`) and the programs' stand-ins (`roadProgramStandIns.ts`) alike. */
+export function surfaceLook(source: TileSource, raised: boolean, materials: SceneMaterials): { readonly material: Material; readonly castShadow?: boolean; readonly renderOrder?: number } {
   if (source.kind === 'median') return { material: source.part === 'kerb' ? materials.kerb : source.part === 'planting' ? materials.verge : materials.footway };
   switch (source.band) {
-    case 'verge':
-      return { material: raised ? materials.deck : groundMaterial ?? materials.verge, castShadow: raised };
+    case 'deckEdge':
+      return { material: materials.deck, castShadow: true };
     case 'footway':
     case 'curbRamp':
       return { material: materials.footway, castShadow: raised };
@@ -812,11 +752,11 @@ export function surfaceLook(source: TileSource, raised: boolean, materials: Scen
 }
 
 /** A surface as the page draws it: what it reads (`passSurfaces`) with its material and shadows (`surfaceLook`). */
-function dress(read: SurfaceRead, raised: boolean, materials: SceneMaterials, groundMaterial: Material | undefined,
-  paintFor: (color: string) => Material): SurfaceSpec {
-  const look = surfaceLook(read.source, raised, materials, groundMaterial, paintFor);
+function dress(read: SurfaceRead, raised: boolean, materials: SceneMaterials): SurfaceSpec {
+  const look = surfaceLook(read.source, raised, materials);
   return {
     source: read.source,
+    code: roadCodeOf(read.source, raised),
     options: { ...read.options, material: look.material, ...(look.castShadow !== undefined ? { castShadow: look.castShadow } : {}), receiveShadow: true },
     ...(look.renderOrder !== undefined ? { renderOrder: look.renderOrder } : {}),
   };

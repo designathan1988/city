@@ -3,10 +3,11 @@ import { createBuildingKit } from '@render/buildings/kit';
 import { cellMass } from '@render/buildings/cellArrays';
 import { ERROR_STEP, FrameScale, LandedMeasure, MOST_ERROR_SCALE, fitErrorScale, letBackFitting, letGoPassed } from '@render/buildings/frameBudget';
 import { createMassCells } from '@render/buildings/massCells';
-import { emitMassing } from '@render/buildings/massing';
+import { massesOf } from './support/masses';
 import { BLUEPRINTS } from '@world/buildings/blueprints';
 import type { Building } from '@world/buildings/types';
 import { m } from '@world/units';
+import { CELL } from '@world/cells';
 
 /** THE LEVELS FIT THE FRAME'S BUDGET OF TRIANGLES (`frameBudget.ts`): the error scale rises until they do, comes down while there is room, and every chooser reads it */
 
@@ -70,7 +71,6 @@ describe('what a level is reckoned to draw', () => {
   });
 });
 
-const CELL = m(256);
 
 /** Five cells in a row east of the origin, each with a building's masses, seen from above at 10 px a metre. */
 function row(): ReturnType<typeof createMassCells> {
@@ -78,7 +78,7 @@ function row(): ReturnType<typeof createMassCells> {
   for (let i = 0; i < 5; i++) {
     const bp = BLUEPRINTS[0]!;
     const b = { ...JSON.parse(JSON.stringify(bp.body)), id: i + 1, x: (i + 0.5) * CELL, y: CELL / 2, rotation: 0 } as Building;
-    cells.land(`${i},0`, cellMass([emitMassing(b, () => 0)!]));
+    cells.land(`${i},0`, cellMass([massesOf(b, () => 0)!]));
   }
   return cells;
 }
@@ -91,9 +91,11 @@ describe('the cells at an error scale', () => {
     cells.dispose();
   });
 
-  it('at 7: near at their facade level (14 px allowed: the detail no longer resolves, the facade level does)', () => {
+  // The detail while 0.3 m spans half a pixel at the scale (`massCells.ts` FINE_PIXELS): at 7.4 it asks 3.7 px (3.15 with the hysteresis of a cell
+  // fine) and 0.3 m spans 3; the masses' 1.5 m spans 15 of the 14.8 allowed, so the cell stays near.
+  it('at 7.4: near at their facade level (14.8 px allowed: the detail no longer resolves, the facade level does)', () => {
     const cells = row();
-    cells.setErrorScale(7);
+    cells.setErrorScale(7.4);
     cells.choose(CELL / 2, CELL / 2, m(300), 1000, 10, false, Infinity);
     for (let i = 0; i < 5; i++) expect([cells.near(`${i},0`), cells.fine(`${i},0`)]).toEqual([true, false]);
     cells.dispose();

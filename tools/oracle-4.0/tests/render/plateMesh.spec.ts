@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { BufferAttribute, PlaneGeometry } from 'three';
 import { buildPlateMesh, landNormalsInto } from '@render/plateMesh';
+import { TERRAIN_CELL, TERRAIN_HALF, TERRAIN_SEGMENTS } from '@render/terrainGrid';
 
 /** A PLATE'S GROUND BUILT OFF THE PAGE (`render/plateMesh.ts`) IS THE ONE THE PAGE DRAWS (`terrain.ts`, three's normals) */
-const side = 321, seg = side - 1, half = 1024, cell = (2 * half) / seg, base = -0.048;
+/** The game's plate (`terrainGrid.ts`): 200 cells of 10 m. */
+const side = TERRAIN_SEGMENTS + 1, seg = side - 1, half = TERRAIN_HALF, cell = TERRAIN_CELL, base = -0.048;
 const ground = new Float64Array(side * side);
-for (let j = 0; j < side; j++) for (let i = 0; i < side; i++) ground[j * side + i] = 6 * Math.sin(i * 0.37) * Math.cos(j * 0.23) + (i > 200 && j < 120 ? 9 : 0) + i * 0.05;
+for (let j = 0; j < side; j++) for (let i = 0; i < side; i++) ground[j * side + i] = 6 * Math.sin(i * 0.37) * Math.cos(j * 0.23) + (i > seg * 0.625 && j < seg * 0.375 ? 9 : 0) + i * 0.05;
 
 describe('a plate built in the workers', () => {
   const mesh = buildPlateMesh(ground, side, half, cell, base);

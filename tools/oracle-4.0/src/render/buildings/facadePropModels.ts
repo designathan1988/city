@@ -13,7 +13,7 @@ import {
 } from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { weldGeometry } from '../mesh/weld';
-import { dropFacing, dropHiddenFaces } from '../mesh/hiddenFaces';
+import { dropBuried, dropFacing, dropHiddenFaces } from '../mesh/hiddenFaces';
 import { AC, type FacadePropKind, POT_HIGH } from './facadeProps';
 
 /** The models of the props on the facades and balconies (`facadeProps.ts` places them) */
@@ -40,11 +40,48 @@ function block(w: number, h: number, d: number, x: number, y: number, z: number,
   return tone(g, rgb);
 }
 
+/** A box's faces in three's order (`BoxGeometry`: +x, -x, +y, -y, +z, -z), two triangles each. */
+const BOX_FACES = ['+x', '-x', '+y', '-y', '+z', '-z'] as const;
+type BoxFace = (typeof BOX_FACES)[number];
+
+/** A geometry's groups of `drop` left out (three's box and cylinder lay each face or cap as a group), the corners they alone used with them. */
+function withoutGroups(g: BufferGeometry, drop: readonly number[]): BufferGeometry {
+  const index = g.getIndex()!;
+  const kept: number[] = [];
+  g.groups.forEach((group, k) => {
+    if (drop.includes(k)) return;
+    for (let i = group.start; i < group.start + group.count; i++) kept.push(index.getX(i));
+  });
+  const remap = new Int32Array(g.getAttribute('position').count).fill(-1);
+  let used = 0;
+  for (const v of kept) if (remap[v] === -1) remap[v] = used++;
+  const out = new BufferGeometry();
+  for (const [name, attribute] of Object.entries(g.attributes)) {
+    const size = attribute.itemSize, array = new Float32Array(used * size);
+    for (let v = 0; v < remap.length; v++) if (remap[v]! >= 0) for (let c = 0; c < size; c++) array[remap[v]! * size + c] = attribute.array[v * size + c]!;
+    out.setAttribute(name, new BufferAttribute(array, size));
+  }
+  out.setIndex(kept.map((v) => remap[v]!));
+  g.dispose();
+  return out;
+}
+
+/** A box without the faces another part covers (`covered`), toned: what `dropHiddenFaces` cannot find, a face inside a part turned off the axes. */
+function blockWithout(w: number, h: number, d: number, x: number, y: number, z: number, rgb: readonly [number, number, number], covered: readonly BoxFace[]): BufferGeometry {
+  const g = new BoxGeometry(w, h, d);
+  g.translate(x, y, z);
+  return tone(withoutGroups(g, covered.map((f) => BOX_FACES.indexOf(f))), rgb);
+}
+
 /** Parts merged into one model, the faces another part covers taken out first (`mesh/hiddenFaces.ts`); `floor`: it stands on y = 0, what lies on it facing down left out too. */
 function merged(parts: BufferGeometry[], floor = false): BufferGeometry {
   dropHiddenFaces(parts, floor);
-  const g = mergeGeometries(parts) as BufferGeometry;
+  dropBuried(parts);
+  const joined = mergeGeometries(parts) as BufferGeometry;
   for (const p of parts) p.dispose();
+  // Welded whole (`weldGeometry`): a corner its parts share drawn once. DO NOT leave the parts' shared corners apart: every instance drew them twice (the model audit, 2026-10-27).
+  const g = weldGeometry(joined);
+  joined.dispose();
   g.computeBoundingBox();
   g.computeBoundingSphere();
   return g;
@@ -64,7 +101,8 @@ function acUnitGeometry(): BufferGeometry {
   for (const x of [-w / 2 + 0.12, w / 2 - 0.12]) {
     // The arm under the case, out from the wall, a brace down to a plate on the wall
     parts.push(block(0.035, 0.035, d + gap + 0.07, x, -h / 2 - 0.018, (wall + front + 0.07) / 2 - 0.005, grey(0.38)));
-    const brace = new BoxGeometry(0.03, 0.03, 0.36);
+    // Its upper end inside the arm: left out.
+    const brace = withoutGroups(new BoxGeometry(0.03, 0.03, 0.36), [BOX_FACES.indexOf('+z')]);
     brace.rotateX(-Math.PI / 4);
     brace.translate(x, -h / 2 - 0.15, wall + 0.12);
     parts.push(tone(brace, grey(0.38)));
@@ -87,6 +125,8 @@ function acUnitGeometry(): BufferGeometry {
 }
 
 /** A plant pot from the floor (y 0) up: a tapered body, its rim and the soil in it. 0.34 m across, 0.32 m high (`POT_HIGH`). */
+// The body's top and the soil lie inside the rim, a closed solid over them (its top the pot's face from above): `dropBuried` takes them out.
+// DO NOT leave the rim's underside out: the 8 mm the rim stands proud of the body is seen from under it, and casts the rim's shadow.
 function potGeometry(): BufferGeometry {
   const body = new CylinderGeometry(0.16, 0.12, POT_HIGH - 0.04, 14);
   body.translate(0, (POT_HIGH - 0.04) / 2, 0);
@@ -172,7 +212,8 @@ function chairGeometry(): BufferGeometry {
 function tableGeometry(): BufferGeometry {
   const top = new CylinderGeometry(0.34, 0.34, 0.03, 18);
   top.translate(0, 0.72, 0);
-  const post = new CylinderGeometry(0.03, 0.03, 0.7, 8);
+  // Its ends inside the foot and under the top: open.
+  const post = new CylinderGeometry(0.03, 0.03, 0.7, 8, 1, true);
   post.translate(0, 0.355, 0);
   const foot = new CylinderGeometry(0.2, 0.22, 0.025, 14);
   foot.translate(0, 0.0125, 0);
@@ -213,8 +254,10 @@ function dishGeometry(): BufferGeometry {
   const bowl = new SphereGeometry(0.42, 14, 4, 0, Math.PI * 2, 0, 0.8);
   bowl.rotateX(Math.PI / 2 + 0.55);
   bowl.translate(0, -0.1, 0.5);
-  const arm = block(0.035, 0.035, 0.3, 0, 0, 0.15, grey(0.45));
-  const mount = block(0.12, 0.16, 0.012, 0, 0, 0.006, grey(0.45));
+  // The arm's and the mount's backs on the wall (the dish is put on it, `facadeProps.ts`): left out. DO NOT shorten the feed to the LNB's
+  // back: its underside is 2.5 mm under the LNB's, its end seen there.
+  const arm = blockWithout(0.035, 0.035, 0.3, 0, 0, 0.15, grey(0.45), ['-z']);
+  const mount = blockWithout(0.12, 0.16, 0.012, 0, 0, 0.006, grey(0.45), ['-z']);
   const feed = block(0.025, 0.025, 0.32, 0, 0.1, 0.32, grey(0.4));
   const lnb = block(0.06, 0.06, 0.09, 0, 0.12, 0.5, grey(0.15));
   return merged([tone(bowl, grey(1)), arm, mount, feed, lnb]);
@@ -256,7 +299,7 @@ float acLidTone(vec3 p) {
   return mix(1.0, 0.93, smoothstep(${(AC.h / 2).toFixed(4)} - aa, ${(AC.h / 2).toFixed(4)} + aa, p.y));
 }`;
 /** The lid's height over the case (it was a slab of its own). */
-export const AC_LID = 0.02;
+const AC_LID = 0.02;
 /** The case's front face: its model-space front (z) within this of `AC.d / 2`, facing +z. */
 export const AC_FRONT_Z = AC.d / 2;
 

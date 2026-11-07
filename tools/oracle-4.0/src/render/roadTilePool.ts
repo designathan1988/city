@@ -1,11 +1,10 @@
 import { MeshoptSimplifier } from 'meshoptimizer';
 import { jobLanes, jobPort, laneFirst } from '../jobs/jobPool';
 import type { Tile } from './mesh/tileMesh';
-import { type BlockArrays, blockBuffers, coarseArrays } from './mesh/roadLodPure';
-import type { TileRect } from './mesh/tileShape';
-import type { SurfaceData, TileMeshes } from './roadTileMesh';
+import { type BlockArrays, type BlockLock, blockBuffers, coarseArrays } from './mesh/roadLodPure';
+import type { TileRect } from './mesh/tileMesh';
+import type { PartAsk, SurfaceData, TileMeshes } from './roadTileMesh';
 import type { PassDesc } from './roadSurfaceReads';
-import type { TilePolys } from './roadTileShape';
 
 /** DO NOT take a silent worker for a dead one: it shares the job pool's workers and the CPU share (a failure comes as an error). */
 interface Lane {
@@ -24,10 +23,10 @@ const SILENCE_MS = 10_000;
 /** Most workers the pool opens: on the desktop, workers of the job processes (`jobPool.ts` PROCESS_LANES). */
 const MOST_LANES = 6;
 
-/** Tiles of a road pass to make off the page, and what the page answers for them. */
+/** Parts of a road pass's pieces to make off the page, and what the page answers for them. */
 export interface TileJob {
   readonly pass: PassDesc;
-  readonly tiles: readonly { readonly rect: TileRect; readonly into: TilePolys }[];
+  readonly tiles: readonly PartAsk[];
   /** The roads a share of the tiles reads, its arrays made afresh to be handed over. */
   dataFor(rects: readonly TileRect[]): { data: SurfaceData; transfer: ArrayBuffer[] };
   /** The ground as drawn, read here at the points a worker asks. */
@@ -45,7 +44,7 @@ export interface RoadTiler {
   /** Called while waiting: reports a worker with tiles waiting silent too long (queued behind other work or without CPU, still waited for). */
   check(now?: number): void;
   /** A block's far level (`mesh/roadLodPure.ts`) made off the page: `arrays` are handed over */
-  coarsen?(arrays: BlockArrays, lock: readonly [number, number, number, number]): Promise<BlockArrays | null>;
+  coarsen?(arrays: BlockArrays, lock: BlockLock): Promise<BlockArrays | null>;
 }
 
 export class RoadTilePool implements RoadTiler {
@@ -64,6 +63,8 @@ export class RoadTilePool implements RoadTiler {
   }
   private hidden = false;
   private broken = false;
+  /** Wall time the tiles asked of the lanes took to come back, ms, summed over the asks (the world's diary, `renderer.ts`); set to 0 by its reader. */
+  wallMs = 0;
 
   constructor() {
     this.unseen = true;
@@ -71,7 +72,7 @@ export class RoadTilePool implements RoadTiler {
   private nextId = 1;
   private nextLane = 0;
 
-  coarsen(arrays: BlockArrays, lock: readonly [number, number, number, number]): Promise<BlockArrays | null> {
+  coarsen(arrays: BlockArrays, lock: BlockLock): Promise<BlockArrays | null> {
     const lanes = (this.unseen ? this.start() : null) ?? this.startCoarse();
     // Where no worker can be made (Node, the specs that open a city: `tests/scale/census/sceneCensus.spec.ts`), made here as the worker makes it, once the simplifier's WebAssembly is in (`roadTile.worker.ts` serve).
     if (!lanes) return MeshoptSimplifier.ready.then(() => coarseArrays(arrays, lock));
@@ -85,6 +86,11 @@ export class RoadTilePool implements RoadTiler {
   }
 
   tiles(job: TileJob): Promise<Map<string, Tile>[]> {
+    const asked = performance.now();
+    return this.shared(job).then((made) => { this.wallMs += performance.now() - asked; return made; });
+  }
+
+  private shared(job: TileJob): Promise<Map<string, Tile>[]> {
     const lanes = this.start();
     if (!lanes) return Promise.reject(new Error('no workers in this browser'));
     const { tiles } = job;
@@ -125,7 +131,7 @@ export class RoadTilePool implements RoadTiler {
 
   private startCoarse(): Lane[] | null {
     if (this.coarseLanes || this.broken) return this.coarseLanes;
-    this.coarseLanes = this.open('roadCoarse', jobLanes(MOST_LANES));
+    this.coarseLanes = this.open('roadCoarse', jobLanes(MOST_LANES, 'roadCoarse'));
     return this.coarseLanes;
   }
 

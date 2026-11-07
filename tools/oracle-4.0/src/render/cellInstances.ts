@@ -21,11 +21,12 @@ import { type Bounds, growInto, planeMask } from './instanceCull';
 import { impostorPick, thinWant } from './plantImpostors';
 import { trianglesOf } from './propGeometry';
 import { castBySize } from './shadowCasters';
+import { type ShadowLadder, shadowLadderOf, shadowShapes } from './shadowLevels';
 
 /**
  * INSTANCES KEPT CELL BY CELL, DRAWN AT THE LEVEL THEIR SIZE ON THE SCREEN CALLS FOR: the gardens'
  * (`gardens.ts`) and every layer kept thing by thing (`instanceRuns.ts`). A kind's placements are kept
- * once for all its meshes (a plant's body, its cards, its far picture); a cull walks only the 64 m
+ * once for all its meshes (a plant's body, its cards, its far picture); a cull walks only the 50 m
  * cells the view takes in, and writes each instance into the buffers of the level its size on the
  * screen picks, with hysteresis, so a plant never flickers between two. DO NOT go back to drawing
  * every plant in view with its whole model: a flowering bush two pixels wide cost 112 triangles.
@@ -48,6 +49,8 @@ export interface KindMesh {
   readonly cards: boolean;
   /** Draws the instances small enough to be far pictures (`KindLevels.far`); else the near ones. */
   readonly far: boolean;
+  /** Draws the instances between the near and the far sizes (`KindLevels.mid`): a simplified model. Never `far` too. */
+  readonly mid?: boolean;
   /** Called on the mesh once it is made (the pictures' hooks, `plantImpostors.ts`). */
   readonly made?: (mesh: InstancedMesh) => void;
 }
@@ -70,10 +73,18 @@ const castTexelsOf = (k: { readonly spec: { readonly levels?: { readonly least?:
 export interface KindLevels {
   /** The radius a size is measured by, model units: the diameter times the instance's largest scale. */
   readonly reach: number;
-  /** Pixels across under which the far meshes draw it, thinned under `THIN_PX` (`plantImpostors.ts`). */
+  /** Pixels across under which the far meshes draw it, thinned under `THIN_PX` (`plantImpostors.ts`) unless the kind has a `least` of its own. */
   readonly far?: number;
-  /** Pixels across under which it is not drawn at all (a kind with no far pictures). */
+  /** Pixels across under which the mid meshes draw it (down to `far`), above it the near ones: THE LADDER near / mid / far
+   *  (a real mesh, its simplified one, its picture). None: no mid level. */
+  readonly mid?: number;
+  /** Whether the mid meshes' models are made (a simplification of their own, `propLevels.ts`): until then no instance is drawn mid. */
+  readonly midReady?: () => boolean;
+  /** Pixels across under which it is not drawn at all: cut there, never thinned (a kind with far pictures or none). */
   readonly least?: number;
+  /** World units from the eye past which its material has faded it out whole (a lamp's cone of light, `scenery.ts` BEAM_FADE): not drawn
+   *  there, in a perspective view (a view from above fades nothing). */
+  readonly fadesAt?: number;
   /** A small thing (a bin, a bench): cast into a cascade only where it spans `SMALL_CAST_TEXELS` (`makeMesh`). */
   readonly small?: boolean;
   /** Its far model is the colour's alone (a street light's light column, `propGeometry.ts` lampFarGeometry): every one drawn casts by its
@@ -83,7 +94,17 @@ export interface KindLevels {
   readonly ready?: () => boolean;
   /** Told each view culled for and half the screen's height, device pixels (the far pictures' uniforms). */
   readonly view?: (view: Matrix4, halfHeight: number) => void;
+  /** Its far pictures blended with no depth written (`plantImpostors.ts` PictureLook.ordered): its far level laid back to front along the
+   *  view's ground direction, quantized to `ORDER_AZIMUTHS` (`orderFar`). */
+  readonly ordered?: boolean;
 }
+
+/** The view's ground directions an ordered far level is laid back to front by: the pictures' own azimuths (`impostorShaders.ts` 8 x 8
+ *  frames, 64 directions). Panning keeps the direction: nothing is laid again; a turn past a step lays the level again once. */
+export const ORDER_AZIMUTHS = 64;
+
+/** What laying ordered far levels again cost (`orderFar`), for a sheet to read: times laid, positions rewritten, milliseconds. */
+interface OrderStats { lays: number; rewritten: number; ms: number; worstMs: number; worstBytes: number }
 
 export interface KindSpec {
   readonly meshes: readonly KindMesh[];
@@ -115,7 +136,7 @@ export interface Pack {
   readonly count: number;
 }
 
-export interface CellChange {
+interface CellChange {
   readonly removed: readonly object[];
   /** Each thing's key (taken away by the same object later) and its packs, by kind. */
   readonly added: readonly { readonly key: object; readonly packs: ReadonlyMap<number, Pack> }[];
@@ -133,6 +154,8 @@ export interface CellInstances {
   setMap(map: boolean): void;
   /** Writes each kind with a mesh shown the instances the view (or its margin) takes in, each at its level. */
   cull(frustum: Frustum, view: Matrix4): void;
+  /** What laying its ordered far levels again has cost since it was made (`KindLevels.ordered`). */
+  readonly orderStats: Readonly<OrderStats>;
   dispose(): void;
 }
 
@@ -146,7 +169,7 @@ const MAIN = /\bvoid\s+main\s*\(\s*\)\s*\{/;
  * `project_vertex`, `worldpos_vertex` and `defaultnormal_vertex` read it, as do the wind and the far pictures)
  * becomes the matrix made from the pose at the top of `main`; the attribute itself is left unread.
  */
-export function poseVertexShader(source: string, format: SlotFormat): string {
+function poseVertexShader(source: string, format: SlotFormat): string {
   if (!MAIN.test(source)) throw new Error(`poseVertexShader: no main() to make the ${format.key} matrix in`);
   return `#ifdef USE_INSTANCING
 attribute vec4 ${POSE_A};
@@ -232,6 +255,17 @@ function posedGeometry(model: BufferGeometry, poses: InstancedInterleavedBuffer)
   return g;
 }
 
+/** A caster's posed shadow shapes let go (`shadowShape`): every attribute taken off first, the poses too, which its colour shape still draws (or
+ *  which went with it). */
+function dropCopies(s: MeshState): void {
+  for (const g of s.shadowCopies.values()) {
+    for (const name of Object.keys(g.attributes)) g.deleteAttribute(name);
+    g.setIndex(null);
+    g.dispose();
+  }
+  s.shadowCopies.clear();
+}
+
 /** A posed geometry let go: the model's attributes and index taken off first, so three frees the poses' buffer and the vertex arrays only (r186 `WebGLGeometries` frees every attribute a disposed geometry holds). */
 function letGo(g: BufferGeometry): void {
   for (const name of Object.keys(g.attributes)) if (name !== POSE_A && name !== POSE_B) g.deleteAttribute(name);
@@ -268,9 +302,9 @@ export function warmMesh(spec: KindMesh, tinted: boolean, format: SlotFormat): I
 
 /** The smallest store worth a mesh. */
 const MIN_CAPACITY = 64;
-/** Side of a leaf cell. */
-const CELL = m(64);
-/** Levels above the leaves: a root spans CELL * 2^LEVELS (65 km), so a town of any size has a handful of roots. */
+/** Side of a leaf cell: a fifth of a world cell (`world/cells.ts` CELL). */
+const CELL = m(50);
+/** Levels above the leaves: a root spans CELL * 2^LEVELS (51 km), so a town of any size has a handful of roots. */
 const LEVELS = 10;
 /** Slack on a node's radius over float rounding: a node test may only keep more than its instances' tests would, never less. */
 const PAD = m(0.001);
@@ -281,8 +315,10 @@ const cellKey = (ix: number, iz: number): number => (ix + 0x1000000) * 0x2000000
 export const HYSTERESIS = 0.15;
 /** A pick at most this far over the share kept is still written: the GPU, in float32, shrinks it away (`impostorThin`). */
 const PICK_SLACK = 1e-4;
-/** Levels an instance was drawn at. */
-const NEAR = 0, FAR = 1, NONE = 2, UNKNOWN = 255;
+/** Levels an instance was drawn at; the near, far and mid ones each a `Level` of its kind (`Kind.levels`, by these numbers). */
+const NEAR = 0, FAR = 1, MID = 2, NONE = 3, UNKNOWN = 255;
+/** Each level's place down the ladder, largest first (`NEAR`, `MID`, `FAR`, `NONE`): what the bands round its bars are held by. */
+const RANK = [0, 2, 1, 3] as const;
 /** A slot's `want` with this bit: it stands under the near cascade's cover (`keepBox`), where it casts by its near level whatever its
  *  colour's level (`reconcile`); its colour's level in the bits under it. */
 const COVER = 0x80, LEVEL_BITS = 0x7f;
@@ -307,7 +343,7 @@ const bufferSize = new Vector2();
 export const screenHalf = (): number => screen.half;
 
 /** The screen's size noted each time three draws `mesh` (a mesh the cells did not make: a layer's far batches, `propCells.ts`). */
-export function watchScreen(mesh: InstancedMesh): void {
+function watchScreen(mesh: InstancedMesh): void {
   const before = mesh.onBeforeRender.bind(mesh);
   mesh.onBeforeRender = (renderer, ...rest) => {
     const half = renderer.getDrawingBufferSize(bufferSize).y / 2;
@@ -384,11 +420,15 @@ interface Level {
   front: number;
   /** Per slot of the kind: whether it casts from this level now (`reconcile`: a change of it is a change of the shadow). */
   cast: Uint8Array;
+  /** An ordered far level (`KindLevels.ordered`): the ground direction step it is laid back to front by (-1: not laid yet). */
+  azimuth: number;
 }
 
 interface MeshState {
   readonly spec: KindMesh;
   readonly level: Level;
+  /** Of the near level (neither `far` nor `mid`): it draws its level's front, the rest of what it holds cast alone (`Level.front`). */
+  readonly near: boolean;
   mesh: InstancedMesh | null;
   /** Whether it was drawn (shown, not left out) when its kind was last culled. */
   wasDrawn: boolean;
@@ -396,14 +436,20 @@ interface MeshState {
   uncast: (() => void) | null;
   /** Where it was put (its owner's group) while it is out of the scene with nothing to draw (`settleInScene`). */
   home: Object3D | null;
+  /** A caster's model and its lighter shapes for the cascades (`shadowLevels.ts`); null: it casts its model, or nothing. */
+  readonly ladder: ShadowLadder | null;
+  /** The shape it draws in the colour pass, posed (what `castCastersInto` puts back between the passes). */
+  shape: BufferGeometry | null;
+  /** Its lighter shapes posed on its level's poses, by their place in the ladder, made as a cascade first asks each (`shadowShape`). */
+  readonly shadowCopies: Map<number, BufferGeometry>;
 }
 
 interface Kind {
   readonly index: number;
   readonly spec: KindSpec;
   readonly meshes: MeshState[];
-  /** Near, far. */
-  readonly levels: readonly [Level, Level];
+  /** Near, far, mid (`NEAR`, `FAR`, `MID`). */
+  readonly levels: readonly [Level, Level, Level];
   /** The sphere round every mesh's, model units: what an instance is culled by. */
   readonly centre: Vector3;
   readonly reach: number;
@@ -426,8 +472,9 @@ interface Kind {
   runs: Map<object, { start: number; count: number }>;
   /** Culls of this kind so far; culled for the current view; culled by the walk in progress. */
   serial: number;
-  /** Whether its far pictures could be drawn at its last cull. */
+  /** Whether its far pictures could be drawn at its last cull; whether its mid models were made then (`KindLevels.midReady`). */
   pictured: boolean;
+  midOn: boolean;
   current: boolean;
   active: boolean;
 }
@@ -460,23 +507,26 @@ export function createCellInstances(kindSpecs: readonly KindSpec[], format: Slot
       if (!s) continue;
       if (!centre) { centre = s.center.clone(); reach = s.radius; } else reach = Math.max(reach, centre.distanceTo(s.center) + s.radius);
     }
-    const level = (): Level => ({ meshes: [], poses: null, tints: null, capacity: 0, shown: new Int32Array(0), at: new Int32Array(0), live: false, drawn: 0, entering: new IntList(), changed: new IntList(), fresh: false, largest: 0, front: 0, cast: new Uint8Array(0) });
-    const levels = [level(), level()] as const;
+    const level = (): Level => ({ meshes: [], poses: null, tints: null, capacity: 0, shown: new Int32Array(0), at: new Int32Array(0), live: false, drawn: 0, entering: new IntList(), changed: new IntList(), fresh: false, largest: 0, front: 0, cast: new Uint8Array(0), azimuth: -1 });
+    const levels = [level(), level(), level()] as const;
     return {
       index, spec, centre: centre ?? new Vector3(), reach: centre ? reach : 1, levels,
       meshes: spec.meshes.map((m) => {
-        const s: MeshState = { spec: m, level: levels[m.far ? 1 : 0], mesh: null, wasDrawn: false, uncast: null, home: null };
+        // A caster drawn from a model (not a picture, not leaf cards): its cascades draw the shape their texel asks (`shadowShape`).
+        const ladder = m.castShadow && !m.far && !m.cards ? shadowLadderOf(m.geometry) : null;
+        const s: MeshState = { spec: m, level: levels[m.mid ? MID : m.far ? FAR : NEAR], near: !m.mid && !m.far, mesh: null, wasDrawn: false, uncast: null, home: null,
+          ladder, shape: null, shadowCopies: new Map() };
         s.level.meshes.push(s);
         return s;
       }),
       capacity: 0, used: 0, dead: 0,
       data: new Float32Array(0), colours: new Float32Array(0), spheres: new Float32Array(0), feet: new Float32Array(0), sizes: new Float32Array(0),
       picks: new Float32Array(0), seen: new Uint32Array(0), level: new Uint8Array(0), want: new Uint8Array(0),
-      bounds: null, runs: new Map(), serial: 1, pictured: false, current: false, active: false,
+      bounds: null, runs: new Map(), serial: 1, pictured: false, midOn: false, current: false, active: false,
     };
   });
-  /** Kinds whose leaves are kept in pick order. */
-  const sorted = kinds.map((k) => k.spec.levels?.far !== undefined);
+  /** Kinds whose far pictures thin (`thinWant`), their leaves kept in pick order: a kind with a `least` of its own is cut there instead. */
+  const sorted = kinds.map((k) => k.spec.levels?.far !== undefined && k.spec.levels.least === undefined);
 
   const roots = new Map<number, CellNode>();
   let rootOrder: CellNode[] = [];
@@ -593,7 +643,8 @@ export function createCellInstances(kindSpecs: readonly KindSpec[], format: Slot
       if (!mesh) continue;
       mesh.dispose();
       letGo(mesh.geometry);
-      mesh.geometry = posedGeometry(s.spec.geometry, poses);
+      mesh.geometry = s.shape = posedGeometry(s.spec.geometry, poses);
+      dropCopies(s);
       mesh.instanceColor = tints;
     }
     b.poses = poses; b.tints = tints; b.capacity = capacity; b.shown = shown;
@@ -605,7 +656,7 @@ export function createCellInstances(kindSpecs: readonly KindSpec[], format: Slot
     const spec = s.spec, b = s.level;
     if (!b.poses) sizeLevel(k, b, MIN_CAPACITY, 0);
     // The level's buffers, not a copy each: a plant's body and its cards draw the same instances.
-    const mesh = dressedMesh(spec, posedGeometry(spec.geometry, b.poses!), format);
+    const mesh = dressedMesh(spec, s.shape = posedGeometry(spec.geometry, b.poses!), format);
     mesh.instanceColor = b.tints;
     s.mesh = mesh;
     meshList = null;
@@ -626,9 +677,28 @@ export function createCellInstances(kindSpecs: readonly KindSpec[], format: Slot
     // in the scene, 1.5 M in the cascades, `npm run diagnose`, 2026-10-22) for shadows PCF spreads to nothing.
     // Its instances in the colour pass and in the cascades (`Level.front`): the near level casts what it draws and what stands under the
     // cover; the far level draws all it holds and casts what stands past the cover.
+    // Its shape in a cascade by the cascade's texel alone (`shadowShape`): the camera's level never the shadow's.
     s.uncast = castBySize({ mesh, casts: spec.castShadow, radius: () => b.largest, texels: castTexelsOf(k),
-      counts: { colour: () => colourCount(s), shadow: () => (!s.wasDrawn ? 0 : spec.far ? b.front : b.drawn) } });
+      counts: { colour: () => colourCount(s), shadow: () => (!s.wasDrawn ? 0 : !s.near ? b.front : b.drawn) },
+      ...(s.ladder ? { levels: { shadow: (texel: number) => shadowShape(s, texel), colour: () => s.shape! } } : {}) });
     return mesh;
+  };
+  /**
+   * The shape a caster draws into a cascade of `texel` world units: the lightest of its ladder whose error, at its level's widest instance
+   * (`Level.largest` over its model's radius: the scale it is drawn at, or more), is under the texel; its colour shape when none is. A shape
+   * off by under a texel throws the same shadow (`shadowLevels.ts`). DO NOT choose it by the camera's level: the shadow would follow the camera.
+   */
+  const shadowShape = (s: MeshState, texel: number): BufferGeometry => {
+    if (!shadowShapes.byTexel) return s.shape!;
+    const shapes = s.ladder!.shapes, b = s.level;
+    const radius = s.spec.geometry.boundingSphere?.radius ?? 0;
+    const scale = radius > 0 ? b.largest / radius : Infinity;
+    let pick = 0;
+    for (let i = shapes.length - 1; i > 0; i--) if (shapes[i]!.error * scale < texel) { pick = i; break; }
+    if (pick === 0 || !b.poses) return s.shape!;
+    let copy = s.shadowCopies.get(pick);
+    if (!copy) s.shadowCopies.set(pick, copy = posedGeometry(shapes[pick]!.geometry, b.poses));
+    return copy;
   };
 
   const scratch = new Float32Array(16), point = new Vector3(), matrix = new Matrix4();
@@ -742,6 +812,9 @@ export function createCellInstances(kindSpecs: readonly KindSpec[], format: Slot
   let cullFrustum: Frustum | null = null;
   /** The view's numbers for a size on the screen: row 1's length times half the height (pixels a unit at w = 1), and row 3 (w). */
   let perUnitAtOne = 0, w0 = 0, w1 = 0, w2 = 0, w3 = 1, wReach = 0;
+  /** The view's ground direction as an ordered far level is laid by (`orderFar`): its step of `ORDER_AZIMUTHS`, and that step's direction. */
+  let azimuth = 0, orderX = 0, orderZ = 1;
+  const orderStats: OrderStats = { lays: 0, rewritten: 0, ms: 0, worstMs: 0, worstBytes: 0 };
   const wOf = (x: number, y: number, z: number): number => w0 * x + w1 * y + w2 * z + w3;
   /** The margin as the cull tests it: a thing's shadow falls from it away from the sun, `margin` along the ray at most, so its sphere is tested moved half that way and grown by half (it holds that ray, and lies within the margin's sphere round the thing); with no sun known, the margin round every way. */
   let reachX = 0, reachY = 0, reachZ = 0, reachR = margin;
@@ -757,11 +830,12 @@ export function createCellInstances(kindSpecs: readonly KindSpec[], format: Slot
    *  the near level holds it for its shadow whatever its colour's level. */
   const mark = (k: Kind, i: number, level: number, cover = false): void => {
     k.want[i] = cover ? level | COVER : level;
-    if (level === NEAR || cover) hold(k, 0, i);
-    if (level === FAR) hold(k, 1, i);
+    if (level === NEAR || cover) hold(k, NEAR, i);
+    if (level === FAR) hold(k, FAR, i);
+    if (level === MID) hold(k, MID, i);
   };
-  /** A mesh's instances in the colour pass: the near level's front (drawn near), the far level's every one. */
-  const colourCount = (s: MeshState): number => (!s.wasDrawn ? 0 : s.spec.far ? s.level.drawn : s.level.front);
+  /** A mesh's instances in the colour pass: the near level's front (drawn near), the mid and far levels' every one. */
+  const colourCount = (s: MeshState): number => (!s.wasDrawn ? 0 : !s.near ? s.level.drawn : s.level.front);
   /** Slot `i`'s pose and tint into position `p` of the level's buffers, once for all its meshes. */
   const put = (k: Kind, b: Level, i: number, p: number): void => {
     b.shown[p] = i;
@@ -775,6 +849,80 @@ export function createCellInstances(kindSpecs: readonly KindSpec[], format: Slot
       tints[p * 3] = c[i * 3]!; tints[p * 3 + 1] = c[i * 3 + 1]!; tints[p * 3 + 2] = c[i * 3 + 2]!;
     }
   };
+  /** `orderFar`'s sort, kept between lays: the part's slots and their keys, the keys' bits as unsigned words, and the order found. */
+  let orderSlots = new Int32Array(0), orderBy = new Int32Array(0), orderSpare = new Int32Array(0);
+  let orderKeys = new Float64Array(0), orderWords = new Uint32Array(0);
+  const orderCounts = new Uint32Array(256);
+  /**
+   * `orderBy[0..count)`: the positions 0..count-1 of `orderKeys`, the largest key first, ties in their order - a stable least-significant-digit
+   * radix sort of the keys' 64 bits, eight a pass (Knuth, The Art of Computer Programming, vol. 3, 5.2.5), a pass left out where every key has
+   * the same digit. DO NOT sort them with a comparator (`Array.prototype.sort`): 50,000 far tufts took 10 ms a lay, 18 at worst, on the main
+   * thread at every step of an orbit (2026-10-25).
+   */
+  const farthestFirst = (count: number): void => {
+    const bits = new Uint32Array(orderKeys.buffer, 0, count * 2), words = orderWords;
+    // Each key's two words (little-endian: low, high) made to sort as unsigned numbers, the largest key smallest: a positive key's bits
+    // inverted but the sign, a negative key's as they are.
+    for (let q = 0; q < count; q++) {
+      const lo = bits[q * 2]!, hi = bits[q * 2 + 1]!;
+      if (hi & 0x80000000) { words[q * 2] = lo; words[q * 2 + 1] = hi; } else { words[q * 2] = ~lo >>> 0; words[q * 2 + 1] = (hi ^ 0x7fffffff) >>> 0; }
+    }
+    let from = orderBy, to = orderSpare;
+    for (let q = 0; q < count; q++) from[q] = q;
+    for (let digit = 0; digit < 8; digit++) {
+      const word = digit >> 2, shift = (digit & 3) * 8;
+      orderCounts.fill(0);
+      for (let q = 0; q < count; q++) orderCounts[(words[from[q]! * 2 + word]! >>> shift) & 255]!++;
+      if (orderCounts.includes(count)) continue;
+      let sum = 0;
+      for (let c = 0; c < 256; c++) { const n = orderCounts[c]!; orderCounts[c] = sum; sum += n; }
+      for (let q = 0; q < count; q++) { const i = from[q]!; to[orderCounts[(words[i * 2 + word]! >>> shift) & 255]!++] = i; }
+      const swap = from; from = to; to = swap;
+    }
+    if (from !== orderBy) orderBy.set(from.subarray(0, count));
+  };
+
+  /**
+   * AN ORDERED FAR LEVEL LAID BACK TO FRONT (`KindLevels.ordered`): its pictures are blended with no depth written, so what stands behind must be
+   * drawn first - else a far tuft's dark foot paints over a near one's tips, and with depth written a near picture's faint edge hid everything
+   * behind it (the ground cover's far rung, 2026-10-25). Each part of the level (`Level.front`: the cast ones, then those under the cover) is
+   * sorted by its feet along the view's ground direction step (`azimuth`), farthest first; only the positions whose slot changed are written.
+   * Laid only when a slot came or went, the front moved, or the view turned past a step: a pan keeps the order.
+   */
+  const orderFar = (k: Kind, b: Level, n: number): void => {
+    const started = performance.now();
+    const shown = b.shown, feet = k.feet;
+    const sortPart = (from: number, to: number): number => {
+      const count = to - from;
+      if (count < 2) return 0;
+      if (orderSlots.length < count) {
+        orderSlots = new Int32Array(count * 2); orderBy = new Int32Array(count * 2); orderSpare = new Int32Array(count * 2);
+        orderKeys = new Float64Array(count * 2); orderWords = new Uint32Array(count * 4);
+      }
+      // Scene z is the world's -y; w grows with x and z as the view's own direction: the larger the key, the farther (drawn first).
+      for (let q = 0; q < count; q++) {
+        const slot = shown[from + q]!;
+        orderSlots[q] = slot;
+        orderKeys[q] = orderX * feet[slot * 3]! + orderZ * feet[slot * 3 + 2]!;
+      }
+      farthestFirst(count);
+      let written = 0;
+      for (let p = 0; p < count; p++) {
+        const slot = orderSlots[orderBy[p]!]!;
+        if (shown[from + p] !== slot) { put(k, b, slot, from + p); written++; }
+      }
+      return written;
+    };
+    const written = sortPart(0, b.front) + sortPart(b.front, n);
+    b.azimuth = azimuth;
+    const ms = performance.now() - started;
+    orderStats.lays++;
+    orderStats.rewritten += written;
+    orderStats.ms += ms;
+    orderStats.worstMs = Math.max(orderStats.worstMs, ms);
+    orderStats.worstBytes = Math.max(orderStats.worstBytes, written * (stride + (b.tints ? 3 : 0)) * 4);
+  };
+
   /**
    * The level's positions brought to the cull just walked: one no longer drawn here takes the last position's slot, one new to the level goes
    * at the end. DO NOT lay the instances in the walk's order: a cell come into view moved every position after it, and the view's every
@@ -803,9 +951,11 @@ export function createCellInstances(kindSpecs: readonly KindSpec[], format: Slot
     // the far level what stands past the cover. DO NOT tell the shadows of a slot whose colour changed level under the cover: it casts by the
     // near level all along - the near cascade's store was thrown away at nearly every frame of a flight for the level swaps round the camera
     // (`tooBigNear` in 295 of 501 passes, `npm run diagnose`, 2026-10-22).
-    const held = (s: number): boolean => (id === NEAR ? (want[s]! & LEVEL_BITS) === NEAR || (want[s]! & COVER) !== 0 : (want[s]! & LEVEL_BITS) === FAR);
+    const held = (s: number): boolean => (id === NEAR ? (want[s]! & LEVEL_BITS) === NEAR || (want[s]! & COVER) !== 0 : (want[s]! & LEVEL_BITS) === id);
     const casting = (s: number): boolean => id === NEAR || (want[s]! & COVER) === 0;
     const cast = b.cast;
+    /** Whether a slot left or came (an ordered far level is laid again, `orderFar`). */
+    let moved = false;
     for (let p = 0; p < n;) {
       const s = shown[p]!;
       if (seen[s] === now && held(s)) {
@@ -813,6 +963,7 @@ export function createCellInstances(kindSpecs: readonly KindSpec[], format: Slot
         p++;
         continue;
       }
+      moved = true;
       at[s] = -1;
       if (cast[s] === 1) dirty(s);
       cast[s] = 0;
@@ -827,7 +978,7 @@ export function createCellInstances(kindSpecs: readonly KindSpec[], format: Slot
       sizeLevel(k, b, capacity, n);
     }
     const entering = b.entering.items;
-    for (let e = 0, count = b.entering.length; e < count; e++) { const i = entering[e]!; if (at[i]! < 0) { put(k, b, i, n++); if (casting(i)) dirty(i); } }
+    for (let e = 0, count = b.entering.length; e < count; e++) { const i = entering[e]!; if (at[i]! < 0) { put(k, b, i, n++); moved = true; if (casting(i)) dirty(i); } }
     b.drawn = n;
     // The front first (`Level.front`): the near level's drawn near, the far level's cast. A slot moving between the two parts moves in the
     // buffers, nothing of what the level casts told unless its casting changed (above). DO NOT draw what the near level holds for the shadows
@@ -835,6 +986,7 @@ export function createCellInstances(kindSpecs: readonly KindSpec[], format: Slot
     // DO NOT read the positions through `shown` here: the level grown above (`sizeLevel`) has a new array of them.
     const order = b.shown;
     const inFront = id === NEAR ? (s: number): boolean => (want[s]! & LEVEL_BITS) === NEAR : casting;
+    const frontWas = b.front;
     let lo = 0, hi = n - 1;
     while (lo <= hi) {
       if (inFront(order[lo]!)) { lo++; continue; }
@@ -844,6 +996,7 @@ export function createCellInstances(kindSpecs: readonly KindSpec[], format: Slot
       put(k, b, a, hi--);
     }
     b.front = lo;
+    if (id === FAR && k.spec.levels?.ordered === true && (moved || b.azimuth !== azimuth || lo !== frontWas)) orderFar(k, b, n);
     for (let p = 0; p < n; p++) { const s = order[p]!; cast[s] = casting(s) ? 1 : 0; }
     // A quarter of the buffers in use or less: shrunk to twice what is drawn, so they follow the view, not the most it ever held.
     if (b.capacity > MIN_CAPACITY && n * 4 < b.capacity) sizeLevel(k, b, Math.max(MIN_CAPACITY, n * 2), n);
@@ -896,8 +1049,11 @@ export function createCellInstances(kindSpecs: readonly KindSpec[], format: Slot
         inner = ALL_PLANES;
       }
     }
-    if (node.children) {
-      for (const child of node.children) if (child) visit(child, inner);
+    // Indexed, not `for...of`: an iterator a call of this walk, every node of every cull of every frame (335 MB of a 13 s flight, DevTools heap
+    // sampling, 2026-10-24).
+    const children = node.children;
+    if (children) {
+      for (let c = 0; c < children.length; c++) { const child = children[c]; if (child) visit(child, inner); }
       return;
     }
     // The nearest the leaf comes to the eye (w), for the largest size in it.
@@ -909,7 +1065,8 @@ export function createCellInstances(kindSpecs: readonly KindSpec[], format: Slot
       nodeProbe.radius = node.r + PAD;
       leafCovered = keepBox.intersectsSphere(nodeProbe);
     }
-    for (const k of kinds) {
+    for (let kk = 0; kk < kinds.length; kk++) {
+      const k = kinds[kk]!;
       if (!k.active) continue;
       const slots = node.slots![k.index]!;
       if (slots.length === 0) continue;
@@ -917,16 +1074,22 @@ export function createCellInstances(kindSpecs: readonly KindSpec[], format: Slot
       const sp = k.spheres, feet = k.feet, sizes = k.sizes, picks = k.picks, seen = k.seen, lv = k.level;
       const was = k.serial - 1, now = k.serial;
       const far = levels?.far === undefined || !k.pictured ? -1 : mapMode === true ? Infinity : levels.far;
+      // The mid level once its models are made, never at the map zoom (every plant its picture there).
+      const mid = levels?.mid === undefined || !k.midOn || far === Infinity ? -1 : levels.mid;
       const least = levels?.least ?? -1;
+      const fades = levels?.fadesAt ?? -1;
+      // Its far pictures thinned (`sorted`): a kind with a `least` of its own is cut there instead.
+      const thins = sorted[k.index]! && far >= 0;
       // Past the first slot whose pick is over the share the leaf's largest keeps, nothing more is drawn (`sorted`); under the cover each
       // still casts (`COVER`): DO NOT let the shadow follow the thinning, which follows the camera.
-      const stopAt = far < 0 ? Infinity : thinWant(node.big![k.index]! * (wNear > 1e-4 ? perUnitAtOne / wNear : Infinity)) + PICK_SLACK;
+      const stopAt = !thins ? Infinity : thinWant(node.big![k.index]! * (wNear > 1e-4 ? perUnitAtOne / wNear : Infinity)) + PICK_SLACK;
       // What casts into the near cascade by its size (`castBySize`: its texels there): the cover asks nothing of a thing too small for them.
       const castFrom = keepTexel * castTexelsOf(k);
       // A leaf none of whose slots reaches a texel there is no cover's: its walk stops at its first slot thinned out. DO NOT walk every
       // thinned slot of a covered leaf to find each too small: a covered leaf of benches and bins was walked whole at each cull of a move.
       const covered = leafCovered && casts[k.index]! && node.wide![k.index]! >= castFrom;
-      for (const i of slots) {
+      for (let si = 0; si < slots.length; si++) {
+        const i = slots[si]!;
         const r = sp[i * 4 + 3]!;
         if (r === -Infinity) continue;
         const thinned = picks[i]! > stopAt;
@@ -959,17 +1122,26 @@ export function createCellInstances(kindSpecs: readonly KindSpec[], format: Slot
         if (!levels) { mark(k, i, NEAR, cover); continue; }
         const w = wOf(feet[i * 3]!, feet[i * 3 + 1]!, feet[i * 3 + 2]!);
         const across = sizes[i]! * (w > 1e-4 ? perUnitAtOne / w : Infinity);
+        // Down the ladder, each bar held by the band round it: a level kept by what was drawn at it or above, left to by what was below.
+        const rank = prev === UNKNOWN ? -1 : RANK[prev as 0 | 1 | 2 | 3];
+        const over = (bar: number, above: number): boolean =>
+          across >= bar * (rank < 0 ? 1 : rank <= RANK[above as 0 | 1 | 2 | 3] ? 1 - HYSTERESIS : 1 + HYSTERESIS);
         let level: number;
-        if (far >= 0) {
-          const bar = far * (prev === NEAR ? 1 - HYSTERESIS : prev === FAR ? 1 + HYSTERESIS : 1);
-          level = across >= bar ? NEAR : FAR;
-        } else if (least >= 0) {
-          const bar = least * (prev === NEAR ? 1 - HYSTERESIS : prev === NONE ? 1 + HYSTERESIS : 1);
-          level = across >= bar ? NEAR : NONE;
+        if (far === Infinity) level = FAR;
+        else if (far >= 0 || mid >= 0) {
+          if (over(mid >= 0 ? mid : far, NEAR)) level = NEAR;
+          else if (mid >= 0 && (far < 0 || over(far, MID))) level = MID;
+          else level = FAR;
         } else level = NEAR;
+        // Under its own least size, not drawn at any level.
+        if (least >= 0 && !over(least, FAR)) level = NONE;
+        // Past where its material fades it out whole: its sphere's nearest depth (never more than its distance) beyond it. DO NOT draw a lamp's
+        // cone a kilometre off: every one of the town's was drawn at night and discarded pixel by pixel past 140 m (the F7 audit, 235 k
+        // triangles at the district's view, 2026-10-25). A view from above has w 1: nothing faded, nothing cut.
+        if (fades >= 0 && wOf(sp[i * 4]!, sp[i * 4 + 1]!, sp[i * 4 + 2]!) - sp[i * 4 + 3]! * wReach > fades) level = NONE;
         lv[i] = level;
         // A far picture past the share its size keeps is thinned out (the GPU grows the ones kept, `impostorThin`).
-        mark(k, i, level === FAR && picks[i]! > thinWant(across) + PICK_SLACK ? NONE : level, cover);
+        mark(k, i, thins && level === FAR && picks[i]! > thinWant(across) + PICK_SLACK ? NONE : level, cover);
       }
     }
   };
@@ -994,9 +1166,10 @@ export function createCellInstances(kindSpecs: readonly KindSpec[], format: Slot
   const meshes = (): InstancedMesh[] => meshList ??= kinds.flatMap((k) => k.meshes.flatMap((s) => (s.mesh ? [s.mesh] : [])));
   return {
     get meshes() { return meshes(); },
+    get orderStats() { return orderStats; },
     get triangles() {
       let n = 0;
-      for (const k of kinds) for (const s of k.meshes) if (s.mesh && !s.spec.far) n += trianglesOf(s.spec.geometry) * (k.used - k.dead);
+      for (const k of kinds) for (const s of k.meshes) if (s.mesh && s.near) n += trianglesOf(s.spec.geometry) * (k.used - k.dead);
       return n;
     },
     get cpuBytes() {
@@ -1079,6 +1252,19 @@ export function createCellInstances(kindSpecs: readonly KindSpec[], format: Slot
         // A mesh shown or hidden since, or its pictures taken: its kind culled again.
         const pictured = k.spec.levels?.far !== undefined && (k.spec.levels.ready?.() ?? true);
         if (pictured !== k.pictured) { k.pictured = pictured; k.current = false; }
+        // Its mid models made since: its mid meshes drawn from them now (a mesh holds its model's attributes as it was made, `posedGeometry`).
+        const midOn = k.spec.levels?.mid !== undefined && (k.spec.levels.midReady?.() ?? true);
+        if (midOn !== k.midOn) {
+          k.midOn = midOn;
+          k.current = false;
+          const b = k.levels[MID];
+          for (const s of b.meshes) {
+            if (!s.mesh || !b.poses) continue;
+            letGo(s.mesh.geometry);
+            s.mesh.geometry = s.shape = posedGeometry(s.spec.geometry, b.poses);
+            dropCopies(s);
+          }
+        }
         for (const s of k.meshes) if (s.wasDrawn !== drawnNow(k, s)) k.current = false;
         k.active = !k.current && k.meshes.some((s) => drawnNow(k, s));
         if (!k.active) continue;
@@ -1097,6 +1283,12 @@ export function createCellInstances(kindSpecs: readonly KindSpec[], format: Slot
       perUnitAtOne = Math.hypot(e[1]!, e[5]!, e[9]!) * culledHalf;
       w0 = e[3]!; w1 = e[7]!; w2 = e[11]!; w3 = e[15]!;
       wReach = Math.hypot(w0, w1, w2);
+      // The view's ground direction (w grows away from the eye: its x and z), to its step of the pictures' azimuths. Straight down: the last kept.
+      if (Math.hypot(w0, w2) > 1e-6 * wReach) {
+        const step = (2 * Math.PI) / ORDER_AZIMUTHS;
+        azimuth = ((Math.round(Math.atan2(w0, w2) / step) % ORDER_AZIMUTHS) + ORDER_AZIMUTHS) % ORDER_AZIMUTHS;
+        orderX = Math.sin(azimuth * step); orderZ = Math.cos(azimuth * step);
+      }
       cullFrustum = frustum;
       keepBox = (frustum as KeptFrustum).keep ?? null;
       keepTexel = (frustum as KeptFrustum).keepTexel ?? 0;
@@ -1112,7 +1304,8 @@ export function createCellInstances(kindSpecs: readonly KindSpec[], format: Slot
         if (!k.active) continue;
         k.active = false;
         k.current = true;
-        k.levels.forEach((b, id) => { if (b.live && b.poses) reconcile(k, b, id === 0 ? NEAR : FAR); });
+        // Each level by its number (`Kind.levels`: NEAR, FAR, MID).
+        k.levels.forEach((b, id) => { if (b.live && b.poses) reconcile(k, b, id); });
         for (const s of k.meshes) {
           s.wasDrawn = drawnNow(k, s);
           if (s.mesh) { s.mesh.count = colourCount(s); settleInScene(s); }
@@ -1121,7 +1314,7 @@ export function createCellInstances(kindSpecs: readonly KindSpec[], format: Slot
       nearBox = null;
     },
     dispose() {
-      for (const k of kinds) for (const s of k.meshes) { s.uncast?.(); s.uncast = null; }
+      for (const k of kinds) for (const s of k.meshes) { s.uncast?.(); s.uncast = null; dropCopies(s); }
       for (const mesh of meshes()) {
         mesh.dispose();
         letGo(mesh.geometry);

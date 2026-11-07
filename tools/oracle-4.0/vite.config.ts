@@ -1,9 +1,9 @@
+// The oracle copy's Vite config: the reference's (Roadcraft 4.0 at the commit tools/oracle-4.0/source.json names) with the oracle's
+// instrumentation, its own Vite cache, and nothing else changed; every other file of tools/oracle-4.0 is the reference's (rebuild.py).
 import { defineConfig } from 'vite';
-import { oracleInstrument } from 'C:/Users/Jonathan/Desktop/city/tools/converter-slice/scripts/oracle-instrument.mjs';
+import { oracleInstrument } from '../converter/scripts/oracle-instrument.mjs';
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-// the features the oracle instruments: ORACLE_FEATURES=<json path> ([{ name, seeds }]) when the dev server starts,
-// else the converter's definitive list
-const oracleFeatures = JSON.parse(readFileSync(process.env['ORACLE_FEATURES'] ?? 'C:/Users/Jonathan/Desktop/city/tools/converter-slice/out/definitive-features.json', 'utf8'));
 import { createRequire } from 'node:module';
 import { fileURLToPath, URL } from 'node:url';
 import { buildStampPlugin } from './scripts/vite/build-stamp.ts';
@@ -17,24 +17,41 @@ const r = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 // The page cross-origin isolated: the same headers the desktop's `app://` sends (`desktop/isolation.cjs`; Vite replaces `import.meta.url` in its config with the file's own).
 const ISOLATED = createRequire(import.meta.url)('./desktop/isolation.cjs') as Record<string, string>;
 
-/** The map's tiles each way (`wholeMap.ts` MAP_TILES): 18 (~18.4 km a side: a city of ~200 000 buildings at today's density spans a radius of ~8.85 km, 0.85 of it each way from the centre; the edge must fall on the 2 km terrain plates' edges, so 10, 14, 18... tiles) unless a run asks another (ROADCRAFT_MAP_TILES, even, 2-64). */
-const MAP_TILES = Number(process.env['ROADCRAFT_MAP_TILES'] ?? 18);
-if (!Number.isInteger(MAP_TILES) || MAP_TILES < 2 || MAP_TILES > 64 || MAP_TILES % 2 !== 0) throw new Error(`ROADCRAFT_MAP_TILES must be an even number of tiles from 2 to 64, not ${process.env['ROADCRAFT_MAP_TILES']}`);
+/** One answer of the converter's own scripts (its machine file, the program's graph it derives); past this the script is stopped. */
+const CONVERTER_ANSWER_TIMEOUT_MS = 1_800_000;
+const converterAnswer = (script: string): string => execFileSync(process.execPath, [r(`../converter/scripts/${script}`)],
+  { encoding: 'utf8', timeout: CONVERTER_ANSWER_TIMEOUT_MS, windowsHide: true }).trim();
+/**
+ * THE ORACLE COPY ONLY, with ORACLE_INSTRUMENT=1: every function of the game and of three.js recorded (scripts/oracle-instrument.mjs of
+ * the converter). The features it instruments: ORACLE_FEATURES=<json path> ([{ name, seeds }]), else the converter machine file's
+ * "oracleFeatures"; the units by the graph of the reference the converter derives (scripts/program-graph.ts).
+ */
+function oraclePlugins() {
+  if (process.env['ORACLE_INSTRUMENT'] !== '1') return [];
+  const machine = JSON.parse(converterAnswer('machine.ts')) as Record<string, string>;
+  const features = JSON.parse(readFileSync(process.env['ORACLE_FEATURES'] ?? machine['oracleFeatures']!, 'utf8')) as { name: string; seeds: string[] }[];
+  return [oracleInstrument({ root: '.', graph: converterAnswer('program-graph.ts'), boundaries: features.map((f) => ({ name: f.name, seeds: f.seeds })) })];
+}
+
+/** The map's tiles each way (`wholeMap.ts` MAP_TILES): 20 (20 km a side: a city of ~200 000 buildings at today's density spans a radius of ~8.85 km, 0.885 of the 10 km each way from the centre; the map is centred on the origin and its edge must fall on the 2,000 m terrain plates' edges (`world/bounds.ts`: 2 x 2 tiles of 1,000 m, edges on multiples of 2,000 m), so a multiple of 4 tiles: 4, 8, ... 20 ...) unless a run asks another (ROADCRAFT_MAP_TILES, a multiple of 4, 4-64). */
+const MAP_TILES = Number(process.env['ROADCRAFT_MAP_TILES'] ?? 20);
+if (!Number.isInteger(MAP_TILES) || MAP_TILES < 4 || MAP_TILES > 64 || MAP_TILES % 4 !== 0) throw new Error(`ROADCRAFT_MAP_TILES must be a multiple of 4 tiles from 4 to 64, not ${process.env['ROADCRAFT_MAP_TILES']}`);
 
 export default defineConfig({
   root: '.',
+  // THE ORACLE COPY ONLY: its own dependency cache, apart from a dev server of the reference itself.
   cacheDir: '.vite-oracle-cache',
   // The map's size and a weaker machine played on this one (`core/weakMachine.ts`), the page and every worker the same.
-  define: { __MAP_TILES__: String(MAP_TILES), __WEAK_MACHINE__: JSON.stringify(process.env['ROADCRAFT_WEAK'] ?? ''), __SLOW_CHECKS__: JSON.stringify(process.env['ROADCRAFT_SLOW_CHECKS'] === '1') },
+  define: { __MAP_TILES__: String(MAP_TILES), __WEAK_MACHINE__: JSON.stringify(process.env['ROADCRAFT_WEAK'] ?? '') },
   // `modelUrlsPlugin`: the model files' URLs, a module per folder, never inlined (`model-urls-plugin.ts`).
   // `surfaceBakePlugin`: the procedural surfaces baked at build time into KTX2 (`surface-bake-plugin.ts`); before `cookPlugin`, whose middleware serves them once baked.
   // `labReportsPlugin`: the lab recorder's reports written into `lab-reports/` (dev server only, `labReports.ts`).
   // `labSourcePlugin`: the lab inspector's search of where a 3D object's name is made in `src/` (dev server only, `labSource.ts`).
-  // THE ORACLE COPY ONLY: every function of the game and of three.js recorded (scripts/oracle-instrument.mjs of the converter).
-  plugins: [...(process.env['ORACLE_INSTRUMENT'] === '1' ? [oracleInstrument({ root: '.', graph: 'C:/Users/Jonathan/Desktop/city/tools/converter-slice/out/cache/source-0f94907384c009a8/program-7fbb60c45362b8cb.json', boundaries: oracleFeatures.map((f: { name: string; seeds: string[] }) => ({ name: f.name, seeds: f.seeds })) })] : []), buildStampPlugin(), surfaceBakePlugin(), cookPlugin(), modelUrlsPlugin(), labReportsPlugin(), labSourcePlugin()],
+  // THE ORACLE COPY ONLY: oraclePlugins (above).
+  plugins: [...oraclePlugins(), buildStampPlugin(), surfaceBakePlugin(), cookPlugin(), modelUrlsPlugin(), labReportsPlugin(), labSourcePlugin()],
   publicDir: false,
   // The dependencies are found from the game's own pages only.
-  optimizeDeps: { entries: ['*.html'], exclude: ['three'] },
+  optimizeDeps: { entries: ['*.html'] },
   resolve: {
     alias: {
       '@core': r('./src/core'),
@@ -69,7 +86,7 @@ export default defineConfig({
   },
   preview: { headers: ISOLATED },
   // ES workers: the simulation's worker makes workers of its own and imports its walkers when it starts (Vite, worker.format).
-  // The workers' own bundles take the model URLs too (Vite `worker.plugins`): the people's worker reads the proxies (`people/body/proxy.ts`).
+  // The workers' own bundles take the model URLs too (Vite `worker.plugins`), for a worker that reads a model file.
   worker: { format: 'es', plugins: () => [modelUrlsPlugin()] },
   build: {
     target: 'es2022',

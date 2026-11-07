@@ -177,7 +177,7 @@ interface Ktx2Encoder {
 }
 
 /** A UASTC file: each level and layer encoded on its own by Basis Universal (these mipmaps, not its own), the blocks put together and Zstandard per level. */
-export async function uastcKtx2(levels: readonly (readonly Uint8Array[])[], size: number, use: TextureUse): Promise<Uint8Array> {
+export async function uastcKtx2(levels: readonly (readonly Uint8Array[])[], size: number, use: TextureUse, layerUses?: readonly TextureUse[]): Promise<Uint8Array> {
   // Not a dependency until UASTC is the codec (the player's yes on shots): installed then, resolved only at that call.
   const name = 'ktx2-encoder';
   const encoder = (await import(/* @vite-ignore */ name)) as unknown as Ktx2Encoder;
@@ -186,7 +186,8 @@ export async function uastcKtx2(levels: readonly (readonly Uint8Array[])[], size
   for (let level = 0; level < levels.length; level++) {
     const side = Math.max(1, size >> level);
     const layers: Uint8Array[] = [];
-    for (const texels of levels[level]!) {
+    for (const [layer, texels] of levels[level]!.entries()) {
+      const own = layerUses?.[layer] ?? use;
       const encoded = read(await encoder.encodeToKTX2(texels, {
         isUASTC: true,
         generateMipmap: false,
@@ -196,7 +197,7 @@ export async function uastcKtx2(levels: readonly (readonly Uint8Array[])[], size
         enableRDO: false,
         isPerceptual: use === 'color',
         isSetKTX2SRGBTransferFunc: use === 'color',
-        isNormalMap: use === 'normal',
+        isNormalMap: own === 'normal',
         isYFlip: false,
         imageDecoder: async () => ({ width: side, height: side, data: texels }),
       }));

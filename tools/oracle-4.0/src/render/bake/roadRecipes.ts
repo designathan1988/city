@@ -4,7 +4,12 @@ import { type SurfaceRecipe, fbm, makeNoise } from '../mesh/textureBaker';
 /** The street surfaces' texture recipes (`materials.ts`), baked at build time (`scripts/vite/surface-bake-plugin.ts`) */
 
 export const ASPHALT_TILE = m(10.4);
+/** Texels a side of each street surface's maps. */
 const ASPHALT_SIZE = 512;
+const FOOTWAY_SIZE = 1024;
+const KERB_SIZE = 256;
+const VERGE_SIZE = 512;
+const DECK_SIZE = 512;
 const ASPHALT_BASE = 0.215;
 const RAISED_ASPHALT_BASE = 0.245;
 export const FOOTWAY_TILE = m(7.2);
@@ -18,6 +23,12 @@ function cellHash(x: number, y: number, seed: number): number {
   h = Math.imul(h ^ (h >>> 15), 0x85ebca6b);
   h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
   return ((h ^ (h >>> 16)) >>> 0) / 4_294_967_296;
+}
+
+/** 0 under `a`, 1 over `b`, the Hermite curve between (GLSL's smoothstep). */
+function smoothstep(a: number, b: number, x: number): number {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
 }
 
 /** The asphalt; `raised` its paler tone for raised crossings, whose colour alone is baked (it shares the road's normal and roughness). */
@@ -45,29 +56,29 @@ function asphaltRecipe(raised: boolean): SurfaceRecipe {
       // Exposed stones: light flecks of aggregate in the dark binder.
       const stone = fbm(grain, u * 420 + 3, v * 420 + 9, 420, 1);
       const flecks = stone > 0.74 ? (stone - 0.74) * 0.5 : stone < 0.2 ? -0.02 : 0;
-      // Patches: rectangles of newer, darker asphalt where a trench was filled.
-      const pu = Math.floor(u * 5), pv = Math.floor(v * 3);
-      const patchy = cellHash(pu, pv, 0x91c) > 0.82 && (u * 5 - pu) > 0.15 && (u * 5 - pu) < 0.75 && (v * 3 - pv) > 0.2 && (v * 3 - pv) < 0.6;
+      // The repairs fade in over a band of the noise. DO NOT cut them at one value, nor lay trench rectangles in the tile: the texture repeats
+      // every `ASPHALT_TILE` on every street, and their hard edges drew a lattice of dark squares and pale blots over the city, diamonds on a
+      // road at 45 degrees (the owner: the roads' texture looked strange, 2026-10-26).
+      const repaired = smoothstep(0.66, 0.84, repair);
       const tone = raised
         ? RAISED_ASPHALT_BASE +
           (chips - 0.5) * 0.03 +
           (wear - 0.5) * 0.032 +
-          (repair > 0.74 ? 0.018 : 0) -
+          repaired * 0.018 -
           drip
         : ASPHALT_BASE +
           (chips - 0.5) * 0.055 +
           flecks +
           (wear - 0.5) * 0.04 +
-          (repair > 0.74 ? 0.022 : 0) -
-          (patchy ? 0.03 : 0) -
+          repaired * 0.022 -
           drip;
       out.r = tone;
       out.g = tone * 1.01;
       out.b = tone * 1.05;
       // Only the aggregate is relief.
       out.h = chips;
-      // Polished wheel tracks are smoother than the rest of the lane.
-      out.rough = 0.9 - (wear > 0.62 ? 0.09 : 0) - chips * 0.05 - drip * 2;
+      // Polished wheel tracks are smoother than the rest of the lane, over a band of the wear as the repairs.
+      out.rough = 0.9 - smoothstep(0.56, 0.7, wear) * 0.09 - chips * 0.05 - drip * 2;
     },
   };
 }
@@ -77,7 +88,7 @@ function footwayRecipe(): SurfaceRecipe {
   const grain = makeNoise(0x77c1);
   const stain = makeNoise(0x1d3f);
   const blot = makeNoise(0x5e2d);
-  const size = 1024;
+  const size = FOOTWAY_SIZE;
   /** Twelve courses per tile: 7.2 m / 12 = 0.6 m slabs. */
   /** A paver's short side in texels: 16, about 11 cm, dividing the tile exactly so it repeats seamlessly. */
   const PAVER = 16;
@@ -126,7 +137,7 @@ function footwayRecipe(): SurfaceRecipe {
 function kerbRecipe(): SurfaceRecipe {
   const grain = makeNoise(0x4aa9);
   const cloud = makeNoise(0x9131);
-  const size = 256;
+  const size = KERB_SIZE;
   const unit = size / 3;
   return {
     size,
@@ -158,7 +169,7 @@ function kerbRecipe(): SurfaceRecipe {
 function vergeRecipe(): SurfaceRecipe {
   const blades = makeNoise(0x6b21);
   const clumps = makeNoise(0xa30d);
-  const size = 512;
+  const size = VERGE_SIZE;
   return {
     size,
     worldSize: VERGE_TILE,
@@ -182,7 +193,7 @@ function vergeRecipe(): SurfaceRecipe {
 function deckRecipe(): SurfaceRecipe {
   const grain = makeNoise(0xcc41);
   const streak = makeNoise(0x3e90);
-  const size = 512;
+  const size = DECK_SIZE;
   return {
     size,
     worldSize: DECK_TILE,
@@ -204,14 +215,31 @@ function deckRecipe(): SurfaceRecipe {
   };
 }
 
-/** Every street surface by its key; `asphalt-raised` bakes its colour only (`mapOnly`): it shares the road's normal and roughness. */
-export function roadRecipes(): readonly { readonly key: string; readonly recipe: SurfaceRecipe; readonly mapOnly?: true }[] {
+/** Every street surface by its key (`asphalt-raised` its colour only read: it shares the road's normal and roughness, ROAD_RELIEF_LAYERS). */
+export function roadRecipes(): readonly { readonly key: string; readonly recipe: SurfaceRecipe }[] {
   return [
     { key: 'asphalt', recipe: asphaltRecipe(false) },
-    { key: 'asphalt-raised', recipe: asphaltRecipe(true), mapOnly: true },
+    { key: 'asphalt-raised', recipe: asphaltRecipe(true) },
     { key: 'footway', recipe: footwayRecipe() },
     { key: 'kerb', recipe: kerbRecipe() },
     { key: 'verge', recipe: vergeRecipe() },
     { key: 'deck', recipe: deckRecipe() },
   ];
 }
+
+/**
+ * The street surfaces as one material draws them all (`mesh/roadEdges.ts` applyRoadSurface: one draw a block where a surface took one each): their
+ * colours in one texture array, a layer a surface (the raised crossings' asphalt beside the road's), their normals and their roughness in another
+ * (every surface's normal, then every surface's roughness), each smaller surface repeated in its layer (`bake/catalogue.ts` tiledTexels: its uv shrunk
+ * by as much reads the same texels, at the same mip level, as its own texture did); the footway, twice their size, in textures of its own (its
+ * colour, and its normal and roughness as two layers). Three samplers where a surface's own maps took three each.
+ */
+export const ROAD_COLOUR_LAYERS = ['asphalt', 'asphalt-raised', 'kerb', 'verge', 'deck'] as const;
+export const ROAD_RELIEF_LAYERS = ['asphalt', 'kerb', 'verge', 'deck'] as const;
+/** The close-zoom layer's families the street surfaces read, in one array: their colours, then their normals (`bake/detailRecipes.ts`). */
+export const ROAD_DETAIL_LAYERS = ['asphalt', 'concrete', 'grass'] as const;
+/** Texels a side of each street surface's maps (the recipes' own), and of the arrays' layers: the largest of the surfaces they hold. */
+export const ROAD_SURFACE_SIZE: Readonly<Record<'asphalt' | 'asphalt-raised' | 'footway' | 'kerb' | 'verge' | 'deck', number>> = {
+  asphalt: ASPHALT_SIZE, 'asphalt-raised': ASPHALT_SIZE, footway: FOOTWAY_SIZE, kerb: KERB_SIZE, verge: VERGE_SIZE, deck: DECK_SIZE,
+};
+export const ROAD_LAYER_SIZE = Math.max(...ROAD_COLOUR_LAYERS.map((key) => ROAD_SURFACE_SIZE[key]));

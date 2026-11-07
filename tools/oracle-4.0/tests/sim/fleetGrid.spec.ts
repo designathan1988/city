@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Rng } from '@core/rng';
-import { FleetGrid } from '@sim/host/fleetGrid';
+import { FLEET_CELL, FleetGrid } from '@sim/host/fleetGrid';
 import type { VehicleFrames } from '@sim/pose';
 import { m } from '@world/units';
 
@@ -55,11 +55,12 @@ describe('the fleet grid', () => {
 
   it('keeps a cell border and a pose that is not a number straight', () => {
     const grid = new FleetGrid<Item>();
-    const on = itemAt(1, m(64), m(-64)), lost = itemAt(2, Number.NaN, 0);
+    // A corner of four cells (`fleetGrid.ts` FLEET_CELL): the grid's own side, never a copy of it.
+    const on = itemAt(1, FLEET_CELL, -FLEET_CELL), lost = itemAt(2, Number.NaN, 0);
     grid.place(on); grid.place(lost);
     expect(grid.size).toBe(1);
-    expect(ids(grid.near(m(64), m(-64), m(64), m(-64), []))).toEqual([1]);
-    expect(ids(grid.near(m(63.9), m(-64.1), m(64.1), m(-63.9), []))).toEqual([1]);
+    expect(ids(grid.near(FLEET_CELL, -FLEET_CELL, FLEET_CELL, -FLEET_CELL, []))).toEqual([1]);
+    expect(ids(grid.near(FLEET_CELL - m(0.1), -FLEET_CELL - m(0.1), FLEET_CELL + m(0.1), -FLEET_CELL + m(0.1), []))).toEqual([1]);
     expect(grid.near(-Infinity, -Infinity, Infinity, Infinity, []).length).toBe(1);
     grid.clear();
     expect(grid.near(-Infinity, -Infinity, Infinity, Infinity, [])).toEqual([]);

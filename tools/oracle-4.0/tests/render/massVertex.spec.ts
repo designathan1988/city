@@ -4,7 +4,7 @@ import { DataUtils } from 'three';
 import { MASS_FACADE, MASS_GRID, cellMass, massPlaces } from '@render/buildings/cellArrays';
 import { createBuildingKit } from '@render/buildings/kit';
 import { cellMesh } from '@render/buildings/massCells';
-import { emitMassing } from '@render/buildings/massing';
+import { massesOf } from './support/masses';
 import { BLUEPRINTS } from '@world/buildings/blueprints';
 import type { Building } from '@world/buildings/types';
 
@@ -14,7 +14,7 @@ const building = (n: number): Building => ({ ...JSON.parse(JSON.stringify(BLUEPR
 
 describe('a mass vertex', () => {
   it('holds in 44 bytes what the masses\' shader reads, the long and the high in full floats', () => {
-    const chunks = [0, 3, 4, 6, 8].map((n) => emitMassing(building(n), (x, y) => x * 0.01 + y * 0.02)!);
+    const chunks = [0, 3, 4, 6, 8].map((n) => massesOf(building(n), (x, y) => x * 0.01 + y * 0.02)!);
     const mass = cellMass(chunks)!;
     const vertices = mass.position.length / 3;
     const bytes = mass.position.byteLength + mass.normal.byteLength + mass.color.byteLength + mass.facade.byteLength + mass.grid.byteLength + mass.seed.byteLength;
@@ -42,7 +42,7 @@ describe('a mass vertex', () => {
 
   it('is drawn from its half floats as half floats, its full ones as floats', () => {
     const kit = createBuildingKit();
-    const mass = cellMass([emitMassing(building(3), () => 0)!])!;
+    const mass = cellMass([massesOf(building(3), () => 0)!])!;
     const g = cellMesh(mass, kit).geometry;
     const flagged = (name: string): boolean => (g.getAttribute(name) as { isFloat16BufferAttribute?: boolean }).isFloat16BufferAttribute === true;
     expect(flagged('color')).toBe(true);
@@ -59,7 +59,7 @@ describe('a mass vertex', () => {
 describe('a mass\'s slabs', () => {
   it('share their corners between their triangles: a roof slab is its points once, not three a triangle', () => {
     for (const n of [0, 3, 4, 6, 8]) {
-      const chunk = emitMassing(building(n), () => 0)!;
+      const chunk = massesOf(building(n), () => 0)!;
       const up = (v: number): boolean => chunk.normal[v * 3 + 1]! > 0.9999;
       // The flat faces' triangles and the points they are drawn from: shared, fewer points than three a triangle.
       const used = new Set<number>();
@@ -81,7 +81,7 @@ describe('a lot\'s plate in the masses', () => {
     const b = building(0);
     // Its one block made a paved lot: the masses draw its plate alone (`emitLotPlates`).
     b.volumes = [{ ...b.volumes[0]!, open: 'paving' }];
-    const chunk = emitMassing(b, () => 0)!;
+    const chunk = massesOf(b, () => 0)!;
     expect(chunk.index.length / 3).toBe(2);
     expect(chunk.position.length / 3).toBe(4);
   });
@@ -91,7 +91,7 @@ describe('masses on their square\'s grid', () => {
   it('put every point within half a step of its float, a point laid twice the same point, in 8 bytes for 12', () => {
     // A row of blocks back to back: corners shared between buildings.
     const row = Array.from({ length: 12 }, (_, i) => ({ ...JSON.parse(JSON.stringify(BLUEPRINTS[3]!.body)), id: i + 1, x: 10 + (i % 6) * 18, y: 20 + Math.floor(i / 6) * 12, rotation: 0 }) as Building);
-    const chunks = row.map((b) => emitMassing(b, (x, y) => x * 0.01 + y * 0.02)!);
+    const chunks = row.map((b) => massesOf(b, (x, y) => x * 0.01 + y * 0.02)!);
     for (const square of [{ i0: 0, j0: 0, n: 1 }, { i0: 0, j0: 0, n: 4 }, { i0: -4, j0: -4, n: 8 }]) {
       const floats = cellMass(chunks)!, onGrid = cellMass(chunks, square)!;
       expect(onGrid.place, `square ${square.n}`).toBeDefined();
@@ -106,7 +106,7 @@ describe('masses on their square\'s grid', () => {
         if (was !== undefined) { expect(got).toBe(was); shared++; } else seen.set(key, got);
       }
       expect(shared).toBeGreaterThan(50);
-      // A hundredth of the level's error: a cell's 2.9 mm, a tile's 8.8 mm, a plate's 16.6 mm.
+      // A hundredth of the level's error: a cell's 2.9 mm, a tile's 8.8 mm, a plate's 16.6 mm (the squares of 1,000 and 2,000 m and their margins in 16 bits).
       expect(step / 2).toBeLessThan(square.n === 1 ? 0.003 : square.n === 4 ? 0.009 : 0.017);
     }
   });

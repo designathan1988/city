@@ -206,7 +206,7 @@ export function railGraph(t: TransitData, mode: 'train' | 'metro'): RailGraph {
 /** A stretch of a track as filed: its track's place and its own, for the order a walk of every track meets them. */
 interface TrackStretch { readonly track: number; readonly order: number; readonly mode: TransitMode; readonly a: Vec2; readonly b: Vec2 }
 /** Side of the cells the stretches of track are filed in, world units. */
-const TRACK_CELL = m(32);
+const TRACK_CELL = m(25);
 /** The stretches of a version of the transit data by cell, made once per version (the data is replaced whole by each edit). */
 const trackCells = identityMemo((t: TransitData): Map<number, TrackStretch[]> => {
   const cells = new Map<number, TrackStretch[]>();
@@ -263,7 +263,7 @@ export function trackPointNear(t: TransitData, p: Vec2, reach: number, mode: 'tr
 }
 
 /** Side of the cells the stops are filed in, world units. */
-const STOP_CELL = m(32);
+const STOP_CELL = m(25);
 /** The stops of a version of the transit data, by id and by cell with their place in its list (the data is replaced whole by each edit). */
 const stopIndex = identityMemo((t: TransitData) => {
   const byId = new Map<number, TransitStop>();

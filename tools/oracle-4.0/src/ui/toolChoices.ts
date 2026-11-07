@@ -1,6 +1,6 @@
 import { DEFAULT_BRUSH, type ElementBrush, type ElementKind } from '@world/elements';
 import { LANDSCAPE_KINDS, type LandscapeKind, type SignType } from '@world/landscape';
-import { POLE_LAMP_MODES, type PoleLampMode } from '@world/utilities';
+import { POLE_KINDS, POLE_LAMP_MODES, type PoleKind, type PoleLampMode } from '@world/utilities';
 import { PAINT_KINDS, type PaintKind } from '@world/terrainPaint';
 import { DEFAULT_TREE_BRUSH, type TreeBrush, type TreeKind } from '@world/trees';
 
@@ -37,15 +37,27 @@ export function setStreetscapeKind(next: LandscapeKind): void {
 }
 
 const LAMP_KEY = 'roadcraft.poleLamps';
-let lamps: PoleLampMode = stored(LAMP_KEY, POLE_LAMP_MODES, 'alternate');
+const POLE_KIND_KEY = 'roadcraft.poleKind';
 
-export function poleLampMode(): PoleLampMode {
-  return lamps;
+/** What the pole tool builds, as the player chose it in its panel: the kind of pole - urban (the arm over the street, the secondary
+ *  rack, the light under the wires) or rural - and the street lights on them; kept between sessions. */
+export interface PoleChoices {
+  kind(): PoleKind;
+  setKind(next: PoleKind): void;
+  lamps(): PoleLampMode;
+  setLamps(next: PoleLampMode): void;
 }
 
-export function setPoleLampMode(next: PoleLampMode): void {
-  lamps = next;
-  keep(LAMP_KEY, next);
+/** The pole tool's choices, read from the last session: one made by the game (`main.ts`), handed to the tool and to its panel. */
+export function createPoleChoices(): PoleChoices {
+  let kind: PoleKind = stored(POLE_KIND_KEY, POLE_KINDS, 'urban');
+  let lamps: PoleLampMode = stored(LAMP_KEY, POLE_LAMP_MODES, 'alternate');
+  return {
+    kind: () => kind,
+    setKind(next) { kind = next; keep(POLE_KIND_KEY, next); },
+    lamps: () => lamps,
+    setLamps(next) { lamps = next; keep(LAMP_KEY, next); },
+  };
 }
 
 /** What a click of the pole tool does: build a run, or remove the pole under it. */

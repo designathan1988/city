@@ -17,7 +17,6 @@ import {
   type MeshDepthMaterial,
 } from 'three';
 
-import type { Rng } from '@core/rng';
 import type { FurnitureKind } from '@world/streetFurniture';
 import { m, perM } from '@world/units';
 import { applyWind, windDepthMaterial, type WindResponse } from './wind';
@@ -46,6 +45,7 @@ import {
   type BushKind,
   type TreeSpecies,
 } from './propGeometry';
+import { LAMP_BEAM_RADIUS, LAMP_POOL_RADIUS, POOL_ALONG } from './lampMeasures';
 
 export { LAMP_HEIGHT, LAMP_OUTREACH } from './propGeometry';
 
@@ -57,13 +57,8 @@ const TREE_WIND: WindResponse = { sway: 0.045, flutter: 0.009 };
 const BUSH_WIND: WindResponse = { sway: 0.05, flutter: 0.014 };
 const GRASS_WIND: WindResponse = { sway: 0.22, flutter: 0.04 };
 
-/** Radius of the bright core under a street lamp (the cone's foot). */
-export const LAMP_POOL_RADIUS = m(4.6);
-/** The light a street lamp lays on the road: not a spotlight's disc but the long patch of a road luminaire's spread */
-export const POOL_ALONG = 1.6;
-/** A lamp's visible cone of light, drawn as Volumetric Light Beam draws one (saladgamer.com/vlb-doc/comp-lightbeam-sd/) */
-/** The cone's radius at the ground: the bright core of the pool. */
-export const LAMP_BEAM_RADIUS = LAMP_POOL_RADIUS * 0.8;
+// The lamp's pool and cone (`lampMeasures.ts`): what the furniture is placed by, on the page and off it.
+export { LAMP_BEAM_RADIUS, LAMP_POOL_RADIUS, POOL_ALONG };
 /** Radius of the cut apex, over the radius at the ground: the lens (about 0.28 m of 3.7). */
 const BEAM_SOURCE = 0.075;
 /** Sides and segments of the cone (VLB: 18 sides; 3 segments at least, for a smooth falloff). */
@@ -74,7 +69,7 @@ const BEAM_INTENSITY = 0.4;
 /** How hard the cone's edges are seen from the side (VLB's Side Thickness): higher, softer. */
 const BEAM_SIDE_SOFTNESS = 1.6;
 /** VLB's Fade Out: the cone dims from `BEAM_FADE[0]` from the eye and is gone at `BEAM_FADE[1]`. */
-const BEAM_FADE = [m(60), m(140)] as const;
+export const BEAM_FADE = [m(60), m(140)] as const;
 
 /** The street lights' colour: white LED, some 4500 K. */
 const STREET_LED = 0xffe2c4;
@@ -364,13 +359,8 @@ export const SHADOW_REACH = m(28);
 
 /* Each species used to be ONE instanced mesh spread over the whole map */
 
-/** Zoom at and above which plants are drawn with their close-up models. */
-export const PLANT_NEAR_ZOOM = perM(3.5);
 /** Below this zoom the plants' leaf cards are left out (`Scenery.setMap`). */
 export const PLANT_MAP_ZOOM = perM(2.5);
 
-/** A near-white multiplier, so no two plants of one species are identical. */
-export function foliageTint(rng: Rng): Color {
-  const warm = rng.float();
-  return new Color(0.9 + warm * 0.18, 0.93 + rng.float() * 0.12, 0.86 + (1 - warm) * 0.14);
-}
+// A near-white multiplier, so no two plants of one species are identical (`plantKinds.ts`).
+export { foliageTint } from './plantKinds';

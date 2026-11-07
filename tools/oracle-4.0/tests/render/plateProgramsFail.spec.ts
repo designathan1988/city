@@ -49,10 +49,11 @@ describe('a plate whose programs fail to be built ahead', () => {
     it(`is shown all the same when the wait for them ${how === 'throw' ? 'throws' : 'is rejected'}`, async () => {
       failing.how = how;
       const atlas = createFlatAtlas(1);
-      atlas.focus!(PLATE_SIZE, 0, m(300));
+      // Over the middle of plate (1, 0) (`world/bounds.ts`: its centre half a plate off the plates' edges).
+      atlas.focus!(PLATE_SIZE * 1.5, PLATE_SIZE / 2, m(300));
       await new Promise((done) => setTimeout(done, 0));
-      atlas.focus!(PLATE_SIZE, 0, m(300));
-      expect(atlas.parts.some((p) => p.cx === PLATE_SIZE)).toBe(true);
+      atlas.focus!(PLATE_SIZE * 1.5, PLATE_SIZE / 2, m(300));
+      expect(atlas.parts.some((p) => p.cx === PLATE_SIZE * 1.5)).toBe(true);
       atlas.dispose();
     });
   }

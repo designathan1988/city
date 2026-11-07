@@ -37,8 +37,11 @@ function piecesOf(root: Object3D): PieceSpec[] {
 }
 
 /** The building kit: its part models (windows, frames, doors, railings, facade props...) with their levels and shadow pieces, and the furniture. */
-export function buildingKitItems(add: Add): void {
+export async function buildingKitItems(add: Add): Promise<void> {
   const kit = createBuildingKit(16);
+  // DO NOT read the levels as the kit is made: the small props' simplified levels come in once the simplifier has loaded (`kit.ts` SIMPLIFIED,
+  // `levelsReady`), and the catalogue listed a balcony's plants and furniture with their finest level alone.
+  await kit.levelsReady;
   for (const [kind, geometry] of Object.entries(kit.geometry) as [string, BufferGeometry][]) {
     const screen = (kit.screen as Record<string, { levels: readonly { geometry: BufferGeometry }[]; pieces: readonly unknown[] }>)[kind];
     const levels = (screen?.levels ?? []).map((l) => l.geometry).filter((g) => g !== geometry);

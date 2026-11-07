@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { RoadDoc } from '@world/doc';
 import type { NodeId, SegmentId } from '@world/ids';
 import { Network } from '@world/network';
-import { approachLegends, segmentMarkings, type StrokeSpec } from '@world/markings';
+import { type AlongLine, approachLegends, segmentAlongPaint, segmentMarkings } from '@world/markings';
 import { catalogRoads } from '@world/roads/catalog';
 import { derivedSigns } from './oracle/derivedSigns';
 import { markingStyle } from '@world/roads/markingStyle';
@@ -25,7 +25,8 @@ function cross(type = 1, length = m(120)): { doc: RoadDoc; net: Network; centre:
   return { doc, net, centre: centre.id, legs: [...doc.segments.keys()].sort((a, b) => a - b) as SegmentId[] };
 }
 
-const centreStrokes = (specs: StrokeSpec[], colour: string): StrokeSpec[] => specs.filter((s) => s.color === colour && s.width >= m(0.12) && s.width <= m(0.16));
+/** The lines between the directions among a road's lines along it (`segmentAlongPaint`): of the centre's colour and width. */
+const centreLines = (lines: readonly AlongLine[], colour: string): AlongLine[] => lines.filter((s) => s.color === colour && s.width >= m(0.12) && s.width <= m(0.16));
 
 /** Distance from a point to a segment's centreline and the share along it (0 at a). */
 function along(net: Network, seg: SegmentId, p: { x: number; y: number }): { off: number; s: number } {
@@ -50,6 +51,7 @@ describe('the map paint standard', () => {
     const { net } = cross();
     for (const ribbon of net.ribbons.values()) {
       expect(segmentMarkings(ribbon, 0, 0, 0, 'classic')).toEqual(segmentMarkings(ribbon, 0, 0, 0));
+      expect(segmentAlongPaint(ribbon, 0, 0, 0, 'classic')).toEqual(segmentAlongPaint(ribbon, 0, 0, 0));
     }
   });
 
@@ -60,10 +62,13 @@ describe('the map paint standard', () => {
     expect(br.dash(80)).toEqual([m(4), m(12)]);
     const { net } = cross(1);
     const ribbon = [...net.ribbons.values()][0]!;
-    const specs = segmentMarkings(ribbon, 0, 0, 0, 'br');
-    const centre = centreStrokes(specs, br.centre!);
+    const paint = segmentAlongPaint(ribbon, 0, 0, 0, 'br')!;
+    const centre = centreLines(paint.lines, br.centre!);
     expect(centre.length).toBe(1);
-    expect(centre[0]!.dash).toEqual([m(3), m(6)]);
+    // Broken, its dash 3 m and its gap 6 m (the road at 50 km/h): the frame the shader inks its dashes by.
+    expect(centre[0]!.dashed).toBe(true);
+    expect(paint.dash).toBe(m(3));
+    expect(paint.period).toBe(m(3) + m(6));
   });
 
   it('a double solid centre line, as the section says', () => {
@@ -71,9 +76,11 @@ describe('the map paint standard', () => {
     const seg = doc.segment(legs[0]!)!;
     doc.setSegmentSection(seg.id, { ...sectionFromProfile(net.ribbons.get(seg.id)!.road), centreLine: 'double' });
     net.rebuild();
-    const specs = segmentMarkings(net.ribbons.get(seg.id)!, 0, 0, 0, 'br');
-    const centre = specs.filter((s) => s.color === markingStyle('br').centre && s.dash === null);
+    const lines = segmentAlongPaint(net.ribbons.get(seg.id)!, 0, 0, 0, 'br')!.lines;
+    const centre = lines.filter((s) => s.color === markingStyle('br').centre && !s.dashed);
     expect(centre.length).toBe(2);
+    // One each side of the middle, apart.
+    expect(centre.map((s) => Math.sign(s.offset)).sort()).toEqual([-1, 1]);
   });
 });
 

@@ -5,11 +5,14 @@ import { type BuildingChunk, emitChunk, kitBoxes, lotGroundAgain } from '@render
 import { type CellArrays, cellArrays } from '@render/buildings/cellArrays';
 import { CellPool } from '@render/buildings/cellPool';
 import { PartyWalls } from '@render/buildings/partyWalls';
-import { fileParts } from '@render/buildings/partFiling';
-import type { CellEntry, CellResult } from '@render/buildings/cellWork';
+import { fileParts, shellPieceOf } from '@render/buildings/partFiling';
+import { type CellEntry, type CellResult, keptPrograms } from '@render/buildings/cellWork';
+import { Digest } from '@core/digest';
 import { PART_KINDS, createBuildingKit } from '@render/buildings/kit';
 import { BATCH_CELL, COARSE_PARTS, DETAIL_CELL, DETAIL_PARTS } from '@render/buildings/layerCells';
-import { tileOf } from '@render/buildings/levelKeys';
+import { baseOf, tileOf } from '@render/buildings/levelKeys';
+import { baseFloor, massFloor } from '@render/buildings/massing';
+import { resolveBlocks } from '@world/buildings/blocks';
 import { growOnLot } from '@world/growth/zoning';
 import type { Building } from '@world/buildings/types';
 import { RoadDoc } from '@world/doc';
@@ -75,7 +78,8 @@ function chunksByCell(buildings: readonly Building[], chunkOf: (b: Building) => 
 const cellOf = (b: Building): string => `${Math.floor(b.x / BATCH_CELL)},${Math.floor(b.y / BATCH_CELL)}`;
 /** The test's records by key: what the pool writes into each job (`CellPool` `text`). */
 const texts = new Map<string, RecordRef>();
-const entryOf = (b: Building): CellEntry => { texts.set(String(b.id), refOf(b)); return { key: String(b.id), sig: b.id, digest: 0 }; };
+/** Its entry as the page makes it: its record's digest (`CellEntry.sig`), so a record changed is a building changed, as the page tells it. */
+const entryOf = (b: Building): CellEntry => { texts.set(String(b.id), refOf(b)); return { key: String(b.id), sig: new Digest().addPlain(b).value(), digest: 0 }; };
 
 describe('a cell put together off the page', () => {
   const kit = createBuildingKit();
@@ -100,8 +104,8 @@ describe('a cell put together off the page', () => {
           pool.run('cell', cell, buildings.map(entryOf), env, (result) => { got = result; });
           expect(got).not.toBeNull();
           const result = got! as CellResult;
-          // The shells pieced by quadrant (two detail cells a side), as the job pieces them (`cellWork.ts`, `cellArrays` groups).
-          const groups = [...chunks.keys()].map((b) => `${Math.floor(b.x / (2 * DETAIL_CELL))},${Math.floor(b.y / (2 * DETAIL_CELL))}`);
+          // The shells pieced by the cell's halves (whole detail cells, `partFiling.ts` shellPieceOf), as the job pieces them (`cellWork.ts`, `cellArrays` groups).
+          const groups = [...chunks.keys()].map((b) => shellPieceOf(b.x, b.y));
           const coarse = cellArrays([...chunks.values()], { parts: PART_KINDS.filter((k) => COARSE_PARTS.has(k)), shells: true, furniture: true, ghost: false, dim: false }, boxes, groups);
           expect(difference(result.batch, coarse), cell).toBe('');
           const details = chunksByCell(buildings, (b) => chunks.get(b)!, DETAIL_CELL);
@@ -178,6 +182,143 @@ describe('a cell put together off the page', () => {
     pool.forgetFloors((key) => staying.has(key));
     // (The floors kept are those measured last, on the other ground.)
     for (const e of moved) expect(pool.floorKnown(e, true) === undefined, e.key).toBe(!staying.has(e.key));
+  });
+
+  it("walks each building once for its masses at every level, an edited building alone walked again (`program.ts`)", () => {
+    const town = [...grownTown().buildings.all()];
+    const byCell = new Map<string, Building[]>();
+    for (const b of town) { const c = cellOf(b); byCell.set(c, [...byCell.get(c) ?? [], b]); }
+    const [cell, buildings] = [...byCell].sort((p, q) => q[1].length - p[1].length)[0]!;
+    expect(buildings.length).toBeGreaterThan(3);
+    const [ci, cj] = cell.split(',').map(Number) as [number, number];
+    const env = { groundAt, naturalAt, pavedAt };
+    const run = (pool: CellPool, kind: 'mass' | 'massTile' | 'massPlate', key: string, entries: readonly CellEntry[]): CellResult => {
+      let got: CellResult | null = null;
+      pool.run(kind, key, entries, env, (result) => { got = result; });
+      expect(got).not.toBeNull();
+      return got!;
+    };
+    const programs = keptPrograms();
+    programs.clear();
+    const pool = new CellPool(() => boxes, (e) => () => texts.get(e.key)!, false);
+    const entries = buildings.map(entryOf);
+    // The cell's masses: each building walked once.
+    programs.resetCounts();
+    run(pool, 'mass', cell, entries);
+    expect(programs.walks).toBe(buildings.length);
+    expect(programs.hits).toBe(0);
+    // Its tile's and plate's masses, on the floors handed: no building walked again, each level a filter over the programs kept.
+    programs.resetCounts();
+    const tile = run(pool, 'massTile', tileOf(ci, cj), entries);
+    expect(programs.walks).toBe(0);
+    expect(programs.hits).toBe(buildings.length);
+    // ...the same, byte for byte, as with every building walked afresh.
+    programs.clear();
+    programs.resetCounts();
+    const afresh = run(pool, 'massTile', tileOf(ci, cj), entries);
+    expect(programs.walks).toBe(buildings.length);
+    expect(difference(tile.mass as never, afresh.mass as never)).toBe('');
+    // One building edited (moved half a metre: its record, so its digest, changed): it alone walked again, the others' programs read as they were.
+    const cellMasses = run(pool, 'mass', cell, entries);
+    const edited = { ...buildings[0]!, x: buildings[0]!.x + m(0.5) };
+    const after = [entryOf(edited), ...buildings.slice(1).map(entryOf)];
+    programs.resetCounts();
+    const editedMasses = run(pool, 'mass', cell, after);
+    expect(programs.walks).toBe(1);
+    expect(programs.hits).toBe(buildings.length - 1);
+    expect(difference(editedMasses.mass as never, cellMasses.mass as never)).not.toBe('');
+    programs.clear();
+    expect(difference(run(pool, 'mass', cell, after).mass as never, editedMasses.mass as never)).toBe('');
+  });
+
+  it("stands a building walked on its estimated floor on its measured one with its lots alone walked again (`program.ts` LotsProgram)", () => {
+    const town = [...grownTown().buildings.all()];
+    const byCell = new Map<string, Building[]>();
+    for (const b of town) { const c = cellOf(b); byCell.set(c, [...byCell.get(c) ?? [], b]); }
+    const [cell, buildings] = [...byCell].sort((p, q) => q[1].length - p[1].length)[0]!;
+    const [ci, cj] = cell.split(',').map(Number) as [number, number];
+    const env = { groundAt, naturalAt, pavedAt };
+    const run = (pool: CellPool, kind: 'mass' | 'massBase', key: string, entries: readonly CellEntry[]): CellResult => {
+      let got: CellResult | null = null;
+      pool.run(kind, key, entries, env, (result) => { got = result; });
+      expect(got).not.toBeNull();
+      return got!;
+    };
+    // The buildings whose floor seen from afar (`baseFloor`, the base's) is not the one measured (`massFloor`, the cell's): each a lots walk, no other.
+    const moved = buildings.filter((b) => baseFloor(b, naturalAt, pavedAt) !== massFloor(b, naturalAt, pavedAt)).length;
+    expect(moved).toBeGreaterThan(0);
+    // Some of them with paved lots, so the lots walked again are really laid on the new floor.
+    expect(buildings.some((b) => resolveBlocks(b).volumes.some((v) => v.open && v.open !== 'grass'))).toBe(true);
+    const programs = keptPrograms();
+    programs.clear();
+    const pool = new CellPool(() => boxes, (e) => () => texts.get(e.key)!, false);
+    const entries = buildings.map(entryOf);
+    // The base first (the opening), on the floors seen from afar: every building's body walked once.
+    programs.resetCounts();
+    run(pool, 'massBase', baseOf(ci, cj), entries);
+    expect(programs.walks).toBe(buildings.length);
+    expect(programs.lotWalks).toBe(0);
+    // Then the cell's masses on the floors measured: no body walked again, the lots of each building whose floor moved walked alone.
+    programs.resetCounts();
+    const cellMasses = run(pool, 'mass', cell, entries);
+    expect(programs.walks).toBe(0);
+    expect(programs.hits).toBe(buildings.length);
+    expect(programs.lotWalks).toBe(moved);
+    expect(cellMasses.mass).toBeTruthy();
+    // ...the same, byte for byte, as every building walked afresh on its measured floor.
+    programs.clear();
+    const fresh = new CellPool(() => boxes, (e) => () => texts.get(e.key)!, false);
+    programs.resetCounts();
+    const afresh = run(fresh, 'mass', cell, entries);
+    expect(programs.walks).toBe(buildings.length);
+    expect(difference(cellMasses.mass as never, afresh.mass as never)).toBe('');
+  });
+
+  it("walks a cell's buildings once for its detail and its facade level within twice the detail's reach, both kept together (`CellJob.pair`)", () => {
+    const town = [...grownTown().buildings.all()];
+    const byCell = new Map<string, Building[]>();
+    for (const b of town) { const c = cellOf(b); byCell.set(c, [...byCell.get(c) ?? [], b]); }
+    const [cell, buildings] = [...byCell].sort((p, q) => q[1].length - p[1].length)[0]!;
+    const env = { groundAt, naturalAt, pavedAt };
+    const run = (pool: CellPool, kind: 'cell' | 'facade', pair: boolean): CellResult => {
+      let got: CellResult | null = null;
+      pool.run(kind, cell, buildings.map(entryOf), env, (result) => { got = result; }, null, false, false, pair);
+      expect(got).not.toBeNull();
+      return got!;
+    };
+    const programs = keptPrograms();
+    programs.clear();
+    // The detail asked in the pair's reach: each building walked once, for both levels.
+    const pool = new CellPool(() => boxes, (e) => () => texts.get(e.key)!, false);
+    programs.resetCounts();
+    const detail = run(pool, 'cell', true);
+    expect(programs.walks).toBe(buildings.length);
+    // The eye steps back: the facade level read from the programs kept, no building walked.
+    programs.resetCounts();
+    const facade = run(pool, 'facade', true);
+    expect(programs.walks).toBe(0);
+    expect(programs.hits).toBe(buildings.length);
+    // Each level the same, byte for byte, as that level walked alone (no pair, nothing kept).
+    programs.clear();
+    const alone = new CellPool(() => boxes, (e) => () => texts.get(e.key)!, false);
+    const detailAlone = run(alone, 'cell', false);
+    programs.clear();
+    programs.resetCounts();
+    const facadeAlone = run(alone, 'facade', false);
+    expect(programs.walks).toBe(buildings.length);
+    expect(detail.batch).toBeTruthy();
+    expect(facade.batch).toBeTruthy();
+    expect(difference(detail.batch, detailAlone.batch)).toBe('');
+    expect(difference(facade.batch, facadeAlone.batch)).toBe('');
+    expect(difference(detail.parts as never, detailAlone.parts as never)).toBe('');
+    expect(difference(facade.parts as never, facadeAlone.parts as never)).toBe('');
+    // Past the pair's reach the facade level alone: its detail not walked, so asking the detail after it walks every building.
+    programs.clear();
+    const far = new CellPool(() => boxes, (e) => () => texts.get(e.key)!, false);
+    run(far, 'facade', false);
+    programs.resetCounts();
+    run(far, 'cell', false);
+    expect(programs.walks).toBe(buildings.length);
   });
 
   for (const paved of [pavedAt, undefined]) {

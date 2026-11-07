@@ -16,8 +16,8 @@ const BLEND_SKIP = BLEND_TAU * (Math.log(1e4) + 0.05);
 export const PROFILE_REACH = m(24);
 /** How far out the road's influence fades to nothing. */
 export const PROFILE_FADE = m(44);
-/** Side of the spatial index's cells, world units. */
-export const INDEX_CELL = m(25.6);
+/** Side of the spatial index's cells, world units: two cells of the drawn terrain (`render/terrainGrid.ts`). */
+export const INDEX_CELL = m(25);
 
 /** Rounding between a box's distance and a line's (`closestInto` measures it its own way): a road this close to the cut is measured. */
 const BOX_SLACK = 1e-6;

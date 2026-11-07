@@ -1,4 +1,4 @@
-import { BufferAttribute, BufferGeometry, Group, Mesh, MeshStandardMaterial, type WebGLRenderer } from 'three';
+import { BufferAttribute, BufferGeometry, Group, Mesh, MeshStandardMaterial, Vector3, type OrthographicCamera, type PerspectiveCamera, type WebGLRenderer } from 'three';
 import type { CoverKind, GeologyKind, PaintDab } from '@world/terrainPaint';
 import { reliefHeight, type ReliefVersion, type TerrainStamp } from '@world/terrain';
 import type { RoadDoc } from '@world/doc';
@@ -33,13 +33,15 @@ import { Digest } from '@core/digest';
 import type { Aabb } from '@core/aabb';
 import type { NaturalPlate } from './groundShape';
 import { GroundShare, type SharedGroundAt } from './sharedGround';
+import type { SeamOutline, SeamSource } from './terrainSeams';
 import { setJobFocus } from '../jobs/jobPool';
 import { gpuLedger } from './gpuLedger';
 import { measureHitch } from '@core/hitch';
 import { cancelUploads, compilesAhead, programsReady, queueUpload } from './uploads';
 import { MAP_HALF } from '@world/cityGen/wholeMap';
-import { type FarNode, farNodesFor } from './farGround';
+import { FAR_STRIDES, type FarNode, farNodesFor, strideErrorsInto, strideFor } from './farGround';
 import { TILE, tileOfKey } from '@world/tiles';
+import { TableItems } from '@world/buildings/items';
 
 /** THE WORLD'S GROUND, plate by plate of the unbounded grid (`world/bounds.ts`): the plates near the view made in full, a ring of far patches round it, nothing beyond */
 
@@ -47,9 +49,9 @@ const REGION_STRIDE = 1000;
 /** DO NOT cap the plates by count: the six newest were kept wherever the view stood */
 const KEEP_MARGIN = 1.25;
 /** Most plates drawn in full near the view, unless the tier holds fewer (`setPlates`). */
-export const NEAR_MOST = 9;
+const NEAR_MOST = 9;
 /** Most plates made but not drawn kept (nearest the view first), past the GPU's room: a view's worth, for a zoom out and back. DO NOT keep them by the GPU's room alone: a plate holds 10-20 MB of arrays on the page the GPU's book does not count (its corners, water, rock, ecosystem, paint), and every plate the view passed stayed made. */
-export const CACHED_MOST = NEAR_MOST;
+const CACHED_MOST = NEAR_MOST;
 /** Beyond this much ground in view, no plate is drawn in full: the far mesh alone. */
 const NEAR_VIEW = m(1400);
 /** Corners along a plate's side (the terrain's grid). */
@@ -59,9 +61,9 @@ const CONTENT_KINDS: readonly ChangeKind[] = ['roads', 'buildings', 'lots', 'uti
 /** A load or an unload of a tile (CLAUDE.md, "Streaming world"): what a plate holds is read again from the document. */
 const TILE_UNLOADED = 'tile unloaded';
 
-/** THE MAP'S GROUND (`wholeMap.ts` MAP_HALF, the player's order: never a world without an edge): the plates of the map round the origin's plate (5 x 5 plates, 10 km; the map's edge lies on the plates' edges), drawn far as the quadtree's nodes the view asks (`farGround.ts`), its cut sides on the map's edge, nothing past it */
-const FAR_RING = Math.round(MAP_HALF / PLATE_SIZE - 0.5);
-/** The far mesh's slots at first (grown twice over when the view asks more nodes, `growFar`): a 10 km map's 25 plates. */
+/** THE MAP'S GROUND (`wholeMap.ts` MAP_HALF, the player's order: never a world without an edge): the plates of the map round the origin (10 x 10 plates, 20 km; the map's edge lies on the plates' edges, `world/bounds.ts`), drawn far as the quadtree's nodes the view asks (`farGround.ts`), its cut sides on the map's edge, nothing past it: the map's half side */
+const FAR_HALF = MAP_HALF;
+/** The far mesh's slots at first (grown twice over when the view asks more nodes, `growFar`): a few rings of nodes round the view. */
 const FAR_SLOTS_FIRST = 32;
 /** The view moved this far: the far nodes chosen again (a node's choice moves with its distance, never by less than a quad). */
 const FAR_RESELECT = m(64);
@@ -113,6 +115,8 @@ interface FarResident {
   readonly node: FarNode;
   readonly slot: number;
   readonly woods: number;
+  /** The stride its patch is drawn at (`strideFor`): 1 until the view first chooses one. */
+  stride: number;
 }
 
 /** Whether a disc reaches a plate (its square grown by the disc). */
@@ -125,8 +129,9 @@ const FAR_SIDE = FAR_QUADS + 1;
 const SKIRT = m(30);
 const FAR_VERTS = FAR_SIDE * FAR_SIDE + 4 * FAR_SIDE;
 const FAR_INDICES = FAR_QUADS * FAR_QUADS * 6 + 4 * FAR_QUADS * 12;
-/** The far mesh's room: `slots` patches, written one slot at a time (`writeFarPatch`), drawn by the index (`farIndexInto`). */
-export interface FlatFar { readonly geometry: BufferGeometry; readonly slots: number }
+/** The far mesh's room: `slots` patches, written one slot at a time (`writeFarPatch`), drawn by the index (`farIndexInto`); each slot's
+ *  error at every stride (`FAR_STRIDES` a slot, `strideErrorsInto`) and its lowest and highest corner (two a slot), as it was written. */
+export interface FlatFar { readonly geometry: BufferGeometry; readonly slots: number; readonly errors: Float32Array; readonly heights: Float32Array }
 export function createFlatFar(slots: number): FlatFar {
   const geometry = new BufferGeometry();
   geometry.setAttribute('position', new BufferAttribute(new Float32Array(slots * FAR_VERTS * 3), 3));
@@ -134,7 +139,7 @@ export function createFlatFar(slots: number): FlatFar {
   // Half the index's bytes where every slot's corners fit 16 bits (three uploads a Uint16Array index as UNSIGNED_SHORT).
   geometry.setIndex(new BufferAttribute(slots * FAR_VERTS <= 0x10000 ? new Uint16Array(slots * FAR_INDICES) : new Uint32Array(slots * FAR_INDICES), 1));
   geometry.setDrawRange(0, 0);
-  return { geometry, slots };
+  return { geometry, slots, errors: new Float32Array(slots * FAR_STRIDES), heights: new Float32Array(slots * 2) };
 }
 
 /** Writes plate (cx, cy)'s patch into `slot` from the land `ground` (the base added here), and marks only that slot to be sent. */
@@ -147,7 +152,7 @@ const FAR_RING_SIDE = FAR_SIDE + 2;
 const farRingHeights = new Float64Array(FAR_RING_SIDE * FAR_RING_SIDE);
 
 /** Writes the patch of `FAR_QUADS` quads of `step` from (x0, y0) into `slot`, its skirts `skirt` deep (a coarser node's sampling misses more: deeper), from the land `ground` (the base added here); marks only that slot to be sent. */
-export function writeFarNode(far: FlatFar, slot: number, x0: number, y0: number, step: number, skirt: number, ground: (x: number, y: number) => number): void {
+function writeFarNode(far: FlatFar, slot: number, x0: number, y0: number, step: number, skirt: number, ground: (x: number, y: number) => number): void {
   const position = far.geometry.getAttribute('position') as BufferAttribute;
   const normal = far.geometry.getAttribute('normal') as BufferAttribute;
   const positions = position.array as Float32Array, normals = normal.array as Float32Array;
@@ -156,10 +161,14 @@ export function writeFarNode(far: FlatFar, slot: number, x0: number, y0: number,
   const h = farRingHeights;
   for (let j = 0; j < RING; j++) for (let i = 0; i < RING; i++) h[j * RING + i] = TERRAIN_BASE + ground(x0 + (i - 1) * step, y0 + (j - 1) * step);
   const first = slot * FAR_VERTS;
+  // What each stride strays from the full grid, and the patch's heights: what its stride is chosen by (`strideFor`).
+  strideErrorsInto(far.errors, slot * FAR_STRIDES, h, RING, 1, FAR_QUADS);
+  let low = Infinity, high = -Infinity;
   let v = first;
   for (let j = 0; j < FAR_SIDE; j++) {
     for (let i = 0; i < FAR_SIDE; i++) {
       const y = h[(j + 1) * RING + i + 1]!;
+      low = Math.min(low, y); high = Math.max(high, y);
       positions[v * 3] = x0 + i * step; positions[v * 3 + 1] = y; positions[v * 3 + 2] = -(y0 + j * step);
       // three's axes: x east, y up, z south.
       const nx = h[(j + 1) * RING + i]! - h[(j + 1) * RING + i + 2]!;
@@ -180,6 +189,8 @@ export function writeFarNode(far: FlatFar, slot: number, x0: number, y0: number,
       v++;
     }
   }
+  far.heights[slot * 2] = low;
+  far.heights[slot * 2 + 1] = high;
   for (const attribute of [position, normal]) {
     attribute.addUpdateRange(first * 3, FAR_VERTS * 3);
     attribute.needsUpdate = true;
@@ -187,19 +198,23 @@ export function writeFarNode(far: FlatFar, slot: number, x0: number, y0: number,
 }
 
 /** A far patch to draw: its slot, which of its edges (south, north, west, east) are the ring's rim (no skirt: the cut side stands there), and how many of its quads lie on the map each way (all, `FAR_QUADS`, unless said). */
-export interface FarPatchDrawn { readonly slot: number; readonly rim: readonly [boolean, boolean, boolean, boolean]; readonly quadsX?: number; readonly quadsY?: number }
+export interface FarPatchDrawn {
+  readonly slot: number; readonly rim: readonly [boolean, boolean, boolean, boolean]; readonly quadsX?: number; readonly quadsY?: number;
+  /** Every `stride`-th corner drawn (`farGround.ts` strideFor; 1: all), its skirts' too; it divides its quads each way. */
+  readonly stride?: number;
+}
 
 /** Writes into the far ground's index the patches given (the far plates not drawn in full); returns how many indices. */
 export function farIndexInto(far: FlatFar, patches: Iterable<FarPatchDrawn>): number {
   const index = far.geometry.getIndex()!;
   const all = index.array as Uint16Array | Uint32Array;
   let w = 0;
-  for (const { slot, rim, quadsX = FAR_QUADS, quadsY = FAR_QUADS } of patches) {
+  for (const { slot, rim, quadsX = FAR_QUADS, quadsY = FAR_QUADS, stride = 1 } of patches) {
     const first = slot * FAR_VERTS;
     const corner = (i: number, j: number): number => first + j * FAR_SIDE + i;
-    for (let j = 0; j < quadsY; j++) {
-      for (let i = 0; i < quadsX; i++) {
-        const p00 = corner(i, j), p10 = corner(i + 1, j), p01 = corner(i, j + 1), p11 = corner(i + 1, j + 1);
+    for (let j = 0; j < quadsY; j += stride) {
+      for (let i = 0; i < quadsX; i += stride) {
+        const p00 = corner(i, j), p10 = corner(i + stride, j), p01 = corner(i, j + stride), p11 = corner(i + stride, j + stride);
         // Counter-clockwise seen from above (east x north = up).
         all[w++] = p00; all[w++] = p10; all[w++] = p01;
         all[w++] = p10; all[w++] = p11; all[w++] = p01;
@@ -209,10 +224,10 @@ export function farIndexInto(far: FlatFar, patches: Iterable<FarPatchDrawn>): nu
       if (rim[e]) continue;
       const hung = first + FAR_SIDE * FAR_SIDE + e * FAR_SIDE;
       // Along the edge: as many quads as lie on the map (a node the ring's edge cuts is the rim on that side).
-      for (let k = 0; k < (e < 2 ? quadsX : quadsY); k++) {
+      for (let k = 0; k < (e < 2 ? quadsX : quadsY); k += stride) {
         const t0 = e === 0 ? corner(k, 0) : e === 1 ? corner(k, FAR_QUADS) : e === 2 ? corner(0, k) : corner(FAR_QUADS, k);
-        const t1 = e === 0 ? corner(k + 1, 0) : e === 1 ? corner(k + 1, FAR_QUADS) : e === 2 ? corner(0, k + 1) : corner(FAR_QUADS, k + 1);
-        const h0 = hung + k, h1 = hung + k + 1;
+        const t1 = e === 0 ? corner(k + stride, 0) : e === 1 ? corner(k + stride, FAR_QUADS) : e === 2 ? corner(0, k + stride) : corner(FAR_QUADS, k + stride);
+        const h0 = hung + k, h1 = hung + k + stride;
         // Both ways round: the skirt is seen from either side.
         all[w++] = t0; all[w++] = h0; all[w++] = t1;
         all[w++] = t1; all[w++] = h0; all[w++] = h1;
@@ -280,6 +295,8 @@ export function createFlatAtlas(anisotropy: number): TerrainSurface {
     const was = far;
     const next = createFlatFar(was.slots * 2);
     for (const name of ['position', 'normal'] as const) (next.geometry.getAttribute(name).array as Float32Array).set(was.geometry.getAttribute(name).array as Float32Array);
+    next.errors.set(was.errors);
+    next.heights.set(was.heights);
     for (let slot = next.slots - 1; slot >= was.slots; slot--) freeSlots.unshift(slot);
     far = next;
     farMesh.geometry = next.geometry;
@@ -304,10 +321,10 @@ export function createFlatAtlas(anisotropy: number): TerrainSurface {
     const patches: FarPatchDrawn[] = [];
     for (const r of farNodes.values()) {
       if (r.node.plate !== null && plates.get(r.node.plate)?.shown) continue;
-      patches.push({ slot: r.slot, rim: r.node.rim, quadsX: r.node.quadsX, quadsY: r.node.quadsY });
+      patches.push({ slot: r.slot, rim: r.node.rim, quadsX: r.node.quadsX, quadsY: r.node.quadsY, stride: r.stride });
     }
     // DO NOT write the whole far index again at each refresh (every edit of the content calls one): only when the patches it draws changed.
-    const key = patches.map((p) => p.slot).join(',');
+    const key = patches.map((p) => `${p.slot}:${p.stride}`).join(',');
     if (key === farDrawn) return;
     farDrawn = key;
     farIndexInto(far, patches);
@@ -317,7 +334,7 @@ export function createFlatAtlas(anisotropy: number): TerrainSurface {
     if (ringSet && Math.hypot(x - farAtX, y - farAtY) < FAR_RESELECT) return false;
     ringSet = true;
     farAtX = x; farAtY = y;
-    const want = farNodesFor(x, y, FAR_RING, FAR_QUADS);
+    const want = farNodesFor(x, y, FAR_HALF, FAR_QUADS);
     const kept = new Set(want.map((n) => n.key));
     let changed = false;
     for (const [key, r] of farNodes) {
@@ -333,7 +350,7 @@ export function createFlatAtlas(anisotropy: number): TerrainSurface {
       if (farNodes.has(node.key)) continue;
       if (!freeSlots.length) growFar();
       const woods = node.plate !== null ? freeWoods.pop() ?? -1 : -1;
-      const r: FarResident = { node, slot: freeSlots.pop()!, woods };
+      const r: FarResident = { node, slot: freeSlots.pop()!, woods, stride: 1 };
       farNodes.set(node.key, r);
       writeFar(r);
       if (woods >= 0) farForest.book.add(node.plate!, woods, node.x0 + TERRAIN_HALF, node.y0 + TERRAIN_HALF);
@@ -342,6 +359,28 @@ export function createFlatAtlas(anisotropy: number): TerrainSurface {
     if (!changed) return false;
     drawFar();
     return true;
+  };
+  const farEye = new Vector3();
+  /** Each far patch's stride for the camera (`farGround.ts` strideFor): its error where its box stands nearest the eye, in the screen's
+   *  `pixels` (as the near plates', `terrainLod.ts` ranges); the index written again only when one changed. */
+  const lookFar = (camera: PerspectiveCamera | OrthographicCamera, pixels: number): void => {
+    camera.getWorldPosition(farEye);
+    const persp = (camera as PerspectiveCamera).isPerspectiveCamera === true;
+    const perMetre = persp ? (pixels * camera.zoom) / (2 * Math.tan(((camera as PerspectiveCamera).fov * Math.PI) / 360)) : 0;
+    const ortho = camera as OrthographicCamera;
+    const orthoPixels = persp ? 0 : Math.max(1, pixels) / ((ortho.top - ortho.bottom) / ortho.zoom);
+    let changed = false;
+    for (const r of farNodes.values()) {
+      const n = r.node, x1 = n.x0 + n.quadsX * n.step, y1 = n.y0 + n.quadsY * n.step;
+      // Three's axes: x east, y up, z south (the map's -y).
+      const dx = Math.max(n.x0 - farEye.x, 0, farEye.x - x1);
+      const dz = Math.max(-y1 - farEye.z, 0, farEye.z + n.y0);
+      const dy = Math.max(far.heights[r.slot * 2]! - farEye.y, 0, farEye.y - far.heights[r.slot * 2 + 1]!);
+      const across = persp ? perMetre / Math.max(Math.hypot(dx, dy, dz), 1) : orthoPixels;
+      const stride = strideFor(far.errors, r.slot * FAR_STRIDES, across, n.quadsX, n.quadsY, r.stride);
+      if (stride !== r.stride) { r.stride = stride; changed = true; }
+    }
+    if (changed) drawFar();
   };
   const buildFar = (relief: ReliefVersion): void => {
     if (relief === farRelief) return;
@@ -432,7 +471,7 @@ export function createFlatAtlas(anisotropy: number): TerrainSurface {
     if (p.surface) return p.surface;
     // Each step of a plate's making measured (F9 and the probes read hitch: measures).
     const t0 = performance.now();
-    const s = createTerrainSurface(anisotropy, { x: p.cx, y: p.cy }, p.key, p.mesh, share.open(p.key));
+    const s = createTerrainSurface(anisotropy, { x: p.cx, y: p.cy }, p.key, p.mesh, share.open(p.key), (seams) => share.setSeams(p.key, seams));
     // A dab's levels come after it, off the page (`landStroke.ts`): the plate's top read again when they land, and the atlas's told on.
     s.onLevels = () => {
       if (p.surface !== s) return;
@@ -454,6 +493,8 @@ export function createFlatAtlas(anisotropy: number): TerrainSurface {
       measureHitch('hitch:flat-plate/paint', t2);
     }
     measureHitch('hitch:flat-plate/create', t0, t1);
+    // The surfaces laid on it, on its ground as it stands (`terrainSeams.ts`).
+    if (seams) s.setSeams?.(seamsOf(p), null);
     if (lastSun) s.setSun(lastSun);
     if (lookGiven) s.setWaterLook(lastLook);
     // Sent ahead of its first draw (`uploads.ts`), not inside it.
@@ -580,17 +621,26 @@ export function createFlatAtlas(anisotropy: number): TerrainSurface {
     const reach = (x: number, y: number, radius: number): boolean => Math.abs(x - r.cx) <= TERRAIN_HALF + radius && Math.abs(y - r.cy) <= TERRAIN_HALF + radius;
     return doc.terrainStamps.some((s) => reach(s.x, s.y, s.radius)) || doc.terrainPaint.some((d) => reach(d.x, d.y, d.radius));
   };
-  /** @rebuild Every plate's content read from the whole document (the page's: the active region): the first time, an unload, or when the diary cannot say where. */
+  /**
+   * @rebuild Every plate's content read from the whole document (the page's: the active region): the first time, an unload, or when the diary
+   * cannot say where. The kinds kept in tables read from their columns (`TableItems.eachPlace`, `eachBox`): DO NOT walk their records -
+   * every building, lot, pole and item of landscaping of a 10 km city decoded in one frame of its opening (2026-10-26).
+   */
   const readWholeContent = (doc: TerrainSource): boolean => {
     const d = doc as Partial<RoadDoc>;
     const next = new Set<number>();
     const mark = (x: number, y: number): void => { next.add(plateOf(x, y)); };
     const disc = (x: number, y: number, r: number): void => { for (const k of platesOver([x - r, y - r, x + r, y + r])) next.add(k); };
+    const places = (items: ReadonlyMap<number, { readonly x: number; readonly y: number }> | undefined): void => {
+      if (items instanceof TableItems) items.eachPlace(mark);
+      else for (const item of items?.values() ?? []) mark(item.x, item.y);
+    };
     for (const n of d.nodes?.values() ?? []) mark(n.x, n.y);
-    for (const b of d.buildings?.all() ?? []) mark(b.x, b.y);
-    for (const l of d.lots ?? []) for (const c of l.corners) mark(c.x, c.y);
-    for (const p of d.poles?.values() ?? []) mark(p.x, p.y);
-    for (const item of d.landscape?.values() ?? []) mark(item.x, item.y);
+    d.buildings?.eachPlace(mark);
+    // A lot by its box: the plates its corners stand on (a box's sides are its corners' extremes).
+    d.lotStore?.eachBox((minX, minY, maxX, maxY) => { for (const k of platesOver([minX, minY, maxX, maxY])) next.add(k); });
+    places(d.poles);
+    places(d.landscape);
     for (const tree of d.trees ?? []) mark(tree.x, tree.y);
     for (const barrier of d.barriers?.values() ?? []) for (const q of barrier.points) mark(q.x, q.y);
     // A stamp or a dab puts content on every plate its disc reaches (`copyOn`).
@@ -696,6 +746,19 @@ export function createFlatAtlas(anisotropy: number): TerrainSurface {
   const encode = (p: Plate, region: TerrainRegion): TerrainRegion => {
     const off = p.key * REGION_STRIDE;
     return [region[0] + off, region[1] + off, region[2], region[3]];
+  };
+  /** Where the surfaces laid on the ground are read (`seamSource`). */
+  let seams: SeamSource | null = null;
+  /** The surfaces laid on a plate's ground and a cell round it, moved to its own frame. */
+  const seamsOf = (p: Plate): SeamOutline => {
+    const reach = TERRAIN_HALF + TERRAIN_CELL;
+    const world = seams!([p.cx - reach, p.cy - reach, p.cx + reach, p.cy + reach]);
+    const local = (list: readonly Float64Array[], stride: number): Float64Array[] => list.map((a) => {
+      const out = Float64Array.from(a);
+      for (let k = 0; k + 1 < out.length; k += stride) { out[k] = out[k]! - p.cx; out[k + 1] = out[k + 1]! - p.cy; }
+      return out;
+    });
+    return { hard: local(world.hard, 3), soft: local(world.soft, 3) };
   };
   /** A road field asked in a plate's own coordinates. */
   const shaperFor = (p: Plate, shape: TerrainShaper): TerrainShaper => ({
@@ -809,9 +872,37 @@ export function createFlatAtlas(anisotropy: number): TerrainSurface {
       refresh();
     },
     vergeMaterial: firstSurface.vergeMaterial,
+    seamSource(source) {
+      seams = source;
+      for (const p of plates.values()) p.surface?.setSeams?.(source ? seamsOf(p) : null, null);
+    },
+    seamsMoved(rects) {
+      if (!seams) return;
+      for (const p of plates.values()) {
+        if (!p.surface) continue;
+        if (rects === null) { p.surface.setSeams?.(seamsOf(p), null); continue; }
+        // The boxes it reaches, a cell round, as one box of its own frame.
+        const reach = TERRAIN_HALF + TERRAIN_CELL;
+        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+        for (const r of rects) {
+          if (r[2] < p.cx - reach || r[0] > p.cx + reach || r[3] < p.cy - reach || r[1] > p.cy + reach) continue;
+          x0 = Math.min(x0, r[0] - p.cx); y0 = Math.min(y0, r[1] - p.cy); x1 = Math.max(x1, r[2] - p.cx); y1 = Math.max(y1, r[3] - p.cy);
+        }
+        if (x0 <= x1) p.surface.setSeams?.(seamsOf(p), [x0, y0, x1, y1]);
+      }
+    },
+    seamDigest(minX, minY, maxX, maxY) {
+      const out = new Digest();
+      for (const key of platesOver([minX, minY, maxX, maxY])) {
+        const p = plates.get(key);
+        if (p?.surface?.seamDigest) out.add(p.surface.seamDigest(minX - p.cx, minY - p.cy, maxX - p.cx, maxY - p.cy)).add(key);
+      }
+      return out.value();
+    },
     meshMaterial: firstSurface.meshMaterial,
     lookFrom(camera, pixels) {
       for (const p of shownList) p.surface!.lookFrom?.(camera, pixels);
+      lookFar(camera, pixels);
     },
     heightAt: (x, y) => ask(x, y, (s, lx, ly) => s.heightAt(lx, ly), bareAt),
     naturalRenderedHeightAt: (x, y) => ask(x, y, (s, lx, ly) => s.naturalRenderedHeightAt(lx, ly), bareAt),

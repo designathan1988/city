@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { InstancedMesh } from 'three';
 
 import { createAgentMeshes } from '@render/agents';
+import { PartLevelMaker } from '@render/vehicleLevels';
 import { archetypeById } from '@sim/vehicles/archetypes';
 import type { SimClient, VehicleView } from '@sim/host/simClient';
 import type { Network } from '@world/network';
@@ -57,13 +58,16 @@ const centres = (agents: ReturnType<typeof createAgentMeshes>): number[] => mesh
   .flatMap((mesh) => (mesh.visible ? Array.from({ length: mesh.count }, (_, i) => mesh.instanceMatrix.array[i * 16 + 12]!) : []))
   .sort((a, b) => a - b);
 
+/** Every body's levels, made once for the file's meshes (the page makes them once too, `createAgentMeshes`). */
+const levels = new PartLevelMaker();
+
 describe('parked cars drawn from instances kept where they were written', () => {
   // The page the meshes are made in: the cooked bodies only (`?bodies=cooked`), no procedural crowd.
   beforeAll(() => { vi.stubGlobal('window', { setInterval: () => 0, clearInterval: () => {} }); vi.stubGlobal('location', { search: '?bodies=cooked' }); });
   afterAll(() => { vi.unstubAllGlobals(); });
 
   it('keep their steering wheel in the kept instances', () => {
-    const agents = createAgentMeshes(() => 0, () => {}, () => 0, () => 0);
+    const agents = createAgentMeshes(() => 0, () => {}, () => 0, () => 0, undefined, levels);
     const world = worldWith([parkedCar(1, 0, 0), parkedCar(2, m(10), 0)]);
     const wheels = meshesOf(agents, /^car-.*-wheel$/);
     expect(wheels.length).toBeGreaterThan(0);
@@ -79,7 +83,7 @@ describe('parked cars drawn from instances kept where they were written', () => 
   it('stand on the ground again after the ground under them changed', () => {
     let lot = 0;
     const changes = new ChangeJournal();
-    const agents = createAgentMeshes(() => 0, () => {}, () => 0, () => lot);
+    const agents = createAgentMeshes(() => 0, () => {}, () => 0, () => lot, undefined, levels);
     const world = worldWith([parkedCar(1, m(5), m(5))]);
     const net = netWith(changes);
     const bodies = meshesOf(agents, /^car-.*-(shell|body)$/);
@@ -104,7 +108,7 @@ describe('parked cars drawn from instances kept where they were written', () => 
   });
 
   it('hold instance buffers sized to what is drawn, not to the fleet ceiling', () => {
-    const agents = createAgentMeshes(() => 0, () => {}, () => 0, () => 0);
+    const agents = createAgentMeshes(() => 0, () => {}, () => 0, () => 0, undefined, levels);
     const all = meshesOf(agents, /^(car-|vehicle-(wheels|hubs|lamps)|bicycle-|bike-|rider-)/);
     expect(all.length).toBeGreaterThan(100);
     // Before anything is drawn: every part's buffers are a few instances, not the ceiling's, and none is shown.
@@ -123,7 +127,7 @@ describe('parked cars drawn from instances kept where they were written', () => 
   });
 
   it('are all drawn past the fleet ceiling', () => {
-    const agents = createAgentMeshes(() => 0, () => {}, () => 0, () => 0);
+    const agents = createAgentMeshes(() => 0, () => {}, () => 0, () => 0, undefined, levels);
     const count = FLEET_CEILING + 300;
     const cars: VehicleView[] = [];
     for (let i = 0; i < count; i++) cars.push(parkedCar(i + 1, (i % 60) * m(8), Math.floor(i / 60) * m(8)));
@@ -142,7 +146,7 @@ describe('parked cars drawn from instances kept where they were written', () => 
   });
 
   it('are neither written nor sent again in a frame where nothing of them changed', () => {
-    const agents = createAgentMeshes(() => 0, () => {}, () => 0, () => 0);
+    const agents = createAgentMeshes(() => 0, () => {}, () => 0, () => 0, undefined, levels);
     const world = worldWith([parkedCar(1, 0, 0), parkedCar(2, m(10), 0), parkedCar(3, m(20), m(10))]);
     const net = netWith();
     agents.sync(world, net, 0, true);
@@ -163,7 +167,7 @@ describe('parked cars drawn from instances kept where they were written', () => 
   });
 
   it('do not move the shadow map while they stand: casting only in a frame where one came, moved or went', () => {
-    const agents = createAgentMeshes(() => 0, () => {}, () => 0, () => 0);
+    const agents = createAgentMeshes(() => 0, () => {}, () => 0, () => 0, undefined, levels);
     const cars = [parkedCar(1, 0, 0), parkedCar(2, m(10), 0)];
     const net = netWith();
     agents.sync(worldWith(cars), net, 0, true);
@@ -183,7 +187,7 @@ describe('parked cars drawn from instances kept where they were written', () => 
   it('ask the ground again, not the diary, of a car not asked the frame before', () => {
     const changes = new ChangeJournal();
     let asked = 0;
-    const agents = createAgentMeshes(() => 0, () => {}, () => 0, () => { asked++; return 0; });
+    const agents = createAgentMeshes(() => 0, () => {}, () => 0, () => { asked++; return 0; }, undefined, levels);
     const car = parkedCar(1, m(5), m(5));
     const net = netWith(changes);
     let seen = true;
@@ -206,7 +210,7 @@ describe('parked cars drawn from instances kept where they were written', () => 
   });
 
   it('grow a part without disposing its mesh (three walks every geometry it knows to release one)', () => {
-    const agents = createAgentMeshes(() => 0, () => {}, () => 0, () => 0);
+    const agents = createAgentMeshes(() => 0, () => {}, () => 0, () => 0, undefined, levels);
     const wheels = meshesOf(agents, /^vehicle-wheels$/)[0]!;
     let disposed = 0;
     wheels.addEventListener('dispose', () => { disposed++; });
@@ -219,7 +223,7 @@ describe('parked cars drawn from instances kept where they were written', () => 
   });
 
   it('let one go with its instances: the last kept ones take their places, and only those places are sent', () => {
-    const agents = createAgentMeshes(() => 0, () => {}, () => 0, () => 0);
+    const agents = createAgentMeshes(() => 0, () => {}, () => 0, () => 0, undefined, levels);
     const cars = [parkedCar(1, 0, 0), parkedCar(2, m(10), 0), parkedCar(3, m(20), 0)];
     const net = netWith();
     agents.sync(worldWith(cars), net, 0, true);
@@ -240,7 +244,7 @@ describe('parked cars drawn from instances kept where they were written', () => 
   });
 
   it('keep a car stopped in the traffic as a parked one, its smoke still leaving it, until it moves off', () => {
-    const agents = createAgentMeshes(() => 0, () => {}, () => 0, () => 0);
+    const agents = createAgentMeshes(() => 0, () => {}, () => 0, () => 0, undefined, levels);
     // Stopped at a light a whole tick: no speed now nor in the tick before, no indicator.
     const car: VehicleView = { ...movingCar(9, m(30), m(20)), v: 0, prev: { v: 0 } };
     const net = netWith();
@@ -265,7 +269,7 @@ describe('parked cars drawn from instances kept where they were written', () => 
   });
 
   it('draw a car on the move after the kept ones, its own instances sent each frame and nothing else', () => {
-    const agents = createAgentMeshes(() => 0, () => {}, () => 0, () => 0);
+    const agents = createAgentMeshes(() => 0, () => {}, () => 0, () => 0, undefined, levels);
     const parked = [parkedCar(1, 0, 0), parkedCar(2, m(10), 0)];
     const car = movingCar(9, m(30), m(20));
     const net = netWith();

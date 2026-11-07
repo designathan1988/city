@@ -120,7 +120,7 @@ export class Derived<D extends { readonly changes: ChangeJournal }, K, V> {
 }
 
 /** Side of a cell of `ChangeSweep`'s filing, world units. */
-const SWEEP_CELL = 64; // world units (1 m)
+const SWEEP_CELL = 50; // world units (1 m)
 /** A rectangle covering more cells than this is taken as the whole map: the sweep answers "changed" everywhere. */
 const SWEEP_MAX_CELLS = 4096;
 

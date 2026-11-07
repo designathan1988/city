@@ -4,7 +4,7 @@ import { RoadDoc } from '@world/doc';
 import { Network } from '@world/network';
 import { CUT_WALL_REACH, buildRoadElevation } from '@world/elevation';
 import { TerrainIndex, sampleTerrainHeight } from '@world/terrain';
-import { casingHalf } from '@world/roadTypes';
+import { FOOTWAY_RISE, casingHalf } from '@world/roadTypes';
 import { ROAD_TUNING } from '@world/roads/tuning';
 import { PORTAL_COPING, buildStructureDetails } from '@render/structures';
 import { TUNNEL_ARCH, TUNNEL_BORE, TUNNEL_HEADROOM } from '@world/structures';
@@ -57,8 +57,10 @@ describe('retaining walls in a cutting', () => {
     expect(walled.shaped(0, past)).toBeCloseTo(walled.natural(0, past), 1);
     // ...where the batter still cuts it down.
     expect(batter.shaped(0, past)).toBeLessThan(batter.natural(0, past) - 1);
-    // Beside the road, at its level: nothing stands over the deck.
-    expect(walled.shaped(0, edge + 1)).toBeLessThanOrEqual(deck);
+    // Beside the road, at its level: nothing stands over the footway's top (the terrain meets the footway's outer edge at its own height,
+    // `terrainSeams.ts`; this road's footways are kerbed), and nothing is dug below the deck.
+    expect(walled.shaped(0, edge + 1)).toBeLessThanOrEqual(deck + FOOTWAY_RISE);
+    expect(walled.shaped(0, edge + 1)).toBeGreaterThanOrEqual(deck);
   });
 
   it('the wall stands from under the road to over the ground, and its backfill meets the ground', () => {

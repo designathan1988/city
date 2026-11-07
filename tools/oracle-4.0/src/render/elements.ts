@@ -1,4 +1,5 @@
 import {
+  Box3,
   BufferAttribute,
   BufferGeometry,
   CanvasTexture,
@@ -12,15 +13,18 @@ import {
   RepeatWrapping,
   SRGBColorSpace,
   TextureLoader,
-  type Vector3,
+  Vector3,
   type Texture,
 } from 'three';
+import { MeshoptDecoder } from 'meshoptimizer/decoder';
 import { isEffectKind, type EffectKind, type ElementItem, type ElementKind } from '@world/elements';
 import type { ChangeRect } from '@world/changes';
 import { m } from '@world/units';
 import { KEEP_CELL, keepCellKey } from './candidateKeep';
 import { keepCellAt, keepCellRect } from './cellKeeps';
-import { createInstanceRuns, leastPixel, RunBuilder, type Run, type RunStore } from './instanceRuns';
+import { createInstanceRuns, RunBuilder, type Run, type RunStore } from './instanceRuns';
+import { createImpostors, SET_MODELS, stillLook, type PictureModel, type PlantImpostors } from './plantImpostors';
+import { PROP_LEAST_PX, PROP_PICTURE_PX } from './propLevels';
 import type { Exhaust, PuffKind } from './exhaust';
 import URLS from 'virtual:model-urls/elements?ext=gltf,bin,png';
 
@@ -66,31 +70,82 @@ const EFFECTS: Readonly<Record<EffectKind, { puff: PuffKind; rate: number; size:
 /** Effects farther than this from the camera give off nothing (a budget for the one particle pool). */
 const EFFECT_REACH = m(720);
 
-async function readParts(name: string, materialFor: (uri: string, mask: boolean, colours: boolean) => MeshStandardMaterial): Promise<Part[]> {
-  const json = await (await fetch(url(`${name}.gltf`))).json() as {
-    meshes: { primitives: { attributes: Record<string, number>; indices: number; material: number }[] }[];
-    accessors: { bufferView: number; byteOffset?: number; componentType: number; count: number; type: string }[];
-    bufferViews: { byteOffset?: number }[];
-    materials: { name: string; alphaMode?: string; pbrMetallicRoughness?: { baseColorTexture?: { index: number } } }[];
-    textures: { source: number }[];
-    images: { uri: string }[];
-    buffers: { uri: string }[];
+/** A bufferView of an element's glTF, its bytes compressed by meshoptimizer where it says so (EXT_meshopt_compression, lossless in these files). */
+interface GltfView {
+  readonly buffer: number;
+  readonly byteOffset?: number;
+  readonly byteLength: number;
+  readonly extensions?: {
+    readonly EXT_meshopt_compression?: {
+      readonly buffer: number; readonly byteOffset?: number; readonly byteLength: number; readonly byteStride: number; readonly count: number;
+      readonly mode: string; readonly filter?: string;
+    };
   };
-  const bin = await (await fetch(url(json.buffers[0]!.uri))).arrayBuffer();
-  const width: Record<string, number> = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 };
-  const read = (i: number): Float32Array | Uint32Array => {
+}
+interface GltfPrimitive { readonly attributes: Readonly<Record<string, number>>; readonly indices: number; readonly material: number }
+
+/** An element model's glTF as this reader takes it: its node's mesh, a primitive a part (the files the source's triangles, exact duplicate vertices
+ *  welded, reordered for the GPU's caches by meshoptimizer `reorderMesh` and compressed losslessly, EXT_meshopt_compression: `elementModels.spec.ts`;
+ *  no simplified level held its texture, light and colours within a pixel where it would be drawn, so none is kept). */
+export interface ElementGltf {
+  readonly nodes: readonly { readonly mesh?: number }[];
+  readonly meshes: readonly { readonly primitives: readonly GltfPrimitive[] }[];
+  readonly accessors: readonly { readonly bufferView: number; readonly byteOffset?: number; readonly componentType: number; readonly count: number; readonly type: string }[];
+  readonly bufferViews: readonly GltfView[];
+  readonly materials: readonly { readonly name: string; readonly alphaMode?: string; readonly pbrMetallicRoughness?: { readonly baseColorTexture?: { readonly index: number } } }[];
+  readonly textures: readonly { readonly source: number }[];
+  readonly images: readonly { readonly uri: string }[];
+  readonly buffers: readonly { readonly uri?: string }[];
+}
+
+/** A part as read: its geometry, and what its material is made of (its texture's file, alpha cut, vertex colours). */
+export interface ElementPartData {
+  readonly geometry: BufferGeometry;
+  readonly texture: string;
+  readonly mask: boolean;
+  readonly colours: boolean;
+}
+
+const WIDTH: Readonly<Record<string, number>> = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 };
+
+/**
+ * A model's parts from its glTF and its buffers (null: one with no file of its own, the compressed views' fallback): the whole model one unit
+ * across, standing on y = 0. The indices as the file keeps them (16 bits): DO NOT widen them to 32 (the old reader did,
+ * twice the index memory for meshes of a few hundred vertices).
+ */
+export async function readElementModel(json: ElementGltf, buffers: readonly (ArrayBuffer | null)[]): Promise<ElementPartData[]> {
+  if (json.bufferViews.some((v) => v.extensions?.EXT_meshopt_compression)) await MeshoptDecoder.ready;
+  const fileOf = (i: number): ArrayBuffer => {
+    const buffer = buffers[i];
+    if (!buffer) throw new Error(`element model: buffer ${i} has no file`);
+    return buffer;
+  };
+  const views = json.bufferViews.map((view): Uint8Array => {
+    const packed = view.extensions?.EXT_meshopt_compression;
+    if (!packed) return new Uint8Array(fileOf(view.buffer), view.byteOffset ?? 0, view.byteLength);
+    // meshoptimizer README, "Decoder": `decodeGltfBuffer` (count, stride and mode as the extension gives them).
+    const out = new Uint8Array(packed.count * packed.byteStride);
+    MeshoptDecoder.decodeGltfBuffer(out, packed.count, packed.byteStride, new Uint8Array(fileOf(packed.buffer), packed.byteOffset ?? 0, packed.byteLength), packed.mode, packed.filter);
+    return out;
+  });
+  const read = (i: number): Float32Array | Uint16Array | Uint32Array => {
     const a = json.accessors[i]!;
-    const offset = (json.bufferViews[a.bufferView]!.byteOffset ?? 0) + (a.byteOffset ?? 0);
-    const n = a.count * width[a.type]!;
-    if (a.componentType === 5126) return new Float32Array(bin.slice(offset, offset + n * 4));
-    if (a.componentType === 5123) return Uint32Array.from(new Uint16Array(bin.slice(offset, offset + n * 2)));
-    return new Uint32Array(bin.slice(offset, offset + n * 4));
+    const bytes = views[a.bufferView]!;
+    const n = a.count * WIDTH[a.type]!;
+    // A copy of its own, aligned: a view may start anywhere in its file.
+    const start = bytes.byteOffset + (a.byteOffset ?? 0);
+    if (a.componentType === 5126) return new Float32Array(bytes.buffer.slice(start, start + n * 4));
+    if (a.componentType === 5123) return new Uint16Array(bytes.buffer.slice(start, start + n * 2));
+    if (a.componentType === 5125) return new Uint32Array(bytes.buffer.slice(start, start + n * 4));
+    throw new Error(`element model: accessor ${i} of component type ${a.componentType}`);
   };
-  const prims = json.meshes.flatMap((mesh) => mesh.primitives);
+  const meshIndex = json.nodes[0]?.mesh;
+  if (meshIndex === undefined) throw new Error('element model: its first node has no mesh');
+  const finest = json.meshes[meshIndex]!.primitives;
   // The whole model one unit across, on y = 0.
   let minX = Infinity, maxX = -Infinity, minY = Infinity, minZ = Infinity, maxZ = -Infinity;
-  const positions = prims.map((p) => read(p.attributes['POSITION']!) as Float32Array);
-  for (const pos of positions) {
+  for (const p of finest) {
+    const pos = read(p.attributes['POSITION']!);
     for (let i = 0; i < pos.length; i += 3) {
       minX = Math.min(minX, pos[i]!); maxX = Math.max(maxX, pos[i]!);
       minY = Math.min(minY, pos[i + 1]!);
@@ -99,8 +154,8 @@ async function readParts(name: string, materialFor: (uri: string, mask: boolean,
   }
   const across = Math.max(maxX - minX, maxZ - minZ, 1e-3);
   const cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2;
-  return prims.map((p, k) => {
-    const pos = positions[k]!;
+  const geometryOf = (p: GltfPrimitive): BufferGeometry => {
+    const pos = read(p.attributes['POSITION']!);
     const g = new BufferGeometry();
     const scaled = new Float32Array(pos.length);
     for (let i = 0; i < pos.length; i += 3) {
@@ -109,13 +164,12 @@ async function readParts(name: string, materialFor: (uri: string, mask: boolean,
       scaled[i + 2] = (pos[i + 2]! - cz) / across;
     }
     g.setAttribute('position', new BufferAttribute(scaled, 3));
-    g.setAttribute('normal', new BufferAttribute(read(p.attributes['NORMAL']!) as Float32Array, 3));
-    if (p.attributes['TEXCOORD_0'] !== undefined) g.setAttribute('uv', new BufferAttribute(read(p.attributes['TEXCOORD_0']) as Float32Array, 2));
-    const colours = p.attributes['COLOR_0'] !== undefined;
-    if (colours) {
+    g.setAttribute('normal', new BufferAttribute(read(p.attributes['NORMAL']!), 3));
+    if (p.attributes['TEXCOORD_0'] !== undefined) g.setAttribute('uv', new BufferAttribute(read(p.attributes['TEXCOORD_0']), 2));
+    if (p.attributes['COLOR_0'] !== undefined) {
       // Normalised shorts in these files (0..65535 for 0..1)
-      const accessor = json.accessors[p.attributes['COLOR_0']!]!;
-      const c = read(p.attributes['COLOR_0']!);
+      const accessor = json.accessors[p.attributes['COLOR_0']]!;
+      const c = read(p.attributes['COLOR_0']);
       const scale = accessor.componentType === 5123 ? 1 / 65535 : accessor.componentType === 5121 ? 1 / 255 : 1;
       const stride = accessor.type === 'VEC3' ? 3 : 4;
       const rgb = new Float32Array((c.length / stride) * 3);
@@ -124,11 +178,24 @@ async function readParts(name: string, materialFor: (uri: string, mask: boolean,
     }
     g.setIndex(new BufferAttribute(read(p.indices), 1));
     g.computeBoundingSphere();
+    return g;
+  };
+  return finest.map((p) => {
     const mat = json.materials[p.material]!;
     const texIndex = mat.pbrMetallicRoughness?.baseColorTexture?.index;
-    const uri = texIndex !== undefined ? json.images[json.textures[texIndex]!.source]!.uri : '';
-    return { geometry: g, material: materialFor(uri, mat.alphaMode === 'MASK', colours) };
+    return {
+      geometry: geometryOf(p),
+      texture: texIndex !== undefined ? json.images[json.textures[texIndex]!.source]!.uri : '',
+      mask: mat.alphaMode === 'MASK',
+      colours: p.attributes['COLOR_0'] !== undefined,
+    };
   });
+}
+
+async function readParts(name: string, materialFor: (uri: string, mask: boolean, colours: boolean) => MeshStandardMaterial): Promise<Part[]> {
+  const json = await (await fetch(url(`${name}.gltf`))).json() as ElementGltf;
+  const buffers = await Promise.all(json.buffers.map(async (b) => (b.uri ? (await fetch(url(b.uri))).arrayBuffer() : null)));
+  return (await readElementModel(json, buffers)).map((p) => ({ geometry: p.geometry, material: materialFor(p.texture, p.mask, p.colours) }));
 }
 
 /** A card of fallen leaves - a dozen leaves in autumn browns, ochres and dull reds, veined - on a clear ground. */
@@ -261,8 +328,31 @@ function elementsInto(builder: RunBuilder, storesOf: ReadonlyMap<ElementKind, re
   }
 }
 
+/** The kind drawn as a card of its own (`fallenLeavesTexture`), not a glTF model. */
+const FALLEN_LEAVES: ElementKind = 'leaves';
+
+/** A model's measure (`propLevels.ts` propMeasure, every part): its box's largest extent, model units. */
+function measureOf(parts: readonly Pick<Part, 'geometry'>[]): number {
+  const box = new Box3();
+  for (const { geometry } of parts) {
+    if (!geometry.boundingBox) geometry.computeBoundingBox();
+    box.union(geometry.boundingBox!);
+  }
+  const size = box.getSize(new Vector3());
+  return Math.max(size.x, size.y, size.z);
+}
+
+/** A model to take pictures of: its parts taken with their own near materials (`PicturePart.material`: the texture times the vertex colours, the
+ *  alpha cut, the side, as the near model draws them), measured as the layer measures it. */
+function pictureModel(kind: ElementKind, parts: readonly Part[]): PictureModel {
+  return {
+    parts: parts.map((part) => ({ geometry: part.geometry, material: part.material, normals: 'vertex', side: part.material.side, casts: CASTS.includes(kind) })),
+    measure: measureOf(parts),
+  };
+}
+
 /** The props that throw a shadow worth its pass. */
-const CASTS: ReadonlySet<ElementKind> = new Set<ElementKind>(['stones', 'pebbles', 'scrub', 'fern', 'tallGrass']);
+const CASTS: readonly ElementKind[] = ['stones', 'pebbles', 'scrub', 'fern', 'tallGrass'];
 /** How far off the view a prop still throws a shadow into it. */
 const ELEMENT_SHADOW_REACH = m(8);
 
@@ -284,15 +374,55 @@ function allByCell(source: ElementSource, before: Iterable<number>): Map<number,
 /** DO NOT build every element of the map again when one is laid: the elements kept cell by cell, instanced per kind */
 export function createElementLayer(kit: ElementKit): ElementLayer {
   const stores: RunStore[] = [];
-  /** Each prop kind's variants, as the stores of their parts. */
+  /** Each prop kind's variants, as the stores they are drawn from (one a model: its parts drawn with it). */
   const storesOf = new Map<ElementKind, number[][]>();
-  for (const [kind, variants] of kit.models) {
-    storesOf.set(kind, variants.map((parts) => parts.map((part) => stores.push({
-      name: `element-${kind}`, geometry: part.geometry, material: part.material,
-      castShadow: CASTS.has(kind), receiveShadow: true, tinted: true, cards: false,
-      // A pebble or a tuft under a pixel across is not drawn (`leastPixel`).
-      levels: leastPixel(part.geometry),
-    }) - 1)));
+  // THE OWNER'S LADDER (`propLevels.ts`), by a model's largest extent on the screen: whole from PROP_PICTURE_PX across (no simplified model held
+  // its texture, light and colours within a pixel at PROP_NEAR_PX, measured when the files were made, so L1 is L0), as its
+  // octahedral picture from PROP_LEAST_PX (`plantImpostors.ts` createImpostors: its parts with their own textures, still, never thinned), not
+  // drawn under it. DO NOT draw a tuft of 600 triangles a few pixels across: 60,000 elements drew 11 M triangles at a district's view.
+  const models: { readonly kind: ElementKind; readonly parts: readonly Part[] }[] = [];
+  for (const [kind, variants] of kit.models) if (kind !== FALLEN_LEAVES) for (const parts of variants) models.push({ kind, parts });
+  const sets: PlantImpostors[] = [];
+  /** Each model's set and place in it: the alpha-cut models (a fern's, a clover's, the flowers' texture cut by its alpha) in sets of their own,
+   *  every level of their pictures taken at its size (`PictureLook.perMip`), the others as they were. */
+  const placeOf = new Map<(typeof models)[number], { readonly set: number; readonly at: number }>();
+  const cut = (parts: readonly Part[]): boolean => parts.some((part) => part.material.alphaTest > 0);
+  for (const perMip of [false, true]) {
+    const kept = models.filter(({ parts }) => cut(parts) === perMip);
+    for (let at = 0; at < kept.length; at += SET_MODELS) {
+      const group = kept.slice(at, at + SET_MODELS);
+      group.forEach((model, k) => placeOf.set(model, { set: sets.length, at: k }));
+      // Drawn in order with no depth written (`PictureLook.ordered`): a field of tufts overlaps at every size, each one's partial cover blended over
+      // those behind it.
+      sets.push(createImpostors(group.map(({ kind, parts }) => pictureModel(kind, parts)), { ...stillLook(group[0]!.parts[0]!.material), ordered: true, perMip },
+        `elements-${sets.length}`));
+    }
+  }
+  models.forEach((model) => {
+    const { kind, parts } = model;
+    const place = placeOf.get(model)!;
+    const set = sets[place.set]!, at = place.at;
+    const castShadow = CASTS.includes(kind);
+    const [first, ...rest] = parts;
+    const store = stores.push({
+      name: `element-${kind}`, geometry: first!.geometry, material: first!.material, castShadow, receiveShadow: true, tinted: true, cards: false,
+      levels: { reach: set.reach[at]!, far: PROP_PICTURE_PX, least: PROP_LEAST_PX, ready: () => set.ready(), view: set.setView, ordered: true },
+      with: [
+        ...rest.map((part) => ({ name: `element-${kind}`, geometry: part.geometry, material: part.material, castShadow, receiveShadow: true, cards: false, far: false })),
+        { name: `element-${kind}-far`, geometry: set.quads[at]!, material: set.material, depth: set.depth, castShadow, receiveShadow: true, cards: false, far: true, made: set.attach },
+      ],
+    }) - 1;
+    const variants = storesOf.get(kind);
+    if (variants) variants.push([store]); else storesOf.set(kind, [[store]]);
+  });
+  // The fallen leaves' card: two triangles, its own picture; not drawn under PROP_LEAST_PX across.
+  for (const parts of kit.models.get(FALLEN_LEAVES) ?? []) {
+    const stored = parts.map((part) => stores.push({
+      name: `element-${FALLEN_LEAVES}`, geometry: part.geometry, material: part.material, castShadow: CASTS.includes(FALLEN_LEAVES), receiveShadow: true, tinted: true,
+      cards: false, levels: { reach: measureOf([part]) / 2, least: PROP_LEAST_PX },
+    }) - 1);
+    const variants = storesOf.get(FALLEN_LEAVES);
+    if (variants) variants.push(stored); else storesOf.set(FALLEN_LEAVES, [stored]);
   }
   const runs = createInstanceRuns('elements', stores, ELEMENT_SHADOW_REACH);
   /** Each cell's instances as drawn, and its effects. */
@@ -349,6 +479,7 @@ export function createElementLayer(kit: ElementKit): ElementLayer {
     },
     dispose() {
       runs.dispose();
+      for (const set of sets) set.dispose();
       drawn.clear();
       emitters.clear();
       effects = 0;

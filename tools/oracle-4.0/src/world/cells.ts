@@ -5,8 +5,8 @@ import { uniqueCounter } from '@core/identityMemo';
 
 /** THE WORLD'S CELLS: one fixed grid over the plane the map is laid on, the partition an edit's cost is measured in */
 
-/** The side of a cell, world units (Unreal's default runtime grid cell). */
-export const CELL = m(256);
+/** The side of a cell, world units: 25 cells of the universal grid (`grid.ts` GRID_CELL), a quarter of a tile (`tiles.ts`), an eighth of a plate (`bounds.ts`). */
+export const CELL = m(250);
 
 /** A cell's key from its column and row (both within ±32 767). */
 const cellKey = (cx: number, cy: number): number => (cx + 32768) * 65536 + (cy + 32768);

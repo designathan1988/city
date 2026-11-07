@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { InstancedMesh, Mesh } from 'three';
 import { BLUEPRINTS } from '@world/buildings/blueprints';
 import type { Building } from '@world/buildings/types';
-import { ShellWriter, assembleBuildingMeshes, buildBuildingMeshes, emitChunk } from '@render/buildings/buildingMesh';
+import { LevelWriter, assembleBuildingMeshes, buildBuildingMeshes, emitChunk } from '@render/buildings/buildingMesh';
 import { createBuildingKit } from '@render/buildings/kit';
 
 /** THE PREVIEW'S MESHES (`buildBuildingMeshes`): emitted into one shell written again, the same meshes as a shell of their own */
@@ -27,7 +27,7 @@ function arraysOf(meshes: ReturnType<typeof buildBuildingMeshes>): Record<string
 describe('the preview meshes', () => {
   it('are emitted into one shell written again, and come out as with a shell of their own', () => {
     const kit = createBuildingKit();
-    const next = vi.spyOn(ShellWriter.prototype, 'next');
+    const next = vi.spyOn(LevelWriter.prototype, 'next');
     // One building, another, the first again: what the first left in the shell does not show in the next.
     for (const index of [0, 1, 0, 2]) {
       const b = placed(index);

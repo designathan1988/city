@@ -1,7 +1,7 @@
 import type { Restoration } from '@world/doc';
 import type { BuildingSent, TrafficMap } from '../agents/trafficBuildings';
 import type { NodeId, SegmentId } from '@world/ids';
-import type { NetworkBake } from '@world/networkBuild';
+import type { NetworkBake } from '@world/networkBake';
 import type { BodyPart, PedView, PersonAgeClass } from '../people/view';
 import type { Casualty } from '../people/casualties';
 import type { KerbStop } from '../vehicles/kerbStops';
@@ -30,7 +30,8 @@ const HEAD = 8;
 const VEHICLES = FLEET_CEILING;
 const PEDS = PED_CEILING;
 /** One slot's Float64s: the head, then the vehicles, then the pedestrians. */
-export const SLOT = HEAD + VEHICLES * VEHICLE_STRIDE + PEDS * PED_STRIDE;
+const SLOT = HEAD + VEHICLES * VEHICLE_STRIDE + PEDS * PED_STRIDE;
+export const SLOT_DOUBLES = SLOT;
 export const vehicleBase = (slot: number): number => slot * SLOT + HEAD;
 export const pedBase = (slot: number): number => slot * SLOT + HEAD + VEHICLES * VEHICLE_STRIDE;
 export const headBase = (slot: number): number => slot * SLOT;
@@ -39,9 +40,9 @@ export const MAX_PEDS = PEDS;
 
 /** The control words (Int32): the slot written last, the slot the page reads now (Atomics, MDN). */
 export const C = { latest: 0, reading: 1 } as const;
-export const CONTROL_WORDS = 2;
+const CONTROL_WORDS = 2;
 
-/** The memory both sides hold: three slots (a triple buffer) and the control words. */
+/** The memory both sides hold: three slots (a triple buffer) and the control words. Only where the worker is a thread of the page's process: the desktop's simulation process shares none (a SharedArrayBuffer never crosses a process, HTML "StructuredSerialize"), and is sent `null` - it writes slot 0 of a buffer of its own and posts the part written with each tick (`FromSim` tick `frame`). */
 export interface SharedFrames {
   readonly data: SharedArrayBuffer;
   readonly control: SharedArrayBuffer;
@@ -80,13 +81,19 @@ export interface SignalLights {
 }
 
 /** A train drawn: its line's colour and each car's place. */
-export interface TrainCar { readonly x: number; readonly y: number; readonly heading: number }
+interface TrainCar { readonly x: number; readonly y: number; readonly heading: number }
 export interface TrainState { readonly colour: string; readonly metro: boolean; readonly cars: readonly TrainCar[] }
 
 /** The page to the worker: never the whole map nor a building's record, only what traffic reads (`agents/trafficBuildings.ts`). */
 export type ToSim =
-  | { readonly type: 'init'; readonly frames: SharedFrames; readonly map: TrafficMap; readonly seed: number; readonly zones: ReadonlyMap<string, Float64Array | null>; readonly zonesPrefix: string | null; readonly ambient: 'view' | 'edges'; readonly bake?: NetworkBake | null }
-  | { readonly type: 'load'; readonly map: TrafficMap; readonly bake?: NetworkBake | null }
+  /** `frames`: the memory both sides hold; null for a worker in another process (the desktop's), told its frames with each tick instead. */
+  /** `bakes`: the page holds the map's network solved and answers `bakeAsk` with the roads the window comes to (SIM-04); none, the worker solves them. */
+  | { readonly type: 'init'; readonly frames: SharedFrames | null; readonly map: TrafficMap; readonly seed: number; readonly zones: ReadonlyMap<string, Float64Array | null>; readonly zonesPrefix: string | null; readonly ambient: 'view' | 'edges'; readonly bakes?: boolean }
+  /** The page's junctions and ribbons of these roads, solved (`Network.exportBake`), for `bakeAsk`. */
+  | { readonly type: 'bakeAnswer'; readonly id: number; readonly bake: NetworkBake | null }
+  /** The kept conflict zones a worker in another process asked for (`derivedAsk`): the page's store answers, that process has none. */
+  | { readonly type: 'derivedAnswer'; readonly id: number; readonly values: ReadonlyMap<string, Float64Array | null> }
+  | { readonly type: 'load'; readonly map: TrafficMap }
   /** The SAME map sent whole again, when the diary cannot say what changed (its entries let go, a change without ids): the replica brought up to it, the simulation kept running (SIM-18). */
   | { readonly type: 'resync'; readonly map: TrafficMap }
   /** The page's job lanes for the lots' bays and the conflict pairs (`jobPool.ts` jobChannel), before `init`: the worker opens no pool of its own. */
@@ -123,7 +130,7 @@ export interface SimControls {
   readonly opening?: boolean;
 }
 
-export interface SimFocus {
+interface SimFocus {
   readonly x: number;
   readonly y: number;
   readonly r: number;
@@ -160,9 +167,16 @@ export type FromSim =
       readonly parked: ParkedChanges | null; readonly stats: SimStats;
       /** The meso links changed since the last tick (null: none), their buffers handed over (`meso/memory.ts`). */
       readonly meso?: MesoDelta | null;
+      /** The tick's numbers (the slot's head, vehicles and people as written, `V`/`P`/`H` from offset 0) for a worker in another process, whose frames are not shared; absent: read from `slot` of the shared frames. */
+      readonly frame?: ArrayBuffer;
       readonly wounds: readonly Wound[]; readonly casualties: readonly Casualty[] }
   | { readonly type: 'acted'; readonly id: number; readonly result: unknown }
-  | { readonly type: 'answer'; readonly id: number; readonly answer: unknown };
+  | { readonly type: 'answer'; readonly id: number; readonly answer: unknown }
+  /** A worker in another process reads and keeps the conflict zones through the page's store (`core/derivedCache.ts` is the page's IndexedDB; that process has none). */
+  | { readonly type: 'derivedAsk'; readonly id: number; readonly prefix: string; readonly keys: readonly string[] }
+  /** The junctions and ribbons of the roads the micro window comes to, asked of the page's network, which holds the map solved (`SimWorld.bakeSource`; answered with `bakeAnswer`). */
+  | { readonly type: 'bakeAsk'; readonly id: number; readonly nodes: readonly NodeId[]; readonly segments: readonly SegmentId[] }
+  | { readonly type: 'derivedKeep'; readonly prefix: string; readonly values: ReadonlyMap<string, Float64Array | null> };
 
 /** The cars come into a bay or gone from one, `PARKED_STRIDE` numbers each (fields `PK`), in a buffer handed over; `whole`: every car standing, those not in it gone. */
 export interface ParkedChanges { readonly whole: boolean; readonly cars: Float64Array }

@@ -49,11 +49,12 @@ describe('a plate of the ground made while the game runs', () => {
     const atlas = createFlatAtlas(1);
     // The compiler answers from now on (the opening's own programs built with the scene).
     drainCompiles(renderer, camera, scene, null);
-    const centre = `${PLATE_SIZE},0`;
-    atlas.focus!(PLATE_SIZE, 0, m(300));
+    // Plate (1, 0), its centre half a plate off the plates' edges (`world/bounds.ts`).
+    const centre = `${PLATE_SIZE * 1.5},${PLATE_SIZE / 2}`;
+    atlas.focus!(PLATE_SIZE * 1.5, PLATE_SIZE / 2, m(300));
     expect(made.has(centre)).toBe(true);
     // Made, not shown: its programs not built yet; the frames asked to go on meanwhile (`waiting`, `renderer.ts` busy).
-    expect(atlas.parts.some((p) => p.cx === PLATE_SIZE)).toBe(false);
+    expect(atlas.parts.some((p) => p.cx === PLATE_SIZE * 1.5)).toBe(false);
     expect(atlas.waiting!()).toBe(true);
     drainCompiles(renderer, camera, scene, null);
     await new Promise((done) => setTimeout(done, 0));
@@ -62,8 +63,8 @@ describe('a plate of the ground made while the game runs', () => {
     // Built, not shown yet: a still camera must still be drawn, or the plate waits for good on its far patch (conf52, conf54).
     expect(atlas.waiting!()).toBe(true);
     // Shown at the next look; nothing waits any more.
-    atlas.focus!(PLATE_SIZE, 0, m(300));
-    expect(atlas.parts.some((p) => p.cx === PLATE_SIZE)).toBe(true);
+    atlas.focus!(PLATE_SIZE * 1.5, PLATE_SIZE / 2, m(300));
+    expect(atlas.parts.some((p) => p.cx === PLATE_SIZE * 1.5)).toBe(true);
     expect(atlas.waiting!()).toBe(false);
     atlas.dispose();
   });

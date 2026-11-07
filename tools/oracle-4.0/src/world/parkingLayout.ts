@@ -8,7 +8,7 @@ import type { Network, SegmentRibbon } from './network';
 import { CROSSWALK_DEPTH } from './approach';
 import { entrancesOf } from './buildingGates';
 // Where they were first: the far roads and the tests read them from here too.
-export { entrancesOf, gatesOf } from './buildingGates';
+export { entrancesOf } from './buildingGates';
 import { CORNER_CLEAR, CROSSING_CLEAR, PARKING_PITCH, type ParkingKind } from './parking';
 import { m, stepsIn } from './units';
 
@@ -34,6 +34,19 @@ export interface ParkingLine {
   readonly color: string;
   /** Paint and gap along the line, world units; null for a continuous line. */
   readonly dash: readonly number[] | null;
+  /** A dashed line along its road (the parking lane's edge): its run's arc length on the road's centreline from `from` to `to`, `across` it (signed
+   *  as the road's normal), its pattern starting at `from` (`ParkingDashRun`): drawn as one strip, its dashes cut by the paint's shader. */
+  readonly run?: ParkingDashRun;
+}
+
+/** Where a parking lane's dashed edge is inked (`ParkingLine.run`): from arc length `from` to `to` of the road, `across` its centreline, inked
+ *  where `s - from` falls below `dash` in `period`. */
+interface ParkingDashRun {
+  readonly from: number;
+  readonly to: number;
+  readonly across: number;
+  readonly dash: number;
+  readonly period: number;
 }
 
 export interface ParkingLayout {
@@ -49,8 +62,10 @@ const MER_DASH: readonly number[] = [m(1), m(1)];
 const YELLOW = '#e1c45a';
 /** The red of a ciclofaixa's paving. */
 const CYCLE_RED = '#a8473e';
-/** Every colour the parking's lines are painted in (`render/markings.ts` `PAINT_COLOURS`). */
+/** Every colour the parking's lines are painted in (`render/roadMarks.ts` palette). */
 export const PARKING_PAINT: readonly string[] = Object.freeze([WHITE, YELLOW, CYCLE_RED]);
+/** The cycle lane's paint: an area under the lines painted over it (`render/roadMarks.ts` palette order). */
+export const CYCLE_LANE_PAINT = CYCLE_RED;
 /** Kept clear either side of a lot's frontage for its entrance. */
 const ENTRANCE_MARGIN = m(1);
 /** Step of the paint along a run, so a line follows a curve. */
@@ -71,19 +86,6 @@ export function parkingLinesOf(net: Network, ribbon: SegmentRibbon, entrances: r
   const lines: ParkingLine[] = [];
   parkingOf(net, ribbon, entrances, [], lines);
   return lines;
-}
-
-/** The entrances of `gates` (`gatesOf`) a street of half width `half` along `line` may read: those `entrancesNear` would hand it, for a road bake without the buildings (`render/nearRoadTiles.ts`). */
-export function gatesNear(gates: ArrayLike<number>, line: Polyline, half: number): [Vec2, Vec2][] {
-  const reach = half + m(8);
-  const bb = line.bbox;
-  const out: [Vec2, Vec2][] = [];
-  for (let k = 0; k + 3 < gates.length; k += 4) {
-    const x0 = gates[k]!, y0 = gates[k + 1]!, x1 = gates[k + 2]!, y1 = gates[k + 3]!;
-    if (Math.max(x0, x1) < bb.minX - reach || Math.min(x0, x1) > bb.maxX + reach || Math.max(y0, y1) < bb.minY - reach || Math.min(y0, y1) > bb.maxY + reach) continue;
-    out.push([{ x: x0, y: y0 }, { x: x1, y: y1 }]);
-  }
-  return out;
 }
 
 /** Whether a street has parking laid out at all (`parkingOf`): only then do the buildings near it move its paint. */
@@ -152,7 +154,7 @@ function parkingOf(net: Network, ribbon: SegmentRibbon, entrances: readonly [Vec
     };
     const kerb = half, inner = half - depth;
     /** A line `offset` from the road's, from `lo` to `hi`: a point a metre where the street bends, none where it runs straight
-     *  (DO NOT keep the metre's points on a straight kerb: each cut the line into another quad and each dash in two, `paintQuads.ts`). */
+     *  (DO NOT keep the metre's points on a straight kerb: each cut the line into another shape and each dash in two, `render/roadMarks.ts`). */
     const runLine = (lo: number, hi: number, offset: number): Vec2[] => simplifyLine(stations(lo, hi).map((s) => at(s, offset)), STRAIGHT);
     let parked: [number, number][] = [];
     for (const [lo, hi] of runs) {
@@ -175,7 +177,10 @@ function parkingOf(net: Network, ribbon: SegmentRibbon, entrances: readonly [Vec
       lines.push({ segment: ribbon.id, points: [at(first, kerb), at(first, inner)], width: BAY_LINE, color: WHITE, dash: null });
       lines.push({ segment: ribbon.id, points: [at(last, kerb), at(last, inner)], width: BAY_LINE, color: WHITE, dash: null });
       // The parking lane's edge, dashed along the whole run, following the road.
-      lines.push({ segment: ribbon.id, points: runLine(first, last, inner), width: BAY_LINE, color: WHITE, dash: MER_DASH });
+      lines.push({
+        segment: ribbon.id, points: runLine(first, last, inner), width: BAY_LINE, color: WHITE, dash: MER_DASH,
+        run: { from: first, to: last, across: inner * side, dash: MER_DASH[0]!, period: MER_DASH[0]! + MER_DASH[1]! },
+      });
       parked.push([first, last]);
     }
     parked = parked.sort((p, q) => p[0] - q[0]);

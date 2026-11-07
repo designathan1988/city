@@ -75,7 +75,7 @@ function extensionObject(): object {
 interface NullCanvasLike { width: number; height: number }
 
 /** A WebGL2 context on `canvas` that accepts every call and draws nothing. */
-export function nullWebGl2(canvas: NullCanvasLike, attributes: WebGLContextAttributes = {}): WebGL2RenderingContext {
+function nullWebGl2(canvas: NullCanvasLike, attributes: WebGLContextAttributes = {}): WebGL2RenderingContext {
   const contextAttributes = {
     alpha: attributes.alpha ?? true, antialias: attributes.antialias ?? true, depth: attributes.depth ?? true,
     stencil: attributes.stencil ?? false, premultipliedAlpha: true, preserveDrawingBuffer: false,
@@ -215,7 +215,7 @@ export class NullCanvas {
 }
 
 /** An image: loaded at once (a turn later), one pixel, its texels never read (SMAA's lookup tables, three's `ImageLoader`). */
-export class NullImage {
+class NullImage {
   width = 1;
   height = 1;
   naturalWidth = 1;
@@ -244,6 +244,20 @@ export class NullImage {
     this.listeners.set(type, (this.listeners.get(type) ?? []).filter((l) => l !== listener));
   }
   decode(): Promise<void> { return Promise.resolve(); }
+}
+
+/** A null canvas whose listeners are kept, so its context events reach three and the game. */
+export class ListeningCanvas extends NullCanvas {
+  private readonly events = new EventTarget();
+  override addEventListener(type?: string, listener?: EventListenerOrEventListenerObject | null): void {
+    if (type && listener) this.events.addEventListener(type, listener);
+  }
+  override removeEventListener(type?: string, listener?: EventListenerOrEventListenerObject | null): void {
+    if (type && listener) this.events.removeEventListener(type, listener);
+  }
+  override dispatchEvent(event?: Event): boolean {
+    return event ? this.events.dispatchEvent(event) : true;
+  }
 }
 
 /** The page's globals the scene reads, as light as they come; `restore` puts back what was there.

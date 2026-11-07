@@ -1,5 +1,5 @@
 import type { ChangeJournal } from '@world/changes';
-import { NetworkLength } from '@world/networkLength';
+import { DocRoadLength } from '@world/docLength';
 import type { Network, SegmentRibbon } from '@world/network';
 import { m, stepsIn } from '@world/units';
 import { IdSlots, grown } from '@core/idSlots';
@@ -37,7 +37,7 @@ export const spotKey = (x: number, y: number): number => Math.round(stepsIn(x, 0
 // ------------------------------------------------------------ the walls
 
 /** The side of a wall cell: a few buildings each, a sight line of 300 m reads some twenty. */
-const WALL_CELL = m(32);
+const WALL_CELL = m(25);
 /** Walls are filed over their box grown by this */
 const WALL_SLACK = m(0.01);
 
@@ -206,8 +206,8 @@ interface Counts { home: number; shop: number; work: number; civic: number; tota
 const noCounts = (): Counts => ({ home: 0, shop: 0, work: 0, civic: 0, total: 0 });
 const MIX_KINDS: readonly Kind[] = ['home', 'shop', 'work', 'civic'];
 
-/** The side of a mix cell. */
-const MIX_CELL = m(128);
+/** The side of a mix cell: half a world cell (`world/cells.ts` CELL). */
+const MIX_CELL = m(125);
 /** Rounding room in the test of a whole cell inside or outside the circle: the cells near the edge are counted building by building. */
 const MIX_SLACK = m(0.001);
 
@@ -346,8 +346,8 @@ export class BuildingMix {
 
 /** Street length within `r` of (x, y), world units */
 export class StreetLength {
-  /** The street length of the whole map (`world/networkLength.ts`). */
-  private readonly whole = new NetworkLength();
+  /** The street length of the whole map (`world/docLength.ts`): the document's roads, whatever roads the network holds. */
+  private readonly whole = new DocRoadLength();
   /** Each ribbon's straight pieces as the walk reads them: middle x, middle y, length. Ribbons are never changed in place. */
   private readonly pieces = new WeakMap<SegmentRibbon, Float64Array>();
 
@@ -364,9 +364,9 @@ export class StreetLength {
     return total;
   }
 
-  /** DO NOT sum every ribbon of the map when the network moves: every road drawn walked the town's roads. */
+  /** DO NOT sum every road of the map when the network moves: every road drawn walked the town's roads. */
   private wholeMap(net: Network): number {
-    return this.whole.of(net);
+    return this.whole.of(net.doc);
   }
 
   /** The pieces of `ribbon` whose middle is within `r` of (x, y), added to `total` in order. */

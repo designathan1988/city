@@ -1,5 +1,6 @@
 import { WEAK_MACHINE } from '@core/weakMachine';
 import type { AdoptLane, CloseLane, FromJob, JobService, ToJob } from './jobScope';
+import { type JobSpec, JobQueue, type Queued } from './jobQueue';
 
 /** THE JOB SYSTEM: one pool of workers (hardwareConcurrency - 2, within the machine's memory) for every kind of work off the page, in place of a pool per kind */
 /** DO NOT make every worker at the start nor give a kind's job to any free worker: each worker is a whole JS heap with the code and state of every service it ran, so 22 of them each running every service took the page's process past 6 GB on a 3 x 3 tile region (2026-10-16, Chrome memory-infra: 2.8 GB of V8 in the workers, out of memory at 8 GB) - workers are made as work waits, and a kind's jobs go first to the workers that already run it */
@@ -13,12 +14,20 @@ const PAGE_POOL_CAGE_SHARE = 1 / 5;
 const WORKER_HEAP_BYTES = 170 * 2 ** 20;
 
 /** Services whose one job runs for seconds: kept on workers of their own, never beside another kind's lane or a queued job (a streamed tile is 2-25 s, `cityTile.worker.ts`: the traffic's conflict pairs waited behind tile after tile and the city's clock stood still). */
-const LONG_RUNNING: readonly JobService[] = ['growth', 'cityGen', 'networkBake'];
+const LONG_RUNNING: readonly JobService[] = ['growth', 'cityGen', 'networkBake', 'cityGrowth'];
 
-/** Services whose worker no queued job runs on (where another worker can take it), all on one worker (never one each: the short side has two, the V8 cage's count, `jobWorkers`): the save's writes are a few short awaits, and each waited for the job running on its worker - under load a write took past a reload, the edit lost (conf15, conf22). */
-const KEPT_CLEAR: readonly JobService[] = ['save'];
+/** Services whose worker no queued job runs on (where another worker can take it), all on one worker (never one each: the short side has two, the V8 cage's count, `jobWorkers`): the save's writes are a few short awaits, and each waited for the job running on its worker - under load a write took past a reload, the edit lost (conf15, conf22). And the derived cache's writer (`derivedWriter.worker.ts`), its reads what the opening waits for: on the desktop's one other page worker, which runs every job of the page's threads (the buildings' cover, the gardens), the 10 km city's 694 kept road tiles (15 MB, read in ~0.2 s) came 17.4 s after they were asked (2026-10-27). */
+const KEPT_CLEAR: readonly JobService[] = ['save', 'derivedWriter'];
 /** Lanes whose messages hold all they read (no shared buffer the job keeps reading: `roadTilePool.ts` hands each share its roads, the ground asked back by `need`), served on the desktop by the long workers of the job processes, outside the page's cage. DO NOT keep the road tiles to the page's short workers there: the lanes were `laneWorkers` of them, ONE on the desktop, and a large city's opening waited 5.6 s on that one worker for its road surfaces while six job processes stood idle (2026-10-21). */
-const PROCESS_LANES: readonly JobService[] = ['roadTiles'];
+/** And every lane whose messages hold what they read (no buffer of the page's memory read live, no store of the page's origin): the roads' blocks, their far levels and the network's far roads, the simulation's lots' bays and conflict pairs (`main.ts` simLanes), the plates' land (`flatGround`: its relief and its square), the plates' ecology, the terrain's light, the fractures, the people's levels. The page keeps the citizens' bake (`citizenBake`: it fetches the bodies from the page's assets by their path), the save and the derived cache's writer (its IndexedDB), the ground's shapes and pads (`groundShape`: the buildings' table rows by reference, a whole table copied to cross) and the lanes that read the shared ground (`roadStations`, `landStroke`). DO NOT leave them to the page's short side: a 10 km city's opening queued 155 of their messages on its one lane worker while 22 cores stood idle (2026-10-26). */
+const PROCESS_LANES: readonly JobService[] = ['roadTiles', 'roadCoarse', 'roadFar', 'bays', 'conflicts', 'flatGround', 'ecology', 'terrainLight', 'fracture', 'peopleLod'];
+/**
+ * Lanes of the job processes that keep their workers to themselves (no other kind's lane there, `Host.alone`): the road tiles, what a large
+ * city's opening waits for, a share of tiles a message. DO NOT put them beside the other kinds' lanes: a worker runs its messages in turn, and a
+ * share waited behind a batch of the traffic's bays or conflicts, of the plates' land or of the people's levels - the 10 km city's 29 tiles
+ * took 21.9 s, their workers silent 10 s, while 8 workers of the job processes hosted no lane (2026-10-27).
+ */
+const ALONE: readonly JobService[] = ['roadTiles'];
 /** Whether `service`'s lanes go to the job processes' workers (`PROCESS_LANES`): on the desktop, with a long side of more than one. */
 const inProcesses = (service: JobService): boolean => PROCESS_LANES.includes(service) && system.makeWorker !== null && longWorkers() > 1;
 const keptClear = (host: Host): boolean => KEPT_CLEAR.some((service) => host.services.has(service));
@@ -28,34 +37,18 @@ const otherKinds = (host: Host): number => { let n = 0; for (const service of ho
 /** Workers set apart for the long-running services: the pool less two kept for every other kind, one at least (the desktop's, in job processes outside the page's cage).
  *  In a browser one: the long-running services have one lane (`growthPool.ts`), and a second long worker of the page's four took no lane, while the traffic's, the roads' and the ground's lanes and the save were crowded on the other two, the save waiting behind a batch of conflicts or bays (JOB-02). */
 export function longWorkers(): number {
-  const n = jobWorkers();
   if (!system.makeWorker) return 1;
+  // The desktop's: the threads its job processes run, a weaker machine's played on this one fewer (its threads less the page's and the simulation's).
+  if (system.processThreads !== null) return Math.max(1, WEAK_MACHINE.threads ? Math.min(system.processThreads, WEAK_MACHINE.threads - 2) : system.processThreads);
+  const n = jobWorkers();
   return n >= 3 ? n - 2 : 1;
 }
 
+/** The page's own workers on the desktop: the save's, and one for the lanes that read the page's memory (`PROCESS_LANES` names the rest). */
+const DESKTOP_PAGE_WORKERS = 2;
+
 /** Workers for every other kind (the traffic's lanes, the cells, the far levels, the roads, the ground): the rest of the pool, one at least. */
 export const shortWorkers = (): number => Math.max(1, jobWorkers() - longWorkers());
-
-/** A job of the central queue (Cidade's job pool, `submit`): its message written when a worker takes it, answered once. */
-interface JobSpec {
-  readonly service: JobService;
-  /** A newer job with the same key replaces this one: never sent if still waiting, its answer dropped if begun. */
-  readonly key: string | null;
-  /** Lower first: the job's distance to the eye (`focusDistance`), in metres, or below it for what must come first; with `at`, its band (what comes before the distance, the same for a kind of job). */
-  readonly priority: number;
-  /** Where on the map the job's work stands: its rank is `priority` plus its distance to where the view looks NOW, re-ranked as the view moves (`setJobFocus`), not where it looked when the job was asked. */
-  readonly at?: readonly [number, number];
-  /** The message, written only when a worker takes the job (a job waiting its turn holds no copy of it); `to`, the worker taking it. */
-  readonly write: (to: JobTaker) => { readonly data: unknown; readonly transfer: Transferable[] };
-  /** Fit for a worker in a desktop job process (`processWorker.ts`): its message holds only what the job reads (`cellPool.ts` the ground's plates around it), copied there. Without it the job waits for the page's own workers. */
-  readonly crosses?: boolean;
-  readonly done: (answer: unknown) => void;
-  /** Its worker failed, or none can run it: the asker does it another way. */
-  readonly failed: (message: string) => void;
-}
-
-/** The worker a job's message is written for: whether it shares the page's memory (a worker of the page), or every shared buffer of the message is copied to it (a desktop job process's, `processWorker.ts` unshared). */
-export interface JobTaker { readonly sharesMemory: boolean }
 
 /** A job of the queue as its asker holds it. */
 export interface JobTicket {
@@ -65,144 +58,13 @@ export interface JobTicket {
   readonly pending: boolean;
 }
 
-/** A job in the queue: waiting, running on a worker, or over (answered, cancelled or replaced by a newer one of its key). */
-interface Queued { readonly seq: number; readonly spec: JobSpec; state: 'waiting' | 'running' | 'over'; rank: number }
+/** How many of the queue's first jobs (its heap's first entries: its nearest few levels) are looked through for one whose worker is free, while
+ *  the first waits for its affinity's busy worker (`dispatch`). Past them the first goes to any free worker: DO NOT hold a free worker idle for
+ *  an affinity (the pool's work waits for no one worker), the affinity then moving with it. */
+const AFFINITY_LOOK = 32;
 
 /** A job's place in the queue now: its band and its distance to the view's focus (`JobSpec.at`), or its priority alone. */
 const rankOf = (spec: JobSpec): number => (spec.at ? spec.priority + focusDistance(spec.at[0], spec.at[1]) : spec.priority);
-
-/** ONE PRIORITY QUEUE FOR EVERY WORKER: a binary min-heap by (priority, order asked); a job replaced or cancelled is left in it and skipped when popped */
-class JobQueue {
-  private readonly heap: Queued[] = [];
-  /** Each key's newest job, while it is not over. */
-  private readonly newest = new Map<string, Queued>();
-  private seq = 0;
-  private count = 0;
-
-  /** Jobs waiting for a worker. */
-  get waiting(): number {
-    return this.count;
-  }
-
-  /** Jobs ever asked of the queue (read only: the debugging lab). */
-  get submitted(): number {
-    return this.seq;
-  }
-
-  submit(spec: JobSpec): Queued {
-    const job: Queued = { seq: ++this.seq, spec, state: 'waiting', rank: rankOf(spec) };
-    if (spec.key !== null) {
-      const older = this.newest.get(spec.key);
-      if (older) this.end(older);
-      this.newest.set(spec.key, job);
-    }
-    this.count++;
-    this.push(job);
-    // DO NOT let the jobs over (replaced or cancelled) pile up in the heap: they are left in it and skipped when popped, and a camera moving replaces thousands a second (the far nodes and the cells asked again under their keys), each dispatch popping them one by one (500 ms of a 16 s drag, 2026-10-16); compacted once they outnumber the waiting.
-    if (this.heap.length > this.count * 2 + 64) this.compact();
-    return job;
-  }
-
-  /** Every waiting job placed by where the view looks now (`setJobFocus`), the heap made again. */
-  rerank(): void {
-    for (const job of this.heap) if (job.state === 'waiting') job.rank = rankOf(job.spec);
-    this.compact();
-  }
-
-  /** The heap made again of the waiting jobs alone (Floyd's build-heap, O(n)). */
-  private compact(): void {
-    const a = this.heap;
-    let n = 0;
-    for (const job of a) if (job.state === 'waiting') a[n++] = job;
-    a.length = n;
-    for (let i = (n >> 1) - 1; i >= 0; i--) this.sink(i);
-  }
-
-  /** The waiting job that would run next, left waiting; null when none waits. */
-  peek(): Queued | null {
-    while (this.heap.length > 0 && this.heap[0]!.state !== 'waiting') this.pop();
-    return this.heap[0] ?? null;
-  }
-
-  /** The waiting job to run next, marked running; null when none waits. */
-  take(): Queued | null {
-    for (let job = this.pop(); job; job = this.pop()) {
-      if (job.state !== 'waiting') continue;
-      this.count--;
-      job.state = 'running';
-      return job;
-    }
-    return null;
-  }
-
-  cancel(job: Queued): void {
-    this.end(job);
-  }
-
-  /** A running job's answer, handed to its asker if it is still wanted. */
-  answer(job: Queued, data: unknown): void {
-    if (this.end(job) === 'running') job.spec.done(data);
-  }
-
-  /** A running job that failed, said to its asker if it is still wanted. */
-  fail(job: Queued, message: string): void {
-    if (this.end(job) === 'running') job.spec.failed(message);
-  }
-
-  /** Every waiting job failed: no worker can run them. */
-  failAll(message: string): void {
-    for (let job = this.take(); job; job = this.take()) this.fail(job, message);
-  }
-
-  /** The job over; what it was. */
-  private end(job: Queued): Queued['state'] {
-    const was = job.state;
-    if (was === 'waiting') this.count--;
-    job.state = 'over';
-    if (job.spec.key !== null && this.newest.get(job.spec.key) === job) this.newest.delete(job.spec.key);
-    return was;
-  }
-
-  private less(a: Queued, b: Queued): boolean {
-    return a.rank < b.rank || (a.rank === b.rank && a.seq < b.seq);
-  }
-
-  private push(job: Queued): void {
-    const a = this.heap;
-    a.push(job);
-    let i = a.length - 1;
-    while (i > 0) {
-      const up = (i - 1) >> 1;
-      if (!this.less(a[i]!, a[up]!)) break;
-      [a[i], a[up]] = [a[up]!, a[i]!];
-      i = up;
-    }
-  }
-
-  private pop(): Queued | undefined {
-    const a = this.heap;
-    const top = a[0];
-    const last = a.pop();
-    if (top === undefined || last === undefined || a.length === 0) return top;
-    a[0] = last;
-    this.sink(0);
-    return top;
-  }
-
-  /** The job at `i` moved down until both children are after it. */
-  private sink(i: number): void {
-    const a = this.heap;
-    for (;;) {
-      const l = i * 2 + 1, r = l + 1;
-      let m = i;
-      if (l < a.length && this.less(a[l]!, a[m]!)) m = l;
-      if (r < a.length && this.less(a[r]!, a[m]!)) m = r;
-      if (m === i) return;
-      [a[i], a[m]] = [a[m]!, a[i]!];
-      i = m;
-    }
-  }
-}
 
 /** A worker of the pool: the lanes it hosts (`place`), its port per service for queued jobs, the queued job it runs, whether it failed. */
 interface Host {
@@ -224,6 +86,8 @@ interface Host {
   firstWork: number;
   /** Told when it fails: the lanes it serves for another thread (`jobChannel`), whose ports say nothing of it. */
   readonly channelLost: (() => void)[];
+  /** It hosts the lanes of a kind that keeps its workers to itself (`ALONE`): no other kind's lane is put there. */
+  alone: boolean;
 }
 
 /** The pool of this thread: its workers (made as work waits, `grow`), its lanes by port, its queue and the point the view looks at. */
@@ -231,8 +95,8 @@ class JobSystem {
   readonly workers: Host[] = [];
   readonly ports = new Map<number, JobPort>();
   nextPort = 1;
-  readonly queue = new JobQueue();
-  /** The services whose lanes go first (`laneFirst`): their workers are given no queued job while a message of theirs is in flight (`hostFor`). */
+  readonly queue = new JobQueue(rankOf);
+  /** The services whose lanes go first (`laneFirst`): their workers are given no queued job while they do, where another worker can take it (`keptForFirst`). */
   readonly firstLanes = new Set<JobService>();
   focusX = 0;
   focusY = 0;
@@ -243,14 +107,19 @@ class JobSystem {
   setup: ((worker: Worker) => void) | null = null;
   /** Where a worker of a side is made instead of a page's Worker (`setJobWorkerMaker`: the desktop's utility process for the long side); null: the page's. */
   makeWorker: ((long: boolean) => Worker | null) | null = null;
+  /** The job threads the desktop's processes run (`setJobWorkerMaker`: the shell's count from the machine's cores and memory); null in a browser. */
+  processThreads: number | null = null;
   /** Tiles of the map waiting for the long side's lanes (`tilesWaiting`): its workers take no queued job meanwhile. */
   tilesWaiting = false;
+  /** The worker that ran the last job of each affinity (`JobSpec.affinity`), while it lives. */
+  readonly owners = new Map<string, Host>();
 }
 const system = new JobSystem();
 
-/** Where the pool's workers are made, by side (`long`: tiles and growth); null from it: the page's own Worker. On the desktop the long side goes to a utility process outside the renderer's V8 cage (`jobs/processWorker.ts`), whose `terminate` ends that thread; the short side stays the page's own. */
-export function setJobWorkerMaker(make: ((long: boolean) => Worker | null) | null): void {
+/** Where the pool's workers are made, by side (`long`: tiles and growth); null from it: the page's own Worker. On the desktop the long side goes to a utility process outside the renderer's V8 cage (`jobs/processWorker.ts`), whose `terminate` ends that thread; the short side stays the page's own. `threads`: how many the processes run (the shell's, by the machine). */
+export function setJobWorkerMaker(make: ((long: boolean) => Worker | null) | null, threads: number | null = null): void {
   system.makeWorker = make;
+  system.processThreads = make ? threads : null;
 }
 
 /** Told to every worker of the pool, those made and those to come, before its first job: on the desktop, the port it reads and writes the tiles through (`editor/workerParts.ts`). */
@@ -265,6 +134,8 @@ export function jobWorkers(): number {
   const cores = WEAK_MACHINE.threads ?? ((typeof navigator !== 'undefined' ? navigator.hardwareConcurrency : 0) || 2);
   // Inside the simulation's worker (no document): its own few, for the lots' bays and the junctions' pairs.
   if (typeof document === 'undefined') return Math.max(1, Math.min(2, cores - 2));
+  // The desktop's: its job processes' threads (each process a cage of its own) and the page's few, DO NOT bounded by the page's cage.
+  if (system.processThreads !== null) return longWorkers() + DESKTOP_PAGE_WORKERS;
   const share = system.makeWorker ? POOL_CAGE_SHARE : PAGE_POOL_CAGE_SHARE;
   const byCage = Math.floor((CAGE_BYTES * share) / WORKER_HEAP_BYTES);
   return Math.max(1, Math.min(cores - 2, byCage));
@@ -299,7 +170,7 @@ function grow(long: boolean): Host | null {
   if (made === null && pageWorkers() >= pageRoomWorkers()) return null;
   const worker = made ?? new Worker(new URL('../job.worker.ts', import.meta.url), { type: 'module' });
   system.setup?.(worker);
-  const host: Host = { worker, long, inPage: made === null, freeSince: NaN, ports: 0, services: new Map(), queuePorts: new Map(), job: null, failed: false, laneWork: 0, firstWork: 0, channelLost: [] };
+  const host: Host = { worker, long, inPage: made === null, freeSince: NaN, ports: 0, services: new Map(), queuePorts: new Map(), job: null, failed: false, laneWork: 0, firstWork: 0, channelLost: [], alone: false };
   worker.onmessage = (event: MessageEvent<FromJob>) => {
     const port = system.ports.get(event.data.port);
     if (port) {
@@ -350,6 +221,12 @@ function retire(host: Host): void {
   const at = system.workers.indexOf(host);
   if (at >= 0) system.workers.splice(at, 1);
   host.worker.terminate();
+  forgetOwner(host);
+}
+
+/** A worker gone (let go, or failed): the affinities it held go to whichever worker runs their next job. */
+function forgetOwner(host: Host): void {
+  for (const [key, owner] of system.owners) if (owner === host) system.owners.delete(key);
 }
 
 /** How long a worker of the page stands with nothing on it before it may be let go: a burst of jobs keeps its workers. */
@@ -379,6 +256,7 @@ function retireIdle(): void {
     if (left > 0) { waiting = Math.min(waiting, left); continue; }
     system.workers.splice(i--, 1);
     host.worker.terminate();
+    forgetOwner(host);
     over--;
   }
   // The others idle not long enough yet: looked at again when they will have been.
@@ -389,7 +267,7 @@ function retireIdle(): void {
 
 /** A worker's queued job failed with it; a worker that failed whole (`dead`) is given no queued job again. */
 function failHost(host: Host, message: string, dead: boolean): void {
-  if (dead) host.failed = true;
+  if (dead) { host.failed = true; forgetOwner(host); }
   const job = host.job;
   host.job = null;
   if (job) system.queue.fail(job, message);
@@ -406,6 +284,21 @@ function queuePort(host: Host, service: JobService): number {
   return port;
 }
 
+/** Whether a worker hosts a lane that goes first (`laneFirst`: the road tiles behind the opening's curtain). */
+const hostsFirstLane = (host: Host): boolean => {
+  if (!system.firstLanes.size) return false;
+  for (const service of host.services.keys()) if (system.firstLanes.has(service)) return true;
+  return false;
+};
+/**
+ * Whether a worker is kept from queued jobs for the lanes that go first on it: while they go first, and another worker can take the jobs. DO NOT
+ * give it a job while its lane is idle between shares: the lane's next share waited behind the whole job (a cell's, a plate's of seconds), its
+ * worker silent 10 s with tiles waiting, and the 10 km city's road surfaces took 14-70 s of wall time for 114-1,050 tiles (2026-10-27).
+ */
+function keptForFirst(host: Host): boolean {
+  return hostsFirstLane(host) && system.workers.some((h) => h !== host && !h.failed && !hostsFirstLane(h) && !keptClear(h));
+}
+
 /** The worker a queued job of `service` goes to: a free one already running the kind, else a new one while the pool has room, else any free one
  *  - a long-running service's worker only while its lanes have nothing in flight: a tile asked after it waits one job, never a job behind a tile (only a pool of one worker shares it otherwise).
  *  - a long worker in a desktop job process (`inPage` false) only for a job fit to cross (`JobSpec.crosses`), and one made for it while the long side keeps room for one more: DO NOT send another there - its message went copied whole, every ground plate of the page's shared memory with it (`processWorker.ts` unshared, ~33 MB a cell job, JOB-03). With the cells kept to the page's two short workers, the large city's first opening waited ~6 s for the buildings in view while six job processes stood idle (2026-10-21).
@@ -415,6 +308,7 @@ function hostFor(service: JobService, crosses: boolean): Host | null {
   for (const host of system.workers) {
     if (host.job || host.failed) continue;
     if (keptClear(host) && system.workers.length > 1) continue;
+    if (keptForFirst(host)) continue;
     if (host.long && system.workers.length > 1) {
       // Of the idle long workers, one already running the kind first.
       if (host.laneWork === 0 && (host.inPage || crosses) && (idleLong === null || (!idleLong.queuePorts.has(service) && host.queuePorts.has(service)))) idleLong = host;
@@ -451,22 +345,60 @@ function growSpareLong(): Host | null {
   return grow(true);
 }
 
-/** Each waiting job, nearest first, to a worker free for it (Cidade's `pump`): one queued job at a time on a worker. */
+/** Whether `host` may take a queued job now, as `hostFor` would give it one, free with nothing in flight: its affinity's worker (`JobSpec.affinity`). */
+function freeFor(host: Host, crosses: boolean): boolean {
+  if (host.job || host.failed || host.laneWork > 0 || host.firstWork > 0) return false;
+  if (keptClear(host) && system.workers.length > 1) return false;
+  if (keptForFirst(host)) return false;
+  if (host.long && system.workers.length > 1) return host.inPage || crosses;
+  return true;
+}
+
+/** A job's affinity's worker (`owners`), if it lives; null with none. */
+const ownerOf = (job: Queued): Host | null => (job.spec.affinity !== undefined ? system.owners.get(job.spec.affinity) ?? null : null);
+
+/** Each waiting job, nearest first, to a worker free for it (Cidade's `pump`): one queued job at a time on a worker. A job of an affinity to the
+ *  worker that ran its last (`JobSpec.affinity`: what it keeps read there, not made again); while that worker is busy the next jobs near the top
+ *  whose own worker is free (or that have none) go first (`AFFINITY_LOOK`); with none, the job to any free worker, its affinity with it. */
 function dispatch(): void {
-  for (let job = system.queue.peek(); job; job = system.queue.peek()) {
-    let host: Host | null;
+  for (let top = system.queue.peek(); top; top = system.queue.peek()) {
+    let job = top;
+    let host: Host | null = null;
     try {
-      host = hostFor(job.spec.service, job.spec.crosses === true);
+      const owner = ownerOf(top);
+      if (owner && freeFor(owner, top.spec.crosses === true)) host = owner;
+      else if (owner) {
+        // Its worker busy: a job near the top with a free worker of its own, or none of its own and a free worker for it, goes first.
+        const other = system.queue.near(AFFINITY_LOOK, (q) => {
+          if (q === top) return false;
+          const own = ownerOf(q);
+          return own ? freeFor(own, q.spec.crosses === true) : true;
+        });
+        const own = other ? ownerOf(other) : null;
+        if (other && own) { job = other; host = own; }
+        else if (other) {
+          host = hostFor(other.spec.service, other.spec.crosses === true);
+          if (host) job = other;
+        }
+      }
+      host ??= hostFor(job.spec.service, job.spec.crosses === true);
     } catch (error) {
       system.queue.failAll(`no job workers: ${String(error)}`);
       return;
+    }
+    // No worker for it now: the first job fit to cross, to a job process that stands free (one the first job could not take anyway).
+    if (!host && job.spec.crosses !== true) {
+      const away = system.queue.awayTop();
+      const there = away ? hostFor(away.spec.service, true) : null;
+      if (away && there) { job = away; host = there; }
     }
     if (!host) {
       if (system.workers.length > 0 && system.workers.every((h) => h.failed)) system.queue.failAll('every job worker failed');
       retireIdle();
       return;
     }
-    system.queue.take();
+    if (job === top) system.queue.take(); else system.queue.takeThis(job);
+    if (job.spec.affinity !== undefined) system.owners.set(job.spec.affinity, host);
     try {
       const { data, transfer } = job.spec.write({ sharesMemory: host.inPage });
       const message: ToJob = { port: queuePort(host, job.spec.service), service: job.spec.service, data, seq: job.seq };
@@ -508,13 +440,14 @@ export interface JobWorkerStats {
 }
 
 /** The pool as it stands, read only: its workers, the queue's waiting jobs, the most it may hold (the debugging lab's consumers; nothing is changed). */
-export function jobPoolStats(): { readonly most: number; readonly longMost: number; readonly shortMost: number; readonly waiting: number; readonly submitted: number; readonly ports: number; readonly workers: readonly JobWorkerStats[] } {
+export function jobPoolStats(): { readonly most: number; readonly longMost: number; readonly shortMost: number; readonly waiting: number; readonly waitingBy: Record<string, { readonly page: number; readonly away: number }>; readonly submitted: number; readonly ports: number; readonly workers: readonly JobWorkerStats[] } {
   const now = performance.now();
   return {
     most: jobWorkers(),
     longMost: longWorkers(),
     shortMost: shortWorkers(),
     waiting: system.queue.waiting,
+    waitingBy: system.queue.waitingBy(),
     submitted: system.queue.submitted,
     ports: system.ports.size,
     workers: system.workers.map((h) => ({
@@ -549,19 +482,32 @@ export function setJobFocus(x: number, y: number): void {
   system.queue.rerank();
 }
 
-/** How far the view moves before the waiting jobs are ranked again: a fraction of a cell (`BATCH_CELL` 256 m). */
+/** How far the view moves before the waiting jobs are ranked again: a fraction of a cell (`BATCH_CELL` 250 m). */
 const RERANK_MOVE = 64;
 
 /** How far a point is from where the view looks (`setJobFocus`): a queued job's priority. */
-export const focusDistance = (x: number, y: number): number => Math.hypot(x - system.focusX, y - system.focusY);
+const focusDistance = (x: number, y: number): number => Math.hypot(x - system.focusX, y - system.focusY);
 
 /** DO NOT pin a lane by a hash of its service, nor put a long-running service's lane on a worker of the other kinds (or the other way round): the traffic's conflict pairs waited behind tile after tile and the city's clock stood still (the long lanes were placed last, on the workers the traffic's lanes already held) */
+/** Whether a worker hosts a lane of the job processes' (`PROCESS_LANES`). */
+const hostsProcessLane = (host: Host): boolean => { for (const service of host.services.keys()) if (PROCESS_LANES.includes(service)) return true; return false; };
+/** The long workers the job processes' lanes may take: half the long side, the rest kept free of lanes for the long jobs (a city's growth, the cells' jobs: `hostFor` gives a long-running job only a worker with no lane). */
+const processLaneHosts = (): number => Math.max(1, Math.floor(longWorkers() / 2));
+
 function place(service: JobService): Host {
   const long = LONG_RUNNING.includes(service) || inProcesses(service);
+  // A lane of the job processes' goes to the workers that host them once they are as many as they may be (`processLaneHosts`).
+  const processLane = inProcesses(service);
+  // A kind that keeps its workers to itself (`ALONE`): a worker with no other kind's lane, and none of its workers counted among the others' hosts.
+  const alone = processLane && ALONE.includes(service);
+  const laneHosts = processLane ? system.workers.filter((w) => w.long && !w.alone && hostsProcessLane(w)).length : 0;
+  const hostsFull = processLane && !alone && laneHosts >= processLaneHosts();
   let best: Host | null = null;
   let bestScore = Infinity;
   for (const w of system.workers) {
     if (w.long !== long) continue;
+    if (alone ? [...w.services.keys()].some((kind) => kind !== service) : w.alone) continue;
+    if (hostsFull && !hostsProcessLane(w)) continue;
     // Lanes of a kind on different workers, then the least loaded; the kept-clear services' worker kept to them, on a worker of their own where there is one.
     // The kept-clear lanes together on their worker (never a worker each: the pool's workers are the jobs').
     const clear = KEPT_CLEAR.includes(service);
@@ -572,11 +518,13 @@ function place(service: JobService): Host {
   // A worker with nothing on it scores 0: one is made for the lane while its side has room, as if every worker were there.
   // A kept-clear lane goes to their own worker once there is one, not to a new worker.
   const own = best !== null && KEPT_CLEAR.includes(service) && keptClear(best) && otherKinds(best) === 0;
-  const roomForLane = long || KEPT_CLEAR.includes(service) || system.workers.filter((w) => !w.long).length < laneWorkers();
+  const roomForLane = (long && !hostsFull) || KEPT_CLEAR.includes(service) || (!long && system.workers.filter((w) => !w.long).length < laneWorkers());
   if (best === null || (bestScore > 0 && !own && roomForLane)) best = grow(long) ?? best;
   // A pool of one worker: the two sides share it.
   if (!best) best = system.workers.reduce<Host | null>((a, w) => (a === null || w.ports < a.ports ? w : a), null);
   if (!best) throw new Error('no job worker could be made');
+  // Kept to its kind where it had a worker of its own (none left: it shares one, as before).
+  if (alone && [...best.services.keys()].every((kind) => kind === service)) best.alone = true;
   return best;
 }
 
@@ -587,10 +535,12 @@ function place(service: JobService): Host {
  */
 export function laneFirst(service: JobService, on: boolean): void {
   if (on) system.firstLanes.add(service); else system.firstLanes.delete(service);
+  // Its workers free for the queue again (`keptForFirst`): the jobs waiting given out now, not at the next answer.
+  if (!on) dispatch();
 }
 
 /** A kind of work's lane in the pool: answers as a `Worker` does (`onmessage`, `onerror`, `postMessage`, `terminate`). */
-export class JobPort {
+class JobPort {
   onmessage: ((event: MessageEvent) => void) | null = null;
   onerror: ((event: ErrorEvent) => void) | null = null;
   onmessageerror: ((event: MessageEvent) => void) | null = null;
@@ -652,6 +602,8 @@ export class JobPort {
     this.host.ports--;
     const left = (this.host.services.get(this.service) ?? 1) - 1;
     if (left > 0) this.host.services.set(this.service, left); else this.host.services.delete(this.service);
+    // Its last lane gone: free for any kind's again.
+    if (this.host.services.size === 0) this.host.alone = false;
     // Its worker counted free now, as an answer that empties it does (`answered`): the waiting jobs given out (JOB-16: they waited for another job's answer or a new one).
     if (freed) dispatch();
     retireIdle();

@@ -103,12 +103,14 @@ export interface RunChunk extends ShellChunk {
   readonly grid: Int16Array;
   /** Each vertex's opening and frame colour, `FACADE_BYTES` bytes. */
   readonly opening: Uint8Array;
+  /** The detail level's runs (their openings closed by their own panes): drawn over the near shell (`kit.facadeNear`). */
+  readonly near?: true;
 }
 
 export interface BuildingChunk {
   /** The shell, one fragment per finish it uses; at the far level every face but the runs of bays with openings. */
   readonly shells: Readonly<Partial<Record<Finish, ShellChunk>>>;
-  /** The far level only: its runs of bays with openings, one fragment per finish, drawn by the facade's material; none on the detail. */
+  /** Its runs of bays, one fragment per finish, drawn by the facade's material: the far level's with openings, the detail level's every wall laid as one face a run. */
   readonly runs?: Readonly<Partial<Record<Finish, RunChunk>>>;
   readonly parts: Readonly<Record<PartKind, PartBatch>>;
   /** Furniture of a cut-open interior, by kind; absent when none is drawn. */

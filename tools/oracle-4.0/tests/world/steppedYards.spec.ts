@@ -1,3 +1,4 @@
+import { MeshBasicMaterial } from 'three';
 import { describe, expect, it } from 'vitest';
 import { RoadDoc } from '@world/doc';
 import { Network } from '@world/network';
@@ -7,11 +8,20 @@ import { lotSurfaces } from '@world/buildings/lots';
 import { floorHeight } from '@world/buildings/foundation';
 import { localToWorld, volumeLift } from '@world/buildings/geometry';
 import { localFootprint } from '@world/buildings/footprints';
-import { LOT_PLATE, buildingPads } from '@world/buildings/pads';
+import { LOT_PLATE, type TownPads, buildingPads, padLevelAt, ringDistance } from '@world/buildings/pads';
 import { validateBuilding } from '@world/buildings/validate';
 import { elementRect } from '@world/buildings/geometry';
 import { emitChunk, withShellParts } from '@render/buildings/buildingMesh';
 import { TERRAIN_CELL, TERRAIN_HALF } from '@render/terrain';
+import { TERRAIN_SEGMENTS } from '@render/terrainGrid';
+import { LOD_PATCH } from '@render/terrainLevels';
+import { type SeamGrid, joinSeams, plateSeams, seamHeightAt } from '@render/terrainSeams';
+import { RoadFootprints } from '@render/roadFootprints';
+import { buildRoadSurfaces } from '@render/roadSurfaces';
+import { SurfaceInputs } from '@render/roadSurfaceInputs';
+import type { SceneMaterials } from '@render/materials';
+import { plateOf, plateRegion, platesOver } from '@world/bounds';
+import { cellDiagonal, cellHeight } from '@world/groundPatch';
 import { buildRoadElevation } from '@world/elevation';
 import type { Building } from '@world/buildings/types';
 import { growOnLot } from '@world/growth/zoning';
@@ -46,6 +56,84 @@ function inside(ring: readonly { x: number; y: number }[], i: number, by: number
   const p = ring[i]!, d = Math.hypot(cx - p.x, cy - p.y) || 1;
   return { x: p.x + ((cx - p.x) / d) * by, y: p.y + ((cy - p.y) / d) * by };
 }
+
+/**
+ * The ground as the terrain draws it (`terrain.ts` renderedHeightAt) over the plates `area` reaches: each plate's grid of corners at `corner`'s
+ * heights, a cell split along the diagonal it is drawn with (`groundPatch.ts` cellDiagonal, cellHeight), and the cells the surfaces laid on the
+ * ground cut along their edges (`terrainSeams.ts`): the roads' footprints (hard) and the paved lots' rings at the ground graded under their
+ * plates (soft), as `renderer.ts` hands them to the terrain (`seamSource`, `pavedLotRings`) and `flatAtlas.ts` moves them to a plate's frame
+ * (`seamsOf`). A corner is read when the cut or a point asks for it.
+ */
+function drawnGround(corner: (x: number, y: number) => number, pads: TownPads, footprints: RoadFootprints, area: readonly [number, number, number, number]):
+  (x: number, y: number) => number {
+  const GRID = TERRAIN_SEGMENTS + 1;
+  const plates = new Map<number, (x: number, y: number) => number>();
+  for (const key of platesOver(area)) {
+    const p = plateRegion(key);
+    const heights = new Float64Array(GRID * GRID).fill(Number.NaN);
+    // Where a corner stands, as the plate's mesh holds it (`terrain.ts` cornerX, cornerY).
+    const cornerAt = (i: number): number => {
+      if (Number.isNaN(heights[i]!)) {
+        heights[i] = corner(p.cx + Math.fround((i % GRID) * TERRAIN_CELL - TERRAIN_HALF), p.cy - Math.fround(Math.floor(i / GRID) * TERRAIN_CELL - TERRAIN_HALF));
+      }
+      return heights[i]!;
+    };
+    const diagonal = (c: number): number => {
+      const cx = c % TERRAIN_SEGMENTS, cy = (c - cx) / TERRAIN_SEGMENTS;
+      return cellDiagonal(cornerAt(cx + GRID * cy), cornerAt(cx + GRID * (cy + 1)), cornerAt(cx + 1 + GRID * (cy + 1)), cornerAt(cx + 1 + GRID * cy));
+    };
+    const grid: SeamGrid = { n: GRID, cell: TERRAIN_CELL, half: TERRAIN_HALF, corner: cornerAt, diagonal };
+    const reach = TERRAIN_HALF + TERRAIN_CELL;
+    const rect = [p.cx - reach, p.cy - reach, p.cx + reach, p.cy + reach] as const;
+    const soft: Float64Array[] = [];
+    for (const pad of pads.cut([rect]).pads) {
+      pad.rings.forEach((ring, k) => {
+        const box = pad.boxes[k]!;
+        if (!pad.paved[k] || box.maxX < rect[0] || box.minX > rect[2] || box.maxY < rect[1] || box.minY > rect[3]) return;
+        soft.push(Float64Array.from(ring.flatMap((q) => [q.x, q.y, padLevelAt(pad.levels[k]!, q.x, q.y)])));
+      });
+    }
+    const local = (list: readonly Float64Array[]): Float64Array[] => list.map((a) => {
+      const out = Float64Array.from(a);
+      for (let k = 0; k + 1 < out.length; k += 3) { out[k] = out[k]! - p.cx; out[k + 1] = out[k + 1]! - p.cy; }
+      return out;
+    });
+    const seams = plateSeams(grid, { hard: local(footprints.meeting(rect)), soft: local(soft) }, LOD_PATCH);
+    const joined = seams.size ? joinSeams(seams, grid) : null;
+    plates.set(key, (x, y) => {
+      // In a cut cell the terrain drawn there; elsewhere, and under a road, the grid (`terrain.ts` renderedHeightAt, `terrainShaping.ts` sampleCorners).
+      const seam = joined ? seamHeightAt(joined, grid, cornerAt, x, y) : undefined;
+      if (seam !== undefined) return seam;
+      const gx = (x + TERRAIN_HALF) / TERRAIN_CELL, gy = (TERRAIN_HALF - y) / TERRAIN_CELL;
+      const ix = Math.min(TERRAIN_SEGMENTS - 1, Math.floor(gx)), iy = Math.min(TERRAIN_SEGMENTS - 1, Math.floor(gy));
+      return cellHeight(cornerAt(ix + iy * GRID), cornerAt(ix + (iy + 1) * GRID), cornerAt(ix + 1 + (iy + 1) * GRID), cornerAt(ix + 1 + iy * GRID),
+        gx - ix, gy - iy, diagonal(ix + iy * TERRAIN_SEGMENTS));
+    });
+  }
+  return (x, y) => {
+    const key = plateOf(x, y), p = plateRegion(key);
+    return plates.get(key)!(x - p.cx, y - p.cy);
+  };
+}
+
+/** The points of a paving the drawn ground is read at: a little inside each corner of its ring, and every corner of the terrain's grid inside it.
+ *  The drawn ground is flat on each of its triangles, whose corners are the grid's and the outlines' points (`terrainSeams.ts`), and the paving
+ *  is flat across: what stands highest over a paving is at one of these, or on its ring, where the ground meets it at its plate's foot. */
+function pavingPoints(ring: readonly { x: number; y: number }[]): { x: number; y: number }[] {
+  const out = ring.map((_, i) => inside(ring, i, m(0.4)));
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const q of ring) { x0 = Math.min(x0, q.x); y0 = Math.min(y0, q.y); x1 = Math.max(x1, q.x); y1 = Math.max(y1, q.y); }
+  for (let i = Math.ceil(x0 / TERRAIN_CELL); i * TERRAIN_CELL <= x1; i++) {
+    for (let j = Math.ceil(y0 / TERRAIN_CELL); j * TERRAIN_CELL <= y1; j++) {
+      const q = { x: i * TERRAIN_CELL, y: j * TERRAIN_CELL };
+      if (ringDistance(ring, q.x, q.y) === 0) out.push(q);
+    }
+  }
+  return out;
+}
+
+/** A stand-in for the scene's materials: the road surfaces built for their footprints alone. */
+const plainMaterials = new Proxy({}, { get: (_target, key) => key === 'scale' ? new Proxy({}, { get: () => 4 }) : new MeshBasicMaterial() }) as unknown as SceneMaterials;
 
 /** The car park or the loading yard behind the building: a wide paved lot surface beyond the building's back. */
 const isYard = (b: Building, v: Building['volumes'][number]): boolean => {
@@ -166,24 +254,23 @@ describe('car parks and loading yards stepped on a hillside', () => {
       const all = [...doc.buildings.all()] as Building[];
       const pads = buildingPads(all, ground, street, TERRAIN_CELL * 1.5);
       const graded = (p: { x: number; y: number }): number => { const s = pads.shapeAt(p.x, p.y, ground(p.x, p.y)); return s.weight ? s.height : ground(p.x, p.y); };
+      // The road drawn, its footprint the terrain is cut along (`roadFootprints.ts`), and the ground as the terrain draws it round the lots.
+      const footprints = new RoadFootprints();
+      buildRoadSurfaces(net, elevation, plainMaterials, ground, { tiles: new Map(), dependsOn: () => 0, chunks: new Map(), inputs: new SurfaceInputs(), footprints }).dispose();
+      expect(footprints.meeting([m(-160), m(-20), m(160), m(20)]).length).toBeGreaterThan(0);
+      const drawn = drawnGround((x, y) => graded({ x, y }), pads, footprints, [m(-400), m(-400), m(400), m(400)]);
       for (const b of all) {
         const floor = floorHeight(b, ground, street);
         for (const s of lotSurfaces(b, floor, street)) {
           if (s.volume.open === 'grass' || s.volume.open === 'water') continue;
           surfaces++;
+          // The ground drawn under the paving (the terrain cut along its ring, `terrainSeams.ts`), never over its plate's foot.
           let over = 0;
-          for (let i = 0; i < s.ring.length; i++) {
-            const p = inside(s.ring, i, m(0.4));
-            const cx = Math.floor((p.x + TERRAIN_HALF) / TERRAIN_CELL), cy = Math.floor((p.y + TERRAIN_HALF) / TERRAIN_CELL);
-            for (const [di, dj] of [[0, 0], [1, 0], [0, 1], [1, 1]] as const) {
-              const q = { x: -TERRAIN_HALF + (cx + di) * TERRAIN_CELL, y: -TERRAIN_HALF + (cy + dj) * TERRAIN_CELL };
-              over = Math.max(over, graded(q) - (s.heightAt(q.x, q.y) - LOT_PLATE));
-            }
-          }
+          for (const q of pavingPoints(s.ring)) over = Math.max(over, drawn(q.x, q.y) - (s.heightAt(q.x, q.y) - LOT_PLATE));
           worst = Math.max(worst, over);
           // Open (AC7)
           const allowed = s.volume.ramp !== undefined ? m(0.5) : m(0.02);
-          if (over > allowed) wrong.push(`${use}: ${b.function} ${b.id}, ${s.volume.open} ${s.volume.id}${s.volume.ramp !== undefined ? ' (rampa)' : s.volume.terrace ? ' (degrau)' : ''}: terra ${(over * METERS_PER_UNIT).toFixed(2)} m acima`);
+          if (over > allowed) wrong.push(`${use}: ${b.function} ${b.id}, ${s.volume.open} ${s.volume.id}${s.volume.ramp !== undefined ? ' (ramp)' : s.volume.terrace ? ' (step)' : ''}: earth ${(over * METERS_PER_UNIT).toFixed(2)} m over`);
         }
       }
     }

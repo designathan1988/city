@@ -120,10 +120,8 @@ export const SHELL_PART_FACES: Readonly<Record<ShellPartKind, readonly ShellPart
 /** A number as a GLSL float literal. */
 const glsl = (x: number): string => x.toFixed(6);
 
-/** GLSL of the shell's vertex shader drawn instanced (`finishes.ts`): `macroNoiseInto` to the bit (Math.imul is a uint product, >>> a uint shift). */
-export const SHELL_PART_PARS = `
-#ifdef USE_INSTANCING
-attribute float ${GROUND_ATTRIBUTE};
+/** GLSL: `macroNoiseInto` to the bit (Math.imul is a uint product, >>> a uint shift): `shellMacroNoise(p)`, p in `MACRO_SCALE`s. */
+export const SHELL_NOISE_GLSL = `
 // An int's two's complement bits as a uint, without converting a negative int (whose conversion GLSL ES leaves to the driver).
 uint shellBits(int i) { return i >= 0 ? uint(i) : uint(i + 2147483647) + 2147483649u; }
 float shellNoiseHash(ivec3 c) {
@@ -142,7 +140,16 @@ float shellMacroNoise(vec3 p) {
   float ab1 = p1a + (p1b - p1a) * f.x, cd1 = p1c + (p1d - p1c) * f.x;
   float plane0 = ab0 + (cd0 - ab0) * f.y, plane1 = ab1 + (cd1 - ab1) * f.y;
   return plane0 + (plane1 - plane0) * f.z;
-}
+}`;
+
+/** The tone `Shell.face` lays on a vertex from its noise: `macroTone`; a facade run's walls take it per pixel (`facadeLevel.ts`). */
+export const macroTone = (noise: number): number => 0.97 + noise * 0.06;
+
+/** GLSL of the shell's vertex shader drawn instanced (`finishes.ts`). */
+export const SHELL_PART_PARS = `
+#ifdef USE_INSTANCING
+attribute float ${GROUND_ATTRIBUTE};
+${SHELL_NOISE_GLSL}
 #endif`;
 
 /** GLSL after `begin_vertex`: a paving's sides stand `COVER_INSET` in from its top's edge whatever its size (its model's uv.x marks them). */

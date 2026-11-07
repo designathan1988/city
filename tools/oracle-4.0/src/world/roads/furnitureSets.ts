@@ -39,9 +39,9 @@ function patternsOf(set: 'complete' | 'basic'): Pattern[] {
 }
 
 /** The cell of the nearby-items grid, world units. */
-const CELL = m(40);
+export const CELL = m(50);
 /** The cell a street's items are filed in for each piece's look round it (`SnapLocal.around`). */
-const NEAR_CELL = m(8);
+const NEAR_CELL = m(10);
 
 /** A street's items filed by place: a piece looks at those round it, never the street's every item. */
 function nearGrid(): { file(item: LandscapeItem): void; around(at: Vec2, radius: number): LandscapeItem[] } {

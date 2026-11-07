@@ -1,7 +1,7 @@
 /** Baking a body's motion into bone palettes (`riggedCitizens.ts` draws them) */
 import { Bone, BufferAttribute, BufferGeometry, Matrix4, Object3D, Quaternion, Skeleton, SkinnedMesh, Vector3 } from 'three';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
-import { RIDER_CLIPS, helmetShape, type RiderClip, type RiderClipKey } from './riderPoses';
+import { BIKE_FIT, MOTO_FIT, RIDER_CLIPS, helmetShape, stopTiltFor, type RiderClip, type RiderClipKey } from './riderPoses';
 import {
   WALK_ADVANCE, clipTransferFor, neutralWalkFor, strideShare, walkDuration, walkSource,
   type LibraryClip, type LibraryClipName, type RocketboxClips, type WalkAmplitude, type WalkSex,
@@ -84,14 +84,14 @@ export function setSliceMs(ms: number): void {
 let sliceStart = 0;
 
 /** Lets the frame loop in once this stretch of baking has run for `SLICE_MS`. */
-export async function breathe(): Promise<void> {
+async function breathe(): Promise<void> {
   if (performance.now() - sliceStart < SLICE_MS) return;
   await afterFrame();
   sliceStart = performance.now();
 }
 
 /** Resolves just after the next frame has been drawn: one slice of work per frame. */
-export function afterFrame(): Promise<void> {
+function afterFrame(): Promise<void> {
   if (typeof requestAnimationFrame !== 'function') return new Promise<void>(resolve => setTimeout(resolve, 0));
   return new Promise<void>(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
 }
@@ -164,7 +164,7 @@ export async function bakeFrames(body: BakeRig, pose: (time: number) => void, du
 }
 
 /** Bakes the Rocketbox walk onto one body: `amplitude` untouched is the capture as recorded, anything less the elder's. */
-export async function bakeWalk(body: BakeRig, sex: WalkSex, amplitude?: WalkAmplitude, hand?: 'L' | 'R', carry = false): Promise<ClipFrames> {
+async function bakeWalk(body: BakeRig, sex: WalkSex, amplitude?: WalkAmplitude, hand?: 'L' | 'R', carry = false): Promise<ClipFrames> {
   body.reset();
   const walk = neutralWalkFor(body.rig, body.mesh, sex, amplitude);
   const duration = walkDuration(sex);
@@ -178,7 +178,7 @@ export async function bakeWalk(body: BakeRig, sex: WalkSex, amplitude?: WalkAmpl
 }
 
 /** Bakes one library clip onto one body, with its travel and turn curves resampled to the baked frames (`gaitClipOf`). */
-export async function bakeLibraryClip(body: BakeRig, clip: LibraryClip, amplitude?: WalkAmplitude, name?: string, carry = false): Promise<ClipFrames> {
+async function bakeLibraryClip(body: BakeRig, clip: LibraryClip, amplitude?: WalkAmplitude, name?: string, carry = false): Promise<ClipFrames> {
   body.reset();
   const transfer = clipTransferFor(body.rig, body.mesh, clip, amplitude);
   const room = LIMB_ROOM[name ?? ''] ?? LIMB_ROOM_DEFAULT;
@@ -398,10 +398,12 @@ export async function bakeDeferred(scene: Object3D, sex: WalkSex, library: Libra
 }
 
 export async function bake(scene: Object3D, sex: WalkSex, library: LibraryOf,
-  given?: readonly (ClipFrames | undefined)[]): Promise<{ clips: ClipFrames[]; helmet: Matrix4 | null; deferred: Deferred }> {
+  given?: readonly (ClipFrames | undefined)[]): Promise<{ clips: ClipFrames[]; helmet: Matrix4 | null; stopTilt: StopTilt; deferred: Deferred }> {
   const body = restRig(scene);
   // A helmet is fitted to this head, at rest, once.
   const helmet = helmetShape(body.rig);
+  // And how far a stopped machine tilts under it, its foot on the road (`riderPoses.stopTiltFor`): what the stopped poses are baked with.
+  const stopTilt: StopTilt = { moto: stopTiltFor(body.rig, MOTO_FIT), bike: stopTiltFor(body.rig, BIKE_FIT) };
   const clips: ClipFrames[] = [];
   // The elder's step, and the shuffle's, cover less ground in the same time
   clips[WALK] = given?.[WALK] ?? await bakeWalk(body, sex);
@@ -426,8 +428,11 @@ export async function bake(scene: Object3D, sex: WalkSex, library: LibraryOf,
   const deferred = deferredClips(body, sex, library, facts);
   // Until baked, each points at what stands in for it.
   for (const [at, { standIn }] of deferred) clips[at] = clips[standIn]!;
-  return { clips, helmet, deferred };
+  return { clips, helmet, stopTilt, deferred };
 }
+
+/** How far a stopped motorcycle and a stopped bicycle tilt onto one body's foot (`riderPoses.stopTiltFor`), radians. */
+export interface StopTilt { readonly moto: number; readonly bike: number }
 
 /** Bakes one IK pose of a person in or on a vehicle. */
 async function bakeRiderClip(body: BakeRig, clip: RiderClip): Promise<ClipFrames> {
@@ -477,7 +482,13 @@ export function rigData(scene: Object3D): { readonly nodes: RigNode[]; readonly 
   scene.traverse((o) => order.push(o));
   const at = new Map(order.map((o, i) => [o, i] as const));
   const transfer: ArrayBuffer[] = [];
-  const copy = (a: ArrayLike<number>): Float32Array => { const f = Float32Array.from(a); transfer.push(f.buffer as ArrayBuffer); return f; };
+  // Each value as the attribute reads it: a cooked body's positions and weights are normalised bytes and shorts (`people/cookedPerson.ts`), not floats.
+  const copy = (a: BufferAttribute): Float32Array => {
+    const f = new Float32Array(a.count * a.itemSize);
+    for (let i = 0; i < a.count; i++) for (let c = 0; c < a.itemSize; c++) f[i * a.itemSize + c] = a.getComponent(i, c);
+    transfer.push(f.buffer as ArrayBuffer);
+    return f;
+  };
   const nodes = order.map((o): RigNode => {
     const base = { name: o.name, parent: o.parent && at.has(o.parent) ? at.get(o.parent)! : -1,
       p: o.position.toArray(), q: o.quaternion.toArray(), s: o.scale.toArray() };
@@ -488,9 +499,9 @@ export function rigData(scene: Object3D): { readonly nodes: RigNode[]; readonly 
       transfer.push(inverses.buffer as ArrayBuffer);
       return { ...base, kind: 'skinned', skin: {
         bones: o.skeleton.bones.map((b) => at.get(b) ?? -1), inverses, bind: [...o.bindMatrix.elements], bindMode: o.bindMode,
-        position: copy(g.getAttribute('position').array as ArrayLike<number>),
-        skinIndex: copy(g.getAttribute('skinIndex').array as ArrayLike<number>),
-        skinWeight: copy(g.getAttribute('skinWeight').array as ArrayLike<number>),
+        position: copy(g.getAttribute('position') as BufferAttribute),
+        skinIndex: copy(g.getAttribute('skinIndex') as BufferAttribute),
+        skinWeight: copy(g.getAttribute('skinWeight') as BufferAttribute),
       } };
     }
     return { ...base, kind: (o as Bone).isBone ? 'bone' : 'node' };

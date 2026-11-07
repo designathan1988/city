@@ -3,17 +3,19 @@ import type { Vec2 } from '@core/vec2';
 import { WORLD_REACH } from './tiles';
 import { m } from './units';
 
-/** THE WORLD'S PLATES: an unbounded grid of 2,048 m squares of ground, plate (pi, pj) centred on (pi, pj) x PLATE_SIZE (CLAUDE.md, "Streaming world") */
+/** THE WORLD'S PLATES: an unbounded grid of 2,000 m squares of ground, plate (pi, pj) from (pi, pj) x PLATE_SIZE to (pi + 1, pj + 1) x PLATE_SIZE, its
+ *  edges on multiples of its side as the tiles' are on theirs (`tiles.ts` tileIJ) (CLAUDE.md, "Streaming world") */
 
-/** A plate's side: it holds 2 x 2 tiles of 1,024 m (`tiles.ts`), their edges on its centre lines and its own. */
-export const PLATE_SIZE = m(2_048);
+/** A plate's side: 200 cells of the terrain's 10 m grid (`render/terrainGrid.ts`), its edges on the universal grid's lines (`grid.ts` GRID_CELL); it holds 2 x 2
+ *  tiles of 1,000 m (`tiles.ts`), their edges on its centre lines and its own, and 8 x 8 cells of 250 m (`cells.ts`). */
+export const PLATE_SIZE = m(2_000);
 const PLATE_HALF = PLATE_SIZE / 2;
 
 /** Plates each way from the origin a key can name: one past the tiles' reach, so every point with a tile has a plate. */
 const PLATE_REACH = Math.ceil(WORLD_REACH / PLATE_SIZE) + 1;
 const KEY_SIDE = PLATE_REACH * 2;
 
-/** A plate's column and row: its centre is (pi, pj) x PLATE_SIZE. */
+/** A plate's column and row: its low corner is (pi, pj) x PLATE_SIZE, its centre (pi + 1/2, pj + 1/2) x PLATE_SIZE. */
 export interface PlateIJ {
   readonly pi: number;
   readonly pj: number;
@@ -28,7 +30,10 @@ export interface PlateRegion {
 }
 
 /** The plate column of a coordinate: a point on an edge is the plate's whose low edge it is (as `tiles.ts` tileIJ). */
-const plateIndex = (v: number): number => Math.floor(v / PLATE_SIZE + 0.5);
+export const plateIndex = (v: number): number => Math.floor(v / PLATE_SIZE);
+
+/** The centre of the plate column (or row) a coordinate lies in, with no object made: what a read of the ground thousands of times a job asks. */
+export const plateCentre = (v: number): number => (Math.floor(v / PLATE_SIZE) + 0.5) * PLATE_SIZE;
 
 /** The plate a point lies in. */
 export const plateIJ = (x: number, y: number): PlateIJ => ({ pi: plateIndex(x), pj: plateIndex(y) });
@@ -53,7 +58,7 @@ export const plateOf = (x: number, y: number): number => plateKey(inReach(plateI
 /** A plate's square by its key. */
 export function plateRegion(key: number): PlateRegion {
   const { pi, pj } = plateOfKey(key);
-  return { key, cx: pi * PLATE_SIZE, cy: pj * PLATE_SIZE, half: PLATE_HALF };
+  return { key, cx: (pi + 0.5) * PLATE_SIZE, cy: (pj + 0.5) * PLATE_SIZE, half: PLATE_HALF };
 }
 
 /** The plate a point lies in, as its square. */

@@ -28,7 +28,7 @@ describe('occupants', () => {
   const adults = CROWD.filter((c) => c.ageBand !== 'child').map((c) => c.id);
 
   it('was measured on the bodies the game draws, in every seated pose and its whole idle loop', () => {
-    // The roster's MakeHuman people, not the glTF crowd that left the game
+    // The cast's bodies, not the glTF crowd that left the game
     expect(measured.bodies).toBe(adults.length);
     expect(measured.phases).toBeGreaterThanOrEqual(8);
     for (const key of seated) {

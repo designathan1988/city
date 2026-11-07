@@ -1,8 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { Frustum, Matrix4, PerspectiveCamera, Sphere, Vector3, WebGLCoordinateSystem, type InstancedMesh } from 'three';
 import { VEHICLE_REACH, createAgentMeshes } from '@render/agents';
+import { PartLevelMaker } from '@render/vehicleLevels';
 import { frustumGroundBox } from '@render/frustumGround';
-import { FleetGrid, type FleetCell, type GroundBox } from '@sim/host/fleetGrid';
+import { FLEET_CELL, FleetGrid, type FleetCell, type GroundBox } from '@sim/host/fleetGrid';
 import type { SimClient, VehicleView } from '@sim/host/simClient';
 import { archetypeById } from '@sim/vehicles/archetypes';
 import type { Network } from '@world/network';
@@ -43,19 +44,22 @@ const bodiesOf = (agents: ReturnType<typeof createAgentMeshes>): InstancedMesh[]
   agents.meshes.filter((o): o is InstancedMesh => (o as InstancedMesh).isInstancedMesh === true && /^car-.*-(shell|shell-lite|body|body-lite|far)$/.test(o.name));
 const drawn = (meshes: readonly InstancedMesh[]): number => meshes.reduce((n, mesh) => n + (mesh.visible ? mesh.count : 0), 0);
 
+/** Every body's levels, made once for the file's meshes (the page makes them once too, `createAgentMeshes`). */
+const levels = new PartLevelMaker();
+
 describe('standing vehicles while the camera moves', () => {
   beforeAll(() => { vi.stubGlobal('window', { setInterval: () => 0, clearInterval: () => {} }); vi.stubGlobal('location', { search: '?bodies=cooked' }); });
   afterAll(() => { vi.unstubAllGlobals(); });
 
   it('are tested, grounded and scaled once per change, not once per frame', () => {
     const parked: VehicleView[] = [];
-    // 4 x 4 cells of 64 m, 9 cars each, well inside the view.
+    // 12 x 12 cars 21 m apart, well inside the view, over the cells of parked cars (`fleetGrid.ts` FLEET_CELL: 5 x 5 cells of 50 m).
     for (let i = 0; i < 12; i++) for (let j = 0; j < 12; j++) parked.push(parkedCar(i * 12 + j + 1, m(4) + i * m(21), m(4) + j * m(21)));
     const traffic = Array.from({ length: 20 }, (_, k) => stoppedCar(1000 + k, m(10) + k * m(10), m(130)));
     const world = worldWith(parked, traffic);
     const net = { doc: { changes: new ChangeJournal() } } as unknown as Network;
     let grounds = 0, tests = 0, scales = 0;
-    const agents = createAgentMeshes(() => { grounds++; return 0; }, () => {}, () => 0, () => { grounds++; return 0; });
+    const agents = createAgentMeshes(() => { grounds++; return 0; }, () => {}, () => 0, () => { grounds++; return 0; }, undefined, levels);
     const camera = new PerspectiveCamera(50, 1.6, m(0.4), m(3000));
     const sphere = new Sphere(new Vector3(), 1);
     const projection = new Matrix4();
@@ -92,10 +96,16 @@ describe('standing vehicles while the camera moves', () => {
     }
     const [g, t, s] = counts;
     // Nothing of them changed: no ground asked; a test and a scale for each stopped car, a test for each cell and the screen's scale found once (`depthField`), nothing for each parked car.
+    // The cells: those the parked cars stand in, counted from where they stand and the grid's own side (16 at HEAD's 64 m, 25 at 50 m).
+    // The scales besides the stopped cars' own: the view's probe at its box's corner, and the 5 `depthField` fits the screen's scale from (at the
+    // box's corner, a cell's side along x, along y and up from it, and the far corner it is checked at): one probe and one field a frame, however
+    // many cells and whatever their side.
     // Before (each car walked every frame): 20 grounds, 508 tests and 165 scales.
+    const cells = new Set(parked.map((car) => `${Math.floor(car.frames.x / FLEET_CELL)},${Math.floor(car.frames.y / FLEET_CELL)}`)).size;
+    const PROBE_SCALES = 1, FIELD_SCALES = 5;
     expect(g).toBe(0);
-    expect(t).toBe(traffic.length + 16);
-    expect(s).toBe(1 + traffic.length + 5);
+    expect(t).toBe(traffic.length + cells);
+    expect(s).toBe(PROBE_SCALES + traffic.length + FIELD_SCALES);
     agents.dispose();
   });
 
@@ -106,7 +116,7 @@ describe('standing vehicles while the camera moves', () => {
     });
     const world = { ...worldWith([], []), pedViews: peds, tick: 1 } as unknown as SimClient;
     const net = { doc: { changes: new ChangeJournal() } } as unknown as Network;
-    const agents = createAgentMeshes(() => 0, () => {}, () => 0, () => 0);
+    const agents = createAgentMeshes(() => 0, () => {}, () => 0, () => 0, undefined, levels);
     let asked = 0;
     agents.sync(world, net, 0.5, true, 40, { vehicleBox: { x0: 0, y0: 0, x1: m(300), y1: m(300) }, hiddenPed: () => { asked++; return false; } });
     expect(asked).toBe(0);
@@ -118,16 +128,16 @@ describe('standing vehicles while the camera moves', () => {
   });
 
   it('take their detail from the tier: the weak one coarser, every other one as before', () => {
-    expect([QUALITY.low.vehicleErrorPixels, QUALITY.low.vehicleWholeCap, QUALITY.low.hairStrandPeople]).toEqual([1, 60, 2]);
+    expect([QUALITY.low.vehicleErrorPixels, QUALITY.low.vehicleWholeCap]).toEqual([1, 60]);
     for (const level of ['medium', 'high', 'ultra'] as const) {
-      expect([QUALITY[level].vehicleErrorPixels, QUALITY[level].vehicleWholeCap, QUALITY[level].hairStrandPeople]).toEqual([0.5, 200, 8]);
+      expect([QUALITY[level].vehicleErrorPixels, QUALITY[level].vehicleWholeCap]).toEqual([0.5, 200]);
     }
     // 300 cars, all big on the screen; frames drawn with no tier, the strong one, and the weak one.
     const traffic = Array.from({ length: 300 }, (_, k) => ({ ...stoppedCar(k + 1, (k % 20) * m(12), Math.floor(k / 20) * m(12)), v: m(5), prev: { v: m(5) } }));
     const world = worldWith([], traffic);
     const net = { doc: { changes: new ChangeJournal() } } as unknown as Network;
     const frame = (tier?: (typeof QUALITY)['high']): { names: string[]; matrices: number[][] } => {
-      const agents = createAgentMeshes(() => 0, () => {}, () => 0, () => 0);
+      const agents = createAgentMeshes(() => 0, () => {}, () => 0, () => 0, undefined, levels);
       const options = { vehicleVisible: () => true, vehicleBox: { x0: -1e6, y0: -1e6, x1: 1e6, y1: 1e6 }, screenScale: () => 40, ...(tier ? { tier } : {}) };
       for (let f = 0; f < 3; f++) agents.sync(world, net, 0, true, 40, options);
       const shown = agents.meshes.filter((o): o is InstancedMesh => (o as InstancedMesh).isInstancedMesh === true && o.visible && (o as InstancedMesh).count > 0);
@@ -149,8 +159,8 @@ describe('standing vehicles while the camera moves', () => {
     for (let i = 0; i < 12; i++) for (let j = 0; j < 12; j++) parked.push(parkedCar(i * 12 + j + 1, m(4) + i * m(21), m(4) + j * m(21)));
     const world = worldWith(parked, []);
     const net = { doc: { changes: new ChangeJournal() } } as unknown as Network;
-    const kept = createAgentMeshes(() => 0, () => {}, () => 0, () => 0);
-    const walked = createAgentMeshes(() => 0, () => {}, () => 0, () => 0);
+    const kept = createAgentMeshes(() => 0, () => {}, () => 0, () => 0, undefined, levels);
+    const walked = createAgentMeshes(() => 0, () => {}, () => 0, () => 0, undefined, levels);
     const camera = new PerspectiveCamera(50, 1.6, m(0.4), m(3000));
     const sphere = new Sphere(new Vector3(), 1);
     const projection = new Matrix4();

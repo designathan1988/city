@@ -1,14 +1,27 @@
 import type { Building } from './types';
+import { CopySource, type CopyTarget, T_ARR, T_F64, T_FALSE, T_I32, T_NODE, T_NULL, T_OBJ, T_STR, T_TRUE, T_U8, copyValue } from './tableCopy';
 
-/** A TILE'S BUILDINGS AS ONE TYPED TABLE IN SHARED MEMORY (CLAUDE.md "Architecture": per-tile typed tables read by stateless jobs): columns for what is read without the record (id, place, rotation), each record's members in a binary stream, every string, object shape and shared member (`intern.ts`) written once for the tile; a SharedArrayBuffer is posted as a handle, never copied (MDN "SharedArrayBuffer"), and each reader decodes only the rows it is asked for */
+/** A ROW ANY TABLE HOLDS (the buildings, the lots, the landscaping: `TableWriter` takes any plain keyed record): its id, and where it stands - the
+ *  columns read without the record; a record without a place has NaN there unless the writer's `place` gives one (a lot's centre). */
+export interface TableRow { readonly id: number; readonly x?: number; readonly y?: number; readonly rotation?: number }
+/** Where a row stands, for its columns (`TableWriter` place). */
+export type RowPlace<T> = (row: T) => { readonly x: number; readonly y: number };
+/** The box a row covers on the ground, for its columns (`TableWriter` box: a building's `buildingBounds`): what files it by place without the record (`BuildingStore` grid). */
+export type RowBox<T> = (row: T) => { readonly minX: number; readonly minY: number; readonly maxX: number; readonly maxY: number };
+/** What else is read of a row without its record, as `width` columns of numbers (`TableWriter` summary: a building's, `buildings/summary.ts`). */
+export interface RowSummary<T> { readonly width: number; of(row: T): readonly number[] }
+
+/** A TILE'S BUILDINGS AS ONE TYPED TABLE IN SHARED MEMORY (CLAUDE.md "Architecture": per-tile typed tables read by stateless jobs): columns for what is read without the record (id, place, rotation, and from format 2 the box on the ground), each record's members in a binary stream, every string, object shape and shared member (`intern.ts`) written once for the tile; a SharedArrayBuffer is posted as a handle, never copied (MDN "SharedArrayBuffer"), and each reader decodes only the rows it is asked for */
 
 const MAGIC = 0x52435442;
-/** Bumped when the layout below changes. */
-const FORMAT = 1;
-/** Header words: magic, format, rows, strings, string units, shapes, shape keys, nodes, stream bytes. */
+/** Bumped when the layout below changes: 2 (2026-10-26) adds the box columns, 3 (2026-10-26) the summary columns (`RowSummary`, their count in the tenth word of the header); a table of format 1 (no box, `RecordTable.boxes` null) or 2 (no summary) is still read. */
+const FORMAT = 3;
+const FIRST_BOXED = 2;
+const FIRST_SUMMARY = 3;
+/** Header words: magic, format, rows, strings, string units, shapes, shape keys, nodes, stream bytes; from format 3 the width of the summary. The sections start at the same place for every format (`align8` of 36 and of 40 bytes). */
 const HEAD = 9;
+const HEAD_SUMMARY = 10;
 
-const T_NULL = 0, T_FALSE = 1, T_TRUE = 2, T_U8 = 3, T_I32 = 4, T_F64 = 5, T_STR = 6, T_ARR = 7, T_OBJ = 8, T_NODE = 9;
 
 const align8 = (n: number): number => Math.ceil(n / 8) * 8;
 
@@ -36,6 +49,7 @@ export function tableBytes(table: ArrayBufferLike): ArrayBuffer {
 
 /** Where each section starts, from the header's counts. */
 interface Layout {
+  readonly format: number;
   readonly rows: number;
   readonly strings: number;
   readonly units: number;
@@ -47,6 +61,14 @@ interface Layout {
   readonly xs: number;
   readonly ys: number;
   readonly turns: number;
+  /** The box columns (format 2; -1 in a table without them). */
+  readonly minXs: number;
+  readonly minYs: number;
+  readonly maxXs: number;
+  readonly maxYs: number;
+  /** The summary columns, one after the other (format 3; -1 in a table without them), and how many. */
+  readonly summary: number;
+  readonly width: number;
   readonly rootAt: number;
   readonly nodeAt: number;
   readonly strStart: number;
@@ -57,13 +79,16 @@ interface Layout {
   readonly bytes: number;
 }
 
-function layout(rows: number, strings: number, units: number, shapes: number, keys: number, nodes: number, stream: number): Layout {
-  let at = align8(HEAD * 4);
+function layout(format: number, rows: number, strings: number, units: number, shapes: number, keys: number, nodes: number, stream: number, width: number): Layout {
+  let at = align8((format >= FIRST_SUMMARY ? HEAD_SUMMARY : HEAD) * 4);
   const take = (bytes: number): number => { const start = at; at = align8(at + bytes); return start; };
   const ids = take(rows * 8), xs = take(rows * 8), ys = take(rows * 8), turns = take(rows * 8);
+  const boxed = format >= FIRST_BOXED;
+  const minXs = boxed ? take(rows * 8) : -1, minYs = boxed ? take(rows * 8) : -1, maxXs = boxed ? take(rows * 8) : -1, maxYs = boxed ? take(rows * 8) : -1;
+  const summary = format >= FIRST_SUMMARY && width > 0 ? take(rows * 8 * width) : -1;
   const rootAt = take(rows * 4), nodeAt = take(nodes * 4), strStart = take((strings + 1) * 4), shapeStart = take((shapes + 1) * 4), shapeKeys = take(keys * 4);
   const strUnits = take(units * 2), streamAt = take(stream);
-  return { rows, strings, units, shapes, keys, nodes, stream, ids, xs, ys, turns, rootAt, nodeAt, strStart, shapeStart, shapeKeys, strUnits, streamAt, bytes: at };
+  return { format, rows, strings, units, shapes, keys, nodes, stream, ids, xs, ys, turns, minXs, minYs, maxXs, maxYs, summary, width: summary >= 0 ? width : 0, rootAt, nodeAt, strStart, shapeStart, shapeKeys, strUnits, streamAt, bytes: at };
 }
 
 /** A growable byte stream the encoder writes the members into. */
@@ -72,7 +97,8 @@ class Stream {
   view = new DataView(this.bytes.buffer);
   length = 0;
 
-  private room(n: number): void {
+  /** Room for `n` more bytes: `bytes` may be another array after it. */
+  room(n: number): void {
     if (this.length + n <= this.bytes.length) return;
     // Doubled while small; past 64 MB a quarter more (a city's table, `TableWriter`: DO NOT leave up to half of a buffer of hundreds of MB empty).
     const grow = (size: number): number => (size < 1 << 26 ? size * 2 : Math.ceil(size * 1.25));
@@ -104,9 +130,9 @@ function sharedObjects(rows: readonly object[]): Set<object> {
   return shared;
 }
 
-/** The rows written as one table: their values as JSON would keep them (undefined members left out, in arrays null), numbers exact. */
-export function encodeRecords(rows: readonly Building[]): RecordTable {
-  const writer = new TableWriter();
+/** The rows written as one table: their values as JSON would keep them (undefined members left out, in arrays null), numbers exact. `place`: where a record without a place of its own stands (its columns); `box`: the box each covers (a building's), for its columns. */
+export function encodeRecords<T extends TableRow = Building>(rows: readonly T[], place: RowPlace<T> | null = null, box: RowBox<T> | null = null, summary: RowSummary<T> | null = null): RecordTable {
+  const writer = new TableWriter<T>(false, place, box, summary);
   writer.add(rows);
   return writer.finish();
 }
@@ -118,7 +144,7 @@ export function encodeRecords(rows: readonly Building[]): RecordTable {
  * city's records as objects to encode them at the end: ~20 KB of JS heap a building, and the city of 160,000 buildings took its worker
  * to 5.6 GB, past the V8 cage it shares with its page (2026-10-22); the table holds ~1 KB a building, outside the JS heap.
  */
-export class TableWriter {
+export class TableWriter<T extends TableRow = Building> {
   private readonly strings = new Map<string, number>();
   private readonly stringList: string[] = [];
   private readonly shapes = new Map<string, number>();
@@ -131,14 +157,31 @@ export class TableWriter {
   private readonly xs: number[] = [];
   private readonly ys: number[] = [];
   private readonly turns: number[] = [];
+  private readonly minXs: number[] = [];
+  private readonly minYs: number[] = [];
+  private readonly maxXs: number[] = [];
+  private readonly maxYs: number[] = [];
+  /** Each row's summary, `summary.width` numbers a row. */
+  private readonly sums: number[] = [];
   private readonly rootAt: number[] = [];
   /** Where `read` stands in the stream. */
   private pos = 0;
   /** The shared members written as nodes, kept across batches (`keepShared`): a member met again in a later batch written as its mark. */
   private readonly keptNodes = new Map<object, number>();
 
-  /** `keepShared`: a member written as a node in one batch is that node in the batches after (the members shared across batches, `intern.ts` SharedMembers); without it each batch writes its own. */
-  constructor(private readonly keepShared = false) {}
+  /** `keepShared`: a member written as a node in one batch is that node in the batches after (the members shared across batches, `intern.ts` SharedMembers); without it each batch writes its own. `place`: where a row stands, for its columns (a record with no x, y of its own). `box`: the box a row covers on the ground, for its columns (a building's `buildingBounds`); none: NaN there. */
+  /** `summary`: what else the columns of a row hold (`RowSummary`, a building's `buildings/summary.ts`). */
+  constructor(private readonly keepShared = false, private readonly place: RowPlace<T> | null = null, private readonly box: RowBox<T> | null = null,
+    private readonly summary: RowSummary<T> | null = null) {}
+
+  /** A row's columns written: its id, place, rotation, box and summary. */
+  private columns(id: number, x: number, y: number, rotation: number, box: { readonly minX: number; readonly minY: number; readonly maxX: number; readonly maxY: number } | null,
+    summary: readonly number[] | null): void {
+    this.ids.push(id); this.xs.push(x); this.ys.push(y); this.turns.push(rotation);
+    this.minXs.push(box?.minX ?? Number.NaN); this.minYs.push(box?.minY ?? Number.NaN); this.maxXs.push(box?.maxX ?? Number.NaN); this.maxYs.push(box?.maxY ?? Number.NaN);
+    const width = this.summary?.width ?? 0;
+    for (let c = 0; c < width; c++) this.sums.push(summary?.[c] ?? Number.NaN);
+  }
 
   get rows(): number {
     return this.rootAt.length;
@@ -172,7 +215,7 @@ export class TableWriter {
   }
 
   /** Rows written after those before; a member shared between rows of this batch written once, as a node. */
-  add(rows: readonly Building[]): void {
+  add(rows: readonly T[]): void {
     const shared = sharedObjects(rows);
     const nodes = this.keepShared ? this.keptNodes : new Map<object, number>();
     const stream = this.stream, nodeAt = this.nodeAt;
@@ -216,16 +259,50 @@ export class TableWriter {
     };
     for (const row of rows) {
       this.rootAt.push(stream.length);
-      this.ids.push(row.id); this.xs.push(row.x); this.ys.push(row.y); this.turns.push(row.rotation);
+      const at = this.place ? this.place(row) : row;
+      this.columns(row.id, at.x ?? Number.NaN, at.y ?? Number.NaN, row.rotation ?? Number.NaN, this.box ? this.box(row) : null, this.summary ? this.summary.of(row) : null);
       body(row);
     }
   }
 
+  /** The tables rows were copied from (`copyRows`), each with what of it this table already holds. */
+  private readonly sources = new Map<ArrayBufferLike, CopySource>();
+  /** What the copy writes into (`tableCopy.ts`): this table's stream, shared members and ids. */
+  private readonly target: CopyTarget = { stream: this.stream, nodeAt: this.nodeAt, stringId: (s) => this.stringId(s), shapeId: (keys) => this.shapeId(keys) };
+
+  /**
+   * ROWS OF ANOTHER TABLE WRITTEN AFTER THOSE BEFORE WITHOUT DECODING A RECORD (the save's squares cut from the map's table, a map's table
+   * joined from its squares, `editor/chunkedSave.ts`): each record's bytes copied from the source's stream with its strings, shapes and
+   * shared members renumbered to this table's; a shared member of the source written once here however many copied rows reach it. The
+   * columns copied as they are. DO NOT decode a record to write it again (`tableRecords` then `add`): a whole city's records as objects.
+   */
+  copyRows(from: RecordTable, rows: readonly number[]): void {
+    let source = this.sources.get(from.buffer);
+    if (!source) {
+      // Its reader made only when a record must be decoded (its box, for a source without box columns), once.
+      let reader: TableReader<TableRow> | null = null;
+      this.sources.set(from.buffer, source = new CopySource(from.buffer, from.at, (row) => (reader ??= from.reader<TableRow>()).record(row)));
+    }
+    const boxes = from.boxes;
+    const width = this.summary?.width ?? 0;
+    const sums = width > 0 && from.summaryWidth === width ? from.summary : null;
+    for (const row of rows) {
+      if (row < 0 || row >= from.rows) throw new Error(`[buildings] no row ${row} in the record table copied from`);
+      this.rootAt.push(this.stream.length);
+      // The box copied with the other columns; a source without box columns (format 1) has it worked out of the record once, decoded for that alone, where this table wants one.
+      const box = boxes ? { minX: boxes.minX[row]!, minY: boxes.minY[row]!, maxX: boxes.maxX[row]!, maxY: boxes.maxY[row]! } : this.box ? this.box(source.record(row) as T) : null;
+      // And the summary: copied, or worked out of the record once where the source has none (a table written before format 3).
+      const summary = width === 0 ? null : sums ? Array.from({ length: width }, (_, c) => sums[c * from.rows + row]!) : this.summary!.of(source.record(row) as T);
+      this.columns(from.ids[row]!, from.xs[row]!, from.ys[row]!, from.rotations[row]!, box, summary);
+      copyValue(source, source.rootAt[row]!, this.target);
+    }
+  }
+
   /** A row written, decoded: a fresh object of its own, its shared members its own too. */
-  read(row: number): Building {
+  read(row: number): T {
     if (row < 0 || row >= this.rows) throw new Error(`[buildings] no row ${row} in the table being written`);
     this.pos = this.rootAt[row]!;
-    return this.value(this.stream.view) as Building;
+    return this.value(this.stream.view) as T;
   }
 
   private value(view: DataView): unknown {
@@ -269,13 +346,23 @@ export class TableWriter {
     const { stringList, shapeList, nodeAt, stream, rootAt } = this;
     const units = stringList.reduce((n, s) => n + s.length, 0);
     const keys = shapeList.reduce((n, s) => n + s.length, 0);
-    const at = layout(this.rows, stringList.length, units, shapeList.length, keys, nodeAt.length, stream.length);
+    const width = this.summary?.width ?? 0;
+    const at = layout(FORMAT, this.rows, stringList.length, units, shapeList.length, keys, nodeAt.length, stream.length, width);
     const buffer = allocate(at.bytes);
-    new Uint32Array(buffer, 0, HEAD).set([MAGIC, FORMAT, at.rows, at.strings, at.units, at.shapes, at.keys, at.nodes, at.stream]);
+    new Uint32Array(buffer, 0, HEAD_SUMMARY).set([MAGIC, FORMAT, at.rows, at.strings, at.units, at.shapes, at.keys, at.nodes, at.stream, width]);
     new Float64Array(buffer, at.ids, at.rows).set(this.ids);
     new Float64Array(buffer, at.xs, at.rows).set(this.xs);
     new Float64Array(buffer, at.ys, at.rows).set(this.ys);
     new Float64Array(buffer, at.turns, at.rows).set(this.turns);
+    new Float64Array(buffer, at.minXs, at.rows).set(this.minXs);
+    new Float64Array(buffer, at.minYs, at.rows).set(this.minYs);
+    new Float64Array(buffer, at.maxXs, at.rows).set(this.maxXs);
+    new Float64Array(buffer, at.maxYs, at.rows).set(this.maxYs);
+    // Column by column: column c's rows from `at.summary + c * rows * 8`.
+    if (at.summary >= 0) {
+      const out = new Float64Array(buffer, at.summary, at.rows * width);
+      for (let row = 0; row < at.rows; row++) for (let c = 0; c < width; c++) out[c * at.rows + row] = this.sums[row * width + c]!;
+    }
     new Uint32Array(buffer, at.rootAt, at.rows).set(rootAt);
     new Uint32Array(buffer, at.nodeAt, at.nodes).set(nodeAt);
     const strStart = new Uint32Array(buffer, at.strStart, at.strings + 1), strUnits = new Uint16Array(buffer, at.strUnits, at.units);
@@ -293,10 +380,18 @@ export class TableWriter {
 
 /** Whether a buffer holds a record table of this format: written once when encoded (`encodeRecords`), never again - a job process's thread keeps the copy it is sent (`jobs/processWorker.ts` KeptBuffer). */
 export function isRecordTable(buffer: ArrayBufferLike): boolean {
-  if (buffer.byteLength < HEAD * 4) return false;
-  const head = new Uint32Array(buffer, 0, 2);
-  return head[0] === MAGIC && head[1] === FORMAT;
+  return tableFormat(buffer) > 0;
 }
+
+/** The format of the record table a buffer holds (1: before the box columns, 2: with them), 0 when it holds none. */
+export function tableFormat(buffer: ArrayBufferLike): number {
+  if (buffer.byteLength < HEAD * 4) return 0;
+  const head = new Uint32Array(buffer, 0, 2);
+  return head[0] === MAGIC && head[1]! >= 1 && head[1]! <= FORMAT ? head[1]! : 0;
+}
+
+/** The box columns of a table: each row's box on the ground (NaN where the row has none). */
+export interface BoxColumns { readonly minX: Float64Array; readonly minY: Float64Array; readonly maxX: Float64Array; readonly maxY: Float64Array }
 
 /** A table read back from its buffer (posted or shared): its columns are views on it; its records are decoded by a `TableReader`. */
 export class RecordTable {
@@ -305,19 +400,32 @@ export class RecordTable {
   readonly xs: Float64Array;
   readonly ys: Float64Array;
   readonly rotations: Float64Array;
+  /** The rows' boxes on the ground (format 2); null in a table written before them. */
+  readonly boxes: BoxColumns | null;
+  /** The rows' summary (format 3, `RowSummary`): column c of row r at `summary[c * rows + r]`; null in a table without one. */
+  readonly summary: Float64Array | null;
+  /** How many summary columns the table has (0: none). */
+  readonly summaryWidth: number;
   /** The row of each id, made when first asked. */
   private rowOf: Map<number, number> | null = null;
   /** @internal */ readonly at: Layout;
 
   constructor(readonly buffer: ArrayBufferLike) {
-    const head = new Uint32Array(buffer, 0, HEAD);
-    if (head[0] !== MAGIC || head[1] !== FORMAT) throw new Error('[buildings] not a record table of this format');
-    this.at = layout(head[2]!, head[3]!, head[4]!, head[5]!, head[6]!, head[7]!, head[8]!);
+    const format = tableFormat(buffer);
+    if (format === 0) throw new Error('[buildings] not a record table of this format');
+    const head = new Uint32Array(buffer, 0, format >= FIRST_SUMMARY ? HEAD_SUMMARY : HEAD);
+    this.at = layout(format, head[2]!, head[3]!, head[4]!, head[5]!, head[6]!, head[7]!, head[8]!, format >= FIRST_SUMMARY ? head[9]! : 0);
     this.rows = this.at.rows;
     this.ids = new Float64Array(buffer, this.at.ids, this.rows);
     this.xs = new Float64Array(buffer, this.at.xs, this.rows);
     this.ys = new Float64Array(buffer, this.at.ys, this.rows);
     this.rotations = new Float64Array(buffer, this.at.turns, this.rows);
+    this.boxes = this.at.minXs >= 0 ? {
+      minX: new Float64Array(buffer, this.at.minXs, this.rows), minY: new Float64Array(buffer, this.at.minYs, this.rows),
+      maxX: new Float64Array(buffer, this.at.maxXs, this.rows), maxY: new Float64Array(buffer, this.at.maxYs, this.rows),
+    } : null;
+    this.summaryWidth = this.at.width;
+    this.summary = this.at.summary >= 0 ? new Float64Array(buffer, this.at.summary, this.rows * this.at.width) : null;
   }
 
   /** The row holding a building's id; -1 when it is not in the table. */
@@ -327,13 +435,13 @@ export class RecordTable {
   }
 
   /** A reader of this table: what it decodes (strings, shapes, shared members) is kept for its own life only (a job's). `weak`: its shared members kept only while a record read holds them (`TableReader`). */
-  reader(weak = false): TableReader {
-    return new TableReader(this, weak);
+  reader<T extends TableRow = Building>(weak = false): TableReader<T> {
+    return new TableReader<T>(this, weak);
   }
 }
 
 /** DO NOT keep a reader past the job it was made for: a stateless job decodes what it reads and lets it go; the shared members it decoded are one object for all its rows (as `intern.ts` on the page) */
-export class TableReader {
+export class TableReader<T extends TableRow = Building> {
   private readonly view: DataView;
   private readonly rootAt: Uint32Array;
   private readonly nodeAt: Uint32Array;
@@ -374,10 +482,24 @@ export class TableReader {
   }
 
   /** A row's record: a fresh object of its own, its shared members the reader's. */
-  record(row: number): Building {
+  record(row: number): T {
     if (row < 0 || row >= this.table.rows) throw new Error(`[buildings] no row ${row} in the record table`);
     this.pos = this.rootAt[row]!;
-    return this.value() as Building;
+    return this.value() as T;
+  }
+
+  /** One field of a row's record, the others passed over, nothing else made (a building's wear for the save, `editor/chunkedSave.ts`); undefined when the record has no such field. */
+  field(row: number, key: string): unknown {
+    if (row < 0 || row >= this.table.rows) throw new Error(`[buildings] no row ${row} in the record table`);
+    const view = this.view;
+    this.pos = this.rootAt[row]!;
+    if (view.getUint8(this.pos++) !== T_OBJ) return undefined;
+    const keys = this.shape(view.getUint32(this.pos, true)); this.pos += 4;
+    for (const k of keys) {
+      if (k === key) return this.value();
+      this.skip();
+    }
+    return undefined;
   }
 
   private string(id: number): string {
@@ -468,23 +590,36 @@ export class TableReader {
 export interface RecordRef {
   readonly buffer: ArrayBufferLike;
   readonly row: number;
+  /** A numeric field written over the row's record, read in its place (a building's wear: `TableItems.writeField`); absent: the row as the table holds it. */
+  readonly field?: { readonly name: string; readonly value: number };
+}
+
+/** A row's record with the field its ref writes over it (`RecordRef.field`): a copy of its own, the members shared. */
+export function withField<T extends TableRow>(record: T, field: RecordRef['field']): T {
+  return field ? { ...record, [field.name]: field.value } : record;
 }
 
 /** Each record's place in a table: its tile's (`tableRecords`) or its own, written once when first asked (a record is replaced, never edited). */
 const refs = new WeakMap<object, RecordRef>();
 
 /** A row's record read on the page, knowing its row: a job is handed the row, never the record (`refOf`). */
-export function readRow(reader: TableReader, row: number): Building {
+export function readRow<T extends TableRow = Building>(reader: TableReader<T>, row: number): T {
   const b = reader.record(row);
   refs.set(b, { buffer: reader.table.buffer, row });
   return b;
 }
 
+/** A record read on the page from a ref (`TableItems` a row with a field written over it): `refOf` hands the job that ref, never the record encoded again. */
+export function readFrom<T extends TableRow>(b: T, ref: RecordRef): T {
+  refs.set(b, ref);
+  return b;
+}
+
 /** DO NOT read a whole city's table this way on the page (`world/buildings/tableRows.ts` reads a row when asked): every record decoded and kept is ~8 KB of heap a building. A tile's buildings read from its table, each knowing its row. */
-export function tableRecords(buffer: ArrayBufferLike): Building[] {
+export function tableRecords<T extends TableRow = Building>(buffer: ArrayBufferLike): T[] {
   const table = new RecordTable(buffer);
-  const reader = table.reader();
-  const out: Building[] = [];
+  const reader = table.reader<T>();
+  const out: T[] = [];
   for (let row = 0; row < table.rows; row++) out.push(readRow(reader, row));
   return out;
 }
@@ -510,6 +645,6 @@ export function* eachRecord(refs: readonly RecordRef[]): Generator<Building, voi
   for (const ref of refs) {
     let reader = readers.get(ref.buffer);
     if (!reader) readers.set(ref.buffer, reader = new RecordTable(ref.buffer).reader());
-    yield reader.record(ref.row);
+    yield withField(reader.record(ref.row), ref.field);
   }
 }

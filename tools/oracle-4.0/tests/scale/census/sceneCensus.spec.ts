@@ -29,15 +29,20 @@ describe('scene census', () => {
     setView(city.scene, STREET);
     const street = (await settle(city)).census;
     city.scene.dispose();
+    // 2026-10-25, against db9da0c7's own counts (the numbers here were already behind it): the district 258 -> 253 draws and 4,910,890 ->
+    // 4,017,696 triangles, the street 374 -> 363 and 4,132,945 -> 3,837,968. The roads' far blocks one surface each (asphalt to planting),
+    // no verge and no marking meshes (the lines in the shader of the carriageway); the street props on the tool's ladder (`propLevels.ts`:
+    // the street's lamps drawn as their simplified model, a rung's far cells named after it); the terrain's ground, rim and seams on the four
+    // plates about the origin (`bounds.ts`); a few building parts filed in other cells of 250 m.
     expect({ district, street }).toMatchInlineSnapshot(`
       {
         "district": {
           "byName": {
-            "asphalt-far": {
-              "drawn": 4,
-              "objects": 4,
+            "asphalt+footway+curb-ramp+median-paved+kerb+median-kerb+median-planting-far": {
+              "drawn": 16,
+              "objects": 16,
             },
-            "benches-far-cells": {
+            "benches-far-far-cells": {
               "drawn": 876,
               "objects": 4,
             },
@@ -106,12 +111,16 @@ describe('scene census', () => {
               "objects": 1,
             },
             "building-lotBox": {
-              "drawn": 216296,
-              "objects": 64,
+              "drawn": 146312,
+              "objects": 49,
             },
             "building-lotRail": {
               "drawn": 23714,
               "objects": 19,
+            },
+            "building-lotSides": {
+              "drawn": 69869,
+              "objects": 33,
             },
             "building-lotSlab": {
               "drawn": 7102,
@@ -138,6 +147,10 @@ describe('scene census', () => {
               "objects": 1,
             },
             "building-shell-batch-detail": {
+              "drawn": 0,
+              "objects": 1,
+            },
+            "building-shell-batch-detailRuns": {
               "drawn": 0,
               "objects": 1,
             },
@@ -173,40 +186,12 @@ describe('scene census', () => {
               "drawn": 1,
               "objects": 1,
             },
-            "footway+curb-ramp+median-paved-far": {
-              "drawn": 4,
-              "objects": 4,
-            },
             "gardens-far-cells": {
               "drawn": 34274,
               "objects": 4,
             },
-            "hydrants-far-cells": {
+            "hydrants-far-far-cells": {
               "drawn": 294,
-              "objects": 4,
-            },
-            "kerb+median-kerb-far": {
-              "drawn": 4,
-              "objects": 4,
-            },
-            "markings-eca-far": {
-              "drawn": 4,
-              "objects": 4,
-            },
-            "markings-eced-far": {
-              "drawn": 4,
-              "objects": 4,
-            },
-            "markings-eeed-far": {
-              "drawn": 4,
-              "objects": 4,
-            },
-            "markings-ffe-far": {
-              "drawn": 4,
-              "objects": 4,
-            },
-            "median-planting-far": {
-              "drawn": 4,
               "objects": 4,
             },
             "nature-tree-cypress-": {
@@ -237,6 +222,10 @@ describe('scene census', () => {
               "drawn": 1,
               "objects": 1,
             },
+            "road-far-blocks": {
+              "drawn": 16,
+              "objects": 1,
+            },
             "sign-plates": {
               "drawn": 2,
               "objects": 2,
@@ -249,7 +238,7 @@ describe('scene census', () => {
               "drawn": 1,
               "objects": 1,
             },
-            "street-bins-far-cells": {
+            "street-bins-far-far-cells": {
               "drawn": 840,
               "objects": 4,
             },
@@ -265,24 +254,56 @@ describe('scene census', () => {
               "drawn": 840,
               "objects": 4,
             },
-            "street-lights-far-cells": {
+            "street-lights-mid-mid-far-cells": {
               "drawn": 840,
               "objects": 4,
             },
+            "street-lights-shadow-far-cells": {
+              "drawn": 0,
+              "objects": 4,
+            },
             "terrain-ground": {
-              "drawn": 1,
-              "objects": 1,
+              "drawn": 4,
+              "objects": 4,
             },
             "terrain-rim": {
-              "drawn": 1,
-              "objects": 1,
+              "drawn": 4,
+              "objects": 4,
+            },
+            "terrain-seams": {
+              "drawn": 4,
+              "objects": 4,
             },
             "utility-arms": {
               "drawn": 797,
               "objects": 4,
             },
+            "utility-braces": {
+              "drawn": 0,
+              "objects": 4,
+            },
+            "utility-caps": {
+              "drawn": 0,
+              "objects": 4,
+            },
+            "utility-insulators": {
+              "drawn": 0,
+              "objects": 4,
+            },
+            "utility-lamp-arms": {
+              "drawn": 0,
+              "objects": 4,
+            },
             "utility-lamp-beams": {
               "drawn": 796,
+              "objects": 4,
+            },
+            "utility-lamp-heads": {
+              "drawn": 0,
+              "objects": 4,
+            },
+            "utility-lamp-lenses": {
+              "drawn": 0,
               "objects": 4,
             },
             "utility-lamp-pools": {
@@ -301,29 +322,33 @@ describe('scene census', () => {
               "drawn": 4,
               "objects": 4,
             },
-            "verge-far": {
-              "drawn": 4,
-              "objects": 4,
-            },
           },
-          "drawn": 471891,
-          "draws": 259,
+          "drawn": 471782,
+          "draws": 253,
           "lines": 0,
-          "objects": 301,
+          "objects": 339,
           "points": 4000,
-          "triangles": 5126798,
+          "triangles": 4017696,
         },
         "street": {
           "byName": {
-            "asphalt-far": {
-              "drawn": 4,
-              "objects": 4,
+            "asphalt+footway+curb-ramp+median-paved+kerb+median-kerb+median-planting": {
+              "drawn": 2,
+              "objects": 2,
+            },
+            "asphalt+footway+curb-ramp+median-paved+kerb+median-kerb+median-planting-far": {
+              "drawn": 14,
+              "objects": 14,
+            },
+            "benches": {
+              "drawn": 0,
+              "objects": 1,
             },
             "benches-far": {
               "drawn": 60,
               "objects": 1,
             },
-            "benches-far-cells": {
+            "benches-far-far-cells": {
               "drawn": 876,
               "objects": 4,
             },
@@ -373,10 +398,10 @@ describe('scene census', () => {
             },
             "building-foliage": {
               "drawn": 597,
-              "objects": 13,
+              "objects": 11,
             },
             "building-frame": {
-              "drawn": 11102,
+              "drawn": 11093,
               "objects": 22,
             },
             "building-glass": {
@@ -396,15 +421,19 @@ describe('scene census', () => {
               "objects": 11,
             },
             "building-lotBox": {
-              "drawn": 169608,
-              "objects": 44,
+              "drawn": 122449,
+              "objects": 40,
             },
             "building-lotRail": {
               "drawn": 18080,
               "objects": 11,
             },
+            "building-lotSides": {
+              "drawn": 47044,
+              "objects": 21,
+            },
             "building-lotSlab": {
-              "drawn": 4668,
+              "drawn": 4683,
               "objects": 11,
             },
             "building-lounger": {
@@ -413,7 +442,7 @@ describe('scene census', () => {
             },
             "building-louvre": {
               "drawn": 4486,
-              "objects": 21,
+              "objects": 11,
             },
             "building-massing": {
               "drawn": 25,
@@ -421,18 +450,22 @@ describe('scene census', () => {
             },
             "building-pot": {
               "drawn": 1150,
-              "objects": 13,
+              "objects": 11,
             },
             "building-railing": {
               "drawn": 1292,
               "objects": 13,
             },
             "building-roofRailing": {
-              "drawn": 1365,
+              "drawn": 1502,
               "objects": 8,
             },
             "building-shell-batch-detail": {
-              "drawn": 86,
+              "drawn": 52,
+              "objects": 1,
+            },
+            "building-shell-batch-detailRuns": {
+              "drawn": 44,
               "objects": 1,
             },
             "building-shell-batch-facade": {
@@ -471,16 +504,36 @@ describe('scene census', () => {
               "drawn": 1,
               "objects": 1,
             },
-            "footway+curb-ramp+median-paved-far": {
-              "drawn": 4,
-              "objects": 4,
+            "garden-bushes-bush": {
+              "drawn": 0,
+              "objects": 1,
+            },
+            "garden-bushes-bush-cards": {
+              "drawn": 0,
+              "objects": 1,
             },
             "garden-bushes-bush-far": {
               "drawn": 2,
               "objects": 1,
             },
+            "garden-bushes-bushFlowering": {
+              "drawn": 0,
+              "objects": 1,
+            },
+            "garden-bushes-bushFlowering-cards": {
+              "drawn": 0,
+              "objects": 1,
+            },
             "garden-bushes-bushFlowering-far": {
               "drawn": 28,
+              "objects": 1,
+            },
+            "garden-bushes-hedge": {
+              "drawn": 0,
+              "objects": 1,
+            },
+            "garden-bushes-hedge-cards": {
+              "drawn": 0,
               "objects": 1,
             },
             "garden-trees-broadleaf": {
@@ -535,37 +588,45 @@ describe('scene census', () => {
               "drawn": 34274,
               "objects": 4,
             },
+            "hydrants": {
+              "drawn": 0,
+              "objects": 1,
+            },
             "hydrants-far": {
               "drawn": 21,
               "objects": 1,
             },
-            "hydrants-far-cells": {
+            "hydrants-far-far-cells": {
               "drawn": 294,
               "objects": 4,
             },
-            "kerb+median-kerb-far": {
-              "drawn": 4,
-              "objects": 4,
+            "nature-tree-cypress-": {
+              "drawn": 0,
+              "objects": 2,
             },
-            "markings-eca-far": {
-              "drawn": 4,
-              "objects": 4,
+            "nature-tree-cypress--cards": {
+              "drawn": 0,
+              "objects": 2,
             },
-            "markings-eced-far": {
-              "drawn": 4,
-              "objects": 4,
+            "nature-tree-oak-": {
+              "drawn": 0,
+              "objects": 2,
             },
-            "markings-eeed-far": {
-              "drawn": 4,
-              "objects": 4,
+            "nature-tree-oak--cards": {
+              "drawn": 0,
+              "objects": 2,
             },
-            "markings-ffe-far": {
-              "drawn": 4,
-              "objects": 4,
+            "nature-tree-palm-": {
+              "drawn": 0,
+              "objects": 2,
             },
-            "median-planting-far": {
-              "drawn": 4,
-              "objects": 4,
+            "nature-tree-palm--cards": {
+              "drawn": 0,
+              "objects": 2,
+            },
+            "road-far-blocks": {
+              "drawn": 14,
+              "objects": 1,
             },
             "sign-plates": {
               "drawn": 2,
@@ -579,11 +640,15 @@ describe('scene census', () => {
               "drawn": 1,
               "objects": 1,
             },
+            "street-bins": {
+              "drawn": 0,
+              "objects": 1,
+            },
             "street-bins-far": {
               "drawn": 59,
               "objects": 1,
             },
-            "street-bins-far-cells": {
+            "street-bins-far-far-cells": {
               "drawn": 840,
               "objects": 4,
             },
@@ -612,27 +677,47 @@ describe('scene census', () => {
               "objects": 4,
             },
             "street-lights": {
+              "drawn": 0,
+              "objects": 1,
+            },
+            "street-lights-mid": {
               "drawn": 64,
               "objects": 1,
             },
-            "street-lights-far-cells": {
+            "street-lights-mid-mid-far-cells": {
               "drawn": 840,
               "objects": 4,
             },
+            "street-lights-shadow-far-cells": {
+              "drawn": 0,
+              "objects": 4,
+            },
             "terrain-ground": {
-              "drawn": 1,
-              "objects": 1,
+              "drawn": 4,
+              "objects": 4,
             },
             "terrain-rim": {
-              "drawn": 1,
-              "objects": 1,
+              "drawn": 4,
+              "objects": 4,
+            },
+            "terrain-seams": {
+              "drawn": 4,
+              "objects": 4,
             },
             "utility-arms": {
               "drawn": 797,
               "objects": 4,
             },
+            "utility-braces": {
+              "drawn": 0,
+              "objects": 4,
+            },
             "utility-caps": {
               "drawn": 796,
+              "objects": 4,
+            },
+            "utility-insulators": {
+              "drawn": 0,
               "objects": 4,
             },
             "utility-lamp-arms": {
@@ -667,17 +752,13 @@ describe('scene census', () => {
               "drawn": 4,
               "objects": 4,
             },
-            "verge-far": {
-              "drawn": 4,
-              "objects": 4,
-            },
           },
-          "drawn": 491913,
-          "draws": 380,
+          "drawn": 491955,
+          "draws": 363,
           "lines": 0,
-          "objects": 547,
+          "objects": 576,
           "points": 4000,
-          "triangles": 5130735,
+          "triangles": 3837968,
         },
       }
     `);

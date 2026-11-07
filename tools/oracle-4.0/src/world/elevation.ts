@@ -1,14 +1,15 @@
 import { measureHitch } from '@core/hitch';
 import { Digest } from '@core/digest';
 import { type Aabb, expand as expandBox } from '@core/aabb';
-import { Polyline } from '@core/polyline';
+import { Polyline, newFrame } from '@core/polyline';
 import type { NodeId, SegmentId } from './ids';
 import type { ChangeRect } from './changes';
 import type { Network } from './network';
 import type { NetworkDelta } from './networkDelta';
 import { RerootMap } from '@core/rerootMap';
-import { CASING_BAND, FOOTWAY_RISE, Level, type RoadType, casingHalf, footwayOn } from './roadTypes';
+import { CASING_BAND, FOOTWAY_RISE, Level, type RoadType, casingHalf, flushOn, footwayOn } from './roadTypes';
 import { m } from './units';
+import { TILE } from './tiles';
 import {
   BLEND_TAU,
   INDEX_CELL,
@@ -105,6 +106,9 @@ interface Profile {
   /** Each side's footway, left and right of a -> b. */
   readonly sidewalkLeft: number;
   readonly sidewalkRight: number;
+  /** Each side's footway laid level with the carriageway, no kerb (`flushOn`): the ground beside it is held at the deck, not over it. */
+  readonly flushLeft: boolean;
+  readonly flushRight: boolean;
   /** A digest of the road's look - its materials, which footway is flush - or 0 for the class's own */
   readonly look: number;
   readonly line: Polyline;
@@ -185,8 +189,8 @@ function everyRoad(net: Network): SegmentId[] {
   return [...net.ribbons.keys()];
 }
 
-/** The side of the squares the roads left are taken in (`pendingOrder`). */
-const ORDER_CELL = m(1024);
+/** The side of the squares the roads left are taken in (`pendingOrder`): the world's tile (`tiles.ts`). */
+const ORDER_CELL = TILE;
 
 /**
  * The roads a scoped solve left, in the order to take them: a square of `ORDER_CELL` at a time, the squares nearest (`x`, `y`) first, each
@@ -216,14 +220,12 @@ const SHAPE_SHOULDER = m(18);
 const BATTER = 2.5;
 /** Cap on the batter, so one deep cut cannot reshape a quarter of the map. */
 const SHAPE_SHOULDER_MAX = m(36);
-/** The same batter for a tunnel's approach cutting, and much narrower. */
-const CUT_SHOULDER = m(6.4);
+/** The same batter for a tunnel's approach cutting, and much narrower: one cell of the drawn terrain (`render/terrainGrid.ts`). */
+const CUT_SHOULDER = m(10);
 /** How far past a road's casing a cutting held by retaining walls is dug (`RoadSegment.cutWalls`) */
 export const CUT_WALL_REACH = SHAPE_INNER + CUT_SHOULDER;
-/** How far below the road SURFACE the ground beside it is pulled. */
+/** How far below the road SURFACE the ground under it is pulled. */
 const SHAPE_DROP = m(0.6);
-/** How far under the carriageway the ground beside a road is laid */
-const BESIDE_DROP = m(0.1);
 
 /** The work of the solves, counted (`tests/scale`): profiles made and nodes whose inputs were read. */
 export const elevationWork = { profiles: 0, nodes: 0 };
@@ -384,7 +386,7 @@ export function buildRoadElevation(
     const reachOf = (node: NodeId, trim: number | undefined): number => {
       if (net.doc.node(node)?.smooth && !net.junctions.has(node)) return 0;
       if (net.transitions.has(node)) return PLATE_MARGIN;
-      // The plate is flat over the junction's whole footprint, its footways and verges included (`Network.plateReach`).
+      // The plate is flat over the junction's whole footprint, its footways and its casing included (`Network.plateReach`).
       let reach = trim ?? 0;
       // The casing's legs alone (`JunctionLevels.legsAt`): DO NOT make the casing's level at every junction for its widths.
       const levels = net.junctions.get(node);
@@ -416,6 +418,8 @@ export function buildRoadElevation(
       sidewalk: ribbon.road.sidewalk,
       sidewalkLeft: footwayOn(ribbon.road, 'left'),
       sidewalkRight: footwayOn(ribbon.road, 'right'),
+      flushLeft: flushOn(ribbon.road, 'left'),
+      flushRight: flushOn(ribbon.road, 'right'),
       look: lookDigest(ribbon.road),
       line,
       length,
@@ -806,7 +810,11 @@ export function buildRoadElevation(
     shapeAt: (x, y, naturalGround) => roadShapeAt(index.near(x, y), x, y, naturalGround),
     shapeCut(rects) {
       const { profiles: meet, cells } = index.meeting(rects);
-      return { field: packField(meet, cells).data, walls: Uint8Array.from(meet, (profile) => (profile.walls ? 1 : 0)) };
+      return {
+        field: packField(meet, cells).data,
+        walls: Uint8Array.from(meet, (profile) => (profile.walls ? 1 : 0)),
+        flush: Uint8Array.from(meet, (profile) => (profile.flushLeft ? 1 : 0) | (profile.flushRight ? 2 : 0)),
+      };
     },
     has(structures) {
       if (!structures) return total > 0;
@@ -831,19 +839,29 @@ interface ShapingRoad {
   readonly manualVertical: boolean;
   readonly walls: boolean;
   readonly half: number;
+  /** The wider footway (the casing's), and each side's, with whether it is laid flush. */
+  readonly sidewalk: number;
+  readonly sidewalkLeft: number;
+  readonly sidewalkRight: number;
+  readonly flushLeft: boolean;
+  readonly flushRight: boolean;
   readonly h: ArrayLike<number>;
   readonly step: number;
-  readonly line: Pick<Polyline, 'closestInto'>;
+  readonly line: Pick<Polyline, 'closestInto' | 'sampleAtInto'>;
 }
 
 /** The roads a shaping of the ground can read inside some rectangles */
 export interface RoadShapeCut {
   readonly field: FieldData;
   readonly walls: Uint8Array;
+  /** Each road's flush footways: 1 the left, 2 the right (`Profile.flushLeft`, `flushRight`). */
+  readonly flush: Uint8Array;
 }
 
 /** Scratch of `roadShapeAt`'s nearest-point reads. */
 const shapeHit = { s: 0, distance: 0 };
+/** Scratch of the frame its side is read from. */
+const shapeFrame = newFrame();
 
 /** DO NOT give either side its own copy of it. */
 function roadShapeAt(candidates: Iterable<ShapingRoad>, x: number, y: number, naturalGround: number): { height: number; weight: number } {
@@ -859,9 +877,17 @@ function roadShapeAt(candidates: Iterable<ShapingRoad>, x: number, y: number, na
     const sunken = isSunken(profile.structure) ||
       (profile.manualVertical && naturalGround - heightAtArc(profile, shapeHit.s) > 0);
     const surface = heightAtArc(profile, shapeHit.s);
-    // Under the road (carriageway and footway) the ground is pulled well below the deck, where nothing can show through it.
-    const beside = !sunken && distance > profile.half - CASING_BAND;
-    const height = beside ? surface - BESIDE_DROP : surface - SHAPE_DROP;
+    // Its side of the road, and that side's footway: its outer edge (the casing less its band, less what this side's footway is narrower by) and its
+    // top (a kerbed footway `FOOTWAY_RISE` over the deck, a flush one at it; no footway, the carriageway's edge at the deck).
+    profile.line.sampleAtInto(shapeHit.s, shapeFrame);
+    const left = (x - shapeFrame.p.x) * shapeFrame.n.x + (y - shapeFrame.p.y) * shapeFrame.n.y >= 0;
+    const walk = left ? profile.sidewalkLeft : profile.sidewalkRight;
+    const edge = profile.half - CASING_BAND - (profile.sidewalk - walk);
+    const rise = walk > 0 && !(left ? profile.flushLeft : profile.flushRight) ? FOOTWAY_RISE : 0;
+    // Under the road (carriageway and footway) the ground is pulled well below the deck, where nothing can show through it; beside it, held
+    // level with the footway's top, so the terrain meets the footway's edge on its own height (`render/terrainSeams.ts`) and goes on from it.
+    const beside = !sunken && distance >= edge;
+    const height = beside ? surface + rise : surface - SHAPE_DROP;
     // The batter is sized from the earthwork it has to carry away
     const shoulder = sunken || (profile.walls && naturalGround > height)
       ? CUT_SHOULDER
@@ -887,7 +913,7 @@ function roadShapeAt(candidates: Iterable<ShapingRoad>, x: number, y: number, na
 /** The roads of a cut (`RoadElevation.shapeCut`) read as the solve reads its own: `shapeAt` */
 export function roadShaper(cut: RoadShapeCut, terrainAt: (x: number, y: number) => number = noGround):
   Pick<RoadElevation, 'shapeAt' | 'at' | 'roadAt'> {
-  const profiles = unpackField(cut.field).map((p, k) => ({ ...p, walls: cut.walls[k] === 1 }));
+  const profiles = unpackField(cut.field).map((p, k) => ({ ...p, walls: cut.walls[k] === 1, flushLeft: (cut.flush[k]! & 1) !== 0, flushRight: (cut.flush[k]! & 2) !== 0 }));
   const index = new SpatialIndex(profiles, new Set(cut.field.cells));
   const reads = roadField(index, new Map(profiles.map((p) => [p.id, p])), terrainAt);
   return {

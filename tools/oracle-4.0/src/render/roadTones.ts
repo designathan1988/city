@@ -17,3 +17,15 @@ export const FOOTWAY_TINT: Readonly<Record<FootwayMaterial, readonly [number, nu
   concrete: [1.08, 1.08, 1.1],
   stone: [1, 0.84, 0.66],
 };
+
+/** THE MEAN LINEAR ALBEDO OF EACH BAKED STREET TEXTURE (`bake/roadRecipes.ts`), every texel as stored (sRGB bytes) and read (linear): constants, worked
+ *  out once from the recipes; the raised crossings' and the deck's read off their layers' last mip level (1 x 1, the mean of every texel). What the
+ *  far levels paint each surface with (`networkFarRoads.ts`, `roadStandIn.ts`), and the sheets (`mesh/roadEdges.ts` roadSheetMaterial). */
+export const STREET_MEANS: Readonly<Record<'asphalt' | 'raised' | 'footway' | 'kerb' | 'verge' | 'deck', readonly [number, number, number]>> = {
+  asphalt: [0.040666, 0.041456, 0.044698],
+  raised: [0.05127, 0.052734, 0.056152],
+  footway: [0.210044, 0.208119, 0.195658],
+  kerb: [0.338651, 0.331236, 0.316671],
+  verge: [0.029413, 0.070144, 0.010057],
+  deck: [0.386719, 0.380859, 0.361328],
+};

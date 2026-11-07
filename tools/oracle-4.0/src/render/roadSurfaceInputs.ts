@@ -1,9 +1,6 @@
-import type { MultiPoly, Poly } from '@core/clipper';
 import type { Polyline } from '@core/polyline';
 import type { Vec2 } from '@core/vec2';
-import { union } from '@core/clipper';
 import { Digest } from '@core/digest';
-import { type Input, inputOf, medianOf } from './roadSurfaceRings';
 import type { ChangeRect } from '@world/changes';
 import { CellFiling } from '@world/cells';
 import { junctionBounds } from '@world/ribbons';
@@ -11,10 +8,7 @@ import { ViewCells } from '@world/viewCells';
 import { JournalCursor } from '@world/derived';
 import type { NodeId, SegmentId } from '@world/ids';
 import type { Network } from '@world/network';
-import { CASING_BAND, Level, type SurfaceLevel } from '@world/roadTypes';
-import { levelRingsOf } from '@world/surfaces';
-import { rampOutline, rampsOfNode } from '@world/curbRamps';
-import { footwayRiseShare } from '@world/roads/footwayRise';
+import type { NetworkDelta } from '@world/networkDelta';
 import { ROAD_STRUCTURES, roadStructure } from '@world/structures';
 import { m } from '@world/units';
 import {
@@ -23,25 +17,36 @@ import {
   approachLegendsAt,
   junctionDetailAt,
   midBlockDetailAt,
-  miniRoundaboutAt,
+  miniRoundaboutIsland,
   transitionMarkings,
+  type ZebraStretch,
 } from '@world/markings';
 import { parkingLinesOf, parksAlong } from '@world/parkingLayout';
-import { PAINT_COLOURS, STOP_PAINT, ZEBRA_PAINT, barQuad, roadStrokes, strokeQuads, type QuadSink } from './paintQuads';
-import { FOOTWAY_EDGE_CELL } from './roadSurfaceReads';
 import {
-  type CellHold, DETAILS, type Entry, type InputResidency, LEVEL_OF, LEVEL_SLOTS, MEDIAN_SLOTS, NODE_PAD, type NodeItem, PAINT_PREFIX, PHASE, type PassInputs, type Reach, type SegmentItem, type Superset, type SurfacePass, TILE, TILE_ORIGIN, TILE_REACH, WAKE_PAD, alignmentPass, byWalk, entryBytes, entryOf, growRect, isGroundPass, medianSlot, paintSlot, surfaceInputWork, tileKey, tileRectOf, tilesOver, unite,
+  type Filed, type MarkGroup, type MarkPasses, type MarkPiece, STOP_PAINT, barGroup, fileMarks, islandGroup, parkingGroups, roadMarks, roadStrokes, strokeGroups, zebraGroup,
+} from './roadMarks';
+import { type Geom, type Input, inputOf } from './roads/pieceGeom';
+import { type Shape, segmentShapes } from './roads/segmentPiece';
+import { junctionShapes } from './roads/junctionPiece';
+import { nodeOwner, segmentOwner } from './roads/pieceOwner';
+import {
+  type CellHold, type Entry, type InputResidency, NODE_PAD, type NodeItem, type PartKey, PHASE, type PassInputs, type Reach, type SegmentItem, type Superset, type SurfacePass, TILE, TILE_REACH, WAKE_PAD, alignmentPass, byPart, byWalk, cellRectOfPart, entryBytes, entryOf, growRect, isGroundPass, ownedPart, pieceKey, pieceOfPart, surfaceInputWork, unite,
 } from './roadSurfaceEntries';
 
-export { ROAD_INPUT_RESIDENCY, TILE, TILE_BIAS, TILE_ORIGIN, surfaceInputWork } from './roadSurfaceEntries';
-export type { InputResidency, Reach, SurfacePass } from './roadSurfaceEntries';
+export { CELL, ROAD_INPUT_RESIDENCY, TILE_REACH, byPart, cellRectOfPart, cellOfPart, surfaceInputWork } from './roadSurfaceEntries';
+export type { InputResidency, PartKey, Reach, SurfacePass } from './roadSurfaceEntries';
 
-/** DO NOT gather a pass's inputs by walking the whole map and filtering by the pass */
-
-/** The inputs of every pass, kept between builds and brought up to the network by its change (`refresh`). */
+/**
+ * DO NOT gather a pass's inputs by walking the whole map and filtering by the pass
+ *
+ * THE ROADS' SURFACES' INPUTS, PIECE BY PIECE: each road and each junction is a piece (`roadSurfaceEntries.ts` pieceKey), its shapes made from its
+ * own centreline and cross-section or its own outlines (`roads/segmentPiece.ts`, `roads/junctionPiece.ts`) and filed under each part of it, its
+ * one part: the piece whole, in the block that owns it (`roads/pieceOwner.ts`), meshed from its shapes whole (`roads/pieceMesh.ts`), nothing cut at a
+ * block's edge. An edit to a road makes that road's part and its two junctions' again, and no other.
+ */
 export class SurfaceInputs {
   /** `gates`: the entrances a street's parking keeps clear of (`parkingLayout.ts` gatesNear), for a network without its buildings (a road bake in a worker, `nearRoadTiles.ts`); none: the document's buildings. */
-  /** `residency`: the inputs held round the view, cell by cell (`viewCells.ts`), each item derived only when a tile it reaches is visited; none: every item derived for good (a bake in a worker, the tests). */
+  /** `residency`: the inputs held round the view, cell by cell (`viewCells.ts`), each item derived only when a part it reaches is visited; none: every item derived for good (a bake in a worker, the tests). */
   constructor(private readonly gates: ((line: Polyline, half: number) => [Vec2, Vec2][]) | null = null, residency: InputResidency | null = null) {
     this.cells = residency ? new ViewCells<CellHold>({
       name: 'road surface inputs',
@@ -55,7 +60,7 @@ export class SurfaceInputs {
 
   /** The cells the inputs are held in round the view; null: every item derived for good. */
   readonly cells: ViewCells<CellHold> | null;
-  /** The items not derived now, filed by their boxes: what a visited tile derives (`wakeTile`). */
+  /** The items not derived now, filed by their boxes: what a visited part derives (`wakeTile`). */
   private dormantSegments = new CellFiling<SegmentId, SegmentItem>(TILE);
   private dormantNodes = new CellFiling<NodeId, NodeItem>(TILE);
   /** The items derived now (held round the view only). */
@@ -82,10 +87,6 @@ export class SurfaceInputs {
   /** The document's roads in each pass. */
   private readonly count = new Map<string, number>();
   private readonly passes = new Map<string, PassInputs>();
-  /** The junctions' paint (`DETAILS`), by tile and slot. */
-  private readonly details = new Map<number, Map<string, Set<Entry>>>();
-  /** Every paint colour met (a handful: the catalogue's, `PAINT_COLOURS`, and any it lacks). */
-  private readonly met = new Set<string>();
   /** Passes made so far: each pass's birth number. */
   private births = 0;
 
@@ -105,6 +106,8 @@ export class SurfaceInputs {
       return;
     }
 
+    // The roads held moved, no edit (`NetworkDelta.scopeOnly`, the page's network holding the tiles near the view): the roads that came are filed as the first build files them, derived when a part of theirs is visited; those that left are let go with their marks. DO NOT derive a tile's every shape for its coming into view.
+    if (delta.scopeOnly) { this.followScope(net, delta); return; }
     const segs = new Set<SegmentId>(delta.segments);
     // A crossing is fitted to the footway along its road, a flush footway lowers the kerbs on it
     if (delta.rects.length) for (const id of net.segmentCells.idsMeetingAny(delta.rects)) segs.add(id);
@@ -116,7 +119,7 @@ export class SurfaceInputs {
       if (item) { nodes.add(item.ends[0]); nodes.add(item.ends[1]); }
     };
     for (const id of segs) ends(id);
-    // A road's lines stop at its nodes' stop lines and crossings, and its mouths overlap their plates
+    // A road's lines stop at its nodes' stop lines and crossings, and its ends lie on their plates' mouths
     for (const node of nodes) for (const id of doc.node(node)?.incident ?? []) segs.add(id);
     for (const id of segs) ends(id);
     // A building changed beside a street with parking: the bays keep clear of its gates.
@@ -138,7 +141,7 @@ export class SurfaceInputs {
     for (const node of [...nodes].sort((p, q) => p - q)) this.placeNode(net, node);
   }
 
-  /** @rebuild Every item made again: the network could not say what changed (a load, the first build). Held round the view, every item is only filed by its box, its inputs derived when a tile it reaches is visited (`wakeTile`): DO NOT derive the whole map's rings before the city appears. */
+  /** @rebuild Every item made again: the network could not say what changed (a load, the first build). Held round the view, every item is only filed by its box, its inputs derived when a part it reaches is visited (`wakeTile`): DO NOT derive the whole map's shapes before the city appears. */
   private rebuildAll(net: Network): void {
     this.resetting = true;
     this.cells?.clear();
@@ -149,16 +152,18 @@ export class SurfaceInputs {
     this.residentNodes.clear();
     this.residentBytes = 0;
     this.passes.clear();
-    this.details.clear();
     this.segments.clear();
     this.nodes.clear();
     this.manual.clear();
     this.rootOf.clear();
     this.chains.clear();
     this.count.clear();
-    const ids = [...net.doc.segments.keys()].sort((p, q) => p - q);
+    // Every mark let go with them, placed again as each item is (`roadMarks.ts`, written at the build's swap).
+    roadMarks.clear(net.doc);
+    // The roads the network holds (`Network.scope`: the tiles near the view on the page, every road elsewhere), and the nodes whose every road it holds.
+    const ids = [...net.scope ?? net.doc.segments.keys()].filter((id) => net.doc.segment(id)).sort((p, q) => p - q);
     this.reassign(net, ids);
-    const nodes = [...net.doc.nodes.keys()].sort((p, q) => p - q);
+    const nodes = net.scope === null ? [...net.doc.nodes.keys()].sort((p, q) => p - q) : this.completeEnds(net, ids);
     if (this.cells) {
       for (const id of ids) this.fileSegment(net, id);
       for (const node of nodes) this.fileNode(net, node);
@@ -168,52 +173,133 @@ export class SurfaceInputs {
     for (const node of nodes) this.placeNode(net, node);
   }
 
-  /** A road filed as not derived (held round the view): its pass counted, its box's tiles filed (`Superset`). */
+  /** The ends of `ids` the network holds whole (`Network.complete`), in id order. */
+  private completeEnds(net: Network, ids: Iterable<SegmentId>): NodeId[] {
+    const out = new Set<NodeId>();
+    for (const id of ids) {
+      const segment = net.doc.segment(id);
+      if (!segment) continue;
+      if (net.complete(segment.a)) out.add(segment.a);
+      if (net.complete(segment.b)) out.add(segment.b);
+    }
+    return [...out].sort((p, q) => p - q);
+  }
+
+  /** The roads held moved (`refresh`, `scopeOnly`): a road that came filed (derived when visited), one that left forgotten; the same of the nodes, held whole or not. */
+  private followScope(net: Network, delta: NetworkDelta): void {
+    const nodes = new Set<NodeId>(delta.nodes);
+    const came: SegmentId[] = [], went: SegmentId[] = [];
+    for (const id of [...delta.segments].sort((p, q) => p - q)) {
+      const segment = net.doc.segment(id);
+      if (segment) { nodes.add(segment.a); nodes.add(segment.b); }
+      const item = this.segments.get(id);
+      if (item) { nodes.add(item.ends[0]); nodes.add(item.ends[1]); }
+      const held = segment !== undefined && net.holds(id);
+      if (held && !item) came.push(id); else if (!held && item) went.push(id);
+    }
+    for (const id of went) this.forgetSegment(net, id);
+    // The alignments of the roads raised by hand that came or went: a road whose pass moved filed again under it.
+    for (const id of this.reassign(net, [...came, ...went])) {
+      if (came.includes(id) || !this.segments.has(id)) continue;
+      this.forgetSegment(net, id);
+      if (net.holds(id)) this.fileSegment(net, id);
+    }
+    for (const id of came) this.fileSegment(net, id);
+    for (const node of [...nodes].sort((p, q) => p - q)) {
+      const item = this.nodes.get(node);
+      const held = net.doc.node(node) !== undefined && net.complete(node);
+      if (held && !item) this.fileNode(net, node);
+      else if (!held && item) this.forgetNode(net, node);
+    }
+  }
+
+  /** A road let go whole (it left the roads held): its entries or its filing, its pass's count, its marks. */
+  private forgetSegment(net: Network, id: SegmentId): void {
+    const old = this.segments.get(id);
+    if (!old) return;
+    if (old.entries) { this.unfile(old.entries, true); this.residentBytes -= old.bytes; }
+    else { this.dormantSegments.remove(id); this.undormant(old.superset, false); }
+    if (old.pass !== null) this.count.set(old.pass, (this.count.get(old.pass) ?? 1) - 1);
+    this.segments.delete(id);
+    this.residentSegments.delete(id);
+    roadMarks.place(net.doc, { kind: 'segment', id }, []);
+  }
+
+  /** A node let go whole (a road of its left the roads held): as `forgetSegment`. */
+  private forgetNode(net: Network, node: NodeId): void {
+    const old = this.nodes.get(node);
+    if (!old) return;
+    if (old.entries) { this.unfile(old.entries, true); this.residentBytes -= old.bytes; }
+    else { this.dormantNodes.remove(node); this.undormant(old.superset, false); }
+    this.nodes.delete(node);
+    this.residentNodes.delete(node);
+    roadMarks.place(net.doc, { kind: 'node', id: node }, []);
+  }
+
+  /** A road filed as not derived (held round the view): its pass counted, its parts filed (`Superset`). */
   private fileSegment(net: Network, id: SegmentId): void {
     const segment = net.doc.segment(id);
     if (!segment) return;
     const pass = this.passOf(net, id)!;
     this.count.set(pass, (this.count.get(pass) ?? 0) + 1);
-    const fresh: SegmentItem = { pass, ends: [segment.a, segment.b], entries: [], box: this.segmentBox(net, id), superset: null, bytes: 0 };
-    const item = this.dormant(fresh, [pass]);
+    const box = this.segmentBox(net, id);
+    const fresh: SegmentItem = { pass, ends: [segment.a, segment.b], entries: [], box, superset: null, bytes: 0 };
+    const item = this.dormant(fresh, [pass], this.segmentParts(net, id));
     this.segments.set(id, item);
     if (item.box) this.dormantSegments.file(id, item, item.box);
   }
 
-  /** A node filed as not derived: the passes of its roads, its box's tiles. */
+  /** A node filed as not derived: its owner's pass, its parts. */
   private fileNode(net: Network, node: NodeId): void {
     const box = this.nodeBox(net, node);
     if (!box) return;
-    const item = this.dormant({ entries: [], box, superset: null, bytes: 0 }, this.nodePasses(net, node));
+    const owner = this.ownerOf(net, node);
+    const item = this.dormant({ entries: [], box, superset: null, bytes: 0 }, owner !== null ? [owner] : [], this.nodeParts(net, node));
     this.nodes.set(node, item);
     this.dormantNodes.file(node, item, box);
+  }
+
+  /** A road's part: the road whole, in the block the middle of its centreline lies in; none where it has no ribbon. */
+  private segmentParts(net: Network, id: SegmentId): PartKey[] {
+    const at = segmentOwner(net, id);
+    return at ? [ownedPart(pieceKey('segment', id), at)] : [];
+  }
+
+  /** A junction's part: the junction whole, in the block its node lies in. */
+  private nodeParts(net: Network, node: NodeId): PartKey[] {
+    const at = nodeOwner(net, node);
+    return at ? [ownedPart(pieceKey('node', node), at)] : [];
   }
 
   /** The box a road's inputs lie in: its ribbon's (`ribbonBounds`, every level), or null when it has none. */
   private segmentBox(net: Network, id: SegmentId): ChangeRect | null {
     const box = net.segmentCells.rectOf(id);
-    return box ? growRect(box, TILE_REACH) : null;
+    return box ? growRect(box, TILE_REACH + NODE_PAD) : null;
   }
 
-  /** The box a node's inputs may lie in: its roads' boxes and its plates', grown by `NODE_PAD`; null for a node with neither. */
-  private nodeBox(net: Network, node: NodeId): ChangeRect | null {
+  /**
+   * The box a node's inputs may lie in: its roads' boxes and its plates', grown by `NODE_PAD`, and the box of every shape it makes (`entries`, else
+   * those it has made: `junctionPiece.ts`), each shape's own (`pieceGeom.ts` inputOf); null for a node with neither. DO NOT take its outlines'
+   * rings for its shapes: a kerb return past a straight angle is mitred and a footway's back corner squared as the owner's road tool draws them, out
+   * past the rings (16 m in the grid-and-bends fixture), and a build handed the field for the rings alone read no road there
+   * (`tests/render/roadTileWorkers.spec.ts`).
+   */
+  private nodeBox(net: Network, node: NodeId, entries?: readonly Entry[]): ChangeRect | null {
     let box: ChangeRect | null = null;
     for (const id of net.doc.node(node)?.incident ?? []) box = unite(box, net.segmentCells.rectOf(id) ?? null);
     const byLevel = net.junctions.get(node);
     if (byLevel) box = unite(box, junctionBounds(byLevel));
-    return box ? growRect(box, NODE_PAD) : null;
+    if (box) box = growRect(box, NODE_PAD);
+    for (const { input } of entries ?? this.nodes.get(node)?.entries ?? []) {
+      // A shape with no place of its own (stations) moves no box.
+      if (input.minX <= input.maxX) box = unite(box, [input.minX, input.minY, input.maxX, input.maxY]);
+    }
+    return box;
   }
 
-  /** The passes a node's inputs may be drawn in: its roads'. */
-  private nodePasses(net: Network, node: NodeId): string[] {
-    const out = new Set<string>();
-    for (const id of net.doc.node(node)?.incident ?? []) { const pass = this.passOf(net, id); if (pass !== null) out.add(pass); }
-    return [...out];
-  }
-
-  /** An item made not derived: its superset's tiles counted in its passes (`PassInputs.dormant`) before its entries go, so no pass is left empty on the way. */
-  private dormant<T extends { readonly entries: readonly Entry[] | null; readonly box: ChangeRect | null; readonly superset: Superset | null; readonly bytes: number }>(item: T, passes: readonly string[]): T {
-    const superset: Superset | null = item.box && passes.length ? { passes, tiles: tilesOver(item.box) } : null;
+  /** An item made not derived: its parts counted in its passes (`PassInputs.dormant`) before its entries go, so no pass is left empty on the way. */
+  private dormant<T extends { readonly entries: readonly Entry[] | null; readonly box: ChangeRect | null; readonly superset: Superset | null; readonly bytes: number }>(item: T, passes: readonly string[], parts: readonly PartKey[]): T {
+    const superset: Superset | null = item.box && passes.length && parts.length ? { passes, tiles: parts } : null;
     if (superset) {
       for (const id of superset.passes) {
         const pass = this.passFor(id);
@@ -224,7 +310,7 @@ export class SurfaceInputs {
     return { ...item, entries: null, superset, bytes: 0 };
   }
 
-  /** A dormant item's superset taken out of its passes (it is derived now, or gone); `dirty`: its tiles visited by the next build (what it drew there may have changed). */
+  /** A dormant item's superset taken out of its passes (it is derived now, or gone); `dirty`: its parts visited by the next build (what it drew there may have changed). */
   private undormant(superset: Superset | null, dirty: boolean): void {
     if (!superset) return;
     for (const id of superset.passes) {
@@ -242,13 +328,28 @@ export class SurfaceInputs {
   /** A pass's inputs, made if it has none yet. */
   private passFor(id: string): PassInputs {
     let pass = this.passes.get(id);
-    if (!pass) this.passes.set(id, pass = { id, ground: isGroundPass(id), tiles: new Map(), dormant: new Map(), born: this.births++, dirty: new Set() });
+    if (!pass) this.passes.set(id, pass = { id, tiles: new Map(), dormant: new Map(), born: this.births++, dirty: new Set() });
     return pass;
   }
 
-  /** The items that may put inputs in tile `key` derived, with the cells round it (`WAKE_PAD`): what a build visiting the tile reads is whole. Nothing when every item is derived for good. */
-  wakeTile(key: number): void {
-    if (this.cells) this.wakeRect(growRect(tileRectOf(key), WAKE_PAD));
+  /** The box of a part's whole piece: where what it reads lies. DO NOT take its share of its block alone: a part is meshed from its piece whole
+   *  (its strips' stations asked of every stretch of it, `roads/pieceMesh.ts`), so the two parts of a road that crosses a block's edge read the
+   *  same heights and meet on the same vertices. */
+  private partRect(key: PartKey): ChangeRect {
+    const net = this.net;
+    if (!net) return cellRectOfPart(key);
+    const piece = pieceOfPart(key);
+    return (piece.kind === 'segment' ? this.segmentBox(net, piece.id as SegmentId) : this.nodeBox(net, piece.id as NodeId)) ?? cellRectOfPart(key);
+  }
+
+  /** Where a part's piece lies (`partRect`), for the build: its ground's and its heights' reads. */
+  rectOf(key: PartKey): ChangeRect {
+    return this.partRect(key);
+  }
+
+  /** The items that may put inputs in part `key` derived, with the cells round its piece (`WAKE_PAD`): what a build visiting it reads is whole. Nothing when every item is derived for good. */
+  wakeTile(key: PartKey): void {
+    if (this.cells) this.wakeRect(growRect(this.partRect(key), WAKE_PAD));
   }
 
   /** The cells a rectangle reaches derived (`deriveCell`), none of them let go for another. */
@@ -301,7 +402,7 @@ export class SurfaceInputs {
   private letGoSegment(id: SegmentId, except: number): void {
     const item = this.segments.get(id);
     if (!item?.entries || this.held(item.box, except)) return;
-    const dormant = this.dormant(item, item.pass !== null ? [item.pass] : []);
+    const dormant = this.dormant(item, item.pass !== null ? [item.pass] : [], this.net ? this.segmentParts(this.net, id) : []);
     this.segments.set(id, dormant);
     this.residentSegments.delete(id);
     if (dormant.box) this.dormantSegments.file(id, dormant, dormant.box);
@@ -310,7 +411,8 @@ export class SurfaceInputs {
   private letGoNode(node: NodeId, except: number): void {
     const item = this.nodes.get(node);
     if (!item?.entries || this.held(item.box, except) || !this.net) return;
-    const dormant = this.dormant(item, this.nodePasses(this.net, node));
+    const owner = this.ownerOf(this.net, node);
+    const dormant = this.dormant(item, owner !== null ? [owner] : [], this.nodeParts(this.net, node));
     this.nodes.set(node, dormant);
     this.residentNodes.delete(node);
     if (dormant.box) this.dormantNodes.file(node, dormant, dormant.box);
@@ -396,7 +498,8 @@ export class SurfaceInputs {
     return root !== undefined ? alignmentPass(root) : segment.structure;
   }
 
-  /** A road's inputs made again and filed. `silent`: derived again as it was (held round the view, `wakeTile`): no tile made dirty. */
+  /** A road's inputs made again and filed: its bands, median and dropped kerbs (`segmentPiece.ts`), its paint. `silent`: derived again as it was
+   *  (held round the view, `wakeTile`): no part made dirty. */
   private placeSegment(net: Network, id: SegmentId, silent = false): void {
     surfaceInputWork.segments++;
     const old = this.segments.get(id);
@@ -408,46 +511,41 @@ export class SurfaceInputs {
       this.residentSegments.delete(id);
     }
     const segment = net.doc.segment(id);
-    if (!segment) { if (old && !old.entries) this.undormant(old.superset, !silent); return; }
+    const source: MarkPiece = { kind: 'segment', id };
+    if (!segment) { roadMarks.place(net.doc, source, []); if (old && !old.entries) this.undormant(old.superset, !silent); return; }
     const pass = this.passOf(net, id)!;
     this.count.set(pass, (this.count.get(pass) ?? 0) + 1);
     const entries: Entry[] = [];
+    const box = this.segmentBox(net, id);
+    const parts = this.segmentParts(net, id);
     const ribbon = net.ribbons.get(id);
-    if (ribbon) {
+    const marks: MarkGroup[] = [];
+    if (ribbon && parts.length) {
       let seq = 0;
-      const add = (slot: string, phase: number, poly: Poly): void => {
-        const input = inputOf(poly);
-        if (input) entries.push(entryOf(input, slot, phase, id, seq++, pass));
+      const add = (slot: string, phase: number, geom: Geom): void => {
+        const input = inputOf(geom);
+        if (input) entries.push(entryOf(input, slot, phase, id, seq++, pass, parts));
       };
-      for (const slot of LEVEL_SLOTS) for (const poly of levelRingsOf(net, LEVEL_OF[slot], [ribbon], [])) add(slot, PHASE.road, poly);
-      const median = medianOf(net, ribbon);
-      if (median) {
-        add(medianSlot('kerb'), PHASE.road, median.kerb);
-        add(medianSlot(median.paved ? 'paved' : 'planting'), PHASE.road, median.inner);
-      }
-      // Paint belongs to the road legs, not to the shared intersection interior
-      const ring = ribbon.rings[Level.Asphalt];
-      if (ring && !ring.isEmpty) add('ribbons', PHASE.road, [ring.flatten().map((point) => [point.x, point.y])]);
-      const paint = (phase: number): QuadSink => (color, quad) => { this.colour(color); add(paintSlot(color), phase, [quad]); };
-      const lines = paint(PHASE.lines);
-      for (const spec of roadStrokes(net, ribbon)) strokeQuads(lines, spec);
-      // Parking bays and the no-parking lines beside them (`world/parkingLayout.ts`).
-      const parking = paint(PHASE.parking);
+      for (const shape of segmentShapes(net, ribbon)) add(shape.slot, PHASE.road, shape.geom);
+      // Its arrows and bus lanes' legends, its parking bays and the no-parking lines beside them (`world/parkingLayout.ts`): marks the carriageway's
+      // shader draws (`roadMarks.ts`), no polygon of paint.
+      for (const spec of roadStrokes(net, ribbon)) marks.push(...strokeGroups(spec));
       const gates = this.gates && parksAlong(net, ribbon) ? this.gates(ribbon.full, ribbon.road.width / 2) : null;
-      for (const line of parkingLinesOf(net, ribbon, gates)) {
-        strokeQuads(parking, { points: line.points, width: line.width, color: line.color, dash: line.dash, dashOffset: 0 });
-      }
+      const hit = { s: 0, distance: 0 };
+      const along = (p: Vec2): number => { ribbon.full.closestInto(p.x, p.y, hit); return hit.s; };
+      for (const line of parkingLinesOf(net, ribbon, gates)) marks.push(...parkingGroups(line, along));
     }
+    roadMarks.place(net.doc, source, fileMarks(net, source, marks, this.markPasses(net)));
     const bytes = entryBytes(entries);
-    this.segments.set(id, { pass, ends: [segment.a, segment.b], entries, box: this.cells ? this.segmentBox(net, id) : null, superset: null, bytes });
+    this.segments.set(id, { pass, ends: [segment.a, segment.b], entries, box: this.cells ? box : null, superset: null, bytes });
     this.file(entries, silent);
     this.residentBytes += bytes;
     if (this.cells) this.residentSegments.add(id);
-    // Its superset out once its entries are in (no pass left empty on the way); made by an edit, the tiles it reached before visited again.
+    // Its superset out once its entries are in (no pass left empty on the way); made by an edit, the parts it reached before visited again.
     if (old && !old.entries) this.undormant(old.superset, !silent);
   }
 
-  /** A node's inputs made again and filed: its plates, taper, island, dropped kerbs and junction paint. */
+  /** A node's inputs made again and filed, in the pass of its lowest road: its plates and corners (`junctionPiece.ts`), its paint. */
   private placeNode(net: Network, node: NodeId, silent = false): void {
     surfaceInputWork.nodes++;
     const old = this.nodes.get(node);
@@ -458,72 +556,25 @@ export class SurfaceInputs {
       this.residentNodes.delete(node);
     }
     const record = net.doc.node(node);
-    if (!record) { if (old && !old.entries) this.undormant(old.superset, !silent); return; }
+    const source: MarkPiece = { kind: 'node', id: node };
+    if (!record) { roadMarks.place(net.doc, source, []); if (old && !old.entries) this.undormant(old.superset, !silent); return; }
     const entries: Entry[] = [];
-    let seq = 0;
-    const add = (slot: string, phase: number, input: Input | null, pass: string | null): void => {
-      if (input && pass !== null) entries.push(entryOf(input, slot, phase, node, seq++, pass));
-    };
-    const byLevel = net.junctions.get(node);
-    const plate = byLevel?.get(Level.Asphalt as SurfaceLevel);
-    if (byLevel) {
-      const owner = this.ownerOf(net, node);
-      if (owner !== null) {
-        for (const slot of LEVEL_SLOTS) {
-          for (const poly of levelRingsOf(net, LEVEL_OF[slot], [], [[node, byLevel]])) add(slot, PHASE.junction, inputOf(poly), owner);
-        }
-      }
+    const owner = this.ownerOf(net, node);
+    const parts = this.nodeParts(net, node);
+    const filed: [MarkPiece, Filed[]][] = [];
+    if (owner !== null && parts.length) {
+      let seq = 0;
+      const add = (slot: string, phase: number, geom: Geom): void => {
+        const input = inputOf(geom);
+        if (input) entries.push(entryOf(input, slot, phase, node, seq++, owner, parts));
+      };
+      for (const shape of junctionShapes(net, node) as Shape[]) add(shape.slot, PHASE.junction, shape.geom);
+      filed.push(...this.nodeMarks(net, node, owner));
     }
-    // ...and to the tapers where a road carries on at another width, whose lane lines and edge lines run on through them
-    if (net.transitions.has(node)) {
-      const leg = plate?.legs[0];
-      const pass = leg ? this.passOf(net, leg.seg) : null;
-      if (plate && pass !== null) {
-        add('ribbons', PHASE.taper, inputOf([plate.ring.flatten().map((point) => [point.x, point.y])]), pass);
-        const sink: QuadSink = (color, quad) => { this.colour(color); add(paintSlot(color), PHASE.taperPaint, inputOf([quad]), pass); };
-        for (const spec of transitionMarkings(net, node)) strokeQuads(sink, spec);
-      }
-    }
-    //...and to a mini-roundabout's plate, where its island is painted
-    if (plate && record.control === 'mini' && record.incident.length >= 3) {
-      const input = inputOf([plate.ring.flatten().map((point) => [point.x, point.y])]);
-      const seen = new Set<string>();
-      for (const id of record.incident) {
-        const pass = this.passOf(net, id);
-        if (pass === null || seen.has(pass)) continue;
-        seen.add(pass);
-        add('ribbons', PHASE.mini, input, pass);
-      }
-    }
-    // The dropped kerbs. No dropped kerb on a footway laid flush: there is no kerb to drop.
-    for (const r of rampsOfNode(net, node)) {
-      if (footwayRiseShare(net, r.x + r.nx * r.run, r.y + r.ny * r.run) <= 0) continue;
-      add('ramps', PHASE.road, inputOf([rampOutline(r)]), this.passOf(net, r.segment));
-    }
-    // The junction's paint, read by every pass at ground level (`DETAILS`).
-    const bars = (phase: number, color: string, list: readonly Bar[]): void => {
-      for (const bar of list) barQuad((c, quad) => { this.colour(c); add(paintSlot(c), phase, inputOf([quad]), DETAILS); }, color, bar);
-    };
-    const strokes = (phase: number, list: readonly StrokeSpec[]): void => {
-      const sink: QuadSink = (color, quad) => { this.colour(color); add(paintSlot(color), phase, inputOf([quad]), DETAILS); };
-      for (const spec of list) strokeQuads(sink, spec);
-    };
-    const stops: Bar[] = [], zebras: Bar[] = [], midStops: Bar[] = [], midZebras: Bar[] = [];
-    junctionDetailAt(net, node, stops, zebras);
-    midBlockDetailAt(net, node, midStops, midZebras);
-    bars(PHASE.stops, STOP_PAINT, stops);
-    bars(PHASE.midStops, STOP_PAINT, midStops);
-    bars(PHASE.zebras, ZEBRA_PAINT, zebras);
-    bars(PHASE.midZebras, ZEBRA_PAINT, midZebras);
-    // Mini-roundabouts' painted islands (V5), and the junction rule's words and symbols before the stop lines (V6).
-    const islands: StrokeSpec[] = [];
-    miniRoundaboutAt(net, node, islands);
-    strokes(PHASE.islands, islands);
-    const legends: StrokeSpec[] = [];
-    approachLegendsAt(net, node, net.doc.markingStyle, legends);
-    strokes(PHASE.legends, legends);
+    roadMarks.place(net.doc, source, filed);
+    const box = this.nodeBox(net, node, entries);
     const bytes = entryBytes(entries);
-    if (entries.length || this.cells) this.nodes.set(node, { entries, box: this.cells ? this.nodeBox(net, node) : null, superset: null, bytes });
+    if (entries.length || this.cells) this.nodes.set(node, { entries, box: this.cells ? box : null, superset: null, bytes });
     this.file(entries, silent);
     this.residentBytes += bytes;
     if (this.cells) this.residentNodes.add(node);
@@ -545,36 +596,65 @@ export class SurfaceInputs {
         owner = this.passOf(net, id);
       }
     }
+    // A node of tunnels only: its first road's pass.
+    if (owner === null && record.incident.length) owner = this.passOf(net, record.incident[0]!);
     return owner;
   }
 
-  private colour(color: string): void {
-    this.met.add(color);
+  /** The passes a mark's pieces are drawn in (`roadMarks.ts` fileMarks): a road's, a node's plate's. */
+  private markPasses(net: Network): MarkPasses {
+    return { segment: (id) => this.passOf(net, id), node: (id) => this.ownerOf(net, id) };
   }
 
-  /** `silent`: entries derived again as they were (`wakeTile`), or let go while what they drew still stands (`dormant`): what the tiles read is put together again, no tile made dirty. */
+  /**
+   * A node's marks (`roadMarks.ts`), each filed on the piece it lies on: the taper's lines on its plate (in any pass, as they always were); and for a
+   * junction drawn at ground level, as its paint always was: each leg's stop line, crossings and the rule's legends on that leg's own carriageway,
+   * in whatever pass that road is drawn (DO NOT file them in the plate's pass: as polygons there, a leg of another pass, a road raised by hand, had
+   * them float over its own deck or sink under it), and a mini-roundabout's island on its plate.
+   */
+  private nodeMarks(net: Network, node: NodeId, owner: string): [MarkPiece, Filed[]][] {
+    const passes = this.markPasses(net);
+    const plate: MarkPiece = { kind: 'node', id: node };
+    const onPlate: MarkGroup[] = [];
+    // The tapers where a road carries on at another width, whose lane lines and edge lines run on through them.
+    if (net.transitions.has(node)) for (const spec of transitionMarkings(net, node)) onPlate.push(...strokeGroups(spec));
+    const onLegs = new Map<SegmentId, MarkGroup[]>();
+    const onLeg = (seg: SegmentId, group: MarkGroup | null): void => {
+      if (!group) return;
+      let list = onLegs.get(seg);
+      if (!list) onLegs.set(seg, list = []);
+      list.push(group);
+    };
+    if (isGroundPass(owner)) {
+      const stops: Bar[] = [], zebras: Bar[] = [], runs: ZebraStretch[] = [], stopSegs: SegmentId[] = [];
+      junctionDetailAt(net, node, stops, zebras, runs, stopSegs);
+      midBlockDetailAt(net, node, stops, zebras, runs, stopSegs);
+      stops.forEach((bar, k) => onLeg(stopSegs[k]!, barGroup(STOP_PAINT, bar)));
+      // A crosswalk a shape a run of its bars, the bars cut by the shader (`ZebraStretch`), not a quad a bar.
+      for (const run of runs) onLeg(run.seg, zebraGroup(run));
+      // Mini-roundabouts' painted islands (V5), and the junction rule's words and symbols before the stop lines (V6).
+      const island = miniRoundaboutIsland(net, node);
+      if (island) onPlate.push(islandGroup(island));
+      const legends: StrokeSpec[] = [], legendSegs: SegmentId[] = [];
+      approachLegendsAt(net, node, net.doc.markingStyle, legends, legendSegs);
+      legends.forEach((spec, k) => { for (const group of strokeGroups(spec)) onLeg(legendSegs[k]!, group); });
+    }
+    const out: [MarkPiece, Filed[]][] = fileMarks(net, plate, onPlate, passes);
+    for (const [seg, groups] of [...onLegs].sort((p, q) => p[0] - q[0])) out.push(...fileMarks(net, { kind: 'segment', id: seg }, groups, passes));
+    return out;
+  }
+
+  /** `silent`: entries derived again as they were (`wakeTile`), or let go while what they drew still stands (`dormant`): what the parts read is put together again, no part made dirty. */
   private file(entries: readonly Entry[], silent = false): void {
     for (const entry of entries) {
-      if (entry.pass === DETAILS) {
-        for (const key of entry.tiles) {
-          let slots = this.details.get(key);
-          if (!slots) this.details.set(key, slots = new Map());
-          let set = slots.get(entry.slot);
-          if (!set) slots.set(entry.slot, set = new Set());
-          set.add(entry);
-          this.touchDetails(key, silent);
-        }
-        continue;
-      }
       const pass = this.passFor(entry.pass);
       for (const key of entry.tiles) {
         let tile = pass.tiles.get(key);
-        if (!tile) pass.tiles.set(key, tile = { key, slots: new Map(), own: 0, ribbons: 0, reach: null, digest: 0, colours: [] });
+        if (!tile) pass.tiles.set(key, tile = { key, slots: new Map(), own: 0, reach: null, digest: 0 });
         let set = tile.slots.get(entry.slot);
         if (!set) tile.slots.set(entry.slot, set = new Set());
         set.add(entry);
         tile.own++;
-        if (entry.slot === 'ribbons') tile.ribbons++;
         tile.reach = null;
         if (!silent) pass.dirty.add(key);
       }
@@ -583,18 +663,6 @@ export class SurfaceInputs {
 
   private unfile(entries: readonly Entry[], silent = false): void {
     for (const entry of entries) {
-      if (entry.pass === DETAILS) {
-        for (const key of entry.tiles) {
-          const slots = this.details.get(key);
-          const set = slots?.get(entry.slot);
-          if (!slots || !set) continue;
-          set.delete(entry);
-          if (set.size === 0) slots.delete(entry.slot);
-          if (slots.size === 0) this.details.delete(key);
-          this.touchDetails(key, silent);
-        }
-        continue;
-      }
       const pass = this.passes.get(entry.pass);
       if (!pass) continue;
       for (const key of entry.tiles) {
@@ -604,7 +672,6 @@ export class SurfaceInputs {
         set.delete(entry);
         if (set.size === 0) tile.slots.delete(entry.slot);
         tile.own--;
-        if (entry.slot === 'ribbons') tile.ribbons--;
         tile.reach = null;
         if (!silent) pass.dirty.add(key);
         if (tile.own === 0) pass.tiles.delete(key);
@@ -613,38 +680,44 @@ export class SurfaceInputs {
     }
   }
 
-  /** The junctions' paint in a tile changed: every pass at ground level reads that tile again. */
-  private touchDetails(key: number, silent = false): void {
-    for (const pass of this.passes.values()) {
-      if (!pass.ground) continue;
-      const tile = pass.tiles.get(key);
-      if (tile) { tile.reach = null; if (!silent) pass.dirty.add(key); }
-    }
-  }
-
-  /** A pass's birth and the tiles whose inputs changed since the build last settled them; null when the pass is not there. */
-  dirtyOf(pass: string): { readonly born: number; readonly keys: ReadonlySet<number> } | null {
+  /** A pass's birth and the parts whose inputs changed since the build last settled them; null when the pass is not there. */
+  dirtyOf(pass: string): { readonly born: number; readonly keys: ReadonlySet<PartKey> } | null {
     const p = this.passes.get(pass);
     return p ? { born: p.born, keys: p.dirty } : null;
   }
 
-  /** The build that took these tiles of a pass finished: they are no longer dirty (a pass made again since keeps its own). */
-  settle(pass: string, born: number, keys: Iterable<number>): void {
+  /** The build that took these parts of a pass finished: they are no longer dirty (a pass made again since keeps its own). */
+  settle(pass: string, born: number, keys: Iterable<PartKey>): void {
     const p = this.passes.get(pass);
     if (!p || p.born !== born) return;
     for (const key of keys) p.dirty.delete(key);
   }
 
-  /** A tile a build visits: the items reaching it derived (`wakeTile`), then whether the pass has it. */
-  visits(pass: string, key: number): boolean {
+  /** A part a build visits: the items reaching it derived (`wakeTile`), then whether the pass has it. */
+  visits(pass: string, key: PartKey): boolean {
     this.wakeTile(key);
     return this.hasTile(pass, key);
   }
 
-  /** Whether a pass has a tile at `key`: inputs filed there, or an item not derived now that may put some (`wakeTile` derives them). */
-  hasTile(pass: string, key: number): boolean {
+  /** Whether a pass has a part at `key`: inputs filed there, or an item not derived now that may put some (`wakeTile` derives them). */
+  hasTile(pass: string, key: PartKey): boolean {
     const p = this.passes.get(pass);
     return !!p && (p.tiles.has(key) || p.dormant.has(key));
+  }
+
+  /** The parts of a pass whose piece's box meets one of `rects` (a change of the ground or the heights there): filed or dormant. */
+  partsMeeting(pass: string, rects: readonly (readonly number[])[]): PartKey[] {
+    const net = this.net, p = this.passes.get(pass);
+    if (!net || !p || rects.length === 0) return [];
+    const boxes = rects.map((r): ChangeRect => [r[0]!, r[1]!, r[2]!, r[3]!]);
+    const out = new Set<PartKey>();
+    const take = (parts: readonly PartKey[]): void => { for (const key of parts) if (p.tiles.has(key) || p.dormant.has(key)) out.add(key); };
+    for (const id of net.segmentCells.idsMeetingAny(boxes)) {
+      take(this.segmentParts(net, id));
+      const segment = net.doc.segment(id);
+      if (segment) for (const node of [segment.a, segment.b]) take(this.nodeParts(net, node));
+    }
+    return [...out];
   }
 
   /** The passes of the surfaces: every structural level, then each alignment raised by hand, by its lowest road. */
@@ -661,115 +734,36 @@ export class SurfaceInputs {
     return (this.count.get(pass) ?? 0) > 0;
   }
 
-  /** Every colour a pass may paint in: the catalogue's, then any other met */
-  paintColours(): string[] {
-    return [...PAINT_COLOURS, ...[...this.met].filter((color) => !PAINT_COLOURS.includes(color)).sort()];
-  }
-
-  /** The colours the roads and junctions have been painted in. */
-  paintedColours(): string[] {
-    return [...this.met];
-  }
-
-  /** The keys of a pass's tiles, in order. */
-  tileKeys(pass: string): number[] {
+  /** The keys of a pass's parts, in order. */
+  tileKeys(pass: string): PartKey[] {
     const p = this.passes.get(pass);
     if (!p) return [];
     const keys = new Set(p.tiles.keys());
     for (const key of p.dormant.keys()) keys.add(key);
-    return [...keys].sort((a, b) => a - b);
+    return [...keys].sort(byPart);
   }
 
-  /** What a tile of a pass reads, put together when something in it changed */
-  reachOf(passId: string, key: number): { readonly reach: Reach; readonly digest: number; readonly colours: readonly string[] } {
+  /** What a part of a pass reads, put together when something in it changed: its piece's shapes by surface, in the walk's order. */
+  reachOf(passId: string, key: PartKey): { readonly reach: Reach; readonly digest: number } {
     // Held round the view: the items reaching it derived first (a build visiting it has, `wakeTile`).
     this.wakeTile(key);
     const pass = this.passes.get(passId)!;
     const tile = pass.tiles.get(key)!;
-    if (tile.reach) return { reach: tile.reach, digest: tile.digest, colours: tile.colours };
-    const list = (slot: string): Input[] => {
-      const set = tile.slots.get(slot);
-      return set ? [...set].sort(byWalk).map((entry) => entry.input) : [];
-    };
-    const paint = new Map<string, Entry[]>();
-    const collect = (slots: ReadonlyMap<string, ReadonlySet<Entry>>): void => {
-      for (const [slot, set] of slots) {
-        if (!slot.startsWith(PAINT_PREFIX)) continue;
-        const color = slot.slice(PAINT_PREFIX.length);
-        const into = paint.get(color);
-        if (into) into.push(...set); else paint.set(color, [...set]);
-      }
-    };
-    collect(tile.slots);
-    const details = pass.ground && tile.ribbons > 0 ? this.details.get(key) : undefined;
-    if (details) collect(details);
-    const colours = [...paint.keys()].sort();
-    const quads = new Map<string, Input[]>();
-    for (const color of colours) quads.set(color, paint.get(color)!.sort(byWalk).map((entry) => entry.input));
-    const reach: Reach = {
-      levels: { casing: list('casing'), sidewalk: list('sidewalk'), curb: list('curb'), asphalt: list('asphalt') },
-      medians: { kerb: list(medianSlot('kerb')), planting: list(medianSlot('planting')), paved: list(medianSlot('paved')) },
-      ramps: list('ramps'),
-      ribbons: list('ribbons'),
-      quads,
-    };
+    if (tile.reach) return { reach: tile.reach, digest: tile.digest };
+    const slots = [...tile.slots.keys()].sort();
+    const reach = new Map<string, Input[]>();
     const digest = new Digest();
-    const addAll = (inputs: readonly Input[]): void => {
-      digest.add(inputs.length);
+    for (const slot of slots) {
+      const inputs = [...tile.slots.get(slot)!].sort(byWalk).map((entry) => entry.input);
+      reach.set(slot, inputs);
+      digest.addText(slot).add(inputs.length);
       for (const input of inputs) digest.add(input.digest);
-    };
-    for (const slot of LEVEL_SLOTS) addAll(reach.levels[slot]);
-    for (const part of MEDIAN_SLOTS) addAll(reach.medians[part]);
-    addAll(reach.ramps);
-    addAll(reach.ribbons);
-    for (const color of colours) {
-      digest.addText(color);
-      addAll(quads.get(color)!);
     }
     tile.reach = reach;
     tile.digest = digest.value();
-    tile.colours = colours;
-    return { reach, digest: tile.digest, colours };
-  }
-
-  /** DO NOT merge every footway of the pass for it */
-  footwayEdges(passId: string, cell: number): number[] | undefined {
-    if (!this.passes.has(passId)) return undefined;
-    const cx = Math.floor(cell / 65536) - 32768, cy = (cell % 65536) - 32768;
-    const x0 = cx * FOOTWAY_EDGE_CELL, y0 = cy * FOOTWAY_EDGE_CELL;
-    const minX = x0 - EDGE_PAD, minY = y0 - EDGE_PAD, maxX = x0 + FOOTWAY_EDGE_CELL + EDGE_PAD, maxY = y0 + FOOTWAY_EDGE_CELL + EDGE_PAD;
-    // Held round the view: the footways round the cell derived first.
-    this.wakeRect([minX - TILE_REACH, minY - TILE_REACH, maxX + TILE_REACH, maxY + TILE_REACH]);
-    const pass = this.passes.get(passId);
-    if (!pass) return undefined;
-    const found = new Set<Entry>();
-    for (let ix = Math.floor((minX - TILE_ORIGIN) / TILE); ix <= Math.floor((maxX - TILE_ORIGIN) / TILE); ix++) {
-      for (let iy = Math.floor((minY - TILE_ORIGIN) / TILE); iy <= Math.floor((maxY - TILE_ORIGIN) / TILE); iy++) {
-        for (const entry of pass.tiles.get(tileKey(ix, iy))?.slots.get('sidewalk') ?? []) {
-          const input = entry.input;
-          if (input.maxX >= minX && input.minX <= maxX && input.maxY >= minY && input.minY <= maxY) found.add(entry);
-        }
-      }
-    }
-    if (found.size === 0) return undefined;
-    const outline: MultiPoly = union([...found].sort(byWalk).map((entry) => entry.input.poly));
-    const out: number[] = [];
-    for (const poly of outline) for (const ring of poly) {
-      if (ring.length < 3) continue;
-      for (let i = 0; i < ring.length; i++) {
-        const ax = ring[i]![0]!, ay = ring[i]![1]!;
-        const bx = ring[(i + 1) % ring.length]![0]!, by = ring[(i + 1) % ring.length]![1]!;
-        // The rule a piece is filed into a cell by: its box, padded, covers the cell.
-        if (Math.floor((Math.min(ax, bx) - EDGE_PAD) / FOOTWAY_EDGE_CELL) > cx || Math.floor((Math.max(ax, bx) + EDGE_PAD) / FOOTWAY_EDGE_CELL) < cx) continue;
-        if (Math.floor((Math.min(ay, by) - EDGE_PAD) / FOOTWAY_EDGE_CELL) > cy || Math.floor((Math.max(ay, by) + EDGE_PAD) / FOOTWAY_EDGE_CELL) < cy) continue;
-        out.push(ax, ay, bx, by);
-      }
-    }
-    return out.length ? out : undefined;
+    return { reach, digest: tile.digest };
   }
 }
 
-/** How far round a footway's cell its outline is read (`footwayEdges`): twice the batter's reach. */
-const EDGE_PAD = CASING_BAND * 2;
 /** How far from a building's box a street's parking may read its gates (`parkingLayout.ts` `entrancesNear`). */
 const PARKING_REACH = m(8.5);

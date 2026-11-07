@@ -19,7 +19,7 @@ const ROOT_SWITCH: Readonly<Record<BuildingRoot, BuildingSwitch>> = {
 const KIND_SWITCH: Readonly<Record<string, BuildingSwitch>> = Object.freeze({
   [SHELL_MESH]: 'bShell',
   // The cells' walls in their multi-draw batches (`shellBatch.ts`): the switch hid none of them once the shells left their cells' meshes.
-  ...Object.fromEntries(['detail', 'facade', 'runs'].map((set) => [`building-shell-batch-${set}`, 'bShell'])),
+  ...Object.fromEntries(['detail', 'detailRuns', 'facade', 'runs'].map((set) => [`building-shell-batch-${set}`, 'bShell'])),
   ...Object.fromEntries(['glass', 'glassDark', 'glassRail'].map((k) => [`building-${k}`, 'bGlass'])),
   ...Object.fromEntries(['frame', 'door', 'shutter'].map((k) => [`building-${k}`, 'bFrames'])),
   ...Object.fromEntries(['railing', 'roofRailing', 'awning', 'column', 'water', 'lamp', 'wash', 'fin', 'louvre', 'brise'].map((k) => [`building-${k}`, 'bFacadeDetails'])),

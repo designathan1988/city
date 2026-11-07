@@ -1,5 +1,5 @@
 import { POSE_FLOATS } from '@render/buildings/partPose';
-import { fileParts, partBandings } from '@render/buildings/partFiling';
+import { SIDE, fileParts, partBandings } from '@render/buildings/partFiling';
 import { describe, expect, it } from 'vitest';
 import { type BufferGeometry, DataUtils, InstancedMesh, type InterleavedBufferAttribute, type Mesh } from 'three';
 import { type BuildingChunk, emitChunk, kitBoxes } from '@render/buildings/buildingMesh';
@@ -123,7 +123,8 @@ describe('the parts of a cell', () => {
   });
 
   it('refuse a sub-cell outside its cell', () => {
-    expect(() => new PartCell('0,0', fileParts('0,0', [['4,0', arrays(frames([windows], 300, 10))]], partBandings(kit.screen)), kit)).toThrow();
+    // The first sub-cell past the cell's east edge (`SIDE` a side).
+    expect(() => new PartCell('0,0', fileParts('0,0', [[`${SIDE},0`, arrays(frames([windows], 300, 10))]], partBandings(kit.screen)), kit)).toThrow();
   });
 });
 

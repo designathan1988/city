@@ -1,4 +1,4 @@
-import { Box3, BufferAttribute, BufferGeometry, type Camera, Group, type InterleavedBufferAttribute, type Material, Matrix4, type Mesh } from 'three';
+import { Box3, BufferAttribute, BufferGeometry, type Camera, Group, type InterleavedBufferAttribute, type Material, Matrix4, type Mesh, Sphere } from 'three';
 
 import { SHELL_MESH } from './cellArrays';
 import type { BuildingKit } from './kit';
@@ -12,9 +12,9 @@ import { GpuBatchedMesh } from './gpuBatchedMesh';
 // BatchedMesh: "reduce the number of draw calls"); its instances take identity matrices, the pieces' vertices already in the
 // world, and a piece is hidden as its cell is.
 
-/** The three attribute sets a cell's shells come in: the detail level's plain walls, the facade level's plain ones, and its runs
- *  of bays with openings (their own window grid attributes). One batch each, one draw each. */
-type ShellSet = 'detail' | 'facade' | 'runs';
+/** The four attribute sets a cell's shells come in: the detail level's plain faces and its runs of bays (their window grid over the near shell),
+ *  the facade level's plain ones and its runs of bays with openings (their own window grid attributes). One batch each, one draw each. */
+type ShellSet = 'detail' | 'detailRuns' | 'facade' | 'runs';
 
 const IDENTITY = new Matrix4();
 
@@ -57,9 +57,15 @@ export class ShellBatch {
     this.batches = this.makeBatches();
   }
 
-  /** A cell's shells (every mesh of `SHELL_MESH` in its batch) taken into the batches; the meshes let go. */
+  /** A cell's shells (every mesh of `SHELL_MESH` in its batch) taken into the batches in place of those it had; the meshes let go. */
   add(kind: 'cell' | 'facade', key: string, batch: BuildingMeshes): void {
     const id = `${kind}|${key}`;
+    // DO NOT keep the shells it landed before: a cell landed again (a building cut open, ruined by a blast, edited) left its old walls in
+    // the batch, drawn whole over the new ones - the cut-open building stood at its full height without its windows, the blast's ruin stood
+    // whole (2026-10-27). Shown or hidden as the cell was.
+    const shown = this.visible.get(id);
+    this.remove(kind, key);
+    if (shown !== undefined) this.visible.set(id, shown);
     const made: { batch: Batch; id: number; geometryId: number }[] = [];
     const box = new Box3();
     for (const child of [...batch.group.children]) {
@@ -77,7 +83,7 @@ export class ShellBatch {
         continue;
       }
       const runs = source.hasAttribute('facadeCell');
-      const set: ShellSet = kind === 'cell' ? 'detail' : runs ? 'runs' : 'facade';
+      const set: ShellSet = kind === 'cell' ? (runs ? 'detailRuns' : 'detail') : runs ? 'runs' : 'facade';
       const target = this.batches.find((one) => one.set === set)!;
       const geometry = worldGeometry(mesh, this.scratch);
       const vertices = geometry.getAttribute('position').count;
@@ -167,8 +173,9 @@ export class ShellBatch {
     this.faded = faded;
     const material = faded ? this.kit.dimShell : this.kit.shellMaterial;
     const facadeMaterial = faded ? this.kit.dimShell : this.kit.facade;
+    const nearMaterial = faded ? this.kit.dimShell : this.kit.facadeNear;
     for (const batch of this.batches) {
-      batch.mesh.material = batch.set === 'detail' ? material : facadeMaterial;
+      batch.mesh.material = batch.set === 'detail' ? material : batch.set === 'detailRuns' ? nearMaterial : facadeMaterial;
       // Faded (transparent) shells drawn back to front; opaque ones unsorted (`makeBatches`).
       batch.mesh.sortObjects = faded;
     }
@@ -216,6 +223,7 @@ export class ShellBatch {
     };
     return [
       make('detail', this.detailGroup, this.kit.shellMaterial),
+      make('detailRuns', this.detailGroup, this.kit.facadeNear),
       make('facade', this.facadeGroup, this.kit.facade),
       make('runs', this.facadeGroup, this.kit.facade),
     ];
@@ -266,9 +274,36 @@ function worldGeometry(mesh: Mesh, scratch: { array: Float32Array }): BufferGeom
   g.setAttribute('position', new BufferAttribute(out, 3));
   for (const name of Object.keys(source.attributes)) if (name !== 'position') g.setAttribute(name, source.attributes[name]!);
   g.setIndex(source.getIndex());
-  g.computeBoundingBox();
-  g.computeBoundingSphere();
+  boundsInto(g, out, count);
   return g;
+}
+
+/** A geometry's box and sphere from its world positions (three a vertex), as three's `computeBoundingBox` and `computeBoundingSphere` make them (the
+ *  box's centre, the farthest vertex from it). DO NOT call those on a landing shell: they read each vertex into a `Vector3`, and every number of every
+ *  shell of a flight was a boxed double, 526 MB of a 13 s flight's 3 GB of garbage (DevTools heap sampling, 2026-10-24). */
+function boundsInto(g: BufferGeometry, out: Float32Array, count: number): void {
+  let x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;
+  for (let i = 0; i < count * 3; i += 3) {
+    const x = out[i]!, y = out[i + 1]!, z = out[i + 2]!;
+    if (x < x0) x0 = x; if (x > x1) x1 = x;
+    if (y < y0) y0 = y; if (y > y1) y1 = y;
+    if (z < z0) z0 = z; if (z > z1) z1 = z;
+  }
+  const box = new Box3();
+  box.min.set(x0, y0, z0);
+  box.max.set(x1, y1, z1);
+  g.boundingBox = box;
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, cz = (z0 + z1) / 2;
+  let far = 0;
+  for (let i = 0; i < count * 3; i += 3) {
+    const dx = out[i]! - cx, dy = out[i + 1]! - cy, dz = out[i + 2]! - cz;
+    const d = dx * dx + dy * dy + dz * dz;
+    if (d > far) far = d;
+  }
+  const sphere = new Sphere();
+  sphere.center.set(cx, cy, cz);
+  sphere.radius = count > 0 ? Math.sqrt(far) : -1;
+  g.boundingSphere = sphere;
 }
 
 /** A shell's stored positions (four integers a vertex, normalized to the cell's grid) into world positions (three a vertex): the integers

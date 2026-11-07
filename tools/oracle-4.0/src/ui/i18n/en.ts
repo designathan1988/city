@@ -88,7 +88,7 @@ export const EN: Dictionary = {
 
   'hint.sampleTown': 'The town built · the previous map comes back with Ctrl+Z',
   'action.newMap': 'New map',
-  'action.newWorld': 'New city (10 km × 10 km)',
+  'action.newWorld': 'New city (20 km × 20 km)',
   'action.newLargeWorld': 'New metropolis (large city)',
   'action.saveMap': 'Save map',
   'action.openMap': 'Open map',
@@ -313,7 +313,7 @@ export const EN: Dictionary = {
 
   'confirm.clearTerrain': 'Flatten the whole terrain? This can be undone.',
   'confirm.newMap': 'Start a new map? The current one has already been saved automatically.',
-  'confirm.newWorld': 'Create a new city over the whole 10 km × 10 km map? The current map has already been saved automatically.',
+  'confirm.newWorld': 'Create a new city over the whole 20 km × 20 km map? The current map has already been saved automatically.',
   'confirm.newLargeWorld': 'Create a large planned city (the small city made larger, about 2.7 km across)? It opens at a district; the rest of the city fills in after the curtain.',
 
   // ------------------------------------------------------------------ tools
@@ -370,6 +370,8 @@ export const EN: Dictionary = {
   'pole.lamps.alternate': 'A light on every other pole',
   'pole.lamps.all': 'A light on every pole',
   'pole.mode.build': 'Build line',
+  'pole.kind.urban': 'Urban pole: arm over the street',
+  'pole.kind.rural': 'Rural pole: arm across the top',
   'pole.mode.remove': 'Remove poles',
   'help.tool.poleRemove': 'Click a pole to remove it, with its wires. Shift+click does the same while building.',
   'tool.pole': 'Poles',
@@ -1343,6 +1345,7 @@ export const EN: Dictionary = {
   'v2.row.sign': 'Sign',
   'v2.row.text': 'Text',
   'v2.row.lights': 'Lights',
+  'v2.row.poleKind': 'Pole',
   'v2.row.cut': 'Cut',
   'v2.row.parts': 'Parts',
   'v2.map': 'Whole map',

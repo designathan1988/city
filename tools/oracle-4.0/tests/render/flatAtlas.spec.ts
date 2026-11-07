@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PLATE_SIZE, plateRegion, platesAround } from '@world/bounds';
+import { PLATE_SIZE, plateKey, plateRegion, platesAround } from '@world/bounds';
 import { RELIEF_NATURAL, reliefHeight } from '@world/terrain';
 import { TERRAIN_BASE, TERRAIN_HALF } from '@render/terrain';
 import { createFlatFar, farIndexInto, writeFarPatch } from '@render/flatAtlas';
@@ -16,6 +16,8 @@ describe('the far ground', () => {
   const land = (x: number, y: number): number => reliefHeight(RELIEF_NATURAL, x, y);
   // A ring of 3 x 3 plates round a plate far from the origin: each in its slot, as the atlas lays them.
   const ring = platesAround(40, -25, 1).map(plateRegion);
+  /** The ring's middle plate (its centre half a plate off the plates' edges, `world/bounds.ts`). */
+  const middle = plateRegion(plateKey(40, -25));
   const far = createFlatFar(ring.length);
   ring.forEach((r, slot) => writeFarPatch(far, slot, r.cx, r.cy, land));
   const position = far.geometry.getAttribute('position');
@@ -25,8 +27,8 @@ describe('the far ground', () => {
       const x = position.getX(v), y = -position.getZ(v), h = position.getY(v);
       // A skirt hangs below its edge; every other vertex is on the land.
       expect(h).toBeLessThanOrEqual(TERRAIN_BASE + land(x, y) + 1e-3);
-      expect(Math.abs(x - 40 * PLATE_SIZE)).toBeLessThanOrEqual(1.5 * PLATE_SIZE + 1e-6);
-      expect(Math.abs(y + 25 * PLATE_SIZE)).toBeLessThanOrEqual(1.5 * PLATE_SIZE + 1e-6);
+      expect(Math.abs(x - middle.cx)).toBeLessThanOrEqual(1.5 * PLATE_SIZE + 1e-6);
+      expect(Math.abs(y - middle.cy)).toBeLessThanOrEqual(1.5 * PLATE_SIZE + 1e-6);
     }
     let onLand = 0;
     for (let v = 0; v < position.count; v += 101) {

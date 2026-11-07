@@ -5,15 +5,16 @@
 // every group's draw calls, the destruction's peak. Lights and effects of the frame are not objects and are left out; the effects with geometry
 // are measured in a section of their own; the editor's previews are listed but kept out of the running game's cost.
 //
-// `node scripts/model-catalog.mjs [out folder] [--url=http://127.0.0.1:5300] [--seed=7] [--sheets=20|all] [--panel=800] [--no-game] [--only=<groups>] [--no-models]
-//   [--sweep-zoom=4] [--sweep-elevation=60] [--sweep-wait=1500]` (default folder: `reports/model-catalog`). `--no-game`: every kit object without opening the game.
-// Writes `catalog.csv` and `catalog.json` (sorted by total cost), `sheets/NN-<id>.png` (render + wireframe) and `models/NN-<id>.glb` for every row (NN its rank),
+// `node scripts/model-catalog.mjs [out folder] [--url=http://127.0.0.1:5300] [--seed=7] [--panel=480] [--no-game] [--only=<groups>] [--no-models]
+//   [--sweep-zoom=4] [--sweep-elevation=60] [--sweep-wait=1500]` (default folder: `reports/engine-geometry`). `--no-game`: every kit object without opening the game.
+// Writes `catalog.csv` and `catalog.json` (sorted by total cost), `images/NNNN-<id>.png` (render + wireframe) and `models/NNNN-<id>.glb` for every row (NNNN the order it was built in),
 // `buildings.csv` (every building of the test city built alone and measured), `gaps.md`.
 // The page side is `src/lab/catalog/` (kits.ts, people.ts, city.ts, measure.ts, items.ts, run.ts).
-import { appendFileSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { chromium } from '@playwright/test';
 import { writeReport } from './model-catalog-report.mjs';
+import { KEEP_ARRAYS } from './lib/keepArrays.mjs';
 
 const args = process.argv.slice(2);
 const flags = args.filter((a) => a.startsWith('--'));
@@ -21,10 +22,8 @@ const flag = (name, fallback) => flags.find((f) => f.startsWith(`--${name}=`))?.
 const out = resolve(args.find((a) => !a.startsWith('--')) ?? 'reports/engine-geometry');
 const url = flag('url', 'http://127.0.0.1:5300/');
 const seed = Number(flag('seed', 7));
-/** How many sheets: every object (the default), or the costliest N. */
-const sheetCount = flag('sheets', 'all');
 /** Pixels of each picture of a sheet (render and wireframe side by side). */
-const panel = Number(flag('panel', sheetCount === 'all' ? 480 : 800));
+const panel = Number(flag('panel', 480));
 /** Only the kits, without opening the game: the fast way to photograph every kit object (no buildings, no test city). */
 const noGame = flags.includes('--no-game');
 /** A pattern of the groups to build (`buildings|vehicles`); every group when absent. */
@@ -42,41 +41,6 @@ for (const [dir, ext] of [['images', '.png'], ['models', '.glb'], ['rows', '.jso
 /** The last number in the folder: the next object saved takes the one after. */
 const savedBefore = readdirSync(join(out, 'rows')).reduce((most, f) => Math.max(most, Number.parseInt(f, 10) || 0), 0);
 
-/** Run in the page before any of the game's scripts: the arrays of a geometry are kept when the engine lets them go once on the GPU
- *  (`mesh/gpuOnly.ts`, `roadLod.ts`, `farBlockBatches.ts`, the pole and prop cells set `array` to null), so the catalogue can measure, draw and export
- *  the roads, the ground and every layer of the test city. Only for the catalogue's run: the page holds more memory than the game does. */
-const KEEP_ARRAYS = `(() => {
-  const held = Symbol('catalogue array');
-  Object.defineProperty(Object.prototype, 'array', {
-    configurable: true,
-    get() { return this[held]; },
-    set(value) {
-      if (value === null && this[held] != null) return;
-      this[held] = value;
-    },
-  });
-})();`;
-
-// ---- what the page needs from the disk: the garment and hair files, the shape targets' size, the textures' sizes.
-const PEOPLE = resolve('public/models/people');
-// A garment or hair is a .json with its .bin; `index.json` and `community.json` are the lists of them, not objects.
-const proxyFiles = readdirSync(join(PEOPLE, 'proxies'));
-const proxies = proxyFiles.filter((f) => f.endsWith('.json') && proxyFiles.includes(`${f.slice(0, -5)}.bin`)).map((f) => f.slice(0, -5)).sort();
-const targetBytes = ['targets-local.bin', 'targets-macro-pca.bin', 'faceunits.bin'].reduce((sum, f) => sum + statSync(join(PEOPLE, f)).size, 0);
-
-/** A WebP file's width and height from its header (VP8, VP8L, VP8X), or null. */
-function webpSize(path) {
-  try {
-    const b = readFileSync(path);
-    const chunk = b.toString('ascii', 12, 16);
-    if (chunk === 'VP8 ') return { width: b.readUInt16LE(26) & 0x3fff, height: b.readUInt16LE(28) & 0x3fff };
-    if (chunk === 'VP8L') { const bits = b.readUInt32LE(21); return { width: (bits & 0x3fff) + 1, height: ((bits >> 14) & 0x3fff) + 1 }; }
-    if (chunk === 'VP8X') return { width: 1 + b.readUIntLE(24, 3), height: 1 + b.readUIntLE(27, 3) };
-  } catch (error) {
-    console.error(`unreadable WebP header: ${path}`, error);
-  }
-  return null;
-}
 
 let server = null;
 if (!(await fetch(url).then((r) => r.ok, () => false))) {
@@ -101,12 +65,12 @@ const step = (text) => console.log(`${new Date().toISOString().slice(11, 19)} ${
 const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--enable-gpu', '--ignore-gpu-blocklist'] });
 let result;
 let sweep = null;
-const sheets = [];
-const models = [];
 try {
   const page = await (await browser.newContext({ viewport: { width: 1600, height: 900 } })).newPage();
   page.on('pageerror', (error) => console.error(`page error: ${error.message}`));
   await page.addInitScript(KEEP_ARRAYS);
+  // Read by `run.ts` saveRow as it writes each object.
+  await page.addInitScript(([p, n]) => { window.__cataloguePanel = p; window.__catalogueNoModels = n; }, [panel, noModels]);
   // The page hands each object's files to the script as it saves them (`run.ts` saveRow): its picture, its 3D file, its numbers; the report written again at each.
   await page.exposeFunction('__catalogueWrite', (file, base64, append) => {
     const path = join(out, file);
@@ -118,13 +82,13 @@ try {
   });
   if (noGame) {
     // A static file of the dev server: the same origin, so the game's modules load, but the game itself does not start.
-    await page.goto(`${url}models/people/base.json`);
+    await page.goto(`${url}public/models/citizens/LICENSE-ANIMATIONS.txt`);
     step(`surfaces read: ${await call(page, 'catalogueSurfaces')}`);
   } else {
     await page.goto(url);
     await page.waitForFunction(() => performance.getEntriesByName('opening:shown').length > 0, null, { timeout: 180000, polling: 250 });
   }
-  step(`kits: ${await call(page, 'catalogueKits', proxies, targetBytes, only, savedBefore)} items`);
+  step(`kits: ${await call(page, 'catalogueKits', only, savedBefore)} items`);
   if (!noGame) {
     await page.evaluate((s) => { performance.clearMarks(); return window.__roadcraft.generateCity({ seed: s, size: 'large' }); }, seed);
     await page.waitForFunction(() => performance.getEntriesByName('city:applied').length > 0 && performance.getEntriesByName('opening:shown').length > 0, null, { timeout: 600000, polling: 250 });
@@ -158,47 +122,8 @@ try {
   }
   result = await call(page, 'catalogueResult');
   if (noGame) result.gaps.push('Run without the game (--no-game): no copies, costs (triangles x copies), draw calls or destruction peak: those are counted in a generated city.');
-  // The garments' and hair's textures: the file's own size and its pixels (from its header). Their memory on the GPU is not added: the person's loader decodes them at run time.
-  for (const row of result.rows) {
-    const texture = row.notes.find((n) => n.startsWith('texture '))?.slice(8);
-    if (!texture) continue;
-    const path = join(PEOPLE, 'proxies', texture);
-    const size = webpSize(path);
-    let fileBytes = null;
-    try { fileBytes = statSync(path).size; } catch (error) { console.error(`texture file not found: ${path}`, error); }
-    row.textures = [...row.textures, `map ${texture} ${size ? `${size.width}x${size.height}` : 'size unreadable'} WebP, ${fileBytes === null ? 'file not found' : `${fileBytes} B on disk`} (GPU memory not in texture_kb: decoded when a person wearing it is loaded)`];
-  }
   result.rows.sort((a, b) => b.totalTriangles - a.totalTriangles || b.triangles - a.triangles);
-  // Every row's sheet and 3D file under its rank (`--sheets=N`: the costliest N of the running game only); a batch of them a call, drawn by one renderer.
-  const digits = String(result.rows.length).length;
-  const fileOf = (row) => `${String(result.rows.indexOf(row) + 1).padStart(digits, '0')}-${row.id.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').slice(0, 80)}`;
-  // Each object was saved as it was made (`run.ts` saveRow): its picture, 3D file and numbers are in the folder already; nothing is drawn again here.
-  const chosen = [];
-  const BATCH = 25;
-  for (let start = 0; start < chosen.length; start += BATCH) {
-    const batch = chosen.slice(start, start + BATCH);
-    const drawn = await call(page, 'catalogueSheets', batch.map((r) => r.id), panel);
-    drawn.forEach((d, k) => {
-      if (!d.png) { result.gaps.push(`${d.id}: no sheet (${d.error ? d.error.split('\n')[0] : 'nothing drawable: no geometry with readable arrays'})`); return; }
-      const file = `${fileOf(batch[k])}.png`;
-      writeFileSync(join(out, 'images', file), Buffer.from(d.png, 'base64'));
-      batch[k].sheet = `images/${file}`;
-      sheets.push(file);
-    });
-    step(`sheets: ${Math.min(start + BATCH, chosen.length)} of ${chosen.length}`);
-  }
-  if (!noModels) {
-    for (let start = 0; start < chosen.length; start += BATCH) {
-      const batch = chosen.slice(start, start + BATCH);
-      const written = await call(page, 'catalogueModels', batch.map((r) => ({ id: r.id, file: `models/${fileOf(r)}.glb` })));
-      written.forEach((w, k) => {
-        if (w.error || !w.bytes) { result.gaps.push(`${w.id}: no 3D file (${w.error ? w.error.split('\n')[0] : 'empty'})`); return; }
-        batch[k].model = `models/${fileOf(batch[k])}.glb`;
-        models.push(batch[k].model);
-      });
-      step(`3D files: ${Math.min(start + BATCH, chosen.length)} of ${chosen.length}`);
-    }
-  }
+  // Each object was saved as it was made (`run.ts` saveRow): its picture, 3D file and numbers are in the folder already.
 } finally {
   await browser.close();
   await server?.close();
@@ -228,7 +153,7 @@ const known = [
   'Editor feedback on the ground (src/render/renderer.ts blink) and the tools\' 2D gizmos (drawn on a canvas over the view): no catalogued mesh.',
 ];
 /** What "hidden triangles" counts: an exact count of this criterion, not an estimate. */
-const HIDDEN = 'hidden_triangles: triangles whose centre lies strictly inside another closed convex solid of the same object (its face planes, the solids welded by position), or pressed face to face on another triangle (the same centre, opposite normals); n/a for lines, points and geometry whose arrays could not be read.';
+const HIDDEN = 'hidden_triangles: triangles whose centre lies strictly inside (by more than 0.1 mm) another convex solid of the same object (the solids welded by position): closed, every edge shared by exactly two of its triangles, or open along one plane only (a box with no bottom, or no back against a wall), that plane then one of its faces; an open strip (a leaf) hides nothing. Or pressed face to face on another triangle (the same centre, opposite normals). n/a for lines, points and geometry whose arrays could not be read.';
 // Each group's total: the running game's (no previews, no effects), the effects', the previews'.
 const groups = {};
 for (const r of rows) {
@@ -236,7 +161,7 @@ for (const r of rows) {
   g.rows++; g.triangles += r.triangles; g.totalTriangles += r.totalTriangles; g.bytes += r.totalBytes;
 }
 const json = {
-  generated: new Date().toISOString(), seed, views: VIEWS, sweep, hiddenTriangles: HIDDEN, drawCalls: result.drawCalls, destruction: result.destruction, sheets, models, gaps: [...known, ...result.gaps],
+  generated: new Date().toISOString(), seed, views: VIEWS, sweep, hiddenTriangles: HIDDEN, drawCalls: result.drawCalls, destruction: result.destruction, gaps: [...known, ...result.gaps],
   buildings: result.buildings,
   groups: Object.fromEntries(Object.entries(groups).sort((a, b) => b[1].totalTriangles - a[1].totalTriangles)),
   effects: rows.filter((r) => r.effect).map((r) => r.id), editorPreviews: rows.filter((r) => r.preview).map((r) => r.id), rows, scene: result.scene,
@@ -252,7 +177,7 @@ writeFileSync(join(out, 'buildings.csv'), ['id,kind,size,floors,triangles,vertic
 
 const sum = (list, f) => list.reduce((s, r) => s + f(r), 0);
 const game = rows.filter((r) => !r.preview && !r.effect);
-console.log(`${rows.length} rows (${sum(rows, (r) => (r.preview ? 1 : 0))} editor previews, ${sum(rows, (r) => (r.effect ? 1 : 0))} effects), ${json.gaps.length} gaps, ${sheets.length} sheets, ${models.length} 3D files, ${result.buildings?.length ?? 0} buildings measured`);
+console.log(`${rows.length} rows (${sum(rows, (r) => (r.preview ? 1 : 0))} editor previews, ${sum(rows, (r) => (r.effect ? 1 : 0))} effects), ${json.gaps.length} gaps, ${rows.filter((r) => r.sheet).length} sheets, ${rows.filter((r) => r.model).length} 3D files, ${result.buildings?.length ?? 0} buildings measured`);
 console.log(`running game: ${sum(game, (r) => r.totalTriangles).toLocaleString('en')} triangles over the test city's copies; draw calls ${result.drawCalls?.total ?? '?'}`);
 for (const r of rows.slice(0, 10)) console.log(`  ${String(r.totalTriangles).padStart(12)}  ${r.id}`);
 console.log(`-> ${out}`);

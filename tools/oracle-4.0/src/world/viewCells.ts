@@ -27,7 +27,7 @@ export const CellStage = { none: 0, derived: 1, resident: 2 } as const;
 export type CellStage = (typeof CellStage)[keyof typeof CellStage];
 
 /** What a cell's derivation made: its value, and the bytes it holds on the CPU and on the GPU. */
-export interface CellProduct<V> {
+interface CellProduct<V> {
   readonly value: V;
   readonly cpuBytes: number;
   /** Bytes on the GPU: a product holding some is resident. */
@@ -236,6 +236,22 @@ export class ViewCells<V> {
     this.work.invalidated += n;
     if (n) this.version++;
     return n;
+  }
+
+  /** A cell's product made elsewhere (off the page, `derive` not called): held as one made here, kept to the budgets. */
+  put(key: CellKey, product: CellProduct<V>): void {
+    if (this.held.has(key)) this.drop(key);
+    this.work.derived++;
+    const gpu = product.gpuBytes ?? 0;
+    this.held.set(key, { product, version: this.spec.version, stage: gpu > 0 ? CellStage.resident : CellStage.derived });
+    this.cpuBytes += product.cpuBytes + ENTRY_BYTES;
+    this.gpuBytes += gpu;
+    this.trim(new Set([key]));
+  }
+
+  /** Whether the view wants a cell (`look`, `want`). */
+  wants(key: CellKey): boolean {
+    return this.wantedSet.has(key);
   }
 
   /** The cells the view wants (`look`), in their order. */

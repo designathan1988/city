@@ -22,6 +22,13 @@ export interface SegmentTrims {
   readonly b: Record<number, number>;
 }
 
+/** A level's two edges as its outline is made of them (`ribbonRing`): the left and right offsets of its trimmed centreline, point for point the
+ *  outline's own, so a strip swept between two of them (`render/mesh/stripShape.ts`) meets the bands cut from the outlines without a crack. */
+interface LevelEdges {
+  readonly left: readonly Vec2[];
+  readonly right: readonly Vec2[];
+}
+
 export interface SegmentRibbon {
   readonly id: SegmentId;
   readonly typeIndex: number;
@@ -36,6 +43,8 @@ export interface SegmentRibbon {
   readonly dashOrigin: number;
   /** Full untrimmed centreline, shared by every level. */
   readonly full: Polyline;
+  /** Each level's edges (`LevelEdges`), where the ribbon keeps them. */
+  readonly edges?: Record<number, LevelEdges>;
 }
 
 /** How far the road turns at a node joining exactly two segments, radians (0 straight on); 0 anywhere else. */
@@ -64,7 +73,7 @@ export function bendAt(doc: RoadDoc, polylines: PolylineCache, nodeId: NodeId, s
 /** How many ribbons' levels made again are held (`LeanRibbon`): the roads of the cells being drawn and walked. */
 const HELD_RIBBONS = 1024;
 
-interface RibbonParts { readonly centre: Record<number, Polyline>; readonly rings: Record<number, Ring> }
+interface RibbonParts { readonly centre: Record<number, Polyline>; readonly rings: Record<number, Ring>; readonly edges: Record<number, LevelEdges> }
 
 /** The ribbons' levels made again (`LeanRibbon`), the latest asked held. */
 const madeParts = new RecentCache<LeanRibbon, RibbonParts>(HELD_RIBBONS);
@@ -96,6 +105,10 @@ class LeanRibbon implements SegmentRibbon {
   get rings(): Record<number, Ring> {
     return madeParts.get(this, partsOf).rings;
   }
+
+  get edges(): Record<number, LevelEdges> {
+    return madeParts.get(this, partsOf).edges;
+  }
 }
 
 const partsOf = (r: LeanRibbon): RibbonParts => ribbonParts(r.full, r.road, r.trims, r.bendA, r.bendB);
@@ -122,6 +135,7 @@ function ribbonParts(full: Polyline, rt: ReturnType<typeof roadProfile>, t: Segm
   const length = full.length;
   const centre: Record<number, Polyline> = {};
   const rings: Record<number, Ring> = {};
+  const edges: Record<number, LevelEdges> = {};
   for (const level of SURFACE_LEVELS) {
     // Pull the ribbon back INTO the junction by a hair.
     const a = Math.max(0, (t.a[level] ?? 0) - SEAM_OVERLAP);
@@ -134,13 +148,15 @@ function ribbonParts(full: Polyline, rt: ReturnType<typeof roadProfile>, t: Segm
     const base = SEAM_OVERLAP + (level - Level.Casing) * SURFACE_END_STEP;
     // Each side to its own width.
     const hw = halfWidth(rt, level);
-    rings[level] = ribbonRing(
+    const made = levelEdges(
       overlapUntrimmedEnds(trimmed, s0 <= 0, s1 >= length, base + hw * Math.tan(bendA / 2), base + hw * Math.tan(bendB / 2)),
       sideHalfWidth(rt, level, 'left'),
       sideHalfWidth(rt, level, 'right'),
     );
+    edges[level] = made;
+    rings[level] = ribbonRing(made);
   }
-  return { centre, rings };
+  return { centre, rings, edges };
 }
 
 /** Pushes an untrimmed end of a ribbon `amount` past the node, ALONG the end tangent */
@@ -164,13 +180,17 @@ function overlapUntrimmedEnds(line: Polyline, atStart: boolean, atEnd: boolean, 
   return Polyline.fromPoints(out);
 }
 
-/** Closes a trimmed centreline into a carriageway outline */
-function ribbonRing(centre: Polyline, hw: number, hwRight = hw): Ring {
-  if (centre.n < 2 || centre.length <= 0) return new Ring({ x: 0, y: 0 }, []);
+/** A trimmed centreline's two edges, `hw` to its left and `hwRight` to its right; none for a centreline of no length. */
+function levelEdges(centre: Polyline, hw: number, hwRight = hw): LevelEdges {
+  if (centre.n < 2 || centre.length <= 0) return { left: [], right: [] };
   const pts = centre.toPoints();
-  const left = offsetPolyline(pts, hw);
-  const right = offsetPolyline(pts, -hwRight);
-  const loop: Vec2[] = [...left, ...right.slice().reverse()];
+  return { left: offsetPolyline(pts, hw), right: offsetPolyline(pts, -hwRight) };
+}
+
+/** Closes a level's edges into its outline: the left edge, then the right one back. */
+function ribbonRing(edges: LevelEdges): Ring {
+  if (edges.left.length < 2 || edges.right.length < 2) return new Ring({ x: 0, y: 0 }, []);
+  const loop: Vec2[] = [...edges.left, ...edges.right.slice().reverse()];
   return Ring.fromPolygon(loop).ensurePositive();
 }
 

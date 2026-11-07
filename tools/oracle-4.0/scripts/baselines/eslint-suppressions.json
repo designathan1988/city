@@ -4,11 +4,6 @@
       "count": 4
     }
   },
-  "scripts/cook-people.mjs": {
-    "roadcraft/no-silent-catch": {
-      "count": 2
-    }
-  },
   "scripts/frames.mjs": {
     "no-undef": {
       "count": 16
@@ -70,7 +65,7 @@
   },
   "scripts/look.mjs": {
     "no-undef": {
-      "count": 4
+      "count": 3
     },
     "no-useless-assignment": {
       "count": 1
@@ -200,11 +195,6 @@
       "count": 1
     }
   },
-  "src/editor/chunkedSave.ts": {
-    "roadcraft/no-whole-map-walk": {
-      "count": 1
-    }
-  },
   "src/editor/cityGenerator.ts": {
     "roadcraft/no-global-revision": {
       "count": 2
@@ -242,11 +232,6 @@
   "src/editor/nodeMover.ts": {
     "roadcraft/no-global-revision": {
       "count": 2
-    }
-  },
-  "src/editor/persistence.ts": {
-    "roadcraft/no-silent-catch": {
-      "count": 15
     }
   },
   "src/editor/poles.ts": {
@@ -328,40 +313,10 @@
       "count": 7
     },
     "roadcraft/no-module-state": {
-      "count": 34
+      "count": 33
     },
     "roadcraft/no-silent-catch": {
       "count": 14
-    }
-  },
-  "src/people/body/assets.ts": {
-    "roadcraft/no-module-state": {
-      "count": 1
-    }
-  },
-  "src/people/body/expressions.ts": {
-    "roadcraft/no-module-state": {
-      "count": 1
-    }
-  },
-  "src/people/body/proxy.ts": {
-    "roadcraft/no-module-state": {
-      "count": 1
-    }
-  },
-  "src/people/roster.ts": {
-    "roadcraft/no-module-state": {
-      "count": 1
-    }
-  },
-  "src/people/spec.ts": {
-    "roadcraft/no-module-state": {
-      "count": 1
-    }
-  },
-  "src/people/wardrobe.ts": {
-    "roadcraft/no-module-state": {
-      "count": 2
     }
   },
   "src/render/agents.ts": {
@@ -370,14 +325,16 @@
     },
     "roadcraft/no-module-state": {
       "count": 2
-    },
-    "roadcraft/no-silent-catch": {
-      "count": 1
     }
   },
   "src/render/bakePool.ts": {
     "roadcraft/no-module-state": {
-      "count": 5
+      "count": 4
+    }
+  },
+  "src/render/blast.ts": {
+    "roadcraft/no-live-interface": {
+      "count": 4
     }
   },
   "src/render/buildings/buildingMesh.ts": {
@@ -391,9 +348,6 @@
   "src/render/buildings/cellPool.ts": {
     "roadcraft/no-module-state": {
       "count": 3
-    },
-    "roadcraft/no-silent-catch": {
-      "count": 1
     }
   },
   "src/render/buildings/facadeProps.ts": {
@@ -429,22 +383,12 @@
       "count": 1
     }
   },
-  "src/render/buildings/massing.ts": {
-    "roadcraft/no-module-state": {
-      "count": 1
-    }
-  },
-  "src/render/buildings/parts.ts": {
-    "roadcraft/no-module-state": {
-      "count": 2
-    },
-    "roadcraft/no-silent-catch": {
-      "count": 1
-    }
-  },
   "src/render/buildings/signature.ts": {
     "max-lines": {
       "count": 1
+    },
+    "roadcraft/no-live-interface": {
+      "count": 4
     },
     "roadcraft/no-module-state": {
       "count": 3
@@ -453,6 +397,11 @@
   "src/render/carBody.ts": {
     "max-lines": {
       "count": 1
+    }
+  },
+  "src/render/casualties.ts": {
+    "roadcraft/no-live-interface": {
+      "count": 2
     }
   },
   "src/render/cellInstances.ts": {
@@ -466,11 +415,8 @@
     }
   },
   "src/render/citizenBake.worker.ts": {
-    "roadcraft/no-module-state": {
-      "count": 2
-    },
     "roadcraft/no-silent-catch": {
-      "count": 2
+      "count": 1
     }
   },
   "src/render/citizenGait.ts": {
@@ -489,8 +435,8 @@
     }
   },
   "src/render/elements.ts": {
-    "roadcraft/no-module-state": {
-      "count": 1
+    "roadcraft/no-live-interface": {
+      "count": 2
     }
   },
   "src/render/flatAtlas.ts": {
@@ -516,12 +462,10 @@
       "count": 2
     }
   },
-  "src/render/gardens.ts": {
-    "roadcraft/no-module-state": {
-      "count": 1
-    }
-  },
   "src/render/lowPolyTrees.ts": {
+    "roadcraft/no-live-interface": {
+      "count": 2
+    },
     "roadcraft/no-module-state": {
       "count": 1
     }
@@ -541,102 +485,14 @@
       "count": 1
     }
   },
-  "src/render/people/cookedLoad.ts": {
-    "roadcraft/no-module-state": {
-      "count": 1
-    },
-    "roadcraft/no-silent-catch": {
-      "count": 1
-    }
-  },
-  "src/render/people/crowdLod.ts": {
-    "roadcraft/no-module-state": {
-      "count": 1
-    }
-  },
-  "src/render/people/garmentPadding.worker.ts": {
-    "roadcraft/no-silent-catch": {
-      "count": 1
-    }
-  },
-  "src/render/people/garmentPaddingPool.ts": {
-    "roadcraft/no-module-state": {
-      "count": 5
-    }
-  },
-  "src/render/people/garmentSlots.ts": {
-    "roadcraft/no-module-state": {
-      "count": 1
-    }
-  },
-  "src/render/people/gpuRows.ts": {
-    "roadcraft/no-module-state": {
-      "count": 2
-    }
-  },
-  "src/render/people/hairTexture.ts": {
-    "roadcraft/no-module-state": {
-      "count": 1
-    }
-  },
   "src/render/people/lodPool.ts": {
     "roadcraft/no-module-state": {
-      "count": 1
-    }
-  },
-  "src/render/people/lodPort.ts": {
-    "roadcraft/no-module-state": {
-      "count": 1
-    }
-  },
-  "src/render/people/lodWorker.ts": {
-    "roadcraft/no-silent-catch": {
       "count": 1
     }
   },
   "src/render/people/paletteTargets.ts": {
     "roadcraft/no-module-state": {
       "count": 1
-    }
-  },
-  "src/render/people/personBuild.ts": {
-    "roadcraft/no-module-state": {
-      "count": 1
-    },
-    "roadcraft/no-silent-catch": {
-      "count": 1
-    }
-  },
-  "src/render/people/personRig.ts": {
-    "max-lines": {
-      "count": 1
-    },
-    "roadcraft/no-module-state": {
-      "count": 2
-    }
-  },
-  "src/render/people/proceduralCook.ts": {
-    "roadcraft/no-module-state": {
-      "count": 1
-    },
-    "roadcraft/no-silent-catch": {
-      "count": 1
-    }
-  },
-  "src/render/people/proceduralCrowd.ts": {
-    "max-lines": {
-      "count": 1
-    },
-    "roadcraft/no-module-state": {
-      "count": 5
-    },
-    "roadcraft/no-silent-catch": {
-      "count": 3
-    }
-  },
-  "src/render/people/skinAppearance.ts": {
-    "roadcraft/no-module-state": {
-      "count": 4
     }
   },
   "src/render/plantImpostors.ts": {
@@ -689,14 +545,6 @@
   "src/render/riggedCitizens.ts": {
     "max-lines": {
       "count": 1
-    },
-    "roadcraft/no-silent-catch": {
-      "count": 3
-    }
-  },
-  "src/render/roadSurfaces.ts": {
-    "max-lines": {
-      "count": 1
     }
   },
   "src/render/shaderCatalogue.ts": {
@@ -707,6 +555,11 @@
   "src/render/shadowCasters.ts": {
     "roadcraft/no-module-state": {
       "count": 1
+    }
+  },
+  "src/render/signs.ts": {
+    "roadcraft/no-live-interface": {
+      "count": 6
     }
   },
   "src/render/stagedTexels.ts": {
@@ -752,10 +605,13 @@
   },
   "src/render/uploads.ts": {
     "roadcraft/no-module-state": {
-      "count": 25
+      "count": 23
     }
   },
   "src/render/utilities.ts": {
+    "roadcraft/no-live-interface": {
+      "count": 2
+    },
     "roadcraft/no-module-state": {
       "count": 1
     }
@@ -813,11 +669,6 @@
   },
   "src/sim/agents/reedsShepp.ts": {
     "roadcraft/no-module-state": {
-      "count": 1
-    }
-  },
-  "src/sim/agents/trafficBuildings.ts": {
-    "roadcraft/no-whole-map-walk": {
       "count": 1
     }
   },
@@ -975,27 +826,12 @@
       "count": 4
     }
   },
-  "src/ui/materialSwatch.ts": {
-    "roadcraft/no-module-state": {
-      "count": 1
-    }
-  },
   "src/ui/overlay/congestion.ts": {
     "roadcraft/no-module-state": {
       "count": 1
     }
   },
-  "src/ui/planSwatch.ts": {
-    "roadcraft/no-module-state": {
-      "count": 1
-    }
-  },
   "src/ui/roadSectionEditor.ts": {
-    "roadcraft/no-module-state": {
-      "count": 1
-    }
-  },
-  "src/ui/roadSwatch.ts": {
     "roadcraft/no-module-state": {
       "count": 1
     }
@@ -1062,7 +898,7 @@
   },
   "src/ui/toolChoices.ts": {
     "roadcraft/no-module-state": {
-      "count": 19
+      "count": 18
     },
     "roadcraft/no-silent-catch": {
       "count": 10
@@ -1160,7 +996,7 @@
       "count": 23
     },
     "roadcraft/no-module-state": {
-      "count": 2
+      "count": 1
     }
   },
   "src/world/ecology.ts": {
@@ -1185,11 +1021,6 @@
     },
     "roadcraft/no-whole-map-walk": {
       "count": 2
-    }
-  },
-  "src/world/growth/grownRows.ts": {
-    "roadcraft/no-module-state": {
-      "count": 1
     }
   },
   "src/world/growth/lotPlan.ts": {

@@ -1,90 +1,98 @@
-import { BuildingItems } from './items';
-import { type RecordRef, RecordTable, encodeRecords, tableRecords } from './recordTable';
-import { TableRows } from './tableRows';
+import { type FieldWrites, TableItems } from './items';
+import { type RecordRef, RecordTable, type RowPlace, type TableRow, encodeRecords, tableRecords } from './recordTable';
+import { type TableBase, TableRows, baseBuffers, baseOrder } from './tableRows';
 import type { Building, BuildingId } from './types';
 
-/** A STORE'S BUILDINGS AS BUFFERS, NEVER AS OBJECTS (the save's sections, the simulation's map, the undo of a whole map): the table they were opened from, as it is (shared, never copied), and what was written over it - the ids deleted, the records replaced in place and those added after, each kind one table. Read back in the store's order (`BuildingItems`). */
-export interface BuildingSections {
-  readonly base: ArrayBufferLike | null;
+/** A STORE'S RECORDS AS BUFFERS, NEVER AS OBJECTS (the save's sections, the simulation's map, the undo of a whole map): the table they were opened from, as it is (shared, never copied), and what was written over it - the ids deleted, the records replaced and the records added, each as a table of their own. The buildings', the lots' and the landscaping's alike. */
+export interface TableSections {
+  /** The tables they were opened from (a map's squares', in their order, `TableBase`), shared. */
+  readonly base: TableBase | null;
   /** The ids of the table deleted (set again: in `added`). */
   readonly gone: Float64Array;
   readonly replaced: ArrayBufferLike | null;
   readonly added: ArrayBufferLike | null;
+  /** A numeric field written over the table's rows, their records the table's (a building's wear, `TableItems.writeField`); absent: none. */
+  readonly field?: FieldWrites | null;
 }
+/** The buildings' sections (`BuildingStore.sections`). */
+export type BuildingSections = TableSections;
 
-const tableOf = (records: Iterable<Building>): ArrayBufferLike | null => {
+/** Sections of nothing: a map with no records of the kind. */
+export const EMPTY_SECTIONS: TableSections = Object.freeze({ base: null, gone: new Float64Array(0), replaced: null, added: null });
+
+const tableOf = <V extends TableRow>(records: Iterable<V>, place: RowPlace<V> | null): ArrayBufferLike | null => {
   const list = [...records];
-  return list.length ? encodeRecords(list).buffer : null;
+  return list.length ? encodeRecords(list, place).buffer : null;
 };
 
-/** The sections of a store's buildings: the table shared as it is, only the records written encoded (`encodeRecords`). A map that is no table (a working copy's `ForkMap`): every record, added. */
-export function sectionsOf(items: ReadonlyMap<BuildingId, Building>): BuildingSections {
-  if (items instanceof BuildingItems) {
-    const { gone, replaced, added } = items.writes();
-    return { base: items.table?.buffer ?? null, gone: Float64Array.from(gone), replaced: tableOf(replaced.values()), added: tableOf(added.values()) };
+/** The sections of a store's records: the table shared as it is, only the records written encoded (`encodeRecords`). A map that is no table (a working copy's `ForkMap`): every record, added. `place`: a record's place for its columns (a lot's centre). */
+export function sectionsOf<K extends number, V extends TableRow>(items: ReadonlyMap<K, V>, place: RowPlace<V> | null = null): TableSections {
+  if (items instanceof TableItems) {
+    const { gone, replaced, added } = (items as TableItems<K, V>).writes();
+    const field = (items as TableItems<K, V>).fieldWrites();
+    return { base: items.table?.base ?? null, gone: Float64Array.from(gone), replaced: tableOf(replaced.values(), place), added: tableOf(added.values(), place), ...(field ? { field } : {}) };
   }
-  return { base: null, gone: new Float64Array(0), replaced: null, added: tableOf(items.values()) };
+  return { base: null, gone: new Float64Array(0), replaced: null, added: tableOf(items.values(), place) };
 }
 
 /** The store's items read back from their sections: the table read when asked (`TableRows`), the records written decoded now (few). */
-export function itemsOfSections(s: BuildingSections, onRead: ((b: Building) => void) | null): BuildingItems {
-  const base = s.base ? new TableRows(s.base) : null;
+export function itemsOfSections<K extends number = BuildingId, V extends TableRow = Building>(s: TableSections, onRead: ((v: V) => void) | null): TableItems<K, V> {
+  const base = s.base ? new TableRows<K, V>(s.base) : null;
   if (base) base.onRead = onRead;
-  const written = (buffer: ArrayBufferLike | null): Building[] => {
-    const list = buffer ? tableRecords(buffer) : [];
+  const written = (buffer: ArrayBufferLike | null): V[] => {
+    const list = buffer ? tableRecords<V>(buffer) : [];
     if (onRead) for (const b of list) onRead(b);
     return list;
   };
-  return BuildingItems.over(base, s.gone as unknown as Iterable<BuildingId>, written(s.replaced), written(s.added));
+  return TableItems.over<K, V>(base, s.gone as unknown as Iterable<K>, written(s.replaced), written(s.added), s.field ?? null);
 }
 
-/** How many buildings the sections hold. */
-export function sectionsSize(s: BuildingSections): number {
+/** How many records the sections hold. */
+export function sectionsSize(s: TableSections): number {
   const rows = (buffer: ArrayBufferLike | null): number => (buffer ? new RecordTable(buffer).rows : 0);
-  return rows(s.base) - s.gone.length + rows(s.added);
+  let base = 0;
+  if (s.base) for (const buffer of baseBuffers(s.base)) base += rows(buffer);
+  return base - s.gone.length + rows(s.added);
 }
 
 /** The bytes the sections hold. */
-export function sectionsBytes(s: BuildingSections): number {
-  return (s.base?.byteLength ?? 0) + s.gone.byteLength + (s.replaced?.byteLength ?? 0) + (s.added?.byteLength ?? 0);
-}
-
-/** Every record of the sections in the store's order, one at a time (a worker's copy: `sim/agents/trafficBuildings.ts`): DO NOT hold them all - what is worked out of each goes with it. */
-export function* eachSectionRecord(s: BuildingSections): Generator<Building, void, void> {
-  const replaced = new Map<number, Building>();
-  if (s.replaced) for (const b of tableRecords(s.replaced)) replaced.set(b.id, b);
-  const gone = new Set<number>(s.gone);
-  if (s.base) {
-    const table = new RecordTable(s.base);
-    const reader = table.reader();
-    for (let row = 0; row < table.rows; row++) {
-      const id = table.ids[row]!;
-      if (gone.has(id)) continue;
-      yield replaced.get(id) ?? reader.record(row);
-    }
-  }
-  if (s.added) {
-    const table = new RecordTable(s.added);
-    const reader = table.reader();
-    for (let row = 0; row < table.rows; row++) yield reader.record(row);
-  }
+export function sectionsBytes(s: TableSections): number {
+  let base = 0;
+  if (s.base) for (const buffer of baseBuffers(s.base)) base += buffer.byteLength;
+  const order = s.base ? baseOrder(s.base) : null;
+  return base + (order?.byteLength ?? 0) + s.gone.byteLength + (s.replaced?.byteLength ?? 0) + (s.added?.byteLength ?? 0) + (s.field?.pairs.byteLength ?? 0);
 }
 
 /** Where each record of the sections is read, in the store's order (`eachSectionRecord`'s order): a row of the table, of the records replaced or of those added - nothing decoded (the worker's columns, `sim/agents/trafficBuildings.ts`). */
-export function* eachSectionRef(s: BuildingSections): Generator<RecordRef, void, void> {
+export function* eachSectionRef(s: TableSections): Generator<RecordRef, void, void> {
   const replaced = new Map<number, number>();
   if (s.replaced) {
     const table = new RecordTable(s.replaced);
     for (let row = 0; row < table.rows; row++) replaced.set(table.ids[row]!, row);
   }
   const gone = new Set<number>(s.gone);
+  const fields = new Map<number, number>();
+  if (s.field) for (let k = 0; k + 1 < s.field.pairs.length; k += 2) fields.set(s.field.pairs[k]!, s.field.pairs[k + 1]!);
   if (s.base) {
-    const table = new RecordTable(s.base);
-    for (let row = 0; row < table.rows; row++) {
+    // The tables' rows in the store's order (`TableBase`): a row of the store its table's and its row there.
+    const tables = baseBuffers(s.base).map((buffer) => new RecordTable(buffer));
+    const starts: number[] = [0];
+    for (const t of tables) starts.push(starts[starts.length - 1]! + t.rows);
+    const order = baseOrder(s.base);
+    const total = starts[tables.length]!;
+    // Each row's table, once (DO NOT look it up a row: a 10 km city's squares are ~1,600 tables).
+    const tableOfRow = new Uint32Array(total);
+    tables.forEach((_, k) => tableOfRow.fill(k, starts[k]!, starts[k + 1]!));
+    for (let rank = 0; rank < total; rank++) {
+      const at = order ? order[rank]! : rank;
+      const t = tableOfRow[at]!;
+      const table = tables[t]!, row = at - starts[t]!;
       const id = table.ids[row]!;
       if (gone.has(id)) continue;
       const over = replaced.get(id);
-      yield over === undefined ? { buffer: s.base, row } : { buffer: s.replaced!, row: over };
+      if (over !== undefined) { yield { buffer: s.replaced!, row: over }; continue; }
+      const value = fields.get(id);
+      yield value === undefined ? { buffer: table.buffer, row } : { buffer: table.buffer, row, field: { name: s.field!.name, value } };
     }
   }
   if (s.added) {

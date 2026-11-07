@@ -39,6 +39,9 @@ interface Targets {
   readonly look?: number;
   /** Head turn, radians, positive to the left; shared between the neck and the head. */
   readonly turn?: number;
+  /** The hands hold the bars: a body whose arms do not reach them from where the trunk put its shoulders leans on until they do (`reachForBars`).
+   *  Never in a seat, whose hands rest where they fall. */
+  readonly reach?: true;
 }
 
 type V3 = readonly [number, number, number];
@@ -144,9 +147,9 @@ export function pedalPoint(fit: TwoWheelerFit, angle: number, side: 1 | -1): V3 
   return [side * (fit.pedalSide ?? 0.13), b.up + Math.sin(angle) * crank, b.forward + Math.cos(angle) * crank];
 }
 
-/** The ankle target for a foot put down on the road beside a machine tilted by `fit.stopTilt` */
-function footDownTarget(fit: TwoWheelerFit): V3 {
-  const t = fit.stopTilt;
+/** The ankle target for a foot put down on the road beside a machine tilted by `tilt` (`fit.stopTilt`, or a short rider's own, `stopTiltFor`) */
+function footDownTarget(fit: TwoWheelerFit, tilt = fit.stopTilt): V3 {
+  const t = tilt;
   const ankle = 0.08;
   const x = fit.footDown.side * Math.cos(t) - ankle * Math.sin(t);
   const h = fit.footDown.side * Math.sin(t) + ankle * Math.cos(t);
@@ -247,6 +250,7 @@ const turned = (t: Targets, turn: number, look = t.look ?? 0): Targets => ({ ...
 /** Astride a motorcycle: leaning into the tank, hands on the grips, feet on the pegs (`MOTO_FIT`). */
 const MOTO: Targets = {
   lean: 0.28,
+  reach: true,
   ...hands(MOTO_FIT),
   leftFoot: offset([MOTO_FIT.peg!.side, MOTO_FIT.peg!.up, MOTO_FIT.peg!.forward], ANKLE_OVER_PEDAL, 1),
   rightFoot: offset([-MOTO_FIT.peg!.side, MOTO_FIT.peg!.up, MOTO_FIT.peg!.forward], ANKLE_OVER_PEDAL, -1),
@@ -254,12 +258,13 @@ const MOTO: Targets = {
   elbowPole: [0.6, -1, 0],
   look: -0.12,
 };
-/** Stopped: the machine tilted onto the left foot, the right on its peg. */
-const MOTO_STOP: Targets = { ...MOTO, lean: 0.12, leftFoot: footDownTarget(MOTO_FIT) };
+/** Stopped: the machine tilted onto the left foot (as far as this body's leg asks, `stopTiltFor`), the right on its peg. */
+const MOTO_STOP: Omit<Targets, 'leftFoot'> = { ...MOTO, lean: 0.12 };
 
 /** On a bicycle: a forward reach to the bars and the feet on the pedals, which turn round the bottom bracket (`BIKE_FIT`). */
 const BIKE: Omit<Targets, 'leftFoot' | 'rightFoot'> = {
   lean: 0.32,
+  reach: true,
   ...hands(BIKE_FIT),
   kneePole: [0.1, 0.2, 1],
   elbowPole: [0.4, -1, 0],
@@ -297,7 +302,7 @@ export const RIDER_CLIPS: readonly RiderClip[] = [
   still('motoRide', MOTO),
   still('motoLeft', steered(MOTO, MOTO_FIT, 1)),
   still('motoRight', steered(MOTO, MOTO_FIT, -1)),
-  still('motoStop', MOTO_STOP),
+  stopped('motoStop', MOTO_FIT, MOTO_STOP),
   {
     key: 'bikePedal',
     duration: 1,
@@ -310,24 +315,25 @@ export const RIDER_CLIPS: readonly RiderClip[] = [
   still('bikeLeft', { ...steered(BIKE, BIKE_FIT, 1), leftFoot: pedalFoot(0, 1), rightFoot: pedalFoot(Math.PI, -1) }),
   still('bikeRight', { ...steered(BIKE, BIKE_FIT, -1), leftFoot: pedalFoot(0, 1), rightFoot: pedalFoot(Math.PI, -1) }),
   // Stopped: tilted onto the left foot, the right on its pedal at the top of the stroke, ready to push off.
-  still('bikeStop', { ...BIKE, lean: 0.18, leftFoot: footDownTarget(BIKE_FIT), rightFoot: pedalFoot(Math.PI * 0.6, -1) }),
+  stopped('bikeStop', BIKE_FIT, { ...BIKE, lean: 0.18, rightFoot: pedalFoot(Math.PI * 0.6, -1) }),
 ];
 
 // ---------------------------------------------------------------- helmets
 
-/** Bodies whose hair no helmet of a helmet's size holds - buns, big curls, a ponytail high on the crown */
-export const NO_HELMET: ReadonlySet<string> = new Set([
-  'female_01', 'female_02', 'female_04', 'female_07', 'female_09', 'female_11', 'female_12', 'female_17',
-  'female_party_02', 'medical_female_01', 'medical_female_03', 'medical_male_04', 'pilot_male_03',
-  'police_male_01', 'security_female_01', 'sports_male_03',
-  // Long hair a helmet would sit on, not round.
-  'female_15',
-]);
+/** Bodies whose hair no helmet of a helmet's size holds - buns, big curls, a ponytail high on the crown: none of the cast (every rider's head
+ *  measured, `tests/render/riderFit.spec.ts`). */
+export const NO_HELMET: ReadonlySet<string> = new Set();
 
 /** Segments round a helmet shell: its flat facets sit this close to the true ellipsoid. */
 export const HELMET_SEGMENTS = { width: 24, height: 16 } as const;
 
-/** A helmet made for one body: an ellipsoid in the head bone's own frame that encloses every point of the head above the */
+/** Up in a head bone's own frame: the cast's bones rest in the model's axes (Y up, Z forward), in metres (`people/cookedPerson.ts`). */
+export const HEAD_UP = new Vector3(0, 1, 0);
+/** Room between a head and its helmet's shell, metres. */
+const HELMET_PAD = 0.012;
+
+/** A helmet made for one body: an ellipsoid in the head bone's own frame that encloses every point of the head above the head bone's joint
+ *  (`headPoints`) */
 export function helmetShape(rig: Object3D): Matrix4 | null {
   rig.updateMatrixWorld(true);
   const head = rig.getObjectByName(BONES.head);
@@ -343,12 +349,12 @@ export function helmetShape(rig: Object3D): Matrix4 | null {
   }
   // Room between the head and the shell, and for the shell's flat facets lying inside the ellipsoid through their corners.
   const facet = 1 / (Math.cos(Math.PI / HELMET_SEGMENTS.height) * Math.cos(Math.PI / HELMET_SEGMENTS.width));
-  const pad = 1.2; // centimetres: the skeleton is authored in them
+  const pad = HELMET_PAD;
   const radius = half.multiplyScalar(k * facet).addScalar(pad);
   return new Matrix4().compose(centre, new Quaternion(), radius.multiplyScalar(2));
 }
 
-/** The points of a posed head a helmet must hold, in the head bone's frame */
+/** The points of a posed head a helmet must hold, in the head bone's frame: those above its joint (`HEAD_UP`) */
 export function headPoints(rig: Object3D, head: Object3D): Vector3[] {
   const out: Vector3[] = [];
   const v = new Vector3();
@@ -370,7 +376,7 @@ export function headPoints(rig: Object3D, head: Object3D): Vector3[] {
       if (w < 0.5) continue;
       o.getVertexPosition(i, v);
       v.applyMatrix4(toHead);
-      if (v.x > 0) out.push(v.clone());
+      if (v.dot(HEAD_UP) > 0) out.push(v.clone());
     }
   });
   return out;
@@ -379,6 +385,38 @@ export function headPoints(rig: Object3D, head: Object3D): Vector3[] {
 /** Seconds a still pose is baked over: two frames, the same pose. */
 function still(key: RiderClipKey, targets: Targets): RiderClip {
   return { key, duration: 1, loop: true, pose: (rig) => apply(rig, targets) };
+}
+
+/** A stopped rider's still pose: the left foot put down on the road beside the machine tilted as far as this body's leg asks (`stopTiltFor`). */
+function stopped(key: RiderClipKey, fit: TwoWheelerFit, targets: Omit<Targets, 'leftFoot'>): RiderClip {
+  return { key, duration: 1, loop: true, pose: (rig) => apply(rig, { ...targets, leftFoot: footDownTarget(fit, stopTiltFor(rig, fit)) }) };
+}
+
+/** The most a stopped machine tilts onto its rider's foot: a short rider's, on a machine made for the average one. */
+export const STOP_TILT_MOST = 0.4;
+/** Of a leg's length, the most its foot-down target may stand from the hip: as far as the limbs reach (`limb`). */
+const LEG_REACH = 0.999;
+
+/**
+ * How far a stopped machine tilts onto this body's left foot (radians): the machine's own tilt (`fit.stopTilt`) where the leg reaches the road from the
+ * saddle, else the least tilt that brings the road to the foot (a short rider leans the machine further onto the foot, as one does), up to
+ * `STOP_TILT_MOST`. Read off the rig at rest: the same number the pose is baked with and the machine is drawn at (`agents.ts`).
+ */
+export function stopTiltFor(rig: Object3D, fit: TwoWheelerFit): number {
+  rig.updateMatrixWorld(true);
+  const pelvis = rig.getObjectByName(BONES.pelvis);
+  const [thigh, calf, foot] = BONES.leftLeg.map((name) => rig.getObjectByName(name));
+  if (!pelvis || !thigh || !calf || !foot) return fit.stopTilt;
+  const origin = pelvis.getWorldPosition(new Vector3());
+  const hip = thigh.getWorldPosition(new Vector3()).sub(origin);
+  const leg = thigh.getWorldPosition(tmpA).distanceTo(calf.getWorldPosition(tmpB)) + calf.getWorldPosition(tmpA).distanceTo(foot.getWorldPosition(tmpB));
+  const reaches = (tilt: number): boolean => { const [x, y, z] = footDownTarget(fit, tilt); return hip.distanceTo(tmpC.set(x, y, z)) <= leg * LEG_REACH; };
+  if (reaches(fit.stopTilt)) return fit.stopTilt;
+  if (!reaches(STOP_TILT_MOST)) return STOP_TILT_MOST;
+  // The target comes nearer the hip the further the machine tilts: the least tilt that reaches, to a thousandth of a radian.
+  let lo = fit.stopTilt, hi = STOP_TILT_MOST;
+  while (hi - lo > 1e-3) { const mid = (lo + hi) / 2; if (reaches(mid)) hi = mid; else lo = mid; }
+  return hi;
 }
 
 /** A seated pose that lives: breathing in the trunk, the head turning a little and nodding */
@@ -503,6 +541,7 @@ function apply(rig: Object3D, t: Targets): void {
   if (neck && nod) rotateWorld(neck, new Vector3(1, 0, 0), nod * 0.6);
   if (head && nod) rotateWorld(head, new Vector3(1, 0, 0), nod * 0.4);
   rig.updateMatrixWorld(true);
+  if (t.reach) reachForBars(rig, spine, worldOf(t.leftHand), worldOf(t.rightHand));
 
   limb(rig, BONES.leftLeg, worldOf(t.leftFoot), t.kneePole ?? [0, 0, 1]);
   limb(rig, BONES.rightLeg, worldOf(t.rightFoot), mirrorPole(t.kneePole ?? [0, 0, 1], -1));
@@ -514,6 +553,52 @@ function apply(rig: Object3D, t: Targets): void {
     if (foot) levelFoot(foot);
   }
   rig.updateMatrixWorld(true);
+}
+
+/** A step of the trunk's turn towards hands out of reach (`reachForBars`), and the most it leans and twists on past its pose. */
+const REACH_STEP = 0.01;
+const REACH_LEAN_MOST = 0.5;
+const REACH_TWIST_MOST = 0.5;
+
+/**
+ * Turns the trunk, a step at a time, while a hand's target lies past its arm's reach from its shoulder (a short body on a machine made for the
+ * average one: the steered bars' far grip), as a rider reaches for the bars: each step the one of leaning forward or twisting either way that
+ * brings the hands nearest, until both reach, until no step brings them nearer, or as far as `REACH_LEAN_MOST` and `REACH_TWIST_MOST` allow.
+ * A body whose arms reach is left as its pose put it.
+ */
+function reachForBars(rig: Object3D, spine: readonly Object3D[], left: Vector3, right: Vector3): void {
+  const arms = [[BONES.leftArm, left], [BONES.rightArm, right]] as const;
+  const reaches = arms.map(([names, target]) => {
+    const [root, mid, end] = names.map((n) => rig.getObjectByName(n));
+    if (!root || !mid || !end || spine.length === 0) return null;
+    const length = root.getWorldPosition(tmpA).distanceTo(mid.getWorldPosition(tmpB)) + mid.getWorldPosition(tmpA).distanceTo(end.getWorldPosition(tmpB));
+    return { root, length, target };
+  });
+  const short = (): number => {
+    let most = 0;
+    for (const arm of reaches) if (arm) most = Math.max(most, arm.root.getWorldPosition(tmpA).distanceTo(arm.target) - arm.length * 0.999);
+    return most;
+  };
+  /** A turn of the trunk about a world axis, shared over its bones; undone by the same with `-angle` (turns about one axis: in either order). */
+  const turn = (axis: Vector3, angle: number): void => {
+    for (const bone of spine) rotateWorld(bone, axis, angle / spine.length);
+  };
+  const LEAN = new Vector3(1, 0, 0), TWIST = new Vector3(0, 1, 0);
+  let deficit = short(), leant = 0, twisted = 0;
+  while (deficit > 0) {
+    let best: { axis: Vector3; angle: number; next: number } | null = null;
+    for (const [axis, angle, room] of [[LEAN, REACH_STEP, REACH_LEAN_MOST - leant], [TWIST, REACH_STEP, REACH_TWIST_MOST - twisted], [TWIST, -REACH_STEP, REACH_TWIST_MOST + twisted]] as const) {
+      if (room < REACH_STEP) continue;
+      turn(axis, angle);
+      const next = short();
+      turn(axis, -angle);
+      if (next < deficit && (!best || next < best.next)) best = { axis, angle, next };
+    }
+    if (!best) break;
+    turn(best.axis, best.angle);
+    if (best.axis === LEAN) leant += best.angle; else twisted += best.angle;
+    deficit = best.next;
+  }
 }
 
 function isAncestor(bone: Object3D, of: Object3D | undefined): boolean {

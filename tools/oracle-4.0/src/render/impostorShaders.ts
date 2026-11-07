@@ -1,5 +1,4 @@
-import { DoubleSide, GLSL3, ShaderMaterial, Vector3 } from 'three';
-import { foliageAtlas } from './lowPolyTrees';
+import { Vector3 } from 'three';
 
 /** THE OCTAHEDRAL IMPOSTOR'S SHADERS (`farForest.ts`, `plantImpostors.ts`). */
 
@@ -191,7 +190,7 @@ export const IMPOSTOR_FRAGMENT_MAP = /* glsl */ `
     float cover = impostorColour.a * (1.0 + lod * 0.3);
     cover = clamp((cover - 0.5) / max(fwidth(cover), 1e-4) + 0.5, 0.0, 1.0) * vFade;
     if (cover < 0.01) discard;
-    // Stored premultiplied and gamma-encoded (\`bakeMaterials\`).
+    // Stored premultiplied and gamma-encoded (\`plantImpostors.ts\` bakeColourMaterial).
     vec3 albedo = pow(impostorColour.rgb / max(impostorColour.a, 1e-4), vec3(2.2)) * vTint;
     diffuseColor = vec4(diffuseColor.rgb * albedo, cover);
   }
@@ -209,106 +208,3 @@ export const IMPOSTOR_FRAGMENT_NORMAL = /* glsl */ `
     nonPerturbedNormal = normal;
   }
 `;
-
-const BAKE_FRAGMENT_OUT = /* glsl */ `
-  layout(location = 0) out vec4 gColour;
-  layout(location = 1) out vec4 gNormal;
-`;
-
-/** The materials the pictures are taken with, made at load: the body's faceted colour and face normal */
-export function bakeMaterials(): { body: ShaderMaterial; cards: ShaderMaterial } {
-  const body = new ShaderMaterial({
-    glslVersion: GLSL3,
-    vertexColors: true,
-    vertexShader: /* glsl */ `
-      varying vec3 vColour;
-      varying vec3 vView;
-      void main() {
-        vColour = color;
-        vec4 mv = modelViewMatrix * vec4(position, 1.0);
-        vView = mv.xyz;
-        gl_Position = projectionMatrix * mv;
-      }`,
-    fragmentShader: /* glsl */ `
-      ${BAKE_FRAGMENT_OUT}
-      varying vec3 vColour;
-      varying vec3 vView;
-      void main() {
-        vec3 n = normalize(cross(dFdx(vView), dFdy(vView)));
-        vec3 local = normalize(transpose(mat3(viewMatrix)) * n);
-        gColour = vec4(pow(max(vColour, vec3(0.0)), vec3(1.0 / 2.2)), 1.0);
-        gNormal = vec4(local * 0.5 + 0.5, 1.0);
-      }`,
-  });
-  const cards = new ShaderMaterial({
-    glslVersion: GLSL3,
-    vertexColors: true,
-    side: DoubleSide,
-    uniforms: { uLeaves: { value: foliageAtlas() } },
-    vertexShader: /* glsl */ `
-      attribute vec2 aCorner;
-      varying vec3 vColour;
-      varying vec3 vNormalLocal;
-      varying vec2 vLeafUv;
-      void main() {
-        vColour = color;
-        vNormalLocal = normal;
-        vLeafUv = uv;
-        vec4 mv = modelViewMatrix * vec4(position, 1.0);
-        mv.xy += aCorner;
-        gl_Position = projectionMatrix * mv;
-      }`,
-    fragmentShader: /* glsl */ `
-      ${BAKE_FRAGMENT_OUT}
-      uniform sampler2D uLeaves;
-      varying vec3 vColour;
-      varying vec3 vNormalLocal;
-      varying vec2 vLeafUv;
-      void main() {
-        vec4 leaf = texture(uLeaves, vLeafUv);
-        if (leaf.a < 0.5) discard;
-        gColour = vec4(pow(max(vColour * leaf.rgb, vec3(0.0)), vec3(1.0 / 2.2)), 1.0);
-        gNormal = vec4(normalize(vNormalLocal) * 0.5 + 0.5, 1.0);
-      }`,
-  });
-  return { body, cards };
-}
-
-/** The materials a model's shadow outline is taken with: its body, and the cards of a plant whose cards throw its shadow (a palm's fronds). */
-export function bakeShadowMaterials(): { body: ShaderMaterial; cards: ShaderMaterial } {
-  const body = new ShaderMaterial({
-    glslVersion: GLSL3,
-    vertexShader: /* glsl */ `
-      void main() {
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      }`,
-    fragmentShader: /* glsl */ `
-      layout(location = 0) out vec4 gCover;
-      void main() {
-        gCover = vec4(1.0);
-      }`,
-  });
-  const cards = new ShaderMaterial({
-    glslVersion: GLSL3,
-    side: DoubleSide,
-    uniforms: { uLeaves: { value: foliageAtlas() } },
-    vertexShader: /* glsl */ `
-      attribute vec2 aCorner;
-      varying vec2 vLeafUv;
-      void main() {
-        vLeafUv = uv;
-        vec4 mv = modelViewMatrix * vec4(position, 1.0);
-        mv.xy += aCorner;
-        gl_Position = projectionMatrix * mv;
-      }`,
-    fragmentShader: /* glsl */ `
-      layout(location = 0) out vec4 gCover;
-      uniform sampler2D uLeaves;
-      varying vec2 vLeafUv;
-      void main() {
-        if (texture(uLeaves, vLeafUv).a < 0.5) discard;
-        gCover = vec4(1.0);
-      }`,
-  });
-  return { body, cards };
-}

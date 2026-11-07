@@ -10,14 +10,16 @@ import { createMassCells } from '@render/buildings/massCells';
 import type { PackedEntries } from '@render/buildings/chunk';
 import { MassLevels } from '@render/buildings/massLevels';
 import { plateOf, tileOf } from '@render/buildings/levelKeys';
-import { CELL_DETAIL, PLATE_DETAIL, TILE_DETAIL, emitMassing, emitMassingLevels } from '@render/buildings/massing';
+import { CELL_DETAIL, PLATE_DETAIL, TILE_DETAIL, massFloor, massOf } from '@render/buildings/massing';
+import { emitProgram } from '@render/buildings/buildingMesh';
+import { massesOf } from './support/masses';
 import { drawsSignature } from '@render/buildings/signature';
 import { BLUEPRINTS } from '@world/buildings/blueprints';
 import type { Building } from '@world/buildings/types';
 import { m } from '@world/units';
+import { CELL } from '@world/cells';
 
 /** THE BUILDINGS' TILES (L2) AND PLATES (L3): chosen by their error on the screen, in place of their cells, asked again only where a cell changed */
-const CELL = m(256);
 const flat = (): number => 0;
 
 function building(index: number, x: number, y: number): Building {
@@ -27,7 +29,7 @@ function building(index: number, x: number, y: number): Building {
 
 /** The masses of a few buildings in a cell, with the error a level says it left out. */
 function masses(x: number, y: number, error = 0): CellMass {
-  const chunks = [0, 1, 2].map((i) => emitMassing(building(i, x + i * m(40), y + m(20)), flat)!);
+  const chunks = [0, 1, 2].map((i) => massesOf(building(i, x + i * m(40), y + m(20)), flat)!);
   return { ...cellMass(chunks)!, error };
 }
 
@@ -247,9 +249,9 @@ describe('a tile or a plate of masses drawn in place of its cells', () => {
     let cell = 0, tile = 0, plate = 0, tileError = 0, plateError = 0;
     for (let i = 0; i < BLUEPRINTS.length; i++) {
       const b = building(i, 0, 0);
-      const c = emitMassing(b, flat, undefined, flat, false, undefined, CELL_DETAIL);
-      const t = emitMassing(b, flat, undefined, flat, false, undefined, TILE_DETAIL);
-      const p = emitMassing(b, flat, undefined, flat, false, undefined, PLATE_DETAIL);
+      const c = massesOf(b, flat, undefined, flat, undefined, CELL_DETAIL);
+      const t = massesOf(b, flat, undefined, flat, undefined, TILE_DETAIL);
+      const p = massesOf(b, flat, undefined, flat, undefined, PLATE_DETAIL);
       if (!c) continue;
       expect(c.error).toBe(0);
       expect(t!.error).toBeLessThanOrEqual(TILE_DETAIL.drop);
@@ -265,20 +267,21 @@ describe('a tile or a plate of masses drawn in place of its cells', () => {
     expect(plateError).toBeGreaterThanOrEqual(tileError);
   });
 
-  it("walks a building once for a tile's and a plate's masses where they answer alike, each the same as walked alone", () => {
-    let shared = 0, apart = 0;
+  it("draws every level of the masses from one program, the same as a program of a copy of the record", () => {
     for (let i = 0; i < BLUEPRINTS.length; i++) {
       for (const turn of [0, 0.7]) {
         const b = { ...building(i, 0, 0), rotation: turn };
-        const [t, p] = emitMassingLevels(b, flat, undefined, flat, undefined, TILE_DETAIL, PLATE_DETAIL);
-        expect(t).toEqual(emitMassing(b, flat, undefined, flat, false, undefined, TILE_DETAIL));
-        expect(p).toEqual(emitMassing(b, flat, undefined, flat, false, undefined, PLATE_DETAIL));
-        if (t && t === p) shared++; else apart++;
+        const floor = massFloor(b, flat) ?? null;
+        // One program (`emitProgram`), its every level a filter (`massOf`): nothing of it read from the record object or its memos again.
+        const program = emitProgram(b, flat, undefined, flat, { near: false, far: false }, { floor });
+        const copy = emitProgram(structuredClone(b), flat, undefined, flat, { near: false, far: false }, { floor });
+        for (const detail of [CELL_DETAIL, TILE_DETAIL, PLATE_DETAIL]) expect(massOf(program, detail)).toEqual(massOf(copy, detail));
+        // The coarser the level, never more triangles.
+        const [c, t, p] = [CELL_DETAIL, TILE_DETAIL, PLATE_DETAIL].map((d) => massOf(program, d)?.index.length ?? 0);
+        expect(t).toBeLessThanOrEqual(c!);
+        expect(p).toBeLessThanOrEqual(t!);
       }
     }
-    // Both ways met: some buildings' plate masses their tile's own, some walked again.
-    expect(shared).toBeGreaterThan(0);
-    expect(apart).toBeGreaterThan(0);
   });
 
   it("is made by the cells' job for its kind, merged, with its error", () => {
@@ -334,12 +337,13 @@ describe('the tiles and plates asked of the workers', () => {
     const levels = new MassLevels(pool, (key) => landed.push(key), (key) => removed.push(key), () => {}, () => true);
     levels.touch('0,0', entries('a', 'b'));
     levels.touch('1,1', entries('c'));
-    levels.touch('5,0', entries('d'));
-    levels.touch('-1,0', entries('e'));
+    // The plates from the cells' origin, eight cells a side (`levelKeys.ts`): cell 9 in tile 2 of plate 1, cell 4 in tile 1 of plate 0.
+    levels.touch('9,0', entries('d'));
+    levels.touch('4,0', entries('e'));
     levels.flush(env);
     const keys = asked.map((a) => `${a.kind} ${a.key}`).sort();
     // And the base over each plate's square, asked at once (`massBase.ts`).
-    expect(keys).toEqual(['massBase b:0,0', 'massBase b:1,0', 'massPlate p:0,0', 'massPlate p:1,0', 'massTile t:-1,0', 'massTile t:0,0', 'massTile t:1,0'].sort());
+    expect(keys).toEqual(['massBase b:0,0', 'massBase b:1,0', 'massPlate p:0,0', 'massPlate p:1,0', 'massTile t:0,0', 'massTile t:1,0', 'massTile t:2,0'].sort());
     // A tile is made of its cells' buildings; a plate of its tiles'.
     expect(named(asked.find((a) => a.key === 't:0,0')!.entries)).toEqual(['a', 'b', 'c']);
     expect(named(asked.find((a) => a.key === 'p:0,0')!.entries)).toEqual(['a', 'b', 'c', 'e']);
@@ -352,22 +356,22 @@ describe('the tiles and plates asked of the workers', () => {
 
     asked.length = 0;
     // One cell changed: its tile and plate alone.
-    levels.touch('5,0', entries('d', 'f'));
+    levels.touch('9,0', entries('d', 'f'));
     // The same buildings on the same ground (the town filed again): nothing.
     levels.touch('0,0', entries('a', 'b'));
     levels.flush(env);
-    expect(asked.map((a) => a.key).sort()).toEqual(['b:1,0', 'p:1,0', 't:1,0']);
+    expect(asked.map((a) => a.key).sort()).toEqual(['b:1,0', 'p:1,0', 't:2,0']);
     // Changed again before it came: the older job cancelled, the newer one asked.
-    levels.touch('5,0', entries('d'));
+    levels.touch('9,0', entries('d'));
     levels.flush(env);
     expect(levels.asking).toBe(3);
 
     // Its last building gone: the tile and plate are removed, not asked.
     asked.length = 0;
-    levels.touch('5,0', null);
+    levels.touch('9,0', null);
     levels.flush(env);
     expect(asked).toEqual([]);
-    expect(removed.sort()).toEqual(['b:1,0', 'p:1,0', 't:1,0']);
+    expect(removed.sort()).toEqual(['b:1,0', 'p:1,0', 't:2,0']);
     expect(levels.asking).toBe(0);
   });
 
@@ -377,11 +381,12 @@ describe('the tiles and plates asked of the workers', () => {
     const wanted = new Set<string>();
     const levels = new MassLevels(pool, () => {}, () => {}, (key) => planned.push(key), (key) => wanted.has(key));
     levels.touch('0,0', entries('a'));
-    levels.touch('5,0', entries('b'));
+    // Cell 9: tile 2, plate 1 (the plates from the cells' origin, `levelKeys.ts`).
+    levels.touch('9,0', entries('b'));
     levels.flush(env);
     // The plates and the bases asked, the tiles only planned: a plate stands for them from afar.
     expect(asked.map((a) => a.key).sort()).toEqual(['b:0,0', 'b:1,0', 'p:0,0', 'p:1,0']);
-    expect(planned.sort()).toEqual(['b:0,0', 'b:1,0', 'p:0,0', 'p:1,0', 't:0,0', 't:1,0']);
+    expect(planned.sort()).toEqual(['b:0,0', 'b:1,0', 'p:0,0', 'p:1,0', 't:0,0', 't:2,0']);
     answer();
     asked.length = 0;
     levels.pump(env);

@@ -1,8 +1,8 @@
 /** DO NOT go back to triangulating each lot and laying every vertex on the ground */
 
-/** Metres a side of a lattice cell: a few shapes each where lots are smallest. */
-export const LOT_CELL = 8;
-/** Cells a side of a tile: the index is kept only where there are shapes. */
+/** Metres a side of a lattice cell: the universal grid's cell (`world/grid.ts` GRID_CELL), a few shapes each where lots are smallest. */
+export const LOT_CELL = 10;
+/** Cells a side of a tile of the lattice's index (160 m): the index is kept only where there are shapes. */
 export const TILE_CELLS = 16;
 /** Texels a row of the texture. */
 export const TEXTURE_WIDTH = 2048;

@@ -2,7 +2,7 @@ import { readDerivedSome, writeDerivedMany } from '@core/derivedCache';
 import { RoadDoc } from '@world/doc';
 import { Network, type NetworkBake } from '@world/network';
 import { type LotPlan, planLots } from '@world/lots';
-import type { NodeId } from '@world/ids';
+import type { NodeId, SegmentId } from '@world/ids';
 import { SimWorld, issuesSince } from '../world';
 import { TrafficBuildingTable, type TrafficMap, takeTrafficMap, trafficChangesOf } from '../agents/trafficBuildings';
 import { step } from '../pipeline';
@@ -24,11 +24,11 @@ import { answer } from './simAnswers';
 import { type Casualty, impactCasualties, takeWounds } from '../people/casualties';
 import type { PedView } from '../people/view';
 import {
-  C, H, MAX_PEDS, MAX_VEHICLES, P, PED_STRIDE, V, VEHICLE_STRIDE, headBase, pedBase, vehicleBase,
-  PARKED_STRIDE, PK, type FromSim, type ParkedChanges, type SimStats, type PedRich, type SignalLayout, type SignalLights, type SimAct, type SimAsk, type SimControls, type ToSim, type VehicleRich,
+  C, H, MAX_PEDS, MAX_VEHICLES, P, PED_STRIDE, SLOT_DOUBLES, V, VEHICLE_STRIDE, headBase, pedBase, vehicleBase,
+  PARKED_STRIDE, PK, type FromSim, type ParkedChanges, type SharedFrames, type SimStats, type PedRich, type SignalLayout, type SignalLights, type SimAct, type SimAsk, type SimControls, type ToSim, type VehicleRich,
 } from './protocol';
 
-/** THE SIMULATION IN ITS OWN THREAD: the page sends the map's changes and the player's controls, the worker steps the city */
+/** THE SIMULATION IN ITS OWN THREAD: the page sends the map's changes and the player's controls, the worker steps the city. A thread of the page's process writes the frames both hold (`SharedFrames`); a thread of the desktop's simulation process (`nodeSimHost.ts`, its own V8 cage) is given none, writes a buffer of its own and posts each tick's part of it (`frame`), and reads and keeps the conflict zones through the page (`derivedAsk`, `derivedKeep`). */
 
 /** Most milliseconds of steps a frame: the worker's own core, a frame's time at 60 Hz (the page's share is gone). */
 const STEP_BUDGET_MS = 14;
@@ -55,7 +55,11 @@ export class SimHost {
   private conflictPool: ConflictPool | null = null;
   private readonly governor = new PopulationGovernor(1);
   private data: Float64Array | null = null;
+  /** The control words of the shared frames; null in another process, where slot 0 of `data` is this thread's own and posted with each tick. */
   private control: Int32Array | null = null;
+  /** The page's answers to the kept zones asked of it (`derivedAsk`), by id. */
+  private readonly derivedAsked = new Map<number, (values: ReadonlyMap<string, Float64Array | null>) => void>();
+  private nextDerivedAsk = 1;
   private tick = 0;
   /** What each vehicle and person was last told with (`VehicleRich`, `PedRich`), by id: told again only when it changes. */
   private readonly vehicleSent = new Map<number, ToldVehicle>();
@@ -87,9 +91,21 @@ export class SimHost {
   async handle(message: ToSim): Promise<void> {
     switch (message.type) {
       case 'init':
-        await this.init(message.map, message.seed, message.zones, message.frames.data, message.frames.control, message.zonesPrefix, message.ambient, message.bake ?? null);
+        await this.init(message.map, message.seed, message.zones, message.frames, message.zonesPrefix, message.ambient, message.bakes ?? false);
         return;
-      case 'load': this.load(message.map, message.bake ?? null); return;
+      case 'bakeAnswer': {
+        const done = this.bakeAsked.get(message.id);
+        this.bakeAsked.delete(message.id);
+        done?.(message.bake);
+        return;
+      }
+      case 'derivedAnswer': {
+        const done = this.derivedAsked.get(message.id);
+        this.derivedAsked.delete(message.id);
+        done?.(message.values);
+        return;
+      }
+      case 'load': this.load(message.map); return;
       // The replica made the map again by its differences (`RoadDoc.replaceWith`): the frame rebuilds what moved, the vehicles drive on (rebound where their lanes went).
       case 'resync': takeTrafficMap(this.doc, this.buildings, message.map); return;
       case 'lanes': this.lanes = { bays: message.bays, conflicts: message.conflicts }; return;
@@ -110,15 +126,18 @@ export class SimHost {
     }
   }
 
-  private async init(map: TrafficMap, seed: number, zones: ReadonlyMap<string, Float64Array | null>, data: SharedArrayBuffer, control: SharedArrayBuffer,
-    prefix: string | null, ambient: 'view' | 'edges', bake: NetworkBake | null): Promise<void> {
-    this.data = new Float64Array(data);
-    this.control = new Int32Array(control);
+  private async init(map: TrafficMap, seed: number, zones: ReadonlyMap<string, Float64Array | null>, frames: SharedFrames | null,
+    prefix: string | null, ambient: 'view' | 'edges', bakes: boolean): Promise<void> {
+    // The frames both sides hold, or (another process) one slot of this thread's own, its written part posted with each tick.
+    this.data = frames ? new Float64Array(frames.data) : new Float64Array(SLOT_DOUBLES);
+    this.control = frames ? new Int32Array(frames.control) : null;
     takeTrafficMap(this.doc, this.buildings, map);
-    // The page's junctions and ribbons, taken where their inputs are this copy's: DO NOT solve the whole map's junctions again (SIM-04).
-    if (bake) this.net.offerBake(bake);
+    // The network holds the micro window's roads alone (`Network.scope`, `SimWorld.useMeso`): nothing of the map's until the window stands.
+    this.net.scope = new Set();
     this.net.rebuild({ full: true });
     const sim = new SimWorld(this.doc, this.net, seed, this.buildings);
+    // The page's junctions and ribbons of the roads the window comes to, taken where their inputs are this copy's: DO NOT solve the map's junctions again here (SIM-04).
+    if (bakes) sim.bakeSource = (nodes, segments) => this.askBake(nodes, segments);
     // Conflicts only where traffic is (the micro window), not every junction of the map.
     sim.useMicroWindow();
     // On the page's lanes when it handed them: DO NOT open a pool in this worker (`jobPool.ts` jobChannel).
@@ -128,15 +147,15 @@ export class SimHost {
     sim.auditLevel = 'cheap';
     sim.auditEvery = 60;
     sim.conflicts.seed(zones);
-    // The zones kept in earlier sessions read by the pairs a build needs (`ConflictIndex.lookup`), never all at the start.
-    if (prefix) sim.conflicts.lookup = (keys) => readDerivedSome<Float64Array | null>(prefix, keys);
+    // The zones kept in earlier sessions read by the pairs a build needs (`ConflictIndex.lookup`), never all at the start: from this thread's store, or through the page's where this process has none (`derivedAsk`).
+    if (prefix) sim.conflicts.lookup = (keys) => (this.control ? readDerivedSome<Float64Array | null>(prefix, keys) : this.askDerived(prefix, keys));
     this.zonesPrefix = prefix;
     sim.usePedestrianEngine((await import('../agents/walk')).createAgentWalkEngine());
     sim.followCity = true;
     sim.ambient.enabled = true;
     sim.ambient.source = ambient;
-    // The whole map's traffic in the meso model; the micro simulation only in its window round the view (`meso/meso.ts`).
-    sim.meso = this.meso;
+    // The whole map's traffic in the meso model; the micro simulation only in its window round the view (`meso/meso.ts`), whose roads alone the lane graph and the walkways hold (`SimWorld.useMeso`).
+    sim.useMeso(this.meso);
     this.sim = sim;
     this.conflictPool = new ConflictPool(prefix, this.lanes?.conflicts.length ? this.lanes.conflicts : null);
     this.topology = new TopologyCatchUp(this.conflictPool);
@@ -144,9 +163,9 @@ export class SimHost {
   }
 
   /** Another map: the replica made whole again, and nothing of the old simulation carried over. */
-  private load(map: TrafficMap, bake: NetworkBake | null): void {
+  private load(map: TrafficMap): void {
     takeTrafficMap(this.doc, this.buildings, map);
-    if (bake) this.net.offerBake(bake);
+    this.net.scope = new Set();
     this.net.rebuild({ full: true });
     this.sim?.reset();
     if (this.sim) this.sim.ambient.reset(this.sim);
@@ -198,12 +217,36 @@ export class SimHost {
     this.publish(alpha);
   }
 
-  /** The frame written into the slot neither the page reads nor was written last (a triple buffer), then made the latest. */
+  /** The page's answers to the roads asked solved (`bakeAsk`), by id. */
+  private readonly bakeAsked = new Map<number, (bake: NetworkBake | null) => void>();
+  private nextBakeAsk = 1;
+
+  /** The junctions and ribbons of the roads the window comes to, asked of the page's network (answered with `bakeAnswer`). */
+  private askBake(nodes: readonly NodeId[], segments: readonly SegmentId[]): Promise<NetworkBake | null> {
+    const id = this.nextBakeAsk++;
+    return new Promise((done) => {
+      this.bakeAsked.set(id, done);
+      this.post({ type: 'bakeAsk', id, nodes, segments });
+    });
+  }
+
+  /** The kept zones asked of the page (another process: this thread's store is none), answered with `derivedAnswer`. */
+  private askDerived(prefix: string, keys: readonly string[]): Promise<ReadonlyMap<string, Float64Array | null>> {
+    const id = this.nextDerivedAsk++;
+    return new Promise((done) => {
+      this.derivedAsked.set(id, done);
+      this.post({ type: 'derivedAsk', id, prefix, keys });
+    });
+  }
+
+  /** The frame written into the slot neither the page reads nor was written last (a triple buffer), then made the latest; in another process, into slot 0 of this thread's own buffer, posted with the tick. */
   private publish(alpha: number): void {
-    const sim = this.sim!, data = this.data!, control = this.control!;
-    const latest = Atomics.load(control, C.latest), reading = Atomics.load(control, C.reading);
+    const sim = this.sim!, data = this.data!, control = this.control;
     let slot = 0;
-    while (slot === latest || slot === reading) slot++;
+    if (control) {
+      const latest = Atomics.load(control, C.latest), reading = Atomics.load(control, C.reading);
+      while (slot === latest || slot === reading) slot++;
+    }
     const vehicles: [number, VehicleRich][] = [];
     const peds: [number, PedRich][] = [];
     const frame = ++this.published;
@@ -268,14 +311,20 @@ export class SimHost {
     const h = headBase(slot);
     data[h + H.tick] = ++this.tick; data[h + H.time] = sim.clock.time; data[h + H.vehicles] = n; data[h + H.peds] = m;
     data[h + H.alpha] = alpha; data[h + H.steps] = sim.clock.lastSteps; data[h + H.stepMs] = sim.clock.lastStepMs; data[h + H.minutes] = sim.city.minutes(sim);
-    Atomics.store(control, C.latest, slot);
+    if (control) Atomics.store(control, C.latest, slot);
     const parked = this.parked();
     const meso = this.meso.takeDelta();
     const transfer: Transferable[] = parked ? [parked.cars.buffer] : [];
     if (meso) transfer.push(...deltaTransfer(meso));
+    // No frames shared (another process): the slot's written part (its head, its vehicles, its people) goes with the tick, in a buffer of its own.
+    let slotBytes: ArrayBuffer | undefined;
+    if (!control) {
+      slotBytes = data.buffer.slice(0, (pb + m * PED_STRIDE) * 8) as ArrayBuffer;
+      transfer.push(slotBytes);
+    }
     this.post({
       type: 'tick', slot, vehicles, peds, ...this.signals(), trains: sim.city.transit.trains().map((t) => ({ colour: t.colour, metro: t.metro, cars: t.cars })),
-      parked, meso, stats: this.stats(), wounds: takeWounds(sim),
+      parked, meso, ...(slotBytes ? { frame: slotBytes } : {}), stats: this.stats(), wounds: takeWounds(sim),
       casualties: impactCasualties(sim, 0).filter((c) => !this.casualtiesSent.has(c) && (this.casualtiesSent.add(c), true)),
     }, transfer.length ? transfer : undefined);
   }
@@ -356,8 +405,12 @@ export class SimHost {
     // The issues reported since the last frame, the last of them still kept (the list keeps 512).
     const issues = issuesSince(sim, this.issuesSent).map((i) => ({ code: i.code, subject: String(i.subject), detail: String(i.detail), tick: i.tick }));
     this.issuesSent = sim.issuesReported;
-    // The zones measured since kept for the next session from here, as the conflicts' workers keep theirs: DO NOT pass them through the page to the store.
-    if (++this.measuredDue % 300 === 0 && this.zonesPrefix) writeDerivedMany(this.zonesPrefix, sim.conflicts.takeMeasured());
+    // The zones measured since kept for the next session from here, as the conflicts' workers keep theirs: DO NOT pass them through the page to the store - unless this thread is in another process, whose store is none (`derivedKeep`).
+    if (++this.measuredDue % 300 === 0 && this.zonesPrefix) {
+      const measured = sim.conflicts.takeMeasured();
+      if (this.control) writeDerivedMany(this.zonesPrefix, measured);
+      else if (measured.size) this.post({ type: 'derivedKeep', prefix: this.zonesPrefix, values: measured });
+    }
     const measured: SimStats['measured'] = [];
     return {
       vehicles: sim.vehicles.size, people: sim.pedViews.length, completedTrips: sim.completedTrips, entryDemandLost: sim.entryDemandLost,
@@ -403,6 +456,8 @@ export class SimHost {
   /** THE ZONING TOOL'S PROPOSAL (`editor/lotTool.ts`): the land along the streets cut into lots on this copy of the region, which the page's diary keeps as the page has it (sent before the question, `SimClient.lotPlan`) - planned again only where the roads and the lots changed (`world/lots.ts` LotPlanner, one for this network), DO NOT plan it on the page. Null while a tile's network is being read (its junctions would be solved here): asked again. */
   private lotPlan(): LotPlan | null {
     if (!this.sim) return null;
+    // The network holds the micro window's roads (`Network.scope`): a road drawn there is held by the next move of the window; until then, asked again.
+    if (!this.sim.windowRoadsHeld()) return null;
     // Brought up to the diary sent before the question (nothing to do when the frame built it: the build reads what changed).
     this.net.rebuild();
     return planLots(this.doc, this.net);

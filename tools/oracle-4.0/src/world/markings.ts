@@ -14,11 +14,10 @@ import {
 import { frameFromNode, segmentStartsAt } from '@world/geometry';
 import { laneTurnAllowed } from './roadSection';
 import type { Network, SegmentRibbon } from '@world/network';
-import { offsetPolyline } from '@core/offset';
 import type { Vec2 } from '@core/vec2';
 import type { Leg } from '@world/junction/legs';
 import { TransitionAxis, taperEase } from '@world/junction/transition';
-import type { NodeId } from '@world/ids';
+import type { NodeId, SegmentId } from '@world/ids';
 import {
   CROSSWALK_DEPTH,
   STOP_BAR_WIDTH,
@@ -38,37 +37,72 @@ export interface StrokeSpec {
   readonly dash: readonly number[] | null;
   /** Dash phase in world units, so a split does not reflow the pattern. */
   readonly dashOffset: number;
-  /** The points close a ring painted whole (`width` and `dash` unused): an area, not a line. */
-  readonly fill?: true;
+}
+
+/** Where a road's broken lines fall along it (`segmentMarkings`): their dash and period, and the shift that puts arc length `s` of the road's
+ *  centreline (`ribbon.full`) at its place in the pattern, `(s + shift) mod period` (inked below `dash`). */
+interface DashFrame {
+  readonly dash: number;
+  readonly period: number;
+  readonly shift: number;
+}
+
+/** A road's `DashFrame`, as `segmentMarkings` lays its broken lines (the same `startS` and `cutA`). */
+function segmentDashFrame(ribbon: SegmentRibbon, startS: number, cutA = 0, styleId: MarkingStyleId = 'classic'): DashFrame | null {
+  const style = markingStyle(styleId);
+  const dashPattern = style.id === 'classic' ? DASH : style.dash(ribbon.road.speedLimit / kmh(1));
+  const period = style.id === 'classic' ? DASH_PERIOD : dashPattern[0]! + dashPattern[1]!;
+  const full = ribbon.centre[Level.Asphalt];
+  if (!full || full.n < 2) return null;
+  const s0 = startS + cutA;
+  const phase = -((ribbon.dashOrigin + s0) % period);
+  // A stroke's own length u starts where its centreline does on the road's, cutA in: (u + phase) mod period is where it is in the pattern.
+  const first = full.toPoints()[0]!;
+  const hit = { s: 0, distance: 0 };
+  ribbon.full.closestInto(first.x, first.y, hit);
+  return { dash: dashPattern[0]!, period, shift: phase - (hit.s + cutA) };
 }
 
 /** Dash pattern used for every broken line, in world units. */
 const DASH: readonly number[] = [m(3.2), m(3.2)];
 const DASH_PERIOD = m(6.4);
 
-/** Lane markings for one segment. */
-export function segmentMarkings(ribbon: SegmentRibbon, startS: number, cutA = 0, cutB = 0, styleId: MarkingStyleId = 'classic'): StrokeSpec[] {
+/** One line painted along a road: its offset from the road's centreline (left of a -> b positive), its width, colour, and whether it is broken. */
+export interface AlongLine {
+  readonly offset: number;
+  readonly width: number;
+  readonly color: string;
+  readonly dashed: boolean;
+}
+
+/**
+ * A road's lines along it as the carriageway's shader draws them (`render/roadPaint.ts`), no polygon of their own: each line by its offset across
+ * the road, between arc lengths `from` and `to` of the road's centreline (`ribbon.full`: from the mouth's stop line or crossing to the other's),
+ * its dashes inked where `(s + shift) mod period` is under `dash` (`DashFrame`, the same as `segmentDashFrame` gives).
+ */
+export interface AlongPaint {
+  readonly lines: readonly AlongLine[];
+  readonly from: number;
+  readonly to: number;
+  readonly dash: number;
+  readonly period: number;
+  readonly shift: number;
+}
+
+/** A road's lines along it (`AlongPaint`); null where it has none or its painted stretch is shorter than a metre. */
+export function segmentAlongPaint(ribbon: SegmentRibbon, startS: number, cutA = 0, cutB = 0, styleId: MarkingStyleId = 'classic'): AlongPaint | null {
   const rt = ribbon.road;
-  // The map's regional standard: colours, dash and gap by the speed.
+  // The map's regional standard: its colours (its dash and gap by the speed, `segmentDashFrame`).
   const style = markingStyle(styleId);
-  const speedKmh = rt.speedLimit / kmh(1);
-  const dashPattern = style.id === 'classic' ? DASH : style.dash(speedKmh);
-  const period = style.id === 'classic' ? DASH_PERIOD : dashPattern[0]! + dashPattern[1]!;
   const centreColour = style.centre ?? markingColor(rt);
   const full = ribbon.centre[Level.Asphalt];
-  if (!full || full.n < 2) return [];
+  if (!full || full.n < 2) return null;
   // Lines along the road stop at the stop line
   const keep = full.length - cutA - cutB;
-  if (keep < 1) return laneArrowMarkings(ribbon);
-  const centre = cutA > 0 || cutB > 0 ? full.sub(cutA, full.length - cutB) : full;
-  startS += cutA;
-
-  const pts = centre.toPoints();
-  const out: StrokeSpec[] = [];
-  const phase = -((ribbon.dashOrigin + startS) % period);
+  if (keep < 1) return null;
+  const lines: AlongLine[] = [];
   // The travel way's own centre: off the road centreline when only one side parks.
   const shift = travelShift(rt);
-  const middle = Math.abs(shift) > 1e-6 ? offsetPolyline(pts, shift) : pts;
 
   // No painted edge lines.
 
@@ -76,30 +110,24 @@ export function segmentMarkings(ribbon: SegmentRibbon, startS: number, cutA = 0,
   const centreLine = (fallback: 'dashed' | 'solid'): void => {
     const kind = rt.centreLine ?? fallback;
     if (kind === 'double') {
-      for (const side of [-1, 1]) out.push({ points: offsetPolyline(middle, side * m(0.18)), width: m(0.12), color: centreColour, dash: null, dashOffset: 0 });
+      for (const side of [-1, 1]) lines.push({ offset: shift + side * m(0.18), width: m(0.12), color: centreColour, dashed: false });
     } else {
-      out.push({ points: middle, width: m(0.16), color: centreColour, dash: kind === 'dashed' ? dashPattern : null, dashOffset: kind === 'dashed' ? phase : 0 });
+      lines.push({ offset: shift, width: m(0.16), color: centreColour, dashed: kind === 'dashed' });
     }
   };
   if (ribbon.direction === 'both' && rt.markings === 'center') centreLine('dashed');
 
   // The line between lane k and k + 1 of one direction: dashed where a lane change is allowed
-  const divider = (forward: boolean, k: number): Pick<StrokeSpec, 'width' | 'dash' | 'dashOffset'> => {
+  const divider = (forward: boolean, k: number, offset: number): AlongLine => {
     const uses = forward ? rt.useForward : rt.useBackward;
     const bus = (uses?.[k] ?? 'all') !== (uses?.[k + 1] ?? 'all');
     const solid = bus || ((forward ? rt.linesForward : rt.linesBackward)?.[k] ?? 'dashed') === 'solid';
-    return { width: bus ? m(0.248) : m(0.128), dash: solid ? null : dashPattern, dashOffset: solid ? 0 : phase };
+    return { offset, width: bus ? m(0.248) : m(0.128), color: LANE_LINE, dashed: !solid };
   };
   if (ribbon.direction !== 'both') {
     const lw = laneWidth(rt);
     const forward = ribbon.direction === 'aToB';
-    for (let i = 1; i < rt.lanes; i++) {
-      out.push({
-        points: offsetPolyline(pts, -rt.width / 2 + rt.parkingRight + lw * i),
-        color: LANE_LINE,
-        ...divider(forward, forward ? rt.lanes - 1 - i : i - 1),
-      });
-    }
+    for (let i = 1; i < rt.lanes; i++) lines.push(divider(forward, forward ? rt.lanes - 1 - i : i - 1, -rt.width / 2 + rt.parkingRight + lw * i));
   } else if (rt.markings === 'lanes') {
     // A four-lane road without a median still needs a centreline separating the two directions.
     if (rt.median === 0) centreLine('solid');
@@ -108,14 +136,31 @@ export function segmentMarkings(ribbon: SegmentRibbon, startS: number, cutA = 0,
     for (let i = 1; i < lpd; i++) {
       const off = rt.median / 2 + lw * i;
       // Left of a -> b: the backward lanes; right: the forward ones (lane 0 by the middle).
-      out.push({ points: offsetPolyline(pts, shift + off), color: LANE_LINE, ...divider(false, i - 1) });
-      out.push({ points: offsetPolyline(pts, shift - off), color: LANE_LINE, ...divider(true, i - 1) });
+      lines.push(divider(false, i - 1, shift + off));
+      lines.push(divider(true, i - 1, shift - off));
     }
   }
+  if (lines.length === 0) return null;
+  const frame = segmentDashFrame(ribbon, startS, cutA, styleId);
+  if (!frame) return null;
+  // The painted stretch on the road's own centreline: the asphalt's trimmed centreline from `cutA` to `cutB` short of its end.
+  const first = full.point(0);
+  const hit = { s: 0, distance: 0 };
+  ribbon.full.closestInto(first.x, first.y, hit);
+  return { lines, from: hit.s + cutA, to: hit.s + full.length - cutB, dash: frame.dash, period: frame.period, shift: frame.shift };
+}
 
-  out.push(...laneArrowMarkings(ribbon));
-  out.push(...busLegends(ribbon, centre, style.busText, style.legendHeight(speedKmh)));
-  return out;
+/** The paint along a road that is not a line (`segmentAlongPaint`): its lanes' turn arrows and its bus lanes' legends. */
+export function segmentMarkings(ribbon: SegmentRibbon, _startS: number, cutA = 0, cutB = 0, styleId: MarkingStyleId = 'classic'): StrokeSpec[] {
+  const rt = ribbon.road;
+  const style = markingStyle(styleId);
+  const speedKmh = rt.speedLimit / kmh(1);
+  const full = ribbon.centre[Level.Asphalt];
+  if (!full || full.n < 2) return [];
+  const keep = full.length - cutA - cutB;
+  if (keep < 1) return laneArrowMarkings(ribbon);
+  const centre = cutA > 0 || cutB > 0 ? full.sub(cutA, full.length - cutB) : full;
+  return [...laneArrowMarkings(ribbon), ...busLegends(ribbon, centre, style.busText, style.legendHeight(speedKmh))];
 }
 
 /** How far from each end of a stretch a bus lane's legend is first painted, and then every so far. */
@@ -168,12 +213,14 @@ const LEGEND_GAP = m(1.5);
 /** What a junction's rule paints on each leg before its stop line (MBST vol. IV): "PARE" */
 export function approachLegends(net: Network, styleId: MarkingStyleId): StrokeSpec[] {
   const out: StrokeSpec[] = [];
+  // @rebuild Walks the whole map: the whole map's paint at once (the specs'); the surfaces paint a junction at a time.
   for (const node of net.doc.nodes.keys()) approachLegendsAt(net, node, styleId, out);
   return out;
 }
 
-/** `approachLegends` of one node, onto `out`: what the surfaces paint of it again when an edit reaches it. */
-export function approachLegendsAt(net: Network, nodeId: NodeId, styleId: MarkingStyleId, out: StrokeSpec[]): void {
+/** `approachLegends` of one node, onto `out`: what the surfaces paint of it again when an edit reaches it; `segs`, given, the road each stroke lies
+ *  on, one a stroke (the leg it is painted before: `render/roadMarks.ts` draws it on that road's carriageway alone). */
+export function approachLegendsAt(net: Network, nodeId: NodeId, styleId: MarkingStyleId, out: StrokeSpec[], segs?: SegmentId[]): void {
   const node = net.doc.node(nodeId);
   if (!node || node.incident.length < 3) return;
   const style = markingStyle(styleId);
@@ -199,7 +246,9 @@ export function approachLegendsAt(net: Network, nodeId: NodeId, styleId: Marking
     const word = kind === 'stop' ? wordStrokes(style.stopText) : YIELD_SYMBOL;
     const letter = kind === 'stop' ? Math.min((lw * 0.78) / Math.max(1, word.width), height * 0.5) : Math.min(lw * 0.55, m(1.5));
     for (let lane = 0; lane < travelLanes(rt, ribbon.direction); lane++) {
+      const before = out.length;
       paintInLane(out, ribbon, centre, forward, lane, foot, word, letter, height, m(kind === 'stop' ? 0.2 : 0.16));
+      if (segs) for (let k = before; k < out.length; k++) segs.push(segId);
     }
   }
 }
@@ -285,6 +334,22 @@ function stopBar(
   };
 }
 
+/**
+ * One run of a crosswalk's bars across one stretch of the carriageway (`zebraBars`), as one quad: its crossing line on the centreline from `a`
+ * to `b`, the stretch from `from` to `from + used` along `nrm`; inked where its offset from `from` falls below `bar` in `pitch`. Drawn as one
+ * shape of the carriageway's marks (`render/roadMarks.ts` zebraGroup), its bars cut by the shader, DO NOT as a quad a bar.
+ */
+export interface ZebraStretch {
+  readonly seg: SegmentId;
+  readonly a: Vec2;
+  readonly b: Vec2;
+  readonly nrm: Vec2;
+  readonly from: number;
+  readonly used: number;
+  readonly bar: number;
+  readonly pitch: number;
+}
+
 /** Zebra bars for one approach. */
 function crosswalkBars(
   origin: Vec2,
@@ -292,14 +357,16 @@ function crosswalkBars(
   nrm: Vec2,
   rt: RoadType,
   trim: number,
+  seg: SegmentId,
+  stretches?: ZebraStretch[],
 ): Bar[] {
   const mid = crosswalkDistance(trim);
   if (mid - CROSSWALK_DEPTH / 2 <= 0) return [];
-  return zebraBars((along) => ({ p: { x: origin.x + dir.x * along, y: origin.y + dir.y * along }, nrm }), rt, mid);
+  return zebraBars((along) => ({ p: { x: origin.x + dir.x * along, y: origin.y + dir.y * along }, nrm }), rt, mid, seg, stretches);
 }
 
-/** The stripes of one crosswalk centred `mid` along a frame given per distance. */
-function zebraBars(frameAt: (along: number) => { p: Vec2; nrm: Vec2 }, rt: RoadType, mid: number): Bar[] {
+/** The stripes of one crosswalk centred `mid` along a frame given per distance; each stretch's run of them onto `stretches`. */
+function zebraBars(frameAt: (along: number) => { p: Vec2; nrm: Vec2 }, rt: RoadType, mid: number, seg: SegmentId, stretches?: ZebraStretch[]): Bar[] {
   const outer = rt.width / 2 - ZEBRA_EDGE;
   const inner = rt.median > 0 ? rt.median / 2 + ZEBRA_EDGE : 0;
   const { nrm } = frameAt(mid);
@@ -314,6 +381,7 @@ function zebraBars(frameAt: (along: number) => { p: Vec2; nrm: Vec2 }, rt: RoadT
     const count = Math.max(1, Math.floor((span + ZEBRA_GAP) / pitch));
     const used = count * ZEBRA_BAR + (count - 1) * ZEBRA_GAP;
     const first = from + (span - used) / 2 + ZEBRA_BAR / 2;
+    stretches?.push({ seg, a, b, nrm, from: first - ZEBRA_BAR / 2, used, bar: ZEBRA_BAR, pitch });
     for (let i = 0; i < count; i++) {
       const o = first + i * pitch;
       bars.push({
@@ -338,12 +406,14 @@ export function junctionDetail(net: Network): { stops: Bar[]; zebras: Bar[] } {
   const zebras: Bar[] = [];
   // In id order: the network's junctions are in the order its rebuilds filed them.
   for (const node of [...net.junctions.keys()].sort((p, q) => p - q)) junctionDetailAt(net, node, stops, zebras);
+  // @rebuild Walks the whole map: the whole map's paint at once (the specs'); the surfaces paint a junction at a time.
   for (const node of net.doc.nodes.keys()) midBlockDetailAt(net, node, stops, zebras);
   return { stops, zebras };
 }
 
-/** The stop bars and crosswalks of one junction's approaches, onto `stops` and `zebras` (`junctionDetail`). */
-export function junctionDetailAt(net: Network, node: NodeId, stops: Bar[], zebras: Bar[]): void {
+/** The stop bars and crosswalks of one junction's approaches, onto `stops` and `zebras` (`junctionDetail`); `stopSegs`, given, the road each stop bar
+ *  lies on, one a bar (its leg's: `render/roadMarks.ts` draws it on that road's carriageway alone; a run of bars says its own, `ZebraStretch.seg`). */
+export function junctionDetailAt(net: Network, node: NodeId, stops: Bar[], zebras: Bar[], stretches?: ZebraStretch[], stopSegs?: SegmentId[]): void {
   const junction = net.junctions.get(node)?.get(Level.Asphalt);
   if (!junction) return;
   if (junction.legs.some((leg) => leg.road.id === 'highway' || leg.road.id === 'ramp')) return;
@@ -358,16 +428,16 @@ export function junctionDetailAt(net: Network, node: NodeId, stops: Bar[], zebra
     const crossing = net.crosswalkDistanceAt(leg.seg, node);
     if (movementsConflict && leg.approaching) {
       const bar = stopBar(leg.origin, leg.dir, leg.nrm, rt, trim, leg.shift);
-      if (bar) stops.push(bar);
+      if (bar) { stops.push(bar); stopSegs?.push(leg.seg); }
     }
     if (crossing > 0) {
-      zebras.push(...crosswalkBars(leg.origin, leg.dir, leg.nrm, rt, trim));
+      zebras.push(...crosswalkBars(leg.origin, leg.dir, leg.nrm, rt, trim, leg.seg, stretches));
     }
   });
 }
 
-/** Paint for the mid-block crossings (`RoadNode.crossing`). */
-export function midBlockDetailAt(net: Network, nodeId: NodeId, stops: Bar[], zebras: Bar[]): void {
+/** Paint for the mid-block crossings (`RoadNode.crossing`); `stopSegs` as `junctionDetailAt`'s. */
+export function midBlockDetailAt(net: Network, nodeId: NodeId, stops: Bar[], zebras: Bar[], stretches?: ZebraStretch[], stopSegs?: SegmentId[]): void {
   const doc = net.doc;
   const node = doc.node(nodeId);
   if (!node || !node.crossing || node.incident.length !== 2) return;
@@ -379,7 +449,7 @@ export function midBlockDetailAt(net: Network, nodeId: NodeId, stops: Bar[], zeb
     const startsHere = segmentStartsAt(seg, node.id);
     const frameAt = (along: number) => frameFromNode(pl, startsHere, Math.max(0, Math.min(pl.length, along)));
     const crossing = net.crosswalkDistanceAt(segId, node.id);
-    if (crossing > 0) zebras.push(...zebraBars(frameAt, rt, crossing));
+    if (crossing > 0) zebras.push(...zebraBars(frameAt, rt, crossing, segId, stretches));
     const approaching = seg.direction === 'both' ||
       (startsHere ? seg.direction === 'bToA' : seg.direction === 'aToB');
     const s = net.stopLineDistance(segId, node.id);
@@ -394,6 +464,7 @@ export function midBlockDetailAt(net: Network, nodeId: NodeId, stops: Bar[], zeb
       b: { x: f.p.x + f.nrm.x * outer, y: f.p.y + f.nrm.y * outer },
       width: STOP_BAR_WIDTH,
     });
+    stopSegs?.push(segId);
   }
 }
 
@@ -450,19 +521,27 @@ export function transitionMarkings(net: Network, node: NodeId): StrokeSpec[] {
   return out;
 }
 
-/** A mini-roundabout's painted island */
-export function miniRoundaboutAt(net: Network, nodeId: NodeId, out: StrokeSpec[]): void {
+/** A mini-roundabout's painted island as a regular polygon: its middle, the radius its corners stand at, its sides (a corner at angle 0) and colour. */
+export interface PaintedIsland {
+  readonly x: number;
+  readonly y: number;
+  readonly radius: number;
+  readonly sides: number;
+  readonly color: string;
+}
+
+/** Sides of a mini-roundabout's painted island. */
+const ISLAND_SIDES = 40;
+
+/** A mini-roundabout's painted island (`PaintedIsland`); null where the node is none. */
+export function miniRoundaboutIsland(net: Network, nodeId: NodeId): PaintedIsland | null {
   const node = net.doc.node(nodeId);
-  if (!node || node.control !== 'mini' || node.incident.length < 3) return;
+  if (!node || node.control !== 'mini' || node.incident.length < 3) return null;
   const mouth = Math.min(...node.incident.map((seg) => net.mouthDistance(seg, node.id)));
   const r = Math.max(m(2), Math.min(m(4), mouth * 0.4));
   // One painted disc, its 40 sides where a 0.2 m line round a 40-gon of radius r had its outer edges.
   // DO NOT paint it as rings of strokes: 18 rings of 40 quads each, 720 shapes for the paint's union to merge, and a hole left at the middle.
-  const half = Math.PI / 40;
-  const outer = (r * Math.cos(half) + m(0.1)) / Math.cos(half);
-  const points = Array.from({ length: 40 }, (_, i) => {
-    const a = (i / 40) * Math.PI * 2;
-    return { x: node.x + Math.cos(a) * outer, y: node.y + Math.sin(a) * outer };
-  });
-  out.push({ points, width: 0, color: LANE_LINE, dash: null, dashOffset: 0, fill: true });
+  const half = Math.PI / ISLAND_SIDES;
+  return { x: node.x, y: node.y, radius: (r * Math.cos(half) + m(0.1)) / Math.cos(half), sides: ISLAND_SIDES, color: LANE_LINE };
 }
+

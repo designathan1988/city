@@ -7,7 +7,9 @@ import { LaneletGraph } from '@world/lanelets';
 import { bands, surfaces } from '@world/surfaces';
 import { buildWalkways } from '../oracle/buildWalkways';
 import { streetFurniture } from '@world/streetFurniture';
-import { junctionDetail, segmentMarkings } from '@world/markings';
+import { junctionDetail, segmentAlongPaint, segmentMarkings } from '@world/markings';
+import { offsetPolyline } from '@core/offset';
+import { Level } from '@world/roadTypes';
 import { sectionOf } from '@world/section';
 
 /** Everything the road network derives, one line per piece, so two builds that differ say WHICH piece differs: the network */
@@ -72,9 +74,16 @@ export function derivedLines(net: Network): string[] {
   }
   for (const f of streetFurniture(net)) out.push(`furniture ${f.kind} ${f.segment} ${f.x} ${f.y}`);
   for (const [id, ribbon] of [...net.ribbons].sort((p, q) => p[0] - q[0])) {
-    const marks = segmentMarkings(ribbon, 0);
     const d = new Digest();
-    for (const m of marks) { d.addAll(m.points.flatMap((p) => [p.x, p.y])).add(m.width).addText(m.color); }
+    // The lines along it (`segmentAlongPaint`, drawn by the carriageway's shader) as the strokes they were before: each its offset off the
+    // carriageway's centreline, its width and colour, in the same order; then its arrows and legends (`segmentMarkings`).
+    const along = segmentAlongPaint(ribbon, 0);
+    const centre = ribbon.centre[Level.Asphalt]?.toPoints() ?? [];
+    for (const line of along?.lines ?? []) {
+      const points = line.offset === 0 ? centre : offsetPolyline(centre, line.offset);
+      d.addAll(points.flatMap((p) => [p.x, p.y])).add(line.width).addText(line.color);
+    }
+    for (const m of segmentMarkings(ribbon, 0)) { d.addAll(m.points.flatMap((p) => [p.x, p.y])).add(m.width).addText(m.color); }
     out.push(`marks ${id} ${d.value()}`);
     // The fields every map had before the road system: an old map's two sides are `side`.
     const s = sectionOf(ribbon.road, ribbon.direction);

@@ -9,7 +9,7 @@ import { BLUEPRINTS, generateBody } from '@world/buildings/blueprints';
 import { foundationOf } from '@world/buildings/foundation';
 import { type Building, asBuildingId } from '@world/buildings/types';
 import { type BuildingChunk, assembleBuildingMeshes, emitChunk } from '@render/buildings/buildingMesh';
-import { emitMassing } from '@render/buildings/massing';
+import { massesOf } from './support/masses';
 import { PART_KINDS, createBuildingKit } from '@render/buildings/kit';
 import { createBuildingLayer } from '@render/buildings/layer';
 import { shapeBody } from '@editor/buildingPlans';
@@ -115,12 +115,12 @@ describe('building shell', () => {
       const other = { ...a, id: asBuildingId(a.id + 100), x: a.x + 300, y: a.y - 90, rotation: -1.1 } as Building;
       emitChunk(other, slope);
       emitChunk(other, slope, undefined, slope, undefined, true);
-      emitMassing(other, slope);
+      massesOf(other, slope);
       const key = BLUEPRINTS[i]!.key;
       // Against the same building worked out from scratch: a deep copy has blocks of its own.
       expect(drawn(emitChunk(a, slope)), key).toEqual(drawn(emitChunk(structuredClone(a), slope)));
       expect(drawn(emitChunk(a, slope, undefined, slope, undefined, true)), key).toEqual(drawn(emitChunk(structuredClone(a), slope, undefined, slope, undefined, true)));
-      expect(emitMassing(a, slope), key).toEqual(emitMassing(structuredClone(a), slope));
+      expect(massesOf(a, slope), key).toEqual(massesOf(structuredClone(a), slope));
     }
   });
 
@@ -183,9 +183,9 @@ describe('building shell', () => {
     const meshes = assembleBuildingMeshes([a, b], kit);
     const glass = meshes.group.children.find((m) => m.name === 'building-glass') as unknown as { count: number };
     expect(glass.count).toBe(a.parts.glass.count + b.parts.glass.count);
-    // One shell for every finish and one batch per part: the draw calls do not grow with the number of buildings.
-    expect(meshes.group.children.length).toBeLessThanOrEqual(1 + PART_KINDS.length);
-    expect(meshes.group.children.filter((m) => m.name === 'building-shell')).toHaveLength(1);
+    // One shell for every finish (its plain faces, and its walls laid as runs of bays, `emitFacadeRuns`) and one batch per part: the draw calls do not grow with the number of buildings.
+    expect(meshes.group.children.length).toBeLessThanOrEqual(2 + PART_KINDS.length);
+    expect(meshes.group.children.filter((m) => m.name === 'building-shell')).toHaveLength(2);
     meshes.dispose();
     kit.dispose();
   });

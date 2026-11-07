@@ -2,8 +2,9 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { Frustum, Matrix4, OrthographicCamera, PerspectiveCamera, Sphere, Vector3, WebGLCoordinateSystem, type InstancedMesh } from 'three';
 import { Rng } from '@core/rng';
 import { VEHICLE_REACH, createAgentMeshes } from '@render/agents';
+import { PartLevelMaker } from '@render/vehicleLevels';
 import { frustumGroundBox } from '@render/frustumGround';
-import { FleetGrid, type FleetCell, type GroundBox } from '@sim/host/fleetGrid';
+import { FLEET_CELL, FleetGrid, type FleetCell, type GroundBox } from '@sim/host/fleetGrid';
 import type { SimClient, VehicleView } from '@sim/host/simClient';
 import { archetypeById } from '@sim/vehicles/archetypes';
 import type { Network } from '@world/network';
@@ -38,6 +39,9 @@ function cameraAt(rng: Rng): Camera {
   camera.lookAt(rng.range(-m(2000), m(2000)), 0, rng.range(-m(2000), m(2000)));
   return camera;
 }
+
+/** Every body's levels, made once for the file's meshes (the page makes them once too, `createAgentMeshes`). */
+const levels = new PartLevelMaker();
 
 describe("the view's ground box", () => {
   it('holds every centre a sphere of the reach can stand at and be seen, between the two heights', () => {
@@ -124,8 +128,8 @@ describe('vehicles drawn from the grid', () => {
     const world = worldWith(cars);
     const net = netWith();
     // One walking every vehicle, one asking the grid: each frame of each the same view.
-    const all = createAgentMeshes(() => 0, () => {}, () => 0, () => 0);
-    const grid = createAgentMeshes(() => 0, () => {}, () => 0, () => 0);
+    const all = createAgentMeshes(() => 0, () => {}, () => 0, () => 0, undefined, levels);
+    const grid = createAgentMeshes(() => 0, () => {}, () => 0, () => 0, undefined, levels);
     const rng = new Rng(3);
     for (let view = 0; view < 4; view++) {
       const camera = new PerspectiveCamera(40 + rng.float() * 30, 1.6, m(0.4), m(250) + rng.float() * m(250));
@@ -158,7 +162,7 @@ describe('vehicles drawn from the grid', () => {
     for (let i = 0; i < 6; i++) for (let j = 0; j < 6; j++) cars.push(parkedCar(i * 6 + j + 1, i * m(40), j * m(40)));
     const world = worldWith(cars);
     const grid = (world as unknown as { grid: FleetGrid<VehicleView> }).grid;
-    const agents = createAgentMeshes(() => 0, () => {}, () => 0, () => 0);
+    const agents = createAgentMeshes(() => 0, () => {}, () => 0, () => 0, undefined, levels);
     let asked = 0;
     const options = {
       vehicleVisible: () => true, vehicleBox: { x0: -m(10), y0: -m(10), x1: m(250), y1: m(250) },
@@ -176,7 +180,7 @@ describe('vehicles drawn from the grid', () => {
     grid.touch(cars[0]!);
     asked = 0;
     agents.sync(world, netWith(), 0, true, undefined, options);
-    const inCell = cars.filter((c) => Math.floor(c.frames.x / m(64)) === 0 && Math.floor(c.frames.y / m(64)) === 0).length;
+    const inCell = cars.filter((c) => Math.floor(c.frames.x / FLEET_CELL) === 0 && Math.floor(c.frames.y / FLEET_CELL) === 0).length;
     expect(asked).toBe(1 + inCell);
     // The view moved: every car walked.
     asked = 0;
@@ -188,13 +192,14 @@ describe('vehicles drawn from the grid', () => {
 
   it('test a cell off the view once, not each of its cars, while nothing of it changed', () => {
     const cars: VehicleView[] = [];
-    // Two cells: one in the view, one off it, 20 cars each.
+    // Two cells (`fleetGrid.ts` FLEET_CELL): one in the view, one off it, 20 cars each, 10 m into the first and the third cell of the row.
     for (let k = 0; k < 20; k++) cars.push(parkedCar(k + 1, m(10) + (k % 5) * m(8), m(10) + Math.floor(k / 5) * m(8)));
-    for (let k = 0; k < 20; k++) cars.push(parkedCar(k + 101, m(138) + (k % 5) * m(8), m(10) + Math.floor(k / 5) * m(8)));
+    for (let k = 0; k < 20; k++) cars.push(parkedCar(k + 101, 2 * FLEET_CELL + m(10) + (k % 5) * m(8), m(10) + Math.floor(k / 5) * m(8)));
     const world = worldWith(cars);
-    const agents = createAgentMeshes(() => 0, () => {}, () => 0, () => 0);
+    const agents = createAgentMeshes(() => 0, () => {}, () => 0, () => 0, undefined, levels);
     let tests = 0;
-    const vehicleVisible = (x: number): boolean => { tests++; return x < m(110); };
+    // The view ends at the third cell: the first cell, its middle and its cars in it; the third's middle and its cars past it.
+    const vehicleVisible = (x: number): boolean => { tests++; return x < 2 * FLEET_CELL; };
     let eye = 0;
     const frame = (): void => {
       // A view that moves a little every frame: nothing kept by the view standing still.
@@ -211,7 +216,7 @@ describe('vehicles drawn from the grid', () => {
 
   it('off the screen and in the reach of the shadows, write only what casts', () => {
     const world = worldWith([parkedCar(1, 0, 0)]);
-    const agents = createAgentMeshes(() => 0, () => {}, () => 0, () => 0);
+    const agents = createAgentMeshes(() => 0, () => {}, () => 0, () => 0, undefined, levels);
     const named = (re: RegExp): number => drawn(agents.meshes.filter((o): o is InstancedMesh => (o as InstancedMesh).isInstancedMesh === true && re.test(o.name)));
     const big = (): number => 50;
     // Seen: the body, its glass and its lamps.

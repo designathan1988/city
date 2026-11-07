@@ -7,7 +7,6 @@ export type QualityLevel = 'low' | 'medium' | 'high' | 'ultra';
 /** What every tier above the weak one draws people and vehicles with, as before tiers chose them (`vehicleLevels.ts`, `agents.ts`, `proceduralCrowd.ts`). */
 export const VEHICLE_ERROR_PIXELS = 0.5;
 export const VEHICLE_WHOLE_CAP = 200;
-export const HAIR_STRAND_PEOPLE = 8;
 
 export interface QualitySettings {
   /** Cap on the device pixel ratio the canvas is rendered at. */
@@ -43,8 +42,6 @@ export interface QualitySettings {
   readonly vehicleErrorPixels: number;
   /** Vehicles drawn whole (body, cabin, wheels apart) at most: the biggest on the screen (`agents.ts`). */
   readonly vehicleWholeCap: number;
-  /** People nearest the camera drawn with their hair's strands (`proceduralCrowd.ts`). */
-  readonly hairStrandPeople: number;
   /** Soft shadows of drifting clouds over the land (`postprocess.ts`, needs post-processing). */
   readonly cloudShadows: boolean;
   /** The ecosystem's vegetation (`render/nature/`) */
@@ -95,8 +92,10 @@ export interface QualitySettings {
  *
  * THE ROADS' WHOLE (`roadBudgetMB`): their near and far levels' budgets, and the network's far level kept for good for the whole map.
  * That last one grows with the map, not with the view: 10 MB for the city of 25,000 buildings (`tests/perf/noHoles.spec.ts`, 21 bytes a
- * vertex), some 80 MB for one of 200,000 by its area; the blocks' far levels it stands for took 264 MB for the 25,000 (2.1 GB for the
- * 200,000), every block of the map kept.
+ * vertex), some 80 MB for one of 200,000 by its area. The blocks are built only for the cells the view wants, nearest first, within
+ * `roadsFarMB` (`mesh/roadResidency.ts`); every other cell is drawn by the network's level. DO NOT build every block of the map and let
+ * the far ones go after: that took 264 MB of far levels for the 25,000 (2.1 GB for the 200,000), and the page of a 10 km city died of it
+ * (2026-10-26).
  */
 export interface GeometryBudget {
   readonly totalMB: number;
@@ -104,7 +103,7 @@ export interface GeometryBudget {
   readonly viewCellsShare: number;
   /** The roads' blocks at their full level (`mesh/roadResidency.ts`): only in the view and under this. */
   readonly roadsNearMB: number;
-  /** The roads' blocks at their far level (`mesh/roadResidency.ts`): the cells nearest the view in it, past it the network's far level. */
+  /** The roads' blocks at their far level (`mesh/roadResidency.ts`): the cells the view wants, nearest first, built within it; past it the network's far level. */
   readonly roadsFarMB: number;
 }
 export const GEOMETRY_BUDGETS: Readonly<Record<QualityLevel, GeometryBudget>> = {
@@ -138,10 +137,9 @@ export const QUALITY: Readonly<Record<QualityLevel, QualitySettings>> = {
     detailCutoffZoom: perM(1.25),
     pedestrianDetail: 0,
     occupantZoom: perM(7.5),
-    // The weak machine's integrated GPU: parts a pixel off, fewer whole vehicles, strands on the two nearest (the other tiers draw as they always did).
+    // The weak machine's integrated GPU: parts a pixel off, fewer whole vehicles (the other tiers draw as they always did).
     vehicleErrorPixels: 1,
     vehicleWholeCap: 60,
-    hairStrandPeople: 2,
     cloudShadows: false,
     vegetationDistance: m(180),
     impostors: true,
@@ -173,7 +171,6 @@ export const QUALITY: Readonly<Record<QualityLevel, QualitySettings>> = {
     occupantZoom: perM(5.5),
     vehicleErrorPixels: VEHICLE_ERROR_PIXELS,
     vehicleWholeCap: VEHICLE_WHOLE_CAP,
-    hairStrandPeople: HAIR_STRAND_PEOPLE,
     cloudShadows: false,
     vegetationDistance: m(300),
     impostors: true,
@@ -193,8 +190,9 @@ export const QUALITY: Readonly<Record<QualityLevel, QualitySettings>> = {
     postProcessing: true,
     ambientOcclusion: true,
     smaa: true,
-    // SMAA smooths every edge on its own: the scene's MSAA samples cost 2.2 ms of the 2560-wide frame for edges SMAA draws as well.
-    msaa: 0,
+    // The scene's own samples: with the post chain on, the canvas's multisampling is not drawn into, and SMAA alone cannot rebuild what is thinner
+    // than a pixel (a sill, a lane line, a wire): with 0 every road and facade sparkled; with the chain off (the canvas's 4x) it did not (the player, 2026-10-24).
+    msaa: 4,
     aoFull: false,
     // No sharpening at the display's own size: see ultra.
     sharpen: 0,
@@ -208,7 +206,6 @@ export const QUALITY: Readonly<Record<QualityLevel, QualitySettings>> = {
     occupantZoom: perM(4),
     vehicleErrorPixels: VEHICLE_ERROR_PIXELS,
     vehicleWholeCap: VEHICLE_WHOLE_CAP,
-    hairStrandPeople: HAIR_STRAND_PEOPLE,
     cloudShadows: true,
     vegetationDistance: m(440),
     impostors: true,
@@ -229,9 +226,8 @@ export const QUALITY: Readonly<Record<QualityLevel, QualitySettings>> = {
     ambientOcclusion: true,
     // Kept over the MSAA: it smooths what multisampling cannot (the shading's own edges - window grids, specular glints, cut-out leaves).
     smaa: true,
-    // DO NOT turn on 4x here for the district's sparkle: measured alone it cost ~4 ms of GPU there (p95 13 -> 17 ms) and left 32 % of its
-    // pixels off a supersampled frame against 34 % (`npm run diagnose`, 2026-10-22): the sparkle is the shading's, not the edges'.
-    msaa: 0,
+    // As high: the scene's own 4x, SMAA over it for the shading's edges (see high).
+    msaa: 4,
     // At the frame's own size, alone (not with the 3072 shadow nor the MSAA of 80074433): at half size the occlusion made the district's
     // frame differ from a supersampled one in 34 % of its pixels, 27 % without it (`npm run diagnose`, 2026-10-22, per-pass ablation).
     // Its GPU paid back by the parts' coarser levels (`partCells.ts` PART_ERROR_PX).
@@ -249,7 +245,6 @@ export const QUALITY: Readonly<Record<QualityLevel, QualitySettings>> = {
     occupantZoom: perM(3.25),
     vehicleErrorPixels: VEHICLE_ERROR_PIXELS,
     vehicleWholeCap: VEHICLE_WHOLE_CAP,
-    hairStrandPeople: HAIR_STRAND_PEOPLE,
     cloudShadows: true,
     vegetationDistance: m(640),
     impostors: true,

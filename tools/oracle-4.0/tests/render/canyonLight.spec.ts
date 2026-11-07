@@ -8,6 +8,9 @@ import { m } from '@world/units';
 
 type Box = { x: number; y: number; w: number; d: number; top: number };
 
+/** A world cell's index on the torus of `side` cells, as `canyonLight.ts` wraps it. */
+const wrap = (v: number, side: number): number => ((v % side) + side) % side;
+
 function solidsOf(boxes: Box[]): () => CameraSolids {
   const solids = {
     forEachIn(x0: number, y0: number, x1: number, y1: number,
@@ -38,10 +41,10 @@ describe('canyon light', () => {
     // The first call lays the whole window, in that call.
     canyon.follow(0, 0, solids, null);
     const window = (canyon.pass.material as ShaderMaterial).uniforms['uWindow']!.value as { x: number; y: number; z: number; w: number };
-    // The field is a torus: a world cell's texel is its index modulo the side.
+    // The field is a torus: a world cell's texel is its index modulo the side (`canyonLight.ts` wrap: 500 cells of 4 m, no power of two).
     const cell = (x: number, y: number): number => {
       const side = window.w;
-      const k = Math.floor(x / window.z) & (side - 1), j = Math.floor(y / window.z) & (side - 1);
+      const k = wrap(Math.floor(x / window.z), side), j = wrap(Math.floor(y / window.z), side);
       const at = (j * side + k) * 4;
       return data[at]! * 256 + data[at + 1]!;
     };
@@ -75,7 +78,7 @@ describe('canyon light', () => {
     canyon.follow(0, 0, solids, null);
     const cell = (x: number, y: number): number => {
       const side = window.w;
-      const at = ((Math.floor(y / window.z) & (side - 1)) * side + (Math.floor(x / window.z) & (side - 1))) * 4;
+      const at = (wrap(Math.floor(y / window.z), side) * side + wrap(Math.floor(x / window.z), side)) * 4;
       return data[at]! * 256 + data[at + 1]!;
     };
     const first = cell(m(20), m(20));

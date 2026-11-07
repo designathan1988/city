@@ -1,13 +1,14 @@
-import { m } from '@world/units';
+import { CELL } from '@world/cells';
 import type { VehicleFrames } from '../pose';
 
-/** THE PAGE'S VEHICLES BY PLACE: a grid of 64 m cells (the world grid's sub-cell) the client files each view in as it decodes it */
+/** THE PAGE'S VEHICLES BY PLACE: a grid of 50 m cells (a fifth of the world cell) the client files each view in as it decodes it */
 
 /** A box on the ground, world x and y (three's -z), ends included. */
 export interface GroundBox { x0: number; y0: number; x1: number; y1: number }
 
-/** The side of a cell. */
-const FLEET_CELL = m(64);
+/** The side of a cell: a fifth of the world cell (`cells.ts`), 50 m, so the cells nest in the world cell, the road block, the tile and the plate.
+ *  The one side of these cells: the page that draws them (`agents.ts`) reads it from here. */
+export const FLEET_CELL = CELL / 5;
 
 /** Column and row each shifted to a positive 21-bit range, one number per cell (exact in a double). */
 const SHIFT = 1 << 20;

@@ -9,7 +9,7 @@ import {
 } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { weldGeometry } from '../mesh/weld';
-import { dropHiddenFaces } from '../mesh/hiddenFaces';
+import { dropBuried, dropHiddenFaces } from '../mesh/hiddenFaces';
 import { FURNITURE_KINDS, FURNITURE_SIZE, type FurnitureKind } from '@world/buildings/interior';
 
 /** The furniture people use inside buildings, as models */
@@ -343,6 +343,7 @@ export function furnitureParts(kind: FurnitureKind): { shape: string; parameters
   const built = build(kind);
   // The same hidden faces dropped as the rendered geometry's (`createFurnitureGeometries`), so the counts are the drawn ones.
   dropHiddenFaces(built);
+  dropBuried(built);
   return built.map((g) => {
     g.computeBoundingBox();
     const centre = g.boundingBox!.getCenter(new Vector3());
@@ -362,7 +363,10 @@ export function createFurnitureGeometries(): Record<FurnitureKind, BufferGeometr
   const out = {} as Record<FurnitureKind, BufferGeometry>;
   for (const kind of FURNITURE_KINDS) {
     const built = build(kind);
+    // The faces a part lies under, then the ones it is buried in (a leg's end in a turned seat, a bulb in its shade, a ball of leaves in the
+    // next) left out.
     dropHiddenFaces(built);
+    dropBuried(built);
     const parts = built.map((g) => {
       // Every part with the same attributes, so they merge: a part that is no box keeps its own normals (no rounding, radius 0).
       const n = g.getAttribute('position').count;
@@ -375,9 +379,12 @@ export function createFurnitureGeometries(): Record<FurnitureKind, BufferGeometr
       }
       return g;
     });
-    const merged = mergeGeometries(parts) as BufferGeometry;
-    merged.computeBoundingSphere();
+    const joined = mergeGeometries(parts) as BufferGeometry;
     for (const p of parts) p.dispose();
+    // Welded whole (`weldGeometry`): a corner its parts share drawn once. DO NOT leave the parts' shared corners apart: every instance drew them twice (the model audit, 2026-10-27).
+    const merged = weldGeometry(joined);
+    joined.dispose();
+    merged.computeBoundingSphere();
     out[kind] = merged;
   }
   return out;

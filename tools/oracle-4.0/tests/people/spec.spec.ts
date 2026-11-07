@@ -1,27 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_LOOK, normalizePerson, randomPerson, wornItems } from '@people/spec';
-import { ageFromYears } from '@people/body/macro';
+import cast from '@people/cast.json';
+import { FORMER_BODY_IDS, normalizePerson } from '@people/spec';
 import { RoadDoc } from '@world/doc';
 import { isSerializedDoc } from '@editor/persistence';
 
+const rowOf = (id: string): { id: string; wardrobe: string; ageBand: string; gender: string } => cast.find((c) => c.id === id)!;
+
 describe('people saved with the city', () => {
-  it('keeps natural children clothed without adult outfits and preserves saved pigment', () => {
-    for (let seed = 0; seed < 64; seed++) {
-      const person = randomPerson(seed, seed * 7919, { body: { age: ageFromYears(8) } });
-      expect(person.look.outfit).toBeUndefined();
-      expect(person.look.top).not.toBe('none');
-      expect(wornItems(person.look).some(name => name.includes('suit'))).toBe(false);
-      expect(normalizePerson(person)?.look.melanin).toBe(person.look.melanin);
-      expect(normalizePerson(person)?.look.skin).toBe(person.look.skin);
-    }
-  });
   it('come back from a save exactly as they were', () => {
     const doc = new RoadDoc();
-    const a = randomPerson(doc.nextPersonId(), 7);
-    doc.savePerson({ ...a, name: 'Ana' });
-    const b = randomPerson(doc.nextPersonId(), 8);
-    doc.savePerson(b);
+    doc.savePerson({ id: doc.nextPersonId(), name: 'Ana', mood: 0.4, model: cast[0]!.id });
+    doc.savePerson({ id: doc.nextPersonId(), name: 'Bruno', model: cast[9]!.id });
     expect(doc.people.length).toBe(2);
     const json = JSON.parse(JSON.stringify(doc.toJSON()));
     expect(isSerializedDoc(json)).toBe(true);
@@ -35,40 +25,58 @@ describe('people saved with the city', () => {
   });
 
   it('are brought into range when read from outside, and junk is dropped', () => {
-    const p = normalizePerson({
-      id: 3, name: 'x'.repeat(200), body: { gender: 7, age: -1, weight: 'heavy' },
-      features: { 'nose-flaring-decr-incr': 5, bad: Number.NaN },
-      look: { skin: -5, hairStyle: 'mohawk', top: 'tshirt', topColour: 0x123456 },
-    })!;
+    const p = normalizePerson({ id: 3, name: 'x'.repeat(200), mood: 9, model: 'nobody', look: { skin: -5 } })!;
     expect(p.name.length).toBe(40);
-    expect(p.body.gender).toBe(1);
-    expect(p.body.age).toBe(0);
-    expect(p.body.weight).toBe(0.5);
-    expect(p.features).toEqual({ 'nose-flaring-decr-incr': 1 });
-    expect(p.look.skin).toBe(DEFAULT_LOOK.skin);
-    expect(p.look.hairStyle).toBe(DEFAULT_LOOK.hairStyle);
-    expect(p.look.topColour).toBe(0x123456);
+    expect(p.mood).toBe(1);
+    // A body outside the cast is not kept: the person is drawn as one of the cast.
+    expect(cast.some((c) => c.id === p.model)).toBe(true);
+    expect(Object.keys(p).sort()).toEqual(['id', 'model', 'mood', 'name']);
     expect(normalizePerson({ id: 'one' })).toBeNull();
     expect(normalizePerson(null)).toBeNull();
     expect(isSerializedDoc({ version: 1, nodes: [], segments: [], people: 'nobody' })).toBe(false);
   });
 
+  it('saved with a former body id, open as that same body under its name now', () => {
+    expect(Object.keys(FORMER_BODY_IDS)).toHaveLength(cast.length);
+    expect(new Set(Object.values(FORMER_BODY_IDS))).toEqual(new Set(cast.map((c) => c.id)));
+    for (const [former, now] of Object.entries(FORMER_BODY_IDS)) {
+      expect(former).not.toBe(now);
+      expect(normalizePerson({ id: 7, name: 'Old save', mood: 0.2, model: former })).toEqual({ id: 7, name: 'Old save', mood: 0.2, model: now });
+    }
+    // The body each former id named: its sex, age band and wardrobe (the cast's rows before the rename).
+    expect(rowOf(normalizePerson({ id: 1, model: 'mh_08' })!.model)).toMatchObject({ gender: 'f', ageBand: 'child', wardrobe: 'sport-casual' });
+    expect(rowOf(normalizePerson({ id: 2, model: 'mh_51' })!.model)).toMatchObject({ gender: 'm', ageBand: 'adult', wardrobe: 'business' });
+    // A body id of today's cast is kept as it is; one no cast ever had falls back to the nearest body.
+    expect(normalizePerson({ id: 3, model: cast[5]!.id })!.model).toBe(cast[5]!.id);
+    expect(cast.some((c) => c.id === normalizePerson({ id: 4, model: 'mh_99' })!.model)).toBe(true);
+  });
+
+  it('saved with the old Person Creator sliders and garments, open as the body of the cast nearest them', () => {
+    // The Person Creator's records: the sex and age sliders (age 0.5 is 25 years, 0.1875 is 11) and the outfit's name.
+    const man = normalizePerson({ id: 1, name: 'Old save', body: { gender: 0.95, age: 0.62 }, look: { outfit: 'male_elegantsuit01', skin: 0xd9a47f } })!;
+    expect(rowOf(man.model)).toMatchObject({ gender: 'm', ageBand: 'adult', wardrobe: 'business' });
+    const girl = normalizePerson({ id: 2, name: 'Old save', body: { gender: 0.05, age: 0.1875 }, look: { outfit: 'female_sportsuit01' } })!;
+    expect(rowOf(girl.model)).toMatchObject({ gender: 'f', ageBand: 'child', wardrobe: 'sport-casual' });
+    const elder = normalizePerson({ id: 3, name: 'Old save', body: { gender: 0.1, age: 0.9 }, look: {} })!;
+    expect(rowOf(elder.model)).toMatchObject({ gender: 'f', ageBand: 'senior' });
+    // A save from before people carried any body opens too.
+    expect(cast.some((c) => c.id === normalizePerson({ id: 4, name: 'Bare' })!.model)).toBe(true);
+  });
+
   it('can be undone like any other edit', () => {
     const doc = new RoadDoc();
     const before = doc.clone();
-    doc.savePerson(randomPerson(1, 1));
+    doc.savePerson({ id: 1, name: 'Ana', model: cast[0]!.id });
     expect(doc.peopleRevision).toBe(1);
     doc.replaceWith(before);
     expect(doc.people.length).toBe(0);
     expect(doc.peopleRevision).toBe(2);
   });
 
-  it('draws strangers of every kind from seeds', () => {
-    const people = Array.from({ length: 200 }, (_, i) => randomPerson(i, i * 7919 + 1));
-    expect(people.some((p) => p.body.gender < 0.3)).toBe(true);
-    expect(people.some((p) => p.body.gender > 0.7)).toBe(true);
-    expect(new Set(people.map((p) => p.look.skin)).size).toBeGreaterThan(6);
-    expect(people.some((p) => p.look.bottom === 'skirt')).toBe(true);
-    expect(randomPerson(1, 42)).toEqual(randomPerson(1, 42));
+  it('are drawn from a cast of both sexes, every age band, children never in a suit', () => {
+    for (const gender of ['f', 'm']) for (const band of ['child', 'young', 'adult', 'senior']) {
+      expect(cast.some((c) => c.gender === gender && c.ageBand === band)).toBe(true);
+    }
+    expect(cast.filter((c) => c.ageBand === 'child').every((c) => c.wardrobe === 'casual' || c.wardrobe === 'sport-casual')).toBe(true);
   });
 });

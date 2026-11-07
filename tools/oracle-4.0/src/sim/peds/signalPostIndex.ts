@@ -14,7 +14,7 @@ export interface SignalPostWorld {
 }
 
 /** Cell of the posts' grid, world units: a walker's look ahead (`walk.ts` LOOK). */
-const POST_CELL = m(8);
+const POST_CELL = m(10);
 const cellOf = (gx: number, gy: number): number => (gx + 32768) * 65536 + (gy + 32768);
 
 /** DO NOT ask the world for every post of the map to keep those round one walker */

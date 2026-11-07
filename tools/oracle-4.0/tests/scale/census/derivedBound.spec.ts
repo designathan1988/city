@@ -9,9 +9,9 @@ import { createInstanceRuns } from '@render/instanceRuns';
 import { sceneryPictures } from '@render/plantImpostors';
 import { PoleCells } from '@render/poleCells';
 import { PROP_CELL, lookProps, propView, type PropSquare, type PropView } from '@render/propCells';
-import { SurfaceInputs } from '@render/roadSurfaceInputs';
+import { SurfaceInputs, cellRectOfPart } from '@render/roadSurfaceInputs';
 import { SHADOW_REACH, createSceneryKit } from '@render/scenery';
-import { createStreetFurniture, furnitureAbout, furnitureStores } from '@render/streetFurnitureLayer';
+import { createStreetFurniture, furnitureAbout, furnitureStores, propLadder } from '@render/streetFurnitureLayer';
 import { poleGroundAt } from '@render/utilities';
 import type { SerializedDoc } from '@world/doc';
 import { RoadDoc } from '@world/doc';
@@ -55,8 +55,8 @@ function heldRound(data: SerializedDoc): Held {
   // A build near the camera: the tiles within the view visited (their rings read), the rest left as they are.
   for (const { id } of inputs.passList()) {
     for (const key of inputs.tileKeys(id)) {
-      const ix = Math.floor(key / 0x1_0000) - 32768, iy = (key % 0x1_0000) - 32768;
-      const cx = (ix + 0.5) * m(76.8), cy = (iy + 0.5) * m(76.8);
+      const block = cellRectOfPart(key);
+      const cx = (block[0] + block[2]) / 2, cy = (block[1] + block[3]) / 2;
       if (Math.hypot(cx - eye.x, cy - eye.y) > VIEW) continue;
       inputs.wakeTile(key);
       if (inputs.hasTile(id, key)) inputs.reachOf(id, key);
@@ -315,7 +315,7 @@ describe('the props held round the view', () => {
     // The street furniture and its plants: every item placed at once, culled to the same view.
     const elevation = buildRoadElevation(city.net, flat);
     const pictures = sceneryPictures(kit);
-    const stores = furnitureStores(kit, pictures);
+    const stores = furnitureStores(kit, pictures, propLadder(kit));
     const everything = furnitureAbout({ changes: city.doc.changes, net: city.net, elevation, groundAt: flat }, stores, kit.lens, 600, [-m(3000), -m(3000), m(3000), m(3000)]);
     const runs = createInstanceRuns('whole', stores, SHADOW_REACH);
     runs.update({ removed: [], added: [everything.packs] });

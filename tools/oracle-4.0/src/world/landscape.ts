@@ -244,7 +244,12 @@ export function crossingAccesses(net: Network): CrossingAccess[] {
   return list;
 }
 function crossingAccessesNow(net: Network): CrossingAccess[] {
-  return crossingAccessesAt(net, net.doc.nodes.keys());
+  // The nodes the network holds whole (`Network.scope`: the page's holds the tiles near the view): a node not held has no crossing here.
+  // @rebuild Walks the whole map: a network of the whole map (no window): every node of it.
+  if (net.scope === null) return crossingAccessesAt(net, net.doc.nodes.keys());
+  const nodes = new Set<NodeId>();
+  for (const id of net.scope) { const seg = net.doc.segment(id); if (seg) { nodes.add(seg.a); nodes.add(seg.b); } }
+  return crossingAccessesAt(net, [...nodes].filter((id) => net.complete(id)).sort((p, q) => p - q));
 }
 
 /** DO NOT work a landing out here again. */
@@ -290,7 +295,7 @@ export function nearCrossingAccess(net: Network, segment: SegmentId, x: number, 
 }
 
 /** The side of the cells `crossingAccessTester` files the landings in. */
-const ACCESS_CELL = m(32);
+const ACCESS_CELL = m(25);
 
 /** `onCrossingAccess` for many items against the same landings */
 export function crossingAccessTester(net: Network, accesses: readonly CrossingAccess[]): (segment: SegmentId, x: number, y: number, radius: number) => boolean {

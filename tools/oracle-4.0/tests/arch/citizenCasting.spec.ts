@@ -46,9 +46,9 @@ describe('citizen casting', () => {
 
   it('keeps a picked-up walker recognizable while recasting incompatible car occupants', () => {
     const roster: CitizenModel[] = [
-      { id: 'smart', wardrobe: 'smart-casual', ageBand: 'adult', gender: 'f' },
-      { id: 'sport', wardrobe: 'sport-casual', ageBand: 'adult', gender: 'f' },
-      { id: 'casual', wardrobe: 'casual', ageBand: 'adult', gender: 'f' },
+      { id: 'smart', wardrobe: 'smart-casual', ageBand: 'adult', gender: 'f', rides: true, mood: 0 },
+      { id: 'sport', wardrobe: 'sport-casual', ageBand: 'adult', gender: 'f', rides: true, mood: 0 },
+      { id: 'casual', wardrobe: 'casual', ageBand: 'adult', gender: 'f', rides: true, mood: 0 },
     ];
     let checked = false;
     for (let vehicleId = 1; vehicleId <= 100 && !checked; vehicleId++) {
@@ -70,7 +70,7 @@ describe('citizen casting', () => {
 
   it('keeps a person in their clothes for good, however long out of sight and wherever they come back', () => {
     // A walker seen, then out of sight for minutes while the street fills with others
-    const roster: CitizenModel[] = ['a', 'b', 'c'].map((id) => ({ id, wardrobe: 'casual' as const, ageBand: 'adult' as const, gender: 'f' as const }));
+    const roster: CitizenModel[] = ['a', 'b', 'c'].map((id) => ({ id, wardrobe: 'casual' as const, ageBand: 'adult' as const, gender: 'f' as const, rides: true, mood: 0 }));
     const walker = { seed: 1, gender: 'f' as const, ageClass: 'adult' as const, company: 'solo' as const, companyId: 1, x: 0, y: 0 };
     const plain = new CastingRegistry(roster).pickCitizenModel({ ...walker, x: 9000, y: 9000 })!.index;
     const casting = new CastingRegistry(roster);

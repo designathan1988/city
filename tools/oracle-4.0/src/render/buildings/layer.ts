@@ -3,11 +3,12 @@ import { Digest } from '@core/digest';
 
 import type { RoadDoc } from '@world/doc';
 import type { GroundAt, PavedAt } from '@world/buildings/foundation';
-import type { RecordRef } from '@world/buildings/recordTable';
+import type { RecordRef, RecordTable } from '@world/buildings/recordTable';
 import type { Building, BuildingId } from '@world/buildings/types';
 import { CellFiling } from '@world/cells';
 import { type BuildingMeshes, type LotGround, buildBuildingMeshes, emitChunk, kitBoxes, lotGroundAgain, signatureFloorOf } from './buildingMesh';
 import { BATCH_CELL, type CellCache, ResidentBytes, watchedCells, STREAM_AHEAD, boxGroundDigest, cellGroup, createCoverIndex, dropCell, recordRef } from './layerCells';
+import { coverJobAsk } from './coverJobs';
 import { FLIES, KEPT, KNOWN, SHOWN, SIGNATURE, TownColumns, recordDigests } from './townColumns';
 import { type PartCell, type PartView, dropParts } from './partCells';
 import { FarPartBatch } from './farParts';
@@ -44,7 +45,7 @@ export const playerCause = (cause: string): boolean => cause.startsWith('tool ')
 /** The most the cells' detail may hold on the GPU as the game sets it (MB): a large city keeps its far levels and masses for the
  *  whole map, but the detail of the places the camera walked through is bounded (`keepToBudget`), and the road walked does not
  *  grow the memory for ever. The player's panel sets another value; -1 is this one. */
-export const GAME_DETAIL_MEMORY_MB = 768;
+const GAME_DETAIL_MEMORY_MB = 768;
 
 /** SHADOW CASTERS BY THEIR SIZE IN THE CASCADE (Unreal's r.Shadow.RadiusThreshold, 0.03 at its epic scalability to 0.06 at low: a caster
  *  whose bounding radius is under that share of the shadow's extent casts nothing; the Cities: Skylines II autopsy found 72 % of the draws
@@ -106,8 +107,17 @@ export function createBuildingLayer(anisotropy = 4): BuildingLayer {
   const slotNow = (id: number): number => {
     const slot = columns.slotOf(id);
     if (slot >= 0 && columns.has(slot, KNOWN)) return slot;
+    // A row of the table from its columns (a building that only wore: `BuildingStore.summaryOf`), nothing decoded; a record written on the page read.
+    const row = docNow?.buildings.summaryOf(id as BuildingId);
+    if (row) return fileSummary(id, row.table, row.at, row.wear);
     const b = docNow?.buildings.get(id as BuildingId);
     return b ? columns.file(b) : -1;
+  };
+  /** A row of the town's table filed from its columns (`TownColumns.fileRow`). */
+  const fileSummary = (id: number, table: RecordTable, at: number, wear: number): number => {
+    const boxes = table.boxes!;
+    return columns.fileRow(id, table.xs[at]!, table.ys[at]!,
+      { minX: boxes.minX[at]!, minY: boxes.minY[at]!, maxX: boxes.maxX[at]!, maxY: boxes.maxY[at]! }, table.summary!, table.rows, at, wear);
   };
   /** A record's digest: its columns' when it is the document's, else worked out (a building drawn on its own). */
   const sigOf = (b: Building): number => {
@@ -170,8 +180,8 @@ export function createBuildingLayer(anisotropy = 4): BuildingLayer {
   partRoot.name = 'building-part-cells';
   partRoot.matrixAutoUpdate = false;
   partRoot.updateMatrix();
-  // The facade level's detail parts, one draw a kind for the whole town (`farParts.ts`).
-  const farParts = new FarPartBatch(kit);
+  // The facade level's detail parts, one draw a kind for the whole town (`farParts.ts`), each kind at the level its error on the screen allows (`view`): the view's budget chooses again when one changes (`chosenTriangles`).
+  const farParts = new FarPartBatch(kit, lodChanged);
   partRoot.add(farParts.group);
   // The cells' walls, one multi-draw a material (`shellBatch.ts`).
   const shellBatch = new ShellBatch(kit);
@@ -215,6 +225,8 @@ export function createBuildingLayer(anisotropy = 4): BuildingLayer {
   const cellNear = (key: string): boolean => eye === null || forcedNear.has(key) || massCells.near(key);
   /** Whether a cell near is wanted at full detail (L0) rather than its facade level (L1). */
   const cellFine = (key: string): boolean => eye === null || forcedNear.has(key) || massCells.fine(key);
+  /** Whether a cell near steps between its two levels as the eye moves (`massCells.ts` PAIR_REACH): both made by one walk. Not one held near (always its detail). */
+  const cellPair = (key: string): boolean => eye !== null && !forcedNear.has(key) && massCells.pair(key);
   /** The level a cell shows: its detail where fine (or with no facade level yet), its facade level where not (or with no detail yet), none far (its masses). */
   const levelShown = (key: string): BatchKind | null => {
     if (!cellNear(key)) return null;
@@ -656,7 +668,7 @@ export function createBuildingLayer(anisotropy = 4): BuildingLayer {
             // A hole: wanted in detail and no level of it landed (its masses at the camera). DO NOT hold it behind `STREAM_AHEAD` cells asked before it (the district's, waiting behind a reopening's re-bake): it is asked past them, `MOST_HOLES` at once (conferencia 109, picture 51).
             const hole = kind === 'cell' && !cells.has(cell) && !facades.has(cell);
             if (requests.isAsked(kind, cell) || requests.asking < STREAM_AHEAD || (hole && requests.holeRoom())) {
-              const got = requests.want(kind, cell, entries, env, true, editedCells.has(cell), hole);
+              const got = requests.want(kind, cell, entries, env, true, editedCells.has(cell), hole, cellPair(cell));
               // DO NOT hold ready cells back a few a frame (`STREAM_CELLS_PER_FRAME`): the swap is a group put in a group.
               if (got) {
                 requests.take(kind, cell);
@@ -686,10 +698,11 @@ export function createBuildingLayer(anisotropy = 4): BuildingLayer {
     return changed;
   };
   /** Where the buildings stand, for the scenery's plant cull (`covers`, `coversVersion`). */
-  const cover = createCoverIndex();
+  const cover = createCoverIndex(coverJobAsk());
 
   return {
     group,
+    occluders: massCells.group,
     get triangles() {
       let shown = 0;
       for (const map of [partCells, facadeParts]) for (const cell of map.values()) if (cell.group.visible) shown += cell.triangles;
@@ -706,8 +719,8 @@ export function createBuildingLayer(anisotropy = 4): BuildingLayer {
     },
     get coarsePending() {
       // The levels in the view's frustum only: DO NOT hold the opening for every plate of the map (a city of 25,000 buildings waited for nine plates of 2 km, 16 s of the workers, when its view drew none of them, step-25k 2026-10-21); those out of view come after the curtain, nearest first.
-      // And every base of the map (`massBase.ts`): the town has no hole once they are in, whatever the view does after the curtain (the map pulled back to at once showed its corners empty for seconds, step-25k 2026-10-21). Their floors are the masses' that follow.
-      return requests.massing > 0 || massCells.waitingInView > 0 || massCells.basesWaiting > 0;
+      // And the bases of the plates in the view (`massBase.ts`): the picture has no hole once they are in. DO NOT hold the opening for every base of the map: a 10 km city's opening waited for all its plates' bases, its whole town massed behind the curtain (2026-10-26); those out of the view come after it, nearest first (`levels.away`).
+      return requests.massing > 0 || massCells.waitingInView > 0 || massCells.basesWaitingInView > 0;
     },
     get viewPending() {
       // The cells the view wants in detail (near, in its frustum, `massCells.nearKeys`) whose detail has not landed.
@@ -819,15 +832,17 @@ export function createBuildingLayer(anisotropy = 4): BuildingLayer {
             group.remove(stored.group);
             stored.dispose();
           }
-          // DO NOT hold the whole town's records while it is filed (`[...doc.buildings.all()]` held every one decoded): each record read once, its numbers put in its columns, let go.
+          // From the table's own columns, no record decoded (`buildings/summary.ts`, `TownColumns.fileRow`); a record written on the page, or a
+          // row of a table without its summary, read once and filed (`file`). DO NOT decode the whole town to file it: the 10 km city's 249,122
+          // buildings were decoded here in one frame of its opening (2026-10-26).
           columns.forEach((_id, slot) => { columns.flags[slot]! &= ~KNOWN; });
           const solid: number[] = [];
-          for (const b of doc.buildings.all()) {
-            const slot = columns.file(b);
-            const shown = b.id !== hides && !ruined.has(b.id);
+          const placed = (id: BuildingId, slot: number): void => {
+            const shown = id !== hides && !ruined.has(id);
             columns.set(slot, SHOWN, shown);
-            if (shown && inCell(b.id)) solid.push(slot);
-          }
+            if (shown && inCell(id)) solid.push(slot);
+          };
+          doc.buildings.eachSummarised((id, table, at, wear) => placed(id, fileSummary(id, table, at, wear)), (b) => placed(b.id, columns.file(b)));
           town.reset(solid);
           // The ids no longer in the document (not filed again by the walk): what was kept of them let go, their slots with it.
           const goneIds: number[] = [];
@@ -1103,7 +1118,7 @@ export function createBuildingLayer(anisotropy = 4): BuildingLayer {
       const partTexel = texel === null ? null : Math.max(texel, CAST_RADIUS_SHARE * half);
       // DO NOT draw hundreds of detail meshes into a far cascade: a cell's masses are its silhouette at those texels, one mesh. Only the cells whose masses stand in: the detail of any other (none landed yet, a town drawn whole) still casts, never a hole.
       if (texel === null || !coarse) {
-        farParts.castShadow(true);
+        farParts.castShadow(true, texel === null);
         shellBatch.castShadow(true);
         if (shadowCoarse) {
           shadowCoarse = false;
@@ -1166,6 +1181,17 @@ export function createBuildingLayer(anisotropy = 4): BuildingLayer {
     },
     covers(x, y) {
       return cover.covers(x, y);
+    },
+    knownFloor(id) {
+      // As the cells' jobs measured it (`CellPool.floorKnown`): the building's record as the town files it (its signature), the ground of its cell
+      // and the paving read as they stand now. Undefined where no job measured it so, or it measured none (no closed block).
+      const slot = slotNow(id);
+      if (slot < 0) return undefined;
+      const floor = pool.floorKnown({ key: String(id), sig: columns.sig[slot]!, digest: digestOfCell(columns.cellOf(slot)) }, groundNow.pavedAt !== undefined);
+      return floor ?? undefined;
+    },
+    coverReady(rect) {
+      return cover.ready(rect);
     },
     lotHeightAt(building, x, y) {
       const k = kept.get(building);

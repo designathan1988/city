@@ -65,6 +65,7 @@ export const ALWAYS = [
   'tests/desktop/jobs.spec.ts',
   'tests/render/canyonLight.spec.ts',
   'tests/render/frameBudget.spec.ts',
+  'tests/render/farPartsLevels.spec.ts',
   'tests/render/layerIncremental.spec.ts',
   'tests/render/openingNature.spec.ts',
   'tests/render/programsGate.spec.ts',

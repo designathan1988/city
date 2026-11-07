@@ -1,12 +1,13 @@
 import { Group, Mesh, MeshStandardMaterial, type BufferGeometry, type Material, type Object3D } from 'three';
 import { measureGeometry, measureMaterial, measureSolids, shaderMotion, type MaterialMeasure } from './measure';
+import { roadSheetMaterial } from '../../render/mesh/roadEdges';
 
 /** ONE ENTRY OF THE ENGINE'S CATALOGUE: what an object is made of, measured from the pieces its builder made (`scripts/model-catalog.mjs`). */
 
 /** Where the object came from: its own builder (kit), a model file, the test city (it depends on the city's layout), an editor preview, an effect. */
-export type Origin = 'kit' | 'file' | 'test city' | 'editor preview' | 'effect';
+type Origin = 'kit' | 'file' | 'test city' | 'editor preview' | 'effect';
 /** How the engine draws it: one draw for many copies, merged into a bigger mesh, a mesh of its own, skinned, points, lines. */
-export type Build = 'instanced' | 'merged' | 'individual' | 'skinned' | 'points' | 'lines';
+type Build = 'instanced' | 'merged' | 'individual' | 'skinned' | 'points' | 'lines';
 
 export interface PieceSpec {
   readonly label: string;
@@ -49,7 +50,7 @@ export interface ItemSpec {
   readonly sceneCopy?: boolean;
 }
 
-export interface LevelRow { readonly level: number; readonly triangles: number; readonly vertices: number }
+interface LevelRow { readonly level: number; readonly triangles: number; readonly vertices: number }
 
 export interface CatalogRow {
   readonly id: string;
@@ -106,7 +107,15 @@ const describe = (m: MaterialMeasure): string => `${m.type}${m.name ? ` "${m.nam
 export function sheetMaterial(m: Material | null, geometry: BufferGeometry): Material {
   if (m && !Object.prototype.hasOwnProperty.call(m, 'onBeforeCompile') && !(m as { isShaderMaterial?: boolean }).isShaderMaterial) return m;
   const source = m as (Material & { color?: { getHex(): number } }) | null;
-  return new MeshStandardMaterial({ color: source?.color?.getHex() ?? 0xb8b4ad, vertexColors: geometry.getAttribute('color') !== undefined, roughness: 0.8, metalness: 0 });
+  // The road surfaces take their colour from the baked maps the running game reads: on a sheet, the surface's own colour by its program.
+  const key = m && typeof m.customProgramCacheKey === 'function' ? m.customProgramCacheKey() : '';
+  // Every road surface in one material (`render/mesh/roadEdges.ts` applyRoadSurface): each in its sheet colour by the code its vertices carry.
+  if (/road-surface/.test(key) && geometry.getAttribute('roadSection')) return roadSheetMaterial();
+  // The network's far carriageway (`render/networkFarRoads.ts` farLayerMaterial): no baked map, drawn on a sheet as the game draws it, its paint too.
+  if (/road-far-paint/.test(key)) return m!;
+  const surface = /verge|splat/.test(key) ? 0x6f9a52 : null;
+  const made = new MeshStandardMaterial({ color: surface ?? source?.color?.getHex() ?? 0xb8b4ad, vertexColors: surface === null && geometry.getAttribute('color') !== undefined, roughness: 0.8, metalness: 0 });
+  return made;
 }
 
 /** Measures one item from its pieces; with it, a group of its finest level to draw it on a sheet. */

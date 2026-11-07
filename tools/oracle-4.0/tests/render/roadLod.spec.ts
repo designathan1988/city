@@ -4,9 +4,9 @@ import { describe, expect, it } from 'vitest';
 
 import { coarseArrays, levelsOf } from '@render/mesh/roadLod';
 import { marksRoadSection } from '@render/mesh/roadEdges';
-import { COARSE_ERROR } from '@render/mesh/roadLodPure';
+import { type BlockLock, COARSE_ERROR } from '@render/mesh/roadLodPure';
 import { type CellCover, FAR_MARGIN, type RoadResidency, makeFar, makeNear, updateRoadLevels } from '@render/mesh/roadResidency';
-import { attachFarLevel, blockArraysOf, cloneBlock, joinBlocks, memberSizes, mergeTiles, splitBlock } from '@render/mesh/surfaceTiles';
+import { TABLE_SLOTS, attachFarLevel, blockArraysOf, cloneBlock, joinBlocks, memberSizes, mergeTiles, splitBlock } from '@render/mesh/surfaceTiles';
 import { refillArrays } from '@render/mesh/gpuOnly';
 import type { Tile } from '@render/mesh/tileMesh';
 import { geometryCost } from '@render/gpuLedger';
@@ -34,12 +34,13 @@ function strip(): Tile {
 }
 
 const options = { name: 'asphalt', material: new MeshBasicMaterial(), receiveShadow: true } as const;
-// A road crossing its block from one side to the other: only its two ends lie on the block's edge.
-const lock = [0, -60, W, H + 60] as const;
+// A road crossing its block from one side to the other: only its two ends lie on the block's edge. No seam inside it.
+const box = [0, -60, W, H + 60] as const;
+const lock: BlockLock = { box, seams: new Float64Array() };
 /** The block with its far level made as a worker makes it (`roadTile.worker.ts`): the arrays copied, simplified, handed back. */
-const make = (near: boolean): Mesh => mergeTiles([strip()], options, () => [strip()], {
+const make = (near: boolean): Mesh => mergeTiles([strip()], options, () => [strip()], TABLE_SLOTS, {
   lock, near,
-  start: (block, arrays) => { const made = coarseArrays(cloneBlock(arrays), lock); if (made) attachFarLevel(block, made, options, [{ source: () => [strip()], lock }], near); },
+  start: (block, arrays) => { const made = coarseArrays(cloneBlock(arrays), lock); if (made) attachFarLevel(block, made, options, [{ source: () => [strip()], slots: TABLE_SLOTS, lock }], near); },
 })!;
 const levels = (mesh: Mesh): { coarse: Mesh; full: boolean } => mesh.userData.lod as { coarse: Mesh; full: boolean };
 const trianglesOf = (mesh: Mesh): number => (mesh.geometry.index?.count ?? 0) / 3;
@@ -54,9 +55,9 @@ describe('a block of road with a far level', () => {
     const reading = new MeshBasicMaterial({ vertexColors: true });
     marksRoadSection(reading);
     const both = { ...options, material: reading };
-    const mesh = mergeTiles([strip()], both, () => [strip()], {
+    const mesh = mergeTiles([strip()], both, () => [strip()], TABLE_SLOTS, {
       lock, near: true,
-      start: (block, arrays) => { const made = coarseArrays(cloneBlock(arrays), lock); if (made) attachFarLevel(block, made, both, [{ source: () => [strip()], lock }], true); },
+      start: (block, arrays) => { const made = coarseArrays(cloneBlock(arrays), lock); if (made) attachFarLevel(block, made, both, [{ source: () => [strip()], slots: TABLE_SLOTS, lock }], true); },
     })!;
     for (const level of [mesh, levels(mesh).coarse]) {
       expect(level.geometry.getAttribute('color')).toBeDefined();
@@ -76,12 +77,60 @@ describe('a block of road with a far level', () => {
     let onEdge = 0;
     for (let i = 0; i < position.count; i++) {
       const x = position.getX(i), y = -position.getZ(i);
-      if (Math.abs(x) < 1e-3 || Math.abs(x - W) < 1e-3 || y < lock[1] + 1e-3 || y > lock[3] - 1e-3) {
+      if (Math.abs(x) < 1e-3 || Math.abs(x - W) < 1e-3 || y < box[1] + 1e-3 || y > box[3] - 1e-3) {
         onEdge++;
         expect(far.has(keyOf(position, i)), `edge vertex ${keyOf(position, i)}`).toBe(true);
       }
     }
     expect(onEdge).toBe(10);
+  });
+
+  it('keeps every vertex on a seam where it was: where its pieces meet the pieces of the next block, inside its box', () => {
+    // A mouth across the road at x = 96 (a lattice column): the road's end on a junction drawn in another block.
+    const seamed: BlockLock = { box, seams: Float64Array.of(96, -1, 96, H + 1) };
+    const arrays = blockArraysOf([strip()], options.material, TABLE_SLOTS)!;
+    const coarse = coarseArrays(cloneBlock(arrays), seamed)!;
+    const plain = coarseArrays(cloneBlock(arrays), lock)!;
+    const keyOf = (p: Float32Array, i: number): string => `${p[i * 3]!.toFixed(3)},${p[i * 3 + 2]!.toFixed(3)}`;
+    const far = new Set(Array.from({ length: coarse.position.length / 3 }, (_, i) => keyOf(coarse.position, i)));
+    const plainFar = new Set(Array.from({ length: plain.position.length / 3 }, (_, i) => keyOf(plain.position, i)));
+    let onSeam = 0, keptWithout = 0;
+    for (let i = 0; i < arrays.position.length / 3; i++) {
+      if (Math.abs(arrays.position[i * 3]! - 96) > 1e-3) continue;
+      onSeam++;
+      expect(far.has(keyOf(arrays.position, i)), `seam vertex ${keyOf(arrays.position, i)}`).toBe(true);
+      if (plainFar.has(keyOf(arrays.position, i))) keptWithout++;
+    }
+    expect(onSeam).toBe(5);
+    // Without the seam the simplifier takes them away: the lock is what keeps them.
+    expect(keptWithout).toBeLessThan(onSeam);
+  });
+
+  it('keeps the mouth two blocks share on the same vertices at both far levels: no crack between a road and its junction', () => {
+    // A road's strips in one block, x 0 to 100, its junction's in another, x 100 to 200: the mouth at x = 100 is both pieces' seam.
+    const part = (x0: number, x1: number): Tile => {
+      const t = strip();
+      const keep: number[] = [];
+      const p = t.positions;
+      for (let i = 0; i < t.indices.length; i += 3) {
+        const v = [t.indices[i]!, t.indices[i + 1]!, t.indices[i + 2]!];
+        // Positions are floats: 99.2 is stored as 99.1999969.
+        if (v.every((k) => p[k * 3]! >= x0 - 1e-3 && p[k * 3]! <= x1 + 1e-3)) keep.push(...v);
+      }
+      return { ...t, indices: Uint32Array.from(keep) };
+    };
+    const mouth = Float64Array.of(99.2, -1, 99.2, H + 1);
+    const road = coarseArrays(blockArraysOf([part(0, 99.2)], options.material, TABLE_SLOTS)!, { box: [0, 0, 99.2, H], seams: mouth })!;
+    const junction = coarseArrays(blockArraysOf([part(99.2, W)], options.material, TABLE_SLOTS)!, { box: [99.2, 0, W, H], seams: mouth })!;
+    const onMouth = (arrays: { position: Float32Array; index: ArrayLike<number> }): string[] => {
+      const used = new Set(Array.from(arrays.index));
+      return [...used].filter((v) => Math.abs(arrays.position[v * 3]! - 99.2) < 1e-3).map((v) => (-arrays.position[v * 3 + 2]!).toFixed(3)).sort();
+    };
+    const full = onMouth(blockArraysOf([part(0, 99.2)], options.material, TABLE_SLOTS)!);
+    expect(full).toHaveLength(5);
+    // Both simplified, both keep every vertex of the mouth: the two coarse edges are the same polyline.
+    expect(onMouth(road)).toEqual(full);
+    expect(onMouth(junction)).toEqual(full);
   });
 
   it('is within the error allowed of the block (a flat road: no vertex of the block is farther than that off the far level\'s plane)', () => {
@@ -120,9 +169,9 @@ describe('a far level on the GPU', () => {
   it('lets go of the arrays its worker made once they are sent, and is made again from the block\'s tiles, never from them', () => {
     let tiles: Tile[] = [strip()];
     let made: ReturnType<typeof coarseArrays> = null;
-    const block = mergeTiles([strip()], options, () => tiles, {
+    const block = mergeTiles([strip()], options, () => tiles, TABLE_SLOTS, {
       lock, near: false,
-      start: (b, arrays) => { made = coarseArrays(cloneBlock(arrays), lock); if (made) attachFarLevel(b, made, options, [{ source: () => tiles, lock }], false); },
+      start: (b, arrays) => { made = coarseArrays(cloneBlock(arrays), lock); if (made) attachFarLevel(b, made, options, [{ source: () => tiles, slots: TABLE_SLOTS, lock }], false); },
     })!;
     const level = levels(block).coarse;
     expect(made).not.toBeNull();
@@ -144,6 +193,23 @@ describe('a far level on the GPU', () => {
     expect(position.array.length).toBe(kept.position.length);
     expect(level.geometry.index!.array.length).toBe(kept.index.length);
   });
+
+  it('is made again whole where its block was too small to simplify and was drawn whole far', () => {
+    const small: Tile = { positions: Float32Array.of(0, 0, 0, 1, 0, 0, 0, 0, -1), normals: Float32Array.of(0, 1, 0, 0, 1, 0, 0, 1, 0), uvs: new Float32Array(6), colors: new Float32Array(0), sections: new Float32Array(0), indices: Uint32Array.of(0, 2, 1) };
+    const block = mergeTiles([small], options, () => [small], TABLE_SLOTS, {
+      lock, near: false,
+      // As `roadSurfaces.ts` start: a block that does not simplify drawn far as it is.
+      start: (b, arrays) => { expect(coarseArrays(cloneBlock(arrays), lock)).toBeNull(); attachFarLevel(b, cloneBlock(arrays), options, [{ source: () => [small], slots: TABLE_SLOTS, lock }], false); },
+    })!;
+    const level = levels(block).coarse;
+    const position = level.geometry.getAttribute('position') as BufferAttribute;
+    for (const a of [...Object.values(level.geometry.attributes), level.geometry.index!]) (a as unknown as { onUploadCallback: () => void }).onUploadCallback.call(a);
+    expect((position as { array: unknown }).array).toBeNull();
+    // A lost context: its own triangle again, not one of no area.
+    refillArrays(level);
+    expect(Array.from(position.array)).toEqual(Array.from(small.positions));
+    expect(Array.from(level.geometry.index!.array)).toEqual(Array.from(small.indices));
+  });
 });
 
 describe('a block brought near from the kept tiles', () => {
@@ -151,7 +217,7 @@ describe('a block brought near from the kept tiles', () => {
     const mesh = make(false);
     const lv = levels(mesh) as unknown as { bring: (() => Promise<unknown>) | null };
     let asked = 0;
-    lv.bring = () => { asked++; return new Promise((done) => setTimeout(() => done(blockArraysOf([strip()], options.material)), 0)); };
+    lv.bring = () => { asked++; return new Promise((done) => setTimeout(() => done(blockArraysOf([strip()], options.material, TABLE_SLOTS)), 0)); };
     makeNear(mesh);
     expect(asked).toBe(1);
     expect(levels(mesh).full).toBe(false);
@@ -263,12 +329,12 @@ describe('the near level under the budget and the view (`RoadResidency`)', () =>
   });
 });
 
-describe('the far levels under the far budget, the network\'s far level standing for a cell let go (`RoadResidency.farBudget`)', () => {
-  /** A far block alone in its cell, centred at `x` (box x to x + W), made again as the workers would (`BlockLevels.remake`). */
+describe('the roads\' cells chosen by the view, their far levels under the far budget (`RoadResidency`)', () => {
+  /** A far block alone in its cell, centred at `x` (box x to x + W). */
   const far = (x: number, cell: string): Mesh => {
     const mesh = make(false);
     const lv = levelsOf(mesh)!;
-    Object.assign(lv, { x: x + W / 2, z: 0, cell, remake: () => Promise.resolve(coarseArrays(blockArraysOf([strip()], options.material)!, lock)) });
+    Object.assign(lv, { x: x + W / 2, z: 0, cell });
     mesh.geometry.boundingBox = new Box3(new Vector3(x, 0, -H), new Vector3(x + W, 1, 0));
     lv.coarse!.geometry.boundingBox = mesh.geometry.boundingBox.clone();
     return mesh;
@@ -282,43 +348,65 @@ describe('the far levels under the far budget, the network\'s far level standing
     new Plane(new Vector3(1, 0, 0), -x0), new Plane(new Vector3(-1, 0, 0), x1),
     new Plane(new Vector3(0, 1, 0), 1e6), new Plane(new Vector3(0, -1, 0), 1e6), new Plane(new Vector3(0, 0, 1), 1e6), new Plane(new Vector3(0, 0, -1), 1e6));
   const farBytes = (mesh: Mesh): number => geometryCost(levelsOf(mesh)!.coarse!.geometry).bytes;
-  const settle = (): Promise<void> => new Promise((done) => setTimeout(done, 0));
+  /** The map's road cells on a grid of `SIDE` units, the network's level's triangles in each. */
+  const SIDE = 1000;
+  const roads = (...keys: string[]): Map<string, number> => new Map(keys.map((key) => [key, 100]));
+  /** A residency whose cells `keys` are taken (built). */
+  const taken = (...keys: string[]): RoadResidency => ({ taken: new Set(keys), awaiting: new Set(), releasing: new Set(), parked: new Set() });
 
-  it('lets the farthest cells of the view go past the budget, the network\'s level shown there, and makes a cell again when the view comes to it', async () => {
+  it('asks the cells the view wants and no other: the ones in the frustum within the want reach, nearest first, then the ones within the reach', () => {
+    const residency: RoadResidency = { ...taken(), view: over(100, 3100), budget: Infinity, farBudget: Infinity, network: network(), wantReach: 2500 };
+    // The eye at x = 50: the cells 0 to 2 lie in the frustum within 2,500 units (gaps 0, 950, 1,950); the third is 2,950 away; the one behind the eye is out of the frustum, 50 away: within the reach.
+    const look = updateRoadLevels([], 50, 0, 600, residency, roads('-1,0', '0,0', '1,0', '2,0', '3,0'), SIDE);
+    expect(look.build).toEqual(['0,0', '1,0', '2,0', '-1,0']);
+    expect(look.wanted).toBe(4);
+    expect(look.release).toEqual([]);
+  });
+
+  it('builds past the far budget only within the reach: the rest of the view stays with the network\'s level', () => {
+    // Each cell reckoned at its 100 triangles of the network's level times the bytes a triangle before any cell measured them: room for two.
+    const residency: RoadResidency = { ...taken(), view: over(100, 3100), budget: Infinity, farBudget: 2 * 100 * 640, network: network(), wantReach: 2500 };
+    const look = updateRoadLevels([], 50, 0, 600, residency, roads('-1,0', '0,0', '1,0', '2,0'), SIDE);
+    // The third of the view is left to the network's level; the one within the reach is taken past the budget.
+    expect(look.build).toEqual(['0,0', '1,0', '-1,0']);
+  });
+
+  it('lets the farthest built cells the view does not want go past the budget, the network\'s level shown there, and gives one back when the view wants it before it is retired', () => {
     const blocks = [far(0, '0,0'), far(1000, '1,0'), far(2000, '2,0')];
     const one = farBytes(blocks[0]!);
     const cover = network();
-    const residency: RoadResidency = { view: over(-1e5, 1e5), budget: Infinity, farBudget: 2 * one, network: cover };
-    updateRoadLevels(blocks, 0, 0, 10, residency);
-    // The farthest from the eye goes: its far level given back and hidden, the network's level shown in its cell.
+    const residency: RoadResidency = { ...taken('0,0', '1,0', '2,0'), view: over(-1e5, 1e5), budget: Infinity, farBudget: 2 * one, network: cover, wantReach: 150 };
+    // The eye at the first cell: wanted within the reach, the other two not; over the budget by one cell, the farthest goes - its blocks hidden, the network's level shown there, its blocks still standing for the owner to retire.
+    let look = updateRoadLevels(blocks, 0, 0, 150, residency, roads('0,0', '1,0', '2,0'), SIDE);
+    expect(look.release).toEqual(['2,0']);
     expect([...cover.shown]).toEqual(['2,0']);
-    expect(farBytes(blocks[2]!)).toBe(0);
     expect(levelsOf(blocks[2]!)!.coarse!.visible).toBe(false);
-    expect(blocks.slice(0, 2).every((m) => levelsOf(m)!.coarse!.visible)).toBe(true);
-    // The eye over the third alone: the first, out of the view and farthest, goes; the third is made again and replaces the network's level.
-    residency.view = over(2000, 2200);
-    updateRoadLevels(blocks, 2100, 0, 10, residency);
-    expect(cover.shown.has('0,0')).toBe(true);
-    await settle();
+    expect(levelsOf(blocks[1]!)!.coarse!.visible).toBe(true);
+    expect(blocks[0]!.visible || levelsOf(blocks[0]!)!.coarse!.visible).toBe(true);
+    // The eye over the third before it is retired: wanted again, it comes back as it was (taken, its blocks shown, the network's level hidden); over the budget, the second goes instead (the first is held while its full level goes far).
+    look = updateRoadLevels(blocks, 2100, 0, 150, residency, roads('0,0', '1,0', '2,0'), SIDE);
+    expect(look.release).toEqual(['1,0']);
     expect(cover.shown.has('2,0')).toBe(false);
+    expect(cover.shown.has('1,0')).toBe(true);
     expect(levelsOf(blocks[2]!)!.coarse!.visible).toBe(true);
-    expect(farBytes(blocks[2]!)).toBe(one);
-    expect(levelsOf(blocks[0]!)!.coarse!.visible).toBe(false);
+    expect(residency.taken!.has('2,0')).toBe(true);
+    expect(look.build).toEqual([]);
   });
 
   it('keeps a cell the network\'s level does not cover, and asks for the level', () => {
     const blocks = [far(0, '0,0'), far(1000, '1,0')];
-    const residency: RoadResidency = { view: null, budget: Infinity, farBudget: 0, network: network((key) => key === '0,0') };
-    updateRoadLevels(blocks, 0, 0, 10, residency);
-    expect(levelsOf(blocks[0]!)!.dropped).toBe(true);
-    expect(levelsOf(blocks[1]!)!.dropped).toBeFalsy();
+    const residency: RoadResidency = { ...taken('0,0', '1,0'), view: null, budget: Infinity, farBudget: 0, network: network((key) => key === '0,0') };
+    const look = updateRoadLevels(blocks, 5000, 0, 10, residency, roads('0,0', '1,0'), SIDE);
+    expect(look.release).toEqual(['0,0']);
+    expect(levelsOf(blocks[1]!)!.coarse!.visible).toBe(true);
     expect(residency.wantsNetwork).toBe(true);
   });
 
   it('keeps every far level with no network\'s level to stand for them', () => {
     const blocks = [far(0, '0,0'), far(1000, '1,0')];
-    updateRoadLevels(blocks, 0, 0, 10, { view: null, budget: Infinity, farBudget: 0 });
-    expect(blocks.every((m) => levelsOf(m)!.coarse!.visible && !levelsOf(m)!.dropped)).toBe(true);
+    const look = updateRoadLevels(blocks, 5000, 0, 10, { ...taken('0,0', '1,0'), view: null, budget: Infinity, farBudget: 0 }, roads('0,0', '1,0'), SIDE);
+    expect(look.release).toEqual([]);
+    expect(blocks.every((m) => levelsOf(m)!.coarse!.visible)).toBe(true);
   });
 });
 
@@ -326,7 +414,9 @@ describe('the wiring', () => {
   it('has the renderer make the blocks near or far by the camera, and the roads free the far level with the block', () => {
     const renderer = readFileSync('src/render/renderer.ts', 'utf8');
     expect(renderer).toMatch(/near: \(x, y\) => isNear\(x, y, roadFocus\.x, roadFocus\.y, roadFocus\.reach\)/);
-    expect(renderer).toMatch(/updateRoadLevels\(blocks, roadFocus\.x, roadFocus\.y, roadFocus\.reach, roadResidency\)/);
+    // The cells the view wants are the network's far level's: the look chooses from them, never from the map's extent.
+    expect(renderer).toMatch(/updateRoadLevels\(blocks, roadFocus\.x, roadFocus\.y, roadFocus\.reach, roadResidency, networkFar\.cells\.size \? networkFar\.cells : null, FAR_ROAD_CELL\)/);
+    expect(renderer).not.toMatch(/networkExtent|fillStep|fillLeft/);
     expect(readFileSync('src/render/mesh/surfaceMesh.ts', 'utf8')).toMatch(/coarse\.geometry\.dispose\(\)/);
     // The far level is simplified by the workers: the page asks
     expect(readFileSync('src/render/roadSurfaces.ts', 'utf8')).not.toMatch(/coarseArrays\(/);
@@ -357,24 +447,26 @@ describe('the far levels made by the workers while the roads are built', () => {
     const tiler = {
       tiles: () => Promise.reject(new Error('the tiles are built here')),
       check: () => {},
-      coarsen: (arrays: Parameters<typeof coarseArrays>[0], blockLock: readonly [number, number, number, number]) => {
+      coarsen: (arrays: Parameters<typeof coarseArrays>[0], blockLock: BlockLock) => {
         asked++;
         return new Promise<ReturnType<typeof coarseArrays>>((done) => setTimeout(() => done(coarseArrays(structuredClone(arrays), blockLock)), 0));
       },
     };
-    const reuse = { tiles: new Map(), dependsOn: () => 0, paint: new Map(), chunks: new Map(), inputs: new SurfaceInputs(), near: () => false } as never;
-    const steps = roadSurfaceSteps(net, buildRoadElevation(net, ground), materials, ground, reuse, undefined, tiler as never);
+    const reuse = { tiles: new Map(), dependsOn: () => 0, chunks: new Map(), inputs: new SurfaceInputs(), near: () => false } as never;
+    const steps = roadSurfaceSteps(net, buildRoadElevation(net, ground), materials, ground, reuse, tiler as never);
     let waited = 0;
     for (;;) {
       const step = steps.next();
       if (step.done) { step.value.adopt(); break; }
       if (step.value === 'wait') { waited++; await new Promise((done) => setTimeout(done, 0)); }
     }
-    expect(asked).toBeGreaterThan(20);
+    // The city's blocks, each made far: four blocks of each of its surfaces (footway, dropped kerb, kerb, carriageway), 16. Its paint is no block
+    // of its own any more (the carriageway's shader draws it, `roadMarks.ts`): the 20 this asked for counted the paint's blocks too.
+    expect(asked).toBeGreaterThanOrEqual(16);
     expect(waited).toBeGreaterThan(0);
     const chunks = [...(reuse as { chunks: Map<string, { mesh: Mesh }> }).chunks.values()].map((c) => c.mesh);
     const withLevel = chunks.filter((m) => levelsOf(m)?.coarse);
-    expect(withLevel.length).toBeGreaterThan(20);
+    expect(withLevel.length).toBeGreaterThanOrEqual(16);
     for (const mesh of withLevel) {
       const level = levelsOf(mesh)!;
       expect(level.full).toBe(false);
@@ -391,11 +483,11 @@ describe('the far levels made by the workers while the roads are built', () => {
 describe('a block of several surfaces drawn alike (`roadSurfaces.ts` drawGroups)', () => {
   it('cuts back into each surface as its own block was, and joins again to the block', () => {
     const a = strip(), b = strip();
-    const block = blockArraysOf([a, b], options.material)!;
+    const block = blockArraysOf([a, b], options.material, TABLE_SLOTS)!;
     const [first, second] = splitBlock(block, memberSizes([[a], [b]]));
     // Each piece the arrays its surface alone would have made: what its worker simplified when it was a block of its own.
     for (const piece of [first!, second!]) {
-      const own = blockArraysOf([strip()], options.material)!;
+      const own = blockArraysOf([strip()], options.material, TABLE_SLOTS)!;
       expect(Array.from(piece.position)).toEqual(Array.from(own.position));
       expect(Array.from(piece.index)).toEqual(Array.from(own.index));
       expect(piece.index.constructor).toBe(own.index.constructor);
@@ -405,9 +497,9 @@ describe('a block of several surfaces drawn alike (`roadSurfaces.ts` drawGroups)
   });
 
   it('stays near while any of its surfaces would be near, and goes far once none is', () => {
-    const block = mergeTiles([strip()], options, () => [strip()], {
+    const block = mergeTiles([strip()], options, () => [strip()], TABLE_SLOTS, {
       lock, near: true, also: [[5000, 0, 5200, 10]],
-      start: (b, arrays) => { const made = coarseArrays(cloneBlock(arrays), lock); if (made) attachFarLevel(b, made, options, [{ source: () => [strip()], lock }], true); },
+      start: (b, arrays) => { const made = coarseArrays(cloneBlock(arrays), lock); if (made) attachFarLevel(b, made, options, [{ source: () => [strip()], slots: TABLE_SLOTS, lock }], true); },
     })!;
     // The eye over the other surface's block: the first surface's is far from it, the block stays whole.
     updateRoadLevels([block], 5100, 5, 300);

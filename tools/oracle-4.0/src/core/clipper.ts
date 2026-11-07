@@ -1,4 +1,4 @@
-import { Clipper64, ClipType, EndType, FillRule, JoinType, PathType, PolyTree64, inflatePaths, type Path64, type Paths64, type PolyPath64 } from 'clipper2-ts';
+import { Clipper64, ClipType, FillRule, PathType, PolyTree64, type Path64, type Paths64, type PolyPath64 } from 'clipper2-ts';
 import clipping from 'polygon-clipping';
 import { perM } from './units';
 
@@ -153,22 +153,6 @@ export function intersection(a: MultiPoly, b: MultiPoly): MultiPoly {
   if (!b.length) return [];
   return compatibleRun(ClipType.Intersection, a, b);
 }
-
-/** The set without its parts thinner than `2 * eps`: shrunk by `eps` and grown back by it */
-export function opened(polygons: MultiPoly, eps: number): MultiPoly {
-  const paths = input(polygons);
-  if (!paths.length) return [];
-  const d = eps * SCALE;
-  const grown = inflatePaths(inflatePaths(paths, -d, JoinType.Miter, EndType.Polygon, OPEN_MITER), d, JoinType.Miter, EndType.Polygon, OPEN_MITER);
-  if (!grown.length) return [];
-  const clip = new Clipper64();
-  clip.addPaths(grown, PathType.Subject);
-  const tree = new PolyTree64();
-  if (!clip.execute(ClipType.Union, FillRule.NonZero, tree)) throw new Error('Polygon clipping failed (opening)');
-  return output(tree);
-}
-/** How far a mitred corner may reach, in offsets: a corner sharper than about 29 degrees comes back squared, a few `eps` short of its tip. */
-const OPEN_MITER = 4;
 
 /** Signed area of the set, with explicit holes subtracted. */
 export function area(polygons: MultiPoly): number {

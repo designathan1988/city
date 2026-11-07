@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildLargeCityMap } from '@editor/smallCityMap';
 import { prepareCity } from '@editor/preparedCity';
 import type { QualityLevel } from '@render/quality';
+import { CELL as ROAD_BLOCK } from '@render/roadSurfaceEntries';
 import { m } from '@world/units';
 import { installNullPage, primeCookedSurfaces } from '../support/nullGpu';
 import { DISTRICT, HEIGHT, WIDTH, drawnPieces, openCityMap, setView, type City, type View } from '../support/sceneHarness';
@@ -22,7 +23,7 @@ import { DISTRICT, HEIGHT, WIDTH, drawnPieces, openCityMap, setView, type City, 
 /** The opening's view of a large city (`main.ts` fitOpeningView: a district from nearly overhead). */
 const OPEN: View = [0, 0, 1.8, 45, 79];
 /** The side of the cells the roads are counted in (the road blocks', `roadSurfaces.ts`). */
-const CELL = m(614.4);
+const CELL = ROAD_BLOCK;
 
 const turn = (): Promise<void> => new Promise((done) => setImmediate(done));
 async function frames(city: City, n: number): Promise<void> {
@@ -68,8 +69,8 @@ interface Opened { readonly frames: number; readonly districtDetail: number; rea
 async function open(quality: QualityLevel, radius?: number): Promise<Opened> {
   // The baked textures again: the scene before let them go with it (`SceneHandle.dispose`).
   primeCookedSurfaces(process.cwd());
-  const { data, buildings } = prepareCity(buildLargeCityMap(7, radius));
-  const { city, frames: opened } = await openCityMap(data, buildings, { large: true, view: OPEN, quality });
+  const made = prepareCity(buildLargeCityMap(7, radius));
+  const { city, frames: opened } = await openCityMap(made.data, made, { large: true, view: OPEN, quality });
   try {
     const wanted = roadCells(city);
     const missing: Record<string, string[]> = {};

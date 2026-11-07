@@ -10,7 +10,7 @@ import type { BuildingChunk } from './buildings/buildingMesh';
 import type { BuildingKit } from './buildings/kit';
 import { fragmentGeometry, prepareFracture, type Fragment, type StillData } from './buildings/fracture';
 import { FINISH_ATTRIBUTE } from './buildings/cellArrays';
-import { interiorFurniture, withShellParts } from './buildings/buildingMesh';
+import { asPlainShells, interiorFurniture, withShellParts } from './buildings/buildingMesh';
 
 /** Buildings that break for real (the player's order of 2026-10-05) */
 
@@ -217,7 +217,7 @@ export function createDestruction(
       for (let level = v.base + 1; level < v.base + v.storeys.length; level++) slabs.push({ corners, y: floor + volumeElevation(b, v, level) });
     }
     // Its lots' boxes broken as the shell they are drawn as (`shellParts.ts`): their finish, tone and wear on every fragment.
-    const { input, materials } = prepareFracture(withShellParts(source.chunk), source.kit, slabs, b.id * 2654435761, interiorFurniture(b, floor));
+    const { input, materials } = prepareFracture(asPlainShells(withShellParts(source.chunk)), source.kit, slabs, b.id * 2654435761, interiorFurniture(b, floor));
     const id = nextJob++;
     const worker = workerOf();
     jobs.set(id, { b, floor, materials, hits: [], worker });

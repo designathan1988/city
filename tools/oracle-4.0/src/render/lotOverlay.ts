@@ -58,7 +58,7 @@ const EMPTY = new DataTexture(new Uint32Array(4), 1, 1, RGBAIntegerFormat, Unsig
 EMPTY.internalFormat = 'RGBA32UI';
 EMPTY.needsUpdate = true;
 
-/** Half the lattice's smallest frame: a plate and the ring round it (6,144 m a side), wherever its middle is on the plate */
+/** Half the lattice's smallest frame: a plate and the ring round it (6,000 m a side), wherever its middle is on the plate */
 const FRAME_HALF = PLATE_SIZE * 1.5;
 
 /** Half the frame stood on a plate's centre (cx, cy) that holds [x0, y0, x1, y1]: the smallest by whole plates, never one sized to a map */
@@ -98,6 +98,9 @@ const LOT_PARS = /* glsl */ `
   uniform float uLotsTiles;
   uniform vec2 uLotsCorner;
   uvec4 lotTexel(uint a) { return texelFetch(uLots, ivec2(int(a & ${TEXTURE_WIDTH - 1}u), int(a >> ${Math.log2(TEXTURE_WIDTH)}u)), 0); }
+  // A texel's component k (0 to 3) by selection, the same number: DO NOT index the vector with k, a dynamic index ANGLE emulates (its log: "dynamic
+  // indexing of vectors and matrices is emulated and can be slow", the road surfaces' programs, scripts/optimization-sheet.mjs).
+  uint lotPick(uvec4 v, int k) { return k == 0 ? v.x : k == 1 ? v.y : k == 2 ? v.z : v.w; }
   float lotCross(vec2 u, vec2 v) { return u.x * v.y - u.y * v.x; }
   vec3 lotLinear(vec3 c) { return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), c)); }
   vec4 lotColour(uint c) {
@@ -114,10 +117,10 @@ const LOT_PARS = /* glsl */ `
     ivec2 c = ivec2(g);
     ivec2 t = c / ${TILE_CELLS};
     int tile = t.y * int(uLotsTiles) + t.x;
-    uint block = lotTexel(uint(tile >> 2))[tile & 3];
+    uint block = lotPick(lotTexel(uint(tile >> 2)), tile & 3);
     if (block == 0u) return base;
     int local = (c.y - t.y * ${TILE_CELLS}) * ${TILE_CELLS} + (c.x - t.x * ${TILE_CELLS});
-    uint entry = lotTexel(block + uint(local >> 2))[local & 3];
+    uint entry = lotPick(lotTexel(block + uint(local >> 2)), local & 3);
     uint count = entry & 255u;
     if (count == 0u) return base;
     uint at = entry >> 8u;

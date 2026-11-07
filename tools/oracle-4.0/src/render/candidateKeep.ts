@@ -3,8 +3,9 @@ import { m } from '@world/units';
 
 /** DO NOT keep the whole sweep again on a global key (the roads' revision, the covers' version) */
 
-/** The places' cells, world units: also the cells their drawing is kept in (`plantCells.ts`). */
-export const KEEP_CELL = m(64);
+/** The places' cells, world units: also the cells their drawing is kept in (`plantCells.ts`). A fifth of the world's cell (`world/cells.ts`), so a keep
+ *  cell lies inside one cell, one road block and one plate (its edges on the plates' edges, `coverSweep.ts`). */
+export const KEEP_CELL = m(50);
 const CELL = KEEP_CELL;
 /** A cell's key, from its column and row. */
 export const keepCellKey = (i: number, j: number): number => (i + 0x8000) * 0x10000 + (j + 0x8000);

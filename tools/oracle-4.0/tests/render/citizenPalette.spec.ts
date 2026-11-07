@@ -27,8 +27,8 @@ describe('citizen animation palette', () => {
     expect(() => packBoneMatrices(perspective, new Float32Array(PACKED_BONE_FLOATS), 0)).toThrow('non-affine');
   });
 
-  it('reconstructs an actual MakeHuman skeleton bake exactly', async () => {
-    const body = restRig(await citizenRig('mh_00'));
+  it('reconstructs the skeleton bake of a cast body exactly', async () => {
+    const body = restRig(await citizenRig('female-child-casual'));
     const baked = await bakeFrames(body, () => body.reset(), 1, true, 1);
     const bones = body.mesh.skeleton.bones.length;
     expect(baked.data.length).toBe((baked.frames + 2) * bones * PACKED_BONE_FLOATS);

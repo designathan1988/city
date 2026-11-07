@@ -29,7 +29,7 @@ const SHOULDERS = m(0.5);
 /** Fastest a body steps sideways, u/s. */
 export const SIDESTEP = m(0.45);
 /** How far ahead others are looked for. */
-const LOOK = m(8);
+export const LOOK = m(8);
 /** Faster than this, somebody is walking (coming the other way, say), u/s. */
 const MOVING = m(0.1);
 /** The gap a walker keeps to the body ahead, and the time headway behind it. */
@@ -94,9 +94,9 @@ const THERE = m(0.25);
 /** Spatial cells for the walkers and for the walkways. */
 /** As wide as a walker looks ahead (`LOOK`) */
 const CELL = LOOK;
-const WAY_CELL = m(20);
+const WAY_CELL = m(25);
 /** Cells for the cars' zones (`zonesNear`). */
-const ZONE_CELL = m(16);
+export const ZONE_CELL = m(25);
 
 /** Ground a walker keeps off: a car's body (and the way it holds), or a train's. */
 interface CarZone {

@@ -1,7 +1,10 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import FILES from 'virtual:model-urls/citizens/people?ext=bin,ktx2';
+import cast from '@people/cast.json';
+import { LEVEL_TRIANGLES, readCookedHeader } from '@render/people/cookedPerson';
 import { importClosure } from '../../scripts/vite/cook-plugin';
 
 /** A file reached only by an import for its effect, or only through the `@/` alias, is code the bake runs: a change to it must change the fingerprint. */
@@ -22,22 +25,30 @@ describe('the import closure follows every way a file is reached', () => {
   });
 });
 
-/** The import closure the derived caches are fingerprinted by */
-describe('the import closure a fingerprint reads', () => {
-  const closure = importClosure(process.cwd(), 'src/render/riggedCitizens.ts')
-    .map((file) => file.replace(/\\/g, '/').replace(`${process.cwd().replace(/\\/g, '/')}/`, ''));
+/** The cast's people are ready files served as they are (`people/cookedLoad.ts`): no build step makes, versions or checks them, so the
+ *  files themselves must hold every body of the cast, each named by its role and with its levels in budget. */
+describe('the ready files of the people', () => {
+  const ids = cast.map((c) => c.id);
 
-  it('reads the code that builds a cooked body', () => {
-    for (const file of ['src/render/riggedCitizens.ts', 'src/render/citizenBake.ts', 'src/render/citizenWalk.ts',
-      'src/render/people/personRig.ts', 'src/render/people/cookedPerson.ts', 'src/people/body/morph.ts']) {
-      expect(closure).toContain(file);
-    }
+  it('are every body of the cast and its atlas, and nothing else', () => {
+    expect(Object.keys(FILES).sort()).toEqual(ids.flatMap((id) => [`${id}.bin`, `${id}.ktx2`]).sort());
   });
 
-  it('does not read code no cooked body is built by', () => {
-    for (const file of ['src/render/people/proceduralCrowd.ts', 'src/people/hair/procedural.ts', 'src/render/agents.ts',
-      'src/render/renderer.ts']) {
-      expect(closure).not.toContain(file);
+  it('each name their body and its atlas, keep the budgets, and get coarser from level to level', () => {
+    for (const id of ids) {
+      const bytes = readFileSync(join('public/models/citizens/people', `${id}.bin`));
+      const header = readCookedHeader(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer);
+      expect(header.id).toBe(id);
+      expect(header.atlas.file).toBe(`${id}.ktx2`);
+      const levels = header.mesh.levels;
+      expect(levels.length, id).toBe(LEVEL_TRIANGLES.length);
+      levels.forEach((level, k) => {
+        expect(level.count % 3, id).toBe(0);
+        expect(level.count / 3, `${id} L${k}`).toBeLessThanOrEqual(LEVEL_TRIANGLES[k]!);
+        if (k > 0) expect(level.count, `${id} L${k}`).toBeLessThan(levels[k - 1]!.count);
+        // The game draws the coarsest level under a pixel (`riggedCitizens.ts` citizenLevelOf): a level no coarser than the next is never drawn.
+        if (k > 0) expect(level.error, `${id} L${k}`).toBeGreaterThan(levels[k - 1]!.error);
+      });
     }
   });
 });

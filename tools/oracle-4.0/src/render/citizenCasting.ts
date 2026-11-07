@@ -1,9 +1,7 @@
-import { wornBy } from '@people/wardrobe';
-import { makeRoster } from '@people/roster';
-import type { PersonSpec } from '@people/spec';
+import cast from '@people/cast.json';
 import { m } from '@world/units';
 
-/** WHO IS DRAWN AS WHOM - the only door into the citizen roster. */
+/** WHO IS DRAWN AS WHOM - the only door into the cast: the sixteen bodies of the game (`src/people/cast.json`, their files `public/models/citizens/people/<id>.bin`). */
 
 /** `traditional`: everyday dress of a tradition - a headscarf and tunic, a shalwar kameez, a thobe and keffiyeh. */
 export type Wardrobe = 'casual' | 'smart-casual' | 'business' | 'sport-casual' | 'traditional';
@@ -15,46 +13,30 @@ export interface CitizenModel {
   readonly wardrobe: Wardrobe;
   readonly ageBand: AgeBand;
   readonly gender: Sex;
-  /** A visual variant uses the same licensed mesh and rig as this source. */
-  readonly sourceId?: string;
-  /** Clothing palette of a visual variant; zero keeps its source texture. */
-  readonly look?: number;
-  /** A MakeHuman person (`people/roster.ts`): built and rigged, not loaded. */
-  readonly person?: PersonSpec;
   /** False for a body that cannot reach a two-wheeler's controls. */
-  readonly rides?: boolean;
+  readonly rides: boolean;
+  /** Their resting expression (`people/faceExpression.ts`), -1..1. */
+  readonly mood: number;
 }
 
-/** The street roster: MakeHuman people, each dressed for a wardrobe (`people/roster.ts`). */
-export const CROWD: readonly CitizenModel[] = sceneryCast(makeRoster().map((entry) => ({
-  id: entry.id, wardrobe: entry.wardrobe, ageBand: entry.ageBand, gender: entry.gender, person: entry.person, rides: entry.rides,
-})));
+const WARDROBES: readonly Wardrobe[] = ['casual', 'smart-casual', 'business', 'sport-casual', 'traditional'];
+const AGE_BANDS: readonly AgeBand[] = ['child', 'young', 'adult', 'senior'];
 
-/** The few bodies the scenery is played by */
-function dressedForSex(c: CitizenModel): boolean {
-  const look = c.person?.look;
-  if (!look) return true;
-  const other = c.gender === 'f' ? 'male' : 'female';
-  return [look.outfit, look.footwear, look.hairCut, look.hat, ...(look.extras ?? [])]
-    .every((item) => !item || item === 'none' || wornBy(item) !== other);
-}
-
-function sceneryCast(all: readonly CitizenModel[]): CitizenModel[] {
-  const wanted: readonly [AgeBand, Wardrobe][] = [
-    ['adult', 'casual'], ['adult', 'sport-casual'], ['adult', 'smart-casual'], ['adult', 'business'],
-    ['young', 'casual'], ['senior', 'casual'], ['child', 'casual'], ['child', 'sport-casual'],
-  ];
-  const out: CitizenModel[] = [];
-  for (const gender of ['f', 'm'] as const) {
-    for (const [ageBand, wardrobe] of wanted) {
-      // Never anything cut for the other sex: a man in Mary Janes (2026-10-05).
-      const fits = all.filter((c) => c.gender === gender && c.ageBand === ageBand && c.wardrobe === wardrobe && dressedForSex(c));
-      const pick = fits.find((c) => c.rides) ?? fits[0];
-      if (pick) out.push(pick);
+/** The file as the game reads it: refused whole when a row is not a body's (a cast half written is no cast). */
+function castOf(rows: unknown): CitizenModel[] {
+  if (!Array.isArray(rows) || !rows.length) throw new Error('src/people/cast.json holds no cast');
+  return rows.map((row: unknown, i) => {
+    const r = row as Partial<CitizenModel>;
+    if (typeof r.id !== 'string' || !WARDROBES.includes(r.wardrobe as Wardrobe) || !AGE_BANDS.includes(r.ageBand as AgeBand)
+      || (r.gender !== 'f' && r.gender !== 'm') || typeof r.rides !== 'boolean' || typeof r.mood !== 'number') {
+      throw new Error(`src/people/cast.json row ${i} is not a body of the cast`);
     }
-  }
-  return out;
+    return { id: r.id, wardrobe: r.wardrobe as Wardrobe, ageBand: r.ageBand as AgeBand, gender: r.gender, rides: r.rides, mood: r.mood };
+  });
 }
+
+/** The cast: the few bodies everybody on the street is played by, one per sex for each (age band, wardrobe) the scenery needs. */
+export const CROWD: readonly CitizenModel[] = castOf(cast);
 /** Their ids, in the same order: the renderer's model indices. */
 export const CROWD_IDS: readonly string[] = CROWD.map((model) => model.id);
 
@@ -213,7 +195,7 @@ export class CastingRegistry {
       const out: number[] = [];
       this.roster.forEach((m, i) => {
         if (m.gender === ctx.gender && m.ageBand === band && code.includes(m.wardrobe) && (!ctx.helmet || helmetFits(m.id))
-          && (ctx.company !== 'rider' || m.rides !== false)) out.push(i);
+          && (ctx.company !== 'rider' || m.rides)) out.push(i);
       });
       return out;
     };

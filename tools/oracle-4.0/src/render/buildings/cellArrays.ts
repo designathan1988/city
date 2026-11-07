@@ -43,13 +43,13 @@ export interface ShellGrid {
   /** Metres a step: every axis alike (the mesh's scale is uniform, so its normals stay as they are). */
   readonly step: number;
 }
-/** How far past its cell a cell's buildings may reach on its grid, m. */
-export const SHELL_GRID_MARGIN = 64;
-/** The grid's step: the cell and its margins in an unsigned short, 5.9 mm (a point within 2.9 mm, a hundredth of the far level's 0.3 m). */
+/** How far past its cell a cell's buildings may reach on its grid, m: 250 + 2 x 60 = 370 m, under the 384 m (256 + 2 x 64) whose step was the bound. */
+const SHELL_GRID_MARGIN = 60;
+/** The grid's step: the cell (250 m) and its margins (2 x 60 m) in an unsigned short, 5.65 mm (a point within 2.9 mm, a hundredth of the far level's 0.3 m). */
 export const SHELL_GRID_STEP = (CELL + 2 * SHELL_GRID_MARGIN) / 65535;
 
 /** A cell's grid, its height from the lowest of its shells. */
-export const cellShellGrid = (i: number, j: number, lowest: number): ShellGrid =>
+const cellShellGrid = (i: number, j: number, lowest: number): ShellGrid =>
   ({ x: i * CELL - SHELL_GRID_MARGIN, y: lowest, z: -(j + 1) * CELL - SHELL_GRID_MARGIN, step: SHELL_GRID_STEP });
 
 /** Pieces with their places on a grid: four unsigned shorts a vertex (the fourth left over: no 3-short format in Direct3D 11); null where a point falls off it (the cell keeps its floats). */
@@ -96,7 +96,7 @@ export const NORMAL_UNIT = 32767;
 /** A linear colour channel as the shell's paint holds it: 16 bits over `COLOUR_RANGE`, a step of 3e-5 (a byte would band the dark paints). */
 export const paintShort = (x: number): number => Math.round(Math.max(0, Math.min(1, Math.fround(x) / COLOUR_RANGE)) * PAINT_UNIT);
 /** A number in [-1, 1] as a signed short the GPU reads back normalised: the shell's normal and wear. */
-export const snorm16 = (x: number): number => Math.round(Math.max(-1, Math.min(1, x)) * NORMAL_UNIT);
+const snorm16 = (x: number): number => Math.round(Math.max(-1, Math.min(1, x)) * NORMAL_UNIT);
 
 /** Numbers a shell vertex carries in its paint (`paint`): four shorts, rgb and its finish with its wear (`finishWear`). */
 export const SHELL_SHORTS = 4;
@@ -147,6 +147,8 @@ interface ShellArrays {
   readonly facade?: Uint16Array;
   readonly grid?: Int16Array;
   readonly opening?: Uint8Array;
+  /** The detail level's runs (`RunChunk.near`): drawn over the near shell (`kit.facadeNear`). */
+  readonly near?: true;
 }
 
 interface InstanceArrays {
@@ -178,7 +180,7 @@ export interface KitBoxes {
 }
 
 /** The batch of `chunks` that `selection` takes, as arrays. */
-/** `groups`: each chunk's square (`cellWork.ts` gives the shells quadrants of two detail cells), its shells then pieced square by square: each piece's box that square's, so three leaves out of the view and out of each sun cascade the squares outside them (a piece of buildings from across the whole cell was drawn whole for a corner of it in view). */
+/** `groups`: each chunk's square (`cellWork.ts` gives the shells the cell's halves by whole detail cells, `partFiling.ts` shellPieceOf), its shells then pieced square by square: each piece's box that square's, so three leaves out of the view and out of each sun cascade the squares outside them (a piece of buildings from across the whole cell was drawn whole for a corner of it in view). */
 export function cellArrays(chunks: readonly BuildingChunk[], selection: CellSelection, boxes: KitBoxes, groups?: readonly string[]): CellArrays {
   const { ghost, dim } = selection;
   const floats = selection.shells ? [...shellPieces(chunks, (c) => c.shells, groups), ...shellPieces(chunks, (c) => c.runs, groups)] : [];
@@ -234,7 +236,7 @@ export interface CellMass {
   readonly color: Uint16Array;
   /** Along its face and its windows' first storey's foot, m: the long and the high, full floats (`MASS_FACADE`). */
   readonly facade: Float32Array;
-  /** Its bay's width and storey's height and its glass share, and a fourth left over, half floats (`MASS_GRID`). */
+  /** Its bay's width and storey's height, its glass share and its windows' sill and head (`massing.ts` windowCode), half floats (`MASS_GRID`). */
   readonly grid: Uint16Array;
   /** Its rooms' seed (the lot of each lit window, `massingMaterial.ts`) and the office flag over it: a full float, a seed's fraction kept whole. */
   readonly seed: Float32Array;
@@ -253,7 +255,7 @@ export function indexArray(vertices: number, indices: number): Uint16Array | Uin
 /** A square of cells a level's masses stand in (`levelKeys.ts`): its first column and row and its side in cells. */
 export interface MassSquare { readonly i0: number; readonly j0: number; readonly n: number }
 
-/** A square's grid for its masses (as `cellShellGrid` for a cell's shells): the square and its margins in an unsigned short, every axis alike, its height from its lowest point; a cell's step 5.9 mm, a tile's 18 mm, a plate's 33 mm (a point within half of it, a hundredth of the level's error). */
+/** A square's grid for its masses (as `cellShellGrid` for a cell's shells): the square and its margins in an unsigned short, every axis alike, its height from its lowest point; a cell's step 5.65 mm, a tile's 17.1 mm, a plate's 32.3 mm (a point within half of it, a hundredth of the level's error). */
 export function massGrid(square: MassSquare, lowest: number): ShellGrid {
   const span = square.n * CELL + 2 * SHELL_GRID_MARGIN;
   return { x: square.i0 * CELL - SHELL_GRID_MARGIN, y: lowest, z: -(square.j0 + square.n) * CELL - SHELL_GRID_MARGIN, step: span / 65535 };
@@ -273,7 +275,7 @@ export function massPlaces(mass: CellMass): Float32Array {
 }
 
 /** A mass's places in floats put on its square's grid; the mass as it was where a point falls off it. */
-export function massOnGrid(mass: CellMass, square: MassSquare): CellMass {
+function massOnGrid(mass: CellMass, square: MassSquare): CellMass {
   const p = massPlaces(mass), n = p.length / 3;
   const grid = massGrid(square, mass.bounds[1]!);
   const q = new Uint16Array(n * 4);
@@ -291,6 +293,31 @@ export function massOnGrid(mass: CellMass, square: MassSquare): CellMass {
 export function cellMass(masses: readonly MassingChunk[], square?: MassSquare): CellMass | null {
   const merged = mergedMass(masses);
   return merged && square ? massOnGrid(merged, square) : merged;
+}
+
+/** A square's masses joined from its cells' (`cellWork.ts` slices: each cell's masses merged in floats, `cellMass` with no square), in the cells'
+ *  order, put on the square's grid: the same arrays as its buildings' chunks merged at once (`cellMass`), each vertex's numbers made once, in its
+ *  cell's slice. */
+export function joinMass(slices: readonly CellMass[], square: MassSquare): CellMass | null {
+  let vertices = 0, indices = 0, error = 0, top = -Infinity;
+  for (const s of slices) { vertices += s.position.length / 3; indices += s.index.length; error = Math.max(error, s.error); top = Math.max(top, s.top); }
+  if (indices === 0) return null;
+  const position = new Float32Array(vertices * 3), normal = new Int8Array(vertices * 4), color = new Uint16Array(vertices * 4);
+  const facade = new Float32Array(vertices * MASS_FACADE), grid = new Uint16Array(vertices * MASS_GRID), seed = new Float32Array(vertices), index = indexArray(vertices, indices);
+  let v = 0, n = 0;
+  for (const s of slices) {
+    if (s.place) throw new Error('[buildings] a cell\'s slice of masses on a grid: slices are kept in floats');
+    position.set(s.position, v * 3);
+    normal.set(s.normal, v * 4);
+    color.set(s.color, v * 4);
+    facade.set(s.facade, v * MASS_FACADE);
+    grid.set(s.grid, v * MASS_GRID);
+    seed.set(s.seed, v);
+    for (let i = 0; i < s.index.length; i++) index[n + i] = s.index[i]! + v;
+    v += s.position.length / 3;
+    n += s.index.length;
+  }
+  return massOnGrid({ position, normal, color, facade, grid, seed, index, bounds: shellBounds(position), top, error }, square);
 }
 
 /** The masses merged, their places in floats. */
@@ -311,6 +338,8 @@ function mergedMass(masses: readonly MassingChunk[]): CellMass | null {
       facade[at * MASS_FACADE] = c.facade[k * 4]!; facade[at * MASS_FACADE + 1] = c.facade[k * 4 + 3]!;
       grid[at * MASS_GRID] = DataUtils.toHalfFloat(c.facade[k * 4 + 1]!); grid[at * MASS_GRID + 1] = DataUtils.toHalfFloat(c.facade[k * 4 + 2]!);
       grid[at * MASS_GRID + 2] = DataUtils.toHalfFloat(c.glazing[k * 2]!);
+      // Its windows' sill and head (`massing.ts` windowCode): an integer under 1,024, exact in a half float.
+      grid[at * MASS_GRID + 3] = DataUtils.toHalfFloat(c.window[k]!);
       seed[at] = c.glazing[k * 2 + 1]!;
     }
     for (let i = 0; i < c.index.length; i++) index[n + i] = c.index[i]! + v;
@@ -406,7 +435,7 @@ function shellPieces(chunks: readonly BuildingChunk[], of: FragmentsOf, groups?:
 function shellArrays(chunks: readonly BuildingChunk[], of: FragmentsOf): ShellArrays | null {
   let vertices = 0;
   let indices = 0;
-  let runs = false;
+  let runs = false, near = false;
   for (const chunk of chunks) {
     const fragments = of(chunk);
     if (!fragments) continue;
@@ -415,7 +444,7 @@ function shellArrays(chunks: readonly BuildingChunk[], of: FragmentsOf): ShellAr
       if (!part) continue;
       vertices += part.position.length / 3;
       indices += part.index.length;
-      if ('facade' in part) runs = true;
+      if ('facade' in part) { runs = true; if (part.near) near = true; }
     }
   }
   if (indices === 0) return null;
@@ -446,7 +475,7 @@ function shellArrays(chunks: readonly BuildingChunk[], of: FragmentsOf): ShellAr
     }
   }
   const bounds = shellBounds(position);
-  return { position, normal, paint, index, bounds, ...(facade && grid && opening ? { facade, grid, opening } : {}) };
+  return { position, normal, paint, index, bounds, ...(facade && grid && opening ? { facade, grid, opening } : {}), ...(near ? { near: true as const } : {}) };
 }
 
 /** 1 in half float: an instance with no tint of its own. */

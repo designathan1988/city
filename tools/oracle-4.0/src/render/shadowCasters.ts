@@ -1,4 +1,4 @@
-import type { BufferGeometry, InstancedMesh, Mesh } from 'three';
+import type { BufferGeometry, InstancedBufferGeometry, InstancedMesh, Mesh } from 'three';
 
 /** CASTERS BY SIZE AND BY CASCADE: a mesh drawn into a sun cascade only when it holds instances and its widest thing reaches a texel there (`sunCascades.ts`). */
 
@@ -11,8 +11,16 @@ export interface SizedCaster {
   readonly texels?: number;
   /** Its instances drawn in the colour pass and into the cascades, when they differ (`cellInstances.ts`: what stands off the frame under a cascade casts and is not drawn): `count` set to each for its passes. */
   readonly counts?: { colour(): number; shadow(): number };
+  /** The same for a mesh whose instances are its geometry's (`InstancedBufferGeometry.instanceCount`, the poles' wires): drawn into the
+   *  cascades alone when its colour is 0 (`poleStores.ts` WireStore). */
+  readonly instances?: { colour(): number; shadow(): number };
   /** Its shape in a cascade of `texel` and in the colour pass, when the camera chooses the colour's (`poleLayer.ts`): the cascade's by its texel alone, so the shadow does not follow the camera's level. */
   readonly levels?: { shadow(texel: number): BufferGeometry; colour(): BufferGeometry };
+  /** Drawn into the cascades alone, none of it in the colour pass (`poleStores.ts`): hidden between the passes and shown for a cascade's pass
+   *  where it casts, as a building part's caster (`partCells.ts` castInto). Its maker keeps it hidden and says in `userData.shadowOnly` whether
+   *  it holds anything (the casters' signature reads it hidden then, `renderer.ts` casterChanges). DO NOT leave it visible with no instance in
+   *  colour: three still set up its program and uniforms in every colour pass - 46 of the 278 draws of a frame drew nothing (audit P46). */
+  readonly shadowOnly?: boolean;
 }
 
 const casters = new Set<SizedCaster>();
@@ -38,10 +46,19 @@ export function castCastersInto(texel: number | null): void {
   for (const c of casters) {
     const instanced = c.mesh as InstancedMesh;
     if (c.counts) instanced.count = texel === null ? c.counts.colour() : c.counts.shadow();
+    if (c.instances) (c.mesh.geometry as InstancedBufferGeometry).instanceCount = texel === null ? c.instances.colour() : c.instances.shadow();
     if (c.levels) c.mesh.geometry = texel === null ? c.levels.colour() : c.levels.shadow(texel);
-    if (texel === null) { c.mesh.castShadow = c.casts; continue; }
+    if (texel === null) {
+      c.mesh.castShadow = c.casts;
+      if (c.shadowOnly) c.mesh.visible = false;
+      continue;
+    }
     const holds = !instanced.isInstancedMesh || instanced.count > 0;
     c.mesh.castShadow = c.casts && holds && c.radius() >= texel * (c.texels ?? 1);
+    if (c.shadowOnly) {
+      const drawn = !c.instances || (c.mesh.geometry as InstancedBufferGeometry).instanceCount > 0;
+      c.mesh.visible = c.mesh.castShadow && drawn && c.mesh.userData['shadowOnly'] === true;
+    }
   }
 }
 
@@ -50,5 +67,5 @@ export function castCastersInto(texel: number | null): void {
 export function castShadowKey(mesh: Mesh): { readonly count: number | null; readonly byTexel: boolean } | null {
   const c = mesh.userData['sizedCaster'] as SizedCaster | undefined;
   if (!c) return null;
-  return { count: c.counts ? c.counts.shadow() : null, byTexel: c.levels !== undefined };
+  return { count: c.counts ? c.counts.shadow() : c.instances ? c.instances.shadow() : null, byTexel: c.levels !== undefined };
 }

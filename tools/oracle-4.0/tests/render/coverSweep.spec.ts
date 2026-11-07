@@ -5,7 +5,6 @@ import { KEEP_CELL } from '@render/candidateKeep';
 import { keepCellRect, keepCellsOver } from '@render/cellKeeps';
 import { COVER_SWEEP_PAD, SHORE_SWEEP_PAD, ShorePlates, cellHash, forestIn, rocksIn, scrubIn, shoreIn, type Candidate, type CoverField } from '@render/coverSweep';
 import { GroundChanges } from '@render/groundChanges';
-import { TERRAIN_HALF } from '@render/terrain';
 
 /** A disc of painted cover, as a dab lays it. */
 interface Disc { readonly x: number; readonly y: number; readonly r: number }
@@ -25,6 +24,9 @@ function fieldOf(discs: readonly Disc[], water: { minX: number; maxX: number; mi
   return field;
 }
 
+/** Where the covers' lattices start (`coverSweep.ts` LATTICE_ORIGIN): plate 0's low corner, the plates' edges on multiples of their side. */
+const ORIGIN = 0;
+
 /** The forest as the whole sweep laid it before (`renderer.ts` `coverSweep`, `paintedCells`): the reference. */
 function wholeForest(discs: readonly Disc[], field: CoverField): Candidate[] {
   const spacing = 12;
@@ -35,14 +37,14 @@ function wholeForest(discs: readonly Disc[], field: CoverField): Candidate[] {
   const out: Candidate[] = [];
   if (!area) return out;
   for (const plate of platesOver(area).map(plateRegion)) {
-    const first = Math.ceil((plate.cx - plate.half + TERRAIN_HALF) / spacing);
-    const last = Math.floor((plate.cx + plate.half + TERRAIN_HALF) / spacing) - 1;
-    const firstY = Math.ceil((plate.cy - plate.half + TERRAIN_HALF) / spacing);
-    const lastY = Math.floor((plate.cy + plate.half + TERRAIN_HALF) / spacing) - 1;
-    const i0 = Math.max(first, Math.floor((area[0] + TERRAIN_HALF) / spacing)), i1 = Math.min(last, Math.floor((area[2] + TERRAIN_HALF) / spacing));
-    const j0 = Math.max(firstY, Math.floor((area[1] + TERRAIN_HALF) / spacing)), j1 = Math.min(lastY, Math.floor((area[3] + TERRAIN_HALF) / spacing));
+    const first = Math.ceil((plate.cx - plate.half - ORIGIN) / spacing);
+    const last = Math.floor((plate.cx + plate.half - ORIGIN) / spacing) - 1;
+    const firstY = Math.ceil((plate.cy - plate.half - ORIGIN) / spacing);
+    const lastY = Math.floor((plate.cy + plate.half - ORIGIN) / spacing) - 1;
+    const i0 = Math.max(first, Math.floor((area[0] - ORIGIN) / spacing)), i1 = Math.min(last, Math.floor((area[2] - ORIGIN) / spacing));
+    const j0 = Math.max(firstY, Math.floor((area[1] - ORIGIN) / spacing)), j1 = Math.min(lastY, Math.floor((area[3] - ORIGIN) / spacing));
     for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
-      const cx = -TERRAIN_HALF + (i + 0.5) * spacing, cy = -TERRAIN_HALF + (j + 0.5) * spacing;
+      const cx = ORIGIN + (i + 0.5) * spacing, cy = ORIGIN + (j + 0.5) * spacing;
       const density = field.forestAt(cx, cy);
       if (density < 0.04 || cellHash(i, j, 1) > density * 0.92) continue;
       const x = cx + (cellHash(i, j, 2) - 0.5) * spacing * 0.9, y = cy + (cellHash(i, j, 3) - 0.5) * spacing * 0.9;
@@ -63,8 +65,8 @@ const cellsOf = (discs: readonly Disc[]): Set<number> => {
 
 /** THE PAINTED COVERS SWEPT CELL BY CELL (`coverSweep.ts`): the same places the whole sweep laid, at a cell's cost */
 describe('the painted covers swept cell by cell', () => {
-  // One wood in a plate, one across the edge between two plates (x = 1024), one far off.
-  const discs: Disc[] = [{ x: 200, y: -150, r: 70 }, { x: 1024, y: 300, r: 50 }, { x: -3000, y: 2500, r: 40 }];
+  // One wood in a plate, one across the edge between two plates (x = 2,000: `world/bounds.ts`, the plates' edges on multiples of PLATE_SIZE), one far off.
+  const discs: Disc[] = [{ x: 200, y: -150, r: 70 }, { x: PLATE_SIZE, y: 300, r: 50 }, { x: -3000, y: 2500, r: 40 }];
 
   it('lays the same trees as the whole sweep did, the plates\' edges included', () => {
     const field = fieldOf(discs, null);
@@ -96,7 +98,7 @@ describe('the painted covers swept cell by cell', () => {
     };
     const many = Array.from({ length: 400 }, (_, k) => ({ x: -4000 + (k % 20) * 400, y: -4000 + Math.floor(k / 20) * 400, r: 90 }));
     expect(asked(many)).toBe(asked([many[0]!]));
-    // A 64 m cell: some 7 x 7 trees' lattice, 28 x 28 bushes', 21 x 21 stones'.
+    // A 50 m cell (`candidateKeep.ts` KEEP_CELL): some 5 x 5 trees' lattice, 21 x 21 bushes', 16 x 16 stones'.
     expect(asked(many)).toBeLessThan(1_500);
   });
 
@@ -149,7 +151,9 @@ describe('the rivers\' stones plate by plate', () => {
   };
 
   it('never puts a keep cell across a plate\'s edge', () => {
-    expect((PLATE_SIZE / 2) % KEEP_CELL).toBe(0);
+    // The plates' edges on multiples of PLATE_SIZE (`world/bounds.ts`), the keep cells' on multiples of KEEP_CELL.
+    expect(PLATE_SIZE % KEEP_CELL).toBe(0);
+    for (const plate of platesOver([-3 * PLATE_SIZE, -2 * PLATE_SIZE, 4 * PLATE_SIZE, 5 * PLATE_SIZE]).map(plateRegion)) expect((plate.cx - plate.half) % KEEP_CELL === 0).toBe(true);
   });
 
   it('sweeps a plate come in over its own water, in its own cells only', () => {

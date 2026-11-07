@@ -7,7 +7,6 @@ import { layCity } from '@editor/cityGenerator';
 import type { SceneMaterials } from '@render/materials';
 import { marksRoadSection } from '@render/mesh/roadEdges';
 import { SurfaceInputs } from '@render/roadSurfaceInputs';
-import { FOOTWAY_EDGE_CELL } from '@render/roadSurfaceReads';
 import { buildRoadSurfaces, type SurfaceReuse } from '@render/roadSurfaces';
 import { DEFAULT_CITY, planCity } from '@world/cityGen/plan';
 import { RoadDoc } from '@world/doc';
@@ -16,7 +15,7 @@ import { Network } from '@world/network';
 import { m } from '@world/units';
 
 /** THE ROAD SURFACES' INPUTS HELD ROUND THE VIEW READ AS THE WHOLE MAP DERIVED (`roadSurfaceInputs.ts` `InputResidency`): every tile a
- *  build visits reads the same rings, digests and colours, whatever was let go before; an edit makes dirty every tile it made dirty. */
+ *  build visits reads the same rings and digests, whatever was let go before; an edit makes dirty every tile it made dirty. */
 
 /** Every tile of every pass read off both, the held one woken tile by tile as a build visits them. */
 function sameReads(whole: SurfaceInputs, held: SurfaceInputs): number {
@@ -32,7 +31,6 @@ function sameReads(whole: SurfaceInputs, held: SurfaceInputs): number {
       if (!known.has(key)) continue;
       const a = whole.reachOf(id, key), b = held.reachOf(id, key);
       expect(b.digest).toBe(a.digest);
-      expect(b.colours).toEqual(a.colours);
       tiles++;
     }
   }
@@ -66,7 +64,7 @@ function reuseFor(elevation: () => RoadElevation, inputs: SurfaceInputs, eye?: {
   return {
     tiles: new Map(), passes: new Map(), withinMoved: [],
     dependsOn: (minX, minY, maxX, maxY) => elevation().digest(minX, minY, maxX, maxY),
-    paint: new Map(), chunks: new Map(), inputs,
+    chunks: new Map(), inputs,
     ...(eye ? { inputsEye: () => eye } : {}),
   };
 }
@@ -119,13 +117,13 @@ describe('road surface inputs held round the view', () => {
     expect(held.residentBytes).toBe(0);
     expect(sameReads(whole, held)).toBeGreaterThan(50);
     expect(held.cells!.work.evicted).toBeGreaterThan(0);
-    // The footways' outlines a tile's build reads round it.
+    // What a part's build reads round it: its piece's box (`SurfaceInputs.rectOf`, where its ground and heights are read), nothing of the pieces
+    // round it (a piece is meshed from its own shapes alone, `roads/pieceMesh.ts`; the footways' outlines the verge read round a tile went with it).
+    let parts = 0;
     for (const { id } of whole.passList()) {
-      for (let x = -m(500); x < m(500); x += FOOTWAY_EDGE_CELL * 7) {
-        const key = (Math.floor(x / FOOTWAY_EDGE_CELL) + 32768) * 65536 + (Math.floor(x / (2 * FOOTWAY_EDGE_CELL)) + 32768);
-        expect(held.footwayEdges(id, key)).toEqual(whole.footwayEdges(id, key));
-      }
+      for (const key of whole.tileKeys(id)) { expect(held.rectOf(key)).toEqual(whole.rectOf(key)); parts++; }
     }
+    expect(parts).toBeGreaterThan(50);
     // Back to the view: what is held is what is round the eye.
     held.keepNear({ x: 0, y: 0 });
     const near = held.residentBytes;

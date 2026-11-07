@@ -11,7 +11,12 @@ describe('the shaders skip what weighs nothing', () => {
   });
   it('roads: the close-up detail read only where it weighs, with the derivatives taken outside the branch (VIA-05)', () => {
     const src = readFileSync('src/render/mesh/detailLayer.ts', 'utf8');
-    expect(src).toMatch(/vec2 detailDx = dFdx\(detailUv\), detailDy = dFdy\(detailUv\);\s*if \(detailW > 0\.0\) \{/);
+    // Read where the road material and the structures' layers read it (`mesh/roadEdges.ts` ROAD_MAP, applyRoadLayers): every read guarded so.
+    const reads = readFileSync('src/render/mesh/roadEdges.ts', 'utf8');
+    // The derivatives right before the guarded read; the road material's own read also inside its `#ifdef ROAD_DETAIL` (a batch's material has none, `roadEdges.ts`).
+    const guarded = reads.match(/vec2 detailDx = dFdx\(detailUv\), detailDy = dFdy\(detailUv\);\s*(?:#ifdef ROAD_DETAIL\s*)?if \(detailW > 0\.0\) \{/g) ?? [];
+    expect(guarded.length).toBeGreaterThan(0);
+    expect(guarded.length).toBe((reads.match(/vec2 detailDx = /g) ?? []).length);
     expect(src).not.toMatch(/texture2D\(tex,/);
     expect(src).toMatch(/textureGrad\(tex, uv, dx, dy\)/);
   });

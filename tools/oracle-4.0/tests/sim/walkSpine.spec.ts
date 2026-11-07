@@ -7,7 +7,7 @@ import { m } from '@world/units';
 import type { WalkGraph, Walkway } from '@world/walkways';
 import { SimWorld } from '@sim/world';
 import { step } from '@sim/pipeline';
-import { createAgentWalkEngine, inspectAgentWalkers, ParkedZoneIndex, route, walkWork } from '@sim/agents/walk';
+import { LOOK, ZONE_CELL, createAgentWalkEngine, inspectAgentWalkers, ParkedZoneIndex, route, walkWork } from '@sim/agents/walk';
 import { ARCHETYPES } from '@sim/vehicles/archetypes';
 import { makeDriver } from '@sim/vehicles/driver';
 import { createVehicle, type Vehicle, type VehicleId } from '@sim/vehicles/state';
@@ -121,7 +121,7 @@ describe('hailable reads the walkers near the lane', () => {
 // ------------------------------------------------------------ parked cars' zones
 
 interface Zone { x0: number; y0: number; x1: number; y1: number; discs: { x: number; y: number; r: number }[] }
-const LOOK = m(8), ZONE_CELL = m(16);
+// The reach and the cell of the walk itself (`walk.ts`), never copies: the reference files by the same cells the index does.
 /** The old `parkedZone` and `fileZones` (walk.ts before 2026-10-14): every parked car filed again. */
 function oldZone(car: Vehicle): Zone {
   const f = car.free!;
