@@ -89,6 +89,17 @@ def failures(ctx):
     tests["a proof must reach the finding"] = not chained([step], "c")
     tests["a proof must hold together"] = not chained([step, {"from": "x", "to": "c", "file": "f", "line": 1}], "c")
     tests["a good proof passes"] = chained([step], "b")
+    from . import oracle
+    text = {"a.gd": 'var x = t.get("used")\nvar y = 1\n', "b.json": "{}\n"}
+    code = oracle.Code(text)
+    finding = {"file": "b.json", "line": 1, "category": "no_reader", "unit": "k", "detail": {"key": "used"}, "path": [{"file": "a.gd", "line": 1, "kind": "x"}], "places": []}
+    tests["precision refutes a key the code reads"] = oracle.no_reader(code, finding) is False
+    tests["precision confirms a key nobody names"] = oracle.no_reader(code, {**finding, "detail": {"key": "gone"}}) is True
+    tests["precision sees no loop where there is none"] = oracle.has_loop(code, {**finding, "file": "a.gd"}) is False
+    tests["precision refuses a kind that is often wrong"] = not oracle.judged({"x": (5, 5, 0)})[0]
+    tests["precision refuses a kind it cannot decide"] = not oracle.judged({"x": (1, 0, 9)})[0]
+    tests["precision refuses an empty sample"] = not oracle.judged({})[0]
+    tests["precision accepts a good sample"] = oracle.judged({"x": (39, 1, 0)})[0]
     from .checks_limits import explodes
     tests["a trace of nearly everything is refused"] = explodes([90], 100)
     tests["no trace at all is refused"] = explodes([], 100)

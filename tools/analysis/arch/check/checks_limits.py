@@ -1,7 +1,5 @@
 """Checks of what the program must not do: a trace that gives back the whole program, a parameter of an algorithm that moves the result."""
-from .. import atoms, layers
-from ..pipeline import analyse
-from .checks_compare import notes
+from .. import atoms, groups, layers
 
 WHOLE = 0.5
 SAMPLE = 32
@@ -28,21 +26,21 @@ def closure(ctx):
                                                                 "largest_reachable_units": max((r[2] for r in rows), default=0), "units": len(graph.units)}}
 
 
-def _partition(a):
-    return sorted(sorted(g["members"]) for g in a["groups"])
+def _partition(found):
+    return sorted(sorted(g["members"]) for g in found)
 
 
 def inert(ctx):
-    """R3: what is left of the parameters of an algorithm, moved. The map and the marks must not notice."""
-    run, plain = ctx.plain()
-    base, marks = _partition(plain), notes(plain)
+    """R3: what is left of the parameters of an algorithm, moved. Only the tree of the map reads it, and every mark follows from the map."""
+    _, plain = ctx.plain()
+    base = _partition(plain["groups"])
     out = {}
-    for name, value in (("PRECISION", atoms.PRECISION - 1), ("PRECISION", atoms.PRECISION + 1)):
-        old = getattr(atoms, name)
-        setattr(atoms, name, value)
+    for value in (atoms.PRECISION - 1, atoms.PRECISION + 1):
+        old = atoms.PRECISION
+        atoms.PRECISION = value
         try:
-            moved = analyse(run)
+            found = groups.discover(plain["atoms"])[0]
         finally:
-            setattr(atoms, name, old)
-        out[f"{name}={value}"] = {"map": _partition(moved) == base, "marks": notes(moved) == marks}
-    return {"pass": bool(out) and all(all(v.values()) for v in out.values()), "detail": out}
+            atoms.PRECISION = old
+        out[f"PRECISION={value}"] = _partition(found) == base
+    return {"pass": bool(out) and all(out.values()), "detail": out}

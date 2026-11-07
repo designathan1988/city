@@ -14,6 +14,8 @@ HEAD_COMMENT = re.compile(r"\A\s*(?://|#|/\*|\"\"\")\s*([^\n]+)")
 CODE = {"json", "csv", "cpp", "cc", "cxx", "c", "h", "hh", "hpp", "hxx", "inl", "gd", "gdshader", "gdshaderinc", "py", "ts", "tsx", "js", "jsx", "mjs", "cjs", "sh", "tscn", "tres", "godot", "cfg", "cmake"}
 SPECIFIC = re.compile(r"[\w./\\-]*[/\\.][\w./\\-]+")
 
+HEADERS = (".h", ".hpp", ".hh", ".inl")
+
 
 class Roles:
     def __init__(self):
@@ -87,6 +89,18 @@ def _read_words(repo, tracked, cache):
     return {p: table[k] for p, k in keys.items()}
 
 
+def words_of_versions(repo, blobs, cache):
+    """Words and mentions of any list of blobs, by blob, each read once on some core."""
+    table = cache.table("words")
+    need = sorted({(repo.content_id(b), b) for b in blobs if repo.content_id(b) not in table})
+    size = max(1, len(need) // (workers.cores() * 4))
+    spec = repo.spec()
+    for part in workers.each(_file_words, [(spec, need[i:i + size]) for i in range(0, len(need), size)]):
+        table.update(part)
+    workers.close()
+    return {b: table[repo.content_id(b)] for b in blobs}
+
+
 def classify(repo, tracked, history, cache):
     roles = Roles()
     names = set(tracked)
@@ -152,6 +166,23 @@ def _outward(files, roles):
     return {d: len(reaching[d]) / n for d, n in count.items()}
 
 
+def _named_from(files, roles):
+    """Who names each header of the repository, by its file name."""
+    headers = {f.rsplit("/", 1)[-1] for f in files if f.endswith(HEADERS)}
+    out = collections.defaultdict(set)
+    for path, found in roles.mentions.items():
+        for name in found & headers:
+            out[name].add(path)
+    return out
+
+
+def _used_whole(folder, files, named):
+    """Most of what it holds has a header named from outside: the lowest layer of a program knows nothing above it, as a library does, but a library is used in part."""
+    inside = [f.rsplit("/", 1)[-1] for f in files if f.startswith(folder + "/")]
+    used = {name.split(".")[0] for name in inside if any(not p.startswith(folder + "/") for p in named.get(name, ()))}
+    return len(used) * 2 > len({name.split(".")[0] for name in inside})
+
+
 def _foreign(roles, files, history):
     """A folder is not the project's when nothing in it lives on (it arrived and was left, and so did every folder inside it), and its
     files do not know the rest of the repository: a library, a copy, records of past work."""
@@ -176,8 +207,9 @@ def _foreign(roles, files, history):
     limit = natural_break(list(calm.values())) if len(calm) > 1 else 0.0
     together = _together(files, history)
     whole = natural_break([together[d] for d in calm]) if len(calm) > 1 else 0.0
+    named = _named_from(files, roles)
     for d in sorted(calm, key=lambda x: (x.count("/"), x)):
-        if calm[d] < limit and together[d] >= whole and not any(d.startswith(k + "/") for k in roles.foreign_dirs):
+        if calm[d] < limit and together[d] >= whole and not any(d.startswith(k + "/") for k in roles.foreign_dirs) and not _used_whole(d, files, named):
             roles.foreign_dirs.append(d)
     keep = tuple(k + "/" for k in roles.foreign_dirs)
     roles.foreign = {f for f in files if f.startswith(keep)} if keep else set()

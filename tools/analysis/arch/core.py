@@ -68,8 +68,8 @@ def text_of(data):
 
 
 def _here():
-    """The program's own folder, the real one also when a selfcheck runs from a copy of it."""
-    return os.environ.get("ARCH_SELF") or os.path.dirname(os.path.abspath(__file__))
+    """The program's own folder."""
+    return os.path.dirname(os.path.abspath(__file__))
 
 
 def own_prefixes(root):

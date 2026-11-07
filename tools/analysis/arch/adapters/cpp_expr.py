@@ -44,6 +44,29 @@ class Expressions:
                         return self.o.target(ref)
         return None
 
+    def receiver_field(self, c):
+        """The field a member call acts on: `field.push_back(x)`, never a field named among its arguments."""
+        head = next(iter(c.get_children()), None)
+        for _ in range(4):
+            if head is None or head.kind != K.MEMBER_REF_EXPR and head.kind != K.UNEXPOSED_EXPR:
+                break
+            inner = next(iter(head.get_children()), None)
+            if head.kind == K.MEMBER_REF_EXPR and inner is None:
+                return self.o.target(head.referenced) if head.referenced is not None and head.referenced.kind == K.FIELD_DECL else None
+            if head.kind == K.MEMBER_REF_EXPR and inner.kind in (K.MEMBER_REF_EXPR, K.DECL_REF_EXPR) and inner.referenced is not None and inner.referenced.kind == K.FIELD_DECL:
+                return self.o.target(inner.referenced)
+            head = inner
+        return None
+
+    def direct_field(self, c):
+        """The field an initialiser is, when it is nothing but that field."""
+        while c is not None and (c.kind == K.UNEXPOSED_EXPR or (c.kind == K.CALL_EXPR and c.referenced is not None and c.referenced.kind == K.CONSTRUCTOR)):
+            kids = list(c.get_children())
+            c = kids[0] if len(kids) == 1 else None
+        if c is not None and c.kind == K.MEMBER_REF_EXPR and c.referenced is not None and c.referenced.kind == K.FIELD_DECL:
+            return self.o.target(c.referenced)
+        return None
+
     def access(self, c, st, mode, ref):
         target = self.o.target(ref)
         line = c.location.line
@@ -63,6 +86,11 @@ class Expressions:
                 self.reference(c, st, mode, ref)
             for k in c.get_children():
                 self.expr(k, st, MUTATE if mode != READ else READ)
+        elif kind == K.ARRAY_SUBSCRIPT_EXPR:
+            kids = list(c.get_children())
+            self.expr(kids[0], st, mode)
+            for k in kids[1:]:
+                self.expr(k, st, READ)  # what is written is the element: the index is only read
         elif kind == K.BINARY_OPERATOR or kind == K.COMPOUND_ASSIGNMENT_OPERATOR:
             self.binary(c, st)
         elif kind == K.UNARY_OPERATOR:
@@ -106,7 +134,7 @@ class Expressions:
         kids = list(c.get_children())
         name = c.binary_operator.name if c.kind == K.BINARY_OPERATOR else "AddAssign"
         if len(kids) == 2 and (name in ASSIGN or name in COMPOUND_ASSIGN):
-            self.expr(kids[0], st, WRITE)
+            self.expr(kids[0], st, WRITE if name in ASSIGN else MUTATE)
             self.expr(kids[1], st, READ)
             if kids[1].kind == K.LAMBDA_EXPR or kids[1].kind == K.UNEXPOSED_EXPR:
                 field = self.first_field(kids[0])
@@ -125,7 +153,7 @@ class Expressions:
         kids = list(c.get_children())
         if head in (b"++", b"--") or tail in (b"++", b"--"):
             for k in kids:
-                self.expr(k, st, WRITE)
+                self.expr(k, st, MUTATE)
             return
         if head[:1] == b"&" and kids:
             ref = kids[0].referenced

@@ -8,6 +8,8 @@ K = ci.CursorKind
 ByRef = ci.TypeKind.LVALUEREFERENCE
 ByPointer = ci.TypeKind.POINTER
 
+KEYED = {"map", "set"}  # a table asked by key does not walk what it holds
+
 
 def _mutable_param(param):
     t = param.type
@@ -83,8 +85,12 @@ def call(body, c, st):
             callee = o.target(template)
         if ref.kind == K.CONSTRUCTOR and c.extent.start.offset == (args[0].extent.start.offset if args else -1):
             kind = "convert"
+        # A call leaves the program only when its body is not here: what a header defines is compiled in, and costs what a call of ours costs.
+        crosses = callee.startswith("ext:") and ref.get_definition() is None and _template_of(ref) is None and _template_of(ref.semantic_parent) is None and not o.of_the_language(ref)
+        if crosses:
+            extra["crosses"] = True
         body.edge(st, kind, callee, line, depth=st.depth, locks=st.locks, **extra)
-        if callee.startswith("ext:"):
+        if crosses:
             body.f.cost(st.unit, "boundary", body.file, line, st.depth, st.locks, api=callee[4:])
         hints(body, st, line, callee, callee_name, c)
     params = list(ref.get_arguments()) if ref is not None and ref.kind in (K.CXX_METHOD, K.FUNCTION_DECL, K.CONSTRUCTOR, K.FUNCTION_TEMPLATE) else []
@@ -151,11 +157,12 @@ def hints(body, st, line, callee, name, c):
         return
     words = set(words_of(name))
     indexed = callee.endswith("operator[]") and "map" in words_of(callee[4:].split(".")[0])
+    field = body.receiver_field(c) or ""
     if words & GROW_WORDS or indexed:
-        body.f.cost(st.unit, "grow", body.file, line, st.depth, st.locks, api=callee[4:], field=body.first_field(c) or "")
-    if words & {"erase", "clear", "pop", "remove", "shrink"}:
-        body.f.cost(st.unit, "shrink", body.file, line, st.depth, st.locks, api=callee[4:], field=body.first_field(c) or "")
-    if words & SEARCH_WORDS:
+        body.f.cost(st.unit, "grow", body.file, line, st.depth, st.locks, api=callee[4:], field=field, sized=bool(words & {"resize", "reserve", "assign"}))
+    if words & {"erase", "clear", "pop", "remove", "shrink", "swap", "assign", "resize"}:
+        body.f.cost(st.unit, "shrink", body.file, line, st.depth, st.locks, api=callee[4:], field=field)
+    if words & SEARCH_WORDS and not KEYED & set(words_of(callee[4:].split(".")[0])):
         body.f.cost(st.unit, "search", body.file, line, st.depth, st.locks, api=callee[4:])
     if words & {"sleep", "wait", "notify", "yield"}:
         body.f.cost(st.unit, "wait", body.file, line, st.depth, st.locks, api=callee[4:])

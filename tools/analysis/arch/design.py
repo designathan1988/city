@@ -3,6 +3,7 @@ sample at hand, and nothing here looks at a file size or a line count."""
 import collections
 import itertools
 import math
+import re
 
 from .core import natural_break, words_of
 
@@ -29,29 +30,45 @@ def _rare_targets(graph, nodes):
     reach = {n: {e.dst for e in graph.out.get(n, ()) if e.kind in ("call", "read", "write", "virtual") and not e.generic} for n in nodes}
     df = collections.Counter(t for ts in reach.values() for t in ts)
     cut = tail_cut(list(df.values()))
-    return {n: {t for t in ts if 1 < df[t] < cut} for n, ts in reach.items()}, df
+    return {n: {t for t in ts if 1 < df[t] < cut and t in graph.units} for n, ts in reach.items()}, df
 
 
 def scattered(k, group_of, layer_of):
-    """Units of one layer, in different groups, that do the same thing to the same things: one responsibility, several places. One finding per unit with
-    all who share it: the pairs are counted and forgotten one unit at a time, so what grows with the square of a repository is never kept."""
+    """Units of one layer, in different groups, that do the same thing to the same things: one responsibility, several places. What counts as the same
+    comes from the sample, the share of what two units touch that they touch together. One finding per unit with all who share it."""
     graph = k.graph
-    nodes = [n for n in k.atoms.nodes if graph.units[n]["kind"] in ("function", "method")]
+    nodes = [n for n in k.atoms.nodes if graph.units[n]["kind"] in ("function", "method") and n not in k.when.tests]
     rare, _ = _rare_targets(graph, nodes)
     by_target = collections.defaultdict(list)
     for n, ts in sorted(rare.items()):
         for t in sorted(ts):
             by_target[t].append(n)
-    out = []
+    near = {}
     for a, targets in sorted(rare.items()):
         met = collections.Counter(b for t in targets for b in by_target[t] if b != a)
         ua = graph.units[a]
         place = layer_of.get(group_of.get(a))
-        others = sorted(b for b, n in met.items() if n > 1 and graph.units[b]["parent"] != ua["parent"] and layer_of.get(group_of.get(b)) == place)
-        if others:
-            f = k.finding("scattered", a, ua["file"], ua["line"], others=len(others))
-            f["places"] = [(x, graph.units[x]["file"], graph.units[x]["line"]) for x in (a, *others)]
-            out.append(f)
+        near[a] = [(b, n / (len(targets) + len(rare[b]) - n)) for b, n in sorted(met.items())
+                   if n > 1 and graph.units[b]["parent"] != ua["parent"] and layer_of.get(group_of.get(b)) == place]
+    cut = natural_break([share for found in near.values() for _, share in found])
+    linked = {a: {b for b, share in found if share >= cut or cut == math.inf} for a, found in near.items()}
+    out = []
+    seen = set()
+    for a in sorted(linked):
+        if a in seen or not linked[a]:
+            continue
+        part, stack = {a}, [a]
+        while stack:
+            for b in linked.get(stack.pop(), ()):
+                if b not in part:
+                    part.add(b)
+                    stack.append(b)
+        seen |= part
+        head = min(part, key=lambda u: (k.atoms.rank.get(u, 0), u))
+        u = graph.units[head]
+        f = k.finding("scattered", head, u["file"], u["line"], others=len(part) - 1)
+        f["places"] = [(x, graph.units[x]["file"], graph.units[x]["line"]) for x in sorted(part)]
+        out.append(f)
     return out
 
 
@@ -60,7 +77,7 @@ def gods(k, group_of, churn):
     graph = k.graph
     members = collections.defaultdict(list)
     for uid, u in graph.units.items():
-        if u["kind"] in ("method", "function", "key", "row") and u["parent"] and uid not in k.atoms.shims:
+        if u["kind"] in ("method", "function", "key", "row") and u["parent"] and uid not in k.atoms.shims and uid not in k.when.tests:
             members[u["parent"]].append(uid)
     rows = {}
     for cls, ms in members.items():
@@ -80,18 +97,13 @@ def gods(k, group_of, churn):
         rows[cls] = (_entropy(reached), len(fan_in), len(fan_out), islands, change)
     if len(rows) < 2:
         return []
-    keys = list(rows)
-    score = {}
-    for i in range(5):
-        order = sorted(keys, key=lambda c: rows[c][i])
-        for r, c in enumerate(order):
-            score[c] = score.get(c, 1.0) * (1 + r / len(order))
-    cut = natural_break(list(score.values()))
+    cuts = [natural_break([r[i] for r in rows.values()]) for i in range(len(next(iter(rows.values()))))]
     out = []
-    for c in keys:
-        if score[c] >= cut and rows[c][0] > 0:
+    for c, row in rows.items():
+        # Most of the signs at once, each above the break of its own sample: one high number makes a busy class, not a god.
+        if sum(v >= cut for v, cut in zip(row, cuts)) * 2 > len(row) and row[0] > 0:
             u = graph.units[c]
-            f = k.finding("god", c, u["file"], u["line"], reach=round(rows[c][0], 3), fan_in=rows[c][1], fan_out=rows[c][2], islands=rows[c][3], change=rows[c][4])
+            f = k.finding("god", c, u["file"], u["line"], reach=round(row[0], 3), fan_in=row[1], fan_out=row[2], islands=row[3], change=row[4])
             f["places"] = [(m, graph.units[m]["file"], graph.units[m]["line"]) for m in sorted(members[c])]
             out.append(f)
     return out
@@ -123,39 +135,52 @@ def missing_owner(k, group_of):
 
 
 def _implicit_roles(k):
+    """Classes that answer the same messages with no base of ours in common, one finding per set of messages. Methods a macro stamps on one line are the
+    macro's, not a role; what nearly every class answers says nothing."""
     graph = k.graph
     methods = collections.defaultdict(set)
+    stamped = collections.Counter((u["file"], u["line"]) for u in graph.units.values() if u["kind"] == "method")
     for u in graph.units.values():
-        if u["kind"] == "method" and u["parent"] in graph.units and graph.units[u["parent"]]["kind"] == "class":
+        if u["kind"] == "method" and u["parent"] in graph.units and graph.units[u["parent"]]["kind"] == "class" and u["id"] not in k.when.tests and stamped[(u["file"], u["line"])] == 1:
             methods[u["parent"]].add(u["name"])
     df = collections.Counter(m for ms in methods.values() for m in ms)
     bases = collections.defaultdict(set)
     for e in graph.edges.values():
         if e.kind == "inherit":
             bases[e.src].add(e.dst)
-    pairs = collections.Counter()
-    by_method = collections.defaultdict(list)
     answered = {u["name"] for u in graph.units.values() if u["attrs"].get("callback")}
+    limit = tail_cut(list(df.values()))
+    by_method = collections.defaultdict(list)
     for c, ms in methods.items():
         for m in ms:
-            if 1 < df[m] and m not in answered:
+            if 1 < df[m] < limit and m not in answered:
                 by_method[m].append(c)
-    limit = tail_cut(list(df.values()))
+    shared = collections.defaultdict(set)
     for m, cs in by_method.items():
-        if df[m] < limit:
-            for a, b in itertools.combinations(sorted(cs), 2):
-                if not {x for x in bases[a] & bases[b] if x in graph.units}:
-                    pairs[(a, b)] += 1
-    if not pairs:
+        for a, b in itertools.combinations(sorted(cs), 2):
+            if not {x for x in bases[a] & bases[b] if x in graph.units}:
+                shared[(a, b)].add(m)
+    if not shared:
         return []
+    cut = min(tail_cut([len(v) for v in shared.values()]), max(len(v) for v in shared.values()))
+    roles = collections.defaultdict(set)
+    for (a, b), names in shared.items():
+        if len(names) > 1 and len(names) >= cut:
+            roles[tuple(sorted(names))] |= {a, b}
     out = []
-    for (a, b), n in sorted(pairs.items()):
-        if n > 1:
-            ua, ub = graph.units[a], graph.units[b]
-            f = k.finding("implicit_role", a, ua["file"], ua["line"], other=b, messages=n, names=sorted(methods[a] & methods[b]))
-            f["places"] = [(a, ua["file"], ua["line"]), (b, ub["file"], ub["line"])]
-            out.append(f)
+    for names, classes in sorted(roles.items()):
+        ordered = sorted(classes)
+        u = graph.units[ordered[0]]
+        f = k.finding("implicit_role", ordered[0], u["file"], u["line"], classes=len(ordered), messages=len(names), names=list(names))
+        f["places"] = [(c, graph.units[c]["file"], graph.units[c]["line"]) for c in ordered]
+        out.append(f)
     return out
+
+
+def _skeleton(k, u):
+    """A body with its names and numbers out: `a > b` and `a < b` are one shape and two rules, the operators tell them apart."""
+    lines = (k.run.texts.get(u["file"]) or "").split(chr(10))[u["line"] - 1:u["end"]]
+    return re.sub(r"\w+", "x", "".join("".join(lines).split()))
 
 
 def _repeated_rules(k, group_of):
@@ -163,10 +188,10 @@ def _repeated_rules(k, group_of):
     by_shape = collections.defaultdict(list)
     for n in k.atoms.nodes:
         u = graph.units[n]
-        if u["kind"] in ("function", "method") and u["shape"] and u["attrs"].get("statements", 0) > 1:
-            by_shape[u["shape"]].append(n)
+        if u["kind"] in ("function", "method") and u["shape"] and u["attrs"].get("statements", 0) > 1 and n not in k.when.tests:
+            by_shape[(u["shape"], _skeleton(k, u))].append(n)
     out = []
-    for shape, units in sorted(by_shape.items()):
+    for _, units in sorted(by_shape.items()):
         groups = {group_of.get(u, u) for u in units}
         if len(units) > 1 and len(groups) > 1:
             units = sorted(units)
@@ -186,8 +211,7 @@ def _repeated_decisions(k, group_of):
     counts = {f: len({group_of.get(u, u) for u in us}) for f, us in deciders.items()}
     if len(counts) < 2:
         return []
-    ordered = sorted(counts.values())
-    cut = ordered[len(ordered) // 2]
+    cut = min(tail_cut(list(counts.values())), max(counts.values()))
     out = []
     for f, n in sorted(counts.items()):
         if n >= cut and n > 1 and f in k.graph.units:

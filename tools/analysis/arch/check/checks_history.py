@@ -5,13 +5,16 @@ import glob
 import importlib
 import json
 import os
+import pickle
+import re
 import random
 import subprocess
 import sys
 
 from ..cache import Cache
-from ..core import IDENT, digest, natural_break, program_root, read_json
+from ..core import IDENT, digest, natural_break, program_root
 from ..pipeline import analyse, publish
+from .. import predict as predict_module
 from ..predict import rolling
 from ..repo import Repo, toplevel
 from ..scan import Run
@@ -21,15 +24,28 @@ from .checks_keys import _load, score_pairs
 
 SIGNIFICANT = 0.01
 TRIALS = 2000
+WHOLE_WORDS = re.compile(r"\w*\}\w+|\w+\{\w*")  # `{word}_tail`, `head_{word}`: the piece of a name a case makes up, never a name of the project
 
 
-def _predict(repo, run=None):
+def _predict(repo, out):
     from .. import roles
     tracked = repo.files()
     history = repo.history()
-    found, _ = roles.classify(repo, tracked, history, Cache("", False))
+    cache = Cache(os.path.join(out, "cache"), True)
+    # The whole replay depends on the commits and on this program: the same pair gives the same numbers.
+    known = cache.table("predicted")
+    with open(predict_module.__file__, encoding="utf8") as f:
+        key = digest(f.read() + (history[-1][0] if history else ""))
+    if key not in known:
+        known[key] = _replayed(repo, tracked, history, cache, roles)
+        cache.save()
+    return known[key]
+
+
+def _replayed(repo, tracked, history, cache, roles):
+    found, _ = roles.classify(repo, tracked, history, cache)
     keep = found.own(tracked) - found.index
-    rows, _, wins = rolling(repo, history, keep)
+    rows, _, wins = rolling(repo, history, keep, cache)
     rng = random.Random(1)
     versus_folder = beats(rows, 0, 1, rng, TRIALS)
     versus_chance = beats(rows, 0, 2, rng, TRIALS)
@@ -41,11 +57,11 @@ def _predict(repo, run=None):
 
 
 def prediction_jobs(ctx):
-    return [Job("prediction", "predicted", {"path": ctx.path}, "prediction")]
+    return [Job("prediction", "predicted", {"path": ctx.path, "out": os.path.join(ctx.home, "jobs", "prediction")}, "prediction")]
 
 
 def predicted(spec):
-    ok, detail = _predict(Repo(spec["path"]))
+    ok, detail = _predict(Repo(spec["path"]), spec["out"])
     return {"pass": ok, "detail": detail}
 
 
@@ -83,7 +99,7 @@ def cleanliness(ctx):
     for path in _program_files():
         with open(path, encoding="utf8") as f:
             text = f.read()
-        own.update(IDENT.findall(text))
+        own.update(IDENT.findall(WHOLE_WORDS.sub(" ", text)))
         if path.endswith(".py"):
             outside |= _libraries(text)
     df = {}
@@ -103,24 +119,35 @@ def cleanliness(ctx):
 
 
 def determinism_jobs(ctx):
-    """A second scan in a process of its own, another hash seed, no store and no shortcut of the compiler: the slow road, kept to prove the fast one."""
-    return [Job("from_nothing", "from_nothing", {"path": ctx.path, "out": os.path.join(ctx.base, "from_nothing")}, "determinism", True)]
+    """The small repository read end to end by two processes, other hash seeds: one with every shortcut of the compiler, one with none."""
+    from .checks_copies import _on_small
+    return [_on_small(ctx, "small_slow", "determinism_small", publish=os.path.join(ctx.base, "reports_slow"), want=(), env={"ARCH_PCH": "0", "PYTHONHASHSEED": "23"})]
 
 
-def from_nothing(spec):
-    entry = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "arch.py")
-    env = dict(os.environ, PYTHONHASHSEED="23", ARCH_OUT=spec["out"], ARCH_PCH="0")
-    subprocess.run((sys.executable, entry, "scan", "--no-cache", spec["path"]), capture_output=True, check=True, env=env)
-    return True
+REPORTS = ("queue.json", "groups.json", "levels.json", "coverage.json", "atoms.json")
+
+
+def _bytes_apart(first, second, names):
+    return [n for n in names if not filecmp.cmp(os.path.join(first, n), os.path.join(second, n), shallow=False)]
+
+
+def determinism_small(ctx, out):
+    ctx.ready.wait()
+    diff = _bytes_apart(os.path.join(ctx.base, "reports_fast"), os.path.join(ctx.base, "reports_slow"), (*REPORTS, "residual.json"))
+    return {"pass": not diff, "detail": {"differ": diff, "compared": len(REPORTS) + 1}}
+
+
+def second_seed_jobs(ctx):
+    """The analysis of the real graph again in another process, under another hash seed."""
+    from .checks_copies import _on_graph
+    job = _on_graph(ctx, "graph_seed", "determinism", "second_seed", out=os.path.join(ctx.base, "reports_seed"))
+    job.env = {"PYTHONHASHSEED": "23"}
+    return [job]
 
 
 def determinism(ctx, out):
-    """Two processes, different hash seeds, one through the run's store and its shortcuts, one with none: the same bytes."""
-    other = os.path.join(ctx.base, "from_nothing")
-    names = ("queue.json", "groups.json", "levels.json", "residual.json", "coverage.json", "atoms.json")
-    diff = [n for n in names if not filecmp.cmp(os.path.join(ctx.store, n), os.path.join(other, n), shallow=False)]
-    here, there = (set(read_json(os.path.join(f, "atoms.json"), [])) for f in (ctx.store, other))
-    return {"pass": not diff, "detail": {"differ": diff, "compared": len(names), "atoms_only_fast": sorted(here - there)[:5], "atoms_only_slow": sorted(there - here)[:5]}}
+    diff = _bytes_apart(ctx.home, os.path.join(ctx.base, "reports_seed"), REPORTS)
+    return {"pass": not diff, "detail": {"differ": diff, "compared": len(REPORTS)}}
 
 
 def _others(ctx):
@@ -133,27 +160,47 @@ def portability_jobs(ctx):
     """The same program, not one line edited, on the other repositories; the groups it found are written out to be read."""
     roots = [(toplevel(p), key) for p, key in _others(ctx)]
     ctx.state["others"] = [os.path.basename(r) for r, _ in roots]
-    return [Job(f"other_{os.path.basename(r)}", "other_repository", {"root": r, "key": key, "base": ctx.base}, "portability", True) for r, key in roots]
+    return [Job(f"other_{os.path.basename(r)}", "other_repository", {"root": r, "key": key, "base": ctx.base, "out": os.path.join(ctx.home, "jobs", "other_" + os.path.basename(r))}, "portability", True) for r, key in roots]
 
 
 def other_repository(spec):
-    root, base = spec["root"], spec["base"]
+    """Read once for a commit of theirs and a text of this program: the same pair gives the same answer."""
+    root, base, out = spec["root"], spec["base"], spec["out"]
     name = os.path.basename(root)
-    out = os.path.join(base, "other_" + name)
+    program = "".join(open(p, encoding="utf8").read() for p in sorted(_program_files(), key=os.path.basename))
+    head = subprocess.run(("git", "-C", root, "rev-parse", "HEAD"), capture_output=True, text=True, check=True).stdout
+    known = os.path.join(out, f"answer_{digest(program + head)}.pkl")
+    groups_file = os.path.join(base, f"groups_{name}.txt")
+    if os.path.exists(known):
+        with open(known, "rb") as f:
+            answer, text = pickle.load(f)
+        with open(groups_file, "w", encoding="utf8", newline="\n") as f:
+            f.write(text)
+        return answer
+    answer = _read_other(spec, root, base, out, name)
+    with open(groups_file, encoding="utf8") as f:
+        text = f.read()
+    with open(known, "wb") as f:
+        pickle.dump((answer, text), f)
+    return answer
+
+
+def _read_other(spec, root, base, out, name):
     os.environ["ARCH_OUT"] = out
-    run = Run(root, cache=False, quiet=True, out=out)
+    run = Run(root, cache=True, quiet=True, out=out)
     run.home = os.path.normpath(program_root())
     run.key = digest(run.repo.root)
     run.read()
     a = analyse(run)
     publish(run, a)
+    run.cache.save()
     with open(os.path.join(out, "groups.json"), encoding="utf8") as f:
         groups = json.load(f)
     top = sorted(groups, key=lambda g: (-g["units"], g["id"]))
     with open(os.path.join(base, f"groups_{name}.txt"), "w", encoding="utf8", newline="\n") as f:
         for g in top:
             f.write(f"{g['units']} units, layer {g['layer']}, {' '.join(g['words'][:8])}: {' '.join(list(g['files'])[:4])}\n")
-    good, numbers = _predict(Repo(root))
+    good, numbers = _predict(Repo(root), out)
     detail = {"groups": len(groups), "prediction": numbers, "read": f"groups_{name}.txt", "largest": [" ".join(g["words"][:5]) for g in top[:6]]}
     if spec["key"]:
         detail["features_key"] = score_pairs(run, a, _load(spec["key"]))

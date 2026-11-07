@@ -14,6 +14,7 @@ import psutil
 from ..core import read_json, write_json
 
 LOOK_EVERY = 1
+LOOKS_TO_TELL = 30
 SHOW_EVERY = 5
 CHILD_MEMORY = 400 * 2 ** 20
 BASE_MEMORY = 2 * 2 ** 30  # a task that reads this repository, until a first run says what it really took
@@ -58,7 +59,7 @@ class Supervisor:
         self.ctx, self.finished = ctx, finished
         self.base_memory = max(base_memory, BASE_MEMORY)
         self.waiting, self.closed, self.lock, self.shown = [], False, threading.Lock(), 0.0
-        self.record = os.path.join(os.path.dirname(ctx.base), "selfcheck_times.json")
+        self.record = os.path.join(ctx.home, "selfcheck_times.json")
         self.known = read_json(self.record, {})
         self.cpus = os.cpu_count() or 1
 
@@ -111,7 +112,7 @@ class Supervisor:
                 stacks = f.read()[-1500:]
         return f"{reason}: {stacks}"
 
-    def _look(self, r, now):
+    def _look(self, r, now, running):
         """Returns why a task must stop, if it must."""
         r.looked = now
         spent, memory = _measure(r.process.pid)
@@ -123,7 +124,9 @@ class Supervisor:
             r.late = True
             self.ctx.say(f"LATE  {r.job.name}: {round(now - r.started)} s, usually {usual} s; nothing waits for it")
         still = now - r.moved
-        if r.spent and still > r.moved - r.started:
+        # While others work, a process that sits still may only be waiting for the machine: a hang shows once nothing else moves after it did.
+        # Nor can a few looks tell a hang from a read of the disk, which costs no processor.
+        if r.spent and still > max(r.moved - r.started, LOOKS_TO_TELL * LOOK_EVERY) and not any(o is not r and o.moved > r.moved for o in running):
             return self._why_stopped(r, f"still for {round(still)} s after working {round(r.moved - r.started)} s")
         return None
 
@@ -165,7 +168,7 @@ class Supervisor:
                     running.remove(r)
                     self._end(r, None)
                 elif now - r.looked >= LOOK_EVERY:
-                    why = self._look(r, now)
+                    why = self._look(r, now, running)
                     if why:
                         self._stop(r)
                         r.process.wait()

@@ -26,9 +26,15 @@ class Run:
         self.cache = Cache(os.path.join(self.base, "cache"), cache)
         self.started = time.time()
 
+    def __copy__(self):
+        """A copy in memory keeps everything: what `__getstate__` leaves out is left out of the disk."""
+        other = object.__new__(type(self))
+        other.__dict__.update(self.__dict__)
+        return other
+
     def __getstate__(self):
         """A run handed to another process: what it knows, without its pipes."""
-        return {k: v for k, v in self.__dict__.items() if k not in ("repo", "cache")}
+        return {k: v for k, v in self.__dict__.items() if k not in ("repo", "cache", "graph", "names", "report")}
 
     def log(self, text):
         if not self.quiet:
@@ -57,8 +63,11 @@ class Run:
                 out |= self.roles.mentions[path]
         return out
 
-    def export(self, paths):
-        target = os.path.join(self.base, "work", digest(self.repo.root + self.repo.export_key()), "export")
+    def export_path(self, part):
+        return os.path.join(self.base, "work", digest(self.repo.root + self.repo.export_key() + part), "export").replace("\\", "/")
+
+    def export(self, paths, part):
+        target = self.export_path(part)
         ready = target + ".json"
         if not os.path.exists(ready):
             fresh = f"{target}.{os.getpid()}"
@@ -73,7 +82,7 @@ class Run:
             time.sleep(0.1)
         refused = read_json(ready)
         self.repo.overlay(target)
-        return target.replace("\\", "/"), refused
+        return target, refused
 
     def adapters(self):
         """The compiler's side starts first and runs while the others read; results join in a fixed order."""
@@ -88,7 +97,7 @@ class Run:
                 self.log(f"{name}: {len(result[0].units)} units, {len(result[0].edges)} edges")
 
             if "godot" not in off:
-                take("godot", godot_text.scan(repo, tracked, scope | {p for p in self.roles.sidecar if p.rsplit(".", 1)[0] in scope}))
+                take("godot", godot_text.scan(repo, tracked, scope | {p for p in self.roles.sidecar if p not in self.roles.foreign}))
             godot = info.get("godot", {})
             if "gdscript" not in off:
                 take("gdscript", gdscript.scan(repo, tracked, scope, self.api, godot.get("autoloads", {})))
@@ -112,18 +121,22 @@ class Run:
         return facts, info
 
     def _on_disk(self):
-        """What needs the files themselves: the compiler and the type checker."""
+        """What needs the files themselves, and only when something really must be parsed: the compiler and the type checker."""
         repo, tracked, scope, off = self.repo, self.tracked, self.scope, self.off
-        needs_disk = sorted(p for p in tracked if p.endswith(cpp_exts()) or p.endswith(typescript.EXT) or p.rsplit("/", 1)[-1] == "tsconfig.json")
-        needs_disk = [p for p in needs_disk if "cpp" not in off or not p.endswith(cpp_exts())]
         out = []
-        if needs_disk and not ({"cpp", "typescript"} <= off):
-            export, refused = self.export(_folders(needs_disk))
-            out.append(("refused", refused))
-            if "cpp" not in off:
-                out.append(("cpp", cpp.scan(repo, tracked, scope, export, self.cache, self.log)))
-            if "typescript" not in off:
-                out.append(("typescript", typescript.scan(repo, tracked, scope, export)))
+        if "cpp" not in off and any(p.endswith(cpp_exts()) for p in tracked):
+            folders = _folders(sorted(p for p in tracked if p.endswith(cpp_exts())))
+            ready = []
+
+            def ensure():
+                if not ready:
+                    ready.append(self.export(folders, "cpp"))
+                    out.append(("refused", ready[0][1]))
+
+            out.append(("cpp", cpp.scan(repo, tracked, scope, self.export_path("cpp"), ensure, self.cache, self.log)))
+        own = sorted(p for p in tracked if (p in scope and p.endswith(typescript.EXT)) or p.rsplit("/", 1)[-1] == "tsconfig.json")
+        if "typescript" not in off and any(p.endswith(typescript.EXT) for p in own):
+            out.append(("typescript", typescript.scan(repo, tracked, scope, self.export(_folders(own), "ts")[0])))
         return out
 
 

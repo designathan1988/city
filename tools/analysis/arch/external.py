@@ -7,6 +7,8 @@ from .core import words_of
 
 
 class Api:
+    values = frozenset()  # types that live in the caller's memory: a method of one crosses nothing
+
     """The engine's methods by name. Empty when the repository ships no description: then by-name positions are not known."""
 
     def __init__(self):
@@ -88,6 +90,7 @@ def load(repo, tracked):
         return api
     for c in pick["classes"]:
         api.add_class(c["name"], c.get("inherits", ""), c.get("methods", []), [*c.get("properties", []), *c.get("signals", []), *c.get("constants", [])])
+    api.values = {c["name"] for c in pick["builtin_classes"]}
     for c in pick["builtin_classes"]:
         api.add_class(c["name"], "", c.get("methods", []), [*c.get("members", []), *c.get("constants", [])])
     api.singletons = {s["name"] for s in pick["singletons"]}

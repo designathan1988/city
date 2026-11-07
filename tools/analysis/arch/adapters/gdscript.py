@@ -15,6 +15,7 @@ class Script:
     def __init__(self, uid, file, name, base):
         self.uid, self.file, self.name, self.base = uid, file, name, base
         self.funcs, self.vars, self.signals, self.setters, self.returns, self.types = {}, {}, {}, {}, {}, {}
+        self.constants = set()
 
 
 class Table:
@@ -96,6 +97,8 @@ def _members(parent, src, cls, scripts):
             name = node_text(n.child_by_field_name("name"), src)
             cls.vars[name] = f"{cls.uid}.{name}"
             cls.types[name] = _type_of(n, src)
+            if k == "const_statement":
+                cls.constants.add(name)
             if n.child_by_field_name("setget") is not None:
                 cls.setters[name] = f"{cls.uid}.{name}#set"
         elif k == "signal_statement":
@@ -128,8 +131,10 @@ def _emit_class(table, cls, parent_node, src, facts):
             text = node_text(n, src)
             api = table.api
             callback = name in api.virtual
+            taken = n.child_by_field_name("parameters")
             facts.unit(uid, "method", name, file, line, end, cls.uid, shape=shape(text, HASH_STYLE), statements=text.count("\n"), callback=callback,
-                       repeating=name in api.repeating, input=name in api.input)
+                       repeating=name in api.repeating, input=name in api.input, inputs=len(taken.named_children) if taken is not None else 0,
+                       signature=node_text(taken, src) if taken is not None else "")
             facts.define("method", name, uid)
             body = n.child_by_field_name("body")
             if body is not None:

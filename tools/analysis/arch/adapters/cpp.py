@@ -7,7 +7,7 @@ import os
 from .. import workers
 from ..core import digest
 from ..model import Facts
-from .cpp_build import HEADER, SOURCE, compile_units, compiler_of
+from .cpp_build import HEADER, SOURCE, compile_units, compiler_of, language_roots
 from . import cpp_plan
 from .cpp_plan import differ, owners, seen_from
 
@@ -53,7 +53,7 @@ def _parse(task):
         tu = index.parse(path, args=flags[:flags.index("-include-pch")], options=options)
     errors = [d for d in tu.diagnostics if d.severity >= 3]
     includes = [(relative(inc.source.name), relative(inc.include.name)) for inc in tu.get_includes()]
-    facts = walk(tu, relative, config, claim, any(here is None and there is not None for here, there in includes[1:] if includes))
+    facts = walk(tu, relative, config, claim, any(here is None and there is not None for here, there in includes[1:] if includes), language_roots(flags))
     deps = sorted({there for _, there in includes if there} | {rel})
     return facts, [(relative(d.location.file.name if d.location.file else None) or rel, d.location.line, d.spelling[:160]) for d in errors], deps, sorted(walked)
 
@@ -81,6 +81,7 @@ class _Pass:
         self.repo, self.tracked, self.export, self.own, self.table, self.world = repo, tracked, export, own, table, world
         self.results = {}
         self.reads = {}
+        self.ready = None
 
     def flags_of(self, config, rel, flags):
         """A unit that reads shared headers says so to the compiler; the key of a result never depends on it: what it sees is the same."""
@@ -103,17 +104,33 @@ class _Pass:
                 pending[key] = (config, rel, flags, sight, owned)
         order = sorted(pending, key=lambda k: (-len(pending[k][3]), pending[k][1], pending[k][0]))
         log(f"c++: {len(order)} of {len(tasks)} units to parse")
+        if order:
+            self.ready()
         jobs = [(pending[k][0], pending[k][1], self.flags_of(pending[k][0], pending[k][1], pending[k][2]), self.export, frozenset(self.own), frozenset(pending[k][4]), k) for k in order]
-        for key, result in workers.each(_keyed, jobs):
+        tenth = max(len(jobs) // 10, 1)
+        for done, (key, result) in enumerate(workers.each(_keyed, jobs), 1):
             self.table[key] = result
             self.results[(pending[key][0], pending[key][1], key)] = result
+            if done % tenth == 0:
+                log(f"c++: {done} of {len(jobs)} read")
+
+
+def _what_differs(repo, tracked, own, cache, first, second, names, world, ensure, export, config):
+    """Which of our files read differently in a second configuration: asked of the compiler once for a given text of the project."""
+    table = cache.table("differ")
+    stable = [f.replace(export, "") for f in (*first, "#", *second)]
+    key = digest("|".join((world, *stable, *sorted(repo.content_id(tracked[p]) for p in own))))
+    if key not in table:
+        ensure()
+        table[key] = differ(compiler_of(repo), first, second, cpp_plan.everything(names, export, config), repo, tracked, own)
+    return table[key]
 
 
 def _keyed(job):
     return job[-1], _parse(job[:-1])
 
 
-def scan(repo, tracked, scope, export, cache, log):
+def scan(repo, tracked, scope, export, ensure, cache, log):
     """Facts for the project's C and C++ code, or none when no build left compile commands."""
     sources = _files(tracked)
     if not sources:
@@ -129,10 +146,11 @@ def scan(repo, tracked, scope, export, cache, log):
         if rel in own:
             work[config].append((rel, flags))
     round_one = _Pass(repo, tracked, export, own, cache.table("cpp"), world)
-    # Shared headers pay when many units read them, and the road without them walks everything: the selfcheck compares the two byte by byte.
-    fast = os.environ.get("ARCH_PCH") != "0" and sum(len(u) for u in work.values()) >= 2 * workers.cores()
+    # Shared headers and a second configuration read by difference pay when many units read them; ARCH_PCH says otherwise, both ways, to compare the roads.
+    many = sum(len(u) for u in work.values()) >= 2 * workers.cores()
+    fast = os.environ.get("ARCH_PCH", "1" if many else "0") != "0"
     outside = cpp_plan.angled(repo, tracked, own)
-    plan, only, same = [], {}, {}
+    plan, only, same, shared_later = [], {}, {}, []
     units_total = 0
     first = None
     for config, units in sorted(work.items()):
@@ -143,16 +161,22 @@ def scan(repo, tracked, scope, export, cache, log):
         units_total += len(units)
         seen_names = {r: set().union(*(outside[f] for f in sight[r])) for r in rels}
         if fast:
-            alike = {r: seen_names[r] for r, f in units if tuple(f) == usual}
-            round_one.reads.update({(config, r): p for r, p in cpp_plan.shared(alike, list(usual), export, config).items()})
+            shared_later.append(({r: seen_names[r] for r, f in units if tuple(f) == usual}, list(usual), config))
         if first is None:
             first = (config, list(usual))
         elif fast:
-            names = set().union(*seen_names.values())
-            only[config] = differ(compiler_of(repo), first[1], list(usual), cpp_plan.everything(names, export, config), repo, tracked, own)
+            only[config] = _what_differs(repo, tracked, own, cache, first[1], list(usual), set().union(*seen_names.values()), world, ensure, export, config)
             same[config] = own - only[config]
             owned = {r: o & only[config] for r, o in owned.items()}
         plan += [(config, rel, flags, sight[rel], owned[rel]) for rel, flags in sorted(units) if owned[rel]]
+
+    def ready():
+        ensure()
+        for alike, flags, config in shared_later:
+            round_one.reads.update({(config, r): p for r, p in cpp_plan.shared(alike, flags, export, config).items()})
+        shared_later.clear()
+
+    round_one.ready = ready
     round_one.run(plan, log)
     late = _left_over(round_one.results, own, plan, included, only)
     round_one.run(late, log)

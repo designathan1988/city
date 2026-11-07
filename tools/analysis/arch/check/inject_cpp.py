@@ -14,6 +14,7 @@ def source(w, expect):
     a1, n1, f1, cc = case("B61"), case("B62"), case("B56"), case("B60")
     al, th, nt, vr = case("B59"), case("B74"), case("D7"), case("B8")
     bd, st, rf, bf, tc = case("B28"), case("B27"), case("B57"), case("B63"), case("test_code_shipped")
+    plain, slot = case("not:boundary_in_loop"), case("not:no_effect")
     g = {c: case(c) for c in ("grows_with_state", "nested_loops", "allocation", "lock_contention", "lock_held_work", "boundary_in_loop", "copy", "linear_search",
                               "redone_work", "memory_growth", "streaming", "loading", "serial_decode", "long_save", "thread_churn", "false_sharing", "no_effect",
                               "costly_option", "boundary_conversion")}
@@ -22,6 +23,7 @@ def source(w, expect):
 #include <atomic>
 #include <condition_variable>
 #include <functional>
+#include <outside_engine.h>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -94,7 +96,8 @@ struct World_{d1} : Base_{h1} {{
 
 	void {f1}_write() {{ {f1}_value = 1; }}
 	int {f1}_read() const {{ return {f1}_value; }}
-	void add(int v) {{ items.push_back(v); {g["memory_growth"]}_kept.push_back(v); {g["redone_work"]}_table.push_back(v); {g["costly_option"]}_mode = v; {g["no_effect"]}_dropped = v; }}
+	void add(int v) {{ items.push_back(v); {g["redone_work"]}_table.push_back(v); {g["costly_option"]}_mode = v; {g["no_effect"]}_dropped = v; }}
+	void {g["memory_growth"]}_take(int v) {{ {g["memory_growth"]}_kept.push_back(v); }}
 	void {al}_alter() {{ int &r = {al}_real; r = 2; }}
 	void {cc}_unlock() const {{ const_cast<World_{d1} *>(this)->{f1}_value = 3; }}
 	int {m1}_read() {{ int World_{d1}::*part = &World_{d1}::{m1}_slot; return this->*part; }}
@@ -108,7 +111,7 @@ struct World_{d1} : Base_{h1} {{
 	void {g["lock_contention"]}_tick() {{ std::lock_guard<std::mutex> hold({g["lock_contention"]}_gate); {f1}_value = 5; }}
 	void {nt}_wake() {{ {nt}_ready.notify_one(); }}
 	void submit(std::function<void()> job) {{ pending.push_back(job); }}
-	int {g["loading"]}_heavy() {{ int total = 0; for (int v : items) total += v; return total; }}
+	int {g["loading"]}_heavy() {{ int total = 0; for (int v : items) for (int u : items) total += u + v; return total; }}
 	int {g["serial_decode"]}_read() {{ return int(items.size()); }}
 	void {g["loading"]}_first() {{ {g["loading"]}_heavy(); }}
 	void {g["loading"]}_second() {{ {g["loading"]}_heavy(); }}
@@ -120,19 +123,24 @@ struct World_{d1} : Base_{h1} {{
 		{g["long_save"]}_save();
 		{g["thread_churn"]}_each();
 	}}
-	void {g["long_save"]}_save() {{ std::lock_guard<std::mutex> hold({g["long_save"]}_gate); {f1}_value = 6; }}
-	void {g["thread_churn"]}_each() {{ for (int i = 0; i < 3; i++) {{ std::thread t([]() {{}}); t.detach(); }} }}
+	void {g["long_save"]}_save() {{ std::lock_guard<std::mutex> hold({g["long_save"]}_gate); for (int v : items) {f1}_value = v; }}
+	void {g["thread_churn"]}_each() {{ for (int i : items) {{ (void)i; std::thread t([]() {{}}); t.detach(); }} }}
 	int {g["grows_with_state"]}_sum() {{ int total = 0; for (int v : items) total += v; return total; }}
 	int {g["nested_loops"]}_pairs() {{ int total = 0; for (int a : items) for (int b : items) total += a * b; return total; }}
 	int {g["redone_work"]}_sum() {{ int total = 0; for (int v : {g["redone_work"]}_table) total -= v; return total; }}
-	void {g["allocation"]}_make() {{ for (int i = 0; i < 3; i++) {{ std::vector<int> scratch; scratch.push_back(i); }} }}
+	void {g["allocation"]}_make() {{ for (int i : items) {{ std::vector<int> scratch; scratch.push_back(i); }} }}
 	int {g["lock_held_work"]}_clasp() {{ int total = 0; std::lock_guard<std::mutex> hold({g["lock_held_work"]}_gate); for (int v : items) total ^= v; return total; }}
-	int {g["boundary_in_loop"]}_ask() {{ int total = 0; for (int i = 0; i < 3; i++) total += int(std::to_string(i).size()); return total; }}
+	int {g["boundary_in_loop"]}_ask() {{ int total = 0; for (int i : items) total += engine_answer(i); return total; }}
 	int {g["copy"]}_grab() {{ std::vector<int> mine = items; return int(mine.size()); }}
-	int {g["linear_search"]}_scan() {{ int total = 0; for (int i = 0; i < 3; i++) total += int(std::count(items.begin(), items.end(), i)); return total; }}
+	int {g["linear_search"]}_scan() {{ int total = 0; for (int i : items) total += int(std::count(items.begin(), items.end(), i)); return total; }}
 	void {g["streaming"]}_start() {{ submit([this]() {{ {f1}_value = 7; }}); }}
 	int {g["costly_option"]}_pay() {{ int total = 0; if ({g["costly_option"]}_mode) {{ for (int v : items) total += v; }} return total; }}
-	void {g["boundary_conversion"]}_say() {{ std::string text = "x"; {c1}_grab("y"); (void)text; }}
+	void {g["boundary_conversion"]}_keep(EngineText l) {{ (void)l; }}
+	int {plain}_count() {{ int total = 0; for (int i : items) total += i + int(items.size()); return total; }}
+	int {slot}_at = 0, {slot}_table[4] = {{ 0, 0, 0, 0 }};
+	void {slot}_put() {{ {slot}_at = 1; {slot}_table[{slot}_at] = 2; }}
+	int {slot}_get() {{ return {slot}_table[0]; }}
+	void {g["boundary_conversion"]}_say() {{ EngineText here("x"); {g["boundary_conversion"]}_keep(here); std::string text = "x"; {c1}_grab("y"); (void)text; }}
 	void _process(double delta) override {{
 		(void)delta;
 		{g["grows_with_state"]}_sum();
@@ -147,6 +155,10 @@ struct World_{d1} : Base_{h1} {{
 		{g["streaming"]}_start();
 		{g["costly_option"]}_pay();
 		{g["boundary_conversion"]}_say();
+		{plain}_count();
+		{slot}_put();
+		{slot}_get();
+		{g["memory_growth"]}_take(1);
 		{g["false_sharing"]}_b = 1;
 		(void){vr}_MACRO(1);
 		(void){t1}_twice(2);

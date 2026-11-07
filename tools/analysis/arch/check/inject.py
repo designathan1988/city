@@ -14,7 +14,7 @@ from ..classes_more import more_classes
 from ..scan import Run
 from ..design import OWNER_KINDS
 from ..groups import leaves_of
-from . import inject_cpp, inject_design, inject_extra, inject_more, inject_script
+from . import inject_cpp, inject_design, inject_extra, inject_healthy, inject_more, inject_script
 
 
 def words(seed):
@@ -83,10 +83,12 @@ def build(seed, api, tracked, scope, avoid=(), define="", small=False):
     files[scene] = files[scene].replace(f'path="res://{stem}.gd"', f'uid="uid://{stem}" path="res://{stem}.gd"')
     expect.append(("D11", stem))
     inject_extra.extras(expect, stem)
-    out = {k: v.encode("utf8") for k, v in files.items()}
+    out = {k: v if isinstance(v, bytes) else v.encode("utf8") for k, v in files.items()}
     if not small:
         # What nearly everything uses cannot be made in a dozen files: in the real repository that class stands on the small one's proof.
         return out, [c for c in expect if c[0] != "B98"]
+    healthy = inject_healthy.files(w, expect, api, places, join, stem)
+    out.update({k: v.encode("utf8") for k, v in healthy.items()})
     word, code, profile = inject_extra.recorded(w, expect)
     out[join(cpp_home, f"{stem}_ran.cpp")] = code.encode("utf8")
     return out, expect, profile
@@ -133,6 +135,17 @@ def _made_profile(folder, tool, text):
     os.remove(source)
 
 
+OUTSIDE_ENGINE = """// A library that lives outside the repository: declared here, its bodies in a binary the program calls.
+#pragma once
+int engine_answer(int value);
+struct EngineText {
+	EngineText(const char *text);
+	EngineText(const EngineText &other);
+	~EngineText();
+};
+"""
+
+
 def fixture(folder, files, base_repo, api_path, define="", profile="", later=()):
     """A small repository holding only the injected files, built twice by the same compiler the real project uses, one build with a macro of
     its own. `later` is a list of file changes, one commit each."""
@@ -144,9 +157,13 @@ def fixture(folder, files, base_repo, api_path, define="", profile="", later=())
         shutil.rmtree(folder, onexc=writable)
     os.makedirs(folder)
     _write(folder, files)
+    library = os.path.join(os.path.dirname(folder), "outside_library").replace("\\", "/")
+    os.makedirs(library, exist_ok=True)
+    with open(os.path.join(library, "outside_engine.h"), "w", encoding="utf8") as f:
+        f.write(OUTSIDE_ENGINE)
     compiler = next(w[0] for v in _entries(base_repo).values() for w in map(_split_words, v) if w and "++" in os.path.basename(w[0]))
     for name, flag in (("build", ""), ("build_more", f" -D{define}" if define else "")):
-        entries = [{"directory": folder.replace("\\", "/"), "file": p, "command": f'"{compiler}" -std=c++17{flag} -c {p}'} for p in sorted(files) if p.endswith(".cpp")]
+        entries = [{"directory": folder.replace("\\", "/"), "file": p, "command": f'"{compiler}" -std=c++17{flag} -I{library} -c {p}'} for p in sorted(files) if p.endswith(".cpp")]
         os.makedirs(os.path.join(folder, name))
         with open(os.path.join(folder, name, "compile_commands.json"), "w", encoding="utf8") as f:
             json.dump(entries, f)
@@ -189,6 +206,9 @@ def judge(run, analysis, expect):
     for cid, word in expect:
         if cid == "feature":
             out[(cid, word)] = _one_feature(run, analysis, word)
+            continue
+        if cid.startswith("not:"):
+            out[(cid, word)] = not any(word in x for x in by_category.get(cid[4:], ()))
             continue
         if cid not in items:
             try:

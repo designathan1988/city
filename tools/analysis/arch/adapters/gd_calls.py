@@ -5,6 +5,9 @@ from ..model import GRAMMAR, NAME
 from .gd_body import READ, TEXT, WRITE, literal, node_text
 
 
+SIZING = {"push", "append", "insert", "resize", "pop", "erase", "remove", "clear"}
+
+
 def _args(n):
     a = next((c for c in n.named_children if c.type == "arguments"), None)
     return list(a.named_children) if a is not None else []
@@ -45,11 +48,14 @@ def call(b, n, st):
 
 
 def api_call(b, st, name, line, receiver):
-    """A call nothing in the project declares for this type: the engine's, when its description has the name, else a name to link."""
+    """A call nothing in the project declares for this type: the engine's, when its description has the name, else a name to link. A function of no class
+    is the language's; of a receiver no one can tell, it crosses only if no value type answers to that name, and it is told by no class it cannot be sure of."""
     if name in b.t.api.words:
-        owner = receiver or (b.t.api.methods.get(name, (("", [], "", False),))[0][0])
+        owners = {cls for cls, _, _, _ in b.t.api.methods.get(name, ())}
+        owner = receiver or (next(iter(owners)) if len(owners) == 1 else "")
         b.f.edge(st.unit, "call", f"ext:{owner}.{name}", b.file, line, GRAMMAR, depth=st.depth, locks=())
-        b.f.cost(st.unit, "boundary", b.file, line, st.depth, api=f"{owner}.{name}")
+        if receiver not in b.t.api.values if receiver else owners and not owners & b.t.api.values:
+            b.f.cost(st.unit, "boundary", b.file, line, st.depth, api=f"{owner}.{name}")
         if name == "new" and st.depth > 0:
             b.f.cost(st.unit, "alloc", b.file, line, st.depth, what="new")
     else:
@@ -59,14 +65,23 @@ def api_call(b, st, name, line, receiver):
 def arguments(b, args, st, method):
     """Each argument by what the engine says it means: a function given, a name of a method, signal, property, group or path."""
     roles = b.t.api.roles(method)
+    of_text = _of_text(b, method)
     for i, a in enumerate(args):
         role = roles.get(i, "")
-        if a.type in TEXT:
+        if a.type in TEXT and of_text:
+            b.f.site(b.file, b.line(a), a.start_point[1] + 1, "string")
+        elif a.type in TEXT:
             b.text(a, st, f"{method}#{i}:{role.split(':')[-1]}" if role else f"{method}#{i}")
         elif role == "callable":
             given(b, a, st, method)
         else:
             b.expr(a, st)
+
+
+def _of_text(b, method):
+    """A method only text answers to: what it is handed is text to compare with, never a name of anything."""
+    owners = b.t.api.methods.get(method, ())
+    return bool(owners) and all("string" in words_of(cls) for cls, _, _, _ in owners)
 
 
 def given(b, a, st, method):
@@ -123,6 +138,15 @@ def chain(b, n, st, mode, emit):
         elif p.type == "identifier":
             last = node_text(p, b.src)
             cls = member_field(b, cls, last, st, mode if final else READ, emit, line, p)
+        elif p.type == "attribute_subscript":
+            # `a.b[i]`: the field or key `b`, read like any other, then one of what it holds.
+            head = p.named_children[0]
+            last = node_text(head, b.src)
+            member_field(b, cls, last, st, mode if final else READ, emit, line, head)
+            cls = None
+            if emit:
+                for index in p.named_children[1:]:
+                    b.expr(index, st)
         elif emit:
             b.expr(p, st)
     return cls, last
@@ -136,6 +160,7 @@ def member_field(b, cls, name, st, mode, emit, line, node):
             uid, owner = b.t.lookup(cls, name, "signals")
     if uid is None:
         if emit:
+            b.f.ref("key", name, st.unit, b.file, line, "attribute")  # `table.key`: a value of data read by its name, as far as text can tell
             target = "ext:." + name if name in b.t.api.props else "name:property:" + name
             b.f.edge(st.unit, "write" if mode else "read", target, b.file, line, GRAMMAR if target[0] == "e" else NAME, depth=st.depth, locks=())
         return None
@@ -163,6 +188,37 @@ def member_call(b, cls, name, p, st, emit, line, head):
     return b.t.script_of(owner.returns.get(name, "")) if owner is not None else None
 
 
+def constant(b, x):
+    """A value written in the code: a number, a list spelled out, a constant of a class."""
+    if x.type in ("integer", "array"):
+        return True
+    if x.type not in ("identifier", "attribute"):
+        return False
+    words = node_text(x, b.src).split(".")
+    cls = b.t.script_of(words[0]) if len(words) == 2 else b.cls
+    uid, owner = b.t.lookup(cls, words[-1], "vars") if cls is not None and len(words) < 3 else (None, None)
+    return uid is not None and words[-1] in owner.constants
+
+
+def fixed(b, n, over):
+    """A loop whose count is written down: the same few steps whatever the state holds, straight-line work and not one more level of growth."""
+    if n.type != "for_statement":
+        return False
+    if over.type == "call" and node_text(over.named_children[0], b.src) == "range":
+        return all(constant(b, a) for a in _args(over))
+    return constant(b, over)
+
+
+def resizes(b, body, field):
+    """A `while` that grows or trims what its condition measures brings it to a size: it does not walk what it holds."""
+    name = field.rsplit(".", 1)[-1]
+    for x in b.walk(body):
+        parts = x.named_children if x.type == "attribute" else ()
+        if len(parts) > 1 and node_text(parts[0], b.src) == name and parts[-1].type == "attribute_call" and SIZING & set(words_of(node_text(parts[-1].named_children[0], b.src))):
+            return True
+    return False
+
+
 def signal_use(b, p, name, st, line, args):
     """`x.connect(f)` and `x.emit()`: the signal is whatever the chain named just before; by the shape of the engine's Signal type."""
     parent = p.parent
@@ -181,4 +237,4 @@ def signal_use(b, p, name, st, line, args):
             b.f.edge(st.unit, name, uid, b.file, line, GRAMMAR)
 
 
-__all__ = ["call", "chain", "WRITE"]
+__all__ = ["call", "chain", "fixed", "resizes", "WRITE"]

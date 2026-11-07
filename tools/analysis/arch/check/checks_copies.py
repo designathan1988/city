@@ -1,17 +1,18 @@
-"""Checks that compare copies of the repository with the plain scan: cases injected, adapters off, names changed, code rearranged, parts taken out. Each
-says which copies it needs, the supervisor reads them side by side, and the judgement here only compares what came back."""
+"""Checks that compare copies with what was read. Each property is proved once, where it is cheapest and still proves it: end to end on the small repository,
+which holds every class of link and cost and healthy code beside each; and on the graph of the real one, in memory, which is read a single time."""
 import collections
 import json
 import os
 import random
+import types
 
 from .. import external
-from ..core import own_prefixes
-from ..history import giant_cut
+from ..core import IDENT, own_prefixes
 from ..scan import ADAPTERS
 from . import inject, inject_extra, rearrange
-from .checks_compare import _ablation_judge, chained, nmi, same
+from .checks_compare import _ablation_judge, chained, nmi, notes, same, snapshot
 from .rename import Renamer, outside_vocabulary
+from .apart import groups_apart, marks_apart, touched_by, with_their_groups
 from .supervisor import Job
 
 BEST_OF_THE_PROTOTYPE = 0.88
@@ -25,17 +26,8 @@ def _seed():
     return int.from_bytes(os.urandom(4), "big")
 
 
-def _api_file(tracked):
-    """The description the project ships, for the small repository to read."""
-    for path in sorted(tracked):
-        name = path.rsplit("/", 1)[-1]
-        if path.endswith(".json") and "api" in name and name.startswith("extension"):
-            return path
-    return None
-
-
 def _api_copy(ctx, tracked):
-    picked = _api_file(tracked)
+    picked = next((p for p in sorted(tracked) if p.endswith(".json") and "api" in p.rsplit("/", 1)[-1] and p.rsplit("/", 1)[-1].startswith("extension")), None)
     if not picked:
         return None
     source = os.path.join(ctx.base, "api.json")
@@ -45,58 +37,74 @@ def _api_copy(ctx, tracked):
     return source
 
 
-def _fixture(ctx, seed):
-    tracked = ctx.repo.files()
-    api = external.load(ctx.repo, tracked)
-    define = f"ONLY_{seed}"
-    files, expect, profile = inject.build(seed, api, tracked, set(), define=define, small=True)
-    folder = os.path.join(ctx.base, f"fixture_{seed}")
-    inject.fixture(folder, files, ctx.repo, _api_copy(ctx, tracked), define, profile)
-    return folder, expect
+def small_repository(ctx):
+    """The small repository of this run, its cases drawn from a seed of this run, built once for every check that reads it."""
+    if "small" not in ctx.state:
+        seed = _seed()
+        tracked = ctx.repo.files()
+        api = external.load(ctx.repo, tracked)
+        define = f"ONLY_{seed}"
+        files, expect, profile = inject.build(seed, api, tracked, set(), define=define, small=True)
+        folder = os.path.join(ctx.base, "small")
+        inject.fixture(folder, files, ctx.repo, _api_copy(ctx, tracked), define, profile)
+        changes = []
+        first, second, third = inject_extra.evolved(inject.words(seed + 2), changes)
+        encoded = lambda t: {k: v.encode("utf8") if v is not None else None for k, v in t.items()}  # noqa: E731
+        evolving = os.path.join(ctx.base, "evolving")
+        inject.fixture(evolving, encoded(first), ctx.repo, _api_copy(ctx, tracked), later=(encoded(second), encoded(third)))
+        texts = {k: v.decode("utf8", "replace") for k, v in files.items()}
+        ctx.state["small"] = types.SimpleNamespace(seed=seed, folder=folder, expect=expect, evolving=evolving, changes=changes, texts=texts, api=api, tracked=tracked)
+    return ctx.state["small"]
 
 
-def _evolution(ctx, seed):
-    """Commits of a tree of its own: what a rename, a move and a split leave in the history."""
-    tracked = ctx.repo.files()
-    expect = []
-    first, second, third = inject_extra.evolved(inject.words(seed + 2), expect)
-    encoded = lambda t: {k: v.encode("utf8") if v is not None else None for k, v in t.items()}  # noqa: E731
-    folder = os.path.join(ctx.base, f"evolution_{seed}")
-    inject.fixture(folder, encoded(first), ctx.repo, _api_copy(ctx, tracked), later=(encoded(second), encoded(third)))
-    return folder, expect
+def _on_small(ctx, name, check, env=None, **spec):
+    s = small_repository(ctx)
+    return Job(name, "read_copy", {"folder": s.folder, "store": False, "out": os.path.join(ctx.base, "small_out"), **spec}, check, env=env)
 
 
-def _copy(ctx, name, check, heavy=False, **spec):
-    return Job(name, "read_copy", {"path": ctx.path, **spec}, check, heavy)
+def _on_graph(ctx, name, check, step, **spec):
+    return Job(name, "graph_steps", {"path": ctx.path, "run": ctx.frozen, "step": step, **spec}, check)
 
 
 def injection_jobs(ctx):
-    """Every case of every class and cost, in a small repository and in a copy of the real one, with a seed drawn now."""
-    seed = _seed()
-    small, expect = _fixture(ctx, seed)
-    history, changes = _evolution(ctx, seed)
-    run0, a0 = ctx.plain()
-    left_out = {run0.graph.units[u]["file"] for u in a0["when"].left_out}
-    files, cases = inject.build(seed + 1, run0.api, ctx.repo.files(), run0.scope, left_out, inject.define_of_one(ctx.repo))
-    ctx.state["seed"] = seed
-    return [_copy(ctx, "inject_small", "injection", folder=small, store=False, expect=expect, want=()), _copy(ctx, "inject_history", "injection", folder=history, store=False, expect=changes, want=()),
-            _copy(ctx, "inject_real", "injection", view={"add": files, "tag": f"inject{seed}"}, expect=cases, want=())]
+    """Every case of every class and cost, on the small repository, with a seed drawn now; healthy code beside each case must stay quiet."""
+    s = small_repository(ctx)
+    return [_on_small(ctx, "small_cases", "injection", expect=s.expect, want=("snapshot", "facts"), publish=os.path.join(ctx.base, "reports_fast"), env={"ARCH_PCH": "1", "PYTHONHASHSEED": "11"}),
+            Job("small_history", "read_copy", {"folder": s.evolving, "store": False, "out": os.path.join(ctx.base, "small_out"), "expect": s.changes, "want": ()}, "injection")]
+
+
+# Kinds that are a place in the sample's own tail or map: a case a few lines long is not in the tail of a real repository, by what the tail means. The small
+# repository, whose tail it is, proves them.
+AGAINST_THE_SAMPLE = ("feature", "texture_bandwidth", "not:texture_bandwidth", "shader_cost", "god", "implicit_role", "missing_owner", "repeated_decision", "not:repeated_rule")
+
+
+def injection_on_graph(ctx):
+    """The same cases in the middle of the real graph: found against the real distribution, not only among themselves."""
+    s = small_repository(ctx)
+    weighed = [c for c in s.expect if not (c[0][0] in "BD" and c[0][1:].isdigit())]
+    weighed = [c for c in weighed if c[0] not in AGAINST_THE_SAMPLE]
+    return [_on_graph(ctx, "graph_cases", "injection_graph", "injected", facts=os.path.join(ctx.base, "small_facts.pkl"), folder=s.folder, expect=weighed)]
 
 
 def injection(ctx, out):
     both = {}
-    for name in ("small", "history", "real"):
-        both.update({(name, *k): v for k, v in out(f"inject_{name}")["judged"].items()})
+    for name in ("small_cases", "small_history"):
+        both.update({(name, *k): v for k, v in out(name)["judged"].items()})
     missed = sorted(k for k, v in both.items() if not v)
-    failed = {k[1] for k in missed}
-    return {"pass": judge_injection(both), "detail": {"seed": ctx.state["seed"], "cases": len(both), "missed": missed[:80]}, "proved": sorted({k[1] for k in both} - failed)}
+    s = ctx.state["small"]
+    return {"pass": judge_injection(both), "detail": {"seed": s.seed, "cases": len(both), "healthy": sum(1 for k in both if k[1].startswith("not:")), "missed": missed[:80]}, "proved": sorted({k[1] for k in both} - {k[1] for k in missed})}
+
+
+def injection_graph(ctx, out):
+    found = out("graph_cases")["judged"]
+    missed = sorted(k for k, v in found.items() if not v)
+    return {"pass": judge_injection(found), "detail": {"cases": len(found), "missed": missed[:40]}}
 
 
 def ablation_jobs(ctx):
-    """Each adapter off: at least one injected case must go missing, and shared words must not bring it back. Never through a store."""
-    folder, expect = _fixture(ctx, _seed())
-    plain = dict(folder=folder, store=False, expect=expect, want=())
-    return [_copy(ctx, "ablation_none", "ablation", **plain)] + [_copy(ctx, f"ablation_{name}", "ablation", off=(name,), **plain) for name in ADAPTERS]
+    """Each adapter off: at least one case must go missing, and shared words must not bring it back."""
+    s = small_repository(ctx)
+    return [_on_small(ctx, "ablation_none", "ablation", expect=s.expect, want=())] + [_on_small(ctx, f"ablation_{name}", "ablation", off=(name,), expect=s.expect, want=()) for name in ADAPTERS]
 
 
 def ablation(ctx, out):
@@ -106,80 +114,93 @@ def ablation(ctx, out):
 
 
 def invariance_jobs(ctx):
-    """Every project word and path changed by a bijection: the map, the queue and the roots must come back identical."""
-    run, _ = ctx.plain()
+    """Every word and path changed by a bijection: read end to end on the small repository, whose text is renamed and compiled again."""
+    s = small_repository(ctx)
     project = set()
-    for words in run.roles.tokens.values():
-        project |= words
-    renamer = Renamer(project, outside_vocabulary(ctx.repo, run.tracked, run.roles, run.api))
-    ctx.state["words"] = len(renamer.forward)
-    return [_copy(ctx, "renamed", "invariance", heavy=True, store=False, view={"rename": renamer, "tag": "renamed"})]
+    for text in s.texts.values():
+        project |= set(IDENT.findall(text))
+    no_roles = types.SimpleNamespace(foreign=(), tokens={})
+    renamer = Renamer(project, outside_vocabulary(ctx.repo, s.tracked, no_roles, s.api))
+    return [_on_small(ctx, "small_plain", "invariance"), _on_small(ctx, "small_renamed", "invariance", view={"rename": renamer, "tag": "renamed"})]
 
 
 def invariance(ctx, out):
-    from .checks_compare import snapshot
+    a, b = out("small_plain"), out("small_renamed")
+    equal = same(a["snapshot"], b["snapshot"]) and a["errors"] == b["errors"]
+    return {"pass": equal and bool(a["snapshot"]["queue"]), "detail": {"causes": (len(a["snapshot"]["queue"]), len(b["snapshot"]["queue"])), "compile_errors": (a["errors"], b["errors"]), **_apart(a["snapshot"], b["snapshot"])}}
+
+
+def invariance_on_graph(ctx):
+    return [_on_graph(ctx, "graph_renamed", "invariance_graph", "renamed")]
+
+
+def invariance_graph(ctx, out):
     plain_run, plain = ctx.plain()
-    got = out("renamed")
-    left, right = snapshot(plain_run, plain), got["snapshot"]
-    errors = [len(plain_run.info.get("cpp", {}).get("errors", ())), got["errors"]]
-    equal = same(left, right) and errors[0] == errors[1]
-    detail = {"words": ctx.state["words"], "groups": (len(left["groups"]), len(right["groups"])), "causes": (len(left["queue"]), len(right["queue"])), "compile_errors": errors}
-    if not equal:
-        key = lambda q: json.dumps((q["cause"], q["places"]))  # noqa: E731
-        la, lb = {key(x) for x in left["queue"]}, {key(x) for x in right["queue"]}
-        ga, gb = {tuple(g) for g in left["groups"]}, {tuple(g) for g in right["groups"]}
-        detail.update(only_plain=len(la - lb), only_renamed=len(lb - la), groups_differ=(len(ga - gb), len(gb - ga)), same_order=left["order"] == right["order"],
-                      sample=(sorted(ga - gb)[:2], sorted(gb - ga)[:2], sorted(la - lb)[:2], sorted(lb - la)[:2]))
-    return {"pass": equal, "detail": detail}
+    left, got = snapshot(plain_run, plain), out("graph_renamed")
+    right = got["snapshot"]
+    return {"pass": same(left, right) and bool(left["queue"]), "detail": {"words": got["words"], "groups": (len(left["groups"]), len(right["groups"])), "causes": (len(left["queue"]), len(right["queue"])), **_apart(left, right)}}
+
+
+def _apart(a, b):
+    """What two snapshots disagree on, to be read."""
+    key = lambda q: json.dumps((q["cause"], q["places"]))  # noqa: E731
+    la, lb = {key(x) for x in a["queue"]}, {key(x) for x in b["queue"]}
+    ga, gb = {tuple(g) for g in a["groups"]}, {tuple(g) for g in b["groups"]}
+    return {"only_first": sorted(la - lb)[:2], "only_second": sorted(lb - la)[:2], "groups_apart": (len(ga - gb), len(gb - ga)), "same_order": a["order"] == b["order"], "group_sample": sorted(ga ^ gb)[:2]}
 
 
 def antimakeup_jobs(ctx):
     """Rearranging without separating responsibility must not move any mark."""
-    run, _ = ctx.plain()
-    ctx.state["views"] = rearrange.views(run)
-    return [_copy(ctx, f"makeup_{name}", "antimakeup", view=view, want=("notes",)) for name, view in ctx.state["views"].items()]
+    s = small_repository(ctx)
+    tokens = {p: set(IDENT.findall(t)) for p, t in s.texts.items()}
+    shape = types.SimpleNamespace(scope=set(s.texts), texts=s.texts, roles=types.SimpleNamespace(tokens=tokens))
+    ctx.state["views"] = rearrange.views(shape)
+    return [_on_small(ctx, "small_plain_marks", "antimakeup", want=("notes",))] + [_on_small(ctx, f"makeup_{name}", "antimakeup", view=view, want=("notes",)) for name, view in ctx.state["views"].items()]
+
+
+def _marks_moved(base, marks):
+    changed, added = collections.Counter(base) - collections.Counter(marks), collections.Counter(marks) - collections.Counter(base)
+    return sum(changed.values()), sum(added.values()), list(changed)[:3], list(added)[:3]
 
 
 def antimakeup(ctx, out):
-    from .checks_compare import notes
-    base = notes(ctx.plain()[1])
+    base = out("small_plain_marks")["notes"]
     detail = {}
     for name in ctx.state["views"]:
         marks = out(f"makeup_{name}")["notes"]
         detail[name] = marks == base
         if marks != base:
-            changed, added = collections.Counter(base) - collections.Counter(marks), collections.Counter(marks) - collections.Counter(base)
-            detail[name + "_diff"] = (sum(changed.values()), sum(added.values()), list(changed)[:3], list(added)[:3])
-    return {"pass": bool(detail) and all(v for k, v in detail.items() if not k.endswith("_diff")), "detail": detail}
+            detail[name + "_diff"] = _marks_moved(base, marks)
+    return {"pass": bool(detail) and bool(base) and all(v for k, v in detail.items() if not k.endswith("_diff")), "detail": detail}
+
+
+def antimakeup_on_graph(ctx):
+    return [_on_graph(ctx, "graph_rearranged", "antimakeup_graph", "rearranged")]
+
+
+def antimakeup_graph(ctx, out):
+    base, marks = notes(ctx.plain()[1]), out("graph_rearranged")["notes"]
+    return {"pass": marks == base and bool(base), "detail": {"marks": len(base), "moved": _marks_moved(base, marks) if marks != base else 0}}
 
 
 def incremental_jobs(ctx):
-    """What the store gives must be what nothing gives: a copy with files added, a header changed and a unit taken out, read through the store and
-    from zero, must come out identical. Without this every shortcut of the run would be a promise."""
-    run0, _ = ctx.plain()
-    files, _ = inject.build(_seed(), run0.api, ctx.repo.files(), run0.scope, define=inject.define_of_one(ctx.repo))
-    code = sorted(p for p in run0.scope if p.endswith(".cpp"))
-    headers = sorted(p for p in run0.scope if p.endswith(".h"))
-    changed = headers[len(headers) // 2]
-    edit = {changed: (run0.texts[changed] + "\ninline int changed_by_the_check() { return 2; }\n").encode("utf8")}
-    view = {"add": files, "edit": edit, "drop": {code[len(code) // 2]}, "tag": "both"}
-    return [_copy(ctx, "through_store", "incremental", view=view, want=("snapshot", "trace")), _copy(ctx, "through_nothing", "incremental", heavy=True, store=False, view=view, want=("snapshot", "trace"))]
+    """What the store gives must be what nothing gives: a copy with a file added, a header changed and a unit taken out. Without this every shortcut is a promise."""
+    s = small_repository(ctx)
+    header = next(p for p in sorted(s.texts) if p.endswith("_more.h"))
+    gone = next(p for p in sorted(s.texts) if p.endswith("_made.cpp"))
+    added = {header.rsplit("/", 1)[0] + "/added_by_the_check.cpp": b"// Added by the check.\nint added_by_the_check() { return 1; }\n"}
+    edit = {header: (s.texts[header] + "\ninline int changed_by_the_check() { return 2; }\n").encode("utf8")}
+    view = {"add": added, "edit": edit, "drop": {gone}, "tag": "both"}
+    return [Job("store_and_nothing", "incremental", {"folder": s.folder, "view": view, "out": os.path.join(ctx.base, "small_store")}, "incremental", env={"ARCH_PCH": "1"})]
 
 
 def incremental(ctx, out):
-    a, b = out("through_store"), out("through_nothing")
-    fast, full = a["snapshot"], b["snapshot"]
-    key = lambda q: json.dumps((q["cause"], q["places"]))  # noqa: E731
-    only_fast, only_full = {key(q) for q in fast["queue"]} - {key(q) for q in full["queue"]}, {key(q) for q in full["queue"]} - {key(q) for q in fast["queue"]}
-    return {"pass": same(fast, full) and bool(fast["queue"]), "detail": {"causes": (len(fast["queue"]), len(full["queue"])), "groups": (len(fast["groups"]), len(full["groups"])), "facts": (a["sizes"], b["sizes"]),
-                                                                         "graph": (a["graph"], b["graph"]), "only_store": sorted(only_fast)[:2], "only_nothing": sorted(only_full)[:2], **_where_apart(a["trace"], b["trace"])}}
-
-
-def _where_apart(a, b):
-    """Which units have other edges, and which groups another layer: where two reads of one thing stopped being the same."""
+    fast, full = out("store_and_nothing")
+    a, b = fast["trace"], full["trace"]
     edges = sorted(u for u in set(a["edges"]) | set(b["edges"]) if a["edges"].get(u) != b["edges"].get(u))
-    layers = sorted(u for u in set(a["layers"]) | set(b["layers"]) if a["layers"].get(u) != b["layers"].get(u))
-    return {"units_with_other_edges": (len(edges), edges[:6]), "groups_in_other_layers": (len(layers), layers[:6])}
+    units = sorted(u for u in set(a["units"]) | set(b["units"]) if a["units"].get(u) != b["units"].get(u))
+    return {"pass": same(fast["snapshot"], full["snapshot"]) and not edges and not units and bool(fast["snapshot"]["queue"]),
+            "detail": {"causes": (len(fast["snapshot"]["queue"]), len(full["snapshot"]["queue"])), "units_apart": units[:4], "edges_apart": edges[:4], **_apart(fast["snapshot"], full["snapshot"])}}
 
 
 def proofs(ctx):
@@ -197,49 +218,29 @@ def _answer_files(tracked, root):
 
 
 def contamination_jobs(ctx):
-    """A copy without the answer keys, their sources or the program must give what the plain scan gives on everything else."""
-    gone = _answer_files(ctx.repo.files(), ctx.repo.root)
-    ctx.state["gone"] = gone
-    return [_copy(ctx, "without_keys", "contamination", view={"drop": gone, "tag": "clean"}, want=("groups", "causes"))]
-
-
-def _changed_with(plain, gone):
-    """Units that shared a real commit with something dropped: taking a file out takes that evidence with it, and that is no contamination."""
-    h = plain["history"]
-    cut = giant_cut(h)
-    away = {lin.id for lin in h.lineages if any(n[0] in gone for n in lin.names)}
-    beside = set()
-    for changed in h.commits:
-        if len(changed) <= cut and away.intersection(changed):
-            beside.update(changed)
-    return {u for u, lin in plain["lineage"].items() if lin.id in beside}
-
-
-def _apart(groups, near):
-    """A map with what the dropped files touched taken out of it: what remains must not have moved. A group left with one unit is no group."""
-    kept = (tuple(sorted(set(g) - near)) for g in groups)
-    return {g for g in kept if len(g) > 1}
-
-
-def _marks_apart(causes, near):
-    """The marks of the causes that touch nothing dropped, children touched by it not counted."""
-    return {(i, commits, sum(1 for _, units in children if not near & set(units))) for i, commits, places, children in causes if not near & set(places)}
+    """Without the answer keys, their sources or the program, the rest must come out the same."""
+    ctx.state["gone"] = _answer_files(ctx.repo.files(), ctx.repo.root)
+    return [_on_graph(ctx, "graph_clean", "contamination", "clean", gone=sorted(ctx.state["gone"]))]
 
 
 def contamination(ctx, out):
     plain_run, plain = ctx.plain()
     gone = ctx.state["gone"]
-    got = out("without_keys")
-    graph = plain_run.graph
-    lost = {u for u, x in graph.units.items() if x["file"] in gone}
-    near = lost | {e.src for e in graph.edges.values() if e.dst in lost} | {e.dst for e in graph.edges.values() if e.src in lost}
-    near |= {e.dst for e in graph.edges.values() if e.src in near and e.conf < 1.0}  # a name that had a candidate there now means the others for sure
-    near |= _changed_with(plain, gone)
-    left, right = _apart((g["members"] for g in plain["groups"]), near), _apart(got["groups"], near)
-    mine = [(q["id"], q["commits"], [p["unit"] for p in q["places"]], q["children"]) for q in plain["queue"]]
-    causes_a, causes_b = _marks_apart(mine, near), _marks_apart(got["causes"], near)
-    equal = bool(left) and bool(causes_a) and left == right and causes_a == causes_b
-    return {"pass": equal, "detail": {"dropped": len(gone), "units_touching_them": len(near), "groups": (len(left), len(right)), "causes": (len(causes_a), len(causes_b)),
+    got = out("graph_clean")
+    touched = touched_by(plain_run, plain, gone, got["cut"])
+    near = with_their_groups(touched, [g["members"] for g in plain["groups"]] + got["groups"])
+    left, right = groups_apart((g["members"] for g in plain["groups"]), near), groups_apart(got["groups"], near)
+    mine = [(q["id"], q["commits"], q["reach"], q["score"], [p["unit"] for p in q["places"]], q["children"]) for q in plain["queue"]]
+    # The same goes for a cause: one place of it touched, and the others are what is left of a cause that was touched.
+    near = with_their_groups(near, [c[4] for c in mine] + [c[4] for c in got["causes"]])
+    causes_a, causes_b = marks_apart(mine, near), marks_apart(got["causes"], near)
+    units = plain_run.graph.units
+    held = {units[m]["file"] for g in plain["groups"] for m in g["members"] if m in units} | {p["file"] for q in plain["queue"] for p in q["places"]}
+    # A role of a file in no group and no cause reaches nothing, and a folder that lost files is a folder the drop touched.
+    kept = lambda v: sorted(f for f in set(v) & held if not any(g.startswith(f.rsplit("/", 1)[0] + "/") for g in gone))  # noqa: E731
+    moved = {k: kept(v)[:5] for k, v in got["roles_moved"].items() if kept(v)}
+    equal = bool(left) and bool(causes_a) and left == right and causes_a == causes_b and not moved
+    return {"pass": equal, "detail": {"dropped": len(gone), "units": len(plain_run.graph.units), "units_touching_them": len(touched), "with_their_groups": len(near), "groups": (len(left), len(right)), "causes": (len(causes_a), len(causes_b)), "roles_moved": moved, "prose_moved": sum(len(v) for v in got["roles_moved"].values()),
                                       "groups_differ": len(left ^ right), "causes_differ": len(causes_a ^ causes_b), "sample": sorted(left ^ right)[:3], "causes_sample": sorted(causes_a ^ causes_b, key=str)[:3]}}
 
 
@@ -254,11 +255,13 @@ def stability_jobs(ctx):
     alone = {f for f in files if all(base.get(u["id"]) == victim["id"] for u in plain_run.graph.units.values() if u["file"] == f and u["id"] in base)}
     cut = random.Random(0).randint(2, 6)
     ctx.state["taken"] = (len(alone or files), cut)
-    return [_copy(ctx, "feature_out", "stability", view={"drop": alone or files, "tag": "nofeature"}, want=("labels",)),
-            _copy(ctx, "commits_out", "stability", view={"last_commits_out": cut, "tag": f"past{cut}"}, want=("labels",))]
+    return [_on_graph(ctx, "graph_feature", "stability", "feature_out", gone=sorted(alone or files)), _on_graph(ctx, "graph_commits", "stability", "commits_out", cut=cut)]
 
 
 def stability(ctx, out):
     base = {m: g["id"] for g in ctx.plain()[1]["groups"] for m in g["members"]}
-    marks = {name: round(nmi(base, out(name)["labels"]), 4) for name in ("feature_out", "commits_out")}
+    marks = {name: round(nmi(base, out(name)["labels"]), 4) for name in ("graph_feature", "graph_commits")}
     return {"pass": all(v > BEST_OF_THE_PROTOTYPE for v in marks.values()), "detail": {**marks, "dropped_files": ctx.state["taken"][0], "commits": ctx.state["taken"][1]}}
+
+
+__all__ = ["injection", "ablation", "invariance", "antimakeup", "incremental", "proofs", "contamination", "stability"]

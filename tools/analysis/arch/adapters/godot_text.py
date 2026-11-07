@@ -24,11 +24,14 @@ class Reader:
         self.ext = {}
         self.current = None
         self.section = ""
+        self.source = ""
 
     def run(self):
         f = self.f
         f.unit(self.root, "file", self.file.rsplit("/", 1)[-1], self.file, 1, self.text.count("\n") + 1)
         f.define("file", self.file, self.root)
+        if self.file.endswith(".import"):
+            f.unit("file:" + self.file[:-len(".import")], "file", self.file[:-len(".import")].rsplit("/", 1)[-1], self.file[:-len(".import")], 1, 1)
         if self.file.endswith(".uid"):
             f.define("uid", self.text.strip(), "file:" + self.file[:-4])
             f.edge(self.root, "uid", "name:file:" + self.file[:-4], self.file, 1, GRAMMAR)
@@ -90,8 +93,10 @@ class Reader:
             f.define("key", key, uid)
         elif file.endswith(".import") and key == "importer":
             f.cost(self.root, "importer", file, n, 0, value=value)
-        elif file.endswith(".import") and "compress" in key and value == "0":
-            f.cost(self.root, "importer", file, n, 0, value=key, uncompressed=True)
+        elif file.endswith(".import") and key == "source_file":
+            self.source = _resource(value)
+        elif file.endswith(".import") and key == "compress/mode" and value == "0":
+            f.cost(self.root, "importer", file, n, 0, value=key, uncompressed=True, source=self.source)
         elif key == "script" and self.ext:
             m = re.search(r'ExtResource\(\s*"?([^"\s)]+)', value)
             if m and m.group(1) in self.ext:

@@ -1,5 +1,7 @@
 """The compiler's view of one C or C++ translation unit: declarations become units, and the walk of each body its edges and costs."""
 import ctypes
+import os
+import re
 import sys
 
 from clang import cindex as ci
@@ -13,13 +15,25 @@ K = ci.CursorKind
 FUNCTIONS = {K.FUNCTION_DECL, K.CXX_METHOD, K.CONSTRUCTOR, K.DESTRUCTOR, K.CONVERSION_FUNCTION, K.FUNCTION_TEMPLATE}
 CLASSES = {K.CLASS_DECL, K.STRUCT_DECL, K.UNION_DECL, K.CLASS_TEMPLATE, K.CLASS_TEMPLATE_PARTIAL_SPECIALIZATION}
 SCOPES = {K.NAMESPACE, K.LINKAGE_SPEC, K.UNEXPOSED_DECL}
+PUNCTUATION = re.compile(r"[();]")
+
+
+def _statements(text):
+    """Statements of a body. What stands inside parentheses is an argument, a lambda given to a call too: a function that hands one on is one statement."""
+    depth = count = 0
+    for mark in PUNCTUATION.findall(text):
+        if mark == ";":
+            count += depth == 0
+        else:
+            depth += 1 if mark == "(" else -1
+    return count
 
 
 class Unit:
     """Reads one translation unit into Facts; `rel` says which absolute paths are the project's and how they are called."""
 
-    def __init__(self, tu, rel, config, claim, nested):
-        self.tu, self.rel, self.config, self.claim, self.nested = tu, rel, config, claim, nested
+    def __init__(self, tu, rel, config, claim, nested, language):
+        self.tu, self.rel, self.config, self.claim, self.nested, self.language = tu, rel, config, claim, nested, language
         self.handles = {}
         self.spot = (ci.c_object_p(), ctypes.c_uint(), ctypes.c_uint(), ctypes.c_uint())
         self.mine = {}
@@ -48,6 +62,11 @@ class Unit:
         if handle not in self.handles:
             self.handles[handle] = self.rel(c.location.file.name if c.location.file else None) is None
         return self.handles[handle]
+
+    def of_the_language(self, ref):
+        """Declared by the compiler's own library: libc and the standard headers come with the language, they are no step out of the program."""
+        file = ref.location.file
+        return file is None or os.path.normpath(file.name).replace("\\", "/").lower().startswith(self.language)
 
     def walks(self, file):
         """A file is walked once per configuration, by the first translation unit that reaches it."""
@@ -131,7 +150,7 @@ class Unit:
         if not c.is_definition():
             return
         uid = self.target(c)
-        self.facts.unit(uid, "class", c.spelling or "anonymous", file, line, c.extent.end.line, parent, abstract=c.is_abstract_record())
+        self.facts.unit(uid, "class", "anonymous" if c.is_anonymous() else c.spelling, file, line, c.extent.end.line, parent, abstract=c.is_abstract_record())
         for k in c.get_children():
             if k.kind == K.CXX_BASE_SPECIFIER:
                 base = k.referenced
@@ -159,7 +178,7 @@ class Unit:
         if not c.is_definition():
             return
         uid = self.target(c)
-        self.facts.unit(uid, "enum", c.spelling or "anonymous", file, line, c.extent.end.line, parent)
+        self.facts.unit(uid, "enum", "anonymous" if c.is_anonymous() else c.spelling, file, line, c.extent.end.line, parent)
         for k in c.get_children():
             if k.kind == K.ENUM_CONSTANT_DECL:
                 self.facts.unit(self.target(k), "enumerator", k.spelling, file, k.location.line, k.location.line, uid)
@@ -180,14 +199,14 @@ class Unit:
         self.facts.unit(uid, "function" if parent is None else "method", c.spelling, file, line, c.extent.end.line, parent, shape=shape(text),
                         virtual=c.is_virtual_method(), const=c.is_const_method(), signature=c.type.spelling, config=self.config,
                         ctor=c.kind == K.CONSTRUCTOR, dtor=c.kind == K.DESTRUCTOR, inline=file.endswith((".h", ".hpp", ".hh", ".inl")),
-                        template=c.kind == K.FUNCTION_TEMPLATE, statements=text.count(";"), overrides=" override" in text.split("{")[0], mangled=c.mangled_name)
+                        template=c.kind == K.FUNCTION_TEMPLATE, statements=_statements(text), inputs=sum(1 for k in c.get_children() if k.kind == K.PARM_DECL), overrides=" override" in text.split("{")[0], mangled=c.mangled_name)
         body = cpp_body.Body(self, uid, file)
         for k in c.get_children():
             if k.kind == K.COMPOUND_STMT or k.kind == K.MEMBER_REF or k.kind == K.CALL_EXPR:
                 body.stmt(k, cpp_body.State(uid))
 
 
-def walk(tu, rel, config, claim, nested):
+def walk(tu, rel, config, claim, nested, language):
     """`nested`: an outside file includes one of ours, so a block of an outside file may hold our code and must be entered."""
     sys.setrecursionlimit(max(sys.getrecursionlimit(), 20000))
-    return Unit(tu, rel, config, claim, nested).run()
+    return Unit(tu, rel, config, claim, nested, language).run()

@@ -49,12 +49,13 @@ class Reader:
         f.unit(self.root, "file", file.rsplit("/", 1)[-1], file, 1, text.count("\n") + 1, shape=shape(text))
         f.define("file", file, self.root)
         for m in INCLUDE.finditer(self.raw):
-            n = _line(self.raw, m.start())
+            n = _line(self.raw, m.start(1))
             path = m.group(1).replace("res://", "")
             f.ref("file", path, self.root, file, n, "include")
             f.site(file, n, 1, "include")
         for m in BRANCHES.finditer(text):
-            f.cost(self.root, "variant", file, _line(text, m.start()), 0, condition=m.group(2).strip())
+            if not re.search(rf"#define\s+{re.escape(m.group(2).strip())}\s*$", text, re.M):  # a guard against a second include chooses nothing
+                f.cost(self.root, "variant", file, _line(text, m.start()), 0, condition=m.group(2).strip())
         for m in CONSTANT.finditer(text):
             f.unit(f"{self.root}.{m.group(1)}", "global", m.group(1), file, _line(text, m.start()), _line(text, m.start()), self.root, constant=True)
         uniforms = {}

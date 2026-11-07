@@ -4,7 +4,7 @@ import collections
 import math
 
 from .cache import Cache
-from .core import IDENT
+from . import roles
 from .repo import Repo
 
 
@@ -16,15 +16,24 @@ class Model:
         self.posting = collections.defaultdict(set)
         self.together = collections.defaultdict(collections.Counter)
         self.touches = collections.Counter()
+        self.number = {}
+        self.names = []
+        self.holders = {}
 
-    def update_file(self, path, text):
+    def update_file(self, path, words):
+        """`words` of the new version, None when the file is gone or is not text."""
         old = self.words.get(path, set())
-        new = set(IDENT.findall(text)) if text is not None else set()
+        new = words if words is not None else set()
+        if path not in self.number:
+            self.number[path] = len(self.names)
+            self.names.append(path)
         for w in old - new:
             self.posting[w].discard(path)
+            self.holders.pop(w, None)
         for w in new - old:
             self.posting[w].add(path)
-        if text is None:
+            self.holders.pop(w, None)
+        if words is None:
             self.words.pop(path, None)
         else:
             self.words[path] = new
@@ -39,18 +48,36 @@ class Model:
                     if a != b:
                         self.together[a][b] += share
 
+    def word_sums(self, path):
+        """Files sharing rare words with this one, by number; a word's worth is one over how many files have it, which needs no corpus size."""
+        import numpy
+        files, sizes = [], []
+        for w in sorted(self.words.get(path, ())):  # sums in one order: a tie of ranks never depends on the run
+            many = len(self.posting[w])
+            if 1 < many < len(self.words) + 1:  # a word in nearly every file says nothing
+                if w not in self.holders:
+                    self.holders[w] = numpy.fromiter((self.number[f] for f in self.posting[w]), numpy.int64, many)
+                files.append(self.holders[w])
+                sizes.append(many)
+        if not files:
+            return numpy.zeros(len(self.names))
+        sizes = numpy.array(sizes)
+        totals = numpy.bincount(numpy.concatenate(files), numpy.repeat(1.0 / (sizes - 1), sizes), len(self.names))
+        totals[self.number[path]] = 0
+        return totals
+
     def lexical(self, path):
-        """Files sharing rare words with this one; a word's worth is one over how many files have it, which needs no corpus size."""
-        out = collections.Counter()
-        for w in self.words.get(path, ()):
-            users = self.posting[w]
-            if 1 < len(users):
-                worth = 1.0 / (len(users) - 1)
-                if worth * len(self.words) > 1:  # a word in nearly every file says nothing
-                    for f in users:
-                        if f != path:
-                            out[f] += worth
-        return out
+        import numpy
+        totals = self.word_sums(path)
+        return {self.names[i]: float(totals[i]) for i in numpy.flatnonzero(totals)}
+
+    def together_sums(self, path):
+        import numpy
+        totals = numpy.zeros(len(self.names))
+        met = self.together.get(path)
+        if met:
+            totals[[self.number[f] for f in met]] = list(met.values())
+        return totals
 
     def scored(self, path, weight):
         """Each kind of evidence as ranks, so neither scale decides; the weight comes from past commits."""
@@ -80,6 +107,29 @@ def _ranks(scores):
     return out
 
 
+def _rank_all(totals):
+    """`_ranks` over an array, for what has a score: ties share their middle rank, nothing else differs."""
+    import numpy
+    out = numpy.zeros(len(totals))
+    present = numpy.flatnonzero(totals)
+    n = len(present)
+    if n:
+        order = numpy.argsort(-totals[present], kind="stable")
+        ordered = totals[present][order]
+        first = numpy.flatnonzero(numpy.r_[True, ordered[1:] != ordered[:-1]])
+        last = numpy.r_[first[1:], n] - 1
+        out[present[order]] = numpy.repeat(1.0 - ((first + last) / 2.0) / n, last - first + 1)
+    return out
+
+
+def _reciprocal_all(scores, wanted):
+    """`reciprocal` over an array: what has no score is no candidate."""
+    best = scores[wanted].max() if len(wanted) else 0.0
+    if best <= 0:
+        return 0.0
+    return 1.0 / (float((scores > best).sum()) + (float((scores == best).sum()) + 1) / 2.0)
+
+
 def reciprocal(scores, wanted):
     """1 / rank of the first file of the commit in a ranking; ties share their middle rank, so names decide nothing."""
     if not scores:
@@ -93,13 +143,17 @@ def reciprocal(scores, wanted):
     return 1.0 / (above + (equal + 1) / 2.0)
 
 
-def rolling(repo, history, keep):
+def _folder(path):
+    return path.rsplit("/", 1)[0] if "/" in path else ""
+
+
+def rolling(repo, history, keep, cache):
     """Rolling origin: every commit is predicted from everything before it, and then learned. Returns per-commit scores for the model,
     the folder and chance, comparable commit by commit."""
     m = Model()
     rows = []
     wins = collections.Counter({"lex": 1.0, "co": 1.0})
-    versions = repo.stream([c[2] for _, changes in history for c in changes if c[1] in keep and c[0] != "D"])
+    versions = roles.words_of_versions(repo, [c[2] for _, changes in history for c in changes if c[1] in keep and c[0] != "D"], cache)
     for sha, changes in history:
         touched = [c for c in changes if c[1] in keep]
         known = [c[1] for c in touched if c[1] in m.words]
@@ -107,20 +161,22 @@ def rolling(repo, history, keep):
             weight = wins["lex"] / (wins["lex"] + wins["co"])
             files = sorted(set(known))
             size = len(m.words)
+            folders = collections.Counter(_folder(g) for g in m.words)
             for f in files:
-                others = set(files) - {f}
-                model = reciprocal(m.scored(f, weight), others)
-                folder = f.rsplit("/", 1)[0] if "/" in f else ""
-                near = {g: 1.0 for g in m.words if g != f and (g.rsplit("/", 1)[0] if "/" in g else "") == folder}
-                by_folder = reciprocal(near, others)
+                others = sorted(set(files) - {f})
+                wanted = [m.number[g] for g in others]
+                by_words = _rank_all(m.word_sums(f))
+                by_commits = _rank_all(m.together_sums(f))
+                model = _reciprocal_all(weight * by_words + (1.0 - weight) * by_commits, wanted)
+                # Every file of a folder scores the same: the rank of the first of them is the middle of that tie.
+                near = any(_folder(g) == _folder(f) for g in others)
+                by_folder = 1.0 / ((folders[_folder(f)] - 1 + 1) / 2.0) if near else 0.0
                 chance = len(others) / max(size - 1, 1)
                 rows.append((model, by_folder, chance, 1.0 / len(files)))
-                lex = reciprocal(_ranks(m.lexical(f)), others)
-                co = reciprocal(_ranks(m.together.get(f, {})), others)
-                wins["lex"] += lex
-                wins["co"] += co
+                wins["lex"] += _reciprocal_all(by_words, wanted)
+                wins["co"] += _reciprocal_all(by_commits, wanted)
         for status, path, blob, _ in touched:
-            m.update_file(path, None if status == "D" else next(versions))
+            m.update_file(path, None if status == "D" or versions[blob] is None else versions[blob][0])
         m.learn(c[1] for c in touched if c[0] != "D")
     return rows, m, wins
 
@@ -128,12 +184,11 @@ def rolling(repo, history, keep):
 def predict_for(path, ident):
     """The files most likely to change with a file, given everything the repository knows now."""
     repo = Repo(path)
-    from . import roles
     tracked = repo.files()
     history = repo.history()
     found, _ = roles.classify(repo, tracked, history, Cache("", False))
     keep = found.own(tracked) - found.index
-    _, m, wins = rolling(repo, history, keep)
+    _, m, wins = rolling(repo, history, keep, Cache("", False))
     weight = wins["lex"] / (wins["lex"] + wins["co"])
     target = next((p for p in sorted(keep) if p == ident or p.endswith(ident)), None)
     if target is None:

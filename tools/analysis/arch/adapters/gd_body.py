@@ -86,13 +86,17 @@ class Body:
 
     def loop(self, n, st):
         over = n.child_by_field_name("right") or n.child_by_field_name("condition")
+        from .gd_calls import fixed, resizes
         target = self.field_in(over) if over is not None else ""
-        inner = st.inside(depth=st.depth + 1)
+        body = n.child_by_field_name("body")
+        written = over is not None and fixed(self, n, over)
+        if written or (target and n.type == "while_statement" and body is not None and resizes(self, body, target)):
+            target = ""
+        inner = st.inside(depth=st.depth + (0 if written else 1))
         if over is not None:
             self.expr(over, inner)
         early = any(x.type in ("break_statement", "return_statement") for x in self.walk(n))
-        self.f.cost(st.unit, "loop", self.file, self.line(n), st.depth + 1, over=target, early=early, forever=n.type == "while_statement" and node_text(over, self.src) == "true")
-        body = n.child_by_field_name("body")
+        self.f.cost(st.unit, "loop", self.file, self.line(n), max(inner.depth, 1), over=target, early=early, forever=n.type == "while_statement" and node_text(over, self.src) == "true")
         if body is not None:
             self.block(body, inner)
 
@@ -103,8 +107,8 @@ class Body:
             if x.type == "identifier":
                 word = node_text(x, self.src)
                 cls = self.t.script_of(last) if last else self.cls
-                uid, _ = self.t.lookup(cls or self.cls, word, "vars")
-                if uid:
+                uid, owner = self.t.lookup(cls or self.cls, word, "vars")
+                if uid and word not in owner.constants:
                     return uid
                 last = word
         return ""
@@ -259,7 +263,8 @@ class Body:
         return ""
 
     def text(self, n, st, role):
-        self.f.ref("role:" + role.split(":")[-1] if ":" in role else None, literal(n, self.src), st.unit, self.file, self.line(n), role)
+        space = "role:" + role.split(":")[-1] if ":" in role else "name" if n.type == "string_name" else None
+        self.f.ref(space, literal(n, self.src), st.unit, self.file, self.line(n), role)
         self.f.site(self.file, self.line(n), n.start_point[1] + 1, "string")
 
     def lambda_(self, n, st):

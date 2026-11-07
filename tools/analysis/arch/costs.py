@@ -1,7 +1,9 @@
 """The catalogue of costs and the detectors of those that follow from repetition: what is paid every frame, every tick, in every thread."""
 import collections
+import re
 
 from .context import api_words
+from .core import words_of
 
 
 class Costs:
@@ -20,6 +22,10 @@ class Costs:
         for i, c in enumerate(self.by_kind["boundary"]):
             for word in set().union(*api_words(c[6]["api"])):
                 self.calls_with[word].append(i)
+        self.reads = collections.defaultdict(set)
+        for e in run.graph.edges.values():
+            if e.kind == "read":
+                self.reads[run.graph.callable_of(e.src)].add(e.dst)
         self.guards = collections.defaultdict(list)
         for c in self.by_kind["guard"]:
             self.guards[c[0]].extend(x for x in c[6].get("on", ()) if x)
@@ -42,12 +48,25 @@ class Costs:
                 "ran": {"count": attrs["ran"], "hot": bool(attrs.get("hot")), "stale": bool(attrs.get("stale"))} if "ran" in attrs else None}
 
 
+NAMES = re.compile(r"\w+")
+COLLECTION = {"vector", "map", "set", "list", "deque", "array", "dictionary", "queue"}
+
+
+def is_collection(k, field):
+    """State that holds many: what a loop over it costs grows with what it holds."""
+    u = k.graph.units.get(field)
+    if u is None:
+        return False
+    words = set(u["attrs"].get("words") or words_of((u["attrs"].get("type") or "").split("<")[0].split("[")[0]))
+    return bool(words & COLLECTION) and not any(w.isdigit() for w in words) and not u["attrs"].get("constant")
+
+
 def _boundary_with(k, words):
     return [k.by_kind["boundary"][i] for i in sorted({i for w in words for i in k.calls_with.get(w, ())})]
 
 
 def grows_with_state(k):
-    return [k.finding("grows_with_state", c[0], c[2], c[3], over=c[6]["over"]) for c in k.by_kind["loop"] if c[6]["over"] and not c[6]["early"] and k.repeated(c)]
+    return [k.finding("grows_with_state", c[0], c[2], c[3], over=c[6]["over"]) for c in k.by_kind["loop"] if is_collection(k, c[6]["over"]) and not c[6]["early"] and k.repeated(c)]
 
 
 def nested_loops(k):
@@ -79,12 +98,19 @@ def boundary_in_loop(k):
     return [k.finding("boundary_in_loop", c[0], c[2], c[3], api=c[6]["api"], depth=c[4]) for c in k.by_kind["boundary"] if c[4] > 0 and k.repeated(c)]
 
 
+def _same_answer(k, uid):
+    """A function that takes nothing and reads nothing the repeating path moves: all it can do is say the same thing again."""
+    home = k.graph.callable_of(uid)
+    takes = k.graph.units[home]["attrs"].get("inputs") if home in k.graph.units else 0
+    return not takes and not any(k.writers.get(f, set()) & k.when.repeats for f in k.reads[home])
+
+
 def redone_work(k):
-    """A loop on the repeating path over state nothing on that path changes: the same answer computed again."""
+    """A loop on the repeating path over state nothing on that path changes, with no other input: the same answer computed again."""
     out = []
     for c in k.by_kind["loop"]:
         field = c[6]["over"]
-        if field and k.repeated(c) and k.writers.get(field) and not (k.writers[field] & k.when.repeats):
+        if is_collection(k, field) and k.repeated(c) and k.writers.get(field) and not (k.writers[field] & k.when.repeats) and _same_answer(k, c[0]):
             out.append(k.finding("redone_work", c[0], c[2], c[3], over=field))
     return out
 
@@ -102,7 +128,7 @@ def query_per_frame(k):
     costly = {c[0] for c in k.by_kind["lock"]} | {c[0] for c in k.by_kind["loop"]}
     out = []
     for e in k.graph.edges.values():
-        if e.kind in ("name_ref", "route", "name_call") and e.conf == 1.0 and e.src in k.when.reach["frame"] and e.src not in k.when.tests and not k.gated(e.src):
+        if e.kind in ("name_ref", "route", "name_call") and e.conf == 1.0 and (e.attrs.get("named") or e.kind != "name_ref") and e.src in k.when.reach["frame"] and e.src not in k.when.tests and not k.gated(e.src) and k.graph.units[e.src]["kind"] != "entry":
             target = e.dst
             hop = [x.dst for x in k.graph.out.get(target, ()) if x.kind in ("route", "name_ref")]
             for t in [target, *hop]:
@@ -137,16 +163,27 @@ def variants(k):
     per = collections.defaultdict(list)
     for c in k.by_kind["variant"]:
         per[c[0]].append(c[6]["condition"])
-    return [k.finding("variants", u, k.graph.units[u]["file"], 1, count=len(v), conditions=sorted(set(v))) for u, v in sorted(per.items()) if u in k.graph.units]
+    # One switch is two programs; it takes several for the count of pipelines to matter.
+    return [k.finding("variants", u, k.graph.units[u]["file"], 1, count=len(v), conditions=sorted(set(v))) for u, v in sorted(per.items()) if u in k.graph.units and len(set(v)) > 1]
+
+
+def _on_the_stack(k, field, held):
+    """A field of a record no field holds, made as a local or plain data: what it takes goes when the record goes."""
+    graph = k.graph
+    owner = graph.units.get(field, {}).get("parent")
+    if owner not in graph.units or graph.units[owner]["name"] in held:
+        return False
+    return any(e.kind == "raii" for e in graph.into.get(owner, ())) or not any(graph.units[c]["kind"] in ("method", "function") for c in graph.children.get(owner, ()))
 
 
 def memory_growth(k):
-    """State that takes entries and never gives any back."""
+    """State that takes entries on the repeating path and never gives any back. Sizing a field to a number is not taking entries."""
     grown = collections.defaultdict(list)
     shrunk = set()
+    held = {w for u in k.graph.units.values() if u["kind"] in ("field", "global") for w in NAMES.findall(u["attrs"].get("type") or "")}
     for c in k.by_kind["grow"]:
         field = c[6].get("field")
-        if field:
+        if field and not c[6].get("sized") and k.repeated(c) and not _on_the_stack(k, field, held):
             grown[field].append(c)
     for c in k.by_kind["shrink"]:
         if c[6].get("field"):
@@ -168,11 +205,11 @@ def streaming(k):
 def loading(k):
     """Heavy work on the opening path that runs in sequence on the main thread, or is decoded twice."""
     boot = k.when.reach["boot"]
-    heavy = {c[0]: c for c in k.by_kind["loop"] if c[6]["over"]}
+    heavy = {c[0]: c for c in k.by_kind["loop"] if c[4] > 1 and is_collection(k, c[6]["over"])}
     out = []
     callers = collections.Counter()
     for e in k.graph.edges.values():
-        if e.kind == "call" and e.src in boot and e.dst in heavy:
+        if e.kind == "call" and e.src in boot and e.src not in k.when.tests and e.dst in heavy:
             callers[e.dst] += 1
     for uid, n in sorted(callers.items()):
         c = heavy[uid]

@@ -140,7 +140,7 @@ func {ri}_remake() -> void:
 		c.queue_free()
 
 func {ec}_per_item() -> void:
-	for i in 3:
+	for i in get_children():
 		{engine_call(api, "instance", "create")}
 
 func {upl}_send() -> void:
@@ -156,13 +156,13 @@ func {tin}_draw() -> void:
 	{engine_call(api, "multimesh", "allocate")}
 
 func {wid}_box() -> void:
-	{engine_call(api, "custom", "aabb")}
+	RenderingServer.instance_set_custom_aabb(RID(), AABB(Vector3(), Vector3(9999, 9999, 9999)))
 
 func {pc}_make() -> void:
 	{engine_call(api, "shader", "create")}
 
 func {lf}_range() -> void:
-	{engine_call(api, "visibility", "range")}
+	RenderingServer.instance_geometry_set_visibility_range(RID(), 0.0, 9.0, 0.0, 0.0, 0)
 
 func {qf}_ask() -> void:
 	self.call(&"{qf}_answer")
@@ -191,9 +191,9 @@ def data_text(w, expect):
         expect.append((cid, word))
         return word
 
-    key, choice, dead, tier = case("B50"), case("B30"), case("no_reader"), case("default_tier")
-    return (f'{{\n "{key}_used": 1,\n "{dead}_unread": 2,\n "{choice}_mode": "{choice}_value",\n "default_preset_{tier}": 3\n}}\n',
-            f'	var {key}_a = "{key}_used"\n	var {choice}_b = "{choice}_value"\n	var {tier}_c = "default_preset_{tier}"\n')
+    key, choice, dead = case("B50"), case("B30"), case("no_reader")
+    return (f'{{\n "{key}_used": 1,\n "{dead}_unread": 2,\n "{choice}_mode": "{choice}_value"\n}}\n',
+            f'	var {key}_a = "{key}_used"\n	var {choice}_b = "{choice}_value"\n')
 
 
 def shader_text(w, expect):

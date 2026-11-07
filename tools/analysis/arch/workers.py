@@ -3,6 +3,9 @@ import atexit
 import multiprocessing
 import os
 
+import psutil
+
+WORKER_BYTES = 3 << 29
 _POOL = []
 
 
@@ -13,7 +16,9 @@ def cores():
 
 def _shared_pool():
     if not _POOL:
-        _POOL.append(multiprocessing.get_context("spawn").Pool(cores()))
+        # A parser holds a translation unit and its shared headers in memory: more of them than memory holds page each other out and all go slower.
+        room = int(psutil.virtual_memory().available // WORKER_BYTES)
+        _POOL.append(multiprocessing.get_context("spawn").Pool(max(1, min(cores(), room))))
         atexit.register(close)
     return _POOL[0]
 

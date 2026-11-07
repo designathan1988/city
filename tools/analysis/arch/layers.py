@@ -4,6 +4,7 @@ import collections
 
 import networkx as nx
 
+from .atoms import PRECISION
 from .graph import DATA, FLOW
 
 ENTRY = "#entry"
@@ -21,7 +22,8 @@ def condensed(graph, atoms, group_of):
     g = nx.DiGraph()
     g.add_nodes_from(sorted(set(group_of.values())))
     for (a, b), w in sorted(weight.items()):
-        if w > weight.get((b, a), 0):
+        # Equal weights reached by sums in another order must stay equal: no direction is read from the last digit.
+        if round(w, PRECISION) > round(weight.get((b, a), 0), PRECISION):
             g.add_edge(a, b, weight=w)
     return g
 

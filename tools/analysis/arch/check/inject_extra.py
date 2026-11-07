@@ -12,6 +12,10 @@ def script(w, expect, stem, api, shared):
 
     parts, save, tier, cmd, hour, size, focus, user, line, mask = (case(c) for c in ("B53", "B54", "B81", "B84", "D21", "D22", "D24", "D14", "D16", "D10"))
     feature, note, remark, copied, level, skin = case("feature"), case("D19"), case("D19"), case("B47"), case("tier_price"), case("B46")
+    expect.append(("default_tier", level))
+    dotted = case("not:no_reader")
+    gentle = case("not:default_tier")
+    expect.append(("not:tier_price", gentle))
     head = f'''# Injected second script, as `{remark}_note` tells.
 class_name Extra_{stem}
 extends Node
@@ -54,9 +58,13 @@ func {line}_say() -> void:
 
 func _process(delta: float) -> void:
 	var r = "{level}_span"
+	var units = "{gentle}_m"
 
 func material_{skin}(n: String) -> void:
 	pass
+
+func {dotted}_look(table) -> int:
+	return table.{dotted}_by_dot + table.get("{dotted}_by_get", 0) + table.{dotted}_by_index[0]
 
 func {skin}_clothe() -> void:
 	material_{skin}("{skin}_coat")
@@ -79,8 +87,9 @@ func {feature}_finish() -> void:
 	var d := load("res://{feature}_rules.json")
 	{feature}_start()
 '''
-    data = (f'{{\n "_about": "kept for `{note}_note` to read",\n "{feature}_speed": 1,\n "{feature}_limit": 2,\n "{copied}_glow": 1,\n "{skin}_coat": 1,\n'
-            f' "{level}_levels": {{\n  "plain_{level}": {{"{level}_span": 1}},\n  "fine_{level}": {{"{level}_span": 9}}\n }}\n}}\n')
+    data = (f'{{\n "_about": "kept for `{note}_note` to read",\n "{feature}_speed": 1,\n "{feature}_limit": 2,\n "{copied}_glow": 1,\n "{skin}_coat": 1,\n "{dotted}_by_dot": 1,\n "{dotted}_by_get": 1,\n "{dotted}_by_index": [1],\n "default_{level}": "fine_{level}",\n "default_{gentle}": "plain_{level}",\n'
+            f' "{level}_levels": {{\n  "plain_{level}": {{"{level}_span": 1, "{level}_reach": 1, "{level}_rate": 1, "{level}_depth": 1}},\n  "mid_{level}": {{"{level}_span": 5, "{level}_reach": 2, "{level}_rate": 3, "{level}_depth": 4}},\n  "fine_{level}": {{"{level}_span": 9, "{level}_reach": 3, "{level}_rate": 5, "{level}_depth": 7}}\n }},\n'
+            f' "{gentle}_units": {{\n  "near_{gentle}": {{"{gentle}_m": 1, "{gentle}_s": 1}},\n  "mid_{gentle}": {{"{gentle}_m": 1000, "{gentle}_s": 60}},\n  "far_{gentle}": {{"{gentle}_m": 1609, "{gentle}_s": 3600}}\n }}\n}}\n')
     shader = f"// Injected.\nshader_type spatial;\nuniform float {feature}_tint = 1.0;\nuniform float {copied}_glow = 1.0;\nvoid fragment() {{\n	ALBEDO = vec3({feature}_tint);\n}}\n"
     tool = f'"""Injected tool."""\n\n\ndef {line}_seek(text):\n    return "LINE_{line}" in text\n'
     return head, {f"{parts}_a.json": "{}\n", f"{parts}_b.json": "{}\n", f"{feature}_rules.json": data}, {f"{feature}_look.gdshader": shader}, {f"{line}_observe.py": tool}

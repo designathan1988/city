@@ -128,27 +128,23 @@ def _owners(run, a):
 
 
 def defects_jobs(ctx):
-    """Each defect with a recorded cause: at the commit before its fix the program must point at the place. A commit is read once, however many defects
-    it holds, and commits go in the order of history: what did not change from one to the next is not read again."""
+    """Each defect with a recorded cause: at the commit before its fix the program must point at the place. A commit is read once, however many defects it holds."""
     tune, final = split(_load("defects.json"))
     commits = collections.defaultdict(list)
     for d in final + tune:
         commits[d["before"]].append({**d, "kept": d in final})
-    order = {sha: i for i, (sha, _) in enumerate(ctx.repo.history())}
-    ordered = sorted(commits.items(), key=lambda kv: order.get(kv[0], -1))
-    return [Job("defects", "defects_at", {"path": ctx.path, "commits": ordered}, "defects", True)]
+    ctx.state["commits"] = sorted(commits)
+    return [Job(f"defects_{c[:10]}", "defects_at", {"path": ctx.path, "before": c, "items": commits[c], "out": os.path.join(ctx.home, "jobs", "defects_" + c[:10])}, "defects", True) for c in sorted(commits)]
 
 
 def defects_at(spec):
-    out = []
-    for before, items in spec["commits"]:
-        _, a = run_on(Repo(spec["path"], before), True, True)
-        out += [{"id": d["id"], "kept": d["kept"], "pointed": _pointed(a, d)} for d in items]
-    return out
+    run, a = run_on(Repo(spec["path"], spec["before"]), True, True, base=spec["out"])
+    run.cache.save()
+    return [{"id": d["id"], "kept": d["kept"], "pointed": _pointed(a, d)} for d in spec["items"]]
 
 
 def defects(ctx, out):
-    results = out("defects")
+    results = [r for c in ctx.state["commits"] for r in out(f"defects_{c[:10]}")]
     held = [r for r in results if r["kept"]]
     return {"pass": bool(results) and all(r["pointed"] for r in results), "detail": {"final": sum(r["pointed"] for r in held), "of": len(held), "all": results}}
 

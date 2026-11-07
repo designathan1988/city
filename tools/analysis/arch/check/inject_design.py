@@ -37,6 +37,24 @@ func {role}_open() -> void:
 func {role}_shut() -> void:
 	{name}_state = 4
 
+func {role}_fill() -> void:
+	{name}_state = 5
+
+func {role}_drain() -> void:
+	{name}_state = 6
+
+func {role}_lift() -> void:
+	{name}_state = 7
+
+func {role}_drop() -> void:
+	{name}_state = 8
+
+func {role}_mark() -> void:
+	{name}_state = 9
+
+func {role}_clean() -> void:
+	{name}_state = 10
+
 func {rule}_{name}(a: int, b: int) -> int:
 	var t := a * b + 7
 	for i in a:

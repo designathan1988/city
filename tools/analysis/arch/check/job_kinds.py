@@ -1,5 +1,5 @@
-"""What a task does in its own process: reads one copy of a repository and hands back a small summary. Comparing is left to the process that holds the
-plain scan, so no task carries it. Stacks go to a file every few seconds: a task that stops answering has already said where it is."""
+"""What a task does in its own process: reads one copy of something and hands back a small summary. Comparing is left to the process that holds the plain
+scan, so no task carries it. Stacks go to a file every few seconds: a task that stops answering has already said where it is."""
 import os
 import pickle
 import sys
@@ -7,24 +7,26 @@ import threading
 import time
 import traceback
 
-from ..core import digest
+from ..core import digest, program_root
+from ..pipeline import publish
 from ..repo import Repo
-from . import checks_history, checks_keys, inject
+from . import checks_history, checks_keys, inject, graph_steps
 from .checks_compare import labels, notes, snapshot
 from .view import View
 
 STACK_EVERY = 5
 
 
-def read_copy(spec):
-    """A repository, a commit of it or a view of it, read and judged."""
-    view = spec.get("view")
-    target = spec.get("folder") or Repo(spec["path"], spec.get("rev", "HEAD"))
-    if view is not None:
-        target = View(target, **view)
-    run, a = inject.run_on(target, spec.get("store", True), True, off=spec.get("off", ()))
-    undo = view["rename"].undo if view and view.get("rename") else (lambda s: s)
-    out = {"errors": len(run.info.get("cpp", {}).get("errors", ())), "sizes": {n: len(getattr(run.facts, n)) for n in ("units", "edges", "refs", "sites", "costs")}, "graph": (len(run.graph.units), len(run.graph.edges))}
+def _trace(run, a):
+    ways = {}
+    for e in run.graph.edges.values():
+        ways.setdefault(e.src, []).append(f"{e.kind}>{e.dst}:{e.conf:.6f}")
+    return {"edges": {u: digest("".join(sorted(w))) for u, w in ways.items()}, "layers": {g["members"][0]: a["layer_of"].get(g["id"]) for g in a["groups"]},
+            "units": {u: digest(repr((x["name"], x["kind"], x["parent"], x["shape"], x["attrs"].get("statements")))) for u, x in run.graph.units.items()}}
+
+
+def _summary(run, a, spec, undo):
+    out = {"errors": len(run.info.get("cpp", {}).get("errors", ()))}
     for part in spec.get("want", ("snapshot",)):
         if part == "snapshot":
             out[part] = snapshot(run, a, undo)
@@ -32,22 +34,43 @@ def read_copy(spec):
             out[part] = notes(a)
         elif part == "labels":
             out[part] = labels(a)
-        elif part == "causes":
-            out[part] = [(q["id"], q["commits"], [p["unit"] for p in q["places"]], q["children"]) for q in a["queue"]]
-        elif part == "groups":
-            out[part] = [sorted(g["members"]) for g in a["groups"]]
         elif part == "trace":
-            ways = {}
-            for e in run.graph.edges.values():
-                ways.setdefault(e.src, []).append(f"{e.kind}>{e.dst}:{e.conf:.6f}")
-            out[part] = {"edges": {u: digest("".join(sorted(w))) for u, w in ways.items()}, "layers": {g["members"][0]: a["layer_of"].get(g["id"]) for g in a["groups"]}}
+            out[part] = _trace(run, a)
+        elif part == "facts":
+            out[part] = run.facts
     if spec.get("expect"):
         out["judged"] = inject.judge(run, a, spec["expect"])
     return out
 
 
-KINDS = {"read_copy": read_copy, "defects_at": checks_keys.defects_at, "other_repository": checks_history.other_repository, "predicted": checks_history.predicted,
-         "from_nothing": checks_history.from_nothing}
+def read_copy(spec):
+    """A repository, a commit of it or a view of it, read and judged."""
+    view = spec.get("view")
+    target = spec.get("folder") or Repo(spec["path"], spec.get("rev", "HEAD"))
+    if view is not None:
+        target = View(Repo(target) if isinstance(target, str) else target, **view)
+    if spec.get("publish"):
+        os.environ["ARCH_OUT"] = spec["publish"]
+    run, a = inject.run_on(target, spec.get("store", True), True, off=spec.get("off", ()), base=spec.get("out"))
+    if spec.get("publish"):
+        run.base, run.home, run.key = spec["publish"], os.path.normpath(program_root()), ""
+        publish(run, a)
+    return _summary(run, a, spec, view["rename"].undo if view and view.get("rename") else (lambda s: s))
+
+
+def incremental(spec):
+    """A copy read through a store that knew the original, and read from nothing: the same, down to each edge. What proves every cached result."""
+    folder, view, out = spec["folder"], spec["view"], spec["out"]
+    run, _ = inject.run_on(folder, True, True, base=out)
+    run.cache.save()
+    results = []
+    for store in (True, False):
+        run, a = inject.run_on(View(Repo(folder), **view), store, True, base=out)
+        results.append({"snapshot": snapshot(run, a), "trace": _trace(run, a)})
+    return results
+
+
+KINDS = {"read_copy": read_copy, "incremental": incremental, "graph_steps": graph_steps.graph_steps, "defects_at": checks_keys.defects_at, "other_repository": checks_history.other_repository, "predicted": checks_history.predicted}
 
 
 def write_task(store, job):

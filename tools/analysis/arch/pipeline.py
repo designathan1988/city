@@ -3,14 +3,19 @@ import collections
 import os
 
 from . import atoms as atoms_stage
-from . import causes_graph, classes, classes_more, context, costs, costs_more, design, groups, history, history_units, layers, points, profile_data, workers
+from . import causes_graph, classes, classes_more, context, costs, costs_levels, costs_more, design, groups, history, history_units, layers, points, profile_data, workers
 from .core import read_json, write_json
 
 
-def analyse(run):
-    h = history.build(run.repo, run.history, set(run.roles.foreign) | run.roles.binary | run.roles.sidecar | run.roles.index, run.cache, run.log)
+def ignored(run):
+    return set(run.roles.foreign) | run.roles.binary | run.roles.sidecar | run.roles.index
+
+
+def analyse(run, h=None, recorded=None):
+    """`h` and `recorded` come given when the graph is a transformed copy of one already read: nothing needs reading again."""
+    h = h or history.build(run.repo, run.history, ignored(run), run.cache, run.log)
     workers.close()
-    recorded = profile_data.read(run)
+    recorded = profile_data.read(run) if recorded is None else dict(recorded)
     atoms = atoms_stage.Atoms(run)
     unit_lineage = history_units.attach(run, h)
     history_units.add_cochange(atoms, unit_lineage, history.cochange(h))
@@ -25,7 +30,7 @@ def analyse(run):
     churn = {u: len(lin.touched) for u, lin in unit_lineage.items()}
     findings = []
     table = []
-    for catalogue in (costs.CATALOGUE, costs_more.CATALOGUE):
+    for catalogue in (costs.CATALOGUE, costs_more.CATALOGUE, costs_levels.CATALOGUE):
         for category, title, detector in catalogue:
             out = detector(k)
             table.append({"category": category, "title": title, "found": len(out), "covered": True})
@@ -34,6 +39,7 @@ def analyse(run):
                                  ("god", "god by responsibility", design.gods(k, group_of, churn)), ("missing_owner", "owner that is missing", design.missing_owner(k, group_of))):
         table.append({"category": category, "title": title, "found": len(out), "covered": True})
         findings += out
+    findings = [f for f in findings if _may_be_root(f, when, run)]
     run.log(f"{len(findings)} findings")
     roots = layers.roots_of(run) | when.roots["frame"] | when.roots["boot"] | when.roots["event"] | when.roots["thread"]
     flow, idom = layers.dominators(run.graph, roots)
@@ -43,6 +49,13 @@ def analyse(run):
             "table": table, "queue": queue, "flow": flow, "idom": idom, "lineage": unit_lineage, "layer_graph": layer_graph}
     result["roles_of"] = roles_of(run, group_of)
     return result
+
+
+def _may_be_root(f, when, run):
+    """Test code is not what a player pays for, unless what it costs is being delivered; a sidecar only describes the file beside it."""
+    if f["file"] in run.roles.sidecar:
+        return False
+    return f["category"] == "test_code_shipped" or f["unit"] not in when.tests
 
 
 def roles_of(run, group_of):
@@ -79,7 +92,7 @@ def publish(run, a):
     write_json(os.path.join(base, "residual.json"), residue)
     write_json(os.path.join(base, "groups.json"), _group_rows(run, a))
     write_json(os.path.join(base, "levels.json"), groups.describe_levels(a["tree"], a["upper"], a["atoms"]))
-    write_json(os.path.join(base, "atoms.json"), sorted(a["atoms"].nodes))
+    write_json(os.path.join(base, "atoms.json"), sorted((n, run.graph.units[n]["name"], run.graph.units[n]["parent"]) for n in a["atoms"].nodes))
     write_json(os.path.join(base, "coverage.json"), {"table": a["table"], "classes": found, "points": totals, "units": len(run.graph.units), "edges": len(run.graph.edges),
                                                      "roles": run.roles.describe(), "recorded": {k: v if not isinstance(v, list) else len(v) for k, v in a["recorded"].items()},
                                                      "adapters": {k: v for k, v in run.info.items() if k != "refused"}, "commit": run.repo.head})

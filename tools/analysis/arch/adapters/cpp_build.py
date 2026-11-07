@@ -42,6 +42,17 @@ def _split_words(entry):
     return shlex.split(command.replace("\\", "/")) if command else list(entry.get("arguments", []))
 
 
+def language_roots(flags):
+    """The folders the driver adds by itself, which lead the flags: the compiler's own library, as apart from any library the build names."""
+    roots, words = [], iter(flags)
+    for word in words:
+        if word == "-isystem":
+            roots.append(os.path.normpath(next(words)).replace("\\", "/").lower() + "/")
+        elif not word.startswith("--target"):
+            break
+    return tuple(roots)
+
+
 def _driver(compiler, memo):
     """What the compiler driver adds by itself: its target and its include search list."""
     if compiler in memo:
@@ -62,17 +73,17 @@ def _driver(compiler, memo):
     return args
 
 
-def _flags(words, repo, export):
+def _flags(words, repo, export, known):
     """The flags that matter to parsing, repository paths moved to the export of the analysed commit."""
     out, i = [], 1
     while i < len(words):
         w = words[i]
         if w in KEEP_TWO and i + 1 < len(words):
-            out += [w, _moved(words[i + 1], repo, export)]
+            out += [w, _moved(words[i + 1], repo, export, known)]
             i += 2
             continue
         if w.startswith("-I") and len(w) > 2:
-            out.append("-I" + _moved(w[2:], repo, export))
+            out.append("-I" + _moved(w[2:], repo, export, known))
         elif w.startswith(("-D", "-U")):
             out.append(repo.flag(w))
         elif w.startswith(KEEP_ONE) and not w.startswith(("-fprofile", "-flto", "-fdebug", "-fmodules")):
@@ -81,12 +92,12 @@ def _flags(words, repo, export):
     return out
 
 
-def _moved(path, repo, export):
+def _moved(path, repo, export, known):
     p = path.replace("\\", "/")
     base = repo.root.replace("\\", "/")
     if p.lower().startswith(base.lower() + "/"):
         rel = repo.translate(p[len(base) + 1:])
-        if os.path.exists(os.path.join(export, rel)):
+        if rel in known:
             return os.path.join(export, rel).replace("\\", "/")
     return p
 
@@ -104,6 +115,13 @@ def compile_units(repo, tracked, export):
     """Tasks (config, file, flags) for every tracked source a build knows, in every configuration, plus the sources no build
     knows (a commit of another time, a copy): those take the flags most sources of that configuration use."""
     tasks, memo = [], {}
+    known = set(tracked)  # a path of the commit, and every folder above one, moves with the export
+    for path in tracked:
+        while "/" in path:
+            path = path.rsplit("/", 1)[0]
+            if path in known:
+                break
+            known.add(path)
     for config, entries in sorted(_entries(repo).items()):
         by_file, common = {}, collections.defaultdict(collections.Counter)
         for entry in entries:
@@ -114,7 +132,7 @@ def compile_units(repo, tracked, export):
             words = _split_words(entry)
             if not words:
                 continue
-            flags = _driver(words[0], memo) + _flags(words, repo, export)
+            flags = _driver(words[0], memo) + _flags(words, repo, export, known)
             by_file[rel] = flags
             common[_home(rel)][tuple(flags)] += 1
         if not common:

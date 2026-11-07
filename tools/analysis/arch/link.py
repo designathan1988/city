@@ -51,26 +51,36 @@ class Names:
 def _resolve_refs(graph, names, facts, report):
     literals = collections.defaultdict(set)
     for space, text, unit, file, line, role in facts.refs:
-        if role not in ("data", "doc") and text and unit in graph.units:
+        if role not in ("data", "doc", "attribute") and text and unit in graph.units:
             literals[text].add(unit)
     for space, text, unit, file, line, role in facts.refs:
-        if not text or unit not in graph.units:
+        # Punctuation in quotes is no name, even when a table has it as a key.
+        if not text or unit not in graph.units or not any(c.isalpha() for c in text):
             continue
         if role == "doc":
             # A name in prose: the weakest link there is, never one that keeps anything alive.
             for t in sorted(names.any.get(text, ())):
                 graph.add_edge(unit, t, "lexical", LEXICAL, 1.0 / len(names.any[text]), file, line, {"text": text, "role": role})
             continue
-        real = None if space is None or space.startswith("role:") else space
+        if role == "attribute":
+            for t in sorted(names.table.get(("key", text), ())):
+                graph.add_edge(unit, t, "lexical", LEXICAL, 1.0 / len(names.table[("key", text)]), file, line, {"text": text, "role": role})
+            continue
+        real = None if space is None or space == "name" or space.startswith("role:") else space
         if space is not None and space.startswith("role:"):
             word = space[5:]
             real = next((ROLE_SPACE[w] for w in words_of(word) if w in ROLE_SPACE), None)
         kind = "name_call" if real in ("method",) else "name_ref"
+        # A word in plain text that happens to spell a name links the two, and that is all: only what is written as a name, or says what it names, can be followed.
+        named = {"named": True} if real is not None or space == "name" or role == "xmacro" else {}
         if real == "group":
             # A group has no declaration: whoever writes its name meets the others there.
             graph.add_unit((f"group:{text}", "group", text, file, line, line, None, "", {}))
             names.table[("group", text)].add(f"group:{text}")
         targets = names.find(real, text)
+        if real == "property":
+            # The engine's `get` takes a property of an object and a key of a table alike: the word says nothing of which.
+            targets = set(targets) | set(names.table.get(("key", text), ()))
         if not targets and real is None and NAMELIKE.match(text):
             targets = _from_shape(names, text)
             kind = "route" if "/" in text and targets else kind
@@ -79,7 +89,7 @@ def _resolve_refs(graph, names, facts, report):
         if targets:
             conf = names.confidence(targets)
             for t in sorted(targets):
-                graph.add_edge(unit, t, kind, NAME, conf[t], file, line, {"text": text, "role": role})
+                graph.add_edge(unit, t, kind, NAME, conf[t], file, line, {"text": text, "role": role, **named})
             report["resolved"].add((file, line, text))
         elif role == "data" and text in literals:
             # A value in data that code compares with or looks for: the data chooses code.
@@ -140,13 +150,13 @@ def _overrides(graph):
         if u["kind"] == "method" and u["parent"]:
             methods[u["parent"]][(u["name"], u["attrs"].get("signature", ""))] = uid
     for cls, own in sorted(methods.items()):
-        seen, todo = set(), list(bases.get(cls, ()))
+        seen, todo = set(), sorted(bases.get(cls, ()))
         while todo:
             b = todo.pop()
             if b in seen:
                 continue
             seen.add(b)
-            todo.extend(bases.get(b, ()))
+            todo.extend(sorted(bases.get(b, ())))
             for key, uid in own.items():
                 other = methods.get(b, {}).get(key)
                 if other:
@@ -158,7 +168,7 @@ def _signals(graph, names, facts):
     for e in list(graph.edges.values()):
         if e.kind == "signal_connect":
             handler = e.attrs.get("handler", "").split(".bind(")[0].rsplit(".", 1)[-1]
-            for t in _near(graph, names.find("method", handler), e.sites[0][0]):
+            for t in sorted(_near(graph, names.find("method", handler), e.sites[0][0])):
                 graph.add_edge(e.dst, t, "connected", NAME, e.conf, *e.sites[0])
 
 

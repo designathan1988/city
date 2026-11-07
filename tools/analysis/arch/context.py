@@ -6,6 +6,8 @@ from .core import words_of
 from .graph import FLOW
 
 CALLABLE = {"function", "method", "entry", "lambda", "branch"}
+# Making a closure, binding a handler or storing a job runs nothing: what they point at runs later, from an event of its own.
+LATER = {"bind", "callable", "stored", "callback", "connection", "signal_connect", "thread"}
 
 
 def flow_edges(graph):
@@ -14,7 +16,7 @@ def flow_edges(graph):
     for e in graph.edges.values():
         if e.generic or e.src not in graph.units or e.dst not in graph.units:
             continue
-        if e.kind in FLOW or (e.kind == "name_ref" and e.conf == 1.0 and graph.units[e.dst]["kind"] in CALLABLE):
+        if e.kind in FLOW or (e.kind == "name_ref" and e.conf == 1.0 and e.attrs.get("named") and graph.units[e.dst]["kind"] in CALLABLE):
             out[e.src].append(e)
     return _in_order(out)
 
@@ -26,6 +28,11 @@ def _in_order(edges):
 
 
 Contains = collections.namedtuple("Contains", "src dst kind sites")
+
+
+def timed_edges(edges):
+    """The edges along which a context carries on: certain, and taken at that moment."""
+    return {src: [e for e in es if e.conf == 1.0 and e.kind not in LATER] for src, es in edges.items()}
 
 
 def wide_edges(graph):
@@ -86,15 +93,20 @@ class When:
         forever = {c[0] for c in run.facts.costs if c[1] == "loop" and c[6].get("forever")}
         threads = {e.src for e in graph.edges.values() if e.kind == "thread"}
         tick = set()
-        spun = _carry(threads, self.edges)
+        spun = _carry(threads, timed_edges(self.edges))
         for uid in forever:
             if uid in spun:
                 tick.add(uid)
+        # What is registered for scripts to call is no entry by itself: it runs when something calls it, and that call is an edge of its own.
+        event |= {e.dst for es in self.edges.values() for e in es if e.kind in LATER and e.dst in graph.units and not (e.kind == "bind" and "ast" in e.sources)}
         self.roots = {"frame": frame, "tick": tick, "boot": boot, "event": event, "thread": threads}
-        self.reach = {name: _carry(starts, self.edges) for name, starts in self.roots.items()}
+        self.tests = self._tests(run)
+        # A context is the delivered program's: a test's own frame says nothing of how often the game runs what it calls.
+        self.roots = {name: starts - self.left_out for name, starts in self.roots.items()}
+        timed = timed_edges(self.edges)
+        self.reach = {name: _carry(starts, timed) for name, starts in self.roots.items()}
         self.repeats = set(self.reach["frame"]) | set(self.reach["tick"])
         self.jobs = _carry({e.src for e in graph.edges.values() if e.kind in ("stored", "callback")}, self.edges)
-        self.tests = self._tests(run)
         self.near = _carry({u for came in self.reach.values() for u in came}, wide_edges(graph))
 
     def _tests(self, run):
@@ -111,7 +123,9 @@ class When:
             if any(fnmatch.fnmatch(tail, p) for p in patterns):
                 left_out.add(uid)
         delivered = set(self.graph.units) - left_out
-        kept = _carry({u for u in delivered if self.graph.units[u]["kind"] == "class" and self.graph.units[u]["attrs"].get("script")} | set(self.reach["frame"]), self.edges)
+        entries = {u for starts in self.roots.values() for u in starts if u in delivered}
+        entries |= {e.dst for e in self.graph.edges.values() if e.src in delivered and self.graph.units.get(e.src, {}).get("kind") in ("key", "row", "entry")}
+        kept = _carry({u for u in delivered if self.graph.units[u]["kind"] == "class" and self.graph.units[u]["attrs"].get("script")} | entries, self.edges)
         tested = _carry(left_out, self.edges)
         return {u for u in tested if u not in kept} | left_out
 

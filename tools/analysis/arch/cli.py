@@ -138,7 +138,6 @@ def main(argv):
             p.add_argument("--no-cache", action="store_true")
         if name == "selfcheck":
             p.add_argument("--only", default="")
-            p.add_argument("--again", action="store_true", help="keep the run's store and run only what --only names: for working, never for delivery")
             p.add_argument("--job", default="", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     return args.fn(args)

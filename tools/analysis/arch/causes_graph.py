@@ -7,6 +7,8 @@ import networkx as nx
 from .core import digest
 from .layers import ENTRY
 
+BY_OWNER = {"no_reader", "no_effect", "test_code_shipped"}
+
 
 def _shape(f, atoms):
     """What tells two findings apart whatever anything is called: only an order between equals, far-away change may move it."""
@@ -24,8 +26,19 @@ def identities(findings):
     return out
 
 
+def _one_cause(f, graph):
+    """What findings of a kind share when they are one cause: the lock they hold, the table or class a value belongs to, the function they sit in."""
+    held = f["detail"].get("under")
+    if held and held != "?":
+        return f["category"], held
+    place = graph.callable_of(f["unit"])
+    if f["category"] in BY_OWNER:
+        return f["category"], graph.units.get(place, {}).get("parent") or place
+    return f["category"], place
+
+
 def explain(findings, idom, atoms):
-    """f explains g when every path to g's unit passes through f's, or when g lies among f's places."""
+    """f explains g when every path to g's unit passes through f's, or when g lies among f's places. Findings of one cause explain each other."""
     by_unit = collections.defaultdict(list)
     for i, f in enumerate(findings):
         f.setdefault("places", [(f["unit"], f["file"], f["line"])])
@@ -33,6 +46,13 @@ def explain(findings, idom, atoms):
             by_unit[uid].append(i)
     g = nx.DiGraph()
     g.add_nodes_from(range(len(findings)))
+    together = collections.defaultdict(list)
+    for i, f in enumerate(findings):
+        together[_one_cause(f, atoms.graph)].append(i)
+    for members in together.values():
+        for a, b in zip(members, members[1:]):
+            g.add_edge(a, b)
+            g.add_edge(b, a)
     for i, f in enumerate(findings):
         # Several places have no first one: what stands above them all is what can explain them, whatever they are called.
         x = common_owner([p[0] for p in f["places"]], idom) if len(f["places"]) > 1 else idom.get(f["unit"])
