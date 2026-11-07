@@ -1,15 +1,18 @@
 """What a task does in its own process: reads one copy of a repository and hands back a small summary. Comparing is left to the process that holds the
 plain scan, so no task carries it. Stacks go to a file every few seconds: a task that stops answering has already said where it is."""
-import faulthandler
 import os
 import pickle
+import sys
+import threading
+import time
+import traceback
 
 from ..repo import Repo
 from . import checks_history, checks_keys, inject
 from .checks_compare import labels, notes, snapshot
 from .view import View
 
-STACK_EVERY = 20
+STACK_EVERY = 5
 
 
 def read_copy(spec):
@@ -53,15 +56,26 @@ def result_of(store, name):
         return pickle.load(f)
 
 
+def _keep_stacks(path):
+    """Where the task is, written over and over by a thread that holds the interpreter while it reads. The standard library's timed dump reads frames
+    without holding it and can crash the very process it watches, which is what it did here."""
+    me = threading.get_ident()
+    while True:
+        time.sleep(STACK_EVERY)
+        frames = sys._current_frames()
+        text = "".join("".join(traceback.format_stack(f)) for i, f in frames.items() if i != me)
+        with open(path + ".tmp", "w", encoding="utf8") as f:
+            f.write(text)
+        os.replace(path + ".tmp", path)
+
+
 def run_task(store, name):
     """The body of a task's process."""
     base = os.path.join(store, "jobs", name)
-    with open(base + ".stack", "w", encoding="utf8") as stacks:
-        faulthandler.dump_traceback_later(STACK_EVERY, repeat=True, file=stacks)  # how often it writes, not a limit
-        with open(base + ".in", "rb") as f:
-            kind, spec = pickle.load(f)
-        result = KINDS[kind](spec)
-        faulthandler.cancel_dump_traceback_later()
+    threading.Thread(target=_keep_stacks, args=(base + ".stack",), daemon=True).start()
+    with open(base + ".in", "rb") as f:
+        kind, spec = pickle.load(f)
+    result = KINDS[kind](spec)
     with open(base + ".tmp", "wb") as f:
         pickle.dump(result, f, pickle.HIGHEST_PROTOCOL)
     os.replace(base + ".tmp", base + ".out")

@@ -362,6 +362,17 @@ Ciclo 2 (2026-11-06, pedido do usuário: tempo de execução). Causas da demora,
 Defeitos achados nessa leitura: `git cat-file` compartilhado entre duas threads travava a leitura (trava por pergunta); `gd_body` cortava o id em `#b`, então função com nome iniciado em "b" perdia o nome e colidia (achado pela semente sorteada); `Renamer` trocava letras dentro de `0xff00ffffu` e quebrava a compilação da cópia (causa do único grupo diferente na Invariância); achado de dois lugares escolhia a cabeça por nome.
 Causa de método, minha: rodar para descobrir em vez de ler o código, e corrigir uma falha por rodada. O usuário cobrou isso três vezes nesta sessão.
 
+Ciclo 3 (2026-11-06, execução sob supervisor). O que a execução paralela mostrou, com a causa de cada um:
+- Fila: reservar núcleos segurava 12 tarefas atrás de 2. O sistema divide os processadores; só memória que não existe segura uma tarefa, e nunca as menores (`check/supervisor.py`).
+- `WinError 1455`: cada processo do pool carregava `numpy`, e o OpenBLAS reserva memória por núcleo. `numpy` só entra em quem corta amostras, com uma thread.
+- Crash `0xC0000005`: `faulthandler.dump_traceback_later` lê frames sem segurar o interpretador e derrubou a tarefa que vigiava. Pilhas agora por thread que segura o interpretador (`job_kinds._keep_stacks`).
+- Falso travamento: quando o pool fecha, o tempo de CPU somado cai; "parado" é não mudar, não deixar de subir.
+- Sem prazo fixo: travada é a tarefa parada por mais tempo do que já trabalhou; atraso é avisado (`LATE`) e nada espera por ela. Painel `NOW` em tempo real.
+- `scattered` guardava todos os pares: agora um achado por unidade, com contagem de pares esquecida unidade a unidade.
+- `compile_units` dava a arquivo novo as opções da maior biblioteca; agora as da vizinhança dele. Variável errada numa compreensão zerou o C++ em uma rodada: a contagem de unidades denunciou.
+- Exportação extraía `arch_eval`: o programa e os gabaritos nunca saem para o disco.
+- Dono candidato vinha vazio quando só a entrada dominava: agora o lugar mais usado, marcado `most_used`.
+
 ## Passo 6: testar
 
 ## Passo 7: verificar

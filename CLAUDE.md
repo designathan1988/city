@@ -84,7 +84,7 @@ Antes de começar, leia o registro da sua linha. Ao terminar, atualize-o com hor
 | Diferença de fotos | `python tools/build/photodiff.py <antes> <depois> <saída>` |
 | Onde cada thread gasta | `python tools/analysis/sampler.py --hidden --cmd "<godot> --path project <cena>" --seconds 30 --symbolizer <llvm-symbolizer>` |
 | Causas pela forma do código | `python tools/analysis/causes.py` |
-| Causas pela arquitetura | `python tools/analysis/arch.py scan`, `status`, `next`, `explain <id>`, `selfcheck` (fila em `dist/arch/queue.json`) |
+| Causas pela arquitetura | `python tools/analysis/arch.py scan`, `status`, `next`, `explain <id>`, `selfcheck` (tarefas lado a lado, painel em tempo real; `--only x --again` refaz só o que falhou; fila em `dist/arch/queue.json`) |
 | Perfil da DLL de release | `tools/build/pgo.sh` (refazer depois de mudar laços quentes) |
 | Tradutor do 4.0 | em `tools/converter`: `node src/cli.ts feature`, `convert`, `differential` |
 

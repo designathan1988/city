@@ -14,6 +14,7 @@ import psutil
 from ..core import read_json, write_json
 
 LOOK_EVERY = 1
+SHOW_EVERY = 5
 CHILD_MEMORY = 400 * 2 ** 20
 BASE_MEMORY = 2 * 2 ** 30  # a task that reads this repository, until a first run says what it really took
 
@@ -56,7 +57,7 @@ class Supervisor:
     def __init__(self, ctx, finished, base_memory):
         self.ctx, self.finished = ctx, finished
         self.base_memory = max(base_memory, BASE_MEMORY)
-        self.waiting, self.closed, self.lock = [], False, threading.Lock()
+        self.waiting, self.closed, self.lock, self.shown = [], False, threading.Lock(), 0.0
         self.record = os.path.join(os.path.dirname(ctx.base), "selfcheck_times.json")
         self.known = read_json(self.record, {})
         self.cpus = os.cpu_count() or 1
@@ -137,6 +138,12 @@ class Supervisor:
         self.ctx.say(f"{'END  ' if failure is None else 'BROKE'} {job.name} {seconds} s {failure or ''}")
         self.finished(job, failure)
 
+    def _show(self, running, now):
+        """The state of everything, as it is, for whoever follows the run: what works, for how long, what it spent, what sits still and what waits."""
+        self.shown = now
+        rows = [f"{r.job.name} {round(now - r.started)}s cpu {round(r.spent)}s {round(r.peak / 2 ** 30, 1)}GB" + (f" STILL {round(now - r.moved)}s" if now - r.moved > 2 * LOOK_EVERY else "") for r in running]
+        self.ctx.say(f"NOW   {len(running)} running, {len(self.waiting)} waiting {[j.name for j in self.waiting]}: " + "; ".join(rows))
+
     def add(self, jobs):
         with self.lock:
             self.waiting = sorted(self.waiting + list(jobs), key=lambda j: (-self._seconds(j), j.name))
@@ -151,6 +158,8 @@ class Supervisor:
                 self._admit(self.waiting, running)
             time.sleep(0.2)
             now = time.time()
+            if now - self.shown >= SHOW_EVERY:
+                self._show(running, now)
             for r in list(running):
                 if r.process.poll() is not None:
                     running.remove(r)

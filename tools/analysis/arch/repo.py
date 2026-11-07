@@ -7,7 +7,7 @@ import subprocess
 import tarfile
 import threading
 
-from .core import inside, program_root, text_of
+from .core import inside, own_prefixes, program_root, text_of
 
 GIT = ("git", "-c", "core.quotepath=off", "-c", "core.autocrlf=false")
 _IGNORED = {}
@@ -148,9 +148,10 @@ class Repo:
         if paths:
             args += ["--", *paths]
         refused = []
+        own = own_prefixes(self.root)
         with tarfile.open(fileobj=io.BytesIO(self.git(*args))) as tar:
             for member in tar:
-                if member.isfile():
+                if member.isfile() and not (own and member.name.startswith(own)):
                     target = os.path.join(dest, member.name)
                     try:
                         os.makedirs(os.path.dirname(target), exist_ok=True)

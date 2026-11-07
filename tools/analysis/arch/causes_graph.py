@@ -92,6 +92,15 @@ def common_owner(units, idom):
     return None
 
 
+def owner_of(units, idom, graph, atoms):
+    """Who should own a cause: what every path to its places passes through; with no such unit, the place the most others already use."""
+    found = common_owner(units, idom)
+    if found in graph.units:
+        return found, "dominator"
+    best = max(units, key=lambda u: (len({e.src for e in graph.into.get(u, ()) if not e.generic}), -atoms.rank.get(u, 0)), default=None)
+    return best, "most_used"
+
+
 def commits_of(h):
     """Per lineage, the commits that changed it."""
     where = collections.defaultdict(list)
@@ -134,12 +143,12 @@ def build_queue(run, findings, explained, idom, atoms, unit_lineage, h):
         spent = max(costs[m] for m in members)
         children = sorted((findings[b]["category"], sorted(p[0] for p in findings[b]["places"])) for b in below)
         generated = run.roles.generated
-        owner = common_owner([p[0] for p in places], idom)
+        owner, reason = owner_of([p[0] for p in places], idom, graph, atoms)
         owner_unit = graph.units.get(owner) if owner else None
         queue.append({
             "id": min(ids[m] for m in members), "shape": _shape(head, atoms), "cause": head["category"], "context": head["context"], "detail": head["detail"],
             "proof": head["path"], "entry": head["root"], "places": [{"unit": p[0], "file": p[1], "line": p[2]} for p in places],
-            "owner": {"unit": owner, "file": owner_unit["file"], "line": owner_unit["line"]} if owner_unit else None,
+            "owner": {"unit": owner, "file": owner_unit["file"], "line": owner_unit["line"], "by": reason} if owner_unit else None,
             "generated": sorted({p[1] for p in places if p[1] in generated}), "made_by": [makers[n] for n in sorted({p[1].rsplit("/", 1)[-1] for p in places}) if n in makers], "vanish": sorted({findings[m]["category"] for m in members}),
             "children": children, "commits": spent, "reach": 1 + len(children), "score": (1 + len(children)) * (spent + prior), "ran": head.get("ran"),
         })
