@@ -1,0 +1,150 @@
+"""When code runs: what repeats (frame, tick, thread), what loads, what only tests reach. Everything is carried along the flow from the entries
+the program itself shows, with the path that proves it."""
+import collections
+
+from .core import words_of
+from .graph import FLOW
+
+CALLABLE = {"function", "method", "entry", "lambda", "branch"}
+
+
+def flow_edges(graph):
+    """Execution paths: certain edges, plus names that reach a table entry or a function without doubt."""
+    out = collections.defaultdict(list)
+    for e in graph.edges.values():
+        if e.generic or e.src not in graph.units or e.dst not in graph.units:
+            continue
+        if e.kind in FLOW or (e.kind == "name_ref" and e.conf == 1.0 and graph.units[e.dst]["kind"] in CALLABLE):
+            out[e.src].append(e)
+    return _in_order(out)
+
+
+def _in_order(edges):
+    for es in edges.values():
+        es.sort(key=lambda x: (x.dst, x.kind))
+    return edges
+
+
+Contains = collections.namedtuple("Contains", "src dst kind sites")
+
+
+def wide_edges(graph):
+    """Everything certain that leads from one unit to another, what contains it included: how a thing nothing runs still hangs from what runs."""
+    out = collections.defaultdict(list)
+    for e in graph.edges.values():
+        if not e.generic and e.src in graph.units and e.dst in graph.units:
+            out[e.src].append(e)
+    for uid, u in graph.units.items():
+        home = u["parent"] if u["parent"] in graph.units else "file:" + u["file"]
+        if home in graph.units and home != uid:
+            out[home].append(Contains(home, uid, "contains", [(u["file"], u["line"])]))
+            out[uid].append(Contains(uid, home, "part_of", [(u["file"], u["line"])]))
+    return _in_order(out)
+
+
+def _carry(starts, edges):
+    """Everything reached from the starts, each with the step that reached it first, in a fixed order."""
+    came = {s: None for s in starts}
+    queue = collections.deque(sorted(starts))
+    while queue:
+        n = queue.popleft()
+        for e in edges.get(n, ()):
+            if e.dst not in came:
+                came[e.dst] = e
+                queue.append(e.dst)
+    return came
+
+
+def _chain(uid, came):
+    """Walks back to where the spread began: that start, and the steps from it to the unit."""
+    steps = []
+    x = uid
+    while came.get(x) is not None and len(steps) < len(came):
+        e = came[x]
+        steps.append({"from": e.src, "to": e.dst, "kind": e.kind, "file": e.sites[0][0], "line": e.sites[0][1]})
+        x = e.src
+    steps.reverse()
+    return x, steps
+
+
+class When:
+    def __init__(self, run):
+        graph, api = run.graph, run.api
+        self.graph = graph
+        self.edges = flow_edges(graph)
+        frame, boot, event = set(), set(), set()
+        for uid, u in graph.units.items():
+            a = u["attrs"]
+            if u["kind"] not in ("function", "method"):
+                continue
+            if a.get("repeating") or (a.get("overrides") and u["name"] in api.repeating):
+                frame.add(uid)
+            elif a.get("input") or (a.get("overrides") and u["name"] in api.input):
+                event.add(uid)
+            elif a.get("callback") or (a.get("overrides") and u["name"] in api.virtual):
+                boot.add(uid)
+        forever = {c[0] for c in run.facts.costs if c[1] == "loop" and c[6].get("forever")}
+        threads = {e.src for e in graph.edges.values() if e.kind == "thread"}
+        tick = set()
+        spun = _carry(threads, self.edges)
+        for uid in forever:
+            if uid in spun:
+                tick.add(uid)
+        self.roots = {"frame": frame, "tick": tick, "boot": boot, "event": event, "thread": threads}
+        self.reach = {name: _carry(starts, self.edges) for name, starts in self.roots.items()}
+        self.repeats = set(self.reach["frame"]) | set(self.reach["tick"])
+        self.jobs = _carry({e.src for e in graph.edges.values() if e.kind in ("stored", "callback")}, self.edges)
+        self.tests = self._tests(run)
+        self.near = _carry({u for came in self.reach.values() for u in came}, wide_edges(graph))
+
+    def _tests(self, run):
+        """What only code left out of the delivered build reaches: the export preset's own filter says what is left out."""
+        filters = run.info.get("godot", {}).get("filters", {})
+        patterns = filters.get("exclude_filter", [])
+        self.left_out = set()
+        if not patterns:
+            return set()
+        import fnmatch
+        left_out = self.left_out
+        for uid, u in self.graph.units.items():
+            tail = u["file"].split("/", 1)[-1]
+            if any(fnmatch.fnmatch(tail, p) for p in patterns):
+                left_out.add(uid)
+        delivered = set(self.graph.units) - left_out
+        kept = _carry({u for u in delivered if self.graph.units[u]["kind"] == "class" and self.graph.units[u]["attrs"].get("script")} | set(self.reach["frame"]), self.edges)
+        tested = _carry(left_out, self.edges)
+        return {u for u in tested if u not in kept} | left_out
+
+    def labels(self, uid):
+        return {name for name in ("frame", "tick", "thread", "event", "boot") if uid in self.reach[name]} or {"cold"}
+
+    def label(self, uid):
+        for name in ("frame", "tick", "thread", "event", "boot"):
+            if uid in self.reach[name]:
+                return name
+        return "cold"
+
+    def path(self, uid):
+        """The proof of a finding: the chain of edges from an entry to the unit. What no entry runs shows how it hangs from what does, and what
+        hangs from nothing shows the file it lives in: a step, always."""
+        for name in ("frame", "tick", "thread", "event", "boot"):
+            if uid in self.reach[name]:
+                root, steps = _chain(uid, self.reach[name])
+                return name, root, steps or self._home(uid)
+        if uid in self.near:
+            joint, bridge = _chain(uid, self.near)
+            for name in ("frame", "tick", "thread", "event", "boot"):
+                if joint in self.reach[name]:
+                    root, steps = _chain(joint, self.reach[name])
+                    return "cold", root, steps + bridge
+        return "cold", uid, self._home(uid)
+
+    def _home(self, uid):
+        u = self.graph.units[uid]
+        return [{"from": "file:" + u["file"], "to": uid, "kind": "contains", "file": u["file"], "line": u["line"]}]
+
+
+def api_words(key):
+    """The words of an outside call: `Class.method` gives both sides."""
+    owner, _, name = key.rpartition(".")
+    return set(words_of(owner)), set(words_of(name))

@@ -136,21 +136,12 @@
       "sim/roads/",
       "sim/street/"
     ],
-    "native/src/sim/zones": [
-      "core/",
-      "sim/catalog/",
-      "sim/state/change_log.h",
-      "sim/terrain/",
-      "sim/roads/",
-      "sim/zones/"
-    ],
     "native/src/sim/buildings": [
       "core/",
       "sim/catalog/",
       "sim/state/change_log.h",
       "sim/terrain/",
       "sim/roads/",
-      "sim/zones/",
       "sim/buildings/"
     ],
     "native/src/sim/nature": [
@@ -166,7 +157,6 @@
       "sim/state/",
       "sim/roads/",
       "sim/buildings/",
-      "sim/zones/",
       "sim/terrain/",
       "sim/street/",
       "sim/traffic/"

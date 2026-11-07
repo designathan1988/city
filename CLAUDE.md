@@ -3,7 +3,8 @@
 Regras, métodos e estrutura do projeto. Atualize este arquivo na mesma mudança que altera o que ele descreve.
 Arquivo criado ou apagado entra em `log/mapa.md` no mesmo commit: o gate `MAPA_DESATUALIZADO` confere.
 O detalhe fica em `log/`: `mapa.md` (arquivo por arquivo), `ferramentas.md` (o que cada uma ensinou), `pendencias.md`
-(o que falta). Registros de cada linha: `work-log.md` (porte e gráficos), `conversor.md`, `causa-raiz.md`, `lab.md`, `base.md`.
+(o que falta). Registros de cada linha: `work-log.md` (porte e gráficos), `conversor.md`, `causa-raiz.md`, `lab.md`, `base.md`,
+`arquitetura.md` (o analisador de causas).
 Antes de começar, leia o registro da sua linha. Ao terminar, atualize-o com hora e commit, no mesmo commit.
 
 ## Metodologia de trabalho (toda tarefa, nesta ordem; trabalho direto, sem agentes)
@@ -83,6 +84,7 @@ Antes de começar, leia o registro da sua linha. Ao terminar, atualize-o com hor
 | Diferença de fotos | `python tools/build/photodiff.py <antes> <depois> <saída>` |
 | Onde cada thread gasta | `python tools/analysis/sampler.py --hidden --cmd "<godot> --path project <cena>" --seconds 30 --symbolizer <llvm-symbolizer>` |
 | Causas pela forma do código | `python tools/analysis/causes.py` |
+| Causas pela arquitetura | `python tools/analysis/arch.py scan`, `status`, `next`, `explain <id>`, `selfcheck` (fila em `dist/arch/queue.json`) |
 | Perfil da DLL de release | `tools/build/pgo.sh` (refazer depois de mudar laços quentes) |
 | Tradutor do 4.0 | em `tools/converter`: `node src/cli.ts feature`, `convert`, `differential` |
 
@@ -124,7 +126,8 @@ compilar. Meshoptimizer e Clipper2 vêm pelo CMake na primeira compilação. À 
 **`tools`**
 - `gates/`: regras verificadas, `rules.json`, `owners.json`, `schemas/`.
 - `build/`: `build.sh`, `quick.sh`, `runq.sh`, `run_tests.sh`, `pgo.sh`, `photodiff.py`, `free_dll.sh`, `hidden_run.ps1`.
-- `analysis/`: `suite.py`, `sampler.py`, `causes.py`, `live40.mjs` (o 4.0 aberto, respondendo em milissegundos).
+- `analysis/`: `suite.py`, `sampler.py`, `causes.py`, `live40.mjs` (o 4.0 aberto, respondendo em milissegundos), `arch.py` e `arch/` (o analisador
+  de arquitetura), `arch_eval/` (gabaritos que só o selfcheck dele lê).
 - `assets/`: cozinha de pessoas, marcos, ruído, móveis, postes e perfis de via.
 - `converter/`: rastreador e tradutor do 4.0, com git próprio; o conteúdo vem por `git read-tree`.
 - `converter-slice/`: fatia antiga do conversor.
