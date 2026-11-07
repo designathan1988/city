@@ -1,0 +1,6 @@
+{
+ "rule": "root",
+ "expect": [
+  "RAIZ_LIMPA junk.txt"
+ ]
+}

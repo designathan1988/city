@@ -1,0 +1,2 @@
+# Lonely.
+extends Node

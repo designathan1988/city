@@ -1,0 +1,13 @@
+{
+ "rule": "data",
+ "expect": [
+  "DADOS project/data/a.json",
+  "DADOS project/data/a.json",
+  "DADOS_SEM_SCHEMA project/data/b.json"
+ ],
+ "overrides": {
+  "schemas": {
+   "project/data/a.json": "tools/gates/schemas/a.schema.json"
+  }
+ }
+}

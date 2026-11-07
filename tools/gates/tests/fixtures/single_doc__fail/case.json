@@ -1,0 +1,6 @@
+{
+ "rule": "single_doc",
+ "expect": [
+  "DOC_UNICO tools/README.md"
+ ]
+}

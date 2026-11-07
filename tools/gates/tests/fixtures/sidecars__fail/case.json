@@ -1,0 +1,7 @@
+{
+ "rule": "sidecars",
+ "expect": [
+  "SIDECAR_WITHOUT_SOURCE project/a.png.import",
+  "SIDECAR_WITHOUT_SOURCE project/ui/gone.gd.uid"
+ ]
+}

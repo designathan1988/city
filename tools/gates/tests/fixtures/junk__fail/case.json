@@ -1,0 +1,6 @@
+{
+ "rule": "junk",
+ "expect": [
+  "SEM_LIXO notes.bak"
+ ]
+}

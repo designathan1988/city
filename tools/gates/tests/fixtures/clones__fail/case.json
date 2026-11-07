@@ -1,0 +1,17 @@
+{
+ "rule": "clones",
+ "expect": [
+  "CODIGO_DUPLICADO native/src/b.cpp:3"
+ ],
+ "overrides": {
+  "clones": {
+   "min_tokens": 20,
+   "paths": [
+    "native/src/"
+   ],
+   "extensions": [
+    ".cpp"
+   ]
+  }
+ }
+}

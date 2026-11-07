@@ -1,0 +1,7 @@
+{
+ "rule": "UM_DONO_DO_CORE",
+ "expect": [
+  "UM_DONO_DO_CORE project/ui/a.gd:3",
+  "UM_DONO_DO_CORE project/ui/a.gd:4"
+ ]
+}

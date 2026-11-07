@@ -1,0 +1,9 @@
+{
+ "rule": "sizes",
+ "expect": [],
+ "overrides": {
+  "max_lines": {
+   ".gd": 3
+  }
+ }
+}

@@ -1,0 +1,10 @@
+{
+ "rule": "ui_state",
+ "expect": [
+  "ESTADO_NA_UI project/ui/a.gd:3",
+  "ESTADO_NA_UI project/ui/a.gd:4",
+  "ESTADO_NA_UI project/ui/a.gd:5",
+  "ESTADO_NA_UI project/ui/a.gd:6",
+  "ESTADO_NA_UI project/ui/a.gd:7"
+ ]
+}

@@ -36,18 +36,26 @@ cp "$OUT/bin/$dll" "$mirror/bin/"
 cp "$ROOT/project/bin/citycore.gdextension.uid" "$mirror/bin/"
 sed "s#^windows\.\(debug\|release\)\.x86_64 = .*#windows.\1.x86_64 = \"res://bin/$dll\"#" "$ROOT/project/bin/citycore.gdextension" > "$mirror/bin/citycore.gdextension"
 
-export LLVM_PROFILE_FILE="$(win "$OUT/raw")/%p.profraw"
-pids=""
-for scene in $SCENES; do
-	name="$(basename "$scene")"
-	powershell -NoProfile -ExecutionPolicy Bypass -File "$(win "$ROOT/tools/build/hidden_run.ps1")" -TimeoutS "$DEADLINE_S" -WorkDir "$(win "$ROOT")" \
-		-Command "\"$GODOT\" --path \"$(win "$mirror")\" --resolution 1600x900 res://$scene.tscn -- --no-flow > \"$(win "$OUT/logs/$name.txt")\" 2>&1" > "$OUT/logs/$name.run" 2>&1 &
-	pids="$pids $!"
-done
-for pid in $pids; do wait "$pid"; done
+# Each scene a hidden task of tools/tasks (its own deadline, its tree killed by PID), all at once; each writes its counts to a
+# folder of its own, the task's output, keyed by the instrumented DLL and the project.
+requests="$OUT/logs/requests.jsonl"
+for scene in $SCENES; do mkdir -p "$OUT/raw/$(basename "$scene")"; done
+"${PY:-python}" - "$requests" "$GODOT" "$(win "$mirror")" "$(win "$OUT/raw")" "$(win "$OUT/bin/$dll")" "$DEADLINE_S" $SCENES <<'PY'
+import json, sys
+out, godot, mirror, raw, dll, deadline, *scenes = sys.argv[1:]
+with open(out, "w", encoding="utf-8") as f:
+    for scene in scenes:
+        name = scene.rsplit("/", 1)[-1]
+        f.write(json.dumps({"id": name, "name": f"pgo-{name}", "timeout_s": float(deadline), "hidden": True,
+                            "argv": [godot, "--path", mirror, "--resolution", "1600x900", f"res://{scene}.tscn", "--", "--no-flow"],
+                            "env": {"LLVM_PROFILE_FILE": f"{raw}/{name}/%p.profraw"},
+                            "inputs": ["project/**", "!project/bin/**", dll], "outputs": [f"{raw}/{name}"]}) + "\n")
+PY
+"${PY:-python}" tools/tasks/cli.py serve < "$requests" > "$OUT/logs/results.jsonl" || exit 1
+"${PY:-python}" -c "import json,sys; r=[json.loads(l) for l in open(sys.argv[1])]; bad=[x for x in r if x['status'] not in ('PASS','CACHED_PASS')]; [print(x['id'], x['status'], x.get('log') or x.get('error')) for x in bad]; sys.exit(1 if bad or len(r) != int(sys.argv[2]) else 0)" "$OUT/logs/results.jsonl" "$(echo $SCENES | wc -w)" || exit 1
 
-ls "$OUT"/raw/*.profraw > /dev/null 2>&1 || { echo "no profile written"; exit 1; }
-"$MINGW/bin/llvm-profdata.exe" merge -o "$ROOT/native/pgo/citycore.profdata" "$OUT"/raw/*.profraw || exit 1
+ls "$OUT"/raw/*/*.profraw > /dev/null 2>&1 || { echo "no profile written"; exit 1; }
+"$MINGW/bin/llvm-profdata.exe" merge -o "$ROOT/native/pgo/citycore.profdata" "$OUT"/raw/*/*.profraw || exit 1
 "$MINGW/bin/llvm-profdata.exe" show "$ROOT/native/pgo/citycore.profdata" | head -n 6
 # the mirror's junctions lead into the project: taken away first, so nothing deletes through them
 for entry in "$mirror"/*; do [ -d "$entry" ] && cmd //c rmdir "$(cygpath -w "$entry")" > /dev/null 2>&1; done

@@ -1,0 +1,10 @@
+{
+ "rule": "function_sizes",
+ "expect": [],
+ "overrides": {
+  "max_function_lines": {
+   ".gd": 3,
+   ".cpp": 3
+  }
+ }
+}

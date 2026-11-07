@@ -1,0 +1,18 @@
+{
+ "rule": "mirrors",
+ "expect": [
+  "ESPELHO project/render/a.gdshader"
+ ],
+ "overrides": {
+  "mirrors": [
+   {
+    "file": "project/render/a.gdshader",
+    "headers": [
+     "native/src/a.h"
+    ],
+    "constant": "MAX_N",
+    "pattern": "uniform float v\\[(\\d+)\\]"
+   }
+  ]
+ }
+}

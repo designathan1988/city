@@ -1,11 +1,12 @@
-"""Code-level gates: C++ layer dependencies, forbidden patterns, orphan GDScript files."""
-import os
-import re
+"""Code-level gates: C++ layer dependencies from #include directives, and orphan scripts and shaders (no scene, script,
+shader or project.godot names them in code)."""
+import cpp_syntax
 
-INCLUDE = re.compile(r'#include\s*[<"]([^>"]+)[>"]')
+REFERRERS = (".gd", ".tscn", ".tres", ".godot", ".gdshader", ".gdshaderinc")
+JUDGED = (".gd", ".gdshader", ".gdshaderinc")
 
 
-def _layer_for(path, layers):
+def layer_of(path, layers):
     best = None
     for prefix in layers:
         if path.startswith(prefix + "/") and (best is None or len(prefix) > len(best)):
@@ -13,55 +14,55 @@ def _layer_for(path, layers):
     return best
 
 
-def check_layers(root, rules, files, err):
-    layers = rules["cpp_layers"]
+def applies_layers(ctx, path):
+    return path.startswith("native/src/") and path.endswith((".cpp", ".h"))
+
+
+def check_layers(ctx, src, err):
+    layers = ctx.rules["cpp_layers"]
+    layer = layer_of(src.path, layers)
+    if layer is None:
+        err("CAMADA_DESCONHECIDA", src.path, "folder without a rule in rules.json/cpp_layers")
+        return
+    for inc, angle, line in cpp_syntax.includes(src):
+        if angle and "/" not in inc:
+            continue  # standard library
+        if not any(inc.startswith(p) for p in layers[layer]):
+            err("CAMADA", f"{src.path}:{line}", f"'{inc}' is not allowed in {layer} (rules.json/cpp_layers)")
+
+
+def orphan_inputs(ctx, path):
+    return path.startswith("project/") and path.endswith(REFERRERS + (".uid",))
+
+
+def check_orphans(ctx, err):
+    """Every GDScript and shader is named by another file's code: a res:// path, a uid:// id or its class_name.
+    The names are indexed once (word -> files), so the check is linear in the project's size."""
+    files = [f for f in ctx.files if f.startswith("project/") and f.endswith(REFERRERS)]
+    uid_to_path = {}
+    for f in ctx.files:
+        if f.startswith("project/") and f.endswith(".uid"):
+            uid = ctx.facts(f).get("uid")
+            if uid:
+                uid_to_path[uid] = f[: -len(".uid")]
+    referenced_by, word_files = {}, {}
     for f in files:
-        if not f.startswith("native/src/") or not f.endswith((".cpp", ".h")):
+        facts = ctx.facts(f)
+        if facts.get("lex_error"):
+            err("ORFAO", f, f"cannot be read as code: {facts['lex_error']}")
             continue
-        layer = _layer_for(f, layers)
-        if layer is None:
-            err("CAMADA_DESCONHECIDA", f, "pasta sem regra em rules.json/cpp_layers")
-            continue
-        with open(os.path.join(root, f), encoding="utf-8") as fh:
-            for n, line in enumerate(fh, 1):
-                m = INCLUDE.search(line)
-                if not m:
-                    continue
-                inc = m.group(1)
-                if "/" not in inc and line.strip().startswith("#include <"):
-                    continue  # standard library
-                if not any(inc.startswith(p) for p in layers[layer]):
-                    err("CAMADA", f"{f}:{n}", f"'{inc}' não é permitido em {layer} (rules.json/cpp_layers)")
-
-
-def check_forbidden(root, rules, files, err):
-    compiled = [(r, re.compile(r["pattern"])) for r in rules["forbidden"]]
+        for ref in facts.get("refs", []):
+            target = uid_to_path.get(ref) or ("project/" + ref[len("res://"):] if ref.startswith("res://") else None)
+            if target:
+                referenced_by.setdefault(target, set()).add(f)
+        for w in facts.get("idents", []):
+            word_files.setdefault(w, set()).add(f)
     for f in files:
-        if f.endswith((".json", ".csv")) and not f.startswith("project/"):
+        if not f.endswith(JUDGED) or f.startswith("project/tests/"):
             continue
-        for rule, rx in compiled:
-            excepted = any(f == e or (e.endswith("/") and f.startswith(e)) for e in rule.get("except", []))
-            if not any(f.startswith(p) for p in rule["paths"]) or excepted:
-                continue
-            with open(os.path.join(root, f), encoding="utf-8", errors="replace") as fh:
-                for n, line in enumerate(fh, 1):
-                    if rx.search(line):
-                        err(rule["id"], f"{f}:{n}", rule["message"])
-
-
-def check_orphans(root, files, err):
-    """Every GDScript/shader must be referenced by a scene, script, project.godot or class_name use."""
-    texts = {}
-    for f in files:
-        if f.startswith("project/") and f.endswith((".gd", ".tscn", ".tres", ".godot", ".gdshader")):
-            with open(os.path.join(root, f), encoding="utf-8", errors="replace") as fh:
-                texts[f] = fh.read()
-    for f, text in texts.items():
-        if not f.endswith((".gd", ".gdshader")) or f.startswith("project/tests/"):
-            continue
-        res = "res://" + f[len("project/"):]
-        m = re.search(r"^class_name\s+(\w+)", text, re.M)
-        cls = re.compile(r"\b%s\b" % m.group(1)) if m else None
-        used = any(res in t or (cls and cls.search(t)) for o, t in texts.items() if o != f)
-        if not used:
-            err("ORFAO", f, "arquivo não referenciado por cena/script/project.godot: apague ou ligue ao projeto")
+        users = set(referenced_by.get(f, ())) - {f}
+        cls = ctx.facts(f).get("class_name")
+        if cls:
+            users |= set(word_files.get(cls, ())) - {f}
+        if not users:
+            err("ORFAO", f, "no scene, script, shader or project.godot names this file: delete it or connect it")

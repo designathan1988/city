@@ -1,0 +1,21 @@
+{
+ "rule": "single_owner",
+ "expect": [
+  "DONO_UNICO native/src/b.cpp:2"
+ ],
+ "owners": {
+  "concepts": [
+   {
+    "id": "height",
+    "owner": "native/src/a.cpp",
+    "symbol": "owner_fn",
+    "forbidden_elsewhere": [
+     "floors\\s*\\*"
+    ],
+    "scope": [
+     "native/src/"
+    ]
+   }
+  ]
+ }
+}

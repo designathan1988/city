@@ -1,0 +1,13 @@
+{
+ "rule": "function_sizes",
+ "expect": [
+  "TAMANHO_FUNCAO a.gd:2",
+  "TAMANHO_FUNCAO native/src/a.h:3"
+ ],
+ "overrides": {
+  "max_function_lines": {
+   ".gd": 3,
+   ".cpp": 3
+  }
+ }
+}

@@ -1,0 +1,4 @@
+{
+ "rule": "magic_numbers",
+ "expect": []
+}

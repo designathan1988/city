@@ -1,0 +1,7 @@
+{
+ "rule": "tuning",
+ "expect": [
+  "TUNING native/src/sim/catalog/tuning_fields.h",
+  "TUNING_SEM_USO native/src/sim/catalog/tuning_fields.h"
+ ]
+}

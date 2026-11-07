@@ -1,0 +1,3 @@
+[autoload]
+
+Main="*res://game/a.gd"

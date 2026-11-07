@@ -1,0 +1,7 @@
+{
+ "rule": "DADOS_POR_UM_LEITOR",
+ "expect": [
+  "DADOS_POR_UM_LEITOR project/ui/a.gd:3",
+  "DADOS_POR_UM_LEITOR project/ui/a.gd:5"
+ ]
+}

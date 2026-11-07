@@ -1,0 +1,19 @@
+{
+ "rule": "single_owner",
+ "expect": [],
+ "owners": {
+  "concepts": [
+   {
+    "id": "height",
+    "owner": "native/src/a.cpp",
+    "symbol": "owner_fn",
+    "forbidden_elsewhere": [
+     "floors\\s*\\*"
+    ],
+    "scope": [
+     "native/src/"
+    ]
+   }
+  ]
+ }
+}

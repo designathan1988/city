@@ -1,103 +1,131 @@
-"""Single-owner gates (fitness functions): owner registry, magic numbers (clang-tidy
-readability-magic-numbers / C++ Core Guidelines ES.45 style), data values copied into code, and UI state
-outside the store (Redux principle: keep state minimal and derive the rest)."""
+"""Single-owner gates (fitness functions) on tokens: the owner registry, magic numbers (clang-tidy
+readability-magic-numbers / C++ Core Guidelines ES.45 style, each literal judged) and data values copied into code."""
 import json
 import os
 import re
 
-NUM = re.compile(r"(?<![\w.#])(\d+\.\d*|\.\d+|\d+)(?:[eE][-+]?\d+)?f?(?![\w.])")
-STRING = re.compile(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'')
+import cpp_syntax
+import gd_syntax
+import lex_c
+import lex_gd
+
+OWNER_EXTENSIONS = (".cpp", ".h", ".gd", ".gdshader")
 
 
-def _code_lines(path):
-    """Lines with strings and comments blanked out (keeps line numbers)."""
-    with open(path, encoding="utf-8", errors="replace") as fh:
-        text = fh.read()
-    text = re.sub(r"/\*.*?\*/", lambda m: "\n" * m.group(0).count("\n"), text, flags=re.S)
-    out = []
-    for line in text.splitlines():
-        line = STRING.sub('""', line)
-        line = re.sub(r"//.*", "", line)
-        if path.endswith((".gd", ".py")):
-            line = re.sub(r"#.*", "", line)
-        out.append(line)
-    return out
+def _in(path, prefixes):
+    return any(path.startswith(p) for p in prefixes)
 
 
-def _in_scope(f, prefixes):
-    return any(f.startswith(p) for p in prefixes)
+# ---- owner registry ---------------------------------------------------------------------------------------------
 
-
-def check_owners(root, files, err):
-    with open(os.path.join(root, "tools", "gates", "owners.json"), encoding="utf-8") as fh:
-        reg = json.load(fh)
-    for c in reg["concepts"]:
+def check_owner_symbols(ctx, err):
+    for c in ctx.owners["concepts"]:
         owner = c["owner"]
-        if owner not in files:
-            err("DONO_AUSENTE", owner, f"dono do conceito '{c['id']}' não existe")
+        if owner not in ctx.listed_set:
+            err("DONO_AUSENTE", owner, f"owner of concept '{c['id']}' does not exist")
             continue
         sym = c["symbol"].split("::")[-1]
-        with open(os.path.join(root, owner), encoding="utf-8") as fh:
-            if not re.search(r"\b%s\b" % re.escape(sym), fh.read()):
-                err("DONO_AUSENTE", owner, f"símbolo '{c['symbol']}' (dono de '{c['id']}') não encontrado")
+        if not any(t.kind == "ident" and t.text == sym for t in ctx.source(owner).code()):
+            err("DONO_AUSENTE", owner, f"symbol '{c['symbol']}' (owner of '{c['id']}') is not in its code")
+
+
+def owner_inputs(ctx, path):
+    return path in {c["owner"] for c in ctx.owners["concepts"]}
+
+
+def applies_owners(ctx, path):
+    return path.endswith(OWNER_EXTENSIONS) and any(_in(path, c["scope"]) for c in ctx.owners["concepts"])
+
+
+def check_single_owner(ctx, src, err):
+    """A concept's re-implementation pattern found in code (comments blanked, strings kept) outside its owner."""
+    lines = None
+    for c in ctx.owners["concepts"]:
+        allow = set(c.get("allow", [])) | {c["owner"]}
+        if src.path in allow or any(src.path.startswith(a) for a in allow if a.endswith("/")) or not _in(src.path, c["scope"]):
+            continue
         rx = [re.compile(p) for p in c["forbidden_elsewhere"]]
-        allow = set(c.get("allow", [])) | {owner}
-        for f in files:
-            if f in allow or any(f.startswith(a) for a in allow if a.endswith("/")):
-                continue
-            if not _in_scope(f, c["scope"]) or not f.endswith((".cpp", ".h", ".gd", ".gdshader")):
-                continue
-            for n, line in enumerate(_code_lines(os.path.join(root, f)), 1):
-                if any(r.search(line) for r in rx):
-                    err("DONO_UNICO", f"{f}:{n}", f"reimplementa '{c['id']}': use {c['symbol']} ({owner})")
+        lines = lines if lines is not None else src.blanked()
+        for n, line in enumerate(lines, 1):
+            if any(r.search(line) for r in rx):
+                err("DONO_UNICO", f"{src.path}:{n}", f"re-implements '{c['id']}': use {c['symbol']} ({c['owner']})")
 
 
-def _allowed_number(tok, cfg):
-    v = float(tok.rstrip("f"))
-    return v in cfg["allowed_values"]
+# ---- named constants and number literals ------------------------------------------------------------------------
+
+def constant_tokens(src):
+    """(token ids inside named-constant declarations, {name: token ids of its declaration}) for C++, GLSL and GDScript."""
+    code = src.code()
+    inside, by_name = set(), {}
+    if src.lang in ("cpp", "glsl"):
+        for a, b in cpp_syntax.named_constant_ranges(code):
+            span = code[a:b + 1]
+            ids = {id(t) for t in span}
+            inside |= ids
+            for k, t in enumerate(span[:-1]):
+                if t.kind == "ident" and cpp_syntax.UPPER.match(t.text) and span[k + 1].text in ("=", "{", "["):
+                    by_name[t.text] = ids
+    elif src.lang == "gd":
+        for ln in gd_syntax.logical_lines(src):
+            anns = gd_syntax.annotations(ln.toks)
+            for _name, a, b in anns:
+                inside |= {id(t) for t in ln.toks[a:b]}
+            rest = ln.toks[anns[-1][2]:] if anns else ln.toks
+            if len(rest) > 1 and rest[0].text == "const" and cpp_syntax.UPPER.match(rest[1].text):
+                ids = {id(t) for t in rest}
+                inside |= ids
+                by_name[rest[1].text] = ids
+            elif rest and rest[0].text == "enum":
+                inside |= {id(t) for t in rest}
+    return inside, by_name
 
 
-def check_magic_numbers(root, rules, files, err):
-    cfg = rules["magic_numbers"]
-    named = re.compile(cfg["named_constant_line"])
-    for f in files:
-        if not _in_scope(f, cfg["paths"]) or _in_scope(f, cfg.get("exempt", [])):
-            continue
-        if not f.endswith(tuple(cfg["extensions"])):
-            continue
-        for n, line in enumerate(_code_lines(os.path.join(root, f)), 1):
-            if named.search(line) or line.lstrip().startswith(("#include", "@export_range", "#define")):
-                continue
-            for m in NUM.finditer(line):
-                if not _allowed_number(m.group(0), cfg):
-                    err("NUMERO_MAGICO", f"{f}:{n}", f"literal {m.group(0)}: dê um nome (constante no dono) ou mova para data/")
-                    break
+def _value(src, tok):
+    return (lex_gd.number_value if src.lang == "gd" else lex_c.number_value)(tok.text)
 
 
-def _data_values(root, rules):
-    """value -> list of data paths, and leaf key -> list of data paths."""
-    vals, keys = {}, {}
+def applies_magic(ctx, path):
+    cfg = ctx.rules["magic_numbers"]
+    return _in(path, cfg["paths"]) and not _in(path, cfg.get("exempt", [])) and path.endswith(tuple(cfg["extensions"]))
 
-    def walk(node, where, leaf):
-        if isinstance(node, dict):
-            for k, v in node.items():
-                walk(v, f"{where}.{k}", k)
-        elif isinstance(node, list):
-            for i, v in enumerate(node):
-                walk(v, f"{where}[{i}]", leaf)
-        elif isinstance(node, (int, float)) and not isinstance(node, bool):
-            vals.setdefault(float(node), []).append(where)
-            if leaf and not leaf.startswith("_"):
-                keys.setdefault(leaf, []).append(where)
 
-    for data_path in rules["schemas"]:
-        if data_path in rules["magic_numbers"].get("data_copy_ignore_files", []):
-            continue
-        full = os.path.join(root, data_path)
-        if os.path.exists(full):
-            with open(full, encoding="utf-8") as fh:
-                walk(json.load(fh), data_path, "")
-    return vals, keys
+def check_magic_numbers(ctx, src, err):
+    allowed = {float(v) for v in ctx.rules["magic_numbers"]["allowed_values"]}
+    inside, _names = constant_tokens(src)
+    for t in src.code():
+        if t.kind == "number" and id(t) not in inside:
+            v = _value(src, t)
+            if v is None or v not in allowed:
+                err("NUMERO_MAGICO", f"{src.path}:{t.line}", f"literal {t.text}: name it (a constant in its owner) or move it to data/")
+
+
+# ---- data values copied into code -------------------------------------------------------------------------------
+
+def data_values(ctx):
+    """value -> data paths, leaf key -> data paths, over every data table with a schema."""
+    def build():
+        vals, keys = {}, {}
+
+        def walk(node, where, leaf):
+            if isinstance(node, dict):
+                for k, v in node.items():
+                    walk(v, f"{where}.{k}", k)
+            elif isinstance(node, list):
+                for i, v in enumerate(node):
+                    walk(v, f"{where}[{i}]", leaf)
+            elif isinstance(node, (int, float)) and not isinstance(node, bool):
+                vals.setdefault(float(node), []).append(where)
+                if leaf and not leaf.startswith("_"):
+                    keys.setdefault(leaf, []).append(where)
+
+        ignore = set(ctx.rules["magic_numbers"].get("data_copy_ignore_files", []))
+        for data_path in ctx.rules["schemas"]:
+            full = os.path.join(ctx.root, data_path)
+            if data_path not in ignore and os.path.exists(full):
+                with open(full, encoding="utf-8") as fh:
+                    walk(json.load(fh), data_path, "")
+        return vals, keys
+    return ctx.lazy("data_values", build)
 
 
 def _distinctive(v):
@@ -109,50 +137,39 @@ def _distinctive(v):
     return n >= 100 and n not in round_numbers and n % 100 != 0
 
 
-CONST_NAME = re.compile(r"\b(?:const|constexpr)\s+[\w:<>]+\s+([A-Z][A-Z0-9_]+)|^\s*const\s+([A-Z][A-Z0-9_]+)")
 GENERIC = {"min", "max", "size", "count", "value", "share", "rate", "time", "step", "scale", "range", "base"}
 
 
-def _tokens(name):
+def _name_words(name):
     return {t for t in re.split(r"[_\W]+", name.lower()) if len(t) >= 3 and t not in GENERIC}
 
 
-def check_data_copies(root, rules, files, err):
-    """A definition owned by a data table must not get a second owner in code: neither the same distinctive
-    value typed again, nor a named constant whose name matches a data key (it would drift silently)."""
-    cfg = rules["magic_numbers"]
-    allow = set(cfg.get("data_copy_allow", []))
-    vals, keys = _data_values(root, rules)
+def applies_data_copies(ctx, path):
+    cfg = ctx.rules["magic_numbers"]
+    return _in(path, cfg["data_copy_paths"]) and not _in(path, cfg.get("exempt", [])) and path.endswith(OWNER_EXTENSIONS)
+
+
+def check_data_copies(ctx, src, err):
+    """A definition owned by a data table gets no second owner in code: neither a named constant whose name matches a
+    data key nor the same distinctive value typed again (it would drift silently)."""
+    allow = set(ctx.rules["magic_numbers"].get("data_copy_allow", []))
+    vals, keys = data_values(ctx)
     distinct = {v: w for v, w in vals.items() if len(w) == 1 and _distinctive(v)}
-    key_tokens = {k: _tokens(k) for k in keys}
-    for f in files:
-        if not _in_scope(f, cfg["data_copy_paths"]) or _in_scope(f, cfg.get("exempt", [])):
+    key_words = {k: _name_words(k) for k in keys}
+    _inside, by_name = constant_tokens(src)
+    skip = set()
+    for name, ids in by_name.items():
+        if f"{src.path}:{name}" in allow:
+            skip |= ids
             continue
-        if not f.endswith((".cpp", ".h", ".gd", ".gdshader")):
-            continue
-        for n, line in enumerate(_code_lines(os.path.join(root, f)), 1):
-            m = CONST_NAME.search(line)
-            name = (m.group(1) or m.group(2)) if m else None
-            if name and f"{f}:{name}" in allow:
-                continue
-            if name:
-                toks = _tokens(name)
-                hits = [k for k, kt in key_tokens.items() if len(kt & toks) >= 2 or (toks and toks == kt)]
-                if hits:
-                    err("SEGUNDO_DONO", f"{f}:{n}", f"{name} repete a definição de '{hits[0]}' ({keys[hits[0]][0]}): leia do dado")
-                    continue
-            for mm in NUM.finditer(line):
-                v = float(mm.group(0).rstrip("f"))
-                if v in distinct:
-                    err("VALOR_DUPLICADO", f"{f}:{n}", f"{mm.group(0)} já é definido em {distinct[v][0]}: leia do dado")
-                    break
-
-
-def check_ui_state(root, files, err):
-    """UI scripts hold no game state: only node refs (@onready) and exported config."""
-    for f in files:
-        if not f.startswith("project/ui/") or not f.endswith(".gd"):
-            continue
-        for n, line in enumerate(_code_lines(os.path.join(root, f)), 1):
-            if re.match(r"var\s", line) and "@onready" not in line and "@export" not in line:
-                err("ESTADO_NA_UI", f"{f}:{n}", "UI não guarda estado: leia do CityStore/ToolController/GameFlow")
+        words = _name_words(name)
+        hits = [k for k, kw in key_words.items() if len(kw & words) >= 2 or (words and words == kw)]
+        if hits:
+            line = min(t.line for t in src.code() if id(t) in ids)
+            err("SEGUNDO_DONO", f"{src.path}:{line}", f"{name} repeats the definition of '{hits[0]}' ({keys[hits[0]][0]}): read the data")
+            skip |= ids
+    for t in src.code():
+        if t.kind == "number" and id(t) not in skip:
+            v = _value(src, t)
+            if v in distinct:
+                err("VALOR_DUPLICADO", f"{src.path}:{t.line}", f"{t.text} is already defined in {distinct[v][0]}: read the data")

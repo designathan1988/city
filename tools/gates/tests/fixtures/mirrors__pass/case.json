@@ -1,0 +1,16 @@
+{
+ "rule": "mirrors",
+ "expect": [],
+ "overrides": {
+  "mirrors": [
+   {
+    "file": "project/render/a.gdshader",
+    "headers": [
+     "native/src/a.h"
+    ],
+    "constant": "MAX_N",
+    "pattern": "uniform float v\\[(\\d+)\\]"
+   }
+  ]
+ }
+}

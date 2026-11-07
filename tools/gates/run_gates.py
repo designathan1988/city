@@ -1,80 +1,186 @@
 #!/usr/bin/env python3
-"""Project gates. Run before finishing any change: python3 tools/gates/run_gates.py
-Exit 2 + report on stderr when something fails.
-Flags: --summary (one-line result), --file PATH (fast check of one edited file)."""
+"""Project gates: python tools/gates/run_gates.py [--file PATH ...] [--files-from LIST] [--summary] [--selftest]
+Exit 0 clean; 1 when any rule reports a problem or crashes; 2 when no file is given or the scope is empty, or a given
+path is unknown (not on disk and not in git). Given paths that every gate leaves out by a declared rule are listed and
+skipped; when all of them are, the exit is 0. Each rule runs on its own: one crashing rule is a failure and the others
+still run."""
+import argparse
 import json
 import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import gate_clones  # noqa: E402
-import gate_code  # noqa: E402
-import gate_data  # noqa: E402
-import gate_defs  # noqa: E402
-import gate_docs  # noqa: E402
-import gate_files  # noqa: E402
-import gate_tuning  # noqa: E402
+import registry  # noqa: E402
+import scope  # noqa: E402
+from context import REPO, Cache, Context, digest  # noqa: E402
+from lex_other import LexError  # noqa: E402
 
-ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+SUMMARY_SHOWN = 15
 
 
-def run(only_file=None):
-    with open(os.path.join(ROOT, "tools", "gates", "rules.json"), encoding="utf-8") as fh:
+def load_config(root):
+    with open(os.path.join(root, "tools", "gates", "rules.json"), encoding="utf-8") as fh:
         rules = json.load(fh)
+    with open(os.path.join(root, "tools", "gates", "owners.json"), encoding="utf-8") as fh:
+        owners = json.load(fh)
+    return rules, owners
+
+
+def run_rules(ctx, targets, rules_list, whole_filter=None):
+    """Problems as (id, where, message). `targets`: files the per-file rules judge; whole-repo rules run when
+    `whole_filter` is None or one of their inputs is in it."""
     problems = []
-
-    def err(gate, where, msg):
-        problems.append(f"[{gate}] {where}: {msg}")
-
-    files = gate_files.walk(ROOT, rules)
-    scope = files
-    if only_file:
-        rel = os.path.relpath(os.path.abspath(only_file), ROOT).replace(os.sep, "/")
-        scope = [rel] if rel in files else []
-    gate_files.check_junk(rules, scope, err)
-    gate_files.check_single_doc(rules, scope, err)
-    gate_files.check_sizes(ROOT, rules, scope, err)
-    gate_files.check_function_sizes(ROOT, rules, scope, err)
-    gate_files.check_headers(ROOT, rules, scope, err)
-    gate_code.check_layers(ROOT, rules, scope, err)
-    gate_code.check_forbidden(ROOT, rules, scope, err)
-    gate_defs.check_magic_numbers(ROOT, rules, scope, err)
-    gate_defs.check_ui_state(ROOT, scope, err)
-    if not only_file:
-        gate_files.check_root(ROOT, rules, files, err)
-        gate_code.check_orphans(ROOT, files, err)
-        gate_docs.check_claude_md(ROOT, rules, files, err)
-        gate_data.check_data(ROOT, rules, files, err)
-        gate_defs.check_owners(ROOT, files, err)
-        gate_defs.check_data_copies(ROOT, rules, files, err)
-        gate_clones.check_clones(ROOT, rules, files, err)
-        gate_tuning.check_tuning(ROOT, files, err)
-        gate_tuning.check_mirrors(ROOT, rules, err)
+    per_file = [r for r in rules_list if isinstance(r, registry.PerFile)]
+    whole = [r for r in rules_list if isinstance(r, registry.Whole)]
+    contexts = {}
+    for f in targets:
+        active = []
+        for r in per_file:
+            try:
+                if r.applies(ctx, f):
+                    active.append(r)
+            except Exception as e:  # noqa: BLE001  a crash is a failure, reported and counted
+                problems.append(("GATE_CRASH", f, f"{r.name}: {e!r}"))
+        if not active:
+            continue
+        for r in active:
+            if r.context and r.name not in contexts:
+                try:
+                    contexts[r.name] = r.context(ctx)
+                except Exception as e:  # noqa: BLE001
+                    contexts[r.name] = None
+                    problems.append(("GATE_CRASH", r.name, f"context: {e!r}"))
+        key = digest("per_file", ctx.cache.file_key(f), [r.name for r in active],
+                     [contexts.get(r.name) for r in active], ctx.changed.get(f) if f in ctx.changed else "-")
+        problems += [tuple(p) for p in ctx.cache.get(key, lambda: _judge(ctx, f, active))]
+    for r in whole:
+        inputs = [f for f in ctx.listed if r.inputs(ctx, f)]
+        if whole_filter is not None and not any(r.inputs(ctx, f) for f in whole_filter):
+            continue
+        try:
+            key = digest("whole", r.name, ctx.cache.key_of(inputs, extra=(json.dumps(r.extra(ctx) if r.extra else None),)))
+            problems += [tuple(p) for p in ctx.cache.get(key, lambda: _collect(lambda err: r.check(ctx, err)))]
+        except Exception as e:  # noqa: BLE001
+            problems.append(("GATE_CRASH", r.name, repr(e)))
     return problems
 
 
-def main():
-    args = sys.argv[1:]
-    try:
-        only = args[args.index("--file") + 1] if "--file" in args else None
-        problems = run(only)
-    except Exception as e:  # a crashing gate is a failed run, never a pass
-        problems = [f"[GATE_RUNNER] o verificador falhou: {e!r}"]
-    if "--summary" in args:
-        state = "OK" if not problems else f"{len(problems)} problema(s)"
-        print(f"Gates do projeto: {state}. Regras: CLAUDE.md. Mapa do código: log/mapa.md. Rode python3 tools/gates/run_gates.py antes de concluir.")
-        for p in problems[:15]:
-            print(p)
-        return 0
-    if problems:
-        print("Gates falharam. Corrija antes de concluir (regras em CLAUDE.md):", file=sys.stderr)
-        for p in problems[:80]:
-            print(p, file=sys.stderr)
-        if len(problems) > 80:
-            print(f"... e mais {len(problems) - 80}", file=sys.stderr)
+def _collect(fn):
+    out = []
+    fn(lambda gid, where, msg: out.append([gid, where, msg]))
+    return out
+
+
+def _judge(ctx, path, active):
+    out = []
+    src = ctx.source(path)
+    for r in active:
+        def err(gid, where, msg):
+            out.append([gid, where, msg])
+        try:
+            r.check(ctx, src, err)
+        except LexError as e:
+            out.append([r.ids[0], path, f"cannot be tokenized: {e}"])
+        except Exception as e:  # noqa: BLE001
+            out.append(["GATE_CRASH", path, f"{r.name}: {e!r}"])
+    return out
+
+
+def build_context(root, requested):
+    rules, owners = load_config(root)
+    cache = Cache(root, enabled=True)
+    listed = scope.listed_files(root)
+    files = [f for f in listed if not scope.excluded(f, rules["exclude_dirs"])]
+    changed = scope.changed_lines(root, requested)
+    return Context(root, files, listed, rules, owners, changed, cache)
+
+
+def requested_paths(args):
+    """Repo-relative paths from --file and --files-from (one path per line), or None when neither was given."""
+    if not args.file and args.files_from is None:
+        return None
+    raw = list(args.file)
+    if args.files_from is not None:
+        with open(args.files_from, encoding="utf-8") as fh:
+            raw += [line.strip() for line in fh if line.strip()]
+    return sorted({os.path.relpath(os.path.join(REPO, f), REPO).replace(os.sep, "/") for f in raw})
+
+
+def classify(ctx, requested, rules_list):
+    """(judged, ignored [(path, reason)], unknown) of the given paths. A path outside every gate by a declared rule
+    (rules.json/exclude_dirs, .gitignore, deleted in git) is ignored and listed; one that git does not know and that is
+    not on disk is a usage error."""
+    wholes = [r for r in rules_list if isinstance(r, registry.Whole)]
+    tracked = scope.tracked_files(ctx.root)
+    judged, ignored, unknown = [], [], []
+    for f in requested:
+        if f in ctx.file_set or (f in ctx.listed_set and any(r.inputs(ctx, f) for r in wholes)):
+            judged.append(f)
+        elif f in ctx.listed_set:
+            ignored.append((f, "in a folder rules.json/exclude_dirs keeps out of the gates"))
+        elif os.path.isfile(os.path.join(ctx.root, f)):
+            ignored.append((f, "ignored by .gitignore"))
+        elif f in tracked:
+            ignored.append((f, "deleted in the worktree"))
+        else:
+            unknown.append(f)
+    return judged, ignored, unknown
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--file", action="append", default=[], help="judge only this file (repeatable)")
+    ap.add_argument("--files-from", help="judge only the files listed in this file, one repo-relative path per line")
+    ap.add_argument("--summary", action="store_true", help="print a count per rule and the first problems")
+    ap.add_argument("--selftest", action="store_true", help="run every rule on its must-fail and must-pass fixtures")
+    args = ap.parse_args(argv)
+    sys.stdout.reconfigure(encoding="utf-8")  # paths and rules.json messages are UTF-8, whatever the console's code page
+    if args.selftest:
+        import selftest
+        return selftest.main()
+    requested = requested_paths(args)
+    if requested is not None and not requested:
+        print("[GATE_SCOPE] no file given: nothing to judge")
         return 2
-    print("Gates OK")
-    return 0
+    ctx = build_context(REPO, requested)
+    rules_list = registry.all_rules(ctx.rules)
+    if requested is None:
+        targets = ctx.files
+        if not targets:
+            print("[GATE_SCOPE] the scope is empty: nothing to judge")
+            return 2
+    else:
+        targets, ignored, unknown = classify(ctx, requested, rules_list)
+        for f, why in ignored:
+            print(f"[GATE_IGNORED] {f}: {why}")
+        if unknown:
+            for f in unknown:
+                print(f"[GATE_SCOPE] {f}: no such file, and git knows no file of that name")
+            return 2
+        if not targets:
+            print(f"Gates: none of the {len(requested)} given file(s) is in a gate's scope; nothing to judge.")
+            return 0
+    ctx.cache.warm(ctx.listed)
+    problems = run_rules(ctx, [t for t in targets if t in ctx.file_set], rules_list, None if requested is None else targets)
+    problems.sort(key=lambda p: (p[0], p[1]))
+    report(problems, len(targets), args.summary)
+    return 1 if problems else 0
+
+
+def report(problems, judged, summary):
+    counts = {}
+    for gid, _w, _m in problems:
+        counts[gid] = counts.get(gid, 0) + 1
+    shown = problems[:SUMMARY_SHOWN] if summary else problems
+    for gid, where, msg in shown:
+        print(f"[{gid}] {where}: {msg}")
+    if summary and len(problems) > len(shown):
+        print(f"... and {len(problems) - len(shown)} more")
+    if problems:
+        print("by rule: " + ", ".join(f"{g} {n}" for g, n in sorted(counts.items())))
+        print(f"Gates FAILED: {len(problems)} problem(s) in {judged} file(s). Rules: CLAUDE.md; map: log/mapa.md.")
+    else:
+        print(f"Gates OK: {judged} file(s).")
 
 
 if __name__ == "__main__":

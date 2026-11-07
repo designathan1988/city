@@ -1,143 +1,87 @@
-"""File-level gates: repo layout, junk, single document, size limits, header comments."""
+"""File-level gates: repo root, junk, single document, file and function sizes, header comments, sidecar files."""
 import fnmatch
 import os
-import re
+
+import cpp_syntax
+import gd_syntax
+from source import language_of
 
 
-def walk(root, rules):
-    """Relative paths (posix) of every project file, excluding third-party and generated folders."""
-    out = []
-    excl = rules["exclude_dirs"]
-    for dirpath, dirnames, filenames in os.walk(root):
-        rel_dir = os.path.relpath(dirpath, root).replace(os.sep, "/")
-        rel_dir = "" if rel_dir == "." else rel_dir
-        dirnames[:] = [d for d in dirnames if not _excluded(f"{rel_dir}/{d}".lstrip("/"), d, excl)]
-        for f in filenames:
-            out.append(f"{rel_dir}/{f}".lstrip("/"))
-    return sorted(out)
-
-
-def _excluded(rel, name, excl):
-    return any(rel == e or name == e for e in excl)
-
-
-def check_root(root, rules, files, err):
-    allowed = set(rules["root_allowed"])
-    for entry in os.listdir(root):
+def check_root(ctx, err):
+    allowed = set(ctx.rules["root_allowed"])
+    for entry in sorted(os.listdir(ctx.root)):
         if entry not in allowed and not entry.startswith(".git"):
-            err("RAIZ_LIMPA", entry, "item fora da lista permitida na raiz (rules.json/root_allowed)")
+            err("RAIZ_LIMPA", entry, "entry outside rules.json/root_allowed at the repository root")
 
 
-def check_junk(rules, files, err):
-    for f in files:
-        name = os.path.basename(f)
-        if any(fnmatch.fnmatch(name, g) for g in rules["junk_globs"]):
-            err("SEM_LIXO", f, "arquivo temporário/cópia: apague ou incorpore")
+def check_junk(ctx, src, err):
+    name = os.path.basename(src.path)
+    if any(fnmatch.fnmatch(name, g) for g in ctx.rules["junk_globs"]):
+        err("SEM_LIXO", src.path, "temporary file or copy: delete it or fold it into its owner")
 
 
-def check_single_doc(rules, files, err):
-    allowed = set(rules["allowed_docs"])
-    exempt = set(rules.get("doc_exempt_names", []))
-    for f in files:
-        if os.path.basename(f) in exempt:
-            continue
-        if os.path.splitext(f)[1].lower() in rules["doc_extensions"] and f not in allowed:
-            err("DOC_UNICO", f, "os documentos do projeto são CLAUDE.md e log/; mova o conteúdo para lá")
+def check_single_doc(ctx, src, err):
+    rules = ctx.rules
+    if os.path.basename(src.path) in set(rules.get("doc_exempt_names", [])):
+        return
+    if os.path.splitext(src.path)[1].lower() in rules["doc_extensions"] and src.path not in set(rules["allowed_docs"]):
+        err("DOC_UNICO", src.path, "the project's documents are CLAUDE.md and log/: move the content there")
 
 
-def count_lines(path):
-    with open(path, encoding="utf-8", errors="replace") as fh:
-        return fh.read().splitlines()
+def check_sizes(ctx, src, err):
+    limits = ctx.rules["max_lines"]
+    ext = os.path.splitext(src.path)[1]
+    if ext not in limits:
+        return
+    n = len(src.lines)
+    if n > limits[ext]:
+        err("TAMANHO_ARQUIVO", src.path, f"{n} lines (max {limits[ext]}): split it by responsibility")
+    if n == 0:
+        err("ARQUIVO_VAZIO", src.path, "empty file")
 
 
-def check_sizes(root, rules, files, err):
-    limits = rules["max_lines"]
-    for f in files:
-        ext = os.path.splitext(f)[1]
-        if ext not in limits:
-            continue
-        n = len(count_lines(os.path.join(root, f)))
-        if n > limits[ext]:
-            err("TAMANHO_ARQUIVO", f, f"{n} linhas (máx {limits[ext]}): divida por responsabilidade")
-        if n == 0:
-            err("ARQUIVO_VAZIO", f, "arquivo vazio")
-
-
-def check_function_sizes(root, rules, files, err):
+def function_limit(rules, path):
+    """The limit of the file's extension, else of its language (a C++ header is held to the C++ limit)."""
     limits = rules["max_function_lines"]
-    for f in files:
-        ext = os.path.splitext(f)[1]
-        if ext not in limits:
-            continue
-        lines = count_lines(os.path.join(root, f))
-        spans = _gd_functions(lines) if ext == ".gd" else _cpp_functions(lines)
-        for name, start, length in spans:
-            if length > limits[ext]:
-                err("TAMANHO_FUNCAO", f"{f}:{start}", f"função '{name}' com {length} linhas (máx {limits[ext]})")
+    ext = os.path.splitext(path)[1]
+    if ext in limits:
+        return limits[ext]
+    lang = language_of(path)
+    same = [v for e, v in limits.items() if lang and language_of("x" + e) == lang]
+    return min(same) if same else None
 
 
-def _gd_functions(lines):
-    spans, cur = [], None
-    for i, line in enumerate(lines):
-        m = re.match(r"(static\s+)?func\s+(\w+)", line)
-        if m or (cur and line and not line[0].isspace() and not line.startswith("#")):
-            if cur:
-                spans.append((cur[0], cur[1] + 1, _trim_len(lines, cur[1], i)))
-            cur = (m.group(2), i) if m else None
-    if cur:
-        spans.append((cur[0], cur[1] + 1, _trim_len(lines, cur[1], len(lines))))
-    return spans
+def check_function_sizes(ctx, src, err):
+    limit = function_limit(ctx.rules, src.path)
+    if limit is None or src.lang not in ("gd", "cpp"):
+        return
+    if src.lang == "gd":
+        spans = gd_syntax.function_spans(gd_syntax.logical_lines(src))
+    else:
+        spans = cpp_syntax.function_spans(src.code())
+    for name, start, length in spans:
+        if length > limit:
+            err("TAMANHO_FUNCAO", f"{src.path}:{start}", f"function '{name}' has {length} lines (max {limit})")
 
 
-def _trim_len(lines, start, end):
-    while end > start and not lines[end - 1].strip():
-        end -= 1
-    return end - start
+def check_headers(ctx, src, err):
+    ext = os.path.splitext(src.path)[1]
+    if ext not in set(ctx.rules["header_comment_extensions"]) or not src.text.strip():
+        return
+    toks = src.tokens
+    if toks and toks[0].kind == "comment" and toks[0].text.startswith("#!"):
+        toks = toks[1:]
+    first = toks[0] if toks else None
+    is_doc = first is not None and src.lang == "py" and first.kind == "string"
+    if first is None or not (first.kind == "comment" or is_doc) or not any(c.isalpha() for c in first.text):
+        err("CABECALHO", src.path, "the file must start with a comment that states its responsibility")
 
 
-def _cpp_functions(lines):
-    """Bodies opened at namespace level after a ')' line; good enough to flag god functions."""
-    spans, depth, ns_depth, start, name = [], 0, 0, None, ""
-    for i, line in enumerate(lines):
-        code = re.sub(r"//.*", "", line)
-        if re.match(r"\s*namespace\b", code) and "{" in code:
-            ns_depth += 1
-        for ch in code:
-            if ch == "{":
-                if depth == ns_depth and start is None and ")" in _context(lines, i):
-                    start, name = i, _func_name(lines, i)
-                depth += 1
-            elif ch == "}":
-                depth -= 1
-                if depth == ns_depth and start is not None:
-                    spans.append((name, start + 1, i - start + 1))
-                    start = None
-                if depth < ns_depth:
-                    ns_depth = depth
-    return spans
+SIDECARS = (".uid", ".import")
 
 
-def _context(lines, i):
-    return " ".join(lines[max(0, i - 2): i + 1])
-
-
-def _func_name(lines, i):
-    m = re.findall(r"([\w:~]+)\s*\(", _context(lines, i))
-    return m[0] if m else "?"
-
-
-def check_headers(root, rules, files, err):
-    exts = set(rules["header_comment_extensions"])
-    for f in files:
-        if os.path.splitext(f)[1] not in exts:
-            continue
-        lines = [l for l in count_lines(os.path.join(root, f)) if l.strip()]
-        if not lines:
-            continue
-        first = lines[0].lstrip()
-        if lines[0].startswith("#!") and len(lines) > 1:
-            first = lines[1].lstrip()
-        ext = os.path.splitext(f)[1]
-        prefixes = ("//", "/*") if ext in (".cpp", ".h", ".gdshader", ".glsl") else ("#", '"""')
-        if not first.startswith(prefixes) or first.startswith("#include"):
-            err("CABECALHO", f, "primeira linha deve ser um comentário dizendo a responsabilidade do arquivo")
+def check_sidecars(ctx, err):
+    """A Godot .uid/.import sidecar belongs to its source file: without it the sidecar is an orphan."""
+    for f in ctx.files:
+        if f.endswith(SIDECARS) and f[: f.rindex(".")] not in ctx.listed_set:
+            err("SIDECAR_WITHOUT_SOURCE", f, f"sidecar of '{f[: f.rindex('.')]}', which does not exist: delete it")

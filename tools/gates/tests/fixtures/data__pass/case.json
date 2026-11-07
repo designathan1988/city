@@ -1,0 +1,9 @@
+{
+ "rule": "data",
+ "expect": [],
+ "overrides": {
+  "schemas": {
+   "project/data/a.json": "tools/gates/schemas/a.schema.json"
+  }
+ }
+}

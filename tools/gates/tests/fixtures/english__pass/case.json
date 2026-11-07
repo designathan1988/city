@@ -1,0 +1,10 @@
+{
+ "rule": "english",
+ "expect": [],
+ "changed": {
+  "project/data/i18n/strings.csv": "all",
+  "tools/b.py": [
+   2
+  ]
+ }
+}

@@ -1,0 +1,15 @@
+{
+ "rule": "map",
+ "expect": [],
+ "overrides": {
+  "mapped_roots": [
+   "tools"
+  ],
+  "map_file": "log/mapa.md",
+  "map_markers": [
+   "<!-- MAP:START -->",
+   "<!-- MAP:END -->"
+  ],
+  "claude_md_max_lines": 2
+ }
+}

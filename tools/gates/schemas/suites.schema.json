@@ -1,0 +1,106 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "title": "tools/tasks/suites.json: the support tools' work as data (tasks, groups of tasks made from a template, suites)",
+ "type": "object",
+ "required": ["vars", "changed", "sets", "tasks", "templates", "groups", "suites"],
+ "additionalProperties": false,
+ "properties": {
+  "_doc": {"type": "string"},
+  "vars": {"type": "object", "additionalProperties": {"$ref": "#/$defs/var"}},
+  "capacity": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 1}},
+  "changed": {
+   "type": "object",
+   "required": ["include"],
+   "additionalProperties": false,
+   "properties": {"doc": {"type": "string"}, "include": {"$ref": "#/$defs/strings"}, "exclude": {"$ref": "#/$defs/strings"}}
+  },
+  "sets": {"type": "object", "additionalProperties": {"$ref": "#/$defs/strings"}},
+  "tasks": {"type": "object", "additionalProperties": {"$ref": "#/$defs/task"}},
+  "templates": {"type": "object", "additionalProperties": {"$ref": "#/$defs/template"}},
+  "groups": {"type": "object", "additionalProperties": {"$ref": "#/$defs/group"}},
+  "suites": {"type": "object", "additionalProperties": {"$ref": "#/$defs/suite"}}
+ },
+ "$defs": {
+  "strings": {"type": "array", "items": {"type": "string", "minLength": 1}},
+  "var": {
+   "type": "object",
+   "required": ["windows", "posix"],
+   "additionalProperties": false,
+   "properties": {"doc": {"type": "string"}, "env": {"type": "string"}, "windows": {"type": "string"}, "posix": {"type": "string"}}
+  },
+  "resources": {
+   "type": "object",
+   "additionalProperties": false,
+   "properties": {
+    "cores": {"oneOf": [{"type": "integer", "minimum": 1}, {"const": "all"}]},
+    "gpu": {"type": "integer", "minimum": 1},
+    "locks": {"type": "object", "additionalProperties": {"enum": ["shared", "exclusive"]}}
+   }
+  },
+  "fields": {
+   "type": "object",
+   "additionalProperties": false,
+   "properties": {
+    "doc": {"type": "string"},
+    "argv": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "timeout_s": {"type": "number", "exclusiveMinimum": 0},
+    "inputs": {"$ref": "#/$defs/strings"},
+    "extra": {"$ref": "#/$defs/strings"},
+    "outputs": {"$ref": "#/$defs/strings"},
+    "after": {"$ref": "#/$defs/strings"},
+    "cwd": {"type": "string"},
+    "env": {"type": "object", "additionalProperties": {"type": "string"}},
+    "hidden": {"type": "boolean"},
+    "verdict": {"enum": ["exit_code", "godot", "matches_golden", "write_golden"]},
+    "params": {"type": "object", "additionalProperties": {"type": "string"}},
+    "resources": {"$ref": "#/$defs/resources"},
+    "fresh": {"type": "boolean"},
+    "hint": {"type": "string"},
+    "call": {"type": "string", "minLength": 3},
+    "spec": {"type": "object"}
+   }
+  },
+  "task": {"allOf": [{"$ref": "#/$defs/fields"}, {"required": ["timeout_s"]}]},
+  "template": {"$ref": "#/$defs/fields"},
+  "group": {
+   "type": "object",
+   "required": ["template", "items"],
+   "additionalProperties": false,
+   "properties": {
+    "doc": {"type": "string"},
+    "template": {"type": "string"},
+    "items": {
+     "type": "array",
+     "minItems": 1,
+     "items": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {"name": {"type": "string", "minLength": 1}, "timeout_s": {"type": "number", "exclusiveMinimum": 0}},
+      "additionalProperties": {"type": "string"}
+     }
+    }
+   }
+  },
+  "suite": {
+   "type": "object",
+   "required": ["tasks"],
+   "additionalProperties": false,
+   "properties": {
+    "doc": {"type": "string"},
+    "tasks": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "apply": {"$ref": "#/$defs/strings"},
+    "variants": {"type": "object", "additionalProperties": {"$ref": "#/$defs/variant"}}
+   }
+  },
+  "variant": {
+   "type": "object",
+   "additionalProperties": false,
+   "properties": {
+    "doc": {"type": "string"},
+    "add": {"$ref": "#/$defs/strings"},
+    "swap": {"type": "object", "additionalProperties": {"type": "string"}},
+    "stamp": {"type": "string"}
+   }
+  }
+ }
+}

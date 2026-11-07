@@ -1,0 +1,22 @@
+{
+ "rule": "owner_symbols",
+ "expect": [],
+ "owners": {
+  "concepts": [
+   {
+    "id": "height",
+    "owner": "native/src/a.cpp",
+    "symbol": "owner_fn",
+    "forbidden_elsewhere": [],
+    "scope": []
+   },
+   {
+    "id": "gone",
+    "owner": "native/src/none.cpp",
+    "symbol": "x",
+    "forbidden_elsewhere": [],
+    "scope": []
+   }
+  ]
+ }
+}

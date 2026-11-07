@@ -1,51 +1,80 @@
-# photodiff.py <before dir> <after dir> <out dir> [limit %]: every photo present in both, compared pixel by pixel. With a limit
-# only the photos past it are told, and any of them ends in exit 1.
-# Per pair: mean absolute difference (0..255), the share of pixels changed by more than 24 levels, and the box of the
-# changed pixels; a diff image (changes in red over the after photo, greyed) for every pair that changed.
-# The HUD bar (top 60 px) and the dock (bottom 80 px) carry live numbers (clock, vehicles): masked.
+# photodiff.py <before dir> <after dir> <out dir>: every photo name of either folder, compared pixel by pixel. A photo on one
+# side only, a different size, an empty set or any changed pixel fails (exit 1): the frozen photos are bit-exact. Per pair:
+# the share of changed pixels, the mean absolute difference (0..255) and the mean shift of each channel (after - before), so a
+# uniform shift is told apart from a local change; for a pair that changed, a "where to look" image: the after photo greyed,
+# pixels changed by more than LOOK_LEVELS in red. The HUD bar (top 60 px) and the dock (bottom 80 px) carry live numbers
+# (clock, vehicles): masked. Usage error: exit 2.
 import sys
 from pathlib import Path
 
 import numpy as np
 from PIL import Image
 
-before, after, out = map(Path, sys.argv[1:4])
-limit = float(sys.argv[4]) if len(sys.argv) > 4 else None
-out.mkdir(parents=True, exist_ok=True)
-CHANGED = 24
+LOOK_LEVELS = 24  # only for the red image: below it a change is real but not worth the eye's search
 HUD_TOP, HUD_BOTTOM = 60, 80
-rows = []
-for a in sorted(after.glob("*.png")):
-    b = before / a.name
-    if not b.exists():
-        rows.append((a.name, None, None, None))
-        continue
-    x = np.asarray(Image.open(b).convert("RGB"), dtype=np.int16)
-    y = np.asarray(Image.open(a).convert("RGB"), dtype=np.int16)
-    if x.shape != y.shape:
-        rows.append((a.name, "size", None, None))
-        continue
-    d = np.abs(x - y).max(axis=2)
-    d[:HUD_TOP] = 0
-    d[-HUD_BOTTOM:] = 0
-    mask = d > CHANGED
-    share = mask.mean()
-    box = None
-    if mask.any():
-        ys, xs = np.nonzero(mask)
+GREY = 0.5
+
+
+def compare(before: Path, after: Path, out: Path) -> tuple[list[tuple], int]:
+    """(rows, failures): one row per photo name, (name, verdict, details)."""
+    rows, failures = [], 0
+    names = sorted({p.name for p in before.glob("*.png")} | {p.name for p in after.glob("*.png")})
+    for name in names:
+        b, a = before / name, after / name
+        if not b.exists() or not a.exists():
+            rows.append((name, "MISSING", f"only in {'after' if a.exists() else 'before'}"))
+            failures += 1
+            continue
+        x = np.asarray(Image.open(b).convert("RGB"), dtype=np.int16)
+        y = np.asarray(Image.open(a).convert("RGB"), dtype=np.int16)
+        if x.shape != y.shape:
+            rows.append((name, "SIZE", f"{x.shape[1]}x{x.shape[0]} -> {y.shape[1]}x{y.shape[0]}"))
+            failures += 1
+            continue
+        keep = np.ones(x.shape[:2], dtype=bool)
+        keep[:HUD_TOP] = False
+        keep[-HUD_BOTTOM:] = False
+        signed = (y - x)[keep]  # (pixels, 3)
+        changed = np.any(signed != 0, axis=1)
+        if not changed.any():
+            rows.append((name, "EQUAL", ""))
+            continue
+        failures += 1
+        shift = signed.mean(axis=0)
+        level = np.abs(y - x).max(axis=2)
+        level[~keep] = 0
+        look = level > LOOK_LEVELS
+        ys, xs = np.nonzero(level)
         box = (int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max()))
-        grey = (y.mean(axis=2, keepdims=True) * 0.5).repeat(3, axis=2)
-        grey[mask] = [255, 0, 0]
-        Image.fromarray(grey.astype(np.uint8)).save(out / a.name)
-    rows.append((a.name, float(d.mean()), float(share), box))
-over = [r for r in rows if not isinstance(r[2], float) or r[2] * 100 > (limit or 0)] if limit is not None else rows
-for name, mean, share, box in sorted(over, key=lambda r: -(r[2] or 0) if isinstance(r[2], float) else 1):
-    if mean is None:
-        print(f"{name:32s} no pair")
-    elif mean == "size":
-        print(f"{name:32s} different size")
-    else:
-        print(f"{name:32s} mean {mean:6.2f}  changed {share * 100:6.2f}%  box {box}")
-if limit is not None:
-    print(f"{len(rows) - len(over)} of {len(rows)} photos equal")
-    sys.exit(1 if over else 0)
+        rows.append((name, "CHANGED", f"changed {changed.mean() * 100:.3f}%  mean {np.abs(signed).mean():.3f}  "
+                                      f"shift R {shift[0]:+.3f} G {shift[1]:+.3f} B {shift[2]:+.3f}  box {box}"))
+        grey = (y.mean(axis=2, keepdims=True) * GREY).repeat(3, axis=2)
+        grey[look] = [255, 0, 0]
+        out.mkdir(parents=True, exist_ok=True)
+        Image.fromarray(grey.astype(np.uint8)).save(out / name)
+    return rows, failures
+
+
+def main(argv: list[str]) -> int:
+    if len(argv) != 3:
+        print("usage: photodiff.py <before dir> <after dir> <out dir>", file=sys.stderr)
+        return 2
+    before, after, out = map(Path, argv)
+    missing = [str(d) for d in (before, after) if not d.is_dir()]
+    if missing:
+        print(f"FAIL no folder: {', '.join(missing)}")
+        return 1
+    out.mkdir(parents=True, exist_ok=True)
+    rows, failures = compare(before, after, out)
+    if not rows:
+        print(f"FAIL no photo in {before} nor {after}: an empty set proves nothing")
+        return 1
+    for name, verdict, details in rows:
+        if verdict != "EQUAL":
+            print(f"FAIL {name:32s} {verdict}  {details}")
+    print(f"{len(rows) - failures} of {len(rows)} photos equal")
+    return 1 if failures else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

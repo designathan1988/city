@@ -1,0 +1,25 @@
+{
+ "rule": "owner_symbols",
+ "expect": [
+  "DONO_AUSENTE native/src/a.cpp",
+  "DONO_AUSENTE native/src/none.cpp"
+ ],
+ "owners": {
+  "concepts": [
+   {
+    "id": "height",
+    "owner": "native/src/a.cpp",
+    "symbol": "owner_fn",
+    "forbidden_elsewhere": [],
+    "scope": []
+   },
+   {
+    "id": "gone",
+    "owner": "native/src/none.cpp",
+    "symbol": "x",
+    "forbidden_elsewhere": [],
+    "scope": []
+   }
+  ]
+ }
+}

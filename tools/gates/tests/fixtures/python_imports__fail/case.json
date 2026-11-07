@@ -1,0 +1,8 @@
+{
+ "rule": "python_imports",
+ "expect": [
+  "PYTHON_IMPORT_UNRESOLVED tools/analysis/arch/foo.py:2",
+  "PYTHON_IMPORT_UNRESOLVED tools/pkg/mod.py:2",
+  "PYTHON_IMPORT_UNRESOLVED tools/process/process.py:2"
+ ]
+}

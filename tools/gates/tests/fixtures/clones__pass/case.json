@@ -1,0 +1,15 @@
+{
+ "rule": "clones",
+ "expect": [],
+ "overrides": {
+  "clones": {
+   "min_tokens": 20,
+   "paths": [
+    "native/src/"
+   ],
+   "extensions": [
+    ".cpp"
+   ]
+  }
+ }
+}

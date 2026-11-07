@@ -1,0 +1,7 @@
+{
+ "rule": "orphans",
+ "expect": [
+  "ORFAO project/render/shaders/unused.gdshader",
+  "ORFAO project/ui/lonely.gd"
+ ]
+}

@@ -1,0 +1,12 @@
+{
+ "rule": "sizes",
+ "expect": [
+  "TAMANHO_ARQUIVO a.gd",
+  "ARQUIVO_VAZIO empty.gd"
+ ],
+ "overrides": {
+  "max_lines": {
+   ".gd": 3
+  }
+ }
+}

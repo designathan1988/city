@@ -1,0 +1,13 @@
+{
+ "rule": "english",
+ "expect": [
+  "NON_ENGLISH_TEXT tools/a.py:2",
+  "NON_ENGLISH_TEXT tools/new.py:1"
+ ],
+ "changed": {
+  "tools/a.py": [
+   2
+  ],
+  "tools/new.py": "all"
+ }
+}

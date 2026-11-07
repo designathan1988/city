@@ -25,26 +25,21 @@ core_windows() { # template_release ships in the export; template_debug is what 
 	return $failed
 }
 
+# One DLL, incrementally (the build folder is configured the first time): the build tasks of tools/tasks/suites.json.
+dll() { # <template_debug|template_release> <build dir>
+	bash "$ROOT/tools/build/free_dll.sh"
+	[ -f "$2/build.ninja" ] || cmake -S "$ROOT/native" -B "$2" -G Ninja -DCMAKE_BUILD_TYPE=Release -DGODOTCPP_TARGET="$1" \
+		-DCMAKE_TOOLCHAIN_FILE="$ROOT/native/toolchain-mingw.cmake" || return 1
+	cmake --build "$2" --target citycore -j "$JOBS"
+}
+
 gates() { python3 "$ROOT/tools/gates/run_gates.py"; }
 
-run_with_display() {
-	if command -v xvfb-run >/dev/null 2>&1; then
-		xvfb-run -a -s "-screen 0 1280x720x24" "$@"
-	else
-		"$@"
-	fi
-}
+# Every test scene and the captures are suites of tools/tasks: each scene a task with its own deadline, on the hidden desktop.
+e2e() { "${PY:-python}" "$ROOT/tools/tasks/cli.py" run tests; }
 
-e2e() { # every test scene, each with a time limit (tools/build/run_tests.sh)
-	"$GODOT" --headless --path "$ROOT/project" --import >/dev/null 2>&1 || true
-	local wrap=(); command -v xvfb-run >/dev/null 2>&1 && wrap=(xvfb-run -a -s "-screen 0 1280x720x24")
-	bash "$ROOT/tools/build/run_tests.sh" "$GODOT" "$ROOT/project" "$OUT/tests" "${wrap[@]}"
-}
-
-capture() {
-	local dir="${1:-$OUT/captures}"
-	mkdir -p "$dir"
-	run_with_display "$GODOT" --path "$ROOT/project" --resolution 1600x900 res://tests/visual/capture.tscn -- --capture-dir="$dir"
+capture() { # [dir]: one folder per capture task under it
+	CAPTURE_DIR="${1:-$OUT/captures}" "${PY:-python}" "$ROOT/tools/tasks/cli.py" run capture
 }
 
 export_all() {
@@ -78,11 +73,13 @@ package() {
 case "${1:-}" in
 	core) core_linux ;; # so para testes/capturas neste ambiente; o jogo e Windows
 	core-windows) core_windows ;;
+	dll-debug) dll template_debug "$ROOT/native/build-win-debug" ;;
+	dll-release) dll template_release "$ROOT/native/build-win" ;;
 	gates) gates ;;
 	e2e) e2e ;;
 	capture) capture "${2:-}" ;;
 	export) export_all ;;
 	package) package ;;
 	all) core_linux; core_windows; gates; e2e; export_all; package ;;
-	*) echo "alvos: core | core-windows | gates | e2e | capture [dir] | export | package | all"; exit 1 ;;
+	*) echo "targets: core | core-windows | dll-debug | dll-release | gates | e2e | capture [dir] | export | package | all"; exit 2 ;;
 esac

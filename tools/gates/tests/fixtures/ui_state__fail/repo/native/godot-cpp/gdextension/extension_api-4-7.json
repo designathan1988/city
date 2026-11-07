@@ -1,0 +1,37 @@
+{
+ "header": {
+  "version_major": 4,
+  "version_minor": 7
+ },
+ "builtin_classes": [],
+ "classes": [
+  {
+   "name": "Object",
+   "inherits": null
+  },
+  {
+   "name": "Node",
+   "inherits": "Object"
+  },
+  {
+   "name": "CanvasItem",
+   "inherits": "Node"
+  },
+  {
+   "name": "Control",
+   "inherits": "CanvasItem"
+  },
+  {
+   "name": "Label",
+   "inherits": "Control"
+  },
+  {
+   "name": "RefCounted",
+   "inherits": "Object"
+  },
+  {
+   "name": "Tween",
+   "inherits": "RefCounted"
+  }
+ ]
+}

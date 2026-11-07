@@ -1,0 +1,11 @@
+{
+ "rule": "UI_SEM_ESTILO_SOLTO",
+ "expect": [
+  "UI_SEM_ESTILO_SOLTO project/ui/a.gd:3",
+  "UI_SEM_ESTILO_SOLTO project/ui/a.gd:4",
+  "UI_SEM_ESTILO_SOLTO project/ui/a.gd:5",
+  "UI_SEM_ESTILO_SOLTO project/ui/a.gd:7",
+  "UI_SEM_ESTILO_SOLTO project/ui/s.tscn:3",
+  "UI_SEM_ESTILO_SOLTO project/ui/s.tscn:3"
+ ]
+}
