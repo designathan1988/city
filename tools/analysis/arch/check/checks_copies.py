@@ -167,8 +167,12 @@ def incremental_jobs(ctx):
 
 
 def incremental(ctx, out):
-    fast, full = out("through_store")["snapshot"], out("through_nothing")["snapshot"]
-    return {"pass": same(fast, full) and bool(fast["queue"]), "detail": {"causes": (len(fast["queue"]), len(full["queue"])), "groups": (len(fast["groups"]), len(full["groups"]))}}
+    a, b = out("through_store"), out("through_nothing")
+    fast, full = a["snapshot"], b["snapshot"]
+    key = lambda q: json.dumps((q["cause"], q["places"]))  # noqa: E731
+    only_fast, only_full = {key(q) for q in fast["queue"]} - {key(q) for q in full["queue"]}, {key(q) for q in full["queue"]} - {key(q) for q in fast["queue"]}
+    return {"pass": same(fast, full) and bool(fast["queue"]), "detail": {"causes": (len(fast["queue"]), len(full["queue"])), "groups": (len(fast["groups"]), len(full["groups"])), "facts": (a["sizes"], b["sizes"]),
+                                                                         "graph": (a["graph"], b["graph"]), "only_store": sorted(only_fast)[:2], "only_nothing": sorted(only_full)[:2]}}
 
 
 def proofs(ctx):

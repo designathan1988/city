@@ -23,7 +23,7 @@ def read_copy(spec):
         target = View(target, **view)
     run, a = inject.run_on(target, spec.get("store", True), True, off=spec.get("off", ()))
     undo = view["rename"].undo if view and view.get("rename") else (lambda s: s)
-    out = {"errors": len(run.info.get("cpp", {}).get("errors", ()))}
+    out = {"errors": len(run.info.get("cpp", {}).get("errors", ())), "sizes": {n: len(getattr(run.facts, n)) for n in ("units", "edges", "refs", "sites", "costs")}, "graph": (len(run.graph.units), len(run.graph.edges))}
     for part in spec.get("want", ("snapshot",)):
         if part == "snapshot":
             out[part] = snapshot(run, a, undo)

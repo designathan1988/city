@@ -7,7 +7,7 @@ import os
 import re
 
 SPLIT_CASE = re.compile(r"[A-Z]+(?![a-z])|[A-Z]?[a-z]+|[0-9]+")
-IDENT = re.compile(r"(?<![0-9A-Za-z_])[A-Za-z_][A-Za-z0-9_]*")
+IDENT = re.compile(r"(?<![0-9A-Za-z_\])[A-Za-z_][A-Za-z0-9_]*")
 
 
 def digest(text):

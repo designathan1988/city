@@ -9,8 +9,9 @@ from .repo import reader
 
 MENTION = re.compile(r"[\w.-]+\.[A-Za-z]\w*")
 HEAD_COMMENT = re.compile(r"\A\s*(?://|#|/\*|\"\"\")\s*([^\n]+)")
-# What adapters read as code: an index is a text about the repository, never a part of it.
-CODE = {"cpp", "cc", "cxx", "c", "h", "hh", "hpp", "hxx", "inl", "gd", "gdshader", "gdshaderinc", "py", "ts", "tsx", "js", "jsx", "mjs", "cjs", "sh", "tscn", "tres", "godot", "cfg", "cmake"}
+# What adapters read as code or tables: an index is prose about the repository, never a part of it. A table that names many files is still a table, and
+# deciding that by the sample made one table's fate depend on whether the real index was there to raise the cut.
+CODE = {"json", "csv", "cpp", "cc", "cxx", "c", "h", "hh", "hpp", "hxx", "inl", "gd", "gdshader", "gdshaderinc", "py", "ts", "tsx", "js", "jsx", "mjs", "cjs", "sh", "tscn", "tres", "godot", "cfg", "cmake"}
 SPECIFIC = re.compile(r"[\w./\\-]*[/\\.][\w./\\-]+")
 
 

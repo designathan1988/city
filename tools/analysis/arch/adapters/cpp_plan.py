@@ -61,7 +61,7 @@ def shared(seen, flags, export, config):
 
 def everything(names, export, config):
     """A file naming every outside header: what the compiler is asked about macros."""
-    source = os.path.join(export, f"all_{digest(config)}_{os.getpid()}.hpp")
+    source = os.path.join(export, f"every_{digest(config)}_{os.getpid()}.hpp")
     with open(source, "w", encoding="utf8", newline="\n") as f:
         f.write("".join(f"#include <{n}>\n" for n in sorted(names)))
     return source

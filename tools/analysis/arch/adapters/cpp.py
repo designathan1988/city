@@ -67,7 +67,7 @@ def _unique(facts):
     for name in Facts.__slots__:
         seen, kept = set(), []
         for v in getattr(facts, name):
-            key = marshal.dumps(v)
+            key = marshal.dumps(v, 2)  # version 2 has no back references: equal facts give equal bytes wherever they came from
             if key not in seen:
                 seen.add(key)
                 kept.append(v)
