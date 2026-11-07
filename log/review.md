@@ -1984,3 +1984,996 @@ removes the symptoms named under it; the per-chunk lists give file, line, defect
   `body_doc.cpp` alone; `lot_projects.gd:15-20` reads them for the zone. Corrected before it entered §3v.
 - 2026-11-07: a `cd` into `tools/converter-slice` inside a compound command moved the working directory (read only, no
   file touched); the next command returned to the root with the absolute path.
+
+## 6. Every finding by cause, and the plan to fix them in batches (2026-11-07)
+
+Method: the 837 bullets of §2-§4 were tagged by rules over their text, then every group was read and 268 bullets were
+moved to the cause that fixes them (the rules and the hand corrections are in the session scratchpad, `catalogue.py`,
+`primary.py`, `overrides.py`). Each finding has one **primary** cause, the one whose fix removes it; §7 lists every
+finding under its cause. 14 bullets are notes, not defects (marked N in §7).
+
+### 6.1 The causes
+
+| Id | The design decision that produces the findings | Findings | Area causes merged | The fix, one mechanism |
+|---|---|---|---|---|
+| C1 | The source game is the reference: its code (translated runtime, generators built for bit parity), its values (style "roadcraft", data docs), its assets (lots, people, textures, icons, strings), its tests (oracles, parity bounds), its copies and porting tools in the repository | 142 | §2, §3a, §3b, R11, P1, T1, A4 (style) | Style in `CityState`, one overlay owner, "roadcraft" blocks deleted; translated code and `js_*.h` deleted; each value sourced or decided here; assets rebuilt from upstream or designed; tests on this game's bounds; copies and porting tools out of the repository |
+| C2 | Verification that cannot fail: gates that skip folders, check empty sets or forbid docs; tests with no harness, a running clock, frame waits, private members, pinned counts, two "drawn" waits | 78 | §3 (tools), T2, P9 | One test base (check, output, exit code); `new_map` paused and stepped by ticks; one capture wait; gates over every folder, a populated mirror table, `_doc` allowed, repeated keys refused, an i18n gate |
+| C3 | Contracts kept by hand: C++ enums and constants typed again in GDScript, shaders, data and tests; rows by position or key order; one vocabulary in many tables | 96 | P3, P4, L11, A4 | One name table per enum beside it; `constants()` exports every enum by name; a generated `.gdshaderinc` for shader constants; data rows keyed by names resolved at load; the mirror gate reads the same table |
+| C4 | One value, two owners (data duplicates, settings in two stores, shader rules copied between levels, derived numbers typed by hand, primitives written twice) | 94 | P6, R10, L11, §3t | One owner per value; derived values computed at load from their inputs; the other side reads the owner |
+| C5 | `StoreApi` mixes commands, queries and render settings; tool state kept in `CityState` and the `Catalog` | 14 | P2, A2 (second half) | Three kinds of call filed by what they do; tool state travels with each command |
+| C6 | The lock protocol: mesh jobs hold the map for their whole build, reads outside the guard, read-only previews take the exclusive lock, `step_ticks` beside the sim thread | 22 | L1, L2, A1, A2, P5, §3a | Gather under a short lock and build outside it; locked views (`ReadView`, `TrafficView`, `EditView`) as the only access; previews under the shared lock; `step_ticks` refused unless the clock is stopped |
+| C7 | Derived data has no cache owner: bodies, street furniture, junction shapes, chunk ground, lots, catalog constants are recomputed by every reader | 25 | R1, R3, R4, R8, R9, L6, L7, L8, A7 | One cache per derived thing (`BodyCache`, per-segment street layout, per-node junction shape, per-chunk placement, lots per block, catalog fields), invalidated through the `ChangeLog` (one dirty channel) |
+| C8 | `BuildingStore` files buildings as points; callers pad by guessed reaches | 8 | R2, L10, A7 | File the rotated footprint's box, return overlaps, test with `covers`; delete every reach constant |
+| C9 | Journal and damage identity: closures in the journal, damage keyed by place, edits outside the journal, the state hash written in hash-map order | 5 | R5, R6, R7 | Data payloads for every op; damage by building id and furniture slot; fires, holds and shots journalled; one ordered writer in `core/bytes` |
+| C10 | Errors abort and loaders are lax (`-fno-exceptions` with `stoi`/`.at()`, unchecked positional arrays, silent defaults) | 9 | A3 | One strict reader (presence, type, size, range) for every loader; errors returned, never thrown or aborted |
+| C11 | Three colour rules in the shaders and five sRGB transfers in C++ | 6 | P7, L11(b) | `core/color` owns both directions; one shader include; overlays through the tone inverse |
+| C12 | Pipeline structure: two result protocols, a dead level-of-detail owner, transit built on the main thread, god classes, an engine internal for the flush, sim data loaded in the render setup, saves decoded on the main thread | 14 | L3, L4, L5, L9, L12, A5, A6 | Buildings on `ChunkResults`; levels by `DetailView` or `detail.*` deleted; transit as jobs; one owner per responsibility; `force_sync`; catalog loads all sim data; decode in a job |
+| C13 | Dead code, data and text; stale or misplaced comments and documents | 88 | P8, §3h, §3l, §4 | Delete; the orphan and i18n gates keep it from coming back |
+| C14 | Tunables and look values in code, shaders and translations | 39 | §3b, §3c, render look numbers | Values to `project/data` with their reason; translations take `{values}` from data |
+| C15 | Portuguese text in code, data ids, file names, tests and tools | 63 | P10, T6 | Mechanical rename; old save names read once and migrated |
+| C16 | Tools: generated data out of step with generators, duplicated readers and wrappers, processes without deadline, files split for size, one-shot tools | 32 | T3, T4, T5, T7 | Generated files keyed by their inputs and checked, or hand-kept with the generator deleted; one parser package; every process through `tools/tasks`; size splits merged; the line rule stops driving splits |
+| C17 | Assets and packaging settings (texture compression, normal-map flags, foreign binaries, export filter, project settings) | 14 | §3v | Import settings per texture role; trimmed addon; export filter by include list |
+| C18 | Lot documents in the source's 0.4 m unit read as metres, limits widened to let them through | 6 | P11 | Convert once at the cook (or drop the lots, C1); limits back to real storeys |
+| C19 | Local wrong results: each its own cause | 38 | §3f, §3j, §3n | One fix and one test each |
+| C20 | Local algorithm and allocation choices (quadratic loops, per-frame allocations, scans without an index, whole-buffer copies) | 30 | §3g, §3k | Per finding: the right structure (index, closed form, retained buffer) |
+
+### 6.2 How to fix them all in one pass and know what broke
+
+1. **Baseline first.** Tag the commit (`audit-baseline`), then one full run: `run_gates.py`, `cli.py run tests`, `quick.sh --all`,
+   the captures and the state hashes of the seeds used by the tests. Keep the photos and hashes as the reference. What
+   already fails is recorded: those failures are findings (for example `transit_test` once its `await` is added).
+2. **One commit per batch, the cause in its subject** (`fix(C7): ...`). Every batch below declares, before it is written,
+   which outputs it may change and which must stay byte-identical (§6.4).
+3. **One full verification at the end** (the same run as the baseline), then compare against §6.4:
+   - an output that a batch declared as changing moves: expected; re-bless it with that batch's reason (CLAUDE.md allows
+     `--bless` only for an understood visual change);
+   - an output that every batch declared identical moves, or a test fails: `git bisect run` over the batch commits with
+     that one test as the probe (`python tools/tasks/cli.py run fast <scene>`). It names the batch in log2(n) runs of one
+     test; the batch's declared mechanism says why.
+4. Batch B0 must land first and alone. Without deterministic tests the bisect gives noise and "test at the end" proves
+   nothing.
+
+### 6.3 The batches, in order (each depends on the ones above it)
+
+| Batch | Causes | What changes | Files (main sets) | Expected break if wrong |
+|---|---|---|---|---|
+| B0 | C2, C9 (R7 only), C6 (`step_ticks` guard) | Test base class; `new_map(..., paused)` everywhere and tick stepping; one capture wait; `transit_test` await; `edit_fuzz_test` without the growth exemption (needs R7); gates: populated mirror table, `_doc` in tuning, repeated keys refused, i18n gate, every folder in scope, per-scene inputs in `suites.json`; UI interaction state allowed by rule, `@onready` dodges removed | `project/tests/**`, `tools/gates/**`, `tools/tasks/suites.json`, `core/bytes.h`, `save_nature.cpp`, `elements.cpp`, `city_core.cpp:250` | New gate reds are the known list of findings (i18n keys, duplicate keys, mirrors): recorded, fixed by C3/C4/C13. A test that now fails was hiding a defect (it names it). |
+| B1 | C1 (copies and porting tools), C13, C16 (one-shot tools), C17 (unused addon parts) | Deletions only: `tools/oracle-4.0`, `features-4.0`, `converter-old`, `converter`, `converter-slice`, `ports`, porting scripts, `live40.mjs`, `export_builder_ui.py`, `rename_english.py`, orphan schemas, dead tables and keys with their schema entries, unreached translation keys, probes and shims, `project/dist`, Terrain3D foreign binaries and editor scripts | `tools/**`, `project/data/**` (dead keys), `project/data/i18n/*`, `project/tests/perf/*` | Nothing at run time: hashes and photos identical. A load error names a key still read by someone (the census missed a reader). |
+| B2 | C3, C4 (equal pairs), C6, C7, C10, C12, C14, C16 (parsers, deadlines) | Restructuring with identical outputs: caches, locks, strict reader, contract tables and generated shader include, data keyed by names, values moved to data unchanged, one owner per equal pair, pipeline owners | `native/src/**`, `project/game/**`, `project/ui/**`, `project/render/**`, `project/data/**` | Any change of a state hash, a photo or a test number: this batch broke it. Hash or count differs: a cache invalidation (C7) or a data row resolved to another enum (C3). Hang or timeout: a lock order (C6). Boot refusal: a key the strict reader now checks (C10, the message names it). |
+| B3 | C4 (unequal pairs), C5, C8, C9, C11, C15, C17 (import), C18, C19, C20 (float-changing) | Intended behaviour changes, one commit each, each with its predicted diff (§6.4) | as each cause lists | Only the outputs in its prediction may move; anything else is bisected inside B3. |
+| B4 | C1 (the rest) | Translated flow control and `js_*.h` replaced by a rule designed here; the style in the state with the "roadcraft" blocks deleted; generators off the source's stream (`seeded.h`, `Map` order, thrown draws); data values re-sourced table by table; 4.0 assets replaced or removed; tests on this game's bounds | `native/src/core/js_*`, `sim/roads/flow_stats*`, `control_advisor*`, `sim/traffic/flow_control.h`, `core/seeded.h`, `sim/citygen/**`, `sim/buildings/b40/**`, `project/data/**`, `project/assets/**`, `project/tests/**` | Every generated city changes: a new baseline after B4, taken on purpose. Money and look tests change by the decided style. |
+
+### 6.4 What each batch may change (the prediction the final run is checked against)
+
+- B0: test output format and exit codes; gate reports (new rules). Game outputs identical.
+- B1: nothing at run time. The product zip loses `fonte/tools/oracle-4.0` (`build.sh:67`).
+- B2: nothing observable. State hashes, `open_probe --digest`, every photo (photodiff zero) and every test number identical.
+- B3, by commit:
+  - C8: `camera_feel_test` eye-in-building count; captures with the camera near buildings; metro entrance places; the
+    inspector's picked building.
+  - C9: save layout (version bump; old saves read by the migration); hash values once (format), then stable; `edit_fuzz_test`
+    strict passes.
+  - C5: no photo change; snapshot rebuild count; tests that mutated through `query` now dispatch.
+  - C11: Compatibility photos (darks), overlay colours on both renderers, tinted leaves; `light_color_test` on Compatibility.
+  - C4 unequal pairs: train car length (18 m everywhere: transit captures), cycle-lane colour in cards, zone swatches,
+    currency text, smoke drift with the wind (blast captures), near/mid/far facade shades.
+  - C18: lot bodies 2.5 times smaller, build limits refuse 9 m storeys (`building_tool_test`, model shelf, `capture_pair`).
+  - C17: low-level noise on road and ground photos (compression).
+  - C15: capture file names (a rename map old to new; content identical), save extension (migration), error texts.
+  - C19 and C20 (float-changing ones): only the outputs their own test names.
+- B4: everything generated and the style-driven looks and prices: a new baseline, re-blessed with the decision recorded.
+
+### 6.5 Decisions only the user can take (they block B4 and part of B3)
+
+- **D1. The 4.0's assets** (38 landmark lots, the people, the road and terrain textures, the Build icons and strings): remove
+  now (those features are missing until new assets exist) or keep them until replacements are made.
+- **D2. The default regional style** once "roadcraft" goes: the sourced Brazilian blocks, or a new generic style (the work log
+  records a user rule against a Brazil-only standard).
+- **D3. Automatic junction control** once the translated flow control goes: a rule designed now (from published signal
+  warrants), or a fixed control until it is designed.
+- **D4. Old saves:** migrate them (keep a reader of the old names and format) or drop compatibility.
+
+## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
+
+Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at
+that place in the section named.
+
+### C1. the source game as the reference (142)
+
+- §2 `GODOT-PORT-GUIDE.md:82` The base architecture was written from another TypeScript game's code
+- §2 `ferramentas.md:158` A written rule allowed copying
+- §2 `conversor.md:100-117` A tool exists to do it
+- §2 `conversor.md:130` The runtime was put in `native/src/core` because that folder is exempt from the magic-number gate
+- §2 `base.md:99` Features ported from its source files, by the records
+- §2 `causa-raiz.md` Decisions justified by the source's code even in the 2026-11-07 audit
+- §2 Size of it in the code
+- §2 The source game is committed inside this repository
+- §2 `CLAUDE.md:7-8` Documents that still order porting from it
+- §3 `build.sh:67` The product zip ships the source game
+- §3a `seeded.h:1-3` The procedural world is built to reproduce the source game bit for bit
+- §3a `js_runtime.h:23-27` A translated `throw` kills the game
+- §3a `js_value.h:162` `js::Value` breaks the semantics it claims
+- §3a `js_map.h:103-104` JavaScript containers in a C++ game
+- §3a `city_state.h:74` A comment in the source of truth cites the source game
+- §3b `blocks.h:1` The folder is the source game's generator, renamed
+- §3b `massing_tall.cpp:162` A random draw thrown away to keep the source's stream
+- §3c `city_plan.cpp:1` Generation is designed for parity with the source's code
+- §3d `road_gen_graph.cpp:28-29` The road generator keeps JavaScript `Map` order for parity
+- §3d `commands.h:1` The source game cited in 39 of 70 command files
+- §3e `geometry.cpp:1` R11. The source game's code and numbers inside the sim
+- §3l `tree_look.cpp:23-24` Placement and geometry chosen for parity with the source game
+- §3o `city_core_flow_probe.cpp:1-2` Source-game code as the reason or the oracle
+- §3p `data_tables.gd:65` P1. The source game's code is the reference, against the rule "look and features only"
+- §3q `camera_pull.gd:2` SOURCE CITES
+- §3q `data_tables.gd:63-65` THE STYLE OVERLAY HAS TWO MECHANISMS AND A FIFTH OWNER OF "roadcraft"
+- §3q `game_flow.gd:37` game_flow.gd:37 "(Roadcraft saveOnClose)"
+- §3q `interior_controller.gd:3` SOURCE CITES IN THE GAME SCRIPTS
+- §3q `lab_recorder.gd:1` lab/lab_recorder.gd:1 "(the 4.0's lab/recorder)", resource_watch.gd:1 "(the 4.0's lab/resources/diagnostics)"
+- §3q `render_switches.gd:7` SOURCE-GAME KEYS AND CITES
+- §3q `formatters.gd:38-42` THE CITY STYLE IS A HALF FEATURE
+- §3q `lot_projects.gd:1` lot_projects.gd:1 "The lots of the Roadcraft's lot lab
+- §3q `session.gd:23-24` THE CITY'S STYLE IS NOT PART OF THE CITY
+- §3q `barrier_tool.gd:1` barrier_tool.gd:1 "Muros
+- §3q `building_tool.gd:1` building_tool.gd:1 "(Massa, Fachada, Telhado, Cores)", control_tool.gd:1-2 "(tab Controle) 
+- §3q `furnish_hand.gd:1` furnish_hand.gd:1 "Construir › Interior, as in The Sims", :52 "(Roadcraft openInside, seeInside)"
+- §3q `lots_tool.gd:1` SOURCE CITES AND PORTUGUESE UI NAMES
+- §3q `road_draft.gd:37` SOURCE CITES AND PORTUGUESE UI NAMES
+- §3q `terrain_tool.gd:3` SOURCE CITES AND PORTUGUESE
+- §3r `approach_panel.gd:1` approach_panel.gd:1 "(Roadcraft ui/roads/junctionPanel.ts)", connector_panel.gd:1 "(Roadcraft ...
+- §3r `hud_popover.gd:40` hud_popover.gd:40 cites ".v2-pop-body.icons"
+- §3r `junction_marks.gd:1-2` junction_marks.gd:1-2 "(Roadcraft main.ts)", "the Controle tab"
+- §3r `preview_tag.gd:1` preview_tag.gd:1 "(Roadcraft main.ts drawRoadPreview)"
+- §3r `road_options.gd:1` SOURCE CITES AND PORTUGUESE
+- §3r `road_section_view.gd:1` road_section_view.gd:1 "(Roadcraft ui/roads/crossSection.ts)"
+- §3r `start_screen.gd:51-56` CONFIRMED HALF FEATURE
+- §3r `theme_art.gd:46` THE SOURCE GAME'S WEB UI AS THE REFERENCE OF THE THEME
+- §3r `theme_builder.gd:42` THE THEME IMITATES THE SOURCE'S BROWSER
+- §3s `daylight.gd:1` SOURCE CITES
+- §3s `interior_lights.gd:2-3` BEHAVIOUR COPIED FROM SOURCE LINES
+- §3s `agent_door.gd` SHADER LOOK COPIED FROM THE SOURCE
+- §3s `building_parts_body.gd` THE FLAGS ARE THE SOURCE GAME'S
+- §3s `lamp_glow.gd` SOURCE CITES
+- §3s `people_look.gd` SOURCE CITES
+- §3s `puffs.gd` THE BLAST PUFFS MOVE AS THE SOURCE'S DID
+- §3s `road_body.gd` SOURCE CITES
+- §3s `sky.gd` sky.gdshader:1 "(Roadcraft render/scene.ts makeSky)"
+- §3s `terrain_layers.gd` SOURCE CITES
+- §3s `water.gd` SOURCE ARGUMENT
+- §3t `blast.json:2` SOURCE GAME VALUES IN THE DATA
+- §3t `nature.json:83-87` HALF-DONE STATE
+- §3t `nature.json:82` nature.json:82 element kinds and growth.json:33 profile ids in the source's camelCase
+- §3t `road_profiles.json:2-31` DEAD STYLE DATA
+- §3t `city_gen.cpp:24-31` SOURCE IDS: profile ids are the source game's camelCase
+- §3t `data_tables.gd:65` THE GAME PLAYS THE SOURCE GAME'S CODE VALUES
+- §3t `streetNames.ts` SOURCE BEHAVIOUR AS DATA
+- §3t `lorryDocks.ts` SOURCE CODE AS DATA ORIGIN
+- §3t `data_tables.gd:65` :410 "United States data, the default style's"
+- §3t `tuning.json` TUNING WITH NO DOC, AND SOURCE CONSTANTS IN IT
+- §3t `interior.json:2` interior.json:2 is the source code, line by line
+- §3t `daylight.json:2` daylight.json:2 source code as origin
+- §3t `camera.json:2` camera.json:2 "Roadcraft's perspective rig and its feel"
+- §3t `lab.json:2` lab.json:2 "(lab/recorder/analysis.ts SETTLE_MS)"
+- §3t `optimizations.json:2` optimizations.json:2 the tab mirrors the source's three.js panel
+- §3t `CLAUDE.md` THE SOURCE GAME'S WHOLE CODE IS IN THE REPOSITORY
+- §3t `render_switches.json:4` render_switches.json:4 the Diagnosis is "the 4.0's doctor", its keys named after the source's functions
+- §3t `saves.json:2` saves.json:2 "Roadcraft game.ts:756", "Roadcraft persistence.ts onSaveFailed", "DEBOUNCE_MS, MAX_WAIT_MS"
+- §3t `sky.json:7` sky.json:7 "_doc" sits after five keys
+- §3t `builder.h` The builder's table
+- §3t fx.* labels name the source's levels and passes
+- §3t `agents.json:2` SOURCE CODE AS DATA
+- §3t `buildings.json:4` buildings.json:4 all twelve architectures sit under styles."roadcraft"
+- §3t `buildings.json:118` SOURCE CODE AS DATA
+- §3t `interiors.json:4` interiors.json:4 everything under styles."roadcraft"
+- §3t SOURCE VALUE
+- §3t `models.json:4` models.json:4 everything under styles."roadcraft" again
+- §3t `overlays.json:2` overlays.json:2 "Roadcraft hud.ts:508-522", "Roadcraft lotTool.ts fillAlpha"
+- §3t `streets.json:29` THE DEFAULT MARKINGS ARE THE 4.0'S CODE, AND THE TABLE'S OWN DOC SAYS OTHERWISE
+- §3t `utilities.ts` SOURCE CODE AS ORIGIN
+- §3t `signs.ts` SOURCE CODE AS ORIGIN
+- §3t `transit.json:2` SOURCE CODE AS ORIGIN
+- §3t `drawers.json:2` SOURCE CODE AS ORIGIN
+- §3u `city_mass_test.gd:1-2` PARITY WITH THE 4.0 AS THE PASS RULE
+- §3u `flow_control_test.gd:1-2` THE SOURCE'S CODE AS THE ORACLE
+- §3u `lab_test.gd:1` THE 4.0 AS THE ORACLE
+- §3u `inspector_test.gd:159` inspector_test.gd:159 set_style "roadcraft" enshrines the 4.0 style
+- §3u `light_color_test.gd:20` THE 4.0'S CODE AS THE ORACLE
+- §3u `people_test.gd:13` THE 4.0 AS THE MEASURE
+- §3u `road_commands_test.gd:25` road_commands_test.gd:25 FILLED_STYLES ["roadcraft", "brasil"] keeps the 4.0 style a tested requirement
+- §3u `road_edit_test.gd:65` PARITY WITH THE 4.0 AS THE PASS RULE
+- §3u `road_grade_test.gd:1-3` A PORT OF THE SOURCE'S TEST, WITH ITS NUMBERS
+- §3u `road_money_cases.gd:1` THE 4.0 AS THE MEASURE
+- §3u `save_undo_test.gd:143` SOURCE REFERENCES
+- §3u `street_move_cases.gd:23` SOURCE REFERENCES
+- §3u `capture_blast.gd:13-15` THE 4.0'S CODE VALUES FOR A CAMERA
+- §3u `capture_landscape.gd:12` THE 4.0'S CODE API AS REFERENCE
+- §3u `capture_pair.gd:3-5` THE SOURCE GAME'S CITY LAID INTO THIS GAME
+- §3u `capture_money.gd:2-3` capture_money.gd:2-3 "Same steps and camera as the 4.0's run", :19 STREET "the card the 4.0 opens on", :50 "as the ...
+- §3u `capture_roads.gd:72` SOURCE REFERENCES
+- §3u `capture_street_pairs.gd:1-4` THE 4.0 AS THE FRAME
+- §3u `capture_transit.gd:2-3` THE 4.0'S CAMERA POSES
+- §3u `frozen_plan.json:13-43` frozen_plan.json:13-43 steps named "setView"
+- §3u `landscape_cards.gd:1` THE 4.0 AS THE FRAME
+- §3u `look.gd:1-5` THE VISUAL TOOLING IS A PORT OF THE SOURCE'S
+- §3v `cook_signatures.py:1-4` THE 4.0'S BUILDINGS SHIPPED AS DATA
+- §3v 656 float-noise literals
+- §3v 5 files without elements/lotPlan
+- §3v Keys camelCase from the 4.0
+- §3v Every civic/commercial doc
+- §3v Duplicate overlapping elements in every doc
+- §3v Two volumes with identical footprint stacked by base
+- §3v facadeGeometry repeats the identical dict for sides "0".."3" in every volume
+- §3v Colours as decimal ints
+- §3v Every lot doc with elements is the same lotPlan 10 template
+- §3v `LICENSES.json:2` people/LICENSES.json:2 "made by tools/assets/cook_people.py from Roadcraft public/models/citizens/people"
+- §3w `live40.mjs` T1. The repository carries the source game and the machinery to port its code
+- §3w `cook_people.py:1-7` THE PEOPLE ARE THE 4.0'S COOKED CAST
+- §3w `calm_stone.py:1-2` calm_stone.py:1-2,10-11 rewrites assets/surfaces/building-finishes.map.png in place, following "the 4.0's recipe
+- §3w `export_builder_ui.py:2-6` THE BUILD TAB IS EXTRACTED FROM THE 4.0'S SOURCE CODE
+- §3w `cook_signatures.py:1-4` cook_signatures.py:1-4 "No code of the 4.0 comes along
+- §3w `ktx2_to_png.mjs:1` ktx2_to_png.mjs:1 converts "the Roadcraft cooked KTX2 surfaces"
+- §3w `cook_ragdoll.py:4` cook_ragdoll.py:4 "the 4.0's ragdoll.ts"
+- §3w `make_flag_icons.py:2-3` make_flag_icons.py:2-3 the fourteen flag designs are "the Roadcraft's flags.ts FLAG_PATTERNS"
+- §3w `make_road_profiles.py:1-5` THE ROAD CATALOGUE IS THE 4.0'S
+- §3w `make_pole_parts.py:1-3` make_pole_parts.py:1-3,14,19-31 the pole is the 4.0's
+- §3w `live40.mjs` live40.mjs: keeps the 4.0 running in a headless Chrome and serves POST /eval of arbitrary JS on it "a question to ...
+- §3w `graph.json` THE SOURCE GAME'S CODE TRACKED TWICE MORE
+- §3w `extract_feature.cjs:1-16` THE PORTING TOOLS COPY SOURCE CODE
+- §3w `roadcraft-machine.json:3` configs/roadcraft-machine.json:3 "source"
+- §3w `flowStats.ts` ITS OUTPUT IS COMPILED INTO THE GAME
+- §3w `CLAUDE.md` tools/oracle-4.0
+- §3w Decision recorded for §1
+
+### C2. verification that cannot fail (78)
+
+- §3 `suites.json:162` Every test scene reruns on any change in `project/`
+- §3 `suites.json:79` `gates_changed` is keyed by the whole tree
+- §3 `scope.py:70` The gate diff reads the whole worktree
+- §3 `suites.json:93` A golden-file verdict depends on the golden being an input
+- §3 `gate_defs.py:92-99` The magic-number gate is satisfied by naming
+- §3 `gate_forbidden.py:169` "Render reads only" is checked only by include path
+- §3p `inspector_test.gd:29-30` P9. The tests have no harness and no control of the clock
+- §3r `compass.gd:7-13` compass.gd:7-13 and effects_panel.gd:11-20 put @onready on plain initial values
+- §3r `health_panel.gd:9-15` @onready on plain values again
+- §3r `hud_drawer.gd:17-29` @onready on plain values again
+- §3r `hud_top_bar.gd:13-22` @onready on plain values again
+- §3r `preview_tag.gd:6-7` @onready on plain values again
+- §3r `roadcraft_hud.gd:10-25` @onready on plain values again
+- §3r `selection_overlay.gd:9-13` @onready on plain values again
+- §3s `city_world.gd:9-23` A LIST KEPT ONLY TO SATISFY A GATE
+- §3t `strings_e.csv:381` GARBLED TEXT THE PLAYER SEES
+- §3u NO SHARED HARNESS
+- §3u `city_store.gd:69-70` THE CLOCK RUNS BEFORE THE TEST HOLDS IT
+- §3u `boot_refusal_test.gd:19` boot_refusal_test.gd:19 reaches the core as CityStore.get_child(0), past the store's API
+- §3u `building_part_cases.gd:105-110` THE LOT FRAME REWRITTEN IN TESTS
+- §3u `building_inside_cases.gd:44-51` COPIED HELPERS
+- §3u `camera_feel_test.gd:81-83` A TEST THAT MEASURES WITH THE DEFECT IT SHOULD CATCH
+- §3u `camera_feel_test.gd:87` TESTS ON PRIVATE MEMBERS
+- §3u `building_tool_test.gd:72-80` THE LOT FRAME A THIRD TIME
+- §3u `camera_feel_test.gd:49-51` step_ticks USED BESIDE THE SIM THREAD
+- §3u `city_mass_test.gd:109-113` city_mass_test.gd:109-113 its _check prints failures only
+- §3u `flow_control_test.gd:55-58` TRAFFIC RUN BY FRAMES, NOT TICKS
+- §3u `inspector_test.gd:29-30` step_ticks WHILE THE SIM THREAD RUNS AT NORMAL SPEED
+- §3u `inspector_test.gd:176-181` A TEST LEAVES A FILE IN THE PLAYER'S user://
+- §3u `lab_test.gd:159-177` MEASUREMENT TESTS THAT DEPEND ON THE MACHINE
+- §3u `inspector_test.gd:41` THREE PASS/FAIL OUTPUTS
+- §3u `lamp_light_test.gd:26` lamp_light_test.gd:26 new_map with the clock running
+- §3u `model_test.gd:52` TESTS PINNED TO DATA COUNTS
+- §3u `model_test.gd:194` model_test.gd:194 writes user://model_test_house.png into the user:// root
+- §3u `quality_test.gd:240-244` THE TEST BLESSES A DEAD SETTING
+- §3u `quality_test.gd:111-115` FRAME-COUNT WAITS FOR LIVE TRAFFIC
+- §3u `quality_test.ts` quality_test.tscn:5 node named "ShellTest" again
+- §3u `road_commands_test.gd:28` road_commands_test.gd:28 DECK_OVER_GROUND_M 0.3 with the comment "the ground under a road is dropped 0.6 m below its ...
+- §3u `shell_test.gd:162` TESTS ON PRIVATE MEMBERS
+- §3u `street_works_test.gd:224` A FOURTH OUTPUT FORMAT
+- §3u `transit_test.gd:35` A TEST WHOSE SAVE CHECKS NEVER RUN
+- §3u `transit_test.gd:37` transit_test.gd:37 quit(failures)
+- §3u `yard_test.gd:26` A BOUND FAR BELOW WHAT IS MEASURED
+- §3u `layer_gpu.gd:20` layer_gpu.gd:20 ignores boot's errors
+- §3u `tier_gpu.ts` tier_gpu.tscn:5 node named "CameraPan"
+- §3u `capture_clock.gd:30-33` TESTS ON PRIVATE MEMBERS
+- §3u `capture.gd:96-99` capture.gd:96-99 Settings.apply called twice in a row
+- §3u `capture_features.gd:83` TESTS ON PRIVATE MEMBERS
+- §3u `capture_interior.gd:11-18` CAPTURES PINNED TO GENERATED IDS
+- §3u `capture_interior.gd:72` PRIVATE METHOD BY NAME
+- §3u `capture_shell.gd:56` PRIVATE MEMBERS
+- §3u `capture_parity.gd:1` A FLAG THAT NEVER MATCHES
+- §3u `capture.gd:143` CAPTURE NUMBERING COLLIDES
+- §3u `live_driver.gd:54` live_driver.gd:54 hud.actions._open_new
+- §3u `capture_wait.gd:7-30` TWO "WAIT UNTIL DRAWN" WITH DIFFERENT RULES
+- §3u `ui_driver.gd:96-103` A GENERIC HELPER WITH A HARD-CODED SHOT
+- §3u `look.gd:98-99` look.gd:98-99 "wait" steps sleep by wall clock
+- §3w `rules.json:2-20` T2. The gates cannot hold the rules they police
+- §3w `CLAUDE.md` 552 problems
+- §3w `compass.gd:8-13` ESTADO_NA_UI 75
+- §3w `agents.json` SEGUNDO_DONO 307
+- §3w `gate_data.py:64-65` gate_data.py:64-65 json.load keeps the last of two equal keys
+- §3w `gate_data.py:56` gate_data.py:56 DADOS_SEM_SCHEMA only for project/data/**
+- §3w `gate_data.py` gate_data.py validate
+- §3w `strings_e.csv:381-382` i18n CSVs have no gate
+- §3w `gate_tuning.py:25-32` gate_tuning.py:25-32
+- §3w `gate_tuning.py:58-72` gate_tuning.py:58-72 check_mirrors
+- §3w `gate_text.py:112-132` gate_text.py:112-132 sees only direct assignments to .text/... and direct calls
+- §3w `gate_ui.py` gate_ui.py: see ESTADO_NA_UI above. gd_syntax/lex_c/lex_gd
+- §3w `rules.json:2-20` rules.json:2-20 exclude_dirs
+- §3w `rules.json:355-380` rules.json:355-380 magic_numbers covers native/src, project/game, project/ui only
+- §3w `rules.json:382` rules.json:382 data_copy_min_abs 4.5
+- §3w `rules.json:393-419` rules.json:393-419 data_copy_allow lists CAL_SIDE, LOT_LOOK, LOT_LOOK_M twice each
+- §3w `rules.json:439` rules.json:439 "mirrors"
+- §3w `owners.json` owners.json: 9 concepts only
+- §3w `test_pool.py:35` test_pool.py:35 asserts the sibling finishes within 3 s of wall clock
+- §3w `test_proc.py:37` test_proc.py:37 and test_photodiff.py:28 create temp folders with mkdtemp and never remove them
+- §3w `test_photodiff.py` test_photodiff.py tests tools/build/photodiff.py from inside tools/tasks/tests
+
+### C3. contracts kept by hand (96)
+
+- §3c `city_gen.cpp:22-39` Profile ids hard-coded by name in the generator
+- §3d `body_blocks.cpp:141-160` The Build tool's handle edit dispatches on strings
+- §3h `parking_sources.cpp:21` Zone codes typed again
+- §3i `shell.cpp:26-27` L11. Contracts with no owner
+- §3m `catalog_loader.cpp:80` A4. One vocabulary, many tables
+- §3p `city_core_query.cpp:93-104` P3. C++ enums and constants are mirrored by hand
+- §3p `surface_means.gd:18-21` P4. Contracts by position or key order
+- §3q `health_log.gd:10` health_log.gd:10 COST_PARTS names must follow api render_cost's keys by hand
+- §3q `body_edits.gd:18` body_edits.gd:18 body_add_setback(id, vol, -1.0, 2) and :32 bevel corner -1
+- §3q `control_tool.gd:15-17` THE JUNCTION CONTROL COUNT IS OWNED BY THE HUD'S DATA
+- §3q `cloud_tool.gd:10-11` cloud_tool.gd:10-11 YAW_PER_M_X / YAW_PER_M_Z
+- §3q `lot_proposals.gd:5` lot_proposals.gd:5 CORE_CELL_M = 256.0 "core/grid.h CHUNK"
+- §3q `lots_tool.gd:6-9` C++ ENUMS MIRRORED BY HAND IN GDSCRIPT
+- §3q `tool_controller.gd:12` tool_controller.gd:12 the hint signal's contract is "text already translated"
+- §3q `transit_tool.gd:7-8` transit_tool.gd:7-8 MODE_BUS / MODE_TRAIN mirror the core's TransitMode by hand
+- §3r `approach_panel.gd:6` approach_panel.gd:6 RULES
+- §3r `hud_actions.gd:7` hud_actions.gd:7 TOWN_MAP = 0 typed again
+- §3r `hud_messages.gd:31-39` TWO CONVENTIONS FOR ONE SIGNAL
+- §3r `hud_popover.gd:45` STRING-BUILT METHOD CALLS FROM DATA
+- §3r `hud_tip.gd:27` TOKENS READ AS THE WRONG KIND
+- §3r `hud_top_bar.gd:11` (checked) hud_top_bar.gd:11 SPEEDS sends 0..3
+- §3r `hud.json` (checked) data/ui/hud.json control_marks has 7 rows = road_network.h:63 NodeControl CTL_COUNT
+- §3r `lab_views.gd:9` THE FRAME SECTIONS HAVE TWO LISTS THAT DISAGREE
+- §3r `land_strips.gd:10-11` TEXT SURGERY ON TRANSLATIONS AND UNITS BY DISPLAY TEXT
+- §3r `pop_bodies.gd:52-53` pop_bodies.gd:52-53 _short cuts the translated text at "
+- §3r CONSTANTS TYPED IN MANY SCRIPTS
+- §3r `road_panel.gd:18-19` road_panel.gd:18-19 CROSS_ZEBRA / CROSS_SIGNAL mirror NodeCrossing by hand
+- §3r `road_spec_ops.gd:111` THE TWO STRIP VOCABULARIES TRANSLATED IN GDSCRIPT
+- §3r `street_strip.gd:113` street_strip.gd:113 cuts translated card names at "
+- §3r `theme_builder.gd:180-184` theme_builder.gd:180-184 _wide sets content margins from the "card_radius" token
+- §3r `transit_strip.gd:5` transit_strip.gd:5 MODE_KEYS mirrors TransitMode by hand
+- §3s `city_world.gd:7` city_world.gd:7 LUMA
+- §3s `element_effects.gd:33` THE ELEMENT/EFFECT BOUNDARY IS A RENDER TABLE'S LENGTH
+- §3s `lamp_radiance.gd:5` lamp_radiance.gd:5 LENSES = 5 "props.gdshader lit_radiance
+- §3s `agent_door.gd` C++/SHADER CONTRACTS BY COMMENT
+- §3s `building_bay.gd` C++/SHADER CONTRACTS BY COMMENT
+- §3s `building_glass_body.gd` building_glass_body.gdshaderinc:90-107 light() re-implements the engine's Lambert + GGX by hand
+- §3s `building_glass_body.gd` C++/SHADER CONTRACTS BY COMMENT
+- §3s `building_pane.gd` C++/SHADER CONTRACTS
+- §3s `building_props.gd` C++/SHADER CONTRACTS
+- §3s `ground_paint.gd` C++/DATA/SHADER CONTRACTS
+- §3s `people_pose.gd` C++/COOK/SHADER CONTRACTS
+- §3s `props.gd` C++/SHADER CONTRACTS
+- §3s `road_body.gd` C++/SHADER CONTRACTS
+- §3s `shore.gd` CONTRACTS: shore.gdshaderinc:23 SHORE_DRY -500 "(TerrainGen::NO_WATER)"
+- §3s `tone_inverse.gd` AN ENGINE INTERNAL MIRRORED TWICE
+- §3s `vegetation.gd` CONTRACTS: vegetation.gdshaderinc:20 PART_* "tree_part.h TreePart", :21 FAR_TINT_SPAN "far_cards.cpp"
+- §3s `vegetation_cards.gd` vegetation_cards.gdshader:10 REGION_W/LEAF_U/FROND_U mirror leaf_atlas.h by comment
+- §3s `wear.gd` wear.gdshaderinc:8 WEAR_RES/TILE/TILES mirror wear_field.h
+- §3s `surface_means.gd:18-21` CONTRACT BY JSON KEY ORDER
+- §3s `surface_means.gd:7` surface_means.gd:7 LANE_TONES mirrors road_look.h:33 TONE_SLOTS and road_body.gdshaderinc:28 lane_tone[8]
+- §3s `tone_map.gd:11-19` tone_map.gd:11-19 mirrors Godot's tonemap_aces constants
+- §3s `transit_overlay.gd:6-8` transit_overlay.gd:6-8 MODE_BUS/TRAIN/METRO mirror the core's transit modes by value
+- §3t `blast.json:30` CONTRACTS BY POSITION
+- §3t OPAQUE NUMBERS
+- §3t POSITIONAL MATRICES
+- §3t `settings.json:12-19` settings.json:12-19 filter_radius mirrors the engine's table per ShadowQuality
+- §3t POSITIONAL: :10 exhaust.classes repeats VehicleType's order by name list
+- §3t `buildings.json:75` POSITIONAL: buildings.json:75 era_affinity 12 rows in architecture order
+- §3t `effects.json` effects.json bursts "kind"
+- §3t `session.gd:62` STYLES BY INDEX
+- §3t POSITIONAL: :393 drawings "in SignType order"
+- §3t `builder.json:2` ENUMS BY NUMBER IN UI DATA
+- §3t `transit_overlay.gd:6-8` ENUMS BY NUMBER, AND ONE MAPPING TWICE
+- §3t `nature.json:82` ONE ORDER IN FOUR FILES
+- §3t `land_panels.json:309-326` NAMES THAT DISAGREE
+- §3t `nature.json` ENUMS BY NUMBER
+- §3u `building_edit_test.gd:29-44` ENUMS BY NUMBER IN TESTS
+- §3u `building_light_test.gd:14-18` CONTRACT COPIES
+- §3u `building_plan_cases.gd:98` POSITIONAL INDEX INTO UI DATA
+- §3u `building_plan_cases.gd:4` building_plan_cases.gd:4 SHAPE_SIDES {1
+- §3u `city_mass_test.gd:8` city_mass_test.gd:8 LARGE_MAP := 5
+- §3u `flow_control_test.gd:16` flow_control_test.gd:16 STOP_NODES 320 "every node of the town" typed for map 0 seed 1
+- §3u `edit_fuzz_test.gd:136-226` edit_fuzz_test.gd:136-226 edit kinds as bare numbers
+- §3u `light_color_test.gd:21-36` CONTRACT COPIES
+- §3u `road_edit_test.gd:23` road_edit_test.gd:23 RULE_STOP 1 by number
+- §3u `road_money_cases.gd:15` COPIES AND POSITIONS
+- §3u `save_undo_test.gd:30` save_undo_test.gd:30 MARKING_STYLES := 2 while streets.json has five marking styles
+- §3u `street_save_cases.gd:9` CONTRACT COPIES
+- §3u `yard_bench.gd:14` CONTRACT COPIES
+- §3u `camera_pan.gd:44-45` THE FRAME SECTIONS LISTED A THIRD TIME
+- §3u `main_thread_probe.gd:10` COPIES: main_thread_probe.gd:10 MAP_DEFAULT 5
+- §3u `pending_probe.gd:12` COPIES: pending_probe.gd:12 MAP_DEFAULT 5, :18 SPEED_FASTEST 3
+- §3u `capture.gd:9` CONTRACT COPIES
+- §3u `capture_demolition.gd:28` A WRONG ENUM COPY
+- §3u `capture_features.gd:15-16` POSITIONAL: capture_features.gd:15-16 MODE_RAISE 0, MODE_MESA 4, :172-174 cards[1] "parque", cards[2] "escola", :183 ...
+- §3u `capture_flag.gd:20` COPIES: capture_flag.gd:20 LANTERN_H 19.4
+- §3u `capture_lorry.gd:6` COPIES: capture_lorry.gd:6 ZONE_INDUSTRIAL 3
+- §3u `capture_roads.gd:25-26` COPIES: capture_roads.gd:25-26 FURNITURE_LAMP 1, FURNITURE_COLUMN 6
+- §3u `capture_street.gd:142` TRANSLATION SURGERY COPIED INTO A CAPTURE
+- §3u `capture_shell.gd:16-18` COPIES: capture_shell.gd:16-18 SPEED_PAUSED 0, SPEED_NORMAL 1, SPEED_FASTEST 3
+- §3u `capture_street_views.gd:14` COPIES: capture_street_views.gd:14 ITEM_NAME 11, :15 NAMES_TRIED 312 "three times what one sheet of 104 held"
+- §3u `capture_transit.gd:7-8` COPIES: capture_transit.gd:7-8 TRAIN 1, METRO 2
+- §3u `capture_vehicles.gd:7-16` THE WHOLE VehicleType ENUM COPIED
+- §3u `capture_views.gd:6-7` COPIES: capture_views.gd:6-7 DAY 16, NIGHT 22
+- §3u `landscape_cards.gd:17` landscape_cards.gd:17 SHADOW_FILTERS [2, 3, 4, 5]
+
+### C4. one value, two owners (94)
+
+- §3 `pgo.sh` `pgo.sh` names its own Godot path
+- §3a `random.h:7-13` Two owners of the same hash
+- §3b `massing_core.cpp:17-18` A second owner of the zone ids
+- §3b `plan_area.cpp` A second polygon engine
+- §3b `types.h:225-228` `Body::add_paint` never deduplicates
+- §3c `zones.json` The zone codes have six owners, two of them wrong
+- §3c `plan.h:14` Two copies of pi and of a turn
+- §3d `random.h` Squares have their own LCG beside `core/random.h`
+- §3d `body_finish.cpp:23-26` Two owners of paint de-duplication, none in `Body`
+- §3d `body_survey.cpp:55` A second convex hull
+- §3e `geometry.cpp:73-91` R10. Geometry primitives written several times
+- §3f `junction_control.cpp:218-224` Two rules for the main road through a junction
+- §3f `ped_doors.cpp:21-26` Two rules for what kind of place a building is
+- §3f `window.cpp:55-64` Two rules for "inside the micro window"
+- §3j `ruin_fracture.cpp:20` `ruin_fracture.cpp:20` `LONGEST_SIDE_M = 2.8` repeats `ruin_cells.h:16` `VORONOI_EDGE_M`
+- §3l `building_renderer.cpp:25` Constants typed more than once
+- §3n `city_core_people.cpp:197-201` `set_city_hour`
+- §3p `traffic.json:137` P6. One value, two owners
+- §3q `settings.gd:108-111` THE "CUT WALLS" SETTING HAS TWO OWNERS
+- §3q `formatters.gd:27-30` formatters.gd:27-30 the decimal comma is chosen by `get_locale().begins_with("pt")` in code while the thousands ...
+- §3r `inspector_panel.gd:277` inspector_panel.gd:277 the inspector's refresh period is DataTables.game("health").refresh_s
+- §3r `inspector_rows.gd:2` inspector_rows.gd:2 "data/game/health.json is the panels' pace"
+- §3r `road_catalog.gd:25-30` A PROFILE'S STRIPS HAVE TWO SOURCES
+- §3r `road_options.gd:140-142` THE TWO-OWNER WALLS SETTING WRITTEN TWICE
+- §3r `road_options.gd:105-109` road_options.gd:105-109 the block grid's default merge is a copy of road_blocks.gd:7-9
+- §3s `change_marks.gd:39` change_marks.gd:39 changes_shown read from data/game/health.json
+- §3s `effect_materials.gd:7-9` A SECOND LIST KEPT FOR THE ORPHAN GATE
+- §3s `facade_bay.cpp:13` THE NEAR AND MID LEVELS PAINT REVEALS AND SILLS DIFFERENTLY
+- §3s `building_far_window.gd` ONE BAY RULE IN C++ AND IN SHADERS
+- §3s `building_far.gd` THE SAME SHADER CONSTANTS TWICE OR THRICE
+- §3s `building_far.gd` building_far.gdshader:32-33 FOOT_SHADE 0.62 over FOOT_STOREYS 0.47 darkens the foot of every far wall
+- §3s `building_card.gd` building_card.gdshader:14 BRISE_PITCH "part_models.cpp BRISE_FINS" and :47-49 railing proportions
+- §3s `building_far_window.gd` building_far_window.gdshaderinc:10 FAR_ROOM_LEVEL 0.68 "the mean of pane_lamp's level
+- §3s `building_hash.gd` TWO HASH FAMILIES IN THE SHADERS
+- §3s `building_pane.gd` A DATA VALUE COPIED INTO A SHADER WITH ANOTHER UNIT
+- §3s `building_pane.gd` CONFIRMS THE MID LEVEL IS THE ODD ONE
+- §3s `building_pane.gd` PANE ALBEDO vec3(0.0075, 0.0096, 0.0115) typed again at building_pane.gdshaderinc:247 and :259
+- §3s `building_parts_body.gd` THE FINISH LOGIC TWICE
+- §3s `building_room_tone.gd` DERIVED CONSTANTS TYPED BY HAND
+- §3s `building_wash.gd` THE SAME FUNCTION PASTED
+- §3s `building_hash.gd` HASHES AND NOISES MULTIPLY
+- §3s `people_look.gd` GGX TYPED AGAIN
+- §3s `people_far.gd` people_far.gdshader:11 TAU_RAD
+- §3s `screen_depth.gd` "ONE OWNER" OF THE DEPTH NORMAL, AND A SECOND ONE
+- §3s `materials.json` A DATA VALUE DERIVED BY HAND FROM ANOTHER AND A SHADER CONSTANT
+- §3s `signature_look.gd` A RULE COPIED BETWEEN SHADERS
+- §3s `terrain_layers.gd` THE SAME CONSTANTS IN TWO INCLUDES
+- §3s `vegetation_cards.gd` The mip-level expression is typed twice in vegetation_cards.gdshader
+- §3s `water.gd` water.gdshader:75-82 reconstructs view depth by hand
+- §3s `sky_view.gd:170-171` STATE READ BACK FROM A MATERIAL
+- §3s `sky_view.gd:178-181` HASH COPY: sky_view.gd:178-181 repeats seeded.h:94-95
+- §3t `blast.json:28` blast.json:28 people.knock_min_s/knock_span_s 3.2/1.8 and :30 shot.knock_min_s/knock_span_s 3.2/1.8
+- §3t `road_profiles_b.json:340-365` SAME SECTION TWICE IN ONE TAB
+- §3t THE SAME DATA TWICE
+- §3t `traffic.json:133-134` ONE VALUE, TWO KEYS, TWO READERS
+- §3t `traffic.json:137` KERB HEIGHT, TWO OWNERS
+- §3t `settings.json` WRONG OWNER: settings.json
+- §3t `start.json` CURRENCY, TWO OWNERS AND A WRONG SYMBOL
+- §3t `hint.sh` SAME TEXT UNDER TWO KEYS
+- §3t `game.h` THE SAME HINT THREE TIMES
+- §3t `strings_b.csv` TWO KEY FAMILIES FOR THE SAME HINTS
+- §3t `strings.csv:419` DUPLICATE: :427 save.blocked repeats strings.csv:419 game.toast.saveBlocked
+- §3t SAME NAME, TWO KEYS, TWO ENGLISH WORDS
+- §3t `strings.csv:146` DUPLICATE KEYS ACROSS FILES
+- §3t `zones.json:3-11` ZONE NAMES, TWO OWNERS, ONE BROKEN
+- §3t `strings.csv:328` DUPLICATE: :556 confirm.clearTerrain repeats strings.csv:328 game.confirm.flattenMap
+- §3t builder.lot.*
+- §3t `strings_e.csv:79-91` TWO KEY SETS FOR THE FINISHES
+- §3t :222-229 eight hint.builder.prim* keys hold the same sentence
+- §3t `model.h` SAME NAME FOR DIFFERENT MODELS
+- §3t `strings_d.csv:102-139` THE SAME 38 BUILDINGS UNDER TWO KEY SETS WITH DIFFERENT NAMES
+- §3t `strings_b.csv` :81 hint.openFailed overlaps strings_b.csv save.file.notMap/save.importFailed
+- §3t `data_tables.gd:65` THE PLAYED STYLE HAS SIX OWNERS, NONE IN THE STATE
+- §3t `buildings.json:134` A VALUE COPIED BECAUSE OF A WALL BETWEEN TABLES
+- §3t `buildings.json:133` DERIVED DATA TYPED BY HAND
+- §3t `effects.json:3` SMOKE IGNORES THE WIND
+- §3t `effects.json:4` ONE LAW, TWO OWNERS
+- §3t `daylight.json` DERIVED NUMBERS TYPED BY HAND, ACROSS TABLES
+- §3t THE SAME TABLES IN TWO MATERIALS
+- §3t `models.json:5-7` ONE MEASURE, TWO OWNERS
+- §3t DERIVED NUMBERS TYPED BY HAND
+- §3t `agents.json` DERIVED BY HAND
+- §3t `street_furniture.json:109` IN-WORLD WORDS IN RENDER DATA
+- §3t `traffic.json:241` ONE TRAIN CAR, TWO LENGTHS
+- §3t `transit.json:6` transit.json:6 default_line "#2f7de1" repeats traffic.json:3 line_colours[1]
+- §3t `rail_run.cpp:185` (readers) traffic train_car_m
+- §3t `builder.json:286-298` FLAG COLOURS, THREE OWNERS
+- §3t `tokens.json:213` THE ROAD CARDS SHOW ANOTHER ROAD
+- §3t `tokens.json:66-69` ZONE COLOURS, TWO OWNERS
+- §3t `tokens.json:4` tokens.json:4 and :111 duplicate key "bg_solid"
+- §3u `road_grade_test.gd:7-9` TUNING VALUES TYPED INTO TESTS
+- §3u `shoot_test.gd:24` shoot_test.gd:24 SHOTS_TO_BURST 14 while blast.json shot.vehicle_shots_to_burst is 12
+- §3v `loftBrick.json` loftBrick.json top-level "use":"commercial" vs body.use "mixed"
+- §3v `lot_projects.gd:15-20` TWO USE FIELDS THAT DISAGREE
+
+### C5. store API kinds and tool state (14)
+
+- §3d `body_furnish.cpp:75` A query that mutates the body
+- §3f `road_variants.cpp:128-160` Road variants are player state stored in the `Catalog`
+- §3p `store_api.gd:47-68` P2. `StoreApi` mixes commands and queries and decides the snapshot mark by a name prefix
+- §3q `store_api.gd:47-68` COMMANDS AND QUERIES ARE MIXED, SO THE SNAPSHOT GOES STALE
+- §3q `road_tool.gd:43-44` road_tool.gd:43-44 the tool reads its own height from the core
+- §3q `road_keys.gd:16-17` road_keys.gd:16-17 static var waiting / note
+- §3r `road_profile_panel.gd:146` road_profile_panel.gd:146,154 and road_panel.gd:68 road_spec_make
+- §3r `road_spec_ops.gd:41-78` road_spec_ops.gd:41-78 where a new element goes
+- §3s `sky_view.gd:124-126` A RENDER VALUE THROUGH THE COMMAND PATH, EVERY FRAME AT DUSK
+- §3u `people_test.gd:42` A MUTATION THROUGH THE QUERY ROUTE
+- §3u `road_money_cases.gd:73` MUTATION THROUGH THE QUERY ROUTE
+- §3u `capture_people.gd:49` MUTATION THROUGH THE QUERY ROUTE
+- §3u `capture_transit.gd:65` MUTATION THROUGH THE QUERY ROUTE
+- §3u `pair_camera.gd:36` MUTATION THROUGH THE QUERY ROUTE
+
+### C6. the lock protocol (22)
+
+- §3a `city_state.h:115-120` One reader-writer lock for the whole city is shared by the frame, the simulation, the commands and the mesh jobs
+- §3a `simulation.cpp:130-136` The simulation's only escape from that lock is to skip work
+- §3a `render_world.cpp:236-272` The frame's main-thread work is all inside the shared lock
+- §3f `signal_commands.cpp:14-17` A signal command reads the traffic's derived graph
+- §3f `city_core_strike.cpp:20-21` To verify in `api`
+- §3i `mesh_queue.h:70-74` L1. The mesh jobs hold the map lock for their whole build
+- §3i `effect_bodies.cpp:118-119` L2. Data race on the walkers
+- §3j `building_renderer_probe.cpp:54-58` Data race (resolved in `api`, §3m)
+- §3k `building_renderer.cpp:304-305` `building_renderer.cpp:304-305,328` takes `queue_mutex_` per chunk per frame on the main thread
+- §3m `body_api.h:43-48` A1. State read outside its lock: the protocol is not enforced
+- §3m `city_core_edit.cpp:205` A2. Read-only previews take the exclusive lock
+- §3n `city_core_strike.cpp:15-28` `shoot` (`city_core_strike.cpp:15-28`) changes the city outside the journal, then a burst calls the undoable ...
+- §3n `city_core.cpp:250-252` `step_ticks`
+- §3n `city_core_lanes.cpp:110-118` `toggle_lane_link`
+- §3o `city_core_people.cpp:64-87` Probe cost under the locks
+- §3p `city_camera.gd:241-259` P5. Core queries under the map lock on every frame and every pointer move
+- §3q `city_camera.gd:241-259` THE CAMERA TAKES THE MAP LOCK ABOUT SEVEN TIMES A FRAME
+- §3q `inspect_tool.gd:16-17` inspect_tool.gd:16-17 asks `inspect` every pointer move
+- §3q `roundabout_tool.gd:28-29` THE EXCLUSIVE-LOCK PREVIEWS RUN ON EVERY POINTER MOVE
+- §3q `tool_base.gd:65-70` tool_base.gd:65-70 road_under asks segment_at
+- §3q `tool_controller.gd:151` tool_controller.gd:151,159 every mouse event asks the core for a raycast
+- §3s `daylight.gd:167` daylight.gd:167 follow_view
+
+### C7. derived data without a cache owner (25)
+
+- §3c `lot_access.cpp:217-240` Parking rebuilds whole building bodies to find car gates
+- §3c `likeness.h:28` Lot growth draws four whole bodies per lot
+- §3c `lot_land.cpp:223-239` The player's lot snap scans every lot on every pointer move
+- §3d `body_pick.cpp:117-118` Root cause shared by many findings: the sim keeps no derived body
+- §3e `interior_commands.cpp:17-32` R1. The sim keeps no derived body
+- §3e `ped_furniture.cpp:80-95` R3. Street furniture is derived again by every reader
+- §3e `lot_cache.cpp:42-72` R4. Lots are derived per 256 m cell from a 576 m window, inside the commands, under the exclusive lock
+- §3e `catalog.h:100-104` R8. Catalog constants are recomputed per call
+- §3e `traffic_state.h:196` R9. More dirty channels than the `ChangeLog`
+- §3i `building_bodies.cpp:61-65` L6. R1 in the render: five private body caches, regenerated bodies
+- §3i `tree_place.cpp:74-79` L7. One chunk's ground is placed three times
+- §3i `road_junction.cpp:187-207` L8. Shapes derived by two jobs
+- §3k `overlay_build.cpp:128-129` `overlay_build.cpp:128-129` each zone chunk job walks every player lot of the city
+- §3k `fog_field.cpp:141-144` `fog_field.cpp:141-144` re-buckets every dab ever painted on each fog revision
+- §3k `road_verge.cpp:42-43` `road_verge.cpp:42-43` samples the ground three times per ribbon vertex
+- §3m `body_api.h:37-41` A7. R1 and R2 reach the API
+- §3q `data_tables.gd:157-162` data_tables.gd:157-162 road_profiles() parses three files again on every call
+- §3q `frame_meter.gd:166-168` frame_meter.gd:166-168 render_cpu_ms asks render_cost every recorded frame, and cpu_watch.gd:26 again
+- §3q `building_tool.gd:71-82` PER-POINTER-MOVE CORE CALLS
+- §3q `furnish_hand.gd:86-92` THE INTERIOR HAND RUNS TWO GENERATORS PER POINTER MOVE
+- §3q `lots_tool.gd:184-199` PER-POINTER-MOVE CORE CALLS
+- §3q `pole_tool.gd:77-78` pole_tool.gd:77-78 release plans the run twice
+- §3q `road_tool.gd:215` THE ROAD DRAG REBUILDS THE WHOLE PROFILE LIST EVERY MOVE
+- §3q `upgrade_tool.gd:12` upgrade_tool.gd:12 asks the whole road_profiles list for one width
+- §3s `city_world.gd:49` DataTables.render()
+
+### C8. buildings filed as points (8)
+
+- §3e `building_store.cpp:80` R2. `BuildingStore` files each building as a point
+- §3i `canyon_field.cpp:27` L10. R2's guessed pads in the render
+- §3n `city_core_sight.cpp:132` The camera does not see most buildings
+- §3n `city_core_inspect.cpp:113-122` The inspector names the building by its centre
+- §3n `city_core_clearance_probe.cpp:81-82` `lot_clearance` cannot fail on long ways
+- §3q `camera_ahead.gd:24-26` camera_ahead.gd:24-26,33,74 the deocclusion stands on api eye_free, which R2 breaks
+- §3q `camera_pull.gd:31` camera_pull.gd:31 sight_pull is also broken by R2
+- §3q `interior_controller.gd:142-147` interior_controller.gd:142-147 _building_at asks api `inspect`
+
+### C9. journal and damage identity (5)
+
+- §3e `damage_state.cpp:67-71` R5. Damage is keyed by place, not by building id, and part of it lives outside the journal
+- §3e `nature_commands.cpp` R6. The edit journal mixes data and opaque closures
+- §3e `save_nature.cpp:54-58` R7. The state hash is not a function of the state
+- §3f `wounds.cpp:22` Wound events bypass the event cap
+- §3u `edit_fuzz_test.gd:28-29` A LOOSENED CHECK ON UNDO
+
+### C10. errors abort, loaders lax (9)
+
+- §3j `people_renderer.cpp:65` `people_renderer.cpp:65` `acts.set(asset_.clip(f.clip), f.act)` with no check for -1
+- §3j `transit_parts.h:52` `transit_parts.h:52` `part_of.at(name)` and `transit_parts.cpp:104,116,118` ask for literal names `read()`
+- §3j `effect_params.h:1-2` `effect_params.h:1-2` says missing keys are reported
+- §3m `packed_arrays.cpp:220-228` A3. Loaders are hand-written, inconsistent, and some crash on bad data
+- §3n `city_core_persist.cpp:39-49` A crash between the two renames of `write_atomic`
+- §3n `city_lab.cpp:31-43` `rules_of` (`lab/city_lab.cpp:31-43`) reads keys without `has()`
+- §3v `body_doc.cpp:94-95` body_doc.cpp:94-95 std::stoi on document text throws std::invalid_argument/out_of_range on a malformed key like ...
+- §3v `body_doc.cpp:94-95` body_doc.cpp:94-95 std::stoi with -fno-exceptions
+- §3v `pinkCorner.json` pinkCorner.json volume 4 open "grass"
+
+### C11. colour pipeline (6)
+
+- §3j `tree_parts.cpp:146` `tree_parts.cpp:146,160,163-164,180-182` average the far card tone in sRGB though `tree_parts.h:20-21` says tones ...
+- §3p `color_space.gd` P7. Three colour rules in the shaders
+- §3s `building_colour.gd` TWO COLOUR-SPACE INCLUDES THAT DISAGREE ON COMPATIBILITY
+- §3s `overlay.gd` THE MAP OVERLAY IS TONE-MAPPED THOUGH IT SAYS IT SHOWS SCREEN COLOURS
+- §3s `vegetation.gd` A THIRD COLOUR RULE, AND A FALSE CITATION
+- §3s `vegetation_cards.gd` TWO COLOUR RULES IN ONE SHADER
+
+### C12. pipeline structure (14)
+
+- §3a `city_state.h:12` `CityState` includes the commands layer
+- §3a `render_world.h:168-209` `RenderWorld` is a façade of eighteen renderers and three fields
+- §3i `transit_renderer.cpp:213-227` L3. Transit meshes are built on the main thread
+- §3i `chunk_jobs.h:125-194` L4. Two result protocols for one pipeline
+- §3i `detail.h:1-5` L5. The single owner of level of detail is dead code
+- §3i `building_renderer.h:41-251` L9. God classes split across files
+- §3i `frame_admission.h:93-97` L12. The frame's upload flush rests on an engine internal
+- §3m `city_core.cpp:79-83` A5. The sim's data loads inside the render setup, from render files
+- §3m `city_core.h:30-228` A6. The facade is a god class with its split half done
+- §3n `city_core_persist.cpp:109-136` Opening a city freezes the frame
+- §3q `city_saves.gd:81-92` city_saves.gd:81-92 load_game calls the core's load_city, which decodes on the main thread
+- §3s `shore_view.gd:16` TWO PROTOCOLS FOR A REVISIONED FIELD
+- §3s `sky_view.gd:146-147` SKY VIEW OWNS THINGS THAT ARE NOT THE SKY
+- §3w `city_core_jobs.cpp:27-30` JOB_SEM_CHAVE 21
+
+### C13. dead code, data, text and stale documents (88)
+
+- §3h `road_network.cpp:16` `road_network.cpp:16` names `LOT_MARGIN`
+- §3h `road_network.h:57-63` Comments above the wrong declaration
+- §3h `kerb_stops.cpp:25-27` Empty anonymous namespaces left by splits
+- §3h `nature_commands.cpp:58` Misnamed: `dab_chunk` is a distance
+- §3h `junction.cpp:2` `junction.cpp:2,6` includes `core/math.h` twice
+- §3h `city_state.h:83` A parked feature in a comment
+- §3h `parking_sources.cpp:182-195` Probe-only code inside `sim/traffic`
+- §3l `road_renderer.cpp:93` Dead code: `road_renderer.cpp:93` `update_view`
+- §3l `building_renderer.cpp:2` Stale or misplaced comments
+- §3l `region_table.h:1-2` Head comment `region_table.h:1-2` cites a Portuguese process file and parks a feature
+- §3o `catalog_loader.cpp:79` Parked features in code
+- §3o `city_core.h:45` Misplaced or stale comments
+- §3p `toolbar.json` P8. Dead data and text kept alive
+- §3q `road_tool.gd:12` road_tool.gd:12 the comment "A long stroke keeps every sample up to DENSE_SAMPLES, then one a metre, up to ...
+- §3q `tool_controller.gd:3-4` tool_controller.gd:3-4 the header's list of tools lacks LOTS
+- §3r `hud_top_bar.gd:112` hud_top_bar.gd:112 the stats tip's "speed" is always "—"
+- §3r `inspector_panel.gd:4` inspector_panel.gd:4 parks features in a comment
+- §3s `contact.gd` contact.gdshader:4-5 "Godot 4.8 has this built in
+- §3s `road_body.gd` road_body.gdshaderinc:18-19 "Mean colour of each map, computed once in project/render/city_world.gd"
+- §3s `water.gd` FALSE HEADER
+- §3s `sign_sheet.gd:17` TEST DATA IN THE GAME
+- §3t `nature.json:2` STALE PATH: nature.json:2 and :109 cite "ports/landscape/research.md"
+- §3t `maps.json` maps.json: no _doc
+- §3t `growth.json:49-50` growth.json:49-50 decay_grace_min/decay_span_min
+- §3t `road_profiles.json:127` UNREACHABLE PROFILES
+- §3t `streets.json:351` STALE DOC: :173 "height_m
+- §3t `pendencias.md` PLACEHOLDERS
+- §3t `data_tables.gd:63` :169 and data_tables.gd:63 cite "session-rules.md, section 10"
+- §3t DEAD DATA BY ITS OWN WORDS
+- §3t `demand.cpp:63` UNDOCUMENTED
+- §3t `sim.md` STALE REFERENCE
+- §3t :4 _doc is one line of about 6,000 characters
+- §3t `zones.json` zones.json: no _doc
+- §3t `render_switches.json:2` STALE: render_switches.json:2 "Switches of systems the game does not have yet
+- §3t `settings.json` A SETTING WITH NO EFFECT
+- §3t `settings.json:2` A BROWSER CONCEPT
+- §3t `start.json:35-38` start.json:35-38 sizes town and metropolis only
+- §3t `strings.csv:234` BROWSER TEXT IN A DESKTOP GAME
+- §3t A TEST TOOL AS A PLAYER OPTION
+- §3t The file is not sorted
+- §3t `strings.csv:434` BROWSER AND JAVASCRIPT TEXT
+- §3t BROWSER TEXT AGAIN
+- §3t `nature.json` ORPHAN CANDIDATE
+- §3t :357 hint.road.clearance sits among refuse.*
+- §3t BROWSER TABS IN A DESKTOP GAME
+- §3t :391 road.section.title "· experimental"
+- §3t `strings_c.csv:138` WRONG CREDITS AND LICENCES
+- §3t `jogar.sh` WEB RUNTIME TEXT
+- §3t `start.json` WRONG TEXT: :298 ui.start.sub "cidades inteiras de 10 a 24 km" while start.json offers town and metropolis only
+- §3t KEYS NAMED BY VERSION
+- §3t :228 ui.menu.testCity "Carregar o pior caso
+- §3t `strings.csv` 905 of 2,559 keys
+- §3t `maps.json:4-7` maps.json:4-7 name_key menu.size.km10/16/20/24 have no translation
+- §3t Key naming mixes conventions
+- §3t TWO PLACEHOLDER CONVENTIONS
+- §3t `world.md` STALE REFERENCE
+- §3t `materials.json:2` DOC AGAINST VALUE
+- §3t `palette.json:2-11` DEAD DATA: palette.json:2-11 vehicle_tints, :12-21 person_tints, :22-28 foliage_round and :60-64 sky are read by no code
+- §3t `palette.json:116` CORRUPTED DOC
+- §3t `materials.json` STALE REFERENCE
+- §3t Layout: :52 two keys on a line, :87 mis-indented, upper- and lower-case hex mixed
+- §3t Layout: :28 a tab among spaces
+- §3t `streets.json:317` DEAD DATA KEPT FOR A SCHEMA
+- §3t `streets.json:482-483` streets.json:482-483 eua/europa placeholders again
+- §3t `maps.json` :236 large_maps lists "km24", a map no screen offers and whose name has no translation
+- §3t `ui.md` (ui.md) drawers.json:2 "specs ui.md 4 and 6"
+- §3t `toolbar.json` A DEAD TABLE WITH A LIVE SCHEMA
+- §3u `yard_test.gd:19` STALE COMMENT ON DETERMINISM
+- §3u `yard_bench.gd:4` A TOOL AMONG THE TESTS
+- §3u `main_thread_probe.gd:112-122` SHIMS FOR VERSIONS THAT ARE GONE
+- §3u `pending_probe.gd:1` INVESTIGATION PROBES KEPT IN THE TREE
+- §3u `capture.gd:2-3` STALE REFERENCE
+- §3u `capture_features.gd:4` STALE RUN NOTE
+- §3u `capture_roads.gd:2-3` SHIMS FOR OLD BUILDS
+- §3u `capture_roads.gd:199` MISPLACED DOC
+- §3u `capture_shell.gd:199-200` MISPLACED DOC
+- §3u `capture_street_views.gd:36` A DOC COMMENT INSIDE ANOTHER FUNCTION
+- §3u `capture_street_views.gd:110` TEST-ONLY STATE IN THE GAME
+- §3w `capture_game.gd` SIDECAR_WITHOUT_SOURCE
+- §3w `rules.json:273-280` rules.json:273-280 TEXTO_VIA_TR "pattern" is dead text
+- §3w `roads.schema.json` schemas: roads.schema.json and services.schema.json are orphans from the base commit
+- §3w `CLAUDE.md` CLAUDE.md lists sampler.py and pgo.sh among the commands while its "Execução e verificação" says "Sem medições, ...
+- §3w `gates_dispatch.py` git status: tools/process/tools/hooks/gates_dispatch.py tracked but deleted in the working tree
+- §4 `mapa.md` `log/mapa.md` has no line for `tools/tasks/**`
+- §4 `work-log.md:561` `log/work-log.md:561`
+- §4 `CLAUDE.md` `tools/process/CLAUDE.md` describes another layout
+- §4 The memory `no-reference-game` says the source game is "not a reference at all"
+- §4 The worktree holds a large uncommitted state
+
+### C14. tunables and look values in code (39)
+
+- §3a `math.h:80` Whole core is outside the magic-number gate
+- §3b `civic.cpp:17-29` Hundreds of tunable design values in code, not in data
+- §3c `nature_types.h:73-77` Regional facts fixed in code
+- §3c `tuning_fields.h:47` Every tunable is a float
+- §3c `traffic_params.h:11-63` One flat struct of about 500 traffic numbers
+- §3c `interior_homes.cpp:13-32` Interior layout numbers in code
+- §3d `body_survey.cpp:19-26` Survey numbers in code
+- §3h `ecology.cpp:58-121` Data in code
+- §3l `facade_bay.cpp:12-20` Look numbers and colours in code
+- §3o `city_core_commands.cpp:22` Bare numbers and local constants
+- §3q `camera_gestures.gd:128` camera_gestures.gd:128 four statements on one line with `;`
+- §3q `brush_tool.gd:8-11` brush_tool.gd:8-11 STEP_SHARE, MIN_STEP_M, MAX_STEPS
+- §3q `building_tool.gd:89` building_tool.gd:89 the plain quarter turn is PI / 2 in code while the Shift turn is data
+- §3q `handle_drag.gd:6` handle_drag.gd:6 TURN_STEP = PI / 12
+- §3q `lots_tool.gd:11-16` lots_tool.gd:11-16 TAKE_PX, CATCH_PX, SNAP_LEAST_M, MARK_M
+- §3q `roundabout_tool.gd:7` roundabout_tool.gd:7 SCALE_STEP = 1.2
+- §3q `terrain_tool.gd:8` terrain_tool.gd:8 DAB_S = 0.1, zone_tool.gd:6,9 DAB_SPACING, MOST_DABS, :15,22 zone 1 by default
+- §3r `builder_strip.gd:6-7` builder_strip.gd:6-7 CHOICES
+- §3r `pop_bodies.gd:8` pop_bodies.gd:8 KEY_SHARE = 0.42
+- §3r `road_panel.gd:7-17` GAME RULES DECIDED IN THE INTERFACE
+- §3r `CLAUDE.md` SIZES IN INTERFACE CODE
+- §3r `start_screen.gd:10` start_screen.gd:10 LANGUAGES
+- §3r `zone_strip.gd:6` zone_strip.gd:6 DENSITIES
+- §3s `city_water.gd:8` city_water.gd:8 WATER_EXTENT_M = 70000
+- §3s `CLAUDE.md` Magic numbers in shaders
+- §3s `road_flash.gd:5-6` road_flash.gd:5-6 GLOW_IN_S, DIE_OUT_S
+- §3s `atmosphere.gd` LOOK VALUES IN SHADER CODE
+- §3s `building_pane.gd` building_pane.gdshaderinc:97-106, 119, 124, 127, 136, 138, 185, 188
+- §3s `lightning.gd` lightning.gdshader:7 screen default vec2(1600, 900)
+- §3s `puffs.gd` puffs.gdshader:53 and :57 two gravities in one shader
+- §3s `verge.gd` verge.gdshader:40 ROUGHNESS mix(0.95, 0.6, rain_wet) typed
+- §3s `weather_view.gd:83` weather_view.gd:83 `dt * rate / 60.0`
+- §3t `health.json` A DATA VALUE TYPED IN TEXT
+- §3t DATA VALUES TYPED IN TEXT
+- §3t `road.bend.sh` DATA VALUES TYPED IN TEXT
+- §3t DATA VALUES IN TEXT
+- §3t `strings_c.csv:540` A DATA VALUE IN TEXT, BESIDE A KEY THAT FILLS IT
+- §3t `strings_ui.csv:7` WRONG NUMBERS TYPED IN TEXT
+- §3v `road_body.gd` road_body.gdshaderinc:158 `uv / asphalt_m * 2.7` magic number in a shader
+
+### C15. Portuguese text (63)
+
+- §3l `render_context.h:30` Portuguese error text
+- §3o `blast_loader.cpp:18` Portuguese error text
+- §3p `data_tables.gd:92` P10. Portuguese text in the repository
+- §3q `data_tables.gd:63` data_tables.gd:63 cites "session-rules.md, section 10"
+- §3q `data_tables.gd:92` data_tables.gd:92, :210, :222 and game_flow.gd:49 errors in Portuguese
+- §3q `interior_controller.gd:41` interior_controller.gd:41 warning in Portuguese
+- §3q `play.gd:18` play.gd:18 error in Portuguese
+- §3q `city_saves.gd:54-56` city_saves.gd:54-56 map copies are named "mapa-<seed>"
+- §3q `save_slots.gd:11-19` PORTUGUESE FILE NAMES AND EXTENSIONS
+- §3q `city_store.gd:54` city_store.gd:54,93,103 assert messages in Portuguese
+- §3q `road_models.gd:1` road_models.gd:1 "(Meus modelos)", road_spec_edit.gd:1 "Personalizar..."
+- §3r `CLAUDE.md` TEXT SHOWN WITHOUT tr()
+- §3r `hud_popover.gd:129-131` SAVE FILE NAMES ARE SHOWN TO THE PLAYER
+- §3r `hud_popover.gd:240` hud_popover.gd:240 "X %d · Y %d" written without tr()
+- §3r `hud_widgets.gd:37` hud_widgets.gd:37 comment "<name> · em construção"
+- §3r `lab_views.gd:69-72` lab_views.gd:69-72 the inspector tab shows raw dictionary keys as labels
+- §3r `profiler_hud.gd:43` profiler_hud.gd:43,49 English text written without tr()
+- §3t `nature.json:2` nature.json:2 "compared with reference-minha photos"
+- §3t `drawers.json:147-170` PORTUGUESE IDS IN DATA
+- §3t `data_tables.gd:93` data_tables.gd:93 push_error("JSON inválido
+- §3t UNTRANSLATED
+- §3t :422 game.toast.stationOnTrack
+- §3t English terms for one thing vary
+- §3t :150 hint.builder.extrude pt_BR "o handle do topo"
+- §3t English uses "blueprint"
+- §3t "sobrado" (:61)
+- §3u `building_edit_test.gd:15` PORTUGUESE IN TESTS
+- §3u `building_light_test.gd:45` PORTUGUESE: building_light_test.gd:45 "renderizador:", :51 "parede perto", "parede longe"
+- §3u `building_plan_cases.gd:31` PORTUGUESE: building_plan_cases.gd:31 "forma %d", :46 "paredes levadas", :54 "relevo", :64 "recuo", :68 "ala", :88 ...
+- §3u `camera_input_test.gd:78` PORTUGUESE: camera_input_test.gd:78 "Shift+direito", "meio"
+- §3u `flow_control_test.gd:60` PORTUGUESE: flow_control_test.gd:60 "rodando:", :86 "empurrado:"
+- §3u `inspector_test.gd:41` PORTUGUESE: inspector_test.gd:41 "falhas", :47 "cidade-medida", :55 "save medido", :96 "volume conta entradas", :123 ...
+- §3u `light_color_test.gd:60` PORTUGUESE: light_color_test.gd:60 "renderizador:", :89 "lente %d", :123 "brilho noturno"
+- §3u `model_test.gd:80` PORTUGUESE: model_test.gd:80 "igreja:", :165 "Minha casa", :180 "palco:"
+- §3u `quality_test.gd:54` PORTUGUESE: quality_test.gd:54 "falhas", :172 "camada Grade liga", :212/:217 "nivel_antigo"
+- §3u PORTUGUESE: :50 "construir:", :54 "segmentos", :62 "zona:", :63 "zoneou lados", :76 "cresceram:", :80 "demolir:", ...
+- §3u `road_edit_test.gd:77` PORTUGUESE: road_edit_test.gd:77 "largura total"
+- §3u `road_grade_test.gd:200` PORTUGUESE: road_grade_test.gd:200 "sozinha"
+- §3u `road_money_cases.gd:143` PORTUGUESE: road_money_cases.gd:143 "perfil mais barato devolveu", :146 "perfil mais caro cobrou", :163 "melhorar", ...
+- §3u `save_undo_test.gd:26` PORTUGUESE: save_undo_test.gd:26 SLOT "teste_ida_e_volta", :69-71 "melhorar", "dividir", "demolir", :84 "relevo ...
+- §3u `shoot_fright_cases.gd:43` PORTUGUESE: shoot_fright_cases.gd:43 "perto", :55 "de"
+- §3u `street_save_cases.gd:8` PORTUGUESE: street_save_cases.gd:8 SLOT "teste_rua", :25 "contagens:", :32 "abrir", :35 "save guarda"
+- §3u `strike_test.gd:99` PORTUGUESE: strike_test.gd:99 "1º golpe", :100 "golpe aceito", :102 "golpe contado", :108 "golpes", :115 "golpe ...
+- §3u `yard_bench.gd:20` PORTUGUESE: yard_bench.gd:20 SLOT "bancada_patios", :71 "docas"
+- §3u `camera_pan.gd:144-159` PORTUGUESE: camera_pan.gd:144-159 movement names "parada", "cruzar", "circular", "girar", "perto", :141 "malhas:", ...
+- §3u `pending_probe.gd:81` PORTUGUESE: pending_probe.gd:81 "como configurado", :89 "agentes:", :98/:112 "PAUSA_INICIO"/"PAUSA_FIM", :143-144 ...
+- §3u `capture.gd:27-28` PORTUGUESE (capture file names are Portuguese throughout)
+- §3u `capture_demolition.gd` PORTUGUESE: capture_demolition.gd phases "pareada", "torre", "derrubados", "topo", files "bomba_f%d", ...
+- §3u `capture_flag.gd:36` PORTUGUESE: capture_flag.gd:36 "feat_build_bandeira"
+- §3u `capture_lorry.gd:51` PORTUGUESE: capture_lorry.gd:51 "passo", :54 "36_doca_%d", key "doca"
+- §3u `capture_people.gd:13-15` PORTUGUESE: capture_people.gd:13-15 "30_casal", "31_familia", "32_crianca", "33_idoso", "34_saindo", "35_entrando", ...
+- §3u `capture_shell.gd:106` PORTUGUESE: capture_shell.gd:106 "fotos:", :214 "hora"
+- §3u `capture_street_gestures.gd:2` PORTUGUESE: capture_street_gestures.gd:2 "Mobiliário", :55 "rua_08_conjunto_via", :78 "barreira", :81 "rua_06_barreiras"
+- §3u `capture_traffic.gd:9-10` PORTUGUESE: capture_traffic.gd:9-10 "30_vaga_rua", "31_vaga_lote", "32_carro_manobra", "33_bicicleta", ...
+- §3u `capture_ui.gd:64-97` PORTUGUESE: capture_ui.gd:64-97 "ui_01_gaveta_vias", "ui_02_previa_via", "ui_03_via_construida", ...
+- §3u `landscape_cards.gd` PORTUGUESE: landscape_cards.gd shot names "rampa", "cubo_a", "cubo_b", "trama_%d_%d", "lamina_vazia", "lamina", ...
+- §3u `ui_driver.gd:3` PORTUGUESE: ui_driver.gd:3 "passo
+- §3v `body_doc.cpp:164-213` PORTUGUESE: body_doc.cpp:164-213 error labels "telhado", "linha", "coroa", "fachada", "peça", "uso", "função"
+- §3v `body_doc.cpp:68` body_doc.cpp:68 error text Portuguese
+- §3w `rules.json` T6. Portuguese in tools the gates do not reach
+- §3w Gate messages and ids in Portuguese
+- §3w `rules.json` rules.json messages, ids, map markers
+- §3w `rules.json` All 18 code files are Portuguese
+
+### C16. tools (32)
+
+- §3 `pool.py:249-250` The orchestrator re-reads git after every task
+- §3 `rules.json` The line limits push splitting by size
+- §3q `CLAUDE.md` FILES SPLIT TO FIT A SIZE
+- §3t `road_profiles.json` The profile list is split over road_profiles.json, _a and _b for size
+- §3t Three files in three layouts
+- §3t `data_tables.gd:69-76` The table is split into six files
+- §3t `furniture.json:56` GENERATED FILE OUT OF STEP WITH ITS GENERATOR
+- §3t `make_pole_parts.py` GENERATOR NOISE
+- §3t `land_elements.json` land_elements.json exists only because land_panels was split for size
+- §3v GENERATOR NOISE
+- §3w `furniture.json` T3. Generated data is out of step with its generators, and tools edit their own inputs
+- §3w `CLAUDE.md` T4. Tool infrastructure has no single owner
+- §3w `export_builder_ui.py:61` T5. The line-count limits drive splits for size
+- §3w `rename_english.py` T7. One-shot and stale tools kept
+- §3w `building_renderer.cpp` TAMANHO_ARQUIVO 19 / TAMANHO_FUNCAO 4
+- §3w `gate_data.py:8-46` TWO JSON-SCHEMA CHECKERS
+- §3w `CLAUDE.md` A one-shot migration
+- §3w `bleed_alpha.py` bleed_alpha.py edits elements/Leaves.png in place
+- §3w `make_furniture.py:31-32` make_furniture.py:31-32 writes "cab" then a single "step"
+- §3w `road_profiles_b.json` DATA OUT OF STEP WITH ITS GENERATOR, AND THE GENERATOR WOULD BREAK THE GAME
+- §3w `CLAUDE.md` :142-143 the catalogue split in three files "a data file stays under the gate's line limit"
+- §3w `lex_c.py` FOUR C++ PARSERS IN tools/
+- §3w `detectors.py` causes.py/detectors.py
+- §3w `sampler.py:125` sampler.py:125 "the first thread seen
+- §3w `scope.py:19` No timeout: tools/gates/scope.py:19
+- §3w `cpp.py` arch/adapters/cpp.py parses with libclang
+- §3w `registry.py` Design: libclang + tree-sitter facts, call graph, slices per entry, seven defect classes each proven by a gold item ...
+- §3w WRITTEN FOR ANOTHER REPOSITORY
+- §3w `process.py:1-9` tools/process/tools/process/process.py:1-9 is a Claude Code hook
+- §3w tools/converter has its own .git AND its 219 files are tracked by the game repository as plain files
+- §3w tools/converter-slice
+- §3w `research.md` tools/ports: 194 tracked files
+
+### C17. assets and packaging (14)
+
+- §3v STRAY OUTPUT INSIDE THE GODOT PROJECT
+- §3v elements/*.gltf
+- §3v `materials.json:8-29` Import settings
+- §3v `project.godot:24` project.godot:24 gui/timers/tooltip_delay_sec=3600.0
+- §3v `project.godot:32-101` project.godot:32-101 shader_globals carry tuning defaults
+- §3v `project.godot:28-29` project.godot:28-29 rendering_method.mobile forced to forward_plus
+- §3v `citycore.gd` bin/citycore.gdextension:3 compatibility_minimum = "4.5" while godot-cpp is the 4.7 API
+- §3v `citycore.gd` bin/citycore.gdextension:9 linux.debug.x86_64 -> template_release .so
+- §3v `export_presets.cfg` export_presets.cfg
+- §3v `.gd` project/dist/rq/bomb45/... 145 untracked capture files
+- §3v `plugin.cfg` Upstream Terrain3D 1.1.0
+- §3v `project.godot` project.godot has no [editor_plugins] section
+- §3v `export_plugin.gd` bin/ ships 14 binaries for platforms the game never targets
+- §3v `terrain.gd` Fix: keep terrain.gdextension
+
+### C18. lot unit scale (6)
+
+- §3p `body_doc.cpp:159-162` P11. The lot documents are in the source's 0.4 m unit and are read as metres
+- §3v `body_doc.cpp` READ AT THE WRONG SCALE
+- §3v beauxArts: groundHeight 14.0, storeyHeight 9.25, no elements, no lotPlan. beigeClassic 11.25/7.75. Same 0.4 m unit
+- §3v `models.json` Census of all 38 lots/*.json
+- §3v `body_doc.cpp:159-162` Scale chain re-verified end to end
+- §3v `city_core_models.cpp:64-67` city_core_models.cpp:64-67 doc_body clamps storey_h/ground_h to build.max_storey_m 9 / max_ground_m 20, comment ...
+
+### C19. local wrong results (38)
+
+- §3a `slot_ids.h:10` `SlotIds` sits outside `namespace city`
+- §3a `polygon_ops.cpp:24` Plans cannot hold holes, so the boolean cuts them and gives up after four cuts
+- §3b `seeded.h:42` Palette index off by one, hidden by a modulo
+- §3d `squares.cpp:156` Generated squares are stored as player edits
+- §3d `body_mass.cpp:279-302` Removing a block points the entrance at the wrong block
+- §3f `road_copies.cpp:56-62` `duplicate_road` does not make a parallel road
+- §3f `lane_graph.cpp:198` Bicycles may use every road, motorways included
+- §3f `lane_graph.cpp:196` Lanes past 4 a direction are drawn but not driven
+- §3f `transit_plan.cpp:37` A bus line whose first stop is a terminal starts its new buses at a later terminal
+- §3f `terrain_brush.cpp:70-73` The smooth brush reads what it just wrote
+- §3f `vehicle_motion.cpp:161-167` A route retry stalls a whole lane for one tick
+- §3f `flow_control.cpp:62` Two `count_entry` overloads with different meanings
+- §3f `road_grade_solve.cpp:184-195` The grade solver hides non-convergence
+- §3j `facade_props.cpp:199` The old-building look of balconies never shows
+- §3j `placed.cpp:47-56` Shaped blocks hide neighbours by their box
+- §3j `roof_util.h:11-15` `built_on` (`roof_util.h:11-15`) tests `o.base == v.top()` only, not that `o` stands over `v`
+- §3j `facade_emit.cpp:221-237` The bay census counts other bays than the drawn ones
+- §3j `shell.cpp:276-280` `shell.cpp:276-280` `bytes()` counts 4 custom arrays per vertex when `rooms`, though the far shell uploads 1
+- §3j `agent_meshes.h:70` `agent_meshes.h:70` `CabinLook` carries `mutable std::vector<SeatSpot> *spots`
+- §3j `heavy_meshes.cpp:84` `heavy_meshes.cpp:84` the deflector side quad repeats a corner
+- §3j `mounds.cpp:97` `mounds.cpp:97` heaps past `MOUND_SLOTS`
+- §3j `sign_atlas.cpp:54-66` `sign_atlas.cpp:54-66` cells are only added until a new city
+- §3j `agent_parts.cpp:265` Plausible, not certain
+- §3n `city_core_lots.cpp:76-91` Lots on a curved street are squared to its chord
+- §3n `city_core_street.cpp:64` The barrier preview allows every refusal but one
+- §3n `city_core_body.cpp:137` `body_mass_rect` indexes `items[id]` with no range check
+- §3q `frame_governor.gd:12-15` frame_governor.gd:12-15 _at_percentile indexes sorted[floor(size * p)]
+- §3q `formatters.gd:105` formatters.gd:105 key "STAT_DATE"
+- §3q `furnish_hand.gd:131` furnish_hand.gd:131 and handle_drag.gd's callers
+- §3q `road_blocks.gd:13-19` road_blocks.gd:13-19 takes `tool
+- §3r `connector_panel.gd:89-90` connector_panel.gd:89-90 after toggle_lane_link the panel re-reads the lanes after a fixed delay
+- §3r `model_shelf.gd:171` A SAVED MODEL IS ANNOUNCED AS A REFUSAL
+- §3s `model_studio.gd:16` model_studio.gd:16 SETTLE_FRAMES = 3 "(measured
+- §3s `reference_model.gd:183-184` reference_model.gd:183-184 DRAWN_FRAMES = 2 and model_studio's 3
+- §3s `thunder.gd:59-63` WRONG SOUND ON OVERLAPPING STRIKES
+- §3t `road_catalog.gd:31` UNDEFINED ORDER
+- §3t `game.h` :358 game.hint.pistol "ela cai e some"
+- §3t `furniture.json:25` furniture.json:25 "pewter"
+
+### C20. local algorithm and allocation choices (30)
+
+- §3 `pool.py:88-97` Small quadratic steps in the scheduler
+- §3a `grid.h:35-91` The spatial hash is not flat
+- §3a `math.h:5-9` `std::floor` where the project's own `ifloor` exists
+- §3a `job_pool.cpp:126-143` Job priorities go stale
+- §3a `job_pool.cpp:159` Nested `parallel_for` runs serially
+- §3a `simulation.cpp:114-116` All traffic runs on one thread
+- §3b `types.h:120-122` The body's per-bay data are three hash maps per volume
+- §3b `data.h:84-88` Named colours looked up by string, per element, per body
+- §3c `lot_gen.h:58-61` The ground of every lot sample through `std::function`
+- §3g `traffic_system.cpp:153-188` Per tick: `publish_poses` walks the whole fleet
+- §3g `road_network_deck.cpp:9-61` Per pointer move
+- §3g `pedestrians.cpp:247-254` Per edit or blow
+- §3g `ground_paint.cpp:55-60` Per sample: `GroundPaint::cell` a hash find per sample
+- §3g `road_rules.cpp:26-36` Smaller: allocations per call in `wanted_retreat`
+- §3k `overlay_renderer.cpp:107-141` The congestion layer re-uploads whole meshes to change colours
+- §3k `terrain_bridge.cpp:76-121` Terrain: `terrain_bridge.cpp:76-121` re-sends each touched region whole
+- §3k `water_renderer.cpp:98-109` Water: `water_renderer.cpp:98-109` builds and keeps every wet chunk of the map at any distance, one free-standing ...
+- §3k `rs_util.h:101-104` `rs_util.h:101-104` `MultiMeshDraw::set(PackedFloat32Array)` copies the whole buffer whenever the count is below the ...
+- §3k `body_renderer.cpp:226` `body_renderer.cpp:226` and `ruin_pieces.cpp:215-216` make a new `Image` of the whole buffer every frame something moves
+- §3k `fleet_shadow.cpp:61-67` `fleet_shadow.cpp:61-67` frees a sector's MultiMesh after one empty frame and creates it again
+- §3k `agent_renderer.cpp:263` `agent_renderer.cpp:263` rolls the odometer of every published vehicle before the distance cull
+- §3k `wear_field.cpp:104` `wear_field.cpp:104,107` two engine calls per wheel and foot sample
+- §3k `pane_rooms.cpp:85` `pane_rooms.cpp:85` copies the floor's partitions per pane
+- §3r `selection_overlay.gd:66-68` selection_overlay.gd:66-68 redraws every frame while anything is picked
+- §3s `element_effects.gd:46-73` element_effects.gd:46-73 a new ParticleProcessMaterial, QuadMesh and StandardMaterial3D each time an emitter changes ...
+- §3s `handle_marks.gd:22-24` handle_marks.gd:22-24 redraws every frame while any handle exists
+- §3s `agents.gd` THE SIN HASH
+- §3s `atmosphere.gd` atmosphere.gdshader:177-187 the clouds are taken nearest first by scanning all 24 for each pass
+- §3s `water.gd` water.gdshader:58, :71, :98 normalize(vec2(wind_x, wind_z)) three times per pixel although sky_view.gd:117-118 ...
+- §3s `sign_sheet.gd:76` GPU READBACK
+
+### N. notes, not defects (14)
+
+- §3s `cook_people.py:1-2` (Settled in step 8, cook_people.py:1-2 and LICENSES.json
+- §3s `sign_atlas.h:2` (sign_atlas.h:2 layers only advance, so sign_sheet.gd:64's "kept only for the layer begun" is right.)
+- §3t `agents.json:2` (agents.json:2 agrees with cook_people.py
+- §3u `light_color_test.gd:3-4` (light_color_test.gd:3-4 checks render/tone_map.gd's hand mirror of ACES against the engine
+- §3u `model_library.gd:6-12` (model_test's ModelLibrary removals are safe
+- §3v `override.cfg` override.cfg is local
+- §3w `gate_python.py` gate_python.py
+- §3w `selftest.py` selftest.py: every rule has a passing and a failing fixture
+- §3w Otherwise sound
+- §3w `compress_atlas.gd` compress_atlas.gd
+- §3w `make_blue_noise.py` make_blue_noise.py
+- §3w `make_lattice_noise.py` make_lattice_noise.py
+- §3w `repo.py:22` arch/repo.py:22 reads the commit, never the working tree, so it does not see uncommitted work
+- §3w `gold.json` arch_eval/gold.json
