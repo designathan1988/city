@@ -163,7 +163,7 @@ def incremental_jobs(ctx):
     changed = headers[len(headers) // 2]
     edit = {changed: (run0.texts[changed] + "\ninline int changed_by_the_check() { return 2; }\n").encode("utf8")}
     view = {"add": files, "edit": edit, "drop": {code[len(code) // 2]}, "tag": "both"}
-    return [_copy(ctx, "through_store", "incremental", view=view), _copy(ctx, "through_nothing", "incremental", heavy=True, store=False, view=view)]
+    return [_copy(ctx, "through_store", "incremental", view=view, want=("snapshot", "trace")), _copy(ctx, "through_nothing", "incremental", heavy=True, store=False, view=view, want=("snapshot", "trace"))]
 
 
 def incremental(ctx, out):
@@ -172,7 +172,14 @@ def incremental(ctx, out):
     key = lambda q: json.dumps((q["cause"], q["places"]))  # noqa: E731
     only_fast, only_full = {key(q) for q in fast["queue"]} - {key(q) for q in full["queue"]}, {key(q) for q in full["queue"]} - {key(q) for q in fast["queue"]}
     return {"pass": same(fast, full) and bool(fast["queue"]), "detail": {"causes": (len(fast["queue"]), len(full["queue"])), "groups": (len(fast["groups"]), len(full["groups"])), "facts": (a["sizes"], b["sizes"]),
-                                                                         "graph": (a["graph"], b["graph"]), "only_store": sorted(only_fast)[:2], "only_nothing": sorted(only_full)[:2]}}
+                                                                         "graph": (a["graph"], b["graph"]), "only_store": sorted(only_fast)[:2], "only_nothing": sorted(only_full)[:2], **_where_apart(a["trace"], b["trace"])}}
+
+
+def _where_apart(a, b):
+    """Which units have other edges, and which groups another layer: where two reads of one thing stopped being the same."""
+    edges = sorted(u for u in set(a["edges"]) | set(b["edges"]) if a["edges"].get(u) != b["edges"].get(u))
+    layers = sorted(u for u in set(a["layers"]) | set(b["layers"]) if a["layers"].get(u) != b["layers"].get(u))
+    return {"units_with_other_edges": (len(edges), edges[:6]), "groups_in_other_layers": (len(layers), layers[:6])}
 
 
 def proofs(ctx):
@@ -208,6 +215,17 @@ def _changed_with(plain, gone):
     return {u for u, lin in plain["lineage"].items() if lin.id in beside}
 
 
+def _apart(groups, near):
+    """A map with what the dropped files touched taken out of it: what remains must not have moved. A group left with one unit is no group."""
+    kept = (tuple(sorted(set(g) - near)) for g in groups)
+    return {g for g in kept if len(g) > 1}
+
+
+def _marks_apart(causes, near):
+    """The marks of the causes that touch nothing dropped, children touched by it not counted."""
+    return {(i, commits, sum(1 for _, units in children if not near & set(units))) for i, commits, places, children in causes if not near & set(places)}
+
+
 def contamination(ctx, out):
     plain_run, plain = ctx.plain()
     gone = ctx.state["gone"]
@@ -215,14 +233,14 @@ def contamination(ctx, out):
     graph = plain_run.graph
     lost = {u for u, x in graph.units.items() if x["file"] in gone}
     near = lost | {e.src for e in graph.edges.values() if e.dst in lost} | {e.dst for e in graph.edges.values() if e.src in lost}
+    near |= {e.dst for e in graph.edges.values() if e.src in near and e.conf < 1.0}  # a name that had a candidate there now means the others for sure
     near |= _changed_with(plain, gone)
-    left = {tuple(sorted(g["members"])) for g in plain["groups"] if not near & set(g["members"])}
-    right = {tuple(g) for g in got["groups"] if not near & set(g)}
-    causes_a = {(q["id"], q["reach"], q["commits"], q["score"]) for q in plain["queue"] if not near & {p["unit"] for p in q["places"]}}
-    causes_b = {c[0] for c in got["causes"] if not near & set(c[1])}
+    left, right = _apart((g["members"] for g in plain["groups"]), near), _apart(got["groups"], near)
+    mine = [(q["id"], q["commits"], [p["unit"] for p in q["places"]], q["children"]) for q in plain["queue"]]
+    causes_a, causes_b = _marks_apart(mine, near), _marks_apart(got["causes"], near)
     equal = bool(left) and bool(causes_a) and left == right and causes_a == causes_b
     return {"pass": equal, "detail": {"dropped": len(gone), "units_touching_them": len(near), "groups": (len(left), len(right)), "causes": (len(causes_a), len(causes_b)),
-                                      "groups_differ": len(left ^ right), "causes_differ": len(causes_a ^ causes_b), "sample": sorted(left ^ right)[:3]}}
+                                      "groups_differ": len(left ^ right), "causes_differ": len(causes_a ^ causes_b), "sample": sorted(left ^ right)[:3], "causes_sample": sorted(causes_a ^ causes_b, key=str)[:3]}}
 
 
 def stability_jobs(ctx):

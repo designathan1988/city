@@ -7,6 +7,7 @@ import threading
 import time
 import traceback
 
+from ..core import digest
 from ..repo import Repo
 from . import checks_history, checks_keys, inject
 from .checks_compare import labels, notes, snapshot
@@ -32,9 +33,14 @@ def read_copy(spec):
         elif part == "labels":
             out[part] = labels(a)
         elif part == "causes":
-            out[part] = [((q["id"], q["reach"], q["commits"], q["score"]), [p["unit"] for p in q["places"]]) for q in a["queue"]]
+            out[part] = [(q["id"], q["commits"], [p["unit"] for p in q["places"]], q["children"]) for q in a["queue"]]
         elif part == "groups":
             out[part] = [sorted(g["members"]) for g in a["groups"]]
+        elif part == "trace":
+            ways = {}
+            for e in run.graph.edges.values():
+                ways.setdefault(e.src, []).append(f"{e.kind}>{e.dst}:{e.conf:.6f}")
+            out[part] = {"edges": {u: digest("".join(sorted(w))) for u, w in ways.items()}, "layers": {g["members"][0]: a["layer_of"].get(g["id"]) for g in a["groups"]}}
     if spec.get("expect"):
         out["judged"] = inject.judge(run, a, spec["expect"])
     return out

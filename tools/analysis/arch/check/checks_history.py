@@ -10,7 +10,7 @@ import subprocess
 import sys
 
 from ..cache import Cache
-from ..core import IDENT, digest, natural_break, program_root
+from ..core import IDENT, digest, natural_break, program_root, read_json
 from ..pipeline import analyse, publish
 from ..predict import rolling
 from ..repo import Repo, toplevel
@@ -117,9 +117,10 @@ def from_nothing(spec):
 def determinism(ctx, out):
     """Two processes, different hash seeds, one through the run's store and its shortcuts, one with none: the same bytes."""
     other = os.path.join(ctx.base, "from_nothing")
-    names = ("queue.json", "groups.json", "levels.json", "residual.json", "coverage.json")
+    names = ("queue.json", "groups.json", "levels.json", "residual.json", "coverage.json", "atoms.json")
     diff = [n for n in names if not filecmp.cmp(os.path.join(ctx.store, n), os.path.join(other, n), shallow=False)]
-    return {"pass": not diff, "detail": {"differ": diff, "compared": len(names)}}
+    here, there = (set(read_json(os.path.join(f, "atoms.json"), [])) for f in (ctx.store, other))
+    return {"pass": not diff, "detail": {"differ": diff, "compared": len(names), "atoms_only_fast": sorted(here - there)[:5], "atoms_only_slow": sorted(there - here)[:5]}}
 
 
 def _others(ctx):

@@ -79,6 +79,7 @@ def publish(run, a):
     write_json(os.path.join(base, "residual.json"), residue)
     write_json(os.path.join(base, "groups.json"), _group_rows(run, a))
     write_json(os.path.join(base, "levels.json"), groups.describe_levels(a["tree"], a["upper"], a["atoms"]))
+    write_json(os.path.join(base, "atoms.json"), sorted(a["atoms"].nodes))
     write_json(os.path.join(base, "coverage.json"), {"table": a["table"], "classes": found, "points": totals, "units": len(run.graph.units), "edges": len(run.graph.edges),
                                                      "roles": run.roles.describe(), "recorded": {k: v if not isinstance(v, list) else len(v) for k, v in a["recorded"].items()},
                                                      "adapters": {k: v for k, v in run.info.items() if k != "refused"}, "commit": run.repo.head})

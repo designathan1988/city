@@ -50,8 +50,7 @@ def write_json(path, value):
     """A file with sorted keys and no time in it: two runs give the same bytes."""
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf8", newline="\n") as f:
-        json.dump(value, f, ensure_ascii=False, sort_keys=True, indent=0, separators=(",", ":"))
-        f.write("\n")
+        f.write(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n")  # in one go, no indent: the C encoder, not the Python one
 
 
 def read_json(path, default=None):
