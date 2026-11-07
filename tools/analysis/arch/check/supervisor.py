@@ -66,7 +66,7 @@ class Supervisor:
         return self.known.get(job.name, [float("inf"), 0])[0]
 
     def _cores(self, job):
-        return max(1, self.cpus // 4) if job.heavy else max(1, self.cpus // 8)
+        return max(1, self.cpus // 2) if job.heavy else max(1, self.cpus // 8)
 
     def _memory_of(self, job):
         seen = self.known.get(job.name, [0, 0])[1]
