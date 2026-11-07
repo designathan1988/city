@@ -89,8 +89,8 @@ func _set_width(index: int, metres: float) -> void:
 	if not edit.limits.has(e.kind):
 		return
 	var lo: Vector2 = edit.limits[e.kind]
-	RoadSpecOps.with_width(edit.spec, index, clampf(snappedf(metres, WIDEN_BY_M), lo.x, lo.y))
-	_refresh()
+	if RoadSpecOps.with_width(edit.spec, index, clampf(snappedf(metres, WIDEN_BY_M), lo.x, lo.y)):
+		_refresh() # a drag that snaps to the width it had changes nothing, and nothing is drawn again
 
 
 func _refresh() -> void:
@@ -119,8 +119,8 @@ func _fill_props() -> void:
 	if edit.selected >= 0 and edit.selected < edit.spec.elements.size():
 		var e: Dictionary = edit.spec.elements[edit.selected]
 		if edit.limits.has(e.kind):
-			_button(_props, "profileEditor.narrower", _set_width.bind(edit.selected, e.width - WIDEN_BY_M))
-			_button(_props, "profileEditor.wider", _set_width.bind(edit.selected, e.width + WIDEN_BY_M))
+			_action(_props, "profileEditor.narrower", _set_width.bind(edit.selected, e.width - WIDEN_BY_M))
+			_action(_props, "profileEditor.wider", _set_width.bind(edit.selected, e.width + WIDEN_BY_M))
 		if e.kind == "lane":
 			_button(_props, "profileEditor.dirForward" if e.dir < 0 else "profileEditor.dirBackward", func() -> void: e.dir = -e.dir)
 			_button(_props, "profileEditor.useBus" if not e.get("bus", false) else "profileEditor.useAll", func() -> void: e.bus = not e.get("bus", false))

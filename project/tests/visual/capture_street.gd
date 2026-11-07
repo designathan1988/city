@@ -108,7 +108,7 @@ func _run() -> void:
 	await CaptureStreetViews.views(self, a, b)
 	print("contagens: ", CityStore.query(&"street_counts"))
 	print("FAILURES: ", failures)
-	get_tree().quit(1 if failures > 0 else 0)
+	get_tree().quit(CaptureWait.exit_code(failures))
 
 
 ## The view from over a point, left above the drawer.

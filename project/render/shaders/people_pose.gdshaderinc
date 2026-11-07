@@ -32,7 +32,8 @@ BonePose walk_pose(int bone, int row) {
 	return BonePose(palette_row(bone * TEXELS, row), palette_row(bone * TEXELS + 1, row), palette_row(bone * TEXELS + 2, row));
 }
 
-// Adds the pose of a clip (its first row, frames and phase 0..1) at `share`: the linear blend of the four bones.
+// Adds the pose of a clip (its first row, frames and phase 0..1) at `share`: the linear blend of the four bones. A bone of weight
+// zero adds nothing, so its palette rows are not fetched (the weights are not sorted: what is held and the helmet pass (1, 0, 0, 0)).
 void add_clip(int first, int frames, float phase, float share, ivec4 bones, vec4 weights, vec3 vertex, vec3 normal, inout vec3 pos, inout vec3 nor) {
 	float f = fract(phase) * float(frames);
 	int f0 = int(floor(f));
@@ -40,6 +41,9 @@ void add_clip(int first, int frames, float phase, float share, ivec4 bones, vec4
 	int row1 = first + (f0 + 1 < frames ? f0 + 1 : 0);
 	float t = fract(f);
 	for (int i = 0; i < 4; i++) {
+		if (weights[i] == 0.0) {
+			continue;
+		}
 		skin_add(pos, nor, share * weights[i], walk_pose(bones[i], row0), walk_pose(bones[i], row1), t, vertex, normal);
 	}
 }

@@ -88,14 +88,27 @@ uniform sampler2D grass_blades_normal : hint_normal, filter_linear_mipmap_anisot
 uniform float grass_bump;
 uniform float blade_bump;
 
-// The tilt the grass gives the ground: the tufts of its normal map, at its scale and turned at a wider one so the two
-// never line up, and the blades under them while they show. Most of what the eye reads as a lawn is this light, not colour.
-vec2 grass_tilt(vec2 xz, float per_pixel) {
+// The tilt the grass gives the ground, at `share` of it: the tufts of its normal map, at its scale and turned at a wider one so
+// the two never line up, and the blades under them while they show. Most of what the eye reads as a lawn is this light, not
+// colour. A read whose weight is zero is not made: the derivatives are taken first, in uniform flow, and the reads under the
+// guards pass them explicitly.
+vec2 grass_tilt(vec2 xz, float per_pixel, float share) {
 	vec2 p = xz / grass_m;
-	vec2 near_n = texture(grass_normal, p).xy * 2.0 - 1.0;
-	vec2 wide_n = texture(grass_normal, vec2(0.9397 * p.x - 0.342 * p.y, 0.342 * p.x + 0.9397 * p.y) * 0.137 + 0.21).xy * 2.0 - 1.0;
-	vec2 blade_n = texture(grass_blades_normal, xz / detail_m).xy * 2.0 - 1.0;
-	return mix(near_n, wide_n, 0.42) * grass_bump + blade_n * blade_bump * blade_weight(per_pixel);
+	vec2 wide = vec2(0.9397 * p.x - 0.342 * p.y, 0.342 * p.x + 0.9397 * p.y) * 0.137 + 0.21;
+	vec2 blade = xz / detail_m;
+	vec2 p_dx = dFdx(p), p_dy = dFdy(p);
+	vec2 wide_dx = dFdx(wide), wide_dy = dFdy(wide);
+	vec2 blade_dx = dFdx(blade), blade_dy = dFdy(blade);
+	if (share == 0.0) return vec2(0.0);
+	vec2 near_n = textureGrad(grass_normal, p, p_dx, p_dy).xy * 2.0 - 1.0;
+	vec2 wide_n = textureGrad(grass_normal, wide, wide_dx, wide_dy).xy * 2.0 - 1.0;
+	vec2 tufts = mix(near_n, wide_n, 0.42) * grass_bump;
+	float blades = blade_weight(per_pixel);
+	if (blades > 0.0) {
+		vec2 blade_n = textureGrad(grass_blades_normal, blade, blade_dx, blade_dy).xy * 2.0 - 1.0;
+		tufts = tufts + blade_n * blade_bump * blades;
+	}
+	return tufts * share;
 }
 
 uniform float biome_dry[7];

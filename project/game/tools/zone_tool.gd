@@ -4,8 +4,11 @@ extends ToolBase
 
 ## A new dab once the brush moved this share of its radius (zoneTool dabs along the stroke).
 const DAB_SPACING := 0.5
-## A fast drag reports the pointer far apart: the whole way is painted, up to this many dabs at a report (lotTool.ts move).
+## A fast drag reports the pointer far apart: the whole way is painted, up to this many dabs at a report (lotTool.ts move),
+## sent as one command (paint_zone_path).
 const MOST_DABS := 400
+## A side the brush passes that already has the zone says nothing.
+const ZONE_SAME := "tools.toast.zoneSame"
 ## What the brush paints with Shift held: no zone (lotTool.ts `remove`).
 const UNZONED := 0
 
@@ -25,7 +28,7 @@ func click(p: Vector3) -> void:
 	_last = p
 	_painting = UNZONED if Input.is_key_pressed(KEY_SHIFT) else zone
 	CityStore.dispatch(&"begin_stroke", ["cmd.place.zone"])
-	_dab(p)
+	_paint(PackedVector3Array([p]))
 
 
 ## The whole stroke is one undo step.
@@ -37,15 +40,17 @@ func release(_p: Vector3) -> void:
 func drag(p: Vector3) -> void:
 	if _last == Vector3.INF:
 		_last = p
-		_dab(p)
+		_paint(PackedVector3Array([p]))
 		return
 	var spacing := radius * DAB_SPACING
 	var far := p.distance_to(_last)
 	if far < spacing:
 		return
 	var steps := mini(ceili(far / spacing), MOST_DABS)
+	var dabs := PackedVector3Array()
 	for k in range(1, steps + 1):
-		_dab(_last.lerp(p, float(k) / steps))
+		dabs.append(_last.lerp(p, float(k) / steps))
+	_paint(dabs)
 	_last = p
 
 
@@ -58,11 +63,9 @@ func exit() -> void:
 	ctl.preview.clear()
 
 
-func _dab(p: Vector3) -> void:
-	var lot: int = CityStore.query(&"lot_at", [p])
-	if lot != 0: # a lot the player drew takes the zone whole
-		CityStore.dispatch(&"lot_zone", [lot, _painting])
-		return
-	var r: Dictionary = CityStore.dispatch(&"paint_zone", [p, radius, _painting])
-	if not r.get("ok", false) and r.get("error", "") != "tools.toast.zoneSame":
+## The dabs of one pointer move as one command: a lot the player drew takes the zone whole, elsewhere the road sides.
+func _paint(dabs: PackedVector3Array) -> void:
+	var r: Dictionary = CityStore.dispatch(&"paint_zone_path", [dabs, radius, _painting])
+	var why: String = r.get("error", "")
+	if not why.is_empty() and why != ZONE_SAME:
 		ctl.hint.emit(refusal(r), false)

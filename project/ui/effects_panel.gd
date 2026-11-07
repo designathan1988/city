@@ -198,7 +198,7 @@ func _read_stats() -> void:
 	var rid := get_viewport().get_viewport_rid()
 	var size := get_viewport().get_visible_rect().size * get_viewport().scaling_3d_scale
 	var rows := [["fx.stat.gpu", "%.2f ms" % RenderingServer.viewport_get_measured_render_time_gpu(rid)],
-		["fx.stat.cpu", "%.2f ms" % FrameMeter.cpu_ms(rid)],
+		["fx.stat.cpu", "%.2f ms" % FrameMeter.render_cpu_ms(rid)],
 		["fx.stat.fps", "%d" % Performance.get_monitor(Performance.TIME_FPS)],
 		["fx.stat.calls", Formatters.format_int(int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)))],
 		["fx.stat.triangles", Formatters.format_int(int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)))],

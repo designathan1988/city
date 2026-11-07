@@ -67,13 +67,13 @@ func _ready() -> void:
 		print("street: ", CityStore.query(&"street_counts"))
 		print("pieces: ", CityStore.query(&"furniture_census"))
 		_memory("medido")
-		get_tree().quit(0)
+		get_tree().quit(CaptureWait.exit_code(0))
 		return
 	await _capture_all(probe, ground)
 	print("desenhados: ", CityStore.query(&"traffic_probe", [0]))
 	print("snapshot: ", CityStore.snapshot)
 	_memory("fim")
-	get_tree().quit(0)
+	get_tree().quit(CaptureWait.exit_code(0))
 
 
 ## The shot's hour: the light and the clock the top bar shows.
@@ -214,7 +214,7 @@ func _civic_tour() -> void:
 		var chunk: int = CityStore.query(&"building_chunk", [at.x, at.z])
 		print("chunk of 12_%s: %d" % [CIVIC_SHOTS[fn], chunk])
 		if chunk & CHUNK_NEAR_BUILT == 0:
-			push_warning("INCOMPLETE PHOTO: 12_%s came out without the building's near level" % CIVIC_SHOTS[fn])
+			CaptureWait.mark_incomplete("12_%s came out without the building's near level" % CIVIC_SHOTS[fn])
 
 
 ## Index of the point nearest to `to` (0 when the list is empty).

@@ -7,7 +7,7 @@ const PERCENT := 100.0
 const DRAW := "draw"
 const SETUP := "setup"
 
-var _frames := {} # zone -> its last times, ms
+var _times := PackedFloat32Array() # the last times of each zone, ms: zone z's window at z * _window, written in place
 var _zones: Array[String] = []
 var _window := 0
 var _at := 0
@@ -18,10 +18,7 @@ func _init(zones: Array[String], window: int) -> void:
 	_zones = zones.duplicate()
 	_zones.append_array([DRAW, SETUP])
 	_window = window
-	for key: String in _zones:
-		var times := PackedFloat32Array()
-		times.resize(window)
-		_frames[key] = times
+	_times.resize(_zones.size() * window)
 
 
 ## One frame's reading.
@@ -29,10 +26,8 @@ func sample(viewport: RID) -> void:
 	var cost: Dictionary = CityStore.query(&"render_cost")
 	cost[DRAW] = RenderingServer.viewport_get_measured_render_time_cpu(viewport)
 	cost[SETUP] = RenderingServer.get_frame_setup_time_cpu()
-	for key: String in _zones:
-		var times: PackedFloat32Array = _frames[key]
-		times[_at] = float(cost.get(key, 0.0))
-		_frames[key] = times
+	for z in _zones.size():
+		_times[z * _window + _at] = float(cost.get(_zones[z], 0.0))
 	_at += 1
 	if _at == _window:
 		_at = 0
@@ -50,8 +45,9 @@ func rows(tail: float) -> Array[Dictionary]:
 	if count == 0:
 		return out
 	var total := 0.0
-	for key: String in _zones:
-		var times: PackedFloat32Array = _frames[key].slice(0, count)
+	for z in _zones.size():
+		var key := _zones[z]
+		var times: PackedFloat32Array = _times.slice(z * _window, z * _window + count)
 		times.sort()
 		var sum := 0.0
 		for t in times:

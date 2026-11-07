@@ -76,7 +76,7 @@ func _process(_delta: float) -> void:
 	var now := Time.get_ticks_usec()
 	if _last_us > 0:
 		_gaps.append(float(now - _last_us) / US_PER_MS)
-		_cpu.append(cpu_ms(_viewport))
+		_cpu.append(render_cpu_ms(_viewport))
 		var gpu := RenderingServer.viewport_get_measured_render_time_gpu(_viewport)
 		if gpu > 0.0:
 			_gpu.append(gpu)
@@ -159,9 +159,11 @@ func passes() -> Array[Dictionary]:
 	return out
 
 
-## The CPU's last frame: the core's work and the renderer's. Performance.TIME_PROCESS will not do: it is the worst frame
-## of the second (main/main.cpp process_max), so a single slow frame reads as the cost of all of them.
-static func cpu_ms(viewport: RID) -> float:
+## The render CPU of the last frame: the core's _process (render_cost "process": the render's sync, uploads and agents), the
+## renderer's drawing of the viewport and its frame setup. Not the whole CPU: the scripts' own work and the simulation on its
+## thread are outside it. Performance.TIME_PROCESS will not do: it is the worst frame of the second (main/main.cpp process_max), so
+## a single slow frame reads as the cost of all of them.
+static func render_cpu_ms(viewport: RID) -> float:
 	return float(CityStore.query(&"render_cost").get("process", 0.0)) + RenderingServer.viewport_get_measured_render_time_cpu(viewport) \
 			+ RenderingServer.get_frame_setup_time_cpu()
 

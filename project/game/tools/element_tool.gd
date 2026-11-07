@@ -26,8 +26,8 @@ func enter() -> void:
 	ctl.hint.emit(tr("hint.terrain.elements"), true)
 
 
-func _dab(p: Vector3) -> Dictionary:
-	return CityStore.dispatch(&"element_brush", [p, radius, -1 if mode == ERASE_ALL else kind, brush, mode != 0])
+func _dab_path(dabs: PackedVector3Array) -> Dictionary:
+	return CityStore.dispatch(&"element_path", [dabs, radius, -1 if mode == ERASE_ALL else kind, brush, mode != 0])
 
 
 func _label() -> String:

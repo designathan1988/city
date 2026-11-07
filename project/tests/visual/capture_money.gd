@@ -109,7 +109,7 @@ func _run() -> void:
 	_state("gerada demolida")
 	await ui.shot("gerada_demolida")
 	print("capture_money: pronto")
-	get_tree().quit(0)
+	get_tree().quit(CaptureWait.exit_code(0))
 
 
 ## The street's card in the open tab, by its profile (the cards keep the catalogue's order, not the profiles').

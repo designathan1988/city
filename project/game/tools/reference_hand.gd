@@ -70,6 +70,14 @@ func build() -> Dictionary:
 	return r
 
 
+## The Build tool put away: the model and its file dialog go with it (both are the tool controller's children while the tool is up).
+func retire() -> void:
+	model.queue_free()
+	if _dialog != null:
+		_dialog.queue_free()
+		_dialog = null
+
+
 func _ask_file() -> void:
 	if _dialog == null:
 		_dialog = FileDialog.new()

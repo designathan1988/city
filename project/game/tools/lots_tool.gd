@@ -51,9 +51,14 @@ func cancel() -> void:
 	_show()
 
 
+## The lots again (after an edit): their outlines are built once here, a band DRAWN_PX pixels to each side at any zoom.
 func _read() -> void:
 	_lots = CityStore.query(&"lots")
 	_land.forget()
+	var rings := []
+	for l: Dictionary in _lots:
+		rings.push_back(l.points)
+	ctl.preview.show_outlines(rings, DRAWN_PX)
 
 
 func _done(r: Dictionary) -> void:
@@ -73,12 +78,10 @@ func _closed(points: PackedVector3Array) -> PackedVector3Array:
 	return ring
 
 
-## The lots on the ground, and `extra` over them.
+## What the gesture shows over the lots' outlines (_read): `extra` and the polygon so far.
 func _show(extra: Array = []) -> void:
 	var roads := extra.duplicate()
 	var at: Vector3 = _from if _from != Vector3.INF else Vector3.ZERO
-	for l: Dictionary in _lots:
-		roads.push_back({"points": _closed(l.points), "half_width": _width(l.points[0])})
 	if _points.size() >= 2:
 		roads.push_back({"points": _points, "half_width": _width(at) * 2.0})
 	ctl.preview.show_ribbons(roads)

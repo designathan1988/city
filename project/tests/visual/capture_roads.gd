@@ -78,7 +78,7 @@ func _run() -> void:
 	if "--tool-only" in OS.get_cmdline_user_args():
 		await CaptureRoadTools.new(self).run()
 		print("FAILURES: ", failures)
-		get_tree().quit(1 if failures > 0 else 0)
+		get_tree().quit(CaptureWait.exit_code(failures))
 		return
 	await _photo("cross_urban_top", at(0, -120), TOP, CLOSE_M)
 	await _photo("cross_urban_low", at(0, -120), LOW, NEAR_M)
@@ -110,7 +110,7 @@ func _run() -> void:
 	if only.is_empty():
 		await CaptureRoadTools.new(self).run()
 	print("FAILURES: ", failures)
-	get_tree().quit(1 if failures > 0 else 0)
+	get_tree().quit(CaptureWait.exit_code(failures))
 
 
 ## The same crossings under the game's night, then the day again for the tool.

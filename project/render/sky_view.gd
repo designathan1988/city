@@ -18,6 +18,8 @@ const PUFF_SEED := 11
 const SALT_X := 6
 const SALT_Z := 7
 const SALT_R := 8
+## What each lobe keeps in _puff_shape: its offset from the cloud's centre on x and z, its height, its radius.
+const PUFF_FIELDS := 4
 
 ## Drift of the clouds so far, on the map (x, z), metres; the cloud tool takes it off what it keeps.
 var drift := Vector2.ZERO
@@ -40,6 +42,14 @@ var _canyon_field: Dictionary = {}
 var _fog_seen := -1 # the fog_revision / canyon_revision last applied
 var _lamp_night := -1.0 # what the core was last told
 var _canyon_seen := -1
+## The clouds' shapes as placed (per sky_revision): each lobe's offset turned by the cloud's yaw, its height and radius; only the
+## centre, carried by the wind and the view, is added each frame.
+var _puff_shape := PackedFloat64Array()
+## What the clouds were last laid from: nothing is re-sent while the view, the drift, the count and the revision stay.
+var _laid_about := Vector2.INF
+var _laid_drift := Vector2.INF
+var _laid_count := -1
+var _laid_revision := -1
 
 
 func _init(world: CityWorld) -> void:
@@ -51,6 +61,7 @@ func _ready() -> void:
 	_d = DataTables.game("sky")
 	_bounds.resize(SLOTS)
 	_puffs.resize(SLOTS * LOBES)
+	_puff_shape.resize(SLOTS * LOBES * PUFF_FIELDS)
 	_looks.resize(SLOTS)
 	_mat = ShaderMaterial.new()
 	_mat.shader = load("res://render/shaders/atmosphere.gdshader")
@@ -131,6 +142,7 @@ func _read() -> void:
 	var land: Dictionary = CityStore.query(&"landscape")
 	weather = land.weather
 	clouds = land.clouds
+	_shape_clouds()
 	_world.set_map_biome(land.biome)
 	_world.set_water_look(weather)
 	# Rain thickens the air: what the player set, or the rain's own mist if that is more.
@@ -169,7 +181,8 @@ func _hash(i: int, salt: int) -> float:
 	return float((h ^ (h >> 16)) & 0xFFFFFFFF) / 4294967296.0
 
 
-## Each cloud where the wind has carried it, its repeat round the view, thinning towards the edge it wraps round.
+## Each cloud where the wind has carried it, its repeat round the view, thinning towards the edge it wraps round. The arrays are
+## sent only when what places them changed.
 func _lay() -> void:
 	var cam := get_viewport().get_camera_3d()
 	var about := Vector2.ZERO
@@ -177,8 +190,15 @@ func _lay() -> void:
 		var ahead := -cam.global_basis.z
 		var t := -cam.global_position.y / ahead.y if ahead.y < -LEVEL_VIEW else 0.0
 		about = Vector2(cam.global_position.x + ahead.x * t, cam.global_position.z + ahead.z * t)
-	var span: float = _d.cloud_span_m
 	var n := mini(clouds.size(), SLOTS) if clouds_drawn else 0
+	_quad.visible = n > 0 or _air > 0.0 or bool(_fog_field.get("any", false)) or bool(_canyon_field.get("any", false))
+	if about == _laid_about and drift == _laid_drift and n == _laid_count and _seen == _laid_revision:
+		return
+	_laid_about = about
+	_laid_drift = drift
+	_laid_count = n
+	_laid_revision = _seen
+	var span: float = _d.cloud_span_m
 	for i in n:
 		var c: Dictionary = clouds[i]
 		var dx := wrapf(c.x + drift.x - about.x, -span * 0.5, span * 0.5)
@@ -190,24 +210,37 @@ func _lay() -> void:
 	_mat.set_shader_parameter("cloud", _bounds)
 	_mat.set_shader_parameter("puff", _puffs)
 	_mat.set_shader_parameter("cloud_look", _looks)
-	_quad.visible = n > 0 or _air > 0.0 or bool(_fog_field.get("any", false)) or bool(_canyon_field.get("any", false))
+
+
+## Each placed cloud's lobes about its centre: jittered by its id, turned by its yaw, at its size. Read once a sky_revision.
+func _shape_clouds() -> void:
+	var shape: Array = _d.puffs
+	for i in mini(clouds.size(), SLOTS):
+		var c: Dictionary = clouds[i]
+		var yaw: float = c.yaw
+		var size: float = c.size
+		var cs := cos(yaw)
+		var sn := sin(yaw)
+		var id := ID_BASE + int(c.id) * ID_STEP
+		for k in LOBES:
+			var p: Array = shape[k]
+			var ja: float = p[0] + (_hash(id * PUFF_SEED + k, SALT_X) - 0.5) * _d.puff_jitter
+			var jb: float = p[2] + (_hash(id * PUFF_SEED + k, SALT_Z) - 0.5) * _d.puff_jitter
+			var jr: float = p[3] * (_d.puff_least + _d.puff_vary * _hash(id * PUFF_SEED + k, SALT_R))
+			var at := (i * LOBES + k) * PUFF_FIELDS
+			_puff_shape[at] = (ja * cs - jb * sn) * size
+			_puff_shape[at + 1] = c.height + p[1] * size
+			_puff_shape[at + 2] = (ja * sn + jb * cs) * size
+			_puff_shape[at + 3] = jr * size
 
 
 func _lay_one(i: int, c: Dictionary, x: float, z: float, show: float) -> void:
-	var yaw: float = c.yaw
 	var size: float = c.size
-	var cs := cos(yaw)
-	var sn := sin(yaw)
-	var id := ID_BASE + int(c.id) * ID_STEP
 	_bounds[i] = Vector4(x, c.height + size * 0.5, z, size * BOUND_REACH)
 	_looks[i] = Vector4(c.height, c.density, show, 0.0)
-	var shape: Array = _d.puffs
 	for k in LOBES:
-		var p: Array = shape[k]
-		var ja: float = p[0] + (_hash(id * PUFF_SEED + k, SALT_X) - 0.5) * _d.puff_jitter
-		var jb: float = p[2] + (_hash(id * PUFF_SEED + k, SALT_Z) - 0.5) * _d.puff_jitter
-		var jr: float = p[3] * (_d.puff_least + _d.puff_vary * _hash(id * PUFF_SEED + k, SALT_R))
-		_puffs[i * LOBES + k] = Vector4(x + (ja * cs - jb * sn) * size, c.height + p[1] * size, z + (ja * sn + jb * cs) * size, jr * size)
+		var at := (i * LOBES + k) * PUFF_FIELDS
+		_puffs[i * LOBES + k] = Vector4(x + _puff_shape[at], _puff_shape[at + 1], z + _puff_shape[at + 2], _puff_shape[at + 3])
 
 
 ## The sky's share of the light is what the streets lose (render/shaders/canyon_light.gdshaderinc).

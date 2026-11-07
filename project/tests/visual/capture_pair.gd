@@ -66,7 +66,7 @@ func _ready() -> void:
 		if v.has("inside"):
 			_report_chunk(v.inside)
 		await ui.shot(v.name)
-	get_tree().quit(0)
+	get_tree().quit(CaptureWait.exit_code(0))
 
 
 ## The 4.0 ids the views open from inside: the only buildings laid. Placing a building welds every one its lot lands on into one

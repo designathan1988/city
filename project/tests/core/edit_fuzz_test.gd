@@ -40,6 +40,11 @@ var last_kind := 0
 const BEND_M := 30.0
 const BEND_AT_LEAST := 0.2
 const BEND_LIFT_M := 4.0
+const PATH_KIND := 25 # a held brush's pointer move: the dabs of one move as one command
+const PATH_DABS := 3
+const PATH_BRUSHES := 4
+const TREE_LIKE := {"density": 1.0, "height": 1.0, "variation": 0.0, "spacing": 4.0}
+const ELEMENT_LIKE := {"density": 1.0, "size": 1.0, "variation": 0.0, "spacing": 4.0, "strength": 1.0, "intensity": 1.0}
 
 
 func _ready() -> void:
@@ -129,11 +134,13 @@ func _point() -> Vector3:
 
 
 func _edit() -> void:
-	var kind := rng.randi_range(0, 24)
+	var kind := rng.randi_range(0, PATH_KIND)
 	last_kind = kind
 	var road: Vector3 = roads[rng.randi_range(0, roads.size() - 1)] if not roads.is_empty() else Vector3.ZERO
 	if kind < 5 or roads.is_empty():
 		_lay()
+	elif kind == PATH_KIND:
+		_brush_path(road)
 	elif kind >= 18:
 		_shape(kind, road)
 	elif kind >= 10:
@@ -217,6 +224,28 @@ func _other(kind: int, road: Vector3) -> void:
 				CityStore.dispatch(&"strike", [road, rng.randi_range(1, STRIKE_MAX)])
 			else:
 				CityStore.dispatch(&"demolish_box", [a, b])
+
+
+## One pointer move of a held brush (zones on the roads, ground paint, trees, fog, elements), inside its stroke.
+func _brush_path(road: Vector3) -> void:
+	var a := _point()
+	var dabs := PackedVector3Array()
+	for i in PATH_DABS:
+		dabs.append(a + Vector3(GRID_M * 0.5 * i, 0, 0))
+	var which := rng.randi_range(0, PATH_BRUSHES)
+	CityStore.dispatch(&"begin_stroke", ["cmd.place.paint"])
+	match which:
+		0:
+			CityStore.dispatch(&"paint_zone_path", [PackedVector3Array([road, road + Vector3(ZONE_RADIUS, 0, 0)]), ZONE_RADIUS, ZONE_KIND])
+		1:
+			CityStore.dispatch(&"paint_path", [dabs, BRUSH_M, 1.0, 0.5, rng.randi_range(0, BRUSH_MODES)])
+		2:
+			CityStore.dispatch(&"tree_path", [dabs, BRUSH_M, 0, 0, TREE_LIKE])
+		3:
+			CityStore.dispatch(&"fog_path", [dabs, BRUSH_M, 1.0, 10.0, 0.0, false])
+		_:
+			CityStore.dispatch(&"element_path", [dabs, BRUSH_M, 0, ELEMENT_LIKE, false])
+	CityStore.dispatch(&"end_stroke")
 
 
 func _lay() -> void:

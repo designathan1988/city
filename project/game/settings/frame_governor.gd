@@ -1,6 +1,8 @@
 ## The two loops that watch the GPU's frame against its budget. QualityGovernor moves the automatic tier: the p90 of a
 ## window of frames, down after a few missed windows, up after more roomy ones, never above the tier the hardware was
-## given, and a tier the machine could not hold is not tried again for a while. DynamicResolution steps the 3D scale so the
+## given, and a tier the machine could not hold is not tried again for a while. A window is roomy only when the frames
+## themselves also came within the budget (cpu_budget_slack over it): a GPU idle because the processor holds the frame back
+## is no room for a heavier tier. DynamicResolution steps the 3D scale so the
 ## frame fits. All numbers: data/game/settings.json "governor" and "dynamic_resolution".
 class_name FrameGovernor
 extends RefCounted
@@ -20,6 +22,7 @@ class Quality:
 	var level: int
 	var ceiling: int
 	var costs := PackedFloat32Array()
+	var intervals := PackedFloat32Array() # the real time between the window's frames, ms
 	var skip := 0
 	var missed := 0
 	var roomy := 0
@@ -40,11 +43,12 @@ class Quality:
 	func set_level(name: String) -> void:
 		level = levels.find(name)
 		costs.clear()
+		intervals.clear()
 		missed = 0
 		roomy = 0
 		skip = int(cfg.settle)
 
-	## One frame: seconds since the last, its cost and the budget in ms. The tier to switch to, or "" to stay.
+	## One frame: seconds since the last, its GPU cost and the budget in ms. The tier to switch to, or "" to stay.
 	func sample(delta_s: float, cost_ms: float, budget_ms: float) -> String:
 		clock += delta_s
 		if delta_s > cfg.stall_s or cost_ms <= 0.0 or budget_ms <= 0.0:
@@ -53,16 +57,19 @@ class Quality:
 			skip -= 1
 			return ""
 		costs.append(cost_ms)
+		intervals.append(delta_s * QualityTier.MS_PER_S)
 		if costs.size() < int(cfg.window):
 			return ""
 		var p90 := FrameGovernor._at_percentile(costs, cfg.percentile)
+		var frame_p90 := FrameGovernor._at_percentile(intervals, cfg.percentile)
 		costs.clear()
+		intervals.clear()
 		if p90 > budget_ms:
 			missed += 1
 			roomy = 0
 		else:
 			missed = 0
-			roomy = roomy + 1 if p90 < budget_ms * cfg.up_share else 0
+			roomy = roomy + 1 if p90 < budget_ms * cfg.up_share and frame_p90 <= budget_ms * cfg.cpu_budget_slack else 0
 		if missed >= int(cfg.down_windows) and level > 0:
 			if clock - last_raise < cfg.undone_s:
 				hold_until = clock + hold

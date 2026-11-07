@@ -30,6 +30,8 @@ var _ground := CameraDamp.new() # the height the view rests on
 var _rise := CameraDamp.new() # how far the eye stands over its orbit, clear of the ground
 var _eye_ground := -INF # the ground under the eye, as last read
 var ahead: CameraAhead
+## What the settle asks of the core, answered once for the same arguments while the map stays (CameraQueries).
+var queries := CameraQueries.new()
 
 
 func _ready() -> void:
@@ -42,7 +44,7 @@ func _ready() -> void:
 	add_child(CameraShake.new(camera))
 	gestures = CameraGestures.new(self)
 	motion = CameraMotion.new(self)
-	pull = CameraPull.new(cfg)
+	pull = CameraPull.new(cfg, queries)
 	ahead = CameraAhead.new(self)
 	yaw = deg_to_rad(cfg.start_yaw)
 	far_tilt = deg_to_rad(cfg.start_pitch)
@@ -203,10 +205,16 @@ func _ask_tilt(next: float) -> void:
 
 
 ## What the player sees at (x, z), the plane the eye stays above and the focus rests on: a road deck where one is, the
-## ground elsewhere (the pointer's rule, the 4.0's sceneHeightAt); the terrain where the ray finds nothing (off the map).
+## ground elsewhere (the pointer's rule, the 4.0's sceneHeightAt); the terrain where the ray finds nothing (off the map). Asked
+## during a settle (`queries`).
 func seen_height(x: float, z: float) -> float:
-	var hit: Dictionary = CityStore.query(&"raycast", [Vector3(x, cfg.ray_top, z), Vector3.DOWN])
-	return hit.position.y if hit.get("hit", false) else CityStore.query(&"height_at", [x, z])
+	var hit: Dictionary = queries.ask(&"raycast", [Vector3(x, cfg.ray_top, z), Vector3.DOWN])
+	return hit.position.y if hit.get("hit", false) else queries.ask(&"height_at", [x, z])
+
+
+## The terrain's height under a camera's eye: the one reading of it the daylight's shadows and the weather's rain take.
+static func ground_below(cam: Camera3D) -> float:
+	return CityStore.query(&"height_at", [cam.global_position.x, cam.global_position.z])
 
 
 ## The view from what the player asks and what the settled heights say: arithmetic alone, so a gesture may place it many times a frame.
@@ -231,6 +239,7 @@ func _apply() -> void:
 ## Once a frame: what stands under and in front of the view, each height and share moved towards it on its own spring. Nothing the terrain,
 ## a road's edge, a roof or a wall asks of the view reaches the screen as a step. `dt` 0 takes it all at once (a jump).
 func _settle(dt: float) -> void:
+	queries.next_settle()
 	_ground.to(seen_height(focus.x, focus.z), dt, cfg.ground_smooth_s) if dt > 0.0 else _ground.snap(seen_height(focus.x, focus.z))
 	var base := Vector3(focus.x, _ground.x + CameraProfile.eye_lift(cfg, half), focus.z)
 	var far_eye := base + Basis.from_euler(Vector3(-pitch, yaw, 0.0)).z * distance

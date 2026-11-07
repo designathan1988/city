@@ -39,7 +39,7 @@ func _ready() -> void:
 		hour = next
 		await _shot("relogio_%d" % i, world)
 	print("capture_clock: pronto")
-	get_tree().quit(0)
+	get_tree().quit(CaptureWait.exit_code(0))
 
 
 func _press(b: Button, world: CityWorld, name: String) -> void:

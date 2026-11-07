@@ -22,7 +22,7 @@ func _init(rig: CityCamera) -> void:
 
 ## At any distance, never inside a building: how far the view must stand over the roof at its point, and the share of the line of sight to take off.
 func clear_of_buildings(base: Vector3, eye: Vector3, line: float, at_half: float) -> Vector2:
-	var free: PackedVector3Array = CityStore.query(&"eye_free", [base, eye, CameraProfile.eye_lift(_rig.cfg, at_half)])
+	var free: PackedVector3Array = _rig.queries.ask(&"eye_free", [base, eye, CameraProfile.eye_lift(_rig.cfg, at_half)])
 	return Vector2(free[0].y - base.y, clampf(1.0 - free[1].distance_to(free[0]) / maxf(line, PARALLEL), 0.0, 1.0))
 
 

@@ -8,7 +8,7 @@ extends RefCounted
 const COMMANDS := {
 	&"set_speed": "set_speed", &"set_day_hour": "set_day_hour", &"build_road": "build_road", &"build_blocks": "build_blocks",
 	&"lot_add_rect": "lot_add_rect", &"lot_add_polygon": "lot_add_polygon", &"lot_move_corner": "lot_move_corner", &"lot_curve_side": "lot_curve_side",
-	&"lot_set_front": "lot_set_front", &"lot_split": "lot_split", &"lot_join": "lot_join", &"lot_delete": "lot_delete", &"lot_zone": "lot_zone", &"demolish": "demolish", &"paint_zone": "paint_zone",
+	&"lot_set_front": "lot_set_front", &"lot_split": "lot_split", &"lot_join": "lot_join", &"lot_delete": "lot_delete", &"lot_zone": "lot_zone", &"demolish": "demolish", &"paint_zone": "paint_zone", &"paint_zone_path": "paint_zone_path",
 	&"preview_road": "preview_road", &"preview_road_path": "preview_road_path",
 	&"build_road_path": "build_road_path", &"undo": "undo", &"redo": "redo", &"begin_stroke": "begin_stroke",
 	&"end_stroke": "end_stroke", &"split_road": "split_road", &"set_road_end": "set_road_end",
@@ -18,9 +18,9 @@ const COMMANDS := {
 	&"toggle_lane_link": "toggle_lane_link", &"set_approach_rule": "set_approach_rule", &"set_building": "set_building", &"set_overlay": "set_overlay", &"set_signal": "set_signal", &"green_wave": "green_wave",
 	&"set_weather": "landscape/set_weather",
 	&"add_cloud": "landscape/add_cloud", &"edit_cloud": "landscape/edit_cloud", &"remove_cloud": "landscape/remove_cloud",
-	&"scatter_clouds": "landscape/scatter_clouds", &"clear_clouds": "landscape/clear_clouds", &"fog_brush": "landscape/fog_brush",
-	&"clear_fog": "landscape/clear_fog", &"paint_brush": "landscape/paint_brush", &"clear_gullies": "landscape/clear_gullies",
-	&"tree_brush": "landscape/tree_brush", &"clear_trees": "landscape/clear_trees", &"element_brush": "landscape/element_brush", &"clear_elements": "landscape/clear_elements", &"set_biome": "landscape/set_biome",
+	&"scatter_clouds": "landscape/scatter_clouds", &"clear_clouds": "landscape/clear_clouds", &"fog_brush": "landscape/fog_brush", &"fog_path": "landscape/fog_path",
+	&"clear_fog": "landscape/clear_fog", &"paint_brush": "landscape/paint_brush", &"paint_path": "landscape/paint_path", &"clear_gullies": "landscape/clear_gullies",
+	&"tree_brush": "landscape/tree_brush", &"tree_path": "landscape/tree_path", &"clear_trees": "landscape/clear_trees", &"element_brush": "landscape/element_brush", &"element_path": "landscape/element_path", &"clear_elements": "landscape/clear_elements", &"set_biome": "landscape/set_biome",
 	&"clear_relief": "landscape/clear_relief",
 	&"body_storeys": "builder/body_storeys",
 	&"body_insert_storey": "builder/body_insert_storey", &"body_resize": "builder/body_resize", &"body_add_wing": "builder/body_add_wing",
@@ -46,7 +46,7 @@ const COMMANDS := {
 }
 const QUERIES := {
 	&"block_lines": "block_lines", &"node_lanes": "node_lanes", &"node_legs": "node_legs", &"road_spec": "road_spec", &"road_spec_limits": "road_spec_limits", &"road_spec_issues": "road_spec_issues", &"road_spec_make": "road_spec_make", &"lot_at": "lot_at", &"lot_angle_at": "lot_angle_at", &"lot_land": "lot_land", &"lot_proposals": "lot_proposals", &"lot_snap_point": "lot_snap_point", &"lots": "lots", &"lot_cut_lines": "lot_cut_lines",
-	&"body_census": "body_census", &"road_census": "road_census", &"raycast": "raycast", &"height_at": "height_at", &"inspect": "inspect", &"probe_building": "probe_building",
+	&"body_census": "body_census", &"road_census": "road_census", &"raycast": "raycast", &"height_at": "height_at", &"map_revision": "map_revision", &"inspect": "inspect", &"probe_building": "probe_building",
 	&"list_buildings": "list_buildings", &"building_chunk": "building_chunk", &"job_pool_probe": "probes/job_pool_probe", &"flow_replay": "probes/flow_replay", &"flow_junction": "probes/flow_junction", &"flow_push": "probes/flow_push", &"flow_state": "probes/flow_state", &"street_watch": "probes/street_watch", &"city_bounds": "city_bounds", &"film_grade": "film_grade", &"film_graded": "film_graded", &"render_pending": "render_pending",
 	&"render_cost": "render_cost", &"wear_probe": "wear_probe", &"road_mesh_counts": "road_mesh_counts", &"draw_verges": "draw_verges", &"wear_paint": "wear_paint", &"pose_stats": "pose_stats", &"agent_cost": "agent_cost", &"building_cost": "building_cost",
 	&"traffic_probe": "traffic_probe", &"road_start": "road_start", &"road_end": "road_end",

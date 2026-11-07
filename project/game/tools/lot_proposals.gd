@@ -7,6 +7,7 @@ const UNREAD := Vector2i(1 << 30, 0)
 const SHOWN_M := 0.1
 
 var _rings: Array = []
+var _flat: Array[PackedVector2Array] = [] # each ring on the ground plane, made once a cell is read
 var _cell := UNREAD
 
 
@@ -21,12 +22,15 @@ func at(p: Vector3) -> PackedVector3Array:
 	if cell != _cell:
 		_cell = cell
 		_rings = CityStore.query(&"lot_proposals", [p])
-	for ring: PackedVector3Array in _rings:
-		var flat := PackedVector2Array()
-		for q in ring:
-			flat.push_back(Vector2(q.x, q.z))
-		if Geometry2D.is_point_in_polygon(Vector2(p.x, p.z), flat):
-			return ring
+		_flat.clear()
+		for ring: PackedVector3Array in _rings:
+			var flat := PackedVector2Array()
+			for q in ring:
+				flat.push_back(Vector2(q.x, q.z))
+			_flat.append(flat)
+	for i in _rings.size():
+		if Geometry2D.is_point_in_polygon(Vector2(p.x, p.z), _flat[i]):
+			return _rings[i]
 	return PackedVector3Array()
 
 

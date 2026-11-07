@@ -15,6 +15,12 @@ const LAMP_DOTS := [&"DotGo", &"DotSlow", &"DotBroken"]
 @onready var _info := {}
 @onready var _stats: Control
 @onready var _since := 0.0
+## What the live part shows, to write the next numbers into the same labels: each row's name key and value label, each lamp's
+## dot and label. A refresh whose rows or lamps differ in kind or number builds the part again.
+var _row_keys: Array = []
+var _values: Array[Label] = []
+var _lamp_dots: Array[Panel] = []
+var _lamp_texts: Array[Label] = []
 
 
 func _ready() -> void:
@@ -28,8 +34,8 @@ func _ready() -> void:
 	hide()
 
 
-## The numbers as cards, two to a row (.inspect-grid).
-func _rows(col: Control, rows: Array) -> void:
+## The numbers as cards, two to a row (.inspect-grid). The live part's (`live`) labels are kept for the next numbers.
+func _rows(col: Control, rows: Array, live := false) -> void:
 	var g := GridContainer.new()
 	g.columns = 2
 	g.theme_type_variation = &"StatGrid"
@@ -39,7 +45,10 @@ func _rows(col: Control, rows: Array) -> void:
 		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var v := HudWidgets.vbox(card)
 		HudWidgets.label(v, &"StatName", tr(r[0]))
-		HudWidgets.label(v, &"StatValue", r[1])
+		var value := HudWidgets.label(v, &"StatValue", r[1])
+		if live:
+			_row_keys.append(r[0])
+			_values.append(value)
 
 
 ## The panel's name with the close button at its end.
@@ -73,7 +82,7 @@ func _building(col: Control, info: Dictionary) -> void:
 func _road(col: Control, info: Dictionary) -> void:
 	_head(col, "%s · %s" % [tr("inspector.road"), tr(info.profile)])
 	_stats = HudWidgets.vbox(col)
-	_rows(_stats, InspectorRows.segment_rows(info))
+	_fill_road(_stats, InspectorRows.segment_rows(info))
 	for e in info.get("ends", []):
 		RoadPanel.end_row(col, e, _redraw)
 	var picks := []
@@ -136,7 +145,7 @@ func _set_class(profile: int) -> void:
 func _node(col: Control) -> void:
 	_head(col, tr("inspector.junction"))
 	_stats = HudWidgets.vbox(col)
-	_fill_node(_stats)
+	_fill_node(_stats, InspectorRows.node_traffic(_info.id))
 	RoadPanel.point(col, _info, _redraw, close)
 	_impossible(col)
 	ApproachPanel.fill(col, _info.id, _redraw)
@@ -158,18 +167,48 @@ func _impossible(col: Control) -> void:
 		col.add_child(off)
 
 
-func _fill_node(col: Control) -> void:
-	_rows(col, InspectorRows.node_rows(_info.id))
+func _forget_live() -> void:
+	_row_keys = []
+	_values = []
+	_lamp_dots = []
+	_lamp_texts = []
+
+
+func _fill_road(col: Control, rows: Array) -> void:
+	_forget_live()
+	_rows(col, rows, true)
+
+
+## A junction's rows and lamps, from one reading of its traffic.
+func _fill_node(col: Control, traffic: Dictionary) -> void:
+	_forget_live()
+	_rows(col, InspectorRows.node_rows(traffic), true)
 	var chips := HFlowContainer.new()
 	col.add_child(chips)
-	for lamp: Array in InspectorRows.lamps(_info.id):
+	for lamp: Array in InspectorRows.lamps(traffic):
 		var row := HudWidgets.hbox(HudWidgets.panel(chips, &"LampChip"))
 		var dot := Panel.new()
 		dot.theme_type_variation = LAMP_DOTS[lamp[1]]
 		dot.custom_minimum_size = Vector2.ONE * HudWidgets.px("dot")
 		dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(dot)
-		HudWidgets.label(row, &"MetaLabel", lamp[0])
+		_lamp_dots.append(dot)
+		_lamp_texts.append(HudWidgets.label(row, &"MetaLabel", lamp[0]))
+
+
+## The live numbers written into the labels already shown; false when the rows or the lamps are not the same ones.
+func _write_live(rows: Array, lamps: Array) -> bool:
+	if rows.size() != _row_keys.size() or lamps.size() != _lamp_dots.size():
+		return false
+	for i in rows.size():
+		if rows[i][0] != _row_keys[i]:
+			return false
+	for i in rows.size():
+		_values[i].text = rows[i][1]
+	for i in lamps.size():
+		_lamp_dots[i].theme_type_variation = LAMP_DOTS[lamps[i][1]]
+		_lamp_texts[i].text = lamps[i][0]
+	return true
 
 
 func _demolish_button(row: Control) -> void:
@@ -191,6 +230,7 @@ func show_info(info: Dictionary, at: Vector3) -> void:
 	_at = at
 	_info = info
 	_stats = null
+	_forget_live()
 	HudWidgets.clear(self)
 	if info.is_empty() or not info.has("kind"):
 		close()
@@ -211,11 +251,16 @@ func refresh() -> void:
 	if now.get("kind", "") != _info.get("kind", "") or now.get("id", -1) != _info.get("id", -1) or now.get("profile_id", -1) != _info.get("profile_id", -1):
 		show_info(now, _at)
 	elif _stats != null:
-		HudWidgets.clear(_stats)
 		if _info.kind == "node":
-			_fill_node(_stats)
+			var traffic := InspectorRows.node_traffic(_info.id)
+			if not _write_live(InspectorRows.node_rows(traffic), InspectorRows.lamps(traffic)):
+				HudWidgets.clear(_stats)
+				_fill_node(_stats, traffic)
 		else:
-			_rows(_stats, InspectorRows.segment_rows(_info))
+			var rows := InspectorRows.segment_rows(_info)
+			if not _write_live(rows, []):
+				HudWidgets.clear(_stats)
+				_fill_road(_stats, rows)
 
 
 func close() -> void:

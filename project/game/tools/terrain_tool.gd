@@ -1,5 +1,6 @@
 ## Relief brush (Landscape › Relief): hold the left button to raise, lower, smooth or level
-## (or lay a landform) under the disc; the core applies one dab per DAB_S held and the whole stroke is one undo step.
+## (or lay a landform) under the disc; the core applies one dab per DAB_S held, at most one a frame (a slow frame owes no
+## dabs to the next: Roadcraft editor/terrainBrush.ts tick, `applied = now`), and the whole stroke is one undo step.
 ## Roads keep their corridors and buildings settle on the new ground.
 extends ToolBase
 
@@ -57,8 +58,8 @@ func tick(delta: float) -> void:
 	if _at == Vector3.INF:
 		return
 	_held += delta
-	while _held >= DAB_S:
-		_held -= DAB_S
+	if _held >= DAB_S:
+		_held = 0.0
 		_dab(DAB_S)
 
 

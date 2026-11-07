@@ -1,5 +1,7 @@
 ## A real building's 3D model in the Build tool, translucent over the building picked, to build over it or to read it into a building (the 4.0's referenceModel.ts). Loaded at run
-## time from a .glb or .gltf by GLTFDocument. The pictures it is read from are a copy of it drawn flat, unlit, from each side and from above, in a viewport of its own.
+## time from a .glb or .gltf by GLTFDocument, once: the scene it makes is kept as it came (`_pristine`), and what is read off the model (its triangles and its pictures,
+## drawn flat, unlit, from each side and from above, in a viewport of its own) comes from a copy of that scene, sharing its meshes. Its look over the city is a material
+## per surface, made once a file and changed in place by fade; a move only moves it.
 class_name ReferenceModel
 extends Node3D
 
@@ -21,8 +23,8 @@ var file_name := ""
 var size_m := Vector3.ZERO
 
 var _inner := Node3D.new()
-var _state: GLTFState
-var _doc: GLTFDocument
+var _pristine: Node3D # the scene as the file gave it, outside the tree: what capture() copies
+var _seen: Array[StandardMaterial3D] = [] # the translucent look of each surface shown
 var _quarter := 0
 var _mirrored := false
 var _target := {"x": 0.0, "z": 0.0, "y": 0.0, "rot": 0.0}
@@ -35,14 +37,16 @@ func _init() -> void:
 
 ## Its plan centred on the origin and its foot at 0. False when the file is no model.
 func load_file(path: String) -> bool:
-	_doc = GLTFDocument.new()
-	_state = GLTFState.new()
-	if _doc.append_from_file(path, _state) != OK:
+	var doc := GLTFDocument.new()
+	var state := GLTFState.new()
+	if doc.append_from_file(path, state) != OK:
 		return false
-	var model: Node3D = _doc.generate_scene(_state)
-	if model == null:
+	var generated: Node3D = doc.generate_scene(state)
+	if generated == null:
 		return false
 	clear()
+	_pristine = generated
+	var model: Node3D = generated.duplicate()
 	_inner.add_child(model)
 	var box := _bounds(model)
 	if box.size == Vector3.ZERO:
@@ -55,6 +59,7 @@ func load_file(path: String) -> bool:
 	visible = true
 	_quarter = 0
 	_mirrored = false
+	_dress(model)
 	_apply()
 	return true
 
@@ -63,8 +68,17 @@ func clear() -> void:
 	for child in _inner.get_children():
 		_inner.remove_child(child)
 		child.queue_free()
+	if _pristine != null:
+		_pristine.free()
+		_pristine = null
+	_seen = []
 	loaded = false
 	visible = false
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE and _pristine != null:
+		_pristine.free() # outside the tree: nothing else frees it
 
 
 func place_on(x: float, z: float, y: float, rot: float) -> void:
@@ -84,7 +98,7 @@ func flip() -> void:
 
 func fade(by: int) -> void:
 	opacity = clampf(snappedf(opacity + by * OPACITY_GRAIN, OPACITY_GRAIN), LEAST_OPACITY, 1.0)
-	_apply()
+	_look()
 
 
 func toggle() -> void:
@@ -99,21 +113,33 @@ func _apply() -> void:
 	position = Vector3(_target.x, _target.y, _target.z)
 	rotation.y = _target.rot + _quarter * QUARTER
 	_inner.scale = Vector3(1, 1, -1 if _mirrored else 1)
-	for mesh: MeshInstance3D in _meshes(_inner):
+
+
+## Each surface shown through a material of its own, a copy of the file's seen from both sides: made once a file.
+func _dress(model: Node3D) -> void:
+	_seen = []
+	for mesh: MeshInstance3D in _meshes(model):
 		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		for i in mesh.mesh.get_surface_count():
 			var source: Material = mesh.mesh.surface_get_material(i)
 			var seen: StandardMaterial3D = source.duplicate() if source is StandardMaterial3D else StandardMaterial3D.new()
 			seen.cull_mode = BaseMaterial3D.CULL_DISABLED
-			seen.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA if opacity < OPAQUE else BaseMaterial3D.TRANSPARENCY_DISABLED
-			seen.albedo_color.a = opacity
 			mesh.set_surface_override_material(i, seen)
+			_seen.push_back(seen)
+	_look()
+
+
+## The opacity on every surface shown.
+func _look() -> void:
+	for seen in _seen:
+		seen.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA if opacity < OPAQUE else BaseMaterial3D.TRANSPARENCY_DISABLED
+		seen.albedo_color.a = opacity
 
 
 ## The model as a surveyor reads it, in plan axes (x, y on the plan, z up): {triangles, views}. Takes a few frames: the pictures are drawn by the renderer.
 func capture() -> Dictionary:
 	var copy := Node3D.new()
-	var model: Node3D = _doc.generate_scene(_state)
+	var model: Node3D = _pristine.duplicate()
 	var turned := Node3D.new()
 	turned.rotation.y = _quarter * QUARTER
 	turned.scale = Vector3(1, 1, -1 if _mirrored else 1)

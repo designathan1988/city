@@ -18,6 +18,7 @@ const SETTLE_FRAMES := 3 # a viewport new to the tree draws nothing (measured: e
 static var pictures := {}
 
 var _queue: Array[Dictionary] = []
+var _asked := {} # the keys queued or being photographed: asked again, they wait for the same picture
 var _busy := true
 var _camera: Camera3D
 
@@ -49,11 +50,16 @@ func _ready() -> void:
 	_next()
 
 
-## The picture comes through `pictured`, or at once from `pictures` when it was taken before.
-func ask(key: String, bytes: PackedByteArray) -> void:
+## The picture comes through `pictured`, or at once from `pictures` when it was taken before. `bytes` gives the body's bytes
+## (a Callable returning a PackedByteArray): called only when the picture is taken, so a picture already kept or already asked
+## for reads nothing.
+func ask(key: String, bytes: Callable) -> void:
 	if pictures.has(key):
 		pictured.emit(key, pictures[key])
 		return
+	if _asked.has(key):
+		return
+	_asked[key] = true
 	_queue.append({"key": key, "bytes": bytes})
 	if not _busy:
 		_next()
@@ -66,8 +72,9 @@ func _next() -> void:
 
 
 func _take(job: Dictionary) -> void:
-	var extent: Vector3 = CityStore.query(&"body_size", [job.bytes])
-	var handle: int = CityStore.query(&"stage_show", [job.bytes, world_3d.scenario, false])
+	var bytes: PackedByteArray = job.bytes.call()
+	var extent: Vector3 = CityStore.query(&"body_size", [bytes])
+	var handle: int = CityStore.query(&"stage_show", [bytes, world_3d.scenario, false])
 	var middle := Vector3(0.0, extent.z / 2.0, -extent.y / 2.0)
 	_camera.size = maxf(Vector2(extent.x, extent.y).length(), extent.z) * FRAME_MARGIN
 	_camera.look_at_from_position(middle + VIEW_FROM.normalized() * CAMERA_REACH_M, middle)
@@ -76,5 +83,6 @@ func _take(job: Dictionary) -> void:
 	var picture := ImageTexture.create_from_image(get_texture().get_image())
 	CityStore.query(&"stage_free", [handle])
 	pictures[job.key] = picture
+	_asked.erase(job.key)
 	pictured.emit(job.key, picture)
 	_next()

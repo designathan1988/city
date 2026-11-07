@@ -13,8 +13,14 @@ const SECTION := "graphics"
 
 var preset := ""
 var road := RoadPrefs.new()
-var kept: Dictionary = {} # shadows, ssao, smaa chosen over the tier
-var level := "" # the tier in use
+var kept: Dictionary = {}: # shadows, ssao, smaa chosen over the tier
+	set(value):
+		kept = value
+		_resolved = {}
+var level := "": # the tier in use
+	set(value):
+		level = value
+		_resolved = {}
 var hardware := ""
 var dynamic_resolution := false
 var fps_limit := 0
@@ -22,7 +28,10 @@ var vsync := true
 var fullscreen := false
 var language := ""
 var switches: RenderSwitches
-var optimizations: Dictionary = {} # the Effects panel: option id -> value over the tier
+var optimizations: Dictionary = {}: # the Effects panel: option id -> value over the tier
+	set(value):
+		optimizations = value
+		_resolved = {}
 var layers: Dictionary = {} # what shows over the map: layer -> on
 var zone_tool := false # the zone brush is in hand
 var _zoned := false # the player has zoned sides on this city, as last shown
@@ -31,6 +40,9 @@ var _viewport: Viewport
 var _quality_governor: FrameGovernor.Quality
 var _resolution: FrameGovernor.Resolution
 var _focus := true
+## current(), resolved once for the tier, the kept choices and the options in force: dropped by their setters and by apply_now (a choice
+## changed inside `kept` or `optimizations` takes effect there). Read-only for whoever reads it.
+var _resolved: Dictionary = {}
 
 
 func _ready() -> void:
@@ -104,9 +116,11 @@ func known_preset(name: Variant) -> String:
 	return name if name is String and t.presets.has(name) else t.default
 
 
-## The tier in force, with the choices kept over it and the Effects panel's options.
+## The tier in force, with the choices kept over it and the Effects panel's options. Shared: read it, never write it.
 func current() -> Dictionary:
-	return QualityTier.resolved(level, kept, optimizations)
+	if _resolved.is_empty():
+		_resolved = QualityTier.resolved(level, kept, optimizations)
+	return _resolved
 
 
 func layer_on(name: String) -> bool:
@@ -149,6 +163,7 @@ func attach(world: CityWorld, viewport: Viewport) -> void:
 
 
 func apply_now() -> void:
+	_resolved = {}
 	if _world == null:
 		return
 	QualityTier.apply(current(), _world, _viewport, _resolution.scale * switches.resolution)

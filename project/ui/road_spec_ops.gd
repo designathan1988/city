@@ -79,11 +79,14 @@ static func insertion_index(spec: Dictionary, kind: String, selected: int) -> in
 
 
 ## A lane's width goes to every lane of the road.
-static func with_width(spec: Dictionary, index: int, metres: float) -> void:
+static func with_width(spec: Dictionary, index: int, metres: float) -> bool:
 	var target: Dictionary = spec.elements[index]
+	var changed := false
 	for e: Dictionary in spec.elements:
-		if e == target or (target.kind == "lane" and e.kind == "lane"):
+		if (e == target or (target.kind == "lane" and e.kind == "lane")) and e.width != metres:
 			e.width = metres
+			changed = true
+	return changed
 
 
 static func moved(spec: Dictionary, from: int, to: int) -> void:

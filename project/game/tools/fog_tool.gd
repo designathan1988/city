@@ -18,8 +18,8 @@ func enter() -> void:
 	ctl.hint.emit(tr("hint.tool.fog"), true)
 
 
-func _dab(p: Vector3) -> Dictionary:
-	return CityStore.dispatch(&"fog_brush", [p, radius, strength, height, drift_ms, erase])
+func _dab_path(dabs: PackedVector3Array) -> Dictionary:
+	return CityStore.dispatch(&"fog_path", [dabs, radius, strength, height, drift_ms, erase])
 
 
 func _label() -> String:

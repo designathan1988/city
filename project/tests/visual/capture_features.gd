@@ -61,7 +61,7 @@ func _run() -> void:
 	await _layers(a, e)
 	await _save_open()
 	print("FAILURES: ", failures)
-	get_tree().quit(1 if failures > 0 else 0)
+	get_tree().quit(CaptureWait.exit_code(failures))
 
 
 func _undo_redo(a: Vector3, e: Vector3) -> void:

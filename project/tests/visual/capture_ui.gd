@@ -96,7 +96,7 @@ func _run() -> void:
 	await _click(e.lerp(a, 0.1))
 	await _shot("ui_07_demolir")
 	print("FAILURES: ", failures)
-	get_tree().quit(1 if failures > 0 else 0)
+	get_tree().quit(CaptureWait.exit_code(failures))
 
 
 ## A building that grew beside the new road (nearest to its middle).

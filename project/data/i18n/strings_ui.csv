@@ -42,7 +42,7 @@ fx.shadows,Sombras do sol (cascatas),Sun shadows (cascades)
 fx.signals,Semáforos,Traffic signals
 fx.smaa,Antisserrilhado (SMAA),Anti-aliasing (SMAA)
 fx.stat.calls,Chamadas de desenho,Draw calls
-fx.stat.cpu,CPU por quadro,CPU per frame
+fx.stat.cpu,CPU de render por quadro,Render CPU per frame
 fx.stat.fps,Quadros por segundo,Frames per second
 fx.stat.geometries,Geometrias,Geometries
 fx.stat.gpu,GPU por quadro,GPU per frame
@@ -111,7 +111,7 @@ v2.do.tools,Escolher a ferramenta,Pick a tool
 v2.help.global,Atalhos,Shortcuts
 v2.key.digits,1 – 6,1 – 6
 fx.tab.doctor,Diagnóstico,Diagnosis
-lab.ab,"GPU %s → %s ms (ruído %s) · CPU %s → %s ms (ruído %s)","GPU %s → %s ms (noise %s) · CPU %s → %s ms (noise %s)"
+lab.ab,"GPU %s → %s ms (ruído %s) · CPU de render %s → %s ms (ruído %s)","GPU %s → %s ms (noise %s) · render CPU %s → %s ms (noise %s)"
 lab.ab.noise,dentro do ruído,within the noise
 lab.hitches,%d engasgos na medida,%d hitches in the measure
 lab.hitches.many,"%d engasgos na medida: muitos, o jogador vê","%d hitches in the measure: many, the player sees them"
@@ -135,9 +135,9 @@ lab.status.before,Medindo antes…,Measuring before…
 lab.status.measuring,Medindo…,Measuring…
 lab.switches,O que cada chave custa,What each switch costs
 lab.test,Testar,Test
-lab.verdict.cpu,"Preso na CPU: GPU %s ms, CPU %s ms, orçamento %s ms. Cortar o trabalho da CPU sobe os quadros.","CPU-bound: GPU %s ms, CPU %s ms, budget %s ms. Cutting the CPU's work raises the frame rate."
-lab.verdict.gpu,"Preso na GPU: GPU %s ms, CPU %s ms, orçamento %s ms. Cortar o trabalho da GPU sobe os quadros; mexer na CPU não.","GPU-bound: GPU %s ms, CPU %s ms, budget %s ms. Cutting the GPU's work raises the frame rate; touching the CPU does not."
-lab.verdict.headroom,"Com folga: GPU %s ms, CPU %s ms, dentro do orçamento de %s ms.","Headroom: GPU %s ms, CPU %s ms, within the %s ms budget."
+lab.verdict.cpu,"Preso na CPU de render: GPU %s ms, CPU de render %s ms, orçamento %s ms. Cortar o trabalho de render da CPU sobe os quadros.","Render-CPU-bound: GPU %s ms, render CPU %s ms, budget %s ms. Cutting the CPU's render work raises the frame rate."
+lab.verdict.gpu,"Preso na GPU: GPU %s ms, CPU de render %s ms, orçamento %s ms. Cortar o trabalho da GPU sobe os quadros; mexer no render da CPU não.","GPU-bound: GPU %s ms, render CPU %s ms, budget %s ms. Cutting the GPU's work raises the frame rate; touching the CPU's render work does not."
+lab.verdict.headroom,"Com folga: GPU %s ms, CPU de render %s ms, dentro do orçamento de %s ms.","Headroom: GPU %s ms, render CPU %s ms, within the %s ms budget."
 lab.verdict.none,Nenhum quadro desenhado na medida: mexa a câmera e meça de novo.,No frame drawn during the measure: move the camera and measure again.
 hint.lot.small,Pequeno demais para um lote,Too small for a lot
 hint.lot.road,Uma via passa por aqui: desenhe o lote ao lado dela,A road runs here: draw the lot beside it

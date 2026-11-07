@@ -208,7 +208,7 @@ void fragment() {
 	float dirt_w = smoothstep(dirt_from, dirt_to, slope + wander) * (1.0 - smoothstep(rock_slope, rock_slope + 0.1, slope));
 	float rock_w = smoothstep(rock_slope, rock_slope + 0.1, slope + wander);
 	vec3 wdx = dFdx(v_vertex), wdy = dFdy(v_vertex);
-	vec2 tilt = grass_tilt(v_vertex.xz, per_pixel) * (1.0 - max(dirt_w, rock_w));
+	vec2 tilt = grass_tilt(v_vertex.xz, per_pixel, 1.0 - max(dirt_w, rock_w));
 	NORMAL = mat3(VIEW_MATRIX) * normalize(w_normal + vec3(tilt.x, 0.0, tilt.y));
 	if (dirt_w > 0.0) {
 		c = mix(c, land_triplanar(dirt_layer, v_vertex / dirt_m, wdx / dirt_m, wdy / dirt_m, w_normal), dirt_w);
@@ -222,12 +222,35 @@ void fragment() {
 		vec3 dirt_c = land(dirt_layer, fract(v_vertex.xz / dirt_m), wdx.xz / dirt_m, wdy.xz / dirt_m);
 		float grain = dot(land(dirt_layer, fract(v_vertex.xz * 0.27), wdx.xz * 0.27, wdy.xz * 0.27), vec3(0.33));
 		float speck = dot(land(dirt_layer, fract(v_vertex.xz * 1.325), wdx.xz * 1.325, wdy.xz * 1.325), vec3(0.33));
+		// Each surface's colour is worked out once, whatever number of corners carry it (it depends on the surface alone: the
+		// derivatives are passed in); the corners then add it in their order, as each did with its own.
+		bool on00 = p00.surface > 0 && cw.x * p00.amount > 0.0;
+		bool on10 = p10.surface > 0 && cw.y * p10.amount > 0.0;
+		bool on01 = p01.surface > 0 && cw.z * p01.amount > 0.0;
+		bool on11 = p11.surface > 0 && cw.w * p11.amount > 0.0;
+		vec3 c00 = vec3(0.0), c10 = vec3(0.0), c01 = vec3(0.0), c11 = vec3(0.0);
+		if (on00) c00 = surface_colour(p00.surface, g, dirt_c, v_vertex, wdx, wdy, w_normal, grain, speck);
+		if (on10) {
+			if (on00 && p10.surface == p00.surface) c10 = c00;
+			else c10 = surface_colour(p10.surface, g, dirt_c, v_vertex, wdx, wdy, w_normal, grain, speck);
+		}
+		if (on01) {
+			if (on00 && p01.surface == p00.surface) c01 = c00;
+			else if (on10 && p01.surface == p10.surface) c01 = c10;
+			else c01 = surface_colour(p01.surface, g, dirt_c, v_vertex, wdx, wdy, w_normal, grain, speck);
+		}
+		if (on11) {
+			if (on00 && p11.surface == p00.surface) c11 = c00;
+			else if (on10 && p11.surface == p10.surface) c11 = c10;
+			else if (on01 && p11.surface == p01.surface) c11 = c01;
+			else c11 = surface_colour(p11.surface, g, dirt_c, v_vertex, wdx, wdy, w_normal, grain, speck);
+		}
 		vec3 sum = vec3(0.0);
 		float weights = 0.0;
-		if (p00.surface > 0 && cw.x * p00.amount > 0.0) { sum += surface_colour(p00.surface, g, dirt_c, v_vertex, wdx, wdy, w_normal, grain, speck) * cw.x * p00.amount; weights += cw.x * p00.amount; }
-		if (p10.surface > 0 && cw.y * p10.amount > 0.0) { sum += surface_colour(p10.surface, g, dirt_c, v_vertex, wdx, wdy, w_normal, grain, speck) * cw.y * p10.amount; weights += cw.y * p10.amount; }
-		if (p01.surface > 0 && cw.z * p01.amount > 0.0) { sum += surface_colour(p01.surface, g, dirt_c, v_vertex, wdx, wdy, w_normal, grain, speck) * cw.z * p01.amount; weights += cw.z * p01.amount; }
-		if (p11.surface > 0 && cw.w * p11.amount > 0.0) { sum += surface_colour(p11.surface, g, dirt_c, v_vertex, wdx, wdy, w_normal, grain, speck) * cw.w * p11.amount; weights += cw.w * p11.amount; }
+		if (on00) { sum += c00 * cw.x * p00.amount; weights += cw.x * p00.amount; }
+		if (on10) { sum += c10 * cw.y * p10.amount; weights += cw.y * p10.amount; }
+		if (on01) { sum += c01 * cw.z * p01.amount; weights += cw.z * p01.amount; }
+		if (on11) { sum += c11 * cw.w * p11.amount; weights += cw.w * p11.amount; }
 		if (weights > 0.0) c = mix(c, sum / weights, clamp(weights, 0.0, 1.0));
 	}
 	c *= gully_shade;

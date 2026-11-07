@@ -12,6 +12,9 @@ const WAY_MARK_PX := 7.0
 const HALF := 0.5
 
 @export var state := RoadSectionState.new()
+## Each element's left edge in pixels, and the right edge of the last: worked out once a spec or a size, read by drawing and picking.
+var _edges := PackedFloat64Array()
+var _edges_width := -1.0 # the control's width they were worked out for
 
 
 func _ready() -> void:
@@ -23,18 +26,32 @@ func show_spec(next: Dictionary, pick: int, issues: Array) -> void:
 	state.spec = next
 	state.selected = pick
 	state.flagged = issues
+	_edges_width = -1.0
 	queue_redraw()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED:
+		_edges_width = -1.0
 
 
 func _scale() -> float:
 	return size.x / maxf(RoadSpecOps.total(state.spec), 1.0)
 
 
+## The left edges, summed as before: each element's width at the scale, one after another.
 func _left_of(index: int) -> float:
-	var x := 0.0
-	for i in index:
-		x += state.spec.elements[i].width * _scale()
-	return x
+	if _edges_width != size.x:
+		_edges_width = size.x
+		_edges.resize(0)
+		if not state.spec.is_empty():
+			var scale := _scale()
+			var x := 0.0
+			for e: Dictionary in state.spec.elements:
+				_edges.push_back(x)
+				x += e.width * scale
+			_edges.push_back(x)
+	return _edges[index]
 
 
 func _colour(e: Dictionary) -> Color:

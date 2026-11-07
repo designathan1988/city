@@ -32,9 +32,13 @@ static func segment_rows(info: Dictionary) -> Array:
 	return rows
 
 
-## Control, legs and movements, the traffic; with a signal, its cycle and stage.
-static func node_rows(id: int) -> Array:
-	var t: Dictionary = CityStore.query(&"node_traffic", [id])
+## A junction's traffic (query node_traffic), asked once for its rows and its lamps.
+static func node_traffic(id: int) -> Dictionary:
+	return CityStore.query(&"node_traffic", [id])
+
+
+## Control, legs and movements, the traffic; with a signal, its cycle and stage (`t`: node_traffic).
+static func node_rows(t: Dictionary) -> Array:
 	if t.is_empty():
 		return []
 	var control := tr_key("control.disconnected") if not t.known else tr_key(CONTROL_KEYS[t.control])
@@ -49,9 +53,8 @@ static func node_rows(id: int) -> Array:
 	return rows
 
 
-## Each signal stage as a lamp: [text, light].
-static func lamps(id: int) -> Array:
-	var t: Dictionary = CityStore.query(&"node_traffic", [id])
+## Each signal stage as a lamp: [text, light] (`t`: node_traffic).
+static func lamps(t: Dictionary) -> Array:
 	var out := []
 	var lights: Array = t.get("lamps", [])
 	for i in lights.size():

@@ -34,7 +34,7 @@ void fragment() {
 	vec3 g;
 	float n;
 	ALBEDO = grass_ground(v_world.xz, detail, biome_tint[map_biome], map_biome, per_pixel, g, n);
-	vec2 tilt = grass_tilt(v_world.xz, per_pixel);
+	vec2 tilt = grass_tilt(v_world.xz, per_pixel, 1.0);
 	vec3 up = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
 	NORMAL = mat3(VIEW_MATRIX) * normalize(up + vec3(tilt.x, 0.0, tilt.y));
 	ROUGHNESS = mix(0.95, 0.6, rain_wet);

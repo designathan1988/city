@@ -1,6 +1,6 @@
 ## Base of the Landscape brushes that lay dabs along a held stroke (ground paint, trees, fog): one undo step a stroke,
-## dabs spaced by a share of the radius, the disc shown under the pointer. A subclass says what a dab is (`_dab`) and
-## names its undo step (`_label`).
+## dabs spaced by a share of the radius, the disc shown under the pointer. The dabs of one pointer move go to the core as
+## one command; a subclass says which (`_dab_path`) and names its undo step (`_label`).
 class_name BrushTool
 extends ToolBase
 
@@ -31,7 +31,7 @@ func hover(p: Vector3) -> void:
 func click(p: Vector3) -> void:
 	_last = p
 	CityStore.dispatch(&"begin_stroke", [_label()])
-	_lay(p)
+	_lay(PackedVector3Array([p]))
 
 
 func drag(p: Vector3) -> void:
@@ -43,8 +43,10 @@ func drag(p: Vector3) -> void:
 	if gap < step:
 		return
 	var steps := mini(MAX_STEPS, maxi(1, roundi(gap / step)))
+	var dabs := PackedVector3Array()
 	for i in range(1, steps + 1):
-		_lay(_last.lerp(p, float(i) / steps))
+		dabs.append(_last.lerp(p, float(i) / steps))
+	_lay(dabs)
 	_last = p
 
 
@@ -53,13 +55,14 @@ func release(_p: Vector3) -> void:
 	CityStore.dispatch(&"end_stroke")
 
 
-func _lay(p: Vector3) -> void:
-	var r: Dictionary = _dab(p)
-	if not r.get("ok", false):
+func _lay(dabs: PackedVector3Array) -> void:
+	var r: Dictionary = _dab_path(dabs)
+	if not r.get("error", "").is_empty(): # a dab refused (the last refusal: those before it were shown and replaced)
 		ctl.hint.emit(refusal(r), false)
 
 
-func _dab(_p: Vector3) -> Dictionary:
+## The dabs in order, as one command; its result as lay_dabs sums it (sim/commands/commands.h).
+func _dab_path(_dabs: PackedVector3Array) -> Dictionary:
 	return {}
 
 

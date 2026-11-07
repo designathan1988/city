@@ -1,11 +1,13 @@
 ## Tool previews drawn over the world: the road as it will be laid (Roadcraft main.ts drawRoadPreview: a green or red
 ## outline, the verge, footway, kerb, carriageway and its paint, a ring at each end), a plain ribbon for the other tools,
 ## and the zone brush disc. Colours and widths are the preview tokens of data/ui/tokens.json; nothing here tests depth,
-## so buildings never hide it, and each band's material draws after the one under it.
+## so buildings never hide it, and each band's material draws after the one under it. Outlines that stay while the view moves
+## (the Lots tool's lots) are one mesh of their own, built when they change, their width in screen pixels kept by its shader.
 class_name PreviewLine
 extends MeshInstance3D
 
 const DISC_SEGMENTS := 48
+const OUTLINE_SHADER := "res://render/shaders/preview_outline.gdshader"
 
 var _mesh := ImmediateMesh.new()
 var _ok_mat: StandardMaterial3D
@@ -17,6 +19,8 @@ var _edge_ok: StandardMaterial3D
 var _edge_bad: StandardMaterial3D
 var _ring_ok: StandardMaterial3D
 var _ring_bad: StandardMaterial3D
+var _outlines: MeshInstance3D # show_outlines: one surface for every ring
+var _outline_mat: ShaderMaterial
 
 
 func _ready() -> void:
@@ -32,6 +36,16 @@ func _ready() -> void:
 	_paint_yellow = _material("preview_paint_yellow", _bands.size() + 1)
 	_ring_ok = _material("preview_edge_ok", _bands.size() + 2)
 	_ring_bad = _material("preview_edge_bad", _bands.size() + 2)
+	_outline_mat = ShaderMaterial.new()
+	_outline_mat.shader = load(OUTLINE_SHADER)
+	_outline_mat.set_shader_parameter("colour", ThemeBuilder.color("preview_ok"))
+	_outlines = MeshInstance3D.new()
+	_outlines.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_outlines.material_override = _outline_mat
+	_outlines.visible = false
+	add_child(_outlines)
+	get_viewport().size_changed.connect(_follow_screen)
+	_follow_screen()
 
 
 func _material(token: String, order: int = 0) -> StandardMaterial3D:
@@ -47,6 +61,51 @@ func _material(token: String, order: int = 0) -> StandardMaterial3D:
 
 func clear() -> void:
 	_mesh.clear_surfaces()
+	clear_outlines()
+
+
+## Closed rings on the ground, each drawn `half_px` screen pixels to each side of its line at any zoom: one mesh, built here and
+## left alone while the view moves (each ring's own surface would cost a draw each, and a mesh holds at most 256 of them).
+func show_outlines(rings: Array, half_px: float) -> void:
+	var lift := Vector3.UP * ThemeBuilder.size("preview_lift")
+	var at := PackedVector3Array()
+	var side := PackedVector2Array()
+	var index := PackedInt32Array()
+	for ring: PackedVector3Array in rings:
+		var points := ring.duplicate()
+		points.push_back(ring[0])
+		var first := at.size()
+		for i in points.size():
+			var left := _left(points, i)
+			at.push_back(points[i] + lift)
+			side.push_back(Vector2(left.x, left.z))
+			at.push_back(points[i] + lift)
+			side.push_back(Vector2(-left.x, -left.z))
+		for k in points.size() * 2 - 2: # the strip as triangles: each vertex with the two after it
+			index.append(first + k)
+			index.append(first + k + 1)
+			index.append(first + k + 2)
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = at
+	arrays[Mesh.ARRAY_TEX_UV] = side
+	arrays[Mesh.ARRAY_INDEX] = index
+	var mesh := ArrayMesh.new()
+	if not index.is_empty():
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	_outline_mat.set_shader_parameter("half_px", half_px)
+	_outlines.mesh = mesh
+	_outlines.visible = not index.is_empty()
+
+
+func clear_outlines() -> void:
+	_outlines.mesh = null
+	_outlines.visible = false
+
+
+## The screen's height, what a pixel's width in metres is reckoned from (ToolController.px_at).
+func _follow_screen() -> void:
+	_outline_mat.set_shader_parameter("screen_h", get_viewport().get_visible_rect().size.y)
 
 
 ## Points along the road on the ground (lifted by preview_lift here) and its half width.

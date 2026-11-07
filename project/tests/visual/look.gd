@@ -4,7 +4,7 @@
 ## bare land of the map, with no town to make and draw.
 ## Steps: {"setView": [x, y, zoom, azimuth, elevation]} (the 4.0's map and degrees), {"shot": name} (after the world is drawn),
 ## {"wait": ms}, {"frames": n}, {"hour": h} (light and clock together), {"dispatch": command, "args": [...]},
-## {"query": name, "args": [...]} (its answer printed), {"key": "Escape"}, {"click": [x, z]}, {"tap": [screen x, y]}, {"control": "what it says"}, {"blastShot": name, "at": s}, {"global": [name, value]} (a shader global: an A/B inside one run, so what else loads the GPU falls on both), {"drag": [[x, z], [x, z]]}.
+## {"query": name, "args": [...]} (its answer printed), {"key": "Escape"}, {"click": [x, z]}, {"tap": [screen x, y]}, {"control": "what it says"}, {"blastShot": name, "at": s}, {"walker": [zoom, azimuth, elevation]}, {"global": [name, value]} (a shader global: an A/B inside one run, so what else loads the GPU falls on both), {"drag": [[x, z], [x, z]]}.
 ## In args, {"at": [x, z]} is the point of the ground there (what the player's pointer would hit), {"profile": id} the index of
 ## that road class, {"v3": [x, y, z]} a vector.
 ## Measures (look_measure.gd): {"record": name} … {"recordEnd": true} (the frames between: intervals, hitches, vsyncs missed,
@@ -70,6 +70,9 @@ func _ready() -> void:
 	add_child(measure)
 	for step: Dictionary in plan.get("steps", []):
 		await _step(step)
+	if shots == 0: # a plan that photographs nothing proves nothing
+		failures += 1
+		print("FAIL the plan took no shot")
 	print("FAILURES: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
@@ -112,6 +115,19 @@ func _step(step: Dictionary) -> void:
 		await ui.click(_point(step.click))
 	elif step.has("global"):
 		RenderingServer.global_shader_parameter_set(StringName(step.global[0]), step.global[1])
+	elif step.has("reference"):
+		_reference(step.reference)
+	elif step.has("until"):
+		await _until(step)
+	elif not await _pointer_step(step) and not await _measure_step(step):
+		failures += 1
+		print("FAIL unknown step: ", step)
+
+
+## The steps of the pointer. False: not one of them.
+func _pointer_step(step: Dictionary) -> bool:
+	if step.has("walker"):
+		await LookAim.stand_on_walker(rig, ui, step.walker)
 	elif step.has("tap"):
 		var at := Vector2(step.tap[0], step.tap[1])
 		await ui.move(at)
@@ -128,13 +144,9 @@ func _step(step: Dictionary) -> void:
 		await ui.drag(_point(step.drag[0]), _point(step.drag[1]))
 	elif step.has("control"): # the `press` of scripts/look.mjs: a control found by what it says, pressed with the mouse where it stands
 		await _press_control(str(step.control))
-	elif step.has("reference"):
-		_reference(step.reference)
-	elif step.has("until"):
-		await _until(step)
-	elif not await _measure_step(step):
-		failures += 1
-		print("FAIL unknown step: ", step)
+	else:
+		return false
+	return true
 
 
 ## The last control on screen that says `said` (its text or its tip, a tip's shortcut left out).

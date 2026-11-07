@@ -72,7 +72,7 @@ func _ready() -> void:
 	await _whole_city()
 	await _run()
 	print("capture_landscape: pronto")
-	get_tree().quit(0)
+	get_tree().quit(CaptureWait.exit_code(0))
 
 
 ## The whole town from the view the 4.0 opens on.

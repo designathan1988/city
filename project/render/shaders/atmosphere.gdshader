@@ -41,6 +41,7 @@ uniform vec2 wind_dir = vec2(0.93, 0.35);
 
 const int FOG_STEPS = 36; // the grain of the start goes with the length of a step: 2.1 grey levels at 24, measured on a bank
 const int CLOUD_STEPS = 16;
+const float WINDOW_SLACK = 0.001; // of the fog window's side: the margin of the step range over float rounding (fog_amount)
 
 void vertex() {
 	POSITION = vec4(VERTEX.xy, 1.0, 1.0);
@@ -115,9 +116,29 @@ float fog_amount(vec3 ro, vec3 rd, float t_scene, float jitter, float time) {
 	}
 	if (t1 <= t0) return 0.0;
 	float step_len = (t1 - t0) / float(FOG_STEPS);
+	// The steps keep their places (t0, step_len: the grain is tuned on them); only those that cannot fall inside the window
+	// are not visited. The ray's stretch over the window in x and z is taken on the window widened by WINDOW_SLACK of its
+	// side, far beyond float rounding, and one step more each way: every step the test in the loop keeps is in the range.
+	float tw0 = t0, tw1 = t1;
+	for (int k = 0; k < 2; k++) {
+		float o = k == 0 ? ro.x : ro.z;
+		float d = k == 0 ? rd.x : rd.z;
+		float lo = (k == 0 ? fog_window.x : fog_window.y) - WINDOW_SLACK * fog_window.z;
+		float hi = lo + (1.0 + 2.0 * WINDOW_SLACK) * fog_window.z;
+		if (d == 0.0) {
+			if (o < lo || o > hi) return 0.0; // every step stands at this x (or z), outside the window
+			continue;
+		}
+		float ta = (lo - o) / d, tb = (hi - o) / d;
+		tw0 = max(tw0, min(ta, tb));
+		tw1 = min(tw1, max(ta, tb));
+	}
+	if (tw1 < tw0) return 0.0;
+	int i_first = int(clamp(floor((tw0 - t0) / step_len - jitter) - 1.0, 0.0, float(FOG_STEPS)));
+	int i_last = int(clamp(ceil((tw1 - t0) / step_len - jitter) + 1.0, -1.0, float(FOG_STEPS - 1)));
 	float keep = 1.0;
 	float phase_a = fract(time / 9.0), phase_b = fract(time / 9.0 + 0.5), blend_b = abs(phase_a - 0.5) * 2.0;
-	for (int i = 0; i < FOG_STEPS; i++) {
+	for (int i = i_first; i <= i_last; i++) {
 		vec3 q = ro + rd * (t0 + (float(i) + jitter) * step_len);
 		vec2 local = (q.xz - fog_window.xy) / fog_window.z;
 		if (local.x < 0.0 || local.y < 0.0 || local.x > 1.0 || local.y > 1.0) continue;
@@ -140,10 +161,15 @@ float fog_amount(vec3 ro, vec3 rd, float t_scene, float jitter, float time) {
 float cloud_bodies(vec3 ro, vec3 rd, float t_scene, float jitter, float time, out vec3 light) {
 	light = vec3(0.0);
 	float keep = 1.0;
+	// A cloud whose entry lies at or past what the pixel sees adds nothing: it is left out here, so the nearest-first
+	// selection below never spends a pass on it.
 	vec2 spans[MAX_CLOUDS];
 	for (int c = 0; c < MAX_CLOUDS; c++) {
 		spans[c] = vec2(-1.0);
-		if (c < cloud_count) spans[c] = sphere_span(ro, rd, cloud[c]);
+		if (c < cloud_count) {
+			vec2 span = sphere_span(ro, rd, cloud[c]);
+			if (max(span.x, 0.0) < t_scene) spans[c] = span;
+		}
 	}
 	vec3 base_shade = mix(vec3(0.22, 0.24, 0.3), vec3(0.02, 0.025, 0.035), dark);
 	vec3 fill = mix(sky_light * 0.55 + vec3(0.12), vec3(0.03, 0.035, 0.05), dark);

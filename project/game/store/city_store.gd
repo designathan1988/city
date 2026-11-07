@@ -1,6 +1,9 @@
 ## CityStore: the only owner of the C++ core (CityCore) on the script side.
 ## State flows one way: commands go in through dispatch(); the UI reads `snapshot` (refreshed from the core)
 ## and reacts to `changed`. Nothing else keeps copies of game numbers (gate ESTADO_NA_UI / owners.json).
+## The snapshot is read from the core when it is read after something may have moved it (a command, the clock's
+## SNAPSHOT_INTERVAL_S, refresh): a read right after a command sees it, and many commands in a frame cost one reading.
+## `changed` follows at the end of the frame, once however many marks came in it.
 extends Node
 
 signal changed(snapshot: Dictionary)
@@ -14,13 +17,21 @@ const CACHED_BY := {&"junctions": "edit_revision", &"transit_plan": "transit_rev
 signal saved(slot: String, result: Dictionary)
 signal loaded(slot: String, result: Dictionary)
 
-var snapshot: Dictionary = {}
+var snapshot: Dictionary:
+	get:
+		if _stale:
+			_stale = false
+			_snapshot = _core.snapshot()
+		return _snapshot
 var constants: Dictionary = {}
 var saves: CitySaves
 var _core: Node3D
 var _routes: Dictionary = {} # a StoreApi name -> the Callable on the core, or on the area of it, that runs it
 var _since_refresh := 0.0
 var _cache := {} # CACHED_BY query -> [the revision it was read at, its answer]
+var _snapshot: Dictionary = {} # the core's snapshot as last read
+var _stale := false # something may have moved it since: the next read asks the core
+var _change_due := false # `changed` is on its way, at the end of this frame
 
 
 func _ready() -> void:
@@ -82,7 +93,7 @@ func dispatch(command: StringName, args: Array = []) -> Variant:
 	assert(StoreApi.COMMANDS.has(command), "comando desconhecido: %s" % command)
 	var result: Variant = _routes[command].callv(args)
 	if not command.begins_with("preview"):
-		refresh()
+		_mark()
 	if result is Dictionary and result.has("error") and not result.error.is_empty() and not command.begins_with("preview"):
 		command_failed.emit(result.error)
 	return result
@@ -94,7 +105,7 @@ func query(name: StringName, args: Array = []) -> Variant:
 
 
 ## A CACHED_BY query's answer, asked of the core again only when its revision in the snapshot moved (every command
-## refreshes the snapshot, so an edit is seen at once).
+## marks the snapshot, so an edit is seen at once).
 func cached(name: StringName) -> Variant:
 	var rev: int = snapshot.get(CACHED_BY[name], -1)
 	if rev < 0:
@@ -109,7 +120,7 @@ func cached(name: StringName) -> Variant:
 ## The Simulation panel: shares of the city's own density of vehicles and people, and the demand.
 func set_levels(traffic: float, people: float, demand: float) -> void:
 	_core.set_levels(traffic, people, demand)
-	refresh()
+	_mark()
 
 
 ## The Effects panel: a simulation system's tick on or off, to measure it ("traffic", "pedestrians", "growth").
@@ -120,11 +131,30 @@ func set_sim_switch(name: String, on: bool) -> void:
 ## Tests only: advance the simulation deterministically.
 func step_ticks(ticks: int) -> void:
 	_core.step_ticks(ticks)
-	refresh()
+	_mark()
 
 
+## The snapshot read from the core now (after a load, or by a caller that wants this instant's numbers); `changed` at the frame's end.
 func refresh() -> void:
-	snapshot = _core.snapshot()
+	_stale = false
+	_snapshot = _core.snapshot()
+	_change_coming()
+
+
+## The core may have moved: the snapshot is read again when next read, and `changed` follows at the frame's end.
+func _mark() -> void:
+	_stale = true
+	_change_coming()
+
+
+func _change_coming() -> void:
+	if not _change_due:
+		_change_due = true
+		_emit_changed.call_deferred()
+
+
+func _emit_changed() -> void:
+	_change_due = false
 	changed.emit(snapshot)
 
 
@@ -132,5 +162,5 @@ func _process(delta: float) -> void:
 	_since_refresh += delta
 	if _since_refresh >= SNAPSHOT_INTERVAL_S:
 		_since_refresh = 0.0
-		refresh()
+		_mark()
 	saves.tick(delta)

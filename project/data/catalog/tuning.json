@@ -45,6 +45,7 @@
   "building_detail_end_m": 700,
   "building_bay_end_m": 350, "building_mid_end_m": 1100,
   "building_far_end_m": 4500,
+  "detail_error_px": 0.5,
   "max_chunk_rebuilds_per_frame": 6,
   "commit_budget_ms": 4,
   "upload_budget_mb": 64,

@@ -25,6 +25,11 @@ func _init(ctl: ToolController) -> void:
 	reference = ReferenceHand.new(ctl)
 
 
+## The tool put away: what the hands put in the scene goes (the reference's model and dialog).
+func retire() -> void:
+	reference.retire()
+
+
 func armed() -> bool:
 	return mass.armed() or furnish.armed() or run.armed() or not primitive.is_empty()
 

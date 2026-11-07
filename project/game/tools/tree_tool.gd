@@ -16,8 +16,8 @@ func enter() -> void:
 	ctl.hint.emit(tr("hint.tool.trees"), true)
 
 
-func _dab(p: Vector3) -> Dictionary:
-	return CityStore.dispatch(&"tree_brush", [p, radius, mode, kind, brush])
+func _dab_path(dabs: PackedVector3Array) -> Dictionary:
+	return CityStore.dispatch(&"tree_path", [dabs, radius, mode, kind, brush])
 
 
 func _label() -> String:

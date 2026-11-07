@@ -49,7 +49,7 @@ func _ready() -> void:
 	for s in SHOTS:
 		await _shot(layer, s)
 	print("FAILURES: ", failures)
-	get_tree().quit(1 if failures > 0 else 0)
+	get_tree().quit(CaptureWait.exit_code(failures))
 
 
 func _shot(layer: InteriorController, s: Array) -> void:

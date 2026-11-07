@@ -70,19 +70,20 @@ func step(dt: float, weather: Dictionary, way: Vector2) -> void:
 	var cam := get_viewport().get_camera_3d()
 	if cam == null or weather.is_empty():
 		return
-	var ground := _ground_under(cam)
-	var span := 2.0 * cam.global_position.distance_to(ground) * tan(deg_to_rad(cam.fov) * 0.5) * float(get_viewport().get_visible_rect().size.aspect())
 	var rain: float = weather.rain
 	_rain.visible = rain > _d.rain_min
-	if _rain.visible:
-		_advance(ground, span, way * float(weather.wind), dt)
-		_rain_mat.set_shader_parameter("drops", roundi(_d.rain_max_drops * minf(1.0, rain)))
-		_rain_mat.set_shader_parameter("opacity", _d.rain_opacity + _d.rain_opacity_full * rain)
 	var rate: float = weather.lightning
-	if rate > 0.0 and _rng.randf() < dt * rate / 60.0:
-		var a := _rng.randf() * TAU
-		var r: float = _rng.randf() * span * _d.strike_reach
-		strike(ground + Vector3(cos(a) * r, 0.0, sin(a) * r))
+	if _rain.visible or rate > 0.0: # the ground in view is what the rain falls on and the bolts strike: asked only for them
+		var ground := _ground_under(cam)
+		var span := 2.0 * cam.global_position.distance_to(ground) * tan(deg_to_rad(cam.fov) * 0.5) * float(get_viewport().get_visible_rect().size.aspect())
+		if _rain.visible:
+			_advance(ground, span, way * float(weather.wind), dt)
+			_rain_mat.set_shader_parameter("drops", roundi(_d.rain_max_drops * minf(1.0, rain)))
+			_rain_mat.set_shader_parameter("opacity", _d.rain_opacity + _d.rain_opacity_full * rain)
+		if rate > 0.0 and _rng.randf() < dt * rate / 60.0:
+			var a := _rng.randf() * TAU
+			var r: float = _rng.randf() * span * _d.strike_reach
+			strike(ground + Vector3(cos(a) * r, 0.0, sin(a) * r))
 	_age(dt)
 	_bolt_mat.set_shader_parameter("brightness", flash)
 	_bolt_mat.set_shader_parameter("screen", get_viewport().get_visible_rect().size)
@@ -91,7 +92,7 @@ func step(dt: float, weather: Dictionary, way: Vector2) -> void:
 
 func _ground_under(cam: Camera3D) -> Vector3:
 	var ahead := -cam.global_basis.z
-	var y: float = CityStore.query(&"height_at", [cam.global_position.x, cam.global_position.z])
+	var y := CityCamera.ground_below(cam)
 	var t := (y - cam.global_position.y) / ahead.y if ahead.y < -LEVEL_VIEW else float(_d.rain_look_m)
 	return cam.global_position + ahead * minf(t, _d.rain_look_m)
 

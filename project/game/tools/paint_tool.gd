@@ -16,8 +16,8 @@ func enter() -> void:
 	ctl.hint.emit(tr("hint.tool.paint"), true)
 
 
-func _dab(p: Vector3) -> Dictionary:
-	return CityStore.dispatch(&"paint_brush", [p, radius, strength, hardness, kind])
+func _dab_path(dabs: PackedVector3Array) -> Dictionary:
+	return CityStore.dispatch(&"paint_path", [dabs, radius, strength, hardness, kind])
 
 
 func _label() -> String:

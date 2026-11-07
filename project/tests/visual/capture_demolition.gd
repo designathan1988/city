@@ -3,7 +3,7 @@
 ## reference game was photographed from: a low house hit by force 5 and 45), `people` (a walker shot in the trunk, the leg
 ## and the head: bodies, tracer, blood), `car` (a car shot through its glass until it bursts). The time between shots is real
 ## time: the effects run on their own clock. Writes PNGs in --capture-dir.
-## Run through tools/build/hidden_run.ps1: godot --path project --resolution 1600x900 res://tests/visual/capture_demolition.tscn
+## Run as a hidden task of tools/tasks (cli.py serve, or a suites.json entry): godot --path project --resolution 1600x900 res://tests/visual/capture_demolition.tscn
 ##   -- --no-flow --phase=pareada,people,car --capture-dir=<dir>
 extends Node3D
 
@@ -83,7 +83,7 @@ func _run() -> void:
 	if "car" in phases:
 		await _car()
 	print("FAILURES: ", failures + blast.failures)
-	get_tree().quit(1 if failures > 0 else 0)
+	get_tree().quit(CaptureWait.exit_code(failures + blast.failures))
 
 
 ## The reference game's views: a low house, force 5 and then force 45 on another, the same moments.
