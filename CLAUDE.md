@@ -4,7 +4,7 @@ Regras, métodos e estrutura do projeto. Atualize este arquivo na mesma mudança
 Arquivo criado ou apagado entra em `log/mapa.md` no mesmo commit: o gate `MAPA_DESATUALIZADO` confere.
 O detalhe fica em `log/`: `mapa.md` (arquivo por arquivo), `ferramentas.md` (o que cada uma ensinou), `pendencias.md`
 (o que falta). Registros de cada linha: `work-log.md` (porte e gráficos), `conversor.md`, `causa-raiz.md`, `lab.md`, `base.md`,
-`arquitetura.md` (o analisador de causas).
+`arquitetura.md` (o analisador de causas), `review.md` (the full reading: findings, problems, process errors).
 Antes de começar, leia o registro da sua linha. Ao fechar o tema, atualize-o com hora e commit, no mesmo commit.
 
 ## Metodologia de trabalho (toda tarefa, nesta ordem; trabalho direto)
@@ -35,7 +35,7 @@ e apagados.
 - Faça o que foi pedido, inteiro. Nada de maquiar resultado ou de deixar para depois.
 - Nunca espere às cegas um processo lançado (tempo-limite e acompanhamento). Pare só processos próprios, pelo PID.
 - Nunca feche o jogo aberto na tela do usuário: `tools/build/free_dll.sh` libera a DLL.
-- Testes e capturas nunca abrem janela na tela do usuário (`tools/build/hidden_run.ps1`).
+- Tests and captures never open a window on the user's screen (`tools/tasks` runs them `hidden`, on a private desktop).
 - Toda mudança no jogo é entregue, ao fechar o tema, com um executável novo: o usuário abre `dist/windows/Roadcraft.exe`.
 - Trabalho direto na `main`, em `C:\Users\Jonathan\Desktop\city`, sem worktree.
   Commit por tema e push em `origin/main` (`https://github.com/designathan1988/city`).
@@ -46,7 +46,7 @@ e apagados.
 
 | Mudou | Verifique |
 |---|---|
-| Ferramenta em `tools/` | os testes dela e `run_gates.py --file` nos arquivos mudados |
+| Tool under `tools/` | its own tests and `run_gates.py --file` on the changed files |
 | GDScript, cena ou dados | `quick.sh <cenas ligadas>` e os gates dos arquivos mudados |
 | C++ | as duas DLLs e `quick.sh <cenas ligadas>` |
 | Fechamento do tema, antes do push | `quick.sh --ready`, `run_gates.py` completo e o executável |
@@ -66,17 +66,6 @@ e apagados.
   o registro ou este documento estiverem em português (a tradução do que já existe está em `log/pendencias.md`).
 - Exceções: os textos que o jogador vê (traduções em `project/data/i18n`) e as cópias externas. A conversa com o usuário é
   em português.
-
-## Referência: Roadcraft 4.0
-- `C:\Users\Jonathan\Documents\Projects\city\roadcraft` (cópia de 29/10; a `roadcraft-4.0-main`, de 23/10, não vale) é a
-  referência de visual e de comportamento de tudo: o jogo deve ter todos os gráficos e funcionalidades dele.
-- Pode ser lida, aberta, rodada e estudada a qualquer momento. Comentário do 4.0 não prova nada sem o par.
-- Portam-se funcionalidades, nunca código, na arquitetura atual, otimizada. Rastreio: `tools/converter`.
-- Exceção: a lógica pura de simulação entra traduzida, sem edição à mão, por uma camada fina, conferida contra o 4.0.
-  Regenera-se, nunca se conserta o gerado. Primeira área: fluxo e controle (`flow_control`).
-- Em porte e paridade, o par com o 4.0 rodando é a prova que mais acha defeito: `npx vite` em 5300 na pasta dele,
-  `node scripts/look.mjs <plano> <saída>` lá e o mesmo plano no `look` daqui (`{"size": "small", "seed": 7}` e
-  `{"map": 0, "seed": 7}`).
 
 ## Regras de arquitetura
 - **Fonte única da verdade:** `CityState` (`native/src/sim/state/city_state.h`). Só `sim/commands` muda o estado a pedido
@@ -109,20 +98,20 @@ e apagados.
 |---|---|
 | Rodar o jogo | `godot --path project` (sem Vulkan: `--rendering-method gl_compatibility`) |
 | Compilar as duas DLLs | `MINGW=... tools/build/build.sh core-windows` (Linux: `core`) |
-| Verificar uma mudança | `tools/build/quick.sh [cena,cena]` (`--ready` no fechamento do tema, `--all` toda a suíte, `--bless` só com mudança visual entendida) |
-| Rodar um teste só | `tools/build/runq.sh <cópia> <pasta> fast test:tests/core/<cena>` |
-| Suíte em paralelo | `python tools/analysis/suite.py [--only=nomes]` (logs em `dist/tests`) |
-| Gates | `python3 tools/gates/run_gates.py` (`--file X`, `--summary`); só os mudados: `tools/build/gates_changed.sh <cópia>` (defeito em `log/pendencias.md`) |
-| Scripts que não compilam | `godot --headless --path project -s <caminho absoluto de tools/build/check_scripts.gd>` (job `scripts` do `runq.sh`) |
+| Check a change | `tools/build/quick.sh [task,task]` (= `python tools/tasks/cli.py run quick`: only the tasks whose inputs changed; `--ready` at a theme's close, `--all` nothing from the cache, `--bless` only for an understood visual change) |
+| Run one test | `python tools/tasks/cli.py run fast <scene>` |
+| Suite in parallel | `python tools/tasks/cli.py run tests` (logs in `dist/tasks/<run>`, `cli.py status`; every task has its own deadline and is killed by PID) |
+| Gates | `python tools/gates/run_gates.py` (`--file X`, `--files-from F`, `--summary`, `--selftest`); changed files only: `python tools/tasks/cli.py run gates_changed` |
+| Scripts that do not compile | `python tools/tasks/cli.py run scripts` (`tools/build/check_scripts.gd`) |
+| Orchestrator | `python tools/tasks/cli.py run <suite or task> [--list]`, `serve` (JSON lines, for Node tools), `status`; its tests: `python -m unittest discover tools/tasks/tests` |
 | Exportar e empacotar | `tools/build/build.sh export && tools/build/build.sh package` |
-| Capturas | `tools/build/build.sh capture /pasta` |
+| Captures | `tools/build/build.sh capture [folder]` (= `cli.py run capture`, hidden, one task per plan) |
 | Olhar o jogo por um plano | `godot --path project --resolution 1920x1080 res://tests/visual/look.tscn -- --no-flow --plan=<json> --capture-dir=<pasta>` |
-| Diferença de fotos | `python tools/build/photodiff.py <antes> <depois> <saída>` |
+| Photo difference | `python tools/build/photodiff.py <before> <after> <out>` (a missing side, an empty set or any changed pixel fails) |
 | Onde cada thread gasta | `python tools/analysis/sampler.py --hidden --cmd "<godot> --path project <cena>" --seconds 30 --symbolizer <llvm-symbolizer>` |
 | Causas pela forma do código | `python tools/analysis/causes.py` |
 | Causas pela arquitetura | `python tools/analysis/arch.py scan`, `status`, `next`, `explain <id>`, `predict <id>`, `done <id>`, `selfcheck` (`--only x` refaz só o que falhou; fila em `dist/arch/queue.json`) |
 | Perfil da DLL de release | `tools/build/pgo.sh` (refazer depois de mudar laços quentes) |
-| Tradutor do 4.0 | em `tools/converter`: `node src/cli.ts feature`, `convert`, `differential` (e `graph`, `translate`, `audit`, `verify`) |
 
 **O que um clone precisa:** `native/godot-cpp` (API 4.7) e as DLLs em `project/bin` já vêm no repositório: o jogo abre sem
 compilar. Meshoptimizer e Clipper2 vêm pelo CMake na primeira compilação. À parte: Godot 4.7.2, llvm-mingw
@@ -163,16 +152,19 @@ compilar. Meshoptimizer e Clipper2 vêm pelo CMake na primeira compilação. À 
 
 **`tools`**
 - `gates/`: regras verificadas, `rules.json`, `owners.json`, `schemas/`.
-- `build/`: `build.sh`, `quick.sh`, `runq.sh` e `runq_jobs.sh`, `run_tests.sh`, `pgo.sh`, `photodiff.py`, `free_dll.sh`,
-  `hidden_run.ps1`, `check_scripts.gd` (scripts que não compilam), `rename_english.py` (renomeação para o inglês).
-- `analysis/`: `suite.py`, `sampler.py` com `sampler_report.py` e `unwind.py`, `causes.py` com `detectors.py`, `live40.mjs`
-  (o 4.0 aberto, respondendo em milissegundos), `arch.py` e `arch/` (o analisador de arquitetura), `arch_eval/` (gabaritos
+- `tasks/`: the one orchestration owner of every support tool (tasks as data: inputs keyed by content, a deadline each,
+  a verdict; parallel pool, cache in `dist/cache/tasks`, Job Object kill, hidden desktop; `suites.json`).
+- `build/`: `build.sh`, `quick.sh` (a thin call of `tools/tasks`), `pgo.sh`, `photodiff.py`, `free_dll.sh`,
+  `check_scripts.gd` (scripts that do not compile), `rename_english.py` (the English rename, with `--check`).
+- `analysis/`: `sampler.py` with `sampler_report.py` and `unwind.py`, `causes.py` with `detectors.py` and `code_parse.py`,
+  `arch.py` e `arch/` (o analisador de arquitetura), `arch_eval/` (gabaritos
   que só o selfcheck dele lê).
 - `assets/`: cozinha de pessoas, marcos, ruído, móveis, postes e perfis de via.
-- `converter/`: rastreador e tradutor do 4.0, com git próprio; o conteúdo vem por `git read-tree`.
-- `converter-slice/`: fatia antiga do conversor.
+- `converter/`: the porting tool, with its own git: traces each feature of the source game, translates its pure simulation
+  logic into C++ for this architecture and audits the result (`node src/cli.ts feature`, `convert`, `differential`, `graph`,
+  `translate`, `audit`, `verify`). Translated code (e.g. `flow_control`) is regenerated, never fixed by hand.
+- `converter-slice/`: the converter's older slice, with its own git.
 - `process/`: ferramentas de processo e registros. `ports/`: planos, coberturas e relatórios de cada porte.
-- `oracle-4.0/`: cópia instrumentada do 4.0 para o oráculo (`ORACLE_INSTRUMENT=1`).
 
 **Outros:** `dist/` (builds, capturas e logs, fora do git) e `log/` (registros).
 
@@ -190,7 +182,6 @@ compilar. Meshoptimizer e Clipper2 vêm pelo CMake na primeira compilação. À 
 - `Daylight` é o dono do sol, do ambiente e do céu. À noite o sol vira lua sem sombra; a luz da rua é `LampLights`.
 - `CityWorld.set_sky_mode("day"|"night"|"cycle")`: dia e noite fixam as horas de `daylight.json` (16h e 22h).
 - Testes e capturas movem relógio e céu juntos (`UiDriver.at_hour`).
-- Par de foto com o 4.0: mesma hora, mesma câmera e 1920x1080.
 
 ## Máquinas de estado
 - `GameFlow.State`: BOOT → MENU → PLAYING → QUITTING (tabela `TRANSITIONS`; fechar a janela também passa por `quit`).

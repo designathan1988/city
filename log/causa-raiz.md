@@ -278,3 +278,123 @@ Rodada completa com a última mudança, sobre o `origin/main` `2e80e670`: 28/28.
 - Rebase com DLLs em conflito: `git checkout --theirs project/bin/*.dll`, refazer as duas DLLs das fontes juntas, suíte, `git add`, continuar.
 - Merge no main só `git merge --ff-only fix/causas-main` em `Desktop\city`; não tocar nas mudanças não commitadas de outras sessões.
 - Observação: este arquivo fora do CLAUDE.md pode acusar o gate `DOC_UNICO`; foi criado a pedido explícito do usuário.
+
+## 2026-11-07: the 92 causes of the Codex audit, audited in full and fixed (English, per CLAUDE.md "Idioma")
+Source: the Codex audit `log/performance-causes-audit.md` in its worktree (C01..C92, base `f3bdc359`; `native/src` had not
+changed up to `e806fc01`). Every item was read in the code by one of five readers (01-17, 18-35, 36-50, 51-69, 70-92), then
+fixed by owner area (render pipeline, sim edits, history/persistence, traffic/transit, effects/agents, GDScript/UI). Nothing
+was run to investigate. Verdicts: C = confirmed, P = partial (part of the claim holds), D = discarded.
+
+Shared causes, each with one owner now:
+- Admission per producer, counting stand-in units, while uploads ran whenever the next main-thread RS call drained the queue
+  (01-04, 07, 09, 10, 15, 16): `render/frame_admission.h` (one deadline from the top of `RenderWorld::sync`, one byte ledger
+  with debt, one merged order, one measured flush). Fact found: `mesh_create_surface_data_from_arrays` is not bound in
+  GDExtension 4.7, so workers keep converting and only admitted bakes are dispatched; the queue flush belongs to the admission.
+- Async results with no wanted/in-flight revision or generation (22-24, plus the roads/props starvation the audit missed):
+  `ChunkRevisions` in `render/chunk_jobs.h`, `render/async_slot.h`.
+- Invalidation guessed from a box at the end of an edit instead of the change record (18-21, 31, the barrier undo):
+  `settle_network` and `finish_command` (`sim/commands/road_edit.cpp`, the latter once per transaction from
+  `EditHistory::end`), `refresh_node` reporting only real changes, one `invalidation_of` per journal record kind.
+- Identity and lifetime cut off from the source (25, 26, 28, 35): ref-counted `BodyRef` with a never-reused stamp, one body
+  cache owned by `BuildingRenderer`, `Revised<T>` lists in `DamageState`, a row lookup that never inserts.
+- Duplicated slot allocators with eager middle removal (32, 33): `core/slot_ids.h`.
+- Counts read from files trusted before the bytes left (90): `ByteReader::claim/get_count/get_string`.
+- Lock and data in one object, so nothing could be built aside and swapped in (87): `CityData` + channels, `sim/state/city_take.cpp`.
+
+| ID | V | What was fixed (owner) | State |
+|---|---|---|---|
+| 01 | C | every producer pays credits and bytes in `FrameAdmission` | done |
+| 02 | C | no admission in a zero window; an indivisible unit larger than the window goes alone, its excess repaid by later frames | partial: splitting a surface would change meshes |
+| 03 | C | one deadline over drain, fields, flush and commits; ready lists ordered on insert | done |
+| 04 | P | the getter drained nothing new on the main thread (`server_wrap_mt_common.h`); it was the drain's probe, placed after the deadline: replaced by the admission's measured flush | done |
+| 05 | C | `JobPool`: per-key work slot, closure freed outside the lock, `current(key, seq)` | done |
+| 06 | C | fog copies its inputs under a short lock | partial: road/prop/tree/cover/zone jobs still read `CityState` under the shared lock; needs a snapshot type |
+| 07 | C | one order (hole rank, distance) for every producer but buildings | partial: `building_renderer.cpp` update_view/commit not in the order yet |
+| 08 | P | `ChunkStream` keeps its candidates incrementally | done |
+| 09 | C | zones use revisions and the admission; lots outside a chunk skipped before triangulation; congestion only recolours | partial: a lot spatial index in `sim/lots` |
+| 10 | C | water chunks are jobs with admitted bakes; `WATER_CHUNKS_A_FRAME` deleted; only chunks with water marked | done |
+| 11 | C | the shore spreads by an exact frontier, without vector copies | partial: dirty rectangle |
+| 12 | C | exact van Herk/Gil-Werman sliding max; redone only when a changed chunk meets the window | done |
+| 13 | C | fog dab index per revision; only entering strips and touched rects redone (exact lattice check) | done |
+| 14 | C | a saturated byte no longer dirties its tile; row clears; RNG order kept | done |
+| 15 | C | transit items stop at the deadline and pay their bytes | partial: per-stretch jobs and preview reuse |
+| 16 | C | signature bodies prepared on a worker; a bad file reported once (`push_error`), negative cache | done |
+| 17 | P | `LeafAtlas::take_image` keeps the CPU image (no GPU readback) | done |
+| 18 | C | a body edit refreshes no road node; only changed nodes and arms are logged | done |
+| 19 | C | finishing runs once per transaction; a block grid charges each line (4.0 `editor/blocks.ts` to `commit.ts`) instead of the running total (money bug) | done, behaviour change for 4.0 parity |
+| 20 | C | terrain: one dab per frame, owed time dropped (4.0 `terrainBrush.ts:209-218`); zone, paint, tree, fog, element: one path command per pointer move (`*_path`) | done |
+| 21 | C | ground paint creates tiles only on a real byte change and drops empty tiles on dab, undo and load | done |
+| 22 | C | `ChunkRevisions` for trees, cover, roads, props, water, zones | done |
+| 23 | C | street instances travel inside the result; `placed_` deleted | done |
+| 24 | C | `AsyncSlot` with a generation for fog, canyon and shore | done |
+| 25 | C | exact body cache keys, one shared cache reset with the renderer, no `thread_local` | done |
+| 26 | C | `Revised<T>` revisions in `DamageState`; `EffectWorld` compares revisions and resets all three | done |
+| 27 | C | road chunk boxes grown to the emitted vertices | done |
+| 28 | C | ref-counted body versions freed with their last holder | done |
+| 29 | C | a terrain stroke copies tiles on first touch, counts bytes, trims with the open entry | done |
+| 30 | C | `EditOp` = kind + per-kind payload, one `op_bytes()` | done |
+| 31 | C | per-record lot and transit journal; `cut_lots_by_roads` copies only crossed lots | done |
+| 32 | C | `core/slot_ids.h`: the same reuse order, O(1) claim | done |
+| 33 | C | planted trees register gaps and keep the saved slot count on load | done |
+| 34 | P | flat walker cell index rebuilt per filing | partial: yard plans kept while the building exists, as in 4.0 (`lorryTraffic.ts:168-174`) |
+| 35 | C | `RowKeeper::draw_of` never inserts | done |
+| 36 | C | moved = shape inputs or a height differ; scratch kept; touched lists only | done |
+| 37 | P | the cost is linear (×47), not quadratic: only the false O(n) comment corrected (a sliding mean would change heights) | done |
+| 38 | C | `SpatialHash::query_unique`; hash set in `street_chain`; name index | done |
+| 39 | C | `LotIndex` built once per lot recompute (stand, box, spatial hash) | done (LotBook mutation not encapsulated) |
+| 40 | C | per-cell free-lot lists need a building change stamp per chunk in `BuildingStore` | not done (pending) |
+| 41 | C | one street run per segment (`RoadNetwork::street_run`) for segment, structures and stays (towers took start and length from two definitions) | done (ulps in texture V) |
+| 42 | P | grade profile keeps ylo/yhi for `ray_deck`; `closest_t` untouched | done |
+| 43 | C | a furniture product per segment: its signal input is written by traffic under the shared lock | not done (pending) |
+| 44 | C | plate index by chunk in `StreetWorks::names`; old and new chunks marked (stale plates after a cut fixed) | done |
+| 45 | C | chunk tested before the ground lookup | done |
+| 46 | C | chunk ground once per cover job; 32 m grid for near_road/in_lot | done |
+| 47 | C | one published read-only broken set; stable compaction | done |
+| 48 | P | furnished floors build walls only (no recipe reads furniture for walls) | done |
+| 49 | P | prepared-body handles need `api/city_builder.h` and GDScript changes | not done (pending) |
+| 50 | P | no-op found by canonical bytes, not by a 32-bit hash (a collision dropped an edit) | done |
+| 51 | P | one vehicle pass fills the views; views clear only what they filled; volumes copied by a log | done (the inspector asks every segment, so not publish-on-demand) |
+| 52 | P | one search admission per tick (`route_admission.cpp`, 4.0 `searchScratch.ts:186,206-218`); connector adjacency deduped | done (per-tick traffic hashes change where reroutes are admitted differently) |
+| 53 | C | walker cells moved to the pedestrians, newborns filed, `crowded` by cells | done |
+| 54 | P | `see_*` stop when Seen is full; scratch kept | done |
+| 55 | C | `around()` by binary search on lanes the step flags as sorted | done |
+| 56 | C | active lists store position+1, same swap order | done |
+| 57 | P | `lane_clear` reads the lane and its entry connectors | done |
+| 58 | P | PoseTable resets only touched places; charging unchanged, because the 4.0 does not charge that way (`hybridAStar.ts:244,268`) | partial |
+| 59 | C | signal node list; only their approaches lit; the render copies only fresh publications | done |
+| 60 | C | rail loops by transit revision; stop lanes only on changed segments; index lookups; only touched lines re-sent (4.0 `transit.ts:246-288`) | done |
+| 61 | C | rail Dijkstra stops once both ends settle; rail net cached | done |
+| 62 | D | O(N) per input event over player stops; no frame cost | discarded |
+| 63 | C | parked cars indexed by cell, rebuilt on a new publication | done |
+| 64 | P | per-body boxes from bones and reach; scratch kept | done |
+| 65 | C | `MmLayer` real bounds for the opaque layers | done (marks and puffs keep the map box: transparent sort order) |
+| 66 | P | puffs hidden when none is alive; one upload a frame | partial: the live draw is still sized by capacity |
+| 67 | P | the event names its ruin; scars indexed by seed; adoption under the admission | done |
+| 68 | C | streamed fracture: exact bounds, per-cell buckets, Packed arrays sized by a count pass | done |
+| 69 | C | only new craters laid; terrain-touched craters re-laid; the mark layer grows (newest marks were dropped past 1400) | done (mounds still drop past 2000: pending) |
+| 70 | C | zero-weight bones skipped | done |
+| 71 | P | hidden clouds dropped when the list is built | done |
+| 72 | C | the fog march loops only steps inside the window, same t0 and step | done |
+| 73 | C | b and c done; a (lantern wash) not done: `display_to_radiance(0)` is not zero, collapsing the quad changes pixels | partial (user decision) |
+| 74 | C | puff offsets cached per sky revision; nothing re-sent while still | done |
+| 75 | C | cascades refit only on change; weather asks the ground only when active; one ground owner | done (skipping while shadows are off is not exact) |
+| 76 | P | resolved tier cached; the governor is roomy only when the p90 frame interval fits `budget x cpu_budget_slack` | done (behaviour change) |
+| 77 | C | solids cached per building by exact key; camera queries remembered per map revision | done |
+| 78 | C | lazy snapshot, `changed` once per frame; live network counts | done (handlers run at end of frame) |
+| 79 | P | junction marks redraw on change; the inspector updates in place | done |
+| 80 | C | one outline mesh with the pixel width in a shader (no 256-surface limit) | done |
+| 81 | P | reference dialog freed on exit; materials cloned once | done |
+| 82 | C | shelf built once per open, key to card map, deduped captures | done |
+| 83 | C | width redrawn only when the snapped width changed | done |
+| 84 | C | keys panel is an internal child | done |
+| 85 | C | CPU layer images kept, doubling, generation reset (C++ and GDScript) | done (`drawn` kept: captures read it) |
+| 86 | P | framed blocks written in place; buffer reserved | done |
+| 87 | C | load decodes once into a candidate and swaps it in under the lock | done |
+| 88 | C | survey before the edit lock; grid merge in the same order | done |
+| 89 | P | blast sigmas computed once at load | done |
+| 90 | P | `ByteReader` owns count checks for every reader (saves, bodies, people asset, signature bodies) | done |
+| 91 | P | `render_cpu_ms` named for what it measures; flat CpuWatch samples | done |
+| 92 | P | terrain generator built once; lot margins are a design (cell independence), not a defect | done |
+
+Also fixed: the `-Wdangling` compound literals in `api/city_core_lots.cpp` `lot_proposals` (pointers to temporaries read after
+the range-init ended); the `street_furniture` gate allowance (`kerbside_reach()` owns the value).

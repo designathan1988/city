@@ -7,10 +7,10 @@ O que cada ferramenta faz e ensinou, e o texto completo do que o `CLAUDE.md` res
   inteira 65 a 75 s com 8 em paralelo (~30 min em série); a cidade do mapa 0 abre em 211 ms (`look`, 6,5 s a rodada inteira); a
   captura da cidade faz 52 fotos em 48 s; `capture_roads` gasta ~43 s antes da primeira foto (causa a medir com o `sampler.py`).
   Lento é defeito de método: medir onde vai o tempo e trocar o método, nunca esperar.
-- **`runq.sh`**: fila de jobs, cada um vigiado pelo log (parado = travado, morto só pelo PID do próprio job); um script que não
+- **`runq.sh`** (deleted 2026-11-07, replaced by `tools/tasks`): fila de jobs, cada um vigiado pelo log (parado = travado, morto só pelo PID do próprio job); um script que não
   compila quebra o job na hora. `fast` compila os scripts antes da DLL (o jogo aberto prende a DLL: nada de jogo ao lado do link).
   A DLL de release é refeita para o commit.
-- **`suite.py`** (sessão de causa-raiz): mesma lista e regra de falha do `run_tests.sh`, todas as cenas ao mesmo tempo; uma
+- **`suite.py`** (deleted 2026-11-07, replaced by `tools/tasks`; sessão de causa-raiz): mesma lista e regra de falha do `run_tests.sh`, todas as cenas ao mesmo tempo; uma
   falha sob carga é repetida sozinha e dita INSTÁVEL, nunca escondida. **`sampler.py`**: congela cada thread por ~0,1 ms a cada 5 ms (copia a pilha e desenrola depois) e soma as
   pilhas (símbolos pedem a DLL com informação de depuração: `-DCMAKE_BUILD_TYPE=RelWithDebInfo` numa pasta de build à parte, essa
   DLL nunca é commitada). **`causes.py`**: analisador estático de causas-raiz (<1 s).
@@ -62,6 +62,54 @@ O que cada ferramenta faz e ensinou, e o texto completo do que o `CLAUDE.md` res
   `model-catalog*`, `model-sheet`, `cook-*`, `bake-people-pics`, `import-makehuman-pack`, `package-desktop` e `accuse`; `src/lab`
   núcleo, `doctor`, `resources`, `inspector`, `code` e `gpu`. A ler: `src/lab/{recorder,tests,optimizations,catalog}`,
   `scripts/{probe,diagnose,lab,vite,check-code}`, `tests/{arch,census,fuzz,scale,perf}`, `eslint-rules`, `desktop`.
+
+
+## 2026-11-07: one orchestration owner for every support tool (English)
+**Cause of the slowness, read in the code:** no tool declared its work as data (inputs, deadline, verdict). Each one was an
+imperative script driving its own processes, so each invented its own scheduler and guesses: hangs judged by log silence
+(`runq_jobs.sh`), by CPU-time change (arch supervisor) or not at all (converter `spawnSync`/`execFile`, `build.sh capture`,
+the import/scripts/build/digest steps of `quick.sh`); serial loops (`runq.sh`, `run_tests.sh`, `run_gates.py`, sandbox steps,
+differential seeds) where one stuck task held the rest; outputs wiped instead of keyed (`run.py rmtree`, `quick.sh rm -rf
+photos`, converter output folders), so nothing was reused; change scope by a hand-written path table (`quick.sh scenes_of`)
+or `git status | awk '{print $2}'` (`gates_changed.sh`); improvised exit codes (`--summary` returned 0, "END OF QUEUE" 0,
+empty sets 0, a test failing under load and passing alone counted as a pass). The arch selfcheck hang was this decision in
+one place: `scan.py` took any `OSError` of `os.rename` for "another task won", deleted its copy and waited forever on a
+marker, while the supervisor, having no deadline, took the waiting loop's CPU ticks as life.
+
+**Fix:** `tools/tasks/` is the one owner (contract: a `Task` with argv or a Python call, a required `timeout_s`, content-keyed
+`inputs`, `extra`, `outputs`, `after`, `resources`, `hidden`, `verdict`).
+- `inputs.py` keys files by git blob ids (never modification times) and is the only owner of "what changed".
+- `cache.py` stores PASS/FAIL by key in `dist/cache/tasks` (TIMEOUT and BROKEN are never cached), plus `memo` for
+  sub-results and `materialize` (a shared directory under an OS lock with a deadline; errors raise).
+- `proc.py`/`win32.py` start every task in a Windows Job Object (KILL_ON_JOB_CLOSE) or a POSIX process group, optionally on
+  the private desktop `WinSta0\roadcraft_tests` (moved from `hidden_run.ps1`), and kill the whole tree by PID at the deadline.
+- `pool.py` runs the dependency graph in parallel within cores and OS readers/writer locks (`dll`: builds exclusive, Godot
+  runs shared); a failure only SKIPs its dependents; recorded times order the work and never kill.
+- `cli.py run|serve|status|--list`; `suites.json` (schema in `tools/gates/schemas/suites.schema.json`) holds the suites
+  `quick` (`--ready`, `--all`, `--bless`), `ready`, `fast`, `tests`, `capture`, `gates`; the Godot test list and timeouts
+  moved there from `run_tests.sh`. Exit 0 only for a non-empty selection that all passed; 1 for any failure; 2 for usage
+  or an empty selection. `serve` speaks JSON lines for the Node converter.
+- Deleted: `tools/analysis/suite.py` (with its UNSTABLE rule), `tools/build/run_tests.sh`, `runq.sh`, `runq_jobs.sh`,
+  `hidden_run.ps1`, `gates_changed.sh`; `tools/converter/scripts/live-run.mjs` (it guessed hangs from the slowest item).
+- `quick.sh` is `exec python tools/tasks/cli.py run quick "$@"`: a scene reruns exactly when an input of it changed (the
+  debug DLL is an output of `build_debug` and an input of every Godot task); a missing golden fails ("run --bless").
+- `photodiff.py` pairs the union of names; a missing side, an empty set or any changed pixel fails; it reports the mean
+  difference and the per-channel shift (the 24-level cut is only for the red picture).
+- Captures exit nonzero on incomplete photos (`CaptureWait.exit_code`); `look.gd` fails a plan with zero shots.
+- `sampler.py` runs its target hidden under a deadline, kills the tree in `finally`, caches symbols by (module hash,
+  address), fails on zero samples. `causes.py` scans the files from `inputs.py` (native/src and project scripts, no
+  converter copies or fixtures), parses each file once per content (`code_parse.py`), roots per-frame at real
+  `_process`/`_physics_process`/`sync`/`tick` member definitions (the 32 ENGINE_CALL_IN_LOOP findings were boot loaders).
+- Gates (`tools/gates`) rebuilt on lexers (C++/GLSL/JS, GDScript, Python, shell, Godot resources, XML, prose): rules read
+  tokens, not raw lines; `--file`/`--files-from` judge only what was asked; scope from the git snapshot; each rule in its
+  own try (`GATE_CRASH` fails); per-file results memoized by content; `--selftest` runs one failing and one passing
+  fixture per rule (60 cases, 30 rules). New rules: SIDECAR_WITHOUT_SOURCE, PYTHON_IMPORT_UNRESOLVED (it would have
+  caught the 11 broken `tools/process` imports of the English rename), NON_ENGLISH_TEXT on changed lines.
+- Converter: every child process is a task (`src/common/tasks.ts`); one machine-config resolver (`src/common/machine.ts`,
+  env vars only override; tests pass without them); derived graphs keyed by their inputs (`src/common/derived.ts`); the
+  differential compiles a translation once and reads each seed as data.
+
+Commands: see CLAUDE.md "Comandos". Tests of the orchestrator: `python -m unittest discover tools/tasks/tests` (26 pass).
 
 
 # Texto completo das seções resumidas no CLAUDE.md (até 2026-11-06)
