@@ -6,8 +6,6 @@ import math
 import os
 import re
 
-import numpy
-
 SPLIT_CASE = re.compile(r"[A-Z]+(?![a-z])|[A-Z]?[a-z]+|[0-9]+")
 IDENT = re.compile(r"(?<![0-9A-Za-z_])[A-Za-z_][A-Za-z0-9_]*")
 
@@ -26,6 +24,7 @@ def words_of(name):
 
 def natural_break(values):
     """The value that best splits a sample in two (Otsu's between-class variance): no constant, only the sample. One sort, one pass of sums."""
+    import numpy  # here, not at the top: a worker process that never cuts anything must not load it
     data = numpy.sort(numpy.fromiter(values, dtype=float))
     if data.size < 2 or data[0] == data[-1]:
         return math.inf

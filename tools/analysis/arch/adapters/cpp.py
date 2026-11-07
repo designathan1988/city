@@ -3,17 +3,15 @@ unit chosen for it before anything starts, and a unit parsed again only when a f
 import collections
 import marshal
 import os
-import re
 
 from .. import workers
-from ..core import IDENT, digest, natural_break
+from ..core import digest
 from ..model import Facts
-from .cpp_build import HEADER, SOURCE, compile_units, compiler_of, macros
+from .cpp_build import HEADER, SOURCE, compile_units, compiler_of
+from . import cpp_plan
+from .cpp_plan import differ, owners, prefix, seen_from
 
 LANG = ("c", "cc", "cpp", "cxx", "h", "hh", "hpp", "hxx", "inl")
-INCLUDE = re.compile(r'^[ \t]*#[ \t]*include[ \t]*["<]([^">]+)[">]', re.M)
-DEFINE = re.compile(r'^[ \t]*#[ \t]*define[ \t]+(\w+)', re.M)
-ANGLED = re.compile(r'^[ \t]*#[ \t]*include[ \t]*<([^>]+)>', re.M)
 
 
 def _parse(task):
@@ -60,105 +58,8 @@ def _parse(task):
     return facts, [(relative(d.location.file.name if d.location.file else None) or rel, d.location.line, d.spelling[:160]) for d in errors], deps, sorted(walked)
 
 
-def _prefix(flags, export, config, repo, tracked, own):
-    """What nearly every unit includes from outside, compiled once for a configuration and read by all of them: the compiler stops parsing the same
-    headers hundreds of times. Which headers comes from the sample, and `ARCH_PCH=0` gives the road without it, which the selfcheck compares byte by byte."""
-    if os.environ.get("ARCH_PCH") == "0":
-        return None
-    from clang import cindex as ci
-    counts = collections.Counter()
-    for path in own:
-        counts.update(n for n in set(ANGLED.findall(repo.text(tracked[path]) or "")) if n.rsplit(".", 1)[-1] in ("hpp", "h") or "." not in n)
-    cut = natural_break(list(counts.values()))
-    names = sorted(n for n, c in counts.items() if c >= cut) if cut != float("inf") else sorted(counts)
-    if not names:
-        return None
-    source = os.path.join(export, f"shared_{digest(config)}_{os.getpid()}.hpp")
-    with open(source, "w", encoding="utf8", newline="\n") as f:
-        f.write("".join(f"#include <{n}>\n" for n in names))
-    tu = ci.Index.create().parse(source, args=["-x", "c++-header", *flags], options=ci.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD | ci.TranslationUnit.PARSE_INCOMPLETE)
-    if any(d.severity >= 3 for d in tu.diagnostics):
-        return None
-    tu.save(source + ".pch")
-    return source + ".pch", source
-
-
-def _differ(compiler, first, second, source, repo, tracked, own):
-    """Which of our files can read differently in two configurations: those that name a macro with another text there, or one defined in such a file,
-    or one that expands to such a macro. The compiler lists the macros; the rest is a fixed point over names. Everything else is the same code."""
-    a, b = macros(compiler, first, source), macros(compiler, second, source)
-    changed = {m for m in set(a) | set(b) if a.get(m) != b.get(m)}
-    users = collections.defaultdict(set)
-    for name, (_, body) in {**a, **b}.items():
-        for word in IDENT.findall(body):
-            users[word].add(name)
-    stack = list(changed)
-    while stack:
-        for name in users.get(stack.pop(), ()):
-            if name not in changed:
-                changed.add(name)
-                stack.append(name)
-    words = {p: set(IDENT.findall(repo.text(tracked[p]) or "")) for p in own}
-    defined = {p: set(DEFINE.findall(repo.text(tracked[p]) or "")) for p in own}
-    apart = set()
-    grew = True
-    while grew:
-        grew = False
-        for p in own - apart:
-            if words[p] & changed:
-                apart.add(p)
-                changed |= defined[p]
-                grew = True
-    return apart
-
-
 def _files(tracked):
     return {p for p in tracked if p.rsplit(".", 1)[-1].lower() in LANG}
-
-
-def _included(repo, tracked, own):
-    """What each file can include, from its text: more than it may really see, which only makes a change look wider than it is."""
-    by_name = collections.defaultdict(list)
-    for p in sorted(own):
-        by_name[p.rsplit("/", 1)[-1]].append(p)
-    out = {}
-    for path in own:
-        found = set()
-        folder = path.rsplit("/", 1)[0] if "/" in path else ""
-        for name in INCLUDE.findall(repo.text(tracked[path]) or ""):
-            near = os.path.normpath(os.path.join(folder, name)).replace("\\", "/")
-            if near in own:
-                found.add(near)
-            else:
-                found.update(p for p in by_name.get(name.rsplit("/", 1)[-1], ()) if p == name or p.endswith("/" + name))
-        out[path] = found
-    return out
-
-
-def _seen_from(start, included):
-    seen, stack = {start}, [start]
-    while stack:
-        for nxt in included.get(stack.pop(), ()):
-            if nxt not in seen:
-                seen.add(nxt)
-                stack.append(nxt)
-    return seen
-
-
-def _owners(rels, sight, weight):
-    """Each header goes to the unit that sees it and has the least to walk so far: the walks spread, and no process waits for another."""
-    load = collections.Counter()
-    seers = collections.defaultdict(list)
-    for rel in rels:
-        for file in sight[rel]:
-            if HEADER.search(file):
-                seers[file].append(rel)
-    owned = {rel: {rel} for rel in rels}
-    for file in sorted(seers, key=lambda f: (-weight.get(f, 0), f)):
-        best = min(seers[file], key=lambda r: (load[r], r))
-        owned[best].add(file)
-        load[best] += weight.get(file, 0)
-    return owned
 
 
 def _unique(facts):
@@ -227,7 +128,7 @@ def scan(repo, tracked, scope, export, cache, log):
     tasks = compile_units(repo, sources, export)
     own = {p for p in sources if p in scope}
     missing_flags = [p for p in sorted(own) if SOURCE.search(p)] if not tasks else []
-    included = _included(repo, tracked, own)
+    included = cpp_plan.included(repo, tracked, own)
     weight = {p: len(repo.text(tracked[p]) or "") for p in own}
     world = digest("".join(sorted(repo.content_id(tracked[p]) for p in sources - own)))
     work = collections.defaultdict(list)
@@ -237,14 +138,14 @@ def scan(repo, tracked, scope, export, cache, log):
     round_one = _Pass(repo, tracked, export, own, cache.table("cpp"), world)
     # Compiling the shared headers pays when many units read them; a handful parses faster without.
     if sum(len(u) for u in work.values()) >= 2 * workers.cores():
-        round_one.prepare = lambda config, flags: _prefix(flags, export, config, repo, tracked, own)
+        round_one.prepare = lambda config, flags: prefix(flags, export, config, repo, tracked, own)
     plan, only, same = [], {}, {}
     units_total = 0
     first = None
     for config, units in sorted(work.items()):
         rels = sorted(r for r, _ in units)
-        sight = {r: _seen_from(r, included) for r in rels}
-        owned = _owners(rels, sight, weight)
+        sight = {r: seen_from(r, included) for r in rels}
+        owned = owners(rels, sight, weight)
         usual = collections.Counter(tuple(f) for _, f in units).most_common(1)[0][0]
         round_one.shared[usual] = (config, list(usual))
         units_total += len(units)
@@ -255,7 +156,7 @@ def scan(repo, tracked, scope, export, cache, log):
             made = round_one.flags_of(list(usual))
             base = round_one.flags_of(first[1])
             if "-include-pch" in made and "-include-pch" in base and round_one.made.get(first[0]):
-                only[config] = _differ(compiler_of(repo), first[1], list(usual), round_one.made[first[0]][1], repo, tracked, own)
+                only[config] = differ(compiler_of(repo), first[1], list(usual), round_one.made[first[0]][1], repo, tracked, own)
                 same[config] = own - only[config]
                 owned = {r: o & only[config] for r, o in owned.items()}
         plan += [(config, rel, flags, sight[rel], owned[rel]) for rel, flags in sorted(units) if owned[rel]]
@@ -293,10 +194,10 @@ def _left_over(results, own, plan, included, only):
         for dep, rel in seen_by[config].items():
             if dep not in walked[config] and (config not in only or dep in only[config]):
                 again[rel].add(dep)
-        late += [(config, rel, flags_of[(config, rel)], _seen_from(rel, included) | deps, deps) for rel, deps in sorted(again.items())]
+        late += [(config, rel, flags_of[(config, rel)], seen_from(rel, included) | deps, deps) for rel, deps in sorted(again.items())]
     anyone = {d for per in seen_by.values() for d in per}
     alone = sorted(p for p in own if HEADER.search(p) and p not in anyone)
     if alone and plan:
         config, _, flags, _, _ = plan[0]
-        late += [(config, h, ["-x", "c++-header", *flags], _seen_from(h, included), {h}) for h in alone]
+        late += [(config, h, ["-x", "c++-header", *flags], seen_from(h, included), {h}) for h in alone]
     return late

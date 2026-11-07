@@ -4,6 +4,8 @@ import json
 import os
 import sys
 
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")  # no matrix is ever multiplied here: its thread pool would only reserve memory
+
 from .core import digest, program_root, read_json, write_json
 
 

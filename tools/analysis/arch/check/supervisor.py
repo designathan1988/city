@@ -15,6 +15,7 @@ from ..core import read_json, write_json
 
 LOOK_EVERY = 1
 CHILD_MEMORY = 400 * 2 ** 20
+BASE_MEMORY = 2 * 2 ** 30  # a task that reads this repository, until a first run says what it really took
 
 
 class Job:
@@ -53,7 +54,8 @@ def _measure(pid):
 
 class Supervisor:
     def __init__(self, ctx, finished, base_memory):
-        self.ctx, self.finished, self.base_memory = ctx, finished, base_memory
+        self.ctx, self.finished = ctx, finished
+        self.base_memory = max(base_memory, BASE_MEMORY)
         self.waiting, self.closed, self.lock = [], False, threading.Lock()
         self.record = os.path.join(os.path.dirname(ctx.base), "selfcheck_times.json")
         self.known = read_json(self.record, {})
@@ -63,7 +65,7 @@ class Supervisor:
         return self.known.get(job.name, [float("inf"), 0])[0]
 
     def _cores(self, job):
-        return max(1, self.cpus // 2) if job.heavy else max(1, self.cpus // 6)
+        return max(1, self.cpus // 4) if job.heavy else max(1, self.cpus // 8)
 
     def _memory_of(self, job):
         seen = self.known.get(job.name, [0, 0])[1]
@@ -79,10 +81,17 @@ class Supervisor:
         self.ctx.say(f"START {job.name}")
         return _Running(job, process, self._cores(job))
 
+    def _promised(self, running):
+        """What started tasks will still ask for: free memory now says nothing about a process that is only beginning."""
+        scan = 0 if self.ctx.ready.is_set() else self.base_memory + self.cpus * CHILD_MEMORY
+        return scan + sum(max(self._memory_of(r.job) - r.peak, 0) for r in running)
+
     def _admit(self, waiting, running):
-        """Every task starts now: the system shares the processors among them. Only memory that does not exist holds a task back, and then only that one."""
+        """Every task starts now: the system shares the processors among them. Only memory that does not exist holds a task back, and then only that one:
+        what counts is what the system can still commit, the limit a process really dies at."""
         for job in list(waiting):
-            if not running or psutil.virtual_memory().available > self._memory_of(job):
+            free = psutil.virtual_memory().available + psutil.swap_memory().free - self._promised(running)
+            if not running or free > self._memory_of(job):
                 waiting.remove(job)
                 running.append(self._start(job))
 
