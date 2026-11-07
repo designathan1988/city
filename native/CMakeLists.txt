@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.25) # add_subdirectory(... SYSTEM)
 project(citycore LANGUAGES C CXX)
 
+# compile_commands.json in every build folder: clangd takes each file's real flags from it (native/.clangd points at build-win).
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # Godot 4.7 API, single precision (see architecture doc: 30 km fits in float32 with the origin at the map center).
 set(GODOTCPP_API_VERSION "4.7" CACHE STRING "" FORCE)
 set(GODOTCPP_TARGET "template_release" CACHE STRING "template_release for the export, template_debug for the editor")
