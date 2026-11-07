@@ -83,7 +83,7 @@ void crossings_of(const CityState &s, RailLine &r) {
 }
 
 // One line's loop: the stations out and the ones back, a leg of track between each two; false when a leg has no way.
-bool make_loop(const TransitData &t, const TransitLine &l, const RailGraph &g, RailLine &r) {
+bool make_loop(const TransitData &t, const TransitLine &l, RailNet &net, RailLine &r) {
 	std::vector<const TransitStop *> order;
 	for (int id : l.stops)
 		if (const TransitStop *q = t.stop(id)) order.push_back(q);
@@ -93,7 +93,7 @@ bool make_loop(const TransitData &t, const TransitLine &l, const RailGraph &g, R
 	std::vector<size_t> marks;
 	auto repeats = [&](const V2 &p) { return !r.points.empty() && r.points.back().x == p.x && r.points.back().y == p.y; };
 	for (size_t i = 0; i < order.size(); i++) {
-		const std::vector<V2> leg = rail_path(g, order[i]->at, order[(i + 1) % order.size()]->at);
+		const std::vector<V2> &leg = leg_of(net, order[i]->at, order[(i + 1) % order.size()]->at);
 		if (leg.empty()) return false;
 		marks.push_back(repeats(leg[0]) ? r.points.size() - 1 : r.points.size());
 		for (const V2 &p : leg)
@@ -120,14 +120,15 @@ void place_rails(CityState &s) {
 	std::vector<RailLine> before = std::move(run.rails);
 	run.rails.clear();
 	run.crossings_by_lane.clear();
-	const RailGraph graphs[2] = { rail_graph(s.transit, TransitMode::TRAIN, join), rail_graph(s.transit, TransitMode::METRO, join) };
+	const TransitMode modes[2] = { TransitMode::TRAIN, TransitMode::METRO };
+	for (int m = 0; m < 2; m++) ready_net(s.transit, modes[m], join, run.nets[m]);
 	for (const TransitLine &l : s.transit.lines) {
 		if (l.mode == TransitMode::BUS) continue;
 		RailLine r;
 		r.line = l.id;
 		r.metro = l.mode == TransitMode::METRO;
 		r.colour = l.colour;
-		if (!make_loop(s.transit, l, graphs[r.metro ? 1 : 0], r)) continue;
+		if (!make_loop(s.transit, l, run.nets[r.metro ? 1 : 0], r)) continue;
 		const auto was = std::find_if(before.begin(), before.end(), [&](const RailLine &o) { return o.line == l.id && o.points.size() == r.points.size() && o.length == r.length && int(o.trains.size()) == l.vehicles; });
 		if (was != before.end()) r.trains = std::move(was->trains); // an edit elsewhere leaves them where they are
 		for (int k = 0; was == before.end() && k < l.vehicles; k++) {
@@ -143,6 +144,39 @@ void place_rails(CityState &s) {
 		for (size_t c = 0; c < r.crossings.size(); c++) run.crossings_by_lane[r.crossings[c].key].push_back({ index, int(c) });
 		run.rails.push_back(std::move(r));
 	}
+	for (RailNet &net : run.nets) drop_unused_legs(net);
+}
+
+void refresh_crossings(CityState &s, const std::vector<int> &segs) {
+	TransitRun &run = s.transit_run;
+	bool any = false;
+	for (RailLine &r : run.rails) {
+		if (r.metro || r.points.empty()) continue;
+		float x0 = r.points[0].x, z0 = r.points[0].y, x1 = x0, z1 = z0;
+		for (const V2 &p : r.points) {
+			x0 = std::min(x0, p.x);
+			z0 = std::min(z0, p.y);
+			x1 = std::max(x1, p.x);
+			z1 = std::max(z1, p.y);
+		}
+		bool touched = false;
+		for (int seg : segs) {
+			if (seg < 0 || size_t(seg) >= s.roads.segs.size()) continue;
+			const RoadSegment &g = s.roads.segs[size_t(seg)];
+			// a road that may cross it now (crossings_of reads every road whose box meets a stretch's), or one it crossed
+			touched = g.alive && !(g.maxx < x0 || g.minx > x1 || g.maxz < z0 || g.minz > z1);
+			for (size_t c = 0; c < r.crossings.size() && !touched; c++) touched = r.crossings[c].key / MAX_LANES / 2 == seg;
+			if (touched) break;
+		}
+		if (!touched) continue;
+		r.crossings.clear();
+		crossings_of(s, r);
+		any = true;
+	}
+	if (!any) return;
+	run.crossings_by_lane.clear();
+	for (size_t i = 0; i < run.rails.size(); i++)
+		for (size_t c = 0; c < run.rails[i].crossings.size(); c++) run.crossings_by_lane[run.rails[i].crossings[c].key].push_back({ int(i), int(c) });
 }
 
 void step_train(CityState &s, RailLine &r, Train &t, float dt) {

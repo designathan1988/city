@@ -11,7 +11,7 @@ namespace city {
 //   BLAST          x y z, a = collapse range m, b = charge kg, c = soil (0 earth, 1 hard, 2 building), d = light range m, dx = the force
 //   SHOT           x y z where the round ended, dx dz = its unit direction (xz), a = dy, u = what it met (0 nothing, 1 walker, 2 vehicle)
 //   WOUND          x y z, dx dz = way of the bullet, u = 1 when a limb came off
-//   BUILDING_DOWN  id = building, x z centre, a = force; the ruin is in DamageState
+//   BUILDING_DOWN  id = building, x z centre, a = force; the ruin is in DamageState, u = its index in DamageState::ruins as it fell
 //   BUILDING_HIT   id = building, x y z the point struck, a = overpressure kPa
 //   BUILDING_SCAR  id = building: part of it broke off and it stands (DamageState::scars)
 //   VEHICLE_BLOWN  id, x y z, a = heading, u = type | paint << 8, b = burn seconds

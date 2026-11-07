@@ -58,8 +58,6 @@ EditResult strike_at(CityState &s, double x, double z, double strength, double h
 	strike_traffic(b);
 	strike_people(b);
 	s.damage.growth_hold_until = std::max(s.damage.growth_hold_until, s.damage.now + double(p.hold_growth_s));
-	const double reach = double(e.d) + double(p.crater_min_m);
-	finish_edit(s, x - reach, z - reach, x + reach, z + reach);
 	r.ok = true;
 	return r;
 }

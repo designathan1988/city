@@ -21,8 +21,7 @@ void write_records(ByteWriter &w, const StreetWorks &k) {
 		w.put<uint8_t>(uint8_t(i.sign));
 		w.put<float>(i.x);
 		w.put<float>(i.z);
-		std::vector<uint8_t> text(i.text.begin(), i.text.end());
-		w.put_vec(text);
+		w.put_string(i.text);
 	}
 	w.put_slots(k.poles.items.size());
 	for (const UtilityPole &p : k.poles.items) {
@@ -52,8 +51,8 @@ void write_records(ByteWriter &w, const StreetWorks &k) {
 }
 
 bool read_records(ByteReader &r, StreetWorks &k) {
-	uint32_t count = r.get<uint32_t>();
-	if (!r.ok || count > MAX_RECORDS) return false;
+	uint32_t count = r.get_count(SLOT_MIN_BYTES);
+	if (!r.ok) return false;
 	for (uint32_t i = 0; i < count && r.ok; i++) {
 		if (!r.get<uint8_t>()) continue;
 		StreetItem it;
@@ -61,14 +60,12 @@ bool read_records(ByteReader &r, StreetWorks &k) {
 		it.sign = SignType(r.get<uint8_t>());
 		it.x = r.get<float>();
 		it.z = r.get<float>();
-		std::vector<uint8_t> text;
-		r.get_vec(text);
-		it.text.assign(text.begin(), text.end());
+		it.text = r.get_string();
 		if (int(it.kind) >= ITEM_KINDS || int(it.sign) >= SIGN_TYPES) return false;
 		if (r.ok) k.put_item(int(i), it);
 	}
-	count = r.get<uint32_t>();
-	if (!r.ok || count > MAX_RECORDS) return false;
+	count = r.get_count(SLOT_MIN_BYTES);
+	if (!r.ok) return false;
 	for (uint32_t i = 0; i < count && r.ok; i++) {
 		if (!r.get<uint8_t>()) continue;
 		UtilityPole p;
@@ -80,8 +77,8 @@ bool read_records(ByteReader &r, StreetWorks &k) {
 		p.kind = (flags & POLE_RURAL_BIT) != 0 ? PoleKind::RURAL : PoleKind::URBAN;
 		if (r.ok) k.put_pole(int(i), p);
 	}
-	count = r.get<uint32_t>();
-	if (!r.ok || count > MAX_RECORDS) return false;
+	count = r.get_count(SLOT_MIN_BYTES);
+	if (!r.ok) return false;
 	for (uint32_t i = 0; i < count && r.ok; i++) {
 		if (!r.get<uint8_t>()) continue;
 		UtilitySpan s;
@@ -91,8 +88,8 @@ bool read_records(ByteReader &r, StreetWorks &k) {
 		if (s.a < 0 || s.b < 0 || s.a >= poles || s.b >= poles || !k.poles.items[size_t(s.a)].alive || !k.poles.items[size_t(s.b)].alive) return false;
 		if (r.ok) k.put_span(int(i), s);
 	}
-	count = r.get<uint32_t>();
-	if (!r.ok || count > MAX_RECORDS) return false;
+	count = r.get_count(SLOT_MIN_BYTES);
+	if (!r.ok) return false;
 	for (uint32_t i = 0; i < count && r.ok; i++) {
 		if (!r.get<uint8_t>()) continue;
 		Barrier b;
@@ -101,8 +98,8 @@ bool read_records(ByteReader &r, StreetWorks &k) {
 		if (int(b.kind) >= BARRIER_KINDS) return false;
 		if (r.ok) k.put_barrier(int(i), b);
 	}
-	count = r.get<uint32_t>();
-	if (!r.ok || count > MAX_RECORDS) return false;
+	count = r.get_count(SLOT_MIN_BYTES);
+	if (!r.ok) return false;
 	for (uint32_t i = 0; i < count && r.ok; i++) {
 		if (!r.get<uint8_t>()) continue;
 		StreetCut c;

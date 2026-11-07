@@ -52,7 +52,7 @@ void insert_roads(CityState &s, const GeneratedRoads &r) {
 	}
 	// Only the generator's own dead ends turn in a bulb: a road demolished later leaves a straight cut.
 	for (int n : ids) s.roads.nodes[n].plain = s.roads.nodes[n].segs.size() != 1;
-	for (int n : ids) s.roads.refresh_node(n);
+	s.roads.settle_shapes();
 }
 
 } // namespace
@@ -63,7 +63,7 @@ void mark_all_lot_cells(CityState &s) {
 		for (int i = first; i < first + cells; i++) s.log.lot_cells.push_back(cell_key(i, j));
 }
 
-void found_land(CityState &s, int map_index, uint32_t exact_seed, bool generate, int tiles) {
+std::unique_ptr<TerrainGen> found_land(CityState &s, int map_index, uint32_t exact_seed, bool generate, int tiles) {
 	s.transit = TransitData(); // a new map has no public transport; a save reads its own after this
 	s.transit_revision++;
 	const Catalog &c = s.catalog;
@@ -90,9 +90,10 @@ void found_land(CityState &s, int map_index, uint32_t exact_seed, bool generate,
 	s.terrain.init(s.map_tiles, c.tune.world_tile_m, c.tune.world_height_spacing_m, s.seed, &s.log, &s.catalog.tune, s.jobs.get());
 	s.nature.ground.init(s.terrain.N, s.terrain.spacing, &c.nature.paint);
 	s.nature.reset(default_weather(c.nature.weather), c.nature.ecology.default_biome, s.seed & ~TerrainGen::FLAT_BIT);
-	if (!generate) return;
-	TerrainGen gen(s.seed, s.map_half, c.tune.world_water_spacing_m);
-	s.terrain.fill(gen, c.tune.world_water_spacing_m);
+	if (!generate) return nullptr;
+	auto gen = std::make_unique<TerrainGen>(s.seed, s.map_half, c.tune.world_water_spacing_m);
+	s.terrain.fill(*gen, c.tune.world_water_spacing_m);
+	return gen;
 }
 
 // Every street of the generated city takes its name, as the Roadcraft's does.
@@ -114,11 +115,11 @@ CityGenReport generate_map(CityState &s, int map_index, uint32_t seed, bool with
 	const Catalog &c = s.catalog;
 	const MapDef &map = c.maps[size_t(map_index) < c.maps.size() ? size_t(map_index) : 0];
 	bool medium = map.medium && with_city;
-	found_land(s, map_index, medium ? (seed | TerrainGen::FLAT_BIT) : (seed & ~TerrainGen::FLAT_BIT));
-	TerrainGen gen(s.seed, s.map_half, c.tune.world_water_spacing_m);
+	// the generator that filled the land lays the streets on it: its river and lakes are planned once
+	const std::unique_ptr<TerrainGen> gen = found_land(s, map_index, medium ? (seed | TerrainGen::FLAT_BIT) : (seed & ~TerrainGen::FLAT_BIT));
 	CityGenReport rep;
 	if (with_city) {
-		GeneratedRoads r = generate_roads(s.seed, s.map_half, map.city_radius_m, gen, gen_profiles(c), c.growth.plan);
+		GeneratedRoads r = generate_roads(s.seed, s.map_half, map.city_radius_m, *gen, gen_profiles(c), c.growth.plan);
 		insert_roads(s, r);
 		s.roads.grade.everything(); // every street solved on the land, and the ground shaped to them
 		sync_grade(s);
@@ -128,6 +129,7 @@ CityGenReport generate_map(CityState &s, int map_index, uint32_t seed, bool with
 		rep.squares = plan_squares(s, seed);
 		rep.buildings = fill_all(s);
 		name_streets(s);
+		settle_name_plates(s.street, s.roads, s.log); // the plates of the names given, on the roads as they are now settled
 		rep.nodes = r.node_count();
 		rep.segments = r.seg_count();
 	}

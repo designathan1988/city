@@ -199,7 +199,11 @@ const YardPlan *yard_of(CityState &s, int building) {
 		pk.planner = std::make_shared<YardPlanner>(std::move(in));
 		pk.planner_building = building;
 		pk.plan_ms = 0;
-	} else pk.yards[building] = std::make_shared<YardPlan>();
+	} else { // nothing to plan: kept as such until what it read of the roads changes
+		auto none = std::make_shared<YardPlan>();
+		none->reads = std::move(in.reads);
+		pk.yards[building] = std::move(none);
+	}
 	return nullptr;
 }
 

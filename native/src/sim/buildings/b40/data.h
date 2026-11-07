@@ -9,6 +9,8 @@
 #include "sim/buildings/b40/model.h"
 #include "sim/buildings/interior/tables.h"
 
+#include <atomic>
+#include <cstdint>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -55,7 +57,16 @@ struct LotRules {
 	float row_depth(int rows) const { return rows <= 0 ? 0 : float(rows) * stall_d + aisle; }
 };
 
+// A number no filling of the tables had before (Data::generation).
+inline uint64_t new_generation() {
+	static std::atomic<uint64_t> next{ 1 };
+	return next.fetch_add(1, std::memory_order_relaxed);
+}
+
 struct Data {
+	// Which filling of the tables this is: a new Data (the catalogue loaded again) has another, a copy the same. What caches
+	// bodies made from the tables keys them by it.
+	uint64_t generation = new_generation();
 	ModelTable models; // the Build > Models catalogue (data/render/models.json)
 	std::shared_ptr<BodyTable> edited = std::make_shared<BodyTable>(); // the bodies the player made; the rest of Data is read-only
 	LotRules lots;

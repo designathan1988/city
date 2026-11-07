@@ -7,6 +7,7 @@
 #include <godot_cpp/classes/rendering_server.hpp>
 
 #include <algorithm>
+#include <cmath>
 #include <vector>
 
 using namespace godot;
@@ -53,20 +54,15 @@ void FarRoadRenderer::build_cpu(const CityState &s, int64_t key, MeshBuilder &mb
 		}
 }
 
-void FarRoadRenderer::update(const CityState &s, JobPool &pool, BuildBudget &budget, const Vector3 &cam) {
-	if (dirty_.empty()) return;
-	std::vector<std::pair<float, int64_t>> order;
-	order.reserve(dirty_.size());
+void FarRoadRenderer::offer(const CityState &s, JobPool &pool, const Vector3 &cam, std::vector<FrameAdmission::Unit> &out) {
 	for (int64_t key : dirty_) {
+		if (busy(key)) continue; // its result lands first; the superchunk stays dirty and is asked again then
 		const float dx = (float(key_x(key)) + MID) * SUPERCHUNK - cam.x, dz = (float(key_y(key)) + MID) * SUPERCHUNK - cam.z;
-		order.emplace_back(dx * dx + dz * dz, key);
-	}
-	std::sort(order.begin(), order.end());
-	for (const auto &[d, key] : order) {
-		if (!budget.take()) break;
-		dirty_.erase(key);
-		const int64_t k = key;
-		submit_job(s, pool, JobKey{ JobLane::ROADS_FAR, k }, k, d, [this, &s, k](MeshBuilder &mb) { build_cpu(s, k, mb); });
+		const float d = std::sqrt(dx * dx + dz * dz);
+		out.push_back(FrameAdmission::Unit{ supers_.count(key) ? 1 : 0, d, 1, [this, &s, &pool, key, d]() {
+					   dirty_.erase(key);
+					   submit_job(s, pool, JobKey{ JobLane::ROADS_FAR, key }, key, d, [this, &s, key](MeshBuilder &mb) { build_cpu(s, key, mb); });
+				   } });
 	}
 }
 
@@ -79,8 +75,7 @@ void FarRoadRenderer::commit_one(BuiltMesh &b) {
 	fresh_ = true;
 	if (!any) return;
 	RenderingServer *rs = RenderingServer::get_singleton();
-	const float x0 = float(key_x(b.key)) * SUPERCHUNK, z0 = float(key_y(b.key)) * SUPERCHUNK;
-	rs->instance_set_custom_aabb(sp.surface.inst, AABB(Vector3(x0, AABB_MIN_Y, z0), Vector3(SUPERCHUNK, AABB_H, SUPERCHUNK)));
+	rs->instance_set_custom_aabb(sp.surface.inst, chunk_bounds(b.key, SUPERCHUNK, b.bounds));
 	rs->instance_geometry_set_shader_parameter(sp.surface.inst, "far_pull", look_->far_pull);
 }
 

@@ -52,17 +52,16 @@ float standing_share(const Blow &b, const Building &bd) {
 	const float height = std::max(1.f, float(bd.floors) * b.s.catalog.tune.strike_storey_m), half = std::min(bd.w, bd.d) * 0.5f;
 	const float ground = b.s.terrain.height_at(bd.x, bd.z);
 	float left = 1.f;
-	for (const Scar &c : b.s.damage.scars) {
-		if (c.seed != bd.seed || c.bx != bd.x || c.bz != bd.z) continue;
+	b.s.damage.each_scar_of(bd.seed, bd.x, bd.z, [&](const Scar &c) {
 		const float r = scar_reach_m(c.force);
 		const float share = r >= half ? (c.y - r - ground) / height : 1.f - r * r * r * SPHERE_VOLUME / (bd.w * bd.d * height);
 		left = std::min(left, std::max(share, 0.f));
-	}
+	});
 	return left;
 }
 
 int scars_on(const CityState &s, const Building &bd) {
-	return int(std::count_if(s.damage.scars.begin(), s.damage.scars.end(), [&](const Scar &c) { return c.seed == bd.seed && c.bx == bd.x && c.bz == bd.z; }));
+	return s.damage.scar_count_of(bd.seed, bd.x, bd.z);
 }
 
 void bring_down(Blow &b, int id, const Aim &aim) {
@@ -75,6 +74,7 @@ void bring_down(Blow &b, int id, const Aim &aim) {
 	ruin.blow_z = aim.z;
 	ruin.blow_force = aim.force;
 	j_add_ruin(b.s, ruin);
+	const uint32_t ruin_index = uint32_t(b.s.damage.ruins.size() - 1); // the event names the ruin it brought (damage_event.h)
 	j_remove_building(b.s, id);
 	j_set_hurt(b.s, rec.seed, rec.x, rec.z, 0.f);
 	auto &fires = b.s.damage.fires;
@@ -85,6 +85,7 @@ void bring_down(Blow &b, int id, const Aim &aim) {
 	e.id = id;
 	e.x = rec.x; e.z = rec.z; e.y = b.ground;
 	e.a = b.strength;
+	e.u = ruin_index;
 	b.emit(e);
 }
 

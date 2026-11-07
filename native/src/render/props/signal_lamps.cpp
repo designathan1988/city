@@ -38,6 +38,7 @@ void SignalLamps::reset() {
 	for (auto &kv : chunks_) kv.second.draw.free();
 	chunks_.clear();
 	signals_.clear();
+	copied_ = false;
 	lit_ = 0;
 }
 
@@ -94,7 +95,9 @@ void SignalLamps::drop_chunk(int64_t key) {
 	chunks_.erase(it);
 }
 
-void SignalLamps::update(const PoseFrame &f) {
+void SignalLamps::update(const PoseFrame &f, bool fresh) {
+	if (!fresh && copied_) return; // the same publication: every post already shows it
+	copied_ = true;
 	signals_.assign(f.signals.begin(), f.signals.end());
 	for (auto &kv : chunks_) {
 		Chunk &c = kv.second;

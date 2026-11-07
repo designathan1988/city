@@ -3,6 +3,7 @@
 
 #include "sim/commands/road_grade_sync.h"
 #include "sim/roads/street_furniture.h"
+#include "sim/street/street_names.h"
 #include "sim/state/city_state.h"
 
 #include <algorithm>
@@ -16,7 +17,6 @@ constexpr double STILL_THERE_M = 0.5; // execute.ts stillThere: the point is sti
 constexpr double CLEAR_STEP_M = 2; // clearAndConform samples the centreline every 2 m
 constexpr double CLEAR_SLACK_M = 0.3; // the lot rectangle grown by the half width minus this
 constexpr double STREET_MARK_PAD_M = 40; // what the player places stands on a segment within this (the widest street's footway)
-constexpr float NODE_REFRESH_PAD_M = 60; // nodes this far past the edit may change shape (bulbs see their neighbours)
 
 bool still_there(const CityState &s, int seg, double x, double z) {
 	const RoadNetwork &net = s.roads;
@@ -124,8 +124,16 @@ void mark_street(CityState &s, double x, double z) {
 	s.roads.for_segments_near(x - r, z - r, x + r, z + r, [&](int seg) { s.log.furniture_segs.push_back(seg); });
 }
 
-void finish_edit(CityState &s, double minx, double minz, double maxx, double maxz) {
+void settle_network(CityState &s) {
+	s.roads.settle_shapes();
+	sync_grade(s); // the heights of what the edit changed (its plates included), and the ground under them
+	settle_name_plates(s.street, s.roads, s.log); // the streets' names stand on their corners: the shapes and heights above
+}
+
+void finish_command(CityState &s, bool recorded) {
 	RoadNetwork &net = s.roads;
+	const bool derived = net.shapes_pending() || net.grade.pending() || !s.log.lot_cells.empty();
+	settle_network(s);
 	std::vector<std::pair<double, double>> squares; // a hydrant may move to another corner of the changed nodes' squares
 	for (int n : s.log.net_nodes) {
 		double x0, z0, x1, z1;
@@ -144,18 +152,12 @@ void finish_edit(CityState &s, double minx, double minz, double maxx, double max
 	}
 	ChangeLog::dedup(segs);
 	for (int seg : segs) mark_furniture(s, seg);
-	float p = NODE_REFRESH_PAD_M;
-	std::vector<int> nodes;
-	net.node_hash.query(float(minx) - p, float(minz) - p, float(maxx) + p, float(maxz) + p, [&](int n) {
-		if (net.nodes[n].alive && std::find(nodes.begin(), nodes.end(), n) == nodes.end()) nodes.push_back(n);
-	});
-	for (int n : nodes) net.refresh_node(n);
-	sync_grade(s); // the heights of what the edit changed (its plates included), and the ground under them
 	std::vector<int64_t> cells = s.log.lot_cells;
 	ChangeLog::dedup(cells);
 	s.lots.process_dirty(s);
 	for (int64_t k : cells)
 		if (s.lots.lots_of(k)) s.growth.push(k);
+	if (!recorded && !derived) return;
 	s.edit_revision++;
 	s.touch();
 }

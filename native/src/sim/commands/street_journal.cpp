@@ -12,7 +12,16 @@ namespace city {
 namespace {
 void grow_at(CityState &s, double x, double z) { s.history.open.grow(x, z, x, z); }
 
-void mark_barrier(CityState &s, const Barrier &b) {
+// What a record of the street changes when it comes or goes: the one rule for a live edit and for its undo and redo.
+void invalidate(CityState &s, const StreetItem &r) { mark_street(s, r.x, r.z); }
+void invalidate(CityState &s, const UtilityPole &r) { mark_street(s, r.x, r.z); }
+void invalidate(CityState &s, const StreetCut &r) { mark_street(s, r.x, r.z); }
+void invalidate(CityState &s, const UtilitySpan &r) { // its poles stand while it does
+	const UtilityPole &pa = s.street.poles.items[size_t(r.a)], &pb = s.street.poles.items[size_t(r.b)];
+	mark_street(s, pa.x, pa.z);
+	mark_street(s, pb.x, pb.z);
+}
+void invalidate(CityState &s, const Barrier &b) { // every chunk its path crosses
 	for (size_t i = 0; i + 3 < b.pts.size(); i += 2) {
 		const double dx = b.pts[i + 2] - b.pts[i], dz = b.pts[i + 3] - b.pts[i + 1];
 		const int steps = int(std::ceil(std::hypot(dx, dz) / CHUNK)) + 1;
@@ -23,9 +32,9 @@ void mark_barrier(CityState &s, const Barrier &b) {
 
 int j_add_item(CityState &s, const StreetItem &r) {
 	int id = s.street.add_item(r);
-	mark_street(s, r.x, r.z);
+	invalidate(s, r);
 	if (s.history.recording) {
-		j_record(s, OpKind::ADD_ITEM, id).item = s.street.items.items[size_t(id)];
+		j_record(s, OpKind::ADD_ITEM, id, s.street.items.items[size_t(id)]);
 		grow_at(s, r.x, r.z);
 	}
 	return id;
@@ -34,18 +43,18 @@ int j_add_item(CityState &s, const StreetItem &r) {
 void j_remove_item(CityState &s, int id) {
 	const StreetItem r = s.street.items.items[size_t(id)];
 	if (s.history.recording) {
-		j_record(s, OpKind::REM_ITEM, id).item = r;
+		j_record(s, OpKind::REM_ITEM, id, r);
 		grow_at(s, r.x, r.z);
 	}
 	s.street.remove_item(id);
-	mark_street(s, r.x, r.z);
+	invalidate(s, r);
 }
 
 int j_add_pole(CityState &s, const UtilityPole &r) {
 	int id = s.street.add_pole(r);
-	mark_street(s, r.x, r.z);
+	invalidate(s, r);
 	if (s.history.recording) {
-		j_record(s, OpKind::ADD_POLE, id).pole = s.street.poles.items[size_t(id)];
+		j_record(s, OpKind::ADD_POLE, id, s.street.poles.items[size_t(id)]);
 		grow_at(s, r.x, r.z);
 	}
 	return id;
@@ -56,11 +65,11 @@ void j_remove_pole(CityState &s, int id) {
 	for (int span : spans) j_remove_span(s, span);
 	const UtilityPole r = s.street.poles.items[size_t(id)];
 	if (s.history.recording) {
-		j_record(s, OpKind::REM_POLE, id).pole = r;
+		j_record(s, OpKind::REM_POLE, id, r);
 		grow_at(s, r.x, r.z);
 	}
 	s.street.remove_pole(id);
-	mark_street(s, r.x, r.z);
+	invalidate(s, r);
 }
 
 int j_add_span(CityState &s, int a, int b) {
@@ -68,29 +77,23 @@ int j_add_span(CityState &s, int a, int b) {
 	r.a = a;
 	r.b = b;
 	int id = s.street.add_span(r);
-	const UtilityPole &pa = s.street.poles.items[size_t(a)], &pb = s.street.poles.items[size_t(b)];
-	mark_street(s, pa.x, pa.z);
-	mark_street(s, pb.x, pb.z);
-	if (s.history.recording) j_record(s, OpKind::ADD_SPAN, id).span = s.street.spans.items[size_t(id)];
+	invalidate(s, r);
+	if (s.history.recording) j_record(s, OpKind::ADD_SPAN, id, s.street.spans.items[size_t(id)]);
 	return id;
 }
 
 void j_remove_span(CityState &s, int id) {
 	const UtilitySpan r = s.street.spans.items[size_t(id)];
-	if (s.history.recording) j_record(s, OpKind::REM_SPAN, id).span = r;
-	const UtilityPole &pa = s.street.poles.items[size_t(r.a)], &pb = s.street.poles.items[size_t(r.b)];
-	mark_street(s, pa.x, pa.z);
-	mark_street(s, pb.x, pb.z);
+	if (s.history.recording) j_record(s, OpKind::REM_SPAN, id, r);
+	invalidate(s, r);
 	s.street.remove_span(id);
 }
 
 int j_add_barrier(CityState &s, const Barrier &r) {
 	int id = s.street.add_barrier(r);
-	mark_barrier(s, r);
+	invalidate(s, r);
 	if (s.history.recording) {
-		EditOp &op = j_record(s, OpKind::ADD_BARRIER, id);
-		op.barrier = s.street.barriers.items[size_t(id)];
-		s.history.open.bytes += r.pts.size() * sizeof(float);
+		j_record(s, OpKind::ADD_BARRIER, id, s.street.barriers.items[size_t(id)]);
 		grow_at(s, r.pts[0], r.pts[1]);
 	}
 	return id;
@@ -99,13 +102,11 @@ int j_add_barrier(CityState &s, const Barrier &r) {
 void j_remove_barrier(CityState &s, int id) {
 	const Barrier r = s.street.barriers.items[size_t(id)];
 	if (s.history.recording) {
-		EditOp &op = j_record(s, OpKind::REM_BARRIER, id);
-		op.barrier = r;
-		s.history.open.bytes += r.pts.size() * sizeof(float);
+		j_record(s, OpKind::REM_BARRIER, id, r);
 		grow_at(s, r.pts[0], r.pts[1]);
 	}
 	s.street.remove_barrier(id);
-	mark_barrier(s, r);
+	invalidate(s, r);
 }
 
 int j_add_cut(CityState &s, float x, float z) {
@@ -113,9 +114,9 @@ int j_add_cut(CityState &s, float x, float z) {
 	r.x = x;
 	r.z = z;
 	int id = s.street.add_cut(r);
-	mark_street(s, x, z);
+	invalidate(s, r);
 	if (s.history.recording) {
-		j_record(s, OpKind::ADD_CUT, id).cut = s.street.cuts.items[size_t(id)];
+		j_record(s, OpKind::ADD_CUT, id, s.street.cuts.items[size_t(id)]);
 		grow_at(s, x, z);
 	}
 	return id;
@@ -137,10 +138,11 @@ void j_set_rule(CityState &s, int seg, int end, uint16_t rule) {
 	const int was = (g.flags & seg_rule_mask(end)) >> seg_rule_shift(end);
 	if (was == rule) return;
 	if (s.history.recording) {
-		EditOp &op = j_record(s, OpKind::SEG_RULE, seg);
-		op.side = end;
-		op.from = was;
-		op.to = rule;
+		Change c;
+		c.side = end;
+		c.from = was;
+		c.to = rule;
+		j_record(s, OpKind::SEG_RULE, seg, c);
 		s.history.open.grow(g.minx, g.minz, g.maxx, g.maxz);
 	}
 	put_rule(s, seg, end, rule);
@@ -149,29 +151,30 @@ void j_set_rule(CityState &s, int seg, int end, uint16_t rule) {
 void exec_street(CityState &s, const EditOp &op, bool fwd) {
 	switch (op.kind) {
 		case OpKind::ADD_ITEM: case OpKind::REM_ITEM:
-			if (fwd == (op.kind == OpKind::ADD_ITEM)) s.street.put_item(op.id, op.item); else s.street.remove_item(op.id);
-			mark_street(s, op.item.x, op.item.z);
+			if (fwd == (op.kind == OpKind::ADD_ITEM)) s.street.put_item(op.id, op.get<StreetItem>()); else s.street.remove_item(op.id);
+			invalidate(s, op.get<StreetItem>());
 			break;
 		case OpKind::ADD_POLE: case OpKind::REM_POLE:
-			if (fwd == (op.kind == OpKind::ADD_POLE)) s.street.put_pole(op.id, op.pole); else s.street.remove_pole(op.id);
-			mark_street(s, op.pole.x, op.pole.z);
+			if (fwd == (op.kind == OpKind::ADD_POLE)) s.street.put_pole(op.id, op.get<UtilityPole>()); else s.street.remove_pole(op.id);
+			invalidate(s, op.get<UtilityPole>());
 			break;
-		case OpKind::ADD_SPAN: case OpKind::REM_SPAN: {
-			if (fwd == (op.kind == OpKind::ADD_SPAN)) s.street.put_span(op.id, op.span); else s.street.remove_span(op.id);
-			const UtilityPole &pa = s.street.poles.items[size_t(op.span.a)], &pb = s.street.poles.items[size_t(op.span.b)];
-			mark_street(s, pa.x, pa.z);
-			mark_street(s, pb.x, pb.z);
+		case OpKind::ADD_SPAN: case OpKind::REM_SPAN:
+			if (fwd == (op.kind == OpKind::ADD_SPAN)) s.street.put_span(op.id, op.get<UtilitySpan>()); else s.street.remove_span(op.id);
+			invalidate(s, op.get<UtilitySpan>());
 			break;
-		}
 		case OpKind::ADD_BARRIER: case OpKind::REM_BARRIER:
-			if (fwd == (op.kind == OpKind::ADD_BARRIER)) s.street.put_barrier(op.id, op.barrier); else s.street.remove_barrier(op.id);
-			for (size_t i = 0; i + 1 < op.barrier.pts.size(); i += 2) mark_street(s, op.barrier.pts[i], op.barrier.pts[i + 1]);
+			if (fwd == (op.kind == OpKind::ADD_BARRIER)) s.street.put_barrier(op.id, op.get<Barrier>()); else s.street.remove_barrier(op.id);
+			invalidate(s, op.get<Barrier>());
 			break;
 		case OpKind::ADD_CUT: case OpKind::REM_CUT:
-			if (fwd == (op.kind == OpKind::ADD_CUT)) s.street.put_cut(op.id, op.cut); else s.street.remove_cut(op.id);
-			mark_street(s, op.cut.x, op.cut.z);
+			if (fwd == (op.kind == OpKind::ADD_CUT)) s.street.put_cut(op.id, op.get<StreetCut>()); else s.street.remove_cut(op.id);
+			invalidate(s, op.get<StreetCut>());
 			break;
-		case OpKind::SEG_RULE: put_rule(s, op.id, op.side, fwd ? op.to : op.from); break;
+		case OpKind::SEG_RULE: {
+			const Change &c = op.get<Change>();
+			put_rule(s, op.id, c.side, fwd ? c.to : c.from);
+			break;
+		}
 		default: break; // not a street op: edit_history.cpp sends only these
 	}
 }

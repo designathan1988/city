@@ -64,9 +64,6 @@ EditResult set_node_lift(CityState &s, int node, float metres) {
 		return r;
 	}
 	j_set_lift(s, node, height);
-	RoadBox box;
-	for (int sid : n.segs) box.add(net.segs[size_t(sid)]);
-	finish_edit(s, box.minx, box.minz, box.maxx, box.maxz);
 	r.ok = true;
 	return r;
 }
@@ -123,7 +120,7 @@ EditResult set_road_bend(CityState &s, int seg, double height, double at, double
 	r.segments += done.segments;
 	r.buildings_removed += done.buildings_removed;
 	for (int p : laid) box.add(net.segs[size_t(p)]);
-	finish_edit(s, box.minx, box.minz, box.maxx, box.maxz);
+	settle_network(s); // the mouths squeezed_worse reads
 	if (squeezed_worse(s, before, box)) {
 		r.error = "hint.rule.squeezed";
 		return r;
@@ -146,7 +143,6 @@ EditResult join_roads(CityState &s, int node) {
 		r.error = "hint.road.join";
 		return r;
 	}
-	finish_edit(s, box.minx, box.minz, box.maxx, box.maxz);
 	r.ok = true;
 	return r;
 }

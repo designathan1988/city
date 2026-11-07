@@ -25,10 +25,10 @@ struct Span {
 bool span_of(const RoadEmit &e, int sid, Span &out) {
 	const Tuning &tn = e.s.catalog.tune;
 	if (structure_of(e.s.roads.segs[size_t(sid)].flags) != Structure::BRIDGE) return false;
-	double length = 0;
-	for (int piece : e.s.roads.pieces_of(sid)) length += e.s.roads.segs[size_t(piece)].len;
+	const StreetRun &run = e.s.roads.street_run(sid); // the street's one definition (RoadNetwork)
+	const double length = run.total;
 	if (length < tn.structure_span_from_m) return false;
-	out.start = street_start(e.s.roads, sid);
+	out.start = run.start;
 	out.spans = std::max(1, int(std::round(length / tn.structure_span_every_m)));
 	out.every = length / out.spans;
 	return true;

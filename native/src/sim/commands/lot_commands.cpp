@@ -1,5 +1,5 @@
-// The Zones > Lots tab (Roadcraft editor/lotTool.ts, world/lots.ts): lots drawn, moved, bent, cut, joined and zoned. Each edit replaces the book through
-// the journal; the cells it touches are read again, so what grows there follows.
+// The Zones > Lots tab (Roadcraft editor/lotTool.ts, world/lots.ts): lots drawn, moved, bent, cut, joined and zoned. Each edit changes
+// the lots it touches through the journal, one record at a time; the cells it touches are read again, so what grows there follows.
 #include "sim/commands/commands.h"
 #include "sim/commands/edit_journal.h"
 #include "sim/commands/road_edit.h"
@@ -27,14 +27,16 @@ void bounds(const std::vector<LotPoint> &q, double &x0, double &z0, double &x1, 
 	}
 }
 
-// The book replaced, and the land of `rings` read again.
-EditResult commit(CityState &s, LotBook next, const std::vector<std::vector<LotPoint>> &rings) {
-	double x0 = FAR_OFF_M, z0 = FAR_OFF_M, x1 = -FAR_OFF_M, z1 = -FAR_OFF_M;
-	for (const std::vector<LotPoint> &q : rings) bounds(q, x0, z0, x1, z1);
-	j_lots(s, std::move(next));
+void mark_box(CityState &s, double x0, double z0, double x1, double z1) {
 	for (int j = int(std::floor(z0 / CHUNK)); j <= int(std::floor(z1 / CHUNK)); j++)
 		for (int i = int(std::floor(x0 / CHUNK)); i <= int(std::floor(x1 / CHUNK)); i++) s.log.lot_cells.push_back(cell_key(i, j));
-	finish_edit(s, x0, z0, x1, z1);
+}
+
+// The land of `rings` read again (the book was changed record by record before); the command ends in EditHistory::end.
+EditResult commit(CityState &s, const std::vector<std::vector<LotPoint>> &rings) {
+	double x0 = FAR_OFF_M, z0 = FAR_OFF_M, x1 = -FAR_OFF_M, z1 = -FAR_OFF_M;
+	for (const std::vector<LotPoint> &q : rings) bounds(q, x0, z0, x1, z1);
+	mark_box(s, x0, z0, x1, z1);
 	EditResult r;
 	r.ok = true;
 	return r;
@@ -67,6 +69,14 @@ void raze(CityState &s, const std::vector<LotPoint> &q, EditResult &r) {
 	}
 }
 
+// A new lot of `zone` on `corners`: its id, the book's next.
+int add_piece(CityState &s, const std::vector<LotPoint> &corners, int zone) {
+	PlayerLot made;
+	made.corners = corners;
+	made.zone = zone;
+	return j_add_lot(s, std::move(made));
+}
+
 EditResult add_lot(CityState &s, const std::vector<LotPoint> &ring) {
 	if (!big_enough(ring)) return refused("hint.lot.small");
 	std::vector<LotPoint> land = lot_on_land(s.roads, ring);
@@ -74,124 +84,126 @@ EditResult add_lot(CityState &s, const std::vector<LotPoint> &ring) {
 	std::rotate(land.begin(), land.begin() + lot_front_side(s.roads, land), land.end());
 	const std::vector<LotPoint> corners = facing_corners(land);
 	if (!free_of_lots(s.lot_book, corners)) return refused("hint.lot.overlap");
-	LotBook next = s.lot_book;
-	PlayerLot lot;
-	lot.id = next.next_id++;
-	lot.corners = corners;
-	next.lots.push_back(lot);
-	EditResult r = commit(s, std::move(next), { corners });
-	r.placed = lot.id;
+	const int id = add_piece(s, corners, 0);
+	EditResult r = commit(s, { corners });
+	r.placed = id;
 	return r;
 }
 } // namespace
+
+void mark_lot_cells(CityState &s, const std::vector<LotPoint> &ring) {
+	double x0 = FAR_OFF_M, z0 = FAR_OFF_M, x1 = -FAR_OFF_M, z1 = -FAR_OFF_M;
+	bounds(ring, x0, z0, x1, z1);
+	mark_box(s, x0, z0, x1, z1);
+}
 
 EditResult add_lot_rect(CityState &s, const LotPoint &a, const LotPoint &b, double angle) { return add_lot(s, lot_rect(a, b, angle)); }
 
 EditResult add_lot_polygon(CityState &s, const std::vector<LotPoint> &points) { return add_lot(s, points); }
 
 void cut_lots_by_roads(CityState &s, double minx, double minz, double maxx, double maxz) {
-	LotBook next = s.lot_book;
-	std::vector<std::vector<LotPoint>> touched;
+	struct Crossed {
+		PlayerLot lot;
+		std::vector<std::vector<LotPoint>> pieces;
+	};
+	std::vector<Crossed> crossed; // only the lots a road crosses are copied, before the book changes
 	for (const PlayerLot &lot : s.lot_book.lots) {
 		double x0 = FAR_OFF_M, z0 = FAR_OFF_M, x1 = -FAR_OFF_M, z1 = -FAR_OFF_M;
 		bounds(lot.corners, x0, z0, x1, z1);
 		if (x1 < minx || x0 > maxx || z1 < minz || z0 > maxz) continue;
-		bool crossed = false;
-		const std::vector<std::vector<LotPoint>> pieces = lot_pieces(s.roads, lot.corners, crossed);
-		if (!crossed) continue;
-		EditResult razed;
-		raze(s, lot.corners, razed);
-		next.lots.erase(std::remove_if(next.lots.begin(), next.lots.end(), [&](const PlayerLot &x) { return x.id == lot.id; }), next.lots.end());
-		for (const std::vector<LotPoint> &piece : pieces) {
-			PlayerLot made;
-			made.id = next.next_id++;
-			made.corners = facing_corners(piece_with_front(piece, lot.corners[0], lot.corners[1]));
-			made.zone = lot.zone;
-			next.lots.push_back(made);
-		}
-		touched.push_back(lot.corners);
+		bool cut = false;
+		std::vector<std::vector<LotPoint>> pieces = lot_pieces(s.roads, lot.corners, cut);
+		if (cut) crossed.push_back({ lot, std::move(pieces) });
 	}
-	if (!touched.empty()) commit(s, std::move(next), touched);
+	if (crossed.empty()) return;
+	std::vector<std::vector<LotPoint>> touched;
+	for (const Crossed &c : crossed) {
+		EditResult razed;
+		raze(s, c.lot.corners, razed);
+		j_remove_lot(s, c.lot.id);
+		for (const std::vector<LotPoint> &piece : c.pieces)
+			add_piece(s, facing_corners(piece_with_front(piece, c.lot.corners[0], c.lot.corners[1])), c.lot.zone);
+		touched.push_back(c.lot.corners);
+	}
+	commit(s, touched);
 }
 
 EditResult move_lot_corner(CityState &s, const LotPoint &from, const LotPoint &to) {
-	LotBook next = s.lot_book;
+	std::vector<PlayerLot> moved;
 	std::vector<std::vector<LotPoint>> touched;
-	for (PlayerLot &l : next.lots) {
-		bool moved = false;
-		std::vector<LotPoint> before = l.corners;
-		for (LotPoint &q : l.corners)
+	for (const PlayerLot &l : s.lot_book.lots) {
+		PlayerLot after = l;
+		bool any = false;
+		for (LotPoint &q : after.corners)
 			if (lot_point_near(q, from, CORNER_TAKE_M)) {
 				q = to;
-				moved = true;
+				any = true;
 			}
-		if (moved) {
-			touched.push_back(before);
-			touched.push_back(l.corners);
-		}
+		if (!any) continue;
+		touched.push_back(l.corners);
+		touched.push_back(after.corners);
+		moved.push_back(std::move(after));
 	}
-	return touched.empty() ? refused("hint.lot.pick") : commit(s, std::move(next), touched);
+	if (moved.empty()) return refused("hint.lot.pick");
+	for (const PlayerLot &l : moved) j_edit_lot(s, l.id, l);
+	return commit(s, touched);
 }
 
 EditResult curve_lot_side(CityState &s, const LotPoint &a, const LotPoint &b, const LotPoint &through) {
-	LotBook next = s.lot_book;
+	std::vector<PlayerLot> bent;
 	std::vector<std::vector<LotPoint>> touched;
-	for (PlayerLot &l : next.lots) {
-		std::vector<LotPoint> &q = l.corners;
+	for (const PlayerLot &l : s.lot_book.lots) {
+		const std::vector<LotPoint> &q = l.corners;
 		for (size_t k = 0; k < q.size(); k++) {
 			const LotPoint p = q[k], r = q[(k + 1) % q.size()];
 			const bool same = lot_point_near(p, a, SIDE_REACH_M) && lot_point_near(r, b, SIDE_REACH_M);
 			if (!same && !(lot_point_near(p, b, SIDE_REACH_M) && lot_point_near(r, a, SIDE_REACH_M))) continue;
 			std::vector<LotPoint> bend = curved_side(a, b, through);
 			if (!same) std::reverse(bend.begin(), bend.end());
-			q.insert(q.begin() + std::ptrdiff_t(k + 1), bend.begin(), bend.end());
-			touched.push_back(q);
+			PlayerLot after = l;
+			after.corners.insert(after.corners.begin() + std::ptrdiff_t(k + 1), bend.begin(), bend.end());
+			touched.push_back(after.corners);
+			bent.push_back(std::move(after));
 			break;
 		}
 	}
-	return touched.empty() ? refused("hint.lot.pick") : commit(s, std::move(next), touched);
+	if (bent.empty()) return refused("hint.lot.pick");
+	for (const PlayerLot &l : bent) j_edit_lot(s, l.id, l);
+	return commit(s, touched);
 }
 
 EditResult set_lot_front(CityState &s, int id, int side) {
-	LotBook next = s.lot_book;
-	PlayerLot *l = next.find(id);
-	if (!l) return refused("hint.lot.pick");
-	const int n = int(l->corners.size()), k = ((side % n) + n) % n;
+	const PlayerLot *found = s.lot_book.find(id);
+	if (!found) return refused("hint.lot.pick");
+	PlayerLot l = *found;
+	const int n = int(l.corners.size()), k = ((side % n) + n) % n;
 	if (k == 0) return refused("hint.lot.same");
 	EditResult razed;
-	raze(s, l->corners, razed); // the building faced the old front
-	std::rotate(l->corners.begin(), l->corners.begin() + k, l->corners.end());
-	const std::vector<LotPoint> ring = l->corners;
-	EditResult r = commit(s, std::move(next), { ring });
+	raze(s, l.corners, razed); // the building faced the old front
+	std::rotate(l.corners.begin(), l.corners.begin() + k, l.corners.end());
+	j_edit_lot(s, id, l);
+	EditResult r = commit(s, { l.corners });
 	r.buildings_removed = razed.buildings_removed;
 	return r;
 }
 
 EditResult split_lot(CityState &s, int id, const LotCut &cut) {
-	LotBook next = s.lot_book;
-	const PlayerLot *l = next.find(id);
+	const PlayerLot *l = s.lot_book.find(id);
 	if (!l) return refused("hint.lot.pick");
 	const std::vector<std::vector<LotPoint>> pieces = cut_lot(l->corners, cut);
 	if (pieces.size() < 2) return refused("hint.lot.small");
 	const PlayerLot old = *l;
 	EditResult razed;
 	raze(s, old.corners, razed);
-	next.lots.erase(std::remove_if(next.lots.begin(), next.lots.end(), [&](const PlayerLot &x) { return x.id == id; }), next.lots.end());
-	for (const std::vector<LotPoint> &piece : pieces) {
-		PlayerLot made;
-		made.id = next.next_id++;
-		made.corners = piece;
-		made.zone = old.zone;
-		next.lots.push_back(made);
-	}
-	EditResult r = commit(s, std::move(next), { old.corners });
+	j_remove_lot(s, id);
+	for (const std::vector<LotPoint> &piece : pieces) add_piece(s, piece, old.zone);
+	EditResult r = commit(s, { old.corners });
 	r.buildings_removed = razed.buildings_removed;
 	return r;
 }
 
 EditResult join_lots(CityState &s, int a, int b) {
-	LotBook next = s.lot_book;
-	const PlayerLot *la = next.find(a), *lb = next.find(b);
+	const PlayerLot *la = s.lot_book.find(a), *lb = s.lot_book.find(b);
 	if (!la || !lb || a == b) return refused("hint.lot.pick");
 	const std::vector<LotPoint> ring = joined_lots(la->corners, lb->corners);
 	if (ring.empty()) return refused("hint.lot.apart");
@@ -199,40 +211,36 @@ EditResult join_lots(CityState &s, int a, int b) {
 	EditResult razed;
 	raze(s, first.corners, razed);
 	raze(s, second.corners, razed);
-	next.lots.erase(std::remove_if(next.lots.begin(), next.lots.end(), [&](const PlayerLot &x) { return x.id == a || x.id == b; }), next.lots.end());
-	PlayerLot made;
-	made.id = next.next_id++;
-	made.corners = ring;
-	made.zone = first.zone;
-	next.lots.push_back(made);
-	EditResult r = commit(s, std::move(next), { ring });
+	j_remove_lot(s, a);
+	j_remove_lot(s, b);
+	add_piece(s, ring, first.zone);
+	EditResult r = commit(s, { ring });
 	r.buildings_removed = razed.buildings_removed;
 	return r;
 }
 
 EditResult delete_lot(CityState &s, int id) {
-	LotBook next = s.lot_book;
-	const PlayerLot *l = next.find(id);
+	const PlayerLot *l = s.lot_book.find(id);
 	if (!l) return refused("hint.lot.pick");
 	const std::vector<LotPoint> ring = l->corners;
 	EditResult razed;
 	raze(s, ring, razed);
-	next.lots.erase(std::remove_if(next.lots.begin(), next.lots.end(), [&](const PlayerLot &x) { return x.id == id; }), next.lots.end());
-	EditResult r = commit(s, std::move(next), { ring });
+	j_remove_lot(s, id);
+	EditResult r = commit(s, { ring });
 	r.buildings_removed = razed.buildings_removed;
 	return r;
 }
 
 EditResult zone_lot(CityState &s, int id, int zone) {
-	LotBook next = s.lot_book;
-	PlayerLot *l = next.find(id);
-	if (!l) return refused("hint.lot.pick");
-	if (l->zone == zone) return refused("tools.toast.zoneSame");
+	const PlayerLot *found = s.lot_book.find(id);
+	if (!found) return refused("hint.lot.pick");
+	if (found->zone == zone) return refused("tools.toast.zoneSame");
+	PlayerLot l = *found;
 	EditResult razed;
-	if (l->zone != 0) raze(s, l->corners, razed); // what grew for the old zone goes
-	l->zone = zone;
-	const std::vector<LotPoint> ring = l->corners;
-	EditResult r = commit(s, std::move(next), { ring });
+	if (l.zone != 0) raze(s, l.corners, razed); // what grew for the old zone goes
+	l.zone = zone;
+	j_edit_lot(s, id, l);
+	EditResult r = commit(s, { l.corners });
 	r.buildings_removed = razed.buildings_removed;
 	return r;
 }

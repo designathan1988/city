@@ -16,40 +16,84 @@ namespace {
 constexpr size_t CACHE_MAX = 8192;
 constexpr float SHADE_BASE = 0.93f, SHADE_SPAN = 0.12f, SHADE_MOD = 1000.f;
 constexpr size_t CUT_CACHE_MAX = 1024;
-constexpr int CUT_LEVEL_SHIFT = 40, CUT_DIR_SHIFT = 52;
 constexpr uint32_t GOLDEN = 2654435761u;
-constexpr uint64_t CUT_MIX = 0x9e3779b97f4a7c15ull;
 
+// Looks `k` up in `map` under `m`; a miss is made by `make` outside the lock and kept, unless another thread kept one first
+// (then that one is used: the same key makes the same thing). `full`: the map is emptied before a new entry beyond its bound.
+template <typename Map, typename K, typename Make, typename Full>
+typename Map::mapped_type find_or_make(std::mutex &m, Map &map, const K &k, Make &&make, Full &&full) {
+	{
+		std::lock_guard<std::mutex> lk(m);
+		auto it = map.find(k);
+		if (it != map.end()) return it->second;
+	}
+	typename Map::mapped_type made = make();
+	std::lock_guard<std::mutex> lk(m);
+	auto it = map.find(k);
+	if (it != map.end()) return it->second;
+	full();
+	return map.emplace(k, std::move(made)).first->second;
+}
 } // namespace
 
-const b40::Body &BuildingBodies::body(const b40::Data &data, const Building &rec) {
-	uint64_t k = b40::body_key(rec);
-	auto it = cache_.find(k);
-	if (it != cache_.end()) return *it->second;
-	if (cache_.size() >= CACHE_MAX) clear();
-	auto b = std::make_unique<b40::Body>();
-	b40::record_mass(data, rec, *b);
-	return *(cache_[k] = std::move(b));
+size_t BuildingBodies::KeyHash::operator()(const Key &k) const {
+	return size_t(b40::BodyKeyHash::mix(b40::BodyKeyHash()(k.body), k.generation));
+}
+size_t BuildingBodies::KeyHash::operator()(const RoomsKey &k) const { return size_t(b40::BodyKeyHash::mix((*this)(k.body), k.seed)); }
+size_t BuildingBodies::KeyHash::operator()(const CutKey &k) const {
+	constexpr int HALF_BITS = 32;
+	const uint64_t h = b40::BodyKeyHash::mix((*this)(k.body), uint64_t(uint32_t(k.level)) | (uint64_t(uint32_t(k.dir)) << HALF_BITS));
+	return size_t(b40::BodyKeyHash::mix(h, k.turn));
 }
 
-const b40::Body &BuildingBodies::cut_body(const b40::Body &whole, const Building &rec, const b40::LotFrame &f, const b40::CutView &cut) {
-	uint64_t k = b40::body_key(rec);
+void BuildingBodies::clear() {
+	std::lock_guard<std::mutex> lk(mutex_);
+	rooms_.clear();
+	cache_.clear();
+	cuts_.clear();
+}
+
+std::shared_ptr<const b40::Body> BuildingBodies::body(const b40::Data &data, const Building &rec) {
+	return find_or_make(mutex_, cache_, key_of(data, rec), [&]() {
+		auto b = std::make_shared<b40::Body>();
+		b40::record_mass(data, rec, *b);
+		return std::shared_ptr<const b40::Body>(std::move(b));
+	}, [this]() {
+		if (cache_.size() < CACHE_MAX) return;
+		cache_.clear(); // the bound empties the bodies and the rooms made of them; what a job holds stays alive with it
+		rooms_.clear();
+	});
+}
+
+std::shared_ptr<b40::PaneRooms> BuildingBodies::rooms(const b40::Data &data, const Key &k, const std::shared_ptr<const b40::Body> &whole, const Building &rec) {
+	return find_or_make(mutex_, rooms_, RoomsKey{ k, rec.seed }, [&]() {
+		return std::make_shared<b40::PaneRooms>(data, whole, b40::purpose_of(*whole, rec.fn, rec.seed)); // it holds the body it reads
+	}, [this]() {
+		if (rooms_.size() >= CACHE_MAX) rooms_.clear();
+	});
+}
+
+std::shared_ptr<const b40::Body> BuildingBodies::cut_body(const Key &k, const b40::Body &whole, const Building &rec, const b40::LotFrame &f, const b40::CutView &cut) {
 	uint32_t turn;
 	std::memcpy(&turn, &rec.rot, sizeof turn);
-	k = (k ^ (uint64_t(cut.level) << CUT_LEVEL_SHIFT) ^ (uint64_t(cut.dir) << CUT_DIR_SHIFT) ^ uint64_t(turn)) * CUT_MIX;
-	auto it = cuts_.find(k);
-	if (it != cuts_.end()) return *it->second;
-	if (cuts_.size() >= CUT_CACHE_MAX) cuts_.clear();
-	const b40::Point2 world = b40::cut_direction(cut.dir);
-	const b40::Point2 local{ world.x * f.e0.x + world.y * f.e0.y, world.x * f.e1.x + world.y * f.e1.y }; // the camera's way in the lot's frame
-	return *(cuts_[k] = std::make_unique<b40::Body>(b40::cut_open(whole, cut.level, local)));
+	return find_or_make(mutex_, cuts_, CutKey{ k, cut.level, cut.dir, turn }, [&]() {
+		const b40::Point2 world = b40::cut_direction(cut.dir);
+		const b40::Point2 local{ world.x * f.e0.x + world.y * f.e0.y, world.x * f.e1.x + world.y * f.e1.y }; // the camera's way in the lot's frame
+		return std::shared_ptr<const b40::Body>(std::make_shared<b40::Body>(b40::cut_open(whole, cut.level, local)));
+	}, [this]() {
+		if (cuts_.size() >= CUT_CACHE_MAX) cuts_.clear();
+	});
 }
 
 void BuildingBodies::place(const b40::Data &data, const b40::BuildingLook &look, const HeightPatch &ground, const Building &rec, b40::Placed &pl,
 		const b40::CutView *cut) {
 	const b40::LotFrame f = b40::lot_frame(rec);
-	const b40::Body &whole = body(data, rec);
-	const b40::Body &b = cut ? cut_body(whole, rec, f, *cut) : whole;
+	const Key k = key_of(data, rec);
+	pl.hold = b40::PlacedHold();
+	pl.hold.whole = body(data, rec);
+	const b40::Body &whole = *pl.hold.whole;
+	if (cut) pl.hold.cut = cut_body(k, whole, rec, f, *cut);
+	const b40::Body &b = cut ? *pl.hold.cut : whole;
 	Vector3 o(f.o.x, 0, f.o.y), e0(f.e0.x, 0, f.e0.y), e1(f.e1.x, 0, f.e1.y), e2(0, 1, 0);
 	float hi = 0, lo = 0;
 	b40::lot_ground(whole, rec, f, [&](float x, float z) { return ground.height_at(x, z); }, hi, lo); // the whole's: a cut keeps the ground floor
@@ -61,9 +105,8 @@ void BuildingBodies::place(const b40::Data &data, const b40::BuildingLook &look,
 	pl.fn = rec.fn;
 	pl.rooms = nullptr; // a cut building shows its real inside, not a room behind its panes
 	if (!cut) {
-		std::unique_ptr<b40::PaneRooms> &rooms = rooms_[b40::body_key(rec)];
-		if (!rooms) rooms = std::make_unique<b40::PaneRooms>(data, b, b40::purpose_of(b, rec.fn, rec.seed));
-		pl.rooms = rooms.get();
+		pl.hold.rooms = rooms(data, k, pl.hold.whole, rec);
+		pl.rooms = pl.hold.rooms.get();
 	}
 	pl.lot = b40::Basis{ o + e2 * floor, e0, e1, e2 };
 	pl.id = rec.seed;

@@ -50,22 +50,29 @@ void sweep_lanes(const CityState &s, const std::vector<AxlePose> &poses, int fro
 	for (const auto &kv : spans) out.push_back({ kv.first, kv.second.first - p.lorry_closure_margin_m, kv.second.second + p.lorry_closure_margin_m, owner });
 }
 
-// Nobody on a stretch or too near to stop short of it.
+// Nobody on a stretch or too near to stop short of it: the near vehicles on its lane, and those on the connectors that end on
+// it (all at the node its lane starts from). A near vehicle is on its lane's list or on its connector's, and on no other.
 bool lane_clear(const CityState &s, const LaneClosure &c) {
 	const TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
 	const int ds = c.key / MAX_LANES, lane = c.key % MAX_LANES;
-	for (int id : t.micro_list) {
-		const Vehicle &v = t.vehicles[size_t(id)];
-		const float stopping = v.v * v.v / (2 * p.classes[int(v.type)].b) + p.lorry_clear_margin_m;
-		if (v.conn >= 0) {
-			const Conn &k = t.g.conns[size_t(v.conn)];
-			if (k.to_ds == ds && k.to_lane == lane && k.len - v.cs + c.from < stopping) return false;
-			continue;
+	const auto stopping = [&](const Vehicle &v) { return v.v * v.v / (2 * p.classes[int(v.type)].b) + p.lorry_clear_margin_m; };
+	if (size_t(c.key) < t.lane_vehicles.size())
+		for (int id : t.lane_vehicles[size_t(c.key)]) {
+			const Vehicle &v = t.vehicles[size_t(id)];
+			const float rear = v.s - p.classes[int(v.type)].length;
+			if (rear < c.to + p.lorry_clear_margin_m && v.s > c.from - stopping(v)) return false;
 		}
-		if (v.ds != ds || v.lane != lane) continue;
-		const float rear = v.s - p.classes[int(v.type)].length;
-		if (rear < c.to + p.lorry_clear_margin_m && v.s > c.from - stopping) return false;
+	const LaneGraph &g = t.g;
+	const int from = size_t(ds) < g.ds.size() ? g.ds[size_t(ds)].from : -1;
+	if (from < 0 || size_t(from) >= g.node_conn.size()) return true;
+	for (int ci = g.node_conn[size_t(from)]; ci >= 0; ci = g.conns[size_t(ci)].next_at_node) {
+		const Conn &k = g.conns[size_t(ci)];
+		if (k.to_ds != ds || k.to_lane != lane || size_t(ci) >= t.conn_vehicles.size()) continue;
+		for (int id : t.conn_vehicles[size_t(ci)]) {
+			const Vehicle &v = t.vehicles[size_t(id)];
+			if (k.len - v.cs + c.from < stopping(v)) return false;
+		}
 	}
 	return true;
 }

@@ -11,7 +11,14 @@ namespace city {
 namespace {
 constexpr double STRAIGHT_ANGLE_COS = -0.9986; // two arms this close to opposite are one street going on
 constexpr double BULB_REACH_PAD = 3, BULB_SEARCH_PAD = 30;
+constexpr double BULB_REACH_M = BULB_R + BULB_WALK + BULB_REACH_PAD; // a road closer than this to a dead end leaves no room for a bulb
+constexpr double BULB_LOOK_M = BULB_REACH_M + BULB_SEARCH_PAD; // the roads a dead end looks at for its bulb lie within this
 constexpr float LOT_LOOK_M = 160.f; // lots look this far for their streets (sim/citygen/lot_gen.h LOT_MARGIN + setbacks)
+
+int zoned_of(const RoadSegment &g) { return int(g.zl != 0) + int(g.zr != 0); }
+// A float bound that never lies inside the double box it stands for (the hash finds its cells from floats).
+float below(double v) { return std::nextafter(float(v), -INFINITY); }
+float above(double v) { return std::nextafter(float(v), INFINITY); }
 } // namespace
 
 void RoadNetwork::init(const Catalog *c, ChangeLog *l) {
@@ -22,6 +29,13 @@ void RoadNetwork::init(const Catalog *c, ChangeLog *l) {
 
 void RoadNetwork::clear() {
 	player_sides = 0;
+	live_segs_ = live_nodes_ = zoned_sides_ = 0;
+	shape_nodes_.clear();
+	shape_boxes_.clear();
+	edited_segs_.clear();
+	edited_boxes_.clear();
+	runs_.clear();
+	run_dirty_.clear();
 	nodes.clear();
 	segs.clear();
 	free_nodes.clear();
@@ -35,16 +49,27 @@ void RoadNetwork::clear() {
 
 int RoadNetwork::add_node(double x, double z, double y) {
 	int id;
-	if (!free_nodes.empty()) { id = free_nodes.back(); free_nodes.pop_back(); }
-	else { id = int(nodes.size()); nodes.emplace_back(); }
+	id = free_nodes.next(int(nodes.size()));
+	nodes.resize(size_t(free_nodes.claim(id, int(nodes.size()))));
 	RoadNode &n = nodes[id];
 	n = RoadNode();
 	n.alive = true;
 	n.x = x; n.z = z; n.y = y;
 	node_hash.insert_aabb(id, float(x), float(z), float(x), float(z));
 	grade.node_changed(id);
+	shape_nodes_.push_back(id);
+	live_nodes_++;
 	version++;
 	return id;
+}
+
+void RoadNetwork::shape_changed(int s) {
+	const RoadSegment &g = segs[size_t(s)];
+	shape_boxes_.push_back({ g.minx, g.minz, g.maxx, g.maxz });
+	edited_boxes_.push_back(shape_boxes_.back());
+	edited_segs_.push_back(s);
+	shape_nodes_.push_back(g.a);
+	shape_nodes_.push_back(g.b);
 }
 
 void RoadNetwork::update_bounds(int s) {
@@ -58,8 +83,9 @@ void RoadNetwork::update_bounds(int s) {
 
 int RoadNetwork::add_segment(int a, int b, const Quad &q, int profile, int zl, int zr, uint16_t flags) {
 	int id;
-	if (!free_segs.empty()) { id = free_segs.back(); free_segs.pop_back(); }
-	else { id = int(segs.size()); segs.emplace_back(); }
+	id = free_segs.next(int(segs.size()));
+	segs.resize(size_t(free_segs.claim(id, int(segs.size()))));
+	runs_.resize(segs.size()); // its street is made at the settle (settle_runs)
 	RoadSegment &g = segs[id];
 	g = RoadSegment();
 	g.alive = true;
@@ -73,6 +99,9 @@ int RoadNetwork::add_segment(int a, int b, const Quad &q, int profile, int zl, i
 	nodes[a].segs.push_back(id);
 	nodes[b].segs.push_back(id);
 	grade.seg_changed(id);
+	shape_changed(id);
+	live_segs_++;
+	zoned_sides_ += zoned_of(g);
 	version++;
 	if (log) log->network_changed = true;
 	return id;
@@ -82,6 +111,9 @@ void RoadNetwork::remove_segment(int s) {
 	RoadSegment &g = segs[s];
 	if (!g.alive) return;
 	mark_segment(s);
+	shape_changed(s);
+	live_segs_--;
+	zoned_sides_ -= zoned_of(g);
 	player_sides -= int((g.flags & SEG_ZONED_LEFT) != 0) + int((g.flags & SEG_ZONED_RIGHT) != 0);
 	seg_hash.remove_aabb(s, g.minx, g.minz, g.maxx, g.maxz);
 	for (int n : { g.a, g.b }) {
@@ -89,7 +121,7 @@ void RoadNetwork::remove_segment(int s) {
 		l.erase(std::remove(l.begin(), l.end(), s), l.end());
 	}
 	g.alive = false;
-	free_segs.push_back(s);
+	free_segs.release(s);
 	grade.seg_changed(s);
 	for (int n : { g.a, g.b }) grade.node_changed(n); // its nodes' other roads settle again
 	version++;
@@ -101,33 +133,35 @@ void RoadNetwork::remove_node_if_orphan(int n) {
 	if (!nd.alive || !nd.segs.empty()) return;
 	node_hash.remove_aabb(n, float(nd.x), float(nd.z), float(nd.x), float(nd.z));
 	nd.alive = false;
-	free_nodes.push_back(n);
+	free_nodes.release(n);
+	live_nodes_--;
 	version++;
 }
 
 template <typename T>
-void RoadNetwork::take_id(std::vector<T> &items, std::vector<int> &free_list, int id) {
-	if (id >= int(items.size())) {
-		for (int k = int(items.size()); k < id; k++) free_list.push_back(k);
-		items.resize(size_t(id) + 1);
-	}
-	free_list.erase(std::remove(free_list.begin(), free_list.end(), id), free_list.end());
+void RoadNetwork::take_id(std::vector<T> &items, SlotIds &free_list, int id) {
+	items.resize(size_t(free_list.claim(id, int(items.size()))));
 }
 
 void RoadNetwork::put_node(int id, const RoadNode &rec) {
 	take_id(nodes, free_nodes, id);
 	RoadNode &n = nodes[id];
+	live_nodes_ += n.alive ? 0 : 1;
 	n = rec;
 	n.alive = true;
 	n.segs.clear();
 	node_hash.insert_aabb(id, float(n.x), float(n.z), float(n.x), float(n.z));
 	grade.node_changed(id);
+	shape_nodes_.push_back(id);
 	version++;
 }
 
 void RoadNetwork::put_segment(int id, const RoadSegment &rec) {
 	take_id(segs, free_segs, id);
+	runs_.resize(segs.size()); // its street is made at the settle (settle_runs)
 	RoadSegment &g = segs[id];
+	live_segs_ += g.alive ? 0 : 1;
+	zoned_sides_ -= g.alive ? zoned_of(g) : 0;
 	g = rec;
 	g.alive = true;
 	player_sides += int((g.flags & SEG_ZONED_LEFT) != 0) + int((g.flags & SEG_ZONED_RIGHT) != 0);
@@ -137,8 +171,10 @@ void RoadNetwork::put_segment(int id, const RoadSegment &rec) {
 	seg_hash.insert_aabb(id, g.minx, g.minz, g.maxx, g.maxz);
 	nodes[g.a].segs.push_back(id);
 	nodes[g.b].segs.push_back(id);
+	zoned_sides_ += zoned_of(g);
 	mark_segment(id);
 	grade.seg_changed(id);
+	shape_changed(id);
 	version++;
 	if (log) log->network_changed = true;
 }
@@ -146,10 +182,12 @@ void RoadNetwork::put_segment(int id, const RoadSegment &rec) {
 void RoadNetwork::set_profile(int s, int profile) {
 	RoadSegment &g = segs[s];
 	mark_segment(s);
+	shape_changed(s);
 	seg_hash.remove_aabb(s, g.minx, g.minz, g.maxx, g.maxz);
 	g.profile = profile;
 	update_bounds(s);
 	seg_hash.insert_aabb(s, g.minx, g.minz, g.maxx, g.maxz);
+	shape_changed(s);
 	mark_segment(s);
 	grade.seg_changed(s); // its casing, so the ground read under it and its plates
 	version++;
@@ -157,8 +195,16 @@ void RoadNetwork::set_profile(int s, int profile) {
 }
 
 void RoadNetwork::set_zone(int s, int side, int zone) {
+	zoned_sides_ -= zoned_of(segs[size_t(s)]);
 	(side == 0 ? segs[s].zl : segs[s].zr) = uint8_t(zone);
+	zoned_sides_ += zoned_of(segs[size_t(s)]);
 	mark_segment(s);
+}
+
+void RoadNetwork::set_plain(int n, bool plain) {
+	if (nodes[size_t(n)].plain == plain) return;
+	nodes[size_t(n)].plain = plain;
+	shape_nodes_.push_back(n);
 }
 
 static int player_sides_of(uint16_t flags) {
@@ -226,6 +272,7 @@ void RoadNetwork::set_structure(int s, Structure st) {
 }
 
 void RoadNetwork::mark_heights(int s) {
+	edited_segs_.push_back(s);
 	if (!log) return;
 	const RoadSegment &g = segs[size_t(s)];
 	for (int j = int(std::floor(g.minz / CHUNK)); j <= int(std::floor(g.maxz / CHUNK)); j++)
@@ -242,7 +289,7 @@ bool RoadNetwork::bulb_clear(int n) const {
 	const RoadSegment &g = segs[s];
 	if (cat->profile(g.profile).rail) return false;
 	if (bulb_retreat(arm_of(g.q, cat->profile(g.profile), g.a == n ? 0 : 1), g.len) <= 0) return false;
-	double reach = BULB_R + BULB_WALK + BULB_REACH_PAD, pad = reach + BULB_SEARCH_PAD;
+	const double reach = BULB_REACH_M, pad = BULB_LOOK_M;
 	bool clear = true;
 	for_segments_near(nd.x - pad, nd.z - pad, nd.x + pad, nd.z + pad, [&](int o) {
 		if (!clear || o == s) return;
@@ -278,11 +325,11 @@ std::vector<int> RoadNetwork::pieces_of(int seg) const {
 	return out;
 }
 
-void RoadNetwork::refresh_node(int n) {
+bool RoadNetwork::refresh_node(int n, bool arms_changed) {
 	RoadNode &nd = nodes[n];
-	if (!nd.alive) return;
+	if (!nd.alive) return false;
 	size_t k = nd.segs.size();
-	const bool was_joint = nd.joint;
+	const bool was_joint = nd.joint, was_bulb = nd.bulb;
 	nd.bulb = k == 1 && !nd.plain && bulb_clear(n);
 	nd.joint = false;
 	std::vector<Arm> arms;
@@ -294,17 +341,104 @@ void RoadNetwork::refresh_node(int n) {
 	}
 	if (k == 2) nd.joint = arms[0].dx * arms[1].dx + arms[0].dz * arms[1].dz < STRAIGHT_ANGLE_COS;
 	if (nd.joint != was_joint) grade.node_changed(n); // a plate there, or none
+	// the node itself is drawn and driven otherwise: a bulb or a plate, or arms come or gone (crosswalks, the junction's
+	// outline and connectors read every arm)
+	const bool whole = arms_changed || nd.joint != was_joint || nd.bulb != was_bulb;
+	if (arms_changed || nd.joint != was_joint) run_dirty_.insert(run_dirty_.end(), nd.segs.begin(), nd.segs.end()); // the street goes on here, or no more
 	junction_retreats(arms, lens, out, order, nd.bulb);
+	bool changed = whole;
 	for (size_t i = 0; i < k; i++) {
 		RoadSegment &g = segs[nd.segs[i]];
 		double &mouth = g.a == n ? g.retreat_a : g.retreat_b;
-		if (mouth != out[i]) grade.seg_changed(nd.segs[i]); // its plate there moved
+		const bool moved = mouth != out[i];
+		if (moved) grade.seg_changed(nd.segs[i]); // its plate there moved
 		mouth = out[i];
+		if (!moved && !whole) continue;
+		changed = true;
+		edited_segs_.push_back(nd.segs[i]);
 		mark_segment(nd.segs[i]);
 		// the mouths moved: the lane graph rebuilds this arm and its node on the next traffic step
 		if (log) {
 			log->net_seg(nd.segs[i]);
 			log->net_node(n);
+		}
+	}
+	return changed;
+}
+
+void RoadNetwork::settle_shapes() {
+	std::vector<int> own, near;
+	own.swap(shape_nodes_);
+	const double pad = BULB_LOOK_M;
+	for (const ChangedBox &b : shape_boxes_)
+		node_hash.query(below(b.minx - pad), below(b.minz - pad), above(b.maxx + pad), above(b.maxz + pad), [&](int n) { near.push_back(n); });
+	shape_boxes_.clear();
+	ChangeLog::dedup(own);
+	ChangeLog::dedup(near);
+	for (int n : own)
+		if (n >= 0 && n < int(nodes.size())) refresh_node(n, true);
+	// the nodes near a changed road whose own arms stand as they were: only a dead end's bulb (and its mouth) can change
+	for (int n : near)
+		if (!std::binary_search(own.begin(), own.end(), n)) refresh_node(n, false);
+	settle_runs();
+}
+
+void RoadNetwork::refresh_all() {
+	shape_nodes_.clear();
+	shape_boxes_.clear();
+	for (int n = 0; n < int(nodes.size()); n++) refresh_node(n, true);
+	settle_runs();
+}
+
+void RoadNetwork::settle_runs() {
+	runs_.resize(segs.size());
+	std::vector<int> dirty;
+	dirty.swap(run_dirty_);
+	ChangeLog::dedup(dirty);
+	// The segment before `at` on its street, -1 where the street begins (street_start of the render, the one definition).
+	const auto before = [&](int at) {
+		const RoadNode &n = nodes[size_t(segs[size_t(at)].a)];
+		if (!n.joint || n.segs.size() != 2) return -1;
+		const int back = n.segs[0] == at ? n.segs[1] : n.segs[0];
+		return segs[size_t(back)].b == segs[size_t(at)].a ? back : -1; // a piece laid the other way starts its own
+	};
+	const auto after = [&](int at) {
+		const RoadNode &n = nodes[size_t(segs[size_t(at)].b)];
+		if (!n.joint || n.segs.size() != 2) return -1;
+		const int next = n.segs[0] == at ? n.segs[1] : n.segs[0];
+		return segs[size_t(next)].a == segs[size_t(at)].b ? next : -1;
+	};
+	std::vector<char> done(segs.size(), 0);
+	std::vector<int> run;
+	for (int s : dirty) {
+		if (s < 0 || s >= int(segs.size()) || done[size_t(s)]) continue;
+		if (!segs[size_t(s)].alive) {
+			runs_[size_t(s)] = StreetRun();
+			continue;
+		}
+		int head = s;
+		bool ring = false;
+		for (int back = before(head); back >= 0; back = before(head)) {
+			if (back == s) {
+				ring = true;
+				break;
+			}
+			head = back;
+		}
+		run.clear();
+		for (int at = head; at >= 0; at = after(at)) {
+			run.push_back(at);
+			done[size_t(at)] = 1;
+			const int next = after(at);
+			if (next == head) break;
+		}
+		double total = 0;
+		for (int at : run) total += segs[size_t(at)].len;
+		const int id = ring ? *std::min_element(run.begin(), run.end()) : head;
+		double start = 0;
+		for (int at : run) {
+			runs_[size_t(at)] = { id, ring ? total - segs[size_t(at)].len : start, total };
+			start += segs[size_t(at)].len;
 		}
 	}
 }
@@ -318,12 +452,6 @@ void RoadNetwork::mark_segment(int s) {
 	};
 	mark(log->road_chunks, g.minx, g.minz, g.maxx, g.maxz);
 	mark(log->lot_cells, g.minx - LOT_LOOK_M, g.minz - LOT_LOOK_M, g.maxx + LOT_LOOK_M, g.maxz + LOT_LOOK_M);
-}
-
-int RoadNetwork::alive_segments() const {
-	int c = 0;
-	for (const RoadSegment &g : segs) c += g.alive ? 1 : 0;
-	return c;
 }
 
 } // namespace city

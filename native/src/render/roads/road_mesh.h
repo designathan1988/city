@@ -61,8 +61,6 @@ void emit_wall_backfill(const RoadEmit &e, int sid);
 
 // How many stretches a segment's surface is drawn in between v0 and v1: one for a road straight and on one grade, else by the look's step.
 int surface_steps(const RoadEmit &e, int sid, double v0, double v1);
-// How far along its street a segment starts: a road is laid in pieces, and what runs along it does not start again at each.
-double street_start(const RoadNetwork &net, int sid);
 // The towers and cables of a long bridge (road_stays.cpp), on the stretch [v0, v1] of a segment; `stayed`: a street held by them stands on no bents.
 bool stayed(const RoadEmit &e, int sid);
 void emit_stays(const RoadEmit &e, int sid, double v0, double v1, float casing);

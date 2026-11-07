@@ -5,11 +5,18 @@
 #include "sim/state/city_state.h"
 
 #include <algorithm>
+#include <utility>
+#include <vector>
 
 namespace city {
 
 namespace {
-constexpr uint32_t SAVED_ENTRIES_MAX = 1000000; // sanity bound on any saved table of the block
+// The bytes of an entry of each table (put_block below writes them): what a count read is checked against.
+constexpr size_t CRATER_BYTES = 4 * sizeof(float) + sizeof(uint8_t) + sizeof(uint32_t);
+constexpr size_t RUIN_BYTES = 5 * sizeof(float) + sizeof(uint32_t) + BUILDING_SAVE_BYTES;
+constexpr size_t GONE_BYTES = sizeof(uint8_t) + 2 * sizeof(float);
+constexpr size_t HURT_BYTES = sizeof(uint32_t) + 3 * sizeof(float);
+constexpr size_t SCAR_BYTES = sizeof(uint32_t) + 6 * sizeof(float);
 
 void put_block(ByteWriter &w, const DamageState &d) {
 	w.put<uint32_t>(d.strikes);
@@ -52,38 +59,38 @@ bool get_block(ByteReader &r, DamageState &d) {
 	d.strikes = r.get<uint32_t>();
 	d.shots = r.get<uint32_t>();
 	d.growth_hold_until = r.get<double>();
-	uint32_t n = r.get<uint32_t>();
-	if (!r.ok || n > SAVED_ENTRIES_MAX) return false;
-	d.craters.resize(n);
-	for (Crater &c : d.craters) {
+	uint32_t n = r.get_count(CRATER_BYTES);
+	if (!r.ok) return false;
+	std::vector<Crater> craters(n); // the revised lists are read aside and handed to DamageState::restore whole
+	for (Crater &c : craters) {
 		c.x = r.get<float>(); c.z = r.get<float>(); c.radius = r.get<float>(); c.depth = r.get<float>();
 		c.hard = r.get<uint8_t>();
 		c.seed = r.get<uint32_t>();
 	}
-	n = r.get<uint32_t>();
-	if (!r.ok || n > SAVED_ENTRIES_MAX) return false;
-	d.ruins.resize(n);
-	for (Ruin &u : d.ruins) {
+	n = r.get_count(RUIN_BYTES);
+	if (!r.ok) return false;
+	std::vector<Ruin> ruins(n);
+	for (Ruin &u : ruins) {
 		u.x = r.get<float>(); u.z = r.get<float>(); u.w = r.get<float>(); u.d = r.get<float>(); u.rot = r.get<float>();
 		u.seed = r.get<uint32_t>();
 		if (!get_building(r, u.record)) return false;
 	}
-	n = r.get<uint32_t>();
-	if (!r.ok || n > SAVED_ENTRIES_MAX) return false;
+	n = r.get_count(GONE_BYTES);
+	if (!r.ok) return false;
 	d.gone.resize(n);
 	for (Gone &g : d.gone) {
 		g.kind = r.get<uint8_t>();
 		g.x = r.get<float>();
 		g.z = r.get<float>();
 	}
-	n = r.get<uint32_t>();
-	if (!r.ok || n > SAVED_ENTRIES_MAX) return false;
+	n = r.get_count(HURT_BYTES);
+	if (!r.ok) return false;
 	d.hurt.resize(n);
 	for (Hurt &h : d.hurt) {
 		h.seed = r.get<uint32_t>();
 		h.x = r.get<float>(); h.z = r.get<float>(); h.amount = r.get<float>();
 	}
-	for (Ruin &u : d.ruins) { // a save from before this has none: the block ends here, and each ruin falls from its middle
+	for (Ruin &u : ruins) { // a save from before this has none: the block ends here, and each ruin falls from its middle
 		if (r.o >= r.n) {
 			u.blow_x = u.x;
 			u.blow_z = u.z;
@@ -91,15 +98,19 @@ bool get_block(ByteReader &r, DamageState &d) {
 		}
 		u.blow_x = r.get<float>(); u.blow_y = r.get<float>(); u.blow_z = r.get<float>(); u.blow_force = r.get<float>();
 	}
-	if (r.o >= r.n) return r.ok; // a save from before scars: every standing building is whole
-	n = r.get<uint32_t>();
-	if (!r.ok || n > SAVED_ENTRIES_MAX) return false;
-	d.scars.resize(n);
-	for (Scar &c : d.scars) {
-		c.seed = r.get<uint32_t>();
-		c.bx = r.get<float>(); c.bz = r.get<float>(); c.x = r.get<float>(); c.y = r.get<float>(); c.z = r.get<float>(); c.force = r.get<float>();
+	std::vector<Scar> scars;
+	if (r.o < r.n) { // a save from before scars ends here: every standing building is whole
+		n = r.get_count(SCAR_BYTES);
+		if (!r.ok) return false;
+		scars.resize(n);
+		for (Scar &c : scars) {
+			c.seed = r.get<uint32_t>();
+			c.bx = r.get<float>(); c.bz = r.get<float>(); c.x = r.get<float>(); c.y = r.get<float>(); c.z = r.get<float>(); c.force = r.get<float>();
+		}
 	}
-	return r.ok;
+	if (!r.ok) return false;
+	d.restore(std::move(craters), std::move(ruins), std::move(scars));
+	return true;
 }
 } // namespace
 

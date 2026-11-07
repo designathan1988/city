@@ -14,6 +14,7 @@ namespace city {
 namespace {
 constexpr int SIDE_LEFT = 0, SIDE_RIGHT = 1;
 constexpr double FRONT_REACH_M = 80; // buildings this far behind a side still face it (deepest downtown lots)
+constexpr const char *ZONE_SAME = "tools.toast.zoneSame"; // every side the brush touched already has the zone
 
 bool zonable(const Profile &p) { return !p.rail && p.walk(); }
 
@@ -82,12 +83,27 @@ EditResult paint_zone(CityState &s, double x, double z, double radius, int zone)
 		r.zoned_sides++;
 	}
 	if (r.zoned_sides == 0) {
-		r.error = hits.empty() ? "tools.toast.zoneNoRoad" : "tools.toast.zoneSame";
+		r.error = hits.empty() ? "tools.toast.zoneNoRoad" : ZONE_SAME;
 		return r;
 	}
-	finish_edit(s, x - reach, z - reach, x + reach, z + reach);
 	r.ok = true;
 	return r;
+}
+
+EditResult paint_zone_path(CityState &s, const std::vector<StrokePoint> &dabs, double radius, int zone) {
+	EditResult all;
+	for (const StrokePoint &p : dabs) {
+		const int lot = s.lot_book.at(p.x, p.z);
+		const EditResult r = lot != 0 ? zone_lot(s, lot, zone) : paint_zone(s, p.x, p.z, radius, zone);
+		if (r.ok) {
+			all.ok = true;
+			all.buildings_removed += r.buildings_removed;
+			all.zoned_sides += r.zoned_sides;
+		} else if (lot == 0 && r.error != ZONE_SAME) {
+			all.error = r.error;
+		}
+	}
+	return all;
 }
 
 } // namespace city

@@ -64,12 +64,7 @@ bool plan_trip(CityState &s, int from, std::vector<int> &route, int &side) {
 // Whether a walker standing at `at` would be closer to another than the room walkers keep (two bodies and the gap):
 // against every walker, those born this step too (a few are born a step).
 bool crowded(const TrafficState &t, const TrafficParams &p, const Pose &at) {
-	const float room = 2 * p.ped_body_m + p.ped_gap_m;
-	for (const Pedestrian &o : t.peds) {
-		const float dx = o.cur.x - at.x, dz = o.cur.z - at.z;
-		if (o.alive && dx * dx + dz * dz < room * room) return true;
-	}
-	return false;
+	return walker_near(t, at, 2 * p.ped_body_m + p.ped_gap_m);
 }
 
 // Standing at the door, its way out to the sidewalk at `d`.
@@ -164,6 +159,7 @@ bool spawn_walker(CityState &s, const PeopleNow &now, bool from_door) {
 	w.company_due = company && out; // out of the same door, after the first
 	int id = alloc_walker(t);
 	t.peds[id] = std::move(w);
+	walker_born(t, id);
 	t.ped_count++;
 	t.doors_out += out ? 1 : 0;
 	if (company && !out) add_company(s, id);
@@ -190,6 +186,7 @@ int ped_on_footway(CityState &s, int seg, int side, float arc) {
 	w.mode = PedMode::KERB;
 	const int id = alloc_walker(t);
 	t.peds[size_t(id)] = std::move(w);
+	walker_born(t, id);
 	t.ped_count++;
 	return id;
 }

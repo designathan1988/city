@@ -40,7 +40,6 @@ EditResult add_crossing(CityState &s, double x, double z, int kind) {
 	}
 	j_set_crossing(s, node, uint8_t(kind));
 	for (int arm : net.nodes[size_t(node)].segs) net.mark_segment(arm);
-	finish_edit(s, box.minx, box.minz, box.maxx, box.maxz);
 	r.ok = true;
 	return r;
 }
@@ -91,7 +90,6 @@ EditResult add_uturn(CityState &s, double x, double z, bool toward_b) {
 	const int arrives = (from_a(arms[0]) == toward_b) ? arms[0] : arms[1];
 	j_set_uturn(s, node, arrives == std::min(arms[0], arms[1]) ? UTURN_FROM_LOW : UTURN_FROM_HIGH);
 	for (int arm : arms) net.mark_segment(arm);
-	finish_edit(s, box.minx, box.minz, box.maxx, box.maxz);
 	r.ok = true;
 	return r;
 }
@@ -103,13 +101,8 @@ EditResult remove_crossing(CityState &s, int node) {
 		r.error = "hint.move";
 		return r;
 	}
-	RoadBox box;
-	for (int arm : net.nodes[size_t(node)].segs) {
-		box.add(net.segs[size_t(arm)]);
-		net.mark_segment(arm);
-	}
+	for (int arm : net.nodes[size_t(node)].segs) net.mark_segment(arm);
 	j_set_crossing(s, node, CROSSING_NONE);
-	finish_edit(s, box.minx, box.minz, box.maxx, box.maxz);
 	r.ok = true;
 	return r;
 }

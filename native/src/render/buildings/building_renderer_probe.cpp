@@ -62,12 +62,11 @@ Dictionary BuildingRenderer::bay_census() {
 		std::snprintf(text, sizeof(text), "%d/%d/%d/%d/%d/%d/%d", int(c.comp), q(c.W), q(c.H), q(o.w), q(o.h0), q(o.h1), q(o.depth));
 		return std::string(text);
 	};
-	BuildingBodies bodies;
 	for (const Building &rec : records) {
 		const float reach = rec.w + rec.d; // past the lot, whatever its turn
 		const HeightPatch ground = s.terrain.patch(rec.x - reach, rec.z - reach, rec.x + reach, rec.z + reach);
 		b40::Placed pl;
-		bodies.place(designs(), look_, ground, rec, pl);
+		bodies_.place(designs(), look_, ground, rec, pl);
 		buildings++;
 		b40::for_each_bay(pl, [&](const b40::BayCtx &c, const b40::Opening &o) {
 			bays++;

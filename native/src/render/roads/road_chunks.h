@@ -9,6 +9,10 @@
 
 namespace city {
 
+// A chunk's box (`size` a chunk or a superchunk): its column (rs_util.h AABB_MIN_Y, AABB_H) grown to the vertices its job emitted
+// (a segment is drawn whole by the chunk of its middle, and reaches past it).
+godot::AABB chunk_bounds(int64_t key, float size, const godot::AABB &emitted);
+
 class RoadChunks : public MeshQueue {
 public:
 	// Everything drawn: its chunks, one instance and one draw call each, what they hold and the heaviest one's bytes.

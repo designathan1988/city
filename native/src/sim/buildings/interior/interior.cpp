@@ -236,12 +236,14 @@ const FloorInterior &Interior::at(int level) {
 		floor = std::make_unique<FloorInterior>();
 		const float module = module_of(data_, body_);
 		const bool residential = purpose_ == PU_HOUSE || purpose_ == PU_FLATS;
+		auto stored = body_.furnishing.find(level); // a floor the player furnished keeps the made partitions and spaces, its own pieces
 		for (size_t i = 0; i < body_.volumes.size(); i++) {
 			const Volume &v = body_.volumes[i];
 			if (level < v.base || level >= v.top()) continue;
 			std::vector<Space> spaces;
 			spaces_of(body_, v, int(i), level, module, residential, spaces);
 			Plan plan(data_, body_, v, level, module);
+			plan.walls_only = stored != body_.furnishing.end();
 			furnish(plan, purpose_, spaces);
 			floor->furniture.insert(floor->furniture.end(), plan.items.begin(), plan.items.end());
 			floor->partitions.insert(floor->partitions.end(), plan.walls.begin(), plan.walls.end());
@@ -254,10 +256,8 @@ const FloorInterior &Interior::at(int level) {
 			auto on_it = [&](const Furniture &p) { return p.x + p.w / 2 > x0 && p.x - p.w / 2 < x1 && p.y + p.d / 2 > y0 && p.y - p.d / 2 < y1; };
 			floor->furniture.erase(std::remove_if(floor->furniture.begin(), floor->furniture.end(), on_it), floor->furniture.end());
 		}
-		auto stored = body_.furnishing.find(level);
 		if (stored == body_.furnishing.end()) room_lights(data_, floor->furniture);
 		else {
-			floor->furniture.clear();
 			for (const PlacedPiece &p : stored->second) {
 				const float *size = data_.interior.size[p.kind];
 				floor->furniture.push_back({ FurnitureKind(p.kind), p.x, p.y, size[0], size[1], size[2], p.angle });

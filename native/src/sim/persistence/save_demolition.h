@@ -14,7 +14,9 @@ struct CityState;
 
 constexpr uint32_t SAVE_TAG_DEMOLITION = 0x31474D44U; // 'DMG1'
 
-// One building record as saved (the table of buildings and a ruin keep the same record).
+// One building record as saved (the table of buildings and a ruin keep the same record), BUILDING_SAVE_BYTES long.
+constexpr size_t BUILDING_SAVE_BYTES = 5 * sizeof(float) + 2 * sizeof(uint8_t) + sizeof(uint16_t) + sizeof(uint32_t) + 2 * sizeof(uint16_t) +
+		sizeof(int16_t) + sizeof(double);
 void put_building(ByteWriter &w, const Building &b);
 bool get_building(ByteReader &r, Building &b);
 

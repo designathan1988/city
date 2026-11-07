@@ -100,9 +100,11 @@ void WearField::add(int channel, float x, float z, float amount) {
 	const int step = int(whole) + (random() < q - whole ? 1 : 0);
 	if (step <= 0) return;
 	const int wx = wrap(gx, RES), wy = wrap(gy, RES), tile = (wy / LAYER_CELLS) * LAYERS_AXIS + wx / LAYER_CELLS;
-	uint8_t *bytes = tiles_[size_t(tile)].ptrw();
-	uint8_t &b = bytes[(size_t(wy % LAYER_CELLS) * LAYER_CELLS + size_t(wx % LAYER_CELLS)) * CHANNELS + size_t(channel)];
-	b = uint8_t(std::min(BYTE_TOP, int(b) + step));
+	const size_t at = (size_t(wy % LAYER_CELLS) * LAYER_CELLS + size_t(wx % LAYER_CELLS)) * CHANNELS + size_t(channel);
+	const uint8_t was = tiles_[size_t(tile)][int64_t(at)];
+	const uint8_t now = uint8_t(std::min(BYTE_TOP, int(was) + step));
+	if (now == was) return; // saturated: the tile sends nothing new
+	tiles_[size_t(tile)].ptrw()[at] = now;
 	touch(tile);
 }
 
@@ -143,13 +145,23 @@ int64_t WearField::worn_cells() const {
 	return n;
 }
 
+// The cells of the rectangle cleared, row by row: each row's run inside one tile in one memset (a run that was clean already
+// leaves its tile as it was, unsent).
 void WearField::clear_cell_range(int gx0, int gx1, int gy0, int gy1) {
-	for (int gy = gy0; gy <= gy1; gy++)
-		for (int gx = gx0; gx <= gx1; gx++) {
-			const int wx = wrap(gx, RES), wy = wrap(gy, RES), tile = (wy / LAYER_CELLS) * LAYERS_AXIS + wx / LAYER_CELLS;
-			std::memset(tiles_[size_t(tile)].ptrw() + (size_t(wy % LAYER_CELLS) * LAYER_CELLS + size_t(wx % LAYER_CELLS)) * CHANNELS, 0, CHANNELS);
-			touch(tile);
+	for (int gy = gy0; gy <= gy1; gy++) {
+		const int wy = wrap(gy, RES), row = wy % LAYER_CELLS, tile_row = (wy / LAYER_CELLS) * LAYERS_AXIS;
+		for (int gx = gx0; gx <= gx1;) {
+			const int wx = wrap(gx, RES), in_tile = wx % LAYER_CELLS, run = std::min(gx1 - gx + 1, LAYER_CELLS - in_tile);
+			const int tile = tile_row + wx / LAYER_CELLS;
+			const size_t from = (size_t(row) * LAYER_CELLS + size_t(in_tile)) * CHANNELS, bytes = size_t(run) * CHANNELS;
+			const uint8_t *read = tiles_[size_t(tile)].ptr() + from;
+			if (std::any_of(read, read + bytes, [](uint8_t b) { return b != 0; })) {
+				std::memset(tiles_[size_t(tile)].ptrw() + from, 0, bytes);
+				touch(tile);
+			}
+			gx += run;
 		}
+	}
 }
 
 void WearField::follow(float x, float z) {
@@ -167,7 +179,7 @@ void WearField::follow(float x, float z) {
 	send_origin();
 }
 
-void WearField::upload(float dt) {
+int64_t WearField::upload(float dt) {
 	for (float &s : since_) s += dt;
 	int sent = 0;
 	RenderingServer *rs = RenderingServer::get_singleton();
@@ -184,6 +196,7 @@ void WearField::upload(float dt) {
 		pending_.pop_back();
 		sent++;
 	}
+	return int64_t(sent) * LAYER_CELLS * LAYER_CELLS * CHANNELS;
 }
 
 } // namespace city

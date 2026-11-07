@@ -9,7 +9,11 @@ namespace city {
 
 namespace {
 thread_local bool in_pool = false;
-}
+// The keyed job running on this thread (running_current).
+thread_local JobPool *running_pool = nullptr;
+thread_local JobKey running_key;
+thread_local uint64_t running_seq = 0;
+} // namespace
 
 JobPool::JobPool(unsigned threads) {
 	const unsigned hw = std::thread::hardware_concurrency();
@@ -28,13 +32,35 @@ JobPool::~JobPool() {
 		if (t.joinable()) t.join();
 }
 
-void JobPool::submit(JobKey key, float priority, std::function<void()> work) {
+uint64_t JobPool::submit(JobKey key, float priority, std::function<void()> work) {
+	std::function<void()> superseded; // the older queued closure of the key: destroyed after the lock is let go
+	uint64_t seq;
 	{
 		std::lock_guard<std::mutex> lk(m_);
-		latest_[key] = ++seq_;
-		q_.push(Item{ priority, seq_, key, std::move(work) });
+		seq = ++seq_;
+		Slot &slot = slots_[key];
+		if (slot.work) {
+			superseded = std::move(slot.work);
+			replaced_++;
+		}
+		slot.seq = seq;
+		slot.work = std::move(work);
+		newest_[key] = seq;
+		q_.push(Item{ priority, seq, key });
 	}
 	cv_.notify_one();
+	return seq;
+}
+
+bool JobPool::current(JobKey key, uint64_t seq) {
+	std::lock_guard<std::mutex> lk(m_);
+	auto it = newest_.find(key);
+	return it != newest_.end() && it->second == seq;
+}
+
+bool JobPool::running_current() {
+	if (running_pool != this) return true;
+	return current(running_key, running_seq);
 }
 
 void JobPool::parallel_for(size_t n, const std::function<void(size_t)> &fn) {
@@ -80,7 +106,7 @@ void JobPool::parallel_for(size_t n, const std::function<void(size_t)> &fn) {
 
 size_t JobPool::tracked() {
 	std::lock_guard<std::mutex> lk(m_);
-	return latest_.size();
+	return slots_.size();
 }
 
 void JobPool::wait_idle() {
@@ -92,6 +118,9 @@ void JobPool::loop() {
 	in_pool = true;
 	for (;;) {
 		std::function<void()> work;
+		bool keyed = false;
+		JobKey key;
+		uint64_t seq = 0;
 		{
 			std::unique_lock<std::mutex> lk(m_);
 			cv_.wait(lk, [&]() { return stop_ || !q_.empty() || !helpers_.empty(); });
@@ -100,23 +129,35 @@ void JobPool::loop() {
 				work = std::move(helpers_.front());
 				helpers_.pop_front();
 			} else {
-				// Moved out, not copied (the job's captures); the heap's order reads only priority and seq, which stay.
-				Item item = std::move(const_cast<Item &>(q_.top()));
+				const Item item = q_.top();
 				q_.pop();
-				auto it = latest_.find(item.key);
-				if (it == latest_.end() || it->second != item.seq) { // superseded while queued
-					replaced_++;
+				auto it = slots_.find(item.key);
+				if (it == slots_.end() || it->second.seq != item.seq) { // superseded while queued: its work went with the newer submit
 					if (idle()) idle_cv_.notify_all();
 					continue;
 				}
-				latest_.erase(it); // its newest job runs: an older one still queued finds no entry and is dropped
-				work = std::move(item.work);
+				work = std::move(it->second.work);
+				slots_.erase(it); // its newest job runs: an older heap entry finds no slot of its seq and is dropped
+				keyed = true;
+				key = item.key;
+				seq = item.seq;
 			}
 			++busy_;
 		}
+		if (keyed) {
+			running_pool = this;
+			running_key = key;
+			running_seq = seq;
+		}
 		work();
+		running_pool = nullptr;
+		work = nullptr; // the closure's captures go before the pool's lock is taken
 		{
 			std::lock_guard<std::mutex> lk(m_);
+			if (keyed) {
+				auto it = newest_.find(key);
+				if (it != newest_.end() && it->second == seq) newest_.erase(it);
+			}
 			--busy_;
 			if (idle()) idle_cv_.notify_all();
 		}

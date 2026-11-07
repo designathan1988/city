@@ -29,7 +29,7 @@ public:
 
 private:
 	std::mutex mutex_;
-	std::unordered_map<uint64_t, Plants> book_;
+	std::unordered_map<b40::BodyKey, Plants, b40::BodyKeyHash> book_; // by the body's exact key
 };
 
 // What a view of the chunk draws of a garden: near, every plant; far, one card each, and no flower, a clump under a pixel there.

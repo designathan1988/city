@@ -115,8 +115,7 @@ void write_transit(ByteWriter &w, const TransitData &t) {
 		w.put_vec(l.stops);
 		w.put<uint32_t>(l.colour);
 		w.put<int32_t>(l.vehicles);
-		w.put<uint32_t>(uint32_t(l.name.size()));
-		w.put_bytes(l.name.data(), l.name.size());
+		w.put_string(l.name);
 	}
 }
 } // namespace
@@ -133,9 +132,10 @@ void put_building(ByteWriter &w, const Building &b) {
 	w.put<double>(b.built);
 }
 
-std::vector<uint8_t> encode_city(const CityState &s, std::vector<SavePart> *parts) {
+std::vector<uint8_t> encode_city(const CityState &s, std::vector<SavePart> *parts, size_t expect) {
 	ByteWriter w;
 	w.canonical = parts != nullptr;
+	w.buf.reserve(expect);
 	const auto mark = [&](const char *name) {
 		if (parts) parts->push_back({ name, w.buf.size() });
 	};

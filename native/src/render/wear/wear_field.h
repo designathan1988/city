@@ -26,7 +26,7 @@ public:
 	void follow(float x, float z); // keeps the window round where the view looks
 	void paint(float x0, float z0, float x1, float z1, float value); // a test sets wheels and feet over a rectangle: the same use in both games
 	int64_t bytes() const { return int64_t(RES) * RES * CHANNELS; } // of the texture, and as much again here
-	void upload(float dt); // sends the tiles that changed and are due
+	int64_t upload(float dt); // sends the tiles that changed and are due; returns their bytes (the upload ledger's)
 	int64_t worn_cells() const; // cells any agent has left wear on (render_cost probe)
 	int64_t publications() const { return publications_; }
 

@@ -18,8 +18,10 @@ public:
 	// `count` puffs of `kind` over `spread` round (x, y, z), a size and a life each varied (as the reference does).
 	void burst(float x, float y, float z, int count, int kind, float spread, float size, float life);
 	void set_wind(float x, float z) { wind_ = godot::Vector2(x, z); }
-	// Advances the clock to `now` (seconds) and sends what was written.
-	void update(double now);
+	// The frame's clock, `now` seconds: what is born from here on is stamped with it, and the shader ages every puff by it.
+	void stamp(double now);
+	// What this frame wrote, sent once; the layer drawn only while a puff lives (a dead one is drawn nowhere by the shader).
+	void flush();
 	bool active(double now) const { return now < last_death_; }
 
 private:
@@ -28,7 +30,7 @@ private:
 	godot::Vector2 wind_;
 	Rng rng_{ 0x9ef0d51ULL };
 	int pool_ = 0, next_ = 0;
-	bool dirty_ = false;
+	bool dirty_ = false, shown_ = true;
 	double now_ = 0, last_death_ = 0;
 };
 

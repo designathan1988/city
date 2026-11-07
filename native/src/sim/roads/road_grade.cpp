@@ -137,12 +137,17 @@ void grade_inputs(RoadGrade &grade, const RoadNetwork &net, int s, const GroundA
 	p.valid = true;
 }
 
-void grade_chains(RoadGrade &grade, const RoadNetwork &net, const std::vector<int> &read, float ground_grade, std::vector<int> &ends) {
+void grade_chains(RoadGrade &grade, const RoadNetwork &net, const std::vector<int> &read, float ground_grade, std::vector<int> &ends,
+		std::vector<char> &seen) {
 	struct Piece {
 		int seg;
 		bool forward; // it runs the way the road is walked
 	};
-	std::vector<char> seen(net.segs.size(), 0);
+	std::vector<int> marked; // what `seen` holds, put back at the end
+	const auto see = [&](int s) {
+		seen[size_t(s)] = 1;
+		marked.push_back(s);
+	};
 	const auto beyond = [&](int at, int n) {
 		if (!carries_on(net, n)) return -1;
 		const RoadNode &nd = net.nodes[size_t(n)];
@@ -151,17 +156,17 @@ void grade_chains(RoadGrade &grade, const RoadNetwork &net, const std::vector<in
 	};
 	for (int s : read) {
 		if (seen[size_t(s)]) continue;
-		seen[size_t(s)] = 1;
+		see(s);
 		std::deque<Piece> run{ { s, true } };
 		for (int at = s, n = net.segs[size_t(s)].b, next = beyond(at, n); next >= 0; next = beyond(at, n)) {
-			seen[size_t(next)] = 1;
+			see(next);
 			const bool forward = net.segs[size_t(next)].a == n;
 			run.push_back({ next, forward });
 			n = forward ? net.segs[size_t(next)].b : net.segs[size_t(next)].a;
 			at = next;
 		}
 		for (int at = s, n = net.segs[size_t(s)].a, next = beyond(at, n); next >= 0; next = beyond(at, n)) {
-			seen[size_t(next)] = 1;
+			see(next);
 			const bool forward = net.segs[size_t(next)].b == n;
 			run.push_front({ next, forward });
 			n = forward ? net.segs[size_t(next)].a : net.segs[size_t(next)].b;
@@ -200,6 +205,7 @@ void grade_chains(RoadGrade &grade, const RoadNetwork &net, const std::vector<in
 			ends.push_back(p.b);
 		}
 	}
+	for (int s : marked) seen[size_t(s)] = 0;
 }
 
 double RoadGrade::at(int s, double arc) const {

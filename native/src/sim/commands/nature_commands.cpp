@@ -209,8 +209,9 @@ EditResult paint_dab(CityState &s, const PaintDab &d) {
 
 EditResult clear_gullies(CityState &s) {
 	GroundPaint &g = s.nature.ground;
-	std::vector<int> keys;
-	for (const auto &kv : g.all()) keys.push_back(kv.first);
+	std::vector<int> keys; // the tiles with a gully cut or wiped: only they change
+	for (const auto &kv : g.all())
+		if (std::any_of(kv.second->begin(), kv.second->end(), [](const PaintCell &c) { return c.gully != 0 || c.gully_wipe != 0; })) keys.push_back(kv.first);
 	j_paint_touch(s, keys);
 	for (int key : keys) {
 		PaintTile t = *g.tile(key);
@@ -301,7 +302,7 @@ EditResult clear_relief(CityState &s) {
 		t.recompose(rect.x0, rect.z0, rect.x1, rect.z1);
 		double ax = t.x_of(rect.x0), az = t.x_of(rect.z0), bx = t.x_of(rect.x1), bz = t.x_of(rect.z1);
 		mark_ground(s, ax, az, bx, bz);
-		finish_edit(s, ax, az, bx, bz);
+		settle_network(s); // the roads over this region read its ground before the next one is taken back
 	}
 	unflood(s);
 	s.touch();

@@ -123,8 +123,9 @@ bool joined_quad(const Quad &first, const Quad &second, Quad &out) {
 }
 
 EditResult build_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile) {
+	const size_t from = s.history.open.ops.size(); // this road alone is paid for (the lines of a block grid one by one)
 	EditResult r = place_road(s, a, has_control, cx, cz, b, profile);
-	if (r.ok && !settle_road_edit(s, r)) r.ok = false; // the caller rolls the journal back
+	if (r.ok && !settle_road_edit(s, r, from)) r.ok = false; // the caller rolls the journal back
 	return r;
 }
 
@@ -200,7 +201,7 @@ EditResult lay_road(CityState &s, const Anchor &a, bool has_control, double cx, 
 	box.add(minx, minz);
 	box.add(maxx, maxz);
 	for (const Stop &stop : stops) merge_stubs(s, stop.node, box, made);
-	finish_edit(s, box.minx, box.minz, box.maxx, box.maxz);
+	settle_network(s); // a road laid in pieces, or a stretch squeezed between junctions, reads the mouths and heights of what is laid
 	if (laid) *laid = made;
 	r.ok = true;
 	r.segments = int(made.size());
@@ -217,19 +218,14 @@ EditResult demolish_at(CityState &s, double x, double z) {
 		if (std::fabs(dx * c - dz * sn) < b.w / 2 && std::fabs(dx * sn + dz * c) < b.d / 2) hit = id;
 	});
 	if (hit >= 0) {
-		const Building &b = s.buildings.items[hit];
-		double bx = b.x, bz = b.z;
 		j_remove_building(s, hit);
-		finish_edit(s, bx, bz, bx, bz);
 		r.ok = true;
 		r.buildings_removed = 1;
 		return r;
 	}
 	const int ruin = s.damage.ruin_at(float(x), float(z), 0.f); // the rubble a blow left: clearing it frees the lot
 	if (ruin >= 0) {
-		const Ruin gone = s.damage.ruins[size_t(ruin)];
 		j_remove_ruin(s, ruin);
-		finish_edit(s, gone.x, gone.z, gone.x, gone.z);
 		r.ok = true;
 		return r;
 	}
@@ -246,13 +242,8 @@ EditResult demolish_at(CityState &s, double x, double z) {
 		return r;
 	}
 	const std::vector<int> street = net.pieces_of(seg);
-	RoadBox box;
-	for (int piece : street) {
-		box.add(net.segs[size_t(piece)]);
-		demolish_segment(s, piece);
-	}
+	for (int piece : street) demolish_segment(s, piece);
 	settle_road_edit(s, r); // what comes back is always affordable
-	finish_edit(s, box.minx, box.minz, box.maxx, box.maxz);
 	r.ok = true;
 	r.segments = int(street.size());
 	return r;

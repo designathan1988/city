@@ -53,7 +53,7 @@ std::vector<Sample> samples(const RoadEmit &e, int sid, double v0, double v1, bo
 	std::sort(at.begin(), at.end());
 	at.erase(std::unique(at.begin(), at.end(), [](double a, double b) { return std::fabs(a - b) < ROAD_MIN_SPAN; }), at.end());
 	std::vector<Sample> out;
-	const double start = street_start(e.s.roads, sid);
+	const double start = e.s.roads.street_run(sid).start;
 	for (double a : at) {
 		Sample sm;
 		sm.f = seg_frame(e.s, sid, a);

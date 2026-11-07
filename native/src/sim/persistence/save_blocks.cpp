@@ -9,18 +9,25 @@
 #include "sim/persistence/save_street.h"
 #include "sim/state/city_state.h"
 
+#include <cstring>
+
 namespace city {
 
 namespace {
-// The payload `fill` writes, framed with its tag and size; nothing when it writes none.
+// The payload `fill` writes, framed with its tag and size; nothing when it writes none. Written in place: the tag and a size
+// to fill in go first, the payload after them, then the size is set (or the frame taken back when the payload is empty).
 template <typename F>
 void put_framed(ByteWriter &w, uint32_t tag, F &&fill) {
-	ByteWriter block;
-	block.canonical = w.canonical;
-	if (!fill(block)) return;
+	const size_t frame = w.buf.size();
 	w.put<uint32_t>(tag);
-	w.put<uint32_t>(uint32_t(block.buf.size()));
-	w.put_bytes(block.buf.data(), block.buf.size());
+	w.put<uint32_t>(0);
+	const size_t payload = w.buf.size();
+	if (!fill(w)) {
+		w.buf.resize(frame);
+		return;
+	}
+	const uint32_t size = uint32_t(w.buf.size() - payload);
+	std::memcpy(w.buf.data() + payload - sizeof(uint32_t), &size, sizeof(size));
 }
 } // namespace
 

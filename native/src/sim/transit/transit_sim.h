@@ -5,6 +5,7 @@
 
 #include "sim/state/pose_buffer.h"
 #include "sim/traffic/bus_call.h"
+#include "sim/transit/rail_net.h"
 #include "sim/transit/transit_data.h"
 
 #include <unordered_map>
@@ -17,6 +18,7 @@ struct Vehicle;
 
 struct Bus {
 	int line = 0, vehicle = -1;
+	int line_index = -1; // its line's place in TransitData::lines, found when the plan was read (TransitRun::plan_seen)
 	int next = 0, dir = 1; // the index of the stop it is going to, and the way along the line
 	float dwell = 0, wait = 0; // seconds at the stop; seconds before it is put on the road
 	traffic::BusCall call; // who gets off and on at this stop
@@ -73,8 +75,13 @@ struct TransitRun {
 	bool built = false;
 	std::vector<Bus> buses;
 	std::vector<RailLine> rails;
+	RailNet nets[2]; // the train's tracks and the metro's
 	std::unordered_map<int, StopLane> stop_lanes; // per bus stop
 	std::unordered_map<int, std::vector<std::pair<int, int>>> crossings_by_lane; // key: (rail, crossing)
+	// Read from the plan when it moves: each stop's place in TransitData::stops by id, the bus stops on each road segment and the bus
+	// lines (places in TransitData::lines) calling at each bus stop.
+	std::unordered_map<int, int> stop_index;
+	std::unordered_map<int, std::vector<int>> stops_on_seg, lines_at_stop;
 	std::vector<TrainZone> zones; // made again each tick, for the trains near the walkers
 	int stops_called = 0, trains_at_stations = 0; // counted for the probe; passengers are the traffic's (bus_boarded, bus_alighted)
 };

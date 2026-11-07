@@ -24,6 +24,8 @@ constexpr uint32_t BYTE = 255, GREEN_SHIFT = 8, BLUE_SHIFT = 16;
 constexpr float HASH_TOP = 65535.f;
 constexpr float LUMP_WIDE = 5, LUMP_MID = 12, LUMP_FINE = 27; // the relief's three scales
 constexpr float COARSE_SHARE = 0.55f, MID_SHARE = 0.3f, FINE_SHARE = 0.15f;
+// rubble.gdshader stretches the hill's height by smoothstep(age) * slump * chunk, each noise 0..1: at most these
+constexpr float RUBBLE_SLUMP_MOST = 0.35f + 1.1f, RUBBLE_CHUNK_MOST = 0.72f + 0.56f;
 
 float lattice(int i, int j) { return float(hash_u32(uint32_t(i) * 73856093u ^ uint32_t(j) * 19349663u ^ LATTICE_SEED) & 0xFFFFu) / HASH_TOP; }
 
@@ -74,12 +76,18 @@ float Mounds::hill_at(float x, float z) { return hill(x, z); }
 void Mounds::init(const RID &scenario, const RID &material, int capacity) {
 	material_ = material;
 	capacity_ = capacity;
-	layer_.init(scenario, hill_mesh(), material, capacity, true, AABB(Vector3(-WORLD_HALF_M, -WORLD_UP_M, -WORLD_HALF_M), Vector3(2 * WORLD_HALF_M, 2 * WORLD_UP_M, 2 * WORLD_HALF_M)));
+	const Ref<ArrayMesh> hill = hill_mesh();
+	AABB local = hill->get_aabb(); // as the shader may stretch it: a height times 0 .. the most
+	const float most = RUBBLE_SLUMP_MOST * RUBBLE_CHUNK_MOST, low = std::min(0.f, local.position.y * most), high = std::max(0.f, local.get_end().y * most);
+	local.position.y = low;
+	local.size.y = high - low;
+	layer_.init_shaped(scenario, hill, material, capacity, true, local, 0.f);
 	layer_.count(0);
 }
 
 void Mounds::reset() {
 	shown_ = 0;
+	layer_.clear_bounds(); // the heaps laid again add theirs
 	dirty_ = true;
 }
 

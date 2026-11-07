@@ -2,6 +2,7 @@
 // (Qt's QUndoCommand::isObsolete: a command with no effect leaves the stack). A piece taken away and put back the same, a price
 // paid and refunded: whatever command wrote them, now or later, an edit that comes to nothing is no step of undo, and one that
 // comes to something keeps only that. Only neighbours cancel: anything between two operations may depend on the first.
+// What the entry holds is measured again after (EditEntry::measure), so its bytes are those of what it kept.
 #include "sim/commands/edit_journal.h"
 
 namespace city {
@@ -19,16 +20,25 @@ bool same(const StreetCut &a, const StreetCut &b) { return a.x == b.x && a.z == 
 
 bool either(OpKind a, OpKind b, OpKind add, OpKind rem) { return (a == add && b == rem) || (a == rem && b == add); }
 
+template <typename P>
+bool same_payload(const EditOp &a, const EditOp &b) { return same(a.get<P>(), b.get<P>()); }
+
 bool inverse(const EditOp &a, const EditOp &b) {
-	if (a.kind == OpKind::MONEY && b.kind == OpKind::MONEY) return a.money + b.money == 0;
+	if (a.kind == OpKind::MONEY && b.kind == OpKind::MONEY) return a.get<double>() + b.get<double>() == 0;
 	if (a.id != b.id) return false;
-	if (a.kind == OpKind::PROFILE && b.kind == OpKind::PROFILE) return a.from == b.to && a.to == b.from;
-	if (a.kind == OpKind::ZONE && b.kind == OpKind::ZONE) return a.side == b.side && a.from == b.to && a.to == b.from && a.player == b.player;
-	if (either(a.kind, b.kind, OpKind::ADD_ITEM, OpKind::REM_ITEM)) return same(a.item, b.item);
-	if (either(a.kind, b.kind, OpKind::ADD_POLE, OpKind::REM_POLE)) return same(a.pole, b.pole);
-	if (either(a.kind, b.kind, OpKind::ADD_SPAN, OpKind::REM_SPAN)) return same(a.span, b.span);
-	if (either(a.kind, b.kind, OpKind::ADD_BARRIER, OpKind::REM_BARRIER)) return same(a.barrier, b.barrier);
-	if (either(a.kind, b.kind, OpKind::ADD_CUT, OpKind::REM_CUT)) return same(a.cut, b.cut);
+	if (a.kind == OpKind::PROFILE && b.kind == OpKind::PROFILE) {
+		const ProfileChange &p = a.get<ProfileChange>(), &q = b.get<ProfileChange>();
+		return p.from == q.to && p.to == q.from;
+	}
+	if (a.kind == OpKind::ZONE && b.kind == OpKind::ZONE) {
+		const Change &p = a.get<Change>(), &q = b.get<Change>();
+		return p.side == q.side && p.from == q.to && p.to == q.from && p.player == q.player;
+	}
+	if (either(a.kind, b.kind, OpKind::ADD_ITEM, OpKind::REM_ITEM)) return same_payload<StreetItem>(a, b);
+	if (either(a.kind, b.kind, OpKind::ADD_POLE, OpKind::REM_POLE)) return same_payload<UtilityPole>(a, b);
+	if (either(a.kind, b.kind, OpKind::ADD_SPAN, OpKind::REM_SPAN)) return same_payload<UtilitySpan>(a, b);
+	if (either(a.kind, b.kind, OpKind::ADD_BARRIER, OpKind::REM_BARRIER)) return same_payload<Barrier>(a, b);
+	if (either(a.kind, b.kind, OpKind::ADD_CUT, OpKind::REM_CUT)) return same_payload<StreetCut>(a, b);
 	return false;
 }
 } // namespace
@@ -40,6 +50,7 @@ void EditEntry::reduce() {
 		if (!kept.empty() && inverse(kept.back(), op)) kept.pop_back();
 		else kept.push_back(std::move(op));
 	}
+	kept.shrink_to_fit(); // what it holds is what it keeps
 	ops = std::move(kept);
 }
 

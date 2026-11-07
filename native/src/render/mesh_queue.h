@@ -1,8 +1,12 @@
-// The job queue of a renderer whose chunk results are one surface each (roads, furniture): a job fills the chunk's
-// builder while it holds the map shared (submit_mesh_job), its bake and hand-over go through chunk_jobs.h commit_baked.
+// The job queue of a renderer whose chunk results are one surface each (roads, verges, structures, far roads, furniture): a job
+// fills the chunk's builder while it holds the map shared (submit_job), its bake is admitted by the frame's upload ledger and its
+// hand-over by the frame's deadline, in the frame's one order (chunk_jobs.h ChunkResults). What a result carries besides its
+// surface (`Extra`: the furniture's instances) travels inside it, so it is drawn with the mesh of the same build or not at all.
 #pragma once
 
 #include "render/chunk_jobs.h"
+
+#include <type_traits>
 
 namespace city {
 
@@ -11,94 +15,69 @@ struct MeshCount {
 	int64_t triangles = 0, vertices = 0, bytes = 0;
 };
 
-// A road or furniture chunk's result: the builder its job filled, then the mesh baked from it.
-struct BuiltMesh {
+struct NoExtra {};
+
+// A chunk's result: the builder its job filled, then the mesh baked from it, and what the job placed besides.
+template <typename Extra>
+struct BuiltMeshOf {
 	int64_t key = 0;
 	JobKey job;
 	float priority = 0;
-	uint64_t seq = 0;
+	uint64_t ticket = 0; // the chunk's revision asked (ChunkRevisions)
 	MeshBuilder mb;
 	OwnedMesh mesh;
 	MeshCount count;
+	godot::AABB bounds; // of the vertices the job emitted
+	Extra extra;
 	bool baked = false;
+	bool bakes() const { return true; }
 	int64_t bytes() const { return mb.bytes(); }
 	void bake() {
 		mesh = mb.bake();
 		count = { mb.idx.size() / 3, mb.v.size(), mb.bytes() };
+		bounds = mb.bounds();
 		mb = MeshBuilder();
 		baked = true;
 	}
 };
+using BuiltMesh = BuiltMeshOf<NoExtra>;
 
-// `build(mb)` fills the chunk's builder from the map.
-template <typename Build>
-void submit_mesh_job(const CityState &s, JobPool &pool, JobKey job, int64_t key, float priority, std::mutex &mutex,
-		std::vector<std::shared_ptr<BuiltMesh>> &done, std::unordered_map<int64_t, uint64_t> &requested, uint64_t &seq_counter,
-		Build &&build) {
-	uint64_t seq;
-	{
-		std::lock_guard<std::mutex> lk(mutex);
-		seq = ++seq_counter;
-		requested[key] = seq;
-	}
-	pool.submit(job, priority, [&s, &mutex, &done, key, job, seq, priority, build]() {
-		auto b = std::make_shared<BuiltMesh>();
-		b->key = key;
-		b->job = job;
-		b->seq = seq;
-		b->priority = priority;
-		{
-			std::shared_lock<std::shared_mutex> map(s.map_mutex);
-			build(b->mb);
-		}
-		std::lock_guard<std::mutex> lk(mutex);
-		done.push_back(std::move(b));
-	});
-}
-
-// The queue of a renderer whose chunk results are one surface each (roads, furniture): its jobs, the bakes it admits
-// and their commit. The renderer fills a chunk's builder (submit_job) and hands the baked mesh to its instance
-// (commit_one).
-class MeshQueue {
+// The queue of such a renderer: it fills a chunk's builder (submit_job) and hands the baked mesh to its instance (commit_one).
+template <typename Extra>
+class MeshQueueOf : public ChunkResults<BuiltMeshOf<Extra>> {
 public:
-	int pending() const {
-		std::lock_guard<std::mutex> lk(mutex_);
-		return int(requested_.size() + done_.size());
+	using Built = BuiltMeshOf<Extra>;
+	MeshQueueOf() {
+		this->hand_one = [this](Built &b) { commit_one(b); };
 	}
-	int64_t baking() const { return baking_bytes(baking_); } // bytes of its bakes still on a worker
-	int64_t waiting() const { return waiting_; } // bytes of its built results waiting to bake (last commit)
-	void commit(JobPool &pool, UploadBudget &upload, const std::chrono::steady_clock::time_point &until) {
-		commit_baked(pool, mutex_, done_, requested_, baking_, upload, until, waiting_, [this](BuiltMesh &b) { commit_one(b); });
-	}
+	MeshQueueOf(const MeshQueueOf &) = delete;
+	MeshQueueOf &operator=(const MeshQueueOf &) = delete;
 
 protected:
-	virtual ~MeshQueue() = default;
-	virtual void commit_one(BuiltMesh &b) = 0;
+	virtual ~MeshQueueOf() = default;
+	virtual void commit_one(Built &b) = 0;
+	// `build(mb)` (or `build(mb, extra)`) fills the chunk's builder; it runs on a worker, the map held shared while it reads.
 	template <typename Build>
 	void submit_job(const CityState &s, JobPool &pool, JobKey job, int64_t key, float priority, Build &&build) {
-		submit_mesh_job(s, pool, job, key, priority, mutex_, done_, requested_, seq_, std::forward<Build>(build));
+		this->set_pool(&pool);
+		const uint64_t ticket = this->revs.ask(key);
+		pool.submit(job, priority, [&s, this, key, job, ticket, priority, build]() {
+			auto b = std::make_shared<Built>();
+			b->key = key;
+			b->job = job;
+			b->ticket = ticket;
+			b->priority = priority;
+			{
+				std::shared_lock<std::shared_mutex> map(s.map_mutex);
+				if constexpr (std::is_same_v<Extra, NoExtra>) build(b->mb);
+				else build(b->mb, b->extra);
+			}
+			this->push(std::move(b));
+		});
 	}
-	void forget(int64_t key) { // the chunk left: a result still on its way is dropped
-		std::lock_guard<std::mutex> lk(mutex_);
-		requested_.erase(key);
-	}
-	void clear_queue() {
-		{
-			std::lock_guard<std::mutex> lk(mutex_);
-			done_.clear();
-			requested_.clear();
-		}
-		baking_.clear();
-		waiting_ = 0;
-	}
-
-private:
-	mutable std::mutex mutex_;
-	Results<BuiltMesh> done_;
-	std::unordered_map<int64_t, uint64_t> requested_;
-	BakingSet baking_;
-	int64_t waiting_ = 0;
-	uint64_t seq_ = 0;
+	void forget(int64_t key) { this->drop(key); } // the chunk left: a result still on its way is dropped when it lands
+	void clear_queue() { this->clear(); }
 };
+using MeshQueue = MeshQueueOf<NoExtra>;
 
 } // namespace city

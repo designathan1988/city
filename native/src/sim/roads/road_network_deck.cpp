@@ -26,8 +26,10 @@ bool RoadNetwork::ray_deck(double ox, double oy, double oz, double dx, double dy
 			return t0 <= t1;
 		};
 		double ylo = std::min(nodes[size_t(g.a)].y, nodes[size_t(g.b)].y), yhi = std::max(nodes[size_t(g.a)].y, nodes[size_t(g.b)].y);
-		if (grade.has(s))
-			for (float h : grade.prof[size_t(s)].h) { ylo = std::min(ylo, double(h)); yhi = std::max(yhi, double(h)); }
+		if (grade.has(s)) { // the solve keeps the lowest and highest of its heights
+			ylo = std::min(ylo, double(grade.prof[size_t(s)].ylo));
+			yhi = std::max(yhi, double(grade.prof[size_t(s)].yhi));
+		}
 		if (!slab(ox, dx, g.minx - half, g.maxx + half) || !slab(oz, dz, g.minz - half, g.maxz + half) || !slab(oy, dy, ylo, yhi)) return;
 		// Above the deck at t, where the section holds the ray's point (outside it: no deck there).
 		auto above = [&](double t, bool &on) {

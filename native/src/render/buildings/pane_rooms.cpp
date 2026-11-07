@@ -91,7 +91,7 @@ PaneRoom room_at(const Placed &pl, const BayCtx &c, const FloorInterior &floor, 
 	r.ahead = std::max(LEAST_WIDE, first_hit(walls, qx, qy, t.x, t.y, MOST_WIDE));
 	r.sill = h;
 	r.head = c.H - h;
-	r.floor = uint8_t(floor_finish(pl.rooms->inside.purpose(), c.level, pl.id));
+	r.floor = uint8_t(floor_finish(pl.rooms->purpose(), c.level, pl.id));
 	piece_seen(*pl.data, floor, px, py, t, n, r);
 	return r;
 }
@@ -115,12 +115,11 @@ PaneLook pane_look(const Placed &pl, const BayCtx &c, float a0, float a1, float 
 	if (look.plain) return look;
 	const float am = (a0 + a1) / 2, hm = (h0 + h1) / 2;
 	const float px = c.plan_at.x + c.plan_along.x * am, py = c.plan_at.y + c.plan_along.y * am;
-	const FloorInterior &floor = pl.rooms->inside.at(c.level);
+	const FloorInterior &floor = pl.rooms->floor(c.level);
 	look.slot = slot_of(pl, c, floor, px - c.plan_out.x * INSIDE, py - c.plan_out.y * INSIDE);
 	uint64_t key = uint64_t(reinterpret_cast<uintptr_t>(&floor));
 	for (float v : { px, py, c.plan_out.x, c.plan_out.y, hm, c.H }) key = mix(key, v);
-	auto known = pl.rooms->known.find(key);
-	look.room = known != pl.rooms->known.end() ? known->second : (pl.rooms->known[key] = room_at(pl, c, floor, px, py, hm));
+	look.room = pl.rooms->room(key, [&]() { return room_at(pl, c, floor, px, py, hm); });
 	return look;
 }
 

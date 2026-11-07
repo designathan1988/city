@@ -66,15 +66,20 @@ int sub_index(const Building &b, int64_t key) {
 } // namespace
 
 void BuildingRenderer::set_broken(const std::unordered_set<uint32_t> &seeds) {
+	auto published = std::make_shared<const std::unordered_set<uint32_t>>(seeds); // copied once per change, on the main thread
 	std::lock_guard<std::mutex> lk(broken_mutex_);
-	broken_ = seeds;
+	broken_ = std::move(published);
+}
+
+std::shared_ptr<RuinMesh> BuildingRenderer::ruin_of(const b40::Data &data, const Building &rec, const HeightPatch &ground) const {
+	return city::ruin_of(bodies_, data, look_, rec, ground);
 }
 
 BuildingRenderer::Inputs BuildingRenderer::gather(const CityState &s, const int64_t *chunk_keys, int count) const {
 	Inputs in;
 	{
 		std::lock_guard<std::mutex> lk(broken_mutex_);
-		in.broken = broken_;
+		in.broken = broken_; // the published set itself: no job copies it
 	}
 	float minx = FLT_MAX, minz = FLT_MAX, maxx = -FLT_MAX, maxz = -FLT_MAX;
 	for (int k = 0; k < count; k++) {
@@ -146,7 +151,7 @@ void BuildingRenderer::link_shells(Built &out, std::array<b40::Shell, SUB_COUNT>
 }
 
 BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t key, bool near, bool mid) const {
-	thread_local BuildingBodies bodies;
+	BuildingBodies &bodies = bodies_;
 	Built out;
 	out.key = key;
 	if (!near && !mid) return out;
@@ -161,7 +166,7 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 		bodies.place(designs(), look_, in.ground, rec, pl, cut ? &in.view.cut : nullptr);
 		int sub = sub_index(rec, key);
 		const bool own_design = pl.b->signature != 0 && !cut; // cut open it is the shell that shows its floors
-		const bool broken = in.broken.count(rec.seed) > 0; // what stands of it is in pieces: its lot is still drawn here
+		const bool broken = in.broken->count(rec.seed) > 0; // what stands of it is in pieces: its lot is still drawn here
 		if (own_design) {
 			const b40::Basis &l = pl.lot;
 			out.signatures.push_back({ int(pl.b->signature), Transform3D(Basis(l.e0, l.e2, -l.e1), l.at(-pl.b->signature_x, -pl.b->signature_y, 0)) });
@@ -230,10 +235,9 @@ BuildingInteriorCost BuildingRenderer::interior_cost(const CityState &s, int id,
 	const Building &rec = s.buildings.items[size_t(id)];
 	const float reach = 0.5f * std::hypot(rec.w, rec.d) + LOT_GROUND_PAD_M;
 	const HeightPatch ground = s.terrain.patch(rec.x - reach, rec.z - reach, rec.x + reach, rec.z + reach);
-	BuildingBodies bodies;
 	b40::Placed pl;
 	const b40::CutView cut{ level, dir };
-	bodies.place(s.buildings.designs, look_, ground, rec, pl, &cut); // not designs(): state_ is set once the renderer has run a frame
+	bodies_.place(s.buildings.designs, look_, ground, rec, pl, &cut); // not designs(): state_ is set once the renderer has run a frame
 	b40::Shell shell, parts;
 	parts.instanced = true;
 	b40::emit_facades(shell, parts, pl);
@@ -249,7 +253,7 @@ BuildingInteriorCost BuildingRenderer::interior_cost(const CityState &s, int id,
 }
 
 BuildingRenderer::SuperBuilt BuildingRenderer::build_super_cpu(const Inputs &in, int64_t super_key) const {
-	thread_local BuildingBodies bodies;
+	BuildingBodies &bodies = bodies_;
 	SuperBuilt out;
 	out.key = super_key;
 	b40::Shell &far = out.far_shell;

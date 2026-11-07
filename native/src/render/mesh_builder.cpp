@@ -5,6 +5,8 @@
 
 #include "render/mesh_order.h"
 
+#include <algorithm>
+
 #include <godot_cpp/classes/mesh.hpp>
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/variant/array.hpp>
@@ -154,6 +156,18 @@ Ref<ArrayMesh> MeshBuilder::commit() const {
 int64_t MeshBuilder::bytes() const {
 	return int64_t((v.size() + n.size()) * sizeof(Vector3) + c.size() * sizeof(Color) + (uv.size() + uv2.size()) * sizeof(Vector2) +
 			idx.size() * sizeof(int32_t) + tags.size());
+}
+
+AABB MeshBuilder::bounds() const {
+	const int64_t n = v.size();
+	if (n == 0) return AABB();
+	const Vector3 *p = v.ptr();
+	Vector3 lo = p[0], hi = p[0];
+	for (int64_t i = 1; i < n; i++) {
+		lo = Vector3(std::min(lo.x, p[i].x), std::min(lo.y, p[i].y), std::min(lo.z, p[i].z));
+		hi = Vector3(std::max(hi.x, p[i].x), std::max(hi.y, p[i].y), std::max(hi.z, p[i].z));
+	}
+	return AABB(lo, hi - lo);
 }
 
 void MeshBuilder::tag(uint8_t value) {

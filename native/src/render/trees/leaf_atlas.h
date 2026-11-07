@@ -4,6 +4,7 @@
 // rachis with leaflets swept towards its tip). Alpha is the leaf's cover; mipmaps are generated from it.
 #pragma once
 
+#include <godot_cpp/classes/image.hpp>
 #include <godot_cpp/classes/image_texture.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
@@ -17,10 +18,17 @@ class LeafAtlas {
 public:
 	bool build(const godot::Dictionary &atlas, godot::PackedStringArray &errors);
 	godot::RID texture() const { return texture_.is_valid() ? texture_->get_rid() : godot::RID(); }
-	godot::Ref<godot::Image> image() const { return texture_->get_image(); } // for the tree pictures, once
+	// The picture the texture was made from, handed over once (the tree pictures paint from it): the CPU copy that already
+	// exists, never read back from the GPU.
+	godot::Ref<godot::Image> take_image() {
+		godot::Ref<godot::Image> out = image_;
+		image_.unref();
+		return out;
+	}
 
 private:
 	godot::Ref<godot::ImageTexture> texture_;
+	godot::Ref<godot::Image> image_;
 };
 
 } // namespace city

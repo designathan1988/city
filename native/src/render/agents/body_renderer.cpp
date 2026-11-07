@@ -56,10 +56,9 @@ void BodyRenderer::make_ready() {
 	rs->material_set_param(material_->get_rid(), "bodies", texture_);
 	rs->material_set_param(material_->get_rid(), "atlas", asset.atlas->get_rid());
 	rs->material_set_param(material_->get_rid(), "alpha_test", asset.variations.front().alpha_test);
-	const AABB world(Vector3(-WORLD_HALF_M, -WORLD_UP_M, -WORLD_HALF_M), Vector3(2 * WORLD_HALF_M, 2 * WORLD_UP_M, 2 * WORLD_HALF_M));
 	layers_.resize(asset.variations.size());
 	for (size_t v = 0; v < layers_.size(); v++) {
-		layers_[v].init(scenario_, asset.variations[v].lods.front(), material_->get_rid(), MOST_BODIES, true, world);
+		layers_[v].init_owned(scenario_, asset.variations[v].lods.front(), material_->get_rid(), MOST_BODIES, true); // the bones place the skin
 		layers_[v].count(0);
 	}
 }
@@ -97,7 +96,8 @@ void BodyRenderer::add(const BodySpec &spec) {
 	Basis stands_b;
 	stands_b.set_columns(AXIS_Y.cross(front), AXIS_Y, front);
 	const Transform3D stands(stands_b, spec.at);
-	std::vector<float> rows(size_t(bones_) * FLOATS_A_BONE);
+	std::vector<float> &rows = clip_scratch_;
+	rows.resize(size_t(bones_) * FLOATS_A_BONE);
 	asset_->clip_rows(spec.variation, idle_clip_, 0, rows.data());
 	b.base.resize(size_t(bones_));
 	for (int i = 0; i < bones_; i++) b.base[size_t(i)] = stands * rows_to_transform(rows.data() + size_t(i) * FLOATS_A_BONE);
@@ -114,10 +114,16 @@ void BodyRenderer::add(const BodySpec &spec) {
 	layers_dirty_ = true;
 }
 
-void BodyRenderer::write_bones(const Body &b, const Transform3D *bones) {
+// The rows of its bones, and its box: a vertex is its bones' bind -> world rows applied to it, weighted to one (people_look.gdshaderinc
+// BODY), so it lies within the boxes of its bones, each the bone's place out by the reach along the rows of its basis.
+void BodyRenderer::write_bones(Body &b, const Transform3D *bones) {
 	float *out = reinterpret_cast<float *>(rows_.ptrw()) + size_t(b.slot) * size_t(bones_) * FLOATS_A_BONE;
+	const float reach = asset_->variations[size_t(b.variation)].reach;
 	for (int i = 0; i < bones_; i++, out += FLOATS_A_BONE) {
 		const Transform3D &t = bones[i];
+		const Vector3 half = Vector3(t.basis.rows[0].length(), t.basis.rows[1].length(), t.basis.rows[2].length()) * reach;
+		const AABB bone(t.origin - half, half * 2.f);
+		b.box = i == 0 ? bone : b.box.merge(bone);
 		for (int r = 0; r < TEXELS_A_BONE; r++) {
 			out[r * FLOATS_A_TEXEL] = t.basis.rows[r].x;
 			out[r * FLOATS_A_TEXEL + 1] = t.basis.rows[r].y;
@@ -147,11 +153,13 @@ void BodyRenderer::pose(Body &b) {
 void BodyRenderer::rise(Body &b) {
 	const float t = 1.f - b.left / b.rise_s, reach = std::min(t / RISE_TO_CROUCH, 1.f);
 	const float blend = reach * reach * (3.f - 2.f * reach), played = std::max(t - RISE_TO_CROUCH, 0.f) / (1.f - RISE_TO_CROUCH);
-	std::vector<float> rows(size_t(bones_) * FLOATS_A_BONE);
+	std::vector<float> &rows = clip_scratch_;
+	rows.resize(size_t(bones_) * FLOATS_A_BONE);
 	const bool up = t >= RISE_TO_CROUCH;
 	const PersonClip &clip = asset_->clips[size_t(up ? up_clip_ : crouch_clip_)];
 	asset_->clip_rows(b.variation, up ? up_clip_ : crouch_clip_, up ? std::min(int(played * float(clip.frames)), clip.frames - 1) : 0, rows.data());
-	std::vector<Transform3D> bones(static_cast<size_t>(bones_));
+	std::vector<Transform3D> &bones = bone_scratch_;
+	bones.resize(size_t(bones_));
 	for (int i = 0; i < bones_; i++) {
 		const int part = asset_->bone_part[size_t(i)];
 		if ((b.lost >> part & 1u) != 0) { // closed on its joint, where that joint stands in this pose
@@ -173,12 +181,18 @@ void BodyRenderer::lay_out() {
 		MmLayer &l = layers_[size_t(b.variation)];
 		l.put(shown[size_t(b.variation)]++, AXIS_X, AXIS_Y, AXIS_Z, Vector3(), float(b.variation), float(b.slot), 0.f, b.charred ? CHARRED_MARK : 0.f);
 	}
+	bound_layers();
 	for (size_t v = 0; v < layers_.size(); v++) {
 		layers_[v].count(shown[v]);
 		layers_[v].shown(shown[v] > 0);
 		if (shown[v] > 0) layers_[v].upload();
 	}
 	layers_dirty_ = false;
+}
+
+void BodyRenderer::bound_layers() {
+	for (MmLayer &l : layers_) l.clear_bounds();
+	for (const Body &b : bodies_) layers_[size_t(b.variation)].grow(b.box);
 }
 
 void BodyRenderer::update(float dt, const Ragdoll::Ground &ground) {
@@ -207,6 +221,8 @@ void BodyRenderer::update(float dt, const Ragdoll::Ground &ground) {
 	}
 	if (layers_dirty_) lay_out();
 	if (!rows_dirty_) return;
+	bound_layers(); // the bones moved: the boxes follow
+	for (MmLayer &l : layers_) l.send_bounds();
 	RenderingServer::get_singleton()->texture_2d_update(texture_, Image::create_from_data(bones_ * TEXELS_A_BONE, MOST_BODIES, false, Image::FORMAT_RGBAF, rows_), 0);
 	rows_dirty_ = false;
 }

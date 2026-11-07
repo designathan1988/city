@@ -5,10 +5,13 @@
 #pragma once
 
 #include "core/grid.h"
+#include "core/slot_ids.h"
 #include "sim/catalog/furniture_types.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace city {
@@ -54,6 +57,39 @@ struct Barrier {
 	std::vector<float> pts; // x, z of each point of the path: two points or more
 };
 
+// A plate standing: where on the road's level, what it says, which way its face looks.
+struct SignStand {
+	float x = 0, y = 0, z = 0;
+	SignType type = SignType::STOP;
+	std::string text;
+	float face_x = 0, face_z = 1;
+};
+
+// The streets' name plates (sim/street/street_names.h settle_name_plates keeps it): by name item, the segment it names,
+// its street and the plates at its corners; by chunk, the name items with a plate there, in id order. Made again only for
+// the names an edit reached, so a chunk's plates are read without walking every name and its street.
+struct NamePlates {
+	struct Entry {
+		int seg = -1;
+		std::vector<int> chain;
+		std::vector<SignStand> plates;
+		std::vector<int64_t> chunks; // of its plates, each once
+	};
+	std::unordered_map<int, Entry> by_item;
+	std::unordered_map<int64_t, std::vector<int>> by_chunk; // name items, ascending
+	std::unordered_map<int, std::vector<int>> by_seg; // name items whose street holds the segment
+	std::vector<int> dirty; // name items added, put back or removed since the last settle
+	// The plates standing in CHUNK `key`, in the order the names were made and their streets walked.
+	template <typename F>
+	void in_chunk(int64_t key, F &&fn) const {
+		auto it = by_chunk.find(key);
+		if (it == by_chunk.end()) return;
+		for (int id : it->second)
+			for (const SignStand &p : by_item.at(id).plates)
+				if (chunk_of(p.x, p.z) == key) fn(p);
+	}
+};
+
 // A piece of a street's own kit the player took away, by its place.
 struct StreetCut {
 	bool alive = false;
@@ -64,7 +100,7 @@ struct StreetCut {
 template <typename T>
 struct StreetTable {
 	std::vector<T> items;
-	std::vector<int> free_ids;
+	SlotIds free_ids;
 	int alive = 0;
 
 	void clear() {
@@ -73,21 +109,19 @@ struct StreetTable {
 		alive = 0;
 	}
 	int add(const T &rec) {
-		const int id = free_ids.empty() ? int(items.size()) : free_ids.back();
+		const int id = free_ids.next(int(items.size()));
 		put(id, rec);
 		return id;
 	}
 	void put(int id, const T &rec) {
-		for (int k = int(items.size()); k < id; k++) free_ids.push_back(k);
-		if (id >= int(items.size())) items.resize(size_t(id) + 1);
-		free_ids.erase(std::remove(free_ids.begin(), free_ids.end(), id), free_ids.end());
+		items.resize(size_t(free_ids.claim(id, int(items.size()))));
 		items[size_t(id)] = rec;
 		items[size_t(id)].alive = true;
 		alive++;
 	}
 	void drop(int id) {
 		items[size_t(id)] = T();
-		free_ids.push_back(id);
+		free_ids.release(id);
 		alive--;
 	}
 };
@@ -99,6 +133,7 @@ public:
 	StreetTable<UtilitySpan> spans;
 	StreetTable<Barrier> barriers;
 	StreetTable<StreetCut> cuts;
+	NamePlates names; // derived from the name items and the roads: never saved
 
 	void clear();
 	bool empty() const { return items.alive + poles.alive + barriers.alive + cuts.alive == 0; }
@@ -139,14 +174,7 @@ private:
 	SpatialHash item_hash_{ WORKS_CELL_M, {} }, pole_hash_{ WORKS_CELL_M, {} }, barrier_hash_{ WORKS_CELL_M, {} }, cut_hash_{ WORKS_CELL_M, {} };
 
 	template <typename F>
-	static void unique(const SpatialHash &h, float x0, float z0, float x1, float z1, F &&fn) {
-		std::vector<int> seen;
-		h.query(x0, z0, x1, z1, [&](int id) {
-			if (std::find(seen.begin(), seen.end(), id) != seen.end()) return;
-			seen.push_back(id);
-			fn(id);
-		});
-	}
+	static void unique(const SpatialHash &h, float x0, float z0, float x1, float z1, F &&fn) { h.query_unique(x0, z0, x1, z1, fn); }
 	void file_barrier(int id, const Barrier &b, bool in);
 };
 

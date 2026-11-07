@@ -57,6 +57,7 @@ struct GradeProfile {
 	int a = -1, b = -1;
 	float len = 0, step = 0, half = 0, plate_a = 0, plate_b = 0;
 	std::vector<float> h, ceil, base, raw; // raw: the mean ground across the casing, before base is made of it
+	float ylo = 0, yhi = 0; // the lowest and highest of h, as the solve left it
 	// what the ground was read along: kept while the curve, the casing and the ground under it stand
 	double q[CURVE_NUMBERS] = {};
 	float read_half = -1;
@@ -91,9 +92,21 @@ public:
 	// The deck height of segment s at arc `at` from its a node (linear between stations, continuous).
 	double at(int s, double arc) const;
 
+	// A solve's working state by segment and by node, kept between solves at its resting values (every entry a solve
+	// writes is put back after it), so a solve costs what it reaches, not the size of the network.
+	struct Scratch {
+		std::vector<char> touched, regrounded, seg_solved, chained, node_solved, aloft;
+		std::vector<float> height, start, grade, cap;
+		std::vector<int> heighted; // the nodes whose height this solve wrote
+		void grow(size_t segs, size_t nodes);
+	};
+
 private:
 	std::vector<int> segs_, nodes_, reground_;
 	bool all_ = false;
+	Scratch scratch_;
+	// By segment: its heights moved since they were last told (moved), by less than a station's rounding.
+	std::vector<char> unshown_;
 };
 
 } // namespace city

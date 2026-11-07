@@ -74,6 +74,10 @@ struct LaneGraph {
 	std::vector<int> node_conn; // per node: first connection of its list (-1)
 	std::vector<int> lane_conn; // per ds * MAX_LANES + lane: first connection leaving it (-1)
 	std::vector<Junction> junctions; // per node
+	// The nodes whose junction runs a signal plan (signal stages to time), and per node its place there plus one (0: not on it):
+	// kept by file_signal (signal_timing.cpp) whenever a junction is built or cleared, so the lights are timed only there.
+	std::vector<int> signal_nodes;
+	std::vector<int> signal_at;
 	double lane_metres = 0;
 };
 

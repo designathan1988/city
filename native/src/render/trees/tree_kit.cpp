@@ -138,7 +138,7 @@ bool TreeKit::build(const Dictionary &trees, PackedStringArray &errors) {
 	}
 	Array list = trees.get("species", Array());
 	if (list.is_empty()) errors.push_back("streets.json trees: sem espécies");
-	if (!pictures_.begin(trees.get("pictures", Dictionary()), int(list.size()), atlas_.image(), errors)) return false;
+	if (!pictures_.begin(trees.get("pictures", Dictionary()), int(list.size()), atlas_.take_image(), errors)) return false;
 	for (int i = 0; i < list.size(); i++) species_.push_back(make_species(list[i], i, trees["caster_error_m"], pictures_, errors));
 	pictures_.finish();
 	return errors.is_empty();

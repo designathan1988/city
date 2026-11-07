@@ -5,7 +5,11 @@
 
 #include "sim/buildings/building_store.h"
 
+#include <algorithm>
+#include <cstddef>
 #include <cstdint>
+#include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace city {
@@ -56,25 +60,118 @@ struct Fire {
 	double until = 0;
 };
 
+struct DamageState;
+
+// A list of DamageState read like a vector and changed only by DamageState, each change raising its revision: the revision,
+// not the count, is what a reader compares to know the list changed (an undo can take one out and a blow put another in).
+template <typename T>
+class Revised {
+public:
+	using const_iterator = typename std::vector<T>::const_iterator;
+	size_t size() const { return items_.size(); }
+	bool empty() const { return items_.empty(); }
+	const T &operator[](size_t i) const { return items_[i]; }
+	const_iterator begin() const { return items_.begin(); }
+	const_iterator end() const { return items_.end(); }
+	const std::vector<T> &items() const { return items_; }
+	uint64_t revision() const { return revision_; } // raised by every change; never lowered, not even by a clear or a load
+	// Raised by every change but an append: while it holds, the items a reader saw are still the first ones (only new ones came).
+	uint64_t layout_revision() const { return layout_; }
+	// A loaded city taking the place of `before`: its revisions go on from the live ones, so a reader never sees one repeat.
+	void follow_on(const Revised &before) {
+		revision_ += before.revision_;
+		layout_ += before.layout_;
+	}
+
+private:
+	friend struct DamageState;
+	void push(const T &v) {
+		items_.push_back(v);
+		revision_++;
+	}
+	void pop() {
+		items_.pop_back();
+		rewritten();
+	}
+	void insert(size_t at, const T &v) {
+		items_.insert(items_.begin() + std::ptrdiff_t(at), v);
+		rewritten();
+	}
+	void erase(size_t at) {
+		items_.erase(items_.begin() + std::ptrdiff_t(at));
+		rewritten();
+	}
+	void replace(std::vector<T> items) {
+		items_ = std::move(items);
+		rewritten();
+	}
+	void follow(const Revised &before) { // an empty list in place of `before` (a clear): its revisions go on from there
+		revision_ = before.revision_ + 1;
+		layout_ = before.layout_ + 1;
+	}
+	void rewritten() {
+		revision_++;
+		layout_++;
+	}
+	std::vector<T> items_;
+	uint64_t revision_ = 0, layout_ = 0;
+};
+
 struct DamageState {
-	std::vector<Crater> craters;
-	std::vector<Ruin> ruins;
+	Revised<Crater> craters;
+	Revised<Ruin> ruins;
 	std::vector<Gone> gone;
 	std::vector<Hurt> hurt; // buildings that took a blow without falling
-	std::vector<Scar> scars; // the parts of them broken off, in the order of the blows
+	Revised<Scar> scars; // the parts of them broken off, in the order of the blows
 	std::vector<Fire> fires; // not saved: a fire does not outlast the session
 	double now = 0; // seconds of simulation since the map began (the clock of fires and of the growth hold)
 	double growth_hold_until = 0; // nothing grows on the lots while rubble lies (seconds of `now`)
 	uint32_t shots = 0; // rounds fired since the map began (the stream of a round)
 	uint32_t strikes = 0; // blows struck since the map began: the stream every draw of a blow comes from
 
-	void clear() { *this = DamageState(); }
+	// Everything gone (a new map); the revisions of the lists go on rising, so a reader still sees the change.
+	void clear();
 	// The index of the building's record in `hurt`, or -1.
 	int hurt_of(uint32_t seed, float x, float z) const;
 	// Is there a ruin whose lot covers the point? (index or -1)
 	int ruin_at(float x, float z, float pad) const;
 	// Was furniture of this kind knocked out within `reach` of the point?
 	bool is_gone(GoneKind kind, float x, float z, float reach) const;
+	// The scars of the building (seed, bx, bz), in the order of the blows, without walking the others'.
+	template <typename F>
+	void each_scar_of(uint32_t seed, float bx, float bz, F &&f) const {
+		const auto it = scars_by_seed_.find(seed);
+		if (it == scars_by_seed_.end()) return;
+		for (uint32_t i : it->second) {
+			const Scar &c = scars[i];
+			if (c.bx == bx && c.bz == bz) f(c);
+		}
+	}
+	int scar_count_of(uint32_t seed, float bx, float bz) const;
+
+	// The changes of the three revised lists (sim/commands/journal_damage.cpp journals them; the save's reader restores them).
+	// A loaded city taking the place of `before` (sim/state/city_take.cpp): the three lists' revisions continue the live ones.
+	void continue_after(const DamageState &before) {
+		craters.follow_on(before.craters);
+		ruins.follow_on(before.ruins);
+		scars.follow_on(before.scars);
+	}
+	void add_crater(const Crater &c) { craters.push(c); }
+	void drop_last_crater() {
+		if (!craters.empty()) craters.pop();
+	}
+	int add_ruin(const Ruin &r); // its index
+	void insert_ruin(size_t at, const Ruin &r) { ruins.insert(std::min(at, ruins.size()), r); }
+	void erase_ruin(size_t at) {
+		if (at < ruins.size()) ruins.erase(at);
+	}
+	void add_scar(const Scar &c);
+	void drop_last_scar();
+	void restore(std::vector<Crater> craters_read, std::vector<Ruin> ruins_read, std::vector<Scar> scars_read); // a save read
+
+private:
+	void index_scars(); // scars_by_seed_ from the whole list
+	std::unordered_map<uint32_t, std::vector<uint32_t>> scars_by_seed_; // by the building's seed: its scars' indices, ascending
 };
 
 // One step of the damage clock (caller holds the map exclusively): time passes, fires burn out.

@@ -323,6 +323,9 @@ void step_vehicles(CityState &s, float dt) {
 		std::vector<int> leaving;
 		step_lane(s, ds, lane, dt, leaving);
 		leave_lane(s, ds, lane, leaving);
+		// only this step moves a vehicle along its lane: whether the list is still in order of s is known here (lane_change.cpp)
+		const std::vector<int> &list = t.lane_vehicles[size_t(key)];
+		t.lane_sorted[size_t(key)] = std::is_sorted(list.begin(), list.end(), [&](int a, int b) { return t.vehicles[size_t(a)].s < t.vehicles[size_t(b)].s; });
 	}
 	t.step_conns = t.active_conns;
 	for (int ci : t.step_conns)

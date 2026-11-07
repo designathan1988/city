@@ -73,6 +73,7 @@ void posts(const Run &r, BarrierKind kind, float ax, float az, float bx, float b
 	for (int k = first ? 0 : 1; k <= n; k++) {
 		const float t = float(k) / n;
 		const Piece p{ ax + (bx - ax) * t, az + (bz - az) * t, dx, dz, 0 };
+		if (chunk_of(p.x, p.z) != r.key) continue; // another chunk's post: its ground is not read
 		box(r.buf, r.key, p, r.ground(p.x, p.z) - B.sink, size, size, height + B.sink, col);
 	}
 	if (kind != BarrierKind::RAILING) return;
@@ -80,6 +81,7 @@ void posts(const Run &r, BarrierKind kind, float ax, float az, float bx, float b
 	for (int k = 1; k < bars; k++) {
 		const float t = float(k) / bars;
 		const Piece p{ ax + (bx - ax) * t, az + (bz - az) * t, dx, dz, 0 };
+		if (chunk_of(p.x, p.z) != r.key) continue;
 		box(r.buf, r.key, p, r.ground(p.x, p.z) + B.bar_foot_m, B.bar_thin_m, B.bar_thin_m, B.bar_top_m - B.bar_foot_m, B.railing);
 	}
 }
@@ -94,6 +96,7 @@ void place_run(const Run &r, const Barrier &b) {
 			const float t0 = float(k) / pieces, t1 = float(k + 1) / pieces;
 			const float x0 = ax + (bx - ax) * t0, z0 = az + (bz - az) * t0, x1 = ax + (bx - ax) * t1, z1 = az + (bz - az) * t1;
 			const Piece p{ (x0 + x1) * 0.5f, (z0 + z1) * 0.5f, (bx - ax) / len, (bz - az) / len, len / pieces };
+			if (chunk_of(p.x, p.z) != r.key) continue; // another chunk's piece (box would drop it): its ground is not read
 			const float g0 = r.ground(x0, z0), g1 = r.ground(x1, z1);
 			if (kerb) kerb_piece(r, b.kind == BarrierKind::GUARDRAIL, p, std::max(g0, g1));
 			else solid_piece(r, b.kind, p, g0, g1);

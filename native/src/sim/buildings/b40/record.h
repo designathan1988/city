@@ -23,8 +23,10 @@ LotFrame lot_frame(const Building &rec);
 void record_body(const Data &data, const Building &rec, Body &b);
 // That body as what stands: its blocks resolved into solid ones (blocks.h). What draws it or walks round it reads this; what edits it reads the blocks.
 void record_mass(const Data &data, const Building &rec, Body &b);
-// What names that body: two records with the same key have the same body, wherever they stand.
-uint64_t body_key(const Building &rec);
+// What names that body exactly: an edited one by its version's stamp, one made from the seed by all it is made from (seed,
+// zone, floors, frontage and depth to a decimetre). The function is in both: what is derived from a body with it (its look,
+// its rooms) differs by it. Two records with the same key have the same body, wherever they stand.
+BodyKey body_key(const Building &rec);
 
 // The ground under a body's ground blocks, from `height(x, z)` in the world: its highest and lowest points (corners and a 1.5 m
 // grid), and the floor those give, the highest + the plinth. The render draws on it and a click on a wall is measured from it.

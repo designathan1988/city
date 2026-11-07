@@ -46,12 +46,14 @@ private:
 		int variation = 0, slot = 0;
 		uint32_t lost = 0;
 		bool charred = false;
+		godot::AABB box; // where its skin lies now: each bone's place, out by the variation's reach along the bone's axes
 	};
 	void make_ready();
 	void pose(Body &b);
 	void rise(Body &b);
-	void write_bones(const Body &b, const godot::Transform3D *bones);
+	void write_bones(Body &b, const godot::Transform3D *bones);
 	void lay_out();
+	void bound_layers(); // each variation's layer boxed round its bodies: what the camera and each light cull it by
 	const PeopleAsset *asset_ = nullptr;
 	godot::RID scenario_, texture_;
 	godot::Ref<godot::ShaderMaterial> material_;
@@ -59,6 +61,8 @@ private:
 	std::deque<Body> bodies_;
 	std::vector<int> free_slots_;
 	godot::PackedByteArray rows_;
+	std::vector<float> clip_scratch_; // a clip's rows of one body, for a pose being worked out (add, rise)
+	std::vector<godot::Transform3D> bone_scratch_;
 	Rng rng_{ 0xb0d1e5ULL };
 	float clock_ = 0;
 	int bones_ = 0, idle_clip_ = 0, crouch_clip_ = 0, up_clip_ = 0;

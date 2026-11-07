@@ -6,6 +6,7 @@
 #include "sim/state/pose_buffer.h"
 
 #include <cstdint>
+#include <utility>
 #include <vector>
 
 namespace city {
@@ -54,9 +55,24 @@ struct CrowdEntry {
 	bool moving = false, follows = false; // follows: a body the others see, with no choice of its own
 };
 
+// What a walker's crowd step chose (ped_stripes.cpp): its stripe, the one it aims at and how long held, its pace, how long held up.
+struct StripeChoice {
+	float u = 0, u_goal = 0, held = 0, pace = 0, jam = 0;
+};
+using CrowdChoice = std::pair<int, StripeChoice>; // the walker's id (-1: a follower, its leader chooses) and its choice
+
 struct SidewalkFurniture {
 	std::vector<StreetObstacle> side[2]; // right (0) and left (1) sidewalk, by s0
 	float longest = 0; // the longest footprint along the arc (a search by s0 starts this far back)
+};
+
+// Who stands where on foot (walker_cells.cpp): (cell, walker) in order of cell, made from the walkers alive when filed. The off-lane
+// filing is made at most once a tick (`tick`); the births' filing stands while `live`, those born meanwhile in `born`.
+struct WalkerCells {
+	std::vector<std::pair<int64_t, int>> by_cell;
+	std::vector<int> born;
+	uint64_t tick = ~0ull;
+	bool live = false;
 };
 
 // A shocking thing on the street (a body, a blast): whoever comes within `reach` of it before `until` runs from it.

@@ -1,6 +1,6 @@
 // The camera's line of sight against the buildings' volumes: how much of it is clear, how much of a pull in front of a building it asks
-// (the Roadcraft's isoViewport), and the eye taken out of a building at any distance. The volumes come from each record's body, kept until
-// the city changes.
+// (the Roadcraft's isoViewport), and the eye taken out of a building at any distance. The volumes come from each record's body, kept for
+// each building while what they are made from stays (solids_key): a change elsewhere in the city keeps them.
 #include "api/city_core.h"
 
 #include "sim/buildings/b40/record.h"
@@ -28,19 +28,39 @@ std::vector<Solid> solids_of(const CityState &s, const Building &rec) {
 	return out;
 }
 
+// All solids_of reads of a record: what its body is made from (b40::record_body: the edited version, by its stamp, never given
+// twice; or the function, floors, frontage, depth, seed and zone) and its lot's frame (b40::lot_frame: centre, depth, turn).
+SolidsKey solids_key(const Building &rec) {
+	SolidsKey k;
+	k.stamp = rec.body.stamp();
+	k.seed = rec.seed;
+	k.x = rec.x;
+	k.z = rec.z;
+	k.w = rec.w;
+	k.d = rec.d;
+	k.rot = rec.rot;
+	k.floors = rec.floors;
+	k.zone = rec.zone;
+	k.fn = rec.fn;
+	return k;
+}
+
 using SolidLists = std::vector<const std::vector<Solid> *>;
 
-// The volumes of the buildings in the box, from the cache.
+// The volumes of the buildings in the box, from the cache: a building's are made again only when its key changed (another
+// building under its id, or the same one edited, moved or grown).
 SolidLists solids_in(const CityState &s, InspectCache &cache, float x0, float z0, float x1, float z1) {
-	if (cache.solids_revision != s.revision) {
-		cache.solids.clear();
-		cache.solids_revision = s.revision;
-	}
 	SolidLists near;
 	s.buildings.query(x0, z0, x1, z1, [&](int id) {
-		auto found = cache.solids.find(id);
-		if (found == cache.solids.end()) found = cache.solids.emplace(id, solids_of(s, s.buildings.items[id])).first;
-		near.push_back(&found->second);
+		const Building &rec = s.buildings.items[id];
+		const SolidsKey key = solids_key(rec);
+		CachedSolids &kept = cache.solids[id];
+		if (!kept.made || !(kept.key == key)) {
+			kept.key = key;
+			kept.solids = solids_of(s, rec);
+			kept.made = true;
+		}
+		near.push_back(&kept.solids);
 	});
 	return near;
 }

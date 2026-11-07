@@ -19,13 +19,25 @@ namespace city {
 enum class WoodBand : int { INNER = 0, EDGE = 1, OPEN = 2, COUNT = 3 };
 constexpr int WOOD_BANDS = int(WoodBand::COUNT);
 
-// What a chunk's plants keep clear of and read, gathered once: its roads and lots, with a margin, and its ecosystem (none
-// on a map with neither a biome nor paint).
+// What a chunk's plants keep clear of and read, gathered once per chunk job: its roads and lots, with a margin, and its ecosystem
+// (none on a map with neither a biome nor paint, or when the job does not ask for it). The roads and lots are filed by cell of a
+// grid over the chunk and its margin, each in every cell its reach can touch, so near_road and in_lot test only those that can
+// answer: the same answer as testing them all.
 struct ChunkGround {
 	std::vector<int> segs, lots;
 	EcologyField eco;
+	struct Grid {
+		double x0 = 0, z0 = 0;
+		int n = 0;
+		std::vector<std::vector<int>> cells; // indices into segs (or lots)
+		mutable std::vector<uint32_t> seen; // per index: the query that last tested it
+		mutable uint32_t stamp = 0;
+		void file(int index, double minx, double minz, double maxx, double maxz);
+		template <typename F>
+		bool any(double x, double z, double reach, F &&test) const; // test(index) on each filed index the square x, z +- reach meets
+	} seg_grid, lot_grid;
 };
-ChunkGround chunk_ground(const CityState &s, int64_t key);
+ChunkGround chunk_ground(const CityState &s, int64_t key, bool ecology = true);
 bool near_road(const CityState &s, const ChunkGround &l, float x, float z, float r);
 bool in_lot(const CityState &s, const ChunkGround &l, float margin, float x, float z);
 

@@ -5,6 +5,7 @@
 #pragma once
 
 #include "core/grid.h"
+#include "core/slot_ids.h"
 #include "sim/catalog/catalog.h"
 #include "sim/roads/geometry.h"
 #include "sim/roads/road_grade.h"
@@ -105,6 +106,14 @@ struct RoadSegment {
 	float minx = 0, minz = 0, maxx = 0, maxz = 0;
 };
 
+// The street a segment is drawn along (its texture's V, a bridge's piers and towers): the run of segments through joints
+// (two arms in line), each laid on from the one before (its a node the other's b). `start`: the arc from the run's first
+// segment to this one's a node; `total`: the run's length. In a ring every segment starts where the ring comes back to it.
+struct StreetRun {
+	int run = -1; // the run's first segment (in a ring, the lowest id)
+	double start = 0, total = 0;
+};
+
 constexpr int ROAD_ARC_STEPS = 48;
 constexpr int CROSSWALK_ARMS = 3; // crosswalks are painted at nodes of this many arms or more
 constexpr float ROAD_HASH_CELL = 64.f;
@@ -113,7 +122,7 @@ class RoadNetwork {
 public:
 	std::vector<RoadNode> nodes;
 	std::vector<RoadSegment> segs;
-	std::vector<int> free_nodes, free_segs;
+	SlotIds free_nodes, free_segs;
 	SpatialHash seg_hash, node_hash;
 	int version = 0; // bumps on every topology change
 	int player_sides = 0; // road sides the player zoned
@@ -158,27 +167,63 @@ public:
 	bool crosswalk_on(int node, int seg) const; // a crosswalk painted over `seg` at that node
 	int uturn_arm(int node) const; // the arm whose traffic may turn back at a node of two arms, -1 none
 	bool movement_banned(int node, int from, int to) const; // nobody goes from this arm to that one (a link with no lanes: LaneLink)
-	// Recomputes the node's arm setbacks, bulb and joint flags (and its segments' mouths).
-	void refresh_node(int n);
+	// A dead end ends in a straight cut (true) or may take a bulb: its shape is settled again.
+	void set_plain(int n, bool plain);
+	// Recomputes the node's arm setbacks, bulb and joint flags (and its segments' mouths). Only what changed is told: every
+	// arm and the node when its arms may have changed (`arms_changed`), its bulb or its joint changed, else each arm whose
+	// mouth moved. True when anything was told.
+	bool refresh_node(int n, bool arms_changed = true);
+	// Refreshes every node whose shape inputs changed since the last settle (refresh_node reads a node's arms, its plain flag
+	// and, for a dead end, every road within BULB_LOOK_M): the nodes of the changed roads and the nodes near them.
+	void settle_shapes();
+	bool shapes_pending() const { return !shape_nodes_.empty() || !shape_boxes_.empty(); }
+	// Every node refreshed (a load, a new city): nothing is left to settle.
+	void refresh_all();
 	void mark_segment(int s); // its road chunks and lot cells
-	int alive_segments() const;
+	// What changed on the roads since the last take_edits, for what is derived from them later in the settle (the streets'
+	// name plates): the segments whose curve, casing, mouths or heights changed, and the boxes of the roads that came, went
+	// or changed casing.
+	struct ChangedBox {
+		double minx, minz, maxx, maxz;
+	};
+	void take_edits(std::vector<int> &segs, std::vector<ChangedBox> &boxes) {
+		segs.swap(edited_segs_);
+		boxes.swap(edited_boxes_);
+		edited_segs_.clear();
+		edited_boxes_.clear();
+	}
+	// The street of segment s (StreetRun), as the last settle left it.
+	const StreetRun &street_run(int s) const { return runs_[size_t(s)]; }
+	int alive_segments() const { return live_segs_; }
+	int alive_nodes() const { return live_nodes_; }
+	int zoned_sides() const { return zoned_sides_; } // sides of live roads with a zone
 
 	template <typename F>
 	void for_segments_near(double minx, double minz, double maxx, double maxz, F &&fn) const {
-		std::vector<int> seen;
-		seg_hash.query(float(minx), float(minz), float(maxx), float(maxz), [&](int s) {
-			if (!segs[s].alive || std::find(seen.begin(), seen.end(), s) != seen.end()) return;
+		seg_hash.query_unique(float(minx), float(minz), float(maxx), float(maxz), [&](int s) {
+			if (!segs[s].alive) return;
 			const RoadSegment &g = segs[s];
 			if (g.maxx < minx || g.minx > maxx || g.maxz < minz || g.minz > maxz) return;
-			seen.push_back(s);
 			fn(s);
 		});
 	}
 
 private:
+	// What changed a node's shape since the last settle_shapes: nodes whose own arms or plain flag changed, and the boxes
+	// of the roads that came, went or changed casing (a dead end within BULB_LOOK_M of one may gain or lose its bulb).
+	std::vector<int> shape_nodes_;
+	std::vector<ChangedBox> shape_boxes_;
+	std::vector<int> edited_segs_;
+	std::vector<ChangedBox> edited_boxes_;
+	std::vector<StreetRun> runs_; // by segment
+	std::vector<int> run_dirty_; // segments whose run may have changed: an arm of a node whose arms or joint changed
+	void settle_runs();
+	int live_segs_ = 0, live_nodes_ = 0, zoned_sides_ = 0;
+
 	void update_bounds(int s);
+	void shape_changed(int s); // segment s's box and its two nodes
 	template <typename T>
-	static void take_id(std::vector<T> &items, std::vector<int> &free_list, int id);
+	static void take_id(std::vector<T> &items, SlotIds &free_list, int id);
 	bool bulb_clear(int n) const;
 };
 

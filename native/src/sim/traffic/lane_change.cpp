@@ -17,14 +17,34 @@ struct Around {
 	int lead = -1, follow = -1;
 };
 
-Around around(const TrafficState &t, const std::vector<int> &list, float at, int self) {
+// The nearest vehicle at or ahead of `at` and the nearest behind it on lane `key`, `self` left out; of several at the same
+// place, the first on the list. A list the step left in order of s (TrafficState::lane_sorted) is searched by place: the lead is
+// the first from where `at` would go, the follower the first of the run at the greatest place behind it; any other is walked whole.
+Around around(const TrafficState &t, int key, float at, int self) {
 	Around a;
-	for (int id : list) {
-		if (id == self) continue;
-		float o = t.vehicles[id].s;
-		if (o >= at && (a.lead < 0 || o < t.vehicles[a.lead].s)) a.lead = id;
-		if (o < at && (a.follow < 0 || o > t.vehicles[a.follow].s)) a.follow = id;
+	const std::vector<int> &list = t.lane_vehicles[size_t(key)];
+	const auto s_of = [&](int i) { return t.vehicles[size_t(list[size_t(i)])].s; };
+	if (size_t(key) >= t.lane_sorted.size() || !t.lane_sorted[size_t(key)]) {
+		for (int id : list) {
+			if (id == self) continue;
+			float o = t.vehicles[id].s;
+			if (o >= at && (a.lead < 0 || o < t.vehicles[a.lead].s)) a.lead = id;
+			if (o < at && (a.follow < 0 || o > t.vehicles[a.follow].s)) a.follow = id;
+		}
+		return a;
 	}
+	const int n = int(list.size());
+	const int first = int(std::lower_bound(list.begin(), list.end(), at, [&](int o, float x) { return t.vehicles[size_t(o)].s < x; }) - list.begin());
+	for (int i = first; i < n && a.lead < 0; i++)
+		if (list[size_t(i)] != self) a.lead = list[size_t(i)];
+	int j = first - 1;
+	while (j >= 0 && list[size_t(j)] == self) j--;
+	if (j < 0) return a;
+	const float most = s_of(j);
+	int k = j;
+	for (int i = j - 1; i >= 0 && s_of(i) == most; i--)
+		if (list[size_t(i)] != self) k = i;
+	a.follow = list[size_t(k)];
 	return a;
 }
 
@@ -44,7 +64,7 @@ struct View {
 };
 
 // Incentive of moving `id` into `dst` (or -BIG when unsafe); `force` keeps only the physical gaps.
-float evaluate(const View &w, int id, const std::vector<int> &cur, const std::vector<int> &dst, float bias, bool force) {
+float evaluate(const View &w, int id, int cur, int dst, float bias, bool force) {
 	const TrafficState &t = w.s.traffic;
 	const TrafficParams &p = w.s.catalog.traffic;
 	const Vehicle &v = t.vehicles[id];
@@ -74,7 +94,7 @@ int choose(const CityState &s, int id) {
 	const Vehicle &v = t.vehicles[id];
 	const DirSeg &d = t.g.ds[v.ds];
 	View w{ s, v.ds };
-	auto list = [&](int lane) -> const std::vector<int> & { return t.lane_vehicles[size_t(v.ds) * MAX_LANES + lane]; };
+	auto list = [&](int lane) { return v.ds * MAX_LANES + lane; };
 	int ci = pick_connector(s, v);
 	if (ci >= 0 && t.g.conns[ci].from_lane != v.lane) {
 		int cand = v.lane + (t.g.conns[ci].from_lane > v.lane ? 1 : -1);

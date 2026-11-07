@@ -45,7 +45,6 @@ EditResult demolish_box(CityState &s, double ax, double az, double bx, double bz
 	settle_road_edit(s, r); // what comes back is always affordable
 	r.buildings_removed = int(buildings.size());
 	r.segments = int(segments.size());
-	finish_edit(s, x0, z0, x1, z1);
 	r.ok = true;
 	return r;
 }

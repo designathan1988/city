@@ -3,6 +3,7 @@
 // trains as a MultiMesh, each tinted with its line's colour. Tables from data/render/transit.json.
 #pragma once
 
+#include "render/frame_admission.h"
 #include "render/render_context.h"
 #include "render/rs_util.h"
 #include "render/transit/transit_parts.h"
@@ -22,7 +23,8 @@ public:
 	// What changed under the plan since the last frame (road and terrain chunks): what stands there is made again.
 	void touch(const std::vector<int64_t> &chunks);
 	void touch_terrain(const CityState &s, const std::vector<int> &rects); // height-sample rectangles, ChangeLog::terrain_rects
-	void sync(const CityState &s); // caller holds the map shared
+	// Caller holds the map shared. Items are made while the frame's deadline lasts; their meshes' bytes are paid into its ledger.
+	void sync(const CityState &s, FrameAdmission &f);
 	void update(const PoseFrame &f, const godot::Vector3 &cam, const PoseSample &at);
 	void set_xray(bool on);
 	void set_preview(const CityState &s, const std::vector<V2> &points, TransitMode mode);
@@ -42,8 +44,8 @@ private:
 
 	void see_plan(const CityState &s);
 	void want(int64_t key, Item &item);
-	void build(const CityState &s, int64_t key, Item &item);
-	void draw(const TransitMeshes &m, Piece &out);
+	int64_t build(const CityState &s, int64_t key, Item &item); // returns the bytes its meshes sent
+	int64_t draw(const TransitMeshes &m, Piece &out);
 	void drop(Piece &p);
 
 	godot::RID scenario_, material_, glass_, xray_[TRANSIT_XRAY_LAYERS];

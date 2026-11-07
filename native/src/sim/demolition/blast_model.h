@@ -22,6 +22,9 @@ Airblast airblast(const BlastParams &p, float kg, float r);
 float felt_pressure(const BlastParams &p, const Airblast &a);
 // The farthest ground distance (m) where the overpressure still reaches `kpa`; 0 when even the nearest curve point is lower.
 float range_at_pressure(const BlastParams &p, float kg, float kpa);
+// The spread of the log-normal probit through (low kPa, p_low) and (half kPa, 0.5): a constant of the catalog, computed once
+// when it loads (api/blast_loader.cpp: BlastParams::lethal_sigma, ear_sigma), never per victim.
+float probit_sigma(float low, float half, float p_low);
 // Probability (0..1) of death, and of a ruptured eardrum, at an overpressure.
 float lethality(const BlastParams &p, float pressure_kpa);
 float eardrum(const BlastParams &p, float pressure_kpa);

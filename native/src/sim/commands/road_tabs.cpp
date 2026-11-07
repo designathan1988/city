@@ -70,9 +70,7 @@ EditResult split_road_at(CityState &s, double x, double z) {
 		r.error = "tools.toast.splitNearEnd";
 		return r;
 	}
-	double minx = g.minx, minz = g.minz, maxx = g.maxx, maxz = g.maxz;
 	split_segment(s, seg, t);
-	finish_edit(s, minx, minz, maxx, maxz);
 	r.ok = true;
 	r.segments = 2;
 	return r;
@@ -113,7 +111,7 @@ EditResult change_profile_at(CityState &s, double x, double z, int profile, bool
 		box.add(s.roads.segs[sg]);
 		r.segments++;
 	}
-	finish_edit(s, box.minx, box.minz, box.maxx, box.maxz);
+	settle_network(s); // the mouths squeezed_worse reads
 	if (squeezed_worse(s, before, box)) {
 		r.error = "hint.rule.squeezed";
 		return r;
@@ -134,8 +132,6 @@ EditResult set_node_control(CityState &s, int node, int ctl) {
 		return r;
 	}
 	j_set_control(s, node, uint8_t(ctl));
-	double x = net.nodes[node].x, z = net.nodes[node].z;
-	finish_edit(s, x, z, x, z);
 	r.ok = true;
 	return r;
 }
@@ -155,8 +151,6 @@ EditResult set_road_end(CityState &s, int node, bool bulb) {
 		r.error = "inspector.end.noRoom";
 		return r;
 	}
-	double x = net.nodes[node].x, z = net.nodes[node].z;
-	finish_edit(s, x, z, x, z);
 	r.ok = true;
 	return r;
 }
@@ -184,13 +178,8 @@ EditResult remove_node(CityState &s, int node) {
 		r.error = "hint.move";
 		return r;
 	}
-	RoadBox box;
 	const std::vector<int> arms = net.nodes[size_t(node)].segs;
-	for (int arm : arms) {
-		box.add(net.segs[size_t(arm)]);
-		demolish_segment(s, arm);
-	}
-	finish_edit(s, box.minx, box.minz, box.maxx, box.maxz);
+	for (int arm : arms) demolish_segment(s, arm);
 	if (!settle_road_edit(s, r)) return r;
 	r.ok = true;
 	return r;
@@ -217,8 +206,6 @@ EditResult toggle_lane_link(CityState &s, int node, const LaneLink &link, const 
 		return std::tie(a.from, a.from_lane, a.to, a.to_lane) < std::tie(b.from, b.from_lane, b.to, b.to_lane);
 	});
 	j_links(s, node, std::move(rest));
-	const RoadNode &n = s.roads.nodes[size_t(node)];
-	finish_edit(s, n.x, n.z, n.x, n.z);
 	r.ok = true;
 	return r;
 }

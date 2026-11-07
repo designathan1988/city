@@ -29,6 +29,12 @@ public:
 	godot::Dictionary paint_brush(const godot::Vector3 &p, float radius, float strength, float hardness, int kind);
 	godot::Dictionary tree_brush(const godot::Vector3 &p, float radius, int mode, int kind, const godot::Dictionary &brush);
 	godot::Dictionary element_brush(const godot::Vector3 &p, float radius, int kind, const godot::Dictionary &brush, bool erase);
+	// The dabs a held brush lays along one pointer move, as one command (sim/commands/commands.h lay_dabs): the same dab
+	// as the single-dab method at every point, derived state settled once when the command ends.
+	godot::Dictionary fog_path(const godot::PackedVector3Array &points, float radius, float strength, float height, float speed, bool erase);
+	godot::Dictionary paint_path(const godot::PackedVector3Array &points, float radius, float strength, float hardness, int kind);
+	godot::Dictionary tree_path(const godot::PackedVector3Array &points, float radius, int mode, int kind, const godot::Dictionary &brush);
+	godot::Dictionary element_path(const godot::PackedVector3Array &points, float radius, int kind, const godot::Dictionary &brush, bool erase);
 	godot::Array effects_near(const godot::Vector3 &p, float reach, int first_effect) const;
 	godot::Dictionary set_biome(int region);
 	godot::Dictionary landscape() const;

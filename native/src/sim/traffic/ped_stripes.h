@@ -26,10 +26,6 @@ struct Body {
 };
 constexpr int MAX_BODIES = 64; // bodies a walker looks at in one step (the nearest first is not needed: all are near)
 
-struct StripeChoice {
-	float u = 0, u_goal = 0, held = 0, pace = 0, jam = 0;
-};
-
 // The crowd's rules for one step (traffic.json ped_*), with the step's length and the inverses a choice multiplies by.
 struct StripeRules {
 	float dt = 0, look = 0, gap = 0, inv_headway = 0, accel = 0, aside_share = 0, lateral_cost = 0, keep_cost = 0;

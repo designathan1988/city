@@ -114,6 +114,11 @@ Color CityCore::film_graded(const Dictionary &grade, const Color &colour) const 
 // Under the map lock shared only: the fleet's numbers are the traffic's last publication (TrafficView) and the panels' levels
 // are atomics, so the frame that reads the snapshot never waits for a traffic step; residents and jobs are the
 // BuildingStore's running totals.
+int64_t CityCore::map_revision() {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	return int64_t(state_->revision);
+}
+
 Dictionary CityCore::snapshot() {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
@@ -130,17 +135,8 @@ Dictionary CityCore::snapshot() {
 	d["edit_revision"] = int64_t(s.edit_revision);
 	d["player_zones"] = s.roads.player_sides;
 	d["style"] = String(s.style.c_str());
-	if (s.edit_revision != snap_.edit_revision) {
-		int nodes = 0;
-		for (const RoadNode &n : s.roads.nodes) nodes += n.alive ? 1 : 0;
-		int zoned = 0;
-		for (const RoadSegment &g : s.roads.segs) zoned += g.alive ? (g.zl != 0) + (g.zr != 0) : 0;
-		snap_.edit_revision = s.edit_revision;
-		snap_.nodes = nodes;
-		snap_.zoned = zoned;
-	}
-	d["nodes"] = snap_.nodes;
-	d["zoned_sides"] = snap_.zoned;
+	d["nodes"] = s.roads.alive_nodes();
+	d["zoned_sides"] = s.roads.zoned_sides();
 	d["grown"] = s.growth.grown;
 	d["growth_cells"] = int(s.growth.cells.size());
 	d["residents"] = s.buildings.residents;

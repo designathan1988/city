@@ -63,21 +63,17 @@ void PropRenderer::reset() {
 	lamps_.reset();
 	lights_.reset();
 	atlas_.reset();
-	std::lock_guard<std::mutex> lk(placed_mutex_);
-	placed_.clear();
 }
 
-void PropRenderer::build_cpu(const CityState &s, int64_t key, MeshBuilder &mb) const {
+// The chunk's mesh and, in the same result, its instances (StreetInstances travels with the mesh it was placed with).
+void PropRenderer::build_cpu(const CityState &s, int64_t key, MeshBuilder &mb, StreetInstances &inst) const {
 	mb.levels = true;
 	std::vector<PropPlace> props;
-	StreetInstances inst;
 	place_street_props(s, *look_, furniture_, key, props, inst);
 	place_barriers(s, *look_, barriers_, key, inst.boxes, inst.beams);
 	place_signs(s, *look_, signs_, atlas_, key, mb);
 	for (const PropPlace &p : props) PropKit::append(mb, kit_.mesh(p.kind), p.basis, p.origin);
 	for (const SignalHead &h : inst.heads) PropKit::append(mb, kit_.mesh(PropKind::SIGNAL), h.basis, h.origin);
-	std::lock_guard<std::mutex> lk(placed_mutex_);
-	placed_[key] = std::move(inst);
 }
 
 void PropRenderer::show(Draws &d, StreetInstances &inst, const AABB &box) {
@@ -118,7 +114,7 @@ void PropRenderer::cast_chunk(Draws &d, const RID &mesh, const AABB &box) {
 	rs->instance_geometry_set_visibility_range(d.cast, 0, shadow_end(), 0, 0, RenderingServer::VISIBILITY_RANGE_FADE_DISABLED);
 }
 
-void PropRenderer::commit_one(BuiltMesh &b) {
+void PropRenderer::commit_one(Built &b) {
 	MeshDraw &d = chunks_[b.key];
 	const bool any = b.mesh.valid();
 	cast_chunk(draws_[b.key], RID(), AABB()); // before the mesh it shows goes
@@ -128,32 +124,20 @@ void PropRenderer::commit_one(BuiltMesh &b) {
 	if (any) RenderingServer::get_singleton()->instance_set_custom_aabb(d.inst, box);
 	d.visible(any);
 	if (any) cast_chunk(draws_[b.key], d.mesh, box);
-	StreetInstances inst;
-	{
-		std::lock_guard<std::mutex> lk(placed_mutex_);
-		auto it = placed_.find(b.key);
-		if (it != placed_.end()) {
-			inst = std::move(it->second);
-			placed_.erase(it);
-		}
-	}
+	StreetInstances &inst = b.extra;
 	show(draws_[b.key], inst, box);
 	lamps_.set_chunk(b.key, std::move(inst.heads));
 	lights_.set_chunk(b.key, std::move(inst.lamps));
 }
 
 void PropRenderer::submit(const CityState &s, int64_t key, JobPool &pool, float priority) {
-	submit_job(s, pool, JobKey{ JobLane::PROPS, key }, key, priority, [this, &s, key](MeshBuilder &mb) { build_cpu(s, key, mb); });
+	submit_job(s, pool, JobKey{ JobLane::PROPS, key }, key, priority, [this, &s, key](MeshBuilder &mb, StreetInstances &inst) { build_cpu(s, key, mb, inst); });
 }
 
 void PropRenderer::drop_chunk(int64_t key) {
 	forget(key);
 	lamps_.drop_chunk(key);
 	lights_.drop_chunk(key);
-	{
-		std::lock_guard<std::mutex> lk(placed_mutex_);
-		placed_.erase(key);
-	}
 	auto dr = draws_.find(key);
 	if (dr != draws_.end()) {
 		instances_ -= dr->second.count;

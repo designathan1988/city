@@ -1,5 +1,5 @@
-// What the parked side asks of the road and of the walkers: the point of a segment's frame, the lane a gate opens onto
-// and who stands near a point (the walkers by cell, filed at most once a tick).
+// What the parked side asks of the road: the point of a segment's frame, the lane a gate opens onto and a bay's way out of its lot.
+// Who stands near a point is the walkers' own (walker_cells.cpp).
 #include "sim/traffic/lane_graph_internal.h"
 #include "sim/traffic/traffic_system.h"
 
@@ -12,24 +12,6 @@
 
 namespace city {
 namespace traffic {
-
-namespace {
-constexpr float WALKER_CELL_M = 8.f;
-constexpr int CELL_ROW_BITS = 32;
-
-int64_t cell_of(float x, float z) {
-	return (int64_t(std::floor(x / WALKER_CELL_M)) << CELL_ROW_BITS) ^ int64_t(uint32_t(int32_t(std::floor(z / WALKER_CELL_M))));
-}
-
-void file_walkers(CityState &s) {
-	TrafficState &t = s.traffic;
-	if (t.walkers_filed == t.tick) return;
-	t.walkers_filed = t.tick;
-	for (auto &kv : t.walker_cells) kv.second.clear();
-	for (int id = 0; id < int(t.peds.size()); id++)
-		if (t.peds[size_t(id)].alive) t.walker_cells[cell_of(t.peds[size_t(id)].cur.x, t.peds[size_t(id)].cur.z)].push_back(id);
-}
-} // namespace
 
 void seg_point(const CityState &s, int seg, float arc, float u, Pose &out) {
 	const RoadSegment &g = s.roads.segs[size_t(seg)];
@@ -47,12 +29,13 @@ void seg_point(const CityState &s, int seg, float arc, float u, Pose &out) {
 	out.fz = float(dz);
 }
 
-bool gate_lane(const CityState &s, const V2 &gate, LaneSpot &out) {
+bool gate_lane(const CityState &s, const V2 &gate, LaneSpot &out, YardReads *reads) {
 	const TrafficParams &p = s.catalog.traffic;
 	const LaneGraph &g = s.traffic.g;
 	const float reach = p.gate_lane_reach_m;
 	float best = reach;
 	bool found = false;
+	if (reads) reads->read(s.roads, gate.x - reach, gate.y - reach, gate.x + reach, gate.y + reach);
 	s.roads.for_segments_near(gate.x - reach, gate.y - reach, gate.x + reach, gate.y + reach, [&](int seg) {
 		const RoadSegment &r = s.roads.segs[size_t(seg)];
 		double t, dist, x, z, dx, dz;
@@ -86,22 +69,6 @@ bool gate_lane(const CityState &s, const V2 &gate, LaneSpot &out) {
 		found = true;
 	});
 	return found;
-}
-
-bool walker_within(CityState &s, float x, float z, float r) {
-	file_walkers(s);
-	const TrafficState &t = s.traffic;
-	const int reach = int(std::ceil(r / WALKER_CELL_M));
-	for (int j = -reach; j <= reach; j++)
-		for (int i = -reach; i <= reach; i++) {
-			auto it = t.walker_cells.find(cell_of(x + float(i) * WALKER_CELL_M, z + float(j) * WALKER_CELL_M));
-			if (it == t.walker_cells.end()) continue;
-			for (int id : it->second) {
-				const Pose &q = t.peds[size_t(id)].cur;
-				if ((q.x - x) * (q.x - x) + (q.z - z) * (q.z - z) < r * r) return true;
-			}
-		}
-	return false;
 }
 
 // Through the gate square on: a curve cut across the wall's line would swing the car's corners into the posts. The way's end is

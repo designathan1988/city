@@ -10,6 +10,7 @@
 
 #include <godot_cpp/classes/camera3d.hpp>
 #include <godot_cpp/classes/engine.hpp>
+#include <godot_cpp/core/math.hpp>
 #include <godot_cpp/classes/material.hpp>
 #include <godot_cpp/classes/viewport.hpp>
 #include <godot_cpp/classes/world3d.hpp>
@@ -17,6 +18,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 
 using namespace godot;
 
@@ -133,6 +135,23 @@ int CityCore::get_speed() const { return int(sim_.speed()); }
 
 void CityCore::set_day_hour(double hour) { state_->clock.set_hour(hour); }
 
+// The frame's level-of-detail view (render/detail.h): what a metre spans on this camera and viewport, and the allowed error;
+// the engine's own mesh LOD takes the same pixels, so meshes with engine levels and the levels chosen here follow one rule.
+DetailView CityCore::detail_view(Camera3D *cam) {
+	DetailView d;
+	Viewport *vp = get_viewport();
+	if (!cam || !vp) return d;
+	const Tuning &t = state_->catalog.tune;
+	const Vector2 size = vp->get_visible_rect().size;
+	const double span = cam->get_keep_aspect_mode() == Camera3D::KEEP_WIDTH ? double(size.x) : double(size.y);
+	d.eye = cam_;
+	if (cam->get_projection() == Camera3D::PROJECTION_ORTHOGONAL) d.ortho_px_per_m = span / double(cam->get_size());
+	else d.px_per_m_at_1m = span / (2.0 * std::tan(Math::deg_to_rad(double(cam->get_fov())) / 2.0));
+	d.error_px = t.render_detail_error_px;
+	vp->set_mesh_lod_threshold(float(d.error_px));
+	return d;
+}
+
 void CityCore::_process(double delta) {
 	if (Engine::get_singleton()->is_editor_hint()) return;
 	if (!render_ok_ || !state_->ready) {
@@ -158,12 +177,13 @@ void CityCore::_process(double delta) {
 	note_pose(poses, fresh, at);
 	ViewCull view;
 	if (cam) view.read(*cam);
+	render_.set_view(detail_view(cam));
 	render_.update_agents(poses, cam_, view, at); // no map lock: the frame is the published snapshot
 	const int64_t published = poses.stamp_ns[POSE_TRAIL - 1];
 	const double ticks = fresh && poses.period_ns > 0 && wear_stamp_ns_ > 0 ? double(published - wear_stamp_ns_) / double(poses.period_ns) : 0;
 	if (fresh) wear_stamp_ns_ = published;
 	render_.update_wear(poses, fresh, float(ticks / state_->catalog.tune.sim_tick_hz), cam_, float(delta));
-	render_.update_signals(poses);
+	render_.update_signals(poses, fresh);
 	render_.update_lamps(cam_, view, float(delta));
 	agents_ms_ = laps.lap();
 	if (need_full_rebuild_) {

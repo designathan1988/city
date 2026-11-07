@@ -19,7 +19,6 @@ void BuildingStore::init(ChangeLog *l, const OccupancyDef *occupancy) {
 }
 
 void BuildingStore::clear() {
-	designs.edited->clear();
 	looks.clear();
 	items.clear();
 	free_ids.clear();
@@ -31,8 +30,8 @@ void BuildingStore::clear() {
 
 int BuildingStore::add(const Building &b) {
 	int id;
-	if (!free_ids.empty()) { id = free_ids.back(); free_ids.pop_back(); }
-	else { id = int(items.size()); items.emplace_back(); }
+	id = free_ids.next(int(items.size()));
+	items.resize(size_t(free_ids.claim(id, int(items.size()))));
 	place(id, b);
 	return id;
 }
@@ -44,7 +43,8 @@ void BuildingStore::remove(int id) {
 	hash.remove_aabb(id, b.x, b.z, b.x, b.z);
 	tally(b, -1);
 	b.alive = false;
-	free_ids.push_back(id);
+	b.body = nullptr; // a dead slot holds no version: what the history keeps of it, the history holds
+	free_ids.release(id);
 	count--;
 }
 
@@ -57,15 +57,11 @@ void BuildingStore::put(int id, const Building &b, bool evict) {
 	if (id < int(items.size()) && items[id].alive) {
 		Building moved = items[id];
 		remove(id);
-		free_ids.pop_back();
-		items.emplace_back();
-		place(int(items.size()) - 1, moved);
+		const int to = int(items.size()); // the record moves to a new slot at the end; `id` stays taken for `b`
+		items.resize(size_t(free_ids.claim(to, to)));
+		place(to, moved);
 	}
-	if (id >= int(items.size())) {
-		for (int k = int(items.size()); k < id; k++) free_ids.push_back(k);
-		items.resize(size_t(id) + 1);
-	}
-	free_ids.erase(std::remove(free_ids.begin(), free_ids.end(), id), free_ids.end());
+	items.resize(size_t(free_ids.claim(id, int(items.size()))));
 	if (evict) {
 		std::vector<int> doomed;
 		float r = std::max(b.w, b.d);

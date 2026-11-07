@@ -10,6 +10,7 @@
 #include "sim/persistence/save_demolition.h"
 #include "sim/citygen/city_gen.h"
 #include "sim/commands/road_grade_sync.h"
+#include "sim/street/street_names.h"
 #include "sim/state/city_state.h"
 
 #include <cmath>
@@ -18,6 +19,12 @@
 namespace city {
 
 namespace {
+// The least bytes an entry of each saved table takes (save_write.cpp writes them): what a count read is checked against.
+constexpr size_t STOP_BYTES = 7 * sizeof(int32_t) + 2 * sizeof(uint8_t); // id, mode, at, seg, track, flags, entrance
+constexpr size_t TRACK_MIN_BYTES = sizeof(int32_t) + sizeof(uint8_t) + sizeof(uint32_t); // id, mode, its points' count
+constexpr size_t LINE_MIN_BYTES = sizeof(int32_t) + sizeof(uint8_t) + 4 * sizeof(uint32_t); // id, mode, stops, colour, vehicles, name
+constexpr size_t VARIANT_MIN_BYTES = 3 * sizeof(int32_t) + sizeof(float); // base, lanes, parking, width
+constexpr size_t SPEC_ELEMENT_BYTES = 3 * sizeof(uint8_t) + sizeof(float) + sizeof(int32_t); // kind, width, dir, flags, paving
 
 Quad get_quad(ByteReader &r) {
 	Quad q;
@@ -40,8 +47,8 @@ bool read_terrain(ByteReader &r, Heightfield &t) {
 		for (int z = z0; z < z0 + rs; z++) r.get_bytes(&t.base_q[size_t(z) * n + x0], size_t(rs) * sizeof(uint16_t));
 	}
 	t.recompose(0, 0, n - 1, n - 1);
-	uint32_t mods = r.get<uint32_t>();
-	if (!r.ok || mods > MAX_RECORDS) return false;
+	const uint32_t mods = r.get_count(SLOT_MIN_BYTES);
+	if (!r.ok) return false;
 	for (uint32_t i = 0; i < mods && r.ok; i++) {
 		if (!r.get<uint8_t>()) continue;
 		TerrainModifier m;
@@ -54,8 +61,8 @@ bool read_terrain(ByteReader &r, Heightfield &t) {
 }
 
 bool read_roads(ByteReader &r, RoadNetwork &net, uint32_t version) {
-	uint32_t nodes = r.get<uint32_t>();
-	if (!r.ok || nodes > MAX_RECORDS) return false;
+	const uint32_t nodes = r.get_count(SLOT_MIN_BYTES);
+	if (!r.ok) return false;
 	for (uint32_t i = 0; i < nodes && r.ok; i++) {
 		if (!r.get<uint8_t>()) continue;
 		RoadNode n;
@@ -71,8 +78,8 @@ bool read_roads(ByteReader &r, RoadNetwork &net, uint32_t version) {
 		n.plain = r.get<uint8_t>() != 0;
 		if (r.ok) net.put_node(int(i), n);
 	}
-	uint32_t segs = r.get<uint32_t>();
-	if (!r.ok || segs > MAX_RECORDS) return false;
+	const uint32_t segs = r.get_count(SLOT_MIN_BYTES);
+	if (!r.ok) return false;
 	for (uint32_t i = 0; i < segs && r.ok; i++) {
 		if (!r.get<uint8_t>()) continue;
 		RoadSegment g;
@@ -86,13 +93,13 @@ bool read_roads(ByteReader &r, RoadNetwork &net, uint32_t version) {
 		if (!ends_ok) return false;
 		if (r.ok) net.put_segment(int(i), g);
 	}
-	for (int n = 0; n < int(net.nodes.size()); n++) net.refresh_node(n);
+	net.refresh_all();
 	return r.ok;
 }
 
 bool read_buildings(ByteReader &r, BuildingStore &bs) {
-	uint32_t count = r.get<uint32_t>();
-	if (!r.ok || count > MAX_RECORDS) return false;
+	const uint32_t count = r.get_count(SLOT_MIN_BYTES);
+	if (!r.ok) return false;
 	for (uint32_t i = 0; i < count && r.ok; i++) {
 		if (!r.get<uint8_t>()) continue;
 		Building b;
@@ -104,7 +111,7 @@ bool read_buildings(ByteReader &r, BuildingStore &bs) {
 bool read_transit(ByteReader &r, TransitData &t) {
 	t = TransitData();
 	t.next_id = r.get<int32_t>();
-	const uint32_t stops = r.get<uint32_t>();
+	const uint32_t stops = r.get_count(STOP_BYTES);
 	for (uint32_t i = 0; i < stops && r.ok; i++) {
 		TransitStop q;
 		q.id = r.get<int32_t>();
@@ -120,7 +127,7 @@ bool read_transit(ByteReader &r, TransitData &t) {
 		q.entrance.y = r.get<float>();
 		t.stops.push_back(q);
 	}
-	const uint32_t tracks = r.get<uint32_t>();
+	const uint32_t tracks = r.get_count(TRACK_MIN_BYTES);
 	for (uint32_t i = 0; i < tracks && r.ok; i++) {
 		RailTrack k;
 		k.id = r.get<int32_t>();
@@ -128,7 +135,7 @@ bool read_transit(ByteReader &r, TransitData &t) {
 		r.get_vec(k.points);
 		t.tracks.push_back(std::move(k));
 	}
-	const uint32_t lines = r.get<uint32_t>();
+	const uint32_t lines = r.get_count(LINE_MIN_BYTES);
 	for (uint32_t i = 0; i < lines && r.ok; i++) {
 		TransitLine l;
 		l.id = r.get<int32_t>();
@@ -136,8 +143,7 @@ bool read_transit(ByteReader &r, TransitData &t) {
 		r.get_vec(l.stops);
 		l.colour = r.get<uint32_t>();
 		l.vehicles = r.get<int32_t>();
-		l.name.resize(r.get<uint32_t>());
-		r.get_bytes(l.name.data(), l.name.size());
+		l.name = r.get_string();
 		t.lines.push_back(std::move(l));
 	}
 	return r.ok;
@@ -149,7 +155,7 @@ constexpr uint32_t NATURE_VERSION = 2, VARIANTS_VERSION = 3;
 
 // Made again in the saved order, so each keeps the index the roads hold.
 void read_spec(ByteReader &r, RoadSpec &spec) {
-	const uint32_t n = r.get<uint32_t>();
+	const uint32_t n = r.get_count(SPEC_ELEMENT_BYTES);
 	for (uint32_t i = 0; i < n && r.ok; i++) {
 		SpecElement e;
 		e.kind = SpecKind(r.get<uint8_t>());
@@ -170,7 +176,7 @@ void read_spec(ByteReader &r, RoadSpec &spec) {
 }
 
 bool read_variants(ByteReader &r, Catalog &c, uint32_t version) {
-	const uint32_t n = r.get<uint32_t>();
+	const uint32_t n = r.get_count(VARIANT_MIN_BYTES);
 	for (uint32_t i = 0; i < n && r.ok; i++) {
 		RoadVariant v;
 		v.base = r.get<int32_t>();
@@ -218,9 +224,9 @@ void drop_baked_road_ground(CityState &s) {
 // The planned cities stood on this much land before the file said so: the land comes from the seed and the side, and another side moves its water.
 constexpr int PLANNED_TILES_BEFORE = 10;
 
-// Everything the file holds, read into `s` (the land founded again from its seed first, or only sized when `checking`):
-// false at the first thing that is not a city, with `s` left half replaced.
-bool read_city(CityState &s, const uint8_t *data, size_t size, std::string &error, bool checking) {
+// Everything the file holds, read into `s` (the land founded again from its seed first): false at the first thing that is
+// not a city, with `s` left half replaced.
+bool read_city(CityState &s, const uint8_t *data, size_t size, std::string &error) {
 	ByteReader r{ data, size };
 	error = "save.file.damaged";
 	if (r.get<uint32_t>() != SAVE_MAGIC || !r.ok) return false;
@@ -235,7 +241,7 @@ bool read_city(CityState &s, const uint8_t *data, size_t size, std::string &erro
 	const MapDef &def = s.catalog.maps[size_t(map)];
 	const int tiles = version >= LAND_SAVE_VERSION ? r.get<int32_t>() : def.medium ? PLANNED_TILES_BEFORE : def.tiles;
 	if (!r.ok || tiles <= 0) return false;
-	found_land(s, map, seed, !checking, tiles);
+	found_land(s, map, seed, true, tiles);
 	s.money = r.get<double>();
 	if (!std::isfinite(s.money)) return false;
 	s.unlimited_money = r.get<uint8_t>() != 0;
@@ -265,24 +271,16 @@ bool read_city(CityState &s, const uint8_t *data, size_t size, std::string &erro
 }
 } // namespace
 
-bool check_city(Catalog catalog, const uint8_t *data, size_t size, std::string &error) {
-	auto scratch = std::make_unique<CityState>();
-	scratch->catalog = std::move(catalog);
-	ComposeHold hold(scratch->terrain, false); // only checked: its final heights are never read
-	if (!read_city(*scratch, data, size, error, true)) return false;
-	error.clear();
-	return true;
-}
-
 bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &error, OpenTimes *times) {
 	OpenTimes spent;
 	Laps laps;
 	{
 		ComposeHold hold(s.terrain); // the modifiers read (and the old ones dropped) and every road shaped: composed once
-		if (!read_city(s, data, size, error, false)) return false;
+		if (!read_city(s, data, size, error)) return false;
 		spent.read = laps.lap();
 		s.roads.grade.everything(); // every road's height solved on the ground read, and the ground shaped to them
 		sync_grade(s);
+		settle_name_plates(s.street, s.roads, s.log); // the plates stand on the roads as they are now settled
 		spent.grade = laps.lap();
 	}
 	spent.compose = laps.lap();

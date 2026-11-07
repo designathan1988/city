@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iterator>
 #include <limits>
 
 namespace city {
@@ -23,6 +24,7 @@ std::vector<V2> rect_ring(const b40::LotFrame &f, float x0, float y0, float x1, 
 
 // The carriageway of every segment near, in short quads along its curve, with what of a lorry's body may stand over the kerb: only its wheels are held by it.
 void asphalt_near(const CityState &s, double x0, double z0, double x1, double z1, YardInput &out) {
+	out.reads.read(s.roads, x0, z0, x1, z1);
 	s.roads.for_segments_near(x0, z0, x1, z1, [&](int seg) {
 		const RoadSegment &g = s.roads.segs[size_t(seg)];
 		const Profile &p = s.roads.profile_of(seg);
@@ -49,7 +51,7 @@ void gates_of(const CityState &s, const LotAccess &acc, YardInput &out) {
 	const LaneGraph &g = s.traffic.g;
 	for (const LotGate &gate : acc.gates) {
 		LaneSpot spot;
-		if (!gate.car || !gate_lane(s, gate.at, spot)) continue;
+		if (!gate.car || !gate_lane(s, gate.at, spot, &out.reads)) continue;
 		const DirSeg &d = g.ds[size_t(spot.ds)];
 		const float foot = (spot.at - p.gate_join_past_m + spot.entry + p.gate_stop_before_m) * HALF;
 		YardGate yg;
@@ -73,6 +75,30 @@ void gates_of(const CityState &s, const LotAccess &acc, YardInput &out) {
 	}
 }
 } // namespace
+
+void YardReads::read(const RoadNetwork &net, double x0, double z0, double x1, double z1) {
+	boxes.push_back({ x0, z0, x1, z1 });
+	net.for_segments_near(x0, z0, x1, z1, [&](int seg) { segs.push_back(seg); });
+}
+
+bool YardReads::touched_by(const RoadNetwork &net, const std::vector<int> &removed, const std::vector<int> &changed) const {
+	for (const std::vector<int> *list : { &removed, &changed })
+		for (int seg : *list)
+			if (std::binary_search(segs.begin(), segs.end(), seg)) return true;
+	for (int seg : changed) { // come into a box (for_segments_near's own test)
+		if (seg < 0 || size_t(seg) >= net.segs.size() || !net.segs[size_t(seg)].alive) continue;
+		const RoadSegment &g = net.segs[size_t(seg)];
+		for (const std::array<double, 4> &b : boxes)
+			if (!(g.maxx < b[0] || g.minx > b[2] || g.maxz < b[1] || g.minz > b[3])) return true;
+	}
+	return false;
+}
+
+void forget_yards_near(CityState &s, const std::vector<int> &removed, const std::vector<int> &changed) {
+	ParkingState &pk = s.traffic.park;
+	for (auto it = pk.yards.begin(); it != pk.yards.end();) it = it->second->reads.touched_by(s.roads, removed, changed) ? pk.yards.erase(it) : std::next(it);
+	if (pk.planner && pk.planner->plan.reads.touched_by(s.roads, removed, changed)) pk.planner.reset();
+}
 
 bool yard_input(const CityState &s, int building, YardInput &out) {
 	const TrafficParams &p = s.catalog.traffic;
@@ -114,6 +140,8 @@ bool yard_input(const CityState &s, int building, YardInput &out) {
 		out.shut.push_back(rect_ring(b40::lot_frame(o), -o.w * HALF, 0, o.w * HALF, o.d));
 	});
 	lot_solids(s.buildings.designs, body, f, p.lorry_clear_h_m, out.shut);
+	std::sort(out.reads.segs.begin(), out.reads.segs.end());
+	out.reads.segs.erase(std::unique(out.reads.segs.begin(), out.reads.segs.end()), out.reads.segs.end());
 	const ParkingState &pk = s.traffic.park;
 	const auto lot = pk.lots.find(building);
 	if (lot == pk.lots.end()) return false;

@@ -43,10 +43,13 @@ Dictionary CityBuilder::build_reference(const PackedVector3Array &triangles, con
 	for (int64_t i = 0; i + 2 < triangles.size(); i += TRIANGLE_CORNERS) tris.push_back({ point_of(triangles[i]), point_of(triangles[i + 1]), point_of(triangles[i + 2]) });
 	std::vector<SurveyView> pictures;
 	for (int64_t i = 0; i < views.size(); i++) pictures.push_back(view_of(views[i]));
+	// The model is read before the map is locked: the survey reads only the model and the generator's tables (set at boot,
+	// read-only after); under the lock the command only places what it read.
+	b40::Body body;
+	const bool found = survey_body(state_->buildings.designs, tris, pictures, body);
 	return run_edit(*state_, SURVEY_LABEL, [&](CityState &s) {
 		EditResult r;
-		b40::Body body;
-		if (!survey_body(s.buildings.designs, s.catalog.tune, tris, pictures, body)) {
+		if (!found) {
 			r.error = "hint.reference.empty";
 			return r;
 		}

@@ -67,6 +67,14 @@ void dress_walker(TrafficState &t, const TrafficParams &p, Pedestrian &w, PedAge
 int alloc_walker(TrafficState &t);
 bool spawn_walker(CityState &s, const PeopleNow &now, bool from_door);
 
+// walker_cells.cpp: who stands near a point (TrafficState::walker_cells, spawn_cells)
+bool walker_within(CityState &s, float x, float z, float r); // somebody on foot within `r` of the point, as filed this tick
+// The births of a step: the walkers filed where they stand (nobody moves until the births are over, then `spawn_cells.live` goes off),
+// each one born filed too, and whether anybody stands within `r` of `at`; with no such filing every walker is looked at.
+void file_spawn_cells(TrafficState &t);
+void walker_born(TrafficState &t, int id);
+bool walker_near(const TrafficState &t, const Pose &at, float r);
+
 // ped_party.cpp
 void add_company(CityState &s, int leader); // somebody at the leader's side
 void follow_leaders(CityState &s, float dt); // after the leaders moved

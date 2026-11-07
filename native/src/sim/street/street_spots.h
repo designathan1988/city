@@ -12,14 +12,6 @@
 
 namespace city {
 
-// A plate standing: where on the road's level, what it says, which way its face looks.
-struct SignStand {
-	float x = 0, y = 0, z = 0;
-	SignType type = SignType::STOP;
-	std::string text;
-	float face_x = 0, face_z = 1;
-};
-
 // The street of a segment: through the nodes, the straightest continuation (edit_street_cos) with the same profile.
 std::vector<int> street_chain(const RoadNetwork &net, int seg);
 // The kind of piece an item is; FurnitureKind::COUNT for the ones with no footprint of their own.

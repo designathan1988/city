@@ -25,7 +25,8 @@ public:
 	// The posts of a chunk whose mesh is now drawn: their lenses drawn at once, in the states last published.
 	void set_chunk(int64_t key, std::vector<SignalHead> &&heads);
 	void drop_chunk(int64_t key);
-	void update(const PoseFrame &f);
+	// The lights of the frame's publication: copied and compared only when it is a new one (`fresh`), or none was since a reset.
+	void update(const PoseFrame &f, bool fresh);
 	int lit() const { return lit_; } // lenses lit in the buffers sent (render_cost probe)
 
 private:
@@ -43,6 +44,7 @@ private:
 	float reach_ = 0; // farthest lens from a post's foot
 	std::unordered_map<int64_t, Chunk> chunks_;
 	std::vector<SignalRecord> signals_; // the last published lights, by ds
+	bool copied_ = false; // signals_ holds a publication's (false after a reset)
 	int lit_ = 0;
 };
 

@@ -42,19 +42,6 @@ int surface_steps(const RoadEmit &e, int sid, double v0, double v1) {
 	return 1;
 }
 
-double street_start(const RoadNetwork &net, int sid) {
-	double run = 0;
-	for (int at = sid, left = int(net.segs.size()); left > 0; left--) {
-		const RoadNode &n = net.nodes[net.segs[at].a];
-		if (!n.joint || n.segs.size() != 2) break;
-		const int back = n.segs[0] == at ? n.segs[1] : n.segs[0];
-		if (back == sid || net.segs[back].b != net.segs[at].a) break; // a ring, or a piece laid the other way
-		run += net.segs[back].len;
-		at = back;
-	}
-	return run;
-}
-
 bool crossing_node(const CityState &s, int node) { return s.roads.has_crosswalks(node); }
 bool crosswalk_at(const CityState &s, int node, int seg) { return s.roads.crosswalk_on(node, seg); }
 

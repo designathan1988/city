@@ -66,7 +66,7 @@ Dictionary CityProbes::grade_probe(const Dictionary &scene) {
 		const int s = net.add_segment(a, b, Quad::straight(na.x, na.z, nb.x, nb.z), profile < 0 ? 0 : profile, 0, 0, 0);
 		net.set_structure(s, Structure(int(g[3])));
 	}
-	for (int n = 0; n < int(net.nodes.size()); n++) net.refresh_node(n);
+	net.refresh_all();
 	const GroundAt ground = ground_named(scene.get("ground", Dictionary()));
 	std::vector<int> moved, gone;
 	net.grade.everything();

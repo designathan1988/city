@@ -1,7 +1,9 @@
 // One road's profile solved between the heights its two nodes settled on (Roadcraft 4.0 world/elevation.ts solveGround,
 // solveVariable, solveRaised, solveSunken and the shaping of a grade line: moving means, grade limits, envelopes, vertical
 // curves). The behaviour of the 4.0 on vectors of float edited in place; the copies a pass reads from are one scratch
-// buffer kept between calls, and the moving means are running sums (O(n), not O(n x reach)).
+// buffer kept between calls. The vertical curves' means are running sums (Means); smooth_profile sums each station's
+// window afresh, O(n x radius) with radius the stations within SMOOTH_REACH_M: linear in the stations for a given step,
+// and each sum keeps its order of addition (a running sum would move the last bits of the heights).
 #include "sim/roads/road_grade_internal.h"
 
 #include "core/math.h"

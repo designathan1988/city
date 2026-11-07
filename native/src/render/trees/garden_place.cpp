@@ -104,7 +104,7 @@ void plant_bed(const Stand &at, const TreeLook &T, const LotPlant &p, Draws &r) 
 } // namespace
 
 GardenBook::Plants GardenBook::plants(const b40::Data &data, const Building &rec) {
-	const uint64_t key = b40::body_key(rec);
+	const b40::BodyKey key = b40::body_key(rec);
 	{
 		std::lock_guard<std::mutex> lk(mutex_);
 		auto it = book_.find(key);

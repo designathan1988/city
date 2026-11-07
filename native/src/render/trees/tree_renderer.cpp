@@ -2,7 +2,6 @@
 // foot, and in its custom data the tint and the species index the shader reads its
 // wind response by.
 #include "render/trees/tree_renderer.h"
-#include "render/chunk_jobs.h"
 
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/variant/packed_float32_array.hpp>
@@ -27,6 +26,11 @@ float distance_to(int64_t key, float size, const Vector3 &cam) {
 	return std::sqrt(dx * dx + dz * dz);
 }
 } // namespace
+
+TreeRenderer::TreeRenderer() {
+	tier_[TIER_NEAR].hand_one = [this](Built &b) { commit_near(b); };
+	tier_[TIER_FAR].hand_one = [this](Built &b) { commit_far(b); };
+}
 
 bool TreeRenderer::init(const RenderContext &ctx, const StreetLook &look, PackedStringArray &errors) {
 	scenario_ = ctx.scenario;
@@ -59,14 +63,7 @@ void TreeRenderer::set_params(const RID &material) const {
 }
 
 void TreeRenderer::reset() {
-	{
-		std::lock_guard<std::mutex> lk(queue_mutex_);
-		for (Tier &t : tier_) {
-			t.done.clear();
-			t.requested.clear();
-			t.dirty.clear();
-		}
-	}
+	for (Tier &t : tier_) t.clear();
 	for (auto &kv : near_) {
 		for (MultiMeshDraw &d : kv.second.body) d.free();
 		for (MultiMeshDraw &d : kv.second.cast) d.free();
@@ -95,38 +92,49 @@ void TreeRenderer::set_share(float tier) {
 	const float share = trees_.tier_share(tier);
 	if (trees_.share.load() == share) return;
 	trees_.share.store(share);
-	for (const auto &[key, ch] : near_) tier_[TIER_NEAR].dirty.insert(key);
-	for (const auto &[key, sp] : far_) tier_[TIER_FAR].dirty.insert(key);
+	for (const auto &[key, ch] : near_) tier_[TIER_NEAR].revs.mark(key);
+	for (const auto &[key, sp] : far_) tier_[TIER_FAR].revs.mark(key);
 }
 
 void TreeRenderer::mark_dirty(int64_t key) {
-	tier_[TIER_NEAR].dirty.insert(key);
-	tier_[TIER_FAR].dirty.insert(cell_key(int(std::floor(float(key_x(key)) / CHUNKS_PER_SUPER)), int(std::floor(float(key_y(key)) / CHUNKS_PER_SUPER))));
+	tier_[TIER_NEAR].revs.mark(key);
+	tier_[TIER_FAR].revs.mark(cell_key(int(std::floor(float(key_x(key)) / CHUNKS_PER_SUPER)), int(std::floor(float(key_y(key)) / CHUNKS_PER_SUPER))));
 }
 
-TreeRenderer::Built TreeRenderer::build_near(const CityState &s, int64_t key) const {
-	Built out;
-	out.key = key;
+std::shared_ptr<TreeRenderer::Built> TreeRenderer::build_near(const CityState &s, int64_t key) const {
+	auto out = std::make_shared<Built>();
 	std::vector<TreeInstance> trees;
 	place_trees(s, *look_, trees_, kit_, gardens_, key, trees);
-	out.bufs.resize(size_t(kit_.count()));
+	out->bufs.resize(size_t(kit_.count()));
 	for (const TreeInstance &t : trees) {
 		const float c = std::cos(t.yaw), sn = std::sin(t.yaw), deep = t.depth > 0 ? t.depth : t.width;
-		mm_push(out.bufs[size_t(t.species)], Vector3(c, 0, -sn) * t.width, Vector3(t.lean_x, 1, t.lean_z) * t.height, Vector3(sn, 0, c) * deep, t.p, Color(1, 1, 1, 1),
+		mm_push(out->bufs[size_t(t.species)], Vector3(c, 0, -sn) * t.width, Vector3(t.lean_x, 1, t.lean_z) * t.height, Vector3(sn, 0, c) * deep, t.p, Color(1, 1, 1, 1),
 				t.tint.r, t.tint.g, t.tint.b, float(t.species));
+	}
+	for (int i = 0; i < kit_.count(); i++) { // commit_near sends a species' buffer to its body, its caster and its cards
+		const bool casts = std::find(trees_.bed_species.begin(), trees_.bed_species.end(), i) == trees_.bed_species.end();
+		const int64_t draws = 1 + (casts ? 1 : 0) + (kit_.species(i).cards.is_null() ? 0 : 1);
+		out->upload += out->bufs[size_t(i)].size() * int64_t(sizeof(float)) * draws;
 	}
 	return out;
 }
 
-TreeRenderer::Built TreeRenderer::build_far(const CityState &s, int64_t key) const {
-	Built out;
-	out.key = key;
-	std::vector<FarCard> cards;
+std::shared_ptr<TreeRenderer::Built> TreeRenderer::build_far(const CityState &s, int64_t key) const {
+	auto out = std::make_shared<Built>();
+	out->far = true;
 	for (int j = 0; j < CHUNKS_PER_SUPER; j++)
 		for (int i = 0; i < CHUNKS_PER_SUPER; i++)
-			place_far(s, *look_, trees_, kit_, gardens_, cell_key(key_x(key) * CHUNKS_PER_SUPER + i, key_y(key) * CHUNKS_PER_SUPER + j), cards);
-	out.far = bake_far_cards(cards, FAR_CARD_CENTRE, kit_.pictures().frame_share() * HALF);
+			place_far(s, *look_, trees_, kit_, gardens_, cell_key(key_x(key) * CHUNKS_PER_SUPER + i, key_y(key) * CHUNKS_PER_SUPER + j), out->cards);
+	out->centre = FAR_CARD_CENTRE;
+	out->half_tall = kit_.pictures().frame_share() * HALF;
+	out->upload = far_cards_bytes(out->cards.size());
 	return out;
+}
+
+void TreeRenderer::Built::bake() {
+	far_mesh = bake_far_cards(cards, centre, half_tall);
+	cards = std::vector<FarCard>();
+	baked = true;
 }
 
 void TreeRenderer::commit_near(Built &b) {
@@ -168,7 +176,7 @@ void TreeRenderer::FarDraw::free() {
 
 void TreeRenderer::commit_far(Built &b) {
 	FarDraw &d = far_[b.key];
-	swap_base(d.inst, d.mesh, b.far.release(), scenario_, card_material_, trees_.far_shadows != 0, LAYER_VEGETATION);
+	swap_base(d.inst, d.mesh, b.far_mesh.release(), scenario_, card_material_, trees_.far_shadows != 0, LAYER_VEGETATION);
 	if (!d.inst.is_valid()) return;
 	RenderingServer *rs = RenderingServer::get_singleton();
 	rs->instance_set_custom_aabb(d.inst, box_of(b.key, SUPERCHUNK));
@@ -178,91 +186,80 @@ void TreeRenderer::commit_far(Built &b) {
 void TreeRenderer::submit(const CityState &s, int64_t key, float priority, bool far) {
 	if (!s.jobs) return;
 	Tier &t = tier_[far ? TIER_FAR : TIER_NEAR];
-	uint64_t seq;
-	{
-		std::lock_guard<std::mutex> lk(queue_mutex_);
-		seq = ++seq_;
-		t.requested[key] = seq;
-	}
-	s.jobs->submit(JobKey{ far ? JobLane::TREES_FAR : JobLane::TREES_NEAR, key }, priority, [this, &s, &t, key, seq, priority, far]() {
-		std::shared_lock<std::shared_mutex> map(s.map_mutex);
-		Built b = far ? build_far(s, key) : build_near(s, key);
-		b.seq = seq;
-		b.priority = priority;
-		std::lock_guard<std::mutex> lk(queue_mutex_);
-		t.done.push_back(std::move(b));
+	t.set_pool(s.jobs.get());
+	const uint64_t ticket = t.revs.ask(key);
+	const JobKey job{ far ? JobLane::TREES_FAR : JobLane::TREES_NEAR, key };
+	s.jobs->submit(job, priority, [this, &s, &t, key, job, ticket, priority, far]() {
+		std::shared_ptr<Built> b;
+		{
+			std::shared_lock<std::shared_mutex> map(s.map_mutex);
+			b = far ? build_far(s, key) : build_near(s, key);
+		}
+		b->key = key;
+		b->job = job;
+		b->ticket = ticket;
+		b->priority = priority;
+		t.push(std::move(b));
 	});
 }
 
-void TreeRenderer::commit(const std::chrono::steady_clock::time_point &until) {
-	commit_done(queue_mutex_, tier_[TIER_NEAR].done, tier_[TIER_NEAR].requested, until, [this](Built &b) { commit_near(b); });
-	commit_done(queue_mutex_, tier_[TIER_FAR].done, tier_[TIER_FAR].requested, until, [this](Built &b) { commit_far(b); });
-}
-
 int TreeRenderer::pending() const {
-	std::lock_guard<std::mutex> lk(queue_mutex_);
-	return pending_ + int(tier_[TIER_NEAR].dirty.size() + tier_[TIER_FAR].dirty.size()) + int(tier_[TIER_NEAR].requested.size() + tier_[TIER_NEAR].done.size() + tier_[TIER_FAR].requested.size() + tier_[TIER_FAR].done.size());
+	return pending_ + tier_[TIER_NEAR].pending() + tier_[TIER_FAR].pending();
 }
 
-void TreeRenderer::sync(const CityState &s, const Vector3 &cam, BuildBudget &budget) {
+void TreeRenderer::offer(const CityState &s, const Vector3 &cam, std::vector<FrameAdmission::Unit> &out) {
 	pending_ = 0;
-	stream(s, cam, budget, false);
-	stream(s, cam, budget, true);
+	stream(s, cam, false, out);
+	stream(s, cam, true, out);
 }
 
-// One level: rebuild the dirty cells, ask the missing ones round the camera, nearest first, and let go of the far.
-void TreeRenderer::stream(const CityState &s, const Vector3 &cam, BuildBudget &budget, bool far) {
+// One level: the marked cells drawn again, the missing ones round the camera asked, and the far let go. A marked cell whose
+// result is on its way keeps its mark and is asked again when that one lands; a marked cell not drawn is built fresh when it comes.
+void TreeRenderer::stream(const CityState &s, const Vector3 &cam, bool far, std::vector<FrameAdmission::Unit> &out) {
 	Tier &t = tier_[far ? TIER_FAR : TIER_NEAR];
 	float size = far ? SUPERCHUNK : CHUNK, reach = far ? trees_.far_m : trees_.near_m + trees_.fade_m;
-	auto busy = [&](int64_t k) {
-		std::lock_guard<std::mutex> lk(queue_mutex_);
-		return t.requested.count(k) > 0;
+	auto unit = [&](int64_t k, float d, int rank) {
+		pending_++;
+		out.push_back(FrameAdmission::Unit{ rank, d, 1, [this, &s, k, d, far]() {
+					   pending_--;
+					   submit(s, k, d, far);
+				   } });
 	};
-	auto built = [&](int64_t k) { return far ? far_.count(k) > 0 : near_.count(k) > 0; };
-	for (auto it = t.dirty.begin(); it != t.dirty.end();) {
-		if (!built(*it) || busy(*it)) { it = t.dirty.erase(it); continue; } // a chunk not drawn is built fresh when it comes
-		if (!budget.take()) break;
-		submit(s, *it, distance_to(*it, size, cam), far);
-		it = t.dirty.erase(it);
+	std::vector<int64_t> unmark;
+	for (int64_t k : t.revs.wanted()) {
+		if (t.revs.busy(k)) continue; // counted by the tier's pending
+		if (!built(k, far)) {
+			unmark.push_back(k);
+			continue;
+		}
+		unit(k, distance_to(k, size, cam), 1);
 	}
+	for (int64_t k : unmark) t.revs.unwant(k);
 	int r = int(std::ceil(reach / size)), cx = int(std::floor(cam.x / size)), cz = int(std::floor(cam.z / size));
-	std::vector<std::pair<float, int64_t>> want;
 	for (int j = cz - r; j <= cz + r; j++)
 		for (int i = cx - r; i <= cx + r; i++) {
 			int64_t k = cell_key(i, j);
 			float d = distance_to(k, size, cam);
 			if (d > reach + size * DIAGONAL * HALF || !s.terrain.in_bounds((i + HALF) * size, (j + HALF) * size, -size * HALF)) continue;
-			if (!built(k) && !busy(k)) want.push_back({ d, k });
+			if (!built(k, far) && !t.revs.busy(k)) unit(k, d, 0);
 		}
-	auto evict = [&](int64_t k) {
-		std::lock_guard<std::mutex> lk(queue_mutex_);
-		t.requested.erase(k);
-	};
 	if (far) {
 		for (auto it = far_.begin(); it != far_.end();) {
 			if (distance_to(it->first, size, cam) <= reach + EVICT_CHUNKS * size) { ++it; continue; }
-			evict(it->first);
+			t.drop(it->first);
 			it->second.free();
 			it = far_.erase(it);
 		}
 	} else {
 		for (auto it = near_.begin(); it != near_.end();) {
 			if (distance_to(it->first, size, cam) <= reach + EVICT_CHUNKS * size) { ++it; continue; }
-			evict(it->first);
+			t.drop(it->first);
 			for (MultiMeshDraw &d : it->second.body) d.free();
 			for (MultiMeshDraw &d : it->second.cast) d.free();
 			for (MultiMeshDraw &d : it->second.cards) d.free();
 			it = near_.erase(it);
 		}
 	}
-	std::sort(want.begin(), want.end());
-	int n = 0;
-	for (const auto &w : want) {
-		if (!budget.take()) break;
-		submit(s, w.second, w.first, far);
-		++n;
-	}
-	pending_ += int(want.size()) - n;
 }
 
 } // namespace city

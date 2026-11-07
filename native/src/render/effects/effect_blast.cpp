@@ -13,6 +13,7 @@ namespace city {
 
 namespace {
 constexpr int SOIL_BUILDING = 2; // BLAST event: the burst was on a building
+constexpr float RUIN_MATCH_M = 1.f; // a BUILDING_DOWN's ruin is centred within this of the event's place
 constexpr int SOIL_SOIL_TINT = 0;
 constexpr float SPARK_COUNT_PER_KPA = 0.4f; // sparks from a building hit grow with the load it felt
 constexpr int HIT_DUST_MIN = 12;
@@ -113,12 +114,18 @@ void EffectWorld::building_down(const DamageEvent &e, const CityState &s) {
 	// The collapse: a cloud of concrete dust that billows out, and the papers of the offices and homes over the street.
 	puffs_.burst(e.x, e.y, e.z, params_.down_dust_count, PUFF_DUST, params_.down_dust_spread, params_.down_dust_size * DOWN_SMOKE_SIZE_SCALE, params_.down_dust_life);
 	puffs_.burst(e.x, e.y + COLLAPSE_DUST_HIGH_M, e.z, params_.down_dust_count, PUFF_CONCRETE, params_.down_dust_spread, params_.down_dust_size, params_.down_dust_life);
-	for (const Ruin &r : s.damage.ruins) { // the heap it left: the building falls into it
-		if (std::fabs(r.x - e.x) < 1.f && std::fabs(r.z - e.z) < 1.f) {
-			ground_here_ = s.terrain.height_at(r.x, r.z);
-			pile(r, true, true, !ruins_.add(s, r, heap_of(r), true));
-		}
-	}
+	// The heap it left, which the building falls into: the ruin the event names (its index when it fell); the list searched by place
+	// only when that one stands elsewhere now (a ruin before it cleared since, in the same frame).
+	const Revised<Ruin> &ruins = s.damage.ruins;
+	const auto here = [&](const Ruin &r) { return std::fabs(r.x - e.x) < RUIN_MATCH_M && std::fabs(r.z - e.z) < RUIN_MATCH_M; };
+	const auto fall = [&](const Ruin &r) {
+		ground_here_ = s.terrain.height_at(r.x, r.z);
+		pile(r, true, true, !ruins_.add(s, r, heap_of(r), true));
+	};
+	if (e.u < ruins.size() && here(ruins[e.u])) fall(ruins[e.u]);
+	else
+		for (const Ruin &r : ruins)
+			if (here(r)) fall(r);
 	puffs_.burst(e.x, e.y + DOWN_PAPER_HEIGHT_M, e.z, params_.paper_count, PUFF_PAPER, params_.paper_spread, params_.paper_size, params_.paper_life);
 }
 

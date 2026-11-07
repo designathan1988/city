@@ -1,5 +1,8 @@
 // CityState: the single source of truth for the whole city. Every system reads and writes only this; mutations from
 // the player go through sim/commands, time advances through sim/simulation.
+// It is two parts: CityData, the city itself (what a save keeps and what is derived from it), and the channels round it
+// that outlive any one city (the locks, the change log, the job pool, the traffic and what it publishes). A city opened
+// from a file is read into a CityData of its own, aside, and taken in whole (take_city): the old one stays intact until then.
 #pragma once
 
 #include "core/job_pool.h"
@@ -26,19 +29,35 @@
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
+#include <utility>
 
 namespace city {
 
+// An atomic the city's data carries (read without the map lock by jobs and the simulation): copied and moved with the data
+// as its value, when the data is taken in under the exclusive lock.
+template <typename T>
+struct CarriedAtomic : std::atomic<T> {
+	using std::atomic<T>::atomic;
+	using std::atomic<T>::operator=;
+	CarriedAtomic() : std::atomic<T>(T()) {}
+	CarriedAtomic(const CarriedAtomic &o) : std::atomic<T>(o.load()) {}
+	CarriedAtomic &operator=(const CarriedAtomic &o) {
+		this->store(o.load());
+		return *this;
+	}
+};
+
 struct CityClock {
-	std::atomic<double> minutes{ 0 }; // city minutes since the map began (never wraps; drives decay)
-	std::atomic<double> day_shift{ 0 }; // added to minutes for the time of day (starts at the day start)
+	CarriedAtomic<double> minutes{ 0 }; // city minutes since the map began (never wraps; drives decay)
+	CarriedAtomic<double> day_shift{ 0 }; // added to minutes for the time of day (starts at the day start)
 	double hour() const;
 	void set_hour(double hour); // the time of day moves; `minutes`, the city's age, does not
 };
 
-struct CityState {
+// The city itself. Its links to the channels and the catalogue (the change log, the job pool, the tables) are set by
+// CityState::bind.
+struct CityData {
 	Catalog catalog;
-	ChangeLog log;
 	Heightfield terrain;
 	NatureState nature; // weather, clouds, fog, painted ground, planted trees, the ecosystem (sim/nature)
 	RoadNetwork roads;
@@ -46,16 +65,8 @@ struct CityState {
 	LotCache lots;
 	LotBook lot_book; // the lots the player drew (sim/lots/lot_book.h); those of `lots` give way to them
 	BuildingStore buildings;
-	InteriorView interior; // the Interior layer: which buildings are drawn cut open (a view, not saved)
-	TrafficState traffic; // vehicles and pedestrians (sim/traffic)
-	TrafficLevels traffic_levels; // the panels' choices: written by the main thread, read by the traffic (traffic_view.h)
-	uint64_t lane_graph_serial = 0; // moves when the lane graph changes; outlives TrafficState, as the views do
-	TripleBuffer<TrafficView> traffic_views; // what the traffic published for the main thread (traffic_view.h)
-	TransitData transit; // stops, tracks and lines as the player laid them; replaced whole by each edit
+	TransitData transit; // stops, tracks and lines as the player laid them; changed record by record by the edits
 	uint64_t transit_revision = 0; // follows every change of the plan: the simulation and the render read it
-	TransitRun transit_run; // what runs on it (sim/transit/transit_sim.h)
-	PoseBuffer poses; // published by the simulation, read by the render without a lock
-	std::unique_ptr<JobPool> jobs{ std::make_unique<JobPool>() }; // shared worker pool (lot cells, later mesh jobs)
 	DamageState damage; // craters, ruins, furniture knocked out, fires (sim/demolition)
 	GrowthQueue growth; // cells whose lots changed after founding: buildings grow there over time
 	CityClock clock;
@@ -68,7 +79,6 @@ struct CityState {
 	int map_index = 0; // entry of data/catalog/maps.json chosen at creation
 	int map_tiles = 0; // the land's side as it was founded: a city keeps it when the table changes
 	float map_half = 0; // metres from the middle to each edge
-	std::atomic<float> camera_x{ 0 }, camera_z{ 0 }; // the ground the player is looking at, set by the api each frame: the traffic's and walkers' windows
 	bool ready = false;
 	std::string style; // the regional style's id, as the new-city screen chose it (the save block and the single reader come with the mechanism)
 	// Owner of "unsaved changes" (tools/gates/owners.json): every change to the map calls touch() (commands, undo/redo,
@@ -76,11 +86,31 @@ struct CityState {
 	// else keeps a dirty flag for the save prompt. `edited`: the player changed this city since it was made or opened
 	// (an edit recorded, undone or redone), so its work is theirs (autosave keeps it).
 	uint64_t revision = 0, saved_revision = 0;
-	std::atomic<int> marking_style{ 0 }; // the map's paint standard (data/render/streets.json markings.styles); mesh jobs read it
+	CarriedAtomic<int> marking_style{ 0 }; // the map's paint standard (data/render/streets.json markings.styles); mesh jobs read it
 	uint64_t edit_revision = 0; // the network as the player shapes it: commands, undo/redo and a new or opened map (found_land)
 	bool edited = false;
 	void touch() { revision++; }
 	bool has_unsaved_work() const { return revision != saved_revision; }
+};
+
+struct CityState : CityData {
+	CityState() = default;
+	// A city read aside (a file being opened) shares the pool of the live one: no workers of its own.
+	explicit CityState(std::shared_ptr<JobPool> pool) : jobs(std::move(pool)) {}
+
+	ChangeLog log;
+	InteriorView interior; // the Interior layer: which buildings are drawn cut open (a view, not saved)
+	TrafficState traffic; // vehicles and pedestrians (sim/traffic)
+	TrafficLevels traffic_levels; // the panels' choices: written by the main thread, read by the traffic (traffic_view.h)
+	uint64_t lane_graph_serial = 0; // moves when the lane graph changes; outlives TrafficState, as the views do
+	TripleBuffer<TrafficView> traffic_views; // what the traffic published for the main thread (traffic_view.h)
+	TransitRun transit_run; // what runs on it (sim/transit/transit_sim.h)
+	PoseBuffer poses; // published by the simulation, read by the render without a lock
+	std::shared_ptr<JobPool> jobs{ std::make_shared<JobPool>() }; // shared worker pool (lot cells, later mesh jobs)
+	std::atomic<float> camera_x{ 0 }, camera_z{ 0 }; // the ground the player is looking at, set by the api each frame: the traffic's and walkers' windows
+
+	// The data's links to the channels and the catalogue (change log, job pool, tables), set again after the data moved in.
+	void bind();
 
 	// map_mutex: shared by readers (simulation traffic step, queries, mesh jobs, the render's per-frame sync, which
 	// drains the ChangeLog under its own mutex: change_log.h); exclusive for commands, growth, clock, load (the
@@ -89,5 +119,11 @@ struct CityState {
 	mutable std::shared_mutex map_mutex;
 	mutable std::mutex traffic_mutex;
 };
+
+// Takes in the city read aside into `read` (caller holds live.map_mutex exclusively, the simulation stopped): the live state
+// ends as decoding in place would have left it, its revisions going on from where they were, its change log keeping what
+// the reading marked. `read` is left with the old city, to be freed after the lock is let go. The generator's tables
+// (BuildingStore::designs, set at boot) stay the live ones.
+void take_city(CityState &live, CityState &read);
 
 } // namespace city

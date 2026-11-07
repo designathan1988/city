@@ -43,6 +43,7 @@ struct PersonVariation {
 	float palm[PALM_FLOATS] = {}; // three rows, the palm at rest: X along the fingers, Y to the thumb, Z out of the back of the hand
 	float joints[JOINT_FLOATS] = {}; // where the ragdoll's joints stand at rest
 	std::vector<godot::Ref<godot::ArrayMesh>> lods; // 0 = near
+	float reach = 0; // the near level's farthest vertex from the bind origin, metres: how far a bone carries skin (body_renderer.cpp)
 	std::vector<PersonFit> fits; // one a clip, in PeopleAsset::clips' order
 };
 

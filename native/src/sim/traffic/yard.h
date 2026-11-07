@@ -5,6 +5,7 @@
 
 #include "sim/traffic/way_search.h"
 
+#include <array>
 #include <cstdint>
 #include <memory>
 #include <unordered_map>
@@ -13,8 +14,20 @@
 namespace city {
 
 struct CityState;
+class RoadNetwork;
 
 namespace traffic {
+
+// What of the roads a yard was made from (yard_input.cpp): the segments read and the boxes they were read in (x0, z0, x1, z1), as
+// RoadNetwork::for_segments_near reads them. Only a change of one of those segments, or a segment come into one of the boxes, can
+// change the yard (Roadcraft 4.0 lorryDocks.ts knownYard: a yard stands while what it was made from near it does).
+struct YardReads {
+	std::vector<int> segs; // sorted
+	std::vector<std::array<double, 4>> boxes;
+	void read(const RoadNetwork &net, double x0, double z0, double x1, double z1); // a box read: the box and the segments in it
+	// Whether the network change that removed `removed` and added or changed `changed` reaches what was read.
+	bool touched_by(const RoadNetwork &net, const std::vector<int> &removed, const std::vector<int> &changed) const;
+};
 
 struct YardGate {
 	V2 inner, outer; // the gate's middle just inside, and its foot on the lane
@@ -38,6 +51,7 @@ struct YardInput {
 	std::vector<std::vector<V2>> open, shut; // carriageways and gate mouths; other lots and this lot's solid things
 	std::vector<YardGate> gates;
 	std::vector<YardDock> docks;
+	YardReads reads;
 };
 
 // A dock's ways, rear-axle poses; `into_street` / `away_street`: where along them the part on the street ends and begins.
@@ -71,6 +85,7 @@ struct YardPlan {
 	std::vector<YardGate> gates;
 	std::vector<DockWays> docks;
 	YardCost cost;
+	YardReads reads; // what of the roads it was made from
 };
 
 class YardPlanner {
@@ -110,7 +125,11 @@ private:
 	bool join_ways(const YardGate &g);
 };
 
+// The yard's input; false when it has none to plan (`out.reads` holds what of the roads was read all the same).
 bool yard_input(const CityState &s, int building, YardInput &out);
+// A network change dropped `removed` and added or changed `changed`: the yards (planned and being planned) it reaches are let go,
+// to be planned again when a lorry is next called to them; the others stand.
+void forget_yards_near(CityState &s, const std::vector<int> &removed, const std::vector<int> &changed);
 
 } // namespace traffic
 } // namespace city

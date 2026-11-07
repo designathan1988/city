@@ -38,8 +38,7 @@ int corner_side(const RoadSegment &g, int n) { return g.a == n ? 0 : 1; }
 
 // A kerbside piece of kind `k` on `side`, its face kerb_clear_m from the kerb's face, facing the road.
 FurnitureSpot kerbside(const RoadNetwork &net, FurnitureKind k, int sid, const Profile &p, int side, double v) {
-	const float half_across = defs(net).footprint[int(k)].z_m * 0.5f;
-	return spot(net, k, sid, p, v, kerb_in(p, side, defs(net).sidewalk.kerb_clear_m + half_across), toward_road(side), 0.f);
+	return spot(net, k, sid, p, v, kerb_in(p, side, kerbside_reach(net, k)), toward_road(side), 0.f);
 }
 
 // Whether a walker still finds a way past `c` on its sidewalk, among the pieces placed beside it: the centres a
@@ -259,6 +258,10 @@ bool sidewalk_on(const Profile &p, int side) { return !p.edges.empty() && walk_o
 
 float sidewalk_u(const Profile &p, int side, float from_kerb) { return kerb_in(p, side, from_kerb); }
 
+float kerbside_reach(const RoadNetwork &net, FurnitureKind k) {
+	return defs(net).sidewalk.kerb_clear_m + defs(net).footprint[int(k)].z_m * 0.5f;
+}
+
 float plate_kerb(const RoadNetwork &net, int seg) {
 	const RoadSegment &g = net.segs[size_t(seg)];
 	const RoadNode &a = net.nodes[size_t(g.a)], &b = net.nodes[size_t(g.b)];
@@ -282,7 +285,7 @@ bool kerbside_place(const RoadNetwork &net, int seg, const Profile &p, int side,
 		return true;
 	}
 	const float across = d.footprint[int(k)].z_m;
-	u = kerb_in(p, side, d.sidewalk.kerb_clear_m + across * 0.5f);
+	u = kerb_in(p, side, kerbside_reach(net, k));
 	return k == FurnitureKind::COLUMN || fits_walk(net, p, side, d.sidewalk.kerb_clear_m + across);
 }
 

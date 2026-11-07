@@ -2,6 +2,7 @@
 // (Heightfield::tile_dirty); lots, trees, traffic and the render are derived again on load. Little endian.
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -29,18 +30,21 @@ struct SavePart { // where a part of the save ends in its bytes (api/city_core_s
 	const char *name;
 	size_t end;
 };
-std::vector<uint8_t> encode_city(const CityState &s, std::vector<SavePart> *parts = nullptr);
-// Whether the bytes are a whole city the catalogue can open, read into a scratch city with this copy of it: nothing of the
-// open city is touched (Roadcraft persistence.ts reads the file before it replaces the document). `error`: a strings.csv key.
-constexpr uint32_t MAX_RECORDS = 50000000; // sanity bound on any saved table: a corrupt count stops here, before any allocation
+// `expect`: the bytes the city is likely to take (the last save's size): the buffer is reserved once, not grown in steps.
+std::vector<uint8_t> encode_city(const CityState &s, std::vector<SavePart> *parts = nullptr, size_t expect = 0);
+// The least bytes a slot of a saved table takes (ByteWriter::put_alive): a dead one is its alive flag alone. A table's count is
+// read against it (ByteReader::get_count).
+constexpr size_t SLOT_MIN_BYTES = sizeof(uint8_t);
 
 // Where the opening of a city went, in milliseconds.
 struct OpenTimes {
 	double read = 0, grade = 0, compose = 0, lots = 0;
 };
 
-bool check_city(Catalog catalog, const uint8_t *data, size_t size, std::string &error);
-// Replaces the city with the saved one. Give it bytes check_city took: a file that fails halfway leaves `s` mixed.
+// A saved city read once into `s`, a state of its own (CityState(pool), its catalogue a copy of the live one's) that nobody
+// else sees: the bytes are checked as they are read, and the live city, untouched meanwhile, takes `s` in whole when it is
+// whole (take_city), so a file that fails halfway changes nothing (Roadcraft persistence.ts reads the file before it
+// replaces the document). `error`: a strings.csv key.
 bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &error, OpenTimes *times = nullptr);
 
 // The landscape part of the file (save_nature.cpp).

@@ -31,32 +31,91 @@ float h01(uint32_t h, Stream s) { return hash_float(h + s); }
 
 } // namespace
 
-ChunkGround chunk_ground(const CityState &s, int64_t key) {
+namespace {
+constexpr double GRID_CELL_M = 32.0; // of the grid filing a chunk's roads and lots
+// Room added to every filed box and every query square: the float sums of the exact tests (lot axes turned by sin and cos) never
+// fall outside it, so the grid hands each test a superset of the roads and lots that can pass it.
+constexpr double GRID_SLACK_M = 1.0;
+constexpr double ROOT_TWO = 1.4142135623730951;
+
+int grid_index(double v, double origin, int n) {
+	const double i = std::floor((v - origin) / GRID_CELL_M);
+	return int(std::clamp(i, 0.0, double(n - 1)));
+}
+} // namespace
+
+void ChunkGround::Grid::file(int index, double minx, double minz, double maxx, double maxz) {
+	const int i0 = grid_index(minx - GRID_SLACK_M, x0, n), i1 = grid_index(maxx + GRID_SLACK_M, x0, n);
+	const int j0 = grid_index(minz - GRID_SLACK_M, z0, n), j1 = grid_index(maxz + GRID_SLACK_M, z0, n);
+	for (int j = j0; j <= j1; j++)
+		for (int i = i0; i <= i1; i++) cells[size_t(j) * size_t(n) + size_t(i)].push_back(index);
+	if (seen.size() <= size_t(index)) seen.resize(size_t(index) + 1, 0);
+}
+
+template <typename F>
+bool ChunkGround::Grid::any(double x, double z, double reach, F &&test) const {
+	if (n == 0) return false;
+	const double r = std::max(0.0, reach) + GRID_SLACK_M;
+	const int i0 = grid_index(x - r, x0, n), i1 = grid_index(x + r, x0, n), j0 = grid_index(z - r, z0, n), j1 = grid_index(z + r, z0, n);
+	if (++stamp == 0) {
+		std::fill(seen.begin(), seen.end(), 0);
+		stamp = 1;
+	}
+	for (int j = j0; j <= j1; j++)
+		for (int i = i0; i <= i1; i++)
+			for (int index : cells[size_t(j) * size_t(n) + size_t(i)]) {
+				if (seen[size_t(index)] == stamp) continue;
+				seen[size_t(index)] = stamp;
+				if (test(index)) return true;
+			}
+	return false;
+}
+
+ChunkGround chunk_ground(const CityState &s, int64_t key, bool ecology) {
 	ChunkGround l;
 	float x0 = key_x(key) * CHUNK, z0 = key_y(key) * CHUNK;
 	s.roads.for_segments_near(x0 - LIST_MARGIN, z0 - LIST_MARGIN, x0 + CHUNK + LIST_MARGIN, z0 + CHUNK + LIST_MARGIN, [&](int sid) { l.segs.push_back(sid); });
 	s.buildings.query(x0 - LIST_MARGIN, z0 - LIST_MARGIN, x0 + CHUNK + LIST_MARGIN, z0 + CHUNK + LIST_MARGIN, [&](int id) { l.lots.push_back(id); });
-	if (s.nature.nature.region >= 0 || s.nature.ground.any_cover()) l.eco = compute_ecology(s.terrain, s.nature.ground, s.nature.nature, s.catalog.nature.ecology, x0, z0, CHUNK);
+	if (ecology && (s.nature.nature.region >= 0 || s.nature.ground.any_cover())) l.eco = compute_ecology(s.terrain, s.nature.ground, s.nature.nature, s.catalog.nature.ecology, x0, z0, CHUNK);
+	const int n = int(std::ceil((double(CHUNK) + 2.0 * double(LIST_MARGIN)) / GRID_CELL_M));
+	for (ChunkGround::Grid *g : { &l.seg_grid, &l.lot_grid }) {
+		g->x0 = double(x0) - double(LIST_MARGIN);
+		g->z0 = double(z0) - double(LIST_MARGIN);
+		g->n = n;
+		g->cells.assign(size_t(n) * size_t(n), {});
+	}
+	for (size_t i = 0; i < l.segs.size(); i++) { // the curve stands inside its control points' hull; a road reaches its half width past it
+		const RoadSegment &g = s.roads.segs[size_t(l.segs[i])];
+		const double half = double(s.catalog.profile(g.profile).half());
+		l.seg_grid.file(int(i), std::min({ g.q.x0, g.q.cx, g.q.x1 }) - half, std::min({ g.q.z0, g.q.cz, g.q.z1 }) - half,
+				std::max({ g.q.x0, g.q.cx, g.q.x1 }) + half, std::max({ g.q.z0, g.q.cz, g.q.z1 }) + half);
+	}
+	for (size_t i = 0; i < l.lots.size(); i++) { // a lot's corners stand within its half diagonal of its centre
+		const Building &b = s.buildings.items[size_t(l.lots[i])];
+		const double r = std::hypot(double(b.w) * 0.5, double(b.d) * 0.5);
+		l.lot_grid.file(int(i), double(b.x) - r, double(b.z) - r, double(b.x) + r, double(b.z) + r);
+	}
 	return l;
 }
 
+// A point within half + r of a curve lies within that of the curve's hull box: the square of side r round it meets the filed box.
 bool near_road(const CityState &s, const ChunkGround &l, float x, float z, float r) {
-	for (int sid : l.segs) {
+	return l.seg_grid.any(double(x), double(z), double(r), [&](int i) {
+		const int sid = l.segs[size_t(i)];
 		double t, d;
 		closest_t(s.roads.segs[sid].q, x, z, t, d);
-		if (d < s.catalog.profile(s.roads.segs[sid].profile).half() + r) return true;
-	}
-	return false;
+		return d < s.catalog.profile(s.roads.segs[sid].profile).half() + r;
+	});
 }
 
+// A point inside a lot grown by `margin` lies within its half diagonal plus margin x sqrt 2 of its centre.
 bool in_lot(const CityState &s, const ChunkGround &l, float margin, float x, float z) {
-	for (int id : l.lots) {
-		const Building &b = s.buildings.items[id];
+	return l.lot_grid.any(double(x), double(z), double(std::max(0.f, margin)) * ROOT_TWO, [&](int i) {
+		const Building &b = s.buildings.items[l.lots[size_t(i)]];
 		float dx = x - b.x, dz = z - b.z;
 		float lx = dx * std::cos(b.rot) - dz * std::sin(b.rot), lz = dx * std::sin(b.rot) + dz * std::cos(b.rot);
-		if (std::fabs(lx) < b.w * 0.5f + margin && std::fabs(lz) < b.d * 0.5f + margin) return true;
-	}
-	return false;
+		return std::fabs(lx) < b.w * 0.5f + margin && std::fabs(lz) < b.d * 0.5f + margin;
+	});
 }
 
 namespace {

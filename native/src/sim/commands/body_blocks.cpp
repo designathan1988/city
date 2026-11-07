@@ -261,8 +261,6 @@ EditResult detach_block(CityState &s, int id, int vol) {
 	other.body = s.buildings.designs.edited->add(std::move(own));
 	j_edit_building(s, id, kept);
 	r.placed = j_add_building(s, other);
-	const float reach = std::max(rec.w, rec.d);
-	finish_edit(s, rec.x - reach, rec.z - reach, rec.x + reach, rec.z + reach);
 	r.ok = true;
 	return r;
 }

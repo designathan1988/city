@@ -34,25 +34,24 @@ struct Tri {
 	bool sheet = false;
 };
 
-// The Voronoi cells over the triangles: a seed jittered in each cell of a grid, laid once; the nearest of the 27 round a point.
+// The Voronoi cells over the triangles: a seed jittered in each cell of a grid, worked out from the hash when it is looked at (no
+// table of them: a large building's grid is never laid whole); the nearest of the 27 round a point.
 struct Cells {
 	Vector3 lo;
 	int nx = 0, ny = 0, nz = 0; // with a cell of margin on every side
-	std::vector<Vector3> seeds;
+	uint32_t seed = 0;
 
-	Cells(const Vector3 &low, const Vector3 &high, uint32_t seed) : lo(low) {
+	Cells(const Vector3 &low, const Vector3 &high, uint32_t s) : lo(low), seed(s) {
 		const Vector3 span = (high - low) / VORONOI_EDGE_M;
 		nx = int(span.x) + GRID_MARGIN;
 		ny = int(span.y) + GRID_MARGIN;
 		nz = int(span.z) + GRID_MARGIN;
-		seeds.resize(size_t(nx) * size_t(ny) * size_t(nz));
-		for (int i = 0; i < nx; i++)
-			for (int j = 0; j < ny; j++)
-				for (int k = 0; k < nz; k++) {
-					const uint32_t h = hash_combine(seed, uint32_t(i) * PRIME_X ^ uint32_t(j) * PRIME_Y ^ uint32_t(k) * PRIME_Z);
-					const Vector3 in(SEED_INSET + hash_float(h) * SEED_SPAN, SEED_INSET + hash_float(h + 1) * SEED_SPAN, SEED_INSET + hash_float(h + 2) * SEED_SPAN);
-					seeds[size_t(index(i, j, k))] = lo + (Vector3(float(i - 1), float(j - 1), float(k - 1)) + in) * VORONOI_EDGE_M;
-				}
+	}
+	Vector3 seed_at(int at) const {
+		const int k = at % nz, j = at / nz % ny, i = at / (nz * ny);
+		const uint32_t h = hash_combine(seed, uint32_t(i) * PRIME_X ^ uint32_t(j) * PRIME_Y ^ uint32_t(k) * PRIME_Z);
+		const Vector3 in(SEED_INSET + hash_float(h) * SEED_SPAN, SEED_INSET + hash_float(h + 1) * SEED_SPAN, SEED_INSET + hash_float(h + 2) * SEED_SPAN);
+		return lo + (Vector3(float(i - 1), float(j - 1), float(k - 1)) + in) * VORONOI_EDGE_M;
 	}
 	int index(int i, int j, int k) const { return (i * ny + j) * nz + k; }
 	int of(const Vector3 &p) const {
@@ -64,7 +63,7 @@ struct Cells {
 			for (int j = j0 - 1; j <= j0 + 1; j++)
 				for (int k = k0 - 1; k <= k0 + 1; k++) {
 					const int at = index(i, j, k);
-					const float d = seeds[size_t(at)].distance_squared_to(p);
+					const float d = seed_at(at).distance_squared_to(p);
 					if (d < nearest) {
 						nearest = d;
 						best = at;
@@ -90,7 +89,7 @@ inline void cut(const Tri &t, const Cells &cells, std::vector<Tri> &out, int dep
 		out.push_back(t);
 		return;
 	}
-	const Vector3 &a = cells.seeds[size_t(in[0])], &b = cells.seeds[size_t(in[0] != in[1] ? in[1] : in[2])];
+	const Vector3 a = cells.seed_at(in[0]), b = cells.seed_at(in[0] != in[1] ? in[1] : in[2]);
 	const Vector3 across = b - a, on = (a + b) * 0.5f;
 	Corner near[4], far[4];
 	int nears = 0, fars = 0;

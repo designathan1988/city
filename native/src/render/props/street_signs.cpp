@@ -99,15 +99,8 @@ void place_signs(const CityState &s, const StreetLook &L, const SignLook &K, Sig
 		const StreetItem &it = s.street.items.items[size_t(id)];
 		if (it.kind == ItemKind::SIGN && chunk_of(it.x, it.z) == key) placed_sign(s.roads, it, stands);
 	});
-	for (const StreetItem &it : s.street.items.items) { // a street's name stands along its whole street: few, and each plate by its own chunk
-		if (!it.alive || it.kind != ItemKind::STREETNAME) continue;
-		const int named = name_segment(s.roads, it);
-		if (named < 0) continue;
-		std::vector<SignStand> names;
-		name_plates(s.roads, it, street_chain(s.roads, named), names);
-		for (const SignStand &n : names)
-			if (chunk_of(n.x, n.z) == key) stands.push_back(n);
-	}
+	// a street's name stands along its whole street: its plates kept by chunk in StreetWorks::names, in the order they were made
+	s.street.names.in_chunk(key, [&](const SignStand &n) { stands.push_back(n); });
 	for (const SignStand &st : stands) stand(mb, K, atlas, L, st);
 }
 

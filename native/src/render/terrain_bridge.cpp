@@ -73,9 +73,9 @@ void TerrainBridge::push_all(const Heightfield &hf, Object *terrain3d) {
 	data->call("calc_height_range", true);
 }
 
-void TerrainBridge::push_rects(const Heightfield &hf, Object *terrain3d, const std::vector<int> &rects) {
+int64_t TerrainBridge::push_rects(const Heightfield &hf, Object *terrain3d, const std::vector<int> &rects) {
 	Object *data = terrain_data(terrain3d);
-	if (!data || rects.empty()) return;
+	if (!data || rects.empty()) return 0;
 	std::vector<int64_t> touched;
 	const int last = hf.regions - 1;
 	for (size_t i = 0; i + 3 < rects.size(); i += 4) {
@@ -88,6 +88,7 @@ void TerrainBridge::push_rects(const Heightfield &hf, Object *terrain3d, const s
 	touched.erase(std::unique(touched.begin(), touched.end()), touched.end());
 	for (int64_t k : touched) write_region(hf, data, key_x(k), key_y(k), false);
 	data->call("update_maps", MAP_TYPE_HEIGHT, false, false);
+	return int64_t(touched.size()) * hf.region_size * hf.region_size * BYTES_PER_SAMPLE;
 }
 
 void TerrainBridge::write_control(const Heightfield &hf, const GroundPaint &paint, Object *data, int bx, int bz) {
@@ -104,9 +105,9 @@ void TerrainBridge::write_control(const Heightfield &hf, const GroundPaint &pain
 	region->call("set_modified", true);
 }
 
-void TerrainBridge::push_paint(const Heightfield &hf, const GroundPaint &paint, Object *terrain3d, const std::vector<int> &rects) {
+int64_t TerrainBridge::push_paint(const Heightfield &hf, const GroundPaint &paint, Object *terrain3d, const std::vector<int> &rects) {
 	Object *data = terrain_data(terrain3d);
-	if (!data || rects.empty()) return;
+	if (!data || rects.empty()) return 0;
 	std::vector<int64_t> touched;
 	const int last = hf.regions - 1;
 	for (size_t i = 0; i + 3 < rects.size(); i += 4)
@@ -116,6 +117,7 @@ void TerrainBridge::push_paint(const Heightfield &hf, const GroundPaint &paint, 
 	touched.erase(std::unique(touched.begin(), touched.end()), touched.end());
 	for (int64_t k : touched) write_control(hf, paint, data, key_x(k), key_y(k));
 	data->call("update_maps", MAP_TYPE_CONTROL, false, false);
+	return int64_t(touched.size()) * hf.region_size * hf.region_size * BYTES_PER_SAMPLE;
 }
 
 void TerrainBridge::push_all_paint(const Heightfield &hf, const GroundPaint &paint, Object *terrain3d) {

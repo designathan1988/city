@@ -96,6 +96,7 @@ bool Plan::free(float x, float y, float w, float d, float angle) const {
 }
 
 bool Plan::put(FurnitureKind kind, float x, float y, float angle, float scale) {
+	if (walls_only) return false;
 	const float *size = data.interior.size[kind];
 	const float fw = size[0] * scale, fd = size[1] * scale;
 	if (!free(x, y, fw, fd, angle)) return false;

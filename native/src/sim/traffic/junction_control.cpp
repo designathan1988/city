@@ -200,6 +200,7 @@ void build_junction(CityState &s, int n) {
 			if (a.in >= 0) g.ds[a.in].stop_back = std::min(s.catalog.furniture.crossing.stop_back(), g.ds[a.in].len * STOP_SETBACK_SHARE);
 	j.ctl = control_of(s, n);
 	if (j.ctl == Control::SIGNAL) make_stages(s, n, arms, j);
+	file_signal(g, n);
 	if (j.ctl != Control::PRIORITY) return;
 	std::vector<int> order;
 	for (size_t i = 0; i < arms.size(); i++) order.push_back(int(i));
@@ -256,6 +257,8 @@ Control control_of(const CityState &s, int n) {
 
 void build_junctions(CityState &s) {
 	s.traffic.g.junctions.assign(s.roads.nodes.size(), Junction());
+	s.traffic.g.signal_nodes.clear();
+	s.traffic.g.signal_at.assign(s.roads.nodes.size(), 0);
 	for (int n = 0; n < int(s.roads.nodes.size()); n++)
 		if (s.roads.nodes[n].alive) build_junction(s, n);
 }

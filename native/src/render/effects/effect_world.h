@@ -29,8 +29,12 @@ public:
 	void set_wrecks(const std::vector<godot::Ref<godot::Mesh>> &bodies, const std::vector<godot::Vector3> &sizes); // the burnt bodies, by vehicle type
 	void reset(); // a new city or a load: every effect gone
 	void release();
-	// One frame, the caller holding the map shared: plays what happened since the last, then steps the effects.
-	void sync(CityState &s);
+	// The height-sample rectangles (x0, z0, x1, z1) the terrain composed again since the last frame (ChangeLog::terrain_rects): the
+	// craters whose decal stands on them are laid again at the next change of the crater list. Before sync, each frame.
+	void touch_terrain(const CityState &s, const std::vector<int> &rects);
+	// One frame, the caller holding the map shared: plays what happened since the last, then steps the effects; the ruins' pieces
+	// it hands the server come within the frame's admission (its deadline and byte ledger).
+	void sync(CityState &s, FrameAdmission &admission);
 	float shake() const { return shake_; } // metres the camera moves now
 	float since_blast() const { return blast_at_ < 0 ? -1.f : float(now_ - blast_at_); } // effect seconds since the last blast (-1 none)
 	bool busy() const { return puffs_.active(now_) || !sources_.empty() || debris_.moving() || ruins_.moving() || flash_left_ > 0; }
@@ -101,7 +105,9 @@ private:
 	double now_ = 0, blast_at_ = -1;
 	float shake_ = 0, flash_left_ = 0, flash_energy_ = 0, flash_range_ = 0;
 	godot::Vector3 flash_at_;
-	size_t craters_seen_ = ~size_t(0), ruins_seen_ = ~size_t(0), scars_seen_ = 0, played_ = 0;
+	static constexpr uint64_t UNSEEN = ~uint64_t(0);
+	uint64_t craters_seen_ = UNSEEN, crater_layout_seen_ = UNSEEN, ruins_seen_ = UNSEEN, scars_seen_ = UNSEEN; // DamageState's revisions drawn
+	size_t played_ = 0;
 	float ground_here_ = 0; // the ground under the heap being laid
 };
 

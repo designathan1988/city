@@ -1,6 +1,5 @@
 // Zone-colour chunk jobs and the congestion layer's refresh cycle (see overlay_renderer.h).
 #include "render/overlays/overlay_renderer.h"
-#include "render/chunk_jobs.h"
 
 #include "core/color.h"
 
@@ -20,6 +19,10 @@ constexpr float RGBA_MAX = 255.f;
 constexpr int R_SHIFT = 24, G_SHIFT = 16, B_SHIFT = 8, JAM_STOPS = 3;
 constexpr uint32_t BYTE = 0xff;
 } // namespace
+
+OverlayRenderer::OverlayRenderer() {
+	zone_queue_.hand_one = [this](Built &b) { upload(zones_[b.key], b.r, on_[int(Overlay::ZONES)]); };
+}
 
 bool OverlayRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	scenario_ = ctx.scenario;
@@ -53,15 +56,11 @@ void OverlayRenderer::reset() {
 	for (auto &kv : congestion_) kv.second.free();
 	zones_.clear();
 	congestion_.clear();
-	zones_dirty_.clear();
+	lanes_.clear();
 	roads_known_.clear();
 	zones_all_ = true;
 	since_ = refresh_;
-	{
-		std::lock_guard<std::mutex> lk(queue_mutex_);
-		done_.clear();
-		requested_.clear();
-	}
+	zone_queue_.clear();
 }
 
 void OverlayRenderer::show_every_zone(bool on) {
@@ -72,7 +71,8 @@ void OverlayRenderer::set(Overlay o, bool on) {
 	on_[int(o)] = on;
 	if (o == Overlay::ZONES) {
 		if (on) zones_all_ = true;
-		else zones_dirty_.clear();
+		else
+			for (int64_t key : roads_known_) zone_queue_.revs.unwant(key);
 		for (auto &kv : zones_) kv.second.visible(on);
 	} else {
 		if (on) since_ = refresh_;
@@ -82,29 +82,25 @@ void OverlayRenderer::set(Overlay o, bool on) {
 
 void OverlayRenderer::mark_dirty(int64_t key) {
 	roads_known_.insert(key);
-	if (on_[int(Overlay::ZONES)]) zones_dirty_.insert(key);
+	lanes_.erase(key); // its roads changed: the congestion ribbons are laid again
+	if (on_[int(Overlay::ZONES)]) zone_queue_.revs.mark(key);
 }
 
-void OverlayRenderer::submit_zone(const CityState &s, int64_t key) {
-	if (!s.jobs) return;
-	float cx = s.camera_x.load(), cz = s.camera_z.load();
-	float dx = (float(key_x(key)) + HALF) * CHUNK - cx, dz = (float(key_y(key)) + HALF) * CHUNK - cz;
-	float priority = std::sqrt(dx * dx + dz * dz);
-	uint64_t seq;
-	{
-		std::lock_guard<std::mutex> lk(queue_mutex_);
-		seq = ++seq_;
-		requested_[key] = seq;
-	}
-	s.jobs->submit(JobKey{ JobLane::ZONES, key }, priority, [this, &s, key, seq, priority]() {
-		std::shared_lock<std::shared_mutex> map(s.map_mutex);
-		Built b;
-		b.key = key;
-		b.seq = seq;
-		b.priority = priority;
-		b.r = build_zone_cpu(s, key);
-		std::lock_guard<std::mutex> lk(queue_mutex_);
-		done_.push_back(std::move(b));
+void OverlayRenderer::submit_zone(const CityState &s, int64_t key, float priority) {
+	zone_queue_.set_pool(s.jobs.get());
+	const uint64_t ticket = zone_queue_.revs.ask(key);
+	const JobKey job{ JobLane::ZONES, key };
+	s.jobs->submit(job, priority, [this, &s, key, job, ticket, priority]() {
+		auto b = std::make_shared<Built>();
+		b->key = key;
+		b->job = job;
+		b->ticket = ticket;
+		b->priority = priority;
+		{
+			std::shared_lock<std::shared_mutex> map(s.map_mutex);
+			b->r = build_zone_cpu(s, key);
+		}
+		zone_queue_.push(std::move(b));
 	});
 }
 
@@ -120,17 +116,27 @@ void OverlayRenderer::upload(MeshDraw &d, Ribbon &r, bool on) {
 	d.visible(on && !r.v.is_empty());
 }
 
-void OverlayRenderer::commit(const std::chrono::steady_clock::time_point &until) {
-	commit_done(queue_mutex_, done_, requested_, until, [this](Built &b) { upload(zones_[b.key], b.r, on_[int(Overlay::ZONES)]); });
-}
-
-void OverlayRenderer::update_congestion(const CityState &s, const PoseFrame &f) {
+// The chunks in reach coloured by this publication's speeds: their ribbons laid once (lay_congestion), coloured here; each
+// upload paid into the frame's ledger.
+void OverlayRenderer::update_congestion(const CityState &s, const PoseFrame &f, FrameAdmission &admission) {
 	float reach = s.catalog.tune.render_road_end_m;
 	float cx = s.camera_x.load(), cz = s.camera_z.load();
 	for (int64_t key : roads_known_) {
 		float dx = (float(key_x(key)) + HALF) * CHUNK - cx, dz = (float(key_y(key)) + HALF) * CHUNK - cz;
 		if (std::sqrt(dx * dx + dz * dz) > reach) continue;
-		Ribbon r = build_congestion_cpu(s, f, key);
+		auto laid = lanes_.find(key);
+		if (laid == lanes_.end()) laid = lanes_.emplace(key, lay_congestion(s, key)).first;
+		const Lanes &l = laid->second;
+		Ribbon r;
+		r.v = l.v;
+		r.c.resize(l.v.size());
+		Color *c = r.c.ptrw();
+		int64_t at = 0;
+		for (const auto &[seg, count] : l.strips) {
+			const Color col = congestion_colour(f, seg);
+			for (int i = 0; i < count; i++) c[at++] = col;
+		}
+		admission.upload.charge(ribbon_bytes(r));
 		upload(congestion_[key], r, on_[int(Overlay::CONGESTION)]);
 	}
 	for (auto it = congestion_.begin(); it != congestion_.end();) {
@@ -144,33 +150,35 @@ void OverlayRenderer::update_congestion(const CityState &s, const PoseFrame &f) 
 	}
 }
 
-void OverlayRenderer::update(const CityState &s, const PoseFrame &f, double dt) {
-	const auto until = std::chrono::steady_clock::now() + std::chrono::milliseconds(int64_t(s.catalog.tune.render_commit_budget_ms));
+void OverlayRenderer::update(const CityState &s, const PoseFrame &f, double dt, FrameAdmission &admission) {
 	if (on_[int(Overlay::ZONES)]) {
 		if (zones_all_) {
-			for (int64_t key : roads_known_) zones_dirty_.insert(key);
+			for (int64_t key : roads_known_) zone_queue_.revs.mark(key);
 			zones_all_ = false;
 		}
-		for (auto it = zones_dirty_.begin(); it != zones_dirty_.end();) {
-			bool inflight = false;
-			{
-				std::lock_guard<std::mutex> lk(queue_mutex_);
-				inflight = requested_.count(*it) != 0;
+		// The marked chunks nearest first, a credit each while the frame has them; a chunk whose result is on its way keeps its
+		// mark and is asked again when that one lands.
+		if (s.jobs) {
+			const float cx = s.camera_x.load(), cz = s.camera_z.load();
+			std::vector<std::pair<float, int64_t>> order;
+			for (int64_t key : zone_queue_.revs.wanted()) {
+				if (zone_queue_.revs.busy(key)) continue;
+				const float dx = (float(key_x(key)) + HALF) * CHUNK - cx, dz = (float(key_y(key)) + HALF) * CHUNK - cz;
+				order.push_back({ std::sqrt(dx * dx + dz * dz), key });
 			}
-			if (inflight) {
-				++it; // rebuilt once the in-flight result lands
-				continue;
+			std::sort(order.begin(), order.end());
+			for (const auto &[d, key] : order) {
+				if (!admission.due() || !admission.build.take()) break;
+				submit_zone(s, key, d);
 			}
-			submit_zone(s, *it);
-			it = zones_dirty_.erase(it);
 		}
-		commit(until);
+		admission.commit({ &zone_queue_ });
 	}
 	if (on_[int(Overlay::CONGESTION)]) {
 		since_ += dt;
 		if (since_ >= refresh_) {
 			since_ = 0;
-			update_congestion(s, f);
+			update_congestion(s, f, admission);
 		}
 	} else {
 		since_ = refresh_;

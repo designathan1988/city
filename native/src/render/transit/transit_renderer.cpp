@@ -156,9 +156,11 @@ void TransitRenderer::see_plan(const CityState &s) {
 	}
 }
 
-void TransitRenderer::draw(const TransitMeshes &m, Piece &out) {
+int64_t TransitRenderer::draw(const TransitMeshes &m, Piece &out) {
 	RenderingServer *rs = RenderingServer::get_singleton();
 	drop(out);
+	int64_t bytes = m.solid.bytes() + m.glass.bytes();
+	for (const MeshBuilder &x : m.xray) bytes += x.bytes();
 	if (!m.solid.empty() || !m.glass.empty()) {
 		out.mesh.rid = rs->mesh_create();
 		int surface = 0;
@@ -172,13 +174,14 @@ void TransitRenderer::draw(const TransitMeshes &m, Piece &out) {
 		if (!out.cut.valid()) out.cut.rid = rs->mesh_create();
 		add_surface(rs, out.cut.rid, m.xray[i], xray_[i], surface);
 	}
-	if (!out.cut.valid()) return;
+	if (!out.cut.valid()) return bytes;
 	out.cut_instance = rs->instance_create2(out.cut.rid, scenario_);
 	rs->instance_geometry_set_cast_shadows_setting(out.cut_instance, RenderingServer::SHADOW_CASTING_SETTING_OFF);
 	rs->instance_set_visible(out.cut_instance, xray_on_);
+	return bytes;
 }
 
-void TransitRenderer::build(const CityState &s, int64_t key, Item &item) {
+int64_t TransitRenderer::build(const CityState &s, int64_t key, Item &item) {
 	std::vector<TransitMeshes> parts;
 	item.x0 = item.z0 = std::numeric_limits<float>::max();
 	item.x1 = item.z1 = std::numeric_limits<float>::lowest();
@@ -202,22 +205,24 @@ void TransitRenderer::build(const CityState &s, int64_t key, Item &item) {
 	}
 	for (size_t i = parts.size(); i < item.pieces.size(); i++) drop(item.pieces[i]);
 	item.pieces.resize(parts.size());
-	for (size_t i = 0; i < parts.size(); i++) draw(parts[i], item.pieces[i]);
+	int64_t bytes = 0;
+	for (size_t i = 0; i < parts.size(); i++) bytes += draw(parts[i], item.pieces[i]);
+	return bytes;
 }
 
-void TransitRenderer::sync(const CityState &s) {
+void TransitRenderer::sync(const CityState &s, FrameAdmission &f) {
 	if (!material_.is_valid()) return;
 	if (s.transit_revision != plan_seen_) {
 		plan_seen_ = s.transit_revision;
 		see_plan(s);
 	}
-	for (int n = 0; n < per_frame_ && !queue_.empty(); n++) {
+	for (int n = 0; n < per_frame_ && !queue_.empty() && f.due(); n++) {
 		const int64_t key = queue_.front();
 		queue_.pop_front();
 		const auto it = items_.find(key);
 		if (it == items_.end()) continue;
 		it->second.waiting = false;
-		build(s, key, it->second);
+		f.upload.charge(build(s, key, it->second));
 	}
 }
 

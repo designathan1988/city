@@ -9,11 +9,18 @@
 
 #include <algorithm>
 #include <functional>
+#include <memory>
 #include <vector>
 
 namespace city::b40 {
 
 struct PaneRooms;
+
+// What keeps a placement's bodies and rooms alive while it is drawn (the body cache is shared: building_bodies.h).
+struct PlacedHold {
+	std::shared_ptr<const Body> whole, cut;
+	std::shared_ptr<PaneRooms> rooms;
+};
 
 struct Placed {
 	const Data *data = nullptr;
@@ -29,6 +36,7 @@ struct Placed {
 	std::function<float(const godot::Vector3 &)> ground; // terrain height under a world point
 	bool coarse = false; // mid level: emit_far draws walls, slabs and parapets; roofs/lot add only the big pieces
 	bool lean = false; // far level: one wall band per side, no coping or machine rooms (a third of the far memory)
+	PlacedHold hold; // set by BuildingBodies::place: `b`, `whole` and `rooms` point into it
 };
 
 // The frame a block is drawn in: the lot's, raised by the block's lift. What a block draws, it draws through the frame, so a split level needs nothing else of the emitters.

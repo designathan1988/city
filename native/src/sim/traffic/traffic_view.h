@@ -37,8 +37,13 @@ struct TrafficView {
 	int vehicles = 0, people = 0, arrived = 0, lost = 0; // the fleet (the snapshot)
 	int near = 0, queued = 0; // driven by the near model, and of those standing
 	double mean_speed_ms = 0;
+	double near_speed = 0; // the near model's speeds summed while the view is filled
 	std::vector<TrafficTally> seg, node; // per segment and per node
+	// The segments and nodes whose tallies hold vehicles in this view: the only ones its next filling clears (every other tally
+	// holds none), so a filling costs the fleet, not the network.
+	std::vector<int> seg_held, node_held;
 	std::vector<uint32_t> volume; // per segment: vehicles that entered it since the city opened
+	uint64_t volume_upto = 0; // the entries of TrafficState::volume_log it has taken (counted from the first ever)
 	std::vector<JunctionView> junction; // per node
 	std::vector<int> lamps; // each signalled stage's light, by its first approach
 	std::vector<float> least; // each signalled stage's minimum green
@@ -69,8 +74,16 @@ struct TrafficLevels {
 	std::atomic<bool> vehicles_on{ true }, people_on{ true }, growth_on{ true }, crowd_on{ true };
 };
 
+struct Vehicle;
+
 namespace traffic {
-void publish_view(CityState &s); // the only writer of CityState::traffic_views
+// The only writer of CityState::traffic_views. A view is filled in one pass over the fleet: begun (the back view, the tallies it
+// held cleared), each live vehicle counted in id order, then ended (the fleet's totals, the volumes, the lights) and published.
+// publish_poses counts the vehicles in its own pass over them; publish_view does the three for a fleet nobody else walks.
+TrafficView &view_begin(CityState &s);
+void view_vehicle(const CityState &s, TrafficView &view, const Vehicle &v);
+void view_end(CityState &s, TrafficView &view);
+void publish_view(CityState &s);
 } // namespace traffic
 
 } // namespace city

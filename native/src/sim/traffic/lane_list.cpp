@@ -10,17 +10,22 @@ namespace traffic {
 
 namespace {
 
-void activate(std::vector<int> &list, std::vector<uint8_t> &flag, int key) {
-	if (key < 0 || key >= int(flag.size()) || flag[size_t(key)]) return;
-	flag[size_t(key)] = 1;
+// `at` holds each key's place in `list` plus one (0: not on it), so a key leaves without a search: the last key takes its
+// place, the order a search for it and the same swap gave.
+void activate(std::vector<int> &list, std::vector<int> &at, int key) {
+	if (key < 0 || key >= int(at.size()) || at[size_t(key)]) return;
 	list.push_back(key);
+	at[size_t(key)] = int(list.size());
 }
 
-void deactivate(std::vector<int> &list, std::vector<uint8_t> &flag, int key) {
-	if (key < 0 || key >= int(flag.size()) || !flag[size_t(key)]) return;
-	flag[size_t(key)] = 0;
-	auto at = std::find(list.begin(), list.end(), key);
-	if (at != list.end()) *at = list.back(), list.pop_back();
+void deactivate(std::vector<int> &list, std::vector<int> &at, int key) {
+	if (key < 0 || key >= int(at.size()) || !at[size_t(key)]) return;
+	const size_t i = size_t(at[size_t(key)] - 1);
+	const int last = list.back();
+	list[i] = last;
+	at[size_t(last)] = int(i) + 1;
+	list.pop_back();
+	at[size_t(key)] = 0;
 }
 
 } // namespace

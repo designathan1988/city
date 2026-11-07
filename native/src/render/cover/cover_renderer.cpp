@@ -3,8 +3,6 @@
 
 #include "core/math.h"
 #include "core/random.h"
-#include "render/chunk_jobs.h"
-#include "render/trees/tree_place.h"
 #include "sim/terrain/terrain_gen.h"
 
 #include <godot_cpp/classes/rendering_server.hpp>
@@ -48,6 +46,10 @@ bool any_cactus(const EcologyField &eco) {
 }
 } // namespace
 
+CoverRenderer::CoverRenderer() {
+	queue_.hand_one = [this](Built &b) { commit_one(b); };
+}
+
 bool CoverRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	scenario_ = ctx.scenario;
 	plant_material_ = ctx.material("cover_plant", errors);
@@ -71,12 +73,7 @@ bool CoverRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 }
 
 void CoverRenderer::reset() {
-	{
-		std::lock_guard<std::mutex> lk(queue_mutex_);
-		done_.clear();
-		requested_.clear();
-	}
-	dirty_.clear();
+	queue_.clear();
 	wet_.clear();
 	for (auto &kv : chunks_)
 		for (MultiMeshDraw &d : kv.second) d.free();
@@ -84,8 +81,7 @@ void CoverRenderer::reset() {
 	pending_ = 0;
 }
 
-void CoverRenderer::place(const CityState &s, int64_t key, Built &out) const {
-	ChunkGround l = chunk_ground(s, key);
+void CoverRenderer::place(const CityState &s, int64_t key, const ChunkGround &l, Built &out) const {
 	if (l.eco.side == 0) return;
 	const bool painted = s.nature.ground.any_cover(), cactus = any_cactus(l.eco);
 	for (int p = 0; p < COVER_PIECES; p++) {
@@ -124,9 +120,7 @@ void CoverRenderer::place_elements(const CityState &s, int64_t key, Built &out) 
 }
 
 // A river's stones, on the same lattice rule as the cover and with its rocks' models, drawn apart: they reach further.
-void CoverRenderer::place_shore(const CityState &s, int64_t key, Built &out) const {
-	if (!shore_near(s.terrain, key_x(key) * CHUNK, key_y(key) * CHUNK, CHUNK, shore_.search_m)) return;
-	ChunkGround l = chunk_ground(s, key);
+void CoverRenderer::place_shore(const CityState &s, int64_t key, const ChunkGround &l, Built &out) const {
 	const CoverLook &k = kit_.look(CoverPiece::ROCKS);
 	const int n = int(CHUNK / shore_.spacing_m), cx = key_x(key), cz = key_y(key), first = draws_ + int(models_.all().size());
 	const float step = CHUNK / float(n);
@@ -148,13 +142,17 @@ void CoverRenderer::place_shore(const CityState &s, int64_t key, Built &out) con
 		}
 }
 
-CoverRenderer::Built CoverRenderer::build(const CityState &s, int64_t key) const {
-	Built out;
-	out.key = key;
-	out.bufs.resize(size_t(draws_) + models_.all().size() + kit_.look(CoverPiece::ROCKS).variants.size());
-	if (s.nature.nature.region >= 0 || s.nature.ground.any_cover()) place(s, key, out);
-	place_elements(s, key, out);
-	place_shore(s, key, out);
+// The chunk's roads, lots and ecosystem gathered once for both lattices (the shore's stones read no ecosystem).
+std::shared_ptr<CoverRenderer::Built> CoverRenderer::build(const CityState &s, int64_t key) const {
+	auto out = std::make_shared<Built>();
+	out->bufs.resize(size_t(draws_) + models_.all().size() + kit_.look(CoverPiece::ROCKS).variants.size());
+	const bool plants = s.nature.nature.region >= 0 || s.nature.ground.any_cover();
+	const bool shore = shore_near(s.terrain, key_x(key) * CHUNK, key_y(key) * CHUNK, CHUNK, shore_.search_m);
+	ChunkGround l;
+	if (plants || shore) l = chunk_ground(s, key, plants);
+	if (plants) place(s, key, l, *out);
+	place_elements(s, key, *out);
+	if (shore) place_shore(s, key, l, *out);
 	return out;
 }
 
@@ -186,29 +184,21 @@ void CoverRenderer::commit_one(Built &b) {
 
 void CoverRenderer::submit(const CityState &s, int64_t key, float priority) {
 	if (!s.jobs) return;
-	uint64_t seq;
-	{
-		std::lock_guard<std::mutex> lk(queue_mutex_);
-		seq = ++seq_;
-		requested_[key] = seq;
-	}
-	s.jobs->submit(JobKey{ JobLane::COVER, key }, priority, [this, &s, key, seq, priority]() {
-		std::shared_lock<std::shared_mutex> map(s.map_mutex);
-		Built b = build(s, key);
-		b.seq = seq;
-		b.priority = priority;
-		std::lock_guard<std::mutex> lk(queue_mutex_);
-		done_.push_back(std::move(b));
+	queue_.set_pool(s.jobs.get());
+	const uint64_t ticket = queue_.revs.ask(key);
+	const JobKey job{ JobLane::COVER, key };
+	s.jobs->submit(job, priority, [this, &s, key, job, ticket, priority]() {
+		std::shared_ptr<Built> b;
+		{
+			std::shared_lock<std::shared_mutex> map(s.map_mutex);
+			b = build(s, key);
+		}
+		b->key = key;
+		b->job = job;
+		b->ticket = ticket;
+		b->priority = priority;
+		queue_.push(std::move(b));
 	});
-}
-
-void CoverRenderer::commit(const std::chrono::steady_clock::time_point &until) {
-	commit_done(queue_mutex_, done_, requested_, until, [this](Built &b) { commit_one(b); });
-}
-
-int CoverRenderer::pending() const {
-	std::lock_guard<std::mutex> lk(queue_mutex_);
-	return pending_ + int(dirty_.size() + requested_.size() + done_.size());
 }
 
 // How far a chunk streams: a chunk by the water as far as its stones are seen.
@@ -218,46 +208,43 @@ float CoverRenderer::reach_of(const CityState &s, int64_t key) {
 	return (it->second ? shore_.reach_m : kit_.reach_m) + kit_.fade_m;
 }
 
-// Rebuild the dirty chunks, ask the missing ones round the camera, nearest first, and let go of the far.
-void CoverRenderer::sync(const CityState &s, const Vector3 &cam, BuildBudget &budget) {
+// The marked chunks drawn again (one whose result is on its way keeps its mark and is asked again when that lands; one not drawn
+// is built fresh when it comes), the missing ones round the camera asked nearest first, and the far let go.
+void CoverRenderer::offer(const CityState &s, const Vector3 &cam, std::vector<FrameAdmission::Unit> &out) {
+	pending_ = 0;
 	float reach = shore_.reach_m + kit_.fade_m;
-	auto busy = [&](int64_t k) {
-		std::lock_guard<std::mutex> lk(queue_mutex_);
-		return requested_.count(k) > 0;
+	auto unit = [&](int64_t k, float d, int rank) {
+		pending_++;
+		out.push_back(FrameAdmission::Unit{ rank, d, 1, [this, &s, k, d]() {
+					   pending_--;
+					   submit(s, k, d);
+				   } });
 	};
-	for (auto it = dirty_.begin(); it != dirty_.end();) {
-		if (chunks_.count(*it) == 0 || busy(*it)) { it = dirty_.erase(it); continue; }
-		if (!budget.take()) break;
-		submit(s, *it, distance_to(*it, cam));
-		it = dirty_.erase(it);
+	std::vector<int64_t> unmark;
+	for (int64_t k : queue_.revs.wanted()) {
+		if (queue_.revs.busy(k)) continue;
+		if (chunks_.count(k) == 0) {
+			unmark.push_back(k);
+			continue;
+		}
+		unit(k, distance_to(k, cam), 1);
 	}
+	for (int64_t k : unmark) queue_.revs.unwant(k);
 	for (auto it = chunks_.begin(); it != chunks_.end();) {
 		if (distance_to(it->first, cam) <= reach_of(s, it->first) + DROP_CHUNKS * CHUNK) { ++it; continue; }
-		{
-			std::lock_guard<std::mutex> lk(queue_mutex_);
-			requested_.erase(it->first);
-		}
+		queue_.drop(it->first);
 		for (MultiMeshDraw &d : it->second) d.free();
 		it = chunks_.erase(it);
 	}
 	int r = int(std::ceil(reach / CHUNK)), cx = int(std::floor(cam.x / CHUNK)), cz = int(std::floor(cam.z / CHUNK));
-	std::vector<std::pair<float, int64_t>> want;
 	for (int j = cz - r; j <= cz + r; j++)
 		for (int i = cx - r; i <= cx + r; i++) {
 			int64_t k = cell_key(i, j);
 			float d = distance_to(k, cam);
 			if (d > reach || chunks_.count(k) != 0) continue;
 			if (d > reach_of(s, k) + CHUNK * DIAGONAL * HALF || !s.terrain.in_bounds((i + HALF) * CHUNK, (j + HALF) * CHUNK, -CHUNK * HALF)) continue;
-			if (chunks_.count(k) == 0 && !busy(k)) want.push_back({ d, k });
+			if (!queue_.revs.busy(k)) unit(k, d, 0);
 		}
-	std::sort(want.begin(), want.end());
-	int n = 0;
-	for (const auto &w : want) {
-		if (!budget.take()) break;
-		submit(s, w.second, w.first);
-		++n;
-	}
-	pending_ = int(want.size()) - n;
 }
 
 } // namespace city

@@ -122,6 +122,7 @@ YardPlanner::YardPlanner(YardInput in) : in_(std::move(in)) {
 	field_.begin(in_.x0, in_.z0, in_.cell, in_.nx, in_.nz);
 	lot_.begin(in_.x0, in_.z0, in_.cell, in_.nx, in_.nz);
 	plan.gates = in_.gates;
+	plan.reads = in_.reads;
 }
 
 // A row of each grid: solid everywhere for the yard's, nothing for the lot's.

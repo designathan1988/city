@@ -28,9 +28,13 @@ struct WayNode {
 // on the simulation's tick, so nothing here grows by copying all it holds (a hash table rehashing took 78 ms of one tick).
 class PoseTable {
 public:
-	// A search's start: every place empty again, the blocks of the last search kept for this one's pages (WaySpace).
+	// A search's start: every place empty again, the blocks of the last search kept for this one's pages (WaySpace). Only the places
+	// the last search took a page for are emptied (`placed_`): the others are empty already, so a start costs what the last search
+	// touched, not the grid.
 	void begin(size_t places, int headings) {
-		page_of_.assign(places, -1);
+		for (size_t place : placed_) page_of_[place] = -1;
+		placed_.clear();
+		if (page_of_.size() < places) page_of_.resize(places, -1);
 		headings_ = headings;
 		pages_ = 0;
 	}
@@ -38,6 +42,7 @@ public:
 		int &page = page_of_[place];
 		if (page < 0) {
 			page = pages_++;
+			placed_.push_back(place);
 			taken++;
 			// not zeroed: a page is set to -1 when it is taken, below
 			if (size_t(page / BLOCK_PAGES) == blocks_.size()) blocks_.push_back(std::unique_ptr<int[]>(new int[size_t(BLOCK_PAGES) * headings_]));
@@ -53,7 +58,8 @@ public:
 	int64_t taken = 0; // the pages taken, ever: a search reads what it took
 
 private:
-	std::vector<int> page_of_;
+	std::vector<int> page_of_; // per place: its page, -1 for none
+	std::vector<size_t> placed_; // the places given a page since the search began
 	std::vector<std::unique_ptr<int[]>> blocks_;
 	int headings_ = 0, pages_ = 0;
 };

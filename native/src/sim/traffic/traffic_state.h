@@ -43,6 +43,12 @@ struct KerbStop {
 };
 
 
+// A tick's route searches (route_admission.cpp): the tick they were counted in and how many started.
+struct SearchBudget {
+	uint64_t tick = ~0ull;
+	int used = 0;
+};
+
 struct Vehicle {
 	bool alive = false, brake = false;
 	bool micro = true; // drawn and driven by the near model; far vehicles are in their lane's meso queue
@@ -97,9 +103,17 @@ struct TrafficState {
 	std::vector<int> free_peds;
 	// The light each approach shows, refreshed once per step: light_for() is asked many times per vehicle and conflict.
 	std::vector<uint8_t> light_now;
+	std::vector<int> lit_ds; // the approaches update_lights set last: green again before it sets this step's
 	std::vector<uint32_t> seg_volume; // per segment: vehicles that entered it since the city opened (the Inspect tool)
+	// The segments entered, in order, since entry `volume_base` (counted from the first ever): each published view copies only
+	// the volumes of those entered since it last did (traffic_view.cpp).
+	std::vector<int> volume_log;
+	uint64_t volume_base = 0;
 	std::vector<double> green_wanted; // per approach: until when the vehicles over its detector want green
 	std::vector<std::vector<int>> lane_vehicles; // ds * MAX_LANES + lane, sorted by s (back first)
+	// Per lane key: its list was in order of s when the step last moved it (vehicle_motion.cpp). Only that step changes the s of a
+	// vehicle on a list; an insertion keeps a list in order and a removal keeps it so.
+	std::vector<uint8_t> lane_sorted;
 	std::vector<std::vector<int>> conn_vehicles; // in entry order
 	std::vector<std::vector<int>> node_crossers; // per node: walkers on one of its crosswalks
 	std::unordered_map<int64_t, uint32_t> kerb_slots; // per kerb end of a crosswalk: the places to wait taken (bits)
@@ -111,6 +125,8 @@ struct TrafficState {
 	std::vector<size_t> crowd_first; // per crowd key: where its walkers' choices start in the step's list
 	std::vector<std::vector<CrowdEntry>> node_walkers;
 	std::vector<int> node_keys;
+	std::vector<CrowdChoice> crowd_next; // the step's choices, kept between steps for their room
+	std::vector<const StreetObstacle *> crowd_around; // the furniture round the junction being looked at
 	// The street furniture of the segments the walkers met, as bodies standing on its sidewalks (ped_furniture.cpp);
 	// dropped when an edit touches the segment or a node of it, and far from the camera.
 	std::unordered_map<int, SidewalkFurniture> furniture;
@@ -125,7 +141,7 @@ struct TrafficState {
 	std::vector<int> micro_list;
 	// Lanes and connectors that hold a near vehicle (step_vehicles walks these, never the whole map).
 	std::vector<int> active_lanes, active_conns;
-	std::vector<uint8_t> lane_active, conn_active;
+	std::vector<int> lane_active, conn_active; // per lane key / connector: its place in the active list plus one, 0 when off it
 	std::vector<int> step_lanes, step_conns; // per-step snapshot of the active lists
 	// Micro window (Roadcraft traffic.ts checkWindow/materialize): last camera position and time, sidewalk metres and
 	// the walkable segments inside ped_window_m.
@@ -154,7 +170,11 @@ struct TrafficState {
 	std::vector<double> last_admit, release_at; // per node
 	std::vector<int> pass_count; // per node: vehicles let in (pedestrian courtesy, tests)
 	int stop_entries = 0, stop_skipped = 0; // vehicles let in past a Stop, and those that had not stood at it (tests)
-	int route_budget = 0; // route searches left this step (spawns, detours, reconsiderations)
+	SearchBudget search_budget; // the route searches of this tick, every one counted (route_admission.cpp)
+	// Per directed segment: one connector leaving it for each segment its connectors reach, the first each_conn_from walks to it, made
+	// again when CityState::lane_graph_serial moves (stamped serial + 1): the router relaxes each segment it can reach once (routing.cpp).
+	std::vector<std::vector<int>> route_next;
+	std::vector<uint64_t> route_next_stamp;
 	float gov = 1, gov_clock = 0; // fleet governor (traffic/regions.ts)
 	int reroutes = 0, released = 0, jams = 0;
 	float red_last[TIMED_STAGES] = {}; // the last red entry: type, speed, ds, time (traffic_probe)
@@ -171,11 +191,22 @@ struct TrafficState {
 	int kerb_planned = 0, kerb_drops = 0, kerb_picks = 0, kerb_deliveries = 0, kerb_abandoned = 0;
 	int bus_boarded = 0, bus_alighted = 0; // who has got on and off the buses
 	std::vector<LaneClosure> closures; // few, and only while a lorry swings across a street
-	std::vector<float> pub_sum, pub_lim; // publish_poses: per segment, kept between ticks
+	// The road segments added, changed or removed by the network changes applied since the transit last read them (lane_graph_edit.cpp
+	// writes, transit_sim.cpp takes): what of its stops and level crossings an edit of the roads alone can reach.
+	std::vector<int> roads_touched;
+	std::vector<float> pub_sum, pub_lim; // publish_poses: per segment, kept between ticks (zero but during a pass)
 	std::vector<int> pub_count;
+	std::vector<int> pub_segs; // the segments the last pass counted vehicles on
+	// Per frame of CityState::poses (by its address, they stand as long as the city): the segments whose speed share it shows
+	// other than 1, so its next filling puts back only those.
+	struct ShareFrame {
+		const PoseFrame *frame = nullptr;
+		std::vector<int> segs;
+	};
+	ShareFrame share_frames[3];
 	ParkingState park;
-	std::unordered_map<int64_t, std::vector<int>> walker_cells; // who stands where, filed when something off the lanes asks
-	uint64_t walkers_filed = ~0ull; // the tick they were filed in
+	WalkerCells walker_cells; // who stands where, filed when something off the lanes asks (walker_cells.cpp)
+	WalkerCells spawn_cells; // who stands where while walkers are born
 	Rng rng{ TRAFFIC_SEED };
 };
 
@@ -190,6 +221,12 @@ inline void count_entry(TrafficState &t, int ds) {
 	const size_t seg = size_t(ds) / 2;
 	if (seg >= t.seg_volume.size()) t.seg_volume.resize(seg + 1, 0);
 	t.seg_volume[seg]++;
+	// a log longer than the counts costs more to read than a copy of them: the views behind it take them whole
+	if (t.volume_log.size() >= t.seg_volume.size()) {
+		t.volume_base += t.volume_log.size();
+		t.volume_log.clear();
+	}
+	t.volume_log.push_back(int(seg));
 }
 
 } // namespace city

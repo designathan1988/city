@@ -14,6 +14,8 @@
 #include "render/rs_util.h"
 #include "sim/state/city_state.h"
 
+#include <memory>
+#include <unordered_map>
 #include <vector>
 
 namespace city {
@@ -74,6 +76,10 @@ private:
 	// A vehicle's passengers and the order its seats fill in (stride * seats + first), from its id.
 	void riders(int type, uint32_t id, float &passengers, float &order) const;
 	void limit_cabins(); // the next frame's limit of who has a cabin
+	// The bays' cars by cell of vehicle_r_ (their indices in the published list, ascending), made again only when the simulation
+	// publishes a new list; and this frame's, those of the cells round the camera, ascending: the list's own order.
+	void index_parked(const std::shared_ptr<const std::vector<ParkedRecord>> &parked);
+	const std::vector<uint32_t> &parked_near(const godot::Vector3 &cam);
 	void draw_rows(const godot::Vector3 &cam); // the rows of this frame to the server
 	void commit_mesh(int model, int draw, const MeshBuilder &mb);
 	// Whoever is aboard, to PeopleRenderer: the driver, and the passengers the order seats.
@@ -107,6 +113,9 @@ private:
 	int cabin_cap_ = 0; // the most cabins drawn, the nearest; 0: no cap
 	float cabin_limit2_ = 0; // the cap's distance, squared, found on the last frame (0: none)
 	std::vector<float> near_d2_;
+	std::shared_ptr<const std::vector<ParkedRecord>> parked_indexed_; // held: the list the cells index
+	std::unordered_map<int64_t, std::vector<uint32_t>> parked_cells_;
+	std::vector<uint32_t> parked_near_;
 	int drawn_vehicles_ = 0, drawn_people_ = 0;
 };
 

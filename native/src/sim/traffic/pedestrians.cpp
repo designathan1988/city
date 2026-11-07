@@ -287,7 +287,10 @@ void step_pedestrians(CityState &s, float dt) {
 		ease_facing(t, p, after, dt);
 	}
 	follow_leaders(s, dt);
+	if (spawns <= 0) return;
+	file_spawn_cells(t); // everybody has moved: the births look at where they stand now, and at each other
 	for (int k = 0; k < spawns; k++) spawn_walker(s, now, !filling);
+	t.spawn_cells.live = false;
 }
 
 } // namespace traffic

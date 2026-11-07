@@ -11,6 +11,8 @@ namespace {
 constexpr double MIN_LOT_M = 10, NEAR_M = 1.2, CUT_PAST_M = 1, SIDE_LEAST_M = 1, OFF_ANGLE_M = 40, STAND_STEP_M = 0.5, FRONT_EPS = 1e-9, INNER_SHARE = 0.2;
 constexpr int STAND_MOST_ROWS = 160, CURVE_STEPS = 12;
 constexpr double QUARTER_LOT = 4; // of the least lot's square: what a cut may leave
+constexpr float INDEX_CELL_M = 64.f; // LotIndex: a few lots a cell
+constexpr double INDEX_PAD_M = 1; // a lot is filed this far past its corners: the inside test decides, the index must not miss it
 
 LotPoint lerp(const LotPoint &a, const LotPoint &b, double t) { return { a.x + (b.x - a.x) * t, a.z + (b.z - a.z) * t }; }
 
@@ -79,6 +81,31 @@ int LotBook::at(double x, double z) const {
 	for (const PlayerLot &l : lots)
 		if (inside_lot({ x, z }, l.corners)) return l.id;
 	return 0;
+}
+
+LotIndex::LotIndex(const LotBook &book) : book_(book) {
+	hash_.cell = INDEX_CELL_M;
+	stands_.reserve(book.lots.size());
+	for (size_t i = 0; i < book.lots.size(); i++) {
+		const PlayerLot &l = book.lots[i];
+		stands_.push_back(lot_stand(l.corners));
+		if (l.zone != 0) zoned_[chunk_of(float(stands_.back().x), float(stands_.back().z))].push_back(int(i));
+		double x0 = std::numeric_limits<double>::max(), z0 = x0, x1 = std::numeric_limits<double>::lowest(), z1 = x1;
+		for (const LotPoint &p : l.corners) {
+			x0 = std::min(x0, p.x); z0 = std::min(z0, p.z);
+			x1 = std::max(x1, p.x); z1 = std::max(z1, p.z);
+		}
+		if (l.corners.empty()) continue;
+		hash_.insert_aabb(int(i), float(x0 - INDEX_PAD_M), float(z0 - INDEX_PAD_M), float(x1 + INDEX_PAD_M), float(z1 + INDEX_PAD_M));
+	}
+}
+
+int LotIndex::at(double x, double z) const {
+	int first = -1;
+	hash_.query(float(x), float(z), float(x), float(z), [&](int i) {
+		if ((first < 0 || i < first) && inside_lot({ x, z }, book_.lots[size_t(i)].corners)) first = i;
+	});
+	return first < 0 ? 0 : book_.lots[size_t(first)].id;
 }
 
 std::vector<LotPoint> piece_with_front(const std::vector<LotPoint> &piece, const LotPoint &fa, const LotPoint &fb) { return with_front(piece, fa, fb); }

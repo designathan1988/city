@@ -53,6 +53,7 @@ void CityCore::bind_edits() {
 	ClassDB::bind_method(D_METHOD("build_road", "start", "end", "has_control", "control", "profile", "px", "from_lift"), &CityCore::build_road, DEFVAL(HEIGHT_IN_HAND));
 	ClassDB::bind_method(D_METHOD("demolish", "position"), &CityCore::demolish);
 	ClassDB::bind_method(D_METHOD("paint_zone", "position", "radius", "zone"), &CityCore::paint_zone);
+	ClassDB::bind_method(D_METHOD("paint_zone_path", "points", "radius", "zone"), &CityCore::paint_zone_path);
 	ClassDB::bind_method(D_METHOD("road_profiles"), &CityCore::road_profiles);
 	ClassDB::bind_method(D_METHOD("road_variant", "base", "lanes", "width", "parking"), &CityCore::road_variant);
 	ClassDB::bind_method(D_METHOD("undo"), &CityCore::undo);
@@ -92,6 +93,7 @@ void CityCore::bind_edits() {
 // What the UI and the tests read: the snapshot, the ground and its inspector, the traffic, the layers and the render's costs.
 void CityCore::bind_queries() {
 	ClassDB::bind_method(D_METHOD("snapshot"), &CityCore::snapshot);
+	ClassDB::bind_method(D_METHOD("map_revision"), &CityCore::map_revision);
 	ClassDB::bind_method(D_METHOD("constants"), &CityCore::constants);
 	ClassDB::bind_method(D_METHOD("raycast", "origin", "direction"), &CityCore::raycast);
 	ClassDB::bind_method(D_METHOD("height_at", "x", "z"), &CityCore::height_at);

@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace city {
@@ -61,6 +62,16 @@ struct RailGraph {
 	std::vector<std::vector<int>> at; // per point: its stretches
 };
 
+// The memory of the rail searches, one after another: each point's distance, the point it is reached from, and the queue. A point's
+// distance counts only when stamped with the search's own number, so no search clears what the last one wrote.
+struct RailSearch {
+	std::vector<float> dist;
+	std::vector<int> prev;
+	std::vector<uint32_t> stamp;
+	uint32_t cur = 0;
+	std::vector<std::pair<float, int>> open;
+};
+
 struct TrackHit {
 	int track = -1;
 	V2 at;
@@ -82,7 +93,7 @@ void transit_set_vehicles(TransitData &t, int id, int vehicles, int most);
 void transit_normalize(TransitData &t);
 RailGraph rail_graph(const TransitData &t, TransitMode mode, float join);
 // The points to pass along the tracks from one point on them to another; empty when no way joins them.
-std::vector<V2> rail_path(const RailGraph &g, const V2 &from, const V2 &to);
+std::vector<V2> rail_path(const RailGraph &g, const V2 &from, const V2 &to, RailSearch &search);
 // The nearest point of a track within `reach`, of a mode unless BUS is given (a bus has no track); track -1 when none.
 TrackHit nearest_track(const TransitData &t, const V2 &p, float reach, TransitMode mode);
 // The nearest stop within `reach`; `any` leaves the mode out. Null when none.

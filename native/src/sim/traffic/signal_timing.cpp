@@ -135,17 +135,47 @@ bool walk_signal(const CityState &s, int node, int arm_seg, int arm_stage) {
 	return s.traffic.time - j.run_start < least - ped_clearance(s, arm_seg) - s.catalog.traffic.ped_all_red_s;
 }
 
+void file_signal(LaneGraph &g, int n) {
+	if (n < 0) return;
+	if (g.signal_at.size() <= size_t(n)) g.signal_at.resize(std::max(g.junctions.size(), size_t(n) + 1), 0);
+	const bool timed = size_t(n) < g.junctions.size() && g.junctions[size_t(n)].ctl == Control::SIGNAL && !g.junctions[size_t(n)].green.empty();
+	int &at = g.signal_at[size_t(n)];
+	if (timed == (at > 0)) return;
+	if (timed) {
+		g.signal_nodes.push_back(n);
+		at = int(g.signal_nodes.size());
+		return;
+	}
+	const int last = g.signal_nodes.back();
+	g.signal_nodes[size_t(at - 1)] = last;
+	g.signal_at[size_t(last)] = at;
+	g.signal_nodes.pop_back();
+	at = 0;
+}
+
+// Only a signalled junction's approaches show other than green (compute_light): each one with a stage is on its junction's list of
+// approaches, and that junction is on LaneGraph::signal_nodes. Those are timed and lit; what was lit the step before and is not now
+// goes back to green.
 void update_lights(CityState &s) {
 	TrafficState &t = s.traffic;
-	if (t.green_wanted.size() != t.g.ds.size()) t.green_wanted.resize(t.g.ds.size(), 0.0);
-	for (Junction &j : t.g.junctions)
-		if (j.ctl == Control::SIGNAL && !j.green.empty()) {
-			if (j.fixed) run_fixed(t, j);
-			else advance(t, j);
-		}
-	t.light_now.assign(t.g.ds.size(), uint8_t(Light::GREEN));
-	for (int ds = 0; ds < int(t.g.ds.size()); ds++)
-		if (t.g.ds[ds].ok) t.light_now[size_t(ds)] = uint8_t(compute_light(s, ds));
+	LaneGraph &g = t.g;
+	if (t.green_wanted.size() != g.ds.size()) t.green_wanted.resize(g.ds.size(), 0.0);
+	for (int n : g.signal_nodes) {
+		Junction &j = g.junctions[size_t(n)];
+		if (j.fixed) run_fixed(t, j);
+		else advance(t, j);
+	}
+	if (t.light_now.size() != g.ds.size()) t.light_now.resize(g.ds.size(), uint8_t(Light::GREEN));
+	for (int ds : t.lit_ds)
+		if (size_t(ds) < t.light_now.size()) t.light_now[size_t(ds)] = uint8_t(Light::GREEN);
+	t.lit_ds.clear();
+	for (int n : g.signal_nodes)
+		for (const std::vector<int> &approaches : g.junctions[size_t(n)].approaches)
+			for (int ds : approaches) {
+				if (size_t(ds) >= g.ds.size() || !g.ds[size_t(ds)].ok) continue;
+				t.light_now[size_t(ds)] = uint8_t(compute_light(s, ds));
+				t.lit_ds.push_back(ds);
+			}
 }
 
 Light light_for(const CityState &s, int ds) {

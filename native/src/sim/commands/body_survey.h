@@ -10,8 +10,6 @@
 
 namespace city {
 
-struct Tuning;
-
 struct SurveyPoint {
 	float x = 0, y = 0, z = 0;
 };
@@ -32,7 +30,8 @@ void survey_depth(SurveyView &v, const std::vector<SurveyTriangle> &tris);
 // What the model shows at a point of its surface, seen along the normal; false for nothing there.
 bool survey_sample(const std::vector<SurveyView> &views, const SurveyPoint &p, float nx, float ny, SurveyColour &out);
 
-// Fills `b`; false when the model has no block big enough to be a room.
-bool survey_body(const b40::Data &data, const Tuning &t, const std::vector<SurveyTriangle> &tris, std::vector<SurveyView> &views, b40::Body &b);
+// Fills `b`; false when the model has no block big enough to be a room. Pure: it reads only the model and the generator's
+// tables (b40::Data, read-only after boot), so a command runs it before it locks the map.
+bool survey_body(const b40::Data &data, const std::vector<SurveyTriangle> &tris, std::vector<SurveyView> &views, b40::Body &b);
 
 } // namespace city

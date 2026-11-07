@@ -234,11 +234,17 @@ void BuildingRenderer::submit_super(const CityState &s, int64_t key, float prior
 			std::shared_lock<std::shared_mutex> map(s.map_mutex); // only while copying: the build reads the copy
 			in = gather(s, chunks.data(), int(chunks.size()));
 		}
-		for (size_t r = in.records.size(); r-- > 0;) // the far level has no lots: a building in pieces is not in it at all
-			if (in.broken.count(in.records[r].seed)) {
-				in.records.erase(in.records.begin() + std::ptrdiff_t(r));
-				in.ids.erase(in.ids.begin() + std::ptrdiff_t(r));
+		size_t kept = 0; // the far level has no lots: a building in pieces is not in it at all (kept in order, each moved once)
+		for (size_t r = 0; r < in.records.size(); r++) {
+			if (in.broken->count(in.records[r].seed)) continue;
+			if (kept != r) {
+				in.records[kept] = std::move(in.records[r]);
+				in.ids[kept] = in.ids[r];
 			}
+			kept++;
+		}
+		in.records.resize(kept);
+		in.ids.resize(kept);
 		SuperBuilt b = build_super_cpu(in, key);
 		for (int64_t seen = super_bytes_max_.load(); b.bytes() > seen && !super_bytes_max_.compare_exchange_weak(seen, b.bytes());) {
 		}

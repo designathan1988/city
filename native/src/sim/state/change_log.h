@@ -58,6 +58,32 @@ struct ChangeLog {
 		lots_changed.clear();
 		signal_nodes.clear();
 	}
+	// What another log holds appended to this one, that log left empty: a city read aside marks its own log, and the live
+	// one takes those marks with the city (take_city).
+	void absorb(ChangeLog &from) {
+		const auto add = [](auto &to, auto &more) {
+			to.insert(to.end(), more.begin(), more.end());
+			more.clear();
+		};
+		add(road_chunks, from.road_chunks);
+		add(prop_chunks, from.prop_chunks);
+		add(lot_cells, from.lot_cells);
+		add(building_chunks, from.building_chunks);
+		add(view_chunks, from.view_chunks);
+		add(terrain_rects, from.terrain_rects);
+		add(paint_rects, from.paint_rects);
+		add(nature_chunks, from.nature_chunks);
+		add(water_chunks, from.water_chunks);
+		network_changed = network_changed || from.network_changed;
+		from.network_changed = false;
+		add(net_nodes, from.net_nodes);
+		add(net_segs_removed, from.net_segs_removed);
+		add(net_segs_changed, from.net_segs_changed);
+		add(furniture_segs, from.furniture_segs);
+		add(lots_changed, from.lots_changed);
+		add(signal_nodes, from.signal_nodes);
+		add(damage_events, from.damage_events);
+	}
 	void clear_render() {
 		road_chunks.clear();
 		prop_chunks.clear();

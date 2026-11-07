@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <godot_cpp/classes/array_mesh.hpp>
+#include <godot_cpp/variant/aabb.hpp>
 #include <godot_cpp/variant/color.hpp>
 #include <godot_cpp/variant/packed_color_array.hpp>
 #include <godot_cpp/variant/packed_int32_array.hpp>
@@ -43,7 +44,8 @@ struct MeshBuilder {
 	void blob(const godot::Vector3 &center, const godot::Vector3 &radius, const godot::Color &col, const godot::Vector2 &t2 = godot::Vector2());
 	void tag(uint8_t value); // the vertices added since the last tag carry `value`
 	bool empty() const { return idx.is_empty(); }
-	int64_t bytes() const; // of the arrays handed to the RenderingServer (chunk_jobs.h UploadBudget)
+	int64_t bytes() const; // of the arrays handed to the RenderingServer (frame_admission.h UploadBudget)
+	godot::AABB bounds() const; // of every vertex added (an empty box when there is none)
 	godot::Ref<godot::ArrayMesh> commit() const;
 	// Adds the surface to an existing mesh RID (RenderingServer) instead of creating a resource.
 	void commit_to(const godot::RID &mesh) const;

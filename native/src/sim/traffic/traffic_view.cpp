@@ -10,7 +10,9 @@ namespace city {
 namespace traffic {
 
 namespace {
-void add(TrafficTally &t, const Vehicle &v, float standing) {
+// One more vehicle on a tally; a tally that held none goes on the view's list of those to clear (`held`).
+void add(TrafficTally &t, const Vehicle &v, float standing, std::vector<int> &held, int at) {
+	if (t.vehicles == 0) held.push_back(at);
 	t.vehicles++;
 	if (!v.micro) return;
 	t.seen++;
@@ -44,7 +46,24 @@ void graph_part(const CityState &s, TrafficView &view) {
 		jv.signal = true;
 		view.signals.push_back(int(n));
 	}
+	view.seg_held.clear();
+	view.node_held.clear();
 	view.graph_serial = s.lane_graph_serial;
+}
+
+// The volumes: the segments entered since the view last took them copied, or all of them when it has fallen behind what the log
+// keeps (or the graph changed: a removed segment's count went back to nothing, a new city started its own).
+void volumes(const TrafficState &t, TrafficView &view, bool whole) {
+	const uint64_t end = t.volume_base + t.volume_log.size();
+	if (whole || view.volume.size() != t.seg_volume.size() || view.volume_upto < t.volume_base || view.volume_upto > end) {
+		view.volume.assign(t.seg_volume.begin(), t.seg_volume.end());
+	} else {
+		for (size_t i = size_t(view.volume_upto - t.volume_base); i < t.volume_log.size(); i++) {
+			const size_t seg = size_t(t.volume_log[i]);
+			view.volume[seg] = t.seg_volume[seg];
+		}
+	}
+	view.volume_upto = end;
 }
 
 // Each signalled node's cycle, stage, lamps and minimum greens.
@@ -67,39 +86,53 @@ void signals(const CityState &s, TrafficView &view) {
 }
 } // namespace
 
-void publish_view(CityState &s) {
-	const TrafficState &t = s.traffic;
-	const LaneGraph &g = t.g;
+TrafficView &view_begin(CityState &s) {
 	TrafficView &view = s.traffic_views.back();
+	if (view.graph_serial != s.lane_graph_serial) {
+		graph_part(s, view);
+		view.volume.clear(); // taken whole at the end
+	} else {
+		for (int seg : view.seg_held) view.seg[size_t(seg)].clear_fleet();
+		for (int n : view.node_held) view.node[size_t(n)].clear_fleet();
+		view.seg_held.clear();
+		view.node_held.clear();
+	}
+	view.near = view.queued = 0;
+	view.near_speed = 0;
+	return view;
+}
+
+void view_vehicle(const CityState &s, TrafficView &view, const Vehicle &v) {
+	const LaneGraph &g = s.traffic.g;
+	const float standing = s.catalog.traffic.tail_moving_ms;
+	if (v.micro) {
+		view.near++;
+		view.near_speed += v.v;
+		view.queued += v.v < standing ? 1 : 0;
+	}
+	if (v.ds < 0) return;
+	const size_t ds = size_t(v.ds);
+	if (ds / 2 < view.seg.size()) add(view.seg[ds / 2], v, standing, view.seg_held, int(ds / 2));
+	if (ds < g.ds.size() && g.ds[ds].ok && size_t(g.ds[ds].to) < view.node.size()) add(view.node[size_t(g.ds[ds].to)], v, standing, view.node_held, g.ds[ds].to);
+}
+
+void view_end(CityState &s, TrafficView &view) {
+	TrafficState &t = s.traffic;
 	view.vehicles = t.vehicle_count + t.park.moving;
 	view.people = t.ped_count;
 	view.arrived = t.arrived;
 	view.lost = t.lost;
-	if (view.graph_serial != s.lane_graph_serial) {
-		graph_part(s, view);
-	} else {
-		for (TrafficTally &tally : view.seg) tally.clear_fleet();
-		for (TrafficTally &tally : view.node) tally.clear_fleet();
-	}
-	const float standing = s.catalog.traffic.tail_moving_ms;
-	double sum = 0;
-	view.near = view.queued = 0;
-	for (const Vehicle &v : t.vehicles) {
-		if (!v.alive) continue;
-		if (v.micro) {
-			view.near++;
-			sum += v.v;
-			view.queued += v.v < standing ? 1 : 0;
-		}
-		if (v.ds < 0) continue;
-		const size_t ds = size_t(v.ds);
-		if (ds / 2 < view.seg.size()) add(view.seg[ds / 2], v, standing);
-		if (ds < g.ds.size() && g.ds[ds].ok && size_t(g.ds[ds].to) < view.node.size()) add(view.node[size_t(g.ds[ds].to)], v, standing);
-	}
-	view.mean_speed_ms = view.near > 0 ? sum / view.near : 0.0;
-	view.volume.assign(t.seg_volume.begin(), t.seg_volume.end());
+	view.mean_speed_ms = view.near > 0 ? view.near_speed / view.near : 0.0;
+	volumes(t, view, view.volume.empty());
 	signals(s, view);
 	s.traffic_views.publish();
+}
+
+void publish_view(CityState &s) {
+	TrafficView &view = view_begin(s);
+	for (const Vehicle &v : s.traffic.vehicles)
+		if (v.alive) view_vehicle(s, view, v);
+	view_end(s, view);
 }
 
 } // namespace traffic

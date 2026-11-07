@@ -6,6 +6,7 @@
 #include "sim/buildings/b40/data.h"
 
 #include <algorithm>
+#include <cstring>
 #include <utility>
 #include <vector>
 
@@ -14,7 +15,16 @@ namespace city {
 using namespace b40;
 
 namespace {
-constexpr uint32_t FILE_CLAIM_CAP = 1u << 20; // what a damaged file may claim; far past any body
+// The least bytes an entry of each list takes, in any version (the writers below): what a count read is checked against.
+constexpr size_t POINT_BYTES = 2 * sizeof(float);
+constexpr size_t RELIEF_BYTES = 5 * sizeof(int32_t) + sizeof(float);
+constexpr size_t ROOF_PART_MIN_BYTES = sizeof(uint8_t) + 6 * sizeof(float); // without the flag of the later versions
+constexpr size_t PAINT_BYTES = sizeof(int8_t) + sizeof(uint32_t);
+constexpr size_t VOLUME_MIN_BYTES = 5 * sizeof(float) + 6 * sizeof(int32_t) + 4 * sizeof(uint8_t); // its fixed head
+constexpr size_t ELEMENT_MIN_BYTES = sizeof(uint8_t) + 7 * sizeof(float) + 2 * sizeof(int32_t); // without the angle
+constexpr size_t CORE_MIN_BYTES = 2 * sizeof(float) + sizeof(int32_t); // without the kind
+constexpr size_t FLOOR_MIN_BYTES = sizeof(int32_t) + sizeof(uint32_t); // its level and its pieces' count
+constexpr size_t PIECE_BYTES = sizeof(uint8_t) + 3 * sizeof(float);
 // Bytes that start with the magic carry a version; the bytes before it (saves and the player's model files) start with
 // the plan's kind byte, never these four. 1: the flag of a roof mast (spire, lantern).
 constexpr uint32_t BODY_MAGIC = 0x31594442U; // 'BDY1'
@@ -87,8 +97,8 @@ void put_map(ByteWriter &w, const std::unordered_map<uint32_t, V> &m) {
 
 template <typename V>
 bool get_map(ByteReader &r, std::unordered_map<uint32_t, V> &m) {
-	uint32_t n = r.get<uint32_t>();
-	if (!r.ok || n > FILE_CLAIM_CAP) return false;
+	const uint32_t n = r.get_count(sizeof(uint32_t) + sizeof(V));
+	if (!r.ok) return false;
 	m.reserve(n);
 	for (uint32_t i = 0; i < n && r.ok; i++) {
 		uint32_t key = r.get<uint32_t>();
@@ -137,8 +147,8 @@ bool get_volume(ByteReader &r, Volume &v, uint32_t version) {
 	v.lines = Lines(r.get<uint8_t>());
 	v.crown = Crown(r.get<uint8_t>());
 	v.keep = r.get<uint8_t>() != 0;
-	uint32_t n = r.get<uint32_t>();
-	if (!r.ok || n > FILE_CLAIM_CAP) return false;
+	uint32_t n = r.get_count(POINT_BYTES);
+	if (!r.ok) return false;
 	v.outline.resize(n);
 	for (Point2 &p : v.outline) {
 		p.x = r.get<float>();
@@ -148,15 +158,15 @@ bool get_volume(ByteReader &r, Volume &v, uint32_t version) {
 	if (!get_map(r, v.bays) || !get_map(r, v.side_fill) || !get_map(r, v.storey_paint)) return false;
 	const int faces = version >= FACES_VERSION ? MAX_FACES : FACES_BEFORE;
 	for (int i = 0; i < faces; i++) v.faces[i] = get_face(r);
-	n = r.get<uint32_t>();
-	if (!r.ok || n > FILE_CLAIM_CAP) return false;
+	n = r.get_count(RELIEF_BYTES);
+	if (!r.ok) return false;
 	v.reliefs.resize(n);
 	for (Relief &e : v.reliefs) {
 		for (int *x : { &e.side, &e.bay0, &e.bay1, &e.storey0, &e.storey1 }) *x = r.get<int32_t>();
 		e.depth = r.get<float>();
 	}
-	n = r.get<uint32_t>();
-	if (!r.ok || n > FILE_CLAIM_CAP) return false;
+	n = r.get_count(ROOF_PART_MIN_BYTES);
+	if (!r.ok) return false;
 	v.gear.resize(n);
 	for (RoofPart &p : v.gear) {
 		p.kind = r.get<uint8_t>();
@@ -249,24 +259,24 @@ bool read_body(ByteReader &r, Body &b) {
 		b.signature = r.get<uint8_t>();
 		for (float *x : { &b.signature_x, &b.signature_y }) *x = r.get<float>();
 	}
-	uint32_t n = r.get<uint32_t>();
-	if (!r.ok || n > FILE_CLAIM_CAP) return false;
+	uint32_t n = r.get_count(PAINT_BYTES);
+	if (!r.ok) return false;
 	b.paints.resize(n);
 	for (Paint &p : b.paints) {
 		p.finish = r.get<int8_t>();
 		p.rgb = r.get<uint32_t>();
 	}
-	n = r.get<uint32_t>();
-	if (!r.ok || n > FILE_CLAIM_CAP) return false;
+	n = r.get_count(VOLUME_MIN_BYTES);
+	if (!r.ok) return false;
 	b.volumes.resize(n);
 	for (Volume &v : b.volumes)
 		if (!get_volume(r, v, version)) return false;
-	n = r.get<uint32_t>();
-	if (!r.ok || n > FILE_CLAIM_CAP) return false;
+	n = r.get_count(ELEMENT_MIN_BYTES);
+	if (!r.ok) return false;
 	b.elements.resize(n);
 	for (LotElement &e : b.elements) e = get_element(r, version);
-	n = r.get<uint32_t>();
-	if (!r.ok || n > FILE_CLAIM_CAP) return false;
+	n = r.get_count(CORE_MIN_BYTES);
+	if (!r.ok) return false;
 	b.cores.resize(n);
 	for (Core &c : b.cores) {
 		c.x = r.get<float>();
@@ -275,12 +285,12 @@ bool read_body(ByteReader &r, Body &b) {
 		if (version >= INSIDE_VERSION) c.kind = CoreKind(r.get<uint8_t>());
 	}
 	if (version < INSIDE_VERSION) return r.ok;
-	n = r.get<uint32_t>();
-	if (!r.ok || n > FILE_CLAIM_CAP) return false;
+	n = r.get_count(FLOOR_MIN_BYTES);
+	if (!r.ok) return false;
 	for (uint32_t i = 0; i < n; i++) {
 		std::vector<PlacedPiece> &floor = b.furnishing[r.get<int32_t>()];
-		const uint32_t pieces = r.get<uint32_t>();
-		if (!r.ok || pieces > FILE_CLAIM_CAP) return false;
+		const uint32_t pieces = r.get_count(PIECE_BYTES);
+		if (!r.ok) return false;
 		floor.resize(pieces);
 		for (PlacedPiece &p : floor) {
 			p.kind = r.get<uint8_t>();
@@ -299,21 +309,21 @@ uint32_t body_digest(const Body &b) {
 }
 
 void write_edited_bodies(ByteWriter &w, const BuildingStore &bs) {
-	std::vector<std::pair<int, BodyRef>> edited;
+	const size_t count_at = w.buf.size();
+	w.put<uint32_t>(0); // the count, set once the records are walked
+	uint32_t count = 0;
 	for (size_t i = 0; i < bs.items.size(); i++) {
 		const Building &rec = bs.items[i];
-		if (!rec.alive || rec.body == 0) continue;
-		if (BodyRef body = bs.designs.edited->get(rec.body)) edited.emplace_back(int(i), std::move(body));
+		if (!rec.alive || !rec.body) continue;
+		w.put<int32_t>(int32_t(i));
+		write_body(w, *rec.body);
+		count++;
 	}
-	w.put<uint32_t>(uint32_t(edited.size()));
-	for (const auto &e : edited) {
-		w.put<int32_t>(e.first);
-		write_body(w, *e.second);
-	}
+	std::memcpy(w.buf.data() + count_at, &count, sizeof(count));
 }
 
 bool read_edited_bodies(ByteReader &r, BuildingStore &bs) {
-	uint32_t n = r.get<uint32_t>();
+	const uint32_t n = r.get_count(sizeof(int32_t)); // each: the record's id, then its body
 	if (!r.ok || n > bs.items.size()) return false;
 	for (uint32_t i = 0; i < n; i++) {
 		int id = r.get<int32_t>();

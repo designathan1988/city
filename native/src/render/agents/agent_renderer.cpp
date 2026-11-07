@@ -9,6 +9,7 @@
 
 #include "render/agents/agent_meshes.h"
 
+#include "core/grid.h"
 #include "core/random.h"
 
 #include <godot_cpp/classes/rendering_server.hpp>
@@ -47,6 +48,10 @@ bool AgentRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	if (!errors.is_empty() || !build_meshes(t, errors)) return false;
 	if (!push_palettes(t, ctx.catalog->traffic.line_colours, errors) || !read_loads(Dictionary(t["occupants"])["load"], errors)) return false;
 	vehicle_r_ = float(t["vehicle_radius_m"]);
+	if (vehicle_r_ <= 0) { // the cells of the bays' cars are this wide (index_parked)
+		errors.push_back("agents.json: vehicle_radius_m must be positive");
+		return false;
+	}
 	cabin_r_ = float(t["cabin_radius_m"]);
 	far_r_ = float(t["far_radius_m"]);
 	level_hold_ = float(Dictionary(t["lod"])["hold"]);
@@ -182,6 +187,9 @@ void AgentRenderer::reset() {
 	for (auto &levels : seen_rows_)
 		for (InstanceRows &rows : levels) rows.restart();
 	odo_.clear();
+	parked_indexed_.reset();
+	parked_cells_.clear();
+	parked_near_.clear();
 	drawn_vehicles_ = drawn_people_ = 0;
 }
 
@@ -276,7 +284,9 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 		if (shown && d2 <= people_r2 && (astride_[model] || level == CABIN_LEVEL || level == MID_DRAW)) seat_people(rec.id, type, model, p, std::sqrt(d2), passengers, order, spin);
 		drawn_vehicles_++;
 	}
-	if (f.parked) for (const ParkedRecord &rec : *f.parked) {
+	if (f.parked != parked_indexed_) index_parked(f.parked);
+	if (f.parked) for (uint32_t index : parked_near(cam)) {
+		const ParkedRecord &rec = (*f.parked)[index];
 		const int type = int(rec.look & LOOK_TYPE_MASK), paint = int((rec.look >> LOOK_PAINT_SHIFT) & LOOK_TYPE_MASK);
 		const float dx = rec.at.x - cam.x, dy = rec.at.y - cam.y, dz = rec.at.z - cam.z, flat2 = dx * dx + dz * dz;
 		if (flat2 > r2 || type < 0 || type >= VEHICLE_TYPES) continue;
@@ -299,6 +309,35 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 	limit_cabins();
 	drawn_people_ = people_.update(f, cam, view, at, people_r_);
 	draw_rows(cam);
+}
+
+namespace {
+int parked_cell(float v, float cell) { return int(std::floor(v / cell)); }
+} // namespace
+
+void AgentRenderer::index_parked(const std::shared_ptr<const std::vector<ParkedRecord>> &parked) {
+	parked_indexed_ = parked;
+	parked_cells_.clear();
+	if (!parked) return;
+	for (size_t i = 0; i < parked->size(); i++) {
+		const Pose &at = (*parked)[i].at;
+		parked_cells_[cell_key(parked_cell(at.x, vehicle_r_), parked_cell(at.z, vehicle_r_))].push_back(uint32_t(i));
+	}
+}
+
+// Every car within vehicle_r_ of the camera on the ground lies in a cell the square round it touches; a cell more on each side
+// takes in what rounding may put across its edge. The rest are farther: the loop over them would only skip them.
+const std::vector<uint32_t> &AgentRenderer::parked_near(const Vector3 &cam) {
+	parked_near_.clear();
+	const int x0 = parked_cell(cam.x - vehicle_r_, vehicle_r_) - 1, x1 = parked_cell(cam.x + vehicle_r_, vehicle_r_) + 1;
+	const int z0 = parked_cell(cam.z - vehicle_r_, vehicle_r_) - 1, z1 = parked_cell(cam.z + vehicle_r_, vehicle_r_) + 1;
+	for (int j = z0; j <= z1; j++)
+		for (int i = x0; i <= x1; i++) {
+			const auto it = parked_cells_.find(cell_key(i, j));
+			if (it != parked_cells_.end()) parked_near_.insert(parked_near_.end(), it->second.begin(), it->second.end());
+		}
+	std::sort(parked_near_.begin(), parked_near_.end()); // the list's order: the rows are placed as before
+	return parked_near_;
 }
 
 void AgentRenderer::limit_cabins() {

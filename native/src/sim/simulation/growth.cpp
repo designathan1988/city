@@ -91,7 +91,7 @@ bool lot_occupied(const CityState &s, const Lot &l) {
 }
 
 BodyLook look_of(CityState &s, const Building &rec) {
-	const uint64_t key = b40::body_key(rec);
+	const b40::BodyKey key = b40::body_key(rec);
 	auto it = s.buildings.looks.find(key);
 	if (it != s.buildings.looks.end()) return it->second;
 	b40::Body body;

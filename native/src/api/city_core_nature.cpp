@@ -75,12 +75,59 @@ int CityLandscape::cloud_at(const Vector3 &origin, const Vector3 &direction, flo
 	return cloud_under(s.nature.clouds, ray, drift_x, drift_z, s.catalog.nature.clouds);
 }
 
+namespace {
+// The points of a brush path as the commands take them.
+std::vector<StrokePoint> stroke_points(const PackedVector3Array &points) {
+	std::vector<StrokePoint> dabs;
+	dabs.reserve(size_t(points.size()));
+	for (int i = 0; i < points.size(); i++) dabs.push_back({ points[i].x, points[i].z });
+	return dabs;
+}
+
+FogDab fog_at(float x, float z, float radius, float strength, float height, float speed, bool erase) {
+	FogDab d;
+	d.x = x; d.z = z; d.radius = radius; d.strength = strength; d.height = height; d.speed = speed;
+	d.erase = erase ? 1 : 0;
+	return d;
+}
+
+PaintDab paint_at(float x, float z, float radius, float strength, float hardness, int kind) {
+	PaintDab d;
+	d.x = x; d.z = z; d.radius = radius; d.strength = strength; d.hardness = hardness; d.kind = kind;
+	return d;
+}
+
+TreeBrush tree_brush_of(const Dictionary &brush) {
+	TreeBrush b;
+	b.density = float(double(brush.get("density", 0.0)));
+	b.height = float(double(brush.get("height", 0.0)));
+	b.variation = float(double(brush.get("variation", 0.0)));
+	b.spacing = float(double(brush.get("spacing", 0.0)));
+	return b;
+}
+
+ElementBrush element_brush_of(const Dictionary &brush) {
+	ElementBrush b;
+	b.density = float(double(brush.get("density", 0.0)));
+	b.size = float(double(brush.get("size", 0.0)));
+	b.variation = float(double(brush.get("variation", 0.0)));
+	b.spacing = float(double(brush.get("spacing", 0.0)));
+	b.strength = float(double(brush.get("strength", 0.0)));
+	b.intensity = float(double(brush.get("intensity", 0.0)));
+	return b;
+}
+} // namespace
+
 Dictionary CityLandscape::fog_brush(const Vector3 &p, float radius, float strength, float height, float speed, bool erase) {
+	return run_edit(*state_, "cmd.fog", [&](CityState &s) { return fog_dab(s, fog_at(p.x, p.z, radius, strength, height, speed, erase)); });
+}
+
+Dictionary CityLandscape::fog_path(const PackedVector3Array &points, float radius, float strength, float height, float speed, bool erase) {
+	const std::vector<StrokePoint> dabs = stroke_points(points);
 	return run_edit(*state_, "cmd.fog", [&](CityState &s) {
-		FogDab d;
-		d.x = p.x; d.z = p.z; d.radius = radius; d.strength = strength; d.height = height; d.speed = speed;
-		d.erase = erase ? 1 : 0;
-		return fog_dab(s, d);
+		return lay_dabs(dabs, [&](const StrokePoint &p) {
+			return fog_dab(s, fog_at(float(p.x), float(p.z), radius, strength, height, speed, erase));
+		});
 	});
 }
 
@@ -89,10 +136,15 @@ Dictionary CityLandscape::clear_fog() {
 }
 
 Dictionary CityLandscape::paint_brush(const Vector3 &p, float radius, float strength, float hardness, int kind) {
+	return run_edit(*state_, "cmd.place.paintGround", [&](CityState &s) { return paint_dab(s, paint_at(p.x, p.z, radius, strength, hardness, kind)); });
+}
+
+Dictionary CityLandscape::paint_path(const PackedVector3Array &points, float radius, float strength, float hardness, int kind) {
+	const std::vector<StrokePoint> dabs = stroke_points(points);
 	return run_edit(*state_, "cmd.place.paintGround", [&](CityState &s) {
-		PaintDab d;
-		d.x = p.x; d.z = p.z; d.radius = radius; d.strength = strength; d.hardness = hardness; d.kind = kind;
-		return paint_dab(s, d);
+		return lay_dabs(dabs, [&](const StrokePoint &p) {
+			return paint_dab(s, paint_at(float(p.x), float(p.z), radius, strength, hardness, kind));
+		});
 	});
 }
 
@@ -101,26 +153,28 @@ Dictionary CityLandscape::clear_gullies() {
 }
 
 Dictionary CityLandscape::tree_brush(const Vector3 &p, float radius, int mode, int kind, const Dictionary &brush) {
+	const TreeBrush b = tree_brush_of(brush);
+	return run_edit(*state_, "cmd.place.tree", [&](CityState &s) { return tree_dab(s, p.x, p.z, radius, mode, kind, b); });
+}
+
+Dictionary CityLandscape::tree_path(const PackedVector3Array &points, float radius, int mode, int kind, const Dictionary &brush) {
+	const std::vector<StrokePoint> dabs = stroke_points(points);
+	const TreeBrush b = tree_brush_of(brush);
 	return run_edit(*state_, "cmd.place.tree", [&](CityState &s) {
-		TreeBrush b;
-		b.density = float(double(brush.get("density", 0.0)));
-		b.height = float(double(brush.get("height", 0.0)));
-		b.variation = float(double(brush.get("variation", 0.0)));
-		b.spacing = float(double(brush.get("spacing", 0.0)));
-		return tree_dab(s, p.x, p.z, radius, mode, kind, b);
+		return lay_dabs(dabs, [&](const StrokePoint &p) { return tree_dab(s, float(p.x), float(p.z), radius, mode, kind, b); });
 	});
 }
 
 Dictionary CityLandscape::element_brush(const Vector3 &p, float radius, int kind, const Dictionary &brush, bool erase) {
+	const ElementBrush b = element_brush_of(brush);
+	return run_edit(*state_, "cmd.place.element", [&](CityState &s) { return element_dab(s, p.x, p.z, radius, kind, b, erase); });
+}
+
+Dictionary CityLandscape::element_path(const PackedVector3Array &points, float radius, int kind, const Dictionary &brush, bool erase) {
+	const std::vector<StrokePoint> dabs = stroke_points(points);
+	const ElementBrush b = element_brush_of(brush);
 	return run_edit(*state_, "cmd.place.element", [&](CityState &s) {
-		ElementBrush b;
-		b.density = float(double(brush.get("density", 0.0)));
-		b.size = float(double(brush.get("size", 0.0)));
-		b.variation = float(double(brush.get("variation", 0.0)));
-		b.spacing = float(double(brush.get("spacing", 0.0)));
-		b.strength = float(double(brush.get("strength", 0.0)));
-		b.intensity = float(double(brush.get("intensity", 0.0)));
-		return element_dab(s, p.x, p.z, radius, kind, b, erase);
+		return lay_dabs(dabs, [&](const StrokePoint &p) { return element_dab(s, float(p.x), float(p.z), radius, kind, b, erase); });
 	});
 }
 
@@ -201,6 +255,10 @@ void CityLandscape::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("tree_brush", "position", "radius", "mode", "kind", "brush"), &CityLandscape::tree_brush);
 	ClassDB::bind_method(D_METHOD("clear_trees"), &CityLandscape::clear_trees);
 	ClassDB::bind_method(D_METHOD("element_brush", "position", "radius", "kind", "brush", "erase"), &CityLandscape::element_brush);
+	ClassDB::bind_method(D_METHOD("fog_path", "points", "radius", "strength", "height", "speed", "erase"), &CityLandscape::fog_path);
+	ClassDB::bind_method(D_METHOD("paint_path", "points", "radius", "strength", "hardness", "kind"), &CityLandscape::paint_path);
+	ClassDB::bind_method(D_METHOD("tree_path", "points", "radius", "mode", "kind", "brush"), &CityLandscape::tree_path);
+	ClassDB::bind_method(D_METHOD("element_path", "points", "radius", "kind", "brush", "erase"), &CityLandscape::element_path);
 	ClassDB::bind_method(D_METHOD("clear_elements"), &CityLandscape::clear_elements);
 	ClassDB::bind_method(D_METHOD("effects_near", "position", "reach", "first_effect"), &CityLandscape::effects_near);
 	ClassDB::bind_method(D_METHOD("set_biome", "region"), &CityLandscape::set_biome);

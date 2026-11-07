@@ -8,7 +8,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstring>
 #include <unordered_map>
 
 using namespace godot;
@@ -50,16 +49,19 @@ float longest_edge(const Tri &t, int &which) {
 	return std::sqrt(best);
 }
 
-// Split along the longest edge until every edge is under `LONGEST_SIDE_M`.
-void divide(const Tri &whole, std::vector<Tri> &out, std::vector<Tri> &stack) {
+// Split along the longest edge until every edge is under `LONGEST_SIDE_M`, each piece handed to `emit` as it comes; `made` counts
+// the pieces of the whole cut: past MOST_TRIANGLES a face goes on undivided.
+template <typename Emit>
+void divide(const Tri &whole, std::vector<Tri> &stack, size_t &made, Emit &&emit) {
 	stack.push_back(whole);
 	while (!stack.empty()) {
 		const Tri t = stack.back();
 		stack.pop_back();
 		int i = 0;
 		const float edge = longest_edge(t, i);
-		if (edge <= LONGEST_SIDE_M || out.size() >= MOST_TRIANGLES) {
-			out.push_back(t);
+		if (edge <= LONGEST_SIDE_M || made >= MOST_TRIANGLES) {
+			made++;
+			emit(t);
 			continue;
 		}
 		const int j = (i + 1) % 3, k = (i + 2) % 3;
@@ -69,7 +71,9 @@ void divide(const Tri &whole, std::vector<Tri> &out, std::vector<Tri> &stack) {
 	}
 }
 
-void gather(const b40::Shell &s, bool panes, std::vector<Tri> &out, std::vector<Tri> &stack) {
+// fn(face) for every face of the shell that is kept (the window trim is not), as it is drawn; the panes dark.
+template <typename F>
+void each_face(const b40::Shell &s, bool panes, F &&fn) {
 	for (size_t i = 0; i + 2 < s.idx.size(); i += 3) {
 		Tri t;
 		for (int q = 0; q < 3; q++) {
@@ -79,13 +83,14 @@ void gather(const b40::Shell &s, bool panes, std::vector<Tri> &out, std::vector<
 		if ((t.v[1].p - t.v[0].p).cross(t.v[2].p - t.v[0].p).length() * 0.5f < TRIM_AREA_M2) continue;
 		int edge = 0;
 		t.sheet = !panes && longest_edge(t, edge) >= PLATE_LEAST_M;
-		divide(t, out, stack);
+		fn(t);
 	}
 }
 
-void gather_slab(const RuinSlab &ring, std::vector<Tri> &out, std::vector<Tri> &stack) {
+template <typename F>
+void each_slab_face(const RuinSlab &ring, F &&fn) {
 	auto corner = [](const Vector3 &p) { return Corner{ p, Vector3(0, 1, 0), SLAB, Vector2(), CONCRETE }; };
-	for (size_t i = 1; i + 1 < ring.size(); i++) divide(Tri{ { corner(ring[0]), corner(ring[i]), corner(ring[i + 1]) }, true }, out, stack);
+	for (size_t i = 1; i + 1 < ring.size(); i++) fn(Tri{ { corner(ring[0]), corner(ring[i]), corner(ring[i + 1]) }, true });
 }
 
 uint64_t weld(const Vector3 &p) {
@@ -97,12 +102,13 @@ uint64_t edge_key(const Vector3 &a, const Vector3 &b) {
 	return x < y ? x * 31u + y : y * 31u + x;
 }
 
-// The arrays of the one mesh, a piece at a time.
+// The arrays of the one mesh, sized once (a pass counts every piece's corners first), written a piece at a time.
 struct Writer {
-	std::vector<Vector3> pos, nrm;
-	std::vector<Color> col;
-	std::vector<Vector2> uv, uv2;
-	std::vector<uint32_t> piece;
+	Vector3 *pos = nullptr, *nrm = nullptr;
+	Color *col = nullptr;
+	Vector2 *uv = nullptr, *uv2 = nullptr;
+	uint8_t *piece = nullptr; // each corner's piece, four bytes little endian (CUSTOM0)
+	size_t at = 0;
 	uint32_t id = 0;
 	float turn = -1.f; // the sign of a front face's winding against its normal, read from the shell
 	Vector3 lo, hi;
@@ -110,12 +116,13 @@ struct Writer {
 	void put(const Corner &c) {
 		lo = lo.min(c.p);
 		hi = hi.max(c.p);
-		pos.push_back(c.p);
-		nrm.push_back(c.n);
-		col.push_back(c.c);
-		uv.push_back(c.t);
-		uv2.push_back(c.t2);
-		piece.push_back(id);
+		pos[at] = c.p;
+		nrm[at] = c.n;
+		col[at] = c.c;
+		uv[at] = c.t;
+		uv2[at] = c.t2;
+		for (uint32_t b = 0; b < sizeof(uint32_t); b++) piece[at * sizeof(uint32_t) + b] = uint8_t(id >> (b * BITS_PER_BYTE) & PIECE_BYTE_MASK);
+		at++;
 	}
 	void tri(const Corner &a, const Corner &b, const Corner &c) {
 		const bool same = (b.p - a.p).cross(c.p - a.p).dot(a.n) * turn >= 0.f;
@@ -143,18 +150,39 @@ struct Writer {
 	}
 };
 
-// One cell's triangles written as a piece.
-RuinPiece write_piece(Writer &w, const std::vector<Tri> &tris, const uint32_t *order, size_t count, std::unordered_map<uint64_t, int> &edges) {
+constexpr size_t FACE_CORNERS = 3, SIDE_CORNERS = 6; // a face, and a side along a cut edge (two faces)
+
+// How many times each edge of a piece's wall faces is shared: an edge on one face only was cut, and gets a side.
+void count_edges(const std::vector<Tri> &tris, std::unordered_map<uint64_t, int> &edges) {
 	edges.clear();
-	for (size_t i = 0; i < count; i++) {
-		const Tri &t = tris[order[i]];
+	for (const Tri &t : tris) {
 		if (!t.sheet) continue;
 		for (int e = 0; e < 3; e++) edges[edge_key(t.v[e].p, t.v[(e + 1) % 3].p)]++;
 	}
-	w.lo = tris[order[0]].v[0].p;
+}
+
+// The corners a piece writes: each face, and for a wall face its back and a side along each edge cut.
+size_t corners_of(const std::vector<Tri> &tris, std::unordered_map<uint64_t, int> &edges) {
+	count_edges(tris, edges);
+	size_t n = 0;
+	for (const Tri &t : tris) {
+		n += FACE_CORNERS;
+		if (!t.sheet) continue;
+		n += FACE_CORNERS;
+		for (int e = 0; e < 3; e++) {
+			const auto seen = edges.find(edge_key(t.v[e].p, t.v[(e + 1) % 3].p));
+			if (seen != edges.end() && seen->second == 1) n += SIDE_CORNERS;
+		}
+	}
+	return n;
+}
+
+// One cell's triangles written as a piece.
+RuinPiece write_piece(Writer &w, const std::vector<Tri> &tris, std::unordered_map<uint64_t, int> &edges) {
+	count_edges(tris, edges);
+	w.lo = tris.front().v[0].p;
 	w.hi = w.lo;
-	for (size_t i = 0; i < count; i++) {
-		const Tri &t = tris[order[i]];
+	for (const Tri &t : tris) {
 		for (const Corner &c : t.v) w.put(c);
 		if (t.sheet) w.thicken(t, edges);
 	}
@@ -166,26 +194,8 @@ RuinPiece write_piece(Writer &w, const std::vector<Tri> &tris, const uint32_t *o
 	return p;
 }
 
-template <typename T, typename P>
-void copy_to(P &dst, const std::vector<T> &src) {
-	dst.resize(int64_t(src.size()));
-	std::memcpy(dst.ptrw(), src.data(), src.size() * sizeof(T));
-}
-
-OwnedMesh bake(const Writer &w) {
-	PackedVector3Array pv, pn;
-	PackedColorArray pc;
-	PackedVector2Array pu, pu2;
-	PackedByteArray ids;
-	copy_to(pv, w.pos);
-	copy_to(pn, w.nrm);
-	copy_to(pc, w.col);
-	copy_to(pu, w.uv);
-	copy_to(pu2, w.uv2);
-	ids.resize(int64_t(w.piece.size() * sizeof(uint32_t)));
-	uint8_t *out = ids.ptrw();
-	for (size_t i = 0; i < w.piece.size(); i++)
-		for (uint32_t b = 0; b < sizeof(uint32_t); b++) out[i * sizeof(uint32_t) + b] = uint8_t(w.piece[i] >> (b * BITS_PER_BYTE) & PIECE_BYTE_MASK);
+OwnedMesh bake(const PackedVector3Array &pv, const PackedVector3Array &pn, const PackedColorArray &pc, const PackedVector2Array &pu,
+		const PackedVector2Array &pu2, const PackedByteArray &ids) {
 	Array arr;
 	arr.resize(RenderingServer::ARRAY_MAX);
 	arr[RenderingServer::ARRAY_VERTEX] = pv;
@@ -220,58 +230,86 @@ void bond(RuinMesh &out, const Cells &cells, const std::unordered_map<int, int> 
 	}
 }
 
-float winding_of(const std::vector<Tri> &tris) {
-	for (const Tri &t : tris) {
-		const float area = (t.v[1].p - t.v[0].p).cross(t.v[2].p - t.v[0].p).dot(t.v[0].n);
-		if (area != 0.f) return area > 0.f ? 1.f : -1.f;
-	}
-	return -1.f;
+// The sign of a face's winding against its normal, 0 when the face has no area.
+float winding(const Tri &t) {
+	const float area = (t.v[1].p - t.v[0].p).cross(t.v[2].p - t.v[0].p).dot(t.v[0].n);
+	return area > 0.f ? 1.f : area < 0.f ? -1.f : 0.f;
 }
 } // namespace
 
+// Streamed: the faces' box first (a face divided stays in the box of its corners), then each face divided, each piece of it cut
+// along the cells and filed by cell in the order made; the cells written in ascending order straight into the mesh's arrays,
+// each freed once written. The same pieces in the same order as dividing every face, cutting every piece and sorting by cell.
 std::shared_ptr<RuinMesh> fracture_shell(const b40::Shell &walls, const b40::Shell &glass, const std::vector<RuinSlab> &slabs, uint32_t seed) {
-	std::vector<Tri> tris, stack;
-	gather(walls, false, tris, stack);
-	gather(glass, true, tris, stack);
-	const float turn = winding_of(tris);
-	for (const RuinSlab &ring : slabs) gather_slab(ring, tris, stack);
 	auto out = std::make_shared<RuinMesh>();
-	if (tris.empty()) return out;
-	Vector3 lo = tris[0].v[0].p, hi = lo;
-	for (const Tri &t : tris)
+	bool any = false;
+	Vector3 lo, hi;
+	const auto bound = [&](const Tri &t) {
 		for (const Corner &c : t.v) {
-			lo = lo.min(c.p);
-			hi = hi.max(c.p);
+			lo = any ? lo.min(c.p) : c.p;
+			hi = any ? hi.max(c.p) : c.p;
+			any = true;
 		}
+	};
+	each_face(walls, false, bound);
+	each_face(glass, true, bound);
+	for (const RuinSlab &ring : slabs) each_slab_face(ring, bound);
+	if (!any) return out;
 	const Cells cells(lo, hi, seed);
-	std::vector<Tri> parts;
-	parts.reserve(tris.size() * 2);
-	for (const Tri &t : tris) cut(t, cells, parts, CUTS_MOST);
-	std::vector<int> cell_of(parts.size());
-	std::vector<uint32_t> order(parts.size());
-	for (size_t i = 0; i < parts.size(); i++) {
-		cell_of[i] = cells.of((parts[i].v[0].p + parts[i].v[1].p + parts[i].v[2].p) / 3.f);
-		order[i] = uint32_t(i);
-	}
-	std::sort(order.begin(), order.end(), [&](uint32_t a, uint32_t b) { return cell_of[a] != cell_of[b] ? cell_of[a] < cell_of[b] : a < b; });
-	Writer w;
-	w.turn = turn;
-	std::unordered_map<int, int> piece_of;
+	std::unordered_map<int, std::vector<Tri>> by_cell;
+	std::vector<Tri> stack, cuts;
+	size_t made = 0;
+	float turn = 0; // the winding of the first wall or pane piece with an area (-1 when none has)
+	const auto file = [&](const Tri &face, bool shell) {
+		divide(face, stack, made, [&](const Tri &t) {
+			if (shell && turn == 0) turn = winding(t);
+			cuts.clear();
+			cut(t, cells, cuts, CUTS_MOST);
+			for (const Tri &part : cuts) by_cell[cells.of((part.v[0].p + part.v[1].p + part.v[2].p) / 3.f)].push_back(part);
+		});
+	};
+	each_face(walls, false, [&](const Tri &t) { file(t, true); });
+	each_face(glass, true, [&](const Tri &t) { file(t, true); });
+	for (const RuinSlab &ring : slabs) each_slab_face(ring, [&](const Tri &t) { file(t, false); });
+	std::vector<int> order;
+	order.reserve(by_cell.size());
+	for (const auto &kv : by_cell) order.push_back(kv.first);
+	std::sort(order.begin(), order.end());
 	std::unordered_map<uint64_t, int> edges;
+	size_t corners = 0;
+	for (int c : order) corners += corners_of(by_cell[c], edges);
+	PackedVector3Array pv, pn;
+	PackedColorArray pc;
+	PackedVector2Array pu, pu2;
+	PackedByteArray ids;
+	pv.resize(int64_t(corners));
+	pn.resize(int64_t(corners));
+	pc.resize(int64_t(corners));
+	pu.resize(int64_t(corners));
+	pu2.resize(int64_t(corners));
+	ids.resize(int64_t(corners * sizeof(uint32_t)));
+	Writer w;
+	w.pos = pv.ptrw();
+	w.nrm = pn.ptrw();
+	w.col = pc.ptrw();
+	w.uv = pu.ptrw();
+	w.uv2 = pu2.ptrw();
+	w.piece = ids.ptrw();
+	w.turn = turn == 0 ? -1.f : turn;
+	std::unordered_map<int, int> piece_of;
 	out->lo = lo;
 	out->hi = hi;
-	for (size_t from = 0; from < order.size();) {
-		size_t to = from;
-		while (to < order.size() && cell_of[order[to]] == cell_of[order[from]]) to++;
+	for (int c : order) {
+		std::vector<Tri> &tris = by_cell[c];
 		w.id = uint32_t(out->pieces.size());
-		piece_of[cell_of[order[from]]] = int(w.id);
-		out->pieces.push_back(write_piece(w, parts, order.data() + from, to - from, edges));
+		piece_of[c] = int(w.id);
+		out->pieces.push_back(write_piece(w, tris, edges));
 		out->hi = out->hi.max(w.hi);
-		from = to;
+		std::vector<Tri>().swap(tris); // written: freed
 	}
 	bond(*out, cells, piece_of);
-	out->vertices = int64_t(w.pos.size());
-	out->mesh = bake(w);
+	out->vertices = int64_t(corners);
+	out->mesh = bake(pv, pn, pc, pu, pu2, ids);
 	return out;
 }
 

@@ -49,13 +49,6 @@ void set_rule(CityState &s, int seg, int n, uint16_t rule) {
 	j_set_rule(s, seg, s.roads.segs[size_t(seg)].a == n ? 0 : 1, rule);
 }
 
-// A street's name stands at the corners of its whole street: their chunks change with it.
-void mark_name(CityState &s, const StreetItem &item) {
-	const int named = name_segment(s.roads, item);
-	if (named < 0) return;
-	for (int seg : street_chain(s.roads, named)) mark_furniture(s, seg);
-}
-
 template <typename F>
 void each_piece_on(const CityState &s, int seg, F &&fn) {
 	const RoadSegment &g = s.roads.segs[size_t(seg)];
@@ -83,8 +76,6 @@ EditResult set_approach_rule(CityState &s, int node, int seg, int rule) {
 		return r;
 	}
 	set_rule(s, seg, node, uint16_t(rule));
-	const RoadNode &n = s.roads.nodes[size_t(node)];
-	finish_edit(s, n.x, n.z, n.x, n.z);
 	r.ok = true;
 	return r;
 }
@@ -103,7 +94,6 @@ EditResult place_item(CityState &s, ItemKind kind, SignType sign, const std::str
 			set_rule(s, h.seg, n, sign == SignType::STOP ? RULE_STOP : RULE_YIELD);
 			r.note = sign == SignType::STOP ? "hint.streetscape.rule.stop" : "hint.streetscape.rule.yield";
 			r.ok = true;
-			finish_edit(s, snap.x, snap.z, snap.x, snap.z);
 			return r;
 		}
 	}
@@ -113,9 +103,7 @@ EditResult place_item(CityState &s, ItemKind kind, SignType sign, const std::str
 	it.x = float(snap.x);
 	it.z = float(snap.z);
 	if (kind != ItemKind::SIGN || sign_has_text(sign)) it.text = text;
-	j_add_item(s, it);
-	if (kind == ItemKind::STREETNAME) mark_name(s, it);
-	finish_edit(s, snap.x, snap.z, snap.x, snap.z);
+	j_add_item(s, it); // a street's name: its plates are made at the settle (settle_name_plates)
 	r.ok = true;
 	return r;
 }
@@ -143,7 +131,6 @@ EditResult place_item_row(CityState &s, ItemKind kind, double ax, double az, dou
 		r.ok = true;
 		r.error.clear();
 		r.note = "hint.streetscape.row";
-		finish_edit(s, std::min(ax, bx), std::min(az, bz), std::max(ax, bx), std::max(az, bz));
 	}
 	return r;
 }
@@ -156,7 +143,6 @@ EditResult build_barrier(CityState &s, BarrierKind kind, const std::vector<float
 	b.kind = kind;
 	b.pts = pts;
 	j_add_barrier(s, b);
-	finish_edit(s, pts[0], pts[1], pts[0], pts[1]);
 	r.ok = true;
 	return r;
 }
@@ -165,22 +151,17 @@ bool remove_street_at(CityState &s, double x, double z, double reach) {
 	const float fx = float(x), fz = float(z), fr = float(reach);
 	const int item = s.street.item_near(fx, fz, fr);
 	if (item >= 0) {
-		const StreetItem it = s.street.items.items[size_t(item)];
-		j_remove_item(s, item);
-		if (it.kind == ItemKind::STREETNAME) mark_name(s, it);
-		finish_edit(s, x, z, x, z);
+		j_remove_item(s, item); // a street's name: its plates go at the settle (settle_name_plates)
 		return true;
 	}
 	const int pole = s.street.pole_near(fx, fz, fr);
 	if (pole >= 0) {
 		j_remove_pole(s, pole);
-		finish_edit(s, x, z, x, z);
 		return true;
 	}
 	const int barrier = s.street.barrier_near(fx, fz, fr);
 	if (barrier >= 0) {
 		j_remove_barrier(s, barrier);
-		finish_edit(s, x, z, x, z);
 		return true;
 	}
 	// A piece of the street's own kit: it stays cut by its place.
@@ -204,7 +185,6 @@ bool remove_street_at(CityState &s, double x, double z, double reach) {
 	if (!found) return false;
 	j_add_cut(s, float(cx), float(cz));
 	mark_furniture(s, h.seg);
-	finish_edit(s, x, z, x, z);
 	return true;
 }
 

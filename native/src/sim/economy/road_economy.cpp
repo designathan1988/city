@@ -75,20 +75,25 @@ RoadCharge charge_of(const CityState &s, double value_change) {
 	return charge_for(0, value_change, s.unlimited_money ? ANY_BALANCE : s.money, s.catalog.tune.economy_refund_share);
 }
 
-double edit_value_change(const CityState &s) {
+double edit_value_change(const CityState &s, size_t from) {
 	const std::vector<EditOp> &ops = s.history.open.ops;
 	double change = 0;
-	for (size_t i = s.history.command_start(); i < ops.size(); i++) {
+	for (size_t i = from; i < ops.size(); i++) {
 		const EditOp &op = ops[i];
-		if (op.kind == OpKind::ADD_SEG) change += recorded_value(s, op.seg, op.seg.profile);
-		else if (op.kind == OpKind::REM_SEG) change -= recorded_value(s, op.seg, op.seg.profile);
-		else if (op.kind == OpKind::PROFILE) change += recorded_value(s, op.seg, op.to) - recorded_value(s, op.seg, op.from);
+		if (op.kind == OpKind::ADD_SEG) change += recorded_value(s, op.get<RoadSegment>(), op.get<RoadSegment>().profile);
+		else if (op.kind == OpKind::REM_SEG) change -= recorded_value(s, op.get<RoadSegment>(), op.get<RoadSegment>().profile);
+		else if (op.kind == OpKind::PROFILE) {
+			const ProfileChange &c = op.get<ProfileChange>();
+			change += recorded_value(s, c.seg, c.to) - recorded_value(s, c.seg, c.from);
+		}
 	}
 	return change;
 }
 
-bool settle_road_edit(CityState &s, EditResult &r) {
-	RoadCharge charge = charge_of(s, edit_value_change(s));
+bool settle_road_edit(CityState &s, EditResult &r) { return settle_road_edit(s, r, s.history.command_start()); }
+
+bool settle_road_edit(CityState &s, EditResult &r, size_t from) {
+	RoadCharge charge = charge_of(s, edit_value_change(s, from));
 	r.money = s.unlimited_money ? 0 : charge.amount;
 	if (!charge.affordable) {
 		r.error = REFUSED_FUNDS;

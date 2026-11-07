@@ -25,7 +25,6 @@ constexpr float MARK_CHARRED = 1.f, MARK_DUSTY = 2.f; // INSTANCE_CUSTOM.a (debr
 
 void Debris::init(const RID &scenario, const RID &material, const EffectParams &params) {
 	params_ = params;
-	const AABB world(Vector3(-WORLD_HALF_M, -WORLD_UP_M, -WORLD_HALF_M), Vector3(2 * WORLD_HALF_M, 2 * WORLD_UP_M, 2 * WORLD_HALF_M));
 	Ref<BoxMesh> box;
 	box.instantiate();
 	box->set_size(Vector3(1, 1, 1));
@@ -35,17 +34,17 @@ void Debris::init(const RID &scenario, const RID &material, const EffectParams &
 	cyl->set_top_radius(1.f);
 	cyl->set_bottom_radius(1.f);
 	cyl->set_radial_segments(int(CYL_SIDES));
-	boxes_.init(scenario, box, material, params.debris_max, true, world);
-	cylinders_.init(scenario, cyl, material, params.debris_max, true, world);
+	// debris.gdshader moves no vertex: a piece's box is its shape's, where it lies
+	boxes_.init_shaped(scenario, box, material, params.debris_max, true, box->get_aabb(), 0.f);
+	cylinders_.init_shaped(scenario, cyl, material, params.debris_max, true, cyl->get_aabb(), 0.f);
 	boxes_.count(0);
 	cylinders_.count(0);
 }
 
 void Debris::set_wrecks(const RID &scenario, const RID &material, const std::vector<Ref<Mesh>> &bodies) {
-	const AABB world(Vector3(-WORLD_HALF_M, -WORLD_UP_M, -WORLD_HALF_M), Vector3(2 * WORLD_HALF_M, 2 * WORLD_UP_M, 2 * WORLD_HALF_M));
 	wrecks_.resize(bodies.size());
 	for (size_t i = 0; i < bodies.size(); i++) {
-		wrecks_[i].init(scenario, bodies[i], material, WRECKS_KEPT, true, world);
+		wrecks_[i].init_shaped(scenario, bodies[i], material, WRECKS_KEPT, true, bodies[i]->get_aabb(), 0.f);
 		wrecks_[i].count(0);
 	}
 }
@@ -125,6 +124,9 @@ void Debris::flush() {
 	if (!dirty_ && !moving() && !burning && drawn_ == int(pieces_.size())) return;
 	int nb = 0, nc = 0;
 	std::vector<int> nw(wrecks_.size(), 0);
+	boxes_.clear_bounds(); // every piece is written again, where the steps left it: the boxes are theirs
+	cylinders_.clear_bounds();
+	for (MmLayer &l : wrecks_) l.clear_bounds();
 	for (const Piece &p : pieces_) {
 		const Basis rot(p.q);
 		const float mark = p.charred ? MARK_CHARRED : p.dusty ? MARK_DUSTY : 0.f;

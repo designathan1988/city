@@ -26,6 +26,7 @@ void StreetWorks::clear() {
 	spans.clear();
 	barriers.clear();
 	cuts.clear();
+	names = NamePlates();
 	item_hash_.clear();
 	pole_hash_.clear();
 	barrier_hash_.clear();
@@ -35,17 +36,20 @@ void StreetWorks::clear() {
 int StreetWorks::add_item(const StreetItem &r) {
 	int id = items.add(r);
 	item_hash_.insert_aabb(id, r.x, r.z, r.x, r.z);
+	if (r.kind == ItemKind::STREETNAME) names.dirty.push_back(id);
 	return id;
 }
 
 void StreetWorks::put_item(int id, const StreetItem &r) {
 	items.put(id, r);
 	item_hash_.insert_aabb(id, r.x, r.z, r.x, r.z);
+	if (r.kind == ItemKind::STREETNAME) names.dirty.push_back(id);
 }
 
 void StreetWorks::remove_item(int id) {
 	const StreetItem &r = items.items[size_t(id)];
 	item_hash_.remove_aabb(id, r.x, r.z, r.x, r.z);
+	if (r.kind == ItemKind::STREETNAME) names.dirty.push_back(id);
 	items.drop(id);
 }
 

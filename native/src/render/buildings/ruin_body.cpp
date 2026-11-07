@@ -4,8 +4,7 @@
 
 namespace city {
 
-std::shared_ptr<RuinMesh> ruin_of(const b40::Data &data, const b40::BuildingLook &look, const Building &rec, const HeightPatch &ground) {
-	thread_local BuildingBodies bodies;
+std::shared_ptr<RuinMesh> ruin_of(BuildingBodies &bodies, const b40::Data &data, const b40::BuildingLook &look, const Building &rec, const HeightPatch &ground) {
 	b40::Placed pl;
 	bodies.place(data, look, ground, rec, pl);
 	b40::Shell shell, glass, aside; // railings, lanterns and lawns do not come down as walls

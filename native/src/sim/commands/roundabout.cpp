@@ -197,7 +197,7 @@ EditResult build_roundabout(CityState &s, double cx, double cz, double radius, b
 	for (int sg : ring_segs) r.buildings_removed += clear_under(s, sg);
 	for (int sg : b.approaches)
 		if (s.roads.segs[sg].alive) r.buildings_removed += clear_under(s, sg);
-	finish_edit(s, box.minx, box.minz, box.maxx, box.maxz);
+	settle_network(s); // the mouths squeezed_worse reads
 	if (squeezed_worse(s, before, box)) { // what a cut road leaves between the ring and its next junction
 		r.error = "hint.rule.squeezed";
 		return r;

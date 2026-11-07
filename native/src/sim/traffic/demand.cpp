@@ -78,7 +78,7 @@ bool lane_free(const CityState &s, int key, float at, float len) {
 }
 
 // One trip attempt; returns false on failure (no destination, no route or no room).
-bool spawn_one(CityState &s, int &routes) {
+bool spawn_one(CityState &s) {
 	TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
 	VehicleType type = draw_type(s);
@@ -105,7 +105,6 @@ bool spawn_one(CityState &s, int &routes) {
 	const float stop = d.len - d.stop_back - p.stop_margin_m; // it starts short of its stop line, able to stop there
 	if (at < vc.length + p.mouth_clear_m || at > stop || !lane_free(s, key, at, vc.length)) return false; // keep the lane mouth clear
 	if (float(lane_load(t, key) + 1) > d.len / p.slot_m) return false; // the lane is full, far vehicles included
-	routes++;
 	std::vector<int> route;
 	if (!find_route(s, from, to, route, -1, -1, bike) || route.size() < 2) return false;
 	const int id = new_vehicle(s, type, uint8_t(t.rng.next() % PAINTS));
@@ -212,9 +211,10 @@ void spawn_vehicles(CityState &s, float dt) {
 		attempts = std::min(int(t.spawn_credit), int(p.spawn_attempts_per_step));
 		t.spawn_credit -= float(attempts);
 	}
-	int failures = 0, routes = 0;
-	for (int k = 0; k < attempts && failures < MAX_FAILURES && routes < int(p.route_budget_per_step); k++)
-		if (!spawn_one(s, routes)) failures++;
+	int failures = 0;
+	// a new trip's search can wait: past the tick's searches the rest of the attempts are not made (route_admission.cpp)
+	for (int k = 0; k < attempts && failures < MAX_FAILURES && may_request_search(s); k++)
+		if (!spawn_one(s)) failures++;
 }
 
 } // namespace traffic

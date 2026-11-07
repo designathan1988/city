@@ -9,23 +9,20 @@ using namespace godot;
 
 namespace city {
 
-namespace {
-} // namespace
-
-void Marks::init(const RID &scenario, const RID &material, int capacity, int soot_kept, int blood_kept) {
+void Marks::init(const RID &scenario, const RID &material, int room, int soot_kept, int blood_kept) {
 	material_ = material;
-	capacity_ = capacity;
 	soot_kept_ = size_t(soot_kept);
 	blood_kept_ = size_t(blood_kept);
 	Ref<PlaneMesh> plane;
 	plane.instantiate();
 	plane->set_size(Vector2(1, 1));
-	layer_.init(scenario, plane, material, capacity, false, AABB(Vector3(-WORLD_HALF_M, -WORLD_UP_M, -WORLD_HALF_M), Vector3(2 * WORLD_HALF_M, 2 * WORLD_UP_M, 2 * WORLD_HALF_M)));
+	layer_.init(scenario, plane, material, room, false, world_box()); // see-through: the map's box keeps its place in the sort (mm_layer.h)
 	layer_.count(0);
 }
 
 void Marks::reset() {
 	craters_.clear();
+	stale_.clear();
 	soot_.clear();
 	blood_.clear();
 	rings_.clear();
@@ -61,11 +58,12 @@ void Marks::update(double now) {
 	const size_t before = rings_.size();
 	rings_.erase(std::remove_if(rings_.begin(), rings_.end(), [&](const Mark &r) { return now > r.born + r.life; }), rings_.end());
 	if (!dirty_ && rings_.size() == before) return;
+	layer_.reserve(int(craters_.size() + soot_.size() + blood_.size() + rings_.size()));
 	int n = 0;
-	for (const auto *list : { &craters_ }) for (const Mark &m : *list) if (n < capacity_) write(m, n++);
-	for (const Mark &m : soot_) if (n < capacity_) write(m, n++);
-	for (const Mark &m : blood_) if (n < capacity_) write(m, n++);
-	for (const Mark &m : rings_) if (n < capacity_) write(m, n++);
+	for (const Mark &m : craters_) write(m, n++);
+	for (const Mark &m : soot_) write(m, n++);
+	for (const Mark &m : blood_) write(m, n++);
+	for (const Mark &m : rings_) write(m, n++);
 	shown_ = n;
 	layer_.count(n);
 	layer_.shown(n > 0);

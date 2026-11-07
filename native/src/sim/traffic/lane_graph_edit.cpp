@@ -113,7 +113,9 @@ void graph_grow(CityState &s, int segs, int nodes) {
 	if (g.lane_conn.size() < lanes) g.lane_conn.resize(lanes, -1);
 	if (g.node_conn.size() < nn) g.node_conn.resize(nn, -1);
 	if (g.junctions.size() < nn) g.junctions.resize(nn);
+	if (g.signal_at.size() < nn) g.signal_at.resize(nn, 0);
 	if (t.lane_vehicles.size() < lanes) t.lane_vehicles.resize(lanes);
+	if (t.lane_sorted.size() < lanes) t.lane_sorted.resize(lanes, 1);
 	if (t.lane_active.size() < lanes) t.lane_active.resize(lanes, 0);
 	if (t.meso_head.size() < lanes) t.meso_head.resize(lanes, -1);
 	if (t.meso_tail.size() < lanes) t.meso_tail.resize(lanes, -1);
@@ -147,6 +149,7 @@ void clear_node(CityState &s, int n) {
 	}
 	g.node_conn[size_t(n)] = -1;
 	if (n < int(g.junctions.size())) g.junctions[size_t(n)] = Junction();
+	file_signal(g, n);
 }
 
 void apply_network_changes(CityState &s) {
@@ -175,11 +178,12 @@ void apply_network_changes(CityState &s) {
 		return;
 	}
 	graph_grow(s, int(s.roads.segs.size()), int(s.roads.nodes.size()));
-	t.park.yards.clear(); // their ways cross the streets
-	t.park.planner.reset();
 	ChangeLog::dedup(removed);
 	ChangeLog::dedup(changed);
 	ChangeLog::dedup(nodes);
+	forget_yards_near(s, removed, changed); // their ways cross the streets: those of the streets that changed are planned again
+	t.roads_touched.insert(t.roads_touched.end(), removed.begin(), removed.end());
+	t.roads_touched.insert(t.roads_touched.end(), changed.begin(), changed.end());
 	for (int seg : removed) drop_segment(s, seg);
 	for (int seg : removed)
 		if (size_t(seg) < t.seg_volume.size()) t.seg_volume[size_t(seg)] = 0;
@@ -206,6 +210,7 @@ void apply_network_changes(CityState &s) {
 			build_junction(s, n);
 		} else if (n < int(t.g.junctions.size())) {
 			t.g.junctions[size_t(n)] = Junction();
+			file_signal(t.g, n);
 		}
 	}
 	t.g.version = s.roads.version;

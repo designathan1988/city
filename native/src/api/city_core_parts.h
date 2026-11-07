@@ -30,17 +30,31 @@ struct SaveJob {
 };
 
 // What the Inspect tool and the camera ask for each frame, kept until the network or the city changes (city_core_inspect.cpp).
-struct InspectCache {
-	std::unordered_map<int, std::vector<Solid>> solids; // clear_reach: each building asked
-	uint64_t solids_revision = 0;
-	std::vector<SharpNode> sharp; // impossible_nodes, for this version of the network
-	int sharp_version = -1;
+// What a building's volumes are made from (city_core_sight.cpp solids_key): its body, by the edited version's stamp or by what a body
+// is made from, and its lot's frame. Equal keys, equal volumes.
+struct SolidsKey {
+	uint64_t stamp = 0;
+	uint32_t seed = 0;
+	float x = 0, z = 0, w = 0, d = 0, rot = 0;
+	uint16_t floors = 0;
+	uint8_t zone = 0, fn = 0;
+	bool operator==(const SolidsKey &o) const {
+		return stamp == o.stamp && seed == o.seed && x == o.x && z == o.z && w == o.w && d == o.d && rot == o.rot && floors == o.floors &&
+				zone == o.zone && fn == o.fn;
+	}
 };
 
-// The snapshot's expensive counts follow the player's edits, not the simulation tick.
-struct SnapCounts {
-	uint64_t edit_revision = ~uint64_t(0);
-	int nodes = 0, zoned = 0; // the network's counts, following the edits (residents and jobs: BuildingStore totals)
+// A building's volumes and the key they were made under.
+struct CachedSolids {
+	SolidsKey key;
+	std::vector<Solid> solids;
+	bool made = false;
+};
+
+struct InspectCache {
+	std::unordered_map<int, CachedSolids> solids; // clear_reach, sight_pull, eye_free: each building asked, kept while its key stays
+	std::vector<SharpNode> sharp; // impossible_nodes, for this version of the network
+	int sharp_version = -1;
 };
 
 // What pose_stats reports since its last call (city_core_probe_render.cpp).

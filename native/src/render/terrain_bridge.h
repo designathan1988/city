@@ -7,15 +7,19 @@
 
 #include <godot_cpp/classes/object.hpp>
 
+#include <cstdint>
+#include <vector>
+
 namespace city {
 
 class TerrainBridge {
 public:
 	void push_all(const Heightfield &hf, godot::Object *terrain3d);
-	// rects: x0,z0,x1,z1 sample rectangles from ChangeLog::terrain_rects.
-	void push_rects(const Heightfield &hf, godot::Object *terrain3d, const std::vector<int> &rects);
+	// rects: x0,z0,x1,z1 sample rectangles from ChangeLog::terrain_rects. Returns the bytes of the maps sent (the upload ledger's).
+	int64_t push_rects(const Heightfield &hf, godot::Object *terrain3d, const std::vector<int> &rects);
 	// The painted ground of the regions under the rectangles, as Terrain3D's control map (layout: ground_paint.gdshaderinc).
-	void push_paint(const Heightfield &hf, const GroundPaint &paint, godot::Object *terrain3d, const std::vector<int> &rects);
+	// Returns the bytes sent.
+	int64_t push_paint(const Heightfield &hf, const GroundPaint &paint, godot::Object *terrain3d, const std::vector<int> &rects);
 	// Every region's control map (a loaded map).
 	void push_all_paint(const Heightfield &hf, const GroundPaint &paint, godot::Object *terrain3d);
 

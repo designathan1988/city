@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <limits>
 
 namespace city {
@@ -33,10 +34,16 @@ struct Solve {
 	RoadNetwork &net;
 	const GradeTune t;
 	const GroundAt &ground;
-	std::vector<char> seg_solved, node_solved;
-	std::vector<float> height, start, grade, cap; // by node, this solve's (NONE: not reached)
-	std::vector<char> aloft;
+	std::vector<char> &seg_solved, &node_solved;
+	std::vector<float> &height, &start, &grade, &cap; // by node, this solve's (NONE: not reached)
+	std::vector<char> &aloft;
+	std::vector<int> &heighted; // the nodes whose height was written (RoadGrade::Scratch)
 	std::vector<int> solved_nodes, solved_segs;
+
+	void set_height(int n, float h) {
+		if (height[size_t(n)] == NONE) heighted.push_back(n);
+		height[size_t(n)] = h;
+	}
 
 	bool alive_profile(int s) const { return net.segs[size_t(s)].alive && g.has(s); }
 	const GradeNode &memo(int n) const { return g.node[size_t(n)]; }
@@ -124,7 +131,7 @@ struct Solve {
 			if (reachable != NONE) cap[size_t(n)] = std::max(grade[size_t(n)], reachable);
 			if (reachable < h) h = std::max(grade[size_t(n)], reachable);
 		}
-		height[size_t(n)] = h;
+		set_height(n, h);
 		start[size_t(n)] = h;
 	}
 
@@ -164,7 +171,7 @@ struct Solve {
 			for (int s : net.nodes[size_t(n)].segs)
 				if (alive_profile(s)) h = std::max(h, end_height(g.prof[size_t(s)], n));
 			if (cap_of(n) != NONE) h = std::min(h, cap_of(n));
-			height[size_t(n)] = h;
+			set_height(n, h);
 			if (h > was + RISE_EPS)
 				for (int s : net.nodes[size_t(n)].segs)
 					if (alive_profile(s)) next.push_back(s);
@@ -211,15 +218,61 @@ void reach_nodes(Solve &sv, const std::vector<int> &changed_ends, bool all) {
 }
 } // namespace
 
+void RoadGrade::Scratch::grow(size_t segs, size_t nodes) {
+	if (touched.size() < segs) {
+		touched.resize(segs, 0);
+		regrounded.resize(segs, 0);
+		seg_solved.resize(segs, 0);
+		chained.resize(segs, 0);
+	}
+	if (node_solved.size() < nodes) {
+		node_solved.resize(nodes, 0);
+		aloft.resize(nodes, 0);
+		height.resize(nodes, NONE);
+		start.resize(nodes, 0);
+		grade.resize(nodes, 0);
+		cap.resize(nodes, NONE);
+	}
+}
+
+namespace {
+// What the ground's shape under a segment is made of (road_grade_sync.cpp shape_of: its curve, casing, build and heights)
+// as a profile had it before this solve made it again.
+struct ShapeInputs {
+	bool valid = false;
+	double q[CURVE_NUMBERS] = {};
+	float step = 0, half = 0;
+	Structure structure = Structure::GROUND;
+	bool manual = false, walls = false;
+	std::vector<float> h;
+	explicit ShapeInputs(const GradeProfile &p)
+		: valid(p.valid), step(p.step), half(p.half), structure(p.structure), manual(p.manual), walls(p.walls), h(p.h) {
+		std::copy(p.q, p.q + CURVE_NUMBERS, q);
+	}
+	// The profile makes another shape: its curve (p.q is the curve's own after grade_inputs), casing, build or a height.
+	bool differs(const GradeProfile &p) const {
+		return !valid || !std::equal(q, q + CURVE_NUMBERS, p.q) || step != p.step || half != p.half || structure != p.structure ||
+				manual != p.manual || walls != p.walls || h.size() != p.h.size() ||
+				std::memcmp(h.data(), p.h.data(), h.size() * sizeof(float)) != 0; // bit for bit: the shape is made of these floats
+	}
+};
+} // namespace
+
 void RoadGrade::solve(RoadNetwork &net, const GroundAt &ground, std::vector<int> &moved, std::vector<int> &gone, JobPool *jobs) {
 	const size_t ns = net.segs.size(), nn = net.nodes.size();
 	prof.resize(ns);
 	node.resize(nn);
-	std::vector<char> touched(ns, 0), regrounded(ns, 0);
+	unshown_.resize(ns, 0);
+	Scratch &sc = scratch_;
+	sc.grow(ns, nn);
+	std::vector<int> touched;
 	auto touch = [&](int s, bool reground) {
 		if (s < 0 || size_t(s) >= ns) return;
-		touched[size_t(s)] = 1;
-		if (reground) regrounded[size_t(s)] = 1;
+		if (!sc.touched[size_t(s)]) {
+			sc.touched[size_t(s)] = 1;
+			touched.push_back(s);
+		}
+		if (reground) sc.regrounded[size_t(s)] = 1;
 	};
 	for (size_t s = 0; all_ && s < ns; s++) touch(int(s), true);
 	for (int s : segs_) touch(s, false);
@@ -229,28 +282,31 @@ void RoadGrade::solve(RoadNetwork &net, const GroundAt &ground, std::vector<int>
 	const bool all = all_;
 	segs_.clear(); nodes_.clear(); reground_.clear();
 	all_ = false;
-	Solve sv{ *this, net, grade_tune(net.cat->tune), ground, std::vector<char>(ns, 0), std::vector<char>(nn, 0),
-		std::vector<float>(nn, NONE), std::vector<float>(nn, 0), std::vector<float>(nn, 0), std::vector<float>(nn, NONE),
-		std::vector<char>(nn, 0), {}, {} };
+	std::sort(touched.begin(), touched.end()); // in id order: the same map gives the same heights
+	Solve sv{ *this, net, grade_tune(net.cat->tune), ground, sc.seg_solved, sc.node_solved, sc.height, sc.start, sc.grade, sc.cap,
+		sc.aloft, sc.heighted, {}, {} };
 	std::vector<int> ends, read;
-	for (size_t s = 0; s < ns; s++) {
-		if (!touched[s]) continue;
-		if (!net.segs[s].alive) {
-			if (prof[s].valid) gone.push_back(int(s));
-			prof[s] = GradeProfile();
+	for (int s : touched) {
+		if (!net.segs[size_t(s)].alive) {
+			if (prof[size_t(s)].valid) gone.push_back(s);
+			prof[size_t(s)] = GradeProfile();
+			unshown_[size_t(s)] = 0;
 			continue;
 		}
-		read.push_back(int(s));
+		read.push_back(s);
 	}
+	std::vector<ShapeInputs> was; // by `read`: what each made the ground's shape of before it is read again
+	was.reserve(read.size());
+	for (int s : read) was.emplace_back(prof[size_t(s)]);
 	// each segment reads the ground into its own profile and nothing else: over the pool when there are many (a whole city)
-	auto inputs = [&](size_t k) { grade_inputs(*this, net, read[k], ground, regrounded[size_t(read[k])] != 0, sv.t); };
+	auto inputs = [&](size_t k) { grade_inputs(*this, net, read[k], ground, sc.regrounded[size_t(read[k])] != 0, sv.t); };
 	if (jobs && read.size() >= POOLED_SEGMENTS) jobs->parallel_for(read.size(), inputs);
 	else for (size_t k = 0; k < read.size(); k++) inputs(k);
 	for (int s : read) {
 		ends.push_back(prof[size_t(s)].a);
 		ends.push_back(prof[size_t(s)].b);
 	}
-	grade_chains(*this, net, read, sv.t.ground, ends);
+	grade_chains(*this, net, read, sv.t.ground, ends, sc.chained);
 	std::sort(ends.begin(), ends.end());
 	ends.erase(std::unique(ends.begin(), ends.end()), ends.end());
 	reach_nodes(sv, ends, all);
@@ -259,29 +315,59 @@ void RoadGrade::solve(RoadNetwork &net, const GroundAt &ground, std::vector<int>
 		for (int s : net.nodes[size_t(n)].segs)
 			if (sv.alive_profile(s) && !sv.seg_solved[size_t(s)]) { sv.seg_solved[size_t(s)] = 1; sv.solved_segs.push_back(s); }
 	std::sort(sv.solved_segs.begin(), sv.solved_segs.end());
-	std::vector<std::vector<float>> before(sv.solved_segs.size());
+	std::vector<std::vector<float>> before(sv.solved_segs.size()); // the heights of a solved segment no change reached
 	for (size_t k = 0; k < sv.solved_segs.size(); k++) {
 		GradeProfile &p = prof[size_t(sv.solved_segs[k])];
-		before[k] = touched[size_t(sv.solved_segs[k])] ? std::vector<float>() : p.h;
+		if (!sc.touched[size_t(sv.solved_segs[k])]) before[k] = p.h;
 		p.h = p.base; // solved again from its grade line
 	}
 	for (int n : sv.solved_nodes) sv.grade_node(n);
 	for (int n : sv.solved_nodes) sv.start_node(n);
 	sv.rounds();
-	for (size_t n = 0; n < nn; n++) {
-		if (sv.height[n] == NONE) continue;
-		GradeNode &m = node[n];
-		const bool here = sv.node_solved[n] != 0;
-		m = GradeNode{ sv.height[n], here ? sv.start[n] : m.start, sv.grade_of(int(n)), sv.cap_of(int(n)) == NONE ? 0.f : sv.cap_of(int(n)),
-			sv.aloft_at(int(n)), sv.cap_of(int(n)) != NONE, true };
-		net.nodes[n].y = m.height;
+	for (int n : sv.heighted) {
+		if (sv.height[size_t(n)] == NONE) continue;
+		GradeNode &m = node[size_t(n)];
+		const bool here = sv.node_solved[size_t(n)] != 0;
+		m = GradeNode{ sv.height[size_t(n)], here ? sv.start[size_t(n)] : m.start, sv.grade_of(n), sv.cap_of(n) == NONE ? 0.f : sv.cap_of(n),
+			sv.aloft_at(n), sv.cap_of(n) != NONE, true };
+		net.nodes[size_t(n)].y = m.height;
 	}
 	for (size_t k = 0; k < sv.solved_segs.size(); k++) {
-		const std::vector<float> &was = before[k], &now = prof[size_t(sv.solved_segs[k])].h;
-		bool differs = was.size() != now.size();
-		for (size_t i = 0; !differs && i < now.size(); i++) differs = std::fabs(was[i] - now[i]) > MOVED_EPS;
-		if (differs) moved.push_back(sv.solved_segs[k]);
+		const int s = sv.solved_segs[k];
+		GradeProfile &p = prof[size_t(s)];
+		bool differs;
+		if (sc.touched[size_t(s)]) {
+			// a change reached it: moved when its shape is another or it was never told the heights it has
+			const ShapeInputs &old = was[size_t(std::lower_bound(read.begin(), read.end(), s) - read.begin())];
+			differs = unshown_[size_t(s)] != 0 || old.differs(p);
+		} else {
+			// carried by a node: moved past a station's rounding (below it the heights are kept untold)
+			const std::vector<float> &then = before[k], &now = p.h;
+			differs = then.size() != now.size();
+			bool any = differs;
+			for (size_t i = 0; !differs && i < now.size(); i++) {
+				differs = std::fabs(then[i] - now[i]) > MOVED_EPS;
+				any = any || then[i] != now[i];
+			}
+			if (!differs && any) unshown_[size_t(s)] = 1;
+		}
+		if (differs) {
+			moved.push_back(s);
+			unshown_[size_t(s)] = 0;
+		}
+		p.ylo = p.h.empty() ? 0.f : *std::min_element(p.h.begin(), p.h.end());
+		p.yhi = p.h.empty() ? 0.f : *std::max_element(p.h.begin(), p.h.end());
 	}
+	// the scratch back at rest: only what this solve wrote
+	for (int s : touched) sc.touched[size_t(s)] = sc.regrounded[size_t(s)] = 0;
+	for (int s : sv.solved_segs) sc.seg_solved[size_t(s)] = 0;
+	for (int n : sv.solved_nodes) {
+		sc.node_solved[size_t(n)] = sc.aloft[size_t(n)] = 0;
+		sc.start[size_t(n)] = sc.grade[size_t(n)] = 0;
+		sc.cap[size_t(n)] = NONE;
+	}
+	for (int n : sv.heighted) sc.height[size_t(n)] = NONE;
+	sv.heighted.clear();
 }
 
 } // namespace city

@@ -24,15 +24,12 @@ EditResult reverse_road(CityState &s, int seg) {
 		return r;
 	}
 	const std::vector<int> pieces = s.roads.pieces_of(seg); // the whole road turns: half of one running against the other would stop it
-	RoadBox box;
 	for (int piece : pieces) {
 		const RoadSegment rec = s.roads.segs[size_t(piece)];
-		box.add(rec);
 		j_remove_segment(s, piece);
 		const Quad q{ rec.q.x1, rec.q.z1, rec.q.cx, rec.q.cz, rec.q.x0, rec.q.z0 };
 		j_add_segment(s, rec.b, rec.a, q, rec.profile, rec.zr, rec.zl, flags_reversed(rec.flags));
 	}
-	finish_edit(s, box.minx, box.minz, box.maxx, box.maxz);
 	r.ok = true;
 	r.segments = int(pieces.size());
 	return r;
@@ -70,19 +67,8 @@ EditResult set_marking_style(CityState &s, int style) {
 	r.ok = true;
 	if (style == s.marking_style.load()) return r; // nothing to paint again: the city is not changed (a session read on opening)
 	j_set_marking(s, style);
-	double minx = 0, minz = 0, maxx = 0, maxz = 0; // the network's box: finish_edit walks the cells of what it is given
-	bool any = false;
-	for (int seg = 0; seg < int(s.roads.segs.size()); seg++) {
-		const RoadSegment &g = s.roads.segs[size_t(seg)];
-		if (!g.alive) continue;
-		s.roads.mark_segment(seg);
-		minx = any ? std::min(minx, double(g.minx)) : g.minx;
-		minz = any ? std::min(minz, double(g.minz)) : g.minz;
-		maxx = any ? std::max(maxx, double(g.maxx)) : g.maxx;
-		maxz = any ? std::max(maxz, double(g.maxz)) : g.maxz;
-		any = true;
-	}
-	if (any) finish_edit(s, minx, minz, maxx, maxz);
+	for (int seg = 0; seg < int(s.roads.segs.size()); seg++)
+		if (s.roads.segs[size_t(seg)].alive) s.roads.mark_segment(seg);
 	return r;
 }
 

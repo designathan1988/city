@@ -15,6 +15,7 @@
 #include "core/job_pool.h"
 #include "sim/buildings/b40/data.h"
 #include "render/buildings/building_bodies.h"
+#include "render/buildings/ruin_fracture.h"
 #include "render/buildings/shell.h"
 #include "render/buildings/signature_bodies.h"
 #include "render/chunk_jobs.h"
@@ -45,6 +46,8 @@ public:
 	bool init(const RenderContext &ctx, godot::PackedStringArray &errors);
 	void reset();
 	void set_broken(const std::unordered_set<uint32_t> &seeds); // the buildings drawn in pieces, by the effects
+	// The walls of a record a blow brings down, broken (ruin_fracture.h), from the bodies the levels draw.
+	std::shared_ptr<RuinMesh> ruin_of(const b40::Data &data, const Building &rec, const HeightPatch &ground) const;
 	void rebuild_chunk(const CityState &s, int64_t key); // a chunk to (re)mesh: its levels turn stale, its superchunk dirty
 	// A chunk whose near level is drawn again with the same buildings (the Interior layer cut some open or closed them): the
 	// far mesh draws them whole either way, so its superchunk stays.
@@ -173,7 +176,7 @@ private:
 	// of its chunks, in query order, and the final ground under their lots. The build itself runs without the lock.
 	struct Inputs {
 		std::vector<Building> records;
-		std::unordered_set<uint32_t> broken; // standing in pieces (RuinPieces): only their lots are drawn here
+		std::shared_ptr<const std::unordered_set<uint32_t>> broken; // standing in pieces (RuinPieces): only their lots are drawn here
 		std::vector<int> ids; // the id of each record
 		InteriorView view; // the Interior layer as the job started
 		HeightPatch ground;
@@ -184,8 +187,8 @@ private:
 		uint8_t mask;
 	};
 	Inputs gather(const CityState &s, const int64_t *chunk_keys, int count) const;
-	mutable std::mutex broken_mutex_; // the jobs gather on their own threads
-	std::unordered_set<uint32_t> broken_;
+	mutable std::mutex broken_mutex_; // the jobs gather on their own threads: they take the set published last, never a copy of it
+	std::shared_ptr<const std::unordered_set<uint32_t>> broken_ = std::make_shared<const std::unordered_set<uint32_t>>();
 	void file_parts(Built &out, std::array<b40::Shell, SUB_COUNT> &parts_shells) const;
 	static void link_shells(Built &out, std::array<b40::Shell, SUB_COUNT> &mid_parts);
 	Built build_cpu(const Inputs &in, int64_t key, bool near, bool mid) const;
@@ -212,7 +215,7 @@ private:
 	// The generator's tables are the simulation's (read-only after boot); the drawing sizes and level shares are ours.
 	const b40::Data &designs() const { return state_->buildings.designs; }
 	b40::BuildingLook look_;
-	BuildingBodies bodies_;
+	mutable BuildingBodies bodies_; // every job's: thread-safe, emptied by reset()
 	godot::RID material_cast_; // shadow_caster: no vertex() of its own
 	void fade_levels(Chunk &ch, const godot::Vector3 &cam); // the sub-chunks in the band of a hand-over (building_renderer_reach.cpp)
 	void fade_near(Chunk &ch, size_t sub, bool on, float keep);

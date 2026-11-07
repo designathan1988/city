@@ -1,5 +1,6 @@
 // Save and open (sim/persistence): a worker thread encodes the city under the map lock shared (it only reads), then
-// writes it with ZSTD through a temporary file and renames it, so the frame never waits for the save.
+// writes it with ZSTD through a temporary file and renames it, so the frame never waits for the save. A city opened is read
+// once into a state of its own while the open one runs on, and taken in whole under the exclusive lock.
 #include "api/city_core.h"
 
 #include "core/laps.h"
@@ -9,6 +10,8 @@
 #include <godot_cpp/classes/dir_access.hpp>
 #include <godot_cpp/classes/file_access.hpp>
 
+#include <algorithm>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -73,15 +76,16 @@ Dictionary CityCore::save_city(const String &path) {
 		if (!state_->ready) return d;
 	}
 	const std::string target = utf8(path);
+	const size_t expect = size_t(std::max<int64_t>(save_.bytes.load(), 0)); // the last save's size: the new one is about as big
 	save_.bytes.store(0);
 	save_.error.clear(); // no save thread runs now (joined above)
 	save_.state.store(1);
-	save_.thread = std::thread([this, target]() {
+	save_.thread = std::thread([this, target, expect]() {
 		std::vector<uint8_t> bytes;
 		uint64_t revision = 0;
 		{
 			std::shared_lock<std::shared_mutex> lk(state_->map_mutex); // the encode only reads the city
-			bytes = encode_city(*state_);
+			bytes = encode_city(*state_, nullptr, expect);
 			revision = state_->revision; // the revision this file holds
 		}
 		save_.bytes.store(int64_t(bytes.size()));
@@ -115,29 +119,33 @@ Dictionary CityCore::load_city(const String &path, bool paused) {
 	uint64_t got = f->get_buffer(bytes.data(), bytes.size());
 	f->close();
 	std::string error = "save.file.damaged";
-	Catalog catalog;
+	if (got != bytes.size()) {
+		d["error"] = String(error.c_str());
+		return d;
+	}
+	// The city is read once, aside, while the open one runs on: it is taken in whole only when the file is whole.
+	auto read = std::make_unique<CityState>(state_->jobs);
 	{
 		std::shared_lock<std::shared_mutex> lk(state_->map_mutex); // the road variants change it under the exclusive lock
-		catalog = state_->catalog;
+		read->catalog = state_->catalog;
 	}
-	Laps laps;
-	if (got != bytes.size() || !check_city(std::move(catalog), bytes.data(), bytes.size(), error)) {
+	OpenTimes times;
+	if (!decode_city(*read, bytes.data(), bytes.size(), error, &times)) {
 		d["error"] = String(error.c_str()); // refused before anything changed: the open city runs on
 		return d;
 	}
 	Dictionary spent;
-	spent["check"] = laps.lap();
+	Laps laps;
 	sim_.stop();
-	bool ok;
-	OpenTimes times;
 	{
 		std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
 		state_->interior = InteriorView(); // the layer closes with the city it showed
-		ok = decode_city(*state_, bytes.data(), bytes.size(), error, &times);
-		laps.lap();
-		if (ok) traffic::reset_traffic(*state_); // a load: full lane graph and an empty fleet
+		take_city(*state_, *read);
+		spent["take"] = laps.lap();
+		traffic::reset_traffic(*state_); // a load: full lane graph and an empty fleet
 		spent["traffic"] = laps.lap();
 	}
+	read.reset(); // the old city, freed with the lock let go
 	spent["read"] = times.read;
 	spent["grade"] = times.grade;
 	spent["compose"] = times.compose;
@@ -145,7 +153,7 @@ Dictionary CityCore::load_city(const String &path, bool paused) {
 	d["ms"] = spent;
 	need_full_rebuild_ = true;
 	sim_.start(*state_, paused); // paused: no tick between the opening and whoever looks at the city
-	d["ok"] = ok;
+	d["ok"] = true;
 	d["error"] = String(error.c_str());
 	return d;
 }

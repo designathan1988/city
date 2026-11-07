@@ -38,6 +38,9 @@ public:
 	float x0 = 0, y0 = 0, x1 = 0, y1 = 0;
 	std::vector<Furniture> items;
 	std::vector<Partition> walls;
+	// A floor the player furnished: only its partitions are made, no piece is put (put() refuses). No recipe reads the
+	// pieces it put to decide a wall (interior.cpp furnish, interior_homes.cpp, interior_rooms.cpp), so the walls are the same.
+	bool walls_only = false;
 	float width() const { return x1 - x0; }
 	float depth() const { return y1 - y0; }
 	float cx() const { return (x0 + x1) / 2; }

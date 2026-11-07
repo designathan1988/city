@@ -4,6 +4,7 @@
 
 #include <godot_cpp/variant/packed_vector3_array.hpp>
 
+#include "render/detail.h"
 #include "render/render_world.h"
 #include "api/city_core_parts.h"
 #include "sim/demolition/blast_model.h"
@@ -74,6 +75,7 @@ public:
 	godot::Dictionary demolish(const godot::Vector3 &p);
 	godot::Dictionary demolish_box(const godot::Vector3 &a, const godot::Vector3 &b); // everything in the box, one undo step
 	godot::Dictionary paint_zone(const godot::Vector3 &p, float radius, int zone);
+	godot::Dictionary paint_zone_path(const godot::PackedVector3Array &points, float radius, int zone);
 	godot::Array road_profiles() const;
 	int road_variant(int base, int lanes, float width, int parking);
 	godot::Array node_legs(int node);
@@ -152,6 +154,7 @@ public:
 
 	// --- queries (city_core_query.cpp)
 	godot::Dictionary snapshot();
+	int64_t map_revision(); // the unsaved-changes revision: a camera at rest re-asks nothing while it holds
 	godot::Dictionary constants() const;
 	godot::Dictionary raycast(const godot::Vector3 &origin, const godot::Vector3 &dir);
 	float height_at(float x, float z); // terrain height without a ray march (camera, ground queries)
@@ -198,7 +201,6 @@ protected:
 private:
 	InspectCache inspect_;
 	SaveJob save_;
-	SnapCounts snap_;
 	godot::Object *terrain3d() const;
 	void join_save(); // waits for a save in flight before the state changes or is destroyed
 	std::unique_ptr<CityState> state_;
@@ -211,6 +213,7 @@ private:
 	bool catalog_ok_ = false, render_ok_ = false, need_full_rebuild_ = false;
 	int64_t wear_stamp_ns_ = 0; // the last publication the wear field took
 	godot::Vector3 cam_;
+	DetailView detail_view(godot::Camera3D *cam);
 	double process_ms_ = 0, agents_ms_ = 0, overlays_ms_ = 0; // the last _process (render_cost)
 	PoseStats pose_stats_;
 	void note_pose(const PoseFrame &f, bool fresh, const PoseSample &at);

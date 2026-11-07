@@ -51,14 +51,22 @@ void Puffs::burst(float x, float y, float z, int count, int kind, float spread, 
 	dirty_ = dirty_ || count > 0;
 }
 
-void Puffs::update(double now) {
+void Puffs::stamp(double now) {
 	now_ = now;
 	RenderingServer *rs = RenderingServer::get_singleton();
 	rs->material_set_param(material_, "now", float(now));
 	rs->material_set_param(material_, "wind_dir", wind_);
-	if (!dirty_) return;
-	layer_.upload();
-	dirty_ = false;
+}
+
+void Puffs::flush() {
+	if (dirty_) {
+		layer_.upload();
+		dirty_ = false;
+	}
+	const bool live = active(now_);
+	if (live == shown_) return;
+	layer_.shown(live);
+	shown_ = live;
 }
 
 } // namespace city

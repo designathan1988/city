@@ -109,6 +109,11 @@ Vector3 CityCore::lot_snap_point(const Vector3 &p, double reach, const Vector3 &
 }
 
 // The lots the streets propose in the cell of a point, each a ring on the ground, past what the player already holds there.
+namespace {
+// A lot's corners in its own frame, in the order its outline is drawn: signs of the half width and half depth.
+constexpr double LOT_CORNERS[4][2] = { { -1, 1 }, { 1, 1 }, { 1, -1 }, { -1, -1 } };
+} // namespace
+
 Array CityCore::lot_proposals(const Vector3 &p) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
@@ -117,8 +122,9 @@ Array CityCore::lot_proposals(const Vector3 &p) {
 		if (s.lot_book.at(l.x, l.z) != 0) continue;
 		const double c = std::cos(l.rot), n = std::sin(l.rot), hw = l.w / 2, hd = l.d / 2;
 		PackedVector3Array ring;
-		for (const double *k : { (const double[2]){ -hw, hd }, (const double[2]){ hw, hd }, (const double[2]){ hw, -hd }, (const double[2]){ -hw, -hd } }) {
-			const float x = float(l.x + k[0] * c + k[1] * n), z = float(l.z - k[0] * n + k[1] * c);
+		for (const auto &corner : LOT_CORNERS) {
+			const double kx = corner[0] * hw, kz = corner[1] * hd;
+			const float x = float(l.x + kx * c + kz * n), z = float(l.z - kx * n + kz * c);
 			ring.push_back(Vector3(x, s.terrain.height_at(x, z), z));
 		}
 		out.push_back(ring);

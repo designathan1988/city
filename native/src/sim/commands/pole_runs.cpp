@@ -233,7 +233,6 @@ EditResult build_pole_run(CityState &s, double ax, double az, double bx, double 
 		j_add_span(s, ids[i - 1], ids[i]);
 		r.ok = true;
 	}
-	if (r.ok) finish_edit(s, std::min(ax, bx), std::min(az, bz), std::max(ax, bx), std::max(az, bz));
 	return r;
 }
 

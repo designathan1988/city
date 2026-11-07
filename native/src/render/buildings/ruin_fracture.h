@@ -18,6 +18,7 @@ struct Data;
 struct Shell;
 struct BuildingLook;
 }
+class BuildingBodies;
 struct Building;
 struct HeightPatch;
 
@@ -42,7 +43,7 @@ using RuinSlab = std::vector<godot::Vector3>;
 
 // `walls`: the shell as the near level draws it; `glass` its panes, drawn dark and broken in the walls' one material.
 std::shared_ptr<RuinMesh> fracture_shell(const b40::Shell &walls, const b40::Shell &glass, const std::vector<RuinSlab> &slabs, uint32_t seed);
-// The record drawn and cut, on a job's thread (ruin_body.cpp).
-std::shared_ptr<RuinMesh> ruin_of(const b40::Data &data, const b40::BuildingLook &look, const Building &rec, const HeightPatch &ground);
+// The record drawn and cut, on a job's thread (ruin_body.cpp), from the body cache the building levels share.
+std::shared_ptr<RuinMesh> ruin_of(BuildingBodies &bodies, const b40::Data &data, const b40::BuildingLook &look, const Building &rec, const HeightPatch &ground);
 
 } // namespace city

@@ -76,7 +76,6 @@ EditResult terrain_dab(CityState &s, double x, double z, double radius, double s
 	landform_rock(s, x, z, radius, d.mode);
 	if (d.mode == BrushMode::RIVER) lay_river(s, d);
 	mark_ground(s, x - radius, z - radius, x + radius, z + radius);
-	finish_edit(s, x - radius, z - radius, x + radius, z + radius);
 	r.ok = true;
 	return r;
 }
@@ -159,7 +158,6 @@ EditResult place_building(CityState &s, double ax, double az, double bx, double 
 	b.floors = uint16_t(body_floors(s.buildings.designs, b));
 	b.built = s.clock.minutes.load();
 	r.placed = j_add_building(s, b);
-	finish_edit(s, b.x - reach, b.z - reach, b.x + reach, b.z + reach);
 	r.ok = true;
 	r.buildings_removed = int(doomed.size());
 	return r;
@@ -202,8 +200,6 @@ EditResult edit_building(CityState &s, int id, int fn, int floors) {
 		b.floors = uint16_t(body_floors(s.buildings.designs, b));
 	}
 	j_edit_building(s, id, b);
-	float reach = std::max(b.w, b.d);
-	finish_edit(s, b.x - reach, b.z - reach, b.x + reach, b.z + reach);
 	r.ok = true;
 	return r;
 }

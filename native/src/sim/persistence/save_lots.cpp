@@ -7,7 +7,8 @@
 namespace city {
 
 namespace {
-constexpr uint32_t MOST_LOTS = 1000000, MOST_CORNERS = 4096;
+constexpr size_t LOT_MIN_BYTES = 2 * sizeof(int32_t) + sizeof(uint32_t); // id, zone and its corners' count
+constexpr size_t CORNER_BYTES = 2 * sizeof(double);
 } // namespace
 
 bool write_lots_block(ByteWriter &w, const LotBook &book) {
@@ -29,14 +30,14 @@ bool write_lots_block(ByteWriter &w, const LotBook &book) {
 bool read_lots_block(ByteReader &r, LotBook &book) {
 	book.clear();
 	book.next_id = r.get<int32_t>();
-	const uint32_t n = r.get<uint32_t>();
-	if (!r.ok || n > MOST_LOTS) return false;
+	const uint32_t n = r.get_count(LOT_MIN_BYTES);
+	if (!r.ok) return false;
 	book.lots.resize(n);
 	for (PlayerLot &l : book.lots) {
 		l.id = r.get<int32_t>();
 		l.zone = r.get<int32_t>();
-		const uint32_t corners = r.get<uint32_t>();
-		if (!r.ok || corners > MOST_CORNERS) return false;
+		const uint32_t corners = r.get_count(CORNER_BYTES);
+		if (!r.ok) return false;
 		l.corners.resize(corners);
 		for (LotPoint &p : l.corners) {
 			p.x = r.get<double>();

@@ -25,6 +25,7 @@ struct BlastParams {
 	float light_kpa = 0, structural_kpa = 0, collapse_kpa = 0, vehicle_kpa = 0, pole_kpa = 0;
 	float lethal_threshold_kpa = 0, lethal_half_kpa = 0, lethal_threshold_prob = 0;
 	float ear_threshold_kpa = 0, ear_half_kpa = 0, ear_threshold_prob = 0;
+	float lethal_sigma = 0, ear_sigma = 0; // the probits' spreads, worked out once at load (api/blast_loader.cpp: blast::probit_sigma)
 	float startle_pa = 0, reference_pa = 0, startle_cap_m = 0;
 	float knock_min_s = 0, knock_span_s = 0, panic_s = 0, panic_gain = 0, torn_kpa = 0, sever_chance = 0, maim_chance = 0;
 	float hold_growth_s = 0, fire_min_s = 0, fire_span_s = 0, wear_gain = 0;

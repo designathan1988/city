@@ -69,7 +69,19 @@ void EffectWorld::reset() {
 	shake_ = 0;
 	blast_at_ = -1;
 	flash_left_ = 0;
-	craters_seen_ = ~size_t(0);
+	craters_seen_ = crater_layout_seen_ = ruins_seen_ = scars_seen_ = UNSEEN; // everything the state holds is drawn again
+}
+
+void EffectWorld::touch_terrain(const CityState &s, const std::vector<int> &rects) {
+	if (rects.empty() || marks_.craters() == 0) return;
+	const Heightfield &t = s.terrain;
+	// a decal reads the ground at the nodes round each of its points (grid_sample: floor and floor + 1): a node more each side
+	marks_.ground_moved([&](float x, float z, float half) {
+		const int x0 = t.ix_of(x - half) - 1, x1 = t.ix_of(x + half) + 2, z0 = t.ix_of(z - half) - 1, z1 = t.ix_of(z + half) + 2;
+		for (size_t k = 0; k + 3 < rects.size(); k += 4)
+			if (rects[k] <= x1 && rects[k + 2] >= x0 && rects[k + 1] <= z1 && rects[k + 3] >= z0) return true;
+		return false;
+	});
 }
 
 void EffectWorld::release() {
@@ -133,7 +145,7 @@ void EffectWorld::step_geysers(float dt) {
 	geysers_.erase(std::remove_if(geysers_.begin(), geysers_.end(), [&](const Geyser &g) { return now_ > g.until; }), geysers_.end());
 }
 
-void EffectWorld::sync(CityState &s) {
+void EffectWorld::sync(CityState &s, FrameAdmission &admission) {
 	const auto t = std::chrono::steady_clock::now();
 	const float dt = started_ ? std::min(MAX_FRAME_S, std::chrono::duration<float>(t - last_).count()) : 0.f;
 	started_ = true;
@@ -143,27 +155,31 @@ void EffectWorld::sync(CityState &s) {
 		std::lock_guard<std::mutex> lk(s.log.mutex);
 		events_.swap(s.log.damage_events);
 	}
-	puffs_.update(now_); // the clock the puffs about to be born are stamped with
+	puffs_.stamp(now_); // the clock the puffs about to be born are stamped with
 	for (const DamageEvent &e : events_) apply(e, s);
 	played_ += events_.size();
 	events_played_.swap(events_);
 	events_.clear();
-	if (craters_seen_ != s.damage.craters.size()) {
-		craters_seen_ = s.damage.craters.size();
-		marks_.set_craters(s.damage.craters, [&](float x, float z) { return s.terrain.base_height_at(x, z); });
+	const Revised<Crater> &craters = s.damage.craters;
+	if (craters_seen_ != craters.revision()) {
+		// only blows since (the layout held): the craters laid are still the list's first, and only the new ones are laid
+		const bool grew = crater_layout_seen_ == craters.layout_revision();
+		marks_.set_craters(craters.items(), grew ? marks_.craters() : 0, [&](float x, float z) { return s.terrain.base_height_at(x, z); });
+		craters_seen_ = craters.revision();
+		crater_layout_seen_ = craters.layout_revision();
 	}
-	if (ruins_seen_ != s.damage.ruins.size() || scars_seen_ != s.damage.scars.size()) {
+	if (ruins_seen_ != s.damage.ruins.revision() || scars_seen_ != s.damage.scars.revision()) {
 		// a building brought down in this frame already fell into its heap (its event); any other change (open, undo, redo) lays them all again
 		const bool fell = std::any_of(events_played_.begin(), events_played_.end(), [](const DamageEvent &e) { return e.kind == DamageEvent::BUILDING_DOWN || e.kind == DamageEvent::BUILDING_SCAR; });
 		if (!fell) rebuild_ruins(s);
-		ruins_seen_ = s.damage.ruins.size();
-		scars_seen_ = s.damage.scars.size();
+		ruins_seen_ = s.damage.ruins.revision();
+		scars_seen_ = s.damage.scars.revision();
 	}
 	burn_fires(s, dt);
 	step_geysers(dt);
 	step_sources(dt);
 	debris_.update(now_, dt, [&](float x, float z) { return s.terrain.height_at(x, z); }, puffs_);
-	ruins_.update(dt, puffs_);
+	ruins_.update(dt, puffs_, admission);
 	if (people_) people_->bodies().update(dt, [&](float x, float z) { return s.terrain.height_at(x, z); });
 	for (const RuinPieces::Uncut &u : ruins_.take_uncut()) {
 		ground_here_ = s.terrain.height_at(u.ruin.x, u.ruin.z);
@@ -174,7 +190,7 @@ void EffectWorld::sync(CityState &s) {
 	light_update(dt);
 	marks_.update(now_);
 	mounds_.update(now_);
-	puffs_.update(now_);
+	puffs_.flush();
 }
 
 } // namespace city

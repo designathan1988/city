@@ -24,13 +24,13 @@
 
 namespace city {
 
-class PropRenderer : public MeshQueue {
+class PropRenderer : public MeshQueueOf<StreetInstances> {
 public:
 	bool init(const RenderContext &ctx, const StreetLook &look, godot::PackedStringArray &errors);
 	void reset();
 	void submit(const CityState &s, int64_t key, JobPool &pool, float priority);
 	void drop_chunk(int64_t key);
-	void update_signals(const PoseFrame &f) { lamps_.update(f); }
+	void update_signals(const PoseFrame &f, bool fresh) { lamps_.update(f, fresh); }
 	int lit_lenses() const { return lamps_.lit(); }
 	void update_lamps(const godot::Vector3 &eye, const ViewCull &view, float frame_s) { lights_.update(eye, view, frame_s); }
 	void set_lamp_budget(int count, int casting) { lights_.set_budget(count, casting); }
@@ -40,6 +40,7 @@ public:
 	// The run under the pointer, drawn as it will stand; empty lists take it away. Main thread, map held.
 	void set_pole_preview(const CityState &s, const std::vector<PreviewPole> &poles);
 	godot::Array take_sign_cells() { return atlas_.take_pending(); }
+	int64_t sign_generation() const { return atlas_.generation(); } // moves when the sheets start empty again (a new city)
 	int instances() const { return instances_; } // poles, wires, boxes and lights drawn (render_cost probe)
 	int sign_cells() const { return atlas_.cells_used(); }
 
@@ -52,8 +53,8 @@ private:
 		int count = 0;
 		void free();
 	};
-	void build_cpu(const CityState &s, int64_t key, MeshBuilder &mb) const;
-	void commit_one(BuiltMesh &b) override;
+	void build_cpu(const CityState &s, int64_t key, MeshBuilder &mb, StreetInstances &inst) const;
+	void commit_one(Built &b) override;
 	void show(Draws &d, StreetInstances &inst, const godot::AABB &box);
 	void cast_chunk(Draws &d, const godot::RID &mesh, const godot::AABB &box);
 	float shadow_end() const;
@@ -71,9 +72,6 @@ private:
 	SignalLamps lamps_;
 	LampLights lights_;
 	int instances_ = 0;
-	// what each chunk's newest job placed, handed over with its mesh (a stale result never commits)
-	mutable std::mutex placed_mutex_;
-	mutable std::unordered_map<int64_t, StreetInstances> placed_;
 };
 
 } // namespace city

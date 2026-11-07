@@ -44,6 +44,28 @@ void end_point(const CityState &s, int ds, V2 &p) {
 	p = V2(d.ex, d.ez);
 }
 
+// The connectors the router relaxes from `ds`: of those leaving it, the first to each segment they reach. Every connector from `ds`
+// to one segment costs the same (the segment's time and load, the turn the two segments make, the node they share), so the others
+// only relaxed it again to no effect; the targets keep the order each_conn_from walks them in.
+const std::vector<int> &next_of(CityState &s, int ds) {
+	TrafficState &t = s.traffic;
+	const LaneGraph &g = t.g;
+	if (t.route_next.size() < g.ds.size()) {
+		t.route_next.resize(g.ds.size());
+		t.route_next_stamp.resize(g.ds.size(), 0);
+	}
+	std::vector<int> &next = t.route_next[size_t(ds)];
+	if (t.route_next_stamp[size_t(ds)] == s.lane_graph_serial + 1) return next;
+	t.route_next_stamp[size_t(ds)] = s.lane_graph_serial + 1;
+	next.clear();
+	each_conn_from(g, ds, [&](int ci) {
+		for (int k : next)
+			if (g.conns[size_t(k)].to_ds == g.conns[size_t(ci)].to_ds) return;
+		next.push_back(ci);
+	});
+	return next;
+}
+
 } // namespace
 
 float junction_cost(const CityState &s, const Conn &c) {
@@ -58,24 +80,25 @@ float junction_cost(const CityState &s, const Conn &c) {
 	return turn + (s.traffic.g.junctions[c.node].ctl == Control::SIGNAL ? tp.signal_cost_s : 0.f);
 }
 
-bool find_route(const CityState &s, int from_ds, int goal_ds, std::vector<int> &out, int max_expanded, int banned_ds, bool by_bike) {
+bool find_route(CityState &s, int from_ds, int goal_ds, std::vector<int> &out, int max_expanded, int banned_ds, bool by_bike) {
 	static thread_local AStarScratch sc;
 	const LaneGraph &g = s.traffic.g;
 	const TrafficParams &tp = s.catalog.traffic;
 	out.clear();
 	if (from_ds < 0 || goal_ds < 0 || !g.ds[from_ds].ok || !g.ds[goal_ds].ok) return false;
+	note_search(s);
 	V2 goal;
 	end_point(s, goal_ds, goal);
 	const float guess = tp.guess_speed_kmh / KMH_PER_MS;
 	auto h = [&](int ds) { V2 p; end_point(s, ds, p); return (p - goal).len() / guess; };
 	auto expand = [&](int ds, auto relax) {
-		each_conn_from(g, ds, [&](int ci) {
+		for (int ci : next_of(s, ds)) {
 			const Conn &c = g.conns[size_t(ci)];
-			if (c.to_ds == banned_ds) return;
+			if (c.to_ds == banned_ds) continue;
 			const DirSeg &d = g.ds[size_t(c.to_ds)];
-			if (by_bike && !d.bikes) return;
+			if (by_bike && !d.bikes) continue;
 			relax(c.to_ds, (d.len / std::max(d.speed, 1.f) + tp.edge_extra_s) * load_factor(s, c.to_ds) + junction_cost(s, c));
-		});
+		}
 	};
 	const int limit = max_expanded < 0 ? int(tp.route_max_expanded) : max_expanded;
 	return astar(sc, g.ds.size(), from_ds, goal_ds, limit, h, expand, out);
@@ -90,9 +113,8 @@ bool detour(CityState &s, int id, int blocked, bool need_room) {
 	bool found = false;
 	each_conn_from(g, v.ds, [&](int ci) {
 		const Conn &c = g.conns[size_t(ci)];
-		if (found || c.from_lane != v.lane || ci == blocked || c.turn == Turn::UTURN || t.route_budget <= 0) return;
+		if (found || c.from_lane != v.lane || ci == blocked || c.turn == Turn::UTURN || !may_request_search(s)) return;
 		if (need_room && !has_exit(s, c, id)) return;
-		t.route_budget--;
 		const int j = std::min(v.route.len - 1, v.ri + 1 + rejoin);
 		const int at_j = route_at(t.route_pool, v.route, j);
 		if (j > v.ri + 1 && at_j != c.to_ds && find_route(s, c.to_ds, at_j, path, local, -1, v.type == VehicleType::BICYCLE)) {
@@ -112,8 +134,7 @@ bool detour(CityState &s, int id, int blocked, bool need_room) {
 bool reconsider(CityState &s, int id) {
 	TrafficState &t = s.traffic;
 	Vehicle &v = t.vehicles[id];
-	if (t.route_budget <= 0 || v.ri + 1 >= v.route.len) return false;
-	t.route_budget--;
+	if (!may_request_search(s) || v.ri + 1 >= v.route.len) return false;
 	const int j = std::min(v.route.len - 1, v.ri + int(s.catalog.traffic.rejoin_ds));
 	std::vector<int> path;
 	if (!find_route(s, v.ds, route_at(t.route_pool, v.route, j), path, int(s.catalog.traffic.detour_max_expanded), -1, v.type == VehicleType::BICYCLE) || path.size() < 2) return false;

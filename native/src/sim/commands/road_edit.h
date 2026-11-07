@@ -80,9 +80,13 @@ struct EndMouth {
 EndMouth end_mouth(const CityState &s, const Anchor &at, const Quad &q, int end, int profile);
 // What the player built at (x, z) changed: the chunk of its props and the walkers' bodies on the segments round it.
 void mark_street(CityState &s, double x, double z);
-// Ends an edit over the box: refreshes node shapes there, places again the furniture of the hydrant squares
-// of the nodes it changed (street_furniture.h hydrant_square), recomputes the dirty lot cells (queued for growth) and bumps
-// the revision.
-void finish_edit(CityState &s, double minx, double minz, double maxx, double maxz);
+// What a change to the network derives, settled where a command reads it before it ends (a road laid in pieces reads the
+// mouths and heights of the pieces before it): the shapes of the nodes the changes reach (RoadNetwork::settle_shapes) and
+// the heights of what they moved (sync_grade). A change that leaves the network alone settles nothing.
+void settle_network(CityState &s);
+// Ends a command, once per transaction (EditHistory::end, apply_entry): settles the network, places again the furniture of
+// the hydrant squares of the nodes it changed (street_furniture.h hydrant_square), recomputes the dirty lot cells (queued
+// for growth) and, when the command recorded a change or left derived work, bumps the edit revision and the map's.
+void finish_command(CityState &s, bool recorded);
 
 } // namespace city

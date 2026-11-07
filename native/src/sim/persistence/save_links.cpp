@@ -6,6 +6,12 @@
 
 namespace city {
 
+namespace {
+constexpr size_t LINKED_NODE_MIN_BYTES = 2 * sizeof(uint32_t); // its index and its links' count
+constexpr size_t LINK_BYTES = 4 * sizeof(int32_t);
+constexpr size_t CROSSING_BYTES = sizeof(uint32_t) + 2 * sizeof(uint8_t); // the node, its crossing and its u-turn
+} // namespace
+
 bool write_links_block(ByteWriter &w, const RoadNetwork &net) {
 	uint32_t nodes = 0;
 	for (const RoadNode &n : net.nodes) nodes += n.alive && !n.links.empty() ? 1 : 0;
@@ -23,9 +29,10 @@ bool write_links_block(ByteWriter &w, const RoadNetwork &net) {
 }
 
 bool read_links_block(ByteReader &r, RoadNetwork &net) {
-	const uint32_t nodes = r.get<uint32_t>();
+	const uint32_t nodes = r.get_count(LINKED_NODE_MIN_BYTES);
 	for (uint32_t k = 0; k < nodes && r.ok; k++) {
-		const uint32_t i = r.get<uint32_t>(), n = r.get<uint32_t>();
+		const uint32_t i = r.get<uint32_t>();
+		const uint32_t n = r.get_count(LINK_BYTES);
 		if (!r.ok || i >= net.nodes.size()) return false;
 		for (uint32_t j = 0; j < n && r.ok; j++) {
 			LaneLink l;
@@ -54,7 +61,7 @@ bool write_crossings_block(ByteWriter &w, const RoadNetwork &net) {
 }
 
 bool read_crossings_block(ByteReader &r, RoadNetwork &net) {
-	const uint32_t nodes = r.get<uint32_t>();
+	const uint32_t nodes = r.get_count(CROSSING_BYTES);
 	for (uint32_t k = 0; k < nodes && r.ok; k++) {
 		const uint32_t i = r.get<uint32_t>();
 		const uint8_t kind = r.get<uint8_t>(), uturn = r.get<uint8_t>();

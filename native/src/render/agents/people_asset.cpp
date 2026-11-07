@@ -29,6 +29,8 @@ constexpr float FACE_ROW_STEP = 4.f; // the same: UV2.x is the region plus this 
 constexpr uint32_t VERSION = 8, REGION_SHIFT = 6, ROUGHNESS_MASK = 63, FLAG_FEMALE = 1, FLAG_SENIOR = 2, FLAG_CHILD = 4;
 constexpr uint32_t MAX_VARIATIONS = 256, MAX_LODS = 4, MAX_CLIPS = 64, CLIP_NAME_BYTES = 16, MAX_VERTICES = 65535, BONE_TEXELS = 3, RGBA = 4;
 constexpr int BYTE_MAX = 255, BYTE_BITS = 8, CHANNELS = 4;
+// What one vertex takes in the file (read_mesh): position, normal, colour, bone bytes, weight bytes, uv, face row.
+constexpr size_t VERTEX_BYTES = 6 * sizeof(float) + sizeof(uint32_t) + 2 * CHANNELS + 2 * sizeof(float) + sizeof(uint32_t);
 constexpr float SRGB_GAMMA = 2.2f;
 constexpr float BYTE_STEPS = 256.f, FIXED_MOST = 65535.f, PALETTE_SPAN = 3.f; // cook_people.py fixed_point, PALETTE_SPAN
 constexpr int TEXELS_PER_VALUE = 2; // the palette comes as it is drawn (cook_people.py fixed_point, decoded in people.gdshader)
@@ -41,13 +43,16 @@ struct LodSize {
 
 float linear(uint32_t c, int shift) { return std::pow(float((c >> shift) & BYTE_MAX) / float(BYTE_MAX), SRGB_GAMMA); }
 
-Ref<ArrayMesh> read_mesh(ByteReader &r, const LodSize &sz) {
+// The level's mesh; `reach`: its farthest vertex from the bind origin.
+Ref<ArrayMesh> read_mesh(ByteReader &r, const LodSize &sz, float &reach) {
 	PackedVector3Array pos, nor;
 	PackedColorArray col;
 	PackedVector2Array uv, uv2;
 	PackedInt32Array bones;
 	PackedFloat32Array weights;
 	PackedInt32Array idx;
+	// every count is claimed against what is left of the file before anything is sized by it (core/bytes.h)
+	if (!r.claim(sz.vertices, VERTEX_BYTES)) return Ref<ArrayMesh>();
 	pos.resize(sz.vertices);
 	nor.resize(sz.vertices);
 	col.resize(sz.vertices);
@@ -66,6 +71,7 @@ Ref<ArrayMesh> read_mesh(ByteReader &r, const LodSize &sz) {
 		for (float &v : t) v = r.get<float>();
 		const uint32_t face = r.get<uint32_t>();
 		pos.set(i, Vector3(p[0], p[1], p[2]));
+		reach = std::max(reach, Vector3(p[0], p[1], p[2]).length());
 		nor.set(i, Vector3(n[0], n[1], n[2]));
 		col.set(i, Color(linear(c, 0), linear(c, BYTE_BITS), linear(c, 2 * BYTE_BITS), 1));
 		// the skin in the engine's own skin attributes (BONE_INDICES / BONE_WEIGHTS in the shader), the weights made to
@@ -80,6 +86,7 @@ Ref<ArrayMesh> read_mesh(ByteReader &r, const LodSize &sz) {
 		uv.set(i, Vector2(t[0], t[1]));
 		uv2.set(i, Vector2(float(look >> REGION_SHIFT) + FACE_ROW_STEP * float(face), float(look & ROUGHNESS_MASK) / float(ROUGHNESS_MASK)));
 	}
+	if (!r.claim(sz.indices, sizeof(uint16_t))) return Ref<ArrayMesh>();
 	idx.resize(sz.indices);
 	for (uint32_t i = 0; i < sz.indices; i++) idx.set(i, int32_t(r.get<uint16_t>()));
 	if (!r.ok) return Ref<ArrayMesh>();
@@ -167,6 +174,7 @@ void PeopleAsset::read_card(ByteReader &r) {
 }
 
 void PeopleAsset::read_ragdoll(ByteReader &r, uint32_t bones) {
+	if (!r.claim(uint64_t(bones) + uint64_t(JOINT_COUNT), 1)) return;
 	bone_part.resize(bones);
 	joint_bone.resize(size_t(JOINT_COUNT));
 	if (!r.ok) return;
@@ -237,15 +245,21 @@ bool PeopleAsset::load(const String &path, const String &atlas_path, PackedStrin
 	}
 	for (uint32_t i = 0; i < count * lod_count && r.ok; i++) {
 		if (sizes[i].vertices > MAX_VERTICES) r.ok = false;
-		else variations[i / lod_count].lods.push_back(read_mesh(r, sizes[i]));
+		else {
+			PersonVariation &pv = variations[i / lod_count];
+			float reach = 0;
+			pv.lods.push_back(read_mesh(r, sizes[i], reach));
+			if (i % lod_count == 0) pv.reach = reach;
+		}
 	}
 	PackedByteArray texels;
-	texels.resize(int64_t(pal_w) * pal_h * RGBA * TEXELS_PER_VALUE);
+	r.claim(uint64_t(pal_w) * pal_h * RGBA * TEXELS_PER_VALUE, 1);
+	if (r.ok) texels.resize(int64_t(pal_w) * pal_h * RGBA * TEXELS_PER_VALUE);
 	if (r.ok) r.get_bytes(texels.ptrw(), size_t(texels.size()));
 	const uint32_t face_lines = r.get<uint32_t>();
 	if (face_lines == 0 || face_lines > MAX_FACE_LINES) r.ok = false;
 	PackedByteArray face_bytes;
-	if (r.ok) {
+	if (r.ok && r.claim(uint64_t(face_lines) * FACE_TEXELS * FACE_TEXEL_BYTES, 1)) {
 		face_bytes.resize(int64_t(face_lines) * FACE_TEXELS * FACE_TEXEL_BYTES);
 		r.get_bytes(face_bytes.ptrw(), size_t(face_bytes.size()));
 	}

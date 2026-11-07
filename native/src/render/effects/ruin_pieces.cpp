@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iterator>
 
 using namespace godot;
 
@@ -164,14 +165,19 @@ void RuinPieces::make_room(int64_t vertices) {
 	}
 }
 
+namespace {
+int rows_of(int pieces) { return (pieces + PIECES_A_ROW - 1) / PIECES_A_ROW; }
+int64_t rows_bytes(int rows) { return int64_t(PIECES_A_ROW) * rows * RuinSim::FLOATS_A_PIECE * int64_t(sizeof(float)); }
+} // namespace
+
 // The mesh on its instance, the pieces as the sim has them.
 void RuinPieces::adopt(Fall &f, const Done &done) {
 	make_room(done.cut->vertices);
 	f.cut = done.cut;
 	f.sim = done.sim;
 	const int n = f.sim->pieces();
-	f.rows_of_pieces = (n + PIECES_A_ROW - 1) / PIECES_A_ROW;
-	f.rows.resize(int64_t(PIECES_A_ROW) * f.rows_of_pieces * RuinSim::FLOATS_A_PIECE * int64_t(sizeof(float)));
+	f.rows_of_pieces = rows_of(n);
+	f.rows.resize(rows_bytes(f.rows_of_pieces));
 	float *out = reinterpret_cast<float *>(f.rows.ptrw());
 	for (int i = 0; i < n; i++) f.sim->write(size_t(i), out + i * RuinSim::FLOATS_A_PIECE);
 	RenderingServer *rs = RenderingServer::get_singleton();
@@ -211,21 +217,36 @@ void RuinPieces::upload(Fall &f) {
 	f.dirty = false;
 }
 
-void RuinPieces::update(float dt, Puffs &puffs) {
+// The cuts the jobs finished, in the order they came: each adopted while the frame's admission has time and takes its texture's bytes;
+// the first it does not waits with all after it for the next frame. What hands the server nothing (a ruin gone since, a design with no
+// walls) never waits.
+void RuinPieces::take_done(FrameAdmission &admission) {
+	const std::shared_ptr<Inbox> inbox = inbox_;
+	std::vector<Done> done;
 	{
-		std::lock_guard<std::mutex> lk(inbox_->mutex);
-		for (const Done &d : inbox_->done) {
-			auto it = falls_.find(d.seed);
-			if (it == falls_.end()) continue;
-			if (d.sim) {
-				adopt(it->second, d);
-				continue;
-			}
+		std::lock_guard<std::mutex> lk(inbox->mutex);
+		done.swap(inbox->done);
+	}
+	size_t next = 0;
+	for (; next < done.size(); next++) {
+		const Done &d = done[next];
+		auto it = falls_.find(d.seed);
+		if (it == falls_.end()) continue;
+		if (!d.sim) {
 			if (!it->second.standing) uncut_.push_back(Uncut{ it->second.ruin, it->second.falling }); // a design of its own stands whole
 			falls_.erase(it);
+			continue;
 		}
-		inbox_->done.clear();
+		if (!admission.due() || !admission.upload.take(rows_bytes(rows_of(d.sim->pieces())))) break;
+		adopt(it->second, d);
 	}
+	if (next == done.size()) return;
+	std::lock_guard<std::mutex> lk(inbox->mutex); // ahead of what came meanwhile
+	inbox->done.insert(inbox->done.begin(), std::make_move_iterator(done.begin() + std::ptrdiff_t(next)), std::make_move_iterator(done.end()));
+}
+
+void RuinPieces::update(float dt, Puffs &puffs, FrameAdmission &admission) {
+	take_done(admission);
 	dust_left_ = DUST_A_FRAME;
 	clock_ = std::min(clock_ + dt, RIGID_STEP_S * float(STEPS_MOST));
 	while (clock_ >= RIGID_STEP_S) {

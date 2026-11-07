@@ -70,20 +70,21 @@ EditResult edit_body(CityState &s, int id, const BodyOp &op) {
 	Building rec = s.buildings.items[id];
 	Body body;
 	record_body(s.buildings.designs, rec, body);
-	const uint32_t before = body_digest(body);
+	ByteWriter before; // the body's canonical bytes (body_codec.h): an edit that leaves them so changed nothing
+	write_body(before, body);
 	r.error = op(body);
 	if (r.error.empty()) r.error = body_problem(s.catalog.tune, body);
 	if (!r.error.empty()) return r;
 	r.ok = true;
-	if (body_digest(body) == before) return r;
+	ByteWriter after;
+	write_body(after, body);
+	if (after.buf == before.buf) return r;
 	int top = 0;
 	for (const Volume &v : body.volumes) top = std::max(top, v.top());
 	rec.floors = uint16_t(top);
 	body.signature = 0; // an edit is the kit's to draw: a design drawn whole knows nothing of a moved wall
 	rec.body = s.buildings.designs.edited->add(std::move(body));
 	j_edit_building(s, id, rec);
-	float reach = std::max(rec.w, rec.d);
-	finish_edit(s, rec.x - reach, rec.z - reach, rec.x + reach, rec.z + reach);
 	return r;
 }
 

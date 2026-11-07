@@ -12,7 +12,7 @@
 namespace city {
 
 namespace {
-constexpr uint32_t MAX_LIST = 1u << 24;
+constexpr uint32_t MAX_LIST = 1u << 24; // the most slots a list of planted trees or clearings may claim
 
 template <typename T>
 void put_slots(ByteWriter &w, const std::vector<T> &list) {
@@ -28,8 +28,9 @@ void put_slots(ByteWriter &w, const std::vector<T> &list) {
 }
 
 template <typename T, typename F>
-bool get_slots(ByteReader &r, F put) {
-	uint32_t size = r.get<uint32_t>(), n = r.get<uint32_t>();
+bool get_slots(ByteReader &r, F put, uint32_t &size) {
+	size = r.get<uint32_t>(); // the slots, dead ones too: nothing of a dead one is written, so only the list bounds it
+	const uint32_t n = r.get_count(sizeof(uint32_t) + sizeof(T)); // each alive one: its id and its record
 	if (!r.ok || size > MAX_LIST || n > size) return false;
 	for (uint32_t k = 0; k < n && r.ok; k++) {
 		uint32_t id = r.get<uint32_t>();
@@ -80,7 +81,7 @@ bool read_nature(ByteReader &r, CityState &s) {
 	r.get_vec(n.fog, size_t(s.catalog.nature.fog.max_dabs));
 	n.nature.region = r.get<int32_t>();
 	n.nature.seed = r.get<uint32_t>();
-	uint32_t tiles = r.get<uint32_t>();
+	const uint32_t tiles = r.get_count(sizeof(int32_t) + sizeof(PaintTile));
 	if (!r.ok || tiles > uint32_t(s.catalog.nature.paint.max_tiles)) return false;
 	auto tile = std::make_unique<PaintTile>();
 	for (uint32_t i = 0; i < tiles && r.ok; i++) {
@@ -88,8 +89,11 @@ bool read_nature(ByteReader &r, CityState &s) {
 		r.get_bytes(tile->data(), sizeof(PaintTile));
 		if (r.ok) n.ground.put_tile(key, tile.get());
 	}
-	if (!get_slots<PlantedTree>(r, [&](int id, const PlantedTree &t) { n.planted.put(id, t); })) return false;
-	if (!get_slots<TreeClearing>(r, [&](int id, const TreeClearing &c) { n.planted.put_clearing(id, c); })) return false;
+	uint32_t tree_slots = 0, clearing_slots = 0;
+	if (!get_slots<PlantedTree>(r, [&](int id, const PlantedTree &t) { n.planted.put(id, t); }, tree_slots)) return false;
+	if (!get_slots<TreeClearing>(r, [&](int id, const TreeClearing &c) { n.planted.put_clearing(id, c); }, clearing_slots))
+		return false;
+	n.planted.keep_slots(int(tree_slots), int(clearing_slots));
 	std::vector<uint32_t> index;
 	std::vector<float> level;
 	r.get_vec(index);

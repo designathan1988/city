@@ -48,8 +48,8 @@ void publish_parked(CityState &s, PoseFrame &f); // the standing cars, made agai
 
 // parking_lanes.cpp
 void seg_point(const CityState &s, int seg, float arc, float u, Pose &out); // the point (arc, u) of a segment, its a -> b heading
-bool gate_lane(const CityState &s, const V2 &gate, LaneSpot &out); // the lane a lot's gate opens onto, on the lot's kerb
-bool walker_within(CityState &s, float x, float z, float r); // somebody on foot within `r` of the point
+// The lane a lot's gate opens onto, on the lot's kerb; `reads` (a yard's) gets the box and segments looked at.
+bool gate_lane(const CityState &s, const V2 &gate, LaneSpot &out, YardReads *reads = nullptr);
 
 // lot_traffic.cpp
 void step_lots(CityState &s, float dt);
@@ -91,6 +91,9 @@ void materialize(CityState &s, int key);
 // junction_control.cpp
 void build_junctions(CityState &s);
 void build_junction(CityState &s, int n); // one node's control and stages (incremental rebuild)
+// signal_timing.cpp: node `n` on LaneGraph::signal_nodes when its junction runs a signal plan, off it otherwise; called after every
+// write of a junction.
+void file_signal(LaneGraph &g, int n);
 void replan_signal(CityState &s, int n); // its signal settings changed: the plan again, the stage running ending as it began
 // The fixed plans of a green wave along the main road through node `n` (green_wave.cpp): empty with under two signals on it.
 std::vector<std::pair<int, SignalSettings>> green_wave_plans(const CityState &s, int n);
@@ -154,9 +157,14 @@ void admit(CityState &s, int node, bool released);
 void reset_admission(CityState &s);
 void step_governor(CityState &s, float dt);
 
+// route_admission.cpp: the tick's route searches. A search that can wait asks first and starts only on true; every search, of
+// either kind, is counted (find_route counts its own).
+bool may_request_search(CityState &s);
+void note_search(CityState &s);
+
 // routing.cpp: directed segments from `from_ds` to `goal_ds` (inclusive), edge times raised by the load (BPR);
-// false when unreachable. `max_expanded` < 0 uses route_max_expanded; `banned_ds` is never entered.
-bool find_route(const CityState &s, int from_ds, int goal_ds, std::vector<int> &out, int max_expanded = -1, int banned_ds = -1, bool by_bike = false);
+// false when unreachable. `max_expanded` < 0 uses route_max_expanded; `banned_ds` is never entered. Counted on the tick's searches.
+bool find_route(CityState &s, int from_ds, int goal_ds, std::vector<int> &out, int max_expanded = -1, int banned_ds = -1, bool by_bike = false);
 float junction_cost(const CityState &s, const Conn &c); // turn + signal time the router adds for a connector
 // The route's next turn is not reachable from this lane: another lane of the segment, else a new route, else false.
 bool retry_route(CityState &s, int id);

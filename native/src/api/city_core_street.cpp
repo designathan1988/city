@@ -196,6 +196,7 @@ Dictionary CityStreet::street_counts() {
 	d["barriers"] = w.barriers.alive;
 	d["cuts"] = w.cuts.alive;
 	d["instances"] = render_->street_instances();
+	d["sign_generation"] = render_->sign_generation(); // a reset of the sign atlas, seen even when the new city has no plates
 	d["sign_cells"] = render_->sign_cells();
 	return d;
 }

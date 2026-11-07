@@ -5,12 +5,21 @@
 #include "core/math.h"
 
 #include <algorithm>
+#include <climits>
 #include <cmath>
+#include <cstring>
 
 namespace city {
 
 namespace {
 const PaintCell EMPTY_CELL{};
+static_assert(sizeof(PaintCell) == 6 + COVER_KINDS, "a cell is its bytes: compared whole");
+bool same(const PaintCell &a, const PaintCell &b) { return std::memcmp(&a, &b, sizeof(PaintCell)) == 0; }
+bool blank(const PaintTile &t) {
+	return std::all_of(t.begin(), t.end(), [](const PaintCell &c) { return same(c, EMPTY_CELL); });
+}
+bool has_biome(const PaintCell &c) { return c.biome != 0 && c.biome_amount != 0; }
+bool has_cover(const PaintCell &c) { return std::any_of(c.cover.begin(), c.cover.end(), [](uint8_t v) { return v != 0; }); }
 constexpr float BYTE_MAX = 255.f;
 constexpr float SWITCH_BELOW = 24.f; // a surface this thin gives way to the one being laid (a tenth of full)
 
@@ -26,7 +35,21 @@ void GroundPaint::init(int samples_per_side, float spacing_m, const PaintDef *de
 	spacing_ = spacing_m;
 	def_ = def;
 	across_ = (n_ + PAINT_TILE - 1) / PAINT_TILE;
+	clear();
+}
+
+void GroundPaint::clear() {
 	tiles_.clear();
+	biome_cells_ = cover_cells_ = 0;
+}
+
+void GroundPaint::count(const PaintCell &c, int sign) {
+	biome_cells_ += has_biome(c) ? sign : 0;
+	cover_cells_ += has_cover(c) ? sign : 0;
+}
+
+void GroundPaint::count(const PaintTile &t, int sign) {
+	for (const PaintCell &c : t) count(c, sign);
 }
 
 const PaintCell &GroundPaint::cell(int ix, int iz) const {
@@ -100,7 +123,8 @@ bool GroundPaint::dab(const PaintDab &d, int rect[4]) {
 	int x0 = clampi(int(std::floor((d.x - d.radius) / spacing_ + n_ * 0.5f)), 0, n_ - 1), x1 = clampi(int(std::ceil((d.x + d.radius) / spacing_ + n_ * 0.5f)), 0, n_ - 1);
 	int z0 = clampi(int(std::floor((d.z - d.radius) / spacing_ + n_ * 0.5f)), 0, n_ - 1), z1 = clampi(int(std::ceil((d.z + d.radius) / spacing_ + n_ * 0.5f)), 0, n_ - 1);
 	float rim = std::max(def_->land_rim, 1.f - d.hardness);
-	bool changed = false;
+	int cx0 = INT_MAX, cz0 = INT_MAX, cx1 = INT_MIN, cz1 = INT_MIN;
+	std::vector<int> wiped; // tiles a cell of which went back to no paint: they go when no paint is left in them
 	for (int iz = z0; iz <= z1; iz++)
 		for (int ix = x0; ix <= x1; ix++) {
 			float wx = (ix - n_ * 0.5f) * spacing_ - d.x, wz = (iz - n_ * 0.5f) * spacing_ - d.z;
@@ -108,12 +132,27 @@ bool GroundPaint::dab(const PaintDab &d, int rect[4]) {
 			if (r >= 1.f) continue;
 			float s = std::min(1.f, (1.f - r) / rim);
 			float w = s * s * (3.f - 2.f * s) * d.strength;
+			const PaintCell &was = cell(ix, iz);
+			PaintCell now = was;
+			paint_cell(now, d, w);
+			if (same(now, was)) continue;
 			PaintCell &c = touch(ix, iz);
-			paint_cell(c, d, w);
-			changed = true;
+			count(c, -1);
+			c = now;
+			count(c, 1);
+			if (same(c, EMPTY_CELL)) wiped.push_back((iz / PAINT_TILE) * across_ + ix / PAINT_TILE);
+			cx0 = std::min(cx0, ix); cx1 = std::max(cx1, ix);
+			cz0 = std::min(cz0, iz); cz1 = std::max(cz1, iz);
 		}
-	rect[0] = x0; rect[1] = z0; rect[2] = x1; rect[3] = z1;
-	return changed;
+	if (cx0 > cx1) return false;
+	std::sort(wiped.begin(), wiped.end());
+	wiped.erase(std::unique(wiped.begin(), wiped.end()), wiped.end());
+	for (int key : wiped) {
+		auto it = tiles_.find(key);
+		if (it != tiles_.end() && blank(*it->second)) tiles_.erase(it);
+	}
+	rect[0] = cx0; rect[1] = cz0; rect[2] = cx1; rect[3] = cz1;
+	return true;
 }
 
 const PaintTile *GroundPaint::tile(int key) const {
@@ -122,13 +161,20 @@ const PaintTile *GroundPaint::tile(int key) const {
 }
 
 void GroundPaint::put_tile(int key, const PaintTile *from) {
-	if (!from) {
-		tiles_.erase(key);
+	auto it = tiles_.find(key);
+	if (it != tiles_.end()) {
+		count(*it->second, -1);
+		if (!from || blank(*from)) {
+			tiles_.erase(it);
+			return;
+		}
+		*it->second = *from;
+		count(*from, 1);
 		return;
 	}
-	std::unique_ptr<PaintTile> &t = tiles_[key];
-	if (!t) t = std::make_unique<PaintTile>();
-	*t = *from;
+	if (!from || blank(*from)) return;
+	tiles_.emplace(key, std::make_unique<PaintTile>(*from));
+	count(*from, 1);
 }
 
 void GroundPaint::tile_rect(int key, int rect[4]) const {

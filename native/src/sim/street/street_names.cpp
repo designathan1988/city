@@ -3,6 +3,7 @@
 
 #include "sim/catalog/catalog.h"
 #include "sim/roads/road_network.h"
+#include "sim/state/change_log.h"
 #include "sim/street/footway.h"
 #include "sim/street/street_spots.h"
 
@@ -45,13 +46,9 @@ std::vector<StreetName> names_for(const RoadNetwork &net, const StreetWorks &wor
 	if (d.names.empty()) return out; // a style without its names
 	std::unordered_set<std::string> used;
 	std::unordered_set<int> named; // segments whose street holds a name, one given before or one given here
-	for (const StreetItem &it : works.items.items) {
-		if (!it.alive || it.kind != ItemKind::STREETNAME) continue;
-		used.insert(it.text);
-		const int seg = name_segment(net, it);
-		if (seg < 0) continue;
-		for (int s : street_chain(net, seg)) named.insert(s);
-	}
+	for (const StreetItem &it : works.items.items)
+		if (it.alive && it.kind == ItemKind::STREETNAME) used.insert(it.text);
+	for (const auto &kv : works.names.by_item) named.insert(kv.second.chain.begin(), kv.second.chain.end());
 	std::sort(segs.begin(), segs.end());
 	for (int id : segs) {
 		const RoadSegment &g = net.segs[size_t(id)];
@@ -68,6 +65,61 @@ std::vector<StreetName> names_for(const RoadNetwork &net, const StreetWorks &wor
 		out.push_back(std::move(name));
 	}
 	return out;
+}
+
+void settle_name_plates(StreetWorks &works, RoadNetwork &net, ChangeLog &log) {
+	NamePlates &np = works.names;
+	std::vector<int> segs, again;
+	std::vector<RoadNetwork::ChangedBox> boxes;
+	net.take_edits(segs, boxes);
+	again.swap(np.dirty);
+	for (int seg : segs) {
+		auto it = np.by_seg.find(seg);
+		if (it != np.by_seg.end()) again.insert(again.end(), it->second.begin(), it->second.end());
+	}
+	const float reach = net.cat->furniture.street_names.reach_m; // name_segment looks this far
+	for (const RoadNetwork::ChangedBox &b : boxes)
+		works.items_in(float(b.minx) - reach, float(b.minz) - reach, float(b.maxx) + reach, float(b.maxz) + reach, [&](int id) {
+			if (works.items.items[size_t(id)].kind == ItemKind::STREETNAME) again.push_back(id);
+		});
+	std::sort(again.begin(), again.end());
+	again.erase(std::unique(again.begin(), again.end()), again.end());
+	for (int id : again) {
+		auto old = np.by_item.find(id);
+		if (old != np.by_item.end()) {
+			for (int64_t k : old->second.chunks) {
+				log.prop_chunks.push_back(k);
+				std::vector<int> &v = np.by_chunk[k];
+				v.erase(std::remove(v.begin(), v.end(), id), v.end());
+				if (v.empty()) np.by_chunk.erase(k);
+			}
+			for (int s : old->second.chain) {
+				std::vector<int> &v = np.by_seg[s];
+				v.erase(std::remove(v.begin(), v.end(), id), v.end());
+				if (v.empty()) np.by_seg.erase(s);
+			}
+			np.by_item.erase(old);
+		}
+		if (id < 0 || id >= int(works.items.items.size())) continue;
+		const StreetItem &it = works.items.items[size_t(id)];
+		if (!it.alive || it.kind != ItemKind::STREETNAME) continue;
+		NamePlates::Entry e;
+		e.seg = name_segment(net, it);
+		if (e.seg < 0) continue;
+		e.chain = street_chain(net, e.seg);
+		name_plates(net, it, e.chain, e.plates);
+		for (const SignStand &p : e.plates) e.chunks.push_back(chunk_of(p.x, p.z));
+		ChangeLog::dedup(e.chunks);
+		for (int64_t k : e.chunks) {
+			log.prop_chunks.push_back(k);
+			std::vector<int> &v = np.by_chunk[k];
+			v.insert(std::upper_bound(v.begin(), v.end(), id), id);
+		}
+		std::vector<int> held = e.chain;
+		ChangeLog::dedup(held);
+		for (int s : held) np.by_seg[s].push_back(id);
+		np.by_item.emplace(id, std::move(e));
+	}
 }
 
 } // namespace city

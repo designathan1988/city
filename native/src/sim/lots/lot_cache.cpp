@@ -20,13 +20,10 @@ namespace {
 constexpr uint32_t PLAYER_LOT_SALT = 0x10755eedu;
 
 // The lots the streets propose give way to those the player drew, and a zoned one of the player's whose middle is in the cell joins them.
-std::vector<Lot> with_player_lots(const CityState &s, std::vector<Lot> lots, int64_t key) {
-	if (s.lot_book.empty()) return lots;
-	lots.erase(std::remove_if(lots.begin(), lots.end(), [&](const Lot &l) { return s.lot_book.at(l.x, l.z) != 0; }), lots.end());
-	for (const PlayerLot &p : s.lot_book.lots) {
-		if (p.zone == 0) continue;
-		const LotStand st = lot_stand(p.corners);
-		if (chunk_of(float(st.x), float(st.z)) != key) continue;
+std::vector<Lot> with_player_lots(std::vector<Lot> lots, int64_t key, const LotIndex &players) {
+	if (players.empty()) return lots;
+	lots.erase(std::remove_if(lots.begin(), lots.end(), [&](const Lot &l) { return players.at(l.x, l.z) != 0; }), lots.end());
+	players.zoned_in(key, [&](const PlayerLot &p, const LotStand &st) {
 		Lot l;
 		l.x = st.x;
 		l.z = st.z;
@@ -36,7 +33,7 @@ std::vector<Lot> with_player_lots(const CityState &s, std::vector<Lot> lots, int
 		l.zone = p.zone;
 		l.seed = uint32_t(p.id) * PLAYER_LOT_SALT;
 		lots.push_back(l);
-	}
+	});
 	return lots;
 }
 } // namespace
@@ -74,7 +71,11 @@ static std::vector<Lot> lots_of_cell(const CityState &s, int64_t key, int every_
 	return build_lots(g, s.catalog.profiles, ground, x0, z0);
 }
 
-std::vector<Lot> LotCache::compute(const CityState &s, int64_t key) { return with_player_lots(s, lots_of_cell(s, key, 0), key); }
+std::vector<Lot> LotCache::compute(const CityState &s, int64_t key) { return compute(s, key, LotIndex(s.lot_book)); }
+
+std::vector<Lot> LotCache::compute(const CityState &s, int64_t key, const LotIndex &players) {
+	return with_player_lots(lots_of_cell(s, key, 0), key, players);
+}
 
 std::vector<Lot> LotCache::proposal(const CityState &s, int64_t key) { return lots_of_cell(s, key, ZONE_RES_LOW); }
 
@@ -84,12 +85,13 @@ void LotCache::process_dirty(CityState &s) {
 	ChangeLog::dedup(cells);
 	if (cells.empty()) return;
 	std::vector<std::vector<Lot>> results(cells.size());
+	const LotIndex players(s.lot_book); // read by every cell: each lot's stand worked out once
 	if (cells.size() < LOT_SERIAL_MAX) {
-		for (size_t i = 0; i < cells.size(); i++) results[i] = compute(s, cells[i]);
+		for (size_t i = 0; i < cells.size(); i++) results[i] = compute(s, cells[i], players);
 	} else if (s.jobs) {
-		s.jobs->parallel_for(cells.size(), [&](size_t i) { results[i] = compute(s, cells[i]); });
+		s.jobs->parallel_for(cells.size(), [&](size_t i) { results[i] = compute(s, cells[i], players); });
 	} else {
-		for (size_t i = 0; i < cells.size(); i++) results[i] = compute(s, cells[i]);
+		for (size_t i = 0; i < cells.size(); i++) results[i] = compute(s, cells[i], players);
 	}
 	for (size_t i = 0; i < cells.size(); i++) {
 		if (results[i].empty()) by_cell.erase(cells[i]);

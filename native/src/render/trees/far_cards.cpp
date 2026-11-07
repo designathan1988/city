@@ -22,6 +22,11 @@ constexpr float TINT_SHARE = 0.5f; // a vertex colour stops at 1 and the tint go
 constexpr int CARD_TRIS[CARD_INDICES] = { 0, 1, 2, 0, 2, 3 };
 } // namespace
 
+int64_t far_cards_bytes(size_t cards) {
+	const int64_t n = int64_t(cards);
+	return n * CORNERS * int64_t(sizeof(Vector3) + sizeof(Color) + CUSTOM_HALFS * sizeof(uint16_t)) + n * CARD_INDICES * int64_t(sizeof(int32_t));
+}
+
 OwnedMesh bake_far_cards(const std::vector<FarCard> &cards, float centre, float half_tall) {
 	OwnedMesh m;
 	if (cards.empty()) return m;

@@ -2,6 +2,8 @@
 // reported and loading fails, so no default value can silently replace the data.
 #include "api/catalog_loader.h"
 
+#include "sim/demolition/blast_model.h"
+
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/variant.hpp>
 
@@ -69,6 +71,8 @@ bool load_blast_params(const Dictionary &t, BlastParams &p, PackedStringArray &e
 	p.ear_threshold_kpa = number(ear, "eardrum", "threshold_kpa", errors);
 	p.ear_half_kpa = number(ear, "eardrum", "half_kpa", errors);
 	p.ear_threshold_prob = number(ear, "eardrum", "threshold_probability", errors);
+	p.lethal_sigma = blast::probit_sigma(p.lethal_threshold_kpa, p.lethal_half_kpa, p.lethal_threshold_prob);
+	p.ear_sigma = blast::probit_sigma(p.ear_threshold_kpa, p.ear_half_kpa, p.ear_threshold_prob);
 	Dictionary noise = group(t, "noise", errors);
 	p.startle_pa = number(noise, "noise", "startle_pa", errors);
 	p.reference_pa = number(noise, "noise", "reference_pa", errors);

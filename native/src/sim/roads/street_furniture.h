@@ -51,6 +51,8 @@ bool open_stretch(const RoadNetwork &net, const RoadSegment &g, float &from, flo
 // The side has a sidewalk; the u `from_kerb` metres in from its kerb.
 bool sidewalk_on(const Profile &p, int side);
 float sidewalk_u(const Profile &p, int side, float from_kerb);
+// How far in from the kerb's face the middle of a kerbside piece of kind `k` stands: its face kerb_clear_m from the kerb.
+float kerbside_reach(const RoadNetwork &net, FurnitureKind k);
 // How far from the kerb a plate's post stands on segment `seg`: the plate clears the road by more in a curve.
 float plate_kerb(const RoadNetwork &net, int seg);
 // Where a piece of kind `k` stands on `side`, its face kerb_clear_m from the kerb; false when it would leave no free width.

@@ -43,9 +43,13 @@ double road_value(const CityState &s, int profile, double len);
 RoadCharge charge_for(double before, double after, double balance, double refund_share);
 // The rule for a change of value in this city, whose unlimited money pays anything.
 RoadCharge charge_of(const CityState &s, double value_change);
-// What the command in progress added to the value of the roads, read from its journal entry.
-double edit_value_change(const CityState &s);
+// What the ops recorded in the open entry from index `from` on added to the value of the roads.
+double edit_value_change(const CityState &s, size_t from);
 // Charges the command in progress. False when it cannot be paid: `r` says why and the caller rolls the journal back.
 bool settle_road_edit(CityState &s, EditResult &r);
+// Charges what was recorded from op `from` on: one road of a command that lays several, each paid for on its own against
+// the map as it stood before it (Roadcraft editor/blocks.ts commitBlockGrid lays each line by commitRoadPath, whose
+// layCopy settles that line alone: settleRoadEdit(roadsBefore(doc), work)).
+bool settle_road_edit(CityState &s, EditResult &r, size_t from);
 
 } // namespace city

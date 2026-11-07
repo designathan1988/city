@@ -79,8 +79,7 @@ Ruin standing_ruin(const Building &b) {
 
 std::vector<Scar> scars_of(const CityState &s, const Building &b) {
 	std::vector<Scar> out;
-	for (const Scar &c : s.damage.scars)
-		if (c.seed == b.seed && c.bx == b.x && c.bz == b.z) out.push_back(c);
+	s.damage.each_scar_of(b.seed, b.x, b.z, [&](const Scar &c) { out.push_back(c); });
 	return out;
 }
 } // namespace
@@ -104,7 +103,7 @@ void EffectWorld::rebuild_ruins(const CityState &s) {
 		});
 	std::map<uint32_t, size_t> counts;
 	for (const auto &[seed, scars] : standing) counts[seed] = scars.size();
-	ruins_.keep_only(s.damage.ruins, counts);
+	ruins_.keep_only(s.damage.ruins.items(), counts);
 	for (const auto &[seed, scars] : standing) ruins_.scar(s, whole[seed], scars, false);
 	for (const Ruin &r : s.damage.ruins) {
 		ground_here_ = s.terrain.height_at(r.x, r.z);

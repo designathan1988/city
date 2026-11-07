@@ -13,9 +13,6 @@ using namespace godot;
 
 namespace city {
 
-namespace {
-} // namespace
-
 bool RoadRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	scenario_ = ctx.scenario;
 	material_ = ctx.material("road", errors);
@@ -44,12 +41,18 @@ void RoadRenderer::build_cpu(const CityState &s, int64_t key, MeshBuilder &mb) c
 	emit_chunk(RoadEmit{ s, look_, mb }, key);
 }
 
+// A chunk draws every segment whose middle it holds, whole: its box is the chunk's column grown to what the job emitted
+// (asked only for a chunk that emitted something).
+AABB chunk_bounds(int64_t key, float size, const AABB &emitted) {
+	const AABB column(Vector3(float(key_x(key)) * size, AABB_MIN_Y, float(key_y(key)) * size), Vector3(size, AABB_H, size));
+	return column.merge(emitted);
+}
+
 void RoadChunks::commit_one(BuiltMesh &b) {
-	float x0 = key_x(b.key) * CHUNK, z0 = key_y(b.key) * CHUNK;
 	Chunk &c = chunks_[b.key];
 	const bool any = b.mesh.valid();
 	c.surface.adopt(scenario_, material_, casts_, b.mesh.release(), LAYER_ROADS);
-	if (any) RenderingServer::get_singleton()->instance_set_custom_aabb(c.surface.inst, AABB(Vector3(x0, AABB_MIN_Y, z0), Vector3(CHUNK, AABB_H, CHUNK)));
+	if (any) RenderingServer::get_singleton()->instance_set_custom_aabb(c.surface.inst, chunk_bounds(b.key, CHUNK, b.bounds));
 	c.surface.visible(any && drawn_);
 	c.made = b.count;
 	revision_++;

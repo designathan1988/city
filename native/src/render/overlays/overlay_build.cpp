@@ -45,6 +45,16 @@ std::vector<LotPoint> clipped(const std::vector<LotPoint> &q, bool on_x, double 
 // relief and each chunk draws its own part of the lot.
 void OverlayRenderer::lot_cover(Ribbon &out, const CityState &s, const PlayerLot &lot, int64_t key) const {
 	const double cx = double(key_x(key)) * CHUNK, cz = double(key_y(key)) * CHUNK;
+	// A lot all of whose corners lie on or past one side of the chunk lays no cell in it (each triangle's cells clamp to none):
+	// it is left before it is cut into triangles.
+	double lx0 = cx + CHUNK, lz0 = cz + CHUNK, lx1 = cx, lz1 = cz;
+	for (const LotPoint &p : lot.corners) {
+		lx0 = std::min(lx0, p.x);
+		lz0 = std::min(lz0, p.z);
+		lx1 = std::max(lx1, p.x);
+		lz1 = std::max(lz1, p.z);
+	}
+	if (lx1 <= cx || lz1 <= cz || lx0 >= cx + CHUNK || lz0 >= cz + CHUNK) return;
 	const Color col = zone_color(s, lot.zone, zone_alpha_);
 	const std::vector<int> tris = lot_triangles(lot.corners);
 	for (size_t t = 0; t + 2 < tris.size(); t += 3) {
@@ -120,20 +130,29 @@ OverlayRenderer::Ribbon OverlayRenderer::build_zone_cpu(const CityState &s, int6
 	return r;
 }
 
-OverlayRenderer::Ribbon OverlayRenderer::build_congestion_cpu(const CityState &s, const PoseFrame &f, int64_t key) const {
+Color OverlayRenderer::congestion_colour(const PoseFrame &f, int sg) const {
+	float share = size_t(sg) < f.seg_speed_share.size() ? f.seg_speed_share[size_t(sg)] : 1.f;
+	float k = std::clamp((share - jam_share_) / std::max(COLOUR_RANGE_MIN, free_share_ - jam_share_), 0.f, 1.f);
+	Color col = k > HALF_JAM ? jam_colors_[1].lerp(jam_colors_[0], (k - HALF_JAM) * 2) : jam_colors_[2].lerp(jam_colors_[1], k * 2);
+	col.a = congestion_alpha_;
+	return col;
+}
+
+// The chunk's carriageways laid as ribbons (what update_congestion colours): each one's vertices and how many.
+OverlayRenderer::Lanes OverlayRenderer::lay_congestion(const CityState &s, int64_t key) const {
+	Lanes l;
 	Ribbon r;
 	each_owned_segment(s, key, [&](int sg) {
 		const RoadSegment &g = s.roads.segs[size_t(sg)];
 		if (!g.alive) return;
 		const Profile &p = s.roads.profile_of(sg);
 		if (p.rail) return;
-		float share = size_t(sg) < f.seg_speed_share.size() ? f.seg_speed_share[size_t(sg)] : 1.f;
-		float k = std::clamp((share - jam_share_) / std::max(COLOUR_RANGE_MIN, free_share_ - jam_share_), 0.f, 1.f);
-		Color col = k > HALF_JAM ? jam_colors_[1].lerp(jam_colors_[0], (k - HALF_JAM) * 2) : jam_colors_[2].lerp(jam_colors_[1], k * 2);
-		col.a = congestion_alpha_;
-		strip(r, s, sg, -p.asph_right, p.asph_left, col, true);
+		const int64_t before = r.v.size();
+		strip(r, s, sg, -p.asph_right, p.asph_left, Color(), true);
+		l.strips.push_back({ sg, int(r.v.size() - before) });
 	});
-	return r;
+	l.v = r.v;
+	return l;
 }
 
 } // namespace city

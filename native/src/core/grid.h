@@ -4,6 +4,7 @@
 
 #include "core/math.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <unordered_map>
 #include <vector>
@@ -32,19 +33,25 @@ void for_chunks(double minx, double minz, double maxx, double maxz, F &&fn) {
 }
 
 struct SpatialHash {
+	// An id filed in a cell, with the first cell of the box it was filed under (query_unique reports it there only).
+	struct Entry {
+		int id;
+		int x0, y0;
+	};
 	float cell = 64.f;
-	std::unordered_map<int64_t, std::vector<int>> cells;
+	std::unordered_map<int64_t, std::vector<Entry>> cells;
 
 	void clear() { cells.clear(); }
 	void insert_aabb(int id, float minx, float miny, float maxx, float maxy) {
-		for_cells(minx, miny, maxx, maxy, [&](int64_t k) { cells[k].push_back(id); });
+		const Entry e{ id, cell_of(minx), cell_of(miny) };
+		for_cells(minx, miny, maxx, maxy, [&](int64_t k) { cells[k].push_back(e); });
 	}
 	void remove_aabb(int id, float minx, float miny, float maxx, float maxy) {
 		for_cells(minx, miny, maxx, maxy, [&](int64_t k) {
 			auto it = cells.find(k);
 			if (it == cells.end()) return;
 			auto &v = it->second;
-			v.erase(std::remove(v.begin(), v.end(), id), v.end());
+			v.erase(std::remove_if(v.begin(), v.end(), [id](const Entry &e) { return e.id == id; }), v.end());
 			if (v.empty()) cells.erase(it);
 		});
 	}
@@ -54,15 +61,30 @@ struct SpatialHash {
 		for_cells(minx, miny, maxx, maxy, [&](int64_t k) {
 			auto it = cells.find(k);
 			if (it == cells.end()) return;
-			for (int id : it->second) fn(id);
+			for (const Entry &e : it->second) fn(e.id);
+		});
+	}
+	// Calls fn(id) once for every id in touched cells, in the order of its first report by query(): the cells are walked
+	// row by row, so the first touched cell of an id is the one at the larger of the query's first cell and the id's own,
+	// on each axis, and the id is reported there only.
+	template <typename F>
+	void query_unique(float minx, float miny, float maxx, float maxy, F &&fn) const {
+		const int qx0 = cell_of(minx), qy0 = cell_of(miny);
+		for_cells(minx, miny, maxx, maxy, [&](int64_t k) {
+			auto it = cells.find(k);
+			if (it == cells.end()) return;
+			const int x = key_x(k), y = key_y(k);
+			for (const Entry &e : it->second)
+				if (x == std::max(qx0, e.x0) && y == std::max(qy0, e.y0)) fn(e.id);
 		});
 	}
 
 private:
+	int cell_of(float v) const { return int(std::floor(v / cell)); }
 	template <typename F>
 	void for_cells(float minx, float miny, float maxx, float maxy, F &&fn) const {
-		int x0 = int(std::floor(minx / cell)), x1 = int(std::floor(maxx / cell));
-		int y0 = int(std::floor(miny / cell)), y1 = int(std::floor(maxy / cell));
+		int x0 = cell_of(minx), x1 = cell_of(maxx);
+		int y0 = cell_of(miny), y1 = cell_of(maxy);
 		for (int y = y0; y <= y1; y++)
 			for (int x = x0; x <= x1; x++) fn(cell_key(x, y));
 	}

@@ -5,6 +5,7 @@
 
 #include "render/effects/puffs.h"
 #include "render/effects/ruin_sim.h"
+#include "render/frame_admission.h"
 #include "sim/state/city_state.h"
 
 #include <godot_cpp/classes/shader_material.hpp>
@@ -39,7 +40,9 @@ public:
 	const std::unordered_set<uint32_t> &broken() const { return broken_; } // standing, drawn here and no longer by the buildings
 	std::vector<int64_t> take_repaint(); // the chunks whose buildings changed hands
 	bool holds(uint32_t seed) const { return falls_.count(seed) > 0; }
-	void update(float dt, Puffs &puffs);
+	// One frame: the finished cuts adopted while the frame's admission does (its deadline and byte ledger; the rest wait, in the order
+	// they came), then the pieces stepped.
+	void update(float dt, Puffs &puffs, FrameAdmission &admission);
 	std::vector<Uncut> take_uncut();
 	bool moving() const;
 	int pieces() const;
@@ -72,6 +75,7 @@ private:
 	};
 	void start(const CityState &s, Fall &f, float heap); // its pieces cut in a job
 	bool room();
+	void take_done(FrameAdmission &admission);
 	void adopt(Fall &f, const Done &done);
 	void make_room(int64_t vertices);
 	void dust(const std::vector<RuinSim::Note> &notes, Puffs &puffs);

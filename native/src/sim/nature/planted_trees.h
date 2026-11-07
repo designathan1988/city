@@ -4,6 +4,7 @@
 #pragma once
 
 #include "core/grid.h"
+#include "core/slot_ids.h"
 #include "sim/catalog/nature_types.h"
 
 #include <cstdint>
@@ -43,6 +44,8 @@ public:
 	int add_clearing(const TreeClearing &c);
 	void put_clearing(int id, const TreeClearing &c);
 	void remove_clearing(int id);
+	// Load: the saved slot counts, so slots past the last live one stay free slots as they were before the save.
+	void keep_slots(int tree_slots, int clearing_slots);
 	// Calls fn(id) for the trees whose foot is in the box.
 	template <typename F>
 	void for_trees(float minx, float minz, float maxx, float maxz, F fn) const {
@@ -58,7 +61,7 @@ public:
 
 private:
 	SpatialHash hash_, clear_hash_;
-	std::vector<int> free_trees_, free_clearings_;
+	SlotIds free_trees_, free_clearings_;
 	int live_trees_ = 0, live_clearings_ = 0;
 };
 

@@ -3,8 +3,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <functional>
 #include <limits>
-#include <queue>
 
 namespace city {
 
@@ -152,39 +152,65 @@ RailGraph rail_graph(const TransitData &t, TransitMode mode, float join) {
 	return g;
 }
 
-std::vector<V2> rail_path(const RailGraph &g, const V2 &from, const V2 &to) {
+// Dijkstra from the two ends of the stretch `from` lies on, over until both ends of the stretch `to` lies on are taken off the queue:
+// a point taken off it has its distance and the point before it for good (no later one is nearer, the stretches have no negative
+// length), and so has every point back along its way. The queue pops as std::priority_queue over std::greater does.
+std::vector<V2> rail_path(const RailGraph &g, const V2 &from, const V2 &to, RailSearch &search) {
 	const OnStretch s = on_graph(g, from), e = on_graph(g, to);
 	if (s.edge < 0 || e.edge < 0) return {};
 	if (s.edge == e.edge) return { s.at, e.at };
 	const size_t n = g.points.size();
-	std::vector<float> dist(n, NO_DISTANCE);
-	std::vector<int> prev(n, -1);
+	if (search.stamp.size() < n) {
+		search.dist.resize(n);
+		search.prev.resize(n);
+		search.stamp.resize(n, 0);
+	}
+	if (++search.cur == 0) {
+		std::fill(search.stamp.begin(), search.stamp.end(), 0);
+		search.cur = 1;
+	}
+	const auto dist = [&](int k) { return search.stamp[size_t(k)] == search.cur ? search.dist[size_t(k)] : NO_DISTANCE; };
+	const auto prev = [&](int k) { return search.stamp[size_t(k)] == search.cur ? search.prev[size_t(k)] : -1; };
+	const auto set = [&](int k, float d, int p) {
+		search.stamp[size_t(k)] = search.cur;
+		search.dist[size_t(k)] = d;
+		search.prev[size_t(k)] = p;
+	};
 	using Item = std::pair<float, int>;
-	std::priority_queue<Item, std::vector<Item>, std::greater<Item>> open;
+	std::vector<Item> &open = search.open;
+	open.clear();
+	const auto push = [&](float d, int k) {
+		open.push_back({ d, k });
+		std::push_heap(open.begin(), open.end(), std::greater<Item>());
+	};
 	const RailGraph::Edge &se = g.edges[size_t(s.edge)], &te = g.edges[size_t(e.edge)];
-	dist[size_t(se.a)] = se.length * s.share;
-	dist[size_t(se.b)] = se.length * (1 - s.share);
-	open.push({ dist[size_t(se.a)], se.a });
-	open.push({ dist[size_t(se.b)], se.b });
+	set(se.a, se.length * s.share, -1);
+	set(se.b, se.length * (1 - s.share), -1);
+	push(dist(se.a), se.a);
+	push(dist(se.b), se.b);
+	bool took_a = false, took_b = false;
 	while (!open.empty()) {
-		const auto [d, k] = open.top();
-		open.pop();
-		if (d > dist[size_t(k)]) continue;
+		std::pop_heap(open.begin(), open.end(), std::greater<Item>());
+		const auto [d, k] = open.back();
+		open.pop_back();
+		if (d > dist(k)) continue;
+		took_a = took_a || k == te.a;
+		took_b = took_b || k == te.b;
+		if (took_a && took_b) break;
 		for (int ei : g.at[size_t(k)]) {
 			const RailGraph::Edge &edge = g.edges[size_t(ei)];
 			const int o = edge.a == k ? edge.b : edge.a;
-			if (d + edge.length < dist[size_t(o)]) {
-				dist[size_t(o)] = d + edge.length;
-				prev[size_t(o)] = k;
-				open.push({ dist[size_t(o)], o });
+			if (d + edge.length < dist(o)) {
+				set(o, d + edge.length, k);
+				push(dist(o), o);
 			}
 		}
 	}
-	const float via_a = dist[size_t(te.a)] == NO_DISTANCE ? NO_DISTANCE : dist[size_t(te.a)] + te.length * e.share;
-	const float via_b = dist[size_t(te.b)] == NO_DISTANCE ? NO_DISTANCE : dist[size_t(te.b)] + te.length * (1 - e.share);
+	const float via_a = dist(te.a) == NO_DISTANCE ? NO_DISTANCE : dist(te.a) + te.length * e.share;
+	const float via_b = dist(te.b) == NO_DISTANCE ? NO_DISTANCE : dist(te.b) + te.length * (1 - e.share);
 	if (via_a == NO_DISTANCE && via_b == NO_DISTANCE) return {};
 	std::vector<V2> chain;
-	for (int k = via_a <= via_b ? te.a : te.b; k >= 0; k = prev[size_t(k)]) chain.push_back(g.points[size_t(k)]);
+	for (int k = via_a <= via_b ? te.a : te.b; k >= 0; k = prev(k)) chain.push_back(g.points[size_t(k)]);
 	std::reverse(chain.begin(), chain.end());
 	chain.insert(chain.begin(), s.at);
 	chain.push_back(e.at);

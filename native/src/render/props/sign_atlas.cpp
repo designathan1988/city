@@ -28,6 +28,7 @@ void SignAtlas::reset() {
 	pending_.clear();
 	shelf_[0] = shelf_[1] = Shelf();
 	layer_ = top_ = used_ = 0;
+	generation_++;
 }
 
 // The next place of its height: on the shelf open for it, a new shelf under the others, or the first of the next layer.
@@ -73,6 +74,7 @@ Array SignAtlas::take_pending() {
 		one.push_back(String::utf8(p.text.c_str()));
 		one.push_back(p.rect);
 		one.push_back(p.layer);
+		one.push_back(generation_);
 		out.push_back(one);
 	}
 	pending_.clear();

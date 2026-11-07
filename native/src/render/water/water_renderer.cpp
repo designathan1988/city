@@ -3,6 +3,7 @@
 
 #include "core/grid.h"
 #include "render/mesh_builder.h"
+#include "sim/state/city_state.h"
 #include "sim/terrain/terrain_gen.h"
 
 #include <godot_cpp/classes/rendering_server.hpp>
@@ -15,7 +16,6 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr int WATER_CHUNKS_A_FRAME = 4;
 constexpr float SHIFT_HALF = 0.5f;
 
 // The level at a corner: the highest water of the four samples round it.
@@ -46,15 +46,31 @@ void WaterRenderer::reset() {
 	}
 	chunks_.clear();
 	dirty_.clear();
+	clear_queue();
 }
 
-void WaterRenderer::mark_all(const Heightfield &hf) {
-	float h = hf.half_size();
-	for_chunks(-h, -h, h, h, [&](int64_t k) { dirty_.push_back(k); });
+// A cell draws when one of its four samples holds water (cell_level): a sample is under the cells either side of it on each axis,
+// and those cells' chunks are the ones asked. A map with no chunk drawn yet (reset) needs no other.
+void WaterRenderer::mark_wet(const Heightfield &hf) {
+	const float step = hf.water_spacing_m, shift = hf.water_n * SHIFT_HALF;
+	const int n = hf.water_n;
+	// the first cell of chunk column (or row) k, as build() cuts them
+	auto first_cell = [&](int k) { return clampi(int(std::floor(k * CHUNK / step + shift)), 0, n); };
+	auto chunk_of_cell = [&](int g) {
+		const int guess = int(std::floor((float(g) - shift) * step / CHUNK));
+		for (int k = guess - 1; k <= guess + 1; k++)
+			if (first_cell(k) <= g && g < first_cell(k + 1)) return k;
+		return guess;
+	};
+	for (int sz = 0; sz < n; sz++)
+		for (int sx = 0; sx < n; sx++) {
+			if (hf.water[size_t(sz) * n + sx] == TerrainGen::NO_WATER) continue;
+			for (int gz = std::max(0, sz - 1); gz <= std::min(n - 1, sz); gz++)
+				for (int gx = std::max(0, sx - 1); gx <= std::min(n - 1, sx); gx++) dirty_.insert(cell_key(chunk_of_cell(gx), chunk_of_cell(gz)));
+		}
 }
 
-void WaterRenderer::build(const Heightfield &hf, int64_t key) {
-	MeshBuilder mb;
+void WaterRenderer::build(const Heightfield &hf, int64_t key, MeshBuilder &mb) {
 	const float step = hf.water_spacing_m, shift = hf.water_n * SHIFT_HALF;
 	int x0 = clampi(int(std::floor(key_x(key) * CHUNK / step + shift)), 0, hf.water_n), x1 = clampi(int(std::floor((key_x(key) + 1) * CHUNK / step + shift)), 0, hf.water_n);
 	int z0 = clampi(int(std::floor(key_y(key) * CHUNK / step + shift)), 0, hf.water_n), z1 = clampi(int(std::floor((key_y(key) + 1) * CHUNK / step + shift)), 0, hf.water_n);
@@ -72,18 +88,24 @@ void WaterRenderer::build(const Heightfield &hf, int64_t key) {
 			mb.quad(Vector3(ax, level(gx, gz), az), Vector3(ax + step, level(gx + 1, gz), az), Vector3(ax + step, level(gx + 1, gz + 1), az + step),
 					Vector3(ax, level(gx, gz + 1), az + step), white, up);
 		}
-	Draw &d = chunks_[key];
-	OwnedMesh next = mb.empty() ? OwnedMesh() : mb.bake();
-	swap_base(d.inst, d.mesh, next.release(), scenario_, material_, false, LAYER_WATER);
 }
 
-void WaterRenderer::sync(const Heightfield &hf) {
-	if (dirty_.empty() || hf.water.empty()) return;
-	std::sort(dirty_.begin(), dirty_.end());
-	dirty_.erase(std::unique(dirty_.begin(), dirty_.end()), dirty_.end());
-	for (int n = 0; n < WATER_CHUNKS_A_FRAME && !dirty_.empty(); n++) {
-		build(hf, dirty_.back());
-		dirty_.pop_back();
+void WaterRenderer::commit_one(BuiltMesh &b) {
+	Draw &d = chunks_[b.key];
+	swap_base(d.inst, d.mesh, b.mesh.release(), scenario_, material_, false, LAYER_WATER);
+}
+
+void WaterRenderer::offer(const CityState &s, const Vector3 &cam, std::vector<FrameAdmission::Unit> &out) {
+	if (dirty_.empty() || s.terrain.water.empty() || !s.jobs) return;
+	JobPool &pool = *s.jobs;
+	for (int64_t key : dirty_) {
+		if (busy(key)) continue; // its result lands first; the chunk stays marked and is asked again then
+		const float dx = (float(key_x(key)) + SHIFT_HALF) * CHUNK - cam.x, dz = (float(key_y(key)) + SHIFT_HALF) * CHUNK - cam.z;
+		const float d = std::sqrt(dx * dx + dz * dz);
+		out.push_back(FrameAdmission::Unit{ chunks_.count(key) ? 1 : 0, d, 1, [this, &s, &pool, key, d]() {
+					   dirty_.erase(key);
+					   submit_job(s, pool, JobKey{ JobLane::WATER, key }, key, d, [&s, key](MeshBuilder &mb) { build(s.terrain, key, mb); });
+				   } });
 	}
 }
 

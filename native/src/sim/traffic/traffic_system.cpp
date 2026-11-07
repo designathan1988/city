@@ -66,6 +66,7 @@ void reset_traffic(CityState &s) {
 	build_lane_graph(s);
 	reset_pedestrians(s);
 	t.lane_vehicles.assign(t.g.ds.size() * MAX_LANES, {});
+	t.lane_sorted.assign(t.g.ds.size() * MAX_LANES, 1);
 	t.lane_active.assign(t.g.ds.size() * MAX_LANES, 0);
 	t.conn_vehicles.assign(t.g.conns.size(), {});
 	t.conn_active.assign(t.g.conns.size(), 0);
@@ -98,6 +99,32 @@ void publish_signals(CityState &s, float cx, float cz, float radius, std::vector
 	});
 	std::sort(out.begin(), out.end(), [](const SignalRecord &a, const SignalRecord &b) { return a.ds < b.ds; });
 }
+
+// Each segment's mean speed over its limit into the frame (1 where nobody drives): the segments this pass counted written, those the
+// frame showed the last time it was filled back to 1 (TrafficState::share_frames), the whole frame on one it has no record of; the
+// pass's sums go back to zero.
+void speed_shares(TrafficState &t, PoseFrame &f, size_t segs) {
+	TrafficState::ShareFrame *mine = nullptr, *spare = nullptr;
+	for (TrafficState::ShareFrame &k : t.share_frames) {
+		if (k.frame == &f) mine = &k;
+		if (!k.frame && !spare) spare = &k;
+	}
+	if (!mine || f.seg_speed_share.size() != segs) {
+		f.seg_speed_share.assign(segs, 1.f);
+		if (!mine) mine = spare;
+	} else {
+		for (int seg : mine->segs) f.seg_speed_share[size_t(seg)] = 1.f;
+	}
+	for (int seg : t.pub_segs) {
+		if (t.pub_lim[size_t(seg)] > 0) f.seg_speed_share[size_t(seg)] = t.pub_sum[size_t(seg)] / t.pub_lim[size_t(seg)];
+		t.pub_sum[size_t(seg)] = t.pub_lim[size_t(seg)] = 0.f;
+		t.pub_count[size_t(seg)] = 0;
+	}
+	if (mine) {
+		mine->frame = &f;
+		mine->segs.assign(t.pub_segs.begin(), t.pub_segs.end());
+	}
+}
 } // namespace
 
 void publish_poses(CityState &s, int64_t stamp_ns) {
@@ -112,14 +139,21 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 	PoseFrame &f = s.poses.back();
 	f.vehicles.clear();
 	f.people.clear();
-	f.seg_speed_share.assign(s.roads.segs.size(), 1.f);
+	// per segment: the speeds and limits of the vehicles on it, zero between passes but where this pass puts some (pub_segs)
+	const size_t segs = s.roads.segs.size();
 	std::vector<float> &sum = t.pub_sum, &lim = t.pub_lim;
 	std::vector<int> &count = t.pub_count;
-	sum.assign(s.roads.segs.size(), 0.f);
-	lim.assign(s.roads.segs.size(), 0.f);
-	count.assign(s.roads.segs.size(), 0);
+	if (sum.size() != segs) {
+		sum.assign(segs, 0.f);
+		lim.assign(segs, 0.f);
+		count.assign(segs, 0);
+	}
+	t.pub_segs.clear();
+	TrafficView &view = view_begin(s); // the main thread's view counts the fleet in this same pass
 	for (Vehicle &v : s.traffic.vehicles) {
-		if (!v.alive || (!v.micro && !v.off)) continue; // far vehicles are queues and events, not poses
+		if (!v.alive) continue;
+		view_vehicle(s, view, v);
+		if (!v.micro && !v.off) continue; // far vehicles are queues and events, not poses
 		if (!v.off) {
 			float len = p.classes[int(v.type)].length;
 			Pose front, rear;
@@ -137,6 +171,7 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 		if (v.ds >= 0 && v.ds < int(t.g.ds.size())) {
 			const int seg = t.g.ds[v.ds].seg;
 			if (seg >= 0 && seg < int(sum.size())) {
+				if (count[seg] == 0) t.pub_segs.push_back(seg);
 				sum[seg] += v.v;
 				lim[seg] += t.g.ds[v.ds].speed;
 				count[seg]++;
@@ -171,15 +206,14 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 		rec.age = uint8_t(w.age);
 		f.people.push_back(rec);
 	}
-	for (size_t seg = 0; seg < f.seg_speed_share.size(); seg++)
-		if (count[seg] > 0 && lim[seg] > 0) f.seg_speed_share[seg] = sum[seg] / lim[seg];
+	speed_shares(t, f, segs);
 	publish_signals(s, cx, cz, p.publish_radius_m, f.signals);
 	transit::publish(s, f, stamp_ns, before, cx, cz, p.publish_radius_m);
 	publish_parked(s, f);
 	for (int i = 0; i < POSE_TRAIL; i++) f.stamp_ns[i] = t.stamp_ns[i];
 	f.period_ns = int64_t(NS_PER_S / double(s.catalog.tune.sim_tick_hz));
 	s.poses.publish();
-	publish_view(s);
+	view_end(s, view);
 	t.step_ms[STAGE_PUBLISH] += lap.lap();
 }
 
@@ -194,7 +228,6 @@ void step(CityState &s, float dt) {
 	Laps lap;
 	step_parking_sources(s);
 	t.step_ms[STAGE_BAYS] += lap.lap();
-	t.route_budget = int(s.catalog.traffic.reroute_budget_per_step);
 	step_governor(s, dt);
 	if (s.traffic_levels.vehicles_on) {
 		spawn_vehicles(s, dt);

@@ -14,14 +14,8 @@ constexpr float HASH_CELL_M = 32.f; // about the widest dab the spacing test loo
 constexpr int STREAMS = 8;
 
 template <typename T>
-int take_slot(std::vector<T> &list, std::vector<int> &free) {
-	if (!free.empty()) {
-		int id = free.back();
-		free.pop_back();
-		return id;
-	}
-	list.emplace_back();
-	return int(list.size()) - 1;
+int take_slot(std::vector<T> &list, SlotIds &free) {
+	return free.next(int(list.size()));
 }
 } // namespace
 
@@ -43,10 +37,8 @@ int PlantedTrees::add(const PlantedTree &t) {
 }
 
 void PlantedTrees::put(int id, const PlantedTree &t) {
-	if (id >= int(trees.size())) trees.resize(size_t(id) + 1);
-	free_trees_.erase(std::remove(free_trees_.begin(), free_trees_.end(), id), free_trees_.end());
-	if (trees[size_t(id)].alive) remove(id);
-	free_trees_.erase(std::remove(free_trees_.begin(), free_trees_.end(), id), free_trees_.end());
+	if (id < int(trees.size()) && trees[size_t(id)].alive) remove(id);
+	trees.resize(size_t(free_trees_.claim(id, int(trees.size()))));
 	trees[size_t(id)] = t;
 	trees[size_t(id)].alive = true;
 	hash_.insert_aabb(id, t.x, t.z, t.x, t.z);
@@ -58,7 +50,7 @@ void PlantedTrees::remove(int id) {
 	if (!t.alive) return;
 	hash_.remove_aabb(id, t.x, t.z, t.x, t.z);
 	t.alive = false;
-	free_trees_.push_back(id);
+	free_trees_.release(id);
 	live_trees_--;
 }
 
@@ -69,8 +61,7 @@ int PlantedTrees::add_clearing(const TreeClearing &c) {
 }
 
 void PlantedTrees::put_clearing(int id, const TreeClearing &c) {
-	if (id >= int(clearings.size())) clearings.resize(size_t(id) + 1);
-	free_clearings_.erase(std::remove(free_clearings_.begin(), free_clearings_.end(), id), free_clearings_.end());
+	clearings.resize(size_t(free_clearings_.claim(id, int(clearings.size()))));
 	clearings[size_t(id)] = c;
 	clearings[size_t(id)].alive = true;
 	clear_hash_.insert_aabb(id, c.x - c.radius, c.z - c.radius, c.x + c.radius, c.z + c.radius);
@@ -82,8 +73,15 @@ void PlantedTrees::remove_clearing(int id) {
 	if (!c.alive) return;
 	clear_hash_.remove_aabb(id, c.x - c.radius, c.z - c.radius, c.x + c.radius, c.z + c.radius);
 	c.alive = false;
-	free_clearings_.push_back(id);
+	free_clearings_.release(id);
 	live_clearings_--;
+}
+
+void PlantedTrees::keep_slots(int tree_slots, int clearing_slots) {
+	for (int k = int(trees.size()); k < tree_slots; k++) free_trees_.release(k);
+	if (tree_slots > int(trees.size())) trees.resize(size_t(tree_slots));
+	for (int k = int(clearings.size()); k < clearing_slots; k++) free_clearings_.release(k);
+	if (clearing_slots > int(clearings.size())) clearings.resize(size_t(clearing_slots));
 }
 
 bool PlantedTrees::cleared(float x, float z) const {

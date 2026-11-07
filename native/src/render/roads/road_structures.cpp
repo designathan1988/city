@@ -179,7 +179,7 @@ struct Deck {
 		const bool bridge = structure_of(g.flags) == Structure::BRIDGE;
 		const float spacing = bridge ? tn.structure_pier_spacing_bridge_m : tn.structure_pier_spacing_elevated_m;
 		const float radius = bridge ? tn.structure_pier_radius_bridge_m : tn.structure_pier_radius_elevated_m;
-		const double start = street_start(e.s.roads, sid), first = std::ceil((start + v0) / spacing - BENT_FIRST) + BENT_FIRST;
+		const double start = e.s.roads.street_run(sid).start, first = std::ceil((start + v0) / spacing - BENT_FIRST) + BENT_FIRST;
 		for (double k = first; k * spacing - start < v1 - double(spacing) * BENT_LAST; k += 1) {
 			const double at = k * spacing - start;
 			const bool clear = std::none_of(near_abutment.begin(), near_abutment.end(), [&](double a) { return std::fabs(a - at) < tn.structure_pier_abutment_gap_m; });

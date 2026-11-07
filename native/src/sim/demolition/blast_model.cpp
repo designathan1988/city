@@ -52,13 +52,17 @@ float normal_quantile(float p) {
 	return 0.5f * (lo + hi);
 }
 
-// Log-normal probit through (low, p_low) and (half, 0.5): probability at `pressure`.
-float lognormal(float pressure, float low, float half, float p_low) {
+// Log-normal probit through (low, p_low) and (half, 0.5), its spread `sigma` (probit_sigma): probability at `pressure`.
+float lognormal(float pressure, float low, float half, float sigma) {
 	if (pressure <= 0 || half <= low || low <= 0) return 0.f;
-	const float sigma = std::log(half / low) / -normal_quantile(p_low);
 	return normal_cdf(std::log(pressure / half) / sigma);
 }
 } // namespace
+
+float probit_sigma(float low, float half, float p_low) {
+	if (half <= low || low <= 0) return 0.f; // no curve: lognormal answers 0 before it reads the spread
+	return std::log(half / low) / -normal_quantile(p_low);
+}
 
 float normal_cdf(float z) { return 0.5f * std::erfc(-z * CDF_SCALE); }
 
@@ -91,11 +95,11 @@ float range_at_pressure(const BlastParams &p, float kg, float kpa) {
 }
 
 float lethality(const BlastParams &p, float pressure_kpa) {
-	return lognormal(pressure_kpa, p.lethal_threshold_kpa, p.lethal_half_kpa, p.lethal_threshold_prob);
+	return lognormal(pressure_kpa, p.lethal_threshold_kpa, p.lethal_half_kpa, p.lethal_sigma);
 }
 
 float eardrum(const BlastParams &p, float pressure_kpa) {
-	return lognormal(pressure_kpa, p.ear_threshold_kpa, p.ear_half_kpa, p.ear_threshold_prob);
+	return lognormal(pressure_kpa, p.ear_threshold_kpa, p.ear_half_kpa, p.ear_sigma);
 }
 
 float startle_range(const BlastParams &p, float kg) {

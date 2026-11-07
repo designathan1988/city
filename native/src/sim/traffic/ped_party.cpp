@@ -105,6 +105,7 @@ void add_company(CityState &s, int leader) {
 	w.cur.fz = l.cur.fz;
 	l.mate = id;
 	t.peds[size_t(id)] = std::move(w);
+	walker_born(t, id);
 	t.ped_count++;
 }
 

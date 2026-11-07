@@ -40,7 +40,7 @@ namespace city {
 	X(jam_seconds) X(release_every_s) X(starve_seconds) X(detour_after_s) X(reconsider_after_s) X(reconsider_full_share) \
 	X(rejoin_ds) X(detour_max_expanded) X(bpr_gain) X(tail_credit_s) X(tail_credit_cap_ms) X(short_exit_m) \
 	X(tail_moving_ms) X(commit_min_m) X(at_line_m) X(gov_every_s) X(gov_min_fleet) X(gov_jammed) X(gov_lo) X(gov_hi) \
-	X(gov_floor) X(gov_rate) X(reroute_budget_per_step) \
+	X(gov_floor) X(gov_rate) \
 	X(ped_route_max_expanded) X(kerb_stand_m) X(ped_courtesy_s) \
 	X(ped_critical_gap_s) X(ped_span_reach_m) X(walk_cost_extra_s) X(ped_routes_per_step) \
 	X(ped_stripe_m) X(ped_body_m) X(ped_margin_m) X(ped_look_m) X(ped_gap_m) X(ped_headway_s) X(ped_lateral_share) \

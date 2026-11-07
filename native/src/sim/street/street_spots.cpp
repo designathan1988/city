@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <unordered_set>
 
 namespace city {
 
@@ -31,6 +32,7 @@ std::vector<int> street_chain(const RoadNetwork &net, int s0) {
 	int prof = net.segs[s0].profile;
 	const Profile &p = net.cat->profile(prof);
 	std::vector<int> out{ s0 };
+	std::unordered_set<int> in{ s0 }; // what `out` holds: a street meets itself only by a loop
 	for (int start_end : { 1, 0 }) {
 		int sg = s0, end = start_end;
 		for (int guard = 0; guard < CHAIN_GUARD; guard++) {
@@ -39,7 +41,7 @@ std::vector<int> street_chain(const RoadNetwork &net, int s0) {
 			double best_dot = net.cat->tune.edit_street_cos;
 			int best = -1, best_end = 0;
 			for (int t : net.nodes[n].segs) {
-				if (std::count(out.begin(), out.end(), t) || net.segs[t].profile != prof || net.cat->profile(prof).ring) continue;
+				if (in.count(t) || net.segs[t].profile != prof || net.cat->profile(prof).ring) continue;
 				int t_end = net.segs[t].a == n ? 0 : 1;
 				if (p.one_way && t_end != (end == 1 ? 0 : 1)) continue;
 				Arm arm = arm_of(net.segs[t].q, p, t_end);
@@ -48,6 +50,7 @@ std::vector<int> street_chain(const RoadNetwork &net, int s0) {
 			}
 			if (best < 0) break;
 			out.push_back(best);
+			in.insert(best);
 			sg = best;
 			end = best_end == 0 ? 1 : 0;
 		}
@@ -132,7 +135,7 @@ void placed_sign(const RoadNetwork &net, const StreetItem &item, std::vector<Sig
 
 void name_plates(const RoadNetwork &net, const StreetItem &item, const std::vector<int> &chain, std::vector<SignStand> &out) {
 	const StreetFurnitureDef &d = defs(net);
-	const float from_kerb = d.sidewalk.kerb_clear_m + d.footprint[int(FurnitureKind::SIGN)].z_m * 0.5f;
+	const float from_kerb = kerbside_reach(net, FurnitureKind::SIGN);
 	for (int sid : chain) {
 		const RoadSegment &g = net.segs[size_t(sid)];
 		const Profile &p = net.profile_of(sid);

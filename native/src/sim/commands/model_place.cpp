@@ -140,8 +140,6 @@ EditResult place_body(CityState &s, const Body &src, double ax, double az, doubl
 	}
 	b.body = s.buildings.designs.edited->add(std::move(body));
 	r.placed = j_add_building(s, b);
-	const float reach = std::max(b.w, b.d);
-	finish_edit(s, b.x - reach, b.z - reach, b.x + reach, b.z + reach);
 	r.ok = true;
 	r.buildings_removed = int(landed.size());
 	return r;

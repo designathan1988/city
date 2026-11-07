@@ -20,7 +20,11 @@ public:
 	explicit RowKeeper(uint64_t dense = 0) : dense_limit_(dense) {}
 	void begin() { frame_++; }
 	void draws(size_t n) { owners_.resize(n); }
-	int draw_of(uint64_t key) { return slot(key).draw; } // where it stood on the last frame, -1 nowhere
+	// Where it stood on the last frame, -1 nowhere: a lookup that never makes a slot (only place does, and sweep forgets it).
+	int draw_of(uint64_t key) const {
+		const Slot *s = find(key);
+		return s ? s->draw : -1;
+	}
 	// The row of `key` in draw `draw`, its rows `rows`: its own if it was there on the last frame, else a new one at the end.
 	float *place(uint64_t key, int draw, InstanceRows &rows) {
 		Slot &s = slot(key);
@@ -71,6 +75,13 @@ private:
 		uint32_t frame = 0;
 		int draw = -1, row = -1;
 	};
+	const Slot *find(uint64_t key) const {
+		if (key >= dense_limit_) {
+			const auto it = sparse_.find(key);
+			return it == sparse_.end() ? nullptr : &it->second;
+		}
+		return key < dense_.size() ? &dense_[size_t(key)] : nullptr;
+	}
 	Slot &slot(uint64_t key) {
 		if (key >= dense_limit_) return sparse_[key];
 		if (key >= dense_.size()) dense_.resize(size_t(key) + 1 + size_t(key) / 2);
