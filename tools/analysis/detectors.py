@@ -1,141 +1,192 @@
 # Root-cause detectors by code shape, with no names nor versions of any project: each looks for the form of a defect (who
-# locks what, who allocates per frame, who never prunes, who wakes for nothing, who calls the engine per element) in any copy.
-# Every finding says the cause, where it is and what proves it; the effect it produces goes in `effect`.
+# locks what, who allocates per frame, who never prunes, who wakes for nothing, who calls the engine per element).
+# Every finding says the cause, where it is and what proves it; the effect it produces goes in `effect`. They read the
+# Sources of code_parse.py: the project's files, each parsed once.
 import os
 import re
 
-CPP_EXT = (".cpp", ".cc", ".cxx", ".h", ".hpp")
-GD_EXT = (".gd",)
-# Folders that hold no code of the project's own: hidden ones, builds, dependencies brought in whole.
-SKIPPED = re.compile(r"^(\..*|build.*|dist|bin|out|obj|__pycache__|node_modules|third_party|thirdparty|vendor|addons|godot-cpp)$", re.I)
-FUNC_HEAD = re.compile(r"^\s*[A-Za-z_][\w:<>,\s\*&~]*?\b([A-Za-z_]\w*(?:::~?\w+)*)\s*\(([^;{}]*)\)\s*(const)?[^;{}=]*\{\s*$")
-SIGNATURE_LINES = 4  # the longest signature that wraps over lines
+from code_parse import CLASS_HEAD, KEYWORDS
+
 # Maths and format constants: repeating them repeats no rule.
 TRIVIAL = re.compile(r"^(HALF\w*|BYTE\w*|PI\w*|TAU\w*|RGBA\w*|CHANNELS|CORNERS|DEG_TO_RAD|RAD_TO_DEG|GOLDEN|NS_PER_\w+|QUARTER|\w*AXES|"
                      r"\w*EPS\w*|DEGENERATE|FULL_TURN|\w*_SHIFT|\w*_BITS|\w*_MASK)$")
 ENGINE_TYPE = r"(?:godot::)?(?:Packed\w+Array|TypedArray<[^>]+>|Array|Dictionary|String)"
-FRAME_ROOTS = re.compile(r"^(_process|_physics_process|update|sync|tick|step)$")  # what a frame or a step enters by
+# What a frame or a simulation step enters by: the engine's frame callbacks and the owners' per-frame entry points, matched
+# only as member definitions (Class::sync), never as any function that happens to share a generic word.
+FRAME_ROOTS = frozenset({"_process", "_physics_process", "sync", "tick"})
 BOUNDED = "bounded:"  # on a member's own line: the code states what ends it (the owner's life, a reset)
-
-
-def files(root, ext):
-    for base, dirs, names in os.walk(root):
-        dirs[:] = [d for d in dirs if not SKIPPED.match(d)]
-        for n in names:
-            if n.endswith(ext):
-                yield os.path.join(base, n)
-
-
-def read(path):
-    with open(path, encoding="utf-8", errors="replace") as f:
-        return f.read()
-
-
-def functions(text):
-    """(name, first line, body, const) of each function defined with its brace on the signature's last line."""
-    lines = text.splitlines()
-    i = 0
-    while i < len(lines):
-        head, k = lines[i], i  # a signature may run over several lines: joined until its parentheses close
-        while head.count("(") > head.count(")") and k + 1 < len(lines) and k - i < SIGNATURE_LINES:
-            k += 1
-            head += " " + lines[k].strip()
-        m = FUNC_HEAD.match(head)
-        if not m or m.group(1) in ("if", "for", "while", "switch", "catch"):
-            i += 1
-            continue
-        depth, j = 0, i
-        while j < len(lines):
-            depth += lines[j].count("{") - lines[j].count("}")
-            if depth <= 0 and j > i or (depth == 0 and j == i and "}" in lines[j]):
-                break
-            j += 1
-        yield m.group(1), i + 1, "\n".join(lines[i:j + 1]), bool(m.group(3))
-        i = j + 1
 
 
 def finding(rule, cause, effect, where, proof):
     return {"rule": rule, "cause": cause, "effect": effect, "where": where, "proof": proof}
 
 
-def rel(root, p):
-    return os.path.relpath(p, root).replace("\\", "/")
+def shipped(path):
+    """A script the running program can reach (tests left out)."""
+    return not re.search(r"(^|/)tests?/", path)
 
 
-def names_in_scripts(root):
-    """Every name the shipped scripts say (tests left out): who the running program can reach from script."""
+def names_in_scripts(scripts):
+    """Every name the shipped scripts say: who the running program can reach from script."""
     words = set()
-    for p in files(root, GD_EXT):
-        if not re.search(r"[\\/]tests?[\\/]", p):
-            words |= set(re.findall(r"\w+", re.sub(r"(?s)const\s+(QUERIES|COMMANDS)\s*:?=\s*\{.*?\n\}", "", read(p))))
+    for p, s in scripts.items():
+        if shipped(p):
+            words |= set(re.findall(r"\w+", re.sub(r"(?s)const\s+(QUERIES|COMMANDS)\s*:?=\s*\{.*?\n\}", "", s.text)))
     return words
 
 
-def per_frame(sources):
-    """The functions a frame or a simulation step reaches, by the short names their bodies call."""
-    calls = {}
-    for t in sources.values():
-        for name, _, body, _ in functions(t):
-            short = name.split("::")[-1]
-            calls.setdefault(short, set()).update(re.findall(r"\b([A-Za-z_]\w*)\s*\(", body))
-    todo = [n for n in calls if FRAME_ROOTS.match(n)]
+MEMBER_CALL = re.compile(r"\b(\w+)\s*(?:\.|->)\s*(~?\w+)\s*\(")
+QUALIFIED_CALL = re.compile(r"\b(\w+)::(~?\w+)\s*\(")
+PLAIN_CALL = re.compile(r"(?<![\w.>:])(\w+)\s*\(")
+
+
+def _declared_type(name, texts):
+    """The class a variable or member is declared with (its template argument for a smart pointer), or None."""
+    rx = re.compile(r"\b(?:std::(?:unique_ptr|shared_ptr|optional)<\s*)?([A-Z]\w*)\s*>?\s*[&*]?\s*\b" + re.escape(name)
+                    + r"\s*[;={(,)\[]")
+    for t in texts:
+        m = rx.search(t)
+        if m:
+            return m.group(1)
+    return None
+
+
+def ident(path, f):
+    """A definition's identity: a member by its qualified name, a free function by its name and its file (file-local
+    helpers of the same name are different functions)."""
+    return f.name if f.owner else f"{f.name}@{path}"
+
+
+def per_frame(sources, parents=None):
+    """The idents of the functions a frame or a simulation step reaches: from the member definitions of FRAME_ROOTS, through
+    calls resolved to their definitions: a member of the caller's class, of a receiver's declared class, of a qualifier;
+    a free function of the caller's file or one a header declares; a member call on an unknown receiver only when one
+    function has that name. An unresolved generic name reaches nothing. `parents` (a dict) receives callee -> caller."""
+    defs, members, free = {}, {}, {}
+    for p, s in sources.items():
+        for f in s.funcs:
+            key = ident(p, f)
+            defs.setdefault(key, (p, f))
+            if f.owner:
+                members.setdefault(f.short, set()).add(key)
+            else:
+                free.setdefault(f.short, []).append((p, key))
+    headers = [s.text for p, s in sources.items() if p.endswith((".h", ".hpp"))]
+    declared = {}  # free name -> whether a header says it is callable
+
+    def in_header(short):
+        """A header declares a free function of that name: a declaration at the start of a line (members are indented)."""
+        if short not in declared:
+            rx = re.compile(r"^(?:inline\s+|static\s+|constexpr\s+)*[A-Za-z_][\w:<>,\*& ]*?\b" + re.escape(short) + r"\s*\(", re.M)
+            declared[short] = any(rx.search(t) for t in headers)
+        return declared[short]
+    class_text = {}
+    for s in sources.values():
+        if s.path.endswith((".h", ".hpp")):
+            for m in CLASS_HEAD.finditer(s.text):
+                class_text.setdefault(m.group(1), []).append(s.text)
+
+    def in_class(cls, short):
+        return {n for n in members.get(short, ()) if n == f"{cls}::{short}" or n.endswith(f"::{cls}::{short}")}
+
+    def free_fn(path, short):
+        local = {k for p, k in free.get(short, ()) if p == path}
+        if local:
+            return local
+        defined_in_header = {k for p, k in free.get(short, ()) if p.endswith((".h", ".hpp"))}
+        if defined_in_header or not in_header(short):
+            return defined_in_header
+        return {k for p, k in free.get(short, ())}
+
+    def callees(path, f):
+        out = set()
+        cls = f.owner.split("::")[-1] if f.owner else ""
+        for recv, short in MEMBER_CALL.findall(f.body):
+            if recv == "this" and cls:
+                out |= in_class(cls, short)
+                continue
+            t = _declared_type(recv, [f.body] + class_text.get(cls, []))
+            if t:
+                out |= in_class(t, short)
+            elif len(members.get(short, ())) == 1:
+                out |= members[short]
+        for q, short in QUALIFIED_CALL.findall(f.body):
+            out |= in_class(q, short) or free_fn(path, short)  # Class::member, or namespace::function
+        for short in PLAIN_CALL.findall(f.body):
+            if short in KEYWORDS or short == f.short:
+                continue
+            out |= (in_class(cls, short) if cls else set()) or free_fn(path, short)
+        return out
+    todo = [k for k, (p, f) in defs.items() if f.owner and f.short in FRAME_ROOTS]
     seen = set(todo)
     while todo:
-        for c in calls.get(todo.pop(), ()):
-            if c in calls and c not in seen:
+        caller = todo.pop()
+        for c in callees(*defs[caller]):
+            if c not in seen:
                 seen.add(c)
                 todo.append(c)
+                if parents is not None:
+                    parents[c] = caller
     return seen
 
 
-def worker_locks_in_readers(root, sources):
+def chain(parents, key):
+    """root -> ... -> key, by the parents per_frame recorded."""
+    out = [key]
+    while out[-1] in parents:
+        out.append(parents[out[-1]])
+    return " -> ".join(reversed(out))
+
+
+def worker_locks_in_readers(root, sources, scripts):
     """A function outside a worker thread's loop, that the running program calls, takes a mutex the loop holds: the caller
     waits for a whole step. What only tests call waits for nobody who plays."""
-    out, held, reached = [], {}, names_in_scripts(root)
-    loops = {p for p, t in sources.items() if re.search(r"std::thread|while\s*\(\s*running", t)}
+    out, held, reached = [], {}, names_in_scripts(scripts)
+    loops = {p for p, s in sources.items() if re.search(r"std::thread|while\s*\(\s*running", s.text)}
     for p in loops:
-        for m in re.finditer(r"lock_guard<std::mutex>\s+\w+\(\s*([\w.>-]+)\s*\)", sources[p]):
-            held.setdefault(m.group(1).split(".")[-1].split(">")[-1], set()).add(rel(root, p))
-    for p, t in sources.items():
+        for m in re.finditer(r"lock_guard<std::mutex>\s+\w+\(\s*([\w.>-]+)\s*\)", sources[p].text):
+            held.setdefault(m.group(1).split(".")[-1].split(">")[-1], set()).add(p)
+    for p, s in sources.items():
         if p in loops:
             continue
-        for name, line, body, _ in functions(t):
-            if name.split("::")[-1] not in reached and "api" in rel(root, p).split("/"):
+        for f in s.funcs:
+            if f.short not in reached and "api" in p.split("/"):
                 continue
-            for m in re.finditer(r"lock_guard<std::mutex>\s+\w+\(\s*([\w.>-]*)", body):
+            for m in re.finditer(r"lock_guard<std::mutex>\s+\w+\(\s*([\w.>-]*)", f.body):
                 mutex = m.group(1).split(".")[-1].split(">")[-1]
                 if mutex in held:
-                    out.append(finding("WORKER_LOCK_IN_READER", f"{name} takes '{mutex}', which {', '.join(sorted(held[mutex]))} holds in its loop",
+                    out.append(finding("WORKER_LOCK_IN_READER", f"{f.name} takes '{mutex}', which {', '.join(sorted(held[mutex]))} holds in its loop",
                                        "the caller waits for the other thread's whole step (frame spikes, slow clicks)",
-                                       f"{rel(root, p)}:{line}", "publish what the reader needs (atomics, an immutable snapshot) instead of reading under the lock"))
+                                       f"{p}:{f.line}", "publish what the reader needs (atomics, an immutable snapshot) instead of reading under the lock"))
                     break
     return out
 
 
-def realloc_per_frame(root, sources):
+def realloc_per_frame(root, sources, scripts):
     """Whoever allocates its instance buffer every time the count changes, with no room."""
     out = []
-    for p, t in sources.items():
-        for name, line, body, _ in functions(t):
-            if "allocate_data" not in body:
+    for p, s in sources.items():
+        for f in s.funcs:
+            if "allocate_data" not in f.body:
                 continue
-            exact = re.search(r"\b(\w*count\w*)\s*!=\s*(\w*capacity\w*)|\b(\w*capacity\w*)\s*!=\s*(\w*count\w*)", body)
-            room = re.search(r">\s*\w*capacity|capacity\w*\s*<|ROOM|room", body)
+            exact = re.search(r"\b(\w*count\w*)\s*!=\s*(\w*capacity\w*)|\b(\w*capacity\w*)\s*!=\s*(\w*count\w*)", f.body)
+            room = re.search(r">\s*\w*capacity|capacity\w*\s*<|ROOM|room", f.body)
             if exact and not room:
-                out.append(finding("REALLOC_PER_FRAME", f"{name} reallocates the buffer whenever the count differs from the capacity",
+                out.append(finding("REALLOC_PER_FRAME", f"{f.name} reallocates the buffer whenever the count differs from the capacity",
                                    "a GPU buffer destroyed and made again on every frame the count moves (GPU spikes)",
-                                   f"{rel(root, p)}:{line}", f"'{exact.group(0)}' with no room rule in the buffer's owner"))
+                                   f"{p}:{f.line}", f"'{exact.group(0)}' with no room rule in the buffer's owner"))
     return out
 
 
-def unpruned_maps(root, sources):
+def unpruned_maps(root, sources, scripts):
     """A map or set member that takes entries and never lets any go: it grows with the session."""
     out = []
-    for p, t in sources.items():
+    for p, s in sources.items():
         if not p.endswith((".h", ".hpp")):
             continue
-        body = t + sources.get(os.path.splitext(p)[0] + ".cpp", "")
-        for m in re.finditer(r"std::(?:unordered_map|map|unordered_set|set)<[^;]*>\s+(\w+_)\s*;([^\n]*)", t):
+        pair = sources.get(os.path.splitext(p)[0] + ".cpp")
+        body = s.text + (pair.text if pair else "")
+        for m in re.finditer(r"std::(?:unordered_map|map|unordered_set|set)<[^;]*>\s+(\w+_)\s*;([^\n]*)", s.text):
             n = m.group(1)
             if BOUNDED in m.group(2):
                 continue
@@ -143,28 +194,28 @@ def unpruned_maps(root, sources):
             pruned = re.search(rf"\b{n}\s*\.(erase|clear)\s*\(|\b{n}\s*=\s*", body)
             if grows and not pruned:
                 out.append(finding("UNPRUNED_MAP", f"'{n}' takes entries and is never pruned", "memory that grows without bound over a session",
-                                   f"{rel(root, p)}:{t[:m.start()].count(chr(10)) + 1}", "inserted into, never erased, cleared nor reassigned"))
+                                   f"{p}:{s.text[:m.start()].count(chr(10)) + 1}", "inserted into, never erased, cleared nor reassigned"))
     return out
 
 
-def idle_wakeups(root, sources):
+def idle_wakeups(root, sources, scripts):
     """A thread loop that sleeps by time even with nothing to do (wakes for nothing while paused)."""
     out = []
-    for p, t in sources.items():
-        for name, line, body, _ in functions(t):
-            if re.search(r"while\s*\(", body) and re.search(r"sleep_for|sleep_until", body) and not re.search(r"\.wait\s*\(|wait_for|wait_until", body):
-                out.append(finding("IDLE_WAKEUPS", f"{name} sleeps by time in a loop instead of waiting for an event",
-                                   "periodic wake-ups with nothing to do (CPU and power while idle)", f"{rel(root, p)}:{line}",
+    for p, s in sources.items():
+        for f in s.funcs:
+            if re.search(r"while\s*\(", f.body) and re.search(r"sleep_for|sleep_until", f.body) and not re.search(r"\.wait\s*\(|wait_for|wait_until", f.body):
+                out.append(finding("IDLE_WAKEUPS", f"{f.name} sleeps by time in a loop instead of waiting for an event",
+                                   "periodic wake-ups with nothing to do (CPU and power while idle)", f"{p}:{f.line}",
                                    "sleep_for/sleep_until in a while, no condition variable in the loop"))
     return out
 
 
-def duplicated_constants(root, sources):
+def duplicated_constants(root, sources, scripts):
     """The same named constant in several files: the rule has more than one owner."""
     owners = {}
-    for p, t in sources.items():
-        for m in re.finditer(r"(?<!static )constexpr\s+[\w:<>]+\s+([A-Z][A-Z0-9_]{3,})\s*=\s*([^,;]+)", t):
-            owners.setdefault(m.group(1), set()).add((rel(root, p), m.group(2).strip()))
+    for p, s in sources.items():
+        for m in re.finditer(r"(?<!static )constexpr\s+[\w:<>]+\s+([A-Z][A-Z0-9_]{3,})\s*=\s*([^,;]+)", s.text):
+            owners.setdefault(m.group(1), set()).add((p, m.group(2).strip()))
     out = []
     for name, places in sorted(owners.items()):
         where = sorted({a for a, _ in places})
@@ -180,18 +231,20 @@ def duplicated_constants(root, sources):
     return out
 
 
-def engine_call_in_loop(root, sources):
+def engine_call_in_loop(root, sources, scripts):
     """A loop a frame reaches whose condition asks the engine (size() of an engine type, a call across the DLL boundary) on
     every turn; at a load it costs nothing that shows."""
-    out, hot = [], per_frame(sources)
-    for p, t in sources.items():
-        for name, line, body, _ in functions(t):
-            if name.split("::")[-1] not in hot:
+    out, parents = [], {}
+    hot = per_frame(sources, parents)
+    for p, s in sources.items():
+        for f in s.funcs:
+            if ident(p, f) not in hot:
                 continue
-            typed = set(re.findall(ENGINE_TYPE + r"\s*&?\s*(\w+)\s*[;=,)(:]", body))
-            for m in re.finditer(r"for\s*\([^;]*;\s*[^;]*<\s*(\w+)\.size\(\)\s*;", body):
+            typed = set(re.findall(ENGINE_TYPE + r"\s*&?\s*(\w+)\s*[;=,)(:]", f.body))
+            for m in re.finditer(r"for\s*\([^;]*;\s*[^;]*<\s*(\w+)\.size\(\)\s*;", f.body):
                 if m.group(1) in typed:
-                    out.append(finding("ENGINE_CALL_IN_LOOP", f"{name}: the loop calls {m.group(1)}.size() on every turn",
+                    out.append(finding("ENGINE_CALL_IN_LOOP", f"{f.name}: the loop calls {m.group(1)}.size() on every turn",
                                        "one call across the DLL boundary per element: long loops turn into hitches",
-                                       f"{rel(root, p)}:{line + body[:m.start()].count(chr(10))}", m.group(0)))
+                                       f"{p}:{f.line + f.body[:m.start()].count(chr(10))}",
+                                       f"{m.group(0)}; reached by {chain(parents, ident(p, f))}"))
     return out

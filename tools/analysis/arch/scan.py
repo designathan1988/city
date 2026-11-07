@@ -3,16 +3,18 @@ import concurrent.futures
 import os
 import shutil
 import sys
+import tempfile
 import time
+import uuid
 
 from . import external, link, roles
-from .adapters import comments, cpp, data, gdscript, godot_text, python_src, script_tools, shader, shader_spirv, typescript
+from .adapters import cpp, data, gdscript, godot_text
 from .cache import Cache
-from .core import digest, own_prefixes, program_root, read_json, write_json
+from .core import own_prefixes, program_root
 from .model import Facts
 from .repo import Repo
 
-ADAPTERS = ("cpp", "gdscript", "shader", "data", "godot", "python", "scripts", "typescript", "comments")
+ADAPTERS = ("cpp", "gdscript", "data", "godot")
 
 
 class Run:
@@ -25,6 +27,7 @@ class Run:
         self.base = out or os.environ.get("ARCH_OUT") or os.path.join(program_root(), "dist", "arch")
         self.cache = Cache(os.path.join(self.base, "cache"), cache)
         self.started = time.time()
+        self._exports = {}
 
     def __copy__(self):
         """A copy in memory keeps everything: what `__getstate__` leaves out is left out of the disk."""
@@ -34,7 +37,7 @@ class Run:
 
     def __getstate__(self):
         """A run handed to another process: what it knows, without its pipes."""
-        return {k: v for k, v in self.__dict__.items() if k not in ("repo", "cache", "graph", "names", "report")}
+        return {k: v for k, v in self.__dict__.items() if k not in ("repo", "cache", "graph", "names", "report", "_exports")}
 
     def log(self, text):
         if not self.quiet:
@@ -64,25 +67,32 @@ class Run:
         return out
 
     def export_path(self, part):
-        return os.path.join(self.base, "work", digest(self.repo.root + self.repo.export_key() + part), "export").replace("\\", "/")
+        """A private folder for this run's copy of the commit: no other process ever reads or writes it."""
+        if part not in self._exports:
+            parent = os.path.join(self.base, "work")
+            os.makedirs(parent, exist_ok=True)
+            self._exports[part] = [os.path.join(parent, f"{part}-{os.getpid()}-{uuid.uuid4().hex[:12]}").replace("\\", "/"), None]
+        return self._exports[part][0]
 
     def export(self, paths, part):
+        """The files on disk, written into a staging folder and published under the private name in one step; any failure raises."""
         target = self.export_path(part)
-        ready = target + ".json"
-        if not os.path.exists(ready):
-            fresh = f"{target}.{os.getpid()}"
-            os.makedirs(fresh, exist_ok=True)
-            refused = self.repo.export(fresh, paths)
-            try:
-                os.rename(fresh, target)
-                write_json(ready, refused)
-            except OSError:  # another task got there first with the same files
-                shutil.rmtree(fresh, ignore_errors=True)
-        while not os.path.exists(ready):
-            time.sleep(0.1)
-        refused = read_json(ready)
-        self.repo.overlay(target)
-        return target, refused
+        if self._exports[part][1] is None:
+            staging = tempfile.mkdtemp(prefix=f"{part}-staging-", dir=os.path.dirname(target))
+            refused = self.repo.export(staging, paths)
+            self.repo.overlay(staging)
+            os.replace(staging, target)
+            self._exports[part][1] = refused
+        return target, self._exports[part][1]
+
+    def close(self):
+        """The private copies go with the run that made them."""
+        from . import workers
+        workers.close()
+        for target, done in self._exports.values():
+            if done is not None:
+                shutil.rmtree(target)
+        self._exports.clear()
 
     def adapters(self):
         """The compiler's side starts first and runs while the others read; results join in a fixed order."""
@@ -101,18 +111,8 @@ class Run:
             godot = info.get("godot", {})
             if "gdscript" not in off:
                 take("gdscript", gdscript.scan(repo, tracked, scope, self.api, godot.get("autoloads", {})))
-            if "shader" not in off:
-                take("shader", shader.scan(repo, tracked, scope))
-                info["spirv"] = shader_spirv.scan(repo, tracked, scope, facts)
-                self.log(f"spir-v: {info['spirv']['compiled']} compiled, {len(info['spirv']['failed'])} refused")
             if "data" not in off:
                 take("data", data.scan(repo, tracked, scope, self.mentioned()))
-            if "comments" not in off:
-                take("comments", comments.scan(scope, self.texts))
-            if "python" not in off:
-                take("python", python_src.scan(repo, tracked, scope))
-            if "scripts" not in off:
-                take("scripts", script_tools.scan(repo, tracked, scope))
             for name, result in compiled.result():
                 if name == "refused":
                     info[name] = result
@@ -121,7 +121,7 @@ class Run:
         return facts, info
 
     def _on_disk(self):
-        """What needs the files themselves, and only when something really must be parsed: the compiler and the type checker."""
+        """What needs the files themselves, and only when something really must be parsed: the compiler."""
         repo, tracked, scope, off = self.repo, self.tracked, self.scope, self.off
         out = []
         if "cpp" not in off and any(p.endswith(cpp_exts()) for p in tracked):
@@ -134,9 +134,6 @@ class Run:
                     out.append(("refused", ready[0][1]))
 
             out.append(("cpp", cpp.scan(repo, tracked, scope, self.export_path("cpp"), ensure, self.cache, self.log)))
-        own = sorted(p for p in tracked if (p in scope and p.endswith(typescript.EXT)) or p.rsplit("/", 1)[-1] == "tsconfig.json")
-        if "typescript" not in off and any(p.endswith(typescript.EXT) for p in own):
-            out.append(("typescript", typescript.scan(repo, tracked, scope, self.export(_folders(own), "ts")[0])))
         return out
 
 

@@ -12,7 +12,7 @@ _TABLES = {}
 def _makers():
     """The text of everything that decides what is stored: a change there and nothing old is read."""
     here = os.path.dirname(os.path.abspath(__file__))
-    paths = sorted(glob.glob(os.path.join(here, "adapters", "*"))) + [os.path.join(here, n) for n in ("core.py", "model.py", "shape.py", "spans.py", "roles.py")]
+    paths = sorted(glob.glob(os.path.join(here, "adapters", "*"))) + [os.path.join(here, n) for n in ("core.py", "model.py", "roles.py")]
     out = []
     for path in paths:
         if os.path.isfile(path):

@@ -4,21 +4,31 @@
 # and the code that triggered engine or driver time (the first frame with symbols). Symbols by llvm-symbolizer for DWARF
 # (clang/mingw) builds; a module without debug information is named so it can be rebuilt with it. The timeline in windows shows
 # the start-up (the first windows) and the worst stretches without anything said about the program.
+# A program it starts (--cmd) runs through tools/tasks/proc: in a job of its own (--hidden: on the private desktop), with a
+# deadline of the sampling time plus START_MARGIN_S, and its whole tree is killed when the sampling ends, whatever happened.
+# Symbols are kept by (module content hash, address) in the tools/tasks store. Zero samples is a failure (exit 1).
 # Use: python tools/analysis/sampler.py (--cmd "line" [--hidden] | --pid N) [--seconds S] [--interval-ms M] [--window-s W]
 #      [--symbolizer llvm-symbolizer.exe] [--json out.json]
 import argparse
 import ctypes as C
 import ctypes.wintypes as W
+import hashlib
 import json
 import os
 import shutil
 import struct
 import subprocess
+import sys
 import time
 from collections import defaultdict
+from pathlib import Path
 
 from sampler_report import report
 from unwind import UnwindTables
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from tasks import proc  # noqa: E402
+from tasks.cache import store_path, write_atomic  # noqa: E402
 
 k32 = C.WinDLL("kernel32", use_last_error=True)
 dbg = C.WinDLL("dbghelp", use_last_error=True)
@@ -35,7 +45,9 @@ STACK_COPY = 256 * 1024  # bytes of the live stack copied while a thread is froz
 STILL_ACTIVE = 259
 CALIBRATE_S = 0.1  # spin that long to learn the cycle counter's rate
 REFRESH_S = 0.5  # threads and modules listed again this often
-DESKTOP = os.environ.get("SAMPLER_DESKTOP", "sampler")
+START_MARGIN_S = 120  # past the sampling time, the started program's deadline: start-up and the walk's own lag
+SYMBOLIZE_TIMEOUT_S = 600  # one llvm-symbolizer call over one module's addresses
+TOOL = "sampler-symbols"
 
 
 class ContextX64(C.Structure):  # CONTEXT (winnt.h, x64): the fields StackWalk64 reads; the rest is room
@@ -99,26 +111,6 @@ def cycles_per_ns():
         pass
     k32.QueryThreadCycleTime(me, C.byref(c1))
     return (c1.value - c0.value) / ((time.perf_counter() - t0) * 1e9)
-
-
-def start_hidden(cmd):
-    """CreateProcess on a desktop of its own (WinSta0\\sampler): the program's windows never show to the user."""
-    u32 = C.WinDLL("user32", use_last_error=True)
-    u32.CreateDesktopW.restype = C.c_void_p
-    u32.CreateDesktopW(DESKTOP, None, None, 0, 0x10000000, None)
-
-    class StartupInfo(C.Structure):
-        _fields_ = [("cb", W.DWORD), ("r", W.LPWSTR), ("desk", W.LPWSTR), ("t", W.LPWSTR), ("x", W.DWORD * 8), ("f", W.DWORD),
-                    ("sw", W.WORD), ("r2", W.WORD), ("r3", C.c_void_p), ("h", C.c_void_p * 3)]
-
-    class ProcessInfo(C.Structure):
-        _fields_ = [("hp", W.HANDLE), ("ht", W.HANDLE), ("pid", W.DWORD), ("tid", W.DWORD)]
-    si, pi = StartupInfo(), ProcessInfo()
-    si.cb = C.sizeof(StartupInfo)
-    si.desk = "WinSta0\\" + DESKTOP
-    if not k32.CreateProcessW(None, C.create_unicode_buffer(cmd), None, None, False, 0, None, None, C.byref(si), C.byref(pi)):
-        raise OSError(C.get_last_error(), "CreateProcess")
-    return pi.pid
 
 
 class Sampler:
@@ -204,6 +196,41 @@ class Sampler:
         return samples
 
 
+def module_hash(path: str) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def symbolize(path: str, offsets: list[int], symbolizer: str) -> dict[int, str | None]:
+    """offset from the image base -> 'function (file)' for the offsets of one module; None where there is no file and line.
+    Kept by (module content hash, offset): a module already read is not read again."""
+    table_path = store_path(TOOL, f"{module_hash(path)}.json")
+    table = json.loads(table_path.read_text(encoding="utf-8")) if table_path.is_file() else {}
+    ask = sorted({o for o in offsets if str(o) not in table})
+    if ask:
+        with open(path, "rb") as f:
+            head = f.read(4096)
+        pe = struct.unpack_from("<I", head, 0x3C)[0]
+        image_base = struct.unpack_from("<Q", head, pe + 24 + 24)[0]
+        r = subprocess.run([symbolizer, f"--obj={path}", "--demangle", "--no-inlines"], timeout=SYMBOLIZE_TIMEOUT_S,
+                           creationflags=proc.NO_WINDOW,
+                           input="\n".join(f"0x{image_base + o:x}" for o in ask), capture_output=True, text=True)
+        if r.returncode != 0:
+            raise RuntimeError(f"{symbolizer} failed on {path} ({r.returncode}): {r.stderr.strip()[:300]}")
+        blocks = [b.splitlines() for b in r.stdout.strip().split("\n\n")]
+        if len(blocks) != len(ask):
+            raise RuntimeError(f"{symbolizer} answered {len(blocks)} of {len(ask)} addresses of {path}")
+        for o, block in zip(ask, blocks):
+            # with file and line only: without debug info a symbolizer gives the nearest export, which misleads
+            trusted = len(block) > 1 and block[0] not in ("??", "") and not block[1].startswith("??")
+            table[str(o)] = f"{block[0]} ({os.path.basename(block[1])})" if trusted else None
+        write_atomic(table_path, json.dumps(table))
+    return {o: table[str(o)] for o in offsets}
+
+
 def symbols(sampler, addresses, symbolizer):
     """address -> 'module!function (file)': only with file and line (debug info); else module+offset, never a guess."""
     names, by_module, undebugged = {}, defaultdict(list), set()
@@ -219,17 +246,11 @@ def symbols(sampler, addresses, symbolizer):
     for (base, path), items in by_module.items():
         if not path or not symbolizer or not os.path.exists(path):
             continue
-        with open(path, "rb") as f:
-            head = f.read(4096)
-        pe = struct.unpack_from("<I", head, 0x3C)[0]
-        image_base = struct.unpack_from("<Q", head, pe + 24 + 24)[0]
-        r = subprocess.run([symbolizer, f"--obj={path}", "--demangle", "--no-inlines"],
-                           input="\n".join(f"0x{image_base + a - base:x}" for a in items), capture_output=True, text=True)
+        found = symbolize(path, [a - base for a in items], symbolizer)
         trusted = 0
-        for a, block in zip(items, (b.splitlines() for b in r.stdout.strip().split("\n\n"))):
-            # with file and line only: without debug info a symbolizer gives the nearest export, which misleads
-            if len(block) > 1 and block[0] not in ("??", "") and not block[1].startswith("??"):
-                names[a] = f"{os.path.basename(path)}!{block[0]} ({os.path.basename(block[1])})"
+        for a in items:
+            if found[a - base]:
+                names[a] = f"{os.path.basename(path)}!{found[a - base]}"
                 trusted += 1
         if not trusted and not path.lower().startswith(windows):
             undebugged.add(os.path.basename(path))
@@ -247,9 +268,20 @@ def main():
     ap.add_argument("--symbolizer", default=shutil.which("llvm-symbolizer") or "")
     ap.add_argument("--json")
     a = ap.parse_args()
-    pid = a.pid or (start_hidden(a.cmd) if a.hidden else subprocess.Popen(a.cmd).pid)
-    s = Sampler(pid)
-    samples = s.run(a.seconds, a.interval_ms / 1000.0)
+    if bool(a.cmd) == bool(a.pid):
+        ap.error("one of --cmd or --pid")
+    target = None
+    if a.cmd:  # ours: started in a job, killed with its tree at the end and at its deadline
+        target = proc.Process(a.cmd, hidden=a.hidden, deadline_s=a.seconds + START_MARGIN_S)
+    try:
+        s = Sampler(target.pid if target else a.pid)
+        samples = s.run(a.seconds, a.interval_ms / 1000.0)
+    finally:
+        if target:
+            target.close()
+    if not samples:
+        print("FAIL zero samples: the process gave no stack to walk (gone, or not reachable)")
+        return 1
     names, undebugged = symbols(s, {e for _, _, st, _, _ in samples for e in st}, a.symbolizer)
     if undebugged:
         print("WARNING: no debug information (build with it to see functions and lines): " + ", ".join(sorted(undebugged)))
@@ -257,9 +289,8 @@ def main():
     if a.json:
         with open(a.json, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=1)
-    if a.cmd:
-        k32.TerminateProcess(s.hp, 0)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

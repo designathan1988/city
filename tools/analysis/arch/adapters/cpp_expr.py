@@ -1,190 +1,291 @@
-"""The walk of a C or C++ expression: field reads and writes, references, operators, strings, lambdas and calls, with the context they sit in."""
-from clang import cindex as ci
+"""C and C++ expressions as summary events: member reads and writes, calls by mechanism, container operations, allocations and small value trees."""
+import re
 
-from ..model import AST
+from clang import cindex as ci
 
 K = ci.CursorKind
 READ, WRITE, MUTATE = 0, 1, 2
-LOOPS = {K.FOR_STMT, K.WHILE_STMT, K.DO_STMT, K.CXX_FOR_RANGE_STMT}
-ASSIGN = {"Assign"}
-COMPOUND_ASSIGN = {"MulAssign", "DivAssign", "RemAssign", "AddAssign", "SubAssign", "ShlAssign", "ShrAssign", "AndAssign", "XorAssign", "OrAssign"}
+WRAPPERS = {K.UNEXPOSED_EXPR, K.PAREN_EXPR, K.CSTYLE_CAST_EXPR, K.CXX_FUNCTIONAL_CAST_EXPR, K.CXX_STATIC_CAST_EXPR, K.CXX_REINTERPRET_CAST_EXPR,
+            K.CXX_CONST_CAST_EXPR}
+CALLABLE_DECLS = {K.FUNCTION_DECL, K.CXX_METHOD, K.FUNCTION_TEMPLATE, K.CONSTRUCTOR, K.CONVERSION_FUNCTION}
+# What the language's own library calls its container operations and algorithms: words of the language, as a keyword is.
+GROW = {"push_back", "emplace_back", "push_front", "emplace_front", "push", "emplace", "insert", "emplace_hint", "try_emplace", "insert_or_assign"}
+SHRINK = {"erase", "pop_back", "pop_front", "pop", "extract"}
+EMPTY = {"clear"}
+LOOKUP = {"find", "count", "contains", "at", "lower_bound", "upper_bound", "equal_range"}
+SIZE = {"resize", "reserve", "assign"}
+EXCHANGE = {"swap"}
+LINEAR = {"find", "find_if", "find_if_not", "remove", "remove_if", "count", "count_if", "any_of", "all_of", "none_of", "for_each", "accumulate",
+          "search", "unique", "replace", "replace_if", "min_element", "max_element", "adjacent_find", "mismatch", "equal"}
+SORT = {"sort", "stable_sort", "partial_sort", "nth_element"}
+PASS_THROUGH = {"move", "forward", "ref", "cref", "as_const"}
+THREADS = {"thread", "jthread", "async"}
+LOCKS = {"lock_guard", "unique_lock", "shared_lock", "scoped_lock"}
+IDENT = re.compile(rb"[A-Za-z_]\w*")
+MIXING = {"Xor", "Mul", "Shl", "Or", "Add"}
 
 
-class State:
-    """Where the walk is: the unit edges belong to, how many loops deep, which locks are held."""
+def strip(c):
+    """The expression under implicit conversions, parentheses and casts."""
+    while c is not None and c.kind in WRAPPERS:
+        kids = list(c.get_children())
+        if len(kids) != 1:
+            return c if not kids else kids[-1]
+        c = kids[0]
+    return c
 
-    __slots__ = ("unit", "depth", "locks", "early", "lambdas", "branches")
 
-    def __init__(self, unit, depth=0, locks=()):
-        self.unit, self.depth, self.locks = unit, depth, locks
-        self.early = [False]
-        self.lambdas = [0]
-        self.branches = [0]
-
-    def inside(self, unit=None, depth=None, locks=None):
-        s = State(self.unit if unit is None else unit, self.depth if depth is None else depth, self.locks if locks is None else locks)
-        s.early, s.lambdas, s.branches = self.early, self.lambdas, self.branches
-        return s
+def canon(ref):
+    """A specialisation stands for the template it came from: one summary per written body."""
+    seen = 0
+    while ref is not None and seen < 8:
+        origin = ref.specialized_template
+        if origin is None or origin == ref:
+            break
+        ref, seen = origin, seen + 1
+    return ref
 
 
 class Expressions:
-    def __init__(self, owner, unit, file):
-        self.o, self.f, self.unit, self.file = owner, owner.facts, unit, file
-        self.alias = {}
+    """Mixed into the body walker: `u` is the translation unit reader, `s` the summary being filled, `ctx()` the loops and guards in force."""
 
-    def edge(self, st, kind, dst, line, **attrs):
-        self.f.edge(st.unit, kind, dst, self.file, line, AST, **attrs)
+    def text(self, c):
+        return self.src[c.extent.start.offset:c.extent.end.offset]
 
-    def first_field(self, c):
+    def op_of(self, c):
+        kind = None
+        try:
+            kind = c.binary_operator.name
+        except (AttributeError, ValueError):
+            kind = None
+        if kind and kind != "Invalid":
+            return kind
+        kids = list(c.get_children())
+        if len(kids) == 2:
+            return self.src[kids[0].extent.end.offset:kids[1].extent.start.offset].strip().decode("latin1") or "?"
+        return "?"
+
+    def unary(self, c):
+        t = self.text(c)
+        for op in (b"++", b"--"):
+            if t.startswith(op) or t.endswith(op):
+                return op.decode()
+        return t[:1].decode("latin1")
+
+    def field_of(self, c):
+        """The member an expression names: `a.b[i].c` is `c`; nothing for a local."""
+        c = strip(c)
+        while c is not None:
+            if c.kind == K.MEMBER_REF_EXPR or c.kind == K.DECL_REF_EXPR:
+                ref = c.referenced
+                if ref is not None and self.is_state(ref):
+                    return self.u.target(ref)
+                return None
+            if c.kind == K.ARRAY_SUBSCRIPT_EXPR or (c.kind == K.CALL_EXPR and c.spelling in ("operator[]", "operator*", "operator->")):
+                kids = list(c.get_children())
+                c = strip(kids[0]) if kids else None
+                continue
+            return None
+        return None
+
+    def is_state(self, ref):
+        if ref.kind == K.FIELD_DECL:
+            return not self.u.of_the_language(ref)
+        if ref.kind != K.VAR_DECL:
+            return False
+        parent = ref.semantic_parent
+        return ref.storage_class == ci.StorageClass.STATIC or (parent is not None and parent.kind in (K.NAMESPACE, K.TRANSLATION_UNIT, K.STRUCT_DECL, K.CLASS_DECL))
+
+    def arg(self, a):
+        """What an argument is: a parameter, a lambda, a member, a local, a text, a function, a number, or what it reads."""
+        c = strip(a)
+        if c is None:
+            return ["x", [], [], []]
+        if c.kind == K.CALL_EXPR and c.spelling in PASS_THROUGH and self.u.of_the_language(c.referenced):
+            kids = list(c.get_arguments())
+            if len(kids) == 1:
+                return self.arg(kids[0])
+        if c.kind == K.CALL_EXPR and c.referenced is not None and c.referenced.kind == K.CONSTRUCTOR and self.u.of_the_language(c.referenced):
+            kids = list(c.get_arguments())
+            if len(kids) == 1:
+                return self.arg(kids[0])  # a conversion the language makes: the value is what it converts
+        if c.kind == K.CALL_EXPR and c.spelling == "operator*":
+            kids = [k for k in c.get_children() if strip(k) is not None and strip(k).kind == K.DECL_REF_EXPR and strip(k).spelling != "operator*"]
+            if kids:
+                return self.arg(kids[0])
+        if c.kind == K.LAMBDA_EXPR:
+            return ["l", self.lambda_(c)]
+        if c.kind == K.STRING_LITERAL:
+            t = c.spelling
+            return ["s", t[t.find('"') + 1:-1]]
+        if c.kind == K.INTEGER_LITERAL:
+            return ["i", self.text(c).decode("latin1")]
+        if c.kind == K.UNARY_OPERATOR:
+            inner = strip(next(iter(c.get_children()), None))
+            if inner is not None and inner.referenced is not None and inner.referenced.kind in CALLABLE_DECLS:
+                return ["m", self.u.target(canon(inner.referenced))]
+        if c.kind in (K.DECL_REF_EXPR, K.MEMBER_REF_EXPR) and c.referenced is not None:
+            ref = c.referenced
+            if ref.kind == K.PARM_DECL:
+                return self.param_ref(ref) or ["x", [], [], []]
+            if ref.kind in CALLABLE_DECLS:
+                return ["m", self.u.target(canon(ref))]
+            if self.is_state(ref):
+                return ["f", self.u.target(ref)]
+            if ref.kind == K.VAR_DECL:
+                lam = self.lambdas.get(ref.get_usr())
+                return ["l", lam] if lam else ["v", ref.spelling]
+        fields, names, params = self.reads(c)
+        return ["x", fields, names, params]
+
+    def param_ref(self, ref):
+        found = self.params.get(ref.get_usr())
+        if found is None:
+            return None
+        owner, i = found
+        return ["p", i] if owner == self.s["id"] else ["o", owner, i]
+
+    def reads(self, c):
+        """Members, locals and parameters an expression reads, and the calls it makes, as a value's sources."""
+        fields, names, params = set(), set(), set()
         for k in c.walk_preorder():
-            if k.kind == K.MEMBER_REF_EXPR or k.kind == K.DECL_REF_EXPR:
+            if k.kind in (K.MEMBER_REF_EXPR, K.DECL_REF_EXPR) and k.referenced is not None:
                 ref = k.referenced
-                if ref is not None and ref.kind in (K.FIELD_DECL, K.VAR_DECL) and ref.semantic_parent is not None and ref.semantic_parent.kind != K.FUNCTION_DECL:
-                    if ref.kind == K.FIELD_DECL or ref.storage_class == ci.StorageClass.STATIC:
-                        return self.o.target(ref)
-        return None
+                if self.is_state(ref):
+                    fields.add(self.u.target(ref))
+                elif ref.kind == K.PARM_DECL and ref.get_usr() in self.params:
+                    params.add(self.params[ref.get_usr()][1])
+                elif ref.kind == K.VAR_DECL:
+                    names.add(ref.spelling)
+            elif k.kind == K.CALL_EXPR and k.referenced is not None and k.referenced.kind in CALLABLE_DECLS:
+                names.add("()" + self.u.target(canon(k.referenced)))
+        return sorted(fields), sorted(names), sorted(params)
 
-    def receiver_field(self, c):
-        """The field a member call acts on: `field.push_back(x)`, never a field named among its arguments."""
-        head = next(iter(c.get_children()), None)
-        for _ in range(4):
-            if head is None or head.kind != K.MEMBER_REF_EXPR and head.kind != K.UNEXPOSED_EXPR:
-                break
-            inner = next(iter(head.get_children()), None)
-            if head.kind == K.MEMBER_REF_EXPR and inner is None:
-                return self.o.target(head.referenced) if head.referenced is not None and head.referenced.kind == K.FIELD_DECL else None
-            if head.kind == K.MEMBER_REF_EXPR and inner.kind in (K.MEMBER_REF_EXPR, K.DECL_REF_EXPR) and inner.referenced is not None and inner.referenced.kind == K.FIELD_DECL:
-                return self.o.target(inner.referenced)
-            head = inner
-        return None
+    def sources(self, c):
+        if c is None:
+            return []
+        fields, names, params = self.reads(c)
+        return [*(["f", f] for f in fields), *(["call", n[2:]] if n.startswith("()") else ["v", n] for n in names), *(["p", p] for p in params)]
 
-    def direct_field(self, c):
-        """The field an initialiser is, when it is nothing but that field."""
-        while c is not None and (c.kind == K.UNEXPOSED_EXPR or (c.kind == K.CALL_EXPR and c.referenced is not None and c.referenced.kind == K.CONSTRUCTOR)):
-            kids = list(c.get_children())
-            c = kids[0] if len(kids) == 1 else None
-        if c is not None and c.kind == K.MEMBER_REF_EXPR and c.referenced is not None and c.referenced.kind == K.FIELD_DECL:
-            return self.o.target(c.referenced)
-        return None
+    def tree(self, c):
+        """A small value tree: enough to evaluate a condition or an update at chosen values."""
+        c = strip(c)
+        if c is None:
+            return ["?"]
+        if c.kind == K.INTEGER_LITERAL:
+            t = self.text(c).decode("latin1").rstrip("uUlL")
+            try:
+                return ["lit", int(t, 0)]
+            except ValueError:
+                return ["?"]
+        if c.kind == K.CXX_BOOL_LITERAL_EXPR:
+            return ["lit", 1 if self.text(c) == b"true" else 0]
+        if c.kind in (K.MEMBER_REF_EXPR, K.DECL_REF_EXPR) and c.referenced is not None:
+            ref = c.referenced
+            if ref.kind == K.FIELD_DECL:
+                return ["f", self.u.target(ref)]
+            if ref.kind == K.PARM_DECL and ref.get_usr() in self.params:
+                return ["p", self.params[ref.get_usr()][1]]
+            return ["v", ref.spelling]
+        kids = list(c.get_children())
+        if c.kind == K.BINARY_OPERATOR and len(kids) == 2:
+            return ["b", self.op_of(c), self.tree(kids[0]), self.tree(kids[1])]
+        if c.kind == K.UNARY_OPERATOR and kids:
+            return ["u", self.unary(c), self.tree(kids[0])]
+        if c.kind == K.CONDITIONAL_OPERATOR and len(kids) == 3:
+            return ["?:", self.tree(kids[0]), self.tree(kids[1]), self.tree(kids[2])]
+        return ["?"]
 
-    def access(self, c, st, mode, ref):
-        target = self.o.target(ref)
-        line = c.location.line
-        self.f.site(self.file, line, c.location.column, "access")
-        if mode == READ:
-            self.edge(st, "read", target, line, depth=st.depth, locks=st.locks)
-        else:
-            self.edge(st, "write", target, line, depth=st.depth, locks=st.locks, via="mutate" if mode == MUTATE else "assign")
-
-    def expr(self, c, st, mode):
+    def expr(self, c, mode=READ, stmt=None):
         kind = c.kind
         if kind == K.CALL_EXPR:
-            self.call(c, st)
+            self.call(c, stmt, mode)
         elif kind == K.MEMBER_REF_EXPR or kind == K.DECL_REF_EXPR:
             ref = c.referenced
             if ref is not None:
-                self.reference(c, st, mode, ref)
+                if self.is_state(ref):
+                    self.ev("w" if mode != READ else "r", c, self.u.target(ref))
+                elif ref.kind == K.PARM_DECL:
+                    found = self.params.get(ref.get_usr())
+                    if found is not None and found[0] != self.s["id"]:
+                        self.ev("opr", c, found[0], found[1])
             for k in c.get_children():
-                self.expr(k, st, MUTATE if mode != READ else READ)
+                self.expr(k, READ)
         elif kind == K.ARRAY_SUBSCRIPT_EXPR:
             kids = list(c.get_children())
-            self.expr(kids[0], st, mode)
+            if kids:
+                self.expr(kids[0], mode)
             for k in kids[1:]:
-                self.expr(k, st, READ)  # what is written is the element: the index is only read
+                self.expr(k, READ)
         elif kind == K.BINARY_OPERATOR or kind == K.COMPOUND_ASSIGNMENT_OPERATOR:
-            self.binary(c, st)
+            self.binary(c, kind)
         elif kind == K.UNARY_OPERATOR:
-            self.unary(c, st, mode)
+            kids = list(c.get_children())
+            op = self.unary(c)
+            if op in ("++", "--") and kids:
+                field = self.field_of(kids[0])
+                if field and self.keep_trees:
+                    self.s["assigns"].append([field, op, ["lit", 1]])
+            for k in kids:
+                self.expr(k, MUTATE if op in ("++", "--") else mode)
         elif kind == K.LAMBDA_EXPR:
-            self.lambda_(c, st, None)
-        elif kind == K.CXX_FUNCTIONAL_CAST_EXPR or kind == K.CSTYLE_CAST_EXPR or kind == K.CXX_STATIC_CAST_EXPR:
-            self.f.site(self.file, c.extent.start.line, c.extent.start.column, "cast")
-            for k in c.get_children():
-                self.expr(k, st, mode)
+            self.lambda_(c)
         elif kind == K.CXX_NEW_EXPR:
-            self.f.cost(st.unit, "alloc", self.file, c.location.line, st.depth, st.locks, what="new")
+            sizes = [s for k in c.get_children() if k.kind not in (K.TYPE_REF, K.TEMPLATE_REF, K.NAMESPACE_REF) for s in self.sources(k)]
+            if "[" in self.text(c).decode("latin1"):
+                self.ev("alloc", c, sizes)
             for k in c.get_children():
-                self.expr(k, st, READ)
-        elif kind == K.STRING_LITERAL:
-            self.string(c, st, "")
-        elif kind == K.CXX_CONST_CAST_EXPR:
-            self.f.cost(st.unit, "const_cast", self.file, c.location.line, st.depth, st.locks)
-            self.edge(st, "const_cast", self.first_field(c) or "ext:const_cast", c.location.line)
-            for k in c.get_children():
-                self.expr(k, st, MUTATE)
-        elif kind == K.COMPOUND_STMT or kind in LOOPS or kind == K.IF_STMT or kind == K.SWITCH_STMT or kind == K.DECL_STMT or kind == K.RETURN_STMT:
-            self.stmt(c, st)
+                self.expr(k, READ)
+        elif kind in (K.COMPOUND_STMT, K.IF_STMT, K.FOR_STMT, K.WHILE_STMT, K.DO_STMT, K.CXX_FOR_RANGE_STMT, K.SWITCH_STMT, K.DECL_STMT, K.RETURN_STMT):
+            self.stmt(c)
         else:
             for k in c.get_children():
-                self.expr(k, st, mode)
+                self.expr(k, mode)
 
-    def reference(self, c, st, mode, ref):
-        rk = ref.kind
-        if rk == K.FIELD_DECL or (rk == K.VAR_DECL and ref.storage_class == ci.StorageClass.STATIC) or (rk == K.VAR_DECL and ref.semantic_parent is not None and ref.semantic_parent.kind in (K.NAMESPACE, K.TRANSLATION_UNIT)):
-            self.access(c, st, mode, ref)
-        elif rk == K.VAR_DECL and ref.spelling in self.alias and mode != READ:
-            self.edge(st, "write", self.alias[ref.spelling], c.location.line, depth=st.depth, locks=st.locks, via="alias")
-        elif rk in (K.FUNCTION_DECL, K.CXX_METHOD, K.FUNCTION_TEMPLATE):
-            self.edge(st, "fnref", self.o.target(ref), c.location.line)
-            self.f.site(self.file, c.location.line, c.location.column, "fnref")
-        elif rk == K.ENUM_CONSTANT_DECL:
-            self.edge(st, "enumref", self.o.target(ref), c.location.line)
-
-    def binary(self, c, st):
+    def binary(self, c, kind):
         kids = list(c.get_children())
-        name = c.binary_operator.name if c.kind == K.BINARY_OPERATOR else "AddAssign"
-        if len(kids) == 2 and (name in ASSIGN or name in COMPOUND_ASSIGN):
-            self.expr(kids[0], st, WRITE if name in ASSIGN else MUTATE)
-            self.expr(kids[1], st, READ)
-            if kids[1].kind == K.LAMBDA_EXPR or kids[1].kind == K.UNEXPOSED_EXPR:
-                field = self.first_field(kids[0])
-                fn = next((k for k in kids[1].walk_preorder() if k.kind == K.LAMBDA_EXPR), None)
-                if field and fn is not None:
-                    self.edge(st, "stores_fn", field, c.location.line)
+        op = self.op_of(c)
+        if len(kids) == 2 and (kind == K.COMPOUND_ASSIGNMENT_OPERATOR or op == "Assign" or op == "="):
+            field = self.field_of(kids[0])
+            self.expr(kids[0], WRITE if op in ("Assign", "=") else MUTATE)
+            self.expr(kids[1], READ)
+            if field:
+                self.stores(c, kids[1])
+                if self.keep_trees and op not in ("Assign", "="):
+                    self.s["assigns"].append([field, op, self.tree(kids[1])])
+            else:
+                target = strip(kids[0])
+                if target is not None and target.kind == K.DECL_REF_EXPR and target.referenced is not None and target.referenced.kind == K.VAR_DECL:
+                    for held in self.aliases.get(target.spelling, ()):
+                        self.ev("w", c, held)
+                    self.ev("set", c, target.spelling, self.sources(kids[1]), self.atom(strip(kids[1])))
+            if op not in ("Assign", "="):
+                self.s.setdefault("ops", []).append(op)
             return
+        if op in MIXING:
+            self.s.setdefault("ops", []).append(op)
         for k in kids:
-            self.expr(k, st, READ)
+            self.expr(k, READ)
 
-    def unary(self, c, st, mode):
-        start = c.extent.start.offset
-        source = self.o.texts.get(self.file, b"")
-        head = source[start:start + 2]
-        tail = source[c.extent.end.offset - 2:c.extent.end.offset]
-        kids = list(c.get_children())
-        if head in (b"++", b"--") or tail in (b"++", b"--"):
-            for k in kids:
-                self.expr(k, st, MUTATE)
-            return
-        if head[:1] == b"&" and kids:
-            ref = kids[0].referenced
-            if ref is not None and ref.kind in (K.FIELD_DECL, K.CXX_METHOD):
-                self.edge(st, "memberptr", self.o.target(ref), c.location.line)
-                self.f.site(self.file, c.location.line, c.location.column, "memberptr")
-        for k in kids:
-            self.expr(k, st, mode)
+    def stores(self, at, value):
+        """A parameter written into a member is kept beyond the call."""
+        _, _, params = self.reads(value)
+        for p in params:
+            self.ev("store", at, p)
+        for k in value.walk_preorder():
+            if k.kind == K.DECL_REF_EXPR and k.referenced is not None and k.referenced.kind == K.PARM_DECL:
+                found = self.params.get(k.referenced.get_usr())
+                if found is not None and found[0] != self.s["id"]:
+                    self.ev("ostore", at, found[0], found[1])
 
-    def string(self, c, st, role):
-        text = c.spelling
-        if len(text) >= 2 and text[0] in "\"'" or text[:2] in ("L\"", "u\"", "U\""):
-            value = text[text.find('"') + 1:-1]
-            self.f.ref(None, value, st.unit, self.file, c.location.line, role)
-            self.f.site(self.file, c.location.line, c.location.column, "string")
-
-    def lambda_(self, c, st, callee):
-        st.lambdas[0] += 1
-        uid = f"{self.unit}#l{st.lambdas[0]}"
-        line = c.location.line
-        source = self.o.texts.get(self.file, b"")
-        head = source[c.extent.start.offset:c.extent.start.offset + 200].split(b"]")[0].decode("utf8", "replace")
-        self.f.unit(uid, "lambda", f"l{st.lambdas[0]}", self.file, line, c.extent.end.line, st.unit, capture=head[1:])
-        self.edge(st, "lambda", uid, line, passed_to=callee or "", capture=head[1:], depth=st.depth)
-        inner = State(uid, 0, ())
-        inner.lambdas, inner.branches = st.lambdas, st.branches
-        for k in c.get_children():
-            if k.kind == K.COMPOUND_STMT:
-                self.stmt(k, inner)
-        return uid
-
-    def call(self, c, st):
+    def call(self, c, stmt, mode=READ):
         from .cpp_calls import call
-        call(self, c, st)
+        call(self, c, stmt, mode)
+
+    def dependent_name(self, c):
+        """A call a template leaves open: the method's name is the last word written before its arguments."""
+        head = next(iter(c.get_children()), None)
+        if head is None:
+            return ""
+        words = IDENT.findall(self.text(head))
+        return words[-1].decode() if words else ""

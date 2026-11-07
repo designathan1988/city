@@ -18,7 +18,7 @@ def _parse(task):
     """One translation unit. Walks only the files given to it: the compiler reads the others, nobody walks them twice."""
     from clang import cindex as ci
 
-    from .cpp_walk import walk
+    from .cpp_summary import walk
     config, rel, flags, export, scope, owned = task
     path = os.path.join(export, rel)
     index = ci.Index.create()
