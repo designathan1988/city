@@ -1,6 +1,7 @@
 """What a scan of C and C++ decides before it parses: what each unit can see, who walks each header, what is compiled once for all, and which of our files
 can read differently in another configuration."""
 import collections
+import concurrent.futures
 import os
 import re
 
@@ -12,27 +13,58 @@ DEFINE = re.compile(r'^[ \t]*#[ \t]*define[ \t]+(\w+)', re.M)
 ANGLED = re.compile(r'^[ \t]*#[ \t]*include[ \t]*<([^>]+)>', re.M)
 
 
-def prefix(flags, export, config, repo, tracked, own):
-    """What nearly every unit includes from outside, compiled once for a configuration and read by all of them: the compiler stops parsing the same
-    headers hundreds of times. Which headers comes from the sample, and `ARCH_PCH=0` gives the road without it, which the selfcheck compares byte by byte."""
-    if os.environ.get("ARCH_PCH") == "0":
-        return None
+def angled(repo, tracked, own):
+    """Per file, the outside headers it names."""
+    return {p: {n for n in ANGLED.findall(repo.text(tracked[p]) or "") if n.rsplit(".", 1)[-1] in ("hpp", "h") or "." not in n} for p in own}
+
+
+def levels(seen):
+    """Nested sets of outside headers, from what nearly every unit includes down: each level adds what the sample's own break says comes next."""
+    rest = collections.Counter(n for names in seen.values() for n in names)
+    taken, out = set(), []
+    while rest:
+        cut = natural_break(list(rest.values()))
+        step = {n for n, c in rest.items() if c >= cut} if cut != float("inf") else set(rest)
+        taken |= step
+        out.append(frozenset(taken))
+        rest = collections.Counter({n: c for n, c in rest.items() if n not in step})
+    return out
+
+
+def _compiled(job):
     from clang import cindex as ci
-    counts = collections.Counter()
-    for path in own:
-        counts.update(n for n in set(ANGLED.findall(repo.text(tracked[path]) or "")) if n.rsplit(".", 1)[-1] in ("hpp", "h") or "." not in n)
-    cut = natural_break(list(counts.values()))
-    names = sorted(n for n, c in counts.items() if c >= cut) if cut != float("inf") else sorted(counts)
-    if not names:
-        return None
-    source = os.path.join(export, f"shared_{digest(config)}_{os.getpid()}.hpp")
+    flags, source, names = job
     with open(source, "w", encoding="utf8", newline="\n") as f:
-        f.write("".join(f"#include <{n}>\n" for n in names))
+        f.write("".join(f"#include <{n}>\n" for n in sorted(names)))
     tu = ci.Index.create().parse(source, args=["-x", "c++-header", *flags], options=ci.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD | ci.TranslationUnit.PARSE_INCOMPLETE)
     if any(d.severity >= 3 for d in tu.diagnostics):
         return None
     tu.save(source + ".pch")
-    return source + ".pch", source
+    return source + ".pch"
+
+
+def shared(seen, flags, export, config):
+    """Outside headers compiled once and read by many units, so the compiler stops parsing them hundreds of times. A unit reads only the largest level made
+    of headers it includes itself: it never sees a declaration it would not have seen. Each file ends with this process's number, for tasks side by side."""
+    steps = levels(seen)
+    pick = {}
+    for rel, names in seen.items():
+        fits = [s for s in steps if s <= names]
+        if fits:
+            pick[rel] = fits[-1]
+    used = sorted(set(pick.values()), key=len)
+    jobs = [(flags, os.path.join(export, f"shared_{digest(config)}_{i}_{os.getpid()}.hpp"), names) for i, names in enumerate(used)]
+    with concurrent.futures.ThreadPoolExecutor(max(1, len(jobs))) as pool:
+        made = dict(zip(used, pool.map(_compiled, jobs)))
+    return {rel: made[names] for rel, names in pick.items() if made[names]}
+
+
+def everything(names, export, config):
+    """A file naming every outside header: what the compiler is asked about macros."""
+    source = os.path.join(export, f"all_{digest(config)}_{os.getpid()}.hpp")
+    with open(source, "w", encoding="utf8", newline="\n") as f:
+        f.write("".join(f"#include <{n}>\n" for n in sorted(names)))
+    return source
 
 
 def differ(compiler, first, second, source, repo, tracked, own):

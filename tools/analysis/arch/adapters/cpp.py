@@ -9,7 +9,7 @@ from ..core import digest
 from ..model import Facts
 from .cpp_build import HEADER, SOURCE, compile_units, compiler_of
 from . import cpp_plan
-from .cpp_plan import differ, owners, prefix, seen_from
+from .cpp_plan import differ, owners, seen_from
 
 LANG = ("c", "cc", "cpp", "cxx", "h", "hh", "hpp", "hxx", "inl")
 
@@ -80,19 +80,12 @@ class _Pass:
     def __init__(self, repo, tracked, export, own, table, world):
         self.repo, self.tracked, self.export, self.own, self.table, self.world = repo, tracked, export, own, table, world
         self.results = {}
-        self.shared = {}
-        self.prepare = None
-        self.made = {}
+        self.reads = {}
 
-    def flags_of(self, flags):
-        """A unit with the usual flags reads the shared headers; one with its own flags parses everything itself."""
-        usual = self.shared.get(tuple(flags))
-        if usual is None or self.prepare is None:
-            return flags
-        if usual[0] not in self.made:
-            self.made[usual[0]] = self.prepare(*usual)
-        made = self.made[usual[0]]
-        return [*flags, "-include-pch", made[0]] if made else flags
+    def flags_of(self, config, rel, flags):
+        """A unit that reads shared headers says so to the compiler; the key of a result never depends on it: what it sees is the same."""
+        made = self.reads.get((config, rel))
+        return [*flags, "-include-pch", made] if made else flags
 
     def key(self, config, rel, flags, sight, owned):
         stable = [f.replace(self.export, "") for f in flags]
@@ -110,7 +103,7 @@ class _Pass:
                 pending[key] = (config, rel, flags, sight, owned)
         order = sorted(pending, key=lambda k: (-len(pending[k][3]), pending[k][1], pending[k][0]))
         log(f"c++: {len(order)} of {len(tasks)} units to parse")
-        jobs = [(pending[k][0], pending[k][1], self.flags_of(pending[k][2]), self.export, frozenset(self.own), frozenset(pending[k][4]), k) for k in order]
+        jobs = [(pending[k][0], pending[k][1], self.flags_of(pending[k][0], pending[k][1], pending[k][2]), self.export, frozenset(self.own), frozenset(pending[k][4]), k) for k in order]
         for key, result in workers.each(_keyed, jobs):
             self.table[key] = result
             self.results[(pending[key][0], pending[key][1], key)] = result
@@ -136,9 +129,9 @@ def scan(repo, tracked, scope, export, cache, log):
         if rel in own:
             work[config].append((rel, flags))
     round_one = _Pass(repo, tracked, export, own, cache.table("cpp"), world)
-    # Compiling the shared headers pays when many units read them; a handful parses faster without.
-    if sum(len(u) for u in work.values()) >= 2 * workers.cores():
-        round_one.prepare = lambda config, flags: prefix(flags, export, config, repo, tracked, own)
+    # Shared headers pay when many units read them, and the road without them walks everything: the selfcheck compares the two byte by byte.
+    fast = os.environ.get("ARCH_PCH") != "0" and sum(len(u) for u in work.values()) >= 2 * workers.cores()
+    outside = cpp_plan.angled(repo, tracked, own)
     plan, only, same = [], {}, {}
     units_total = 0
     first = None
@@ -147,18 +140,18 @@ def scan(repo, tracked, scope, export, cache, log):
         sight = {r: seen_from(r, included) for r in rels}
         owned = owners(rels, sight, weight)
         usual = collections.Counter(tuple(f) for _, f in units).most_common(1)[0][0]
-        round_one.shared[usual] = (config, list(usual))
         units_total += len(units)
+        seen_names = {r: set().union(*(outside[f] for f in sight[r])) for r in rels}
+        if fast:
+            alike = {r: seen_names[r] for r, f in units if tuple(f) == usual}
+            round_one.reads.update({(config, r): p for r, p in cpp_plan.shared(alike, list(usual), export, config).items()})
         if first is None:
             first = (config, list(usual))
-        else:
-            # Only with the shared headers on: the road without them walks everything, and the selfcheck compares the two byte by byte.
-            made = round_one.flags_of(list(usual))
-            base = round_one.flags_of(first[1])
-            if "-include-pch" in made and "-include-pch" in base and round_one.made.get(first[0]):
-                only[config] = differ(compiler_of(repo), first[1], list(usual), round_one.made[first[0]][1], repo, tracked, own)
-                same[config] = own - only[config]
-                owned = {r: o & only[config] for r, o in owned.items()}
+        elif fast:
+            names = set().union(*seen_names.values())
+            only[config] = differ(compiler_of(repo), first[1], list(usual), cpp_plan.everything(names, export, config), repo, tracked, own)
+            same[config] = own - only[config]
+            owned = {r: o & only[config] for r, o in owned.items()}
         plan += [(config, rel, flags, sight[rel], owned[rel]) for rel, flags in sorted(units) if owned[rel]]
     round_one.run(plan, log)
     late = _left_over(round_one.results, own, plan, included, only)
