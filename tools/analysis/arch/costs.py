@@ -176,6 +176,28 @@ def _on_the_stack(k, field, held):
     return any(e.kind == "raii" for e in graph.into.get(owner, ())) or not any(graph.units[c]["kind"] in ("method", "function") for c in graph.children.get(owner, ()))
 
 
+def _through_a_local(k, c, field):
+    """`record.field.push_back(x)` where the function itself declares `Record record`: the entries go with the function, or are handed over whole."""
+    graph = k.graph
+    u = graph.units.get(field)
+    home = graph.units.get(graph.callable_of(c[0]))
+    if u is None or home is None or u["parent"] not in graph.units:
+        return False
+    lines = (k.run.texts.get(c[2]) or "").split(chr(10))
+    found = re.search(rf"(\w+)\s*\.\s*{re.escape(u['name'])}\b", lines[c[3] - 1]) if 0 < c[3] <= len(lines) else None
+    declared = rf"\b{re.escape(graph.units[u['parent']]['name'])}\s+{found[1]}\s*[;={{(]" if found else None
+    return bool(declared) and re.search(declared, chr(10).join(lines[home["line"] - 1:home["end"]])) is not None
+
+
+def _replaced(k, field):
+    """A work object its holder replaces on the repeating path: what it took goes with it when the next one comes."""
+    graph = k.graph
+    owner = graph.units.get(graph.units.get(field, {}).get("parent"))
+    if owner is None:
+        return False
+    return any(owner["name"] in NAMES.findall(u["attrs"].get("type") or "") and k.writers.get(uid, set()) & k.when.repeats for uid, u in graph.units.items() if u["kind"] == "field")
+
+
 def memory_growth(k):
     """State that takes entries on the repeating path and never gives any back. Sizing a field to a number is not taking entries."""
     grown = collections.defaultdict(list)
@@ -183,7 +205,7 @@ def memory_growth(k):
     held = {w for u in k.graph.units.values() if u["kind"] in ("field", "global") for w in NAMES.findall(u["attrs"].get("type") or "")}
     for c in k.by_kind["grow"]:
         field = c[6].get("field")
-        if field and not c[6].get("sized") and k.repeated(c) and not _on_the_stack(k, field, held):
+        if field and not c[6].get("sized") and k.repeated(c) and not _on_the_stack(k, field, held) and not _through_a_local(k, c, field) and not _replaced(k, field):
             grown[field].append(c)
     for c in k.by_kind["shrink"]:
         if c[6].get("field"):
@@ -205,7 +227,7 @@ def streaming(k):
 def loading(k):
     """Heavy work on the opening path that runs in sequence on the main thread, or is decoded twice."""
     boot = k.when.reach["boot"]
-    heavy = {c[0]: c for c in k.by_kind["loop"] if c[4] > 1 and is_collection(k, c[6]["over"])}
+    heavy = {c[0]: c for c in sorted(k.by_kind["loop"], key=lambda c: c[4]) if c[4] > 2 or (c[4] > 1 and is_collection(k, c[6]["over"]))}
     out = []
     callers = collections.Counter()
     for e in k.graph.edges.values():
@@ -213,7 +235,8 @@ def loading(k):
             callers[e.dst] += 1
     for uid, n in sorted(callers.items()):
         c = heavy[uid]
-        if n > 1 and uid not in k.when.tests:
+        # Called from two places, or three deep from one: either way the opening pays it over and over.
+        if (n > 1 or heavy[uid][4] > 2) and uid not in k.when.tests:
             out.append(k.finding("loading", uid, c[2], c[3], callers=n))
     return out
 

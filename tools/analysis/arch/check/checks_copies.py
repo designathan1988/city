@@ -12,7 +12,7 @@ from ..scan import ADAPTERS
 from . import inject, inject_extra, rearrange
 from .checks_compare import _ablation_judge, chained, nmi, notes, same, snapshot
 from .rename import Renamer, outside_vocabulary
-from .apart import groups_apart, marks_apart, touched_by, with_their_groups
+from .apart import beside, groups_apart, marks_apart, moved_causes, moved_groups, touched_by
 from .supervisor import Job
 
 BEST_OF_THE_PROTOTYPE = 0.88
@@ -73,9 +73,8 @@ def injection_jobs(ctx):
             Job("small_history", "read_copy", {"folder": s.evolving, "store": False, "out": os.path.join(ctx.base, "small_out"), "expect": s.changes, "want": ()}, "injection")]
 
 
-# Kinds that are a place in the sample's own tail or map: a case a few lines long is not in the tail of a real repository, by what the tail means. The small
-# repository, whose tail it is, proves them.
-AGAINST_THE_SAMPLE = ("feature", "texture_bandwidth", "not:texture_bandwidth", "shader_cost", "god", "implicit_role", "missing_owner", "repeated_decision", "not:repeated_rule")
+# The two that a case cannot be without a real corpus: images and shaders are weighed against the repository's own, and a feature is a place on its map.
+AGAINST_THE_SAMPLE = ("feature", "texture_bandwidth", "not:texture_bandwidth", "shader_cost")
 
 
 def injection_on_graph(ctx):
@@ -83,7 +82,11 @@ def injection_on_graph(ctx):
     s = small_repository(ctx)
     weighed = [c for c in s.expect if not (c[0][0] in "BD" and c[0][1:].isdigit())]
     weighed = [c for c in weighed if c[0] not in AGAINST_THE_SAMPLE]
-    return [_on_graph(ctx, "graph_cases", "injection_graph", "injected", facts=os.path.join(ctx.base, "small_facts.pkl"), folder=s.folder, expect=weighed)]
+    findings = ctx.plain()[1]["findings"]
+    top = lambda kind: max((f for f in findings if f["category"] == kind), key=lambda f: (len(f["places"]), f["unit"]))  # noqa: E731
+    heavy = {"god": top("god")["unit"], "decision": top("repeated_decision")["unit"], "messages": max(f["detail"]["messages"] for f in findings if f["category"] == "implicit_role") + 1}
+    words = {c[0]: c[1] for c in s.expect if c[0] in ("god", "repeated_decision", "implicit_role")}
+    return [_on_graph(ctx, "graph_cases", "injection_graph", "injected", facts=os.path.join(ctx.base, "small_facts.pkl"), folder=s.folder, expect=weighed, heavy=heavy, words=words)]
 
 
 def injection(ctx, out):
@@ -227,21 +230,17 @@ def contamination(ctx, out):
     plain_run, plain = ctx.plain()
     gone = ctx.state["gone"]
     got = out("graph_clean")
-    touched = touched_by(plain_run, plain, gone, got["cut"])
-    near = with_their_groups(touched, [g["members"] for g in plain["groups"]] + got["groups"])
-    left, right = groups_apart((g["members"] for g in plain["groups"]), near), groups_apart(got["groups"], near)
+    touched = touched_by(plain_run, plain, gone | set(got["applied"]), got["cut"])
+    every = [g["members"] for g in plain["groups"]] + got["groups"]
+    left, right = groups_apart((g["members"] for g in plain["groups"]), touched), groups_apart(got["groups"], touched)
     mine = [(q["id"], q["commits"], q["reach"], q["score"], [p["unit"] for p in q["places"]], q["children"]) for q in plain["queue"]]
-    # The same goes for a cause: one place of it touched, and the others are what is left of a cause that was touched.
-    near = with_their_groups(near, [c[4] for c in mine] + [c[4] for c in got["causes"]])
-    causes_a, causes_b = marks_apart(mine, near), marks_apart(got["causes"], near)
-    units = plain_run.graph.units
-    held = {units[m]["file"] for g in plain["groups"] for m in g["members"] if m in units} | {p["file"] for q in plain["queue"] for p in q["places"]}
-    # A role of a file in no group and no cause reaches nothing, and a folder that lost files is a folder the drop touched.
-    kept = lambda v: sorted(f for f in set(v) & held if not any(g.startswith(f.rsplit("/", 1)[0] + "/") for g in gone))  # noqa: E731
-    moved = {k: kept(v)[:5] for k, v in got["roles_moved"].items() if kept(v)}
-    equal = bool(left) and bool(causes_a) and left == right and causes_a == causes_b and not moved
-    return {"pass": equal, "detail": {"dropped": len(gone), "units": len(plain_run.graph.units), "units_touching_them": len(touched), "with_their_groups": len(near), "groups": (len(left), len(right)), "causes": (len(causes_a), len(causes_b)), "roles_moved": moved, "prose_moved": sum(len(v) for v in got["roles_moved"].values()),
-                                      "groups_differ": len(left ^ right), "causes_differ": len(causes_a ^ causes_b), "sample": sorted(left ^ right)[:3], "causes_sample": sorted(causes_a ^ causes_b, key=str)[:3]}}
+    causes_a, causes_b = marks_apart(mine, touched), marks_apart(got["causes"], touched)
+    places = {c[0]: c[4] for c in (*mine, *got["causes"])}
+    groups_moved = moved_groups(left, right, beside(touched, every))
+    causes_moved = moved_causes(causes_a, causes_b, places, touched)
+    equal = bool(left) and bool(causes_a) and not groups_moved and not causes_moved and not got["roles_back"]
+    return {"pass": equal, "detail": {"dropped": len(gone), "applied": len(got["applied"]), "units": len(plain_run.graph.units), "units_touching_them": len(touched), "groups": (len(left), len(right)), "causes": (len(causes_a), len(causes_b)),
+                                      "groups_differ": len(left ^ right), "causes_differ": len(causes_a ^ causes_b), "groups_moved": groups_moved[:3], "causes_moved": causes_moved[:3], "roles_back": got["roles_back"][:5]}}
 
 
 def stability_jobs(ctx):

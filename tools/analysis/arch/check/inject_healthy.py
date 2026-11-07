@@ -119,6 +119,8 @@ func {bl}_values(sizes) -> int:
 	var total := 0
 	for i in sizes.size():
 		total += int(absf(i))
+	for c in get_children():
+		total += 1
 	return total
 
 func {a}_fill() -> int:

@@ -1,6 +1,9 @@
 """Injected structure: a feature nobody told the program about, a god, a repeated rule, a decision taken in many places, a role without a contract."""
 
 
+SCATTERED_PLACES = 3
+
+
 def files(w, expect, places, join):
     def case(cid):
         word = w()
@@ -14,6 +17,8 @@ def files(w, expect, places, join):
     for i in range(12):
         name = w()
         parts.append(name)
+        # A few places, as a scattered rule is: what every part touched would be the common currency of this small repository.
+        touch = f"func {scattered}_{name}() -> void:\n	Shared_{decide}.{scattered}_first = 1\n	Shared_{decide}.{scattered}_second = 2\n" if i < SCATTERED_PLACES else ""
         out[join(pick(), f"{name}.gd")] = f"""# Injected part {i}.
 class_name Part_{name}
 extends Node
@@ -63,10 +68,7 @@ func {rule}_{name}(a: int, b: int) -> int:
 			t -= a
 	return t + b
 
-func {scattered}_{name}() -> void:
-	Shared_{decide}.{scattered}_first = 1
-	Shared_{decide}.{scattered}_second = 2
-"""
+{touch}"""
     out[join(pick(), f"shared_{decide}.gd")] = f"""# Injected shared state.
 class_name Shared_{decide}
 extends Node

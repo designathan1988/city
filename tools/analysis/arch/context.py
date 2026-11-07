@@ -10,10 +10,25 @@ CALLABLE = {"function", "method", "entry", "lambda", "branch"}
 LATER = {"bind", "callable", "stored", "callback", "connection", "signal_connect", "thread"}
 
 
+def _calling_by_name(graph):
+    """Functions that run what they are given by name, there and then. A name handed to any other function is kept for later: a button's command."""
+    out = {"call", "callv"}
+    for e in graph.edges.values():
+        if e.dst.startswith("ext:") and e.dst.rsplit(".", 1)[-1] in ("call", "callv"):
+            home = graph.units.get(graph.callable_of(e.src))
+            if home is not None:
+                out.add(home["name"])
+    return out
+
+
 def flow_edges(graph):
     """Execution paths: certain edges, plus names that reach a table entry or a function without doubt."""
     out = collections.defaultdict(list)
+    at_once = _calling_by_name(graph)
     for e in graph.edges.values():
+        role = e.attrs.get("role", "")
+        if e.kind == "name_ref" and "#" in role and role.split("#")[0] not in at_once:
+            e.attrs["handed"] = True
         if e.generic or e.src not in graph.units or e.dst not in graph.units:
             continue
         if e.kind in FLOW or (e.kind == "name_ref" and e.conf == 1.0 and e.attrs.get("named") and graph.units[e.dst]["kind"] in CALLABLE):
@@ -30,9 +45,16 @@ def _in_order(edges):
 Contains = collections.namedtuple("Contains", "src dst kind sites")
 
 
+def later(e):
+    """Taken some other time: what is registered, and a function a script writes as an argument, which runs when something calls it. C++ lambdas are read by the
+    compiler and mostly run in the call they are given to."""
+    return e.kind in LATER or (e.kind == "lambda" and "ast" not in e.sources) or bool(e.attrs.get("handed"))
+
+
 def timed_edges(edges):
     """The edges along which a context carries on: certain, and taken at that moment."""
-    return {src: [e for e in es if e.conf == 1.0 and e.kind not in LATER] for src, es in edges.items()}
+    deferred = {(e.src, e.dst) for es in edges.values() for e in es if later(e)}
+    return {src: [e for e in es if e.conf == 1.0 and not later(e) and not (e.kind == "lambda" and (e.src, e.dst) in deferred)] for src, es in edges.items()}
 
 
 def wide_edges(graph):
@@ -98,12 +120,14 @@ class When:
             if uid in spun:
                 tick.add(uid)
         # What is registered for scripts to call is no entry by itself: it runs when something calls it, and that call is an edge of its own.
-        event |= {e.dst for es in self.edges.values() for e in es if e.kind in LATER and e.dst in graph.units and not (e.kind == "bind" and "ast" in e.sources)}
+        event |= {e.dst for es in self.edges.values() for e in es if later(e) and e.dst in graph.units and not (e.kind == "bind" and "ast" in e.sources)}
         self.roots = {"frame": frame, "tick": tick, "boot": boot, "event": event, "thread": threads}
         self.tests = self._tests(run)
         # A context is the delivered program's: a test's own frame says nothing of how often the game runs what it calls.
         self.roots = {name: starts - self.left_out for name, starts in self.roots.items()}
         timed = timed_edges(self.edges)
+        # A test of a remembered value (`if rev != seen`) does not cut the path: how often the value moves is not in the text, and a revision that moved
+        # every tick is how the sky came to read everything each frame.
         self.reach = {name: _carry(starts, timed) for name, starts in self.roots.items()}
         self.repeats = set(self.reach["frame"]) | set(self.reach["tick"])
         self.jobs = _carry({e.src for e in graph.edges.values() if e.kind in ("stored", "callback")}, self.edges)

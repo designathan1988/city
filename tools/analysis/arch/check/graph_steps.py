@@ -135,6 +135,22 @@ def rearranged(run, h, recorded, spec):
     return {"notes": notes(analyse(c, shifted, recorded))}
 
 
+def _in_the_tail(merged, small, heavy, words):
+    """A god, a decision taken everywhere, a wide role are places in the tail of the sample, and a case a few lines long is not there. Each gets the weight of
+    what stands there in the real repository, and must then be found as that is."""
+    case = next(u[0] for u in small.units if u[1] == "class" and words["god"] in u[2])
+    methods = sorted(u[0] for u in small.units if u[6] == case and u[1] in ("method", "function"))
+    real = sorted(u[0] for u in merged.units if u[6] == heavy["god"] and u[1] in ("method", "function"))
+    onto = {m: methods[i % len(methods)] for i, m in enumerate(real)}
+    merged.edges += [(onto.get(e[0], e[0]), e[1], onto.get(e[2], e[2]), *e[3:]) for e in merged.edges if e[0] in onto or e[2] in onto]
+    field = next(u[0] for u in small.units if u[1] == "field" and words["repeated_decision"] in u[2])
+    merged.costs += [(*c[:6], {**c[6], "on": [field]}) for c in merged.costs if c[1] in ("decision", "guard") and heavy["decision"] in c[6].get("on", ())]
+    role = words["implicit_role"]
+    answering = {u[6]: u[3] for u in small.units if u[1] in ("method", "function") and role in u[2]}
+    for cls, file in sorted(answering.items()):
+        merged.units += [(f"{cls}#m{i}", "method", f"{role}_m{i}", file, 1000 + i, 1000 + i, cls, "", {}) for i in range(heavy["messages"])]
+
+
 def injected(run, h, recorded, spec):
     """The cases of the small repository in the middle of the real graph: found against the real distribution, and the healthy ones still quiet."""
     with open(spec["facts"], "rb") as f:
@@ -149,6 +165,7 @@ def injected(run, h, recorded, spec):
     merged.refs += [r for r in small.refs if r[3] not in outside]
     merged.costs += small.costs
     merged.sites += small.sites
+    _in_the_tail(merged, small, spec["heavy"], spec["words"])
     c = copy_of(run, merged)
     c.texts = dict(run.texts)
     for file in sorted({u[3] for u in small.units} - outside):
@@ -191,19 +208,22 @@ def commits_out(run, h, recorded, spec):
 
 
 def clean(run, h, recorded, spec):
-    """Without the keys and what they come from. Roles are decided again on the smaller repository; the rest follows from the facts that remain."""
+    """Without the keys and what they come from. Roles are decided again on the smaller repository, and a file they now leave out is left out here too: what a
+    role moves shows in the result. A file they would bring in has no facts to bring, and is reported."""
     gone = set(spec["gone"])
-    c = copy_of(run, _without(run.facts, gone))
-    past = _past_without(run, gone)
     view = View(run.repo, drop=gone, tag="clean")
-    found, _ = roles.classify(view, {p: b for p, b in run.tracked.items() if p not in gone}, past, run.cache)
-    moved = {n: sorted(set(getattr(found, n)) ^ (set(getattr(run.roles, n)) - gone)) for n in ("foreign", "index", "generated", "sidecar", "binary")}
-    _with_roles(c, gone=gone)
+    found, _ = roles.classify(view, {p: b for p, b in run.tracked.items() if p not in gone}, _past_without(run, gone), run.cache)
+    applied = (set(found.foreign) | set(found.index)) - set(run.roles.foreign) - set(run.roles.index) - gone
+    back = (set(run.roles.foreign) | set(run.roles.index)) - set(found.foreign) - set(found.index) - gone
+    dropped = gone | applied
+    c = copy_of(run, _without(run.facts, dropped))
+    past = _past_without(run, dropped)
+    _with_roles(c, gone=dropped)
     c.history = past
     h_clean = history.build(run.repo, past, ignored(c), run.cache, run.log)
     a = analyse(c, h_clean, recorded)
-    return {"cut": history.giant_cut(h_clean), "groups": [sorted(g["members"]) for g in a["groups"]], "causes": [(q["id"], q["commits"], q["reach"], q["score"], [p["unit"] for p in q["places"]], q["children"]) for q in a["queue"]],
-            "roles_moved": {k: v for k, v in moved.items() if v}}
+    return {"cut": history.giant_cut(h_clean), "groups": [sorted(g["members"]) for g in a["groups"]], "applied": sorted(applied), "roles_back": sorted(f for f in back if f.rsplit(".", 1)[-1].lower() in roles.CODE),
+            "causes": [(q["id"], q["commits"], q["reach"], q["score"], [p["unit"] for p in q["places"]], q["children"]) for q in a["queue"]]}
 
 
 def second_seed(run, h, recorded, spec):

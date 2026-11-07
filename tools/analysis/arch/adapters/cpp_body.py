@@ -91,7 +91,7 @@ class Body(Expressions):
         # A count written in the code is the same few steps whatever the state holds: straight-line work, not one more level of growth.
         inner = st.inside(depth=st.depth + (0 if fixed else 1))
         for k in kids[:-1]:
-            self.expr(k, inner, READ)
+            self.expr(k, st if c.kind == K.CXX_FOR_RANGE_STMT else inner, READ)  # the range is asked for once; a condition each time
         if kids:
             self.stmt(kids[-1], inner)
         walked = None if fixed or (over and c.kind in UNTIL and self.resizes(c, over)) else over

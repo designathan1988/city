@@ -193,7 +193,7 @@ def data_text(w, expect):
 
     key, choice, dead = case("B50"), case("B30"), case("no_reader")
     return (f'{{\n "{key}_used": 1,\n "{dead}_unread": 2,\n "{choice}_mode": "{choice}_value"\n}}\n',
-            f'	var {key}_a = "{key}_used"\n	var {choice}_b = "{choice}_value"\n')
+            f'	var {key}_a = get_meta("table").get("{key}_used", 0)\n	var {choice}_b = "{choice}_value"\n')
 
 
 def shader_text(w, expect):

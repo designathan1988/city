@@ -7,6 +7,8 @@ import re
 
 from .core import natural_break, words_of
 
+RULE_LINES = 3  # a set-and-call of two lines has the shape of half the code: it takes a body for a shape to be a rule
+
 
 OWNER_KINDS = ("implicit_role", "repeated_rule", "repeated_decision")
 
@@ -29,8 +31,13 @@ def _rare_targets(graph, nodes):
     """What each function reaches, without the far tail: what nearly everyone touches says nothing about responsibility."""
     reach = {n: {e.dst for e in graph.out.get(n, ()) if e.kind in ("call", "read", "write", "virtual") and not e.generic} for n in nodes}
     df = collections.Counter(t for ts in reach.values() for t in ts)
-    cut = tail_cut(list(df.values()))
-    return {n: {t for t in ts if 1 < df[t] < cut and t in graph.units} for n, ts in reach.items()}, df
+    # State only: two callers of one helper have an owner already, the opposite of scattered. And what nearly all state users touch, the x of a point, says nothing.
+    state = {t for t in df if t in graph.units and graph.units[t]["kind"] in ("field", "global")}
+    common = [df[t] for t in state if df[t] > 1]
+    cut = natural_break(common) if len(set(common)) > 1 else math.inf
+    # What is done to it counts too: the loader that writes a setting and the code that reads it do two things to it.
+    done = {n: {(e.dst, e.kind) for e in graph.out.get(n, ()) if e.kind in ("read", "write") and e.conf == 1.0} for n in nodes}
+    return {n: {(t, how) for t, how in ts if 1 < df[t] < cut and t in state} for n, ts in done.items()}, df
 
 
 def scattered(k, group_of, layer_of):
@@ -183,16 +190,22 @@ def _skeleton(k, u):
     return re.sub(r"\w+", "x", "".join("".join(lines).split()))
 
 
+def _apart_from_callers(graph, units):
+    """Copies that call each other are one recursion in two steps, not one rule in two places: those count once."""
+    same = set(units)
+    return [u for u in units if not any(e.kind == "call" and e.dst in same and e.dst < u for e in graph.out.get(u, ()))]
+
+
 def _repeated_rules(k, group_of):
     graph = k.graph
     by_shape = collections.defaultdict(list)
     for n in k.atoms.nodes:
         u = graph.units[n]
-        if u["kind"] in ("function", "method") and u["shape"] and u["attrs"].get("statements", 0) > 1 and n not in k.when.tests:
+        if u["kind"] in ("function", "method") and u["shape"] and u["attrs"].get("statements", 0) > 1 and u["end"] - u["line"] >= RULE_LINES and n not in k.when.tests:
             by_shape[(u["shape"], _skeleton(k, u))].append(n)
     out = []
     for _, units in sorted(by_shape.items()):
-        groups = {group_of.get(u, u) for u in units}
+        groups = {group_of.get(u, u) for u in _apart_from_callers(graph, units)}
         if len(units) > 1 and len(groups) > 1:
             units = sorted(units)
             u = graph.units[units[0]]

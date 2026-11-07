@@ -37,10 +37,21 @@ def marks_apart(causes, near):
     return out
 
 
-def with_their_groups(touched, groups):
-    """A group that holds a touched unit is touched whole: its other members were placed by it."""
-    out = set(touched)
+def beside(touched, groups):
+    """Units that shared a group with a touched unit: when it leaves, the next best partner of each changes, and that is its doing."""
+    out = set()
     for g in groups:
         if touched.intersection(g):
             out.update(g)
-    return out
+    return out - touched
+
+
+def moved_groups(left, right, mates):
+    """Every difference of the two maps that no touched unit explains."""
+    return sorted(g for g in left ^ right if not mates.intersection(g))
+
+
+def moved_causes(first, second, places, touched):
+    """Every difference of the marks, but for the same cause seen again without the place that was touched."""
+    near = {u for ps in places.values() if touched.intersection(ps) for u in ps}
+    return sorted((m for m in first ^ second if not near.intersection(places.get(m[0], ()))), key=str)

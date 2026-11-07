@@ -11,17 +11,24 @@ from .costs_decode import serial_decode
 
 
 BUILT_BOX = re.compile(r"\baabb\s+(\w+)\s*\(.*vector3\(", re.I)
+BEYOND_ANY_VIEW = 1e6
 TEMPLATE_FILES = (".h", ".hpp", ".inl", ".cpp")
 GENERIC = re.compile(r"\btemplate\s*<|\(const auto &|\(auto &")
 MEMBER_READ = re.compile(r"(?:\.|->)(\w+)\b(?!\s*(?:=[^=]|\())")
+
+
+def _a_read(k, e):
+    """A key that fits only this table, named by code that ships: a word several tables have proves none of them read."""
+    return e.src not in k.when.tests and e.conf == 1.0
 
 
 def no_reader(k):
     """A key of a table that is read, which no code reads and nothing takes over by its name: a value that does nothing."""
     graph = k.graph
     named = {r[1].rsplit("/", 1)[-1].split(".")[0] for r in k.run.facts.refs if r[1] and r[5] != "doc"}
-    # A table no code of this repository names is read by something else: a tool of its own. What is not read here says nothing.
-    read_files = {f for f in (graph.units[e.dst]["file"] for e in graph.edges.values() if e.dst in graph.units and graph.units[e.dst]["kind"] == "key") if f.rsplit("/", 1)[-1].split(".")[0] in named}
+    # A table nothing here reads by a key of its own serves something else: a test's plan, a tool of its own. What is not read here says nothing.
+    read_files = {graph.units[e.dst]["file"] for e in graph.edges.values() if e.dst in graph.units and graph.units[e.dst]["kind"] == "key" and _a_read(k, e)}
+    read_files = {f for f in read_files if f.rsplit("/", 1)[-1].split(".")[0] in named}
     out = []
     for uid, u in graph.units.items():
         if u["kind"] == "key" and u["file"] in read_files and uid not in k.when.left_out and not graph.into.get(uid) and not graph.out.get(uid) and not graph.children.get(uid) and not u["name"].startswith("_"):
@@ -171,6 +178,12 @@ def _arguments(k, c, method):
     return out + [word]
 
 
+def _out_of_sight(k, c, given):
+    """A range that begins at a constant no camera reaches is a way of hiding a thing: there is no edge to flip at."""
+    found = re.search(rf"\b{re.escape(given[1].strip())}\s*=\s*([\d.]+(?:e\d+)?)", k.run.texts.get(c[2]) or "") if len(given) > 1 and given[1].strip().isidentifier() else None
+    return found is not None and float(found[1]) >= BEYOND_ANY_VIEW
+
+
 def level_flip(k):
     """A distance range set with nothing at its margins, as the engine's own description names them: at the edge a thing flips every frame the camera moves."""
     out = []
@@ -179,7 +192,7 @@ def level_flip(k):
         names = [a for owner, args, _, _ in k.run.api.methods.get(method, ()) for a in args][:16]
         spots = [i for i, a in enumerate(names) if "margin" in words_of(str(a))]
         given = _arguments(k, c, method)
-        if spots and all(i < len(given) and given[i].strip() in ("0", "0.0", "0.0f") for i in spots):
+        if spots and all(i < len(given) and given[i].strip() in ("0", "0.0", "0.0f") for i in spots) and not _out_of_sight(k, c, given):
             out.append(k.finding("level_flip", c[0], c[2], c[3], api=c[6]["api"]))
     return out
 

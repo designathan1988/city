@@ -3,6 +3,8 @@ import collections
 import json
 import math
 
+from . import apart
+
 
 def snapshot(run, a, undo=lambda s: s):
     """A scan in a form that does not depend on order: the map, the queue, the roots, every name passed through `undo`."""
@@ -93,6 +95,9 @@ def failures(ctx):
     text = {"a.gd": 'var x = t.get("used")\nvar y = 1\n', "b.json": "{}\n"}
     code = oracle.Code(text)
     finding = {"file": "b.json", "line": 1, "category": "no_reader", "unit": "k", "detail": {"key": "used"}, "path": [{"file": "a.gd", "line": 1, "kind": "x"}], "places": []}
+    tests["contamination refuses a group that moved with nothing touched beside it"] = apart.moved_groups({("a", "b")}, {("a", "c")}, set()) == [("a", "b"), ("a", "c")]
+    tests["contamination allows only the partner of what was touched"] = apart.moved_groups({("a", "b")}, {("a", "c")}, {"a"}) == []
+    tests["contamination refuses a cause whose score moved"] = len(apart.moved_causes({("x", 1, 2, 3)}, {("x", 1, 2, 4)}, {"x": ["u"]}, {"t"})) == 2
     tests["precision refutes a key the code reads"] = oracle.no_reader(code, finding) is False
     tests["precision confirms a key nobody names"] = oracle.no_reader(code, {**finding, "detail": {"key": "gone"}}) is True
     tests["precision sees no loop where there is none"] = oracle.has_loop(code, {**finding, "file": "a.gd"}) is False

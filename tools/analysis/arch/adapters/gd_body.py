@@ -94,7 +94,7 @@ class Body:
             target = ""
         inner = st.inside(depth=st.depth + (0 if written else 1))
         if over is not None:
-            self.expr(over, inner)
+            self.expr(over, st if n.type == "for_statement" else inner)  # what a `for` walks is asked for once; a `while` asks each time
         early = any(x.type in ("break_statement", "return_statement") for x in self.walk(n))
         self.f.cost(st.unit, "loop", self.file, self.line(n), max(inner.depth, 1), over=target, early=early, forever=n.type == "while_statement" and node_text(over, self.src) == "true")
         if body is not None:
