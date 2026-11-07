@@ -2073,6 +2073,14 @@ finding under its cause. 14 bullets are notes, not defects (marked N in §7).
   warrants), or a fixed control until it is designed.
 - **D4. Old saves:** migrate them (keep a reader of the old names and format) or drop compatibility.
 
+Decided by the user, 2026-11-07:
+- D1: keep the 4.0's assets until replacements exist; the lot unit scale (C18) is fixed meanwhile in B3 (documents
+  converted to metres once, limits back to real storeys).
+- D2: a new generic style of this game: values from international norms or design decisions stated as such; the
+  "roadcraft" blocks are deleted and "brasil" stays a regional option, not the default.
+- D3: a new automatic junction rule designed now, from published signal warrants, in B4 with the translated code's removal.
+- D4: no compatibility with old saves: the save names, extensions and format change without a migration reader (C9, C15).
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at
