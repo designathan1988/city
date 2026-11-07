@@ -6,11 +6,15 @@ import math
 import re
 
 from .core import natural_break, words_of
+from .costs import COLLECTION
 
 RULE_LINES = 3  # a set-and-call of two lines has the shape of half the code: it takes a body for a shape to be a rule
 
 VALUE_FIELDS = 4
 NUMBERS = {"float", "double", "int", "real"}
+
+WORDS = re.compile(r"[A-Za-z_]\w*")
+SHARED_BY_CHANCE = 2  # two fields can meet by chance: a record's x and z
 
 
 OWNER_KINDS = ("implicit_role", "repeated_rule", "repeated_decision")
@@ -65,7 +69,7 @@ def scattered(k, group_of, layer_of):
         ua = graph.units[a]
         place = layer_of.get(group_of.get(a))
         near[a] = [(b, n / (len(targets) + len(rare[b]) - n)) for b, n in sorted(met.items())
-                   if n > 1 and graph.units[b]["parent"] != ua["parent"] and layer_of.get(group_of.get(b)) == place]
+                   if n > SHARED_BY_CHANCE and graph.units[b]["parent"] != ua["parent"] and layer_of.get(group_of.get(b)) == place]
     cut = natural_break([share for found in near.values() for _, share in found])
     linked = {a: {b for b, share in found if share >= cut or cut == math.inf} for a, found in near.items()}
     out = []
@@ -150,6 +154,29 @@ def missing_owner(k, group_of):
     return _implicit_roles(k) + _repeated_rules(k, group_of) + _repeated_decisions(k, group_of)
 
 
+def _ancestors(cls, bases):
+    """The class and all it descends from: a class and its own base answer the same messages by contract."""
+    seen, stack = {cls}, [cls]
+    while stack:
+        for b in bases.get(stack.pop(), ()):
+            if b not in seen:
+                seen.add(b)
+                stack.append(b)
+    return seen
+
+
+def _forwarded(graph):
+    """Methods that call their namesake in another class: a facade passes a message on, it does not play the same part."""
+    out = set()
+    for u in graph.units.values():
+        if u["kind"] == "method":
+            for e in graph.out.get(u["id"], ()):
+                v = graph.units.get(e.dst)
+                if e.kind == "call" and v is not None and v["name"] == u["name"] and v["parent"] != u["parent"]:
+                    out.update({(u["parent"], v["parent"], u["name"]), (v["parent"], u["parent"], u["name"])})
+    return out
+
+
 def _implicit_roles(k):
     """Classes that answer the same messages with no base of ours in common, one finding per set of messages. Methods a macro stamps on one line are the
     macro's, not a role; what nearly every class answers says nothing."""
@@ -158,12 +185,16 @@ def _implicit_roles(k):
     stamped = collections.Counter((u["file"], u["line"]) for u in graph.units.values() if u["kind"] == "method")
     for u in graph.units.values():
         if u["kind"] == "method" and u["parent"] in graph.units and graph.units[u["parent"]]["kind"] == "class" and u["id"] not in k.when.tests and stamped[(u["file"], u["line"])] == 1:
-            methods[u["parent"]].add(u["name"])
+            # What the language itself calls, an operator or the class's own constructor, is the language's contract.
+            if u["name"].isidentifier() and u["name"] != graph.units[u["parent"]]["name"]:
+                methods[u["parent"]].add(u["name"])
     df = collections.Counter(m for ms in methods.values() for m in ms)
     bases = collections.defaultdict(set)
     for e in graph.edges.values():
-        if e.kind == "inherit":
+        if e.kind == "inherit" and e.dst in graph.units:
             bases[e.src].add(e.dst)
+    above = {c: _ancestors(c, bases) for c in methods}
+    handed_on = _forwarded(graph)
     answered = {u["name"] for u in graph.units.values() if u["attrs"].get("callback")}
     limit = tail_cut(list(df.values()))
     by_method = collections.defaultdict(list)
@@ -174,7 +205,7 @@ def _implicit_roles(k):
     shared = collections.defaultdict(set)
     for m, cs in by_method.items():
         for a, b in itertools.combinations(sorted(cs), 2):
-            if not {x for x in bases[a] & bases[b] if x in graph.units}:
+            if not above[a] & above[b] and (a, b, m) not in handed_on:
                 shared[(a, b)].add(m)
     if not shared:
         return []
@@ -205,6 +236,16 @@ def _apart_from_callers(graph, units):
     return [u for u in units if not any(e.kind == "call" and e.dst in same and e.dst < u for e in graph.out.get(u, ()))]
 
 
+def _saying_the_same(k, units):
+    """Copies of a rule say the same words but a few; two switches that map different things only have the same outline, and a table is not a rule."""
+    words = {}
+    for n in units:
+        u = k.graph.units[n]
+        words[n] = set(WORDS.findall(chr(10).join((k.run.texts.get(u["file"]) or "").split(chr(10))[u["line"] - 1:u["end"]])))
+    close = lambda a, b: len(words[a] & words[b]) * 2 >= len(words[a] | words[b])  # noqa: E731
+    return [a for a in units if any(a != b and close(a, b) for b in units)]
+
+
 def _repeated_rules(k, group_of):
     graph = k.graph
     by_shape = collections.defaultdict(list)
@@ -214,6 +255,7 @@ def _repeated_rules(k, group_of):
             by_shape[(u["shape"], _skeleton(k, u))].append(n)
     out = []
     for _, units in sorted(by_shape.items()):
+        units = _saying_the_same(k, units)
         groups = {group_of.get(u, u) for u in _apart_from_callers(graph, units)}
         if len(units) > 1 and len(groups) > 1:
             units = sorted(units)
@@ -224,11 +266,19 @@ def _repeated_rules(k, group_of):
     return out
 
 
+def _a_value_to_decide_on(k, field, classes):
+    """`s.roads.segs[i].alive`: the test decides on `alive`; `roads` and `segs` are the way there, a holder of records or a list of them."""
+    u = k.graph.units.get(field)
+    words = set(words_of(((u or {}).get("attrs", {}).get("type") or "").split("<")[0]))
+    return u is not None and not words & classes and not words & COLLECTION
+
+
 def _repeated_decisions(k, group_of):
+    classes = {w for u in k.graph.units.values() if u["kind"] == "class" for w in words_of(u["name"])}
     deciders = collections.defaultdict(set)
     for c in k.by_kind["decision"] + k.by_kind["guard"]:
         for field in c[6].get("on", ()):
-            if field:
+            if field and _a_value_to_decide_on(k, field, classes):
                 deciders[field].add(k.graph.callable_of(c[0]))
     counts = {f: len({group_of.get(u, u) for u in us}) for f, us in deciders.items()}
     if len(counts) < 2:

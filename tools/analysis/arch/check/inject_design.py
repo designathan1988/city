@@ -18,7 +18,7 @@ def files(w, expect, places, join):
         name = w()
         parts.append(name)
         # A few places, as a scattered rule is: what every part touched would be the common currency of this small repository.
-        touch = f"func {scattered}_{name}() -> void:\n	Shared_{decide}.{scattered}_first = 1\n	Shared_{decide}.{scattered}_second = 2\n" if i < SCATTERED_PLACES else ""
+        touch = f"func {scattered}_{name}() -> void:\n	Shared_{decide}.{scattered}_first = 1\n	Shared_{decide}.{scattered}_second = 2\n	Shared_{decide}.{scattered}_third = 3\n" if i < SCATTERED_PLACES else ""
         out[join(pick(), f"{name}.gd")] = f"""# Injected part {i}.
 class_name Part_{name}
 extends Node
@@ -76,6 +76,7 @@ extends Node
 static var flag_{decide} := false
 static var {scattered}_first := 0
 static var {scattered}_second := 0
+static var {scattered}_third := 0
 """
     calls = "\n".join(f"func {god}_{n}() -> void:\n	var p := Part_{n}.new()\n	p.{n}_one()\n	p.{n}_state = 9\n" for n in parts)
     out[join(pick(), f"{god}_all.gd")] = f"# Injected class that does everything.\nclass_name All_{god}\nextends Node\n\n{calls}\n"

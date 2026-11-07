@@ -102,7 +102,13 @@ def lock_around(c, f):
     text = c.line(f["file"], f["line"])
     if LOCK.search(text):
         return True
-    return any(LOCK.search(c.line(f["file"], i)) for i in range(max(1, f["line"] - 60), f["line"]))
+    for i in range(f["line"] - 1, 0, -1):
+        line = c.line(f["file"], i)
+        if LOCK.search(line):
+            return True
+        if line[:1].isalpha() and line.rstrip().endswith("{"):
+            return False
+    return False
 
 
 def on_lock(c, f):

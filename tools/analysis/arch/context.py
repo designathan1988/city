@@ -96,6 +96,23 @@ def _chain(uid, came):
     return x, steps
 
 
+def _answers_the_engine(graph, api, u):
+    """A script's `_run` is a callback only in a class whose engine base declares it: elsewhere it is a function that happens to have that name."""
+    owners = {cls for cls, _, _, _ in api.methods.get(u["name"], ())}
+    if not u["attrs"].get("callback") or not api.classes or not u["id"].startswith("gd:"):
+        return True
+    seen, cls = set(), u["parent"]
+    while cls is not None and cls not in seen:
+        seen.add(cls)
+        cls = next((e.dst for e in graph.out.get(cls, ()) if e.kind == "inherit"), None)
+    engine = next((c[4:] for c in seen if c and c.startswith("ext:")), None)
+    while engine:
+        if engine in owners:
+            return True
+        engine = api.classes.get(engine)
+    return False
+
+
 class When:
     def __init__(self, run):
         graph, api = run.graph, run.api
@@ -104,7 +121,7 @@ class When:
         frame, boot, event = set(), set(), set()
         for uid, u in graph.units.items():
             a = u["attrs"]
-            if u["kind"] not in ("function", "method"):
+            if u["kind"] not in ("function", "method") or not _answers_the_engine(graph, api, u):
                 continue
             if a.get("repeating") or (a.get("overrides") and u["name"] in api.repeating):
                 frame.add(uid)
