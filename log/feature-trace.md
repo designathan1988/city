@@ -71,3 +71,38 @@ How to trace one feature end to end in this project, and what each attempt taugh
 Traced by reading, link by link, in one pass: trigger -> tool -> store route -> binding -> undoable command -> network
 and money writes -> dirty marks -> lots, traffic, render -> snapshot back to the UI. No guessing was needed: every link
 went through a call mechanism listed under Method.
+
+## Generic tracer (`C:\Users\Jonathan\Desktop\feature-trace`): causes found and fixed (2026-11-07)
+Membership comes from language constructs plus graph prevalence; no names are listed anywhere. Each cause below was
+found by reading the extractor (`ftrace/extract.py`) and the graph (`ftrace/graph.py`) whole, not by rerunning.
+| # | Cause (design decision that produced the symptom) | Symptom | Fix |
+|---|---|---|---|
+| 1 | Plain-name lookup had four owners (`_resolve`, `_chains`, `_registrations`, `_receiver`); the last two searched every unit, ignoring visibility | `count(key)` in C++ registered GDScript `key`; upstream exploded to 3770 | One lookup (`Graph._lookup`); registrations reuse the edges the unit already resolved, name edges only (not strings) |
+| 2 | Statement position was recognised by the `body` field only | locals in `if {}` blocks (C++ `consequence`) and in `elif`/`else` clauses resolved to global namesakes | A statement child that opens a block (`{`) or is led by a reserved word is a statement position |
+| 3 | Loop bindings were not declarations | `for key in snap` resolved `key` globally | A construct with `left` and `body` (no assignment) declares the names in `left` |
+| 4 | Imports were walked as definitions | `using godot::Vector2;` became a unit and swallowed `Vector2(...)` calls | A node with a dependency word and no `name` field of its own is an import; its names are referenced |
+| 5 | A call was any node with an `arguments` field | `Map<int,T>` (template args) and `snap[key]` (GDScript subscript) counted as calls | A call's arguments open with the call operator `(`; the name of a callee or a target skips arguments and subscripts |
+| 6 | A member access was any node holding a member-operator token | GDScript `func f() -> void:` made the whole function a chain: every name became a member | Member access = operand first, then only member operators |
+| 7 | Bases were taken from every read token of a class or file | a shader reading `floor` "inherited" C++ `PaneRooms::floor`; visibility cascaded through its includes | Bases are what the inheritance construct names: `extends` or the class header (neither name nor body) |
+| 8 | The anywhere-visible rules (types, script classes, declaration-definition joins) ignored language | GDScript `Control` resolved to C++ `city::Control` | A file's language comes from structure (extensions whose files include each other with one grammar); plain names never cross it, strings do |
+| 9 | `_callable_part` followed only fielded links | `T &sort(...)` (reference return) became a container; `return v;` became a data member | It follows the same single-named-child chain as `_definition` |
+| 10 | Shared code (fan-in outlier) stopped the walk, so its effects were lost | `road_chunks`, `lot_cells`, `finish_command`, `sync_grade` missing | Effect = closure of direct calls through everything; prevalence decides membership only |
+| 11 | Fan-out counted resolved targets | `set_tool` (one `active.exit()` reaching ten overrides) looked like a hub | Fan-out counts the names called |
+| 12 | Upstream followed only calls | the tool selection path was missing | Upstream also goes from a registered handler's object to whoever fires it, and from a polymorphic call to whoever assigns its receiver (`assign` edges, not mutation by method call) |
+| 13 | A declaration with several declarators declared only its first; `for (int i...)` initializers and catch parameters were not statement positions | in `V2 r = a, s = b;` the `s` escaped; `int nx = 0, ny = 0;` gave one member | Every declarator is declared (locals, or one data unit each); a fielded child with a `declarator` is a declaration; a clause with parameters and a body binds them |
+| 14 | A class member was visible by plain name from any file including its header | the escaped `s` resolved to `Rng::s`, `Loft::s`, `Run::s`...; mutated state and dependents inflated | A scoped member is reached by plain name only from the scopes the unit sits in, its class's bases, or a namespace its file opens with `using`; from elsewhere through `obj.x` / `A::x` |
+| 15 | The effect stopped at the mutated data, mixed into all its readers | `drain_log`, `apply_network_changes` lost among 1561 dependents | Consumers: readers outside the run that read an outlier amount of the mutated state (Tukey fence), each with what it reads and the chain from the entry that runs it |
+
+Result on the game (`python eval/check_repo.py C:/Users/Jonathan/Desktop/city --include project --include native/src --query "build road"`,
+graph 5.3 s, trace and checks 0.9 s): 0 property violations; no name edge crosses a language; mutated state 155, dependents 867
+(from 685 and 2999 before causes 2, 13 and 14). Every link of the chain above lands where it belongs: `tool_requested` ->
+`_on_tool_requested` -> `set_tool` (setup) and `_unhandled_input` (entry) -> `release` -> `_lay` -> seed `build_road_path`
+-> `build_path`, `lay_road`, `plan_road`, `lay_pieces` (feature) -> `j_add_segment`, `mark_segment`, `settle_network`
+(infrastructure) -> `finish_command`, `sync_grade`, `put_road_shape`, `process_dirty`, `j_money` (executed) -> `road_chunks`,
+`lot_cells`, `net_nodes`, `edit_revision` (mutated) -> consumers `CityCore::snapshot` (the UI's snapshot), `apply_network_changes`
+(traffic), `RenderWorld::drain_log` (the frame: `_process` -> `sync` -> `drain_log`). The same run on "bulldoze" also has 0 violations.
+Tests: 59, in `feature-trace/tests` (each cause above has its own).
+
+
+`log/mapa.md` brought up to date in the same change (the `MAPA_DESATUALIZADO` gate failed on 59 entries left by earlier
+commits: files added without a line, lines naming deleted files).

@@ -4,7 +4,8 @@ Regras, métodos e estrutura do projeto. Atualize este arquivo na mesma mudança
 Arquivo criado ou apagado entra em `log/mapa.md` no mesmo commit: o gate `MAPA_DESATUALIZADO` confere.
 O detalhe fica em `log/`: `mapa.md` (arquivo por arquivo), `ferramentas.md` (o que cada uma ensinou), `pendencias.md`
 (o que falta). Registros de cada linha: `work-log.md` (porte e gráficos), `conversor.md`, `causa-raiz.md`, `lab.md`, `base.md`,
-`arquitetura.md` (o analisador de causas), `review.md` (the full reading: findings, problems, process errors).
+`arquitetura.md` (o analisador de causas), `review.md` (the full reading: findings, problems, process errors),
+`feature-trace.md` (the road flow traced by hand and the generic feature tracer's causes).
 Antes de começar, leia o registro da sua linha. Ao fechar o tema, atualize-o com hora e commit, no mesmo commit.
 
 ## Metodologia de trabalho (toda tarefa, nesta ordem; trabalho direto)
