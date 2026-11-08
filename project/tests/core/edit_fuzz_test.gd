@@ -30,15 +30,15 @@ const GROWTH_QUEUE := "growth"
 var drawn := -1
 var rng := RandomNumberGenerator.new()
 var roads: Array[Vector3] = [] # the middles of what was laid, for the edits that need a road
-
-
 var last_kind := 0
+## The edits the fuzz draws from, by what each does (every number below DEMOLISH lays a road: five chances in the draw).
+enum Edit { LAY, DEMOLISH = 5, SPLIT, UPGRADE, ZONE, REVERSE, TERRAIN, ITEM, BARRIER, BUILDING, STOP, BLAST, LOT, LANE_LINK, BEND, NODE_HEIGHT,
+	JOIN, CROSSING, UTURN, BAN_TURN, REMOVE_NODE, PATH }
 
 
 const BEND_M := 30.0
 const BEND_AT_LEAST := 0.2
 const BEND_LIFT_M := 4.0
-const PATH_KIND := 25 # a held brush's pointer move: the dabs of one move as one command
 const PATH_DABS := 3
 const PATH_BRUSHES := 4
 const TREE_LIKE := {"density": 1.0, "height": 1.0, "variation": 0.0, "spacing": 4.0}
@@ -128,24 +128,24 @@ func _point() -> Vector3:
 
 
 func _edit() -> void:
-	var kind := rng.randi_range(0, PATH_KIND)
+	var kind := rng.randi_range(0, Edit.PATH) # PATH: a held brush's pointer move, the dabs of one move as one command
 	last_kind = kind
 	var road: Vector3 = roads[rng.randi_range(0, roads.size() - 1)] if not roads.is_empty() else Vector3.ZERO
-	if kind < 5 or roads.is_empty():
+	if kind < Edit.DEMOLISH or roads.is_empty():
 		_lay()
-	elif kind == PATH_KIND:
+	elif kind == Edit.PATH:
 		_brush_path(road)
-	elif kind >= 18:
+	elif kind >= Edit.BEND: # what the Inspector does to a road's shape
 		_shape(kind, road)
-	elif kind >= 10:
+	elif kind >= Edit.TERRAIN: # what is not a road
 		_other(kind, road)
-	elif kind == 5:
+	elif kind == Edit.DEMOLISH:
 		CityStore.dispatch(&"demolish", [road])
-	elif kind == 6:
+	elif kind == Edit.SPLIT:
 		CityStore.dispatch(&"split_road", [road])
-	elif kind == 7:
+	elif kind == Edit.UPGRADE:
 		CityStore.dispatch(&"upgrade_road", [road, rng.randi_range(0, 3), false])
-	elif kind == 8:
+	elif kind == Edit.ZONE:
 		CityStore.dispatch(&"begin_stroke", ["cmd.place.zone"])
 		CityStore.dispatch(&"paint_zone", [road, ZONE_RADIUS, DataTables.zone_code("residential")])
 		CityStore.dispatch(&"end_stroke")
@@ -159,21 +159,21 @@ func _edit() -> void:
 func _shape(kind: int, road: Vector3) -> void:
 	var seg: Dictionary = CityStore.query(&"segment_at", [road])
 	var node: int = CityStore.query(&"node_at", [road, PX]).get("node", -1)
-	if kind == 18 and seg.get("id", -1) >= 0:
+	if kind == Edit.BEND and seg.get("id", -1) >= 0:
 		CityStore.dispatch(&"bend_road", [seg.id, rng.randf_range(-BEND_M, BEND_M), rng.randf_range(BEND_AT_LEAST, 1.0 - BEND_AT_LEAST)])
-	elif kind == 19 and node >= 0:
+	elif kind == Edit.NODE_HEIGHT and node >= 0:
 		CityStore.dispatch(&"set_node_height", [node, rng.randf_range(-BEND_LIFT_M, BEND_LIFT_M)])
-	elif kind == 20 and node >= 0:
+	elif kind == Edit.JOIN and node >= 0:
 		CityStore.dispatch(&"join_roads", [node])
-	elif kind == 21:
-		CityStore.dispatch(&"add_crossing", [road, rng.randi_range(1, 2)])
-	elif kind == 22:
+	elif kind == Edit.CROSSING:
+		CityStore.dispatch(&"add_crossing", [road, rng.randi_range(CityStore.code(&"NodeCrossing", &"CROSSING_ZEBRA"), CityStore.code(&"NodeCrossing", &"CROSSING_SIGNAL"))])
+	elif kind == Edit.UTURN:
 		CityStore.dispatch(&"add_uturn", [road, rng.randf() < 0.5])
-	elif kind == 23 and node >= 0:
+	elif kind == Edit.BAN_TURN and node >= 0:
 		var legs: Array = CityStore.query(&"node_legs", [node])
 		if legs.size() >= 2:
 			CityStore.dispatch(&"set_movement_banned", [node, legs[0].seg, legs[1].seg, legs[0].banned.is_empty()])
-	elif kind == 24 and node >= 0:
+	elif kind == Edit.REMOVE_NODE and node >= 0:
 		CityStore.dispatch(&"remove_node", [node])
 
 
@@ -182,24 +182,24 @@ func _other(kind: int, road: Vector3) -> void:
 	var a := _point()
 	var b := a + Vector3(GRID_M, 0, GRID_M)
 	match kind:
-		10:
+		Edit.TERRAIN:
 			CityStore.dispatch(&"begin_stroke", ["cmd.place.terrainBrush"])
 			CityStore.dispatch(&"terrain_brush", [a, BRUSH_M, 1.0, BRUSH_DT, rng.randi_range(0, BRUSH_MODES), 0.5])
 			CityStore.dispatch(&"end_stroke")
-		11:
+		Edit.ITEM:
 			CityStore.dispatch(&"place_item", [road, rng.randi_range(0, ITEM_KINDS), 0, "", REACH_M])
-		12:
+		Edit.BARRIER:
 			CityStore.dispatch(&"build_barrier", [PackedVector3Array([a, b]), rng.randi_range(0, 1)])
-		13:
+		Edit.BUILDING:
 			var box: PackedVector3Array = CityStore.query(&"body_outline", [drawn, 0]) if drawn >= 0 else PackedVector3Array()
 			if not box.is_empty() and rng.randf() < 0.5:
 				BodyEdits.run(rng, drawn, box)
 			else:
 				var r: Dictionary = CityStore.dispatch(&"draw_building", [a, b, 0, DataTables.zone_code("residential"), rng.randi_range(0, PLAN_SHAPES)])
 				drawn = r.get("placed", -1) if r.get("ok", false) else drawn
-		14:
+		Edit.STOP:
 			CityStore.dispatch(&"transit_stop", [road])
-		17:
+		Edit.LANE_LINK:
 			var junctions: Array = CityStore.query(&"junctions")
 			if not junctions.is_empty():
 				var node: int = junctions[rng.randi_range(0, junctions.size() - 1)].node
@@ -207,13 +207,13 @@ func _other(kind: int, road: Vector3) -> void:
 				if not built.is_empty():
 					var one: Array = built[rng.randi_range(0, built.size() - 1)]
 					CityStore.dispatch(&"toggle_lane_link", [node, one[0], one[1], one[2], one[3]])
-		16:
+		Edit.LOT:
 			var lots: Array = CityStore.query(&"lots")
 			if lots.is_empty() or rng.randf() < 0.5:
 				CityStore.dispatch(&"lot_add_rect", [a, a + Vector3(LOT_M, 0, LOT_M), 0.0])
 			else:
 				CityStore.dispatch(&"lot_zone", [lots[rng.randi_range(0, lots.size() - 1)].id, DataTables.zone_code("residential")])
-		_:
+		_: # Edit.BLAST
 			if rng.randf() < 0.5:
 				CityStore.dispatch(&"strike", [road, rng.randi_range(1, STRIKE_MAX)])
 			else:

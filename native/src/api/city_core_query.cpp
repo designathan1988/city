@@ -1,17 +1,12 @@
 // Read-only views for the UI and the tests. Values are derived here from CityState; the UI never recomputes them.
 #include "api/city_core.h"
-#include "api/frame_sections.h"
-#include "api/script_enums.h"
 
 #include "render/render_layers.h"
 
 #include "core/math.h"
-#include "core/shader_contracts/all.h"
 #include "core/units.h"
 #include "render/film_grade.h"
 #include "sim/buildings/lot_access.h"
-#include "sim/commands/body_ops.h"
-#include "sim/roads/road_spec.h"
 #include "sim/commands/interior_commands.h"
 #include "sim/terrain/terrain_gen.h"
 #include "sim/traffic/traffic_system.h"
@@ -94,36 +89,6 @@ Dictionary lot_probe(const CityState &s, const Building &rec) {
 	return d;
 }
 } // namespace
-
-Dictionary CityCore::constants() const {
-	Dictionary d;
-	d["speed_paused"] = int(SimSpeed::PAUSED);
-	d["speed_fastest"] = int(SimSpeed::FASTEST);
-	d["minutes_per_day"] = MINUTES_PER_DAY;
-	d["minutes_per_hour"] = MINUTES_PER_HOUR;
-	d["zone_codes"] = ZONE_CODES;
-	Dictionary layers;
-	for (const RenderLayerName &l : RENDER_LAYERS) layers[l.name] = int64_t(l.bit);
-	d["render_layers"] = layers;
-	d["enums"] = script_enums(); // every enum a script names (script_enums.h)
-	d["chunk_m"] = CHUNK; // the core's cell: lots, props and the far levels are read a cell at a time
-	d["setback_by_module"] = SETBACK_BY_MODULE; // the body edits' own choices (body_ops.h)
-	d["every_corner"] = EVERY_CORNER;
-	Dictionary spec_strips; // the catalogue's strip each element of a composed road draws as (road_spec.h strip_of)
-	for (int k = 0; k < int(SpecKind::COUNT); k++) spec_strips[SPEC_KIND_NAMES[k]] = STRIP_KIND_NAMES[int(strip_of(SpecKind(k)))];
-	d["spec_strips"] = spec_strips;
-	Array sections;
-	for (const char *name : FRAME_SECTIONS) sections.push_back(name);
-	d["frame_sections"] = sections;
-	Dictionary shader; // what the shaders read too, by the shaders' names (core/shader_contracts/all.h)
-	for (const ShaderContractGroup &g : SHADER_CONTRACT_GROUPS)
-		for (size_t i = 0; i < g.count; i++) {
-			const ShaderContract &c = g.rows[i];
-			shader[String(c.name)] = c.size == 1 ? Variant(c.value[0]) : Variant(Vector3(real_t(c.value[0]), real_t(c.value[1]), real_t(c.value[2])));
-		}
-	d["shader"] = shader;
-	return d;
-}
 
 TypedArray<Image> CityCore::film_grade(const Dictionary &grade) const {
 	return film_grade_slices(grade);

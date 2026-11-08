@@ -155,7 +155,7 @@ public:
 	const CanyonField &canyon() const { return canyon_; }
 	const ShoreField &shore() const { return shore_; }
 	BuildingViewNeed building_need() const { return buildings_.view_need(); }
-	int building_chunk(float x, float z) const { return buildings_.chunk_flags(x, z); }
+	godot::Dictionary building_chunk(float x, float z) const { return buildings_.chunk_view(x, z); }
 	RoadChunks::Count road_count() const { return roads_.count(); }
 	RoadChunks::Count verge_count() const { return verges_.count(); }
 	void draw_verges(bool on) { verges_.draw(on); }

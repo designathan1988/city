@@ -43,15 +43,18 @@ func _ready() -> void:
 
 ## Construir > Interior from its cards in the data: the building chosen opens, goes up a floor, and closes.
 func _inside(tool: BuildingTool, id: int) -> void:
-	var cards: Array = DataTables.ui("builder").tabs.interior.sections[0].tools
-	tool.act(cards[0])
+	var cards := {}
+	for s: Dictionary in DataTables.ui("builder").tabs.interior.sections:
+		for c: Dictionary in s.tools:
+			cards[c.id] = c
+	tool.act(cards.interiorView)
 	var open: Dictionary = CityStore.query(&"interior")
 	check(open.on and open.target == id, "Cut and see opens the picked building: %s" % open)
-	tool.act(cards[2])
+	tool.act(cards.floorUp)
 	check(int(CityStore.query(&"interior").level) == 1, "Floor up goes up a floor")
-	tool.act(cards[1])
+	tool.act(cards.floorDown)
 	check(int(CityStore.query(&"interior").level) == 0, "Floor down goes down")
-	tool.act(cards[0])
+	tool.act(cards.interiorView)
 	check(not CityStore.query(&"interior").on, "Cut and see again closes")
 
 

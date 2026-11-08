@@ -2646,6 +2646,35 @@ same), and the numbers are the same. The loaders refuse data that would have gon
 run before C7, `scripts` compiling every script; `gates_changed` only lines the files had. The first run failed `scripts`: four tools
 read `PERCENT` inherited from `BrushTool`, whose own copy had gone; every unqualified use now names `Units`.
 
+### 6.22 B2, C3 (the tests' side): what the tests and captures copied (2026-11-08)
+
+**Cause.** What §3u listed and C3a had not reached: the town's node count typed (`flow_control_test` STOP_NODES 320, for map 0 seed
+1 only); the Build strip's sections and cards by position (`building_plan_cases` `sections[1]`, `building_tool_test`
+`sections[0].tools[0..2]`, the lot cards `cards[1]`, `cards[2]` of `capture_features`, the street signs' first two and from the
+eighth on in `capture_street_views`); the street block's tag as four bytes (`street_save_cases`); the yard's reach, a vehicle
+type, the turn speed in m/s, the speeds, a zone, a brush mode and the civic functions by number; the chunk's flags as bits (1 near,
+2 mid...) read from an int; the crater's decal scale (`marks.h` CRATER_SCALE) and the lantern's height (`builder.json`) typed; 3 m a
+floor; the element kinds' count; a sheet's capacity of street names ("three times what one sheet of 104 held"); the fuzz tests' own
+edits as bare numbers with ranges by comparison, the primitive and the wall run copied from the strip, the bevel's sentinel typed.
+
+**Fix.** The core gives what a test reads: the chunk as named fields (`BuildingRenderer::chunk_view`), the blast's decal reach
+(`blast_probe` `decal_half_m`), `YardReach` among the scripts' enums, the street block's tag (`save_tag_street`); `constants()`
+moved to `api/city_core_constants.cpp`, the query file past its size. The tests find a section by its title, a card by its id or the
+function it lays, a sign by its type (`SignType`), a speed button and a sky button by what they set (`HudTopBar.sky_button`,
+`speed_button`); they read the node count from the snapshot, the turn speed from `traffic.json` (`Units.KMH_PER_M_S`), the kinds
+from the catalogue, a roof from the body's storeys, the lantern from the strip; the names test fills the sign sheet until three
+layers are in use. The fuzz tests name their edits (`Edit`, `BodyEdit`, the same numbers, so the same draws and the same hashes) and
+take the primitive and the run from the strip's cards.
+
+**Left, and why.** `save_land_cases` (the save header's byte offsets) and the street save test's file without a street block test
+the reading of an older format, which D4 drops with C9's save layout: they go with that change.
+
+**What changes.** No test asks less: the stop test now covers every node of whatever town it opens, the names test fills three
+layers however many names a layer holds, and the captures aim at the same places by their names.
+
+**Verified** (`city-verify`, `quick --all`, both DLLs): every test passes (the fuzz tests with their hashes, the flow test over every
+node), the digest equal, every photo byte-equal to a run before C7; `gates_changed` only lines the files had.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

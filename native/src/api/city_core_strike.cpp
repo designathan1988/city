@@ -4,6 +4,7 @@
 #include "api/city_core.h"
 
 #include "api/edit_result.h"
+#include "render/effects/marks.h"
 
 using namespace godot;
 
@@ -114,6 +115,7 @@ Dictionary CityCore::blast_probe(float strength, float distance) const {
 	d["collapse_range_m"] = blast::range_at_pressure(p, kg, p.collapse_kpa);
 	d["light_range_m"] = blast::range_at_pressure(p, kg, p.light_kpa);
 	d["crater_radius_m"] = blast::crater_radius(p, kg, blast::Surface::EARTH);
+	d["decal_half_m"] = float(d["crater_radius_m"]) * Marks::CRATER_SCALE; // how far its mark on the ground reaches (render/effects/marks.h)
 	return d;
 }
 

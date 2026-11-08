@@ -78,9 +78,9 @@ public:
 	void update(double now);
 	static constexpr float SURFACE_LIFT_M = 0.06f;
 	static constexpr int RELIEF_GRID = 4; // the ground is sampled on a grid of (2 * this + 1)^2 points across a decal
+	static constexpr float CRATER_SCALE = 2.4f; // the quad is wider than the hole: the scorch and the broken lip round it (blast_probe says how far)
 
 private:
-	static constexpr float CRATER_SCALE = 2.4f; // the quad is wider than the hole: the scorch and the broken lip round it
 	static constexpr uint32_t SEED_MASK = 0xffffu;
 	MmLayer layer_;
 	godot::RID material_;

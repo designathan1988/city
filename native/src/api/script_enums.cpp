@@ -19,6 +19,7 @@
 #include "sim/street/street_works.h"
 #include "sim/terrain/heightfield.h"
 #include "sim/traffic/lane_graph_types.h"
+#include "sim/traffic/yard.h"
 #include "sim/transit/transit_data.h"
 
 #include <cstddef>
@@ -58,6 +59,8 @@ Dictionary script_enums() {
 	CITY_ENUM("FurnitureLevel", CITY_ROW_PLAIN(FURN_FULL), CITY_ROW_PLAIN(FURN_BASIC), CITY_ROW_PLAIN(FURN_NONE))
 	CITY_ENUM_ALL("RoadClass", int64_t(RoadClass::COUNT), CITY_ROW(RoadClass, LOCAL), CITY_ROW(RoadClass, URBAN), CITY_ROW(RoadClass, AVENUE),
 			CITY_ROW(RoadClass, BOULEVARD), CITY_ROW(RoadClass, HIGHWAY), CITY_ROW(RoadClass, RAMP), CITY_ROW(RoadClass, RAIL))
+	CITY_ENUM_ALL("YardReach", traffic::YARD_REACHES, CITY_ROW(traffic, YARD_NO_PRE), CITY_ROW(traffic, YARD_NO_STOP), CITY_ROW(traffic, YARD_NO_WAY),
+			CITY_ROW(traffic, YARD_NO_LANE), CITY_ROW(traffic, YARD_ONE_WAY), CITY_ROW(traffic, YARD_BOTH_WAYS))
 	CITY_ENUM("TransitMode", CITY_ROW(TransitMode, BUS), CITY_ROW(TransitMode, TRAIN), CITY_ROW(TransitMode, METRO))
 	CITY_ENUM("SegRule", CITY_ROW_PLAIN(RULE_NONE), CITY_ROW_PLAIN(RULE_STOP), CITY_ROW_PLAIN(RULE_YIELD))
 	CITY_ENUM("NodeCrossing", CITY_ROW_PLAIN(CROSSING_NONE), CITY_ROW_PLAIN(CROSSING_ZEBRA), CITY_ROW_PLAIN(CROSSING_SIGNAL))

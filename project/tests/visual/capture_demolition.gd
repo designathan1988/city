@@ -199,7 +199,10 @@ func _shoot_walker(label: String, first: Dictionary, aim_m: float, moments: Arra
 func _houses(lo: int, hi: int) -> Array:
 	var all := []
 	for id in CityStore.query(&"list_buildings"):
-		all.append(CityStore.query(&"probe_building", [id]))
+		var info: Dictionary = CityStore.query(&"probe_building", [id])
+		var body: Dictionary = CityStore.query(&"body_info", [id])
+		info.roof_h = body.ground_h + body.storey_h * (info.floors - 1) # the top of its last storey (the roof the blow lands on)
+		all.append(info)
 	var tall := all.filter(func(b): return b.floors > hi)
 	var out := []
 	for info in all:
@@ -211,7 +214,7 @@ func _houses(lo: int, hi: int) -> Array:
 				open = false
 				break
 		if open:
-			out.append(info.position + Vector3(0, 3.0 * info.floors, 0))
+			out.append(info.position + Vector3(0, info.roof_h, 0))
 	return out
 
 

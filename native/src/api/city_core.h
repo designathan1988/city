@@ -184,7 +184,7 @@ public:
 	godot::Dictionary set_style(const godot::String &id); // the regional style of this city
 	godot::Dictionary overlays() const;
 	int render_pending() const { return render_.pending(); } // chunks still waiting to be drawn
-	int building_chunk(float x, float z) const { return render_.building_chunk(x, z); } // the tests: BuildingRenderer::chunk_flags
+	godot::Dictionary building_chunk(float x, float z) const { return render_.building_chunk(x, z); } // the tests: BuildingRenderer::chunk_view
 	godot::Dictionary render_cost() const; // where the last frame's _process went, in ms (tests tell a hitch's cause); constant time
 	godot::Dictionary wear_probe() const; // the wear field's worn cells, scanned whole (captures; never per frame)
 	godot::Dictionary road_mesh_counts() const; // what the road and verge chunks hold and the wear field's bytes

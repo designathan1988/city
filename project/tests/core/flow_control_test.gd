@@ -15,7 +15,6 @@ const PUSH_S := 1000
 ## city running fast, stepped by the test.
 const DRIVE_TICKS := 160
 const STOP_TICKS := 800
-const STOP_NODES := 320 # every node of the town: the traffic flows with a Stop at every junction
 const STOP_LEAST := 40
 
 func _ready() -> void:
@@ -54,7 +53,7 @@ func _driven() -> void:
 ## A Stop on every leg: who goes through has come to a stand at the line.
 func _stop_sign() -> void:
 	var signed := 0
-	for n in STOP_NODES:
+	for n in int(CityStore.snapshot.nodes): # every node of the town: the traffic flows with a Stop at every junction
 		signed += 1 if CityStore.dispatch(&"set_node_control", [n, CityStore.code(&"NodeControl", &"CTL_STOP")]).get("ok", false) else 0
 	check(signed > 0, "Stop put at %d junctions" % signed)
 	ticks(STOP_TICKS)

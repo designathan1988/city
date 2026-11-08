@@ -18,6 +18,22 @@ var _money: Label
 var _stats: Label
 var _speed_buttons: Array[Button] = []
 var _sky_buttons: Array[Button] = []
+
+
+## The button that sets the sky to `mode` (SKY: "day", "night", "cycle").
+func sky_button(mode: String) -> Button:
+	for i in SKY.size():
+		if SKY[i][2] == mode:
+			return _sky_buttons[i]
+	return null
+
+
+## The button that sets the speed named `speed` (the core's SimSpeed).
+func speed_button(speed: StringName) -> Button:
+	for i in SPEEDS.size():
+		if SPEEDS[i][0] == speed:
+			return _speed_buttons[i]
+	return null
 var _history_buttons: Dictionary = {}
 var _tipped: Array = [] # [button, tip key]: drawn again when the language changes
 var _warn: Button

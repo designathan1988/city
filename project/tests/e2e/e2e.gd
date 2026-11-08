@@ -11,9 +11,7 @@ const WARMUP_TICKS := 2400
 const MIN_DRAWN_VEHICLES := 1
 const MIN_DRAWN_PEOPLE := 1
 const LENSES_PER_POST := 2
-const SUV := 2 # traffic.json classes: b 2,8 and b_emergency 5,8 m/s²
 const NO_TURN := 1000.0 # m/s: no limit at the line
-const TURN_MS := 6.11 # turn_speed_kmh in m/s
 const AMBER_EPS_S := 0.01
 const HIGH_EYE := Vector3(1000, 1830, 1000) # past the walkers' window from the city's edge, looking at its middle
 const HIGH_TICKS := 600
@@ -62,13 +60,13 @@ func _ready() -> void:
 
 ## The amber's decision (light_rule.cpp) in numbers: speed, metres to where it stops, speed at the line, amber left.
 func _check_amber_rule() -> void:
-	check(CityStore.query(&"amber_stops", [10.0, 30.0, NO_TURN, 4.0, SUV]), "amber: who can stop as the intergreen supposes stops")
-	check(not CityStore.query(&"amber_stops", [16.67, 50.0, NO_TURN, 4.0, SUV]), "amber: who does not stop and reaches the line goes on")
+	check(CityStore.query(&"amber_stops", [10.0, 30.0, NO_TURN, 4.0, CityStore.code(&"VehicleType", &"SUV")]), "amber: who can stop as the intergreen supposes stops")
+	check(not CityStore.query(&"amber_stops", [16.67, 50.0, NO_TURN, 4.0, CityStore.code(&"VehicleType", &"SUV")]), "amber: who does not stop and reaches the line goes on")
 	# just out of the far model near the line, as the soak saw it: slow enough to stop, the amber nearly over
-	check(CityStore.query(&"amber_stops", [7.32, 9.57, NO_TURN, 0.1, SUV]), "amber: who does not reach the line in time stops")
-	check(not CityStore.query(&"amber_stops", [14.0, 40.0, NO_TURN, 3.5, SUV]), "amber: straight on arrives in time")
-	check(CityStore.query(&"amber_stops", [14.0, 40.0, TURN_MS, 3.5, SUV]), "amber: braking for the turn it does not arrive and stops")
-	check(not CityStore.query(&"amber_stops", [14.0, 10.0, NO_TURN, 0.1, SUV]), "amber: who not even an emergency stops goes on")
+	check(CityStore.query(&"amber_stops", [7.32, 9.57, NO_TURN, 0.1, CityStore.code(&"VehicleType", &"SUV")]), "amber: who does not reach the line in time stops")
+	check(not CityStore.query(&"amber_stops", [14.0, 40.0, NO_TURN, 3.5, CityStore.code(&"VehicleType", &"SUV")]), "amber: straight on arrives in time")
+	check(CityStore.query(&"amber_stops", [14.0, 40.0, DataTables.catalog_table("traffic").params.turn_speed_kmh / Units.KMH_PER_M_S, 3.5, CityStore.code(&"VehicleType", &"SUV")]), "amber: braking for the turn it does not arrive and stops")
+	check(not CityStore.query(&"amber_stops", [14.0, 10.0, NO_TURN, 0.1, CityStore.code(&"VehicleType", &"SUV")]), "amber: who not even an emergency stops goes on")
 	check(absf(CityStore.query(&"amber_wanted", [60.0]) - 4.0) < AMBER_EPS_S, "4 s of amber at 60 km/h (MBST vol. V 5.7.1)")
 	check(absf(CityStore.query(&"amber_wanted", [70.0]) - 5.0) < AMBER_EPS_S, "5 s of amber at 70 km/h")
 

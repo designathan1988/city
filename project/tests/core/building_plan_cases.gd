@@ -92,7 +92,8 @@ static func _runs(id: int, made: int, check: Callable) -> void:
 	var box: PackedVector3Array = CityStore.query(&"body_outline", [id, 0])
 	var start: Vector3 = box[0] + (box[0] - box[box.size() / 4]).normalized() * RUN_OFF_M
 	var path := PackedVector3Array([start, start + Vector3(RUN_LEG_M, 0, RUN_LEG_M), start + Vector3(RUN_LEG_M * 2.0, 0, 0)])
-	for spec: Dictionary in DataTables.ui("builder").tabs.parts.sections[1].tools:
+	var runs: Array = DataTables.ui("builder").tabs.parts.sections.filter(func(s: Dictionary) -> bool: return s.title_key == "builder.section.runs")
+	for spec: Dictionary in runs[0].tools:
 		if spec.do != "run":
 			continue
 		var parts: int = BuildingProbe.info(id).parts
