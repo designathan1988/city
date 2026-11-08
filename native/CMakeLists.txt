@@ -92,6 +92,9 @@ endif()
 # engine-class registration callbacks (Image, Camera3D, Terrain3D...) that the release DLL needs at runtime.
 if(MINGW)
     target_link_libraries(citycore PRIVATE "-Wl,--no-gc-sections")
+    # No link time in the PE header (lld's MinGW driver, --no-insert-timestamp): the same sources give the same DLL bytes, so a
+    # rebuild leaves the committed DLLs unchanged and two branches built from the same sources do not conflict.
+    target_link_options(citycore PRIVATE "-Wl,--no-insert-timestamp")
 endif()
 target_include_directories(citycore PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
 # Every warning on (the build must stay free of them: CLAUDE.md "Antes de concluir"); godot-cpp keeps its own flags.
