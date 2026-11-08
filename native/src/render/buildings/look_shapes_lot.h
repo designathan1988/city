@@ -1,7 +1,7 @@
 // The building render's shapes of the lots: the ground and the boundary, the props, the small parts (building_look.json shapes, read by building_look.cpp).
 #pragma once
 
-#include "render/buildings/look_shape_fields.h"
+#include "core/shape_fields.h"
 
 namespace city::b40 {
 
@@ -12,7 +12,7 @@ namespace city::b40 {
 	X(bollard_band) X(bollard_band_h) X(bollard_band_out) X(soil_in) X(bench_seat) X(bench_seat_t) X(bench_back) \
 	X(bench_back_t) X(fascia_shade) X(fascia_h) X(awn_shade) X(grille_t)
 struct LotEmitLook {
-	LOOK_SHAPE_LOT_EMIT(LOOK_SHAPE_FLOAT, LOOK_SHAPE_COUNT, LOOK_SHAPE_DOUBLE, LOOK_SHAPE_FLOATS, LOOK_SHAPE_COUNTS)
+	SHAPE_DECLARE(LOOK_SHAPE_LOT_EMIT)
 };
 
 #define LOOK_SHAPE_LOT_PROPS(X, XI, XD, XV, XVI) \
@@ -23,13 +23,13 @@ struct LotEmitLook {
 	X(door_h) X(door_out) X(line_post) X(wire) X(wire_down) X(cloth) X(cloth_h) X(cloth_at) X(pallet_t) \
 	X(cage_post) X(cage_rail) X(cage_bar) X(cage_bar_every) X(cylinder) X(cylinder_h) X(cylinder_every)
 struct LotPropsLook {
-	LOOK_SHAPE_LOT_PROPS(LOOK_SHAPE_FLOAT, LOOK_SHAPE_COUNT, LOOK_SHAPE_DOUBLE, LOOK_SHAPE_FLOATS, LOOK_SHAPE_COUNTS)
+	SHAPE_DECLARE(LOOK_SHAPE_LOT_PROPS)
 };
 
 #define LOOK_SHAPE_LOT_PARTS(X, XI, XD, XV, XVI) \
 	X(rock_shade) X(dial_out) X(dial_margin) X(hand_w) X(line_w) X(line_up) X(long_hand) X(short_hand)
 struct LotPartsLook {
-	LOOK_SHAPE_LOT_PARTS(LOOK_SHAPE_FLOAT, LOOK_SHAPE_COUNT, LOOK_SHAPE_DOUBLE, LOOK_SHAPE_FLOATS, LOOK_SHAPE_COUNTS)
+	SHAPE_DECLARE(LOOK_SHAPE_LOT_PARTS)
 };
 
 } // namespace city::b40

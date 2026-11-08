@@ -1,7 +1,7 @@
 // The building render's shapes of the roofs: the edges, the plant, the terraces, the gear (building_look.json shapes, read by building_look.cpp).
 #pragma once
 
-#include "render/buildings/look_shape_fields.h"
+#include "core/shape_fields.h"
 
 namespace city::b40 {
 
@@ -10,7 +10,7 @@ namespace city::b40 {
 	X(deco_out) X(deco_h) X(deco2_drop) X(deco2_out) X(deco2_h) X(slab_up) X(slab_out) X(slab_h) X(rail_in) \
 	X(machine_in) X(machine_min)
 struct RoofEmitLook {
-	LOOK_SHAPE_ROOF_EMIT(LOOK_SHAPE_FLOAT, LOOK_SHAPE_COUNT, LOOK_SHAPE_DOUBLE, LOOK_SHAPE_FLOATS, LOOK_SHAPE_COUNTS)
+	SHAPE_DECLARE(LOOK_SHAPE_ROOF_EMIT)
 };
 
 #define LOOK_SHAPE_ROOF_PLANT(X, XI, XD, XV, XVI) \
@@ -23,7 +23,7 @@ struct RoofEmitLook {
 	X(vent_r) X(vent_cap_r) X(vent_cap) X(chim_r) X(chim_top) X(door_w) X(door_h) X(door_t) X(lid) X(lid_t) \
 	X(ladder) X(ladder_up)
 struct RoofPlantLook {
-	LOOK_SHAPE_ROOF_PLANT(LOOK_SHAPE_FLOAT, LOOK_SHAPE_COUNT, LOOK_SHAPE_DOUBLE, LOOK_SHAPE_FLOATS, LOOK_SHAPE_COUNTS)
+	SHAPE_DECLARE(LOOK_SHAPE_ROOF_PLANT)
 };
 
 #define LOOK_SHAPE_ROOF_TERRACE(X, XI, XD, XV, XVI) \
@@ -35,7 +35,7 @@ struct RoofPlantLook {
 	X(slat_half) X(slat_reach) X(slat_lo) X(slat_hi) X(pergola_half) X(tank_in) X(tank_r) X(tank_h) X(rim_r) \
 	X(rim_top) X(rim_shade) X(pots) X(loungers) X(pergola) X(tanks)
 struct RoofTerraceLook {
-	LOOK_SHAPE_ROOF_TERRACE(LOOK_SHAPE_FLOAT, LOOK_SHAPE_COUNT, LOOK_SHAPE_DOUBLE, LOOK_SHAPE_FLOATS, LOOK_SHAPE_COUNTS)
+	SHAPE_DECLARE(LOOK_SHAPE_ROOF_TERRACE)
 };
 
 #define LOOK_SHAPE_ROOF_GEAR(X, XI, XD, XV, XVI) \
@@ -45,13 +45,13 @@ struct RoofTerraceLook {
 	X(beacon_high) XI(round) XI(bands) XI(dome_steps) X(spire_flag_at) X(spire_flag_w) X(spire_flag_h) \
 	X(lantern_flag_drop) X(lantern_flag_w) X(lantern_flag_aspect)
 struct RoofGearLook {
-	LOOK_SHAPE_ROOF_GEAR(LOOK_SHAPE_FLOAT, LOOK_SHAPE_COUNT, LOOK_SHAPE_DOUBLE, LOOK_SHAPE_FLOATS, LOOK_SHAPE_COUNTS)
+	SHAPE_DECLARE(LOOK_SHAPE_ROOF_GEAR)
 };
 
 #define LOOK_SHAPE_ROOF_PITCHED(X, XI, XD, XV, XVI) \
 	X(eaves) X(thick) X(fascia) X(soffit) X(cap_w) X(cap_lift) X(cap_shade) X(mullion)
 struct RoofPitchedLook {
-	LOOK_SHAPE_ROOF_PITCHED(LOOK_SHAPE_FLOAT, LOOK_SHAPE_COUNT, LOOK_SHAPE_DOUBLE, LOOK_SHAPE_FLOATS, LOOK_SHAPE_COUNTS)
+	SHAPE_DECLARE(LOOK_SHAPE_ROOF_PITCHED)
 };
 
 } // namespace city::b40

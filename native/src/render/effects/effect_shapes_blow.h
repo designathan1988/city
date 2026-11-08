@@ -1,7 +1,7 @@
 // The effects' shapes of a blow's events: the blast, the people struck, the things reached (effects.json shapes, read by effect_params.cpp).
 #pragma once
 
-#include "render/effects/effect_shape_fields.h"
+#include "core/shape_fields.h"
 
 namespace city {
 
@@ -11,7 +11,7 @@ namespace city {
 	X(down_paper_height_m) X(down_smoke_size_scale) X(collapse_dust_high_m) X(soot_size_jitter) X(hit_spark_size) \
 	X(hit_spark_life) X(hit_lift_m)
 struct BlastShape {
-	EFFECT_SHAPE_EFFECT_BLAST(EFFECT_SHAPE_FLOAT, EFFECT_SHAPE_COUNT, EFFECT_SHAPE_DOUBLE, EFFECT_SHAPE_FLOATS, EFFECT_SHAPE_COUNTS)
+	SHAPE_DECLARE(EFFECT_SHAPE_EFFECT_BLAST)
 };
 
 #define EFFECT_SHAPE_EFFECT_BODIES(X, XI, XD, XV, XVI) \
@@ -21,7 +21,7 @@ struct BlastShape {
 	X(wound_size_m) X(wound_life_s) X(wound_spread_m) X(spark_count) X(spark_spread_m) X(spark_size_m) \
 	X(spark_life_s) XI(shards) X(shard_size_m) X(shard_thick_m) X(shard_speed_ms) X(shard_life_s)
 struct BodiesShape {
-	EFFECT_SHAPE_EFFECT_BODIES(EFFECT_SHAPE_FLOAT, EFFECT_SHAPE_COUNT, EFFECT_SHAPE_DOUBLE, EFFECT_SHAPE_FLOATS, EFFECT_SHAPE_COUNTS)
+	SHAPE_DECLARE(EFFECT_SHAPE_EFFECT_BODIES)
 };
 
 #define EFFECT_SHAPE_EFFECT_THINGS(X, XI, XD, XV, XVI) \
@@ -37,7 +37,7 @@ struct BodiesShape {
 	X(organ_thin_span) X(organ_round) XI(organs_min) XI(organs_span) X(chest_rise_m) X(scatter_blood_m) \
 	X(pool_min) X(pool_span) X(pool_torn) XI(torn_pools) X(drip_scatter_m) X(drip_min_m) X(drip_span_m)
 struct ThingsShape {
-	EFFECT_SHAPE_EFFECT_THINGS(EFFECT_SHAPE_FLOAT, EFFECT_SHAPE_COUNT, EFFECT_SHAPE_DOUBLE, EFFECT_SHAPE_FLOATS, EFFECT_SHAPE_COUNTS)
+	SHAPE_DECLARE(EFFECT_SHAPE_EFFECT_THINGS)
 };
 
 } // namespace city

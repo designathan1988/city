@@ -1,7 +1,7 @@
 // The building render's shapes of the facades: the openings' pieces, the wall and its bands, the instanced parts' models, the mouldings (building_look.json shapes, read by building_look.cpp).
 #pragma once
 
-#include "render/buildings/look_shape_fields.h"
+#include "core/shape_fields.h"
 
 namespace city::b40 {
 
@@ -17,7 +17,7 @@ namespace city::b40 {
 	X(transom_at) X(window_sill_min) X(lamp_w) X(lamp_h) X(lamp_d) X(lamp_off) X(lamp_drop) X(lamp_out) \
 	X(lamp_room) X(shutter_chroma) X(shutter_max) X(wash_half) X(wash_up) X(wash_foot) X(wash_out)
 struct FacadePartsLook {
-	LOOK_SHAPE_FACADE_PARTS(LOOK_SHAPE_FLOAT, LOOK_SHAPE_COUNT, LOOK_SHAPE_DOUBLE, LOOK_SHAPE_FLOATS, LOOK_SHAPE_COUNTS)
+	SHAPE_DECLARE(LOOK_SHAPE_FACADE_PARTS)
 };
 
 #define LOOK_SHAPE_FACADE_EMIT(X, XI, XD, XV, XVI) \
@@ -25,7 +25,7 @@ struct FacadePartsLook {
 	X(band_out) X(band_h) X(base_out) X(base_h) X(slab_out) X(slab_h) X(slab_shade) X(plinth_out) X(plinth_bury) \
 	X(step_min) X(facade_run_min) X(step_front) X(step_pad) X(step_foot) X(door_w)
 struct FacadeEmitLook {
-	LOOK_SHAPE_FACADE_EMIT(LOOK_SHAPE_FLOAT, LOOK_SHAPE_COUNT, LOOK_SHAPE_DOUBLE, LOOK_SHAPE_FLOATS, LOOK_SHAPE_COUNTS)
+	SHAPE_DECLARE(LOOK_SHAPE_FACADE_EMIT)
 };
 
 #define LOOK_SHAPE_PART_MODELS(X, XI, XD, XV, XVI) \
@@ -33,13 +33,13 @@ struct FacadeEmitLook {
 	X(panel_d) X(handle_x) X(handle_y) X(door_handle_w) X(handle_d) X(handle_z) X(panel_shade) X(louvre_t) \
 	X(slat_fill) X(slat_shade) XI(slats) X(canvas_slope) X(valance_h) X(valance_t)
 struct PartModelsLook {
-	LOOK_SHAPE_PART_MODELS(LOOK_SHAPE_FLOAT, LOOK_SHAPE_COUNT, LOOK_SHAPE_DOUBLE, LOOK_SHAPE_FLOATS, LOOK_SHAPE_COUNTS)
+	SHAPE_DECLARE(LOOK_SHAPE_PART_MODELS)
 };
 
 #define LOOK_SHAPE_PLACED(X, XI, XD, XV, XVI) \
 	X(mould_k) X(band_low) X(band_mid) X(low_tier)
 struct PlacedLook {
-	LOOK_SHAPE_PLACED(LOOK_SHAPE_FLOAT, LOOK_SHAPE_COUNT, LOOK_SHAPE_DOUBLE, LOOK_SHAPE_FLOATS, LOOK_SHAPE_COUNTS)
+	SHAPE_DECLARE(LOOK_SHAPE_PLACED)
 };
 
 #define LOOK_SHAPE_FACADE_BAY(X, XI, XD, XV, XVI) \
@@ -49,7 +49,7 @@ struct PlacedLook {
 	X(streak_half) X(streak_half_step) X(streak_top) X(streak_dark) X(streak_mid) XI(streak_skip) \
 	XI(streak_reach) XI(streak_width) X(french_streak_sill) X(wall_run_m) X(pane_on_wall_m)
 struct FacadeBayLook {
-	LOOK_SHAPE_FACADE_BAY(LOOK_SHAPE_FLOAT, LOOK_SHAPE_COUNT, LOOK_SHAPE_DOUBLE, LOOK_SHAPE_FLOATS, LOOK_SHAPE_COUNTS)
+	SHAPE_DECLARE(LOOK_SHAPE_FACADE_BAY)
 };
 
 #define LOOK_SHAPE_FACADE_PROPS(X, XI, XD, XV, XVI) \
@@ -61,7 +61,7 @@ struct FacadeBayLook {
 	X(ledge_in) X(gourmet_in) X(ledge_deep) X(gourmet_deep) X(ledge_min) X(inset_in) X(inset_min) X(inset_corner) \
 	X(inset_plant) X(inset_chair) X(inset_turn) XI(garden_few) XI(garden_many)
 struct FacadePropsLook {
-	LOOK_SHAPE_FACADE_PROPS(LOOK_SHAPE_FLOAT, LOOK_SHAPE_COUNT, LOOK_SHAPE_DOUBLE, LOOK_SHAPE_FLOATS, LOOK_SHAPE_COUNTS)
+	SHAPE_DECLARE(LOOK_SHAPE_FACADE_PROPS)
 };
 
 } // namespace city::b40

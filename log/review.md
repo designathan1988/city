@@ -3304,6 +3304,17 @@ again from scratch, fetching their own.
 **What changes.** The release DLL's layout once (the colliding initializers, the promoted functions and the unprofiled ones in input
 order) and the debug DLL's banner date; everything the game does, nothing. Upstream: `log/pendencias.md`.
 
+### 6.46 B2, C16 (one owner): the shapes' field macros written once (2026-11-08)
+
+**Cause and fix.** Each family of shapes (the building generator's, the building look's, the effects') had its own header of the
+same five macros, a float, a count, a double and the two lists, under its own prefix (`b40/shape_fields.h`,
+`look_shape_fields.h`, `effect_shape_fields.h`), and every block's struct spelled the five out. The city generator's shapes would
+have been the fourth copy. One header owns them (`core/shape_fields.h`, the core: the simulation and the render both declare
+shapes) with `SHAPE_DECLARE(LIST)`, which makes a block's list its struct's members; the three copies are gone and every block
+reads `SHAPE_DECLARE(<its list>)`. `render/shape_reader.h` reads them as before.
+
+**What changes.** Nothing: both DLLs are byte for byte the ones built before the change.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

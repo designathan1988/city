@@ -2,7 +2,7 @@
 // api/buildings_loader.cpp) and its struct.
 #pragma once
 
-#include "sim/buildings/b40/shape_fields.h"
+#include "core/shape_fields.h"
 
 namespace city::b40 {
 
@@ -14,7 +14,7 @@ namespace city::b40 {
 	X(ward_d_share) X(podium_d_share) X(sign_w) X(sign_t) X(sign_bar) X(sign_out) X(band_h) X(band_out) \
 	X(canopy_w) X(canopy_d) X(canopy_t) XI(hospital_lo) XI(hospital_hi) XI(clinic_storeys)
 struct CivicShape {
-	B40_CIVIC(B40_SHAPE_FLOAT, B40_SHAPE_COUNT, B40_SHAPE_DOUBLE, B40_SHAPE_FLOATS, B40_SHAPE_COUNTS)
+	SHAPE_DECLARE(B40_CIVIC)
 };
 
 #define B40_SERVICES(X, XI, XD, XV, XVI) \
@@ -26,7 +26,7 @@ struct CivicShape {
 	X(flag_t) X(stair_h) X(stair_d) XI(columns) XI(hall_storeys) XI(pediment_steps) X(station_storey) X(tower_w) \
 	X(band_h) X(band_out) XI(station_storeys) XI(tower_storeys) XI(garage_bays)
 struct ServiceShape {
-	B40_SERVICES(B40_SHAPE_FLOAT, B40_SHAPE_COUNT, B40_SHAPE_DOUBLE, B40_SHAPE_FLOATS, B40_SHAPE_COUNTS)
+	SHAPE_DECLARE(B40_SERVICES)
 };
 
 #define B40_FACADE(X, XI, XD, XV, XVI) \
@@ -36,7 +36,7 @@ struct ServiceShape {
 	XI(relief_min_storeys) XI(relief_min_bays) XI(relief_wide_bays) XI(pier_min_storeys) X(stone_base_k) \
 	X(relief_skip) X(relief_out) X(pier_out)
 struct FacadeShape {
-	B40_FACADE(B40_SHAPE_FLOAT, B40_SHAPE_COUNT, B40_SHAPE_DOUBLE, B40_SHAPE_FLOATS, B40_SHAPE_COUNTS)
+	SHAPE_DECLARE(B40_FACADE)
 };
 
 #define B40_MASSING(X, XI, XD, XV, XVI) \
@@ -44,7 +44,7 @@ struct FacadeShape {
 	X(rise_other) XV(pitch_gable) XV(pitch_hip) XV(pitch_shed) XV(pitch_saw) XV(pitch_other) X(second_skin_light) \
 	X(second_skin_nudge) XI(second_skin_tries) X(membrane_nudge)
 struct MassingShape {
-	B40_MASSING(B40_SHAPE_FLOAT, B40_SHAPE_COUNT, B40_SHAPE_DOUBLE, B40_SHAPE_FLOATS, B40_SHAPE_COUNTS)
+	SHAPE_DECLARE(B40_MASSING)
 };
 
 #define B40_HOUSE(X, XI, XD, XV, XVI) \
@@ -57,7 +57,7 @@ struct MassingShape {
 	X(twin_main_lo) X(twin_main_hi) X(bung_pitch_lo) X(bung_pitch_hi) X(wing_min_room) X(wing_min) X(wing_lo) \
 	X(wing_hi) X(double_door)
 struct HouseShape {
-	B40_HOUSE(B40_SHAPE_FLOAT, B40_SHAPE_COUNT, B40_SHAPE_DOUBLE, B40_SHAPE_FLOATS, B40_SHAPE_COUNTS)
+	SHAPE_DECLARE(B40_HOUSE)
 };
 
 #define B40_TALL(X, XI, XD, XV, XVI) \
@@ -77,20 +77,20 @@ struct HouseShape {
 	XI(shop_low_max) XV(setback_shares) XVI(twin_steps) XVI(office_twin_steps) XI(workplace_min_f) \
 	XI(office_max_f) XI(office_twin_min)
 struct TallShape {
-	B40_TALL(B40_SHAPE_FLOAT, B40_SHAPE_COUNT, B40_SHAPE_DOUBLE, B40_SHAPE_FLOATS, B40_SHAPE_COUNTS)
+	SHAPE_DECLARE(B40_TALL)
 };
 
 #define B40_WORKS(X, XI, XD, XV, XVI) \
 	X(hall_lo) X(hall_hi) X(office_storey) X(annex_d) X(annex_w) X(annex_room) X(annex_w_lo) X(annex_w_hi) \
 	X(annex_d_lo) X(annex_d_hi) XI(loading_every)
 struct WorksShape {
-	B40_WORKS(B40_SHAPE_FLOAT, B40_SHAPE_COUNT, B40_SHAPE_DOUBLE, B40_SHAPE_FLOATS, B40_SHAPE_COUNTS)
+	SHAPE_DECLARE(B40_WORKS)
 };
 
 #define B40_PAINT(X, XI, XD, XV, XVI) \
 	XD(hue_step) XD(sat_step) XD(light_step) XD(light_min) XD(light_max) XD(tint_lo) XD(tint_span)
 struct PaintShape {
-	B40_PAINT(B40_SHAPE_FLOAT, B40_SHAPE_COUNT, B40_SHAPE_DOUBLE, B40_SHAPE_FLOATS, B40_SHAPE_COUNTS)
+	SHAPE_DECLARE(B40_PAINT)
 };
 
 #define B40_SURVEY(X, XI, XD, XV, XVI) \
@@ -101,7 +101,7 @@ struct PaintShape {
 	XI(wall_up) XI(bay_along) XI(bay_up) XI(least_samples) XI(least_light) XI(tall_storeys) XI(top_storeys) \
 	XI(least_based_top) X(least_cell_m) X(hidden_m)
 struct SurveyShape {
-	B40_SURVEY(B40_SHAPE_FLOAT, B40_SHAPE_COUNT, B40_SHAPE_DOUBLE, B40_SHAPE_FLOATS, B40_SHAPE_COUNTS)
+	SHAPE_DECLARE(B40_SURVEY)
 };
 
 } // namespace city::b40

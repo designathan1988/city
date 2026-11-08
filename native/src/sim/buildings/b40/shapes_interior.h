@@ -2,7 +2,7 @@
 // api/buildings_loader.cpp) and its struct.
 #pragma once
 
-#include "sim/buildings/b40/shape_fields.h"
+#include "core/shape_fields.h"
 
 namespace city::b40 {
 
@@ -12,7 +12,7 @@ namespace city::b40 {
 	XI(office_room_bays) XI(class_room_bays) XI(hotel_room_bays) XI(ward_room_bays) XI(light_share) \
 	XI(wood_share) X(ward_from_ground) X(reach_past_m) X(reach_unsized_m)
 struct InteriorShape {
-	B40_INTERIOR(B40_SHAPE_FLOAT, B40_SHAPE_COUNT, B40_SHAPE_DOUBLE, B40_SHAPE_FLOATS, B40_SHAPE_COUNTS)
+	SHAPE_DECLARE(B40_INTERIOR)
 };
 
 #define B40_HOMES(X, XI, XD, XV, XVI) \
@@ -29,7 +29,7 @@ struct InteriorShape {
 	X(wide_unit) X(bath_wall) X(bath_wall_door) X(u_bath_x) X(u_bath_y) X(u_toilet_x) X(u_toilet_y) X(u_plant) \
 	X(desk_front) X(lobby_sofa_x) X(lobby_sofa_y) X(lobby_plant)
 struct InteriorHomeShape {
-	B40_HOMES(B40_SHAPE_FLOAT, B40_SHAPE_COUNT, B40_SHAPE_DOUBLE, B40_SHAPE_FLOATS, B40_SHAPE_COUNTS)
+	SHAPE_DECLARE(B40_HOMES)
 };
 
 #define B40_ROOMS(X, XI, XD, XV, XVI) \
@@ -53,13 +53,13 @@ struct InteriorHomeShape {
 	X(sofa_from) X(sofa_to) X(sofa_gx) X(sofa_gy) X(mall_plant_in) X(mall_plant_from) X(mall_plant_gx) \
 	X(mall_plant_gy)
 struct InteriorRoomShape {
-	B40_ROOMS(B40_SHAPE_FLOAT, B40_SHAPE_COUNT, B40_SHAPE_DOUBLE, B40_SHAPE_FLOATS, B40_SHAPE_COUNTS)
+	SHAPE_DECLARE(B40_ROOMS)
 };
 
 #define B40_FLOOR_PLAN(X, XI, XD, XV, XVI) \
 	X(inset) X(pad) X(front_room) X(core_x) X(core_y) X(corridor) X(double_loaded) X(off_wall)
 struct FloorPlanShape {
-	B40_FLOOR_PLAN(B40_SHAPE_FLOAT, B40_SHAPE_COUNT, B40_SHAPE_DOUBLE, B40_SHAPE_FLOATS, B40_SHAPE_COUNTS)
+	SHAPE_DECLARE(B40_FLOOR_PLAN)
 };
 
 } // namespace city::b40

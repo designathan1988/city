@@ -2,7 +2,7 @@
 // api/buildings_loader.cpp) and its struct.
 #pragma once
 
-#include "sim/buildings/b40/shape_fields.h"
+#include "core/shape_fields.h"
 
 namespace city::b40 {
 
@@ -10,7 +10,7 @@ namespace city::b40 {
 	X(cover_h) X(court_w) X(court_d) X(court_line) X(bench_h) X(drain) X(drain_h) X(pallet) X(pallet_h) X(lamp) \
 	X(swing_w) X(swing_d) X(swing_h) X(way_side)
 struct LotPartShape {
-	B40_PARTS(B40_SHAPE_FLOAT, B40_SHAPE_COUNT, B40_SHAPE_DOUBLE, B40_SHAPE_FLOATS, B40_SHAPE_COUNTS)
+	SHAPE_DECLARE(B40_PARTS)
 };
 
 #define B40_BACK(X, XI, XD, XV, XVI) \
@@ -23,14 +23,14 @@ struct LotPartShape {
 	X(bollard_h) X(bollard_out) X(yard_lamp_h) X(yard_lamp_in) X(yard_back) X(wall_lamp_every) X(wall_lamp_z) \
 	X(wall_lamp_out) X(wall_lamp_w) X(wall_lamp_h)
 struct LotBackShape {
-	B40_BACK(B40_SHAPE_FLOAT, B40_SHAPE_COUNT, B40_SHAPE_DOUBLE, B40_SHAPE_FLOATS, B40_SHAPE_COUNTS)
+	SHAPE_DECLARE(B40_BACK)
 };
 
 #define B40_BOUNDARY(X, XI, XD, XV, XVI) \
 	X(boundary_wall_t) X(fence_thick) X(hedge_thick) X(gate_post) X(gate_gap) X(attach) X(shortest_run) \
 	X(walk_trim)
 struct LotBoundaryShape {
-	B40_BOUNDARY(B40_SHAPE_FLOAT, B40_SHAPE_COUNT, B40_SHAPE_DOUBLE, B40_SHAPE_FLOATS, B40_SHAPE_COUNTS)
+	SHAPE_DECLARE(B40_BOUNDARY)
 };
 
 #define B40_CARS(X, XI, XD, XV, XVI) \
@@ -38,7 +38,7 @@ struct LotBoundaryShape {
 	X(alley_lamp_min) X(alley_lamp_h) X(drain_every) X(alley_drain) X(bin_w) X(bin_d) X(bin_h) X(crate) \
 	X(crate_h) X(back_end) X(crate_gap) X(side_tree_every) X(side_tree) X(side_tree_h) X(side_shrub_h)
 struct LotCarsShape {
-	B40_CARS(B40_SHAPE_FLOAT, B40_SHAPE_COUNT, B40_SHAPE_DOUBLE, B40_SHAPE_FLOATS, B40_SHAPE_COUNTS)
+	SHAPE_DECLARE(B40_CARS)
 };
 
 #define B40_FRONT(X, XI, XD, XV, XVI) \
@@ -51,13 +51,13 @@ struct LotCarsShape {
 	X(lamp_in) X(lamp_back) X(apron_path) X(apron_lamp_h) X(apron_lamp_x) X(apron_lamp_in) X(visitor_from) \
 	X(visitor_door)
 struct LotFrontShape {
-	B40_FRONT(B40_SHAPE_FLOAT, B40_SHAPE_COUNT, B40_SHAPE_DOUBLE, B40_SHAPE_FLOATS, B40_SHAPE_COUNTS)
+	SHAPE_DECLARE(B40_FRONT)
 };
 
 #define B40_GROUND(X, XI, XD, XV, XVI) \
 	X(door_way_pad) X(door_way_min) X(edge_keep)
 struct LotGroundShape {
-	B40_GROUND(B40_SHAPE_FLOAT, B40_SHAPE_COUNT, B40_SHAPE_DOUBLE, B40_SHAPE_FLOATS, B40_SHAPE_COUNTS)
+	SHAPE_DECLARE(B40_GROUND)
 };
 
 #define B40_PLAN(X, XI, XD, XV, XVI) \
@@ -72,13 +72,13 @@ struct LotGroundShape {
 	X(apron) X(works_w) X(works_d) X(works_path_w) X(loading_full) X(loading_extra) X(loading_max) X(loading_min) \
 	X(loading_share)
 struct LotPlanShape {
-	B40_PLAN(B40_SHAPE_FLOAT, B40_SHAPE_COUNT, B40_SHAPE_DOUBLE, B40_SHAPE_FLOATS, B40_SHAPE_COUNTS)
+	SHAPE_DECLARE(B40_PLAN)
 };
 
 #define B40_SPACE(X, XI, XD, XV, XVI) \
 	X(lot_clear_in) X(part_gap) X(cover_step)
 struct LotSpaceShape {
-	B40_SPACE(B40_SHAPE_FLOAT, B40_SHAPE_COUNT, B40_SHAPE_DOUBLE, B40_SHAPE_FLOATS, B40_SHAPE_COUNTS)
+	SHAPE_DECLARE(B40_SPACE)
 };
 
 #define B40_YARD(X, XI, XD, XV, XVI) \
@@ -93,7 +93,7 @@ struct LotSpaceShape {
 	X(free_min) X(small_w) X(small_d) X(planter) X(planter_h) X(square_max) X(square_in) X(free_tree_in) \
 	X(free_flowers) X(flowers_h)
 struct LotYardShape {
-	B40_YARD(B40_SHAPE_FLOAT, B40_SHAPE_COUNT, B40_SHAPE_DOUBLE, B40_SHAPE_FLOATS, B40_SHAPE_COUNTS)
+	SHAPE_DECLARE(B40_YARD)
 };
 
 #define B40_OPEN(X, XI, XD, XV, XVI) \
@@ -104,7 +104,7 @@ struct LotYardShape {
 	X(band_min) X(band) X(band_col) X(band_h) X(band_roof) X(band_deck) X(court_run) X(fence_h) X(goal_w) \
 	X(goal_h) X(goal_d) X(circle) X(lift_line) X(lift_inner)
 struct OpenLotShape {
-	B40_OPEN(B40_SHAPE_FLOAT, B40_SHAPE_COUNT, B40_SHAPE_DOUBLE, B40_SHAPE_FLOATS, B40_SHAPE_COUNTS)
+	SHAPE_DECLARE(B40_OPEN)
 };
 
 } // namespace city::b40
