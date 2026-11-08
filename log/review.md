@@ -3073,6 +3073,32 @@ now under the rule), `CONSTANT_WITHOUT_SOURCE` 719, `SEGUNDO_DONO` 8, and the re
 17, `DONO_UNICO` 9, `TAMANHO_FUNCAO` 3, `ESPELHO` 1). The two new counts are the values of C14 the old rules hid: they are the rest
 of C14, domain by domain.
 
+### 6.36 B2, C14 (the tuning's types and the generated land): a count is an int, the land is data (2026-11-08)
+
+**Causes and fixes.**
+- **Every tunable was a float** (`tuning_fields.h` `CITY_TUNING_DECLARE`): counts were read back through `int(...)` at every
+  use (`build_max_volumes` in eight places), a fraction in the table passed silently, and a generator working in double could not
+  share a value with the brush. The X-macro gives each field its type: `X` a measure or share (float), `XI` a count (int, which
+  the loader refuses as a fraction: 24 fields), `XD` a value read in double precision. The casts the counts no longer need are
+  gone; the tuning gate reads all three.
+- **The generated land kept its whole shape in code** (`terrain_gen.cpp`, about forty `constexpr double`: hills, valley, canal,
+  lakes, ranges, the flood), and two of its values were second owners of tuning's `terrain` group (`RIVER_BED_FLOOR` and
+  `ROUGH_REACH_MIN`, the bed's profile the brush read from data and the generator from code; `SEGUNDO_DONO` named both). The
+  shape is tuning's `land` group (doubles, the counts as ints, a `_doc` saying each one's part), the generator keeps the tuning
+  it was made with and derives the canal's reach and cut from it, the bed reads `terrain` like the brush (which still works in
+  float, as before), and the height limits are tuning's (`MIN_Y`/`MAX_Y` were copies). What stays in code is named with its
+  source: the keys' packing, the lattice strides and salts, the neighbour tables, the end guard. Godot's JSON reader gives the
+  correctly rounded double for every value moved (checked bit by bit), and the build contracts no floating expression
+  (`-ffp-contract=off`), so the run-time products equal the folded ones.
+
+**Not here, and why.** `civic_services.cpp` `STALL_D` (5 m against `lots.stall_d` 5.5 m) is a second owner that drifted:
+reading the table changes the market's parking (B3, C4 unequal pairs). `road_gen_graph.cpp` `PARALLEL_COS` (0.93) is the city
+generator's own hugging test, not the road tool's overlap rule (0.9), and `ruin_pieces.cpp` `DUST_*` are a falling piece's dust,
+not a person going down: both go to data with their domains (the citygen and effects passes).
+
+**What changes.** Nothing: the digest of the generated maps, the hash tests and the numbers are the same (`quick`: 44 of 46; the
+photo that differed by 0.004 % was a state of the capture's variation: taken again with the same DLL it is one seen before).
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

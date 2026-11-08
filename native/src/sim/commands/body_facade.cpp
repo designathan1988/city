@@ -170,13 +170,13 @@ std::string op_set_face(Body &b, const Tuning &t, int vol, int side, const FaceG
 	int was = bays_of(*v, side);
 	FaceGeometry &f = v->faces[side];
 	float lo = float(t.build_least_opening), hi = float(t.build_most_opening), out = float(t.build_max_projection_m);
-	if (patch.bays >= 0) f.bays = std::clamp(patch.bays, 1, int(t.build_max_bays));
+	if (patch.bays >= 0) f.bays = std::clamp(patch.bays, 1, t.build_max_bays);
 	if (patch.window_w > 0) f.window_w = std::clamp(patch.window_w, lo, hi);
 	if (patch.window_h > 0) f.window_h = std::clamp(patch.window_h, lo, hi);
 	if (patch.sill >= 0) f.sill = std::clamp(patch.sill, 0.f, out);
 	if (patch.pier_w >= 0) f.pier_w = std::clamp(patch.pier_w, 0.f, out);
 	if (patch.pier_d >= 0) f.pier_d = std::clamp(patch.pier_d, 0.f, out);
-	if (patch.pier_every >= 0) f.pier_every = std::clamp(patch.pier_every, 1, int(t.build_max_pier_every));
+	if (patch.pier_every >= 0) f.pier_every = std::clamp(patch.pier_every, 1, t.build_max_pier_every);
 	int now = bays_of(*v, side);
 	if (now == was) return "";
 	// Fewer or more bays: what was set on one bay goes to the bay at the same place along the face.

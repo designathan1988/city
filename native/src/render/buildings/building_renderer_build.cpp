@@ -175,7 +175,7 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 			}
 			if (cut) b40::emit_interior(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
 			if (lots_drawn_.load()) b40::emit_lot(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
-			if (!broken) out.walls.add(pl, int(state_->catalog.tune.render_occluder_min_storeys));
+			if (!broken) out.walls.add(pl, state_->catalog.tune.render_occluder_min_storeys);
 			out.cut = out.cut || cut;
 			if (!mid) continue; // both asked (first build close to the camera): the coarse mid level follows
 			if (cut) bodies.place(designs(), look_, in.ground, rec, pl);

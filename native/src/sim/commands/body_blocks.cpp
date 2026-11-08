@@ -59,7 +59,7 @@ Ring on_roof(const Ring &box, const Volume &v) {
 
 std::string op_add_mass(Body &b, const Tuning &t, int vol, V2 from, V2 to, int action) {
 	if (vol < 0 || vol >= int(b.volumes.size()) || action < MASS_GROUND || action > MASS_CUT) return NO_BLOCK;
-	if (int(b.volumes.size()) >= int(t.build_max_volumes)) return "building.problem.size";
+	if (int(b.volumes.size()) >= t.build_max_volumes) return "building.problem.size";
 	Volume &source = b.volumes[size_t(vol)];
 	const float x0 = on_grid(t, std::min(from.x, to.x)), x1 = on_grid(t, std::max(from.x, to.x)), y0 = on_grid(t, std::min(from.y, to.y)), y1 = on_grid(t, std::max(from.y, to.y));
 	Ring ring{ { x0, y0 }, { x1, y0 }, { x1, y1 }, { x0, y1 } };
@@ -67,7 +67,7 @@ std::string op_add_mass(Body &b, const Tuning &t, int vol, V2 from, V2 to, int a
 	if (action == MASS_ROOF) ring = on_roof(ring, source);
 	if (ring.size() < 3) return "building.problem.outline";
 	if (action == MASS_CUT && overlap_area(ring, ring_of(source)) <= TOUCH_AREA_M2) return "building.problem.cut";
-	Volume mass = block_like(source, action == MASS_ROOF ? std::min(int(t.build_roof_mass_storeys), std::max(1, int(t.edit_max_floors) - source.top())) : source.storeys);
+	Volume mass = block_like(source, action == MASS_ROOF ? std::min(t.build_roof_mass_storeys, std::max(1, t.edit_max_floors - source.top())) : source.storeys);
 	for (FaceGeometry &f : mass.faces) f.bays = -1; // its openings' proportions, but as many bays as its own walls hold
 	set_block_ring(mass, ring);
 	if (action == MASS_GROUND) {
@@ -195,12 +195,12 @@ std::string op_set_block_mode(Body &b, int vol, int mode) {
 
 std::string op_primitive_on(Body &b, const Tuning &t, int vol, int side, int storey, float x, float y, const PrimitiveSpec &p) {
 	if (vol < 0 || vol >= int(b.volumes.size())) return NO_BLOCK;
-	if (int(b.volumes.size()) >= int(t.build_max_volumes)) return "building.problem.size";
+	if (int(b.volumes.size()) >= t.build_max_volumes) return "building.problem.size";
 	const Volume &source = b.volumes[size_t(vol)];
 	const float size = float(t.build_primitive_m);
 	const bool top = side < 0;
 	float cx = x, cy = y, across = size, angle = 0;
-	int storeys = int(t.build_roof_mass_storeys);
+	int storeys = t.build_roof_mass_storeys;
 	if (!top) {
 		const BlockWall e = block_wall(source, side);
 		const float along = (x - e.a.x) * e.tx + (y - e.a.y) * e.ty, depth = float(t.build_primitive_depth_m);
@@ -294,7 +294,7 @@ EditResult place_primitive(CityState &s, double x, double z, const PrimitiveSpec
 	m.trim = data.color("wall_coping");
 	ModelBlock block;
 	block.w = block.d = float(t.build_primitive_m);
-	block.storeys = int(t.build_primitive_storeys);
+	block.storeys = t.build_primitive_storeys;
 	block.roof = Roof(p.roof);
 	block.pitch = p.roof == ROOF_FLAT ? -1 : p.pitch;
 	block.door_bay = MIDDLE_BAY;

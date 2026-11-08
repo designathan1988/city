@@ -229,7 +229,7 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 	const bool uploads_due = ++upload_frame_ >= upload_every_;
 	if (uploads_due) upload_frame_ = 0;
 	if (frame_) upload_debt_ = frame_->upload.debt_after(); // what the last frame (and its overlays) left owing
-	frame_.emplace(until, backlog ? 0 : std::max(1, int(t.render_max_chunk_rebuilds_per_frame)), UploadBudget(uploads_due ? window : 0, baking(), upload_debt_));
+	frame_.emplace(until, backlog ? 0 : std::max(1, t.render_max_chunk_rebuilds_per_frame), UploadBudget(uploads_due ? window : 0, baking(), upload_debt_));
 	FrameAdmission &f = *frame_;
 	f.upload.charge(carried_bytes_); // the wear's tiles sent since the last sync
 	carried_bytes_ = 0;

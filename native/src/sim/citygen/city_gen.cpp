@@ -81,7 +81,7 @@ std::unique_ptr<TerrainGen> found_land(CityState &s, int map_index, uint32_t exa
 	const ScenicCity *scenic = c.scenic_of(map_index);
 	s.nature.reset(default_weather(c.nature.weather), scenic ? scenic->biome : c.nature.ecology.default_biome, s.seed & ~TerrainGen::FLAT_BIT);
 	if (!generate) return nullptr;
-	auto gen = std::make_unique<TerrainGen>(s.seed, s.map_half, c.tune.world_water_spacing_m, scenic ? &scenic->land : nullptr);
+	auto gen = std::make_unique<TerrainGen>(s.seed, s.map_half, c.tune, scenic ? &scenic->land : nullptr);
 	s.terrain.fill(*gen, c.tune.world_water_spacing_m);
 	return gen;
 }

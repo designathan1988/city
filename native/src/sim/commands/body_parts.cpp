@@ -71,7 +71,7 @@ std::string op_add_part(Body &b, const Tuning &t, int vol, int storey, int side,
 	if (vol < 0 || vol >= int(b.volumes.size())) return NO_TARGET;
 	const Volume &v = b.volumes[size_t(vol)];
 	if (side < 0 || side >= v.sides() || storey < 0 || storey >= v.storeys) return NO_TARGET;
-	if (int(b.elements.size()) >= int(t.build_max_parts)) return "building.problem.size";
+	if (int(b.elements.size()) >= t.build_max_parts) return "building.problem.size";
 	WallFrame f = wall_of(v, side);
 	float width = f.length / float(bays_of(v, side)), along = (float(bay) + 0.5f) * width;
 	float floor = b.level_z(v.base + storey), next = b.level_z(v.base + storey + 1), tall = next - floor;
@@ -129,7 +129,7 @@ std::string op_add_part(Body &b, const Tuning &t, int vol, int storey, int side,
 }
 
 std::string op_add_part_at(Body &b, const Tuning &t, float x, float y, int facing, const PartSpec &s) {
-	if (int(b.elements.size()) >= int(t.build_max_parts)) return "building.problem.size";
+	if (int(b.elements.size()) >= t.build_max_parts) return "building.problem.size";
 	LotElement e;
 	e.kind = Element(s.kind);
 	e.facing = facing;
@@ -153,7 +153,7 @@ std::string op_add_run(Body &b, const Tuning &t, const std::vector<V2> &path, in
 		const V2 p = path[i - 1], q = path[i];
 		const float leg = std::hypot(q.x - p.x, q.y - p.y);
 		if (leg < SHORTEST_LEG_M) continue;
-		if (int(b.elements.size()) >= int(t.build_max_parts)) return "building.problem.size";
+		if (int(b.elements.size()) >= t.build_max_parts) return "building.problem.size";
 		LotElement e;
 		e.kind = Element(s.kind);
 		e.x = (p.x + q.x) / 2;
@@ -206,7 +206,7 @@ std::string op_repeat_part(Body &b, const Tuning &t, int part, float spacing) {
 		}
 	float start = along_x ? base.x : base.y;
 	for (float dir : { 1.f, -1.f })
-		for (int k = 1; k < MAX_REPEAT && int(b.elements.size()) < int(t.build_max_parts); k++) {
+		for (int k = 1; k < MAX_REPEAT && int(b.elements.size()) < t.build_max_parts; k++) {
 			float at = start + dir * float(k) * step;
 			if (at < lo - EPS || at > hi + EPS) break;
 			LotElement copy = base;

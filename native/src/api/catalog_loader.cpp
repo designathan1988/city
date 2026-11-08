@@ -21,8 +21,12 @@ float num(DataReader &r, const Dictionary &d, const char *key) { return float(r.
 
 void load_tuning(DataReader r, const Dictionary &t, Tuning &tn) {
 #define CITY_TUNING_LOAD(group, name) tn.group##_##name = float(r.in(#group).num(r.table(t, #group), #name));
-	CITY_TUNING_FIELDS(CITY_TUNING_LOAD)
+#define CITY_TUNING_LOAD_COUNT(group, name) tn.group##_##name = r.in(#group).integer(r.table(t, #group), #name);
+#define CITY_TUNING_LOAD_DOUBLE(group, name) tn.group##_##name = r.in(#group).num(r.table(t, #group), #name);
+	CITY_TUNING_FIELDS(CITY_TUNING_LOAD, CITY_TUNING_LOAD_COUNT, CITY_TUNING_LOAD_DOUBLE)
 #undef CITY_TUNING_LOAD
+#undef CITY_TUNING_LOAD_COUNT
+#undef CITY_TUNING_LOAD_DOUBLE
 }
 
 StripKind strip_kind(const String &k, DataReader &r) {

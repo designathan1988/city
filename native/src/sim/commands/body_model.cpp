@@ -146,7 +146,7 @@ std::string op_extrude_face(Body &b, const Tuning &t, int vol, int side, float d
 // A brick the face's width and the block's height, set against the face.
 std::string op_extrude_block(Body &b, const Tuning &t, int vol, int side, float depth) {
 	if (!has(b, vol) || side < 0 || side >= b.volumes[size_t(vol)].sides()) return "builder.pickFace";
-	if (int(b.volumes.size()) >= int(t.build_max_volumes)) return "building.problem.size";
+	if (int(b.volumes.size()) >= t.build_max_volumes) return "building.problem.size";
 	const Volume &v = b.volumes[size_t(vol)];
 	const BlockWall e = block_wall(v, side);
 	const V2 far{ e.a.x + e.tx * e.length, e.a.y + e.ty * e.length };
@@ -260,7 +260,7 @@ std::string op_change_point(Body &b, int vol, int index, bool remove) {
 
 std::string op_copy_block(Body &b, const Tuning &t, int vol) {
 	if (!has(b, vol)) return NO_BLOCK;
-	if (int(b.volumes.size()) >= int(t.build_max_volumes)) return "building.problem.size";
+	if (int(b.volumes.size()) >= t.build_max_volumes) return "building.problem.size";
 	Volume copy = b.volumes[size_t(vol)];
 	shift_block(copy, copy.w, 0);
 	b.volumes.push_back(std::move(copy));

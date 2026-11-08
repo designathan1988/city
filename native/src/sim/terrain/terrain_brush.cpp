@@ -30,7 +30,7 @@ float smoothstep01(float t) { return smooth01(t); }
 } // namespace
 
 float Heightfield::natural_reach(const BrushDab &d, float x, float z, float lobe_share, float salt_x, float salt_z) const {
-	float lobe = d.radius * lobe_share, least = tune->terrain_rough_reach_min;
+	float lobe = d.radius * lobe_share, least = float(tune->terrain_rough_reach_min);
 	return least + (1.f - least) * (HALF + HALF * vnoise(x / lobe + salt_x, z / lobe + salt_z, OUTLINE_SEED));
 }
 
@@ -64,7 +64,7 @@ float Heightfield::dab_value(const BrushDab &d, size_t i, float dist, int x, int
 			float reach = natural_reach(d, x_of(x), x_of(z), RIVER_LOBE, RIVER_SALT_X, RIVER_SALT_Z);
 			if (dist >= reach) return v;
 			float bed = river_level(d.h0) - tune->terrain_river_depth_m;
-			return std::min(v, v + (bed - v) * smoothstep01((1.f - dist / reach) / tune->terrain_river_floor_share));
+			return std::min(v, v + (bed - v) * smoothstep01((1.f - dist / reach) / float(tune->terrain_river_floor_share)));
 		}
 		case BrushMode::FLATTEN: return v + (d.h0 - v) * k * f;
 		case BrushMode::SMOOTH: {

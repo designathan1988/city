@@ -125,10 +125,10 @@ void strike_buildings(Blow &b) {
 		if (felt < p.light_kpa) continue;
 		const Tuning &t = b.s.catalog.tune;
 		const int at = b.s.damage.hurt_of(bd.seed, bd.x, bd.z);
-		const float limit = float(bd.floors) >= t.strike_frame_floors ? t.strike_frame_collapse_kpa : p.collapse_kpa;
+		const float limit = bd.floors >= t.strike_frame_floors ? t.strike_frame_collapse_kpa : p.collapse_kpa;
 		const float taken = (at >= 0 ? b.s.damage.hurt[size_t(at)].amount : 0.f) + felt / limit;
 		const Aim aim = aim_at(b, bd, lot_distance(bd, b.x, b.z));
-		const bool scarred = aim.breaks && float(scars_on(b.s, bd)) < t.strike_scars_most;
+		const bool scarred = aim.breaks && scars_on(b.s, bd) < t.strike_scars_most;
 		if (scarred) j_add_scar(b.s, Scar{ bd.seed, bd.x, bd.z, aim.x, aim.y, aim.z, aim.force });
 		if (taken >= 1.f || standing_share(b, bd) < t.strike_standing_least) {
 			bring_down(b, id, aim);

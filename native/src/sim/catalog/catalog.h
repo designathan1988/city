@@ -19,7 +19,7 @@
 namespace city {
 
 struct Tuning {
-	CITY_TUNING_FIELDS(CITY_TUNING_DECLARE)
+	CITY_TUNING_FIELDS(CITY_TUNING_DECLARE, CITY_TUNING_DECLARE_COUNT, CITY_TUNING_DECLARE_DOUBLE)
 };
 
 // A map offered by the start screen: its size in 1 km tiles, whether its city is planned on flat ground, that city's radius (0: it
