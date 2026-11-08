@@ -3,10 +3,10 @@
 class_name HudMessages
 extends Node
 
-@onready var _hint: Label
-@onready var _toast: PanelContainer
-@onready var _toast_label: Label
-@onready var _toast_left := 0.0
+var _hint: Label
+var _toast: PanelContainer
+var _toast_label: Label
+var _toast_left := 0.0
 
 
 func _init(root: Control) -> void:

@@ -1,5 +1,6 @@
 # photodiff: an empty set, a photo on one side only, a missing folder and a uniform shift of one level all fail; equal
-# photos pass.
+# photos pass. Run: python -m unittest discover tools/build/tests
+import shutil
 import sys
 import tempfile
 import unittest
@@ -10,7 +11,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "build"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import photodiff  # noqa: E402
 
 SIZE = 200  # taller than the masked HUD bands together
@@ -25,7 +26,8 @@ def photo(path: Path, level: int) -> None:
 
 class PhotodiffTest(unittest.TestCase):
     def setUp(self):
-        base = Path(tempfile.mkdtemp(prefix="tasks-photodiff-"))
+        base = Path(tempfile.mkdtemp(prefix="photodiff-test-"))
+        self.addCleanup(shutil.rmtree, base, True)
         self.before, self.after, self.out = base / "before", base / "after", base / "out"
         self.before.mkdir()
         self.after.mkdir()

@@ -1,0 +1,8 @@
+{
+ "rule": "i18n",
+ "expect": [
+  "I18N project/data/i18n/strings_b.csv:2",
+  "I18N project/data/i18n/strings_b.csv:3",
+  "I18N project/data/i18n/strings_b.csv:4"
+ ]
+}

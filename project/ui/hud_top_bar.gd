@@ -10,16 +10,16 @@ signal impossible_pressed
 const SKY := [["sun", "sky.day", "day"], ["moon", "sky.night", "night"], ["cycle", "sky.cycle", "cycle"]]
 const SPEEDS := [["", 0], ["1×", 1], ["2×", 2], ["4×", 3]]
 
-@onready var action_buttons: Dictionary = {}
+var action_buttons: Dictionary = {}
 @export var world: CityWorld
-@onready var _clock: Label
-@onready var _money: Label
-@onready var _stats: Label
-@onready var _speed_buttons: Array[Button] = []
-@onready var _sky_buttons: Array[Button] = []
-@onready var _history_buttons: Dictionary = {}
-@onready var _tipped: Array = [] # [button, tip key]: drawn again when the language changes
-@onready var _warn: Button
+var _clock: Label
+var _money: Label
+var _stats: Label
+var _speed_buttons: Array[Button] = []
+var _sky_buttons: Array[Button] = []
+var _history_buttons: Dictionary = {}
+var _tipped: Array = [] # [button, tip key]: drawn again when the language changes
+var _warn: Button
 
 
 func _ready() -> void:

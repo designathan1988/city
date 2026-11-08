@@ -1,5 +1,6 @@
 {
  "sim": {
+  "_doc": "The simulation clock: ticks a second, game minutes a real second, the steps a tick at the fast speeds, the hour a map opens at, and how fast buildings grow on queued lots.",
   "tick_hz": 20,
   "minutes_per_second": 1,
   "speed_fast": 2,
@@ -9,17 +10,20 @@
   "growth_tries": 8
  },
  "economy": {
+  "_doc": "Money: the funds a map opens with, the share of a road's price given back on demolition, and from what height a road is charged as fill or as a structure on piers.",
   "start_money": 20000000,
   "refund_share": 0.25,
   "fill_from_m": 1,
   "on_piers_from_m": 2.8
  },
  "world": {
+  "_doc": "The map's grids: the size of a terrain tile and the spacing of the height and water samples.",
   "tile_m": 1024,
   "height_spacing_m": 4,
   "water_spacing_m": 8
  },
  "render": {
+  "_doc": "What the renderer draws and how far: occluder buildings, where roads, props and each building level end, the street lamps' and headlamps' lights, the level-of-detail error, and the per-frame budgets of chunk rebuilds, mesh commits and uploads.",
   "occluder_min_storeys": 2,
   "road_end_m": 2200,
   "props_end_m": 900,
@@ -43,7 +47,8 @@
   "head_height_m": 0.7,
   "head_dip_deg": 6,
   "building_detail_end_m": 700,
-  "building_bay_end_m": 350, "building_mid_end_m": 1100,
+  "building_bay_end_m": 350,
+  "building_mid_end_m": 1100,
   "building_far_end_m": 4500,
   "detail_error_px": 0.5,
   "max_chunk_rebuilds_per_frame": 6,
@@ -52,6 +57,7 @@
   "pose_delay_ticks": 2
  },
  "terrain": {
+  "_doc": "The landscape: height limits, embankment slope and run, how far the ground sits under a road, the rough and hard ground of the relief, and the river's depth, freeboard, floor and shore.",
   "min_height_m": -64,
   "max_height_m": 400,
   "embankment_ratio": 1.8,
@@ -66,6 +72,7 @@
   "shore_reach_m": 19
  },
  "road": {
+  "_doc": "The road tool: least length, U-turn openings, snapping to nodes, ends, grid and angles, merging and overlap limits, the freehand stroke, and the lane and pavement widths of the road variants.",
   "min_len_m": 8,
   "uturn_opening_m": 10,
   "uturn_radius_m": 3,
@@ -100,6 +107,7 @@
   "max_variants": 256
  },
  "flow": {
+  "_doc": "Automatic junction control: the flows at which a junction asks for a stop or a signal, and the trend window of the measure.",
   "stop_major": 300,
   "stop_minor": 200,
   "signal_major": 500,
@@ -110,6 +118,7 @@
   "trend_window": 900
  },
  "grade": {
+  "_doc": "The road heights solver: the weights of the ground, the authored height, ramps, decks and tunnels, and the clearances and deck depths of each structure.",
   "ground": 0.12,
   "authored": 0.12,
   "join_m": 0.3,
@@ -130,10 +139,12 @@
   "lift_on_m": 0.6
  },
  "history": {
+  "_doc": "Undo and redo: the most steps and megabytes the history keeps.",
   "max_entries": 500,
   "max_mb": 512
  },
  "roundabout": {
+  "_doc": "The roundabout tool: radius limits, approach and entry lengths, the widest arc and the pad of the central disc.",
   "radius_min_m": 14,
   "radius_max_m": 60,
   "approach_m": 40,
@@ -142,6 +153,7 @@
   "disc_pad_m": 6
  },
  "edit": {
+  "_doc": "Road edits: the shortest piece a split leaves, what counts as a straight street, and the spacing of duplicated roads.",
   "split_min_m": 4,
   "street_cos": 0.8192,
   "max_floors": 60,
@@ -149,10 +161,12 @@
   "duplicate_gap_m": 4.8
  },
  "inspect": {
+  "_doc": "The Inspector: the length a vehicle takes in a lane, and the least angle between the legs of a junction.",
   "lane_vehicle_m": 12,
   "min_leg_deg": 25
  },
  "build": {
+  "_doc": "The Build tools: the grid and module, the primitives' sizes, the limits of a body's sides, storeys, openings, projections, roofs and parts, and the snapping to roads and buildings.",
   "grid_m": 0.5,
   "module_m": 3,
   "wing_modules": 3,
@@ -196,20 +210,54 @@
   "snap_edge": 0.32
  },
  "structure": {
-  "span_from_m": 320, "span_every_m": 220, "cable_step_m": 12, "cable_first_m": 16, "tower_over_m": 46, "tower_leg_m": 2.4,
-  "raised_m": 2, "buried_m": 0.5, "wall_thick_m": 0.32, "wall_coping_m": 0.18, "wall_foot_m": 0.24, "wall_step_m": 0.8, "bore_over_m": 0.56, "pier_spacing_elevated_m": 29.6, "pier_spacing_bridge_m": 38.4,
-  "pier_radius_elevated_m": 1.04, "pier_radius_bridge_m": 1.28, "bearing_m": 0.08, "pier_slenderness": 8,
-  "pier_max_width": 1.8, "min_support_m": 0.36, "bent_spread": 0.55, "cap_depth": 2.2, "cap_height_m": 0.72,
-  "cap_overhang_m": 0.64, "parapet_height_m": 0.88, "parapet_foot_m": 0.36, "parapet_top_m": 0.2,
-  "parapet_step_m": 1.2, "parapet_from_m": 0.64, "parapet_full_m": 1.28, "abutment_lift_m": 0.48,
-  "abutment_depth_m": 1.6, "pier_abutment_gap_m": 10.4, "portal_wing_m": 5.6, "portal_thickness_m": 1.6,
-  "portal_slice_m": 1.2, "portal_coping_m": 0.24, "portal_cover_m": 0.6
+  "_doc": "Bridges, viaducts, walls and tunnels: span and cable spacing, towers, piers and their caps, parapets, abutments and tunnel portals.",
+  "span_from_m": 320,
+  "span_every_m": 220,
+  "cable_step_m": 12,
+  "cable_first_m": 16,
+  "tower_over_m": 46,
+  "tower_leg_m": 2.4,
+  "raised_m": 2,
+  "buried_m": 0.5,
+  "wall_thick_m": 0.32,
+  "wall_coping_m": 0.18,
+  "wall_foot_m": 0.24,
+  "wall_step_m": 0.8,
+  "bore_over_m": 0.56,
+  "pier_spacing_elevated_m": 29.6,
+  "pier_spacing_bridge_m": 38.4,
+  "pier_radius_elevated_m": 1.04,
+  "pier_radius_bridge_m": 1.28,
+  "bearing_m": 0.08,
+  "pier_slenderness": 8,
+  "pier_max_width": 1.8,
+  "min_support_m": 0.36,
+  "bent_spread": 0.55,
+  "cap_depth": 2.2,
+  "cap_height_m": 0.72,
+  "cap_overhang_m": 0.64,
+  "parapet_height_m": 0.88,
+  "parapet_foot_m": 0.36,
+  "parapet_top_m": 0.2,
+  "parapet_step_m": 1.2,
+  "parapet_from_m": 0.64,
+  "parapet_full_m": 1.28,
+  "abutment_lift_m": 0.48,
+  "abutment_depth_m": 1.6,
+  "pier_abutment_gap_m": 10.4,
+  "portal_wing_m": 5.6,
+  "portal_thickness_m": 1.6,
+  "portal_slice_m": 1.2,
+  "portal_coping_m": 0.24,
+  "portal_cover_m": 0.6
  },
  "zone": {
+  "_doc": "The zone brush: the side offset of a zoned lot and the spacing of its samples.",
   "side_offset_m": 14,
   "sample_m": 8
  },
  "strike": {
+  "_doc": "The bomb: the force steps of its strip, the pressure that brings a frame down, the storey a fall counts, and the size and reach of the scars a blast leaves.",
   "force_start": 5,
   "force_fine": 10,
   "force_coarse": 5,

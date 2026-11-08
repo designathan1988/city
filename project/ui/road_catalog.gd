@@ -10,15 +10,15 @@ signal customise(profile: Dictionary, spec: Dictionary) ## Personalizar… on th
 const MINE := "mine"
 
 @onready var tools: ToolController = get_tree().get_first_node_in_group(&"tools")
-@onready var _profiles: Array = []
-@onready var _strips: Dictionary = {}
-@onready var _tabs_row: HBoxContainer
-@onready var _cards_row: HBoxContainer
-@onready var _scroll: ScrollContainer
-@onready var _tab_buttons: Dictionary = {}
-@onready var _counts: Dictionary = {}
-@onready var _open := ""
-@onready var _fades: Array[TextureRect] = []
+var _profiles: Array = []
+var _strips: Dictionary = {}
+var _tabs_row: HBoxContainer
+var _cards_row: HBoxContainer
+var _scroll: ScrollContainer
+var _tab_buttons: Dictionary = {}
+var _counts: Dictionary = {}
+var _open := ""
+var _fades: Array[TextureRect] = []
 
 
 func _ready() -> void:

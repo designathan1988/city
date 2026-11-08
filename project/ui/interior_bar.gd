@@ -7,9 +7,9 @@ extends PanelContainer
 signal floor_step(delta: int)
 signal closed
 
-@onready var _label: Label
-@onready var _down: Button
-@onready var _up: Button
+var _label: Label
+var _down: Button
+var _up: Button
 
 
 func _ready() -> void:

@@ -14,13 +14,13 @@ const SPEED_LEAST := 10.0
 const SPEED_MOST := 130.0
 
 @export var edit := RoadSpecEdit.new()
-@onready var _view: RoadSectionView
-@onready var _total: Label
-@onready var _problem: Label
-@onready var _props: HBoxContainer
-@onready var _name: LineEdit
-@onready var _use: Button
-@onready var _street: Button
+var _view: RoadSectionView
+var _total: Label
+var _problem: Label
+var _props: HBoxContainer
+var _name: LineEdit
+var _use: Button
+var _street: Button
 
 
 func _init() -> void:

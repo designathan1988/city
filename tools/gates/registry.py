@@ -10,6 +10,7 @@ import gate_defs
 import gate_docs
 import gate_files
 import gate_forbidden
+import gate_i18n
 import gate_language
 import gate_python
 import gate_tuning
@@ -67,7 +68,7 @@ def per_file_rules(rules):
         PerFile("layers", ["CAMADA", "CAMADA_DESCONHECIDA"], gate_code.applies_layers, gate_code.check_layers),
         *[_forbidden(e) for e in rules["forbidden"]],
         PerFile("magic_numbers", ["NUMERO_MAGICO"], gate_defs.applies_magic, gate_defs.check_magic_numbers),
-        PerFile("ui_state", ["ESTADO_NA_UI"], gate_ui.applies, gate_ui.check_ui_state, gate_ui.context_inputs),
+        PerFile("ui_state", ["ESTADO_NA_UI"], gate_ui.applies, gate_ui.check_ui_state),
         PerFile("single_owner", ["DONO_UNICO"], gate_defs.applies_owners, gate_defs.check_single_owner),
         PerFile("data_copies", ["SEGUNDO_DONO", "VALOR_DUPLICADO"], gate_defs.applies_data_copies,
                 gate_defs.check_data_copies, lambda ctx: ctx.cache.key_of(_data_files(ctx))),
@@ -94,6 +95,7 @@ def whole_rules(rules):
         Whole("map", ["CLAUDE_MD", "MAPA_DESATUALIZADO"], gate_docs.inputs, gate_docs.check_claude_md,
               lambda ctx: sorted(ctx.listed)),
         Whole("data", ["DADOS", "DADOS_SEM_SCHEMA"], _in_scope(gate_data.inputs), gate_data.check_data),
+        Whole("i18n", ["I18N"], _in_scope(gate_i18n.inputs), gate_i18n.check_i18n),
         Whole("owner_symbols", ["DONO_AUSENTE"], gate_defs.owner_inputs, gate_defs.check_owner_symbols,
               lambda ctx: sorted(c["owner"] in ctx.listed_set for c in ctx.owners["concepts"])),
         Whole("clones", ["CODIGO_DUPLICADO"], _in_scope(gate_clones.applies), gate_clones.check_clones),

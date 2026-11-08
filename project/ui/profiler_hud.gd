@@ -5,8 +5,8 @@ extends PanelContainer
 
 const MIB := 1048576.0
 
-@onready var _text: Label
-@onready var _since := 0.0
+var _text: Label
+var _since := 0.0
 
 
 func _ready() -> void:

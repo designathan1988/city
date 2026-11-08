@@ -12,7 +12,7 @@ signal road_picked(id: String)
 
 @onready var tools: ToolController = get_tree().get_first_node_in_group(&"tools")
 ## The keys' panel: an internal child, made with the options and freed with them; the rows' rebuild (HudWidgets.clear) never reaches it.
-@onready var _keys_panel := RoadKeysPanel.new()
+var _keys_panel := RoadKeysPanel.new()
 
 
 func _ready() -> void:

@@ -11,10 +11,10 @@ signal laid_again(info: Dictionary) # the road shown stands somewhere else now
 
 const LAMP_DOTS := [&"DotGo", &"DotSlow", &"DotBroken"]
 
-@onready var _at := Vector3.ZERO
-@onready var _info := {}
-@onready var _stats: Control
-@onready var _since := 0.0
+var _at := Vector3.ZERO
+var _info := {}
+var _stats: Control
+var _since := 0.0
 ## What the live part shows, to write the next numbers into the same labels: each row's name key and value label, each lamp's
 ## dot and label. A refresh whose rows or lamps differ in kind or number builds the part again.
 var _row_keys: Array = []

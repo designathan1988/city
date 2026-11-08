@@ -5,9 +5,8 @@ extends Control
 
 signal closed
 
-@onready var card: PanelContainer
-@onready var column: VBoxContainer
-@export var width_token := "dialog_w"
+var card: PanelContainer
+var column: VBoxContainer
 
 
 func _ready() -> void:
@@ -19,9 +18,14 @@ func _ready() -> void:
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
 	card = HudWidgets.panel(center, &"Card2")
-	card.custom_minimum_size.x = HudWidgets.px(width_token)
+	card.custom_minimum_size.x = HudWidgets.px(width_token())
 	column = HudWidgets.vbox(card, &"Gap")
 	refill()
+
+
+## The token of the card's width (data/ui/tokens.json): a kind of dialog says its own.
+func width_token() -> String:
+	return "dialog_w"
 
 
 func refill() -> void:
@@ -87,8 +91,8 @@ class Confirm:
 class About:
 	extends HudDialog
 
-	func _init() -> void:
-		width_token = "about_w"
+	func width_token() -> String:
+		return "about_w"
 
 	func fill() -> void:
 		HudWidgets.label(column, &"HeadLabel", tr("about.title"))

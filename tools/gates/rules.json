@@ -15,8 +15,7 @@
     "tools/converter-slice",
     "tools/oracle-4.0",
     "tools/process",
-    "tools/ports",
-    "log"
+    "tools/ports"
   ],
   "root_allowed": [
     "CLAUDE.md",
@@ -30,7 +29,8 @@
   ],
   "allowed_docs": [
     "CLAUDE.md",
-    ".claude/REGISTRO-GOAL.md"
+    ".claude/REGISTRO-GOAL.md",
+    "log/"
   ],
   "doc_exempt_names": [
     "CMakeLists.txt"
@@ -356,7 +356,8 @@
     "paths": [
       "native/src/",
       "project/game/",
-      "project/ui/"
+      "project/ui/",
+      "project/render/"
     ],
     "exempt": [
       "native/src/core/",
@@ -398,11 +399,8 @@
       "native/src/sim/terrain/heightfield.cpp:VALLEY_START",
       "native/src/sim/terrain/heightfield.cpp:BANK_START",
       "native/src/sim/terrain/terrain_gen.cpp:LAKE_GRID",
-      "native/src/render/trees/tree_look.cpp:CAL_SIDE",
-      "native/src/sim/lots/lot_cache.cpp:LOT_LOOK",
       "native/src/sim/buildings/b40/model.h:NO_BAY",
       "project/game/tools/building_tool.gd:NO_BAY",
-      "native/src/sim/roads/road_network.cpp:LOT_LOOK_M",
       "native/src/sim/buildings/b40/massing_house.cpp:STOREY_MIN_H",
       "native/src/render/atmosphere/fog_field.cpp:BUCKET_M",
       "native/src/render/effects/effect_blast.cpp:SOIL_TINT",

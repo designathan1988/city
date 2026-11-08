@@ -143,7 +143,6 @@ cmd.place.buildingDesign,projeto do prédio,building design
 cmd.place.bus,ônibus,bus
 cmd.place.busPriority,prioridade ao ônibus,bus priority
 cmd.place.closeUTurn,fechar retorno,close U-turn
-cmd.place.crossing,faixa de pedestres,crosswalk
 cmd.place.duplicateRoad,duplicar via,duplicate road
 cmd.place.editBuilding,editar prédio,edit building
 cmd.place.elements,elementos,elements

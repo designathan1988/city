@@ -16,9 +16,9 @@ const PERCENT := 100.0
 @onready var rig: CityCamera = get_tree().get_first_node_in_group(&"camera_rig")
 @onready var tools: ToolController = get_tree().get_first_node_in_group(&"tools")
 ## Value labels of the Simulation metrics and the Camera readouts, by name (rebuilt with the popover).
-@onready var _metrics: Dictionary = {}
-@onready var _since := 0.0
-@onready var _under := Rect2()
+var _metrics: Dictionary = {}
+var _since := 0.0
+var _under := Rect2()
 
 
 func _ready() -> void:

@@ -6,13 +6,13 @@ extends PanelContainer
 
 const TABS := ["health", "world", "state"]
 
-@onready var _tab := "health"
-@onready var _body: VBoxContainer
-@onready var _tabs := {}
-@onready var _picked := -1
-@onready var _since := 0.0
-@onready var _seen := -1
-@onready var _copy_button: Button
+var _tab := "health"
+var _body: VBoxContainer
+var _tabs := {}
+var _picked := -1
+var _since := 0.0
+var _seen := -1
+var _copy_button: Button
 
 
 func _ready() -> void:

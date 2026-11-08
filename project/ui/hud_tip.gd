@@ -3,9 +3,9 @@
 class_name HudTip
 extends PanelContainer
 
-@onready var _label: Label
-@onready var _over: Control
-@onready var _rested := 0.0
+var _label: Label
+var _over: Control
+var _rested := 0.0
 
 
 func _ready() -> void:

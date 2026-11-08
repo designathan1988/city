@@ -26,13 +26,11 @@ class PoolTest(RepoCase):
     def test_hung_task_does_not_block_a_sibling(self):
         hang = Task("hang", py(f"import time; time.sleep({HANG_S})"), timeout_s=3)
         quick = Task("quick", py("print('done')"), timeout_s=60)
-        t0 = time.monotonic()
         results, finished = self.run_tasks([hang, quick], jobs=2)
         self.assertEqual(results["hang"].status, TIMEOUT)
         self.assertEqual(results["quick"].status, PASS)
         order = [n for n, _ in finished]
-        self.assertEqual(order, ["quick", "hang"])
-        self.assertLess(dict(finished)["quick"] - t0, 3, "the sibling waited for the hung task")
+        self.assertEqual(order, ["quick", "hang"], "the sibling waited for the hung task: it would end after its deadline")
 
     def test_failure_skips_dependents_only(self):
         tasks = [Task("bad", py("import sys; sys.exit(1)"), timeout_s=60),

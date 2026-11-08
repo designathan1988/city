@@ -10,19 +10,19 @@ signal category_pressed(id: String)
 @onready var tools: ToolController = get_tree().get_first_node_in_group(&"tools")
 @onready var rig: CityCamera = get_tree().get_first_node_in_group(&"camera_rig")
 @onready var world: CityWorld = get_tree().get_first_node_in_group(&"world")
-@onready var root: Control
-@onready var top_bar: HudTopBar
-@onready var drawer: HudDrawer
-@onready var popover: HudPopover
-@onready var inspector: InspectorPanel
-@onready var _road_editor: RoadProfilePanel
-@onready var actions: HudActions
-@onready var health: HealthPanel
-@onready var profiler: ProfilerHud
-@onready var effects: EffectsPanel
-@onready var messages: HudMessages
-@onready var _cat_buttons := {}
-@onready var _dialog: HudDialog
+var root: Control
+var top_bar: HudTopBar
+var drawer: HudDrawer
+var popover: HudPopover
+var inspector: InspectorPanel
+var _road_editor: RoadProfilePanel
+var actions: HudActions
+var health: HealthPanel
+var profiler: ProfilerHud
+var effects: EffectsPanel
+var messages: HudMessages
+var _cat_buttons := {}
+var _dialog: HudDialog
 
 
 func _ready() -> void:

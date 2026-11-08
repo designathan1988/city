@@ -1,6 +1,8 @@
-"""Data gates: every data table parses and matches its schema (minimal JSON-Schema subset, stdlib only)."""
-import json
+"""Data gates: every data table parses, names each key of an object once, and matches its schema (minimal JSON-Schema
+subset, stdlib only)."""
 import os
+
+import jsonfile
 
 TYPES = {"object": dict, "array": list, "string": str, "boolean": bool, "integer": int, "number": (int, float)}
 
@@ -61,11 +63,9 @@ def check_data(ctx, err):
             err("DADOS", data_path, "data table missing")
             continue
         try:
-            with open(full, encoding="utf-8") as fh:
-                data = json.load(fh)
-            with open(os.path.join(ctx.root, schema_path), encoding="utf-8") as fh:
-                schema = json.load(fh)
-        except (OSError, json.JSONDecodeError) as e:
+            data = jsonfile.load(full)
+            schema = jsonfile.load(os.path.join(ctx.root, schema_path))
+        except (OSError, ValueError) as e:  # malformed, or a key written twice (jsonfile)
             err("DADOS", data_path, f"invalid JSON: {e}")
             continue
         errors = []

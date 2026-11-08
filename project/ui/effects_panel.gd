@@ -8,16 +8,16 @@ const MIB := 1048576.0
 const MS_PER_S := 1000.0
 const LIVE_TABS := ["consumers", "cpu", "inspector", "gpu", "checks"]
 
-@onready var _body: VBoxContainer
-@onready var _stats: GridContainer
-@onready var _live: VBoxContainer # what is read again as the panel stands open: nothing in it takes a click, a button rebuilt under the pointer loses it
-@onready var _tab := "switches"
-@onready var doctor: DoctorRun
-@onready var frame: FrameCapture
-@onready var recorder: LabRecorder
-@onready var _watch := ResourceWatch.new()
-@onready var cpu := CpuWatch.new(LabViews.core_zones(), DataTables.game("lab").cpu.window_frames)
-@onready var _since := 0.0
+var _body: VBoxContainer
+var _stats: GridContainer
+var _live: VBoxContainer # what is read again as the panel stands open: nothing in it takes a click, a button rebuilt under the pointer loses it
+var _tab := "switches"
+var doctor: DoctorRun
+var frame: FrameCapture
+var recorder: LabRecorder
+var _watch := ResourceWatch.new()
+var cpu := CpuWatch.new(LabViews.core_zones(), DataTables.game("lab").cpu.window_frames)
+var _since := 0.0
 
 
 func _ready() -> void:

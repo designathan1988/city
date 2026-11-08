@@ -1,11 +1,11 @@
 """Single-owner gates (fitness functions) on tokens: the owner registry, magic numbers (clang-tidy
 readability-magic-numbers / C++ Core Guidelines ES.45 style, each literal judged) and data values copied into code."""
-import json
 import os
 import re
 
 import cpp_syntax
 import gd_syntax
+import jsonfile
 import lex_c
 import lex_gd
 
@@ -122,8 +122,10 @@ def data_values(ctx):
         for data_path in ctx.rules["schemas"]:
             full = os.path.join(ctx.root, data_path)
             if data_path not in ignore and os.path.exists(full):
-                with open(full, encoding="utf-8") as fh:
-                    walk(json.load(fh), data_path, "")
+                try:
+                    walk(jsonfile.load(full), data_path, "")
+                except ValueError:  # malformed or with a key written twice: the data gate reports it
+                    continue
         return vals, keys
     return ctx.lazy("data_values", build)
 

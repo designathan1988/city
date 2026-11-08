@@ -24,7 +24,10 @@ def check_single_doc(ctx, src, err):
     rules = ctx.rules
     if os.path.basename(src.path) in set(rules.get("doc_exempt_names", [])):
         return
-    if os.path.splitext(src.path)[1].lower() in rules["doc_extensions"] and src.path not in set(rules["allowed_docs"]):
+    allowed = rules["allowed_docs"]  # a path, or a folder when it ends in "/" (log/: the records)
+    if src.path in allowed or any(a.endswith("/") and src.path.startswith(a) for a in allowed):
+        return
+    if os.path.splitext(src.path)[1].lower() in rules["doc_extensions"]:
         err("DOC_UNICO", src.path, "the project's documents are CLAUDE.md and log/: move the content there")
 
 

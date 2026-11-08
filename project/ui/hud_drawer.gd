@@ -14,19 +14,19 @@ const DENSITY_FIRST := 0
 
 ## The panel at the bottom left that holds the tool's options (the HUD makes it).
 @export var options_panel: PanelContainer
-@onready var options: VBoxContainer
+var options: VBoxContainer
 ## The road tool's options: its rows stand in the options panel while the road tool is in hand.
-@onready var road_options := RoadOptions.new()
-@onready var category: Dictionary = {}
-@onready var catalog: RoadCatalog
-@onready var _editor: RoadProfilePanel
-@onready var _head: HBoxContainer
-@onready var strip: Container
-@onready var _tabs: Dictionary = {}
+var road_options := RoadOptions.new()
+var category: Dictionary = {}
+var catalog: RoadCatalog
+var _editor: RoadProfilePanel
+var _head: HBoxContainer
+var strip: Container
+var _tabs: Dictionary = {}
 @onready var tools: ToolController = get_tree().get_first_node_in_group(&"tools")
-@onready var _profile_ids: Dictionary = {}
-@onready var _tab: Dictionary = {}
-@onready var density := DENSITY_FIRST
+var _profile_ids: Dictionary = {}
+var _tab: Dictionary = {}
+var density := DENSITY_FIRST
 
 
 func _ready() -> void:

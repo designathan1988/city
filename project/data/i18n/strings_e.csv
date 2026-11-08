@@ -378,8 +378,8 @@ profile.cityUrban,Rua larga,Wide street
 profile.cityAvenue,Avenida com canteiro,Avenue with a median
 cmd.place.crossing,faixa de pedestres,pedestrian crossing
 cmd.place.uturn,retorno,U-turn
-hint.uturn.noMedian,SÃ³ uma via de mÃ£o dupla com canteiro tem retorno.,Only a two-way road with a median takes a U-turn.
-hint.uturn.narrow,O canteiro Ã© estreito demais para um carro fazer a volta.,The median is too narrow for a car to turn back.
+hint.uturn.noMedian,Só uma via de mão dupla com canteiro tem retorno.,Only a two-way road with a median takes a U-turn.
+hint.uturn.narrow,O canteiro é estreito demais para um carro fazer a volta.,The median is too narrow for a car to turn back.
 hint.uturn.tooShort,O retorno precisa de mais via dos dois lados.,A U-turn needs more road on both sides.
 inspector.addUturnToEnd,Retorno para quem vai ao fim,U-turn for traffic going to the end
 inspector.addUturnToStart,Retorno para quem vai ao início,U-turn for traffic going to the start

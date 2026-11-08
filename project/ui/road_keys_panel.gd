@@ -5,7 +5,7 @@ extends PopupPanel
 
 signal keys_changed
 
-@onready var _rows := VBoxContainer.new()
+var _rows := VBoxContainer.new()
 
 
 func _ready() -> void:
