@@ -3,6 +3,7 @@
 # deadline; recorded times order the queue (longest path first) and never stop anything.
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import threading
@@ -13,7 +14,7 @@ from typing import Callable
 
 from . import inputs, proc, verdicts
 from .cache import Cache, remove, safe
-from .locks import FileLock
+from .locks import FileLock, take_all
 from .runs import RunRecord, check_graph
 from .task import (BROKEN, CACHEABLE, CACHED_FAIL, CACHED_PASS, FAIL, HERE, PASS, ROOT, SKIPPED, TIMEOUT, Result,
                    Task)
@@ -128,7 +129,7 @@ class Pool:
         for i in ready:
             t = self.tasks[i]
             need = self._needs(t)
-            locks = (t.resources or {}).get("locks", {})
+            locks = [name for name, _ in self._lock_names(t)]
             if any(name in blocked_locks for name in locks) or any(k in blocked_counts for k, v in need.items() if v):
                 continue  # a task ahead waits for the same thing: no overtaking it
             short = [k for k, v in need.items() if self.used[k] + v > self.capacity[k]]
@@ -161,16 +162,18 @@ class Pool:
             need[k] = min(n, self.capacity[k])  # a task asking more than the machine has runs alone, not never
         return need
 
+    def _lock_names(self, t: Task) -> list[tuple[str, bool]]:
+        """The OS locks a task holds while it runs, (name, shared), in one global order: its named resources, and one
+        exclusive lock per declared output. Two processes never write one output at once: a run that stored a result
+        while another still wrote the same file in place cached the half-written file (two converter extractions shared
+        one Jelly analysis and stored it torn, 2026-11-08)."""
+        named = [(safe(name), mode == "shared") for name, mode in (t.resources or {}).get("locks", {}).items()]
+        outputs = [(f"output-{hashlib.sha1(str(self.cache.output_path(o).resolve()).lower().encode()).hexdigest()}", False)
+                   for o in t.outputs]
+        return sorted(named + outputs)
+
     def _take_locks(self, t: Task) -> list[FileLock] | None:
-        got = []
-        for name, mode in sorted((t.resources or {}).get("locks", {}).items()):
-            lock = FileLock(self.root / LOCKS / f"{safe(name)}.lock")
-            if not lock.try_acquire(shared=(mode == "shared")):
-                for g in got:
-                    g.release()
-                return None
-            got.append(lock)
-        return got
+        return take_all(self.root / LOCKS, self._lock_names(t))
 
     # one task -------------------------------------------------------------------------------------------------------
     def _task_key(self, t: Task) -> str:
@@ -179,17 +182,23 @@ class Pool:
                              "params": t.params, "outputs": t.outputs, "cwd": t.cwd}, sort_keys=True)]
         return inputs.key_of(list(t.inputs) + own_sources(), extra, root=self.root)
 
+    def _hit(self, t: Task, key: str) -> tuple[Result, bool] | None:
+        """The stored result of the key, its outputs put back, and whether any were; None when none is stored."""
+        doc = self.cache.lookup(t.name, key) if self.use_cache and key else None
+        if doc is None:
+            return None
+        log = self.cache.restore(t.name, key, doc)
+        status = CACHED_PASS if doc["status"] == PASS else CACHED_FAIL
+        return Result(t.name, status, doc["exit_code"], doc["seconds"], log, key, doc.get("message", "")), bool(doc["saved"])
+
     def _key(self, i: str) -> None:
         t = self.tasks[i]
         try:
             key = self._task_key(t)
-            doc = self.cache.lookup(t.name, key) if self.use_cache else None
-            if doc is not None:
-                log = self.cache.restore(t.name, key, doc)
-                status = CACHED_PASS if doc["status"] == PASS else CACHED_FAIL
-                result = Result(t.name, status, doc["exit_code"], doc["seconds"], log, key, doc.get("message", ""))
+            hit = self._hit(t, key)
+            if hit is not None:
                 with self.cond:
-                    self._finish(i, result, wrote=bool(doc["saved"]))
+                    self._finish(i, hit[0], wrote=hit[1])
                 return
         except Exception:
             with self.cond:
@@ -202,6 +211,14 @@ class Pool:
 
     def _execute(self, i: str) -> None:
         t = self.tasks[i]
+        # With its locks held: another process may have run the same key while this one waited for them (`_lock_names`).
+        try:
+            hit = self._hit(t, self.keys.get(i, ""))
+        except Exception:
+            hit = Result(t.name, BROKEN, None, 0.0, "", "", "restoring the result failed:\n" + traceback.format_exc()), True
+        if hit is not None:
+            self._give_back(i, hit[0])
+            return
         log = self.record.log(i)
         self.record.event({"event": "start", "task": i, "name": t.name})
         t0 = time.monotonic()
@@ -234,8 +251,12 @@ class Pool:
             result.status, result.message = BROKEN, "storing the result failed:\n" + traceback.format_exc()
         if status != BROKEN:
             self.record.took(t.name, seconds)
+        self._give_back(i, result)
+
+    def _give_back(self, i: str, result: Result) -> None:
+        """A running task done: its counted resources and its locks given back, its result recorded."""
         with self.cond:
-            for k, v in self._needs(t).items():
+            for k, v in self._needs(self.tasks[i]).items():
                 self.used[k] -= v
             for lock in self.held.pop(i, []):
                 lock.release()

@@ -111,6 +111,22 @@ marker, while the supervisor, having no deadline, took the waiting loop's CPU ti
 
 Commands: see CLAUDE.md "Comandos". Tests of the orchestrator: `python -m unittest discover tools/tasks/tests` (26 pass).
 
+## 2026-11-08 03:40: two processes never write one output, nor swap one shared file, at once (English)
+**Problem:** two converter extractions run together (zoning and bomb) each asked their own `cli.py serve` for the same
+Jelly analysis (one key). Both Jelly processes wrote `tokens.json` in place; the first to end stored in the cache a copy
+taken while the other was still writing, torn in the middle (JSON broken at byte 51,460,743 of 133 MB), and every later
+run restored the torn file. `Cache.store` assumed "another process stored the same key first: that is the same result",
+false when the outputs are shared files written in place. A second fault of the same kind: two runs started in the same
+second both `os.replace` onto `dist/tasks/latest.txt`, and on Windows a rename over a file another process renames or
+holds open fails (access denied).
+**Fix:** a task holds one exclusive OS lock per declared output while it runs (`pool.py` `_lock_names`, taken all at once
+by `locks.py` `take_all`, in one global order), and with its locks held it looks in the cache again (`_hit` in
+`_execute`): a run that waited takes the result the other stored. Shared files (`latest.txt`, `times.json`, a memo) are
+replaced and read under their own lock (`cache.py` `write_atomic`, `read_shared`). Test:
+`test_two_runs_never_write_one_output_together` (a task writing its output in two parts, run twice at once: one runs,
+one takes the stored result, the cache holds the whole file); without the output locks it fails. The 24 tests that
+`unittest discover` finds pass; the gates pass on the six files.
+
 
 # Texto completo das seções resumidas no CLAUDE.md (até 2026-11-06)
 

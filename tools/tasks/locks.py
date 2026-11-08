@@ -1,5 +1,6 @@
 # OS file locks, shared or exclusive, that hold across processes and across handles of one process (LockFileEx on Windows,
-# flock on POSIX): the dll readers/writer lock of every tool on this machine, and the build-once lock of materialize.
+# flock on POSIX): the dll readers/writer lock of every tool on this machine, a task's locks taken all at once (take_all),
+# and the build-once lock of materialize.
 from __future__ import annotations
 
 import os
@@ -83,3 +84,17 @@ class FileLock:
 
     def __exit__(self, *exc):
         self.release()
+
+
+def take_all(folder: Path, names: list[tuple[str, bool]]) -> list[FileLock] | None:
+    """Every lock of `names` ((name, shared), in the one order every caller sorts them by, so two takers never hold one
+    each and wait for the other's) taken in `folder`, or none: one held elsewhere gives back those already taken."""
+    got = []
+    for name, shared in names:
+        lock = FileLock(folder / f"{name}.lock")
+        if not lock.try_acquire(shared=shared):
+            for g in got:
+                g.release()
+            return None
+        got.append(lock)
+    return got

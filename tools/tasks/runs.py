@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 
 from . import proc
-from .cache import remove, safe, write_atomic
+from .cache import read_shared, remove, safe, write_atomic
 
 RUNS = "dist/tasks"
 TIMES = "dist/tasks/times.json"
@@ -29,7 +29,7 @@ class RunRecord:
         self._events = open(self.dir / "events.jsonl", "a", encoding="utf-8")
         self._lock = threading.Lock()
         path = root / TIMES
-        self.times: dict[str, float] = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+        self.times: dict[str, float] = json.loads(read_shared(path)) if path.is_file() else {}
 
     def log(self, ident: str) -> Path:
         return self.dir / f"{safe(ident)}.log"

@@ -15,7 +15,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from tasks import verdicts  # noqa: E402
-from tasks.cache import remove, write_atomic  # noqa: E402
+from tasks.cache import read_shared, remove, write_atomic  # noqa: E402
 from tasks.pool import Pool, run  # noqa: E402
 from tasks.runs import RUNS  # noqa: E402
 from tasks.suites import Suites, UsageError  # noqa: E402
@@ -171,7 +171,7 @@ def cmd_status(argv: list[str]) -> int:
     if not latest.is_file():
         print("no run yet")
         return USAGE
-    run_dir = root / RUNS / latest.read_text(encoding="utf-8").strip()
+    run_dir = root / RUNS / read_shared(latest).strip()
     events = run_dir / "events.jsonl"
     state: dict[str, dict] = {}
     if events.is_file():

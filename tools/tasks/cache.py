@@ -17,7 +17,7 @@ from .task import ROOT, Result
 
 STORE = "dist/cache/tasks"
 HELD = "dist/held"  # a file another process holds (an open game's DLL) is moved aside here, never overwritten
-LOCK_POLL_S = 0.1  # how often a materialize waiting for another builder looks again, inside its deadline
+LOCK_POLL_S = 0.1  # how often a waiter on a lock another process holds (a materialize, a shared file) looks again
 COMPLETE = ".complete"
 
 
@@ -29,11 +29,36 @@ def _tmp(path: Path) -> Path:
     return path.with_name(f"{path.name}.tmp-{os.getpid()}-{threading.get_ident()}")
 
 
+def _held(path: Path, shared: bool) -> FileLock:
+    """The lock of one shared file (`<file>.lock`), held: kept only for a read or a rename, and freed by the OS with a
+    process that dies, so the wait is that long at most."""
+    lock = FileLock(path.with_name(f"{path.name}.lock"))
+    while not lock.try_acquire(shared=shared):
+        time.sleep(LOCK_POLL_S)
+    return lock
+
+
 def write_atomic(path: Path, text: str) -> None:
+    """A file other processes read and write too (latest run, recorded times, a memo), replaced whole. On Windows a rename
+    over a file another process renames or holds open fails (access denied: two runs started together, 2026-11-08), so
+    every writer and reader of it takes its lock."""
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = _tmp(path)
     tmp.write_text(text, encoding="utf-8")
-    os.replace(tmp, path)
+    lock = _held(path, shared=False)
+    try:
+        os.replace(tmp, path)
+    finally:
+        lock.release()
+
+
+def read_shared(path: Path) -> str:
+    """A file `write_atomic` writes, read under its lock."""
+    lock = _held(path, shared=True)
+    try:
+        return path.read_text(encoding="utf-8")
+    finally:
+        lock.release()
 
 
 def _same_file(a: Path, b: Path) -> bool:
@@ -144,7 +169,7 @@ def memo(tool: str, key: str, fn: Callable[[], object], root: Path | str | None 
             return _memo[(tool, key)]
     path = Path(root or ROOT).resolve() / STORE / safe(tool) / "memo" / key[:2] / f"{key}.json"
     if path.is_file():
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(read_shared(path))
     else:
         value = fn()
         write_atomic(path, json.dumps(value, ensure_ascii=False))

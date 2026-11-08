@@ -1,6 +1,8 @@
 # pool: a hung task does not block a sibling, a failure SKIPs its dependents only, results are cached by content (hit on
-# unchanged inputs, miss on changed content), timeouts are never cached, outputs come back on a hit.
+# unchanged inputs, miss on changed content), timeouts are never cached, outputs come back on a hit, two runs never write
+# one output together.
 import sys
+import threading
 import time
 import unittest
 from pathlib import Path
@@ -15,6 +17,7 @@ from tasks.inputs import invalidate  # noqa: E402
 from tasks.task import CACHED_PASS, FAIL, PASS, SKIPPED, TIMEOUT  # noqa: E402
 
 HANG_S = 120
+WRITE_GAP_S = 1.5  # between the two parts of a torn write: far longer than a scheduler's turn, so the runs overlap
 
 
 class PoolTest(RepoCase):
@@ -84,6 +87,28 @@ class PoolTest(RepoCase):
         results, _ = self.run_tasks([t])
         self.assertEqual(results["writes"].status, CACHED_PASS)
         self.assertEqual(out.read_text(), "made")
+
+    def test_two_runs_never_write_one_output_together(self):
+        # Two runs at once of a task that writes its output in two parts: one runs, the other waits for the output's lock
+        # and takes the stored result; the cache holds the whole file, never the first part alone.
+        out = self.root / "out" / "y.txt"
+        code = ("import os, time; os.makedirs('out', exist_ok=True); f = open('out/y.txt', 'w'); f.write('first'); "
+                f"f.flush(); time.sleep({WRITE_GAP_S}); f.write(' second'); f.close()")
+        results = {}
+
+        def one(k):
+            results[k] = run([Task("torn", py(code), timeout_s=60, inputs=["a.txt"], outputs=["out/y.txt"])],
+                             root=self.root)[0]
+        threads = [threading.Thread(target=one, args=(k,)) for k in range(2)]
+        for th in threads:
+            th.start()
+        for th in threads:
+            th.join()
+        self.assertEqual(sorted(r.status for r in results.values()), sorted([PASS, CACHED_PASS]))
+        out.unlink()
+        again = run([Task("torn", py(code), timeout_s=60, inputs=["a.txt"], outputs=["out/y.txt"])], root=self.root)[0]
+        self.assertEqual(again.status, CACHED_PASS)
+        self.assertEqual(out.read_text(), "first second")
 
     def test_a_missing_declared_output_fails(self):
         t = Task("forgets", py("pass"), timeout_s=60, outputs=["never.txt"])
