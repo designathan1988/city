@@ -4,7 +4,7 @@
 ## bare land of the map, with no town to make and draw.
 ## Steps: {"setView": [x, y, zoom, azimuth, elevation]} (the 4.0's map and degrees), {"shot": name} (after the world is drawn),
 ## {"frames": n}, {"hour": h} (light and clock together), {"dispatch": command, "args": [...]},
-## {"query": name, "args": [...]} (its answer printed), {"key": "Escape"}, {"click": [x, z]}, {"tap": [screen x, y]}, {"control": "what it says"}, {"blastShot": name, "at": s}, {"walker": [zoom, azimuth, elevation]}, {"global": [name, value]} (a shader global: an A/B inside one run, so what else loads the GPU falls on both), {"drag": [[x, z], [x, z]]}.
+## {"query": name, "args": [...]} (its answer printed), {"key": "Escape"}, {"click": [x, z]}, {"tap": [screen x, y]}, {"control": "what it says"}, {"blastShot": name, "at": s}, {"walker": [zoom, azimuth, elevation]}, {"vehicle": [zoom, azimuth, elevation]}, {"global": [name, value]} (a shader global: an A/B inside one run, so what else loads the GPU falls on both), {"drag": [[x, z], [x, z]]}.
 ## In args, {"at": [x, z]} is the point of the ground there (what the player's pointer would hit), {"profile": id} the index of
 ## that road class, {"v3": [x, y, z]} a vector.
 ## Measures (look_measure.gd): {"record": name} … {"recordEnd": true} (the frames between: intervals, hitches, vsyncs missed,
@@ -127,6 +127,8 @@ func _step(step: Dictionary) -> void:
 func _pointer_step(step: Dictionary) -> bool:
 	if step.has("walker"):
 		await LookAim.stand_on_walker(rig, ui, step.walker)
+	elif step.has("vehicle"):
+		await LookAim.stand_on_vehicle(rig, ui, step.vehicle)
 	elif step.has("tap"):
 		var at := Vector2(step.tap[0], step.tap[1])
 		await ui.move(at)
