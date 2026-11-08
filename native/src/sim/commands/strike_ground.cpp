@@ -32,7 +32,7 @@ constexpr uint32_t POLE_WHO_BASE = 0x40000000U; // a utility pole's draws, apart
 float pole_fate(const Blow &b, float d, float reach, uint32_t who) {
 	const Tuning &t = b.s.catalog.tune;
 	if (d > reach) return FURNITURE_WHOLE;
-	if (d < reach * t.strike_pole_splinter_share && b.roll(SALT_THROW, who) < t.strike_pole_splinter_chance) return FURNITURE_SPLINTERS;
+	if (d < reach * t.strike_splinter_share && b.roll(SALT_THROW, who) < t.strike_splinter_chance) return FURNITURE_SPLINTERS;
 	return b.roll(SALT_SNAP, who) < t.strike_pole_snap_chance ? FURNITURE_SNAPPED : FURNITURE_WHOLE;
 }
 

@@ -14,7 +14,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float CYL_SIDES = 9.f;
+constexpr float CYL_SIDES = 9.f; // a thrown pole's or trunk's sides
 constexpr int ROUND_SIDES = 10, ROUND_RINGS = 7; // an organ is a sphere of ten by seven
 constexpr float UNIT_RADIUS = 0.5f; // a round one across, as the unit box
 } // namespace

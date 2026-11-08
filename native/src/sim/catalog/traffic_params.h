@@ -25,7 +25,7 @@ namespace city {
 	X(brake_light_accel) X(brake_light_speed) X(body_lift_m) \
 	X(walk_speed_min) X(walk_speed_max) X(walk_track_min) X(walk_track_max) X(ped_trip_min_m) X(ped_trip_max_m) \
 	X(ped_child_share) X(ped_elder_share) X(ped_child_pace) X(ped_elder_pace) X(ped_rest_fade_s) \
-	X(bus_passenger_s) X(bus_step_aboard_s) X(bus_fetch_m) X(bus_fetch_share) X(bus_front_door_m) X(ped_shot_fright_s) X(ped_shock_life_s) X(ped_body_shock_m) X(ped_blast_shock_m) X(ped_shock_look_s) X(ped_shocks_most) X(ped_react_near_m) X(ped_react_crouch_roll) X(ped_react_film_roll) X(ped_react_trip_roll) X(ped_react_crouch_s) X(ped_react_film_s) \
+	X(bus_passenger_s) X(bus_step_aboard_s) X(bus_step_down_s) X(bus_riders_start_min) X(bus_riders_start_max) X(bus_riders_max) X(bus_fetch_m) X(bus_fetch_share) X(bus_front_door_m) X(ped_shot_fright_s) X(ped_shock_life_s) X(ped_body_shock_m) X(ped_blast_shock_m) X(ped_shock_look_s) X(ped_shocks_most) X(ped_react_near_m) X(ped_react_crouch_roll) X(ped_react_film_roll) X(ped_react_trip_roll) X(ped_react_crouch_s) X(ped_react_film_s) \
 	X(ped_react_glance_s) X(ped_react_look_s) X(ped_trip_after_s) X(ped_trip_s) X(ped_stampede_trip_roll) X(ped_stampede_trip_m) X(ped_stampede_trip_span_s) \
 	X(ped_stampede_crouch_roll) X(ped_stampede_crouch_s) X(ped_stampede_fall_roll) X(ped_stampede_fall_m) X(ped_stampede_fall_s) X(ped_stampede_fall_after_s) \
 	X(ped_stampede_film_roll) X(ped_stampede_film_m) X(ped_mourn_m) X(ped_mourn_s) X(ped_turn_rad_s) \

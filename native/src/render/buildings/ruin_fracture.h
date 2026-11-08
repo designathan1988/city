@@ -37,7 +37,7 @@ struct RuinMesh {
 	std::vector<int> links;
 	godot::Vector3 lo, hi;
 	int64_t vertices = 0;
-	static constexpr float NO_FLOOR_M = -1e30f;
+	static constexpr float NO_FLOOR_M = -1e30f; // below any ground: no floor to rest on
 	float floor = NO_FLOOR_M; // the height its building stood on (its lot's floor): a piece starting there rests on it
 };
 

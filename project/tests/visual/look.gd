@@ -4,7 +4,7 @@
 ## bare land of the map, with no town to make and draw.
 ## Steps: {"setView": [x, y, zoom, azimuth, elevation]} (the 4.0's map and degrees), {"shot": name} (after the world is drawn),
 ## {"frames": n}, {"hour": h} (light and clock together), {"dispatch": command, "args": [...]},
-## {"query": name, "args": [...]} (its answer printed), {"key": "Escape"}, {"click": [x, z]}, {"tap": [screen x, y]}, {"control": "what it says"}, {"blastShot": name, "at": s}, {"walker": [zoom, azimuth, elevation]}, {"global": [name, value]} (a shader global: an A/B inside one run, so what else loads the GPU falls on both), {"drag": [[x, z], [x, z]]}.
+## {"query": name, "args": [...]} (its answer printed), {"key": "Escape"}, {"click": [x, z]}, {"tap": [screen x, y]}, {"control": "what it says"}, {"blastShot": name, "at": s}, {"walker": [zoom, azimuth, elevation]}, {"busDoor": [zoom, turn from the kerb side, elevation]} (a bus line laid, a bus at a stop with people at its doors: look_aim.gd), {"global": [name, value]} (a shader global: an A/B inside one run, so what else loads the GPU falls on both), {"drag": [[x, z], [x, z]]}.
 ## In args, {"at": [x, z]} is the point of the ground there (what the player's pointer would hit), {"profile": id} the index of
 ## that road class, {"v3": [x, y, z]} a vector, {"lot": key} a lot lab's body.
 ## Measures (look_measure.gd): {"record": name} … {"recordEnd": true} (the frames between: intervals, hitches, vsyncs missed,
@@ -126,9 +126,9 @@ func _step(step: Dictionary) -> void:
 ## The steps of the pointer. False: not one of them.
 func _pointer_step(step: Dictionary) -> bool:
 	if step.has("walker"):
-		if not await LookAim.stand_on_walker(rig, ui, step.walker):
-			failures += 1
-			print("FAIL no walker to stand on: the town has to run a while first")
+		failures += 0 if await LookAim.stand_on_walker(rig, ui, step.walker) else 1
+	elif step.has("busDoor"):
+		failures += 0 if await LookAim.stand_on_bus_door(rig, ui, step.busDoor) else 1
 	elif step.has("tap"):
 		var at := Vector2(step.tap[0], step.tap[1])
 		await ui.move(at)

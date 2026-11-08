@@ -4,10 +4,10 @@
 ## the zone layer while the tool is in hand). The core zones whole lots (paint_zone_path); the stroke is one undo step.
 extends ToolBase
 
-## A fast drag reports the pointer far apart: the whole way is sampled at this step, shorter than any lot's front.
-const STEP_M := 2.0
-## At most this many samples of one pointer move are sent, as one command.
-const MOST_DABS := 400
+## A fast drag reports the pointer far apart: the whole way is sampled every step_m, shorter than any lot's front; at most most_dabs
+## samples of one pointer move are sent, as one command (data/game/tools.json zone).
+static var step_m: float = DataTables.game("tools").zone.step_m
+static var most_dabs: int = DataTables.game("tools").zone.most_dabs
 ## What the brush paints with Shift held: no zone.
 const UNZONED := 0
 ## Two rings met by two samples are one lot when their middles round to the same decimetre (whichever corner each starts at: a
@@ -57,7 +57,7 @@ func release(p: Vector3) -> void:
 func drag(p: Vector3) -> void:
 	if _last == Vector3.INF:
 		return
-	var steps := mini(ceili(p.distance_to(_last) / STEP_M), MOST_DABS)
+	var steps := mini(ceili(p.distance_to(_last) / step_m), most_dabs)
 	if steps < 1:
 		return
 	var dabs := PackedVector3Array()

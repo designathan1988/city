@@ -41,7 +41,7 @@ public:
 	void reset();
 	void release();
 	void add(const BodySpec &spec);
-	void set_gore(const godot::RID &material, const GoreLook &look, float gravity) { gore_.init(scenario_, material, look, gravity); }
+	void set_gore(const godot::RID &material, const GoreLook &look, float gravity) { gore_.init(scenario_, material, look, gravity, law_->step_s); }
 	int gore_chains() const { return gore_.chains(); }
 	godot::PackedVector3Array places() const; // where each body's pelvis lies now (a probe)
 	int gore_bones() const { return gore_.bones(); }

@@ -327,7 +327,7 @@
   "backfill_over_m": 0.016
  },
  "strike": {
-  "_doc": "The bomb: the force steps of its strip, the pressure that brings a frame down, and the size and reach of the scars a blast leaves. Street furniture is looked for within furniture_reach_m of the blow; within splinter_share of the knock-out range a pole goes to splinters with chance splinter_chance. A pole within the reach that topples it (blast.json pole_kpa): inside pole_splinter_share of the reach it bursts into splinters at pole_splinter_chance, else it snaps at pole_snap_chance or falls whole; the wires of a utility pole brought down pull the next pole over at pole_pull_chance out to pole_pull_reach_k times the reach (modelling choices, no published or measured value). The first blow a building takes and stands shorts it: 1 + force / short_force_step points, at most short_spots_most, within short_spread_m along the wall nearest the burst and short_out_m out of it, at a storey drawn at random and short_lift_m plus up to short_lift_span_m over its floor; short_spark_share of them spark for short_spark_s plus up to short_spark_span_s seconds, the rest a burst pipe spurting for short_leak_s plus up to short_leak_span_s (modelling choices too).",
+  "_doc": "The bomb: the force steps of its strip, the pressure that brings a frame down, and the size and reach of the scars a blast leaves. Street furniture is looked for within furniture_reach_m of the blow; A pole within the reach that topples it (blast.json pole_kpa): inside splinter_share of the reach it bursts into splinters at splinter_chance, else it snaps at pole_snap_chance or falls whole; the wires of a utility pole brought down pull the next pole over at pole_pull_chance out to pole_pull_reach_k times the reach (modelling choices, no published or measured value). The first blow a building takes and stands shorts it: 1 + force / short_force_step points, at most short_spots_most, within short_spread_m along the wall nearest the burst and short_out_m out of it, at a storey drawn at random and short_lift_m plus up to short_lift_span_m over its floor; short_spark_share of them spark for short_spark_s plus up to short_spark_span_s seconds, the rest a burst pipe spurting for short_leak_s plus up to short_leak_span_s (modelling choices too).",
   "force_start": 5,
   "force_fine": 10,
   "force_coarse": 5,
@@ -341,8 +341,6 @@
   "scar_force_least": 4,
   "scar_lift_m": 1.5,
   "scars_most": 8,
-  "pole_splinter_share": 0.4,
-  "pole_splinter_chance": 0.6,
   "pole_snap_chance": 0.5,
   "pole_pull_reach_k": 2.2,
   "pole_pull_chance": 0.5,

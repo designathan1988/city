@@ -17,7 +17,7 @@ constexpr size_t LOT_SERIAL_MAX = 4; // below this, the pool's hand-off costs mo
 } // namespace
 
 namespace {
-constexpr uint32_t PLAYER_LOT_SALT = 0x10755eedu;
+constexpr uint32_t PLAYER_LOT_SALT = 0x10755eedu; // a player lot's seed salt: "lot seed" in hex letters
 // A lot's corners in its own frame, front first: signs of the half width and half depth (+z is the street's side).
 constexpr double LOT_CORNERS[4][2] = { { -1, 1 }, { 1, 1 }, { 1, -1 }, { -1, -1 } };
 } // namespace

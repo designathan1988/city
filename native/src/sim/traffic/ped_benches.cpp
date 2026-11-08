@@ -12,7 +12,7 @@ namespace city {
 namespace traffic {
 
 namespace {
-constexpr uint32_t SIT_SALT = 0x51754eU, STAY_SALT = 0x5374u;
+constexpr uint32_t SIT_SALT = 0x51754eU, STAY_SALT = 0x5374u; // streams' salts: "QuN" and "St" in ASCII, apart from the walker's others
 constexpr int SEATS = 2;
 constexpr float ARC_KEY_PER_M = 10.f; // a bench's draws are keyed by its arc to a tenth of a metre
 

@@ -19,7 +19,8 @@ class BodyGore {
 public:
 	// The body's particle `particle` now, false when the body in `slot` is gone.
 	using Anchor = std::function<bool(int slot, int particle, godot::Vector3 &out)>;
-	void init(const godot::RID &scenario, const godot::RID &material, const GoreLook &look, float gravity); // gravity m/s2, the debris'
+	// gravity m/s2, the debris'; step_s the ragdoll's step (agents.json shapes.ragdoll), what a chain's first speed is spread over
+	void init(const godot::RID &scenario, const godot::RID &material, const GoreLook &look, float gravity, float step_s);
 	bool ready() const { return links_.mm.is_valid(); }
 	void reset();
 	void release();
@@ -49,11 +50,11 @@ private:
 	void step(Chain &c, float dt, const Anchor &anchor, const std::function<float(float, float)> &ground);
 	void flush(const Anchor &anchor);
 	GoreLook look_;
-	float gravity_ = 0;
+	float gravity_ = 0, step_s_ = 0;
 	std::vector<Chain> chains_;
 	std::vector<Bone> bones_;
 	MmLayer links_, sticks_, cuffs_;
-	static constexpr uint64_t GORE_STREAM = 0x676f7265ULL;
+	static constexpr uint64_t GORE_STREAM = 0x676f7265ULL; // the stream's seed: "gore" in ASCII
 	Rng rng_{ GORE_STREAM };
 	bool dirty_ = false;
 };

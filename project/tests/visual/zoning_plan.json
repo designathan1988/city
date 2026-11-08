@@ -1,5 +1,5 @@
 {
- "_doc": "The zoning tool looked at in play (look.gd): a grid of blocks on bare land, the Zones drawer opened (the lots the streets propose outlined, the one under the pointer lit), a short brush stroke over two lots of the middle block, those lots from close by (their colour, outline, front and arrow), the town left to grow, the Lots tab, a proposed lot split there (taken as the player's first), and the eraser over the grown lots (taking the zone off takes what grew). setView's y is the ground's -z; drag and click take x and z.",
+ "_doc": "The zoning tool looked at in play (look.gd): a grid of blocks on bare land, the Zones drawer opened (the lots the streets propose outlined, the one under the pointer lit), a short brush stroke over two lots of the middle block, those lots from close by (their colour, outline, front and arrow), the town left to grow, with the tool in hand and put down (the lots' outlines are the tool's: they go with it), the Lots tab, a proposed lot split there (taken as the player's first), and the eraser over the grown lots (taking the zone off takes what grew). setView's y is the ground's -z; drag and click take x and z.",
  "city": {"map": 0, "seed": 1, "generate": false},
  "steps": [
   {"hour": 16},
@@ -25,6 +25,11 @@
   {"dispatch": "set_speed", "args": [1]},
   {"frames": 60},
   {"shot": "grown"},
+  {"key": "Escape"},
+  {"frames": 10},
+  {"shot": "grown-tool-put-down"},
+  {"control": "Zonas"},
+  {"frames": 10},
   {"setView": [0, -25, 16, 30, 40]},
   {"frames": 60},
   {"shot": "grown-close"},

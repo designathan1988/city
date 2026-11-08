@@ -14,14 +14,13 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr int FIRST_ROOM = 64;
+constexpr int FIRST_ROOM = 64; // instances a layer holds before it grows
 constexpr int SIDES = 7; // a gut and a bone are seven-sided
-constexpr float STEP_S = 1.f / 60.f;
 constexpr float STALL_CAP_S = 0.05f; // a stalled frame steps them no more than this
-constexpr float MM_TO_M = 0.001f;
-constexpr float LINK_EPS = 1e-6f;
+constexpr float MM_TO_M = 0.001f; // a millimetre in metres (SI)
+constexpr float LINK_EPS = 1e-6f; // a link this short has no direction (a micrometre)
 constexpr float HALF = 0.5f;
-constexpr float NEAR_VERTICAL = 0.99f;
+constexpr float NEAR_VERTICAL = 0.99f; // a direction within 8 degrees of up (cos 8 deg) takes another axis for its side
 const Vector3 UP(0, 1, 0), ACROSS(1, 0, 0);
 constexpr float HOLDS = std::numeric_limits<float>::infinity();
 
@@ -35,9 +34,10 @@ void put_between(MmLayer &layer, int i, const Vector3 &a, const Vector3 &b, floa
 }
 } // namespace
 
-void BodyGore::init(const RID &scenario, const RID &material, const GoreLook &look, float gravity) {
+void BodyGore::init(const RID &scenario, const RID &material, const GoreLook &look, float gravity, float step_s) {
 	look_ = look;
 	gravity_ = gravity;
+	step_s_ = step_s;
 	Ref<CylinderMesh> cyl;
 	cyl.instantiate();
 	cyl->set_height(1.f);
@@ -74,7 +74,7 @@ void BodyGore::spill(int slot, int particle, const Vector3 &at, const Vector3 &k
 		const float a = float(i) * g.coil_turn;
 		const Vector3 v = at + Vector3(std::cos(a) * g.coil_m, -float(i) * c.link * g.drop_share, std::sin(a) * g.coil_m);
 		c.p.push_back(v);
-		c.o.push_back(v - kick * (STEP_S * float(i) / float(g.links)));
+		c.o.push_back(v - kick * (step_s_ * float(i) / float(g.links)));
 	}
 	chains_.push_back(std::move(c));
 	dirty_ = true;

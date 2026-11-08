@@ -5,6 +5,7 @@
 #include "sim/state/city_state.h"
 #include "sim/transit/rail_run.h"
 #include "sim/traffic/traffic_system.h"
+#include "core/random.h"
 
 #include <algorithm>
 #include <cmath>
@@ -29,6 +30,12 @@ bool lane_beside(const CityState &s, const TransitStop &q, StopLane &out) {
 	if (!d.ok) return false;
 	out = { ds, 0, std::clamp((float(t) * float(g.len) - d.at0) * d.sign, 0.f, d.len) };
 	return true;
+}
+
+// Who rides in the k-th bus of a line when it is first put on it: a roll of the line and the bus between the data's fewest and most.
+int first_riders(const TrafficParams &p, int line, int k) {
+	const int least = int(p.bus_riders_start_min), span = std::max(0, int(p.bus_riders_start_max) - least) + 1;
+	return std::min(int(p.bus_riders_max), least + int(hash_combine(uint32_t(line), uint32_t(k)) % uint32_t(span)));
 }
 
 // A line's buses: those it had stay where they are, more wait at its terminal, up to its number.
@@ -59,6 +66,7 @@ void place_buses(CityState &s, const TransitLine &l, int index, std::vector<Bus>
 		b.line_index = index;
 		b.next = start;
 		b.wait = float(k) * p.bus_spacing_s;
+		b.riders = first_riders(p, l.id, k);
 		out.push_back(b);
 	}
 }

@@ -51,7 +51,7 @@ private:
 	// A CHUNK key (cell_key: the column in the high half) with the way of cutting in bit 62: flipping it moves the column by 2^30
 	// either way, where no map's cells reach.
 	static int64_t slot_of(int64_t key, bool works) { return works ? key ^ WORKS_BIT : key; }
-	static constexpr int64_t WORKS_BIT = int64_t(1) << 62;
+	static constexpr int64_t WORKS_BIT = int64_t(1) << 62; // bit 62 of the key, the way of cutting (see slot_of)
 	std::mutex mutex_;
 	std::unordered_map<int64_t, Cell> cells_;
 };

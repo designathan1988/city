@@ -189,7 +189,7 @@ struct TrafficState {
 	std::vector<KerbStop> kerb_stops; // few: the vehicles pulling up or standing at the kerb
 	std::vector<int> free_kerb_stops;
 	int kerb_planned = 0, kerb_drops = 0, kerb_picks = 0, kerb_deliveries = 0, kerb_abandoned = 0;
-	int bus_boarded = 0, bus_alighted = 0; // who has got on and off the buses
+	int bus_boarded = 0, bus_alighted = 0, bus_set_down = 0; // who has got on and off the buses; of those off, who has walked out on to the footway
 	std::vector<LaneClosure> closures; // few, and only while a lorry swings across a street
 	std::vector<float> pub_sum, pub_lim; // publish_poses: per segment, kept between ticks (zero but during a pass)
 	std::vector<int> pub_count;

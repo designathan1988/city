@@ -12,7 +12,7 @@ namespace city {
 
 namespace {
 constexpr int FIRST_ROOM = 64; // links the layer holds before it grows
-constexpr float LINK_EPS = 1e-6f;
+constexpr float LINK_EPS = 1e-6f; // a link this short has no direction (a micrometre)
 constexpr float HALF = 0.5f;
 const Vector3 UP(0, 1, 0), ACROSS(1, 0, 0);
 constexpr float NEAR_VERTICAL = 0.99f; // a link this upright takes its side from x, not from up

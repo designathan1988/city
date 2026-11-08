@@ -92,6 +92,11 @@ private:
 	// The frame's rows of the fleet and of the bays' cars: the camera's by key (keeper_), the sun's in order; `placed` counts the seen.
 	void place_vehicles(const PoseFrame &f, const godot::Vector3 &cam, const ViewCull &view, const PoseSample &at, const TakenAgents &taken, const LevelRule &rule, int &placed);
 	void place_parked(const PoseFrame &f, const godot::Vector3 &cam, const ViewCull &view, const LevelRule &rule, int &placed);
+	// Who rides in a vehicle of the frame: the model's load, the kerb stop's set down or picked up, a bus's own count, or nobody in a
+	// parked car (NOBODY_ABOARD); `order` as riders' above.
+	float passengers_of(const AgentRecord &rec, int type, float &order) const;
+	static constexpr float NOBODY_ABOARD = -1.f; // passengers of a car standing in a bay: not even a driver (agents.gdshader)
+	static constexpr int STILL_FRAMES = 12; // so many frames in a row standing and a rider puts a foot down
 	void limit_cabins(); // the next frame's limit of who has a cabin
 	// The bays' cars by cell of vehicle_r_ (their indices in the published list, ascending), made again only when the simulation
 	// publishes a new list; and this frame's, those of the cells round the camera, ascending: the list's own order.
