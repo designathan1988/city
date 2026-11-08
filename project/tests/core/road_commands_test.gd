@@ -34,6 +34,7 @@ func _ready() -> void:
 		return
 	_styles()
 	new_map(TOWN_MAP, SEED, true)
+	_surface_mesh("the town")
 	var s0 := CityStore.snapshot.duplicate()
 	var b: Dictionary = CityStore.query(&"city_bounds")
 	var a := Vector3(b.max.x - 1.0, 0, (b.min.z + b.max.z) * 0.5)
@@ -92,6 +93,15 @@ func _surface(mid: Vector3) -> void:
 	check(off.hit and absf(off.position.y - ground) < GROUND_EPS_M, "off the road the ray lands on the ground (%.3f against %.3f)" % [off.position.y, ground])
 
 
+## Every road's mesh within the surface error of the true road (streets.json surface_error_m), read densely between its stations
+## by the core (road_surface_probe); a straight road on one grade drawn in one stretch.
+func _surface_mesh(what: String) -> void:
+	var p: Dictionary = CityStore.query(&"road_surface_probe")
+	print("road surface, %s: %s" % [what, p])
+	check(p.segments > 0 and p.error_m <= p.tolerance_m, "%s: the mesh %.4f m off its roads at worst, within %.3f m" % [what, p.error_m, p.tolerance_m])
+	check(p.whole > 0, "%s: %d straight roads on one grade in one stretch" % [what, p.whole])
+
+
 ## A road the player lays ends in a straight cut; the bulb is a choice, undone like any edit.
 func _road_end(e: Vector3) -> void:
 	var ends: Array = CityStore.query(&"inspect", [e - Vector3(2, 0, 0)]).get("ends", [])
@@ -148,6 +158,7 @@ func _freehand(e: Vector3) -> void:
 	var money0: float = CityStore.snapshot.money
 	var r: Dictionary = CityStore.dispatch(&"build_road_path", [pieces, PROFILE, PX])
 	check(r.ok and CityStore.snapshot.segments >= seg0 + n, "stroke built: %s" % r)
+	_surface_mesh("a freehand stroke's curves")
 	CityStore.dispatch(&"undo", [])
 	check(CityStore.snapshot.segments == seg0 and is_equal_approx(CityStore.snapshot.money, money0), "one undo takes the whole stroke")
 	var b := base + Vector3(60, 0, 0)

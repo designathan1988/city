@@ -35,8 +35,10 @@ inline godot::Color wear_color(float from_a, float from_b, float lane, RoadMat m
 struct StreetLook {
 	StreetShapes shapes; // every size the emitters draw with beyond the section (streets.json "shapes")
 	godot::Color surface[4], paving[4], median[4], asphalt[int(RoadClass::COUNT)], bike, shoulder, curb, barrier;
-	float far_step = 0, far_pull = 0; // the far level: its stretches on a curve; how far towards the eye it is drawn, over the coarser ground out there
-	float h_curb = 0, h_curb_median = 0, h_sidewalk = 0, h_median = 0, h_barrier = 0, step = 1, skirt = 0, median_nose = 0;
+	// The most a road's mesh may stand off its true surface (plan and height, the section's edges too), in metres: the near
+	// level's and the far level's (segment_stations, road_emit.cpp); how far towards the eye the far level is drawn.
+	float surface_error = 0, far_surface_error = 0, far_pull = 0;
+	float h_curb = 0, h_curb_median = 0, h_sidewalk = 0, h_median = 0, h_barrier = 0, skirt = 0, median_nose = 0;
 	float face_eps = 0; // coplanar faces closer than this are one
 	float verge_reach = 0, verge_under = 0;
 	int verge_strips = 1;

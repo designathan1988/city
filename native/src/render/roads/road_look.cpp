@@ -54,8 +54,9 @@ void load_shape(StreetLook &L, DataReader &r, const Dictionary &t) {
 	L.verge_reach = num(rv, v, "reach_m");
 	L.verge_under = num(rv, v, "under_m");
 	L.verge_strips = rv.integer(v, "strips");
-	L.step = num(r, t, "sample_step_m");
-	L.far_step = num(r, t, "far_step_m");
+	L.surface_error = num(r, t, "surface_error_m");
+	L.far_surface_error = num(r, t, "far_surface_error_m");
+	if (!(L.surface_error > 0) || !(L.far_surface_error > 0)) r.fail("surface_error_m and far_surface_error_m must be above 0");
 	L.far_pull = num(r, t, "far_pull_m");
 	L.face_eps = num(r, t, "face_eps_m");
 	const Dictionary k = r.table(t, "dropped_kerb");

@@ -191,6 +191,7 @@ public:
 	godot::Dictionary render_cost() const; // where the last frame's _process went, in ms (tests tell a hitch's cause); constant time
 	godot::Dictionary wear_probe() const; // the wear field's worn cells, scanned whole (captures; never per frame)
 	godot::Dictionary road_mesh_counts() const; // what the road and verge chunks hold and the wear field's bytes
+	godot::Dictionary road_surface_probe() const; // the roads' stations over the map and how far their mesh stands off the true road (tests)
 	void draw_verges(bool on) { render_.draw_verges(on); } // tests/perf/camera_pan: a frame without them
 	void wear_paint(float x0, float z0, float x1, float z1, float value) { render_.wear_paint(x0, z0, x1, z1, value); } // tests/visual: a set use
 	godot::Dictionary building_cost() const { return render_.building_cost(); } // the building levels by surface: triangles, bytes

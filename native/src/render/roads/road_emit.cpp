@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 using namespace godot;
 
@@ -12,8 +13,111 @@ namespace city {
 
 namespace {
 constexpr float DEGENERATE = 1e-12f; // a triangle of less area has no normal
-constexpr double ONE_GRADE_M = 0.02; // off the straight line between its mouths a road is on one grade under this
+// A stretch shorter than this is not split again: the surface merges stations closer than it (road_segment.cpp ROAD_MIN_SPAN).
+constexpr double LEAST_STRETCH_M = 0.05;
+constexpr int ERROR_PROBES = 32; // the points a stretch is measured at by stations_error, its own dense reading
+// A curve of length L bending at most k stays within k L^2 / SAGITTA_SHARE of its chord: a circular arc's sagitta,
+// R - sqrt(R^2 - (L/2)^2) <= (L/2)^2 / (2 R) = k L^2 / 8, and a curve bending less stays closer.
+constexpr double SAGITTA_SHARE = 8;
+
+// A point of the road's surface: `u` across from the centre line at arc `at`, at the deck's height.
+Vector3 surface_at(const CityState &s, int sid, double at, double u) {
+	const SegFrame f = seg_frame(s, sid, at);
+	return f.c + f.left * float(u);
+}
+
+// How far the true surface at arc m stands off the mesh's straight stretch between arcs a and b, over the centre line and both
+// edges of the section: the distance from the true point to the stretch's segment (the mesh's geometry, whatever share of the
+// way along it the point falls).
+double off_chord(const CityState &s, int sid, double half, double a, double b, double m) {
+	double worst = 0;
+	for (const double u : { -half, 0.0, half }) {
+		const Vector3 pa = surface_at(s, sid, a, u), pb = surface_at(s, sid, b, u), p = surface_at(s, sid, m, u);
+		const Vector3 run = pb - pa;
+		const float run2 = run.length_squared();
+		const float share = run2 > 0 ? std::clamp((p - pa).dot(run) / run2, 0.f, 1.f) : 0.f;
+		worst = std::max(worst, double((p - (pa + run * share)).length()));
+	}
+	return worst;
+}
+
+// The stations of the deck's height profile strictly between a and b (it is linear between them: RoadGrade::at).
+template <typename Fn>
+void each_grade_station(const CityState &s, int sid, double a, double b, Fn &&fn) {
+	if (!s.roads.grade.has(sid)) return; // linear between its nodes: no station inside
+	const double step = double(s.roads.grade.prof[size_t(sid)].step);
+	for (double at = (std::floor(a / step) + 1) * step; at < b; at += step) fn(at);
+}
+
+// The most a quadratic Bezier bends between parameters ta and tb: |B' x B''| / |B'|^3. B' = B'(0) + t B'' with B'' constant,
+// so the numerator is constant and the curvature peaks where the derivative is shortest: the curve's vertex, or the nearer end.
+double most_curvature(const Quad &q, double ta, double tb) {
+	const double ddx = 2 * (q.x0 - 2 * q.cx + q.x1), ddz = 2 * (q.z0 - 2 * q.cz + q.z1);
+	double dx0, dz0;
+	q.deriv(0, dx0, dz0);
+	const double dd = ddx * ddx + ddz * ddz;
+	const double vertex = dd > 0 ? -(dx0 * ddx + dz0 * ddz) / dd : ta;
+	double dx, dz;
+	q.deriv(std::clamp(vertex, ta, tb), dx, dz);
+	const double speed = std::hypot(dx, dz);
+	return speed > 0 ? std::fabs(dx0 * ddz - dz0 * ddx) / (speed * speed * speed) : std::numeric_limits<double>::infinity();
+}
+
+// The most the plan of the stretch [a, b] (arcs) can stand off its chord, over the centre line and both edges `half` across. A
+// curve of length L bending at most k stays within k L^2 / SAGITTA_SHARE of its chord. Its length is at most its control polygon's (a
+// Bezier lies in its control hull); the outer edge bends k / (1 + k h) over at most (1 + k h) L, the inner one k / (1 - k h)
+// over at most L. Infinite where the inner edge folds (k h >= 1): the stretch is split until it is the least one.
+double plan_bound(const RoadSegment &g, double half, double a, double b) {
+	const double ta = t_at_length(g.table, a), tb = t_at_length(g.table, b);
+	const Quad piece = sub_quad(g.q, ta, tb);
+	const double hull = std::hypot(piece.cx - piece.x0, piece.cz - piece.z0) + std::hypot(piece.x1 - piece.cx, piece.z1 - piece.cz);
+	const double k = most_curvature(g.q, ta, tb), kh = k * half;
+	if (kh >= 1) return std::numeric_limits<double>::infinity();
+	return k * hull * hull / SAGITTA_SHARE * std::max(1 + kh, 1 / (1 - kh));
+}
+
+// How far the height of the stretch [a, b] stands off its chord at worst: the height is linear between the grade's stations, so
+// the worst is at one of them, read exactly.
+double height_off(const CityState &s, int sid, double a, double b) {
+	const double ya = s.roads.seg_y(sid, a), yb = s.roads.seg_y(sid, b);
+	double worst = 0;
+	each_grade_station(s, sid, a, b, [&](double at) { worst = std::max(worst, std::fabs(s.roads.seg_y(sid, at) - (ya + (yb - ya) * (at - a) / (b - a)))); });
+	return worst;
+}
+
+// Splits [a, b] until the surface between its stations is within `error` of the true one, appending each right end: the plan's
+// bound and the height's exact deviation together (a point is off its chord by at most the sum of the two).
+void split(const CityState &s, int sid, double half, double error, double a, double b, std::vector<double> &out) {
+	const RoadSegment &g = s.roads.segs[size_t(sid)];
+	if (b - a <= LEAST_STRETCH_M || plan_bound(g, half, a, b) + height_off(s, sid, a, b) <= error) {
+		out.push_back(b);
+		return;
+	}
+	split(s, sid, half, error, a, (a + b) / 2, out);
+	split(s, sid, half, error, (a + b) / 2, b, out);
+}
 } // namespace
+
+std::vector<double> segment_stations(const CityState &s, const StreetLook &L, bool far, int sid, double v0, double v1) {
+	std::vector<double> out{ v0 };
+	if (v1 <= v0) return out;
+	const double half = double(s.catalog.profile(s.roads.segs[size_t(sid)].profile).half());
+	split(s, sid, half, double(far ? L.far_surface_error : L.surface_error), v0, v1, out);
+	return out;
+}
+
+std::vector<double> segment_stations(const RoadEmit &e, int sid, double v0, double v1) {
+	return segment_stations(e.s, e.L, e.far, sid, v0, v1);
+}
+
+double stations_error(const CityState &s, int sid, const std::vector<double> &at) {
+	const double half = double(s.catalog.profile(s.roads.segs[size_t(sid)].profile).half());
+	double worst = 0;
+	for (size_t k = 0; k + 1 < at.size(); k++)
+		for (int i = 1; i < ERROR_PROBES; i++)
+			worst = std::max(worst, off_chord(s, sid, half, at[k], at[k + 1], at[k] + (at[k + 1] - at[k]) * i / ERROR_PROBES));
+	return worst;
+}
 
 SegFrame seg_frame(const CityState &s, int sid, double at) {
 	const RoadSegment &g = s.roads.segs[sid];
@@ -27,19 +131,6 @@ SegFrame seg_frame(const CityState &s, int sid, double at) {
 	f.fwd = Vector3(float(dx / l), 0, float(dz / l));
 	f.left = Vector3(float(dz / l), 0, float(-dx / l));
 	return f;
-}
-
-int surface_steps(const RoadEmit &e, int sid, double v0, double v1) {
-	const RoadSegment &g = e.s.roads.segs[size_t(sid)];
-	const int fine = std::max(1, int(std::ceil((v1 - v0) / (e.far ? e.L.far_step : e.L.step))));
-	if (!g.q.is_straight(STRAIGHT_TOL)) return fine;
-	// A straight road on one grade is linear in position, height, texture and pool coordinates: its two mouths are enough.
-	const double ya = e.s.roads.seg_y(sid, v0), yb = e.s.roads.seg_y(sid, v1);
-	for (int k = 1; k < fine; k++) {
-		const double share = double(k) / fine;
-		if (std::fabs(e.s.roads.seg_y(sid, v0 + (v1 - v0) * share) - (ya + (yb - ya) * share)) > ONE_GRADE_M) return fine;
-	}
-	return 1;
 }
 
 void emit_chunk(const RoadEmit &e, int64_t chunk) {

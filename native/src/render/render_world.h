@@ -157,6 +157,7 @@ public:
 	BuildingViewNeed building_need() const { return buildings_.view_need(); }
 	godot::Dictionary building_chunk(float x, float z) const { return buildings_.chunk_view(x, z); }
 	RoadChunks::Count road_count() const { return roads_.count(); }
+	const StreetLook &street_look() const { return roads_.look(); } // what the road meshes are drawn by (road_surface_probe)
 	RoadChunks::Count verge_count() const { return verges_.count(); }
 	void draw_verges(bool on) { verges_.draw(on); }
 	int64_t wear_bytes() const { return wear_.bytes(); }

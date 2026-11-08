@@ -778,3 +778,30 @@ Ressalvas abertas:
   `tree_tall_m`, `bridge_span_m`, `seam_profile`), the value 128. On dcf96cb3 with the fix the full run is 424 against B1's 425,
   the only lines apart being BIKE_N and BUS_M, moved with PlanRules. The loader's literals change in the audit session's C10
   rewrite of the loaders, committed together with the data, the schema and the test.
+
+## 2026-11-08 19:20: a road's mesh on stations placed by its surface error (C3 of log/review.md §6)
+- Cause: `road_emit.cpp surface_steps` cut every segment at a fixed step (`streets.json sample_step_m` 3 m, `far_step_m` far): a
+  straight 100 m street got 34 stations of identical quads, a tight curve kept a kink at every station on the kerb and the
+  footway's edge (photo `curves_before/02-tight_low`); the verge and the paint walked the same stations.
+- Research (standard geometry; the owner's `docs/Vias e mobiliário urbano otimizados/road_surface_meshes.md` §3 reaches the same
+  rules through Skia's Wang formula and PostGIS): a curve of length L bending at most k stays within k L^2 / 8 of its chord; a
+  quadratic Bezier never inflects, its curvature peaks at its vertex or the nearer end, its arc is no longer than its control
+  polygon; an edge h off the centre bends k / (1 + k h) outside, k / (1 - k h) inside. A metre one metre away spans
+  rows / (2 tan(fov / 2)) px: 1037 at 1080 rows and 55 degrees.
+- Fix: `segment_stations` bisects a segment until the plan's bound plus the height's exact deviation (the grade is linear between
+  its own stations) is within `surface_error_m` 0.01 (half a pixel from 21 m, under the paint's 0.02 lift) near and
+  `far_surface_error_m` 0.5 far (half a pixel from 1.7 km); the surface, the verge and the paint share them. `sample_step_m` and
+  `far_step_m` are gone, the schema renamed. `CityCore.road_surface_probe` reads every live segment's worst distance to the true
+  surface (`stations_error`, 32 probes a stretch, point to segment); `road_commands_test` holds it to the tolerance.
+- Verified: both DLLs; `road_commands_test` (the town's 438 straight segments one stretch each, a freehand stroke's curves at
+  0.0088 m of 0.01); six close photos of a tight local street and a gentle avenue from three angles (`photodiff`): the kerb and
+  the footway's edge lose their kinks, pavers and asphalt move only where facets and the along-road UV follow the new stations,
+  same look; `quick --ready` 45 of 47, digest equal, `photos_check` off only in the three known single pixels on facades of
+  00-cidade and the known 02-rua/03-rua_noite pixels (not blessed, not this change), `gates_changed` only on the owner's new
+  `docs/` folder (Portuguese studies, not committed). Executable exported 19:14.
+- Files: changed `native/src/render/roads/road_emit.cpp`, `road_mesh.h`, `road_look.{h,cpp}`, `road_segment.cpp`,
+  `road_verge.cpp`, `road_markings.cpp`, `native/src/render/render_world.h`, `native/src/api/city_core.h`, `city_core_bind.cpp`,
+  `city_core_probe_render.cpp`, `project/game/store/store_api.gd`, `project/data/render/streets.json`,
+  `tools/gates/schemas/streets.schema.json`, `project/tests/core/road_commands_test.gd`, both DLLs, this record.
+- Next: the verge (`road_verge.cpp`, the 4.0's `vergeTop` translated) is the owner's order of 19:00: it goes, and the terrain meets
+  the road level.

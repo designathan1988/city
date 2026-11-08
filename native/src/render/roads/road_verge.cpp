@@ -59,8 +59,8 @@ void emit_verge_segment(const RoadEmit &e, int sid) {
 	const double v0 = g.retreat_a, v1 = g.len - g.retreat_b;
 	if (p.edges.empty() || p.rail || v1 <= v0) return;
 	const std::vector<Piece> ps = pieces_of(e.L, p);
-	// A straight road is linear in height and the ground is held to it, so the ribbon needs no more points than the road has (road_segment.cpp)
-	const int n = surface_steps(e, sid, v0, v1);
+	// The ground is held to the road beside it, so the ribbon stands on the road's own stations (road_segment.cpp)
+	const std::vector<double> stations = segment_stations(e, sid, v0, v1);
 	const float raised = e.s.catalog.tune.structure_raised_m;
 	for (const float side : { -1.f, 1.f }) {
 		const Piece &edge_piece = side < 0 ? ps.front() : ps.back();
@@ -71,8 +71,8 @@ void emit_verge_segment(const RoadEmit &e, int sid) {
 			edge.clear();
 			out.clear();
 		};
-		for (int k = 0; k <= n; k++) {
-			const SegFrame f = seg_frame(e.s, sid, v0 + (v1 - v0) * k / n);
+		for (const double at : stations) {
+			const SegFrame f = seg_frame(e.s, sid, at);
 			// Nothing runs down to the ground from a deck in the air, nor from a road against its wall: the runs of open road only.
 			if (f.c.y - e.s.terrain.height_at(f.c.x, f.c.z) > raised || walled_at(e, g, f, side)) {
 				flush();

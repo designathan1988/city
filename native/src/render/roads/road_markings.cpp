@@ -27,13 +27,12 @@ struct Painter {
 		lamp.pool(u, at, du, dv);
 		return Vector2(du, dv);
 	}
-	// A rectangle u0..u1 across, va..vb metres along from node a, in pieces of at most one sample step.
+	// A rectangle u0..u1 across, va..vb metres along from node a, on the stations that keep it on the road's surface.
 	void rect(float u0, float u1, double va, double vb, const Color &c) const {
-		bool straight = e.s.roads.segs[sid].q.is_straight(STRAIGHT_TOL);
-		int n = straight ? 1 : std::max(1, int(std::ceil((vb - va) / e.L.step)));
+		const std::vector<double> at = segment_stations(e, sid, va, vb);
 		Color col = road_color(c, RoadMat::PAINT);
-		for (int k = 0; k < n; k++) {
-			double a = va + (vb - va) * k / n, b = va + (vb - va) * (k + 1) / n;
+		for (size_t k = 0; k + 1 < at.size(); k++) {
+			const double a = at[k], b = at[k + 1];
 			SegFrame fa = seg_frame(e.s, sid, a), fb = seg_frame(e.s, sid, b);
 			Vector3 lift(0, e.L.paint_lift, 0);
 			const Vector3 p[4] = { fa.c + fa.left * u0 + lift, fa.c + fa.left * u1 + lift, fb.c + fb.left * u1 + lift, fb.c + fb.left * u0 + lift };

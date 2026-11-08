@@ -11,8 +11,6 @@
 
 namespace city {
 
-constexpr float STRAIGHT_TOL = 0.5f; // metres off its chord under which a segment is drawn as a straight one
-
 struct RoadEmit {
 	const CityState &s;
 	const StreetLook &L;
@@ -59,8 +57,13 @@ bool walled_at(const RoadEmit &e, const RoadSegment &g, const SegFrame &f, float
 void emit_retaining_walls(const RoadEmit &e, int sid);
 void emit_wall_backfill(const RoadEmit &e, int sid);
 
-// How many stretches a segment's surface is drawn in between v0 and v1: one for a road straight and on one grade, else by the look's step.
-int surface_steps(const RoadEmit &e, int sid, double v0, double v1);
+// The arcs a segment's surface is drawn at between v0 and v1, both included: as few as keep the mesh within the level's surface
+// error of the true road (StreetLook::surface_error, far_surface_error), in plan, height and across the section; two for a road
+// straight and on one grade. The surface, its verge and its paint stand on these.
+std::vector<double> segment_stations(const RoadEmit &e, int sid, double v0, double v1);
+std::vector<double> segment_stations(const CityState &s, const StreetLook &L, bool far, int sid, double v0, double v1);
+// The most a mesh on stations `at` stands off the true surface, read densely between them (the stations' own proof).
+double stations_error(const CityState &s, int sid, const std::vector<double> &at);
 // The towers and cables of a long bridge (road_stays.cpp), on the stretch [v0, v1] of a segment; `stayed`: a street held by them stands on no bents.
 bool stayed(const RoadEmit &e, int sid);
 void emit_stays(const RoadEmit &e, int sid, double v0, double v1, float casing);

@@ -40,9 +40,7 @@ struct Sample {
 };
 
 std::vector<Sample> samples(const RoadEmit &e, int sid, double v0, double v1, bool ca, bool cb, double lo, double hi) {
-	std::vector<double> at;
-	const int n = surface_steps(e, sid, v0, v1);
-	for (int k = 0; k <= n; k++) at.push_back(v0 + (v1 - v0) * k / n);
+	std::vector<double> at = segment_stations(e, sid, v0, v1);
 	const float marks[3] = { e.L.ramp_full, e.L.ramp_flat, e.L.ramp_flat + e.L.ramp_flare };
 	for (float m : marks) {
 		if (ca && v0 + m < v1) at.push_back(v0 + m);

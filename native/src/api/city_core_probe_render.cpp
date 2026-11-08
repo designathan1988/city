@@ -1,9 +1,10 @@
 // Probes for the tests: the agents' and the wear's cost (agent_cost, wear_probe), where the last _process went (render_cost), the road
-// meshes' size (road_mesh_counts) and how the agents' poses arrive (pose_stats: publications, their gaps, frames shown past the newest
+// meshes' size (road_mesh_counts) and how far they stand off the roads (road_surface_probe), and how the agents' poses arrive (pose_stats: publications, their gaps, frames shown past the newest
 // pose). The traffic's own probe is city_core_probe.cpp.
 #include "api/city_core.h"
 
 #include "core/units.h"
+#include "render/roads/road_mesh.h"
 
 #include <algorithm>
 #include <cmath>
@@ -81,6 +82,33 @@ Dictionary CityCore::road_mesh_counts() const {
 	d["roads"] = count_of(render_.road_count());
 	d["verges"] = count_of(render_.verge_count());
 	d["wear_bytes"] = render_.wear_bytes();
+	return d;
+}
+
+// The road surfaces' stations over the whole map (render/roads/road_emit.cpp segment_stations), the near level's: how many
+// stretches the segments are drawn in, how far the mesh stands off the true surface at worst (read densely between the stations:
+// stations_error), the tolerance it is held to, and how many segments are drawn in one stretch (straight, on one grade).
+Dictionary CityCore::road_surface_probe() const {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	const StreetLook &L = render_.street_look();
+	int64_t stretches = 0, segments = 0, whole = 0;
+	double worst = 0;
+	for (size_t sid = 0; sid < state_->roads.segs.size(); sid++) {
+		const RoadSegment &g = state_->roads.segs[sid];
+		const double v0 = g.retreat_a, v1 = g.len - g.retreat_b;
+		if (!g.alive || v1 <= v0) continue;
+		const std::vector<double> at = segment_stations(*state_, L, false, int(sid), v0, v1);
+		segments++;
+		stretches += int64_t(at.size()) - 1;
+		whole += at.size() == 2 ? 1 : 0;
+		worst = std::max(worst, stations_error(*state_, int(sid), at));
+	}
+	Dictionary d;
+	d["segments"] = segments;
+	d["stretches"] = stretches;
+	d["whole"] = whole;
+	d["error_m"] = worst;
+	d["tolerance_m"] = L.surface_error;
 	return d;
 }
 
