@@ -8,9 +8,9 @@ signal filled
 
 const SHADER := "res://render/shaders/sky_level_table.gdshader"
 const STEPS := 64 # sun heights, evenly in sin(elevation), read between by a straight line: the meter needs no finer step
-## The lowest sun of the row: 6 degrees under, the end of civil twilight, past where the sky's own light ends in this air (its earth
-## shadow at the Rayleigh scale height, sky_model.gdshaderinc sky_sun_at).
-const SUN_LOWEST_SINE := -0.1045
+## The lowest sun of the row: 18 degrees under, the end of astronomical twilight, where the sky's last sunlit layer is gone
+## (sky_model.gdshaderinc sky_layer_lit: the earth's shadow 320 km up).
+const SUN_LOWEST_SINE := -0.309
 const TOWN_TEXELS := 2 # the town's level light and zenith
 
 var levels := PackedVector3Array() # by the sun's height, a white floor's radiance in the lights' unit

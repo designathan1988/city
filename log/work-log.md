@@ -933,3 +933,23 @@ From above at 22h the centre was a carpet of lit windows: every room, office or 
 - Changed `project/data/game/daylight.json`, its schema, `project/project.godot`, `project/render/daylight.gd`,
   `project/render/shaders/{building_lamps.gdshaderinc, building_pane.gdshaderinc, building_far.gdshader,
   building_far_window.gdshaderinc, signature_look.gdshaderinc}`; created and deleted nothing.
+
+## Twilight and the blue hour (2026-11-08 12:40, branch `realism`)
+
+Hidden captures at 17:48, 18:12, 18:30 and 18:54 showed the whole town saturated orange two degrees after sunset and black a degree
+later: no blue hour.
+- Cause: `sky_model.gdshaderinc` lit each layer with the sun's light at its scale height over the eye: until the sun set behind
+  that height's horizon (2.9 degrees under, for the Rayleigh layer) the whole layer took the light that grazed the low air, all red,
+  and then none. The earth's shadow rising through the layer, the sun's height changing along the view, and the grazing ozone
+  path of the light that reaches the lit top (Chappuis absorption, what makes the dusk's zenith blue) were all missing.
+- Code: `sky_layer_lit`: a layer scatters most at its scale height over the point under it, reach = H / tan(elevation) away (at most
+  its own horizon, sqrt(2 R H)); the sun there is higher by reach / R towards it and lower away (the Belt of Venus); under that
+  point's horizon the earth's shadow fills the layer to R (1 / cos d - 1), and the share above it, exp(-h_s / H), takes the sun's
+  light at h_s + H. `sky_sun_from` is the sun's light from any height with its own sun elevation, and `sky_ozone_path` the ozone a
+  ray crosses from that height (once from under the layer, twice when it dips under it from over it). The sky's row for the meter
+  reaches 18 degrees under (astronomical twilight).
+- Verified: hidden captures over the roofs at 16h, 17:48, 18:12, 18:30, 18:54 and 22h: neutral warm light at 18:12, a blue hour at
+  18:30 with the rooms lit, night at 18:54; `quick.sh` 46 of 47 then the photos: the day's three changed one 8-bit level in 4 to 5 %
+  of their pixels (the sky near the horizon now takes the sun's height along the view, and the ambient follows), the night's 0.06 %,
+  accepted after looking.
+- Changed `project/render/shaders/sky_model.gdshaderinc`, `project/render/sky_level_table.gd`, logs; created and deleted nothing.

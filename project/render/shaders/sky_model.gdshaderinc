@@ -60,15 +60,46 @@ void sky_depths(Air a, float mu, float h, out vec3 rayleigh, out float mie, out 
 	}
 }
 
-// The sun's light after the air from height h (rgb, the light's unit), with the earth's shadow at that height: the sun sets
-// behind the horizon's dip, -sqrt(2h / R), across its own disc.
-vec3 sky_sun_at(Air a, float h) {
-	float mu = a.sun_dir.y;
+// The ozone a ray from height h at elevation sine mu crosses, in zenith columns: once from under the layer (a thin shell, its slant
+// at the crossing), twice from over it when the ray dips under it (down to its perigee and up again), never from over it otherwise.
+float sky_ozone_path(float mu, float h, float layer_h) {
+	float k = (PLANET_RADIUS_M + h) / (PLANET_RADIUS_M + layer_h);
+	float grazing = k * k * (1.0 - mu * mu);
+	float cross = 1.0 / sqrt(max(1.0 - grazing, SKY_LEAST_SLANT));
+	if (h <= layer_h) return cross;
+	return mu >= 0.0 || grazing >= 1.0 ? 0.0 : 2.0 * cross;
+}
+
+// The sun's light after the air from height h, the sun at elevation sine mu over that point's own horizon (rgb, the light's unit),
+// with the earth's shadow at that height: the sun sets behind the horizon's dip, -sqrt(2h / R), across its own disc.
+vec3 sky_sun_from(Air a, float h, float mu) {
 	vec3 r = a.rayleigh.rgb * a.rayleigh.w * exp(-h / a.rayleigh.w) * sky_airmass(mu, h, a.rayleigh.w);
 	float m = a.mie.x * a.mie.w * exp(-h / a.mie.w) * sky_airmass(mu, h, a.mie.w);
-	vec3 o = a.ozone.rgb * sky_ozone_airmass(mu, a.ozone.w);
+	vec3 o = a.ozone.rgb * sky_ozone_path(mu, h, a.ozone.w);
 	float dip = -sqrt(2.0 * max(h, 1.0) / PLANET_RADIUS_M);
 	return a.sun_top * exp(-(r + m + o)) * smoothstep(dip - SUN_RADIUS_RAD, dip + SUN_RADIUS_RAD, mu);
+}
+
+// The sun's light after the air from height h over the eye (render/air.gd mirrors it at the ground).
+vec3 sky_sun_at(Air a, float h) {
+	return sky_sun_from(a, h, a.sun_dir.y);
+}
+
+// The sun's light on a layer of scale height `scale_h` seen along `dir` from the eye. The layer scatters most at its scale height over
+// the point under it, `reach` along the ground (scale_h over the view's slope, at most the layer's own horizon, sqrt(2 R H); by the
+// eye for a view down), where the sun stands higher by the arc reach / R towards it and lower away from it. Once the sun is under
+// that point's horizon (depression d), the earth's shadow fills the layer up to R (1 / cos d - 1) over it, and the share above the
+// shadow, exp(-h_s / H), is lit by the sun's light at h_s + H, the middle of the lit part: its rays graze the air and the ozone
+// layer, which take the red and the orange (Chappuis), so the dusk's sky turns blue as its lit part rises. With the sun up there it
+// is the light at H.
+vec3 sky_layer_lit(Air a, vec3 dir, float scale_h) {
+	float horizon = sqrt(2.0 * PLANET_RADIUS_M * scale_h);
+	float reach = dir.y <= 0.0 ? 0.0 : min(scale_h * sqrt(1.0 - dir.y * dir.y) / max(dir.y, LEAST_MU), horizon);
+	vec2 view = dir.xz, sun = a.sun_dir.xz;
+	float facing = length(view) > LEAST_MU && length(sun) > LEAST_MU ? dot(normalize(view), normalize(sun)) : 0.0;
+	float elev = asin(clamp(a.sun_dir.y, -1.0, 1.0)) + reach / PLANET_RADIUS_M * facing;
+	float shadow = elev < 0.0 ? PLANET_RADIUS_M * (1.0 / cos(elev) - 1.0) : 0.0;
+	return sky_sun_from(a, shadow + scale_h, sin(elev)) * exp(-shadow / scale_h);
 }
 
 float sky_rayleigh_phase(float c) {
@@ -81,7 +112,7 @@ float sky_mie_phase(float g, float c) { // Henyey-Greenstein
 }
 
 // The light the air sends along `dir` towards an eye at height h, from the sun lit over it: what the path scatters in.
-// The sun's light at the scattering is taken high in each layer, at its scale height, where most of the scattering is.
+// The sun's light at the scattering is each layer's where it scatters most along the view (sky_layer_lit).
 vec3 sky_inscatter(Air a, vec3 dir, float h, out vec3 through, out bool ground) {
 	vec3 tr;
 	float tm;
@@ -91,8 +122,8 @@ vec3 sky_inscatter(Air a, vec3 dir, float h, out vec3 through, out bool ground) 
 	through = exp(-ext);
 	float c = dot(dir, a.sun_dir);
 	vec3 share = (vec3(1.0) - through) / max(ext, vec3(1e-6));
-	vec3 lit = sky_sun_at(a, a.rayleigh.w);
-	vec3 lit_mie = sky_sun_at(a, a.mie.w);
+	vec3 lit = sky_layer_lit(a, dir, a.rayleigh.w);
+	vec3 lit_mie = sky_layer_lit(a, dir, a.mie.w);
 	vec3 single = SKY_PI * (lit * tr * sky_rayleigh_phase(c) + lit_mie * tm * a.mie.y * sky_mie_phase(a.mie.z, c)) * share;
 	// The higher orders: isotropic, their ratio from the zenith column: half of it, along a mean path of twice its depth.
 	vec3 zr = a.rayleigh.rgb * a.rayleigh.w;
