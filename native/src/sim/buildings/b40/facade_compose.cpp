@@ -67,7 +67,7 @@ int style_for(const Data &data, Kind kind, Xoshiro128 &r, uint32_t character, in
 void paints_of(const Data &data, int style, Xoshiro128 &r, Paint &wall, Paint &trim) {
 	const StyleDef &s = data.styles[size_t(style)];
 	const Paint &skin = choose(r, s.skins);
-	wall = Paint{ skin.finish, tint(skin.rgb, r) };
+	wall = Paint{ skin.finish, tint(data.shapes.paint, skin.rgb, r) };
 	std::vector<Paint> dark;
 	for (const Paint &t : s.trims)
 		if (!is_light(t.rgb)) dark.push_back(t);

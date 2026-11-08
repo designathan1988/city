@@ -3119,6 +3119,27 @@ and the commands depend on; the hash constants and the HSL hexcone; tolerances. 
 **What changes.** Nothing: the generated maps' digest, the hashes and the numbers are the same (`quick`: 44 of 46; the photos
 are states seen before).
 
+### 6.38 B2, C14 (the building generator, lots): the lot zones' values, and one owner for the parts they share (2026-11-08)
+
+**Cause and fix.** The same as §6.37 for the lot layout (`lot_back`, `lot_boundary`, `lot_cars`, `lot_front`, `lot_ground`,
+`lot_plan`, `lot_space`, `lot_yard`, `open_lots`): their values are blocks of `buildings.json` `shapes` (`back`, `boundary`,
+`cars`, `front`, `ground`, `plan`, `space`, `yard`, `open`), with the comments' meaning in each `_doc`. The lot plan takes the
+`Data` (`plan_lot`), the boundary's helpers, the open lots' layout and the tree test (`open_lot_tree_ok`, read by the tree
+renderer through `s.buildings.designs`) take their blocks.
+
+Several files laid the same part with the same number, written once a file: a ground cover's thickness (`COVER_H`,
+`SURFACE_H` in civic, services and open lots), the sports court (school and open lot: 15 x 28 m, 0.12 m lines), a bench's
+seat, a drain, a pallet, a lamp post, a yard swing, and a car way's margin (`WAY_SIDE`, in `lot_ground.cpp` and again in
+`lot_cars.cpp` with a comment pointing at the first). They are one block, `shapes.parts`, every file reading it. The market's
+bays read `lots.stall_w` (the second owner `SEGUNDO_DONO` named; same value); its `stall_d` drifted (5 m against 5.5 m) and
+waits for B3. Parts that only look alike stay their files' own: the bins, benches' widths, planters and lamps that differ.
+
+The headers' last constants say what they are (the packed colour's channels, the sRGB transfer, the bay key's bytes, the
+flag's default colours); the skin's lightness tint is the paint block's.
+
+**What changes.** Nothing: 681 values in 18 blocks, the generated maps' digest, the hashes and the numbers the same (`quick`:
+45 of 46; the photos are states seen before).
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

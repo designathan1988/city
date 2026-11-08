@@ -17,7 +17,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr uint32_t WILD_SALT = 0x51ed27u, PARK_SALT = 0x9a2cu, STREET_SALT = 0x57ee7u;
+constexpr uint32_t WILD_SALT = 0x51ed27u, PARK_SALT = 0x9a2cu, STREET_SALT = 0x57ee7u; // distinct salts: woods, parks and streets draw apart
 // The woods' hash streams of one cell (Roadcraft's numbers: the same tree in the same spot).
 constexpr uint32_t WOOD_KEEP = 41, WOOD_X = 43, WOOD_Z = 44, WOOD_SIZE = 45, WOOD_YAW = 47, WOOD_MODEL = 48, WOOD_KIND = 49;
 constexpr float NEIGHBOUR_LEAST_M = 1e-3f; // nearer than this two trees give no direction
@@ -262,7 +262,7 @@ void parks(const CityState &s, const TreeLook &T, const ChunkGround &l, int64_t 
 		for (int k = 0, placed = 0; k < n * PARK_TRIES && placed < n; k++) {
 			uint32_t h = hash_combine(b.seed, uint32_t(k) + PARK_SALT);
 			float lx = (h01(h, POS_X) - 0.5f) * std::max(0.f, b.w - 2 * T.park_edge), lz = (h01(h, POS_Z) - 0.5f) * std::max(0.f, b.d - 2 * T.park_edge);
-			if (!b40::open_lot_tree_ok(b.fn, b.w, b.d, lx, b.d / 2 - lz)) continue; // lot frame y runs from the street (+z side)
+			if (!b40::open_lot_tree_ok(s.buildings.designs, b.fn, b.w, b.d, lx, b.d / 2 - lz)) continue; // lot frame y runs from the street (+z side)
 			Vector3 p = Vector3(b.x, 0, b.z) + ax * lx + az * lz;
 			p.y = s.terrain.height_at(p.x, p.z);
 			float height = T.park_h0 + (T.park_h1 - T.park_h0) * h01(h, HEIGHT);

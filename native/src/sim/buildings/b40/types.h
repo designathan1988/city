@@ -16,6 +16,7 @@
 namespace city::b40 {
 
 constexpr float EPS = 1e-3f, FAR_AWAY = 1e9f; // geometric tolerance; 'no bound yet'
+// The most faces a volume's outline has (a saved body's limit), and a bay key's packing: storey, side and bay in bytes.
 constexpr int MAX_FACES = 24, KEY_STOREY_SHIFT = 16, KEY_SIDE_SHIFT = 8;
 constexpr int ERAS = 3; // the eras a building is drawn from: old, middle, new (buildings.json era_affinity's columns)
 constexpr float RISER_M = 0.17f; // the rise of a step, drawn at entrances and flights (ABNT NBR 9050 6.8: 0.16 to 0.18 m)
@@ -91,9 +92,11 @@ enum FlagPattern : uint8_t {
 	FLAG_DIAGONAL, FLAG_SALTIRE, FLAG_CANTON, FLAG_STRIPES, FLAG_BORDER, FLAG_DISC, FLAG_CHEVRON, FLAG_COUNT
 };
 constexpr int FLAG_COLOURS = 3, FLAG_NONE = -1;
+// The source game's default design (flags.ts DEFAULT_FLAG): blue, white and red.
+constexpr uint32_t FLAG_BLUE = 0x0b5ea8, FLAG_WHITE = 0xffffff, FLAG_RED = 0xc8102e;
 struct FlagDesign {
 	int8_t pattern = FLAG_NONE; // a FlagPattern; FLAG_NONE: no flag flown
-	uint32_t rgb[FLAG_COLOURS] = { 0x0b5ea8, 0xffffff, 0xc8102e }; // the Roadcraft's default design (flags.ts DEFAULT_FLAG)
+	uint32_t rgb[FLAG_COLOURS] = { FLAG_BLUE, FLAG_WHITE, FLAG_RED };
 };
 constexpr FlagDesign DEFAULT_FLAG{ FLAG_TRICOLOUR_V }; // what a new lantern flies (buildingRoofs.ts); a spire flies none until set
 struct RoofPart {

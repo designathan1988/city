@@ -92,7 +92,7 @@ struct Data {
 
 	// A named colour of "colors" (magenta when missing: the loader rejects a table without the names asked for).
 	const Paint &color(const char *name) const {
-		static const Paint MISSING{ FIN_PLASTER, 0xff00ff };
+		static const Paint MISSING{ FIN_PLASTER, 0xff00ff }; // magenta: a colour the table lacks shows
 		auto it = colors.find(name);
 		return it == colors.end() ? MISSING : it->second;
 	}

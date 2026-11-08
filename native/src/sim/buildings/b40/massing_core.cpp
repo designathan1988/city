@@ -136,7 +136,7 @@ void make_body(const Data &data, Body &b, int zone, int floors, float W, float D
 	b.kind = data.kind_of_zone(zone);
 	b.use = b.kind == KIND_WORKS ? USE_INDUSTRIAL : b.kind == KIND_SHOP || b.kind == KIND_OFFICE ? USE_COMMERCIAL : USE_RESIDENTIAL;
 	Xoshiro128 r(seed);
-	b.plan = plan_lot(data.lots, b.kind, W, D, r);
+	b.plan = plan_lot(data, b.kind, W, D, r);
 	Envelope env;
 	env.W = b.plan.x1 - b.plan.x0;
 	env.D = b.plan.y1 - b.plan.y0;

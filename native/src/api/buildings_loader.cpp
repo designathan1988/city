@@ -15,6 +15,7 @@ namespace city {
 using namespace b40;
 
 namespace {
+// A table's colour is 0xRRGGBBAA (core/color.h): the body keeps 0xRRGGBB, the alpha byte shifted off.
 constexpr uint32_t RGB_MASK = 0xffffff;
 constexpr int RGBA_SHIFT = 8;
 const char *const BAY_NAMES[BAY_COUNT] = { "wall", "window", "sash", "french", "bayWindow", "ribbon", "wide", "balcony", "door",

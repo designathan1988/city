@@ -22,6 +22,7 @@ bool is_service(int fn) {
 
 void school(const Data &data, Body &b, float w, float d, Xoshiro128 &r) {
 	const CivicShape &K = data.shapes.civic;
+	const LotPartShape &P = data.shapes.parts;
 	int storeys = r.irange(K.school_storeys_lo, K.school_storeys_hi);
 	float wd = std::min(K.wing_d, d * K.wing_d_share), sw = std::min(K.side_wing_w, w * K.side_wing_share);
 	bool left = r.f() < HALF;
@@ -38,16 +39,16 @@ void school(const Data &data, Body &b, float w, float d, Xoshiro128 &r) {
 	}
 	// the court: lawn round a painted sports court on the open side of the L
 	float x0 = left ? sw : 0, x1 = left ? w : w - sw;
-	put(b, EL_SURFACE, x0, wd, x1, d, K.surface_h, b.add_paint(data.color("lawn")));
-	float cw = std::min(K.court_w, x1 - x0 - 2 * K.court_edge), cd = std::min(K.court_d, d - wd - 2 * K.court_edge);
+	put(b, EL_SURFACE, x0, wd, x1, d, P.cover_h, b.add_paint(data.color("lawn")));
+	float cw = std::min(P.court_w, x1 - x0 - 2 * K.court_edge), cd = std::min(P.court_d, d - wd - 2 * K.court_edge);
 	if (cw <= 0 || cd <= 0) return;
 	float cx = (x0 + x1) / 2, cy = (wd + d) / 2;
-	put_at(b, EL_SURFACE, cx, cy, cw, cd, K.surface_h * 2, b.add_paint(data.color("court")));
+	put_at(b, EL_SURFACE, cx, cy, cw, cd, P.cover_h * 2, b.add_paint(data.color("court")));
 	int line = b.add_paint(data.color("court_line"));
-	put_at(b, EL_SURFACE, cx, cy, cw, K.court_line, K.surface_h * 3, line);
+	put_at(b, EL_SURFACE, cx, cy, cw, P.court_line, P.cover_h * 3, line);
 	for (float s : { -1.f, 1.f }) {
-		put_at(b, EL_SURFACE, cx + s * (cw - K.court_line) / 2, cy, K.court_line, cd, K.surface_h * 3, line);
-		put_at(b, EL_SURFACE, cx, cy + s * (cd - K.court_line) / 2, cw, K.court_line, K.surface_h * 3, line);
+		put_at(b, EL_SURFACE, cx + s * (cw - P.court_line) / 2, cy, P.court_line, cd, P.cover_h * 3, line);
+		put_at(b, EL_SURFACE, cx, cy + s * (cd - P.court_line) / 2, cw, P.court_line, P.cover_h * 3, line);
 	}
 }
 

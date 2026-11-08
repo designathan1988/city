@@ -22,7 +22,7 @@ bool is_open_lot(int fn);
 void civic_body(const Data &data, Body &b, int fn, int floors, float W, float D, uint32_t seed);
 void open_lot_body(const Data &data, Body &b, int fn, float W, float D);
 // Where the tree renderer may stand a tree in an open lot (lot frame): on the lawn, off paths, courts and fountains.
-bool open_lot_tree_ok(int fn, float W, float D, float x, float y);
+bool open_lot_tree_ok(const Data &data, int fn, float W, float D, float x, float y);
 
 // civic_services.cpp: the service buildings (one per function), on a body whose plan, paints and heights are set.
 void gas_station(const Data &data, Body &b, Xoshiro128 &r);
