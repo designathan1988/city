@@ -1,6 +1,7 @@
 // The Zones > Lots tab (Roadcraft editor/lotTool.ts, world/lots.ts): lots drawn, moved, bent, cut, joined and zoned. Each edit changes
 // the lots it touches through the journal, one record at a time; the cells it touches are read again, so what grows there follows.
 #include "sim/commands/commands.h"
+#include "sim/commands/lot_commands.h"
 #include "sim/commands/edit_journal.h"
 #include "sim/commands/road_edit.h"
 #include "core/grid.h"

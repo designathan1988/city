@@ -15,6 +15,7 @@
 #include "core/job_pool.h"
 #include "sim/buildings/b40/data.h"
 #include "render/buildings/building_bodies.h"
+#include "render/buildings/building_job_inputs.h"
 #include "render/buildings/ruin_fracture.h"
 #include "render/buildings/shell.h"
 #include "render/buildings/signature_bodies.h"
@@ -172,15 +173,7 @@ private:
 		int64_t bytes() const { return far_shell.bytes(false); }
 		void bake();
 	};
-	// What a job reads from the map, copied while it holds the map lock shared for a moment (gather): the records
-	// of its chunks, in query order, and the final ground under their lots. The build itself runs without the lock.
-	struct Inputs {
-		std::vector<Building> records;
-		std::shared_ptr<const std::unordered_set<uint32_t>> broken; // standing in pieces (RuinPieces): only their lots are drawn here
-		std::vector<int> ids; // the id of each record
-		InteriorView view; // the Interior layer as the job started
-		HeightPatch ground;
-	};
+	using Inputs = BuildingJobInputs; // what a job reads from the map (building_job_inputs.h)
 	struct Want {
 		float d;
 		int64_t key;

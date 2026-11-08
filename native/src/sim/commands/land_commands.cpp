@@ -2,6 +2,7 @@
 // stroke is one undo step) and a building drawn as a lot rectangle (Roadcraft lotEdit.ts lot "rect", the Build
 // drawer's Draw tab) with the function chosen in the strip: civic buildings, parks and squares.
 #include "sim/commands/commands.h"
+#include "sim/commands/nature_commands.h"
 #include "sim/commands/edit_journal.h"
 #include "sim/commands/road_edit.h"
 

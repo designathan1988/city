@@ -3797,6 +3797,38 @@ Each piece moved verbatim; the callers changed only the name they reach it by.
 
 **What changes.** Nothing seen.
 
+### 6.72 B2, C12 (the core's files over their limit): each second job in a file of its own (2026-11-08)
+
+**Cause and fix.** Twelve files and three functions were over their limits because each held a second job beside its own.
+- `commands.h` also declared the lot and Landscape commands: they are `lot_commands.h` and `nature_commands.h`, included where they are used.
+- `road_network.cpp` (455) also settled node shapes and street runs: `road_network_shape.cpp`.
+- `journal_ops.cpp` (416) also journalled the transit plan: `journal_transit.cpp`, which records through the public `j_record`.
+- `edit_history.cpp` (370) also applied the entries: `edit_apply.cpp`. Its `exec` (106 lines) became one switch that sends node ops to `exec_node` and segment ops to `exec_segment`; it still names every `OpKind` with no default, so the compiler still flags a missing kind.
+- `road_grade_solve.cpp` (373): `solve` (111 lines) became one helper per stage, and the rounds' state and machinery became `road_grade_rounds.{h,cpp}`.
+- `road_grade_profile.cpp` (352) also read the tuning: `road_grade_tune.cpp`.
+- `chunk_jobs.h` (324) also held the results queue: `chunk_results.h`.
+- `building_renderer.h` (253) also held a job's map copy: `building_job_inputs.h`.
+- `agent_renderer.cpp`'s `update` (92) became the level rule (`LevelRule`, computed at the same point), `place_vehicles` and `place_parked`.
+Four agents did the moves. Each moved line was checked against HEAD by content, and the only lines that differ are the ones the moves required: `record` → `j_record`, members defined out of line, lambdas made functions with their captures as arguments. The build has `-ffp-contract=off`, so moving a function between files cannot change its floats.
+
+**Proof.** Both DLLs built with no warning. quick on the changed sources: 45 of 46 passed, edit_fuzz, save_undo, road_grade and the e2e among them; the one failure is 03-rua_noite's flicker box (831,264)-(1167,287), §6.9. gates_changed passed.
+
+**What changes.** Nothing seen or simulated. The release DLL's function order (`native/pgo`) does not yet name the new functions, which affects speed only; it is refreshed with `pgo.sh` at the theme's close.
+
+### 6.73 B3, the tests' saves: one folder per test process (2026-11-08)
+
+**Cause.** `SaveSlots.dir()` gave every run driven by tests the same `user://saves_tests`. The suite runs each test in its own Godot, in parallel, and the user folder is the project's, so every checkout on the machine shares it too: the main checkout, city-verify and the sessions' worktrees. Three things in that folder were shared:
+- the index `cidades.cfg`, which names the last city;
+- the city slots `cidade-<seed>`, the same seed in every test that opens `tests_preset`, so a name one process just took is taken again by another;
+- the quarantine folder, which `inspector_test` empties.
+That is how `save_undo_test` read "the same buildings" from another process's file and found a save it had just written opening as `save.none` (log/pendencias.md, 2026-11-08 12:17). It is also the likely holder of the file in the realism branch's "save rename while the file is held": another test process with the same slot open.
+
+**Fix.** `save_slots.gd:23`: a run driven by tests saves under `user://saves_tests/<process id>`. `TestCase.finish` removes that folder, since no other process reads it. The player's folder is unchanged.
+
+**Why it does not come back.** Two processes alive at once never share an id, so they never share a file. Index, slots and quarantine all derive from `dir()`, the one owner of the folder. A test's own scratch files (`TestCase.SCRATCH`) are named per test, and no test that writes them runs in two variants at once.
+
+**Proof.** quick with the suite in parallel: save_undo, inspector and shell all passed. No `<id>` folder is left in `saves_tests` after the run; that folder's own root files are the other checkouts' runs.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

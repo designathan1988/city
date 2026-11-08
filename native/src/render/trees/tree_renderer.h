@@ -7,8 +7,8 @@
 #pragma once
 
 #include "core/job_pool.h"
-#include "render/chunk_jobs.h"
 #include "render/chunk_queue.h"
+#include "render/chunk_results.h"
 #include "render/render_context.h"
 #include "render/rs_util.h"
 #include "render/trees/far_cards.h"

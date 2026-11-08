@@ -1,5 +1,6 @@
 // Zones > Lots as API of script: the lots the player draws, as edits and as outlines on the ground.
 #include "api/city_core.h"
+#include "sim/commands/lot_commands.h"
 #include "api/edit_result.h"
 #include "sim/lots/lot_book.h"
 #include "sim/citygen/lot_land.h"

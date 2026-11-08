@@ -1,6 +1,7 @@
 // The Landscape drawer as script API: the sky, the painted ground, the planted trees, the map's biome and the relief's
 // map actions. Commands hold map_mutex exclusively (run_edit); `landscape` is what the sky's view and the panels read.
 #include "api/city_landscape.h"
+#include "sim/commands/nature_commands.h"
 
 #include "api/edit_result.h"
 #include "sim/state/city_state.h"

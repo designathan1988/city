@@ -4,6 +4,7 @@
 #pragma once
 
 #include <godot_cpp/classes/object.hpp>
+#include "sim/commands/nature_commands.h"
 
 namespace city {
 

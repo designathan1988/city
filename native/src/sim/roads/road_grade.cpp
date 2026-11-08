@@ -1,6 +1,7 @@
 // A road's profile made ready for the solve (Roadcraft 4.0 world/elevation.ts, the stations step and readStations): its
 // stations along the curve, the ground read under them across its casing, and its junction plates; and the reads of a
-// solved profile. The solve itself is road_grade_solve.cpp, one profile's solvers road_grade_profile.cpp.
+// solved profile. The solve itself is road_grade_solve.cpp with its rounds in road_grade_rounds.cpp, one profile's
+// solvers road_grade_profile.cpp, the figures it is tuned by road_grade_tune.cpp.
 #include "sim/roads/road_grade_internal.h"
 
 #include "core/math.h"

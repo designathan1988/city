@@ -1,5 +1,5 @@
 // The parts of the road grade's solve (road_grade.h), internal to sim/roads: the figures it is tuned by, read once a
-// solve from data/catalog/tuning.json (grade), and the solvers of one profile (road_grade_profile.cpp).
+// solve from data/catalog/tuning.json (grade, road_grade_tune.cpp), and the solvers of one profile (road_grade_profile.cpp).
 #pragma once
 
 #include "sim/roads/road_grade.h"
