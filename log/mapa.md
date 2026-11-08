@@ -526,6 +526,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `tools/build/android.sh` — the Android build: the arm64 core library (NDK r28b) and the signed APK (`dist/android/Roadcraft.apk`)
 - `tools/build/free_dll.sh` — a DLL presa por um jogo aberto vai para `dist/held`, e a compilação segue sem fechar o jogo
 - `tools/build/pgo.sh` — o perfil da DLL de release: uma DLL instrumentada joga escondida e as contagens vão para `native/pgo/citycore.profdata`
+- `native/pgo/citycore.order` — the order of the release DLL's functions as the profile's call graph clusters them (lld's sort, printed by `tools/build/pgo.sh`): the link reads it, so every link lays the functions out alike
 - `tools/build/quick.sh` · `tools/build/check_scripts.gd` · `tools/build/photodiff.py` — a change checked in one command (a thin call of `tools/tasks`: only the tasks whose inputs changed); every GDScript compiled at once; the difference of two photo runs; the English rename of the tool folders (pending: the plan without `--apply`)
 - `tools/build/shader_contracts.json` · `tools/build/shader_contracts.py` — the values the shaders share with the core and the scripts, written once; the generator of each group's C++ header and shader include from it (`--check`: quick's `shader_contracts` task fails when any is not what the table makes, or one is there it does not make)
 - `tools/gates/gate_clones.py` · `tools/gates/gate_code.py` · `tools/gates/gate_data.py` · `tools/gates/gate_defs.py` —

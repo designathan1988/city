@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# pgo.sh: the profile the release DLL is optimized by (native/pgo/citycore.profdata). An instrumented DLL, built as the export's, plays
-# the game hidden: the camera over a running city, edits, roads, people, yards. The counts are merged and committed; a build then
-# needs no training. Stale functions only lose their counts, so a new profile is a choice, not a duty: after a change of the hot paths.
+# pgo.sh: the profile the release DLL is optimized by (native/pgo/citycore.profdata) and the order of its functions
+# (native/pgo/citycore.order). An instrumented DLL, built as the export's, plays the game hidden: the camera over a running city,
+# edits, roads, people, yards. The counts are merged, a release build with them prints the order lld's call-graph sort gives, and
+# both are committed; a build then needs no training. Stale functions only lose their counts and their place, so a new profile is a
+# choice, not a duty: after a change of the hot paths.
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT" || exit 2
 machine() { "${PY:-python}" "$ROOT/tools/tasks/cli.py" var "$1"; } # where the machine's tools are: suites.json vars, env first
@@ -62,3 +64,16 @@ ls "$OUT"/raw/*/*.profraw > /dev/null 2>&1 || { echo "no profile written"; exit 
 for entry in "$mirror"/*; do [ -d "$entry" ] && cmd //c rmdir "$(cygpath -w "$entry")" > /dev/null 2>&1; done
 cmd //c rmdir "$(cygpath -w "$mirror/.godot")" > /dev/null 2>&1
 echo "profile: $(du -h "$ROOT/native/pgo/citycore.profdata" | cut -f1)"
+
+# The order of the functions (native/pgo/citycore.order, read by the release link, native/CMakeLists.txt): a release build with the
+# new profile and lld's sort on prints the order it chose. Its DLL goes to the run's folder, emptied above, so the link runs. The
+# names ThinLTO gives promoted local functions (`.llvm.<n>`, their module's hash: the module holds its absolute path) differ from
+# folder to folder and are left out, so every clone lays the DLL out alike.
+ORDER_BUILD="$ROOT/dist/build-pgo-order"
+rm -f "$ROOT/native/pgo/citycore.order" "$ORDER_BUILD/citycore.order"
+cmake -S native -B "$ORDER_BUILD" -G Ninja -DCMAKE_BUILD_TYPE=Release -DGODOTCPP_TARGET=template_release -DCITY_PROFILE=order \
+	-DCITY_OUTPUT_DIR="$(win "$OUT/order")/" -DCMAKE_TOOLCHAIN_FILE="$ROOT/native/toolchain-mingw.cmake" > "$OUT/logs/configure-order.txt" 2>&1 || exit 1
+cmake --build "$ORDER_BUILD" --target citycore -j "$(nproc)" > "$OUT/logs/build-order.txt" 2>&1 || { tail -n 20 "$OUT/logs/build-order.txt"; exit 1; }
+[ -s "$ORDER_BUILD/citycore.order" ] || { echo "no order written"; exit 1; }
+grep -v '\.llvm\.[0-9]*$' "$ORDER_BUILD/citycore.order" > "$ROOT/native/pgo/citycore.order" || exit 1
+echo "order: $(wc -l < "$ROOT/native/pgo/citycore.order") functions"

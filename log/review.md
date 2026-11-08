@@ -3260,6 +3260,50 @@ bindings left unused by the last batches (`RuinSim::write`, `park` of the open l
 **What changes.** Nothing: the hashes, the numbers and every photo the same (`quick`: 45 of 46, the gate's two baseline counts
 in `traffic_params.h` sourced since).
 
+### 6.45 The DLLs' bytes changed with the link and the hour: the functions' order from native/pgo, mimalloc at the epoch (2026-11-08)
+
+**Symptom.** A change that expands to the same code (one owner for the shapes' field macros, §6.46) gave a debug DLL byte for byte
+the same and a release DLL with 834 thousand bytes changed. Rebuilt from HEAD's own sources, the release DLL differed from the
+committed one; linked twice from the same objects, it differed from itself (746 thousand bytes), single-threaded too. CLAUDE.md's
+"the same sources give the same bytes" held for the debug DLL only: every committed release DLL was one of many.
+
+**Cause.** The two links' maps lay the same sections out in another order, every difference among the sections lld's call-graph
+sort places (`.llvm.call-graph-profile`, written by the profile: on by default in lld COFF). The sort itself is ordered (a `MapVector`
+of edges, a stable sort by density, `lld/COFF/CallGraphSort.cpp`), but its result is a `DenseMap` keyed by the sections' addresses,
+walked to store each section's priority under its symbol's name (`lld/COFF/Writer.cpp`, `sortSections`: `for (auto it : order)`,
+`config.order[sym->getName()] = it.second`). Sections that share a name take whichever priority the walk gives last, and the walk
+follows the heap's addresses: this DLL has 48 such names (a `__cxx_global_var_init` per file, 227 of them; godot-cpp's static
+`make_property_info` six times), and every section after them moves. With the sort off, two links differ in one byte, the output's
+own name in the export table.
+
+**Fix.** The order is an input, as the profile is: `tools/build/pgo.sh` builds the release once more with the new profile and the
+sort on (`CITY_PROFILE=order`), which prints the order lld chose (`/print-symbol-order`) to `native/pgo/citycore.order`; the release
+link reads it (`/order`, the sort off, `native/CMakeLists.txt`) and relinks when it changes (`LINK_DEPENDS`). The profiled
+functions keep the sort's sequence; the rest follow in input order, the same names in one place. The order keeps only the names
+every folder gives alike: a local function ThinLTO promotes is named after its module's hash (`mi_free_generic_mt.llvm.<n>`), and
+the module holds its source's absolute path, so the 73 such names of a build in one folder are other names in another and their
+functions would move there. Left out, they follow in input order: 2,202 names stay. A name the code no longer has is an order out
+of date, as the profile's counts are: LNK4037 is left out as `-Wno-profile-instr-out-of-date` is. The order committed now is the
+current profile's.
+
+**Why it does not come back.** No priority comes from walking a map of addresses, and no name in the order depends on the folder:
+lld reads the file's names in order. The same objects linked twice give the same bytes; two copies of the repository in two
+folders, each built from scratch, give the same bytes.
+
+**The debug DLL and the hour.** Built from scratch, the debug DLL differed from the committed one in seven bytes: mimalloc's banner
+prints the date and hour it was compiled (`src/options.c`: `__DATE__`, `__TIME__`), so every compile of that file changed the DLL. Its
+sources compile with the clock at the epoch (`SOURCE_DATE_EPOCH=0` through the target's compiler launcher, read by Clang since
+D135045 and by GCC); mimalloc is the only source that reads the date. The release DLL had none of it (the banner is dropped at the
+link) and does not change; the debug DLL carries "Jan  1 1970" and is the same after its objects are compiled again.
+
+**Process.** The verifying checkout (`city-verify`) had been configured to take the fetched libraries' sources from the main
+checkout's build folder (`FETCHCONTENT_SOURCE_DIR_*`): its objects of mimalloc, Clipper2 and meshoptimizer were compiled from
+another path than a clone compiles them from, and its release DLL was not the one a clone builds. Its build folders were made
+again from scratch, fetching their own.
+
+**What changes.** The release DLL's layout once (the colliding initializers, the promoted functions and the unprofiled ones in input
+order) and the debug DLL's banner date; everything the game does, nothing. Upstream: `log/pendencias.md`.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

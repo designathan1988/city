@@ -17,6 +17,10 @@ O que falta fazer, por área.
   + 1 in `nature.json` `paint.kinds`, its colours literals in the shader; `marks.gdshader` reads `crater_rad` four colours a crater kind
   by index (`materials.json` `display_colors.crater`). Both become named rows of data, sent by the slot the core gives them.
 - Street items keep their footway place when put down (B3, log/review.md §6.13, R3): what an item does when its road moves changes.
+- lld's call-graph sort at the release link (log/review.md §6.45): the link reads `native/pgo/citycore.order` and sorts nothing,
+  because lld COFF hands the sort's result on through a map of section addresses and stores it by symbol name (`lld/COFF/Writer.cpp`,
+  `sortSections`), so same-named sections took a priority that changed with every link. Reporting it to LLVM is the user's call (an
+  outside post); once lld orders it alike at every link, the link may sort again and `pgo.sh` drop its order build.
 - The building render's last look values in code (C14, log/review.md §6.41): the shell's baked tone and grime (`shell.cpp`
   `MACRO_M`, `TONE_*`, `GRIME_*`, read by `Shell::shaded` with no look in reach: a tone block the builders hand each shell), the
   material colours a few emitters name (brass, gas cylinders, shutters, clocks, lamps) and the roof plant's catalogue arrays
