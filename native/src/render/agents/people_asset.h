@@ -1,4 +1,4 @@
-// The cast (project/assets/people/people.bin and atlas.bin, made by tools/assets/cook_people.py and compress_atlas.gd from Roadcraft's
+// The cast (project/assets/people/people.bin and atlas.bin, made by cook_people.py, kept with the 4.0's tools in city-archive, and compress_atlas.gd from Roadcraft's
 // MakeHuman CC0 people on the Rocketbox MIT skeleton): per body and level an ArrayMesh in the bind pose (metres, +Z forward, feet at
 // y = 0) whose bone attributes carry four bone indices and their weights (summing to 1), UV = where in the body's atlas, UV2 = (region,
 // roughness), COLOR = the vertex's own colour over the atlas; the atlases as one array, a layer a body; the clips as a palette texture
@@ -32,7 +32,7 @@ struct PersonFit {
 	float above = 0, below = 0, ahead = 0, side = 0;
 };
 
-constexpr int PALM_FLOATS = 12;
+constexpr int PALM_FLOATS = 12; // three rows of four: a transform without its last row
 constexpr int JOINT_COUNT = 18, JOINT_FLOATS = JOINT_COUNT * 3; // ragdoll.h RAGDOLL_JOINTS
 
 struct PersonVariation {

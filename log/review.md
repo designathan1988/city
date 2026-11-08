@@ -3349,6 +3349,27 @@ same float).
 
 **What changes.** Nothing: the hashes, the numbers and every photo the same (`quick`: 44 of 46).
 
+### 6.49 B2, C14 (the traffic agents' meshes): every part size in agents.json shapes (2026-11-08)
+
+**Cause and fix.** The vehicles' part builders held their sizes by eye beside their definitions: a steering wheel's spokes, a
+seat's nose and lap, a wheel's hub, rim, spokes and brake disc, a pod's squareness, a wreck's dents (the 4.0's waves), the bicycle's
+stays and saddle, the bus's partition, the heavy vehicles' pillars and seams, the car's lamps, grille, plates, handles and mirrors,
+the lofted shape's rows. They went to agents.json `shapes`, one block a builder file, read once at boot through the one reader of
+shapes into `AgentShapes`, which the trim (handed to every part builder), the cabin look and the car style carry; the pod, the
+wreck and the bus and truck readers take it. A size two files had is one field: a door's split (bus and truck), a wheel arch's room
+round its tyre (the car's `CAR_ARCH_PAD_M` and the heavy vehicles' pad: every vehicle's, in the shared parts). The blob under a
+walker gets its sides with its other sizes (agents.json `people.blob`). The definitions stay and say what they are: the pod's turns
+and rings (the sizes of its arrays), the cooked cast's file layout, the hash streams and primes, the ring rows each level keeps,
+the units, the tolerances. `people_asset.h` named a cooker no longer in the repository: it says where it is kept.
+
+`agent_renderer.cpp` was over the file limit and the reading made it more: the boot's mesh building and the shapes' reading went
+to `agent_looks.cpp`, the file of what the agents read of agents.json at boot, and the renderer is under the limit.
+
+**Not here, and why.** The ragdoll's and the bodies' numbers (air and ground friction, limb thickness, the folds, the rest, the
+fixed step two files write) are the next batch: their owner is the body renderer, not the part builders.
+
+**What changes.** Nothing: the hashes, the numbers and every photo the same (`quick`: 44 of 46).
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

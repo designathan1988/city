@@ -14,17 +14,6 @@ namespace city {
 
 namespace {
 
-constexpr float LAMP_DEPTH_M = 0.04f, LAMP_SINK_M = 0.005f, INDICATOR_SINK_M = 0.01f; // a lens, and how far into the surface it starts
-constexpr float INDICATOR_DROP_M = 0.03f, INDICATOR_RISE_M = 0.02f; // the front's under the lamp, the rear's over it
-constexpr float SCAN_STEP_M = 0.005f, SCAN_REACH_M = 0.6f; // the walk in from an end to the surface at a half width
-constexpr float NOSE_BACK_M = 0.02f, TAIL_BACK_M = 0.05f; // where the end's height is read, clear of its roll
-constexpr float GRILLE_RISE_M = 0.03f, GRILLE_SINK_M = 0.012f, GRILLE_LOW = 0.5f; // over the middle of the nose
-constexpr float BUMPER_SHARE = 0.3f; // of an end's height, up from its foot
-constexpr float PLATE_THICK_M = 0.012f, PLATE_PROUD_M = 0.009f, PLATE_FRONT = 0.45f, PLATE_REAR = 0.55f; // up from the bottom to the grille, the tail lamps
-constexpr float HANDLE_SINK_M = 0.007f, HANDLE_DROP_M = 0.09f, HANDLE_REACH_M = 0.2f, HANDLE_SHARE = 0.25f, HANDLE_AHEAD_M = 0.06f;
-constexpr float ROOT_IN_M = 0.02f, ROOT_DROP_M = 0.03f, TIP_BACK_M = 0.04f, TIP_OUT_M = 0.1f; // a mirror's arm, out of the door to its housing
-constexpr float HOUSING_BACK_M = 0.06f, HOUSING_DROP_M = 0.02f, HOUSING_OUT_M = 0.17f; // its housing's middle from the door
-constexpr float MIRROR_GLASS_PROUD_M = 0.003f; // off the housing's back, or the two fight for the pixel
 // SAE J1100 counts 254 mm (10 in) more in its leg room dimensions (L33, L51) than the leg's own reach.
 constexpr float SAE_EXTRA_M = 0.254f;
 
@@ -42,30 +31,33 @@ float skin_x(const CarStyle &s, float xf) {
 
 // The z of the surface `half` out from the middle: walking in from the nose (dir 1) or the tail (dir -1).
 float end_surface(const CarStyle &s, float half, float dir) {
+	const CarPartsShape &K = s.shapes->car_parts;
 	float z = dir * s.L * 0.5f;
-	for (float walked = 0; walked < SCAN_REACH_M && car_half_w(s, z / s.L) < half; walked += SCAN_STEP_M) z -= dir * SCAN_STEP_M;
+	for (float walked = 0; walked < K.scan_reach_m && car_half_w(s, z / s.L) < half; walked += K.scan_step_m) z -= dir * K.scan_step_m;
 	return z;
 }
 
 void mirror(MeshBuilder &mb, const CarStyle &s, const DataValue &m, int side, const AgentTrim &trim) {
+	const CarPartsShape &K = trim.shapes->car_parts;
 	const float z = s.doors[0] * s.L - m["back_m"].f(), y = belt_y(s, z / s.L) + m["rise_m"].f(), x = skin_x(s, z / s.L);
-	const float along = m["long_m"].f(), out = m["wide_m"].f(), high = m["high_m"].f(), arm = m["stalk_m"].f(), cz = z - HOUSING_BACK_M, cx = x + HOUSING_OUT_M;
-	agent_strut(mb, Vector3(side * (x - ROOT_IN_M), y - ROOT_DROP_M, z), Vector3(side * (x + TIP_OUT_M), y, z - TIP_BACK_M), arm, arm, trim.blackout, AgentTag::FIXED);
-	const Vector3 back(side * cx, y - HOUSING_DROP_M + high * 0.5f, cz - along * 0.5f);
-	agent_pod(mb, back, Vector2(out, high) * 0.5f, along, AGENT_WHITE, AgentTag::PAINT);
+	const float along = m["long_m"].f(), out = m["wide_m"].f(), high = m["high_m"].f(), arm = m["stalk_m"].f(), cz = z - K.housing_back_m, cx = x + K.housing_out_m;
+	agent_strut(mb, Vector3(side * (x - K.root_in_m), y - K.root_drop_m, z), Vector3(side * (x + K.tip_out_m), y, z - K.tip_back_m), arm, arm, trim.blackout, AgentTag::FIXED);
+	const Vector3 back(side * cx, y - K.housing_drop_m + high * 0.5f, cz - along * 0.5f);
+	agent_pod(mb, *trim.shapes, back, Vector2(out, high) * 0.5f, along, AGENT_WHITE, AgentTag::PAINT);
 	const Vector2 g = agent_v2(m["glass_m"]); // high, across
-	agent_pod_face(mb, back - Vector3(0, 0, MIRROR_GLASS_PROUD_M), Vector2(g.y, g.x) * 0.5f, trim.mirror, AgentTag::FIXED);
+	agent_pod_face(mb, *trim.shapes, back - Vector3(0, 0, K.mirror_glass_proud_m), Vector2(g.y, g.x) * 0.5f, trim.mirror, AgentTag::FIXED);
 }
 
 // A mirror on each front door by the A pillar's foot, its arm dark and its housing painted; a handle on each door under the belt.
 void mirrors_and_handles(MeshBuilder &mb, const CarStyle &s, const DataValue &body, const AgentTrim &trim) {
+	const CarPartsShape &K = trim.shapes->car_parts;
 	const Vector3 h = agent_v3(body["car_handle_m"]); // [long, high, out]
 	for (int side : { -1, 1 }) {
 		mirror(mb, s, body["mirror"], side, trim);
 		for (size_t d = 0; d + 1 < s.doors.size(); d++) {
-			const float front = s.doors[d] * s.L, back = s.doors[d + 1] * s.L, z = back + std::min(HANDLE_REACH_M, (front - back) * HANDLE_SHARE);
-			const float y = belt_y(s, z / s.L) - HANDLE_DROP_M, x = skin_x(s, z / s.L), mid = z + HANDLE_AHEAD_M;
-			agent_box(mb, Vector3(side * (x - HANDLE_SINK_M), y, mid - h.x * 0.5f), Vector3(side * (x + h.z), y + h.y, mid + h.x * 0.5f), trim.blackout, AgentTag::FIXED);
+			const float front = s.doors[d] * s.L, back = s.doors[d + 1] * s.L, z = back + std::min(K.handle_reach_m, (front - back) * K.handle_share);
+			const float y = belt_y(s, z / s.L) - K.handle_drop_m, x = skin_x(s, z / s.L), mid = z + K.handle_ahead_m;
+			agent_box(mb, Vector3(side * (x - K.handle_sink_m), y, mid - h.x * 0.5f), Vector3(side * (x + h.z), y + h.y, mid + h.x * 0.5f), trim.blackout, AgentTag::FIXED);
 		}
 	}
 }
@@ -107,6 +99,7 @@ Cabin cabin_of(const CarStyle &s, const DataValue &inside, const CabinLook &l) {
 } // namespace
 
 void car_cap(MeshBuilder &mb, const CarStyle &s, float xf, float dir, const AgentTrim &trim) {
+	const CarPartsShape &K = trim.shapes->car_parts;
 	Vector2 r[RING];
 	car_ring(s, xf, r);
 	const float z = xf * s.L;
@@ -115,7 +108,7 @@ void car_cap(MeshBuilder &mb, const CarStyle &s, float xf, float dir, const Agen
 		low = std::min(low, r[k].y);
 		top = std::max(top, r[k].y);
 	}
-	const float bumper = low + (top - low) * BUMPER_SHARE;
+	const float bumper = low + (top - low) * K.bumper_share;
 	for (int k = 1; k + 1 < RING; k++) { // ring[0] is the middle of the floor: band 0 has no height
 		const Vector2 &lo = r[k], &hi = r[k + 1];
 		// the end is the body's own panel; only the bumper's foot is the black of the trim
@@ -127,30 +120,32 @@ void car_cap(MeshBuilder &mb, const CarStyle &s, float xf, float dir, const Agen
 
 // A lens `w` wide and `h` high with its middle at (x, y) on the end `dir`, both sides.
 static void lens_pair(MeshBuilder &mb, const CarStyle &s, float half, float y, float w, float h, float dir, float sink, const Color &c, AgentTag tag) {
+	const CarPartsShape &K = s.shapes->car_parts;
 	const float z = end_surface(s, half, dir) - dir * sink;
 	for (int side : { -1, 1 }) {
 		const float x = side * half;
-		agent_box(mb, Vector3(x - w * 0.5f, y - h * 0.5f, z - LAMP_DEPTH_M * 0.5f), Vector3(x + w * 0.5f, y + h * 0.5f, z + LAMP_DEPTH_M * 0.5f), c, tag);
+		agent_box(mb, Vector3(x - w * 0.5f, y - h * 0.5f, z - K.lamp_depth_m * 0.5f), Vector3(x + w * 0.5f, y + h * 0.5f, z + K.lamp_depth_m * 0.5f), c, tag);
 	}
 }
 
 void car_details(MeshBuilder &mb, const CarStyle &s, const DataValue &body, bool fine, const AgentTrim &trim) {
+	const CarPartsShape &K = trim.shapes->car_parts;
 	const float low_f = car_low_at(s, 0.5f), low_b = car_low_at(s, -0.5f), zf = s.L * 0.5f, zb = -zf;
-	const float nose_y = car_top_at(s, 0.5f - NOSE_BACK_M / s.L), tail_top = car_top_at(s, -0.5f + TAIL_BACK_M / s.L);
+	const float nose_y = car_top_at(s, 0.5f - K.nose_back_m / s.L), tail_top = car_top_at(s, -0.5f + K.tail_back_m / s.L);
 	const float lamp_y = low_f + (nose_y - low_f) * body["lamp_y"].f(), tail_y = low_b + (tail_top - low_b) * body["tail_y"].f();
 	const Vector3 head = agent_v3(body["front_lens_m"]), ind = agent_v3(body["indicator_m"]);
 	const Vector2 tail = agent_v2(body["rear_lens_m"]);
-	lens_pair(mb, s, s.W * 0.5f - head.x, lamp_y, head.z, head.y, 1.f, LAMP_SINK_M, trim.headlamp, AgentTag::HEAD);
-	lens_pair(mb, s, s.W * 0.5f - tail.x, tail_y, tail.y, s.tail_lamp_h, -1.f, LAMP_SINK_M, trim.tail, AgentTag::TAIL);
-	lens_pair(mb, s, s.W * 0.5f - ind.x, lamp_y - INDICATOR_DROP_M, ind.z, ind.y, 1.f, INDICATOR_SINK_M, trim.indicator, AgentTag::FIXED);
-	lens_pair(mb, s, s.W * 0.5f - ind.x, tail_y + INDICATOR_RISE_M, ind.z, ind.y, -1.f, INDICATOR_SINK_M, trim.indicator, AgentTag::FIXED);
+	lens_pair(mb, s, s.W * 0.5f - head.x, lamp_y, head.z, head.y, 1.f, K.lamp_sink_m, trim.headlamp, AgentTag::HEAD);
+	lens_pair(mb, s, s.W * 0.5f - tail.x, tail_y, tail.y, s.tail_lamp_h, -1.f, K.lamp_sink_m, trim.tail, AgentTag::TAIL);
+	lens_pair(mb, s, s.W * 0.5f - ind.x, lamp_y - K.indicator_drop_m, ind.z, ind.y, 1.f, K.indicator_sink_m, trim.indicator, AgentTag::FIXED);
+	lens_pair(mb, s, s.W * 0.5f - ind.x, tail_y + K.indicator_rise_m, ind.z, ind.y, -1.f, K.indicator_sink_m, trim.indicator, AgentTag::FIXED);
 	const Vector3 g = agent_v3(body["grille_m"]); // the share of the nose's half width across, high, deep
-	const float gy = low_f + (nose_y - low_f) * GRILLE_LOW + GRILLE_RISE_M, gw = car_half_w(s, 0.5f - NOSE_BACK_M / s.L) * g.x * 0.5f;
-	agent_box(mb, Vector3(-gw, gy - g.y * 0.5f, zf - GRILLE_SINK_M - g.z * 0.5f), Vector3(gw, gy + g.y * 0.5f, zf - GRILLE_SINK_M + g.z * 0.5f), trim.grille, AgentTag::FIXED);
+	const float gy = low_f + (nose_y - low_f) * K.grille_low + K.grille_rise_m, gw = car_half_w(s, 0.5f - K.nose_back_m / s.L) * g.x * 0.5f;
+	agent_box(mb, Vector3(-gw, gy - g.y * 0.5f, zf - K.grille_sink_m - g.z * 0.5f), Vector3(gw, gy + g.y * 0.5f, zf - K.grille_sink_m + g.z * 0.5f), trim.grille, AgentTag::FIXED);
 	const Vector2 p = agent_v2(body["car_plate_m"]);
-	const float py[2] = { low_f + (gy - low_f) * PLATE_FRONT, low_b + (tail_y - low_b) * PLATE_REAR }, pz[2] = { zf + PLATE_PROUD_M, zb - PLATE_PROUD_M };
+	const float py[2] = { low_f + (gy - low_f) * K.plate_front, low_b + (tail_y - low_b) * K.plate_rear }, pz[2] = { zf + K.plate_proud_m, zb - K.plate_proud_m };
 	for (int i = 0; i < 2; i++)
-		agent_box(mb, Vector3(-p.x * 0.5f, py[i] - p.y * 0.5f, pz[i] - PLATE_THICK_M * 0.5f), Vector3(p.x * 0.5f, py[i] + p.y * 0.5f, pz[i] + PLATE_THICK_M * 0.5f), trim.plate, AgentTag::FIXED);
+		agent_box(mb, Vector3(-p.x * 0.5f, py[i] - p.y * 0.5f, pz[i] - K.plate_thick_m * 0.5f), Vector3(p.x * 0.5f, py[i] + p.y * 0.5f, pz[i] + K.plate_thick_m * 0.5f), trim.plate, AgentTag::FIXED);
 	if (fine) mirrors_and_handles(mb, s, body, trim);
 }
 

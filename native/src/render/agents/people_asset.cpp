@@ -26,6 +26,8 @@ namespace city {
 namespace {
 constexpr uint32_t MAGIC = 0x50504352u; // "RCPP"
 constexpr uint32_t FACE_TEXELS = PEOPLE_FACE_SPAN * PEOPLE_FACE_CHANNELS, FACE_TEXEL_BYTES = 8, MAX_FACE_LINES = 16384; // half floats
+// the cooked cast's layout (people.bin, people_asset.h): its version, a material byte's region over its six roughness bits,
+// a body's flags, the most of each list it may hold, a clip name's bytes, a mesh's vertices under a 16-bit index, four channels a byte each
 constexpr uint32_t VERSION = 8, REGION_SHIFT = 6, ROUGHNESS_MASK = 63, FLAG_FEMALE = 1, FLAG_SENIOR = 2, FLAG_CHILD = 4;
 constexpr uint32_t MAX_VARIATIONS = 256, MAX_LODS = 4, MAX_CLIPS = 64, CLIP_NAME_BYTES = 16, MAX_VERTICES = 65535, RGBA = 4;
 constexpr int BYTE_MAX = 255, BYTE_BITS = 8, CHANNELS = 4;

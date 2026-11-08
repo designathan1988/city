@@ -1,4 +1,4 @@
-// Builds the agent meshes once at both levels, pushes the palettes to the "agent" material and refills the instance
+// Holds the agent meshes (built at boot, agent_looks.cpp) and refills the instance
 // buffers every frame: transform from the interpolated pose (+Z forward, +X left), INSTANCE_CUSTOM = (paint index, wheel
 // roll angle in radians + AGENT_BRAKE_FLAG when braking, passengers, 0) for vehicles, all small whole numbers or a few bits of an
 // angle, since the Compatibility renderer keeps custom data as halfs; the instance colour's alpha a seed of the vehicle. Walkers
@@ -28,18 +28,12 @@ namespace {
 
 constexpr int WAGON_EVERY = 3; // one sedan in three is an estate, by its paint: a car keeps its shape from the road to its bay
 constexpr float NOBODY_ABOARD = -1.f; // passengers of a car standing in a bay: not even a driver (agents.gdshader)
-constexpr uint32_t WRECK_SEED = 2654435761u; // each model buckled its own way
+// streams of a vehicle's id (any distinct words; the seats' is 2^32 over the golden ratio), and the byte a load's order is read past
 constexpr uint32_t SEED_SALT = 0x5ea7u, LOAD_SALT = 0x10adu, ORDER_SHIFT = 8, SEAT_SALT = 0x9e3779b1u;
 constexpr float ROLL_LEAST_M = 0.002f; // a frame's movement under this is standing
 constexpr int STILL_FRAMES = 12; // so many in a row and a rider puts a foot down
 constexpr uint64_t SEAT_KEYS = 128; // more than any vehicle's seats: a rider's key is the vehicle's and the seat's
 
-// agents.json's table of a vehicle that is no car.
-const char *vehicle_key(int type) {
-	if (type == int(VehicleType::MOTO)) return "moto";
-	if (type == int(VehicleType::BICYCLE)) return "bicycle";
-	return type == int(VehicleType::BUS) ? "bus" : "truck";
-}
 } // namespace
 
 bool AgentRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
@@ -52,6 +46,7 @@ bool AgentRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	const Dictionary table = ctx.table("agents", errors);
 	if (!errors.is_empty()) return false;
 	const DataValue t = DataReader{ errors, "agents.json" }.at(table); // render/data_reader.h
+	if (!read_shapes(table, errors)) return false;
 	if (!build_meshes(t, errors)) return false;
 	if (!push_palettes(t, ctx.catalog->traffic.line_colours, errors) || !read_loads(t["occupants"]["load"], errors)) return false;
 	vehicle_r_ = t["vehicle_radius_m"].f();
@@ -69,58 +64,6 @@ bool AgentRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	if (!errors.is_empty()) return false;
 	people_.set_level_hold(level_hold_);
 	return people_.init(ctx, t["people"], t["held"], errors);
-}
-
-bool AgentRenderer::build_meshes(const DataValue &t, PackedStringArray &errors) {
-	const int64_t before = errors.size();
-	const AgentTrim trim = read_trim(t["trim"]);
-	const DataValue cars = t["cars"], body = t["car_body"], inside = t["cars_cabin"];
-	cars.list(CAR_MODELS + 1); // one car a style, and the wagon
-	CabinLook look;
-	if (!look.load(t["cabin"])) t["cabin"].fail("a cabin row does not read");
-	for (const char *key : { "wheel_sides", "stations", "arch_steps", "end_steps", "end_roll_steps" }) // one entry per level and one for the fleet's shadow (agent_meshes.h)
-		body[key].list(LEVELS + 1);
-	if (errors.size() != before) return false;
-	const DataValue wheel_sides = body["wheel_sides"], far_shadow = t["far_shadow"], lod = t["lod"];
-	const float cabin_error = lod["cabin_error_m"].f(), body_error = lod["body_error_m"].f(), far_error = lod["far_error_m"].f();
-	MeshBuilder hull;
-	build_car(hull, cars[0], body, inside, nullptr, trim, AGENT_HULL_LEVEL);
-	fleet_shadow_.init(scenario_, shadow_, simplify_parts(hull, far_error), far_shadow["sector_m"].f(), far_shadow["inset"].f(), AGENT_MODELS);
-	for (int i = 0; i < AGENT_MODELS; i++)
-		for (int level = 0; level < LEVELS; level++) {
-			MeshBuilder mb;
-			const bool car = i < CAR_MODELS || i == WAGON_MODEL;
-			const DataValue d = car ? cars[i == WAGON_MODEL ? CAR_MODELS : i] : t[vehicle_key(i)];
-			const int sides = wheel_sides[level].whole();
-			const CabinLook *l = level == CABIN_LEVEL ? &look : nullptr;
-			look.spots = &seats_[i];
-			int seats = 0;
-			if (car) seats = build_car(mb, d, body, inside, l, trim, level);
-			else if (i == int(VehicleType::MOTO)) seats = build_moto(mb, d, sides, trim);
-			else if (i == int(VehicleType::BICYCLE)) seats = build_bicycle(mb, d, sides, trim);
-			else if (i == int(VehicleType::BUS)) seats = build_bus(mb, d, sides, l, trim);
-			else seats = build_truck(mb, d, sides, l, trim);
-			wheel_r_[i] = agent_tyre(d["tyre"]).x; // the motorbike's: its rear wheel
-			if (level == CABIN_LEVEL && (i == int(VehicleType::MOTO) || i == int(VehicleType::BICYCLE))) {
-				astride_[i] = true;
-				seats_[i].push_back({ agent_v3(d["rider"]["hip"]), i == int(VehicleType::MOTO) ? SeatPose::MOTO : SeatPose::BICYCLE, DRIVER_SEAT });
-			}
-			if (level == FAR_LEVEL) fleet_shadow_.set_model(i, mb);
-			if (level == BODY_LEVEL) wrecks_[size_t(i)] = agent_wreck(mb, uint32_t(i + 1) * WRECK_SEED);
-			if (level == CABIN_LEVEL) {
-				const AABB box = mesh_outline(mb);
-				reach_m_[i] = box.position.abs().max(box.get_end().abs()).length();
-			}
-			if (seats < 0) d.fail("its cabin is inside out (its back ahead of its front)");
-			if (level == CABIN_LEVEL) {
-				load_[i].seats = seats;
-				commit_mesh(i, MID_DRAW, simplify_parts(mb, cabin_error));
-				commit_mesh(i, level, mb);
-			} else {
-				commit_mesh(i, level, level == BODY_LEVEL ? simplify_parts(mb, body_error) : simplify_whole(mb, far_error)); // far, a shell of few pixels: the parts need not keep their borders
-			}
-		}
-	return errors.size() == before;
 }
 
 void AgentRenderer::commit_mesh(int model, int draw, const MeshBuilder &mb) {

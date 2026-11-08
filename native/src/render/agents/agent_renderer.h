@@ -6,6 +6,7 @@
 #pragma once
 
 #include "render/agents/agent_meshes.h"
+#include "render/agents/agent_shapes.h"
 #include "render/agents/head_lights.h"
 #include "render/agents/fleet_shadow.h"
 #include "render/view_cull.h"
@@ -53,6 +54,7 @@ public:
 
 private:
 	HeadLights heads_;
+	AgentShapes shapes_; // every size the part builders draw with (agents.json "shapes"): the meshes are built from it at init
 	std::array<AgentWreck, AGENT_MODELS> wrecks_;
 	float level_hold_ = 0; // of a level's edge: how far past it a vehicle or a walker changes level
 	static constexpr int CABIN_LEVEL = AGENT_CABIN_LEVEL, BODY_LEVEL = AGENT_BODY_LEVEL, FAR_LEVEL = AGENT_FAR_LEVEL, LEVELS = AGENT_LEVELS;
@@ -70,6 +72,7 @@ private:
 	};
 	// Wheel roll angle of a vehicle slot: metres moved since the last frame over the wheel radius (render-side odometer).
 	float roll(int id, const Pose &p, float wheel_r);
+	bool read_shapes(const godot::Dictionary &table, godot::PackedStringArray &errors); // agent_looks.cpp
 	bool build_meshes(const DataValue &t, godot::PackedStringArray &errors);
 	bool push_palettes(const DataValue &t, const std::vector<uint32_t> &lines, godot::PackedStringArray &errors);
 	bool read_loads(const DataValue &loads, godot::PackedStringArray &errors);
