@@ -3754,6 +3754,21 @@ exact. `quick`: every test passes, the four photos byte-equal to known states.
 
 **What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56).
 
+### 6.69 B2, C14 (the last shaders): street props, the condenser's front, the flags; the shaders' findings closed (2026-11-08)
+
+**Cause and fix.** The last three shaders: `props` (24), `building_props` (32), `building_parts_body` (31). The props' wire gust,
+wear mix, planks and pole grain are `prop` params; the condenser's front and the fourteen flag designs are drawn geometry, named
+consts with their source (the designs' codes from `FlagPattern`, the border's far edges kept as the floats they were, `1.0 - 0.15`
+falling on a rounding tie); the flags' cloth roughness, which drew from its default, is the `building_parts` row's; Godot's
+`F0 = 0.16 SPECULAR^2` and the guards are named. Defaults the rows set are gone. The condenser's names carry `AC_`: `fan_r`,
+`slat_half` and `slat_reach` are other parts' keys in `building_look.json`.
+
+With §6.55-§6.69 the shaders hold no bare number and no unsourced constant (1356 and 43 findings at the start of the stage).
+
+**Proof.** Each shader with its consts and moved values put back is HEAD's code. `quick --ready`: every test passes, the four photos byte-equal to known states.
+
+**What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56).
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

@@ -240,7 +240,8 @@
   "uses": ["finishes"],
   "shader": "res://render/shaders/building_parts.gdshader", "fade_shader": "res://render/shaders/building_parts_fade.gdshader",
   "params": {
-   "wall_gain": 1.0
+   "wall_gain": 1.0,
+   "cloth_roughness": 0.85
   }
  },
  "prop": {
@@ -255,7 +256,14 @@
    "glow_gain": 6.0,
    "roughness": 0.85,
    "lens_roughness": 0.0,
-   "lens_ior": 1.5848
+   "lens_ior": 1.5848,
+   "wire_gust": [0.55, 0.45, 1.9],
+   "wear_mix": [0.6, 0.4],
+   "plank_look": [0.7, 1.12, 0.86, 0.28],
+   "plank_rough": [0.5, 0.3],
+   "plank_wave_noise": [0.8, 5.0],
+   "plank_fade": 0.3,
+   "pole_grain_per_m": 0.7
   }
  },
  "agent": {
