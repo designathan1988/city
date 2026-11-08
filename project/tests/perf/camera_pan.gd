@@ -7,7 +7,7 @@
 ## frames are broken down (when in the movement; the core's _process by section, query render_cost; GPU; render
 ## CPU) to tell where a hitch comes from.
 ## Analysis knobs: --shadows=0 (no sun shadows), --casters=MASK (only these render layers cast them), --casters-cycle=all,0,2,-64
-## (A/B in one run, turn by turn: all, no shadows, 2 splits, every layer but 64: a busy machine weighs on each alike; --uncapped), --msaa=0 (no MSAA), --verges=0 (no ground round the roads), --wear=0 (no wear
+## (A/B in one run, turn by turn: all, no shadows, 2 splits, every layer but 64: a busy machine weighs on each alike; --uncapped), --msaa=0 (no MSAA), --wear=0 (no wear
 ## read), to see what a feature costs; --moves=a,b runs
 ## only those movements (the rig still goes where each one starts); --uncapped (no vsync, no frame cap: under the cap the GPU
 ## slows its clock until a frame takes about the same, so only this compares the GPU cost of two versions; not the game's pace).
@@ -138,8 +138,6 @@ func _ready() -> void:
 		waited += 1
 	print("city %s .. %s, drawn in %d frames" % [lo, hi, waited])
 	print("malhas: ", CityStore.query(&"road_mesh_counts"))
-	if "--verges=0" in OS.get_cmdline_user_args():
-		CityStore.query(&"draw_verges", [false])
 	await _run("parada", STILL_S, func(_dt: float, _t: float) -> void: pass)
 	var a := Vector3(lerpf(lo.x, hi.x, CROSS_INSET), 0.0, centre.z)
 	var b := Vector3(lerpf(lo.x, hi.x, 1.0 - CROSS_INSET), 0.0, centre.z)

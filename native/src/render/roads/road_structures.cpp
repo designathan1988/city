@@ -5,6 +5,7 @@
 #include "render/roads/road_mesh.h"
 
 #include "sim/roads/road_grade.h"
+#include "sim/terrain/road_shape.h"
 
 #include <algorithm>
 #include <cmath>
@@ -114,6 +115,18 @@ struct Deck {
 			structure_face(e.mb, a.c - a.left * half - under, b.c - b.left * half - under, b.c + b.left * half - under, a.c + a.left * half - under, concrete, UP);
 			a = b;
 		}
+	}
+
+	// The deck closed where it stops at a dead end (a road built to there, or cut there), facing `along` the road (-1 back, +1
+	// ahead): its end from the road's surface down to the soffit, and the edge bands' ends up to their top (the raised strips close
+	// their own ends, road_segment.cpp end_faces). At a junction the deck runs on into the next road's.
+	void end_cap(double at, float along) const {
+		const SegFrame f = seg_frame(e.s, sid, at);
+		const float casing = casing_half(p), half = p.half();
+		const Vector3 top(0, e.L.h_sidewalk, 0), soffit(0, -spec.deck - K.soffit_band_m, 0), out = f.fwd * along;
+		structure_face(e.mb, f.c - f.left * casing, f.c + f.left * casing, f.c + f.left * casing + soffit, f.c - f.left * casing + soffit, deck_tone, out);
+		for (const float side : { 1.f, -1.f })
+			structure_face(e.mb, f.c + f.left * (side * half), f.c + f.left * (side * casing), f.c + f.left * (side * casing) + top, f.c + f.left * (side * half) + top, deck_tone, out);
 	}
 
 	// Where a ramp leaves its solid approach: an abutment there, and no bent near it.
@@ -262,6 +275,13 @@ void structure_face(MeshBuilder &mb, const Vector3 &a, const Vector3 &b, const V
 	mb.quad(a, b, c, d, col, out, uv);
 }
 
+bool decked_at(const RoadEmit &e, int sid, const SegFrame &f) {
+	if (is_raised(structure_of(e.s.roads.segs[size_t(sid)].flags))) return true;
+	const Heightfield &t = e.s.terrain;
+	const uint8_t kind = size_t(sid) < t.road_shapes.size() && t.road_shapes[size_t(sid)].alive ? t.road_shapes[size_t(sid)].kind : 0;
+	return ground_carries(kind, f.c.y - t.base_height_at(f.c.x, f.c.z), e.s.catalog.tune) < 1.f;
+}
+
 void emit_structures(const RoadEmit &e, int sid) {
 	const StructureShape &K = e.L.shapes.road_structures;
 	const RoadSegment &g = e.s.roads.segs[size_t(sid)];
@@ -274,15 +294,17 @@ void emit_structures(const RoadEmit &e, int sid) {
 	const double scan = std::max(double(K.scan_road_m), g.len / SCAN_MOST);
 	for (double s = 0; s <= g.len && !(raised && sunk); s += scan) {
 		const SegFrame f = seg_frame(e.s, sid, s);
-		const float over = f.c.y - e.s.terrain.height_at(f.c.x, f.c.z);
-		raised = raised || over > tn.structure_raised_m;
-		sunk = sunk || over < -bore;
+		raised = raised || decked_at(e, sid, f);
+		sunk = sunk || f.c.y - e.s.terrain.height_at(f.c.x, f.c.z) < -bore;
 	}
 	if (raised) {
 		const Deck deck{ e, sid, g, p, structure_spec(is_raised(st) ? st : Structure::ELEVATED, tn), tn };
 		const double v0 = g.retreat_a, v1 = g.len - g.retreat_b;
 		if (v1 > v0) {
 			deck.slabs(v0, v1);
+			const auto dead_end = [&](int n, double at) { return e.s.roads.nodes[size_t(n)].segs.size() == 1 && decked_at(e, sid, seg_frame(e.s, sid, at)); };
+			if (dead_end(g.a, v0)) deck.end_cap(v0, -1.f);
+			if (dead_end(g.b, v1)) deck.end_cap(v1, 1.f);
 			const std::vector<double> near_abutment = deck.abutments(v0, v1);
 			if (stayed(e, sid)) emit_stays(e, sid, v0, v1, casing_half(p));
 			else deck.bents(v0, v1, near_abutment);

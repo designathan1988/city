@@ -1,5 +1,6 @@
 // Segment surface: the profile's strips split into pieces (the ramp band of a footway at a dropped kerb), extruded between the two mouths; vertical faces where
-// neighbouring pieces step in height (kerb faces), skirts down the outer edges and end faces of raised strips.
+// neighbouring pieces step in height (kerb faces), skirts down the outer edges to the ground the terrain levels to them (none over a
+// deck, whose sides close the road) and end faces of raised strips.
 #include "render/roads/road_mesh.h"
 #include "render/roads/road_section.h"
 
@@ -37,6 +38,7 @@ struct Sample {
 	SegFrame f;
 	float at = 0, d = BIG_D;
 	float tex = 0; // how far along its street, what the maps read
+	bool decked = false; // a deck carries the road here (decked_at)
 };
 
 std::vector<Sample> samples(const RoadEmit &e, int sid, double v0, double v1, bool ca, bool cb, double lo, double hi) {
@@ -59,6 +61,7 @@ std::vector<Sample> samples(const RoadEmit &e, int sid, double v0, double v1, bo
 		sm.f = seg_frame(e.s, sid, a);
 		sm.at = float(a);
 		sm.tex = float(start + a);
+		sm.decked = decked_at(e, sid, sm.f);
 		if (ca) sm.d = std::min(sm.d, float(a - v0));
 		if (cb) sm.d = std::min(sm.d, float(v1 - a));
 		out.push_back(sm);
@@ -130,6 +133,7 @@ void steps(const Ctx &c, const Piece &a, const Piece &b) {
 void skirts(const Ctx &c, const std::vector<Piece> &ps) {
 	const StreetLook &L = c.e.L;
 	for (size_t k = 0; k + 1 < c.sm.size(); k++) {
+		if (c.sm[k].decked && c.sm[k + 1].decked) continue;
 		float h0, h1, g0, g1;
 		heights(L, ps.front(), c.sm[k].d, h0, h1);
 		heights(L, ps.front(), c.sm[k + 1].d, g0, g1);

@@ -1,6 +1,6 @@
 // The shapes two road jobs both draw from, made once for the city's revision (render/kept_by_revision.h) instead of in each job: a
-// node's ends and the kerb line of each corner between them (the road jobs pave and kerb it, the verge job runs the ground off it),
-// and a segment's runs of retaining wall on each side (the structure job builds them, the verge job backfills behind them).
+// node's ends and the kerb line of each corner between them (the road jobs pave and kerb it),
+// and a segment's runs of retaining wall on each side (the structure job builds them, the backfill job covers the ground behind them).
 #pragma once
 
 #include "render/kept_by_revision.h"

@@ -45,13 +45,12 @@ void emit_chunk(const RoadEmit &e, int64_t chunk);
 void kerbed_line(const RoadEmit &e, const std::vector<godot::Vector3> &in, const std::vector<godot::Vector3> &bk, const std::vector<godot::Vector3> &out,
 		float across, bool kerbed, const godot::Color &walk);
 
-// The ground round the road (road_verge.cpp): from `edge`, a line along the paving's outer top, out along `away` (unit,
-// flat) down to the terrain. emit_verge_node draws it round a node's corners and ends.
-void verge_ribbon(const RoadEmit &e, const std::vector<godot::Vector3> &edge, const std::vector<godot::Vector3> &away);
-void emit_verge_segment(const RoadEmit &e, int sid);
-void emit_verge_node(const RoadEmit &e, int node);
 // What of a segment is not its surface: the deck, bents and parapets where it is raised, the portals where it goes under (road_structures.cpp).
+// The ground round a road is the terrain's (sim/terrain/road_shape.h): no mesh here draws ground.
 void emit_structures(const RoadEmit &e, int sid);
+// Whether a deck carries segment `sid` at frame `f`: built as a viaduct or a bridge, or standing where the ground lets it go
+// (sim/terrain/road_shape.h ground_carries, read on the natural ground: the same lift the terrain shaped it by).
+bool decked_at(const RoadEmit &e, int sid, const SegFrame &f);
 godot::Color structure_concrete();
 void structure_face(MeshBuilder &mb, const godot::Vector3 &a, const godot::Vector3 &b, const godot::Vector3 &c, const godot::Vector3 &d, const godot::Color &col, const godot::Vector3 &out);
 // The retaining walls of a cutting and the backfill behind them (road_walls.cpp); `walled_at` says where one stands, on side +1 or -1.

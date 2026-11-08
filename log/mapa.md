@@ -193,7 +193,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/sim/terrain/compose.cpp` — as alturas finais compostas (base, modificadores e chão das vias): a composição segurada de uma edição em massa (blocos fundidos, cada um composto uma vez) e o ponto mais perto de uma polilinha por regiões (faixa, cunha e pontas de cada peça)
 - `native/src/sim/terrain/height_patch.h` — amostrador bilinear único do terreno e cópia das alturas para os jobs
 - `native/src/sim/terrain/heightfield.cpp` · `native/src/sim/terrain/heightfield.h` — alturas, consultas, raycast, modificadores, formas das vias e o chão que se moveu
-- `native/src/sim/terrain/road_shape.cpp` · `native/src/sim/terrain/road_shape.h` — the ground shaped to a road by the resolved height: cut, fill, slope, the ground under the deck and the tunnel
+- `native/src/sim/terrain/road_shape.cpp` · `native/src/sim/terrain/road_shape.h` — the ground shaped to a road by the resolved height, the only ground beside a road: levelled to the paving's outer top, cut, fill, slope, the embankment up to where a deck carries the road (`ground_carries`), the tunnel; its sizes in `project/data/catalog/tuning.json` (`road_shape`)
 - `native/src/sim/terrain/terrain_brush.cpp` — pincel de relevo e formas
 - `native/src/sim/terrain/terrain_gen.cpp` · `native/src/sim/terrain/terrain_gen.h` — generated terrain (from the map seed)
 - `native/src/sim/terrain/scenic_land.cpp` · `native/src/sim/terrain/scenic_land.h` — the land of a scenic city: plateau and relief, ridges, rivers cut in their channels with their floodplains, lakes under their shores
@@ -319,16 +319,15 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/render/roads/street_shapes.h` · `native/src/render/roads/street_shapes_parts.h` — every size a street emitter draws with beyond the road's section, one block per file (structures, stays, a junction's outline, the section, the street trees), as streets.json "shapes" gives them; the StreetShapes the StreetLook holds
 - `native/src/render/roads/road_emit.cpp` — referenciais de segmento, nós e quad texturizado
 - `native/src/render/roads/road_junction.cpp` · `native/src/render/roads/road_kerb.cpp` — placas de nó, beco sem saída e balão; a borda com meio-fio de uma esquina ou balão
-- `native/src/render/roads/road_shapes.cpp` · `native/src/render/roads/road_shapes.h` — the shapes the road jobs share, made once for the city's revision: a node's ends and its corners' kerb and outer lines (road and verge jobs), a segment's runs of retaining wall (structure and verge jobs)
+- `native/src/render/roads/road_shapes.cpp` · `native/src/render/roads/road_shapes.h` — the shapes the road jobs share, made once for the city's revision: a node's ends and its corners' kerb and outer lines (road jobs), a segment's runs of retaining wall (structure and backfill jobs)
 - `native/src/render/roads/road_look.cpp` · `native/src/render/roads/road_look.h` — streets.json → StreetLook (aparência das vias)
 - `native/src/render/roads/road_markings.cpp` — pintura viária como geometria fina elevada
 - `native/src/render/roads/road_mesh.h` — peças do malhador de vias
 - `native/src/render/roads/road_chunks.h` · `native/src/render/roads/road_renderer.cpp` · `native/src/render/roads/road_renderer.h` — chunks de via por segmento e nó
 - `native/src/render/roads/far_road_renderer.cpp` · `native/src/render/roads/far_road_renderer.h` — toda via do mapa no nível distante: uma malha por superchunk, só as faces de cima, dobrada onde o chunk detalhado está de pé
-- `native/src/render/roads/road_verge.cpp` — the verge: the band from the footway's end down to the terrain, in the terrain's grass
-- `native/src/render/roads/road_layer.cpp` · `native/src/render/roads/road_layer.h` — a layer drawn chunk by chunk on the road chunks' streaming, in a material of its own: the verges and the structures (the only one that casts), told apart by material, job lane and what they emit
+- `native/src/render/roads/road_layer.cpp` · `native/src/render/roads/road_layer.h` — a layer drawn chunk by chunk on the road chunks' streaming, in a material of its own: the backfill behind a cutting's walls and the structures (the only one that casts), told apart by material, job lane and what they emit
 - `native/src/render/roads/road_stays.cpp` — the long bridge hung from towers: spans along the whole street, an H tower in each and the cable fan
-- `native/src/render/roads/road_structures.cpp` · `native/src/render/roads/road_walls.cpp` — what is not the road's surface: closed deck, abutments, bents and parapets where it is in the air, portals with wing walls where it enters the ground; the cutting's retaining walls and the backfill behind them
+- `native/src/render/roads/road_structures.cpp` · `native/src/render/roads/road_walls.cpp` — what is not the road's surface: closed deck (its end closed at a dead end), abutments, bents and parapets where it is in the air, portals with wing walls where it enters the ground; the cutting's retaining walls and the backfill behind them
 - `native/src/render/roads/road_section.cpp` · `native/src/render/roads/road_section.h` — a seção da via em peças: superfícies, rampa do rebaixo e ilha entre as pistas
 - `native/src/render/roads/road_segment.cpp` — superfície do segmento: as peças da seção entre as bocas, com a ponta da ilha antes da travessia
 - `native/src/render/wear/wear_field.cpp` · `native/src/render/wear/wear_field.h` — desgaste das ruas e calçadas: campo em janela que dá a volta, em camadas de uma textura em array, só as alteradas enviadas
@@ -486,6 +485,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `project/tests/visual/ui_driver.gd` — entrada real (mouse/teclas) para as capturas
 - `project/tests/visual/live_driver.gd` — o jogo aberto na tela do jogador, dirigido de fora enquanto ele olha (`-- --live=<pasta>`): cidade nova, câmera, comandos, consultas e fotos
 - `project/tests/visual/frozen_plan.json` — as vistas congeladas do `tools/build/quick.sh` (`look --frozen`): o mundo parado, bit a bit
+- `project/tests/visual/road_ground_plan.json` — the ground beside a road looked at close: a street across a hill's flank, one raised 1.5 m on its terrain embankment, one raised 9 m with its deck's dead ends and a charge's cut
 - `project/tests/visual/sao_paulo_plan.json` — the scenic Sao Paulo photographed: the whole city, Paulista from above and down its middle, Centro, Ibirapuera, Pinheiros, the Tiete bridge, the city at night
 - `project/tests/visual/look.gd` · `project/tests/visual/look.tscn` · `project/tests/visual/look_aim.gd` · `project/tests/visual/look_measure.gd` — the game looked at through a JSON plan: setView, shot, wait, frames, hour, dispatch, query, key, click, drag; the Godot servers' measurements (frames, usage, render, GPU passes)
 - `project/ui/builder_strip.gd` · `project/ui/model_shelf.gd` — seções e cartões das abas do Construir; prateleira de Modelos (busca, categorias, fotos, salvar e remover)

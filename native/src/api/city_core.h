@@ -190,8 +190,7 @@ public:
 	godot::Dictionary building_chunk(float x, float z) const { return render_.building_chunk(x, z); } // the tests: BuildingRenderer::chunk_view
 	godot::Dictionary render_cost() const; // where the last frame's _process went, in ms (tests tell a hitch's cause); constant time
 	godot::Dictionary wear_probe() const; // the wear field's worn cells, scanned whole (captures; never per frame)
-	godot::Dictionary road_mesh_counts() const; // what the road and verge chunks hold and the wear field's bytes
-	void draw_verges(bool on) { render_.draw_verges(on); } // tests/perf/camera_pan: a frame without them
+	godot::Dictionary road_mesh_counts() const; // what the road and wall backfill chunks hold and the wear field's bytes
 	void wear_paint(float x0, float z0, float x1, float z1, float value) { render_.wear_paint(x0, z0, x1, z1, value); } // tests/visual: a set use
 	godot::Dictionary building_cost() const { return render_.building_cost(); } // the building levels by surface: triangles, bytes
 	godot::Dictionary agent_cost() const; // vehicles by type and level: triangles, instances, draws (counts)

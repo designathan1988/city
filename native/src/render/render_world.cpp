@@ -24,7 +24,7 @@ constexpr int64_t BACKLOG_WINDOWS = 4;
 bool RenderWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	bool ok = roads_.init(ctx, errors);
 	ok = ok && far_roads_.init(ctx, roads_.look(), roads_.shapes(), errors);
-	ok = ok && verges_.init(ctx, roads_.look(), roads_.shapes(), errors);
+	ok = ok && backfills_.init(ctx, roads_.look(), roads_.shapes(), errors);
 	ok = ok && structures_.init(ctx, roads_.look(), roads_.shapes(), errors);
 	ok = ok && props_.init(ctx, roads_.look(), errors);
 	ground_.set_budget(size_t(ctx.catalog->tune.render_ground_cache_mb * BYTES_PER_MIB));
@@ -60,7 +60,7 @@ void RenderWorld::reset() {
 	wear_.reset();
 	roads_.reset();
 	far_roads_.reset();
-	verges_.reset();
+	backfills_.reset();
 	structures_.reset();
 	props_.reset();
 	trees_.reset();
@@ -180,16 +180,16 @@ void RenderWorld::mark_changed(const CityState &s) {
 }
 
 int64_t RenderWorld::baking() const {
-	return roads_.baking() + far_roads_.baking() + verges_.baking() + structures_.baking() + props_.baking() + buildings_.baking() + trees_.baking() +
+	return roads_.baking() + far_roads_.baking() + backfills_.baking() + structures_.baking() + props_.baking() + buildings_.baking() + trees_.baking() +
 			water_.baking();
 }
 
 int64_t RenderWorld::waiting() const {
-	return roads_.waiting() + far_roads_.waiting() + verges_.waiting() + structures_.waiting() + props_.waiting() + buildings_.waiting() + trees_.waiting() +
+	return roads_.waiting() + far_roads_.waiting() + backfills_.waiting() + structures_.waiting() + props_.waiting() + buildings_.waiting() + trees_.waiting() +
 			water_.waiting();
 }
 
-// The streamed chunks' build units: a road chunk's are its road, verge and (unless it stands out from afar) structure jobs, one
+// The streamed chunks' build units: a road chunk's are its road, wall backfill and (unless it stands out from afar) structure jobs, one
 // credit each, asked together; a chunk with a result on its way waits for it, marked.
 void RenderWorld::offer_streams(const CityState &s, const Vector3 &cam, std::vector<FrameAdmission::Unit> &units) {
 	const Tuning &t = s.catalog.tune;
@@ -198,15 +198,15 @@ void RenderWorld::offer_streams(const CityState &s, const Vector3 &cam, std::vec
 	road_stream_.offer(cam.x, cam.z, t.render_road_end_m, STREAM_DROP_K, [&](int64_t k) { return raised_stream_.known.count(k) ? 2 : 3; }, units,
 			[this, &s, &pool](int64_t k, float d) {
 				roads_.submit(s, k, pool, d);
-				verges_.submit(s, k, pool, d);
+				backfills_.submit(s, k, pool, d);
 				if (!raised_stream_.known.count(k)) structures_.submit(s, k, pool, d);
 			},
 			[this](int64_t k) {
 				roads_.drop_chunk(k);
-				verges_.drop_chunk(k);
+				backfills_.drop_chunk(k);
 				if (!raised_stream_.known.count(k)) structures_.drop_chunk(k);
 			},
-			[this](int64_t k) { return roads_.busy(k) || verges_.busy(k) || (!raised_stream_.known.count(k) && structures_.busy(k)); });
+			[this](int64_t k) { return roads_.busy(k) || backfills_.busy(k) || (!raised_stream_.known.count(k) && structures_.busy(k)); });
 	raised_stream_.offer(cam.x, cam.z, buildings_.stream_reach(s, cam), STREAM_DROP_K, one, units,
 			[this, &s, &pool](int64_t k, float d) { structures_.submit(s, k, pool, d); }, [this](int64_t k) { structures_.drop_chunk(k); },
 			[this](int64_t k) { return structures_.busy(k); });
@@ -284,10 +284,10 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 	cost_.buildings = laps.lap();
 	cost_.building = buildings_.commit_times();
 	// Every other chunk queue in the frame's one order: the bakes the ledger admits, then the hand-overs while the deadline lasts.
-	enum Hand { ROADS, FAR_ROADS, VERGES, STRUCTURES, PROPS, TREES_NEAR, TREES_FAR, COVER, WATER }; // the queues below, in their order
-	f.commit({ &roads_, &far_roads_, &verges_, &structures_, &props_, trees_.near_queue(), trees_.far_queue(), cover_.queue(), &water_ }, &hand_ms_);
+	enum Hand { ROADS, FAR_ROADS, BACKFILLS, STRUCTURES, PROPS, TREES_NEAR, TREES_FAR, COVER, WATER }; // the queues below, in their order
+	f.commit({ &roads_, &far_roads_, &backfills_, &structures_, &props_, trees_.near_queue(), trees_.far_queue(), cover_.queue(), &water_ }, &hand_ms_);
 	far_roads_.fold(roads_);
-	cost_.roads = hand_ms_[ROADS] + hand_ms_[FAR_ROADS] + hand_ms_[VERGES] + hand_ms_[STRUCTURES];
+	cost_.roads = hand_ms_[ROADS] + hand_ms_[FAR_ROADS] + hand_ms_[BACKFILLS] + hand_ms_[STRUCTURES];
 	cost_.props = hand_ms_[PROPS];
 	cost_.trees = hand_ms_[TREES_NEAR] + hand_ms_[TREES_FAR] + hand_ms_[COVER];
 	laps.lap();

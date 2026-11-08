@@ -49,11 +49,6 @@ void load_shape(StreetLook &L, DataReader &r, const Dictionary &t) {
 	L.h_barrier = num(rh, h, "barrier");
 	L.skirt = num(rh, h, "skirt");
 	L.median_nose = num(r, t, "median_nose_m");
-	const Dictionary v = r.table(t, "verge");
-	DataReader rv = r.in("verge");
-	L.verge_reach = num(rv, v, "reach_m");
-	L.verge_under = num(rv, v, "under_m");
-	L.verge_strips = rv.integer(v, "strips");
 	L.step = num(r, t, "sample_step_m");
 	L.far_step = num(r, t, "far_step_m");
 	L.far_pull = num(r, t, "far_pull_m");

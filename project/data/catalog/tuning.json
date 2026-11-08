@@ -73,6 +73,15 @@
   "river_floor_share": 0.72,
   "shore_reach_m": 19
  },
+ "road_shape": {
+  "_doc": "The ground shaped to each road (sim/terrain/road_shape.cpp), the terrain being the only ground beside a road: under the paving it stands under_m below the surface; past the paving's outer edge it is held level with that edge's top for hold_m past the casing, then a batter back to the natural ground of batter metres run a metre of rise, at least shoulder_least_m and at most shoulder_most_m long (one deep cut never reshapes a quarter of the map); a tunnel's approach cutting, or one held by retaining walls, is dug back cut_shoulder_m.",
+  "hold_m": 1.2,
+  "shoulder_least_m": 18,
+  "shoulder_most_m": 36,
+  "batter": 2.5,
+  "cut_shoulder_m": 6.4,
+  "under_m": 0.6
+ },
  "land": {
   "_doc": "The land a new map is generated with (sim/terrain/terrain_gen.cpp), in metres unless the name says otherwise. A plain map lies flat at plain_m. Hills: hills_base_m plus hills_amp_m of fractal noise over hills_scale_m (hills_octaves), with bumps_amp_m over bumps_scale_m (bumps_octaves); towards the canal they flatten into a valley valley_width_m wide, keeping 1 - open_share of their height and rising at least to valley_floor_m. Ranges: past edge_start of the half map the land climbs over edge_ramp by range_base_m plus range_amp_m of noise over range_scale_m (range_octaves). The canal runs canal_from_edge_m in from the north edge, river_radius_m wide a side; its bed is cut river_strength_m x river_carve x river_bed_depth under the land, the banks are the lowest of bank_probes points round it, its water stands water_fill of the way from bank to bed (at least water_margin_m under the bank, at least river_min_depth_m deep), smoothed over smooth_passes passes and falling at least river_min_fall a metre downstream. Lakes: in each lake_grid_m square a basin with chance lake_chance, kept lake_edge_max of the half map from the edges and lake_river_gap_m from the canal; it sinks basin_depth_m over basin_radius_m (to basin_reach of it), its rim wobbling by basin_wobble with noise over basin_noise_m (offset basin_noise_step a metre of the basin's place); the water finds the basin's bottom in at most descend_steps steps and floods every sample within flood_slack_m under the rim, standing as the canal's does. The values are the source game's terrainGen.ts (B4 of log/review.md re-sources them).",
   "plain_m": 20,
