@@ -126,3 +126,12 @@ O que falta fazer, por área.
   - The Minhocao (an elevated road over Avenida Sao Joao) waits for the same uncut crossings as the flyovers.
   - A district's look (the Centro's older facades, the Jardins' houses) comes from its zone and density alone: the building
     styles are not chosen by district.
+
+- Realism (2026-11-08, log/work-log.md "Physical sky"): the night sky is still the data's two colours, not the moon through the
+  air; twilight loses its blue a few degrees after sunset (the sky model takes the sun's light at one height a layer, so the
+  high, ozone-blue light of dusk is missing); the clouds' bodies keep their authored light (`atmosphere.gdshader` cloud_bodies);
+  HDR output (Godot 4.7) is not asked for: it needs HDR 2D on every viewport, which changes the interface's own colours, and the
+  lens radiances would have to read the window's output maximum; reflection probes per district (octahedral since 4.6) are not
+  laid, so glass off the screen reflects only the sky; the terrain's and water's albedos in `palette.json` were held to pictures
+  under the former ACES and light, and are not re-derived; photo-scanned surface textures (2K) and decals for wear were not
+  added (a download the user must approve).

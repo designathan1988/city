@@ -81,6 +81,9 @@
           },
           "ssil": {
             "type": "boolean"
+          },
+          "ssr": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -95,7 +98,8 @@
           "temporal",
           "temporal_sharpness",
           "temporal_mip_bias",
-          "ssil"
+          "ssil",
+          "ssr"
         ]
       }
     }

@@ -13,6 +13,7 @@ global uniform float room_daylight;
 uniform vec3 glass_sky : source_color = vec3(0.45, 0.55, 0.66);
 uniform float glass_floor = 0.18;
 uniform float wall_gain = 1.0;
+uniform float paint_chroma = 1.0; // the near level's dust on the paint (building_common.gdshaderinc dusty), so a hand-over keeps the colour
 uniform float window_glow = 1.5;
 
 // The superchunk's chunks drawn in their own detail (building_renderer.h): their buildings fold away here, so the far
@@ -45,10 +46,13 @@ void vertex() {
 	v_opening = CUSTOM0;
 }
 
+#include "res://render/shaders/canyon_light.gdshaderinc"
+
 void fragment() {
 	int kind = int(COLOR.a * 255.0 + 0.5) & KIND_MASK;
 	vec3 n = normalize(v_wn);
 	vec3 albedo = to_linear(COLOR.rgb);
+	albedo = mix(vec3(dot(albedo, vec3(0.2126, 0.7152, 0.0722))), albedo, paint_chroma);
 	vec3 glass = mix(vec3(0.05, 0.06, 0.07), uniform_linear(glass_sky), glass_floor) * (1.0 - 0.92 * night);
 	vec3 emit = vec3(0.0);
 	float rough = BUILDING_FAR_ROUGHNESS, metal = 0.0;
@@ -81,4 +85,5 @@ void fragment() {
 	ROUGHNESS = rough;
 	METALLIC = metal;
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
+	AO = canyon_sky_seen(v_world, n); // the sky the street round it leaves this face
 }

@@ -22,6 +22,7 @@ uniform float finish_m[FIN_COUNT];
 uniform float finish_normal_k[FIN_COUNT];
 uniform float finish_metal[FIN_COUNT];
 uniform float wall_gain = 1.0;
+uniform float paint_chroma = 1.0; // the share of its chroma a wall's paint keeps under dust (building_common.gdshaderinc)
 uniform float cloth_roughness = 0.85; // the Roadcraft's flag material (flagLayer.ts MeshStandardMaterial)
 
 // The Roadcraft's wave (flagLayer.ts): its clock runs WIND_PACE times real time (wind.ts), the two sines travel from the
@@ -104,11 +105,14 @@ void vertex() {
 	}
 }
 
+#include "res://render/shaders/canyon_light.gdshaderinc"
+
 void fragment() {
 #ifdef LEVEL_FADE
 	if (!IN_SHADOW_PASS && level_noise(FRAGCOORD.xy) >= level_keep) discard;
 #endif
 	vec3 n = normalize(v_wn);
+	AO = canyon_sky_seen(v_world, n); // the sky the street round it leaves this part
 	if (v_cloth > 0.5) {
 		vec3 c = flag_colour(v_uv, int(v_custom.a + PACKED_ROUND), unpack_rgb(v_custom.r), unpack_rgb(v_custom.g), unpack_rgb(v_custom.b));
 		ALBEDO = surface_out(to_linear(c));

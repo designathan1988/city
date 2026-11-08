@@ -1,10 +1,10 @@
-## The tone mapping the Environment applies to the 3D image (render/city_world.gd: ACES with its exposure and white), as
-## Godot 4.7 computes it (servers/rendering/renderer_rd/shaders/effects/tonemap.glsl tonemap_aces, the white from
-## storage/environment_storage.cpp environment_get_tonemap_parameters; drivers/gles3 tonemap_inc.glsl is the same), and
-## its inverse: the scene radiance a light needs to show as a display colour (a lit signal lens shown in its signal
-## colour, whatever the tone mapping does to bright light). ACES's input matrix mixes the channels, so a bright
-## saturated green or amber would need a negative radiance in another channel: such a colour becomes the nearest one
-## ACES shows (least CIELAB distance, every channel of the radiance >= 0).
+## The tone mapping the Environment applies to the 3D image (render/city_world.gd: AgX with its exposure, white and contrast), as
+## Godot 4.7 computes it on an SDR output (servers/rendering/renderer_rd/shaders/effects/tonemap.glsl tonemap_agx and allenwp_curve,
+## the curve's parameters from storage/environment_storage.cpp environment_get_tonemap_parameters; drivers/gles3 tonemap_inc.glsl is
+## the same), and its inverse: the scene radiance a light needs to show as a display colour (a lit signal lens shown in its signal
+## colour, whatever the tone mapping does to bright light). AgX's inset matrix mixes the channels, so a bright saturated green or
+## amber would need a negative radiance in another channel: such a colour becomes the nearest one AgX shows (least CIELAB distance,
+## every channel of the radiance >= 0).
 class_name ToneMap
 extends RefCounted
 
@@ -21,48 +21,75 @@ const LAB_AB := Vector2(500.0, 200.0)
 const SEARCH_FIRST := 0.25
 const SEARCH_END := 1e-5
 const SEARCH_MAX_TRIES := 4000
-## The engine's tonemap_aces once for this and tone_inverse.gdshaderinc (tools/build/shader_contracts.json AcesCurve, ACES_RRT_*,
-## ACES_ODT_*: CityStore.constants.shader): its exposure bias, its curve, rgb_to_rrt and odt_to_rgb as column bases (the GLSL
-## `color *= m` takes m's vec3s as rows), the highest share of the curve's asymptote 1 / C the inverse is asked for. Read at first use.
-static var _aces := {}
+## An SDR output's top, the engine's output_max_value (HDR output is not asked for: project.godot).
+const OUTPUT_MAX := 1.0
+## The least white AgX takes (environment_storage.cpp environment_get_white).
+const ENGINE_LEAST_WHITE := 2.0
+## The engine's tonemap_agx once for this and tone_inverse.gdshaderinc (tools/build/shader_contracts.json AgxCurve, AGX_INSET_*,
+## AGX_OUTSET_*: CityStore.constants.shader): its crossover, its matrices as column bases (the GLSL mat3(...) takes them as
+## columns), the highest share of the output's top the inverse is asked for. Read at first use.
+static var _agx := {}
 
 
 static func _k() -> Dictionary:
-	if _aces.is_empty():
+	if _agx.is_empty():
 		var s: Dictionary = CityStore.constants.shader
-		_aces = {bias = s.ACES_BIAS, a = s.ACES_A, b = s.ACES_B, c = s.ACES_C, d = s.ACES_D, e = s.ACES_E, top = s.ACES_TOP,
-				rrt = Basis(s.ACES_RRT_0, s.ACES_RRT_1, s.ACES_RRT_2), odt = Basis(s.ACES_ODT_0, s.ACES_ODT_1, s.ACES_ODT_2)}
-	return _aces
+		_agx = {cross = s.AGX_CROSSOVER, top = s.AGX_TOP, inset = Basis(s.AGX_INSET_0, s.AGX_INSET_1, s.AGX_INSET_2),
+				outset = Basis(s.AGX_OUTSET_0, s.AGX_OUTSET_1, s.AGX_OUTSET_2)}
+	return _agx
 
 
-## What the screen shows (linear, 0..1) for scene radiance `s` under Environment `exposure` and `white`.
-static func aces(s: Vector3, exposure: float, white: float) -> Vector3:
+## The allenwp curve's parameters for a white and a contrast, as environment_get_tonemap_parameters computes them: contrast, toe a,
+## slope and w. tone_inverse.gdshaderinc takes them as its tone_curve.
+static func curve_params(white: float, contrast: float) -> Vector4:
+	var c: float = _k().cross
+	var shoulder_max := OUTPUT_MAX - c
+	var toe_a := (1.0 / c - 1.0) * pow(c, contrast)
+	var denom := pow(c, contrast) + toe_a
+	var slope := contrast * pow(c, contrast - 1.0) * toe_a / (denom * denom)
+	var w := maxf(white, ENGINE_LEAST_WHITE) * OUTPUT_MAX - c
+	return Vector4(contrast, toe_a, slope, w * w / shoulder_max * slope)
+
+
+## The parameters of an Environment's AgX.
+static func params_of(environment: Environment) -> Vector4:
+	return curve_params(environment.tonemap_agx_white, environment.tonemap_agx_contrast)
+
+
+## What the screen shows (linear, 0..1) for scene radiance `s` under the Environment's exposure and AgX.
+static func shown(s: Vector3, environment: Environment) -> Vector3:
+	return agx(s, environment.tonemap_exposure, params_of(environment))
+
+
+static func agx(s: Vector3, exposure: float, p: Vector4) -> Vector3:
 	var k := _k()
-	var x: Vector3 = k.rrt * (s.max(Vector3.ZERO) * exposure * k.bias)
-	var out: Vector3 = k.odt * Vector3(_curve(x.x), _curve(x.y), _curve(x.z)) / _curve(maxf(white, 1.0) * k.bias)
-	return out.clamp(Vector3.ZERO, Vector3.ONE)
+	var x: Vector3 = k.inset * (s.max(Vector3.ZERO) * exposure)
+	var y := Vector3(_curve(x.x, p), _curve(x.y, p), _curve(x.z, p)).min(Vector3.ONE * OUTPUT_MAX)
+	return (k.outset * y).clamp(Vector3.ZERO, Vector3.ONE)
 
 
-## The scene radiance (linear, >= 0) that shows as `srgb` under Environment `exposure` and `white`, or as the nearest
-## colour ACES shows.
-static func radiance(srgb: Color, exposure: float, white: float) -> Vector3:
+## The scene radiance (linear, >= 0) that shows as `srgb` under the Environment's exposure and AgX, or as the nearest colour AgX
+## shows.
+static func radiance(srgb: Color, environment: Environment) -> Vector3:
+	var exposure := environment.tonemap_exposure
+	var p := params_of(environment)
 	var lin := srgb.srgb_to_linear()
 	var goal := Vector3(lin.r, lin.g, lin.b)
 	var k := _k()
-	var odt: Basis = k.odt
-	var rrt: Basis = k.rrt
-	var y := odt.inverse() * (goal * _curve(maxf(white, 1.0) * k.bias))
-	var top: float = k.top / k.c
+	var outset: Basis = k.outset
+	var inset: Basis = k.inset
+	var y := outset.inverse() * goal
+	var top: float = k.top * OUTPUT_MAX
 	var reachable := y.x >= 0.0 and y.y >= 0.0 and y.z >= 0.0 and maxf(y.x, maxf(y.y, y.z)) <= top
 	y = y.clamp(Vector3.ZERO, Vector3.ONE * top)
-	var s: Vector3 = rrt.inverse() * Vector3(_curve_inverse(y.x), _curve_inverse(y.y), _curve_inverse(y.z)) / (exposure * k.bias)
+	var s: Vector3 = inset.inverse() * Vector3(_curve_inverse(y.x, p), _curve_inverse(y.y, p), _curve_inverse(y.z, p)) / exposure
 	if reachable and s.x >= 0.0 and s.y >= 0.0 and s.z >= 0.0:
 		return s
-	return _nearest(s.max(Vector3.ZERO), _lab(goal), exposure, white)
+	return _nearest(s.max(Vector3.ZERO), _lab(goal), exposure, p)
 
 
-static func _nearest(s: Vector3, goal: Vector3, exposure: float, white: float) -> Vector3:
-	var best := _lab(aces(s, exposure, white)).distance_squared_to(goal)
+static func _nearest(s: Vector3, goal: Vector3, exposure: float, p: Vector4) -> Vector3:
+	var best := _lab(agx(s, exposure, p)).distance_squared_to(goal)
 	var step := maxf(s.x, maxf(s.y, s.z)) * SEARCH_FIRST
 	var end := step * SEARCH_END
 	var tries := 0
@@ -72,7 +99,7 @@ static func _nearest(s: Vector3, goal: Vector3, exposure: float, white: float) -
 			for sign: float in [1.0, -1.0]:
 				var c := s
 				c[axis] = maxf(0.0, c[axis] + sign * step)
-				var e := _lab(aces(c, exposure, white)).distance_squared_to(goal)
+				var e := _lab(agx(c, exposure, p)).distance_squared_to(goal)
 				tries += 1
 				if e < best:
 					best = e
@@ -83,18 +110,27 @@ static func _nearest(s: Vector3, goal: Vector3, exposure: float, white: float) -
 	return s
 
 
-static func _curve(x: float) -> float:
-	var k := _k()
-	return (x * (x + k.a) - k.b) / (x * (k.c * x + k.d) + k.e)
+## allenwp_curve: a sigmoid power toe under the crossover, a Reinhard-like shoulder over it.
+static func _curve(x: float, p: Vector4) -> float:
+	var c: float = _k().cross
+	if x < c:
+		var t := pow(x, p.x)
+		return t / (t + p.y)
+	var s := x - c
+	var slope_s := p.z * s
+	return slope_s * (1.0 + s / p.w) / (1.0 + slope_s / (OUTPUT_MAX - c)) + c
 
 
-## x >= 0 with _curve(x) = y, 0 <= y < 1 / C: the root of (yC - 1) x^2 + (yD - A) x + (yE + B) = 0.
-static func _curve_inverse(y: float) -> float:
-	var k := _k()
-	var a: float = y * k.c - 1.0
-	var b: float = y * k.d - k.a
-	var c: float = y * k.e + k.b
-	return (-b - sqrt(b * b - 4.0 * a * c)) / (2.0 * a)
+## x >= 0 with _curve(x) = y, 0 <= y < OUTPUT_MAX. The toe: t = a y / (1 - y), x = t^(1 / contrast). The shoulder, u = y - crossover
+## and m the shoulder's top: (slope / w) s^2 + slope (1 - u / m) s - u = 0, its root s >= 0.
+static func _curve_inverse(y: float, p: Vector4) -> float:
+	var c: float = _k().cross
+	if y < c:
+		return pow(p.y * y / (1.0 - y), 1.0 / p.x)
+	var u := y - c
+	var a := p.z / p.w
+	var b := p.z * (1.0 - u / (OUTPUT_MAX - c))
+	return (-b + sqrt(b * b + 4.0 * a * u)) / (2.0 * a) + c
 
 
 ## CIELAB (D65) of a linear sRGB colour.

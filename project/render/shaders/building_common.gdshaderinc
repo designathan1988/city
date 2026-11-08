@@ -47,13 +47,19 @@ float weather(vec3 n) {
 	return (0.9 + 0.2 * macro) * (1.0 - stain);
 }
 
+// Paint under dust: its chroma towards its own luminance (Rec. 709 weights).
+vec3 dusty(vec3 albedo) {
+	return mix(vec3(dot(albedo, vec3(0.2126, 0.7152, 0.0722))), albedo, paint_chroma);
+}
+
 // A face's finish `fin` (-1: none) laid on its colour: the finish's tone, normal, roughness and metalness, and the weathering of
-// every finish but glass and metal. What the face had stays where it has no finish.
+// every finish but glass and metal, whose paint also loses chroma to the city's dust (paint_chroma, towards its own luminance:
+// a grey film over it). What the face had stays where it has no finish.
 void finish_surface(int fin, vec3 n, inout vec3 albedo, inout vec3 nn, inout float rough, inout float metal) {
 	if (fin >= 0 && fin < FIN_COUNT) {
 		vec3 tone;
 		finish_layer(fin, n, tone, nn, rough, metal);
 		albedo *= tone;
-		if (fin != FIN_GLASS && fin != FIN_METAL) albedo *= weather(n);
+		if (fin != FIN_GLASS && fin != FIN_METAL) albedo = dusty(albedo) * weather(n);
 	}
 }

@@ -56,46 +56,10 @@
     "low_height": {
       "type": "number"
     },
-    "sun_low_share": {
-      "type": "number"
-    },
-    "sun_rise_k": {
-      "type": "number"
-    },
-    "sun_rise_from": {
-      "type": "number"
-    },
-    "fill": {
-      "type": "string",
-      "pattern_prefix": "#"
-    },
-    "sky_top": {
-      "type": "string",
-      "pattern_prefix": "#"
-    },
     "shadow_bias_m": {
       "type": "number"
     },
     "shadow_pancake_m": {
-      "type": "number"
-    },
-    "ground_under": {
-      "type": "string",
-      "pattern_prefix": "#"
-    },
-    "ground_under_k": {
-      "type": "number"
-    },
-    "fill_energy": {
-      "type": "number"
-    },
-    "fill_key_share": {
-      "type": "number"
-    },
-    "fill_elev_deg": {
-      "type": "number"
-    },
-    "fill_turn_deg": {
       "type": "number"
     },
     "clock_step_h": {
@@ -148,65 +112,16 @@
         }
       }
     },
-    "low_from_m": {
-      "type": "number"
-    },
-    "low_to_m": {
-      "type": "number"
-    },
     "overcast_sun": {
-      "type": "number"
-    },
-    "overcast_fill": {
-      "type": "number"
-    },
-    "air_high": {
-      "type": "string",
-      "pattern_prefix": "#"
-    },
-    "air_night_cut": {
-      "type": "number"
-    },
-    "air_height_m": {
-      "type": "number"
-    },
-    "overcast_ambient": {
       "type": "number"
     },
     "overcast_sky": {
       "type": "number"
     },
-    "overcast_grey": {
-      "type": "string",
-      "pattern_prefix": "#"
-    },
-    "flash_ambient": {
-      "type": "number"
-    },
     "flash_sky": {
       "type": "number"
     },
-    "sun_day": {
-      "type": "string",
-      "pattern_prefix": "#"
-    },
-    "sun_low": {
-      "type": "string",
-      "pattern_prefix": "#"
-    },
     "moon": {
-      "type": "string",
-      "pattern_prefix": "#"
-    },
-    "hemi_day": {
-      "type": "string",
-      "pattern_prefix": "#"
-    },
-    "hemi_night": {
-      "type": "string",
-      "pattern_prefix": "#"
-    },
-    "zenith_day": {
       "type": "string",
       "pattern_prefix": "#"
     },
@@ -214,27 +129,7 @@
       "type": "string",
       "pattern_prefix": "#"
     },
-    "horizon_day": {
-      "type": "string",
-      "pattern_prefix": "#"
-    },
-    "horizon_dusk": {
-      "type": "string",
-      "pattern_prefix": "#"
-    },
     "horizon_night": {
-      "type": "string",
-      "pattern_prefix": "#"
-    },
-    "sky_ground": {
-      "type": "string",
-      "pattern_prefix": "#"
-    },
-    "low_zenith": {
-      "type": "string",
-      "pattern_prefix": "#"
-    },
-    "low_horizon": {
       "type": "string",
       "pattern_prefix": "#"
     },
@@ -260,6 +155,70 @@
           "type": "number"
         }
       }
+    },
+    "air": {
+      "type": "object",
+      "properties": {
+        "rayleigh_beta_per_m": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "rayleigh_height_m": {
+          "type": "number"
+        },
+        "ozone_beta_per_m": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "ozone_thickness_m": {
+          "type": "number"
+        },
+        "ozone_height_m": {
+          "type": "number"
+        },
+        "aerosol_height_m": {
+          "type": "number"
+        },
+        "aerosol_g": {
+          "type": "number"
+        },
+        "aerosol_albedo": {
+          "type": "number"
+        },
+        "visibility_km": {
+          "type": "number"
+        },
+        "sun_top_klx": {
+          "type": "number"
+        },
+        "energy_unit_klx": {
+          "type": "number"
+        },
+        "ground_albedo": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        }
+      },
+      "required": [
+        "rayleigh_beta_per_m",
+        "rayleigh_height_m",
+        "ozone_beta_per_m",
+        "ozone_thickness_m",
+        "ozone_height_m",
+        "aerosol_height_m",
+        "aerosol_g",
+        "aerosol_albedo",
+        "visibility_km",
+        "sun_top_klx",
+        "energy_unit_klx",
+        "ground_albedo"
+      ]
     }
   },
   "additional": {

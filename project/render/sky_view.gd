@@ -6,20 +6,12 @@ extends Node3D
 
 const METRES_A_KM := 1000.0
 const SLOTS := 24
-const LOBES := 7
+const LOBES := CloudPuffs.LOBES
 ## A view this close to level looks at no ground under it.
 const LEVEL_VIEW := 0.0015
 ## How far a cloud's bound reaches, and its centre, in its own size.
 const BOUND_REACH := 1.12
-## The hash of a puff's jitter: the same puffs every visit (a cloud's id seeds it).
-const ID_BASE := 1000003
-const ID_STEP := 7919
-const PUFF_SEED := 11
-const SALT_X := 6
-const SALT_Z := 7
-const SALT_R := 8
-## What each lobe keeps in _puff_shape: its offset from the cloud's centre on x and z, its height, its radius.
-const PUFF_FIELDS := 4
+const PUFF_FIELDS := CloudPuffs.FIELDS
 
 ## Drift of the clouds so far, on the map (x, z), metres; the cloud tool takes it off what it keeps.
 var drift := Vector2.ZERO
@@ -125,7 +117,8 @@ func _process(dt: float) -> void:
 		_lamp_night = _world.daylight.night
 		CityStore.dispatch(&"set_lamp_night", [_lamp_night])
 	var sun: Vector3 = _world.sun.global_basis.z
-	_world.contact.follow(sun, _d.contact_most * _world.daylight.direct_share * clampf(sun.y * _d.contact_sun_gain, 0.0, 1.0))
+	var light := _world.sun.light_energy * maxf(sun.y, 0.0) # the sun's light on level ground; the pass weighs it against the sky's
+	_world.contact.follow(sun, _d.contact_most * clampf(sun.y * _d.contact_sun_gain, 0.0, 1.0), light)
 	var fog_rev: int = CityStore.query(&"fog_revision") # the render takes new windows in; read and bound only then
 	if fog_rev != _fog_seen:
 		_fog_seen = fog_rev
@@ -142,7 +135,7 @@ func _read() -> void:
 	var land: Dictionary = CityStore.query(&"landscape")
 	weather = land.weather
 	clouds = land.clouds
-	_shape_clouds()
+	CloudPuffs.shape(clouds, SLOTS, _d, _puff_shape)
 	_world.set_map_biome(land.biome)
 	_world.set_water_look(weather)
 	# Rain thickens the air: what the player set, or the rain's own mist if that is more.
@@ -166,18 +159,7 @@ func _light(way: Vector2) -> void:
 	_mat.set_shader_parameter("sun_dir", _world.sun.global_basis.z.normalized())
 	var c := _world.sun.light_color
 	_mat.set_shader_parameter("sun_light", Vector3(c.r, c.g, c.b) * _world.sun.light_energy * _d.sun_gain)
-	# The air takes the sky's colour at the horizon, overcast with it; the pass works in linear light.
-	var horizon := _world.daylight.horizon_linear
-	_mat.set_shader_parameter("sky_light", Vector3(horizon.r, horizon.g, horizon.b))
-	_mat.set_shader_parameter("mist_color", Vector3(horizon.r, horizon.g, horizon.b))
 	_mat.set_shader_parameter("dark", _world.daylight.night)
-
-
-## 0..1 hash of an integer and a salt.
-func _hash(i: int, salt: int) -> float:
-	var h := ((i + 1) * 374761393) ^ (salt * 668265263)
-	h = ((h ^ (h >> 13)) * 1274126177) & 0xFFFFFFFF
-	return float((h ^ (h >> 16)) & 0xFFFFFFFF) / 4294967296.0
 
 
 ## Each cloud where the wind has carried it, its repeat round the view, thinning towards the edge it wraps round. The arrays are
@@ -190,7 +172,7 @@ func _lay() -> void:
 		var t := -cam.global_position.y / ahead.y if ahead.y < -LEVEL_VIEW else 0.0
 		about = Vector2(cam.global_position.x + ahead.x * t, cam.global_position.z + ahead.z * t)
 	var n := mini(clouds.size(), SLOTS) if clouds_drawn else 0
-	_quad.visible = n > 0 or _air > 0.0 or bool(_fog_field.get("any", false)) or bool(_canyon_field.get("any", false))
+	_quad.visible = n > 0 or _air > 0.0 or bool(_fog_field.get("any", false))
 	if about == _laid_about and drift == _laid_drift and n == _laid_count and _seen == _laid_revision:
 		return
 	_laid_about = about
@@ -211,28 +193,6 @@ func _lay() -> void:
 	_mat.set_shader_parameter("cloud_look", _looks)
 
 
-## Each placed cloud's lobes about its centre: jittered by its id, turned by its yaw, at its size. Read once a sky_revision.
-func _shape_clouds() -> void:
-	var shape: Array = _d.puffs
-	for i in mini(clouds.size(), SLOTS):
-		var c: Dictionary = clouds[i]
-		var yaw: float = c.yaw
-		var size: float = c.size
-		var cs := cos(yaw)
-		var sn := sin(yaw)
-		var id := ID_BASE + int(c.id) * ID_STEP
-		for k in LOBES:
-			var p: Array = shape[k]
-			var ja: float = p[0] + (_hash(id * PUFF_SEED + k, SALT_X) - 0.5) * _d.puff_jitter
-			var jb: float = p[2] + (_hash(id * PUFF_SEED + k, SALT_Z) - 0.5) * _d.puff_jitter
-			var jr: float = p[3] * (_d.puff_least + _d.puff_vary * _hash(id * PUFF_SEED + k, SALT_R))
-			var at := (i * LOBES + k) * PUFF_FIELDS
-			_puff_shape[at] = (ja * cs - jb * sn) * size
-			_puff_shape[at + 1] = c.height + p[1] * size
-			_puff_shape[at + 2] = (ja * sn + jb * cs) * size
-			_puff_shape[at + 3] = jr * size
-
-
 func _lay_one(i: int, c: Dictionary, x: float, z: float, show: float) -> void:
 	var size: float = c.size
 	_bounds[i] = Vector4(x, c.height + size * 0.5, z, size * BOUND_REACH)
@@ -242,13 +202,13 @@ func _lay_one(i: int, c: Dictionary, x: float, z: float, show: float) -> void:
 		_puffs[i * LOBES + k] = Vector4(x + _puff_shape[at], _puff_shape[at + 1], z + _puff_shape[at + 2], _puff_shape[at + 3])
 
 
-## The sky's share of the light is what the streets lose (render/shaders/canyon_light.gdshaderinc).
+## The sky the streets see past the buildings, for every surface's ambient occlusion (render/shaders/canyon_light.gdshaderinc).
 func _apply_canyon() -> void:
 	var on: bool = _canyon_field.get("any", false)
-	_mat.set_shader_parameter("canyon_sky", _d.canyon_sky_most - _d.canyon_sun_cut * _world.daylight.direct_share if on else 0.0)
+	RenderingServer.global_shader_parameter_set(&"canyon_on", 1.0 if on else 0.0)
 	if on:
-		_mat.set_shader_parameter("canyon_map", _canyon_field.texture)
-		_mat.set_shader_parameter("canyon_window", _canyon_field.window)
+		RenderingServer.global_shader_parameter_set(&"canyon_map", _canyon_field.texture)
+		RenderingServer.global_shader_parameter_set(&"canyon_window", _canyon_field.window)
 
 
 func _apply_fog() -> void:

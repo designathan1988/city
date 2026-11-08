@@ -24,6 +24,8 @@ uniform int map_biome = 0;
 
 varying vec3 v_world;
 
+#include "res://render/shaders/canyon_light.gdshaderinc"
+
 void vertex() {
 	v_world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
@@ -38,4 +40,5 @@ void fragment() {
 	vec3 up = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
 	NORMAL = mat3(VIEW_MATRIX) * normalize(up + vec3(tilt.x, 0.0, tilt.y));
 	ROUGHNESS = mix(0.95, 0.6, rain_wet);
+	AO = canyon_sky_seen(v_world, vec3(0.0, 1.0, 0.0)); // the sky the buildings leave the ground
 }

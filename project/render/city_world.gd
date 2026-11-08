@@ -137,12 +137,6 @@ func _build_environment(_palette: Dictionary) -> void:
 	var day: Dictionary = DataTables.game("daylight")
 	sun = DaylightRig.sun(day)
 	add_child(sun)
-	var fill := DaylightRig.plain()
-	add_child(fill)
-	var sky_top := DaylightRig.top()
-	add_child(sky_top)
-	var under := DaylightRig.under()
-	add_child(under)
 	var sky_mat := ShaderMaterial.new()
 	sky_mat.shader = load(SKY_SHADER)
 	var sky := Sky.new()
@@ -151,18 +145,18 @@ func _build_environment(_palette: Dictionary) -> void:
 	environment = Environment.new()
 	environment.background_mode = Environment.BG_SKY
 	environment.sky = sky
-	# The same shade on every renderer: a flat ambient colour and the sky's top light (daylight.gd), no sky share;
-	# only the specular reflections come from the sky. Forward+ renders in RGBA16F and Compatibility in RGBA8 with the
-	# tonemap in the material pass; both support these modes (docs: Environment and post-processing).
-	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.ambient_light_sky_contribution = 0.0
+	# The sky is the light of everything the sun does not reach: the ambient and the reflections both read its radiance map, in the
+	# lights' own unit (render/shaders/sky_model.gdshaderinc), so a shaded wall takes the sky in front of it and the ground under it.
+	environment.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 	environment.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
-	environment.tonemap_mode = Environment.TONE_MAPPER_ACES
+	environment.tonemap_mode = Environment.TONE_MAPPER_AGX
 	environment.tonemap_exposure = day.exposure
-	environment.tonemap_white = day.tonemap_white
+	environment.tonemap_agx_white = day.agx_white
+	environment.tonemap_agx_contrast = day.agx_contrast
+	# The haze takes its colour from the sky along the view: aerial perspective (render/daylight.gd follow_view sets its density).
 	environment.fog_enabled = true
+	environment.fog_aerial_perspective = 1.0
 	environment.fog_sky_affect = 0.0
-	environment.fog_light_energy = day.sky_gain
 	environment.glow_hdr_threshold = day.glow_threshold
 	environment.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
 	environment.ssil_radius = day.ssil.radius_m
@@ -176,7 +170,7 @@ func _build_environment(_palette: Dictionary) -> void:
 	contact.setup()
 	add_child(contact)
 	FilmLook.vignette(self, day.vignette)
-	daylight = Daylight.new(day, sun, fill, sky_top, under, environment, sky_mat)
+	daylight = Daylight.new(day, sun, environment, sky_mat)
 	add_child(ElementEffects.new())
 	add_child(ShoreView.new(self))
 	daylight.set_hour(day.day_hour)

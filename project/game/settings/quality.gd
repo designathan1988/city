@@ -1,6 +1,6 @@
 ## The graphics tiers on the running game: a tier's table (data/game/settings.json "tiers") with the player's kept choices and
 ## the optimisations over it, and each of its fields on the renderer that owns it: the Viewport (MSAA, SMAA, 3D scale,
-## anisotropy), the sun (shadows), the Environment (SSAO), the RenderingServer (shadow atlas, SSAO quality) and the core.
+## anisotropy), the sun (shadows), the Environment (SSAO, SSIL, SSR), the RenderingServer (shadow atlas, SSAO quality) and the core.
 class_name QualityTier
 extends RefCounted
 
@@ -118,6 +118,7 @@ static func apply(q: Dictionary, world: CityWorld, viewport: Viewport, dynamic_s
 	world.occlusion.turn(q.ssao)
 	world.sky.clouds_drawn = q.sky_clouds
 	world.environment.ssil_enabled = bool(q.ssil) # the light the walls and the street throw back on each other: shade stops being one flat blue
+	world.environment.ssr_enabled = bool(q.ssr) and has_temporal() # glass and wet streets mirror what is on the screen (SSR reads Forward+'s buffers, as TAA does)
 	CityStore.dispatch(&"set_detail_scale", [sqrt(float(q.triangle_share))])
 	var lamps: bool = world.contact.available() # a mesh takes 8 lights in Compatibility
 	CityStore.dispatch(&"set_lamp_lights", [int(q.lamp_lights) if lamps else 0, int(q.lamp_shadows) if lamps else 0, int(q.head_lights) if lamps else 0])

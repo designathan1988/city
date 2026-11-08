@@ -112,6 +112,8 @@ float lamp_pools() {
 	return pool_fall(length(vec2(du, dv / pool_along_m))) + pool_fall(length(vec2(du, far / pool_along_m)));
 }
 
+#include "res://render/shaders/canyon_light.gdshaderinc"
+
 void fragment() {
 	vec3 base = srgb_to_linear(COLOR.rgb); // the strip colour, sRGB in the mesh; everything below in linear
 	if (v_mat == ROAD_MAT_LANE) {
@@ -216,6 +218,7 @@ void fragment() {
 	ALBEDO = linear_out(albedo);
 	ROUGHNESS = rough;
 	SPECULAR = 0.5; // the F0 of 0.04 of the roads of the Roadcraft (three: dielectric default; Godot: 0.08 * specular)
+	AO = canyon_sky_seen(v_world, normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz)); // the sky the buildings leave the street
 	float fade = 1.0 - smoothstep(0.02, 0.5, pix);
 	NORMAL = bent_normal(NORMAL, VERTEX, frame, bend * bend_scale * fade + fine);
 	float far = pool_handed_over(v_eye_m, lamp_lit);

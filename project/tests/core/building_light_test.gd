@@ -2,7 +2,7 @@
 ## materials (CityWorld), on each renderer (tools/build/run_tests.sh runs it on Forward+ and on Compatibility):
 ## - by night, with the ambient and the moon off so only a surface's own light is left, a lamp face of the near level
 ##   (shell.h SK_LAMP) must show its colour x night x lamp_glow, and a lamp face of the far level its colour x
-##   wall_gain x night, tone mapped as render/tone_map.gd does (its colour a mid grey: inside ACES's range);
+##   wall_gain x night, tone mapped as render/tone_map.gd does (its colour a mid grey: inside AgX's range);
 ## - by day, a plain wall face of the near level and of the far level, and an instanced part with no finish layer, must
 ##   each show what the engine's own material shows for the same colour x wall_gain under the same light (a
 ##   StandardMaterial3D below it, vertex colour as sRGB albedo, the same roughness): each albedo path against the engine's.
@@ -19,7 +19,7 @@ const GREY := 0.5 # sRGB
 const FRAMES := 10
 const BYTE := 255.0
 const TOLERANCE := 1
-const LAMP_GLOW := 0.5
+const LAMP_REACH := 0.9 # the lamp's brightest channel after the exposure, a share of the 1 Compatibility keeps before its tone mapping
 
 var cam: Camera3D
 
@@ -41,6 +41,7 @@ func _ready() -> void:
 
 func _wall_by_day() -> void:
 	world.environment.fog_enabled = false # the surface under the same light: the air over it is another thing
+	world.environment.glow_enabled = false # and the camera's bloom over the picture another again (Daylight keeps it on by day too)
 	var shared: Dictionary = CityStore.constants.shader # a face with no finish, near and far (tools/build/shader_contracts.json)
 	var cases := [["near wall", "building", shared.BUILDING_WALL_ROUGHNESS, false], ["far wall", "building_far", shared.BUILDING_FAR_ROUGHNESS, false],
 			["a piece with no finish", "building_parts", shared.BUILDING_WALL_ROUGHNESS, true]]
@@ -88,9 +89,10 @@ func _part(m: ShaderMaterial, at: Vector3) -> MultiMeshInstance3D:
 
 func _lamps_by_night() -> void:
 	world.set_hour(DataTables.game("daylight").night_hour)
-	world.environment.ambient_light_energy = 0.0
+	world.environment.ambient_light_sky_contribution = 0.0 # the sky is the ambient: its share, not ambient_light_energy, turns it off
 	world.environment.glow_enabled = false # a lamp's own light: what it blooms over is another thing
-	world.materials()["building"].set_shader_parameter("lamp_glow", LAMP_GLOW) # under 1 after the exposure: without the glow, Compatibility's picture before the tone mapping stops there
+	# under 1 after the exposure, whatever the exposure: without the glow, Compatibility's picture before the tone mapping stops there
+	world.materials()["building"].set_shader_parameter("lamp_glow", LAMP_REACH / world.environment.tonemap_exposure)
 	world.sun.light_energy = 0.0
 	var near: ShaderMaterial = world.materials()["building"]
 	var far: ShaderMaterial = world.materials()["building_far"]
@@ -110,7 +112,7 @@ func _shown(radiance: float) -> Color:
 
 
 func _shown_rgb(radiance: Vector3) -> Color:
-	var s := ToneMap.aces(radiance, world.environment.tonemap_exposure, world.environment.tonemap_white)
+	var s := ToneMap.shown(radiance, world.environment)
 	return Color(s.x, s.y, s.z).linear_to_srgb()
 
 

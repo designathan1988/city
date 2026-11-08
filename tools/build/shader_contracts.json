@@ -102,15 +102,15 @@
    ]
   },
   "tone": {
-   "doc": "the engine's ACES tone mapping, which tone_inverse.gdshaderinc and render/tone_map.gd both invert",
+   "doc": "the engine's AgX tone mapping, which tone_inverse.gdshaderinc and render/tone_map.gd both invert",
    "entries": [
-    {"name": "AcesCurve", "type": "floats", "values": {"ACES_BIAS": "1.8", "ACES_A": "0.0245786", "ACES_B": "0.000090537", "ACES_C": "0.983729", "ACES_D": "0.432951", "ACES_E": "0.238081", "ACES_TOP": "0.999"}, "doc": "Godot 4.7's tonemap_aces (servers/rendering/renderer_rd/shaders/effects/tonemap.glsl): its exposure bias and curve, and the highest share of the curve's asymptote 1 / C its inverse is asked for (tone_inverse.gdshaderinc and render/tone_map.gd invert it; light_color_test holds the script's against the engine)"},
-    {"name": "ACES_RRT_0", "type": "vec3", "value": ["0.59719", "0.07600", "0.02840"], "doc": "tonemap_aces rgb_to_rrt's first vec3 as the engine writes it (tone_inverse.gdshaderinc builds its mat3 of them, tone_map.gd its Basis)"},
-    {"name": "ACES_RRT_1", "type": "vec3", "value": ["0.35458", "0.90834", "0.13383"], "doc": "its second vec3"},
-    {"name": "ACES_RRT_2", "type": "vec3", "value": ["0.04823", "0.01566", "0.83777"], "doc": "its third vec3"},
-    {"name": "ACES_ODT_0", "type": "vec3", "value": ["1.60475", "-0.10208", "-0.00327"], "doc": "tonemap_aces odt_to_rgb's first vec3, the same way"},
-    {"name": "ACES_ODT_1", "type": "vec3", "value": ["-0.53108", "1.10813", "-0.07276"], "doc": "its second vec3"},
-    {"name": "ACES_ODT_2", "type": "vec3", "value": ["-0.07367", "-0.00605", "1.07602"], "doc": "its third vec3"}
+    {"name": "AgxCurve", "type": "floats", "values": {"AGX_CROSSOVER": "0.18", "AGX_TOP": "0.999"}, "doc": "Godot 4.7's allenwp_curve under tonemap_agx (servers/rendering/renderer_rd/shaders/effects/tonemap.glsl, storage/environment_storage.cpp environment_get_tonemap_parameters): its crossover from the toe to the shoulder, and the highest share of the SDR output's top (1) its inverse is asked for (tone_inverse.gdshaderinc and render/tone_map.gd invert it; light_color_test holds the script's against the engine)"},
+    {"name": "AGX_INSET_0", "type": "vec3", "value": ["0.544814746488245", "0.140416948464053", "0.0888104196149096"], "doc": "tonemap_agx rec709_to_rec2020_agx_inset_matrix's first vec3 as the engine writes it (tone_inverse.gdshaderinc builds its mat3 of them, tone_map.gd its Basis)"},
+    {"name": "AGX_INSET_1", "type": "vec3", "value": ["0.373787398372697", "0.754137554567394", "0.178871756420858"], "doc": "its second vec3"},
+    {"name": "AGX_INSET_2", "type": "vec3", "value": ["0.0813978551390581", "0.105445496968552", "0.732317823964232"], "doc": "its third vec3"},
+    {"name": "AGX_OUTSET_0", "type": "vec3", "value": ["1.96488741169489", "-0.299313364904742", "-0.164352742528393"], "doc": "tonemap_agx agx_outset_rec2020_to_rec709_matrix's first vec3, the same way"},
+    {"name": "AGX_OUTSET_1", "type": "vec3", "value": ["-0.855988495690215", "1.32639796461980", "-0.238183969428088"], "doc": "its second vec3"},
+    {"name": "AGX_OUTSET_2", "type": "vec3", "value": ["-0.108898916004672", "-0.0270845997150571", "1.40253671195648"], "doc": "its third vec3"}
    ]
   }
  }

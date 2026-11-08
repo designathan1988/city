@@ -1,11 +1,11 @@
 ## The lights of the street as the screen shows them, through the game's own Environment and "prop" and "road" materials
 ## (CityWorld), on each renderer (tools/build/run_tests.sh runs it on Forward+ and on Compatibility):
 ## - by day, each signal lens lit must show the lens colour of data/render/streets.json props.signal (render/tone_map.gd
-##   mirrors Godot's ACES by hand; this checks the mirror against the engine);
+##   mirrors Godot's AgX by hand; this checks the mirror against the engine);
 ## - by night, with the ambient, the moon and the glow (a screen effect added after) off so only the part's own light
 ##   is left, a part that glows at night
 ##   (PropTag::NIGHT_GLOW, lamp glass) must show glow_color x its colour x glow_gain x night, tone mapped as
-##   render/tone_map.gd does. Its colour is a mid grey so that the glow stays inside ACES's range (a white one would
+##   render/tone_map.gd does. Its colour is a mid grey so that the glow stays inside AgX's range (a white one would
 ##   saturate and hide an error);
 ## - by night likewise, a grey road surface under the even light of a junction plate, seen as the road draws it past the lamps
 ##   with a light of their own (`lamp_lit` 0), must show its albedo x pool_color x plate_glow x pool_gain x night (road.gdshader);
@@ -17,7 +17,7 @@ extends TestCase
 
 const BYTE_TOP := 255.0
 const GRADE_LEVELS_OFF := 1.0
-const GRADE_TABLE := {0.0: [0.0, 0.0, 0.0], 46.0: [38.2, 38.2, 38.1], 127.0: [129.4, 127.9, 125.1], 255.0: [255.0, 255.0, 251.4]}
+const GRADE_TABLE := {0.0: [0.0, 0.0, 0.0], 46.0: [46.0, 46.0, 46.0], 127.0: [127.0, 127.0, 127.0], 255.0: [255.0, 255.0, 255.0]}
 const NONE_LIT := -1.0 # INSTANCE_CUSTOM of the other lens slot (signal_lamps.cpp)
 const SIDE_M := 1.0 # each part: a square this wide, facing the camera
 const PITCH_M := 1.5
@@ -42,7 +42,7 @@ var road_ids := 0.0
 var road_plate := Vector2.ZERO
 const BYTE := 255.0
 const TOLERANCE := 1 # in 8-bit steps
-const LENS_STEPS := 3 # the signal green sits at the edge of the gamut: ACES has no radiance that lands on it exactly
+const LENS_STEPS := 3 # the signal green sits at the edge of the gamut: AgX has no radiance that lands on it exactly
 
 var cam: Camera3D
 
@@ -102,7 +102,7 @@ func _lenses(material: ShaderMaterial) -> void:
 
 func _night(material: ShaderMaterial, road: ShaderMaterial) -> void:
 	world.set_hour(DataTables.game("daylight").night_hour)
-	world.environment.ambient_light_energy = 0.0
+	world.environment.ambient_light_sky_contribution = 0.0 # the sky is the ambient: its share, not ambient_light_energy, turns it off
 	world.sun.light_energy = 0.0
 	world.environment.glow_enabled = false
 	road = road.duplicate()
@@ -126,25 +126,25 @@ func _night(material: ShaderMaterial, road: ShaderMaterial) -> void:
 	var c := Color(GLOW_GREY, GLOW_GREY, GLOW_GREY).srgb_to_linear()
 	var k: float = float(material.get_shader_parameter("glow_gain")) * night
 	var radiance := Vector3(g.r * c.r, g.g * c.g, g.b * c.b) * k
-	var shown := ToneMap.aces(radiance, world.environment.tonemap_exposure, world.environment.tonemap_white)
+	var shown := ToneMap.shown(radiance, world.environment)
 	var want := Color(shown.x, shown.y, shown.z).linear_to_srgb()
 	var img := get_viewport().get_texture().get_image()
 	_compare(img, GLOW_AT, want, "night glow (night %.2f)" % night)
 	var p: Color = Color(road.get_shader_parameter("pool_color")).srgb_to_linear()
 	var lit: float = float(road.get_shader_parameter("plate_glow")) * float(road.get_shader_parameter("pool_gain")) * night
 	var albedo: float = Color(ROAD_GREY, ROAD_GREY, ROAD_GREY).srgb_to_linear().r
-	var pool := ToneMap.aces(Vector3(p.r, p.g, p.b) * lit * albedo, world.environment.tonemap_exposure, world.environment.tonemap_white)
+	var pool := ToneMap.shown(Vector3(p.r, p.g, p.b) * lit * albedo, world.environment)
 	_compare(img, ROAD_AT, Color(pool.x, pool.y, pool.z).linear_to_srgb(), "road light (junction plate)", ROAD_STEPS)
 
 
-## The grade against the 4.0's own (postprocess.ts GRADED_OUTPUT_FRAGMENT), levels of grey in and out.
+## The grade as data/game/daylight.json sets it, neutral: levels of grey in and out, each as it came in (the picture is AgX's own).
 func _check_grade() -> void:
 	var grade: Dictionary = DataTables.game("daylight").grade
 	for level: float in GRADE_TABLE:
 		var got: Color = CityStore.query(&"film_graded", [grade, Color(level / BYTE_TOP, level / BYTE_TOP, level / BYTE_TOP)])
 		var want: Array = GRADE_TABLE[level]
 		var off := maxf(maxf(absf(got.r * BYTE_TOP - want[0]), absf(got.g * BYTE_TOP - want[1])), absf(got.b * BYTE_TOP - want[2]))
-		check(off <= GRADE_LEVELS_OFF, "grade of %d: %s, the 4.0 gives %s" % [int(level), got.to_html(false), want])
+		check(off <= GRADE_LEVELS_OFF, "grade of %d: %s, a neutral grade gives %s" % [int(level), got.to_html(false), want])
 
 
 func _compare(img: Image, at: Vector3, wanted: Color, what: String, steps := TOLERANCE) -> void:

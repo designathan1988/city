@@ -20,6 +20,7 @@ uniform float finish_m[FIN_COUNT];
 uniform float finish_normal_k[FIN_COUNT];
 uniform float finish_metal[FIN_COUNT];
 uniform float wall_gain = 1.0;
+uniform float paint_chroma = 1.0; // the share of its chroma a wall's paint keeps under dust (building_common.gdshaderinc)
 uniform float lamp_glow = 3.4;
 uniform vec3 lamp_light : source_color = vec3(1.0, 0.83, 0.6); // what a lit lamp gives, whatever its body is by day
 uniform float window_glow = 1.5;
@@ -83,6 +84,7 @@ void vertex() {
 #include "res://render/shaders/building_room_tone.gdshaderinc"
 #include "res://render/shaders/building_sky_glass.gdshaderinc"
 #include "res://render/shaders/building_far_window.gdshaderinc"
+#include "res://render/shaders/canyon_light.gdshaderinc"
 
 void fragment() {
 #ifdef LEVEL_FADE
@@ -112,6 +114,7 @@ void fragment() {
 	EMISSION = surface_out(emit);
 	ROUGHNESS = rough;
 	METALLIC = metal;
+	AO = canyon_sky_seen(v_world, n); // the sky the street round it leaves this face
 #ifdef RUIN
 	nn = vec3(dot(v_turn0, nn), dot(v_turn1, nn), dot(v_turn2, nn));
 #endif

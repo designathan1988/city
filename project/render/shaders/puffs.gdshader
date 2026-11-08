@@ -112,8 +112,8 @@ void fragment() {
 	bool lit_up = k == PUFF_FLAME || k == PUFF_SPARK;
 	c *= (0.85 + 0.3 * (0.5 - d.y)) * (lit_up ? 1.0 : mix(1.0, night_dim, clamp(night, 0.0, 1.0)));
 	// Smoke, dust, blood, grit, water and paper are the colour the screen should show (the reference game writes them straight to its
-	// frame buffer), so they go through the inverse of the ACES; flame and spark are light, brighter than white: the ACES takes them as
-	// they are (their saturated oranges need radiance the ACES cannot give back without a hue shift: measured, ports/demolition/relatorio.md).
+	// frame buffer), so they go through the inverse of the AgX; flame and spark are light, brighter than white: the AgX takes them as
+	// they are (their saturated oranges need radiance the tone mapping cannot give back without a hue shift).
 	ALBEDO = lit_up ? c : linear_out(display_to_radiance(min(c, vec3(1.0))));
 	ALPHA = clamp(v_alpha * soft, 0.0, 1.0);
 }

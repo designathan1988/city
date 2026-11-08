@@ -15,11 +15,13 @@ func turn(on: bool) -> void:
 	_show()
 
 
-## Each frame: where the sun is and how much of the light it is.
-func follow(sun_direction: Vector3, strength: float) -> void:
-	_strength = strength
+## Each frame: where the sun is, how deep its contact shade may go and its light on level ground (the pass weighs that against
+## the sky's light, render/shaders/contact.gdshader).
+func follow(sun_direction: Vector3, strength: float, sun_level: float) -> void:
+	_strength = strength * sun_level
 	_material.set_shader_parameter("sun_direction", sun_direction)
 	_material.set_shader_parameter("strength", strength)
+	_material.set_shader_parameter("sun_level", sun_level)
 	_show()
 
 

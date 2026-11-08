@@ -190,9 +190,9 @@ the same sources give the same bytes, so a rebuild of unchanged sources leaves t
 - Poses por `PoseBuffer`. O save grava em thread própria.
 
 ## Luz e relógio
-- `Daylight` é o dono do sol, do ambiente e do céu. À noite o sol vira lua sem sombra; a luz da rua é `LampLights`.
-- `CityWorld.set_sky_mode("day"|"night"|"cycle")`: dia e noite fixam as horas de `daylight.json` (16h e 22h).
-- Testes e capturas movem relógio e céu juntos (`UiDriver.at_hour`).
+- `Daylight` owns the sun, the ambient and the sky: a physical sky (`render/shaders/sky_model.gdshaderinc`, values in `render/air.gd`) colours the sun,
+  lights every surface as ambient and hazes the distance; AgX, neutral grade; at night a shadowless moon, street light by `LampLights`.
+- `CityWorld.set_sky_mode("day"|"night"|"cycle")`: day and night pin `daylight.json`'s hours (16h, 22h); tests and captures move clock and sky together (`UiDriver.at_hour`).
 
 ## Máquinas de estado
 - `GameFlow.State`: BOOT → MENU → PLAYING → QUITTING (tabela `TRANSITIONS`; fechar a janela também passa por `quit`).

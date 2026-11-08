@@ -1,6 +1,6 @@
 // The air over the scene, in one full-screen pass (Godot's "Advanced post-processing": a quad in clip space reading the
-// depth texture, drawn after the opaque world): the placed clouds' shadows on what the pixel sees, the mist, the banks
-// of painted fog and the clouds' bodies. Each layer takes `keep` of what is behind and adds its own light, so the whole
+// depth texture, drawn after the opaque world): the placed clouds' shadows on what the pixel sees, the mist (lit as the air
+// is, its colour the sky's at the horizon along the view: sky_model.gdshaderinc), the banks of painted fog and the clouds' bodies. Each layer takes `keep` of what is behind and adds its own light, so the whole
 // pass is one blend over the scene (ALBEDO, ALPHA). render/sky_view.gd lays the clouds and sets the uniforms; numbers
 // come from data/game/sky.json.
 shader_type spatial;
@@ -18,15 +18,13 @@ uniform vec4 puff[168]; // MAX_CLOUDS * PUFFS: x, y, z, radius
 uniform vec4 cloud_look[MAX_CLOUDS]; // base height, thickness (life), how much shows, -
 uniform vec3 sun_dir = vec3(0.5, 0.8, 0.3);
 uniform vec3 sun_light = vec3(3.0, 2.8, 2.5);
-uniform vec3 sky_light = vec3(0.6, 0.7, 0.8);
-uniform vec3 mist_color = vec3(0.79, 0.86, 0.92);
 uniform float dark = 0.0;
 uniform float shadow_strength = 0.62;
 uniform float mist = 0.0;
 uniform float mist_height = 60.0;
 uniform float mist_beta;
 uniform float mist_reach = 2400.0;
-uniform float air_gain = 1.0; // daylight.json sky_gain: what the air gives off meets the curve as the sky does
+uniform float air_gain = 1.0; // daylight.json sky_gain: the clouds' and fog banks' authored light (in the sky's colour before it) as light
 uniform float fog_on = 0.0;
 uniform float fog_density = 1.0;
 uniform vec2 fog_slab = vec2(0.0);
@@ -37,10 +35,12 @@ uniform vec2 wind_dir = vec2(0.93, 0.35);
 #include "res://render/shaders/screen_depth.gdshaderinc"
 #include "res://render/shaders/color_space.gdshaderinc"
 #include "res://render/shaders/cloud_field.gdshaderinc"
-#include "res://render/shaders/canyon_light.gdshaderinc"
+#include "res://render/shaders/sky_model.gdshaderinc"
+#include "res://render/shaders/air_globals.gdshaderinc"
 
 const int FOG_STEPS = 36; // the grain of the start goes with the length of a step: 2.1 grey levels at 24, measured on a bank
 const int CLOUD_STEPS = 16;
+const vec3 NIGHT_AIR = vec3(0.03, 0.035, 0.05) * 0.18; // the night's air under the lamps, as the clouds' night fill
 const float WINDOW_SLACK = 0.001; // of the fog window's side: the margin of the step range over float rounding (fog_amount)
 
 void vertex() {
@@ -158,7 +158,7 @@ float fog_amount(vec3 ro, vec3 rd, float t_scene, float jitter, float time) {
 }
 
 // The clouds' bodies, nearest first: `light` the light they add, the result what of the scene shows through.
-float cloud_bodies(vec3 ro, vec3 rd, float t_scene, float jitter, float time, out vec3 light) {
+float cloud_bodies(vec3 ro, vec3 rd, float t_scene, float jitter, float time, vec3 sky_light, out vec3 light) {
 	light = vec3(0.0);
 	float keep = 1.0;
 	// A cloud whose entry lies at or past what the pixel sees adds nothing: it is left out here, so the nearest-first
@@ -227,25 +227,26 @@ void fragment() {
 	vec3 add = vec3(0.0);
 	float jitter = texture(start_noise, FRAGCOORD.xy / vec2(textureSize(start_noise, 0))).r;
 	if (!sky && cloud_count > 0) keep *= cloud_shade(hit);
-	if (!sky && canyon_sky > 0.0) keep *= canyon_keep(hit, ro, SCREEN_UV, 1.0 / VIEWPORT_SIZE, INV_PROJECTION_MATRIX, INV_VIEW_MATRIX);
+	vec3 level = normalize(vec3(rd.x, 0.0, rd.z) + vec3(1e-5, 0.0, 0.0));
+	vec3 horizon = sky_radiance(air_now(), level, max(ro.y, 1.0)) + NIGHT_AIR * dark; // what the air sends along a level view
 	if (mist > 0.0) {
 		float a = mist_amount(ro, rd, t_scene, sky ? mist_height : hit.y);
-		add = add * (1.0 - a) + mix(mist_color, mist_color * 0.18, dark) * a;
+		add = add * (1.0 - a) + horizon * a;
 		keep *= 1.0 - a;
 	}
 	if (fog_on > 0.5) {
 		float a = fog_amount(ro, rd, t_scene, jitter, TIME);
 		vec3 fog_light = mix(vec3(0.86, 0.9, 0.95), vec3(1.0, 0.95, 0.84), pow(max(dot(rd, sun_dir), 0.0), 8.0)) * (0.72 + 0.28 * max(sun_dir.y, 0.0));
-		add = add * (1.0 - a) + fog_light * (1.0 - 0.85 * dark) * a;
+		add = add * (1.0 - a) + fog_light * (1.0 - 0.85 * dark) * air_gain * a;
 		keep *= 1.0 - a;
 	}
 	if (cloud_count > 0) {
 		vec3 light;
-		float through = cloud_bodies(ro, rd, t_scene, jitter, TIME, light);
-		add = add * through + light;
+		float through = cloud_bodies(ro, rd, t_scene, jitter, TIME, horizon / air_gain, light);
+		add = add * through + light * air_gain;
 		keep *= through;
 	}
 	if (keep > 0.999) discard;
 	ALPHA = 1.0 - keep;
-	ALBEDO = linear_out(add * air_gain / max(ALPHA, 0.0015));
+	ALBEDO = linear_out(add / max(ALPHA, 0.0015));
 }

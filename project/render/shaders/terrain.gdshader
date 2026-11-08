@@ -32,10 +32,10 @@ uniform highp sampler2DArray _control_maps : repeat_disable;
 group_uniforms;
 
 #include "res://render/shaders/terrain_uniforms.gdshaderinc"
+#include "res://render/shaders/map_frame.gdshaderinc"
 
 // Varyings & Types
 // Some are required for editor functions
-global uniform float map_grid;
 varying vec3 v_vertex;
 varying vec3 v_ground_n; // the ground's normal at the vertices, interpolated: what slope and light read, with no step at each cell
 varying float v_vertex_xz_dist;
@@ -175,6 +175,8 @@ void vertex() {
 #include "res://render/shaders/ground_paint.gdshaderinc"
 #include "res://render/shaders/shore.gdshaderinc"
 
+#include "res://render/shaders/canyon_light.gdshaderinc"
+
 global uniform float rain_wet;
 
 void fragment() {
@@ -183,11 +185,7 @@ void fragment() {
 	ivec3 i0 = get_index_coord(index_id + vec2(0, 1));
 	ivec3 i2 = get_index_coord(index_id + vec2(1, 0));
 	ivec3 i3 = get_index_coord(index_id);
-	vec3 w_normal = normalize(v_ground_n);
-	vec2 past = abs(v_vertex.xz);
-	if (max(past.x, past.y) >= map_half - 0.5) { // the wall at the end of the map: rock on its own plane
-		w_normal = past.x > past.y ? vec3(sign(v_vertex.x), 0.0, 0.0) : vec3(0.0, 0.0, sign(v_vertex.z));
-	}
+	vec3 w_normal = map_edge_normal(normalize(v_ground_n), v_vertex);
 	ivec3 i1 = get_index_coord(index_id + vec2(1, 1));
 	vec2 fc = fract(uv);
 	PaintCorner p00 = read_paint(i3), p10 = read_paint(i2), p01 = read_paint(i0), p11 = read_paint(i1);
@@ -254,11 +252,7 @@ void fragment() {
 		if (weights > 0.0) c = mix(c, sum / weights, clamp(weights, 0.0, 1.0));
 	}
 	c *= gully_shade;
-	c *= 1.0 - 0.4 * step(map_half - 0.5, max(abs(v_vertex.x), abs(v_vertex.z)));
-	if (map_grid > 0.5) { // the Layers popover: the zoning grid over the ground, one line a cell, as wide as a pixel of it
-		vec2 cell = abs(fract(v_vertex.xz / grid_m - 0.5) - 0.5) / fwidth(v_vertex.xz / grid_m);
-		c = mix(c, vec3(1.0), (1.0 - clamp(min(cell.x, cell.y), 0.0, 1.0)) * grid_alpha);
-	}
-	ALBEDO = c;
+	ALBEDO = map_frame_colour(c, v_vertex);
 	ROUGHNESS = mix(0.95, 0.6, rain_wet);
+	AO = canyon_sky_seen(v_vertex, w_normal); // the sky the buildings leave the ground
 }

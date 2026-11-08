@@ -770,3 +770,49 @@ Ressalvas abertas:
   audit session rebuilds both from HEAD with its folder-independent build (`-ffile-prefix-map`, the retrained profile) in its
   next commit. The checks above ran on DLLs built from this commit's sources in the worktree `city-scenic` (HEAD + this change
   only); the user's `dist/windows/Roadcraft.exe` was exported from it.
+
+## Physical sky, sky light and haze, AgX (2026-11-08, branch `realism`, worktree `city-realism`)
+
+The user asked for the realistic look the reading of the renderer found within reach without weight, in a worktree, fast.
+- Problems found (reading): the light was a studio rig, a sun plus a fill from 100 degrees off it, a top and a negative under light
+  over a flat ambient colour (`daylight_rig.gd`, `daylight.gd`), so a shade had neither the sky's direction nor its colour; the sky
+  a painted gradient (`sky.gdshader`) that nothing else shared; the haze a grey exponential fog with no aerial perspective, so
+  towers 2 km off kept the contrast of the near ones; ACES with a grade of +0.25 contrast and +0.3 vibrance; the street canyons'
+  sky occlusion multiplied over the finished picture (`atmosphere.gdshader`), the sunlit floor losing as much as the shaded one.
+- Sources: Godot 4.7.2-stable source (light_storage.cpp: a directional energy times pi; scene_forward_lights_inc.glsl: the diffuse
+  BRDF over pi; scene_forward_clustered.glsl and render_scene_data_rd.cpp: the sky ambient read from the radiance map and scaled by
+  the background energy, not by ambient_light_energy; tonemap.glsl, environment_storage.cpp: AgX's matrices and the allenwp curve;
+  drivers/gles3: Compatibility's picture clamped at 1 before its tone mapping); Godot docs (Environment, Sky, HDR output, global
+  illumination); Hillaire 2020 (sky and aerial perspective, 0.31 ms on a GTX 1080 at 720p), Bruneton & Neyret 2008 (the air's
+  coefficients), Hoffman & Preetham 2002 (closed-form single scattering), Koschmieder (visibility), Kasten & Czeplak 1980
+  (overcast light), Darula et al. 2005 (extraterrestrial illuminance), Pomerantz et al. 2000 (aged asphalt), St-Amour 2013 (World AO).
+- Plan and code: one air for everything. `render/shaders/sky_model.gdshaderinc` (Rayleigh, aerosol and ozone as exponential layers,
+  single scattering in closed form, higher orders as a geometric series, the sun's light through the air) in the lights' own unit,
+  so the sky's brightness follows from the sun's energy with no gain; `render/air.gd` holds its values (`daylight.json` "air",
+  the aerosol from the visibility) and mirrors the sun's light through it, which colours the DirectionalLight3D. The sky
+  (`sky.gdshader`) is that air plus an overcast deck (CIE overcast) and the night's two colours; the Environment's ambient and
+  reflections read its radiance map, so the three studio lights are gone; the haze is the fog at the air's extinction, thinned
+  with height, its colour the sky's along the view (aerial perspective). The canyon field became the surfaces' AO
+  (`canyon_light.gdshaderinc`, global uniforms): it darkens only the sky's light. AgX with the engine's defaults and a neutral grade;
+  the tone contract (`shader_contracts.json` tone, both DLLs) and its mirrors (`tone_map.gd`, `tone_inverse.gdshaderinc`) moved to
+  AgX. Exposure 2.47 from a grey card in sun. Aged asphalt (0.09 to 0.14). Paint loses 40 % of its chroma to dust in the render
+  (`building_common.gdshaderinc` dusty, `paint_chroma`): first tried in the palettes' data, which moved the digest, the yard docks and
+  a crossing, because the generator reads a wall's lightness (`paint.h` is_light steers the trims and the random stream), so the
+  palettes stayed as drawn. SSR on the high and ultra tiers; glow by day too (the camera's bloom).
+- Tests moved with their cause: `building_light_test` turns the glow off by day like the fog, the ambient off by the sky's share,
+  and holds its lamp under Compatibility's clamp for any exposure (LAMP_REACH / exposure); `light_color_test` the same for the
+  ambient, the signal lenses are the nearest colours AgX shows (`streets.json`), the grade check holds the neutral grade.
+- Split for the gates: `cloud_puffs.gd` (the clouds' lobes, out of `sky_view.gd`), `map_frame.gdshaderinc` (the map's edge and the
+  zoning grid, out of `terrain.gdshader`).
+- Verified: both DLLs rebuilt from these sources; `quick.sh --ready --bless`: 46 of 46, the digest equal to HEAD's (4040792916cf7d78:
+  the simulation untouched), the four frozen photos blessed after looking at each against the old ones (haze over the distance,
+  the sun warm at 16h, shade lit by the sky, aged asphalt, muted paint); captures `sao_paulo`, `frozen`, `city` looked at; the light
+  tests at HEAD (worktree `city-headcheck`) passed, which located each failure here in this change; gates of the changed files OK
+  (the full run's 393 findings are the old backlog in other files). Exported `dist/windows/Roadcraft.exe` from the worktree.
+- Created `project/render/air.gd`, `project/render/cloud_puffs.gd`, `project/render/shaders/sky_model.gdshaderinc`,
+  `air_globals.gdshaderinc`, `map_frame.gdshaderinc`; changed the rest listed in this commit; deleted nothing.
+- Ultra-realism, what the research found within reach next (not done here): photo-scanned 2K PBR surfaces with hex-tiling
+  (Mikkelsen 2022, 3 samples) and decals for wear, both needing the user's approval of the downloads; reflection probes per district;
+  AreaLight3D (4.7) for shopfronts at night; auto exposure (CameraAttributesPractical, a moderate cost) for the day's whole arc;
+  HDR output once the interface takes HDR 2D. Real-time GI past SSIL and the World AO waits for the engine (4.7 ships only the
+  ray-tracing foundation).

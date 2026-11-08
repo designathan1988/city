@@ -91,7 +91,7 @@ void fragment() {
 		rough = lens_roughness;
 	} else if (tag == TAG_TAIL) {
 		bool on = v_custom.b > -0.5;
-		bool braking = mod(v_custom.g, AGENT_DOOR_STEP) >= AGENT_BRAKE_FLAG; // by day each shows as its colour: more red than that, and ACES turns it cream
+		bool braking = mod(v_custom.g, AGENT_DOOR_STEP) >= AGENT_BRAKE_FLAG; // by day each shows as its colour: more red than that, and the tone mapping turns it cream
 		emit = on ? (braking ? brake_lit : tail_lit) + source_linear(tail_glow) * tail_power * night * (braking ? brake_ratio : 1.0) : vec3(0.0);
 		c = on ? vec3(0.0) : c;
 		rough = lens_roughness;
