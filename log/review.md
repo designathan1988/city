@@ -3512,6 +3512,24 @@ edges, a division by a literal) is folded when the shader is compiled into a mul
 uniform it runs on the GPU. The last bit of a value differs, and on two pixels of the near glass it crosses a level. Nothing to see;
 city-verify's photos re-blessed for it (`photos_bless`, an understood change). Every shader that follows can do the same.
 
+### 6.57 B2, C14 (the blast's puffs): their motions, edges and colours in materials.json, the kinds' tables by kind (2026-11-08)
+
+**Cause and fix.** `puffs.gdshader` wrote the reference game's puff motions as bare numbers (135 findings): how each kind rises,
+spreads, grows and peaks as chains of `k == PUFF_... ? value :`, the paper's flight, the hydrant's jet, what is flung, the flame's
+lick, the billow and edge of every kind, the flame's shape and flicker, the paper's turn and tones, and the colours as uniform
+defaults. They are `materials.json` `puffs.params`. The four chains are tables by `PuffKind` (`puff_rise`, `puff_spread`,
+`puff_grow`, `puff_peak`, sized `PUFF_PAPER + 1` from the contract), so a kind's value is one entry; the rest are uniforms grouped by
+what they move. The seeds' decorrelating multipliers, the step of the reference game's motions and the least life are named
+consts; `SEED_TURN` keeps the 6.28 it wrote (not `TAU`: that would move the bobs).
+
+Kept for B3, said in the data's `_doc`: the puffs blow along a fixed `wind_dir`, not the sky's wind, and fall under two gravities
+(`water_fall` 9.8 and `flung_fall` 12.25 steps a second squared).
+
+**Proof.** Each table equals its chain kind by kind (the chain evaluated for the ten kinds); the shader with every other param and
+const put back as literals is HEAD's code line for line (the local `flung` renamed `flung_kind`, the uniform taking its name).
+
+**What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56).
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at
