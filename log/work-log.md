@@ -805,3 +805,57 @@ Ressalvas abertas:
   `tools/gates/schemas/streets.schema.json`, `project/tests/core/road_commands_test.gd`, both DLLs, this record.
 - Next: the verge (`road_verge.cpp`, the 4.0's `vergeTop` translated) is the owner's order of 19:00: it goes, and the terrain meets
   the road level.
+
+## 2026-11-08 20:40: the roads' green verge gone, the terrain cut along the paving (the owner's order of 19:00)
+- Problems: every road wore a band of grass (`road_verge.cpp`, the 4.0's `vergeTop` translated) laid over the ground from the
+  footway's edge down to the terrain, with its own triangles; the terrain under it was pulled 0.25 m below the deck beside the road
+  (`road_shape.cpp` BESIDE_DROP_M), so the verge had to hide a step everywhere. Roadcraft 4.0 (`roadcraft-4.0-main`) draws it the
+  same way: our port was faithful to an old version. The lab (`lab/roadcraft`, the correct source) removed it: `render/terrainSeams.ts`
+  cuts the terrain cells the paving's outline crosses and `world/elevation.ts roadShapeAt` levels the ground beside a road with the
+  footway's top.
+- Fix (designed from the lab, no code copied): the ground beside a road stands at the paving's outer top on each side (a raised
+  footway's rise, else the deck: `road_grade_sync.cpp paving_rise`), under it 0.6 m below the deck. `ground_seam.cpp` reads the
+  up-facing paving at grade the road jobs draw, unites it (Clipper2), finds every cell its outline crosses (exact in whole
+  millimetres) and draws each such cell outside the paving: Difference, then Clipper2's constrained Delaunay; a grid corner keeps the
+  terrain's height (the seam's shader reads it, and the normal, from Terrain3D's maps as the terrain draws it), an outline point the
+  paving's height. The terrain itself stays whole: holes in Terrain3D cannot follow its clipmap (its mesher floors the target to the
+  vertex grid and rounds each level to 2^(lod+1) spacings, `_target_pos` re-sent only after a vertex's move), and holes did open blue
+  wedges onto the water; under a cut cell the terrain stands lower than the seam at every level, so nothing shows through. The
+  terrain's fragment moved to `terrain_ground.gdshaderinc`, shared with `terrain_seam.gdshader` through `terrain_common.gdshaderinc`.
+- Dark slivers found after (systematic debugging, evidence first): they vanished with `draw_seams(false)`, so they were seam
+  triangles. Two causes. (1) The ground's shape took "under the paving" as the distance to the centreline, round past both ends, but a
+  dead end's paving is cut straight at the node (`road_junction.cpp road_cut`) and a bulb is a 12.5 m disc: grid corners past a cut
+  stood 0.6 m low outside the paving. Now a road's ends travel with its grade (`RoadEndKind` joint, cut or bulb in `GradeProfile`,
+  compared by the solve so a change reshapes the ground; `refresh_node` tells the grade when a node's arms or bulb change) and the
+  ground's shape takes them (`RoadShape.cut`, `disc`); the paving's outline counts as beside, where the seam's corner meets it.
+  (2) An outline point the paving gave no height: `ON_PAVING_M` was 2 mm, "twice the millimetre", but a point goes through four
+  roundings to the millimetre (the triangle's vertex, the union's crossing, the cell's rectangle clip, the square's difference),
+  each up to half a diagonal; one stood 2.18 mm off. The bound is now derived (4 x sqrt(2)/2 mm), a point the triangulation adds on a
+  side takes that side's height (one rounding), and a triangle with a point no side holds is not drawn and is counted.
+- A grey kerb face left bare along a dead end's side (the owner's photo, 21:00): with and without the seam the view was the same, so
+  no seam was drawn there; the render drew 4 seam chunks where the probe built 6. Cause: a chunk is streamed only if it is known,
+  and `full_rebuild` knew the chunk of each segment's middle and each node; a cut cell is drawn by the chunk of its own middle,
+  up to a cell past the paving, so a road near a chunk's border (z 2304 here) left the cells across it to a chunk nobody knew. The
+  probe read the same short list, so the test missed it. Now `RoadNetwork::for_drawn_chunks` (one owner) gives the chunks a
+  segment's drawing reaches: its box, a terrain cell round it, a bulb's disc round either node; the edits' marks, the full rebuild
+  and the probe all read it.
+- Verified: both DLLs; the dead end's view with and without the seam (the face gone with it; 6 seam chunks drawn, as the probe
+  builds); `road_commands_test` (the town: 16056 cut cells, no refused, no point without height, cover error 0; a
+  freehand road 0.002 m²); the curves map's probe (unheighted 0, worst cover 0.004 m²); a cross-section at the dead end (seam at the
+  deck past the cut, the terrain at -0.6 under the paving); close photos of the dead ends, an avenue's side and a local street from
+  four angles: the terrain meets the footway level, no band, no sliver. `quick --ready`: digest moved only in `heights` (the ground
+  beside and past the roads); the four frozen photos move as one frame (the camera rests on the ground, now level with the paving):
+  blessed, understood. `gates_changed` only on the owner's `docs/` (not committed).
+- Files: created `native/src/render/roads/ground_seam.{h,cpp}`, `ground_seam_layer.{h,cpp}`,
+  `project/render/shaders/terrain_common.gdshaderinc`, `terrain_ground.gdshaderinc`, `terrain_seam.gdshader`; deleted
+  `native/src/render/roads/road_verge.cpp`; changed `road_chunks.h` (a template over what a chunk reports), `road_renderer.cpp`,
+  `road_junction.cpp`, `road_layer.{h,cpp}`, `road_look.{h,cpp}`, `road_mesh.h`, `render_world.{h,cpp}`, `core/job_pool.h`
+  (SEAMS lane), `sim/terrain/{heightfield.h,compose.cpp,road_shape.{h,cpp}}`, `sim/roads/{road_grade.h,road_grade.cpp,
+  road_grade_solve.cpp,road_network_shape.cpp,road_network.{h,cpp}}`, `sim/commands/road_grade_sync.cpp`, `api/city_core.h`, `city_core_bind.cpp`,
+  `city_core_probe_render.cpp` (`road_seam_probe`, `draw_seams`), `project/render/{city_world.gd,city_terrain.gd}`,
+  `shaders/{terrain.gdshader,verge.gdshader}`, `project/data/render/{streets.json,materials.json}`, their schemas,
+  `project/game/store/store_api.gd`, `project/tests/core/road_commands_test.gd`, `project/tests/perf/camera_pan.gd`, `log/mapa.md`,
+  `log/pendencias.md`, both DLLs, this record.
+- Next: the port from the lab by script (the owner's orders of 19:45 to 22:15): a translator with a differential proof against the
+  lab before any of it enters, the roads first.
+

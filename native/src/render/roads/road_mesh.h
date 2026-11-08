@@ -43,11 +43,6 @@ void emit_chunk(const RoadEmit &e, int64_t chunk);
 void kerbed_line(const RoadEmit &e, const std::vector<godot::Vector3> &in, const std::vector<godot::Vector3> &bk, const std::vector<godot::Vector3> &out,
 		float across, bool kerbed, const godot::Color &walk);
 
-// The ground round the road (road_verge.cpp): from `edge`, a line along the paving's outer top, out along `away` (unit,
-// flat) down to the terrain. emit_verge_node draws it round a node's corners and ends.
-void verge_ribbon(const RoadEmit &e, const std::vector<godot::Vector3> &edge, const std::vector<godot::Vector3> &away);
-void emit_verge_segment(const RoadEmit &e, int sid);
-void emit_verge_node(const RoadEmit &e, int node);
 // What of a segment is not its surface: the deck, bents and parapets where it is raised, the portals where it goes under (road_structures.cpp).
 void emit_structures(const RoadEmit &e, int sid);
 godot::Color structure_concrete();
@@ -59,7 +54,7 @@ void emit_wall_backfill(const RoadEmit &e, int sid);
 
 // The arcs a segment's surface is drawn at between v0 and v1, both included: as few as keep the mesh within the level's surface
 // error of the true road (StreetLook::surface_error, far_surface_error), in plan, height and across the section; two for a road
-// straight and on one grade. The surface, its verge and its paint stand on these.
+// straight and on one grade. The surface and its paint stand on these.
 std::vector<double> segment_stations(const RoadEmit &e, int sid, double v0, double v1);
 std::vector<double> segment_stations(const CityState &s, const StreetLook &L, bool far, int sid, double v0, double v1);
 // The most a mesh on stations `at` stands off the true surface, read densely between them (the stations' own proof).

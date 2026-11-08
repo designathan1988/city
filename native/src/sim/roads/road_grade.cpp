@@ -132,6 +132,10 @@ void grade_inputs(RoadGrade &grade, const RoadNetwork &net, int s, const GroundA
 	p.plate_b = std::min(len * float(MOUTH_SHARE), plate_reach(net, g.b, g.retreat_b));
 	p.structure = structure_of(g.flags);
 	p.walls = (g.flags & SEG_CUT_WALLS) != 0;
+	for (int k = 0; k < 2; k++) { // a node of this road alone is a dead end: a bulb, or cut straight across
+		const RoadNode &nd = net.nodes[size_t(k == 0 ? g.a : g.b)];
+		p.ends[k] = nd.segs.size() != 1 ? RoadEndKind::JOINT : nd.bulb ? RoadEndKind::BULB : RoadEndKind::CUT;
+	}
 	p.manual = std::fabs(net.nodes[size_t(g.a)].lift) > AUTHORED_EPS || std::fabs(net.nodes[size_t(g.b)].lift) > AUTHORED_EPS;
 	if (p.h.size() != size_t(count)) p.h = p.base;
 	p.valid = true;

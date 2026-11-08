@@ -47,15 +47,17 @@ struct ShapeInputs {
 	float step = 0, half = 0;
 	Structure structure = Structure::GROUND;
 	bool manual = false, walls = false;
+	RoadEndKind ends[2] = { RoadEndKind::JOINT, RoadEndKind::JOINT };
 	std::vector<float> h;
 	explicit ShapeInputs(const GradeProfile &p)
 		: valid(p.valid), step(p.step), half(p.half), structure(p.structure), manual(p.manual), walls(p.walls), h(p.h) {
 		std::copy(p.q, p.q + CURVE_NUMBERS, q);
+		std::copy(p.ends, p.ends + 2, ends);
 	}
-	// The profile makes another shape: its curve (p.q is the curve's own after grade_inputs), casing, build or a height.
+	// The profile makes another shape: its curve (p.q is the curve's own after grade_inputs), casing, build, an end or a height.
 	bool differs(const GradeProfile &p) const {
 		return !valid || !std::equal(q, q + CURVE_NUMBERS, p.q) || step != p.step || half != p.half || structure != p.structure ||
-				manual != p.manual || walls != p.walls || h.size() != p.h.size() ||
+				manual != p.manual || walls != p.walls || ends[0] != p.ends[0] || ends[1] != p.ends[1] || h.size() != p.h.size() ||
 				std::memcmp(h.data(), p.h.data(), h.size() * sizeof(float)) != 0; // bit for bit: the shape is made of these floats
 	}
 };

@@ -1,6 +1,6 @@
-// The ground between a footway's edge and the terrain (render/roads/road_verge.cpp): a ribbon in the terrain's own grass,
-// so the land runs up to the paving with no wall and no seam. Its uniforms are the terrain's (render/city_world.gd). It
-// takes the map's biome and not what was painted on the ground: the ribbon is a metre wide and paint stays on the terrain.
+// A lot's lawn (render/buildings/building_renderer.cpp, the "verge" material): the terrain's own grass on a lot's ground. Its
+// uniforms are the terrain's (render/world_materials.gd). It takes the map's biome and not what was painted on the ground: paint
+// stays on the terrain. (The roads' verge it was first made for is gone: render/roads/ground_seam.h meets the terrain instead.)
 shader_type spatial;
 render_mode blend_mix, depth_draw_opaque, cull_back;
 

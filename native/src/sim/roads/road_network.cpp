@@ -1,6 +1,8 @@
 // Road graph storage, spatial queries and the bookkeeping of every edit (Roadcraft roads/network.ts).
 #include "sim/roads/road_network.h"
 
+#include "sim/roads/junction.h"
+
 #include <algorithm>
 #include <cmath>
 
@@ -266,7 +268,7 @@ void RoadNetwork::mark_heights(int s) {
 	edited_segs_.push_back(s);
 	if (!log) return;
 	const RoadSegment &g = segs[size_t(s)];
-	for_chunks(g.minx, g.minz, g.maxx, g.maxz, [&](int64_t key) { log->road_chunks.push_back(key); });
+	for_drawn_chunks(s, [&](int64_t key) { log->road_chunks.push_back(key); });
 	log->net_seg(s);
 	log->net_node(g.a);
 	log->net_node(g.b);
@@ -304,8 +306,22 @@ void RoadNetwork::mark_segment(int s) {
 	auto mark = [](std::vector<int64_t> &v, float x0, float z0, float x1, float z1) {
 		for_chunks(x0, z0, x1, z1, [&](int64_t key) { v.push_back(key); });
 	};
-	mark(log->road_chunks, g.minx, g.minz, g.maxx, g.maxz);
+	for_drawn_chunks(s, [&](int64_t key) { log->road_chunks.push_back(key); });
 	mark(log->lot_cells, g.minx - LOT_LOOK_M, g.minz - LOT_LOOK_M, g.maxx + LOT_LOOK_M, g.maxz + LOT_LOOK_M);
+}
+
+void RoadNetwork::for_drawn_chunks(int s, const std::function<void(int64_t)> &fn) const {
+	const RoadSegment &g = segs[size_t(s)];
+	const double cell = cat->tune.world_height_spacing_m, disc = BULB_R + BULB_WALK + cell;
+	std::vector<int64_t> keys;
+	for_chunks(g.minx - cell, g.minz - cell, g.maxx + cell, g.maxz + cell, [&](int64_t k) { keys.push_back(k); });
+	for (const int n : { g.a, g.b }) {
+		const RoadNode &nd = nodes[size_t(n)];
+		for_chunks(nd.x - disc, nd.z - disc, nd.x + disc, nd.z + disc, [&](int64_t k) { keys.push_back(k); });
+	}
+	std::sort(keys.begin(), keys.end());
+	keys.erase(std::unique(keys.begin(), keys.end()), keys.end());
+	for (const int64_t k : keys) fn(k);
 }
 
 } // namespace city

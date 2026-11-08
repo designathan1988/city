@@ -40,9 +40,11 @@ struct BrushDab {
 	BrushMode mode = BrushMode::RAISE;
 };
 
-// What a sample learns from a polyline: its distance to the nearest piece and the height there.
+// What a sample learns from a polyline: its distance to the nearest piece, the height there, and the side it lies on (1 left of
+// the polyline's way, +u of a road's frame; 0 right).
 struct NearSample {
 	float d = BIG, surface = 0;
+	int side = 0;
 };
 
 // A rectangle of height samples (inclusive).

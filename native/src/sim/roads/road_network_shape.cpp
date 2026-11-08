@@ -57,6 +57,8 @@ bool RoadNetwork::refresh_node(int n, bool arms_changed) {
 	const bool whole = arms_changed || nd.joint != was_joint || nd.bulb != was_bulb;
 	if (arms_changed || nd.joint != was_joint) run_dirty_.insert(run_dirty_.end(), nd.segs.begin(), nd.segs.end()); // the street goes on here, or no more
 	junction_retreats(cat->tune, arms, lens, out, order, nd.bulb);
+	if (arms_changed || nd.bulb != was_bulb) // a dead end now, or no more, or its bulb come or gone: the ground under its roads is shaped again
+		for (int s : nd.segs) grade.seg_changed(s);
 	bool changed = whole;
 	for (size_t i = 0; i < k; i++) {
 		RoadSegment &g = segs[nd.segs[i]];

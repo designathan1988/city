@@ -2,6 +2,16 @@
 
 O que falta fazer, por área.
 
+- Junction plate corners and the ground (theme 3, log/work-log.md 2026-11-08 20:40): the ground's shape (`road_shape.cpp`) knows a
+  road's strip and how it ends (joint, cut, bulb), not a plate's corners; where a plate's footway tip reaches past every arm's casing
+  the ground stands at the footway's top under it (coplanar), and a fillet's asphalt wider than its arms' footways would stand under
+  the ground. A node's outline handed to the ground (sim/roads/junction.h already has the corners) would make it exact.
+- The plate's paving is a fan from its centre (`road_junction.cpp` `fan`), as the 4.0 drew it; the lab triangulates it (earcut and a
+  refinement). Port it from the lab with the script port.
+- `FOOTWAY_RISE_M` (`road_grade_sync.cpp`, the ground beside a raised footway) mirrors `furniture.sidewalk.height_m`, which the render
+  reads for the footway's top: one owner, read by both.
+- The lot lawn's material is still named "verge" (`materials.json`, `verge.gdshader`, `building_renderer.cpp`): rename it "lawn";
+  the road material keeps the verge's textures, unused since the roads' verge went.
 - Growth's look memory (B3, log/review.md §6.11): `record_for` stores the chosen candidate's look under the key of the record with
   the storeys that candidate reached, though the cap may make that record's body another; after a load the look is the standing
   body's. Derive looks from the kept body (`b40/body_cache.h`), delete `BuildingStore::looks`; the generated city moves.

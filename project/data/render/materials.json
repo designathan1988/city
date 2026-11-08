@@ -35,6 +35,7 @@
   "stone": { "sway_per_ms2": 0.0, "turbulence": 0.0, "sway_hz": 0.0, "roughness": 0.94, "leaf_specular": 0.5 }
  },
  "verge": { "shader": "res://render/shaders/verge.gdshader", "params": {} },
+ "terrain_seam": { "shader": "res://render/shaders/terrain_seam.gdshader", "params": {} },
  "road": {
   "fade_shader": "res://render/shaders/road_far.gdshader",
   "_doc": "The streets' surfaces (render/shaders/road_body.gdshaderinc): each map's scale and normal strength, the close-up detail of each surface, pavers, cobbles, the lamps' pools, and the look the shader worked out by hand (blotches, roughness, joints, the far level's lines; the wear bands by the kerb, the lanes' tracks and the footway's grime, road_wear.gdshaderinc; what wear does, wear.gdshaderinc), by eye as the 4.0's streets; each vector's parts are said at its uniform.",

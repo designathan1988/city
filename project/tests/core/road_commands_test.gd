@@ -26,6 +26,9 @@ const FILLED_STYLES := ["roadcraft", "brasil"] # session-rules.md, section 10
 const RAY_FROM_M := 400.0
 const OFF_ROAD_M := 120.0
 const GROUND_EPS_M := 0.01
+## The most a cell's seam and paving may differ from its area: the outline is cut in whole millimetres (ground_seam.cpp), so a
+## 4 m cell's sides err by under 4 x 4 m x 0.5 mm = 0.008 m2.
+const SEAM_COVER_M2 := 0.01
 
 
 func _ready() -> void:
@@ -100,6 +103,13 @@ func _surface_mesh(what: String) -> void:
 	print("road surface, %s: %s" % [what, p])
 	check(p.segments > 0 and p.error_m <= p.tolerance_m, "%s: the mesh %.4f m off its roads at worst, within %.3f m" % [what, p.error_m, p.tolerance_m])
 	check(p.whole > 0, "%s: %d straight roads on one grade in one stretch" % [what, p.whole])
+	# The terrain meets the paving's edge itself (ground_seam.h): every cut cell triangulated, every outline point on the paving, and
+	# in every cell drawn the seam and the paving make the cell's area: no gap in the terrain's hole, no seam over a road.
+	var g: Dictionary = CityStore.query(&"road_seam_probe")
+	print("ground seams, %s: %s" % [what, g])
+	check(g.cells > 0 and g.cut > 0 and g.triangles > 0, "%s: the roads cut %d of the terrain's cells, %d drawn" % [what, g.cut, g.cells])
+	check(g.refused == 0 and g.unheighted == 0, "%s: every cut cell triangulated, every edge point on the paving" % what)
+	check(g.worst_cover_m2 < SEAM_COVER_M2, "%s: seam and paving fill each cell, %.5f m2 off at worst" % [what, g.worst_cover_m2])
 
 
 ## A road the player lays ends in a straight cut; the bulb is a choice, undone like any edit.

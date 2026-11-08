@@ -49,11 +49,7 @@ void load_shape(StreetLook &L, DataReader &r, const Dictionary &t) {
 	L.h_barrier = num(rh, h, "barrier");
 	L.skirt = num(rh, h, "skirt");
 	L.median_nose = num(r, t, "median_nose_m");
-	const Dictionary v = r.table(t, "verge");
-	DataReader rv = r.in("verge");
-	L.verge_reach = num(rv, v, "reach_m");
-	L.verge_under = num(rv, v, "under_m");
-	L.verge_strips = rv.integer(v, "strips");
+	// (no "verge" table: StreetLook has no band of ground beside the road, the terrain meets the paving itself, ground_seam.h)
 	L.surface_error = num(r, t, "surface_error_m");
 	L.far_surface_error = num(r, t, "far_surface_error_m");
 	if (!(L.surface_error > 0) || !(L.far_surface_error > 0)) r.fail("surface_error_m and far_surface_error_m must be above 0");

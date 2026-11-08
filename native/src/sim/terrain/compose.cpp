@@ -128,6 +128,8 @@ const std::vector<NearSample> &Heightfield::nearest(const std::vector<float> &pt
 		if (d < n.d) {
 			n.d = d;
 			n.surface = lerpf(a[1], b[1], t);
+			// left of a -> b: the frame's left is (dz, -dx) of its way (render/roads seg_frame)
+			n.side = (x_of(x) - a[0]) * (b[2] - a[2]) - (x_of(z) - a[2]) * (b[0] - a[0]) >= 0.f ? 1 : 0;
 		}
 	};
 	// The samples of a convex region: half-planes n.p <= c and, if `disc`, the circle of radius r around `o`.

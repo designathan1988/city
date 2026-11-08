@@ -1,5 +1,5 @@
 // Probes for the tests: the agents' and the wear's cost (agent_cost, wear_probe), where the last _process went (render_cost), the road
-// meshes' size (road_mesh_counts) and how far they stand off the roads (road_surface_probe), and how the agents' poses arrive (pose_stats: publications, their gaps, frames shown past the newest
+// meshes' size (road_mesh_counts), how far they stand off the roads (road_surface_probe), the ground seams (road_seam_probe), and how the agents' poses arrive (pose_stats: publications, their gaps, frames shown past the newest
 // pose). The traffic's own probe is city_core_probe.cpp.
 #include "api/city_core.h"
 
@@ -66,7 +66,8 @@ Dictionary CityCore::render_cost() const {
 }
 
 namespace {
-Dictionary count_of(const RoadChunks::Count &n) {
+template <typename Count>
+Dictionary count_of(const Count &n) {
 	Dictionary d;
 	d["chunks"] = n.chunks; // one instance and one draw call each
 	d["triangles"] = n.all.triangles;
@@ -80,8 +81,42 @@ Dictionary count_of(const RoadChunks::Count &n) {
 Dictionary CityCore::road_mesh_counts() const {
 	Dictionary d;
 	d["roads"] = count_of(render_.road_count());
-	d["verges"] = count_of(render_.verge_count());
+	d["seams"] = count_of(render_.seam_count());
 	d["wear_bytes"] = render_.wear_bytes();
+	return d;
+}
+
+// The ground seams of every chunk a road or a node stands in (render/roads/ground_seam.h), built anew from the state: the cells drawn
+// and cut, the triangles, the cells no triangulation took (also of the standing chunks), the outline points no paving gave a height,
+// where the last of them is (its y: its polygon's ring count), and the worst cell where seam and paving do not make the cell's area.
+Dictionary CityCore::road_seam_probe() {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	std::vector<int64_t> keys;
+	for (size_t sid = 0; sid < state_->roads.segs.size(); sid++) // every chunk a road's drawing reaches (RoadNetwork::for_drawn_chunks)
+		if (state_->roads.segs[sid].alive) state_->roads.for_drawn_chunks(int(sid), [&](int64_t k) { keys.push_back(k); });
+	std::sort(keys.begin(), keys.end());
+	keys.erase(std::unique(keys.begin(), keys.end()), keys.end());
+	SeamProbe all;
+	for (const int64_t k : keys) {
+		const SeamProbe p = render_.probe_seam(*state_, k);
+		all.cells += p.cells;
+		all.cut += p.cut;
+		all.triangles += p.triangles;
+		all.refused += p.refused;
+		all.unheighted += p.unheighted;
+		if (p.unheighted > 0) all.lost = p.lost;
+		all.worst_cover_m2 = std::max(all.worst_cover_m2, p.worst_cover_m2);
+	}
+	Dictionary d;
+	d["chunks"] = int64_t(keys.size());
+	d["cells"] = all.cells;
+	d["cut"] = all.cut;
+	d["triangles"] = all.triangles;
+	d["refused"] = all.refused;
+	d["refused_drawn"] = render_.seam_refused();
+	d["unheighted"] = all.unheighted;
+	d["lost"] = all.lost;
+	d["worst_cover_m2"] = all.worst_cover_m2;
 	return d;
 }
 

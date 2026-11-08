@@ -24,6 +24,7 @@
 #include "render/props/prop_renderer.h"
 #include "render/render_context.h"
 #include "render/roads/far_road_renderer.h"
+#include "render/roads/ground_seam_layer.h"
 #include "render/roads/road_renderer.h"
 #include "render/roads/road_layer.h"
 #include "render/terrain_bridge.h"
@@ -158,12 +159,15 @@ public:
 	godot::Dictionary building_chunk(float x, float z) const { return buildings_.chunk_view(x, z); }
 	RoadChunks::Count road_count() const { return roads_.count(); }
 	const StreetLook &street_look() const { return roads_.look(); } // what the road meshes are drawn by (road_surface_probe)
-	RoadChunks::Count verge_count() const { return verges_.count(); }
-	void draw_verges(bool on) { verges_.draw(on); }
+	GroundSeamLayer::Count seam_count() const { return seams_.count(); }
+	int seam_refused() const { return seams_.refused(); }
+	void draw_seams(bool on) { seams_.draw(on); }
+	// What the ground seam of chunk `key` is (ground_seam.h), built anew from the state (the probe's own reading).
+	SeamProbe probe_seam(const CityState &s, int64_t key) { return probe_ground_seam(s, roads_.look(), roads_.shapes(), key); }
 	int64_t wear_bytes() const { return wear_.bytes(); }
 	void wear_paint(float x0, float z0, float x1, float z1, float value) { wear_.paint(x0, z0, x1, z1, value); }
 	int pending() const {
-		return road_stream_.pending + raised_stream_.pending + props_stream_.pending + building_stream_.pending + roads_.pending() + far_roads_.pending() + far_roads_.waiting_supers() + verges_.pending() +
+		return road_stream_.pending + raised_stream_.pending + props_stream_.pending + building_stream_.pending + roads_.pending() + far_roads_.pending() + far_roads_.waiting_supers() + seams_.pending() +
 				structures_.pending() + props_.pending() + buildings_.pending() + trees_.pending() + cover_.pending() + water_.pending();
 	}
 
@@ -171,7 +175,7 @@ private:
 	TerrainBridge terrain_;
 	RoadRenderer roads_;
 	FarRoadRenderer far_roads_;
-	RoadLayer verges_{ "verge", false, JobLane::VERGES, emit_verge_chunk };
+	GroundSeamLayer seams_; // the terrain met by the roads at grade (ground_seam.h)
 	RoadLayer structures_{ "transit", true, JobLane::STRUCTURES, emit_structure_chunk };
 	PropRenderer props_;
 	GroundKept ground_; // the chunks' ground the trees and the cover plant on: before them, so it outlives their jobs

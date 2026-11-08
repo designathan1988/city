@@ -52,11 +52,16 @@ constexpr float UNDER_DECK_ROOM_M = 0.4f; // solveRaised: nothing comes closer t
 // across the casing, dilated, plus the surface clearance; base: the mean, smoothed and graded, the line it is designed
 // on), and the plates flat at each end.
 constexpr int CURVE_NUMBERS = 6; // what the curve of a segment is: its two ends and its control point
+// How a road's paving ends at a node (render/roads/road_junction.cpp each_shape): met by other roads, cut straight across (a dead
+// end), or round a turning bulb.
+enum class RoadEndKind : uint8_t { JOINT, CUT, BULB };
+
 struct GradeProfile {
 	bool valid = false;
 	Structure structure = Structure::GROUND;
 	bool manual = false; // a node of it has a height of its own (lift): an authored alignment
 	bool walls = false; // its cutting is held by retaining walls
+	RoadEndKind ends[2] = { RoadEndKind::JOINT, RoadEndKind::JOINT }; // how its paving ends at a and at b (the ground's shape reads it)
 	int a = -1, b = -1;
 	float len = 0, step = 0, half = 0, plate_a = 0, plate_b = 0;
 	std::vector<float> h, ceil, base, raw; // raw: the mean ground across the casing, before base is made of it

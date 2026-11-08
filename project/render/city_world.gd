@@ -24,6 +24,7 @@ var marks: ChangeMarks # F8
 var water: CityWater
 var _mesh_size := 0
 var _terrain_target: Node3D # what the terrain's clipmap centres on (_follow_view)
+var _seam_looks: Array[StringName] = [] # the look's uniforms the ground seams take from the terrain's material (_feed_seams)
 var _sky_table: Dictionary # the contact shade's share of the sun (data/game/sky.json)
 var sky_mode: String:
 	get:
@@ -186,9 +187,16 @@ func _process(_delta: float) -> void:
 	var cam := get_viewport().get_camera_3d()
 	daylight.follow_view(cam)
 	_follow_view(cam)
+	_feed_seams()
 	if sky.step(_delta):
 		var toward: Vector3 = sun.global_basis.z
 		contact.follow(toward, _sky_table.contact_most * daylight.direct_share * clampf(toward.y * _sky_table.contact_sun_gain, 0.0, 1.0))
+
+
+## The ground seams beside the roads, drawn in the terrain's own surface (CityTerrain.feed_seams).
+func _feed_seams() -> void:
+	if _materials.has("terrain_seam") and terrain != null:
+		CityTerrain.feed_seams(terrain, _terrain_material, _materials.terrain_seam, _terrain_target, _seam_looks)
 
 
 ## The terrain's clipmap and LODs centre on the camera that draws the city, or on the world's origin while none does (a test of the

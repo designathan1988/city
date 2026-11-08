@@ -31,13 +31,6 @@ bool RoadRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	return true;
 }
 
-void RoadChunks::reset() {
-	clear_queue();
-	for (auto &kv : chunks_) kv.second.surface.free();
-	chunks_.clear();
-	revision_++;
-}
-
 void RoadRenderer::build_cpu(const CityState &s, int64_t key, MeshBuilder &mb) const {
 	emit_chunk(RoadEmit{ s, look_, mb, shapes_ }, key);
 }
@@ -49,47 +42,8 @@ AABB chunk_bounds(int64_t key, float size, const AABB &emitted) {
 	return column.merge(emitted);
 }
 
-void RoadChunks::commit_one(BuiltMesh &b) {
-	Chunk &c = chunks_[b.key];
-	const bool any = b.mesh.valid();
-	c.surface.adopt(scenario_, material_, casts_, b.mesh.release(), LAYER_ROADS);
-	if (any) RenderingServer::get_singleton()->instance_set_custom_aabb(c.surface.inst, chunk_bounds(b.key, CHUNK, b.bounds));
-	c.surface.visible(any && drawn_);
-	c.made = b.count;
-	revision_++;
-}
-
-RoadChunks::Count RoadChunks::count() const {
-	Count n;
-	for (const auto &kv : chunks_) {
-		const MeshCount &m = kv.second.made;
-		if (m.triangles == 0) continue;
-		n.chunks++;
-		n.all.triangles += m.triangles;
-		n.all.vertices += m.vertices;
-		n.all.bytes += m.bytes;
-		n.largest = std::max(n.largest, m.bytes);
-	}
-	return n;
-}
-
-void RoadChunks::draw(bool on) {
-	drawn_ = on;
-	for (auto &kv : chunks_) kv.second.surface.visible(on && kv.second.made.triangles > 0);
-}
-
 void RoadRenderer::submit(const CityState &s, int64_t key, JobPool &pool, float priority) {
 	submit_job(s, pool, JobKey{ JobLane::ROADS, key }, key, priority, [this, &s, key](MeshBuilder &mb) { build_cpu(s, key, mb); });
 }
-
-void RoadChunks::drop_chunk(int64_t key) {
-	forget(key);
-	auto it = chunks_.find(key);
-	if (it == chunks_.end()) return;
-	it->second.surface.free();
-	chunks_.erase(it);
-	revision_++;
-}
-
 
 } // namespace city

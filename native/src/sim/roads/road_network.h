@@ -182,6 +182,10 @@ public:
 	// Every node refreshed (a load, a new city): nothing is left to settle.
 	void refresh_all();
 	void mark_segment(int s); // its road chunks and lot cells
+	// The chunks segment s's drawing reaches: its box (curve and casing), a cell of the terrain's grid round it (the ground seam
+	// cuts each cell the paving's outline crosses, drawn by the chunk of the cell's middle: render/roads/ground_seam.h) and a turning
+	// bulb's disc round either node, whether it has one now or had one (the chunk drawn again as it comes or goes).
+	void for_drawn_chunks(int s, const std::function<void(int64_t)> &fn) const;
 	// What changed on the roads since the last take_edits, for what is derived from them later in the settle (the streets'
 	// name plates): the segments whose curve, casing, mouths or heights changed, and the boxes of the roads that came, went
 	// or changed casing.
