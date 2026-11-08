@@ -47,7 +47,13 @@ bool BuildingLook::load(const Dictionary &t, const Dictionary &bay_props, const 
 	guard_h_m = num(rp, parts, "guard_h_m");
 	DataReader rlot = rr.in("lot"), rroof = rr.in("roof");
 	fence_bar_m = num(rlot, rr.table(region, "lot"), "fence_bar_m");
-	air_handler_per_area = num(rroof, rr.table(region, "roof"), "air_handler_per_area");
+	const Dictionary roof = rr.table(region, "roof");
+	air_handler_per_area = num(rroof, roof, "air_handler_per_area");
+	const Dictionary pad = rroof.table(roof, "helipad");
+	DataReader rh = rroof.in("helipad");
+	helipad = HelipadLook{ rh.integer(pad, "storeys_least"), num(rh, pad, "share"), num(rh, pad, "side_m"), num(rh, pad, "deck_up_m"),
+		num(rh, pad, "h_tall_m"), num(rh, pad, "h_wide_m"), num(rh, pad, "h_stroke_m"), num(rh, pad, "circle_line_m"), num(rh, pad, "edge_line_m"),
+		num(rh, pad, "net_m") };
 	const Array bands = rl.list(lod, "part_bands");
 	std::vector<PartBand> read_bands;
 	for (int i = 0; i < bands.size(); i++) {

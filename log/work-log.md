@@ -847,3 +847,26 @@ The user: graphics alone are not enough, every building looks the same. Read at 
   repeated went to the shader contract (`shader_contracts.json` sky: `core/shader_contracts/sky.h`, `contracts/sky.gdshaderinc`).
 - Created `render/sky_light_probe.gd`, `render/shaders/{sky_level.gdshader, sky_level_map.gdshaderinc, sky_weather.gdshaderinc}`,
   `sim/buildings/b40/era.{h,cpp}`; deleted `render/shaders/building_sky_glass.gdshaderinc`.
+
+## Helipads on the tall office towers (2026-11-08 11:10, branch `realism`)
+
+The towers of the centre all ended in the same box of roof plant; a tall office tower in a real centre often carries a landing
+deck over its plant (Sao Paulo has the most rooftop helipads of any city).
+- Problem: `roof_plant.cpp` packed the same twelve kinds on every flat roof by use and age, so at the city's distance every tower top
+  read alike; nothing on a roof said "a tall office" apart from its height.
+- Sources: ICAO Annex 14 Vol II (Heliports), 4th ed.: a rooftop FATO/TLOF at least 1 D, the touchdown/positioning circle's inner
+  diameter 0.5 D and line 1 m wide (yellow), the perimeter line 0.3 m (white), the heliport "H" 3 m by 1.8 m with 0.4 m strokes
+  (white), the safety net at least 1.5 m wide round an elevated deck; D of an AS350 (the most common helicopter over Sao Paulo)
+  12.94 m.
+- Code: buildings.json roof.helipad (the least storeys, the share of such towers, the deck's side and rise over the plant, the
+  marking sizes, the net) read by `building_look.cpp` into `HelipadLook`; `PlantEmit::helipad` builds the slab on four legs over
+  the machine rooms, the net, the perimeter, the ring and the H; a commercial volume of 20 storeys or more whose roof takes the deck
+  and its net picks it by its building and volume (hash, salt of its own, not the plant's random stream, so the rest of the roof
+  is unchanged), and the packer keeps the plant off the deck's footprint. Render only: the digest is unchanged.
+- Gates: the file's old single-word constants (CELL, MARGIN, DOOR_W, ...) matched single-word data keys once the file changed:
+  renamed to say what they are (GRID_CELL, PARAPET_MARGIN, ROOM_DOOR_W, ...).
+- Verified: both DLLs; `quick.sh`: 43 of 45 then the gates fixed; `00-cidade` and `01-bairro` changed: the decks on about a dozen towers,
+  and one-pixel shadow edges elsewhere (a taller caster changes the cascade's depth range), so those two were accepted after looking;
+  `03-rua_noite` keeps the known 10 x 1 px of the C12 wire joint, not blessed.
+- Changed `native/src/render/buildings/{roof_plant.cpp, building_look.h, building_look.cpp}`, `project/data/render/buildings.json`,
+  `tools/gates/schemas/buildings.schema.json`; created and deleted nothing.
