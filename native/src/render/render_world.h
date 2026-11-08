@@ -157,12 +157,11 @@ public:
 	BuildingViewNeed building_need() const { return buildings_.view_need(); }
 	godot::Dictionary building_chunk(float x, float z) const { return buildings_.chunk_view(x, z); }
 	RoadChunks::Count road_count() const { return roads_.count(); }
-	RoadChunks::Count verge_count() const { return verges_.count(); }
-	void draw_verges(bool on) { verges_.draw(on); }
+	RoadChunks::Count backfill_count() const { return backfills_.count(); }
 	int64_t wear_bytes() const { return wear_.bytes(); }
 	void wear_paint(float x0, float z0, float x1, float z1, float value) { wear_.paint(x0, z0, x1, z1, value); }
 	int pending() const {
-		return road_stream_.pending + raised_stream_.pending + props_stream_.pending + building_stream_.pending + roads_.pending() + far_roads_.pending() + far_roads_.waiting_supers() + verges_.pending() +
+		return road_stream_.pending + raised_stream_.pending + props_stream_.pending + building_stream_.pending + roads_.pending() + far_roads_.pending() + far_roads_.waiting_supers() + backfills_.pending() +
 				structures_.pending() + props_.pending() + buildings_.pending() + trees_.pending() + cover_.pending() + water_.pending();
 	}
 
@@ -170,7 +169,7 @@ private:
 	TerrainBridge terrain_;
 	RoadRenderer roads_;
 	FarRoadRenderer far_roads_;
-	RoadLayer verges_{ "verge", false, JobLane::VERGES, emit_verge_chunk };
+	RoadLayer backfills_{ "verge", false, JobLane::BACKFILLS, emit_backfill_chunk };
 	RoadLayer structures_{ "transit", true, JobLane::STRUCTURES, emit_structure_chunk };
 	PropRenderer props_;
 	GroundKept ground_; // the chunks' ground the trees and the cover plant on: before them, so it outlives their jobs

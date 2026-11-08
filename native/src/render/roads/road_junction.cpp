@@ -7,7 +7,6 @@
 #include "sim/roads/junction.h"
 
 #include <algorithm>
-#include <iterator>
 #include <cmath>
 
 using namespace godot;
@@ -16,11 +15,6 @@ namespace city {
 
 namespace {
 const Vector3 UP(0, 1, 0);
-
-Vector3 flat_unit(Vector3 v) {
-	v.y = 0;
-	return v.length() > 0 ? v.normalized() : UP;
-}
 
 using End = RoadEnd;
 
@@ -115,10 +109,12 @@ EndFrame end_frame(const RoadEmit &e, int n, const End &en) {
 }
 
 // A plain road end: the carriageway runs to the cut and the footways stop level with it, closed by one face down to the
-// ground on each piece of the section (Roadcraft 4.0 has no kerb across the end).
+// ground on each piece of the section, no kerb across the end; on a deck the deck's own end closes it.
 void road_cut(const RoadEmit &e, int n, const End &en) {
 	const StreetLook &L = e.L;
 	const EndFrame f = end_frame(e, n, en);
+	const int sid = e.s.roads.nodes[size_t(n)].segs.front();
+	if (decked_at(e, sid, seg_frame(e.s, sid, en.at_a ? en.at : e.s.roads.segs[size_t(sid)].len - en.at))) return; // the deck's end closes it (road_structures.cpp)
 	const float ar = float(en.arm.asph_right), al = float(en.arm.asph_left), walk = f.kw > 0 ? L.h_sidewalk : 0.f;
 	const Color col = road_color(L.curb, RoadMat::KERB);
 	auto face = [&](float u0, float u1, float h) {
@@ -173,56 +169,7 @@ void each_shape(const RoadEmit &e, int n, Junction &&plate, Cut &&cut, Bulb &&tu
 	if (is_plate(e.L.shapes.road_shapes, ends)) plate(e, n, *shape);
 }
 
-// The verge along a line of the paving, each point taken `rise` up and sent out towards `from` the other way.
-void verge_from(const RoadEmit &e, std::vector<Vector3> edge, const std::vector<Vector3> &away, float rise) {
-	for (Vector3 &p : edge) p.y += rise;
-	verge_ribbon(e, edge, away);
-}
-
-void junction_verge(const RoadEmit &e, int, const NodeShape &shape) {
-	const std::vector<End> &ends = shape.ends;
-	for (size_t i = 0; i < ends.size(); i++) {
-		const End &a = ends[i], &b = ends[(i + 1) % ends.size()];
-		const std::vector<Vector3> &in = shape.corners[i].in, &out = shape.corners[i].out;
-		const std::vector<Vector3> unit = outside(in, a, b, 1.f, 1.f);
-		const size_t tip = shape.corners[i].tip;
-		std::vector<Vector3> away;
-		for (size_t k = 0; k < in.size(); k++) away.push_back(flat_unit(unit[k] - in[k]));
-		const float rise = kerb_w(a, 1) > 0 || kerb_w(b, -1) > 0 ? e.L.h_sidewalk : 0.f;
-		if (tip > 0) { // each edge sends its ground straight out: past the point they overlap, the nearer one on top, and that is the mitre
-			verge_from(e, { out.front(), out[tip] }, { away.front(), away.front() }, rise);
-			verge_from(e, { out[tip], out.back() }, { away.back(), away.back() }, rise);
-			continue;
-		}
-		// Where the outer line runs back on itself the arms' own ribbons already meet: only where it runs with the kerb is the ground its own.
-		size_t from = 0;
-		for (size_t k = 1; k <= in.size(); k++) {
-			if (k < in.size() && (out[k] - out[k - 1]).dot(in[k] - in[k - 1]) > 0) continue;
-			if (k - from > 1) verge_from(e, { out.begin() + from, out.begin() + k }, { away.begin() + from, away.begin() + k }, rise);
-			from = k;
-		}
-	}
-}
-
-void cut_verge(const RoadEmit &e, int n, const End &en) {
-	const EndFrame f = end_frame(e, n, en);
-	const float ar = float(en.arm.asph_right), al = float(en.arm.asph_left), walk = f.kw > 0 ? e.L.h_sidewalk : 0.f;
-	const float at[] = { -f.r, -ar, -ar, al, al, f.l }, up[] = { walk, walk, 0, 0, walk, walk };
-	std::vector<Vector3> edge;
-	for (size_t k = 0; k < std::size(at); k++) edge.push_back(f.node + f.left * at[k] + Vector3(0, up[k], 0));
-	verge_ribbon(e, edge, std::vector<Vector3>(edge.size(), -f.d));
-}
-
-void bulb_verge(const RoadEmit &e, int n, const End &en) {
-	const EndFrame f = end_frame(e, n, en);
-	const std::vector<Vector3> ring = bulb_ring(e.L, f, en, std::max(en.at, FILLET_SLACK), BULB_R + BULB_WALK);
-	std::vector<Vector3> away;
-	for (const Vector3 &p : ring) away.push_back(flat_unit(p - f.node));
-	verge_from(e, ring, away, f.kw > 0 ? e.L.h_sidewalk : 0.f);
-}
 } // namespace
-
-void emit_verge_node(const RoadEmit &e, int n) { each_shape(e, n, junction_verge, cut_verge, bulb_verge); }
 
 void emit_node(const RoadEmit &e, int n) { each_shape(e, n, junction, road_cut, bulb); }
 

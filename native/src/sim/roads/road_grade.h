@@ -46,6 +46,9 @@ constexpr float CASING_BAND_M = 1.f; // the band past the footway the casing hol
 // Half the casing: the road's widest side, footway included, and the casing band past it.
 float casing_half(const Profile &p);
 constexpr float FOOTWAY_RISE_M = 0.15f; // roadTypes.ts FOOTWAY_RISE: the kerb a footway stands on
+// How far the paving's outer top stands over the road's surface: a raised footway or a kerb at the edge, else none; the lower of
+// the two sides, so the ground shaped level with it (sim/terrain/road_shape.h) covers neither edge.
+float paving_rise(const Profile &p);
 constexpr float UNDER_DECK_ROOM_M = 0.4f; // solveRaised: nothing comes closer than this under a deck's structure
 
 // A segment's solved profile: heights at arc i * step from its a node (h), the ground read under it (ceil: the highest

@@ -105,6 +105,15 @@ void read_stations(const RoadSegment &g, GradeProfile &p, int count, const Groun
 
 float casing_half(const Profile &p) { return p.half() + CASING_BAND_M; }
 
+float paving_rise(const Profile &p) {
+	if (p.edges.empty()) return 0.f;
+	const auto rise = [](const Strip &s) {
+		const bool raised = (s.kind == StripKind::SIDEWALK && !s.flush) || s.kind == StripKind::CURB;
+		return raised ? FOOTWAY_RISE_M : 0.f;
+	};
+	return std::min(rise(p.edges.front().strip), rise(p.edges.back().strip));
+}
+
 // The inputs of segment s as they stand: stations, ground (read again only when its curve, casing or ground changed),
 // plates, structure; its heights left as they were (the solve starts them from the grade line when it takes them).
 void grade_inputs(RoadGrade &grade, const RoadNetwork &net, int s, const GroundAt &ground, bool reground, const GradeTune &t) {

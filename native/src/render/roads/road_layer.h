@@ -1,6 +1,7 @@
 // A layer drawn chunk by chunk on the road chunks' own streaming, from the road look and the shapes the road jobs share
-// (road_shapes.h): one mesh a chunk in a material of its own. Two of it stand beside the roads: the verges, the ground round the
-// roads in the terrain's grass (material "verge", which the road shader has no samplers left for), and the structures, decks, bents,
+// (road_shapes.h): one mesh a chunk in a material of its own. Two of it stand beside the roads: the backfill behind a cutting's
+// retaining walls in the terrain's grass (material "verge", which the road shader has no samplers left for; the ground round every
+// other road is the terrain's own, sim/terrain/road_shape.h), and the structures, decks, bents,
 // parapets, portals and the walls of cuttings in the plain concrete of material "transit" (vertex colour and UV say tone and finish),
 // the only one that casts. Each is told apart by its material, its lane in the job pool and what it emits for a chunk.
 #pragma once
@@ -28,8 +29,8 @@ private:
 	RoadShapes *shapes_ = nullptr; // the road renderer's
 };
 
-// The verges of chunk `key`: of the segments it owns (the chunk of their midpoint) and of the nodes standing in it.
-void emit_verge_chunk(const RoadEmit &e, int64_t key);
+// The wall backfills of chunk `key`: of the segments it owns (the chunk of their midpoint).
+void emit_backfill_chunk(const RoadEmit &e, int64_t key);
 // The structures of the segments chunk `key` owns.
 void emit_structure_chunk(const RoadEmit &e, int64_t key);
 

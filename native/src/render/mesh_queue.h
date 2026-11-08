@@ -1,4 +1,4 @@
-// The job queue of a renderer whose chunk results are one surface each (roads, verges, structures, far roads, furniture): a job
+// The job queue of a renderer whose chunk results are one surface each (roads, wall backfills, structures, far roads, furniture): a job
 // fills the chunk's builder while it holds the map shared (submit_job), its bake is admitted by the frame's upload ledger and its
 // hand-over by the frame's deadline, in the frame's one order (chunk_results.h ChunkResults). What a result carries besides its
 // surface (`Extra`: the furniture's instances) travels inside it, so it is drawn with the mesh of the same build or not at all.

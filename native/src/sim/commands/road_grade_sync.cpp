@@ -23,12 +23,15 @@ GroundAt ground_of(const Heightfield &t) {
 }
 
 // The shape the ground takes under segment s: its stations along the curve at their solved heights.
-RoadShape shape_of(const RoadNetwork &net, int s) {
+RoadShape shape_of(const RoadNetwork &net, int s, const Tuning &tn) {
 	const RoadSegment &g = net.segs[size_t(s)];
 	const GradeProfile &p = net.grade.prof[size_t(s)];
 	RoadShape r;
 	r.alive = true;
 	r.half = p.half;
+	const Profile &pf = net.profile_of(s);
+	r.paving = pf.half();
+	r.rise = paving_rise(pf);
 	r.kind = uint8_t((is_raised(p.structure) ? SHAPE_RAISED : 0) | (is_sunken(p.structure) ? SHAPE_SUNKEN : 0) |
 			(p.manual ? SHAPE_MANUAL : 0) | (p.walls ? SHAPE_WALLS : 0));
 	r.minx = r.minz = BIG;
@@ -40,7 +43,7 @@ RoadShape shape_of(const RoadNetwork &net, int s) {
 		r.minx = std::min(r.minx, float(x)); r.maxx = std::max(r.maxx, float(x));
 		r.minz = std::min(r.minz, float(z)); r.maxz = std::max(r.maxz, float(z));
 	}
-	const float reach = p.half + road_shape_reach();
+	const float reach = p.half + road_shape_reach(tn);
 	r.minx -= reach; r.minz -= reach; r.maxx += reach; r.maxz += reach;
 	return r;
 }
@@ -69,7 +72,7 @@ void sync_grade(CityState &s) {
 	ComposeHold hold(s.terrain); // every road moved, shaped once where they overlap
 	for (int seg : gone) s.terrain.drop_road_shape(seg);
 	for (int seg : moved) {
-		const RoadShape shape = shape_of(net, seg);
+		const RoadShape shape = shape_of(net, seg, s.catalog.tune);
 		mark_ground(s, shape.minx, shape.minz, shape.maxx, shape.maxz); // what stands on the ground there sits again
 		s.terrain.put_road_shape(seg, shape);
 		net.mark_heights(seg);

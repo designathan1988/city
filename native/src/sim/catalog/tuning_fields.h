@@ -31,6 +31,7 @@
 	X(world, tile_m) X(world, height_spacing_m) X(world, water_spacing_m) \
 	X(terrain, min_height_m) X(terrain, max_height_m) \
 	X(terrain, embankment_ratio) X(terrain, min_run_m) X(terrain, road_sink_m) \
+	X(road_shape, hold_m) X(road_shape, shoulder_least_m) X(road_shape, shoulder_most_m) X(road_shape, batter) X(road_shape, cut_shoulder_m) X(road_shape, under_m) \
 	XD(terrain, rough_reach_min) X(terrain, min_hard_rim) X(terrain, min_hard_wall_m) X(terrain, river_depth_m) \
 	X(terrain, river_freeboard_m) XD(terrain, river_floor_share) X(terrain, shore_reach_m) \
 	XD(land, plain_m) XD(land, river_radius_m) XD(land, river_strength_m) XD(land, canal_from_edge_m) XD(land, river_carve) XD(land, river_bed_depth) XD(land, water_fill) XD(land, water_margin_m) XD(land, river_min_depth_m) XD(land, flood_slack_m) XD(land, river_min_fall) XD(land, valley_floor_m) XD(land, valley_width_m) XD(land, open_share) XD(land, lake_grid_m) XD(land, lake_chance) XD(land, lake_edge_max) XD(land, lake_river_gap_m) XD(land, basin_radius_m) XD(land, basin_depth_m) XD(land, basin_reach) XD(land, basin_wobble) XD(land, basin_noise_m) XD(land, basin_noise_step) XD(land, hills_base_m) XD(land, hills_amp_m) XD(land, hills_scale_m) XI(land, hills_octaves) XD(land, bumps_amp_m) XD(land, bumps_scale_m) XI(land, bumps_octaves) XD(land, edge_start) XD(land, edge_ramp) XD(land, range_base_m) XD(land, range_amp_m) XD(land, range_scale_m) XI(land, range_octaves) XI(land, bank_probes) XI(land, smooth_passes) XI(land, descend_steps) \

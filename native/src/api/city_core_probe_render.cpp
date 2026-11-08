@@ -79,7 +79,7 @@ Dictionary count_of(const RoadChunks::Count &n) {
 Dictionary CityCore::road_mesh_counts() const {
 	Dictionary d;
 	d["roads"] = count_of(render_.road_count());
-	d["verges"] = count_of(render_.verge_count());
+	d["backfills"] = count_of(render_.backfill_count());
 	d["wear_bytes"] = render_.wear_bytes();
 	return d;
 }

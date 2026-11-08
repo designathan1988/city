@@ -21,7 +21,7 @@ using Section = WallSection;
 
 // The natural ground behind a wall, past what the cutting dug.
 float held_ground(const RoadEmit &e, const RoadSegment &g, const SegFrame &f, float side) {
-	const Vector3 q = f.c + f.left * (side * (casing_half(e.s.catalog.profile(g.profile)) + cut_wall_reach() - e.s.catalog.tune.structure_backfill_in_m));
+	const Vector3 q = f.c + f.left * (side * (casing_half(e.s.catalog.profile(g.profile)) + cut_wall_reach(e.s.catalog.tune) - e.s.catalog.tune.structure_backfill_in_m));
 	return e.s.terrain.height_at(q.x, q.z);
 }
 
@@ -61,7 +61,7 @@ Vector3 point(const Section &q, float out, float y) { return Vector3(q.at.x + q.
 
 // The end of a run: the backfill closed down to the road.
 void close_run(const RoadEmit &e, const Section &q, const Vector3 &away, float foot, float coping) {
-	const float back = cut_wall_reach() - e.s.catalog.tune.structure_backfill_in_m;
+	const float back = cut_wall_reach(e.s.catalog.tune) - e.s.catalog.tune.structure_backfill_in_m;
 	structure_face(e.mb, point(q, 0, q.deck - foot), point(q, back, q.deck - foot), point(q, back, q.top + e.s.catalog.tune.structure_backfill_over_m), point(q, 0, q.top + coping), structure_concrete(), away);
 }
 } // namespace
@@ -98,7 +98,7 @@ void emit_retaining_walls(const RoadEmit &e, int sid) {
 void emit_wall_backfill(const RoadEmit &e, int sid) {
 	if (!(e.s.roads.segs[size_t(sid)].flags & SEG_CUT_WALLS)) return;
 	const Tuning &tn = e.s.catalog.tune;
-	const float thick = tn.structure_wall_thick_m, back = cut_wall_reach() - tn.structure_backfill_in_m, over = tn.structure_backfill_over_m;
+	const float thick = tn.structure_wall_thick_m, back = cut_wall_reach(tn) - tn.structure_backfill_in_m, over = tn.structure_backfill_over_m;
 	const std::shared_ptr<const SegWalls> walls = walls_of(e, sid);
 	for (const float side : { 1.f, -1.f })
 		for (const std::vector<Section> &run : runs_on(*walls, side))
