@@ -72,6 +72,7 @@ void RenderWorld::reset() {
 	transit_.reset();
 	overlays_.reset();
 	effects_.reset();
+	taken_.clear();
 	road_stream_.clear();
 	raised_stream_.clear();
 	props_stream_.clear();
@@ -246,6 +247,7 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 		drain_log(s);
 		effects_.touch_terrain(s, terrain_rects_);
 		effects_.sync(s, f);
+		taken_.take(effects_.played());
 		const std::vector<int64_t> repaint = effects_.take_repaint();
 		if (!repaint.empty()) {
 			buildings_.set_broken(effects_.broken());

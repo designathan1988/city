@@ -1,7 +1,10 @@
 // The people a blow or a bullet took off their feet, drawn as themselves: the cooked body of the walker, near level, its bones carried by a ragdoll
 // (ragdoll.h). A row of a float texture per body holds its bones as bind -> world rows (people_look.gdshaderinc BODY), written only while it moves.
+// A limb or the head cut off is a body of its own, drawing only that piece (the person's own skin, not a stand-in); what hangs off a body opened
+// or cut (guts, a bone out of a stump) is body_gore.h's, stepped here with the bodies and gone with them.
 #pragma once
 
+#include "render/agents/body_gore.h"
 #include "render/agents/people_asset.h"
 #include "render/agents/ragdoll.h"
 #include "render/effects/mm_layer.h"
@@ -21,7 +24,15 @@ struct BodySpec {
 	std::vector<BodyWall> walls; // of the buildings around it
 	int variation = 0;
 	uint32_t lost = 0; // parts gone, a bit each (ragdoll.h order)
+	uint32_t piece = 0; // a piece cut off (Ragdoll::cut_to): only these parts are drawn, and only their particles hold together
 	bool charred = false;
+	struct StumpBone {
+		RagdollStump stump;
+		float length = 0;
+	};
+	std::vector<StumpBone> bones; // bones that show out of its stumps
+	int guts = 0; // chains of guts out of it: from the belly, and a second from the pelvis
+	godot::Vector3 guts_kick, second_kick;
 };
 
 class BodyRenderer {
@@ -30,6 +41,10 @@ public:
 	void reset();
 	void release();
 	void add(const BodySpec &spec);
+	void set_gore(const godot::RID &material, const GoreLook &look, float gravity) { gore_.init(scenario_, material, look, gravity); }
+	int gore_chains() const { return gore_.chains(); }
+	godot::PackedVector3Array places() const; // where each body's pelvis lies now (a probe)
+	int gore_bones() const { return gore_.bones(); }
 	void update(float dt, const Ragdoll::Ground &ground);
 	int count() const { return int(bodies_.size()); }
 	int moving() const;
@@ -63,7 +78,9 @@ private:
 	godot::PackedByteArray rows_;
 	std::vector<float> clip_scratch_; // a clip's rows of one body, for a pose being worked out (add, rise)
 	std::vector<godot::Transform3D> bone_scratch_;
-	Rng rng_{ 0xb0d1e5ULL };
+	BodyGore gore_;
+	static constexpr uint64_t BODIES_STREAM = 0xb0d1e5ULL; // the bodies' own stream
+	Rng rng_{ BODIES_STREAM };
 	float clock_ = 0;
 	int bones_ = 0, idle_clip_ = 0, crouch_clip_ = 0, up_clip_ = 0;
 	bool rows_dirty_ = false, layers_dirty_ = false;

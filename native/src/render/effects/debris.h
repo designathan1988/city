@@ -1,6 +1,7 @@
-// The pieces a blast throws, as rigid boxes and cylinders: gravity, then each corner under the ground struck with an
-// impulse (a body bounces, slides, tumbles and settles; at rest it sleeps and is never written again). Two MultiMeshes
-// (boxes, cylinders) each tinted by the instance; a burning piece (a wreck) sends flame and smoke puffs while it burns.
+// The pieces a blast throws, as rigid boxes, cylinders and rounds: gravity, then each corner under the ground struck with an
+// impulse (a body bounces, slides, tumbles and settles; at rest it sleeps and is never written again). Three MultiMeshes
+// (boxes, cylinders, rounds: an organ, flattened) each tinted by the instance; a burning piece (a wreck) sends flame and smoke
+// puffs while it burns.
 #pragma once
 
 #include "core/random.h"
@@ -21,6 +22,7 @@ struct PieceSpec {
 	godot::Quaternion turn;
 	godot::Color tint; // sRGB
 	bool cylinder = false; // size = (radius, length, radius)
+	bool round = false; // a sphere stretched to the box `size` (an organ)
 	bool dusty = false; // of a building: concrete dust over it
 	int wreck = -1; // drawn as this vehicle's burnt body, whose box `size` is
 	float burn_s = 0; // seconds it burns (a wreck), 0 none
@@ -60,17 +62,18 @@ private:
 		godot::Color tint;
 		float burn_until = 0, carry = 0;
 		float life = 0;
-		bool cylinder = false, still = false, charred = false, dusty = false;
+		bool cylinder = false, round = false, still = false, charred = false, dusty = false;
 		int wreck = -1;
 	};
 	void burn(Piece &p, double now, float dt, Puffs &puffs);
 	void reap(float dt); // the pieces whose time is up leave
 	void flush();
-	MmLayer boxes_, cylinders_;
+	MmLayer boxes_, cylinders_, rounds_;
 	std::vector<MmLayer> wrecks_;
 	std::deque<Piece> pieces_;
 	EffectParams params_;
-	Rng rng_{ 0xd3b415ULL };
+	static constexpr uint64_t DEBRIS_STREAM = 0xd3b415ULL; // the pieces' own stream
+	Rng rng_{ DEBRIS_STREAM };
 	float clock_ = 0;
 	bool dirty_ = false;
 	int drawn_ = -1;

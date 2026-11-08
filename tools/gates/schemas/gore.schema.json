@@ -1,0 +1,273 @@
+{
+ "type": "object",
+ "strict": true,
+ "required": [
+  "_doc",
+  "gore"
+ ],
+ "properties": {
+  "_doc": {
+   "type": "string"
+  },
+  "gore": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "links",
+    "passes",
+    "opened_organs_min",
+    "opened_organs_span",
+    "torn_organs_min",
+    "torn_organs_span",
+    "link_min_m",
+    "link_span_m",
+    "coil_m",
+    "coil_turn",
+    "drop_share",
+    "gut_r_min_m",
+    "gut_r_span_m",
+    "hold_chance",
+    "hold_min_s",
+    "hold_span_s",
+    "damp",
+    "friction",
+    "still_mm",
+    "still_s",
+    "organ_min_m",
+    "organ_span_m",
+    "organ_long_span",
+    "organ_flat_min",
+    "organ_flat_span",
+    "organ_scatter_ms",
+    "organ_lift_min_ms",
+    "organ_lift_span_ms",
+    "bone_r_m",
+    "bone_len_m",
+    "head_bone_len_m",
+    "piece_bone_len_m",
+    "head_piece_bone_len_m",
+    "cuff_r_m",
+    "cuff_len_m",
+    "stump_bone_chance",
+    "piece_bone_from",
+    "piece_bone_to",
+    "open_torn_chance",
+    "open_dead_chance",
+    "pelvis_chance",
+    "pelvis_kick_share",
+    "belly_kick_ms",
+    "piece_speed_min_ms",
+    "piece_speed_power_ms",
+    "power_least",
+    "speed_jitter_min",
+    "speed_jitter_span",
+    "piece_spread_ms",
+    "piece_lift_min_ms",
+    "piece_lift_span_ms",
+    "lift_base",
+    "shot_speed_min_ms",
+    "shot_speed_span_ms",
+    "shot_spread_ms",
+    "shot_lift_min_ms",
+    "shot_lift_span_ms",
+    "bone_tint",
+    "cuff_tint",
+    "gut_tints",
+    "organ_tints"
+   ],
+   "properties": {
+    "links": {
+     "type": "number"
+    },
+    "passes": {
+     "type": "number"
+    },
+    "opened_organs_min": {
+     "type": "number"
+    },
+    "opened_organs_span": {
+     "type": "number"
+    },
+    "torn_organs_min": {
+     "type": "number"
+    },
+    "torn_organs_span": {
+     "type": "number"
+    },
+    "link_min_m": {
+     "type": "number"
+    },
+    "link_span_m": {
+     "type": "number"
+    },
+    "coil_m": {
+     "type": "number"
+    },
+    "coil_turn": {
+     "type": "number"
+    },
+    "drop_share": {
+     "type": "number"
+    },
+    "gut_r_min_m": {
+     "type": "number"
+    },
+    "gut_r_span_m": {
+     "type": "number"
+    },
+    "hold_chance": {
+     "type": "number"
+    },
+    "hold_min_s": {
+     "type": "number"
+    },
+    "hold_span_s": {
+     "type": "number"
+    },
+    "damp": {
+     "type": "number"
+    },
+    "friction": {
+     "type": "number"
+    },
+    "still_mm": {
+     "type": "number"
+    },
+    "still_s": {
+     "type": "number"
+    },
+    "organ_min_m": {
+     "type": "number"
+    },
+    "organ_span_m": {
+     "type": "number"
+    },
+    "organ_long_span": {
+     "type": "number"
+    },
+    "organ_flat_min": {
+     "type": "number"
+    },
+    "organ_flat_span": {
+     "type": "number"
+    },
+    "organ_scatter_ms": {
+     "type": "number"
+    },
+    "organ_lift_min_ms": {
+     "type": "number"
+    },
+    "organ_lift_span_ms": {
+     "type": "number"
+    },
+    "bone_r_m": {
+     "type": "number"
+    },
+    "bone_len_m": {
+     "type": "number"
+    },
+    "head_bone_len_m": {
+     "type": "number"
+    },
+    "piece_bone_len_m": {
+     "type": "number"
+    },
+    "head_piece_bone_len_m": {
+     "type": "number"
+    },
+    "cuff_r_m": {
+     "type": "number"
+    },
+    "cuff_len_m": {
+     "type": "number"
+    },
+    "stump_bone_chance": {
+     "type": "number"
+    },
+    "piece_bone_from": {
+     "type": "number"
+    },
+    "piece_bone_to": {
+     "type": "number"
+    },
+    "open_torn_chance": {
+     "type": "number"
+    },
+    "open_dead_chance": {
+     "type": "number"
+    },
+    "pelvis_chance": {
+     "type": "number"
+    },
+    "pelvis_kick_share": {
+     "type": "number"
+    },
+    "belly_kick_ms": {
+     "type": "number"
+    },
+    "piece_speed_min_ms": {
+     "type": "number"
+    },
+    "piece_speed_power_ms": {
+     "type": "number"
+    },
+    "power_least": {
+     "type": "number"
+    },
+    "speed_jitter_min": {
+     "type": "number"
+    },
+    "speed_jitter_span": {
+     "type": "number"
+    },
+    "piece_spread_ms": {
+     "type": "number"
+    },
+    "piece_lift_min_ms": {
+     "type": "number"
+    },
+    "piece_lift_span_ms": {
+     "type": "number"
+    },
+    "lift_base": {
+     "type": "number"
+    },
+    "shot_speed_min_ms": {
+     "type": "number"
+    },
+    "shot_speed_span_ms": {
+     "type": "number"
+    },
+    "shot_spread_ms": {
+     "type": "number"
+    },
+    "shot_lift_min_ms": {
+     "type": "number"
+    },
+    "shot_lift_span_ms": {
+     "type": "number"
+    },
+    "bone_tint": {
+     "type": "string"
+    },
+    "cuff_tint": {
+     "type": "string"
+    },
+    "gut_tints": {
+     "type": "array",
+     "minItems": 1,
+     "items": {
+      "type": "string"
+     }
+    },
+    "organ_tints": {
+     "type": "array",
+     "minItems": 1,
+     "items": {
+      "type": "string"
+     }
+    }
+   }
+  }
+ }
+}

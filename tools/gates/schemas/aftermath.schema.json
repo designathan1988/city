@@ -27,7 +27,7 @@
     "plate_w_min_m",
     "plate_w_span_m",
     "scale_base",
-    "scale_per_m",
+    "scale_grow_m",
     "scale_most",
     "plate_depth_min",
     "plate_depth_span",
@@ -95,7 +95,7 @@
     "scale_base": {
      "type": "number"
     },
-    "scale_per_m": {
+    "scale_grow_m": {
      "type": "number"
     },
     "scale_most": {
@@ -215,7 +215,7 @@
    "required": [
     "points",
     "most",
-    "iterations",
+    "passes",
     "slack",
     "damp",
     "lift_m",
@@ -243,7 +243,7 @@
     "most": {
      "type": "number"
     },
-    "iterations": {
+    "passes": {
      "type": "number"
     },
     "slack": {

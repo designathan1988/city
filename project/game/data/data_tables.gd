@@ -37,6 +37,7 @@ const RENDER_TABLES := {
 	"transit": "res://data/render/transit.json",
 	"effects": "res://data/render/effects.json",
 	"aftermath": "res://data/render/aftermath.json",
+	"gore": "res://data/render/gore.json",
 }
 const UI := {
 	"tokens": "res://data/ui/tokens.json",

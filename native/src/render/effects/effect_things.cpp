@@ -38,9 +38,6 @@ constexpr float TRUNK_BURN_S = 10.f; // a thrown trunk smoulders as long
 constexpr float ROLL_R = 0.32f, ROLL_W = 0.22f;
 constexpr float FIRE_PUFFS_CAR = 40.f, FIRE_PUFFS_BIKE = 15.f, FIRE_SPREAD_CAR = 1.2f, FIRE_SPREAD_BIKE = 0.6f, FIRE_SIZE = 1.4f, FIRE_LIFE = 1.f;
 constexpr float BLOOD_PUFFS = 40.f, BLOOD_SPREAD_M = 0.2f, BLOOD_SIZE_M = 0.04f, BLOOD_LIFE_S = 0.8f;
-constexpr float ORGAN_MIN_M = 0.04f, ORGAN_SPAN_M = 0.07f, ORGAN_SPEED = 3.f, ORGAN_FLAT_MIN = 0.6f, ORGAN_THIN = 0.7f, ORGAN_THIN_SPAN = 0.6f;
-constexpr float ORGAN_ROUND = 0.7f; // the share of organs drawn as short cylinders
-constexpr int ORGANS_MIN = 4, ORGANS_SPAN = 4;
 constexpr float CHEST_RISE_M = 0.5f; // blood sprays from the chest of someone falling
 constexpr float SCATTER_BLOOD_M = 1.2f, POOL_MIN = 0.6f, POOL_SPAN = 0.8f, POOL_TORN = 1.4f;
 constexpr int TORN_POOLS = 3;
@@ -200,12 +197,8 @@ void EffectWorld::casualty(const DamageEvent &e, const CityState &s) {
 		marks_.add_blood(m);
 	}
 	if (!torn) return;
-	const int organs = ORGANS_MIN + int(rng_.f() * float(ORGANS_SPAN));
-	for (int k = 0; k < organs; k++) { // a body torn apart: what was inside, thrown over the street
-		const float s0 = ORGAN_MIN_M + rng_.f() * ORGAN_SPAN_M, a = rng_.f() * TAU_F;
-		piece(Vector3(e.x, e.y + CHEST_RISE_M, e.z), Vector3(s0, s0 * (ORGAN_FLAT_MIN + rng_.f()), s0 * (ORGAN_THIN + rng_.f() * ORGAN_THIN_SPAN)),
-				Vector3(std::cos(a) * ORGAN_SPEED, THROW_LIFT, std::sin(a) * ORGAN_SPEED), params_.tints.flesh, rng_.f() < ORGAN_ROUND);
-	}
+	const GoreLook &g = params_.gore; // a body torn apart: what was inside, thrown
+	organs(Vector3(e.x, e.y + CHEST_RISE_M, e.z), g.torn_organs_min + int(rng_.f() * float(g.torn_organs_span)), Vector3());
 }
 
 void EffectWorld::apply(const DamageEvent &e, const CityState &s) {

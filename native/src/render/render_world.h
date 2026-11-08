@@ -66,7 +66,8 @@ public:
 	const DetailView &view() const { return view_; }
 	// Vehicles and people near the camera, at the moment `at` of the published poses.
 	void update_agents(const PoseFrame &f, const godot::Vector3 &cam, const ViewCull &view, const PoseSample &at) {
-		agents_.update(f, cam, view, at);
+		taken_.seen(f.stamp_ns[POSE_TRAIL - 1]);
+		agents_.update(f, cam, view, at, taken_);
 		transit_.update(f, cam, at);
 	}
 	int drawn_cars() const { return transit_.drawn_cars(); }
@@ -106,6 +107,9 @@ public:
 	int effect_pieces() const { return effects_.pieces(); }
 	int heave_pieces() const { return effects_.heave_pieces(); } // the ground the craters heaved
 	int wires_down() const { return effects_.wires_down(); } // the wires a blow tore loose
+	int gore_chains() const { return effects_.gore_chains(); } // chains of guts out of bodies opened
+	godot::PackedVector3Array body_places() const { return effects_.body_places(); }
+	int gore_bones() const { return effects_.gore_bones(); } // bones out of stumps
 	int broken_buildings() const { return int(effects_.broken().size()); }
 	int blood_marks() const { return effects_.blood_marks(); }
 	bool effects_busy() const { return effects_.busy(); }
@@ -188,6 +192,7 @@ private:
 	TransitRenderer transit_;
 	OverlayRenderer overlays_;
 	EffectWorld effects_;
+	TakenAgents taken_; // whom the blows took since the newest publication of the poses (render/agents/taken_agents.h)
 	WearField wear_;
 	ChunkStream road_stream_, props_stream_, building_stream_;
 	ChunkStream raised_stream_; // the chunks with a bridge, a viaduct or a tunnel: those stand out from afar, as far as the buildings

@@ -12,13 +12,8 @@
 namespace city {
 
 namespace {
-constexpr size_t EVENT_CAP = 8192; // events kept when nothing drains them (a headless run)
 constexpr float ROOF_MIN_M = 0.5f; // a burst this high over the ground is on a building
 } // namespace
-
-void emit_damage_event(CityState &s, const DamageEvent &e) {
-	if (s.log.damage_events.size() < EVENT_CAP) s.log.damage_events.push_back(e);
-}
 
 void Blow::emit(const DamageEvent &e) const { emit_damage_event(s, e); }
 

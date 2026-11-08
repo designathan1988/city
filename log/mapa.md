@@ -293,6 +293,10 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
   standing, stepped by Verlet onto the ground, their live end crackling and flashing blue
 - `native/src/render/effects/ground_cells.cpp` · `native/src/render/effects/ground_cells.h` — the ground the effects lie on: the street's
   surface where there is one, else the terrain, kept by small cells while the map stands as it is
+- `native/src/render/agents/body_gore.cpp` · `native/src/render/agents/body_gore.h` — what hangs off a body opened or cut: the guts held to
+  the wound (Verlet chains, some torn loose), a bone out of a stump with its cuff of flesh; stepped with the bodies, gone with them
+- `native/src/render/agents/taken_agents.h` — the walkers and vehicles a blow took since the newest publication of the poses, drawn no more
+  until a newer one (the game paused publishes none)
 - `native/src/render/effects/mounds.cpp` · `native/src/render/effects/mounds.h` · `project/render/shaders/rubble.gdshader` — o monte de escombros de um prédio caído: uma colina com relevo por ruína, em um MultiMesh, que sobe com a queda
 - `native/src/render/effects/mm_layer.h` · `native/src/render/effects/puffs.cpp` · `native/src/render/effects/puffs.h` — um MultiMesh de capacidade fixa; a reserva circular de fumaça, poeira, chama, faísca, sangue, água e papel (o shader move cada uma pela idade)
 - `native/src/render/effects/marks.cpp` · `native/src/render/effects/marks.h` — marcas no chão em um MultiMesh: crateras do estado, fuligem e sangue guardados, anel de onda
@@ -475,6 +479,8 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `project/tests/visual/live_driver.gd` — o jogo aberto na tela do jogador, dirigido de fora enquanto ele olha (`-- --live=<pasta>`): cidade nova, câmera, comandos, consultas e fotos
 - `project/tests/visual/bomb_plan.json` — the bomb looked at in play: one charge on a tower's face in the generated town, the blast at
   three moments of its clock, what is left from above, the broken face closer and the street at its level
+- `project/tests/visual/bomb_gore_plan.json` — the bomb at a walker's feet in the generated town: the blast, the bodies where they came
+  to rest (the pieces cut off, the bones, the guts), the damage probe's counts of them
 - `project/tests/visual/bomb_street_plan.json` — the bomb on a street with the player's utility poles: the crater on the raised road and
   the ground it heaved, the poles brought down, the wires hanging from those left standing
 - `project/tests/visual/zones_town_plan.json` — the zoning tool over the generated town: its lots coloured with outlines and
@@ -512,7 +518,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `project/data/catalog/growth.json` · `project/data/catalog/maps.json` · `project/data/catalog/nature.json` · `project/data/catalog/road_profiles.json` · `project/data/catalog/road_profiles_a.json` · `project/data/catalog/road_profiles_b.json` · `project/data/catalog/street_furniture.json` · `project/data/catalog/traffic.json` · `project/data/catalog/tuning.json` · `project/data/catalog/blast.json` · `project/data/catalog/zones.json` · `project/data/catalog/scenic.json` — the catalogue: growth, maps, landscape, road profiles, street furniture and crossings, traffic, tuning, zones and the scenic cities
 - `project/data/game/camera.json` · `project/data/game/daylight.json` · `project/data/game/interior.json` · `project/data/game/saves.json` · `project/data/game/settings.json` · `project/data/game/sky.json` · `project/data/game/render_switches.json` · `project/data/game/optimizations.json` · `project/data/game/health.json` · `project/data/game/start.json` · `project/data/game/lab.json` — câmera, dia/noite, saves, qualidade, céu desenhado e as ferramentas do F7
 - `project/data/i18n/strings.csv` · `project/data/i18n/strings_b.csv` · `project/data/i18n/strings_c.csv` · `project/data/i18n/strings_d.csv` · `project/data/i18n/strings_e.csv` · `project/data/i18n/strings_ui.csv` — textos (partes do mesmo catálogo)
-- `project/data/render/transit.json` · `project/data/render/agents.json` · `project/data/render/bay_props.json` · `project/data/render/buildings.json` · `project/data/render/cover.json` · `project/data/render/interiors.json` · `project/data/render/furniture.json` · `project/data/render/materials.json` · `project/data/render/models.json` · `project/data/render/overlays.json` · `project/data/render/palette.json` · `project/data/render/effects.json` · `project/data/render/aftermath.json` · `project/data/render/streets.json` — tabelas do render
+- `project/data/render/transit.json` · `project/data/render/agents.json` · `project/data/render/bay_props.json` · `project/data/render/buildings.json` · `project/data/render/cover.json` · `project/data/render/interiors.json` · `project/data/render/furniture.json` · `project/data/render/materials.json` · `project/data/render/models.json` · `project/data/render/overlays.json` · `project/data/render/palette.json` · `project/data/render/effects.json` · `project/data/render/aftermath.json` · `project/data/render/gore.json` · `project/data/render/streets.json` — tabelas do render
 - `project/data/ui/builder.json` · `project/data/ui/drawers.json` · `project/data/ui/hud.json` · `project/data/ui/land_elements.json` · `project/data/ui/land_panels.json` · `project/data/ui/tokens.json` · `project/data/ui/keys.json` · `project/data/ui/help.json` — tabelas da interface
 - `tools/gates/schemas/**` — um schema por tabela de dados
 

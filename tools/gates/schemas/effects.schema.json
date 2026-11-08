@@ -484,7 +484,6 @@
     "body_life_s",
     "push_ms",
     "lift_ms",
-    "limb_push_ms",
     "tracer_life_s",
     "tracer_m",
     "flash_m",
@@ -510,9 +509,6 @@
      "type": "number"
     },
     "lift_ms": {
-     "type": "number"
-    },
-    "limb_push_ms": {
      "type": "number"
     },
     "tracer_life_s": {
@@ -578,7 +574,6 @@
     "metal",
     "char",
     "leaf",
-    "flesh",
     "paint",
     "dirt"
    ],
@@ -608,9 +603,6 @@
      "type": "string"
     },
     "leaf": {
-     "type": "string"
-    },
-    "flesh": {
      "type": "string"
     },
     "paint": {

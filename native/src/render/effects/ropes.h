@@ -64,7 +64,7 @@ private:
 			r.o[k] = r.p[k];
 			r.p[k] += v - godot::Vector3(0, drop, 0);
 		}
-		for (int it = 0; it < look_.iterations; it++) {
+		for (int it = 0; it < look_.passes; it++) {
 			r.p[0] = r.pin;
 			for (size_t k = 1; k < r.p.size(); k++) pull(r.p[k - 1], r.p[k], r.link, k == 1);
 			for (size_t k = 1; k < r.p.size(); k++) {

@@ -11,6 +11,7 @@
 #include "render/agents/helmets.h"
 #include "render/agents/body_renderer.h"
 #include "render/agents/people_asset.h"
+#include "render/agents/taken_agents.h"
 #include "render/row_keeper.h"
 #include "render/render_context.h"
 #include "render/rs_util.h"
@@ -62,7 +63,7 @@ public:
 	// a two-wheeler's rider with a foot down when `stopped`.
 	void seat(uint64_t key, const Pose &vehicle, const SeatSpot &spot, uint32_t look, float dist, float phase, bool stopped);
 	// Returns how many walkers were drawn.
-	int update(const PoseFrame &f, const godot::Vector3 &cam, const ViewCull &view, const PoseSample &at, float radius);
+	int update(const PoseFrame &f, const godot::Vector3 &cam, const ViewCull &view, const PoseSample &at, float radius, const TakenAgents &taken);
 	void set_floor(int level) { floor_ = level; } // the nearest level the graphics tier allows
 	BodyRenderer &bodies() { return bodies_; }
 	int variation_of(uint32_t look, int age) const; // which body a walker is drawn with

@@ -110,7 +110,7 @@ void PeopleRenderer::seat(uint64_t key, const Pose &vehicle, const SeatSpot &spo
 	if (spot.pose == SeatPose::MOTO && level < asset_.lods) agent_row(helmets_.row(key), at, 1.f, float(v), 0.f, float(look & SEED_MASK), phase, PEOPLE_CLIP_CODE_BASE + float(clip));
 }
 
-int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCull &view, const PoseSample &at, float radius) {
+int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCull &view, const PoseSample &at, float radius, const TakenAgents &taken) {
 	if (draws_.empty()) return 0;
 	const float r2 = radius * radius;
 	const int nv = int(asset_.variations.size()), lods = asset_.lods, levels = lods + 1;
@@ -119,6 +119,7 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 	RenderingServer::get_singleton()->material_set_param(held_.material(), "idle_clock", clock);
 	int drawn = 0;
 	for (const AgentRecord &rec : f.people) {
+		if (taken.walker(rec.id)) continue; // struck since this frame was published: their body lies in their place
 		Pose p = record_pose(rec, at);
 		float dx = p.x - cam.x, dy = p.y - cam.y, dz = p.z - cam.z, d2 = dx * dx + dz * dz;
 		if (d2 > r2) continue;

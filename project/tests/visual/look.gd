@@ -126,7 +126,9 @@ func _step(step: Dictionary) -> void:
 ## The steps of the pointer. False: not one of them.
 func _pointer_step(step: Dictionary) -> bool:
 	if step.has("walker"):
-		await LookAim.stand_on_walker(rig, ui, step.walker)
+		if not await LookAim.stand_on_walker(rig, ui, step.walker):
+			failures += 1
+			print("FAIL no walker to stand on: the town has to run a while first")
 	elif step.has("tap"):
 		var at := Vector2(step.tap[0], step.tap[1])
 		await ui.move(at)

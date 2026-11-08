@@ -34,6 +34,7 @@ struct DamageEvent {
 	int id = -1;
 	float x = 0, y = 0, z = 0, dx = 0, dz = 0, a = 0, b = 0, c = 0, d = 0;
 	uint32_t u = 0, v = 0;
+	int64_t published = 0; // the newest publication of the poses when it happened (emit_damage_event): what it took is drawn no more until a newer one
 };
 
 // FURNITURE a: how a pole went.

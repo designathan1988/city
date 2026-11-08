@@ -1,9 +1,9 @@
 // The people a blow or a bullet struck, thrown as themselves: the walker's own body on a ragdoll (render/agents/body_renderer.h). A limb already lost is
-// not there; a limb that comes off at this blow is thrown clear as a piece tinted by the skin and clothes, with a spray of blood. Someone knocked down lies for
-// as long as the simulation keeps them down (the walker is not drawn meanwhile) and the body goes when they get up. Also what a bullet draws: the tracer,
-// the wound's spray and a car's bodywork hit.
+// not there; a limb that comes off at this blow is the person's own piece, a body of its own thrown clear (ragdoll.ts detach), now and then a bone out of
+// the stump or the piece, with a spray of blood; a body a blast tears open spills its guts and organs (gore.ts). Someone knocked down lies for as long as
+// the simulation keeps them down (the walker is not drawn meanwhile) and the body goes when they get up. Also what a bullet draws: the tracer, the
+// wound's spray and a car's bodywork hit.
 #include "render/effects/effect_world.h"
-#include "render/data_reader.h"
 
 #include "core/math.h"
 
@@ -15,20 +15,14 @@ using namespace godot;
 namespace city {
 
 namespace {
-// An adult standing, in metres (NASA-STD-3000 vol. 1 table 3.3.1, the 50th percentile mean of both sexes, rounded to the
-// box that holds the part): where the middle of each part is, and its box.
-constexpr float SKULL_CENTRE_M = 1.62f, TRUNK_CENTRE_M = 1.2f, ARM_CENTRE_M = 1.2f, LEG_CENTRE_M = 0.45f, ARM_SIDE_M = 0.24f, LEG_SIDE_M = 0.1f;
-constexpr float SKULL_W = 0.18f, SKULL_H = 0.23f, SKULL_D = 0.2f;
-constexpr float SLEEVE_W = 0.09f, SLEEVE_H = 0.6f, LEG_W = 0.13f, LEG_H = 0.9f, LEG_D = 0.14f;
-const Vector3 HEAD_BOX(SKULL_W, SKULL_H, SKULL_D), ARM_BOX(SLEEVE_W, SLEEVE_H, SLEEVE_W), LEG_BOX(LEG_W, LEG_H, LEG_D);
+constexpr float TRUNK_CENTRE_M = 1.2f; // an adult's chest over the feet (NASA-STD-3000 vol. 1 table 3.3.1, the 50th percentile)
 constexpr float WALLS_REACH_M = 12.f; // farther than a body is thrown
 constexpr float TOPPLE_MS = 2.2f; // the head of somebody going down, over their feet
 constexpr float LIMB_SCATTER_MS = 1.5f; // each part leaves a little differently from its neighbour
 constexpr float TORN_PUSH = 1.5f; // a body blown apart flies faster
 constexpr float NO_PUSH_BELOW_M = 0.05f;
 constexpr float LEAST_LIFE_S = 0.2f;
-constexpr uint32_t LOOK_SKIN_SHIFT = 21, LOOK_TWO_BITS = 3, LOOK_TOP_SHIFT = 4, LOOK_BOTTOM_TEST = 2, LOOK_BOTTOM_SHIFT = 9; // bits of the walker's look hash (people_renderer.cpp)
-const Color BODY_CHAR = Color(0.05f, 0.045f, 0.04f);
+constexpr uint32_t STRUCK_MASK = 7; // the part a round struck (damage_event.h CAS_STRUCK_SHIFT): 0 none, a blast
 const Color TRACER_HOT = Color(1.f, 0.82f, 0.35f);
 const Color GLASS_SHARD = Color(0.55f, 0.7f, 0.78f);
 constexpr float TRACER_REACH_M = 30.f; // the line is drawn this far back along the shot
@@ -36,49 +30,36 @@ constexpr float WOUND_SPRAY = 8.f, WOUND_SIZE_M = 0.05f, WOUND_LIFE_S = 0.5f, WO
 constexpr float SPARK_COUNT = 10.f, SPARK_SPREAD_M = 0.15f, SPARK_SIZE_M = 0.1f, SPARK_LIFE_S = 0.5f;
 constexpr int SHARDS = 10;
 constexpr float SHARD_SIZE_M = 0.06f, SHARD_THICK_M = 0.01f, SHARD_SPEED_MS = 3.f, SHARD_LIFE_S = 6.f;
-constexpr int PART_KINDS = 5;
-constexpr uint32_t SALT_LOOK = 7;
 
-Color parse_color(const DataValue &v) {
-	v.colour(); // '#rrggbb', or an error
-	return Color::html(v.text());
-}
-
-// The ragdoll's parts a loss takes (ragdoll.ts LOST_PARTS: the arm from the forearm, the leg from the calf).
+// The ragdoll's parts a loss takes (ragdoll.ts LOST_PARTS), every limb in `limbs` (CasLimb bits, RagdollLimb order).
 uint32_t parts_gone(uint32_t limbs) {
-	constexpr uint32_t SKULL = 1u << 2, FOREARM_L = 1u << 4, FOREARM_R = 1u << 6, CALF_L = 3u << 8, CALF_R = 3u << 11;
-	return ((limbs & CAS_LIMB_HEAD) != 0 ? SKULL : 0) | ((limbs & CAS_LIMB_ARM_L) != 0 ? FOREARM_L : 0) | ((limbs & CAS_LIMB_ARM_R) != 0 ? FOREARM_R : 0) |
-			((limbs & CAS_LIMB_LEG_L) != 0 ? CALF_L : 0) | ((limbs & CAS_LIMB_LEG_R) != 0 ? CALF_R : 0);
+	uint32_t parts = 0;
+	for (int k = 0; k < LIMBS; k++)
+		if ((limbs >> k & 1u) != 0) parts |= Ragdoll::parts_of(RagdollLimb(k));
+	return parts;
 }
 } // namespace
 
-bool EffectWorld::load_looks(const RenderContext &ctx, PackedStringArray &errors) {
-	const Dictionary table = ctx.table("agents", errors);
-	if (!errors.is_empty()) return false;
-	const int64_t before = errors.size();
-	const DataValue agents = DataReader{ errors, "agents.json" }.at(table); // render/data_reader.h
-	const DataValue skin = agents["occupants"]["skin"], clothes = agents["people"]["clothes"];
-	if (skin.size() == 0 || clothes.size() == 0) {
-		agents.fail("occupants.skin and people.clothes are what the bodies wear");
-		return false;
+// What was inside a body opened (gore.ts scatter): flattened rounds of dark reds, thrown out of `at` by `kick` and their own scatter.
+void EffectWorld::organs(const Vector3 &at, int count, const Vector3 &kick) {
+	const GoreLook &g = params_.gore;
+	for (int k = 0; k < count; k++) {
+		const float r = g.organ_min_m + rng_.f() * g.organ_span_m;
+		PieceSpec p;
+		p.round = true;
+		p.at = at;
+		p.size = Vector3(r * (1.f + rng_.f() * g.organ_long_span), r * (g.organ_flat_min + rng_.f() * g.organ_flat_span), r);
+		p.turn = Quaternion(Vector3(rng_.f(), rng_.f(), rng_.f()).normalized(), rng_.f() * PI_F);
+		p.velocity = kick + Vector3((rng_.f() - 0.5f) * g.organ_scatter_ms, g.organ_lift_min_ms + rng_.f() * g.organ_lift_span_ms, (rng_.f() - 0.5f) * g.organ_scatter_ms);
+		p.tint = g.organ_tints[size_t(rng_.next() % uint32_t(g.organ_tints.size()))];
+		debris_.add(p);
 	}
-	skins_.clear(); // a second read is the table again
-	clothes_.clear();
-	for (int k = 0; k < skin.size(); k++) skins_.push_back(parse_color(skin[k]));
-	for (int k = 0; k < clothes.size(); k++) clothes_.push_back(parse_color(clothes[k]));
-	return errors.size() == before;
 }
 
 void EffectWorld::body(const DamageEvent &e, const CityState &s) {
 	const uint32_t kind = e.v & CAS_KIND_MASK;
 	const uint32_t lost = (e.v >> CAS_LOST_SHIFT) & CAS_LIMB_MASK, severed = (e.v >> CAS_SEVERED_SHIFT) & CAS_LIMB_MASK;
-	const bool charred = (e.v & CAS_CHARRED) != 0, bled = (e.v & CAS_BLED) != 0;
-	const uint32_t h = hash_u32(e.u ^ SALT_LOOK);
-	const Color skin = skins_[(e.u >> LOOK_SKIN_SHIFT) % skins_.size()];
-	// The walker's own clothes as the people renderer decodes the look hash (a top or bottom tinted by the hash; one drawn in
-	// the texture's own colour has no tint to copy: a clothes colour from the hash stands in).
-	const Color top = clothes_[((e.u & LOOK_TWO_BITS) != 0 ? e.u >> LOOK_TOP_SHIFT : h) % clothes_.size()];
-	const Color bottom = clothes_[(((e.u >> LOOK_BOTTOM_TEST) & LOOK_TWO_BITS) != 0 ? e.u >> LOOK_BOTTOM_SHIFT : h >> LOOK_BOTTOM_SHIFT) % clothes_.size()];
+	const bool charred = (e.v & CAS_CHARRED) != 0, bled = (e.v & CAS_BLED) != 0, struck = ((e.v >> CAS_STRUCK_SHIFT) & STRUCK_MASK) != 0;
 	const float ground = GroundCells::surface(s, e.x, e.z);
 	float px = e.x - e.b, pz = e.z - e.c;
 	const float pl = std::hypot(px, pz);
@@ -86,35 +67,11 @@ void EffectWorld::body(const DamageEvent &e, const CityState &s) {
 	const float power = bled ? 0.f : e.d * (kind == CAS_TORN ? TORN_PUSH : 1.f);
 	// Someone knocked down gets up when the simulation says; the effects clock runs a little late, so the body goes a moment early.
 	const float life = kind == CAS_KNOCKED && e.dx > 0.f ? std::max(LEAST_LIFE_S, std::min(e.dx, params_.body_life) - params_.body_lead) : params_.body_life;
-	const float yaw = e.a;
-	const float side_x = -std::sin(yaw), side_z = std::cos(yaw); // to the walker's left
-	struct Part { Vector3 box, at; Color tint; uint32_t bit; };
-	// A limb or the head as a cylinder: (radius, length, radius) of the box that holds it.
-	auto round_of = [](const Vector3 &box) { return Vector3(std::min(box.x, box.z) * 0.5f, box.y, std::min(box.x, box.z) * 0.5f); };
-	const Part parts[PART_KINDS] = {
-		{ HEAD_BOX, Vector3(0, SKULL_CENTRE_M, 0), skin, CAS_LIMB_HEAD },
-		{ ARM_BOX, Vector3(side_x * ARM_SIDE_M, ARM_CENTRE_M, side_z * ARM_SIDE_M), top, CAS_LIMB_ARM_L },
-		{ ARM_BOX, Vector3(-side_x * ARM_SIDE_M, ARM_CENTRE_M, -side_z * ARM_SIDE_M), top, CAS_LIMB_ARM_R },
-		{ LEG_BOX, Vector3(side_x * LEG_SIDE_M, LEG_CENTRE_M, side_z * LEG_SIDE_M), bottom, CAS_LIMB_LEG_L },
-		{ LEG_BOX, Vector3(-side_x * LEG_SIDE_M, LEG_CENTRE_M, -side_z * LEG_SIDE_M), bottom, CAS_LIMB_LEG_R },
-	};
-	auto lay = [&](const Vector3 &box, const Vector3 &at, const Color &tint, float push, float keep_life, bool round) {
-		PieceSpec p;
-		p.size = round ? round_of(box) : box;
-		p.cylinder = round;
-		p.at = Vector3(e.x + at.x, ground + at.y, e.z + at.z);
-		p.turn = Quaternion(Vector3(0, 1, 0), -yaw);
-		p.tint = charred ? BODY_CHAR : tint;
-		p.velocity = Vector3(px * push + (rng_.f() - 0.5f) * LIMB_SCATTER_MS, push > 0.f ? params_.lift_ms * (0.5f + rng_.f()) : 0.f, pz * push + (rng_.f() - 0.5f) * LIMB_SCATTER_MS);
-		p.life_s = keep_life;
-		p.random_spin = push > 0.f;
-		p.spin = Vector3();
-		debris_.add(p);
-	};
+	const GoreLook &g = params_.gore;
 	if (people_) {
 		BodySpec b;
 		b.at = Vector3(e.x, std::max(ground, e.y), e.z);
-		b.heading = yaw;
+		b.heading = e.a;
 		b.velocity = Vector3(px, 0, pz) * (params_.push_ms * power) + Vector3(0, power > 0.f ? params_.lift_ms : 0.f, 0);
 		b.tip = Vector3(px, 0, pz) * TOPPLE_MS;
 		b.scatter = power > 0.f ? LIMB_SCATTER_MS : 0.f;
@@ -124,10 +81,40 @@ void EffectWorld::body(const DamageEvent &e, const CityState &s) {
 		b.rises = kind == CAS_KNOCKED;
 		b.walls = walls_near(s, e.x, e.z, WALLS_REACH_M);
 		b.variation = people_->variation_of(e.u, cas_age_of(e.v)); // the age the walker had (damage_event.h)
+		// Now and then the bone shows at a cut: out of the stump, out of the piece, or both (one draw for the two, ragdoll.ts detach).
+		float bone_roll[LIMBS] = {};
+		for (int k = 0; k < LIMBS; k++) {
+			bone_roll[k] = rng_.f();
+			if ((severed >> k & 1u) != 0 && bone_roll[k] < g.stump_bone_chance)
+				b.bones.push_back({ Ragdoll::stump(RagdollLimb(k), false), k == LIMB_HEAD ? g.head_bone_len_m : g.bone_len_m });
+		}
+		// A blast tears a body open (one torn apart, most often); a round opens one only when the simulation says (CAS_OPENED).
+		const float open_chance = struck ? 0.f : kind == CAS_TORN ? g.open_torn_chance : kind == CAS_DEAD ? g.open_dead_chance : 0.f;
+		const bool opened = (e.v & CAS_OPENED) != 0 || rng_.f() < open_chance;
+		if (opened) {
+			b.guts = rng_.f() < g.pelvis_chance ? 2 : 1;
+			b.guts_kick = Vector3(px, 0, pz) * g.belly_kick_ms;
+			b.second_kick = b.guts_kick * g.pelvis_kick_share;
+		}
 		people_->bodies().add(b);
-		for (int k = 1; k < PART_KINDS; k++)
-			if ((severed & parts[k].bit) != 0) lay(parts[k].box, parts[k].at, parts[k].tint, params_.limb_push_ms, life, true);
-		if ((severed & CAS_LIMB_HEAD) != 0) lay(HEAD_BOX, parts[0].at, skin, params_.limb_push_ms, life, true);
+		for (int k = 0; k < LIMBS; k++) { // what came off at this blow: the person's own piece, a body of its own from here
+			if ((severed >> k & 1u) == 0) continue;
+			BodySpec piece = b;
+			piece.piece = Ragdoll::parts_of(RagdollLimb(k));
+			piece.rises = false;
+			piece.guts = 0;
+			piece.bones.clear();
+			piece.tip = Vector3();
+			const float speed = (struck ? g.shot_speed_min_ms + rng_.f() * g.shot_speed_span_ms : g.piece_speed_min_ms + g.piece_speed_power_ms * std::max(g.power_least, e.d)) *
+					(g.speed_jitter_min + rng_.f() * g.speed_jitter_span);
+			const float spread = struck ? g.shot_spread_ms : g.piece_spread_ms;
+			const float lift = struck ? g.shot_lift_min_ms + rng_.f() * g.shot_lift_span_ms : (g.piece_lift_min_ms + rng_.f() * g.piece_lift_span_ms) * (g.lift_base + e.d);
+			piece.velocity = Vector3(px * speed + (rng_.f() - 0.5f) * spread, lift, pz * speed + (rng_.f() - 0.5f) * spread);
+			if (bone_roll[k] > g.piece_bone_from && bone_roll[k] < g.piece_bone_to)
+				piece.bones.push_back({ Ragdoll::stump(RagdollLimb(k), true), k == LIMB_HEAD ? g.head_piece_bone_len_m : g.piece_bone_len_m });
+			people_->bodies().add(piece);
+		}
+		if (opened) organs(Vector3(e.x, ground + TRUNK_CENTRE_M, e.z), g.opened_organs_min + int(rng_.f() * float(g.opened_organs_span)), b.guts_kick);
 	}
 	if (severed != 0) puffs_.burst(e.x, ground + TRUNK_CENTRE_M, e.z, int(WOUND_SPRAY * 2.f), PUFF_BLOOD, WOUND_SPREAD_M * 2.f, WOUND_SIZE_M, WOUND_LIFE_S);
 }

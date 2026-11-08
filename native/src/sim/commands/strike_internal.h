@@ -29,8 +29,6 @@ struct Blow {
 	void emit(const DamageEvent &e) const;
 };
 
-// Tells the render of a blow, a shot or a fall (kept when nothing drains them, up to a cap).
-void emit_damage_event(CityState &s, const DamageEvent &e);
 
 // The distance (m) from a point to a building's lot rectangle (0 inside it).
 float lot_distance(const Building &b, float x, float z);

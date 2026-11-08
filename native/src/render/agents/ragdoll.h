@@ -9,6 +9,7 @@
 #include <godot_cpp/variant/vector2.hpp>
 #include <godot_cpp/variant/vector3.hpp>
 
+#include <cstdint>
 #include <functional>
 #include <vector>
 
@@ -16,6 +17,13 @@ namespace city {
 
 constexpr int RAGDOLL_JOINTS = 18; // the particles on a bone, in cook_people.py RAGDOLL_JOINTS order
 constexpr int RAGDOLL_PARTS = 13; // in cook_people.py RAGDOLL_PARTS order
+constexpr uint32_t RAGDOLL_ALL_PARTS = (1u << RAGDOLL_PARTS) - 1;
+// What can come off a body, in the order of the casualty's limb bits (sim/demolition/damage_event.h CasLimb).
+enum RagdollLimb : int { LIMB_HEAD = 0, LIMB_ARM_L, LIMB_ARM_R, LIMB_LEG_L, LIMB_LEG_R, LIMBS };
+// The end of a bone at a cut: the joint it shows at and the particle it points from (ragdoll.ts STUMP), on the body or on the piece.
+struct RagdollStump {
+	int from = 0, at = 0;
+};
 
 // A wall of a building a body can strike: a box of the lot's frame, up to `top`.
 struct BodyWall {
@@ -35,6 +43,14 @@ public:
 	// Each part's frame now: its origin on its joint, its axes along it. The frames only: what a bone does with them is the caller's.
 	void frames(godot::Transform3D out[RAGDOLL_PARTS]);
 	godot::Vector3 pelvis() const;
+	godot::Vector3 belly() const;
+	godot::Vector3 point(int particle) const { return now_[particle]; }
+	// A piece cut off the body (ragdoll.ts detach): only the particles of `parts` stay held together, each other stick let go; the rest
+	// of the particles fly loose and unseen (the piece's body draws only `parts`). Its hinges go, and its frames keep the roll they had.
+	void cut_to(uint32_t parts);
+	static RagdollStump stump(RagdollLimb limb, bool piece);
+	static uint32_t parts_of(RagdollLimb limb); // the parts a limb takes (ragdoll.ts LOST_PARTS: the arm from the forearm, the leg from the calf)
+	static constexpr int PELVIS = 0, BELLY = RAGDOLL_JOINTS + 1; // the particles guts hang from (ragdoll.cpp Joint)
 
 private:
 	static constexpr int PARTICLES = RAGDOLL_JOINTS + 2; // and the top of the head and the belly, which brace what the joints leave free
@@ -55,6 +71,7 @@ private:
 	int sticks_used_ = 0;
 	float still_ = 0;
 	bool asleep_ = false;
+	uint32_t kept_ = ~0u; // the particles a cut keeps together (bits); all of them on a whole body
 };
 
 } // namespace city

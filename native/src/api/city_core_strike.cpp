@@ -52,6 +52,10 @@ Dictionary CityCore::damage_probe() const {
 	d["pieces"] = render_.effect_pieces();
 	d["heave"] = render_.heave_pieces();
 	d["wires_down"] = render_.wires_down();
+	d["gore_chains"] = render_.gore_chains();
+	d["gore_bones"] = render_.gore_bones();
+	d["bodies"] = render_.bodies();
+	d["body_places"] = render_.body_places();
 	d["blood_marks"] = render_.blood_marks();
 	d["events"] = int64_t(state_->log.damage_events.size()); // not yet played: no render, as in a test with no view, leaves them here
 	d["effects_busy"] = render_.effects_busy();

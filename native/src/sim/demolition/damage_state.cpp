@@ -9,6 +9,15 @@
 
 namespace city {
 
+namespace {
+constexpr size_t EVENT_CAP = 8192; // events kept when nothing drains them (a headless run)
+} // namespace
+
+void emit_damage_event(CityState &s, DamageEvent e) {
+	e.published = s.traffic.stamp_ns[POSE_TRAIL - 1];
+	if (s.log.damage_events.size() < EVENT_CAP) s.log.damage_events.push_back(e);
+}
+
 bool knockable(FurnitureKind k) { return k != FurnitureKind::DRAIN; }
 
 GoneKind gone_kind(FurnitureKind k) {

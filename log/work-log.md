@@ -845,8 +845,9 @@ of the changed files fail on those findings only). The digest and the frozen pho
 and photographed in a scratch worktree, equal to the main checkout's goldens): the digest moves in `lots` and the fleet only, and
 the photos show other buildings on the lots, both from the zoning round's lots that now touch (`lot_place.cpp` WIDTH_TRIM gone);
 held to the zoning commit (27aab1be) this round changes two photos by one pixel that also flickers between two runs of the same
-commit, and six pixels of a wire's edge by one level of one channel (the wire's mesh, built from the same numbers by the new
-`WireSeats` caller: float contraction, no geometry moved). The goldens of this worktree were blessed from it. `building_edit_test`
+commit, and six pixels of a wire's edge by one level of one channel (first put down to float contraction in the new `WireSeats`
+caller; the gore round found those six pixels, and 55 of a tree's crown in 02-rua, differing between two runs of the same code:
+render noise, log/pendencias.md). The goldens of this worktree were blessed from it. `building_edit_test`
 aimed at the middle of a facade, which on a facade of an even number of bays is the line between two (the zoning round's lots
 gave its building six): it now aims at the middle of the middle bay (`building_pick_cases.gd`).
 The heave's and the wires' first reset wrote their layers before init (three `instance_set_visible` errors at every start, in
@@ -857,3 +858,30 @@ changed the strike commands (buildings, ground, commands), `damage_event.h`, `da
 `ped_furniture.cpp`, `ped_system.h`, `tuning_fields.h`, the effects (params, world, blast, things, bodies, marks), `prop_kit`,
 `street_props.cpp`, `render_world.h`, `city_core_strike.cpp`, `effects.json` and its schema, `tuning.json`, `data_tables.gd`,
 `rules.json`, `strike_test.gd`, `building_pick_cases.gd`, `bomb_plan.json`, `suites.json`, `log/mapa.md`.
+
+## 2026-11-08 06:32: the bomb, what a body opened or cut shows (English)
+**Problems:** a limb or the head cut off flew as a cylinder tinted by the skin or clothes, not as the person's own; a body opened
+spilled nothing (no guts, no bone out of a stump) and the organs were boxes and cylinders of one flesh tint; with the game paused,
+the walkers and the vehicles a bomb or a round took stayed drawn where they stood (the poses are published only by a step), the
+dead standing beside their bodies; the `walker` step of the look plans aimed the camera at infinity when nobody walked yet (NaN in
+every frame, 455 000 warnings, the task killed at its deadline) instead of failing; the damage events had two writers
+(`wounds.cpp` pushed onto the list itself).
+**Source read:** the converter's `bomb` extraction, `render/gore.ts` (spill, scatter, bone), `render/ragdoll.ts` (detach, sever, STUMP,
+openBelly), `render/playEffects.ts` (onGore).
+**Design in this game:** a piece cut off is a body of its own (`BodySpec::piece`, `Ragdoll::cut_to`: only the piece's particles keep
+their sticks, its hinges go, its frames keep their roll), drawn with the person's own skin; `BodyGore` (render/agents) owns what
+hangs off a body, the guts held to the wound by the body's particle (some torn loose after a while) and the bones out of the stumps,
+stepped by `BodyRenderer` with the bodies and gone with them; the organs are flattened rounds among the debris (`Debris` gains a
+round layer); `TakenAgents` hides what a blow took until a publication newer than the one standing when it was taken
+(`DamageEvent::published`, stamped by `emit_damage_event`, now the one writer of the list, in sim/demolition); the gore's look is its
+own table, `gore.json` (the organs of a body torn apart too, out of effect_things' constants); the agents.json skin and clothes tints
+the stand-in pieces read are no longer read.
+**Checks:** `bomb_gore_plan.json` (new: the camera on a walker, the charge at their feet, the bodies where they came to rest; the damage
+probe gives the chains, the bones, the bodies and where each lies); `shoot_test`, `strike_test`, `save_undo_test`, `edit_fuzz_test`,
+the three bomb plans pass; `quick.sh --ready` 44 of 46: the gates of the changed files fail on findings there before, and the frozen
+photos on render noise (two runs of the same code differ in the same pixels, log/pendencias.md).
+**Files:** created `native/src/render/agents/body_gore.{h,cpp}`, `native/src/render/agents/taken_agents.h`, `project/data/render/gore.json`,
+`tools/gates/schemas/gore.schema.json`, `project/tests/visual/bomb_gore_plan.json`; changed the ragdoll, the body, people and agent
+renderers, the debris, the effects (params, world, bodies, things, heave, ropes), `render_world`, `damage_event.h`, `damage_state`,
+`strike_commands.cpp`, `strike_internal.h`, `wounds.cpp`, `city_core_strike.cpp`, `effects.json`, `aftermath.json` and their schemas,
+`data_tables.gd`, `rules.json`, `look.gd`, `look_aim.gd`, `suites.json`, `log/mapa.md`.

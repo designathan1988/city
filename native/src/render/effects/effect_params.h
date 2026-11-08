@@ -1,5 +1,5 @@
 // The look of the blast effects (data/render/effects.json: the blast itself and the tints of what it throws; data/render/aftermath.json:
-// what it leaves on the street), read once by EffectWorld::init: strict, a missing key is reported. Style values: how the effects
+// what it leaves on the street; data/render/gore.json: what a body opened or cut shows), read once by EffectWorld::init: strict, a missing key is reported. Style values: how the effects
 // look, never what a blow does to the city (that is data/catalog/blast.json).
 #pragma once
 
@@ -26,13 +26,13 @@ struct BurstDef {
 
 // The colours (sRGB) of what a blow throws and leaves, by what it is (effects.json "tints").
 struct Tints {
-	godot::Color asphalt, concrete, earth, brick, glass, wood, metal, charred, leaf, flesh, paint, dirt;
+	godot::Color asphalt, concrete, earth, brick, glass, wood, metal, charred, leaf, paint, dirt;
 };
 
 // The ground a crater heaved (aftermath.json "heave", render/effects/heave.h). Distances out from the crater's centre are shares of
 // its reach (the crater quad's half, Marks::CRATER_SCALE times its hole). Plates: plates_base + reach / plates_per_m of them, at most
 // plates_most, none where `crowded` plates of earlier craters already lie within crowd_r reaches; each out at plate_in + plate_span x
-// sqrt(u), plate_w_min + plate_w_span x u wide times min(scale_most, scale_base + reach / scale_per_m), plate_depth_* of its width deep,
+// sqrt(u), plate_w_min + plate_w_span x u wide times min(scale_most, scale_base + reach / scale_grow_m), plate_depth_* of its width deep,
 // plate_thick_* thick, tipped tilt_min + tilt_span x u about the way round and turned at random, its middle plate_lift of its width
 // over the ground; dirt_* of the dirt over its tint and shade_* of light. Slabs at the lip: slabs_base + reach x slabs_per_m, out at
 // slab_in + slab_span x u (slab_jitter rad off their even turn), slab_min_m + slab_span_m x u across (slab_earth_scale on earth),
@@ -41,7 +41,7 @@ struct Tints {
 // a corner, its faces bevelled bevel_m. Its colours are the tints'.
 struct HeaveLook {
 	int plates_base = 0, plates_most = 0, crowded = 0, slabs_base = 0, clod_every = 0, slab_concrete_every = 0;
-	float plates_per_m = 0, crowd_r = 0, plate_in = 0, plate_span = 0, plate_w_min = 0, plate_w_span = 0, scale_base = 0, scale_per_m = 0, scale_most = 0;
+	float plates_per_m = 0, crowd_r = 0, plate_in = 0, plate_span = 0, plate_w_min = 0, plate_w_span = 0, scale_base = 0, scale_grow_m = 0, scale_most = 0;
 	float plate_depth_min = 0, plate_depth_span = 0, plate_thick_hard = 0, plate_thick_earth = 0, plate_lift = 0, tilt_min = 0, tilt_span = 0;
 	float dirt_min = 0, dirt_span = 0, shade_min = 0, shade_span = 0, concrete_share = 0;
 	float slabs_per_m = 0, slab_in = 0, slab_span = 0, slab_jitter = 0, slab_min_m = 0, slab_span_m = 0, slab_earth_scale = 0, slab_thick_hard = 0, slab_thick_earth = 0;
@@ -52,13 +52,13 @@ struct HeaveLook {
 };
 
 // A wire torn loose (aftermath.json "rope", render/effects/ropes.h): `points` points a wire, at most `most` kept; its links `slack` of
-// the length they had; `damp` of the speed kept a step, `iterations` passes of the lengths a step; on the ground `lift_m` over it and
+// the length they had; `damp` of the speed kept a step, `passes` passes of the lengths a step; on the ground `lift_m` over it and
 // `friction` of its speed kept. Its loose end, while within crackle_near_m of the ground and live (crackle_min_s + crackle_span_s x u),
 // crackles at crackle_hz (crackle_count spark puffs over crackle_spread_m, crackle_size_m, crackle_life_s), and at flash_chance of them flashes the arc's
 // colour (flash_energy, flash_s). Its loose end thrown kick_m a second out from the burst and kick_lift of that up; the fallen end at
 // drop_share of the seat height; still after settle_s.
 struct RopeLook {
-	int points = 0, most = 0, iterations = 0, crackle_count = 0;
+	int points = 0, most = 0, passes = 0, crackle_count = 0;
 	float slack = 0, damp = 0, lift_m = 0, friction = 0, crackle_min_s = 0, crackle_span_s = 0, crackle_hz = 0, crackle_near_m = 0;
 	float crackle_spread_m = 0, crackle_size_m = 0, crackle_life_s = 0, flash_chance = 0, flash_energy = 0, flash_s = 0;
 	float kick_m = 0, kick_lift = 0, drop_share = 0, settle_s = 0;
@@ -83,6 +83,32 @@ struct ArcLook {
 	godot::Color color;
 };
 
+// What a body opened or torn shows (gore.json "gore", the 4.0's gore.ts and ragdoll.ts detach and openBelly). Guts: chains of
+// `links` links, link_min_m + link_span_m x u each, coiled coil_m round as they leave (coil_turn rad a link) and drop_share of a link
+// lower each, gut_r_min_m + gut_r_span_m x u thick, a tint of gut_tints; held to the wound, or at hold_chance torn loose after hold_min_s +
+// hold_span_s x u; `damp` of their speed kept a step, `passes` passes of their lengths, `friction` of it on the ground, still under
+// still_mm a step for still_s. Organs: organ_min_m + organ_span_m x u across, organ_long_span longer, organ_flat_min + organ_flat_span x u
+// as thick, thrown organ_scatter_ms across and organ_lift_min_ms + organ_lift_span_ms x u up, a tint of organ_tints. A bone out of a
+// stump: bone_r_m round in bone_tint, bone_len_m long (head_bone_len_m from a neck), the cuff of flesh round it cuff_r_m round and
+// cuff_len_m long in cuff_tint; on a piece piece_bone_len_m (head_piece_bone_len_m); it shows on the body at stump_bone_chance, on the
+// piece for a draw between piece_bone_from and piece_bone_to. A blast opens a torn body at open_torn_chance, a dead one at
+// open_dead_chance, opened_organs_min + opened_organs_span x u out of it (torn_organs_* out of one torn apart), a second chain from the pelvis at pelvis_chance with pelvis_kick_share of
+// the kick, belly_kick_ms. A piece cut off flies at piece_speed_min_ms + piece_speed_power_ms x max(power_least, power), times
+// speed_jitter_min + speed_jitter_span x u, piece_spread_ms across, piece_lift_min_ms + piece_lift_span_ms x u up times lift_base + power;
+// shot off it drops near: shot_speed_min_ms + shot_speed_span_ms x u, shot_spread_ms, shot_lift_min_ms + shot_lift_span_ms x u.
+struct GoreLook {
+	int links = 0, passes = 0, opened_organs_min = 0, opened_organs_span = 0, torn_organs_min = 0, torn_organs_span = 0;
+	float link_min_m = 0, link_span_m = 0, coil_m = 0, coil_turn = 0, drop_share = 0, gut_r_min_m = 0, gut_r_span_m = 0;
+	float hold_chance = 0, hold_min_s = 0, hold_span_s = 0, damp = 0, friction = 0, still_mm = 0, still_s = 0;
+	float organ_min_m = 0, organ_span_m = 0, organ_long_span = 0, organ_flat_min = 0, organ_flat_span = 0, organ_scatter_ms = 0, organ_lift_min_ms = 0, organ_lift_span_ms = 0;
+	float bone_r_m = 0, bone_len_m = 0, head_bone_len_m = 0, piece_bone_len_m = 0, head_piece_bone_len_m = 0, cuff_r_m = 0, cuff_len_m = 0;
+	float stump_bone_chance = 0, piece_bone_from = 0, piece_bone_to = 0, open_torn_chance = 0, open_dead_chance = 0, pelvis_chance = 0, pelvis_kick_share = 0, belly_kick_ms = 0;
+	float piece_speed_min_ms = 0, piece_speed_power_ms = 0, power_least = 0, speed_jitter_min = 0, speed_jitter_span = 0, piece_spread_ms = 0, piece_lift_min_ms = 0;
+	float piece_lift_span_ms = 0, lift_base = 0, shot_speed_min_ms = 0, shot_speed_span_ms = 0, shot_spread_ms = 0, shot_lift_min_ms = 0, shot_lift_span_ms = 0;
+	godot::Color bone_tint, cuff_tint; // sRGB
+	std::vector<godot::Color> gut_tints, organ_tints;
+};
+
 struct EffectParams {
 	int pool = 0;
 	float wind_x = 0, wind_z = 0, fireball_base = 0, fireball_per_force = 0;
@@ -99,6 +125,7 @@ struct EffectParams {
 	ArcLook arc;
 	float leak_rate = 0, leak_size = 0, leak_life = 0; // a burst pipe's spurt: puffs a second, their size and life
 	PoleLook pole;
+	GoreLook gore;
 	godot::Color flash_color;
 	float flash_energy = 0, flash_range_r = 0, flash_range_min = 0, flash_life = 0, flash_decay = 0, flash_height = 0;
 	float shake_base = 0, shake_per_r = 0, shake_decay = 0;
@@ -115,15 +142,16 @@ struct EffectParams {
 	float paper_size = 0, paper_life = 0, paper_spread = 0;
 	int down_dust_count = 0;
 	float down_dust_size = 0, down_dust_life = 0, down_dust_spread = 0;
-	float body_life = 0, push_ms = 0, lift_ms = 0, limb_push_ms = 0, tracer_life = 0, tracer_m = 0, flash_m = 0, body_lead = 0; // bodies, tracers and the muzzle
+	float body_life = 0, push_ms = 0, lift_ms = 0, tracer_life = 0, tracer_m = 0, flash_m = 0, body_lead = 0; // bodies, tracers and the muzzle
 
-	bool load(const godot::Dictionary &t, const godot::Dictionary &aftermath, godot::PackedStringArray &errors);
+	bool load(const godot::Dictionary &t, const godot::Dictionary &aftermath, const godot::Dictionary &gore_table, godot::PackedStringArray &errors);
 
 private:
 	void load_look(const godot::Dictionary &t, godot::PackedStringArray &errors); // fire, ring, flash, shake, shrapnel
 	void load_things(const godot::Dictionary &t, godot::PackedStringArray &errors); // soot, debris, geysers, blood, paper
 	void load_heave(const godot::Dictionary &t, godot::PackedStringArray &errors); // aftermath.json heave, in the tints
 	void load_wires(const godot::Dictionary &t, godot::PackedStringArray &errors); // aftermath.json rope, arc, leak, pole
+	void load_gore(const godot::Dictionary &t, godot::PackedStringArray &errors); // gore.json
 };
 
 } // namespace city

@@ -31,7 +31,7 @@ constexpr float FLASH_YIELD = 0.6f; // a weaker flash of another colour never ta
 
 bool EffectWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	scenario_ = ctx.scenario;
-	if (!params_.load(ctx.table("effects", errors), ctx.table("aftermath", errors), errors) || !load_looks(ctx, errors)) return false;
+	if (!params_.load(ctx.table("effects", errors), ctx.table("aftermath", errors), ctx.table("gore", errors), errors)) return false;
 	const RID puffs = ctx.material("puffs", errors), debris = ctx.material("debris", errors), marks = ctx.material("marks", errors), rubble = ctx.material("rubble", errors);
 	if (!errors.is_empty()) return false;
 	puffs_.init(scenario_, puffs, params_.pool);

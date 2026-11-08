@@ -28,7 +28,8 @@ public:
 	const std::array<AgentWreck, AGENT_MODELS> &wrecks() const { return wrecks_; }
 	bool init(const RenderContext &ctx, godot::PackedStringArray &errors);
 	void reset();
-	void update(const PoseFrame &f, const godot::Vector3 &cam, const ViewCull &view, const PoseSample &at);
+	// `taken`: the walkers and vehicles a blow took since the newest publication, which still holds them (taken_agents.h).
+	void update(const PoseFrame &f, const godot::Vector3 &cam, const ViewCull &view, const PoseSample &at, const TakenAgents &taken);
 	int drawn_vehicles() const { return drawn_vehicles_; }
 	int drawn_people() const { return drawn_people_; }
 	godot::Array people_clips() const { return people_.clips(); }

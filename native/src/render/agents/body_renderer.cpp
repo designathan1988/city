@@ -66,11 +66,13 @@ void BodyRenderer::make_ready() {
 void BodyRenderer::reset() {
 	for (const Body &b : bodies_) free_slots_.push_back(b.slot);
 	bodies_.clear();
+	gore_.reset();
 	layers_dirty_ = !layers_.empty();
 }
 
 void BodyRenderer::release() {
 	reset();
+	gore_.release();
 	for (MmLayer &l : layers_) l.release();
 	layers_.clear();
 	if (texture_.is_valid()) RenderingServer::get_singleton()->free_rid(texture_);
@@ -82,6 +84,7 @@ void BodyRenderer::add(const BodySpec &spec) {
 	make_ready();
 	if (free_slots_.empty()) {
 		free_slots_.push_back(bodies_.front().slot);
+		gore_.forget(bodies_.front().slot);
 		bodies_.pop_front();
 	}
 	Body &b = bodies_.emplace_back();
@@ -105,7 +108,14 @@ void BodyRenderer::add(const BodySpec &spec) {
 	const float *rest = asset_->variations[size_t(spec.variation)].joints;
 	for (int j = 0; j < RAGDOLL_JOINTS; j++) joints[j] = b.base[size_t(asset_->joint_bone[size_t(j)])].xform(Vector3(rest[j * 3], rest[j * 3 + 1], rest[j * 3 + 2]));
 	b.doll.begin(joints, spec.velocity, spec.tip, spec.scatter, rng_);
+	if (spec.piece != 0) {
+		b.doll.cut_to(spec.piece);
+		b.lost = RAGDOLL_ALL_PARTS & ~spec.piece;
+	}
 	b.doll.set_walls(spec.walls);
+	for (const BodySpec::StumpBone &s : spec.bones) gore_.bone(b.slot, s.stump, s.length);
+	if (spec.guts > 0) gore_.spill(b.slot, Ragdoll::BELLY, b.doll.belly(), spec.guts_kick);
+	if (spec.guts > 1) gore_.spill(b.slot, Ragdoll::PELVIS, b.doll.pelvis(), spec.second_kick);
 	b.stands = stands;
 	if (spec.rises) b.rise_s = std::min(GET_UP_S, spec.life_s * RISE_SHARE_MOST);
 	b.doll.frames(b.stood);
@@ -213,6 +223,7 @@ void BodyRenderer::update(float dt, const Ragdoll::Ground &ground) {
 	const auto gone = std::remove_if(bodies_.begin(), bodies_.end(), [this](const Body &b) {
 		if (b.left > 0.f) return false;
 		free_slots_.push_back(b.slot);
+		gore_.forget(b.slot);
 		return true;
 	});
 	if (gone != bodies_.end()) {
@@ -220,11 +231,25 @@ void BodyRenderer::update(float dt, const Ragdoll::Ground &ground) {
 		layers_dirty_ = true;
 	}
 	if (layers_dirty_) lay_out();
+	gore_.update(dt, [this](int slot, int particle, Vector3 &out) {
+		for (const Body &b : bodies_)
+			if (b.slot == slot) {
+				out = b.doll.point(particle);
+				return true;
+			}
+		return false;
+	}, ground, rows_dirty_);
 	if (!rows_dirty_) return;
 	bound_layers(); // the bones moved: the boxes follow
 	for (MmLayer &l : layers_) l.send_bounds();
 	RenderingServer::get_singleton()->texture_2d_update(texture_, Image::create_from_data(bones_ * TEXELS_A_BONE, MOST_BODIES, false, Image::FORMAT_RGBAF, rows_), 0);
 	rows_dirty_ = false;
+}
+
+PackedVector3Array BodyRenderer::places() const {
+	PackedVector3Array out;
+	for (const Body &b : bodies_) out.push_back(b.doll.pelvis());
+	return out;
 }
 
 int BodyRenderer::moving() const {

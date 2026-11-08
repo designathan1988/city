@@ -325,6 +325,7 @@
     "project/data/render/transit.json": "tools/gates/schemas/transit.schema.json",
     "project/data/render/effects.json": "tools/gates/schemas/effects.schema.json",
     "project/data/render/aftermath.json": "tools/gates/schemas/aftermath.schema.json",
+    "project/data/render/gore.json": "tools/gates/schemas/gore.schema.json",
     "project/data/render/buildings.json": "tools/gates/schemas/buildings.schema.json",
     "project/data/render/interiors.json": "tools/gates/schemas/interiors.schema.json",
     "project/data/render/furniture.json": "tools/gates/schemas/furniture.schema.json",

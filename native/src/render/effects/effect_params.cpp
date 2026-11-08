@@ -31,7 +31,7 @@ struct Group {
 };
 } // namespace
 
-bool EffectParams::load(const Dictionary &t, const Dictionary &aftermath, PackedStringArray &errors) {
+bool EffectParams::load(const Dictionary &t, const Dictionary &aftermath, const Dictionary &gore_table, PackedStringArray &errors) {
 	const int64_t before = errors.size();
 	DataReader r{ errors, "effects.json" };
 	Group puffs(r, t, "puffs");
@@ -87,6 +87,7 @@ bool EffectParams::load(const Dictionary &t, const Dictionary &aftermath, Packed
 	load_things(t, errors);
 	load_heave(aftermath, errors);
 	load_wires(aftermath, errors);
+	load_gore(gore_table, errors);
 	if (bursts.empty()) r.in("bursts").fail("no burst");
 	return errors.size() == before;
 }
@@ -131,7 +132,7 @@ void EffectParams::load_look(const Dictionary &t, PackedStringArray &errors) {
 	Group tint(r, t, "tints");
 	const auto hue = [&](const char *key) { return Color::hex(tint.r.colour(tint.d, key)); };
 	tints = Tints{ hue("asphalt"), hue("concrete"), hue("earth"), hue("brick"), hue("glass"), hue("wood"), hue("metal"), hue("char"), hue("leaf"),
-		hue("flesh"), hue("paint"), hue("dirt") };
+		hue("paint"), hue("dirt") };
 }
 
 void EffectParams::load_things(const Dictionary &t, PackedStringArray &errors) {
@@ -176,7 +177,6 @@ void EffectParams::load_things(const Dictionary &t, PackedStringArray &errors) {
 	body_life = down.num("body_life_s");
 	push_ms = down.num("push_ms");
 	lift_ms = down.num("lift_ms");
-	limb_push_ms = down.num("limb_push_ms");
 	tracer_life = down.num("tracer_life_s");
 	tracer_m = down.num("tracer_m");
 	flash_m = down.num("flash_m");
@@ -197,7 +197,7 @@ void EffectParams::load_heave(const Dictionary &t, PackedStringArray &errors) {
 	v.plate_w_min = h.num("plate_w_min_m");
 	v.plate_w_span = h.num("plate_w_span_m");
 	v.scale_base = h.num("scale_base");
-	v.scale_per_m = h.num("scale_per_m");
+	v.scale_grow_m = h.num("scale_grow_m");
 	v.scale_most = h.num("scale_most");
 	v.plate_depth_min = h.num("plate_depth_min");
 	v.plate_depth_span = h.num("plate_depth_span");
@@ -248,7 +248,7 @@ void EffectParams::load_wires(const Dictionary &t, PackedStringArray &errors) {
 	Group w(r, t, "rope");
 	rope.points = w.integer("points");
 	rope.most = w.integer("most");
-	rope.iterations = w.integer("iterations");
+	rope.passes = w.integer("passes");
 	rope.slack = w.num("slack");
 	rope.damp = w.num("damp");
 	rope.lift_m = w.num("lift_m");
@@ -301,6 +301,49 @@ void EffectParams::load_wires(const Dictionary &t, PackedStringArray &errors) {
 	pole.lamp_reach_share = p.num("lamp_reach_share");
 	pole.lamp_head_m = vec3_of(p.r.list(p.d, "lamp_head_m", VEC3));
 	pole.post_head_m = vec3_of(p.r.list(p.d, "post_head_m", VEC3));
+}
+
+void EffectParams::load_gore(const Dictionary &t, PackedStringArray &errors) {
+	DataReader r{ errors, "gore.json" };
+	Group g(r, t, "gore");
+	GoreLook &v = gore;
+	v.links = g.integer("links");
+	v.passes = g.integer("passes");
+	v.opened_organs_min = g.integer("opened_organs_min");
+	v.opened_organs_span = g.integer("opened_organs_span");
+	v.torn_organs_min = g.integer("torn_organs_min");
+	v.torn_organs_span = g.integer("torn_organs_span");
+	const struct {
+		const char *key;
+		float *to;
+	} nums[] = { { "link_min_m", &v.link_min_m }, { "link_span_m", &v.link_span_m }, { "coil_m", &v.coil_m }, { "coil_turn", &v.coil_turn },
+		{ "drop_share", &v.drop_share }, { "gut_r_min_m", &v.gut_r_min_m }, { "gut_r_span_m", &v.gut_r_span_m }, { "hold_chance", &v.hold_chance },
+		{ "hold_min_s", &v.hold_min_s }, { "hold_span_s", &v.hold_span_s }, { "damp", &v.damp }, { "friction", &v.friction }, { "still_mm", &v.still_mm },
+		{ "still_s", &v.still_s }, { "organ_min_m", &v.organ_min_m }, { "organ_span_m", &v.organ_span_m }, { "organ_long_span", &v.organ_long_span },
+		{ "organ_flat_min", &v.organ_flat_min }, { "organ_flat_span", &v.organ_flat_span }, { "organ_scatter_ms", &v.organ_scatter_ms },
+		{ "organ_lift_min_ms", &v.organ_lift_min_ms }, { "organ_lift_span_ms", &v.organ_lift_span_ms }, { "bone_r_m", &v.bone_r_m },
+		{ "bone_len_m", &v.bone_len_m }, { "head_bone_len_m", &v.head_bone_len_m }, { "piece_bone_len_m", &v.piece_bone_len_m },
+		{ "head_piece_bone_len_m", &v.head_piece_bone_len_m }, { "cuff_r_m", &v.cuff_r_m }, { "cuff_len_m", &v.cuff_len_m },
+		{ "stump_bone_chance", &v.stump_bone_chance }, { "piece_bone_from", &v.piece_bone_from }, { "piece_bone_to", &v.piece_bone_to },
+		{ "open_torn_chance", &v.open_torn_chance }, { "open_dead_chance", &v.open_dead_chance }, { "pelvis_chance", &v.pelvis_chance },
+		{ "pelvis_kick_share", &v.pelvis_kick_share }, { "belly_kick_ms", &v.belly_kick_ms }, { "piece_speed_min_ms", &v.piece_speed_min_ms },
+		{ "piece_speed_power_ms", &v.piece_speed_power_ms }, { "power_least", &v.power_least }, { "speed_jitter_min", &v.speed_jitter_min },
+		{ "speed_jitter_span", &v.speed_jitter_span }, { "piece_spread_ms", &v.piece_spread_ms }, { "piece_lift_min_ms", &v.piece_lift_min_ms },
+		{ "piece_lift_span_ms", &v.piece_lift_span_ms }, { "lift_base", &v.lift_base }, { "shot_speed_min_ms", &v.shot_speed_min_ms },
+		{ "shot_speed_span_ms", &v.shot_speed_span_ms }, { "shot_spread_ms", &v.shot_spread_ms }, { "shot_lift_min_ms", &v.shot_lift_min_ms },
+		{ "shot_lift_span_ms", &v.shot_lift_span_ms } };
+	for (const auto &n : nums) *n.to = g.num(n.key);
+	v.bone_tint = Color::hex(g.r.colour(g.d, "bone_tint"));
+	v.cuff_tint = Color::hex(g.r.colour(g.d, "cuff_tint"));
+	const DataValue all = g.r.at(g.d);
+	const auto tints_of = [&](const char *key, std::vector<Color> &into) {
+		const DataValue list = all[key];
+		for (int i = 0; i < list.size(); i++) into.push_back(Color::hex(list[i].colour()));
+		if (into.empty()) list.fail("one tint or more");
+	};
+	tints_of("gut_tints", v.gut_tints);
+	tints_of("organ_tints", v.organ_tints);
+	if (v.links < MIN_ROPE_POINTS) g.r.in("links").fail("a chain needs two links or more");
 }
 
 } // namespace city

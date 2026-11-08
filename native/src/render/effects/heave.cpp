@@ -134,7 +134,7 @@ void Heave::lay(const Crater &c, const CityState &s) {
 		if (o.plate && std::hypot(o.at.x - c.x, o.at.z - c.z) < reach * h.crowd_r) crowding++;
 	}
 	const int plates = crowding > h.crowded ? 0 : std::min(h.plates_most, int(std::lround(float(h.plates_base) + reach / h.plates_per_m)));
-	const float scale = std::min(h.scale_most, h.scale_base + reach / h.scale_per_m);
+	const float scale = std::min(h.scale_most, h.scale_base + reach / h.scale_grow_m);
 	for (int i = 0; i < plates; i++) {
 		const float a = rng.f() * TAU_F, r = reach * (h.plate_in + std::sqrt(rng.f()) * h.plate_span);
 		const float w = (h.plate_w_min + rng.f() * h.plate_w_span) * scale;

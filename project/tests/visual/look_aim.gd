@@ -6,12 +6,15 @@ extends RefCounted
 const WALKERS_READ := 4096
 
 
-## `view` is the setView's zoom, azimuth and elevation.
-static func stand_on_walker(rig: CityCamera, ui: UiDriver, view: Array) -> void:
+## `view` is the setView's zoom, azimuth and elevation. False, the camera left where it stands, when nobody walks yet.
+static func stand_on_walker(rig: CityCamera, ui: UiDriver, view: Array) -> bool:
 	CityStore.dispatch(&"set_speed", [0])
 	var best := Vector3.INF
 	for w: Dictionary in CityStore.query(&"shot_targets", [WALKERS_READ]).walkers:
 		if not w.fallen and Vector2(w.position.x, w.position.z).length() < Vector2(best.x, best.z).length():
 			best = w.position
+	if best == Vector3.INF:
+		return false
 	print("walker at ", best)
 	await PairCamera.stand(rig, ui, best, view[1], view[2], view[0])
+	return true

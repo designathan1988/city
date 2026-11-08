@@ -225,7 +225,7 @@ void AgentRenderer::seat_people(uint32_t id, int type, int model, const Pose &p,
 	}
 }
 
-void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCull &view, const PoseSample &at) {
+void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCull &view, const PoseSample &at, const TakenAgents &taken) {
 	if (!material_.is_valid() || !meshes_[0][CABIN_LEVEL].valid()) return;
 	people_.begin();
 	keeper_.begin();
@@ -262,6 +262,7 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 	// Sent to the level's lists: the sun's every time, the camera's only in the view, with room for the frame the camera turned since.
 	auto seen = [&](int model, const Pose &p, float d2) { return view.sees(Vector3(p.x, p.y, p.z), reach_m_[model] + std::sqrt(d2) * view_slack_); };
 	for (const AgentRecord &rec : f.vehicles) {
+		if (taken.vehicle(rec.id)) continue; // blown up since this frame was published: its wreck stands in for it, and its riders go with it
 		Pose p = record_pose(rec, at);
 		const int type = int(rec.look & LOOK_TYPE_MASK), paint = int((rec.look >> LOOK_PAINT_SHIFT) & LOOK_TYPE_MASK);
 		const bool brake = (rec.look & (1u << LOOK_BRAKE_SHIFT)) != 0;
@@ -314,7 +315,7 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 	for (int i = 0; i < AGENT_MODELS; i++)
 		for (int level = 0; level < DRAWS; level++) rows_lost_ -= bufs[i][level].count();
 	limit_cabins();
-	drawn_people_ = people_.update(f, cam, view, at, people_r_);
+	drawn_people_ = people_.update(f, cam, view, at, people_r_, taken);
 	draw_rows(cam);
 }
 

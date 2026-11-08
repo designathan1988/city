@@ -4,6 +4,7 @@
 
 #include <godot_cpp/classes/box_mesh.hpp>
 #include <godot_cpp/classes/cylinder_mesh.hpp>
+#include <godot_cpp/classes/sphere_mesh.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -16,6 +17,8 @@ namespace {
 constexpr float RANDOM_SPIN_RANGE = 8.f; // rad/s of the random spin a piece is thrown with, either way
 constexpr float TINT_MIN = 0.85f, TINT_SPAN = 0.3f; // each piece's shade varies a little
 constexpr float CYL_SIDES = 9.f;
+constexpr int ROUND_SIDES = 10, ROUND_RINGS = 7; // gore.ts: an organ is a sphere of ten by seven
+constexpr float UNIT_RADIUS = 0.5f; // a round one across, as the unit box
 constexpr float FLAME_OVER_M = 0.3f; // flames rise from a burning piece
 constexpr float SMOKE_OVER_M = 1.0f;
 constexpr float SMOKE_SPREAD_M = 0.4f;
@@ -37,8 +40,16 @@ void Debris::init(const RID &scenario, const RID &material, const EffectParams &
 	// debris.gdshader moves no vertex: a piece's box is its shape's, where it lies
 	boxes_.init_shaped(scenario, box, material, params.debris_max, true, box->get_aabb(), 0.f);
 	cylinders_.init_shaped(scenario, cyl, material, params.debris_max, true, cyl->get_aabb(), 0.f);
+	Ref<SphereMesh> ball;
+	ball.instantiate();
+	ball->set_radius(UNIT_RADIUS);
+	ball->set_height(1.f);
+	ball->set_radial_segments(ROUND_SIDES);
+	ball->set_rings(ROUND_RINGS);
+	rounds_.init_shaped(scenario, ball, material, params.debris_max, true, ball->get_aabb(), 0.f);
 	boxes_.count(0);
 	cylinders_.count(0);
+	rounds_.count(0);
 }
 
 void Debris::set_wrecks(const RID &scenario, const RID &material, const std::vector<Ref<Mesh>> &bodies) {
@@ -58,6 +69,7 @@ void Debris::reset() {
 void Debris::release() {
 	boxes_.release();
 	cylinders_.release();
+	rounds_.release();
 	for (MmLayer &l : wrecks_) l.release();
 }
 
@@ -72,6 +84,7 @@ void Debris::add(const PieceSpec &s) {
 	const float shade = TINT_MIN + TINT_SPAN * rng_.f();
 	b.tint = Color(std::min(1.f, s.tint.r * shade), std::min(1.f, s.tint.g * shade), std::min(1.f, s.tint.b * shade));
 	b.cylinder = s.cylinder;
+	b.round = s.round;
 	b.still = s.still;
 	b.asleep = s.still;
 	b.burn_until = s.burn_s;
@@ -122,10 +135,11 @@ void Debris::reap(float dt) {
 void Debris::flush() {
 	const bool burning = std::any_of(pieces_.begin(), pieces_.end(), [](const Piece &p) { return p.burn_until > 0; });
 	if (!dirty_ && !moving() && !burning && drawn_ == int(pieces_.size())) return;
-	int nb = 0, nc = 0;
+	int nb = 0, nc = 0, nr = 0;
 	std::vector<int> nw(wrecks_.size(), 0);
 	boxes_.clear_bounds(); // every piece is written again, where the steps left it: the boxes are theirs
 	cylinders_.clear_bounds();
+	rounds_.clear_bounds();
 	for (MmLayer &l : wrecks_) l.clear_bounds();
 	for (const Piece &p : pieces_) {
 		const Basis rot(p.q);
@@ -135,8 +149,8 @@ void Debris::flush() {
 			if (k < WRECKS_KEPT) wrecks_[size_t(p.wreck)].put(k++, rot.get_column(0), rot.get_column(1), rot.get_column(2), p.p, p.tint.r, p.tint.g, p.tint.b, mark);
 			continue;
 		}
-		MmLayer &layer = p.cylinder ? cylinders_ : boxes_;
-		int &n = p.cylinder ? nc : nb;
+		MmLayer &layer = p.round ? rounds_ : p.cylinder ? cylinders_ : boxes_;
+		int &n = p.round ? nr : p.cylinder ? nc : nb;
 		if (n >= params_.debris_max) continue;
 		layer.put(n++, rot.get_column(0) * p.size.x, rot.get_column(1) * p.size.y, rot.get_column(2) * p.size.z, p.p, p.tint.r, p.tint.g, p.tint.b, mark);
 	}
@@ -145,12 +159,11 @@ void Debris::flush() {
 		wrecks_[i].shown(nw[i] > 0);
 		if (nw[i] > 0) wrecks_[i].upload();
 	}
-	boxes_.count(nb);
-	cylinders_.count(nc);
-	boxes_.shown(nb > 0);
-	cylinders_.shown(nc > 0);
-	if (nb > 0) boxes_.upload();
-	if (nc > 0) cylinders_.upload();
+	for (auto [layer, n] : { std::pair<MmLayer *, int>{ &boxes_, nb }, std::pair<MmLayer *, int>{ &cylinders_, nc }, std::pair<MmLayer *, int>{ &rounds_, nr } }) {
+		layer->count(n);
+		layer->shown(n > 0);
+		if (n > 0) layer->upload();
+	}
 	drawn_ = int(pieces_.size());
 	dirty_ = false;
 }

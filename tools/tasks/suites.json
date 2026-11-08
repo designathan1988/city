@@ -343,6 +343,7 @@
     {"name": "zoning", "plan": "res://tests/visual/zoning_plan.json", "resolution": "1600x900", "timeout_s": 300},
     {"name": "bomb", "plan": "res://tests/visual/bomb_plan.json", "resolution": "1600x900", "timeout_s": 300},
     {"name": "bomb_street", "plan": "res://tests/visual/bomb_street_plan.json", "resolution": "1600x900", "timeout_s": 300},
+    {"name": "bomb_gore", "plan": "res://tests/visual/bomb_gore_plan.json", "resolution": "1600x900", "timeout_s": 300},
     {"name": "zones_town", "plan": "res://tests/visual/zones_town_plan.json", "resolution": "1600x900", "timeout_s": 300}]
   },
   "capture_scenes": {

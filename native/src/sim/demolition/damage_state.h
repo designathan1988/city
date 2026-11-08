@@ -5,6 +5,7 @@
 
 #include "sim/buildings/building_store.h"
 #include "sim/catalog/furniture_types.h"
+#include "sim/demolition/damage_event.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -181,6 +182,9 @@ private:
 
 // One step of the damage clock (caller holds the map exclusively): time passes, fires burn out.
 struct CityState;
+// Tells the render of a blow, a shot, a fall or a drop of blood (kept when nothing drains them, up to a cap), stamped with the newest
+// publication of the poses: the one owner of the events' list (the caller holds the map exclusively, so no publication runs meanwhile).
+void emit_damage_event(CityState &s, DamageEvent e);
 void damage_step(CityState &s, double dt);
 void bleed_step(CityState &s, double dt); // wounds.cpp: the wounded bleed, and die of it
 

@@ -30,7 +30,26 @@ constexpr float KNEE_LEAST = 0.45f, ELBOW_LEAST = 0.35f, FOLD_LEAST = 0.62f; // 
 constexpr float RESTING_MS = 0.12f, RESTING_S = 0.6f;
 constexpr float NOTHING_M = 1e-5f;
 constexpr float ONE_STEP_S = 1.f / 60.f;
+// The parts each limb takes off, by part index (PART_FRAMES), and its stumps: the body's and the piece's (ragdoll.ts STUMP).
+constexpr uint32_t LIMB_PARTS[LIMBS] = { 1u << 2, 1u << 4, 1u << 6, (1u << 8) | (1u << 9), (1u << 11) | (1u << 12) };
+constexpr RagdollStump BODY_STUMP[LIMBS] = { { CHE, NEC }, { LS, LE }, { RS, RE }, { LH, LK }, { RH, RK } };
+constexpr RagdollStump PIECE_STUMP[LIMBS] = { { TOP, HEA }, { LW, LE }, { RW, RE }, { LA, LK }, { RA, RK } };
+constexpr uint32_t ALL_KEPT = ~0u;
 } // namespace
+
+RagdollStump Ragdoll::stump(RagdollLimb limb, bool piece) { return piece ? PIECE_STUMP[limb] : BODY_STUMP[limb]; }
+
+uint32_t Ragdoll::parts_of(RagdollLimb limb) { return LIMB_PARTS[limb]; }
+
+void Ragdoll::cut_to(uint32_t parts) {
+	kept_ = 0;
+	for (int p = 0; p < RAGDOLL_PARTS; p++)
+		if ((parts >> p & 1u) != 0) kept_ |= (1u << PART_FRAMES[p].origin) | (1u << PART_FRAMES[p].to);
+	int n = 0;
+	for (int i = 0; i < sticks_used_; i++)
+		if ((kept_ >> sticks_[i].a & 1u) != 0 && (kept_ >> sticks_[i].b & 1u) != 0) sticks_[n++] = sticks_[i];
+	sticks_used_ = n;
+}
 
 void Ragdoll::link(int a, int b, float share, bool least_only) {
 	Stick &s = sticks_[sticks_used_++];
@@ -66,6 +85,9 @@ void Ragdoll::begin(const Vector3 joints[RAGDOLL_JOINTS], const Vector3 &velocit
 	for (Vector3 &s : last_side_) s = side;
 	still_ = 0;
 	asleep_ = false;
+	kept_ = ALL_KEPT;
+	Transform3D first[RAGDOLL_PARTS];
+	frames(first); // each part's roll as it stood: what a piece keeps
 }
 
 // Holds a limb's middle joint to the side it bends to, `way` the front of the pelvis or its back.
@@ -85,6 +107,7 @@ void Ragdoll::relax() {
 		now_[s.a] += move;
 		now_[s.b] -= move;
 	}
+	if (kept_ != ALL_KEPT) return; // a piece: its hinges lean on joints it left behind
 	hinge(LH, LK, LA, 1.f);
 	hinge(RH, RK, RA, 1.f);
 	hinge(LS, LE, LW, -1.f);
@@ -143,6 +166,7 @@ void Ragdoll::frames(Transform3D out[RAGDOLL_PARTS]) {
 			const int *limb = LIMB_OF[f.ref];
 			side = (now_[limb[1]] - now_[limb[0]]).cross(now_[limb[2]] - now_[limb[1]]);
 		}
+		if (kept_ != ALL_KEPT) side = last_side_[p]; // a piece keeps the roll it had: the joints its bend was read from are gone
 		side -= along * side.dot(along);
 		if (side.length() < NOTHING_M) side = last_side_[p] - along * last_side_[p].dot(along);
 		side = side.normalized();
@@ -154,5 +178,7 @@ void Ragdoll::frames(Transform3D out[RAGDOLL_PARTS]) {
 }
 
 Vector3 Ragdoll::pelvis() const { return now_[PEL]; }
+
+Vector3 Ragdoll::belly() const { return now_[BEL]; }
 
 } // namespace city

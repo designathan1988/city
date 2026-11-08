@@ -28,7 +28,14 @@ namespace city {
 class EffectWorld {
 public:
 	bool init(const RenderContext &ctx, godot::PackedStringArray &errors);
-	void set_people(PeopleRenderer *people) { people_ = people; }
+	// Whose bodies fall; what hangs off a body opened or cut is drawn with the debris' material, in the gore's look.
+	void set_people(PeopleRenderer *people) {
+		people_ = people;
+		if (people_) people_->bodies().set_gore(debris_material_, params_.gore, params_.gravity);
+	}
+	int gore_chains() const { return people_ ? people_->bodies().gore_chains() : 0; }
+	godot::PackedVector3Array body_places() const { return people_ ? people_->bodies().places() : godot::PackedVector3Array(); }
+	int gore_bones() const { return people_ ? people_->bodies().gore_bones() : 0; }
 	void set_ruin_maker(RuinPieces::Maker maker) { ruins_.set_maker(std::move(maker)); }
 	void set_wrecks(const std::vector<godot::Ref<godot::Mesh>> &bodies, const std::vector<godot::Vector3> &sizes); // the burnt bodies, by vehicle type
 	void reset(); // a new city or a load: every effect gone
@@ -56,6 +63,7 @@ public:
 	uint32_t ruin_digest(uint32_t seed) const { return ruins_.digest(seed); }
 	int blood_marks() const { return marks_.blood(); }
 	size_t events_played() const { return played_; }
+	const std::vector<DamageEvent> &played() const { return events_played_; } // this frame's
 
 private:
 	struct Geyser {
@@ -78,8 +86,8 @@ private:
 	static float heap_of(const Ruin &r); // how high its mound stands
 	void furniture(const DamageEvent &e, const CityState &s);
 	void pole(const DamageEvent &e); // a pole or a signal post knocked out (effect_things.cpp)
-	bool load_looks(const RenderContext &ctx, godot::PackedStringArray &errors); // skin and clothes tints of the bodies (effect_bodies.cpp)
-	void body(const DamageEvent &e, const CityState &s); // the pieces of someone struck
+	void body(const DamageEvent &e, const CityState &s); // the body of someone struck, the pieces cut off it, what came out
+	void organs(const godot::Vector3 &at, int count, const godot::Vector3 &kick); // what was inside, thrown (effect_bodies.cpp)
 	void tracer(const DamageEvent &e); // a bullet's line and where it ends
 	void wound(const DamageEvent &e);
 	void drip(const DamageEvent &e);
@@ -122,7 +130,6 @@ private:
 	std::vector<Source> sources_;
 	std::vector<Geyser> geysers_;
 	std::vector<Arc> arcs_;
-	std::vector<godot::Color> skins_, clothes_;
 	std::unordered_map<int, float> fire_carry_;
 	std::chrono::steady_clock::time_point last_;
 	bool started_ = false;
