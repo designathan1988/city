@@ -282,7 +282,7 @@
   "handle_relief_out_m": 1.12
  },
  "structure": {
-  "_doc": "Bridges, viaducts, walls and tunnels: span and cable spacing, towers, piers and their caps, parapets, abutments and tunnel portals.",
+  "_doc": "Bridges, viaducts, walls and tunnels: span and cable spacing, towers, piers and their caps, parapets, abutments and tunnel portals. backfill_in_m and backfill_over_m: the backfill behind a cutting's wall stops this far inside the dug band, where the ground comes back, and lies this far over the ground it covers (design values of the road walls, render/roads/road_walls.cpp).",
   "span_from_m": 320,
   "span_every_m": 220,
   "cable_step_m": 12,
@@ -321,7 +321,9 @@
   "portal_thickness_m": 1.6,
   "portal_slice_m": 1.2,
   "portal_coping_m": 0.24,
-  "portal_cover_m": 0.6
+  "portal_cover_m": 0.6,
+  "backfill_in_m": 0.2,
+  "backfill_over_m": 0.016
  },
  "zone": {
   "_doc": "The zone brush: the side offset of a zoned lot and the spacing of its samples.",

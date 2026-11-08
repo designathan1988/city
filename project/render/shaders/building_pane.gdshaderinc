@@ -17,7 +17,7 @@ const float BYTE_TOP = 255.0; // a code in a colour byte reads byte / 255
 // A floor cell's seed: its column plus its row times CELL_ROW (more than a room's tiles a row), offset to stay positive.
 const float CELL_ROW = 17.0, CELL_OFFSET = 4096.0;
 // A room's independent picks from its lot: fract(lot * k), each k far from a simple ratio of the others.
-const float LOT_PICTURE = 29.17, LOT_ART = 41.3, LOT_HUNG = 13.71, LOT_CLOTH = 7.37, LOT_SIDE = 3.13, LOT_LIT = 5.31, LOT_TV = 3.71;
+const float LOT_PICTURE = 29.17, LOT_ART = 41.3, LOT_LIT = 5.31, LOT_TV = 3.71; // (LOT_HUNG, LOT_CLOTH, LOT_SIDE: building_room_tone)
 // A room's and a bay's seeds: Knuth's multiplicative hash (2^32 over the golden ratio), a salt, and two primes.
 const uint KNUTH = 2654435761u, AWAKE_SALT = 977u, BAY_PRIME = 7919u, SLOT_PRIME = 31u;
 
@@ -58,13 +58,10 @@ uniform vec2 piece_foot; // its foot's shade, the height it lifts over
 uniform float room_dim; // the room's light, all of it
 uniform float hung_back_m; // what hangs, behind the glass
 uniform vec2 hung_daylight; // its light, from and over the height up the pane
-uniform vec4 hung_kinds; // the shares of lots under which a room has curtains, a roller blind, a Venetian blind, a sheer
-uniform vec2 curtain_side; // a curtain's width, of the pane: from and over
 uniform vec3 curtain_sway; // its sway: how far, its waves up the pane, the lot's phase
 uniform float curtain_folds; // its folds a metre (by 2 pi)
 uniform vec4 curtain_shade; // a fold's shade: from and over, its two-sided lift from and over
 uniform vec2 curtain_hem; // the hem's shade, its height
-uniform vec2 roller_down; // a roller blind's drop, of the pane: from and over
 uniform vec3 roller_look; // its shade, its bar's grey, the bar's half height
 uniform vec4 venetian_look; // a Venetian blind's slats a metre (by 2 pi), the cover's edges, the cover
 uniform vec3 venetian_albedo;

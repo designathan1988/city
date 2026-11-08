@@ -3620,6 +3620,30 @@ swizzled its default vectors (`vec3(0.7, 0.8, 0.6).x`) against the same number f
 
 **What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56).
 
+### 6.62 B2, C14 and C16 (the rooms too small to trace): one owner for what hangs in a window, two backfill values in tuning (2026-11-08)
+
+**Cause and fix.** `building_room_tone.gdshaderinc`, which every level's glass reads (rows building, building_glass, building_far),
+wrote again what `room_hung` picks (§6.56 moved those to the `building_glass` row): the thresholds of curtains, roller blinds,
+Venetian blinds and sheers, a curtain's side, a blind's drop, the lots' three multipliers; and it held the cloths' seven tones by
+pick and the blinds' and sheers' mean tone and cover as bare numbers (43 findings). What hangs in a window is now the `_shared` set
+`rooms`, which the three rows use, declared once in `building_room_tone` and read by `room_hung` too; the lots' multipliers are its
+consts. The cloths are two tables (`cloth_until`, `cloth_tone`) walked in order, the same pick as the old chain. The blinds' and
+sheers' means stay as data said to be worked out by hand (B3, as the `HUNG_*` means).
+
+Two findings of the full gates, made by this stage's earlier data and caught only by a run over every file:
+- `HUNG_DIM` was a second owner of the new `hung_dim` key: it is not that value but `room_hung`'s `hung_dim` under the mean of its
+  daylight (0.776 against 0.8), worked out by hand, now named `HUNG_DAYLIT` and kept for B3.
+- `road_walls.cpp`'s `BACKFILL_OVER_M = 0.016` met the new `paver_joint` width in data: a design value of the road walls typed in
+  C++. It and `BACKFILL_IN_M` are tunings beside the walls' other sizes (`structure_backfill_in_m`, `structure_backfill_over_m`).
+
+The schema's list of shared sets (`uses`) takes `lamp_pool` and `rooms`; the road's and `building_wash`'s `uses` read the same list
+(§6.61 had left them open).
+
+**Proof.** The room tone with the set and consts put back is HEAD's code but the cloth's pick, a loop over the same thresholds and
+tones; the pane the same, its lots' multipliers now from the room tone. Both DLLs rebuilt; `quick`: every test passes; three photos byte-equal to known states, `00-cidade` one pixel off its nearest by one level, the same in two runs, on a tower's painted windows (the room tone, §6.56's cause); city-verify's photos re-blessed.
+
+**What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56); the road walls the same numbers from tuning.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

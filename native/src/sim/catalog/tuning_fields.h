@@ -67,7 +67,8 @@
 	X(inspect, radius_m) \
 	XD(lot, angle_look_m) \
 	X(build, handle_side_out_m) X(build, handle_corner_out_m) X(build, handle_scale_out_m) X(build, handle_above_roof_m) \
-	X(build, handle_off_floor_m) X(build, handle_lift_out_m) X(build, handle_relief_out_m)
+	X(build, handle_off_floor_m) X(build, handle_lift_out_m) X(build, handle_relief_out_m) \
+	X(structure, backfill_in_m) X(structure, backfill_over_m)
 
 #define CITY_TUNING_DECLARE(group, name) float group##_##name = 0;
 #define CITY_TUNING_DECLARE_COUNT(group, name) int group##_##name = 0;

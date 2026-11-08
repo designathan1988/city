@@ -14,8 +14,6 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float BACKFILL_IN_M = 0.2f; // the backfill stops this far inside the dug band, where the ground comes back
-constexpr float BACKFILL_OVER_M = 0.016f; // and lies this far over the ground it covers
 const Vector3 UP(0, 1, 0);
 
 using Section = WallSection;
@@ -23,7 +21,7 @@ using Section = WallSection;
 
 // The natural ground behind a wall, past what the cutting dug.
 float held_ground(const RoadEmit &e, const RoadSegment &g, const SegFrame &f, float side) {
-	const Vector3 q = f.c + f.left * (side * (casing_half(e.s.catalog.profile(g.profile)) + cut_wall_reach() - BACKFILL_IN_M));
+	const Vector3 q = f.c + f.left * (side * (casing_half(e.s.catalog.profile(g.profile)) + cut_wall_reach() - e.s.catalog.tune.structure_backfill_in_m));
 	return e.s.terrain.height_at(q.x, q.z);
 }
 
@@ -63,8 +61,8 @@ Vector3 point(const Section &q, float out, float y) { return Vector3(q.at.x + q.
 
 // The end of a run: the backfill closed down to the road.
 void close_run(const RoadEmit &e, const Section &q, const Vector3 &away, float foot, float coping) {
-	const float back = cut_wall_reach() - BACKFILL_IN_M;
-	structure_face(e.mb, point(q, 0, q.deck - foot), point(q, back, q.deck - foot), point(q, back, q.top + BACKFILL_OVER_M), point(q, 0, q.top + coping), structure_concrete(), away);
+	const float back = cut_wall_reach() - e.s.catalog.tune.structure_backfill_in_m;
+	structure_face(e.mb, point(q, 0, q.deck - foot), point(q, back, q.deck - foot), point(q, back, q.top + e.s.catalog.tune.structure_backfill_over_m), point(q, 0, q.top + coping), structure_concrete(), away);
 }
 } // namespace
 
@@ -99,13 +97,14 @@ void emit_retaining_walls(const RoadEmit &e, int sid) {
 
 void emit_wall_backfill(const RoadEmit &e, int sid) {
 	if (!(e.s.roads.segs[size_t(sid)].flags & SEG_CUT_WALLS)) return;
-	const float thick = e.s.catalog.tune.structure_wall_thick_m, back = cut_wall_reach() - BACKFILL_IN_M;
+	const Tuning &tn = e.s.catalog.tune;
+	const float thick = tn.structure_wall_thick_m, back = cut_wall_reach() - tn.structure_backfill_in_m, over = tn.structure_backfill_over_m;
 	const std::shared_ptr<const SegWalls> walls = walls_of(e, sid);
 	for (const float side : { 1.f, -1.f })
 		for (const std::vector<Section> &run : runs_on(*walls, side))
 			for (size_t k = 0; k + 1 < run.size(); k++) {
 				const Section &a = run[k], &b = run[k + 1];
-				e.mb.quad(point(a, thick, a.top + BACKFILL_OVER_M), point(b, thick, b.top + BACKFILL_OVER_M), point(b, back, b.top + BACKFILL_OVER_M), point(a, back, a.top + BACKFILL_OVER_M), Color(1, 1, 1), UP);
+				e.mb.quad(point(a, thick, a.top + over), point(b, thick, b.top + over), point(b, back, b.top + over), point(a, back, a.top + over), Color(1, 1, 1), UP);
 			}
 }
 

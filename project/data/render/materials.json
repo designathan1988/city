@@ -1,7 +1,7 @@
 {
  "_doc": "Materials the native renderers draw with, by name (native/src/render/render_context.h). pool_gain 0.2115 (lamp_glow; the road's is its own, 0.9): the Roadcraft 4.0's pool, opacity 0.32 of a #ffe2c4 light, times daylight.json sky_gain 0.661, which carries a colour drawn without light from three.js's tone chain into this game's; computed and not fitted to a picture. Colours as '#rrggbb', textures as res:// paths. prop lens_roughness and lens_ior: the signal lens, polished polycarbonate (Physically Based database, physicallybased.info, 'Plastic (PC)': roughness 0, index of refraction 1.5848 from refractiveindex.info). Vegetation wind (_shared gust and sway; vegetation.gdshaderinc; its speed and direction are shader globals, not material values): sway_per_ms2 = top bend per (m/s)^2 from Peltola et al. 1993 (crown-centre bending under 5 cm on a 13.5 m pine at 8 m/s: 0.0037 of the height, times (1/0.6)^2 to the top, over 64); gust_m = 22 x 10 m (Kaimal et al. 1972 spectral peak n z / U = 1/22); turbulence = 1 / ln(10 m / 0.05 m) (EN 1991-1-4 eq. 4.7, terrain category II); sway_hz = natural frequency of leafy trees of 8-15 m, 0.2-0.3 Hz (Jackson et al. 2019). vegetation_cards cover_per_mip 0.25: alpha rescaled by mip level so a card keeps its coverage far away (Golus 2017, Anti-aliased Alpha Test: The Esoteric Alpha To Coverage). vegetation roughness 0.8: modelling choice for matte leaves, no published value.",
  "_shared": {
-  "_doc": "Parameter sets several materials read alike, laid under a material's own params by its uses (render/world_materials.gd params): finishes, the building finishes' maps and scales (building, building_parts); glass, the near levels' glass (building, building_glass; building_glass_set.gdshaderinc declares it and sky_in_glass); sky_in_glass, the sky every level's glass shows (building, building_glass, building_far); lamp_pool, the fall of a street lamp's pool, the 4.0's lightLevels.ts (road, building_wash: lamp_pool.gdshaderinc); gust and sway, the vegetation wind (vegetation, cover_plant, vegetation_cards); stone, a still, rough cover (cover_rock, cover_shore).",
+  "_doc": "Parameter sets several materials read alike, laid under a material's own params by its uses (render/world_materials.gd params): finishes, the building finishes' maps and scales (building, building_parts); glass, the near levels' glass (building, building_glass; building_glass_set.gdshaderinc declares it and sky_in_glass); sky_in_glass, the sky every level's glass shows (building, building_glass, building_far); rooms, what hangs in a room's window, its picks, cloths and the means of its blinds (building, building_glass, building_far: building_room_tone.gdshaderinc, read by building_pane's room_hung too); lamp_pool, the fall of a street lamp's pool, the 4.0's lightLevels.ts (road, building_wash: lamp_pool.gdshaderinc); gust and sway, the vegetation wind (vegetation, cover_plant, vegetation_cards); stone, a still, rough cover (cover_rock, cover_shore).",
   "finishes": {
    "noise_lattice": "res://assets/noise/lattice.png",
    "finish_map": "res://assets/surfaces/building-finishes.map.png",
@@ -14,6 +14,15 @@
   "glass": { "glass_reflect": 0.04, "glass_sky_floor": 0.0, "window_glow": 0.62, "dark_glass": 0.64 },
   "sky_in_glass": { "glass_sky": "#7f95ad" },
   "lamp_pool": { "pool_stops": [0.35, 0.55, 0.7, 0.15] },
+  "rooms": {
+   "hung_kinds": [0.36, 0.56, 0.68, 0.8],
+   "curtain_side": [0.14, 0.2],
+   "roller_down": [0.15, 0.65],
+   "cloth_until": [0.25, 0.45, 0.6, 0.72, 0.84, 0.93],
+   "cloth_tone": [[0.86, 0.8, 0.68], [0.9, 0.89, 0.86], [0.5, 0.51, 0.53], [0.72, 0.6, 0.45], [0.4, 0.47, 0.58], [0.6, 0.34, 0.26], [0.42, 0.5, 0.38]],
+   "blind_mean": [0.53, 0.523, 0.496, 0.55],
+   "sheer_mean": [0.698, 0.691, 0.667, 0.5]
+  },
   "gust": { "gust_m": 220.0 },
   "sway": { "sway_per_ms2": 0.000161, "turbulence": 0.189, "sway_hz": 0.25 },
   "stone": { "sway_per_ms2": 0.0, "turbulence": 0.0, "sway_hz": 0.0, "roughness": 0.94, "leaf_specular": 0.5 }
@@ -94,7 +103,7 @@
   }
  },
  "building": {
-  "uses": ["finishes", "glass", "sky_in_glass"],
+  "uses": ["finishes", "glass", "sky_in_glass", "rooms"],
   "shader": "res://render/shaders/building.gdshader", "fade_shader": "res://render/shaders/building_fade.gdshader", "ruin_shader": "res://render/shaders/building_ruin.gdshader",
   "params": {
    "wall_gain": 1.0,
@@ -103,7 +112,7 @@
   }
  },
  "building_glass": {
-  "uses": ["glass", "sky_in_glass"],
+  "uses": ["glass", "sky_in_glass", "rooms"],
   "_doc": "The near level's glass (render/shaders/building_pane.gdshaderinc): the room behind each pane by interior mapping and what hangs in its window, by eye as the 4.0's rooms; each vector's parts are said at its uniform. Colours are linear albedo (panel_light a radiance), lengths metres, a pick of a room's lot h is from + over * h. furniture_tone: three floats a furniture kind.",
   "shader": "res://render/shaders/building_glass.gdshader", "fade_shader": "res://render/shaders/building_glass_fade.gdshader",
   "params": {
@@ -143,13 +152,10 @@
    "room_dim": 0.9,
    "hung_back_m": 0.12,
    "hung_daylight": [0.85, 0.25],
-   "hung_kinds": [0.36, 0.56, 0.68, 0.8],
-   "curtain_side": [0.14, 0.2],
    "curtain_sway": [0.03, 7.0, 6.0],
    "curtain_folds": 70.0,
    "curtain_shade": [0.72, 0.28, 0.6, 0.4],
    "curtain_hem": [0.82, 0.04],
-   "roller_down": [0.15, 0.65],
    "roller_look": [0.92, 0.2, 0.012],
    "venetian_look": [62.0, 0.3, 0.6, 0.9],
    "venetian_albedo": [0.78, 0.77, 0.73],
@@ -201,7 +207,7 @@
   }
  },
  "building_far": {
-  "uses": ["sky_in_glass"],
+  "uses": ["sky_in_glass", "rooms"],
   "shader": "res://render/shaders/building_far.gdshader",
   "params": {
    "glass_floor": 0.18,
