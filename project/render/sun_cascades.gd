@@ -31,7 +31,7 @@ func _init(day: Dictionary, sun: DirectionalLight3D) -> void:
 
 ## Fitted again only when what the fit reads changed.
 func follow(camera: Camera3D) -> void:
-	var ground := CityCamera.ground_below(camera)
+	var ground := CameraQueries.ground_below(camera)
 	var view := [camera.global_position, camera.global_basis.z.y, ground, camera.near, camera.far, camera.fov,
 			camera.get_viewport().get_visible_rect().size, shadow_side_px, shadow_filter_radius, _sun.shadow_blur, shadow_least_m]
 	if view != _fitted_for:

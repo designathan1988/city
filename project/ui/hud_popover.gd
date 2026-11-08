@@ -97,7 +97,7 @@ func _build_layers(col: Control, spec: Dictionary) -> void:
 		b.theme_type_variation = &"LayerRow"
 		b.custom_minimum_size.x = HudWidgets.px("layer_row_w")
 		var sw := HudSwitch.new()
-		sw.on = Settings.layer_on(r.action) if r.has("action") else false
+		sw.on = Settings.map.layer_on(r.action) if r.has("action") else false
 		b.add_child(sw)
 		if r.has("action"):
 			b.toggle_mode = true
@@ -108,7 +108,7 @@ func _build_layers(col: Control, spec: Dictionary) -> void:
 			b.toggled.connect(func(v: bool) -> void:
 				sw.on = v
 				sw.queue_redraw()
-				Settings.set_layer(r.action, v))
+				Settings.map.set_layer(r.action, v))
 
 
 ## The Interior layer's row: on while a building is open; the switch goes to the interior controller, which says whether it opened one.

@@ -67,7 +67,7 @@ func coming() -> Vector2:
 	var ahead_s: float = cfg.look_ahead_s
 	var at := _rig.focus + _focus_rate * ahead_s
 	var at_half := clampf(_rig.half * exp(_half_rate * ahead_s), cfg.view_half_min, cfg.view_half_max)
-	var base := Vector3(at.x, _rig.seen_height(at.x, at.z) + CameraProfile.eye_lift(cfg, at_half), at.z)
+	var base := Vector3(at.x, _rig.queries.seen_height(_rig.cfg.ray_top, at.x, at.z) + CameraProfile.eye_lift(cfg, at_half), at.z)
 	var tilt := clampf(CameraProfile.profile_tilt(cfg, at_half) + _rig.far_tilt - deg_to_rad(cfg.far_tilt_deg), CameraProfile.min_tilt(cfg, at_half), deg_to_rad(cfg.max_tilt_deg))
 	var away := CameraProfile.view_distance(cfg, at_half)
 	var eye := base + Basis.from_euler(Vector3(-tilt, _rig.yaw + _yaw_rate * ahead_s, 0.0)).z * away

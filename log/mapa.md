@@ -367,6 +367,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `project/game/play.gd` · `project/game/play.tscn` — cena de jogo: mundo, câmera, HUD e captura por linha de comando
 - `project/game/settings/road_prefs.gd` — o que a ferramenta de via guarda entre sessões: encaixes, teclas e muros do corte
 - `project/game/settings/settings.gd` — opções gráficas persistidas em user://settings.cfg (predefinição, escolhas, limite de quadros, vsync, tela cheia, idioma, chaves), aplicadas ao vivo
+- `project/game/settings/map_layers.gd` — what shows over the map (the Layers popover): the grid and the core's overlays, the zones with their tool
 - `project/game/settings/quality.gd` · `project/game/settings/frame_governor.gd` · `project/game/settings/render_switches.gd` — um nível gráfico no renderizador; governador do nível automático e resolução dinâmica; chaves do painel de efeitos
 - `project/game/store/city_store.gd` — único dono do CityCore no lado de script (`snapshot`)
 - `project/game/store/store_api.gd` — os nomes de comando e de consulta que o script pode mandar ao CityCore, cada um com a área dele (tabelas lidas pelo store)
@@ -453,6 +454,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `project/tests/core/quality_test.gd` · `project/tests/core/quality_test.tscn` · `project/tests/core/inspector_test.gd` · `project/tests/core/inspector_test.tscn` — níveis gráficos lidos no que é desenhado; inspetor, edições de via, nó impossível, arquivo ruim, quarentena e sessão
 - `project/tests/core/boot_refusal_test.gd` · `project/tests/core/boot_refusal_test.tscn` — catálogo sem uma chave: recusado pelo nome, e o jogo de pé atrás da recusa
 - `project/tests/core/edit_fuzz_test.gd` · `project/tests/core/edit_fuzz_test.tscn` · `project/tests/core/fuzz_body_edits.gd` — edições sorteadas contra o hash do estado: desfazer e refazer passam pelos mesmos hashes, salvar e abrir é a mesma cidade, a mesma semente faz a mesma cidade (`--seed=N`, `--steps=N` repetem uma falha)
+- `project/tests/core/fuzz_brush_edits.gd` — the fuzz's held brushes: zones along a road, ground paint, trees, fog, elements
 - `project/tests/core/traffic_hash_test.gd` · `project/tests/core/traffic_hash_test.tscn` — o tráfego é determinístico: o mesmo mapa, passo a passo duas vezes, dá o mesmo hash da frota em todo tick, e o primeiro que diverge é nomeado
 - `project/tests/core/job_pool_test.gd` · `project/tests/core/job_pool_test.tscn` — a regra da fila de jobs: chaves de usuários diferentes convivem, a mais nova substitui a mesma
 - `project/tests/core/flow_control_test.gd` · `project/tests/core/flow_control_test.tscn` — control by flow: the translation against its expected numbers, real vehicles counted and a crossing that becomes a signal
@@ -497,6 +499,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `project/ui/effects_panel.gd` · `project/ui/health_panel.gd` · `project/ui/profiler_hud.gd` — painel de efeitos F7 (chaves, otimizações e Diagnóstico); monitor F9; perfil Shift+F9
 - `project/ui/hud_tip.gd` · `project/ui/hud_widgets.gd` — a dica própria (centrada sob o controle, só se o nome não está na tela); fábricas de botões/rótulos do tema
 - `project/ui/inspector_panel.gd` · `project/ui/junction_panel.gd` — inspetor; tempos do semáforo e onda verde
+- `project/ui/inspector_live.gd` — the inspector's live part: a road's or a junction's numbers and lamps, rewritten in place
 - `project/ui/road_panel.gd` — altura das pontas, curva e ponto de altura de uma via no Inspecionar
 - `project/ui/inspector_rows.gd` · `project/ui/selection_overlay.gd` — os números ao vivo do inspetor, como linhas; a faixa da via e o anel do cruzamento que a ferramenta Informação marca sobre o mapa
 - `project/ui/lab_views.gd` — abas Consumidores e Inspetor do F7: quem gasta a memória dos prédios e o quadro do núcleo; o que há sob o ponteiro e as alturas dele

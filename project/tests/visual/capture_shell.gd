@@ -179,11 +179,11 @@ func _switch_shadow() -> void:
 
 func _map_layers() -> void:
 	var junction := _nearest("node") # the grid is seen over a junction, the same one the shadow shots stand on
-	Settings.set_layer("grid", true)
+	Settings.map.set_layer("grid", true)
 	rig.jump(junction, VIEW[0], VIEW[1], STREET_M)
 	await _frames(SETTLE)
 	await _shot("layer_grid")
-	Settings.set_layer("grid", false)
+	Settings.map.set_layer("grid", false)
 	rig.jump(Vector3.ZERO, VIEW[0], VIEW[1], VIEW[2])
 	await _frames(FRAMES / 2)
 

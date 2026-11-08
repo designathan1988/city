@@ -48,7 +48,7 @@ func enter() -> void:
 func _read_cell() -> void:
 	_cell = 0.0
 	_cell_offset = 0.0
-	if not Settings.layer_on("grid"):
+	if not Settings.map.layer_on("grid"):
 		return
 	_cell = DataTables.ui("drawers").road_options.cell_m
 	var width: float = CityStore.cached(&"road_profiles")[drawn].width

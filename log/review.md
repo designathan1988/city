@@ -3782,6 +3782,21 @@ Left for their own stages: TEXTO_VIA_TR's 23 are helpers handed text their calle
 (C13: the helpers take keys); ESPELHO still registers no mirror (the furniture table's size and the clouds' slots are written
 twice, with owners the mirror table cannot read yet); C12's twelve files and three functions over their limits.
 
+### 6.71 B2, C12 (the scripts over their limit): four jobs out of four files (2026-11-08)
+
+**Cause and fix.** Four scripts each held a second job beside their own, so they ran over the size limits.
+- `settings.gd` (the options and their file) also drove the map's layers. That job is `MapLayers` (`game/settings/map_layers.gd`): the layers, the zone brush in hand, set and show, and following the player's zoning each frame. Settings keeps it as `Settings.map` and saves on its `changed`.
+- `inspector_panel.gd` also kept the live labels of a road or a junction. That job is `InspectorLive` (`ui/inspector_live.gd`): its rows, lamps and in-place rewrite.
+- `city_camera.gd` also answered ground questions for other scripts. `seen_height` and `ground_below` now belong to `camera_queries.gd`, which already owned the camera's rays; its callers `camera_ahead`, `sun_cascades` and `weather_view` ask it directly.
+- `edit_fuzz_test.gd` also held the held-brush edits. They are `fuzz_brush_edits.gd`, called with the test's grid, brush and road.
+Each piece moved verbatim; the callers changed only the name they reach it by.
+
+**Proof.** quick on the changed scripts: 44 of 46 passed. The two failures are both known:
+- `photos_check`: 02-rua's flicker box (831,264)-(1167,287), §6.9.
+- `gates_changed`: four TEXTO_VIA_TR findings, all baseline. The two in `inspector_live.gd` are the inspector's two, moved with their lines; hud_popover's two were there already. C13 handles them.
+
+**What changes.** Nothing seen.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at
