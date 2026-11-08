@@ -191,9 +191,6 @@ struct TrafficState {
 	int kerb_planned = 0, kerb_drops = 0, kerb_picks = 0, kerb_deliveries = 0, kerb_abandoned = 0;
 	int bus_boarded = 0, bus_alighted = 0; // who has got on and off the buses
 	std::vector<LaneClosure> closures; // few, and only while a lorry swings across a street
-	// The road segments added, changed or removed by the network changes applied since the transit last read them (lane_graph_edit.cpp
-	// writes, transit_sim.cpp takes): what of its stops and level crossings an edit of the roads alone can reach.
-	std::vector<int> roads_touched;
 	std::vector<float> pub_sum, pub_lim; // publish_poses: per segment, kept between ticks (zero but during a pass)
 	std::vector<int> pub_count;
 	std::vector<int> pub_segs; // the segments the last pass counted vehicles on

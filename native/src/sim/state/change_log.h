@@ -1,8 +1,11 @@
-// The one channel through which the simulation announces what changed. Render adapters consume and clear it on
-// the main thread; the traffic drains the net_* lists; the lot cache consumes lot_cells. Nothing else keeps its own
-// dirty flags. Locking: producers append while holding CityState::map_mutex exclusively (commands, growth, load);
-// a consumer that holds the map lock only shared drains under `mutex` too (swapping the lists out), so draining never
-// needs the map exclusively and never waits for the mesh jobs that read the map.
+// The one channel through which the simulation announces what changed: each consumer drains its own lists. Render adapters
+// consume and clear theirs on the main thread; the traffic drains the net_* lists; the transit drains transit_segs; the lot
+// cache consumes lot_cells. Nothing else keeps its own dirty flags: what an owner has still to work out of its own data (the
+// network's shapes and grades left to settle, growth's queue of cells) is that owner's state, and what is kept by the city's
+// revision (sim/street/furniture_kept.h) or by an exact key (sim/buildings/b40/body_cache.h) needs no mark.
+// Locking: producers append while holding CityState::map_mutex exclusively (commands, growth, load); a consumer that holds
+// the map lock only shared drains under `mutex` too (swapping the lists out), so draining never needs the map exclusively and
+// never waits for the mesh jobs that read the map.
 #pragma once
 
 #include "sim/demolition/damage_event.h"
@@ -29,6 +32,8 @@ struct ChangeLog {
 	// The lane graph's incremental work: drained by the traffic (not by the render). `net_nodes` are the nodes whose
 	// connectors and junction must be rebuilt; the segment lists are the ids added, removed or reprofiled.
 	std::vector<int> net_nodes, net_segs_removed, net_segs_changed;
+	// The same segments, added, removed or reprofiled, for the transit: its stops on them find their lanes again (transit_plan.cpp).
+	std::vector<int> transit_segs;
 	// Segments whose street furniture must be placed again though their lanes did not change (a hydrant moving to
 	// another corner of its square, a zone change moving a bin): drained by the traffic with the net_* lists.
 	std::vector<int> furniture_segs;
@@ -48,12 +53,19 @@ struct ChangeLog {
 		v.erase(std::unique(v.begin(), v.end()), v.end());
 	}
 	void net_node(int n) { net_nodes.push_back(n); }
-	void net_seg(int seg) { net_segs_changed.push_back(seg); }
-	void net_seg_removed(int seg) { net_segs_removed.push_back(seg); }
+	void net_seg(int seg) {
+		net_segs_changed.push_back(seg);
+		transit_segs.push_back(seg);
+	}
+	void net_seg_removed(int seg) {
+		net_segs_removed.push_back(seg);
+		transit_segs.push_back(seg);
+	}
 	void clear_net() {
 		net_nodes.clear();
 		net_segs_removed.clear();
 		net_segs_changed.clear();
+		transit_segs.clear();
 		furniture_segs.clear();
 		lots_changed.clear();
 		signal_nodes.clear();
@@ -79,6 +91,7 @@ struct ChangeLog {
 		add(net_nodes, from.net_nodes);
 		add(net_segs_removed, from.net_segs_removed);
 		add(net_segs_changed, from.net_segs_changed);
+		add(transit_segs, from.transit_segs);
 		add(furniture_segs, from.furniture_segs);
 		add(lots_changed, from.lots_changed);
 		add(signal_nodes, from.signal_nodes);

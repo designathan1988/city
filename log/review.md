@@ -2403,6 +2403,22 @@ constants of one reach (`lot_cache.cpp:15`, `lot_gen.h:20`, `road_network.cpp:16
 runs before C7; `gates_changed` only what the files had (`overlay_build.cpp` 0xff, two constants that moved with the geometry,
 `edit_history.cpp` and `journal_ops.cpp` already past the size limit).
 
+### 6.15 B2, C7 (R9): the transit reads its own list of the change log (2026-11-08)
+
+**Cause.** The change log gave each list one consumer, and the transit needed the segments the traffic drained, so the traffic
+handed them on through a second channel of its own (`TrafficState::roads_touched`, filled in `lane_graph_edit.cpp`, taken in
+`transit_plan.cpp`): the log was not the one channel its header and CLAUDE.md say it is.
+
+**Fix.** `ChangeLog::transit_segs`, filled by the same producers (`net_seg`, `net_seg_removed` append to the traffic's list and the
+transit's), drained by the transit under the log's mutex, cleared with the network's lists and taken in with a city read aside.
+The traffic applies the network changes and the transit reads the plan in the same step under the same shared hold
+(`traffic_system.cpp`: `apply_network_changes`, then `transit::step`), so the transit sees the same segments at the same tick.
+The header now says what is not a channel: an owner's own pending work (the network's shapes and grades to settle, growth's
+queue) and what is kept by the revision or by an exact key.
+
+**Verified** (`city-verify`, `quick --all`): 44 of 45, the digest equal, `gates_changed` clean, `00-cidade` byte-equal to runs
+before C7.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at
