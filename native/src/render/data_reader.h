@@ -11,12 +11,16 @@
 #include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/string.hpp>
 #include <godot_cpp/variant/variant.hpp>
+#include <godot_cpp/variant/vector2.hpp>
+#include <godot_cpp/variant/vector3.hpp>
 
 #include <cstddef>
 #include <cstdint>
 #include <string>
 
 namespace city {
+
+struct DataValue;
 
 struct DataReader {
 	godot::PackedStringArray &errors;
@@ -45,6 +49,8 @@ struct DataReader {
 	godot::Dictionary table_or(const godot::Dictionary &d, const char *key);
 	// A list that came some other way (a value handed in, a list whose length depends on its content) checked for its length.
 	void expect(const godot::Array &a, int size);
+	// A whole table as a value with its path, for code that reads as it builds (the kit builders): DataValue below.
+	DataValue at(const godot::Variant &table) const;
 
 	double num_at(const godot::Array &a, int i);
 	int integer_at(const godot::Array &a, int i);
@@ -72,6 +78,7 @@ struct DataReader {
 	}
 
 private:
+	friend struct DataValue;
 	// The value at `key` (or index `i`) when it is of `type` (a number accepts INT and FLOAT); Nil, with an error, otherwise.
 	godot::Variant typed(const godot::Dictionary &d, const char *key, godot::Variant::Type type);
 	godot::Variant typed_at(const godot::Array &a, int i, godot::Variant::Type type);
@@ -82,6 +89,36 @@ private:
 	godot::Array sized(const godot::Array &a, int size, const godot::String &key);
 	// Every character after '#' a hex digit: parse_hex_color reads what strtoul can and stops at the rest.
 	uint32_t hex(const godot::Variant &v, const godot::String &key);
+};
+
+// A value inside a table with its path, read one step at a time: `d["box_m"][2].f()`. Every step checks what DataReader checks
+// (a key present, an index inside its list, the value of its type, a list of its length); the first failure is said once, and
+// what is read through it is a neutral value, said nothing more of.
+struct DataValue {
+	DataReader reader; // its path, and the list its errors go to
+	godot::Variant value;
+	bool failed = false; // a step before it failed, and said so
+
+	DataValue operator[](const char *key) const; // a key of a table
+	DataValue operator[](int index) const; // an item of a list
+	bool has(const char *key) const; // a key the format may leave out (a table, or nothing said)
+	int size() const; // the items of a list
+	godot::Array keys() const; // the keys of a table
+	double num() const;
+	float f() const { return float(num()); }
+	int whole() const; // a count or an index: a fraction is an error
+	bool flag() const;
+	godot::String text() const;
+	std::string utf8() const;
+	uint32_t colour() const; // '#rrggbb[aa]' as 0xRRGGBBAA
+	godot::Vector2 v2() const; // [x, y]
+	godot::Vector3 v3() const; // [x, y, z]
+	godot::Array list(int size = -1) const;
+	godot::Dictionary table() const;
+	void fail(const godot::String &what) const; // a rule of the table's own, on this value
+
+private:
+	godot::Variant typed(godot::Variant::Type type) const;
 };
 
 } // namespace city

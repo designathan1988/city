@@ -6,6 +6,7 @@
 
 #include "core/math.h"
 #include "core/random.h"
+#include "render/data_reader.h"
 
 #include <godot_cpp/classes/image.hpp>
 #include <godot_cpp/variant/array.hpp>
@@ -65,24 +66,24 @@ struct Canvas {
 	}
 };
 
-float range2(const Array &a, int i) { return a.size() > i ? float(a[i]) : 0.f; }
+constexpr int PAIR = 2; // [low, high]
 
+// trees.atlas through the strict reader (render/data_reader.h).
 bool load(const Dictionary &d, Look &L, PackedStringArray &errors) {
-	const char *keys[] = { "px", "leaves", "near_leaves", "leaf_len_px", "leaf_wid_px", "spread", "squash", "heart_bias", "leaf_tone_min", "lit_lift", "rim",
-		"rim_share", "leaflets", "leaflet_px", "leaflet_reach", "leaflet_vary", "leaflet_rise", "leaflet_tilt", "rachis_px", "rachis_tone", "frond_tone_min",
-		"seed" };
-	for (const char *k : keys)
-		if (!d.has(k)) errors.push_back(String("streets.json trees.atlas: falta ") + k);
-	if (!errors.is_empty()) return false;
-	Array len = d["leaf_len_px"], wid = d["leaf_wid_px"];
-	L.px = d["px"]; L.leaves = d["leaves"]; L.near_leaves = d["near_leaves"]; L.leaflets = d["leaflets"];
-	L.len0 = range2(len, 0); L.len1 = range2(len, 1); L.wid0 = range2(wid, 0); L.wid1 = range2(wid, 1);
-	L.spread = d["spread"]; L.squash = d["squash"]; L.heart = d["heart_bias"]; L.shade_min = d["leaf_tone_min"]; L.lit_lift = d["lit_lift"];
-	L.rim = d["rim"]; L.rim_share = d["rim_share"]; L.leaflet_w = d["leaflet_px"]; L.leaflet_reach = d["leaflet_reach"];
-	L.leaflet_vary = d["leaflet_vary"];
-	L.leaflet_rise = d["leaflet_rise"]; L.leaflet_tilt = d["leaflet_tilt"]; L.rachis_w = d["rachis_px"]; L.rachis_tone = d["rachis_tone"];
-	L.frond_shade_min = d["frond_tone_min"]; L.seed = uint32_t(int(d["seed"]));
-	return L.px > 0;
+	const int64_t before = errors.size();
+	DataReader r{ errors, "streets.json.trees.atlas" };
+	auto num = [&](const char *key) { return float(r.num(d, key)); };
+	const Array len = r.list(d, "leaf_len_px", PAIR), wid = r.list(d, "leaf_wid_px", PAIR);
+	L.px = r.integer(d, "px"); L.leaves = r.integer(d, "leaves"); L.near_leaves = num("near_leaves"); L.leaflets = r.integer(d, "leaflets");
+	L.len0 = float(r.in("leaf_len_px").num_at(len, 0)); L.len1 = float(r.in("leaf_len_px").num_at(len, 1));
+	L.wid0 = float(r.in("leaf_wid_px").num_at(wid, 0)); L.wid1 = float(r.in("leaf_wid_px").num_at(wid, 1));
+	L.spread = num("spread"); L.squash = num("squash"); L.heart = num("heart_bias"); L.shade_min = num("leaf_tone_min"); L.lit_lift = num("lit_lift");
+	L.rim = num("rim"); L.rim_share = num("rim_share"); L.leaflet_w = num("leaflet_px"); L.leaflet_reach = num("leaflet_reach");
+	L.leaflet_vary = num("leaflet_vary");
+	L.leaflet_rise = num("leaflet_rise"); L.leaflet_tilt = num("leaflet_tilt"); L.rachis_w = num("rachis_px"); L.rachis_tone = num("rachis_tone");
+	L.frond_shade_min = num("frond_tone_min"); L.seed = uint32_t(r.integer(d, "seed"));
+	if (d.has("px") && L.px <= 0) r.fail("px: not above 0");
+	return errors.size() == before;
 }
 
 // A leaf cluster in region `at`, denser at its heart (radius drawn as rand^heart_bias of the spread): `leaves` of them,

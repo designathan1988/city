@@ -7,6 +7,7 @@
 // its model; far away the same trees are one card each.
 #pragma once
 
+#include "render/data_reader.h"
 #include "render/props/street_props.h"
 #include "render/trees/tree_kit.h"
 
@@ -45,7 +46,7 @@ struct SpeciesMix {
 	std::vector<int> species;
 	std::vector<float> weight; // cumulative, ending at 1
 	int pick(float r) const;
-	bool load(const godot::Dictionary &mix, const TreeKit &kit, const godot::String &where, godot::PackedStringArray &errors);
+	bool load(DataReader r, const godot::Dictionary &mix, const TreeKit &kit); // name -> weight; an unknown name is an error on `r`
 };
 
 struct BandLook {

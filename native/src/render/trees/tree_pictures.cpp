@@ -7,6 +7,7 @@
 
 #include "core/math.h"
 #include "core/units.h"
+#include "render/data_reader.h"
 #include "render/trees/tree_kit.h"
 
 #include <godot_cpp/variant/array.hpp>
@@ -76,17 +77,16 @@ struct TreePictures::Frame {
 };
 
 bool TreePictures::begin(const Dictionary &spec, int species, const Ref<Image> &leaves, PackedStringArray &errors) {
-	if (!spec.has("picture_px") || !spec.has("elevations_deg") || !spec.has("picture_share") || !spec.has("picture_shade")) {
-		errors.push_back("streets.json trees: falta pictures");
-		return false;
-	}
-	px_ = spec["picture_px"];
-	share_ = spec["picture_share"];
-	shade_ = spec["picture_shade"];
+	const int64_t before = errors.size();
+	DataReader r{ errors, "streets.json.trees.pictures" }; // render/data_reader.h
+	px_ = r.integer(spec, "picture_px");
+	share_ = float(r.num(spec, "picture_share"));
+	shade_ = float(r.num(spec, "picture_shade"));
 	rows_ = species;
-	Array e = spec["elevations_deg"];
+	const Array e = r.list(spec, "elevations_deg");
 	elevations_.clear();
-	for (int i = 0; i < e.size(); i++) elevations_.push_back(float(e[i]));
+	for (int i = 0; i < e.size(); i++) elevations_.push_back(float(r.in("elevations_deg").num_at(e, i)));
+	if (errors.size() != before) return false;
 	leaves_ = leaves;
 	if (leaves_->is_compressed()) leaves_->decompress();
 	frond_texels_ = leaves_->get_data();

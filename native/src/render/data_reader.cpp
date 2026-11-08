@@ -97,8 +97,96 @@ uint32_t DataReader::hex(const Variant &v, const String &key) {
 	const std::string t(String(v).utf8().get_data());
 	const bool digits = t.find_first_not_of("0123456789abcdefABCDEF", 1) == std::string::npos;
 	if (!t.empty() && t[0] == '#' && (t.size() == RGB_TEXT || t.size() == RGBA_TEXT) && digits) return parse_hex_color(t);
-	fail(key + String(": expected '#rrggbb', found '") + String(v) + String("'"));
+	fail((key.is_empty() ? String() : key + String(": ")) + String("expected '#rrggbb', found '") + String(v) + String("'"));
 	return 0;
+}
+
+DataValue DataReader::at(const Variant &table) const { return DataValue{ *this, table }; }
+
+void DataValue::fail(const String &what) const {
+	DataReader r = reader;
+	r.fail(what);
+}
+
+Variant DataValue::typed(Variant::Type type) const {
+	if (failed) return Variant();
+	const Variant::Type got = value.get_type();
+	if (got == type || (type == Variant::FLOAT && got == Variant::INT)) return value;
+	fail(String("expected ") + Variant::get_type_name(type) + String(", found ") + Variant::get_type_name(got));
+	return Variant();
+}
+
+DataValue DataValue::operator[](const char *key) const {
+	if (failed) return DataValue{ reader.in(String(key)), Variant(), true };
+	const Variant t = typed(Variant::DICTIONARY);
+	if (t.get_type() != Variant::DICTIONARY) return DataValue{ reader.in(String(key)), Variant(), true };
+	const Dictionary d = t;
+	if (!d.has(key)) {
+		fail(String("missing '") + key + String("'"));
+		return DataValue{ reader.in(String(key)), Variant(), true };
+	}
+	return DataValue{ reader.in(String(key)), d[key] };
+}
+
+DataValue DataValue::operator[](int index) const {
+	if (failed) return DataValue{ reader.in(index), Variant(), true };
+	const Variant t = typed(Variant::ARRAY);
+	if (t.get_type() != Variant::ARRAY) return DataValue{ reader.in(index), Variant(), true };
+	const Array a = t;
+	if (index < 0 || index >= a.size()) {
+		fail(String("no item ") + String::num_int64(index) + String(" (the list has ") + String::num_int64(a.size()) + String(")"));
+		return DataValue{ reader.in(index), Variant(), true };
+	}
+	return DataValue{ reader.in(index), a[index] };
+}
+
+bool DataValue::has(const char *key) const {
+	return !failed && value.get_type() == Variant::DICTIONARY && Dictionary(value).has(key);
+}
+
+int DataValue::size() const { return int(array_of(typed(Variant::ARRAY)).size()); }
+Array DataValue::keys() const { return dict_of(typed(Variant::DICTIONARY)).keys(); }
+double DataValue::num() const { return number(typed(Variant::FLOAT)); }
+
+int DataValue::whole() const {
+	const double v = num();
+	if (v == std::floor(v)) return int(v);
+	fail(String("expected a whole number, found ") + String::num(v));
+	return int(v);
+}
+
+bool DataValue::flag() const {
+	const Variant v = typed(Variant::BOOL);
+	return v.get_type() == Variant::BOOL && bool(v);
+}
+
+String DataValue::text() const { return string_of(typed(Variant::STRING)); }
+std::string DataValue::utf8() const { return std::string(text().utf8().get_data()); }
+
+uint32_t DataValue::colour() const {
+	DataReader r = reader;
+	return failed ? 0 : r.hex(typed(Variant::STRING), String());
+}
+
+Array DataValue::list(int size) const {
+	const Array a = array_of(typed(Variant::ARRAY));
+	if (!failed && value.get_type() == Variant::ARRAY && size >= 0 && a.size() != size)
+		fail(String("expected ") + String::num_int64(size) + String(" items, found ") + String::num_int64(a.size()));
+	return a;
+}
+
+Dictionary DataValue::table() const { return dict_of(typed(Variant::DICTIONARY)); }
+
+Vector2 DataValue::v2() const {
+	const Array a = list(2);
+	if (a.size() != 2) return Vector2();
+	return Vector2((*this)[0].f(), (*this)[1].f());
+}
+
+Vector3 DataValue::v3() const {
+	const Array a = list(3);
+	if (a.size() != 3) return Vector3();
+	return Vector3((*this)[0].f(), (*this)[1].f(), (*this)[2].f());
 }
 
 } // namespace city
