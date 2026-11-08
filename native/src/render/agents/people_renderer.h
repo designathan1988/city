@@ -77,9 +77,9 @@ private:
 	godot::RID scenario_, material_, far_material_;
 	std::vector<MultiMeshDraw> draws_; // body * (lods + 1) + level; the last, the far card casting no shadow
 	std::vector<InstanceRows> bufs_;
-	// The slot of a variation's level in draws_ and bufs_: its lods, then the far mesh casting no shadow.
 	int held_level(uint64_t key, float dist);
 	float level_hold_ = 0;
+	// The slot of a variation's level in draws_ and bufs_: its lods, then the far mesh casting no shadow.
 	size_t slot(size_t variation, int level) const { return variation * size_t(asset_.lods + 1) + size_t(level); }
 	std::vector<float> lod_m_; // camera distance where each level ends
 	std::vector<int> by_age_[PED_AGES]; // the variations of each age

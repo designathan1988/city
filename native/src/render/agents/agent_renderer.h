@@ -1,6 +1,6 @@
 // Vehicles and pedestrians near the camera: per vehicle type two MultiMeshes, near (the cabin behind see-through glass)
-// and far (no cabin, the glass opaque), refilled every frame from CityState::traffic and interpolated between the last
-// two simulation ticks (wheels roll by a render-side odometer); pedestrians through PeopleRenderer. Materials "agent"
+// and far (no cabin, the glass opaque), refilled every frame from the poses the simulation published (PoseFrame) and
+// interpolated between the last two simulation ticks (wheels roll by a render-side odometer); pedestrians through PeopleRenderer. Materials "agent"
 // and, on the near glass, "agent_glass" (data/render/materials.json); meshes, paints, palettes and how full each type
 // runs from data/render/agents.json.
 #pragma once

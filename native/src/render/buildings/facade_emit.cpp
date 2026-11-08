@@ -21,10 +21,8 @@ constexpr int MAX_STEPS = 40;
 constexpr uint32_t HV = 0x27d4eb2d, HL = 0x165667b1, HS = 0x3c6ef372, HI = 0x85ebca6b, HX = 0x2c1b3c6d, HY = 0x297a2d39;
 constexpr int HASH_SH1 = 15, HASH_SH2 = 13, LEVEL_OFF = 7, SIDE_OFF = 3, INDEX_OFF = 11, BAY_Q = 7;
 
-uint8_t component(const Volume &v, int k, int side, int bay) { return bay_at(v, k, side, bay); }
 
-
-void relief_faces(Shell &s, const BayCtx &c, float push, float left_push, float right_push, bool first, bool last) {
+void relief_faces(Shell &s, const BayCtx &c, float push, float left_push, float right_push) {
 	auto cheek = [&](float a, float p0, float p1, bool facing_right) {
 		if (std::abs(p1 - p0) < EPS) return;
 		Basis g{ c.f.at(a, 0, 0), c.f.e2, c.f.e1, facing_right ? c.f.e0 : -c.f.e0 };
@@ -33,7 +31,6 @@ void relief_faces(Shell &s, const BayCtx &c, float push, float left_push, float 
 	// c.f already sits at the pushed plane: cheeks run back to the neighbour's plane
 	if (left_push != push) cheek(0, 0, left_push - push, push < left_push);
 	if (right_push != push) cheek(c.W, 0, right_push - push, push > right_push);
-	(void)first; (void)last;
 }
 
 void relief_caps(Shell &s, const BayCtx &c, float push, bool bottom, bool top) {
@@ -109,15 +106,15 @@ void SideEmit::each_bay(const Side &sd, int k, float z, F &&at) {
 		c.f = Basis{ sd.f.at(a0, z, push), sd.f.e0, sd.f.e1, sd.f.e2 };
 		c.wall_before = a0;
 		c.wall_after = sd.length - a0 - W;
-		c.comp = component(v, k, sd.side, i);
+		c.comp = bay_at(v, k, sd.side, i);
 		c.plain = cl || cm || cr;
 		c.hash = bay_hash(vol, level, sd.side, i, plan_at(am).x, plan_at(am).y);
 		c.vol = vol;
 		c.plan_at = Point2{ sd.p0.x + dir.x * a0, sd.p0.y + dir.y * a0 };
 		c.plan_along = dir;
 		c.plan_out = sd.n;
-		c.open_left = i > 0 && component(v, k, sd.side, i - 1) == BAY_GOURMET;
-		c.open_right = i + 1 < n && component(v, k, sd.side, i + 1) == BAY_GOURMET;
+		c.open_left = i > 0 && bay_at(v, k, sd.side, i - 1) == BAY_GOURMET;
+		c.open_right = i + 1 < n && bay_at(v, k, sd.side, i + 1) == BAY_GOURMET;
 		at(c, i, n, push);
 	}
 }
@@ -156,7 +153,7 @@ void SideEmit::relief(const Side &sd, int k, float z) {
 // The cheeks and caps of a bay pushed out of its neighbours' plane.
 void SideEmit::pushed_faces(const BayCtx &c, const Side &sd, int k, int i, int n, float push) {
 	float lp = i > 0 ? relief_push(v, sd.side, i - 1, k) : 0, rp = i + 1 < n ? relief_push(v, sd.side, i + 1, k) : 0;
-	relief_faces(shell, c, push, lp, rp, i == 0, i == n - 1);
+	relief_faces(shell, c, push, lp, rp);
 	if (push != 0) relief_caps(shell, c, push, k == 0 || relief_push(v, sd.side, i, k - 1) != push, k + 1 >= v.storeys || relief_push(v, sd.side, i, k + 1) != push);
 }
 
@@ -230,7 +227,7 @@ void for_each_bay(const Placed &pl, const std::function<void(const BayCtx &, con
 				c.level = v.base + k;
 				c.geo = &v.faces[sd.side];
 				for (int i = 0; i < n; i++) {
-					c.comp = component(v, k, sd.side, i);
+					c.comp = bay_at(v, k, sd.side, i);
 					at(c, opening_of(*pl.data, c));
 				}
 			}

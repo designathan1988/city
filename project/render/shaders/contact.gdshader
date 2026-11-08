@@ -1,8 +1,7 @@
 // The sun's contact shadows (the 4.0's canyonLight): a few steps towards the sun along the depth, for the thin shade the shadow
 // map does not resolve where a thing meets what it stands on. Only where the sun does reach, or a shadow would be shaded twice;
 // and a full-screen pass cannot read the shadow atlas, so this one is lit: LIGHT_VERTEX sets the pixel's place for light and
-// shadows without moving the fragment, and ATTENUATION is then the sun's own shadow at that place. Godot 4.8 has this built in
-// (GH-118045); the project is on 4.7. render/contact_pass.gd lays it.
+// shadows without moving the fragment, and ATTENUATION is then the sun's own shadow at that place. render/contact_pass.gd lays it.
 shader_type spatial;
 render_mode fog_disabled, depth_test_disabled, depth_draw_never, cull_disabled, ambient_light_disabled, specular_disabled, blend_mul;
 

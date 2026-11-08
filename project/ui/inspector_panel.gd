@@ -1,7 +1,6 @@
 ## The inspector side panel: what the inspect tool picked, under a name. A building: floors, residents and jobs. A road: its live numbers
 ## (InspectorRows) and what can be done to it: its class, reversed when one-way, split at the middle, duplicated, demolished. A junction:
-## control, movements, traffic and each signal stage's lamp. The numbers follow the traffic while it is open; what the road's height,
-## curve, parking, crossings and the junction's plan offer in the reference are the sessions road-elevation, roads and traffic's.
+## control, movements, traffic and each signal stage's lamp. The numbers follow the traffic while it is open.
 class_name InspectorPanel
 extends PanelContainer
 
@@ -34,7 +33,7 @@ func _ready() -> void:
 	hide()
 
 
-## The numbers as cards, two to a row (.inspect-grid). The live part's (`live`) labels are kept for the next numbers.
+## The numbers as cards, two to a row. The live part's (`live`) labels are kept for the next numbers.
 func _rows(col: Control, rows: Array, live := false) -> void:
 	var g := GridContainer.new()
 	g.columns = 2

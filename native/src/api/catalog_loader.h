@@ -12,7 +12,7 @@ namespace city {
 
 class CatalogLoader {
 public:
-	// tables: { "tuning", "maps", "road_profiles", "zones", "growth", "traffic", "street_furniture" } (parsed JSON)
+	// tables: { "tuning", "maps", "road_profiles", "zones", "growth", "traffic", "street_furniture", "blast", "nature" } (parsed JSON)
 	static bool load(const godot::Dictionary &tables, Catalog &out, godot::PackedStringArray &errors);
 	static uint32_t parse_color(const godot::String &hex); // "#RRGGBB" or "#RRGGBBAA" -> RGBA8
 };

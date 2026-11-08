@@ -1,8 +1,7 @@
 ## Captures of the features that used to be "being built", driven like a player (real mouse and key events through
 ## the viewport): undo/redo, save and open, the road tabs Melhorar/Dividir/Rotatória, the Relief brush, a park and a
 ## school drawn from the Build drawer and the map layers. Each step checks the core's numbers and saves a PNG.
-## Run under xvfb: godot --path project --rendering-driver opengl3 --rendering-method gl_compatibility
-##   --resolution 1280x720 res://tests/visual/capture_features.tscn -- --no-flow --capture-dir=/tmp/x
+## Run: godot --path project --resolution 1280x720 res://tests/visual/capture_features.tscn -- --no-flow --capture-dir=<folder>
 extends Node3D
 
 const TOWN_MAP := 0

@@ -29,7 +29,6 @@ struct SaveJob {
 	std::string error; // set by the save thread before the state turns 3, read only then
 };
 
-// What the Inspect tool and the camera ask for each frame, kept until the network or the city changes (city_core_inspect.cpp).
 // What a building's volumes are made from (city_core_sight.cpp solids_key): its body, by the edited version's stamp or by what a body
 // is made from, and its lot's frame. Equal keys, equal volumes.
 struct SolidsKey {
@@ -51,6 +50,7 @@ struct CachedSolids {
 	bool made = false;
 };
 
+// What the Inspect tool and the camera ask for each frame, kept until the network or the city changes (city_core_inspect.cpp).
 struct InspectCache {
 	std::unordered_map<int, CachedSolids> solids; // clear_reach, sight_pull, eye_free: each building asked, kept while its key stays
 	std::vector<SharpNode> sharp; // impossible_nodes, for this version of the network

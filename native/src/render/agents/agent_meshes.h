@@ -114,7 +114,6 @@ void agent_pod_face(MeshBuilder &mb, const godot::Vector3 &centre, const godot::
 // A bar from a to b, `w` across (along X where it can be) and `d` the other way: limbs, torsos, steering wheels.
 void agent_strut(MeshBuilder &mb, const godot::Vector3 &a, const godot::Vector3 &b, float w, float d, const godot::Color &c, AgentTag tag,
 		Limb limb = Limb::NONE);
-// A pane of glass a-b-c-d facing `out`.
 // A vehicle burnt out (agent_wreck.cpp), centred on its box; `size` its box.
 struct AgentWreck {
 	godot::Ref<godot::ArrayMesh> mesh;

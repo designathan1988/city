@@ -197,7 +197,7 @@ float top_speed(const CityState &s, const Vehicle &v, float limit); // the most 
 // lane_change.cpp
 void change_lanes(CityState &s);
 
-// ped_crossing.cpp
+// signal_timing.cpp
 float amber_wanted(const TrafficParams &tp, float v); // the amber a regulated speed `v` asks (m/s), before amber_max_s
 // The intergreen after the green of approach `ds` into node `n` (amber, all-red), `walkers` when it has crosswalks.
 void intergreen(const CityState &s, int n, int ds, bool walkers, float &amber, float &all_red);

@@ -54,12 +54,12 @@ constexpr uint16_t flags_reversed(uint16_t f) {
 	return uint16_t(keep | sides | rules | runs);
 }
 
-// What the player set a junction to (Roadcraft 4.0 JunctionControl); the order the Controle tab cycles it in.
 // A crossing on a road between junctions (Roadcraft editor/streetObjects.ts commitPedestrianCrossing): a node of two arms with a crosswalk over one of them.
 enum NodeCrossing : uint8_t { CROSSING_NONE, CROSSING_ZEBRA, CROSSING_SIGNAL };
 // A U-turn through the median (Roadcraft commitUturn), for the traffic arriving by the node's arm of lower id or of higher.
 enum NodeUturn : uint8_t { UTURN_NONE, UTURN_FROM_LOW, UTURN_FROM_HIGH };
 constexpr int LINK_BANNED = -1;
+// What the player set a junction to (Roadcraft 4.0 JunctionControl); the order the Controle tab cycles it in.
 enum NodeControl : uint8_t { CTL_AUTO, CTL_SIGNAL, CTL_PRIORITY, CTL_STOP, CTL_YIELD, CTL_NONE, CTL_MINI, CTL_COUNT };
 // What the player sets on a junction's signal (the plan itself is the traffic's: junction_control.cpp). Fixed time: every
 // stage its own green in order, every cycle, `offset` seconds after the common clock's zero (CONTRAN MBST vol. V).

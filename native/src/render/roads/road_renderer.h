@@ -21,7 +21,6 @@ class RoadRenderer : public RoadChunks {
 public:
 	bool init(const RenderContext &ctx, godot::PackedStringArray &errors);
 	void submit(const CityState &s, int64_t key, JobPool &pool, float priority);
-	void update_view(const godot::Vector3 &cam);
 	const StreetLook &look() const { return look_; }
 
 private:

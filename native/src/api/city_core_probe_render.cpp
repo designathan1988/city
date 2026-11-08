@@ -1,19 +1,18 @@
-// Probes for the tests: where the last _process went (render_cost), the road meshes' size (road_mesh_counts) and how the agents' poses
-// arrive (pose_stats: publications, their gaps, frames shown past the newest pose). The traffic's own probe is city_core_probe.cpp.
+// Probes for the tests: the agents' and the wear's cost (agent_cost, wear_probe), where the last _process went (render_cost), the road
+// meshes' size (road_mesh_counts) and how the agents' poses arrive (pose_stats: publications, their gaps, frames shown past the newest
+// pose). The traffic's own probe is city_core_probe.cpp.
 #include "api/city_core.h"
 
 #include "core/units.h"
 
 #include <algorithm>
 #include <cmath>
-
-using namespace godot;
-
-#include <algorithm>
 #include <cstring>
 #include <mutex>
 #include <shared_mutex>
 #include <vector>
+
+using namespace godot;
 
 namespace city {
 

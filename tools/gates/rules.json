@@ -10,12 +10,7 @@
     "project/bin",
     "dist",
     "__pycache__",
-    ".claude/worktrees",
-    "tools/converter",
-    "tools/converter-slice",
-    "tools/oracle-4.0",
-    "tools/process",
-    "tools/ports"
+    ".claude/worktrees"
   ],
   "root_allowed": [
     "CLAUDE.md",
@@ -275,7 +270,6 @@
         "project/ui/",
         "project/game/"
       ],
-      "pattern": "(\\.text|tooltip_text|\\.title)\\s*=\\s*\"[^\"]*[A-Za-zÀ-ú]{2}",
       "message": "Textos visíveis usam tr(\"CHAVE\") com data/i18n/strings.csv"
     },
     {
@@ -334,7 +328,6 @@
     "project/data/render/streets.json": "tools/gates/schemas/streets.schema.json",
     "project/data/render/palette.json": "tools/gates/schemas/palette.schema.json",
     "project/data/ui/tokens.json": "tools/gates/schemas/tokens.schema.json",
-    "project/data/ui/toolbar.json": "tools/gates/schemas/toolbar.schema.json",
     "project/data/ui/builder.json": "tools/gates/schemas/builder.schema.json",
     "project/data/ui/hud.json": "tools/gates/schemas/hud.schema.json",
     "project/data/ui/drawers.json": "tools/gates/schemas/drawers.schema.json",

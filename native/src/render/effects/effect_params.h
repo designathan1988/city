@@ -10,13 +10,13 @@
 
 namespace city {
 
-// `count` puffs of `kind` over a spread, at a height, each of a size and a life (kind -1: the soil's dust).
 // A flame source the blast leaves burning (the 4.0's `fires`): lasts for_s + min(for_cap_s, for_k * fireball radius) seconds, puffs rate_hz flames a second
 // of size min(size_cap_m, size_k * radius) (no cap when 0), height_m over the ground.
 struct SourceDef {
 	float for_s = 0, for_k = 0, for_cap_s = 0, rate_hz = 0, size_k = 0, size_cap_m = 0, height_m = 0;
 };
 
+// `count` puffs of `kind` over a spread, at a height, each of a size and a life (kind -1: the soil's dust).
 struct BurstDef {
 	int kind = 0, count = 0;
 	float height = 0, spread_m = 0, spread_r = 0, size_m = 0, size_r = 0, life = 0;

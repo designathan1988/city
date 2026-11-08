@@ -1,6 +1,6 @@
 ## Visual capture: generates a city through the store (the same path as the start screen), waits until every chunk is
-## drawn and saves screenshots to user://captures (or --capture-dir=PATH). Views match the Roadcraft reference shots
-## (docs/referencia-visual: street from above, neighbourhood, whole town). --map=N --seed=S choose the city.
+## drawn and saves screenshots to user://captures (or --capture-dir=PATH): street from above, neighbourhood, whole town
+## (capture_views.gd). --map=N --seed=S choose the city.
 extends Node3D
 
 const SETTLE_FRAMES := 4

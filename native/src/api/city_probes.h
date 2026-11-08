@@ -1,6 +1,8 @@
 // CityProbes: what the tests and the captures ask of the city, an area of the core (api/city_core.h): the parked, the kerb, the docks
 // and the lots (city_core_park_probe.cpp), the lots' clearance and the amber (city_core_clearance_probe.cpp), who is on foot
-// and the clips they are drawn in (city_core_people.cpp), the job queue (city_core_jobs.cpp) and the money (city_core_economy_probe.cpp).
+// and the clips they are drawn in (city_core_people.cpp), the job queue (city_core_jobs.cpp), the money (city_core_economy_probe.cpp),
+// the junction flows (city_core_flow_probe.cpp), the road heights solved alone (city_core_grade_probe.cpp), the state as a number
+// and the traffic's series (city_core_state_probe.cpp) and the street watch (city_core_watch_probe.cpp).
 // Made and freed by CityCore; game/store/city_store.gd reaches it through CityCore.area("probes").
 #pragma once
 

@@ -1,7 +1,0 @@
-Roadcraft - city builder (Godot 4.7 + nucleo C++)
-Windows 10/11 64 bits: abra jogo/Roadcraft.exe
-Camera (como no Roadcraft): botao direito arrastado gira/inclina; botao do meio (ou Shift+direito) arrasta o mapa;
-roda = zoom no cursor; WASD/setas andam; Q/E giram; PgUp/PgDn inclinam; Shift acelera; Home volta.
-Clique direito sem arrastar ou Esc cancela a ferramenta; Esc abre o menu de pausa. Ctrl+S salva, Ctrl+O abre, Ctrl+Z desfaz.
-Vias: clique no inicio e no fim (C alterna curva). Zonas/terreno: segure o botao esquerdo.
-Fonte: pasta fonte/ (leia fonte/CLAUDE.md: regras, comandos e mapa do codigo).

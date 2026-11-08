@@ -82,7 +82,7 @@ void parking(Shell &shell, const Placed &pl, const LotElement &e, float g, const
 	}
 }
 
-// A square dial on the wall, its hands at ten past ten, the way a clock is shown.
+// A square dial on the wall, its hands at three o'clock (the long one up, the short one across).
 void clock(Shell &shell, const Placed &pl, const LotElement &e, const Lin &lin, int8_t fin) {
 	float x0 = e.x - e.w / 2, x1 = e.x + e.w / 2, y0 = e.y - e.d / 2, y1 = e.y + e.d / 2;
 	shell.box(pl.lot, x0, x1, y0, y1, e.z, e.z + e.h, lin, fin);

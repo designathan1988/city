@@ -77,7 +77,7 @@ void reclined_seat(MeshBuilder &mb, const Seat &s, const CabinLook &l, const Cab
 	const Vector3 &h = st.headrest;
 	if (h.y <= 0) return;
 	const float gap = h.z, hy = top_y + gap * cs, hz = top_z - gap * sn - st.back_d_m * cs * 0.5f, rod = h.x * HEADREST_ROD_SHARE;
-	agent_box(mb, Vector3(s.x - h.x * 0.5f, hy + rod * 0, hz - REST_DEPTH_M * 0.5f), Vector3(s.x + h.x * 0.5f, hy + h.y, hz + REST_DEPTH_M * 0.5f), p.seat, AgentTag::FIXED);
+	agent_box(mb, Vector3(s.x - h.x * 0.5f, hy, hz - REST_DEPTH_M * 0.5f), Vector3(s.x + h.x * 0.5f, hy + h.y, hz + REST_DEPTH_M * 0.5f), p.seat, AgentTag::FIXED);
 	for (int side : { -1, 1 })
 		agent_box(mb, Vector3(s.x + side * rod - HEADREST_ROD_M * 0.5f, top_y - BACK_TOP_ROUND_M, hz - HEADREST_ROD_M * 0.5f), Vector3(s.x + side * rod + HEADREST_ROD_M * 0.5f, hy, hz + HEADREST_ROD_M * 0.5f),
 				p.dash, AgentTag::FIXED);

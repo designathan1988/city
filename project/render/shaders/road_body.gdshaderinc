@@ -15,7 +15,7 @@ uniform sampler2D kerb_map : source_color, filter_linear_mipmap_anisotropic, rep
 uniform sampler2D kerb_normal : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D verge_map : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D verge_normal : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
-// Mean colour of each map, computed once in project/render/city_world.gd (one read instead of a smallest-mip fetch per
+// Mean colour of each map, computed once in project/render/surface_means.gd (one read instead of a smallest-mip fetch per
 // pixel; the strip colour stays the mean albedo).
 uniform vec3 mean_asphalt : source_color = vec3(1.0);
 uniform vec3 mean_footway : source_color = vec3(1.0);

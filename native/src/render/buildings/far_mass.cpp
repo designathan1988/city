@@ -131,22 +131,10 @@ void bay_walls(Shell &s, const Placed &pl, const Volume &v, const Side &sd, int 
 	auto blank = [&](int k, int i, int k0, int i0) {
 		return !cell_of(k, i) && relief_push(v, sd.side, i, k) == relief_push(v, sd.side, i0, k0) && b.level_h(v.base + k) == b.level_h(v.base + k0);
 	};
-	for (int k = 0; k < v.storeys; k++)
-		for (int i = 0; i < n; i++) {
-			if (cell_of(k, i)) continue;
-			int i1 = i + 1, k1 = k + 1;
-			while (i1 < n && blank(k, i1, k, i)) i1++;
-			auto whole_row = [&](int row) {
-				for (int j = i; j < i1; j++)
-					if (!blank(row, j, k, i)) return false;
-				return true;
-			};
-			while (k1 < v.storeys && whole_row(k1)) k1++;
-			for (int r = k; r < k1; r++)
-				for (int j = i; j < i1; j++) cell_of(r, j) = 1;
-			s.rect(Basis{ sd.f.at(W * float(i), b.level_z(v.base + k), relief_push(v, sd.side, i, k)), sd.f.e0, sd.f.e1, sd.f.e2 }, 0, W * float(i1 - i), 0,
-					b.level_z(v.base + k1) - b.level_z(v.base + k), 0, wall_lin(pl, v, k, sd.side), fin);
-		}
+	rectangles(v.storeys, n, [&](int k, int i) { return !cell_of(k, i); }, blank, [&](int k, int i, int k1, int i1) {
+		s.rect(Basis{ sd.f.at(W * float(i), b.level_z(v.base + k), relief_push(v, sd.side, i, k)), sd.f.e0, sd.f.e1, sd.f.e2 }, 0, W * float(i1 - i), 0,
+				b.level_z(v.base + k1) - b.level_z(v.base + k), 0, wall_lin(pl, v, k, sd.side), fin);
+	});
 	s.rect(sd.f, 0, sd.length, b.level_z(v.base), b.level_z(v.top()), -MASS_IN_M, wall_lin(pl, v, 0, sd.side), fin);
 }
 
@@ -187,7 +175,6 @@ void walls(Shell &s, const Placed &pl, const Volume &v, bool roofs) {
 		}
 		if (v.base == 0 && !covered(b, v, 0, mid))
 			s.rect(sd.f, 0, sd.length, pl.ground_lo - PLINTH_BURY, 0, 0, paint_lin(pl.data->color("plinth")), FIN_STONE);
-		(void)z0;
 	}
 }
 

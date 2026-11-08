@@ -1,6 +1,6 @@
 // Building chunk streaming: the near (+ parts) and mid levels are built lazily, nearest first, when the camera comes
-// within their reach (near end / mid end, plus a pad) and freed beyond 1.25x it. Every dirty chunk marks its 512 m
-// superchunk, whose far/HLOD mesh is built within building_far_end_m (the city never vanishes when zooming out). See
+// within their reach (near end / mid end, plus a pad) and freed beyond 1.25x it. Every dirty chunk marks its superchunk
+// (core/grid.h SUPERCHUNK), whose far/HLOD mesh is built within building_far_end_m (the city never vanishes when zooming out). See
 // building_renderer.h for the switch between a chunk's own detail and the far mesh.
 #include "render/buildings/building_renderer.h"
 
@@ -108,8 +108,7 @@ void BuildingRenderer::reset() {
 // A dirty chunk keeps its meshes on screen until the new ones land: its built levels turn stale and its version moves
 // on, so update_view remeshes it and a job already in flight (it may have read the map before the change) still lands
 // but leaves the chunk stale (commit_one).
-void BuildingRenderer::rebuild_chunk(const CityState &s, int64_t key) {
-	(void)s;
+void BuildingRenderer::rebuild_chunk(const CityState &, int64_t key) {
 	auto [found, fresh] = chunks_.try_emplace(key);
 	Chunk &ch = found->second;
 	ch.centre = Vector3((float(key_x(key)) + HALF) * CHUNK, 0, (float(key_y(key)) + HALF) * CHUNK);
@@ -182,8 +181,7 @@ void BuildingRenderer::drop_bands(Chunk &ch) {
 	ch.flags.free();
 }
 
-void BuildingRenderer::submit(const CityState &s, int64_t key, bool far, bool near, bool mid, float priority) {
-	(void)far;
+void BuildingRenderer::submit(const CityState &s, int64_t key, bool, bool near, bool mid, float priority) {
 	auto ch = chunks_.find(key);
 	if (!s.jobs || ch == chunks_.end()) return;
 	const uint32_t version = ch->second.version;

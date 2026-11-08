@@ -23,12 +23,10 @@ constexpr float SHAFT_WALL = 0.2f, SHAFT_CLEAR = 0.3f; // the shaft's walls, and
 constexpr float LIFT_DOOR_W = 1.2f, DOOR_SHARE = 0.5f, DOOR_H = 2.2f; // the shaft's door at the floor
 constexpr float CAB_GAP = 0.1f, CAB_LIFT = 0.05f, CAB_H = 2.3f; // the car in the shaft
 
-Lin lin_of_paint(const Paint &p) { return paint_lin(p); }
-
 // The floor of each block that reaches it.
 void floors(Shell &shell, const Placed &pl, const InteriorLook &look, int cut, FloorFinish finish) {
 	const Paint &p = look.paint(finish == FLOOR_WOOD ? "floor_wood" : finish == FLOOR_STONE ? "floor_stone" : "floor_porcelain");
-	const Lin lin = lin_of_paint(p);
+	const Lin lin = paint_lin(p);
 	for (const Volume &v : pl.b->volumes) {
 		if (!(v.base <= cut && v.top() > cut)) continue;
 		const float z = pl.b->block_z(v, cut) + FLOOR_LIFT;
@@ -41,7 +39,7 @@ void floors(Shell &shell, const Placed &pl, const InteriorLook &look, int cut, F
 void cores(Shell &shell, const Placed &pl, const InteriorLook &look, int cut) {
 	const Body &b = *pl.b;
 	const Paint &shaft = look.paint("shaft"), &cab = look.paint("cab"), &step = look.paint("step");
-	const Lin sl = lin_of_paint(shaft), cl = lin_of_paint(cab), tl = lin_of_paint(step);
+	const Lin sl = paint_lin(shaft), cl = paint_lin(cab), tl = paint_lin(step);
 	for (const Core &c : b.cores) {
 		if (cut > c.to) continue;
 		const float lift = lift_at(*pl.whole, cut, c.x + b40::core_width(c) / 2, c.y + b40::CORE_SIDE_M / 2);
@@ -69,7 +67,7 @@ void cores(Shell &shell, const Placed &pl, const InteriorLook &look, int cut) {
 // The flights between blocks at floors of their own, step on step from the lower floor.
 void flights(Shell &shell, const Placed &pl, const InteriorLook &look, int cut) {
 	const Paint &step = look.paint("step");
-	const Lin lin = lin_of_paint(step);
+	const Lin lin = paint_lin(step);
 	for (const LevelFlight &f : level_flights(*pl.whole, cut)) {
 		const float run = std::hypot(f.top.x - f.foot.x, f.top.y - f.foot.y), ux = (f.top.x - f.foot.x) / run, uy = (f.top.y - f.foot.y) / run;
 		const float tread = run / float(f.risers), rise = (f.z1 - f.z0) / float(f.risers), half = f.width / 2;
@@ -85,7 +83,7 @@ void flights(Shell &shell, const Placed &pl, const InteriorLook &look, int cut) 
 void partitions(Shell &shell, const Placed &pl, const InteriorLook &look, int cut, const FloorInterior &floor) {
 	const Body &b = *pl.b;
 	const Paint &p = look.paint("partition");
-	const Lin lin = lin_of_paint(p);
+	const Lin lin = paint_lin(p);
 	const float rise = std::min(b.level_h(cut) - WALL_CLEAR, WALL_MAX);
 	for (const Partition &w : floor.partitions) {
 		const float z = lift_at(*pl.whole, cut, (w.x0 + w.x1) / 2, (w.y0 + w.y1) / 2) + b.level_z(cut);

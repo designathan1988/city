@@ -42,7 +42,8 @@ e apagados.
   Commit por tema e push em `origin/main` (`https://github.com/designathan1988/city`).
 
 ## Execução e verificação
-- Investigar é ler código. Sem medições, perfis nem testes longos e pesados para investigar.
+- Investigating is reading code: no measurements, profiles or long, heavy tests to investigate. A measurement only checks the
+  effect of an optimisation its cause already explains (`sampler.py`, `tests/perf`) or trains the release DLL's profile (`pgo.sh`).
 - Verifica-se só o que a mudança alcança:
 
 | Mudou | Verifique |
@@ -164,16 +165,14 @@ the JDK and SDK paths go in Godot's editor settings, `export/android/*`) and a r
 - `tasks/`: the one orchestration owner of every support tool (tasks as data: inputs keyed by content, a deadline each,
   a verdict; parallel pool, cache in `dist/cache/tasks`, Job Object kill, hidden desktop; `suites.json`).
 - `build/`: `build.sh`, `android.sh` (the Android library and APK), `quick.sh` (a thin call of `tools/tasks`), `pgo.sh`, `photodiff.py`, `free_dll.sh`,
-  `check_scripts.gd` (scripts that do not compile), `rename_english.py` (the English rename, with `--check`).
+  `check_scripts.gd` (scripts that do not compile).
 - `analysis/`: `sampler.py` with `sampler_report.py` and `unwind.py`, `causes.py` with `detectors.py` and `code_parse.py`,
   `arch.py` e `arch/` (o analisador de arquitetura), `arch_eval/` (gabaritos
   que só o selfcheck dele lê).
-- `assets/`: cozinha de pessoas, marcos, ruído, móveis, postes e perfis de via.
-- `converter/`: the porting tool, with its own git: traces each feature of the source game, translates its pure simulation
-  logic into C++ for this architecture and audits the result (`node src/cli.ts feature`, `convert`, `differential`, `graph`,
-  `translate`, `audit`, `verify`). Translated code (e.g. `flow_control`) is regenerated, never fixed by hand.
-- `converter-slice/`: the converter's older slice, with its own git.
-- `process/`: ferramentas de processo e registros. `ports/`: planos, coberturas e relatórios de cada porte.
+- `assets/`: what makes this game's assets: noise tiles, furniture parts, flag icons, texture fixes.
+- The source game, the porting tools and their records (`oracle-4.0`, `converter`, `converter-slice`, `ports`, `process`) left
+  the repository (B1 of log/review.md §6) and are kept outside it, in `C:\Users\Jonathan\Desktop\city-archive`. The code they
+  translated (`flow_control`, `js_*.h`) stays until B4 replaces it, and is no longer regenerated.
 
 **Outros:** `dist/` (builds, capturas e logs, fora do git) e `log/` (registros).
 

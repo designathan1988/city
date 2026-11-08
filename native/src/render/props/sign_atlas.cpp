@@ -2,6 +2,7 @@
 #include "render/props/sign_atlas.h"
 
 #include <godot_cpp/variant/rect2i.hpp>
+#include <cstdlib>
 #include <godot_cpp/variant/string.hpp>
 #include <godot_cpp/variant/variant.hpp>
 
@@ -62,6 +63,22 @@ SignCell SignAtlas::cell(SignType type, const std::string &text) {
 	const float sheet_w = float(width_), sheet_h = float(height_);
 	const SignCell out{ Rect2(px.position.x / sheet_w, px.position.y / sheet_h, px.size.x / sheet_w, px.size.y / sheet_h), layer_ };
 	cells_[key] = out;
+	return out;
+}
+
+Array SignAtlas::laid() const {
+	std::lock_guard<std::mutex> lk(mutex_);
+	Array out;
+	for (const auto &kv : cells_) {
+		const size_t cut = kv.first.find('|'); // key_of: the type, then the text
+		const Rect2 &uv = kv.second.uv;
+		Array one;
+		one.push_back(std::atoi(kv.first.c_str())); // stops at the '|'
+		one.push_back(String::utf8(kv.first.substr(cut + 1).c_str()));
+		one.push_back(Rect2(uv.position.x * float(width_), uv.position.y * float(height_), uv.size.x * float(width_), uv.size.y * float(height_)));
+		one.push_back(kv.second.layer);
+		out.push_back(one);
+	}
 	return out;
 }
 

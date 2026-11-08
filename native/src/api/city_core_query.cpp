@@ -111,14 +111,14 @@ Color CityCore::film_graded(const Dictionary &grade, const Color &colour) const 
 	return city::film_graded(grade, colour);
 }
 
-// Under the map lock shared only: the fleet's numbers are the traffic's last publication (TrafficView) and the panels' levels
-// are atomics, so the frame that reads the snapshot never waits for a traffic step; residents and jobs are the
-// BuildingStore's running totals.
 int64_t CityCore::map_revision() {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	return int64_t(state_->revision);
 }
 
+// Under the map lock shared only: the fleet's numbers are the traffic's last publication (TrafficView) and the panels' levels
+// are atomics, so the frame that reads the snapshot never waits for a traffic step; residents and jobs are the
+// BuildingStore's running totals.
 Dictionary CityCore::snapshot() {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
@@ -174,7 +174,7 @@ Dictionary CityCore::raycast(const Vector3 &origin, const Vector3 &dir) {
 	if (!state_->ready) return d;
 	V2 d2(dir.x, dir.z);
 	float l2 = d2.len();
-if (l2 < RAY_DIR_MIN && dir.y >= 0) return d;
+	if (l2 < RAY_DIR_MIN && dir.y >= 0) return d;
 	// What the player sees under the ray (the 4.0's worldAtScreen): the ground, or a road deck the ray meets before it.
 	float hx, hy, hz;
 	const bool ground = state_->terrain.raycast(V2(origin.x, origin.z), origin.y, d2, dir.y, RAY_MAX_M, hx, hy, hz);

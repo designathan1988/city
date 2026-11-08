@@ -50,10 +50,6 @@ std::map<int, bool> along_street(const CityState &s, const std::vector<int> &seg
 	}
 	return out;
 }
-
-// After a profile change, like a new road: what the wider road covers goes (the ground under it follows its new casing
-// when the edit settles: sim/commands/road_grade_sync.cpp).
-int settle_under(CityState &s, int seg) { return clear_under(s, seg); }
 } // namespace
 
 EditResult split_road_at(CityState &s, double x, double z) {
@@ -106,8 +102,8 @@ EditResult change_profile_at(CityState &s, double x, double z, int profile, bool
 		changed.push_back(sg);
 	}
 	if (!settle_road_edit(s, r)) return r; // before the ground moves: the caller rolls the journal back
-	for (int sg : changed) {
-		r.buildings_removed += settle_under(s, sg);
+	for (int sg : changed) { // like a new road: what the wider road covers goes (the ground follows its casing as the edit settles)
+		r.buildings_removed += clear_under(s, sg);
 		box.add(s.roads.segs[sg]);
 		r.segments++;
 	}

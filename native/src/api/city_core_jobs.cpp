@@ -15,9 +15,9 @@ using namespace godot;
 
 namespace city {
 
-// The pool's rule on a pool of one worker, held busy while the jobs queue: a key's newest job replaces a queued one, and only that.
 Dictionary CityProbes::bay_census() { return render_->bay_census(); }
 
+// The pool's rule on a pool of one worker, held busy while the jobs queue: a key's newest job replaces a queued one, and only that.
 Dictionary CityProbes::job_pool_probe() const {
 	constexpr int64_t CHUNK_ID = 7;
 	std::mutex gate;

@@ -4,7 +4,7 @@
 //                                      geometry that is not a box (lamps, AC fans, awnings) in the "building" material
 //   near   0 .. D x near_share         walls with real openings and reveals, panes, sills, bands, roofs, plant, lot
 //   mid    near end ..                 walls with shader-painted windows, the real roofs (parapets, cornices, plant)
-//   far    per 512 m SUPERCHUNK        every building's masses in one mesh (material building_far)
+//   far    per SUPERCHUNK (core/grid.h) every building's masses in one mesh (material building_far)
 // Near and mid switch inside a chunk by RenderingServer visibility ranges. The far mesh of a superchunk stands in for every chunk not drawn in its own detail: a chunk is drawn in detail once its centre comes within mid_end (measured with the eye height, as the visibility ranges measure; it leaves past mid_end x (1 + lod.far_hysteresis)) while its mid level is built, and the far mesh folds that chunk's buildings away (building_far.gdshader chunk_mask) - one switch per chunk, never a hole nor a building drawn twice.
 // The mid level is built within mid_end (+ pad) on the ground, as the chunks are streamed. Large chunks are split into 128 m sub-chunks so every surface keeps 16-bit indices. A chunk lives while RenderWorld streams it (within far_end), a superchunk while one of its chunks does.
 #pragma once
@@ -240,7 +240,7 @@ private:
 	int64_t waiting_ = 0, super_waiting_ = 0;
 	std::atomic<int64_t> super_bytes_max_{ 0 }; // written by the superchunk jobs
 	CommitTimes times_; // the last commit's (render_cost probe)
-	std::unordered_map<int64_t, uint8_t> requested_mask_; // bit 1 far, 2 near, 4 mid
+	std::unordered_map<int64_t, uint8_t> requested_mask_; // BAND_BIT_NEAR, BAND_BIT_MID (the far level is the superchunk's)
 	uint64_t seq_ = 0;
 	std::unordered_map<int64_t, Chunk> chunks_;
 	SignatureBodies signatures_;

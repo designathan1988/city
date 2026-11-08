@@ -40,9 +40,11 @@ public:
 	// The run under the pointer, drawn as it will stand; empty lists take it away. Main thread, map held.
 	void set_pole_preview(const CityState &s, const std::vector<PreviewPole> &poles);
 	godot::Array take_sign_cells() { return atlas_.take_pending(); }
+	godot::Array laid_sign_cells() const { return atlas_.laid(); }
 	int64_t sign_generation() const { return atlas_.generation(); } // moves when the sheets start empty again (a new city)
 	int instances() const { return instances_; } // poles, wires, boxes and lights drawn (render_cost probe)
 	int sign_cells() const { return atlas_.cells_used(); }
+	int sign_cells_waiting() const { return atlas_.waiting(); }
 
 private:
 	// What a chunk draws as instances.

@@ -42,7 +42,7 @@ public:
 	void mark_saved();
 	void set_speed(int speed);
 	void set_levels(float traffic, float people, float demand); // the Simulation panel: shares of the city's own density
-	void set_sim_switch(const godot::String &name, bool on); // the Effects panel: "traffic", "pedestrians", "growth"
+	void set_sim_switch(const godot::String &name, bool on); // the Effects panel: "traffic", "pedestrians", "growth", "crowd"
 	void set_detail_scale(float scale); // the graphics tier's reach of the buildings' near level
 	void set_lamp_lights(int count, int casting, int heads); // the graphics tier's street lamps with a light of their own, those with a shadow, and the vehicles' headlamps
 	void set_lamp_night(float night); // how much of the night it is, as daylight.gd reckons it
@@ -76,7 +76,7 @@ public:
 	godot::Dictionary demolish_box(const godot::Vector3 &a, const godot::Vector3 &b); // everything in the box, one undo step
 	godot::Dictionary paint_zone(const godot::Vector3 &p, float radius, int zone);
 	godot::Dictionary paint_zone_path(const godot::PackedVector3Array &points, float radius, int zone);
-	godot::Array road_profiles() const;
+	godot::Array road_profiles() const; // the catalogue as the drawer shows it (derived width and price per metre)
 	int road_variant(int base, int lanes, float width, int parking);
 	godot::Array node_legs(int node);
 	godot::Dictionary set_approach_rule(int node, int seg, int rule);
@@ -97,9 +97,9 @@ public:
 	int effects_bodies_moving() const { return render_.bodies_moving(); }
 	// The pistol along a line of sight: {ok, hit 0 none / 1 walker / 2 vehicle, killed, burst}; a car that took enough rounds bursts as a blow.
 	godot::Dictionary shoot(const godot::Vector3 &origin, const godot::Vector3 &direction);
-	godot::Dictionary damage_probe() const;
+	godot::Dictionary damage_probe() const; // what blows left on the map (counts)
 	// The first `limit` walkers and vehicles as the pistol sees them (tests, probes): id, position, health, fallen, ...
-	godot::Dictionary shot_targets(int limit) const; // what blows left on the map (counts)
+	godot::Dictionary shot_targets(int limit) const;
 	godot::Dictionary blast_probe(float strength, float distance) const; // the blast model's numbers at a distance
 
 	// --- undo / redo and the drawer edits (city_core_edit.cpp)
@@ -150,7 +150,7 @@ public:
 	// --- save / open (city_core_persist.cpp)
 	godot::Dictionary save_city(const godot::String &path);
 	godot::Dictionary save_status(); // { busy, ok, error, bytes } of the background save
-	godot::Dictionary load_city(const godot::String &path, bool paused = false); // the catalogue as the drawer shows it (derived width and price per metre)
+	godot::Dictionary load_city(const godot::String &path, bool paused = false);
 
 	// --- queries (city_core_query.cpp)
 	godot::Dictionary snapshot();

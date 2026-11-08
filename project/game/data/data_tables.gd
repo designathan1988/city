@@ -40,7 +40,6 @@ const UI := {
 	"tokens": "res://data/ui/tokens.json",
 	"land_panels": "res://data/ui/land_panels.json",
 	"land_elements": "res://data/ui/land_elements.json",
-	"toolbar": "res://data/ui/toolbar.json",
 	"hud": "res://data/ui/hud.json",
 	"drawers": "res://data/ui/drawers.json",
 	"keys": "res://data/ui/keys.json",

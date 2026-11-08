@@ -15,7 +15,6 @@ namespace city {
 
 constexpr size_t JOINT_ARMS = 2; // a road going on through a node
 
-// Arc length at curve parameter t from an arc_table (plan.ts arcAtT).
 // Splits segment `seg` at t; returns the new node (height linear along the segment).
 int split_segment(CityState &s, int seg, double t);
 // The node an anchor stands for: its node, a split of its segment (searched again when an earlier split took it) or a

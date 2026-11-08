@@ -138,11 +138,9 @@ void LotEmit::prop(const LotElement &e) {
 			}
 			parts.box(pl.lot, e.x - LAMP_POST / 2, e.x + LAMP_POST / 2, e.y - LAMP_POST / 2, e.y + LAMP_POST / 2, g, g + e.h, lin, FIN_METAL);
 			shell.box(pl.lot, e.x - LAMP_HEAD / 2, e.x + LAMP_HEAD / 2, e.y - LAMP_HEAD / 2, e.y + LAMP_HEAD / 2, g + e.h, g + e.h + LAMP_HEAD_H, lin, FIN_METAL);
-			Basis down{ pl.lot.o, pl.lot.e0, pl.lot.e1, -pl.lot.e2 };
 			shell.quad(pl.lot.at(e.x - LAMP_HEAD / 3, e.y - LAMP_HEAD / 3, g + e.h - GRILLE_T), pl.lot.at(e.x + LAMP_HEAD / 3, e.y - LAMP_HEAD / 3, g + e.h - GRILLE_T),
 					pl.lot.at(e.x + LAMP_HEAD / 3, e.y + LAMP_HEAD / 3, g + e.h - GRILLE_T), pl.lot.at(e.x - LAMP_HEAD / 3, e.y + LAMP_HEAD / 3, g + e.h - GRILLE_T),
 					-pl.lot.e2, lin_of(LAMP_WARM), FIN_NONE, SK_LAMP);
-			(void)down;
 			break;
 		}
 		case EL_AC:

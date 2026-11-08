@@ -2,6 +2,7 @@
 class_name RoadDraft
 extends RefCounted
 
+## A long stroke keeps every sample up to DENSE_SAMPLES, then one each SPARSE_SAMPLE_M, up to MOST_SAMPLES.
 const DENSE_SAMPLES := 256
 const MOST_SAMPLES := 4096
 const SPARSE_SAMPLE_M := 1.0

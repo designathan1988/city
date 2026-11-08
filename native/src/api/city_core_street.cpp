@@ -147,6 +147,8 @@ int CityStreet::road_furniture() {
 
 Array CityStreet::sign_cells() { return render_->take_sign_cells(); }
 
+Array CityStreet::sign_cells_laid() const { return render_->laid_sign_cells(); }
+
 // What stands along the streets, kit and player's alike, for a comparison per kilometre: the pieces of each FurnitureKind (`kinds`,
 // in its order), the street length and the poles that carry a light.
 Dictionary CityStreet::furniture_census() {
@@ -198,6 +200,7 @@ Dictionary CityStreet::street_counts() {
 	d["instances"] = render_->street_instances();
 	d["sign_generation"] = render_->sign_generation(); // a reset of the sign atlas, seen even when the new city has no plates
 	d["sign_cells"] = render_->sign_cells();
+	d["sign_cells_waiting"] = render_->sign_cells_waiting(); // laid, not yet handed to the painter
 	return d;
 }
 
@@ -243,6 +246,7 @@ void CityStreet::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_road_walls", "on"), &CityStreet::set_road_walls);
 	ClassDB::bind_method(D_METHOD("road_walls"), &CityStreet::road_walls);
 	ClassDB::bind_method(D_METHOD("sign_cells"), &CityStreet::sign_cells);
+	ClassDB::bind_method(D_METHOD("sign_cells_laid"), &CityStreet::sign_cells_laid);
 	ClassDB::bind_method(D_METHOD("street_counts"), &CityStreet::street_counts);
 	ClassDB::bind_method(D_METHOD("street_poles"), &CityStreet::street_poles);
 	ClassDB::bind_method(D_METHOD("furniture_census"), &CityStreet::furniture_census);

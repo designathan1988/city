@@ -32,12 +32,11 @@ static func views(cap: Node, a: Vector3, b: Vector3) -> void:
 		await _eye(cap, "rua_13_ao_longo_" + tag, a - dir * cap.ALONG_BACK_M + Vector3.UP * cap.ALONG_UP_M, a + dir * cap.RUN_M)
 		await _eye(cap, "rua_12_alto_" + tag, a + dir * cap.RUN_M * 0.3 + Vector3.UP * cap.TOP_M + side * cap.TOP_M, a + dir * cap.RUN_M * 0.3, true)
 
-
-## Each sign of the dropdown on the footway across the street, with its words where it carries them.
 	await CaptureStreetPairs.run(cap, a, dir)
 	await many_names(cap, (a + cap._across) * 0.5)
 
 
+## Each sign of the dropdown on the footway across the street, with its words where it carries them.
 static func signs(cap: Node, a: Vector3, dir: Vector3) -> void:
 	var side := dir.cross(Vector3.UP)
 	await cap._pick("streetscape.sign")
@@ -107,7 +106,7 @@ static func _check_ink(cap: Node) -> void:
 		images.append(sheet.layers.get_layer_data(i))
 		images[i].save_png("%s/rua_23_folha_%d.png" % [cap.out_dir, i])
 	var look: Dictionary = DataTables.render().streets.signs
-	for c: Array in sheet.drawn:
+	for c: Array in CityStore.query(&"sign_cells_laid"):
 		var p: Dictionary = look.drawings[c[0]]
 		if not p.has("ink"):
 			continue
@@ -129,11 +128,13 @@ static func many_names(cap: Node, road: Vector3) -> void:
 	var had: int = CityStore.query(&"street_counts").sign_cells
 	for i in NAMES_TRIED:
 		CityStore.dispatch(&"place_item", [road, ITEM_NAME, 0, "Rua Teste %d" % i, 1.0])
+	var counts: Dictionary = {}
 	for f in NAMES_FRAMES:
-		if sheet.drawn.size() >= had + NAMES_TRIED:
+		counts = CityStore.query(&"street_counts")
+		if counts.sign_cells >= had + NAMES_TRIED and counts.sign_cells_waiting == 0 and sheet.idle():
 			break
 		await cap.ui.frames(1)
-	cap._check(sheet.drawn.size() >= had + NAMES_TRIED, "%d names painted in %d layers" % [sheet.drawn.size(), sheet.layers.get_layers()])
+	cap._check(counts.sign_cells >= had + NAMES_TRIED and counts.sign_cells_waiting == 0 and sheet.idle(), "%d names painted in %d layers" % [counts.sign_cells, sheet.layers.get_layers()])
 	_check_ink(cap)
 
 

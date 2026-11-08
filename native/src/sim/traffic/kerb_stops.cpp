@@ -22,9 +22,9 @@ constexpr float MOVED_MIN_M = 0.05f; // shorter than this a move has no directio
 
 bool is_car(const Vehicle &v) { return v.type <= VehicleType::PICKUP; }
 
+} // namespace
 
 // The walker a stop holds: called to a door within `reach`; set where it is, facing its way; let go to walk on, or gone aboard.
-} // namespace
 
 bool kerb_hail(CityState &s, int ped, const V2 &door, float reach) {
 	TrafficState &t = s.traffic;
@@ -71,9 +71,9 @@ bool has_footway(const CityState &s, const DirSeg &d) {
 	const Profile &p = s.roads.profile_of(d.seg);
 	return kerb_side(d) == RIGHT_SIDE ? p.has_walk_right : p.has_walk_left;
 }
+} // namespace
 
 // Where a kerb-side door opens, and the footway beside it.
-} // namespace
 
 KerbDoors kerb_door_at(const CityState &s, const Vehicle &v, float back_m) {
 	const TrafficParams &p = s.catalog.traffic;
@@ -301,7 +301,8 @@ void step_stop(CityState &s, int id, KerbStop &k, float dt) {
 		case KerbPhase::AWAY:
 			if (k.t >= p.kerb_delivery_s) {
 				k.back = true;
-				k.transfer = (door_places(s, v).foot - door_places(s, v).door).len() / p.kerb_pace_ms + p.kerb_seat_s;
+				const KerbDoors at = door_places(s, v);
+				k.transfer = (at.foot - at.door).len() / p.kerb_pace_ms + p.kerb_seat_s;
 				enter(k, KerbPhase::TRANSFER);
 			}
 			break;

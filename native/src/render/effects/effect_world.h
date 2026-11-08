@@ -1,7 +1,7 @@
 // What a blow looks like: smoke, fire, flung pieces, ground marks, the flash, the ring and the camera's shake. The owner of
 // the effects (render/effects/*): it takes the events of the simulation's blows (damage_event.h) from the ChangeLog, plays
-// each once, draws the craters and the fires the damage state holds, and steps everything with its own clock. Reads the
-// city, never writes it (render is read only).
+// each once, draws the craters and the fires the damage state holds, and steps everything with its own clock. It drains
+// those events from the ChangeLog (the one dirty channel) and never changes the map.
 #pragma once
 
 #include "render/agents/body_walls.h"

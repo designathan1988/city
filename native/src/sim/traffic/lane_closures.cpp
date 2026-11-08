@@ -12,9 +12,6 @@
 namespace city {
 namespace traffic {
 
-namespace {
-} // namespace
-
 // The stretches of lane a street part sweeps: the lanes of the gate's segment under the body, with a margin each way.
 void sweep_lanes(const CityState &s, const std::vector<AxlePose> &poses, int from, int to, int seg, int owner, std::vector<LaneClosure> &out) {
 	const TrafficParams &p = s.catalog.traffic;

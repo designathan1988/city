@@ -26,8 +26,6 @@ struct SegFrame {
 SegFrame seg_frame(const CityState &s, int sid, double at);
 
 // A node whose mouths get crossings, stop lines and dropped kerbs (three or more arms, not a roundabout or rails).
-bool crossing_node(const CityState &s, int node);
-bool crosswalk_at(const CityState &s, int node, int seg); // a crosswalk over this arm there; a crossing between junctions has a stop line on both
 
 // Four corners with their own uv (texture metres) and uv2 (lamp pool), flat normal facing `out`.
 void emit_quad(MeshBuilder &mb, const godot::Vector3 p[4], const godot::Vector2 uv[4], const godot::Vector2 uv2[4], const godot::Color &col,

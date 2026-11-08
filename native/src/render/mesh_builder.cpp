@@ -1,4 +1,4 @@
-// Primitive emitters. Smooth normals only for blobs; everything else is flat shaded (toon look).
+// Primitive emitters (MeshBuilder): flat-shaded boxes, quads and prisms; the blob carries its own smooth normals.
 #include "render/mesh_builder.h"
 
 #include "render/mesh_levels.h"

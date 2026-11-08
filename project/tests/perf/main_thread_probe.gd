@@ -109,17 +109,12 @@ func _locks() -> void:
 
 
 ## Each read a view makes every frame, timed READS times in a row: as the core answers it, and as the store keeps it.
-## (Reads an older core lacks are left out, so the same probe measures both sides of a change.)
 func _reads() -> void:
 	var reads := [&"fog_field", &"fog_revision", &"transit_plan", &"junctions", &"sky_revision", &"landscape"]
-	var fog_args := [] if StoreApi.QUERIES.has(&"fog_revision") else [Vector3.ZERO] # an older fog_field took the camera
 	for name in reads:
-		if StoreApi.QUERIES.has(name):
-			var args: Array = fog_args if name == &"fog_field" else []
-			print("leitura %s: %s" % [name, _timed(func() -> void: CityStore.query(name, args))])
-	if CityStore.has_method(&"cached"): # called by name: an older store has neither the method nor its table
-		for name in CityStore.get(&"CACHED_BY"):
-			print("read %s through the CityStore cache: %s" % [name, _timed(func() -> void: CityStore.call(&"cached", name))])
+		print("read %s: %s" % [name, _timed(func() -> void: CityStore.query(name))])
+	for name: StringName in CityStore.CACHED_BY:
+		print("read %s through the CityStore cache: %s" % [name, _timed(func() -> void: CityStore.cached(name))])
 	print("junctions on the list: %d" % CityStore.query(&"junctions").size())
 
 

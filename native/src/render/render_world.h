@@ -111,8 +111,10 @@ public:
 	int lit_lenses() const { return props_.lit_lenses(); }
 	int street_instances() const { return props_.instances(); }
 	int sign_cells() const { return props_.sign_cells(); }
+	int sign_cells_waiting() const { return props_.sign_cells_waiting(); }
 	int64_t sign_generation() const { return props_.sign_generation(); }
 	godot::Array take_sign_cells() { return props_.take_sign_cells(); }
+	godot::Array laid_sign_cells() const { return props_.laid_sign_cells(); }
 	void set_pole_preview(const CityState &s, const std::vector<PreviewPole> &poles) {
 		props_.set_pole_preview(s, poles);
 	}

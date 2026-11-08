@@ -55,7 +55,7 @@ EditResult edit_clouds(CityState &s, F change) {
 	return done();
 }
 
-float dab_chunk(const PlantedTree &t, float x, float z) { return std::hypot(t.x - x, t.z - z); }
+float tree_distance(const PlantedTree &t, float x, float z) { return std::hypot(t.x - x, t.z - z); }
 
 void add_trees(CityState &s, const std::vector<PlantedTree> &list, std::vector<int> &ids) {
 	for (const PlantedTree &t : list) ids.push_back(s.nature.planted.add(t));
@@ -81,7 +81,7 @@ bool cut_trees_at(CityState &s, float x, float z, float radius) {
 	if (p.live_clearings() >= d.max_clearings) return false;
 	std::vector<int> gone;
 	p.for_trees(x - radius, z - radius, x + radius, z + radius, [&](int id) {
-		if (dab_chunk(p.trees[size_t(id)], x, z) < radius) gone.push_back(id);
+		if (tree_distance(p.trees[size_t(id)], x, z) < radius) gone.push_back(id);
 	});
 	std::vector<PlantedTree> kept;
 	for (int id : gone) {
@@ -237,7 +237,7 @@ EditResult tree_dab(CityState &s, double x, double z, double radius, int mode, i
 	uint32_t seed = hash_combine(hash_combine(s.seed ^ DAB_SALT, uint32_t(p.trees.size())), uint32_t(int32_t(std::floor(x))) ^ uint32_t(int32_t(std::floor(z))));
 	std::vector<PlantedTree> stand;
 	if (mode == TREE_ONE) {
-		bool room = std::all_of(nearby.begin(), nearby.end(), [&](const PlantedTree &t) { return dab_chunk(t, fx, fz) >= b.spacing; });
+		bool room = std::all_of(nearby.begin(), nearby.end(), [&](const PlantedTree &t) { return tree_distance(t, fx, fz) >= b.spacing; });
 		if (room) stand.push_back(one_tree(TreeKind(kind), b, fx, fz, seed, d));
 	} else {
 		stand = plant_stand(TreeKind(kind), b, fx, fz, r, seed, nearby, d);

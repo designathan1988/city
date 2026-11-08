@@ -26,10 +26,8 @@ func run() -> void:
 	await t.ui.hover(t.at(0, -420))
 	await t.ui.shot("tool_curve_bend")
 	t.tools.active.cancel()
-	if StoreApi.COMMANDS.has(&"build_road_path"):
-		await _freehand(street)
-	if ToolController.Tool.has("MOVE"):
-		await _node_tools()
+	await _freehand(street)
+	await _node_tools()
 	t.hud.drawer.close()
 
 

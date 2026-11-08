@@ -144,10 +144,10 @@ void emit_markings(const RoadEmit &e, int sid) {
 	const Profile &p = e.s.catalog.profile(g.profile);
 	if (p.rail) return;
 	double v0 = g.retreat_a, v1 = g.len - g.retreat_b;
-	bool ca = !p.ring && crossing_node(e.s, g.a), cb = !p.ring && crossing_node(e.s, g.b);
+	bool ca = !p.ring && e.s.roads.has_crosswalks(g.a), cb = !p.ring && e.s.roads.has_crosswalks(g.b);
 	Painter pt{ e, sid, lamp_row(e.s.roads, sid) };
 	const double clear = e.s.catalog.furniture.crossing.stop_to_m; // the lines end at the stop line
-	crossings(pt, p, v0, v1, ca, cb, crosswalk_at(e.s, g.a, sid), crosswalk_at(e.s, g.b, sid));
+	crossings(pt, p, v0, v1, ca, cb, e.s.roads.crosswalk_on(g.a, sid), e.s.roads.crosswalk_on(g.b, sid));
 	if (e.far) return; // the lane lines are filtered by the road's shader there
 	lines(pt, p, v0 + (ca ? clear : 0), v1 - (cb ? clear : 0));
 	parking_paint(pt);

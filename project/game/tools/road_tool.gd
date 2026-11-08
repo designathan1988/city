@@ -9,7 +9,6 @@ extends ToolBase
 
 enum Alignment { STRAIGHT, CURVE, FREE }
 
-## A long stroke keeps every sample up to DENSE_SAMPLES, then one a metre, up to MOST_SAMPLES.
 const WHOLE_M := 0.000001 # a height this near a whole metre is on it
 
 var alignment: Alignment = Alignment.STRAIGHT

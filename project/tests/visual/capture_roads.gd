@@ -1,7 +1,6 @@
 ## Captures of the roads up close, on open ground where nothing stands in front of them: the same crossings, T junction,
-## road end and curve the Roadcraft 4.0 photos show, then the road tool in use with real mouse events. Works on a build
-## without the road paths too (no px argument, no freehand), so one script takes the "before" and the "after".
-## Run: godot --path project --resolution 1600x900 res://tests/visual/capture_roads.tscn -- --no-flow --capture-dir=/tmp/x
+## road end and curve the Roadcraft 4.0 photos show, then the road tool in use with real mouse events (CaptureRoadTools).
+## Run: godot --path project --resolution 1600x900 res://tests/visual/capture_roads.tscn -- --no-flow --capture-dir=<folder>
 extends Node3D
 
 const TOWN_MAP := 0
@@ -127,9 +126,7 @@ func at(x: float, z: float) -> Vector3:
 
 
 func _road(a: Vector3, e: Vector3, profile: String, control: Variant = null) -> void:
-	var args := [a, e, control != null, control if control != null else Vector3.ZERO, profiles[profile]]
-	if StoreApi.COMMANDS.has(&"build_road_path"):
-		args.push_back(PX)
+	var args := [a, e, control != null, control if control != null else Vector3.ZERO, profiles[profile], PX]
 	var r: Dictionary = CityStore.dispatch(&"build_road", args)
 	_check(r.get("ok", false), "road %s: %s" % [profile, r])
 
@@ -195,7 +192,6 @@ func _worn(p: Vector3) -> void:
 	await _pair("worn_low", p, 30.0, 30.0, 30.0)
 
 
-## The tool as the player uses it: the drawer, a stretch held by a click, a curve waiting for its bend, a freehand stroke.
 func _check(ok: bool, what: String) -> void:
 	print(("ok   " if ok else "FAIL ") + what)
 	if not ok:

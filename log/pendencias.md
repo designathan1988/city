@@ -77,6 +77,12 @@ O que falta fazer, por área.
   - `look.gd` does not count incomplete photos (`failures += CaptureWait.incomplete`): left out because the file holds the
     user's uncommitted work; `tools/ports/landscape/plan-poses.json` takes zero shots and now fails.
   - `dist/cache/tasks` grows without a bound (tools/tasks keeps every result).
+  - `project/render/shaders/contact.gdshader` (the sun's contact shadows by hand) is built into Godot 4.8 (GH-118045): retire it at
+    the upgrade from 4.7.
+  - `ui.stats.tip` shows `{speed}` as "—": the top bar never fills it; the key's text loses the field when the translation tables
+    are next edited (held while another session edits them).
+  - `growth.json` `decay_grace_min` is loaded (catalog_loader.cpp, catalog.h) and read by no code: removed with them once the
+    session that edits those files is done.
 - Android (the first APK, 2026-11-07, `tools/build/android.sh`): built and signed, never run on a device (none was connected), so
   whether it opens, and at what frame rate, is unknown.
   - Touch: the camera has only mouse gestures (`camera_gestures.gd`). A finger is the left button through Godot's mouse emulation,

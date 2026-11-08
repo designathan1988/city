@@ -114,7 +114,7 @@ void emit_roofs(Shell &shell, Shell &parts, const Placed &whole) {
 		if (b.cut_level >= 0 && v.top() == b.cut_level + 1) continue; // cut open: no roof over the floor seen
 		float eaves = b.level_z(v.top());
 		emit_roof_gear(shell, pl, v, eaves);
-		const bool on_top = covered_by_above(b, v), terrace = v.roof == ROOF_TERRACE;
+		const bool terrace = v.roof == ROOF_TERRACE;
 		if (pl.coarse) {
 			if (!roof_flat(v.roof)) continue;
 			RoofEmit re{ shell, parts, pl, v, eaves };

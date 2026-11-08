@@ -21,13 +21,13 @@ struct GradeTune {
 };
 GradeTune grade_tune(const Tuning &t);
 
-// Segment s's profile made ready for the solve (road_grade.cpp): stations, the ground under them (read again only when its
-// curve, casing or ground changed), plates and structure.
 // The roads laid in pieces among `read` (a cut carries one road on): the design line of each made along all of it, as of one profile, and the ends of its
 // pieces added to `ends`: on a hill a line made piece by piece disagrees at every cut, and the road breaks there to meet itself.
 // `seen`: by segment, all 0 on entry and left so (the solve's scratch).
 void grade_chains(RoadGrade &grade, const RoadNetwork &net, const std::vector<int> &read, float ground_grade, std::vector<int> &ends,
 		std::vector<char> &seen);
+// Segment s's profile made ready for the solve (road_grade.cpp): stations, the ground under them (read again only when its
+// curve, casing or ground changed), plates and structure.
 void grade_inputs(RoadGrade &grade, const RoadNetwork &net, int s, const GroundAt &ground, bool reground, const GradeTune &t);
 
 // Station of arc s (rounded, inside the profile).

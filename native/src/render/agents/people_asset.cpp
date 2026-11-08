@@ -36,7 +36,7 @@ constexpr float BYTE_STEPS = 256.f, FIXED_MOST = 65535.f, PALETTE_SPAN = 3.f; //
 constexpr int TEXELS_PER_VALUE = 2; // the palette comes as it is drawn (cook_people.py fixed_point, decoded in people.gdshader)
 constexpr float CARD_HALF = 0.5f;
 
-// Float textures are not sampled reliably in the Compatibility renderer (Godot may fall back to 8 bits and clamp), so
+// The vertex and index counts of one level of a person's mesh, as people.bin gives them.
 struct LodSize {
 	uint32_t vertices = 0, indices = 0;
 };

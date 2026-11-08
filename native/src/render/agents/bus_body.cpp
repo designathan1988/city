@@ -248,10 +248,10 @@ void leaf(MeshBuilder &mb, const Bus &b, float jamb, float free, Limb limb, cons
 	const float xd = -b.hw - HEAVY_PROUD_M, low = b.clear;
 	const Vector2 hinge(xd, jamb), uvs[4] = { hinge, hinge, hinge, hinge };
 	mb.quad(Vector3(xd, low, jamb), Vector3(xd, low, free), Vector3(xd, b.cant, free), Vector3(xd, b.cant, jamb), trim.glass, Vector3(-1, 0, 0), uvs, agent_tag(AgentTag::GLASS, limb));
-	const size_t from = mb.uv.size();
+	const int64_t from = mb.uv.size();
 	for (float z : { jamb, free })
 		agent_box(mb, Vector3(xd - HEAVY_PROUD_M, low, z - DOOR_SPLIT_W), Vector3(-b.hw + HEAVY_PROUD_M, b.cant, z + DOOR_SPLIT_W), trim.blackout, AgentTag::FIXED, limb);
-	for (size_t i = from; i < mb.uv.size(); i++) mb.uv[i] = hinge;
+	for (int64_t i = from; i < mb.uv.size(); i++) mb.uv[i] = hinge;
 }
 
 void band(MeshBuilder &mb, const Bus &b, const AgentTrim &trim) {

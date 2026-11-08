@@ -14,7 +14,6 @@ const IDLE_SIZE := Vector2i.ONE
 const CELL_LAYER := 3
 const CELL_GENERATION := 4
 
-var drawn: Array = [] ## Every cell painted in this city: [type, words, rectangle, layer, generation] (the captures check their ink).
 var layers := Texture2DArray.new()
 
 var _paper := _Paper.new()
@@ -60,7 +59,6 @@ func _process(delta: float) -> void:
 		cut += 1
 	var batch := _waiting.slice(0, cut)
 	_waiting = _waiting.slice(cut)
-	drawn.append_array(batch)
 	var kept: Image = _pictures[layer] if layer == _begun and layer < _pictures.size() else null
 	_paper.begin(batch, ImageTexture.create_from_image(kept) if kept else null)
 	_begun = layer
@@ -92,11 +90,15 @@ func _new_city(generation: int) -> void:
 	_generation = generation
 	_waiting = []
 	_begun = -1
-	drawn = []
 	if _painted:
 		_painted = false
 		_pictures = []
 		_grow(1)
+
+
+## Nothing waits to be painted and no round is on the canvas (the captures wait for this before they read the sheets).
+func idle() -> bool:
+	return not _busy and _waiting.is_empty()
 
 
 func _layer_size() -> Vector2i:

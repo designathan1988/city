@@ -95,8 +95,6 @@ Dictionary derived_of(const CityState &s) {
 }
 } // namespace
 
-// The determinism check of a lockstep game (Factorio's map CRC): two runs from the same map must give the same series, and the
-// first tick that differs says where the cause is. Steps run here, only while the clock holds still (Simulation::hold_still).
 int CityProbes::undo_steps() {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	return int(state_->history.undo_stack.size());
@@ -107,6 +105,8 @@ String CityProbes::graph_fault() {
 	return String(state_->traffic.graph_fault.c_str());
 }
 
+// The determinism check of a lockstep game (Factorio's map CRC): two runs from the same map must give the same series, and the
+// first tick that differs says where the cause is. Steps run here, only while the clock holds still (Simulation::hold_still).
 PackedStringArray CityProbes::traffic_hashes(int ticks) {
 	if (!sim_->hold_still()) return PackedStringArray(); // beside a running clock its ticks would land among these steps
 	std::shared_lock<std::shared_mutex> map(state_->map_mutex);

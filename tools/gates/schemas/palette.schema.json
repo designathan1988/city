@@ -1,30 +1,6 @@
 {
  "type": "object",
  "properties": {
-  "vehicle_tints": {
-   "type": "array",
-   "items": {
-    "type": "string",
-    "pattern_prefix": "#"
-   },
-   "minItems": 1
-  },
-  "person_tints": {
-   "type": "array",
-   "items": {
-    "type": "string",
-    "pattern_prefix": "#"
-   },
-   "minItems": 1
-  },
-  "foliage_round": {
-   "type": "array",
-   "items": {
-    "type": "string",
-    "pattern_prefix": "#"
-   },
-   "minItems": 1
-  },
   "water": {
    "type": "object",
    "properties": {
@@ -100,7 +76,14 @@
     "bed_cover": {
      "type": "number"
     },
-    "absorb_m": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3},
+    "absorb_m": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 3,
+     "maxItems": 3
+    },
     "bed_wet": {
      "type": "number"
     },
@@ -134,29 +117,6 @@
     "slope_sigma",
     "specular_f0",
     "fetch_m"
-   ],
-   "strict": true
-  },
-  "sky": {
-   "type": "object",
-   "properties": {
-    "top": {
-     "type": "string",
-     "pattern_prefix": "#"
-    },
-    "horizon": {
-     "type": "string",
-     "pattern_prefix": "#"
-    },
-    "ground": {
-     "type": "string",
-     "pattern_prefix": "#"
-    }
-   },
-   "required": [
-    "top",
-    "horizon",
-    "ground"
    ],
    "strict": true
   },
@@ -359,11 +319,7 @@
   }
  },
  "required": [
-  "vehicle_tints",
-  "person_tints",
-  "foliage_round",
   "water",
-  "sky",
   "terrain"
  ],
  "strict": true

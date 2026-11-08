@@ -73,7 +73,7 @@ static func resolved(level: String, kept: Dictionary, optimizations: Dictionary)
 	return q
 
 
-## The 3D scale the tier's pixel ratio cap allows on this screen (1 on a display of one pixel per CSS pixel).
+## The 3D scale the tier's pixel ratio cap allows on this screen (1 on a display at BASE_DPI).
 static func cap_scale(pixel_ratio: float) -> float:
 	var dpi := float(DisplayServer.screen_get_dpi())
 	var ratio := maxf(1.0, dpi / BASE_DPI)
@@ -117,7 +117,7 @@ static func apply(q: Dictionary, world: CityWorld, viewport: Viewport, dynamic_s
 	viewport.texture_mipmap_bias = float(q.temporal_mip_bias) if temporal != TEMPORAL_NONE else 0.0
 	viewport.scaling_3d_scale = cap_scale(q.pixel_ratio) * dynamic_scale
 	world.occlusion.turn(q.ssao)
-	world.sky.clouds_drawn = q.sky_clouds or q.cloud_shadows
+	world.sky.clouds_drawn = q.sky_clouds
 	world.environment.ssil_enabled = bool(q.ssil) # the light the walls and the street throw back on each other: shade stops being one flat blue
 	CityStore.dispatch(&"set_detail_scale", [sqrt(float(q.triangle_share))])
 	var lamps: bool = world.contact.available() # a mesh takes 8 lights in Compatibility

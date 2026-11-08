@@ -196,7 +196,6 @@ func _frames(n: int) -> void:
 		await get_tree().process_frame
 
 
-## The clock stands still between the photos; it runs for each, so the bar shows the game at 1x.
 ## The drawer's other tabs that have a photo of the 4.0.
 func _tabs(cat: String) -> void:
 	for t: Dictionary in hud.drawer.category.tabs:
@@ -205,6 +204,7 @@ func _tabs(cat: String) -> void:
 			await _shot("drawer_%s_%s" % [cat, t.id])
 
 
+## The clock stands still between the photos; it runs for each, so the bar shows the game at 1x.
 func _shot(name: String) -> void:
 	CityStore.dispatch(&"set_speed", [SPEED_NORMAL])
 	await _frames(SETTLE)

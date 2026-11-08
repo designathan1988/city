@@ -90,6 +90,5 @@ void RoadChunks::drop_chunk(int64_t key) {
 	revision_++;
 }
 
-void RoadRenderer::update_view(const Vector3 &) {}
 
 } // namespace city

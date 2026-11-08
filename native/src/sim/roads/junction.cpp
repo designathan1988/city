@@ -3,7 +3,6 @@
 #include "core/units.h"
 #include "sim/roads/junction.h"
 
-#include "core/math.h"
 #include "sim/roads/road_network.h"
 
 #include <algorithm>

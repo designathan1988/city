@@ -48,7 +48,7 @@ public:
 	const MeshBuilder &wire(bool near) const { return near ? wire_near_ : wire_far_; }
 	const MeshBuilder &unit_box() const { return box_; }
 	const MeshBuilder &w_beam() const { return beam_; } // a guardrail's beam, in the unit box
-	// The pool of light (a disc of radius 1 at y = 0) and the beam (a cone from there to its apex at y = 1): lamp_glow.gdshader.
+	// The beam: a unit cone from its foot on the ground (radius 1 at y = 0) to the lens near its apex at y = 1: lamp_glow.gdshader.
 	const MeshBuilder &light() const { return light_; }
 	// The renderer has baked the six above: their vertices need not stay on the CPU.
 	void drop_baked() { pole_ = pole_cast_ = wire_near_ = wire_far_ = box_ = beam_ = light_ = MeshBuilder(); }

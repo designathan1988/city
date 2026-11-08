@@ -1,5 +1,5 @@
 {
- "_doc": "Roadcraft dock drawers (specs ui.md 4 and 6): tabs, cards and notes per category. tool = ToolController.Tool; a tab without tool is drawn 'being built' (ui.soon). profile = road profile id the tool draws with.",
+ "_doc": "The dock's drawers (ui/hud_drawer.gd): tabs, cards and notes per category. tool = ToolController.Tool; a tab without tool is drawn 'being built' (ui.soon). profile = road profile id the tool draws with.",
  "categories": [
   {
    "id": "roads",

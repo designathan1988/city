@@ -208,7 +208,7 @@ void emit_segment(const RoadEmit &e, int sid) {
 		return;
 	}
 	bool ring_or_rail = p.ring || p.rail;
-	bool ca = !ring_or_rail && crosswalk_at(e.s, g.a, sid), cb = !ring_or_rail && crosswalk_at(e.s, g.b, sid);
+	bool ca = !ring_or_rail && e.s.roads.crosswalk_on(g.a, sid), cb = !ring_or_rail && e.s.roads.crosswalk_on(g.b, sid); // a crossing between junctions has a stop line on both
 	float island0, island1;
 	const bool island = island_span(p, island0, island1);
 	const double nose = e.s.catalog.furniture.crossing.zebra_to_m + e.L.median_nose;
