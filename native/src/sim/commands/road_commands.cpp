@@ -31,7 +31,7 @@ double dir_turn(const Quad &first, const Quad &second) {
 	return l > 0 ? -(ax * bx + az * bz) / l : 0;
 }
 
-constexpr int ARC_STEPS = 64;
+constexpr int ARC_STEPS = 64; // a curve's preview drawn in this many pieces
 
 struct Stop {
 	double t = 0;

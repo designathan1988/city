@@ -20,7 +20,7 @@ namespace city {
 namespace {
 constexpr int LOT_SAMPLES = 5; // lot rectangle samples per side tested against the road surfaces
 constexpr double FACE_REACH_M = 80; // a drawn lot faces the nearest road this close
-constexpr uint32_t LOT_SALT = 0x6c6f7421U;
+constexpr uint32_t LOT_SALT = 0x6c6f7421U; // a stream's salt: the word it names, in ASCII
 constexpr double SEED_GRID_M = 4;
 constexpr double HALF = 0.5; // the drawn lot's seed comes from its corner rounded to this grid
 } // namespace

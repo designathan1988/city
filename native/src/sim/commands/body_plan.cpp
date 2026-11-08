@@ -18,7 +18,7 @@ using namespace b40;
 
 namespace {
 constexpr const char *NO_BLOCK = "tool.failed";
-constexpr int CIRCLE_SIDES = 24, HEXAGON_SIDES = 6, OCTAGON_SIDES = 8, MOST_BAYS = 64;
+constexpr int CIRCLE_SIDES = 24, HEXAGON_SIDES = 6, OCTAGON_SIDES = 8, MOST_BAYS = 64; // a round plan's sides, the polygons', the most bays a side
 constexpr uint32_t KEY_FIELD = (1u << KEY_SIDE_SHIFT) - 1;
 // Shares of the box, the 4.0's: the width of an L's arms; where the arms of a U and a cross stand; a stepped cross's steps; a chamfer, the same as the step's rise.
 constexpr float ELL_LEG = .4f, ARM = .3f, FAR_ARM = 1 - ARM, STEP = .15f, FAR_STEP = 1 - STEP, RISE = .12f, FAR_RISE = 1 - RISE;

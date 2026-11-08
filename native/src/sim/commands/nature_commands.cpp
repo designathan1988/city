@@ -16,7 +16,7 @@ namespace city {
 
 namespace {
 constexpr const char *FULL = "hint.tileFull";
-constexpr uint32_t DAB_SALT = 0x74726565u;
+constexpr uint32_t DAB_SALT = 0x74726565u; // a stream's salt: the word it names, in ASCII
 
 EditResult done() {
 	EditResult r;

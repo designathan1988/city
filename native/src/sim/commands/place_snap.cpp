@@ -15,9 +15,9 @@ using namespace b40;
 
 namespace {
 constexpr double ALONG_SIDE_COS = 0.9; // a road this close to the footprint's depth runs along its side
-constexpr double SAME_BEARING_RAD = 0.02;
+constexpr double SAME_BEARING_RAD = 0.02; // two bearings this near (a degree) are one
 constexpr double FLUSH_PAD_M = 8;
-constexpr double BEYOND = 1e30, TINY = 1e-9;
+constexpr double BEYOND = 1e30, TINY = 1e-9; // farther than anything; a length this small is none
 
 // The lot's axes at a turn: along the front, and from the street into the lot (b40::lot_frame).
 XZ along_of(double rot) { return { std::cos(rot), -std::sin(rot) }; }

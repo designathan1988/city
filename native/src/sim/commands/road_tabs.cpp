@@ -20,7 +20,7 @@ namespace city {
 
 namespace {
 constexpr size_t JUNCTION_ARMS = 3; // fewer arms need no control
-constexpr float SAME_WIDTH_M = 0.01f;
+constexpr float SAME_WIDTH_M = 0.01f; // two widths a centimetre apart are one
 
 // The profile reads the same from both ends (strips mirrored, lane directions turned).
 bool mirror_symmetric(const Profile &p) {

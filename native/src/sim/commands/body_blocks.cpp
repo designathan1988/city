@@ -23,7 +23,7 @@ using namespace b40;
 
 namespace {
 constexpr const char *NO_BLOCK = "tool.failed", *PRIMITIVE_ID = "primitive";
-constexpr float TOUCH_AREA_M2 = 1e-3f;
+constexpr float TOUCH_AREA_M2 = 1e-3f; // two blocks sharing less than this do not touch
 constexpr int PRIMITIVE_ZONE = 1;
 
 float on_grid(const Tuning &t, float x) { return std::round(x / float(t.build_grid_m)) * float(t.build_grid_m); }

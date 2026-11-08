@@ -6,6 +6,7 @@
 #include "sim/commands/body_ops.h"
 
 #include "core/math.h"
+#include "core/units.h"
 
 #include <algorithm>
 #include <cmath>
@@ -19,7 +20,7 @@ using namespace b40;
 
 namespace {
 constexpr const char *NO_BLOCK = "tool.failed", *NOT_THAT_PLAN = "building.problem.outline";
-constexpr float RADIANS_PER_DEG = TAU_F / 360.f, TOUCH_AREA_M2 = 1e-3f, CLICK_IN_M = 1.2f, NO_SHIFT = 1e-6f, SIZE_SLACK_M = 1e-3f;
+constexpr float RADIANS_PER_DEG = DEG_TO_RAD, TOUCH_AREA_M2 = 1e-3f, CLICK_IN_M = 1.2f, NO_SHIFT = 1e-6f, SIZE_SLACK_M = 1e-3f;
 constexpr int LEAST_CORNERS = 3, FRAME_BAYS = 2;
 constexpr uint32_t KEY_FIELD = (1u << KEY_SIDE_SHIFT) - 1;
 

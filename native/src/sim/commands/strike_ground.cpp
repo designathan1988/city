@@ -17,8 +17,8 @@ constexpr float SPLINTER_SHARE = 0.4f; // within this share of the knock-out ran
 constexpr float SPLINTER_CHANCE = 0.6f;
 constexpr float MIN_NORMAL_M = 1.f;
 constexpr float ARC_DRAW_SCALE = 8.f; // the arc a piece stands at, as the draw's identity
-constexpr uint32_t SALT_CRATER = 0x63726174U;
-constexpr uint32_t SALT_THROW = 0x7468726fU;
+constexpr uint32_t SALT_CRATER = 0x63726174U; // a stream's salt: the word it names, in ASCII
+constexpr uint32_t SALT_THROW = 0x7468726fU; // a stream's salt: the word it names, in ASCII
 
 GoneKind kind_of(FurnitureKind k) {
 	switch (k) {

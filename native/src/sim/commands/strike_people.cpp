@@ -12,21 +12,21 @@
 namespace city {
 
 namespace {
-constexpr uint32_t SALT_DEATH = 0x64656174U;
-constexpr uint32_t SALT_EAR = 0x65617273U;
-constexpr uint32_t SALT_LIMBS = 0x6c696d62U;
-constexpr uint32_t SALT_LIE = 0x6c696573U;
-constexpr uint32_t SALT_SEVER = 0x73657665U;
-constexpr uint32_t SALT_MAIM = 0x6d61696dU;
-constexpr uint32_t SALT_BODY = 0x626f6479U;
+constexpr uint32_t SALT_DEATH = 0x64656174U; // a stream's salt: the word it names, in ASCII
+constexpr uint32_t SALT_EAR = 0x65617273U; // a stream's salt: the word it names, in ASCII
+constexpr uint32_t SALT_LIMBS = 0x6c696d62U; // a stream's salt: the word it names, in ASCII
+constexpr uint32_t SALT_LIE = 0x6c696573U; // a stream's salt: the word it names, in ASCII
+constexpr uint32_t SALT_SEVER = 0x73657665U; // a stream's salt: the word it names, in ASCII
+constexpr uint32_t SALT_MAIM = 0x6d61696dU; // a stream's salt: the word it names, in ASCII
+constexpr uint32_t SALT_BODY = 0x626f6479U; // a stream's salt: the word it names, in ASCII
 constexpr int LIMB_KINDS = 5; // head, two arms, two legs
 constexpr float THROW_FLOOR = 0.3f; // the least share of the throw a body at the edge of the blast gets: it still moves a little
 constexpr float DEATH_REACH_SHARE = 1.1f; // vehicles are blown within this share of the range of their limit
 constexpr float FAR_DIE_HEAD = 0.25f; // a killed body further out loses its head with this chance
 constexpr uint32_t TORN_BIT = 1;
 constexpr float TORN_NEAR_SHARE = 0.6f; // the drivers torn apart sit within this share of the range that blows their car
-constexpr int CHANCE_BITS = 8;
-constexpr float BYTE_RANGE = 256.f;
+constexpr int CHANCE_BITS = 8; // a chance drawn as a byte of the hash
+constexpr float BYTE_RANGE = 256.f; // ... over the byte's 256 values
 
 float heading_of(const Pose &p) { return std::atan2(p.fz, p.fx); }
 

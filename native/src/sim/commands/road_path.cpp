@@ -16,7 +16,7 @@ namespace city {
 
 namespace {
 constexpr double TOLERANCE_GROWTH = 1.5; // the thinning loosens by this until the stroke fits max_controls
-constexpr double SAME_POINT_M = 1e-6;
+constexpr double SAME_POINT_M = 1e-6; // two points this near are one
 constexpr double NODE_FOUND_M = 0.01; // the node a piece just laid ends on
 
 double dist(const XZ &a, const XZ &b) { return std::hypot(a.x - b.x, a.z - b.z); }

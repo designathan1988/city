@@ -14,7 +14,7 @@
 namespace city {
 
 namespace {
-constexpr uint32_t DAB_SALT = 0xe1e3e47u;
+constexpr uint32_t DAB_SALT = 0xe1e3e47u; // a stream's salt: any fixed odd number apart from the others
 constexpr int DRAWS_A_SPOT = 3; // a spot too near another is drawn again this many times
 const char *const FULL = "hint.element.full";
 

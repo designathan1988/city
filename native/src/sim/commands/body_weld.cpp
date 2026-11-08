@@ -1,5 +1,6 @@
 // Two buildings made one (model_ops.h): the blocks of the one absorbed go over to the other's lot frame as they stand, each with the
 // walls and roof it had. A block at another bearing keeps its plan as an outline; parts keep their boxes, turned by quarters.
+#include "core/math.h"
 #include "sim/buildings/b40/plan_area.h"
 #include "sim/commands/model_ops.h"
 
@@ -11,7 +12,7 @@ namespace city {
 using namespace b40;
 
 namespace {
-constexpr float QUARTER_RAD = 1.5707963f, SAME_BEARING_RAD = 1e-3f;
+constexpr float QUARTER_RAD = PI_F / 2, SAME_BEARING_RAD = 1e-3f; // a quarter turn; two bearings this near are one
 constexpr int SIDES = 4;
 
 struct Move {

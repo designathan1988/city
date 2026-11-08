@@ -14,7 +14,7 @@
 namespace city {
 
 namespace {
-constexpr double UNIT_LEN_EPS = 1e-6;
+constexpr double UNIT_LEN_EPS = 1e-6; // a direction this short is none
 const char *const OFF_FOOTWAY = "hint.streetscape.offFootway";
 const char *const NARROW = "hint.streetscape.narrow";
 const char *const OCCUPIED = "hint.streetscape.occupied";

@@ -16,7 +16,7 @@ namespace city {
 namespace {
 constexpr float LOT_REACH_M = 80.f; // the widest lot: a centre this far outside the reach may still have a wall inside it
 constexpr float STANDOFF_DEPTH = 0.5f; // the load on a wall is that at its distance plus half the building's depth
-constexpr uint32_t SALT_FIRE = 0x66697265U;
+constexpr uint32_t SALT_FIRE = 0x66697265U; // a stream's salt: the word it names, in ASCII
 constexpr float SPHERE_VOLUME = 4.18879f; // 4/3 of pi
 
 // What the building feels: the blast at its distance taken to the middle of its depth.

@@ -18,7 +18,7 @@ namespace city {
 using namespace b40;
 
 namespace {
-constexpr float GRAZING = 1e-6f;
+constexpr float GRAZING = 1e-6f; // a ray this parallel to a face misses it
 constexpr int ROOF_STEPS = 16; // a slope is walked in this many heights: a click lands within a sixteenth of the ridge
 
 // The ray in a lot's frame: x along the front, y away from the street, z over the building's floor.

@@ -9,7 +9,7 @@ namespace city {
 
 namespace {
 constexpr float HIDDEN_M = 1.2f;
-constexpr int ALPHA_SEEN = 128, RGB_MAX = 255;
+constexpr int ALPHA_SEEN = 128, RGB_MAX = 255; // a pixel seen past half alpha; a channel's top
 
 float dot(const SurveyPoint &a, const SurveyPoint &b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
 SurveyPoint minus(const SurveyPoint &a, const SurveyPoint &b) { return { a.x - b.x, a.y - b.y, a.z - b.z }; }

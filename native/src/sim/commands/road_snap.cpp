@@ -15,7 +15,7 @@ namespace city {
 
 namespace {
 constexpr int GRID_HEADINGS = 8; // the grid's two lines both ways, then the diagonals between them
-constexpr double ON_HEADING = 1e-9;
+constexpr double ON_HEADING = 1e-9; // a cross product this small: the point is on the heading
 constexpr double RAY_PAD_M = 1; // the snapped ray reaches past twice the pointer's distance by this
 constexpr double HALF = 0.5;
 

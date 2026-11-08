@@ -17,7 +17,7 @@ namespace city {
 using namespace b40;
 
 namespace {
-constexpr float SIZE_EPS = 1e-3f;
+constexpr float SIZE_EPS = 1e-3f; // a size this near another is the same
 
 // Whether `o` reaches `v`'s floor: by levels at the same height, by metres on a split level.
 bool bears(const Body &b, const Volume &o, const Volume &v) {

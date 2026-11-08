@@ -1,5 +1,6 @@
 // The Parts tab's edits: free elements set against a bay or on the ground, changed, repeated and taken away (body_ops.h). How a part
 // fits a wall is data (`PartSpec`, from data/ui/builder.json): a part stands in the lot frame, w across its facing, d along it.
+#include "core/math.h"
 #include "sim/buildings/b40/gen.h"
 #include "sim/buildings/b40/plan_area.h"
 #include "sim/commands/body_ops.h"
@@ -12,10 +13,10 @@ namespace city {
 using namespace b40;
 
 namespace {
-constexpr float SHORTEST_LEG_M = .4f, LOWEST_FLIGHT_M = .5f, LOWEST_STEP_M = .2f, FLIGHT_WIDTH_M = 1.2f, BAND_WIDTH_M = 1.6f, THINNEST_M = .12f, QUARTER_TURN = 1.57079633f;
+constexpr float SHORTEST_LEG_M = .4f, LOWEST_FLIGHT_M = .5f, LOWEST_STEP_M = .2f, FLIGHT_WIDTH_M = 1.2f, BAND_WIDTH_M = 1.6f, THINNEST_M = .12f, QUARTER_TURN = PI_F / 2;
 constexpr const char *NO_TARGET = "tool.failed";
-constexpr float AREA_EPS = 1e-3f, TOUCH_EPS = 1e-3f;
-constexpr int MAX_REPEAT = 64;
+constexpr float AREA_EPS = 1e-3f, TOUCH_EPS = 1e-3f; // an area this small is none; two faces this near touch
+constexpr int MAX_REPEAT = 64; // the most copies a repeat lays (build_max_parts caps the body's parts)
 
 // The frame of a side of a block: where its bays start, the way they run, and out of the wall.
 struct WallFrame {

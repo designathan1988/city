@@ -13,7 +13,7 @@
 namespace city {
 
 namespace {
-constexpr size_t BYTES_PER_MB = size_t(1) << 20;
+constexpr size_t BYTES_PER_MB = size_t(1) << 20; // a mebibyte
 constexpr double SETTLE_PAD_M = 4; // the box an undo settles reaches one height sample past what it touched
 
 // The lane graph follows an undo/redo the same way it follows a journal op: mark what the traffic must rebuild.

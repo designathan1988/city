@@ -18,7 +18,7 @@ using namespace b40;
 
 namespace {
 constexpr double SEED_GRID_M = 0.5;
-constexpr uint32_t PLACE_SALT = 0x5bd1e995u;
+constexpr uint32_t PLACE_SALT = 0x5bd1e995u; // a stream's salt: any fixed odd number apart from the others
 constexpr float FACE_REACH_M = 40.f; // how far off a street a lot still takes that street as its own
 constexpr float TOUCH_M2 = 1e-3f; // lots meeting at an edge do not overlap
 
