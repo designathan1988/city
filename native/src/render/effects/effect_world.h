@@ -86,6 +86,10 @@ private:
 	static float heap_of(const Ruin &r); // how high its mound stands
 	void furniture(const DamageEvent &e, const CityState &s);
 	void pole(const DamageEvent &e); // a pole or a signal post knocked out (effect_things.cpp)
+public:
+	// A tree brought down at its foot `at`, of its height and crown width, thrown along `way` (effect_things.cpp).
+	void fell(const godot::Vector3 &at, float height, float width, const godot::Vector3 &way);
+private:
 	void body(const DamageEvent &e, const CityState &s); // the body of someone struck, the pieces cut off it, what came out
 	void organs(const godot::Vector3 &at, int count, const godot::Vector3 &kick); // what was inside, thrown (effect_bodies.cpp)
 	void tracer(const DamageEvent &e); // a bullet's line and where it ends

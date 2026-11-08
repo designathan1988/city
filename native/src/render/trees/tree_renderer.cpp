@@ -63,6 +63,13 @@ void TreeRenderer::set_params(const RID &material) const {
 	rs->material_set_param(material, "picture_top_deg", kit_.pictures().top_elevation_deg());
 }
 
+void TreeRenderer::felled(const CityState &s, float x, float z, float r, int clearing, std::vector<TreeInstance> &out) {
+	for_chunks(x - r, z - r, x + r, z + r, [&](int64_t key) {
+		if (near_.count(key) == 0) return; // far, its card goes with its chunk's next bake
+		felled_trees(s, trees_, kit_, *grounds_->of(s, key), key, x, z, r, clearing, out);
+	});
+}
+
 void TreeRenderer::reset() {
 	for (Tier &t : tier_) t.clear();
 	for (auto &kv : near_) {

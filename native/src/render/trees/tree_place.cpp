@@ -189,7 +189,9 @@ struct WildTree {
 };
 
 // The cell's tree, if it holds one.
-bool wild_tree(const CityState &s, const TreeLook &T, const ChunkGround &l, const PlateCells &px, const PlateCells &py, int i, int j, WildTree &w) {
+// `standing`: a clearing not counted (the trees it took, as they stood before it).
+bool wild_tree(const CityState &s, const TreeLook &T, const ChunkGround &l, const PlateCells &px, const PlateCells &py, int i, int j, WildTree &w,
+		int standing) {
 	int gi = i + px.hash0, gj = j + py.hash0;
 	float roll = float(woods_hash(gi, gj, WOOD_KEEP));
 	if (roll >= T.most) return false; // above the highest chance: its density is never read
@@ -198,7 +200,7 @@ bool wild_tree(const CityState &s, const TreeLook &T, const ChunkGround &l, cons
 	if (roll >= T.keep_at(d, b) * T.share.load(std::memory_order_relaxed)) return false;
 	w.x = px.corner + (i + 0.5f + (float(woods_hash(gi, gj, WOOD_X)) - 0.5f) * T.jitter) * T.grid_m;
 	w.z = -(py.corner + (j + 0.5f + (float(woods_hash(gi, gj, WOOD_Z)) - 0.5f) * T.jitter) * T.grid_m);
-	if (!ground_ok(s, T, w.x, w.z, T.grid_m, w.y) || s.nature.planted.cleared(w.x, w.z)) return false;
+	if (!ground_ok(s, T, w.x, w.z, T.grid_m, w.y) || s.nature.planted.cleared(w.x, w.z, standing)) return false;
 	const BandLook &B = T.band[size_t(b)];
 	w.species = B.mix.pick(float(woods_hash(gi, gj, WOOD_KIND)));
 	float r = h01(cell_hash(gi, gj, WILD_SALT), TINT);
@@ -213,7 +215,7 @@ bool wild_tree(const CityState &s, const TreeLook &T, const ChunkGround &l, cons
 // The trees of the woods and the open land whose cell's centre lies in the chunk. The lattice runs on the map's own axes (its north is -z). A tree's
 // crowd is its neighbours, each weighing less with distance, out to crowd_reach_m: deep in a wood it stands taller and narrower, and at a wood's edge
 // it leans away from them. They are read within the plate.
-void wild(const CityState &s, const TreeLook &T, const TreeKit &kit, const ChunkGround &l, int64_t key, std::vector<TreeInstance> &out) {
+void wild(const CityState &s, const TreeLook &T, const TreeKit &kit, const ChunkGround &l, int64_t key, std::vector<TreeInstance> &out, int standing = -1) {
 	float x0 = key_x(key) * CHUNK, z0 = key_y(key) * CHUNK;
 	PlateCells px = plate_cells(T, x0, x0 + CHUNK), py = plate_cells(T, -(z0 + CHUNK), -z0);
 	int margin = int(std::ceil(T.crowd_reach_m / T.grid_m)), cells = int(std::floor(T.plate_m / T.grid_m));
@@ -221,7 +223,7 @@ void wild(const CityState &s, const TreeLook &T, const TreeKit &kit, const Chunk
 	for (int j = std::max(0, py.first - margin); j <= std::min(cells - 1, py.last + margin); j++)
 		for (int i = std::max(0, px.first - margin); i <= std::min(cells - 1, px.last + margin); i++) {
 			WildTree w;
-			if (!wild_tree(s, T, l, px, py, i, j, w)) continue;
+			if (!wild_tree(s, T, l, px, py, i, j, w, standing)) continue;
 			w.own = i >= px.first && i <= px.last && j >= py.first && j <= py.last;
 			trees.push_back(w);
 		}
@@ -305,6 +307,14 @@ void place_trees(const CityState &s, const StreetLook &L, const TreeLook &T, con
 	parks(s, T, l, key, GardenView::NEAR, out);
 	planted(s, T, key, out);
 	wild(s, T, kit, l, key, out);
+}
+
+void felled_trees(const CityState &s, const TreeLook &T, const TreeKit &kit, const ChunkGround &l, int64_t key, float x, float z, float r,
+		int clearing, std::vector<TreeInstance> &out) {
+	std::vector<TreeInstance> trees;
+	wild(s, T, kit, l, key, trees, clearing);
+	for (const TreeInstance &t : trees)
+		if ((t.p.x - x) * (t.p.x - x) + (t.p.z - z) * (t.p.z - z) < r * r) out.push_back(t);
 }
 
 void place_far(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, const ChunkGround &l, int64_t key,

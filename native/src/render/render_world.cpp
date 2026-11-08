@@ -248,6 +248,15 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 		effects_.touch_terrain(s, terrain_rects_);
 		effects_.sync(s, f);
 		taken_.take(effects_.played());
+		for (const DamageEvent &e : effects_.played()) { // the woods' trees a blow brought down, as they stood, thrown each at its size
+			if (e.kind != DamageEvent::TREES_FELLED) continue;
+			felled_.clear();
+			trees_.felled(s, e.x, e.z, e.a, int(e.u), felled_);
+			for (const TreeInstance &t : felled_) {
+				const Vector3 out(t.p.x - e.x, 0, t.p.z - e.z);
+				effects_.fell(t.p, t.height, t.width, out.length_squared() > 0.f ? out.normalized() : Vector3());
+			}
+		}
 		const std::vector<int64_t> repaint = effects_.take_repaint();
 		if (!repaint.empty()) {
 			buildings_.set_broken(effects_.broken());

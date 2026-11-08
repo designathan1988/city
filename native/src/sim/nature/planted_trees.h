@@ -54,8 +54,8 @@ public:
 			if (t.alive && t.x >= minx && t.x <= maxx && t.z >= minz && t.z <= maxz) fn(id);
 		});
 	}
-	// True when a clearing covers the point.
-	bool cleared(float x, float z) const;
+	// True when a clearing covers the point; `but` a clearing not counted (the trees a new clearing took, as they stood before it).
+	bool cleared(float x, float z, int but = -1) const;
 	// The clearings near the box, for a whole chunk's candidates to test (`cleared` looks them up one by one).
 	void clearings_near(float minx, float minz, float maxx, float maxz, std::vector<int> &out) const;
 

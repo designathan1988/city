@@ -70,8 +70,8 @@ O que falta fazer, por área.
 - Demolition (bomb, pistol, demolish), 2026-11-08 (log/work-log.md, the bomb's round): done this round: the crater on a raised
   road, the ground it heaved, the player's poles brought down with their wires hanging, shorted buildings, arcs, leaks, the
   pieces of a lighting column, a shrub or a small box, everything laid on the street's surface. Left: a landmark (own design)
-  falls as a mound and an own-design building does not break in part; natural trees off the streets and parks, and the player's planted trees, do not fall with the bomb (`render/trees/tree_place.cpp`);
-  a joined lamp row (the span through a node, `join_rows`) is cut with no wire left hanging; a charge on a bridge digs its
+  falls as a mound and an own-design building does not break in part; the trees of a lot's garden and of a park's grove stand
+  through a blow (the woods' and the planted ones fall); a joined lamp row (the span through a node, `join_rows`) is cut with no wire left hanging; a charge on a bridge digs its
   crater decal on the terrain under it (the crater keeps no height of its own); the scar of a tower shows its floor slabs' rubble
   in uniform grey; old saves whose knocked lighting columns were filed as trees show those columns again (the kinds are now
   their own). As before: the pieces land on each other by a height map, with no collision between two in the air; past 24

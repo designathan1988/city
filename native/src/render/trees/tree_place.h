@@ -107,6 +107,9 @@ struct FarCard {
 // The trees of 256 m chunk `key` on its ground `l` (chunk_ground), near models.
 void place_trees(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, const ChunkGround &l, int64_t key,
 		std::vector<TreeInstance> &out);
+// The trees of the woods of chunk `key` within `r` of (x, z) as they stood before `clearing` took them (a blow brought them down).
+void felled_trees(const CityState &s, const TreeLook &T, const TreeKit &kit, const ChunkGround &l, int64_t key, float x, float z, float r,
+		int clearing, std::vector<TreeInstance> &out);
 // The far cards of chunk `key` on its ground `l`: the same trees, one card each.
 void place_far(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, const ChunkGround &l, int64_t key,
 		std::vector<FarCard> &out);

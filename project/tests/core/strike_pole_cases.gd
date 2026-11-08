@@ -12,6 +12,9 @@ const REACH := 6.0
 const FORCE := 5
 const DRAWN_FRAMES := 600 # frames the effects have to play the blow
 const MIDDLE := 0.5
+const GROVE_OFF := Vector3(0, 0, 14) # a grove planted off the street, inside the charge's reach
+const GROVE_M := 8.0
+const GROVE := {"density": 400.0, "height": 8.0, "variation": 0.0, "spacing": 3.0} # trees a hectare
 
 var t: Node # the test (TestCase): its check and frames
 
@@ -37,6 +40,11 @@ func run() -> void:
 	var mid := a.lerp(e, MIDDLE)
 	var hit: Dictionary = CityStore.query(&"raycast", [mid + Vector3.UP * FIELD_M, Vector3.DOWN])
 	var deck: Vector3 = hit.position if hit.get("hit", false) else mid
+	CityStore.dispatch(&"begin_stroke", ["cmd.place.trees"])
+	CityStore.dispatch(&"tree_path", [PackedVector3Array([mid + GROVE_OFF]), GROVE_M, 0, 0, GROVE])
+	CityStore.dispatch(&"end_stroke")
+	var grove: Dictionary = CityStore.query(&"landscape")
+	t.check(grove.planted > 0, "a grove planted beside the street (%d trees)" % grove.planted)
 	var standing: Dictionary = CityStore.query(&"street_counts")
 	var damage: Dictionary = CityStore.query(&"damage_probe")
 	var before: Dictionary = CityStore.query(&"state_hash")
@@ -46,6 +54,8 @@ func run() -> void:
 	t.check(CityStore.query(&"damage_probe").craters == damage.craters + 1, "it dug a crater on the road, over the terrain as the road stands")
 	t.check(down.poles < standing.poles and down.spans < standing.spans, "poles came down with their wires (%d -> %d)" % [standing.poles, down.poles])
 	t.check(down.poles > 0, "the poles past its reach stand")
+	var felled: Dictionary = CityStore.query(&"landscape")
+	t.check(felled.planted < grove.planted and felled.clearings == grove.clearings + 1, "the trees in its reach came down, the woods' with them (%d -> %d)" % [grove.planted, felled.planted])
 	for f in DRAWN_FRAMES:
 		var seen: Dictionary = CityStore.query(&"damage_probe")
 		if seen.wires_down > 0 and seen.heave > 0:
@@ -56,6 +66,7 @@ func run() -> void:
 	t.check(drawn.heave > 0, "the crater laid the ground it heaved (%d pieces)" % drawn.heave)
 	t.check(CityStore.dispatch(&"undo", []), "undid the charge")
 	t.check(CityStore.query(&"street_counts").poles == standing.poles, "undo stood every pole again")
+	t.check(CityStore.query(&"landscape").planted == grove.planted, "and every tree")
 	t.check(CityStore.query(&"state_hash").whole == before.whole, "and left the city as it was")
 	t.check(CityStore.dispatch(&"redo", []), "redid the charge")
 	t.check(CityStore.query(&"state_hash").whole == after.whole, "redo brought the same down")

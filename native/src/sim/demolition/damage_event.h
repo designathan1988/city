@@ -22,6 +22,9 @@ namespace city {
 //   GEYSER         x y z, a = seconds
 //   LEAK / SPARK   x y z on a wall a blow struck, a = seconds: a pipe spurting, the wiring shorting
 //   FURNITURE      x y z, u = GoneKind, dx dz = the way thrown, a = FURNITURE_WHOLE, _SPLINTERS or _SNAPPED, v = 1 a pole with a lamp
+//   TREE_FELL      a planted tree a blow brought down: x y z its foot, a its height, dx dz the way it is thrown
+//   TREES_FELLED   the woods' trees a blow brought down: x z the burst, a the reach, u the clearing that took them (the render lists
+//                  the trees of the woods that clearing hides, as they stood, and throws them)
 //   WIRE           a wire torn loose, hanging from the pole left standing: x y z its foot and ground, dx dz its seat line (the arm,
 //                  toward the street, unit), b c the fallen pole's foot, d the ground there, a = the angle (rad, of x z) out from the
 //                  burst at the fallen end, u = 1 when the standing pole is rural
@@ -29,7 +32,7 @@ namespace city {
 //   DRIP           x y z: somebody hurt walked there, bleeding
 struct DamageEvent {
 	enum Kind : uint8_t { BLAST, SHOT, WOUND, BUILDING_DOWN, BUILDING_HIT, BUILDING_SCAR, VEHICLE_BLOWN, VEHICLE_HIT, VEHICLE_DROP, CASUALTY, GEYSER,
-		LEAK, SPARK, FURNITURE, IGNITE, DRIP, WIRE };
+		LEAK, SPARK, FURNITURE, IGNITE, DRIP, WIRE, TREE_FELL, TREES_FELLED };
 	Kind kind = BLAST;
 	int id = -1;
 	float x = 0, y = 0, z = 0, dx = 0, dz = 0, a = 0, b = 0, c = 0, d = 0;

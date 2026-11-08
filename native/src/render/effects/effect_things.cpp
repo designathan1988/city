@@ -20,21 +20,17 @@ constexpr float SNAP_THROW = 0.7f, LAMP_THROW = 1.2f; // of the push: a snapped 
 // A lighting column (streets.json props: about 9 m, 0.12 m across at its top), a shrub and a small box.
 constexpr float COLUMN_H = 9.f, COLUMN_R = 0.12f, COLUMN_SPIN = 1.6f, COLUMN_HEAD_LIFT = 4.f;
 constexpr float COLUMN_HEAD_L = 0.78f, COLUMN_HEAD_T = 0.14f, COLUMN_HEAD_W = 0.38f;
-constexpr float BUSH_TALL = 1.2f, BUSH_STEM = 0.14f, BUSH_LEAF = 0.3f, BUSH_LEAF_THICK = 0.05f, BUSH_TOP_SHARE = 0.8f;
+constexpr float BUSH_TALL = 1.2f, BUSH_STEM = 0.14f, BUSH_LEAF = 0.3f, BUSH_LEAF_DEPTH = 0.05f, BUSH_TOP_SHARE = 0.8f;
 constexpr int BUSH_LEAVES = 14, SCRAP_PIECES = 4;
 constexpr float SCRAP_FROM_M = 0.5f;
 constexpr float SCRAP_L_LEAST = 0.2f, SCRAP_T_LEAST = 0.06f, SCRAP_W_LEAST = 0.1f, SCRAP_L_MORE = 0.5f, SCRAP_T_MORE = 0.2f, SCRAP_W_MORE = 0.3f;
 constexpr float BENCH_L = 1.6f, BENCH_W = 0.5f, BENCH_H = 0.5f, BIN_L = 0.5f, BIN_H = 0.9f;
 constexpr float BENCH_SLAT_SHARE = 0.3f; // a bench thrown flat: its thickness over its height
-constexpr float TRUNK_R = 0.2f, TRUNK_H = 3.f, LEAF_SIZE = 0.5f, LEAF_THICK = 0.1f;
-constexpr float TRUNK_TOP_SHARE = 0.9f, TRUNK_STUMP_SHARE = 0.25f, TRUNK_HALF = 0.5f, CROWN_HEIGHT_K = 1.7f;
-constexpr float SPLINTER_R = 0.05f, SPLINTER_LEN_MIN = 0.3f, SPLINTER_LEN_SPAN = 0.5f;
-constexpr int CROWN_LEAVES = 24, SPLINTERS = 6;
-constexpr float THROW_SPEED = 5.f, THROW_LIFT = 3.f, THROW_SCATTER = 4.f, THROWN_SLOW = 0.4f, THROWN_TREE = 0.6f;
+constexpr float TRUNK_HALF = 0.5f; // a standing piece's middle, half its height up
+constexpr float THROW_SPEED = 5.f, THROW_LIFT = 3.f, THROW_SCATTER = 4.f, THROWN_SLOW = 0.4f;
 constexpr float SPLINTER_PUSH_MIN = 0.8f, SPLINTER_STEP_MIN = 1.f, SPLINTER_STEP_SPAN = 2.5f, SPLINTER_BASE_M = 0.5f;
 constexpr float WRECK_L = 4.4f, WRECK_H = 1.4f, WRECK_W = 1.8f, CAR_BURN_S = 40.f, CAR_THROW_SPEED = 9.f, WRECK_LIFT = 3.f;
 constexpr float MOPED_BURN_S = 10.f; // a moped or a bike burns less
-constexpr float TRUNK_BURN_S = 10.f; // a thrown trunk smoulders as long
 constexpr float ROLL_R = 0.32f, ROLL_W = 0.22f;
 constexpr float FIRE_PUFFS_CAR = 40.f, FIRE_PUFFS_BIKE = 15.f, FIRE_SPREAD_CAR = 1.2f, FIRE_SPREAD_BIKE = 0.6f, FIRE_SIZE = 1.4f, FIRE_LIFE = 1.f;
 constexpr float BLOOD_PUFFS = 40.f, BLOOD_SPREAD_M = 0.2f, BLOOD_SIZE_M = 0.04f, BLOOD_LIFE_S = 0.8f;
@@ -121,22 +117,36 @@ void EffectWorld::furniture(const DamageEvent &e, const CityState &) {
 		case GoneKind::SHRUB: // its stem thrown over, its leaves scattered
 			piece(at + Vector3(0, BUSH_TALL * TRUNK_HALF, 0), Vector3(BUSH_STEM, BUSH_TALL, BUSH_STEM), push * THROWN_SLOW, c.wood, true);
 			for (int k = 0; k < BUSH_LEAVES; k++)
-				piece(at + Vector3(0, BUSH_TALL * BUSH_TOP_SHARE, 0), Vector3(BUSH_LEAF, BUSH_LEAF_THICK, BUSH_LEAF), push + scatter(rng_, THROW_SCATTER * 2.f), c.leaf);
+				piece(at + Vector3(0, BUSH_TALL * BUSH_TOP_SHARE, 0), Vector3(BUSH_LEAF, BUSH_LEAF_DEPTH, BUSH_LEAF), push + scatter(rng_, THROW_SCATTER * 2.f), c.leaf);
 			break;
 		case GoneKind::BOX: // a post box, a phone or a sign: in a few pieces of metal
 			for (int k = 0; k < SCRAP_PIECES; k++)
 				piece(at + Vector3(0, SCRAP_FROM_M, 0), Vector3(SCRAP_L_LEAST + rng_.f() * SCRAP_L_MORE, SCRAP_T_LEAST + rng_.f() * SCRAP_T_MORE, SCRAP_W_LEAST + rng_.f() * SCRAP_W_MORE),
 						push + scatter(rng_, THROW_SCATTER), c.metal);
 			break;
-		default: { // a tree: a charred stump, the trunk thrown, splinters and the crown in clumps of leaves
-			piece(at + Vector3(0, TRUNK_H * TRUNK_STUMP_SHARE, 0), Vector3(TRUNK_R, TRUNK_H * TRUNK_HALF, TRUNK_R), Vector3(), c.charred, true);
-			piece(at + Vector3(0, TRUNK_H, 0), Vector3(TRUNK_R * TRUNK_TOP_SHARE, TRUNK_H * TRUNK_HALF, TRUNK_R * TRUNK_TOP_SHARE), push * THROWN_TREE, c.wood, true, TRUNK_BURN_S);
-			for (int k = 0; k < SPLINTERS; k++)
-				piece(at + Vector3(0, TRUNK_H * TRUNK_HALF, 0), Vector3(SPLINTER_R, SPLINTER_LEN_MIN + rng_.f() * SPLINTER_LEN_SPAN, SPLINTER_R), push + scatter(rng_, THROW_SCATTER), c.wood);
-			for (int k = 0; k < CROWN_LEAVES; k++)
-				piece(at + Vector3(0, TRUNK_H * CROWN_HEIGHT_K, 0), Vector3(LEAF_SIZE * (SPLINTER_PUSH_MIN + rng_.f()), LEAF_THICK, LEAF_SIZE * (SPLINTER_PUSH_MIN + rng_.f())), push + scatter(rng_, THROW_SCATTER * 2.f), c.leaf);
-			break;
-		}
+		default: fell(at, params_.tree.street_height_m, params_.tree.street_width_m, Vector3(e.dx, 0, e.dz)); break; // a street tree
+	}
+}
+
+void EffectWorld::fell(const Vector3 &at, float height, float width, const Vector3 &way) {
+	const auto &L = params_.tree;
+	const Tints &c = params_.tints;
+	const Vector3 push(way.x * THROW_SPEED, THROW_LIFT, way.z * THROW_SPEED);
+	const Vector3 axis = way.length_squared() > 0.f ? UP.cross(way).normalized() : ACROSS_X; // the crown falls the way it is thrown
+	const float r = height * L.trunk_r_share, cut = height * (L.stump_min + rng_.f() * L.stump_span);
+	PieceSpec stump = turning(at + Vector3(0, cut * TRUNK_HALF, 0), Vector3(r, cut, r), Vector3(), c.charred, Vector3());
+	stump.still = true;
+	debris_.add(stump);
+	PieceSpec trunk = turning(at + Vector3(0, cut + (height - cut) * TRUNK_HALF, 0), Vector3(r, height - cut, r), push * L.throw_share, c.wood,
+			axis * (L.spin_min + rng_.f() * L.spin_span));
+	trunk.burn_s = L.burn_min_s + rng_.f() * L.burn_span_s;
+	debris_.add(trunk);
+	for (int k = 0; k < L.chips; k++)
+		piece(at + Vector3(0, cut, 0), Vector3(L.chip_r_m, L.chip_len_min_m + rng_.f() * L.chip_len_span_m, L.chip_r_m), push + scatter(rng_, THROW_SCATTER), c.wood);
+	const int leaves = std::max(1, int(width * L.leaves_per_m));
+	for (int k = 0; k < leaves; k++) {
+		const float a = L.leaf_min_m + rng_.f() * L.leaf_span_m, b = L.leaf_min_m + rng_.f() * L.leaf_span_m;
+		piece(at + Vector3(0, height * L.crown_at, 0), Vector3(a, L.leaf_thick_m, b), push + scatter(rng_, L.leaf_scatter_ms), c.leaf);
 	}
 }
 
@@ -219,6 +229,7 @@ void EffectWorld::apply(const DamageEvent &e, const CityState &s) {
 		case DamageEvent::LEAK: geysers_.push_back({ e.x, e.y, e.z, now_ + double(e.a), 0.f, true }); break;
 		case DamageEvent::SPARK: arc(Vector3(e.x, e.y, e.z), e.a); break;
 		case DamageEvent::WIRE: wire(e); break;
+		case DamageEvent::TREE_FELL: fell(Vector3(e.x, e.y, e.z), e.a, e.a * params_.tree.street_width_m / params_.tree.street_height_m, Vector3(e.dx, 0, e.dz)); break;
 		default: break;
 	}
 }

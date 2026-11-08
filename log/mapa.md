@@ -285,8 +285,10 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/render/frame_admission.h` — the one owner of what a frame admits (`render.commit_budget_ms`, `render.max_chunk_rebuilds_per_frame`, `render.upload_budget_mb`): one deadline, one count of build jobs, one byte ledger and one priority order, made by `RenderWorld::sync` and handed to every producer
 - `native/src/render/effects/effect_world.cpp` · `native/src/render/effects/effect_world.h` — dono dos efeitos da explosão: lê os eventos dos golpes no ChangeLog, desenha crateras e fogos do estado, relógio próprio, clarão (luz), tremor da câmera, gêiseres
 - `native/src/render/effects/effect_blast.cpp` · `native/src/render/effects/effect_things.cpp` · `native/src/render/effects/effect_ruins.cpp` · `native/src/render/effects/effect_bodies.cpp` — o corpo de quem foi atingido, como peças rígidas (cabeça, tronco, braços, pernas na pele e roupa do pedestre; membro arrancado voa sozinho; some quando a pessoa se levanta), o traçante, a ferida e o carro atingido; o monte que um prédio derrubado deixa (cai dentro dele e assenta; o do estado é posto direto, igual toda vez); os eventos tocados uma vez: bola de fogo, fumaça, poeira, estilhaços, anel de onda, fuligem, prédio atingido e caído; mobiliário jogado, veículos explodidos, sangue e corpo dilacerado
-- `native/src/render/effects/effect_params.cpp` · `native/src/render/effects/effect_params.h` — data/render/effects.json and aftermath.json read
-  strictly: the look of the blast, the tints of what it throws, and what it leaves on the street
+- `native/src/render/effects/effect_params.cpp` · `native/src/render/effects/effect_params.h` · `native/src/render/effects/effect_params_aftermath.cpp`
+  · `native/src/render/effects/effect_params_read.h` — data/render/effects.json, aftermath.json and gore.json read strictly: the look of the
+  blast and the tints of what it throws (effect_params.cpp), what it leaves on the street and the gore (effect_params_aftermath.cpp), the
+  reader's helpers both share
 - `native/src/render/effects/heave.cpp` · `native/src/render/effects/heave.h` — the ground a crater heaved: tipped slabs at its lip and plates
   of the surface round it, laid at rest from each crater's seed (the same after an open, an undo or a redo), in two MultiMeshes
 - `native/src/render/effects/ropes.cpp` · `native/src/render/effects/ropes.h` — the wires a blow tore loose: pinned at the pole left

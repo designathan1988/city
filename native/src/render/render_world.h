@@ -181,6 +181,7 @@ private:
 	PropRenderer props_;
 	GroundKept ground_; // the chunks' ground the trees and the cover plant on: before them, so it outlives their jobs
 	TreeRenderer trees_;
+	std::vector<TreeInstance> felled_; // the woods' trees a blow brought down this frame (sync)
 	CoverRenderer cover_;
 	WaterRenderer water_;
 	FogField fog_;

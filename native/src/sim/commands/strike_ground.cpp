@@ -5,6 +5,7 @@
 #include "sim/commands/strike_internal.h"
 
 #include "sim/commands/edit_journal.h"
+#include "sim/commands/nature_commands.h"
 #include "sim/commands/road_edit.h"
 #include "sim/commands/street_journal.h"
 #include "sim/street/pole_arms.h"
@@ -148,6 +149,32 @@ void knock_out_poles(Blow &b, float reach) {
 	}
 	for (int id : down) j_remove_pole(b.s, id);
 }
+
+// The trees within the reach: the planted ones thrown each from where it stood, then a clearing there takes them and the woods'
+// own (cut_trees_at, through the journal: undoing the blow stands them again), which the render lists and throws.
+void fell_trees(Blow &b, float reach) {
+	const PlantedTrees &p = b.s.nature.planted;
+	p.for_trees(b.x - reach, b.z - reach, b.x + reach, b.z + reach, [&](int id) {
+		const PlantedTree &t = p.trees[size_t(id)];
+		const float d = std::hypot(t.x - b.x, t.z - b.z);
+		if (d >= reach) return;
+		DamageEvent e;
+		e.kind = DamageEvent::TREE_FELL;
+		e.x = t.x; e.z = t.z; e.y = b.s.terrain.height_at(t.x, t.z);
+		e.a = t.height;
+		e.dx = (t.x - b.x) / std::max(d, MIN_NORMAL_M);
+		e.dz = (t.z - b.z) / std::max(d, MIN_NORMAL_M);
+		b.emit(e);
+	});
+	const int clearing = cut_trees_at(b.s, b.x, b.z, reach);
+	if (clearing < 0) return; // the map holds as many clearings as it may: the woods stand
+	DamageEvent e;
+	e.kind = DamageEvent::TREES_FELLED;
+	e.x = b.x; e.z = b.z; e.y = b.ground;
+	e.a = reach;
+	e.u = uint32_t(clearing);
+	b.emit(e);
+}
 } // namespace
 
 void strike_ground(Blow &b) {
@@ -155,6 +182,7 @@ void strike_ground(Blow &b) {
 	const float reach = std::min(blast::range_at_pressure(p, b.kg, p.pole_kpa), FURNITURE_REACH_M);
 	knock_out_furniture(b, reach);
 	knock_out_poles(b, reach);
+	fell_trees(b, reach); // a tree falls to the blow that topples a pole
 	if (b.on_building) return; // a burst on a roof digs no crater
 	const float radius = blast::crater_radius(p, b.kg, b.soil), depth = blast::crater_depth(p, b.kg, b.soil);
 	j_add_crater(b.s, { b.x, b.z, radius, depth, uint8_t(b.soil == blast::Surface::HARD), b.bits(SALT_CRATER, 0) });

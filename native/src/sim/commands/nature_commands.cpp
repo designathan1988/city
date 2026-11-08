@@ -75,10 +75,10 @@ void record_trees(CityState &s, const std::vector<int> &ids, const std::vector<P
 }
 } // namespace
 
-bool cut_trees_at(CityState &s, float x, float z, float radius) {
+int cut_trees_at(CityState &s, float x, float z, float radius) {
 	PlantedTrees &p = s.nature.planted;
 	const TreeBrushDef &d = s.catalog.nature.trees;
-	if (p.live_clearings() >= d.max_clearings) return false;
+	if (p.live_clearings() >= d.max_clearings) return -1;
 	std::vector<int> gone;
 	p.for_trees(x - radius, z - radius, x + radius, z + radius, [&](int id) {
 		if (tree_distance(p.trees[size_t(id)], x, z) < radius) gone.push_back(id);
@@ -101,7 +101,7 @@ bool cut_trees_at(CityState &s, float x, float z, float radius) {
 		mark_trees(st, x, z, radius);
 	});
 	mark_trees(s, x, z, radius);
-	return true;
+	return cid;
 }
 
 EditResult set_weather(CityState &s, const Weather &next) {
@@ -229,7 +229,7 @@ EditResult tree_dab(CityState &s, double x, double z, double radius, int mode, i
 	const TreeBrushDef &d = s.catalog.nature.trees;
 	float fx = float(x), fz = float(z), r = float(radius);
 	if (!s.terrain.in_bounds(fx, fz) || kind < 0 || kind >= int(TreeKind::COUNT)) return refused("tool.failed");
-	if (mode == TREE_CUT) return cut_trees_at(s, fx, fz, r) ? done() : refused(FULL);
+	if (mode == TREE_CUT) return cut_trees_at(s, fx, fz, r) >= 0 ? done() : refused(FULL);
 	PlantedTrees &p = s.nature.planted;
 	float reach = r + b.spacing;
 	std::vector<PlantedTree> nearby;

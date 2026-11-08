@@ -40,6 +40,8 @@ public:
 	int64_t baking() const { return tier_[1].baking(); }
 	int64_t waiting() const { return tier_[1].waiting(); }
 	int pending() const;
+	// The woods' trees drawn near within `r` of (x, z) as they stood before `clearing` took them (felled_trees).
+	void felled(const CityState &s, float x, float z, float r, int clearing, std::vector<TreeInstance> &out);
 
 private:
 	struct Near {

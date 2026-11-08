@@ -31,7 +31,7 @@ EditResult element_dab(CityState &s, double x, double z, double radius, int kind
 EditResult clear_elements(CityState &s);
 // The map's ecosystem: a Biome, or Biome::NONE.
 EditResult set_biome(CityState &s, int region);
-// Takes the planted trees in a circle away and leaves a clearing there (the woods' trees go too); false when full.
-bool cut_trees_at(CityState &s, float x, float z, float radius);
+// Takes the planted trees in a circle away and leaves a clearing there (the woods' trees go too): the clearing's id, -1 when full.
+int cut_trees_at(CityState &s, float x, float z, float radius);
 
 } // namespace city

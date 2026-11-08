@@ -125,6 +125,17 @@ struct EffectParams {
 	ArcLook arc;
 	float leak_rate = 0, leak_size = 0, leak_life = 0; // a burst pipe's spurt: puffs a second, their size and life
 	PoleLook pole;
+	// A tree brought down (aftermath.json "tree"): its stump stump_min + stump_span x u of its height, charred; its trunk trunk_r_share of
+	// its height round, thrown throw_share of the push and turning spin_min + spin_span x u rad/s across its way, burning burn_min_s +
+	// burn_span_s x u; `chips` at the break (chip_r_m round, chip_len_min_m + chip_len_span_m x u long); its crown
+	// leaves_per_m clumps a metre of its width, leaf_min_m + leaf_span_m x u across and leaf_thick_m thick, out of crown_at of its
+	// height, scattered leaf_scatter_ms. A street tree, whose size the street does not say, is street_height_m by street_width_m.
+	struct TreeLook {
+		float stump_min = 0, stump_span = 0, trunk_r_share = 0, throw_share = 0, spin_min = 0, spin_span = 0, burn_min_s = 0, burn_span_s = 0;
+		float chip_r_m = 0, chip_len_min_m = 0, chip_len_span_m = 0, leaves_per_m = 0, leaf_min_m = 0, leaf_span_m = 0;
+		float leaf_thick_m = 0, crown_at = 0, leaf_scatter_ms = 0, street_height_m = 0, street_width_m = 0;
+		int chips = 0;
+	} tree;
 	GoreLook gore;
 	godot::Color flash_color;
 	float flash_energy = 0, flash_range_r = 0, flash_range_min = 0, flash_life = 0, flash_decay = 0, flash_height = 0;

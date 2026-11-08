@@ -7,7 +7,8 @@
   "rope",
   "arc",
   "leak",
-  "pole"
+  "pole",
+  "tree"
  ],
  "properties": {
   "_doc": {
@@ -452,6 +453,94 @@
      },
      "minItems": 3,
      "maxItems": 3
+    }
+   }
+  },
+  "tree": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "stump_min",
+    "stump_span",
+    "trunk_r_share",
+    "throw_share",
+    "spin_min",
+    "spin_span",
+    "burn_min_s",
+    "burn_span_s",
+    "chips",
+    "chip_r_m",
+    "chip_len_min_m",
+    "chip_len_span_m",
+    "leaves_per_m",
+    "leaf_min_m",
+    "leaf_span_m",
+    "leaf_thick_m",
+    "crown_at",
+    "leaf_scatter_ms",
+    "street_height_m",
+    "street_width_m"
+   ],
+   "properties": {
+    "stump_min": {
+     "type": "number"
+    },
+    "stump_span": {
+     "type": "number"
+    },
+    "trunk_r_share": {
+     "type": "number"
+    },
+    "throw_share": {
+     "type": "number"
+    },
+    "spin_min": {
+     "type": "number"
+    },
+    "spin_span": {
+     "type": "number"
+    },
+    "burn_min_s": {
+     "type": "number"
+    },
+    "burn_span_s": {
+     "type": "number"
+    },
+    "chips": {
+     "type": "number"
+    },
+    "chip_r_m": {
+     "type": "number"
+    },
+    "chip_len_min_m": {
+     "type": "number"
+    },
+    "chip_len_span_m": {
+     "type": "number"
+    },
+    "leaves_per_m": {
+     "type": "number"
+    },
+    "leaf_min_m": {
+     "type": "number"
+    },
+    "leaf_span_m": {
+     "type": "number"
+    },
+    "leaf_thick_m": {
+     "type": "number"
+    },
+    "crown_at": {
+     "type": "number"
+    },
+    "leaf_scatter_ms": {
+     "type": "number"
+    },
+    "street_height_m": {
+     "type": "number"
+    },
+    "street_width_m": {
+     "type": "number"
     }
    }
   }

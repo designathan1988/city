@@ -885,3 +885,17 @@ photos on render noise (two runs of the same code differ in the same pixels, log
 renderers, the debris, the effects (params, world, bodies, things, heave, ropes), `render_world`, `damage_event.h`, `damage_state`,
 `strike_commands.cpp`, `strike_internal.h`, `wounds.cpp`, `city_core_strike.cpp`, `effects.json`, `aftermath.json` and their schemas,
 `data_tables.gd`, `rules.json`, `look.gd`, `look_aim.gd`, `suites.json`, `log/mapa.md`.
+
+## 2026-11-08 10:40: the bomb brings trees down (English)
+**Problem:** no tree fell to a blow but a street tree: the player's planted trees and the woods stood through any charge.
+**Design:** a tree falls to the blow that topples a pole (`strike_ground.cpp` `fell_trees`, the same reach): the planted trees in it are
+thrown each from where it stood (TREE_FELL, its own height), then `cut_trees_at` (the landscape's own cut, now giving the clearing's
+id) takes them through the journal and leaves a clearing that hides the woods' trees there (TREES_FELLED). The render lists those trees
+as they stood before that clearing (`PlantedTrees::cleared(x, z, but)`, `felled_trees` in tree_place, `TreeRenderer::felled` over the
+near chunks) and throws each at its size: a charred stump, the trunk turning away from the burst and burning, chips, the crown in clumps
+(`EffectWorld::fell`, one owner, the street trees through it too; aftermath.json "tree"). `effect_params.cpp` was split by
+responsibility (the blast; what it leaves and the gore, `effect_params_aftermath.cpp`; the reader's helpers, `effect_params_read.h`).
+**Checks:** `strike_pole_cases.gd` plants a grove by the street: the charge brings the trees in its reach down with a clearing, undo
+stands every one again (and the state hash); `bomb_street_plan.json` plants the same grove and shows stumps, burning trunks and leaves
+inside the reach and the grove standing past it; `strike_test`, `bomb_street`, `bomb_gore`, `shoot_test`, `edit_fuzz_test`,
+`save_undo_test` pass.
