@@ -3530,6 +3530,31 @@ const put back as literals is HEAD's code line for line (the local `flung` renam
 
 **What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56).
 
+### 6.58 B2, C14, C12 and C16 (the air): the atmosphere pass's look in sky.json, one cloud shape, the fog bank apart (2026-11-08)
+
+**Cause and fix.** `atmosphere.gdshader` and its `cloud_field.gdshaderinc` held the air's look as bare numbers (93 and 16
+findings): the clouds' shadow depth, the mist's ceiling and night, the fog bank's billows, flow, wisps, reach and light, the
+clouds' base and fill by day and night, their fade near the eye, the sun's light inside them, their extinction, the puffs'
+flattening and blend, the noise's boil and cells, the shape and erosion. They are `sky.json`'s `atmosphere` block (schema typed and
+strict), which `sky_view` sets by name and uniform type (`WorldMaterials.typed`). The far-plane depths, the sky's distance, the
+tie-break, the march's step counts, the hash's constants and offsets and the guards are named consts with their source; the arrays
+are sized by `MAX_CLOUDS` and `PUFFS` (render/cloud_puffs.gd's `SLOTS` and `LOBES`), the puffs' `MAX_CLOUDS * PUFFS`.
+
+The cloud's shadow (`shadow_density`) wrote the body's shape and erosion again with both noises at their mean: `cloud_field` owns
+them (`cloud_shape`, `cloud_worn`), the body passing its noises, the shadow `NOISE_MEAN`. The defaults of the uniforms `sky_view`
+sets before the pass is ever shown (the sun, the sky's and the mist's light, the wind, the mist's height and reach, the shadow's
+strength: the quad stays hidden until the first `step` has read the weather and lit it) are gone; they drew nothing.
+
+Moving the values took the shader over the shaders' file limit (291 of 260 lines): the fog bank, a responsibility of its own (its
+noise, its march through the painted slab, its light), is `fog_bank.gdshaderinc` with its uniforms; the pass is 187 lines.
+
+**Proof.** The pass with its includes pasted in, every param and const put back as literals, is HEAD's code line for line: the
+two shape functions' bodies are the old terms (the shadow's with 0.5), `fog_light(rd)` is the old expression, `time * cloud_boil`
+the old vector part by part (`-time * 0.04` is `time * -0.04`), `float(SHADOW_STEPS)` folds to `5.0`; the fog functions now come
+before the clouds'. `quick`: every test passes, the four photos byte-equal to known states.
+
+**What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56).
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

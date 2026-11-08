@@ -52,6 +52,10 @@ func _ready() -> void:
 	_mat.set_shader_parameter("fog_extinction", _d.fog_extinction_km / METRES_A_KM)
 	for key in ["mist_beta", "mist_reach", "shadow_strength"]:
 		_mat.set_shader_parameter(key, _d[key])
+	var kinds := WorldMaterials.uniform_kinds(_mat.shader)
+	for key: String in _d.atmosphere: # the pass's look, each a uniform of its name
+		if not key.begins_with("_"):
+			_mat.set_shader_parameter(key, WorldMaterials.typed(kinds, key, _d.atmosphere[key]))
 	var quad := QuadMesh.new()
 	quad.size = Vector2(2, 2)
 	quad.flip_faces = true
