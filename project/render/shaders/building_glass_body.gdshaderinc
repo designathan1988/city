@@ -36,10 +36,10 @@ void vertex() {
 	if (building_glass < 0.5) VERTEX = vec3(0.0); // triangles of no area: nothing to shade, and no discard to cost the depth pass
 	v_world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	v_wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
-	v_room0 = CUSTOM0;
-	v_room1 = CUSTOM1;
-	v_room2 = CUSTOM2;
-	v_trim = CUSTOM3;
+	v_room0 = custom_bytes(CUSTOM0);
+	v_room1 = custom_bytes(CUSTOM1);
+	v_room2 = custom_bytes(CUSTOM2);
+	v_trim = custom_bytes(CUSTOM3);
 }
 
 #include "res://render/shaders/building_colour.gdshaderinc"

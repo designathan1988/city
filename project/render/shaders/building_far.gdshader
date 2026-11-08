@@ -42,7 +42,7 @@ void vertex() {
 	}
 	v_world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	v_wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
-	v_opening = CUSTOM0;
+	v_opening = custom_bytes(CUSTOM0);
 }
 
 void fragment() {

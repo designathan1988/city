@@ -2,7 +2,7 @@
 // the screen should show. Godot 4.7 servers/rendering/renderer_rd/shaders/effects/tonemap.glsl tonemap_agx on an SDR output,
 // mirrored by render/tone_map.gd (ToneMap.radiance is the same inverse, with a search for the nearest colour where a channel would
 // need negative radiance).
-// Needs color_space.gdshaderinc (srgb_to_linear); the material sets tone_exposure to the Environment's and tone_curve to
+// Needs color_space.gdshaderinc (srgb_to_linear, luminance); the material sets tone_exposure to the Environment's and tone_curve to
 // ToneMap.params_of(environment): the allenwp curve's contrast, toe a, slope and w.
 #ifndef TONE_INVERSE_INC
 #define TONE_INVERSE_INC
@@ -31,7 +31,7 @@ vec3 display_to_radiance(vec3 shown) {
 	vec3 goal = srgb_to_linear(clamp(shown, vec3(0.0), vec3(1.0)));
 	mat3 outset_inverse = inverse(AGX_OUTSET);
 	vec3 y_goal = outset_inverse * goal;
-	vec3 y_grey = outset_inverse * vec3(dot(goal, REC709_LUMA));
+	vec3 y_grey = outset_inverse * vec3(luminance(goal));
 	vec3 step_y = y_goal - y_grey;
 	float top = AGX_TOP * AGX_OUTPUT_MAX;
 	float keep = 1.0;

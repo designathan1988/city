@@ -4,6 +4,7 @@
 #include "render/buildings/shell.h"
 #include "core/shader_contracts/buildings.h"
 
+#include "render/custom_words.h"
 #include "render/mesh_order.h"
 
 #include <godot_cpp/classes/rendering_server.hpp>
@@ -311,12 +312,9 @@ void Shell::commit_to(const RID &mesh, bool with_uv2, bool blends) const {
 		constexpr int ARRAYS[CUSTOM_ARRAYS] = { RenderingServer::ARRAY_CUSTOM0, RenderingServer::ARRAY_CUSTOM1, RenderingServer::ARRAY_CUSTOM2, RenderingServer::ARRAY_CUSTOM3 };
 		constexpr uint64_t SHIFTS[CUSTOM_ARRAYS] = { RenderingServer::ARRAY_FORMAT_CUSTOM0_SHIFT, RenderingServer::ARRAY_FORMAT_CUSTOM1_SHIFT,
 			RenderingServer::ARRAY_FORMAT_CUSTOM2_SHIFT, RenderingServer::ARRAY_FORMAT_CUSTOM3_SHIFT };
-		for (int i = 0; i < custom_used; i++) {
-			PackedByteArray bytes;
-			bytes.resize(int64_t(custom[i].size() * sizeof(uint32_t)));
-			std::memcpy(bytes.ptrw(), custom[i].data(), custom[i].size() * sizeof(uint32_t));
-			arr[ARRAYS[i]] = bytes;
-			format |= uint64_t(RenderingServer::ARRAY_CUSTOM_RGBA8_UNORM) << SHIFTS[i];
+		for (int i = 0; i < custom_used; i++) { // each word whole on both renderers (render/custom_words.h)
+			arr[ARRAYS[i]] = custom_words(custom[i].data(), custom[i].size());
+			format |= uint64_t(CUSTOM_WORD_FORMAT) << SHIFTS[i];
 		}
 	}
 	RenderingServer::get_singleton()->mesh_add_surface_from_arrays(mesh, RenderingServer::PRIMITIVE_TRIANGLES, arr, Array(), Dictionary(),

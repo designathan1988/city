@@ -114,7 +114,7 @@ struct Shell {
 	std::vector<BayInstance> bays; // the mid level's openings (bay())
 	std::vector<PropInstance> props; // what hangs on the bays and stands on their balconies
 	std::vector<FlagInstance> flags; // the flags of the masts it drew (roof_gear.cpp)
-	std::vector<uint32_t> custom[CUSTOM_ARRAYS]; // RGBA8 per vertex, in the near and mid shells (`rooms`)
+	std::vector<uint32_t> custom[CUSTOM_ARRAYS]; // four bytes per vertex, in the near and mid shells (`rooms`): render/custom_words.h
 	float grime_floor = -FAR_AWAY; // world height of the current block's floor (walls darken over its first 1.2 m)
 	float shade = 1.f; // extra multiplier (rain streak tops)
 	bool tone = true;

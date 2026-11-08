@@ -156,7 +156,3 @@ O que falta fazer, por área.
     mirror's sky (the map's unfiltered level) is a little brighter in the darkest tones.
   - The clouds and the mist keep their authored night light (`atmosphere.gdshader` NIGHT_AIR, cloud_bodies' dark terms); only their
     physical parts are pre-exposed.
-  - Compatibility draws the far level's towers with no window grid (plain boxes by day, nothing lit at night) and some facade parts
-    (the air-conditioner units on the balconies) bright green, where Forward+ draws both right: seen on the frozen views and the
-    Centro captures run with --rendering-method gl_compatibility (2026-11-08); outside the light's paths changed here, to read in
-    `building_far.gdshader` (the SK_FAR_WALL mask from v_opening) and the parts' shader on that renderer.

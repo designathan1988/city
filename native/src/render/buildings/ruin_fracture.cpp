@@ -3,6 +3,7 @@
 
 #include "render/buildings/ruin_cells.h"
 #include "render/buildings/shell.h"
+#include "render/custom_words.h"
 
 #include <godot_cpp/classes/rendering_server.hpp>
 
@@ -26,7 +27,6 @@ constexpr float WELD_PER_M = 200.f;
 constexpr int WELD_HALF_BITS = 32;
 constexpr float HALF_LEAST_M = 0.12f;
 constexpr size_t MOST_TRIANGLES = 600000; // a cut past this stops dividing: the faces go to the cell of their middle
-constexpr uint32_t PIECE_BYTE_MASK = 255u, BITS_PER_BYTE = 8u; // a piece's id in a byte
 constexpr uint64_t EDGE_MIX = 31u; // an edge's key from its two welded ends (Java's String.hashCode multiplier)
 const Color BROKEN = Color(0.62f, 0.6f, 0.56f, 0.f); // the grey of broken masonry, on the cut faces; alpha is the surface kind, SK_SHELL
 const Color SLAB = Color(0.8f, 0.78f, 0.74f, 0.f); // a slab's cut face
@@ -108,7 +108,7 @@ struct Writer {
 	Vector3 *pos = nullptr, *nrm = nullptr;
 	Color *col = nullptr;
 	Vector2 *uv = nullptr, *uv2 = nullptr;
-	uint8_t *piece = nullptr; // each corner's piece, four bytes little endian (CUSTOM0)
+	float *piece = nullptr; // each corner's piece, its id as a custom word (CUSTOM0: render/custom_words.h)
 	size_t at = 0;
 	uint32_t id = 0;
 	float turn = -1.f; // the sign of a front face's winding against its normal, read from the shell
@@ -122,7 +122,7 @@ struct Writer {
 		col[at] = c.c;
 		uv[at] = c.t;
 		uv2[at] = c.t2;
-		for (uint32_t b = 0; b < sizeof(uint32_t); b++) piece[at * sizeof(uint32_t) + b] = uint8_t(id >> (b * BITS_PER_BYTE) & PIECE_BYTE_MASK);
+		put_custom_word(piece + at * CUSTOM_WORD_FLOATS, id);
 		at++;
 	}
 	void tri(const Corner &a, const Corner &b, const Corner &c) {
@@ -196,7 +196,7 @@ RuinPiece write_piece(Writer &w, const std::vector<Tri> &tris, std::unordered_ma
 }
 
 OwnedMesh bake(const PackedVector3Array &pv, const PackedVector3Array &pn, const PackedColorArray &pc, const PackedVector2Array &pu,
-		const PackedVector2Array &pu2, const PackedByteArray &ids) {
+		const PackedVector2Array &pu2, const PackedFloat32Array &ids) {
 	Array arr;
 	arr.resize(RenderingServer::ARRAY_MAX);
 	arr[RenderingServer::ARRAY_VERTEX] = pv;
@@ -205,7 +205,7 @@ OwnedMesh bake(const PackedVector3Array &pv, const PackedVector3Array &pn, const
 	arr[RenderingServer::ARRAY_TEX_UV] = pu;
 	arr[RenderingServer::ARRAY_TEX_UV2] = pu2;
 	arr[RenderingServer::ARRAY_CUSTOM0] = ids;
-	const uint64_t format = RenderingServer::ARRAY_FLAG_COMPRESS_ATTRIBUTES | uint64_t(RenderingServer::ARRAY_CUSTOM_RGBA8_UNORM) << RenderingServer::ARRAY_FORMAT_CUSTOM0_SHIFT;
+	const uint64_t format = RenderingServer::ARRAY_FLAG_COMPRESS_ATTRIBUTES | uint64_t(CUSTOM_WORD_FORMAT) << RenderingServer::ARRAY_FORMAT_CUSTOM0_SHIFT;
 	RenderingServer *rs = RenderingServer::get_singleton();
 	OwnedMesh m;
 	m.rid = rs->mesh_create();
@@ -282,13 +282,13 @@ std::shared_ptr<RuinMesh> fracture_shell(const b40::Shell &walls, const b40::She
 	PackedVector3Array pv, pn;
 	PackedColorArray pc;
 	PackedVector2Array pu, pu2;
-	PackedByteArray ids;
+	PackedFloat32Array ids;
 	pv.resize(int64_t(corners));
 	pn.resize(int64_t(corners));
 	pc.resize(int64_t(corners));
 	pu.resize(int64_t(corners));
 	pu2.resize(int64_t(corners));
-	ids.resize(int64_t(corners * sizeof(uint32_t)));
+	ids.resize(int64_t(corners * CUSTOM_WORD_FLOATS));
 	Writer w;
 	w.pos = pv.ptrw();
 	w.nrm = pn.ptrw();

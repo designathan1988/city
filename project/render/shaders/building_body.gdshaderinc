@@ -43,8 +43,8 @@ varying flat vec3 v_turn2;
 #include "res://render/shaders/building_level.gdshaderinc"
 
 void vertex() {
-	v_room0 = CUSTOM0;
-	v_trim = CUSTOM3;
+	v_room0 = custom_bytes(CUSTOM0);
+	v_trim = custom_bytes(CUSTOM3);
 	v_recess = RECESS_M * building_recess;
 	if (UV2.y > BAY_MESH) {
 		v_recess = 0.0;
@@ -63,7 +63,7 @@ void vertex() {
 	v_wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 #ifdef RUIN
 	// The finishes keep to the wall as it stood, in v_world and v_wn; only where it is drawn and how it faces the light move.
-	ivec4 id = ivec4(CUSTOM0 * BYTE_TOP + 0.5);
+	ivec4 id = ivec4(custom_bytes(CUSTOM0) * BYTE_TOP + 0.5);
 	int piece = id.r + id.g * BYTE_SPAN + id.b * TWO_BYTES_SPAN;
 	ivec2 at = ivec2((piece % RUIN_PIECES_A_ROW) * 3, piece / RUIN_PIECES_A_ROW);
 	vec4 r0 = texelFetch(pieces, at, 0), r1 = texelFetch(pieces, at + ivec2(1, 0), 0), r2 = texelFetch(pieces, at + ivec2(2, 0), 0);
