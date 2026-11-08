@@ -95,6 +95,9 @@
     "<!-- MAPA:INICIO -->",
     "<!-- MAPA:FIM -->"
   ],
+  "output_roots": [
+    "dist"
+  ],
   "claude_md_max_lines": 200,
   "cpp_layers": {
     "native/src/core": [

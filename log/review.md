@@ -2139,6 +2139,49 @@ JOB_SEM_CHAVE 21, NUMERO_MAGICO 41 with project/render in scope, SEGUNDO_DONO 30
 TAMANHO_FUNCAO 4, TEXTO_VIA_TR 26, UI_SEM_ESTILO_SOLTO 1); gate selftest 64 cases OK; tools tests 20 + 6 OK. Non-vacuity: with
 `TestCase.new_map` turned to a running clock, `traffic_hash_test`, `street_crossing_test` and `transit_test` fail and say why.
 
+### 6.7 B1 as done (2026-11-07)
+
+**What B1 changed** (`9a056673`): the source game, the porting machinery and its records and the tools that took assets and
+tables from it left the repository for `C:\Users\Jonathan\Desktop\city-archive` (moved, not deleted); Terrain3D keeps what the game
+ships (its `.gdextension` header is `;`, the comment ConfigFile reads: a `#` header dropped `entry_symbol` and Terrain3D loaded
+nowhere, caught and fixed by the Android session before either commit); dead tables and keys went with their schema entries;
+dead render code, `(void)` parameters and three warnings went; the sign sheet keeps no list for the captures (they read the core's
+laid cells and wait for the painter to be idle); probes and shims for old builds went.
+
+**Verification method.** The shared folder held two other sessions' sources mid-edit, so a build there would have tested their
+code with mine: B1 was verified in a worktree of its own commit (`C:\Users\Jonathan\Desktop\city-verify`, its own build folders,
+the fetched libraries' sources by `FETCHCONTENT_SOURCE_DIR_*`). `quick.sh --all` 42/43: every test scene passes, the digest is the
+baseline's; `photos_check` fails on `00-cidade` and `02-rua` by 2 to 7 pixels. Measured, not assumed: ten frozen runs over two
+trees with one DLL (three at `fbfc8720`, three at `9a056673`, the golden and three others) give `01-bairro` and `03-rua_noite`
+byte-identical every time, while `00-cidade` and `02-rua` land in one of four and three byte-identical states, the same states in
+both trees. The frozen photos still hold run-to-run state at the utility wires' joints (C12, ties broken by the order jobs finish):
+the first fix of B2, before B2 relies on photodiff zero.
+
+**Found while verifying, fixed in the B1 close** (each a decision of the build or of a gate, fixed there):
+- The map gate failed every checkout since `fbfc8720`: it read every backticked path of the map as a repository file, and a map
+  line names the APK that `android.sh` writes (`dist/android/Roadcraft.apk`, outside git). `rules.json` `output_roots` declares
+  where the tools write; a path there may be named as a product and is not checked as a file (`gate_docs.py`); the `map__pass`
+  fixture names one and fails without the rule.
+- The DLL's bytes depended on the folder that built it: godot-cpp's error macros put 24 absolute paths (`__FILE__`) in each DLL,
+  the user's folder names among them in the shipped one, so a clone, a worktree or another machine built other bytes from the
+  same sources. `-ffile-prefix-map` maps the repository root to nothing and the build folder to `build/` (`native/CMakeLists.txt`).
+- The release DLL's profile never matched a static function: LLVM keys a static function by its file's path as compiled
+  (`InstrProf.cpp`, `getPGOFuncName`), and `native/pgo/citycore.profdata` had been trained in `city-worktrees/porte-total`, so
+  5 329 static functions of the core and 112 of the fetched libraries (4.8 and 0.7 of 35 billion counts) were compiled without
+  their counts in every build here. `city_profile_names` strips the separators of each target's base
+  (`static-func-strip-dirname-prefix`: the core's names start at `native/src/`, a fetched library's at its `<name>-src/`); the
+  profile was retrained (`pgo.sh`, 19 788 functions, 40.6 billion counts) and matches a build in any folder. What stays tied to
+  the build folder: the generated godot-cpp bindings' static functions (698, 720 counts: functions that never ran). LLVM notes
+  that stripping can stop an indirect-call promotion across modules in ThinLTO; static functions called through a pointer from
+  another module are not a pattern of this core.
+- `9a056673` changed C++ sources without its DLLs (a build in the shared folder would have taken the other sessions' sources):
+  the B1 close carries both DLLs, built in the worktree from HEAD with the flags above.
+
+**Moved:** the B1 deletions in files another session holds (`maps.json` km entries, `start.json` `ui.start.sub`, the
+`data_tables.gd` "session-rules" comments, `decay_grace_min` in `catalog.h`, `catalog_loader.cpp`, `growth.json` and its schema,
+the unreached translation keys with the census script, `ui.stats.tip`'s `{speed}`) go with C13 in the first commit after that
+session's lands.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

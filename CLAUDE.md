@@ -126,8 +126,9 @@ compilar. Meshoptimizer e Clipper2 vêm pelo CMake na primeira compilação. À 
 Android (arm64, armv8-a): JDK 17, Android SDK with build-tools 35.0.1 and platform 35, NDK r28b (all in `C:/Projects/toolchains`;
 the JDK and SDK paths go in Godot's editor settings, `export/android/*`) and a release keystore outside the repository.
 
-**DLLs in a rebase:** never pick a side: rebuild both from the merged sources and run the suite. The link is reproducible
-(`--no-insert-timestamp`): the same sources give the same bytes, so a rebuild of unchanged sources leaves the DLLs unchanged.
+**DLLs in a rebase:** never pick a side: rebuild both from the merged sources and run the suite. The build is reproducible in any
+folder (`--no-insert-timestamp`; paths from the repository root in the binaries and in the profile's names, `native/CMakeLists.txt`):
+the same sources give the same bytes, so a rebuild of unchanged sources leaves the DLLs unchanged, in a clone or a worktree too.
 
 ## Estrutura do projeto
 `C:\Users\Jonathan\Desktop\city` é o projeto inteiro. O detalhe arquivo por arquivo está em `log/mapa.md`.

@@ -23,6 +23,27 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
     add_compile_options(-ffp-contract=off -fno-math-errno -fno-trapping-math -fvisibility-inlines-hidden)
 endif()
 
+# What the build leaves behind names files from the repository root, never by this checkout's folder: __FILE__ in godot-cpp's
+# error macros reads `native/...` (a generated file `build/...`: Clang takes the longest matching prefix, GCC the last one), so a
+# clone in another folder, a worktree or another machine builds the same bytes, and the user's folders are not in the DLL. The
+# profile's names follow the same rule (city_profile_names, below).
+cmake_path(GET CMAKE_CURRENT_SOURCE_DIR PARENT_PATH CITY_REPO_ROOT)
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+    add_compile_options("-ffile-prefix-map=${CITY_REPO_ROOT}/=" "-ffile-prefix-map=${CMAKE_BINARY_DIR}/=build/")
+endif()
+
+# The profile keys a static function by its file's path as compiled (LLVM InstrProf.cpp: getPGOFuncName), absolute here; the
+# separators of `base` are stripped from it (static-func-strip-dirname-prefix), so a static function of the core is
+# `native/src/x.cpp;f` and one of a fetched library `mimalloc-src/src/static.c;f`, whatever folder or build folder compiled it,
+# and native/pgo matches a build anywhere. One value per target: LLVM takes the option once.
+function(city_profile_names target base)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        string(REGEX MATCHALL "/" separators "${base}/")
+        list(LENGTH separators depth)
+        target_compile_options(${target} PRIVATE "SHELL:-mllvm -static-func-strip-dirname-prefix=${depth}")
+    endif()
+endfunction()
+
 # The export's DLL: one program for the optimizer across every file (ThinLTO, https://clang.llvm.org/docs/ThinLTO.html), and with the
 # profile of a run of the game (native/pgo, tools/build/pgo.sh) it knows which branch is taken and what is worth inlining. The tests'
 # DLL leaves both out: it is linked many times an hour. CITY_PROFILE=generate is the instrumented build pgo.sh trains; none is a build
@@ -76,6 +97,14 @@ file(GLOB_RECURSE CITYCORE_HEADERS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR
 add_library(citycore SHARED ${CITYCORE_SOURCES} ${CITYCORE_HEADERS})
 target_link_libraries(citycore PRIVATE godot-cpp meshoptimizer mimalloc-static Clipper2)
 target_include_directories(citycore PRIVATE ${clipper2_SOURCE_DIR}/CPP/Clipper2Lib/include/clipper2) # <clipper.h>, as <meshoptimizer.h>: a library by its own name
+city_profile_names(citycore "${CITY_REPO_ROOT}")
+city_profile_names(godot-cpp "${CITY_REPO_ROOT}") # its generated bindings keep the build folder: static functions that never ran
+cmake_path(GET meshoptimizer_SOURCE_DIR PARENT_PATH fetched) # the fetched libraries from their <name>-src folder on
+city_profile_names(meshoptimizer "${fetched}")
+cmake_path(GET mimalloc_SOURCE_DIR PARENT_PATH fetched)
+city_profile_names(mimalloc-static "${fetched}")
+cmake_path(GET clipper2_SOURCE_DIR PARENT_PATH fetched)
+city_profile_names(Clipper2 "${fetched}")
 
 # Every object of the link is compiled against the one profile: ThinLTO refuses two summaries, and Ninja knows nothing of a file read through
 # a flag, so a new profile would leave the libraries on the old one.
