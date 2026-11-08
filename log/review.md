@@ -3769,6 +3769,19 @@ With §6.55-§6.69 the shaders hold no bare number and no unsourced constant (13
 
 **What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56).
 
+### 6.70 B2, C16 (the single-owner rules): two patterns that named the wrong thing (2026-11-08)
+
+**Cause and fix.** Nine DONO_UNICO findings were the rules' own: `money_format` forbade `%.2f` anywhere in the interface, so a
+frame time (`"%.2f ms"`) read as money; `unsaved_changes` forbade the word `unsaved`, so the core publishing
+`has_unsaved_work()` and the scripts reading the published flag read as a second dirty state. Neither code formats money or works
+out whether the city changed. The rules now name what a second owner would do: money is the currency's markers or a read of the
+style's `.currency` outside `formatters.gd`; a dirty state is comparing `revision` with `saved_revision` outside `city_state.h`. No
+code matches either; the gates' self-test passes.
+
+Left for their own stages: TEXTO_VIA_TR's 23 are helpers handed text their callers translated, which the rule cannot see through
+(C13: the helpers take keys); ESPELHO still registers no mirror (the furniture table's size and the clouds' slots are written
+twice, with owners the mirror table cannot read yet); C12's twelve files and three functions over their limits.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at
