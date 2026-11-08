@@ -3829,6 +3829,37 @@ That is how `save_undo_test` read "the same buildings" from another process's fi
 
 **Proof.** quick with the suite in parallel: save_undo, inspector and shell all passed. No `<id>` folder is left in `saves_tests` after the run; that folder's own root files are the other checkouts' runs.
 
+### 6.74 B4, the junction control: a rule designed here, the translated runtime gone (2026-11-08)
+
+**Cause.** The control a junction on automatic gets from its flows was the source game's code, translated by the converter:
+`sim/roads/flow_stats*` and `sim/roads/control_advisor*`, written on a runtime with ECMAScript semantics
+(`core/js_{array,map,number,runtime,string,value}.h`, 1073 lines). The test checked it against numbers the source game printed
+(`ORACLE`, `call40.mjs`). That is a parity argument, and the code was the source's own (D3: a new junction rule in B4).
+
+**Sources.**
+- MUTCD 2009 (FHWA), section 4C.02 Warrant 1, eight-hour vehicular volume, Table 4C-1, the 100% column for one lane each way:
+  - Condition A: 500 vehicles an hour on the major street's two approaches together and 150 on the busier minor approach;
+  - Condition B: 750 and 75.
+- Section 2B.07 paragraph 04 C: a Stop on every leg at 300 on the major approaches and 200 on the minor approaches together.
+The tuning held these values already. Its `_doc` now cites them.
+
+**Design.** Three owners in `sim/traffic`, plain C++:
+- `flow_measure` counts who enters each junction from each leg. Each second's count becomes an exponentially weighted hourly rate with time constant `trend_window / 3`. Rates are aged when read, and held while the junction is out of the micro window.
+- `flow_warrants` is the rule. The MUTCD's three warrants come first, with `AutoControl` ordered by how much each holds the traffic. Then the game's own parts: a control steps down only below `step_down` of its volumes, and changes at most once a trend window, so it does not flicker at a threshold.
+- `flow_control` links them to the game: it looks at the counted junctions every `flow.look_every_s` (data, the old constant 10) and publishes the choice to `RoadNode::auto_signal`.
+The arithmetic of the measure and the rule is the same as before, so a city's choices, and with them the photos and hashes, stay as they were. This keeps the rewrite separate from any change of behaviour.
+
+**Proof.** `flow_control_test` now checks the rule against the standard and its own design, not the source:
+- a leg fed one vehicle every 4 s measures 900 an hour, within the ripple 3600 / tau (904.5);
+- the first change comes at the first look after a trend window (900 s);
+- left quiet, the junction decays back to priority;
+- the warrants hold at each MUTCD threshold, and a vehicle short of it fails;
+- the step down holds at 80% and lets go under it;
+- on the town, vehicles are counted, a three-arm junction becomes a signal, and 673 went through Stops with none skipping.
+27 checks, 0 failures. A mutation (Condition A's `>=` made `>`) failed two checks. quick: the digest of the state is identical; the photos differ only by the known flicker pixels (§6.9: (122,546), and the box (831,264)-(1167,287)); the one gate finding is the baseline ESPELHO.
+
+**What changes.** Nothing in the game. No converter output is left in the repository (CLAUDE.md), and the magic-number gate's exemption for `js_` is gone with the files. Left of B4: the source's random stream (`seeded.h`) and the generators built on it, and the 138 hand-ported files that still name a source file as their model. Their logic and values are to be re-sourced, owner by owner.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

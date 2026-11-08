@@ -1,14 +1,11 @@
-## The control a junction on automatic gets from its flows: the translated classes against the Roadcraft 4.0 on one script (the
-## numbers below came from its own code, tools/converter/scripts/call40.mjs, ORACLE), real vehicles counted, and a junction of the
-## city turned into a signal by what passes through it.
+## The control a junction on automatic gets from its flows (sim/traffic/flow_warrants.h): the measure fed at known rates stands at
+## them and decays when left, the rule gives the MUTCD's warrants at their thresholds (a signal by Warrant 1's Conditions A and B,
+## a Stop on every leg by 2B.07) with the game's step down, real vehicles are counted, and a junction of the city turns into a signal
+## by what passes through it.
 extends TestCase
 
 const TOWN_MAP := 0
 const SEED := 1
-## The game keeps floats, the 4.0 doubles: this far apart and no more.
-const SAME := 0.00002
-const ORACLE := {"busy_major": 872.4241116004741, "busy_minor": 290.64694425165396, "busy_choice": "signal", "quiet_major": 0.038951884536446886,
-	"quiet_choice": "priority", "changed_at": 900, "quiet_flow": 240.0, "warranted": "signal"}
 ## Past the trend window, with room for the first evaluation after it.
 const PUSH_S := 1000
 ## The game time each run takes, in ticks of the simulation (sim_tick_hz 20, two steps a tick at speed 2): 4 s and 20 s of the
@@ -16,6 +13,20 @@ const PUSH_S := 1000
 const DRIVE_TICKS := 160
 const STOP_TICKS := 800
 const STOP_LEAST := 40
+## AutoControl, in its order (flow_warrants.h).
+const PRIORITY := 0
+const STOP := 1
+const SIGNAL := 2
+## The MUTCD (2009) volumes, vehicles an hour: Table 4C-1's 100% column for one lane each way, Condition A and B (major street's
+## two approaches, busier minor approach), and 2B.07 paragraph 04 C (major approaches, minor approaches together).
+const SIGNAL_A := [500.0, 150.0]
+const SIGNAL_B := [750.0, 75.0]
+const MULTIWAY := [300.0, 200.0]
+## One vehicle an hour under a threshold.
+const UNDER := 1.0
+## A third of the trend window is the measure's time constant (flow_measure.h).
+const WINDOW_PER_TAU := 3.0
+const VEHICLE_HOUR_S := 3600.0
 
 func _ready() -> void:
 	var rig := CityCamera.new()
@@ -25,20 +36,49 @@ func _ready() -> void:
 		return
 	new_map(TOWN_MAP, SEED, true)
 	_replay()
+	_warrants()
 	_driven()
 	_junction()
 	_stop_sign()
 	finish()
 
 
-## Every number and choice of the script, as the 4.0 gave them.
+## The measure fed at known rates, then left quiet, and the choices the script's junction got.
 func _replay() -> void:
 	var got: Dictionary = CityStore.query(&"flow_replay")
 	print("replay: ", got)
-	for key: String in ORACLE:
-		var want: Variant = ORACLE[key]
-		var same: bool = absf(got[key] - want) <= absf(want) * SAME if want is float else got[key] == want
-		check(same, "%s: %s, the 4.0 gives %s" % [key, got[key], want])
+	var window: float = DataTables.tuning("flow_trend_window")
+	var look: float = DataTables.tuning("flow_look_every_s")
+	# A count of one vehicle moves the mean by at most an hour's vehicle over the time constant: the ripple about the fed rate.
+	var ripple := VEHICLE_HOUR_S / (window / WINDOW_PER_TAU)
+	check(absf(got.busy_major - got.fed_major) <= ripple, "a major leg measures what it is fed: %.1f of %.1f" % [got.busy_major, got.fed_major])
+	check(absf(got.busy_minor - got.fed_minor) <= ripple, "the minor leg too: %.1f of %.1f" % [got.busy_minor, got.fed_minor])
+	check(got.busy_choice == "signal", "fed over Condition A, the junction is a signal: %s" % got.busy_choice)
+	check(got.changed_at == int(ceilf(window / look) * look), "the first change at the first look after a trend window: %d" % got.changed_at)
+	var quiet: float = DataTables.tuning("flow_stop_major") * DataTables.tuning("flow_step_down")
+	check(is_equal_approx(got.quiet_flow, quiet), "no control under the least step up, stepped down: %.1f" % got.quiet_flow)
+	check(got.quiet_major < got.quiet_flow and got.quiet_choice == "priority", "left quiet %d s it decays back to priority: %.3f, %s" % [got.quiet_s, got.quiet_major, got.quiet_choice])
+
+
+## The rule at the manual's thresholds, and the step down that keeps a control above 80% of them.
+func _warrants() -> void:
+	var down: float = DataTables.tuning("flow_step_down")
+	var cases := [
+		[SIGNAL_A[0], SIGNAL_A[1], SIGNAL_A[1], PRIORITY, "signal", "Condition A at its volumes"],
+		[SIGNAL_A[0] - UNDER, SIGNAL_A[1], SIGNAL_A[1], PRIORITY, "priority", "Condition A a vehicle short on the major street"],
+		[SIGNAL_A[0], SIGNAL_A[1] - UNDER, SIGNAL_A[1] - UNDER, PRIORITY, "priority", "Condition A a vehicle short on the minor"],
+		[SIGNAL_B[0], SIGNAL_B[1], SIGNAL_B[1], PRIORITY, "signal", "Condition B at its volumes"],
+		[SIGNAL_B[0] - UNDER, SIGNAL_B[1], SIGNAL_B[1], PRIORITY, "priority", "Condition B a vehicle short"],
+		[MULTIWAY[0], SIGNAL_B[1], MULTIWAY[1], PRIORITY, "stop", "the multi-way stop at its volumes"],
+		[MULTIWAY[0], SIGNAL_B[1], MULTIWAY[1] - UNDER, PRIORITY, "priority", "the multi-way stop a vehicle short on the minor"],
+		[MULTIWAY[0] - UNDER, SIGNAL_B[1], MULTIWAY[1], PRIORITY, "priority", "the multi-way stop a vehicle short on the major"],
+		[SIGNAL_A[0] * down, SIGNAL_A[1] * down, SIGNAL_A[1] * down, SIGNAL, "signal", "a signal kept at the step down"],
+		[MULTIWAY[0] * down, SIGNAL_B[1], MULTIWAY[1] * down, STOP, "stop", "a stop kept at the step down"],
+		[MULTIWAY[0] * down - UNDER, SIGNAL_B[1], MULTIWAY[1] * down, STOP, "priority", "a stop under the step down goes"],
+	]
+	for c: Array in cases:
+		var got: String = CityStore.query(&"flow_warrant", [c[0], c[1], c[2], c[3]])
+		check(got == c[4], "%s (%.0f, %.0f, %.0f): %s" % [c[5], c[0], c[1], c[2], got])
 
 
 ## The city running: vehicles entering junctions reach the count.

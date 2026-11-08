@@ -17,7 +17,7 @@
 	X(grade, ground) X(grade, authored) X(grade, join_m) X(grade, ramp) X(grade, deck) X(grade, deck_tie) X(grade, tunnel) X(grade, clearance_m) \
 	X(grade, clear_elevated_m) X(grade, clear_bridge_m) X(grade, deck_ground_m) X(grade, deck_elevated_m) X(grade, deck_bridge_m) X(grade, deck_tunnel_m) \
 	X(flow, stop_major) X(flow, stop_minor) X(flow, signal_major) X(flow, signal_minor) X(flow, signal_major_b) X(flow, signal_minor_b) \
-	X(flow, step_down) X(flow, trend_window) \
+	X(flow, step_down) X(flow, trend_window) X(flow, look_every_s) \
 	X(grade, tunnel_headroom_m) X(grade, tunnel_arch_m) X(grade, tunnel_floor_m) X(grade, lift_on_m) \
 	X(structure, span_from_m) X(structure, span_every_m) X(structure, cable_step_m) X(structure, cable_first_m) X(structure, tower_over_m) X(structure, tower_leg_m) X(structure, raised_m) X(structure, buried_m) X(structure, wall_thick_m) X(structure, wall_coping_m) X(structure, wall_foot_m) X(structure, wall_step_m) X(structure, bore_over_m) X(structure, pier_spacing_elevated_m) X(structure, pier_spacing_bridge_m) \
 	X(structure, pier_radius_elevated_m) X(structure, pier_radius_bridge_m) X(structure, bearing_m) X(structure, pier_slenderness) \
