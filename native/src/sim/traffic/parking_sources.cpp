@@ -16,7 +16,7 @@ namespace traffic {
 namespace {
 
 constexpr float ROW_CELL_M = 0.4f; // a bay's seed: where it is in steps of this (the same car whatever the float rounding)
-constexpr uint32_t ROW_SALT = 0x9e3779b9u;
+constexpr uint32_t ROW_SALT = 0x9e3779b9u; // 2^32 / the golden ratio (Knuth's multiplicative hash): spreads a cell's row
 constexpr uint8_t FILED_NONE = 0, FILED_FREE = 1, FILED_ROW = 2;
 
 int take_bay(ParkingState &p) {

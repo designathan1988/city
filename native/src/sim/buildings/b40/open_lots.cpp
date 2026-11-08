@@ -101,7 +101,6 @@ float play_y(const OpenLotShape &K, float W, float D) { return (D / 2 + K.path_w
 
 void park(Lay &L) {
 	const OpenLotShape &K = L.K;
-	const LotPartShape &P = L.P;
 	const float W = L.W, D = L.D, rg = ring_of(K, W, D);
 	L.surface(-W / 2 + K.lawn_clear, K.lawn_clear, W / 2 - K.lawn_clear, D - K.lawn_clear, L.paint("square_lawn"));
 	int path = L.paint("path");

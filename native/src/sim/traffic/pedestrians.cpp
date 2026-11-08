@@ -12,7 +12,7 @@
 namespace city {
 namespace traffic {
 
-constexpr float MIN_LEG_M = 0.05f;
+constexpr float MIN_LEG_M = 0.05f; // a leg's direction divides by its length: a leg is never shorter
 
 static void off_crosswalk(TrafficState &t, int id) {
 	Pedestrian &w = t.peds[id];

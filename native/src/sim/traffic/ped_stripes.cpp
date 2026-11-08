@@ -17,7 +17,7 @@ namespace traffic {
 
 namespace {
 
-constexpr int MAX_STRIPES = 8;
+constexpr int MAX_STRIPES = 8; // the most stripes a room is cut into across: the size of STRIPE_STEP below
 constexpr int MAX_CANDIDATES = MAX_STRIPES + 2 + 2 * MAX_BODIES;
 constexpr int AIMED = 0, HERE = 1; // candidates[0]: the stripe aimed at; [1] where it is, when that is another place
 constexpr float ONE_WAY_CLOSING = 0.5f; // a body coming the other way closes the gap at both paces: half the room

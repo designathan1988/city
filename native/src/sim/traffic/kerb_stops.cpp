@@ -14,6 +14,7 @@ namespace city {
 namespace traffic {
 
 namespace {
+// the errand roll's stream of the car's hash (any word), and the 24 bits a float holds exactly, for a share 0..1
 constexpr uint32_t ERRAND_SALT = 0x2545F491u, ERRAND_SPAN = 0xFFFFFFu;
 constexpr float STOPPED_MS = 0.1f; // standing still, for a stop
 constexpr float NEAR_STOP_M = 1.f, PAST_STOP_M = 2.f; // pulled up at it; gone past it

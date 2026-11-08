@@ -12,11 +12,6 @@ namespace traffic {
 
 namespace {
 
-constexpr int PICK_TRIES = 24, DEST_TRIES = 16, MAX_FAILURES = 8, FLEET_MAX = 65536;
-constexpr float SIDE_REACH_M = 120.f; // a segment counts fully once it is this long
-constexpr float VF_BASE = 0.92f, VF_SPAN = 0.16f;
-constexpr float PLACE_LO = 0.1f, PLACE_HI = 0.9f, GOAL_LO = 0.2f, GOAL_HI = 0.8f;
-constexpr float START_SPEED_SHARE = 0.6f;
 
 const float *weights_now(const TrafficParams &p, float hour, bool origin) {
 	if (hour >= p.morning_from_h && hour < p.morning_to_h) return origin ? p.zone_home : p.zone_work;
@@ -25,16 +20,18 @@ const float *weights_now(const TrafficParams &p, float hour, bool origin) {
 }
 
 float seg_weight(const CityState &s, int seg, const float *w) {
+	const TrafficParams &p = s.catalog.traffic;
 	const RoadSegment &g = s.roads.segs[seg];
 	float best = std::max(w[s.catalog.zone(g.zl).base % BASE_ZONES], w[s.catalog.zone(g.zr).base % BASE_ZONES]);
-	return best * std::min(1.f, float(g.len) / SIDE_REACH_M);
+	return best * std::min(1.f, float(g.len) / p.demand_side_reach_m);
 }
 
 int pick_ds(CityState &s, const float *w) {
+	const TrafficParams &p = s.catalog.traffic;
 	TrafficState &t = s.traffic;
 	const int n = int(t.g.ds.size());
 	int last = -1;
-	for (int k = 0; k < PICK_TRIES && n > 0; k++) {
+	for (int k = 0; k < p.demand_pick_tries && n > 0; k++) {
 		int ds = int(t.rng.next() % uint32_t(n));
 		if (!t.g.ds[ds].ok) ds ^= 1;
 		if (!t.g.ds[ds].ok) continue;
@@ -89,7 +86,7 @@ bool spawn_one(CityState &s) {
 	if (from < 0 || (bike && !t.g.ds[size_t(from)].bikes)) return false;
 	V2 a = mid_of(s, from);
 	int to = -1;
-	for (int k = 0; k < DEST_TRIES && to < 0; k++) {
+	for (int k = 0; k < p.demand_dest_tries && to < 0; k++) {
 		int c = pick_ds(s, truck ? p.zone_truck : weights_now(p, hour, false));
 		if (c < 0) continue;
 		float d = (mid_of(s, c) - a).len();
@@ -100,7 +97,7 @@ bool spawn_one(CityState &s) {
 	const VehicleClass &vc = p.classes[int(type)];
 	const DirSeg &d = t.g.ds[from];
 	int lane = bike ? 0 : int(t.rng.next() % uint32_t(d.lanes)); // a bicycle keeps to the edge of the carriageway
-	float at = t.rng.range(PLACE_LO, PLACE_HI) * d.len;
+	float at = t.rng.range(p.demand_place_lo, p.demand_place_hi) * d.len;
 	const int key = from * MAX_LANES + lane;
 	const float stop = d.len - d.stop_back - p.stop_margin_m; // it starts short of its stop line, able to stop there
 	if (at < vc.length + p.mouth_clear_m || at > stop || !lane_free(s, key, at, vc.length)) return false; // keep the lane mouth clear
@@ -113,9 +110,9 @@ bool spawn_one(CityState &s) {
 	v.ds = from;
 	v.lane = lane;
 	v.s = at;
-	v.v = std::min(d.speed * v.vf * START_SPEED_SHARE, std::sqrt(2 * vc.b * (stop - at)));
+	v.v = std::min(d.speed * v.vf * p.demand_start_speed_share, std::sqrt(2 * vc.b * (stop - at)));
 	route_set(t.route_pool, v.route, t.route_waste, route.data(), int(route.size()));
-	v.goal_s = t.rng.range(GOAL_LO, GOAL_HI) * t.g.ds[to].len;
+	v.goal_s = t.rng.range(p.demand_goal_lo, p.demand_goal_hi) * t.g.ds[to].len;
 	// micro only close to the camera; farther out the trip starts in the far model (and is drawn if its lane is in
 	// the window, which cannot happen for a segment beyond micro_spawn_m < meso_window_m, but the rule stays explicit)
 	const V2 mid = mid_of(s, from);
@@ -134,6 +131,7 @@ bool spawn_one(CityState &s) {
 } // namespace
 
 int new_vehicle(CityState &s, VehicleType type, uint8_t paint) {
+	const TrafficParams &p = s.catalog.traffic;
 	TrafficState &t = s.traffic;
 	int id;
 	if (!t.free_vehicles.empty()) {
@@ -149,7 +147,7 @@ int new_vehicle(CityState &s, VehicleType type, uint8_t paint) {
 	v.micro = false; // micro_add registers it in micro_list
 	v.type = type;
 	v.paint = paint;
-	v.vf = s.catalog.traffic.classes[int(type)].speed_share * (VF_BASE + VF_SPAN * t.rng.f());
+	v.vf = s.catalog.traffic.classes[int(type)].speed_share * (p.demand_vf_base + p.demand_vf_span * t.rng.f());
 	v.drift = t.rng.range(0.f, TAU_F);
 	t.vehicle_count++;
 	return id;
@@ -168,7 +166,7 @@ bool new_trip(CityState &s, int id, int from_ds) {
 	Vehicle &v = t.vehicles[size_t(id)];
 	const float *w = v.type == VehicleType::TRUCK ? p.zone_truck : weights_now(p, float(s.clock.hour()), false);
 	const V2 a = mid_of(s, from_ds);
-	for (int k = 0; k < DEST_TRIES; k++) {
+	for (int k = 0; k < p.demand_dest_tries; k++) {
 		const int c = pick_ds(s, w);
 		if (c < 0 || c == from_ds) continue;
 		const float d = (mid_of(s, c) - a).len();
@@ -177,7 +175,7 @@ bool new_trip(CityState &s, int id, int from_ds) {
 		if (!find_route(s, from_ds, c, route, -1, -1, v.type == VehicleType::BICYCLE) || route.size() < 2) return false;
 		route_set(t.route_pool, v.route, t.route_waste, route.data(), int(route.size()));
 		v.ri = 0;
-		v.goal_s = t.rng.range(GOAL_LO, GOAL_HI) * t.g.ds[size_t(c)].len;
+		v.goal_s = t.rng.range(p.demand_goal_lo, p.demand_goal_hi) * t.g.ds[size_t(c)].len;
 		return true;
 	}
 	return false;
@@ -186,7 +184,7 @@ bool new_trip(CityState &s, int id, int from_ds) {
 double fleet_target(const CityState &s) {
 	const TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
-	return std::min(double(FLEET_MAX), t.g.lane_metres * p.density_per_lane_m * day_factor(p, float(s.clock.hour())) * p.traffic_share * s.traffic_levels.traffic * s.traffic_levels.population * s.traffic_levels.demand * t.gov);
+	return std::min(double(p.demand_fleet_max), t.g.lane_metres * p.density_per_lane_m * day_factor(p, float(s.clock.hour())) * p.traffic_share * s.traffic_levels.traffic * s.traffic_levels.population * s.traffic_levels.demand * t.gov);
 }
 
 float day_factor(const TrafficParams &p, float h) {
@@ -213,7 +211,7 @@ void spawn_vehicles(CityState &s, float dt) {
 	}
 	int failures = 0;
 	// a new trip's search can wait: past the tick's searches the rest of the attempts are not made (route_admission.cpp)
-	for (int k = 0; k < attempts && failures < MAX_FAILURES && may_request_search(s); k++)
+	for (int k = 0; k < attempts && failures < p.demand_max_failures && may_request_search(s); k++)
 		if (!spawn_one(s)) failures++;
 }
 

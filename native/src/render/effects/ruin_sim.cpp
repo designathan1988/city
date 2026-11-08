@@ -248,7 +248,6 @@ void RuinSim::clear_moved() {
 }
 
 void RuinSim::write(size_t i, float *rows) const {
-	const RuinSimShape &K = law_.shapes.ruin_sim;
 	const Piece &p = pieces_[i];
 	const Basis b(p.q);
 	const Vector3 at = p.p - b.xform(p.home);

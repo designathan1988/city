@@ -10,6 +10,7 @@ namespace city {
 namespace traffic {
 
 namespace {
+// rounding: a value within ten epsilons of nought is nought, a piece this short is none; the length of no path, over any
 constexpr double ZERO = 10 * std::numeric_limits<double>::epsilon();
 constexpr double TINY_PIECE = 1e-12;
 constexpr double NONE_M = 1e18;

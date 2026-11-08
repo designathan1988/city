@@ -13,7 +13,7 @@ namespace {
 constexpr uint32_t PHONE_MASK = 3, PHONE_HASH = 0, LOOK_HASH = 1; // a quarter of the people each (the look hash's low bits)
 constexpr uint32_t HANDS_MASK = 7, HEADPHONES_HASH = 5, BAG_HASH = 6; // an eighth each
 constexpr int PARTY_SPREAD = 7; // parties start their turns apart
-constexpr int LONGEST_PARTY = 8;
+constexpr int LONGEST_PARTY = 8; // the walk along a party's links (add_company) stops at this many, even if one loops
 
 struct Party {
 	const Pedestrian *leader = nullptr;

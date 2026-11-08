@@ -13,7 +13,7 @@ struct AxlePose {
 	bool reverse = false;
 };
 
-constexpr int RS_MOST_PIECES = 5;
+constexpr int RS_MOST_PIECES = 5; // a Reeds-Shepp word has at most five pieces (Reeds and Shepp 1990, the CCSCC family)
 
 struct RsPath {
 	const char *pieces = ""; // L, R and S, one per length

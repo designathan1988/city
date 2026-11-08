@@ -14,9 +14,6 @@ namespace city {
 namespace traffic {
 
 namespace {
-constexpr float SAFE_PAD_M = 0.3f;
-constexpr float WAIT_SPEED = 0.5f, STUCK_SPEED = 0.3f, LC_DECAY = 1.f;
-constexpr float MOVING_OFF_SHARE = 0.5f; // box_hold: obstacles that leave it this share of its free-road pickup do not hold it
 
 struct Lead {
 	float gap = NO_LEADER, v = 0;
@@ -29,6 +26,7 @@ float body(const CityState &s, const Vehicle &v) { return s.catalog.traffic.clas
 
 // Acceleration after the emergency cap and the jerk limit.
 float finish_accel(const CityState &s, const Vehicle &v, float acc, const Lead &l, float dt) {
+	const TrafficParams &p = s.catalog.traffic;
 	const VehicleClass &c = s.catalog.traffic.classes[int(v.type)];
 	acc = clampf(acc, -c.b_emergency, c.a);
 	// jerk limit from the last acceleration as felt, never harder than an emergency stop: a standing vehicle's is zero,
@@ -36,7 +34,7 @@ float finish_accel(const CityState &s, const Vehicle &v, float acc, const Lead &
 	const float foot = clampf(v.acc, -c.b_emergency, c.a);
 	if (acc > foot) acc = std::min(acc, foot + s.catalog.traffic.jerk_up * dt);
 	if (l.gap < NO_LEADER) {
-		float be = c.b_emergency, room = std::max(0.f, l.gap - SAFE_PAD_M + (l.v > 0 ? l.v * l.v / (2 * be) : 0.f));
+		float be = c.b_emergency, room = std::max(0.f, l.gap - p.vehicle_safe_pad_m + (l.v > 0 ? l.v * l.v / (2 * be) : 0.f));
 		float safe = -be * dt + std::sqrt(be * be * dt * dt + 2 * be * room);
 		if (v.v + acc * dt > safe) acc = (safe - v.v) / dt;
 	}
@@ -52,10 +50,10 @@ void integrate(const CityState &s, Vehicle &v, float acc, float dt, float &pos) 
 	v.acc = (nv - v.v) / dt;
 	v.v = nv;
 	v.brake = acc < p.brake_light_accel || nv < p.brake_light_speed;
-	v.stuck = nv < STUCK_SPEED ? v.stuck + dt : 0.f;
-	v.wait = nv < WAIT_SPEED ? v.wait + dt : 0.f;
-	v.held = nv < WAIT_SPEED ? v.held + dt : 0.f;
-	v.lc_off *= std::max(0.f, 1.f - dt * LC_DECAY / std::max(p.lc_duration_s, dt));
+	v.stuck = nv < p.vehicle_stuck_speed ? v.stuck + dt : 0.f;
+	v.wait = nv < p.vehicle_wait_speed ? v.wait + dt : 0.f;
+	v.held = nv < p.vehicle_wait_speed ? v.held + dt : 0.f;
+	v.lc_off *= std::max(0.f, 1.f - dt * p.vehicle_lc_decay / std::max(p.lc_duration_s, dt));
 	v.lc_cool = std::max(0.f, v.lc_cool - dt);
 }
 
@@ -106,7 +104,7 @@ bool gate(CityState &s, int id, int &ci, float dist, bool head, bool held, bool 
 		const bool can_stop = light == Light::AMBER ? stops_at_amber(s, v, v.ds, line - p.stop_margin_m, ci) || v.amber_hold == v.ds
 				: stop_is_comfortable(s, v, line - p.stop_margin_m);
 		const bool stale = held || (can_stop && light != Light::GREEN) ||
-				(!released && v.v < WAIT_SPEED && !is_splice(s, t.g.conns[ci].node) && !has_exit(s, t.g.conns[ci], id));
+				(!released && v.v < p.vehicle_wait_speed && !is_splice(s, t.g.conns[ci].node) && !has_exit(s, t.g.conns[ci], id));
 		if (!stale) return box_clear(s, ci);
 		release(s, id, ci);
 		return false;
@@ -193,7 +191,7 @@ void step_lane(CityState &s, int ds, int lane, float dt, std::vector<int> &leavi
 					leaving.push_back(id);
 					continue;
 				}
-				if (v.v < WAIT_SPEED && line >= 0 && line < p.at_line_m) v.stood = true;
+				if (v.v < p.vehicle_wait_speed && line >= 0 && line < p.at_line_m) v.stood = true;
 			}
 		}
 		float acc = finish_accel(s, v, idm_accel(p.classes[int(v.type)], v.v, v0, l.gap, l.v), l, dt);
@@ -296,6 +294,7 @@ void step_connector(CityState &s, int ci, float dt) {
 } // namespace
 
 BoxHold box_hold(const CityState &s, int id) {
+	const TrafficParams &p = s.catalog.traffic;
 	const TrafficState &t = s.traffic;
 	const Vehicle &v = t.vehicles[size_t(id)];
 	const auto &on = t.conn_vehicles[size_t(v.conn)];
@@ -311,7 +310,7 @@ BoxHold box_hold(const CityState &s, int id) {
 	const float by[int(BoxHold::STARTING)] = { idm_accel(vc, v.v, top, car.gap, car.v), idm_accel(vc, v.v, top, walkers.gap, 0.f),
 		idm_accel(vc, v.v, top, light, 0.f) };
 	const int most = int(std::min_element(by, by + int(BoxHold::STARTING)) - by);
-	return by[most] > MOVING_OFF_SHARE * idm_accel(vc, v.v, top, NO_LEADER, 0.f) ? BoxHold::STARTING : BoxHold(most);
+	return by[most] > p.vehicle_moving_off_share * idm_accel(vc, v.v, top, NO_LEADER, 0.f) ? BoxHold::STARTING : BoxHold(most);
 }
 
 void step_vehicles(CityState &s, float dt) {

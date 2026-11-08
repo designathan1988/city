@@ -60,7 +60,17 @@ namespace city {
 	X(parker_look_ticks) X(bike_share) X(bike_speed_kmh) X(bike_edge_m) X(cycle_ease_m) X(cycle_clear_share) \
 	X(transit_pick_m) X(transit_stop_reach_m) X(transit_join_m) X(transit_along_road_m) X(transit_entrance_reach_m) X(transit_most_vehicles) X(transit_bus_vehicles) X(transit_rail_vehicles) X(bus_dwell_s) X(bus_terminal_s) X(bus_spacing_s) X(bus_approach_m) X(bus_at_stop_m) X(bus_stopped_ms) X(bus_detour) X(bus_pace) X(bus_away_margin_m) X(train_dwell_s) X(train_top_ms) X(metro_top_ms) X(train_accel) X(train_brake) X(train_gap_m) X(train_cars) X(metro_cars) X(train_car_m) X(crossing_stop_m) X(crossing_warn_m) X(crossing_keep_clear_m) X(train_clear_ahead_m) X(train_clear_time_s) X(train_clear_from_m) X(train_clear_step_m) X(train_clear_disc_m) X(train_car_disc_m) X(train_car_step_m) X(train_car_margin_m) X(train_idle_ms) X(train_walker_look_m) \
 	X(meso_alpha) X(meso_crowd) X(meso_s0_m) X(meso_head_s) X(meso_dwell_s) \
-	X(meso_window_m) X(meso_window_out_m) X(micro_spawn_m) X(ped_window_m) X(ped_despawn_window_share)
+	X(meso_window_m) X(meso_window_out_m) X(micro_spawn_m) X(ped_window_m) X(ped_despawn_window_share) \
+	X(demand_pick_tries) X(demand_dest_tries) X(demand_max_failures) X(demand_fleet_max) X(demand_side_reach_m) \
+	X(demand_vf_base) X(demand_vf_span) X(demand_place_lo) X(demand_place_hi) X(demand_goal_lo) X(demand_goal_hi) \
+	X(demand_start_speed_share) X(junction_signal_arms) X(junction_signal_main_arms) X(lc_force_after_s) X(lc_force_gap_m) \
+	X(meso_headway_light_s) X(meso_headway_long_s) X(meso_headway_mid_s) X(meso_headway_base_s) X(meso_wait_long_s) \
+	X(meso_wait_mid_s) X(meso_speed_floor_ms) X(meso_min_wait_s) X(meso_queue_retry_s) X(meso_window_retry_s) X(meso_fit_m) \
+	X(meso_min_handover_ms) X(meso_free_handover_ms) X(meso_handover_share) X(meso_handover_pad_m) X(meso_handover_retry_s) \
+	X(ped_spawn_pick_tries) X(ped_spawn_dest_tries) X(ped_spawn_scale_min) X(ped_spawn_scale_max) X(speed_drift_rate) \
+	X(vehicle_safe_pad_m) X(vehicle_wait_speed) X(vehicle_stuck_speed) X(vehicle_lc_decay) X(vehicle_moving_off_share) \
+	X(window_view_step_m) X(window_every_s) X(window_mat_tail_pad_m) X(window_mat_end_pad_m) X(window_mat_speed_share) \
+	X(window_furniture_keep_windows)
 
 #define CITY_TRAFFIC_DECLARE(name) float name = 0;
 
@@ -72,8 +82,8 @@ constexpr bool two_wheeler(VehicleType t) { return t == VehicleType::MOTO || t =
 // What kind of place sends people out on foot (traffic.json people_kind_m, zone_kinds).
 enum class PlaceKind : uint8_t { HOME = 0, SHOP, WORK, CIVIC, COUNT };
 constexpr int PLACE_KINDS = int(PlaceKind::COUNT);
-constexpr int HOURS = 24;
-constexpr int CAR_STYLES = 6;
+constexpr int HOURS = 24; // a day's hours, the rows of people_busy
+constexpr int CAR_STYLES = 6; // the car body styles, VehicleType SEDAN to MOTO
 constexpr int BASE_ZONES = 5; // none, residential, commercial, industrial, mixed
 constexpr int EXTENSION_LANES = 5; // traffic.json signal_extension_s: approaches of 1 to 5 lanes
 constexpr int PAINTS = 16; // Roadcraft shared/vehiclePaints.ts

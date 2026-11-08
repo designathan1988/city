@@ -10,7 +10,7 @@ namespace {
 
 constexpr int SAMPLES = 28; // per leg: a leg is a few metres to a few tens of metres long
 constexpr float H_DERIV = 6.f; // the derivative of the Hermite basis: 6 u^2 - 6 u
-constexpr float DONE_EPS = 1e-4f, UNIT_EPS = 1e-6f;
+constexpr float DONE_EPS = 1e-4f, UNIT_EPS = 1e-6f; // float rounding along a leg; a vector this short has no direction
 constexpr float RAMP_START = 0.15f, RAMP_END = 0.1f; // shares of top speed at a leg's ends (a leg always ends)
 
 V2 unit_or(const V2 &v, const V2 &fallback) {

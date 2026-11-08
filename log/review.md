@@ -3239,6 +3239,27 @@ baseline found them: their split by responsibility goes with the large files (C1
 
 **What changes.** Nothing: the hashes, the numbers and every photo the same (`quick`: 44 of 46).
 
+### 6.44 B2, C14 (the traffic): the near and far models' numbers in traffic.json, the definitions sourced (2026-11-08)
+
+**Cause and fix.** The traffic files held what one tunes beside what is defined, with nothing to tell them apart: a car's tries
+at a spawn place, its free-speed spread and start, the arms that make a junction signalled, a forced lane change's gaps, the far
+model's headways, retries and handovers, a walker's tries and scale, the speeds under which a car waits or is stuck, the near
+window's pads and pace. The values one tunes went to traffic.json `params`, the one table of the traffic's numbers
+(`CITY_TRAFFIC_FIELDS`, `api/traffic_loader.cpp` refuses a missing key), named by the file that reads them (`demand_*`,
+`junction_*`, `lc_force_*`, `meso_*`, `ped_spawn_*`, `speed_drift_rate`, `vehicle_*`, `window_*`), each described in the table's
+`_doc` with the reason the code's comment gave. The definitions stay and say what they are: the tolerances (a stale heap entry,
+a leg's end, a straight step, Reeds and Shepp's rounding), the guards before a division (a step of no time, a leg of no length,
+the IDM's desired speed and gap), the IDM's exponent (Treiber, Hennecke and Helbing 2000: 4, squared twice in the code), the
+hash streams and the golden-ratio multiplier, the 24 bits a float holds, the walker cells (a power of two, so their index
+divides exactly), the largest Reeds-Shepp word, the planner's grains and its memory's blocks and chunks, √2 and √½.
+
+The mover bound the params where `p` already named a pose or a profile (`mid_of`, `in_window`, `check_window`,
+`grow_ped_window`) and missed a loop's own binding (`pick_seg`): each was bound by hand where the function reads it. Two
+bindings left unused by the last batches (`RuinSim::write`, `park` of the open lots) are gone: the build is again free of warnings.
+
+**What changes.** Nothing: the hashes, the numbers and every photo the same (`quick`: 45 of 46, the gate's two baseline counts
+in `traffic_params.h` sourced since).
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at
