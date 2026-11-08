@@ -60,7 +60,7 @@ func _ready() -> void:
 	_mat.render_priority = RenderingServer.MATERIAL_RENDER_PRIORITY_MAX
 	_mat.set_shader_parameter("noise_volume", _noise())
 	_mat.set_shader_parameter("start_noise", load(_d.start_noise))
-	_mat.set_shader_parameter("air_gain", DataTables.game("daylight").sky_gain)
+	_mat.set_shader_parameter("cloud_albedo", DataTables.game("daylight").sky_glow.cloud_reflect)
 	_mat.set_shader_parameter("fog_extinction", _d.fog_extinction_km / METRES_A_KM)
 	for key in ["mist_beta", "mist_reach", "shadow_strength"]:
 		_mat.set_shader_parameter(key, _d[key])
@@ -158,7 +158,7 @@ func _light(way: Vector2) -> void:
 	_mat.set_shader_parameter("wind_dir", way)
 	_mat.set_shader_parameter("sun_dir", _world.sun.global_basis.z.normalized())
 	var c := _world.sun.light_color
-	_mat.set_shader_parameter("sun_light", Vector3(c.r, c.g, c.b) * _world.sun.light_energy * _d.sun_gain)
+	_mat.set_shader_parameter("sun_light", Vector3(c.r, c.g, c.b) * _world.sun.light_energy) # the sun's (or the moon's) own light
 	_mat.set_shader_parameter("dark", _world.daylight.night)
 
 

@@ -139,6 +139,7 @@ func set_hour(hour: float) -> void:
 		m.set_shader_parameter("city_up", meter.town * night)
 		m.set_shader_parameter("overcast", _overcast * _d.overcast_sky)
 		m.set_shader_parameter("flash", _flash * _d.flash_sky)
+	RenderingServer.global_shader_parameter_set(&"town_light", meter.town * night)
 	_probe.refresh()
 	if meter.is_ready():
 		meter.expose(meter.adapted(solar, sun_lit, _moon_dir, moon_lit, _overcast * _d.overcast_sky, _flash * _d.flash_sky, night))

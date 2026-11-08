@@ -116,6 +116,10 @@ room_lux={
 "type": "vec2",
 "value": Vector2(0, 0)
 }
+town_light={
+"type": "vec3",
+"value": Vector3(0, 0, 0)
+}
 street_lamp_lens={
 "type": "float",
 "value": 0.0

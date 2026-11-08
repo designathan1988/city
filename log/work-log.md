@@ -985,3 +985,19 @@ later: no blue hour.
   lens_dark as one colour a lens).
 - Verified: both DLLs; light_color_test on both renderers (the lenses as the tone mapping shows their light, Compatibility's clamp at
   1 mirrored); `quick.sh` 46 of 47 then the gates fixed (the agents doc folded to ASCII, the shader's PI); e2e passed.
+
+## Clouds, fog banks and mist lit by the light that is there (2026-11-08 13:30, branch `realism`)
+
+- Cause: `atmosphere.gdshader` lit the clouds with authored shades (day 0.22/0.24/0.30, night 0.02..0.05, a fill of +0.12), the sun
+  times an authored sun_gain (3.236) and everything times daylight.json sky_gain; the mist took the sun's sky plus an authored
+  NIGHT_AIR, the fog banks an authored white and warm.
+- Code: `cloud_light.gdshaderinc` (new): a cloud is white and diffuse, cloud_albedo (daylight.json sky_glow.cloud_reflect, a
+  stratus's 0.6, one owner with the overcast deck's reflection) of the sun's or the moon's own light where it reaches, the sky's
+  level light from above (the probe: sun, moon and town skies) and the ground's and the town's light from below, by the point's
+  height in the cloud; the mist and the fog banks the same deep inside. Pre-exposed as the scene. sky.json sun_gain removed; the
+  global town_light published by Daylight.
+- Verified: hidden captures with 24 scattered clouds at 14h, 18:06, 18:27 and 22h; `quick.sh` 45 of 47 (the photos task timed out
+  under the other sessions' load, then passed alone: three photos equal, `02-rua` the known 8 x 1 px of the C12 wire joint, not
+  blessed).
+- Created `project/render/shaders/cloud_light.gdshaderinc`; changed `atmosphere.gdshader`, `render/sky_view.gd`, `render/daylight.gd`,
+  `project.godot`, `data/game/{sky.json, daylight.json}`, the sky schema, `log/mapa.md`.
