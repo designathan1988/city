@@ -14,7 +14,7 @@
 
 namespace city {
 
-struct OccupancyDef;
+struct Catalog;
 
 // What a building is for (the ids saved with a record, new ones at the end). FN_NONE: its kind and seed say.
 enum BuildingFn : uint8_t { FN_NONE = 0, FN_SCHOOL, FN_CHURCH, FN_HOSPITAL, FN_CLINIC, FN_SQUARE, FN_PARK, FN_GAS_STATION,
@@ -51,11 +51,11 @@ public:
 	// How each body looks (likeness.h), by b40::body_key: derived, never saved. Only growth writes it, under the map's exclusive lock.
 	std::unordered_map<b40::BodyKey, BodyLook, b40::BodyKeyHash> looks;
 
-	void init(ChangeLog *l, const OccupancyDef *occupancy);
+	void init(ChangeLog *l, const Catalog *catalog);
 	// The same links set again, nothing cleared: the store moved in with a city read aside (CityState::bind).
-	void attach(ChangeLog *l, const OccupancyDef *occupancy) {
+	void attach(ChangeLog *l, const Catalog *catalog) {
 		log = l;
-		occupancy_ = occupancy;
+		catalog_ = catalog;
 	}
 	void clear();
 	int add(const Building &b);
@@ -75,10 +75,11 @@ public:
 		});
 	}
 	// Residents and jobs from the floor area.
-	static void occupancy(const Building &b, float floor_share, const float per_m2[4], int &residents, int &jobs);
+	// `base`: the zone's base kind (the catalogue's, BaseZone), which says who lives or works there.
+	static void occupancy(const Building &b, int base, float floor_share, const float per_m2[4], int &residents, int &jobs);
 
 private:
-	const OccupancyDef *occupancy_ = nullptr; // the catalogue's, set by init
+	const Catalog *catalog_ = nullptr; // its occupancy and zones, set by init
 	void place(int id, const Building &b);
 	void tally(const Building &b, int sign); // the record's residents and jobs into (+1) or out of (-1) the totals
 	void mark_into(int id, std::vector<int64_t> &out) const;

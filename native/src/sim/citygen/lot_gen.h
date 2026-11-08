@@ -16,6 +16,8 @@
 
 namespace city {
 
+struct GenZones;
+
 constexpr double LOT_CELL = 256; // lots are computed per cell of this size
 constexpr double CELL_MARGIN = 120; // the streets a cell looks at reach this far past it
 
@@ -60,7 +62,7 @@ struct LotGround {
 	std::function<double(double, double)> water; // water level (very low where dry)
 };
 
-std::vector<Lot> build_lots(const LotGraph &g, const std::vector<Profile> &profiles, const LotGround &ground, double cell_x0, double cell_z0);
+std::vector<Lot> build_lots(const LotGraph &g, const std::vector<Profile> &profiles, const GenZones &zones, const LotGround &ground, double cell_x0, double cell_z0);
 
 // Internals shared by the two files.
 namespace lot_gen {

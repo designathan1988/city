@@ -64,7 +64,7 @@ std::unique_ptr<TerrainGen> found_land(CityState &s, int map_index, uint32_t exa
 	s.roads.init(&s.catalog, &s.log);
 	s.street.clear();
 	s.lot_book.clear();
-	s.buildings.init(&s.log, &s.catalog.occupancy);
+	s.buildings.init(&s.log, &s.catalog);
 	s.lots.clear();
 	s.growth.clear();
 	s.damage.clear(); // what blows left on the last map is not on this one
@@ -110,7 +110,7 @@ CityGenReport generate_map(CityState &s, int map_index, uint32_t seed, bool with
 	const std::unique_ptr<TerrainGen> gen = found_land(s, map_index, medium ? (seed | TerrainGen::FLAT_BIT) : (seed & ~TerrainGen::FLAT_BIT));
 	CityGenReport rep;
 	if (with_city) {
-		GeneratedRoads r = scenic ? scenic_roads(*scenic, c, *gen) : generate_roads(s.seed, s.map_half, map.city_radius_m, *gen, gen_profiles(c), c.growth.plan);
+		GeneratedRoads r = scenic ? scenic_roads(*scenic, c, *gen) : generate_roads(s.seed, s.map_half, map.city_radius_m, *gen, gen_profiles(c), c.growth.plan, c.gen_zones);
 		insert_roads(s, r);
 		s.roads.grade.everything(); // every street solved on the land, and the ground shaped to them
 		sync_grade(s);

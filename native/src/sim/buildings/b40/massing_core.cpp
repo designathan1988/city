@@ -14,24 +14,12 @@ constexpr float MIN_PITCH = 5.f, FLAT_BELOW = 0.66f, RIDGE_TO_STREET = 0.33f, SA
 constexpr float RISE_GABLE = 3.2f, RISE_SHED = 1.2f, RISE_SAWTOOTH = 2.f, RISE_OTHER = 3.f;
 constexpr float PITCH_GABLE[2] = { 20, 35 }, PITCH_HIP[2] = { 20, 32 }, PITCH_SHED[2] = { 5, 14 }, PITCH_SAW[2] = { 22, 30 };
 constexpr float PITCH_OTHER[2] = { 20, 30 }, TINY = 1e-6f, HALF = 0.5f, SECOND_SKIN_LIGHT = 0.04f, SECOND_SKIN_NUDGE = 3.f;
-constexpr int SECOND_SKIN_TRIES = 4, ZONE_RESIDENTIAL = 1, ZONE_COMMERCIAL = 2, ZONE_INDUSTRIAL = 3, ZONE_MIXED = 4, ZONE_COM_LOW = 7;
-constexpr int ZONE_COM_HIGH = 8, ZONE_RES_LOW = 5, ZONE_RES_HIGH = 6, ERAS = 3;
+constexpr int SECOND_SKIN_TRIES = 4, ERAS = 3;
 constexpr uint32_t CHARACTER_MASK = 0xffff, ERA_SHIFT = 16;
 constexpr float MEMBRANE_NUDGE = 0.6f;
 
 bool closed_roof(Roof r) { return r == ROOF_FLAT || r == ROOF_TERRACE; }
 
-Kind kind_of(int zone) {
-	switch (zone) {
-		case ZONE_RES_LOW: return KIND_HOUSE;
-		case ZONE_RESIDENTIAL: return KIND_FLATS;
-		case ZONE_RES_HIGH: return KIND_TOWER;
-		case ZONE_COM_HIGH: return KIND_OFFICE;
-		case ZONE_INDUSTRIAL: return KIND_WORKS;
-		case ZONE_COMMERCIAL: case ZONE_MIXED: case ZONE_COM_LOW: return KIND_SHOP;
-		default: return KIND_HOUSE;
-	}
-}
 } // namespace
 
 void membranes(const Data &data, Body &b, Xoshiro128 &r) {
@@ -146,7 +134,7 @@ void made_to_measure(const Data &data, Body &b, const Envelope &env, Xoshiro128 
 
 void make_body(const Data &data, Body &b, int zone, int floors, float W, float D, uint32_t seed) {
 	b = Body{};
-	b.kind = kind_of(zone);
+	b.kind = data.kind_of_zone(zone);
 	b.use = b.kind == KIND_WORKS ? USE_INDUSTRIAL : b.kind == KIND_SHOP || b.kind == KIND_OFFICE ? USE_COMMERCIAL : USE_RESIDENTIAL;
 	Xoshiro128 r(seed);
 	b.plan = plan_lot(data.lots, b.kind, W, D, r);
@@ -157,7 +145,7 @@ void make_body(const Data &data, Body &b, int zone, int floors, float W, float D
 	env.character = seed & CHARACTER_MASK;
 	env.era = int((seed >> ERA_SHIFT) % ERAS);
 	env.cap = floors;
-	env.low = zone == ZONE_COM_LOW;
+	env.low = data.low_shop(zone);
 	made_to_measure(data, b, env, r);
 	float dx = b.plan.x0 - W / 2, dy = b.plan.y0;
 	for (Volume &v : b.volumes) { v.x += dx; v.y += dy; }

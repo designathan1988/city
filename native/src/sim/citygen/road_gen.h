@@ -12,10 +12,6 @@
 
 namespace city {
 
-// Zone ids written on segment sides (Roadcraft src/roads/zones.ts); their look and names are data (zones.json).
-enum Zone : int { ZONE_NONE = 0, ZONE_RES = 1, ZONE_COM = 2, ZONE_IND = 3, ZONE_MIXED = 4, ZONE_RES_LOW = ZONE_MIXED + 1, ZONE_RES_HIGH = ZONE_MIXED + 2,
-	ZONE_COM_LOW = ZONE_RES_HIGH + 1, ZONE_COM_HIGH = ZONE_RES_HIGH + 2, ZONE_COUNT = ZONE_COM_HIGH + 1 };
-
 // The profile ids the generator uses, looked up by name in the catalogue (data/catalog/road_profiles.json).
 // The road roles (growth.json road_roles, by profile id) and each profile's asphalt to the right of its centre.
 struct GenProfiles : RoadRoles {
@@ -33,7 +29,8 @@ struct GeneratedRoads {
 };
 
 // `radius`: the city's, 0 for one that fills the map.
-GeneratedRoads generate_roads(uint32_t seed, double map_half, double radius, TerrainGen &terrain, const GenProfiles &prof, const CityPlanDef &plan);
+GeneratedRoads generate_roads(uint32_t seed, double map_half, double radius, TerrainGen &terrain, const GenProfiles &prof, const CityPlanDef &plan,
+	const GenZones &zones);
 
 // Internals shared by the generator's files (and the scenic city's, sim/citygen/scenic_roads.h).
 namespace road_gen {

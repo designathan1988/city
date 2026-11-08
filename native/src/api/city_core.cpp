@@ -81,6 +81,7 @@ PackedStringArray CityCore::setup_render(const Dictionary &tables, const Diction
 	state_->buildings.designs = b40::Data{};
 	state_->buildings.designs.made->set_budget(size_t(state_->catalog.tune.sim_body_cache_mb * BYTES_PER_MIB));
 	if (!load_buildings(tables.get("buildings", Dictionary()), state_->buildings.designs, errors)) return errors;
+	if (!set_zone_kinds(state_->catalog, state_->buildings.designs, errors)) return errors;
 	if (!load_models(tables.get("models", Dictionary()), state_->buildings.designs, errors)) return errors;
 	if (!load_interiors(tables.get("interiors", Dictionary()), state_->buildings.designs.interior, errors)) return errors;
 	RenderContext ctx;

@@ -20,8 +20,6 @@ MapCell map_cell_of(const CityState &s, double x, double z);
 // The storeys of a record's body: what its `floors` must say.
 int body_floors(const b40::Data &data, const Building &rec);
 int civic_for(const GrowthDef &g, int cell_id, int base_zone, bool biggest, float area);
-int base_zone(int zone_id);
-int zone_density(int zone_id);
 
 // Is a building standing on the lot (any record within 0.8 of the two half sizes)?
 bool lot_occupied(const CityState &s, const Lot &l);

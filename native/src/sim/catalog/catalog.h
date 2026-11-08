@@ -39,10 +39,17 @@ struct ZoneDef {
 	std::string id, name_key;
 	int base = BASE_NONE; // BaseZone
 	int density = 1; // 0 low, 1 medium, 2 high
+	std::string building; // what the generator builds on it (b40 Kind by name: house, flats, tower, shop, office, works)
 	uint32_t color = 0; // RGBA8
 };
 constexpr int ZONE_CODES = 9;
 constexpr int BASE_ZONE_SLOTS = BASE_COUNT;
+constexpr int ZONE_DENSITIES = 3; // low, medium, high
+// The zone codes the generator lays, by what each is (its base and density in zones.json), resolved and checked by the loader.
+struct GenZones {
+	int none = 0, industrial = 0, mixed = 0;
+	int commercial[ZONE_DENSITIES] = {}, residential[ZONE_DENSITIES] = {}; // by density
+};
 
 // Residents and jobs of a building: floor area = w * d * floor_share * floors (Roadcraft world/world.ts).
 struct OccupancyDef {
@@ -95,6 +102,7 @@ struct Catalog {
 	RoadPrices prices;
 	StructureCost structure;
 	ZoneDef zones[ZONE_CODES];
+	GenZones gen_zones; // load_zones
 	OccupancyDef occupancy;
 	Tuning tune;
 	TrafficParams traffic; // data/catalog/traffic.json
@@ -116,6 +124,12 @@ struct Catalog {
 		return m.scenic >= 0 && size_t(m.scenic) < scenic.size() ? &scenic[size_t(m.scenic)] : nullptr;
 	}
 	const ZoneDef &zone(int code) const { return zones[(code >= 0 && code < ZONE_CODES) ? code : 0]; }
+	// The code of the zone of `base` at `density`, -1 when the table has none.
+	int zone_code(int base, int density) const {
+		for (int c = 0; c < ZONE_CODES; c++)
+			if (zones[c].base == base && zones[c].density == density) return c;
+		return -1;
+	}
 
 	// A profile added: the catalogue's own at load, a variant in play (road_variants.cpp). The one way a profile comes, so what is
 	// derived from all of them is kept here as each comes, never searched again per call. Returns its id.

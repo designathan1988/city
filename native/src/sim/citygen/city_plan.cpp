@@ -18,8 +18,9 @@ constexpr double NO_CENTRE = 1e30;
 double range(Xoshiro128 &r, double lo, double hi) { return lo + r.f() * (hi - lo); }
 } // namespace
 
-CityPlan plan_city(uint32_t seed, double radius, const CityPlanDef &def) {
+CityPlan plan_city(uint32_t seed, double radius, const CityPlanDef &def, const GenZones &zones) {
 	CityPlan p;
+	p.zones = zones;
 	p.def = def;
 	p.radius = radius;
 	const uint32_t start = seed * SEED_MUL;
@@ -47,17 +48,16 @@ int zone_at(const CityPlan &p, double x, double z, bool on_main) {
 	if (k > d.industry_from) {
 		double off = std::fmod(std::fabs(std::atan2(y, x) - p.industry_angle), TAU_D);
 		if (off > TAU_D / 2) off = TAU_D - off;
-		if (off < d.industry_half_angle) return ZONE_IND;
+		if (off < d.industry_half_angle) return p.zones.industrial;
 	}
 	const double heat = 1 - k + (d.density - 0.5) * d.density_pull + value_noise(x / d.noise_cell_m, y / d.noise_cell_m) * d.noise_heat;
 	const int density = heat > d.high_heat ? 2 : heat > d.medium_heat ? 1 : 0;
-	return zone_of(heat > d.commerce_heat || (on_main && heat > d.main_commerce_heat), density);
+	return zone_of(p.zones, heat > d.commerce_heat || (on_main && heat > d.main_commerce_heat), density);
 }
 
-int zone_of(bool commercial, int density) {
-	static constexpr int DENSITIES = 3, COMMERCIAL[DENSITIES] = { ZONE_COM_LOW, ZONE_COM, ZONE_COM_HIGH }, RESIDENTIAL[DENSITIES] = { ZONE_RES_LOW, ZONE_RES, ZONE_RES_HIGH };
-	const int k = std::clamp(density, 0, DENSITIES - 1);
-	return commercial ? COMMERCIAL[k] : RESIDENTIAL[k];
+int zone_of(const GenZones &zones, bool commercial, int density) {
+	const int k = std::clamp(density, 0, ZONE_DENSITIES - 1);
+	return commercial ? zones.commercial[k] : zones.residential[k];
 }
 
 } // namespace city

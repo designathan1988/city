@@ -45,7 +45,7 @@ int clear_side(CityState &s, int seg, int side, int keep_zone) {
 	float r = float(FRONT_REACH_M);
 	s.buildings.query(g.minx - r, g.minz - r, g.maxx + r, g.maxz + r, [&](int id) {
 		const Building &b = s.buildings.items[id];
-		if (b.zone == 0 || (keep_zone != 0 && base_zone(b.zone) == base_zone(keep_zone))) return;
+		if (b.zone == 0 || (keep_zone != 0 && s.catalog.zone(b.zone).base == s.catalog.zone(keep_zone).base)) return;
 		double t, d, nt, nd;
 		closest_t(g.q, b.x, b.z, t, d);
 		if (d > FRONT_REACH_M || s.roads.find_segment_near(b.x, b.z, d, nt, nd) != seg) return;

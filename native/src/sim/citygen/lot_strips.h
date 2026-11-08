@@ -11,7 +11,7 @@ namespace city {
 
 class LotStrips {
 public:
-	LotStrips(const LotGraph &g, const std::vector<Profile> &profiles, const LotGround &ground, double x0, double z0);
+	LotStrips(const LotGraph &g, const std::vector<Profile> &profiles, const GenZones &zones, const LotGround &ground, double x0, double z0);
 	std::vector<Lot> run();
 
 	// A lot's frame: centre, along-front unit (t), away-from-street unit (l), width and depth.
@@ -22,6 +22,7 @@ public:
 private:
 	const LotGraph &g_;
 	const std::vector<Profile> &prof_;
+	const GenZones &zones_; // the catalogue's: works stand on its industrial zone
 	const LotGround &ground_;
 	double cx0_, cz0_, ax_, az_;
 	int W_;

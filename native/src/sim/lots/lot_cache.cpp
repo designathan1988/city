@@ -68,12 +68,12 @@ static std::vector<Lot> lots_of_cell(const CityState &s, int64_t key, int every_
 	LotGround ground;
 	ground.height = [&s](double x, double z) { return double(s.terrain.base_height_at(float(x), float(z))); };
 	ground.water = [&s](double x, double z) { return double(s.terrain.water_at(float(x), float(z))); };
-	return build_lots(g, s.catalog.profiles, ground, x0, z0);
+	return build_lots(g, s.catalog.profiles, s.catalog.gen_zones, ground, x0, z0);
 }
 
 std::vector<Lot> LotCache::compute(const CityState &s, int64_t key) { return with_player_lots(lots_of_cell(s, key, 0), key, s.lot_book); }
 
-std::vector<Lot> LotCache::proposal(const CityState &s, int64_t key) { return lots_of_cell(s, key, ZONE_RES_LOW); }
+std::vector<Lot> LotCache::proposal(const CityState &s, int64_t key) { return lots_of_cell(s, key, s.catalog.gen_zones.residential[0]); } // a proposal is a house's
 
 void LotCache::process_dirty(CityState &s) {
 	std::vector<int64_t> cells = s.log.lot_cells;

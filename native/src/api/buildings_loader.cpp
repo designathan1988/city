@@ -251,4 +251,19 @@ bool load_buildings(const Dictionary &table, Data &d, PackedStringArray &errors)
 	return errors.size() == before;
 }
 
+bool set_zone_kinds(const Catalog &catalog, Data &d, PackedStringArray &errors) {
+	const int64_t before = errors.size();
+	d.zone_kind.assign(ZONE_CODES, KIND_HOUSE);
+	d.zone_low_shop.assign(ZONE_CODES, false);
+	for (int code = 0; code < ZONE_CODES; code++) {
+		const ZoneDef &z = catalog.zones[code];
+		int kind = 0;
+		while (kind < KIND_COUNT && z.building != KIND_NAMES[kind]) kind++;
+		if (kind == KIND_COUNT) errors.push_back(String("zones.json: zone '") + String(z.id.c_str()) + String("' builds '") + String(z.building.c_str()) + String("', no building kind"));
+		else d.zone_kind[size_t(code)] = Kind(kind);
+		d.zone_low_shop[size_t(code)] = z.base == BASE_COMMERCIAL && z.density == 0;
+	}
+	return errors.size() == before;
+}
+
 } // namespace city

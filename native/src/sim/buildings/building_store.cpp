@@ -8,13 +8,10 @@
 
 namespace city {
 
-namespace {
-constexpr uint8_t ZONE_RES_LOW = 5, ZONE_RES_HIGH = 6, ZONE_IND_LOW = 7, ZONE_IND_HIGH = 8;
-} // namespace
 
-void BuildingStore::init(ChangeLog *l, const OccupancyDef *occupancy) {
+void BuildingStore::init(ChangeLog *l, const Catalog *catalog) {
 	log = l;
-	occupancy_ = occupancy;
+	catalog_ = catalog;
 	clear();
 }
 
@@ -84,11 +81,11 @@ void BuildingStore::place(int id, const Building &b) {
 }
 
 void BuildingStore::tally(const Building &b, int sign) {
-	if (!occupancy_) return;
-	const OccupancyDef &o = *occupancy_;
+	if (!catalog_) return;
+	const OccupancyDef &o = catalog_->occupancy;
 	const float per[4] = { o.m2_per_resident, o.m2_per_job_commercial, o.m2_per_job_industrial, o.m2_per_person_mixed };
 	int r, j;
-	occupancy(b, o.floor_share, per, r, j);
+	occupancy(b, catalog_->zone(b.zone).base, o.floor_share, per, r, j);
 	residents += sign * r;
 	jobs += sign * j;
 }
@@ -110,10 +107,9 @@ void BuildingStore::mark_into(int id, std::vector<int64_t> &out) const {
 		for (int i = int(std::floor((b.x - r) / CHUNK)); i <= int(std::floor((b.x + r) / CHUNK)); i++) out.push_back(cell_key(i, j));
 }
 
-void BuildingStore::occupancy(const Building &b, float floor_share, const float per_m2[4], int &residents, int &jobs) {
+void BuildingStore::occupancy(const Building &b, int base, float floor_share, const float per_m2[4], int &residents, int &jobs) {
 	float area = b.w * b.d * floor_share * b.floors;
 	residents = jobs = 0;
-	int base = b.zone == ZONE_RES_LOW || b.zone == ZONE_RES_HIGH ? 1 : b.zone == ZONE_IND_LOW || b.zone == ZONE_IND_HIGH ? 2 : b.zone;
 	switch (base) {
 		case 1: residents = int(std::lround(area / per_m2[0])); break;
 		case 2: jobs = int(std::lround(area / per_m2[1])); break;

@@ -107,7 +107,22 @@ void load_zones(DataReader top, const Dictionary &t, Catalog &c) {
 		z.base = r.integer(d, "base");
 		if (z.base < 0 || z.base >= BASE_COUNT) r.fail("a base past the base zones (BaseZone)");
 		z.density = r.integer(d, "density");
+		z.building = r.utf8(d, "building");
 		z.color = r.colour(d, "color");
+	}
+	// The zones the generator lays: each must be in the table.
+	auto gen = [&](int base, int density) {
+		const int code = c.zone_code(base, density);
+		if (code < 0) top.in("zones").fail(String("the generator lays a zone of base ") + String::num_int64(base) + String(" at density ") + String::num_int64(density) + String(": none"));
+		return code < 0 ? 0 : code;
+	};
+	constexpr int MEDIUM = 1;
+	c.gen_zones.none = gen(BASE_NONE, MEDIUM);
+	c.gen_zones.industrial = gen(BASE_INDUSTRIAL, MEDIUM);
+	c.gen_zones.mixed = gen(BASE_MIXED, MEDIUM);
+	for (int k = 0; k < ZONE_DENSITIES; k++) {
+		c.gen_zones.commercial[k] = gen(BASE_COMMERCIAL, k);
+		c.gen_zones.residential[k] = gen(BASE_RESIDENTIAL, k);
 	}
 	const Dictionary o = top.table(t, "residents");
 	DataReader ro = top.in("residents");

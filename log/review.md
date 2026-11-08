@@ -2706,6 +2706,31 @@ parity code. The seven 2D vector types are the next part.
 **Verified** (`city-verify`, `quick --all`, both DLLs): every test passes, the digest equal, every photo byte-equal to a run before C7
 (02-rua once off by the known residual's pixels, equal on two reruns); `gates_changed` only lines the files had.
 
+### 6.24 B2, C4 (the zones): the zone codes read from their table (2026-11-08)
+
+**Cause.** `data/catalog/zones.json` gives each zone code its base and density, and `Catalog::zones` carries them; the codes were
+typed again in six places (the "six owners" of §3c, and §3h's copies left from C3): the generator's own `enum Zone`
+(`road_gen.h`), `massing_core.cpp`'s mapping of codes to building kinds (an unknown code falling to a house by `default:`),
+`building_store.cpp` and `growth.cpp` (both calling codes 7 and 8 `ZONE_IND_LOW`/`ZONE_IND_HIGH`, though the table says
+`com_low`/`com_high`, and mapping them to the commercial base: right by accident), `models_loader.cpp`'s use names, and
+`lot_cache.cpp`'s proposal zone.
+
+**Fix.** `zones.json` says what the generator builds on each zone (`building`, a b40 kind by name, in the schema); the catalogue
+resolves the zones the generator lays by what they are (`Catalog::zone_code(base, density)`, `gen_zones`: none, industrial, mixed,
+commercial and residential by density), and the loader refuses a table without one. The generator's plan carries those codes
+(`CityPlan::zones`, `zone_of(zones, ...)`), and the road rules, the scenic rules, the lot strips and the lot cache read them; the
+generator tables take each zone's kind and whether it is a low shop street at boot (`set_zone_kinds`), so the body generator never
+sees a code. The store and growth read a zone's base from the catalogue (`BuildingStore` holds the catalogue, not its occupancy alone;
+`occupancy(b, base, ...)`); the use names are the `BaseZone` values.
+
+**Why it does not come back.** A zone's code exists once, in its table; what it means is read from the table everywhere.
+
+**What changes.** Nothing: every zone resolves to the code and the kind it had (checked against the table: none 0, industrial 3,
+mixed 4, commercial 7/2/8 and residential 5/1/6 by density; house, flats, tower, shop, office, works as before).
+
+**Verified** (`city-verify`, `quick --all`, both DLLs): every test passes, the digest equal, every photo byte-equal to a run before C7;
+`gates_changed` only lines the files had.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

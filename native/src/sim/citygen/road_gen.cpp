@@ -29,13 +29,13 @@ public:
 	PlanRules(uint32_t seed, const GenProfiles &prof, const CityPlan &plan) : seed_(seed), prof_(prof), plan_(plan) {}
 	int rank(int p) const override { return p == prof_.expressway ? RANK_EXPRESSWAY : p == prof_.avenue_bike ? RANK_AVENUE_BIKE : p == prof_.avenue ? 1 : 0; }
 	bool yields(int p) const override { return p == prof_.local; }
-	int zone_beside(int p, double x, double z) const override { return p == prof_.expressway ? ZONE_NONE : zone_at(plan_, x, z, p != prof_.local); }
+	int zone_beside(int p, double x, double z) const override { return p == prof_.expressway ? plan_.zones.none : zone_at(plan_, x, z, p != prof_.local); }
 	int section(int p, int zone, double d, double x, double z) const override {
 		double n = fbm2(x / DISTRICT_SCALE_N, z / DISTRICT_SCALE_N, seed_ + NOISE_N, 2), m = fbm2(x / NOISE_M_SCALE, z / NOISE_M_SCALE, seed_ + NOISE_M, 2);
 		if (p == prof_.local) {
-			if (zone == ZONE_COM) return n > AVENUE_SHARE_N ? prof_.wide : n > URBAN_N ? prof_.urban : prof_.local;
-			if (zone == ZONE_IND) return prof_.concrete;
-			if (zone == ZONE_MIXED) return n > BIKE_N ? prof_.bike : n < -BIKE_N ? prof_.green : prof_.local;
+			if (zone == plan_.zones.commercial[1]) return n > AVENUE_SHARE_N ? prof_.wide : n > URBAN_N ? prof_.urban : prof_.local;
+			if (zone == plan_.zones.industrial) return prof_.concrete;
+			if (zone == plan_.zones.mixed) return n > BIKE_N ? prof_.bike : n < -BIKE_N ? prof_.green : prof_.local;
 			if (d > COBBLE_D && m > COBBLE_M) return prof_.cobble;
 			return n > URBAN_LOCAL_N ? prof_.urban : p;
 		}
@@ -124,14 +124,15 @@ bool road_gen::land(TerrainGen &t, double x, double z) {
 	return h > TerrainGen::OCEAN_Y + LAND_CLEAR && t.water_level_at(x, z) < h - LAND_CLEAR;
 }
 
-GeneratedRoads generate_roads(uint32_t seed, double map_half, double radius, TerrainGen &terrain, const GenProfiles &prof, const CityPlanDef &plan) {
+GeneratedRoads generate_roads(uint32_t seed, double map_half, double radius, TerrainGen &terrain, const GenProfiles &prof, const CityPlanDef &plan,
+	const GenZones &zones) {
 	double R = radius > 0 ? radius : map_half - EDGE_PAD;
 	std::vector<road_gen::Piece> pieces;
 	for (const Line &l : block_lines(R)) {
 		int profile = l.level == AVENUE ? prof.avenue : l.level == COLLECTOR ? prof.collector : prof.local;
 		march(l, profile, map_half, terrain, pieces);
 	}
-	const CityPlan city = plan_city(seed & ~TerrainGen::FLAT_BIT, R, plan);
+	const CityPlan city = plan_city(seed & ~TerrainGen::FLAT_BIT, R, plan, zones);
 	GeneratedRoads g = road_gen::build_graph(pieces, R * CENTRE_SHARE, terrain, prof.asph_right, PlanRules(seed, prof, city));
 	return road_gen::without_spurs(road_gen::dry_crossings(g, terrain));
 }

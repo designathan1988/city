@@ -2,6 +2,7 @@
 // are laid out here, once, into plain elements; a missing key, a wrong type or length and an unknown name are errors at startup,
 // never a silent default (the keys the format leaves out take the value it gives them).
 #include "api/models_loader.h"
+#include "sim/catalog/catalog.h"
 
 #include "api/function_names.h"
 
@@ -25,7 +26,6 @@ using namespace b40;
 
 namespace {
 constexpr float RING_TOLERANCE_M = 0.01f;
-constexpr int ZONE_RESIDENTIAL = 1, ZONE_COMMERCIAL = 2, ZONE_INDUSTRIAL = 3, ZONE_MIXED = 4;
 enum { SPEC_NAME, SPEC_W, SPEC_D, SPEC_H, SPEC_SIZE };     // part_sizes rows
 enum { RECT_X, RECT_Y, RECT_WIDTH, RECT_DEPTH, RECT_SIZE }; // "at" of a block, a ring, an open ground
 constexpr int POINT = 2;                                    // [x, y]
@@ -38,7 +38,7 @@ constexpr Named PATTERN_NAMES[] = { { "office", PATTERN_OFFICE }, { "gallery", P
 constexpr Named ELEMENT_NAMES[] = { { "tree", EL_TREE }, { "bench", EL_BENCH }, { "planter", EL_PLANTER }, { "flowers", EL_FLOWERS }, { "rocks", EL_ROCKS }, { "fence", EL_FENCE },
 	{ "wall", EL_WALL }, { "pavement", EL_PAVEMENT }, { "slab", EL_SLAB }, { "pillar", EL_PILLAR }, { "canopy", EL_CANOPY }, { "parking", EL_PARKING },
 	{ "railing", EL_RAILING }, { "clock", EL_CLOCK }, { "awning", EL_AWNING } };
-constexpr Named USE_NAMES[] = { { "residential", ZONE_RESIDENTIAL }, { "commercial", ZONE_COMMERCIAL }, { "industrial", ZONE_INDUSTRIAL }, { "mixed", ZONE_MIXED } };
+constexpr Named USE_NAMES[] = { { "residential", BASE_RESIDENTIAL }, { "commercial", BASE_COMMERCIAL }, { "industrial", BASE_INDUSTRIAL }, { "mixed", BASE_MIXED } };
 
 struct Sizes {
 	float x = 0, y = 0, z = 0;
@@ -223,7 +223,7 @@ void model_of(const Layout &l, DataReader r, const Dictionary &s, const Array &s
 	m.id = r.utf8(s, "id");
 	m.group = r.utf8(s, "group");
 	m.zone = r.value_of(USE_NAMES, r.utf8(s, "use"), "use");
-	m.use = m.zone == ZONE_RESIDENTIAL ? USE_RESIDENTIAL : m.zone == ZONE_INDUSTRIAL ? USE_INDUSTRIAL : USE_COMMERCIAL;
+	m.use = m.zone == BASE_RESIDENTIAL ? USE_RESIDENTIAL : m.zone == BASE_INDUSTRIAL ? USE_INDUSTRIAL : USE_COMMERCIAL;
 	m.kind = kind_named(r.utf8(s, "kind"), r);
 	if (s.has("function")) m.function = r.value_of(FUNCTION_NAMES, r.utf8(s, "function"), "function");
 	m.palette = r.integer(s, "scheme");

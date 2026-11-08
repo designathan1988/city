@@ -1,6 +1,7 @@
 // Lots along zoned streets (Roadcraft src/jobs/lots.ts buildLots): the cell's occupancy grid, the streets' setbacks
 // and the tests every lot must pass. Placement is in lot_place.cpp.
 #include "sim/citygen/lot_gen.h"
+#include "sim/catalog/catalog.h"
 
 #include "sim/citygen/lot_strips.h"
 #include "sim/terrain/terrain_gen.h"
@@ -28,12 +29,12 @@ double lot_gen::curve_distance(const Quad &q, double x, double z) {
 	return dist;
 }
 
-std::vector<Lot> build_lots(const LotGraph &g, const std::vector<Profile> &profiles, const LotGround &ground, double cell_x0, double cell_z0) {
-	return LotStrips(g, profiles, ground, cell_x0, cell_z0).run();
+std::vector<Lot> build_lots(const LotGraph &g, const std::vector<Profile> &profiles, const GenZones &zones, const LotGround &ground, double cell_x0, double cell_z0) {
+	return LotStrips(g, profiles, zones, ground, cell_x0, cell_z0).run();
 }
 
-LotStrips::LotStrips(const LotGraph &g, const std::vector<Profile> &profiles, const LotGround &ground, double x0, double z0) :
-		g_(g), prof_(profiles), ground_(ground), cx0_(x0), cz0_(z0), ax_(x0 - CELL_MARGIN), az_(z0 - CELL_MARGIN),
+LotStrips::LotStrips(const LotGraph &g, const std::vector<Profile> &profiles, const GenZones &zones, const LotGround &ground, double x0, double z0) :
+		g_(g), prof_(profiles), zones_(zones), ground_(ground), cx0_(x0), cz0_(z0), ax_(x0 - CELL_MARGIN), az_(z0 - CELL_MARGIN),
 		W_(int(std::ceil((LOT_CELL + CELL_MARGIN * 2) / RES))) {
 	grid_.assign(size_t(W_) * W_, 0);
 	for (int s = 0; s < g.segs(); s++) {

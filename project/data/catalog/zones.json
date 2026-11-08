@@ -1,14 +1,14 @@
 {
  "zones": [
-  { "id": "none", "code": 0, "name_key": "zone.none", "base": 0, "density": 1, "color": "#888888" },
-  { "id": "residential", "code": 1, "name_key": "zone.residential", "base": 1, "density": 1, "color": "#56bb73" },
-  { "id": "commercial", "code": 2, "name_key": "zone.commercial", "base": 2, "density": 1, "color": "#5da9e9" },
-  { "id": "industrial", "code": 3, "name_key": "zone.industrial", "base": 3, "density": 1, "color": "#d9b254" },
-  { "id": "mixed", "code": 4, "name_key": "zone.mixed", "base": 4, "density": 1, "color": "#b05fd0" },
-  { "id": "res_low", "code": 5, "name_key": "zone.resLow", "base": 1, "density": 0, "color": "#56bb73" },
-  { "id": "res_high", "code": 6, "name_key": "zone.resHigh", "base": 1, "density": 2, "color": "#56bb73" },
-  { "id": "com_low", "code": 7, "name_key": "zone.comLow", "base": 2, "density": 0, "color": "#5da9e9" },
-  { "id": "com_high", "code": 8, "name_key": "zone.comHigh", "base": 2, "density": 2, "color": "#5da9e9" }
+  { "id": "none", "code": 0, "name_key": "zone.none", "base": 0, "density": 1, "building": "house", "color": "#888888" },
+  { "id": "residential", "code": 1, "name_key": "zone.residential", "base": 1, "density": 1, "building": "flats", "color": "#56bb73" },
+  { "id": "commercial", "code": 2, "name_key": "zone.commercial", "base": 2, "density": 1, "building": "shop", "color": "#5da9e9" },
+  { "id": "industrial", "code": 3, "name_key": "zone.industrial", "base": 3, "density": 1, "building": "works", "color": "#d9b254" },
+  { "id": "mixed", "code": 4, "name_key": "zone.mixed", "base": 4, "density": 1, "building": "shop", "color": "#b05fd0" },
+  { "id": "res_low", "code": 5, "name_key": "zone.resLow", "base": 1, "density": 0, "building": "house", "color": "#56bb73" },
+  { "id": "res_high", "code": 6, "name_key": "zone.resHigh", "base": 1, "density": 2, "building": "tower", "color": "#56bb73" },
+  { "id": "com_low", "code": 7, "name_key": "zone.comLow", "base": 2, "density": 0, "building": "shop", "color": "#5da9e9" },
+  { "id": "com_high", "code": 8, "name_key": "zone.comHigh", "base": 2, "density": 2, "building": "office", "color": "#5da9e9" }
  ],
  "residents": { "floor_share": 0.6, "m2_per_resident": 28, "m2_per_job_commercial": 18, "m2_per_job_industrial": 45, "m2_per_person_mixed": 40 }
 }

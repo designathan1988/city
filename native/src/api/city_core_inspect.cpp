@@ -104,7 +104,7 @@ void put_building(const CityState &s, Dictionary &d, int id) {
 	const OccupancyDef &o = s.catalog.occupancy;
 	const float per[4] = { o.m2_per_resident, o.m2_per_job_commercial, o.m2_per_job_industrial, o.m2_per_person_mixed };
 	int residents, jobs;
-	BuildingStore::occupancy(b, o.floor_share, per, residents, jobs);
+	BuildingStore::occupancy(b, s.catalog.zone(b.zone).base, o.floor_share, per, residents, jobs);
 	d["residents"] = residents;
 	d["jobs"] = jobs;
 }

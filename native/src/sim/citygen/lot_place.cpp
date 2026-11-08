@@ -1,6 +1,7 @@
 // Placing lots (Roadcraft world/lots.ts): closed blocks first, then the open land along each zoned street side (streetPlan): a run of street with free
 // land behind its footway is one strip, of a lot's depth, cut in equal lots.
 #include "sim/citygen/lot_strips.h"
+#include "sim/catalog/catalog.h"
 
 #include "core/seeded.h"
 #include "sim/citygen/road_gen.h"
@@ -80,7 +81,7 @@ LotStrips::Along LotStrips::along(int s, double at, double sign) const {
 void LotStrips::place_side(int s, int side, int zone) {
 	const Profile &info = prof_[g_.profile[s]];
 	const double sign = side == 0 ? 1 : -1, face = (side == 0 ? info.left : info.right) + FRONT_PAD, length = len(s);
-	const bool works = zone == ZONE_IND;
+	const bool works = zone == zones_.industrial;
 	const double depth = works ? WORKS_DEPTH : STRIP_DEPTH, frontage = works ? WORKS_FRONTAGE : STRIP_FRONTAGE;
 	const auto clear = [&](double at) {
 		const Along a = along(s, at, sign);

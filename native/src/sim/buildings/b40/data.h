@@ -71,6 +71,12 @@ struct Data {
 	ModelTable models; // the Build > Models catalogue (data/render/models.json)
 	std::shared_ptr<BodyTable> edited = std::make_shared<BodyTable>(); // the bodies the player made; the rest of Data is read-only
 	std::shared_ptr<BodyCache> made = std::make_shared<BodyCache>(); // the records' bodies made from these tables (record.h), shared by a copy
+	// By zone code, what the generator builds there and whether it is a low shop street (zones.json, set at boot: buildings_loader.h
+	// set_zone_kinds).
+	std::vector<Kind> zone_kind;
+	std::vector<bool> zone_low_shop;
+	Kind kind_of_zone(int code) const { return code >= 0 && code < int(zone_kind.size()) ? zone_kind[size_t(code)] : KIND_HOUSE; }
+	bool low_shop(int code) const { return code >= 0 && code < int(zone_low_shop.size()) && zone_low_shop[size_t(code)]; }
 	LotRules lots;
 	InteriorTables interior;
 	std::vector<StyleDef> styles;

@@ -23,7 +23,7 @@ int ScenicRules::rank(int profile) const { return catalog_.profile(profile).prio
 bool ScenicRules::highway(int profile) const { return catalog_.profile(profile).road_class == RoadClass::HIGHWAY; }
 
 int ScenicRules::zone_beside(int profile, double x, double z) const {
-	if (highway(profile) || catalog_.profile(profile).rail) return ZONE_NONE;
+	if (highway(profile) || catalog_.profile(profile).rail) return catalog_.gen_zones.none;
 	return zone_at(V2(float(x), float(z)), rank(profile) > 0);
 }
 
@@ -53,9 +53,9 @@ bool ScenicRules::near_highway(V2 p, float reach) const {
 }
 
 int ScenicRules::zone_at(V2 p, bool on_main) const {
-	if (!road_gen::land(land_, p.x, p.y) || in_park(p)) return ZONE_NONE;
+	if (!road_gen::land(land_, p.x, p.y) || in_park(p)) return catalog_.gen_zones.none;
 	for (const Polyline &ring : city_.works)
-		if (ring_holds(ring, p)) return ZONE_IND;
+		if (ring_holds(ring, p)) return catalog_.gen_zones.industrial;
 	const ScenicDistrict &d = city_.districts[size_t(district_at(p))];
 	const ScenicZoning &z = city_.zoning;
 	float heat = d.heat, trade = d.trade;
@@ -66,7 +66,7 @@ int ScenicRules::zone_at(V2 p, bool on_main) const {
 	}
 	heat += z.noise_heat * float(value_noise(p.x / z.noise_cell_m, p.y / z.noise_cell_m));
 	const int density = heat > z.high_heat ? 2 : heat > z.medium_heat ? 1 : 0;
-	return zone_of(trade > z.commerce_trade || (on_main && trade > z.main_trade), density);
+	return zone_of(catalog_.gen_zones, trade > z.commerce_trade || (on_main && trade > z.main_trade), density);
 }
 
 } // namespace city
