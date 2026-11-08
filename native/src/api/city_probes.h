@@ -10,14 +10,16 @@ namespace city {
 
 struct CityState;
 class RenderWorld;
+class Simulation;
 
 class CityProbes : public godot::Object {
 	GDCLASS(CityProbes, godot::Object)
 
 public:
-	void attach(CityState *state, RenderWorld *render) {
+	void attach(CityState *state, RenderWorld *render, Simulation *sim) {
 		state_ = state;
 		render_ = render;
+		sim_ = sim;
 	}
 	godot::Dictionary park_sample(); // where the capture looks at bays, lots, bicycles and docks
 	godot::Array plan_all_yards(); // the yard planner's bench: every yard planned now (city_core_park_probe.cpp)
@@ -38,7 +40,7 @@ public:
 	godot::Dictionary job_pool_probe() const;
 	godot::Dictionary flow_replay(); // tests: the translated flow classes alone through a fixed script (city_core_flow_probe.cpp)
 	int flow_junction(); // tests: a three-arm junction on automatic with no signal, or -1
-	godot::Dictionary flow_push(int n, int seconds); // tests: that much traffic through it, the choice applied
+	godot::Dictionary flow_push(int n, int seconds); // tests: that much traffic through it, the choice applied; empty while the clock runs
 	godot::Dictionary flow_state(int n); // tests: what is measured, and the control of `n`
 	godot::Dictionary street_watch(float near_m); // tests: who is on a crossing between junctions, what stopped for them, who is turning back
 	void probe_set_money(double money); // tests: a balance to reach the refusal without spending it
@@ -48,7 +50,7 @@ public:
 	godot::Dictionary grade_probe(const godot::Dictionary &scene);
 	int undo_steps(); // tests: the steps the player can undo
 	godot::String graph_fault(); // tests: what the lane graph broke first, since the city opened (the debug DLL looks at every change)
-	godot::PackedStringArray traffic_hashes(int ticks); // tests: a hash of the fleet after each of `ticks` steps, the clock held by hand
+	godot::PackedStringArray traffic_hashes(int ticks); // tests: a hash of the fleet after each of `ticks` steps; empty while the clock runs
 	godot::Dictionary state_hash(); // tests: the city as a number, whole and by part (city_core_state_probe.cpp)
 	godot::Dictionary bay_census(); // how many bays the city has and how many different ones (building_renderer_probe.cpp)
 
@@ -58,6 +60,7 @@ protected:
 private:
 	CityState *state_ = nullptr; // the core's: it outlives this area (CityCore frees its areas first)
 	RenderWorld *render_ = nullptr;
+	Simulation *sim_ = nullptr; // the core's clock: a probe that steps the city on this thread asks it to hold still first
 };
 
 } // namespace city

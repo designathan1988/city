@@ -247,8 +247,8 @@ Dictionary CityCore::overlays() const {
 	return d;
 }
 
-void CityCore::step_ticks(int ticks) {
-	for (int i = 0; i < ticks; i++) sim_.step(*state_);
+bool CityCore::step_ticks(int ticks) {
+	return sim_.step(*state_, ticks);
 }
 
 } // namespace city

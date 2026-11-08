@@ -57,7 +57,7 @@ public:
 	void set_terrain_path(const godot::NodePath &p) { terrain_path_ = p; }
 	godot::NodePath get_terrain_path() const { return terrain_path_; }
 	void _process(double delta) override;
-	void step_ticks(int ticks); // tests: deterministic steps with the clock paused
+	bool step_ticks(int ticks); // tests: deterministic steps, refused (false) unless the clock is paused or stopped (Simulation::hold_still)
 
 	// --- the areas of the API (city_core_areas.cpp): the Build drawer, the Landscape drawer, public transport and the test probes, each
 	// an object of its own that game/store/city_store.gd calls by the names of game/store/store_api.gd ("builder", "landscape", ...).
