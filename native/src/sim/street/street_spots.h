@@ -1,5 +1,6 @@
 // What the player built as the pieces of a street (Roadcraft streetFurniture.ts furnitureOf): the items and poles standing
-// on a segment's sidewalks join its derived kit, the cuts leave it, and a derived piece an item stands on gives way. Read
+// on a segment's sidewalks join its derived kit, the cuts leave it, a derived piece an item stands on gives way, and the street's
+// own row of utility poles gives way to a line of the player's strung along the segment. Read
 // through traffic::street_furniture_of by the walkers and the render.
 #pragma once
 

@@ -132,6 +132,14 @@ void MeshBuilder::blob(const Vector3 &center, const Vector3 &radius, const Color
 		}
 }
 
+// The formats of the custom channels the builder carries (Godot asks for each one's format with the arrays).
+static uint64_t custom_format(const MeshBuilder &b) {
+	uint64_t format = 0;
+	if (!b.tags.is_empty()) format |= uint64_t(Mesh::ARRAY_CUSTOM_RGBA8_UNORM) << Mesh::ARRAY_FORMAT_CUSTOM0_SHIFT;
+	if (!b.pairs.is_empty()) format |= uint64_t(Mesh::ARRAY_CUSTOM_RG_FLOAT) << Mesh::ARRAY_FORMAT_CUSTOM1_SHIFT;
+	return format;
+}
+
 static Array surface_arrays(const MeshBuilder &b) {
 	Array arr;
 	arr.resize(Mesh::ARRAY_MAX);
@@ -141,6 +149,7 @@ static Array surface_arrays(const MeshBuilder &b) {
 	arr[Mesh::ARRAY_TEX_UV] = b.uv;
 	arr[Mesh::ARRAY_TEX_UV2] = b.uv2;
 	if (!b.tags.is_empty()) arr[Mesh::ARRAY_CUSTOM0] = b.tags;
+	if (!b.pairs.is_empty()) arr[Mesh::ARRAY_CUSTOM1] = b.pairs;
 	PackedInt32Array ordered = b.idx;
 	order_triangles(ordered.ptrw(), size_t(ordered.size()), size_t(b.v.size()));
 	arr[Mesh::ARRAY_INDEX] = ordered;
@@ -150,13 +159,13 @@ static Array surface_arrays(const MeshBuilder &b) {
 Ref<ArrayMesh> MeshBuilder::commit() const {
 	Ref<ArrayMesh> m;
 	m.instantiate();
-	if (!empty()) m->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, surface_arrays(*this));
+	if (!empty()) m->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, surface_arrays(*this), {}, Dictionary(), BitField<Mesh::ArrayFormat>(custom_format(*this)));
 	return m;
 }
 
 int64_t MeshBuilder::bytes() const {
 	return int64_t((v.size() + n.size()) * sizeof(Vector3) + c.size() * sizeof(Color) + (uv.size() + uv2.size()) * sizeof(Vector2) +
-			idx.size() * sizeof(int32_t) + tags.size());
+			idx.size() * sizeof(int32_t) + tags.size() + pairs.size() * sizeof(float));
 }
 
 AABB MeshBuilder::bounds() const {
@@ -181,6 +190,16 @@ void MeshBuilder::tag(uint8_t value) {
 	}
 }
 
+void MeshBuilder::pair(const Vector2 &value) {
+	constexpr int64_t CHANNELS = 2; // an RG float custom array
+	int64_t at = pairs.size();
+	pairs.resize(v.size() * CHANNELS);
+	for (; at < pairs.size(); at += CHANNELS) {
+		pairs[at] = value.x;
+		pairs[at + 1] = value.y;
+	}
+}
+
 OwnedMesh MeshBuilder::bake() const {
 	OwnedMesh m;
 	if (empty()) return m;
@@ -191,8 +210,7 @@ OwnedMesh MeshBuilder::bake() const {
 
 void MeshBuilder::commit_to(const RID &mesh) const {
 	if (empty()) return;
-	uint64_t format = RenderingServer::ARRAY_FLAG_COMPRESS_ATTRIBUTES;
-	if (!tags.is_empty()) format |= uint64_t(RenderingServer::ARRAY_CUSTOM_RGBA8_UNORM) << RenderingServer::ARRAY_FORMAT_CUSTOM0_SHIFT;
+	const uint64_t format = uint64_t(RenderingServer::ARRAY_FLAG_COMPRESS_ATTRIBUTES) | custom_format(*this);
 	const Dictionary lods = levels ? mesh_levels(v, idx, STREET_LEVELS_M) : Dictionary();
 	RenderingServer::get_singleton()->mesh_add_surface_from_arrays(mesh, RenderingServer::PRIMITIVE_TRIANGLES, surface_arrays(*this), Array(), lods, format);
 }

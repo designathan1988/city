@@ -1,5 +1,5 @@
-// The posts of the street furniture, see street_furniture.h: the lamp rows (distribution poles evenly along the block,
-// on one face or both by the street's width) and the signal post of each signalled approach (across the junction, or on
+// The posts of the street furniture, see street_furniture.h: the lamp rows (distribution poles evenly along the block, on
+// one face, each carrying its lamp) and the signal post of each signalled approach (across the junction, or on
 // its own corner). Every distance comes from data/catalog/street_furniture.json and its sources.
 #include "sim/roads/street_furniture_internal.h"
 
@@ -45,11 +45,11 @@ LampRow lamp_row(const RoadNetwork &net, int sid) {
 	if (!right && !left) return r;
 	const StreetFurnitureDef &d = defs(net);
 	r.any = true;
-	// the wires on one face, a lighting column on the other when there is one (the Roadcraft 4.0 street); the line on the east or south face
-	r.twin = right && left;
+	// The power line on one face, its poles carrying the lamps: on the east or south face (NPIP-1 5.2), a rule of the world, so a
+	// street keeps its face through its nodes whichever way its segments run.
 	const RoadNode &a = net.nodes[size_t(g.a)], &b = net.nodes[size_t(g.b)];
 	const double dx = b.x - a.x, dz = b.z - a.z; // the right face looks to (-dz, dx): east is +x, south +z
-	r.side = right && left ? (r.twin || dx - dz >= 0 ? 0 : 1) : (right ? 0 : 1);
+	r.side = right && left ? (dx - dz >= 0 ? 0 : 1) : (right ? 0 : 1);
 	const float pole = d.sidewalk.kerb_clear_m + d.footprint[int(FurnitureKind::LAMP)].z_m * 0.5f;
 	r.pole_u = kerb_in(p, r.side, pole);
 	r.head_u = r.pole_u + toward_road(r.side) * d.lamps.reach_m;
@@ -58,11 +58,6 @@ LampRow lamp_row(const RoadNetwork &net, int sid) {
 	const float lo = re.strip.kind == StripKind::SIDEWALK ? re.u1 : re.u0, hi = le.strip.kind == StripKind::SIDEWALK ? le.u0 : le.u1;
 	r.across = std::max(d.lamps.pool_least_m, (hi - lo) * d.lamps.pool_share + d.lamps.pool_margin_m);
 	r.centre = r.pole_u + toward_road(r.side) * std::max(d.lamps.reach_m, r.across - d.lamps.pool_back_m);
-	if (r.twin) {
-		r.pole_u2 = kerb_in(p, 1, pole);
-		r.head_u2 = r.pole_u2 + toward_road(1) * d.lamps.reach_m;
-		r.centre = (r.head_u + r.head_u2) * 0.5f;
-	}
 	// a pole just past each crosswalk, after the place a signal post may take, and evenly at most span_m apart between
 	const double past = d.crossing.zebra_to_m + d.footprint[int(FurnitureKind::SIGNAL)].z_m + d.footprint[int(FurnitureKind::LAMP)].x_m * 0.5;
 	const double v0 = g.retreat_a, v1 = g.len - g.retreat_b, from = v0 + past, to = v1 - past;

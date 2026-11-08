@@ -46,8 +46,36 @@
   "bulb_steps": 28
  },
  "props": {
-  "_doc": "Parts in local metres (+z faces the road or the arriving traffic, base at y = 0). shape box (min, max), cylinder (base, radius, height, segments) or blob (center, radius); glow 'night' lights the part at night. Signal lenses: lens 0/1/2 = the cars' red/amber/green (on both faces of the head), 3/4 = the walkers' stop/walk (their head faces -x, across the crosswalk; the cars' red and green). color is the lens lit as the screen shows it (render/tone_map.gd gives the radiance): the colour regions of road traffic signals (CIE, as tabled by Janoff, Transportation Research Record 1316, 1991, Table 1; EN 12368 Table 7 asks the same) lie outside what an sRGB screen shows for red and amber, so each is the brightest colour the Environment's ACES can show whose chromaticity is within one MacAdam step (0.0011 in CIE 1976 u'v', CIE TN 001:2014) of the nearest one it can show (red: 0.0377 from the region, the nearest 0.0366; amber: 0.0073, the nearest 0.0062); green the brightest inside its region. An unlit lens is that colour times lens_dim (sRGB), a dark filter lit by the scene: in full sun (daylight.json sun and ambient) it stays at least 16 times dimmer than the lens lit, the phantom signal class 5 of EN 12368 (ratios 21.2, 16.6 and 19.9). The signal head: three 12-inch sections (MUTCD 4D.07; 300 mm lenses, EN 12368 6.2), each housing 13.5 x 13.5 x 7.0 in (SWARCO McCain traffic signal housing sheet), two back to back for the two faces, its bottom 15 ft over the road (MUTCD 4D.15), red on top; each lens a dome 2.0 in proud of its door (Leotek IL6-P3 12-inch module), under a cap visor as deep as the lens is wide, 0.10 in thick (McCain visor sheet), dull black (MUTCD 4D.12). The walkers' head: two 8-inch sections (10 x 10 x 7.0 in, 200 mm lenses, domes 1.7 in, 8-inch visors), the upraised hand above the walking person (MUTCD 4E.04), its bottom at 8.5 ft, the middle of MUTCD 4E.05's 7 to 10 ft. Housings and visors black: linear albedo 0.05, a black-pigmented polymer (Physically Based, 'Toner (Black)'). The lenses are not in the post's mesh: each is drawn once, lit or not, by render/props/signal_lamps.h.",
+  "_doc": "Parts in local metres (+z faces the road or the arriving traffic, base at y = 0). shape box (min, max), cylinder (base, radius, height, segments) or blob (center, radius); glow 'night' lights the part at night. Signal lenses: lens 0/1/2 = the cars' red/amber/green (on both faces of the head), 3/4 = the walkers' stop/walk (their head faces -x, across the crosswalk; the cars' red and green). color is the lens lit as the screen shows it (render/tone_map.gd gives the radiance): the colour regions of road traffic signals (CIE, as tabled by Janoff, Transportation Research Record 1316, 1991, Table 1; EN 12368 Table 7 asks the same) lie outside what an sRGB screen shows for red and amber, so each is the brightest colour the Environment's ACES can show whose chromaticity is within one MacAdam step (0.0011 in CIE 1976 u'v', CIE TN 001:2014) of the nearest one it can show (red: 0.0377 from the region, the nearest 0.0366; amber: 0.0073, the nearest 0.0062); green the brightest inside its region. An unlit lens is that colour times lens_dim (sRGB), a dark filter lit by the scene: in full sun (daylight.json sun and ambient) it stays at least 16 times dimmer than the lens lit, the phantom signal class 5 of EN 12368 (ratios 21.2, 16.6 and 19.9). The signal head: three 12-inch sections (MUTCD 4D.07; 300 mm lenses, EN 12368 6.2), each housing 13.5 x 13.5 x 7.0 in (SWARCO McCain traffic signal housing sheet), two back to back for the two faces, its bottom 15 ft over the road (MUTCD 4D.15), red on top; each lens a dome 2.0 in proud of its door (Leotek IL6-P3 12-inch module), under a cap visor as deep as the lens is wide, 0.10 in thick (McCain visor sheet), dull black (MUTCD 4D.12). The walkers' head: two 8-inch sections (10 x 10 x 7.0 in, 200 mm lenses, domes 1.7 in, 8-inch visors), the upraised hand above the walking person (MUTCD 4E.04), its bottom at 8.5 ft, the middle of MUTCD 4E.05's 7 to 10 ft. Housings and visors black: linear albedo 0.05, a black-pigmented polymer (Physically Based, 'Toner (Black)'). The lenses are not in the post's mesh: each is drawn once, lit or not, by render/props/signal_lamps.h. pole: one mesh for every style, its parts shown by `part` (render/props/prop_kit.h PolePart): the mast and cap (1), the urban cross-arm held out over the street with its three insulators, brace and the secondary rack with its two spools (2), the transformer away from the street (4), the lamp on its bracket (8), the lighting column (16), the rural cross-arm across the crown (32) and its transformer toward the street (64). The utility pole stands 12.0 m clear of the ground: a 14 m distribution pole (a nominal length of ABNT NBR 8451-1, concrete poles for distribution networks) set L/10 + 0.60 m = 2.0 m deep, the embedding rule of Neoenergia DIS-NOR-012 rev. 08 table 30 (which sets a 12 m pole 1.8 m deep). Measured from its crown: the cap 1 cm into it, the cross-arm's top 0.15 m below it and 0.10 m deep, the insulators 0.20 m tall on it, the rack's spools 1.30 and 1.50 m below the crown, the transformer's middle 0.75 m under the arm and its side against the mast, the lamp's head 2.0 m below the crown and 1.6 m out on a bracket rising 8 degrees. The mast tapers from 0.18 m at the foot to 0.11 m at the crown. The lighting column: 9 m, its lens 2.1 m out.",
   "lens_dark": [["#8d221c", "#2a0705"], ["#8a6410", "#281c04"], ["#1d6b33", "#07230f"], ["#8d221c", "#2a0705"], ["#1d6b33", "#07230f"]],
+  "pole_cast": {"_doc": "What a pole casts past from_m: only its parts of least_m or longer, round ones of `segments` sides. Nearer the whole pole casts: an insulator shows there.", "from_m": 140, "least_m": 0.3, "segments": 5},
+  "pole": [
+   {"shape": "frustum", "base": [0, 0, 0], "radius": 0.18, "top_radius": 0.11, "height": 12.0, "segments": 12, "color": "#4e3b2a", "part": 1, "wood": true},
+   {"shape": "frustum", "base": [0, 11.99, 0], "radius": 0.1265, "top_radius": 0.044, "height": 0.08, "segments": 10, "color": "#8c9590", "part": 1},
+   {"shape": "box", "min": [-0.05, 11.75, 0.0], "max": [0.05, 11.85, 2.0], "color": "#3a2c20", "wood": true, "part": 2},
+   {"shape": "frustum", "base": [0, 11.85, 0.55], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 2},
+   {"shape": "frustum", "base": [0, 11.85, 1.25], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 2},
+   {"shape": "frustum", "base": [0, 11.85, 1.85], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 2},
+   {"shape": "beam", "from": [0, 11.35, 0.1138], "to": [0, 11.75, 0.45], "width": 0.05, "thick": 0.025, "color": "#8c9590", "part": 2},
+   {"shape": "box", "min": [-0.03, 10.4, 0.1182], "max": [0.03, 10.8, 0.1682], "color": "#8c9590", "part": 2},
+   {"shape": "frustum", "base": [0, 10.66, 0.2082], "radius": 0.04, "top_radius": 0.022, "height": 0.08, "segments": 10, "color": "#d8dcd6", "part": 2},
+   {"shape": "frustum", "base": [0, 10.46, 0.2082], "radius": 0.04, "top_radius": 0.022, "height": 0.08, "segments": 10, "color": "#d8dcd6", "part": 2},
+   {"shape": "box", "min": [-0.05, 11.75, -1.0], "max": [0.05, 11.85, 1.0], "color": "#3a2c20", "wood": true, "part": 32},
+   {"shape": "frustum", "base": [0, 11.85, -0.95], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 32},
+   {"shape": "frustum", "base": [0, 11.85, 0.35], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 32},
+   {"shape": "frustum", "base": [0, 11.85, 0.95], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 32},
+   {"shape": "beam", "from": [0, 11.35, -0.1138], "to": [0, 11.75, -0.45], "width": 0.05, "thick": 0.025, "color": "#8c9590", "part": 32},
+   {"shape": "cylinder", "base": [0, 10.575, -0.3955], "radius": 0.28, "height": 0.95, "segments": 14, "color": "#8c9590", "part": 4},
+   {"shape": "cylinder", "base": [0, 10.575, 0.3955], "radius": 0.28, "height": 0.95, "segments": 14, "color": "#8c9590", "part": 64},
+   {"shape": "beam", "from": [0, 9.7751, 0], "to": [0, 10.0, 1.6], "width": 0.08, "thick": 0.08, "color": "#4a4a46", "part": 8},
+   {"shape": "box", "min": [-0.13, 9.86, 1.35], "max": [0.13, 10.0, 1.85], "color": "#a9b0ad", "part": 8},
+   {"shape": "box", "min": [-0.104, 9.85, 1.4], "max": [0.104, 9.86, 1.8], "color": "#ffdba0", "glow": "night", "part": 8},
+   {"shape": "frustum", "base": [0, 0, 0], "radius": 0.19, "top_radius": 0.15, "height": 0.7, "segments": 8, "color": "#5d6461", "part": 16},
+   {"shape": "frustum", "base": [0, 0.7, 0], "radius": 0.12, "top_radius": 0.07, "height": 8.3, "segments": 8, "color": "#8a918e", "part": 16},
+   {"shape": "beam", "from": [0, 8.88, 0], "to": [0, 9.09, 2.1], "width": 0.08, "thick": 0.08, "color": "#8a918e", "part": 16},
+   {"shape": "box", "min": [-0.19, 9.02, 1.71], "max": [0.19, 9.16, 2.49], "color": "#a9b0ad", "part": 16},
+   {"shape": "box", "min": [-0.14, 9.01, 1.82], "max": [0.14, 9.02, 2.38], "color": "#ffdba0", "glow": "night", "part": 16}
+  ],
   "signal": [
    {"shape": "cylinder", "base": [0, 0, 0], "radius": 0.12, "height": 5.8, "segments": 8, "color": "#3a3e42"},
    {"shape": "box", "min": [-3.6, 5.5, -0.06], "max": [0, 5.62, 0.06], "color": "#3a3e42"},
@@ -149,8 +177,11 @@
   ]
  },
  "wires": {
-  "_doc": "The wires of a span, on the seats of each pole (Roadcraft 4.0 world/utilities.ts primarySeats, secondarySeats, spanCarries): the three primary wires on the cross-arm's insulators, z_m along it from the mast toward the street on an urban pole (B1), the style's rural_z_m on a rural one (N1, across the crown), the wire i from the seat i of one pole to the seat i of the other; the two secondary wires on the urban pole's rack (S1), the style's secondary_z_m out from the mast, only between two urban poles. The style's y_m: the primary wires' height, then the secondary ones'. sag: share of the span, up to max_sag_m. radius_m: thicker than life so a cable reads at play zoom, as the 4.0 draws it. min_span_m, max_span_m: what is strung. near_chords and near_sides are the tube up to tube_end_m, far_chords and far_sides the coarse one up to far_end_m, where a wire is under a pixel at the 1600 x 900 view. Sag and these distances have no norm behind them: measured against the 4.0 in play.",
+  "_doc": "The wires of a span, on the seats of each pole (props.pole): the three primary wires rest on the tops of the cross-arm's insulators, y_m[0]; z_m along the arm from the mast toward the street on an urban pole (its arm held out over the street), rural_z_m on a rural one (its arm across the crown); the two secondary wires through the spools of the urban pole's rack, at the rest of y_m, secondary_z_m out from the mast (the rack's face plus a spool's radius), only between two urban poles. Wire i runs from seat i of one pole to seat i of the other when both arms reach the same way, and to seat n-1-i when they reach opposite ways (a span over a street, between poles that each reach over their own side): the wires keep their order across and never cross (render/props/street_props.cpp push_span, props.gdshader). y_m, z_m, rural_z_m and secondary_z_m are measured on props.pole and change with it. sag: share of the span, up to max_sag_m. radius_m: thicker than life so a cable reads at play zoom. min_span_m, max_span_m: what is strung. near_chords and near_sides are the tube up to tube_end_m, far_chords and far_sides the coarse one up to far_end_m, where a wire is under a pixel at the 1600 x 900 view. Sag and these distances are modelling choices with no norm behind them.",
+  "y_m": [12.05, 10.7, 10.5],
   "z_m": [0.55, 1.25, 1.85],
+  "rural_z_m": [-0.95, 0.35, 0.95],
+  "secondary_z_m": 0.2082,
   "radius_m": 0.035,
   "sag": 0.018,
   "max_sag_m": 1.4,
@@ -313,10 +344,10 @@
   "beam_section": [[-0.5, -0.5], [-0.42, -0.32], [-0.22, 0.5], [-0.1, 0.42], [0, 0.1], [0.1, 0.42], [0.22, 0.5], [0.42, -0.32], [0.5, -0.5]]
  },
  "lamp_light": {
-  "_doc": "A lamp's lens and the lit air under it. The light on the ground is render/props/lamp_lights.h, its numbers in tuning.json render.lamp_*. beam_radius_m: the lit air under the lens in rain. lamp_* and column_*: height and reach of the lens on a utility pole and on a lighting column.",
+  "_doc": "A lamp's lens and the lit air under it. The light on the ground is render/props/lamp_lights.h, its numbers in tuning.json render.lamp_*. beam_radius_m: the lit air under the lens in rain. lamp_* and column_*: height and reach of the lens on a utility pole and on a lighting column, measured on props.pole: the utility pole's lens under its head, 2.14 m below the crown of the 12 m pole.",
   "beams": false,
   "beam_radius_m": 3.68,
-  "lamp_height_m": 7.16,
+  "lamp_height_m": 9.86,
   "lamp_reach_m": 1.6,
   "column_height_m": 9.02,
   "column_reach_m": 2.1
@@ -340,39 +371,7 @@
  "styles": {
   "_doc": "What changes with a city's regional style (session-rules.md, section 10), laid over this table by DataTables: a block here replaces the same keys above, a list replaces the list. The drawings are the Roadcraft 4.0 look in both for now.",
   "roadcraft": {
-   "_doc": "What the Roadcraft 4.0 draws (src/render/signs.ts PLATE; src/world/utilities.ts and src/render/utilities.ts placePole: the urban and the rural pole, 8.5 m, made by tools/assets/make_pole_parts.py). The look of this style, not a norm.",
-   "props": {
-    "pole_cast": {"_doc": "What a pole casts past from_m: only its parts of least_m or longer, round ones of `segments` sides. Nearer the whole pole casts: an insulator shows there.", "from_m": 140, "least_m": 0.3, "segments": 5},
-    "pole": [
-     {"shape": "frustum", "base": [0, 0, 0], "radius": 0.18, "top_radius": 0.11, "height": 8.5, "segments": 12, "color": "#4e3b2a", "part": 1, "wood": true},
-     {"shape": "frustum", "base": [0, 8.49, 0], "radius": 0.1265, "top_radius": 0.044, "height": 0.08, "segments": 10, "color": "#8c9590", "part": 1},
-     {"shape": "box", "min": [-0.05, 8.25, 0.0], "max": [0.05, 8.35, 2.0], "color": "#3a2c20", "wood": true, "part": 2},
-     {"shape": "frustum", "base": [0, 8.35, 0.55], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 2},
-     {"shape": "frustum", "base": [0, 8.35, 1.25], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 2},
-     {"shape": "frustum", "base": [0, 8.35, 1.85], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 2},
-     {"shape": "beam", "from": [0, 7.85, 0.1154], "to": [0, 8.25, 0.45], "width": 0.05, "thick": 0.025, "color": "#8c9590", "part": 2},
-     {"shape": "box", "min": [-0.03, 6.9, 0.1215], "max": [0.03, 7.3, 0.1715], "color": "#8c9590", "part": 2},
-     {"shape": "frustum", "base": [0, 7.16, 0.22], "radius": 0.04, "top_radius": 0.022, "height": 0.08, "segments": 10, "color": "#d8dcd6", "part": 2},
-     {"shape": "frustum", "base": [0, 6.96, 0.22], "radius": 0.04, "top_radius": 0.022, "height": 0.08, "segments": 10, "color": "#d8dcd6", "part": 2},
-     {"shape": "box", "min": [-0.05, 8.25, -1.0], "max": [0.05, 8.35, 1.0], "color": "#3a2c20", "wood": true, "part": 32},
-     {"shape": "frustum", "base": [0, 8.35, -0.95], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 32},
-     {"shape": "frustum", "base": [0, 8.35, 0.35], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 32},
-     {"shape": "frustum", "base": [0, 8.35, 0.95], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 32},
-     {"shape": "beam", "from": [0, 7.85, -0.1154], "to": [0, 8.25, -0.45], "width": 0.05, "thick": 0.025, "color": "#8c9590", "part": 32},
-     {"shape": "cylinder", "base": [0, 7.075, -0.46], "radius": 0.28, "height": 0.95, "segments": 14, "color": "#8c9590", "part": 4},
-     {"shape": "cylinder", "base": [0, 7.075, 0.46], "radius": 0.28, "height": 0.95, "segments": 14, "color": "#8c9590", "part": 64},
-     {"shape": "beam", "from": [0, 6.2751, 0], "to": [0, 6.5, 1.6], "width": 0.08000000000000002, "thick": 0.08000000000000002, "color": "#4a4a46", "part": 8},
-     {"shape": "box", "min": [-0.13, 6.36, 1.35], "max": [0.13, 6.5, 1.85], "color": "#a9b0ad", "part": 8},
-     {"shape": "box", "min": [-0.104, 6.35, 1.4], "max": [0.104, 6.36, 1.8], "color": "#ffdba0", "glow": "night", "part": 8},
-     {"shape": "frustum", "base": [0, 0, 0], "radius": 0.19, "top_radius": 0.15, "height": 0.7, "segments": 8, "color": "#5d6461", "part": 16},
-     {"shape": "frustum", "base": [0, 0.7, 0], "radius": 0.12, "top_radius": 0.07, "height": 8.3, "segments": 8, "color": "#8a918e", "part": 16},
-     {"shape": "beam", "from": [0, 8.88, 0], "to": [0, 9.09, 2.1], "width": 0.08, "thick": 0.08, "color": "#8a918e", "part": 16},
-     {"shape": "box", "min": [-0.19, 9.02, 1.71], "max": [0.19, 9.16, 2.49], "color": "#a9b0ad", "part": 16},
-     {"shape": "box", "min": [-0.14, 9.01, 1.82], "max": [0.14, 9.02, 2.38], "color": "#ffdba0", "glow": "night", "part": 16}
-    ]
-   },
-   "wires": {"y_m": [8.55, 7.2, 7.0], "rural_z_m": [-0.95, 0.35, 0.95], "secondary_z_m": 0.22},
-   "lamp_light": {"lamp_height_m": 6.36},
+   "_doc": "What the Roadcraft style draws (the plates). The look of this style, not a norm.",
    "signs": {
     "plates": {
      "stop": {"w_m": 0.75, "h_m": 0.75, "z_m": 2.2, "rotation": 0.0625, "outline_points": 8},
@@ -408,39 +407,7 @@
    }
   },
   "brasil": {
-   "_doc": "The pole: Neoenergia DIS-NOR-012 rev. 08, in the catalog's poles. CONTRAN MBST vol. I (2022) 3.7, recommended for town: stop, R-1, side 0.35 m, 0.845 m across, an octagon; yield, R-2, side 0.90 m; round plates 0.50 m. z_m is the plate centre: 3.11 puts the bottom edge 2.0 to 2.5 m up, here 2.1 m.",
-   "props": {
-    "pole_cast": {"_doc": "What a pole casts past from_m: only its parts of least_m or longer, round ones of `segments` sides. Nearer the whole pole casts: an insulator shows there.", "from_m": 140, "least_m": 0.3, "segments": 5},
-    "pole": [
-     {"shape": "frustum", "base": [0, 0, 0], "radius": 0.18, "top_radius": 0.11, "height": 10.2, "segments": 12, "color": "#4e3b2a", "part": 1, "wood": true},
-     {"shape": "frustum", "base": [0, 10.19, 0], "radius": 0.1265, "top_radius": 0.044, "height": 0.08, "segments": 10, "color": "#8c9590", "part": 1},
-     {"shape": "box", "min": [-0.05, 9.95, 0.0], "max": [0.05, 10.05, 2.0], "color": "#3a2c20", "wood": true, "part": 2},
-     {"shape": "frustum", "base": [0, 10.05, 0.55], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 2},
-     {"shape": "frustum", "base": [0, 10.05, 1.25], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 2},
-     {"shape": "frustum", "base": [0, 10.05, 1.85], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 2},
-     {"shape": "beam", "from": [0, 9.55, 0.1145], "to": [0, 9.95, 0.45], "width": 0.05, "thick": 0.025, "color": "#8c9590", "part": 2},
-     {"shape": "box", "min": [-0.03, 8.6, 0.1196], "max": [0.03, 9.0, 0.1696], "color": "#8c9590", "part": 2},
-     {"shape": "frustum", "base": [0, 8.86, 0.22], "radius": 0.04, "top_radius": 0.022, "height": 0.08, "segments": 10, "color": "#d8dcd6", "part": 2},
-     {"shape": "frustum", "base": [0, 8.66, 0.22], "radius": 0.04, "top_radius": 0.022, "height": 0.08, "segments": 10, "color": "#d8dcd6", "part": 2},
-     {"shape": "box", "min": [-0.05, 9.95, -1.0], "max": [0.05, 10.05, 1.0], "color": "#3a2c20", "wood": true, "part": 32},
-     {"shape": "frustum", "base": [0, 10.05, -0.95], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 32},
-     {"shape": "frustum", "base": [0, 10.05, 0.35], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 32},
-     {"shape": "frustum", "base": [0, 10.05, 0.95], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 32},
-     {"shape": "beam", "from": [0, 9.55, -0.1145], "to": [0, 9.95, -0.45], "width": 0.05, "thick": 0.025, "color": "#8c9590", "part": 32},
-     {"shape": "cylinder", "base": [0, 8.775, -0.46], "radius": 0.28, "height": 0.95, "segments": 14, "color": "#8c9590", "part": 4},
-     {"shape": "cylinder", "base": [0, 8.775, 0.46], "radius": 0.28, "height": 0.95, "segments": 14, "color": "#8c9590", "part": 64},
-     {"shape": "beam", "from": [0, 7.9751, 0], "to": [0, 8.2, 1.6], "width": 0.08000000000000002, "thick": 0.08000000000000002, "color": "#4a4a46", "part": 8},
-     {"shape": "box", "min": [-0.13, 8.06, 1.35], "max": [0.13, 8.2, 1.85], "color": "#a9b0ad", "part": 8},
-     {"shape": "box", "min": [-0.104, 8.05, 1.4], "max": [0.104, 8.06, 1.8], "color": "#ffdba0", "glow": "night", "part": 8},
-     {"shape": "frustum", "base": [0, 0, 0], "radius": 0.19, "top_radius": 0.15, "height": 0.7, "segments": 8, "color": "#5d6461", "part": 16},
-     {"shape": "frustum", "base": [0, 0.7, 0], "radius": 0.12, "top_radius": 0.07, "height": 8.3, "segments": 8, "color": "#8a918e", "part": 16},
-     {"shape": "beam", "from": [0, 8.88, 0], "to": [0, 9.09, 2.1], "width": 0.08, "thick": 0.08, "color": "#8a918e", "part": 16},
-     {"shape": "box", "min": [-0.19, 9.02, 1.71], "max": [0.19, 9.16, 2.49], "color": "#a9b0ad", "part": 16},
-     {"shape": "box", "min": [-0.14, 9.01, 1.82], "max": [0.14, 9.02, 2.38], "color": "#ffdba0", "glow": "night", "part": 16}
-    ]
-   },
-   "wires": {"y_m": [10.25, 8.9, 8.7], "rural_z_m": [-0.95, 0.35, 0.95], "secondary_z_m": 0.22},
-   "lamp_light": {"lamp_height_m": 8.06},
+   "_doc": "CONTRAN MBST vol. I (2022) 3.7, recommended for town: stop, R-1, side 0.35 m, 0.845 m across, an octagon; yield, R-2, side 0.90 m; round plates 0.50 m. z_m is the plate centre: 3.11 puts the bottom edge 2.0 to 2.5 m up, here 2.1 m.",
    "signs": {
     "plates": {
      "stop": {"w_m": 0.845, "h_m": 0.845, "z_m": 2.53, "rotation": 0.0625, "outline_points": 8},

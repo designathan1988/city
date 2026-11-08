@@ -487,6 +487,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `project/tests/visual/live_driver.gd` — o jogo aberto na tela do jogador, dirigido de fora enquanto ele olha (`-- --live=<pasta>`): cidade nova, câmera, comandos, consultas e fotos
 - `project/tests/visual/frozen_plan.json` — as vistas congeladas do `tools/build/quick.sh` (`look --frozen`): o mundo parado, bit a bit
 - `project/tests/visual/sao_paulo_plan.json` — the scenic Sao Paulo photographed: the whole city, Paulista from above and down its middle, Centro, Ibirapuera, Pinheiros, the Tiete bridge, the city at night
+- `project/tests/visual/street_poles_plan.json` — the 12 m utility poles and their wires photographed: a street's own line through joints and across a junction, two bends (one where the line changes face and its span crosses the street), the player's line along a street whose own row gives way; far, close on the seats, and at night
 - `project/tests/visual/look.gd` · `project/tests/visual/look.tscn` · `project/tests/visual/look_aim.gd` · `project/tests/visual/look_measure.gd` — the game looked at through a JSON plan: setView, shot, wait, frames, hour, dispatch, query, key, click, drag; the Godot servers' measurements (frames, usage, render, GPU passes)
 - `project/ui/builder_strip.gd` · `project/ui/model_shelf.gd` — seções e cartões das abas do Construir; prateleira de Modelos (busca, categorias, fotos, salvar e remover)
 - `project/ui/drawer_strips.gd` — cartões e controles das gavetas

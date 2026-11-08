@@ -168,22 +168,17 @@ Dictionary CityStreet::furniture_census() {
 	kinds.resize(FURNITURE_KINDS);
 	kinds.fill(0);
 	double metres = 0;
-	int lit = 0;
 	std::vector<FurnitureSpot> spots;
 	for (int sid = 0; sid < int(s.roads.segs.size()); sid++) {
 		if (!s.roads.segs[size_t(sid)].alive) continue;
 		metres += s.roads.segs[size_t(sid)].len;
 		spots.clear();
 		traffic::street_furniture_of(s, sid, FURNITURE_ALL, spots);
-		for (const FurnitureSpot &p : spots) {
-			kinds[int(p.kind)] += 1;
-			lit += p.kind == FurnitureKind::LAMP && p.lit ? 1 : 0;
-		}
+		for (const FurnitureSpot &p : spots) kinds[int(p.kind)] += 1;
 	}
 	Dictionary d;
 	d["kinds"] = kinds;
 	d["street_m"] = metres;
-	d["lit"] = lit;
 	return d;
 }
 
@@ -214,7 +209,7 @@ Dictionary CityStreet::street_counts() {
 	return d;
 }
 
-// Where each piece of segment `seg`'s furniture stands (tests and the look's queries): its kind, row, side, station, place in the
+// Where each piece of segment `seg`'s furniture stands (tests and the look's queries): its kind, side, station, place in the
 // segment frame (v along, u across) and in the world (sim/street/footway.h footway_point, without the kerb's rise).
 Array CityStreet::furniture_spots(int seg) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
@@ -228,7 +223,6 @@ Array CityStreet::furniture_spots(int seg) {
 		footway_point(s.roads, seg, p.v, p.u, x, z, y);
 		Dictionary d;
 		d["kind"] = int(p.kind);
-		d["row"] = p.row;
 		d["side"] = p.side;
 		d["station"] = p.station;
 		d["v"] = p.v;

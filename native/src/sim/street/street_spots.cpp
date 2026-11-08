@@ -90,10 +90,23 @@ void merge_street(const StreetWorks &w, const RoadNetwork &net, int sid, uint32_
 		s.item = id;
 		mine.push_back(s);
 	});
+	std::vector<int> standing; // the player's poles on this segment's footways
 	w.poles_in(x0, z0, x1, z1, [&](int id) {
 		const UtilityPole &pole = w.poles.items[size_t(id)];
 		const FootwayHit h = footway_at(net, pole.x, pole.z, stand);
-		if (h.ok && h.seg == sid) mine.push_back(piece_on(net, FurnitureKind::POLE, h));
+		if (!h.ok || h.seg != sid) return;
+		mine.push_back(piece_on(net, FurnitureKind::POLE, h));
+		standing.push_back(id);
+	});
+	// The player's line runs along the segment when one of its spans joins two poles standing on it: it is then the street's
+	// power line, carrying its lamps, and the street's own row of poles gives way to it (a street has one line of poles).
+	const bool line_along = std::any_of(standing.begin(), standing.end(), [&](int id) {
+		for (int sp : w.poles.items[size_t(id)].spans) {
+			const UtilitySpan &span = w.spans.items[size_t(sp)];
+			const int other = span.a == id ? span.b : span.a;
+			if (span.alive && std::find(standing.begin(), standing.end(), other) != standing.end()) return true;
+		}
+		return false;
 	});
 	std::vector<FurnitureSpot> kept(out.begin(), out.begin() + long(first)); // what other segments put there stays
 	for (size_t i = first; i < out.size(); i++) {
@@ -107,6 +120,7 @@ void merge_street(const StreetWorks &w, const RoadNetwork &net, int sid, uint32_
 		});
 		if (s.kind != FurnitureKind::SIGNAL)
 			gone = gone || std::any_of(mine.begin(), mine.end(), [&](const FurnitureSpot &m) { return touches(s, m); });
+		gone = gone || (line_along && s.kind == FurnitureKind::LAMP);
 		if (!gone) kept.push_back(s);
 	}
 	out.swap(kept);

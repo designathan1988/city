@@ -13,7 +13,7 @@ namespace city {
 
 // Scalar keys of the blocks (X-macros: declared here, required by the loader).
 #define CITY_SIDEWALK_FIELDS(X) X(free_width_m) X(kerb_clear_m) X(height_m)
-#define CITY_LAMP_FIELDS(X) X(span_m) X(reach_m) X(pool_share) X(pool_margin_m) X(pool_least_m) X(pool_back_m) X(twin_stagger) X(column_every_m) X(column_first_m) X(pole_lit_every)
+#define CITY_LAMP_FIELDS(X) X(span_m) X(reach_m) X(pool_share) X(pool_margin_m) X(pool_least_m) X(pool_back_m)
 #define CITY_SIGNAL_FIELDS(X) X(kerb_m)
 #define CITY_HYDRANT_FIELDS(X) X(reach_m)
 #define CITY_FURNITURE_FIELDS(X) X(corner_clear_m) X(bin_spacing_m) X(bin_every_m) X(bin_first_m) X(bench_every_m) X(bench_first_m) X(row_end_m)

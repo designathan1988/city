@@ -11,6 +11,7 @@
 #include <godot_cpp/variant/aabb.hpp>
 #include <godot_cpp/variant/color.hpp>
 #include <godot_cpp/variant/packed_color_array.hpp>
+#include <godot_cpp/variant/packed_float32_array.hpp>
 #include <godot_cpp/variant/packed_int32_array.hpp>
 #include <godot_cpp/variant/packed_vector2_array.hpp>
 #include <godot_cpp/variant/packed_vector3_array.hpp>
@@ -31,6 +32,7 @@ struct MeshBuilder {
 
 	godot::PackedInt32Array idx;
 	godot::PackedByteArray tags; // what a shader tells the vertices apart by, CUSTOM0.r: none unless `tag` was asked
+	godot::PackedFloat32Array pairs; // two numbers a vertex for a shader, CUSTOM1.rg in full float: none unless `pair` was asked
 
 	int add(const godot::Vector3 &p, const godot::Vector3 &nn, const godot::Color &col, const godot::Vector2 &t = godot::Vector2(),
 			const godot::Vector2 &t2 = godot::Vector2());
@@ -43,6 +45,7 @@ struct MeshBuilder {
 	void cone(const godot::Vector3 &base, float r, float h, int seg, const godot::Color &col, const godot::Vector2 &t2 = godot::Vector2());
 	void blob(const godot::Vector3 &center, const godot::Vector3 &radius, const godot::Color &col, const godot::Vector2 &t2 = godot::Vector2());
 	void tag(uint8_t value); // the vertices added since the last tag carry `value`
+	void pair(const godot::Vector2 &value); // the vertices added since the last pair carry `value`
 	bool empty() const { return idx.is_empty(); }
 	int64_t bytes() const; // of the arrays handed to the RenderingServer (frame_admission.h UploadBudget)
 	godot::AABB bounds() const; // of every vertex added (an empty box when there is none)

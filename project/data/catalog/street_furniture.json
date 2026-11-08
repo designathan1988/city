@@ -7,17 +7,13 @@
   "height_m": 0.15
  },
  "lamps": {
-  "_doc": "pole_lit_every: on a street lit from both faces the line of poles lights one pole in this many, the columns of the other face the rest; a street with the poles alone lights them all. twin_stagger: the row on the other face of a street lit from both, in shares of the spacing, so the lamps fall between each other and their pools run on. column_every_m, column_first_m: above 0, that row keeps a beat of its own instead, from the first metres past the mouth; the poles then all light, and between lamps of the two rows the road goes dark, as the Roadcraft 4.0 lights it (counted: columns every 30 m, poles every 33 to 45 m, styles.roadcraft). pool_*: the night pool of a lighting column, across: pool_share of the carriageway plus pool_margin_m, at least pool_least_m, its middle pool_back_m short of that from the column; the lamp of a utility pole lays a round pool of pool_least_m under its head; behaviour of the Roadcraft 4.0 (no norm found). The lamps hang on the utility poles that carry the wires: Enel SP PD-4.003 (urban overhead distribution networks), basic span 35 m; the poles spread evenly from one end of the block to the other, one past each crosswalk (Rioluz NPIP-1 item 4: a crossing is lit by the sum of both streets). The line stands on the east or south face (NPIP-1 5.2); the other face, when it has a sidewalk, gets a lighting column at each station, as on the Roadcraft 4.0 streets (photographed: reference/rua). reach_m is measured on props.pole in data/render/streets.json: the lens 1.6 m out along its arm.",
+  "_doc": "The street's lamps hang on the utility poles that carry its wires, one row on one face; no lighting column stands on the other face, so the poles of the power line are the street's only poles (a pole carries lamp and wires: Enel SP PD-4.003, urban overhead distribution networks; Rioluz NPIP-1 5.2, the line on one face). Basic span span_m 35 m (PD-4.003); the poles spread evenly from one end of the block to the other, one past each crosswalk (Rioluz NPIP-1 item 4: a crossing is lit by the sum of both streets). The line stands on the east or south face (NPIP-1 5.2). pool_*: the night pool of a lamp, across: pool_share of the carriageway plus pool_margin_m, at least pool_least_m, its middle pool_back_m short of that from the pole (modelling choices, no norm found). reach_m is measured on props.pole in data/render/streets.json: the lens 1.6 m out along its bracket.",
   "span_m": 35,
   "reach_m": 1.6,
   "pool_share": 0.55,
   "pool_margin_m": 2.5,
   "pool_least_m": 4.6,
-  "pool_back_m": 3,
-  "twin_stagger": 0.5,
-  "column_every_m": 0,
-  "column_first_m": 0,
-  "pole_lit_every": 2
+  "pool_back_m": 3
  },
  "furniture": {
   "_doc": "Bins and benches. Prefeitura de São Paulo, Programa Passeio Livre: small and medium furniture 5 m from the corner's axis. Anchieta (ES) Lei 1.215/2017 on litter bins: at least 50 m apart, preferably at the corners, so one bin at each corner of a full-furniture street outside industrial zones whose block is at least bin_spacing_m long. A bench stands in the middle of residential blocks.",
@@ -36,7 +32,8 @@
   "pit_m": 0.6
  },
  "poles": {
-  "_doc": "The utility poles the player strings (Street tab) and the planner of a run. height_m: by style. max_spacing_m: the same norm, 6.6.31.9: spans of 30 to 40 m. kerb_inset_m: sidewalk.kerb_clear_m plus the radius of the mast. The rest are behaviour of the tool, read from the Roadcraft 4.0 tool in play, with no norm: how near a pointer catches the line, how close two poles may stand, how far a run looks for its way (route_margin), the step of the guide lines along the footways it is planned on (guide_step_m), what crossing a street costs over its width, and which bend counts as a corner (a pole with its own arm per line).",
+  "height_m": 12,
+  "_doc": "The utility poles the player strings (Street tab) and the planner of a run. height_m: the pole clear of the ground, 12.0 m: a 14 m distribution pole (a nominal length of ABNT NBR 8451-1, concrete poles for distribution networks) set L/10 + 0.60 m = 2.0 m deep, the embedding of Neoenergia DIS-NOR-012 rev. 08 table 30, which sets a 12 m pole 1.8 m deep; its mesh is props.pole of data/render/streets.json. max_spacing_m: DIS-NOR-012 6.6.31.9: spans of 30 to 40 m. kerb_inset_m: sidewalk.kerb_clear_m plus the radius of the mast. The rest are behaviour of the tool, with no norm: how near a pointer catches the line, how close two poles may stand, how far a run looks for its way (route_margin), the step of the guide lines along the footways it is planned on (guide_step_m), what crossing a street costs over its width, and which bend counts as a corner (a pole with its own arm per line).",
   "kerb_inset_m": 0.68,
   "min_spacing_m": 15,
   "max_spacing_m": 40,
@@ -169,9 +166,8 @@
  "styles": {
   "_doc": "What changes with a city's regional style (session-rules.md, section 10), laid over this table by DataTables: a block here replaces the same keys above, a list replaces the list. signals: the same in both for now, nothing of the Roadcraft 4.0 was measured to tell them apart.",
   "roadcraft": {
-   "lamps": {"pole_lit_every": 1, "column_every_m": 30, "column_first_m": 6},
    "street_names": {"names": ["Brasil", "Sete de Setembro", "Quinze de Novembro", "Tiradentes", "Santos Dumont", "Getúlio Vargas", "Rui Barbosa", "Duque de Caxias", "Marechal Deodoro", "Princesa Isabel", "Dom Pedro II", "Castro Alves", "Machado de Assis", "José de Alencar", "Carlos Gomes", "Barão do Rio Branco", "Anita Garibaldi", "Benjamin Constant", "Floriano Peixoto", "das Flores", "dos Ipês", "das Palmeiras", "das Acácias", "dos Jacarandás", "das Mangueiras", "dos Pinheiros", "da Paz", "da Liberdade", "da Esperança", "da Independência", "da República", "XV de Agosto", "Primeiro de Maio", "São Paulo", "Minas Gerais", "Bahia", "Paraná", "Pernambuco", "Goiás", "Amazonas", "Ceará", "Santa Catarina", "Cecília Meireles", "Monteiro Lobato", "Oscar Niemeyer", "Tom Jobim", "Portinari", "Villa-Lobos", "Clarice Lispector", "do Comércio", "da Estação", "do Porto", "da Matriz", "do Rosário", "São João", "São José", "Santo Antônio"]},
-   "_doc": "What the Roadcraft 4.0 draws. height_m: the mesh in props.pole of the render table, 8.4 m where the 4.0 has 8.5 (POLE_HEIGHT). plate_kerb_m: carried from brasil, the 4.0's was not measured. hydrants.reach_m: 100, the 4.0's hydrant every 100 m on one side, which this rule's squares of coverage reach at about 10 a km, as it counts. furniture: bins and benches in rows, every 60 m from 9 and 24 m past the mouth, up to 4 m from the end (world/roads/furnitureCatalog.ts); trees: its generated city has none on the footway (editor/cityGenerator.ts), a street the player draws does.",
+   "_doc": "What the Roadcraft 4.0 draws. plate_kerb_m: carried from brasil, the 4.0's was not measured. hydrants.reach_m: 100, the 4.0's hydrant every 100 m on one side, which this rule's squares of coverage reach at about 10 a km, as it counts. furniture: bins and benches in rows, every 60 m from 9 and 24 m past the mouth, up to 4 m from the end (world/roads/furnitureCatalog.ts); trees: its generated city has none on the footway (editor/cityGenerator.ts), a street the player draws does.",
    "signals": {
     "_doc": "CONTRAN MBST vol. V (Res. 483/2014), 9.1.1: one pattern, here 'after the crossing street'; table 10.4: a head on an arm over the road at 5.50 m stands at least 13 m past the stop line, which the far side of the junction gives. The post stands on the far arm, at the right of the traffic going straight on, just clear of that arm's crosswalk (9.2.3 c: never in front of the dropped kerb); 9.1.5: columns usually 0.80 m from the kerb (never under 0.30 m). An approach with no straight continuation (the stem of a T) keeps its post on its own corner, the exception 9.1.1 allows.",
     "kerb_m": 0.8
@@ -189,12 +185,11 @@
    },
    "furniture": {"bin_every_m": 60, "bin_first_m": 9, "bench_every_m": 60, "bench_first_m": 24, "row_end_m": 4},
    "trees": {"in_generated_city": 0},
-   "poles": {"height_m": 8.5},
    "signs": {"plate_kerb_m": 0.75, "plate_kerb_curve_m": 0.75}
   },
   "brasil": {
    "street_names": {"names": ["Brasil", "Sete de Setembro", "Quinze de Novembro", "Tiradentes", "Santos Dumont", "Getúlio Vargas", "Rui Barbosa", "Duque de Caxias", "Marechal Deodoro", "Princesa Isabel", "Dom Pedro II", "Castro Alves", "Machado de Assis", "José de Alencar", "Carlos Gomes", "Barão do Rio Branco", "Anita Garibaldi", "Benjamin Constant", "Floriano Peixoto", "das Flores", "dos Ipês", "das Palmeiras", "das Acácias", "dos Jacarandás", "das Mangueiras", "dos Pinheiros", "da Paz", "da Liberdade", "da Esperança", "da Independência", "da República", "XV de Agosto", "Primeiro de Maio", "São Paulo", "Minas Gerais", "Bahia", "Paraná", "Pernambuco", "Goiás", "Amazonas", "Ceará", "Santa Catarina", "Cecília Meireles", "Monteiro Lobato", "Oscar Niemeyer", "Tom Jobim", "Portinari", "Villa-Lobos", "Clarice Lispector", "do Comércio", "da Estação", "do Porto", "da Matriz", "do Rosário", "São João", "São José", "Santo Antônio"]},
-   "_doc": "plate_kerb_curve_m: a plate clears the road by 0.40 m in a curve where it clears it by 0.30 m on the straight (MBST vol. I 3.7), so its post stands 0.10 m further in. height_m: a 12 m pole, the urban medium voltage minimum, set 1.8 m deep, stands 10.2 m clear (Neoenergia DIS-NOR-012 rev. 08, 6.8.2.2 and table 30). plate_kerb_m: CONTRAN MBST vol. I (2022) 3.11: a plate edge at least 0.30 m off the carriageway on a straight, with the 0.45 m half of the widest plate, R-2.",
+   "_doc": "plate_kerb_curve_m: a plate clears the road by 0.40 m in a curve where it clears it by 0.30 m on the straight (MBST vol. I 3.7), so its post stands 0.10 m further in. plate_kerb_m: CONTRAN MBST vol. I (2022) 3.11: a plate edge at least 0.30 m off the carriageway on a straight, with the 0.45 m half of the widest plate, R-2.",
    "signals": {
     "_doc": "CONTRAN MBST vol. V (Res. 483/2014), 9.1.1: one pattern, here 'after the crossing street'; table 10.4: a head on an arm over the road at 5.50 m stands at least 13 m past the stop line, which the far side of the junction gives. The post stands on the far arm, at the right of the traffic going straight on, just clear of that arm's crosswalk (9.2.3 c: never in front of the dropped kerb); 9.1.5: columns usually 0.80 m from the kerb (never under 0.30 m). An approach with no straight continuation (the stem of a T) keeps its post on its own corner, the exception 9.1.1 allows.",
     "kerb_m": 0.8
@@ -212,7 +207,6 @@
    },
    "furniture": {"bin_every_m": 0, "bin_first_m": 0, "bench_every_m": 0, "bench_first_m": 0, "row_end_m": 0},
    "trees": {"in_generated_city": 1},
-   "poles": {"height_m": 10.2},
    "signs": {"plate_kerb_m": 0.75, "plate_kerb_curve_m": 0.85}
   },
   "eua": {"_doc": "To fill from the MUTCD (FHWA) and the AASHTO Green Book."},

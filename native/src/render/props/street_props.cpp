@@ -9,6 +9,7 @@
 #include "core/color.h"
 #include "core/random.h"
 #include "render/roads/road_mesh.h"
+#include "sim/roads/junction.h"
 #include "sim/street/pole_arms.h"
 #include "sim/traffic/traffic_system.h"
 
@@ -29,7 +30,7 @@ constexpr float PHASE_STEP = 2.399f; // the golden angle: neighbouring spans swi
 // A span's phase in the wind and the kinds of its two poles share INSTANCE_CUSTOM.y: the phase (under a turn) plus this times
 // kind_a + 2 kind_b, which props.gdshader takes apart to pick each end's seats.
 constexpr int KIND_B_WEIGHT = 2;
-constexpr int JOINT_ARMS = 2; // a street going on through a node
+constexpr int JOINT_ARMS = 2; // a node joining two segments: the one goes on into the other, however it bends
 const Vector3 UP(0, 1, 0);
 
 Vector3 world_of(const CityState &s, const StreetLook &L, const FurnitureSpot &p, Basis *basis) {
@@ -121,45 +122,81 @@ void place_pole(const CityState &s, const StreetLook &L, const FurnitureLook &F,
 	}
 }
 
-// The first or last pole of `seg`'s main row at node `n`, when it stands on `side`.
-bool row_end(const CityState &s, const StreetLook &L, int seg, int n, int side, PropPlace &out) {
+// The first or last pole of `seg`'s row at node `n`, when it still stands there (a cut pole, or a row given way to the player's
+// line, leaves none).
+bool row_end(const CityState &s, const StreetLook &L, int seg, int n, PropPlace &out) {
 	const LampRow row = lamp_row(s.roads, seg);
-	if (!row.any || row.stations == 0 || row.side != side) return false;
+	if (!row.any || row.stations == 0) return false;
 	std::vector<FurnitureSpot> spots;
 	traffic::street_furniture_of(s, seg, furniture_bit(FurnitureKind::LAMP), spots);
 	const int station = s.roads.segs[size_t(seg)].a == n ? 0 : row.stations - 1;
 	for (const FurnitureSpot &p : spots) {
-		if (p.row != 0 || p.station != station) continue;
+		if (p.station != station) continue;
 		out.origin = world_of(s, L, p, &out.basis);
 		return true;
 	}
 	return false;
 }
 
-// A street going on through its node keeps its line: the last pole of `sid` strung to the first of the next (Roadcraft
-// powerLine.ts join), by the lower segment of the two. Both poles' arms reach over the same street, as the wires' seats want.
-void join_rows(const CityState &s, const StreetLook &L, const FurnitureLook &F, int sid, int row_side, StreetInstances &inst) {
+// The segment `sid` goes on into through node `n`: the other one of a node of two, however it bends; at a junction the arm
+// straight across (the straightest within tune.edit_street_cos, the street's own rule of going on, sim/street/street_spots.h
+// street_chain), or -1.
+int going_on(const RoadNetwork &net, int n, int sid) {
+	const std::vector<int> &arms = net.nodes[size_t(n)].segs;
+	if (int(arms.size()) == JOINT_ARMS) return arms[0] == sid ? arms[1] : arms[0];
+	const RoadSegment &g = net.segs[size_t(sid)];
+	const Arm here = arm_of(g.q, net.profile_of(sid), g.a == n ? 0 : 1);
+	int best = -1;
+	double best_dot = net.cat->tune.edit_street_cos;
+	for (int t : arms) {
+		const RoadSegment &o = net.segs[size_t(t)];
+		if (t == sid || !o.alive || o.a == o.b) continue;
+		const Arm there = arm_of(o.q, net.profile_of(t), o.a == n ? 0 : 1);
+		const double straight = -(here.dx * there.dx + here.dz * there.dz); // both arms point out of the node
+		if (straight > best_dot) {
+			best_dot = straight;
+			best = t;
+		}
+	}
+	return best;
+}
+
+// The pair of segments whose line goes on through node `n`: those that each go on into the other, and of several such pairs
+// (a crossing of two straight streets) the one holding the lowest segment, so one line crosses the junction: two spans across
+// it would meet in the air, every wire of both at the same heights. -1 when none goes on.
+int through_low(const RoadNetwork &net, int n) {
+	int best = -1;
+	for (int t : net.nodes[size_t(n)].segs) {
+		const int o = going_on(net, n, t);
+		if (o >= 0 && going_on(net, n, o) == t && (best < 0 || std::min(t, o) < best)) best = std::min(t, o);
+	}
+	return best;
+}
+
+// A street going on through its node keeps its line: the last pole of `sid` strung to the first of the segment it goes on
+// into, through a bend or straight across a junction (through_low), by the lower segment of the two. The two rows may stand on
+// opposite faces (the face is the world's east or south one, and a bend can turn it): the span then crosses the street, each
+// pole's arm reaching over its own side, and props.gdshader keeps the wires in their order across it.
+void join_rows(const CityState &s, const StreetLook &L, const FurnitureLook &F, int sid, StreetInstances &inst) {
 	const RoadSegment &g = s.roads.segs[size_t(sid)];
+	if (g.a == g.b) return;
 	for (int n : { g.a, g.b }) {
-		const std::vector<int> &arms = s.roads.nodes[size_t(n)].segs;
-		if (int(arms.size()) != JOINT_ARMS) continue;
-		const int other = arms[0] == sid ? arms[1] : arms[0];
-		if (other <= sid) continue;
-		const bool same_way = (g.b == n) == (s.roads.segs[size_t(other)].a == n); // the sides keep their names through the node
+		const int other = going_on(s.roads, n, sid);
+		if (other <= sid || going_on(s.roads, n, other) != sid || through_low(s.roads, n) != sid) continue;
 		PropPlace a, b;
-		if (!row_end(s, L, sid, n, row_side, a) || !row_end(s, L, other, n, same_way ? row_side : 1 - row_side, b)) continue;
+		if (!row_end(s, L, sid, n, a) || !row_end(s, L, other, n, b)) continue;
 		push_span(inst, F.wire, a.origin, a.basis.get_column(2), b.origin, b.basis.get_column(2), float(sid) * PHASE_STEP, PoleKind::URBAN, PoleKind::URBAN);
 	}
 }
 
-// A row pole: one instance, its arm across the street; a pole of the row on the other side is a lighting column.
+// A row pole: one instance, its arm across the street, its lamp on it; a lamp the player placed is a lighting column.
 void place_row_pole(const FurnitureLook &F, const FurnitureSpot &p, int sid, const PropPlace &at, StreetInstances &inst) {
 	const uint32_t h = hash_combine(uint32_t(sid), uint32_t(p.station));
-	const bool column = p.row != 0 || p.kind == FurnitureKind::COLUMN;
-	int mask = column ? int(PolePart::COLUMN) : int(PolePart::MAST) | int(PolePart::ARM) | (p.lit ? int(PolePart::LAMP) : 0);
+	const bool column = p.kind == FurnitureKind::COLUMN;
+	int mask = column ? int(PolePart::COLUMN) : int(PolePart::MAST) | int(PolePart::ARM) | int(PolePart::LAMP);
 	if (!column && h % uint32_t(CAN_PERIOD) == uint32_t(CAN_PHASE)) mask |= int(PolePart::CAN);
 	push_part(inst.poles, at.basis, at.origin, mask);
-	if (p.lit) push_light(inst, F, at.origin, at.basis.get_column(2), { column ? F.column_reach : F.lamp_reach, column ? F.column_height : F.lamp_height });
+	push_light(inst, F, at.origin, at.basis.get_column(2), { column ? F.column_reach : F.lamp_reach, column ? F.column_height : F.lamp_height });
 }
 
 PropKind prop_kind(FurnitureKind k) {
@@ -180,14 +217,13 @@ void place_segment(const CityState &s, const StreetLook &L, const FurnitureLook 
 	traffic::street_furniture_of(s, sid, PROP_KINDS, spots);
 	bool wired = false;
 	PropPlace last;
-	int last_station = -1, row_side = 0;
+	int last_station = -1;
 	for (const FurnitureSpot &p : spots) {
 		PropPlace place;
 		place.origin = world_of(s, L, p, &place.basis);
 		if (p.kind == FurnitureKind::LAMP || p.kind == FurnitureKind::COLUMN) {
 			place_row_pole(F, p, sid, place, inst);
-			if (p.kind != FurnitureKind::LAMP || p.row != 0) continue;
-			row_side = p.side;
+			if (p.kind != FurnitureKind::LAMP) continue;
 			if (wired && p.station == last_station + 1) {
 				const Vector3 arm = place.basis.get_column(2);
 				push_span(inst, F.wire, last.origin, last.basis.get_column(2), place.origin, arm, float(sid + p.station) * PHASE_STEP, PoleKind::URBAN, PoleKind::URBAN);
@@ -200,7 +236,7 @@ void place_segment(const CityState &s, const StreetLook &L, const FurnitureLook 
 		place.kind = prop_kind(p.kind);
 		out.push_back(place);
 	}
-	if (wired) join_rows(s, L, F, sid, row_side, inst);
+	if (wired) join_rows(s, L, F, sid, inst);
 }
 } // namespace
 

@@ -51,18 +51,6 @@
     },
     "pool_back_m": {
      "type": "number"
-    },
-    "twin_stagger": {
-     "type": "number"
-    },
-    "column_every_m": {
-     "type": "number"
-    },
-    "column_first_m": {
-     "type": "number"
-    },
-    "pole_lit_every": {
-     "type": "number"
     }
    },
    "required": [
@@ -72,11 +60,7 @@
     "pool_share",
     "pool_margin_m",
     "pool_least_m",
-    "pool_back_m",
-    "twin_stagger",
-    "column_every_m",
-    "column_first_m",
-    "pole_lit_every"
+    "pool_back_m"
    ],
    "strict": true
   },
@@ -402,6 +386,7 @@
    },
    "required": [
     "_doc",
+    "height_m",
     "kerb_inset_m",
     "min_spacing_m",
     "max_spacing_m",

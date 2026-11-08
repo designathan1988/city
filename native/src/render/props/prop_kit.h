@@ -22,7 +22,7 @@ enum class Lens : int { RED = 0, AMBER, GREEN, STOP, WALK, COUNT };
 static_assert(int(Lens::COUNT) == LENS_COUNT, "a lens a radiance of props.gdshader (core/shader_contracts/streets.h)");
 // The parts of the pole mesh (streets.json props.pole "part"): an instance shows those of INSTANCE_CUSTOM.a, its UV2.y bits.
 // ARM and CAN are an urban pole's (the arm over the street with its rack, the transformer away from it); ARM_RURAL and CAN_RURAL
-// a rural pole's (the arm across the crown, the transformer toward the street): streets.json, tools/assets/make_pole_parts.py.
+// a rural pole's (the arm across the crown, the transformer toward the street): streets.json props.pole.
 enum class PolePart : int { MAST = 1, ARM = MAST << 1, CAN = ARM << 1, LAMP = CAN << 1, COLUMN = LAMP << 1, ARM_RURAL = COLUMN << 1, CAN_RURAL = ARM_RURAL << 1 };
 // A secondary wire's mark where a primary wire keeps its seat on a rural pole (UV2.y, WIRE_SECONDARY_MARK: core/shader_contracts/streets.h):
 // props.gdshader draws it only between two urban poles.
@@ -47,7 +47,8 @@ public:
 	const MeshBuilder &pole_levels() { pole_.levels = true; return pole_; } // for the MultiMeshes: a chunk of poles thins out with its distance
 	const MeshBuilder &pole_cast_levels() { pole_cast_.levels = true; return pole_cast_; }
 	float cast_from() const { return cast_from_; }
-	// A wire from t = 0 to 1 along x, as a tube round it (near) or a coarser one (far): props.gdshader bends it.
+	// A wire from t = 0 to 1 along x, as a tube round it (near) or a coarser one (far): props.gdshader bends it, CUSTOM1 its seats
+	// at a far pole reaching the other way (wire_mesh).
 	const MeshBuilder &wire(bool near) const { return near ? wire_near_ : wire_far_; }
 	const MeshBuilder &unit_box() const { return box_; }
 	const MeshBuilder &w_beam() const { return beam_; } // a guardrail's beam, in the unit box

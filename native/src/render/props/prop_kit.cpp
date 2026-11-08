@@ -127,8 +127,9 @@ MeshBuilder cast_parts(const DataValue &props, const char *name, const DataValue
 
 // A wire: `chords` straight pieces of a tube of `sides` sides round the x axis from 0 to 1, flat-shaded per side. UV is the
 // wire's height and its seat along an urban pole's arm, UV2.y its seat along a rural pole's (or WIRE_SECONDARY_MARK), which
-// props.gdshader hangs from the poles by their kinds.
-void wire_tube(MeshBuilder &b, const Vector2 &place, float rural_seat, const Color &colour, float radius, int chords, int sides) {
+// props.gdshader hangs from the poles by their kinds; CUSTOM1 (`mirror`) the seats it takes at the far pole when that pole's arm
+// reaches the other way across the span: the seat as far from the end of the row as this one is from its start, urban then rural.
+void wire_tube(MeshBuilder &b, const Vector2 &place, float rural_seat, const Vector2 &mirror, const Color &colour, float radius, int chords, int sides) {
 	const Vector2 t2(float(int(PropTag::WIRE)), rural_seat);
 	const Vector2 uvs[4] = { place, place, place, place };
 	for (int s = 0; s < chords; s++) {
@@ -139,16 +140,20 @@ void wire_tube(MeshBuilder &b, const Vector2 &place, float rural_seat, const Col
 			b.quad(Vector3(t0, 0, 0) + r0, Vector3(t1, 0, 0) + r0, Vector3(t1, 0, 0) + r1, Vector3(t0, 0, 0) + r1, colour, (r0 + r1).normalized(), uvs, t2);
 		}
 	}
+	b.pair(mirror);
 }
 
 // Every wire of a span (streets.json wires): the primary ones at y_m[0], the i-th on seat i along the arm (z_m on an urban pole,
-// rural_z_m on a rural one), then the secondary ones at the rest of y_m, on the urban rack (secondary_z_m).
+// rural_z_m on a rural one) and on seat n-1-i at a far pole whose arm reaches the other way, then the secondary ones at the rest of
+// y_m, on the urban rack (secondary_z_m), one seat across.
 void wire_mesh(MeshBuilder &b, const DataValue &wires, int chords, int sides) {
 	const DataValue ys = wires["y_m"], urban = wires["z_m"], rural = wires["rural_z_m"];
 	const Color colour = rgba8_to_color(wires["color"].colour());
-	const float radius = wires["radius_m"].f();
-	for (int k = 0; k < urban.size(); k++) wire_tube(b, Vector2(ys[0].f(), urban[k].f()), rural[k].f(), colour, radius, chords, sides);
-	for (int i = 1; i < ys.size(); i++) wire_tube(b, Vector2(ys[i].f(), wires["secondary_z_m"].f()), WIRE_SECONDARY_MARK, colour, radius, chords, sides);
+	const float radius = wires["radius_m"].f(), secondary = wires["secondary_z_m"].f();
+	const int n = urban.size();
+	for (int k = 0; k < n; k++)
+		wire_tube(b, Vector2(ys[0].f(), urban[k].f()), rural[k].f(), Vector2(urban[n - 1 - k].f(), rural[n - 1 - k].f()), colour, radius, chords, sides);
+	for (int i = 1; i < ys.size(); i++) wire_tube(b, Vector2(ys[i].f(), secondary), WIRE_SECONDARY_MARK, Vector2(secondary, WIRE_SECONDARY_MARK), colour, radius, chords, sides);
 }
 
 void light_mesh(MeshBuilder &b) {

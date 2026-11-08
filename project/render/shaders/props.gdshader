@@ -51,20 +51,26 @@ varying vec3 v_faces;
 
 // A wire's vertex: VERTEX.x is t along the span's chord (the instance's x axis), y and z its ring, UV its height up the poles
 // and its seat along an urban pole's arm, `rural` its seat along a rural pole's; the arms (turned toward the street) have the
-// headings INSTANCE_CUSTOM.z (t = 0) and .w (t = 1). The arm between them is horizontal, and the chord may climb, so the offset
-// goes into the instance's axes by parts. The wire hangs in a parabola of depth INSTANCE_CUSTOM.x, swings across in the wind by
-// its phase, and keeps wire_min_px on the screen. A secondary wire with a rural pole at either end is not strung: nothing.
-vec3 wire_vertex(vec3 v, vec2 place, float rural, vec2 headings, mat4 model, mat4 model_view, mat4 projection, vec2 viewport, float sag, float phase_kinds, float time, bool shadow) {
+// headings INSTANCE_CUSTOM.z (t = 0) and .w (t = 1). Each wire keeps its place across the span: when the two arms reach to opposite
+// sides of the chord (a span over a street between poles that each reach over their own side), the far end takes `mirror`, the seat
+// as far from the end of its row as this one is from the start (urban, rural), so the wires never cross. The arm between them is
+// horizontal, and the chord may climb, so the offset goes into the instance's axes by parts. The wire hangs in a parabola of depth
+// INSTANCE_CUSTOM.x, swings across in the wind by its phase, and keeps wire_min_px on the screen. A secondary wire with a rural pole
+// at either end is not strung: nothing.
+vec3 wire_vertex(vec3 v, vec2 place, float rural, vec2 mirror, vec2 headings, mat4 model, mat4 model_view, mat4 projection, vec2 viewport, float sag, float phase_kinds, float time, bool shadow) {
 	float kinds = floor(phase_kinds / PROP_SPAN_KIND_STRIDE);
 	float phase = phase_kinds - kinds * PROP_SPAN_KIND_STRIDE;
 	bool rural_a = mod(kinds, 2.0) > 0.5, rural_b = kinds > 1.5;
 	if (rural > 0.5 * WIRE_SECONDARY_MARK && (rural_a || rural_b)) {
 		return vec3(0.0);
 	}
-	float seat_a = rural_a ? rural : place.y, seat_b = rural_b ? rural : place.y;
+	vec2 arm_a = vec2(cos(headings.x), sin(headings.x)), arm_b = vec2(cos(headings.y), sin(headings.y));
+	bool crossed = dot(arm_a, model[2].xz) * dot(arm_b, model[2].xz) < 0.0;
+	float seat_a = rural_a ? rural : place.y;
+	float seat_b = crossed ? (rural_b ? mirror.y : mirror.x) : (rural_b ? rural : place.y);
 	float t = v.x, u = t * 2.0 - 1.0;
 	vec3 chord = model[0].xyz;
-	vec2 arm = mix(vec2(cos(headings.x), sin(headings.x)) * seat_a, vec2(cos(headings.y), sin(headings.y)) * seat_b, t);
+	vec2 arm = mix(arm_a * seat_a, arm_b * seat_b, t);
 	float ahead = dot(arm, chord.xz) / dot(chord.xz, chord.xz);
 	vec3 hung = vec3(t + ahead, place.x - ahead * chord.y, dot(arm, model[2].xz));
 	float depth = max(-(model_view * vec4(hung, 1.0)).z, LEAST_DEPTH_M);
@@ -120,7 +126,7 @@ void vertex() {
 	v_layer = UV2.y;
 	v_local = VERTEX;
 	if (abs(v_tag - PROP_WIRE) < 0.5) {
-		VERTEX = wire_vertex(VERTEX, UV, UV2.y, INSTANCE_CUSTOM.zw, MODEL_MATRIX, MODELVIEW_MATRIX, PROJECTION_MATRIX, VIEWPORT_SIZE, INSTANCE_CUSTOM.x, INSTANCE_CUSTOM.y, TIME, IN_SHADOW_PASS);
+		VERTEX = wire_vertex(VERTEX, UV, UV2.y, CUSTOM1.xy, INSTANCE_CUSTOM.zw, MODEL_MATRIX, MODELVIEW_MATRIX, PROJECTION_MATRIX, VIEWPORT_SIZE, INSTANCE_CUSTOM.x, INSTANCE_CUSTOM.y, TIME, IN_SHADOW_PASS);
 	} else if (INSTANCE_CUSTOM.a > 0.5 && UV2.y > 0.5 && abs(v_tag - PROP_LENS) > 0.5) {
 		if ((int(INSTANCE_CUSTOM.a + 0.5) & int(UV2.y + 0.5)) == 0) {
 			VERTEX = vec3(0.0); // a part this pole does not have

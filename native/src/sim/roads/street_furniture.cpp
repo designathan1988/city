@@ -92,32 +92,15 @@ struct Placer {
 	}
 };
 
-FurnitureSpot column(const Placer &c, const LampRow &row, double v, int station) {
-	FurnitureSpot s = spot(c.net, FurnitureKind::LAMP, c.sid, c.p, v, row.pole_u2, toward_road(1 - row.side), 0.f);
-	s.row = 1;
-	s.station = station;
-	return s;
-}
-
-// Lamps: spread evenly at most span_m apart between a pole just past each crosswalk (and the signal post's place). The
-// lighting columns of the other face keep to the stations, staggered, or to a beat of their own (column_every_m).
+// Lamps: the utility poles of the power line, spread evenly at most span_m apart between a pole just past each crosswalk (and
+// the signal post's place), each with its lamp; the other face has none.
 void lamps(Placer &c) {
 	const LampRow row = lamp_row(c.net, c.sid);
-	const LampDef &d = defs(c.net).lamps;
 	for (int k = 0; k < row.stations; k++) {
-		const double v = row.origin + row.spacing * k;
-		FurnitureSpot main_pole = spot(c.net, FurnitureKind::LAMP, c.sid, c.p, v, row.pole_u, toward_road(row.side), 0.f);
-		main_pole.station = k;
-		main_pole.lit = !row.twin || k % int(d.pole_lit_every) == 0;
-		c.all.push_back(main_pole);
-		const bool one = row.stations == 1; // a short block's only station has the other face's lamp beside it
-		if (!row.twin || d.column_every_m > 0.f || (!one && k + 1 == row.stations)) continue;
-		const double between = one ? v : v + row.spacing * d.twin_stagger;
-		c.all.push_back(column(c, row, between, k));
+		FurnitureSpot pole = spot(c.net, FurnitureKind::LAMP, c.sid, c.p, row.origin + row.spacing * k, row.pole_u, toward_road(row.side), 0.f);
+		pole.station = k;
+		c.all.push_back(pole);
 	}
-	if (!row.twin || row.stations == 0 || d.column_every_m <= 0.f) return;
-	int k = 0;
-	for (double v = c.v0 + d.column_first_m; v <= c.v1 - defs(c.net).furniture.row_end_m; v += d.column_every_m) c.all.push_back(column(c, row, v, k++));
 }
 
 // The arm of node `n` a hydrant may stand on: the lowest-numbered one with room at the corner it faces, or -1.
@@ -206,7 +189,7 @@ float tree_clear(const TreeDef &t, FurnitureKind k) {
 }
 
 // Street trees spacing_m apart, clear of the corner, the crosswalk and every piece by the manual's distances; not on
-// the lit face of a street lit from one side when the other face has a sidewalk (NPIP-1 5.2).
+// the face of the power line when the other face has a sidewalk (NPIP-1 5.2).
 void trees(Placer &c) {
 	const StreetFurnitureDef &d = defs(c.net);
 	const TreeDef &t = d.trees;
@@ -216,7 +199,7 @@ void trees(Placer &c) {
 	const double clear = std::max(t.corner_clear_m, d.crossing.zebra_to_m + t.crossing_clear_m);
 	for (int side = 0; side < 2; side++) {
 		if (!c.fits(side, t.kerb_clear_m + t.pit_m)) continue;
-		if (row.any && !row.twin && row.side == side && walk_on(c.p, 1 - side)) continue;
+		if (row.any && row.side == side && walk_on(c.p, 1 - side)) continue;
 		const float u = kerb_in(c.p, side, t.kerb_clear_m + t.pit_m * 0.5f);
 		for (double v = c.v0 + clear; v <= c.v1 - clear;) {
 			bool moved = false;

@@ -18,9 +18,7 @@ struct FurnitureSpot {
 	int seg = -1; // the segment it stands on
 	int node = -1, approach = -1; // a signal post: the junction, and the arm whose arriving traffic it shows
 	int side = -1; // the sidewalk it stands on: 0 the right one (edges.front()), 1 the left one, -1 none
-	int row = 0; // a lamp: 0 the main row (its poles are wired), 1 the row on the other side
 	int station = -1; // a lamp: its place along the row (a cut pole breaks the wires there)
-	bool lit = true; // a lamp: this pole carries a light (lamps.pole_lit_every)
 	int item = -1; // what the player placed: its record (sim/street/street_works.h)
 	double v = 0;
 	float u = 0;
@@ -28,12 +26,13 @@ struct FurnitureSpot {
 	float half_v = 0, half_u = 0; // half its footprint along and across the segment
 };
 
-// A segment's lamps: the poles' u on the main sidewalk (and on the other, when the street is lit from both sides), the
-// heads `reach` toward the carriageway, and the stations: `stations` poles from `origin`, `spacing` apart.
+// A segment's lamps: the utility poles of its power line, one row on one sidewalk, each carrying a lamp (no lighting column
+// stands on the other face: the poles that carry the wires are the street's only poles); their u, the heads `reach` toward the
+// carriageway, and the stations: `stations` poles from `origin`, `spacing` apart.
 struct LampRow {
-	bool any = false, twin = false;
+	bool any = false;
 	int side = 0;
-	float pole_u = 0, head_u = 0, pole_u2 = 0, head_u2 = 0;
+	float pole_u = 0, head_u = 0;
 	float centre = 0, across = 1; // the night pools' middle line and how far they reach from it, from the profile's width
 	double origin = 0, spacing = 1, span = 1; // span: lamps.span_m, the period the night pools repeat with
 	int stations = 0;

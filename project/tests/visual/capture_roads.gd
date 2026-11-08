@@ -139,7 +139,7 @@ func _spots(p: Vector3) -> void:
 	print("poles of road %d (profile %d) at %s:" % [seg.seg, seg.profile, p])
 	for s: Dictionary in CityStore.query(&"furniture_spots", [seg.seg]):
 		if s.kind == CityStore.code(&"FurnitureKind", &"LAMP") or s.kind == CityStore.code(&"FurnitureKind", &"COLUMN"):
-			print("  kind %d row %d side %d station %d v %.1f u %.2f at %s" % [s.kind, s.row, s.side, s.station, s.v, s.u, s.position])
+			print("  kind %d side %d station %d v %.1f u %.2f at %s" % [s.kind, s.side, s.station, s.v, s.u, s.position])
 
 
 func _lay() -> void:
