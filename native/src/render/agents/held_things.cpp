@@ -13,36 +13,33 @@ namespace city {
 
 namespace {
 
-Vector3 triple(const Variant &v) {
-	const Array a = v;
-	return Vector3(float(a[0]), float(a[1]), float(a[2]));
-}
-
 } // namespace
 
-bool HeldThings::init(const RenderContext &ctx, const Dictionary &held, const char *const *act_names, PackedStringArray &errors) {
+bool HeldThings::init(const RenderContext &ctx, const DataValue &held, const char *const *act_names, PackedStringArray &errors) {
 	reset();
 	material_ = ctx.material("people_held", errors);
 	if (!errors.is_empty()) return false;
-	const Dictionary kinds = held["things"];
-	things_ = std::vector<Thing>(size_t(kinds.size()));
+	const DataValue kinds = held["things"];
+	const int count = int(kinds.keys().size());
+	things_ = std::vector<Thing>(size_t(count));
 	int n = 0;
 	for (int act = 0; act < int(PedAct::COUNT); act++) {
 		thing_of_[act] = -1;
 		if (!act_names[act] || !kinds.has(act_names[act])) continue;
-		const Dictionary kind = kinds[act_names[act]];
-		const Vector2 upright(bool(kind["upright"]) ? 1.f : 0.f, 0);
+		const DataValue kind = kinds[act_names[act]];
+		const Vector2 upright(kind["upright"].flag() ? 1.f : 0.f, 0);
 		MeshBuilder b;
-		for (const Variant &part : Array(kind["parts"])) {
-			const Dictionary d = part;
-			const Vector3 at = triple(d["at"]), half = triple(d["size"]) * .5f;
-			b.box(at - half, at + half, rgba8_to_color(parse_hex_color(String(d["colour"]).utf8().get_data())), upright, true);
+		const DataValue parts = kind["parts"];
+		for (int i = 0; i < parts.size(); i++) {
+			const DataValue d = parts[i];
+			const Vector3 at = d["at"].v3(), half = d["size"].v3() * .5f;
+			b.box(at - half, at + half, rgba8_to_color(d["colour"].colour()), upright, true);
 		}
 		things_[size_t(n)].mesh = b.bake();
 		thing_of_[act] = n++;
 	}
-	if (n != kinds.size()) {
-		errors.push_back("agents.json held: uma coisa sem ato que a segure");
+	if (n != count) {
+		kinds.fail("a thing no act holds");
 		return false;
 	}
 	keeper_.clear();

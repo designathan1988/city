@@ -18,25 +18,26 @@ constexpr float SHELL_RADIUS = 0.5f; // the fit in people.bin is the shell's who
 constexpr int MOST_COLOURS = 8; // people_helmet.gdshader helmet_colours
 }
 
-bool Helmets::init(const RenderContext &ctx, const Dictionary &helmet, PackedStringArray &errors) {
+bool Helmets::init(const RenderContext &ctx, const DataValue &helmet, PackedStringArray &errors) {
 	reset();
 	material_ = ctx.material("people_helmet", errors);
 	if (!errors.is_empty()) return false;
-	const Array colours = helmet["colours"];
-	if (colours.is_empty() || colours.size() > MOST_COLOURS) {
-		errors.push_back("agents.json held.helmet: cores fora do que o shader guarda");
+	const DataValue colours = helmet["colours"];
+	const int count = colours.size();
+	if (count == 0 || count > MOST_COLOURS) {
+		colours.fail(String("between 1 and ") + String::num_int64(MOST_COLOURS) + String(" colours, what the shader holds"));
 		return false;
 	}
 	PackedVector3Array linear;
 	linear.resize(MOST_COLOURS);
-	for (int i = 0; i < colours.size(); i++) {
-		const Color c = rgba8_to_color(parse_hex_color(String(colours[i]).utf8().get_data())).srgb_to_linear();
+	for (int i = 0; i < count; i++) {
+		const Color c = rgba8_to_color(colours[i].colour()).srgb_to_linear();
 		linear.set(i, Vector3(c.r, c.g, c.b));
 	}
 	RenderingServer *rs = RenderingServer::get_singleton();
 	rs->material_set_param(material_, "helmet_colours", linear);
-	rs->material_set_param(material_, "colour_count", int(colours.size()));
-	rs->material_set_param(material_, "helmet_roughness", float(helmet["roughness"]));
+	rs->material_set_param(material_, "colour_count", count);
+	rs->material_set_param(material_, "helmet_roughness", helmet["roughness"].f());
 	MeshBuilder b;
 	b.blob(Vector3(), Vector3(SHELL_RADIUS, SHELL_RADIUS, SHELL_RADIUS), Color(1, 1, 1));
 	mesh_ = b.bake();

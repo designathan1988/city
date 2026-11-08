@@ -23,10 +23,11 @@ constexpr float ROLL_DEPTH = 0.9f; // how much of the quarter circle the ends' r
 constexpr float EPS_M = 1e-6f, HALF_PI = 1.5707963f;
 constexpr float FC_LIMIT = 3.f; // Fritsch-Carlson: slopes scaled back inside the circle of radius 3 keep a piece monotone
 
-void pair(const Dictionary &d, const char *k, float out[2]) {
-	Array a = d[k];
-	out[0] = float(a[0]);
-	out[1] = float(a[1]);
+void pair(const DataValue &d, const char *k, float out[2]) {
+	const DataValue a = d[k];
+	a.list(2);
+	out[0] = a[0].f();
+	out[1] = a[1].f();
 }
 
 // The slopes at the points (Fritsch & Carlson's steps 1-5): the secants' mean where they agree in sign, zero at a
@@ -65,43 +66,44 @@ float bottom_at(const CarStyle &s, float xf) {
 
 } // namespace
 
-CarStyle read_car_style(const Dictionary &d, const Dictionary &body) {
+CarStyle read_car_style(const DataValue &d, const DataValue &body) {
 	CarStyle s;
-	s.L = float(d["length"]); s.W = float(d["width"]); s.H = float(d["height"]); s.clear = float(d["clearance"]);
+	s.L = d["length"].f(); s.W = d["width"].f(); s.H = d["height"].f(); s.clear = d["clearance"].f();
 	const Vector2 tyre = agent_tyre(d["tyre"]), track = agent_v2(d["track_m"]);
 	s.r = tyre.x;
 	s.tw = tyre.y;
 	// the wheelbase centred when the sheet gives no overhang; the tyres flush with the sides when it gives no track
-	const float wb = d["wheelbase_m"], front = float(d["front_overhang_m"]) > 0 ? float(d["front_overhang_m"]) : (s.L - wb) * 0.5f;
+	const float wb = d["wheelbase_m"].f(), front = d["front_overhang_m"].f() > 0 ? d["front_overhang_m"].f() : (s.L - wb) * 0.5f;
 	s.axles[0] = (s.L * 0.5f - front) / s.L;
 	s.axles[1] = s.axles[0] - wb / s.L;
 	s.track[0] = track.x > 0 ? track.x : s.W - s.tw;
 	s.track[1] = track.y > 0 ? track.y : s.W - s.tw;
-	const Array top = d["top"]; // front to back
+	const DataValue top = d["top"]; // front to back
 	for (int64_t i = top.size() - 1; i >= 0; i--) {
-		const Array p = top[i];
-		s.top_x.push_back(float(p[0]));
-		s.top_y.push_back(float(p[1]));
+		const DataValue p = top[i];
+		s.top_x.push_back(p[0].f());
+		s.top_y.push_back(p[1].f());
 	}
 	s.top_m = monotone_slopes(s.top_x, s.top_y);
 	pair(d, "screen", s.screen); pair(d, "belt", s.belt);
-	s.rear_glass = Array(d["rear"]).size() == 2;
+	s.rear_glass = d["rear"].size() == 2; // [from, to], or [] for a car with no rear glass
 	if (s.rear_glass) pair(d, "rear", s.rear);
-	for (const Variant &e : Array(d["doors"])) s.doors.push_back(float(e));
-	s.nose_r = float(d["nose_r"]); s.tail_r = float(d["tail_r"]);
-	s.lean = float(d["tumble_m"]) / std::max(EPS_M, s.H * (1 - s.belt[0]));
-	s.lift[0] = d["nose_lift_m"]; s.lift[1] = d["tail_lift_m"]; s.tail_lamp_h = d["tail_lamp_h_m"]; s.bed_from = d["bed_from"];
+	const DataValue doors = d["doors"];
+	for (int i = 0; i < doors.size(); i++) s.doors.push_back(doors[i].f());
+	s.nose_r = d["nose_r"].f(); s.tail_r = d["tail_r"].f();
+	s.lean = d["tumble_m"].f() / std::max(EPS_M, s.H * (1 - s.belt[0]));
+	s.lift[0] = d["nose_lift_m"].f(); s.lift[1] = d["tail_lift_m"].f(); s.tail_lamp_h = d["tail_lamp_h_m"].f(); s.bed_from = d["bed_from"].f();
 	pair(body, "tuck_m", s.tuck); pair(body, "crown_m", s.crown);
-	const Array roll = body["end_roll_m"];
-	for (int i = 0; i < 3; i++) s.roll[i] = float(roll[i]);
-	s.sill = float(body["sill_m"]); s.bottom_round = float(body["bottom_round_m"]); s.bulge = float(body["bulge"]);
-	s.frame = float(body["glass_frame_m"]); s.pillar_foot = float(body["pillar_foot_m"]); s.roof_r = float(body["roof_round_m"]);
+	const DataValue roll = body["end_roll_m"];
+	for (int i = 0; i < 3; i++) s.roll[i] = roll[i].f();
+	s.sill = body["sill_m"].f(); s.bottom_round = body["bottom_round_m"].f(); s.bulge = body["bulge"].f();
+	s.frame = body["glass_frame_m"].f(); s.pillar_foot = body["pillar_foot_m"].f(); s.roof_r = body["roof_round_m"].f();
 	// the side glass from behind the A pillar to the C pillar, or just past the last door
 	float quarter[2];
 	pair(body, "c_pillar_m", quarter);
 	const float last = s.doors.back();
-	s.glass_front = s.screen[0] - float(body["a_foot_m"]) / s.L;
-	s.glass_back = bool(d["quarter"]) && s.rear_glass ? std::max(s.rear[0] + quarter[0] / s.L, last - quarter[1] / s.L) : last + float(body["last_door_m"]) / s.L;
+	s.glass_front = s.screen[0] - body["a_foot_m"].f() / s.L;
+	s.glass_back = d["quarter"].flag() && s.rear_glass ? std::max(s.rear[0] + quarter[0] / s.L, last - quarter[1] / s.L) : last + body["last_door_m"].f() / s.L;
 	return s;
 }
 

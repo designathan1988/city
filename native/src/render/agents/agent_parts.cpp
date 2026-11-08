@@ -22,25 +22,17 @@ constexpr float ALONG_X = 0.01f;   // a bar this close to X (its square off X) t
 constexpr float MM_PER_M = 1000.f, PERCENT = 100.f, M_PER_INCH = 0.0254f; // the inch: 25.4 mm exactly (1959)
 } // namespace
 
-Color agent_hex(const Variant &v) { return rgba8_to_color(parse_hex_color(String(v).utf8().get_data())); }
+Color agent_hex(const DataValue &v) { return rgba8_to_color(v.colour()); }
+Vector3 agent_v3(const DataValue &v) { return v.v3(); }
+Vector2 agent_v2(const DataValue &v) { return v.v2(); }
 
-Vector3 agent_v3(const Variant &v) {
-	Array a = v;
-	return a.size() == 3 ? Vector3(float(a[0]), float(a[1]), float(a[2])) : Vector3();
-}
-
-Vector2 agent_v2(const Variant &v) {
-	Array a = v;
-	return a.size() == 2 ? Vector2(float(a[0]), float(a[1])) : Vector2();
-}
-
-Vector2 agent_tyre(const Variant &designation) {
+Vector2 agent_tyre(const DataValue &designation) {
 	const Vector3 t = agent_v3(designation); // section width mm, aspect ratio %, rim diameter in
 	const float w = t.x / MM_PER_M;
 	return Vector2(t.z * M_PER_INCH * 0.5f + w * t.y / PERCENT, w);
 }
 
-AgentTrim read_trim(const Dictionary &t) {
+AgentTrim read_trim(const DataValue &t) {
 	AgentTrim r;
 	r.tyre = agent_hex(t["tyre"]);
 	r.hub = agent_hex(t["hub"]);
@@ -59,7 +51,7 @@ AgentTrim read_trim(const Dictionary &t) {
 	return r;
 }
 
-CabinPaint read_cabin_paint(const Dictionary &d) {
+CabinPaint read_cabin_paint(const DataValue &d) {
 	CabinPaint p;
 	p.lining = agent_hex(d["lining"]);
 	p.floor = agent_hex(d["floor"]);

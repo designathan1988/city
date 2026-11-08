@@ -12,13 +12,13 @@ constexpr float STAY_X = 0.06f, FORK_X = 0.05f; // half the width of the rear st
 constexpr float SADDLE_LONG = 0.26f, SADDLE_HALF_W = 0.08f, SADDLE_TOP = 0.04f, BAR_HALF = 0.28f, THIN = 0.8f;
 } // namespace
 
-int build_bicycle(MeshBuilder &mb, const Dictionary &d, int sides, const AgentTrim &trim) {
+int build_bicycle(MeshBuilder &mb, const DataValue &d, int sides, const AgentTrim &trim) {
 	const Vector2 tyre = agent_tyre(d["tyre"]);
-	const float az = float(d["wheelbase_m"]) * 0.5f, r = tyre.x, tube = float(d["tube_m"]), saddle = float(d["saddle_m"]);
+	const float az = d["wheelbase_m"].f() * 0.5f, r = tyre.x, tube = d["tube_m"].f(), saddle = d["saddle_m"].f();
 	const Vector2 bracket = agent_v2(d["bracket"]), head = agent_v2(d["head"]); // [z, y]
-	const Vector3 bb(0, bracket.y, bracket.x), top(0, head.y, head.x), seat(0, saddle - SADDLE_TOP, bracket.x - float(d["seat_back_m"]));
-	const Vector3 low(0, head.y - float(d["head_tube_m"]), head.x + float(d["head_rake_m"]));
-	for (float z : { -az, az }) agent_spoked_wheel(mb, Vector3(0, r, z), r, tyre.y, sides, int(d["spokes"]), trim);
+	const Vector3 bb(0, bracket.y, bracket.x), top(0, head.y, head.x), seat(0, saddle - SADDLE_TOP, bracket.x - d["seat_back_m"].f());
+	const Vector3 low(0, head.y - d["head_tube_m"].f(), head.x + d["head_rake_m"].f());
+	for (float z : { -az, az }) agent_spoked_wheel(mb, Vector3(0, r, z), r, tyre.y, sides, d["spokes"].whole(), trim);
 	agent_strut(mb, bb, seat, tube, tube, AGENT_WHITE, AgentTag::PAINT);
 	agent_strut(mb, seat, top, tube, tube, AGENT_WHITE, AgentTag::PAINT);
 	agent_strut(mb, bb, low, tube, tube, AGENT_WHITE, AgentTag::PAINT);
@@ -32,7 +32,7 @@ int build_bicycle(MeshBuilder &mb, const Dictionary &d, int sides, const AgentTr
 	agent_box(mb, Vector3(-SADDLE_HALF_W, saddle - SADDLE_TOP, seat.z - SADDLE_LONG * 0.5f), Vector3(SADDLE_HALF_W, saddle, seat.z + SADDLE_LONG * 0.5f),
 			trim.blackout, AgentTag::FIXED);
 	agent_strut(mb, Vector3(-BAR_HALF, head.y, head.x), Vector3(BAR_HALF, head.y, head.x), tube, tube, trim.blackout, AgentTag::FIXED);
-	const Dictionary rack = d["rack"];
+	const DataValue rack = d["rack"];
 	const Vector2 at = agent_v2(rack["at"]), lens = agent_v2(rack["lens_m"]);
 	const Vector3 size = agent_v3(rack["size_m"]);
 	agent_box(mb, Vector3(-size.x * 0.5f, at.y, at.x - size.z * 0.5f), Vector3(size.x * 0.5f, at.y + size.y, at.x + size.z * 0.5f), trim.blackout, AgentTag::FIXED);

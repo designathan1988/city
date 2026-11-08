@@ -70,9 +70,9 @@ private:
 	};
 	// Wheel roll angle of a vehicle slot: metres moved since the last frame over the wheel radius (render-side odometer).
 	float roll(int id, const Pose &p, float wheel_r);
-	bool build_meshes(const godot::Dictionary &t, godot::PackedStringArray &errors);
-	bool push_palettes(const godot::Dictionary &t, const std::vector<uint32_t> &lines, godot::PackedStringArray &errors);
-	bool read_loads(const godot::Dictionary &loads, godot::PackedStringArray &errors);
+	bool build_meshes(const DataValue &t, godot::PackedStringArray &errors);
+	bool push_palettes(const DataValue &t, const std::vector<uint32_t> &lines, godot::PackedStringArray &errors);
+	bool read_loads(const DataValue &loads, godot::PackedStringArray &errors);
 	// A vehicle's passengers and the order its seats fill in (stride * seats + first), from its id.
 	void riders(int type, uint32_t id, float &passengers, float &order) const;
 	void limit_cabins(); // the next frame's limit of who has a cabin

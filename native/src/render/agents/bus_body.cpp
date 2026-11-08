@@ -30,21 +30,21 @@ struct Bus {
 	std::vector<Vector2> doors; // kerb side, z spans
 };
 
-Bus read_bus(const Dictionary &d) {
+Bus read_bus(const DataValue &d) {
 	Bus b;
-	b.L = d["length"]; b.W = d["width"]; b.H = d["height"]; b.clear = d["clearance"]; b.floor = d["floor"]; b.wall = d["wall_m"];
+	b.L = d["length"].f(); b.W = d["width"].f(); b.H = d["height"].f(); b.clear = d["clearance"].f(); b.floor = d["floor"].f(); b.wall = d["wall_m"].f();
 	b.hw = b.W * 0.5f; b.hl = b.L * 0.5f;
 	b.g = heavy_running(d, b.L);
 	b.arch_r = b.g.r + HEAVY_ARCH_PAD_M; b.arch_top = 2 * b.g.r + HEAVY_ARCH_PAD_M;
 	b.well_x = (b.g.rear_track - b.g.dual - b.g.w) * 0.5f - WELL_GAP_M;
 	const Vector2 step = agent_v2(d["step_m"]); // rise, tread
-	b.rise = step.x; b.tread = step.y; b.steps = d["deck_steps"];
+	b.rise = step.x; b.tread = step.y; b.steps = d["deck_steps"].whole();
 	b.deck = b.floor + b.steps * b.rise;
-	b.sill = b.floor + float(d["sill_m"]); b.rear_sill = b.deck + float(d["sill_m"]);
-	b.cant = b.deck + float(d["liner_m"]);
-	b.pitch = d["window_max_m"];
+	b.sill = b.floor + d["sill_m"].f(); b.rear_sill = b.deck + d["sill_m"].f();
+	b.cant = b.deck + d["liner_m"].f();
+	b.pitch = d["window_max_m"].f();
 	// the first door behind the windscreen's corner pillar, the second midway between the first two axles
-	const float door = d["door_m"], z1 = b.hl - HEAVY_PILLAR_M, mid = (b.g.axles[0] + b.g.axles[1]) * 0.5f;
+	const float door = d["door_m"].f(), z1 = b.hl - HEAVY_PILLAR_M, mid = (b.g.axles[0] + b.g.axles[1]) * 0.5f;
 	b.doors = { Vector2(z1 - door, z1), Vector2(mid - door * 0.5f, mid + door * 0.5f) };
 	// the deck from the last door's back edge, its steps' treads behind it on the low floor
 	b.deck_z = b.doors.back().x - b.steps * b.tread;
@@ -105,11 +105,11 @@ void platforms(const Bus &b, Plan &p) {
 		}
 }
 
-Plan plan_of(const Bus &b, const Dictionary &in, const Cabin &c, const CabinLook &l) {
+Plan plan_of(const Bus &b, const DataValue &in, const Cabin &c, const CabinLook &l) {
 	Plan p;
 	p.place = l.chair.width_m;
 	p.behind = l.person.torso.z * 0.5f + l.chair.back_d_m;
-	p.ahead = l.chair.depth_m * 0.5f + float(in["knee_m"]);
+	p.ahead = l.chair.depth_m * 0.5f + in["knee_m"].f();
 	p.inner = c.half_w - l.lining_inset_m;
 	p.aisle = p.inner - 2 * p.place;
 	p.driver.x = p.inner - p.place;
@@ -118,7 +118,7 @@ Plan plan_of(const Bus &b, const Dictionary &in, const Cabin &c, const CabinLook
 	p.driver.style = &l.cab;
 	p.driver.driver = true;
 	p.partition = p.driver.z - l.person.torso.z * 0.5f - l.cab.back_d_m;
-	const float wheelchair = in["wheelchair_m"], door = (b.doors.back().x + b.doors.back().y) * 0.5f;
+	const float wheelchair = in["wheelchair_m"].f(), door = (b.doors.back().x + b.doors.back().y) * 0.5f;
 	p.reserved = Vector2(door - wheelchair * 0.5f, door + wheelchair * 0.5f);
 	const float back = c.z_back + l.lining_inset_m, last = back + p.behind; // the back row's hip
 	side_rows(b, p, 1, p.partition - p.ahead, b.deck_z + p.behind, l);
@@ -126,7 +126,7 @@ Plan plan_of(const Bus &b, const Dictionary &in, const Cabin &c, const CabinLook
 	for (int side : { 1, -1 }) // the deck's rows: from the back row forward
 		for (float z = last + p.behind + p.ahead; z + p.ahead <= b.deck_z + CMP_EPSILON; z += p.behind + p.ahead) side_rows(b, p, side, z, z, l);
 	platforms(b, p);
-	const float single = in["single_m"]; // the back row: double, single, double
+	const float single = in["single_m"].f(); // the back row: double, single, double
 	for (float x : { -single * 0.5f - p.place * 1.5f, -single * 0.5f - p.place * 0.5f, 0.f, single * 0.5f + p.place * 0.5f, single * 0.5f + p.place * 1.5f }) {
 		Seat s;
 		s.x = x;
@@ -171,10 +171,10 @@ void housings(MeshBuilder &mb, const Bus &b, const std::vector<Vector2> plat[2],
 
 // Stanchions along the aisle's edges alternating sides at most pole_m[1] apart and one in each doorway, from the floor
 // to the ceiling rails over the aisle's edges (rail_m over each floor), the partition behind the driver with glass above.
-void fittings(MeshBuilder &mb, const Bus &b, const Plan &p, const Dictionary &in, const Cabin &c, const CabinLook &l, const AgentTrim &trim) {
+void fittings(MeshBuilder &mb, const Bus &b, const Plan &p, const DataValue &in, const Cabin &c, const CabinLook &l, const AgentTrim &trim) {
 	const Color pole = agent_hex(in["pole"]);
 	const Vector2 pm = agent_v2(in["pole_m"]), wall = agent_v2(in["partition_m"]); // diameter, spacing; height, gap over the floor
-	const float t = pm.x * 0.5f, rail = in["rail_m"], liner = c.roof - l.liner_drop_m, front = p.partition - PARTITION_THICK_M;
+	const float t = pm.x * 0.5f, rail = in["rail_m"].f(), liner = c.roof - l.liner_drop_m, front = p.partition - PARTITION_THICK_M;
 	auto rail_at = [&](float z) { return std::min(floor_at(b, z) + rail, liner - pm.x); };
 	auto stanchion = [&](float x, float z) { // in the aisle, clear of the seats
 		const float xc = x - (x > 0 ? t : -t);
@@ -196,7 +196,7 @@ void fittings(MeshBuilder &mb, const Bus &b, const Plan &p, const Dictionary &in
 			Vector3(0, 0, -1), trim);
 }
 
-Cabin cabin_of(const Bus &b, const Dictionary &in) {
+Cabin cabin_of(const Bus &b, const DataValue &in) {
 	Cabin c;
 	c.floor = b.floor;
 	c.roof = b.cant;
@@ -275,7 +275,7 @@ void band(MeshBuilder &mb, const Bus &b, const AgentTrim &trim) {
 
 // The windscreen between its corner pillars with the lit destination sign along its top, the rear window, the roof and
 // its air conditioning.
-void ends_and_roof(MeshBuilder &mb, const Bus &b, const Dictionary &d, const AgentTrim &trim) {
+void ends_and_roof(MeshBuilder &mb, const Bus &b, const DataValue &d, const AgentTrim &trim) {
 	const float zf = b.hl + HEAVY_PROUD_M, sx = b.hw - HEAVY_PILLAR_M, zb = -b.hl - HEAVY_PROUD_M;
 	agent_pane(mb, Vector3(-sx, b.sill, zf), Vector3(sx, b.sill, zf), Vector3(sx, b.cant, zf), Vector3(-sx, b.cant, zf), Vector3(0, 0, 1), trim);
 	agent_pane(mb, Vector3(-sx, b.rear_sill, zb), Vector3(sx, b.rear_sill, zb), Vector3(sx, b.cant, zb), Vector3(-sx, b.cant, zb), Vector3(0, 0, -1), trim);
@@ -291,9 +291,9 @@ void ends_and_roof(MeshBuilder &mb, const Bus &b, const Dictionary &d, const Age
 
 } // namespace
 
-int build_bus(MeshBuilder &mb, const Dictionary &d, int sides, const CabinLook *look, const AgentTrim &trim) {
+int build_bus(MeshBuilder &mb, const DataValue &d, int sides, const CabinLook *look, const AgentTrim &trim) {
 	const Bus b = read_bus(d);
-	const Dictionary in = d["interior"];
+	const DataValue in = d["interior"];
 	Cabin c = cabin_of(b, in);
 	int passengers = 0;
 	float aisle = b.well_x; // the far level: the housings as deep as the wells

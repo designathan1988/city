@@ -122,10 +122,10 @@ bool same_surface(Region a, Region b) {
 	return a == b || (painted(a) && painted(b));
 }
 
-std::vector<float> stations(const Loft &lf, const Dictionary &body) {
+std::vector<float> stations(const Loft &lf, const DataValue &body) {
 	const CarStyle &s = *lf.s;
-	const int k = lf.level, uniform = int(Array(body["stations"])[k]), arch = int(Array(body["arch_steps"])[k]);
-	const int ends = int(Array(body["end_steps"])[k]), rolls = int(Array(body["end_roll_steps"])[k]);
+	const int k = lf.level, uniform = body["stations"][k].whole(), arch = body["arch_steps"][k].whole();
+	const int ends = body["end_steps"][k].whole(), rolls = body["end_roll_steps"][k].whole();
 	std::vector<float> xs;
 	for (int i = 0; i <= uniform; i++) xs.push_back(-0.5f + float(i) / uniform);
 	for (float f : { s.screen[0], s.screen[1], s.glass_front, s.glass_back }) xs.push_back(f);
@@ -149,7 +149,7 @@ std::vector<float> stations(const Loft &lf, const Dictionary &body) {
 		xs.push_back(-0.5f + s.roll[0] / s.L * j / rolls);
 	}
 	std::sort(xs.begin(), xs.end());
-	const float eps = float(body["station_eps_m"]) / s.L;
+	const float eps = body["station_eps_m"].f() / s.L;
 	std::vector<float> out;
 	for (float x : xs)
 		if (x >= -0.5f && x <= 0.5f && (out.empty() || x - out.back() > eps)) out.push_back(x);
@@ -220,7 +220,7 @@ void loft(MeshBuilder &mb, const Loft &lf, const std::vector<float> &xs, const A
 
 } // namespace
 
-int build_car(MeshBuilder &mb, const Dictionary &car, const Dictionary &body, const Dictionary &inside, const CabinLook *look, const AgentTrim &trim,
+int build_car(MeshBuilder &mb, const DataValue &car, const DataValue &body, const DataValue &inside, const CabinLook *look, const AgentTrim &trim,
 		int level) {
 	const CarStyle s = read_car_style(car, body);
 	const int passengers = look ? car_cabin(mb, s, inside, *look) : 0;
@@ -228,8 +228,8 @@ int build_car(MeshBuilder &mb, const Dictionary &car, const Dictionary &body, co
 	lf.s = &s;
 	lf.level = level;
 	lf.fine = level == AGENT_CABIN_LEVEL; // every detail
-	lf.seam = float(body["door_seam_m"]) / s.L;
-	lf.pillar = float(body["b_pillar_m"]) / s.L;
+	lf.seam = body["door_seam_m"].f() / s.L;
+	lf.pillar = body["b_pillar_m"].f() / s.L;
 	lf.frame = s.frame / s.L;
 	const std::vector<float> xs = stations(lf, body);
 	loft(mb, lf, xs, trim);
@@ -237,7 +237,7 @@ int build_car(MeshBuilder &mb, const Dictionary &car, const Dictionary &body, co
 	car_cap(mb, s, xs.front(), -1.f, trim);
 	if (level < AGENT_FAR_LEVEL) car_details(mb, s, body, lf.fine, trim); // far, none of them is a pixel
 	if (level == AGENT_HULL_LEVEL) return passengers;
-	const int sides = int(Array(body["wheel_sides"])[level]);
+	const int sides = body["wheel_sides"][level].whole();
 	for (int k = 0; k < 2; k++)
 		for (int side : { -1, 1 }) {
 			const Vector3 hub(side * s.track[k] * 0.5f, s.r, s.axles[k] * s.L);

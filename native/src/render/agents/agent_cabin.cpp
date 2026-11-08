@@ -24,14 +24,16 @@ constexpr float DASH_LIP_M = 0.02f, DASH_FOOT_M = 0.12f, DASH_WAIST = 0.5f;
 constexpr float ROW_EPS_M = 0.01f;
 constexpr int WHEEL_KEYS = 5; // agents.json cabin.seats.*.wheel
 
-bool load_style(const Dictionary &d, SeatStyle &s) {
-	s.hip_m = d["hip_m"]; s.cushion_m = d["cushion_m"]; s.width_m = d["cushion_w_m"]; s.depth_m = d["cushion_d_m"]; s.back_h_m = d["back_h_m"];
-	s.back_d_m = d["back_d_m"]; s.base_share = d["base_share"];
-	s.recline = d["recline"];
+bool load_style(const DataValue &d, SeatStyle &s) {
+	s.hip_m = d["hip_m"].f(); s.cushion_m = d["cushion_m"].f(); s.width_m = d["cushion_w_m"].f(); s.depth_m = d["cushion_d_m"].f(); s.back_h_m = d["back_h_m"].f();
+	s.back_d_m = d["back_d_m"].f(); s.base_share = d["base_share"].f();
+	s.recline = d["recline"].f();
 	s.headrest = agent_v3(d["headrest_m"]); s.handle = agent_v2(d["handle_m"]); s.handle_colour = agent_hex(d["handle"]);
-	Array w = d["wheel"];
-	if (w.size() == WHEEL_KEYS) { s.wheel_fwd_m = w[0]; s.wheel_up_m = w[1]; s.wheel_tilt = w[2]; s.wheel_r_m = w[3]; s.column_m = w[4]; }
-	return s.hip_m > 0 && s.width_m > 0 && w.size() == WHEEL_KEYS;
+	const DataValue w = d["wheel"];
+	const bool wheel = w.list(WHEEL_KEYS).size() == WHEEL_KEYS;
+	if (wheel) { s.wheel_fwd_m = w[0].f(); s.wheel_up_m = w[1].f(); s.wheel_tilt = w[2].f(); s.wheel_r_m = w[3].f(); s.column_m = w[4].f(); }
+	if (s.hip_m <= 0 || s.width_m <= 0) d.fail("a seat with no hip or no width");
+	return s.hip_m > 0 && s.width_m > 0 && wheel;
 }
 
 void wall(MeshBuilder &mb, const Vector3 &a, const Vector3 &b, const Vector3 &c, const Vector3 &d, const Vector3 &in, const Color &col) {
@@ -155,11 +157,11 @@ void dash_for(Cabin &c, const Seat &driver, const CabinLook &l, float width) {
 	c.dash_w = width;
 }
 
-bool CabinLook::load(const Dictionary &d) {
-	lining_inset_m = d["lining_inset_m"]; liner_drop_m = d["liner_drop_m"]; rim_m = d["steering_rim_m"];
-	const Dictionary p = d["person"], seats = d["seats"];
+bool CabinLook::load(const DataValue &d) {
+	lining_inset_m = d["lining_inset_m"].f(); liner_drop_m = d["liner_drop_m"].f(); rim_m = d["steering_rim_m"].f();
+	const DataValue p = d["person"], seats = d["seats"];
 	person.torso = agent_v3(p["torso_m"]); person.thigh = agent_v3(p["thigh_m"]); person.foot = agent_v3(p["foot_m"]);
-	person.shin_w = p["shin_w_m"];
+	person.shin_w = p["shin_w_m"].f();
 	const bool styles = load_style(seats["car"], car) && load_style(seats["cab"], cab) && load_style(seats["chair"], chair);
 	return styles && person.torso.y > 0 && person.thigh.z > 0 && rim_m > 0;
 }

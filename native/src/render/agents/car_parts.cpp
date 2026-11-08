@@ -47,9 +47,9 @@ float end_surface(const CarStyle &s, float half, float dir) {
 	return z;
 }
 
-void mirror(MeshBuilder &mb, const CarStyle &s, const Dictionary &m, int side, const AgentTrim &trim) {
-	const float z = s.doors[0] * s.L - float(m["back_m"]), y = belt_y(s, z / s.L) + float(m["rise_m"]), x = skin_x(s, z / s.L);
-	const float along = m["long_m"], out = m["wide_m"], high = m["high_m"], arm = m["stalk_m"], cz = z - HOUSING_BACK_M, cx = x + HOUSING_OUT_M;
+void mirror(MeshBuilder &mb, const CarStyle &s, const DataValue &m, int side, const AgentTrim &trim) {
+	const float z = s.doors[0] * s.L - m["back_m"].f(), y = belt_y(s, z / s.L) + m["rise_m"].f(), x = skin_x(s, z / s.L);
+	const float along = m["long_m"].f(), out = m["wide_m"].f(), high = m["high_m"].f(), arm = m["stalk_m"].f(), cz = z - HOUSING_BACK_M, cx = x + HOUSING_OUT_M;
 	agent_strut(mb, Vector3(side * (x - ROOT_IN_M), y - ROOT_DROP_M, z), Vector3(side * (x + TIP_OUT_M), y, z - TIP_BACK_M), arm, arm, trim.blackout, AgentTag::FIXED);
 	const Vector3 back(side * cx, y - HOUSING_DROP_M + high * 0.5f, cz - along * 0.5f);
 	agent_pod(mb, back, Vector2(out, high) * 0.5f, along, AGENT_WHITE, AgentTag::PAINT);
@@ -58,7 +58,7 @@ void mirror(MeshBuilder &mb, const CarStyle &s, const Dictionary &m, int side, c
 }
 
 // A mirror on each front door by the A pillar's foot, its arm dark and its housing painted; a handle on each door under the belt.
-void mirrors_and_handles(MeshBuilder &mb, const CarStyle &s, const Dictionary &body, const AgentTrim &trim) {
+void mirrors_and_handles(MeshBuilder &mb, const CarStyle &s, const DataValue &body, const AgentTrim &trim) {
 	const Vector3 h = agent_v3(body["car_handle_m"]); // [long, high, out]
 	for (int side : { -1, 1 }) {
 		mirror(mb, s, body["mirror"], side, trim);
@@ -76,7 +76,7 @@ struct CarRows {
 	float first = 0, pitch = 0, x = 0;
 };
 
-CarRows rows_of(const Cabin &c, const Dictionary &inside, const CabinLook &l) {
+CarRows rows_of(const Cabin &c, const DataValue &inside, const CabinLook &l) {
 	const Vector2 leg = agent_v2(inside["leg_room_m"]); // L33, L51
 	const float back = l.person.torso.z * 0.5f + l.car.back_d_m; // the hip point to the backrest's back
 	CarRows r;
@@ -88,7 +88,7 @@ CarRows rows_of(const Cabin &c, const Dictionary &inside, const CabinLook &l) {
 
 // The inside of the body: from the floor over the sill to the lowest belt line and under the roof, from the windscreen
 // base back to the rear screen's base or, on a blind back, to a bulkhead behind the front seats' backrests up to the roof.
-Cabin cabin_of(const CarStyle &s, const Dictionary &inside, const CabinLook &l) {
+Cabin cabin_of(const CarStyle &s, const DataValue &inside, const CabinLook &l) {
 	Cabin c;
 	c.floor = s.clear + s.sill;
 	c.side_top = c.front_top = c.back_top = std::min(s.belt[0], s.belt[1]) * s.H;
@@ -134,10 +134,10 @@ static void lens_pair(MeshBuilder &mb, const CarStyle &s, float half, float y, f
 	}
 }
 
-void car_details(MeshBuilder &mb, const CarStyle &s, const Dictionary &body, bool fine, const AgentTrim &trim) {
+void car_details(MeshBuilder &mb, const CarStyle &s, const DataValue &body, bool fine, const AgentTrim &trim) {
 	const float low_f = car_low_at(s, 0.5f), low_b = car_low_at(s, -0.5f), zf = s.L * 0.5f, zb = -zf;
 	const float nose_y = car_top_at(s, 0.5f - NOSE_BACK_M / s.L), tail_top = car_top_at(s, -0.5f + TAIL_BACK_M / s.L);
-	const float lamp_y = low_f + (nose_y - low_f) * float(body["lamp_y"]), tail_y = low_b + (tail_top - low_b) * float(body["tail_y"]);
+	const float lamp_y = low_f + (nose_y - low_f) * body["lamp_y"].f(), tail_y = low_b + (tail_top - low_b) * body["tail_y"].f();
 	const Vector3 head = agent_v3(body["front_lens_m"]), ind = agent_v3(body["indicator_m"]);
 	const Vector2 tail = agent_v2(body["rear_lens_m"]);
 	lens_pair(mb, s, s.W * 0.5f - head.x, lamp_y, head.z, head.y, 1.f, LAMP_SINK_M, trim.headlamp, AgentTag::HEAD);
@@ -154,13 +154,13 @@ void car_details(MeshBuilder &mb, const CarStyle &s, const Dictionary &body, boo
 	if (fine) mirrors_and_handles(mb, s, body, trim);
 }
 
-int car_cabin(MeshBuilder &mb, const CarStyle &s, const Dictionary &inside, const CabinLook &l) {
+int car_cabin(MeshBuilder &mb, const CarStyle &s, const DataValue &inside, const CabinLook &l) {
 	Cabin c = cabin_of(s, inside, l);
 	if (c.z_back >= c.z_front) return -1;
 	const CarRows r = rows_of(c, inside, l);
 	const float room = c.z_back + l.lining_inset_m + l.person.torso.z * 0.5f + l.car.back_d_m; // a backrest still fits
 	std::vector<Seat> seats;
-	seat_rows(seats, r.first, std::max(r.first - (int(inside["rows"]) - 1) * r.pitch, room), r.pitch, { r.x, -r.x }, c.floor, l.car);
+	seat_rows(seats, r.first, std::max(r.first - (inside["rows"].whole() - 1) * r.pitch, room), r.pitch, { r.x, -r.x }, c.floor, l.car);
 	if (seats.empty()) return -1;
 	seats[0].driver = true;
 	dash_for(c, seats[0], l, 2 * c.half_w);

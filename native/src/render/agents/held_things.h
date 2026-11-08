@@ -3,6 +3,7 @@
 // on this side but who holds what. Data: agents.json "held".
 #pragma once
 
+#include "render/data_reader.h"
 #include "render/render_context.h"
 #include "render/row_keeper.h"
 #include "render/rs_util.h"
@@ -15,7 +16,7 @@ namespace city {
 class HeldThings {
 public:
 	// `act_names`: each PedAct's name, as the things are called in the data (a name no thing has holds nothing).
-	bool init(const RenderContext &ctx, const godot::Dictionary &held, const char *const *act_names, godot::PackedStringArray &errors);
+	bool init(const RenderContext &ctx, const DataValue &held, const char *const *act_names, godot::PackedStringArray &errors);
 	void reset();
 	godot::RID material() const { return material_; }
 	void begin();

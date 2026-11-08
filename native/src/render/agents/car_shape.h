@@ -30,7 +30,7 @@ struct CarStyle {
 	bool rear_glass = true; // "rear": [] is a blind back (the van)
 };
 
-CarStyle read_car_style(const godot::Dictionary &car, const godot::Dictionary &body);
+CarStyle read_car_style(const DataValue &car, const DataValue &body);
 float car_top_at(const CarStyle &s, float xf);
 float car_half_w(const CarStyle &s, float xf);
 void car_ring(const CarStyle &s, float xf, godot::Vector2 out[RING]);
@@ -43,7 +43,7 @@ float car_low_at(const CarStyle &s, float xf);
 // car_parts.cpp: the ends closed dark, the lamps, grille, plates, mirrors and door handles; the cabin behind the glass
 // (passengers, -1 when the data's cabin is inside out).
 void car_cap(MeshBuilder &mb, const CarStyle &s, float xf, float dir, const AgentTrim &trim);
-void car_details(MeshBuilder &mb, const CarStyle &s, const godot::Dictionary &body, bool fine, const AgentTrim &trim);
-int car_cabin(MeshBuilder &mb, const CarStyle &s, const godot::Dictionary &inside, const CabinLook &l);
+void car_details(MeshBuilder &mb, const CarStyle &s, const DataValue &body, bool fine, const AgentTrim &trim);
+int car_cabin(MeshBuilder &mb, const CarStyle &s, const DataValue &inside, const CabinLook &l);
 
 } // namespace city

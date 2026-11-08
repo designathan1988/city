@@ -2,6 +2,7 @@
 // the head's (project/render/shaders/people_helmet.gdshader). Each body's fit comes from people.bin. Data: agents.json "held" "helmet".
 #pragma once
 
+#include "render/data_reader.h"
 #include "render/render_context.h"
 #include "render/row_keeper.h"
 #include "render/rs_util.h"
@@ -10,7 +11,7 @@ namespace city {
 
 class Helmets {
 public:
-	bool init(const RenderContext &ctx, const godot::Dictionary &helmet, godot::PackedStringArray &errors);
+	bool init(const RenderContext &ctx, const DataValue &helmet, godot::PackedStringArray &errors);
 	void reset();
 	godot::RID material() const { return material_; }
 	void begin();
