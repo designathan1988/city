@@ -15,7 +15,6 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr int CHUNKS_PER_SUPER = int(SUPERCHUNK / CHUNK); // per axis
 constexpr float MID = 0.5f;
 
 int64_t super_of(int64_t chunk) { return chunk_of((float(key_x(chunk)) + MID) * CHUNK, (float(key_y(chunk)) + MID) * CHUNK, SUPERCHUNK); }

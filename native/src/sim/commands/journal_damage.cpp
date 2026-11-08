@@ -15,9 +15,7 @@ void mark_ruin(CityState &s, const Ruin &r) {
 	Building b = r.record;
 	{
 		const float reach = std::max(b.w, b.d) * 0.5f;
-		for (int j = int(std::floor((b.z - reach) / CHUNK)); j <= int(std::floor((b.z + reach) / CHUNK)); j++)
-			for (int i = int(std::floor((b.x - reach) / CHUNK)); i <= int(std::floor((b.x + reach) / CHUNK)); i++)
-				s.log.building_chunks.push_back(cell_key(i, j));
+		for_chunks(b.x - reach, b.z - reach, b.x + reach, b.z + reach, [&](int64_t key) { s.log.building_chunks.push_back(key); });
 	}
 }
 } // namespace

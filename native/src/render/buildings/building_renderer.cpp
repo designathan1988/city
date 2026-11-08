@@ -22,7 +22,6 @@ namespace city {
 namespace {
 constexpr float HALF = 0.5f, DROP_K = 1.25f;
 constexpr int BAND_BIT_NEAR = 2, BAND_BIT_MID = 4;
-constexpr int CHUNKS_PER_SUPER = int(SUPERCHUNK / CHUNK); // per axis
 
 int64_t super_of(const Vector3 &centre) { return chunk_of(centre.x, centre.z, SUPERCHUNK); }
 

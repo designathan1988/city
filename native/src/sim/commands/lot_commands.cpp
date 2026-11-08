@@ -28,8 +28,7 @@ void bounds(const std::vector<LotPoint> &q, double &x0, double &z0, double &x1, 
 }
 
 void mark_box(CityState &s, double x0, double z0, double x1, double z1) {
-	for (int j = int(std::floor(z0 / CHUNK)); j <= int(std::floor(z1 / CHUNK)); j++)
-		for (int i = int(std::floor(x0 / CHUNK)); i <= int(std::floor(x1 / CHUNK)); i++) s.log.lot_cells.push_back(cell_key(i, j));
+	for_chunks(x0, z0, x1, z1, [&](int64_t key) { s.log.lot_cells.push_back(key); });
 }
 
 // The land of `rings` read again (the book was changed record by record before); the command ends in EditHistory::end.

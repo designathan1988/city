@@ -2,6 +2,7 @@
 // crossing road at a corner; else at a near neighbour's bearing; else on the grid; and flush with the lots beside it. It runs at every
 // pointer move, so it only asks by neighbourhood.
 #include "sim/buildings/b40/record.h"
+#include "core/math.h"
 #include "sim/commands/model_ops.h"
 #include "sim/state/city_state.h"
 
@@ -13,7 +14,6 @@ namespace city {
 using namespace b40;
 
 namespace {
-constexpr double QUARTER = 1.5707963267948966, TURN = 2 * QUARTER * 2;
 constexpr double ALONG_SIDE_COS = 0.9; // a road this close to the footprint's depth runs along its side
 constexpr double SAME_BEARING_RAD = 0.02;
 constexpr double FLUSH_PAD_M = 8;
@@ -31,9 +31,9 @@ Vec along_of(double rot) { return { std::cos(rot), -std::sin(rot) }; }
 Vec into_of(double rot) { return { -std::sin(rot), -std::cos(rot) }; }
 
 double normal_angle(double a) {
-	a = std::fmod(a, TURN);
-	if (a > TURN / 2) a -= TURN;
-	if (a < -TURN / 2) a += TURN;
+	a = std::fmod(a, TAU_D);
+	if (a > TAU_D / 2) a -= TAU_D;
+	if (a < -TAU_D / 2) a += TAU_D;
 	return a;
 }
 
@@ -183,7 +183,7 @@ PlaceSnap snap_place(const CityState &s, float w, float d, double x, double z, d
 		return out;
 	}
 	if (const Building *near_one = nearest_building(s, at)) {
-		const double turn = near_one->rot + std::round(normal_angle(rot - near_one->rot) / QUARTER) * QUARTER;
+		const double turn = near_one->rot + std::round(normal_angle(rot - near_one->rot) / (PI_D / 2)) * (PI_D / 2);
 		const Vec front = front_of(at, size, turn);
 		out = PlaceSnap{ front.x, front.z, normal_angle(turn), SNAP_BUILDING };
 		flush(s, out, size, true);

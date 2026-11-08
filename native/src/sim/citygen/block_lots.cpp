@@ -2,6 +2,7 @@
 // raster, each closed piece a block; its least-area rectangle cut into one or two rows (two when >= 44 m deep, back to
 // back) and each row into equal columns of about LOT_FRONTAGE. Every lot reaches the footway.
 #include "sim/citygen/lot_gen.h"
+#include "core/plane_geometry.h"
 
 #include <algorithm>
 #include <array>
@@ -19,21 +20,8 @@ using P2 = std::pair<double, double>;
 
 std::vector<P2> convex_hull(std::vector<P2> s) {
 	std::sort(s.begin(), s.end());
-	if (s.size() < 3) return s;
 	auto cross = [](const P2 &o, const P2 &a, const P2 &b) { return (a.first - o.first) * (b.second - o.second) - (a.second - o.second) * (b.first - o.first); };
-	std::vector<P2> lower, upper;
-	for (const P2 &q : s) {
-		while (lower.size() >= 2 && cross(lower[lower.size() - 2], lower.back(), q) <= 0) lower.pop_back();
-		lower.push_back(q);
-	}
-	for (int k = int(s.size()) - 1; k >= 0; k--) {
-		while (upper.size() >= 2 && cross(upper[upper.size() - 2], upper.back(), s[k]) <= 0) upper.pop_back();
-		upper.push_back(s[k]);
-	}
-	lower.pop_back();
-	upper.pop_back();
-	lower.insert(lower.end(), upper.begin(), upper.end());
-	return lower;
+	return monotone_hull(s, cross, 0.0);
 }
 
 struct Box {

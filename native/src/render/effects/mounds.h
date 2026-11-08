@@ -8,6 +8,8 @@
 
 namespace city {
 
+constexpr float MOUND_SPREAD = 1.15f; // a mound slumps past the walls it fell from, by this share of their footprint
+
 class Mounds {
 public:
 	void init(const godot::RID &scenario, const godot::RID &material, int capacity);

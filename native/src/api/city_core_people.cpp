@@ -196,8 +196,7 @@ Dictionary CityProbes::people_census(const Vector3 &at, float radius) {
 
 void CityProbes::set_city_hour(float hour) {
 	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
-	CityClock &c = state_->clock;
-	c.day_shift = double(hour) * MINUTES_PER_HOUR - c.minutes.load();
+	state_->clock.set_hour(double(hour));
 }
 
 } // namespace city

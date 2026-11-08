@@ -114,8 +114,7 @@ void mark_paint(CityState &s, const int rect[4]) {
 void mark_furniture(CityState &s, int seg) {
 	const RoadSegment &g = s.roads.segs[size_t(seg)];
 	s.log.furniture_segs.push_back(seg);
-	for (int j = int(std::floor(g.minz / CHUNK)); j <= int(std::floor(g.maxz / CHUNK)); j++)
-		for (int i = int(std::floor(g.minx / CHUNK)); i <= int(std::floor(g.maxx / CHUNK)); i++) s.log.road_chunks.push_back(cell_key(i, j));
+	for_chunks(g.minx, g.minz, g.maxx, g.maxz, [&](int64_t key) { s.log.road_chunks.push_back(key); });
 }
 
 void mark_street(CityState &s, double x, double z) {

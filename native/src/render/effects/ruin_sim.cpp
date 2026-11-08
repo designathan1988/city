@@ -20,7 +20,6 @@ constexpr float TURN_RANGE = 3.f, SPIN_BASE = 0.4f, SPIN_PER_POWER = 0.1f;
 constexpr float HOP_S = 0.055f, HOP_LEAST = 0.7f, HOP_SPAN = 0.6f; // the break runs a bond in this long
 constexpr float SUPPORT_EVERY_S = 0.1f;
 constexpr float MOUND_FILL = 0.85f; // of a mound's height where the pieces come to rest: its shader's slumps average under it
-constexpr float MOUND_SPREAD = 1.15f; // effect_ruins.cpp: it slumps past the walls it fell from
 constexpr float LONGEST_FALL_S = 12.f;
 constexpr float LAND_SPEED_MS = 3.f;
 constexpr float FARTHEST_M = 1e30f;

@@ -3,6 +3,7 @@
 // two-cell clear ring round every piece and the machine rooms. Stream = mulberry32(id*2654435761 ^ (vol+7)*40503 ^
 // 0x5f3759df). Drains, masts and dish posts are fine parts.
 #include "render/buildings/facade.h"
+#include "render/buildings/roof_sizes.h"
 
 #include "core/math.h"
 #include "core/seeded.h"
@@ -168,7 +169,7 @@ void emit_roof_plant(Shell &shell, Shell &parts, const Placed &pl, const Volume 
 	if (pk.nx <= 0 || pk.ny <= 0) return;
 	pk.used.assign(size_t(pk.nx * pk.ny), 0);
 	for (const Core &c : b.cores) // the machine room square
-		pk.mark(int((c.x - v.x - MARGIN) / CELL), int((c.y - v.y - MARGIN) / CELL), int(3 / CELL), int(3 / CELL));
+		pk.mark(int((c.x - v.x - MARGIN) / CELL), int((c.y - v.y - MARGIN) / CELL), int(MACHINE_ROOM_M / CELL), int(MACHINE_ROOM_M / CELL));
 	Mulberry32 r((pl.id * GOLDEN) ^ (uint32_t(vol + VOL_OFF) * VOL_K) ^ MAGIC);
 	int use = b.use == USE_RESIDENTIAL ? 0 : b.use == USE_COMMERCIAL ? 1 : 2;
 	float age = float((pl.id * AGE_MUL) % AGE_MOD) / float(AGE_MOD), area = v.w * v.d;

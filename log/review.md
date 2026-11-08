@@ -2675,6 +2675,37 @@ layers however many names a layer holds, and the captures aim at the same places
 **Verified** (`city-verify`, `quick --all`, both DLLs): every test passes (the fuzz tests with their hashes, the flow test over every
 node), the digest equal, every photo byte-equal to a run before C7; `gates_changed` only lines the files had.
 
+### 6.23 B2, C4 (the core, first part): what the core wrote twice and merges without a bit moving (2026-11-08)
+
+**Cause.** §3a/§3b/§3c/§3e/§3j/§3l/§3n's copies of one value or one primitive: lowbias32 twice (`core/random.h` `hash_u32`,
+`seeded.h` `hash32`); pi and a turn typed again in eleven files (`interior/plan.h` even shadowing `PI_F` in `b40`); the chunks a
+superchunk spans in four files and the sub-chunks a chunk holds in two; √2 computed in two; a ruin piece's size twice
+(`ruin_fracture.cpp` `LONGEST_SIDE_M`, `ruin_cells.h` `VORONOI_EDGE_M`) and a mound's spread twice; a roof's parapet, attic, coping,
+machine room and slab lift in both levels (`roof_emit.cpp`, `far_mass.cpp`) and the machine room once more as `3` in `roof_plant.cpp`;
+the casing three times (`road_grade.cpp`, `road_structures.cpp`, `road_walls.cpp`); `in_ds` twice; the clock's hour set by hand beside
+`CityClock::set_hour`; the convex hull twice; the point-in-ring test three times; where two lines meet three times; the chunks a box
+touches written by hand five times beside `for_chunks`; the arc table read at a share three times.
+
+**Fix.** One owner each, and only where the merge is exact: `hash_u32`; `core/math.h`'s `PI_F`, `TAU_F`, `PI_D`, `TAU_D`, `SQRT2_F`
+and `core/units.h`'s `DEG_TO_RAD_D` (every replaced literal was checked to round to the same float or double); `core/grid.h`'s
+`CHUNKS_PER_SUPER` and `SUBCHUNKS_PER_CHUNK`; `VORONOI_EDGE_M`; `MOUND_SPREAD` in `mounds.h`; `render/buildings/roof_sizes.h`;
+`casing_half` declared in `road_grade.h`; `traffic::in_ds`; `CityClock::set_hour`; `core/plane_geometry.h` with `line_shares`,
+`inside_ring` and `monotone_hull`, written once over any point type, each caller keeping its own tolerance and range (the hull of the
+survey still rounds and dedups its points first; the open segment of `segments_cross` still drops its ends); `for_chunks`; `arc_at`.
+
+**Not merged here, and why.** Each would move a number, so it is B3 with a predicted diff: two chunk half-diagonals that differ
+(`lamp_lights.cpp` 0.7072, `prop_renderer.cpp` 0.7071); two truncated π (`agent_cabin.cpp` 3.14159f, `car_shape.cpp` 1.5707963f);
+two value noises that are not one (`mounds.cpp` 2D, `shell.cpp` 3D); the private hashes of `growth.cpp` and `street_names.cpp`;
+RDP twice with different metrics; `closest_t` in closed form; the float polygon engine (`plan_area.cpp`) against Clipper2; paints
+deduplicated in `Body::add_paint`; the squares' LCG; the three rules for a junction's main road, the two for what kind of place a
+building is and the two for the micro window. The seeded generators (`Mulberry32`, the double noises) go with B4's removal of the
+parity code. The seven 2D vector types are the next part.
+
+**What changes.** Nothing: every merge is the same arithmetic on the same types.
+
+**Verified** (`city-verify`, `quick --all`, both DLLs): every test passes, the digest equal, every photo byte-equal to a run before C7
+(02-rua once off by the known residual's pixels, equal on two reruns); `gates_changed` only lines the files had.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

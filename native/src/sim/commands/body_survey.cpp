@@ -1,5 +1,6 @@
 // A building read off a 3D model (body_survey.h).
 #include "sim/commands/body_survey.h"
+#include "core/plane_geometry.h"
 
 #include "sim/buildings/b40/gen.h"
 #include "sim/buildings/b40/plan_area.h"
@@ -56,22 +57,8 @@ Hull convex_hull(Hull p) {
 	for (auto &q : p) q = { std::round(q[0] * HULL_STEP) / HULL_STEP, std::round(q[1] * HULL_STEP) / HULL_STEP };
 	std::sort(p.begin(), p.end());
 	p.erase(std::unique(p.begin(), p.end()), p.end());
-	if (p.size() < 3) return p;
 	auto cross = [](const std::array<float, 2> &o, const std::array<float, 2> &a, const std::array<float, 2> &b) { return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]); };
-	auto chain = [&](const Hull &list) {
-		Hull out;
-		for (const auto &q : list) {
-			while (out.size() >= 2 && cross(out[out.size() - 2], out.back(), q) <= HULL_EPS) out.pop_back();
-			out.push_back(q);
-		}
-		out.pop_back();
-		return out;
-	};
-	Hull lower = chain(p);
-	std::reverse(p.begin(), p.end());
-	const Hull upper = chain(p);
-	lower.insert(lower.end(), upper.begin(), upper.end());
-	return lower;
+	return monotone_hull(p, cross, HULL_EPS);
 }
 
 // The tops of the model filed by a uniform grid over its plan: each top in every cell its box, grown by TOUCH_M, covers, so

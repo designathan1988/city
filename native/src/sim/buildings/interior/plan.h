@@ -3,6 +3,7 @@
 #pragma once
 
 #include "sim/buildings/interior/interior.h"
+#include "core/math.h"
 
 #include <array>
 #include <cmath>
@@ -11,7 +12,7 @@
 
 namespace city::b40 {
 
-constexpr float PI_F = 3.14159265f, RIGHT_ANGLE = PI_F / 2;
+constexpr float RIGHT_ANGLE = PI_F / 2;
 // The way a piece faces, as a direction in the floor's own axes (+y away from the street).
 inline float face(float dx, float dy) { return std::atan2(dx, -dy); }
 

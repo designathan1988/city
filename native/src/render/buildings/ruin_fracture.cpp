@@ -17,7 +17,6 @@ namespace city {
 using namespace ruin;
 
 namespace {
-constexpr float LONGEST_SIDE_M = 2.8f; // a face is divided to this before the cells cut it
 constexpr int CUTS_MOST = 8;
 constexpr float WALL_DEPTH_M = 0.28f; // the thickness given to a wall
 constexpr float PLATE_LEAST_M = 0.5f; // a face at least this long is wall: it gets a back and a side along its cuts (the small trim is closed boxes already)
@@ -49,7 +48,7 @@ float longest_edge(const Tri &t, int &which) {
 	return std::sqrt(best);
 }
 
-// Split along the longest edge until every edge is under `LONGEST_SIDE_M`, each piece handed to `emit` as it comes; `made` counts
+// Split along the longest edge until every edge is under `VORONOI_EDGE_M`, each piece handed to `emit` as it comes; `made` counts
 // the pieces of the whole cut: past MOST_TRIANGLES a face goes on undivided.
 template <typename Emit>
 void divide(const Tri &whole, std::vector<Tri> &stack, size_t &made, Emit &&emit) {
@@ -59,7 +58,7 @@ void divide(const Tri &whole, std::vector<Tri> &stack, size_t &made, Emit &&emit
 		stack.pop_back();
 		int i = 0;
 		const float edge = longest_edge(t, i);
-		if (edge <= LONGEST_SIDE_M || made >= MOST_TRIANGLES) {
+		if (edge <= VORONOI_EDGE_M || made >= MOST_TRIANGLES) {
 			made++;
 			emit(t);
 			continue;

@@ -78,7 +78,6 @@ void column(MeshBuilder &mb, const Vector3 &foot, float top, float width, const 
 	}
 }
 
-float casing_of(const Profile &p) { return p.half() + CASING_BAND_M; }
 
 // Stands on a road that runs on the ground there: a column's foot keeps off it, not off a deck over it.
 bool on_ground_road(const CityState &s, int self, float x, float z, float clearance, float raised) {
@@ -87,7 +86,7 @@ bool on_ground_road(const CityState &s, int self, float x, float z, float cleara
 		if (hit || o == self) return;
 		double t, d;
 		closest_t(s.roads.segs[size_t(o)].q, x, z, t, d);
-		if (d >= casing_of(s.roads.profile_of(o)) + clearance) return;
+		if (d >= casing_half(s.roads.profile_of(o)) + clearance) return;
 		hit = s.roads.seg_y(o, arc_at(s.roads.segs[size_t(o)].table, t)) - s.terrain.height_at(x, z) < raised;
 	});
 	return hit;
@@ -111,7 +110,7 @@ struct Deck {
 
 	// The deck's edge band, its sides and its soffit, from mouth to mouth.
 	void slabs(double v0, double v1) const {
-		const float casing = casing_of(p), half = p.half();
+		const float casing = casing_half(p), half = p.half();
 		const int n = std::max(1, int(std::ceil((v1 - v0) / tn.structure_parapet_step_m)));
 		SegFrame a = seg_frame(e.s, sid, v0);
 		for (int k = 1; k <= n; k++) {
@@ -140,7 +139,7 @@ struct Deck {
 				const double mid = s - SCAN_M * HALF;
 				const SegFrame f = seg_frame(e.s, sid, mid);
 				const float soffit = soffit_at(f), foot = std::min(ground(f.c), soffit) - ABUTMENT_SINK_M;
-				slab(e.mb, Vector3(f.c.x, foot, f.c.z), f.fwd, f.left, tn.structure_abutment_depth_m, casing_of(p) * 2, soffit - foot, concrete);
+				slab(e.mb, Vector3(f.c.x, foot, f.c.z), f.fwd, f.left, tn.structure_abutment_depth_m, casing_half(p) * 2, soffit - foot, concrete);
 				at.push_back(mid);
 			}
 			before = here;
@@ -190,7 +189,7 @@ struct Deck {
 	// The barrier along one edge: its traffic face leans back, and it grows out of the road as the deck leaves the ground.
 	void parapet(double v0, double v1, float side) const {
 		const int n = std::max(1, int(std::ceil((v1 - v0) / tn.structure_parapet_step_m)));
-		const float edge = casing_of(p) - DECK_CLEAR_IN_M;
+		const float edge = casing_half(p) - DECK_CLEAR_IN_M;
 		struct Section { Vector3 out, in; float foot, top, grow; Vector3 fwd; };
 		std::vector<Section> sec;
 		for (int k = 0; k <= n; k++) {
@@ -295,7 +294,7 @@ void emit_structures(const RoadEmit &e, int sid) {
 		if (v1 > v0) {
 			deck.slabs(v0, v1);
 			const std::vector<double> near_abutment = deck.abutments(v0, v1);
-			if (stayed(e, sid)) emit_stays(e, sid, v0, v1, casing_of(p));
+			if (stayed(e, sid)) emit_stays(e, sid, v0, v1, casing_half(p));
 			else deck.bents(v0, v1, near_abutment);
 			deck.parapet(v0, v1, 1.f);
 			deck.parapet(v0, v1, -1.f);

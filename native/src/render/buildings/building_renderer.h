@@ -78,7 +78,7 @@ public:
 
 private:
 	enum Level { LEVEL_NEAR, LEVEL_MID, LEVELS };
-	static constexpr int SUBS = 2; // CHUNK / SUBCHUNK: sub-chunks per axis inside a 256 m chunk
+	static constexpr int SUBS = SUBCHUNKS_PER_CHUNK; // sub-chunks per axis inside a chunk (core/grid.h)
 	static constexpr int SUB_COUNT = SUBS * SUBS;
 	static constexpr int BAND_COUNT = 5; // of boxes; the kinds of bay_props.h follow them
 	static constexpr int BAND_DRAWS = BAND_COUNT + b40::BAY_PROPS;

@@ -4,6 +4,7 @@
 // record's seed). Pieces are boxes of the wall's tints, the roof's and glass, for what cannot be cut: a building comes down as its own walls, and lies as
 // they came to rest (ruin_pieces.h), with only the mound laid here.
 #include "render/effects/effect_world.h"
+#include "render/effects/mounds.h"
 
 #include "core/math.h"
 
@@ -23,7 +24,6 @@ constexpr float STOREYS_PER_M = 0.3125f; // a storey is about 3.2 m: a building'
 constexpr float SLAB_MIN_M = 0.35f, PIECE_SPAN_M = 1.6f, PIECE_FLAT_MIN = 0.08f, PIECE_FLAT_SPAN = 0.22f; // slabs of wall, roof and glass
 constexpr float HEAP_HEIGHT_K = 0.07f; // a heap rises this share of the building's height: most of a building is air (a design choice, no measured source)
 constexpr float HEAP_MIN_M = 0.8f, HEAP_MAX_M = 4.5f;
-constexpr float MOUND_SPREAD = 1.15f; // it slumps past the walls it fell from
 constexpr float FALL_OUT_M = 2.5f; // the pieces of a falling building are thrown out a little
 constexpr float FALL_DOWN_M = 1.5f;
 constexpr double MOUND_LONG_AGO_S = -1e6; // a heap read from the state stands whole

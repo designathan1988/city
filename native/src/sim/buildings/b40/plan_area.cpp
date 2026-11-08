@@ -1,5 +1,6 @@
 // Areas of building plans (plan_area.h).
 #include "sim/buildings/b40/plan_area.h"
+#include "core/plane_geometry.h"
 
 #include <algorithm>
 #include <cmath>
@@ -164,12 +165,7 @@ float support_share(const Ring &ring, const std::vector<Ring> &supports) {
 }
 
 bool contains_point(const Ring &ring, Point2 p) {
-	bool inside = false;
-	for (size_t i = 0, j = ring.size() - 1; i < ring.size(); j = i++) {
-		const Point2 &a = ring[i], &b = ring[j];
-		if ((a.y > p.y) != (b.y > p.y) && p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x) inside = !inside;
-	}
-	return inside;
+	return inside_ring(ring, p.x, p.y, [](const Point2 &a) { return std::make_pair(a.x, a.y); });
 }
 
 } // namespace city::b40

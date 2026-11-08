@@ -1,6 +1,8 @@
 // 2D vector math in the XZ plane (V2.y is world Z). Pure C++, usable from any thread.
 #pragma once
 
+#include "core/plane_geometry.h"
+
 #include <algorithm>
 #include <cmath>
 
@@ -10,6 +12,7 @@ constexpr double PI_D = 3.14159265358979323846;
 constexpr double TAU_D = 2 * PI_D;
 constexpr float PI_F = 3.14159265358979323846f;
 constexpr float TAU_F = 6.28318530717958647692f;
+constexpr float SQRT2_F = 1.41421356237309504880f; // a unit square's diagonal
 // std::floor as an int, inline: on the x86-64 baseline std::floor is a library call, paid per cell of a raster.
 inline int ifloor(double v) {
 	const int i = int(v);
@@ -72,11 +75,8 @@ inline bool line_line(const V2 &p, const V2 &d, const V2 &q, const V2 &e, float 
 
 // Proper intersection of segments ab and cd (endpoints excluded by a small margin).
 inline bool segments_cross(const V2 &a, const V2 &b, const V2 &c, const V2 &d, float *out_t = nullptr) {
-	V2 r = b - a, s = d - c;
-	float den = r.cross(s);
-	if (std::fabs(den) < 1e-6f) return false;
-	V2 w = c - a;
-	float t = w.cross(s) / den, u = w.cross(r) / den;
+	float t, u;
+	if (!line_shares(a.x, a.y, b.x, b.y, c.x, c.y, d.x, d.y, 1e-6f, t, u)) return false;
 	if (out_t) *out_t = t;
 	return t > 0.02f && t < 0.98f && u > 0.02f && u < 0.98f;
 }

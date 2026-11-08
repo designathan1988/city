@@ -16,6 +16,7 @@ namespace city {
 
 class JobPool;
 class RoadNetwork;
+struct Profile;
 struct Tuning;
 
 // How a segment is built (Roadcraft 4.0 world/structures.ts RoadStructure): saved in its flags.
@@ -41,7 +42,9 @@ using GroundAt = std::function<float(float x, float z)>;
 constexpr float STATION_M = 1.6f; // STATION: the most a profile's stations stand apart
 constexpr int MAX_STATIONS = 400; // MAX_STATIONS: a road of more is read coarser, never longer
 constexpr float PLATE_MARGIN_M = 2.f; // PLATE_MARGIN: a station and 0.4 m past the junction's casing
-constexpr float CASING_BAND_M = 1.f; // roadTypes.ts CASING_BAND: the band past the footway the casing holds
+constexpr float CASING_BAND_M = 1.f; // the band past the footway the casing holds
+// Half the casing: the road's widest side, footway included, and the casing band past it.
+float casing_half(const Profile &p);
 constexpr float FOOTWAY_RISE_M = 0.15f; // roadTypes.ts FOOTWAY_RISE: the kerb a footway stands on
 constexpr float UNDER_DECK_ROOM_M = 0.4f; // solveRaised: nothing comes closer than this under a deck's structure
 

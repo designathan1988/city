@@ -1,5 +1,6 @@
 // Port of Roadcraft src/roads/geometry.ts.
 #include "core/math.h"
+#include "core/plane_geometry.h"
 #include "sim/roads/geometry.h"
 
 #include <algorithm>
@@ -91,12 +92,7 @@ void closest_t(const Quad &q, double x, double z, double &t_out, double &dist) {
 }
 
 bool seg_seg(double ax, double az, double bx, double bz, double cx, double cz, double dx, double dz, double &s, double &t) {
-	double rx = bx - ax, rz = bz - az, sx = dx - cx, sz = dz - cz;
-	double den = rx * sz - rz * sx;
-	if (std::fabs(den) < SEG_PARALLEL) return false;
-	double qx = cx - ax, qz = cz - az;
-	s = (qx * sz - qz * sx) / den;
-	t = (qx * rz - qz * rx) / den;
+	if (!line_shares(ax, az, bx, bz, cx, cz, dx, dz, SEG_PARALLEL, s, t)) return false;
 	return !(s < 0 || s > 1 || t < 0 || t > 1);
 }
 

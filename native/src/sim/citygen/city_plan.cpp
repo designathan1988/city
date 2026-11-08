@@ -1,5 +1,6 @@
 // The plan of a generated city (city_plan.h). The draws keep their order, so a seed lands its centres where the TypeScript game's does.
 #include "sim/citygen/city_plan.h"
+#include "core/math.h"
 
 #include "core/seeded.h"
 #include "core/units.h"
@@ -12,7 +13,7 @@ namespace city {
 
 namespace {
 constexpr uint32_t SEED_MUL = 2654435761U;
-constexpr double TURN = 6.283185307179586, NO_CENTRE = 1e30;
+constexpr double NO_CENTRE = 1e30;
 
 double range(Xoshiro128 &r, double lo, double hi) { return lo + r.f() * (hi - lo); }
 } // namespace
@@ -26,11 +27,11 @@ CityPlan plan_city(uint32_t seed, double radius, const CityPlanDef &def) {
 	const double x = range(r, -radius, radius) * def.main_offset, y = range(r, -radius, radius) * def.main_offset;
 	p.centres.push_back({ x, y });
 	for (int i = 1; i < def.centres; i++) {
-		const double a = range(r, 0, TURN) + i * def.centre_turn, d = radius * range(r, def.second_from, def.second_to);
+		const double a = range(r, 0, TAU_D) + i * def.centre_turn, d = radius * range(r, def.second_from, def.second_to);
 		p.centres.push_back({ std::cos(a) * d, std::sin(a) * d });
 	}
-	range(r, 0, TURN / 2); // the grain of the streets: drawn for the stream, a block grid has none
-	p.industry_angle = range(r, 0, TURN);
+	range(r, 0, TAU_D / 2); // the grain of the streets: drawn for the stream, a block grid has none
+	p.industry_angle = range(r, 0, TAU_D);
 	return p;
 }
 
@@ -44,8 +45,8 @@ int zone_at(const CityPlan &p, double x, double z, bool on_main) {
 	}
 	const double k = near_share / p.radius; // 0 at a centre, about 1 at the edge
 	if (k > d.industry_from) {
-		double off = std::fmod(std::fabs(std::atan2(y, x) - p.industry_angle), TURN);
-		if (off > TURN / 2) off = TURN - off;
+		double off = std::fmod(std::fabs(std::atan2(y, x) - p.industry_angle), TAU_D);
+		if (off > TAU_D / 2) off = TAU_D - off;
 		if (off < d.industry_half_angle) return ZONE_IND;
 	}
 	const double heat = 1 - k + (d.density - 0.5) * d.density_pull + value_noise(x / d.noise_cell_m, y / d.noise_cell_m) * d.noise_heat;

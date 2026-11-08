@@ -2,6 +2,7 @@
 // scaled to its size. Boxes are instanced boxes (the facade parts' way: a MultiMesh a thickness band); the round parts
 // (a lamp's shade, a plant's pot, a leg) are fine geometry in the near shell, with few sides.
 #include "render/buildings/interior_emit.h"
+#include "core/math.h"
 
 #include <cmath>
 
@@ -11,7 +12,6 @@ namespace city::b40 {
 
 namespace {
 constexpr int CYL_SIDES = 10, BALL_SEGMENTS = 8, BALL_RINGS = 4;
-constexpr float TURN = 6.2831853f, HALF_TURN = 3.1415927f;
 constexpr float FURNITURE_LIFT = 0.05f; // a piece stands this far over the floor (its slab, FLOOR_LIFT, is under it)
 constexpr float CEILING_GAP = 0.06f; // a ceiling lamp hangs from the ceiling's underside: the slab's thickness
 
@@ -38,7 +38,7 @@ void Piece::cylinder(const Basis &g, const FurniturePart &, const float size[3],
 	const Lin lin = paint_lin(paint);
 	Vector3 ring0[CYL_SIDES], ring1[CYL_SIDES];
 	for (int i = 0; i < CYL_SIDES; i++) {
-		const float a = TURN * float(i) / float(CYL_SIDES), c = std::cos(a), s = std::sin(a);
+		const float a = TAU_F * float(i) / float(CYL_SIDES), c = std::cos(a), s = std::sin(a);
 		ring0[i] = g.at(cx + r0 * c, by, cz + r0 * s);
 		ring1[i] = g.at(cx + r1 * c, by + h, cz + r1 * s);
 	}
@@ -55,7 +55,7 @@ void Piece::ball(const Basis &g, const FurniturePart &, const float size[3], con
 	const Lin lin = paint_lin(paint);
 	const Vector3 centre = g.at(at[0] * sx, at[1] * sy, at[2] * sz);
 	auto point = [&](int ring, int seg) {
-		const float lat = HALF_TURN * (float(ring) / float(BALL_RINGS) - 0.5f), lon = TURN * float(seg) / float(BALL_SEGMENTS);
+		const float lat = PI_F * (float(ring) / float(BALL_RINGS) - 0.5f), lon = TAU_F * float(seg) / float(BALL_SEGMENTS);
 		return g.at(at[0] * sx + r * std::cos(lat) * std::cos(lon), at[1] * sy + r * std::sin(lat), at[2] * sz + r * std::cos(lat) * std::sin(lon));
 	};
 	for (int ring = 0; ring < BALL_RINGS; ring++)
@@ -86,7 +86,7 @@ void emit_furniture(Shell &shell, Shell &parts, const Placed &pl, const Furnitur
 			}
 			const Paint &paint = look.palette[p.colours[size_t(copy) % p.colours.size()]];
 			for (int turn = 0; turn < p.spin; turn++) {
-				const float a = TURN * float(turn) / float(p.spin), ca = std::cos(a), sa = std::sin(a);
+				const float a = TAU_F * float(turn) / float(p.spin), ca = std::cos(a), sa = std::sin(a);
 				const Basis g{ origin, right * ca - front * sa, pl.lot.e2, right * sa + front * ca };
 				if (p.shape == PART_BOX) piece.box(g, p, size, at, paint);
 				else if (p.shape == PART_CYL) piece.cylinder(g, p, size, at, paint);

@@ -31,9 +31,6 @@ float read_line(const std::vector<float> &v, float at) {
 	return v[lo] + (v[hi] - v[lo]) * (f - float(lo));
 }
 
-// Half the casing (roadTypes.ts casingHalf): the road's widest side, footway included, and the casing band past it.
-float casing_half(const Profile &p) { return p.half() + CASING_BAND_M; }
-
 // junction/build.ts MAX_CONTINUOUS_BEND: two legs bent less than this carry one road on through a transition, not a corner.
 constexpr double MAX_CONTINUOUS_BEND = 55.0 * PI_D / DEG_PER_HALF_TURN;
 
@@ -104,6 +101,8 @@ void read_stations(const RoadSegment &g, GradeProfile &p, int count, const Groun
 	dilate(p.ceil, DILATE_STATIONS);
 }
 } // namespace
+
+float casing_half(const Profile &p) { return p.half() + CASING_BAND_M; }
 
 // The inputs of segment s as they stand: stations, ground (read again only when its curve, casing or ground changed),
 // plates, structure; its heights left as they were (the solve starts them from the grade line when it takes them).

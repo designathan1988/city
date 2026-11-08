@@ -2,6 +2,7 @@
 // floors, parapets cut per bay (outer wall face, inner face, coping and lip; attic crowns 1.5 m), terrace railings,
 // cornices (cornice / deco / slab), lift machine rooms, roof plant and used terraces (roof_terrace.cpp); pitched roofs go to roof_pitched.cpp.
 #include "render/buildings/facade_bay.h"
+#include "render/buildings/roof_sizes.h"
 #include "sim/buildings/b40/gen.h"
 #include "render/buildings/roof_util.h"
 
@@ -10,12 +11,12 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
-constexpr float ROOF_EDGE_H = 0.85f, ATTIC_H = 1.5f, PARAPET_T = 0.25f, COPING_OUT = 0.05f, COPING_IN = 0.3f, LIP_H = 0.06f;
-constexpr float INNER_SHADE = 0.9f, LIP_SHADE = 0.9f, TEST_OUT = 0.03f, CORNICE_DROP = 0.2f, CORNICE_OUT = 0.16f, CORNICE_H = 0.36f;
+constexpr float PARAPET_T = 0.25f, COPING_OUT = 0.05f, LIP_H = 0.06f; // ROOF_EDGE_H, ATTIC_H, COPING_IN...: roof_sizes.h
+constexpr float INNER_SHADE = 0.9f, LIP_SHADE = 0.9f, CORNICE_DROP = 0.2f, CORNICE_OUT = 0.16f, CORNICE_H = 0.36f;
 constexpr float DECO_OUT = 0.55f, DECO_H = 0.55f, DECO2_DROP = 1.05f, DECO2_OUT = 0.28f, DECO2_H = 0.32f, SLAB_UP = 0.73f;
 constexpr float SLAB_OUT = 0.45f, SLAB_H = 0.26f, RAIL_IN = 0.12f;
-constexpr float MACHINE_H = 3.f, MACHINE_IN = 0.3f;
-constexpr float ROOF_MODULE_LEN = 3.f, MACHINE_MIN = 1.f, SLAB_LIFT = 0.002f;
+constexpr float MACHINE_IN = 0.3f;
+constexpr float MACHINE_MIN = 1.f;
 
 // A volume standing at or over this volume's top storey covers its parapet there.
 bool roof_covered(const Body &b, const Volume &v, Point2 p) {
@@ -56,7 +57,7 @@ void RoofEmit::edge(const Side &sd, bool terrace, Crown crown) {
 	Point2 dir{ (sd.p1.x - sd.p0.x) / sd.length, (sd.p1.y - sd.p0.y) / sd.length };
 	for (int i = 0; i < n; i++) {
 		float a0 = W * float(i), am = a0 + W / 2;
-		Point2 p{ sd.p0.x + dir.x * am - sd.n.x * TEST_OUT, sd.p0.y + dir.y * am - sd.n.y * TEST_OUT };
+		Point2 p{ sd.p0.x + dir.x * am - sd.n.x * ROOF_TEST_OUT, sd.p0.y + dir.y * am - sd.n.y * ROOF_TEST_OUT };
 		if (roof_covered(b, v, p)) continue;
 		if (terrace) {
 			Basis rf{ sd.f.at(a0, eaves, -RAIL_IN), sd.f.e0, sd.f.e1, sd.f.e2 };
@@ -74,7 +75,7 @@ void RoofEmit::edge(const Side &sd, bool terrace, Crown crown) {
 }
 
 void RoofEmit::crown_bands(const Side &sd, Crown crown) {
-	Point2 mid{ (sd.p0.x + sd.p1.x) / 2 - sd.n.x * TEST_OUT, (sd.p0.y + sd.p1.y) / 2 - sd.n.y * TEST_OUT };
+	Point2 mid{ (sd.p0.x + sd.p1.x) / 2 - sd.n.x * ROOF_TEST_OUT, (sd.p0.y + sd.p1.y) / 2 - sd.n.y * ROOF_TEST_OUT };
 	if (roof_covered(*pl.b, v, mid)) return;
 	Paint mp = moulding_of(pl);
 	Lin m = paint_lin(mp);
@@ -88,13 +89,13 @@ void RoofEmit::crown_bands(const Side &sd, Crown crown) {
 void RoofEmit::machine_rooms() {
 	const Body &b = *pl.b;
 	for (const Core &c : b.cores) {
-		float cx = c.x + ROOF_MODULE_LEN / 2, cy = c.y + ROOF_MODULE_LEN / 2;
+		float cx = c.x + MACHINE_ROOM_M / 2, cy = c.y + MACHINE_ROOM_M / 2;
 		const Volume *best = nullptr;
 		for (const Volume &o : b.volumes)
 			if (roof_flat(o.roof) && cx > o.x && cx < o.x + o.w && cy > o.y && cy < o.y + o.d && (!best || o.top() > best->top())) best = &o;
 		if (best != &v) continue;
-		float x0 = std::max(c.x, v.x + MACHINE_IN), x1 = std::min(c.x + ROOF_MODULE_LEN, v.x + v.w - MACHINE_IN);
-		float y0 = std::max(c.y, v.y + MACHINE_IN), y1 = std::min(c.y + ROOF_MODULE_LEN, v.y + v.d - MACHINE_IN);
+		float x0 = std::max(c.x, v.x + MACHINE_IN), x1 = std::min(c.x + MACHINE_ROOM_M, v.x + v.w - MACHINE_IN);
+		float y0 = std::max(c.y, v.y + MACHINE_IN), y1 = std::min(c.y + MACHINE_ROOM_M, v.y + v.d - MACHINE_IN);
 		if (x1 - x0 < MACHINE_MIN || y1 - y0 < MACHINE_MIN) continue;
 		bool glass = b.wall_of(v).finish == FIN_GLASS;
 		const Paint &wp = glass ? pl.data->color("machine_glass") : b.wall_of(v);

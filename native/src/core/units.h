@@ -17,6 +17,7 @@ constexpr double BYTES_PER_MIB = 1024.0 * 1024.0;
 constexpr double DEG_PER_TURN = 360.0;
 constexpr double DEG_PER_HALF_TURN = DEG_PER_TURN / 2;
 constexpr float DEG_TO_RAD = PI_F / float(DEG_PER_HALF_TURN);
+constexpr double DEG_TO_RAD_D = PI_D / double(DEG_PER_HALF_TURN);
 constexpr float RAD_TO_DEG = float(DEG_PER_HALF_TURN) / PI_F;
 
 } // namespace city

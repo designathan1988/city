@@ -275,8 +275,7 @@ void RoadNetwork::mark_heights(int s) {
 	edited_segs_.push_back(s);
 	if (!log) return;
 	const RoadSegment &g = segs[size_t(s)];
-	for (int j = int(std::floor(g.minz / CHUNK)); j <= int(std::floor(g.maxz / CHUNK)); j++)
-		for (int i = int(std::floor(g.minx / CHUNK)); i <= int(std::floor(g.maxx / CHUNK)); i++) log->road_chunks.push_back(cell_key(i, j));
+	for_chunks(g.minx, g.minz, g.maxx, g.maxz, [&](int64_t key) { log->road_chunks.push_back(key); });
 	log->net_seg(s);
 	log->net_node(g.a);
 	log->net_node(g.b);
@@ -447,8 +446,7 @@ void RoadNetwork::mark_segment(int s) {
 	if (!log) return;
 	const RoadSegment &g = segs[s];
 	auto mark = [](std::vector<int64_t> &v, float x0, float z0, float x1, float z1) {
-		for (int j = int(std::floor(z0 / CHUNK)); j <= int(std::floor(z1 / CHUNK)); j++)
-			for (int i = int(std::floor(x0 / CHUNK)); i <= int(std::floor(x1 / CHUNK)); i++) v.push_back(cell_key(i, j));
+		for_chunks(x0, z0, x1, z1, [&](int64_t key) { v.push_back(key); });
 	};
 	mark(log->road_chunks, g.minx, g.minz, g.maxx, g.maxz);
 	mark(log->lot_cells, g.minx - LOT_LOOK_M, g.minz - LOT_LOOK_M, g.maxx + LOT_LOOK_M, g.maxz + LOT_LOOK_M);

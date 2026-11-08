@@ -13,9 +13,7 @@ constexpr float BESIDE_M = 0.05f; // the closest-point search's own error: under
 
 double arc_of(const RoadSegment &g, double t) {
 	if (g.table.size() < 2) return g.len * t;
-	const double f = std::clamp(t, 0.0, 1.0) * double(g.table.size() - 1);
-	const size_t i = std::min(size_t(f), g.table.size() - 2);
-	return g.table[i] + (g.table[i + 1] - g.table[i]) * (f - double(i));
+	return arc_at(g.table, t);
 }
 
 bool strip_at(const Profile &p, float u, StripKind kind, float &centre) {

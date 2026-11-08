@@ -2,6 +2,7 @@
 // once the angles and the grid have had their say. Radii are screen pixels, so a click means the same at any zoom. The
 // result is only a position: the plan (road_plan.cpp) validates it like any other point.
 #include "sim/commands/commands.h"
+#include "core/units.h"
 #include "sim/roads/junction.h"
 
 #include "sim/state/city_state.h"
@@ -13,9 +14,6 @@
 namespace city {
 
 namespace {
-constexpr double PI = 3.14159265358979323846;
-constexpr double TAU = 2 * PI;
-constexpr double DEG_TO_RAD = PI / 180;
 constexpr int GRID_HEADINGS = 8; // the grid's two lines both ways, then the diagonals between them
 constexpr double ON_HEADING = 1e-9;
 constexpr double RAY_PAD_M = 1; // the snapped ray reaches past twice the pointer's distance by this
@@ -27,8 +25,8 @@ struct Heading {
 };
 
 double wrap(double a) {
-	a = std::fmod(a + PI, TAU);
-	return (a < 0 ? a + TAU : a) - PI;
+	a = std::fmod(a + PI_D, TAU_D);
+	return (a < 0 ? a + TAU_D : a) - PI_D;
 }
 
 // The direction a segment leaves `node` in.
@@ -41,7 +39,7 @@ double arm_heading(const RoadNetwork &net, int seg, int node) {
 // The heading a drag may take and why: inside the cone of a candidate, that candidate; else the pointer's own. Landing
 // on a road the angles that matter are the ones to that road; on open ground, the grid's and every step from them.
 Heading snap_heading(const CityState &s, const Anchor &start, double heading, bool landing, double land) {
-	double step = s.catalog.tune.road_snap_step_deg * DEG_TO_RAD, diff = step / 2;
+	double step = s.catalog.tune.road_snap_step_deg * DEG_TO_RAD_D, diff = step / 2;
 	Heading best{ heading, SnapGuide::NONE };
 	auto offer = [&](double a, SnapGuide g) {
 		double d = std::fabs(wrap(a - heading));
@@ -53,17 +51,17 @@ Heading snap_heading(const CityState &s, const Anchor &start, double heading, bo
 	if (start.node >= 0)
 		for (int seg : s.roads.nodes[start.node].segs) {
 			double out = arm_heading(s.roads, seg, start.node);
-			offer(out + PI, SnapGuide::CONTINUE);
-			offer(out + PI / 2, SnapGuide::PERPENDICULAR);
-			offer(out - PI / 2, SnapGuide::PERPENDICULAR);
+			offer(out + PI_D, SnapGuide::CONTINUE);
+			offer(out + PI_D / 2, SnapGuide::PERPENDICULAR);
+			offer(out - PI_D / 2, SnapGuide::PERPENDICULAR);
 		}
-	int turns = int(std::lround(TAU / step));
+	int turns = int(std::lround(TAU_D / step));
 	if (landing) {
-		offer(land + PI / 2, SnapGuide::PERPENDICULAR);
-		offer(land - PI / 2, SnapGuide::PERPENDICULAR);
+		offer(land + PI_D / 2, SnapGuide::PERPENDICULAR);
+		offer(land - PI_D / 2, SnapGuide::PERPENDICULAR);
 		for (int i = 0; i < turns; i++) offer(land + i * step, SnapGuide::ANGLE);
 	} else {
-		for (int i = 0; i < GRID_HEADINGS; i++) offer(i * TAU / GRID_HEADINGS, SnapGuide::ORTHOGONAL);
+		for (int i = 0; i < GRID_HEADINGS; i++) offer(i * TAU_D / GRID_HEADINGS, SnapGuide::ORTHOGONAL);
 		for (int i = 0; i < turns; i++) offer(i * step, SnapGuide::ANGLE);
 	}
 	return best;
@@ -100,7 +98,7 @@ double on_grid(double v, double step, double offset = 0) { return std::round((v 
 void onto_grid(const Anchor &start, double angle, double length, double step, double offset, double &x, double &z) {
 	bool start_on = std::fabs(start.x - on_grid(start.x, step, offset)) < ON_HEADING && std::fabs(start.z - on_grid(start.z, step, offset)) < ON_HEADING;
 	for (int k = 0; start_on && k < GRID_HEADINGS; k++) {
-		double h = k * TAU / GRID_HEADINGS;
+		double h = k * TAU_D / GRID_HEADINGS;
 		if (std::fabs(wrap(angle - h)) >= ON_HEADING) continue;
 		double unit = k % 2 ? step * std::sqrt(2.0) : step, steps = std::max(1.0, std::round(length / unit));
 		x = start.x + std::cos(h) * steps * unit;

@@ -3,6 +3,7 @@
 // plinth. A few dozen triangles per building; `lean` (the far level) keeps one band per side and drops the coping and
 // machine rooms.
 #include "render/buildings/facade_bay.h"
+#include "render/buildings/roof_sizes.h"
 #include "sim/buildings/b40/gen.h"
 #include "render/buildings/roof_util.h"
 
@@ -15,8 +16,7 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
-constexpr float ROOF_EDGE_H = 0.85f, ATTIC_H = 1.5f, COPING = 0.3f;
-constexpr float PLINTH_BURY = 0.8f, TEST_OUT = 0.03f, MACHINE_H = 3.f, MODULE = 3.f, SLAB_LIFT = 0.002f;
+constexpr float PLINTH_BURY = 0.8f; // ROOF_EDGE_H, ATTIC_H, MACHINE_H...: roof_sizes.h
 constexpr float MASS_IN_M = 0.7f, HALF = 0.5f; // the plain side stands this far behind the bays: past the deepest opening
 constexpr uint32_t CELL_OFFSETS = 64; // bays the far level's grid starts from, by building: two buildings light other rooms
 
@@ -69,7 +69,7 @@ struct OpenCell {
 	float W;
 	bool operator()(int k, int i) const {
 		const float along = W * (float(i) + HALF) / sd.length;
-		return !covered(b, v, v.base + k, Point2{ sd.p0.x + (sd.p1.x - sd.p0.x) * along + sd.n.x * TEST_OUT, sd.p0.y + (sd.p1.y - sd.p0.y) * along + sd.n.y * TEST_OUT });
+		return !covered(b, v, v.base + k, Point2{ sd.p0.x + (sd.p1.x - sd.p0.x) * along + sd.n.x * ROOF_TEST_OUT, sd.p0.y + (sd.p1.y - sd.p0.y) * along + sd.n.y * ROOF_TEST_OUT });
 	}
 };
 
@@ -160,7 +160,7 @@ void walls(Shell &s, const Placed &pl, const Volume &v, bool roofs) {
 	float ph = v.crown == CROWN_ATTIC ? ATTIC_H : ROOF_EDGE_H;
 	Paint mp = moulding_of(pl);
 	for (const Side &sd : sides_of(pl, v, 0)) {
-		Point2 mid{ (sd.p0.x + sd.p1.x) / 2 + sd.n.x * TEST_OUT, (sd.p0.y + sd.p1.y) / 2 + sd.n.y * TEST_OUT };
+		Point2 mid{ (sd.p0.x + sd.p1.x) / 2 + sd.n.x * ROOF_TEST_OUT, (sd.p0.y + sd.p1.y) / 2 + sd.n.y * ROOF_TEST_OUT };
 		int n = bays_of(v, sd.side);
 		float W = sd.length / float(n);
 		int8_t fin = b.wall_of(v).finish;
@@ -171,7 +171,7 @@ void walls(Shell &s, const Placed &pl, const Volume &v, bool roofs) {
 		if (parapet) {
 			s.rect(Basis{ sd.f.o + sd.f.e1 * top, sd.f.e0, sd.f.e1, sd.f.e2 }, 0, sd.length, 0, ph, 0, wall_lin(pl, v, v.storeys - 1, sd.side), fin);
 			Basis cap{ sd.f.at(0, top + ph, 0), sd.f.e0, -sd.f.e2, sd.f.e1 };
-			s.rect(cap, 0, sd.length, 0, COPING, 0, paint_lin(mp), mp.finish);
+			s.rect(cap, 0, sd.length, 0, COPING_IN, 0, paint_lin(mp), mp.finish);
 		}
 		if (v.base == 0 && !covered(b, v, 0, mid))
 			s.rect(sd.f, 0, sd.length, pl.ground_lo - PLINTH_BURY, 0, 0, paint_lin(pl.data->color("plinth")), FIN_STONE);
@@ -192,10 +192,10 @@ void roof(Shell &s, const Placed &pl, const Volume &v, int vol) {
 	s.grime_floor = -FAR_AWAY;
 	for (size_t i = 0; i < p.size(); i++) s.tri(c, p[i], p[(i + 1) % p.size()], pl.lot.e2, lin, rp.finish);
 	for (const Core &cr : b.cores) {
-		float cx = cr.x + MODULE / 2, cy = cr.y + MODULE / 2;
+		float cx = cr.x + MACHINE_ROOM_M / 2, cy = cr.y + MACHINE_ROOM_M / 2;
 		if (!(cx > v.x && cx < v.x + v.w && cy > v.y && cy < v.y + v.d) || covered_by_above(b, v)) continue;
 		const Paint &wp = b.wall_of(v);
-		s.box(pl.lot, cr.x, cr.x + MODULE, cr.y, cr.y + MODULE, eaves, eaves + MACHINE_H, paint_lin(wp) * pl.shade, wp.finish, SKIP_E2_NEG);
+		s.box(pl.lot, cr.x, cr.x + MACHINE_ROOM_M, cr.y, cr.y + MACHINE_ROOM_M, eaves, eaves + MACHINE_H, paint_lin(wp) * pl.shade, wp.finish, SKIP_E2_NEG);
 	}
 	if (pl.lean && v.roof != ROOF_TERRACE && v.outline.empty() && !covered_by_above(b, v)) { // its plant a metre or more across, the same as near; what is finer goes
 		Shell finer;

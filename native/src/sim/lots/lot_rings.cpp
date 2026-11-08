@@ -1,5 +1,6 @@
 // The geometry of a lot on the (x, z) plane (lot_rings.h), as world/lots.ts has it on its (x, y): the same turns, the same left.
 #include "sim/lots/lot_rings.h"
+#include "core/plane_geometry.h"
 
 #include <algorithm>
 #include <cmath>
@@ -106,10 +107,7 @@ std::vector<int> lot_triangles(const std::vector<LotPoint> &ring) {
 bool big_enough(const std::vector<LotPoint> &ring) { return ring.size() >= 3 && std::abs(lot_area(ring)) >= MIN_LOT_M * MIN_LOT_M / 2; }
 
 bool inside_lot(const LotPoint &p, const std::vector<LotPoint> &q) {
-	bool in = false;
-	for (size_t i = 0, j = q.size() - 1; i < q.size(); j = i++)
-		if ((q[i].z > p.z) != (q[j].z > p.z) && p.x < (q[j].x - q[i].x) * (p.z - q[i].z) / (q[j].z - q[i].z) + q[i].x) in = !in;
-	return in;
+	return inside_ring(q, p.x, p.z, [](const LotPoint &c) { return std::make_pair(c.x, c.z); });
 }
 
 std::vector<LotPoint> facing_corners(const std::vector<LotPoint> &c) {

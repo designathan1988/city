@@ -1,5 +1,6 @@
 // The transport's boxes (transit_parts.h): tables read once; a track in pieces, each on what is under it; a stop from its table, in its frame.
 #include "render/transit/transit_parts.h"
+#include "core/math.h"
 
 #include "render/data_reader.h"
 #include "sim/transit/transit_ground.h"
@@ -17,7 +18,6 @@ namespace city {
 
 namespace {
 constexpr float HALF = 0.5f, MIN_RUN_M = 1e-3f;
-constexpr float FULL_TURN = 6.28318530718f;
 
 Vector3 v3(DataReader r, const Array &a) {
 	r.expect(a, 3);
@@ -84,7 +84,7 @@ void entrance_spot(const CityState &s, const TransitLook &look, const V2 &at, V2
 	if (!transit_on_road(s, at) && !transit_built(s, at, 0)) return;
 	for (float r = look.entrance_step; r <= look.entrance_reach; r += look.entrance_step)
 		for (int k = 0; k < look.entrance_turns; k++) {
-			const float a = float(k) / float(look.entrance_turns) * FULL_TURN;
+			const float a = float(k) / float(look.entrance_turns) * TAU_F;
 			const V2 d(std::cos(a), std::sin(a));
 			const V2 near = at + d * r, spot_at = at + d * (r + look.entrance_clear);
 			if (transit_on_road(s, near) || transit_built(s, near, 0) || transit_on_road(s, spot_at) || transit_built(s, spot_at, 0)) continue;

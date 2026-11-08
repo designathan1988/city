@@ -17,6 +17,8 @@ constexpr float SUBCHUNK = 128.f;
 // The building HLOD cell (4 x 4 chunks): one far mesh each. The densest of the 24 km city is 8 MiB of arrays
 // (render_cost super_mb_max), well inside one frame's upload window (render.upload_budget_mb).
 constexpr float SUPERCHUNK = 1024.f;
+constexpr int CHUNKS_PER_SUPER = int(SUPERCHUNK / CHUNK); // chunks a superchunk spans, per axis
+constexpr int SUBCHUNKS_PER_CHUNK = int(CHUNK / SUBCHUNK); // sub-chunks a chunk holds, per axis
 
 inline int64_t cell_key(int cx, int cy) { return (int64_t(cx) << 32) ^ int64_t(uint32_t(cy)); }
 inline int key_x(int64_t k) { return int(k >> 32); }

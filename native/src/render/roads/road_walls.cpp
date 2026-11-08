@@ -20,11 +20,10 @@ const Vector3 UP(0, 1, 0);
 
 using Section = WallSection;
 
-float casing_of(const RoadEmit &e, const RoadSegment &g) { return e.s.catalog.profile(g.profile).half() + CASING_BAND_M; }
 
 // The natural ground behind a wall, past what the cutting dug.
 float held_ground(const RoadEmit &e, const RoadSegment &g, const SegFrame &f, float side) {
-	const Vector3 q = f.c + f.left * (side * (casing_of(e, g) + cut_wall_reach() - BACKFILL_IN_M));
+	const Vector3 q = f.c + f.left * (side * (casing_half(e.s.catalog.profile(g.profile)) + cut_wall_reach() - BACKFILL_IN_M));
 	return e.s.terrain.height_at(q.x, q.z);
 }
 
@@ -43,7 +42,7 @@ std::vector<std::vector<Section>> make_runs(const RoadEmit &e, int sid, float si
 		}
 		if (!open) runs.emplace_back();
 		open = true;
-		runs.back().push_back({ f.c + f.left * (side * casing_of(e, g)), f.left * side, f.c.y, held_ground(e, g, f, side) });
+		runs.back().push_back({ f.c + f.left * (side * casing_half(e.s.catalog.profile(g.profile))), f.left * side, f.c.y, held_ground(e, g, f, side) });
 	}
 	return runs;
 }

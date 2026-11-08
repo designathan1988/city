@@ -1,6 +1,7 @@
 // The formulas are the paper's, numbered as there (8.1 to 8.11, the typos of 8.3-8.4 and 8.11 corrected). Each family holds for
 // the pose as given, driven backwards (timeflip) and on the other hand (reflect): one call tries the four.
 #include "sim/traffic/reeds_shepp.h"
+#include "core/math.h"
 
 #include <cmath>
 #include <limits>
@@ -9,7 +10,6 @@ namespace city {
 namespace traffic {
 
 namespace {
-constexpr double PI = 3.14159265358979323846, HALF_PI = PI / 2, TWO_PI = 2 * PI;
 constexpr double ZERO = 10 * std::numeric_limits<double>::epsilon();
 constexpr double TINY_PIECE = 1e-12;
 constexpr double NONE_M = 1e18;
@@ -24,9 +24,9 @@ struct Tuv {
 using Formula = bool (*)(double x, double y, double phi, Tuv &o);
 
 double wrap(double a) {
-	double v = std::fmod(a, TWO_PI);
-	if (v < -PI) v += TWO_PI;
-	else if (v > PI) v -= TWO_PI;
+	double v = std::fmod(a, TAU_D);
+	if (v < -PI_D) v += TAU_D;
+	else if (v > PI_D) v -= TAU_D;
 	return v;
 }
 
@@ -41,7 +41,7 @@ Polar polar(double x, double y) {
 void tau_omega(double u, double v, double xi, double eta, double phi, double &tau, double &omega) {
 	const double delta = wrap(u - v), a = std::sin(u) - std::sin(delta), b = std::cos(u) - std::cos(delta) - 1;
 	const double t1 = std::atan2(eta * a - xi * b, xi * a + eta * b), t2 = 2 * (std::cos(delta) - std::cos(v) - std::cos(u)) + 3;
-	tau = t2 < 0 ? wrap(t1 + PI) : wrap(t1);
+	tau = t2 < 0 ? wrap(t1 + PI_D) : wrap(t1);
 	omega = wrap(tau - u + v - phi);
 }
 
@@ -68,7 +68,7 @@ bool lp_rm_l(double x, double y, double phi, Tuv &o) { // 8.3, 8.4
 	const Polar p = polar(x - std::sin(phi), y - 1 + std::cos(phi));
 	if (p.r > 4) return false;
 	o.u = -2 * std::asin(QUARTER * p.r);
-	o.t = wrap(p.theta + HALF * o.u + PI);
+	o.t = wrap(p.theta + HALF * o.u + PI_D);
 	o.v = wrap(phi - o.t + o.u);
 	return o.t >= -ZERO && o.u <= ZERO;
 }
@@ -85,7 +85,7 @@ bool lp_rum_lum_rp(double x, double y, double phi, Tuv &o) { // 8.8
 	const double xi = x + std::sin(phi), eta = y - 1 - std::cos(phi), rho = (RHO_TOP - xi * xi - eta * eta) / RHO_BELOW;
 	if (rho < 0 || rho > 1) return false;
 	o.u = -std::acos(rho);
-	if (o.u < -HALF_PI) return false;
+	if (o.u < -(PI_D / 2)) return false;
 	tau_omega(o.u, o.u, xi, eta, phi, o.t, o.v);
 	return o.t >= -ZERO && o.v >= -ZERO;
 }
@@ -96,7 +96,7 @@ bool lp_rm_sm_lm(double x, double y, double phi, Tuv &o) { // 8.9
 	const double r = std::sqrt(p.r * p.r - 4);
 	o.u = 2 - r;
 	o.t = wrap(p.theta + std::atan2(r, -2));
-	o.v = wrap(phi - HALF_PI - o.t);
+	o.v = wrap(phi - (PI_D / 2) - o.t);
 	return o.t >= -ZERO && o.u <= ZERO && o.v <= ZERO;
 }
 
@@ -106,7 +106,7 @@ bool lp_rm_sm_rm(double x, double y, double phi, Tuv &o) { // 8.10
 	if (p.r < 2) return false;
 	o.t = p.theta;
 	o.u = 2 - p.r;
-	o.v = wrap(o.t + HALF_PI - phi);
+	o.v = wrap(o.t + (PI_D / 2) - phi);
 	return o.t >= -ZERO && o.u <= ZERO && o.v <= ZERO;
 }
 
@@ -125,7 +125,7 @@ bool lp_rm_s_lm_rp(double x, double y, double phi, Tuv &o) { // 8.11
 enum class Shape { TUV, VUT, T_U_NEG_U_V, T_U_U_V, T_H_U_V, V_U_H_T, T_H_U_H_V };
 
 int spread(Shape s, const Tuv &o, double *l) {
-	const double h = -HALF_PI;
+	const double h = -(PI_D / 2);
 	switch (s) {
 		case Shape::TUV: l[0] = o.t; l[1] = o.u; l[2] = o.v; return 3;
 		case Shape::VUT: l[0] = o.v; l[1] = o.u; l[2] = o.t; return 3;
