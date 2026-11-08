@@ -990,3 +990,13 @@ the burst's height: a crater in the ground leaves the bridge over it, one in a d
 ground under it keeps its height; a charge on that ground digs its crater and leaves the bridge; `bomb_bridge_plan.json`: the cut
 bridge with bare grass under the gap, a small charge's mark on the deck that stands. `strike_test`, `shoot_test` and `save_undo_test`
 (saves with craters, round trip), `edit_fuzz_test`, `bomb`, `bomb_street` pass.
+
+## 2026-11-08 12:45: the span of a lamp row through a node hangs from the pole left (English)
+**Problem:** a street goes on through a node of two arms with its lamp row strung from the last pole of one piece to the first of the
+next (`street_props.cpp` `join_rows`); a blow that knocked one of those two poles out cut that span with no wire left hanging.
+**Cause:** `strike_ground.cpp` `hang_row_wires` hung only the spans between stations of one segment.
+**Design:** the lamps knocked out at a row's end are kept with their node (`RowEnd`); after the whole blow, for each, the next piece's
+end pole on the matching side (the sides keep their names through the node, as `join_rows` reads them) hangs a wire toward it when it
+stands (`hang_joined_wires`; read after the blow, so a pole knocked out on the next piece leaves nothing to hang from).
+**Checks:** `bomb_street_plan.json` adds a charge by the joint where the 300 m street's pieces meet: wires hang there; `strike_test`,
+`bomb_street` pass. No probe names a wire's span, so no test tells the joint's span from the others (pendencias).

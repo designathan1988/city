@@ -8,6 +8,7 @@
 #include "sim/commands/nature_commands.h"
 #include "sim/commands/road_edit.h"
 #include "sim/commands/street_journal.h"
+#include "sim/roads/street_furniture.h"
 #include "sim/street/pole_arms.h"
 #include "sim/traffic/traffic_system.h"
 
@@ -64,10 +65,40 @@ void hang_row_wires(const Blow &b, int sid, const std::vector<FurnitureSpot> &sp
 	}
 }
 
+// A lamp pole knocked out at the end of its street's row, at node `node`, where it stood.
+struct RowEnd {
+	int sid = 0, node = 0;
+	float x = 0, z = 0;
+};
+
+// A lamp row going on through its node (a street of two arms there) is strung from the last pole of one street to the first of
+// the next (the render's join_rows): each such span that lost a pole at one end hangs from the pole standing at the other, read
+// after the whole blow (a pole knocked out on the next street leaves nothing to hang from).
+void hang_joined_wires(const Blow &b, const std::vector<RowEnd> &ends) {
+	std::vector<FurnitureSpot> spots;
+	for (const RowEnd &k : ends) {
+		const std::vector<int> &arms = b.s.roads.nodes[size_t(k.node)].segs;
+		if (arms.size() != JOINT_ARMS) continue;
+		const int other = arms[0] == k.sid ? arms[1] : arms[0];
+		const RoadSegment &g = b.s.roads.segs[size_t(k.sid)], &o = b.s.roads.segs[size_t(other)];
+		const LampRow mine = lamp_row(b.s.roads, k.sid), theirs = lamp_row(b.s.roads, other);
+		const bool same_way = (g.b == k.node) == (o.a == k.node); // the sides keep their names through the node
+		if (!theirs.any || theirs.stations == 0 || theirs.side != (same_way ? mine.side : 1 - mine.side)) continue;
+		const int station = o.a == k.node ? 0 : theirs.stations - 1;
+		spots.clear();
+		traffic::street_furniture_of(b.s, other, furniture_bit(FurnitureKind::LAMP), spots, FurnitureRead::PLACED);
+		for (const FurnitureSpot &p : spots) {
+			float x, z, fx, fz;
+			if (p.row == 0 && p.station == station && traffic::furniture_facing(b.s, other, p, x, z, fx, fz)) hang_wire(b, x, z, ArmDir{ fx, fz }, k.x, k.z, false);
+		}
+	}
+}
+
 // Poles, posts, trees and the rest within the overpressure that topples them.
 void knock_out_furniture(Blow &b, float reach) {
 	std::vector<FurnitureSpot> spots;
 	std::vector<char> knocked;
+	std::vector<RowEnd> ends; // the lamps knocked out at a row's end, for the spans through their nodes
 	b.s.roads.for_segments_near(b.x - reach, b.z - reach, b.x + reach, b.z + reach, [&](int sid) {
 		spots.clear();
 		traffic::street_furniture_of(b.s, sid, FURNITURE_ALL, spots, FurnitureRead::PLACED); // the blow knocks pieces out as it goes
@@ -80,6 +111,12 @@ void knock_out_furniture(Blow &b, float reach) {
 			if (d > reach) continue;
 			knocked[i] = 1;
 			j_add_gone(b.s, { uint8_t(gone_kind(f.kind)), x, z });
+			if (f.kind == FurnitureKind::LAMP && f.row == 0) {
+				const int last = lamp_row(b.s.roads, sid).stations - 1;
+				const RoadSegment &g = b.s.roads.segs[size_t(sid)];
+				if (f.station == 0) ends.push_back({ sid, g.a, x, z });
+				if (f.station == last) ends.push_back({ sid, g.b, x, z });
+			}
 			DamageEvent e;
 			e.kind = DamageEvent::FURNITURE;
 			e.x = x; e.z = z; e.y = b.s.terrain.height_at(x, z);
@@ -97,6 +134,7 @@ void knock_out_furniture(Blow &b, float reach) {
 		}
 		hang_row_wires(b, sid, spots, knocked);
 	});
+	hang_joined_wires(b, ends);
 }
 
 // The utility poles the player built (sim/street): those within the reach break, and the wires torn off a broken pole pull the

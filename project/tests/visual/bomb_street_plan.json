@@ -1,5 +1,5 @@
 {
- "_doc": "The bomb on a street looked at in play (look.gd): one urban street across bare land with a line of the player's utility poles strung along its footway, the Demolish drawer's Bomb tab, one charge in the middle of the carriageway, the blast at 0.4, 1.2 and 4 s of its own clock, then what it left: the crater and the ground it heaved, the poles brought down and the next ones pulled over, the wires hanging from the poles left standing, the grove planted beside it thrown down tree by tree, and the grove of the park drawn across the street (draw_building: function 6 FN_PARK, zone 1 residential) with it. setView's y is the ground's -z; click takes x and z.",
+ "_doc": "The bomb on a street looked at in play (look.gd): one urban street across bare land with a line of the player's utility poles strung along its footway, the Demolish drawer's Bomb tab, one charge in the middle of the carriageway, the blast at 0.4, 1.2 and 4 s of its own clock, then what it left: the crater and the ground it heaved, the poles brought down and the next ones pulled over, the wires hanging from the poles left standing, the grove planted beside it thrown down tree by tree, a second charge by the joint where the 300 m street's pieces meet (x 50: road.max_seg_m) leaving the span through it hanging from the pole that stands, and the grove of the park drawn across the street (draw_building: function 6 FN_PARK, zone 1 residential) with it. setView's y is the ground's -z; click takes x and z.",
  "city": {"map": 0, "seed": 1, "generate": false},
  "steps": [
   {"hour": 16},
@@ -32,6 +32,11 @@
   {"shot": "crater-top"},
   {"setView": [24, -5, 34, 200, 14]},
   {"frames": 60},
-  {"shot": "wires-low"}
+  {"shot": "wires-low"},
+  {"dispatch": "strike", "args": [{"at": [44, 0]}, 5]},
+  {"blastShot": "joint-after", "at": 12.0},
+  {"setView": [50, 2, 22, 250, 16]},
+  {"frames": 60},
+  {"shot": "joint-wires-low"}
  ]
 }
