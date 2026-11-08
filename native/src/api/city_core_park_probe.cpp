@@ -1,5 +1,6 @@
 // park_sample: where the capture looks at the parked side of the traffic, clear of tall buildings so a camera high over it
 // stands in nothing (project/tests/visual/capture_traffic.gd); camera_clear: whether a capture may stand at a point.
+#include "api/state_locks.h"
 #include "api/city_probes.h"
 
 #include "sim/buildings/b40/record.h"
@@ -285,7 +286,7 @@ int CityProbes::dock_count() {
 }
 
 Variant CityProbes::kerb_busy() {
-	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
+	const TrafficRead lk(*state_);
 	const TrafficState &t = state_->traffic;
 	for (const KerbStop &k : t.kerb_stops)
 		if (k.vehicle >= 0 && k.phase == KerbPhase::TRANSFER && k.ped >= 0) {

@@ -1,6 +1,7 @@
 // CityProbes: the flows and the control they warrant, for the tests. `flow_replay` runs the translated classes alone through a fixed
 // script, the same one tools/converter/scripts/call40.mjs runs on the Roadcraft 4.0, so a number off is a translation off.
 // `flow_junction`, `flow_push` and `flow_state` work on the city.
+#include "api/state_locks.h"
 #include "api/city_probes.h"
 
 #include "sim/simulation/simulation.h"
@@ -82,16 +83,17 @@ int CityProbes::flow_junction() {
 Dictionary CityProbes::flow_push(int n, int seconds) {
 	if (!sim_->hold_still()) return Dictionary(); // beside a running clock its ticks would land among these seconds
 	CityState &s = *state_;
-	const RoadNode &node = s.roads.nodes[size_t(n)];
-	s.camera_x.store(float(node.x));
-	s.camera_z.store(float(node.z));
-	const std::vector<int> main = traffic::main_legs(s, n);
-	int minor = -1;
-	for (int seg : node.segs)
-		if (seg != main[0] && seg != main[1]) minor = seg;
 	{
-		std::unique_lock<std::shared_mutex> map(s.map_mutex);
+		std::unique_lock<std::shared_mutex> map(s.map_mutex); // the node and its legs are read under it too
 		std::lock_guard<std::mutex> tr(s.traffic_mutex);
+		if (n < 0 || n >= int(s.roads.nodes.size())) return Dictionary(); // flow_junction found none
+		const RoadNode &node = s.roads.nodes[size_t(n)];
+		s.camera_x.store(float(node.x));
+		s.camera_z.store(float(node.z));
+		const std::vector<int> main = traffic::main_legs(s, n);
+		int minor = -1;
+		for (int seg : node.segs)
+			if (seg != main[0] && seg != main[1]) minor = seg;
 		FlowControl &c = s.traffic.flow_control;
 		for (int second = 1; second <= seconds; second++) {
 			feed(*c.flow, second, main[0], main[1], minor, n);
@@ -104,7 +106,7 @@ Dictionary CityProbes::flow_push(int n, int seconds) {
 
 Dictionary CityProbes::flow_state(int n) {
 	CityState &s = *state_;
-	std::lock_guard<std::mutex> tr(s.traffic_mutex);
+	const TrafficRead lk(s); // control_of reads the road network
 	const FlowControl &c = s.traffic.flow_control;
 	Dictionary out;
 	out["measured"] = c.flow->measured;

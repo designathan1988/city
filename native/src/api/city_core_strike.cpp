@@ -1,5 +1,6 @@
 // The bomb and its probe as script API (sim/commands/strike_commands.cpp): the blow is one undoable edit; the probe
 // counts what blows have left on the map, so a test can tell the explosion changed the city.
+#include "api/state_locks.h"
 #include "api/city_core.h"
 
 #include "api/edit_result.h"
@@ -36,7 +37,7 @@ PackedInt64Array CityCore::ruin_seeds() const {
 }
 
 Dictionary CityCore::damage_probe() const {
-	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	const TrafficRead lk(*state_); // it counts the walkers and vehicles too
 	const CityState &s = *state_;
 	Dictionary d;
 	if (!s.ready) return d;
@@ -62,7 +63,7 @@ Dictionary CityCore::damage_probe() const {
 }
 
 Dictionary CityCore::shot_targets(int limit) const {
-	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	const TrafficRead lk(*state_);
 	const TrafficState &t = state_->traffic;
 	Array walkers, vehicles;
 	for (int id = 0; id < int(t.peds.size()) && int(walkers.size()) < limit; id++) {

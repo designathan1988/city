@@ -51,11 +51,9 @@ Dictionary BuildingRenderer::bay_census() {
 	std::array<int64_t, b40::BAY_COUNT> by_comp{};
 	int64_t bays = 0, buildings = 0;
 	std::vector<Building> records;
-	{
-		std::shared_lock<std::shared_mutex> lk(s.map_mutex);
-		for (const Building &b : s.buildings.items)
-			if (b.alive && !(b.floors == 0 && b.body == 0 && !b40::is_open_lot(b.fn))) records.push_back(b);
-	}
+	std::shared_lock<std::shared_mutex> lk(s.map_mutex); // held to the end: the ground patches and the designs are the map's too
+	for (const Building &b : s.buildings.items)
+		if (b.alive && !(b.floors == 0 && b.body == 0 && !b40::is_open_lot(b.fn))) records.push_back(b);
 	const auto key = [](float grain, const b40::BayCtx &c, const b40::Opening &o) {
 		char text[BAY_KEY_CHARS];
 		const auto q = [grain](float v) { return int(std::round(v * grain)); };

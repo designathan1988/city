@@ -15,26 +15,34 @@ static FloorEdit floor_of(const CityState &s, const b40::Body &b, int id, int le
 }
 
 Dictionary CityBuilder::body_add_core(int id, const Vector3 &at, int kind) {
-	const V2 p = lot_point(*state_, id, at);
-	return edit_of_body(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_add_core(b, t, p.x, p.y, kind); });
+	return edit_of_body_in_lot(*state_, id, [&](b40::Body &b, const Tuning &t, const b40::LotFrame &f) {
+		const V2 p = lot_local(f, at);
+		return op_add_core(b, t, p.x, p.y, kind);
+	});
 }
 
 Dictionary CityBuilder::body_remove_core(int id, const Vector3 &at) {
-	const V2 p = lot_point(*state_, id, at);
-	return edit_of_body(*state_, id, [&](b40::Body &b, const Tuning &) { return op_remove_core(b, p.x, p.y); });
+	return edit_of_body_in_lot(*state_, id, [&](b40::Body &b, const Tuning &, const b40::LotFrame &f) {
+		const V2 p = lot_local(f, at);
+		return op_remove_core(b, p.x, p.y);
+	});
 }
 
 Dictionary CityBuilder::body_put_piece(int id, int level, const String &kind, const Vector3 &at, double angle) {
-	const V2 p = lot_point(*state_, id, at);
 	int found = -1;
 	for (int k = 0; k < b40::FK_COUNT; k++)
 		if (kind == b40::FURNITURE_NAMES[k]) found = k;
-	return edit_of_body(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_put_piece(b, t, floor_of(*state_, b, id, level), found, p.x, p.y, float(angle)); });
+	return edit_of_body_in_lot(*state_, id, [&](b40::Body &b, const Tuning &t, const b40::LotFrame &f) {
+		const V2 p = lot_local(f, at);
+		return op_put_piece(b, t, floor_of(*state_, b, id, level), found, p.x, p.y, float(angle));
+	});
 }
 
 Dictionary CityBuilder::body_move_piece(int id, int level, int index, const Vector3 &at) {
-	const V2 p = lot_point(*state_, id, at);
-	return edit_of_body(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_move_piece(b, t, floor_of(*state_, b, id, level), index, p.x, p.y); });
+	return edit_of_body_in_lot(*state_, id, [&](b40::Body &b, const Tuning &t, const b40::LotFrame &f) {
+		const V2 p = lot_local(f, at);
+		return op_move_piece(b, t, floor_of(*state_, b, id, level), index, p.x, p.y);
+	});
 }
 
 Dictionary CityBuilder::body_turn_piece(int id, int level, int index) {
@@ -42,8 +50,10 @@ Dictionary CityBuilder::body_turn_piece(int id, int level, int index) {
 }
 
 Dictionary CityBuilder::body_remove_piece(int id, int level, const Vector3 &at) {
-	const V2 p = lot_point(*state_, id, at);
-	return edit_of_body(*state_, id, [&](b40::Body &b, const Tuning &) { return op_remove_piece(b, floor_of(*state_, b, id, level), p.x, p.y); });
+	return edit_of_body_in_lot(*state_, id, [&](b40::Body &b, const Tuning &, const b40::LotFrame &f) {
+		const V2 p = lot_local(f, at);
+		return op_remove_piece(b, floor_of(*state_, b, id, level), p.x, p.y);
+	});
 }
 
 int CityBuilder::body_piece_at(int id, int level, const Vector3 &at) const {

@@ -34,7 +34,8 @@ Dictionary handle(const char *kind, const Vector3 &at, const Vector3 &dir, int s
 	return d;
 }
 
-HandleEdit edit_of(const CityState &s, int id, const Dictionary &spec) {
+// The edit a handle asks for, its point in the lot `f` (taken under the edit's lock: edit_of_body_in_lot).
+HandleEdit edit_of(const b40::LotFrame &f, const Dictionary &spec) {
 	HandleEdit e;
 	e.kind = String(spec.get("op", "")).utf8().get_data();
 	e.vol = int(spec.get("vol", 0));
@@ -47,7 +48,7 @@ HandleEdit edit_of(const CityState &s, int id, const Dictionary &spec) {
 	e.snap = bool(spec.get("snap", true));
 	if (spec.has("card")) e.part = part_spec(Dictionary(spec["card"]));
 	if (spec.has("shape")) e.shape = primitive_of(Dictionary(spec["shape"]));
-	const V2 at = lot_point(s, id, Vector3(spec.get("at", Vector3())));
+	const V2 at = lot_local(f, Vector3(spec.get("at", Vector3())));
 	e.x = at.x;
 	e.y = at.y;
 	return e;
@@ -142,7 +143,7 @@ Dictionary CityBuilder::body_draft(int id, const Dictionary &spec) const {
 	b40::Body body;
 	if (!body_of_record(s, id, body)) return d;
 	const Building &rec = s.buildings.items[id];
-	const std::string done = op_handle(body, s.catalog.tune, edit_of(s, id, spec));
+	const std::string done = op_handle(body, s.catalog.tune, edit_of(lot_frame_of(s, id), spec));
 	const std::string problem = !done.empty() ? done : body_problem(s.catalog.tune, body);
 	ByteWriter w;
 	write_body(w, body);
@@ -162,8 +163,7 @@ Dictionary CityBuilder::body_draft(int id, const Dictionary &spec) const {
 }
 
 Dictionary CityBuilder::body_apply(int id, const Dictionary &spec) {
-	const HandleEdit e = edit_of(*state_, id, spec);
-	return edit_of_body(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_handle(b, t, e); });
+	return edit_of_body_in_lot(*state_, id, [&](b40::Body &b, const Tuning &t, const b40::LotFrame &f) { return op_handle(b, t, edit_of(f, spec)); });
 }
 
 // The building taken to another place: the middle of its front at (x, z), turned by `rot`. It lands as a body lands: on another building it welds.

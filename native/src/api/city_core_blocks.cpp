@@ -34,8 +34,10 @@ Dictionary CityBuilder::body_bevel(int id, int vol, double distance, int corner)
 }
 
 Dictionary CityBuilder::body_move_point(int id, int vol, int index, const Vector3 &at, bool snap) {
-	const V2 p = lot_point(*state_, id, at);
-	return edit_of_body(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_move_point(b, t, vol, index, p.x, p.y, snap); });
+	return edit_of_body_in_lot(*state_, id, [&](b40::Body &b, const Tuning &t, const b40::LotFrame &f) {
+		const V2 p = lot_local(f, at);
+		return op_move_point(b, t, vol, index, p.x, p.y, snap);
+	});
 }
 
 Dictionary CityBuilder::body_change_point(int id, int vol, int index, bool remove) {
@@ -55,8 +57,10 @@ Dictionary CityBuilder::body_turn_block(int id, int vol, double degrees) {
 }
 
 Dictionary CityBuilder::body_slide_block(int id, int vol, const Vector3 &from, const Vector3 &to, bool snap) {
-	const V2 a = lot_point(*state_, id, from), c = lot_point(*state_, id, to);
-	return edit_of_body(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_slide_block(b, t, vol, c.x - a.x, c.y - a.y, snap); });
+	return edit_of_body_in_lot(*state_, id, [&](b40::Body &b, const Tuning &t, const b40::LotFrame &f) {
+		const V2 a = lot_local(f, from), c = lot_local(f, to);
+		return op_slide_block(b, t, vol, c.x - a.x, c.y - a.y, snap);
+	});
 }
 
 Dictionary CityBuilder::body_detach(int id, int vol) {
@@ -64,9 +68,11 @@ Dictionary CityBuilder::body_detach(int id, int vol) {
 }
 
 Dictionary CityBuilder::body_add_primitive(int id, int vol, int side, int storey, const Vector3 &at, const Dictionary &spec) {
-	const V2 p = lot_point(*state_, id, at);
 	const PrimitiveSpec shape = primitive_of(spec);
-	return edit_of_body(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_primitive_on(b, t, vol, side, storey, p.x, p.y, shape); });
+	return edit_of_body_in_lot(*state_, id, [&](b40::Body &b, const Tuning &t, const b40::LotFrame &f) {
+		const V2 p = lot_local(f, at);
+		return op_primitive_on(b, t, vol, side, storey, p.x, p.y, shape);
+	});
 }
 
 Dictionary CityBuilder::drop_primitive(const Vector3 &at, const Dictionary &spec) {

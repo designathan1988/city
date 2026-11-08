@@ -40,17 +40,34 @@ inline bool body_of_record(const CityState &s, int id, b40::Body &body) {
 	return true;
 }
 
-inline V2 lot_point(const CityState &s, int id, const godot::Vector3 &at) {
-	if (id < 0 || id >= int(s.buildings.items.size())) return V2(0, 0);
-	b40::LotFrame f = b40::lot_frame(s.buildings.items[id]);
-	V2 rel = V2(at.x, at.z) - f.o;
+// A point of the world (`at`) in a lot's frame: the one owner of that conversion.
+inline V2 lot_local(const b40::LotFrame &f, const godot::Vector3 &at) {
+	const V2 rel = V2(at.x, at.z) - f.o;
 	return V2(rel.x * f.e0.x + rel.y * f.e0.y, rel.x * f.e1.x + rel.y * f.e1.y);
 }
+
+// The lot frame of building `id`, the identity when there is none (whoever asks under a lock checks the id itself).
+inline b40::LotFrame lot_frame_of(const CityState &s, int id) {
+	return id >= 0 && id < int(s.buildings.items.size()) ? b40::lot_frame(s.buildings.items[id]) : b40::LotFrame{};
+}
+
+// A point of the world in building `id`'s lot, for a reader that holds the map lock.
+inline V2 lot_point(const CityState &s, int id, const godot::Vector3 &at) { return lot_local(lot_frame_of(s, id), at); }
 
 template <typename F>
 godot::Dictionary edit_of_body(CityState &state, int id, F &&op) {
 	return run_edit(state, "cmd.place.editBuilding", [&](CityState &s) {
 		return edit_body(s, id, [&](b40::Body &b) { return op(b, s.catalog.tune); });
+	});
+}
+
+// A body edit given the building's lot frame, taken inside the edit's lock with the body: a point the script gives in the world
+// becomes a lot point there, never before the lock (growth appends buildings under the exclusive lock, and the vector moves).
+template <typename F>
+godot::Dictionary edit_of_body_in_lot(CityState &state, int id, F &&op) {
+	return run_edit(state, "cmd.place.editBuilding", [&](CityState &s) {
+		const b40::LotFrame f = lot_frame_of(s, id);
+		return edit_body(s, id, [&](b40::Body &b) { return op(b, s.catalog.tune, f); });
 	});
 }
 

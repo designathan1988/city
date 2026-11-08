@@ -123,8 +123,7 @@ void EffectWorld::body(const DamageEvent &e, const CityState &s) {
 		b.lost = parts_gone(lost | severed);
 		b.rises = kind == CAS_KNOCKED;
 		b.walls = walls_.near(s, e.x, e.z, WALLS_REACH_M);
-		const bool walker = e.id >= 0 && e.id < int(s.traffic.peds.size());
-		b.variation = people_->variation_of(e.u, walker ? int(s.traffic.peds[size_t(e.id)].age) : -1);
+		b.variation = people_->variation_of(e.u, cas_age_of(e.v)); // the age the walker had (damage_event.h)
 		people_->bodies().add(b);
 		for (int k = 1; k < PART_KINDS; k++)
 			if ((severed & parts[k].bit) != 0) lay(parts[k].box, parts[k].at, parts[k].tint, params_.limb_push_ms, life, true);

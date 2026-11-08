@@ -2265,6 +2265,35 @@ being loaded (`mesh_generate_pipelines`): no script can know when the background
 `photos_check` fails on these pixels in every run of an unchanged tree; until the engine gives a completion signal, a change is
 judged by its photos being byte-equal to one of the states the unchanged tree gives (log/pendencias.md).
 
+### 6.10 B2, C6: the reads that broke the lock protocol (2026-11-08)
+
+The protocol (`city_state.h`): what commands change is read under the map shared; traffic under the map shared and then
+`traffic_mutex`. Fixed where the code broke it:
+- **The walkers' age in the effects (L2).** `effect_bodies.cpp` read `s.traffic.peds[e.id].age` under the map alone, and the
+  event's walker had often been removed already (`strike_people.cpp`, `wounds.cpp` call `remove_pedestrian` right after the
+  casualty, a swap-remove): the dead body took another walker's age, or none. The age travels in the event now
+  (`damage_event.h`, `cas_age`: bits 19-20 of the casualty flags), and the render reads no traffic. Bodies in the blast
+  captures may change body for the better: the body is the walker's.
+- **Lot points before the lock (A1 a).** Fourteen body commands turned a world point into a lot point before `run_edit` took the
+  lock, while growth may append buildings: `edit_of_body_in_lot` (`body_api.h`) hands the command the lot frame taken inside the
+  edit's lock, and `lot_local` owns the conversion that `lot_point` and the handles' drafts use too.
+- **Traffic read with one lock of the two (A1 b-d).** `shot_targets` and `damage_probe` held the map alone; `kerb_busy`,
+  `graph_fault`, `flow_state` and `transit_run` held `traffic_mutex` alone while commands change traffic under the map's
+  exclusive lock without it; `flow_push` read the node and its legs with no lock (and indexed `nodes[-1]` when no junction was
+  found); `bay_census` read ground patches after letting the map go. One owner of the traffic read, `TrafficRead`
+  (`api/state_locks.h`, map then traffic), and the census holds the map to its end.
+- **Previews under the exclusive lock (A2).** `preview_roundabout`, `segment_at`, `preview_lot` read through a const state: they
+  take the map shared now, so a pointer move no longer waits for every mesh job and stops the simulation.
+- **TOCTOU in `toggle_lane_link`.** The traffic's built links were read under one lock and the edit made under another: both are
+  inside the edit now (map exclusive, then `traffic_mutex`).
+- **A signal command read a stale graph.** `signal_commands.cpp` asked the traffic's junctions, rebuilt from the change log
+  later: it asks the road network (`traffic::control_of`), as the junctions are built from.
+
+**Left of C6, the lock's architecture** (one reader-writer lock for the whole city shared by the frame, the simulation, the
+commands and the mesh jobs, which hold it for their whole build; the frame's main-thread work inside it; the camera and the tools
+asking the core several times a frame and at every pointer move; the Street tab's settings stored in the state): a design of
+its own, with the measures that judge it (`sampler.py`), not an identity change.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

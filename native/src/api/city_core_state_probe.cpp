@@ -2,6 +2,7 @@
 // part, so whatever a save keeps is covered without a list to keep up, and a difference says which part it is in. `derived` is
 // what a save does not keep because it is made from the rest (final heights, lots, lane graph, solved grades): where an
 // optimisation works, it must leave those equal.
+#include "api/state_locks.h"
 #include "api/city_probes.h"
 
 #include "sim/citygen/lot_gen.h"
@@ -101,7 +102,7 @@ int CityProbes::undo_steps() {
 }
 
 String CityProbes::graph_fault() {
-	std::lock_guard<std::mutex> traffic(state_->traffic_mutex);
+	const TrafficRead lk(*state_);
 	return String(state_->traffic.graph_fault.c_str());
 }
 

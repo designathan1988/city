@@ -18,7 +18,7 @@ namespace city {
 //   VEHICLE_HIT    x y z, dx dz, u = 1 glass
 //   VEHICLE_DROP   id, x y z, a = heading, u = type | paint << 8 (a two-wheeler's rider shot off, the machine falls over)
 //   CASUALTY       id (pedestrian id, or 8'000'000 + vehicle id), x y z, a = heading, b c = blast point, d = power 0..1,
-//                  u = look hash, v = flags (casualty_flags below)
+//                  u = look hash, v = flags (casualty_flags below, the walker's age among them)
 //   GEYSER         x y z, a = seconds       LEAK / SPARK: x y z, a = seconds
 //   FURNITURE      x y z, u = GoneKind, dx dz = the way thrown, a = 1 when it burst into splinters
 //   IGNITE         id = building, x z
@@ -39,5 +39,10 @@ constexpr uint32_t VEHICLE_PAINT_SHIFT = 8; // VEHICLE_BLOWN / VEHICLE_DROP: u =
 constexpr uint32_t CAS_KIND_MASK = 3, CAS_LOST_SHIFT = 2, CAS_SEVERED_SHIFT = 7, CAS_LIMB_MASK = 31;
 constexpr uint32_t CAS_CHARRED = 1u << 12, CAS_CRAWL = 1u << 13, CAS_OPENED = 1u << 14, CAS_BLED = 1u << 15, CAS_STRUCK_SHIFT = 16; // struck part 0 none, 1 head ... 6 legR
 constexpr int VEHICLE_BODY_ID_BASE = 8'000'000; // CASUALTY ids of a vehicle's occupants (the 4.0's convention)
+// CASUALTY: the walker's age (PedAge) + 1, 0 for an occupant, who has none. It travels in the event: the walker may be gone by
+// the time the render reads it, and the render does not read traffic (pose_buffer.h is its only window).
+constexpr uint32_t CAS_AGE_SHIFT = 19, CAS_AGE_MASK = 3;
+inline uint32_t cas_age(int age) { return uint32_t(age + 1) << CAS_AGE_SHIFT; }
+inline int cas_age_of(uint32_t v) { return int((v >> CAS_AGE_SHIFT) & CAS_AGE_MASK) - 1; }
 
 } // namespace city

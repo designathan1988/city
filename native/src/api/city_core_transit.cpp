@@ -1,4 +1,5 @@
 // Public transport as the script API: the commands (sim/commands/transit_commands.h) and the plan, for the tools and the panel.
+#include "api/state_locks.h"
 #include "api/city_transit.h"
 
 #include "api/edit_result.h"
@@ -97,7 +98,7 @@ Dictionary CityTransit::transit_plan() {
 }
 
 Dictionary CityTransit::transit_run() {
-	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
+	const TrafficRead lk(*state_); // the crossing gaps read the road network too
 	const TransitRun &run = state_->transit_run;
 	int on_road = 0, trains = 0;
 	for (const Bus &b : run.buses) on_road += b.vehicle >= 0 ? 1 : 0;

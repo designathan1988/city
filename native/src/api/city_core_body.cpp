@@ -133,8 +133,10 @@ Dictionary CityBuilder::body_add_wing(int id, int vol, int side, double depth, d
 }
 
 Dictionary CityBuilder::body_add_mass(int id, int vol, const Vector3 &from, const Vector3 &to, int action) {
-	const V2 a = lot_point(*state_, id, from), c = lot_point(*state_, id, to);
-	return edit_of_body(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_add_mass(b, t, vol, { a.x, a.y }, { c.x, c.y }, action); });
+	return edit_of_body_in_lot(*state_, id, [&](b40::Body &b, const Tuning &t, const b40::LotFrame &f) {
+		const V2 a = lot_local(f, from), c = lot_local(f, to);
+		return op_add_mass(b, t, vol, { a.x, a.y }, { c.x, c.y }, action);
+	});
 }
 
 Dictionary CityBuilder::body_set_block_mode(int id, int vol, int mode) {
@@ -233,8 +235,10 @@ Dictionary CityBuilder::body_roof_shape(int id, int vol, double pitch, int ridge
 
 Dictionary CityBuilder::body_add_gear(int id, int vol, const Vector3 &at, const Dictionary &spec) {
 	PartSpec s = part_spec(spec);
-	V2 local = lot_point(*state_, id, at);
-	return edit_of_body(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_add_gear(b, t, vol, s.kind, local.x, local.y, s.w, s.d, s.h); });
+	return edit_of_body_in_lot(*state_, id, [&](b40::Body &b, const Tuning &t, const b40::LotFrame &f) {
+		const V2 local = lot_local(f, at);
+		return op_add_gear(b, t, vol, s.kind, local.x, local.y, s.w, s.d, s.h);
+	});
 }
 
 Dictionary CityBuilder::body_remove_gear(int id, int vol, int gear) {
@@ -246,14 +250,18 @@ Dictionary CityBuilder::body_turn_gear(int id, int vol, int gear) {
 }
 
 Dictionary CityBuilder::body_set_flag(int id, int vol, const Vector3 &at, int pattern) {
-	V2 local = lot_point(*state_, id, at);
-	return edit_of_body(*state_, id, [&](b40::Body &b, const Tuning &) { return op_set_flag(b, vol, local.x, local.y, pattern); });
+	return edit_of_body_in_lot(*state_, id, [&](b40::Body &b, const Tuning &, const b40::LotFrame &f) {
+		const V2 local = lot_local(f, at);
+		return op_set_flag(b, vol, local.x, local.y, pattern);
+	});
 }
 
 Dictionary CityBuilder::body_flag_colour(int id, int vol, const Vector3 &at, int slot, const String &colour) {
-	V2 local = lot_point(*state_, id, at);
 	uint32_t rgb = parse_hex_color(colour.utf8().get_data()) >> ALPHA_BITS;
-	return edit_of_body(*state_, id, [&](b40::Body &b, const Tuning &) { return op_flag_colour(b, vol, local.x, local.y, slot, rgb); });
+	return edit_of_body_in_lot(*state_, id, [&](b40::Body &b, const Tuning &, const b40::LotFrame &f) {
+		const V2 local = lot_local(f, at);
+		return op_flag_colour(b, vol, local.x, local.y, slot, rgb);
+	});
 }
 
 Dictionary CityBuilder::body_add_part(int id, int vol, int storey, int side, int bay, const Dictionary &spec) {
@@ -263,18 +271,20 @@ Dictionary CityBuilder::body_add_part(int id, int vol, int storey, int side, int
 
 Dictionary CityBuilder::body_add_part_at(int id, const Vector3 &at, const Dictionary &spec) {
 	PartSpec s = part_spec(spec);
-	V2 local = lot_point(*state_, id, at);
-	return edit_of_body(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_add_part_at(b, t, local.x, local.y, b40::FACE_STREET, s); });
+	return edit_of_body_in_lot(*state_, id, [&](b40::Body &b, const Tuning &t, const b40::LotFrame &f) {
+		const V2 local = lot_local(f, at);
+		return op_add_part_at(b, t, local.x, local.y, b40::FACE_STREET, s);
+	});
 }
 
 Dictionary CityBuilder::body_add_run(int id, int vol, int storey, const PackedVector3Array &points, const Dictionary &spec) {
 	const PartSpec s = part_spec(spec);
-	std::vector<b40::Point2> path;
-	for (const Vector3 &p : points) {
-		const V2 at = lot_point(*state_, id, p);
-		path.push_back({ at.x, at.y });
-	}
-	return edit_of_body(*state_, id, [&](b40::Body &b, const Tuning &t) {
+	return edit_of_body_in_lot(*state_, id, [&](b40::Body &b, const Tuning &t, const b40::LotFrame &f) {
+		std::vector<b40::Point2> path;
+		for (const Vector3 &p : points) {
+			const V2 at = lot_local(f, p);
+			path.push_back({ at.x, at.y });
+		}
 		const int level = vol >= 0 && vol < int(b.volumes.size()) ? b.volumes[size_t(vol)].base + storey : 0;
 		return op_add_run(b, t, path, level, s);
 	});

@@ -35,7 +35,7 @@ DamageEvent casualty_of(const Round &r, int id, const Pedestrian &w, uint32_t fl
 	e.d = power;
 	e.dx = lie;
 	e.u = w.look;
-	e.v = flags;
+	e.v = flags | cas_age(int(w.age));
 	return e;
 }
 

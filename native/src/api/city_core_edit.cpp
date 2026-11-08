@@ -202,7 +202,7 @@ Dictionary CityCore::roundabout(const Vector3 &p, float radius, bool cut) {
 }
 
 Dictionary CityCore::preview_roundabout(const Vector3 &p, float radius, bool cut) {
-	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex); // it reads: a pointer move must not wait for every mesh job
 	const CityState &s = *state_;
 	Dictionary d;
 	if (!s.ready) return d;
@@ -215,7 +215,7 @@ Dictionary CityCore::preview_roundabout(const Vector3 &p, float radius, bool cut
 }
 
 Dictionary CityCore::segment_at(const Vector3 &p) {
-	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
 	Dictionary d;
 	if (!s.ready) return d;
@@ -263,7 +263,7 @@ Dictionary CityCore::draw_building(const Vector3 &a, const Vector3 &b, int fn, i
 }
 
 Dictionary CityCore::preview_lot(const Vector3 &a, const Vector3 &b) {
-	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
 	Dictionary d;
 	if (!s.ready) return d;
