@@ -103,6 +103,19 @@ PackedVector3Array CityBuilder::body_outline(int id, int vol) const {
 	return out;
 }
 
+Vector3 CityBuilder::body_at(int id, float x, float y) const {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	const CityState &s = *state_;
+	if (id < 0 || id >= int(s.buildings.items.size()) || !s.buildings.items[id].alive) return Vector3();
+	const Building &rec = s.buildings.items[id];
+	b40::Body body;
+	b40::record_body(s.buildings.designs, rec, body);
+	b40::LotFrame f = b40::lot_frame(rec);
+	float floor = b40::lot_floor(body, rec, f, [&](float hx, float hz) { return s.terrain.height_at(hx, hz); });
+	V2 at = f.at(x, y);
+	return Vector3(at.x, floor, at.y);
+}
+
 Dictionary CityBuilder::body_storeys(int id, int vol, int count) {
 	return edit_of_body(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_set_storeys(b, t, vol, count); });
 }

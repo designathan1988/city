@@ -41,8 +41,7 @@ func _ready() -> void:
 		push_error("boot: %s" % errors)
 		get_tree().quit(1)
 		return
-	CityStore.new_map(TOWN_MAP, SEED, true)
-	CityStore.dispatch(&"set_speed", [0])
+	CityStore.new_map(TOWN_MAP, SEED, true, true)
 	tools = ToolController.new(rig)
 	add_child(tools)
 	hud = RoadcraftHud.new()

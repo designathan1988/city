@@ -13,10 +13,10 @@ const OLD_VERSION := 7
 const OLD_HALF_M := 5120.0
 
 
-## `save`: writes the slot and waits for it. `check`: the test's own.
-static func run(slot: String, save: Callable, check: Callable) -> void:
-	CityStore.new_map(TEN_KM_MAP, SEED, false)
-	await save.call(slot)
+## `t`: the save_undo_test (TestCase), whose map, save and check these are.
+static func run(t: Node, slot: String) -> void:
+	t.new_map(TEN_KM_MAP, SEED, false)
+	await t.save(slot)
 	var path: String = CityStore.saves.save_path(slot)
 	var f := FileAccess.open_compressed(path, FileAccess.READ, FileAccess.COMPRESSION_ZSTD)
 	var bytes := f.get_buffer(f.get_length())
@@ -28,7 +28,7 @@ static func run(slot: String, save: Callable, check: Callable) -> void:
 	var w := FileAccess.open_compressed(path, FileAccess.WRITE, FileAccess.COMPRESSION_ZSTD)
 	w.store_buffer(old)
 	w.close()
-	var r: Dictionary = CityStore.saves.load_game(slot)
-	check.call(r.get("ok", false), "a file of the format before opens: %s" % r)
+	var r: Dictionary = CityStore.saves.load_game(slot, true)
+	t.check(r.get("ok", false), "a file of the format before opens: %s" % r)
 	var half: float = CityStore.query(&"city_bounds").half
-	check.call(is_equal_approx(half, OLD_HALF_M), "and stands on the land it was made on: %.0f m" % half)
+	t.check(is_equal_approx(half, OLD_HALF_M), "and stands on the land it was made on: %.0f m" % half)

@@ -5,35 +5,32 @@ extends RefCounted
 
 const TOWN_MAP := 0
 const OTHER_SEED := 7
-const SLOT := "teste_rua"
+const SLOT := "street_test"
 const TAG_BYTES := [0x53, 0x54, 0x52, 0x54] # save_street.h SAVE_TAG_STREET: STRT
 const SIZE_BYTES := 4
 const KEYS := ["items", "poles", "rural_poles", "spans", "barriers", "cuts"]
 
-var _host: Node
-var _check: Callable
+var t: Node # the test (TestCase): its check, ticks and tree
 
 
-func _init(host: Node, check: Callable) -> void:
-	_host = host
-	_check = check
+func _init(test: Node) -> void:
+	t = test
 
 
 ## Saved and opened, the street records come back; a save with the block cut out opens with none and the same roads.
 func run() -> void:
 	var before: Dictionary = CityStore.query(&"street_counts")
-	print("contagens: ", before)
-	CityStore.saves.save_game(SLOT)
-	while CityStore.saves.save_busy():
-		await _host.get_tree().process_frame
-	CityStore.new_map(TOWN_MAP, OTHER_SEED, true)
-	_check.call(CityStore.query(&"street_counts").poles == 0, "a new city with no poles")
-	var loaded: Dictionary = CityStore.saves.load_game(SLOT)
-	_check.call(loaded.get("ok", false), "abrir")
+	print("counts: ", before)
+	var saved: Dictionary = await t.save(SLOT)
+	t.check(saved.get("ok", false), "the city is written: %s" % saved)
+	t.new_map(TOWN_MAP, OTHER_SEED, true)
+	t.check(CityStore.query(&"street_counts").poles == 0, "a new city with no poles")
+	var loaded: Dictionary = CityStore.saves.load_game(SLOT, true)
+	t.check(loaded.get("ok", false), "the file opens: %s" % loaded)
 	var after: Dictionary = CityStore.query(&"street_counts")
 	for key in KEYS:
-		_check.call(after[key] == before[key], "save guarda " + key)
-	_check.call(after.poles > 0 and after.rural_poles > 0 and after.spans > 0 and after.items > 0 and after.barriers > 0, "something was saved and opened")
+		t.check(after[key] == before[key], "the save keeps " + key)
+	t.check(after.poles > 0 and after.rural_poles > 0 and after.spans > 0 and after.items > 0 and after.barriers > 0, "something was saved and opened")
 	await _old_save(before)
 	DirAccess.remove_absolute(CityStore.saves.save_path(SLOT))
 	DirAccess.remove_absolute(Session.path(SLOT)) # and the session the save wrote beside it
@@ -48,7 +45,7 @@ func _old_save(with_street: Dictionary) -> void:
 	var o := bytes.size() - TAG_BYTES.size()
 	while o >= 0 and not (bytes[o] == TAG_BYTES[0] and bytes[o + 1] == TAG_BYTES[1] and bytes[o + 2] == TAG_BYTES[2] and bytes[o + 3] == TAG_BYTES[3]):
 		o -= 1
-	_check.call(o > 0 and with_street.poles > 0, "the street block found in the save")
+	t.check(o > 0 and with_street.poles > 0, "the street block found in the save")
 	var size := bytes.decode_u32(o + TAG_BYTES.size())
 	var old := bytes.slice(0, o)
 	old.append_array(bytes.slice(o + TAG_BYTES.size() + SIZE_BYTES + size))
@@ -56,9 +53,9 @@ func _old_save(with_street: Dictionary) -> void:
 	w.store_buffer(old)
 	w.close()
 	var bounds: Dictionary = CityStore.query(&"city_bounds")
-	var r: Dictionary = CityStore.saves.load_game(SLOT)
-	_check.call(r.get("ok", false), "a save with no block opens %s" % r)
+	var r: Dictionary = CityStore.saves.load_game(SLOT, true)
+	t.check(r.get("ok", false), "a save with no block opens %s" % r)
 	var now: Dictionary = CityStore.query(&"street_counts")
 	for key in KEYS:
-		_check.call(now[key] == 0, "with no block, no " + key)
-	_check.call(CityStore.query(&"city_bounds").max == bounds.max, "the old save's roads come back")
+		t.check(now[key] == 0, "with no block, no " + key)
+	t.check(CityStore.query(&"city_bounds").max == bounds.max, "the old save's roads come back")

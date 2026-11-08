@@ -2,7 +2,7 @@
 ## frame's move of the eye and of the point looked at is held against the one before, as a share of the view's height: what the eye sees as a jolt.
 ## A frame the machine lost (HITCH_EVERY) is held against the time it took, and a drag goes through the gestures as a mouse's events do: a few a frame, whole pixels, round a
 ## circle the hand can keep to. The worst frames say which of the rig's springs moved them. Run: godot --path project --resolution 640x360 res://tests/core/camera_feel_test.tscn -- --no-flow
-extends Node3D
+extends TestCase
 
 const MAP := 0
 const SEED := 7
@@ -32,23 +32,17 @@ const PRESS_HIGH := Vector2(0.5, 0.12) # near the horizon of a low view
 
 var _rig: CityCamera
 var _worst: Array = []
-var _failed := 0
 var _frames := 0
 var _inside := 0
 var _deepest := 0.0
 
 
 func _ready() -> void:
-	var world := CityWorld.new()
-	add_child(world)
-	var errors := CityStore.boot(world.terrain, world.materials())
-	if not errors.is_empty():
-		push_error("boot: %s" % [errors])
-		get_tree().quit(1)
+	if not boot():
+		finish()
 		return
-	CityStore.new_map(MAP, SEED, true)
-	CityStore.dispatch(&"set_speed", [0])
-	CityStore.step_ticks(1)
+	new_map(MAP, SEED, true)
+	ticks(1)
 	_rig = CityCamera.new()
 	add_child(_rig)
 	_rig.set_process(false)
@@ -68,23 +62,16 @@ func _ready() -> void:
 	_worst.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.jolt > b.jolt)
 	for w: Dictionary in _worst.slice(0, WORST):
 		print("%.4f half %.0f tilt %.0f yaw %.0f at %s: %s" % [w.jolt, w.half, w.tilt, w.yaw, w.at, w.parts])
-	print("rides over the limit: ", _failed, " of ", _worst.size())
-	print("eye in a building: %d of %d frames, deepest %.3f of the view" % [_inside, _frames, _deepest])
-	if float(_inside) / _frames > INSIDE_SHARE:
-		print("FAIL the eye stays inside a building")
-		_failed += 1
-	print("FAILURES: ", _failed)
-	get_tree().quit(1 if _failed > 0 else 0)
+	var over := _worst.filter(func(w: Dictionary) -> bool: return w.jolt > LIMIT).size()
+	check(over == 0, "no ride jolts past %.3f of the view: %d of %d" % [LIMIT, over, _worst.size()])
+	check(float(_inside) / _frames <= INSIDE_SHARE, "the eye stays out of the buildings: in one %d of %d frames, deepest %.3f of the view" % [_inside, _frames, _deepest])
+	finish()
 
 
 ## How much of the line from the eye to the point looked at, in metres, lies in a building at the eye's end.
 func _in_a_building(look: Vector3, eye: Vector3) -> float:
 	var free: PackedVector3Array = CityStore.query(&"eye_free", [look, eye, 0.0])
 	return free[1].distance_to(eye)
-
-
-func _parts() -> Dictionary:
-	return {"ground": _rig._ground.x, "rise": _rig._rise.x, "over": _rig.ahead.over.x, "out": _rig.ahead.out.x, "pull": _rig.pull.shown(), "floor": _rig._eye_ground}
 
 
 func _walk(half: float, tilt: float, yaw: float, start: Vector3, hitches: bool) -> void:
@@ -128,13 +115,13 @@ func _drag(half: float, tilt: float, yaw: float, start: Vector3, button: MouseBu
 func _turn(half: float, tilt: float, yaw: float, start: Vector3) -> void:
 	_ride(half, tilt, yaw, start, func(_frames: float) -> void:
 		_rig.yaw += TURN_RAD_S * STEP_S
-		_rig._apply())
+		_rig.apply())
 
 
 func _zoom(tilt: float, yaw: float, start: Vector3) -> void:
 	_ride(ZOOM_FROM, tilt, yaw, start, func(_frames: float) -> void:
 		_rig.half *= ZOOM_STEP
-		_rig._apply())
+		_rig.apply())
 
 
 func _ride(half: float, tilt: float, yaw: float, start: Vector3, step: Callable, hitches := false, held := false, grain := 0.0) -> void:
@@ -144,12 +131,12 @@ func _ride(half: float, tilt: float, yaw: float, start: Vector3, step: Callable,
 	var last_look: Vector3 = _rig.focus
 	var move_eye := Vector3.ZERO
 	var move_look := Vector3.ZERO
-	var before := _parts()
+	var before := _rig.springs()
 	var worst := {"jolt": 0.0}
 	for f in WALK_FRAMES:
 		var frames := HITCH_FRAMES if hitches and f % HITCH_EVERY == HITCH_EVERY - 1 else 1.0
 		step.call(frames)
-		_rig._settle(STEP_S * frames)
+		_rig.settle(STEP_S * frames)
 		var eye: Vector3 = _rig.camera.global_position
 		var look: Vector3 = _rig.focus
 		var now_eye := (eye - last_eye) / frames
@@ -159,7 +146,7 @@ func _ride(half: float, tilt: float, yaw: float, start: Vector3, step: Callable,
 		var inside := _in_a_building(look, eye)
 		_inside += 1 if inside > 0.0 else 0
 		_deepest = maxf(_deepest, inside / (2.0 * _rig.half))
-		var parts := _parts()
+		var parts := _rig.springs()
 		if f > 1 and jolt > worst.jolt:
 			var moved := {}
 			for k: String in parts:
@@ -173,6 +160,5 @@ func _ride(half: float, tilt: float, yaw: float, start: Vector3, step: Callable,
 		move_look = now_look
 	worst.jolt = maxf(worst.jolt - grain, 0.0)
 	if worst.jolt > LIMIT:
-		print("FAIL solavanco ", worst)
-		_failed += 1
+		print("  over the limit: ", worst)
 	_worst.append(worst)

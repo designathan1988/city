@@ -93,10 +93,9 @@ func _boot_world() -> bool:
 	if not errors.is_empty():
 		push_error("boot: %s" % errors)
 		return false
-	Settings.apply(world, get_viewport()) # as game/play.gd: the picture the player sees (MSAA, shadows, scale)
-	print("qualidade: ", Settings.current(), " msaa_3d ", get_viewport().msaa_3d)
 	add_child(RoadcraftHud.new())
-	Settings.apply(world, get_viewport()) # the shots show what the player's preset shows: its antialiasing and shadows
+	Settings.apply(world, get_viewport()) # as game/play.gd: the shots show what the player's preset shows (MSAA, shadows, scale)
+	print("quality: ", Settings.current(), " msaa_3d ", get_viewport().msaa_3d)
 	var report: Dictionary = CityStore.new_map(map, seed, true, true)
 	print("city: ", report)
 	_memory("city generated")

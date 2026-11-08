@@ -8,7 +8,7 @@ from pathlib import Path
 from .task import FAIL, PASS
 
 # The failure lines of the Godot tests and captures: a crash can leave exit code 0, and a SCRIPT ERROR does not stop a scene.
-GODOT_FAILED = re.compile(r"Program crashed|SCRIPT ERROR|^FAIL\b|FALHAS: [1-9]|FAILURES: [1-9]", re.M)
+GODOT_FAILED = re.compile(r"Program crashed|SCRIPT ERROR|^FAIL\b|FAILURES: [1-9]", re.M)
 SHOWN_LINES = 5
 
 

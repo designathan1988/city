@@ -34,6 +34,9 @@ public:
 	void stage_free(int handle);
 	int stage_triangles(int handle) const;
 	godot::PackedVector3Array body_outline(int id, int vol) const;
+	// Tests: the world point of (x, y) in building `id`'s lot frame (b40::lot_frame: across the street front, then inward), at
+	// its floor, so a test never computes the frame again. The origin when there is no such building.
+	godot::Vector3 body_at(int id, float x, float y) const;
 	godot::Dictionary body_storeys(int id, int vol, int count);
 	godot::Dictionary body_insert_storey(int id, int vol, int at, bool above);
 	godot::Dictionary body_resize(int id, int vol, int side, double delta, bool snap);

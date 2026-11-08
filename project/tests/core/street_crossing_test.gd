@@ -1,6 +1,6 @@
 ## The street's two gestures of the Inspector, seen working in traffic: a car stops for who is on a zebra between junctions and never reaches them, and a car
 ## turns back through the opening of a median. Run: godot --path project res://tests/core/street_crossing_test.tscn -- --no-flow
-extends Node3D
+extends TestCase
 
 const TOWN_MAP := 0
 const SEED := 7
@@ -14,25 +14,15 @@ const TICKS := 4
 const BUSY_STREETS := 6
 const OPENINGS := 10
 
-var failures := 0
-
-
-func _check(ok: bool, what: String) -> void:
-	print(("ok   " if ok else "FAIL ") + what)
-	failures += 0 if ok else 1
-
-
 func _ready() -> void:
-	var world := CityWorld.new()
-	add_child(world)
-	_check(CityStore.boot(world.terrain, world.materials()).is_empty(), "boot")
-	CityStore.new_map(TOWN_MAP, SEED, true)
-	CityStore.dispatch(&"set_speed", [0])
-	CityStore.step_ticks(WARM_TICKS)
+	if not boot():
+		finish()
+		return
+	new_map(TOWN_MAP, SEED, true)
+	ticks(WARM_TICKS)
 	_zebras()
 	_openings()
-	print("FAILURES: ", failures)
-	get_tree().quit(1 if failures > 0 else 0)
+	finish()
 
 
 func _middle_of(at: Vector3) -> Variant:
@@ -53,13 +43,13 @@ func _zebras() -> void:
 			made += 1
 		if made == BUSY_STREETS:
 			break
-	_check(made > 0, "crossings put on streets with cars: %d" % made)
+	check(made > 0, "crossings put on streets with cars: %d" % made)
 	var crossers := 0
 	var near := 0
 	var held := 0
 	var closest := INF
 	for i in STEPS:
-		CityStore.step_ticks(TICKS)
+		ticks(TICKS)
 		var w: Dictionary = CityStore.query(&"street_watch", [NEAR_M])
 		crossers = maxi(crossers, w.crossers)
 		near += w.near
@@ -67,11 +57,11 @@ func _zebras() -> void:
 		closest = minf(closest, w.closest_m)
 		if near > 0 and held > 0 and i * TICKS > WARM_TICKS:
 			break
-	print("on the crossing ", crossers, " cars near ", near, " parados ", held, " the nearest ", closest)
-	_check(crossers > 0, "gente atravessa")
-	_check(near > 0, "with a car coming")
-	_check(held > 0, "a car stops for who crosses")
-	_check(closest >= CLEAR_M, "no car reaches who is on the crossing (%.2f m)" % closest)
+	print("on the crossing ", crossers, " cars near ", near, " stopped ", held, " the nearest ", closest)
+	check(crossers > 0, "people cross")
+	check(near > 0, "with a car coming")
+	check(held > 0, "a car stops for who crosses")
+	check(closest >= CLEAR_M, "no car reaches who is on the crossing (%.2f m)" % closest)
 
 
 ## Openings along the avenues, and somebody using one.
@@ -87,11 +77,11 @@ func _openings() -> void:
 			made += 1
 		if made == OPENINGS:
 			break
-	_check(made > 0, "openings put in the median: %d" % made)
+	check(made > 0, "openings put in the median: %d" % made)
 	var turning := 0
 	for i in STEPS:
-		CityStore.step_ticks(TICKS)
+		ticks(TICKS)
 		turning = maxi(turning, CityStore.query(&"street_watch", [NEAR_M]).turning_back)
 		if turning > 0:
 			break
-	_check(turning > 0, "a car turns back through the median's opening")
+	check(turning > 0, "a car turns back through the median's opening")

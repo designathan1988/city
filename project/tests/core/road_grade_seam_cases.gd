@@ -15,7 +15,7 @@ func run() -> void:
 
 
 func _through(structure: int, length: float) -> Dictionary:
-	return t._alone(length, {"kind": "hill", "radius": 320 * t.U, "height": 40 * t.U}, structure)
+	return t.alone(length, {"kind": "hill", "radius": 320 * t.U, "height": 40 * t.U}, structure)
 
 
 func _cover(r: Dictionary) -> float:
@@ -26,15 +26,15 @@ func _cover(r: Dictionary) -> float:
 func _tunnels() -> void:
 	var bored = _through(3, 900 * t.U)
 	var surface = _through(0, 900 * t.U)
-	t._check("tunnel: dives under the hill it crosses", _cover(bored) > t.BORE, _cover(bored))
+	t.judge("tunnel: dives under the hill it crosses", _cover(bored) > t.BORE, _cover(bored))
 	var ends: PackedFloat32Array = bored.segs[0].ground
-	t._check("tunnel: meets the ground at both portals", absf(bored.nodes[0] - (ends[0] + t.CLEARANCE)) < 1.5 * t.U and absf(bored.nodes[1] - (ends[-1] + t.CLEARANCE)) < 1.5 * t.U, [bored.nodes, ends[0], ends[-1]])
+	t.judge("tunnel: meets the ground at both portals", absf(bored.nodes[0] - (ends[0] + t.CLEARANCE)) < 1.5 * t.U and absf(bored.nodes[1] - (ends[-1] + t.CLEARANCE)) < 1.5 * t.U, [bored.nodes, ends[0], ends[-1]])
 	var mid: int = bored.segs[0].h.size() / 2
-	t._check("tunnel: solved quite unlike the same road on the ground", surface.segs[0].h[mid] > ends[mid] - 8 * t.U and bored.segs[0].h[mid] < surface.segs[0].h[mid] - 20 * t.U, [surface.segs[0].h[mid], bored.segs[0].h[mid]])
-	t._check("tunnel: continuous all along", t._steepest(bored.segs[0]) < 0.13 * 2.5, t._steepest(bored.segs[0]))
+	t.judge("tunnel: solved quite unlike the same road on the ground", surface.segs[0].h[mid] > ends[mid] - 8 * t.U and bored.segs[0].h[mid] < surface.segs[0].h[mid] - 20 * t.U, [surface.segs[0].h[mid], bored.segs[0].h[mid]])
+	t.judge("tunnel: continuous all along", t.steepest(bored.segs[0]) < 0.13 * 2.5, t.steepest(bored.segs[0]))
 	var short = _cover(_through(3, 180 * t.U))
 	var shorter = _cover(_through(3, 90 * t.U))
-	t._check("tunnel: shallower the shorter it is", _cover(bored) > short and short > shorter and shorter < t.BORE, [_cover(bored), short, shorter])
+	t.judge("tunnel: shallower the shorter it is", _cover(bored) > short and short > shorter and shorter < t.BORE, [_cover(bored), short, shorter])
 
 
 ## Every leg of a crossroads of chains, on broken ground, flat over its plate at its node's height (worstSeam).
@@ -46,7 +46,7 @@ func _plates() -> void:
 				var worst = 0.0
 				for chain in [[3, 150 * t.U], [2, 200 * t.U]]:
 					worst = maxf(worst, _plate_seam(ground, east_west, layout, chain[0], chain[1]))
-				t._check("plates (%s, %s, %s): every flat leg at its node's height" % [layout, east_west, ground], worst < 1e-3 * t.U, worst)
+				t.judge("plates (%s, %s, %s): every flat leg at its node's height" % [layout, east_west, ground], worst < 1e-3 * t.U, worst)
 
 
 ## The worst a leg's plate stands off its node's height: a crossroads of chains of `count` segments `length` long.
@@ -61,7 +61,7 @@ func _plate_seam(ground: String, east_west: String, layout: String, count: int, 
 			var raised: bool = layout == "toda elevada" or (layout == "elevada sobre chão" and arm % 2 == 0) 					or (layout == "elevada pousando nas ruas" and k < count)
 			segs.append([prev, nodes.size() - 1, "boulevard" if arm % 2 == 0 else east_west, 1 if raised else 0])
 			prev = nodes.size() - 1
-	var r = t._solve({"kind": ground}, nodes, segs)
+	var r = t.solve({"kind": ground}, nodes, segs)
 	var worst = 0.0
 	for k in segs.size():
 		var seg: Dictionary = r.segs[k]

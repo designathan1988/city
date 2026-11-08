@@ -1,7 +1,9 @@
-## The pair of a 4.0 photo (--only=paridade --pairs=<file>): each entry of the file says, in a vehicle's own frame, where the 4.0's
+## The pair of a 4.0 photo (--only=parity --pairs=<file>, ONLY): each entry of the file says, in a vehicle's own frame, where the 4.0's
 ## camera stood and how it looked; the same class here, the same pose, the same field of view, at the hour of the photo.
 class_name CaptureParity
 extends RefCounted
+
+const ONLY := "parity" # the --only key that hands the capture to these shots (CaptureTraffic.directed)
 
 const CAMERA_CLEAR_M := 0.5
 const SAMPLE := 800
@@ -48,7 +50,7 @@ static func _pair(cap: Node, pair: Dictionary) -> void:
 		var look: Vector3 = ahead * pair.look[0] + left * pair.look[1] + Vector3.UP * pair.look[2]
 		cap.camera.fov = pair.fov
 		await cap._shot(pair.name, eye, eye + look * pair.reach)
-		print("paridade: ", pair.name, " tentativa ", attempt + 1, " em ", eye)
+		print("parity: ", pair.name, " attempt ", attempt + 1, " at ", eye)
 		return
 	print("capture: no vehicle for ", pair.name)
 

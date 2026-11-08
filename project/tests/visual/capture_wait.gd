@@ -5,6 +5,10 @@ extends RefCounted
 
 ## Most frames waited for the drawing to finish; a photo that leaves at this limit is incomplete.
 const BUILD_FRAMES := 400
+## The frozen photo: frames between two looks at the picture, and how many looks it may take to hold still (a pipeline compiled
+## in the background replaces the ubershader's drawing on a frame the machine decides: Godot docs, pipeline compilations).
+const STEADY_FRAMES := 16
+const STEADY_LOOKS := 30
 
 ## Photos of this run that came out incomplete.
 static var incomplete := 0
@@ -23,11 +27,29 @@ static func until_drawn(host: Node, settle: int, label: String) -> int:
 		waited += 1
 	var pending: int = CityStore.query(&"render_pending")
 	var cost: Dictionary = CityStore.query(&"render_cost")
-	print("espera: %s quadros=%d pendente=%d pedir=%d sem_vez=%d pedidos=%d prontos=%d orcamento=%d fila=%s substituidos=%d" % [label, waited, pending,
+	print("wait: %s frames=%d pending=%d want=%d unmet=%d asked=%d done=%d budget=%d backlog=%s replaced=%d" % [label, waited, pending,
 			cost.b_want, cost.b_unmet, cost.b_requested, cost.b_done, cost.budget_left, cost.backlog, cost.jobs_replaced])
 	if pending > 0:
 		mark_incomplete("%s came out with %d drawing jobs pending after %d frames" % [label, pending, waited])
 	return waited
+
+
+
+## Frames until the picture holds still (two looks STEADY_FRAMES apart give the same bytes), so whatever settles after the
+## drawing is done settles before the photo. False, told, past STEADY_LOOKS.
+static func until_steady(host: Node, label: String) -> bool:
+	var last := PackedByteArray()
+	for i in STEADY_LOOKS:
+		for f in STEADY_FRAMES:
+			await host.get_tree().process_frame
+		await RenderingServer.frame_post_draw
+		var now := host.get_viewport().get_texture().get_image().get_data()
+		if now == last:
+			print("steady: %s after %d looks" % [label, i + 1])
+			return true
+		last = now
+	print("FAIL the picture of %s never held still (%d looks)" % [label, STEADY_LOOKS])
+	return false
 
 
 ## A photo that came out without all it should show: told and counted.

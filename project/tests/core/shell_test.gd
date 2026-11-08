@@ -1,6 +1,6 @@
 ## The interface's rules without the screen: the tier the GPU's name gives, the tier governor and the dynamic resolution, the chosen
 ## options over a tier, the render switches on the cull mask, the Simulation panel's levels reaching the core, keys and Escape.
-extends Node3D
+extends TestCase
 
 const DRAWER_FRAMES := 6
 const FORCE_PRESSES := 7
@@ -15,45 +15,36 @@ const DT := 0.016
 ## Free ground past the town, where a road can start.
 const FIELD_M := 100.0
 
-var failures := 0
-
-
-func _check(ok: bool, what: String) -> void:
-	print(("ok   " if ok else "FAIL ") + what)
-	failures += 0 if ok else 1
-
 
 func _ready() -> void:
 	_gpu_tiers()
 	_governor()
 	_resolution()
-	var world := CityWorld.new()
-	add_child(world)
 	var rig := CityCamera.new()
 	add_child(rig)
-	var errors := CityStore.boot(world.terrain, world.materials())
-	_check(errors.is_empty(), "boot")
-	CityStore.new_map(TOWN_MAP, SEED, true)
+	if not boot():
+		finish()
+		return
+	new_map(TOWN_MAP, SEED, true)
 	add_child(ToolController.new(rig))
 	var hud := RoadcraftHud.new()
 	add_child(hud)
 	Settings.attach(world, get_viewport())
-	_options(world, rig)
+	_options(rig)
 	_levels()
 	_panels(hud)
 	await _session(rig)
 	await _drawers(hud)
 	await _bomb_force(hud)
 	_new_city(hud)
-	print("FAILURES: ", failures)
-	get_tree().quit(1 if failures > 0 else 0)
+	finish()
 
 
 func _gpu_tiers() -> void:
 	var t: Dictionary = DataTables.game("settings")
 	for pair: Array in [["NVIDIA GeForce RTX 3060", "ultra"], ["NVIDIA GeForce RTX 2060", "high"], ["Intel(R) UHD Graphics 770", "low"],
-			["AMD Radeon RX 6600", "high"], ["Microsoft Basic Render Driver", "low"], ["Chip desconhecido", "medium"]]:
-		_check(QualityTier.tier_for_gpu(t, pair[0]) == pair[1], "%s -> %s" % pair)
+			["AMD Radeon RX 6600", "high"], ["Microsoft Basic Render Driver", "low"], ["Unknown chip", "medium"]]:
+		check(QualityTier.tier_for_gpu(t, pair[0]) == pair[1], "%s -> %s" % pair)
 
 
 func _governor() -> void:
@@ -64,24 +55,24 @@ func _governor() -> void:
 	while next == "" and frames < 2000:
 		next = g.sample(DT, COST_SLOW_MS, BUDGET_MS)
 		frames += 1
-	_check(next == "medium", "frames over budget go down a tier (%s in %d frames)" % [next, frames])
+	check(next == "medium", "frames over budget go down a tier (%s in %d frames)" % [next, frames])
 	var expected: int = int(t.governor.settle) + int(t.governor.window) * int(t.governor.down_windows)
-	_check(frames == expected, "goes down after %d windows, the wait over" % int(t.governor.down_windows))
+	check(frames == expected, "goes down after %d windows, the wait over" % int(t.governor.down_windows))
 	g.set_level(next)
 	next = ""
 	frames = 0
 	while next == "" and frames < 4000:
 		next = g.sample(DT, COST_FAST_MS, BUDGET_MS)
 		frames += 1
-	_check(next == "high", "headroom goes up again (%s)" % next)
+	check(next == "high", "headroom goes up again (%s)" % next)
 	g.set_level("high")
 	var stay := ""
 	for i in 2000:
 		stay = g.sample(DT, COST_FAST_MS, BUDGET_MS)
 		if stay != "":
 			break
-	_check(stay == "", "never past the hardware's ceiling")
-	_check(g.sample(1.0, COST_SLOW_MS, BUDGET_MS) == "", "a hitch is no window")
+	check(stay == "", "never past the hardware's ceiling")
+	check(g.sample(1.0, COST_SLOW_MS, BUDGET_MS) == "", "a hitch is no window")
 
 
 func _resolution() -> void:
@@ -92,60 +83,60 @@ func _resolution() -> void:
 		if s > 0.0:
 			scale = s
 			break
-	_check(scale > 0.0 and scale < 1.0, "dynamic resolution falls when the GPU does not fit (%.2f)" % scale)
+	check(scale > 0.0 and scale < 1.0, "dynamic resolution falls when the GPU does not fit (%.2f)" % scale)
 	r.reset()
-	_check(is_equal_approx(r.scale, 1.0), "off, it returns to the whole resolution")
+	check(is_equal_approx(r.scale, 1.0), "off, it returns to the whole resolution")
 
 
-func _options(world: CityWorld, rig: CityCamera) -> void:
+func _options(rig: CityCamera) -> void:
 	Settings.set_preset("ultra")
 	var aa := Viewport.SCREEN_SPACE_AA_SMAA if QualityTier.has_smaa() else Viewport.SCREEN_SPACE_AA_DISABLED
-	_check(world.occlusion.visible == world.occlusion.available() and get_viewport().screen_space_aa == aa, "ultra turns occlusion and SMAA on where they exist")
+	check(world.occlusion.visible == world.occlusion.available() and get_viewport().screen_space_aa == aa, "ultra turns occlusion and SMAA on where they exist")
 	Settings.set_preset("low")
-	_check(not world.sun.shadow_enabled and not world.occlusion.visible, "low takes shadow and occlusion off")
+	check(not world.sun.shadow_enabled and not world.occlusion.visible, "low takes shadow and occlusion off")
 	var names: Dictionary = CityStore.constants.render_layers
-	_check(rig.camera.cull_mask & int(names.furniture) == 0, "low hides the furniture by the mask")
+	check(rig.camera.cull_mask & int(names.furniture) == 0, "low hides the furniture by the mask")
 	Settings.keep("shadows", 2048)
-	_check(world.sun.shadow_enabled, "a chosen shadow stands over the tier")
+	check(world.sun.shadow_enabled, "a chosen shadow stands over the tier")
 	Settings.set_preset("high")
-	_check(Settings.kept.is_empty(), "a chosen tier forgets the previous one's choices")
+	check(Settings.kept.is_empty(), "a chosen tier forgets the previous one's choices")
 	Settings.switches.set_on("roads", false)
 	Settings.switches_changed()
-	_check(rig.camera.cull_mask & int(names.roads) == 0, "the switch turns the road layer off")
+	check(rig.camera.cull_mask & int(names.roads) == 0, "the switch turns the road layer off")
 	Settings.switches.reset()
 	Settings.switches_changed()
-	_check(rig.camera.cull_mask & int(names.roads) != 0, "all on gives the layer back")
+	check(rig.camera.cull_mask & int(names.roads) != 0, "all on gives the layer back")
 	Settings.optimizations = {"shadowMapSize": 1024}
-	_check(int(Settings.current().shadow_px) == 1024, "an optimisation stands over the tier")
+	check(int(Settings.current().shadow_px) == 1024, "an optimisation stands over the tier")
 	Settings.optimizations = {}
 
 
 func _levels() -> void:
 	CityStore.set_levels(2.0, 0.5, 1.55)
 	var s := CityStore.snapshot
-	_check(is_equal_approx(s.traffic_level, 2.0) and is_equal_approx(s.people_level, 0.5) and is_equal_approx(s.demand, 1.55), "the panel reaches the core")
+	check(is_equal_approx(s.traffic_level, 2.0) and is_equal_approx(s.people_level, 0.5) and is_equal_approx(s.demand, 1.55), "the panel reaches the core")
 	CityStore.set_levels(1.0, 1.0, 1.0)
 	var m: Dictionary = CityStore.query(&"traffic_metrics")
-	_check(m.has("mean_speed_ms") and m.has("queued"), "traffic metrics")
+	check(m.has("mean_speed_ms") and m.has("queued"), "traffic metrics")
 
 
 ## A city comes back with its levels and its view; a save that does not read goes aside, not deleted.
 func _session(rig: CityCamera) -> void:
 	CityStore.set_levels(2.0, 0.5, 1.55)
 	rig.jump(Vector3(100, 0, 50), 30.0, 50.0, 800.0)
-	CityStore.saves.save_city()
-	await CityStore.saved
+	var saved: Dictionary = await save()
+	check(saved.get("ok", false), "the city is written to its own slot: %s" % saved)
 	var slot := CityStore.saves.city_slot()
 	CityStore.set_levels(1.0, 1.0, 1.0)
 	rig.jump(Vector3.ZERO, 0.0, 50.0, 400.0)
-	_check(CityStore.saves.load_game(slot).get("ok", false), "opened the saved city")
-	_check(is_equal_approx(CityStore.snapshot.traffic_level, 2.0), "the levels came back with the city")
-	_check(Vector2(rig.focus.x, rig.focus.z).distance_to(Vector2(100, 50)) < 1.0, "the view came back with the city (%s)" % rig.focus)
+	check(CityStore.saves.load_game(slot, true).get("ok", false), "opened the saved city")
+	check(is_equal_approx(CityStore.snapshot.traffic_level, 2.0), "the levels came back with the city")
+	check(Vector2(rig.focus.x, rig.focus.z).distance_to(Vector2(100, 50)) < 1.0, "the view came back with the city (%s)" % rig.focus)
 	CityStore.set_levels(1.0, 1.0, 1.0)
-	_check(SaveSlots.quarantine(slot) == OK and not SaveSlots.exists(slot), "an unreadable save goes to quarantine")
+	check(SaveSlots.quarantine(slot) == OK and not SaveSlots.exists(slot), "an unreadable save goes to quarantine")
 	var aside := "%s/%s" % [SaveSlots.dir(), SaveSlots.QUARANTINE_DIR]
 	var kept := Array(DirAccess.get_files_at(aside)).filter(func(f: String) -> bool: return f.begins_with(slot))
-	_check(kept.size() == 1, "guardado, nunca apagado")
+	check(kept.size() == 1, "kept, never deleted")
 	for f: String in kept:
 		DirAccess.remove_absolute("%s/%s" % [aside, f])
 	DirAccess.remove_absolute(Session.path(slot))
@@ -153,22 +144,22 @@ func _session(rig: CityCamera) -> void:
 
 ## The title screen's form: left alone it asks for nothing, a new seed asks for that city.
 func _new_city(hud: RoadcraftHud) -> void:
-	_check(HudActions.map_index("town") == 0, "the small city is map 0")
-	_check(HudActions.map_index("nao_existe") == -1, "a map the table does not have")
+	check(HudActions.map_index("town") == 0, "the small city is map 0")
+	check(HudActions.map_index("no_such_map") == -1, "a map the table does not have")
 	var asked := []
 	var keep := StartScreen.new()
 	keep.city_chosen.connect(func(map: int, seed: int) -> void: asked.append([map, seed]))
 	hud.root.add_child(keep)
-	keep._pick("play")
-	_check(asked.is_empty(), "with the form untouched no new city opens")
+	keep.pick("play")
+	check(asked.is_empty(), "with the form untouched no new city opens")
 	var form := StartScreen.new()
 	form.city_chosen.connect(func(map: int, seed: int) -> void: asked.append([map, seed]))
 	hud.root.add_child(form)
 	form.seed_box.value = CHOSEN_SEED
-	form._pick("play")
-	_check(asked == [[0, CHOSEN_SEED]], "the form's seed goes to the new city: %s" % [asked])
+	form.pick("play")
+	check(asked == [[0, CHOSEN_SEED]], "the form's seed goes to the new city: %s" % [asked])
 	hud.actions.new_city_at(0, CHOSEN_SEED)
-	_check(int(CityStore.snapshot.seed) == CHOSEN_SEED, "the core opens that seed's city")
+	check(int(CityStore.snapshot.seed) == CHOSEN_SEED, "the core opens that seed's city")
 
 
 ## The force steps on at every press, and the tool in hand is the one that has it.
@@ -180,7 +171,7 @@ func _bomb_force(hud: RoadcraftHud) -> void:
 	for i in FORCE_PRESSES:
 		keys.back().pressed.emit()
 		at = StrikeStrip.next_force(at, 1)
-	_check(hud.drawer.param("STRIKE", "strength", 0) == at, "the bomb's force steps on at every press (%d)" % at)
+	check(hud.drawer.param("STRIKE", "strength", 0) == at, "the bomb's force steps on at every press (%d)" % at)
 
 
 ## The Landscape drawer: the brush's sliders on the left, inside its width; the Models shelf scrolls inside the window.
@@ -188,16 +179,16 @@ func _drawers(hud: RoadcraftHud) -> void:
 	hud.open_category("landscape")
 	await _wait(DRAWER_FRAMES)
 	var options: Control = hud.drawer.options
-	_check(options.find_children("*", "HSlider", true, false).size() == RELIEF_SLIDERS, "the Relief sliders in the options panel")
-	_check(hud.drawer.strip.find_children("*", "HSlider", true, false).is_empty(), "no slider in the drawer")
-	_check(hud.drawer.options_panel.size.x <= HudWidgets.px("opts_w"), "a panel at the 4.0's width (%.0f)" % hud.drawer.options_panel.size.x)
+	check(options.find_children("*", "HSlider", true, false).size() == RELIEF_SLIDERS, "the Relief sliders in the options panel")
+	check(hud.drawer.strip.find_children("*", "HSlider", true, false).is_empty(), "no slider in the drawer")
+	check(hud.drawer.options_panel.size.x <= HudWidgets.px("opts_w"), "a panel at the 4.0's width (%.0f)" % hud.drawer.options_panel.size.x)
 	hud.drawer.select_tab(hud.drawer.category.tabs[1])
 	await _wait(DRAWER_FRAMES)
-	_check(hud.drawer.options_panel.size.x <= HudWidgets.px("opts_w"), "biomes fit in the panel (%.0f)" % hud.drawer.options_panel.size.x)
+	check(hud.drawer.options_panel.size.x <= HudWidgets.px("opts_w"), "biomes fit in the panel (%.0f)" % hud.drawer.options_panel.size.x)
 	hud.open_category("build")
 	await _wait(DRAWER_FRAMES)
 	var right := hud.drawer.get_global_rect().end.x
-	_check(right <= hud.drawer.get_viewport_rect().size.x, "the model shelf stays inside the window (%.0f)" % right)
+	check(right <= hud.drawer.get_viewport_rect().size.x, "the model shelf stays inside the window (%.0f)" % right)
 	hud.drawer.close()
 
 
@@ -208,18 +199,18 @@ func _wait(frames: int) -> void:
 
 func _panels(hud: RoadcraftHud) -> void:
 	hud.open_popover("menu")
-	_check(hud.popover.visible, "the menu opens")
-	_check(hud.escape() and not hud.popover.visible, "Esc closes the menu before the tool")
+	check(hud.popover.visible, "the menu opens")
+	check(hud.escape() and not hud.popover.visible, "Esc closes the menu before the tool")
 	hud.open_category("roads")
 	var road: ToolBase = hud.tools.active
 	var b: Dictionary = CityStore.query(&"city_bounds")
 	road.click(Vector3(b.max.x + FIELD_M, 0, (b.min.z + b.max.z) * 0.5))
-	_check(road.in_progress(), "road started")
-	_check(hud.escape() and not road.in_progress() and not hud.drawer.category.is_empty(), "Esc drops the road being drawn, not the tool")
-	_check(hud.escape() and hud.drawer.category.is_empty(), "Esc drops the tool")
-	_check(not hud.escape(), "Esc with nothing in hand passes on")
+	check(road.in_progress(), "road started")
+	check(hud.escape() and not road.in_progress() and not hud.drawer.category.is_empty(), "Esc drops the road being drawn, not the tool")
+	check(hud.escape() and hud.drawer.category.is_empty(), "Esc drops the tool")
+	check(not hud.escape(), "Esc with nothing in hand passes on")
 	hud.health.toggle()
-	Health.record("error", "broken", "teste", "detalhe")
-	Health.record("error", "broken", "teste", "detalhe")
-	_check(Health.entries[0].count == 2 and Health.status() == "broken", "health counts repeats and turns red")
+	Health.record("error", "broken", "test", "detail")
+	Health.record("error", "broken", "test", "detail")
+	check(Health.entries[0].count == 2 and Health.status() == "broken", "health counts repeats and turns red")
 	hud.health.close()

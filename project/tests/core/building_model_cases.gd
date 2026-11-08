@@ -15,36 +15,36 @@ const SCALE := 1.2
 
 
 static func run(id: int, made: int, check: Callable) -> void:
-	var vol: int = _info(id).volumes.size() - 1
-	var blocks: int = _info(id).volumes.size()
-	_edit(id, made, "extrudar", &"body_extrude_face", [id, vol, SIDE, OUT_M], check)
-	_edit(id, made, "tijolo", &"body_extrude_block", [id, vol, SIDE, BRICK_M], check)
-	_edit(id, made, "recuar face", &"body_inset_face", [id, vol, SIDE, INSET_M], check)
-	_edit(id, made, "crescer", &"body_offset", [id, vol, OUT_M], check)
-	_edit(id, made, "chanfrar", &"body_bevel", [id, vol, BEVEL_M, -1], check)
-	_edit(id, made, "copiar", &"body_copy_block", [id, vol], check)
-	_edit(id, made, "girar", &"body_turn_block", [id, vol, TURN_DEG], check)
+	var vol: int = BuildingProbe.info(id).volumes.size() - 1
+	var blocks: int = BuildingProbe.info(id).volumes.size()
+	_edit(id, made, "extrude", &"body_extrude_face", [id, vol, SIDE, OUT_M], check)
+	_edit(id, made, "brick", &"body_extrude_block", [id, vol, SIDE, BRICK_M], check)
+	_edit(id, made, "push the face in", &"body_inset_face", [id, vol, SIDE, INSET_M], check)
+	_edit(id, made, "grow", &"body_offset", [id, vol, OUT_M], check)
+	_edit(id, made, "chamfer", &"body_bevel", [id, vol, BEVEL_M, -1], check)
+	_edit(id, made, "copy", &"body_copy_block", [id, vol], check)
+	_edit(id, made, "turn", &"body_turn_block", [id, vol, TURN_DEG], check)
 	var box: PackedVector3Array = CityStore.query(&"body_outline", [id, vol])
 	var a: Vector3 = box[0]
-	_edit(id, made, "deslizar", &"body_slide_block", [id, vol, a, a + (box[1] - a).normalized() * SLIDE_M, false], check)
+	_edit(id, made, "slide", &"body_slide_block", [id, vol, a, a + (box[1] - a).normalized() * SLIDE_M, false], check)
 	_points(id, vol, made, check)
 	_handles(id, vol, made, check)
-	check.call(_info(id).volumes.size() == blocks, "the blocks came back")
+	check.call(BuildingProbe.info(id).volumes.size() == blocks, "the blocks came back")
 
 
 ## A point moved; a corner added on a side and taken away again is the plan it was.
 static func _points(id: int, vol: int, made: int, check: Callable) -> void:
 	CityStore.dispatch(&"body_set_plan", [id, vol, CHAMFERED])
-	var shaped: int = _info(id).digest
+	var shaped: int = BuildingProbe.info(id).digest
 	var r: Dictionary = CityStore.dispatch(&"body_change_point", [id, vol, 0, false])
-	check.call(r.get("ok", false) and _info(id).volumes[vol].bays.size() == CHAMFERED_SIDES + 1, "one corner more: %s" % r)
+	check.call(r.get("ok", false) and BuildingProbe.info(id).volumes[vol].bays.size() == CHAMFERED_SIDES + 1, "one corner more: %s" % r)
 	r = CityStore.dispatch(&"body_change_point", [id, vol, 1, true])
-	check.call(r.get("ok", false) and _info(id).volumes[vol].bays.size() == CHAMFERED_SIDES, "canto tirado: %s" % r)
+	check.call(r.get("ok", false) and BuildingProbe.info(id).volumes[vol].bays.size() == CHAMFERED_SIDES, "corner taken off: %s" % r)
 	var box: PackedVector3Array = CityStore.query(&"body_outline", [id, vol])
 	var out: Vector3 = (box[0] - box[box.size() / 4]).normalized() * OUT_M
 	r = CityStore.dispatch(&"body_move_point", [id, vol, 0, box[0] + out, false])
-	check.call(r.get("ok", false) and _info(id).digest != shaped, "ponto movido: %s" % r)
-	_back_to(made, id, check, "pontos")
+	check.call(r.get("ok", false) and BuildingProbe.info(id).digest != shaped, "point moved: %s" % r)
+	BuildingProbe.back_to(made, id, check, "points")
 
 
 ## What a handle asks: the handles stand where they should, a draft changes nothing, and the release is one step of undo.
@@ -55,10 +55,10 @@ static func _handles(id: int, vol: int, made: int, check: Callable) -> void:
 		kinds[h.kind] = true
 	for kind: String in ["storeys", "side", "vertex", "move", "rotate", "scale"]:
 		check.call(kinds.has(kind), "there is a %s handle" % kind)
-	var storeys: int = _info(id).volumes[vol].storeys
+	var storeys: int = BuildingProbe.info(id).volumes[vol].storeys
 	var spec := {"op": "storeys", "vol": vol, "count": storeys + 1}
 	var d: Dictionary = CityStore.query(&"body_draft", [id, spec])
-	check.call(not d.bytes.is_empty() and _info(id).digest == made, "the draft does not change the body")
+	check.call(not d.bytes.is_empty() and BuildingProbe.info(id).digest == made, "the draft does not change the body")
 	_edit(id, made, "storeys handle", &"body_apply", [id, spec], check)
 	_edit(id, made, "face handle", &"body_apply", [id, {"op": "side", "vol": vol, "side": SIDE, "along": OUT_M}], check)
 	_edit(id, made, "wing handle", &"body_apply", [id, {"op": "side", "vol": vol, "side": SIDE, "along": BRICK_M, "wing": true}], check)
@@ -66,12 +66,12 @@ static func _handles(id: int, vol: int, made: int, check: Callable) -> void:
 	_edit(id, made, "relief handle", &"body_apply", [id, {"op": "relief", "vol": vol, "side": SIDE, "index": 0, "count": 0, "along": OUT_M}], check)
 	var ground: int = _ground_block(id)
 	var r: Dictionary = CityStore.dispatch(&"body_apply", [id, {"op": "lift", "vol": ground, "along": OUT_M, "snap": false}])
-	check.call(r.get("ok", false) and _info(id).volumes[ground].lift == OUT_M, "the block's level: %s" % r)
-	_back_to(made, id, check, "cota")
+	check.call(r.get("ok", false) and BuildingProbe.info(id).volumes[ground].lift == OUT_M, "the block's level: %s" % r)
+	BuildingProbe.back_to(made, id, check, "level")
 
 
 static func _ground_block(id: int) -> int:
-	var blocks: Array = _info(id).volumes
+	var blocks: Array = BuildingProbe.info(id).volumes
 	for i in blocks.size():
 		if blocks[i].base == 0:
 			return i
@@ -80,15 +80,5 @@ static func _ground_block(id: int) -> int:
 
 static func _edit(id: int, made: int, what: String, command: StringName, args: Array, check: Callable) -> void:
 	var r: Dictionary = CityStore.dispatch(command, args)
-	check.call(r.get("ok", false) and _info(id).digest != made, "%s: %s" % [what, r])
-	_back_to(made, id, check, what)
-
-
-static func _back_to(made: int, id: int, check: Callable, what: String) -> void:
-	while _info(id).digest != made and CityStore.dispatch(&"undo"):
-		pass
-	check.call(_info(id).digest == made, "%s desfeito" % what)
-
-
-static func _info(id: int) -> Dictionary:
-	return CityStore.query(&"body_info", [id])
+	check.call(r.get("ok", false) and BuildingProbe.info(id).digest != made, "%s: %s" % [what, r])
+	BuildingProbe.back_to(made, id, check, what)

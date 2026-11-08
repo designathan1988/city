@@ -13,7 +13,7 @@ const SECTION := "graphics"
 
 var preset := ""
 var road := RoadPrefs.new()
-var kept: Dictionary = {}: # shadows, ssao, smaa chosen over the tier
+var kept: Dictionary = {}: # shadows, ssao, smaa, temporal chosen over the tier
 	set(value):
 		kept = value
 		_resolved = {}

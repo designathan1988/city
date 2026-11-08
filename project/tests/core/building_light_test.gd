@@ -9,7 +9,7 @@
 ## Colours are sRGB as the meshes carry them (shell.cpp); their linear value is the sRGB decoding (IEC 61966-2-1).
 ## The tolerance is one 8-bit step, as in light_color_test.gd.
 ## Run: godot --path project [--rendering-method gl_compatibility] res://tests/core/building_light_test.tscn -- --no-flow
-extends Node3D
+extends TestCase
 
 const LAMP_KIND := 4 # shell.h SK_LAMP (COLOR.a), the near level; the far level reads kind 4 the same (building_far)
 const SHELL_KIND := 0 # shell.h SK_SHELL, no finish layer (UV2.x = 0)
@@ -26,8 +26,6 @@ const BYTE := 255.0
 const TOLERANCE := 1
 const LAMP_GLOW := 0.5
 
-var failures := 0
-var world: CityWorld
 var cam: Camera3D
 
 
@@ -42,13 +40,13 @@ func _ready() -> void:
 	cam.make_current()
 	await _wall_by_day()
 	await _lamps_by_night()
-	print("renderizador: ", RenderingServer.get_current_rendering_method(), " FAILURES: ", failures)
-	get_tree().quit(1 if failures > 0 else 0)
+	print("renderer: ", RenderingServer.get_current_rendering_method())
+	finish()
 
 
 func _wall_by_day() -> void:
 	world.environment.fog_enabled = false # the surface under the same light: the air over it is another thing
-	var cases := [["parede perto", "building", WALL_ROUGHNESS, false], ["parede longe", "building_far", FAR_ROUGHNESS, false],
+	var cases := [["near wall", "building", WALL_ROUGHNESS, false], ["far wall", "building_far", FAR_ROUGHNESS, false],
 			["a piece with no finish", "building_parts", WALL_ROUGHNESS, true]]
 	var made: Array[Node3D] = []
 	var spots := []
@@ -166,7 +164,7 @@ func _compare(img: Image, at: Vector3, wanted: Color, what: String, on_screen :=
 	var want: Color = wanted if on_screen else CityStore.query(&"film_graded", [DataTables.game("daylight").grade, wanted])
 	var got := _pixel(img, at)
 	var off := maxi(maxi(_step(got.r, want.r), _step(got.g, want.g)), _step(got.b, want.b))
-	_check(off <= TOLERANCE, "%s: screen %s, wanted %s (%d steps of 8 bits)" % [what, got.to_html(false), want.to_html(false), off])
+	check(off <= TOLERANCE, "%s: screen %s, wanted %s (%d steps of 8 bits)" % [what, got.to_html(false), want.to_html(false), off])
 
 
 func _step(a: float, b: float) -> int:
@@ -176,9 +174,3 @@ func _step(a: float, b: float) -> int:
 func _frames(n: int) -> void:
 	for i in n:
 		await get_tree().process_frame
-
-
-func _check(ok: bool, what: String) -> void:
-	print(("ok   " if ok else "FAIL ") + what)
-	if not ok:
-		failures += 1

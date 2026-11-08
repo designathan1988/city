@@ -57,8 +57,7 @@ func _ready() -> void:
 		push_error("boot: %s" % errors)
 		get_tree().quit(1)
 		return
-	CityStore.new_map(TOWN_MAP, SEED, true)
-	CityStore.dispatch(&"set_speed", [0])
+	CityStore.new_map(TOWN_MAP, SEED, true, true)
 	CityStore.step_ticks(WARM_TICKS)
 	ui = UiDriver.new(rig, get_tree(), out_dir)
 	blast = CaptureBlast.new(rig, ui)

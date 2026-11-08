@@ -23,7 +23,7 @@ static func run(id: int, made: int, check: Callable) -> void:
 				check.call(_count(id) == before + 1, "%s went into the body" % spec.id)
 				if spec.get("standoff_m", 0.0) > 0.0 and spec.fit_kind == 0:
 					check.call(_clear_of_wall(id, spec), "%s stands %.1f m from the wall" % [spec.id, spec.standoff_m])
-				check.call(CityStore.dispatch(&"undo") and _digest(id) == made, "%s desfeito" % spec.id)
+				check.call(CityStore.dispatch(&"undo") and _digest(id) == made, "%s undone" % spec.id)
 			else:
 				var why: String = r.get("error", "")
 				check.call(why != "" and TranslationServer.translate(why) != why, "%s refused with a text: %s" % [spec.id, r])
@@ -43,7 +43,7 @@ static func run(id: int, made: int, check: Callable) -> void:
 ## A lantern flying a flag of its own colours, left on the body (the save round trip carries it).
 static func fly_flag(id: int, check: Callable) -> void:
 	var tools := _roof_tools()
-	var middle := _middle(id)
+	var middle := BuildingProbe.block_middle(id)
 	check.call(CityStore.dispatch(&"body_add_gear", [id, 0, middle, tools.lantern]).get("ok", false), "a lantern to save")
 	check.call(CityStore.dispatch(&"body_flag_colour", [id, 0, middle, SECOND_COLOUR, tools.flagColour6.rgb]).get("ok", false), "a coloured flag to save")
 	check.call(_flags_of(id) == 1, "the saved lantern flies the flag")
@@ -51,7 +51,7 @@ static func fly_flag(id: int, check: Callable) -> void:
 
 ## Each thing of the roof lands on it or says why not, and undo takes it away; off the roof it is refused.
 static func _gear(id: int, made: int, check: Callable) -> void:
-	var middle := _middle(id)
+	var middle := BuildingProbe.block_middle(id)
 	var landed := 0
 	for section: Dictionary in DataTables.ui("builder").tabs.roof.sections:
 		for spec: Dictionary in section.get("tools", []):
@@ -61,7 +61,7 @@ static func _gear(id: int, made: int, check: Callable) -> void:
 			if r.get("ok", false):
 				landed += 1
 				check.call(CityStore.query(&"body_info", [id]).volumes[0].gear == 1, "%s on the roof" % spec.id)
-				check.call(CityStore.dispatch(&"undo") and _digest(id) == made, "%s desfeito" % spec.id)
+				check.call(CityStore.dispatch(&"undo") and _digest(id) == made, "%s undone" % spec.id)
 			else:
 				check.call(r.get("error", "") == "building.problem.roofPart", "%s does not fit: %s" % [spec.id, r])
 	check.call(landed > 0, "%d pieces of gear went on the roof" % landed)
@@ -73,14 +73,14 @@ static func _gear(id: int, made: int, check: Callable) -> void:
 ## takes it down, colouring a bare spire raises it, a point with no mast is refused, and undo brings the generated body back.
 static func _flags(id: int, made: int, check: Callable) -> void:
 	var tools := _roof_tools()
-	var middle := _middle(id)
+	var middle := BuildingProbe.block_middle(id)
 	check.call(CityStore.dispatch(&"body_add_gear", [id, 0, middle, tools.lantern]).get("ok", false), "lantern on the roof")
 	check.call(_flags_of(id) == 1, "the lantern already flies the flag")
 	var before: int = _digest(id)
 	check.call(CityStore.dispatch(&"body_set_flag", [id, 0, middle, tools.flagCross.value]).get("ok", false) and _digest(id) != before, "the flag's design changed")
 	before = _digest(id)
 	check.call(CityStore.dispatch(&"body_flag_colour", [id, 0, middle, SECOND_COLOUR, tools.flagColour6.rgb]).get("ok", false) and _digest(id) != before, "the flag's colour changed")
-	check.call(CityStore.dispatch(&"body_set_flag", [id, 0, middle, tools.flagNone.value]).get("ok", false) and _flags_of(id) == 0, "bandeira arriada")
+	check.call(CityStore.dispatch(&"body_set_flag", [id, 0, middle, tools.flagNone.value]).get("ok", false) and _flags_of(id) == 0, "flag lowered")
 	check.call(CityStore.dispatch(&"body_set_flag", [id, 0, _away(id), tools.flagCross.value]).get("error", "") == "building.problem.noMast", "with no mast it is refused")
 	for i in FLAG_EDITS:
 		CityStore.dispatch(&"undo")
@@ -101,15 +101,6 @@ static func _roof_tools() -> Dictionary:
 	return tools
 
 
-## The middle of the first block's roof, in the world.
-static func _middle(id: int) -> Vector3:
-	var p: Dictionary = CityStore.query(&"probe_building", [id])
-	var v: Dictionary = CityStore.query(&"body_info", [id]).volumes[0]
-	var s: float = sin(p.rot)
-	var c: float = cos(p.rot)
-	return p.position + Vector3(s, 0, c) * (p.d * 0.5) + Vector3(c, 0, -s) * (v.x + v.w * 0.5) + Vector3(-s, 0, -c) * (v.y + v.d * 0.5)
-
-
 static func _flags_of(id: int) -> int:
 	return CityStore.query(&"body_info", [id]).volumes[0].flags
 
@@ -125,10 +116,9 @@ static func _count(id: int) -> int:
 
 
 static func _digest(id: int) -> int:
-	return CityStore.query(&"body_info", [id]).digest
+	return BuildingProbe.info(id).digest
 
 
-## A point on the ground beyond the street front.
+## A point on the ground beyond the street front (the lot frame's origin is the front's middle).
 static func _away(id: int) -> Vector3:
-	var p: Dictionary = CityStore.query(&"probe_building", [id])
-	return p.position + Vector3(sin(p.rot), 0, cos(p.rot)) * (p.d * 0.5 + FREE_OUT_M)
+	return BuildingProbe.on_lot(id, 0.0, -FREE_OUT_M)

@@ -45,7 +45,8 @@ static func budget_ms(fps_limit: int) -> float:
 	return MS_PER_S / fps
 
 
-## The tier's fields with the kept choices over them; `shadows` kept 0 is no shadows, ao and smaa force their pass.
+## The tier's fields with the kept choices over them; `shadows` kept 0 is no shadows, ao and smaa force their pass, `temporal`
+## its filter (TEMPORAL_*).
 static func merged(tier: Dictionary, kept: Dictionary) -> Dictionary:
 	var out := tier.duplicate()
 	if kept.has("shadows"):
@@ -56,6 +57,8 @@ static func merged(tier: Dictionary, kept: Dictionary) -> Dictionary:
 		out.ssao = kept.ssao
 	if kept.has("smaa"):
 		out.smaa = kept.smaa
+	if kept.has("temporal"):
+		out.temporal = int(kept.temporal)
 	return out
 
 

@@ -2,5 +2,5 @@
 
 [ext_resource type="Script" path="res://tests/core/camera_feel_test.gd" id="1"]
 
-[node name="CameraFeel" type="Node3D"]
+[node name="CameraFeelTest" type="Node3D"]
 script = ExtResource("1")

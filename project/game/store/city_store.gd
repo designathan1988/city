@@ -55,9 +55,10 @@ func _route(spec: String) -> Callable:
 	return Callable(area, spec.substr(cut + 1))
 
 
-## Loads the data tables into the core and prepares rendering. Returns the list of problems (empty = ok).
-func boot(terrain: Node, materials: Dictionary) -> PackedStringArray:
-	var errors: PackedStringArray = _core.load_catalog(DataTables.catalog())
+## Loads the data tables into the core and prepares rendering. Returns the list of problems (empty = ok). `catalog`: the
+## tables to load instead of DataTables' (a test hands a damaged one to see it refused).
+func boot(terrain: Node, materials: Dictionary, catalog: Dictionary = {}) -> PackedStringArray:
+	var errors: PackedStringArray = _core.load_catalog(DataTables.catalog() if catalog.is_empty() else catalog)
 	if not errors.is_empty():
 		return errors
 	_core.terrain_path = _core.get_path_to(terrain)
@@ -128,10 +129,11 @@ func set_sim_switch(name: String, on: bool) -> void:
 	_core.set_sim_switch(name, on)
 
 
-## Tests only: advance the simulation deterministically.
-func step_ticks(ticks: int) -> void:
-	_core.step_ticks(ticks)
+## Tests only: advance the simulation deterministically. Refused (false) while the clock runs: open the map paused.
+func step_ticks(ticks: int) -> bool:
+	var stepped: bool = _core.step_ticks(ticks)
 	_mark()
+	return stepped
 
 
 ## The snapshot read from the core now (after a load, or by a caller that wants this instant's numbers); `changed` at the frame's end.

@@ -23,6 +23,11 @@ func _ready() -> void:
 	add_child(_meter)
 
 
+## A stretch is being measured: the change before it has settled (`settle_ms`, data/game/lab.json).
+func measuring() -> bool:
+	return _measuring
+
+
 func start() -> void:
 	if recording:
 		return

@@ -51,7 +51,7 @@ func _run(steps: Array) -> void:
 func _step(step: Dictionary) -> String:
 	if step.has("new"):
 		var hud: RoadcraftHud = get_parent().find_children("*", "RoadcraftHud", false, false)[0]
-		hud.actions._open_new(int(step.new[0]), int(step.new[1]), bool(step.new[2]))
+		hud.actions.open_new(int(step.new[0]), int(step.new[1]), bool(step.new[2]))
 		CityStore.dispatch(&"set_speed", [1])
 	elif step.has("view"):
 		var v: Array = step.view

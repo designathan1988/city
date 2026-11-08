@@ -155,6 +155,7 @@ void CityBuilder::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("body_info", "id"), &CityBuilder::body_info);
 	ClassDB::bind_method(D_METHOD("body_pick", "origin", "dir"), &CityBuilder::body_pick);
 	ClassDB::bind_method(D_METHOD("body_outline", "id", "vol"), &CityBuilder::body_outline);
+	ClassDB::bind_method(D_METHOD("body_at", "id", "x", "y"), &CityBuilder::body_at);
 	ClassDB::bind_method(D_METHOD("body_storeys", "id", "vol", "count"), &CityBuilder::body_storeys);
 	ClassDB::bind_method(D_METHOD("body_insert_storey", "id", "vol", "at", "above"), &CityBuilder::body_insert_storey);
 	ClassDB::bind_method(D_METHOD("body_resize", "id", "vol", "side", "delta", "snap"), &CityBuilder::body_resize);

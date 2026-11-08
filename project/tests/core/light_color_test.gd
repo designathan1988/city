@@ -13,7 +13,7 @@
 ## The tolerance is one 8-bit step: the screen keeps 8 bits a channel, and the scene radiance (half floats, 11-bit
 ## mantissa) is far finer than that.
 ## Run: godot --path project [--rendering-method gl_compatibility] res://tests/core/light_color_test.tscn -- --no-flow
-extends Node3D
+extends TestCase
 
 const BYTE_TOP := 255.0
 const GRADE_LEVELS_OFF := 1.0
@@ -40,8 +40,6 @@ const BYTE := 255.0
 const TOLERANCE := 1 # in 8-bit steps
 const LENS_STEPS := 3 # the signal green sits at the edge of the gamut: ACES has no radiance that lands on it exactly
 
-var failures := 0
-var world: CityWorld
 var cam: Camera3D
 
 
@@ -57,9 +55,9 @@ func _ready() -> void:
 	cam.make_current()
 	await _lenses(material)
 	await _night(material, world.materials()["road"])
-	print("renderizador: ", RenderingServer.get_current_rendering_method(), " FAILURES: ", failures)
+	print("renderer: ", RenderingServer.get_current_rendering_method())
 	_check_grade()
-	get_tree().quit(1 if failures > 0 else 0)
+	finish()
 
 
 func _lenses(material: ShaderMaterial) -> void:
@@ -86,7 +84,7 @@ func _lenses(material: ShaderMaterial) -> void:
 	var img := get_viewport().get_texture().get_image()
 	var want := _lens_colours()
 	for k in LENSES:
-		_compare(img, centres[k], want[k], "lente %d" % k, LENS_STEPS)
+		_compare(img, centres[k], want[k], "lens %d" % k, LENS_STEPS)
 	for n in nodes:
 		n.queue_free()
 
@@ -120,7 +118,7 @@ func _night(material: ShaderMaterial, road: ShaderMaterial) -> void:
 	var shown := ToneMap.aces(radiance, world.environment.tonemap_exposure, world.environment.tonemap_white)
 	var want := Color(shown.x, shown.y, shown.z).linear_to_srgb()
 	var img := get_viewport().get_texture().get_image()
-	_compare(img, GLOW_AT, want, "brilho noturno (night %.2f)" % night)
+	_compare(img, GLOW_AT, want, "night glow (night %.2f)" % night)
 	var p: Color = Color(road.get_shader_parameter("pool_color")).srgb_to_linear()
 	var lit: float = float(road.get_shader_parameter("plate_glow")) * float(road.get_shader_parameter("pool_gain")) * night
 	var albedo: float = Color(ROAD_GREY, ROAD_GREY, ROAD_GREY).srgb_to_linear().r
@@ -135,14 +133,14 @@ func _check_grade() -> void:
 		var got: Color = CityStore.query(&"film_graded", [grade, Color(level / BYTE_TOP, level / BYTE_TOP, level / BYTE_TOP)])
 		var want: Array = GRADE_TABLE[level]
 		var off := maxf(maxf(absf(got.r * BYTE_TOP - want[0]), absf(got.g * BYTE_TOP - want[1])), absf(got.b * BYTE_TOP - want[2]))
-		_check(off <= GRADE_LEVELS_OFF, "grade of %d: %s, the 4.0 gives %s" % [int(level), got.to_html(false), want])
+		check(off <= GRADE_LEVELS_OFF, "grade of %d: %s, the 4.0 gives %s" % [int(level), got.to_html(false), want])
 
 
 func _compare(img: Image, at: Vector3, wanted: Color, what: String, steps := TOLERANCE) -> void:
 	var want: Color = CityStore.query(&"film_graded", [DataTables.game("daylight").grade, wanted])
 	var got := img.get_pixelv(Vector2i(cam.unproject_position(at).round()))
 	var off := maxi(maxi(_step(got.r, want.r), _step(got.g, want.g)), _step(got.b, want.b))
-	_check(off <= steps, "%s: screen %s, wanted %s (%d steps of 8 bits)" % [what, got.to_html(false),
+	check(off <= steps, "%s: screen %s, wanted %s (%d steps of 8 bits)" % [what, got.to_html(false),
 			want.to_html(false), off])
 
 
@@ -178,9 +176,3 @@ func _step(a: float, b: float) -> int:
 func _frames(n: int) -> void:
 	for i in n:
 		await get_tree().process_frame
-
-
-func _check(ok: bool, what: String) -> void:
-	print(("ok   " if ok else "FAIL ") + what)
-	if not ok:
-		failures += 1

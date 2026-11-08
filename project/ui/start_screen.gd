@@ -10,13 +10,12 @@ signal city_chosen(map: int, seed: int) # the form names another city than the o
 const LANGUAGES := [["en", "English"], ["pt_BR", "Português"]]
 
 @export var saved := false
-@onready var _curtain: PanelContainer
-@onready var _card_box: VBoxContainer
-@onready var _worked := 0.0
-@onready var _map := 0 # what the form holds, until a choice sends it
-@onready var seed_box: SpinBox
-@onready var _seed := 0
-@onready var _first_seed := 0
+var _curtain: PanelContainer
+var _card_box: VBoxContainer
+var _worked := 0.0
+var _map := 0 # what the form holds, until a choice sends it
+var seed_box: SpinBox
+var _seed := 0
 
 
 func _ready() -> void:
@@ -68,7 +67,7 @@ func _fill() -> void:
 	about.text = tr("action.about")
 	about.focus_mode = Control.FOCUS_NONE
 	about.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	about.pressed.connect(_pick.bind("about"))
+	about.pressed.connect(pick.bind("about"))
 	_card_box.add_child(about)
 	for name: Control in _card_box.find_children("*", "Label", true, false):
 		if name.theme_type_variation == &"FieldLabel":
@@ -84,9 +83,8 @@ func _city_form(t: Dictionary) -> void:
 		if at >= 0:
 			sizes.append([at, tr(maps[at].name_key)])
 	HudWidgets.dropdown(_card_box, tr("start.size"), sizes, _map, func(at: int) -> void: _map = at)
-	if _first_seed == 0:
-		_first_seed = mini(int(CityStore.snapshot.get("seed", 1)), int(t.seed_max))
-		_seed = _first_seed
+	if _seed == 0:
+		_seed = _standing_seed()
 	var row := HudWidgets.option_row(_card_box, tr("start.seed"))
 	seed_box = SpinBox.new()
 	seed_box.min_value = 1
@@ -97,14 +95,20 @@ func _city_form(t: Dictionary) -> void:
 	row.add_child(seed_box)
 
 
+
+## The seed of the city standing, as the form can hold it: the form starts there, and only another seed asks for a new city.
+func _standing_seed() -> int:
+	return mini(int(CityStore.snapshot.get("seed", 1)), int(DataTables.game("start").seed_max))
+
 func _action(variation: StringName, key: String, action: String, h: String) -> void:
 	var b := HudWidgets.button(variation, "", tr(key), "", "", h)
-	b.pressed.connect(_pick.bind(action))
+	b.pressed.connect(pick.bind(action))
 	_card_box.add_child(b)
 
 
-func _pick(action: String) -> void:
-	var another := _map != 0 or _seed != _first_seed
+## A card's action, as its button and Enter choose it: another city when the form names one, then `chosen`.
+func pick(action: String) -> void:
+	var another := _map != 0 or _seed != _standing_seed()
 	if another and (action == "play" or action == "new"):
 		city_chosen.emit(_map, _seed)
 		action = "play"
@@ -124,4 +128,4 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	var k := event as InputEventKey
 	if k != null and k.pressed and (k.keycode == KEY_ENTER or k.keycode == KEY_ESCAPE):
 		get_viewport().set_input_as_handled()
-		_pick("play")
+		pick("play")

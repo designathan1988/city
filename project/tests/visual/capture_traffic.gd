@@ -22,7 +22,7 @@ const BAND_UP := 4.5
 static func directed(cap: Node, probe: Dictionary, ground: Vector3) -> bool:
 	if cap.only.has("doca"):
 		await CaptureLorry.shots(cap)
-	elif cap.only.has("parity"):
+	elif cap.only.has(CaptureParity.ONLY):
 		await CaptureParity.shots(cap, cap.pairs)
 	elif cap.only.has("embarque"):
 		await kerb_shot(cap)
