@@ -2,6 +2,7 @@
 // ground, planted trees and clearings, the map's biome, and taking the relief back to the land the map started with.
 // Each records how to undo itself (j_nature, j_paint_touch); a held brush is one undo step.
 #include "sim/commands/commands.h"
+#include "sim/commands/nature_commands.h"
 #include "sim/commands/edit_journal.h"
 #include "sim/commands/road_edit.h"
 

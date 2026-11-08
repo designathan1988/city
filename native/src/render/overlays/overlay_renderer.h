@@ -5,7 +5,7 @@
 // are laid once per change of its roads, a refresh only colours them). Only reads the state.
 #pragma once
 
-#include "render/chunk_jobs.h"
+#include "render/chunk_results.h"
 #include "render/frame_admission.h"
 #include "render/render_context.h"
 #include "render/rs_util.h"

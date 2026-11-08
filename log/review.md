@@ -3797,6 +3797,24 @@ Each piece moved verbatim; the callers changed only the name they reach it by.
 
 **What changes.** Nothing seen.
 
+### 6.72 B2, C12 (the core's files over their limit): each second job in a file of its own (2026-11-08)
+
+**Cause and fix.** Twelve files and three functions were over their limits because each held a second job beside its own.
+- `commands.h` also declared the lot and Landscape commands: they are `lot_commands.h` and `nature_commands.h`, included where they are used.
+- `road_network.cpp` (455) also settled node shapes and street runs: `road_network_shape.cpp`.
+- `journal_ops.cpp` (416) also journalled the transit plan: `journal_transit.cpp`, which records through the public `j_record`.
+- `edit_history.cpp` (370) also applied the entries: `edit_apply.cpp`. Its `exec` (106 lines) became one switch that sends node ops to `exec_node` and segment ops to `exec_segment`; it still names every `OpKind` with no default, so the compiler still flags a missing kind.
+- `road_grade_solve.cpp` (373): `solve` (111 lines) became one helper per stage, and the rounds' state and machinery became `road_grade_rounds.{h,cpp}`.
+- `road_grade_profile.cpp` (352) also read the tuning: `road_grade_tune.cpp`.
+- `chunk_jobs.h` (324) also held the results queue: `chunk_results.h`.
+- `building_renderer.h` (253) also held a job's map copy: `building_job_inputs.h`.
+- `agent_renderer.cpp`'s `update` (92) became the level rule (`LevelRule`, computed at the same point), `place_vehicles` and `place_parked`.
+Four agents did the moves. Each moved line was checked against HEAD by content, and the only lines that differ are the ones the moves required: `record` → `j_record`, members defined out of line, lambdas made functions with their captures as arguments. The build has `-ffp-contract=off`, so moving a function between files cannot change its floats.
+
+**Proof.** Both DLLs built with no warning. quick on the changed sources: 45 of 46 passed, edit_fuzz, save_undo, road_grade and the e2e among them; the one failure is 03-rua_noite's flicker box (831,264)-(1167,287), §6.9. gates_changed passed.
+
+**What changes.** Nothing seen or simulated. The release DLL's function order (`native/pgo`) does not yet name the new functions, which affects speed only; it is refreshed with `pgo.sh` at the theme's close.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at
