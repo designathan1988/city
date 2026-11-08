@@ -3451,6 +3451,34 @@ the assembly stay in `body_survey.cpp`. Both under the limit; the stage closes w
 
 **What changes.** Nothing: the survey makes the same bodies (`quick`).
 
+### 6.55 B2, C14 (the shaders, first): the blast marks' look values in materials.json (2026-11-08)
+
+**Cause and fix.** A shader's look was written into its code as bare numbers: every share, edge, scale and alpha of
+`marks.gdshader` (the crater's scorch, hole, lip, grit and cracks, the soot, the blood's pool, splat and drops, the shock ring) and
+its colours as uniform defaults. Tuning one meant editing the shader, and NUMERO_MAGICO counts them by the hundred over the shaders.
+The look is data: each value is a uniform whose value is `data/render/materials.json` `marks.params` (schema typed, strict, every
+key required), grouped as vectors by what they shape (`scorch`, `lip`, `crack_wave`...), each part said at its uniform. What is
+not look is named: the noise hash's constants and the least time a share divides by are `const` with their source, the crater
+table's size is `CRATER_STOPS`. `WorldMaterials.typed` hands a param to its uniform by the uniform's type (the shader's own
+`get_shader_uniform_list`): a list of numbers is a `Vector2/3/4`, or a `Color` for a `source_color` uniform; a `float[]` keeps the
+list.
+
+The pilot showed the one trap of the move. `soot_color` is `source_color` with an sRGB value: Godot makes it linear only when the
+value is a `Color` (`servers/rendering/storage/variant_converters.h`, `convert_to_vector`: only the `Variant::COLOR` branch reads
+the flag; a `source_color` default is filled with it on, `material_storage.cpp` `update_uniform_buffer`). Handed as a plain vector,
+the soot was drawn eleven times too bright (0.078 instead of its linear 0.0069) (a blast's photos shifted R +0.22, G +0.18, B +0.15 against two runs of the same files,
+shift 0.00). The 4.7.2 engine lists a `source_color` vec3 or vec4 as `TYPE_COLOR` (a headless probe), so `typed` gives those a
+`Color`; no other material hands numbers to a colour uniform (every other numeric list feeds a `float[]`). Every shader that follows
+keeps its colour uniforms' hints.
+
+**Proof.** The shader with every param and const put back as the literal it holds is HEAD's line for line, but the three uniforms
+HEAD already had (6.0, 0.5, 0.4, the same defaults) and the hole's mid stop (`1.0 - 0.7`, the float the old `0.3` is). A blast on
+a road at 16:00 (force 5), photographed at 1, 3 and 8 s of the effects clock with HEAD's files and the new ones: no shift (b8 R
+-0.009, G -0.001, B -0.008), what differs is the run-to-run noise of leaves, line edges and the paving's sharpness, which differ
+already in the picture before the blast.
+
+**What changes.** Nothing: the marks look the same.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

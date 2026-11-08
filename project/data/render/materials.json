@@ -254,9 +254,42 @@
   "params": {}
  },
  "marks": {
+  "_doc": "What a blast leaves on the ground (render/shaders/marks.gdshader), by eye as the 4.0's marks drew them, a mark's radius running 0..1; each vector's parts are said at its uniform. soot_color is sRGB (a source_color), ring_color and crack_grey linear; night_dim what a mark keeps of its colour at night; a pool starts at pool_start of its size and spreads over pool_spread_s; eye_pull_m draws every mark nearer the eye along its ray, so the ground's bumps do not bury it.",
   "shader": "res://render/shaders/marks.gdshader",
   "display_colors": { "crater": ["#231C15", "#493A2D", "#736C64", "#96918A", "#2A1F15", "#58412B", "#785C3E", "#8A6C4B"] },
-  "params": { "eye_pull_m": 0.5, "blood_deep": "#600609", "blood_thin": "#850C10" }
+  "params": {
+   "eye_pull_m": 0.5,
+   "blood_deep": "#600609",
+   "blood_thin": "#850C10",
+   "soot_color": [0.078, 0.067, 0.055],
+   "ring_color": [1.0, 0.945, 0.816],
+   "crack_grey": 0.012,
+   "night_dim": 0.4,
+   "pool_spread_s": 6.0,
+   "pool_start": 0.2,
+   "wobble": [0.22, 3.0, 17.0],
+   "scorch": [0.35, 0.55, 0.6, 0.4],
+   "scorch_scale": 6.0,
+   "hole": [0.5, 0.56],
+   "lip": [0.42, 0.52, 0.56, 0.62],
+   "hole_stops": [0.58, 0.7],
+   "grit": [0.72, 22.0, 5.0, 0.3],
+   "grit_share": 0.7,
+   "lip_look": [0.9, 1.1, 0.8],
+   "crack_wave": [0.06, 5.5, 9.0, 2.0],
+   "crack_bend": [3.0, 0.02],
+   "crack_span": [0.5, 0.58, 0.78, 0.85],
+   "soot": [4.0, 11.0, 0.1, 0.25],
+   "soot_share": 0.4,
+   "pool_edge": [0.6, 0.72, 0.3, 0.7],
+   "pool_look": [0.05, 0.97],
+   "splat_core": [0.2, 0.3, 0.35, 0.95],
+   "splat_drops": [0.78, 14.0, 7.0, 0.95],
+   "drops_noise": [0.7, 9.0, 3.0],
+   "drops_fade": [0.1, 0.9, 0.95],
+   "ring_edges": [0.86, 0.93, 0.97, 1.0],
+   "ring_alpha": 0.55
+  }
  },
  "lamp_glow": {
   "shader": "res://render/shaders/lamp_glow.gdshader",
