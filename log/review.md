@@ -3555,6 +3555,32 @@ before the clouds'. `quick`: every test passes, the four photos byte-equal to kn
 
 **What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56).
 
+### 6.59 B2, C14, C12 and C16 (the ground): the terrain's look in palette.json, the painted surfaces by table, one sand grain (2026-11-08)
+
+**Cause and fix.** The terrain's shaders held their look as bare numbers or look constants (terrain 22, terrain_layers 58,
+terrain_uniforms 9, ground_paint 55, shore 10, verge 6): the slope bands' wander and the rock's edge, the map wall's dimming, the
+roughness dry and wet, the grass's blotches, wide read, speckle and tufts, the dry season's straw patches, the land's macro tones,
+the patches' mix and shade, the gullies' stretch and shade, the painted surfaces' tones and grain, the shore's fade and wetness,
+the overlay grid. They are `palette.json` `terrain` keys (schema typed, strict, required), which `CityWorld` already lays on the
+terrain and on the verge; both loops now hand each key to its uniform by type (`WorldMaterials.typed`, which takes a list of vectors
+for a `vec3[]` or `vec4[]` uniform too). The painted surfaces' switch reads two tables by surface (`paint_tone`, `paint_mix`) with the
+surfaces named after `nature.json` paint.kinds; the turns, lattice shifts, Geiss's triplanar weights, the channel mean, the region
+grid of Terrain3D (its own defaults, named) and the guards are named consts. The uniform defaults the palette always overwrote are
+gone; `gully_auto`'s, which shows before the weather is read, is `nature.json`'s weather default, set with the palette.
+
+Held twice: the beach's sand grain (`shore`) is the painted sand's (`paint_mix[PAINT_SAND]`); the channel mean `vec3(0.33)` of
+`terrain` and `shore` is `CHANNEL_MEAN`; `biome_dry` is sized by the overlay id as `biome_tint` is, the verge's `biome_tint` too.
+`terrain.gdshader` was over the file limit (264 lines): the painted surfaces' blend is `ground_paint`'s `paint_over`; 238 lines.
+
+Found, not changed here: the shader's `map_half` is never set, so every map draws its edge at 5120 m, the half of a 10-tile map,
+though the 16- and 20-tile maps reach 8192 and 10240 m (§6.60 fixes it).
+
+**Proof.** The terrain with every include pasted in, the params, consts and macros put back as literals and the paint tables read
+at their surfaces, is HEAD's code line for line, `paint_over` being the old block with `world` the `v_vertex` it is passed, and
+the keys the palette always set showing HEAD's dead defaults. The verge the same. `quick`: every test passes, the four photos byte-equal to known states; the photos stopped once under the parallel suite and passed alone (log/pendencias.md).
+
+**What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56).
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

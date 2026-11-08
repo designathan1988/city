@@ -1,9 +1,11 @@
 // Value noise on the integer hash, shared by terrain.gdshader, water.gdshader and road.gdshader.
 #include "res://render/shaders/hash.gdshaderinc"
 
+const int LATTICE_OFFSET = 32768; // 2^15: a cell's index stays positive within 32 km of the origin
+
 float hash2(vec2 p) {
 	ivec2 i = ivec2(floor(p));
-	return h01(spatial_hash(uint(i.x + 32768), uint(i.y + 32768)));
+	return h01(spatial_hash(uint(i.x + LATTICE_OFFSET), uint(i.y + LATTICE_OFFSET)));
 }
 
 float vnoise(vec2 p) {

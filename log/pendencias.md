@@ -111,6 +111,10 @@ O que falta fazer, por área.
     Godot draws with the ubershader until a specialized pipeline is compiled in the background and gives no signal when it is, so
     `photos_check` fails on an unchanged tree. Until a completion signal exists (an engine change), a change's photos are judged
     against the states the unchanged tree gives over several runs.
+  - The frozen photos (`photos`, quick) once stopped after "city opened" and were killed at their 90 s deadline (2026-11-08 11:34,
+    with the suite in parallel; the terrain's look change); alone they passed in 10 s, byte-equal to known states. The scene waits
+    in `CaptureWait.until_drawn` on the render's pending work: to read there and in the render's pending counters which one
+    did not drain.
 - The exported game leaks six render resources when it quits (`--quit-after`: a shadow atlas, a render target, two textures, a
   viewport, a font, "RID allocations ... leaked at exit"): the same six at the C3 and C4 closes (2026-11-08), so older than
   both; which owner frees them too late, or never, is to read in the quit path (`GameFlow` QUITTING).

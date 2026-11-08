@@ -57,9 +57,10 @@ func materials() -> Dictionary:
 ## The verge wears the terrain's grass: the same table, the same values.
 func _set_ground(m: ShaderMaterial) -> void:
 	var ground: Dictionary = DataTables.render_table("palette").terrain
+	var kinds := WorldMaterials.uniform_kinds(m.shader)
 	for key in ground:
 		if not key.begins_with("_"):
-			m.set_shader_parameter(key, shader_value(ground[key]))
+			m.set_shader_parameter(key, WorldMaterials.typed(kinds, key, ground[key]))
 	m.set_shader_parameter("grass_mean", _grass_mean(ground))
 
 
@@ -212,7 +213,9 @@ func _build_terrain(palette: Dictionary) -> void:
 	add_child(terrain)
 	_mesh_size = terrain.get("mesh_size")
 	# Terrain3D drops parameters set before it enters the tree: the look is applied once the terrain is in the scene
+	var kinds := WorldMaterials.uniform_kinds(load(TERRAIN_SHADER))
 	for key in palette.terrain:
 		if not key.begins_with("_"):
-			_terrain_material.set_shader_param(key, shader_value(palette.terrain[key]))
+			_terrain_material.set_shader_param(key, WorldMaterials.typed(kinds, key, palette.terrain[key]))
 	_terrain_material.set_shader_param("grass_mean", _grass_mean(palette.terrain))
+	_terrain_material.set_shader_param("gully_auto", DataTables.catalog_table("nature").weather.gully_auto.default) # until the weather is read

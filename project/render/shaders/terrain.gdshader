@@ -5,6 +5,15 @@ render_mode blend_mix,depth_draw_opaque,cull_back,skip_vertex_transform;
 
 // Defined Constants
 #define MAX_REGIONS 1024 // Match Terrain3DMaterial.max_regions. Set to 64-256 for mobile
+// Terrain3D's defaults for the private uniforms it sets itself (its minimum.gdshader): the clipmap's mesh size, the mouse
+// camera's layer (32), a region's side in vertices and its inverse, the region map's side; LOD0 is a clipmap scale under the
+// vertex spacing by less than its slack.
+#define T3D_MESH_SIZE 48.f
+#define T3D_MOUSE_LAYER 0x80000000u
+#define T3D_REGION_SIZE 1024.0
+#define T3D_REGION_TEXEL 0.0009765625
+#define T3D_REGION_MAP_SIZE 32
+#define T3D_LOD0_SLACK 1e-6
 
 // Inline Functions
 #if CURRENT_RENDERER == RENDERER_COMPATIBILITY
@@ -17,16 +26,16 @@ render_mode blend_mix,depth_draw_opaque,cull_back,skip_vertex_transform;
 // Commented uniforms aren't needed for this shader, but are available for your own needs.
 group_uniforms private;
 uniform vec3 _target_pos = vec3(0.f);
-uniform float _mesh_size = 48.f;
+uniform float _mesh_size = T3D_MESH_SIZE;
 uniform float _subdiv = 1.f;
 uniform uint _background_mode = 1u; // NONE = 0, FLAT = 1, NOISE = 2
-uniform uint _mouse_layer = 0x80000000u; // Layer 32
+uniform uint _mouse_layer = T3D_MOUSE_LAYER;
 uniform float _vertex_spacing = 1.0;
 uniform float _vertex_density = 1.0; // = 1./_vertex_spacing
-uniform float _region_size = 1024.0;
-uniform float _region_texel_size = 0.0009765625; // = 1./region_size
-uniform int _region_map_size = 32;
-uniform int _region_map[1024];
+uniform float _region_size = T3D_REGION_SIZE;
+uniform float _region_texel_size = T3D_REGION_TEXEL; // = 1./region_size
+uniform int _region_map_size = T3D_REGION_MAP_SIZE;
+uniform int _region_map[T3D_REGION_MAP_SIZE * T3D_REGION_MAP_SIZE];
 uniform highp sampler2DArray _height_maps : repeat_disable;
 uniform highp sampler2DArray _control_maps : repeat_disable;
 group_uniforms;
@@ -111,7 +120,7 @@ void vertex() {
 	float vertex_lerp = smoothstep(0.0, 1.0, (max_xz * inv_scale - _mesh_size - 4.0) / (_mesh_size - 4.0));
 	vec2 vertex_fract = fract(VERTEX.xz * 0.5) * 2.0;
 	// For LOD0 morph from a regular grid to an alternating grid to align with LOD1+
-	vec2 shift = (scale < _vertex_spacing / _subdiv + 1e-6) ? // LOD0 or not
+	vec2 shift = (scale < _vertex_spacing / _subdiv + T3D_LOD0_SLACK) ? // LOD0 or not
 		// Shift from regular to symmetric
 		mix(vertex_fract, vec2(vertex_fract.x, -vertex_fract.y),
 			round(fract(round(mod(v_vertex.z * inv_scale, 4.0)) *
@@ -196,7 +205,7 @@ void fragment() {
 	float gully = gully_weight(dot(cw, vec4(p00.gully, p10.gully, p01.gully, p11.gully)), dot(cw, vec4(p00.wipe, p10.wipe, p01.wipe, p11.wipe)), slope);
 	float gully_shade = 1.0;
 	if (gully > 0.0) w_normal = gully_normal(w_normal, v_vertex.xz, gully, gully_shade);
-	float detail = 1.0 - smoothstep(DETAIL_NEAR_M, DETAIL_FAR_M, length(v_vertex.xz - v_camera_pos.xz));
+	float detail = 1.0 - smoothstep(detail_fade_m.x, detail_fade_m.y, length(v_vertex.xz - v_camera_pos.xz));
 	vec3 tint = biome_tint[map_biome];
 	float biome_cover = dot(cw, vec4(p00.biome_amount, p10.biome_amount, p01.biome_amount, p11.biome_amount));
 	if (biome_cover > 0.0) tint = mix(tint, biome_tint[(cw.x + cw.y > cw.z + cw.w ? (cw.x > cw.y ? p00.biome : p10.biome) : (cw.z > cw.w ? p01.biome : p11.biome))], biome_cover);
@@ -204,9 +213,9 @@ void fragment() {
 	vec3 g;
 	float n;
 	vec3 c = grass_ground(v_vertex.xz, detail, tint, map_biome, per_pixel, g, n);
-	float wander = (n - 0.5) * 0.08;
-	float dirt_w = smoothstep(dirt_from, dirt_to, slope + wander) * (1.0 - smoothstep(rock_slope, rock_slope + 0.1, slope));
-	float rock_w = smoothstep(rock_slope, rock_slope + 0.1, slope + wander);
+	float wander = (n - 0.5) * slope_wander;
+	float dirt_w = smoothstep(dirt_from, dirt_to, slope + wander) * (1.0 - smoothstep(rock_slope, rock_slope + rock_edge, slope));
+	float rock_w = smoothstep(rock_slope, rock_slope + rock_edge, slope + wander);
 	vec3 wdx = dFdx(v_vertex), wdy = dFdy(v_vertex);
 	vec2 tilt = grass_tilt(v_vertex.xz, per_pixel, 1.0 - max(dirt_w, rock_w));
 	NORMAL = mat3(VIEW_MATRIX) * normalize(w_normal + vec3(tilt.x, 0.0, tilt.y));
@@ -217,48 +226,13 @@ void fragment() {
 	if (rock_w > 0.0) {
 		c = mix(c, mix(land_triplanar(rock_layer, v_vertex / rock_m, wdx / rock_m, wdy / rock_m, w_normal), rock, 0.25), rock_w);
 	}
-	float painted = dot(cw, vec4(p00.amount, p10.amount, p01.amount, p11.amount));
-	if (painted > 0.004) {
-		vec3 dirt_c = land(dirt_layer, fract(v_vertex.xz / dirt_m), wdx.xz / dirt_m, wdy.xz / dirt_m);
-		float grain = dot(land(dirt_layer, fract(v_vertex.xz * 0.27), wdx.xz * 0.27, wdy.xz * 0.27), vec3(0.33));
-		float speck = dot(land(dirt_layer, fract(v_vertex.xz * 1.325), wdx.xz * 1.325, wdy.xz * 1.325), vec3(0.33));
-		// Each surface's colour is worked out once, whatever number of corners carry it (it depends on the surface alone: the
-		// derivatives are passed in); the corners then add it in their order, as each did with its own.
-		bool on00 = p00.surface > 0 && cw.x * p00.amount > 0.0;
-		bool on10 = p10.surface > 0 && cw.y * p10.amount > 0.0;
-		bool on01 = p01.surface > 0 && cw.z * p01.amount > 0.0;
-		bool on11 = p11.surface > 0 && cw.w * p11.amount > 0.0;
-		vec3 c00 = vec3(0.0), c10 = vec3(0.0), c01 = vec3(0.0), c11 = vec3(0.0);
-		if (on00) c00 = surface_colour(p00.surface, g, dirt_c, v_vertex, wdx, wdy, w_normal, grain, speck);
-		if (on10) {
-			if (on00 && p10.surface == p00.surface) c10 = c00;
-			else c10 = surface_colour(p10.surface, g, dirt_c, v_vertex, wdx, wdy, w_normal, grain, speck);
-		}
-		if (on01) {
-			if (on00 && p01.surface == p00.surface) c01 = c00;
-			else if (on10 && p01.surface == p10.surface) c01 = c10;
-			else c01 = surface_colour(p01.surface, g, dirt_c, v_vertex, wdx, wdy, w_normal, grain, speck);
-		}
-		if (on11) {
-			if (on00 && p11.surface == p00.surface) c11 = c00;
-			else if (on10 && p11.surface == p10.surface) c11 = c10;
-			else if (on01 && p11.surface == p01.surface) c11 = c01;
-			else c11 = surface_colour(p11.surface, g, dirt_c, v_vertex, wdx, wdy, w_normal, grain, speck);
-		}
-		vec3 sum = vec3(0.0);
-		float weights = 0.0;
-		if (on00) { sum += c00 * cw.x * p00.amount; weights += cw.x * p00.amount; }
-		if (on10) { sum += c10 * cw.y * p10.amount; weights += cw.y * p10.amount; }
-		if (on01) { sum += c01 * cw.z * p01.amount; weights += cw.z * p01.amount; }
-		if (on11) { sum += c11 * cw.w * p11.amount; weights += cw.w * p11.amount; }
-		if (weights > 0.0) c = mix(c, sum / weights, clamp(weights, 0.0, 1.0));
-	}
+	c = paint_over(c, g, p00, p10, p01, p11, cw, v_vertex, wdx, wdy, w_normal);
 	c *= gully_shade;
-	c *= 1.0 - 0.4 * step(map_half - 0.5, max(abs(v_vertex.x), abs(v_vertex.z)));
+	c *= 1.0 - wall_dim * step(map_half - 0.5, max(abs(v_vertex.x), abs(v_vertex.z)));
 	if (map_grid > 0.5) { // the Layers popover: the zoning grid over the ground, one line a cell, as wide as a pixel of it
 		vec2 cell = abs(fract(v_vertex.xz / grid_m - 0.5) - 0.5) / fwidth(v_vertex.xz / grid_m);
 		c = mix(c, vec3(1.0), (1.0 - clamp(min(cell.x, cell.y), 0.0, 1.0)) * grid_alpha);
 	}
 	ALBEDO = c;
-	ROUGHNESS = mix(0.95, 0.6, rain_wet);
+	ROUGHNESS = mix(ground_rough.x, ground_rough.y, rain_wet);
 }

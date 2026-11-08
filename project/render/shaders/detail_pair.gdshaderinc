@@ -3,10 +3,10 @@
 #ifndef DETAIL_PAIR_INC
 #define DETAIL_PAIR_INC
 
-const mat2 DETAIL_TURN = mat2(vec2(0.5403, 0.8415), vec2(-0.8415, 0.5403));
+const mat2 DETAIL_TURN = mat2(vec2(0.5403, 0.8415), vec2(-0.8415, 0.5403)); // a turn of one radian: cos 1, sin 1
 const float DETAIL_SECOND = 0.4137; // scale of the second read
 const float DETAIL_MIX = 0.55; // its share
-const vec2 DETAIL_SHIFT = vec2(0.31);
+const vec2 DETAIL_SHIFT = vec2(0.31); // the second read off the first's lattice
 
 vec3 detail_tone(sampler2D map, vec2 uv, vec2 dx, vec2 dy) {
 	vec3 a = textureGrad(map, uv, dx, dy).rgb * 2.0;
