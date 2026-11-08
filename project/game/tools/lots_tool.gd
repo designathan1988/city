@@ -3,13 +3,12 @@
 ## clicked becomes the front), split (across, along or by a drawn line), join (one lot, then its neighbour), delete. The zone brush paints them.
 extends ToolBase
 
-## What of a corner or a side the pointer takes, in screen pixels.
-const TAKE_PX := 14.0
-const DRAWN_PX := 2.0
-## How far a lot's point reaches for a footway or a corner: pixels at this zoom, and never less than these metres.
-const CATCH_PX := 16.0
-const SNAP_LEAST_M := 2.5
-const MARK_M := 0.9
+## What of a corner or a side the pointer takes, how far a lot's point reaches, the marks (data/game/tools.json lots).
+static var take_px: float = DataTables.game("tools").lots.take_px
+static var drawn_px: float = DataTables.game("tools").drawn_px
+static var catch_px: float = DataTables.game("tools").lots.catch_px
+static var snap_least_m: float = DataTables.game("tools").lots.snap_least_m
+static var mark_m: float = DataTables.game("tools").lots.mark_m
 
 var mode := "add"
 var cut_kind := CityStore.code(&"LotCutKind", &"ACROSS")
@@ -48,14 +47,14 @@ func cancel() -> void:
 	_show()
 
 
-## The lots again (after an edit): their outlines are built once here, a band DRAWN_PX pixels to each side at any zoom.
+## The lots again (after an edit): their outlines are built once here, a band drawn_px pixels to each side at any zoom.
 func _read() -> void:
 	_lots.read()
 	_land.forget()
 	var rings := []
 	for l: Dictionary in _lots.all:
 		rings.push_back(l.points)
-	ctl.preview.show_outlines(rings, DRAWN_PX)
+	ctl.preview.show_outlines(rings, drawn_px)
 
 
 func _done(r: Dictionary) -> void:
@@ -66,7 +65,7 @@ func _done(r: Dictionary) -> void:
 
 
 func _width(at: Vector3) -> float:
-	return ctl.px_at(at) * DRAWN_PX
+	return ctl.px_at(at) * drawn_px
 
 
 func _closed(points: PackedVector3Array) -> PackedVector3Array:
@@ -86,16 +85,16 @@ func _show(extra: Array = []) -> void:
 
 ## A point of a lot by the footways, the blocks' corners and the other lots' corners; `apart` is the corner being dragged.
 func _snap(p: Vector3, apart := Vector3.INF) -> Vector3:
-	return CityStore.query(&"lot_snap_point", [p, maxf(SNAP_LEAST_M, ctl.px_at(p) * CATCH_PX), apart])
+	return CityStore.query(&"lot_snap_point", [p, maxf(snap_least_m, ctl.px_at(p) * catch_px), apart])
 
 
 func _mark(p: Vector3) -> Dictionary:
-	return {"points": PackedVector3Array([p + Vector3.LEFT * MARK_M, p + Vector3.RIGHT * MARK_M]), "half_width": MARK_M}
+	return {"points": PackedVector3Array([p + Vector3.LEFT * mark_m, p + Vector3.RIGHT * mark_m]), "half_width": mark_m}
 
 
 ## The corner under `p`, or INF.
 func _corner(p: Vector3) -> Vector3:
-	return _lots.corner_near(p, ctl.px_at(p) * TAKE_PX)
+	return _lots.corner_near(p, ctl.px_at(p) * take_px)
 
 
 func click(p: Vector3) -> void:
@@ -105,7 +104,7 @@ func click(p: Vector3) -> void:
 			_from = _snap(p)
 			_angle = CityStore.query(&"lot_angle_at", [_from])
 		"polygon":
-			if _points.size() >= 3 and Vector2(p.x - _points[0].x, p.z - _points[0].z).length() < ctl.px_at(p) * TAKE_PX:
+			if _points.size() >= 3 and Vector2(p.x - _points[0].x, p.z - _points[0].z).length() < ctl.px_at(p) * take_px:
 				_done(CityStore.dispatch(&"lot_add_polygon", [_points]))
 			else:
 				_points.push_back(_snap(p))
@@ -114,7 +113,7 @@ func click(p: Vector3) -> void:
 			_from = _corner(p)
 		"curve":
 			for l: Dictionary in _lots.all:
-				var k := LotOutlines.side_near(l, p, ctl.px_at(p) * TAKE_PX)
+				var k := LotOutlines.side_near(l, p, ctl.px_at(p) * take_px)
 				if k >= 0:
 					_side = [l.points[k], l.points[(k + 1) % l.points.size()]]
 					_from = p
@@ -182,7 +181,7 @@ func release(p: Vector3) -> void:
 	match mode:
 		"add":
 			var ring := _land.at(p)
-			if Vector2(p.x - _from.x, p.z - _from.z).length() < ctl.px_at(p) * TAKE_PX and not ring.is_empty():
+			if Vector2(p.x - _from.x, p.z - _from.z).length() < ctl.px_at(p) * take_px and not ring.is_empty():
 				_done(CityStore.dispatch(&"lot_add_polygon", [ring])) # a click takes what the streets propose
 			else:
 				_done(CityStore.dispatch(&"lot_add_rect", [_from, _snap(p), _angle]))

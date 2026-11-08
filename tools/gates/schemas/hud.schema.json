@@ -12,8 +12,8 @@
   },
   "timings": {
    "type": "object",
-   "properties": {"tip_wait_s": {"type": "number"}, "lane_reread_s": {"type": "number"}, "toast_s": {"type": "number"}, "inspector_refresh_s": {"type": "number"}},
-   "required": ["tip_wait_s", "lane_reread_s", "toast_s", "inspector_refresh_s"],
+   "properties": {"tip_wait_s": {"type": "number"}, "lane_reread_s": {"type": "number"}, "toast_s": {"type": "number"}, "inspector_refresh_s": {"type": "number"}, "flash_in_s": {"type": "number"}, "flash_out_s": {"type": "number"}},
+   "required": ["tip_wait_s", "lane_reread_s", "toast_s", "inspector_refresh_s", "flash_in_s", "flash_out_s"],
    "strict": true
   },
   "stats": {

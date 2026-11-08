@@ -1,5 +1,6 @@
 {
  "_doc": "What the Build tabs offer (ui/builder_strip.gd, game/tools/building_tool.gd). A tool: id (its icon b_<id> and text builder.tool.<id>, unless icon or label_key say otherwise; its hint in hand hint.builder.<id> unless hint_key says otherwise), do (what it does) and value: a bay, scope, pattern, roof or finish code of native/src/sim/buildings/b40/types.h, or the storeys to add. Colours are each finish's own.",
+ "choices": ["arm", "part", "gear", "flag", "flag_colour", "flag_slot", "scope", "paint_scope", "shape", "mass", "core", "piece", "run", "brush", "copy_style", "primitive", "points", "point_add", "point_remove", "bevel_corner", "ref_load", "ref_build", "ref_align", "ref_turn", "ref_flip", "ref_fade", "ref_toggle", "ref_remove"],
  "model_groups": ["all", "homes", "public", "commerce", "work", "leisure", "generic", "lots", "mine"],
  "tabs": {
   "interior": {

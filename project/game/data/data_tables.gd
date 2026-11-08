@@ -52,6 +52,7 @@ const GAME := {
 	"optimizations": "res://data/game/optimizations.json",
 	"health": "res://data/game/health.json",
 	"start": "res://data/game/start.json",
+	"tools": "res://data/game/tools.json",
 }
 ## The regional style a city's tables read (session-rules.md, section 10): this one until a city carries its own. The tables that
 ## keep what changes with it under `styles.<id>`, laid over the table when it is read.

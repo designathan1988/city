@@ -85,7 +85,7 @@ func _every_tool(tool: BuildingTool, id: int) -> void:
 			for spec: Dictionary in section.get("tools", []):
 				if spec.do == "ref_load": # the operating system's file dialog: nobody here to answer it
 					continue
-				if BuilderStrip.CHOICES.has(spec.do):
+				if (DataTables.ui("builder").choices as Array).has(spec.do):
 					tool.act(spec)
 					continue
 				count += 1

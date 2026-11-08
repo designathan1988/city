@@ -2984,6 +2984,35 @@ give: they stay the analyser's, the other readers use the gates' lexer.
 short Python process (1 392 samples, the main thread named, the modules without symbols said); the `tools/tasks` tests and the
 gates of the changed files.
 
+### 6.33 B2, C14 (first part): the tools' steps, the interface's choices and the numbers in text, from their tables (2026-11-08)
+
+**Causes and fixes.**
+- **The player's tools kept their steps as constants** (`brush_tool.gd`, `handle_drag.gd`, `lots_tool.gd`, `roundabout_tool.gd`,
+  `terrain_tool.gd`, `zone_tool.gd`, `demolish_tool.gd`): how far apart a brush lays its dabs, how many steps a handle turns in,
+  what a lot's corner catches, how a roundabout scales, the zone a stroke paints with none chosen. They are interaction choices of
+  this game, so they are one table, `data/game/tools.json` (its schema, its `_doc` giving each one's reason), read by `DataTables`
+  and taken by each tool as static values. The handle's step is `TAU / turn_steps` (24, the old `PI / 12`); the default zone is a
+  `zones.json` id resolved by `ZoneTable.code`, not the bare `1`.
+- **Interface choices typed in the scripts**: the zone densities (`drawers.json` `zone_densities`), the builder's choices
+  (`builder.json` `choices`, which `building_tool_test` reads too), the share of a help row the key takes (`tokens.json`
+  `help_key_share`), the road flash's fade times (`hud.json` `timings`), and the languages the start screen offers
+  (`start.json` `languages`). A language's own name is text, so it is `language.self` in `strings.csv` (each language
+  names itself), and `StartScreen.languages()` is the one list the start screen and the menu rows read.
+- **Numbers written into translations beside the value that decides them** (`strings.csv`): the health window's 30 s, the
+  junction step's 0.5 m and the most clouds (24) were typed in both languages, so a change of `health.json`, of the panel's step
+  or of `nature.json` left the text wrong. They are `{seconds}`, `{m}` and `{n}`, filled by `health_panel.gd`, `road_panel.gd`
+  and `cloud_tool.gd` from those owners. `game.toast.maxClouds` said the same as `hint.cloud.full` and nothing read it.
+- `weather_view.gd` divided by `60.0` where `Units.S_PER_MIN` is the owner; `camera_gestures.gd:128` held four statements on
+  one line.
+
+**Not here, and why.** `road_panel.gd`'s limits (the curve's least and most, the height step) are rules the core should give
+(B3, the panel asks the core); `WATER_EXTENT_M` comes from the map (B3); the plain quarter turn of `building_tool.gd`, the road
+section's and the swatch's pixel sizes, the shader look values and the other numbers typed in text are the next parts of C14.
+
+**What changes.** Nothing: the same steps, densities, choices, times and texts (verified by `quick --all`: 45 of 47 tasks pass;
+`gates_changed` reports only lines the baseline holds; `photos_check` differs by 0.001 % on two photos whose bytes are states
+already captured before this batch, the capture's known variation).
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

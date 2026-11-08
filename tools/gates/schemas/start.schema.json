@@ -6,7 +6,8 @@
   "styles",
   "units",
   "sizes",
-  "seed_max"
+  "seed_max",
+  "languages"
  ],
  "properties": {
   "_doc": {
@@ -48,6 +49,13 @@
   "seed_max": {
    "type": "integer",
    "minimum": 1
+  },
+  "languages": {
+   "type": "array",
+   "minItems": 1,
+   "items": {
+    "type": "string"
+   }
   }
  }
 }

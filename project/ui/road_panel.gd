@@ -73,7 +73,8 @@ static func _stepper(col: Control, key: String, node: int, metres: float, change
 	var row := HudWidgets.option_row(col, tr_key(key))
 	var label := "%.1f m" % metres
 	for step: float in [-RAISE_BY_M, RAISE_BY_M]:
-		var b := HudWidgets.button(&"Ghost", "", "\u2212" if step < 0.0 else "+", "junction.lower" if step < 0.0 else "junction.raise", "icon_btn", "icon_btn")
+		var tip := TranslationServer.translate("junction.lower" if step < 0.0 else "junction.raise").format({"m": Formatters.format_tenths(RAISE_BY_M)})
+		var b := HudWidgets.button(&"Ghost", "", "\u2212" if step < 0.0 else "+", tip, "icon_btn", "icon_btn")
 		b.pressed.connect(func() -> void:
 			CityStore.dispatch(&"set_node_height", [node, metres + step])
 			changed.call())

@@ -3,7 +3,7 @@
 class_name HandleDrag
 extends RefCounted
 
-const TURN_STEP := PI / 12.0
+static var turn_step: float = TAU / DataTables.game("tools").handle.turn_steps # data/game/tools.json
 const ROOF_REACH := 1.0
 
 const NO_POINT := -1
@@ -221,7 +221,7 @@ func _turned(free: bool) -> Dictionary:
 	var to := _on_plane(_held.at.y) - centre
 	var angle := atan2(to.x, to.z) - atan2(from.x, from.z)
 	if not free:
-		angle = snappedf(angle, TURN_STEP)
+		angle = snappedf(angle, turn_step)
 	var front := (Vector3(_base.x, centre.y, _base.z) - centre).rotated(Vector3.UP, angle) + centre
 	return {"x": front.x, "z": front.z, "rot": _base.rot + angle}
 

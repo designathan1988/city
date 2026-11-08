@@ -3,8 +3,6 @@
 class_name BuilderStrip
 extends RefCounted
 
-const CHOICES := ["arm", "part", "gear", "flag", "flag_colour", "flag_slot", "scope", "paint_scope", "shape", "mass", "core", "piece", "run", "brush", "copy_style", "primitive", "points", "point_add", "point_remove", "bevel_corner",
-	"ref_load", "ref_build", "ref_align", "ref_turn", "ref_flip", "ref_fade", "ref_toggle", "ref_remove"]
 
 
 static func fill(strip: Container, tab_id: String, tools: ToolController) -> void:
@@ -23,7 +21,7 @@ static func fill(strip: Container, tab_id: String, tools: ToolController) -> voi
 static func _card(spec: Dictionary, row: Container, tools: ToolController) -> Button:
 	var text := TranslationServer.translate(spec.get("label_key", "builder.tool.%s" % spec.id))
 	var b := HudWidgets.button(&"Card", "b_%s" % spec.get("icon", spec.id), text, "", "card_w", "card_h")
-	var choice: bool = CHOICES.has(spec.do)
+	var choice: bool = (DataTables.ui("builder").choices as Array).has(spec.do) # what stays chosen once pressed
 	b.toggle_mode = choice
 	b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
 	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER

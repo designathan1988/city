@@ -2,24 +2,23 @@
 ## the brush; the core knocks down buildings of another zone there and queues the new lots for growth.
 extends ToolBase
 
-## A new dab once the brush moved this share of its radius (zoneTool dabs along the stroke).
-const DAB_SPACING := 0.5
-## A fast drag reports the pointer far apart: the whole way is painted, up to this many dabs at a report (lotTool.ts move),
-## sent as one command (paint_zone_path).
-const MOST_DABS := 400
+## A new dab once the brush moved this share of its radius; a fast drag paints the whole way, up to most_dabs at a report, sent
+## as one command (paint_zone_path). data/game/tools.json zone.
+static var dab_spacing: float = DataTables.game("tools").zone.dab_spacing
+static var most_dabs: int = DataTables.game("tools").zone.most_dabs
 ## A side the brush passes that already has the zone says nothing.
 const ZONE_SAME := "tools.toast.zoneSame"
 ## What the brush paints with Shift held: no zone (lotTool.ts `remove`).
 const UNZONED := 0
 
-var zone := 1
+var zone: int = ZoneTable.code(DataTables.game("tools").zone.default_zone)
 var radius := 0.0
 var _last := Vector3.INF
 var _painting := 0 # the zone of the stroke in hand
 
 
 func enter() -> void:
-	zone = params.get("zone", 1)
+	zone = params.get("zone", ZoneTable.code(DataTables.game("tools").zone.default_zone))
 	radius = params.get("radius", DataTables.ui("drawers").zone_radius)
 	ctl.hint.emit("", true)
 
@@ -42,11 +41,11 @@ func drag(p: Vector3) -> void:
 		_last = p
 		_paint(PackedVector3Array([p]))
 		return
-	var spacing := radius * DAB_SPACING
+	var spacing := radius * dab_spacing
 	var far := p.distance_to(_last)
 	if far < spacing:
 		return
-	var steps := mini(ceili(far / spacing), MOST_DABS)
+	var steps := mini(ceili(far / spacing), most_dabs)
 	var dabs := PackedVector3Array()
 	for k in range(1, steps + 1):
 		dabs.append(_last.lerp(p, float(k) / steps))

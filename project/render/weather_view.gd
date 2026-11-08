@@ -80,7 +80,7 @@ func step(dt: float, weather: Dictionary, way: Vector2) -> void:
 			_advance(ground, span, way * float(weather.wind), dt)
 			_rain_mat.set_shader_parameter("drops", roundi(_d.rain_max_drops * minf(1.0, rain)))
 			_rain_mat.set_shader_parameter("opacity", _d.rain_opacity + _d.rain_opacity_full * rain)
-		if rate > 0.0 and _rng.randf() < dt * rate / 60.0:
+		if rate > 0.0 and _rng.randf() < dt * rate / Units.S_PER_MIN:
 			var a := _rng.randf() * TAU
 			var r: float = _rng.randf() * span * _d.strike_reach
 			strike(ground + Vector3(cos(a) * r, 0.0, sin(a) * r))

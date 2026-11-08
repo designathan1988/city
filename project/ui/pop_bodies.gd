@@ -4,7 +4,6 @@
 class_name PopBodies
 extends RefCounted
 
-const KEY_SHARE := 0.42 # of the Help popover: the key caps' column
 
 
 static func grid(parent: Control) -> GridContainer:
@@ -75,8 +74,8 @@ static func _keys(col: Control, title_key: String, rows: Array) -> void:
 	var g := grid(col)
 	for r: Array in rows:
 		var cap := HudWidgets.hbox(g)
-		cap.custom_minimum_size.x = HudWidgets.px("help_w") * KEY_SHARE
+		cap.custom_minimum_size.x = HudWidgets.px("help_w") * float(ThemeBuilder.tokens().help_key_share)
 		HudWidgets.kbd(cap, TranslationServer.translate(r[0])).size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 		var what := HudWidgets.label(g, &"MutedLabel", TranslationServer.translate(r[1]))
 		what.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		what.custom_minimum_size.x = HudWidgets.px("help_w") * (1.0 - KEY_SHARE) - HudWidgets.px("help_inset")
+		what.custom_minimum_size.x = HudWidgets.px("help_w") * (1.0 - float(ThemeBuilder.tokens().help_key_share)) - HudWidgets.px("help_inset")

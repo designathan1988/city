@@ -5,7 +5,8 @@
     "first_road",
     "catalog_tabs",
     "road_options",
-    "street"
+    "street",
+    "zone_densities"
   ],
   "properties": {
     "first_road": {
@@ -580,6 +581,30 @@
     },
     "lot_cards": {
       "type": "object"
+    },
+    "zone_densities": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "density",
+          "label_key",
+          "icon"
+        ],
+        "properties": {
+          "density": {
+            "type": "integer"
+          },
+          "label_key": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
     }
   },
   "strict": true

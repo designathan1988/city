@@ -350,6 +350,7 @@
     "project/data/game/optimizations.json": "tools/gates/schemas/optimizations.schema.json",
     "project/data/game/health.json": "tools/gates/schemas/health.schema.json",
     "project/data/game/start.json": "tools/gates/schemas/start.schema.json",
+    "project/data/game/tools.json": "tools/gates/schemas/tools.schema.json",
     "project/data/game/lab.json": "tools/gates/schemas/lab.schema.json",
     "project/data/ui/keys.json": "tools/gates/schemas/keys.schema.json",
     "project/data/ui/help.json": "tools/gates/schemas/help.schema.json",

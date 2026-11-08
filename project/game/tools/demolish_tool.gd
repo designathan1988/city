@@ -5,7 +5,7 @@ extends ToolBase
 
 ## A drag shorter than this is a click.
 const DRAG_MIN_M := 2.0
-const DRAWN_PX := 2.0
+static var drawn_px: float = DataTables.game("tools").drawn_px # data/game/tools.json
 
 var _corner := Vector3.INF
 
@@ -28,7 +28,7 @@ func drag(p: Vector3) -> void:
 	var ring := PackedVector3Array()
 	for i in corners.size():
 		ring.push_back(Vector3(corners[i].x, heights[i], corners[i].y))
-	ctl.preview.show_ribbons([{"points": ring, "half_width": ctl.px_at(p) * DRAWN_PX}])
+	ctl.preview.show_ribbons([{"points": ring, "half_width": ctl.px_at(p) * drawn_px}])
 
 
 func click(p: Vector3) -> void:

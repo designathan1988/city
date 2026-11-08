@@ -3,8 +3,8 @@
 ## radius; the disc previews it green or red with the core's refusal.
 extends ToolBase
 
-## [ and ] scale by this.
-const SCALE_STEP := 1.2
+## [ and ] scale by this (data/game/tools.json roundabout).
+static var scale_step: float = DataTables.game("tools").roundabout.scale_step
 
 var radius := 0.0
 
@@ -46,7 +46,7 @@ func key(keycode: Key) -> void:
 	var lo: float = DataTables.tuning("roundabout_radius_min_m")
 	var hi: float = DataTables.tuning("roundabout_radius_max_m")
 	if keycode == KEY_BRACKETRIGHT:
-		radius = clampf(radius * SCALE_STEP, lo, hi)
+		radius = clampf(radius * scale_step, lo, hi)
 	elif keycode == KEY_BRACKETLEFT:
-		radius = clampf(radius / SCALE_STEP, lo, hi)
+		radius = clampf(radius / scale_step, lo, hi)
 	ctl.remembered[ToolController.Tool.ROUNDABOUT] = {"radius": radius}

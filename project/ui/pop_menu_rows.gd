@@ -27,4 +27,4 @@ static func paint(col: Control, r: Dictionary) -> void:
 
 static func language(col: Control, r: Dictionary) -> void:
 	var row := HudWidgets.option_row(col, TranslationServer.translate(r.label_key))
-	HudWidgets.choices(row, StartScreen.LANGUAGES, TranslationServer.get_locale(), Settings.set_language)
+	HudWidgets.choices(row, StartScreen.languages(), TranslationServer.get_locale(), Settings.set_language)

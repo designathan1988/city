@@ -376,7 +376,6 @@ game.toast.lotSplit,Lote dividido.,Lot split.
 game.toast.lotSplitLine,Lote dividido pela linha.,Lot split along the line.
 game.toast.lotsJoined,Lotes juntados.,Lots joined.
 game.toast.mapTooBig,Sua placa de vídeo não comporta aquele tamanho de mapa: abri no maior que cabe.,Your graphics card cannot hold that map size: opened the largest that fits.
-game.toast.maxClouds,O céu já tem o máximo de nuvens ({n}).,The sky already has the most clouds ({n}).
 game.toast.noCloud,Nenhuma nuvem aqui: clique embaixo de uma.,No cloud here: click under one.
 game.toast.noLot,Nenhum lote aqui: desenhe um ou zoneie a rua.,No lot here: draw one or zone the street.
 game.toast.noSidewalk,Essa via não tem calçada.,This road has no sidewalk.
@@ -422,9 +421,9 @@ health.empty,Nada registrado,Nothing recorded
 health.msg.noMessage,Erro sem mensagem,Error with no message
 health.msg.rejected,Promessa rejeitada: {reason},Promise rejected: {reason}
 health.msg.simulation,simulação: {message},simulation: {message}
-health.status.broken,Algo quebrou nos últimos 30 s,Something broke in the last 30 s
-health.status.ok,Nada quebrou nem travou nos últimos 30 s,Nothing broke or hitched in the last 30 s
-health.status.slow,Houve quadro lento nos últimos 30 s,A frame was slow in the last 30 s
+health.status.broken,Algo quebrou nos últimos {seconds} s,Something broke in the last {seconds} s
+health.status.ok,Nada quebrou nem travou nos últimos {seconds} s,Nothing broke or hitched in the last {seconds} s
+health.status.slow,Houve quadro lento nos últimos {seconds} s,A frame was slow in the last {seconds} s
 health.tab.health,Saúde,Health
 health.tab.state,Estado,State
 health.tab.world,Mudanças,Changes
@@ -562,7 +561,7 @@ junction.greenWave,Onda verde na via principal,Green wave along the main road
 junction.greenWaveNone,A via principal não tem outro semáforo para coordenar.,The main road has no other signal to coordinate.
 junction.legs,Regra de cada via,Each road’s rule
 junction.locked,Travado na sua escolha.,Locked on your choice.
-junction.lower,"Descer 0,5 m",Lower 0.5 m
+junction.lower,Descer {m} m,Lower {m} m
 junction.mainRoad,via principal,main road
 junction.mode.adaptive,Adaptativo,Adaptive
 junction.mode.fixed,Tempo fixo,Fixed time
@@ -571,7 +570,7 @@ junction.moveBlocked,Proibido: clique para permitir,Banned: click to allow
 junction.movements,Movimentos permitidos,Movements allowed
 junction.offset,Defasagem,Offset
 junction.perHour,{n} veíc./h,{n} veh/h
-junction.raise,"Subir 0,5 m",Raise 0.5 m
+junction.raise,Subir {m} m,Raise {m} m
 junction.rule.priority,Preferencial,Priority
 junction.rule.stop,Pare,Stop
 junction.rule.yield,Dê a preferência,Give way
@@ -1483,7 +1482,7 @@ hint.tool.trees,Segure e arraste para plantar ou cortar.,Hold and drag to plant 
 hint.tool.fog,Segure e arraste para deitar neblina.,Hold and drag to lay fog.
 hint.tool.cloud,Clique no céu para pôr ou pegar uma nuvem.,Click the sky to place or pick a cloud.
 hint.tileFull,Esta parte do mapa já tem o máximo que cabe,This part of the map holds as many as it can
-hint.cloud.full,O céu já tem o máximo de nuvens (24),The sky already holds the most clouds (24)
+hint.cloud.full,O céu já tem o máximo de nuvens ({n}),The sky already holds the most clouds ({n})
 gully.cut,Cavar,Cut
 gully.erase,Apagar,Erase
 gully.strength,Força,Strength
@@ -2506,3 +2505,4 @@ hint.reference.failed,Este arquivo não abriu como modelo 3D,This file did not o
 hint.reference.none,Carregue um modelo primeiro,Load a model first
 hint.reference.empty,O modelo não tem bloco grande o bastante para ser um prédio,The model has no block big enough to be a building
 hint.reference.built,Prédio feito a partir do modelo,Building made from the model
+language.self,Português,English

@@ -7,7 +7,6 @@ extends Control
 signal chosen(action: String)
 signal city_chosen(map: int, seed: int) # the form names another city than the one standing
 
-const LANGUAGES := [["en", "English"], ["pt_BR", "Português"]]
 
 @export var saved := false
 var _curtain: PanelContainer
@@ -55,12 +54,13 @@ func _fill() -> void:
 		func(id: String) -> void: CityStore.dispatch(&"set_style", [id]))
 	var langs := HudWidgets.hbox(_card_box, &"Pad")
 	langs.alignment = BoxContainer.ALIGNMENT_CENTER
-	for l: Array in LANGUAGES:
+	for l: Array in languages():
+		var locale: String = l[0]
 		var b := HudWidgets.button(&"Chip", "", l[1], "", "", "opt_row_h")
 		b.toggle_mode = true
-		b.set_pressed_no_signal(TranslationServer.get_locale() == l[0])
+		b.set_pressed_no_signal(TranslationServer.get_locale() == locale)
 		b.pressed.connect(func() -> void:
-			Settings.set_language(l[0])
+			Settings.set_language(locale)
 			_fill.call_deferred())
 		langs.add_child(b)
 	var about := LinkButton.new()
@@ -129,3 +129,12 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if k != null and k.pressed and (k.keycode == KEY_ENTER or k.keycode == KEY_ESCAPE):
 		get_viewport().set_input_as_handled()
 		pick("play")
+
+
+## The languages offered, in their order (data/game/start.json): [locale, its name in itself (strings.csv language.self, its own
+## column)].
+static func languages() -> Array:
+	var out := []
+	for locale: String in DataTables.game("start").languages:
+		out.append([locale, TranslationServer.get_translation_object(locale).get_message(&"language.self")])
+	return out

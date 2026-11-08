@@ -103,10 +103,17 @@
    "items": {
     "type": "string"
    }
+  },
+  "choices": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   }
   }
  },
  "required": [
-  "tabs"
+  "tabs",
+  "choices"
  ],
  "additionalProperties": false
 }

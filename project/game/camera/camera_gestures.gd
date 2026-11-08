@@ -126,10 +126,16 @@ func _hand_speed() -> Vector2:
 	if samples.size() < 2 or samples[-1].z - samples[0].z < cfg.speed_min_span_ms:
 		return Vector2.ZERO
 	var t0 := samples[0].z
-	var st := 0.0; var stt := 0.0; var sp := Vector2.ZERO; var stp := Vector2.ZERO
+	var st := 0.0
+	var stt := 0.0
+	var sp := Vector2.ZERO
+	var stp := Vector2.ZERO
 	for s in samples:
 		var t := (s.z - t0) / Units.MS_PER_S
-		st += t; stt += t * t; sp += Vector2(s.x, s.y); stp += Vector2(s.x, s.y) * t
+		st += t
+		stt += t * t
+		sp += Vector2(s.x, s.y)
+		stp += Vector2(s.x, s.y) * t
 	var n := float(samples.size())
 	var den := n * stt - st * st
 	if absf(den) < CityCamera.PARALLEL:

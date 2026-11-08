@@ -1,0 +1,122 @@
+{
+ "type": "object",
+ "properties": {
+  "_doc": {
+   "type": "string"
+  },
+  "drawn_px": {
+   "type": "number"
+  },
+  "brush": {
+   "type": "object",
+   "properties": {
+    "step_share": {
+     "type": "number"
+    },
+    "step_least_m": {
+     "type": "number"
+    },
+    "most_steps": {
+     "type": "integer"
+    }
+   },
+   "required": [
+    "step_share",
+    "step_least_m",
+    "most_steps"
+   ],
+   "strict": true
+  },
+  "handle": {
+   "type": "object",
+   "properties": {
+    "turn_steps": {
+     "type": "integer"
+    }
+   },
+   "required": [
+    "turn_steps"
+   ],
+   "strict": true
+  },
+  "lots": {
+   "type": "object",
+   "properties": {
+    "take_px": {
+     "type": "number"
+    },
+    "catch_px": {
+     "type": "number"
+    },
+    "snap_least_m": {
+     "type": "number"
+    },
+    "mark_m": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "take_px",
+    "catch_px",
+    "snap_least_m",
+    "mark_m"
+   ],
+   "strict": true
+  },
+  "roundabout": {
+   "type": "object",
+   "properties": {
+    "scale_step": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "scale_step"
+   ],
+   "strict": true
+  },
+  "terrain": {
+   "type": "object",
+   "properties": {
+    "dab_s": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "dab_s"
+   ],
+   "strict": true
+  },
+  "zone": {
+   "type": "object",
+   "properties": {
+    "dab_spacing": {
+     "type": "number"
+    },
+    "most_dabs": {
+     "type": "integer"
+    },
+    "default_zone": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "dab_spacing",
+    "most_dabs",
+    "default_zone"
+   ],
+   "strict": true
+  }
+ },
+ "required": [
+  "_doc",
+  "drawn_px",
+  "brush",
+  "handle",
+  "lots",
+  "roundabout",
+  "terrain",
+  "zone"
+ ],
+ "strict": true
+}

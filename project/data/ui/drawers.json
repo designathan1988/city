@@ -196,6 +196,7 @@
   "building.fn.sportsCourt"
  ],
  "zone_radius": 40,
+ "zone_densities": [{"density": 0, "label_key": "zone.low", "icon": "low"}, {"density": 1, "label_key": "zone.medium", "icon": "medium"}, {"density": 2, "label_key": "zone.high", "icon": "high"}],
  "actions": [
   {"icon": "layers", "tip_key": "v2.layers", "popover": "layers"},
   {"icon": "advanced", "tip_key": "builder.menu.simulation", "popover": "sim"},
