@@ -253,11 +253,12 @@ void wild(const CityState &s, const TreeLook &T, const TreeKit &kit, const Chunk
 }
 
 // The lots' plants: each lot's garden, and the grove of a park or a square that has not been edited.
-void parks(const CityState &s, const TreeLook &T, const ChunkGround &l, int64_t key, GardenView view, std::vector<TreeInstance> &out) {
+// A clearing takes them as it takes the woods (`standing`: one not counted, as for the woods).
+void parks(const CityState &s, const TreeLook &T, const ChunkGround &l, int64_t key, GardenView view, std::vector<TreeInstance> &out, int standing = -1) {
 	for (int id : l.lots) {
 		const Building &b = s.buildings.items[size_t(id)];
 		if (chunk_of(b.x, b.z) != key) continue;
-		place_garden(s, T, b, view, out);
+		place_garden(s, T, b, view, out, standing);
 		if (b.body != 0 || !b40::is_open_lot(b.fn)) continue;
 		int n = std::min(T.park_max, int(b.w * b.d / T.park_m2_per_tree));
 		Vector3 ax(std::cos(b.rot), 0, -std::sin(b.rot)), az(std::sin(b.rot), 0, std::cos(b.rot));
@@ -267,6 +268,10 @@ void parks(const CityState &s, const TreeLook &T, const ChunkGround &l, int64_t 
 			if (!b40::open_lot_tree_ok(b.fn, b.w, b.d, lx, b.d / 2 - lz)) continue; // lot frame y runs from the street (+z side)
 			Vector3 p = Vector3(b.x, 0, b.z) + ax * lx + az * lz;
 			p.y = s.terrain.height_at(p.x, p.z);
+			if (s.nature.planted.cleared(p.x, p.z, standing)) {
+				placed++; // the grove keeps its count: the trees past the clearing stand where they stood
+				continue;
+			}
 			float height = T.park_h0 + (T.park_h1 - T.park_h0) * h01(h, HEIGHT);
 			out.push_back({ p, height, height * (1.f + (h01(h, WIDTH) * 2.f - 1.f) * T.width_vary), TAU_F * h01(h, YAW), 0, 0,
 					T.park.pick(h01(h, SPECIES)), tint_of(T, h01(h, TINT)) });
@@ -313,8 +318,9 @@ void felled_trees(const CityState &s, const TreeLook &T, const TreeKit &kit, con
 		int clearing, std::vector<TreeInstance> &out) {
 	std::vector<TreeInstance> trees;
 	wild(s, T, kit, l, key, trees, clearing);
-	for (const TreeInstance &t : trees)
-		if ((t.p.x - x) * (t.p.x - x) + (t.p.z - z) * (t.p.z - z) < r * r) out.push_back(t);
+	parks(s, T, l, key, GardenView::FELLED, trees, clearing);
+	for (const TreeInstance &t : trees) // those that stood before the clearing and stand no more
+		if ((t.p.x - x) * (t.p.x - x) + (t.p.z - z) * (t.p.z - z) < r * r && s.nature.planted.cleared(t.p.x, t.p.z)) out.push_back(t);
 }
 
 void place_far(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, const ChunkGround &l, int64_t key,

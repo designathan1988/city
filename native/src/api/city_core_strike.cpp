@@ -52,6 +52,7 @@ Dictionary CityCore::damage_probe() const {
 	d["pieces"] = render_.effect_pieces();
 	d["heave"] = render_.heave_pieces();
 	d["wires_down"] = render_.wires_down();
+	d["trees_thrown"] = render_.trees_thrown(); // where the trees the last blow's clearing took stood: the woods', a grove's, a garden's
 	d["gore_chains"] = render_.gore_chains();
 	d["gore_bones"] = render_.gore_bones();
 	d["bodies"] = render_.bodies();

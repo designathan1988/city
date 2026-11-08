@@ -105,6 +105,7 @@ public:
 	uint32_t ruin_digest(uint32_t seed) const { return effects_.ruin_digest(seed); }
 	int bodies() const { return effects_.bodies(); }
 	int bodies_moving() const { return effects_.bodies_moving(); }
+	godot::PackedVector3Array trees_thrown() const { return thrown_places_; }
 	float bodies_rising_left() const { return effects_.bodies_rising_left(); }
 	int effect_pieces() const { return effects_.pieces(); }
 	int heave_pieces() const { return effects_.heave_pieces(); } // the ground the craters heaved
@@ -183,7 +184,8 @@ private:
 	PropRenderer props_;
 	GroundKept ground_; // the chunks' ground the trees and the cover plant on: before them, so it outlives their jobs
 	TreeRenderer trees_;
-	std::vector<TreeInstance> felled_; // the woods' trees a blow brought down this frame (sync)
+	std::vector<TreeInstance> felled_; // the trees a blow's clearing took this frame (sync)
+	godot::PackedVector3Array thrown_places_; // where the trees the last blow's clearing took stood (tests)
 	CoverRenderer cover_;
 	WaterRenderer water_;
 	FogField fog_;

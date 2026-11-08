@@ -104,21 +104,26 @@ void plant_bed(const Stand &at, const TreeLook &T, const b40::LotElement &p, Dra
 bool is_plant(b40::Element kind) { return kind == b40::EL_TREE || kind == b40::EL_SHRUB || kind == b40::EL_HEDGE || kind == b40::EL_FLOWERS; }
 } // namespace
 
-void place_garden(const CityState &s, const TreeLook &T, const Building &rec, GardenView view, std::vector<TreeInstance> &out) {
+void place_garden(const CityState &s, const TreeLook &T, const Building &rec, GardenView view, std::vector<TreeInstance> &out, int standing) {
 	const std::shared_ptr<const b40::Body> body = b40::record_body(s.buildings.designs, rec);
 	const Stand at{ s, b40::lot_frame(rec), out };
 	uint32_t k = 0; // the plant's index among the body's plants: its draws
 	for (const b40::LotElement &p : body->elements) {
 		if (!is_plant(p.kind)) continue;
 		Draws r{ hash_combine(rec.seed, k++ + GARDEN_SALT) };
+		const size_t from = out.size();
 		switch (p.kind) {
 			case b40::EL_TREE: plant_tree(at, T, p, r); break;
 			case b40::EL_SHRUB: plant_shrub(at, T, p, r); break;
-			case b40::EL_HEDGE: plant_hedge(at, T, p, r); break;
+			case b40::EL_HEDGE:
+				if (view != GardenView::FELLED) plant_hedge(at, T, p, r);
+				break;
 			default:
 				if (view == GardenView::NEAR) plant_bed(at, T, p, r);
 				break;
 		}
+		if (p.kind != b40::EL_TREE && p.kind != b40::EL_SHRUB) continue;
+		out.erase(std::remove_if(out.begin() + std::ptrdiff_t(from), out.end(), [&](const TreeInstance &t) { return s.nature.planted.cleared(t.p.x, t.p.z, standing); }), out.end());
 	}
 }
 

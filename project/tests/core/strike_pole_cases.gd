@@ -15,6 +15,8 @@ const MIDDLE := 0.5
 const GROVE_OFF := Vector3(0, 0, 14) # a grove planted off the street, inside the charge's reach
 const GROVE_M := 8.0
 const GROVE := {"density": 400.0, "height": 8.0, "variation": 0.0, "spacing": 3.0} # trees a hectare
+const PARK_FROM := Vector3(-12, 0, -8) # a park drawn across the street from the grove: undo and redo hold it with the rest (its trees thrown: bomb_street_plan.json, the render throws only near the camera)
+const PARK_TO := Vector3(12, 0, -24)
 
 var t: Node # the test (TestCase): its check and frames
 
@@ -43,6 +45,8 @@ func run() -> void:
 	CityStore.dispatch(&"begin_stroke", ["cmd.place.trees"])
 	CityStore.dispatch(&"tree_path", [PackedVector3Array([mid + GROVE_OFF]), GROVE_M, 0, 0, GROVE])
 	CityStore.dispatch(&"end_stroke")
+	var park: Dictionary = CityStore.dispatch(&"draw_building", [mid + PARK_FROM, mid + PARK_TO, CityStore.code(&"BuildingFn", &"FN_PARK"), DataTables.zone_code("residential"), 0])
+	t.check(park.get("ok", false), "a park across the street: %s" % [park])
 	var grove: Dictionary = CityStore.query(&"landscape")
 	t.check(grove.planted > 0, "a grove planted beside the street (%d trees)" % grove.planted)
 	var standing: Dictionary = CityStore.query(&"street_counts")

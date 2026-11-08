@@ -1,5 +1,5 @@
 {
- "_doc": "The bomb on a street looked at in play (look.gd): one urban street across bare land with a line of the player's utility poles strung along its footway, the Demolish drawer's Bomb tab, one charge in the middle of the carriageway, the blast at 0.4, 1.2 and 4 s of its own clock, then what it left: the crater and the ground it heaved, the poles brought down and the next ones pulled over, the wires hanging from the poles left standing, the grove planted beside it thrown down tree by tree. setView's y is the ground's -z; click takes x and z.",
+ "_doc": "The bomb on a street looked at in play (look.gd): one urban street across bare land with a line of the player's utility poles strung along its footway, the Demolish drawer's Bomb tab, one charge in the middle of the carriageway, the blast at 0.4, 1.2 and 4 s of its own clock, then what it left: the crater and the ground it heaved, the poles brought down and the next ones pulled over, the wires hanging from the poles left standing, the grove planted beside it thrown down tree by tree, and the grove of the park drawn across the street (draw_building: function 6 FN_PARK, zone 1 residential) with it. setView's y is the ground's -z; click takes x and z.",
  "city": {"map": 0, "seed": 1, "generate": false},
  "steps": [
   {"hour": 16},
@@ -8,6 +8,7 @@
   {"dispatch": "begin_stroke", "args": ["cmd.place.trees"]},
   {"dispatch": "tree_path", "args": [{"path": [[-6, 16], [6, 16]]}, 9.0, 0, 0, {"density": 400.0, "height": 9.0, "variation": 0.2, "spacing": 3.0}]},
   {"dispatch": "end_stroke"},
+  {"dispatch": "draw_building", "args": [{"at": [-12, -8]}, {"at": [12, -24]}, 6, 1, 0]},
   {"setView": [0, 0, 9, 25, 32]},
   {"frames": 120},
   {"shot": "street-before"},

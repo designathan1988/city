@@ -71,8 +71,8 @@ O que falta fazer, por área.
   road, the ground it heaved, the player's poles brought down with their wires hanging, shorted buildings, arcs, leaks, the
   pieces of a lighting column, a shrub or a small box, everything laid on the street's surface. Left: a design of its own broken
   or brought down loses its painted windows and its pictures' detail (each corner takes its look's colour times the mean of its picture
-  round it: one material for every ruin); the trees of a lot's garden and of a park's grove stand through a blow (the woods' and the
-  planted ones fall); a joined lamp row (the span through a node, `join_rows`) is cut with no wire left hanging; a charge on a bridge digs its
+  round it: one material for every ruin); a blow's trees are thrown only in the chunks
+  drawn near the camera (a far chunk's go with its next bake), so a core test away from the camera sees none thrown; a joined lamp row (the span through a node, `join_rows`) is cut with no wire left hanging; a charge on a bridge digs its
   crater decal on the terrain under it (the crater keeps no height of its own); the scar of a tower shows its floor slabs' rubble
   in uniform grey; old saves whose knocked lighting columns were filed as trees show those columns again (the kinds are now
   their own). As before: the pieces land on each other by a height map, with no collision between two in the air; past 24

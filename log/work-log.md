@@ -962,3 +962,17 @@ junction's control changed by the player or by undo now draws its arms again (`m
 either, since only the lane graph was told).
 **Checks:** `signal_approach_plan.json`: two avenues under signals, each arm's arriving lines solid for the last 30 m and dashed
 before, the leaving lines dashed; `road_commands_test`, `edit_fuzz_test` pass.
+
+## 2026-11-08 12:20: a clearing takes the gardens' and the parks' trees too (English)
+**Problem:** a blow brought the woods and the player's planted trees down, but the trees of a lot's garden and a park's grove stood in
+its crater's reach; the player's own cut-trees brush left them standing too.
+**Cause:** a clearing (`PlantedTrees::cleared`) was read only by the woods' placement (`tree_place.cpp` `wild_tree`); the parks' groves
+and the gardens' plants (`parks`, `garden_place.cpp` `place_garden`) never asked it.
+**Design:** one rule: a clearing takes every tree in it. The park's grove skips a tree in a clearing (keeping its count, so the trees
+past the clearing stand where they stood) and a garden's trees and shrubs in one are not placed; a new GardenView::FELLED lists only
+what a clearing takes (never a hedge or a bed). `felled_trees` takes the woods', the groves' and the gardens' trees as they stood
+before the blow's clearing and keeps those it hides now; they are thrown as the woods' are (`EffectWorld::fell`).
+`damage_probe.trees_thrown` gives where the last blow's thrown trees stood.
+**Checks:** `bomb_street_plan.json` draws a park across the street (draw_building, FN_PARK): after the blow its trees lie thrown and
+burning, its paths and hedge stay; in the town's strikes of `strike_test` the gardens' trees in reach are thrown (`trees_thrown` in
+its log); `strike_test` (the park held by undo and redo with the rest), `edit_fuzz_test`, `save_undo_test` pass.
