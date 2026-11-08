@@ -13,11 +13,12 @@ namespace city {
 
 namespace {
 constexpr float FARTHEST_M = 1e30f; // farther than any piece: a search's start
+constexpr float FAR_DOWN_M = -1e9f; // under any ground: the height read off the pile map outside it
 } // namespace
 
 float RuinSim::Pile::at(float x, float z) const {
 	const int i = int((x - from.x) / cell), j = int((z - from.y) / cell);
-	if (i < 0 || j < 0 || i >= side || j >= side) return below;
+	if (i < 0 || j < 0 || i >= side || j >= side) return FAR_DOWN_M;
 	return top[size_t(j) * size_t(side) + size_t(i)];
 }
 
@@ -45,8 +46,7 @@ void RuinSim::begin(const std::shared_ptr<RuinMesh> &cut, const Ruin &ruin, floa
 	pile_.cell = std::max(K.pile_cell_m, 2.f * reach / float(K.pile_most_side));
 	pile_.side = int(2.f * reach / pile_.cell) + 1;
 	pile_.from = Vector2(ruin.x - reach, ruin.z - reach);
-	pile_.below = K.far_down_m;
-	pile_.top.assign(size_t(pile_.side) * size_t(pile_.side), K.far_down_m);
+	pile_.top.assign(size_t(pile_.side) * size_t(pile_.side), FAR_DOWN_M);
 	pieces_.resize(cut->pieces.size());
 	for (size_t i = 0; i < pieces_.size(); i++) {
 		const RuinPiece &src = cut->pieces[i];

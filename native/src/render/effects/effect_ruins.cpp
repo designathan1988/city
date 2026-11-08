@@ -18,6 +18,7 @@ namespace city {
 namespace {
 // The pieces' tints (sRGB, the source game's): four walls, a roof tile and glass; a building's wall is one of the first four.
 constexpr uint32_t PALETTE = 6, WALLS = 4;
+constexpr double MOUND_LONG_AGO_S = -1e6; // a mound read from the state was born long before any clock: it stands risen
 constexpr uint64_t SEED_MUL = 2654435761ULL; // Knuth's multiplicative hash of the record's seed
 constexpr uint32_t SEED_BITS = 0xFFFu; // a mound's seed: twelve bits of the record's hash
 const Color WALL_CREAM = Color(0.78f, 0.72f, 0.6f);
@@ -37,7 +38,7 @@ void EffectWorld::pile(const Ruin &r, bool falling, bool mound, bool loose) {
 	const float height = storeys / K.storeys_per_m, heap = heap_of(r);
 	const float c = std::cos(r.rot), sn = std::sin(r.rot);
 	const Color wall = PALETTE_TINTS[hash_u32(r.seed) % WALLS]; // each building its own wall; the roof and glass are common to all
-	if (mound) mounds_.add(Vector3(r.x, ground_here_, r.z), r.rot, r.w * MOUND_SPREAD, r.d * MOUND_SPREAD, heap, wall, float(hash_u32(r.seed) & SEED_BITS) / K.seed_span, falling ? now_ : K.mound_long_ago_s);
+	if (mound) mounds_.add(Vector3(r.x, ground_here_, r.z), r.rot, r.w * MOUND_SPREAD, r.d * MOUND_SPREAD, heap, wall, float(hash_u32(r.seed) & SEED_BITS) / K.seed_span, falling ? now_ : MOUND_LONG_AGO_S);
 	for (int i = 0; loose && i < n; i++) {
 		const float u = (rng.f() - 0.5f) * r.w, v = (rng.f() - 0.5f) * r.d;
 		const float x = r.x + u * c + v * sn, z = r.z - u * sn + v * c;
