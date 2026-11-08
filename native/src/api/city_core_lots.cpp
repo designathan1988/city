@@ -141,7 +141,7 @@ int CityCore::lot_at(const Vector3 &p) {
 Array CityCore::lots() {
 	Array out;
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
-	for (const PlayerLot &l : state_->lot_book.lots) {
+	for (const PlayerLot &l : state_->lot_book.all()) {
 		Dictionary d;
 		d["id"] = l.id;
 		d["zone"] = l.zone;

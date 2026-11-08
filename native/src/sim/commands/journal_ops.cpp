@@ -123,11 +123,6 @@ void record_list(CityState &s, const std::vector<R> &before, const std::vector<R
 	}
 }
 
-int lot_index(const LotBook &book, int id) {
-	for (size_t i = 0; i < book.lots.size(); i++)
-		if (book.lots[i].id == id) return int(i);
-	return -1;
-}
 } // namespace
 
 size_t op_bytes(const EditOp &op) { return sizeof(EditOp) + std::visit(Heap{}, op.payload); }
@@ -323,27 +318,28 @@ int j_add_modifier(CityState &s, const std::vector<float> &pts, float flat, floa
 int j_add_lot(CityState &s, PlayerLot lot) {
 	LotBook &book = s.lot_book;
 	lot.id = book.next_id++;
-	book.lots.push_back(lot);
-	if (s.history.recording) record(s, OpKind::ADD_LOT, lot.id, Listed<PlayerLot>{ int(book.lots.size()) - 1, std::move(lot) });
+	const int id = lot.id;
+	book.add(lot);
+	if (s.history.recording) record(s, OpKind::ADD_LOT, id, Listed<PlayerLot>{ int(book.all().size()) - 1, std::move(lot) });
 	s.touch();
-	return book.lots.back().id;
+	return id;
 }
 
 void j_remove_lot(CityState &s, int id) {
 	LotBook &book = s.lot_book;
-	const int i = lot_index(book, id);
+	const int i = book.index_of(id);
 	if (i < 0) return;
-	if (s.history.recording) record(s, OpKind::REM_LOT, id, Listed<PlayerLot>{ i, book.lots[size_t(i)] });
-	book.lots.erase(book.lots.begin() + i);
+	if (s.history.recording) record(s, OpKind::REM_LOT, id, Listed<PlayerLot>{ i, book.all()[size_t(i)] });
+	book.erase(i);
 	s.touch();
 }
 
 void j_edit_lot(CityState &s, int id, const PlayerLot &after) {
 	LotBook &book = s.lot_book;
-	const int i = lot_index(book, id);
+	const int i = book.index_of(id);
 	if (i < 0) return;
-	if (s.history.recording) record(s, OpKind::EDIT_LOT, id, Edited<PlayerLot>{ i, book.lots[size_t(i)], after });
-	book.lots[size_t(i)] = after;
+	if (s.history.recording) record(s, OpKind::EDIT_LOT, id, Edited<PlayerLot>{ i, book.all()[size_t(i)], after });
+	book.set(i, after);
 	s.touch();
 }
 

@@ -49,8 +49,10 @@ EditResult refused(const char *why) {
 }
 
 bool free_of_lots(const LotBook &book, const std::vector<LotPoint> &q) {
-	for (const PlayerLot &l : book.lots)
-		if (lots_overlap(q, l.corners)) return false;
+	double x0 = FAR_OFF_M, z0 = FAR_OFF_M, x1 = -FAR_OFF_M, z1 = -FAR_OFF_M;
+	bounds(q, x0, z0, x1, z1);
+	for (int i : book.near(x0, z0, x1, z1)) // two rings deep in each other share their bounds
+		if (lots_overlap(q, book.all()[size_t(i)].corners)) return false;
 	return true;
 }
 
@@ -107,7 +109,8 @@ void cut_lots_by_roads(CityState &s, double minx, double minz, double maxx, doub
 		std::vector<std::vector<LotPoint>> pieces;
 	};
 	std::vector<Crossed> crossed; // only the lots a road crosses are copied, before the book changes
-	for (const PlayerLot &lot : s.lot_book.lots) {
+	for (int i : s.lot_book.near(minx, minz, maxx, maxz)) {
+		const PlayerLot &lot = s.lot_book.all()[size_t(i)];
 		double x0 = FAR_OFF_M, z0 = FAR_OFF_M, x1 = -FAR_OFF_M, z1 = -FAR_OFF_M;
 		bounds(lot.corners, x0, z0, x1, z1);
 		if (x1 < minx || x0 > maxx || z1 < minz || z0 > maxz) continue;
@@ -131,7 +134,8 @@ void cut_lots_by_roads(CityState &s, double minx, double minz, double maxx, doub
 EditResult move_lot_corner(CityState &s, const LotPoint &from, const LotPoint &to) {
 	std::vector<PlayerLot> moved;
 	std::vector<std::vector<LotPoint>> touched;
-	for (const PlayerLot &l : s.lot_book.lots) {
+	for (int i : s.lot_book.near(from.x - CORNER_TAKE_M, from.z - CORNER_TAKE_M, from.x + CORNER_TAKE_M, from.z + CORNER_TAKE_M)) {
+		const PlayerLot &l = s.lot_book.all()[size_t(i)];
 		PlayerLot after = l;
 		bool any = false;
 		for (LotPoint &q : after.corners)
@@ -152,7 +156,9 @@ EditResult move_lot_corner(CityState &s, const LotPoint &from, const LotPoint &t
 EditResult curve_lot_side(CityState &s, const LotPoint &a, const LotPoint &b, const LotPoint &through) {
 	std::vector<PlayerLot> bent;
 	std::vector<std::vector<LotPoint>> touched;
-	for (const PlayerLot &l : s.lot_book.lots) {
+	// the side's two ends are a and b, either way round: a lot it is on has a corner by a
+	for (int i : s.lot_book.near(a.x - SIDE_REACH_M, a.z - SIDE_REACH_M, a.x + SIDE_REACH_M, a.z + SIDE_REACH_M)) {
+		const PlayerLot &l = s.lot_book.all()[size_t(i)];
 		const std::vector<LotPoint> &q = l.corners;
 		for (size_t k = 0; k < q.size(); k++) {
 			const LotPoint p = q[k], r = q[(k + 1) % q.size()];

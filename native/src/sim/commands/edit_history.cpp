@@ -39,14 +39,15 @@ void exec_lot(CityState &s, const EditOp &op, bool fwd) {
 	LotBook &book = s.lot_book;
 	if (op.kind == OpKind::EDIT_LOT) {
 		const Edited<PlayerLot> &e = op.get<Edited<PlayerLot>>();
-		put_edited(book.lots, e, fwd);
+		book.set(e.index, fwd ? e.after : e.before);
 		mark_lot_cells(s, e.before.corners);
 		mark_lot_cells(s, e.after.corners);
 		return;
 	}
 	const Listed<PlayerLot> &l = op.get<Listed<PlayerLot>>();
 	const bool in = (op.kind == OpKind::ADD_LOT) == fwd;
-	put_listed(book.lots, l, in);
+	if (in) book.insert(l.index, l.record);
+	else book.erase(l.index);
 	if (op.kind == OpKind::ADD_LOT) book.next_id = fwd ? l.record.id + 1 : l.record.id; // j_add_lot gave it the book's next id
 	mark_lot_cells(s, l.record.corners);
 }
@@ -226,7 +227,7 @@ void EditHistory::begin(const std::string &label) {
 }
 
 void EditHistory::end(CityState &s, bool ok) {
-	if (ok && open.has_box && !s.lot_book.lots.empty() && moved_paving(open, begin_ops)) {
+	if (ok && open.has_box && !s.lot_book.empty() && moved_paving(open, begin_ops)) {
 		settle_network(s); // the lots are cut by the paving as it now stands (its junctions' shapes)
 		cut_lots_by_roads(s, open.minx - SETTLE_PAD_M, open.minz - SETTLE_PAD_M, open.maxx + SETTLE_PAD_M, open.maxz + SETTLE_PAD_M);
 	}

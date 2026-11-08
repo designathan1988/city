@@ -2381,6 +2381,28 @@ when an item is put down changes what an item does when its road moves (B3). The
 **Verified** (`city-verify`, `quick --all`): 44 of 45, the digest equal, `gates_changed` clean; `00-cidade`, `02-rua` and
 `03-rua_noite` each byte-equal to runs before C7 (the last two to the saved state of 21:21).
 
+### 6.14 B2, C7 (R4's book, the lot snap, the zone overlay): the player's lots filed by their book (2026-11-08)
+
+**Cause.** The book of the player's lots was a bare vector anyone wrote, so nothing could keep what is derived from it: the lot
+cache built a `LotIndex` (every lot's stand worked out again) on every recompute; `LotBook::find/at`, the journal's
+`lot_index`, five lot commands, the lot snap on every pointer move (`lot_corner_near`) and each zone overlay job
+(`overlay_build.cpp`) walked every lot.
+
+**Fix.** `LotBook` owns its lots: the edits (`add`, `insert`, `erase`, `set`, `assign`: the journal, undo and redo, a load) file
+it again as they change it (each lot's stand, the lots by place, by id, and the zoned ones by their stand's cell), and the readers
+ask it: `near(box)` gives the lots round a box in the book's order, so every answer is the one walking the book gave (the first
+lot holding a point, the nearest corner on a tie, the order the journal records). `LotIndex` is gone. Splitting by
+responsibility what this made too long: the ring geometry left the book (`sim/lots/lot_rings.{h,cpp}`), the paving as polygons
+left the lot against the streets (`sim/citygen/lot_paving.{h,cpp}`).
+
+**Left of R4 for B3.** Lots derived per 256 m cell from a 576 m window, under the exclusive lock in `finish_command`: deriving
+them per block in jobs outside the lock moves when lots appear, and growth with them (B3, with its predicted diff); the three
+constants of one reach (`lot_cache.cpp:15`, `lot_gen.h:20`, `road_network.cpp:16`) go with it.
+
+**Verified** (`city-verify`, `quick --all`, with the splits): 43 of 45, the digest equal; `00-cidade`, `03-rua_noite` byte-equal to
+runs before C7; `gates_changed` only what the files had (`overlay_build.cpp` 0xff, two constants that moved with the geometry,
+`edit_history.cpp` and `journal_ops.cpp` already past the size limit).
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

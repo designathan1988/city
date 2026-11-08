@@ -20,10 +20,8 @@ public:
 	void clear() { by_cell.clear(); }
 	// Recomputes every cell listed in the log (threads: one cell per task); clears the list.
 	void process_dirty(CityState &s);
-	// The lots of one cell computed from the current streets (the player's lots read through `players`, built once for
-	// every cell of a recompute).
+	// The lots of one cell computed from the current streets, the player's lots read through their book's own filing.
 	static std::vector<Lot> compute(const CityState &s, int64_t key);
-	static std::vector<Lot> compute(const CityState &s, int64_t key, const LotIndex &players);
 	// What the streets would cut there, every side taken as zoned: the lots the Lots tab proposes (planLots of the 4.0).
 	static std::vector<Lot> proposal(const CityState &s, int64_t key);
 	const std::vector<Lot> *lots_of(int64_t key) const {

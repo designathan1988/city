@@ -125,8 +125,11 @@ OverlayRenderer::Ribbon OverlayRenderer::build_zone_cpu(const CityState &s, int6
 			else strip(r, s, sg, -p.right - zone_depth_, -p.right, col, false);
 		}
 	});
-	for (const PlayerLot &lot : s.lot_book.lots)
+	const double cx = double(key_x(key)) * CHUNK, cz = double(key_y(key)) * CHUNK;
+	for (int i : s.lot_book.near(cx, cz, cx + CHUNK, cz + CHUNK)) {
+		const PlayerLot &lot = s.lot_book.all()[size_t(i)];
 		if (lot.zone != 0) lot_cover(r, s, lot, key);
+	}
 	return r;
 }
 
