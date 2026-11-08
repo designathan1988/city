@@ -179,7 +179,7 @@ func _build(a: Vector3, e: Vector3) -> void:
 
 
 func _layers(a: Vector3, e: Vector3) -> void:
-	var zoned: Dictionary = CityStore.dispatch(&"paint_zone", [a.lerp(e, 0.5), 80.0, DataTables.zone_code("commercial")])
+	var zoned: Dictionary = CityStore.dispatch(&"paint_zone", [a.lerp(e, 0.5), 80.0, ZoneTable.code("commercial")])
 	_check(zoned.ok, "zoned the road: %s" % zoned)
 	CityStore.dispatch(&"set_speed", [CityStore.code(&"SimSpeed", &"NORMAL")])
 	for i in 120:

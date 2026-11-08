@@ -4,6 +4,7 @@
 // cuts, the furniture it knocks out, the vehicles and walkers it reaches. The render is told by events.
 #include "sim/commands/strike_internal.h"
 
+#include "sim/commands/edit_journal.h"
 #include "sim/commands/road_edit.h"
 
 #include <algorithm>

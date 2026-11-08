@@ -1,4 +1,4 @@
-// Parses data/render/buildings.json into the building generator's tables (sim/buildings/b40/data.h) through the strict reader
+// Parses data/catalog/buildings.json into the building generator's tables (sim/buildings/b40/data.h) through the strict reader
 // (api/data_reader.h): every key, type, list length and name is checked, and a problem is an error at startup, never a default.
 #include "api/buildings_loader.h"
 

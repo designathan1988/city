@@ -4,6 +4,7 @@
 // under it is a flat disc at the centre's height.
 #include "core/units.h"
 #include "sim/commands/commands.h"
+#include "sim/commands/edit_journal.h"
 #include "sim/commands/road_edit.h"
 #include "sim/economy/road_economy.h"
 

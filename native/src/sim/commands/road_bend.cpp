@@ -2,6 +2,7 @@
 // the height the player gives a node, within the steepest grade a road may be drawn at; the whole road bent, taken up and laid again
 // through the steps of a new road; and two roads in line made one.
 #include "sim/commands/commands.h"
+#include "sim/commands/edit_journal.h"
 #include "sim/commands/road_edit.h"
 #include "sim/commands/street_commands.h"
 

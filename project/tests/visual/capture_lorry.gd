@@ -31,7 +31,7 @@ static func _new_street() -> Vector3:
 ## `cap` is the capture scene (its camera, _frames and _shot).
 static func shots(cap: Node) -> void:
 	var at := _new_street()
-	print("industrial zone at ", at, ": ", CityStore.dispatch(&"paint_zone", [at, ZONE_RADIUS_M, DataTables.zone_code("industrial")]))
+	print("industrial zone at ", at, ": ", CityStore.dispatch(&"paint_zone", [at, ZONE_RADIUS_M, ZoneTable.code("industrial")]))
 	cap.camera.global_position = at + Vector3(CAMERA_BACK, CAMERA_UP, CAMERA_BACK)
 	for i in GROW_STEPS:
 		await cap._frames(1)

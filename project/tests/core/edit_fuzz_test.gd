@@ -147,7 +147,7 @@ func _edit() -> void:
 		CityStore.dispatch(&"upgrade_road", [road, rng.randi_range(0, 3), false])
 	elif kind == Edit.ZONE:
 		CityStore.dispatch(&"begin_stroke", ["cmd.place.zone"])
-		CityStore.dispatch(&"paint_zone", [road, ZONE_RADIUS, DataTables.zone_code("residential")])
+		CityStore.dispatch(&"paint_zone", [road, ZONE_RADIUS, ZoneTable.code("residential")])
 		CityStore.dispatch(&"end_stroke")
 	else:
 		var seg: Dictionary = CityStore.query(&"segment_at", [road])
@@ -195,7 +195,7 @@ func _other(kind: int, road: Vector3) -> void:
 			if not box.is_empty() and rng.randf() < 0.5:
 				BodyEdits.run(rng, drawn, box)
 			else:
-				var r: Dictionary = CityStore.dispatch(&"draw_building", [a, b, 0, DataTables.zone_code("residential"), rng.randi_range(0, PLAN_SHAPES)])
+				var r: Dictionary = CityStore.dispatch(&"draw_building", [a, b, 0, ZoneTable.code("residential"), rng.randi_range(0, PLAN_SHAPES)])
 				drawn = r.get("placed", -1) if r.get("ok", false) else drawn
 		Edit.STOP:
 			CityStore.dispatch(&"transit_stop", [road])
@@ -212,7 +212,7 @@ func _other(kind: int, road: Vector3) -> void:
 			if lots.is_empty() or rng.randf() < 0.5:
 				CityStore.dispatch(&"lot_add_rect", [a, a + Vector3(LOT_M, 0, LOT_M), 0.0])
 			else:
-				CityStore.dispatch(&"lot_zone", [lots[rng.randi_range(0, lots.size() - 1)].id, DataTables.zone_code("residential")])
+				CityStore.dispatch(&"lot_zone", [lots[rng.randi_range(0, lots.size() - 1)].id, ZoneTable.code("residential")])
 		_: # Edit.BLAST
 			if rng.randf() < 0.5:
 				CityStore.dispatch(&"strike", [road, rng.randi_range(1, STRIKE_MAX)])
@@ -230,7 +230,7 @@ func _brush_path(road: Vector3) -> void:
 	CityStore.dispatch(&"begin_stroke", ["cmd.place.paint"])
 	match which:
 		0:
-			CityStore.dispatch(&"paint_zone_path", [PackedVector3Array([road, road + Vector3(ZONE_RADIUS, 0, 0)]), ZONE_RADIUS, DataTables.zone_code("residential")])
+			CityStore.dispatch(&"paint_zone_path", [PackedVector3Array([road, road + Vector3(ZONE_RADIUS, 0, 0)]), ZONE_RADIUS, ZoneTable.code("residential")])
 		1:
 			CityStore.dispatch(&"paint_path", [dabs, BRUSH_M, 1.0, 0.5, rng.randi_range(0, BRUSH_MODES)])
 		2:

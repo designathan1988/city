@@ -55,8 +55,8 @@ func _undo_cases(a: Vector3, e: Vector3) -> void:
 		return CityStore.dispatch(&"build_road", [a + VARIANT_OFF, e + VARIANT_OFF, false, Vector3.ZERO, four, 0.25]))
 	_round("zone (stroke)", func() -> Dictionary:
 		CityStore.dispatch(&"begin_stroke", ["cmd.place.zone"])
-		var r: Dictionary = CityStore.dispatch(&"paint_zone", [mid, ZONE_RADIUS, DataTables.zone_code("residential")])
-		CityStore.dispatch(&"paint_zone", [mid + Vector3(ZONE_RADIUS, 0, 0), ZONE_RADIUS, DataTables.zone_code("residential")])
+		var r: Dictionary = CityStore.dispatch(&"paint_zone", [mid, ZONE_RADIUS, ZoneTable.code("residential")])
+		CityStore.dispatch(&"paint_zone", [mid + Vector3(ZONE_RADIUS, 0, 0), ZONE_RADIUS, ZoneTable.code("residential")])
 		CityStore.dispatch(&"end_stroke")
 		return r)
 	_round("upgrade", func() -> Dictionary: return CityStore.dispatch(&"upgrade_road", [mid, CityStore.profile_index("avenue"), true]))
@@ -66,7 +66,7 @@ func _undo_cases(a: Vector3, e: Vector3) -> void:
 	_round("roundabout", func() -> Dictionary: return CityStore.dispatch(&"roundabout", [ring, RING_RADIUS, false]))
 	var lot := mid + Vector3(0, 0, LOT_M)
 	_round("drawn building", func() -> Dictionary:
-		return CityStore.dispatch(&"draw_building", [lot, lot + Vector3(LOT_M, 0, LOT_M), CityStore.code(&"BuildingFn", &"FN_PARK"), DataTables.zone_code("residential"), 0]))
+		return CityStore.dispatch(&"draw_building", [lot, lot + Vector3(LOT_M, 0, LOT_M), CityStore.code(&"BuildingFn", &"FN_PARK"), ZoneTable.code("residential"), 0]))
 	var hill := _hill(e)
 	var h0 := _height(hill)
 	CityStore.dispatch(&"begin_stroke", ["cmd.place.terrainBrush"])
@@ -155,7 +155,7 @@ func _drop(slot: String) -> void:
 
 
 func _save_round_trip(a: Vector3, e: Vector3) -> void:
-	CityStore.dispatch(&"paint_zone", [(a + e) * 0.5, ZONE_RADIUS, DataTables.zone_code("residential")])
+	CityStore.dispatch(&"paint_zone", [(a + e) * 0.5, ZONE_RADIUS, ZoneTable.code("residential")])
 	ticks(GROW_TICKS)
 	var sculpted := _hill(e)
 	var saved := _counts()

@@ -64,7 +64,7 @@ func _site(camera: Camera3D, far: Vector3) -> void:
 		if built.ok:
 			break
 	var at := from + out * STREET_M * 0.5
-	var zoned: Dictionary = CityStore.dispatch(&"paint_zone", [at, ZONE_RADIUS_M, DataTables.zone_code("industrial")])
+	var zoned: Dictionary = CityStore.dispatch(&"paint_zone", [at, ZONE_RADIUS_M, ZoneTable.code("industrial")])
 	print("site ", at, " road ", built.ok, " ", built.error, " zoned sides ", zoned.zoned_sides)
 	camera.global_position = at + Vector3.UP * CAMERA_UP_M
 	for i in GROW_STEPS:

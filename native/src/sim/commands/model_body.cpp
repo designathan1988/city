@@ -1,4 +1,4 @@
-// A model of data/render/models.json made into a body (model_ops.h): blocks with their fills, doors and patterns, then the parts, all
+// A model of data/catalog/models.json made into a body (model_ops.h): blocks with their fills, doors and patterns, then the parts, all
 // moved to the lot frame. A model has no seed: its random bits (the flat roofs' membrane) come from its name.
 #include "core/random.h"
 #include "sim/buildings/b40/gen.h"

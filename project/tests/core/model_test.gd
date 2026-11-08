@@ -45,7 +45,7 @@ func _ready() -> void:
 
 func _catalogue() -> void:
 	var list: Array = CityStore.query(&"model_list")
-	var table: Array = DataTables.style_of(DataTables.RENDER_TABLES.models, DataTables.REGIONAL_STYLE).models
+	var table: Array = DataTables.style_of(DataTables.CATALOG.models, DataTables.REGIONAL_STYLE).models
 	var listed: Array = list.map(func(m: Dictionary) -> String: return m.id)
 	var written: Array = table.map(func(m: Dictionary) -> String: return m.id)
 	listed.sort()

@@ -1,7 +1,7 @@
 // Civic buildings and open lots of the records with a function: the
 // body of a school, church, hospital, clinic, gas station, supermarket, mall, city hall, police and fire station
 // (civic.cpp, civic_services.cpp), and squares, parks and sports courts laid as lot elements (open_lots.cpp). Colours
-// are names of data/render/buildings.json "colors". Bodies come out in the lot frame (x from the lot's middle, y from
+// are names of data/catalog/buildings.json "colors". Bodies come out in the lot frame (x from the lot's middle, y from
 // the street), like make_body.
 #pragma once
 

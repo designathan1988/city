@@ -2,6 +2,7 @@
 // and laid again through the same steps as a new road, so a crossing makes a junction, an overlap is refused and the
 // whole edit rolls back as one undo step.
 #include "sim/commands/commands.h"
+#include "sim/commands/edit_journal.h"
 #include "sim/commands/street_commands.h"
 #include "sim/commands/road_edit.h"
 

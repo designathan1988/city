@@ -1,4 +1,4 @@
-// Parses data/render/interiors.json into the interior tables (sim/buildings/interior/tables.h) through the strict reader
+// Parses data/catalog/interiors.json into the interior tables (sim/buildings/interior/tables.h) through the strict reader
 // (api/data_reader.h): every key, type, length and name is checked (an unknown piece, edge, purpose or step is an error at
 // startup, never a silent default); the keys a step may leave out take the value the format gives them.
 #include "api/interiors_loader.h"

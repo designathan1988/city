@@ -46,6 +46,7 @@ public:
 	godot::Dictionary canyon_field() const;
 	int64_t canyon_revision() const;
 	godot::Dictionary shore_field() const;
+	int64_t shore_revision() const;
 
 protected:
 	static void _bind_methods();

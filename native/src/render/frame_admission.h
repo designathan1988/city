@@ -89,10 +89,11 @@ public:
 	// The frame's one flush of the RenderingServer's queue: a worker's bake converts its arrays on the worker and queues only the
 	// upload, which the server runs at the main thread's next call into it (Godot server_wrap_mt_common.h: flush_if_pending). The
 	// admitted bakes that finished since the last frame (their bytes paid when admitted) run their uploads here, at a fixed point
-	// inside the deadline, and the time is the frame's uploads (a getter is the wrapped call that runs the queue and does nothing else). Returns milliseconds.
+	// inside the deadline, and the time is the frame's uploads (RenderingServer::force_sync, the call Godot binds for it: the queue
+	// synced with the render thread, or flushed without one). Returns milliseconds.
 	double flush_uploads() const {
 		const clock::time_point at = clock::now();
-		godot::RenderingServer::get_singleton()->get_video_adapter_name();
+		godot::RenderingServer::get_singleton()->force_sync();
 		return std::chrono::duration<double, std::milli>(clock::now() - at).count();
 	}
 

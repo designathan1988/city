@@ -1,6 +1,7 @@
 // Zone brush (Roadcraft src/features/zones/zoneTool.ts dab + clearSide): paints the zone on the road sides whose
 // frontage the brush touches; a building of another base zone facing a repainted side is knocked down.
 #include "sim/commands/commands.h"
+#include "sim/commands/edit_journal.h"
 #include "sim/commands/road_edit.h"
 
 #include "sim/buildings/growth.h"

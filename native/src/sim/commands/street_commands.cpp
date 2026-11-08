@@ -2,6 +2,7 @@
 // item or a row of them, a Stop or Give Way plate that becomes its approach's rule, a barrier, and taking away what stands
 // at a point. What a road carries goes with it or moves with its new sidewalks.
 #include "sim/commands/commands.h"
+#include "sim/commands/edit_journal.h"
 #include "sim/commands/street_commands.h"
 #include "sim/commands/street_journal.h"
 #include "sim/commands/road_edit.h"

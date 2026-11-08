@@ -1,4 +1,4 @@
-// The building generator's tables, filled once from data/render/buildings.json by api/buildings_loader.cpp: styles,
+// The building generator's tables, filled once from data/catalog/buildings.json by api/buildings_loader.cpp: styles,
 // style weights per kind and era, palettes, named colours and the opening table. Plain data (no Godot types): the
 // simulation reads it to lay the lots out, the render to draw them. How far each level is drawn is the render's
 // (render/buildings/building_look.h).
@@ -68,7 +68,7 @@ struct Data {
 	// Which filling of the tables this is: a new Data (the catalogue loaded again) has another, a copy the same. What caches
 	// bodies made from the tables keys them by it.
 	uint64_t generation = new_generation();
-	ModelTable models; // the Build > Models catalogue (data/render/models.json)
+	ModelTable models; // the Build > Models catalogue (data/catalog/models.json)
 	std::shared_ptr<BodyTable> edited = std::make_shared<BodyTable>(); // the bodies the player made; the rest of Data is read-only
 	std::shared_ptr<BodyCache> made = std::make_shared<BodyCache>(); // the records' bodies made from these tables (record.h), shared by a copy
 	// By zone code, what the generator builds there and whether it is a low shop street (zones.json, set at boot: buildings_loader.h

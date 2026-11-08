@@ -52,7 +52,7 @@ func _ready() -> void:
 	_road_end(e)
 	_snapping(a, e)
 	_freehand(e)
-	var z: Dictionary = CityStore.dispatch(&"paint_zone", [(a + e) * 0.5, ZONE_RADIUS, DataTables.zone_code("residential")])
+	var z: Dictionary = CityStore.dispatch(&"paint_zone", [(a + e) * 0.5, ZONE_RADIUS, ZoneTable.code("residential")])
 	print("zone: ", z, " cells growing: ", CityStore.snapshot.growth_cells)
 	check(z.ok and z.zoned_sides > 0, "zoned sides: %d" % z.get("zoned_sides", 0))
 	check(CityStore.snapshot.player_zones == z.zoned_sides, "counts the player's sides")

@@ -1,6 +1,6 @@
 """Writes project/data/render/furniture.json: what each piece of furniture is made of, part by part, for the cut-open
 view of a building (native/src/render/buildings/interior_emit.cpp). Each model is built at the size of its row in
-data/render/interiors.json "sizes" (across W, deep D, high H) and scaled to the piece placed. A part is
+data/catalog/interiors.json "sizes" (across W, deep D, high H) and scaled to the piece placed. A part is
   ["box", [across, up, deep], [centre x, bottom y, centre z], colour, {options}]
   ["cyl", [radius, height, radius at top], [centre x, bottom y, centre z], colour, {options}]
   ["ball", [radius], [centre x, centre y, centre z], colour]
@@ -14,6 +14,7 @@ import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, "..", "..", "project", "data", "render")
+CATALOG = os.path.join(HERE, "..", "..", "project", "data", "catalog")
 PALETTE = {
 	"oak": ["wood", "#9a6a43"], "walnut": ["wood", "#5e3d26"], "linen": ["plaster", "#f2efe8"], "duvet": ["plaster", "#7d93ad"],
 	"fabric": ["plaster", "#6f7f8f"], "cushion": ["plaster", "#84929f"], "black": ["plaster", "#1e2125"], "steel": ["metal", "#b3b9bd"],
@@ -190,7 +191,7 @@ def build(kind, W, D, H):
 
 
 def main():
-	sizes = json.load(open(os.path.join(DATA, "interiors.json"), encoding="utf-8"))["sizes"]
+	sizes = json.load(open(os.path.join(CATALOG, "interiors.json"), encoding="utf-8"))["sizes"]
 	models = {k: build(k, w, d, h) for k, w, d, h in sizes}
 	doc = ("What each piece of furniture is made of, part by part, for the cut-open view of a building (tools/assets/make_furniture.py writes it "
 		"from the sizes of interiors.json). A part is [shape, size, place, colour, options]; see the script for the shapes and options.")

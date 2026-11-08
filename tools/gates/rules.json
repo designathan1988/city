@@ -113,7 +113,18 @@
     ],
     "native/src/sim/state": [
       "core/",
-      "sim/"
+      "sim/buildings/",
+      "sim/catalog/",
+      "sim/demolition/",
+      "sim/lots/",
+      "sim/nature/",
+      "sim/roads/",
+      "sim/simulation/city_growth.h",
+      "sim/state/",
+      "sim/street/",
+      "sim/terrain/",
+      "sim/traffic/",
+      "sim/transit/"
     ],
     "native/src/sim/terrain": [
       "core/",
@@ -305,7 +316,7 @@
   ],
   "schemas": {
     "project/data/catalog/tuning.json": "tools/gates/schemas/tuning.schema.json",
-    "project/data/render/models.json": "tools/gates/schemas/models.schema.json",
+    "project/data/catalog/models.json": "tools/gates/schemas/models.schema.json",
     "project/data/catalog/maps.json": "tools/gates/schemas/maps.schema.json",
     "project/data/catalog/nature.json": "tools/gates/schemas/nature.schema.json",
     "project/data/catalog/scenic.json": "tools/gates/schemas/scenic.schema.json",
@@ -324,8 +335,9 @@
     "project/data/render/agents.json": "tools/gates/schemas/agents.schema.json",
     "project/data/render/transit.json": "tools/gates/schemas/transit.schema.json",
     "project/data/render/effects.json": "tools/gates/schemas/effects.schema.json",
-    "project/data/render/buildings.json": "tools/gates/schemas/buildings.schema.json",
-    "project/data/render/interiors.json": "tools/gates/schemas/interiors.schema.json",
+    "project/data/catalog/buildings.json": "tools/gates/schemas/buildings.schema.json",
+    "project/data/render/building_look.json": "tools/gates/schemas/building_look.schema.json",
+    "project/data/catalog/interiors.json": "tools/gates/schemas/interiors.schema.json",
     "project/data/render/furniture.json": "tools/gates/schemas/furniture.schema.json",
     "project/data/game/interior.json": "tools/gates/schemas/interior.schema.json",
     "project/data/render/materials.json": "tools/gates/schemas/materials.schema.json",

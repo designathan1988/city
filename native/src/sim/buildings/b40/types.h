@@ -1,5 +1,5 @@
 // The building body: the vocabulary codes (bays, roofs, dress, finishes), in the order the lists of
-// data/render/buildings.json name them, and the
+// data/catalog/buildings.json name them, and the
 // plain structures the generator fills (lot plan, volumes with storeys and bay overrides, lot elements, cores).
 // Lengths in metres in the lot frame: x along the street front from the lot's middle, y away from the street, z up.
 #pragma once

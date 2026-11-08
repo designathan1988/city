@@ -22,6 +22,9 @@ const SALT_R := 8
 const PUFF_FIELDS := 4
 
 ## Drift of the clouds so far, on the map (x, z), metres; the cloud tool takes it off what it keeps.
+## The landscape as it was read, for the rest of the world (CityWorld: the biome, the water).
+signal landscape_read(land: Dictionary)
+
 var drift := Vector2.ZERO
 var weather := {}
 var clouds: Array = []
@@ -107,9 +110,10 @@ func strike_at(p: Vector3) -> void:
 	_weather_view.strike(p)
 
 
-func _process(dt: float) -> void:
+## One frame of the sky, driven by CityWorld after its own (the sun and the clock first); false while there is no city to read.
+func step(dt: float) -> bool:
 	if not CityStore.ready_to_read():
-		return
+		return false
 	var rev: int = CityStore.query(&"sky_revision")
 	if rev != _seen:
 		_seen = rev
@@ -124,8 +128,6 @@ func _process(dt: float) -> void:
 	if _world.daylight.night != _lamp_night:
 		_lamp_night = _world.daylight.night
 		CityStore.dispatch(&"set_lamp_night", [_lamp_night])
-	var sun: Vector3 = _world.sun.global_basis.z
-	_world.contact.follow(sun, _d.contact_most * _world.daylight.direct_share * clampf(sun.y * _d.contact_sun_gain, 0.0, 1.0))
 	var fog_rev: int = CityStore.query(&"fog_revision") # the render takes new windows in; read and bound only then
 	if fog_rev != _fog_seen:
 		_fog_seen = fog_rev
@@ -136,6 +138,7 @@ func _process(dt: float) -> void:
 		_canyon_seen = canyon_rev
 		_canyon_field = CityStore.query(&"canyon_field")
 		_apply_canyon()
+	return true
 
 
 func _read() -> void:
@@ -143,8 +146,7 @@ func _read() -> void:
 	weather = land.weather
 	clouds = land.clouds
 	_shape_clouds()
-	_world.set_map_biome(land.biome)
-	_world.set_water_look(weather)
+	landscape_read.emit(land)
 	# Rain thickens the air: what the player set, or the rain's own mist if that is more.
 	var rain: float = weather.get("rain", 0.0)
 	_air = maxf(weather.mist, rain * _d.rain_mist)

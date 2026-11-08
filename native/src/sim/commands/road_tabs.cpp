@@ -2,6 +2,7 @@
 // changeProfiles / streetChain / mirrorSymmetric / alongStreet): split a segment where clicked, upgrade a segment or a
 // whole street to the profile in hand (Shift), charging the difference in value or refunding a share of it.
 #include "sim/commands/commands.h"
+#include "sim/commands/edit_journal.h"
 #include "sim/commands/street_commands.h"
 #include "sim/commands/road_edit.h"
 #include "sim/economy/road_economy.h"

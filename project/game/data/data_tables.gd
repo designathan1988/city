@@ -13,6 +13,9 @@ const CATALOG := {
 	"blast": "res://data/catalog/blast.json",
 	"nature": "res://data/catalog/nature.json",
 	"scenic": "res://data/catalog/scenic.json",
+	"buildings": "res://data/catalog/buildings.json",
+	"models": "res://data/catalog/models.json",
+	"interiors": "res://data/catalog/interiors.json",
 }
 ## Tables split only to keep each file small; merged under the same key they extend.
 const CATALOG_FRAGMENTS := {
@@ -26,11 +29,9 @@ const RENDER_TABLES := {
 	"palette": "res://data/render/palette.json",
 	"streets": "res://data/render/streets.json",
 	"cover": "res://data/render/cover.json",
-	"buildings": "res://data/render/buildings.json",
+	"building_look": "res://data/render/building_look.json",
 	"bay_props": "res://data/render/bay_props.json",
-	"interiors": "res://data/render/interiors.json",
 	"furniture": "res://data/render/furniture.json",
-	"models": "res://data/render/models.json",
 	"materials": "res://data/render/materials.json",
 	"agents": "res://data/render/agents.json",
 	"overlays": "res://data/render/overlays.json",
@@ -157,22 +158,6 @@ static func map_index(id: String) -> int:
 		if list[i].id == id:
 			return i
 	return -1
-
-
-## The code of zone `id` (zones.json), -1 when there is none.
-static func zone_code(id: String) -> int:
-	for z: Dictionary in catalog_table("zones").zones:
-		if z.id == id:
-			return int(z.code)
-	return -1
-
-
-## The text key of zone code `code` (zones.json name_key), "" when there is none.
-static func zone_name_key(code: int) -> String:
-	for z: Dictionary in catalog_table("zones").zones:
-		if int(z.code) == code:
-			return z.name_key
-	return ""
 
 
 static func render() -> Dictionary:

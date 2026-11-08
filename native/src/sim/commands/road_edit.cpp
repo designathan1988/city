@@ -1,6 +1,7 @@
 // Shared steps of the road commands (Roadcraft construction/execute.ts splitSeg, anchorNode, clearAndConform).
 #include "sim/commands/road_edit.h"
 
+#include "sim/commands/edit_journal.h"
 #include "sim/commands/road_grade_sync.h"
 #include "sim/roads/street_furniture.h"
 #include "sim/street/footway.h"

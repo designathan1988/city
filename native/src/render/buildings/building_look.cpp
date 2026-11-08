@@ -1,4 +1,4 @@
-// data/render/buildings.json -> BuildingLook (the render's part of the buildings table, with the bay props of bay_props.json and
+// data/render/building_look.json -> BuildingLook (the buildings' look, with the bay props of bay_props.json and
 // the interior's furniture of furniture.json), through the strict reader
 // (render/data_reader.h). The lists are built whole and assigned, so a second boot reads the table again instead of adding to it.
 #include "render/buildings/building_look.h"
@@ -22,7 +22,7 @@ float num(DataReader &r, const Dictionary &d, const char *key) { return float(r.
 bool BuildingLook::load(const Dictionary &t, const Dictionary &bay_props, const Dictionary &furniture, const Dictionary &camera,
 		PackedStringArray &errors) {
 	const int64_t before = errors.size();
-	DataReader r{ errors, "buildings.json" };
+	DataReader r{ errors, "building_look.json" };
 	DataReader rc{ errors, "camera.json" };
 	far_fov_deg = num(rc, camera, "far_fov_deg");
 	const Dictionary lod = r.table(t, "lod");

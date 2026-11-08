@@ -1,4 +1,4 @@
-// How the buildings are drawn, from data/render/buildings.json ("lod", "parts", "lot", "roof"): the distance shares of the
+// How the buildings are drawn, from data/render/building_look.json ("lod", "parts", "lot", "roof"): the distance shares of the
 // detail levels, the part visibility bands, the far switch and rebuild pacing, and the sizes of the thin drawn pieces.
 // The generator's own tables (styles, palettes, openings) are the simulation's (sim/buildings/b40/data.h).
 #pragma once

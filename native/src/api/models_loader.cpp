@@ -1,4 +1,4 @@
-// Parses data/render/models.json through the strict reader (api/data_reader.h). Rows of parts and fences all round a rectangle
+// Parses data/catalog/models.json through the strict reader (api/data_reader.h). Rows of parts and fences all round a rectangle
 // are laid out here, once, into plain elements; a missing key, a wrong type or length and an unknown name are errors at startup,
 // never a silent default (the keys the format leaves out take the value it gives them).
 #include "api/models_loader.h"

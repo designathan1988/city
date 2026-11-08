@@ -58,7 +58,7 @@ func _make(slot: String) -> void:
 		var far := _far_in(sample, TAU * i / SITES, TAU / SITES)
 		var end := far + Vector3(far.x, 0, far.z).normalized() * STREET_M
 		CityStore.dispatch(&"build_road", [far, end, false, Vector3.ZERO, PROFILE, PX])
-		CityStore.dispatch(&"paint_zone", [(far + end) * 0.5, ZONE_RADIUS_M, DataTables.zone_code("industrial")])
+		CityStore.dispatch(&"paint_zone", [(far + end) * 0.5, ZONE_RADIUS_M, ZoneTable.code("industrial")])
 		for k in GROW_STEPS:
 			await get_tree().process_frame
 			CityStore.step_ticks(STEP_TICKS)

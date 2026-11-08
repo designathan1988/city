@@ -1,5 +1,6 @@
-## Builds the 3D world around the core: Terrain3D (ground override shader), sun, sky, water, and the materials the
-## C++ renderers draw with (data/render/materials.json). Colours come from data/render/palette.json.
+## Builds the 3D world around the core: Terrain3D (ground override shader), sun, sky, water; keeps the materials the C++
+## renderers draw with (WorldMaterials makes them) and fans the landscape the sky reads out to the land and the water.
+## Colours come from data/render/palette.json.
 class_name CityWorld
 extends Node3D
 
@@ -23,6 +24,7 @@ var marks: ChangeMarks # F8
 var water: CityWater
 var _mesh_size := 0
 var _terrain_target: Node3D # what the terrain's clipmap centres on (_follow_view)
+var _sky_table: Dictionary # the contact shade's share of the sun (data/game/sky.json)
 var sky_mode: String:
 	get:
 		return daylight.mode
@@ -38,51 +40,15 @@ func _ready() -> void:
 	marks = ChangeMarks.new()
 	add_child(marks)
 	sky = SkyView.new(self)
+	sky.landscape_read.connect(_take_landscape)
 	add_child(sky)
+	_sky_table = DataTables.game("sky")
 
 
-## A material's parameters: the shared sets it uses (materials.json _shared), then its own.
-static func material_params(table: Dictionary, key: String) -> Dictionary:
-	var out := {}
-	for set_name: String in table[key].get("uses", []):
-		out.merge(table._shared[set_name])
-	out.merge(table[key].params, true)
-	return out
-
-
-## The materials of data/render/materials.json, by name (textures loaded from their res:// paths).
+## The materials of data/render/materials.json, by name (WorldMaterials), kept alive here, with the sign sheet the props read.
 func materials() -> Dictionary:
 	if _materials.is_empty():
-		var table: Dictionary = DataTables.render_table("materials")
-		for key in table:
-			if key.begins_with("_"):
-				continue
-			var m := EffectMaterials.make(key, table[key], environment)
-			var params := material_params(table, key)
-			for name in params:
-				m.set_shader_parameter(name, shader_value(params[name]))
-			if key == "road":
-				SurfaceMeans.apply(m, params, shader_value)
-			elif key == "verge":
-				_set_ground(m)
-			elif key == "prop":
-				LampRadiance.lenses(m, environment)
-			elif key == "agent":
-				LampRadiance.vehicles(m, environment)
-			_materials[key] = m
-			if table[key].has("fade_shader"): # the same material for what is handing over to another level (building_level.gdshaderinc)
-				var fade: ShaderMaterial = m.duplicate()
-				fade.shader = load(table[key].fade_shader)
-				_materials[key + "_fade"] = fade
-			for variant: String in ["ruin", "body"]: # the same material for a building coming down in pieces (ruin_pieces.h) and somebody off their feet (body_renderer.h)
-				if table[key].has(variant + "_shader"):
-					var other: ShaderMaterial = m.duplicate()
-					other.shader = load(table[key][variant + "_shader"])
-					_materials[key + "_" + variant] = other
-			for layer in int(table[key].get("layers", 0)): # the same material drawn in this order (render_priority)
-				var over: ShaderMaterial = m.duplicate()
-				over.render_priority = layer
-				_materials["%s_%d" % [key, layer]] = over
+		_materials = WorldMaterials.make_all(environment, _set_ground)
 		add_child(SignSheet.new(DataTables.render_table("streets").signs, _materials.prop))
 		_materials["water"] = water.own # the lakes and rivers of the core (render/water) wear the sea's material
 	return _materials
@@ -116,6 +82,12 @@ static func shader_value(v: Variant) -> Variant:
 	if v is Array:
 		return PackedFloat32Array(v)
 	return v
+
+
+## What the landscape says of the land and the water, as the sky read it.
+func _take_landscape(land: Dictionary) -> void:
+	set_map_biome(land.biome)
+	set_water_look(land.weather)
 
 
 ## The map's biome tints the grass (0 none, else the biome's index + 1).
@@ -211,6 +183,9 @@ func _process(_delta: float) -> void:
 	var cam := get_viewport().get_camera_3d()
 	daylight.follow_view(cam)
 	_follow_view(cam)
+	if sky.step(_delta):
+		var toward: Vector3 = sun.global_basis.z
+		contact.follow(toward, _sky_table.contact_most * daylight.direct_share * clampf(toward.y * _sky_table.contact_sun_gain, 0.0, 1.0))
 
 
 ## The terrain's clipmap and LODs centre on the camera that draws the city, or on the world's origin while none does (a test of the

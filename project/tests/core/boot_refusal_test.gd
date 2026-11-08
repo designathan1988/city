@@ -11,13 +11,13 @@ const ROADCRAFT := ["styles", "roadcraft"]
 ## has never held one, and the game is checked standing behind them; the render's after, against a good catalogue (ERASED is
 ## the missing-key case).
 const RENDER_CASES := [
-	["buildings", ROADCRAFT + ["architectures", 0, "opening"], [0.4, 0.4, 0.6, 0.6], "opening: expected 5 items, found 4"],
-	["models", ROADCRAFT + ["part_sizes", 0, 0], "sofa", "unknown part 'sofa'"],
-	["interiors", ROADCRAFT + ["sizes", 0, 0], "hammock", "unknown piece 'hammock'"],
 	["transit", ["station", 0, "part"], "kiosk", "unknown part 'kiosk'"],
 	["effects", ["bursts", 0, "count"], "many", "count: expected float, found String"],
 ]
 const CATALOG_CASES := [
+	["buildings", ROADCRAFT + ["architectures", 0, "opening"], [0.4, 0.4, 0.6, 0.6], "opening: expected 5 items, found 4"],
+	["models", ROADCRAFT + ["part_sizes", 0, 0], "sofa", "unknown part 'sofa'"],
+	["interiors", ROADCRAFT + ["sizes", 0, 0], "hammock", "unknown piece 'hammock'"],
 	["traffic", ["classes", 0], [2.4, 2.9, 6.0, 1.2, 2.0, 1.0, 4.4], "classes[0]: expected 8 items, found 7"],
 	["road_profiles", ["profiles", 0, "strips", 0, "kind"], "moat", "unknown strip kind 'moat'"],
 	["zones", ["zones", 0, "color"], "#88888", "color: expected '#rrggbb', found '#88888'"],

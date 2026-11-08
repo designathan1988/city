@@ -1,4 +1,4 @@
-// data/render/buildings.json -> the building generator's tables kept by the simulation (BuildingStore::designs).
+// data/catalog/buildings.json -> the building generator's tables kept by the simulation (BuildingStore::designs).
 #pragma once
 
 #include "render/data_reader.h"

@@ -1,4 +1,4 @@
-// Build > Models: a model as data/render/models.json puts it together, block by block. Coordinates in metres from the model's own
+// Build > Models: a model as data/catalog/models.json puts it together, block by block. Coordinates in metres from the model's own
 // front left corner; sim/commands/model_body.cpp turns one into a body in the lot frame. Plain data, filled by api/models_loader.cpp.
 #pragma once
 

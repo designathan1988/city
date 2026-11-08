@@ -2869,6 +2869,42 @@ reach through `city` was checked (each pair of same-named functions is a declara
 **Verified** (`city-verify`, `quick --all`, both DLLs): every test passes, the digest equal, the four photos byte-equal to known
 states; `gates_changed` reports only `commands.h`'s length, shorter than it was.
 
+### 6.29 B2, C12 (first part): the pipeline's owners where nothing moves (2026-11-08)
+
+**Causes and fixes.**
+- **The source of truth included the layer that mutates it** (`city_state.h:12` included `sim/commands/edit_journal.h` for
+  `EditHistory`, and through it every render file saw the journal's mutations). The history's records (operations, entries,
+  `EditHistory`) are the state's data: `sim/state/edit_history.h`; the journal that writes them and runs them backwards and forwards
+  stays `sim/commands/edit_journal.h`, included by the eleven commands and the survey that call it. `rules.json` `cpp_layers` lists
+  what `sim/state` may include, `sim/commands` not among it, so the dependency cannot come back.
+- **The frame's upload flush rested on an engine internal (L12)**: `frame_admission.h` called `get_video_adapter_name()` for its side
+  effect; it calls `RenderingServer::force_sync`, the call Godot binds for it.
+- **Two protocols for a revisioned field**: `shore_view.gd` built the shore's whole Dictionary every frame to compare a revision;
+  `shore_revision` (`ShoreField::view_revision`) is asked each frame and the field only when it moved, as the fog and the canyon.
+- **The sky view owned what is not the sky**: it set the map's biome and the water's look from its landscape read and drove the
+  contact shade. It tells what it read (`landscape_read`) and CityWorld lays the biome and the water; CityWorld drives the sky's step
+  (`step`, after its own frame, the order it had) and the contact shade from the sun it owns.
+- **The simulation's data loaded in the render setup, from render files (A5)**: the building generator's tables, the Build > Models
+  catalogue and the interiors' recipes go to `data/catalog/` (`buildings.json`, `models.json`, `interiors.json`) and load in
+  `load_catalog`; what the render draws them with stays `data/render/building_look.json` (the facade parts, the lot fence, the roof
+  plant by style, the far finishes, the levels of detail). The catalogue and the building tables are read aside and taken in whole:
+  a refused building table no longer leaves the core with a catalogue and no generator (the refusal test's "no roads to offer"
+  found it when the cases moved). Schemas follow the files.
+- With these, `city_world.gd` and `data_tables.gd` passed their length: the world's materials are a responsibility of their own
+  (`render/world_materials.gd`, `WorldMaterials`), and so are the zones' lookups (`game/data/zone_table.gd`, `ZoneTable`).
+
+**Not here, and why.** Transit built on the main thread (L3) and the buildings' second result protocol (L4) are the pipeline's
+redesign; `DetailView` (L5) is either the families' levels chosen by their error (a behaviour change, B3) or deleted; the god classes
+(L9, A6, `RenderWorld`) and opening a city in a job are refactors of their own, next. `JOB_SEM_CHAVE` is the gate contradicting
+itself (its pattern in `rules.json` allows `submit(JobKey{`, its check forbids it): C16. The jobs' own lock (C6's architecture) is
+the measured design §6.10 left.
+
+**What changes.** Nothing: the same tables, read in the same order before any body; the same frame order; the same shore and sky.
+
+**Verified** (`city-verify`, `quick --all`, both DLLs): every test passes, the digest equal, the four photos byte-equal to known
+states; `gates_changed` reports only what the files had (`sky_view.gd`'s length and hash literals, `inspector_panel.gd`'s, the
+flag colours in `types.h`, the fuzz test's length).
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at
