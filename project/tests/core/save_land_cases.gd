@@ -28,7 +28,7 @@ static func run(t: Node, slot: String) -> void:
 	var w := FileAccess.open_compressed(path, FileAccess.WRITE, FileAccess.COMPRESSION_ZSTD)
 	w.store_buffer(old)
 	w.close()
-	var r: Dictionary = CityStore.saves.load_game(slot, true)
+	var r: Dictionary = await CityStore.saves.load_game(slot, true)
 	t.check(r.get("ok", false), "a file of the format before opens: %s" % r)
 	var half: float = CityStore.query(&"city_bounds").half
 	t.check(is_equal_approx(half, OLD_HALF_M), "and stands on the land it was made on: %.0f m" % half)

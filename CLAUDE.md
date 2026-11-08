@@ -187,7 +187,7 @@ the same sources give the same bytes, so a rebuild of unchanged sources leaves t
 - A building's body is made once and kept by the generator tables' cache (`sim/buildings/b40/body_cache.h`, through
   `record_body`/`record_mass`), read by the simulation and the render alike.
 - A conversão de malha entra em `render.upload_budget_mb` por quadro; o commit só troca malhas, em `render.commit_budget_ms`.
-- Poses por `PoseBuffer`. O save grava em thread própria.
+- Poses through `PoseBuffer`. A save writes and an opening reads on threads of their own (the main thread takes the city in whole).
 
 ## Luz e relógio
 - `Daylight` é o dono do sol, do ambiente e do céu. À noite o sol vira lua sem sombra; a luz da rua é `LampLights`.

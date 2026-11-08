@@ -27,7 +27,7 @@ func _ready() -> void:
 	await _edits()
 	_units()
 	_sharp()
-	_saves()
+	await _saves()
 	_session()
 	finish()
 
@@ -167,7 +167,7 @@ func _saves() -> void:
 	var f := FileAccess.open(bad, FileAccess.WRITE)
 	f.store_string("this is no city")
 	f.close()
-	var r: Dictionary = CityStore.saves.open_file(bad)
+	var r: Dictionary = await CityStore.saves.open_file(bad)
 	check(not r.get("ok", true), "a bad file is refused")
 	check(CityStore.snapshot.get("ready", false) and CityStore.snapshot.segments == before, "the city on screen stayed")
 	for i in 2:

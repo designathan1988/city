@@ -29,7 +29,7 @@ func _ready() -> void:
 	if OS.get_cmdline_user_args().has("--make"):
 		await _make(slot)
 	CityStore.new_map(TOWN_MAP, SEED, false) # nothing of the city made survives the load
-	var opened: Dictionary = CityStore.saves.load_game(slot)
+	var opened: Dictionary = await CityStore.saves.load_game(slot)
 	if not opened.get("ok", false):
 		_quit("FAIL: opening %s %s" % [slot, opened])
 		return

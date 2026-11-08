@@ -27,7 +27,7 @@ func menu(action: String) -> void:
 		"save_map":
 			_refused(CityStore.saves.export_map())
 		"load_last":
-			_loaded(CityStore.saves.load_last())
+			_loaded(await CityStore.saves.load_last())
 		"open":
 			_hud().open_popover("files")
 		"open_file":
@@ -93,7 +93,7 @@ func _pick_file() -> void:
 
 ## A city file: opened, or nothing changed and the player told so.
 func open_file(file: String) -> void:
-	var r := CityStore.saves.open_file(file)
+	var r: Dictionary = await CityStore.saves.open_file(file)
 	_hud().drawer.close()
 	_hud().flash(tr("hint.opened") if r.get("ok", false) else tr("hint.openFailed"), r.get("ok", false))
 
@@ -111,7 +111,7 @@ func show_impossible() -> void:
 
 
 func load_slot(slot: String) -> void:
-	_loaded(CityStore.saves.load_game(slot))
+	_loaded(await CityStore.saves.load_game(slot))
 
 
 func _loaded(r: Dictionary) -> void:

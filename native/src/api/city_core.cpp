@@ -49,6 +49,7 @@ Vector3 ground_seen(const Camera3D &cam) {
 CityCore::~CityCore() {
 	free_areas(); // first: they point at the state and the render
 	join_save();
+	join_load();
 	sim_.stop();
 	if (state_ && state_->jobs) state_->jobs->wait_idle();
 	render_.reset();
@@ -111,6 +112,7 @@ Dictionary CityCore::new_map(int map, int seed, bool with_city, bool paused) {
 	d["ok"] = false;
 	if (!catalog_ok_) return d;
 	join_save();
+	join_load();
 	sim_.stop();
 	CityGenReport r;
 	{

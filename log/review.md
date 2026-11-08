@@ -2905,6 +2905,28 @@ the measured design §6.10 left.
 states; `gates_changed` reports only what the files had (`sky_view.gd`'s length and hash literals, `inspector_panel.gd`'s, the
 flag colours in `types.h`, the fuzz test's length).
 
+### 6.30 B2, C12 (opening a city): the file decoded aside, the city taken in with no job inside it (2026-11-08)
+
+**Cause.** Opening a city froze the frame (§3n `city_core_persist.cpp:109-136`, §3q `city_saves.gd:81-92`): `load_city` read the
+file, decoded it (`decode_city`: the land from its seed, every road graded, every lot cell) and took it in, all on the main thread.
+
+**Fix.** `load_city` reads the file on the main thread (the engine's compressed `FileAccess`) and decodes it on a thread of its own
+into the city aside (`LoadJob`); `load_poll` answers `pending` until it is read, then takes it in as before. `CitySaves.load_game`,
+`load_last` and `open_file` wait frames for it (`_opened`), and the game and the tests `await` them.
+
+**What the change found.** With the frames going on during the decode, two tests died off the main thread (an access violation, a
+division by zero, four rounds in five): `take_city` swaps the whole `CityData`, the catalogue and the building tables with it, and
+frees the old city, while render jobs that copied their inputs under a short lock went on reading those tables outside it (the
+canyon's `record_mass` on `s.buildings.designs`, the ruins' pointer to them, the shore's and the fog's reads of the catalogue). The
+synchronous opening had the same race, hidden by timing: no frame submitted jobs while it decoded. `JobPool::pause` hands out no
+work and waits for the running jobs; the opening pauses the pool around the swap, and the jobs that start after it block on the map
+lock or read whole tables. Six rounds of the opening tests after it: none died.
+
+**What changes.** The frame no longer stops while a city decodes; the city taken in is the same (the digest equal).
+
+**Verified** (`city-verify`, `quick --all`, both DLLs, and the six save-opening tests six times): every test passes, the digest
+equal, the photos byte-equal to known states; `gates_changed` reports only what the files had.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

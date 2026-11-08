@@ -48,6 +48,11 @@ public:
 	uint64_t submit(JobKey key, float priority, std::function<void()> work);
 	void parallel_for(size_t n, const std::function<void(size_t)> &fn); // blocks until done
 	void wait_idle(); // blocks until the queue is empty and no worker is running
+	// Hands out no more work and returns once none runs, until resume(): what the caller changes then, no job sees half done (the
+	// city taken in whole, catalogue and tables with it, which some jobs read outside the map lock). parallel_for still finishes,
+	// on the caller alone; wait_idle must not be asked in between.
+	void pause();
+	void resume();
 	size_t tracked(); // keys with a job still queued: none once the pool is idle (a key is forgotten when its newest job is taken)
 	uint64_t replaced() const { return replaced_.load(); } // queued jobs a newer one of their key took the place of
 	// The job `seq` of `key` is still the newest submitted for its key (a running job polls it to stop early).
@@ -80,6 +85,7 @@ private:
 	std::priority_queue<Item, std::vector<Item>, Later> q_;
 	std::deque<std::function<void()>> helpers_; // parallel_for helpers, taken before any keyed job
 	size_t busy_ = 0;
+	bool paused_ = false;
 	std::unordered_map<JobKey, Slot, JobKeyHash> slots_;
 	// Each key's newest submitted seq while that job is queued or running (current()): gone when it finishes.
 	std::unordered_map<JobKey, uint64_t, JobKeyHash> newest_;

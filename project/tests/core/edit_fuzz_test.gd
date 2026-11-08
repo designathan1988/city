@@ -97,7 +97,7 @@ func _reopened(seed: int, before: Dictionary) -> void:
 	var slot := "%s_%d" % [SLOT, seed]
 	var saved: Dictionary = await save(slot)
 	check(saved.get("ok", false), "seed %d is written: %s" % [seed, saved])
-	var r: Dictionary = CityStore.saves.load_game(slot, true)
+	var r: Dictionary = await CityStore.saves.load_game(slot, true)
 	check(r.get("ok", false), "seed %d opens: %s" % [seed, r])
 	_same(before, _hash(), "seed %d save and open" % seed)
 	DirAccess.remove_absolute(CityStore.saves.save_path(slot))

@@ -142,7 +142,7 @@ func _refuses_bad_balance() -> void:
 	CityStore.dispatch(&"set_marking_style", [(int(CityStore.snapshot.marking_style) + 1) % STYLES_TRIED, true])
 	var before := _counts()
 	var could_undo: bool = CityStore.snapshot.can_undo
-	var r: Dictionary = CityStore.saves.load_game(SLOT, true)
+	var r: Dictionary = await CityStore.saves.load_game(SLOT, true)
 	check(not r.get("ok", false) and r.get("error", "") == "save.file.damaged", "an infinite balance refused: %s" % r)
 	check(could_undo and CityStore.snapshot.can_undo and _counts() == before, "the open city stayed as it was, with what to undo: %s == %s" % [_counts(), before])
 	_drop(SLOT)
@@ -175,7 +175,7 @@ func _save_round_trip(a: Vector3, e: Vector3) -> void:
 	new_map(TOWN_MAP, OTHER_SEED, false)
 	check(_counts() != saved, "a new map is another")
 	var t0 := Time.get_ticks_usec()
-	var r: Dictionary = CityStore.saves.load_game(SLOT, true)
+	var r: Dictionary = await CityStore.saves.load_game(SLOT, true)
 	print("opening: %d ms" % ((Time.get_ticks_usec() - t0) / 1000))
 	var got := _counts()
 	got.grown = CityStore.snapshot.grown

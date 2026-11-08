@@ -33,6 +33,6 @@ func _ready() -> void:
 		return
 	for round in ROUNDS:
 		var t0 := Time.get_ticks_msec()
-		var r: Dictionary = CityStore.saves.open_file(file)
+		var r: Dictionary = await CityStore.saves.open_file(file)
 		print("open %d: %d ms, ok %s, %s" % [round, Time.get_ticks_msec() - t0, r.get("ok", false), r.get("ms", {})])
 	get_tree().quit(0)

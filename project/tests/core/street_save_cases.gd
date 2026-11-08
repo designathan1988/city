@@ -25,7 +25,7 @@ func run() -> void:
 	t.check(saved.get("ok", false), "the city is written: %s" % saved)
 	t.new_map(TOWN_MAP, OTHER_SEED, true)
 	t.check(CityStore.query(&"street_counts").poles == 0, "a new city with no poles")
-	var loaded: Dictionary = CityStore.saves.load_game(SLOT, true)
+	var loaded: Dictionary = await CityStore.saves.load_game(SLOT, true)
 	t.check(loaded.get("ok", false), "the file opens: %s" % loaded)
 	var after: Dictionary = CityStore.query(&"street_counts")
 	for key in KEYS:
@@ -54,7 +54,7 @@ func _old_save(with_street: Dictionary) -> void:
 	w.store_buffer(old)
 	w.close()
 	var bounds: Dictionary = CityStore.query(&"city_bounds")
-	var r: Dictionary = CityStore.saves.load_game(SLOT, true)
+	var r: Dictionary = await CityStore.saves.load_game(SLOT, true)
 	t.check(r.get("ok", false), "a save with no block opens %s" % r)
 	var now: Dictionary = CityStore.query(&"street_counts")
 	for key in KEYS:

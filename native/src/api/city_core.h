@@ -150,7 +150,10 @@ public:
 	// --- save / open (city_core_persist.cpp)
 	godot::Dictionary save_city(const godot::String &path);
 	godot::Dictionary save_status(); // { busy, ok, error, bytes } of the background save
+	// Opening runs aside: load_city starts it ({ pending } or a refusal), load_poll answers { pending } until the city is read, then
+	// takes it in and answers as the opening did ({ ok, error, ms }).
 	godot::Dictionary load_city(const godot::String &path, bool paused = false);
+	godot::Dictionary load_poll();
 
 	// --- queries (city_core_query.cpp)
 	godot::Dictionary snapshot();
@@ -204,6 +207,8 @@ private:
 	SaveJob save_;
 	godot::Object *terrain3d() const;
 	void join_save(); // waits for a save in flight before the state changes or is destroyed
+	LoadJob load_;
+	void join_load(); // waits for an opening in flight; what it read is dropped (another city or the end comes first)
 	std::unique_ptr<CityState> state_;
 	Simulation sim_;
 	// The materials the render draws with (render/city_world.gd makes them): held while its meshes reference them, so

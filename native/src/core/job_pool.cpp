@@ -109,6 +109,20 @@ size_t JobPool::tracked() {
 	return slots_.size();
 }
 
+void JobPool::pause() {
+	std::unique_lock<std::mutex> lk(m_);
+	paused_ = true;
+	idle_cv_.wait(lk, [&]() { return busy_ == 0; });
+}
+
+void JobPool::resume() {
+	{
+		std::lock_guard<std::mutex> lk(m_);
+		paused_ = false;
+	}
+	cv_.notify_all();
+}
+
 void JobPool::wait_idle() {
 	std::unique_lock<std::mutex> lk(m_);
 	idle_cv_.wait(lk, [&]() { return idle(); });
@@ -123,7 +137,7 @@ void JobPool::loop() {
 		uint64_t seq = 0;
 		{
 			std::unique_lock<std::mutex> lk(m_);
-			cv_.wait(lk, [&]() { return stop_ || !q_.empty() || !helpers_.empty(); });
+			cv_.wait(lk, [&]() { return stop_ || (!paused_ && (!q_.empty() || !helpers_.empty())); });
 			if (stop_ && q_.empty() && helpers_.empty()) return;
 			if (!helpers_.empty()) {
 				work = std::move(helpers_.front());
@@ -159,7 +173,7 @@ void JobPool::loop() {
 				if (it != newest_.end() && it->second == seq) newest_.erase(it);
 			}
 			--busy_;
-			if (idle()) idle_cv_.notify_all();
+			if (busy_ == 0) idle_cv_.notify_all(); // wait_idle and pause wake on it
 		}
 	}
 }
