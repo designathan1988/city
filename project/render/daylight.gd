@@ -45,6 +45,10 @@ func _init(day: Dictionary, sun: DirectionalLight3D, fill: DirectionalLight3D, t
 	_sky = sky
 	cascades = SunCascades.new(day, sun)
 	RenderingServer.global_shader_parameter_set(&"rooms_in_use", day.rooms_in_use)
+	var kinds := WorldMaterials.uniform_kinds(sky.shader)
+	for key: String in day.sky_shader: # the gradient's own shape, once
+		if not key.begins_with("_"):
+			sky.set_shader_parameter(key, WorldMaterials.typed(kinds, key, day.sky_shader[key]))
 
 
 func _c(key: String) -> Color:

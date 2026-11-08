@@ -3644,6 +3644,18 @@ tones; the pane the same, its lots' multipliers now from the room tone. Both DLL
 
 **What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56); the road walls the same numbers from tuning.
 
+### 6.63 B2, C14 (the sky): its gradient's shape in daylight.json (2026-11-08)
+
+**Cause and fix.** `sky.gdshader` wrote the 4.0's gradient as bare numbers (31 findings): the zenith's power, the sun's warmth on
+the low band, what night takes of it, the ground's edge, the sun's glow and disc. They are `daylight.json`'s `sky_shader` block
+(schema typed and strict), which `Daylight` sets once by name and uniform type. The colours' defaults are gone: `Daylight` sets
+every colour, the low band's share and the gain at every hour, the first as soon as it is made (`CityWorld._build_environment`),
+before the sky is drawn.
+
+**Proof.** The shader with the block put back is HEAD's code line for line but for the dead defaults. `quick` with §6.62: every test passes.
+
+**What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56).
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at
