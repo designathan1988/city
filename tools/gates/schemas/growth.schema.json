@@ -35,6 +35,46 @@
    ],
    "strict": true
   },
+  "fit": {
+   "type": "object",
+   "properties": {
+    "inset_m": {
+     "type": "number"
+    },
+    "tries": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "setback_share": {
+        "type": "number"
+       },
+       "width_share": {
+        "type": "number"
+       },
+       "density_drop": {
+        "type": "integer"
+       }
+      },
+      "required": [
+       "setback_share",
+       "width_share",
+       "density_drop"
+      ],
+      "strict": true
+     },
+     "minItems": 1
+    }
+   },
+   "required": [
+    "inset_m",
+    "tries"
+   ],
+   "strict": true
+  },
+  "pick_reach_m": {
+   "type": "integer"
+  },
   "organic_reach_m": {
    "type": "integer"
   },
@@ -51,6 +91,8 @@
  "required": [
   "_doc",
   "civic",
+  "fit",
+  "pick_reach_m",
   "organic_reach_m",
   "organic_extra_floors",
   "decay_span_min",

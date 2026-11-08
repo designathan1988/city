@@ -20,6 +20,11 @@ struct LotFrame {
 };
 LotFrame lot_frame(const Building &rec);
 
+// The body's solid ground blocks on the ground in the world, BLOCK_CORNERS corners each, every block drawn `inset` metres in from its own
+// sides: what stands on the lot, as growth fits it to the lot's ring (sim/buildings/growth.h) and the building probe shows it.
+constexpr size_t BLOCK_CORNERS = 4;
+std::vector<V2> ground_corners(const Body &b, const Building &rec, float inset);
+
 // The record's body: the version the player edited, or a civic building, an open lot or a grown building made from its seed.
 // Made once and kept by the tables' cache (body_cache.h), shared and never changed: an edit copies it.
 std::shared_ptr<const Body> record_body(const Data &data, const Building &rec);

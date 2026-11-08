@@ -177,6 +177,28 @@ LotStand lot_stand(const std::vector<LotPoint> &q) {
 	return st;
 }
 
+namespace {
+// Which side of a -> b the point p lies on (the cross product's sign, nought on the line).
+int turn_sign(const LotPoint &a, const LotPoint &b, const LotPoint &p) {
+	const double c = (b.x - a.x) * (p.z - a.z) - (b.z - a.z) * (p.x - a.x);
+	return (c > 0) - (c < 0);
+}
+// Whether the segments p -> q and r -> t cross at a point inside both.
+bool sides_cross(const LotPoint &p, const LotPoint &q, const LotPoint &r, const LotPoint &t) {
+	return turn_sign(p, q, r) * turn_sign(p, q, t) < 0 && turn_sign(r, t, p) * turn_sign(r, t, q) < 0;
+}
+} // namespace
+
+bool ring_holds(const std::vector<LotPoint> &ring, const std::vector<LotPoint> &shape) {
+	if (ring.size() < 3) return false;
+	for (const LotPoint &p : shape)
+		if (!inside_lot(p, ring)) return false;
+	for (size_t i = 0; i < shape.size(); i++)
+		for (size_t k = 0; k < ring.size(); k++)
+			if (sides_cross(shape[i], shape[(i + 1) % shape.size()], ring[k], ring[(k + 1) % ring.size()])) return false;
+	return true;
+}
+
 std::vector<LotPoint> lot_rect(const LotPoint &a, const LotPoint &b, double angle) {
 	const double ux = std::cos(angle), uz = std::sin(angle), vx = -uz, vz = ux;
 	const double ds = (b.x - a.x) * ux + (b.z - a.z) * uz, dt = (b.x - a.x) * vx + (b.z - a.z) * vz;

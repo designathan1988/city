@@ -16,6 +16,18 @@ LotFrame lot_frame(const Building &rec) {
 	return LotFrame{ V2(rec.x + rec.d / 2 * sn, rec.z + rec.d / 2 * cs), V2(cs, -sn), V2(-sn, -cs) };
 }
 
+std::vector<V2> ground_corners(const Body &b, const Building &rec, float inset) {
+	const LotFrame f = lot_frame(rec);
+	std::vector<V2> out;
+	for (const Volume &v : b.volumes) {
+		if (v.base != 0 || v.mode != BLOCK_SOLID) continue;
+		const float ix = std::min(inset, v.w / 2), iy = std::min(inset, v.d / 2);
+		const float x0 = v.x + ix, x1 = v.x + v.w - ix, y0 = v.y + iy, y1 = v.y + v.d - iy;
+		out.insert(out.end(), { f.at(x0, y0), f.at(x1, y0), f.at(x1, y1), f.at(x0, y1) });
+	}
+	return out;
+}
+
 std::shared_ptr<const Body> record_body(const Data &data, const Building &rec) { return data.made->body(data, rec); }
 
 std::shared_ptr<const Body> record_mass(const Data &data, const Building &rec) { return data.made->mass(data, rec); }

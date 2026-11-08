@@ -25,7 +25,9 @@ int base_zone(const Catalog &c, int zone_id); // the zone's base kind (zones.jso
 // Is a building standing on the lot (any record within 0.8 of the two half sizes)?
 bool lot_occupied(const CityState &s, const Lot &l);
 // Record for lot i of a cell's lot list: a middling block answers its neighbours' height, the body says the storeys, and of the
-// lot's candidates the one least like what stands round it is kept (likeness.h).
+// lot's candidates the one least like what stands round it is kept (likeness.h). The body is fitted to the lot's ring (the player's
+// lot of any shape, else the lot's rectangle): the growth data's fit tries in order (as drawn, set back, narrower, a density lower),
+// the first whose ground blocks lie inside the ring kept, the last when none does.
 Building record_for(CityState &s, const std::vector<Lot> &cell_lots, int i);
 // How a record's body looks, read once (BuildingStore::looks).
 BodyLook look_of(CityState &s, const Building &rec);

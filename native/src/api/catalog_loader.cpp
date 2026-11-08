@@ -165,6 +165,18 @@ void load_growth(DataReader r, const Dictionary &t, GrowthDef &g) {
 			g.civic_by_zone[z].push_back({ rz.in(i).integer_at(row, 0), rz.in(i).integer_at(row, 1) });
 		}
 	}
+	const Dictionary fit = r.table(t, "fit");
+	DataReader rf = r.in("fit");
+	g.fit_inset_m = num(rf, fit, "inset_m");
+	const Array tries = rf.list(fit, "tries");
+	g.fit_tries.clear();
+	for (int i = 0; i < tries.size(); i++) {
+		DataReader rt = rf.in("tries").in(i);
+		const Dictionary row = rf.in("tries").table_at(tries, i);
+		g.fit_tries.push_back({ num(rt, row, "setback_share"), num(rt, row, "width_share"), rt.integer(row, "density_drop") });
+	}
+	if (g.fit_tries.empty()) rf.fail("tries: at least one");
+	g.pick_reach_m = num(r, t, "pick_reach_m");
 	g.organic_reach_m = num(r, t, "organic_reach_m");
 	g.organic_extra_floors = r.integer(t, "organic_extra_floors");
 	g.decay_span_min = num(r, t, "decay_span_min");

@@ -28,6 +28,8 @@ bool inside_lot(const LotPoint &p, const std::vector<LotPoint> &ring);
 // The ring turned so its inside lies on the left of every side, the first side kept the front.
 std::vector<LotPoint> facing_corners(const std::vector<LotPoint> &ring);
 LotStand lot_stand(const std::vector<LotPoint> &ring);
+// Whether a polygon lies wholly in a ring: its corners inside and no side of one crossing a side of the other (a ring may be concave).
+bool ring_holds(const std::vector<LotPoint> &ring, const std::vector<LotPoint> &shape);
 // The rectangle from a to b square to `angle`, empty when under the least lot.
 std::vector<LotPoint> lot_rect(const LotPoint &a, const LotPoint &b, double angle);
 // The lines a cut runs along, in pairs of points: what the tool shows.

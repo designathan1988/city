@@ -66,8 +66,18 @@ struct CityPlanDef {
 };
 
 // Which lots become civic buildings and how a building's height answers its neighbours' (data/catalog/growth.json).
+// One way a grown building is fitted to its lot (data/catalog/growth.json "fit"): its depth set back from the front by a share of it,
+// its width kept to a share of it, its zone dropped so many densities.
+struct FitTry {
+	float setback_share = 0, width_share = 1;
+	int density_drop = 0;
+};
+
 struct GrowthDef {
 	CityPlanDef plan;
+	float fit_inset_m = 0; // a body's ground blocks are tested this far inside themselves against the lot's ring
+	std::vector<FitTry> fit_tries; // in order; the first whose body fits the lot stands
+	float pick_reach_m = 0; // the next lot grown is drawn among the free ones this near the last
 	float civic_min_area = 0, civic_chance = 0;
 	std::vector<std::pair<int, int>> civic_by_zone[BASE_ZONE_SLOTS]; // (fn, weight) per base zone
 	float organic_reach_m = 0;

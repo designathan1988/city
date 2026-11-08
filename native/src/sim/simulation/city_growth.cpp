@@ -1,6 +1,7 @@
 // Growth over time on the queued cells (Roadcraft world/growth.ts step / nearestFree / grow).
 #include "sim/simulation/city_growth.h"
 
+#include "core/random.h"
 #include "sim/buildings/growth.h"
 #include "sim/state/city_state.h"
 
@@ -17,10 +18,14 @@ struct Pick {
 	double d2 = 0;
 };
 
-// The free lot nearest the last one grown among the queued cells; cells left without a free lot leave the queue.
-Pick nearest_free(CityState &s) {
+// The next lot to grow among the queued cells: drawn among the free lots within the pick's reach of the last one grown, by a pick
+// seeded with the city's seed and the count grown (saved), so a city grows the same every time; the free lot nearest the last when
+// none is that near, the first when nothing grew yet. Cells left without a free lot leave the queue.
+Pick next_free(CityState &s) {
 	GrowthQueue &g = s.growth;
+	const double reach2 = double(s.catalog.growth.pick_reach_m) * s.catalog.growth.pick_reach_m;
 	Pick best;
+	std::vector<Pick> near;
 	for (size_t c = 0; c < g.cells.size();) {
 		const std::vector<Lot> *lots = s.lots.lots_of(g.cells[c]);
 		bool any = false;
@@ -30,6 +35,7 @@ Pick nearest_free(CityState &s) {
 			any = true;
 			double d2 = g.has_last ? (l.x - g.last_x) * (l.x - g.last_x) + (l.z - g.last_z) * (l.z - g.last_z) : 0;
 			if (best.lot < 0 || d2 < best.d2) best = { g.cells[c], i, d2 };
+			if (g.has_last && d2 <= reach2) near.push_back({ g.cells[c], i, d2 });
 		}
 		if (any) {
 			c++;
@@ -39,7 +45,8 @@ Pick nearest_free(CityState &s) {
 			g.cells.pop_back();
 		}
 	}
-	return best;
+	if (near.empty()) return best;
+	return near[hash_combine(s.seed, uint32_t(g.grown)) % near.size()];
 }
 } // namespace
 
@@ -58,7 +65,7 @@ void grow_step(CityState &s, double dt) {
 	if (g.cells.empty() || s.damage.now < s.damage.growth_hold_until) return; // rubble lies: nothing is built over it yet
 	g.acc = std::min(g.acc + dt * s.catalog.tune.sim_growth_per_s, MAX_OWED);
 	for (int tries = int(s.catalog.tune.sim_growth_tries); g.acc >= 1 && tries > 0; tries--) {
-		Pick p = nearest_free(s);
+		Pick p = next_free(s);
 		if (p.lot < 0) {
 			g.acc = 0;
 			return;

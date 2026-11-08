@@ -9,6 +9,7 @@
 #include "core/shader_contracts/all.h"
 #include "core/units.h"
 #include "render/film_grade.h"
+#include "sim/buildings/b40/record.h"
 #include "sim/buildings/lot_access.h"
 #include "sim/commands/interior_commands.h"
 #include "sim/terrain/terrain_gen.h"
@@ -232,6 +233,11 @@ Dictionary CityCore::probe_building(int id) {
 	d["fn"] = int(b.fn);
 	d["seed"] = int64_t(b.seed); // what names it to the effects (a building broken in part: effects_ruin_pieces_of)
 	d["lot"] = lot_probe(s, b);
+	// its solid ground blocks on the ground, b40::BLOCK_CORNERS corners each, drawn in by the growth fit's inset as growth tests them
+	PackedVector3Array foot;
+	for (const V2 &p : b40::ground_corners(*b40::record_body(s.buildings.designs, b), b, s.catalog.growth.fit_inset_m))
+		foot.push_back(Vector3(p.x, s.terrain.height_at(p.x, p.y), p.y));
+	d["footprint"] = foot;
 	const InteriorFocus body = interior_focus(s, id);
 	d["focus"] = Vector3(body.at.x, s.terrain.height_at(body.at.x, body.at.y), body.at.y);
 	d["extent"] = body.extent;

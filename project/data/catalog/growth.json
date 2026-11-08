@@ -1,5 +1,5 @@
 {
- "_doc": "The plan of a generated city and world/arch.ts civicFor. A building's storeys are its body's (sim/buildings/b40). decay_span_min: the span a generated building's age is drawn from (growth.cpp generated_age) and the minutes of age a blow's wear takes off at its full share (strike_buildings.cpp).",
+ "_doc": "The plan of a generated city and world/arch.ts civicFor. A building's storeys are its body's (sim/buildings/b40). decay_span_min: the span a generated building's age is drawn from (growth.cpp generated_age) and the minutes of age a blow's wear takes off at its full share (strike_buildings.cpp). fit: a grown body is kept only when its ground blocks, drawn in by inset_m, lie inside the lot's ring; the tries are made in order (the depth set back from the front by a share of it, the width kept to a share of it, the zone dropped so many densities) and the first that fits stands, the last when none does. pick_reach_m: growth draws its next lot among the free ones this near the last it grew (city_growth.cpp).",
  "plan": {
   "_doc": "The city's shape, authored as the 4.0's world/cityGen/plan.ts has it: no survey behind these numbers. heat = 1 - distance share + density term + noise; the thresholds make it low, medium or high, and commerce on main roads.",
   "centres": 2,
@@ -44,6 +44,16 @@
    [[1, 15], [2, 12], [5, 20], [8, 14], [7, 12], [4, 10], [3, 6], [12, 5]]
   ]
  },
+ "fit": {
+  "inset_m": 0.05,
+  "tries": [
+   {"setback_share": 0, "width_share": 1, "density_drop": 0},
+   {"setback_share": 0.25, "width_share": 1, "density_drop": 0},
+   {"setback_share": 0.25, "width_share": 0.7, "density_drop": 0},
+   {"setback_share": 0.25, "width_share": 0.7, "density_drop": 1}
+  ]
+ },
+ "pick_reach_m": 60,
  "organic_reach_m": 30,
  "organic_extra_floors": 3,
  "decay_span_min": 43200
