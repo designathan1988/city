@@ -50,8 +50,13 @@ int zone_at(const CityPlan &p, double x, double z, bool on_main) {
 	}
 	const double heat = 1 - k + (d.density - 0.5) * d.density_pull + value_noise(x / d.noise_cell_m, y / d.noise_cell_m) * d.noise_heat;
 	const int density = heat > d.high_heat ? 2 : heat > d.medium_heat ? 1 : 0;
-	static constexpr int COMMERCIAL[3] = { ZONE_COM_LOW, ZONE_COM, ZONE_COM_HIGH }, RESIDENTIAL[3] = { ZONE_RES_LOW, ZONE_RES, ZONE_RES_HIGH };
-	return heat > d.commerce_heat || (on_main && heat > d.main_commerce_heat) ? COMMERCIAL[density] : RESIDENTIAL[density];
+	return zone_of(heat > d.commerce_heat || (on_main && heat > d.main_commerce_heat), density);
+}
+
+int zone_of(bool commercial, int density) {
+	static constexpr int DENSITIES = 3, COMMERCIAL[DENSITIES] = { ZONE_COM_LOW, ZONE_COM, ZONE_COM_HIGH }, RESIDENTIAL[DENSITIES] = { ZONE_RES_LOW, ZONE_RES, ZONE_RES_HIGH };
+	const int k = std::clamp(density, 0, DENSITIES - 1);
+	return commercial ? COMMERCIAL[k] : RESIDENTIAL[k];
 }
 
 } // namespace city

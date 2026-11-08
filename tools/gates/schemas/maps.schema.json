@@ -10,7 +10,8 @@
      "name_key": { "type": "string" },
      "tiles": { "type": "integer", "minimum": 4 },
      "medium": { "type": "boolean" },
-     "city_radius_m": { "type": "number", "minimum": 100 }
+     "city_radius_m": { "type": "number", "minimum": 100 },
+     "scenic": { "type": "string" }
     },
     "required": ["id", "name_key", "tiles", "medium"],
     "strict": true

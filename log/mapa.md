@@ -14,6 +14,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/api/blast_loader.cpp` · `native/src/api/traffic_loader.cpp` — blast.json → BlastParams estrito (curvas K-B, limiares, pessoas, cratera); Dictionary → TrafficParams estrito
 - `native/src/api/city_core_strike.cpp` — a bomba como API de script (`strike`, um passo de desfazer) e as sondas `damage_probe` (o que os golpes deixaram no mapa) e `blast_probe` (números do modelo)
 - `native/src/api/catalog_loader.cpp` · `native/src/api/catalog_loader.h` · `native/src/api/furniture_loader.cpp` — Dictionary → Catalog estrito; as X-macros ditam as chaves (tuning, mobiliário da rua)
+- `native/src/api/scenic_loader.cpp` — scenic.json → Catalog::scenic, strict; a road's name is the player's text of its i18n key; the maps that name a scenic city linked to it
 - `native/src/api/city_core.cpp` · `native/src/api/city_core.h` · `native/src/api/city_core_parts.h` · `native/src/api/city_core_bind.cpp` — ciclo de vida: catálogo, render, mapa novo, velocidade, sincronização por quadro; o que o núcleo guarda para cada área (o save em thread, o cache do inspetor, as contagens do snapshot, as estatísticas das poses); os bindings de script do CityCore
 - `native/src/api/city_core_areas.cpp` — as áreas da API, cada uma um objeto próprio sobre o estado e o render do núcleo, feitas com ele e soltas antes dele; o store chama cada nome do `StoreApi` na área dele (o método `area` do núcleo): `builder`, `landscape`, `transit`, `probes`
 - `native/src/api/city_core_commands.cpp` — comandos do jogador e prévias (sim/commands) como API de script
@@ -44,6 +45,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/core/job_pool.cpp` · `native/src/core/job_pool.h` — pool de jobs por prioridade e `parallel_for`; a chave do job é tipada (`JobKey`: uma `JobLane` por usuário e um id), então dois usuários não se substituem na fila
 - `native/src/core/js_array.h` · `native/src/core/js_map.h` · `native/src/core/js_number.h` · `native/src/core/js_runtime.h` · `native/src/core/js_string.h` · `native/src/core/js_value.h` — what the translated code calls: the built-ins with ECMAScript semantics (runtime of `tools/converter/cpp/js`; not edited here)
 - `native/src/core/math.h` — vetores 2D no plano XZ
+- `native/src/core/polyline.h` — open lines and closed rings in the XZ plane: distance and position along a line, a ring holding a point, a line moved sideways
 - `native/src/core/memory.cpp` — `new` e `delete` do núcleo no mimalloc: um heap por thread, sem a trava do runtime de C
 - `native/src/core/polygon_ops.cpp` · `native/src/core/polygon_ops.h` — booleanas de plantas em milímetros inteiros (Clipper2): o que cai dentro e o que sobra, em anéis simples
 - `native/src/core/random.h` — hash, RNG e ruído determinísticos
@@ -78,18 +80,22 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/sim/catalog/blast_params.h` — parâmetros da explosão (sem valores): curvas de sobrepressão, impulso e duração, limiares de dano, pessoas, cratera
 - `native/src/sim/catalog/nature_types.h` — tipos do clima, nuvens, neblina, pintura, pincel de árvores e comunidades de plantas (X-macro do clima)
 - `native/src/sim/catalog/profile_types.h` — formas da seção de via que road_profiles.json preenche
+- `native/src/sim/catalog/scenic.h` — a scenic city laid out by hand: its land (plateau, ridges, rivers, lakes), districts, roads, parks, works, heat, zoning and park trees
 - `native/src/sim/catalog/traffic_params.h` — parâmetros de tráfego e pedestres
 - `native/src/sim/catalog/tuning_fields.h` — nomes de todo tunable escalar (X-macro)
 - `native/src/sim/citygen/block_lots.cpp` — a closed block cut into lots
 - `native/src/sim/citygen/city_plan.cpp` · `native/src/sim/citygen/city_plan.h` — o plano da cidade gerada: centros da semente e curva de calor (zona por densidade, comércio nas vias principais, indústria num setor da borda)
 - `native/src/sim/citygen/squares.cpp` · `native/src/sim/citygen/squares.h` — as praças da cidade gerada: em cada bairro, a quadra em via principal mais perto do meio vira gramado com caminhos e árvores
-- `native/src/sim/citygen/city_gen.cpp` · `native/src/sim/citygen/city_gen.h` — pipeline da cidade gerada
+- `native/src/sim/citygen/city_gen.cpp` · `native/src/sim/citygen/city_gen.h` — the pipeline of a new map: the generated city, or a scenic one
 - `native/src/sim/citygen/lot_gen.cpp` · `native/src/sim/citygen/lot_gen.h` — lotes ao longo das ruas zonadas: grade de ocupação, recuos, testes
 - `native/src/sim/citygen/lot_place.cpp` — lot placement: closed blocks and the open streets as one continuous strip
 - `native/src/sim/citygen/lot_strips.h` — cortador de lotes de uma célula (interno de sim/citygen)
 - `native/src/sim/citygen/road_gen.cpp` · `native/src/sim/citygen/road_gen.h` — linhas da malha e marcha sobre o terreno
 - `native/src/sim/citygen/road_gen_graph.cpp` — grafo planar das ruas geradas (cruzamentos, nós fundidos)
 - `native/src/sim/citygen/road_gen_tidy.cpp` — limpeza do grafo gerado (nós e braços degenerados)
+- `native/src/sim/citygen/scenic_roads.cpp` · `native/src/sim/citygen/scenic_roads.h` — a scenic city's streets: each district's grid in its Voronoi cell, the seams between cells, the plan's roads, through the generated city's graph builder
+- `native/src/sim/citygen/scenic_rules.cpp` · `native/src/sim/citygen/scenic_rules.h` — a scenic city's graph rules (rank by priority, only locals give way) and its zoning (parks, works, district heat, heat lines)
+- `native/src/sim/citygen/scenic_finish.cpp` · `native/src/sim/citygen/scenic_finish.h` — a scenic city's park trees and the names of its plan's roads
 - `native/src/sim/demolition/blast_model.cpp` · `native/src/sim/demolition/blast_model.h` — dono único da física do sopro: escala de Hopkinson-Cranz e curvas de Kingery-Bulmash (Swisdak), pressão sentida pela estrutura, letalidade e tímpano, alcance, cratera
 - `native/src/sim/demolition/damage_state.cpp` · `native/src/sim/demolition/damage_state.h` · `native/src/sim/demolition/damage_event.h` — o que sobra dos golpes no `CityState` (crateras, ruínas, mobiliário derrubado, dano dos prédios, fogos) e o relógio do dano; os eventos que o render toca uma vez
 - `native/src/sim/demolition/wounds.cpp` — os feridos sangram e morrem do sangramento (pelo relógio do dano, sob a trava exclusiva)
@@ -174,6 +180,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/sim/terrain/road_shape.cpp` · `native/src/sim/terrain/road_shape.h` — the ground shaped to a road by the resolved height: cut, fill, slope, the ground under the deck and the tunnel
 - `native/src/sim/terrain/terrain_brush.cpp` — pincel de relevo e formas
 - `native/src/sim/terrain/terrain_gen.cpp` · `native/src/sim/terrain/terrain_gen.h` — generated terrain (from the map seed)
+- `native/src/sim/terrain/scenic_land.cpp` · `native/src/sim/terrain/scenic_land.h` — the land of a scenic city: plateau and relief, ridges, rivers cut in their channels with their floodplains, lakes under their shores
 - `native/src/sim/traffic/astar.h` — A* único de carros e pedestres
 - `native/src/sim/traffic/demand.cpp` — frota e viagens por zona
 - `native/src/sim/traffic/junction_admission.cpp` — antitravamento: saída livre, caixa livre, reserva e governador
@@ -413,6 +420,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `project/tests/core/lab_test.gd` · `project/tests/core/lab_test.tscn` — the Diagnostics: expected verdicts, the A/B arithmetic and a city measurement from the panel button
 - `project/tests/core/model_test.gd` · `project/tests/core/model_test.tscn` — Modelos pelo store e pela ferramenta: catálogo, encaixe, recusas, desfazer, fusão, biblioteca e foto
 - `project/tests/core/city_mass_test.gd` · `project/tests/core/city_mass_test.tscn` — a massa da cidade gerada: andares por distância do miolo
+- `project/tests/core/scenic_city_test.gd` · `project/tests/core/scenic_city_test.tscn` — the scenic Sao Paulo as the player meets it: streets, buildings, park trees, named roads, Paulista on its ridge, the Marginal Tiete, Ibirapuera empty of buildings, a city of towers
 - `project/tests/core/yard_test.gd` · `project/tests/core/yard_test.tscn` · `project/tests/perf/yard_bench.gd` · `project/tests/perf/yard_bench.tscn` — yards of industrial zones in several directions: docks with a way, a lorry in its own lane and one whole round; the planner's bench (not a test): a saved city, every yard planned at once (`plan_all_yards`)
 - `project/tests/core/save_undo_test.gd` · `project/tests/core/save_undo_test.tscn` · `project/tests/core/signal_cases.gd` · `project/tests/core/save_land_cases.gd` — desfazer/refazer e ida e volta do save; o semáforo ajustável pelo store e pelo painel; o arquivo antigo, que abre na terra em que foi feito
 - `project/tests/visual/capture.gd` · `project/tests/visual/capture.tscn` · `project/tests/visual/capture_views.gd` — captures of the real city and its fixed views · `project/tests/visual/capture_crossing.gd` · `project/tests/visual/capture_sweep.gd` · `project/tests/visual/capture_directed.gd` · `project/tests/visual/capture_kerb.gd` · `project/tests/visual/capture_lorry.gd` · `project/tests/visual/capture_parity.gd` · `project/tests/visual/capture_memory.gd` · `project/tests/visual/capture_signals.gd` · `project/tests/visual/capture_soak.gd` · `project/tests/visual/capture_traffic.gd` · `project/tests/visual/capture_wait.gd` — the busy crossing (both views and the same view under each paint style, at the probe point), the sweep (orbit, zoom, tilt and pan over targets defined by the game), the runs directed by `--only`, kerb drop, lorry at the dock, a fixed-pose photo, memory, signals, traffic (soak) and the stopped side of the capture traffic; every photo waits until the city is drawn, recorded, with a warning on an incomplete photo
@@ -439,6 +447,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `project/tests/visual/ui_driver.gd` — entrada real (mouse/teclas) para as capturas
 - `project/tests/visual/live_driver.gd` — o jogo aberto na tela do jogador, dirigido de fora enquanto ele olha (`-- --live=<pasta>`): cidade nova, câmera, comandos, consultas e fotos
 - `project/tests/visual/frozen_plan.json` — as vistas congeladas do `tools/build/quick.sh` (`look --frozen`): o mundo parado, bit a bit
+- `project/tests/visual/sao_paulo_plan.json` — the scenic Sao Paulo photographed: the whole city, Paulista from above and down its middle, Centro, Ibirapuera, Pinheiros, the Tiete bridge, the city at night
 - `project/tests/visual/look.gd` · `project/tests/visual/look.tscn` · `project/tests/visual/look_aim.gd` · `project/tests/visual/look_measure.gd` — the game looked at through a JSON plan: setView, shot, wait, frames, hour, dispatch, query, key, click, drag; the Godot servers' measurements (frames, usage, render, GPU passes)
 - `project/ui/builder_strip.gd` · `project/ui/model_shelf.gd` — seções e cartões das abas do Construir; prateleira de Modelos (busca, categorias, fotos, salvar e remover)
 - `project/ui/drawer_strips.gd` — cartões e controles das gavetas
@@ -466,7 +475,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `project/ui/strike_strip.gd` — Demolish's Bomb tab: the force in steps
 - `project/ui/street_strip.gd` — aba Rua da Paisagem: peças, barreiras, postes e opções
 - `project/ui/icons/**` — the game's SVG icons (white; the colour comes from the theme)
-- `project/data/catalog/growth.json` · `project/data/catalog/maps.json` · `project/data/catalog/nature.json` · `project/data/catalog/road_profiles.json` · `project/data/catalog/road_profiles_a.json` · `project/data/catalog/road_profiles_b.json` · `project/data/catalog/street_furniture.json` · `project/data/catalog/traffic.json` · `project/data/catalog/tuning.json` · `project/data/catalog/blast.json` · `project/data/catalog/zones.json` — catálogo: crescimento, mapas, paisagem, perfis de via, mobiliário da rua e travessias, tráfego, tuning e zonas
+- `project/data/catalog/growth.json` · `project/data/catalog/maps.json` · `project/data/catalog/nature.json` · `project/data/catalog/road_profiles.json` · `project/data/catalog/road_profiles_a.json` · `project/data/catalog/road_profiles_b.json` · `project/data/catalog/street_furniture.json` · `project/data/catalog/traffic.json` · `project/data/catalog/tuning.json` · `project/data/catalog/blast.json` · `project/data/catalog/zones.json` · `project/data/catalog/scenic.json` — the catalogue: growth, maps, landscape, road profiles, street furniture and crossings, traffic, tuning, zones and the scenic cities
 - `project/data/game/camera.json` · `project/data/game/daylight.json` · `project/data/game/interior.json` · `project/data/game/saves.json` · `project/data/game/settings.json` · `project/data/game/sky.json` · `project/data/game/render_switches.json` · `project/data/game/optimizations.json` · `project/data/game/health.json` · `project/data/game/start.json` · `project/data/game/lab.json` — câmera, dia/noite, saves, qualidade, céu desenhado e as ferramentas do F7
 - `project/data/i18n/strings.csv` · `project/data/i18n/strings_b.csv` · `project/data/i18n/strings_c.csv` · `project/data/i18n/strings_d.csv` · `project/data/i18n/strings_e.csv` · `project/data/i18n/strings_ui.csv` — textos (partes do mesmo catálogo)
 - `project/data/render/transit.json` · `project/data/render/agents.json` · `project/data/render/bay_props.json` · `project/data/render/buildings.json` · `project/data/render/cover.json` · `project/data/render/interiors.json` · `project/data/render/furniture.json` · `project/data/render/materials.json` · `project/data/render/models.json` · `project/data/render/overlays.json` · `project/data/render/palette.json` · `project/data/render/effects.json` · `project/data/render/streets.json` — tabelas do render

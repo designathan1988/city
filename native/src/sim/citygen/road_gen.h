@@ -36,16 +36,30 @@ struct GeneratedRoads {
 // `radius`: the city's, 0 for one that fills the map.
 GeneratedRoads generate_roads(uint32_t seed, double map_half, double radius, TerrainGen &terrain, const GenProfiles &prof, const CityPlanDef &plan);
 
-// Internals shared by the generator's files.
+// Internals shared by the generator's files (and the scenic city's, sim/citygen/scenic_roads.h).
 namespace road_gen {
 struct Piece {
 	double x0, z0, x1, z1;
 	int profile;
 };
+
+// What the graph builder asks of the city it builds: which of two roads keeps an edge or a sharp node (the higher rank),
+// which street goes when it hugs a stronger one, what the land beside a street of a profile is zoned, and the section a
+// street finally takes (its zone, its distance share of the centre and its middle given).
+class GraphRules {
+public:
+	virtual ~GraphRules() = default;
+	virtual int rank(int profile) const = 0;
+	virtual bool yields(int profile) const = 0;
+	virtual int zone_beside(int profile, double x, double z) const = 0;
+	virtual int section(int profile, int zone, double centre_share, double x, double z) const = 0;
+};
+
 bool land(TerrainGen &t, double x, double z);
-GeneratedRoads build_graph(const std::vector<Piece> &pieces, double centre_r, uint32_t seed, TerrainGen &terrain, const GenProfiles &prof, const CityPlan &plan);
+// `asph_right`: each profile's half carriageway (the tidy pass's reach onto a road).
+GeneratedRoads build_graph(const std::vector<Piece> &pieces, double centre_r, TerrainGen &terrain, const std::vector<double> &asph_right, const GraphRules &rules);
 void tidy_graph(std::vector<double> &nx, std::vector<double> &nz, std::vector<double> &ny, std::vector<int> &segs,
-		const std::vector<int> &strength, TerrainGen &terrain, const GenProfiles &prof);
+		const std::vector<int> &strength, TerrainGen &terrain, const std::vector<double> &asph_right);
 GeneratedRoads dry_crossings(const GeneratedRoads &r, TerrainGen &terrain);
 GeneratedRoads without_spurs(const GeneratedRoads &r);
 } // namespace road_gen

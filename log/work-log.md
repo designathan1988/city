@@ -727,3 +727,46 @@ Ressalvas abertas:
   `project/bin/citycore.gdextension`, `project/addons/terrain_3d/terrain.gdextension`, `project/export_presets.cfg`,
   `project/project.godot`, 23 `.import` files, `CLAUDE.md`, `log/mapa.md`, `log/pendencias.md`; restored
   `project/addons/terrain_3d/bin/libterrain.android.{debug,release}.arm64.so`.
+
+## 2026-11-07 22:50: the scenic Sao Paulo
+- User's order: a beautiful scenic city like Sao Paulo, about 5 x 5 km, in the game, opened and shown. Delivered the map
+  `sao_paulo` ("Sao Paulo (cenografica)" on the start screen): a 5 km square laid out by hand on a 10-tile map.
+- Problems found: the only cities were drawn from a seed (one straight grid round a centre, a straight canal, lakes by chance);
+  the graph builder hard-wired the generated city's ranks, zones and profile variety (`road_gen_graph.cpp`); the land came only
+  from the seed (`TerrainGen`); nothing could say where a river, an avenue or a park goes.
+- Plan and causes fixed, each with one owner:
+  - `sim/catalog/scenic.h` + `api/scenic_loader.cpp`: a scenic city as data (land, districts, roads, parks, works, heat,
+    zoning, park trees), strict, linked from `maps.json` by `scenic`. Road names are i18n keys (`scenic.road.*`,
+    `strings_d.csv`), translated by the loader: no player text outside data/i18n.
+  - `sim/terrain/scenic_land.*`: the authored land (plateau, ridges, rivers in channels with floodplains, lakes under their
+    lowest shore). `TerrainGen` takes it for a scenic map; `clear_relief` restores the same land.
+  - `road_gen.h GraphRules`: what the graph builder asks of a city (rank, which street yields, the zone beside a street, its
+    final section). The generated city's rules moved unchanged into `PlanRules` (road_gen.cpp): the digest of the frozen town
+    is equal, bit for bit. The density-to-zone table has one owner (`city_plan.cpp zone_of`).
+  - `sim/citygen/scenic_rules.*` (rank by profile priority, only locals yield, zoning by parks, works, district and heat lines),
+    `scenic_roads.*` (each district's grid inside its Voronoi cell, seams between cells, the plan's roads, district streets kept
+    off water, parks and the highways' band), `scenic_finish.*` (park trees, the named roads' plates before the style's names).
+- The city: 21,251 buildings (half of them 10 storeys or more), 9,638 street segments, 22,585 lots, 5,849 park trees, made in
+  about 1 s; the Tiete (north) and the Pinheiros (west) meeting at the north-west corner with their marginals, the Tamanduatei
+  and Avenida do Estado, Paulista on its ridge (50 m over the Tiete's banks) with the Trianon, Centro, Jardins (houses), Pinheiros
+  and Faria Lima, Ibirapuera with its lake, 34 named roads, bridges over the rivers, a Mata Atlantica biome.
+- Verified: both DLLs; `scenic_city_test` (new: streets, buildings, trees, every named road on its street, Paulista's section and
+  height, the Marginal Tiete a highway, Ibirapuera empty of buildings, a city of towers); `quick.sh --ready`: 43 of 45, the two
+  failures are `gates_changed` (only the old backlog and the audit session's files) and `photos_check` (see below); captures of
+  the plan `sao_paulo` (look group `sao_paulo`), looked at one by one: the first lake shore was a cliff where the ridge tilts the
+  park (fixed by a wider `shore_m`), the street shot stood in a building (moved onto Paulista's median).
+- `photos_check`: a few scattered pixels of `00-cidade` (once `03-rua_noite`) differ from the goldens blessed at 21:25, the box
+  moving from run to run while the digest is equal. HEAD without this change (9a056673, the audit session's own worktree) fails
+  the same way: the known residual at the utility wires' joints, depth ties broken by job order (log/review.md 6.6, finding C12,
+  fixed in its batch B2). Against HEAD's photos this run differs in 2 pixels of one level. Not blessed.
+- Files: created `native/src/core/polyline.h`, `native/src/sim/catalog/scenic.h`, `native/src/api/scenic_loader.cpp`,
+  `native/src/sim/terrain/scenic_land.{h,cpp}`, `native/src/sim/citygen/scenic_{rules,roads,finish}.{h,cpp}`,
+  `project/data/catalog/scenic.json`, `tools/gates/schemas/scenic.schema.json`, `project/tests/core/scenic_city_test.{gd,tscn}`,
+  `project/tests/visual/sao_paulo_plan.json`; changed `catalog.h`, `catalog_loader.{h,cpp}`, `city_core.cpp`, `city_gen.{h,cpp}`,
+  `city_plan.{h,cpp}`, `road_gen.{h,cpp}`, `road_gen_graph.cpp`, `road_gen_tidy.cpp`, `nature_commands.cpp`,
+  `terrain_gen.{h,cpp}`, `maps.json`, `start.json`, `strings_ui.csv`, `strings_d.csv`, `data_tables.gd`, `maps.schema.json`,
+  `rules.json` (the schema line), `suites.json`, `CLAUDE.md`, `log/mapa.md`, `log/pendencias.md`.
+- The DLLs are not in this commit: a DLL built in another folder carries that folder in godot-cpp's `__FILE__` strings, so the
+  audit session rebuilds both from HEAD with its folder-independent build (`-ffile-prefix-map`, the retrained profile) in its
+  next commit. The checks above ran on DLLs built from this commit's sources in the worktree `city-scenic` (HEAD + this change
+  only); the user's `dist/windows/Roadcraft.exe` was exported from it.

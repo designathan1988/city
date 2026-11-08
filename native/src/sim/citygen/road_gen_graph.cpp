@@ -1,9 +1,7 @@
 // The planar graph of the generated streets (cityGen.ts buildGraph): crossings by 96 m buckets, nodes merged within
-// 7 m, short edges collapsed, at most 6 links per node, small pieces dropped, zones by the distance to the centre,
-// profile variety by district noise, long edges split into <= 100 m segments, then tidied.
+// 7 m, short edges collapsed, at most 6 links per node, small pieces dropped, zones and sections by the city's rules
+// (road_gen.h GraphRules), long edges split into <= 100 m segments, then tidied.
 #include "sim/citygen/road_gen.h"
-
-#include "core/seeded.h"
 
 #include <algorithm>
 #include <cmath>
@@ -14,14 +12,10 @@ namespace city {
 namespace {
 constexpr double BUCKET = 96, MERGE = 7, COLLAPSE = 16, PARALLEL_COS = 0.93, HUG_DIST = 26, GEN_SEG_LEN = 100;
 constexpr int64_t KEY_OFF = 2000, KEY_ROW = 4096, PAIR = 1000000;
-constexpr int MAX_LINKS = 6, MIN_COMPONENT = 30, RANK_EXPRESSWAY = 3, RANK_AVENUE_BIKE = 2;
+constexpr int MAX_LINKS = 6, MIN_COMPONENT = 30;
 constexpr int GROUND_PROBES = 5;
 constexpr double NODE_PROBE = 8, NODE_MIN_Y = 1.5, CROSS_EPS = 1e-6, PARALLEL_DEN = 1e-9;
 constexpr double SIDE_PROBE_M = 20; // about half a lot's depth, off the street's middle
-constexpr uint32_t NOISE_N = 313, NOISE_M = 919;
-constexpr double DISTRICT_SCALE_N = 650, NOISE_M_SCALE = 1400;
-constexpr double AVENUE_SHARE_N = 0.45, URBAN_N = 0.1, BIKE_N = 0.25, COBBLE_D = 0.9, COBBLE_M = 0.2, URBAN_LOCAL_N = 0.3;
-constexpr double BUS_OFFSET = 0.5, BUS_M = 0.15, BOULEVARD_M = -0.3, AV4_N = 0.35;
 
 int64_t key(int64_t i, int64_t j) { return (i + KEY_OFF) * KEY_ROW + (j + KEY_OFF); }
 
@@ -39,8 +33,8 @@ struct EdgeMap {
 
 class GraphBuilder {
 public:
-	GraphBuilder(const std::vector<road_gen::Piece> &p, uint32_t seed, TerrainGen &t, const GenProfiles &prof, const CityPlan &plan) :
-			pieces_(p), seed_(seed), terrain_(t), prof_(prof), plan_(plan) {}
+	GraphBuilder(const std::vector<road_gen::Piece> &p, TerrainGen &t, const std::vector<double> &asph_right, const road_gen::GraphRules &rules) :
+			pieces_(p), terrain_(t), asph_right_(asph_right), rules_(rules) {}
 
 	GeneratedRoads build(double centre_r) {
 		bucket_pieces();
@@ -52,16 +46,15 @@ public:
 		drop_small_components();
 		node_heights();
 		zone_and_split(centre_r);
-		road_gen::tidy_graph(nx_, nz_, ny_, segs_, strength_, terrain_, prof_);
+		road_gen::tidy_graph(nx_, nz_, ny_, segs_, strength_, terrain_, asph_right_);
 		return compact(centre_r);
 	}
 
 private:
 	const std::vector<road_gen::Piece> &pieces_;
-	uint32_t seed_;
 	TerrainGen &terrain_;
-	const GenProfiles &prof_;
-	const CityPlan &plan_;
+	const std::vector<double> &asph_right_;
+	const road_gen::GraphRules &rules_;
 	std::unordered_map<int64_t, std::vector<int>> buckets_;
 	std::vector<int64_t> bucket_order_;
 	std::vector<uint8_t> dead_;
@@ -71,7 +64,7 @@ private:
 	EdgeMap edges_;
 	std::vector<int> root_, segs_, strength_;
 
-	int rank(int p) const { return p == prof_.expressway ? RANK_EXPRESSWAY : p == prof_.avenue_bike ? RANK_AVENUE_BIKE : p == prof_.avenue ? 1 : 0; }
+	int rank(int p) const { return rules_.rank(p); }
 
 	void bucket_pieces() {
 		for (size_t s = 0; s < pieces_.size(); s++) {
@@ -94,12 +87,12 @@ private:
 			const auto &list = buckets_[bk];
 			for (int s : list) {
 				const road_gen::Piece &a = pieces_[s];
-				if (a.profile != prof_.local || dead_[s]) continue;
+				if (!rules_.yields(a.profile) || dead_[s]) continue;
 				double mx = (a.x0 + a.x1) / 2, mz = (a.z0 + a.z1) / 2, ls = std::hypot(a.x1 - a.x0, a.z1 - a.z0);
 				if (ls == 0) ls = 1;
 				for (int t : list) {
 					const road_gen::Piece &b = pieces_[t];
-					if (b.profile == prof_.local) continue;
+					if (rules_.yields(b.profile)) continue;
 					double dx = b.x1 - b.x0, dz = b.z1 - b.z0, lt = std::hypot(dx, dz);
 					if (lt == 0) lt = 1;
 					if (std::fabs(((a.x1 - a.x0) * dx + (a.z1 - a.z0) * dz) / (ls * lt)) < PARALLEL_COS) continue;
@@ -253,26 +246,8 @@ private:
 
 	// What the land beside a street is for, a lot's depth off its middle (+1 the street's left, -1 its right).
 	int zone_beside(int profile, double mx, double mz, double dx, double dz, double side) const {
-		if (profile == prof_.expressway) return ZONE_NONE;
 		const double length = std::max(std::hypot(dx, dz), 1.0), off = side * SIDE_PROBE_M / length;
-		return zone_at(plan_, mx + dz * off, mz - dx * off, profile != prof_.local);
-	}
-
-	int variant(int p, int zone, double d, double x, double z) const {
-		double n = fbm2(x / DISTRICT_SCALE_N, z / DISTRICT_SCALE_N, seed_ + NOISE_N, 2), m = fbm2(x / NOISE_M_SCALE, z / NOISE_M_SCALE, seed_ + NOISE_M, 2);
-		if (p == prof_.local) {
-			if (zone == ZONE_COM) return n > AVENUE_SHARE_N ? prof_.wide : n > URBAN_N ? prof_.urban : prof_.local;
-			if (zone == ZONE_IND) return prof_.concrete;
-			if (zone == ZONE_MIXED) return n > BIKE_N ? prof_.bike : n < -BIKE_N ? prof_.green : prof_.local;
-			if (d > COBBLE_D && m > COBBLE_M) return prof_.cobble;
-			return n > URBAN_LOCAL_N ? prof_.urban : p;
-		}
-		if (p == prof_.avenue) {
-			if (d < BUS_OFFSET && m > BUS_M) return prof_.bus_side;
-			if (m < BOULEVARD_M) return prof_.boulevard;
-			if (n > AV4_N) return prof_.av4;
-		}
-		return p;
+		return rules_.zone_beside(profile, mx + dz * off, mz - dx * off);
 	}
 
 	void zone_and_split(double centre_r) {
@@ -281,7 +256,7 @@ private:
 			double mx = (nx_[a] + nx_[b]) / 2, mz = (nz_[a] + nz_[b]) / 2;
 			double d = std::hypot(mx, mz) / centre_r, dx = nx_[b] - nx_[a], dz = nz_[b] - nz_[a];
 			double L = std::hypot(dx, dz);
-			int count = int(std::ceil(L / GEN_SEG_LEN)), pv = variant(profile, zone_beside(profile, mx, mz, dx, dz, 1), d, mx, mz);
+			int count = int(std::ceil(L / GEN_SEG_LEN)), pv = rules_.section(profile, zone_beside(profile, mx, mz, dx, dz, 1), d, mx, mz);
 			int from = a;
 			for (int k = 1; k <= count; k++) {
 				int to = b;
@@ -320,8 +295,8 @@ private:
 };
 } // namespace
 
-GeneratedRoads road_gen::build_graph(const std::vector<Piece> &pieces, double centre_r, uint32_t seed, TerrainGen &terrain, const GenProfiles &prof, const CityPlan &plan) {
-	return GraphBuilder(pieces, seed, terrain, prof, plan).build(centre_r);
+GeneratedRoads road_gen::build_graph(const std::vector<Piece> &pieces, double centre_r, TerrainGen &terrain, const std::vector<double> &asph_right, const GraphRules &rules) {
+	return GraphBuilder(pieces, terrain, asph_right, rules).build(centre_r);
 }
 
 } // namespace city

@@ -34,7 +34,8 @@
  },
  "sizes": [
   "town",
-  "metropolis"
+  "metropolis",
+  "sao_paulo"
  ],
  "seed_max": 9999
 }

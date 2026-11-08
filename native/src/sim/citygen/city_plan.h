@@ -19,5 +19,7 @@ struct CityPlan {
 CityPlan plan_city(uint32_t seed, double radius, const CityPlanDef &def);
 // The zone code of a lot at world (x, z); `on_main`: on an avenue or a collector.
 int zone_at(const CityPlan &plan, double x, double z, bool on_main);
+// The zone code of a use at a density (0 low, 1 medium, 2 high).
+int zone_of(bool commercial, int density);
 
 } // namespace city

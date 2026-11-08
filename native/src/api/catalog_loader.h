@@ -12,7 +12,7 @@ namespace city {
 
 class CatalogLoader {
 public:
-	// tables: { "tuning", "maps", "road_profiles", "zones", "growth", "traffic", "street_furniture", "blast", "nature" } (parsed JSON)
+	// tables: { "tuning", "maps", "road_profiles", "zones", "growth", "traffic", "street_furniture", "blast", "nature", "scenic" } (parsed JSON)
 	static bool load(const godot::Dictionary &tables, Catalog &out, godot::PackedStringArray &errors);
 	static uint32_t parse_color(const godot::String &hex); // "#RRGGBB" or "#RRGGBBAA" -> RGBA8
 };
@@ -27,5 +27,9 @@ bool load_street_furniture(const godot::Dictionary &t, StreetFurnitureDef &d, go
 bool load_blast_params(const godot::Dictionary &t, BlastParams &p, godot::PackedStringArray &errors);
 // data/catalog/nature.json (api/nature_loader.cpp).
 bool load_nature(const godot::Dictionary &t, NatureDef &n, godot::PackedStringArray &errors);
+// data/catalog/scenic.json (api/scenic_loader.cpp), read after the profiles and the nature tables; then each map that names a
+// scenic city (`names`, by map, empty for none) takes its index.
+bool load_scenic(const godot::Dictionary &t, Catalog &c, godot::PackedStringArray &errors);
+bool link_scenic_maps(const std::vector<std::string> &names, Catalog &c, godot::PackedStringArray &errors);
 
 } // namespace city

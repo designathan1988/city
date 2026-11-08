@@ -19,8 +19,8 @@ constexpr double EPS = 1e-6;
 
 class Tidy {
 public:
-	Tidy(std::vector<double> &nx, std::vector<double> &nz, std::vector<double> &ny, TerrainGen &t, const GenProfiles &p) :
-			nx_(nx), nz_(nz), ny_(ny), terrain_(t), prof_(p) {}
+	Tidy(std::vector<double> &nx, std::vector<double> &nz, std::vector<double> &ny, TerrainGen &t, const std::vector<double> &asph_right) :
+			nx_(nx), nz_(nz), ny_(ny), terrain_(t), asph_right_(asph_right) {}
 
 	void run(std::vector<int> &segs, const std::vector<int> &strength) {
 		for (size_t i = 0; i < segs.size(); i += SEG_FIELDS)
@@ -42,7 +42,7 @@ public:
 private:
 	std::vector<double> &nx_, &nz_, &ny_;
 	TerrainGen &terrain_;
-	const GenProfiles &prof_;
+	const std::vector<double> &asph_right_;
 	std::vector<int> a_, b_, prof_s_, zl_, zr_, rk_;
 	std::vector<bool> alive_;
 	std::unordered_map<int, std::vector<int>> legs_;
@@ -119,7 +119,7 @@ private:
 			double t = std::max(0.0, std::min(1.0, ((x - nx_[a_[s]]) * dx + (z - nz_[a_[s]]) * dz) / (L * L)));
 			double d = std::hypot(x - nx_[a_[s]] - dx * t, z - nz_[a_[s]] - dz * t);
 			size_t p = size_t(prof_s_[s]);
-			double asph = p < prof_.asph_right.size() ? prof_.asph_right[p] : ON_ROAD_DEFAULT;
+			double asph = p < asph_right_.size() ? asph_right_[p] : ON_ROAD_DEFAULT;
 			if (d > std::max(ON_ROAD_MIN, asph) || d >= bd) continue;
 			if (t * L < END_GAP || (1 - t) * L < END_GAP) continue;
 			if (std::fabs(ny_[a_[s]] + (ny_[b_[s]] - ny_[a_[s]]) * t - ny_[n]) > ON_ROAD_DY) continue;
@@ -170,8 +170,8 @@ private:
 } // namespace
 
 void road_gen::tidy_graph(std::vector<double> &nx, std::vector<double> &nz, std::vector<double> &ny, std::vector<int> &segs,
-		const std::vector<int> &strength, TerrainGen &terrain, const GenProfiles &prof) {
-	Tidy(nx, nz, ny, terrain, prof).run(segs, strength);
+		const std::vector<int> &strength, TerrainGen &terrain, const std::vector<double> &asph_right) {
+	Tidy(nx, nz, ny, terrain, asph_right).run(segs, strength);
 }
 
 } // namespace city

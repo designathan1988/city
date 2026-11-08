@@ -95,3 +95,11 @@ O que falta fazer, por área.
   - No project icon (`application/config/icon`): the export warns and the launcher shows Godot's.
   - The Android library is not in git (`project/bin/*.so` is ignored, like the Linux one): a clone runs `android.sh core` first.
   - The release keystore is in `C:/Projects/toolchains/keystores`, outside the repository; a store upload needs the user's own key.
+- The scenic Sao Paulo (map `sao_paulo`, `data/catalog/scenic.json`, 2026-11-07):
+  - The named avenues cross the marginal highways at grade (a junction on the highway): the graph builder cuts every crossing,
+    and a flyover needs a crossing left uncut and a raised deck the grade solver lifts over the other road.
+  - No railway or metro is laid (the CPTM along the Pinheiros, the lines under Paulista): the scenic roads take road profiles only,
+    and a rail profile crossing the district streets would make level crossings everywhere.
+  - The Minhocao (an elevated road over Avenida Sao Joao) waits for the same uncut crossings as the flyovers.
+  - A district's look (the Centro's older facades, the Jardins' houses) comes from its zone and density alone: the building
+    styles are not chosen by district.

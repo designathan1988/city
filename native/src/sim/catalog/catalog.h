@@ -6,6 +6,7 @@
 #include "sim/catalog/furniture_types.h"
 #include "sim/catalog/nature_types.h"
 #include "sim/catalog/profile_types.h"
+#include "sim/catalog/scenic.h"
 #include "sim/catalog/tuning_fields.h"
 #include "sim/catalog/traffic_params.h"
 
@@ -19,13 +20,14 @@ struct Tuning {
 	CITY_TUNING_FIELDS(CITY_TUNING_DECLARE)
 };
 
-// A map offered by the start screen: its size in 1 km tiles, whether its city is planned on flat ground, and that city's radius (0: it
-// fills the map).
+// A map offered by the start screen: its size in 1 km tiles, whether its city is planned on flat ground, that city's radius (0: it
+// fills the map), and the scenic city laid out on it instead (an index of Catalog::scenic; -1: none).
 struct MapDef {
 	std::string id, name_key;
 	int tiles = 0;
 	bool medium = false;
 	double city_radius_m = 0;
+	int scenic = -1;
 };
 
 // A zone id written on segment sides (Roadcraft src/roads/zones.ts).
@@ -88,6 +90,7 @@ struct Catalog {
 	StreetFurnitureDef furniture; // data/catalog/street_furniture.json
 	BlastParams blast; // data/catalog/blast.json
 	NatureDef nature; // data/catalog/nature.json
+	std::vector<ScenicCity> scenic; // data/catalog/scenic.json
 
 	bool ready() const { return !profiles.empty(); }
 	const Profile &profile(int id) const { return profiles[size_t(id) < profiles.size() ? size_t(id) : 0]; }
@@ -95,6 +98,11 @@ struct Catalog {
 		for (size_t i = 0; i < profiles.size(); i++)
 			if (profiles[i].id == id) return int(i);
 		return -1;
+	}
+	// The scenic city of a map (null: a generated one), the map index read as generate_map reads it.
+	const ScenicCity *scenic_of(int map_index) const {
+		const MapDef &m = maps[size_t(map_index) < maps.size() ? size_t(map_index) : 0];
+		return m.scenic >= 0 && size_t(m.scenic) < scenic.size() ? &scenic[size_t(m.scenic)] : nullptr;
 	}
 	const ZoneDef &zone(int code) const { return zones[(code >= 0 && code < ZONE_CODES) ? code : 0]; }
 	float widest_half() const {

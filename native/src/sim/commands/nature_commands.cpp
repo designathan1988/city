@@ -291,7 +291,8 @@ EditResult set_biome(CityState &s, int region) {
 EditResult clear_relief(CityState &s) {
 	Heightfield &t = s.terrain;
 	const Tuning &tn = s.catalog.tune;
-	TerrainGen gen(s.seed, s.map_half, tn.world_water_spacing_m);
+	const ScenicCity *scenic = s.catalog.scenic_of(s.map_index); // a scenic map's relief is its own laid-out land
+	TerrainGen gen(s.seed, s.map_half, tn.world_water_spacing_m, scenic ? &scenic->land : nullptr);
 	for (int r = 0; r < int(t.tile_dirty.size()); r++) {
 		if (!t.tile_dirty[size_t(r)]) continue;
 		int x0 = (r % t.regions) * t.region_size, z0 = (r / t.regions) * t.region_size;

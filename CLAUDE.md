@@ -142,7 +142,7 @@ the JDK and SDK paths go in Godot's editor settings, `export/android/*`) and a r
 - `sim/traffic/`: veículos, faixas, cruzamentos, semáforos, pedestres, caminhões, pátio.
 - `sim/transit/`: ônibus, trens e linhas.
 - `sim/buildings/`: registros, gerador de corpos (`b40/`) e interiores (`interior/`).
-- `sim/lots/`, `sim/citygen/`: lotes; a cidade gerada.
+- `sim/lots/`, `sim/citygen/`: lots; the generated city, and the scenic cities laid out by hand (`data/catalog/scenic.json`).
 - `sim/terrain/`, `sim/nature/`: relevo; paisagem, clima e ecologia.
 - `sim/demolition/`, `sim/economy/`, `sim/persistence/`: explosão e dano; dinheiro das vias; save.
 - `render/`: `RenderWorld` (consome o `ChangeLog`, aplica os orçamentos), `rs_util.h`, `mesh_builder`, `chunk_queue.h`,

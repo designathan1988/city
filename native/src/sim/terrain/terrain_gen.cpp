@@ -34,8 +34,10 @@ double influence(double u) { return u * u * (3 - 2 * u); }
 double bed_profile(double d, double reach) { return influence(std::min(1.0, (1 - d / reach) / RIVER_BED_FLOOR)); }
 } // namespace
 
-TerrainGen::TerrainGen(uint32_t seed, double map_half, double water_spacing) : seed_(seed), half_(map_half), water_spacing_(water_spacing) {
-	if (!flat()) plan_river();
+TerrainGen::TerrainGen(uint32_t seed, double map_half, double water_spacing, const ScenicLand *authored) :
+		seed_(seed), half_(map_half), water_spacing_(water_spacing) {
+	if (authored) authored_ = std::make_unique<ScenicLandField>(*authored, seed & ~FLAT_BIT);
+	else if (!flat()) plan_river();
 }
 
 double TerrainGen::course_z() const { return half_ - CANAL_FROM_EDGE; }
@@ -122,6 +124,7 @@ TerrainGen::River TerrainGen::river_at(double x, double z) const {
 }
 
 double TerrainGen::base_height(double x, double z) const {
+	if (authored_) return std::min(MAX_Y, std::max(MIN_Y, authored_->height(x, z)));
 	if (flat()) return PLAIN_Y;
 	double h = land(x, z);
 	River r = river_at(x, z);
@@ -140,7 +143,7 @@ const TerrainGen::Lake *TerrainGen::lake_of(int i, int j) {
 }
 
 void TerrainGen::plan_lakes(int water_n, JobPool *jobs) {
-	if (flat() || water_n <= 0) return;
+	if (flat() || authored_ || water_n <= 0) return; // an authored land's lakes are its own
 	// the squares water_at_sample looks at: those of the grid's first and last samples, and one more on each side
 	const int lo = int(std::floor(-half_ / LAKE_GRID)) - 1, hi = int(std::floor(((water_n - 1) * water_spacing_ - half_) / LAKE_GRID)) + 1;
 	const int side = hi - lo + 1;
@@ -259,8 +262,12 @@ void TerrainGen::flood(Lake &lake, int gx, int gz, double bottom) const {
 }
 
 float TerrainGen::water_at_sample(int gx, int gz) {
-	if (flat()) return NO_WATER;
 	double x = gx * water_spacing_ - half_, z = gz * water_spacing_ - half_;
+	if (authored_) {
+		float level = NO_WATER;
+		return authored_->water(x, z, level) ? level : NO_WATER;
+	}
+	if (flat()) return NO_WATER;
 	River r = river_at(x, z);
 	if (r.d < r.reach + water_spacing_) return float(r.level);
 	float best = NO_WATER;

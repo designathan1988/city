@@ -6,6 +6,8 @@
 #include "sim/buildings/growth.h"
 #include "sim/street/street_names.h"
 #include "sim/citygen/road_gen.h"
+#include "sim/citygen/scenic_finish.h"
+#include "sim/citygen/scenic_roads.h"
 #include "sim/citygen/squares.h"
 #include "sim/terrain/terrain_gen.h"
 #include "sim/roads/junction.h"
@@ -89,9 +91,10 @@ std::unique_ptr<TerrainGen> found_land(CityState &s, int map_index, uint32_t exa
 	s.clock.day_shift = c.tune.sim_day_start_min;
 	s.terrain.init(s.map_tiles, c.tune.world_tile_m, c.tune.world_height_spacing_m, s.seed, &s.log, &s.catalog.tune, s.jobs.get());
 	s.nature.ground.init(s.terrain.N, s.terrain.spacing, &c.nature.paint);
-	s.nature.reset(default_weather(c.nature.weather), c.nature.ecology.default_biome, s.seed & ~TerrainGen::FLAT_BIT);
+	const ScenicCity *scenic = c.scenic_of(map_index);
+	s.nature.reset(default_weather(c.nature.weather), scenic ? scenic->biome : c.nature.ecology.default_biome, s.seed & ~TerrainGen::FLAT_BIT);
 	if (!generate) return nullptr;
-	auto gen = std::make_unique<TerrainGen>(s.seed, s.map_half, c.tune.world_water_spacing_m);
+	auto gen = std::make_unique<TerrainGen>(s.seed, s.map_half, c.tune.world_water_spacing_m, scenic ? &scenic->land : nullptr);
 	s.terrain.fill(*gen, c.tune.world_water_spacing_m);
 	return gen;
 }
@@ -115,11 +118,12 @@ CityGenReport generate_map(CityState &s, int map_index, uint32_t seed, bool with
 	const Catalog &c = s.catalog;
 	const MapDef &map = c.maps[size_t(map_index) < c.maps.size() ? size_t(map_index) : 0];
 	bool medium = map.medium && with_city;
+	const ScenicCity *scenic = c.scenic_of(map_index);
 	// the generator that filled the land lays the streets on it: its river and lakes are planned once
 	const std::unique_ptr<TerrainGen> gen = found_land(s, map_index, medium ? (seed | TerrainGen::FLAT_BIT) : (seed & ~TerrainGen::FLAT_BIT));
 	CityGenReport rep;
 	if (with_city) {
-		GeneratedRoads r = generate_roads(s.seed, s.map_half, map.city_radius_m, *gen, gen_profiles(c), c.growth.plan);
+		GeneratedRoads r = scenic ? scenic_roads(*scenic, c, *gen) : generate_roads(s.seed, s.map_half, map.city_radius_m, *gen, gen_profiles(c), c.growth.plan);
 		insert_roads(s, r);
 		s.roads.grade.everything(); // every street solved on the land, and the ground shaped to them
 		sync_grade(s);
@@ -128,6 +132,11 @@ CityGenReport generate_map(CityState &s, int map_index, uint32_t seed, bool with
 		rep.lots = int(s.lots.total());
 		rep.squares = plan_squares(s, seed);
 		rep.buildings = fill_all(s);
+		if (scenic) {
+			rep.trees = plant_parks(s, *scenic, s.seed);
+			rep.named = name_scenic_roads(s, *scenic);
+			settle_name_plates(s.street, s.roads, s.log); // the named roads' chains are known before the rest take names
+		}
 		name_streets(s);
 		settle_name_plates(s.street, s.roads, s.log); // the plates of the names given, on the roads as they are now settled
 		rep.nodes = r.node_count();

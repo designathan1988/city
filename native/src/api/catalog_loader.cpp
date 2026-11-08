@@ -189,7 +189,7 @@ void load_growth(const Dictionary &t, GrowthDef &g, PackedStringArray &errors) {
 	g.decay_span_min = r.num(t, "decay_span_min");
 }
 
-void load_maps(const Dictionary &t, Catalog &c, PackedStringArray &errors) {
+void load_maps(const Dictionary &t, Catalog &c, PackedStringArray &errors, std::vector<std::string> &scenic) {
 	Reader top{ errors, "maps" };
 	Array list = top.arr(t, "maps");
 	for (int i = 0; i < list.size(); i++) {
@@ -201,6 +201,7 @@ void load_maps(const Dictionary &t, Catalog &c, PackedStringArray &errors) {
 		m.tiles = r.integer(d, "tiles");
 		m.medium = r.flag(d, "medium");
 		m.city_radius_m = double(d.get("city_radius_m", 0.0));
+		scenic.push_back(d.has("scenic") ? s8(String(d["scenic"])) : std::string()); // linked once the scenic cities are read
 		c.maps.push_back(m);
 	}
 }
@@ -213,7 +214,8 @@ bool CatalogLoader::load(const Dictionary &tables, Catalog &out, PackedStringArr
 	Catalog c;
 	Reader r{ errors, "catalog" };
 	load_tuning(r.dict(tables, "tuning"), c.tune, errors);
-	load_maps(r.dict(tables, "maps"), c, errors);
+	std::vector<std::string> scenic_names;
+	load_maps(r.dict(tables, "maps"), c, errors, scenic_names);
 	load_profiles(r.dict(tables, "road_profiles"), c, errors);
 	load_zones(r.dict(tables, "zones"), c, errors);
 	load_growth(r.dict(tables, "growth"), c.growth, errors);
@@ -221,6 +223,7 @@ bool CatalogLoader::load(const Dictionary &tables, Catalog &out, PackedStringArr
 	load_street_furniture(r.dict(tables, "street_furniture"), c.furniture, errors);
 	load_blast_params(r.dict(tables, "blast"), c.blast, errors);
 	load_nature(r.dict(tables, "nature"), c.nature, errors);
+	if (load_scenic(r.dict(tables, "scenic"), c, errors)) link_scenic_maps(scenic_names, c, errors);
 	if (c.maps.empty()) errors.push_back("maps: nenhum mapa");
 	if (!errors.is_empty()) return false;
 	out = std::move(c);

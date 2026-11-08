@@ -12,6 +12,7 @@ const CATALOG := {
 	"street_furniture": "res://data/catalog/street_furniture.json",
 	"blast": "res://data/catalog/blast.json",
 	"nature": "res://data/catalog/nature.json",
+	"scenic": "res://data/catalog/scenic.json",
 }
 ## Tables split only to keep each file small; merged under the same key they extend.
 const CATALOG_FRAGMENTS := {

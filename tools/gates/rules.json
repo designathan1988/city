@@ -305,6 +305,7 @@
     "project/data/render/models.json": "tools/gates/schemas/models.schema.json",
     "project/data/catalog/maps.json": "tools/gates/schemas/maps.schema.json",
     "project/data/catalog/nature.json": "tools/gates/schemas/nature.schema.json",
+    "project/data/catalog/scenic.json": "tools/gates/schemas/scenic.schema.json",
     "project/data/game/sky.json": "tools/gates/schemas/sky.schema.json",
     "project/data/render/cover.json": "tools/gates/schemas/cover.schema.json",
     "project/data/ui/land_panels.json": "tools/gates/schemas/land_panels.schema.json",

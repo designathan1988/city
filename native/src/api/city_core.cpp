@@ -118,6 +118,8 @@ Dictionary CityCore::new_map(int map, int seed, bool with_city, bool paused) {
 	d["lots"] = r.lots;
 	d["buildings"] = r.buildings;
 	d["squares"] = r.squares;
+	d["trees"] = r.trees;
+	d["named"] = r.named;
 	d["seconds"] = r.seconds;
 	return d;
 }

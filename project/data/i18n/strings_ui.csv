@@ -84,6 +84,7 @@ inspector.group,GRUPO {id},GROUP {id}
 inspector.roadClass,Classe da via,Road class
 menu.effectsPanel,Painel de efeitos (F7)…,Effects panel (F7)…
 menu.size.metropolis,Cidade grande,Large city
+menu.size.saoPaulo,São Paulo (cenográfica),São Paulo (scenic)
 menu.size.town,Cidade pequena,Small city
 opt.tier,nível,tier
 profiler.hide,Shift+F9 esconde,Shift+F9 hides

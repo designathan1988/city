@@ -1,7 +1,10 @@
 // The generated land of a new map, Roadcraft's src/jobs/terrainGen.ts: broad hills, a straight canal 300 m in from
 // the north (+z) edge, lakes filling the basins of a 2200 m grid, ranges along the edges. Deterministic from the seed
-// (the same map as the TypeScript game). A seed with FLAT_BIT is a level plain at PLAIN_Y without water.
+// (the same map as the TypeScript game). A seed with FLAT_BIT is a level plain at PLAIN_Y without water. A scenic map's land
+// is its own, laid out by hand (scenic_land.h): given one, the generator answers with it instead.
 #pragma once
+
+#include "sim/terrain/scenic_land.h"
 
 #include <cstdint>
 #include <memory>
@@ -21,7 +24,8 @@ public:
 	
 	static constexpr float NO_WATER = -1000.f;
 
-	TerrainGen(uint32_t seed, double map_half, double water_spacing);
+	// `authored`: a scenic map's land (null: the land drawn from the seed).
+	TerrainGen(uint32_t seed, double map_half, double water_spacing, const ScenicLand *authored = nullptr);
 	bool flat() const { return (seed_ & FLAT_BIT) != 0; }
 	// Ground height at (x, z): the land cut by the canal's bed.
 	double base_height(double x, double z) const;
@@ -45,6 +49,7 @@ private:
 	double half_, water_spacing_;
 	std::vector<double> course_z_, level_, depth_;
 	std::unordered_map<int64_t, std::unique_ptr<Lake>> lakes_; // null entry: the square has no lake; bounded: a generator lives for one fill
+	std::unique_ptr<ScenicLandField> authored_;
 
 	double course_z() const;
 	bool basin_of(int i, int j, double &x, double &z) const;

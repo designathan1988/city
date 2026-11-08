@@ -1,0 +1,508 @@
+{
+ "type": "object",
+ "properties": {
+  "_doc": {
+   "type": "string"
+  },
+  "cities": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "string"
+     },
+     "half_m": {
+      "type": "number",
+      "minimum": 100
+     },
+     "biome": {
+      "type": "string"
+     },
+     "land": {
+      "type": "object",
+      "properties": {
+       "base_m": {
+        "type": "number"
+       },
+       "relief_m": {
+        "type": "number"
+       },
+       "relief_cell_m": {
+        "type": "number",
+        "minimum": 1
+       },
+       "ridges": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "_doc": {
+           "type": "string"
+          },
+          "line": {
+           "type": "array",
+           "items": {
+            "type": "array",
+            "items": {
+             "type": "number"
+            },
+            "minItems": 2,
+            "maxItems": 2
+           },
+           "minItems": 2
+          },
+          "height_m": {
+           "type": "number"
+          },
+          "half_width_m": {
+           "type": "number",
+           "minimum": 1
+          }
+         },
+         "required": [
+          "line",
+          "height_m",
+          "half_width_m"
+         ],
+         "strict": true
+        }
+       },
+       "rivers": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "id": {
+           "type": "string"
+          },
+          "line": {
+           "type": "array",
+           "items": {
+            "type": "array",
+            "items": {
+             "type": "number"
+            },
+            "minItems": 2,
+            "maxItems": 2
+           },
+           "minItems": 2
+          },
+          "half_width_m": {
+           "type": "number",
+           "minimum": 1
+          },
+          "depth_m": {
+           "type": "number"
+          },
+          "wall_m": {
+           "type": "number",
+           "minimum": 1
+          },
+          "freeboard_m": {
+           "type": "number"
+          },
+          "valley_m": {
+           "type": "number",
+           "minimum": 1
+          },
+          "level_m": {
+           "type": "number",
+           "minimum": 1
+          },
+          "level_end_m": {
+           "type": "number",
+           "minimum": 1
+          }
+         },
+         "required": [
+          "id",
+          "line",
+          "half_width_m",
+          "depth_m",
+          "wall_m",
+          "freeboard_m",
+          "valley_m",
+          "level_m",
+          "level_end_m"
+         ],
+         "strict": true
+        },
+        "unique_key": "id"
+       },
+       "lakes": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "_doc": {
+           "type": "string"
+          },
+          "shore": {
+           "type": "array",
+           "items": {
+            "type": "array",
+            "items": {
+             "type": "number"
+            },
+            "minItems": 2,
+            "maxItems": 2
+           },
+           "minItems": 3
+          },
+          "drop_m": {
+           "type": "number"
+          },
+          "depth_m": {
+           "type": "number"
+          },
+          "shore_m": {
+           "type": "number",
+           "minimum": 1
+          }
+         },
+         "required": [
+          "shore",
+          "drop_m",
+          "depth_m",
+          "shore_m"
+         ],
+         "strict": true
+        }
+       }
+      },
+      "required": [
+       "base_m",
+       "relief_m",
+       "relief_cell_m",
+       "ridges",
+       "rivers",
+       "lakes"
+      ],
+      "strict": true
+     },
+     "streets": {
+      "type": "object",
+      "properties": {
+       "seam": {
+        "type": "string"
+       },
+       "seam_overshoot_m": {
+        "type": "number"
+       },
+       "highway_clear_m": {
+        "type": "number"
+       },
+       "bridge_max_m": {
+        "type": "number"
+       },
+       "march_step_m": {
+        "type": "number",
+        "minimum": 1
+       }
+      },
+      "required": [
+       "seam",
+       "seam_overshoot_m",
+       "highway_clear_m",
+       "bridge_max_m",
+       "march_step_m"
+      ],
+      "strict": true
+     },
+     "districts": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "id": {
+         "type": "string"
+        },
+        "seed": {
+         "type": "array",
+         "items": {
+          "type": "number"
+         },
+         "minItems": 2,
+         "maxItems": 2
+        },
+        "turn_deg": {
+         "type": "number"
+        },
+        "block_m": {
+         "type": "array",
+         "items": {
+          "type": "number",
+          "minimum": 10
+         },
+         "minItems": 2,
+         "maxItems": 2
+        },
+        "heat": {
+         "type": "number"
+        },
+        "trade": {
+         "type": "number"
+        },
+        "local": {
+         "type": "string"
+        },
+        "collector": {
+         "type": "string"
+        },
+        "collector_every": {
+         "type": "integer",
+         "minimum": 0
+        }
+       },
+       "required": [
+        "id",
+        "seed",
+        "turn_deg",
+        "block_m",
+        "heat",
+        "trade",
+        "local",
+        "collector",
+        "collector_every"
+       ],
+       "strict": true
+      },
+      "minItems": 1,
+      "unique_key": "id"
+     },
+     "roads": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "name_key": {
+         "type": "string",
+         "pattern_prefix": "scenic.road."
+        },
+        "profile": {
+         "type": "string"
+        },
+        "line": {
+         "type": "array",
+         "items": {
+          "type": "array",
+          "items": {
+           "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+         },
+         "minItems": 2
+        },
+        "river": {
+         "type": "string"
+        },
+        "offset_m": {
+         "type": "number"
+        }
+       },
+       "required": [
+        "profile"
+       ],
+       "strict": true
+      }
+     },
+     "parks": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "id": {
+         "type": "string"
+        },
+        "ring": {
+         "type": "array",
+         "items": {
+          "type": "array",
+          "items": {
+           "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+         },
+         "minItems": 3
+        }
+       },
+       "required": [
+        "id",
+        "ring"
+       ],
+       "strict": true
+      },
+      "unique_key": "id"
+     },
+     "works": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "id": {
+         "type": "string"
+        },
+        "ring": {
+         "type": "array",
+         "items": {
+          "type": "array",
+          "items": {
+           "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+         },
+         "minItems": 3
+        }
+       },
+       "required": [
+        "id",
+        "ring"
+       ],
+       "strict": true
+      },
+      "unique_key": "id"
+     },
+     "heat": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "id": {
+         "type": "string"
+        },
+        "line": {
+         "type": "array",
+         "items": {
+          "type": "array",
+          "items": {
+           "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+         },
+         "minItems": 1
+        },
+        "heat": {
+         "type": "number"
+        },
+        "trade": {
+         "type": "number"
+        },
+        "reach_m": {
+         "type": "number",
+         "minimum": 1
+        }
+       },
+       "required": [
+        "id",
+        "line",
+        "heat",
+        "trade",
+        "reach_m"
+       ],
+       "strict": true
+      },
+      "unique_key": "id"
+     },
+     "zoning": {
+      "type": "object",
+      "properties": {
+       "high_heat": {
+        "type": "number"
+       },
+       "medium_heat": {
+        "type": "number"
+       },
+       "commerce_trade": {
+        "type": "number"
+       },
+       "main_trade": {
+        "type": "number"
+       },
+       "noise_cell_m": {
+        "type": "number",
+        "minimum": 1
+       },
+       "noise_heat": {
+        "type": "number"
+       }
+      },
+      "required": [
+       "high_heat",
+       "medium_heat",
+       "commerce_trade",
+       "main_trade",
+       "noise_cell_m",
+       "noise_heat"
+      ],
+      "strict": true
+     },
+     "trees": {
+      "type": "object",
+      "properties": {
+       "spacing_m": {
+        "type": "number",
+        "minimum": 1
+       },
+       "jitter": {
+        "type": "number"
+       },
+       "grove_cell_m": {
+        "type": "number",
+        "minimum": 1
+       },
+       "grove_cut": {
+        "type": "number"
+       },
+       "low_m": {
+        "type": "number"
+       },
+       "high_m": {
+        "type": "number"
+       },
+       "road_clear_m": {
+        "type": "number"
+       }
+      },
+      "required": [
+       "spacing_m",
+       "jitter",
+       "grove_cell_m",
+       "grove_cut",
+       "low_m",
+       "high_m",
+       "road_clear_m"
+      ],
+      "strict": true
+     }
+    },
+    "required": [
+     "id",
+     "half_m",
+     "biome",
+     "land",
+     "streets",
+     "districts",
+     "roads",
+     "parks",
+     "works",
+     "heat",
+     "zoning",
+     "trees"
+    ],
+    "strict": true
+   },
+   "minItems": 1,
+   "unique_key": "id"
+  }
+ },
+ "required": [
+  "_doc",
+  "cities"
+ ],
+ "strict": true
+}

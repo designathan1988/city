@@ -1,6 +1,7 @@
 // A new map (Roadcraft app/cityFlows.ts generatedCity / newMapSession): the land from the seed, then, for a
 // generated city, its streets inserted into the network (free of charge), the land shaped under them, the lots cut
-// and a building on every lot. An empty map stops after the land.
+// and a building on every lot. An empty map stops after the land. A scenic map (sim/catalog/scenic.h) takes its own land
+// and streets laid out by hand, then the same lots and buildings, its parks' trees and its roads' names.
 #pragma once
 
 #include "sim/terrain/terrain_gen.h"
@@ -16,6 +17,7 @@ struct CityGenReport {
 	int nodes = 0, segments = 0, lots = 0, buildings = 0;
 	double seconds = 0;
 	int squares = 0;
+	int trees = 0, named = 0; // a scenic city's: the trees planted in its parks, the named roads that found their street
 };
 
 // map_index: entry of data/catalog/maps.json; with_city = false makes an empty map.
