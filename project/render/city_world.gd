@@ -85,10 +85,12 @@ static func shader_value(v: Variant) -> Variant:
 	return v
 
 
-## What the landscape says of the land and the water, as the sky read it.
+## What the landscape says of the land and the water, as the sky read it; every map's first read (a new map resets nature, an
+## opened one moves its revision) gives the terrain the map's half side, where its edge stands.
 func _take_landscape(land: Dictionary) -> void:
 	set_map_biome(land.biome)
 	set_water_look(land.weather)
+	_terrain_material.set_shader_param("map_half", float(CityStore.query(&"city_bounds").half))
 
 
 ## The map's biome tints the grass (0 none, else the biome's index + 1).
@@ -219,3 +221,4 @@ func _build_terrain(palette: Dictionary) -> void:
 			_terrain_material.set_shader_param(key, WorldMaterials.typed(kinds, key, palette.terrain[key]))
 	_terrain_material.set_shader_param("grass_mean", _grass_mean(palette.terrain))
 	_terrain_material.set_shader_param("gully_auto", DataTables.catalog_table("nature").weather.gully_auto.default) # until the weather is read
+	_terrain_material.set_shader_param("map_half", float(DataTables.maps()[0].tiles) * DataTables.tuning("world_tile_m") / 2.0) # the first map's, until a map is read

@@ -3581,6 +3581,26 @@ the keys the palette always set showing HEAD's dead defaults. The verge the same
 
 **What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56).
 
+### 6.60 B3 (the ground's edge): the terrain's map half from the core (2026-11-08)
+
+**Cause.** `terrain.gdshader` draws the map's edge (past it the land lies at its end, a wall of rock on its own plane, dimmed)
+at `map_half`, a uniform no script ever set: its default 5120 m held on every map. The maps run 10, 16 and 20 tiles of
+1024 m (`maps.json`, `found_land`: `map_half = tiles * world_tile_m / 2`), so on the 16- and 20-tile maps everything past
+5120 m from the centre was drawn as the wall, clamped and dimmed, though the land goes on to 8192 or 10240 m.
+
+**Fix.** The core's half (`city_bounds().half`, `state_->map_half`) is set on the terrain at every map's first read
+(`CityWorld._take_landscape`: a new map resets nature, which moves `sky_revision`, and an opened one adds its own), and the first
+map's half from the catalogue before any map is read, so the uniform is never left at 0, which would put the whole ground past
+its edge. The shader keeps no value of its own.
+
+**What changes (predicted).** On the 10-tile map nothing. On the larger maps the ground between 5120 m and the map's end is
+drawn as ground: its own normal and colour, at its own height, undimmed; the wall stands at the map's real end. The quick
+photos' town is 20 tiles: a view that reaches past 5120 m changes there and nowhere else.
+
+**Verified.** `quick`: every test passes, the four photos byte-equal to known states (none looks past 5120 m). A plan on
+the town looking at the ground 6.5 km east and at the corner 5.2 km out on both axes: HEAD draws the wall's rock smeared over
+the land there, two planes meeting at the corner; the fix draws the grass that stands there.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at
