@@ -25,8 +25,7 @@
 #include "render/render_context.h"
 #include "render/roads/far_road_renderer.h"
 #include "render/roads/road_renderer.h"
-#include "render/roads/structure_renderer.h"
-#include "render/roads/verge_renderer.h"
+#include "render/roads/road_layer.h"
 #include "render/terrain_bridge.h"
 #include "render/cover/cover_renderer.h"
 #include "render/trees/tree_renderer.h"
@@ -171,9 +170,10 @@ private:
 	TerrainBridge terrain_;
 	RoadRenderer roads_;
 	FarRoadRenderer far_roads_;
-	VergeRenderer verges_;
-	StructureRenderer structures_;
+	RoadLayer verges_{ "verge", false, JobLane::VERGES, emit_verge_chunk };
+	RoadLayer structures_{ "transit", true, JobLane::STRUCTURES, emit_structure_chunk };
 	PropRenderer props_;
+	GroundKept ground_; // the chunks' ground the trees and the cover plant on: before them, so it outlives their jobs
 	TreeRenderer trees_;
 	CoverRenderer cover_;
 	WaterRenderer water_;

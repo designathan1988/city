@@ -35,12 +35,13 @@ Vector3 normal_of(const Vector3 &a, const Vector3 &b, const Vector3 &away) {
 void verge_ribbon(const RoadEmit &e, const std::vector<Vector3> &edge, const std::vector<Vector3> &away) {
 	const int steps = e.L.verge_strips;
 	std::vector<int> prev;
+	std::vector<Vector3> across(size_t(steps) + 1); // the ground sampled once at each point across, its normal leaning off its neighbours
 	for (size_t i = 0; i < edge.size(); i++) {
 		std::vector<int> ids;
+		for (int k = 0; k <= steps; k++) across[size_t(k)] = ground_at(e, edge[i], away[i], float(k) / float(steps));
 		for (int k = 0; k <= steps; k++) {
-			const float t = float(k) / float(steps), dt = 1.f / float(steps);
-			const Vector3 a = ground_at(e, edge[i], away[i], std::max(0.f, t - dt)), b = ground_at(e, edge[i], away[i], std::min(1.f, t + dt));
-			ids.push_back(e.mb.add(ground_at(e, edge[i], away[i], t), normal_of(a, b, away[i]), Color(1, 1, 1)));
+			const Vector3 &a = across[size_t(std::max(0, k - 1))], &b = across[size_t(std::min(steps, k + 1))];
+			ids.push_back(e.mb.add(across[size_t(k)], normal_of(a, b, away[i]), Color(1, 1, 1)));
 		}
 		if (i > 0) {
 			for (int k = 0; k < steps; k++) {

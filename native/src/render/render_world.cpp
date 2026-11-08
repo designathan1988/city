@@ -23,12 +23,13 @@ constexpr int64_t BACKLOG_WINDOWS = 4;
 
 bool RenderWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	bool ok = roads_.init(ctx, errors);
-	ok = ok && far_roads_.init(ctx, roads_.look(), errors);
-	ok = ok && verges_.init(ctx, roads_.look(), errors);
-	ok = ok && structures_.init(ctx, roads_.look(), errors);
+	ok = ok && far_roads_.init(ctx, roads_.look(), roads_.shapes(), errors);
+	ok = ok && verges_.init(ctx, roads_.look(), roads_.shapes(), errors);
+	ok = ok && structures_.init(ctx, roads_.look(), roads_.shapes(), errors);
 	ok = ok && props_.init(ctx, roads_.look(), errors);
-	ok = ok && trees_.init(ctx, roads_.look(), errors);
-	ok = ok && cover_.init(ctx, errors);
+	ground_.set_budget(size_t(ctx.catalog->tune.render_ground_cache_mb * BYTES_PER_MIB));
+	ok = ok && trees_.init(ctx, roads_.look(), ground_, errors);
+	ok = ok && cover_.init(ctx, ground_, errors);
 	ok = ok && water_.init(ctx, errors);
 	ok = buildings_.init(ctx, errors) && ok;
 	stage_.use_designs(buildings_.own_designs());

@@ -5,9 +5,10 @@
 
 namespace city {
 
-void fog_at(const std::vector<const FogDab *> &dabs, float x, float z, const FogDef &def, FogSample &out) {
+void fog_at(const std::vector<FogDab> &dabs, const std::vector<int> &which, float x, float z, const FogDef &def, FogSample &out) {
 	float d = 0, weight = 0, height = 0, speed = 0;
-	for (const FogDab *dab : dabs) {
+	for (int i : which) {
+		const FogDab *dab = &dabs[size_t(i)];
 		float r = std::hypot(x - dab->x, z - dab->z) / dab->radius;
 		if (r >= 1.f) continue;
 		float s = 1.f - r * r, w = s * s * dab->strength;

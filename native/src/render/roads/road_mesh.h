@@ -5,6 +5,7 @@
 
 #include "render/mesh_builder.h"
 #include "render/roads/road_look.h"
+#include "render/roads/road_shapes.h"
 #include "sim/roads/street_furniture.h"
 #include "sim/state/city_state.h"
 
@@ -16,6 +17,7 @@ struct RoadEmit {
 	const CityState &s;
 	const StreetLook &L;
 	MeshBuilder &mb;
+	RoadShapes &shapes; // the nodes' and walls' shapes the road jobs share (road_shapes.h)
 	bool far = false; // the far level: the pieces' top faces alone, on a longer step
 };
 

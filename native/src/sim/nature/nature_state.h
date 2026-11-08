@@ -24,9 +24,10 @@ struct FogDab {
 struct FogSample {
 	float density = 0, height = 0, speed = 0;
 };
-// The fog the dabs leave at a point: each in turn, a smooth falloff from its centre to its rim, adding towards one (or,
-// erasing, taking away); height and speed follow the dabs by what each laid.
-void fog_at(const std::vector<const FogDab *> &dabs, float x, float z, const FogDef &d, FogSample &out);
+// The fog the dabs listed by `which` (indices into `dabs`, in the order they were laid) leave at a point: each in turn, a smooth
+// falloff from its centre to its rim, adding towards one (or, erasing, taking away); height and speed follow the dabs by what each
+// laid.
+void fog_at(const std::vector<FogDab> &dabs, const std::vector<int> &which, float x, float z, const FogDef &d, FogSample &out);
 
 struct NatureState {
 	Weather weather;

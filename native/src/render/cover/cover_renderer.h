@@ -14,6 +14,7 @@
 #include "render/cover/shore_stones.h"
 #include "render/render_context.h"
 #include "render/rs_util.h"
+#include "render/trees/ground_kept.h"
 #include "render/trees/tree_place.h"
 #include "sim/state/city_state.h"
 
@@ -28,7 +29,7 @@ namespace city {
 class CoverRenderer {
 public:
 	CoverRenderer();
-	bool init(const RenderContext &ctx, godot::PackedStringArray &errors);
+	bool init(const RenderContext &ctx, GroundKept &ground, godot::PackedStringArray &errors); // `ground`: shared with the trees
 	void reset();
 	void mark_dirty(int64_t key) {
 		queue_.revs.mark(key);
@@ -57,6 +58,7 @@ private:
 		void bake() {}
 	};
 	std::shared_ptr<Built> build(const CityState &s, int64_t key) const;
+	GroundKept *grounds_ = nullptr; // each chunk's ground, gathered once for the trees and the cover
 	void place(const CityState &s, int64_t key, const ChunkGround &l, Built &out) const;
 	void place_elements(const CityState &s, int64_t key, Built &out) const;
 	void place_shore(const CityState &s, int64_t key, const ChunkGround &l, Built &out) const;

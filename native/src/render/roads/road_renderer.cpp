@@ -38,7 +38,7 @@ void RoadChunks::reset() {
 }
 
 void RoadRenderer::build_cpu(const CityState &s, int64_t key, MeshBuilder &mb) const {
-	emit_chunk(RoadEmit{ s, look_, mb }, key);
+	emit_chunk(RoadEmit{ s, look_, mb, shapes_ }, key);
 }
 
 // A chunk draws every segment whose middle it holds, whole: its box is the chunk's column grown to what the job emitted

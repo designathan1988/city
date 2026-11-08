@@ -24,7 +24,7 @@
   "water_spacing_m": 8
  },
  "render": {
-  "_doc": "What the renderer draws and how far: occluder buildings, where roads, props and each building level end, the street lamps' and headlamps' lights, the level-of-detail error, and the per-frame budgets of chunk rebuilds, mesh commits and uploads.",
+  "_doc": "What the renderer draws and how far: occluder buildings, where roads, props and each building level end, the street lamps' and headlamps' lights, the level-of-detail error, and the per-frame budgets of chunk rebuilds, mesh commits and uploads. ground_cache_mb: the memory the chunks' ground (roads, lots and ecosystem the trees and the cover plant on: render/trees/ground_kept.h) may keep for the city as it stands; past it the least recently read are gathered again.",
   "occluder_min_storeys": 2,
   "road_end_m": 2200,
   "props_end_m": 900,
@@ -55,7 +55,8 @@
   "max_chunk_rebuilds_per_frame": 6,
   "commit_budget_ms": 4,
   "upload_budget_mb": 64,
-  "pose_delay_ticks": 2
+  "pose_delay_ticks": 2,
+  "ground_cache_mb": 64
  },
  "terrain": {
   "_doc": "The landscape: height limits, embankment slope and run, how far the ground sits under a road, the rough and hard ground of the relief, and the river's depth, freeboard, floor and shore.",

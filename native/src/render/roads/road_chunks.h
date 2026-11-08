@@ -1,4 +1,4 @@
-// What the road chunks and the verge chunks share (render/roads/road_renderer.h, verge_renderer.h): one mesh a chunk, its
+// What the road chunks and the road layers share (render/roads/road_renderer.h, road_layer.h): one mesh a chunk, its
 // instance and its material.
 #pragma once
 

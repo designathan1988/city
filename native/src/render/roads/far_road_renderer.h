@@ -9,6 +9,7 @@
 #include "render/render_context.h"
 #include "render/roads/road_chunks.h"
 #include "render/roads/road_look.h"
+#include "render/roads/road_shapes.h"
 #include "render/rs_util.h"
 #include "sim/state/city_state.h"
 
@@ -20,7 +21,7 @@ namespace city {
 
 class FarRoadRenderer : public MeshQueue {
 public:
-	bool init(const RenderContext &ctx, const StreetLook &look, godot::PackedStringArray &errors);
+	bool init(const RenderContext &ctx, const StreetLook &look, RoadShapes &shapes, godot::PackedStringArray &errors);
 	void reset();
 	void mark(int64_t chunk); // the roads of this chunk changed
 	// The dirty superchunks as the frame's build units (frame_admission.h): nearest first in the frame's one order.
@@ -40,6 +41,7 @@ private:
 	void send(Super &sp) const;
 
 	const StreetLook *look_ = nullptr;
+	RoadShapes *shapes_ = nullptr; // the road renderer's (road_shapes.h)
 	godot::RID scenario_, material_;
 	std::unordered_map<int64_t, Super> supers_;
 	std::unordered_set<int64_t> dirty_;

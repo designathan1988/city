@@ -20,25 +20,24 @@ namespace city {
 enum class WoodBand : int { INNER = 0, EDGE = 1, OPEN = 2, COUNT = 3 };
 constexpr int WOOD_BANDS = int(WoodBand::COUNT);
 
-// What a chunk's plants keep clear of and read, gathered once per chunk job: its roads and lots, with a margin, and its ecosystem
-// (none on a map with neither a biome nor paint, or when the job does not ask for it). The roads and lots are filed by cell of a
-// grid over the chunk and its margin, each in every cell its reach can touch, so near_road and in_lot test only those that can
-// answer: the same answer as testing them all.
+// What a chunk's plants keep clear of and read: its roads and lots, with a margin, and its ecosystem (none on a map with neither a
+// biome nor paint). The roads and lots are filed by cell of a grid over the chunk and its margin, each in every cell its reach can
+// touch, so near_road and in_lot test only those that can answer: the same answer as testing them all. Only read once made, so the
+// jobs of several threads may read one (ground_kept.h).
 struct ChunkGround {
 	std::vector<int> segs, lots;
 	EcologyField eco;
 	struct Grid {
 		double x0 = 0, z0 = 0;
-		int n = 0;
+		int n = 0, count = 0; // cells a side; indices filed
 		std::vector<std::vector<int>> cells; // indices into segs (or lots)
-		mutable std::vector<uint32_t> seen; // per index: the query that last tested it
-		mutable uint32_t stamp = 0;
 		void file(int index, double minx, double minz, double maxx, double maxz);
 		template <typename F>
 		bool any(double x, double z, double reach, F &&test) const; // test(index) on each filed index the square x, z +- reach meets
 	} seg_grid, lot_grid;
+	size_t bytes() const; // what it holds, for the memory it is kept by
 };
-ChunkGround chunk_ground(const CityState &s, int64_t key, bool ecology = true);
+ChunkGround chunk_ground(const CityState &s, int64_t key);
 bool near_road(const CityState &s, const ChunkGround &l, float x, float z, float r);
 bool in_lot(const CityState &s, const ChunkGround &l, float margin, float x, float z);
 
@@ -105,9 +104,11 @@ struct FarCard {
 	int species = 0;
 };
 
-// The trees of 256 m chunk `key`, near models.
-void place_trees(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, int64_t key, std::vector<TreeInstance> &out);
-// The far cards of chunk `key`: the same trees, one card each.
-void place_far(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, int64_t key, std::vector<FarCard> &out);
+// The trees of 256 m chunk `key` on its ground `l` (chunk_ground), near models.
+void place_trees(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, const ChunkGround &l, int64_t key,
+		std::vector<TreeInstance> &out);
+// The far cards of chunk `key` on its ground `l`: the same trees, one card each.
+void place_far(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, const ChunkGround &l, int64_t key,
+		std::vector<FarCard> &out);
 
 } // namespace city

@@ -25,8 +25,9 @@ int bit_of(int64_t chunk, int64_t super) {
 }
 } // namespace
 
-bool FarRoadRenderer::init(const RenderContext &ctx, const StreetLook &look, PackedStringArray &errors) {
+bool FarRoadRenderer::init(const RenderContext &ctx, const StreetLook &look, RoadShapes &shapes, PackedStringArray &errors) {
 	scenario_ = ctx.scenario;
+	shapes_ = &shapes;
 	material_ = ctx.material("road_fade", errors); // road_far.gdshader, by the road material's fade_shader
 	look_ = &look;
 	return errors.is_empty();
@@ -44,7 +45,7 @@ void FarRoadRenderer::reset() {
 void FarRoadRenderer::mark(int64_t chunk) { dirty_.insert(super_of(chunk)); }
 
 void FarRoadRenderer::build_cpu(const CityState &s, int64_t key, MeshBuilder &mb) const {
-	const RoadEmit e{ s, *look_, mb, true };
+	const RoadEmit e{ s, *look_, mb, *shapes_, true };
 	for (int j = 0; j < CHUNKS_PER_SUPER; j++)
 		for (int i = 0; i < CHUNKS_PER_SUPER; i++) {
 			const float x0 = float(key_x(key) * CHUNKS_PER_SUPER + i) * CHUNK, z0 = float(key_y(key) * CHUNKS_PER_SUPER + j) * CHUNK;

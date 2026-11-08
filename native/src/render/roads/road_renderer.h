@@ -8,6 +8,7 @@
 #include "render/render_context.h"
 #include "render/roads/road_chunks.h"
 #include "render/roads/road_look.h"
+#include "render/roads/road_shapes.h"
 #include "sim/state/city_state.h"
 
 #include <chrono>
@@ -22,10 +23,12 @@ public:
 	bool init(const RenderContext &ctx, godot::PackedStringArray &errors);
 	void submit(const CityState &s, int64_t key, JobPool &pool, float priority);
 	const StreetLook &look() const { return look_; }
+	RoadShapes &shapes() const { return shapes_; } // the nodes' and walls' shapes every road job shares (road_shapes.h)
 
 private:
 	void build_cpu(const CityState &s, int64_t key, MeshBuilder &mb) const;
 	StreetLook look_;
+	mutable RoadShapes shapes_;
 };
 
 } // namespace city

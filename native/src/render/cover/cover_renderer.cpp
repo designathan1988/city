@@ -50,8 +50,9 @@ CoverRenderer::CoverRenderer() {
 	queue_.hand_one = [this](Built &b) { commit_one(b); };
 }
 
-bool CoverRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
+bool CoverRenderer::init(const RenderContext &ctx, GroundKept &ground, PackedStringArray &errors) {
 	scenario_ = ctx.scenario;
+	grounds_ = &ground;
 	plant_material_ = ctx.material("cover_plant", errors);
 	rock_material_ = ctx.material("cover_rock", errors);
 	shore_material_ = ctx.material("cover_shore", errors);
@@ -150,11 +151,10 @@ std::shared_ptr<CoverRenderer::Built> CoverRenderer::build(const CityState &s, i
 	out->bufs.resize(size_t(draws_) + models_.all().size() + kit_.look(CoverPiece::ROCKS).variants.size());
 	const bool plants = s.nature.nature.region >= 0 || s.nature.ground.any_cover();
 	const bool shore = shore_near(s.terrain, key_x(key) * CHUNK, key_y(key) * CHUNK, CHUNK, shore_.search_m);
-	ChunkGround l;
-	if (plants || shore) l = chunk_ground(s, key, plants);
-	if (plants) place(s, key, l, *out);
+	const std::shared_ptr<const ChunkGround> l = plants || shore ? grounds_->of(s, key) : nullptr;
+	if (plants) place(s, key, *l, *out);
 	place_elements(s, key, *out);
-	if (shore) place_shore(s, key, l, *out);
+	if (shore) place_shore(s, key, *l, *out);
 	return out;
 }
 

@@ -13,6 +13,7 @@
 #include "render/rs_util.h"
 #include "render/trees/far_cards.h"
 #include "render/trees/garden_place.h"
+#include "render/trees/ground_kept.h"
 #include "render/trees/tree_place.h"
 
 #include <memory>
@@ -25,7 +26,7 @@ namespace city {
 class TreeRenderer {
 public:
 	TreeRenderer();
-	bool init(const RenderContext &ctx, const StreetLook &look, godot::PackedStringArray &errors);
+	bool init(const RenderContext &ctx, const StreetLook &look, GroundKept &ground, godot::PackedStringArray &errors); // `ground`: shared with the cover
 	void reset();
 	void mark_dirty(int64_t key);
 	void set_share(float share); // the graphics tier: every drawn chunk is placed again
@@ -77,6 +78,7 @@ private:
 	bool built(int64_t key, bool far) const { return far ? far_.count(key) > 0 : near_.count(key) > 0; }
 	godot::RID scenario_, body_material_, card_material_;
 	const StreetLook *look_ = nullptr;
+	GroundKept *grounds_ = nullptr; // each chunk's ground, gathered once for the near trees, the far cards and the cover
 	TreeLook trees_;
 	TreeKit kit_;
 	std::unordered_map<int64_t, Near> near_;

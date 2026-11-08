@@ -18,10 +18,7 @@ constexpr float BACKFILL_IN_M = 0.2f; // the backfill stops this far inside the 
 constexpr float BACKFILL_OVER_M = 0.016f; // and lies this far over the ground it covers
 const Vector3 UP(0, 1, 0);
 
-struct Section {
-	Vector3 at, out; // the wall's foot on the casing's edge, and the way out of the road
-	float deck, top; // the road's height, and the ground the wall holds
-};
+using Section = WallSection;
 
 float casing_of(const RoadEmit &e, const RoadSegment &g) { return e.s.catalog.profile(g.profile).half() + CASING_BAND_M; }
 
@@ -32,7 +29,7 @@ float held_ground(const RoadEmit &e, const RoadSegment &g, const SegFrame &f, fl
 }
 
 // The runs of wall along one side, each as its sections.
-std::vector<std::vector<Section>> runs_of(const RoadEmit &e, int sid, float side) {
+std::vector<std::vector<Section>> make_runs(const RoadEmit &e, int sid, float side) {
 	const RoadSegment &g = e.s.roads.segs[size_t(sid)];
 	std::vector<std::vector<Section>> runs;
 	const double v0 = g.retreat_a, v1 = g.len - g.retreat_b;
@@ -50,6 +47,18 @@ std::vector<std::vector<Section>> runs_of(const RoadEmit &e, int sid, float side
 	}
 	return runs;
 }
+
+// The segment's runs of wall on both sides for the city's revision (road_shapes.h): the walls and the backfill read the same runs.
+std::shared_ptr<const SegWalls> walls_of(const RoadEmit &e, int sid) {
+	return e.shapes.walls.of(e.s.revision, sid, [&]() {
+		auto walls = std::make_shared<SegWalls>();
+		walls->runs[0] = make_runs(e, sid, -1.f);
+		walls->runs[1] = make_runs(e, sid, 1.f);
+		return std::shared_ptr<const SegWalls>(std::move(walls));
+	}, [](const SegWalls &) { return size_t(1); });
+}
+
+const std::vector<std::vector<Section>> &runs_on(const SegWalls &w, float side) { return w.runs[side > 0 ? 1 : 0]; }
 
 Vector3 point(const Section &q, float out, float y) { return Vector3(q.at.x + q.out.x * out, y, q.at.z + q.out.z * out); }
 
@@ -73,8 +82,9 @@ void emit_retaining_walls(const RoadEmit &e, int sid) {
 	const float foot = tn.structure_wall_foot_m, coping = tn.structure_wall_coping_m, thick = tn.structure_wall_thick_m;
 	const Color concrete = structure_concrete();
 	if (!(e.s.roads.segs[size_t(sid)].flags & SEG_CUT_WALLS)) return;
+	const std::shared_ptr<const SegWalls> walls = walls_of(e, sid);
 	for (const float side : { 1.f, -1.f })
-		for (const std::vector<Section> &run : runs_of(e, sid, side)) {
+		for (const std::vector<Section> &run : runs_on(*walls, side)) {
 			if (run.size() < 2) continue;
 			close_run(e, run.front(), run.front().at - run[1].at, foot, coping);
 			close_run(e, run.back(), run.back().at - run[run.size() - 2].at, foot, coping);
@@ -91,8 +101,9 @@ void emit_retaining_walls(const RoadEmit &e, int sid) {
 void emit_wall_backfill(const RoadEmit &e, int sid) {
 	if (!(e.s.roads.segs[size_t(sid)].flags & SEG_CUT_WALLS)) return;
 	const float thick = e.s.catalog.tune.structure_wall_thick_m, back = cut_wall_reach() - BACKFILL_IN_M;
+	const std::shared_ptr<const SegWalls> walls = walls_of(e, sid);
 	for (const float side : { 1.f, -1.f })
-		for (const std::vector<Section> &run : runs_of(e, sid, side))
+		for (const std::vector<Section> &run : runs_on(*walls, side))
 			for (size_t k = 0; k + 1 < run.size(); k++) {
 				const Section &a = run[k], &b = run[k + 1];
 				e.mb.quad(point(a, thick, a.top + BACKFILL_OVER_M), point(b, thick, b.top + BACKFILL_OVER_M), point(b, back, b.top + BACKFILL_OVER_M), point(a, back, a.top + BACKFILL_OVER_M), Color(1, 1, 1), UP);

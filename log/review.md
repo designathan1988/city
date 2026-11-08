@@ -2419,6 +2419,33 @@ queue) and what is kept by the revision or by an exact key.
 **Verified** (`city-verify`, `quick --all`): 44 of 45, the digest equal, `gates_changed` clean, `00-cidade` byte-equal to runs
 before C7.
 
+### 6.16 B2, C7 (L7, L8, fog, verge): the render jobs derive each place once (2026-11-08)
+
+**Causes.** (L7) A chunk's ground (roads, lots, ecosystem: `chunk_ground`) was gathered by the near trees, again by the far cards
+for each of the sixteen chunks of a superchunk, and again by the cover; its query grid kept a mutable scratch, so no two jobs could
+share one. (L8) A node's ends and each corner's kerb and outer lines were worked out by the road job and again by the verge job, and
+a segment's runs of retaining wall by the structure job and again by the verge job (backfill). The fog job copied every dab and
+filed all of them again in its buckets at each revision, and scanned its whole 512 x 512 window for the slab; the verge sampled the
+ground three times per point across.
+
+**Fix.** One owner of "derived for one place, for the city's revision": `render/kept_by_revision.h` (an LRU keyed by place and
+`CityData::revision`, which every change to the map moves; the jobs ask under the map's shared lock). `GroundKept`
+(`render/trees/ground_kept.h`, `render.ground_cache_mb`) gives the trees and the cover one ground per chunk; the grid's scratch is the
+thread's own, so a ground is only read. `RoadShapes` (`render/roads/road_shapes.{h,cpp}`) gives the road jobs one shape per node
+(the construction moved there from `road_junction.cpp`, its owner) and one set of wall runs per segment. The fog files only the dabs
+past the first changed one (indices, each leaving dab the last of its buckets, so every bucket keeps the order a whole filing
+gives) and keeps each row's slab, working out again only the rows a span wrote (a least and a most are the same in any order); its
+job is split by responsibility (`refile`, `paint`, `slab`: `work` 121 lines at HEAD, 76 now). The verge samples each point once and
+leans each normal off its neighbours: with `strips` 1 (the data) the old t - dt and t + dt were exactly those neighbours.
+
+**What the gates showed.** The shared shapes made the verge and the structure renderers identical past the duplication limit: they
+were one class with another material, shadow, job lane and emitter, so they are two instances of `RoadLayer`
+(`render/roads/road_layer.{h,cpp}`), and `verge_renderer.*` and `structure_renderer.*` are deleted. `TAU_D` moved to `core/math.h`.
+
+**Verified** (`city-verify`, `quick --all`, three runs over the batch): the digest equal; every photo byte-equal to runs before
+C7. Once, `01-bairro` (equal in every run until then) showed four single pixels of 1 level; three fresh runs of the same DLL gave
+it equal to the golden: the run-to-run residual (§6.9) reaches it too. `gates_changed` only what the files had.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

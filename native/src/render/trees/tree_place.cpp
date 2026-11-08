@@ -49,34 +49,54 @@ void ChunkGround::Grid::file(int index, double minx, double minz, double maxx, d
 	const int j0 = grid_index(minz - GRID_SLACK_M, z0, n), j1 = grid_index(maxz + GRID_SLACK_M, z0, n);
 	for (int j = j0; j <= j1; j++)
 		for (int i = i0; i <= i1; i++) cells[size_t(j) * size_t(n) + size_t(i)].push_back(index);
-	if (seen.size() <= size_t(index)) seen.resize(size_t(index) + 1, 0);
+	count = std::max(count, index + 1);
 }
+
+namespace {
+// The indices a query has tested already (each is filed in every cell its reach touches): the thread's own, so a ground several
+// jobs share is only read. A query is a stamp; an index tested under it carries it.
+struct Asked {
+	std::vector<uint32_t> seen;
+	uint32_t stamp = 0;
+};
+thread_local Asked asked;
+} // namespace
 
 template <typename F>
 bool ChunkGround::Grid::any(double x, double z, double reach, F &&test) const {
 	if (n == 0) return false;
 	const double r = std::max(0.0, reach) + GRID_SLACK_M;
 	const int i0 = grid_index(x - r, x0, n), i1 = grid_index(x + r, x0, n), j0 = grid_index(z - r, z0, n), j1 = grid_index(z + r, z0, n);
-	if (++stamp == 0) {
-		std::fill(seen.begin(), seen.end(), 0);
-		stamp = 1;
+	if (asked.seen.size() < size_t(count)) asked.seen.resize(size_t(count), 0);
+	if (++asked.stamp == 0) {
+		std::fill(asked.seen.begin(), asked.seen.end(), 0);
+		asked.stamp = 1;
 	}
 	for (int j = j0; j <= j1; j++)
 		for (int i = i0; i <= i1; i++)
 			for (int index : cells[size_t(j) * size_t(n) + size_t(i)]) {
-				if (seen[size_t(index)] == stamp) continue;
-				seen[size_t(index)] = stamp;
+				if (asked.seen[size_t(index)] == asked.stamp) continue;
+				asked.seen[size_t(index)] = asked.stamp;
 				if (test(index)) return true;
 			}
 	return false;
 }
 
-ChunkGround chunk_ground(const CityState &s, int64_t key, bool ecology) {
+size_t ChunkGround::bytes() const {
+	size_t b = sizeof(ChunkGround) + (segs.capacity() + lots.capacity()) * sizeof(int) + eco.at.capacity() * sizeof(Community);
+	for (const Grid *g : { &seg_grid, &lot_grid }) {
+		b += g->cells.capacity() * sizeof(std::vector<int>);
+		for (const std::vector<int> &c : g->cells) b += c.capacity() * sizeof(int);
+	}
+	return b;
+}
+
+ChunkGround chunk_ground(const CityState &s, int64_t key) {
 	ChunkGround l;
 	float x0 = key_x(key) * CHUNK, z0 = key_y(key) * CHUNK;
 	s.roads.for_segments_near(x0 - LIST_MARGIN, z0 - LIST_MARGIN, x0 + CHUNK + LIST_MARGIN, z0 + CHUNK + LIST_MARGIN, [&](int sid) { l.segs.push_back(sid); });
 	s.buildings.query(x0 - LIST_MARGIN, z0 - LIST_MARGIN, x0 + CHUNK + LIST_MARGIN, z0 + CHUNK + LIST_MARGIN, [&](int id) { l.lots.push_back(id); });
-	if (ecology && (s.nature.nature.region >= 0 || s.nature.ground.any_cover())) l.eco = compute_ecology(s.terrain, s.nature.ground, s.nature.nature, s.catalog.nature.ecology, x0, z0, CHUNK);
+	if (s.nature.nature.region >= 0 || s.nature.ground.any_cover()) l.eco = compute_ecology(s.terrain, s.nature.ground, s.nature.nature, s.catalog.nature.ecology, x0, z0, CHUNK);
 	const int n = int(std::ceil((double(CHUNK) + 2.0 * double(LIST_MARGIN)) / GRID_CELL_M));
 	for (ChunkGround::Grid *g : { &l.seg_grid, &l.lot_grid }) {
 		g->x0 = double(x0) - double(LIST_MARGIN);
@@ -279,16 +299,16 @@ void planted(const CityState &s, const TreeLook &T, int64_t key, std::vector<Tre
 }
 } // namespace
 
-void place_trees(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, int64_t key, std::vector<TreeInstance> &out) {
-	ChunkGround l = chunk_ground(s, key);
+void place_trees(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, const ChunkGround &l, int64_t key,
+		std::vector<TreeInstance> &out) {
 	street(s, L, T, key, out);
 	parks(s, T, l, key, GardenView::NEAR, out);
 	planted(s, T, key, out);
 	wild(s, T, kit, l, key, out);
 }
 
-void place_far(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, int64_t key, std::vector<FarCard> &out) {
-	ChunkGround l = chunk_ground(s, key);
+void place_far(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, const ChunkGround &l, int64_t key,
+		std::vector<FarCard> &out) {
 	std::vector<TreeInstance> trees;
 	street(s, L, T, key, trees);
 	parks(s, T, l, key, GardenView::FAR, trees);
