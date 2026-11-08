@@ -3815,6 +3815,20 @@ Four agents did the moves. Each moved line was checked against HEAD by content, 
 
 **What changes.** Nothing seen or simulated. The release DLL's function order (`native/pgo`) does not yet name the new functions, which affects speed only; it is refreshed with `pgo.sh` at the theme's close.
 
+### 6.73 B3, the tests' saves: one folder per test process (2026-11-08)
+
+**Cause.** `SaveSlots.dir()` gave every run driven by tests the same `user://saves_tests`. The suite runs each test in its own Godot, in parallel, and the user folder is the project's, so every checkout on the machine shares it too: the main checkout, city-verify and the sessions' worktrees. Three things in that folder were shared:
+- the index `cidades.cfg`, which names the last city;
+- the city slots `cidade-<seed>`, the same seed in every test that opens `tests_preset`, so a name one process just took is taken again by another;
+- the quarantine folder, which `inspector_test` empties.
+That is how `save_undo_test` read "the same buildings" from another process's file and found a save it had just written opening as `save.none` (log/pendencias.md, 2026-11-08 12:17). It is also the likely holder of the file in the realism branch's "save rename while the file is held": another test process with the same slot open.
+
+**Fix.** `save_slots.gd:23`: a run driven by tests saves under `user://saves_tests/<process id>`. `TestCase.finish` removes that folder, since no other process reads it. The player's folder is unchanged.
+
+**Why it does not come back.** Two processes alive at once never share an id, so they never share a file. Index, slots and quarantine all derive from `dir()`, the one owner of the folder. A test's own scratch files (`TestCase.SCRATCH`) are named per test, and no test that writes them runs in two variants at once.
+
+**Proof.** quick with the suite in parallel: save_undo, inspector and shell all passed. No `<id>` folder is left in `saves_tests` after the run; that folder's own root files are the other checkouts' runs.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at
