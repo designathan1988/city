@@ -30,7 +30,7 @@ namespace city {
 	X(ped_stampede_crouch_roll) X(ped_stampede_crouch_s) X(ped_stampede_fall_roll) X(ped_stampede_fall_m) X(ped_stampede_fall_s) X(ped_stampede_fall_after_s) \
 	X(ped_stampede_film_roll) X(ped_stampede_film_m) X(ped_mourn_m) X(ped_mourn_s) X(ped_turn_rad_s) \
 	X(lorry_kerb_over_m) X(ped_crossing_share) X(ped_act_fade_s) X(ped_look_after_s) X(ped_look_hold_s) X(ped_phone_after_s) X(ped_hands_after_s) X(ped_talk_after_s) X(ped_talk_turn_s) \
-	X(ped_talk_stagger_s) \
+	X(ped_talk_stagger_s) X(ped_sit_share) X(ped_sit_min_s) X(ped_sit_span_s) X(ped_seat_apart_m) X(ped_seat_forward_m) \
 	X(ped_company_share) X(ped_company_child_share) X(ped_company_catch) X(ped_door_off_m) X(ped_gate_out_m) \
 	X(ped_door_reach_m) X(ped_door_budget) X(work_stay_h) X(errand_stay_h) \
 	X(curb_m) X(ped_spawn_per_step) X(ped_fill_per_step) \

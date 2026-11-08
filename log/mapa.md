@@ -191,6 +191,8 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/sim/terrain/terrain_brush.cpp` — pincel de relevo e formas
 - `native/src/sim/terrain/terrain_gen.cpp` · `native/src/sim/terrain/terrain_gen.h` — generated terrain (from the map seed)
 - `native/src/sim/terrain/scenic_land.cpp` · `native/src/sim/terrain/scenic_land.h` — the land of a scenic city: plateau and relief, ridges, rivers cut in their channels with their floodplains, lakes under their shores
+- `native/src/sim/traffic/ped_benches.cpp` — who sits on a bench along the way: a walker alone takes a free seat now and then, a
+  while, and goes on (a fright gets it up)
 - `native/src/sim/traffic/astar.h` — A* único de carros e pedestres
 - `native/src/sim/traffic/demand.cpp` — frota e viagens por zona
 - `native/src/sim/traffic/junction_admission.cpp` — antitravamento: saída livre, caixa livre, reserva e governador

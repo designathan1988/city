@@ -1,5 +1,6 @@
 ## Who is on foot, through the census of the core: out of the doors and in at them, of each age, in pairs that stay together,
-## no child alone, fewer in the small hours than in the afternoon, and nobody inside a street piece or another walker.
+## no child alone, some sitting on the benches, fewer in the small hours than in the afternoon, and nobody inside a street piece
+## or another walker (but those on a bench).
 ## Run: godot --path project res://tests/core/people_test.tscn -- --no-flow
 extends TestCase
 
@@ -64,6 +65,7 @@ func _ready() -> void:
 	for act in later.acts:
 		doing += int(later.acts[act])
 	check(doing > 0, "who waits at the kerb does nothing: %s" % later.acts)
+	check(int(later.acts.sit) > 0, "nobody sits on a bench: %s" % later.acts)
 	var indoors := float(later.went_in) / maxf(float(later.arrived), 1.0)
 	check(indoors >= MIN_INDOORS, "arrived by a door: %.2f" % indoors)
 	_mid_block()

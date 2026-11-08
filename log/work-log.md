@@ -1000,3 +1000,10 @@ end pole on the matching side (the sides keep their names through the node, as `
 stands (`hang_joined_wires`; read after the blow, so a pole knocked out on the next piece leaves nothing to hang from).
 **Checks:** `bomb_street_plan.json` adds a charge by the joint where the 300 m street's pieces meet: wires hang there; `strike_test`,
 `bomb_street` pass. No probe names a wire's span, so no test tells the joint's span from the others (pendencias).
+
+## 2026-11-08 13:00: walkers sit on the benches (English)
+**Problem:** nobody sat on the street's benches. **Design:** `ped_benches.cpp`: a walker alone passing a bench of its sidewalk with a
+seat free sits a while (traffic.json ped_sit_share, ped_sit_min_s + ped_sit_span_s, two seats ped_seat_apart_m apart, feet
+ped_seat_forward_m in front, facing the bench's way), the act SIT plays the people's chairSit clip; a fright gets it up; the crowd
+sees it on the bench and `walkers_in_furniture` leaves it out. **Checks:** `people_test` (28 sitting in the town after the run),
+`street_crossing_test`, `transit_test`, `shoot_test`, `edit_fuzz_test` pass.

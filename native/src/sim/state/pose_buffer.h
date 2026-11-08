@@ -44,7 +44,7 @@ enum class PedAge : uint8_t { ADULT = 0, CHILD, ELDER, COUNT };
 constexpr int PED_AGES = int(PedAge::COUNT);
 
 // What somebody standing does with their hands and face, past the idle.
-enum class PedAct : uint8_t { NONE = 0, TALK, LISTEN, LOOK, PHONE, HEADPHONES, BAG, CROUCH, PHOTO, COUNT };
+enum class PedAct : uint8_t { NONE = 0, TALK, LISTEN, LOOK, PHONE, HEADPHONES, BAG, CROUCH, PHOTO, SIT, COUNT };
 
 struct AgentRecord {
 	Pose at[POSE_TRAIL]; // the agent's PoseTrail

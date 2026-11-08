@@ -79,6 +79,9 @@ bool walker_near(const TrafficState &t, const Pose &at, float r);
 void add_company(CityState &s, int leader); // somebody at the leader's side
 void follow_leaders(CityState &s, float dt); // after the leaders moved
 void step_act(const TrafficState &t, const TrafficParams &p, Pedestrian &w, float dt); // what it does while it stands
+// A walker that just walked its sidewalk from arc `from` to `to` past a bench sits on it now and then (ped_benches.cpp): true when it did.
+bool sit_down(CityState &s, int id, float from, float to);
+void seated_pose(Pedestrian &w); // where it sits, facing the way the bench faces
 
 // ped_crowd.cpp / ped_stripes.cpp: walkers among walkers and street furniture, on every way they walk
 void crowd_step(CityState &s, float dt); // every walking walker's stripe and pace, from the bodies around it

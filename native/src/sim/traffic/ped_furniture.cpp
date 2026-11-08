@@ -45,6 +45,10 @@ void build(const CityState &s, int seg, SidewalkFurniture &out) {
 		o.fz = at.fz;
 		o.half_along = f.half_v;
 		o.half_across = f.half_u;
+		o.y = at.y;
+		o.bench = f.kind == FurnitureKind::BENCH;
+		float px = 0, pz = 0;
+		furniture_facing(s, seg, f, px, pz, o.face_x, o.face_z); // on a sidewalk (side >= 0): always placed
 		out.side[f.side].push_back(o);
 		out.longest = std::max(out.longest, o.s1 - o.s0);
 	}
@@ -166,7 +170,7 @@ int walkers_in_furniture(const CityState &s) {
 	const float body = s.catalog.traffic.ped_body_m;
 	int inside = 0;
 	for (const Pedestrian &w : s.traffic.peds) {
-		if (!w.alive) continue;
+		if (!w.alive || s.traffic.time < w.sit_until) continue; // one sitting is on its bench
 		bool hit = false;
 		auto check = [&](int seg) {
 			if (hit || seg < 0 || !s.roads.segs[size_t(seg)].alive) return;

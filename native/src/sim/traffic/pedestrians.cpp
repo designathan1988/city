@@ -149,6 +149,10 @@ void walk(CityState &s, int id, float dt) {
 	if (!walkable(s, w.seg)) { despawn(t, id, false); return; }
 	if (t.time < w.down_until || t.time < w.flinch_until) return; // knocked down by a blow (the render shows the body) or bent over a wound
 	if (held_by_fright(t, w)) return;
+	if (t.time < w.sit_until) {
+		if (t.time >= w.panic_until) return; // it sits on
+		w.sit_until = 0; // a fright gets it up
+	}
 	turn_from_bang(s, w);
 	if (w.mode == PedMode::LOT) {
 		walk_lot(s, id, dt);
@@ -183,7 +187,9 @@ void walk(CityState &s, int id, float dt) {
 		return;
 	}
 	const RoadSegment &g = s.roads.segs[w.seg];
+	const float before = w.s;
 	w.s += w.dir == 0 ? step : -step;
+	if (sit_down(s, id, before, w.s)) return;
 	if (w.door.building >= 0 && (w.dir == 0 ? w.s >= w.door.s : w.s <= w.door.s)) {
 		go_in(s, id);
 		return;
@@ -196,6 +202,10 @@ void walk(CityState &s, int id, float dt) {
 
 void pose(const CityState &s, Pedestrian &w) {
 	if (w.mode == PedMode::KERB) return;
+	if (s.traffic.time < w.sit_until) {
+		seated_pose(w);
+		return;
+	}
 	if (w.mode == PedMode::SIDEWALK) {
 		sidewalk_pose(s, w.seg, w.side, w.s, w.u, w.cur);
 		if (w.dir == 1) { w.cur.fx = -w.cur.fx; w.cur.fz = -w.cur.fz; }
@@ -280,7 +290,7 @@ void step_pedestrians(CityState &s, float dt) {
 		walk(s, id, dt);
 		if (!t.peds[size_t(id)].alive) continue;
 		Pedestrian &after = t.peds[size_t(id)];
-		const bool standing = after.mode == PedMode::WAIT || after.pace <= p.ped_moving_ms || held_by_fright(t, after);
+		const bool standing = after.mode == PedMode::WAIT || after.pace <= p.ped_moving_ms || held_by_fright(t, after) || t.time < after.sit_until;
 		after.rest = clampf(after.rest + (standing ? dt : -dt) / p.ped_rest_fade_s, 0.f, 1.f);
 		step_act(t, p, after, dt);
 		pose(s, after);

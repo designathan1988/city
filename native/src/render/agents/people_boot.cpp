@@ -27,7 +27,7 @@ constexpr FaceAct FACE_ACTS[] = { { "talk", FACE_ACT_TALK }, { "listen", FACE_AC
 	{ "crouchIdle", FACE_ACT_CROUCH }, { "crouchUp", FACE_ACT_CROUCH } };
 constexpr int BLOB_SIDES = 10;
 constexpr int PALM_ROW_FLOATS = 4;
-constexpr const char *ACT_CLIPS[int(PedAct::COUNT)] = { nullptr, "talk", "listen", "look", "phone", "headphones", "bag", "crouchIdle", "photo" };
+constexpr const char *ACT_CLIPS[int(PedAct::COUNT)] = { nullptr, "talk", "listen", "look", "phone", "headphones", "bag", "crouchIdle", "photo", "chairSit" };
 // The clip of each SeatPose and, for who puts a foot down, the one stopped.
 constexpr const char *SEAT_CLIPS[int(SeatPose::COUNT)] = { "carDrive", "carRide", "carRearRide", "cabDrive", "cabRide", "chairSit", "motoRide", "bikePedal" };
 constexpr const char *STOP_CLIPS[int(SeatPose::COUNT)] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, "motoStop", "bikeStop" };

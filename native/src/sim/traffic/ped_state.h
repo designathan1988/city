@@ -42,6 +42,8 @@ struct PedDoor {
 struct StreetObstacle {
 	float s0 = 0, s1 = 0, u0 = 0, u1 = 0;
 	float x = 0, z = 0, fx = 1, fz = 0, half_along = 0, half_across = 0;
+	float y = 0, face_x = 0, face_z = 1; // the footway's height there, and the way the piece faces
+	bool bench = false; // a seat for a walker (ped_benches.cpp)
 };
 // A walker as the crowd step reads it (ped_crowd.cpp), copied out once a step so that looking round and choosing read
 // one array: on a sidewalk its arc and across, in the world its place and heading, whether it moves, and what its own
@@ -106,6 +108,11 @@ struct Pedestrian {
 	PedAct held_act = PedAct::NONE;
 	float held_until = 0, face_x = 0, face_z = 0, trip_at = 0, trip_s = 0, bang_x = 0, bang_z = 0, turn_x = 0, turn_z = 0;
 	bool flee_due = false, turning = false, mourning = false;
+	// On a bench (ped_benches.cpp): until when, where its feet are and the way it faces; the bench (its segment and arc) and the seat,
+	// so it is not sat on again by it at once nor by another while it sits.
+	float sit_until = 0, seat_x = 0, seat_y = 0, seat_z = 0, seat_fx = 0, seat_fz = 1, sat_s = -1;
+	int sat_seg = -1;
+	uint8_t seat = 0;
 	// among the others (ped_crowd.cpp): across its way (on a sidewalk from its middle, on a line round a corner or over
 	// a zebra from that line; +u on the left of a -> b, of the line), the stripe aimed at, how long that has held, the
 	// pace the bodies ahead leave it and how long it has been held up (SUMO's jam time)

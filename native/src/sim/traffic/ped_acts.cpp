@@ -35,6 +35,7 @@ Party party_of(const TrafficState &t, const Pedestrian &w) {
 
 PedAct wanted(const TrafficState &t, const TrafficParams &p, const Pedestrian &w, const Party &party) {
 	if (t.time < w.held_until) return w.held_act == PedAct::CROUCH && w.rest < 1.f ? PedAct::NONE : w.held_act; // the crouch starts from standing
+	if (t.time < w.sit_until) return PedAct::SIT; // on a bench (ped_benches.cpp)
 	const Pedestrian &l = *party.leader;
 	if (l.mode != PedMode::WAIT) return PedAct::NONE;
 	const float waited = l.wait;

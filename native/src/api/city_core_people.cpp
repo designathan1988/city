@@ -116,7 +116,7 @@ static void census_doors(const CityState &s, Dictionary &d) {
 	d["arrived"] = t.ped_arrived;
 }
 
-static constexpr const char *ACT_NAMES[int(PedAct::COUNT)] = { "", "talk", "listen", "look", "phone", "headphones", "bag", "crouch", "photo" };
+static constexpr const char *ACT_NAMES[int(PedAct::COUNT)] = { "", "talk", "listen", "look", "phone", "headphones", "bag", "crouch", "photo", "sit" };
 
 Dictionary CityProbes::people_census(const Vector3 &at, float radius) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
