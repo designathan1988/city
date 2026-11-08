@@ -28,6 +28,19 @@ float lot_distance(const Building &b, float x, float z) {
 	return std::hypot(std::max(u, 0.f), std::max(v, 0.f));
 }
 
+namespace {
+// Whether a building with a body stands on (x, z): a burst there over its ground is on the building. A road's deck, a bridge or a
+// footway stands over the terrain too, and a charge on one is a burst on the ground it is.
+bool building_under(const CityState &s, float x, float z) {
+	bool under = false;
+	s.buildings.query(x, z, x, z, [&](int id) {
+		const Building &b = s.buildings.items[size_t(id)];
+		under = under || (b.alive && b.floors > 0 && lot_distance(b, x, z) <= 0.f);
+	});
+	return under;
+}
+} // namespace
+
 EditResult strike_at(CityState &s, double x, double z, double strength, double height) {
 	EditResult r;
 	const BlastParams &p = s.catalog.blast;
@@ -39,7 +52,7 @@ EditResult strike_at(CityState &s, double x, double z, double strength, double h
 	const float ground = s.terrain.height_at(float(x), float(z));
 	double t, d;
 	const int street = s.roads.find_segment_near(x, z, s.catalog.tune.road_pick_m, t, d);
-	const bool on_building = height > ground + ROOF_MIN_M;
+	const bool on_building = height > ground + ROOF_MIN_M && building_under(s, float(x), float(z));
 	Blow b{ s, p, float(x), float(z), ground, float(std::max(height, double(ground))), st, blast::charge_kg(p, st),
 		street >= 0 && !on_building ? blast::Surface::HARD : blast::Surface::EARTH, on_building, STRIKE_SALT ^ s.damage.strikes, r };
 	const uint32_t struck = s.damage.strikes++; // undone with the blow: the next one draws what this one drew

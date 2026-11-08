@@ -2,6 +2,7 @@
 #include "render/effects/effect_world.h"
 
 #include "core/math.h"
+#include "render/data_reader.h"
 
 #include <godot_cpp/classes/rendering_server.hpp>
 
@@ -24,17 +25,23 @@ constexpr float SHAKE_FLOOR = 1e-3f;
 constexpr float FLASH_DAMP = 2.f; // the flash dies off with the square of its life left
 constexpr float LIGHT_ATTEN = 2.f;
 constexpr float GEYSER_LIFT_M = 0.4f, JET_SPREAD_M = 0.1f, JET_LIFE_S = 4.2f;
+constexpr float JET_LEAST = 0.25f; // a hydrant's jet dying down keeps this share of its size
+constexpr float FLASH_YIELD = 0.6f; // a weaker flash of another colour never takes the light from one brighter than this share of it
 } // namespace
 
 bool EffectWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	scenario_ = ctx.scenario;
-	if (!params_.load(ctx.table("effects", errors), errors) || !load_looks(ctx, errors)) return false;
+	if (!params_.load(ctx.table("effects", errors), ctx.table("aftermath", errors), errors) || !load_looks(ctx, errors)) return false;
 	const RID puffs = ctx.material("puffs", errors), debris = ctx.material("debris", errors), marks = ctx.material("marks", errors), rubble = ctx.material("rubble", errors);
 	if (!errors.is_empty()) return false;
 	puffs_.init(scenario_, puffs, params_.pool);
 	puffs_.set_wind(params_.wind_x, params_.wind_z);
 	marks_.init(scenario_, marks, int(MARK_SLOTS), params_.soot_kept, params_.blood_max);
 	debris_.init(scenario_, debris, params_);
+	heave_.init(scenario_, debris, params_.heave);
+	DataReader streets{ errors, "streets.json" };
+	if (!seats_.load(streets.at(ctx.table("streets", errors))["wires"])) return false;
+	ropes_.init(scenario_, debris, params_.rope, seats_.colour, seats_.radius, params_.gravity);
 	debris_material_ = debris;
 	mounds_.init(scenario_, rubble, MOUND_SLOTS);
 	const Ref<ShaderMaterial> ruin = ctx.material_objects.get("building_ruin", Variant());
@@ -44,6 +51,7 @@ bool EffectWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	light_ = rs->omni_light_create();
 	rs->light_set_shadow(light_, false);
 	rs->light_set_color(light_, params_.flash_color);
+	flash_colour_ = flash_sent_ = params_.flash_color;
 	rs->light_set_param(light_, RenderingServer::LIGHT_PARAM_ENERGY, 0.f);
 	rs->light_set_param(light_, RenderingServer::LIGHT_PARAM_ATTENUATION, LIGHT_ATTEN);
 	light_inst_ = rs->instance_create2(light_, scenario_);
@@ -61,8 +69,11 @@ void EffectWorld::reset() {
 	puffs_.reset();
 	marks_.reset();
 	debris_.reset();
+	heave_.reset();
+	ropes_.reset();
 	mounds_.reset();
 	geysers_.clear();
+	arcs_.clear();
 	sources_.clear();
 	fire_carry_.clear();
 	events_.clear();
@@ -73,15 +84,18 @@ void EffectWorld::reset() {
 }
 
 void EffectWorld::touch_terrain(const CityState &s, const std::vector<int> &rects) {
-	if (rects.empty() || marks_.craters() == 0) return;
+	if (rects.empty() || (marks_.craters() == 0 && heave_.craters() == 0)) return;
 	const Heightfield &t = s.terrain;
-	// a decal reads the ground at the nodes round each of its points (grid_sample: floor and floor + 1): a node more each side
-	marks_.ground_moved([&](float x, float z, float half) {
+	// a decal reads the ground at the nodes round each of its points (grid_sample: floor and floor + 1): a node more each side;
+	// a heaved piece stands where it was laid, on the node under it and the next
+	const auto moved = [&](float x, float z, float half) {
 		const int x0 = t.ix_of(x - half) - 1, x1 = t.ix_of(x + half) + 2, z0 = t.ix_of(z - half) - 1, z1 = t.ix_of(z + half) + 2;
 		for (size_t k = 0; k + 3 < rects.size(); k += 4)
 			if (rects[k] <= x1 && rects[k + 2] >= x0 && rects[k + 1] <= z1 && rects[k + 3] >= z0) return true;
 		return false;
-	});
+	};
+	marks_.ground_moved(moved);
+	heave_.ground_moved(moved);
 }
 
 void EffectWorld::release() {
@@ -95,18 +109,34 @@ void EffectWorld::release() {
 	marks_.release();
 	mounds_.release();
 	debris_.release();
+	heave_.release();
+	ropes_.release();
 }
 
 void EffectWorld::flash(float radius) {
-	flash_left_ = params_.flash_life;
-	flash_energy_ = params_.flash_energy;
-	flash_range_ = std::max(params_.flash_range_min, params_.flash_range_r * radius);
+	flash_at(flash_at_, params_.flash_color, params_.flash_energy, std::max(params_.flash_range_min, params_.flash_range_r * radius), params_.flash_life);
+}
+
+void EffectWorld::flash_at(const Vector3 &at, const Color &colour, float energy, float range, float life) {
+	const float lit = flash_left_ > 0 ? flash_energy_ * std::pow(flash_left_ / std::max(flash_life_, SHAKE_FLOOR), FLASH_DAMP) : 0.f;
+	const bool same = colour == flash_colour_;
+	if (lit > energy * FLASH_YIELD && !same) return;
+	flash_at_ = at;
+	flash_colour_ = colour;
+	flash_energy_ = std::max(energy, same ? lit : 0.f);
+	flash_range_ = range;
+	flash_life_ = life;
+	flash_left_ = life;
 }
 
 void EffectWorld::light_update(float dt) {
 	RenderingServer *rs = RenderingServer::get_singleton();
 	flash_left_ = std::max(0.f, flash_left_ - dt);
-	const float k = flash_left_ / std::max(params_.flash_life, SHAKE_FLOOR);
+	const float k = flash_left_ / std::max(flash_life_, SHAKE_FLOOR);
+	if (flash_colour_ != flash_sent_) {
+		rs->light_set_color(light_, flash_colour_);
+		flash_sent_ = flash_colour_;
+	}
 	rs->light_set_param(light_, RenderingServer::LIGHT_PARAM_ENERGY, flash_energy_ * std::pow(k, FLASH_DAMP));
 	rs->light_set_param(light_, RenderingServer::LIGHT_PARAM_RANGE, flash_range_);
 	rs->instance_set_transform(light_inst_, Transform3D(Basis(), flash_at_));
@@ -136,13 +166,37 @@ void EffectWorld::burn_fires(const CityState &s, float dt) {
 
 void EffectWorld::step_geysers(float dt) {
 	for (Geyser &g : geysers_) {
-		const float strength = std::min(1.f, float(g.until - now_) / params_.geyser_fade);
-		g.carry += params_.geyser_rate * strength * dt;
+		const float strength = g.weak ? 1.f : std::min(1.f, float(g.until - now_) / params_.geyser_fade);
+		g.carry += (g.weak ? params_.leak_rate : params_.geyser_rate) * strength * dt;
 		const int n = int(g.carry);
 		g.carry -= float(n);
-		if (n > 0) puffs_.burst(g.x, g.y + GEYSER_LIFT_M, g.z, n, PUFF_WATER, JET_SPREAD_M, params_.geyser_size * std::max(0.25f, strength), JET_LIFE_S);
+		if (n == 0) continue;
+		if (g.weak) puffs_.burst(g.x, g.y, g.z, n, PUFF_WATER, JET_SPREAD_M, params_.leak_size, params_.leak_life);
+		else puffs_.burst(g.x, g.y + GEYSER_LIFT_M, g.z, n, PUFF_WATER, JET_SPREAD_M, params_.geyser_size * std::max(JET_LEAST, strength), JET_LIFE_S);
 	}
 	geysers_.erase(std::remove_if(geysers_.begin(), geysers_.end(), [&](const Geyser &g) { return now_ > g.until; }), geysers_.end());
+}
+
+void EffectWorld::step_arcs() {
+	const ArcLook &a = params_.arc;
+	for (Arc &c : arcs_) {
+		if (now_ < c.next) continue;
+		c.next = now_ + double(a.gap_min_s + rng_.f() * a.gap_span_s);
+		puffs_.burst(c.at.x, c.at.y, c.at.z, a.sparks, PUFF_SPARK, a.spread_m, a.size_m, a.life_s);
+		flash_at(c.at, a.color, a.energy, a.range_m, a.flash_s);
+	}
+	arcs_.erase(std::remove_if(arcs_.begin(), arcs_.end(), [&](const Arc &c) { return now_ > c.until; }), arcs_.end());
+}
+
+void EffectWorld::wire(const DamageEvent &e) {
+	const RopeLook &r = params_.rope;
+	const bool rural = e.u != 0;
+	const Vector3 arm(e.dx, 0, e.dz), out(std::cos(e.a), r.kick_lift, std::sin(e.a));
+	const std::vector<float> &seats = rural ? seats_.rural : seats_.urban;
+	for (float along : seats) {
+		const Vector3 from = Vector3(e.x, e.y + seats_.height, e.z) + arm * along, to = Vector3(e.b, e.d + seats_.height * r.drop_share, e.c) + arm * along;
+		ropes_.add(from, to, out * r.kick_m);
+	}
 }
 
 void EffectWorld::sync(CityState &s, FrameAdmission &admission) {
@@ -164,9 +218,12 @@ void EffectWorld::sync(CityState &s, FrameAdmission &admission) {
 	if (craters_seen_ != craters.revision()) {
 		// only blows since (the layout held): the craters laid are still the list's first, and only the new ones are laid
 		const bool grew = crater_layout_seen_ == craters.layout_revision();
-		marks_.set_craters(craters.items(), grew ? marks_.craters() : 0, [&](float x, float z) { return s.terrain.base_height_at(x, z); });
+		marks_.set_craters(craters.items(), grew ? marks_.craters() : 0, [&](float x, float z) { return GroundCells::laid(s, x, z); });
+		heave_.set_craters(craters.items(), grew ? heave_.craters() : 0, s);
 		craters_seen_ = craters.revision();
 		crater_layout_seen_ = craters.layout_revision();
+	} else if (heave_.craters() < craters.size()) {
+		heave_.set_craters(craters.items(), heave_.craters(), s); // the ground under them moved: laid again on it
 	}
 	if (ruins_seen_ != s.damage.ruins.revision() || scars_seen_ != s.damage.scars.revision()) {
 		// a building brought down in this frame already fell into its heap (its event); any other change (open, undo, redo) lays them all again
@@ -177,10 +234,14 @@ void EffectWorld::sync(CityState &s, FrameAdmission &admission) {
 	}
 	burn_fires(s, dt);
 	step_geysers(dt);
+	step_arcs();
 	step_sources(dt);
-	debris_.update(now_, dt, [&](float x, float z) { return s.terrain.height_at(x, z); }, puffs_);
+	const auto ground = [&](float x, float z) { return ground_.at(s, x, z); };
+	ropes_.update(dt, ground, puffs_,
+			[&](const Vector3 &at) { flash_at(at, params_.arc.color, params_.rope.flash_energy, params_.arc.range_m, params_.rope.flash_s); });
+	debris_.update(now_, dt, ground, puffs_);
 	ruins_.update(dt, puffs_, admission);
-	if (people_) people_->bodies().update(dt, [&](float x, float z) { return s.terrain.height_at(x, z); });
+	if (people_) people_->bodies().update(dt, ground);
 	for (const RuinPieces::Uncut &u : ruins_.take_uncut()) {
 		ground_here_ = s.terrain.height_at(u.ruin.x, u.ruin.z);
 		pile(u.ruin, u.falling, false, true);

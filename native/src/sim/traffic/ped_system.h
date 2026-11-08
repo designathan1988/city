@@ -98,6 +98,8 @@ bool step_to_nearer_place(CityState &s, int id);
 void street_furniture_of(const CityState &s, int sid, uint32_t kinds, std::vector<FurnitureSpot> &out, FurnitureRead read = FurnitureRead::KEPT);
 // Where a piece on a sidewalk stands in the world; false for a piece with no sidewalk (it cannot be knocked out).
 bool furniture_xz(const CityState &s, int seg, const FurnitureSpot &f, float &x, float &z);
+// The same, and the way the piece faces (its +z: toward the road or the arriving traffic) as a unit direction in the world.
+bool furniture_facing(const CityState &s, int seg, const FurnitureSpot &f, float &x, float &z, float &face_x, float &face_z);
 const SidewalkFurniture &sidewalk_furniture(CityState &s, int seg); // its footprints as bodies, built once per edit
 bool on_furniture(CityState &s, int seg, int side, float x, float z, float reach); // within `reach` of a footprint
 // The first arc from `at` on where a walker `u` across the sidewalk keeps its body off every footprint on it.

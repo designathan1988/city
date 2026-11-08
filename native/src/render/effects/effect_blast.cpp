@@ -30,12 +30,6 @@ constexpr float DOWN_SMOKE_SIZE_SCALE = 1.f;
 constexpr float COLLAPSE_DUST_HIGH_M = 6.f;
 constexpr float SOOT_SIZE_JITTER = 1.f;
 
-// The shrapnel of the ground it tears up: the soil's own tints (sRGB).
-const Color ROAD_TINT = Color(0.169f, 0.169f, 0.176f);
-const Color CONCRETE = Color(0.604f, 0.588f, 0.557f);
-const Color SOIL_TINT = Color(0.359f, 0.276f, 0.196f);
-const Color BRICK = Color(0.541f, 0.29f, 0.208f);
-const Color GLASS_TINT = Color(0.624f, 0.722f, 0.769f);
 constexpr float HIT_SPARK_SIZE = 0.3f, HIT_SPARK_LIFE = 1.f, HIT_LIFT_M = 1.f;
 } // namespace
 
@@ -73,14 +67,15 @@ void EffectWorld::blast(const DamageEvent &e, const CityState &s) {
 	Mark ring;
 	ring.kind = MARK_RING;
 	ring.x = e.x; ring.z = e.z;
-	ring.size = e.a * 2.f; // across: the damage reach
-	ring.y = Marks::top_ground(e.x, e.z, ring.size * 0.5f, [&](float x, float z) { return s.terrain.height_at(x, z); }) + params_.ring_height;
+	ring.size = radius * 2.f * params_.ring_reach_r; // across
+	ring.y = Marks::top_ground(e.x, e.z, ring.size * 0.5f, [&](float x, float z) { return GroundCells::surface(s, x, z); }) + params_.ring_height;
 	ring.born = now_;
 	ring.life = params_.ring_life;
 	marks_.ring(ring);
 	// Shrapnel of what the ground was.
-	const Color kinds_ground[4] = { SOIL_TINT, SOIL_TINT, SOIL_TINT, CONCRETE }, kinds_road[4] = { ROAD_TINT, ROAD_TINT, CONCRETE, SOIL_TINT },
-			kinds_building[4] = { CONCRETE, BRICK, GLASS_TINT, CONCRETE };
+	const Tints &c = params_.tints; // shrapnel of the ground it tears up, in its own tints
+	const Color kinds_ground[4] = { c.earth, c.earth, c.earth, c.concrete }, kinds_road[4] = { c.asphalt, c.asphalt, c.concrete, c.earth },
+			kinds_building[4] = { c.concrete, c.brick, c.glass, c.concrete };
 	const Color *palette = soil == SOIL_BUILDING ? kinds_building : soil == SOIL_SOIL_TINT ? kinds_ground : kinds_road;
 	const int n = params_.shrap_base + int(params_.shrap_per_r * radius);
 	for (int i = 0; i < n; i++) {
@@ -97,7 +92,7 @@ void EffectWorld::blast(const DamageEvent &e, const CityState &s) {
 		Mark m;
 		m.kind = MARK_SOOT;
 		m.x = e.x + std::cos(a) * r; m.z = e.z + std::sin(a) * r;
-		m.y = s.terrain.height_at(m.x, m.z) + Marks::SURFACE_LIFT_M * SOOT_SIZE_JITTER;
+		m.y = GroundCells::surface(s, m.x, m.z) + Marks::SURFACE_LIFT_M * SOOT_SIZE_JITTER;
 		m.size = params_.soot_size_min + rng_.f() * params_.soot_size_span + radius * params_.soot_size_r;
 		m.seed = rng_.f();
 		marks_.add_soot(m);

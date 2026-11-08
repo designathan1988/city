@@ -1,0 +1,33 @@
+{
+ "_doc": "The bomb on a street looked at in play (look.gd): one urban street across bare land with a line of the player's utility poles strung along its footway, the Demolish drawer's Bomb tab, one charge in the middle of the carriageway, the blast at 0.4, 1.2 and 4 s of its own clock, then what it left: the crater and the ground it heaved, the poles brought down and the next ones pulled over, the wires hanging from the poles left standing. setView's y is the ground's -z; click takes x and z.",
+ "city": {"map": 0, "seed": 1, "generate": false},
+ "steps": [
+  {"hour": 16},
+  {"dispatch": "build_road", "args": [{"at": [-150, 0]}, {"at": [150, 0]}, false, {"v3": [0, 0, 0]}, {"profile": "urbanStreet"}, 0.25]},
+  {"dispatch": "build_pole_run", "args": [{"at": [-90, 5]}, {"at": [90, 5]}, 6.0, 2, 0]},
+  {"setView": [0, 0, 9, 25, 32]},
+  {"frames": 120},
+  {"shot": "street-before"},
+  {"control": "Demolir"},
+  {"frames": 5},
+  {"control": "Bomba"},
+  {"frames": 5},
+  {"query": "damage_probe"},
+  {"click": [0, 0]},
+  {"query": "damage_probe"},
+  {"blastShot": "street-blast-0.4s", "at": 0.4},
+  {"blastShot": "street-blast-1.2s", "at": 1.2},
+  {"blastShot": "street-blast-4s", "at": 4.0},
+  {"frames": 600},
+  {"shot": "street-after"},
+  {"setView": [0, 0, 26, 40, 38]},
+  {"frames": 60},
+  {"shot": "crater-close"},
+  {"setView": [0, 0, 16, 0, 85]},
+  {"frames": 60},
+  {"shot": "crater-top"},
+  {"setView": [24, -5, 34, 200, 14]},
+  {"frames": 60},
+  {"shot": "wires-low"}
+ ]
+}

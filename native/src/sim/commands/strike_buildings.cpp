@@ -6,10 +6,12 @@
 // blow part of it breaks off first (destruction.ts `strike`): a scar, and when little would be left standing, the rest comes down.
 #include "sim/commands/strike_internal.h"
 
+#include "sim/buildings/b40/record.h"
 #include "sim/commands/edit_journal.h"
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace city {
 
@@ -17,6 +19,9 @@ namespace {
 constexpr float LOT_REACH_M = 80.f; // the widest lot: a centre this far outside the reach may still have a wall inside it
 constexpr float STANDOFF_DEPTH = 0.5f; // the load on a wall is that at its distance plus half the building's depth
 constexpr uint32_t SALT_FIRE = 0x66697265U;
+constexpr uint32_t SALT_SHORT_ALONG = 0x73686f61U, SALT_SHORT_STOREY = 0x73686f73U, SALT_SHORT_KIND = 0x73686f6bU, SALT_SHORT_RISE = 0x73686f6cU,
+		SALT_SHORT_TIME = 0x73686f74U;
+constexpr uint32_t SHORT_DRAWS = 8; // the draws of a building's shorted points: its id times this, plus the point's
 constexpr float SPHERE_VOLUME = 4.18879f; // 4/3 of pi
 
 // What the building feels: the blast at its distance taken to the middle of its depth.
@@ -102,6 +107,60 @@ void ignite(Blow &b, int id, const Building &rec) {
 	b.emit(e);
 }
 
+// The point of the building's blocks nearest (x, z), on a wall, and that wall's way along and outward (unit); false for a body of no block.
+struct WallSpot {
+	V2 at, along, out;
+};
+bool nearest_wall(const Building &bd, const b40::Body &body, float x, float z, WallSpot &w) {
+	const b40::LotFrame f = b40::lot_frame(bd);
+	const V2 p(x, z);
+	float best = std::numeric_limits<float>::max();
+	for (const b40::Volume &v : body.volumes) {
+		const V2 c[4] = { f.at(v.x, v.y), f.at(v.x + v.w, v.y), f.at(v.x + v.w, v.y + v.d), f.at(v.x, v.y + v.d) };
+		const V2 mid = f.at(v.x + v.w * 0.5f, v.y + v.d * 0.5f);
+		for (int k = 0; k < 4; k++) {
+			const V2 a = c[k], e = c[(k + 1) % 4] - a;
+			const float len2 = e.dot(e);
+			if (len2 <= 0.f) continue;
+			const V2 q = a + e * std::clamp((p - a).dot(e) / len2, 0.f, 1.f);
+			const float d = (q - p).dot(q - p);
+			if (d >= best) continue;
+			best = d;
+			const V2 along = e * (1.f / std::sqrt(len2));
+			const V2 side(along.y, -along.x);
+			w.at = q;
+			w.along = along;
+			w.out = side.dot(q - mid) >= 0.f ? side : V2(-side.x, -side.y);
+		}
+	}
+	return best < std::numeric_limits<float>::max();
+}
+
+// Its wiring shorting and its pipes bursting (actionsWiring.ts explodeAt): the first blow a building takes and stands leaves a few
+// points of the wall nearest the burst, at storeys drawn at random, sparking or spurting water a while (SPARK, LEAK).
+void short_out(Blow &b, int id, const Building &bd, const Aim &aim) {
+	const Tuning &t = b.s.catalog.tune;
+	const std::shared_ptr<const b40::Body> body = b40::record_mass(b.s.buildings.designs, bd);
+	WallSpot wall;
+	if (!nearest_wall(bd, *body, aim.x, aim.z, wall)) return;
+	const float ground = b.s.terrain.height_at(wall.at.x, wall.at.y);
+	const int spots = std::min(int(t.strike_short_spots_most), 1 + int(std::lround(aim.force / t.strike_short_force_step)));
+	for (int k = 0; k < spots; k++) {
+		const uint32_t who = uint32_t(id) * SHORT_DRAWS + uint32_t(k);
+		const float along = (b.roll(SALT_SHORT_ALONG, who) - 0.5f) * t.strike_short_spread_m;
+		const int storey = std::min(bd.floors - 1, int(b.roll(SALT_SHORT_STOREY, who) * float(bd.floors)));
+		const bool spark = b.roll(SALT_SHORT_KIND, who) < t.strike_short_spark_share;
+		DamageEvent e;
+		e.kind = spark ? DamageEvent::SPARK : DamageEvent::LEAK;
+		e.x = wall.at.x + wall.along.x * along + wall.out.x * t.strike_short_out_m;
+		e.z = wall.at.y + wall.along.y * along + wall.out.y * t.strike_short_out_m;
+		e.y = ground + float(storey) * t.strike_storey_m + t.strike_short_lift_m + b.roll(SALT_SHORT_RISE, who) * t.strike_short_lift_span_m;
+		const float last = spark ? t.strike_short_spark_s : t.strike_short_leak_s, more = spark ? t.strike_short_spark_span_s : t.strike_short_leak_span_s;
+		e.a = last + b.roll(SALT_SHORT_TIME, who) * more;
+		b.emit(e);
+	}
+}
+
 // Soot and wear: the building looks older by as much as the blow aged it.
 void wear(Blow &b, int id, float pressure) {
 	const BlastParams &p = b.p;
@@ -148,6 +207,7 @@ void strike_buildings(Blow &b) {
 		e.a = felt;
 		e.b = taken;
 		b.emit(e);
+		if (at < 0) short_out(b, id, bd, aim); // its first blow: once shorted, a building is not shorted again
 		wear(b, id, felt);
 		if (felt >= p.structural_kpa) ignite(b, id, b.s.buildings.items[size_t(id)]);
 	}

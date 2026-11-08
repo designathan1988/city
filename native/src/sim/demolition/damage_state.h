@@ -4,6 +4,7 @@
 #pragma once
 
 #include "sim/buildings/building_store.h"
+#include "sim/catalog/furniture_types.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -30,9 +31,13 @@ struct Ruin {
 	float blow_x = 0, blow_y = 0, blow_z = 0, blow_force = 0; // the blow that brought it down: how it fell, so how it lies
 };
 
-// A pole, signal post, hydrant, bench, bin or tree a blow took out: placed by kind and place, so the street furniture
-// derived from the road (sim/roads/street_furniture.h) and the trees skip it.
-enum class GoneKind : uint8_t { POLE = 0, POST, HYDRANT, BENCH, BIN, TREE, COUNT };
+// A pole, signal post, hydrant, bench, bin, tree, lighting column, shrub or small box (a post box, a phone, a sign) a blow took
+// out: placed by kind and place, so the street furniture derived from the road (sim/roads/street_furniture.h) and the trees skip
+// it. Saved: a new kind goes at the end.
+enum class GoneKind : uint8_t { POLE = 0, POST, HYDRANT, BENCH, BIN, TREE, COLUMN, SHRUB, BOX, COUNT };
+// What a piece of street furniture goes as when a blow knocks it out; a drain lies in the ground and is never knocked out.
+bool knockable(FurnitureKind k);
+GoneKind gone_kind(FurnitureKind k);
 struct Gone {
 	uint8_t kind = 0;
 	float x = 0, z = 0;

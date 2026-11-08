@@ -1,0 +1,459 @@
+{
+ "type": "object",
+ "strict": true,
+ "required": [
+  "_doc",
+  "heave",
+  "rope",
+  "arc",
+  "leak",
+  "pole"
+ ],
+ "properties": {
+  "_doc": {
+   "type": "string"
+  },
+  "heave": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "plates_base",
+    "plates_per_m",
+    "plates_most",
+    "crowded",
+    "crowd_r",
+    "plate_in",
+    "plate_span",
+    "plate_w_min_m",
+    "plate_w_span_m",
+    "scale_base",
+    "scale_per_m",
+    "scale_most",
+    "plate_depth_min",
+    "plate_depth_span",
+    "plate_thick_hard_m",
+    "plate_thick_earth_m",
+    "plate_lift",
+    "tilt_min_rad",
+    "tilt_span_rad",
+    "dirt_min",
+    "dirt_span",
+    "shade_min",
+    "shade_span",
+    "concrete_share",
+    "slabs_base",
+    "slabs_per_m",
+    "slab_in",
+    "slab_span",
+    "slab_jitter_rad",
+    "slab_min_m",
+    "slab_span_m",
+    "slab_earth_scale",
+    "slab_thick_hard_m",
+    "slab_thick_earth_m",
+    "slab_depth_min",
+    "slab_depth_span",
+    "slab_tilt_min_rad",
+    "slab_tilt_span_rad",
+    "slab_embed",
+    "slab_concrete_every",
+    "clod_every",
+    "clod_min_m",
+    "clod_span_m",
+    "clod_h_m",
+    "bevel_m",
+    "outline_r"
+   ],
+   "properties": {
+    "plates_base": {
+     "type": "number"
+    },
+    "plates_per_m": {
+     "type": "number"
+    },
+    "plates_most": {
+     "type": "number"
+    },
+    "crowded": {
+     "type": "number"
+    },
+    "crowd_r": {
+     "type": "number"
+    },
+    "plate_in": {
+     "type": "number"
+    },
+    "plate_span": {
+     "type": "number"
+    },
+    "plate_w_min_m": {
+     "type": "number"
+    },
+    "plate_w_span_m": {
+     "type": "number"
+    },
+    "scale_base": {
+     "type": "number"
+    },
+    "scale_per_m": {
+     "type": "number"
+    },
+    "scale_most": {
+     "type": "number"
+    },
+    "plate_depth_min": {
+     "type": "number"
+    },
+    "plate_depth_span": {
+     "type": "number"
+    },
+    "plate_thick_hard_m": {
+     "type": "number"
+    },
+    "plate_thick_earth_m": {
+     "type": "number"
+    },
+    "plate_lift": {
+     "type": "number"
+    },
+    "tilt_min_rad": {
+     "type": "number"
+    },
+    "tilt_span_rad": {
+     "type": "number"
+    },
+    "dirt_min": {
+     "type": "number"
+    },
+    "dirt_span": {
+     "type": "number"
+    },
+    "shade_min": {
+     "type": "number"
+    },
+    "shade_span": {
+     "type": "number"
+    },
+    "concrete_share": {
+     "type": "number"
+    },
+    "slabs_base": {
+     "type": "number"
+    },
+    "slabs_per_m": {
+     "type": "number"
+    },
+    "slab_in": {
+     "type": "number"
+    },
+    "slab_span": {
+     "type": "number"
+    },
+    "slab_jitter_rad": {
+     "type": "number"
+    },
+    "slab_min_m": {
+     "type": "number"
+    },
+    "slab_span_m": {
+     "type": "number"
+    },
+    "slab_earth_scale": {
+     "type": "number"
+    },
+    "slab_thick_hard_m": {
+     "type": "number"
+    },
+    "slab_thick_earth_m": {
+     "type": "number"
+    },
+    "slab_depth_min": {
+     "type": "number"
+    },
+    "slab_depth_span": {
+     "type": "number"
+    },
+    "slab_tilt_min_rad": {
+     "type": "number"
+    },
+    "slab_tilt_span_rad": {
+     "type": "number"
+    },
+    "slab_embed": {
+     "type": "number"
+    },
+    "slab_concrete_every": {
+     "type": "number"
+    },
+    "clod_every": {
+     "type": "number"
+    },
+    "clod_min_m": {
+     "type": "number"
+    },
+    "clod_span_m": {
+     "type": "number"
+    },
+    "clod_h_m": {
+     "type": "number"
+    },
+    "bevel_m": {
+     "type": "number"
+    },
+    "outline_r": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 3
+    }
+   }
+  },
+  "rope": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "points",
+    "most",
+    "iterations",
+    "slack",
+    "damp",
+    "lift_m",
+    "friction",
+    "crackle_min_s",
+    "crackle_span_s",
+    "crackle_hz",
+    "crackle_near_m",
+    "crackle_count",
+    "crackle_spread_m",
+    "crackle_size_m",
+    "crackle_life_s",
+    "flash_chance",
+    "flash_energy",
+    "flash_s",
+    "kick_m",
+    "kick_lift",
+    "drop_share",
+    "settle_s"
+   ],
+   "properties": {
+    "points": {
+     "type": "number"
+    },
+    "most": {
+     "type": "number"
+    },
+    "iterations": {
+     "type": "number"
+    },
+    "slack": {
+     "type": "number"
+    },
+    "damp": {
+     "type": "number"
+    },
+    "lift_m": {
+     "type": "number"
+    },
+    "friction": {
+     "type": "number"
+    },
+    "crackle_min_s": {
+     "type": "number"
+    },
+    "crackle_span_s": {
+     "type": "number"
+    },
+    "crackle_hz": {
+     "type": "number"
+    },
+    "crackle_near_m": {
+     "type": "number"
+    },
+    "crackle_count": {
+     "type": "number"
+    },
+    "crackle_spread_m": {
+     "type": "number"
+    },
+    "crackle_size_m": {
+     "type": "number"
+    },
+    "crackle_life_s": {
+     "type": "number"
+    },
+    "flash_chance": {
+     "type": "number"
+    },
+    "flash_energy": {
+     "type": "number"
+    },
+    "flash_s": {
+     "type": "number"
+    },
+    "kick_m": {
+     "type": "number"
+    },
+    "kick_lift": {
+     "type": "number"
+    },
+    "drop_share": {
+     "type": "number"
+    },
+    "settle_s": {
+     "type": "number"
+    }
+   }
+  },
+  "arc": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "sparks",
+    "gap_min_s",
+    "gap_span_s",
+    "spread_m",
+    "size_m",
+    "life_s",
+    "color",
+    "energy",
+    "range_m",
+    "flash_s",
+    "pole_arc_min_s",
+    "pole_arc_span_s",
+    "signal_arc_min_s",
+    "signal_arc_span_s"
+   ],
+   "properties": {
+    "sparks": {
+     "type": "number"
+    },
+    "gap_min_s": {
+     "type": "number"
+    },
+    "gap_span_s": {
+     "type": "number"
+    },
+    "spread_m": {
+     "type": "number"
+    },
+    "size_m": {
+     "type": "number"
+    },
+    "life_s": {
+     "type": "number"
+    },
+    "color": {
+     "type": "string"
+    },
+    "energy": {
+     "type": "number"
+    },
+    "range_m": {
+     "type": "number"
+    },
+    "flash_s": {
+     "type": "number"
+    },
+    "pole_arc_min_s": {
+     "type": "number"
+    },
+    "pole_arc_span_s": {
+     "type": "number"
+    },
+    "signal_arc_min_s": {
+     "type": "number"
+    },
+    "signal_arc_span_s": {
+     "type": "number"
+    }
+   }
+  },
+  "leak": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "jet_hz",
+    "size_m",
+    "life_s"
+   ],
+   "properties": {
+    "jet_hz": {
+     "type": "number"
+    },
+    "size_m": {
+     "type": "number"
+    },
+    "life_s": {
+     "type": "number"
+    }
+   }
+  },
+  "pole": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "crown_m",
+    "fall_spin_min",
+    "fall_spin_span",
+    "snap_spin_min",
+    "snap_spin_span",
+    "cut_min",
+    "cut_span",
+    "arm_section_m",
+    "arm_over_m",
+    "lamp_reach_share",
+    "lamp_head_m",
+    "post_head_m"
+   ],
+   "properties": {
+    "crown_m": {
+     "type": "number"
+    },
+    "fall_spin_min": {
+     "type": "number"
+    },
+    "fall_spin_span": {
+     "type": "number"
+    },
+    "snap_spin_min": {
+     "type": "number"
+    },
+    "snap_spin_span": {
+     "type": "number"
+    },
+    "cut_min": {
+     "type": "number"
+    },
+    "cut_span": {
+     "type": "number"
+    },
+    "arm_section_m": {
+     "type": "number"
+    },
+    "arm_over_m": {
+     "type": "number"
+    },
+    "lamp_reach_share": {
+     "type": "number"
+    },
+    "lamp_head_m": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 3,
+     "maxItems": 3
+    },
+    "post_head_m": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 3,
+     "maxItems": 3
+    }
+   }
+  }
+ }
+}

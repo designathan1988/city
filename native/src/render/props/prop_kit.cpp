@@ -141,14 +141,12 @@ void wire_tube(MeshBuilder &b, const Vector2 &place, float rural_seat, const Col
 	}
 }
 
-// Every wire of a span (streets.json wires): the primary ones at y_m[0], the i-th on seat i along the arm (z_m on an urban pole,
-// rural_z_m on a rural one), then the secondary ones at the rest of y_m, on the urban rack (secondary_z_m).
-void wire_mesh(MeshBuilder &b, const DataValue &wires, int chords, int sides) {
-	const DataValue ys = wires["y_m"], urban = wires["z_m"], rural = wires["rural_z_m"];
-	const Color colour = rgba8_to_color(wires["color"].colour());
-	const float radius = wires["radius_m"].f();
-	for (int k = 0; k < urban.size(); k++) wire_tube(b, Vector2(ys[0].f(), urban[k].f()), rural[k].f(), colour, radius, chords, sides);
-	for (int i = 1; i < ys.size(); i++) wire_tube(b, Vector2(ys[i].f(), wires["secondary_z_m"].f()), WIRE_SECONDARY_MARK, colour, radius, chords, sides);
+// Every wire of a span (streets.json wires): the primary ones on their seats (WireSeats), then the secondary ones at the rest of
+// y_m, on the urban rack (secondary_z_m).
+void wire_mesh(MeshBuilder &b, const DataValue &wires, const WireSeats &seats, int chords, int sides) {
+	const DataValue ys = wires["y_m"];
+	for (size_t k = 0; k < seats.urban.size(); k++) wire_tube(b, Vector2(seats.height, seats.urban[k]), seats.rural[k], seats.colour, seats.radius, chords, sides);
+	for (int i = 1; i < ys.size(); i++) wire_tube(b, Vector2(ys[i].f(), wires["secondary_z_m"].f()), WIRE_SECONDARY_MARK, seats.colour, seats.radius, chords, sides);
 }
 
 void light_mesh(MeshBuilder &b) {
@@ -188,6 +186,25 @@ void sheet_mesh(MeshBuilder &b, const DataValue &section) {
 }
 } // namespace
 
+bool WireSeats::load(const DataValue &wires) {
+	const DataValue ys = wires["y_m"], u = wires["z_m"], r = wires["rural_z_m"];
+	if (ys.failed || u.failed || r.failed) return false;
+	if (u.size() != r.size() || ys.size() == 0 || u.size() == 0) {
+		wires.fail("z_m and rural_z_m of different lengths, or y_m or z_m empty");
+		return false;
+	}
+	height = ys[0].f();
+	radius = wires["radius_m"].f();
+	colour = rgba8_to_color(wires["color"].colour());
+	urban.clear();
+	rural.clear();
+	for (int k = 0; k < u.size(); k++) {
+		urban.push_back(u[k].f());
+		rural.push_back(r[k].f());
+	}
+	return true;
+}
+
 bool PropKit::build(const DataValue &props, const DataValue &wires, const DataValue &beam_section, PackedStringArray &errors) {
 	const int64_t before = errors.size();
 	meshes_[int(PropKind::SIGNAL)] = parts(props, "signal");
@@ -204,15 +221,11 @@ bool PropKit::build(const DataValue &props, const DataValue &wires, const DataVa
 	if (errors.size() != before) return false;
 	pole_cast_ = cast_parts(props, "pole", cast);
 	cast_from_ = cast["from_m"].f();
-	const DataValue ys = wires["y_m"], urban = wires["z_m"], rural = wires["rural_z_m"];
+	WireSeats seats;
 	wires["secondary_z_m"].f();
-	if (errors.size() != before) return false;
-	if (urban.size() != rural.size() || ys.size() == 0) {
-		wires.fail("z_m and rural_z_m of different lengths, or y_m empty");
-		return false;
-	}
-	wire_mesh(wire_near_, wires, wires["near_chords"].whole(), wires["near_sides"].whole());
-	wire_mesh(wire_far_, wires, wires["far_chords"].whole(), wires["far_sides"].whole());
+	if (!seats.load(wires) || errors.size() != before) return false;
+	wire_mesh(wire_near_, wires, seats, wires["near_chords"].whole(), wires["near_sides"].whole());
+	wire_mesh(wire_far_, wires, seats, wires["far_chords"].whole(), wires["far_sides"].whole());
 	box_.box(Vector3(-0.5f, -0.5f, -0.5f), Vector3(0.5f, 0.5f, 0.5f), WHITE, Vector2(float(int(PropTag::FINISHED)), 0), true);
 	sheet_mesh(beam_, beam_section);
 	light_mesh(light_);

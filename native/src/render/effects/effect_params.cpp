@@ -1,4 +1,4 @@
-// Strict Dictionary -> EffectParams conversion for project/data/render/effects.json, through the strict reader
+// Strict Dictionary -> EffectParams conversion for project/data/render/effects.json and aftermath.json, through the strict reader
 // (render/data_reader.h): every key, type and row checked.
 #include "render/effects/effect_params.h"
 
@@ -12,6 +12,15 @@ using namespace godot;
 namespace city {
 
 namespace {
+constexpr size_t FEWEST_CORNERS = 3;
+constexpr int MIN_ROPE_POINTS = 2;
+constexpr int VEC3 = 3;
+
+// A list of three numbers (already checked for its length by the reader) as a vector; a zero one when the reader failed it.
+Vector3 vec3_of(const Array &a) {
+	return a.size() == VEC3 ? Vector3(float(double(a[0])), float(double(a[1])), float(double(a[2]))) : Vector3();
+}
+
 // One table of effects.json, read through the strict reader.
 struct Group {
 	DataReader r;
@@ -22,7 +31,7 @@ struct Group {
 };
 } // namespace
 
-bool EffectParams::load(const Dictionary &t, PackedStringArray &errors) {
+bool EffectParams::load(const Dictionary &t, const Dictionary &aftermath, PackedStringArray &errors) {
 	const int64_t before = errors.size();
 	DataReader r{ errors, "effects.json" };
 	Group puffs(r, t, "puffs");
@@ -76,6 +85,8 @@ bool EffectParams::load(const Dictionary &t, PackedStringArray &errors) {
 	light_life = emit.num("light_life_s");
 	load_look(t, errors);
 	load_things(t, errors);
+	load_heave(aftermath, errors);
+	load_wires(aftermath, errors);
 	if (bursts.empty()) r.in("bursts").fail("no burst");
 	return errors.size() == before;
 }
@@ -95,6 +106,7 @@ void EffectParams::load_look(const Dictionary &t, PackedStringArray &errors) {
 	Group ring(r, t, "ring");
 	ring_life = ring.num("life_s");
 	ring_height = ring.num("height_m");
+	ring_reach_r = ring.num("reach_r");
 	Group flash(r, t, "flash");
 	flash_color = Color::hex(flash.r.colour(flash.d, "color"));
 	flash_energy = flash.num("energy");
@@ -116,6 +128,10 @@ void EffectParams::load_look(const Dictionary &t, PackedStringArray &errors) {
 	shrap_lift_span = shrap.num("lift_span_m");
 	shrap_size_min = shrap.num("size_min_m");
 	shrap_size_span = shrap.num("size_span_m");
+	Group tint(r, t, "tints");
+	const auto hue = [&](const char *key) { return Color::hex(tint.r.colour(tint.d, key)); };
+	tints = Tints{ hue("asphalt"), hue("concrete"), hue("earth"), hue("brick"), hue("glass"), hue("wood"), hue("metal"), hue("char"), hue("leaf"),
+		hue("flesh"), hue("paint"), hue("dirt") };
 }
 
 void EffectParams::load_things(const Dictionary &t, PackedStringArray &errors) {
@@ -165,6 +181,126 @@ void EffectParams::load_things(const Dictionary &t, PackedStringArray &errors) {
 	tracer_m = down.num("tracer_m");
 	flash_m = down.num("flash_m");
 	body_lead = down.num("body_lead_s");
+}
+
+void EffectParams::load_heave(const Dictionary &t, PackedStringArray &errors) {
+	DataReader r{ errors, "aftermath.json" };
+	Group h(r, t, "heave");
+	HeaveLook &v = heave;
+	v.plates_base = h.integer("plates_base");
+	v.plates_per_m = h.num("plates_per_m");
+	v.plates_most = h.integer("plates_most");
+	v.crowded = h.integer("crowded");
+	v.crowd_r = h.num("crowd_r");
+	v.plate_in = h.num("plate_in");
+	v.plate_span = h.num("plate_span");
+	v.plate_w_min = h.num("plate_w_min_m");
+	v.plate_w_span = h.num("plate_w_span_m");
+	v.scale_base = h.num("scale_base");
+	v.scale_per_m = h.num("scale_per_m");
+	v.scale_most = h.num("scale_most");
+	v.plate_depth_min = h.num("plate_depth_min");
+	v.plate_depth_span = h.num("plate_depth_span");
+	v.plate_thick_hard = h.num("plate_thick_hard_m");
+	v.plate_thick_earth = h.num("plate_thick_earth_m");
+	v.plate_lift = h.num("plate_lift");
+	v.tilt_min = h.num("tilt_min_rad");
+	v.tilt_span = h.num("tilt_span_rad");
+	v.dirt_min = h.num("dirt_min");
+	v.dirt_span = h.num("dirt_span");
+	v.shade_min = h.num("shade_min");
+	v.shade_span = h.num("shade_span");
+	v.concrete_share = h.num("concrete_share");
+	v.slabs_base = h.integer("slabs_base");
+	v.slabs_per_m = h.num("slabs_per_m");
+	v.slab_in = h.num("slab_in");
+	v.slab_span = h.num("slab_span");
+	v.slab_jitter = h.num("slab_jitter_rad");
+	v.slab_min_m = h.num("slab_min_m");
+	v.slab_span_m = h.num("slab_span_m");
+	v.slab_earth_scale = h.num("slab_earth_scale");
+	v.slab_thick_hard = h.num("slab_thick_hard_m");
+	v.slab_thick_earth = h.num("slab_thick_earth_m");
+	v.slab_depth_min = h.num("slab_depth_min");
+	v.slab_depth_span = h.num("slab_depth_span");
+	v.slab_tilt_min = h.num("slab_tilt_min_rad");
+	v.slab_tilt_span = h.num("slab_tilt_span_rad");
+	v.slab_embed = h.num("slab_embed");
+	v.slab_concrete_every = h.integer("slab_concrete_every");
+	if (v.slab_concrete_every < 1) h.r.in("slab_concrete_every").fail("one slab in one or more");
+	v.clod_every = h.integer("clod_every");
+	v.clod_min_m = h.num("clod_min_m");
+	v.clod_span_m = h.num("clod_span_m");
+	v.clod_h_m = h.num("clod_h_m");
+	v.bevel_m = h.num("bevel_m");
+	const Array outline = h.r.list(h.d, "outline_r");
+	for (int i = 0; i < outline.size(); i++) v.outline_r.push_back(float(double(outline[i])));
+	if (v.outline_r.size() < FEWEST_CORNERS) h.r.in("outline_r").fail("a plate needs three corners or more");
+	if (v.clod_every < 1) h.r.in("clod_every").fail("a clod every one plate or more");
+	v.asphalt = tints.asphalt;
+	v.concrete = tints.concrete;
+	v.earth = tints.earth;
+	v.dirt = tints.dirt;
+}
+
+void EffectParams::load_wires(const Dictionary &t, PackedStringArray &errors) {
+	DataReader r{ errors, "aftermath.json" };
+	Group w(r, t, "rope");
+	rope.points = w.integer("points");
+	rope.most = w.integer("most");
+	rope.iterations = w.integer("iterations");
+	rope.slack = w.num("slack");
+	rope.damp = w.num("damp");
+	rope.lift_m = w.num("lift_m");
+	rope.friction = w.num("friction");
+	rope.crackle_min_s = w.num("crackle_min_s");
+	rope.crackle_span_s = w.num("crackle_span_s");
+	rope.crackle_hz = w.num("crackle_hz");
+	rope.crackle_near_m = w.num("crackle_near_m");
+	rope.crackle_count = w.integer("crackle_count");
+	rope.crackle_spread_m = w.num("crackle_spread_m");
+	rope.crackle_size_m = w.num("crackle_size_m");
+	rope.crackle_life_s = w.num("crackle_life_s");
+	rope.flash_chance = w.num("flash_chance");
+	rope.flash_energy = w.num("flash_energy");
+	rope.flash_s = w.num("flash_s");
+	rope.kick_m = w.num("kick_m");
+	rope.kick_lift = w.num("kick_lift");
+	rope.drop_share = w.num("drop_share");
+	rope.settle_s = w.num("settle_s");
+	if (rope.points < MIN_ROPE_POINTS) w.r.in("points").fail("a wire needs two points or more");
+	Group a(r, t, "arc");
+	arc.sparks = a.integer("sparks");
+	arc.gap_min_s = a.num("gap_min_s");
+	arc.gap_span_s = a.num("gap_span_s");
+	arc.spread_m = a.num("spread_m");
+	arc.size_m = a.num("size_m");
+	arc.life_s = a.num("life_s");
+	arc.color = Color::hex(a.r.colour(a.d, "color"));
+	arc.energy = a.num("energy");
+	arc.range_m = a.num("range_m");
+	arc.flash_s = a.num("flash_s");
+	arc.pole_arc_min_s = a.num("pole_arc_min_s");
+	arc.pole_arc_span_s = a.num("pole_arc_span_s");
+	arc.signal_arc_min_s = a.num("signal_arc_min_s");
+	arc.signal_arc_span_s = a.num("signal_arc_span_s");
+	Group l(r, t, "leak");
+	leak_rate = l.num("jet_hz");
+	leak_size = l.num("size_m");
+	leak_life = l.num("life_s");
+	Group p(r, t, "pole");
+	pole.crown_m = p.num("crown_m");
+	pole.fall_spin_min = p.num("fall_spin_min");
+	pole.fall_spin_span = p.num("fall_spin_span");
+	pole.snap_spin_min = p.num("snap_spin_min");
+	pole.snap_spin_span = p.num("snap_spin_span");
+	pole.cut_min = p.num("cut_min");
+	pole.cut_span = p.num("cut_span");
+	pole.arm_section_m = p.num("arm_section_m");
+	pole.arm_over_m = p.num("arm_over_m");
+	pole.lamp_reach_share = p.num("lamp_reach_share");
+	pole.lamp_head_m = vec3_of(p.r.list(p.d, "lamp_head_m", VEC3));
+	pole.post_head_m = vec3_of(p.r.list(p.d, "post_head_m", VEC3));
 }
 
 } // namespace city

@@ -41,6 +41,7 @@ func _ready() -> void:
 	await _fall()
 	_effects()
 	_roads()
+	await StrikePoleCases.new(self).run()
 	finish()
 
 

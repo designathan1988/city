@@ -15,11 +15,15 @@ static func run(id: int, check: Callable) -> void:
 	check.call(not down.is_empty() and down.id == id and down.side == -1, "a ray down hits the roof of %d: %s" % [id, down])
 	var away: Dictionary = CityStore.query(&"body_pick", [Vector3(0, SKY_M, 0), Vector3.UP])
 	check.call(away.is_empty(), "a ray to the sky hits nothing")
-	var out := BuildingProbe.on_lot(id, v.x + v.w * 0.5, v.y - OFF_M) + Vector3.UP * WALL_M
-	var wall: Dictionary = CityStore.query(&"body_pick", [out, middle + Vector3.UP * WALL_M - out])
+	# aimed at the middle of the middle bay: with an even count the middle of the facade is the line between two bays
+	var mid_bay: int = v.bays[0] / 2
+	var along: float = v.x + v.w * (mid_bay + 0.5) / v.bays[0]
+	var out := BuildingProbe.on_lot(id, along, v.y - OFF_M) + Vector3.UP * WALL_M
+	var aim := BuildingProbe.on_lot(id, along, v.y + v.d * 0.5) + Vector3.UP * WALL_M
+	var wall: Dictionary = CityStore.query(&"body_pick", [out, aim - out])
 	check.call(not wall.is_empty() and wall.id == id and wall.side == 0, "a ray from the front hits the facade of %d: %s" % [id, wall])
 	var bay: int = wall.get("bay", -1)
-	check.call(bay == v.bays[0] / 2, "the middle of the facade is the middle bay: %d of %d" % [bay, v.bays[0]])
+	check.call(bay == mid_bay, "the middle bay is hit at its middle: %d of %d" % [bay, v.bays[0]])
 	_pitched(id, over, check)
 
 

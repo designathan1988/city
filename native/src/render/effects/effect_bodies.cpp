@@ -79,7 +79,7 @@ void EffectWorld::body(const DamageEvent &e, const CityState &s) {
 	// the texture's own colour has no tint to copy: a clothes colour from the hash stands in).
 	const Color top = clothes_[((e.u & LOOK_TWO_BITS) != 0 ? e.u >> LOOK_TOP_SHIFT : h) % clothes_.size()];
 	const Color bottom = clothes_[(((e.u >> LOOK_BOTTOM_TEST) & LOOK_TWO_BITS) != 0 ? e.u >> LOOK_BOTTOM_SHIFT : h >> LOOK_BOTTOM_SHIFT) % clothes_.size()];
-	const float ground = s.terrain.height_at(e.x, e.z);
+	const float ground = GroundCells::surface(s, e.x, e.z);
 	float px = e.x - e.b, pz = e.z - e.c;
 	const float pl = std::hypot(px, pz);
 	if (pl > NO_PUSH_BELOW_M) { px /= pl; pz /= pl; } else { px = std::cos(e.a); pz = std::sin(e.a); }

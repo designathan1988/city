@@ -85,17 +85,13 @@ struct PoleFrame {
 
 PoleFrame frame_of(const CityState &s, const StreetLook &L, int id) {
 	const UtilityPole &p = s.street.poles.items[size_t(id)];
-	const FootwayHit h = footway_at(s.roads, p.x, p.z, s.catalog.furniture.items.stand_reach_m);
+	const PoleStand st = pole_stand(s.street, s.roads, s.catalog.furniture, id);
 	PoleFrame f;
 	f.foot = Vector3(p.x, street_ground(s, L, p.x, p.z), p.z);
-	ArmDir idle;
-	if (h.ok) {
-		idle = { h.kx, h.kz };
-		f.seg = h.seg;
-		f.v = h.v;
-	}
-	f.arms = pole_arms(s.street, s.catalog.furniture.poles, id, idle);
-	f.kerb = flat(pole_toward(h.ok ? &idle : nullptr, f.arms.arms[0]));
+	f.seg = st.seg;
+	f.v = st.v;
+	f.arms = st.arms;
+	f.kerb = flat(st.toward);
 	return f;
 }
 

@@ -809,3 +809,49 @@ network, overlay renderer, city state and take, city gen, lot placement and squa
 bind), `zone_tool.gd`, `lots_tool.gd`, `lot_proposals.gd`, `preview_line.gd`, `settings.gd`, `roadcraft_hud.gd`,
 `zone_strip.gd`, `theme_builder.gd`, `store_api.gd`, `overlays.json` and its schema, `tokens.json`, `drawers.json`, `hud.json`
 and their schemas, `tuning.json`, the strings, eight tests and captures, `suites.json`, `log/mapa.md`.
+
+## 2026-11-08 05:35: the bomb, what a blow leaves on the street (English)
+**Problems (photos `dist/captures/bomb`, `dist/captures/bomb_street`, before):** a charge on a street dug no crater: the road's
+deck stands 0.6 m over the terrain under it, and `strike_at` called any burst more than 0.5 m over the terrain a burst on a
+building (which digs none); a crater laid on a road would have lain under the asphalt too (`Marks` read the natural ground), and
+so did every piece of debris, body, pool of blood and blot of soot that came down on a street (they all read the terrain). The
+crater left no broken ground round it (only the decal); the shock ring went to the collapse reach, not the fireball's; LEAK and
+SPARK events existed and were never sent nor drawn; the player's utility poles stood through any blow; a lamp pole knocked out
+took its wires away with nothing left hanging; a lighting column, a post box, a phone, a sign or a shrub knocked out was drawn
+as a tree (`kind_of` sent every kind it did not name to TREE, written twice, in `strike_ground.cpp` and `ped_furniture.cpp`); the
+"ruins close" photo looked at the back of another tower.
+**Source read:** the converter's extraction `bomb` (29 files: `actionsWiring.ts` explodeAt, `render/blast.ts`, `playEffects.ts`,
+`destruction.ts`, `gore.ts`) and its ledger slice (wrong methods flagged there and not carried: the queue shift, the god
+function, the hot allocations, the quadratic proximity).
+**Design in this game:** the sim decides and the render draws from events and state. `strike_at` calls a burst on a building only
+when a building stands under it (`building_under`). The player's poles in reach go through the journal (one undo step with the
+blow), a broken pole's wires pull the next pole over now and then (`strike.pole_pull_*`), and every span left with one end
+standing is a WIRE event with that pole's seat line (`pole_stand`, one owner of a pole's frame, now also what
+`street_props.cpp` draws from); a lamp row cut does the same from the stations left. The first blow a building takes and stands
+shorts it: SPARK or LEAK points along the wall of its blocks nearest the burst (`short_out`). The render: `GroundCells` is the
+one owner of the ground the effects lie on (the street's surface, else the terrain, kept by cells per map revision);
+`Heave` lays the plates and lip slabs of each crater from its seed, so a save, an undo or a redo lays the same, and only a
+blow's own are added; `Ropes` steps the torn wires (Verlet, pinned, slack, on the ground, a live crackling end); arcs flash
+the one light blue (`flash_at`, the brighter flash of another colour keeps it); a leak is a weak geyser; poles snap, splinter or
+fall turning away from the burst with their arm and lamp thrown; `gone_kind` is one owner of what a knocked piece goes as
+(new saved kinds COLUMN, SHRUB, BOX at the end). The tints of what is thrown are data (`effects.json` tints, read by the blast,
+the things and the heave); what a blow leaves is its own table, `aftermath.json` (heave, rope, arc, leak, pole).
+**Checks:** `bomb_street_plan.json` (new) and `bomb_plan.json` photographed: the crater on the raised road with its plates and
+cracks, poles snapped and fallen, the wires hanging from the poles left to the ground, columns falling as metal; the tower's
+broken face from its own side. `strike_test` (with `strike_pole_cases.gd`: the crater on the raised road, poles down, wires
+and heave drawn, undo and redo by the state hash), `street_works_test`, `save_undo_test`, `edit_fuzz_test`, `shoot_test` pass.
+Gates on the changed files: what remains failed at HEAD already (log/pendencias.md). `quick.sh --ready`: 45 of 46 (the gates
+of the changed files fail on those findings only). The digest and the frozen photos, held to the branch's base (12e753b1, built
+and photographed in a scratch worktree, equal to the main checkout's goldens): the digest moves in `lots` and the fleet only, and
+the photos show other buildings on the lots, both from the zoning round's lots that now touch (`lot_place.cpp` WIDTH_TRIM gone);
+held to the zoning commit (27aab1be) this round changes two photos by one pixel that also flickers between two runs of the same
+commit, and six pixels of a wire's edge by one level of one channel (the wire's mesh, built from the same numbers by the new
+`WireSeats` caller: float contraction, no geometry moved). The goldens of this worktree were blessed from it. `building_edit_test`
+aimed at the middle of a facade, which on a facade of an even number of bays is the line between two (the zoning round's lots
+gave its building six): it now aims at the middle of the middle bay (`building_pick_cases.gd`).
+**Files:** created `native/src/render/effects/{heave,ropes,ground_cells}.{h,cpp}`, `project/data/render/aftermath.json`,
+`tools/gates/schemas/aftermath.schema.json`, `project/tests/core/strike_pole_cases.gd`, `project/tests/visual/bomb_street_plan.json`;
+changed the strike commands (buildings, ground, commands), `damage_event.h`, `damage_state.{h,cpp}`, `pole_arms.{h,cpp}`,
+`ped_furniture.cpp`, `ped_system.h`, `tuning_fields.h`, the effects (params, world, blast, things, bodies, marks), `prop_kit`,
+`street_props.cpp`, `render_world.h`, `city_core_strike.cpp`, `effects.json` and its schema, `tuning.json`, `data_tables.gd`,
+`rules.json`, `strike_test.gd`, `building_pick_cases.gd`, `bomb_plan.json`, `suites.json`, `log/mapa.md`.

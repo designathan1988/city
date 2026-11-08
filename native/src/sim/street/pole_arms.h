@@ -9,6 +9,9 @@
 
 namespace city {
 
+class RoadNetwork;
+struct StreetFurnitureDef;
+
 struct ArmDir {
 	float x = 0, z = 1;
 };
@@ -27,5 +30,17 @@ PoleArms pole_arms(const StreetWorks &w, const PoleDef &def, int pole, ArmDir id
 ArmDir pole_toward(const ArmDir *kerb, ArmDir arm);
 // An arm turned to reach toward the street (streetArm): itself or its opposite. The wires' seats are measured along it.
 ArmDir street_arm(ArmDir arm, ArmDir toward);
+
+// A pole the player built as it stands: its arms, the way they reach (pole_toward) and the footway it stands on, if any. The one
+// frame its wires hang from: render/props/street_props.cpp draws them from it, and a blow tears them from it (strike_ground.cpp).
+struct PoleStand {
+	PoleArms arms;
+	ArmDir toward;
+	int seg = -1; // the street it stands by, and where along it
+	double v = 0;
+};
+PoleStand pole_stand(const StreetWorks &w, const RoadNetwork &roads, const StreetFurnitureDef &def, int id);
+// The seat line of span `at` (its place in the pole's list): the arm that span hangs from, turned toward the street.
+inline ArmDir seat_arm(const PoleStand &p, size_t at) { return street_arm(p.arms.by_span[at], p.toward); }
 
 } // namespace city

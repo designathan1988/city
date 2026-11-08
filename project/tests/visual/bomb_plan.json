@@ -1,5 +1,5 @@
 {
- "_doc": "The bomb looked at in play (look.gd): the generated town with its people walking, the Demolish drawer's Bomb tab, one charge on a block, the blast at 0.4, 1.2 and 4 s of its own clock, then what is left from above and from close by.",
+ "_doc": "The bomb looked at in play (look.gd): the generated town with its people walking, the Demolish drawer's Bomb tab, one charge on a tower's face, the blast at 0.4, 1.2 and 4 s of its own clock, then what is left from above, the broken face closer from the same side (another tower stands between it and any other side) and the street from low down.",
  "city": {"map": 0, "seed": 1, "generate": true},
  "steps": [
   {"hour": 16},
@@ -17,7 +17,7 @@
   {"blastShot": "blast-4s", "at": 4.0},
   {"frames": 300},
   {"shot": "after"},
-  {"setView": [60, -40, 30, 120, 30]},
+  {"setView": [60, -40, 18, 30, 40]},
   {"frames": 60},
   {"shot": "ruins-close"},
   {"setView": [60, -40, 45, 210, 18]},

@@ -18,7 +18,8 @@
   "down",
   "flash",
   "sources",
-  "emitter"
+  "emitter",
+  "tints"
  ],
  "properties": {
   "_doc": {
@@ -249,13 +250,17 @@
    "strict": true,
    "required": [
     "life_s",
-    "height_m"
+    "height_m",
+    "reach_r"
    ],
    "properties": {
     "life_s": {
      "type": "number"
     },
     "height_m": {
+     "type": "number"
+    },
+    "reach_r": {
      "type": "number"
     }
    }
@@ -557,6 +562,62 @@
     },
     "height_m": {
      "type": "number"
+    }
+   }
+  },
+  "tints": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "asphalt",
+    "concrete",
+    "earth",
+    "brick",
+    "glass",
+    "wood",
+    "metal",
+    "char",
+    "leaf",
+    "flesh",
+    "paint",
+    "dirt"
+   ],
+   "properties": {
+    "asphalt": {
+     "type": "string"
+    },
+    "concrete": {
+     "type": "string"
+    },
+    "earth": {
+     "type": "string"
+    },
+    "brick": {
+     "type": "string"
+    },
+    "glass": {
+     "type": "string"
+    },
+    "wood": {
+     "type": "string"
+    },
+    "metal": {
+     "type": "string"
+    },
+    "char": {
+     "type": "string"
+    },
+    "leaf": {
+     "type": "string"
+    },
+    "flesh": {
+     "type": "string"
+    },
+    "paint": {
+     "type": "string"
+    },
+    "dirt": {
+     "type": "string"
     }
    }
   }

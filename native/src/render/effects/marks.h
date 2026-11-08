@@ -24,6 +24,9 @@ struct Mark {
 
 class Marks {
 public:
+	// A crater's quad is this many times its hole across: the scorch and the broken lip round it (the ground it heaved is laid out to
+	// the same reach, heave.h).
+	static constexpr float CRATER_SCALE = 2.4f;
 	void init(const godot::RID &scenario, const godot::RID &material, int room, int soot_kept, int blood_kept); // room: the layer's first size
 	void reset();
 	void release();
@@ -80,7 +83,6 @@ public:
 	static constexpr int RELIEF_GRID = 4; // the ground is sampled on a grid of (2 * this + 1)^2 points across a decal
 
 private:
-	static constexpr float CRATER_SCALE = 2.4f; // the quad is wider than the hole: the scorch and the broken lip round it
 	static constexpr uint32_t SEED_MASK = 0xffffu;
 	MmLayer layer_;
 	godot::RID material_;

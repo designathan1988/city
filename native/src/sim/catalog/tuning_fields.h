@@ -41,6 +41,9 @@
 	X(build, max_bays) X(build, max_pier_every) X(build, min_pitch_deg) X(build, max_pitch_deg) X(build, pick_step_m) \
 	X(build, max_parts) X(build, dial_share) X(build, step_run_m) X(build, ramp_run_per_rise) X(build, max_gear) X(build, gear_turn_deg) X(build, road_probe_m) X(build, world_margin_m) X(build, max_plinth_m) \
 	X(strike, force_start) X(strike, force_fine) X(strike, force_coarse) X(strike, frame_floors) X(strike, frame_collapse_kpa) X(strike, standing_least) X(strike, storey_m) X(strike, scar_radius_m) X(strike, scar_radius_per_force) X(strike, scar_near_share) X(strike, scar_force_gain) X(strike, scar_force_least) X(strike, scar_lift_m) X(strike, scars_most) \
+	X(strike, pole_splinter_share) X(strike, pole_splinter_chance) X(strike, pole_snap_chance) X(strike, pole_pull_reach_k) X(strike, pole_pull_chance) \
+	X(strike, short_spots_most) X(strike, short_force_step) X(strike, short_spread_m) X(strike, short_out_m) X(strike, short_lift_m) X(strike, short_lift_span_m) \
+	X(strike, short_spark_share) X(strike, short_spark_s) X(strike, short_spark_span_s) X(strike, short_leak_s) X(strike, short_leak_span_s) \
 	X(build, road_clearance_m) X(build, snap_road_reach_m) X(build, snap_building_reach_m) X(build, snap_edge)
 
 #define CITY_TUNING_DECLARE(group, name) float group##_##name = 0;

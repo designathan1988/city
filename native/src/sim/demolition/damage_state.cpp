@@ -9,6 +9,25 @@
 
 namespace city {
 
+bool knockable(FurnitureKind k) { return k != FurnitureKind::DRAIN; }
+
+GoneKind gone_kind(FurnitureKind k) {
+	switch (k) {
+		case FurnitureKind::SIGNAL: return GoneKind::POST;
+		case FurnitureKind::LAMP:
+		case FurnitureKind::POLE: return GoneKind::POLE;
+		case FurnitureKind::HYDRANT: return GoneKind::HYDRANT;
+		case FurnitureKind::BIN: return GoneKind::BIN;
+		case FurnitureKind::BENCH: return GoneKind::BENCH;
+		case FurnitureKind::COLUMN: return GoneKind::COLUMN;
+		case FurnitureKind::SHRUB: return GoneKind::SHRUB;
+		case FurnitureKind::POSTBOX:
+		case FurnitureKind::PHONE:
+		case FurnitureKind::SIGN: return GoneKind::BOX;
+		default: return GoneKind::TREE;
+	}
+}
+
 void DamageState::clear() {
 	DamageState fresh;
 	fresh.craters.follow(craters);

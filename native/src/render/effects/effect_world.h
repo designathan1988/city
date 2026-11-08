@@ -8,10 +8,14 @@
 #include "render/agents/people_renderer.h"
 #include "render/effects/debris.h"
 #include "render/effects/effect_params.h"
+#include "render/effects/ground_cells.h"
+#include "render/effects/heave.h"
 #include "render/effects/marks.h"
 #include "render/effects/mounds.h"
 #include "render/effects/puffs.h"
+#include "render/effects/ropes.h"
 #include "render/effects/ruin_pieces.h"
+#include "render/props/prop_kit.h"
 #include "render/render_context.h"
 #include "sim/state/city_state.h"
 
@@ -37,7 +41,11 @@ public:
 	void sync(CityState &s, FrameAdmission &admission);
 	float shake() const { return shake_; } // metres the camera moves now
 	float since_blast() const { return blast_at_ < 0 ? -1.f : float(now_ - blast_at_); } // effect seconds since the last blast (-1 none)
-	bool busy() const { return puffs_.active(now_) || !sources_.empty() || debris_.moving() || ruins_.moving() || flash_left_ > 0; }
+	bool busy() const {
+		return puffs_.active(now_) || !sources_.empty() || debris_.moving() || ruins_.moving() || ropes_.moving() || !arcs_.empty() || flash_left_ > 0;
+	}
+	int heave_pieces() const { return heave_.pieces(); }
+	int wires_down() const { return ropes_.count(); }
 	int pieces() const { return debris_.count(); }
 	int ruin_pieces() const { return ruins_.pieces(); }
 	const std::unordered_set<uint32_t> &broken() const { return ruins_.broken(); }
@@ -54,6 +62,11 @@ private:
 		float x = 0, y = 0, z = 0;
 		double until = 0;
 		float carry = 0;
+		bool weak = false; // a burst pipe's spurt (LEAK), not a hydrant's jet
+	};
+	struct Arc { // an electric discharge, repeated a while (blast.ts arc)
+		godot::Vector3 at;
+		double until = 0, next = 0;
 	};
 	void apply(const DamageEvent &e, const CityState &s);
 	void blast(const DamageEvent &e, const CityState &s);
@@ -64,6 +77,7 @@ private:
 	void rebuild_ruins(const CityState &s); // every ruin of the state as a heap lying (open, undo, redo)
 	static float heap_of(const Ruin &r); // how high its mound stands
 	void furniture(const DamageEvent &e, const CityState &s);
+	void pole(const DamageEvent &e); // a pole or a signal post knocked out (effect_things.cpp)
 	bool load_looks(const RenderContext &ctx, godot::PackedStringArray &errors); // skin and clothes tints of the bodies (effect_bodies.cpp)
 	void body(const DamageEvent &e, const CityState &s); // the pieces of someone struck
 	void tracer(const DamageEvent &e); // a bullet's line and where it ends
@@ -74,6 +88,11 @@ private:
 	void casualty(const DamageEvent &e, const CityState &s);
 	void burn_fires(const CityState &s, float dt);
 	void step_geysers(float dt);
+	void step_arcs();
+	void wire(const DamageEvent &e); // a wire torn loose, hanging from the pole left standing (ropes.h)
+	void arc(const godot::Vector3 &at, float seconds) { arcs_.push_back({ at, now_ + double(seconds), now_ }); }
+	// The one light flashes `colour` at `at`: a flash of another colour brighter than FLASH_YIELD of this one keeps it (blast.ts flashAt).
+	void flash_at(const godot::Vector3 &at, const godot::Color &colour, float energy, float range, float life);
 	void step_sources(float dt); // the flame sources a blast leaves (effect_blast.cpp)
 	void flash(float radius);
 	void light_update(float dt);
@@ -86,9 +105,14 @@ private:
 	Marks marks_;
 	Mounds mounds_;
 	Debris debris_;
+	Heave heave_;
+	GroundCells ground_; // what the pieces in the air come down on
+	Ropes ropes_;
+	WireSeats seats_; // where a pole's wires sit (streets.json wires): a torn wire hangs from them
 	RuinPieces ruins_;
 	PeopleRenderer *people_ = nullptr; // whose bodies fall (render_world.cpp)
-	Rng rng_{ 0xb1a57ULL };
+	static constexpr uint64_t EFFECTS_STREAM = 0xb1a57ULL; // the effects' own stream, the same every run
+	Rng rng_{ EFFECTS_STREAM };
 	godot::RID scenario_, light_, light_inst_;
 	std::vector<DamageEvent> events_, events_played_; // to play; played this frame
 	struct Source {
@@ -97,13 +121,15 @@ private:
 	};
 	std::vector<Source> sources_;
 	std::vector<Geyser> geysers_;
+	std::vector<Arc> arcs_;
 	std::vector<godot::Color> skins_, clothes_;
 	std::unordered_map<int, float> fire_carry_;
 	std::chrono::steady_clock::time_point last_;
 	bool started_ = false;
 	double now_ = 0, blast_at_ = -1;
-	float shake_ = 0, flash_left_ = 0, flash_energy_ = 0, flash_range_ = 0;
+	float shake_ = 0, flash_left_ = 0, flash_life_ = 0, flash_energy_ = 0, flash_range_ = 0;
 	godot::Vector3 flash_at_;
+	godot::Color flash_colour_, flash_sent_;
 	static constexpr uint64_t UNSEEN = ~uint64_t(0);
 	uint64_t craters_seen_ = UNSEEN, crater_layout_seen_ = UNSEEN, ruins_seen_ = UNSEEN, scars_seen_ = UNSEEN; // DamageState's revisions drawn
 	size_t played_ = 0;

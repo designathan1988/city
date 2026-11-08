@@ -55,26 +55,25 @@ void build(const CityState &s, int seg, SidewalkFurniture &out) {
 } // namespace
 
 namespace {
-GoneKind gone_kind(FurnitureKind k) {
-	switch (k) {
-		case FurnitureKind::SIGNAL: return GoneKind::POST;
-		case FurnitureKind::LAMP: return GoneKind::POLE;
-		case FurnitureKind::HYDRANT: return GoneKind::HYDRANT;
-		case FurnitureKind::BIN: return GoneKind::BIN;
-		case FurnitureKind::BENCH: return GoneKind::BENCH;
-		default: return GoneKind::TREE;
-	}
-}
 constexpr float GONE_MATCH_M = 0.25f; // a piece knocked out is the one standing within this of where it stood
 } // namespace
 
 bool furniture_xz(const CityState &s, int seg, const FurnitureSpot &f, float &x, float &z) {
+	float fx, fz;
+	return furniture_facing(s, seg, f, x, z, fx, fz);
+}
+
+bool furniture_facing(const CityState &s, int seg, const FurnitureSpot &f, float &x, float &z, float &face_x, float &face_z) {
 	if (f.side < 0) return false;
 	const Profile &p = s.roads.profile_of(seg);
 	Pose at;
 	sidewalk_pose(s, seg, f.side, float(f.v), f.u - (f.side == 0 ? p.walk_right : p.walk_left), at);
 	x = at.x;
 	z = at.z;
+	// the segment's left is (fz, -fx), as u is measured (sidewalk_pose)
+	const float fx = at.fz * f.face_left + at.fx * f.face_fwd, fz = -at.fx * f.face_left + at.fz * f.face_fwd, l = std::hypot(fx, fz);
+	face_x = l > 0.f ? fx / l : 0.f;
+	face_z = l > 0.f ? fz / l : 1.f;
 	return true;
 }
 

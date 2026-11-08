@@ -27,6 +27,16 @@ enum class PolePart : int { MAST = 1, ARM = MAST << 1, CAN = ARM << 1, LAMP = CA
 // A secondary wire's mark where a primary wire keeps its seat on a rural pole (UV2.y, WIRE_SECONDARY_MARK: core/shader_contracts/streets.h):
 // props.gdshader draws it only between two urban poles.
 
+// Where a span's primary wires sit on a pole (streets.json wires): `height` over its foot, the i-th on seat `urban[i]` along the arm
+// from the mast toward the street (`rural[i]` on a rural pole, across its crown). Read once here: the kit hangs the standing wires
+// from these seats (wire_mesh), and a blow tears the wires from the same ones (render/effects/ropes.h).
+struct WireSeats {
+	float height = 0, radius = 0; // and a wire's own radius
+	std::vector<float> urban, rural;
+	godot::Color colour; // a wire's
+	bool load(const DataValue &wires); // false, with its error said, for seats of two lengths or none
+};
+
 // A placed prop: which mesh, where, facing.
 struct PropPlace {
 	PropKind kind = PropKind::SIGNAL;

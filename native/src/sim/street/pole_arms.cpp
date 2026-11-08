@@ -2,6 +2,9 @@
 #include "sim/street/pole_arms.h"
 
 #include "core/units.h"
+#include "sim/catalog/furniture_types.h"
+#include "sim/roads/road_network.h"
+#include "sim/street/footway.h"
 
 #include <algorithm>
 #include <cmath>
@@ -80,6 +83,21 @@ ArmDir pole_toward(const ArmDir *kerb, ArmDir arm) {
 
 ArmDir street_arm(ArmDir arm, ArmDir toward) {
 	return arm.x * toward.x + arm.z * toward.z >= 0 ? arm : ArmDir{ -arm.x, -arm.z };
+}
+
+PoleStand pole_stand(const StreetWorks &w, const RoadNetwork &roads, const StreetFurnitureDef &def, int id) {
+	const UtilityPole &p = w.poles.items[size_t(id)];
+	const FootwayHit h = footway_at(roads, p.x, p.z, def.items.stand_reach_m);
+	PoleStand out;
+	ArmDir idle;
+	if (h.ok) {
+		idle = { h.kx, h.kz };
+		out.seg = h.seg;
+		out.v = h.v;
+	}
+	out.arms = pole_arms(w, def.poles, id, idle);
+	out.toward = pole_toward(h.ok ? &idle : nullptr, out.arms.arms[0]);
+	return out;
 }
 
 } // namespace city

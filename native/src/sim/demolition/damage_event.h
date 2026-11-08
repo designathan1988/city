@@ -19,18 +19,25 @@ namespace city {
 //   VEHICLE_DROP   id, x y z, a = heading, u = type | paint << 8 (a two-wheeler's rider shot off, the machine falls over)
 //   CASUALTY       id (pedestrian id, or 8'000'000 + vehicle id), x y z, a = heading, b c = blast point, d = power 0..1,
 //                  u = look hash, v = flags (casualty_flags below, the walker's age among them)
-//   GEYSER         x y z, a = seconds       LEAK / SPARK: x y z, a = seconds
-//   FURNITURE      x y z, u = GoneKind, dx dz = the way thrown, a = 1 when it burst into splinters
+//   GEYSER         x y z, a = seconds
+//   LEAK / SPARK   x y z on a wall a blow struck, a = seconds: a pipe spurting, the wiring shorting
+//   FURNITURE      x y z, u = GoneKind, dx dz = the way thrown, a = FURNITURE_WHOLE, _SPLINTERS or _SNAPPED, v = 1 a pole with a lamp
+//   WIRE           a wire torn loose, hanging from the pole left standing: x y z its foot and ground, dx dz its seat line (the arm,
+//                  toward the street, unit), b c the fallen pole's foot, d the ground there, a = the angle (rad, of x z) out from the
+//                  burst at the fallen end, u = 1 when the standing pole is rural
 //   IGNITE         id = building, x z
 //   DRIP           x y z: somebody hurt walked there, bleeding
 struct DamageEvent {
 	enum Kind : uint8_t { BLAST, SHOT, WOUND, BUILDING_DOWN, BUILDING_HIT, BUILDING_SCAR, VEHICLE_BLOWN, VEHICLE_HIT, VEHICLE_DROP, CASUALTY, GEYSER,
-		LEAK, SPARK, FURNITURE, IGNITE, DRIP };
+		LEAK, SPARK, FURNITURE, IGNITE, DRIP, WIRE };
 	Kind kind = BLAST;
 	int id = -1;
 	float x = 0, y = 0, z = 0, dx = 0, dz = 0, a = 0, b = 0, c = 0, d = 0;
 	uint32_t u = 0, v = 0;
 };
+
+// FURNITURE a: how a pole went.
+constexpr float FURNITURE_WHOLE = 0.f, FURNITURE_SPLINTERS = 1.f, FURNITURE_SNAPPED = 2.f;
 
 // CASUALTY flags (v): fate in bits 0-1, then which limbs went and which came off at this blow.
 enum CasualtyKind : uint32_t { CAS_DEAD = 0, CAS_TORN = 1, CAS_KNOCKED = 2 };

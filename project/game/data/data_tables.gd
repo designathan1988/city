@@ -36,6 +36,7 @@ const RENDER_TABLES := {
 	"overlays": "res://data/render/overlays.json",
 	"transit": "res://data/render/transit.json",
 	"effects": "res://data/render/effects.json",
+	"aftermath": "res://data/render/aftermath.json",
 }
 const UI := {
 	"tokens": "res://data/ui/tokens.json",

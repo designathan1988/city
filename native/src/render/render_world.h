@@ -104,6 +104,8 @@ public:
 	int bodies() const { return effects_.bodies(); }
 	int bodies_moving() const { return effects_.bodies_moving(); }
 	int effect_pieces() const { return effects_.pieces(); }
+	int heave_pieces() const { return effects_.heave_pieces(); } // the ground the craters heaved
+	int wires_down() const { return effects_.wires_down(); } // the wires a blow tore loose
 	int broken_buildings() const { return int(effects_.broken().size()); }
 	int blood_marks() const { return effects_.blood_marks(); }
 	bool effects_busy() const { return effects_.busy(); }
