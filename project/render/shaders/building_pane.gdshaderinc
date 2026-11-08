@@ -4,14 +4,12 @@
 // room at night. Each hit is an exact ray-plane or slab test.
 // Needs v_room0..2 and v_trim: room0 = back, ahead, depth, floor kind; room1 = sill, head, piece + 1, piece height;
 // room2 = piece centre (signed), half width, near, far; trim = sRGB frame colour, frame thickness.
-const float ROOM_SPAN_M = 12.75; // a byte's 1.0, metres (shell.h ROOM_SPAN_M)
-const float FRAME_SPAN_M = 0.255; // a byte's 1.0 of the frame's thickness (shell.h FRAME_SPAN_M)
+#include "res://render/shaders/shader_contracts.gdshaderinc"
 const float FRAME_SHARE = 0.045; // the border of the frame, of the pane's side (buildings.json parts.frame_bar_m)
 const float FRAME_OUT_M = 0.03; // the frame's middle in front of the glass
 const float TV_SHARE = 0.12; // the share of a home's lit rooms lit by a television alone
 const float TILE_M = 0.6, BOARD_M = 0.14, PLANK_M = 2.4, PANEL_GRID_M = 2.4;
 const float REVEAL_ALBEDO = 0.9; // the mean of the trim finishes' maps (render, stone, concrete)
-const float REVEAL_SHADE = 0.68, SILL_SHADE = 0.92, HEAD_SHADE = 0.544; // facade_bay.cpp: the sides, the sill, the head
 
 // The overlap of [a, b] with a pixel's footprint k round x, as a share of k.
 float pane_span(float x, float k, float a, float b) { return clamp((min(x + 0.5 * k, b) - max(x - 0.5 * k, a)) / k, 0.0, 1.0); }
@@ -73,7 +71,7 @@ float recess_meet(vec3 d, vec2 size, float deep, float thick, inout vec3 o, out 
 	float solid = clamp(gap / max(fwidth(gap), 1e-5) + 0.5, 0.0, 1.0);
 	bool on_side = solid > 0.5;
 	side = !on_side ? vec3(0.0, 0.0, -1.0) : tx < ty ? vec3(-sign(d.x), 0.0, 0.0) : vec3(0.0, d.y < 0.0 ? 1.0 : -1.0, 0.0);
-	shade = tx < ty ? REVEAL_SHADE : d.y < 0.0 ? SILL_SHADE : HEAD_SHADE;
+	shade = tx < ty ? REVEAL_SHADE : d.y < 0.0 ? SILL_SHADE : REVEAL_SHADE * HEAD_SHADE; // the head, of its sides' shade
 	hit = o + d * (on_side ? t_side : t_glass);
 	o = vec3(hit.xy, 0.0);
 	return solid;

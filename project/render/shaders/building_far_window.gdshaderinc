@@ -9,7 +9,7 @@ const int DARK_QUARTER = 2;
 const int DARK_FIFTH = 3;
 const float FAR_ROOM_LEVEL = 0.68; // a far window's lamp: the mean of pane_lamp's level (0.3 + 0.85 x two uniform lots)
 const float FAR_FRAME_SHARE = 0.027; // the frame read round a pane: 8 cm of a 3 m bay or storey
-const float REVEAL_SHADE = 0.42, REVEAL_SUN = 0.75; // a reveal in the wall's shade, and what the sun adds on the faces that see it
+const float FAR_REVEAL_SHADE = 0.42, REVEAL_SUN = 0.75; // a far reveal in the wall's shade, and what the sun adds on the faces that see it
 const float SILL_SHARE = 0.018, SILL_DRIP = 0.05, SILL_LIGHT = 1.28, DRIP_DARK = 0.2; // the sill's line, and the shade it throws under it
 const float RECESS_FROM = 0.1, RECESS_TO = 0.28; // of a cell per pixel: where the recess fades into the flat grid
 const float GRAZING_LEAST = 0.08; // a ray along the wall stops here, or it would leave the bay
@@ -48,7 +48,7 @@ void far_window(vec2 uv, vec4 code, uint seed, vec3 n, vec3 V, float depth, inou
 	vec2 past = vec2(at.x < a0 ? -1.0 : at.x > a1 ? 1.0 : 0.0, at.y < code.g ? -1.0 : at.y > code.b ? 1.0 : 0.0);
 	float reveal = recess * hole * (1.0 - pulse(back.x, foot.x, a0, a1) * pulse(back.y, foot.y, code.g, code.b));
 	vec3 face = normalize(-past.x * normalize(pu) - past.y * normalize(pv) + n * 1e-3);
-	vec3 wall_seen = wall * (REVEAL_SHADE + REVEAL_SUN * clamp(dot(face, sun_direction), 0.0, 1.0) * (1.0 - night));
+	vec3 wall_seen = wall * (FAR_REVEAL_SHADE + REVEAL_SUN * clamp(dot(face, sun_direction), 0.0, 1.0) * (1.0 - night));
 	uint h = pcg(seed * 977u + uint(cell.x + 512.0) * 131u + uint(cell.y + 512.0) * 7177u);
 	float dark_near = picks == DARK_PICK ? (h % 20u < 5u ? 1.0 : 0.0) : picks == DARK_QUARTER ? (h % 4u == 0u ? 1.0 : 0.0) : picks == DARK_FIFTH ? (h % 5u == 0u ? 1.0 : 0.0) : 0.0;
 	float dark = mix(dark_near, picks == DARK_FIFTH ? 0.2 : picks == DARK_PICK || picks == DARK_QUARTER ? 0.25 : 0.0, sub);

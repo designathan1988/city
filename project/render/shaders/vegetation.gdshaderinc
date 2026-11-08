@@ -16,9 +16,9 @@
 //   sway: the turbulent share of the drag (2 I of it) at the natural frequency sway_hz (Jackson et al. 2019; 0.2-0.3 Hz
 //   for trees of this size with leaves).
 // Leaf flutter is not drawn: no measured amplitude for it has been found.
+#include "res://render/shaders/shader_contracts.gdshaderinc"
 
-const float PART_CARD = 1.0, PART_FROND = 2.0, PART_FAR = 3.0, PART_BARK = 4.0; // tree_part.h TreePart
-const float FAR_TINT_SPAN = 2.0; // far_cards.cpp: a vertex colour stops at 1, and the tint goes either side of it
+const float FAR_TINT_SPAN = 1.0 / FAR_TINT_SHARE; // a vertex colour stops at 1: the tint packed at its share, either side of it
 
 uniform float near_m = 240.0;
 uniform float fade_m = 30.0;

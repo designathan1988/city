@@ -3,6 +3,7 @@
 // light() because an opening's sun is not its sky: the sky comes by AO (ambient times the share the opening lets through), and
 // a point the wall hides from a light must take none of it with a sky above zero, which AO_LIGHT_AFFECT cannot say.
 render_mode cull_back;
+#include "res://render/shaders/shader_contracts.gdshaderinc"
 
 global uniform float night;
 global uniform float rooms_awake; // the share of people awake at this hour (daylight.gd)
@@ -18,8 +19,6 @@ uniform float furniture_tone[120]; // linear tone of each furniture kind, three 
 const int KIND_BITS = 3;
 const int KIND_MASK = 7;
 const int KIND_DARK = 2;
-const int KIND_CLEAR = 6; // shell.h SK_PANE_CLEAR: the glass of a building cut open, with no room behind it
-const float PANE_DEPTH_STEP_M = 0.01; // shell.cpp PANE_RECESS_STEP_M
 
 varying vec3 v_world;
 varying vec3 v_wn;
@@ -59,13 +58,13 @@ void fragment() {
 #endif
 	int coded = int(COLOR.a * 255.0 + 0.5);
 	uint code = uint(COLOR.r * 255.0 + 0.5) | (uint(COLOR.g * 255.0 + 0.5) << 8u);
-	float deep = float(coded >> KIND_BITS) * PANE_DEPTH_STEP_M;
+	float deep = float(coded >> KIND_BITS) * PANE_RECESS_STEP_M;
 	vec2 size = max(UV2, vec2(0.3));
 	vec3 n = normalize(v_wn);
 	vec3 V = normalize(v_world - CAMERA_POSITION_WORLD);
 	vec3 albedo, emit, nn, at;
 	float rough, metal, open;
-	if ((coded & KIND_MASK) == KIND_CLEAR) {
+	if ((coded & KIND_MASK) == SK_PANE_CLEAR) {
 		pane_clear(n, V, albedo, emit, nn, rough, metal);
 		at = vec3(0.0);
 		open = 1.0;

@@ -5,6 +5,7 @@
 // at any distance.
 shader_type spatial;
 render_mode cull_back;
+#include "res://render/shaders/shader_contracts.gdshaderinc"
 
 global uniform float night;
 global uniform float rooms_awake;
@@ -28,7 +29,6 @@ varying vec3 v_world;
 varying vec3 v_wn;
 varying flat vec4 v_opening; // width, sill and head as shares of the bay and the storey; flags
 
-const int WINDOW_BLANK = 4; // shell.h WINDOW_FLAG_BLANK: a side with no openings
 const float FOOT_SHADE = 0.62; // the foot of a wall in the street's shade
 const float FOOT_STOREYS = 0.47; // its height, storeys (1.4 m of a 3 m storey)
 #include "res://render/shaders/building_room_tone.gdshaderinc"
@@ -63,7 +63,7 @@ void fragment() {
 	}
 	if (kind == 3) {
 		vec2 foot = grid_footprint(UV);
-		float open = (int(v_opening.a * 255.0 + 0.5) & WINDOW_BLANK) != 0 ? 0.0 : 1.0;
+		float open = (int(v_opening.a * 255.0 + 0.5) & WINDOW_FLAG_BLANK) != 0 ? 0.0 : 1.0;
 		float m = open * clamp(pulse(UV.x, foot.x, 0.5 - 0.5 * v_opening.r, 0.5 + 0.5 * v_opening.r) * pulse(UV.y, foot.y, v_opening.g, v_opening.b), 0.0, 1.0);
 		vec2 room = floor(UV);
 		float lot = h01(uint(room.x + 512.0) * 131u + uint(room.y + 512.0) * 7177u);

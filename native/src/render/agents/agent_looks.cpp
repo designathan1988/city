@@ -1,6 +1,7 @@
 // The paints pushed to the "agent" material and how full each type runs
 // (agents.json). Once, at boot; the frame's work is in agent_renderer.cpp.
 #include "render/agents/agent_renderer.h"
+#include "core/shader_contracts.h"
 
 #include "render/agents/agent_meshes.h"
 
@@ -17,7 +18,6 @@ namespace city {
 namespace {
 
 // agents.gdshader palette array sizes
-constexpr int PAINT_MAX = 16, LINE_PAINTS = 8;
 constexpr int HALF_EXACT = 2048; // whole numbers a half float holds exactly: the order (stride * seats + first) below it
 constexpr int MIN_STRIDE = 2;    // a shuffled order skips at least one seat (stride 1 fills them front to back)
 
@@ -44,8 +44,8 @@ bool AgentRenderer::push_palettes(const DataValue &t, const std::vector<uint32_t
 	const DataValue paints = t["styles"][REGIONAL_STYLE]["paints"];
 	// as numbers: a Color array would be turned linear on the way (the parts' vertex colours are not)
 	PackedVector3Array raw;
-	for (const Color &c : palette(paints, PAINT_MAX)) raw.push_back(Vector3(c.r, c.g, c.b));
-	for (size_t i = 0; i < lines.size() && i < size_t(LINE_PAINTS); i++) { // after them: a bus's line (traffic_state.h LINE_PAINT)
+	for (const Color &c : palette(paints, AGENT_PAINTS)) raw.push_back(Vector3(c.r, c.g, c.b));
+	for (size_t i = 0; i < lines.size() && i < size_t(AGENT_LINE_PAINTS); i++) { // after them: a bus's line (traffic_state.h LINE_PAINT)
 		const Color c = rgb8_to_color(lines[i]);
 		raw.push_back(Vector3(c.r, c.g, c.b));
 	}

@@ -54,6 +54,13 @@
    "after": ["import"],
    "resources": {"cores": 2, "locks": {"dll": "shared"}}
   },
+  "shader_contracts": {
+   "doc": "the values the shaders share with the core and the scripts are what their table makes (tools/build/shader_contracts.py --check: native/src/core/shader_contracts.h and project/render/shaders/shader_contracts.gdshaderinc)",
+   "argv": ["{python}", "tools/build/shader_contracts.py", "--check"],
+   "timeout_s": 60,
+   "inputs": ["tools/build/shader_contracts.json", "tools/build/shader_contracts.py", "native/src/core/shader_contracts.h", "project/render/shaders/shader_contracts.gdshaderinc"],
+   "resources": {"cores": 1}
+  },
   "build_debug": {
    "doc": "the debug DLL, the one the editor, tests and captures load",
    "argv": ["{bash}", "tools/build/build.sh", "dll-debug"],
@@ -342,8 +349,8 @@
  },
  "suites": {
   "quick": {
-   "doc": "what a change asks for: scripts, debug DLL, gates of the changed files, every scene whose inputs moved, the digest and the frozen photos against their goldens",
-   "tasks": ["import", "scripts", "build_debug", "gates_changed", "@test_scenes", "digest", "photos", "photos_check"],
+   "doc": "what a change asks for: scripts, the shader contracts, debug DLL, gates of the changed files, every scene whose inputs moved, the digest and the frozen photos against their goldens",
+   "tasks": ["import", "scripts", "shader_contracts", "build_debug", "gates_changed", "@test_scenes", "digest", "photos", "photos_check"],
    "variants": {
     "ready": {
      "doc": "the check before a commit: also the release DLL; when all of it holds it leaves dist/quick/passed",

@@ -5,6 +5,7 @@
 #pragma once
 
 #include "sim/terrain/scenic_land.h"
+#include "core/shader_contracts.h"
 
 #include <cstdint>
 #include <memory>
@@ -22,7 +23,7 @@ public:
 	static constexpr double OCEAN_Y = 0; // the sea plane; the visual palette reads the same level
 	static constexpr double MIN_Y = -64, MAX_Y = 400;
 	
-	static constexpr float NO_WATER = -1000.f;
+	static constexpr float NO_WATER = TERRAIN_NO_WATER;
 
 	// `authored`: a scenic map's land (null: the land drawn from the seed).
 	TerrainGen(uint32_t seed, double map_half, double water_spacing, const ScenicLand *authored = nullptr);

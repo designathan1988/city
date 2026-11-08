@@ -7,13 +7,14 @@
 // its colour lit by the scene, its surface polished polycarbonate (lens_roughness, lens_ior). One shader for all of
 // them: each spatial shader's variants cost ~3 MiB.
 shader_type spatial;
+#include "res://render/shaders/shader_contracts.gdshaderinc"
 
 global uniform float night;
 uniform vec3 glow_color : source_color;
 uniform float glow_gain = 6.0;
 uniform float roughness = 0.85;
-uniform vec3 lit_radiance[5]; // per Lens (prop_kit.h Lens::COUNT)
-uniform vec3 dark_radiance[5]; // an unlit lens's faint glow (render/lamp_radiance.gd)
+uniform vec3 lit_radiance[LENS_COUNT]; // per lens
+uniform vec3 dark_radiance[LENS_COUNT]; // an unlit lens's faint glow (render/lamp_radiance.gd)
 uniform float lens_roughness = 0.0;
 uniform float lens_ior = 1.5;
 uniform float wire_min_px = 0.7; // a wire never narrower than this on the screen

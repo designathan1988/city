@@ -2,6 +2,7 @@
 // shaders, the held things and helmets, the blob under each walker, and agents.json's people block through the strict reader's
 // values (render/data_reader.h). The frame's work is people_renderer.cpp.
 #include "render/agents/people_renderer.h"
+#include "core/shader_contracts.h"
 
 #include "core/color.h"
 #include "render/mesh_builder.h"
@@ -22,11 +23,10 @@ struct FaceAct {
 	const char *clip;
 	int act;
 };
-constexpr FaceAct FACE_ACTS[] = { { "talk", 1 }, { "listen", 2 }, { "phone", 3 }, { "crouchDown", 4 }, { "crouchIdle", 4 }, { "crouchUp", 4 } };
-constexpr int BODY_TABLE = 32; // people_pose.gdshaderinc walk_frames, body_female; people_held.gdshader palm_rows
+constexpr FaceAct FACE_ACTS[] = { { "talk", FACE_ACT_TALK }, { "listen", FACE_ACT_LISTEN }, { "phone", FACE_ACT_PHONE }, { "crouchDown", FACE_ACT_CROUCH },
+	{ "crouchIdle", FACE_ACT_CROUCH }, { "crouchUp", FACE_ACT_CROUCH } };
 constexpr int BLOB_SIDES = 10;
-constexpr int CLIP_TABLE = 24; // people_pose.gdshaderinc clip_row, clip_frames, clip_seconds
-constexpr int PALM_ROWS = 3, PALM_ROW_FLOATS = 4;
+constexpr int PALM_ROW_FLOATS = 4;
 constexpr const char *ACT_CLIPS[int(PedAct::COUNT)] = { nullptr, "talk", "listen", "look", "phone", "headphones", "bag", "crouchIdle", "photo" };
 // The clip of each SeatPose and, for who puts a foot down, the one stopped.
 constexpr const char *SEAT_CLIPS[int(SeatPose::COUNT)] = { "carDrive", "carRide", "carRearRide", "cabDrive", "cabRide", "chairSit", "motoRide", "bikePedal" };
@@ -54,10 +54,10 @@ void disc_mesh(MeshBuilder &b) {
 void PeopleRenderer::set_faces(const RID &material) const {
 	PackedInt32Array acts;
 	PackedFloat32Array moods;
-	acts.resize(CLIP_TABLE);
+	acts.resize(PEOPLE_CLIPS);
 	acts.fill(0);
 	for (const FaceAct &f : FACE_ACTS) acts.set(asset_.clip(f.clip), f.act);
-	moods.resize(BODY_TABLE);
+	moods.resize(PEOPLE_BODIES);
 	moods.fill(0);
 	for (size_t v = 0; v < asset_.variations.size(); v++) moods.set(int64_t(v), asset_.variations[v].mood);
 	RenderingServer *rs = RenderingServer::get_singleton();
@@ -69,16 +69,16 @@ void PeopleRenderer::set_faces(const RID &material) const {
 void PeopleRenderer::set_tables(const RID &material) const {
 	PackedInt32Array clip_rows, clip_frames, walk_frames, female;
 	PackedFloat32Array seconds;
-	clip_rows.resize(CLIP_TABLE);
-	clip_frames.resize(CLIP_TABLE);
-	seconds.resize(CLIP_TABLE * 2);
+	clip_rows.resize(PEOPLE_CLIPS);
+	clip_frames.resize(PEOPLE_CLIPS);
+	seconds.resize(PEOPLE_CLIPS * 2);
 	for (size_t i = 0; i < asset_.clips.size(); i++) {
 		clip_rows.set(int64_t(i), asset_.clips[i].row);
 		clip_frames.set(int64_t(i), asset_.clips[i].frames);
 		for (int sex = 0; sex < 2; sex++) seconds.set(int64_t(i) * 2 + sex, asset_.clips[i].seconds[sex]);
 	}
-	walk_frames.resize(BODY_TABLE);
-	female.resize(BODY_TABLE);
+	walk_frames.resize(PEOPLE_BODIES);
+	female.resize(PEOPLE_BODIES);
 	for (size_t v = 0; v < asset_.variations.size(); v++) {
 		walk_frames.set(int64_t(v), asset_.variations[v].walk_frames);
 		female.set(int64_t(v), asset_.variations[v].female ? 1 : 0);
@@ -109,21 +109,21 @@ bool PeopleRenderer::init(const RenderContext &ctx, const DataValue &people, con
 		lods.fail("one limit for each level of the people file");
 		return false;
 	}
-	if (asset_.variations.size() > size_t(BODY_TABLE)) {
+	if (asset_.variations.size() > size_t(PEOPLE_BODIES)) {
 		errors.push_back("pessoas: variações demais para as tabelas dos corpos");
 		return false;
 	}
 	PackedVector4Array palms, shells;
-	palms.resize(BODY_TABLE * PALM_ROWS);
-	shells.resize(BODY_TABLE * PALM_ROWS);
+	palms.resize(PEOPLE_BODIES * PEOPLE_HAND_ROWS);
+	shells.resize(PEOPLE_BODIES * PEOPLE_HAND_ROWS);
 	for (std::vector<int> &list : by_age_) list.clear();
 	for (size_t v = 0; v < asset_.variations.size(); v++) {
 		const PersonVariation &pv = asset_.variations[v];
-		for (int r = 0; r < PALM_ROWS; r++) {
+		for (int r = 0; r < PEOPLE_HAND_ROWS; r++) {
 			const float *row = pv.palm + r * PALM_ROW_FLOATS;
-			palms.set(int64_t(v) * PALM_ROWS + r, Vector4(row[0], row[1], row[2], row[3]));
+			palms.set(int64_t(v) * PEOPLE_HAND_ROWS + r, Vector4(row[0], row[1], row[2], row[3]));
 			const float *shell = pv.helmet + r * PALM_ROW_FLOATS;
-			shells.set(int64_t(v) * PALM_ROWS + r, Vector4(shell[0], shell[1], shell[2], shell[3]));
+			shells.set(int64_t(v) * PEOPLE_HAND_ROWS + r, Vector4(shell[0], shell[1], shell[2], shell[3]));
 		}
 		by_age_[int(pv.child ? PedAge::CHILD : pv.senior ? PedAge::ELDER : PedAge::ADULT)].push_back(int(v));
 	}
@@ -132,7 +132,7 @@ bool PeopleRenderer::init(const RenderContext &ctx, const DataValue &people, con
 			errors.push_back("pessoas: falta corpo de alguma idade");
 			return false;
 		}
-	if (asset_.clips.size() > size_t(CLIP_TABLE)) {
+	if (asset_.clips.size() > size_t(PEOPLE_CLIPS)) {
 		errors.push_back("pessoas: clipes demais para a tabela do shader");
 		return false;
 	}

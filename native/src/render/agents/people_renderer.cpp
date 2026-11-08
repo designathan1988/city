@@ -1,7 +1,8 @@
 // Fills one instance buffer per (body, level) every frame. Look hash bits: body 24..31; the low ones spread the idles. INSTANCE_CUSTOM =
 // (body, walk frames, a seed, walk phase); on the far card (body, its height, the seed, 0). The instance colour's alpha: the share of the
-// walk in the pose, or from CLIP_CODE_BASE a clip held (somebody in a vehicle). What it reads once is people_boot.cpp.
+// walk in the pose, or from PEOPLE_CLIP_CODE_BASE a clip held (somebody in a vehicle). What it reads once is people_boot.cpp.
 #include "render/agents/people_renderer.h"
+#include "core/shader_contracts.h"
 
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/variant/array.hpp>
@@ -16,8 +17,6 @@ namespace city {
 namespace {
 constexpr uint32_t VARIATION_SHIFT = 24, SEED_MASK = 1023;
 constexpr float FRIGHT_MARK = 0.25f; // people_face.gdshaderinc: a seed below zero is a frightened person's, this short of its number
-constexpr float ACT_SPAN = .96f; // people_pose.gdshaderinc: the whole of an act, short of the next clip's number
-constexpr float CLIP_CODE_BASE = 2.f; // an instance colour's alpha from here on: the clip of that number, held (people.gdshader)
 constexpr double NS_PER_S = 1e9, CLOCK_WRAP_S = 86400.0; // the idles' clock wraps once a day: a float keeps its milliseconds
 
 } // namespace
@@ -107,8 +106,8 @@ void PeopleRenderer::seat(uint64_t key, const Pose &vehicle, const SeatSpot &spo
 	at.y += flat * off.y + up * off.z;
 	at.z += -vehicle.fx * off.x - vehicle.fz * up * off.y + vehicle.fz * flat * off.z;
 	const int level = dist > blob_from_m_ ? asset_.lods : level_at(dist);
-	place(PEOPLE_DENSE_KEYS + key, v, level, at, look, 0.f, phase, CLIP_CODE_BASE + float(clip));
-	if (spot.pose == SeatPose::MOTO && level < asset_.lods) agent_row(helmets_.row(key), at, 1.f, float(v), 0.f, float(look & SEED_MASK), phase, CLIP_CODE_BASE + float(clip));
+	place(PEOPLE_DENSE_KEYS + key, v, level, at, look, 0.f, phase, PEOPLE_CLIP_CODE_BASE + float(clip));
+	if (spot.pose == SeatPose::MOTO && level < asset_.lods) agent_row(helmets_.row(key), at, 1.f, float(v), 0.f, float(look & SEED_MASK), phase, PEOPLE_CLIP_CODE_BASE + float(clip));
 }
 
 int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCull &view, const PoseSample &at, float radius) {
@@ -137,11 +136,11 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 			agent_row(blob_buf_.add(), under, blob_radius_m_, 0, 0, 0, 0);
 		}
 		const int act = rec.act < int(PedAct::COUNT) ? rec.act : 0;
-		float doing = rec.act_share > 0 ? float(act_clips_[act]) + rec.act_share * ACT_SPAN : 0.f;
+		float doing = rec.act_share > 0 ? float(act_clips_[act]) + rec.act_share * PEOPLE_ACT_SPAN : 0.f;
 		float walk = phase - std::floor(phase);
 		if (act == int(PedAct::CROUCH) && doing > 0) { // down, a while there and up again (citizenGait.ts): played from its start, not by the clock
 			const Played at_it = crouch_at(pv.female ? 1 : 0, rec.act_since, rec.act_left);
-			doing = -(float(at_it.clip) + rec.act_share * ACT_SPAN);
+			doing = -(float(at_it.clip) + rec.act_share * PEOPLE_ACT_SPAN);
 			walk = at_it.phase;
 		}
 		place(rec.id, v, level, p, rec.look, doing, walk, 1.f - rec.rest, rec.frightened);

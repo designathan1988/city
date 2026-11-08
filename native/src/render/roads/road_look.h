@@ -5,6 +5,7 @@
 #pragma once
 
 #include "sim/roads/profiles.h"
+#include "core/shader_contracts.h"
 
 #include <godot_cpp/variant/color.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
@@ -30,7 +31,7 @@ inline godot::Color road_color(const godot::Color &srgb, RoadMat m) {
 // metres over WEAR_SPAN_M, interpolated exactly across a strip because they are linear in it. On a lane, B is the lane's
 // width over WEAR_LANE_M, and the class's tone travels in the fraction of the material id.
 constexpr float WEAR_SPAN_M = 25.5f, WEAR_LANE_M = 12.75f;
-constexpr float TONE_SLOTS = 8.f;
+constexpr float TONE_SLOTS = float(ROAD_TONE_SLOTS);
 inline godot::Color wear_color(float from_a, float from_b, float lane, RoadMat m, int tone) {
 	return godot::Color(from_a / WEAR_SPAN_M, from_b / WEAR_SPAN_M, lane / WEAR_LANE_M, (float(int(m)) + (float(tone) + MAT_HALF) / TONE_SLOTS) / MAT_SCALE);
 }

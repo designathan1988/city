@@ -1,5 +1,6 @@
 // Bakes a superchunk's far cards into one mesh (see far_cards.h).
 #include "render/trees/far_cards.h"
+#include "core/shader_contracts.h"
 
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/core/math.hpp>
@@ -18,7 +19,6 @@ namespace city {
 namespace {
 constexpr int CORNERS = 4, CARD_INDICES = 6, CUSTOM_HALFS = 4;
 constexpr float FRAME_SIDES = 2.f; // a frame reaches its half side either way
-constexpr float TINT_SHARE = 0.5f; // a vertex colour stops at 1 and the tint goes either side of it (vegetation.gdshaderinc FAR_TINT_SPAN)
 constexpr int CARD_TRIS[CARD_INDICES] = { 0, 1, 2, 0, 2, 3 };
 } // namespace
 
@@ -45,7 +45,7 @@ OwnedMesh bake_far_cards(const std::vector<FarCard> &cards, float centre, float 
 	int32_t *ix = idx.ptrw();
 	for (int64_t k = 0; k < n; k++) {
 		const FarCard &f = cards[size_t(k)];
-		Color tone = f.tone * TINT_SHARE;
+		Color tone = f.tone * FAR_TINT_SHARE;
 		tone.a = centre;
 		const uint16_t half[CUSTOM_HALFS] = { Math::make_half_float(f.width * half_tall * FRAME_SIDES), Math::make_half_float(f.height), Math::make_half_float(float(f.species)),
 			Math::make_half_float(half_tall) };

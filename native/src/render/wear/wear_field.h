@@ -6,6 +6,7 @@
 #pragma once
 
 #include "render/render_context.h"
+#include "core/shader_contracts.h"
 #include "sim/state/pose_buffer.h"
 
 #include <godot_cpp/variant/packed_byte_array.hpp>
@@ -31,7 +32,7 @@ public:
 	int64_t publications() const { return publications_; }
 
 private:
-	static constexpr int LAYER_CELLS = 256, LAYERS_AXIS = 8, RES = LAYER_CELLS * LAYERS_AXIS, CHANNELS = 2;
+	static constexpr int LAYER_CELLS = WEAR_LAYER_CELLS, LAYERS_AXIS = WEAR_LAYERS_AXIS, RES = LAYER_CELLS * LAYERS_AXIS, CHANNELS = 2;
 	void add(int channel, float x, float z, float amount);
 	void clear_cell_range(int gx0, int gx1, int gy0, int gy1);
 	void touch(int tile);

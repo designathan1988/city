@@ -3,11 +3,12 @@
 // louvred shutters, gourmet balconies, transoms. Every box is an instance in `parts` (a row of a band, not 20 vertices in the chunk's
 // mesh); what is no box (railing cards, awnings, door panels, glass guards) stays where its material is.
 #include "render/buildings/facade_bay.h"
+#include "core/shader_contracts.h"
 
 namespace city::b40 {
 
 namespace {
-constexpr float FRAME_D = 0.06f, FRAME_THIN = 0.05f, FRAME_IN = 0.03f, SILL_PAST = 0.14f, SILL_T = 0.06f, SILL_OUT = 0.07f;
+constexpr float FRAME_D = 0.06f, FRAME_THIN = 0.05f, FRAME_IN = 0.03f;
 constexpr float BAL_EDGE = 0.3f, BAL_SLAB = 0.18f, BAL_OUT = 1.3f;
 constexpr float CANOPY_PAD = 0.7f, CANOPY_T = 0.12f, CANOPY_OUT = 0.9f, FASCIA_H = 0.2f, FASCIA_T = 0.05f, FASCIA_DROP = 0.04f;
 constexpr float CANOPY_RISE = 0.3f, CANOPY_ROOM = 0.48f, BRACKET_W = 0.06f, BRACKET_H = 0.3f, BRACKET_D = 0.5f, BRACKET_OFF = 0.2f;
@@ -156,15 +157,15 @@ void emit_bay_parts(Shell &shell, Shell &parts, const Placed &pl, const BayCtx &
 	Ctx x{ shell, parts, pl, c, o, c.W / 2, (o.h0 + o.h1) / 2, o.w, o.h1 - o.h0 };
 	if (x.stands_out()) return;
 	switch (c.comp) {
-		case BAY_WINDOW: case BAY_SASH: x.sill(SILL_PAST, SILL_T, SILL_OUT); break;
+		case BAY_WINDOW: case BAY_SASH: x.sill(SILL_PAST_M, SILL_T_M, SILL_OUT_M); break;
 		case BAY_DOOR: x.door(); break;
 		case BAY_DOUBLE_DOOR: x.double_door(); break;
 		case BAY_LOADING_DOOR: case BAY_GARAGE_DOOR:
 			part_box(parts, x.at(x.am, x.hm, o.depth - FRAME_IN, x.w, x.h, FRAME_IN), x.paint("shutter"), FIN_METAL);
 			break;
 		case BAY_FRENCH: case BAY_BAY_WINDOW: case BAY_RIBBON:
-			if (x.h > TRANSOM_MIN) part_box(parts, x.at(x.am, o.h0 + TRANSOM_AT * x.h, o.depth - FRAME_IN, x.w, TRANSOM_T, SILL_OUT), c.trim, PART_PAINT);
-			if (o.h0 > WINDOW_SILL_MIN) x.sill(SILL_PAST, SILL_T, SILL_OUT);
+			if (x.h > TRANSOM_MIN) part_box(parts, x.at(x.am, o.h0 + TRANSOM_AT * x.h, o.depth - FRAME_IN, x.w, TRANSOM_T, SILL_OUT_M), c.trim, PART_PAINT);
+			if (o.h0 > WINDOW_SILL_MIN) x.sill(SILL_PAST_M, SILL_T_M, SILL_OUT_M);
 			break;
 		default: break;
 	}

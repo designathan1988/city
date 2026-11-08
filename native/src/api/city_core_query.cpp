@@ -6,6 +6,7 @@
 #include "render/render_layers.h"
 
 #include "core/math.h"
+#include "core/shader_contracts.h"
 #include "core/units.h"
 #include "render/film_grade.h"
 #include "sim/buildings/lot_access.h"
@@ -107,6 +108,9 @@ Dictionary CityCore::constants() const {
 	Array sections;
 	for (const char *name : FRAME_SECTIONS) sections.push_back(name);
 	d["frame_sections"] = sections;
+	Dictionary shader; // what the shaders read too, by the shaders' names (core/shader_contracts.h)
+	for (const ShaderContract &c : SHADER_CONTRACTS) shader[String(c.name)] = c.value;
+	d["shader"] = shader;
 	return d;
 }
 

@@ -4,6 +4,8 @@
 // Lengths in metres in the lot frame: x along the street front from the lot's middle, y away from the street, z up.
 #pragma once
 
+#include "core/shader_contracts.h"
+
 #include <cstdint>
 #include <unordered_map>
 #include <map>
@@ -39,6 +41,7 @@ enum Style : uint8_t { STYLE_COLONIAL, STYLE_ART_DECO, STYLE_MODERNIST, STYLE_CO
 // Finishes in the COOKED texture-array layer order (project/assets/surfaces/building-finishes.*.png).
 enum Finish : int8_t { FIN_NONE = -1, FIN_PLASTER, FIN_STUCCO, FIN_CERAMIC, FIN_BRICK, FIN_STONE, FIN_CONCRETE, FIN_WOOD,
 	FIN_METAL, FIN_GLASS, FIN_TILE, FIN_SLATE, FIN_PANEL, FIN_ROOFING, FIN_COUNT };
+static_assert(FIN_COUNT == FINISH_LAYERS, "the finishes are the layers the building shaders read (core/shader_contracts.h)");
 
 // A material: finish layer + sRGB colour 0xRRGGBB.
 struct Paint {

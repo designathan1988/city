@@ -6,6 +6,7 @@
 #pragma once
 
 #include "sim/buildings/b40/paint.h"
+#include "core/shader_contracts.h"
 #include "sim/buildings/b40/types.h"
 
 #include <godot_cpp/variant/color.hpp>
@@ -17,12 +18,8 @@
 
 namespace city::b40 {
 
-// Surface kinds (COLOR.a byte), read by project/render/shaders/building.gdshader.
-enum SurfaceKind : uint8_t { SK_SHELL, SK_PANE, SK_PANE_DARK, SK_FAR_WALL, SK_LAMP, SK_LAWN, SK_PANE_CLEAR, SK_GROUND, SK_COUNT }; // SK_GROUND: a shell face lying on the lot, which stays on it when a level steps back
-
-// A byte's 1.0 in CUSTOM0..3 (building_pane.gdshaderinc ROOM_SPAN_M, FRAME_SPAN_M): 5 cm and 1 mm steps, more than a
-// pane shows.
-constexpr float ROOM_SPAN_M = 12.75f, FRAME_SPAN_M = 0.255f;
+// Surface kinds (COLOR.a byte: SurfaceKind) and a byte's 1.0 in CUSTOM0..3 (ROOM_SPAN_M, FRAME_SPAN_M: 5 cm and 1 mm steps, more than a
+// pane shows) are core/shader_contracts.h's, which the building shaders read too.
 
 // The room behind a pane, seen from the pane's middle: how far its walls stand along the facade, its depth, the floor
 // and ceiling from the pane's middle, the finish of its floor, and the largest piece of furniture seen through it
@@ -51,7 +48,7 @@ struct PaneLook {
 enum CardKind : uint8_t { CARD_ROOF_RAILING = 2, CARD_RAILING_FRONT, CARD_RAILING_SIDE, CARD_BRISE };
 
 // A far wall's window row: shares of the bay and the storey, flags (building_pane.gdshaderinc far_window).
-constexpr int WINDOW_FLAG_BLANK = 4, WINDOW_FLAG_OFFICE = 8, WINDOW_DARK_SHIFT = 4; // the shift: PaneDark
+constexpr int WINDOW_FLAG_OFFICE = 8, WINDOW_DARK_SHIFT = 4; // the shift: PaneDark (WINDOW_FLAG_BLANK: core/shader_contracts.h)
 struct FarWindows {
 	float width = 0, sill = 0, head = 0;
 	int flags = 0;

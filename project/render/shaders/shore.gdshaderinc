@@ -1,5 +1,6 @@
 // The shore: a band set by height over the water beside it (render/water/shore_field.h), sand on a gentle bank and damp
 // earth on a steep one, darker where it is wet. Needs land() and dirt_layer, dirt_m.
+#include "res://render/shaders/shader_contracts.gdshaderinc"
 
 uniform highp sampler2D shore_map : repeat_disable, filter_nearest;
 uniform vec3 shore_grid = vec3(0.0, 1.0, 2.0); // half the map, metres between samples, samples a side; no half: no levels yet
@@ -20,7 +21,7 @@ uniform float shore_wander_len_m; // metres one wander of the band's edge runs a
 uniform float sand_grain_m;
 uniform float sand_speck_m;
 
-const float SHORE_DRY = -500.0; // under this a sample has no water by it (TerrainGen::NO_WATER)
+const float SHORE_DRY = TERRAIN_NO_WATER * 0.5; // under this a sample has no water by it: half the way to the level of none
 const float SHORE_FADE_FROM = 0.15, SHORE_FADE_TO = 0.85, SHORE_FADE_WANDER = 0.3;
 const float SHORE_WET_FROM = 0.03, SHORE_WET_TO = 0.35;
 

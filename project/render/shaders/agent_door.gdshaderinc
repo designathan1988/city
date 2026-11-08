@@ -1,7 +1,6 @@
 // The kerb door of a vehicle swung by the vertex stage, the way a wheel turns: its vertices are marked in the mesh (UV2.y, UV the hinge)
-// and the instance says how far it stands open, over the wheel's angle (agent_renderer.cpp DOOR_FLAG), so a door costs no draw.
-const float DOOR_FLAG = 16.0;
-const float DOOR_LEVELS = 31.0; // pose_buffer.h LOOK_DOOR_MASK
+// and the instance says how far it stands open, over the wheel's angle (AGENT_DOOR_STEP, shader_contracts.gdshaderinc), so a door costs no draw.
+#include "res://render/shaders/shader_contracts.gdshaderinc"
 const float DOOR_SWING = 1.15; // radians, fully open (Roadcraft occupants.ts)
 const float DOOR_MARK = 1.5; // UV2.y over this: a door's vertex
 const float DOOR_BACK_MARK = 2.5; // and over this, one hung at its back edge
@@ -18,7 +17,7 @@ float pane_drop(float seed, float x) {
 }
 
 void door_swing(inout vec3 p, inout vec3 n, vec2 hinge, float wheel_and_door, float mark) {
-	float a = floor(wheel_and_door / DOOR_FLAG) / DOOR_LEVELS * DOOR_SWING * sign(hinge.x) * (mark > DOOR_BACK_MARK ? -1.0 : 1.0); // always out of the body
+	float a = floor(wheel_and_door / AGENT_DOOR_STEP) / float(AGENT_DOOR_LEVELS) * DOOR_SWING * sign(hinge.x) * (mark > DOOR_BACK_MARK ? -1.0 : 1.0); // always out of the body
 	float c = cos(a), s = sin(a);
 	vec2 d = p.xz - hinge;
 	p.xz = hinge + vec2(d.x * c - d.y * s, d.x * s + d.y * c);

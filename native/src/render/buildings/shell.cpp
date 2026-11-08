@@ -2,6 +2,7 @@
 // grime), clockwise winding toward `out` (Godot front faces), the vertex code of each surface kind, and the commit of
 // one surface to a RenderingServer mesh.
 #include "render/buildings/shell.h"
+#include "core/shader_contracts.h"
 
 #include "render/mesh_order.h"
 
@@ -23,7 +24,6 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
-constexpr float PANE_RECESS_STEP_M = 0.01f; // COLOR.a above the kind: building_glass.gdshader reads the same
 constexpr int PANE_KIND_BITS = 3, PANE_RECESS_MAX = 31;
 constexpr float MACRO_M = 12.f, TONE_BASE = 0.97f, TONE_SPAN = 0.06f, GRIME_M = 1.2f, GRIME_FLOOR = 0.8f, GRIME_SPAN = 0.2f;
 constexpr float SHELL_WALL_TOP = 0.5f, GAMMA_INV = 1.f / 2.2f, BYTE = 255.f, DEGENERATE = 1e-12f, BIG = 1e30f;
@@ -221,7 +221,6 @@ void Shell::pane(const Basis &f, float a0, float a1, float b0, float b1, float c
 }
 
 void Shell::bay(const Basis &f, float W, float H, const Lin &wall, int8_t fin, uint32_t seed, const FarWindows &w, float depth) {
-	constexpr float DEPTH_STEP_M = 0.04f; // building_bay.gdshaderinc DEPTH_STEP_M
 	constexpr int DEPTH_MOST = 15, FIN_SHIFT = 8, FLAGS_SHIFT = 12, DEPTH_SHIFT = 20;
 	auto byte = [](float v) { return uint32_t(std::clamp(v, 0.f, 1.f) * BYTE + HALF_STEP); };
 	auto three = [&](float r, float g, float b) { return float(byte(r) << (2 * BYTE_BITS) | byte(g) << BYTE_BITS | byte(b)); };
@@ -234,7 +233,7 @@ void Shell::bay(const Basis &f, float W, float H, const Lin &wall, int8_t fin, u
 	b.shares = three(w.width, w.sill, w.head);
 	b.wall = three(tone.r, tone.g, tone.b);
 	b.trim = three(gamma(w.trim.r), gamma(w.trim.g), gamma(w.trim.b));
-	const uint32_t steps = uint32_t(std::min(DEPTH_MOST, int(std::lround(depth / DEPTH_STEP_M))));
+	const uint32_t steps = uint32_t(std::min(DEPTH_MOST, int(std::lround(depth / BAY_DEPTH_STEP_M))));
 	b.code = float((seed & SEED_BYTE) | uint32_t(fin + 1) << FIN_SHIFT | uint32_t(w.flags & SEED_BYTE) << FLAGS_SHIFT | steps << DEPTH_SHIFT);
 	bays.push_back(b);
 }

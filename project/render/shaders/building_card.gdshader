@@ -3,6 +3,7 @@
 // shadow texel, and the one-pixel rule in that pass would draw them a texel wide, stripes on what stands beside.
 shader_type spatial;
 render_mode cull_disabled;
+#include "res://render/shaders/shader_contracts.gdshaderinc"
 
 uniform float veil_from_m = 100.0; // the blades of a brise, as boxes, end here (buildings.json lod.part_bands, the first band)
 uniform float roughness = 0.45;
@@ -11,7 +12,7 @@ uniform float metalness = 0.55;
 const int ROOF_RAILING = 2;
 const int RAILING_FRONT = 3;
 const int BRISE_KIND = 5;
-const float BRISE_PITCH = 1.0 / 6.0; // part_models.cpp BRISE_FINS
+const float BRISE_PITCH = 1.0 / float(BRISE_FINS); // a fin's pitch on the card
 const float TOP_RAIL = 0.97, TOP_RAIL_H = 0.06;
 const float BRISE_FILTER_PX = 2.0;
 

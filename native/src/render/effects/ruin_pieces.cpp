@@ -1,5 +1,6 @@
 // A building's pieces, drawn (ruin_pieces.h).
 #include "render/effects/ruin_pieces.h"
+#include "core/shader_contracts.h"
 
 #include "core/job_pool.h"
 #include "render/render_layers.h"
@@ -18,7 +19,6 @@ namespace city {
 namespace {
 constexpr int MOST_FALLS = 24; // ruins drawn as pieces at once: the rest of a razed block falls as plain heaps
 constexpr int64_t MOST_VERTICES = 6000000; // of them all, about 170 MB: past it the oldest at rest leaves its mound alone
-constexpr int PIECES_A_ROW = 256; // of the matrix texture: building_body.gdshaderinc RUIN_PIECES_A_ROW
 constexpr int TEXELS_A_PIECE = 3;
 constexpr float BOX_SPREAD = 2.f; // of the building's height, how far a piece may end from it
 constexpr int STEPS_MOST = 4;
@@ -166,8 +166,8 @@ void RuinPieces::make_room(int64_t vertices) {
 }
 
 namespace {
-int rows_of(int pieces) { return (pieces + PIECES_A_ROW - 1) / PIECES_A_ROW; }
-int64_t rows_bytes(int rows) { return int64_t(PIECES_A_ROW) * rows * RuinSim::FLOATS_A_PIECE * int64_t(sizeof(float)); }
+int rows_of(int pieces) { return (pieces + RUIN_PIECES_A_ROW - 1) / RUIN_PIECES_A_ROW; }
+int64_t rows_bytes(int rows) { return int64_t(RUIN_PIECES_A_ROW) * rows * RuinSim::FLOATS_A_PIECE * int64_t(sizeof(float)); }
 } // namespace
 
 // The mesh on its instance, the pieces as the sim has them.
@@ -181,7 +181,7 @@ void RuinPieces::adopt(Fall &f, const Done &done) {
 	float *out = reinterpret_cast<float *>(f.rows.ptrw());
 	for (int i = 0; i < n; i++) f.sim->write(size_t(i), out + i * RuinSim::FLOATS_A_PIECE);
 	RenderingServer *rs = RenderingServer::get_singleton();
-	f.texture = rs->texture_2d_create(Image::create_from_data(PIECES_A_ROW * TEXELS_A_PIECE, f.rows_of_pieces, false, Image::FORMAT_RGBAF, f.rows));
+	f.texture = rs->texture_2d_create(Image::create_from_data(RUIN_PIECES_A_ROW * TEXELS_A_PIECE, f.rows_of_pieces, false, Image::FORMAT_RGBAF, f.rows));
 	f.material = material_->duplicate();
 	rs->material_set_param(f.material->get_rid(), "pieces", f.texture);
 	const RID mesh = f.cut->mesh.rid;
@@ -212,7 +212,7 @@ void RuinPieces::upload(Fall &f) {
 	for (int i = 0; i < f.sim->pieces(); i++)
 		if (f.sim->moved(size_t(i))) f.sim->write(size_t(i), out + i * RuinSim::FLOATS_A_PIECE);
 	f.sim->clear_moved();
-	const Ref<Image> image = Image::create_from_data(PIECES_A_ROW * TEXELS_A_PIECE, f.rows_of_pieces, false, Image::FORMAT_RGBAF, f.rows);
+	const Ref<Image> image = Image::create_from_data(RUIN_PIECES_A_ROW * TEXELS_A_PIECE, f.rows_of_pieces, false, Image::FORMAT_RGBAF, f.rows);
 	RenderingServer::get_singleton()->texture_2d_update(f.texture, image, 0);
 	f.dirty = false;
 }

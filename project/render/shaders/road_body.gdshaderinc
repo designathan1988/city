@@ -3,6 +3,7 @@
 // corners, (across, along) on a kerb's top, the run along it on any face) and the lamp pool coordinates in UV2 (|u - lamp| and metres from the first lamp; -1000 = junction plate,
 // lit evenly; 1000 = no lamp). The cooked maps are tinted so their mean becomes the strip colour. Everything in linear
 // on both renderers (color_space.gdshaderinc).
+#include "res://render/shaders/shader_contracts.gdshaderinc"
 
 global uniform float night;
 global uniform float road_paint; // 0: the detail cut-off of the graphics tier leaves the paint out
@@ -25,7 +26,7 @@ uniform float asphalt_m = 10.4;
 uniform float footway_m = 7.2;
 uniform float kerb_m = 3.2;
 uniform float verge_m = 8.8;
-uniform vec3 lane_tone[8]; // linear, by road class (road_look.h wear_color)
+uniform vec3 lane_tone[ROAD_TONE_SLOTS]; // linear, by road class (road_look.h wear_color)
 uniform vec3 footway_tone;
 uniform float plate_blend = 2.26; // metres of that difference over which two arms share a plate
 uniform float normal_asphalt = 1.0;

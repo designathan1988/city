@@ -2,6 +2,7 @@
 // scaled by (sx, sy, sz) along / up / out and centred at (a, h, -depth). Railings with balusters, panelled
 // doors, louvred shutters, brise fins, awnings, split AC condensers and porch lamps.
 #include "render/buildings/facade_bay.h"
+#include "core/shader_contracts.h"
 
 #include "core/math.h"
 
@@ -17,7 +18,6 @@ constexpr float PANEL_Y_LO = -0.3f, PANEL_X = 0.24f, PANEL_Z = 0.25f, PANEL_D = 
 constexpr float DOOR_HANDLE_W = 0.1f, HANDLE_D = 1.6f, HANDLE_Z = 0.9f, PANEL_SHADE = 0.92f;
 constexpr float LOUVRE_T = 0.09f, SLAT_FILL = 0.67f, SLAT_SHADE = 0.85f;
 constexpr int SLATS = 9;
-constexpr int BRISE_FINS = 6;
 constexpr float CANVAS_SLOPE = 0.75f, VALANCE_H = 0.28f, VALANCE_T = 0.025f;
 constexpr float HALF = 0.5f;
 constexpr uint32_t BRASS = 0xb08d57, LAMP_BODY = 0xf1ebdd;

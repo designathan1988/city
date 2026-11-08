@@ -166,7 +166,7 @@ the same sources give the same bytes, so a rebuild of unchanged sources leaves t
 - `tasks/`: the one orchestration owner of every support tool (tasks as data: inputs keyed by content, a deadline each,
   a verdict; parallel pool, cache in `dist/cache/tasks`, Job Object kill, hidden desktop; `suites.json`).
 - `build/`: `build.sh`, `android.sh` (the Android library and APK), `quick.sh` (a thin call of `tools/tasks`), `pgo.sh`, `photodiff.py`, `free_dll.sh`,
-  `check_scripts.gd` (scripts that do not compile).
+  `check_scripts.gd` (scripts that do not compile), `shader_contracts.py` (what shaders, core and scripts share, from its JSON).
 - `analysis/`: `sampler.py` with `sampler_report.py` and `unwind.py`, `causes.py` with `detectors.py` and `code_parse.py`,
   `arch.py` e `arch/` (o analisador de arquitetura), `arch_eval/` (gabaritos
   que só o selfcheck dele lê).

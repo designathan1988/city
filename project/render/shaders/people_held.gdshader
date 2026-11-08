@@ -3,13 +3,14 @@
 // with the body's axes; otherwise in the palm's frame (X along the fingers, Y to the thumb, Z out of the back of the hand). It grows out of the fist as the
 // act comes in, as a hand brings it out of a pocket.
 shader_type spatial;
+#include "res://render/shaders/shader_contracts.gdshaderinc"
 
 #include "res://render/shaders/people_skin.gdshaderinc"
 #include "res://render/shaders/people_pose.gdshaderinc"
 
 uniform int hand_bone;
 uniform vec3 fist; // in the palm's frame
-uniform vec4 palm_rows[96]; // by variation, three rows each: the palm at rest
+uniform vec4 palm_rows[PEOPLE_BODIES * PEOPLE_HAND_ROWS]; // by variation, three rows each: the palm at rest
 
 const float HELD_ROUGH = 0.7;
 

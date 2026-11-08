@@ -1,15 +1,15 @@
 // A person's face this instant (faceExpression.ts faceAt), worked out on the GPU from what the instance already says: its seed, the clock, what it is
 // doing and whether it is frightened. Only the near mesh's face vertices carry a row of face_table (tools/assets/cook_people.py): where each moves, by
 // channel; no other vertex pays for any of it.
+#include "res://render/shaders/shader_contracts.gdshaderinc"
 uniform sampler2D face_table : filter_nearest, repeat_disable;
-uniform int act_face[24]; // by clip: what the face does at it (people_renderer.cpp FACE_ACTS)
-uniform float body_mood[32]; // by variation: -1 low .. 1 bright (cast.json)
+uniform int act_face[PEOPLE_CLIPS]; // by clip: what the face does at it (FACE_ACT_*)
+uniform float body_mood[PEOPLE_BODIES]; // by variation: -1 low .. 1 bright (cast.json)
 
 const float FACE_ROW_STEP = 4.0; // cook_people.py: UV2.x is the region plus this many a row
 const int FACE_CHANNELS = 13;
 const int FACE_SPAN = 8; // rows side by side in the table
 const int BLINK = 0, JOY = 1, SADNESS = 2, ANGER = 3, SURPRISE = 4, BROW_RAISE = 5, OPEN = 6, ROUND = 7, PUCKERED = 8, SPREAD = 9, SHUT = 10, LOOK_LEFT = 11, LOOK_RIGHT = 12;
-const int ACT_TALK = 1, ACT_LISTEN = 2, ACT_PHONE = 3, ACT_CROUCH = 4;
 const int VISEME_COUNT = 9;
 const int VISEMES[VISEME_COUNT] = { OPEN, SPREAD, SPREAD, ROUND, PUCKERED, SHUT, SHUT, OPEN, SPREAD };
 const uint FACE_SALT = 0x4c9e3721u;
@@ -43,7 +43,7 @@ vec3 face_move(int row, vec4 custom, float code) {
 	float time = idle_clock;
 	uint hash = person_hash(uint(floor(abs(custom.b) + 0.5)) ^ FACE_SALT);
 	float low = float(hash & BYTE_MASK);
-	int doing = code >= CLIP_CODE_BASE - 0.5 ? 0 : act_face[int(abs(custom.g))];
+	int doing = code >= PEOPLE_CLIP_CODE_BASE - 0.5 ? 0 : act_face[int(abs(custom.g))];
 	bool frightened = custom.b < 0.0;
 
 	float blink = fract(time * (BLINK_RATE + float((hash >> 8u) & 15u) * BLINK_RATE_STEP) + low / BYTE_MAX);
@@ -52,7 +52,7 @@ vec3 face_move(int row, vec4 custom, float code) {
 	w[LOOK_LEFT] = max(gaze, 0.0);
 	w[LOOK_RIGHT] = max(-gaze, 0.0);
 
-	if (frightened && doing == ACT_CROUCH) {
+	if (frightened && doing == FACE_ACT_CROUCH) {
 		// Sobbing (FACS sadness AU1+4+15 with the jaw catching)
 		float sob = max(0.0, sin(time * 5.5 + float(hash & 63u)));
 		w[SADNESS] = 1.0;
@@ -69,9 +69,9 @@ vec3 face_move(int row, vec4 custom, float code) {
 		w[SPREAD] = 0.7;
 	} else {
 		float mood = body_mood[int(custom.r + 0.5)];
-		w[JOY] = max(mood, 0.0) * 0.3 + (doing == ACT_TALK ? 0.25 : doing == ACT_LISTEN ? 0.15 : 0.0);
+		w[JOY] = max(mood, 0.0) * 0.3 + (doing == FACE_ACT_TALK ? 0.25 : doing == FACE_ACT_LISTEN ? 0.15 : 0.0);
 		w[SADNESS] = max(-mood, 0.0) * 0.35;
-		if (doing == ACT_TALK || doing == ACT_PHONE) {
+		if (doing == FACE_ACT_TALK || doing == FACE_ACT_PHONE) {
 			float beat = time * SYLLABLES + float((hash >> 16u) & BYTE_MASK) / 64.0;
 			float syllable = floor(beat);
 			float open = sin((beat - syllable) * FACE_PI);

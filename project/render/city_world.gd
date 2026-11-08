@@ -4,7 +4,6 @@ class_name CityWorld
 extends Node3D
 
 const TERRAIN_SHADER := "res://render/shaders/terrain.gdshader"
-const LUMA := Vector3(0.3, 0.6, 0.1) # the weights terrain_layers.gdshaderinc reads a colour's luma with
 const SKY_SHADER := "res://render/shaders/sky.gdshader"
 ## Kept as text so the orphan gate sees every shader the native renderers load by name from materials.json.
 const NATIVE_SHADERS := [
@@ -105,7 +104,9 @@ func _set_ground(m: ShaderMaterial) -> void:
 
 func _grass_mean(ground: Dictionary) -> float:
 	var mean := SurfaceMeans.mean_color(shader_value(ground.grass_map)).srgb_to_linear()
-	return mean.r * LUMA.x + mean.g * LUMA.y + mean.b * LUMA.z
+	var k: Dictionary = CityStore.constants.shader
+	var luma := Vector3(k.LUMA_R, k.LUMA_G, k.LUMA_B) # the weights terrain_layers.gdshaderinc reads a colour's luma with
+	return mean.r * luma.x + mean.g * luma.y + mean.b * luma.z
 
 
 static func shader_value(v: Variant) -> Variant:

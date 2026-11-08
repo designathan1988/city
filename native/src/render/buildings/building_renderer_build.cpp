@@ -26,7 +26,7 @@ constexpr int CHUNKS_PER_SUPER_AXIS = int(SUPERCHUNK / CHUNK);
 // the layout building_far.gdshader decodes (KIND_BITS, KIND_MASK).
 constexpr int FAR_KIND_BITS = 3, FAR_KIND_MASK = (1 << FAR_KIND_BITS) - 1, FAR_OFFICE_BIT = 128;
 constexpr float BYTE_MAX = 255.f;
-static_assert(b40::SK_COUNT <= (1 << FAR_KIND_BITS), "surface kinds must fit the far mesh's kind bits");
+static_assert(SK_COUNT <= (1 << FAR_KIND_BITS), "surface kinds must fit the far mesh's kind bits");
 static_assert(CHUNKS_PER_SUPER_AXIS * CHUNKS_PER_SUPER_AXIS << FAR_KIND_BITS <= FAR_OFFICE_BIT, "chunk index must fit COLOR.a under the office bit");
 
 constexpr float AABB_PAD = 1.f;

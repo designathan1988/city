@@ -1,5 +1,6 @@
 // A motorcyclist's helmet: its mesh, colours and instances (helmets.h).
 #include "render/agents/helmets.h"
+#include "core/shader_contracts.h"
 
 #include "core/color.h"
 #include "render/mesh_builder.h"
@@ -15,7 +16,6 @@ namespace city {
 
 namespace {
 constexpr float SHELL_RADIUS = 0.5f; // the fit in people.bin is the shell's whole width
-constexpr int MOST_COLOURS = 8; // people_helmet.gdshader helmet_colours
 }
 
 bool Helmets::init(const RenderContext &ctx, const DataValue &helmet, PackedStringArray &errors) {
@@ -24,12 +24,12 @@ bool Helmets::init(const RenderContext &ctx, const DataValue &helmet, PackedStri
 	if (!errors.is_empty()) return false;
 	const DataValue colours = helmet["colours"];
 	const int count = colours.size();
-	if (count == 0 || count > MOST_COLOURS) {
-		colours.fail(String("between 1 and ") + String::num_int64(MOST_COLOURS) + String(" colours, what the shader holds"));
+	if (count == 0 || count > HELMET_COLOURS) {
+		colours.fail(String("between 1 and ") + String::num_int64(HELMET_COLOURS) + String(" colours, what the shader holds"));
 		return false;
 	}
 	PackedVector3Array linear;
-	linear.resize(MOST_COLOURS);
+	linear.resize(HELMET_COLOURS);
 	for (int i = 0; i < count; i++) {
 		const Color c = rgba8_to_color(colours[i].colour()).srgb_to_linear();
 		linear.set(i, Vector3(c.r, c.g, c.b));

@@ -6,6 +6,7 @@
 // angle + 8 when braking, passengers, 0); COLOR.a is the vehicle's seed. The Compatibility renderer stores instance custom data as half
 // floats: whole numbers below 2048 exactly. Who rides is drawn by PeopleRenderer.
 shader_type spatial;
+#include "res://render/shaders/shader_contracts.gdshaderinc"
 
 #include "res://render/shaders/color_space.gdshaderinc"
 
@@ -30,10 +31,9 @@ uniform float sheen_power;
 uniform float lens_roughness;
 uniform float trim_roughness;
 
-const float BRAKE_FLAG = 8.0;
 #include "res://render/shaders/agent_door.gdshaderinc"
 // the paints as numbers (vec3, not colours): used as they are, like the parts' own vertex colours; the riders' helmets too
-uniform vec3 paints[24]; // the paints, then the colours of the transport lines
+uniform vec3 paints[AGENT_PAINTS + AGENT_LINE_PAINTS]; // the paints, then the colours of the transport lines
 varying flat float v_tag;
 varying flat vec4 v_custom;
 varying flat float v_seed;
@@ -49,7 +49,7 @@ void vertex() {
 	if (UV2.y > DOOR_MARK) {
 		door_swing(VERTEX, NORMAL, UV, INSTANCE_CUSTOM.g, UV2.y);
 	} else if (UV2.y > 0.5) {
-		float a = mod(INSTANCE_CUSTOM.g, BRAKE_FLAG);
+		float a = mod(INSTANCE_CUSTOM.g, AGENT_BRAKE_FLAG);
 		vec2 d = VERTEX.yz - UV;
 		vec2 nd = NORMAL.yz;
 		float c = cos(a), s = sin(a);
@@ -91,7 +91,7 @@ void fragment() {
 		rough = lens_roughness;
 	} else if (tag == 3) {
 		bool on = v_custom.b > -0.5;
-		bool braking = mod(v_custom.g, DOOR_FLAG) >= BRAKE_FLAG; // by day each shows as its colour: more red than that, and ACES turns it cream
+		bool braking = mod(v_custom.g, AGENT_DOOR_STEP) >= AGENT_BRAKE_FLAG; // by day each shows as its colour: more red than that, and ACES turns it cream
 		emit = on ? (braking ? brake_lit : tail_lit) + source_linear(tail_glow) * tail_power * night * (braking ? brake_ratio : 1.0) : vec3(0.0);
 		c = on ? vec3(0.0) : c;
 		rough = lens_roughness;

@@ -4,7 +4,6 @@ class_name SurfaceMeans
 extends RefCounted
 
 const MEAN_PX := 64 # side of the shrunk copy whose average becomes a surface map's mean colour
-const LANE_TONES := 8 # slots of road_look.h TONE_SLOTS
 const MEAN_MAPS := ["asphalt_map", "footway_map", "kerb_map"] # those road.gdshader tones by their mean; the grass is its map
 
 
@@ -18,7 +17,7 @@ static func apply(m: ShaderMaterial, params: Dictionary, load_param: Callable) -
 	for road_class in streets.asphalt_by_class:
 		var c := Color.html(streets.asphalt_by_class[road_class]).srgb_to_linear()
 		tones.push_back(Vector3(c.r, c.g, c.b))
-	tones.resize(LANE_TONES)
+	tones.resize(int(CityStore.constants.shader.ROAD_TONE_SLOTS)) # road_body.gdshaderinc lane_tone
 	m.set_shader_parameter("lane_tone", tones)
 	m.set_shader_parameter("plate_blend", streets.plate_blend_m)
 	var walk := Color.html(streets.paving_colors[0]).srgb_to_linear()

@@ -2504,6 +2504,58 @@ element kinds in four files, marking styles by index). They become names resolve
 **Verified** (`city-verify`, `quick`, both DLLs): every test passes (42 of 44, the shoot test with the data's twelve shots), the
 digest equal, every photo byte-equal to runs before C7, `scripts` compiling every script; `gates_changed` only lines the files had.
 
+### 6.19 B2, C3 (the shaders' side, first part): what the shaders share, written once (2026-11-08)
+
+**Cause.** A shader cannot include a C++ header, so every value a renderer writes into a vertex or an instance and a shader
+reads back was typed on both sides with a comment naming the other: the door's and the brake's flags in an agent's custom
+data, the people's clip and body tables (the uniform arrays sized 24, 32, 48 and 96 by hand), the face acts, the helmets'
+colours, the building surface kinds, a pane's and a bay's byte steps, the sill's sizes, the opening's shades, the brise fins,
+the ruin pieces a row, the finish layers, the tree parts, the leaf atlas regions, the far cards' tint, the wear layers, the
+road tones, the lenses and the dry shore level; some of them a third time in a script (`lamp_radiance.gd`, `surface_means.gd`)
+and the luma weights five times in `terrain_layers.gdshaderinc` and once in `city_world.gd`. Copies had already moved apart
+in form: the shader's `HEAD_SHADE` was the product 0.544 of the C++'s two shades, its `SILL_PAST_M` half the C++'s, its
+`SHORE_DRY` half of `NO_WATER`, each kept equal only by a comment.
+
+**Fix.** `tools/build/shader_contracts.json` holds each value once, with what it means and who writes and reads it;
+`tools/build/shader_contracts.py` makes `native/src/core/shader_contracts.h` (constexpr values, the `SurfaceKind` and
+`TreePart` enums, and `SHADER_CONTRACTS`: every value by the shaders' name) and `project/render/shaders/shader_contracts.gdshaderinc`
+(guarded, so any shader and include takes it). The renderers and the shaders read those names, the uniform arrays are sized by
+them (Godot reduces a constant expression in an array size: `ShaderLanguage::_parse_array_size`), and a side that needs a
+value derived from one derives it in its own code (the head's shade as `REVEAL_SHADE * HEAD_SHADE`, the sill's overhang a side
+as half of `SILL_PAST_M`, the dry shore as half of `TERRAIN_NO_WATER`). Where C++ keeps its own enum (`Finish`, `Lens`) a
+`static_assert` holds its count to the layers the shaders read. The scripts read `CityStore.constants.shader`, a float as the
+table's decimal at double precision, as their literals were. Quick's `shader_contracts` task (`--check`) fails when the header
+or the include is not what the table makes; `tools/build/tests/test_shader_contracts.py` tests the generator.
+
+**Why it does not come back.** A value shared across the boundary has one place to be written, and both generated files are
+checked against it on every quick run; a new shared value with no entry has no name on the other side to read.
+
+**What changes.** Nothing a player sees: every derived value is exact in float32 (0.68 x 0.8 = 0.544, 0.14 x 0.5 = 0.07,
+1 / 0.5 = 2, -1000 x 0.5 = -500, 1 / float(6) = 1 / 6.0) and the scripts get the same numbers. One trap, found by the photos:
+`city_world.gd` held the luma weights in a `Vector3`, whose components are float32, so the grass mean was worked out with 0.3
+rounded to a float; read as the table's doubles it moved by an ulp and a few pixels of `00-cidade` with it. The script keeps the
+weights in a `Vector3`, as before.
+
+**A shader that does not compile passed 42 tests.** The first run of this change had `building_far_window.gdshaderinc`'s own
+`REVEAL_SHADE` (0.42, the far level's, another value under the same name) clash with the table's: every building material fell
+back, and only the light test and the photos saw it. `tools/tasks/verdicts.py` failed a Godot task on a `SCRIPT ERROR` (which does
+not stop a scene) but not on a `SHADER ERROR` (which does not either): it now does (`tools/tasks/tests/test_verdicts.py`, red
+before the rule, green after). The far level's shade is `FAR_REVEAL_SHADE`.
+
+**Left for the second part** (the same table; the review's §3s list, which this first pass did not cover whole): the bay's piece
+kinds, mesh mark, line names and code shifts (`bay_kit.cpp`, `shell.cpp` `Shell::bay`); the finishes by index in the shaders
+(`fin != 8 && fin != 7`, `fin == 8`: the `Finish` enum); the surface kinds by number (`building_body` 3, 4, 5; `building_far` 1..4),
+the kind bits and the far level's office bit (`shell.cpp`, `building_renderer_build.cpp`), the far windows' `PaneDark` codes, dark
+shift and office flag; `CardKind`; the condenser's case (from `bay_props.json`, not typed), the canyon cell; the control map's bit
+layout (`terrain_bridge.cpp`) and the biome tints' size; the people's face table, palette span, bone texels and bones; the agents'
+`AgentTag` and `Limb` marks and the pane's sill span; `PropTag`, the span's kind stride and the secondary wire's mark; `RoadMat`,
+its scale, the pool sentinels and the wear spans; the effect marks (debris, bodies, the frightened); the engine's ACES, mirrored in
+`tone_inverse.gdshaderinc` and `tone_map.gd`; the lane tones by the key order of `asphalt_by_class`.
+
+**Verified** (`city-verify`, `quick --all` then `quick` and the photos, both DLLs): every test passes, the digest equal, every
+photo byte-equal to a run before C7, `scripts` compiling every script, `shader_contracts` passing; `gates_changed` only lines the
+files had (four fewer).
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

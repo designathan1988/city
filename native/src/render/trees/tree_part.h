@@ -1,8 +1,5 @@
-// What each vertex of a tree is (UV2.x), the contract with render/shaders/vegetation.gdshaderinc.
+// What each vertex of a tree is (UV2.x): TreePart, written once in core/shader_contracts.h, which vegetation.gdshaderinc reads too.
 #pragma once
 
-namespace city {
+#include "core/shader_contracts.h"
 
-enum class TreePart : int { BODY = 0, CARD = 1, FROND = 2, FAR = 3, BARK = 4 };
-
-} // namespace city

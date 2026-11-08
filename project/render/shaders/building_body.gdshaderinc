@@ -5,8 +5,8 @@
 // windows: building_far_window.gdshaderinc (CUSTOM0 and 3 written by shell.cpp). The mid level's bays are instances of one mesh
 // that the vertex stage places and turns into these same faces (building_bay.gdshaderinc).
 render_mode cull_back;
+#include "res://render/shaders/shader_contracts.gdshaderinc"
 
-const int KIND_GROUND = 7; // shell.h SK_GROUND
 
 global uniform float night;
 global uniform float building_recess; // 0 turns the worked-out recess off: an A/B of what it costs
@@ -18,9 +18,9 @@ global uniform float outside_on; // the share of outside lights lit at this hour
 uniform sampler2DArray finish_map : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2DArray finish_normal : filter_linear_mipmap, repeat_enable;
 uniform sampler2DArray finish_rough : filter_linear_mipmap, repeat_enable;
-uniform float finish_m[13];
-uniform float finish_normal_k[13];
-uniform float finish_metal[13];
+uniform float finish_m[FINISH_LAYERS];
+uniform float finish_normal_k[FINISH_LAYERS];
+uniform float finish_metal[FINISH_LAYERS];
 uniform float wall_gain = 1.0;
 uniform float lamp_glow = 3.4;
 uniform vec3 lamp_light : source_color = vec3(1.0, 0.83, 0.6); // what a lit lamp gives, whatever its body is by day
@@ -35,7 +35,6 @@ varying flat vec4 v_room0;
 varying flat vec4 v_trim;
 varying flat float v_recess; // how deep a far wall's panes stand, worked out in the fragment: 0 on a bay, whose recess is geometry
 #ifdef RUIN
-const int RUIN_PIECES_A_ROW = 256; // render/effects/ruin_pieces.cpp PIECES_A_ROW
 uniform sampler2D pieces : filter_nearest, repeat_disable; // three rows of a matrix a piece
 varying flat vec3 v_turn0;
 varying flat vec3 v_turn1;
@@ -77,7 +76,7 @@ void vertex() {
 	v_turn2 = r2.xyz;
 #endif
 	// What lies on the lot stays there: stepped back it sinks under the lawn, which is drawn by another material and stands still.
-	if (level_back > 0.0 && !IN_SHADOW_PASS && int(COLOR.a * 255.0 + 0.5) != KIND_GROUND) VERTEX += level_local(MODEL_MATRIX, normalize(v_world - CAMERA_POSITION_WORLD) * level_back);
+	if (level_back > 0.0 && !IN_SHADOW_PASS && int(COLOR.a * 255.0 + 0.5) != SK_GROUND) VERTEX += level_local(MODEL_MATRIX, normalize(v_world - CAMERA_POSITION_WORLD) * level_back);
 }
 
 #include "res://render/shaders/building_colour.gdshaderinc"

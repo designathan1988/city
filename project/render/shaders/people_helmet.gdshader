@@ -1,13 +1,14 @@
 // A motorcyclist's helmet (Roadcraft riderPoses.helmetShape): a shell fitted to each body's head at the cook, posed by the head's bone of the same clip
 // and phase as the rider it is on. Instances as the body's (people_pose.gdshaderinc).
 shader_type spatial;
+#include "res://render/shaders/shader_contracts.gdshaderinc"
 
 #include "res://render/shaders/people_skin.gdshaderinc"
 #include "res://render/shaders/people_pose.gdshaderinc"
 
 uniform int head_bone;
-uniform vec4 helmet_rows[96]; // by variation, three rows each: the shell at rest
-uniform vec3 helmet_colours[8];
+uniform vec4 helmet_rows[PEOPLE_BODIES * PEOPLE_HAND_ROWS]; // by variation, three rows each: the shell at rest
+uniform vec3 helmet_colours[HELMET_COLOURS];
 uniform int colour_count = 1;
 uniform float helmet_roughness = 0.3;
 

@@ -4,6 +4,8 @@
 // rachis with leaflets swept towards its tip). Alpha is the leaf's cover; mipmaps are generated from it.
 #pragma once
 
+#include "core/shader_contracts.h"
+
 #include <godot_cpp/classes/image.hpp>
 #include <godot_cpp/classes/image_texture.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
@@ -11,8 +13,8 @@
 
 namespace city {
 
-// Each region's place in the atlas along u (the shader maps a card's 0..1 corner into its region).
-constexpr float ATLAS_REGION_W = 1.f / 3.f, LEAF_REGION_U = 0.f, FROND_REGION_U = 2.f / 3.f;
+// Each region's place in the atlas along u (the shader maps a card's 0..1 corner into its region): ATLAS_REGION_W, LEAF_REGION_U and
+// FROND_REGION_U, core/shader_contracts.h's.
 
 class LeafAtlas {
 public:

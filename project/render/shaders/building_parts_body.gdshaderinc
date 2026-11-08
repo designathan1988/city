@@ -9,6 +9,7 @@
 // designs are the Roadcraft's fourteen (flags.ts FLAG_PATTERNS, native types.h FlagPattern). One shader for both, as
 // props.gdshader does: each spatial shader's variants cost ~3 MiB.
 render_mode cull_back, skip_vertex_transform;
+#include "res://render/shaders/shader_contracts.gdshaderinc"
 
 global uniform float night;
 global uniform float wind_x; // the way the wind blows, x and z of a unit vector (render/sky_view.gd)
@@ -17,9 +18,9 @@ global uniform float wind_z;
 uniform sampler2DArray finish_map : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2DArray finish_normal : filter_linear_mipmap, repeat_enable;
 uniform sampler2DArray finish_rough : filter_linear_mipmap, repeat_enable;
-uniform float finish_m[13];
-uniform float finish_normal_k[13];
-uniform float finish_metal[13];
+uniform float finish_m[FINISH_LAYERS];
+uniform float finish_normal_k[FINISH_LAYERS];
+uniform float finish_metal[FINISH_LAYERS];
 uniform float wall_gain = 1.0;
 uniform float cloth_roughness = 0.85; // the Roadcraft's flag material (flagLayer.ts MeshStandardMaterial)
 

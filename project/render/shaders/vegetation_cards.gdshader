@@ -4,10 +4,10 @@
 // far away (Golus, "Anti-aliased Alpha Test: The Esoteric Alpha To Coverage", 2017).
 shader_type spatial;
 render_mode skip_vertex_transform, cull_disabled, shadows_disabled, alpha_to_coverage;
+#include "res://render/shaders/shader_contracts.gdshaderinc"
 
 #include "res://render/shaders/vegetation.gdshaderinc"
 
-const float REGION_W = 1.0 / 3.0, LEAF_U = 0.0, FROND_U = 2.0 / 3.0; // leaf_atlas.h ATLAS_REGION_W, LEAF_REGION_U, FROND_REGION_U
 const float CUT = 0.5;
 uniform sampler2D leaf_atlas : source_color, filter_linear_mipmap_anisotropic, repeat_disable;
 uniform float cover_per_mip = 0.25;
@@ -35,12 +35,12 @@ void fragment() {
 		SPECULAR = leaf_sheen(NORMAL, VIEW);
 	} else {
 	bool frond = v_part > PART_FROND - 0.5 && v_part < PART_FROND + 0.5;
-	vec2 uv = vec2((frond ? FROND_U : LEAF_U) + clamp(UV.x, 0.0, 1.0) * REGION_W, UV.y);
+	vec2 uv = vec2((frond ? FROND_REGION_U : LEAF_REGION_U) + clamp(UV.x, 0.0, 1.0) * ATLAS_REGION_W, UV.y);
 	vec2 dx = dFdx(uv), dy = dFdy(uv);
 	vec4 leaf = textureGrad(leaf_atlas, uv, dx, dy);
 	float close = frond ? 0.0 : 1.0 - smoothstep(leaf_near_m, leaf_far_m, length(VERTEX));
 	if (close > 0.0) {
-		leaf = mix(leaf, textureGrad(leaf_atlas, uv + vec2(REGION_W, 0.0), dx, dy), close);
+		leaf = mix(leaf, textureGrad(leaf_atlas, uv + vec2(ATLAS_REGION_W, 0.0), dx, dy), close);
 	}
 	vec2 texel = uv * vec2(textureSize(leaf_atlas, 0));
 	float mip = max(0.0, 0.5 * log2(max(dot(dFdx(texel), dFdx(texel)), dot(dFdy(texel), dFdy(texel)))));
