@@ -410,7 +410,6 @@ game.toast.webgl,WebGPU indisponível: rodando no modo de compatibilidade (WebGL
 gfx.ao,Oclusão de ambiente,Ambient occlusion
 gfx.close,Fechar,Close
 gfx.fullscreen,Tela cheia,Full screen
-gfx.gpu,Placa de vídeo,Graphics card
 gfx.gpu.named,Placa de vídeo: {name},Graphics card: {name}
 gfx.preset,Predefinição,Preset
 gfx.shadows,Sombras,Shadows
