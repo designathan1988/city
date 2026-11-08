@@ -68,6 +68,21 @@
    "inputs": ["tools/assets/make_furniture.py", "project/data/catalog/interiors.json", "project/data/game/start.json", "project/data/render/furniture.json"],
    "resources": {"cores": 1}
   },
+  "causes": {
+   "doc": "the causes the code's shape shows (tools/analysis/causes.py): its report, under a deadline like every tool",
+   "argv": ["{python}", "tools/analysis/causes.py"],
+   "timeout_s": 600,
+   "inputs": ["tools/analysis/causes.py", "tools/analysis/detectors.py", "tools/analysis/code_parse.py", "tools/gates/lex_c.py", "native/src/**"],
+   "resources": {"cores": 1}
+  },
+  "arch_scan": {
+   "doc": "the architecture analyser's scan (tools/analysis/arch.py scan, its queue in dist/arch/queue.json): its git streams and compiler questions under this deadline",
+   "argv": ["{python}", "tools/analysis/arch.py", "scan"],
+   "timeout_s": 1800,
+   "inputs": ["tools/analysis/arch.py", "tools/analysis/arch/**", "native/src/**", "project/**/*.gd"],
+   "outputs": ["dist/arch/queue.json"],
+   "resources": {"cores": "all"}
+  },
   "build_debug": {
    "doc": "the debug DLL, the one the editor, tests and captures load",
    "argv": ["{bash}", "tools/build/build.sh", "dll-debug"],

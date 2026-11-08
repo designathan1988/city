@@ -2961,6 +2961,29 @@ tree-sitter adapters) and the analyzer's own git and compiler calls are the anal
 
 **What changes.** Nothing in the game: the same profiles in the same order, the same panels, the same text, the same furniture.
 
+### 6.32 B2, C16 (the analysis tools): one C++ lexer, deadlines, a sampler that knows the main thread (2026-11-08)
+
+**Causes and fixes.**
+- **The analysers' C++ reader counted braces in strings and comments** (`code_parse.py`: line regexes and a brace count per line,
+  so a `{` in a string or a comment shifted every later function's span): heads and braces are read on the code the gates'
+  lexer leaves (`lex_c.py`, comments, strings and characters blanked), the bodies are the source as written, and the lexer's source
+  keys the parses with the parser's. A test function whose string holds `}{` and whose comment holds `}` keeps its five lines.
+- **The analyser's processes had no deadline** (`arch/repo.py` git, `arch/adapters/cpp_build.py` ninja and the compiler): each call
+  has one, and `causes` and `arch_scan` are tasks of the orchestrator (CLAUDE.md's commands run them through it), so the analyser's
+  long-lived `git cat-file` streams end with the task's deadline too.
+- **The sampler took the first thread Toolhelp32 listed for the main one** (no documented order), opened handles it never
+  closed, left the handle types at `int` (a 64-bit handle truncated) and stopped on any module whose debug file was elsewhere:
+  the main thread is the oldest (`GetThreadTimes`), the handles and dbghelp's state are given back (`Sampler.close`), the handle
+  types are declared, and a module whose PDB is not on the machine is reported as without debug information. Its Windows access is
+  a responsibility of its own (`win_process.py`), which also keeps the sampler under its length.
+
+**Not here, and why.** The analyser's libclang and tree-sitter adapters read C++ for a call graph, which a token lexer cannot
+give: they stay the analyser's, the other readers use the gates' lexer.
+
+**Verified.** The parse of a function with braces in a string and a comment; `causes` as a task (it passes); the sampler on a
+short Python process (1 392 samples, the main thread named, the modules without symbols said); the `tools/tasks` tests and the
+gates of the changed files.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

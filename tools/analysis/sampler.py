@@ -25,21 +25,14 @@ from pathlib import Path
 
 from sampler_report import report
 from unwind import UnwindTables
+from win_process import (CONTEXT_FULL, IMAGE_FILE_MACHINE_AMD64, PROCESS_ALL, STILL_ACTIVE, THREAD_ACCESS, ContextX64,  # noqa: E402
+                         Frame, dbg, k32, main_thread, modules_of, threads_of)
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tasks import proc  # noqa: E402
 from tasks.cache import store_path, write_atomic  # noqa: E402
 
-k32 = C.WinDLL("kernel32", use_last_error=True)
-dbg = C.WinDLL("dbghelp", use_last_error=True)
-psapi = C.WinDLL("psapi", use_last_error=True)
-k32.GetCurrentThread.restype = C.c_void_p  # a pseudo-handle (-2): 64 bits, never an int
-k32.QueryThreadCycleTime.argtypes = [C.c_void_p, C.POINTER(C.c_uint64)]
-PROCESS_ALL = 0x1F0FFF
-THREAD_ACCESS = 0x0002 | 0x0008 | 0x0010 | 0x0040  # suspend/resume, get context, query information
-CONTEXT_FULL = 0x10000B
-IMAGE_FILE_MACHINE_AMD64 = 0x8664
-TH32CS_SNAPTHREAD = 0x4
+
 MAX_FRAMES = 96
 STACK_COPY = 256 * 1024  # bytes of the live stack copied while a thread is frozen (deeper frames are read live)
 STILL_ACTIVE = 259
@@ -48,57 +41,6 @@ REFRESH_S = 0.5  # threads and modules listed again this often
 START_MARGIN_S = 120  # past the sampling time, the started program's deadline: start-up and the walk's own lag
 SYMBOLIZE_TIMEOUT_S = 600  # one llvm-symbolizer call over one module's addresses
 TOOL = "sampler-symbols"
-
-
-class ContextX64(C.Structure):  # CONTEXT (winnt.h, x64): the fields StackWalk64 reads; the rest is room
-    _fields_ = [("P", C.c_uint64 * 6), ("ContextFlags", W.DWORD), ("MxCsr", W.DWORD), ("Seg", W.WORD * 6), ("EFlags", W.DWORD),
-                ("Dr", C.c_uint64 * 6), ("Rax", C.c_uint64), ("Rcx", C.c_uint64), ("Rdx", C.c_uint64), ("Rbx", C.c_uint64),
-                ("Rsp", C.c_uint64), ("Rbp", C.c_uint64), ("Rsi", C.c_uint64), ("Rdi", C.c_uint64), ("R", C.c_uint64 * 8),
-                ("Rip", C.c_uint64), ("Rest", C.c_byte * 976)]
-
-
-class Address(C.Structure):
-    _fields_ = [("Offset", C.c_uint64), ("Segment", W.WORD), ("Mode", C.c_int)]
-
-
-class Frame(C.Structure):  # STACKFRAME64
-    _fields_ = [("AddrPC", Address), ("AddrReturn", Address), ("AddrFrame", Address), ("AddrStack", Address),
-                ("AddrBStore", Address), ("FuncTableEntry", C.c_void_p), ("Params", C.c_uint64 * 4), ("Far", W.BOOL),
-                ("Virtual", W.BOOL), ("Reserved", C.c_uint64 * 3), ("KdHelp", C.c_byte * 112)]
-
-
-class Thread32(C.Structure):
-    _fields_ = [("dwSize", W.DWORD), ("cntUsage", W.DWORD), ("th32ThreadID", W.DWORD), ("th32OwnerProcessID", W.DWORD),
-                ("tpBasePri", C.c_long), ("tpDeltaPri", C.c_long), ("dwFlags", W.DWORD)]
-
-
-class ModuleInfo(C.Structure):
-    _fields_ = [("base", C.c_void_p), ("size", W.DWORD), ("entry", C.c_void_p)]
-
-
-def threads_of(pid):
-    snap = k32.CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0)
-    te, out = Thread32(), []
-    te.dwSize = C.sizeof(Thread32)
-    ok = k32.Thread32First(snap, C.byref(te))
-    while ok:
-        if te.th32OwnerProcessID == pid:
-            out.append(te.th32ThreadID)
-        ok = k32.Thread32Next(snap, C.byref(te))
-    k32.CloseHandle(snap)
-    return out
-
-
-def modules_of(hp):
-    handles = (C.c_void_p * 2048)()
-    needed = W.DWORD()
-    psapi.EnumProcessModulesEx(hp, handles, C.sizeof(handles), C.byref(needed), 3)  # LIST_MODULES_ALL
-    out, path, info = [], C.create_unicode_buffer(1024), ModuleInfo()
-    for h in handles[:needed.value // C.sizeof(C.c_void_p)]:
-        if h and psapi.GetModuleInformation(hp, C.c_void_p(h), C.byref(info), C.sizeof(info)):
-            psapi.GetModuleFileNameExW(hp, C.c_void_p(h), path, 1024)
-            out.append((info.base, info.base + info.size, path.value))
-    return out
 
 
 def cycles_per_ns():
@@ -122,9 +64,20 @@ class Sampler:
         self.opened = {}
         self.cycles_per_ns = cycles_per_ns()
         self.last = {}  # tid -> (cycles, stack, cpu) of its last walk: a thread that has not run since has the same stack
-        self.main = None  # the first thread seen: the program's main loop
+        self.main = None  # the program's main loop: its oldest thread (main_thread)
         self.modules = {}  # base -> (end, path), gathered while sampling: the process may be gone at the end
         self.unwind = UnwindTables(self.hp, self.modules)  # every module's own unwind tables, symbols or not
+
+    def close(self):
+        """The thread and process handles and dbghelp's own state, given back."""
+        for h in self.opened.values():
+            if h:
+                k32.CloseHandle(h)
+        self.opened = {}
+        if self.hp:
+            dbg.SymCleanup(self.hp)
+            k32.CloseHandle(self.hp)
+            self.hp = None
 
     def stack(self, tid):
         """(the thread's stack, its CPU ns so far)."""
@@ -174,7 +127,7 @@ class Sampler:
                 for b, end, path in modules_of(self.hp):
                     self.modules[b] = (end, path)
                 if ids and self.main is None:
-                    self.main = ids[0]
+                    self.main = main_thread(ids)
             if not ids or (k32.GetExitCodeProcess(self.hp, C.byref(code)) and code.value != STILL_ACTIVE):
                 break
             # the main thread on every sweep; the others take turns while the sweep is within its interval, so a busy pool
@@ -218,6 +171,8 @@ def symbolize(path: str, offsets: list[int], symbolizer: str) -> dict[int, str |
         r = subprocess.run([symbolizer, f"--obj={path}", "--demangle", "--no-inlines"], timeout=SYMBOLIZE_TIMEOUT_S,
                            creationflags=proc.NO_WINDOW,
                            input="\n".join(f"0x{image_base + o:x}" for o in ask), capture_output=True, text=True)
+        if r.returncode != 0 and ".pdb" in r.stderr.lower():  # its debug file is not on this machine: no debug information
+            return {o: None for o in offsets}
         if r.returncode != 0:
             raise RuntimeError(f"{symbolizer} failed on {path} ({r.returncode}): {r.stderr.strip()[:300]}")
         blocks = [b.splitlines() for b in r.stdout.strip().split("\n\n")]
@@ -281,11 +236,13 @@ def main():
             target.close()
     if not samples:
         print("FAIL zero samples: the process gave no stack to walk (gone, or not reachable)")
+        s.close()
         return 1
     names, undebugged = symbols(s, {e for _, _, st, _, _ in samples for e in st}, a.symbolizer)
     if undebugged:
         print("WARNING: no debug information (build with it to see functions and lines): " + ", ".join(sorted(undebugged)))
     data = report(samples, names, s.main, a.window_s, a.interval_ms)
+    s.close()
     if a.json:
         with open(a.json, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=1)

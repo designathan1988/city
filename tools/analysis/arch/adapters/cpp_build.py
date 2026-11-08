@@ -7,6 +7,8 @@ import shlex
 import shutil
 import subprocess
 
+TOOL_TIMEOUT_S = 120  # one ninja or compiler question; a hang is an error, not a wait
+
 SOURCE = re.compile(r"\.(c|cc|cpp|cxx)$")
 HEADER = re.compile(r"\.(h|hh|hpp|hxx|inl)$")
 KEEP_ONE = ("-D", "-U", "-I", "-std", "-f", "-m", "--target")
@@ -28,7 +30,7 @@ def _ask_builds(repo):
         folder = os.path.join(repo.root, os.path.dirname(ninja_file))
         if ninja is None:
             continue
-        run = subprocess.run((ninja, "-t", "compdb"), cwd=folder, capture_output=True, check=False)
+        run = subprocess.run((ninja, "-t", "compdb"), cwd=folder, capture_output=True, check=False, timeout=TOOL_TIMEOUT_S)
         if run.returncode == 0:
             out[os.path.dirname(ninja_file)] = json.loads(run.stdout.decode("utf8", "replace") or "[]")
     for db in repo.on_disk("*compile_commands.json"):
@@ -59,7 +61,7 @@ def _driver(compiler, memo):
         return memo[compiler]
     args = []
     try:
-        run = subprocess.run((compiler, "-E", "-v", "-x", "c++", "-"), input=b"", capture_output=True, check=False)
+        run = subprocess.run((compiler, "-E", "-v", "-x", "c++", "-"), input=b"", capture_output=True, check=False, timeout=TOOL_TIMEOUT_S)
         text = run.stderr.decode("utf8", "replace").replace("\r\n", "\n").replace("\\", "/")
         target = re.search(r"^Target: (\S+)", text, re.M)
         if target:
@@ -155,7 +157,7 @@ def compiler_of(repo):
 def macros(compiler, flags, source):
     """Every macro and its text after a file, as the compiler itself lists them."""
     words = [compiler, "-E", "-dM", "-x", "c++", *[f for f in flags if f != "-include-pch" and not f.endswith(".pch")], source]
-    out = subprocess.run(words, capture_output=True, check=False).stdout.decode("utf8", "replace")
+    out = subprocess.run(words, capture_output=True, check=False, timeout=TOOL_TIMEOUT_S).stdout.decode("utf8", "replace")
     table = {}
     for line in out.split("\n"):
         if line.startswith("#define "):
