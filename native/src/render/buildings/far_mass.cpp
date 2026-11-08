@@ -23,7 +23,7 @@ FarWindows windows_of(const Placed &pl, const Volume &v, int k, int side, float 
 	BayCtx c;
 	c.W = W; c.H = H; c.level = v.base + k; c.geo = &v.faces[side];
 	c.comp = comp;
-	Opening o = opening_of(*pl.data, c);
+	Opening o = opening_of(pl, c);
 	FarWindows w;
 	w.width = o.w / W; w.sill = o.h0 / H; w.head = o.h1 / H;
 	w.flags = (o.has ? 0 : WINDOW_FLAG_BLANK) | (pl.b->use == USE_COMMERCIAL ? WINDOW_FLAG_OFFICE : 0) | (pane_dark(c.comp) << WINDOW_DARK_SHIFT);
@@ -91,7 +91,7 @@ void flat_bays(Shell &s, const Placed &pl, const Volume &v, const Side &sd, int 
 		BayCtx c;
 		c.W = W; c.H = b.level_h(v.base + k); c.level = v.base + k; c.geo = &v.faces[sd.side];
 		c.comp = bay_at(v, k, sd.side, i);
-		return opening_of(*pl.data, c).has;
+		return opening_of(pl, c).has;
 	};
 	s.grime_floor = pl.lot.o.y + b.level_z(v.base);
 	rectangles(v.storeys, n, [&](int k, int i) { return open(k, i) && opening(k, i); },
@@ -120,7 +120,7 @@ void bay_walls(Shell &s, const Placed &pl, const Volume &v, const Side &sd, int 
 			BayCtx c;
 			c.W = W; c.H = H; c.level = v.base + k; c.geo = &v.faces[sd.side];
 			c.comp = bay_at(v, k, sd.side, i);
-			const Opening o = opening_of(*pl.data, c);
+			const Opening o = opening_of(pl, c);
 			if (!o.has) continue;
 			cell_of(k, i) = 1;
 			const Basis f{ sd.f.at(W * float(i), z, relief_push(v, sd.side, i, k)), sd.f.e0, sd.f.e1, sd.f.e2 };

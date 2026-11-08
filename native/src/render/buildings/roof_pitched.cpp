@@ -14,8 +14,7 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
-constexpr float EAVES = 0.45f, THICK = 0.18f, FASCIA = 0.92f, SOFFIT = 0.7f, CAP_W = 0.14f, CAP_LIFT = 0.07f, CAP_SHADE = 0.85f;
-constexpr float HALF = 0.5f, MULLION = 0.08f;
+constexpr float HALF = 0.5f;
 
 struct Pitch {
 	Shell &s;
@@ -24,6 +23,7 @@ struct Pitch {
 	Lin roof, fascia, soffit, wall;
 	int8_t roof_fin, trim_fin, wall_fin;
 	const RoofHide *hide = nullptr; // what a taller volume of a body cut open encloses is left out
+	const RoofPitchedLook *K = nullptr; // its sizes (building_look.json shapes.roof_pitched)
 	Vector3 p(float u, float sv, float z) const { return R.at(u, sv, z); }
 	void tri(const Vector3 &a, const Vector3 &b, const Vector3 &c, const Vector3 &out, const Lin &lin, int8_t fin) {
 		if (hide) hide->tri(s, a, b, c, out, lin, fin);
@@ -44,7 +44,7 @@ struct Pitch {
 	}
 	// A roof plane polygon (3 or 4 corners) with its underside THICK below.
 	void plane(const Vector3 *q, int n, const Vector3 &out) {
-		Vector3 down = -R.e2 * THICK;
+		Vector3 down = -R.e2 * K->thick;
 		if (n == 4) {
 			quad(q[0], q[1], q[2], q[3], out, roof, roof_fin);
 			quad(q[0] + down, q[1] + down, q[2] + down, q[3] + down, -out, soffit, trim_fin);
@@ -55,7 +55,7 @@ struct Pitch {
 	}
 	// The vertical face of the roof body under the edge a-b (eaves fascia, barge board).
 	void edge(const Vector3 &a, const Vector3 &b, const Vector3 &out) {
-		Vector3 down = -R.e2 * THICK;
+		Vector3 down = -R.e2 * K->thick;
 		quad(a, b, b + down, a + down, out, fascia, trim_fin);
 	}
 	void gable_hip(bool hip);
@@ -64,9 +64,9 @@ struct Pitch {
 };
 
 void Pitch::gable_hip(bool hip) {
-	float ze = -EAVES * slope, H = S / 2, rise = H * slope;
-	float U0 = -EAVES, U1 = L + EAVES, S0 = -EAVES, S1 = S + EAVES;
-	float r0 = hip ? U0 + (H + EAVES) : U0, r1 = hip ? U1 - (H + EAVES) : U1;
+	float ze = -K->eaves * slope, H = S / 2, rise = H * slope;
+	float U0 = -K->eaves, U1 = L + K->eaves, S0 = -K->eaves, S1 = S + K->eaves;
+	float r0 = hip ? U0 + (H + K->eaves) : U0, r1 = hip ? U1 - (H + K->eaves) : U1;
 	if (r0 > r1) r0 = r1 = L / 2;
 	Vector3 a = p(U0, S0, ze), b = p(U1, S0, ze), c = p(U1, S1, ze), d = p(U0, S1, ze), k0 = p(r0, H, rise), k1 = p(r1, H, rise);
 	Vector3 front = (R.e2 - R.e1 * slope).normalized(), back = (R.e2 + R.e1 * slope).normalized();
@@ -87,12 +87,12 @@ void Pitch::gable_hip(bool hip) {
 		tri(p(L, 0, 0), p(L, S, 0), p(L, H, rise), R.e0, wall, wall_fin);
 		edge(a, k0, -R.e0); edge(d, k0, -R.e0); edge(b, k1, R.e0); edge(c, k1, R.e0);
 	}
-	if (r1 > r0) along(r0, r1, H - CAP_W, H + CAP_W, rise, rise + CAP_LIFT, roof * CAP_SHADE, roof_fin);
+	if (r1 > r0) along(r0, r1, H - K->cap_w, H + K->cap_w, rise, rise + K->cap_lift, roof * K->cap_shade, roof_fin);
 }
 
 void Pitch::shed() {
-	float rise = S * slope, hi = rise + EAVES * slope, lo = -EAVES * slope;
-	float U0 = -EAVES, U1 = L + EAVES, S0 = -EAVES, S1 = S + EAVES;
+	float rise = S * slope, hi = rise + K->eaves * slope, lo = -K->eaves * slope;
+	float U0 = -K->eaves, U1 = L + K->eaves, S0 = -K->eaves, S1 = S + K->eaves;
 	Vector3 a = p(U0, S0, hi), b = p(U1, S0, hi), c = p(U1, S1, lo), d = p(U0, S1, lo);
 	Vector3 q[4] = { a, b, c, d };
 	plane(q, 4, (R.e2 + R.e1 * slope).normalized());
@@ -112,7 +112,7 @@ void Pitch::sawtooth(float n_step, const Lin &glass, int8_t glass_fin) {
 		Vector3 q[4] = { p(0, s0, 0), p(L, s0, 0), p(L, s1, rise), p(0, s1, rise) };
 		plane(q, 4, up);
 		quad(p(0, s1, 0), p(L, s1, 0), p(L, s1, rise), p(0, s1, rise), R.e1, glass, glass_fin);
-		along(0, L, s1 - MULLION, s1, rise, rise + CAP_LIFT, fascia, trim_fin);
+		along(0, L, s1 - K->mullion, s1, rise, rise + K->cap_lift, fascia, trim_fin);
 		tri(p(0, s0, 0), p(0, s1, 0), p(0, s1, rise), -R.e0, wall, wall_fin);
 		tri(p(L, s0, 0), p(L, s1, 0), p(L, s1, rise), R.e0, wall, wall_fin);
 	}
@@ -120,14 +120,16 @@ void Pitch::sawtooth(float n_step, const Lin &glass, int8_t glass_fin) {
 } // namespace
 
 void emit_pitched(Shell &shell, const Placed &pl, const Volume &v, float eaves) {
+	const RoofPitchedLook &K = pl.look->shapes.roof_pitched;
 	const Body &b = *pl.b;
 	const Paint &rp = b.roof_of(v), &tp = b.paints[size_t(b.trim)], &wp = b.wall_of(v);
 	Lin trim = paint_lin(tp);
-	Pitch P{ shell, Basis{}, 0, 0, roof_slope(v), paint_lin(rp), trim * FASCIA, trim * SOFFIT, wall_lin(pl, v, v.storeys - 1, 0),
+	Pitch P{ shell, Basis{}, 0, 0, roof_slope(v), paint_lin(rp), trim * K.fascia, trim * K.soffit, wall_lin(pl, v, v.storeys - 1, 0),
 		rp.finish, tp.finish, wp.finish };
 	shell.grime_floor = -FAR_AWAY;
 	RoofHide hidden(pl, v);
 	if (hidden.any()) P.hide = &hidden;
+	P.K = &K;
 	if (!v.outline.empty()) {
 		emit_outline_roof(shell, pl, v, eaves, P.roof, P.roof_fin, P.wall_fin, P.hide);
 		return;

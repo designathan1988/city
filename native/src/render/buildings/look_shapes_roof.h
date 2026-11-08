@@ -48,4 +48,10 @@ struct RoofGearLook {
 	LOOK_SHAPE_ROOF_GEAR(LOOK_SHAPE_FLOAT, LOOK_SHAPE_COUNT, LOOK_SHAPE_DOUBLE, LOOK_SHAPE_FLOATS, LOOK_SHAPE_COUNTS)
 };
 
+#define LOOK_SHAPE_ROOF_PITCHED(X, XI, XD, XV, XVI) \
+	X(eaves) X(thick) X(fascia) X(soffit) X(cap_w) X(cap_lift) X(cap_shade) X(mullion)
+struct RoofPitchedLook {
+	LOOK_SHAPE_ROOF_PITCHED(LOOK_SHAPE_FLOAT, LOOK_SHAPE_COUNT, LOOK_SHAPE_DOUBLE, LOOK_SHAPE_FLOATS, LOOK_SHAPE_COUNTS)
+};
+
 } // namespace city::b40

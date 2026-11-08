@@ -27,11 +27,13 @@ namespace {
 constexpr const char *FOLDER = "res://assets/lots/";
 constexpr const char *SOLID_SHADER = "res://render/shaders/signature.gdshader", *BLENDED_SHADER = "res://render/shaders/signature_glass.gdshader";
 constexpr uint32_t MAGIC_LOOKS = 0x4D534352u, MAGIC_BODY = 0x42534352u; // "RCSM", "RCSB"
+// The signature files' format (tools/assets cooks them): a look's flags, the most surfaces and looks a file holds, a name's
+// bytes, a record's floats, a colour's channels, a normal's bytes.
 constexpr uint32_t FLAG_BLENDED = 1, FLAG_TWO_SIDED = 2, FLAG_WINDOWS = 4, FLAG_PAINTED_WINDOWS = 8, MOST_SURFACES = 64, MOST_LOOKS = 1024;
 constexpr int NAME_BYTES = 24, RECORD_FLOATS = 10, RGBA = 4, NORMAL_BYTES = 4;
 constexpr size_t VERTEX_BYTES = 5 * sizeof(float) + NORMAL_BYTES; // position, normal, uv: what each vertex takes in the file
 constexpr int RED = 0, ROUGHNESS = 3, METALLIC = 4, GLOW = 5, OPACITY = 8, ALPHA_CUT = 9; // a record's floats
-constexpr float NORMAL_SCALE = 127.f;
+constexpr float NORMAL_SCALE = 127.f; // a normal's component in a signed byte
 
 // A file: u32 magic, u32 size unpacked, then the packed bytes.
 PackedByteArray unpacked(const String &path, uint32_t magic) {

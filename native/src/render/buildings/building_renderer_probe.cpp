@@ -47,7 +47,7 @@ Dictionary BuildingRenderer::chunk_view(float x, float z) const {
 }
 
 Dictionary BuildingRenderer::bay_census() {
-	constexpr int BAY_KEY_CHARS = 96;
+	constexpr int BAY_KEY_CHARS = 96; // room for a bay's key written out
 	constexpr float FINE = 100.f, COARSE = 4.f; // bays per metre told apart: by the centimetre, by the 25 cm
 	if (!state_) return Dictionary(); // no chunk was asked yet
 	const CityState &s = *state_;

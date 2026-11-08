@@ -20,6 +20,7 @@ using namespace godot;
 namespace city {
 
 namespace {
+// A chunk's box is dropped DROP_K of its height below the ground (its plinths and walls go down); a part band's bits.
 constexpr float HALF = 0.5f, DROP_K = 1.25f;
 constexpr int BAND_BIT_NEAR = 2, BAND_BIT_MID = 4;
 

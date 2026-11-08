@@ -42,4 +42,26 @@ struct PlacedLook {
 	LOOK_SHAPE_PLACED(LOOK_SHAPE_FLOAT, LOOK_SHAPE_COUNT, LOOK_SHAPE_DOUBLE, LOOK_SHAPE_FLOATS, LOOK_SHAPE_COUNTS)
 };
 
+#define LOOK_SHAPE_FACADE_BAY(X, XI, XD, XV, XVI) \
+	X(min_sill_room) X(min_w) X(w_margin) X(min_h) X(head_room) X(no_opening) X(threshold) X(threshold_below) \
+	XI(picks) XI(dark_picks) XI(roll_from) XI(roll_to) XI(loggia_dark) XI(brise_dark) X(roll_base) X(roll_step) \
+	X(roll_out) X(tall_opening) X(streak_out) X(streak_min_sill) X(streak_lo) X(streak_base) X(streak_step) \
+	X(streak_half) X(streak_half_step) X(streak_top) X(streak_dark) X(streak_mid) XI(streak_skip) \
+	XI(streak_reach) XI(streak_width) X(french_streak_sill) X(wall_run_m) X(pane_on_wall_m)
+struct FacadeBayLook {
+	LOOK_SHAPE_FACADE_BAY(LOOK_SHAPE_FLOAT, LOOK_SHAPE_COUNT, LOOK_SHAPE_DOUBLE, LOOK_SHAPE_FLOATS, LOOK_SHAPE_COUNTS)
+};
+
+#define LOOK_SHAPE_FACADE_PROPS(X, XI, XD, XV, XVI) \
+	X(ac_gap) X(ac_under_sill) X(ac_room) X(ac_edge) X(mid) X(quarter_back) X(dish_room) X(dish_off) X(dish_drop) \
+	X(pot_high) X(soil_down) X(pot_min) X(pot_span) X(pot_tall) X(pot_tall_span) X(leaf_wide) X(leaf_wide_span) \
+	X(leaf_high) X(leaf_high_span) X(floor_lift) X(plant_lift) X(corner_in) X(rail_in) X(mid_drift) X(chair_turn) \
+	X(half_deep) X(airer_min) X(table_deep) X(table_big) X(table_small) X(table_tall) X(table_side) \
+	X(table_chair) X(table_edge) X(gourmet_lounger_narrow) X(bike_off) X(chair_back_deep) X(garden_end) \
+	X(ledge_in) X(gourmet_in) X(ledge_deep) X(gourmet_deep) X(ledge_min) X(inset_in) X(inset_min) X(inset_corner) \
+	X(inset_plant) X(inset_chair) X(inset_turn) XI(garden_few) XI(garden_many)
+struct FacadePropsLook {
+	LOOK_SHAPE_FACADE_PROPS(LOOK_SHAPE_FLOAT, LOOK_SHAPE_COUNT, LOOK_SHAPE_DOUBLE, LOOK_SHAPE_FLOATS, LOOK_SHAPE_COUNTS)
+};
+
 } // namespace city::b40

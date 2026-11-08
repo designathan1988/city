@@ -11,7 +11,7 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
-constexpr int CLOTH_COLS = 24, CLOTH_ROWS = 12;
+constexpr int CLOTH_COLS = 24, CLOTH_ROWS = 12; // the cloth's grid, fine enough for its wave
 constexpr float CLOTH_TAG = 1.f; // UV2.x of every cloth vertex (a box's is 0)
 
 void grid(MeshBuilder &m, const Vector3 &normal) {

@@ -3177,6 +3177,25 @@ the next part, with the files that remain (`facade_bay`, `facade_props`, `shell`
 
 **What changes.** Nothing: every photo is a state captured before (`quick`: 45 of 46), the hashes and numbers the same.
 
+### 6.41 B2, C14 (the building render, second part): windows, balcony props, panes' rooms and pitched roofs (2026-11-08)
+
+**Cause and fix.** The rest of §3l's look numbers in the building render: the window grammar of `facade_bay.cpp` (the opening's
+least sizes, the pane picks, the rolled shutters, the rain streaks), the balcony and window props of `facade_props.cpp`, the
+rooms seen behind a pane (`pane_rooms.cpp`), the pitched roof (`roof_pitched.cpp`) and the body's tone (`building_bodies.cpp`):
+five more blocks of `building_look.json` `shapes` (511 values in 18 blocks now). The opening reads the placed building
+(`opening_of(pl, c)`, its six callers), the window helpers and the wall run take their block, `Furnish` and `Pitch` carry it.
+`facade_bay.cpp` drew the frames with `FRAME_D` and `FRAME_THIN` of its own, the facade parts' frames (`SEGUNDO_DONO`): it reads
+`shapes.facade_parts`. The structural numbers left in the render files say what they are (buffer layouts, the signature files'
+format, hash multipliers, tolerances, tessellations); the spatial primes of the ruin cells are `core/random.h`'s; an opaque white
+instance colour and a channel mask are named once.
+
+Found on the way: the body's place read `pl.look` before it set it; the binding reads the look it is handed.
+
+**Not here, and why.** The shell's baked tone and grime, the material colours some emitters name, the roof plant's catalogue
+arrays and the foliage leaf's shape: recorded in `log/pendencias.md` (their table is a render palette and the plant's rows).
+
+**What changes.** Nothing: every photo is a state seen before (`quick`: 45 of 46), hashes and numbers the same.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

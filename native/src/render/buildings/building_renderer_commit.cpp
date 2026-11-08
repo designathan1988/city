@@ -16,8 +16,10 @@ using namespace godot;
 namespace city {
 
 namespace {
+// A box padded a metre each way; a packed 0xRRGGBBAA's channels, their mask and top; a basis's three axes.
 constexpr float AABB_PAD = 1.f, BYTE = 255.f;
 constexpr int RGBA_R_SHIFT = 24, RGBA_G_SHIFT = 16, RGBA_B_SHIFT = 8, BASIS = 3;
+constexpr uint32_t CHANNEL_MASK = 0xff;
 const char *const FAR_MASK_PARAM = "chunk_mask"; // building_far.gdshader's instance uniform
 
 // An instance whose basis is three columns in a row.
@@ -32,7 +34,8 @@ void grow(AABB &box, const AABB &more) {
 }
 
 Color unpack(uint32_t c) {
-	return Color(float((c >> RGBA_R_SHIFT) & 0xff) / BYTE, float((c >> RGBA_G_SHIFT) & 0xff) / BYTE, float((c >> RGBA_B_SHIFT) & 0xff) / BYTE, float(c & 0xff) / BYTE);
+	return Color(float((c >> RGBA_R_SHIFT) & CHANNEL_MASK) / BYTE, float((c >> RGBA_G_SHIFT) & CHANNEL_MASK) / BYTE, float((c >> RGBA_B_SHIFT) & CHANNEL_MASK) / BYTE,
+			float(c & CHANNEL_MASK) / BYTE);
 }
 } // namespace
 

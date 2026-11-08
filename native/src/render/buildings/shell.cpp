@@ -24,8 +24,13 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
+// The baked tone of a wall: a macro noise over MACRO_M metres moves it TONE_SPAN around TONE_BASE, and grime darkens a wall's
+// first GRIME_M over its floor from GRIME_FLOOR (the source game's); a face whose normal leans less than SHELL_WALL_TOP
+// from level is a wall; the display gamma's inverse; a byte's top; a degenerate cross product; farther than anything.
 constexpr float MACRO_M = 12.f, TONE_BASE = 0.97f, TONE_SPAN = 0.06f, GRIME_M = 1.2f, GRIME_FLOOR = 0.8f, GRIME_SPAN = 0.2f;
 constexpr float SHELL_WALL_TOP = 0.5f, GAMMA_INV = 1.f / 2.2f, BYTE = 255.f, DEGENERATE = 1e-12f, BIG = 1e30f;
+// The lattice hash (MurmurHash3's and xxHash32's multipliers, MurmurHash3's shifts), 2^32, a seed's byte; a box's corners,
+// faces and their indices, the corner bits.
 constexpr uint32_t H1 = 0x27d4eb2d, H2 = 0x165667b1, H3 = 0x3c6ef372, H4 = 0x85ebca6b;
 constexpr int SH1 = 15, SH2 = 13;
 constexpr double U32 = 4294967296.0;
@@ -145,7 +150,7 @@ void Shell::box(const Basis &f, float a0, float a1, float b0, float b1, float c0
 		Vector3 e0 = f.e0 * m0, e1 = f.e1 * m1, e2 = f.e2 * m2;
 		Color c = shaded(centre, lin, false, SK_SHELL);
 		auto byte = [](float v) { return uint32_t(std::clamp(v, 0.f, 1.f) * BYTE + 0.5f); };
-		constexpr int RGBA_R_SHIFT = 24, RGBA_G_SHIFT = 16, RGBA_B_SHIFT = 8;
+		constexpr int RGBA_R_SHIFT = 24, RGBA_G_SHIFT = 16, RGBA_B_SHIFT = 8; // a packed 0xRRGGBBAA's channels
 		BoxInstance inst;
 		const float cols[3][3] = { { e0.x, e0.y, e0.z }, { e1.x, e1.y, e1.z }, { e2.x, e2.y, e2.z } };
 		for (int i = 0; i < 3; i++)
@@ -221,7 +226,7 @@ void Shell::pane(const Basis &f, float a0, float a1, float b0, float b1, float c
 }
 
 void Shell::bay(const Basis &f, float W, float H, const Lin &wall, int8_t fin, uint32_t seed, const FarWindows &w, float depth) {
-	constexpr int DEPTH_MOST = 15;
+	constexpr int DEPTH_MOST = 15; // a recess's depth in the alpha byte's bits above the kind (PANE_RECESS_MAX)
 	auto byte = [](float v) { return uint32_t(std::clamp(v, 0.f, 1.f) * BYTE + HALF_STEP); };
 	auto three = [&](float r, float g, float b) { return float(byte(r) << (2 * BYTE_BITS) | byte(g) << BYTE_BITS | byte(b)); };
 	const Color tone = shaded(f.at(W / 2, H / 2, 0), far_tint(wall, fin), true, SK_SHELL);

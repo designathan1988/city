@@ -15,7 +15,7 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
-constexpr float HALF = 0.5f, PROBE_M = 0.01f, SHORTEST_M = 1e-3f, LOWEST_M = 1e-4f;
+constexpr float HALF = 0.5f, PROBE_M = 0.01f, SHORTEST_M = 1e-3f, LOWEST_M = 1e-4f; // a probe's step, the shortest edge and the lowest rise kept
 
 // A convex piece of the plan and the height over the eaves there: gx * x + gy * y + h0.
 struct Patch {

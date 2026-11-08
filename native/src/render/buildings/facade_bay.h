@@ -37,7 +37,7 @@ struct Opening {
 	float w = 0, h0 = 0, h1 = 0, depth = 0, a0 = 0, a1 = 0;
 };
 
-Opening opening_of(const Data &data, const BayCtx &c);
+Opening opening_of(const Placed &pl, const BayCtx &c);
 // The four faces of an opening's reveal between wall depths `from` and `to` (<= 0, from < to): the jambs, the sill at `sill_h` and the head.
 // The one owner of that shape: the bay's own (depth to the wall face) and the inside of a wall cut open (plaster to the pane's recess).
 void emit_reveal(Shell &shell, const BayCtx &c, const Opening &o, float from, float to, const Lin &jamb, const Lin &sill, const Lin &head, int8_t fin,
@@ -58,7 +58,7 @@ struct WallRun {
 	float width = 0, height = 0, push = 0;
 	Lin wall;
 	int8_t fin = FIN_NONE;
-	void add(const BayCtx &c, int bay, float at_push);
+	void add(const FacadeBayLook &K, const BayCtx &c, int bay, float at_push);
 	void close();
 };
 void emit_bay(Shell &shell, Shell &parts, const Placed &pl, const BayCtx &c, WallRun &run, int bay, float push);

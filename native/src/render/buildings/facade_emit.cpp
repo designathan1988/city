@@ -140,7 +140,7 @@ void SideEmit::relief(const Side &sd, int k, float z) {
 	const Body &b = *pl.b;
 	each_bay(sd, k, z, [&](const BayCtx &c, int i, int n, float push) {
 		if (c.plain) return;
-		emit_bay_relief(shell, parts, pl, c, opening_of(*pl.data, c));
+		emit_bay_relief(shell, parts, pl, c, opening_of(pl, c));
 		pushed_faces(c, sd, k, i, n, push);
 		if (k != 0) return;
 		BayCtx whole = c;
@@ -227,7 +227,7 @@ void for_each_bay(const Placed &pl, const std::function<void(const BayCtx &, con
 				c.geo = &v.faces[sd.side];
 				for (int i = 0; i < n; i++) {
 					c.comp = bay_at(v, k, sd.side, i);
-					at(c, opening_of(*pl.data, c));
+					at(c, opening_of(pl, c));
 				}
 			}
 }

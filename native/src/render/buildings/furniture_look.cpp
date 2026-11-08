@@ -79,7 +79,7 @@ bool part_of(const DataValue &a, const InteriorLook &look, FurniturePart &p) {
 } // namespace
 
 const Paint &InteriorLook::paint(const char *name) const {
-	static const Paint MISSING{ FIN_PLASTER, 0xff00ff };
+	static const Paint MISSING{ FIN_PLASTER, 0xff00ff }; // magenta: a colour the table lacks shows
 	auto it = index.find(name);
 	return it == index.end() ? MISSING : palette[size_t(it->second)];
 }

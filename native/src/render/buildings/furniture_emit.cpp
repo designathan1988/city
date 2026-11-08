@@ -11,7 +11,7 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
-constexpr int CYL_SIDES = 10, BALL_SEGMENTS = 8, BALL_RINGS = 4;
+constexpr int CYL_SIDES = 10, BALL_SEGMENTS = 8, BALL_RINGS = 4; // a piece's cylinders and balls, as fine as a room seen through a window needs
 constexpr float FURNITURE_LIFT = 0.05f; // a piece stands this far over the floor (its slab, FLOOR_LIFT, is under it)
 constexpr float CEILING_GAP = 0.06f; // a ceiling lamp hangs from the ceiling's underside: the slab's thickness
 

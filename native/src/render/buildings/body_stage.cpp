@@ -12,7 +12,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr int AXIS_FLOATS = 3, ALPHA_BITS = 8;
+constexpr int AXIS_FLOATS = 3, ALPHA_BITS = 8; // a basis axis's floats in the buffer, the alpha byte's bits
 
 // A piece of the bays in the body's own mesh: its tones over its colour, no finish.
 void append_prop(b40::Shell &s, const MeshBuilder &model, const b40::PropInstance &p) {

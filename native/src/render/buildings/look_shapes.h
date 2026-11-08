@@ -14,6 +14,8 @@ namespace city::b40 {
 	S(facade_emit, FacadeEmitLook, LOOK_SHAPE_FACADE_EMIT) \
 	S(part_models, PartModelsLook, LOOK_SHAPE_PART_MODELS) \
 	S(placed, PlacedLook, LOOK_SHAPE_PLACED) \
+	S(facade_bay, FacadeBayLook, LOOK_SHAPE_FACADE_BAY) \
+	S(facade_props, FacadePropsLook, LOOK_SHAPE_FACADE_PROPS) \
 	S(lot_emit, LotEmitLook, LOOK_SHAPE_LOT_EMIT) \
 	S(lot_props, LotPropsLook, LOOK_SHAPE_LOT_PROPS) \
 	S(lot_parts, LotPartsLook, LOOK_SHAPE_LOT_PARTS) \
@@ -21,8 +23,11 @@ namespace city::b40 {
 	S(roof_plant, RoofPlantLook, LOOK_SHAPE_ROOF_PLANT) \
 	S(roof_terrace, RoofTerraceLook, LOOK_SHAPE_ROOF_TERRACE) \
 	S(roof_gear, RoofGearLook, LOOK_SHAPE_ROOF_GEAR) \
+	S(roof_pitched, RoofPitchedLook, LOOK_SHAPE_ROOF_PITCHED) \
 	S(interior_emit, InteriorEmitLook, LOOK_SHAPE_INTERIOR_EMIT) \
-	S(far_mass, FarMassLook, LOOK_SHAPE_FAR_MASS)
+	S(far_mass, FarMassLook, LOOK_SHAPE_FAR_MASS) \
+	S(pane_rooms, PaneRoomsLook, LOOK_SHAPE_PANE_ROOMS) \
+	S(building_bodies, BuildingBodiesLook, LOOK_SHAPE_BUILDING_BODIES)
 
 struct LookShapes {
 #define LOOK_SHAPE_MEMBER(key, Type, LIST) Type key;

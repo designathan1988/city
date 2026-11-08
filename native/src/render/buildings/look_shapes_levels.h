@@ -1,4 +1,4 @@
-// The building render's shapes of the levels: the building cut open, the far mass (building_look.json shapes, read by building_look.cpp).
+// The building render's shapes of the levels and the whole: the building cut open, the far mass, the rooms behind the panes, the body's tone (building_look.json shapes, read by building_look.cpp).
 #pragma once
 
 #include "render/buildings/look_shape_fields.h"
@@ -16,6 +16,18 @@ struct InteriorEmitLook {
 	X(plinth_bury) X(mass_in_m)
 struct FarMassLook {
 	LOOK_SHAPE_FAR_MASS(LOOK_SHAPE_FLOAT, LOOK_SHAPE_COUNT, LOOK_SHAPE_DOUBLE, LOOK_SHAPE_FLOATS, LOOK_SHAPE_COUNTS)
+};
+
+#define LOOK_SHAPE_PANE_ROOMS(X, XI, XD, XV, XVI) \
+	X(most_deep) X(most_wide) X(inside) X(off_glass) X(least_deep) X(least_wide) X(nearest_piece) X(off_centre_k)
+struct PaneRoomsLook {
+	LOOK_SHAPE_PANE_ROOMS(LOOK_SHAPE_FLOAT, LOOK_SHAPE_COUNT, LOOK_SHAPE_DOUBLE, LOOK_SHAPE_FLOATS, LOOK_SHAPE_COUNTS)
+};
+
+#define LOOK_SHAPE_BUILDING_BODIES(X, XI, XD, XV, XVI) \
+	X(shade_base) X(shade_span)
+struct BuildingBodiesLook {
+	LOOK_SHAPE_BUILDING_BODIES(LOOK_SHAPE_FLOAT, LOOK_SHAPE_COUNT, LOOK_SHAPE_DOUBLE, LOOK_SHAPE_FLOATS, LOOK_SHAPE_COUNTS)
 };
 
 } // namespace city::b40

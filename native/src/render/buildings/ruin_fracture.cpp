@@ -17,18 +17,20 @@ namespace city {
 using namespace ruin;
 
 namespace {
-constexpr int CUTS_MOST = 8;
+constexpr int CUTS_MOST = 8; // the most cells a piece is cut into
 constexpr float WALL_DEPTH_M = 0.28f; // the thickness given to a wall
 constexpr float PLATE_LEAST_M = 0.5f; // a face at least this long is wall: it gets a back and a side along its cuts (the small trim is closed boxes already)
 constexpr float TRIM_AREA_M2 = 0.06f; // the bars and frames of a window: most of a near shell's triangles, and nothing to see in a building coming down
+// Vertices weld at half centimetres, a welded point packed in two 32-bit halves; a cut piece is at least HALF_LEAST_M a side.
 constexpr float WELD_PER_M = 200.f;
 constexpr int WELD_HALF_BITS = 32;
 constexpr float HALF_LEAST_M = 0.12f;
 constexpr size_t MOST_TRIANGLES = 600000; // a cut past this stops dividing: the faces go to the cell of their middle
-constexpr uint32_t PIECE_BYTE_MASK = 255u, BITS_PER_BYTE = 8u;
+constexpr uint32_t PIECE_BYTE_MASK = 255u, BITS_PER_BYTE = 8u; // a piece's id in a byte
+constexpr uint64_t EDGE_MIX = 31u; // an edge's key from its two welded ends (Java's String.hashCode multiplier)
 const Color BROKEN = Color(0.62f, 0.6f, 0.56f, 0.f); // the grey of broken masonry, on the cut faces; alpha is the surface kind, SK_SHELL
-const Color SLAB = Color(0.8f, 0.78f, 0.74f, 0.f);
-const Color PANE_DARK = Color(0.09f, 0.12f, 0.15f, 0.f);
+const Color SLAB = Color(0.8f, 0.78f, 0.74f, 0.f); // a slab's cut face
+const Color PANE_DARK = Color(0.09f, 0.12f, 0.15f, 0.f); // a pane's broken face
 const Vector2 CONCRETE = Vector2(float(b40::FIN_CONCRETE) + 1.f, 0.f); // shell.h: UV2.x is the finish + 1
 const Vector2 PLAIN = Vector2();
 
@@ -98,7 +100,7 @@ uint64_t weld(const Vector3 &p) {
 }
 uint64_t edge_key(const Vector3 &a, const Vector3 &b) {
 	const uint64_t x = weld(a), y = weld(b);
-	return x < y ? x * 31u + y : y * 31u + x;
+	return x < y ? x * EDGE_MIX + y : y * EDGE_MIX + x;
 }
 
 // The arrays of the one mesh, sized once (a pass counts every piece's corners first), written a piece at a time.
