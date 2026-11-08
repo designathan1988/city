@@ -1,5 +1,5 @@
 // Save and open (sim/persistence): a worker thread encodes the city under the map lock shared (it only reads), then
-// writes it with ZSTD through a temporary file and renames it, so the frame never waits for the save. A city opened is read
+// writes it with ZSTD through a temporary file and one replacing rename, so the frame never waits for the save. A city opened is read
 // once into a state of its own while the open one runs on, and taken in whole under the exclusive lock.
 #include "api/city_core.h"
 
@@ -7,12 +7,14 @@
 #include "sim/persistence/save_format.h"
 #include "sim/traffic/traffic_system.h"
 
-#include <godot_cpp/classes/dir_access.hpp>
 #include <godot_cpp/classes/file_access.hpp>
+#include <godot_cpp/classes/project_settings.hpp>
 
 #include <algorithm>
+#include <filesystem>
 #include <memory>
 #include <string>
+#include <system_error>
 #include <utility>
 #include <vector>
 
@@ -26,27 +28,33 @@ std::string utf8(const String &s) {
 	return std::string(s.utf8().get_data());
 }
 
-// Writes `bytes` to `target` atomically: temporary file, old generation aside, rename, then drop the old one.
-bool write_atomic(const std::string &target, const std::vector<uint8_t> &bytes, std::string &error) {
-	const String tmp = String((target + ".tmp").c_str());
-	Ref<FileAccess> f = FileAccess::open_compressed(tmp, FileAccess::WRITE, FileAccess::COMPRESSION_ZSTD);
+// The OS path of a Godot path (user://, res://, or already absolute), as std::filesystem takes it. Main thread: ProjectSettings.
+std::filesystem::path os_path(const String &path) { return std::filesystem::u8path(utf8(ProjectSettings::get_singleton()->globalize_path(path))); }
+
+// Where a save goes: the file, and the temporary file it is written to first.
+struct SaveTarget {
+	String tmp;
+	std::filesystem::path tmp_os, to_os;
+};
+
+// Writes `bytes` through the temporary file and one replacing rename. std::filesystem::rename replaces in one step (MoveFileExW
+// with MOVEFILE_REPLACE_EXISTING on Windows, rename(2) elsewhere: libc++ posix_compat.h), where DirAccess's rename deletes the
+// old file first (DirAccessWindows::rename): no moment holds neither the old save nor the new one, so a crash leaves one whole.
+bool write_atomic(const SaveTarget &target, const std::vector<uint8_t> &bytes, std::string &error) {
+	Ref<FileAccess> f = FileAccess::open_compressed(target.tmp, FileAccess::WRITE, FileAccess::COMPRESSION_ZSTD);
 	if (f.is_null()) {
 		error = "save.writeFailed";
 		return false;
 	}
 	f->store_buffer(bytes.data(), bytes.size());
 	f->close();
-	const String to = String(target.c_str());
-	const String old = to + String(".old");
-	DirAccess::remove_absolute(old);
-	if (FileAccess::file_exists(to)) DirAccess::rename_absolute(to, old);
-	if (DirAccess::rename_absolute(tmp, to) != OK) {
-		if (FileAccess::file_exists(old)) DirAccess::rename_absolute(old, to);
-		DirAccess::remove_absolute(tmp);
+	std::error_code ec;
+	std::filesystem::rename(target.tmp_os, target.to_os, ec);
+	if (ec) {
+		std::filesystem::remove(target.tmp_os, ec);
 		error = "save.writeFailed";
 		return false;
 	}
-	DirAccess::remove_absolute(old);
 	return true;
 }
 
@@ -75,7 +83,7 @@ Dictionary CityCore::save_city(const String &path) {
 		std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 		if (!state_->ready) return d;
 	}
-	const std::string target = utf8(path);
+	const SaveTarget target{ path + String(".tmp"), os_path(path + String(".tmp")), os_path(path) };
 	const size_t expect = size_t(std::max<int64_t>(save_.bytes.load(), 0)); // the last save's size: the new one is about as big
 	save_.bytes.store(0);
 	save_.error.clear(); // no save thread runs now (joined above)

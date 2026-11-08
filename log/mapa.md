@@ -290,6 +290,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/render/view_cull.h` — o que a câmera vê no quadro, para quem enche um MultiMesh à mão (o motor recorta a caixa inteira, nunca a instância)
 - `native/src/render/render_layers.h` — o bit de cada renderizador: o painel de efeitos e os níveis gráficos escondem uma camada pela máscara da câmera
 - `native/src/render/film_grade.cpp` · `native/src/render/film_grade.h` — gradação de filme da imagem na tela como tabela 3D (contraste em S, vibrance, viragem de cor)
+- `native/src/render/data_reader.h` · `native/src/render/data_reader.cpp` — the one strict reader of the data tables (`DataReader`): every key present and of its type, every list of its length, every index inside it, the keys a format leaves out by `_or`; an error names the table and the path, and reading goes on so one boot reports them all
 - `native/src/render/region_table.h` — o estilo regional de uma tabela (`styles.<id>`), lido num lugar só
 - `native/src/render/render_context.h` — cenário, tabelas de render e materiais recebidos pelos renderizadores
 - `native/src/render/render_world.cpp` · `native/src/render/render_world.h` — consome o ChangeLog e aplica os orçamentos por quadro

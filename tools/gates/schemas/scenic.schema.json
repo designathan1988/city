@@ -12,7 +12,7 @@
      "id": {
       "type": "string"
      },
-     "half_m": {
+     "city_half_m": {
       "type": "number",
       "minimum": 100
      },
@@ -25,7 +25,7 @@
        "base_m": {
         "type": "number"
        },
-       "relief_m": {
+       "relief_amp_m": {
         "type": "number"
        },
        "relief_cell_m": {
@@ -40,7 +40,7 @@
           "_doc": {
            "type": "string"
           },
-          "line": {
+          "polyline": {
            "type": "array",
            "items": {
             "type": "array",
@@ -52,7 +52,7 @@
            },
            "minItems": 2
           },
-          "height_m": {
+          "crest_m": {
            "type": "number"
           },
           "half_width_m": {
@@ -61,8 +61,8 @@
           }
          },
          "required": [
-          "line",
-          "height_m",
+          "polyline",
+          "crest_m",
           "half_width_m"
          ],
          "strict": true
@@ -76,7 +76,7 @@
           "id": {
            "type": "string"
           },
-          "line": {
+          "polyline": {
            "type": "array",
            "items": {
             "type": "array",
@@ -92,10 +92,10 @@
            "type": "number",
            "minimum": 1
           },
-          "depth_m": {
+          "deep_m": {
            "type": "number"
           },
-          "wall_m": {
+          "channel_wall_m": {
            "type": "number",
            "minimum": 1
           },
@@ -106,7 +106,7 @@
            "type": "number",
            "minimum": 1
           },
-          "level_m": {
+          "level_start_m": {
            "type": "number",
            "minimum": 1
           },
@@ -117,13 +117,13 @@
          },
          "required": [
           "id",
-          "line",
+          "polyline",
           "half_width_m",
-          "depth_m",
-          "wall_m",
+          "deep_m",
+          "channel_wall_m",
           "freeboard_m",
           "valley_m",
-          "level_m",
+          "level_start_m",
           "level_end_m"
          ],
          "strict": true
@@ -150,10 +150,10 @@
            },
            "minItems": 3
           },
-          "drop_m": {
+          "below_shore_m": {
            "type": "number"
           },
-          "depth_m": {
+          "deep_m": {
            "type": "number"
           },
           "shore_m": {
@@ -163,8 +163,8 @@
          },
          "required": [
           "shore",
-          "drop_m",
-          "depth_m",
+          "below_shore_m",
+          "deep_m",
           "shore_m"
          ],
          "strict": true
@@ -173,7 +173,7 @@
       },
       "required": [
        "base_m",
-       "relief_m",
+       "relief_amp_m",
        "relief_cell_m",
        "ridges",
        "rivers",
@@ -184,7 +184,7 @@
      "streets": {
       "type": "object",
       "properties": {
-       "seam": {
+       "seam_profile": {
         "type": "string"
        },
        "seam_overshoot_m": {
@@ -193,7 +193,7 @@
        "highway_clear_m": {
         "type": "number"
        },
-       "bridge_max_m": {
+       "bridge_span_m": {
         "type": "number"
        },
        "march_step_m": {
@@ -202,10 +202,10 @@
        }
       },
       "required": [
-       "seam",
+       "seam_profile",
        "seam_overshoot_m",
        "highway_clear_m",
-       "bridge_max_m",
+       "bridge_span_m",
        "march_step_m"
       ],
       "strict": true
@@ -218,7 +218,7 @@
         "id": {
          "type": "string"
         },
-        "seed": {
+        "seed_point": {
          "type": "array",
          "items": {
           "type": "number"
@@ -226,10 +226,10 @@
          "minItems": 2,
          "maxItems": 2
         },
-        "turn_deg": {
+        "bearing_deg": {
          "type": "number"
         },
-        "block_m": {
+        "blocks_m": {
          "type": "array",
          "items": {
           "type": "number",
@@ -257,9 +257,9 @@
        },
        "required": [
         "id",
-        "seed",
-        "turn_deg",
-        "block_m",
+        "seed_point",
+        "bearing_deg",
+        "blocks_m",
         "heat",
         "trade",
         "local",
@@ -283,7 +283,7 @@
         "profile": {
          "type": "string"
         },
-        "line": {
+        "polyline": {
          "type": "array",
          "items": {
           "type": "array",
@@ -316,7 +316,7 @@
         "id": {
          "type": "string"
         },
-        "ring": {
+        "boundary": {
          "type": "array",
          "items": {
           "type": "array",
@@ -331,7 +331,7 @@
        },
        "required": [
         "id",
-        "ring"
+        "boundary"
        ],
        "strict": true
       },
@@ -345,7 +345,7 @@
         "id": {
          "type": "string"
         },
-        "ring": {
+        "boundary": {
          "type": "array",
          "items": {
           "type": "array",
@@ -360,7 +360,7 @@
        },
        "required": [
         "id",
-        "ring"
+        "boundary"
        ],
        "strict": true
       },
@@ -374,7 +374,7 @@
         "id": {
          "type": "string"
         },
-        "line": {
+        "polyline": {
          "type": "array",
          "items": {
           "type": "array",
@@ -399,7 +399,7 @@
        },
        "required": [
         "id",
-        "line",
+        "polyline",
         "heat",
         "trade",
         "reach_m"
@@ -458,10 +458,10 @@
        "grove_cut": {
         "type": "number"
        },
-       "low_m": {
+       "tree_short_m": {
         "type": "number"
        },
-       "high_m": {
+       "tree_tall_m": {
         "type": "number"
        },
        "road_clear_m": {
@@ -473,8 +473,8 @@
        "jitter",
        "grove_cell_m",
        "grove_cut",
-       "low_m",
-       "high_m",
+       "tree_short_m",
+       "tree_tall_m",
        "road_clear_m"
       ],
       "strict": true
@@ -482,7 +482,7 @@
     },
     "required": [
      "id",
-     "half_m",
+     "city_half_m",
      "biome",
      "land",
      "streets",

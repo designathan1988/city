@@ -1,5 +1,8 @@
-// Strict Dictionary -> EffectParams conversion for project/data/render/effects.json.
+// Strict Dictionary -> EffectParams conversion for project/data/render/effects.json, through the strict reader
+// (render/data_reader.h): every key, type and row checked.
 #include "render/effects/effect_params.h"
+
+#include "render/data_reader.h"
 
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/variant.hpp>
@@ -9,61 +12,56 @@ using namespace godot;
 namespace city {
 
 namespace {
-struct Reader {
-	PackedStringArray &errors;
-	const char *where;
+// One table of effects.json, read through the strict reader.
+struct Group {
+	DataReader r;
 	Dictionary d;
-
-	Reader(PackedStringArray &e, const Dictionary &root, const char *group) : errors(e), where(group) {
-		if (root.has(group)) d = root[group];
-		else errors.push_back(String("effects: falta '") + group + "'");
-	}
-	float num(const char *key) {
-		if (d.has(key)) return float(double(d[key]));
-		errors.push_back(String("effects.") + where + ": falta '" + key + "'");
-		return 0.f;
-	}
-	int integer(const char *key) { return int(num(key)); }
+	Group(DataReader &top, const Dictionary &root, const char *key) : r(top.in(key)), d(top.table(root, key)) {}
+	float num(const char *key) { return float(r.num(d, key)); }
+	int integer(const char *key) { return r.integer(d, key); }
 };
 } // namespace
 
 bool EffectParams::load(const Dictionary &t, PackedStringArray &errors) {
-	const int before = int(errors.size());
-	Reader puffs(errors, t, "puffs");
+	const int64_t before = errors.size();
+	DataReader r{ errors, "effects.json" };
+	Group puffs(r, t, "puffs");
 	pool = puffs.integer("pool");
 	wind_x = puffs.num("wind_x");
 	wind_z = puffs.num("wind_z");
-	Reader fireball(errors, t, "fireball");
+	Group fireball(r, t, "fireball");
 	fireball_base = fireball.num("base_m");
 	fireball_per_force = fireball.num("per_force_m");
-	Array list = t.has("bursts") ? Array(t["bursts"]) : Array();
+	const Array list = r.list(t, "bursts");
 	for (int i = 0; i < list.size(); i++) {
-		Dictionary row = list[i];
+		DataReader rb = r.in("bursts").in(i);
+		const Dictionary row = r.in("bursts").table_at(list, i);
 		BurstDef b;
-		b.kind = int(double(row.get("kind", 0)));
-		b.count = int(double(row.get("count", 0)));
-		b.height = float(double(row.get("height_m", 0)));
-		b.spread_m = float(double(row.get("spread_m", 0)));
-		b.spread_r = float(double(row.get("spread_r", 0)));
-		b.size_m = float(double(row.get("size_m", 0)));
-		b.size_r = float(double(row.get("size_r", 0)));
-		b.life = float(double(row.get("life_s", 0)));
+		b.kind = rb.integer(row, "kind");
+		b.count = rb.integer(row, "count");
+		b.height = float(rb.num(row, "height_m"));
+		b.spread_m = float(rb.num(row, "spread_m"));
+		b.spread_r = float(rb.num(row, "spread_r"));
+		b.size_m = float(rb.num(row, "size_m"));
+		b.size_r = float(rb.num(row, "size_r"));
+		b.life = float(rb.num(row, "life_s"));
 		bursts.push_back(b);
 	}
-	Array srcs = t.has("sources") ? Array(t["sources"]) : Array();
+	const Array srcs = r.list(t, "sources");
 	for (int i = 0; i < srcs.size(); i++) {
-		Dictionary row = srcs[i];
+		DataReader rs = r.in("sources").in(i);
+		const Dictionary row = r.in("sources").table_at(srcs, i);
 		SourceDef d;
-		d.for_s = float(double(row.get("for_s", 0)));
-		d.for_k = float(double(row.get("for_k", 0)));
-		d.for_cap_s = float(double(row.get("for_cap_s", 0)));
-		d.rate_hz = float(double(row.get("rate_hz", 0)));
-		d.size_k = float(double(row.get("size_k", 0)));
-		d.size_cap_m = float(double(row.get("size_cap_m", 0)));
-		d.height_m = float(double(row.get("height_m", 0)));
+		d.for_s = float(rs.num(row, "for_s"));
+		d.for_k = float(rs.num(row, "for_k"));
+		d.for_cap_s = float(rs.num(row, "for_cap_s"));
+		d.rate_hz = float(rs.num(row, "rate_hz"));
+		d.size_k = float(rs.num(row, "size_k"));
+		d.size_cap_m = float(rs.num(row, "size_cap_m"));
+		d.height_m = float(rs.num(row, "height_m"));
 		sources.push_back(d);
 	}
-	Reader emit(errors, t, "emitter");
+	Group emit(r, t, "emitter");
 	flame_base = emit.num("flame_base_m");
 	flame_k = emit.num("flame_k");
 	dying_s = emit.num("dying_s");
@@ -78,11 +76,13 @@ bool EffectParams::load(const Dictionary &t, PackedStringArray &errors) {
 	light_life = emit.num("light_life_s");
 	load_look(t, errors);
 	load_things(t, errors);
-	return int(errors.size()) == before && !bursts.empty();
+	if (bursts.empty()) r.in("bursts").fail("no burst");
+	return errors.size() == before;
 }
 
 void EffectParams::load_look(const Dictionary &t, PackedStringArray &errors) {
-	Reader burn(errors, t, "burn");
+	DataReader r{ errors, "effects.json" };
+	Group burn(r, t, "burn");
 	burn_fire_rate = burn.num("puff_rate_hz");
 	burn_building_rate = burn.num("building_rate_hz");
 	flame_kind = burn.integer("flame_kind");
@@ -92,22 +92,22 @@ void EffectParams::load_look(const Dictionary &t, PackedStringArray &errors) {
 	smoke_size = burn.num("smoke_size_m");
 	smoke_life = burn.num("smoke_life_s");
 	column_chance = burn.num("column_chance");
-	Reader ring(errors, t, "ring");
+	Group ring(r, t, "ring");
 	ring_life = ring.num("life_s");
 	ring_height = ring.num("height_m");
-	Reader flash(errors, t, "flash");
-	flash_color = Color::html(String(flash.d.get("color", "#ffffff")));
+	Group flash(r, t, "flash");
+	flash_color = Color::hex(flash.r.colour(flash.d, "color"));
 	flash_energy = flash.num("energy");
 	flash_range_r = flash.num("reach_k");
 	flash_range_min = flash.num("range_min_m");
 	flash_life = flash.num("life_s");
 	flash_decay = flash.num("decay");
 	flash_height = flash.num("height_m");
-	Reader shake(errors, t, "shake");
+	Group shake(r, t, "shake");
 	shake_base = shake.num("base_m");
 	shake_per_r = shake.num("radius_k_m");
 	shake_decay = shake.num("decay_hz");
-	Reader shrap(errors, t, "shrapnel");
+	Group shrap(r, t, "shrapnel");
 	shrap_base = shrap.integer("base");
 	shrap_per_r = shrap.num("count_k");
 	shrap_speed_min = shrap.num("speed_min_m");
@@ -119,7 +119,8 @@ void EffectParams::load_look(const Dictionary &t, PackedStringArray &errors) {
 }
 
 void EffectParams::load_things(const Dictionary &t, PackedStringArray &errors) {
-	Reader soot(errors, t, "soot");
+	DataReader r{ errors, "effects.json" };
+	Group soot(r, t, "soot");
 	soot_base = soot.integer("base");
 	soot_per_step = soot.num("count_k");
 	soot_max = soot.integer("max");
@@ -128,30 +129,30 @@ void EffectParams::load_things(const Dictionary &t, PackedStringArray &errors) {
 	soot_size_span = soot.num("size_span_m");
 	soot_size_r = soot.num("size_r");
 	soot_kept = soot.integer("kept");
-	Reader debris(errors, t, "debris");
+	Group debris(r, t, "debris");
 	debris_max = debris.integer("max_pieces");
 	gravity = debris.num("gravity_ms2");
 	restitution = debris.num("restitution");
 	friction = debris.num("friction");
 	rest_s = debris.num("rest_s");
 	damp_ground = debris.num("damp_ground");
-	Reader geyser(errors, t, "geyser");
+	Group geyser(r, t, "geyser");
 	geyser_s = geyser.num("seconds");
 	geyser_fade = geyser.num("fade_s");
 	geyser_rate = geyser.num("jet_hz");
 	geyser_size = geyser.num("size_m");
-	Reader blood(errors, t, "blood");
+	Group blood(r, t, "blood");
 	blood_max = blood.integer("max_decals");
 	pool_spread_s = blood.num("pool_spread_s");
 	pool_size = blood.num("pool_size_m");
 	splat_m = blood.num("splat_m");
 	drop_m = blood.num("drop_m");
-	Reader paper(errors, t, "paper");
+	Group paper(r, t, "paper");
 	paper_count = paper.integer("count");
 	paper_size = paper.num("size_m");
 	paper_life = paper.num("life_s");
 	paper_spread = paper.num("spread_m");
-	Reader down(errors, t, "down");
+	Group down(r, t, "down");
 	down_dust_count = down.integer("dust_count");
 	down_dust_size = down.num("dust_size_m");
 	down_dust_life = down.num("dust_life_s");

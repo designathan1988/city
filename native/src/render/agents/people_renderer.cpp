@@ -147,6 +147,8 @@ bool PeopleRenderer::init(const RenderContext &ctx, const Dictionary &people, co
 	crouch_down_ = asset_.clip("crouchDown");
 	crouch_up_ = asset_.clip("crouchUp");
 	if (crouch_down_ < 0 || crouch_up_ < 0) errors.push_back("pessoas: falta o clipe de agachar");
+	for (const FaceAct &f : FACE_ACTS) // set_faces writes each act at its clip's row
+		if (asset_.clip(f.clip) < 0) errors.push_back(String("people: no clip ") + f.clip + String(" for the face table"));
 	for (int i = 0; i < int(SeatPose::COUNT); i++) {
 		seat_clips_[i] = asset_.clip(SEAT_CLIPS[i]);
 		stop_clips_[i] = STOP_CLIPS[i] ? asset_.clip(STOP_CLIPS[i]) : -1;

@@ -41,9 +41,6 @@
   "organic_extra_floors": {
    "type": "integer"
   },
-  "decay_grace_min": {
-   "type": "integer"
-  },
   "decay_span_min": {
    "type": "integer"
   },
@@ -56,7 +53,6 @@
   "civic",
   "organic_reach_m",
   "organic_extra_floors",
-  "decay_grace_min",
   "decay_span_min",
   "plan"
  ],

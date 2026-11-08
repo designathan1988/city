@@ -1,13 +1,15 @@
 // The transport's boxes (transit_parts.h): tables read once; a track in pieces, each on what is under it; a stop from its table, in its frame.
 #include "render/transit/transit_parts.h"
 
-#include "core/color.h"
+#include "render/data_reader.h"
 #include "sim/transit/transit_ground.h"
 
 #include <godot_cpp/variant/array.hpp>
 
 #include <algorithm>
 #include <cmath>
+#include <string>
+#include <unordered_map>
 
 using namespace godot;
 
@@ -17,41 +19,43 @@ namespace {
 constexpr float HALF = 0.5f, MIN_RUN_M = 1e-3f;
 constexpr float FULL_TURN = 6.28318530718f;
 
-Color hex(const Variant &v) {
-	return Color::hex(parse_hex_color(String(v).utf8().get_data()));
+Vector3 v3(DataReader r, const Array &a) {
+	r.expect(a, 3);
+	return Vector3(float(r.num_at(a, 0)), float(r.num_at(a, 1)), float(r.num_at(a, 2)));
+}
+Vector3 v3(DataReader &r, const Dictionary &d, const char *key) { return v3(r.in(key), r.list(d, key)); }
+
+Vector2 v2(DataReader &r, const Dictionary &d, const char *key) {
+	const Array a = r.list(d, key, 2);
+	return Vector2(float(r.in(key).num_at(a, 0)), float(r.in(key).num_at(a, 1)));
 }
 
-Vector3 v3(const Variant &v) {
-	const Array a = v;
-	return Vector3(float(a[0]), float(a[1]), float(a[2]));
-}
-
-Vector2 v2(const Variant &v) {
-	const Array a = v;
-	return Vector2(float(a[0]), float(a[1]));
-}
-
-TrackLayer layer(const Dictionary &d) {
+TrackLayer layer(DataReader r, const Dictionary &d) {
 	TrackLayer l;
-	l.up = d["up"];
-	l.high = d["high"];
-	l.wide = d["wide"];
-	l.over = d.get("over", 0.f);
-	l.along = d.get("long", 0.f);
+	l.up = float(r.num(d, "up"));
+	l.high = float(r.num(d, "high"));
+	l.wide = float(r.num(d, "wide"));
+	l.over = float(r.num_or(d, "over", 0.0));
+	l.along = float(r.num_or(d, "long", 0.0));
 	return l;
 }
 
-TransitBoxes boxes(const TransitLook &look, const Array &list, PackedStringArray &errors) {
+using PartNames = std::unordered_map<std::string, int>;
+
+int part_named(const PartNames &names, const std::string &name, DataReader &r) {
+	const auto it = names.find(name);
+	if (it != names.end()) return it->second;
+	r.fail(String("unknown part '") + name.c_str() + String("'"));
+	return 0;
+}
+
+TransitBoxes boxes(const PartNames &names, DataReader r, const Array &list) {
 	TransitBoxes out;
 	for (int i = 0; i < list.size(); i++) {
-		const Dictionary d = list[i];
-		const std::string name(String(d["part"]).utf8().get_data());
-		const auto it = look.part_of.find(name);
-		if (it == look.part_of.end()) {
-			errors.push_back(String("transit: parte desconhecida ") + name.c_str());
-			continue;
-		}
-		out.push_back({ it->second, v3(d["at"]), v3(d["size"]), bool(d.get("tint", false)) });
+		DataReader rb = r.in(i);
+		const Dictionary d = r.table_at(list, i);
+		const int part = part_named(names, rb.utf8(d, "part"), rb);
+		out.push_back({ part, v3(rb, d, "at"), v3(rb, d, "size"), rb.flag_or(d, "tint", false) });
 	}
 	return out;
 }
@@ -101,7 +105,7 @@ void metro_parts(const CityState &s, const TransitLook &look, const TransitStop 
 	const float up = ground(s, at), deep = ground(s, q.at) - look.depth;
 	place(m, look, look.entrance, at, up, along, left_of(along), tint);
 	place(m, look, look.below, q.at, ground(s, q.at), dir, side, tint);
-	const int bore = look.part("x_bore");
+	const int bore = look.bore_part;
 	transit_box(m, look, bore, on(at, deep), along, Vector3(look.shaft.x, up - deep, look.shaft.y));
 	const V2 across = q.at - at;
 	if (across.len() > 0) transit_box(m, look, bore, on((at + q.at) * HALF, deep), across.norm(), Vector3(across.len(), look.passage.y, look.passage.x));
@@ -113,9 +117,9 @@ void track_piece(const CityState &s, const TransitLook &look, bool metro, const 
 	float y = ground(s, mid) - (metro ? look.depth : 0);
 	bool on_road = false;
 	const bool paved = !metro && transit_paved(s, mid, look.kerb, y, on_road); // on a street, flush with it
-	const int ballast = look.part(metro ? "x_ballast" : "ballast"), sleeper = look.part(metro ? "x_sleeper" : "sleeper"), rail = look.part(metro ? "x_rail" : "rail");
+	const int ballast = look.ballast_part[metro], sleeper = look.sleeper_part[metro], rail = look.rail_part[metro];
 	if (metro) {
-		const int bore = look.part("x_bore"), roof = look.part("x_roof");
+		const int bore = look.bore_part, roof = look.roof_part;
 		const float base = y + look.floor_up, along = piece + look.bore_over, side = look.bore_wide * HALF + look.wall_off;
 		transit_box(m, look, bore, on(mid, base), d, Vector3(along, look.slab, look.bore_wide));
 		for (int k : { -1, 1 }) transit_box(m, look, bore, on(mid + n * (float(k) * side), base), d, Vector3(along, look.bore_high, look.slab));
@@ -156,54 +160,71 @@ void track_cut(const CityState &s, const TransitLook &look, const V2 &a, const V
 } // namespace
 
 bool TransitLook::read(const Dictionary &t, PackedStringArray &errors) {
+	const int64_t before = errors.size();
+	DataReader r{ errors, "transit.json" };
 	parts.clear();
-	part_of.clear();
-	const Dictionary list = t["parts"];
-	const Array names = list.keys();
-	for (int i = 0; i < names.size(); i++) {
-		const Dictionary d = list[names[i]];
+	PartNames names;
+	const Dictionary list = r.table(t, "parts");
+	const Array keys = list.keys();
+	for (int i = 0; i < keys.size(); i++) {
+		const String key = keys[i];
+		DataReader rp = r.in("parts").in(key);
+		const Dictionary d = r.in("parts").table(list, key.utf8().get_data());
 		TransitPart p;
-		p.colour = hex(d["colour"]);
-		p.roughness = d["roughness"];
-		p.metal = d["metal"];
-		p.xray = d.get("xray", -1);
-		p.glass = d.get("glass", false);
-		part_of[std::string(String(names[i]).utf8().get_data())] = int(parts.size());
+		p.colour = Color::hex(rp.colour(d, "colour"));
+		p.roughness = float(rp.num(d, "roughness"));
+		p.metal = float(rp.num(d, "metal"));
+		p.xray = rp.integer_or(d, "xray", -1);
+		if (p.xray >= TRANSIT_XRAY_LAYERS) rp.fail("xray: past the last layer");
+		p.glass = rp.flag_or(d, "glass", false);
+		names[key.utf8().get_data()] = int(parts.size());
 		parts.push_back(p);
 	}
-	default_line = hex(t["default_line"]);
-	run = t["run_m"];
-	const Dictionary k = t["track"], m = t["metro"];
-	gauge = k["gauge_m"];
-	piece = k["piece_m"];
-	sleeper_step = k["sleeper_step_m"];
-	ballast = layer(k["ballast"]);
-	sleeper = layer(k["sleeper"]);
-	rail = layer(k["rail"]);
-	rail_paved_up = Dictionary(k["rail"])["paved_up"];
-	rail_paved_high = Dictionary(k["rail"])["paved_high"];
-	depth = m["rails_below_m"];
-	bore_wide = m["wide_m"];
-	bore_high = m["high_m"];
-	floor_up = m["floor_up_m"];
-	slab = m["shell_m"];
-	wall_off = m["side_gap_m"];
-	roof_wide = m["roof_wide_m"];
-	bore_over = m["over_m"];
-	shaft = v2(m["shaft_m"]);
-	passage = v2(m["passage_m"]);
-	entrance_step = m["entrance_step_m"];
-	entrance_reach = m["entrance_reach_m"];
-	entrance_clear = m["entrance_clear_m"];
-	entrance_turns = m["entrance_turns"];
-	station = boxes(*this, t["station"], errors);
-	stop = boxes(*this, t["stop"], errors);
-	terminal = boxes(*this, t["terminal"], errors);
-	entrance = boxes(*this, t["entrance"], errors);
-	below = boxes(*this, t["below"], errors);
-	car = v3(t["car_m"]);
-	car_up = t["car_up_m"];
-	return errors.is_empty();
+	DataReader rn = r.in("parts");
+	const char *const surface[2] = { "", "x_" };
+	for (int m = 0; m < 2; m++) {
+		ballast_part[m] = part_named(names, std::string(surface[m]) + "ballast", rn);
+		sleeper_part[m] = part_named(names, std::string(surface[m]) + "sleeper", rn);
+		rail_part[m] = part_named(names, std::string(surface[m]) + "rail", rn);
+	}
+	bore_part = part_named(names, "x_bore", rn);
+	roof_part = part_named(names, "x_roof", rn);
+	car_part = part_named(names, "car", rn);
+	default_line = Color::hex(r.colour(t, "default_line"));
+	run = float(r.num(t, "run_m"));
+	const Dictionary k = r.table(t, "track"), m = r.table(t, "metro");
+	DataReader rk = r.in("track"), rm = r.in("metro");
+	gauge = float(rk.num(k, "gauge_m"));
+	piece = float(rk.num(k, "piece_m"));
+	sleeper_step = float(rk.num(k, "sleeper_step_m"));
+	ballast = layer(rk.in("ballast"), rk.table(k, "ballast"));
+	sleeper = layer(rk.in("sleeper"), rk.table(k, "sleeper"));
+	const Dictionary rails = rk.table(k, "rail");
+	rail = layer(rk.in("rail"), rails);
+	rail_paved_up = float(rk.in("rail").num(rails, "paved_up"));
+	rail_paved_high = float(rk.in("rail").num(rails, "paved_high"));
+	depth = float(rm.num(m, "rails_below_m"));
+	bore_wide = float(rm.num(m, "wide_m"));
+	bore_high = float(rm.num(m, "high_m"));
+	floor_up = float(rm.num(m, "floor_up_m"));
+	slab = float(rm.num(m, "shell_m"));
+	wall_off = float(rm.num(m, "side_gap_m"));
+	roof_wide = float(rm.num(m, "roof_wide_m"));
+	bore_over = float(rm.num(m, "over_m"));
+	shaft = v2(rm, m, "shaft_m");
+	passage = v2(rm, m, "passage_m");
+	entrance_step = float(rm.num(m, "entrance_step_m"));
+	entrance_reach = float(rm.num(m, "entrance_reach_m"));
+	entrance_clear = float(rm.num(m, "entrance_clear_m"));
+	entrance_turns = rm.integer(m, "entrance_turns");
+	station = boxes(names, r.in("station"), r.list(t, "station"));
+	stop = boxes(names, r.in("stop"), r.list(t, "stop"));
+	terminal = boxes(names, r.in("terminal"), r.list(t, "terminal"));
+	entrance = boxes(names, r.in("entrance"), r.list(t, "entrance"));
+	below = boxes(names, r.in("below"), r.list(t, "below"));
+	car = v3(r, t, "car_m");
+	car_up = float(r.num(t, "car_up_m"));
+	return errors.size() == before;
 }
 
 void transit_box(TransitMeshes &m, const TransitLook &look, int part, const Vector3 &base, const V2 &dir, const Vector3 &size, const Color *tint) {

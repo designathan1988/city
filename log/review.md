@@ -2182,6 +2182,60 @@ the first fix of B2, before B2 relies on photodiff zero.
 the unreached translation keys with the census script, `ui.stats.tip`'s `{speed}`) go with C13 in the first commit after that
 session's lands.
 
+### 6.8 B2, C10: one strict reader (2026-11-07)
+
+**The owner.** `native/src/render/data_reader.h` (`DataReader`): every key present and of its type, every list of its length,
+every index inside its list (godot-cpp's `Array::operator[]` dereferences the engine's `nullptr` past the end), a count or an
+index a whole number, a colour `#rrggbb[aa]` of hex digits, a name in its table (`index_of`, `value_of`), the keys a format leaves
+out read by `_or` with the value the format gives them. An error names the file and the path (`buildings.json.architectures[0]:
+opening: expected 5 items, found 4`) and reading goes on, so one boot reports them all. It lives in `render/`, the lowest layer
+that may use Godot, because render reads tables too; its bodies are compiled once (`data_reader.cpp`): defined in the class, they
+were inlined at every read site and the release DLL grew by a megabyte for code that runs once, at boot.
+
+**Through it now:** the catalogue (`catalog_loader`, traffic, street furniture, blast, nature, scenic), the building generator's
+tables (buildings, models, interiors), the building look, transit, effects, overlays, the lab's doctor rules and the grade
+probe's scene. The building look's part bands and far tones were appended at each read: a second boot (the refusal test boots
+fifteen times) doubled them and failed on its own count; they are built whole and assigned now. Gone with
+it: `catalog_loader`'s `Reader`, `nature_loader`'s `Read`, `scenic_loader`'s `Scene` and three copies of a name lookup.
+
+**What could crash and now refuses:** positional reads past a list's end in every loader; `models_loader` `sizes.at(kind)` and
+`% schemes.size()`; `transit_parts` `.at()` on literal part names (resolved when the table is read, an error if one is missing);
+`body_doc` `std::stoi` on a bay key (it aborts under `-fno-exceptions`); a people file without a face clip (index -1); the grade
+probe's node indices.
+
+**What defaulted silently and now refuses:** an unknown open surface in a lot document (plain grass is a row with no colour); a
+side key that is not a number (read as 0) and a side past the last face (skipped); a model's scheme index (it wrapped); every
+burst and source row of effects.json and every key of overlays.json (`get(key, 0)`); the doctor's rules (a missing `budget_fps`
+was a budget of 1000 / 0 ms); a count with a fraction (truncated); `#zzzzzz` (strtoul read what it could) and an empty colour.
+
+**Saves.** Godot's rename deletes the target before moving on Windows (`DirAccessWindows::rename`), which is why `write_atomic`
+kept an old generation, and a crash between its two renames left only `<save>.old`, which `load_city` never opened. The save now
+ends in one replacing rename (`std::filesystem::rename`: `MoveFileExW` with `MOVEFILE_REPLACE_EXISTING` on Windows, `rename(2)`
+elsewhere; libc++ `posix_compat.h`), so no moment holds neither the old file nor the new one.
+
+**Dead with it:** `CatalogLoader::parse_color`, `IntRange`, `decay_grace_min` (moved from B1).
+
+**Proof that it can refuse:** `boot_refusal_test` now boots once per damaged value, one for each kind of refusal in each table
+(5 render tables, 9 catalogue tables and the missing tuning key) and checks the error names the file and the path; `CityStore.boot`
+takes render tables as it takes the catalogue.
+
+**Identity kept on purpose, recorded for B3 (C19):** the plan's doubles (`CityPlanDef`) are still read through float, as the old
+`Reader::num` returned float; reading them as doubles moves every generated city.
+
+**C10 still to do in B2:** the other render readers of tables (`road_look`, `tree_kit`, `heavy_meshes`, `bay_props`,
+`agent_renderer`, `prop_kit`, `tree_look`, `bus_body`, `cover_kit`, `agent_parts`, `people_renderer`, `car_shape`, `car_parts`
+and about twenty smaller ones, 600-odd `get(key, default)` and `["key"]` reads) and positional data turned into named fields
+(`opening`, `piers`, `pool`, the openings rows, `era_affinity`, `lit_share`, the vehicle class rows).
+
+**Found while verifying, fixed here (C2):** `camera_input_test` turned 1.061 rad for a drag worth 0.756 rad in one run of four.
+The gestures timed the hand on the wall clock (`Time.get_ticks_usec`) while the springs, the coast and the test's still wait run
+on the frames' deltas; when the two clocks parted, a hand that stood still for 0.15 s of frames was still moving by the wall's,
+and the view was thrown. The gestures keep their own clock now, the deltas `advance` receives (`camera_gestures.gd`): one time
+base for the whole camera.
+
+Carried in the same commit at the scenic city session's request: its scenic key renames (`scenic.json`, its schema,
+`scenic_city_test`), applied to the rewritten loader, and one value (barra_funda `blocks_m` 130 -> 128).
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

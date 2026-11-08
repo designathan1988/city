@@ -70,7 +70,7 @@ func _roads() -> void:
 
 func _parks(city: Dictionary) -> void:
 	var ring := PackedVector2Array()
-	for p: Array in city.parks[0].ring:
+	for p: Array in city.parks[0].boundary:
 		ring.append(Vector2(p[0], p[1]))
 	var inside := 0
 	for id: int in CityStore.query(&"list_buildings"):

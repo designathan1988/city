@@ -1,7 +1,9 @@
-// data/catalog/scenic.json -> Catalog::scenic (sim/catalog/scenic.h), strict: a missing or mistyped key, an unknown profile
-// or biome, a road on a river the city does not have, a road's name key with no text, fails the load. Read after the
-// profiles and the nature tables, and after the translations (a road's name is the player's text of its key).
+// data/catalog/scenic.json -> Catalog::scenic (sim/catalog/scenic.h) through the strict reader (render/data_reader.h): a
+// missing or mistyped key, a list too short, an unknown profile or biome, a road on a river the city does not have, a road's
+// name key with no text, fails the load. Read after the profiles and the nature tables, and after the translations (a road's
+// name is the player's text of its key).
 #include "api/catalog_loader.h"
+#include "render/data_reader.h"
 
 #include <godot_cpp/classes/translation_server.hpp>
 #include <godot_cpp/variant/array.hpp>
@@ -15,163 +17,162 @@ namespace city {
 namespace {
 constexpr int POINT_PARTS = 2, LINE_LEAST = 2, RING_LEAST = 3;
 
-struct Scene {
-	PackedStringArray &errors;
-	const Catalog &c;
-	String where;
+V2 point(DataReader r, const Array &a) {
+	r.expect(a, POINT_PARTS);
+	return V2(float(r.num_at(a, 0)), float(r.num_at(a, 1)));
+}
+V2 point(DataReader &r, const Dictionary &d, const char *key) { return point(r.in(key), r.list(d, key)); }
 
-	void fail(const String &what) { errors.push_back("scenic." + where + ": " + what); }
-	bool has(const Dictionary &d, const char *k) {
-		if (d.has(k)) return true;
-		fail("missing '" + String(k) + "'");
-		return false;
-	}
-	float num(const Dictionary &d, const char *k) {
-		if (!has(d, k)) return 0.f;
-		const Variant v = d[k];
-		if (v.get_type() == Variant::FLOAT || v.get_type() == Variant::INT) return float(double(v));
-		fail(String(k) + ": expected a number");
-		return 0.f;
-	}
-	std::string text(const Dictionary &d, const char *k) { return has(d, k) ? std::string(String(d[k]).utf8().get_data()) : std::string(); }
-	Array arr(const Dictionary &d, const char *k) { return has(d, k) ? Array(d[k]) : Array(); }
-	Dictionary dict(const Dictionary &d, const char *k) { return has(d, k) ? Dictionary(d[k]) : Dictionary(); }
-	V2 point(const Variant &v) {
-		const Array a = v;
-		if (a.size() == POINT_PARTS) return V2(float(double(a[0])), float(double(a[1])));
-		fail("expected [x, z]");
-		return V2();
-	}
-	Polyline line(const Dictionary &d, const char *k, int least) {
-		Polyline out;
-		for (const Variant &p : arr(d, k)) out.push_back(point(p));
-		if (int(out.size()) < least) fail(String(k) + ": too few points");
-		return out;
-	}
-	// The player's text of an i18n key (data/i18n, loaded before the catalogue): a key with no text fails.
-	std::string translated(const std::string &key) {
-		const String text = TranslationServer::get_singleton()->translate(StringName(key.c_str()));
-		if (text == String(key.c_str())) fail("no text for '" + text + "'");
-		return std::string(text.utf8().get_data());
-	}
-	int profile(const Dictionary &d, const char *k) {
-		const std::string id = text(d, k);
-		const int p = c.profile_id(id);
-		if (p < 0) fail("unknown profile '" + String(id.c_str()) + "'");
-		return p;
-	}
-};
+Polyline line(DataReader &r, const Dictionary &d, const char *key, int least) {
+	Polyline out;
+	const Array points = r.list(d, key);
+	for (int i = 0; i < points.size(); i++) out.push_back(point(r.in(key).in(i), r.in(key).list_at(points, i)));
+	if (int(out.size()) < least) r.in(key).fail("too few points");
+	return out;
+}
 
-void load_land(Scene &r, const Dictionary &t, ScenicLand &land) {
-	land.base_m = r.num(t, "base_m");
-	land.relief_m = r.num(t, "relief_m");
-	land.relief_cell_m = r.num(t, "relief_cell_m");
-	for (const Variant &v : r.arr(t, "ridges")) {
-		const Dictionary d = v;
-		land.ridges.push_back({ r.line(d, "line", LINE_LEAST), r.num(d, "height_m"), r.num(d, "half_width_m") });
+// The player's text of an i18n key (data/i18n, loaded before the catalogue): a key with no text fails.
+std::string translated(DataReader &r, const std::string &key) {
+	const String text = TranslationServer::get_singleton()->translate(StringName(key.c_str()));
+	if (text == String(key.c_str())) r.fail(String("no text for '") + text + String("'"));
+	return std::string(text.utf8().get_data());
+}
+
+int profile(DataReader &r, const Catalog &c, const Dictionary &d, const char *key) {
+	const std::string id = r.utf8(d, key);
+	const int p = c.profile_id(id);
+	if (p < 0) r.in(key).fail(String("unknown profile '") + id.c_str() + String("'"));
+	return p;
+}
+
+void load_land(DataReader r, const Dictionary &t, ScenicLand &land) {
+	land.base_m = float(r.num(t, "base_m"));
+	land.relief_m = float(r.num(t, "relief_amp_m"));
+	land.relief_cell_m = float(r.num(t, "relief_cell_m"));
+	const Array ridges = r.list(t, "ridges"), rivers = r.list(t, "rivers"), lakes = r.list(t, "lakes");
+	for (int i = 0; i < ridges.size(); i++) {
+		DataReader rr = r.in("ridges").in(i);
+		const Dictionary d = r.in("ridges").table_at(ridges, i);
+		land.ridges.push_back({ line(rr, d, "polyline", LINE_LEAST), float(rr.num(d, "crest_m")), float(rr.num(d, "half_width_m")) });
 	}
-	for (const Variant &v : r.arr(t, "rivers")) {
-		const Dictionary d = v;
+	for (int i = 0; i < rivers.size(); i++) {
+		DataReader rw = r.in("rivers").in(i);
+		const Dictionary d = r.in("rivers").table_at(rivers, i);
 		ScenicRiver w;
-		w.id = r.text(d, "id");
-		w.line = r.line(d, "line", LINE_LEAST);
-		w.half_width_m = r.num(d, "half_width_m");
-		w.depth_m = r.num(d, "depth_m");
-		w.wall_m = r.num(d, "wall_m");
-		w.freeboard_m = r.num(d, "freeboard_m");
-		w.valley_m = r.num(d, "valley_m");
-		w.level_m = r.num(d, "level_m");
-		w.level_end_m = r.num(d, "level_end_m");
+		w.id = rw.utf8(d, "id");
+		w.line = line(rw, d, "polyline", LINE_LEAST);
+		w.half_width_m = float(rw.num(d, "half_width_m"));
+		w.depth_m = float(rw.num(d, "deep_m"));
+		w.wall_m = float(rw.num(d, "channel_wall_m"));
+		w.freeboard_m = float(rw.num(d, "freeboard_m"));
+		w.valley_m = float(rw.num(d, "valley_m"));
+		w.level_m = float(rw.num(d, "level_start_m"));
+		w.level_end_m = float(rw.num(d, "level_end_m"));
 		land.rivers.push_back(std::move(w));
 	}
-	for (const Variant &v : r.arr(t, "lakes")) {
-		const Dictionary d = v;
-		land.lakes.push_back({ r.line(d, "shore", RING_LEAST), r.num(d, "drop_m"), r.num(d, "depth_m"), r.num(d, "shore_m") });
+	for (int i = 0; i < lakes.size(); i++) {
+		DataReader rl = r.in("lakes").in(i);
+		const Dictionary d = r.in("lakes").table_at(lakes, i);
+		land.lakes.push_back({ line(rl, d, "shore", RING_LEAST), float(rl.num(d, "below_shore_m")), float(rl.num(d, "deep_m")), float(rl.num(d, "shore_m")) });
 	}
 }
 
-void load_districts(Scene &r, const Array &list, std::vector<ScenicDistrict> &out) {
-	for (const Variant &v : list) {
-		const Dictionary d = v;
+void load_districts(DataReader r, const Catalog &c, const Array &list, std::vector<ScenicDistrict> &out) {
+	for (int i = 0; i < list.size(); i++) {
+		DataReader rd = r.in(i);
+		const Dictionary d = r.table_at(list, i);
 		ScenicDistrict k;
-		k.id = r.text(d, "id");
-		k.seed = r.has(d, "seed") ? r.point(d["seed"]) : V2();
-		const V2 block = r.has(d, "block_m") ? r.point(d["block_m"]) : V2();
+		k.id = rd.utf8(d, "id");
+		k.seed = point(rd, d, "seed_point");
+		const V2 block = point(rd, d, "blocks_m");
 		k.block_along_m = block.x;
 		k.block_across_m = block.y;
-		k.turn_deg = r.num(d, "turn_deg");
-		k.heat = r.num(d, "heat");
-		k.trade = r.num(d, "trade");
-		k.local = r.profile(d, "local");
-		k.collector = r.profile(d, "collector");
-		k.collector_every = int(r.num(d, "collector_every"));
-		if (k.block_along_m <= 0 || k.block_across_m <= 0) r.fail(String(k.id.c_str()) + ": blocks must be wider than 0");
+		k.turn_deg = float(rd.num(d, "bearing_deg"));
+		k.heat = float(rd.num(d, "heat"));
+		k.trade = float(rd.num(d, "trade"));
+		k.local = profile(rd, c, d, "local");
+		k.collector = profile(rd, c, d, "collector");
+		k.collector_every = rd.integer(d, "collector_every");
+		if (k.block_along_m <= 0 || k.block_across_m <= 0) rd.fail("blocks must be wider than 0");
 		out.push_back(std::move(k));
 	}
 }
 
-void load_roads(Scene &r, const Array &list, const ScenicLand &land, std::vector<ScenicRoad> &out) {
-	for (const Variant &v : list) {
-		const Dictionary d = v;
+void load_roads(DataReader r, const Catalog &c, const Array &list, const ScenicLand &land, std::vector<ScenicRoad> &out) {
+	for (int i = 0; i < list.size(); i++) {
+		DataReader rr = r.in(i);
+		const Dictionary d = r.table_at(list, i);
 		ScenicRoad road;
-		if (d.has("name_key")) road.name = r.translated(r.text(d, "name_key"));
-		road.profile = r.profile(d, "profile");
+		if (d.has("name_key")) road.name = translated(rr, rr.utf8(d, "name_key"));
+		road.profile = profile(rr, c, d, "profile");
 		if (d.has("river")) {
-			const std::string id = std::string(String(d["river"]).utf8().get_data());
-			for (size_t i = 0; i < land.rivers.size(); i++)
-				if (land.rivers[i].id == id) road.river = int(i);
-			if (road.river < 0) r.fail("a road on no river '" + String(id.c_str()) + "'");
-			road.offset_m = r.num(d, "offset_m");
-		} else road.line = r.line(d, "line", LINE_LEAST);
+			const std::string id = rr.utf8(d, "river");
+			for (size_t k = 0; k < land.rivers.size(); k++)
+				if (land.rivers[k].id == id) road.river = int(k);
+			if (road.river < 0) rr.fail(String("a road on no river '") + id.c_str() + String("'"));
+			road.offset_m = float(rr.num(d, "offset_m"));
+		} else road.line = line(rr, d, "polyline", LINE_LEAST);
 		out.push_back(std::move(road));
 	}
 }
 
-void load_rings(Scene &r, const Array &list, std::vector<Polyline> &out) {
-	for (const Variant &v : list) out.push_back(r.line(Dictionary(v), "ring", RING_LEAST));
-}
-
-void load_rules(Scene &r, const Dictionary &t, ScenicCity &city) {
-	const Dictionary st = r.dict(t, "streets");
-	city.streets = { r.profile(st, "seam"), r.num(st, "seam_overshoot_m"), r.num(st, "highway_clear_m"), r.num(st, "bridge_max_m"), r.num(st, "march_step_m") };
-	const Dictionary z = r.dict(t, "zoning");
-	city.zoning = { r.num(z, "high_heat"), r.num(z, "medium_heat"), r.num(z, "commerce_trade"), r.num(z, "main_trade"), r.num(z, "noise_cell_m"), r.num(z, "noise_heat") };
-	const Dictionary tr = r.dict(t, "trees");
-	city.trees = { r.num(tr, "spacing_m"), r.num(tr, "jitter"), r.num(tr, "grove_cell_m"), r.num(tr, "grove_cut"), r.num(tr, "low_m"), r.num(tr, "high_m"), r.num(tr, "road_clear_m") };
-	for (const Variant &v : r.arr(t, "heat")) {
-		const Dictionary d = v;
-		city.heat.push_back({ r.line(d, "line", 1), r.num(d, "heat"), r.num(d, "trade"), r.num(d, "reach_m") });
+void load_rings(DataReader r, const Array &list, std::vector<Polyline> &out) {
+	for (int i = 0; i < list.size(); i++) {
+		DataReader ri = r.in(i);
+		out.push_back(line(ri, r.table_at(list, i), "boundary", RING_LEAST));
 	}
 }
 
-int biome_slot(Scene &r, const std::string &id) {
-	for (const PaintKindDef &k : r.c.nature.paint.kinds)
+void load_rules(DataReader r, const Catalog &c, const Dictionary &t, ScenicCity &city) {
+	const Dictionary st = r.table(t, "streets");
+	DataReader rs = r.in("streets");
+	city.streets = { profile(rs, c, st, "seam_profile"), float(rs.num(st, "seam_overshoot_m")), float(rs.num(st, "highway_clear_m")),
+		float(rs.num(st, "bridge_span_m")), float(rs.num(st, "march_step_m")) };
+	const Dictionary z = r.table(t, "zoning");
+	DataReader rz = r.in("zoning");
+	city.zoning = { float(rz.num(z, "high_heat")), float(rz.num(z, "medium_heat")), float(rz.num(z, "commerce_trade")), float(rz.num(z, "main_trade")),
+		float(rz.num(z, "noise_cell_m")), float(rz.num(z, "noise_heat")) };
+	const Dictionary tr = r.table(t, "trees");
+	DataReader rt = r.in("trees");
+	city.trees = { float(rt.num(tr, "spacing_m")), float(rt.num(tr, "jitter")), float(rt.num(tr, "grove_cell_m")), float(rt.num(tr, "grove_cut")),
+		float(rt.num(tr, "tree_short_m")), float(rt.num(tr, "tree_tall_m")), float(rt.num(tr, "road_clear_m")) };
+	const Array heat = r.list(t, "heat");
+	for (int i = 0; i < heat.size(); i++) {
+		DataReader rh = r.in("heat").in(i);
+		const Dictionary d = r.in("heat").table_at(heat, i);
+		city.heat.push_back({ line(rh, d, "polyline", 1), float(rh.num(d, "heat")), float(rh.num(d, "trade")), float(rh.num(d, "reach_m")) });
+	}
+}
+
+int biome_slot(DataReader &r, const Catalog &c, const std::string &id) {
+	for (const PaintKindDef &k : c.nature.paint.kinds)
 		if (k.cls == PaintClass::BIOME && k.id == id) return k.slot;
-	r.fail("unknown biome '" + String(id.c_str()) + "'");
+	r.fail(String("unknown biome '") + id.c_str() + String("'"));
 	return 0;
 }
 } // namespace
 
 bool load_scenic(const Dictionary &t, Catalog &c, PackedStringArray &errors) {
-	const int before = int(errors.size());
-	Scene top{ errors, c, "cities" };
-	for (const Variant &v : top.arr(t, "cities")) {
-		const Dictionary d = v;
+	const int64_t before = errors.size();
+	DataReader top{ errors, "scenic.json" };
+	const Array cities = top.list(t, "cities");
+	for (int i = 0; i < cities.size(); i++) {
+		DataReader r = top.in("cities").in(i);
+		const Dictionary d = top.in("cities").table_at(cities, i);
 		ScenicCity city;
-		Scene r{ errors, c, String(d.get("id", "?")) };
-		city.id = r.text(d, "id");
-		city.half_m = r.num(d, "half_m");
-		city.biome = biome_slot(r, r.text(d, "biome"));
-		load_land(r, r.dict(d, "land"), city.land);
-		load_districts(r, r.arr(d, "districts"), city.districts);
-		load_roads(r, r.arr(d, "roads"), city.land, city.roads);
-		load_rings(r, r.arr(d, "parks"), city.parks);
-		load_rings(r, r.arr(d, "works"), city.works);
-		load_rules(r, d, city);
+		city.id = r.utf8(d, "id");
+		city.half_m = float(r.num(d, "city_half_m"));
+		city.biome = biome_slot(r, c, r.utf8(d, "biome"));
+		load_land(r.in("land"), r.table(d, "land"), city.land);
+		load_districts(r.in("districts"), c, r.list(d, "districts"), city.districts);
+		load_roads(r.in("roads"), c, r.list(d, "roads"), city.land, city.roads);
+		load_rings(r.in("parks"), r.list(d, "parks"), city.parks);
+		load_rings(r.in("works"), r.list(d, "works"), city.works);
+		load_rules(r, c, d, city);
 		if (city.districts.empty()) r.fail("a city needs a district");
 		c.scenic.push_back(std::move(city));
 	}
-	return int(errors.size()) == before;
+	return errors.size() == before;
 }
 
 bool link_scenic_maps(const std::vector<std::string> &names, Catalog &c, PackedStringArray &errors) {

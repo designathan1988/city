@@ -50,11 +50,6 @@ struct StructureCost {
 	float ground = 0, embankment = 0, trench = 0, bridge = 0, tunnel = 0;
 };
 
-// A drawn integer range [lo, hi) (Roadcraft Rng.int is exclusive of hi).
-struct IntRange {
-	int lo = 0, hi = 0;
-};
-
 // The plan of a generated city (data/catalog/growth.json "plan", sim/citygen/city_plan.h).
 struct CityPlanDef {
 	double main_offset = 0, centre_turn = 0, second_from = 0, second_to = 0, second_pull = 0;
@@ -73,7 +68,7 @@ struct GrowthDef {
 	std::vector<std::pair<int, int>> civic_by_zone[BASE_ZONE_SLOTS]; // (fn, weight) per base zone
 	float organic_reach_m = 0;
 	int organic_extra_floors = 0;
-	float decay_grace_min = 0, decay_span_min = 0;
+	float decay_span_min = 0;
 };
 
 struct Catalog {

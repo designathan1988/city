@@ -55,14 +55,14 @@ func _route(spec: String) -> Callable:
 	return Callable(area, spec.substr(cut + 1))
 
 
-## Loads the data tables into the core and prepares rendering. Returns the list of problems (empty = ok). `catalog`: the
-## tables to load instead of DataTables' (a test hands a damaged one to see it refused).
-func boot(terrain: Node, materials: Dictionary, catalog: Dictionary = {}) -> PackedStringArray:
+## Loads the data tables into the core and prepares rendering. Returns the list of problems (empty = ok). `catalog` and
+## `render`: the tables to load instead of DataTables' (a test hands a damaged one to see it refused).
+func boot(terrain: Node, materials: Dictionary, catalog: Dictionary = {}, render: Dictionary = {}) -> PackedStringArray:
 	var errors: PackedStringArray = _core.load_catalog(DataTables.catalog() if catalog.is_empty() else catalog)
 	if not errors.is_empty():
 		return errors
 	_core.terrain_path = _core.get_path_to(terrain)
-	var problems: PackedStringArray = _core.setup_render(DataTables.render(), materials)
+	var problems: PackedStringArray = _core.setup_render(DataTables.render() if render.is_empty() else render, materials)
 	DataTables.release_boot_tables()
 	return problems
 

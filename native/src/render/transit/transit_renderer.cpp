@@ -78,7 +78,7 @@ bool TransitRenderer::init(const RenderContext &ctx, PackedStringArray &errors) 
 	radius_ = t["radius_m"];
 	per_frame_ = t["items_per_frame"];
 	TransitMeshes car;
-	transit_box(car, look_, look_.part("car"), Vector3(0, look_.car_up, 0), V2(0, 1), look_.car);
+	transit_box(car, look_, look_.car_part, Vector3(0, look_.car_up, 0), V2(0, 1), look_.car);
 	RenderingServer *rs = RenderingServer::get_singleton();
 	car_.reset();
 	car_.rid = rs->mesh_create();

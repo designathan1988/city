@@ -81,8 +81,6 @@ O que falta fazer, por área.
     the upgrade from 4.7.
   - `ui.stats.tip` shows `{speed}` as "—": the top bar never fills it; the key's text loses the field when the translation tables
     are next edited (held while another session edits them).
-  - `growth.json` `decay_grace_min` is loaded (catalog_loader.cpp, catalog.h) and read by no code: removed with them once the
-    session that edits those files is done.
 - Android (the first APK, 2026-11-07, `tools/build/android.sh`): built and signed, never run on a device (none was connected), so
   whether it opens, and at what frame rate, is unknown.
   - Touch: the camera has only mouse gestures (`camera_gestures.gd`). A finger is the left button through Godot's mouse emulation,

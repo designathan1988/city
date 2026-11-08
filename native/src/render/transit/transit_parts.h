@@ -8,7 +8,6 @@
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 
-#include <unordered_map>
 #include <vector>
 
 namespace city {
@@ -36,7 +35,9 @@ struct TrackLayer {
 
 struct TransitLook {
 	std::vector<TransitPart> parts;
-	std::unordered_map<std::string, int> part_of;
+	// The parts the code lays by name, resolved when the table is read ([0] at the surface, [1] the metro's).
+	int ballast_part[2] = {}, sleeper_part[2] = {}, rail_part[2] = {};
+	int bore_part = 0, roof_part = 0, car_part = 0;
 	godot::Color default_line;
 	float gauge = 0, piece = 0, sleeper_step = 0, run = 0, rail_paved_up = 0, rail_paved_high = 0;
 	TrackLayer ballast, sleeper, rail;
@@ -48,8 +49,8 @@ struct TransitLook {
 	godot::Vector3 car;
 	float car_up = 0;
 
+	// Every key, type and length checked (render/data_reader.h); a box or a named part that names no part is an error.
 	bool read(const godot::Dictionary &t, godot::PackedStringArray &errors);
-	int part(const char *name) const { return part_of.at(name); }
 };
 
 // One stretch's surfaces: opaque, see-through, and the layers drawn through the ground.

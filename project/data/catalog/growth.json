@@ -1,5 +1,5 @@
 {
- "_doc": "The plan of a generated city and world/arch.ts civicFor. A building's storeys are its body's (sim/buildings/b40). decay_span_min: the span a generated building's age is drawn from (growth.cpp generated_age) and the minutes of age a blow's wear takes off at its full share (strike_buildings.cpp). decay_grace_min is read by no code (log/pendencias.md).",
+ "_doc": "The plan of a generated city and world/arch.ts civicFor. A building's storeys are its body's (sim/buildings/b40). decay_span_min: the span a generated building's age is drawn from (growth.cpp generated_age) and the minutes of age a blow's wear takes off at its full share (strike_buildings.cpp).",
  "plan": {
   "_doc": "The city's shape, authored as the 4.0's world/cityGen/plan.ts has it: no survey behind these numbers. heat = 1 - distance share + density term + noise; the thresholds make it low, medium or high, and commerce on main roads.",
   "centres": 2,
@@ -46,6 +46,5 @@
  },
  "organic_reach_m": 30,
  "organic_extra_floors": 3,
- "decay_grace_min": 7200,
  "decay_span_min": 43200
 }

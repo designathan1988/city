@@ -1,7 +1,7 @@
 // Zone-colour chunk jobs and the congestion layer's refresh cycle (see overlay_renderer.h).
 #include "render/overlays/overlay_renderer.h"
 
-#include "core/color.h"
+#include "render/data_reader.h"
 
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/variant/array.hpp>
@@ -27,24 +27,23 @@ OverlayRenderer::OverlayRenderer() {
 bool OverlayRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	scenario_ = ctx.scenario;
 	material_ = ctx.material("overlay", errors);
-	Dictionary t = ctx.table("overlays", errors);
+	const Dictionary t = ctx.table("overlays", errors);
 	if (!errors.is_empty()) return false;
-	zone_depth_ = float(t.get("zone_depth_m", 0));
-	zone_alpha_ = float(t.get("zone_alpha", 0));
-	zone_alpha_tool_ = float(t.get("zone_alpha_tool", 0));
-	congestion_alpha_ = float(t.get("congestion_alpha", 0));
-	lift_ = float(t.get("lift_m", 0));
-	sample_ = std::max(1.f, float(t.get("sample_m", 1)));
-	refresh_ = float(t.get("refresh_s", 1));
-	free_share_ = float(t.get("free_share", 1));
-	jam_share_ = float(t.get("jam_share", 0));
-	Array cols = t.get("congestion", Array());
-	if (cols.size() != JAM_STOPS) {
-		errors.push_back("overlays.json: congestion precisa de 3 cores");
-		return false;
-	}
+	const int64_t before = errors.size();
+	DataReader r{ errors, "overlays.json" }; // render/data_reader.h: every key present and of its type
+	zone_depth_ = float(r.num(t, "zone_depth_m"));
+	zone_alpha_ = float(r.num(t, "zone_alpha"));
+	zone_alpha_tool_ = float(r.num(t, "zone_alpha_tool"));
+	congestion_alpha_ = float(r.num(t, "congestion_alpha"));
+	lift_ = float(r.num(t, "lift_m"));
+	sample_ = std::max(1.f, float(r.num(t, "sample_m")));
+	refresh_ = float(r.num(t, "refresh_s"));
+	free_share_ = float(r.num(t, "free_share"));
+	jam_share_ = float(r.num(t, "jam_share"));
+	const Array cols = r.list(t, "congestion", JAM_STOPS);
+	if (errors.size() != before) return false;
 	for (int i = 0; i < JAM_STOPS; i++) {
-		uint32_t c = parse_hex_color(String(cols[i]).utf8().get_data());
+		const uint32_t c = r.in("congestion").colour_at(cols, i);
 		jam_colors_[i] = Color(float((c >> R_SHIFT) & BYTE) / RGBA_MAX, float((c >> G_SHIFT) & BYTE) / RGBA_MAX,
 				float((c >> B_SHIFT) & BYTE) / RGBA_MAX, float(c & BYTE) / RGBA_MAX);
 	}
