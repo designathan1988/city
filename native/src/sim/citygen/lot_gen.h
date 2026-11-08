@@ -36,6 +36,7 @@ struct Lot {
 	double x = 0, z = 0, w = 0, d = 0, rot = 0; // rot: local +z faces the street
 	int zone = 0, profile = 0;
 	uint32_t seed = 0;
+	uint8_t site = 0; // b40::LotSite bits: a corner lot's second street, ground rising to the back
 };
 
 // A raster of square cells with its first cell's corner at (ax, az): the cells whose centre is within r of (x, z) in the

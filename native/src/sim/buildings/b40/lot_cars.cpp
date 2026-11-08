@@ -1,7 +1,8 @@
 // Where a house's car stands and how the side strips are used. Every house gets its bay: in a closed garage or under a
 // carport standing on its own drive - at the drive's front, or at its end in the yard with the drive carried there -
 // or, on a lot too narrow for a drive, on a car pad in the front garden. The garage is a volume of the body on the
-// drive's strip with its door on the drive, so the car drives straight in. Other lots' drives get their drain, their
+// drive's strip with its door on the drive, so the car drives straight in; on an uphill lot it is dug into the slope at the
+// drive's front, its door at the street's level (LotSpace::dug). Other lots' drives get their drain, their
 // side paths a lamp, drains, bins and crates (an alley used as one), side gardens a row of trees and shrubs.
 #include "sim/buildings/b40/lot_layout.h"
 #include "sim/buildings/b40/massing.h"
@@ -35,6 +36,12 @@ void house_car(LotSpace &s) {
 	const LotPartShape &P = s.data.shapes.parts;
 	const LotRules &l = s.rules;
 	const int line = s.paint("stall_line");
+	if (!s.dug.empty()) { // the car drives straight in from the street, under the house's level
+		s.flat(EL_STALL, Rect::around(s.dug.cx(), s.dug.y0 + l.stall_d * HALF, l.stall_w, l.stall_d), 0, line, FACE_STREET);
+		s.edge(EL_DUG_GARAGE, s.dug, l.car_clear_h, s.paint("concrete"));
+		s.built.push_back(s.dug);
+		return;
+	}
 	Rect pad = car_pad(s);
 	if (!pad.empty()) {
 		s.cover(pad, "concrete", 2);

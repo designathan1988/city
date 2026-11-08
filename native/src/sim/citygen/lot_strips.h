@@ -44,6 +44,7 @@ private:
 	bool unfit(const Frame &f) const;
 	void mark_lot(const Frame &f);
 	bool lot_free(double x, double z) const; // no paving and no lot there
+	uint8_t site_of(const Frame &f) const; // the lot's b40::LotSite bits
 	void keep(const Frame &f, int zone, int profile);
 	void place_blocks();
 	void place_strips();

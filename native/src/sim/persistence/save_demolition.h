@@ -14,14 +14,14 @@ struct CityState;
 
 constexpr uint32_t SAVE_TAG_DEMOLITION = 0x31474D44U; // 'DMG1'
 
-// One building record as saved (the table of buildings and a ruin keep the same record), BUILDING_SAVE_BYTES long.
+// One building record as saved (the table of buildings and a ruin keep the same record), at least BUILDING_SAVE_BYTES long (the site byte after them since SITE_SAVE_VERSION).
 constexpr size_t BUILDING_SAVE_BYTES = 5 * sizeof(float) + 2 * sizeof(uint8_t) + sizeof(uint16_t) + sizeof(uint32_t) + 2 * sizeof(uint16_t) +
 		sizeof(int16_t) + sizeof(double);
 void put_building(ByteWriter &w, const Building &b);
-bool get_building(ByteReader &r, Building &b);
+bool get_building(ByteReader &r, Building &b, uint32_t version); // version: the file's (SITE_SAVE_VERSION brought the site byte)
 
 // The block's payload (save_blocks.cpp frames it): false, and nothing written, when nothing was blown.
 bool write_damage_block(ByteWriter &w, const DamageState &d);
-bool read_damage_block(ByteReader &r, DamageState &d);
+bool read_damage_block(ByteReader &r, DamageState &d, uint32_t version);
 
 } // namespace city

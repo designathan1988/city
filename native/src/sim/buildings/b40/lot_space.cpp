@@ -54,6 +54,15 @@ LotSpace::LotSpace(const Data &d, Body &body, Xoshiro128 &rng) : data(d), b(body
 	std::sort(loading_x.begin(), loading_x.end());
 	own_parts = built.size();
 	door_x = b.entrance_x;
+	if ((plan.site & SITE_UPHILL) && b.kind == KIND_HOUSE && plan.front != FRONT_CARPAD) {
+		const LotCarsShape &K = data.shapes.cars;
+		const float y0 = K.garage_set, y1 = y0 + rules.stall_d + K.garage_wall;
+		for (const Strip &st : strips)
+			if (!st.drive.empty()) {
+				if (y1 <= B) dug = { st.drive.x0, y0, st.drive.x1, y1 };
+				break;
+			}
+	}
 }
 
 int LotSpace::paint(const char *name) {

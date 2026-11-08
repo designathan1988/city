@@ -170,6 +170,7 @@ Building record_for(CityState &s, const std::vector<Lot> &cell_lots, int i) {
 	b.seed = l.seed;
 	b.style = uint16_t(l.seed & BUILDING_AUTO_STYLE_MASK);
 	b.profile = uint16_t(l.profile);
+	b.site = l.site;
 	b.floors = uint16_t(fn == FN_NONE && tallest >= 0 ? std::max(1, tallest) + g.organic_extra_floors : 0);
 	const Candidate kept = fn == FN_NONE ? best_candidate(s, b) : draw_candidate(s, b, b.seed);
 	b.seed = kept.seed;

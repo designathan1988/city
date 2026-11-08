@@ -53,6 +53,9 @@ struct Paint {
 enum FrontUse : uint8_t { FRONT_STREET, FRONT_GARDEN, FRONT_CARPAD, FRONT_FORECOURT, FRONT_PLAZA, FRONT_APRON };
 enum SideUse : uint8_t { SIDE_ATTACHED, SIDE_PATH, SIDE_DRIVE, SIDE_DRIVE_PATH, SIDE_GARDEN };
 enum BackUse : uint8_t { BACK_NONE, BACK_YARD, BACK_PARKING, BACK_SERVICE, BACK_COURTYARD, BACK_LOADING };
+// What the lot's place in the city tells its plan (bits, read by sim/citygen/lot_gen.cpp from the streets and the ground): a second
+// street along its left (-x) or right (+x) side, a corner lot fronting both; the ground rising from the street to the back.
+enum LotSite : uint8_t { SITE_CORNER_LEFT = 1, SITE_CORNER_RIGHT = 2, SITE_UPHILL = 4 };
 struct SidePlan {
 	SideUse use = SIDE_ATTACHED;
 	float width = 0;
@@ -68,6 +71,7 @@ struct LotPlan {
 	float back_depth = 0;
 	int rows = 0;
 	float x0 = 0, y0 = 0, x1 = 0, y1 = 0; // building envelope, x from the lot's left edge
+	uint8_t site = 0; // LotSite bits
 };
 
 // The composed geometry of one face: bay count, opening shares, sill, piers.
@@ -172,7 +176,7 @@ inline uint8_t bay_at(const Volume &v, int storey, int side, int bay) {
 enum Element : uint8_t { EL_PAVEMENT, EL_SLAB, EL_PILLAR, EL_CANOPY, EL_AWNING, EL_WALL, EL_FENCE, EL_RAILING, EL_HEDGE,
 	EL_GATE, EL_CAR_GATE, EL_PLANTER, EL_BENCH, EL_BOLLARD, EL_LAMP, EL_BIN, EL_AC, EL_SURFACE, EL_STALL, EL_DOCK, EL_DRAIN,
 	EL_TREE, EL_SHRUB, EL_FLOWERS, EL_POOL, EL_LOUNGER, EL_TABLE, EL_SWING, EL_SHED, EL_LINE, EL_PALLET, EL_CAGE, EL_STAIR, EL_RAMP,
-	EL_ROCKS, EL_PARKING, EL_CLOCK };
+	EL_ROCKS, EL_PARKING, EL_CLOCK, EL_DUG_GARAGE };
 enum Facing : uint8_t { FACE_STREET, FACE_RIGHT, FACE_BACK, FACE_LEFT };
 struct LotElement {
 	Element kind = EL_PAVEMENT;

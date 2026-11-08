@@ -435,6 +435,12 @@
       },
       "straight_on": {
        "type": "number"
+      },
+      "corner_probe": {
+       "type": "number"
+      },
+      "uphill_rise": {
+       "type": "number"
       }
      },
      "required": [
@@ -449,7 +455,9 @@
       "facing_pad",
       "arc_steps",
       "facing_samples",
-      "straight_on"
+      "straight_on",
+      "corner_probe",
+      "uphill_rise"
      ],
      "strict": true
     },

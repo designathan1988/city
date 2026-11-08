@@ -29,8 +29,8 @@ constexpr size_t PIECE_BYTES = sizeof(uint8_t) + 3 * sizeof(float);
 constexpr uint32_t BODY_MAGIC = 0x31594442U; // 'BDY1'
 constexpr int FACES_BEFORE = 16; // a block's faces in the bytes of version 2 and earlier
 constexpr uint32_t FACES_VERSION = 3;
-constexpr uint32_t MODE_VERSION = 4, INSIDE_VERSION = 5, ANGLE_VERSION = 6, LIFT_VERSION = 7;
-constexpr uint32_t BODY_VERSION = 7, FLAG_VERSION = 1, SIGNATURE_VERSION = 2, UNVERSIONED = 0;
+constexpr uint32_t MODE_VERSION = 4, INSIDE_VERSION = 5, ANGLE_VERSION = 6, LIFT_VERSION = 7, SITE_VERSION = 8;
+constexpr uint32_t BODY_VERSION = 8, FLAG_VERSION = 1, SIGNATURE_VERSION = 2, UNVERSIONED = 0;
 
 void put_side(ByteWriter &w, const SidePlan &p) {
 	w.put<uint8_t>(uint8_t(p.use));
@@ -54,9 +54,10 @@ void put_plan(ByteWriter &w, const LotPlan &p) {
 	put_side(w, p.right);
 	w.put<uint8_t>(uint8_t(p.back));
 	w.put<int32_t>(p.rows);
+	w.put<uint8_t>(p.site);
 }
 
-LotPlan get_plan(ByteReader &r) {
+LotPlan get_plan(ByteReader &r, uint32_t version) {
 	LotPlan p;
 	p.kind = Kind(r.get<uint8_t>());
 	for (float *v : { &p.W, &p.D, &p.front_depth, &p.back_depth, &p.x0, &p.y0, &p.x1, &p.y1 }) *v = r.get<float>();
@@ -65,6 +66,7 @@ LotPlan get_plan(ByteReader &r) {
 	p.right = get_side(r);
 	p.back = BackUse(r.get<uint8_t>());
 	p.rows = r.get<int32_t>();
+	if (version >= SITE_VERSION) p.site = r.get<uint8_t>();
 	return p;
 }
 
@@ -244,7 +246,7 @@ void write_body(ByteWriter &w, const Body &b) {
 bool read_body(ByteReader &r, Body &b) {
 	const uint32_t version = body_version(r);
 	if (version > BODY_VERSION) return false;
-	b.plan = get_plan(r);
+	b.plan = get_plan(r, version);
 	b.kind = Kind(r.get<uint8_t>());
 	b.use = Use(r.get<uint8_t>());
 	b.ground = Ground(r.get<uint8_t>());

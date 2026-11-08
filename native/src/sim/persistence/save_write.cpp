@@ -130,6 +130,7 @@ void put_building(ByteWriter &w, const Building &b) {
 	w.put<uint16_t>(b.profile);
 	w.put<int16_t>(b.landmark);
 	w.put<double>(b.built);
+	w.put<uint8_t>(b.site);
 }
 
 std::vector<uint8_t> encode_city(const CityState &s, std::vector<SavePart> *parts, size_t expect) {

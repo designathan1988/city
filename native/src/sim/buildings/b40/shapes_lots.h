@@ -70,7 +70,7 @@ struct LotGroundShape {
 	X(plaza_lo) X(plaza_hi) X(office_court) X(office_park_w) X(workplace_min) X(office_service) \
 	X(office_service_d) X(narrow_lot) X(house_paths_w) X(house_path) X(service_max) X(apron_d) X(apron_deep) \
 	X(apron) X(works_w) X(works_d) X(works_path_w) X(loading_full) X(loading_extra) X(loading_max) X(loading_min) \
-	X(loading_share)
+	X(loading_share) X(corner_side)
 struct LotPlanShape {
 	SHAPE_DECLARE(B40_PLAN)
 };

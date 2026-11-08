@@ -14,7 +14,7 @@ struct BlocksShape {
 
 #define GEN_SHAPE_STRIPS(X, XI, XD, XV, XVI) \
 	XD(res) XD(road_pad) XD(dry_min) XD(wet_clear) XD(max_relief) XD(wet_step) XD(facing_probe) XD(facing_pad) \
-	XI(arc_steps) XI(facing_samples) X(straight_on)
+	XI(arc_steps) XI(facing_samples) X(straight_on) XD(corner_probe) XD(uphill_rise)
 struct StripsShape {
 	SHAPE_DECLARE(GEN_SHAPE_STRIPS)
 };

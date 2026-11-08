@@ -1,5 +1,6 @@
 // Placing lots (Roadcraft world/lots.ts): closed blocks first, then the open land along each zoned street side (streetPlan): a run of street with free
-// land behind its footway is one strip, of a lot's depth, cut in equal lots.
+// land behind its footway is one strip, of a lot's depth, cut in equal lots. Where two streets meet, the end lot of the side
+// cut first takes the corner; each lot is told its site (a corner's second street, ground rising to its back).
 #include "sim/citygen/lot_strips.h"
 #include "sim/catalog/catalog.h"
 
@@ -32,6 +33,7 @@ void LotStrips::keep(const Frame &f, int zone, int profile) {
 	l.zone = zone;
 	l.profile = profile;
 	l.seed = hash2(js_round(f.cx * SEED_SCALE), js_round(f.cz * SEED_SCALE), uint32_t(zone));
+	l.site = site_of(f);
 	out_.push_back(l);
 }
 
@@ -48,8 +50,7 @@ void LotStrips::place_blocks() {
 void LotStrips::place_strips() {
 	struct Side {
 		int s, side, zone;
-		uint32_t key;
-	};
+		uint32_t key;	};
 	std::vector<Side> sides;
 	for (int s = 0; s < g_.segs(); s++) {
 		double mx, mz;

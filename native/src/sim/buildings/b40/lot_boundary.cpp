@@ -1,6 +1,7 @@
 // The lot's boundary, made whole by construction: along each edge the run is the whole edge less its gates and less the
 // stretches where the building itself stands on the edge (its wall closes them). The front takes one of its kind's
-// styles (buildings.json lots.boundary); the sides and back are party walls (a works' fence), low beside a front garden.
+// styles (buildings.json lots.boundary); the sides and back are party walls (a works' fence), low beside a front garden. A corner
+// lot's side on its second street takes the front's style. The dug garage of an uphill lot closes its stretch of the side with its own wall.
 // Gates: the people's at the door, a car's on every drive, the car pad's and the works visitors'; with no front zone the
 // side strips open on the street through their own gates.
 #include "sim/buildings/b40/lot_layout.h"
@@ -99,6 +100,13 @@ void lay_boundary(LotSpace &s) {
 		std::vector<Span> held;
 		for (const Rect &f : s.built)
 			if (std::abs((side == 0 ? f.x0 : f.x1) - edge_x) < K.attach) held.push_back({ f.y0, f.y1 });
+		if (!s.dug.empty() && std::abs((side == 0 ? s.dug.x0 : s.dug.x1) - edge_x) < K.attach) held.push_back({ s.dug.y0, s.dug.y1 });
+		if (!works && (s.plan.site & (side == 0 ? SITE_CORNER_LEFT : SITE_CORNER_RIGHT))) {
+			// A corner lot's side on its second street is a front: the front's boundary all along it.
+			const float x0 = side == 0 ? s.L : s.R - ft, x1 = side == 0 ? s.L + ft : s.R;
+			for (const Span &run : runs(K, ft, s.D, held)) s.edge(style.kind, { x0, run.first, x1, run.second }, style.h, front_paint, style.base);
+			continue;
+		}
 		const float x0 = side == 0 ? s.L : s.R - st, x1 = side == 0 ? s.L + st : s.R;
 		for (const Span &run : runs(K, 0, s.D, held)) {
 			if (run.first < s.F) s.edge(side_kind, { x0, run.first, x1, std::min(run.second, s.F) }, low, side_paint);

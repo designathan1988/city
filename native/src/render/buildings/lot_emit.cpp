@@ -1,7 +1,8 @@
 // The lot elements of a placed body: surfaces laid
 // on a 3 m grid following the ground (lawns drawn as grass by the shader), boundary walls with plinth and coping, fences
 // and railings on their base walls, hedges, gates with posts and bars, planters, benches, bollards, lamps (lit heads),
-// bins, stall lines, wall ACs, and the building-hung canopies, awnings, veranda floors, slabs and posts.
+// bins, stall lines, wall ACs, an uphill house's garage dug into the slope, and the building-hung canopies, awnings, veranda floors,
+// slabs and posts.
 #include "render/buildings/facade.h"
 
 #include <cmath>
@@ -29,6 +30,7 @@ struct LotEmit {
 	void gate(const LotElement &e);
 	void prop(const LotElement &e);
 	void hung(const LotElement &e);
+	void dug(const LotElement &e);
 	void element(const LotElement &e);
 	const LotEmitLook &K = pl.look->shapes.lot_emit; // last: it reads pl
 };
@@ -168,12 +170,21 @@ void LotEmit::hung(const LotElement &e) {
 	}
 }
 
+// An uphill house's garage dug into the slope: a box from the ground at its door (the street's level) up to the lot's floor, or to
+// a door's height and its roof when the floor stands lower; the slope buries its back. Its door stands on the front face.
+void LotEmit::dug(const LotElement &e) {
+	const float x0 = e.x - e.w / 2, x1 = e.x + e.w / 2, y0 = e.y - e.d / 2, y1 = e.y + e.d / 2;
+	const float door = ground(e.x, y0), top = std::max(0.f, door + e.h + K.dug_roof);
+	shell.box(pl.lot, x0, x1, y0, y1, door - K.foot, top, paint(e, "concrete"), fin(e), SKIP_E2_NEG);
+	shell.box(pl.lot, x0 + K.dug_jamb, x1 - K.dug_jamb, y0 - K.dug_door_out, y0, door, door + e.h, paint_lin(pl.data->color("gate")), FIN_METAL, SKIP_E2_NEG);
+}
+
 void LotEmit::element(const LotElement &e) {
 	float x0 = e.x - e.w / 2, x1 = e.x + e.w / 2, y0 = e.y - e.d / 2, y1 = e.y + e.d / 2;
 	bool along_x = e.w >= e.d;
 	float len = along_x ? e.w : e.d;
 	int pieces = std::max(1, int(std::ceil(len / K.piece)));
-	if (pl.coarse && e.kind != EL_SURFACE && e.kind != EL_WALL && e.kind != EL_HEDGE && e.kind != EL_FENCE && e.kind != EL_RAILING && e.kind != EL_POOL) return;
+	if (pl.coarse && e.kind != EL_SURFACE && e.kind != EL_WALL && e.kind != EL_HEDGE && e.kind != EL_FENCE && e.kind != EL_RAILING && e.kind != EL_POOL && e.kind != EL_DUG_GARAGE) return;
 	if (!pl.coarse && e.kind == EL_HEDGE) return; // near, a hedge is the gardens' plants (render/trees/garden_place.h)
 	switch (e.kind) {
 		case EL_SURFACE: surface(e); break;
@@ -188,6 +199,7 @@ void LotEmit::element(const LotElement &e) {
 			break;
 		case EL_GATE: case EL_CAR_GATE: gate(e); break;
 		case EL_CANOPY: case EL_AWNING: case EL_SLAB: case EL_PILLAR: case EL_PAVEMENT: hung(e); break;
+		case EL_DUG_GARAGE: dug(e); break;
 		default: prop(e); break;
 	}
 }

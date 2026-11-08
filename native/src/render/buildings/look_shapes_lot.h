@@ -10,7 +10,7 @@ namespace city::b40 {
 	X(splash_shade) X(rail_t) X(rail_low) X(low_rail_h) X(post) X(post_every) X(post_over) X(light_post) \
 	X(light_every) X(bar_every) X(gate_post) X(gate_rail) X(lamp_head) X(lamp_head_h) X(lamp_post) \
 	X(bollard_band) X(bollard_band_h) X(bollard_band_out) X(soil_in) X(bench_seat) X(bench_seat_t) X(bench_back) \
-	X(bench_back_t) X(fascia_shade) X(fascia_h) X(awn_shade) X(grille_t)
+	X(bench_back_t) X(fascia_shade) X(fascia_h) X(awn_shade) X(grille_t) X(dug_roof) X(dug_jamb) X(dug_door_out)
 struct LotEmitLook {
 	SHAPE_DECLARE(LOOK_SHAPE_LOT_EMIT)
 };

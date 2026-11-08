@@ -2,6 +2,7 @@
 // and the tests every lot must pass. Placement is in lot_place.cpp.
 #include "sim/citygen/lot_gen.h"
 #include "sim/catalog/catalog.h"
+#include "sim/buildings/b40/types.h"
 
 #include "sim/citygen/lot_strips.h"
 #include "sim/terrain/terrain_gen.h"
@@ -148,6 +149,30 @@ void LotStrips::mark_lot(const Frame &f) {
 			if (i >= 0 && j >= 0 && i < W_ && j < W_) grid_[size_t(j) * W_ + i] = TAKEN;
 		}
 	}
+}
+
+// A side of the lot is a corner's when a street's paving lies within corner_probe of it, at mid-depth (the grid's roadway marks:
+// the run along the street the lot faces stops short of the other street's paving, so its end lot's side is right there); the
+// lot rises when its back stands uphill_rise over its front.
+uint8_t LotStrips::site_of(const Frame &f) const {
+	const double ex = -f.lz, ez = f.lx; // the lot's +x in the b40 lot frame (Lot::rot from the frame, lot_place.cpp keep)
+	uint8_t site = 0;
+	for (int side = 0; side < 2; side++) {
+		const double sign = side == 0 ? -1 : 1;
+		for (double out = 0; out <= K.corner_probe; out += K.res / 2) {
+			const double reach = f.w / 2 + out;
+			const int i = ifloor((f.cx + ex * sign * reach - ax_) / K.res), j = ifloor((f.cz + ez * sign * reach - az_) / K.res);
+			if (i < 0 || j < 0 || i >= W_ || j >= W_) break;
+			if (grid_[size_t(j) * W_ + i] == ROADWAY) {
+				site |= side == 0 ? b40::SITE_CORNER_LEFT : b40::SITE_CORNER_RIGHT;
+				break;
+			}
+		}
+	}
+	const double front = ground_.height(f.cx - f.lx * f.d / 2, f.cz - f.lz * f.d / 2);
+	const double back = ground_.height(f.cx + f.lx * f.d / 2, f.cz + f.lz * f.d / 2);
+	if (back - front >= K.uphill_rise) site |= b40::SITE_UPHILL;
+	return site;
 }
 
 bool LotStrips::lot_free(double x, double z) const {

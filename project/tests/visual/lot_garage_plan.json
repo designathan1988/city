@@ -1,0 +1,19 @@
+{
+ "_doc": "Uphill houses with their garage dug into the slope (the scenic Sao Paulo's hills, map sao_paulo, seed 1; the lots tests/core/lot_site_test.gd lists): a row of three lots rising from the street to the west, each garage door at the street's level and the house above. setView: [x, y, zoom, azimuth, elevation], y the map's north (our -z); the azimuth puts the camera at +x at 0 and +z at 90.",
+ "city": {
+  "map": 6,
+  "seed": 1,
+  "generate": true
+ },
+ "steps": [
+  {"hour": 16},
+  {"setView": [-2318, 1421, 60, 350, 16]},
+  {"shot": "dug_garage_street"},
+  {"setView": [-2318, 1421, 50, 325, 22]},
+  {"shot": "dug_garage_left"},
+  {"setView": [-2318, 1421, 50, 15, 22]},
+  {"shot": "dug_garage_right"},
+  {"setView": [-2322, 1421, 26, 350, 50]},
+  {"shot": "dug_garage_above"}
+ ]
+}
