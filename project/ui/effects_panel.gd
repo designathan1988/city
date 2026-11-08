@@ -4,6 +4,8 @@
 class_name EffectsPanel
 extends PanelContainer
 
+## The tabs in their order, each named by fx.tab.<tab>.
+const TABS := ["switches", "optimizations", "doctor", "consumers", "cpu", "inspector", "gpu", "checks", "recorder", "tests"]
 const LIVE_TABS := ["consumers", "cpu", "inspector", "gpu", "checks"]
 
 var _body: VBoxContainer
@@ -86,12 +88,11 @@ func _render() -> void:
 	_stats.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_body.add_child(_stats)
 	_read_stats()
-	HudWidgets.choices(_body, [["switches", tr("fx.tab.switches")], ["optimizations", tr("fx.tab.optimizations")], ["doctor", tr("fx.tab.doctor")],
-		["consumers", tr("fx.tab.consumers")], ["cpu", tr("fx.tab.cpu")], ["inspector", tr("fx.tab.inspector")], ["gpu", tr("fx.tab.gpu")], ["checks", tr("fx.tab.checks")],
-		["recorder", tr("fx.tab.recorder")], ["tests", tr("fx.tab.tests")]], _tab,
-		func(t: String) -> void:
-			_tab = t
-			_render.call_deferred())
+	var tabs := HudWidgets.choices(_body, _tab, func(t: String) -> void:
+		_tab = t
+		_render.call_deferred())
+	for t: String in TABS:
+		HudWidgets.choice(tabs, t, tr("fx.tab." + t))
 	if _tab == "switches":
 		_switches()
 	elif _tab == "doctor":
@@ -142,13 +143,12 @@ func _reset() -> void:
 
 func _switches() -> void:
 	var t: Dictionary = DataTables.game("render_switches")
-	var res := []
-	for r: float in t.resolutions:
-		res.append([r, "%d%%" % int(r * Units.PERCENT)])
 	HudWidgets.label(_body, &"MutedLabel", tr("fx.resolution"))
-	HudWidgets.choices(_body, res, Settings.switches.resolution, func(r: float) -> void:
+	var res := HudWidgets.choices(_body, Settings.switches.resolution, func(r: float) -> void:
 		Settings.switches.resolution = r
 		Settings.switches_changed())
+	for r: float in t.resolutions:
+		HudWidgets.choice(res, r, "%d%%" % int(r * Units.PERCENT))
 	for g: Dictionary in t.groups:
 		var head := HudWidgets.hbox(_body, &"Pad")
 		var name := HudWidgets.label(head, &"TitleLabel", tr("fx.group." + g.id).to_upper())
@@ -174,15 +174,14 @@ func _group(id: String, on: bool) -> void:
 func _optimizations() -> void:
 	for o: Dictionary in DataTables.game("optimizations").options:
 		HudWidgets.label(_body, &"MutedLabel", tr("opt." + o.id))
-		var items := []
-		for c: Variant in o.offered:
-			items.append([c, tr("opt.tier") if c is String else (tr("gfx.on") if c is bool and c else tr("gfx.off") if c is bool else str(c))])
-		HudWidgets.choices(_body, items, Settings.optimizations.get(o.id, "tier"), func(v: Variant) -> void:
+		var row := HudWidgets.choices(_body, Settings.optimizations.get(o.id, "tier"), func(v: Variant) -> void:
 			if v is String:
 				Settings.optimizations.erase(o.id)
 			else:
 				Settings.optimizations[o.id] = v
 			Settings.switches_changed())
+		for c: Variant in o.offered:
+			HudWidgets.choice(row, c, tr("opt.tier") if c is String else (tr("gfx.on") if c is bool and c else tr("gfx.off") if c is bool else Formatters.format_number(c)))
 
 
 ## The language changed.
@@ -195,19 +194,22 @@ func _read_stats() -> void:
 	HudWidgets.clear(_stats)
 	var rid := get_viewport().get_viewport_rid()
 	var size := get_viewport().get_visible_rect().size * get_viewport().scaling_3d_scale
-	var rows := [["fx.stat.gpu", "%.2f ms" % RenderingServer.viewport_get_measured_render_time_gpu(rid)],
-		["fx.stat.cpu", "%.2f ms" % FrameMeter.render_cpu_ms(rid)],
-		["fx.stat.fps", "%d" % Performance.get_monitor(Performance.TIME_FPS)],
-		["fx.stat.calls", Formatters.format_int(int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)))],
-		["fx.stat.triangles", Formatters.format_int(int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)))],
-		["fx.stat.textures", "%d MiB" % (Performance.get_monitor(Performance.RENDER_TEXTURE_MEM_USED) / Units.BYTES_PER_MIB)],
-		["fx.stat.geometries", "%d MiB" % (Performance.get_monitor(Performance.RENDER_BUFFER_MEM_USED) / Units.BYTES_PER_MIB)],
-		["fx.stat.static", "%d MiB" % (Performance.get_monitor(Performance.MEMORY_STATIC) / Units.BYTES_PER_MIB)],
-		["fx.stat.pixels", "%d × %d" % [size.x, size.y]]]
-	for r: Array in rows:
-		var name := HudWidgets.label(_stats, &"MutedLabel", tr(r[0]))
-		name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		HudWidgets.label(_stats, &"BodyLabel", r[1]).horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_stat("fx.stat.gpu", tr("unit.ms").format({"n": "%.2f" % RenderingServer.viewport_get_measured_render_time_gpu(rid)}))
+	_stat("fx.stat.cpu", tr("unit.ms").format({"n": "%.2f" % FrameMeter.render_cpu_ms(rid)}))
+	_stat("fx.stat.fps", "%d" % Performance.get_monitor(Performance.TIME_FPS))
+	_stat("fx.stat.calls", Formatters.format_int(int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))))
+	_stat("fx.stat.triangles", Formatters.format_int(int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME))))
+	_stat("fx.stat.textures", tr("unit.mib").format({"n": "%d" % (Performance.get_monitor(Performance.RENDER_TEXTURE_MEM_USED) / Units.BYTES_PER_MIB)}))
+	_stat("fx.stat.geometries", tr("unit.mib").format({"n": "%d" % (Performance.get_monitor(Performance.RENDER_BUFFER_MEM_USED) / Units.BYTES_PER_MIB)}))
+	_stat("fx.stat.static", tr("unit.mib").format({"n": "%d" % (Performance.get_monitor(Performance.MEMORY_STATIC) / Units.BYTES_PER_MIB)}))
+	_stat("fx.stat.pixels", "%d × %d" % [size.x, size.y])
+
+
+## A reading of the stats grid: its name, and its value at the right.
+func _stat(name_key: String, value: String) -> void:
+	var name := HudWidgets.label(_stats, &"MutedLabel", tr(name_key))
+	name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	HudWidgets.label(_stats, &"BodyLabel", value).horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 
 
 func _process(delta: float) -> void:

@@ -50,20 +50,21 @@ func _building(col: Control, info: Dictionary) -> void:
 	var name := tr(fn_keys[fn]) if fn > 0 and fn < fn_keys.size() else tr(ZoneTable.name_key(info.zone))
 	_head(col, name)
 	HudWidgets.label(col, &"BodyLabel", tr("ui.floors.other").format({"count": info.floors}))
-	_live.rows(col, [["ui.metric.residents", Formatters.format_int(info.residents)], ["ui.metric.jobs", Formatters.format_int(info.jobs)]])
+	_live.cards(col)
+	_live.row("ui.metric.residents", Formatters.format_int(info.residents))
+	_live.row("ui.metric.jobs", Formatters.format_int(info.jobs))
 	_demolish_button(_actions(col))
 
 
 func _road(col: Control, info: Dictionary) -> void:
 	_head(col, "%s · %s" % [tr("inspector.road"), tr(info.profile)])
 	_stats = HudWidgets.vbox(col)
-	_live.fill_road(_stats, InspectorRows.segment_rows(info))
+	_live.fill_road(_stats, info)
 	for e in info.get("ends", []):
 		RoadPanel.end_row(col, e, _redraw)
-	var picks := []
+	var picks := HudWidgets.dropdown(col, tr("inspector.roadClass"), info.profile_id, _set_class)
 	for p: Dictionary in CityStore.cached(&"road_profiles"):
-		picks.append([p.index, tr(p.name_key)])
-	HudWidgets.dropdown(col, tr("inspector.roadClass"), picks, info.profile_id, _set_class)
+		HudWidgets.dropdown_item(picks, p.index, tr(p.name_key))
 	RoadPanel.road(col, info, _at, _redraw, _bent)
 	var row := _actions(col)
 	if info.one_way:
@@ -184,14 +185,12 @@ func refresh() -> void:
 	elif _stats != null:
 		if _info.kind == "node":
 			var traffic := InspectorRows.node_traffic(_info.id)
-			if not _live.write(InspectorRows.node_rows(traffic), InspectorRows.lamps(traffic)):
+			if not _live.write_node(traffic):
 				HudWidgets.clear(_stats)
 				_live.fill_node(_stats, traffic)
-		else:
-			var rows := InspectorRows.segment_rows(_info)
-			if not _live.write(rows, []):
-				HudWidgets.clear(_stats)
-				_live.fill_road(_stats, rows)
+		elif not _live.write_road(_info):
+			HudWidgets.clear(_stats)
+			_live.fill_road(_stats, _info)
 
 
 func close() -> void:

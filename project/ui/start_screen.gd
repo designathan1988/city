@@ -35,7 +35,7 @@ func _ready() -> void:
 
 func _fill() -> void:
 	HudWidgets.clear(_card_box)
-	var title := HudWidgets.label(_card_box, &"TitleBig", "Roadcraft")
+	var title := HudWidgets.label(_card_box, &"TitleBig", tr("ui.title"))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var tag := HudWidgets.label(_card_box, &"TagLabel", tr("start.tagline"))
 	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -46,17 +46,15 @@ func _fill() -> void:
 	_action(&"StartBtn", "menu.graphicsOptions", "graphics", "start_btn2_h")
 	var t: Dictionary = DataTables.game("start")
 	_city_form(t)
-	var styles := []
-	for id: String in t.styles:
-		styles.append([id, tr(t.styles[id].name_key)])
 	var now: String = CityStore.snapshot.get("style", "")
-	HudWidgets.dropdown(_card_box, tr("style.label"), styles, now if t.styles.has(now) else t.default_style,
+	var styles := HudWidgets.dropdown(_card_box, tr("style.label"), now if t.styles.has(now) else t.default_style,
 		func(id: String) -> void: CityStore.dispatch(&"set_style", [id]))
+	for id: String in t.styles:
+		HudWidgets.dropdown_item(styles, id, tr(t.styles[id].name_key))
 	var langs := HudWidgets.hbox(_card_box, &"Pad")
 	langs.alignment = BoxContainer.ALIGNMENT_CENTER
-	for l: Array in languages():
-		var locale: String = l[0]
-		var b := HudWidgets.button(&"Chip", "", l[1], "", "", "opt_row_h")
+	for locale: String in locales():
+		var b := HudWidgets.button(&"Chip", "", language_name(locale), "", "", "opt_row_h")
 		b.toggle_mode = true
 		b.set_pressed_no_signal(TranslationServer.get_locale() == locale)
 		b.pressed.connect(func() -> void:
@@ -76,13 +74,12 @@ func _fill() -> void:
 
 ## Size and seed of a new city. The map and seed on screen are the form's start: left alone, it opens nothing new.
 func _city_form(t: Dictionary) -> void:
-	var sizes := []
 	var maps: Array = DataTables.maps()
+	var sizes := HudWidgets.dropdown(_card_box, tr("start.size"), _map, func(at: int) -> void: _map = at)
 	for id: String in t.sizes:
 		var at := HudActions.map_index(id)
 		if at >= 0:
-			sizes.append([at, tr(maps[at].name_key)])
-	HudWidgets.dropdown(_card_box, tr("start.size"), sizes, _map, func(at: int) -> void: _map = at)
+			HudWidgets.dropdown_item(sizes, at, tr(maps[at].name_key))
 	if _seed == 0:
 		_seed = _standing_seed()
 	var row := HudWidgets.option_row(_card_box, tr("start.seed"))
@@ -133,8 +130,11 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 ## The languages offered, in their order (data/game/start.json): [locale, its name in itself (strings.csv language.self, its own
 ## column)].
-static func languages() -> Array:
-	var out := []
-	for locale: String in DataTables.game("start").languages:
-		out.append([locale, TranslationServer.get_translation_object(locale).get_message(&"language.self")])
-	return out
+## The languages offered (data/game/start.json), by locale.
+static func locales() -> Array:
+	return DataTables.game("start").languages
+
+
+## A language's name in itself: its own translation's `language.self`.
+static func language_name(locale: String) -> String:
+	return TranslationServer.get_translation_object(locale).get_message(&"language.self")

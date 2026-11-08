@@ -216,9 +216,9 @@ func _preview(pieces: PackedVector3Array, from_lift: float) -> void:
 	ctl.preview.show_road(_last_plan, RoadDraft.paint(drawn), ok, ctl.px_at(pieces[0]), ctl.px_at(pieces[-1]))
 	var text := RoadDraft.measure(_last_plan)
 	if not _last_plan.ok:
-		text += " · " + reason(_last_plan)
+		text = "%s · %s" % [text, reason(_last_plan)]
 	elif not _last_plan.affordable:
-		text += " · " + tr("rule.short.funds")
+		text = "%s · %s" % [text, tr("rule.short.funds")]
 	ctl.tagged.emit(text, pieces[-1], ok)
 
 

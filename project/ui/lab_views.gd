@@ -32,14 +32,15 @@ static func consumers(body: Control) -> void:
 			most = maxf(most, float(cost[key].bytes))
 	rows.sort_custom(func(a: Array, b: Array) -> bool: return a[1] > b[1])
 	for r: Array in rows:
-		_row(body, body.tr("lab.surface." + String(r[0])), "%.1f MiB · %s" % [r[1] / Units.BYTES_PER_MIB, Formatters.format_int(r[2])], r[1] / most)
+		var bytes := body.tr("unit.mib").format({"n": "%.1f" % (r[1] / Units.BYTES_PER_MIB)})
+		_row(body, body.tr("lab.surface." + String(r[0])), "%s · %s" % [bytes, Formatters.format_int(r[2])], r[1] / most)
 	HudWidgets.label(body, &"TitleLabel", body.tr("lab.consumers.frame"))
 	var frame: Dictionary = CityStore.query(&"render_cost")
 	var longest := BAR_FULL_MS
 	for key: String in CityStore.constants.frame_sections:
 		longest = maxf(longest, float(frame.get(key, 0.0)))
 	for key: String in CityStore.constants.frame_sections:
-		_row(body, body.tr("lab.core." + key), "%.2f ms" % float(frame.get(key, 0.0)), float(frame.get(key, 0.0)) / longest)
+		_row(body, body.tr("lab.core." + key), body.tr("unit.ms").format({"n": "%.2f" % float(frame.get(key, 0.0))}), float(frame.get(key, 0.0)) / longest)
 
 
 static func core_zones() -> Array[String]:
@@ -59,12 +60,14 @@ static func inspector(body: Control) -> void:
 		return
 	var p: Vector3 = at
 	_row(body, body.tr("lab.inspector.point"), "%.1f, %.1f" % [p.x, p.z], -1.0)
-	_row(body, body.tr("lab.inspector.ground"), "%.2f m" % float(CityStore.query(&"height_at", [p.x, p.z])), -1.0)
-	_row(body, body.tr("lab.inspector.pointer"), "%.2f m" % p.y, -1.0)
+	_row(body, body.tr("lab.inspector.ground"), body.tr("unit.metre").format({"n": "%.2f" % float(CityStore.query(&"height_at", [p.x, p.z]))}), -1.0)
+	_row(body, body.tr("lab.inspector.pointer"), body.tr("unit.metre").format({"n": "%.2f" % p.y}), -1.0)
 	var info: Dictionary = CityStore.query(&"inspect", [p])
 	if info.is_empty():
 		return
 	for key: String in info:
 		var value: Variant = info[key]
 		if value is String or value is int or value is float or value is bool:
-			_row(body, key, str(value), -1.0)
+			var row := HudWidgets.hbox(body) # the core's own field names and values, as it reports them
+			HudWidgets.verbatim(HudWidgets.label(row, &"MutedLabel"), key).size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			HudWidgets.verbatim(HudWidgets.label(row, &"BodyLabel"), str(value))

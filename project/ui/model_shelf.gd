@@ -132,7 +132,7 @@ func _show_cards() -> void:
 
 
 func _card(entry: Dictionary) -> Control:
-	var b := HudWidgets.button(&"Card", "models", entry.label, "", "card_w", "card_h")
+	var b := HudWidgets.verbatim(HudWidgets.button(&"Card", "models", "", "", "card_w", "card_h"), entry.label) as Button
 	b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
 	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	b.expand_icon = true

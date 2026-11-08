@@ -70,5 +70,5 @@ static func _test(row: Control, run: DoctorRun, key: String) -> void:
 static func _result(body: Control, c: Dictionary) -> void:
 	var line := body.tr("lab.ab") % [_ms(c.gpu_before), _ms(c.gpu_after), _ms(c.noise_gpu), _ms(c.cpu_before), _ms(c.cpu_after), _ms(c.noise_cpu)]
 	if not c.real:
-		line += " · " + body.tr("lab.ab.noise")
+		line = "%s · %s" % [line, body.tr("lab.ab.noise")]
 	HudWidgets.label(body, &"MetaLabel", line).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

@@ -96,13 +96,14 @@ func _set_width(index: int, metres: float) -> void:
 func _refresh() -> void:
 	var issues: Array = CityStore.query(&"road_spec_issues", [edit.base, edit.spec])
 	var flagged := []
-	var texts := PackedStringArray()
+	var problems := ""
 	for i: Dictionary in issues:
 		flagged.append_array(i.elements)
-		texts.push_back(tr("profile.problem." + String(i.problem)))
+		var problem := tr("profile.problem." + String(i.problem))
+		problems = problem if problems.is_empty() else "%s · %s" % [problems, problem]
 	_view.show_spec(edit.spec, edit.selected, flagged)
 	_total.text = tr("profileEditor.totalWidth").format({"width": Formatters.format_measure(RoadSpecOps.total(edit.spec))})
-	_problem.text = " · ".join(texts) if not issues.is_empty() else tr("profileEditor.ok")
+	_problem.text = problems if not issues.is_empty() else tr("profileEditor.ok")
 	_use.disabled = not issues.is_empty()
 	_fill_props()
 

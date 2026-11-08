@@ -1,0 +1,9 @@
+{
+ "rule": "TEXTO_VIA_TR",
+ "expect": [
+  "TEXTO_VIA_TR project/ui/panel.gd:7",
+  "TEXTO_VIA_TR project/ui/panel.gd:8",
+  "TEXTO_VIA_TR project/ui/panel.gd:9",
+  "TEXTO_VIA_TR project/ui/panel.gd:10"
+ ]
+}

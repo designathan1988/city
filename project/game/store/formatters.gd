@@ -28,6 +28,12 @@ static func format_tenths(v: float) -> String:
 	return ("%.1f" % v).replace(".", TranslationServer.translate(&"economy.decimal"))
 
 
+## As short as the number can be written and still read back the same, with the language's decimal mark: a tuning value
+## as it stands (4096, 0.25, 1.5).
+static func format_number(v: float) -> String:
+	return String.num(v).replace(".", TranslationServer.translate(&"economy.decimal"))
+
+
 ## Two decimals, with the language's decimal mark (a norm's measure as it is written: "1,20 m").
 static func format_hundredths(v: float) -> String:
 	return ("%.2f" % v).replace(".", TranslationServer.translate(&"economy.decimal"))

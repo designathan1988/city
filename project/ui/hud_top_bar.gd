@@ -116,7 +116,7 @@ func set_sky(mode: String) -> void:
 func _sync_impossible() -> void:
 	var n: int = CityStore.query(&"impossible_nodes").size()
 	_warn.visible = n > 0
-	_warn.text = str(n)
+	_warn.text = Formatters.format_int(n)
 	_warn.tooltip_text = Formatters.count_label("status.impossible", n)
 
 
@@ -137,4 +137,5 @@ func _on_changed(s: Dictionary) -> void:
 		var b: Button = _history_buttons[action]
 		b.disabled = not s.get("can_" + action, false)
 		var label: String = s.get(action + "_label", "")
-		b.tooltip_text = tr("action." + action) + ("" if label.is_empty() else " · " + tr(label))
+		var named := tr("action." + action)
+		b.tooltip_text = named if label.is_empty() else "%s · %s" % [named, tr(label)]

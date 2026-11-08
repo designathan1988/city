@@ -3,21 +3,24 @@ class_name GraphicsPanel
 extends HudDialog
 
 
-func _row(name_key: String, items: Array, value: Variant, pick: Callable, note_key := "") -> void:
+## A row of choices, each added to the row it returns (HudWidgets.choice).
+func _row(name_key: String, value: Variant, pick: Callable, note_key := "") -> HBoxContainer:
 	column.add_child(HSeparator.new())
 	var box := HudWidgets.vbox(column)
 	HudWidgets.label(box, &"MutedLabel", tr(name_key))
-	HudWidgets.choices(box, items, value, func(v: Variant) -> void:
+	var row := HudWidgets.choices(box, value, func(v: Variant) -> void:
 		if v != value:
 			pick.call(v)
 			refill.call_deferred())
 	if note_key != "":
 		var note := HudWidgets.label(box, &"MetaLabel", tr(note_key))
 		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	return row
 
 
-func _on_off() -> Array:
-	return [[false, tr("gfx.off")], [true, tr("gfx.on")]]
+func _on_off(row: HBoxContainer) -> void:
+	HudWidgets.choice(row, false, tr("gfx.off"))
+	HudWidgets.choice(row, true, tr("gfx.on"))
 
 
 func fill() -> void:
@@ -25,25 +28,22 @@ func fill() -> void:
 	var now := Settings.current()
 	column.theme_type_variation = &"VDialog"
 	HudWidgets.label(column, &"HeadLabel", tr("gfx.title"))
-	var presets := []
+	var presets := _row("gfx.preset", Settings.preset, Settings.set_preset)
 	for p: String in t.presets:
-		presets.append([p, tr("quality." + p)])
-	_row("gfx.preset", presets, Settings.preset, Settings.set_preset)
-	var shadows := []
+		HudWidgets.choice(presets, p, tr("quality." + p))
+	var shadows := _row("gfx.shadows", int(now.shadow_px) if now.shadows else 0, _keep.bind("shadows"))
 	for s: float in t.shadow_choices:
-		shadows.append([int(s), tr("gfx.shadows.%d" % int(s))])
-	_row("gfx.shadows", shadows, int(now.shadow_px) if now.shadows else 0, _keep.bind("shadows"))
-	_row("gfx.ao", _on_off(), now.ssao, _keep.bind("ssao"))
+		HudWidgets.choice(shadows, int(s), tr("gfx.shadows.%d" % int(s)))
+	_on_off(_row("gfx.ao", now.ssao, _keep.bind("ssao")))
 	if QualityTier.has_smaa():
-		_row("gfx.aa", _on_off(), now.smaa, _keep.bind("smaa"))
-	_row("gfx.dynamicResolution", _on_off(), Settings.dynamic_resolution, Settings.set_dynamic_resolution, "gfx.dynamicResolution.note")
-	var fps := []
+		_on_off(_row("gfx.aa", now.smaa, _keep.bind("smaa")))
+	_on_off(_row("gfx.dynamicResolution", Settings.dynamic_resolution, Settings.set_dynamic_resolution, "gfx.dynamicResolution.note"))
+	var fps := _row("gfx.fpsLimit", Settings.fps_limit, Settings.set_fps_limit)
 	for f: float in t.fps_choices:
-		fps.append([int(f), tr("gfx.fpsLimit.none") if f == 0 else str(int(f))])
-	_row("gfx.fpsLimit", fps, Settings.fps_limit, Settings.set_fps_limit)
-	_row("gfx.vsync", _on_off(), Settings.vsync, Settings.set_vsync)
-	_row("gfx.fullscreen", _on_off(), Settings.fullscreen, Settings.set_fullscreen)
-	var gpu := HudWidgets.label(column, &"MetaLabel", "%s: %s" % [tr("gfx.gpu"), RenderingServer.get_video_adapter_name()])
+		HudWidgets.choice(fps, int(f), tr("gfx.fpsLimit.none") if f == 0 else Formatters.format_int(f))
+	_on_off(_row("gfx.vsync", Settings.vsync, Settings.set_vsync))
+	_on_off(_row("gfx.fullscreen", Settings.fullscreen, Settings.set_fullscreen))
+	var gpu := HudWidgets.label(column, &"MetaLabel", tr("gfx.gpu.named").format({"name": RenderingServer.get_video_adapter_name()}))
 	gpu.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	close_row()
 

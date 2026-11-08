@@ -1,5 +1,6 @@
 """GDScript structure from tokens: logical lines (brackets, backslashes and `;`), indentation blocks (class, function,
-other), declarations (var/const with annotations, type and initializer, member or local) and function spans."""
+other), declarations (var/const with annotations, type and initializer, member or local), function spans, and inside a
+line: its statements (a multi-line lambda's body too), a value's extent, call arguments and access paths."""
 
 OPEN, CLOSE = frozenset("([{"), frozenset(")]}")
 STANDALONE_ANNOTATIONS = {"tool", "icon", "static_unload", "export_group", "export_subgroup", "export_category",
@@ -169,3 +170,111 @@ def function_spans(lines):
             last = nxt.last
         spans.append((rest[1].text, ln.first, last - ln.first + 1))
     return spans
+
+
+def split_args(toks, open_idx):
+    """Argument token lists of the call whose '(' is toks[open_idx], and the index of its ')'."""
+    args, cur, depth = [], [], 0
+    for k in range(open_idx + 1, len(toks)):
+        x = toks[k].text if toks[k].kind == "punct" else None
+        if x in ("(", "[", "{"):
+            depth += 1
+        elif x in (")", "]", "}"):
+            if depth == 0:
+                if cur:
+                    args.append(cur)
+                return args, k
+            depth -= 1
+        elif x == "," and depth == 0:
+            args.append(cur)
+            cur = []
+            continue
+        cur.append(toks[k])
+    if cur:
+        args.append(cur)
+    return args, len(toks) - 1
+
+
+def access_path(toks):
+    """[(name, called)] of an access path `a.b(...).c`, or None when the tokens are anything else ([...] included)."""
+    out, k = [], 0
+    while k < len(toks):
+        if toks[k].kind != "ident":
+            return None
+        called = k + 1 < len(toks) and toks[k + 1].text == "("
+        out.append((toks[k].text, called))
+        k = (split_args(toks, k + 1)[1] if called else k) + 1
+        if k < len(toks) and toks[k].text != ".":
+            return None
+        k += 1
+    return out or None
+
+
+def unbound(toks):
+    """A Callable's tokens without a trailing `.bind(...)`."""
+    k = next((k for k in range(1, len(toks) - 1) if toks[k].text == "bind" and toks[k - 1].text == "."
+              and toks[k + 1].text == "(" and split_args(toks, k + 1)[1] == len(toks) - 1), None)
+    return toks[:k - 1] if k else toks
+
+
+def receiver(toks, dot):
+    """The access path that ends just before toks[dot] (a `.`); empty when it does not start with a name."""
+    k, start = dot - 1, dot
+    while k >= 0:
+        while k >= 0 and toks[k].text in (")", "]"):
+            depth = 0
+            while k >= 0 and (depth := depth + {")": 1, "]": 1, "(": -1, "[": -1}.get(toks[k].text, 0)):
+                k -= 1
+            k -= 1
+        if k < 0 or toks[k].kind != "ident":
+            break
+        start = k
+        if k == 0 or toks[k - 1].text != ".":
+            break
+        k -= 2
+    return [] if start > 0 and toks[start - 1].text == "." else toks[start:dot]
+
+
+def lambda_at(toks, i):
+    return toks[i].text == "func" and i + 1 < len(toks) and toks[i + 1].text == "("
+
+
+def statements(toks):
+    """The statements of a logical line: its own, then each one of a multi-line lambda's body written inside it."""
+    out, cur, depth, levels = [], [], 0, [0]
+    for k, t in enumerate(toks):
+        if k and t.line > toks[k - 1].last_line:
+            if toks[k - 1].text == ":" and depth > levels[-1] and any(lambda_at(cur, i) for i in range(len(cur))):
+                levels.append(depth)
+            while len(levels) > 1 and depth < levels[-1]:
+                levels.pop()
+            if depth == levels[-1] and len(levels) > 1 and cur:
+                out, cur = out + [cur], []
+        if t.text == ";" and depth == levels[-1]:
+            out, cur = out + [cur], []
+            continue
+        cur.append(t)
+        if t.kind == "punct":
+            depth += (t.text in OPEN) - (t.text in CLOSE)
+    return [c for c in out + [cur] if c]
+
+
+def top_index(toks, texts):
+    depth = 0
+    for k, t in enumerate(toks):
+        if t.kind == "punct" and t.text in texts and depth == 0:
+            return k
+        if t.kind == "punct":
+            depth += (t.text in OPEN) - (t.text in CLOSE)
+    return None
+
+
+def value_of(toks):
+    """A value's tokens up to where it ends: a `,` or `;` of its own depth, or the bracket that closes around it."""
+    depth = 0
+    for k, t in enumerate(toks):
+        if t.kind == "punct" and (t.text in (",", ";") and depth == 0 or t.text in CLOSE and depth == 0):
+            return toks[:k]
+        if t.kind == "punct":
+            depth += (t.text in OPEN) - (t.text in CLOSE)
+    return toks

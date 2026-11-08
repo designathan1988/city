@@ -79,6 +79,7 @@ building.fn.square,Praça,Square
 building.fn.supermarket,Supermercado,Supermarket
 building.fn.university,Faculdade,University
 camera.centre,Centro,Centre
+camera.centre.value,X %d · Y %d,X %d · Y %d
 camera.label,Câmera,Camera
 camera.north,"Norte para cima, vista padrão (Home também enquadra o mapa)","North up, default view (Home frames the map too)"
 camera.perspective,"Câmera em perspectiva: ligar ou desligar (desligada, a vista é isométrica)","Perspective camera on or off (off, the view is isometric)"
@@ -410,6 +411,7 @@ gfx.ao,Oclusão de ambiente,Ambient occlusion
 gfx.close,Fechar,Close
 gfx.fullscreen,Tela cheia,Full screen
 gfx.gpu,Placa de vídeo,Graphics card
+gfx.gpu.named,Placa de vídeo: {name},Graphics card: {name}
 gfx.preset,Predefinição,Preset
 gfx.shadows,Sombras,Shadows
 health.button,Saúde do jogo (F9),Game health (F9)
@@ -596,6 +598,7 @@ menu.graphicsOptions,Opções gráficas…,Graphics options…
 menu.language,Idioma,Language
 menu.paint,Pintura,Paint
 menu.quality,Gráficos,Graphics
+menu.saveRow,{slot}  ·  {when},{slot}  ·  {when}
 paint.biome,Bioma,Biome
 paint.br,Brasil,Brazil
 paint.br_norm,Norma BR,BR standard
@@ -1612,6 +1615,9 @@ menu.size.saoPaulo,São Paulo (cenográfica),São Paulo (scenic)
 menu.size.town,Cidade pequena,Small city
 opt.tier,nível,tier
 profiler.hide,Shift+F9 esconde,Shift+F9 hides
+profiler.frame,PROFILER  %d fps · %.1f ms · %d calls · %s tris,PROFILER  %d fps · %.1f ms · %d calls · %s tris
+profiler.section,"  %-10s %6.2f ms","  %-10s %6.2f ms"
+profiler.memory,video %d MiB · texture %d MiB · static %d MiB,video %d MiB · texture %d MiB · static %d MiB
 signal.amber,amarelo,amber
 signal.green,verde,green
 signal.red,vermelho,red
@@ -1638,6 +1644,7 @@ v2.key.digits,1 – 6,1 – 6
 fx.tab.doctor,Diagnóstico,Diagnosis
 lab.ab,GPU %s → %s ms (ruído %s) · CPU de render %s → %s ms (ruído %s),GPU %s → %s ms (noise %s) · render CPU %s → %s ms (noise %s)
 lab.ab.noise,dentro do ruído,within the noise
+lab.ab.row,%.2f → %.2f ms,%.2f → %.2f ms
 lab.hitches,%d engasgos na medida,%d hitches in the measure
 lab.hitches.many,"%d engasgos na medida: muitos, o jogador vê","%d hitches in the measure: many, the player sees them"
 lab.measure,Medir agora,Measure now
@@ -1777,6 +1784,10 @@ unit.speed,{n} m/s,{n} m/s
 unit.per_hectare,{n}/ha,{n}/ha
 unit.per_minute,{n}/min,{n}/min
 unit.degree,{n}°,{n}°
+unit.metre,{n} m,{n} m
+unit.second,{n} s,{n} s
+unit.ms,{n} ms,{n} ms
+unit.mib,{n} MiB,{n} MiB
 builder.advanced.off,Mostrar modelagem avançada,Show advanced modelling
 builder.advanced.on,Ocultar modelagem avançada,Hide advanced modelling
 builder.blockMode.intersect,Interseção,Intersect

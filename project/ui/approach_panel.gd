@@ -26,12 +26,11 @@ static func fill(col: Control, node: int, redraw: Callable) -> void:
 	HudWidgets.label(col, &"TitleLabel", col.tr("junction.legs"))
 	for leg: Dictionary in legs:
 		var row := HudWidgets.option_row(col, _named(col, leg))
-		var items := []
-		for r: Array in RULES:
-			items.push_back([CityStore.code(&"SegRule", r[1]), col.tr(r[0])])
-		HudWidgets.choices(row, items, leg.rule, func(rule: int) -> void:
+		var rules := HudWidgets.choices(row, leg.rule, func(rule: int) -> void:
 			CityStore.dispatch(&"set_approach_rule", [node, leg.seg, rule])
 			redraw.call())
+		for r: Array in RULES:
+			HudWidgets.choice(rules, CityStore.code(&"SegRule", r[1]), col.tr(r[0]))
 	_movements(col, node, legs, redraw)
 
 

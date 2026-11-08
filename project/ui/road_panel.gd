@@ -61,17 +61,19 @@ static func _direction(col: Control, info: Dictionary, at: Vector3, changed: Cal
 	var now := 0
 	if info.one_way:
 		now = 1 if spec.elements.any(func(e: Dictionary) -> bool: return e.kind == "lane" and e.dir > 0) else -1
-	var items := [[0, tr_key("direction.both")], [1, tr_key("direction.aToB")], [-1, tr_key("direction.bToA")]]
-	HudWidgets.dropdown(col, tr_key("inspector.direction"), items, now, func(dir: int) -> void:
+	var ways := HudWidgets.dropdown(col, tr_key("inspector.direction"), now, func(dir: int) -> void:
 		var index: int = CityStore.query(&"road_spec_make", [info.profile_id, RoadSpecOps.directed(spec, dir)])
 		if index >= 0:
 			CityStore.dispatch(&"upgrade_road", [at, index, false])
 		changed.call())
+	HudWidgets.dropdown_item(ways, 0, tr_key("direction.both"))
+	HudWidgets.dropdown_item(ways, 1, tr_key("direction.aToB"))
+	HudWidgets.dropdown_item(ways, -1, tr_key("direction.bToA"))
 
 
 static func _stepper(col: Control, key: String, node: int, metres: float, changed: Callable) -> void:
 	var row := HudWidgets.option_row(col, tr_key(key))
-	var label := "%.1f m" % metres
+	var label := TranslationServer.translate("unit.metre").format({"n": "%.1f" % metres})
 	for step: float in [-RAISE_BY_M, RAISE_BY_M]:
 		var tip := TranslationServer.translate("junction.lower" if step < 0.0 else "junction.raise").format({"m": Formatters.format_tenths(RAISE_BY_M)})
 		var b := HudWidgets.button(&"Ghost", "", "\u2212" if step < 0.0 else "+", tip, "icon_btn", "icon_btn")
@@ -88,7 +90,7 @@ static func tr_key(key: String) -> String:
 
 
 static func _metres(v: float) -> String:
-	return "%d m" % roundi(v)
+	return TranslationServer.translate("unit.metre").format({"n": roundi(v)})
 
 
 static func _percent(v: float) -> String:

@@ -37,5 +37,5 @@ func click(p: Vector3) -> void:
 		return
 	var text := Formatters.count_label("ui.insp.upgraded", r.segments) # the money joins it with " · ": no full stop
 	if r.money != 0:
-		text += " · " + Formatters.format_cost(r.money)
+		text = "%s · %s" % [text, Formatters.format_cost(r.money)]
 	ctl.hint.emit(text, true)

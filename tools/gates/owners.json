@@ -67,6 +67,13 @@
       "symbol": "snapshot",
       "forbidden_elsewhere": ["\\bvar\\s+(money|population|residents|happiness|demand|game_time|speed)\\b"],
       "scope": ["project/"]
+    },
+    {
+      "id": "verbatim_text",
+      "owner": "project/ui/hud_widgets.gd",
+      "symbol": "verbatim",
+      "forbidden_elsewhere": ["auto_translate_mode", "AUTO_TRANSLATE_MODE_"],
+      "scope": ["project/ui/", "project/game/"]
     }
   ]
 }

@@ -11,12 +11,10 @@ var _toast_left := 0.0
 
 func _init(root: Control) -> void:
 	var bar := _bar(root, HudWidgets.px("toast_top") + HudWidgets.px("hud_h"))
-	_hint = HudWidgets.label(bar, &"BodyLabel")
+	_hint = HudWidgets.translated_label(bar, &"BodyLabel") # the text arrives translated (ToolController.hint)
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_toast = _bar(root, HudWidgets.px("toast_top"))
-	_toast_label = HudWidgets.label(_toast, &"BodyLabel")
-	for l: Label in [_hint, _toast_label]: # the text arrives translated (ToolController.hint): a key that slipped through shows as one
-		l.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	_toast_label = HudWidgets.translated_label(_toast, &"BodyLabel")
 
 
 ## A panel hanging from the top edge, centred, hidden until it has something to say.

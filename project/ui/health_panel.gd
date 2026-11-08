@@ -105,8 +105,8 @@ func _render_health() -> void:
 		dot.custom_minimum_size = Vector2.ONE * HudWidgets.px("dot")
 		dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(dot)
-		HudWidgets.label(row, &"MutedLabel", tr("health.earlier") if e.earlier else e.wall)
-		var what := HudWidgets.button(&"Row", "", e.message, e.message, "", "")
+		HudWidgets.verbatim(HudWidgets.label(row, &"MutedLabel"), tr("health.earlier") if e.earlier else e.wall)
+		var what := HudWidgets.verbatim(HudWidgets.button(&"Row", "", "", "", "", ""), e.message) as Button
 		what.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		what.clip_text = true
 		what.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -114,10 +114,11 @@ func _render_health() -> void:
 			_picked = -1 if _picked == e.serial else int(e.serial)
 			_render())
 		row.add_child(what)
-		var much := ("%d ms " % e.ms if e.ms > 0 else "") + ("×%d" % e.count if e.count > 1 else "")
-		HudWidgets.label(row, &"MutedLabel", much)
+		var took := tr("unit.ms").format({"n": "%d" % e.ms}) if e.ms > 0 else ""
+		var times := "×%d" % e.count if e.count > 1 else ""
+		HudWidgets.label(row, &"MutedLabel", "%s %s" % [took, times] if took != "" else times)
 		if _picked == e.serial and e.detail != "":
-			var detail := HudWidgets.label(_body, &"MetaLabel", e.detail)
+			var detail := HudWidgets.verbatim(HudWidgets.label(_body, &"MetaLabel"), e.detail) as Label
 			detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 
@@ -141,7 +142,7 @@ func _state_lines() -> Array:
 
 func _lines(lines: Array) -> void:
 	for l: String in lines:
-		HudWidgets.label(HudWidgets.panel(_body, &"RowBand"), &"BodyLabel", l)
+		HudWidgets.verbatim(HudWidgets.label(HudWidgets.panel(_body, &"RowBand"), &"BodyLabel"), l)
 
 
 func _copy() -> void:

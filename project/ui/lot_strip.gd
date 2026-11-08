@@ -12,16 +12,14 @@ static func build(drawer: HudDrawer) -> void:
 		return
 	var cut: int = drawer.param("LOTS", "cut", 0)
 	var row := HudWidgets.option_row(drawer.options, TranslationServer.translate("v2.row.cut"))
-	var items := []
-	for k: Dictionary in spec.cuts:
-		items.append([int(k.kind), "", k.icon, TranslationServer.translate(k.label_key)])
-	HudWidgets.choices(row, items, cut, func(v: int) -> void:
+	var cuts := HudWidgets.choices(row, cut, func(v: int) -> void:
 		drawer.retool(v, "LOTS", "cut")
 		drawer.rebuild())
+	for k: Dictionary in spec.cuts:
+		HudWidgets.choice(cuts, int(k.kind), "", k.icon, TranslationServer.translate(k.label_key))
 	if cut == int(spec.line_cut):
 		return
 	row = HudWidgets.option_row(drawer.options, TranslationServer.translate("v2.row.parts"))
-	var parts := []
+	var parts := HudWidgets.choices(row, drawer.param("LOTS", "parts", int(spec.parts_least)), func(v: int) -> void: drawer.retool(v, "LOTS", "parts"))
 	for n: int in range(int(spec.parts_least), int(spec.parts_most) + 1):
-		parts.append([n, str(n), "", TranslationServer.translate("zone.split.into")])
-	HudWidgets.choices(row, parts, drawer.param("LOTS", "parts", int(spec.parts_least)), func(v: int) -> void: drawer.retool(v, "LOTS", "parts"))
+		HudWidgets.choice(parts, n, Formatters.format_int(n), "", TranslationServer.translate("zone.split.into"))

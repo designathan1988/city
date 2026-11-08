@@ -48,6 +48,24 @@ static func label(parent: Control, variation: StringName, text: String = "") -> 
 	return l
 
 
+## Text that is not the game's own, shown exactly as given: engine messages, key names, the player's names, the core's
+## identifiers (a line's code) and developer diagnostics (the health panel, the F7 lab). Godot translates a control's text
+## that equals a key; this control is never translated. The one owner of untranslated text (tools/gates/owners.json
+## verbatim_text): the visible-text gate does not judge what it is given, and nothing else turns translation off.
+static func verbatim(control: Control, text: String) -> Control:
+	control.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	control.set(&"text", text)
+	return control
+
+
+## A label for text that arrives translated (each write to it is judged by the visible-text gate): Godot does not translate
+## it again, so a key that slipped through shows as one.
+static func translated_label(parent: Control, variation: StringName) -> Label:
+	var l := label(parent, variation)
+	l.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	return l
+
+
 ## Rows and columns: separation from the theme (variation "Gap" = the panel gap, "Pad" = pad, default = pad_s).
 static func hbox(parent: Control, variation: StringName = &"") -> HBoxContainer:
 	var h := HBoxContainer.new()
@@ -70,20 +88,26 @@ static func panel(parent: Control, variation: StringName) -> PanelContainer:
 	return p
 
 
-## A choice among a few, in a row: each [value, text]; the one in use lit; pick(value) on a click.
-static func choices(parent: Control, items: Array, value: Variant, pick: Callable) -> HBoxContainer:
+## A choice among a few, in a row, each added by choice(): the one in use (`value`) lit; pick(value) on a click.
+static func choices(parent: Control, value: Variant, pick: Callable) -> HBoxContainer:
 	var row := hbox(parent)
-	for item: Array in items:
-		var drawn: bool = item.size() > 2 # [value, text] or, with an icon for a name, [value, "", icon, tip]
-		var b := button(&"IconChoice" if drawn else &"Choice", item[2] if drawn else "", item[1], item[3] if drawn else "", "icon_btn" if drawn else "", "opt_row_h")
-		b.toggle_mode = true
-		b.set_pressed_no_signal(item[0] == value)
-		b.pressed.connect(func() -> void:
-			for other: Button in row.get_children():
-				other.set_pressed_no_signal(other == b)
-			pick.call(item[0]))
-		row.add_child(b)
+	row.set_meta(&"value", value)
+	row.set_meta(&"pick", pick)
 	return row
+
+
+## One choice of a choices() row, by its text (shown as given, already translated) or drawn, an icon for a name with a tip.
+static func choice(row: HBoxContainer, value: Variant, text: String, icon_name := "", tip := "") -> Button:
+	var drawn := icon_name != "" or tip != ""
+	var b := button(&"IconChoice" if drawn else &"Choice", icon_name, text, tip, "icon_btn" if drawn else "", "opt_row_h")
+	b.toggle_mode = true
+	b.set_pressed_no_signal(value == row.get_meta(&"value"))
+	b.pressed.connect(func() -> void:
+		for other: Button in row.get_children():
+			other.set_pressed_no_signal(other == b)
+		row.get_meta(&"pick").call(value))
+	row.add_child(b)
+	return b
 
 
 ## A row of a menu or a tool's options: a short name at the left, its controls at the right.
@@ -116,19 +140,17 @@ static func range_row(parent: Control, name_text: String, lo: float, hi: float, 
 	return s
 
 
-## "<name>  [choice v]": a list that opens; arrows, Home, End and Escape work in it. items [value, text]; pick(value) on a choice.
-static func dropdown(parent: Control, name_text: String, items: Array, value: Variant, pick: Callable) -> OptionButton:
+## "<name>  [choice v]": a list that opens; arrows, Home, End and Escape work in it. Each choice added by dropdown_item(); the
+## one in use (`value`) chosen; pick(value) on a choice.
+static func dropdown(parent: Control, name_text: String, value: Variant, pick: Callable) -> OptionButton:
 	var row := option_row(parent, name_text)
 	var o := OptionButton.new()
 	o.theme_type_variation = &"Ghost"
 	o.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	o.fit_to_longest_item = false
 	o.clip_text = true
-	for i in items.size():
-		o.add_item(items[i][1], i)
-		if items[i][0] == value:
-			o.select(i)
-	o.item_selected.connect(func(i: int) -> void: pick.call(items[i][0]))
+	o.set_meta(&"value", value)
+	o.item_selected.connect(func(i: int) -> void: pick.call(o.get_item_metadata(i)))
 	var popup := o.get_popup()
 	popup.window_input.connect(func(event: InputEvent) -> void:
 		var k := event as InputEventKey
@@ -138,6 +160,15 @@ static func dropdown(parent: Control, name_text: String, items: Array, value: Va
 			popup.set_focused_item(popup.item_count - 1))
 	row.add_child(o)
 	return o
+
+
+## One choice of a dropdown(), by its text (already translated); chosen when it is the dropdown's value.
+static func dropdown_item(o: OptionButton, value: Variant, text: String) -> void:
+	var i := o.item_count
+	o.add_item(text, i)
+	o.set_item_metadata(i, value)
+	if value == o.get_meta(&"value"):
+		o.select(i)
 
 
 ## A key cap: the key's name in a small rounded box.

@@ -23,7 +23,7 @@ func refresh() -> void:
 		var name := HudWidgets.label(row, &"MutedLabel", tr(RoadKeys.LABEL_KEYS[action]).format({"step_m": step}))
 		name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var text := tr("roadKeys.press") if RoadKeys.waiting == action else RoadKeys.label(RoadKeys.key_of(action))
-		var chip := HudWidgets.button(&"Choice", "", text, "", "icon_btn", "icon_btn")
+		var chip := HudWidgets.verbatim(HudWidgets.button(&"Choice", "", "", "", "icon_btn", "icon_btn"), text) as Button
 		chip.toggle_mode = true
 		chip.set_pressed_no_signal(RoadKeys.waiting == action)
 		chip.pressed.connect(func() -> void:

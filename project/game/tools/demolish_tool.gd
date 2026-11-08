@@ -58,5 +58,5 @@ func release(p: Vector3) -> void:
 		return
 	var text := tr("game.toast.demolished.one") if not box else tr("game.toast.demolished.box")
 	if r.money < 0:
-		text += tr("game.toast.refunded").format({"money": Formatters.format_money(-r.money)})
+		text = "%s%s" % [text, tr("game.toast.refunded").format({"money": Formatters.format_money(-r.money)})]
 	ctl.hint.emit(text, true)

@@ -39,15 +39,14 @@ func _process(delta: float) -> void:
 
 func _refresh() -> void:
 	var cost: Dictionary = CityStore.query(&"render_cost")
-	var lines := ["PROFILER  %d fps · %.1f ms · %d calls · %s tris" % [Performance.get_monitor(Performance.TIME_FPS),
+	var text := tr("profiler.frame") % [Performance.get_monitor(Performance.TIME_FPS),
 		Performance.get_monitor(Performance.TIME_PROCESS) * Units.MS_PER_S,
 		Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
-		Formatters.format_int(int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)))]]
+		Formatters.format_int(int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)))]
 	for k: String in CityStore.constants.frame_sections:
-		lines.append("  %-10s %6.2f ms" % [k, float(cost.get(k, 0.0))])
-	lines.append("video %d MiB · texture %d MiB · static %d MiB" % [Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / Units.BYTES_PER_MIB,
-		Performance.get_monitor(Performance.RENDER_TEXTURE_MEM_USED) / Units.BYTES_PER_MIB, Performance.get_monitor(Performance.MEMORY_STATIC) / Units.BYTES_PER_MIB])
-	lines.append(tr("profiler.hide"))
-	_text.text = "\n".join(lines)
+		text = "%s\n%s" % [text, tr("profiler.section") % [k, float(cost.get(k, 0.0))]]
+	text = "%s\n%s" % [text, tr("profiler.memory") % [Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / Units.BYTES_PER_MIB,
+		Performance.get_monitor(Performance.RENDER_TEXTURE_MEM_USED) / Units.BYTES_PER_MIB, Performance.get_monitor(Performance.MEMORY_STATIC) / Units.BYTES_PER_MIB]]
+	_text.text = "%s\n%s" % [text, tr("profiler.hide")]
 	reset_size()
 

@@ -39,7 +39,7 @@ func click(p: Vector3) -> void:
 		ctl.hint.emit(refusal(r), false)
 		return
 	ctl.preview.clear()
-	ctl.hint.emit(tr("ui.do.roundabout") + " · " + Formatters.format_cost(r.money), true)
+	ctl.hint.emit("%s · %s" % [tr("ui.do.roundabout"), Formatters.format_cost(r.money)], true)
 
 
 func key(keycode: Key) -> void:

@@ -3860,6 +3860,43 @@ The arithmetic of the measure and the rule is the same as before, so a city's ch
 
 **What changes.** Nothing in the game. No converter output is left in the repository (CLAUDE.md), and the magic-number gate's exemption for `js_` is gone with the files. Left of B4: the source's random stream (`seeded.h`) and the generators built on it, and the 138 hand-ported files that still name a source file as their model. Their logic and values are to be re-sourced, owner by owner.
 
+### 6.75 B2, C13 (visible text through tr): the gate follows text through helpers, verbatim text has one owner (2026-11-08)
+
+**Cause.** TEXTO_VIA_TR judged each text write by its own tokens. Text that reached a Control through a helper parameter, a container, a returned value or a signal was invisible to the rule. Its 23 findings were all such places, and they hid real gaps behind them: `+` concatenations, `str(n)` where the language's digit grouping belongs, letter format strings (the camera's centre, the profiler) and engine or player text with no declared treatment.
+
+**Fix, the gate** (tools/gates/gate_text.py, the new gd_index.py):
+- A bare parameter reaching a sink makes its function a helper. Every call of a helper is then judged at the call site, to a fixpoint.
+- Signals count as call sites: `connect`, `bind` and `emit`.
+- Locals, members and returns are judged at each assignment.
+- A Callable that is called in a sink must be given a translating function.
+- `Formatters.*` counts as translated: it is the one owner of shown numbers, units and dates.
+- A read of a gated text property counts only when the reader's class is known.
+- A LineEdit's own text is the player's input, not a display.
+- `set(&"text", …)` counts as a write.
+- A multi-line lambda no longer swallows the next statement. The old gate had that bug too.
+- Self-test cases tr_flow and tr_verbatim cover each rule, positive and negative.
+
+**Fix, the code:**
+- Concatenations became translated formats.
+- `str(n)` became `Formatters.format_int`.
+- Letter format strings became keys: camera.centre.value, profiler.frame/section/memory, unit.ms/mib/metre/second, menu.saveRow, gfx.gpu.named, lab.ab.row.
+- InspectorRows pushes rows to InspectorLive instead of returning arrays.
+- The dropdown and choice helpers take one item per call.
+- Raw tuning numbers use the new `Formatters.format_number`.
+- Text that is not the game's own goes through `HudWidgets.verbatim`, a declared owner (owners.json verbatim_text) that turns Godot's auto-translation off. This covers engine messages, key names, the player's model names, line codes, and the health panel's and F7 lab's diagnostics. Godot translates a Label whose text equals a key, so a player's name that equals a key used to show translated.
+
+**Proof.**
+- TEXTO_VIA_TR finds 0 problems over the repository; the self-test passes 70 cases.
+- quick: 45 of 46. The one failure is 03-rua_noite's flicker box (831,264)-(1167,287) (§6.9). gates_changed passed.
+- The 15 drawers and popovers (bar, Vias, Zonas, Construir, Paisagem, Transporte, Demolir, Bomba, the inspector on a road, Camadas, Simulação, Câmera, Menu, Opções gráficas, Painel de efeitos) were shot before (HEAD) and after.
+  - photodiff shows no changed pixel in any panel's text, apart from the effects panel's live frame times.
+  - The changed pixels are the unfrozen world (foliage and edges in the wind).
+
+**What changes.**
+- Land slider values of 1000 or more get the language's digit grouping.
+- The save row's name and date sit in a translated format.
+- `gfx.gpu` is unused and removed.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

@@ -63,11 +63,10 @@ static func _group(drawer: HudDrawer, strip: Container, g: Dictionary, tool_name
 
 ## What the brush does, in the options panel: an icon each.
 static func _brush(drawer: HudDrawer, g: Dictionary, tool_name: String) -> void:
-	var items := []
-	for c: Dictionary in g.cards:
-		items.append([c.value, "", c.icon, TranslationServer.translate(c.label_key)])
 	var row := HudWidgets.option_row(drawer.options, TranslationServer.translate("v2.row.brush"))
-	HudWidgets.choices(row, items, drawer.param(tool_name, g.key, g.default), LandHands.pick.bind(tool_name, g.key, drawer))
+	var brushes := HudWidgets.choices(row, drawer.param(tool_name, g.key, g.default), LandHands.pick.bind(tool_name, g.key, drawer))
+	for c: Dictionary in g.cards:
+		HudWidgets.choice(brushes, c.value, "", c.icon, TranslationServer.translate(c.label_key))
 
 
 static func _head(drawer: HudDrawer, key: String) -> void:
@@ -76,27 +75,26 @@ static func _head(drawer: HudDrawer, key: String) -> void:
 
 
 ## How a slider writes its value: a length as the style writes it, anything else in its unit's pattern (i18n unit.<id>, "{n}").
-static func _shown(sl: Dictionary) -> Callable:
-	var unit: String = sl.get("unit", "")
-	if unit == LENGTH_UNIT:
-		return Formatters.format_length
-	var whole: bool = sl.step >= 1.0
-	var pattern: String = TranslationServer.translate("unit." + unit) if unit != "" else "{n}"
-	return func(v: float) -> String: return pattern.format({"n": str(int(v)) if whole else Formatters.format_tenths(v)})
+## A slider's value in its unit (`unit.<unit>` of the strings, none for ""), whole or to tenths.
+static func _in_unit(v: float, unit: String, whole: bool) -> String:
+	var n := Formatters.format_int(v) if whole else Formatters.format_tenths(v)
+	return TranslationServer.translate("unit." + unit).format({"n": n}) if unit != "" else n
 
 
 static func _slider(drawer: HudDrawer, sl: Dictionary, tool_name: String) -> void:
 	if sl.has("head"):
 		_head(drawer, sl.head)
 	var label := TranslationServer.translate(sl.label_key)
+	var unit: String = sl.get("unit", "")
+	var shown: Callable = Formatters.format_length if unit == LENGTH_UNIT else _in_unit.bind(unit, sl.step >= 1.0)
 	if sl.has("weather"):
 		var scale: float = sl.get("scale", 1.0)
 		var now: float = CityStore.query(&"landscape").weather[sl.weather] * scale
-		HudWidgets.range_row(drawer.options, label, sl.min, sl.max, sl.step, now, _shown(sl), func(v: float) -> void:
+		HudWidgets.range_row(drawer.options, label, sl.min, sl.max, sl.step, now, shown, func(v: float) -> void:
 			CityStore.dispatch(&"set_weather", [{sl.weather: v / scale}]))
 	else:
 		var now: float = drawer.param(tool_name, sl.key, sl.default)
-		HudWidgets.range_row(drawer.options, label, sl.min, sl.max, sl.step, now, _shown(sl), drawer.retool.bind(tool_name, sl.key))
+		HudWidgets.range_row(drawer.options, label, sl.min, sl.max, sl.step, now, shown, drawer.retool.bind(tool_name, sl.key))
 
 
 ## The map's biome and the actions on the whole map, under their heading.

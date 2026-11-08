@@ -13,6 +13,7 @@ import gate_forbidden
 import gate_i18n
 import gate_language
 import gate_python
+import gate_text
 import gate_tuning
 import gate_ui
 from gate_files import SIDECARS
@@ -50,6 +51,8 @@ def _forbidden(entry):
     context = None
     if entry["id"] == "JOB_SEM_CHAVE":
         context = lambda ctx: sorted(gate_forbidden.job_pool_members(ctx))  # noqa: E731
+    elif entry["id"] == "TEXTO_VIA_TR":  # a file's findings follow values from every other script
+        context = lambda ctx: gate_text.findings(ctx, entry)  # noqa: E731
     return PerFile(entry["id"], [entry["id"]], lambda ctx, path: gate_forbidden.applies(entry, path),
                    lambda ctx, src, err: check(ctx, src, entry, err), context)
 

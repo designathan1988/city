@@ -194,7 +194,7 @@ func _edit(shift: bool) -> Dictionary:
 func _measure() -> String:
 	match String(_held.kind):
 		"storeys":
-			return str(_spec.count)
+			return Formatters.format_int(_spec.count)
 		"side", "lift", "relief":
 			return Formatters.format_length_tenths(absf(_spec.along))
 	return ""

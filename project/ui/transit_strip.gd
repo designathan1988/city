@@ -26,11 +26,11 @@ static func _fill(list: Control) -> void:
 		swatch.color = line.colour
 		swatch.custom_minimum_size = Vector2.ONE * HudWidgets.px("transit_swatch")
 		row.add_child(swatch)
-		HudWidgets.label(row, &"", line.name)
+		HudWidgets.verbatim(HudWidgets.label(row, &""), line.name) # the core's code for the line
 		var stops := TranslationServer.translate("transit.stops").format({"n": line.stops.size()})
 		HudWidgets.label(row, &"MutedLabel", "%s · %s" % [TranslationServer.translate(MODE_KEYS[CityStore.code_name(&"TransitMode", int(line.mode))]), stops])
 		_button(row, "minus", "transit.fewer", _change.bind(list, line.id, line.vehicles - 1))
-		HudWidgets.label(row, &"", str(line.vehicles))
+		HudWidgets.label(row, &"", Formatters.format_int(line.vehicles))
 		_button(row, "plus", "transit.more", _change.bind(list, line.id, line.vehicles + 1))
 		_button(row, "demolish", "transit.remove", _drop.bind(list, line.id))
 

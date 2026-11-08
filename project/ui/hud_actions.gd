@@ -141,4 +141,4 @@ func _on_saved(_slot: String, r: Dictionary) -> void:
 func history(action: String) -> void:
 	var label: String = CityStore.snapshot.get("undo_label" if action == "undo" else "redo_label", "")
 	if CityStore.dispatch(StringName(action)):
-		_hud().flash(tr("v2.do." + action) + " · " + tr(label), true)
+		_hud().flash("%s · %s" % [tr("v2.do." + action), tr(label)], true)

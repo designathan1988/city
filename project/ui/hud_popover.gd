@@ -136,7 +136,7 @@ func _build_files(col: Control, spec: Dictionary) -> void:
 		HudWidgets.label(col, &"MutedLabel", tr(spec.empty_key))
 	for f in saves:
 		var when := Time.get_datetime_string_from_unix_time(f.modified, true)
-		var b := HudWidgets.button(&"Row", "m_open", "%s  ·  %s" % [f.slot, when], "", "pop_w", "row_h")
+		var b := HudWidgets.button(&"Row", "m_open", tr("menu.saveRow").format({"slot": f.slot, "when": when}), "", "pop_w", "row_h")
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.pressed.connect(func() -> void:
 			close()
@@ -219,7 +219,7 @@ func _process(delta: float) -> void:
 func _read_camera() -> void:
 	var start: float = DataTables.game("camera").start_view_half
 	_metrics["camera.zoom"].text = "%d %%" % int(round(start / rig.half * Units.PERCENT))
-	_metrics["camera.centre"].text = "X %d · Y %d" % [int(rig.focus.x), int(rig.focus.z)]
+	_metrics["camera.centre"].text = tr("camera.centre.value") % [int(rig.focus.x), int(rig.focus.z)]
 
 
 func _on_changed(s: Dictionary) -> void:

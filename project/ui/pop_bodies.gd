@@ -33,11 +33,10 @@ static func sim(col: Control, spec: Dictionary, metrics: Dictionary) -> void:
 		s.get("people_level", 1.0) * Units.PERCENT, Formatters.format_points, func(v: float) -> void:
 			send.call(CityStore.snapshot.traffic_level, v / Units.PERCENT, CityStore.snapshot.demand))
 	var row := HudWidgets.option_row(col, TranslationServer.translate("sim.demand"))
-	var items := []
-	for d: Array in spec.demand:
-		items.append([d[0], TranslationServer.translate(d[1])])
-	HudWidgets.choices(row, items, s.get("demand", 1.0), func(v: float) -> void:
+	var demand_row := HudWidgets.choices(row, s.get("demand", 1.0), func(v: float) -> void:
 		send.call(CityStore.snapshot.traffic_level, CityStore.snapshot.people_level, v))
+	for d: Array in spec.demand:
+		HudWidgets.choice(demand_row, d[0], TranslationServer.translate(d[1]))
 	col.add_child(HSeparator.new())
 	var g := grid(col)
 	for m: Array in spec.metrics:
@@ -48,11 +47,17 @@ static func sim(col: Control, spec: Dictionary, metrics: Dictionary) -> void:
 
 static func sync_sim(metrics: Dictionary, s: Dictionary) -> void:
 	var traffic: Dictionary = CityStore.query(&"traffic_metrics")
-	var values := {"trips_arrived": Formatters.format_int(s.trips_arrived), "trips_lost": Formatters.format_int(s.trips_lost),
-		"mean_speed": Formatters.format_speed(traffic.mean_speed_ms), "queued": Formatters.format_int(traffic.queued),
-		"network": "%s · %s" % [Formatters.count_label("status.roads", s.segments), Formatters.count_label("status.nodes", s.nodes)]}
-	for k: String in metrics:
-		metrics[k].text = values.get(k, "")
+	_put(metrics, "trips_arrived", Formatters.format_int(s.trips_arrived))
+	_put(metrics, "trips_lost", Formatters.format_int(s.trips_lost))
+	_put(metrics, "mean_speed", Formatters.format_speed(traffic.mean_speed_ms))
+	_put(metrics, "queued", Formatters.format_int(traffic.queued))
+	_put(metrics, "network", "%s · %s" % [Formatters.count_label("status.roads", s.segments), Formatters.count_label("status.nodes", s.nodes)])
+
+
+## A metric's value, when the popover shows that metric (data/ui/drawers.json sim metrics, and the network).
+static func _put(metrics: Dictionary, key: String, text: String) -> void:
+	if metrics.has(key):
+		metrics[key].text = text
 
 
 static func help(col: Control, spec: Dictionary, tool_name: String) -> void:
