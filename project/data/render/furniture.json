@@ -1,5 +1,5 @@
 {
- "_doc": "What each piece of furniture is made of, part by part, for the cut-open view of a building (tools/assets/make_furniture.py writes it from the sizes of interiors.json). A part is [shape, size, place, colour, options]; see the script for the shapes and options.",
+ "_doc": "What each piece of furniture is made of, part by part, for the cut-open view of a building (tools/assets/make_furniture.py writes it from the sizes of interiors.json). A part is [shape, size, place, colour, options]; edges: each kind's rounding of its box edges, metres; see the script for the shapes and options.",
  "palette": {
   "oak": ["wood", "#9a6a43"],
   "walnut": ["wood", "#5e3d26"],
@@ -67,6 +67,48 @@
   "goods3": ["plaster", "#5fb34a"],
   "goods4": ["plaster", "#e8e3d6"],
   "goods5": ["plaster", "#8b5a2b"]
+ },
+ "edges": {
+  "bed": 0.04,
+  "singleBed": 0.04,
+  "sofa": 0.06,
+  "armchair": 0.06,
+  "table": 0.008,
+  "chair": 0.006,
+  "desk": 0.008,
+  "officeChair": 0.03,
+  "shelf": 0.005,
+  "bookshelf": 0.006,
+  "counter": 0.01,
+  "fridge": 0.03,
+  "stove": 0.012,
+  "sink": 0.01,
+  "toilet": 0.03,
+  "bath": 0.06,
+  "wardrobe": 0.012,
+  "tv": 0.01,
+  "plant": 0,
+  "pew": 0.012,
+  "seat": 0.03,
+  "wardBed": 0.02,
+  "bars": 0.01,
+  "screen": 0.01,
+  "altar": 0.01,
+  "machine": 0.02,
+  "rack": 0,
+  "locker": 0.008,
+  "atm": 0.02,
+  "stage": 0.01,
+  "barCounter": 0.012,
+  "blackboard": 0.01,
+  "checkout": 0.012,
+  "treadmill": 0.02,
+  "pallet": 0,
+  "ceilingLamp": 0,
+  "floorLamp": 0,
+  "tableLamp": 0,
+  "stairs": 0.004,
+  "stairwell": 0
  },
  "models": {
   "bed": [
@@ -158,13 +200,13 @@
    ["box", [0.04, 1.9, 0.5], [-0.98, 0, 0], "pewter"],
    ["box", [0.04, 1.9, 0.5], [0.98, 0, 0], "pewter"],
    ["box", [1.94, 0.03, 0.46], [0, 0.0, 0], "pewter"],
-   ["box", [0.254, 0.2905, 0.35], [-0.81, 0.03, 0.02], "goods0", {"n": 7, "step": [0.26, 0, 0], "colors": ["goods0", "goods1", "goods2", "goods3", "goods4", "goods5"]}],
+   ["box", [0.254, 0.2905, 0.35], [-0.81, 0.03, 0.02], "goods0", {"n": 7, "step": [0.26, 0, 0], "colours": ["goods0", "goods1", "goods2", "goods3", "goods4", "goods5"]}],
    ["box", [1.94, 0.03, 0.46], [0, 0.465, 0], "pewter"],
-   ["box", [0.254, 0.2905, 0.35], [-0.81, 0.495, 0.02], "goods0", {"n": 7, "step": [0.26, 0, 0], "colors": ["goods0", "goods1", "goods2", "goods3", "goods4", "goods5"]}],
+   ["box", [0.254, 0.2905, 0.35], [-0.81, 0.495, 0.02], "goods0", {"n": 7, "step": [0.26, 0, 0], "colours": ["goods0", "goods1", "goods2", "goods3", "goods4", "goods5"]}],
    ["box", [1.94, 0.03, 0.46], [0, 0.93, 0], "pewter"],
-   ["box", [0.254, 0.2905, 0.35], [-0.81, 0.96, 0.02], "goods0", {"n": 7, "step": [0.26, 0, 0], "colors": ["goods0", "goods1", "goods2", "goods3", "goods4", "goods5"]}],
+   ["box", [0.254, 0.2905, 0.35], [-0.81, 0.96, 0.02], "goods0", {"n": 7, "step": [0.26, 0, 0], "colours": ["goods0", "goods1", "goods2", "goods3", "goods4", "goods5"]}],
    ["box", [1.94, 0.03, 0.46], [0, 1.395, 0], "pewter"],
-   ["box", [0.254, 0.2905, 0.35], [-0.81, 1.425, 0.02], "goods0", {"n": 7, "step": [0.26, 0, 0], "colors": ["goods0", "goods1", "goods2", "goods3", "goods4", "goods5"]}],
+   ["box", [0.254, 0.2905, 0.35], [-0.81, 1.425, 0.02], "goods0", {"n": 7, "step": [0.26, 0, 0], "colours": ["goods0", "goods1", "goods2", "goods3", "goods4", "goods5"]}],
    ["box", [1.94, 0.03, 0.46], [0, 1.86, 0], "pewter"]
   ],
   "bookshelf": [
@@ -172,15 +214,15 @@
    ["box", [0.04, 2.2, 0.4], [-1.18, 0, 0], "walnut"],
    ["box", [0.04, 2.2, 0.4], [1.18, 0, 0], "walnut"],
    ["box", [2.34, 0.03, 0.36], [0, 0.0, 0], "walnut"],
-   ["box", [0.046, 0.3268, 0.28], [-1.114, 0.03, 0.02], "book0", {"n": 42, "step": [0.052, 0, 0], "colors": ["book0", "book1", "book2", "book3", "book4", "book5"]}],
+   ["box", [0.046, 0.3268, 0.28], [-1.114, 0.03, 0.02], "book0", {"n": 42, "step": [0.052, 0, 0], "colours": ["book0", "book1", "book2", "book3", "book4", "book5"], "vary": [0.4, 0.3], "edge": 0}],
    ["box", [2.34, 0.03, 0.36], [0, 0.432, 0], "walnut"],
-   ["box", [0.046, 0.3268, 0.28], [-1.114, 0.462, 0.02], "book0", {"n": 42, "step": [0.052, 0, 0], "colors": ["book0", "book1", "book2", "book3", "book4", "book5"]}],
+   ["box", [0.046, 0.3268, 0.28], [-1.114, 0.462, 0.02], "book0", {"n": 42, "step": [0.052, 0, 0], "colours": ["book0", "book1", "book2", "book3", "book4", "book5"], "vary": [0.4, 0.3], "edge": 0}],
    ["box", [2.34, 0.03, 0.36], [0, 0.864, 0], "walnut"],
-   ["box", [0.046, 0.3268, 0.28], [-1.114, 0.894, 0.02], "book0", {"n": 42, "step": [0.052, 0, 0], "colors": ["book0", "book1", "book2", "book3", "book4", "book5"]}],
+   ["box", [0.046, 0.3268, 0.28], [-1.114, 0.894, 0.02], "book0", {"n": 42, "step": [0.052, 0, 0], "colours": ["book0", "book1", "book2", "book3", "book4", "book5"], "vary": [0.4, 0.3], "edge": 0}],
    ["box", [2.34, 0.03, 0.36], [0, 1.296, 0], "walnut"],
-   ["box", [0.046, 0.3268, 0.28], [-1.114, 1.326, 0.02], "book0", {"n": 42, "step": [0.052, 0, 0], "colors": ["book0", "book1", "book2", "book3", "book4", "book5"]}],
+   ["box", [0.046, 0.3268, 0.28], [-1.114, 1.326, 0.02], "book0", {"n": 42, "step": [0.052, 0, 0], "colours": ["book0", "book1", "book2", "book3", "book4", "book5"], "vary": [0.4, 0.3], "edge": 0}],
    ["box", [2.34, 0.03, 0.36], [0, 1.728, 0], "walnut"],
-   ["box", [0.046, 0.3268, 0.28], [-1.114, 1.758, 0.02], "book0", {"n": 42, "step": [0.052, 0, 0], "colors": ["book0", "book1", "book2", "book3", "book4", "book5"]}],
+   ["box", [0.046, 0.3268, 0.28], [-1.114, 1.758, 0.02], "book0", {"n": 42, "step": [0.052, 0, 0], "colours": ["book0", "book1", "book2", "book3", "book4", "book5"], "vary": [0.4, 0.3], "edge": 0}],
    ["box", [2.34, 0.03, 0.36], [0, 2.16, 0], "walnut"]
   ],
   "counter": [
@@ -327,7 +369,7 @@
    ["box", [4, 0.08, 0.62], [0, 0, 0.02], "black"],
    ["box", [4, 0.98, 0.66], [0, 0.08, 0], "walnut"],
    ["box", [4.04, 0.04, 0.74], [0, 1.06, 0], "black"],
-   ["cyl", [0.035, 0.28, 0.015], [-1.6, 1.1, -0.23], "goods0", {"n": 6, "step": [0.6, 0, 0], "colors": ["goods0", "goods1", "goods2", "goods3", "goods4", "goods5"]}]
+   ["cyl", [0.035, 0.28, 0.015], [-1.6, 1.1, -0.23], "goods0", {"n": 6, "step": [0.6, 0, 0], "colours": ["goods0", "goods1", "goods2", "goods3", "goods4", "goods5"]}]
   ],
   "blackboard": [
    ["box", [4, 1.2, 0.1], [0, 0.9, 0], "cabinet"],
@@ -368,7 +410,7 @@
    ["cyl", [0.1137, 0.22, 0.175], [0, 0.31, 0], "shade"]
   ],
   "stairs": [
-   ["box", [1, 0.2071, 0.2469], [0, 0, 1.5786], "tread", {"n": 14, "step": [0, 0, -0.24285714285714285], "grow": [0, 0.20714285714285713, 0], "colors": ["tread", "tread_dark"]}],
+   ["box", [1, 0.2071, 0.2469], [0, 0, 1.5786], "tread", {"n": 14, "step": [0, 0, -0.24285714285714285], "grow": [0, 0.20714285714285713, 0], "colours": ["tread", "tread_dark"]}],
    ["box", [0.04, 0.9, 0.04], [0.47, 0.29, 1.36], "walnut"],
    ["box", [0.04, 0.9, 0.04], [0.47, 1.45, 0.0], "walnut"],
    ["box", [0.04, 0.9, 0.04], [0.47, 2.61, -1.36], "walnut"],

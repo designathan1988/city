@@ -43,7 +43,7 @@ int colour_index(const InteriorLook &look, const DataValue &name) {
 	return -1;
 }
 
-// [shape, size, at, colour, {n, spin, step, grow, colours}?]
+// [shape, size, at, colour, {n, spin, step, grow, colours, edge, vary}?]
 bool part_of(const DataValue &a, const InteriorLook &look, FurniturePart &p) {
 	const int n = a.size();
 	if (n < SHORT_PART || n > WITH_OPTIONS) {
@@ -66,6 +66,13 @@ bool part_of(const DataValue &a, const InteriorLook &look, FurniturePart &p) {
 	p.spin = o.has("spin") ? o["spin"].whole() : 1;
 	if (o.has("step") && !vec3(o["step"], p.step)) return false;
 	if (o.has("grow") && !vec3(o["grow"], p.grow)) return false;
+	if (o.has("edge")) p.edge = o["edge"].f();
+	if (o.has("vary")) {
+		const DataValue vary = o["vary"];
+		if (vary.list(2).size() != 2) return false;
+		p.vary[0] = vary[0].f();
+		p.vary[1] = vary[1].f();
+	}
 	if (!o.has("colours")) return true;
 	p.colours.clear();
 	const DataValue names = o["colours"];
@@ -89,7 +96,7 @@ bool InteriorLook::load(const DataValue &table, PackedStringArray &errors) {
 	palette.clear(); // a second read is the table again
 	index.clear();
 	for (auto &list : models) list.clear();
-	const DataValue colours = table["palette"], models_t = table["models"];
+	const DataValue colours = table["palette"], models_t = table["models"], edges_t = table["edges"];
 	const Array names = colours.keys();
 	for (int i = 0; i < names.size(); i++) {
 		const String name = names[i];
@@ -106,6 +113,7 @@ bool InteriorLook::load(const DataValue &table, PackedStringArray &errors) {
 	for (const char *need : NEEDED)
 		if (!index.count(need)) colours.fail(String("no colour ") + need);
 	for (int k = 0; k < FK_COUNT; k++) {
+		edges[k] = edges_t[FURNITURE_NAMES[k]].f();
 		const DataValue parts = models_t[FURNITURE_NAMES[k]];
 		for (int i = 0; i < parts.size(); i++) {
 			FurniturePart p;

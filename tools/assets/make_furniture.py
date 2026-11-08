@@ -5,7 +5,11 @@ data/catalog/interiors.json "sizes" (across W, deep D, high H) and scaled to the
   ["cyl", [radius, height, radius at top], [centre x, bottom y, centre z], colour, {options}]
   ["ball", [radius], [centre x, centre y, centre z], colour]
 x across (right of the piece), y up, z towards the front (the way it faces). Options: n copies each moved by step and
-grown by grow, spin copies turned about the up axis, colours cycled one per copy.
+grown by grow, spin copies turned about the up axis, colours cycled one per copy, edge the box's own rounding (metres, in place
+of its kind's), vary [width, height] a row whose copies are not alike (books): each copy's share of the row within 1 +- width
+of the step (the row keeps its length), its height within 1 - height of the size, its colour drawn from colours, all from the
+piece's own seed. "edges" gives each kind the rounding of its boxes' edges, metres: soft and moulded pieces round more, joinery
+less, crates and pallets not at all (the drawing keeps a rounding to half the thinnest side of a box).
 The shapes are the modelling of a piece as people use it (a bed: frame, legs, mattress, duvet, headboard, pillows), drawn
 against the photos of the reference; no norm fixes them. Run: python3 tools/assets/make_furniture.py; --check writes nothing and fails
 when the committed table is not what the sizes make (the quick suite's furniture_table task).
@@ -41,6 +45,16 @@ PALETTE = {
 }
 BOOKS = ["book%d" % i for i in range(6)]
 GOODS = ["goods%d" % i for i in range(6)]
+BOOK_VARY = [0.4, 0.3]  # books on a shelf: widths within 40 % of the step, heights down to 70 % of the space
+# The rounding of each kind's box edges, metres: upholstery and mattresses round the most, moulded ceramic and appliances
+# next, joinery a few millimetres; crates, pallets and racks stay square.
+EDGES = {
+	"bed": 0.04, "singleBed": 0.04, "wardBed": 0.02, "sofa": 0.06, "armchair": 0.06, "table": 0.008, "chair": 0.006, "desk": 0.008,
+	"officeChair": 0.03, "shelf": 0.005, "bookshelf": 0.006, "counter": 0.01, "fridge": 0.03, "stove": 0.012, "sink": 0.01, "toilet": 0.03,
+	"bath": 0.06, "wardrobe": 0.012, "tv": 0.01, "plant": 0, "pew": 0.012, "seat": 0.03, "altar": 0.01, "screen": 0.01, "blackboard": 0.01,
+	"machine": 0.02, "rack": 0, "bars": 0.01, "locker": 0.008, "atm": 0.02, "stage": 0.01, "barCounter": 0.012, "checkout": 0.012,
+	"treadmill": 0.02, "pallet": 0, "ceilingLamp": 0, "floorLamp": 0, "tableLamp": 0, "stairs": 0.004, "stairwell": 0,
+}
 
 
 def r(v):
@@ -122,7 +136,7 @@ def shelving(kind, W, D, H):
 		bw = 0.052 if book else 0.26
 		bh = (H / levels - 0.06) * (0.86 if book else 0.7)
 		out.append(box(bw - 0.006, bh, D * 0.7, -W / 2 + 0.06 + bw / 2, y + 0.03, 0.02, (BOOKS if book else GOODS)[0],
-			n=int((W - 0.18) / bw), step=[bw, 0, 0], colors=BOOKS if book else GOODS))
+			n=int((W - 0.18) / bw), step=[bw, 0, 0], colours=BOOKS if book else GOODS, **({"vary": BOOK_VARY, "edge": 0} if book else {})))
 	return out
 
 
@@ -132,7 +146,7 @@ def counters(kind, W, D, H):
 	out = [box(W, 0.08, D - 0.08, 0, 0, 0.02, "black"), box(W, H - 0.12, D - 0.04, 0, 0.08, 0, body),
 		box(W + 0.04, 0.04, D + 0.04, 0, H - 0.04, 0, "black" if kind == "barCounter" else "counter_top")]
 	if kind == "barCounter":
-		out.append(cyl(0.035, 0.28, -W / 2 + 0.4, H, back + 0.12, GOODS[0], 0.015, n=6, step=[0.6, 0, 0], colors=GOODS))
+		out.append(cyl(0.035, 0.28, -W / 2 + 0.4, H, back + 0.12, GOODS[0], 0.015, n=6, step=[0.6, 0, 0], colours=GOODS))
 	if kind == "checkout":
 		out += [box(W * 0.6, 0.02, D * 0.5, -W * 0.15, H, 0.05, "black"), box(0.3, 0.25, 0.3, W / 2 - 0.25, H, 0, "desk_pad")]
 	return out
@@ -181,7 +195,7 @@ def build(kind, W, D, H):
 		"treadmill": lambda: [box(W, 0.18, D, 0, 0, 0, "black"), box(W - 0.14, 0.02, D - 0.3, 0, 0.18, 0.05, "belt"), box(0.05, 1.0, 0.05, -W / 2 + 0.05, 0.18, back + 0.15, "steel"),
 			box(0.05, 1.0, 0.05, W / 2 - 0.05, 0.18, back + 0.15, "steel"), box(W, 0.12, 0.25, 0, 1.15, back + 0.15, "black")],
 		"pallet": lambda: [box(W, 0.14, D, 0, 0, 0, "pallet"), box(W - 0.1, H - 0.18, D - 0.1, 0, 0.14, 0, "pallet_load")],
-		"stairs": lambda: [box(W, H / 14, D / 14 + 0.004, 0, 0, D / 2 - D / 28, "tread", n=14, step=[0, 0, -D / 14], grow=[0, H / 14, 0], colors=["tread", "tread_dark"]),
+		"stairs": lambda: [box(W, H / 14, D / 14 + 0.004, 0, 0, D / 2 - D / 28, "tread", n=14, step=[0, 0, -D / 14], grow=[0, H / 14, 0], colours=["tread", "tread_dark"]),
 			*[box(0.04, 0.9, 0.04, W / 2 - 0.03, H * t, D / 2 - D * t, "walnut") for t in (0.1, 0.5, 0.9)], box(0.06, 0.05, D * 0.95, W / 2 - 0.03, H * 0.5 + 0.9, 0, "walnut")],
 		"stairwell": lambda: [box(W, 0.012, D, 0, 0, 0, "well"), box(0.05, H, D, -W / 2, 0, 0, "walnut"), box(0.05, H, D, W / 2, 0, 0, "walnut"), box(W, H, 0.05, 0, 0, D / 2, "walnut")],
 		"ceilingLamp": lambda: [cyl(0.05, 0.12, 0, H - 0.12, 0, "steel"), cyl(W / 2, 0.2, 0, 0.02, 0, "shade", W / 2 * 0.55), ball(0.08, 0, 0.05, 0, "bulb")],
@@ -197,10 +211,15 @@ def main():
 	style = json.load(open(os.path.join(GAME, "start.json"), encoding="utf-8"))["default_style"]  # the style the game plays
 	sizes = json.load(open(os.path.join(CATALOG, "interiors.json"), encoding="utf-8"))["styles"][style]["sizes"]
 	models = {k: build(k, w, d, h) for k, w, d, h in sizes}
+	missing = [k for k in models if k not in EDGES]
+	if missing:
+		raise SystemExit("no edge rounding for " + ", ".join(missing))
 	doc = ("What each piece of furniture is made of, part by part, for the cut-open view of a building (tools/assets/make_furniture.py writes it "
-		"from the sizes of interiors.json). A part is [shape, size, place, colour, options]; see the script for the shapes and options.")
+		"from the sizes of interiors.json). A part is [shape, size, place, colour, options]; edges: each kind's rounding of its box edges, metres; "
+		"see the script for the shapes and options.")
 	text = "{\n \"_doc\": %s,\n \"palette\": {\n" % json.dumps(doc)
-	text += ",\n".join("  %s: %s" % (json.dumps(k), json.dumps(v)) for k, v in PALETTE.items()) + "\n },\n \"models\": {\n"
+	text += ",\n".join("  %s: %s" % (json.dumps(k), json.dumps(v)) for k, v in PALETTE.items()) + "\n },\n"
+	text += " \"edges\": {\n" + ",\n".join("  %s: %s" % (json.dumps(k), json.dumps(EDGES[k])) for k in models) + "\n },\n \"models\": {\n"
 	text += ",\n".join("  %s: [\n%s\n  ]" % (json.dumps(k), ",\n".join("   " + json.dumps(p) for p in v)) for k, v in models.items()) + "\n }\n}\n"
 	target = os.path.join(DATA, "furniture.json")
 	if "--check" in sys.argv:

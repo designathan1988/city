@@ -364,9 +364,10 @@
     {"name": "sao_paulo", "plan": "res://tests/visual/sao_paulo_plan.json", "resolution": "1600x900", "timeout_s": 900}]
   },
   "capture_scenes": {
-   "doc": "the reference views (capture.tscn: street from above, neighbourhood, whole town)",
+   "doc": "the reference views (capture.tscn: street from above, neighbourhood, whole town) and the Interior layer's (capture_interior.tscn: floors, the floor bar in the top bar, furniture close)",
    "template": "capture_scene",
-   "items": [{"name": "city", "scene": "tests/visual/capture", "resolution": "1600x900", "timeout_s": 1800}]
+   "items": [{"name": "city", "scene": "tests/visual/capture", "resolution": "1600x900", "timeout_s": 1800},
+    {"name": "interior", "scene": "tests/visual/capture_interior", "resolution": "1600x900", "timeout_s": 900}]
   }
  },
  "suites": {

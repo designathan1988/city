@@ -26,12 +26,17 @@ struct FurniturePart {
 	float step[3] = {}, grow[3] = {}; // each copy after the first: moved by step, its size grown by grow
 	int copies = 1, spin = 1; // copies in a row; turns about the up axis
 	std::vector<uint16_t> colours; // palette indices, one a copy (cycled); the first is the part's own
+	float edge = -1; // a box's rounded edges, metres (negative: its kind's, InteriorLook::edges)
+	// A row of copies that are not all alike (books on a shelf): each copy's share of the row along `step` drawn within 1 +- vary[0]
+	// of the step (the row keeps its length), its height within 1 - vary[1] of the size, its colour drawn from `colours`.
+	float vary[2] = {};
 };
 
 struct InteriorLook {
 	std::vector<Paint> palette;
 	std::unordered_map<std::string, int> index; // palette name -> place
 	std::vector<FurniturePart> models[FK_COUNT];
+	float edges[FK_COUNT] = {}; // the rounding of each kind's boxes, metres (0: hard edges)
 
 	// A named paint of the palette (magenta when missing: `load` refuses a table without the names the drawing asks for).
 	const Paint &paint(const char *name) const;

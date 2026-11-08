@@ -7,7 +7,8 @@ extends Node3D
 const TOWN_MAP := 0
 const SEED := 7
 ## Kind of building (KINDS), floor, turn from the lot's front (degrees), pixels a metre at the focus, tilt (degrees), hour, name, and
-## "toggle" for the layer's switch (the building in the middle of the view) in place of the floor buttons' command.
+## "toggle" for the layer's switch (the building in the middle of the view) in place of the floor buttons' command, or a piece of
+## furniture (data/catalog/interiors.json) put on the floor as the Interior tab does, and framed close (its edges and its books).
 const SHOTS := [
 	["house", 0, 0.0, 38.0, 75.0, 12.0, "house-ground"],
 	["house", 1, 90.0, 38.0, 75.0, 12.0, "house-floor1-turn90"],
@@ -15,7 +16,12 @@ const SHOTS := [
 	["shop", 1, 0.0, 30.0, 70.0, 12.0, "commercial-floor1"],
 	["house", 0, 0.0, 38.0, 75.0, 22.0, "house-night-ground"],
 	["house", 0, 0.0, 8.0, 60.0, 12.0, "city-layer-house", "toggle"],
+	["house", 0, 20.0, 110.0, 35.0, 12.0, "house-bookshelf", "bookshelf"],
+	["house", 0, 200.0, 90.0, 45.0, 12.0, "house-sofa", "sofa"],
 ]
+## Where a piece is tried on the floor, metres from the building's focus along x and z: the first spot the floor takes. The
+## focus is the middle of the house, where its stair core stands: the spots start clear of it.
+const PUT_SPOTS := [[3.5, 0], [-3.5, 0], [0, 3.5], [0, -3.5], [3.5, 3.5], [-3.5, -3.5], [3.5, -3.5], [-3.5, 3.5], [2.5, 0], [-2.5, 0]]
 ## What each kind is, read off the town as generated: its zone (data/catalog/zones.json, by name) and its floors.
 const KINDS := {"house": ["residential", 2, 3], "tower": ["residential", 11, 1000], "shop": ["commercial", 2, 1000]}
 const SETTLE_FRAMES := 60
@@ -70,12 +76,32 @@ func _shot(layer: InteriorController, s: Array) -> void:
 			failures += 1
 			print("FAIL: the switch found no building in the middle of the view for ", s[6])
 		rig.jump(info.focus, yaw, s[4], _distance_for(info.focus, yaw, s[4], s[3])) # the switch frames the building: this shot is the city
+	elif s.size() > 7:
+		layer.open(s[0], s[1])
+		var at: Variant = _put(s[0], s[1], s[7], info.focus, deg_to_rad(float(s[2])))
+		if at == null:
+			failures += 1
+			print("FAIL: no spot on the floor took a ", s[7], " for ", s[6])
+			return
+		rig.jump(at, yaw, s[4], _distance_for(at, yaw, s[4], s[3]))
 	else:
 		layer.open(s[0], s[1])
 		_aim_at_floor(info.focus, yaw, s[4], s[3])
 	await _settled()
 	get_viewport().get_texture().get_image().save_png("%s/%s.png" % [out_dir, s[6]])
 	print("shot ", s[6], " ", CityStore.query(&"interior").level, "/", CityStore.query(&"interior").floors)
+
+
+## Puts a `kind` on floor `level` of building `id` at the first of PUT_SPOTS the floor takes (the Interior tab's own command),
+## facing the camera; where it stands, or null.
+func _put(id: int, level: int, kind: String, focus: Vector3, angle: float) -> Variant:
+	var y: float = CityStore.query(&"body_floor_y", [id, level])
+	for spot: Array in PUT_SPOTS:
+		var at := Vector3(focus.x + spot[0], y, focus.z + spot[1])
+		var r: Dictionary = CityStore.dispatch(&"body_put_piece", [id, level, kind, at, angle])
+		if r.get("ok", false):
+			return at
+	return null
 
 
 ## The rig stands on the ground: the floor open high in a tower is framed by the point of the ground behind it on the line of sight.
