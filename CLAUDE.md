@@ -190,10 +190,8 @@ the same sources give the same bytes, so a rebuild of unchanged sources leaves t
 - Poses por `PoseBuffer`. O save grava em thread própria.
 
 ## Luz e relógio
-- `Daylight` owns the sun, the ambient and the sky: a physical sky (`render/shaders/sky_model.gdshaderinc`, values in `render/air.gd`) colours the sun,
-  lights every surface as ambient and hazes the distance; AgX, neutral grade; at night the moon by its magnitude through the same air and
-  the town's light in its sky, street light by `LampLights`. `LightMeter` meters what the eye takes in and pre-exposes the picture by its
-  adaptation (`Eye`, Ward's scale factor); every light is in one unit (tuning.json `render.light_unit_lx`): lamps by photometry, rooms in lux.
+- `Daylight` owns the sun, the moon and the sky (`render/shaders/sky_model.gdshaderinc`, `render/air.gd`): every surface's ambient and haze; AgX;
+  `LightMeter` pre-exposes the picture by the eye's adaptation (`Eye`, Ward); one light unit (`render.light_unit_lx`): lamps in lm and cd, rooms in lux.
 - `CityWorld.set_sky_mode("day"|"night"|"cycle")`: day and night pin `daylight.json`'s hours (16h, 22h); tests and captures move clock and sky together (`UiDriver.at_hour`).
 
 ## Máquinas de estado
