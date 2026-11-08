@@ -20,9 +20,8 @@ uniform float finish_normal_k[FIN_COUNT];
 uniform float finish_metal[FIN_COUNT];
 uniform float wall_gain = 1.0;
 uniform float paint_chroma = 1.0; // the share of its chroma a wall's paint keeps under dust (building_common.gdshaderinc)
-uniform float lamp_glow = 3.4;
-uniform vec3 lamp_light : source_color = vec3(1.0, 0.83, 0.6); // what a lit lamp gives, whatever its body is by day
-uniform float window_glow = 1.5;
+uniform vec3 lamp_light : source_color = vec3(1.0, 0.83, 0.6); // materials.json lantern: an outside lamp's glass lit, whatever its body is by day
+uniform float lamp_cd_m2 = 1600.0; // and its luminance
 
 varying vec3 v_world;
 varying vec3 v_wn;
@@ -77,6 +76,7 @@ void vertex() {
 #include "res://render/shaders/building_colour.gdshaderinc"
 #include "res://render/shaders/building_common.gdshaderinc"
 #include "res://render/shaders/building_lamps.gdshaderinc"
+#include "res://render/shaders/emission_light.gdshaderinc"
 #include "res://render/shaders/building_room_tone.gdshaderinc"
 #include "res://render/shaders/sky_level_map.gdshaderinc"
 #include "res://render/shaders/building_far_window.gdshaderinc"
@@ -92,7 +92,7 @@ void fragment() {
 	vec3 albedo = to_linear(COLOR.rgb), emit = vec3(0.0), nn = n;
 	float rough = BUILDING_WALL_ROUGHNESS, metal = 0.0;
 	if (kind == SK_LAMP) {
-		emit = uniform_linear(lamp_light) * night * lamp_glow * step(h01(uint(floor(v_world.x * 0.1) * 31.0 + floor(v_world.z * 0.1) * 977.0 + 65536.0)), outside_on);
+		emit = lantern_light(uniform_linear(lamp_light), lamp_cd_m2) * night * step(h01(uint(floor(v_world.x * 0.1) * 31.0 + floor(v_world.z * 0.1) * 977.0 + 65536.0)), outside_on);
 	} else if (kind == SK_LAWN) {
 		albedo *= 0.8 + 0.25 * vnoise(v_world.xz * 0.7) + 0.15 * vnoise(v_world.xz * 3.1);
 		rough = 0.95;
@@ -108,7 +108,7 @@ void fragment() {
 		}
 	}
 	ALBEDO = surface_out(albedo);
-	EMISSION = surface_out(emit);
+	EMISSION = surface_out(emission_light(emit));
 	ROUGHNESS = rough;
 	METALLIC = metal;
 	AO = canyon_sky_seen(v_world, n); // the sky the street round it leaves this face

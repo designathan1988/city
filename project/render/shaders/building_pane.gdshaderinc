@@ -188,14 +188,15 @@ vec3 room_hung(vec3 room, vec3 o, vec3 d, vec2 size, float lot) {
 	return mix(room, hung * 0.8, cover);
 }
 
-// The lamp of a room at night, multiplied by what the room shows. Who is awake is the room's; whether this stretch of it is lit and how much is `lot`, a bay's, as the
+// The lamp of a room at night: the room's surfaces as it lights them, its working plane's illuminance (room_light_level) times what
+// they show. Who is awake is the room's; whether this stretch of it is lit and how much is `lot`, a bay's, as the
 // 4.0's vRoomLot is of what stands within 2.7 m: a wide floor is lit in patches, never all or nothing.
 vec3 pane_lamp(uint slot, float lot, float office, vec3 seen) {
 	float awake = step(1.0 - rooms_awake, h01(slot * 2654435761u + 977u));
 	float lit = step(fract(lot * 5.31), 0.64) * awake * room_level(lot) * building_night_windows;
 	vec3 tint = room_lamp(lot, office);
 	tint = mix(tint, tv_light(TIME, lot), (1.0 - office) * step(1.0 - TV_SHARE, fract(lot * 3.71)));
-	return tint * lit * (vec3(0.35) + 1.3 * clamp(seen / 0.55, vec3(0.0), vec3(1.6)));
+	return tint * lit * seen * room_light_level(office);
 }
 
 // A pane: uv 0..1 over the glass, `size` metres, `slot` its room's seed, `bay` its own. Out: what the surface is.
@@ -241,7 +242,7 @@ void pane(vec2 uv, vec2 size, uint slot, uint bay, bool dark, float deep, vec3 n
 	// engine's reflections of the sky, Fresnel's share at this angle).
 	vec3 trim = to_linear(v_trim.rgb);
 	albedo = mix(mix(vec3(f0), trim, frame), trim * REVEAL_ALBEDO * side_shade, solid);
-	emit = (seen * room_daylight() + pane_lamp(slot, lot, office, seen) * night * window_glow) * glass_k * (1.0 - max(frame, solid));
+	emit = (seen * room_daylight() + pane_lamp(slot, lot, office, seen) * night) * glass_k * (1.0 - max(frame, solid));
 	nn = normalize(mix(n, normalize(t * face.x + vec3(0.0, face.y, 0.0) + n * face.z), step(0.5, frame)));
 	nn = normalize(mix(nn, normalize(t * side.x + vec3(0.0, side.y, 0.0) - n * side.z), step(0.5, solid)));
 	rough = mix(mix(mix(0.12, 0.55, tiny), 0.55, frame), 0.9, solid);

@@ -4,12 +4,13 @@
 ##   mirrors Godot's AgX by hand; this checks the mirror against the engine);
 ## - by night, with the ambient, the moon and the glow (a screen effect added after) off so only the part's own light
 ##   is left, a part that glows at night
-##   (PropTag::NIGHT_GLOW, lamp glass) must show glow_color x its colour x glow_gain x night, tone mapped as
-##   render/tone_map.gd does. Its colour is a mid grey so that the glow stays inside AgX's range (a white one would
-##   saturate and hide an error);
+##   (PropTag::NIGHT_GLOW, lamp glass) must show glow_color x its colour x the lamp's lens light (the shader global
+##   street_lamp_lens, render/lamp_photometry.h) x night, pre-exposed by the eye's adaptation and tone mapped as render/tone_map.gd
+##   does. The test sets the lens light so that the glow stays inside AgX's range (a saturated one would hide an error);
 ## - by night likewise, a grey road surface under the even light of a junction plate, seen as the road draws it past the lamps
-##   with a light of their own (`lamp_lit` 0), must show its albedo x pool_color x plate_glow x pool_gain x night (road.gdshader);
-##   the concrete's own mottle is +-6% of that, so this one is looser.
+##   with a light of their own (`lamp_lit` 0), must show its albedo x pool_color x plate_glow x the light under a lamp (the global
+##   street_lamp_foot, set by the test likewise) x night (road.gdshader); the concrete's own mottle is +-6% of that, so this one
+##   is looser.
 ## The tolerance is one 8-bit step: the screen keeps 8 bits a channel, and the scene radiance (half floats, 11-bit
 ## mantissa) is far finer than that.
 ## Run: godot --path project [--rendering-method gl_compatibility] res://tests/core/light_color_test.tscn -- --no-flow
@@ -30,6 +31,7 @@ const ROAD_STEPS := 16 # the mottle
 const ROAD_PLATE_GLOW := 1.0
 const GLOW_GREY := 0.2 # sRGB
 const FRAMES := 10 # the sky's radiance and the tone mapping settle
+const LIGHT_REACH := 0.5 # the brightest channel of a lamp's light after the exposure: inside AgX's range and Compatibility's clamp
 
 # The shaders' encodings (CityStore.constants.shader, tools/build/shader_contracts.json), read when the test starts: the lenses, a
 # prop vertex's tag (UV2.x), the road material with no map (its albedo the strip colour) and its scale in COLOR.a, a junction
@@ -64,6 +66,8 @@ func _ready() -> void:
 	cam.position = Vector3(0, 0, CAMERA_Z)
 	add_child(cam)
 	cam.make_current()
+	if not world.sky_table.is_filled(): # the eye's meter reads the sky's row: the pre-exposure is final once it is in
+		await world.sky_table.filled
 	await _lenses(material)
 	await _night(material, world.materials()["road"])
 	print("renderer: ", RenderingServer.get_current_rendering_method())
@@ -120,21 +124,25 @@ func _night(material: ShaderMaterial, road: ShaderMaterial) -> void:
 	plate.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	plate.position = ROAD_AT
 	add_child(plate)
-	await _frames(FRAMES)
-	var night: float = world.daylight.night # what daylight.gd published to the shaders
+	var exposed: float = world.daylight.pre_exposure * world.environment.tonemap_exposure
 	var g: Color = Color(material.get_shader_parameter("glow_color")).srgb_to_linear()
 	var c := Color(GLOW_GREY, GLOW_GREY, GLOW_GREY).srgb_to_linear()
-	var k: float = float(material.get_shader_parameter("glow_gain")) * night
-	var radiance := Vector3(g.r * c.r, g.g * c.g, g.b * c.b) * k
-	var shown := ToneMap.shown(radiance, world.environment)
+	var glass := Vector3(g.r * c.r, g.g * c.g, g.b * c.b)
+	var lens := LIGHT_REACH / (exposed * maxf(glass.x, maxf(glass.y, glass.z)))
+	RenderingServer.global_shader_parameter_set(&"street_lamp_lens", lens)
+	var p: Color = Color(road.get_shader_parameter("pool_color")).srgb_to_linear()
+	var albedo: float = Color(ROAD_GREY, ROAD_GREY, ROAD_GREY).srgb_to_linear().r
+	var pool := Vector3(p.r, p.g, p.b) * float(road.get_shader_parameter("plate_glow")) * albedo
+	var foot := LIGHT_REACH / (exposed * maxf(pool.x, maxf(pool.y, pool.z)))
+	RenderingServer.global_shader_parameter_set(&"street_lamp_foot", foot)
+	await _frames(FRAMES)
+	var night: float = world.daylight.night # what daylight.gd published to the shaders
+	var shown := ToneMap.shown(glass * lens * night, world.environment, world.daylight.pre_exposure)
 	var want := Color(shown.x, shown.y, shown.z).linear_to_srgb()
 	var img := get_viewport().get_texture().get_image()
 	_compare(img, GLOW_AT, want, "night glow (night %.2f)" % night)
-	var p: Color = Color(road.get_shader_parameter("pool_color")).srgb_to_linear()
-	var lit: float = float(road.get_shader_parameter("plate_glow")) * float(road.get_shader_parameter("pool_gain")) * night
-	var albedo: float = Color(ROAD_GREY, ROAD_GREY, ROAD_GREY).srgb_to_linear().r
-	var pool := ToneMap.shown(Vector3(p.r, p.g, p.b) * lit * albedo, world.environment)
-	_compare(img, ROAD_AT, Color(pool.x, pool.y, pool.z).linear_to_srgb(), "road light (junction plate)", ROAD_STEPS)
+	var road_shown := ToneMap.shown(pool * foot * night, world.environment, world.daylight.pre_exposure)
+	_compare(img, ROAD_AT, Color(road_shown.x, road_shown.y, road_shown.z).linear_to_srgb(), "road light (junction plate)", ROAD_STEPS)
 
 
 ## The grade as data/game/daylight.json sets it, neutral: levels of grey in and out, each as it came in (the picture is AgX's own).

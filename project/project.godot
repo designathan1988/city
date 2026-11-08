@@ -100,6 +100,26 @@ sky_level_map={
 "type": "sampler2D",
 "value": ""
 }
+pre_exposure={
+"type": "float",
+"value": 1.0
+}
+lux={
+"type": "float",
+"value": 0.0
+}
+room_lux={
+"type": "vec2",
+"value": Vector2(0, 0)
+}
+street_lamp_lens={
+"type": "float",
+"value": 0.0
+}
+street_lamp_foot={
+"type": "float",
+"value": 0.0
+}
 outside_on={
 "type": "float",
 "value": 0.79

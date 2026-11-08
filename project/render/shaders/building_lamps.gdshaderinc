@@ -16,6 +16,20 @@ const vec3 LAMP_OFFICE_MEAN = vec3(1.3902, 0.9254, 0.5895);
 
 global uniform float rooms_awake; // the share of people awake at this hour (daylight.gd)
 global uniform float building_night_windows; // the Effects panel: 0 puts the lit rooms out
+global uniform float lux; // the radiance of a white floor under 1 lx (render/daylight.gd, tuning.json render.light_unit_lx)
+// A lit room's working plane, home and office (daylight.json rooms), as the radiance of a white floor under it: its surfaces show
+// their albedo times it, as by day they show it times the daylight that comes in.
+global uniform vec2 room_lux;
+const float LAMP_PI = 3.14159265; // a luminance L in cd/m^2 is the radiance L pi lux
+
+float room_light_level(float office) {
+	return mix(room_lux.x, room_lux.y, office);
+}
+
+// An outside lantern's glass as a light: its colour (luminance about 1) times its luminance in cd/m^2.
+vec3 lantern_light(vec3 colour, float cd_m2) {
+	return colour * cd_m2 * LAMP_PI * lux;
+}
 
 const float GLASS_ROUGHNESS = 0.0; // float glass (physicallybased.info, Glass: roughness 0): it mirrors, through the engine's reflections
 // A glazed opening's reflectance at normal incidence (materials.json glass): double glazing in a home, a solar-control coating in an

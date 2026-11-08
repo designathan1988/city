@@ -870,3 +870,48 @@ deck over its plant (Sao Paulo has the most rooftop helipads of any city).
   `03-rua_noite` keeps the known 10 x 1 px of the C12 wire joint, not blessed.
 - Changed `native/src/render/buildings/{roof_plant.cpp, building_look.h, building_look.cpp}`, `project/data/render/buildings.json`,
   `tools/gates/schemas/buildings.schema.json`; created and deleted nothing.
+
+## The physical night (2026-11-08 12:20, branch `realism`)
+
+The night was a day for night: a moon of a quarter of the sun's energy, the night sky two colours of the data, street lamps that put
+a sun's illuminance on the road (energy 6 at decay 1), every emitter authored for the day's fixed exposure, so a street at 22h read
+as an evenly lit grey-blue afternoon.
+- Problems: (1) the exposure was the day's at every hour, so the night could only show by making its lights unphysical; (2) the
+  moon's energy and the night sky's colours were data, not the air; (3) lamps, rooms, lanterns and pools were gains tuned to that
+  exposure; (4) found on the way, in Godot 4.7.2: Forward+ pre-exposes the sky's radiance map once and its ambient twice; the
+  ambient takes the background's energy twice on both renderers; Compatibility multiplies a sky's COLOR by its energy before
+  decoding it, bakes the Environment's exposure into its radiance map, and encodes and decodes that map with transfer functions
+  that are not inverses in the dark; Compatibility pre-exposes no EMISSION; our sky shader wrote linear light where Compatibility
+  decodes sRGB (since the physical sky).
+- Sources: Ward 1994, Graphics Gems IV (contrast-based scale factor); IEC 61966-2-1 (80 cd/m^2 display); EN 13201-2:2015 (M3,
+  1 cd/m^2); Allen's Astrophysical Quantities (sun -26.74, full moon -12.74, the moon's B-V and radius); Kieffer & Stone 2005 (ROLO
+  slope); Volpe et al., Boletim da SAB 2024 and RMxAC 60 (16.49 mag/arcsec^2 at the IAG inside Sao Paulo); Falchi et al. 2016
+  (0.171 mcd/m^2 at 22.0); Kyba et al. 2011 (overcast amplification); Liou (stratus albedo 0.6); EN 12464-1:2021 (500 lx offices);
+  IES RP-11 (homes); UNECE R112 (75R, 10 100 cd); the Godot 4.7.2 sources read for each claim (light_storage.cpp, sky.cpp, sky.glsl,
+  render_scene_data_rd.cpp, render_forward_clustered.cpp, scene_forward_clustered.glsl, rasterizer_scene_gles3.cpp, scene.glsl,
+  drivers/gles3 sky.glsl, tonemap_inc.glsl, effects/cubemap_filter.glsl).
+- Code: the eye adapts (`render/eye.gd`, Ward's scale factor over the day hour's, so the day keeps its grey-card exposure) to the
+  luminance metered by `render/light_meter.gd` (a grey card under the sun's, the moon's and the sky's level light and the town's,
+  plus the lit street), on the sky's row rendered and read back once (`render/sky_level_table.gd` + `sky_level_table.gdshader`: the
+  shader stays the one owner of the sky's light); the picture is pre-exposed by CameraAttributesPractical.exposure_multiplier, the
+  sky by its own shader with the background's energy at 1 / e on Forward+ (the ambient then e x e^-2 x e^2 = e), the Compatibility
+  sky by the code its renderer decodes to the light (both transfer steps inverted for the filtered levels), and EMISSION by
+  `emission_light.gdshaderinc` (pre-exposed by hand on Compatibility; display-authored lights taken back out on Forward+). The moon
+  is the sun's light times 10^(-0.4 x 14.0) and the moon's reflectance, through the same air, with its own sky and disc; the night
+  sky is that and the town's light scattered by the air (`sky_model.gdshaderinc` sky_glow: Rayleigh's half-space phase 1/2, the
+  aerosol's from 1/2 at the horizon to its back hemisphere at the zenith), its upward radiance set so its zenith is the measured
+  one, cloud_reflect of it sent back by an overcast deck. Lamps by photometry (`native/src/render/lamp_photometry.h`, the light unit
+  moved to tuning.json render.light_unit_lx for C++ and GDScript alike): 10 000 lm over the spot's cone, decay 2, the lens's
+  luminance and the pools' foot light as shader globals; headlamps at 10 100 cd; rooms at 100 / 500 lx times what their surfaces
+  show; lanterns at 1 600 cd/m^2 (materials.json lantern). Daylight's cascades moved to `render/sun_cascades.gd` (its size gate),
+  the meter out of it to `render/light_meter.gd`.
+- Tests moved with their cause: building_light_test and light_color_test read the lights in their physical units and the
+  pre-exposure (`ToneMap.shown(..., pre)`); the new `sky_exposure_test` (both renderers) holds the sky's light to the pre-exposure
+  once, and fails without the fix (1/64 of it on Forward+: checked by undoing the fix).
+- Verified: both DLLs; `quick.sh`: every test passed (save_undo_test once failed under the full parallel run and passed alone twice:
+  a race in the save path, logged); photos: `03-rua_noite` the night itself, `00-cidade` 27 pixels one 8-bit level off at the top
+  (the sky function's new order of evaluation), both accepted after looking; hidden captures of the Centro at 22h, 18:18 and 17:36
+  looked at (dark facades and lit rooms, the pools under the lamps, the golden hour's exposure); gates of the changed files OK.
+- Created `project/render/{eye.gd, light_meter.gd, sun_cascades.gd, sky_level_table.gd}`, `project/render/shaders/
+  {sky_level_table.gdshader, emission_light.gdshaderinc}`, `native/src/render/lamp_photometry.h`,
+  `project/tests/core/sky_exposure_test.{gd,tscn}`; changed the rest listed in this commit; deleted nothing.

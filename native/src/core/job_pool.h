@@ -32,6 +32,8 @@ struct JobKey {
 	bool baked = false;
 	bool operator==(const JobKey &o) const { return lane == o.lane && id == o.id && baked == o.baked; }
 	JobKey bake() const { return JobKey{ lane, id, true }; }
+	// The first job of a user's result: its lane and its own id, made here so no user builds a key by hand.
+	static JobKey of(JobLane lane, int64_t id) { return JobKey{ lane, id, false }; }
 };
 
 struct JobKeyHash {

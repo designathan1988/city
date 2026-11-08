@@ -70,5 +70,5 @@ void far_window(vec2 uv, vec4 code, uint seed, vec3 n, vec3 V, float depth, inou
 	float through = glazing_through(glazing_f0(office), cosv); // what the glazing lets out at this angle
 	vec3 room = room_tone(V, n, office > 0.5 ? FLOOR_STONE : fract(lot * 11.3) < 0.5 ? FLOOR_BOARD : FLOOR_TILE);
 	vec3 seen = mix(pane_tone(lot, room), pane_mean(room_tone(V, n, office > 0.5 ? FLOOR_STONE : FLOOR_HOME)), far_sub);
-	emit = (lamp * lit * night * window_glow * FAR_ROOM_LEVEL + seen * room_daylight()) * through * mix(1.0, 0.64, dark) * glass;
+	emit = seen * (lamp * lit * night * room_light_level(office) * FAR_ROOM_LEVEL + room_daylight()) * through * mix(1.0, 0.64, dark) * glass;
 }

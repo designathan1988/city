@@ -56,9 +56,15 @@ static func params_of(environment: Environment) -> Vector4:
 	return curve_params(environment.tonemap_agx_white, environment.tonemap_agx_contrast)
 
 
-## What the screen shows (linear, 0..1) for scene radiance `s` under the Environment's exposure and AgX.
-static func shown(s: Vector3, environment: Environment) -> Vector3:
-	return agx(s, environment.tonemap_exposure, params_of(environment))
+## What the screen shows (linear, 0..1) for scene radiance `s` under the Environment's exposure and AgX, the picture pre-exposed by
+## `pre` (render/eye.gd: what the lights, the sky and their emission were multiplied by before it).
+static func shown(s: Vector3, environment: Environment, pre := 1.0) -> Vector3:
+	return agx(s * pre, environment.tonemap_exposure, params_of(environment))
+
+
+## The luminance of a linear sRGB colour: XYZ's Y.
+static func luminance(lin: Vector3) -> float:
+	return lin.dot(Vector3(XYZ.x.y, XYZ.y.y, XYZ.z.y))
 
 
 static func agx(s: Vector3, exposure: float, p: Vector4) -> Vector3:

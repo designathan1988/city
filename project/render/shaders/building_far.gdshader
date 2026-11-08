@@ -11,7 +11,8 @@ global uniform float night;
 
 uniform float wall_gain = 1.0;
 uniform float paint_chroma = 1.0; // the near level's dust on the paint (building_common.gdshaderinc dusty), so a hand-over keeps the colour
-uniform float window_glow = 1.5;
+uniform vec3 lamp_light : source_color = vec3(1.0, 0.83, 0.6); // materials.json lantern: an outside lamp's glass lit
+uniform float lamp_cd_m2 = 1600.0; // and its luminance
 
 // The superchunk's chunks drawn in their own detail (building_renderer.h): their buildings fold away here, so the far
 // masses never draw over them. COLOR.a carries the surface kind (low 3 bits) and the building's chunk in the
@@ -28,6 +29,7 @@ varying flat vec4 v_opening; // width, sill and head as shares of the bay and th
 #include "res://render/shaders/building_colour.gdshaderinc"
 #include "res://render/shaders/hash.gdshaderinc"
 #include "res://render/shaders/building_lamps.gdshaderinc"
+#include "res://render/shaders/emission_light.gdshaderinc"
 #include "res://render/shaders/sky_level_map.gdshaderinc"
 
 void vertex() {
@@ -71,11 +73,12 @@ void fragment() {
 		albedo = mix(albedo, vec3(f0), m);
 		rough = mix(rough, GLASS_ROUGHNESS, m);
 		metal = m;
-		emit = (lamp * lit * night * window_glow + pane_mean(room_tone(V, n, FLOOR_HOME)) * room_daylight()) * glazing_through(f0, cosv) * m;
+		vec3 seen = pane_mean(room_tone(V, n, office > 0.5 ? FLOOR_STONE : FLOOR_HOME));
+		emit = seen * (lamp * lit * night * room_light_level(office) + room_daylight()) * glazing_through(f0, cosv) * m;
 	}
-	if (kind == SK_LAMP) emit += albedo * night;
+	if (kind == SK_LAMP) emit += lantern_light(uniform_linear(lamp_light), lamp_cd_m2) * night;
 	ALBEDO = surface_out(albedo);
-	EMISSION = surface_out(emit);
+	EMISSION = surface_out(emission_light(emit));
 	ROUGHNESS = rough;
 	METALLIC = metal;
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);

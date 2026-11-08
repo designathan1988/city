@@ -37,6 +37,7 @@ uniform vec2 wind_dir = vec2(0.93, 0.35);
 #include "res://render/shaders/cloud_field.gdshaderinc"
 #include "res://render/shaders/sky_model.gdshaderinc"
 #include "res://render/shaders/air_globals.gdshaderinc"
+#include "res://render/shaders/emission_light.gdshaderinc"
 
 const int FOG_STEPS = 36; // the grain of the start goes with the length of a step: 2.1 grey levels at 24, measured on a bank
 const int CLOUD_STEPS = 16;
@@ -199,7 +200,7 @@ float cloud_bodies(vec3 ro, vec3 rd, float t_scene, float jitter, float time, ve
 			float towards = clamp(heap(best, q + sun_dir * size * 0.18), 0.0, 1.0);
 			float lit = exp(-towards * 2.6) * mix(0.55, 1.0, smoothstep(-0.05, 0.1, here - towards));
 			float up = clamp((q.y - cloud_look[best].x) / size, 0.0, 1.0);
-			vec3 c = mix(base_shade, fill, 0.25 + 0.75 * up) * 0.85 + sun_light * 0.36 * lit * (1.0 - dark);
+			vec3 c = mix(base_shade, fill, 0.25 + 0.75 * up) * 0.85 + unshaded_light(sun_light) * 0.36 * lit * (1.0 - dark);
 			float alpha = 1.0 - exp(-density * step_len * 0.015 * 200.0 / size);
 			light += keep * alpha * c;
 			keep *= 1.0 - alpha;
@@ -228,7 +229,7 @@ void fragment() {
 	float jitter = texture(start_noise, FRAGCOORD.xy / vec2(textureSize(start_noise, 0))).r;
 	if (!sky && cloud_count > 0) keep *= cloud_shade(hit);
 	vec3 level = normalize(vec3(rd.x, 0.0, rd.z) + vec3(1e-5, 0.0, 0.0));
-	vec3 horizon = sky_radiance(air_now(), level, max(ro.y, 1.0)) + NIGHT_AIR * dark; // what the air sends along a level view
+	vec3 horizon = unshaded_light(sky_radiance(air_now(), level, max(ro.y, 1.0))) + NIGHT_AIR * dark; // what the air sends along a level view, pre-exposed as the scene is
 	if (mist > 0.0) {
 		float a = mist_amount(ro, rd, t_scene, sky ? mist_height : hit.y);
 		add = add * (1.0 - a) + horizon * a;

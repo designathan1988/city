@@ -9,6 +9,7 @@ shader_type spatial;
 #include "res://render/shaders/contracts/agents.gdshaderinc"
 
 #include "res://render/shaders/color_space.gdshaderinc"
+#include "res://render/shaders/emission_light.gdshaderinc"
 
 global uniform float night;
 uniform vec3 head_glow : source_color;
@@ -104,5 +105,5 @@ void fragment() {
 	ALBEDO = linear_out(c);
 	ROUGHNESS = rough;
 	METALLIC = 0.0;
-	EMISSION = linear_out(emit);
+	EMISSION = linear_out(emission_shown(emit)); // the lamps authored as the screen shows them (render/lamp_radiance.gd, agents.json trim)
 }

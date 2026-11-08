@@ -3,6 +3,7 @@
 
 #include "core/grid.h"
 #include "core/math.h"
+#include "render/lamp_photometry.h"
 #include "render/render_layers.h"
 
 #include <godot_cpp/variant/basis.hpp>
@@ -33,7 +34,7 @@ float flat_distance(const Vector3 &a, const Vector3 &b) { return std::hypot(a.x 
 void LampLights::init(const RID &scenario, const Tuning &t, const Color &glass) {
 	LightLook l;
 	l.color = glass;
-	l.energy = float(t.render_lamp_energy);
+	l.energy = float(light_energy(lamp_intensity_cd(t), t));
 	l.range = float(t.render_lamp_range_m);
 	l.angle_deg = float(t.render_lamp_cone_deg);
 	l.cone_fall = float(t.render_lamp_cone_fall);

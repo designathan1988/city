@@ -1,16 +1,13 @@
 ## Time of day: the sun's place, its light after the air (render/air.gd), the sky the air makes of it (render/shaders/sky.gdshader),
 ## which is also every surface's ambient light and reflections (the Environment reads the sky's radiance map), the air's
-## haze over the distance, the moon by night, glow, and the global shader parameters that lamps, windows and the road light pools
-## read. All numbers come from data/game/daylight.json.
+## haze over the distance, the moon by night and the town's own light in its sky, the eye's adaptation to all of it (render/eye.gd,
+## metered here), glow, and the global shader parameters that lamps, windows and the road light pools read. All numbers come from
+## data/game/daylight.json.
 class_name Daylight
 extends RefCounted
 
-const BIAS_PERCENT := 100.0 # the engine reads the bias in hundredths
-const HALF := 0.5
-const MARGIN_TEXELS := 2.0
 const SKY_LIT := 1.0 # the sky's share of the ambient: all of it
 const SHADED := 0.0 # what an ambient switched off leaves
-const SIDE_BEFORE_TIER_PX := 2048.0 # a cascade's side until the graphics tier gives its own
 
 var _d: Dictionary
 var _sun: DirectionalLight3D
@@ -18,50 +15,62 @@ var _env: Environment
 var _sky: ShaderMaterial
 var _probe: SkyLightProbe
 var air: Air
+var meter: LightMeter # the night's lights, the eye's meter and its pre-exposure
+var lux: float:
+	get:
+		return meter.lux
+var pre_exposure: float:
+	get:
+		return meter.pre_exposure
+var _moon_dir := Vector3.UP # towards the moon
 var night := 0.0
 var shadows_on := true: # what the graphics tier asks of the sun; the moon's shadow goes with the night (_cast)
 	set(on):
 		shadows_on = on
 		_cast()
-var shadow_side_px := SIDE_BEFORE_TIER_PX # a cascade's side: game/settings/settings.gd
-var shadow_filter_radius := 1.0 # the engine's radius for the filter in use
+var cascades: SunCascades # the sun's shadow cascades fitted to the view
 var solar := Vector3.UP # towards the sun, wherever the light of the night points
 var mode := "day"
-var shadow_least_m := 0.0 # the quality's own reach (game/settings/settings.gd)
-var _first_m := 0.0 # where the first cascade ends
 var _clock_shown := -1.0
 var _hour := 0.0
 var _overcast := 0.0
 var _flash := 0.0
-## What the cascades were last fitted to: the eye, its tilt, the ground under it, the lens, the screen and the shadow settings. The fit
-## is a function of these and of its own last result, which it reproduces when they repeat: a view at rest is not fitted again.
-var _fitted_for := []
 ## The values last given to the engine (it keeps them in single precision, so its own copy does not compare): each is set only
 ## when it moves.
 var _air_density := NAN
-var _splits := PackedFloat64Array([NAN, NAN, NAN])
 ## The Effects panel's switches: bloom and the ambient light drawn or not.
 var glow_on := true
 var ambient_on := true
 
 
-func _init(day: Dictionary, sun: DirectionalLight3D, env: Environment, sky: ShaderMaterial, probe: SkyLightProbe) -> void:
+func _init(day: Dictionary, sun: DirectionalLight3D, env: Environment, sky: ShaderMaterial, probe: SkyLightProbe,
+		table: SkyLevelTable, camera: CameraAttributesPractical) -> void:
 	_d = day
 	_sun = sun
 	_env = env
 	_sky = sky
 	_probe = probe
 	air = Air.new(day.air)
+	cascades = SunCascades.new(day, sun)
+	meter = LightMeter.new(day, air, table, camera, env, sky)
+	_moon_dir = _toward(day.moon_elev_deg, day.moon_az_deg)
+	_sky.set_shader_parameter("tone_exposure", env.tonemap_exposure)
 	for m: ShaderMaterial in [_sky, _probe.material]:
-		m.set_shader_parameter("night_zenith", _c("zenith_night"))
-		m.set_shader_parameter("night_horizon", _c("horizon_night"))
-		m.set_shader_parameter("night_gain", _d.sky_gain)
+		m.set_shader_parameter("moon_dir", _moon_dir)
+		m.set_shader_parameter("cloud_reflect", day.sky_glow.cloud_reflect)
 		m.set_shader_parameter("overcast_pass", _d.overcast_pass)
 	RenderingServer.global_shader_parameter_set(&"daylight_factor", _d.daylight_factor)
+	table.filled.connect(_on_table)
 
 
-func _c(key: String) -> Color:
-	return Color.html(_d[key])
+## The sky's row is read (render/sky_level_table.gd): the meter takes the town's light and the day hour's clear light as the eye's
+## reference, and the light is metered again.
+func _on_table() -> void:
+	meter.fill(func() -> float:
+		var day := _place(_d.day_hour)
+		var toward: Vector3 = day[0]
+		return meter.adapted(toward, air.sun_at(toward, 0.0), _moon_dir, Vector3.ZERO, 0.0, 0.0, day[3]))
+	relight()
 
 
 ## The same hour again, after a switch changed what the light draws.
@@ -95,34 +104,44 @@ func follow_clock(hour: float) -> void:
 		set_hour(hour)
 
 
-func set_hour(hour: float) -> void:
-	_hour = hour
+## The sun at a clock time: towards it, its height (the sine of the arc's angle), its azimuth in degrees and how dark it is.
+func _place(hour: float) -> Array:
 	var k: float = (hour - _d.sunrise_h) / _d.day_span_h
 	var height := sin(PI * k)
 	var elev: float = _d.max_elev_deg * height
 	var az: float = _d.az_start_deg + _d.az_span_deg * clampf(k, 0.0, 1.0)
-	night = smoothstep(_d.night_from_deg, _d.night_to_deg, elev)
-	solar = _toward(elev, az)
-	if height > -_d.light_from:
-		_aim(_sun, maxf(height, _d.low_height) * _d.max_elev_deg, az)
-		var lit: Vector3 = air.sun_at(solar, 0.0) * (1.0 - _overcast * _d.overcast_sun)
-		var most := maxf(lit.x, maxf(lit.y, lit.z))
-		_sun.light_color = Color(lit.x, lit.y, lit.z) / most if most > 0.0 else Color.WHITE
-		_sun.light_energy = most
-	else:
+	return [_toward(elev, az), height, az, smoothstep(_d.night_from_deg, _d.night_to_deg, elev)]
+
+
+func set_hour(hour: float) -> void:
+	_hour = hour
+	var place := _place(hour)
+	solar = place[0]
+	var height: float = place[1]
+	night = place[3]
+	var dim: float = 1.0 - _overcast * _d.overcast_sun # what the weather leaves of a disc's own light
+	var sun_lit: Vector3 = air.sun_at(solar, 0.0) * dim
+	var moon_up: bool = height <= -_d.light_from # the moon lights the town once the sun is gone
+	var moon_lit: Vector3 = air.light_at(_moon_dir, 0.0, meter.moon_top) * dim if moon_up else Vector3.ZERO
+	if moon_up:
 		_aim(_sun, _d.moon_elev_deg, _d.moon_az_deg)
-		_sun.light_color = _c("moon")
-		_sun.light_energy = _d.moon_energy * night
+		_shine(moon_lit)
+	else:
+		_aim(_sun, maxf(height, _d.low_height) * _d.max_elev_deg, place[2])
+		_shine(sun_lit)
 	# The sky's radiance map is the ambient, scaled by the background's energy and not by ambient_light_energy (that one scales only
 	# the flat colour it mixes out: render_scene_data_rd.cpp, 4.7.2): the switch takes the sky's share away, and the colour is none.
 	_env.ambient_light_sky_contribution = SKY_LIT if ambient_on else SHADED
 	_env.ambient_light_energy = SHADED
 	air.publish(_sky, solar)
 	for m: ShaderMaterial in [_sky, _probe.material]: # the sky drawn and the one its level light is taken from: the same weather
-		m.set_shader_parameter("dark", night)
+		m.set_shader_parameter("moon_top", meter.moon_top if moon_up else Vector3.ZERO)
+		m.set_shader_parameter("city_up", meter.town * night)
 		m.set_shader_parameter("overcast", _overcast * _d.overcast_sky)
 		m.set_shader_parameter("flash", _flash * _d.flash_sky)
 	_probe.refresh()
+	if meter.is_ready():
+		meter.expose(meter.adapted(solar, sun_lit, _moon_dir, moon_lit, _overcast * _d.overcast_sky, _flash * _d.flash_sky, night))
 	_cast()
 	_env.glow_enabled = glow_on
 	_env.glow_intensity = _d.glow_intensity
@@ -131,6 +150,13 @@ func set_hour(hour: float) -> void:
 	var awake := _awake_share(hour)
 	RenderingServer.global_shader_parameter_set(&"rooms_awake", awake)
 	RenderingServer.global_shader_parameter_set(&"outside_on", _d.outside_all_night + (1.0 - _d.outside_all_night) * awake)
+
+
+## The directional light shines with `lit`, its colour and its energy.
+func _shine(lit: Vector3) -> void:
+	var most := maxf(lit.x, maxf(lit.y, lit.z))
+	_sun.light_color = Color(lit.x, lit.y, lit.z) / most if most > 0.0 else Color.WHITE
+	_sun.light_energy = most
 
 
 ## Under the street lamps no one can see the moon's shadow, and it is the whole city drawn again for its maps: it fades with the dusk and the pass goes.
@@ -151,7 +177,7 @@ func _awake_share(hour: float) -> float:
 
 ## The haze between the eye and what it sees: the air's extinction at the ground (render/air.gd, from the visibility), thinned with
 ## height as the aerosol is, its colour the sky's own along the view (aerial perspective, the Environment's fog reading the radiance
-## map); and the cascades reach past the point looked at, so a far view keeps its shadows: only when that changes by a step.
+## map); and the sun's cascades fitted to the view (render/sun_cascades.gd).
 func follow_view(camera: Camera3D) -> void:
 	if camera == null:
 		return
@@ -161,63 +187,7 @@ func follow_view(camera: Camera3D) -> void:
 	if density != _air_density:
 		_air_density = density
 		_env.fog_density = density
-	var ground := CityCamera.ground_below(camera)
-	var view := [camera.global_position, camera.global_basis.z.y, ground, camera.near, camera.far, camera.fov,
-			camera.get_viewport().get_visible_rect().size, shadow_side_px, shadow_filter_radius, _sun.shadow_blur, shadow_least_m]
-	if view != _fitted_for:
-		_fitted_for = view
-		_fit_cascades(camera, ground)
-
-
-## The filter in use: its radius is the engine's, and the blur follows it so a soft edge keeps its width whatever the filter
-## (shadow_blur at shadow_blur_radius). What a filter changes is its samples: 32 at Soft Ultra, 16 at Soft High, per pixel
-## (renderer_scene_render_rd.cpp); at the same width the picture holds to 16 and shows its grain at 8.
-func set_filter(radius: float) -> void:
-	shadow_filter_radius = radius
-	_sun.shadow_blur = _d.shadow_blur * _d.shadow_blur_radius / radius
-
-
-## The sun's cascades fitted to the view (Engel, ShaderX5): the first ends just past the point looked at, the others in ratio to the
-## far end. A fixed share leaves a texel wider than a sign post up close.
-func _fit_cascades(camera: Camera3D, ground: float) -> void:
-	var eye := camera.global_position
-	var above: float = maxf(eye.y - ground, 0.0)
-	var look: float = above / maxf(_d.shadow_view_least_dip, camera.global_basis.z.y)
-	var depth: float = clampf(maxf(look + _d.shadow_reach_m, look * _d.shadow_past_look), shadow_least_m, _d.shadow_depth_max_m)
-	if absf(depth - _sun.directional_shadow_max_distance) > depth * _d.shadow_reach_step:
-		_sun.directional_shadow_max_distance = depth
-	var end: float = _sun.directional_shadow_max_distance
-	var fitted: float = minf(maxf(look * _d.shadow_first_past_look, _d.shadow_first_least_m), end * _d.shadow_first_share)
-	# by steps, as the far end: a slice that changes size with every metre of the ground under the eye changes the width of the
-	# cascade's texels with it, and every edge of every shadow crawls while the camera moves
-	if absf(fitted - _first_m) > fitted * _d.shadow_reach_step or _first_m > end * _d.shadow_first_share:
-		_first_m = fitted
-	var first: float = _first_m
-	var second: float = sqrt(first * end)
-	_set_split(0, &"directional_shadow_split_1", first / end)
-	_set_split(1, &"directional_shadow_split_2", second / end)
-	_set_split(2, &"directional_shadow_split_3", sqrt(second * end) / end)
-	var bias: float = _d.shadow_bias_m * BIAS_PERCENT / (_first_depth(camera, end) * _sun.shadow_blur * shadow_filter_radius)
-	if absf(bias - _sun.shadow_bias) > bias * _d.shadow_reach_step:
-		_sun.shadow_bias = bias
-
-
-## A split of the sun's cascades, given to the light only when it moved.
-func _set_split(i: int, property: StringName, share: float) -> void:
-	if share != _splits[i]:
-		_splits[i] = share
-		_sun.set(property, share)
-
-
-## The first cascade's depth as the engine takes it (renderer_scene_cull.cpp, 4.7.2): the sphere round the slice of the view, a texel
-## of margin on each side, and the pancake. The bias of the others grows with theirs, and so stays the same in texels.
-func _first_depth(camera: Camera3D, end: float) -> float:
-	var near := camera.near
-	var far: float = near + _sun.directional_shadow_split_1 * (minf(end, camera.far) - near)
-	var screen := camera.get_viewport().get_visible_rect().size
-	var across: float = far * tan(deg_to_rad(camera.fov) * HALF) * Vector2(screen.x / screen.y, 1.0).length()
-	var radius: float = Vector2(across, (far - near) * HALF).length() * shadow_side_px / (shadow_side_px - MARGIN_TEXELS)
-	return 2.0 * radius + _d.shadow_pancake_m
+	cascades.fit(camera)
 
 
 ## The direction (elevation, azimuth) in degrees, towards it: noon toward -Z.

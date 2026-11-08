@@ -12,7 +12,9 @@ void fragment() {
 	ALBEDO = c.rgb;
 	ROUGHNESS = roughness;
 	METALLIC = metallic;
-	EMISSION = windows || painted_windows ? emission + room_light(UV, painted_windows ? c.a : 1.0) : emission;
+	// the look's own glow as the cooked model gave it, as the screen shows it; the rooms in the scene's light
+	vec3 room = windows || painted_windows ? room_light(UV, painted_windows ? c.a : 1.0, mat3(INV_VIEW_MATRIX) * -VIEW, mat3(INV_VIEW_MATRIX) * NORMAL) : vec3(0.0);
+	EMISSION = emission_shown(emission) + emission_light(room);
 	if (alpha_cut > 0.0) {
 		ALPHA = c.a;
 		ALPHA_SCISSOR_THRESHOLD = alpha_cut;

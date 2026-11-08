@@ -2,6 +2,7 @@
 #include "render/agents/head_lights.h"
 
 #include "core/units.h"
+#include "render/lamp_photometry.h"
 #include "render/render_layers.h"
 
 #include <godot_cpp/variant/basis.hpp>
@@ -16,7 +17,7 @@ namespace city {
 void HeadLights::init(const RID &scenario, const Tuning &t, const Color &beam) {
 	LightLook l;
 	l.color = beam;
-	l.energy = float(t.render_head_energy);
+	l.energy = float(light_energy(t.render_head_intensity_cd, t));
 	l.range = float(t.render_head_range_m);
 	l.angle_deg = float(t.render_head_cone_deg);
 	l.cone_fall = float(t.render_head_cone_fall);

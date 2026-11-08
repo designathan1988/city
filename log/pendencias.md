@@ -127,8 +127,7 @@ O que falta fazer, por área.
   - A district's look (the Centro's older facades, the Jardins' houses) comes from its zone and density alone: the building
     styles are not chosen by district.
 
-- Realism (2026-11-08, log/work-log.md "Physical sky"): the night sky is still the data's two colours, not the moon through the
-  air; twilight loses its blue a few degrees after sunset (the sky model takes the sun's light at one height a layer, so the
+- Realism (2026-11-08, log/work-log.md "Physical sky"): twilight loses its blue a few degrees after sunset (the sky model takes the sun's light at one height a layer, so the
   high, ozone-blue light of dusk is missing); the clouds' bodies keep their authored light (`atmosphere.gdshader` cloud_bodies); the far level (past building_mid_end_m) paints
   every bay of a side as its middle one, so balconies and brise fins go flat out there;
   HDR output (Godot 4.7) is not asked for: it needs HDR 2D on every viewport, which changes the interface's own colours, and the
@@ -136,3 +135,20 @@ O que falta fazer, por área.
   laid, so glass off the screen reflects only the sky; the terrain's and water's albedos in `palette.json` were held to pictures
   under the former ACES and light, and are not re-derived; photo-scanned surface textures (2K) and decals for wear were not
   added (a download the user must approve).
+- The physical night (2026-11-08, log/work-log.md "The physical night"):
+  - Office towers light their rooms by the share of people awake at home (`awake_by_hour`), so at 22h the centre's towers are lit
+    like flats; offices need their own occupancy by hour (a lighting schedule such as ASHRAE 90.1's), and the far level's lit share
+    (`far_room_lit`) leaves out the near level's rooms-in-use share (`pane_lamp`, 0.64).
+  - Signal lenses, vehicle lamps, the placing ghost and a signature's own glow stay authored as the screen shows them
+    (`emission_shown`): their luminance in cd/m^2 (EN 12368, UNECE R7) would make them physical lights too.
+  - Compatibility: its fog takes `fog_light_color` (aerial perspective is commented out in drivers/gles3 scene.glsl), which is not
+    pre-exposed, so its haze is the default grey by day and too bright at night; its sky map is mipmapped and filtered on sRGB codes,
+    so its ambient bends from proportional in the dark (sky_exposure_test holds it to the nearer of once, never and twice), and a
+    mirror's sky (the map's unfiltered level) is a little brighter in the darkest tones.
+  - The sky's twilight ends about 3 degrees after sunset (the single-scattering model's earth shadow at a layer's scale height):
+    a real civil twilight lights the town to 6 degrees.
+  - The clouds and the mist keep their authored night light (`atmosphere.gdshader` NIGHT_AIR, cloud_bodies' dark terms); only their
+    physical parts are pre-exposed.
+  - `save_undo_test`'s old-format case failed once under the full parallel suite ("save.file.damaged", 22 s against 6.5 s alone)
+    and passed alone twice: a race between the core's save thread finishing and the file being read back (city_saves.gd
+    `_settle_save`, the core's save status), unrelated to the light; to read in the persistence code.

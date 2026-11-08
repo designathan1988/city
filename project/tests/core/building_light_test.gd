@@ -1,8 +1,9 @@
 ## The buildings as the screen shows them, through the game's own Environment and its "building" and "building_far"
 ## materials (CityWorld), on each renderer (tools/build/run_tests.sh runs it on Forward+ and on Compatibility):
-## - by night, with the ambient and the moon off so only a surface's own light is left, a lamp face of the near level
-##   (shell.h SK_LAMP) must show its colour x night x lamp_glow, and a lamp face of the far level its colour x
-##   wall_gain x night, tone mapped as render/tone_map.gd does (its colour a mid grey: inside AgX's range);
+## - by night, with the ambient and the moon off so only a surface's own light is left, a lamp face of the near level and of the
+##   far level (shell.h SK_LAMP) must show its lantern's colour x its luminance (materials.json lantern, as a radiance: x pi x lux)
+##   x night, pre-exposed by the eye's adaptation and tone mapped as render/tone_map.gd does (the luminance set so the brightest
+##   channel stays inside what Compatibility keeps before its tone mapping);
 ## - by day, a plain wall face of the near level and of the far level, and an instanced part with no finish layer, must
 ##   each show what the engine's own material shows for the same colour x wall_gain under the same light (a
 ##   StandardMaterial3D below it, vertex colour as sRGB albedo, the same roughness): each albedo path against the engine's.
@@ -33,6 +34,8 @@ func _ready() -> void:
 	cam.position = Vector3(0, 0, CAMERA_Z)
 	add_child(cam)
 	cam.make_current()
+	if not world.sky_table.is_filled(): # the eye's meter reads the sky's row: the pre-exposure is final once it is in
+		await world.sky_table.filled
 	await _wall_by_day()
 	await _lamps_by_night()
 	print("renderer: ", RenderingServer.get_current_rendering_method())
@@ -91,28 +94,28 @@ func _lamps_by_night() -> void:
 	world.set_hour(DataTables.game("daylight").night_hour)
 	world.environment.ambient_light_sky_contribution = 0.0 # the sky is the ambient: its share, not ambient_light_energy, turns it off
 	world.environment.glow_enabled = false # a lamp's own light: what it blooms over is another thing
-	# under 1 after the exposure, whatever the exposure: without the glow, Compatibility's picture before the tone mapping stops there
-	world.materials()["building"].set_shader_parameter("lamp_glow", LAMP_REACH / world.environment.tonemap_exposure)
 	world.sun.light_energy = 0.0
 	var near: ShaderMaterial = world.materials()["building"]
 	var far: ShaderMaterial = world.materials()["building_far"]
+	# under 1 after the exposure, whatever the exposure: without the glow, Compatibility's picture before the tone mapping stops there
+	var luminance := LAMP_REACH / (PI * world.daylight.lux * world.daylight.pre_exposure * world.environment.tonemap_exposure)
+	for m: ShaderMaterial in [near, far]:
+		m.set_shader_parameter("lamp_cd_m2", luminance)
 	var a := _quad(Color(GREY, GREY, GREY, CityStore.code(&"SurfaceKind", &"SK_LAMP") / BYTE), near, Vector3(-PITCH_M * 0.5, 0, 0))
 	var b := _quad(Color(GREY, GREY, GREY, CityStore.code(&"SurfaceKind", &"SK_LAMP") / BYTE), far, Vector3(PITCH_M * 0.5, 0, 0))
 	await _frames(FRAMES)
 	var night: float = world.daylight.night
 	var img := get_viewport().get_texture().get_image()
-	var lit: Color = Color(near.get_shader_parameter("lamp_light")).srgb_to_linear() # what a lit lamp gives, whatever its body is
-	_compare(img, a.position, _shown_rgb(Vector3(lit.r, lit.g, lit.b) * night * _param(near, "lamp_glow")), "lamp near (night %.2f)" % night)
-	_compare(img, b.position, _shown(_decode(GREY) * _param(far, "wall_gain") * night), "lamp far (night %.2f)" % night)
+	for at: Vector3 in [a.position, b.position]:
+		var m: ShaderMaterial = near if at == a.position else far
+		var lit: Color = Color(m.get_shader_parameter("lamp_light")).srgb_to_linear() # what a lit lamp gives, whatever its body is
+		var radiance := Vector3(lit.r, lit.g, lit.b) * _param(m, "lamp_cd_m2") * PI * world.daylight.lux * night
+		_compare(img, at, _shown_rgb(radiance), "lamp %s (night %.2f)" % ["near" if m == near else "far", night])
 
 
-## The colour a linear grey radiance shows on screen, through the Environment's tone mapping (render/tone_map.gd).
-func _shown(radiance: float) -> Color:
-	return _shown_rgb(Vector3(radiance, radiance, radiance))
-
-
+## The colour a linear radiance shows on screen, pre-exposed and through the Environment's tone mapping (render/tone_map.gd).
 func _shown_rgb(radiance: Vector3) -> Color:
-	var s := ToneMap.shown(radiance, world.environment)
+	var s := ToneMap.shown(radiance, world.environment, world.daylight.pre_exposure)
 	return Color(s.x, s.y, s.z).linear_to_srgb()
 
 

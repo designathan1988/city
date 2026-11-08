@@ -43,7 +43,7 @@ uniform float cobble_per_m = 4.2;
 uniform vec3 pool_color : source_color = vec3(1.0, 0.82, 0.55);
 uniform float pool_along_m = 11.5; // a lamp's pool along the road: where it ends; across, the street furniture owner sets it
 uniform float pool_step = 1.0; // the lamp step, set by the road renderer from the street furniture catalog
-uniform float pool_gain = 0.32;
+global uniform float street_lamp_foot; // the illuminance under a street lamp, as a white floor's radiance (render/lamp_photometry.h)
 uniform float plate_glow = 0.55;
 global uniform vec2 lamp_lit; // where the lamps with a light of their own give way to these pools (render/props/lamp_lights.h)
 
@@ -98,6 +98,7 @@ void vertex() {
 }
 
 #include "res://render/shaders/lamp_pool.gdshaderinc"
+#include "res://render/shaders/emission_light.gdshaderinc"
 
 float lamp_pools() {
 	if (v_pool.x < 0.5 * ROAD_POOL_PLATE) {
@@ -223,5 +224,5 @@ void fragment() {
 	NORMAL = bent_normal(NORMAL, VERTEX, frame, bend * bend_scale * fade + fine);
 	float far = pool_handed_over(v_eye_m, lamp_lit);
 	float pools = night > 0.0 && far > 0.0 ? lamp_pools() * far : 0.0; // daylight and near: skip the two falls per pixel
-	EMISSION = linear_out(albedo * source_linear(pool_color) * pools * night * pool_gain); // the surface's own colour: dark asphalt stays dark, the paint shows
+	EMISSION = linear_out(emission_light(albedo * source_linear(pool_color) * pools * night * street_lamp_foot)); // the surface's own colour: dark asphalt stays dark, the paint shows
 }

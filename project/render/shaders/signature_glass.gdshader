@@ -10,5 +10,5 @@ void fragment() {
 	ALPHA = c.a;
 	ROUGHNESS = roughness;
 	METALLIC = metallic;
-	EMISSION = emission;
+	EMISSION = emission_shown(emission); // the cooked model's own glow, as the screen shows it
 }

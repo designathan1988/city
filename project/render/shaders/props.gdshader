@@ -11,7 +11,7 @@ shader_type spatial;
 
 global uniform float night;
 uniform vec3 glow_color : source_color;
-uniform float glow_gain = 6.0;
+global uniform float street_lamp_lens; // the street lamp's lens as a light (render/lamp_photometry.h)
 uniform float roughness = 0.85;
 uniform vec3 lit_radiance[LENS_COUNT]; // per lens
 uniform vec3 dark_radiance[LENS_COUNT]; // an unlit lens's faint glow (render/lamp_radiance.gd)
@@ -35,6 +35,7 @@ varying vec3 v_seen; // where it is in the world, and which way it faces
 varying vec3 v_faces;
 
 #include "res://render/shaders/color_space.gdshaderinc"
+#include "res://render/shaders/emission_light.gdshaderinc"
 #include "res://render/shaders/lattice_noise.gdshaderinc"
 
 // A span's phase and its poles' kinds share INSTANCE_CUSTOM.y (street_props.cpp push_span): phase + PROP_SPAN_KIND_STRIDE (kind_a +
@@ -164,8 +165,8 @@ void fragment() {
 		// Godot's dielectric reflectance at normal incidence is 0.16 SPECULAR^2 (scene_forward_lights_inc.glsl F0);
 		// Fresnel's ((n - 1) / (n + 1))^2 for the lens's index of refraction. A lit lens reflects nothing.
 		SPECULAR = sqrt(pow((lens_ior - 1.0) / (lens_ior + 1.0), 2.0) / 0.16) * (1.0 - v_lit);
-		EMISSION = linear_out(v_light);
+		EMISSION = linear_out(emission_shown(v_light));
 	} else if (abs(v_tag - 2.0) < 0.5) {
-		EMISSION = linear_out(source_linear(glow_color) * c * night * glow_gain);
+		EMISSION = linear_out(emission_light(source_linear(glow_color) * c * night * street_lamp_lens));
 	}
 }

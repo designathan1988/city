@@ -16,6 +16,7 @@
 
 const float SKY_PI = 3.14159265;
 const float SUN_LIMB_DARKENING = 0.6; // the linear limb darkening of the visible disc (Allen's Astrophysical Quantities, 4th ed., 14.7)
+const float MOON_RADIUS_RAD = 0.00452; // the moon's mean apparent radius, 15.5 arcminutes (Allen's Astrophysical Quantities, 4th ed., 12.3)
 const float LEAST_MU = 0.001; // a ray this close to level still meets the ground or the top of the air
 
 // What render/air.gd hands every shader that draws the sky: the sun's direction (towards it) and its light over the air, the
@@ -128,29 +129,71 @@ vec3 sky_sun_disc(Air a, vec3 dir, float h) {
 	return sky_sun_at(a, h) * limb / (SUN_RADIUS_RAD * SUN_RADIUS_RAD) / (1.0 - SUN_LIMB_DARKENING / 3.0);
 }
 
-// What the weather and the hour lay over the clear air (render/daylight.gd): the night's two colours and their gain, how dark it is,
-// the overcast deck's cover and the light it lets down, a bolt's flash.
+// What the hour and the weather lay over the clear air (render/daylight.gd): the moon (towards it, its light over the air; none while
+// the sun is up, whose sky outshines it 10^5 times), the town's light sent up (the radiance of the ground under the air, lit by its
+// lamps) and the share of it an overcast deck sends back down, the deck's cover and the light it lets down, a bolt's flash.
 struct SkyWeather {
-	vec3 night_zenith;
-	vec3 night_horizon;
-	float night_gain;
-	float dark;
+	vec3 moon_dir;
+	vec3 moon_top;
+	vec3 city_up;
+	float cloud_reflect;
 	float overcast;
 	float overcast_pass;
 	float flash;
 };
 
-const float NIGHT_CURVE = 0.62; // how fast the night's sky darkens from the horizon up
-
-// The sky as seen along `dir` from height h: the clear air, an overcast deck over it as the weather has it (the CIE overcast sky,
-// CIE S 011/E:2003 type 1: L = Lz (1 + 2 sin(elevation)) / 3, its level light E = 7/9 pi Lz a share of the clear sky's direct light
-// on level ground), the night's own sky, a bolt's light. The sun's disc is the picture's own (sky_sun_disc).
-vec3 sky_seen(Air a, SkyWeather w, vec3 dir, float h) {
+// The sky lit by one light over the air (a's sun: the sun or the moon) along `dir` from height h: the clear air, an overcast deck
+// over it as the weather has it (the CIE overcast sky, CIE S 011/E:2003 type 1: L = Lz (1 + 2 sin(elevation)) / 3, its level light
+// E = 7/9 pi Lz a share of the clear sky's direct light on level ground).
+vec3 sky_lit(Air a, SkyWeather w, vec3 dir, float h) {
 	vec3 col = sky_radiance(a, dir, h);
 	float lz = 9.0 / 7.0 * w.overcast_pass * dot(sky_sun_at(a, 0.0), vec3(0.2126, 0.7152, 0.0722)) * max(a.sun_dir.y, 0.0);
-	col = mix(col, vec3(lz * (1.0 + 2.0 * max(dir.y, 0.0)) / 3.0), w.overcast);
-	vec3 night = mix(w.night_horizon, w.night_zenith, pow(clamp(dir.y, 0.0, 1.0), NIGHT_CURVE));
-	return (col + night * w.dark * w.night_gain) * (1.0 + w.flash);
+	return mix(col, vec3(lz * (1.0 + 2.0 * max(dir.y, 0.0)) / 3.0), w.overcast);
+}
+
+// The town's own light in its sky: the ground under the air at the radiance city_up, scattered towards the eye along the view, each
+// layer's share of the path as for the sun (sky_inscatter), with its phase taken over the lower hemisphere the light comes from.
+// Rayleigh's phase is symmetric fore and aft, so half of it lies in any half-space; the aerosol's leans forward, half of it at a
+// level view and only its back hemisphere looking straight up, B(g) = (1 - g) / (2 g) ((1 + g) / sqrt(1 + g^2) - 1), taken as linear
+// in the sine between. Below the horizon the town itself. An overcast deck sends cloud_reflect of the town's light back, evenly.
+vec3 sky_glow(Air a, SkyWeather w, vec3 dir, float h) {
+	vec3 tr;
+	float tm;
+	vec3 to;
+	bool ground;
+	sky_depths(a, dir.y, h, tr, tm, to, ground);
+	vec3 ext = tr + vec3(tm) + to;
+	vec3 through = exp(-ext);
+	vec3 share = (vec3(1.0) - through) / max(ext, vec3(1e-6));
+	float g = a.mie.z;
+	float back = (1.0 - g) / (2.0 * g) * ((1.0 + g) / sqrt(1.0 + g * g) - 1.0);
+	float mie_half = mix(0.5, back, clamp(dir.y, 0.0, 1.0));
+	vec3 col = w.city_up * (0.5 * tr + vec3(tm * a.mie.y * mie_half)) * share;
+	if (ground) col += w.city_up * through;
+	return mix(col, w.city_up * w.cloud_reflect, w.overcast);
+}
+
+// The sky as seen along `dir` from height h: the sun's, the moon's, the town's light in it, a bolt's light. The discs are the
+// picture's own (sky_sun_disc, sky_moon_disc).
+vec3 sky_seen(Air a, SkyWeather w, vec3 dir, float h) {
+	vec3 col = sky_lit(a, w, dir, h);
+	if (max(w.moon_top.r, max(w.moon_top.g, w.moon_top.b)) > 0.0) {
+		Air m = a;
+		m.sun_dir = w.moon_dir;
+		m.sun_top = w.moon_top;
+		col += sky_lit(m, w, dir, h);
+	}
+	return (col + sky_glow(a, w, dir, h)) * (1.0 + w.flash);
+}
+
+// The full moon's disc: its light after the air over its solid angle, as radiance (as sky_sun_disc), even across it (a full moon
+// shows next to no limb darkening).
+vec3 sky_moon_disc(Air a, SkyWeather w, vec3 dir, float h) {
+	if (dot(dir, w.moon_dir) < cos(MOON_RADIUS_RAD)) return vec3(0.0);
+	Air m = a;
+	m.sun_dir = w.moon_dir;
+	m.sun_top = w.moon_top;
+	return sky_sun_at(m, h) / (MOON_RADIUS_RAD * MOON_RADIUS_RAD);
 }
 
 // The irradiance that sky gives level ground, over pi (the radiance of a white diffuse floor under it): a cosine-weighted mean of the

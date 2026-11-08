@@ -15,6 +15,8 @@ var sky: SkyView
 var occlusion: MeshInstance3D = preload("res://render/occlusion_pass.gd").new() # the corners of the town: the one owner of the screen-space occlusion
 var contact: MeshInstance3D = preload("res://render/contact_pass.gd").new() # the sun's shade where things touch
 var sky_probe := SkyLightProbe.new() # the sky's light on level ground, one texel: the rooms' daylight and the contact shade read it
+var sky_table := SkyLevelTable.new() # the sky's level light over the sun's heights, read back once: the eye's meter (render/daylight.gd)
+var eye_attributes := CameraAttributesPractical.new() # the eye's adaptation as the picture's pre-exposure (render/eye.gd)
 var _materials := {} # kept alive here: the core draws with their RIDs
 var _dither := 0.0
 var _terrain_material: Resource
@@ -165,6 +167,7 @@ func _build_environment(_palette: Dictionary) -> void:
 	FilmLook.grade(environment, day.grade)
 	var we := WorldEnvironment.new()
 	we.environment = environment
+	we.camera_attributes = eye_attributes
 	add_child(we)
 	occlusion.setup(day.occlusion)
 	add_child(occlusion)
@@ -172,7 +175,8 @@ func _build_environment(_palette: Dictionary) -> void:
 	add_child(contact)
 	FilmLook.vignette(self, day.vignette)
 	add_child(sky_probe)
-	daylight = Daylight.new(day, sun, environment, sky_mat, sky_probe)
+	add_child(sky_table)
+	daylight = Daylight.new(day, sun, environment, sky_mat, sky_probe, sky_table, eye_attributes)
 	add_child(ElementEffects.new())
 	add_child(ShoreView.new(self))
 	daylight.set_hour(day.day_hour)

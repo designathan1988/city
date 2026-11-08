@@ -7,7 +7,6 @@ render_mode cull_back;
 
 global uniform float night;
 global uniform float building_glass; // the Effects panel: 0 leaves the panes out
-uniform float window_glow = 1.5;
 uniform float furniture_tone[120]; // linear tone of each furniture kind, three floats a kind (materials.json)
 
 const int KIND_MASK = (1 << SURFACE_KIND_BITS) - 1;
@@ -40,6 +39,7 @@ void vertex() {
 #include "res://render/shaders/building_colour.gdshaderinc"
 #include "res://render/shaders/hash.gdshaderinc"
 #include "res://render/shaders/building_lamps.gdshaderinc"
+#include "res://render/shaders/emission_light.gdshaderinc"
 #include "res://render/shaders/building_room_tone.gdshaderinc"
 #include "res://render/shaders/sky_level_map.gdshaderinc"
 #include "res://render/shaders/building_pane.gdshaderinc"
@@ -69,7 +69,7 @@ void fragment() {
 	v_axis_y = (VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz;
 	v_axis_z = (VIEW_MATRIX * vec4(n, 0.0)).xyz;
 	ALBEDO = surface_out(albedo);
-	EMISSION = surface_out(emit);
+	EMISSION = surface_out(emission_light(emit));
 	ROUGHNESS = rough;
 	METALLIC = metal;
 	AO = open;
