@@ -40,6 +40,8 @@ struct ChunkGround {
 ChunkGround chunk_ground(const CityState &s, int64_t key);
 bool near_road(const CityState &s, const ChunkGround &l, float x, float z, float r);
 bool in_lot(const CityState &s, const ChunkGround &l, float margin, float x, float z);
+// The ground's grade (rise over run) at (x, z), read `probe` metres either side: what the trees and the cover keep off cliffs by.
+float grade_at(const Heightfield &hf, float x, float z, float probe);
 
 struct SpeciesMix {
 	std::vector<int> species;

@@ -14,6 +14,10 @@ const BUDGET_MS := 16.0
 const DT := 0.016
 ## Free ground past the town, where a road can start.
 const FIELD_M := 100.0
+## The Relief brush's choices a city is saved with: the escarpment, a size off the default; a ground kind no card offers.
+const BRUSH_MODE := 6
+const BRUSH_RADIUS_M := 155.0
+const NO_SUCH_KIND := 99
 
 
 func _ready() -> void:
@@ -120,18 +124,31 @@ func _levels() -> void:
 	check(m.has("mean_speed_ms") and m.has("queued"), "traffic metrics")
 
 
-## A city comes back with its levels and its view; a save that does not read goes aside, not deleted.
+## A city comes back with its levels, its view and the Landscape brushes' last choices; a save that does not read goes aside,
+## not deleted.
 func _session(rig: CityCamera) -> void:
 	CityStore.set_levels(2.0, 0.5, 1.55)
 	rig.jump(Vector3(100, 0, 50), 30.0, 50.0, 800.0)
+	var tools: ToolController = get_tree().get_first_node_in_group(&"tools")
+	var relief_top: float = _slider("TERRAIN", "hardness").max
+	tools.remembered[ToolController.Tool.TERRAIN] = {"mode": BRUSH_MODE, "radius": BRUSH_RADIUS_M, "hardness": relief_top + 1.0, "stray": 1}
+	tools.remembered[ToolController.Tool.PAINT] = {"kind": NO_SUCH_KIND, "radius": BRUSH_RADIUS_M}
 	var saved: Dictionary = await save()
 	check(saved.get("ok", false), "the city is written to its own slot: %s" % saved)
 	var slot := CityStore.saves.city_slot()
 	CityStore.set_levels(1.0, 1.0, 1.0)
 	rig.jump(Vector3.ZERO, 0.0, 50.0, 400.0)
+	tools.remembered.clear()
 	check((await CityStore.saves.load_game(slot, true)).get("ok", false), "opened the saved city")
 	check(is_equal_approx(CityStore.snapshot.traffic_level, 2.0), "the levels came back with the city")
 	check(Vector2(rig.focus.x, rig.focus.z).distance_to(Vector2(100, 50)) < 1.0, "the view came back with the city (%s)" % rig.focus)
+	var relief: Dictionary = tools.remembered.get(ToolController.Tool.TERRAIN, {})
+	check(relief.get("mode", -1) == BRUSH_MODE and is_equal_approx(relief.get("radius", 0.0), BRUSH_RADIUS_M),
+			"the Relief brush comes back with its landform and size (%s)" % relief)
+	check(is_equal_approx(relief.get("hardness", 0.0), relief_top) and not relief.has("stray"), "kept into the panel's range, nothing it does not offer")
+	var paint: Dictionary = tools.remembered.get(ToolController.Tool.PAINT, {})
+	check(not paint.has("kind") and is_equal_approx(paint.get("radius", 0.0), BRUSH_RADIUS_M), "a kind no card has is left to the default (%s)" % paint)
+	tools.remembered.clear()
 	CityStore.set_levels(1.0, 1.0, 1.0)
 	check(SaveSlots.quarantine(slot) == OK and not SaveSlots.exists(slot), "an unreadable save goes to quarantine")
 	var aside := "%s/%s" % [SaveSlots.dir(), SaveSlots.QUARANTINE_DIR]
@@ -140,6 +157,13 @@ func _session(rig: CityCamera) -> void:
 	for f: String in kept:
 		DirAccess.remove_absolute("%s/%s" % [aside, f])
 	DirAccess.remove_absolute(Session.path(slot))
+
+
+func _slider(tool_name: String, key: String) -> Dictionary:
+	for s: Dictionary in DataTables.ui("land_panels")[tool_name].sliders:
+		if s.get("key", "") == key:
+			return s
+	return {}
 
 
 ## The title screen's form: left alone it asks for nothing, a new seed asks for that city.

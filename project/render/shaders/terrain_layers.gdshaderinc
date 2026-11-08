@@ -108,6 +108,34 @@ vec2 grass_tilt(vec2 xz, float per_pixel, float share) {
 	return tufts * share;
 }
 
+uniform float strata_m; // one layer's thickness
+uniform float strata_contrast; // how far a layer's light strays from the rock's, either way
+uniform vec3 strata_warm : source_color; // the hue the warmer layers lean to
+uniform float strata_seam; // the light left in the thin seam between two layers
+uniform float strata_warp_m; // how far the layers rise and fall along a face
+uniform float strata_warp_len_m; // how long one rise runs
+uniform float strata_from; // 1 - normal.y where the layers start to show, and where they are whole
+uniform float strata_to;
+
+// The bedding of a rock face: level layers of the rock's colour, each a little lighter or darker and warmer or cooler than the
+// next, a dark seam between them, rising and falling gently along the face. Steep ground only (a flat rock shows its top, not
+// its beds), and gone once a layer takes under a pixel of height.
+const float STRATA_GONE_FROM = 0.5, STRATA_GONE_TO = 1.0; // layers a pixel spans, as a share of one: fading, and gone
+const float STRATA_SEAM_SHARE = 0.08; // the share of a layer's height its seam takes at each side
+const float STRATA_LIGHT_SALT = 17.0, STRATA_HUE_SALT = 41.0; // the hash streams of a layer's light and hue
+
+vec3 strata_over(vec3 c, vec3 world, float slope, float pixel_y) {
+	float show = smoothstep(strata_from, strata_to, slope) * (1.0 - smoothstep(STRATA_GONE_FROM, STRATA_GONE_TO, pixel_y / strata_m));
+	if (show <= 0.0) return c;
+	float rise = (vnoise(world.xz / strata_warp_len_m) * 2.0 - 1.0) * strata_warp_m;
+	float y = (world.y + rise) / strata_m;
+	float layer = floor(y), band = y - layer;
+	float light = mix(1.0 - strata_contrast, 1.0 + strata_contrast, hash2(vec2(layer, STRATA_LIGHT_SALT)));
+	float seam = mix(strata_seam, 1.0, smoothstep(0.0, STRATA_SEAM_SHARE, band) * smoothstep(1.0, 1.0 - STRATA_SEAM_SHARE, band));
+	vec3 hue = mix(vec3(1.0), strata_warm, hash2(vec2(layer, STRATA_HUE_SALT)));
+	return mix(c, c * hue * light * seam, show);
+}
+
 uniform float biome_dry[7];
 uniform float straw_share;
 

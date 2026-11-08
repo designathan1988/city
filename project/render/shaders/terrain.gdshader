@@ -168,7 +168,8 @@ void vertex() {
 	TANGENT = normalize((MODELVIEW_MATRIX * vec4(TANGENT, 0.0)).xyz);
 }
 ////////////////////////
-// Fragment: grass map in world space, sand at the shore, soil and rock on slopes steeper than loose debris rests
+// Fragment: grass map in world space, sand at the shore, soil and rock on slopes steeper than loose debris rests, the rock
+// bedded in layers on the steepest faces
 ////////////////////////
 
 #include "res://render/shaders/terrain_layers.gdshaderinc"
@@ -208,6 +209,7 @@ void fragment() {
 	float dirt_w = smoothstep(dirt_from, dirt_to, slope + wander) * (1.0 - smoothstep(rock_slope, rock_slope + 0.1, slope));
 	float rock_w = smoothstep(rock_slope, rock_slope + 0.1, slope + wander);
 	vec3 wdx = dFdx(v_vertex), wdy = dFdy(v_vertex);
+	float pixel_y = abs(wdx.y) + abs(wdy.y); // the height a pixel spans, taken in uniform flow for the rock's layers
 	vec2 tilt = grass_tilt(v_vertex.xz, per_pixel, 1.0 - max(dirt_w, rock_w));
 	NORMAL = mat3(VIEW_MATRIX) * normalize(w_normal + vec3(tilt.x, 0.0, tilt.y));
 	if (dirt_w > 0.0) {
@@ -215,44 +217,10 @@ void fragment() {
 	}
 	c = shore_over(c, v_vertex, slope, wdx, wdy);
 	if (rock_w > 0.0) {
-		c = mix(c, mix(land_triplanar(rock_layer, v_vertex / rock_m, wdx / rock_m, wdy / rock_m, w_normal), rock, 0.25), rock_w);
+		vec3 face = mix(land_triplanar(rock_layer, v_vertex / rock_m, wdx / rock_m, wdy / rock_m, w_normal), rock, 0.25);
+		c = mix(c, strata_over(face, v_vertex, slope, pixel_y), rock_w);
 	}
-	float painted = dot(cw, vec4(p00.amount, p10.amount, p01.amount, p11.amount));
-	if (painted > 0.004) {
-		vec3 dirt_c = land(dirt_layer, fract(v_vertex.xz / dirt_m), wdx.xz / dirt_m, wdy.xz / dirt_m);
-		float grain = dot(land(dirt_layer, fract(v_vertex.xz * 0.27), wdx.xz * 0.27, wdy.xz * 0.27), vec3(0.33));
-		float speck = dot(land(dirt_layer, fract(v_vertex.xz * 1.325), wdx.xz * 1.325, wdy.xz * 1.325), vec3(0.33));
-		// Each surface's colour is worked out once, whatever number of corners carry it (it depends on the surface alone: the
-		// derivatives are passed in); the corners then add it in their order, as each did with its own.
-		bool on00 = p00.surface > 0 && cw.x * p00.amount > 0.0;
-		bool on10 = p10.surface > 0 && cw.y * p10.amount > 0.0;
-		bool on01 = p01.surface > 0 && cw.z * p01.amount > 0.0;
-		bool on11 = p11.surface > 0 && cw.w * p11.amount > 0.0;
-		vec3 c00 = vec3(0.0), c10 = vec3(0.0), c01 = vec3(0.0), c11 = vec3(0.0);
-		if (on00) c00 = surface_colour(p00.surface, g, dirt_c, v_vertex, wdx, wdy, w_normal, grain, speck);
-		if (on10) {
-			if (on00 && p10.surface == p00.surface) c10 = c00;
-			else c10 = surface_colour(p10.surface, g, dirt_c, v_vertex, wdx, wdy, w_normal, grain, speck);
-		}
-		if (on01) {
-			if (on00 && p01.surface == p00.surface) c01 = c00;
-			else if (on10 && p01.surface == p10.surface) c01 = c10;
-			else c01 = surface_colour(p01.surface, g, dirt_c, v_vertex, wdx, wdy, w_normal, grain, speck);
-		}
-		if (on11) {
-			if (on00 && p11.surface == p00.surface) c11 = c00;
-			else if (on10 && p11.surface == p10.surface) c11 = c10;
-			else if (on01 && p11.surface == p01.surface) c11 = c01;
-			else c11 = surface_colour(p11.surface, g, dirt_c, v_vertex, wdx, wdy, w_normal, grain, speck);
-		}
-		vec3 sum = vec3(0.0);
-		float weights = 0.0;
-		if (on00) { sum += c00 * cw.x * p00.amount; weights += cw.x * p00.amount; }
-		if (on10) { sum += c10 * cw.y * p10.amount; weights += cw.y * p10.amount; }
-		if (on01) { sum += c01 * cw.z * p01.amount; weights += cw.z * p01.amount; }
-		if (on11) { sum += c11 * cw.w * p11.amount; weights += cw.w * p11.amount; }
-		if (weights > 0.0) c = mix(c, sum / weights, clamp(weights, 0.0, 1.0));
-	}
+	c = painted_over(c, p00, p10, p01, p11, cw, g, v_vertex, wdx, wdy, w_normal);
 	c *= gully_shade;
 	c *= 1.0 - 0.4 * step(map_half - 0.5, max(abs(v_vertex.x), abs(v_vertex.z)));
 	if (map_grid > 0.5) { // the Layers popover: the zoning grid over the ground, one line a cell, as wide as a pixel of it

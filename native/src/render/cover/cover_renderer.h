@@ -1,9 +1,9 @@
 // The ground cover streamed round the camera: every 256 m chunk within CoverKit::reach_m draws each variant of each kind
 // as a MultiMesh. A plant stands on a lattice of its kind's spacing, kept by its density there: what the player painted
-// (sim/nature/ground_paint.h), the biome's cactus (sim/nature/ecology.h), never on roads, lots or water. An unpainted
-// map outside the thorn scrub places nothing. The elements the player laid (sim/nature/elements.h) are drawn here too, a
-// MultiMesh per model. Chunks are built by jobs and rebuilt when their
-// roads, lots or nature change.
+// (sim/nature/ground_paint.h), the ecosystem's cactus and dry grass (sim/nature/ecology.h), never on roads, lots, water or bare rock.
+// An unpainted map with no biome places nothing. The elements the player laid (sim/nature/elements.h) are drawn here too, a
+// MultiMesh per model, and the stones of the water's edge, the sea's coast and the banks of rivers and lakes (shore_stones.h).
+// Chunks are built by jobs and rebuilt when their roads, lots or nature change.
 #pragma once
 
 #include "core/job_pool.h"

@@ -138,10 +138,11 @@ bool in_lot(const CityState &s, const ChunkGround &l, float margin, float x, flo
 	});
 }
 
-namespace {
 float grade_at(const Heightfield &hf, float x, float z, float probe) {
 	return std::hypot(hf.height_at(x + probe, z) - hf.height_at(x - probe, z), hf.height_at(x, z + probe) - hf.height_at(x, z - probe)) / (2 * probe);
 }
+
+namespace {
 
 // The woods' density at (x, z): the patches (the map's north is -z), raised on steep ground, by the ecosystem and by painted forest.
 float density(const CityState &s, const TreeLook &T, const ChunkGround &l, float x, float z) {

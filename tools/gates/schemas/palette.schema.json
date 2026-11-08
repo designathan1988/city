@@ -299,6 +299,30 @@
     },
     "straw_share": {
      "type": "number"
+    },
+    "strata_m": {
+     "type": "number"
+    },
+    "strata_contrast": {
+     "type": "number"
+    },
+    "strata_warm": {
+     "type": "string"
+    },
+    "strata_seam": {
+     "type": "number"
+    },
+    "strata_warp_m": {
+     "type": "number"
+    },
+    "strata_warp_len_m": {
+     "type": "number"
+    },
+    "strata_from": {
+     "type": "number"
+    },
+    "strata_to": {
+     "type": "number"
     }
    },
    "required": [
@@ -313,7 +337,15 @@
     "rock_layer",
     "dirt_from",
     "dirt_to",
-    "rock_slope"
+    "rock_slope",
+    "strata_m",
+    "strata_contrast",
+    "strata_warm",
+    "strata_seam",
+    "strata_warp_m",
+    "strata_warp_len_m",
+    "strata_from",
+    "strata_to"
    ],
    "strict": true
   }

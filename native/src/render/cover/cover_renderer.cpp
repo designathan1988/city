@@ -29,8 +29,11 @@ float distance_to(int64_t key, const Vector3 &cam) {
 	return std::sqrt(dx * dx + dz * dz);
 }
 
+// The dry grass of a community: its grass stratum, the share of it that is dry.
+float dry_grass(const Community &c) { return c.grass * c.dry; }
+
 // How much of a kind grows at a point: what the player painted; the grass stands up among the painted scrub and flowers;
-// cactus is the biome's own.
+// cactus and the dry grass are the ecosystem's own.
 float density(const CityState &s, const CoverKit &kit, CoverPiece p, const EcologyField &eco, float x, float z) {
 	const GroundPaint &g = s.nature.ground;
 	switch (p) {
@@ -38,12 +41,26 @@ float density(const CityState &s, const CoverKit &kit, CoverPiece p, const Ecolo
 		case CoverPiece::SCRUB: return g.cover_at(CoverKind::SCRUB, x, z);
 		case CoverPiece::CACTUS: return eco.near(x, z).cactus;
 		case CoverPiece::TUFTS: return std::max(g.cover_at(CoverKind::SCRUB, x, z), g.cover_at(CoverKind::FLOWERS, x, z)) * kit.tuft_share;
+		case CoverPiece::DRY_GRASS: return dry_grass(eco.near(x, z)) * kit.dry_share;
 		default: return g.cover_at(CoverKind::FLOWERS, x, z);
 	}
 }
 
 bool any_cactus(const EcologyField &eco) {
 	return std::any_of(eco.at.begin(), eco.at.end(), [](const Community &c) { return c.cactus > 0; });
+}
+
+bool any_dry(const EcologyField &eco) {
+	return std::any_of(eco.at.begin(), eco.at.end(), [](const Community &c) { return dry_grass(c) > 0; });
+}
+
+// Whether a kind can stand anywhere on the chunk: the painted kinds where anything was painted, the ecosystem's where it grows.
+bool grows(CoverPiece p, bool painted, bool cactus, bool dry) {
+	switch (p) {
+		case CoverPiece::CACTUS: return cactus;
+		case CoverPiece::DRY_GRASS: return dry;
+		default: return painted;
+	}
 }
 } // namespace
 
@@ -92,9 +109,9 @@ void CoverRenderer::reset() {
 
 void CoverRenderer::place(const CityState &s, int64_t key, const ChunkGround &l, Built &out) const {
 	if (l.eco.side == 0) return;
-	const bool painted = s.nature.ground.any_cover(), cactus = any_cactus(l.eco);
+	const bool painted = s.nature.ground.any_cover(), cactus = any_cactus(l.eco), dry = any_dry(l.eco);
 	for (int p = 0; p < COVER_PIECES; p++) {
-		if (CoverPiece(p) == CoverPiece::CACTUS ? !cactus : !painted) continue;
+		if (!grows(CoverPiece(p), painted, cactus, dry)) continue;
 		const CoverLook &k = kit_.look(CoverPiece(p));
 		int n = int(CHUNK / k.spacing_m), cx = key_x(key), cz = key_y(key);
 		for (int j = 0; j < n; j++)
@@ -105,6 +122,7 @@ void CoverRenderer::place(const CityState &s, int64_t key, const ChunkGround &l,
 				float d = density(s, kit_, CoverPiece(p), l.eco, x, z);
 				if (d < k.least || h01(h, KEEP) > std::sqrt(d)) continue;
 				if (!s.terrain.in_bounds(x, z, k.spacing_m) || s.terrain.is_water(x, z, 0.f)) continue;
+				if (grade_at(s.terrain, x, z, kit_.grade_probe_m) > kit_.max_grade) continue; // bare rock: nothing takes root
 				if (near_road(s, l, x, z, k.road_margin_m) || in_lot(s, l, k.road_margin_m, x, z)) continue;
 				float size = k.size0 + (k.size1 - k.size0) * h01(h, SIZE), yaw = TAU_F * h01(h, YAW);
 				float c = std::cos(yaw) * size, sn = std::sin(yaw) * size, tint = 1.f + (h01(h, TINT) * 2.f - 1.f) * k.tint_vary;
@@ -128,7 +146,8 @@ void CoverRenderer::place_elements(const CityState &s, int64_t key, Built &out) 
 	}
 }
 
-// A river's stones, on the same lattice rule as the cover and with its rocks' models, drawn apart: they reach further.
+// The stones of the water's edge, on the same lattice rule as the cover and with its rocks' models, drawn apart: they reach
+// further. A stone by the sea takes the coast's look, one by a river or a lake the banks'.
 void CoverRenderer::place_shore(const CityState &s, int64_t key, const ChunkGround &l, Built &out) const {
 	const CoverLook &k = kit_.look(CoverPiece::ROCKS);
 	const int n = int(CHUNK / shore_.spacing_m), cx = key_x(key), cz = key_y(key), first = draws_ + int(models_.all().size());
@@ -139,15 +158,17 @@ void CoverRenderer::place_shore(const CityState &s, int64_t key, const ChunkGrou
 			uint32_t h = hash_combine(hash_combine(hash_combine(uint32_t(ix), uint32_t(iz)), COVER_SALT ^ s.seed), uint32_t(COVER_PIECES));
 			float x = (float(ix) + h01(h, POS_X)) * step, z = (float(iz) + h01(h, POS_Z)) * step;
 			if (!s.terrain.in_bounds(x, z, step)) continue;
-			float level = shore_level(s.terrain, x, z, shore_.search_m);
-			if (level <= TerrainGen::NO_WATER) continue;
+			const ShoreWater water = shore_water(s.terrain, x, z, shore_.search_m);
+			if (!water.wet) continue;
+			const ShoreKind &look = water.sea ? shore_.coast : shore_.banks;
 			float ground = s.terrain.height_at(x, z);
-			if (h01(h, KEEP) > shore_.odds(ground - level) || near_road(s, l, x, z, k.road_margin_m) || in_lot(s, l, k.road_margin_m, x, z)) continue;
-			float size = shore_.size0 + (shore_.size1 - shore_.size0) * std::pow(h01(h, SIZE), shore_.size_power), yaw = TAU_F * h01(h, YAW);
+			if (h01(h, KEEP) > look.odds(ground - water.level) || near_road(s, l, x, z, k.road_margin_m) || in_lot(s, l, k.road_margin_m, x, z)) continue;
+			float size = look.size0 + (look.size1 - look.size0) * std::pow(h01(h, SIZE), look.size_power), yaw = TAU_F * h01(h, YAW);
 			float c = std::cos(yaw) * size, sn = std::sin(yaw) * size, tint = 1.f + (h01(h, TINT) * 2.f - 1.f) * k.tint_vary;
 			float height = size * k.tall, y = ground - height * k.sink;
 			int v = std::min(int(k.variants.size()) - 1, int(h01(h, VARIANT) * float(k.variants.size())));
-			mm_push(out.bufs[size_t(first + v)], Vector3(c, 0, -sn), Vector3(0, height, 0), Vector3(sn, 0, c), Vector3(x, y, z), Color(1, 1, 1, 1), tint, tint, tint, 0.f);
+			mm_push(out.bufs[size_t(first + v)], Vector3(c, 0, -sn), Vector3(0, height, 0), Vector3(sn, 0, c), Vector3(x, y, z), Color(1, 1, 1, 1),
+					tint * look.tint.r, tint * look.tint.g, tint * look.tint.b, 0.f);
 		}
 }
 

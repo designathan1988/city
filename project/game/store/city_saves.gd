@@ -95,7 +95,7 @@ func load_game(slot: String, paused := false) -> Dictionary:
 		_city_slot = slot if SaveSlots.is_city_slot(slot) else ""
 		if not _city_slot.is_empty():
 			SaveSlots.remember_last(_city_slot)
-		Session.read(slot, _store.get_tree().get_first_node_in_group(&"camera_rig"), paused)
+		Session.read(slot, _store.get_tree().get_first_node_in_group(&"camera_rig"), paused, _store.get_tree().get_first_node_in_group(&"tools"))
 	_store.refresh()
 	_store.loaded.emit(slot, r)
 	return r
@@ -209,7 +209,7 @@ func _settle_save() -> void:
 func _finish_save(slot: String, result: Dictionary) -> void:
 	if result.get("ok", false) and slot == _city_slot:
 		SaveSlots.remember_last(slot)
-		Session.write(slot, _store.get_tree().get_first_node_in_group(&"camera_rig"))
+		Session.write(slot, _store.get_tree().get_first_node_in_group(&"camera_rig"), _store.get_tree().get_first_node_in_group(&"tools"))
 	if result.get("ok", false) and not _export_to.is_empty():
 		if DirAccess.copy_absolute(save_path(slot), _export_to) != OK:
 			result = {"ok": false, "error": "save.writeFailed"}

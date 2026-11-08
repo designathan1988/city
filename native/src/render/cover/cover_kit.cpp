@@ -19,7 +19,7 @@ namespace city {
 namespace {
 constexpr float HALF_F = 0.5f;
 constexpr int HEAD_SUBDIV = 1, STEM_SIDES = 3;
-const char *const PIECE_KEYS[COVER_PIECES] = { "rocks", "scrub", "cactus", "tufts", "flowers" };
+const char *const PIECE_KEYS[COVER_PIECES] = { "rocks", "scrub", "cactus", "tufts", "flowers", "dry_grass" };
 
 Color hexc(const DataValue &v) { return rgba8_to_color(v.colour()); }
 
@@ -84,7 +84,8 @@ Ref<ArrayMesh> variant(CoverPiece p, const DataValue &k, int i, Rng &r) {
 		case CoverPiece::ROCKS:
 		case CoverPiece::SCRUB: lump(mb, k, seed, r); break;
 		case CoverPiece::CACTUS: cactus(mb, k, r); break;
-		case CoverPiece::TUFTS: tuft(mb, k, r); break;
+		case CoverPiece::TUFTS:
+		case CoverPiece::DRY_GRASS: tuft(mb, k, r); break;
 		default: flower(mb, k, hexc(k["blooms"][i]), seed, r); break;
 	}
 	return mb.commit();
@@ -93,7 +94,8 @@ Ref<ArrayMesh> variant(CoverPiece p, const DataValue &k, int i, Rng &r) {
 
 bool CoverKit::build(const DataValue &t, PackedStringArray &errors) {
 	const int64_t before = errors.size();
-	reach_m = t["reach_m"].f(); fade_m = t["fade_m"].f(); tuft_share = t["tuft_share"].f();
+	reach_m = t["reach_m"].f(); fade_m = t["fade_m"].f(); tuft_share = t["tuft_share"].f(); dry_share = t["dry_share"].f();
+	max_grade = t["max_grade"].f(); grade_probe_m = t["grade_probe_m"].f();
 	if (errors.size() != before) return false;
 	for (int i = 0; i < COVER_PIECES; i++) {
 		const DataValue k = t[PIECE_KEYS[i]];
