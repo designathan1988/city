@@ -21,6 +21,7 @@ struct RigidPiece {
 	godot::Vector3 corners[RIGID_CORNERS];
 	float inv_inertia = 0, rest = 0;
 	bool asleep = false;
+	bool touching = false; // a corner was on the ground at the last step
 
 	// Its box: `half` the sides, `extent` the sum of the squares its inertia goes by.
 	void shape(const godot::Vector3 &half, float extent) {
@@ -71,6 +72,7 @@ bool rigid_step(RigidPiece &b, F &&ground_of, const EffectParams &law) {
 		b.w += godot::Vector3(r.y * fz, r.z * fx - r.x * fz, -r.y * fx) * b.inv_inertia;
 	}
 	if (deepest > 0) b.p.y += deepest;
+	b.touching = touching;
 	if (touching) {
 		b.w *= law.damp_ground;
 		b.v.x *= AIR_DRAG_GROUND;

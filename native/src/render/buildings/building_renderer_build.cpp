@@ -70,8 +70,8 @@ void BuildingRenderer::set_broken(const std::unordered_set<uint32_t> &seeds) {
 	broken_ = std::move(published);
 }
 
-std::shared_ptr<RuinMesh> BuildingRenderer::ruin_of(const b40::Data &data, const Building &rec, const HeightPatch &ground) const {
-	return city::ruin_of(bodies_, data, look_, rec, ground);
+std::shared_ptr<RuinMesh> BuildingRenderer::ruin_of(const b40::Data &data, const Building &rec, const HeightPatch &ground) {
+	return city::ruin_of(bodies_, signatures_, data, look_, rec, ground);
 }
 
 BuildingRenderer::Inputs BuildingRenderer::gather(const CityState &s, const int64_t *chunk_keys, int count) const {
@@ -166,10 +166,7 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 		int sub = sub_index(rec, key);
 		const bool own_design = pl.b->signature != 0 && !cut; // cut open it is the shell that shows its floors
 		const bool broken = in.broken->count(rec.seed) > 0; // what stands of it is in pieces: its lot is still drawn here
-		if (own_design) {
-			const b40::Basis &l = pl.lot;
-			out.signatures.push_back({ int(pl.b->signature), Transform3D(Basis(l.e0, l.e2, -l.e1), l.at(-pl.b->signature_x, -pl.b->signature_y, 0)) });
-		}
+		if (own_design && !broken) out.signatures.push_back({ int(pl.b->signature), signature_place(pl) });
 		if (near) {
 			if (!own_design && !broken) {
 				b40::emit_facades(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);

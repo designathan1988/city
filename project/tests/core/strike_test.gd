@@ -1,6 +1,7 @@
 ## Core test of the bomb through the store (no rendering needed): the blast model against known points of the
 ## Kingery-Bulmash curve, and that a blow changes the city for real: buildings worn and brought down, a road cut by a
-## crater, furniture knocked out, walkers and vehicles gone; the whole blow undone in one step.
+## crater, furniture knocked out, walkers and vehicles gone; the whole blow undone in one step; a design of its own broken and brought
+## down in pieces of its own faces (StrikeLandmarkCases).
 ## Run: godot --headless --path project res://tests/core/strike_test.tscn -- --no-flow
 extends TestCase
 
@@ -42,6 +43,7 @@ func _ready() -> void:
 	_effects()
 	_roads()
 	await StrikePoleCases.new(self).run()
+	await StrikeLandmarkCases.new(self).run()
 	finish()
 
 

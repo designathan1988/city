@@ -46,6 +46,7 @@ public:
 	std::vector<Uncut> take_uncut();
 	bool moving() const;
 	int pieces() const;
+	int pieces_of(uint32_t seed) const; // of that ruin, 0 before its cut is adopted (and for a plain heap)
 	int flying() const;
 	uint32_t digest(uint32_t seed) const; // where the pieces of that ruin lie, 0 before they come to rest
 

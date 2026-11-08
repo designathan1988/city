@@ -91,6 +91,7 @@ public:
 	godot::PackedInt64Array ruin_seeds() const;
 	int effects_ruin_pieces() const { return render_.ruin_pieces(); } // of the buildings drawn in pieces, and of those in the air
 	int effects_ruin_flying() const { return render_.ruin_pieces_flying(); }
+	int effects_ruin_pieces_of(int64_t seed) const { return render_.ruin_pieces_of(uint32_t(seed)); } // of one ruin: its own walls cut, or none
 	int64_t effects_ruin_digest(int64_t seed) const { return int64_t(render_.ruin_digest(uint32_t(seed))); } // where a ruin's pieces lie
 	int effects_bodies() const { return render_.bodies(); } // of people off their feet, and of those still falling
 	int effects_bodies_moving() const { return render_.bodies_moving(); }

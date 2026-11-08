@@ -4,6 +4,7 @@
 #include "render/mesh_levels.h"
 
 #include "core/bytes.h"
+#include "render/buildings/signature_file.h"
 #include "sim/buildings/b40/signature_kinds.h"
 
 #include <godot_cpp/classes/file_access.hpp>
@@ -23,24 +24,10 @@ using namespace godot;
 
 namespace city {
 
-namespace {
-constexpr const char *FOLDER = "res://assets/lots/";
-constexpr const char *SOLID_SHADER = "res://render/shaders/signature.gdshader", *BLENDED_SHADER = "res://render/shaders/signature_glass.gdshader";
-constexpr uint32_t MAGIC_LOOKS = 0x4D534352u, MAGIC_BODY = 0x42534352u; // "RCSM", "RCSB"
-constexpr uint32_t FLAG_BLENDED = 1, FLAG_TWO_SIDED = 2, FLAG_WINDOWS = 4, FLAG_PAINTED_WINDOWS = 8, MOST_SURFACES = 64, MOST_LOOKS = 1024;
-constexpr int NAME_BYTES = 24, RECORD_FLOATS = 10, RGBA = 4, NORMAL_BYTES = 4;
-constexpr size_t VERTEX_BYTES = 5 * sizeof(float) + NORMAL_BYTES; // position, normal, uv: what each vertex takes in the file
-constexpr int RED = 0, ROUGHNESS = 3, METALLIC = 4, GLOW = 5, OPACITY = 8, ALPHA_CUT = 9; // a record's floats
-constexpr float NORMAL_SCALE = 127.f;
+using namespace signature_file;
 
-// A file: u32 magic, u32 size unpacked, then the packed bytes.
-PackedByteArray unpacked(const String &path, uint32_t magic) {
-	const PackedByteArray raw = FileAccess::get_file_as_bytes(path);
-	ByteReader r{ raw.ptr(), size_t(raw.size()) };
-	const uint32_t found = r.get<uint32_t>(), size = r.get<uint32_t>();
-	if (!r.ok || found != magic) return PackedByteArray();
-	return raw.slice(int64_t(r.o)).decompress(size, FileAccess::COMPRESSION_DEFLATE);
-}
+namespace {
+constexpr const char *SOLID_SHADER = "res://render/shaders/signature.gdshader", *BLENDED_SHADER = "res://render/shaders/signature_glass.gdshader";
 } // namespace
 
 void SignatureBodies::init(const RID &scenario, uint32_t layer) {
@@ -97,11 +84,9 @@ Ref<Image> SignatureBodies::picture(uint32_t index) const {
 Ref<ShaderMaterial> SignatureBodies::look(uint32_t index, const Ref<Image> &image) {
 	Look &l = looks_[index];
 	if (l.made.is_valid()) return l.made;
-	ByteReader r{ table_.ptr(), size_t(table_.size()) };
-	r.o = l.at + NAME_BYTES;
-	float v[RECORD_FLOATS];
-	for (float &f : v) f = r.get<float>();
-	const uint32_t flags = r.get<uint32_t>();
+	const LookRecord rec = record_at(table_, l.at);
+	const float *v = rec.v;
+	const uint32_t flags = rec.flags;
 	l.made.instantiate();
 	l.made->set_shader(flags & FLAG_BLENDED ? blended_ : solid_);
 	l.made->set_shader_parameter("albedo", Color(v[RED], v[RED + 1], v[RED + 2], v[OPACITY]));
@@ -127,51 +112,59 @@ int64_t SignatureBodies::Prepared::bytes() const {
 	return n;
 }
 
-// The file read, unpacked and made into arrays, levels and the pictures of looks not made yet: what the main thread then only uploads.
-std::shared_ptr<SignatureBodies::Prepared> SignatureBodies::prepare(int kind) {
-	auto out = std::make_shared<Prepared>();
-	out->kind = kind;
-	out->file = std::string(FOLDER) + b40::SIGNATURE_KINDS[kind - 1] + ".sig";
-	if (!read_table()) return out;
-	const PackedByteArray data = unpacked(String(out->file.c_str()), MAGIC_BODY);
+bool SignatureBodies::read_body(int kind, std::vector<RawSurface> &out) {
+	if (!read_table()) return false;
+	const PackedByteArray data = unpacked(String(file_of(kind).c_str()), MAGIC_BODY);
 	ByteReader r{ data.ptr(), size_t(data.size()) };
 	const uint32_t surfaces = r.get<uint32_t>();
-	if (!r.ok || surfaces > MOST_SURFACES) return out;
+	if (!r.ok || surfaces > MOST_SURFACES) return false;
 	for (uint32_t s = 0; s < surfaces && r.ok; s++) {
-		const uint32_t material = r.get<uint32_t>(), vertices = r.get<uint32_t>(), indices = r.get<uint32_t>();
-		if (material >= looks_.size()) return out;
-		PackedVector3Array pos, nor;
-		PackedVector2Array uv;
-		PackedInt32Array idx;
+		RawSurface sf;
+		sf.look = r.get<uint32_t>();
+		const uint32_t vertices = r.get<uint32_t>(), indices = r.get<uint32_t>();
+		if (sf.look >= looks_.size()) return false;
 		// the counts are claimed against what is left of the file before anything is sized by them (core/bytes.h)
-		if (!r.claim(vertices, VERTEX_BYTES) || !r.claim(indices, sizeof(uint32_t))) return out;
-		pos.resize(vertices);
-		nor.resize(vertices);
-		uv.resize(vertices);
-		idx.resize(indices);
+		if (!r.claim(vertices, VERTEX_BYTES) || !r.claim(indices, sizeof(uint32_t))) return false;
+		sf.pos.resize(vertices);
+		sf.nor.resize(vertices);
+		sf.uv.resize(vertices);
+		sf.idx.resize(indices);
 		for (uint32_t i = 0; i < vertices; i++) {
 			const float x = r.get<float>(), y = r.get<float>(), z = r.get<float>();
 			int8_t n[NORMAL_BYTES];
 			r.get_bytes(reinterpret_cast<uint8_t *>(n), NORMAL_BYTES);
 			const float u = r.get<float>(), v = r.get<float>();
-			pos.set(i, Vector3(x, y, z));
-			nor.set(i, Vector3(float(n[0]), float(n[1]), float(n[2])) / NORMAL_SCALE);
-			uv.set(i, Vector2(u, v));
+			sf.pos.set(i, Vector3(x, y, z));
+			sf.nor.set(i, Vector3(float(n[0]), float(n[1]), float(n[2])) / NORMAL_SCALE);
+			sf.uv.set(i, Vector2(u, v));
 		}
-		for (uint32_t i = 0; i < indices; i++) idx.set(i, int32_t(r.get<uint32_t>()));
-		Surface sf;
-		sf.lods = mesh_levels(pos, idx, DESIGN_LEVELS_M);
-		sf.arrays.resize(Mesh::ARRAY_MAX);
-		sf.arrays[Mesh::ARRAY_VERTEX] = pos;
-		sf.arrays[Mesh::ARRAY_NORMAL] = nor;
-		sf.arrays[Mesh::ARRAY_TEX_UV] = uv;
-		sf.arrays[Mesh::ARRAY_INDEX] = idx;
-		sf.look = material;
-		sf.bytes = int64_t(vertices) * int64_t(2 * sizeof(Vector3) + sizeof(Vector2)) + int64_t(indices) * int64_t(sizeof(int32_t));
-		out->surfaces.push_back(std::move(sf));
-		if (!out->pictures.count(material)) out->pictures[material] = picture(material);
+		for (uint32_t i = 0; i < indices; i++) sf.idx.set(i, int32_t(r.get<uint32_t>()));
+		out.push_back(std::move(sf));
 	}
-	out->ok = r.ok;
+	return r.ok;
+}
+
+// The file read, unpacked and made into arrays, levels and the pictures of looks not made yet: what the main thread then only uploads.
+std::shared_ptr<SignatureBodies::Prepared> SignatureBodies::prepare(int kind) {
+	auto out = std::make_shared<Prepared>();
+	out->kind = kind;
+	out->file = file_of(kind);
+	std::vector<RawSurface> raw;
+	if (!read_body(kind, raw)) return out;
+	for (const RawSurface &r : raw) {
+		Surface sf;
+		sf.lods = mesh_levels(r.pos, r.idx, DESIGN_LEVELS_M);
+		sf.arrays.resize(Mesh::ARRAY_MAX);
+		sf.arrays[Mesh::ARRAY_VERTEX] = r.pos;
+		sf.arrays[Mesh::ARRAY_NORMAL] = r.nor;
+		sf.arrays[Mesh::ARRAY_TEX_UV] = r.uv;
+		sf.arrays[Mesh::ARRAY_INDEX] = r.idx;
+		sf.look = r.look;
+		sf.bytes = r.pos.size() * int64_t(2 * sizeof(Vector3) + sizeof(Vector2)) + r.idx.size() * int64_t(sizeof(int32_t));
+		out->surfaces.push_back(std::move(sf));
+		if (!out->pictures.count(r.look)) out->pictures[r.look] = picture(r.look);
+	}
+	out->ok = true;
 	return out;
 }
 

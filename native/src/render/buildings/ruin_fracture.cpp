@@ -19,7 +19,6 @@ using namespace ruin;
 namespace {
 constexpr float LONGEST_SIDE_M = 2.8f; // a face is divided to this before the cells cut it
 constexpr int CUTS_MOST = 8;
-constexpr float WALL_DEPTH_M = 0.28f; // the thickness given to a wall
 constexpr float PLATE_LEAST_M = 0.5f; // a face at least this long is wall: it gets a back and a side along its cuts (the small trim is closed boxes already)
 constexpr float TRIM_AREA_M2 = 0.06f; // the bars and frames of a window: most of a near shell's triangles, and nothing to see in a building coming down
 constexpr float WELD_PER_M = 200.f;
@@ -111,6 +110,7 @@ struct Writer {
 	size_t at = 0;
 	uint32_t id = 0;
 	float turn = -1.f; // the sign of a front face's winding against its normal, read from the shell
+	float depth = RUIN_WALL_DEPTH_M; // how far behind a wall face its back lies; 0: in its plane, with no sides
 	Vector3 lo, hi;
 
 	void put(const Corner &c) {
@@ -133,8 +133,9 @@ struct Writer {
 	// The wall's thickness behind `t`, and a side along each edge cut (`once`: the edges no other face of the piece has).
 	void thicken(const Tri &t, const std::unordered_map<uint64_t, int> &once) {
 		Corner back[3];
-		for (int q = 0; q < 3; q++) back[q] = Corner{ t.v[q].p - t.v[q].n * WALL_DEPTH_M, -t.v[q].n, BROKEN, t.v[q].t, PLAIN };
+		for (int q = 0; q < 3; q++) back[q] = Corner{ t.v[q].p - t.v[q].n * depth, -t.v[q].n, BROKEN, t.v[q].t, PLAIN };
 		tri(back[0], back[1], back[2]);
+		if (depth <= 0.f) return;
 		const Vector3 middle = (t.v[0].p + t.v[1].p + t.v[2].p) / 3.f;
 		for (int i = 0; i < 3; i++) {
 			const int j = (i + 1) % 3;
@@ -161,15 +162,15 @@ void count_edges(const std::vector<Tri> &tris, std::unordered_map<uint64_t, int>
 	}
 }
 
-// The corners a piece writes: each face, and for a wall face its back and a side along each edge cut.
-size_t corners_of(const std::vector<Tri> &tris, std::unordered_map<uint64_t, int> &edges) {
+// The corners a piece writes: each face, and for a wall face its back and (`sides`) a side along each edge cut.
+size_t corners_of(const std::vector<Tri> &tris, std::unordered_map<uint64_t, int> &edges, bool sides) {
 	count_edges(tris, edges);
 	size_t n = 0;
 	for (const Tri &t : tris) {
 		n += FACE_CORNERS;
 		if (!t.sheet) continue;
 		n += FACE_CORNERS;
-		for (int e = 0; e < 3; e++) {
+		for (int e = 0; sides && e < 3; e++) {
 			const auto seen = edges.find(edge_key(t.v[e].p, t.v[(e + 1) % 3].p));
 			if (seen != edges.end() && seen->second == 1) n += SIDE_CORNERS;
 		}
@@ -240,8 +241,11 @@ float winding(const Tri &t) {
 // Streamed: the faces' box first (a face divided stays in the box of its corners), then each face divided, each piece of it cut
 // along the cells and filed by cell in the order made; the cells written in ascending order straight into the mesh's arrays,
 // each freed once written. The same pieces in the same order as dividing every face, cutting every piece and sorting by cell.
-std::shared_ptr<RuinMesh> fracture_shell(const b40::Shell &walls, const b40::Shell &glass, const std::vector<RuinSlab> &slabs, uint32_t seed) {
+std::shared_ptr<RuinMesh> fracture_shell(const b40::Shell &walls, const b40::Shell &glass, const std::vector<RuinSlab> &slabs, uint32_t seed,
+		const b40::Shell *sided) {
 	auto out = std::make_shared<RuinMesh>();
+	const bool own_depth = sided != nullptr;
+	const auto no_back = [](auto &&fn) { return [fn](Tri t) { t.sheet = false; fn(t); }; }; // a face drawn with its other side
 	bool any = false;
 	Vector3 lo, hi;
 	const auto bound = [&](const Tri &t) {
@@ -253,6 +257,7 @@ std::shared_ptr<RuinMesh> fracture_shell(const b40::Shell &walls, const b40::She
 	};
 	each_face(walls, false, bound);
 	each_face(glass, true, bound);
+	if (sided) each_face(*sided, false, bound);
 	for (const RuinSlab &ring : slabs) each_slab_face(ring, bound);
 	if (!any) return out;
 	const Cells cells(lo, hi, seed);
@@ -270,6 +275,7 @@ std::shared_ptr<RuinMesh> fracture_shell(const b40::Shell &walls, const b40::She
 	};
 	each_face(walls, false, [&](const Tri &t) { file(t, true); });
 	each_face(glass, true, [&](const Tri &t) { file(t, true); });
+	if (sided) each_face(*sided, false, no_back([&](const Tri &t) { file(t, true); }));
 	for (const RuinSlab &ring : slabs) each_slab_face(ring, [&](const Tri &t) { file(t, false); });
 	std::vector<int> order;
 	order.reserve(by_cell.size());
@@ -277,7 +283,7 @@ std::shared_ptr<RuinMesh> fracture_shell(const b40::Shell &walls, const b40::She
 	std::sort(order.begin(), order.end());
 	std::unordered_map<uint64_t, int> edges;
 	size_t corners = 0;
-	for (int c : order) corners += corners_of(by_cell[c], edges);
+	for (int c : order) corners += corners_of(by_cell[c], edges, !own_depth);
 	PackedVector3Array pv, pn;
 	PackedColorArray pc;
 	PackedVector2Array pu, pu2;
@@ -296,6 +302,7 @@ std::shared_ptr<RuinMesh> fracture_shell(const b40::Shell &walls, const b40::She
 	w.uv2 = pu2.ptrw();
 	w.piece = ids.ptrw();
 	w.turn = turn == 0 ? -1.f : turn;
+	w.depth = own_depth ? 0.f : RUIN_WALL_DEPTH_M;
 	std::unordered_map<int, int> piece_of;
 	out->lo = lo;
 	out->hi = hi;

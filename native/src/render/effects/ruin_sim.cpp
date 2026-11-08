@@ -21,7 +21,7 @@ constexpr float HOP_S = 0.055f, HOP_LEAST = 0.7f, HOP_SPAN = 0.6f; // the break 
 constexpr float SUPPORT_EVERY_S = 0.1f;
 constexpr float MOUND_FILL = 0.85f; // of a mound's height where the pieces come to rest: its shader's slumps average under it
 constexpr float MOUND_SPREAD = 1.15f; // effect_ruins.cpp: it slumps past the walls it fell from
-constexpr float LONGEST_FALL_S = 12.f;
+constexpr float LONGEST_ROCK_S = 12.f; // a piece still rocking this long after it first came down is laid to rest where it is
 constexpr float LAND_SPEED_MS = 3.f;
 constexpr float FARTHEST_M = 1e30f;
 constexpr float PILE_CELL_M = 0.5f, PILE_OVER = 2.f; // of the lot's reach, what the pile map covers
@@ -55,8 +55,10 @@ void RuinSim::begin(const std::shared_ptr<RuinMesh> &cut, const Ruin &ruin, floa
 	rng_ = Rng(uint64_t(ruin.seed) + 1);
 	cos_ = std::cos(ruin.rot);
 	sin_ = std::sin(ruin.rot);
-	const float reach = std::max(ruin.w, ruin.d) * PILE_OVER;
-	pile_.cell = std::max(PILE_CELL_M, 2.f * reach / float(PILE_MOST_SIDE));
+	// The pile keeps its cell (a coarser one is raised whole by any piece over part of it, and the heap of a big building climbs into the
+	// air): a big building's map covers what the grid reaches round its middle, and what lands past it lands on the ground.
+	const float reach = std::min(std::max(ruin.w, ruin.d) * PILE_OVER, PILE_CELL_M * float(PILE_MOST_SIDE - 1) * 0.5f);
+	pile_.cell = PILE_CELL_M;
 	pile_.side = int(2.f * reach / pile_.cell) + 1;
 	pile_.from = Vector2(ruin.x - reach, ruin.z - reach);
 	pile_.top.assign(size_t(pile_.side) * size_t(pile_.side), FAR_DOWN_M);
@@ -69,7 +71,7 @@ void RuinSim::begin(const std::shared_ptr<RuinMesh> &cut, const Ruin &ruin, floa
 		p.radius = src.radius;
 		p.first_link = src.first_link;
 		p.links = src.links;
-		p.grounded = src.low <= ground + RESTING_M;
+		p.grounded = src.low <= std::max(ground, cut->floor) + RESTING_M; // on the ground, or on the floor its building stood on
 		p.asleep = true;
 		p.flat = std::min({ src.half.x, src.half.y, src.half.z });
 		p.shape(src.half, 4.f * src.half.length_squared());
@@ -207,7 +209,9 @@ void RuinSim::rest_on_pile(const Piece &p) {
 		lo = lo.min(w);
 		hi = hi.max(w);
 	}
-	pile_.lay(lo, hi, std::min(hi.y, p.p.y + p.flat));
+	// it is a piece of wall: lying, it adds a wall's depth over where it lies (its box, a corner's or a sloping roof's, is mostly air), however
+	// it came to rest; a plate asleep on its edge is no column for the next to land on
+	pile_.lay(lo, hi, std::min(hi.y, lo.y + std::min(2.f * p.flat, RUIN_WALL_DEPTH_M)));
 }
 
 void RuinSim::step(std::vector<Note> *notes) {
@@ -232,11 +236,12 @@ void RuinSim::step(std::vector<Note> *notes) {
 		left_++;
 		const float falling = p.v.y;
 		const bool slept = rigid_step(p, ground, law_);
-		p.aloft += RIGID_STEP_S;
+		if (p.landed < 0.f && p.touching) p.landed = 0.f; // its first touch: the clock runs from there, never in its flight
+		if (p.landed >= 0.f) p.landed += RIGID_STEP_S;
 		p.moved = true;
 		if (notes && falling < -LAND_SPEED_MS && p.v.y > falling * 0.5f) notes->push_back(Note{ p.p, p.radius, true });
-		if (!slept && p.aloft <= LONGEST_FALL_S) continue;
-		p.asleep = true; // on a slope a plate rocks for good: the clock ends it
+		if (!slept && p.landed <= LONGEST_ROCK_S) continue;
+		p.asleep = true; // on a slope a plate rocks for good: the clock, from where it came down, ends it
 		rest_on_pile(p);
 	}
 }

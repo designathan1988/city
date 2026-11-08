@@ -55,6 +55,7 @@ public:
 	int wires_down() const { return ropes_.count(); }
 	int pieces() const { return debris_.count(); }
 	int ruin_pieces() const { return ruins_.pieces(); }
+	int ruin_pieces_of(uint32_t seed) const { return ruins_.pieces_of(seed); }
 	const std::unordered_set<uint32_t> &broken() const { return ruins_.broken(); }
 	std::vector<int64_t> take_repaint() { return ruins_.take_repaint(); }
 	int bodies() const { return people_ ? people_->bodies().count() : 0; }

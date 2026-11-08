@@ -69,9 +69,10 @@ O que falta fazer, por área.
 - Pedestres: o elenco é o do 4.0 (16 corpos com atlas, `tools/assets/cook_people.py`); quem espera na guia faz o que o 4.0 faz (`standingKey`: olhar, celular, fones, sacola), com o celular e a sacola na mão (o 4.0 só desenha a coisa com um gesto, e nada lá dispara um gesto), e o grupo conversa, o que o 4.0 tem o clipe mas não dispara; a pele e o cabelo têm a luz do `personMaterial.ts` (`light()` de `people.gdshader`); quem ouve um tiro vira para ele, agacha perto, filma longe e foge pela rua que leva para mais longe, e os do grupo de quem morreu agacham ao lado (`ped_fright.cpp`; no 4.0 a pessoa de luto fica em pé, o comentário dele diz agachada); no jogo todo tiro que pousa é ouvido, no 4.0 só o que acerta alguém; quem está em grupo foge com o líder (no 4.0 cada um foge por si); o rosto é o do 4.0 (piscar, olhar, sílabas da fala, humor do `cast.json`, terror de quem foge e choro de quem agacha), feito na GPU só nos vértices do rosto do nível de perto; não há os rostos de dor e de morto, porque ferido e morto são peças rígidas, nem a conversa de quem vai sentado; faltam guarda-chuva, sentados na rua e mochila; os clipes de olhar para o lado (`carDriveMirror`, `chairSitPhone`) não foram cozidos; só há um corpo por pessoa, sem tingir roupa, então a multidão repete os 16; a curva `people_busy` não tem pesquisa por trás. Os 38 lotes do laboratório do 4.0 estão na prateleira Modelos (`LotProjects`) com o desenho próprio cozido (`SignatureBodies`), com níveis de detalhe do meshoptimizer e janelas acesas à noite; muros de divisa entre prédios colados ainda não são desenhados.
 - Demolition (bomb, pistol, demolish), 2026-11-08 (log/work-log.md, the bomb's round): done this round: the crater on a raised
   road, the ground it heaved, the player's poles brought down with their wires hanging, shorted buildings, arcs, leaks, the
-  pieces of a lighting column, a shrub or a small box, everything laid on the street's surface. Left: a landmark (own design)
-  falls as a mound and an own-design building does not break in part; the trees of a lot's garden and of a park's grove stand
-  through a blow (the woods' and the planted ones fall); a joined lamp row (the span through a node, `join_rows`) is cut with no wire left hanging; a charge on a bridge digs its
+  pieces of a lighting column, a shrub or a small box, everything laid on the street's surface. Left: a design of its own broken
+  or brought down loses its painted windows and its pictures' detail (each corner takes its look's colour times the mean of its picture
+  round it: one material for every ruin); the trees of a lot's garden and of a park's grove stand through a blow (the woods' and the
+  planted ones fall); a joined lamp row (the span through a node, `join_rows`) is cut with no wire left hanging; a charge on a bridge digs its
   crater decal on the terrain under it (the crater keeps no height of its own); the scar of a tower shows its floor slabs' rubble
   in uniform grey; old saves whose knocked lighting columns were filed as trees show those columns again (the kinds are now
   their own). As before: the pieces land on each other by a height map, with no collision between two in the air; past 24
@@ -88,6 +89,8 @@ O que falta fazer, por área.
   line that skips what a blow took.
 - The debug DLL built from 12e753b1 in a scratch worktree (another folder) came out with other bytes than the one committed at
   that commit, against CLAUDE.md's "the same sources give the same bytes" (found by the bomb round's photo baseline; not chased).
+- The SEGUNDO_DONO name likenesses of the signature look record (`RED`, `ROUGHNESS`, `METALLIC`, `OPACITY`, `ALPHA_CUT`) moved with
+  it from `signature_bodies.cpp` to `signature_file.h` (2026-11-08, the landmark round); the rule's wording is the user's to decide.
 - Gate findings met in files the bomb's round touched, there at HEAD before it: SEGUNDO_DONO name likenesses (`effect_things.cpp`
   FIRE_SIZE and POOL_MIN, `prop_kit.h` the PropKind and PolePart names, `street_props.cpp` SHRUB_SCALE, `damage_state.h`
   GoneKind::POLE and SCAR_REACH_PER_FORCE_M); ESPELHO on `rules.json` (no mirror registered since the shader contracts are

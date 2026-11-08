@@ -40,7 +40,7 @@ public:
 private:
 	struct Piece : RigidPiece {
 		godot::Vector3 home;
-		float fall_at = 0, radius = 0, power = 0, aloft = 0, flat = 0;
+		float fall_at = 0, radius = 0, power = 0, landed = -1, flat = 0; // landed: seconds since it first came down on something, -1 still in the air
 		int first_link = 0, links = 0;
 		bool loose = false, grounded = false, scheduled = false, moved = false;
 	};

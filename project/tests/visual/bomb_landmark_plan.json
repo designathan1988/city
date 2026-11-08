@@ -1,0 +1,30 @@
+{
+ "_doc": "The bomb on a building with a design of its own, looked at in play (look.gd): the lot lab's church on bare land by one street, a small charge behind its roof (part of it breaks off in pieces of its own faces and it stands), then the strongest charge till it comes down, the blast at 1.2 s of its own clock and what is left at 32 s (a piece thrown up from inside the nave flies some 16 s; hidden, the frames run faster than that clock) from the street, close and from low down. The church's lot fronts the street at z -12 (place_model's point is the lot's front); the charges burst at (5, -61). setView's y is the ground's -z.",
+ "city": {"map": 0, "seed": 1, "generate": false},
+ "steps": [
+  {"hour": 16},
+  {"dispatch": "build_road", "args": [{"at": [-150, 0]}, {"at": [150, 0]}, false, {"v3": [0, 0, 0]}, {"profile": "urbanStreet"}, 0.25]},
+  {"dispatch": "place_model", "args": [{"lot": "lot:church"}, 0.0, -12.0, 0.0, 2, 8]},
+  {"setView": [5, 61, 7, 90, 25]},
+  {"frames": 240},
+  {"shot": "church-before"},
+  {"dispatch": "strike", "args": [{"v3": [5.4, 47.0, -61.4]}, 5]},
+  {"blastShot": "church-small-1.2s", "at": 1.2},
+  {"blastShot": "church-broken", "at": 12.0},
+  {"setView": [5, 61, 9, 120, 60]},
+  {"frames": 60},
+  {"shot": "church-broken-top"},
+  {"setView": [5, 61, 7, 90, 25]},
+  {"dispatch": "strike", "args": [{"v3": [5.4, 47.0, -61.4]}, 50]},
+  {"dispatch": "strike", "args": [{"v3": [5.4, 40.0, -61.4]}, 50]},
+  {"blastShot": "church-blast-1.2s", "at": 1.2},
+  {"blastShot": "church-down", "at": 32.0},
+  {"query": "effects_ruin_flying"},
+  {"setView": [5, 61, 10, 60, 30]},
+  {"frames": 60},
+  {"shot": "church-rubble-close"},
+  {"setView": [-20, 20, 14, 45, 8]},
+  {"frames": 60},
+  {"shot": "church-rubble-low"}
+ ]
+}

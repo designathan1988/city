@@ -913,3 +913,52 @@ stays an effect on the effects' clock, as the debris'.
 **Checks:** `shoot_test` `_rises`: 60 frames paused leave the knocked body's seconds unchanged (`damage_probe.bodies_rising_left`;
 the old clock lost them every frame), then the ticks of the longest lie bring the walker back and the body goes; `strike_test`,
 `edit_fuzz_test` pass.
+
+## 2026-11-08 12:10: a design of its own broken and brought down in its own pieces (English)
+**Problem:** a charge on the lot lab's church did nothing; the strongest brought it down only as its crater took it, as a heap of
+plain boxes; a design of its own never broke in part.
+**Causes, each with its fix:**
+- `strike_buildings.cpp` measured a blow to the *lot* (the land round the building: the church's lot is 137 x 125 m, its blocks
+  89 x 71 m inside a garden) and took the load at half the lot's depth, so a blow on the church's roof was 62 m away; and the local
+  break (the scar) was skipped whenever the whole building felt less than the light pressure. Now a blow is measured to the walls of
+  the body's blocks (`nearest_wall`, also the short circuits' owner): how far, the point hit, the depth of the block it reaches; a scar
+  is made where the blow breaks a wall even when the building as a whole feels little; `standing_share` takes the blocks' height and
+  room (`strike.storey_m`, a storey guessed for every building, goes). Houses set back in their gardens are measured right too.
+- `ruin_body.cpp` cut only the facade kit's walls: a design of its own (`pl.b->signature`) had none, the cut came back empty and the
+  fall was a plain heap. `SignatureBodies::ruin_faces` (`signature_ruin.cpp`) hands its cooked faces, placed as drawn, each corner
+  painted by its look (the colour times the mean of its picture round the corner, from an 8 x 8 copy), the glass apart, what a picture
+  cuts (leaves, railings) left out. The cooked file's layout has one owner (`signature_file.h`), read by the drawing and the cut.
+- The fracture gives a wall face a back 0.28 m behind it (the kit draws one face to a wall); the church's roof and walls are cooked
+  with both sides in one plane, so that back stood out through the roof (grey patches) or, in the plane, fought the twin face. A face
+  whose twin is on the same three corners goes to `sided` (no back); a face alone gets a back in its plane
+  (`fracture_shell(..., sided)`).
+- `RuinSim::begin` held a piece as standing on the ground by the terrain at the lot's middle; a design of its own stands on its lot's
+  floor (the highest ground under it plus the plinth) with no foundation down to the ground, so on a slope of half a metre nothing
+  was held and the whole church fell to the smallest scar. A piece starting on the floor its building stood on rests on it
+  (`RuinMesh::floor`, from the placement, for the kit too).
+- A piece was laid to rest 12 s after it was let go wherever it was: thrown up from inside the nave (some 60 m/s at the strongest
+  charge, a flight of about 16 s) it slept in the air and others landed on it. The clock now runs from its first touch
+  (`RigidPiece::touching`, `Piece::landed`).
+- A piece laid to rest raised the heap's map under its whole box by twice its smallest half side: the church's pieces are boxes of
+  corners and sloping roof, so each raised ~2.5 m, lifted the pieces still rocking there, which raised it again: a heap 59 m high
+  (measured). A piece adds a wall's depth where it lies (`RUIN_WALL_DEPTH_M`, one owner with the fracture's), and the map keeps its
+  0.5 m cell for a big building (it covers what 256 cells reach round the middle; a coarser cell was raised whole by any piece).
+**Checks:** `strike_landmark_cases.gd` (in `strike_test`): a small charge on the church's roof scars it, it stands drawn in pieces of
+its own faces (`effects_ruin_pieces_of` its seed: another broken building may make way for it under the vertex budget), undo gives it
+back whole; the strongest charge brings it down in 2519 pieces of its own faces. `bomb_landmark_plan.json`: the church before, broken
+at the top with its red roof and white walls, the blast, the heap lying on the ground at 32 s of the effects' clock (hidden runs draw
+frames faster than that clock: a photo by frames came before the pieces landed). `strike_test`, `shoot_test`, `model_test`,
+`building_edit_test`, `save_undo_test`, `edit_fuzz_test`, `bomb`, `bomb_street`, `bomb_gore` pass; the tower's broken face in `bomb`
+looks as before.
+
+## 2026-11-08 12:10: the lane lines of a signalled approach run solid (English)
+**Problem:** the lines between the lanes of one way were dashed up to the stop line of a signalled junction.
+**Source:** MBST vol. IV (CONTRAN, 2022) 5.2.1: the LMS-1 (solid white line between lanes of one way) is used on the approach of a
+signalled junction, 15 to 30 m from the stop line (the PDF read in full in that section).
+**Design:** `road_markings.cpp` `lines()` lays a dashed line between lanes of one way solid for `markings.base.signal_solid_m` (30 m,
+the most: a red's queue) back from where the lines end, on the side whose traffic arrives at a signalled end (+u arrives at a; a one
+way road at the end its lanes run to); the control is the network's (`traffic::control_of`, as the signal posts read it). A
+junction's control changed by the player or by undo now draws its arms again (`mark_control`: the signal posts did not refresh
+either, since only the lane graph was told).
+**Checks:** `signal_approach_plan.json`: two avenues under signals, each arm's arriving lines solid for the last 30 m and dashed
+before, the leaving lines dashed; `road_commands_test`, `edit_fuzz_test` pass.

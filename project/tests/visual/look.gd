@@ -6,7 +6,7 @@
 ## {"frames": n}, {"hour": h} (light and clock together), {"dispatch": command, "args": [...]},
 ## {"query": name, "args": [...]} (its answer printed), {"key": "Escape"}, {"click": [x, z]}, {"tap": [screen x, y]}, {"control": "what it says"}, {"blastShot": name, "at": s}, {"walker": [zoom, azimuth, elevation]}, {"global": [name, value]} (a shader global: an A/B inside one run, so what else loads the GPU falls on both), {"drag": [[x, z], [x, z]]}.
 ## In args, {"at": [x, z]} is the point of the ground there (what the player's pointer would hit), {"profile": id} the index of
-## that road class, {"v3": [x, y, z]} a vector.
+## that road class, {"v3": [x, y, z]} a vector, {"lot": key} a lot lab's body.
 ## Measures (look_measure.gd): {"record": name} … {"recordEnd": true} (the frames between: intervals, hitches, vsyncs missed,
 ## CPU and GPU), {"usage": seconds} (peak, mean and least), {"info": true} (what the last frame drew and what is held),
 ## {"clock": true} (the stages' stamps on the camera), {"switch": [key, on]} (an F7 switch), {"passes": true} (the GPU's stamps), {"view": "overdraw"} (any Viewport.DEBUG_DRAW_* by its name, "disabled" back),
@@ -201,8 +201,7 @@ func _reference(args: Array) -> void:
 	model.scale = Vector3.ONE * float(args[3])
 
 
-## A plan's arguments for a command: {"at": [x, z]} the ground's point there, {"profile": id} a road class's index,
-## {"v3": [x, y, z]} a vector, the rest as the JSON gives it.
+## A plan's arguments for a command, as the header says ({"at"}, {"profile"}, {"v3"}, {"lot"}: LotProjects), the rest as given.
 func _args(raw: Array) -> Array:
 	var out := []
 	for a: Variant in raw:
@@ -212,6 +211,8 @@ func _args(raw: Array) -> Array:
 			out.push_back(_profile(a.profile))
 		elif a is Dictionary and a.has("v3"):
 			out.push_back(Vector3(a.v3[0], a.v3[1], a.v3[2]))
+		elif a is Dictionary and a.has("lot"):
+			out.push_back(LotProjects.entries().filter(func(e: Dictionary) -> bool: return e.key == a.lot)[0].bytes)
 		elif a is Dictionary and a.has("path"):
 			var path := PackedVector3Array()
 			for p: Array in a.path:

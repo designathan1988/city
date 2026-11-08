@@ -230,6 +230,7 @@ Dictionary CityCore::probe_building(int id) {
 	d["floors"] = int(b.floors);
 	d["zone"] = int(b.zone);
 	d["fn"] = int(b.fn);
+	d["seed"] = int64_t(b.seed); // what names it to the effects (a building broken in part: effects_ruin_pieces_of)
 	d["lot"] = lot_probe(s, b);
 	const InteriorFocus body = interior_focus(s, id);
 	d["focus"] = Vector3(body.at.x, s.terrain.height_at(body.at.x, body.at.y), body.at.y);

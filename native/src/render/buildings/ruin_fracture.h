@@ -19,6 +19,7 @@ struct Shell;
 struct BuildingLook;
 }
 class BuildingBodies;
+class SignatureBodies;
 struct Building;
 struct HeightPatch;
 
@@ -36,14 +37,24 @@ struct RuinMesh {
 	std::vector<int> links;
 	godot::Vector3 lo, hi;
 	int64_t vertices = 0;
+	static constexpr float NO_FLOOR_M = -1e30f;
+	float floor = NO_FLOOR_M; // the height its building stood on (its lot's floor): a piece starting there rests on it
 };
+
+// The depth given to a wall face cut (the facade kit draws one face to a wall), and what a piece lying in a heap adds to it (ruin_sim.cpp).
+constexpr float RUIN_WALL_DEPTH_M = 0.28f;
 
 // A floor inside: its ring of corners, at its height.
 using RuinSlab = std::vector<godot::Vector3>;
 
-// `walls`: the shell as the near level draws it; `glass` its panes, drawn dark and broken in the walls' one material.
-std::shared_ptr<RuinMesh> fracture_shell(const b40::Shell &walls, const b40::Shell &glass, const std::vector<RuinSlab> &slabs, uint32_t seed);
-// The record drawn and cut, on a job's thread (ruin_body.cpp), from the body cache the building levels share.
-std::shared_ptr<RuinMesh> ruin_of(BuildingBodies &bodies, const b40::Data &data, const b40::BuildingLook &look, const Building &rec, const HeightPatch &ground);
+// `walls`: the shell as the near level draws it; `glass` its panes, drawn dark and broken in the walls' one material. A wall face is
+// given a depth behind it (the facade kit draws one face to a wall). `sided`, a design of its own: the faces drawn with their other
+// side (a roof both ways, a wall with its inside), which get no back; then the walls' faces, alone, get a back in their plane, so no
+// back stands out through another face nor lies on one.
+std::shared_ptr<RuinMesh> fracture_shell(const b40::Shell &walls, const b40::Shell &glass, const std::vector<RuinSlab> &slabs, uint32_t seed,
+		const b40::Shell *sided = nullptr);
+// The record drawn and cut, on a job's thread (ruin_body.cpp), from the body cache the building levels share; a design of its own from its
+// cooked faces (`designs`).
+std::shared_ptr<RuinMesh> ruin_of(BuildingBodies &bodies, SignatureBodies &designs, const b40::Data &data, const b40::BuildingLook &look, const Building &rec, const HeightPatch &ground);
 
 } // namespace city

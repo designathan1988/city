@@ -100,6 +100,7 @@ public:
 	float shake() const { return effects_.shake(); } // metres the blasts move the camera now
 	float since_blast() const { return effects_.since_blast(); } // effect seconds since the last blast
 	int ruin_pieces() const { return effects_.ruin_pieces(); }
+	int ruin_pieces_of(uint32_t seed) const { return effects_.ruin_pieces_of(seed); }
 	int ruin_pieces_flying() const { return effects_.ruin_pieces_flying(); }
 	uint32_t ruin_digest(uint32_t seed) const { return effects_.ruin_digest(seed); }
 	int bodies() const { return effects_.bodies(); }

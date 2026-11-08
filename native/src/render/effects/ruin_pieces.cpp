@@ -280,6 +280,11 @@ int RuinPieces::pieces() const {
 	return n;
 }
 
+int RuinPieces::pieces_of(uint32_t seed) const {
+	const auto it = falls_.find(seed);
+	return it == falls_.end() || !it->second.ready ? 0 : it->second.sim->pieces();
+}
+
 int RuinPieces::flying() const {
 	int n = 0;
 	for (const auto &[seed, f] : falls_) n += f.ready ? f.sim->flying() : 0;

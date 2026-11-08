@@ -248,6 +248,10 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/render/atmosphere/fog_field.cpp` · `native/src/render/atmosphere/fog_field.h` · `native/src/render/atmosphere/canyon_field.cpp` · `native/src/render/atmosphere/canyon_field.h` — janelas da neblina pintada e das alturas dos prédios, escritas em job e lidas pelo passe de atmosfera
 - `native/src/render/buildings/body_stage.cpp` · `native/src/render/buildings/body_stage.h` — um corpo desenhado à parte da cidade: o fantasma sob o ponteiro e as fotos dos modelos
 - `native/src/render/buildings/building_bodies.cpp` · `native/src/render/buildings/building_bodies.h` · `native/src/render/buildings/building_look.cpp` · `native/src/render/buildings/building_look.h` — a record placed in the world, with the rooms behind its panes and its cut bodies kept (the body itself is the simulation's cache); buildings.json → level shares, part bands and the thin parts' sizes
+- `native/src/render/buildings/signature_file.h` — the layout of the cooked signature designs (folder, marks, a look's record, a vertex),
+  read by the bodies drawn and the bodies cut for a fall
+- `native/src/render/buildings/signature_ruin.cpp` — a design of its own as the walls a fall cuts: its faces placed and painted by their
+  looks, the glass apart, the faces cooked with their other side apart (no back of the fracture's)
 - `native/src/render/buildings/signature_bodies.cpp` · `native/src/render/buildings/signature_bodies.h` · `native/src/sim/buildings/b40/signature_kinds.h` · `project/render/shaders/signature.gdshader` · `project/render/shaders/signature_glass.gdshader` · `project/render/shaders/signature_look.gdshaderinc` — the buildings with a design of their own (landmarks): baked shape and paintings, one mesh per kind, loaded the first time, one instance per building, coming and going with the chunk
 - `native/src/render/buildings/building_surface.h` — o que um nível guarda: a superfície que um job fez, os triângulos e bytes de cada tipo e a malha distante de um superchunk
 - `native/src/render/buildings/building_renderer.cpp` · `native/src/render/buildings/building_renderer.h` · `native/src/render/buildings/building_renderer_reach.cpp` — streaming dos níveis near/mid/far por chunk e superchunk; o alcance de cada nível (dados, nível gráfico) e as faixas de visibilidade dos chunks
@@ -464,6 +468,8 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `project/tests/core/strike_test.gd` · `project/tests/core/strike_test.tscn` — a bomba pela store: curva K-B contra o ponto conhecido, prédios que caem aos poucos, via cortada pela cratera, mobiliário derrubado, desfazer e refazer
 - `project/tests/core/strike_pole_cases.gd` — the poles case of strike_test: a charge on a street with the player's utility poles (the
   crater on the raised road, the poles down and their wires hanging, the heaved ground; undo and redo by the state hash)
+- `project/tests/core/strike_landmark_cases.gd` — the landmark case of strike_test: the lot lab's church by a street, broken in part and
+  drawn in pieces of its own faces, then brought down in them
 - `project/tests/visual/capture_blast.gd` — the bomb photographed by the effects clock (file name = real instant) and by a fixed camera
 - `project/tests/visual/capture_demolition.gd` · `project/tests/visual/capture_demolition.tscn` · `project/tests/visual/capture_falls.gd` — capturas da bomba (casa, rua, terra, bomba grande) em instantes depois do golpe; a torre que cai e quem é derrubado e levanta
 - `project/tests/core/shoot_test.gd` · `project/tests/core/shoot_test.tscn` · `project/tests/core/shoot_fright_cases.gd` — a pistola pela store (cabeça mata, tronco fere, o ferido sangra, tiro no céu erra, rajada faz o carro explodir), o que um golpe deixa num save (ida e volta de crateras, ruínas e mobiliário) e quem ouve um tiro ou um estouro
@@ -485,6 +491,10 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
   to rest (the pieces cut off, the bones, the guts), the damage probe's counts of them
 - `project/tests/visual/bomb_street_plan.json` — the bomb on a street with the player's utility poles: the crater on the raised road and
   the ground it heaved, the poles brought down, the wires hanging from those left standing
+- `project/tests/visual/bomb_landmark_plan.json` — the bomb on the lot lab's church: broken in part (its own faces, its colours), then
+  brought down in pieces of them, the heap lying on the ground
+- `project/tests/visual/signal_approach_plan.json` — two avenues crossing under signals: the lines between the lanes of one way solid
+  for the last 30 m of each approach (LMS-1)
 - `project/tests/visual/zones_town_plan.json` — the zoning tool over the generated town: its lots coloured with outlines and
   fronts, the lot under the pointer lit, the eraser across a few
 - `project/tests/visual/zoning_plan.json` — the zoning tool looked at in play: blocks on bare land, the Zones drawer, a short stroke, the town grown, the Lots tab

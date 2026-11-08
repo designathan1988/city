@@ -47,7 +47,7 @@ public:
 	void reset();
 	void set_broken(const std::unordered_set<uint32_t> &seeds); // the buildings drawn in pieces, by the effects
 	// The walls of a record a blow brings down, broken (ruin_fracture.h), from the bodies the levels draw.
-	std::shared_ptr<RuinMesh> ruin_of(const b40::Data &data, const Building &rec, const HeightPatch &ground) const;
+	std::shared_ptr<RuinMesh> ruin_of(const b40::Data &data, const Building &rec, const HeightPatch &ground);
 	void rebuild_chunk(const CityState &s, int64_t key); // a chunk to (re)mesh: its levels turn stale, its superchunk dirty
 	// A chunk whose near level is drawn again with the same buildings (the Interior layer cut some open or closed them): the
 	// far mesh draws them whole either way, so its superchunk stays.
