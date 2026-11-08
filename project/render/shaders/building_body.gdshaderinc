@@ -26,8 +26,6 @@ uniform vec3 lamp_light : source_color; // what a lit lamp gives, whatever its b
 uniform vec4 lawn_tone; // a lawn's tone: its floor, its wide noise's share, its fine noise's share; its roughness
 uniform vec2 lawn_noise; // the wide and the fine noise a metre
 uniform float far_glass_rough; // the far wall's painted glass, its roughness
-// The outside lamps switched on by 10 m cells, each its own pick: its column and row times two primes, offset to stay positive.
-const float LAMP_CELL_PER_M = 0.1, LAMP_CELL_X = 31.0, LAMP_CELL_Z = 977.0, LAMP_CELL_SHIFT = 65536.0;
 const float FINISH_ROUND = 0.001; // a finish's layer + 1, carried in a float, read up past its rounding
 #include "res://render/shaders/building_glass_set.gdshaderinc"
 
@@ -98,7 +96,7 @@ void fragment() {
 	vec3 albedo = srgb_to_linear(COLOR.rgb), emit = vec3(0.0), nn = n;
 	float rough = BUILDING_WALL_ROUGHNESS, metal = 0.0;
 	if (kind == SK_LAMP) {
-		emit = uniform_linear(lamp_light) * night * lamp_glow * step(h01(uint(floor(v_world.x * LAMP_CELL_PER_M) * LAMP_CELL_X + floor(v_world.z * LAMP_CELL_PER_M) * LAMP_CELL_Z + LAMP_CELL_SHIFT)), outside_on);
+		emit = uniform_linear(lamp_light) * night * lamp_glow * outside_lamp(v_world.xz, outside_on);
 	} else if (kind == SK_LAWN) {
 		albedo *= lawn_tone.x + lawn_tone.y * vnoise(v_world.xz * lawn_noise.x) + lawn_tone.z * vnoise(v_world.xz * lawn_noise.y);
 		rough = lawn_tone.w;

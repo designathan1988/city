@@ -5,12 +5,17 @@ shader_type spatial;
 render_mode cull_disabled;
 #include "res://render/shaders/contracts/buildings.gdshaderinc"
 
-uniform float veil_from_m = 100.0; // the blades of a brise, as boxes, end here (buildings.json lod.part_bands, the first band)
-uniform float roughness = 0.45;
-uniform float metalness = 0.55;
+uniform float veil_from_m; // the blades of a brise, as boxes, end here (materials.json building_card, as the next two)
+uniform float roughness;
+uniform float metalness;
 
 const float BRISE_PITCH = 1.0 / float(BRISE_FINS); // a fin's pitch on the card
+// The railings as a card draws them, shares of its height and width, by eye against the near level's models (B3: one owner):
+// the top rail's middle and height; a roof railing's mid rail and its posts; a front's low rail and its bars, a side's.
 const float TOP_RAIL = 0.97, TOP_RAIL_H = 0.06;
+const float MID_RAIL = 0.45, RAIL_H = 0.04, ROOF_POSTS = 0.25, ROOF_POST_W = 0.02;
+const float LOW_RAIL = 0.12, FRONT_BARS = 0.1, SIDE_BARS = 0.25, BAR_W = 0.015;
+const float LEAST_FW = 1e-5; // a footprint never under this
 const float BRISE_FILTER_PX = 2.0;
 
 #include "res://render/shaders/building_level.gdshaderinc"
@@ -42,16 +47,16 @@ float cover(int kind, vec2 q, vec2 fw, float share) {
 	// Fins a pixel or two apart: a box one pixel wide leaves their beat with the pixels as arcs across a tower; two pixels wide its first null falls on the
 	// pitch where the beat is strongest.
 	if (kind == CARD_BRISE) return every(q.x + 0.5 * BRISE_PITCH, BRISE_PITCH, share, fw.x * BRISE_FILTER_PX);
-	if (kind == CARD_ROOF_RAILING) return either(either(bar(q.y, TOP_RAIL, TOP_RAIL_H, fw.y), bar(q.y, 0.45, 0.04, fw.y)), every(q.x, 0.25, 0.02, fw.x));
-	float rails = either(bar(q.y, TOP_RAIL, TOP_RAIL_H, fw.y), bar(q.y, 0.12, 0.04, fw.y));
-	return either(rails, every(q.x, kind == CARD_RAILING_FRONT ? 0.1 : 0.25, 0.015, fw.x));
+	if (kind == CARD_ROOF_RAILING) return either(either(bar(q.y, TOP_RAIL, TOP_RAIL_H, fw.y), bar(q.y, MID_RAIL, RAIL_H, fw.y)), every(q.x, ROOF_POSTS, ROOF_POST_W, fw.x));
+	float rails = either(bar(q.y, TOP_RAIL, TOP_RAIL_H, fw.y), bar(q.y, LOW_RAIL, RAIL_H, fw.y));
+	return either(rails, every(q.x, kind == CARD_RAILING_FRONT ? FRONT_BARS : SIDE_BARS, BAR_W, fw.x));
 }
 
 void fragment() {
 	int kind = int(UV2.x + 0.5);
 	if (level_noise(FRAGCOORD.xy) >= level_keep) discard;
 	if (kind == CARD_BRISE && length(v_world - CAMERA_POSITION_WORLD) < veil_from_m) discard;
-	vec2 fw = max(fwidth(UV), vec2(1e-5));
+	vec2 fw = max(fwidth(UV), vec2(LEAST_FW));
 	// the share of the pixel kept as a share of the pixels that stay: a screen of bars under a pixel is a veil and no moire; the frames resolve the grain
 	float grain = level_noise(FRAGCOORD.xy);
 	if (cover(kind, UV, fw, UV2.y) <= grain) discard;

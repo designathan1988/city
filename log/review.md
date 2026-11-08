@@ -3731,6 +3731,29 @@ and swing steps are named.
 
 **What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56).
 
+### 6.68 B2, C14 and C16 (vehicles, water, the canyon's light, the lamps' wash, the cards): one sin hash, one outside lamp, looks in data (2026-11-08)
+
+**Cause and fix.** Eight shaders held their look or their definitions as bare numbers (agents 9, agent_door 7, agent_glass 3,
+people_held 1, water 18, canyon_light 9, building_wash 9, building_card 12):
+- The vehicles' coat lift and horizon are the `agent` row's; the front windows' picks (the 4.0's windowsDown), read by the agent and
+  agent-glass shaders alike, are the `_shared` set `windows`; the glass's local `SCHLICK_POWER` is `fresnel`'s; the held props'
+  roughness is their row's.
+- The water's froth, bed grain and paws are `palette.json` water keys, laid by uniform type; its waves, foam and current, which
+  drew from defaults until a map's weather is read, take `nature.json`'s weather defaults when `CityWater` is made.
+- `canyon_light`: the none height, the wall test, the eight directions (their step `TAU / 8`, the float the old 0.7853982 is), the
+  reach's steps and Jimenez et al.'s multi-bounce fit for albedo 0.5 are named consts with their source.
+- The card's railing shares are named (B3: the near level's models are their other owner); its brise veil distance is its row's,
+  worked out by hand from the first part band (B3).
+- Defaults rows always set are gone (the agent glass's three, the wash's two, the card's two).
+
+Held twice: the sin hash's constants, in `agents` and `people_look`, are `hash.gdshaderinc`'s (`SIN_HASH`, a vec3, the sparkle
+reading its first two); the outside lamps' 10 m switch, in `building_body` and `building_wash`, is `building_lamps`'s `outside_lamp`.
+
+**Proof.** Each shader with its moved values put back is HEAD's code, `outside_lamp` being the old expression and the folds above
+exact. `quick`: every test passes, the four photos byte-equal to known states.
+
+**What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56).
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

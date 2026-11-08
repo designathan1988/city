@@ -9,6 +9,9 @@
 const uint PCG_MUL = 747796405u, PCG_INC = 2891336453u, PCG_SHIFT = 28u, PCG_OUT_MUL = 277803737u, PCG_OUT_SHIFT = 22u;
 const float WORD_TOP = 4294967295.0;
 const uint KNUTH_HASH = 2654435761u; // Knuth's multiplicative hash: 2^32 over the golden ratio
+// The common sin hash (Rey 1998): fract(sin(dot(p, k)) * scale); three directions for a vec3, the first two for a vec2.
+const vec3 SIN_HASH = vec3(12.9898, 78.233, 37.719);
+const float SIN_HASH_SCALE = 43758.5453;
 const uint TESCHNER_X = 73856093u, TESCHNER_Y = 19349663u;
 
 uint pcg(uint v) {

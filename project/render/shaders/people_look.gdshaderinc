@@ -10,6 +10,7 @@ render_mode cull_disabled; // the hair's cards and the clothes' open edges are s
 #include "res://render/shaders/people_pose.gdshaderinc"
 #include "res://render/shaders/people_face.gdshaderinc"
 #include "res://render/shaders/fresnel.gdshaderinc"
+#include "res://render/shaders/hash.gdshaderinc"
 
 uniform sampler2DArray atlas : source_color, filter_linear_mipmap_anisotropic, repeat_disable;
 uniform float alpha_test; // the texels of the hair's cards that are drawn
@@ -19,9 +20,7 @@ const float REFLECTS = 0.5; // what a dielectric mirrors (Godot's SPECULAR for a
 const float DULL_REFLECTS = 0.125; // skin and hair: a quarter of that
 const float STRAND_ROOM = 1e-12; // a strand's or a normal's squared length under this is none
 const float LEAST_GGX_ALPHA = 0.002, LEAST_NV = 1e-3, LEAST_VIS = 1e-5; // guards: the lobe's width, the view's cosine, the visibility's sum
-// A strand's sparkle: the hair's cells across and down its atlas region, each its own by the common sin hash (Rey 1998).
-const vec2 SPARKLE_CELLS = vec2(640.0, 48.0), SIN_HASH = vec2(12.9898, 78.233);
-const float SIN_HASH_SCALE = 43758.5453;
+const vec2 SPARKLE_CELLS = vec2(640.0, 48.0); // a strand's sparkle: the hair's cells across and down its atlas region, each its own by the sin hash
 // A person's light (materials.json people.params), by eye as the 4.0's personMaterial.ts; each vector's parts are said here.
 uniform vec3 inside_tone; // skin seen from inside (the cheeks through an open mouth) is the body's dark
 uniform float skin_specular; // what skin keeps of the sheen
@@ -102,7 +101,7 @@ void fragment() {
 	vec3 along = dFdy(VERTEX) * dFdx(UV).x - dFdx(VERTEX) * dFdy(UV).x; // the strands run with the atlas's rows
 	along -= NORMAL * dot(along, NORMAL);
 	v_strand = dot(along, along) > STRAND_ROOM ? normalize(along) : vec3(0.0, 1.0, 0.0);
-	v_sparkle = fract(sin(dot(floor(UV * SPARKLE_CELLS), SIN_HASH)) * SIN_HASH_SCALE);
+	v_sparkle = fract(sin(dot(floor(UV * SPARKLE_CELLS), SIN_HASH.xy)) * SIN_HASH_SCALE);
 }
 
 void light() {

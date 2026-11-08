@@ -9,15 +9,16 @@ render_mode blend_add, unshaded, cull_back, depth_draw_never, shadows_disabled;
 global uniform float night;
 global uniform float outside_on;
 
-uniform vec3 display_colour = vec3(0.89, 0.83, 0.7); // as the screen shows it: not a source_color, it stays encoded
-uniform float opacity = 0.55;
+uniform vec3 display_colour; // as the screen shows it: not a source_color, it stays encoded (materials.json building_wash, as opacity)
+uniform float opacity;
 
 #include "res://render/shaders/color_space.gdshaderinc"
 #include "res://render/shaders/tone_inverse.gdshaderinc"
 #include "res://render/shaders/hash.gdshaderinc"
+#include "res://render/shaders/building_lamps.gdshaderinc"
 #include "res://render/shaders/lamp_pool.gdshaderinc"
 
 void fragment() {
-	float lit = step(h01(uint(floor(UV2.x * 0.1) * 31.0 + floor(UV2.y * 0.1) * 977.0 + 65536.0)), outside_on);
+	float lit = outside_lamp(UV2, outside_on);
 	ALBEDO = linear_out(display_to_radiance(display_colour * pool_fall(length(UV * 2.0 - 1.0)) * opacity * night * lit));
 }

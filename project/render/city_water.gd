@@ -15,9 +15,13 @@ func _init(palette: Dictionary) -> void:
 	plane.size = Vector2(WATER_EXTENT_M, WATER_EXTENT_M)
 	own = ShaderMaterial.new()
 	own.shader = load(WATER_SHADER)
+	var kinds := WorldMaterials.uniform_kinds(own.shader)
 	for key in palette.water:
 		if key != "sea_level_m" and not key.begins_with("_"):
-			own.set_shader_parameter(key, CityWorld.shader_value(palette.water[key]))
+			own.set_shader_parameter(key, WorldMaterials.typed(kinds, key, palette.water[key]))
+	var weather: Dictionary = DataTables.catalog_table("nature").weather
+	for key in ["waves", "foam", "current"]: # the weather's defaults until a map's is read (CityWorld.set_water_look)
+		own.set_shader_parameter(key, weather[key].default)
 	mesh = plane
 	material_override = own
 	position.y = palette.water.sea_level_m

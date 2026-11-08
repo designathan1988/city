@@ -10,14 +10,14 @@ render_mode blend_mix, depth_draw_opaque, cull_back;
 
 #include "res://render/shaders/color_space.gdshaderinc"
 #include "res://render/shaders/agent_door.gdshaderinc"
+#include "res://render/shaders/fresnel.gdshaderinc"
 
 const float SPECULAR_PER_F0 = 12.5; // Godot: F0 = 0.08 * SPECULAR
-const float SCHLICK_POWER = 5.0;
 
 uniform vec3 tint : source_color;
-uniform float transmittance = 0.7;
-uniform float ior = 1.52;
-uniform float roughness = 0.0;
+uniform float transmittance; // materials.json agent_glass, as the next two
+uniform float ior;
+uniform float roughness;
 
 void vertex() {
 	if (COLOR.g > PANE_MARK) VERTEX.y = mix(VERTEX.y, COLOR.r * AGENT_SILL_SPAN_M, pane_drop(COLOR.a, VERTEX.x));

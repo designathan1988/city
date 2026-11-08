@@ -42,9 +42,16 @@ uniform float paws_m; // the gust patches that roughen the surface: how wide, an
 uniform float paws_rough;
 global uniform float wind_x;
 global uniform float wind_z;
-uniform float waves = 0.3; // the map's weather: how rough, how much foam, how fast the rivers run (render/sky_view.gd)
-uniform float foam = 0.4;
-uniform float current = 1.2;
+uniform float waves; // the map's weather: how rough, how much foam, how fast the rivers run (render/city_world.gd; nature.json's defaults before it is read)
+uniform float foam;
+uniform float current;
+uniform vec4 froth_look; // the froth's edges in its noise, the noise a metre, its drift with the current
+uniform float froth_edge; // the shore's edge's share in it
+uniform vec4 bed_grain; // the bed's grain: from and to by its fine noise, from and to by its wide one
+uniform vec3 bed_grain_noise; // the fine and the wide noise a metre, the wide one's shift
+uniform float paws_wide; // the cat's paws' second noise, this many times wider
+const float LEAST_COVER = 0.001; // the cover divided by never under this
+const float PAWS_SHIFT = 7.0; // the second noise off the first's lattice
 uniform sampler2D depth_texture : hint_depth_texture, repeat_disable, filter_nearest;
 
 #include "res://render/shaders/lattice_noise.gdshaderinc"
@@ -85,18 +92,18 @@ void fragment() {
 	vec3 c = tint < 0.5 ? mix(source_linear(shallow), source_linear(mid), tint * 2.0) : mix(source_linear(mid), source_linear(deep), tint * 2.0 - 1.0);
 	c *= 1.0 + slick_share * (vnoise(world.xz / fetch_m) * 2.0 - 1.0);
 	float edge = (1.0 - smoothstep(0.0, foam_m, below)) * foam;
-	float froth = smoothstep(0.35, 0.8, vnoise(world.xz * 0.9 + current * TIME * 0.3) + edge * 0.6) * edge;
+	float froth = smoothstep(froth_look.x, froth_look.y, vnoise(world.xz * froth_look.z + current * TIME * froth_look.w) + edge * froth_edge) * edge;
 	c = mix(c, source_linear(foam_tint), froth);
 	// The bed, drawn here as a layer under the sheet: the ground shader knows the sea's level, not the water over each place.
-	float grain = mix(0.62, 1.3, vnoise(world.xz * 2.65)) * mix(0.85, 1.12, vnoise(world.xz * 1.05 + 0.4));
+	float grain = mix(bed_grain.x, bed_grain.y, vnoise(world.xz * bed_grain_noise.x)) * mix(bed_grain.z, bed_grain.w, vnoise(world.xz * bed_grain_noise.y + bed_grain_noise.z));
 	vec3 bed = mix(source_linear(gravel) * grain, source_linear(silt), smoothstep(bed_from_m, silt_m, below)) * bed_wet;
 	bed *= exp(-absorb_m * below * 2.0); // down to the bed and up again
 	float bed_a = bed_cover * smoothstep(0.0, bed_from_m, below);
 	float sheet = max(mix(sheet_least, sheet_most, smoothstep(bed_seen_m, bed_hidden_m, below)), froth);
 	float cover = sheet + (1.0 - sheet) * bed_a;
-	ALBEDO = linear_out((c * sheet + bed * bed_a * (1.0 - sheet)) / max(cover, 0.001));
+	ALBEDO = linear_out((c * sheet + bed * bed_a * (1.0 - sheet)) / max(cover, LEAST_COVER));
 	ALPHA = cover * smoothstep(0.0, rim_m, below);
-	float paws = vnoise(drift / paws_m) * vnoise(world.xz / (paws_m * 3.1) + 7.0);
+	float paws = vnoise(drift / paws_m) * vnoise(world.xz / (paws_m * paws_wide) + PAWS_SHIFT);
 	ROUGHNESS = sqrt(slope_sigma * sqrt(1.0 - fine * fine)) + paws * paws_rough * rough;
 	SPECULAR = specular_f0;
 }

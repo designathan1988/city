@@ -37,6 +37,13 @@ const float TV_CUTS_HZ = 0.6, TV_CUT_LEAST = 0.45, TV_CUT_SPAN = 0.45, TV_FLICKE
 const float LOT_BITS_TOP = 8191.0;
 const float BOX_UNDER = 0.05; // a pulse narrower than this many periods a pixel is box-filtered (the tent's second integral loses precision)
 const float LEAST_FOOT = 1e-4; // a grid footprint never under this
+// The outside lamps switched on by 10 m cells, each its own pick: its column and row times two primes, offset to stay positive.
+const float LAMP_CELL_PER_M = 0.1, LAMP_CELL_X = 31.0, LAMP_CELL_Z = 977.0, LAMP_CELL_SHIFT = 65536.0;
+
+// Whether the outside lamp at `at` (metres, x and z) is on, `on` the share of them lit at this hour.
+float outside_lamp(vec2 at, float on) {
+	return step(h01(uint(floor(at.x * LAMP_CELL_PER_M) * LAMP_CELL_X + floor(at.y * LAMP_CELL_PER_M) * LAMP_CELL_Z + LAMP_CELL_SHIFT)), on);
+}
 
 // The lamp of a room by its lot `room`: the colour takes a lot of its own from it.
 vec3 room_lamp(float room, float office) {

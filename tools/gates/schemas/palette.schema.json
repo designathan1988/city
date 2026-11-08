@@ -104,6 +104,36 @@
     },
     "paws_rough": {
      "type": "number"
+    },
+    "froth_look": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 4,
+     "maxItems": 4
+    },
+    "froth_edge": {
+     "type": "number"
+    },
+    "bed_grain": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 4,
+     "maxItems": 4
+    },
+    "bed_grain_noise": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 3,
+     "maxItems": 3
+    },
+    "paws_wide": {
+     "type": "number"
     }
    },
    "required": [
@@ -116,7 +146,12 @@
     "ripple_strength",
     "slope_sigma",
     "specular_f0",
-    "fetch_m"
+    "fetch_m",
+    "froth_look",
+    "froth_edge",
+    "bed_grain",
+    "bed_grain_noise",
+    "paws_wide"
    ],
    "strict": true
   },
