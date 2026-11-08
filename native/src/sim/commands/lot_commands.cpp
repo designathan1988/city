@@ -79,9 +79,9 @@ int add_piece(CityState &s, const std::vector<XZ> &corners, int zone) {
 
 EditResult add_lot(CityState &s, const std::vector<XZ> &ring) {
 	if (!big_enough(ring)) return refused("hint.lot.small");
-	std::vector<XZ> land = lot_on_land(s.roads, ring);
+	std::vector<XZ> land = lot_on_land(s.catalog.growth.shapes, s.roads, ring);
 	if (land.empty()) return refused("hint.lot.road");
-	std::rotate(land.begin(), land.begin() + lot_front_side(s.roads, land), land.end());
+	std::rotate(land.begin(), land.begin() + lot_front_side(s.catalog.growth.shapes, s.roads, land), land.end());
 	const std::vector<XZ> corners = facing_corners(land);
 	if (!free_of_lots(s.lot_book, corners)) return refused("hint.lot.overlap");
 	const int id = add_piece(s, corners, 0);
@@ -113,7 +113,7 @@ void cut_lots_by_roads(CityState &s, double minx, double minz, double maxx, doub
 		bounds(lot.corners, x0, z0, x1, z1);
 		if (x1 < minx || x0 > maxx || z1 < minz || z0 > maxz) continue;
 		bool cut = false;
-		std::vector<std::vector<XZ>> pieces = lot_pieces(s.roads, lot.corners, cut);
+		std::vector<std::vector<XZ>> pieces = lot_pieces(s.catalog.growth.shapes, s.roads, lot.corners, cut);
 		if (cut) crossed.push_back({ lot, std::move(pieces) });
 	}
 	if (crossed.empty()) return;

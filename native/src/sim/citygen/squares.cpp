@@ -21,11 +21,10 @@ namespace city {
 using namespace b40;
 
 namespace {
-constexpr double FILE_CELL_M = 60; // the grid lots are filed in while they are joined
-constexpr float LAWN_H = 0.06f, LATTICE_FROM_M = 200, SEAM_M = 0.35f;
+// the trees' heights from Numerical Recipes' linear congruential generator (its multiplier and increment, a draw over 2^32); a
+// square's stream from the seed, its index's stride a prime
 constexpr uint32_t LCG_MUL = 1664525U, LCG_ADD = 1013904223U, TREE_SEED_MUL = 31U, TREE_SEED_STEP = 7919U, SQUARE_SALT = 0x711eU;
 constexpr double LCG_UNIT = 4294967296.0;
-constexpr float PLAZA_WIDE = 0.45f; // the round plaza's rectangles: full size, and this share across
 
 struct Plot {
 	const Lot *lot;
@@ -53,12 +52,12 @@ bool touches(const Plot &a, const Plot &b, float reach) {
 	return false;
 }
 
-bool inside(const Plot &p, V2 at) {
+bool inside(const SquaresShape &K, const Plot &p, V2 at) {
 	const Lot &l = *p.lot;
 	const float sn = std::sin(float(l.rot)), cs = std::cos(float(l.rot));
 	const V2 rel = at - p.centre;
 	// a lot stands a little short of the next (lot_place.cpp WIDTH_TRIM): the seam between two is the block's, and no edge to a tree
-	return std::fabs(rel.x * cs - rel.y * sn) <= float(l.w) / 2 + SEAM_M && std::fabs(rel.x * sn + rel.y * cs) <= float(l.d) / 2 + SEAM_M;
+	return std::fabs(rel.x * cs - rel.y * sn) <= float(l.w) / 2 + K.seam_m && std::fabs(rel.x * sn + rel.y * cs) <= float(l.d) / 2 + K.seam_m;
 }
 
 struct Joined {
@@ -66,11 +65,11 @@ struct Joined {
 	int find(int i) { return parent[size_t(i)] == i ? i : parent[size_t(i)] = find(parent[size_t(i)]); }
 };
 
-std::vector<std::vector<int>> blocks_of(const std::vector<Plot> &plots, float reach) {
+std::vector<std::vector<int>> blocks_of(const SquaresShape &K, const std::vector<Plot> &plots, float reach) {
 	Joined j{ std::vector<int>(plots.size()) };
 	std::iota(j.parent.begin(), j.parent.end(), 0);
 	std::map<std::pair<int, int>, std::vector<int>> grid;
-	auto cell = [](float v) { return int(std::floor(v / FILE_CELL_M)); };
+	auto cell = [&K](float v) { return int(std::floor(v / K.file_cell_m)); };
 	for (size_t i = 0; i < plots.size(); i++) grid[{ cell(plots[i].centre.x), cell(plots[i].centre.y) }].push_back(int(i));
 	for (size_t i = 0; i < plots.size(); i++)
 		for (int dx = -1; dx <= 1; dx++)
@@ -106,6 +105,7 @@ struct Chosen {
 
 // The body of a square on the block, and its record.
 void set_down(CityState &s, const std::vector<Plot> &plots, const Chosen &c, uint32_t &random) {
+	const SquaresShape &K = s.catalog.growth.shapes.squares;
 	const CityPlanDef &d = s.catalog.growth.plan;
 	const Data &data = s.buildings.designs;
 	const Lot &first = *plots[size_t(c.block[0])].lot;
@@ -125,18 +125,18 @@ void set_down(CityState &s, const std::vector<Plot> &plots, const Chosen &c, uin
 	body.use = USE_COMMERCIAL;
 	const int lawn = body.add_paint(data.color("lawn")), walk = body.add_paint(data.color("concrete"));
 	const float w = float(d.square_walk_half_m), plaza = float(d.square_plaza_m);
-	put(body, EL_SURFACE, -W / 2, 0, W / 2, D, LAWN_H, lawn);
-	put(body, EL_SURFACE, -W / 2, cy - w, W / 2, cy + w, LAWN_H * 2, walk);
-	put(body, EL_SURFACE, cx - w, 0, cx + w, D, LAWN_H * 2, walk);
-	put_at(body, EL_SURFACE, cx, cy, plaza * 2, plaza * 2 * PLAZA_WIDE, LAWN_H * 2, walk);
-	put_at(body, EL_SURFACE, cx, cy, plaza * 2 * PLAZA_WIDE, plaza * 2, LAWN_H * 2, walk);
+	put(body, EL_SURFACE, -W / 2, 0, W / 2, D, K.lawn_h, lawn);
+	put(body, EL_SURFACE, -W / 2, cy - w, W / 2, cy + w, K.lawn_h * 2, walk);
+	put(body, EL_SURFACE, cx - w, 0, cx + w, D, K.lawn_h * 2, walk);
+	put_at(body, EL_SURFACE, cx, cy, plaza * 2, plaza * 2 * K.plaza_wide, K.lawn_h * 2, walk);
+	put_at(body, EL_SURFACE, cx, cy, plaza * 2 * K.plaza_wide, plaza * 2, K.lawn_h * 2, walk);
 	auto in_block = [&](float a, float b) {
 		const V2 p = c.centre + along * a + in * b;
-		return std::any_of(c.block.begin(), c.block.end(), [&](int i) { return inside(plots[size_t(i)], p); });
+		return std::any_of(c.block.begin(), c.block.end(), [&](int i) { return inside(K, plots[size_t(i)], p); });
 	};
 	const float step = float(d.square_tree_grid_m), clear = float(d.square_tree_edge_m);
-	for (float a = -LATTICE_FROM_M; a <= LATTICE_FROM_M; a += step) // squares.ts: the grid starts here, so it lies the same on any block
-		for (float b = -LATTICE_FROM_M; b <= LATTICE_FROM_M; b += step) {
+	for (float a = -K.lattice_from_m; a <= K.lattice_from_m; a += step) // squares.ts: the grid starts here, so it lies the same on any block
+		for (float b = -K.lattice_from_m; b <= K.lattice_from_m; b += step) {
 			if (!in_block(a, b) || std::fabs(a) < w || std::fabs(b) < w || std::hypot(a, b) < plaza) continue;
 			if (!in_block(a + clear, b) || !in_block(a - clear, b) || !in_block(a, b + clear) || !in_block(a, b - clear)) continue;
 			random = random * LCG_MUL + LCG_ADD;
@@ -171,7 +171,7 @@ int plan_squares(CityState &s, uint32_t seed) {
 	for (const std::string &name : d.square_main_roads) mains.push_back(s.catalog.profile_id(name.c_str()));
 	std::map<std::pair<int, int>, Chosen> by_cell;
 	const float cell = float(d.square_cell_m);
-	for (std::vector<int> &block : blocks_of(plots, float(d.square_touch_m))) {
+	for (std::vector<int> &block : blocks_of(s.catalog.growth.shapes.squares, plots, float(d.square_touch_m))) {
 		float area = 0;
 		V2 sum(0, 0);
 		bool fronting = false;

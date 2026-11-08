@@ -17,24 +17,16 @@ using Clipper2Lib::Paths64;
 using Clipper2Lib::Point64;
 
 namespace {
-constexpr double CROSSED_AREA_M2 = 1; // less off a lot is the paving's own outline, not a road through it
-constexpr double STRAIGHT_BACK_M = 2; // an outline edge this long is a straight back of a footway; shorter, a corner's curve
-constexpr double SQUARE_SHARE = 0.3; // sine under which two backs are one street, not two
-constexpr double SQUARE_REACH_M = 8; // how far a squared corner may stand from the outline
-constexpr double FRONT_SLACK_M = 1.5; // sides this much further from the street than the nearest still face it
-constexpr double FRONT_SEARCH_M = 60;
-constexpr double LOT_SNAP_SHARE = 0.7; // of the reach, for the corners of other lots
-constexpr double BACK_SPAN = 1.5; // of the reach, for the backs that make a corner
-constexpr double APART_M = 0.8;
 
 double side_length(const XZ &p, const XZ &q) { return std::hypot(q.x - p.x, q.z - p.z); }
 
 // A lot cut back to the footways, the corners between its long sides made square: the curve of a street's corner goes.
-std::vector<XZ> square_corners(const std::vector<XZ> &ring) {
+std::vector<XZ> square_corners(const GenShapes &S, const std::vector<XZ> &ring) {
+	const LotLandShape &K = S.lot_land;
 	const size_t n = ring.size();
 	std::vector<size_t> long_sides;
 	for (size_t i = 0; i < n; i++)
-		if (side_length(ring[i], ring[(i + 1) % n]) >= STRAIGHT_BACK_M) long_sides.push_back(i);
+		if (side_length(ring[i], ring[(i + 1) % n]) >= K.straight_back_m) long_sides.push_back(i);
 	if (long_sides.size() < 2) return ring;
 	std::vector<XZ> out;
 	for (size_t k = 0; k < long_sides.size(); k++) {
@@ -45,12 +37,12 @@ std::vector<XZ> square_corners(const std::vector<XZ> &ring) {
 			continue;
 		}
 		const double ux = b.x - a.x, uz = b.z - a.z, vx = d.x - c.x, vz = d.z - c.z, den = ux * vz - uz * vx;
-		bool met = std::fabs(den) > SQUARE_SHARE * std::hypot(ux, uz) * std::hypot(vx, vz);
+		bool met = std::fabs(den) > K.square_share * std::hypot(ux, uz) * std::hypot(vx, vz);
 		XZ x;
 		if (met) {
 			const double t = ((c.x - a.x) * vz - (c.z - a.z) * vx) / den;
 			x = { a.x + ux * t, a.z + uz * t };
-			met = side_length(x, b) < SQUARE_REACH_M;
+			met = side_length(x, b) < K.square_reach_m;
 		}
 		if (met) out.push_back(x);
 		else // not a corner of two streets: the short sides kept as they are
@@ -59,9 +51,10 @@ std::vector<XZ> square_corners(const std::vector<XZ> &ring) {
 	return out.size() >= 3 ? out : ring;
 }
 
-double street_distance(const RoadNetwork &net, double x, double z) {
+double street_distance(const GenShapes &S, const RoadNetwork &net, double x, double z) {
+	const LotLandShape &K = S.lot_land;
 	double best = std::numeric_limits<double>::infinity();
-	net.for_segments_near(x - FRONT_SEARCH_M, z - FRONT_SEARCH_M, x + FRONT_SEARCH_M, z + FRONT_SEARCH_M, [&](int seg) {
+	net.for_segments_near(x - K.front_search_m, z - K.front_search_m, x + K.front_search_m, z + K.front_search_m, [&](int seg) {
 		if (net.profile_of(seg).rail) return;
 		double v;
 		float u, past;
@@ -71,14 +64,15 @@ double street_distance(const RoadNetwork &net, double x, double z) {
 	return best;
 }
 
-bool lot_corner_near(const LotBook &book, const XZ &p, double reach, int skip, const XZ *apart, XZ &out) {
+bool lot_corner_near(const GenShapes &S, const LotBook &book, const XZ &p, double reach, int skip, const XZ *apart, XZ &out) {
+	const LotLandShape &K = S.lot_land;
 	double best = reach;
 	bool found = false;
 	for (int i : book.near(p.x - reach, p.z - reach, p.x + reach, p.z + reach)) {
 		const PlayerLot &l = book.all()[size_t(i)];
 		if (l.id == skip) continue;
 		for (const XZ &q : l.corners) {
-			if (apart && side_length(q, *apart) <= APART_M) continue;
+			if (apart && side_length(q, *apart) <= K.apart_m) continue;
 			const double d = side_length(q, p);
 			if (d < best) {
 				best = d;
@@ -95,13 +89,13 @@ struct Back {
 };
 } // namespace
 
-std::vector<XZ> lot_on_land(const RoadNetwork &net, const std::vector<XZ> &ring) {
+std::vector<XZ> lot_on_land(const GenShapes &S, const RoadNetwork &net, const std::vector<XZ> &ring) {
 	if (ring.size() < 3) return {};
-	const Paths64 paving = paving_round(net, ring);
+	const Paths64 paving = paving_round(S, net, ring);
 	if (paving.empty()) return ring;
 	const Path64 *best = nullptr;
 	double most = 0;
-	const Paths64 left = land_of(ring, paving);
+	const Paths64 left = land_of(S, ring, paving);
 	for (const Path64 &p : left)
 		if (Clipper2Lib::Area(p) > most) {
 			most = Clipper2Lib::Area(p);
@@ -109,38 +103,40 @@ std::vector<XZ> lot_on_land(const RoadNetwork &net, const std::vector<XZ> &ring)
 		}
 	if (!best) return {};
 	const std::vector<XZ> land = paving_ring(*best);
-	return big_enough(land) ? square_corners(land) : std::vector<XZ>();
+	return big_enough(land) ? square_corners(S, land) : std::vector<XZ>();
 }
 
-std::vector<std::vector<XZ>> lot_pieces(const RoadNetwork &net, const std::vector<XZ> &ring, bool &crossed) {
+std::vector<std::vector<XZ>> lot_pieces(const GenShapes &S, const RoadNetwork &net, const std::vector<XZ> &ring, bool &crossed) {
+	const LotLandShape &K = S.lot_land;
 	crossed = false;
 	std::vector<std::vector<XZ>> pieces;
-	const Paths64 paving = paving_round(net, ring);
+	const Paths64 paving = paving_round(S, net, ring);
 	if (paving.empty()) return pieces;
 	double left = 0;
-	for (const Path64 &p : land_of(ring, paving)) {
+	for (const Path64 &p : land_of(S, ring, paving)) {
 		std::vector<XZ> piece = paving_ring(p);
 		left += std::abs(lot_area(piece));
 		if (big_enough(piece)) pieces.push_back(std::move(piece));
 	}
-	crossed = std::abs(lot_area(ring)) - left >= CROSSED_AREA_M2;
+	crossed = std::abs(lot_area(ring)) - left >= K.crossed_area_m2;
 	return pieces;
 }
 
-int lot_front_side(const RoadNetwork &net, const std::vector<XZ> &ring) {
+int lot_front_side(const GenShapes &S, const RoadNetwork &net, const std::vector<XZ> &ring) {
+	const LotLandShape &K = S.lot_land;
 	const size_t n = ring.size();
 	std::vector<double> away(n);
 	double nearest = std::numeric_limits<double>::infinity();
 	for (size_t i = 0; i < n; i++) {
 		const XZ &p = ring[i], &q = ring[(i + 1) % n];
-		away[i] = street_distance(net, (p.x + q.x) / 2, (p.z + q.z) / 2);
+		away[i] = street_distance(S, net, (p.x + q.x) / 2, (p.z + q.z) / 2);
 		nearest = std::min(nearest, away[i]);
 	}
 	int front = 0;
 	double longest = -1;
 	for (size_t i = 0; i < n; i++) {
 		const double length = side_length(ring[i], ring[(i + 1) % n]);
-		if (away[i] < nearest + FRONT_SLACK_M && length > longest) {
+		if (away[i] < nearest + K.front_slack_m && length > longest) {
 			longest = length;
 			front = int(i);
 		}
@@ -148,17 +144,18 @@ int lot_front_side(const RoadNetwork &net, const std::vector<XZ> &ring) {
 	return front;
 }
 
-LotSnap lot_snap(const LotBook &book, const RoadNetwork &net, const XZ &p, double reach, int skip, const XZ *apart) {
+LotSnap lot_snap(const GenShapes &S, const LotBook &book, const RoadNetwork &net, const XZ &p, double reach, int skip, const XZ *apart) {
+	const LotLandShape &K = S.lot_land;
 	LotSnap out;
 	out.p = p;
 	XZ corner;
-	if (lot_corner_near(book, p, reach * LOT_SNAP_SHARE, skip, apart, corner)) {
+	if (lot_corner_near(S, book, p, reach * K.lot_snap_share, skip, apart, corner)) {
 		out.p = corner;
 		out.kind = LotSnapKind::LOT;
 		return out;
 	}
-	const double span = reach * BACK_SPAN, around = span + STRAIGHT_BACK_M + PAVING_MARGIN_M;
-	const Paths64 paving = paving_near(net, p.x - around, p.z - around, p.x + around, p.z + around);
+	const double span = reach * K.back_span, around = span + K.straight_back_m + PAVING_MARGIN_M;
+	const Paths64 paving = paving_near(S, net, p.x - around, p.z - around, p.x + around, p.z + around);
 	std::vector<Back> backs;
 	double best = reach;
 	bool street = false;
@@ -174,14 +171,14 @@ LotSnap lot_snap(const LotBook &book, const RoadNetwork &net, const XZ &p, doubl
 				on_street = { qx, qz };
 				street = true;
 			}
-			if (len2 >= STRAIGHT_BACK_M * STRAIGHT_BACK_M && d < span) backs.push_back({ d, x0, z0, dx, dz });
+			if (len2 >= K.straight_back_m * K.straight_back_m && d < span) backs.push_back({ d, x0, z0, dx, dz });
 		}
 	if (!backs.empty()) {
 		const Back first = *std::min_element(backs.begin(), backs.end(), [](const Back &u, const Back &v) { return u.d < v.d; });
 		std::stable_sort(backs.begin(), backs.end(), [](const Back &u, const Back &v) { return u.d < v.d; });
 		for (const Back &other : backs) {
 			const double den = first.dx * other.dz - first.dz * other.dx;
-			if (std::fabs(den) < SQUARE_SHARE * std::hypot(first.dx, first.dz) * std::hypot(other.dx, other.dz)) continue; // one back cut in two
+			if (std::fabs(den) < K.square_share * std::hypot(first.dx, first.dz) * std::hypot(other.dx, other.dz)) continue; // one back cut in two
 			const double k = ((other.x0 - first.x0) * other.dz - (other.z0 - first.z0) * other.dx) / den;
 			const XZ x = { first.x0 + first.dx * k, first.z0 + first.dz * k };
 			if (side_length(x, p) < span) {

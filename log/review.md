@@ -3315,6 +3315,26 @@ reads `SHAPE_DECLARE(<its list>)`. `render/shape_reader.h` reads them as before.
 
 **What changes.** Nothing: both DLLs are byte for byte the ones built before the change.
 
+### 6.47 B2, C14 (the city generator): every value of a sim/citygen file in growth.json shapes (2026-11-08)
+
+**Cause and fix.** The generator's files held the 4.0's numbers beside their definitions with nothing to tell them apart: the grid's
+blocks, avenues and grades, the graph's buckets, merges and caps, the tidy pass's angles and gaps, the lots' rasters, strips and
+sizes, a lot's fit to the land and the paving, the squares' lawn and plaza. Each file's values went to a block of growth.json
+`shapes` (the generator's table: its plan and road roles are there), read into `GrowthDef::shapes` by `api/catalog_loader.cpp`
+through the one reader of shapes, each block described with the reasons the code's comments gave. The blocks reach the functions
+as the earlier families do: the classes hold their block (`PlanRules`, `GraphBuilder`, `Tidy`, `Blocks`, `LotStrips`, the scenic
+`Layout`), the entry points take `GenShapes` (`generate_roads`, `build_graph`, `tidy_graph`, `dry_crossings`, `road_gen::land`,
+`build_lots`, the lot land and paving functions the lot commands and the core's lot tools call).
+
+Two values had two owners: the lots' frontage and least width (`LOT_FRONTAGE`/`MIN_LOT` of the block cutter, `STRIP_FRONTAGE`/
+`STRIP_LEAST` of the strips, both lots.ts's) are one `lots` block both read, and a node's most legs (the graph's `MAX_LINKS`, the
+tidy pass's `MAX_LEGS`) is the graph's `max_links`. The graph's hug test is `hug_cos`: the road tool's `road.parallel_cos` is
+another rule (a new road over an old one), not this one. A lot's end inset is derived, a cell and a half of the strips' grid,
+no longer a second number. The definitions stay and say what they are: the keys' layouts, the streams and the golden-ratio and
+Numerical Recipes multipliers, the tolerances, a junction's three arms, the ground's five probes.
+
+**What changes.** Nothing: the generated and scenic cities' hashes, the numbers and every photo the same (`quick`: 44 of 46).
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

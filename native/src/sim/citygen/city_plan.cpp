@@ -12,8 +12,8 @@
 namespace city {
 
 namespace {
-constexpr uint32_t SEED_MUL = 2654435761U;
-constexpr double NO_CENTRE = 1e30;
+constexpr uint32_t SEED_MUL = 2654435761U; // 2^32 / the golden ratio (Knuth's multiplicative hash): spreads the seed
+constexpr double NO_CENTRE = 1e30; // farther than any centre: the search's start
 
 double range(Xoshiro128 &r, double lo, double hi) { return lo + r.f() * (hi - lo); }
 } // namespace

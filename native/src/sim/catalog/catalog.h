@@ -4,6 +4,7 @@
 
 #include "sim/catalog/blast_params.h"
 #include "sim/catalog/furniture_types.h"
+#include "sim/catalog/gen_shapes.h"
 #include "sim/catalog/nature_types.h"
 #include "sim/catalog/profile_types.h"
 #include "sim/catalog/scenic.h"
@@ -92,6 +93,7 @@ struct GrowthDef {
 	float organic_reach_m = 0;
 	int organic_extra_floors = 0;
 	float decay_span_min = 0;
+	GenShapes shapes; // every value a city generator file tunes (growth.json "shapes")
 };
 
 struct Catalog {

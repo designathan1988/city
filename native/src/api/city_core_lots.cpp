@@ -96,7 +96,7 @@ PackedVector3Array CityCore::lot_land(const Vector3 &a, const Vector3 &b, double
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const std::vector<XZ> rect = lot_rect({ a.x, a.z }, { b.x, b.z }, angle);
 	if (rect.empty()) return out;
-	for (const XZ &p : lot_on_land(state_->roads, rect)) out.push_back(Vector3(float(p.x), state_->terrain.height_at(float(p.x), float(p.z)), float(p.z)));
+	for (const XZ &p : lot_on_land(state_->catalog.growth.shapes, state_->roads, rect)) out.push_back(Vector3(float(p.x), state_->terrain.height_at(float(p.x), float(p.z)), float(p.z)));
 	return out;
 }
 
@@ -104,7 +104,7 @@ PackedVector3Array CityCore::lot_land(const Vector3 &a, const Vector3 &b, double
 Vector3 CityCore::lot_snap_point(const Vector3 &p, double reach, const Vector3 &apart) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const XZ from = { apart.x, apart.z };
-	const LotSnap hit = lot_snap(state_->lot_book, state_->roads, { p.x, p.z }, reach, 0, apart.is_finite() ? &from : nullptr);
+	const LotSnap hit = lot_snap(state_->catalog.growth.shapes, state_->lot_book, state_->roads, { p.x, p.z }, reach, 0, apart.is_finite() ? &from : nullptr);
 	return Vector3(float(hit.p.x), state_->terrain.height_at(float(hit.p.x), float(hit.p.z)), float(hit.p.z));
 }
 

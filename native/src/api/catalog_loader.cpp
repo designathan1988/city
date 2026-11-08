@@ -4,6 +4,7 @@
 #include "api/catalog_loader.h"
 
 #include "render/data_reader.h"
+#include "render/shape_reader.h"
 #include "sim/roads/profiles.h"
 
 #include <godot_cpp/variant/array.hpp>
@@ -175,8 +176,12 @@ int road_role(DataReader r, const Dictionary &roles, const char *role, const Cat
 	return p;
 }
 
+// The generator's shapes: every block of GEN_SHAPE_BLOCKS, each field under its own name (render/shape_reader.h).
+void gen_shapes_of(DataReader r, const Dictionary &t, GenShapes &out) { GEN_SHAPE_BLOCKS(SHAPE_READ_BLOCK) }
+
 void load_growth(DataReader r, const Dictionary &t, Catalog &c) {
 	GrowthDef &g = c.growth;
+	gen_shapes_of(r.in("shapes"), r.table(t, "shapes"), g.shapes);
 	load_plan(r.in("plan"), r.table(t, "plan"), g.plan);
 	const Dictionary roles = r.table(t, "road_roles");
 	DataReader rr = r.in("road_roles");

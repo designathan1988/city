@@ -14,11 +14,8 @@
 namespace city {
 
 namespace {
-constexpr double FRONT_PAD = 0.3, WIDTH_TRIM = 0.6;
-constexpr double STRIP_DEPTH = 32, STRIP_FRONTAGE = 22, STRIP_LEAST = 10; // lots.ts LOT_DEPTH, LOT_FRONTAGE, MIN_LOT
-// Works take more than the 4.0 gives them: a lorry has to turn in the yard. On its lots a tenth of the docks had no way in (yard_test).
-constexpr double WORKS_DEPTH = 50, WORKS_FRONTAGE = 42;
-constexpr double ALONG_STEP = 1, BEHIND_FOOTWAY = 1.5, BACK_IN = 1; // where a run reads the land: lots.ts streetPlan
+// a side's key and a lot's seed from where they stand, in quarter and half metres (the same key whatever the float rounding), the
+// side's number past any zone code
 constexpr double KEY_SCALE = 4, SEED_SCALE = 2;
 constexpr uint32_t SIDE_KEY = 77;
 
@@ -30,7 +27,7 @@ void LotStrips::keep(const Frame &f, int zone, int profile) {
 	mark_lot(f);
 	if (std::floor((f.cx - cx0_) / LOT_CELL) != 0 || std::floor((f.cz - cz0_) / LOT_CELL) != 0) return;
 	Lot l;
-	l.x = f.cx; l.z = f.cz; l.w = f.w - WIDTH_TRIM; l.d = f.d;
+	l.x = f.cx; l.z = f.cz; l.w = f.w - P.width_trim; l.d = f.d;
 	l.rot = std::atan2(-f.lx, -f.lz);
 	l.zone = zone;
 	l.profile = profile;
@@ -40,7 +37,7 @@ void LotStrips::keep(const Frame &f, int zone, int profile) {
 
 void LotStrips::place_blocks() {
 	auto facing_fn = [this](double fx, double fz, double ox, double oz, int &zone, int &profile) { facing(fx, fz, ox, oz, zone, profile); };
-	for (const lot_gen::BlockLot &b : lot_gen::block_lots(g_, prof_, tables_, cx0_, cz0_, facing_fn)) {
+	for (const lot_gen::BlockLot &b : lot_gen::block_lots(S, g_, prof_, tables_, cx0_, cz0_, facing_fn)) {
 		double lx = -std::sin(b.rot), lz = -std::cos(b.rot);
 		Frame f{ b.x, b.z, lz, -lx, lx, lz, b.w, b.d };
 		if (unfit(f)) continue;
@@ -80,22 +77,22 @@ LotStrips::Along LotStrips::along(int s, double at, double sign) const {
 // Runs of street where the land behind the footway is open, and its far side too.
 void LotStrips::place_side(int s, int side, int zone) {
 	const Profile &info = prof_[g_.profile[s]];
-	const double sign = side == 0 ? 1 : -1, face = (side == 0 ? info.left : info.right) + FRONT_PAD, length = len(s);
+	const double sign = side == 0 ? 1 : -1, face = (side == 0 ? info.left : info.right) + P.front_pad, length = len(s);
 	const bool works = zone == zones_.industrial;
-	const double depth = works ? WORKS_DEPTH : STRIP_DEPTH, frontage = works ? WORKS_FRONTAGE : STRIP_FRONTAGE;
+	const double depth = works ? P.works_depth : P.depth_m, frontage = works ? P.works_frontage : P.frontage_m;
 	const auto clear = [&](double at) {
 		const Along a = along(s, at, sign);
-		const double near = face + BEHIND_FOOTWAY, far = face + depth - BACK_IN;
+		const double near = face + P.behind_footway, far = face + depth - P.back_in;
 		return lot_free(a.px + a.lx * near, a.pz + a.lz * near) && lot_free(a.px + a.lx * far, a.pz + a.lz * far);
 	};
 	double from = -1;
-	for (double at = 0;; at += ALONG_STEP) {
-		const bool last = at + ALONG_STEP > length;
+	for (double at = 0;; at += P.along_step) {
+		const bool last = at + P.along_step > length;
 		const double here = last ? length : at; // the run reaches the street's end: the next street's strip starts there
 		const bool ok = clear(here);
 		if (ok && from < 0) from = here;
 		if ((!ok || last) && from >= 0) {
-			cut_run({ s, sign, face, depth, frontage, zone }, from, ok ? here : here - ALONG_STEP);
+			cut_run({ s, sign, face, depth, frontage, zone }, from, ok ? here : here - P.along_step);
 			from = -1;
 		}
 		if (last) break;
@@ -104,7 +101,7 @@ void LotStrips::place_side(int s, int side, int zone) {
 
 // A run cut in equal lots, each kept where its ground will take it.
 void LotStrips::cut_run(const Strip &strip, double from, double to) {
-	if (to - from < STRIP_LEAST) return;
+	if (to - from < P.least_m) return;
 	const int parts = std::max(1, int(js_round((to - from) / strip.frontage)));
 	const double w = (to - from) / parts;
 	for (int k = 0; k < parts; k++) {

@@ -87,6 +87,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/sim/buildings/interior/cut.cpp` · `native/src/sim/buildings/interior/cut.h` — o prédio cortado num andar (dono único do corte): volumes acima saem, os demais perdem os andares de cima; a direção da câmera em 8 passos
 - `native/src/sim/buildings/interior/view.h` — o que a camada Interior mostra: quais prédios estão cortados, em que andar e para que direção da câmera (vista, não é salva)
 - `native/src/sim/catalog/catalog.h` · `native/src/sim/catalog/furniture_types.h` — tipos do catálogo (sem valores); mobiliário da rua e travessia
+- `native/src/sim/catalog/gen_shapes.h` · `native/src/sim/catalog/gen_shapes_roads.h` · `native/src/sim/catalog/gen_shapes_lots.h` — every value a city generator file tunes, one block per file (the streets: grid, graph, tidy pass, scenic runs; the lots: blocks, strips, sizes, land, paving, squares), as growth.json "shapes" gives them; the list GrowthDef holds
 - `native/src/sim/catalog/blast_params.h` — parâmetros da explosão (sem valores): curvas de sobrepressão, impulso e duração, limiares de dano, pessoas, cratera
 - `native/src/sim/catalog/nature_types.h` — tipos do clima, nuvens, neblina, pintura, pincel de árvores e comunidades de plantas (X-macro do clima)
 - `native/src/sim/catalog/profile_types.h` — formas da seção de via que road_profiles.json preenche

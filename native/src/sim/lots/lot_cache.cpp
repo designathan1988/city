@@ -68,7 +68,7 @@ static std::vector<Lot> lots_of_cell(const CityState &s, int64_t key, int every_
 	LotGround ground;
 	ground.height = [&s](double x, double z) { return double(s.terrain.base_height_at(float(x), float(z))); };
 	ground.water = [&s](double x, double z) { return double(s.terrain.water_at(float(x), float(z))); };
-	return build_lots(g, s.catalog.profiles, s.catalog.gen_zones, ground, x0, z0);
+	return build_lots(s.catalog.growth.shapes, g, s.catalog.profiles, s.catalog.gen_zones, ground, x0, z0);
 }
 
 std::vector<Lot> LotCache::compute(const CityState &s, int64_t key) { return with_player_lots(lots_of_cell(s, key, 0), key, s.lot_book); }

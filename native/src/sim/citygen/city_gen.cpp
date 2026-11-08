@@ -110,7 +110,7 @@ CityGenReport generate_map(CityState &s, int map_index, uint32_t seed, bool with
 	const std::unique_ptr<TerrainGen> gen = found_land(s, map_index, medium ? (seed | TerrainGen::FLAT_BIT) : (seed & ~TerrainGen::FLAT_BIT));
 	CityGenReport rep;
 	if (with_city) {
-		GeneratedRoads r = scenic ? scenic_roads(*scenic, c, *gen) : generate_roads(s.seed, s.map_half, map.city_radius_m, *gen, gen_profiles(c), c.growth.plan, c.gen_zones);
+		GeneratedRoads r = scenic ? scenic_roads(*scenic, c, *gen) : generate_roads(s.seed, s.map_half, map.city_radius_m, *gen, gen_profiles(c), c.growth.plan, c.gen_zones, c.growth.shapes);
 		insert_roads(s, r);
 		s.roads.grade.everything(); // every street solved on the land, and the ground shaped to them
 		sync_grade(s);

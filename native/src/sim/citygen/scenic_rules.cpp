@@ -53,7 +53,7 @@ bool ScenicRules::near_highway(V2 p, float reach) const {
 }
 
 int ScenicRules::zone_at(V2 p, bool on_main) const {
-	if (!road_gen::land(land_, p.x, p.y) || in_park(p)) return catalog_.gen_zones.none;
+	if (!road_gen::land(catalog_.growth.shapes, land_, p.x, p.y) || in_park(p)) return catalog_.gen_zones.none;
 	for (const Polyline &ring : city_.works)
 		if (ring_holds(ring, p)) return catalog_.gen_zones.industrial;
 	const ScenicDistrict &d = city_.districts[size_t(district_at(p))];

@@ -1,10 +1,11 @@
-// Lots are a pure function of the streets around a 256 m cell (Roadcraft src/jobs/lots.ts + blockLots.ts): closed
-// blocks are cut as Roadcraft 4.0 cuts them (rows back to back, equal columns of about 22 m), then the open land
+// Lots are a pure function of the streets around a cell of LOT_CELL (Roadcraft src/jobs/lots.ts + blockLots.ts): closed
+// blocks are cut as Roadcraft 4.0 cuts them (rows back to back, equal columns of about the lots' frontage), then the open land
 // left along zoned street sides is one strip of a lot's depth, cut in equal lots. A lot belongs to the cell
 // holding its centre; every cell that sees the same streets cuts them the same way.
 #pragma once
 
 #include "core/math.h"
+#include "sim/catalog/gen_shapes.h"
 #include "sim/roads/geometry.h"
 #include "sim/roads/profiles.h"
 
@@ -62,7 +63,8 @@ struct LotGround {
 	std::function<double(double, double)> water; // water level (very low where dry)
 };
 
-std::vector<Lot> build_lots(const LotGraph &g, const std::vector<Profile> &profiles, const GenZones &zones, const LotGround &ground, double cell_x0, double cell_z0);
+std::vector<Lot> build_lots(const GenShapes &S, const LotGraph &g, const std::vector<Profile> &profiles, const GenZones &zones, const LotGround &ground,
+	double cell_x0, double cell_z0);
 
 // Internals shared by the two files.
 namespace lot_gen {
@@ -71,7 +73,7 @@ struct BlockLot {
 	int zone, profile;
 };
 using Facing = std::function<void(double fx, double fz, double ox, double oz, int &zone, int &profile)>;
-std::vector<BlockLot> block_lots(const LotGraph &g, const std::vector<Profile> &profiles, const std::vector<std::vector<double>> &tables,
+std::vector<BlockLot> block_lots(const GenShapes &S, const LotGraph &g, const std::vector<Profile> &profiles, const std::vector<std::vector<double>> &tables,
 		double x0, double z0, const Facing &facing);
 // Distance from a point to a curve (12 samples, then halving the step).
 double curve_distance(const Quad &q, double x, double z);

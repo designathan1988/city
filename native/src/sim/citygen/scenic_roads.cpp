@@ -12,7 +12,7 @@
 namespace city {
 
 namespace {
-constexpr float EPS = 1e-4f, LONGEST_RUN_M = 240, KEY_GRAIN_M = 0.1f;
+constexpr float EPS = 1e-4f, KEY_GRAIN_M = 0.1f; // float rounding; an end's key in steps of this (the same node whatever the rounding)
 
 // A half-plane n.p <= c: a district's cell is the city's square cut by one per other seed (the bisector between the two).
 struct HalfPlane {
@@ -74,7 +74,7 @@ Polyline cell_ring(const std::vector<HalfPlane> &cell, float h) {
 
 class Layout {
 public:
-	Layout(const ScenicCity &city, const ScenicRules &rules, TerrainGen &land) : city_(city), rules_(rules), land_(land) {}
+	Layout(const GenShapes &s, const ScenicCity &city, const ScenicRules &rules, TerrainGen &land) : S(s), city_(city), rules_(rules), land_(land) {}
 	std::vector<road_gen::Piece> pieces;
 
 	// The named roads, each segment of its line walked on its own; a main road bridges water.
@@ -115,6 +115,7 @@ public:
 	}
 
 private:
+	const GenShapes &S; // growth.json shapes
 	const ScenicCity &city_;
 	const ScenicRules &rules_;
 	TerrainGen &land_;
@@ -156,7 +157,7 @@ private:
 				flush();
 				continue;
 			}
-			if (!road_gen::land(land_, p.x, p.y)) {
+			if (!road_gen::land(S, land_, p.x, p.y)) {
 				if (!bridge || !in) flush();
 				else if ((wet += step) > city_.streets.bridge_max_m) flush();
 				continue;
@@ -172,7 +173,7 @@ private:
 	void lay(V2 a, V2 b, int profile) {
 		const float len = (b - a).len();
 		if (len < EPS) return;
-		const int parts = std::max(1, int(std::ceil(len / LONGEST_RUN_M)));
+		const int parts = std::max(1, int(std::ceil(len / S.scenic.longest_run_m)));
 		for (int k = 0; k < parts; k++) {
 			const V2 p = a + (b - a) * (float(k) / float(parts)), q = a + (b - a) * (float(k + 1) / float(parts));
 			pieces.push_back({ p.x, p.y, q.x, q.y, profile });
@@ -183,14 +184,14 @@ private:
 
 GeneratedRoads scenic_roads(const ScenicCity &city, const Catalog &catalog, TerrainGen &land) {
 	const ScenicRules rules(city, catalog, land);
-	Layout layout(city, rules, land);
+	Layout layout(catalog.growth.shapes, city, rules, land);
 	layout.roads(); // first: their nodes are numbered first, and an edge laid twice keeps the higher rank either way
 	for (size_t i = 0; i < city.districts.size(); i++) layout.district(i);
 	layout.seams();
 	std::vector<double> asph_right;
 	for (const Profile &p : catalog.profiles) asph_right.push_back(p.asph_right);
-	const GeneratedRoads g = road_gen::build_graph(layout.pieces, city.half_m, land, asph_right, rules);
-	return road_gen::without_spurs(road_gen::dry_crossings(g, land));
+	const GeneratedRoads g = road_gen::build_graph(catalog.growth.shapes, layout.pieces, city.half_m, land, asph_right, rules);
+	return road_gen::without_spurs(road_gen::dry_crossings(catalog.growth.shapes, g, land));
 }
 
 } // namespace city

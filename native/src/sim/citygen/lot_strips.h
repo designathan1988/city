@@ -1,4 +1,4 @@
-// The lot cutter of one cell (internal to sim/citygen): its 2 m occupancy grid, the streets' setbacks and the lots
+// The lot cutter of one cell (internal to sim/citygen): its occupancy grid, the streets' setbacks and the lots
 // placed so far. Methods in lot_gen.cpp (grid, streets, tests) and lot_place.cpp (blocks and street strips).
 #pragma once
 
@@ -11,7 +11,8 @@ namespace city {
 
 class LotStrips {
 public:
-	LotStrips(const LotGraph &g, const std::vector<Profile> &profiles, const GenZones &zones, const LotGround &ground, double x0, double z0);
+	LotStrips(const GenShapes &s, const LotGraph &g, const std::vector<Profile> &profiles, const GenZones &zones, const LotGround &ground, double x0,
+		double z0);
 	std::vector<Lot> run();
 
 	// A lot's frame: centre, along-front unit (t), away-from-street unit (l), width and depth.
@@ -20,6 +21,9 @@ public:
 	};
 
 private:
+	const GenShapes &S; // growth.json shapes: the strips' grid and tests (K) and the lots' sizes (P)
+	const StripsShape &K;
+	const LotsShape &P;
 	const LotGraph &g_;
 	const std::vector<Profile> &prof_;
 	const GenZones &zones_; // the catalogue's: works stand on its industrial zone
