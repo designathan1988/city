@@ -3435,9 +3435,21 @@ clouds' slots and puffs (the shader's array sizes), a PCM sample's top, the vign
 
 `sky_view.gd` was over the scripts' limit before and the named hash made it more: the clouds' puffs (their shape per cloud, their
 laying where the wind and the view put them, the hash that jitters them, the arrays the shader reads) are a class of their own,
-`render/cloud_puffs.gd`, which the sky owns; the sky is under the limit.
+`render/cloud_puffs.gd`, which the sky owns; the sky is under the limit. `daylight.gd` was over it too, and naming the engine's
+default cascade side (Godot's 4096 atlas over two cascades a side) made it more: the sun's cascades fitted to the view are
+`render/sun_cascades.gd`, which the daylight owns and the graphics tier sets (`daylight.cascades`); the daylight is under the limit.
 
 **What changes.** Nothing: the numbers and every photo the same.
+
+### 6.54 B2, C12 (one file, one responsibility): the model survey's blocks apart from their looks (2026-11-08)
+
+**Cause and fix.** `body_survey.cpp` read a 3D model in two steps in one file: the blocks it stands on (the faces that look up,
+filed in a grid, joined into tops that merge, each a block with its hull) and what each block shows (wall shades, bays, the crown,
+a plinth of another colour) with the body made of them. It was over the file limit before the commands batch and that batch's
+bindings made it more (§6.43). The blocks are `survey_blocks.cpp` with their header (`SurveyBlock`, `survey_blocks`); the looks and
+the assembly stay in `body_survey.cpp`. Both under the limit; the stage closes with no file worse than the baseline found it.
+
+**What changes.** Nothing: the survey makes the same bodies (`quick`).
 
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 

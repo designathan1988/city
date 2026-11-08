@@ -3,7 +3,8 @@
 class_name SelectionOverlay
 extends Control
 
-const CAP_POINTS := 8 # chords of a line's round cap, and of a ring
+## Chords of a line's round cap, and of a ring.
+const CAP_POINTS := 8
 const RING_POINTS := 32
 
 var _hud: RoadcraftHud
