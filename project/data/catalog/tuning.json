@@ -152,7 +152,7 @@
   "max_variants": 256
  },
  "flow": {
-  "_doc": "Automatic junction control: the flows at which a junction asks for a stop or a signal, and the trend window of the measure.",
+  "_doc": "Automatic junction control (sim/traffic/flow_warrants.h), vehicles an hour: a signal by the MUTCD 2009 Warrant 1 (section 4C.02, Table 4C-1, 100% column, one lane each way): Condition A signal_major on the major street's two approaches and signal_minor on the busier minor approach, Condition B signal_major_b and signal_minor_b; a Stop on every leg by section 2B.07 paragraph 04 C, stop_major on the major approaches and stop_minor on the minor ones. The game's own: step_down, the share of its volumes below which a control steps down; trend_window, seconds of the measure's trend (its time constant a third) and the least time between two changes; look_every_s, seconds between two looks at the junctions.",
   "stop_major": 300,
   "stop_minor": 200,
   "signal_major": 500,
@@ -160,7 +160,8 @@
   "signal_major_b": 750,
   "signal_minor_b": 75,
   "step_down": 0.8,
-  "trend_window": 900
+  "trend_window": 900,
+  "look_every_s": 10
  },
  "grade": {
   "_doc": "The road heights solver: the weights of the ground, the authored height, ramps, decks and tunnels, and the clearances and deck depths of each structure.",

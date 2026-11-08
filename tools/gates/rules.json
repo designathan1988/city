@@ -365,10 +365,9 @@
       "project/render/"
     ],
     "exempt": [
-      "native/src/core/js_",
       "native/src/core/seeded.h"
     ],
-    "_exempt_doc": "The runtime translated from the source game (js_*.h) and its random stream (seeded.h): B4 of log/review.md replaces them, and their numbers go with them.",
+    "_exempt_doc": "The source game's random stream (seeded.h): B4 of log/review.md replaces it, and its numbers go with it.",
     "extensions": [
       ".cpp",
       ".h",

@@ -172,8 +172,8 @@ the same sources give the same bytes, so a rebuild of unchanged sources leaves t
   que só o selfcheck dele lê).
 - `assets/`: what makes this game's assets: noise tiles, furniture parts, flag icons, texture fixes.
 - The source game, the porting tools and their records (`oracle-4.0`, `converter`, `converter-slice`, `ports`, `process`) left
-  the repository (B1 of log/review.md §6) and are kept outside it, in `C:\Users\Jonathan\Desktop\city-archive`. The code they
-  translated (`flow_control`, `js_*.h`) stays until B4 replaces it, and is no longer regenerated.
+  the repository (B1 of log/review.md §6) and are kept outside it, in `C:\Users\Jonathan\Desktop\city-archive`. Nothing they
+  translated is left in the repository (B4 replaced the junction control and the `js_*.h` runtime).
 
 **Outros:** `dist/` (builds, capturas e logs, fora do git) e `log/` (registros).
 

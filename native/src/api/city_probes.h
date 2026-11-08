@@ -40,7 +40,8 @@ public:
 	bool amber_stops(float v, float stop_m, float top, float left, int type) const;
 	float amber_wanted(float kmh) const;
 	godot::Dictionary job_pool_probe() const;
-	godot::Dictionary flow_replay(); // tests: the translated flow classes alone through a fixed script (city_core_flow_probe.cpp)
+	godot::Dictionary flow_replay(); // tests: the flow measure and the warrants alone through a fixed script (city_core_flow_probe.cpp)
+	godot::String flow_warrant(float major, float minor_max, float minor_total, int current) const; // tests: the rule alone, by AutoControl
 	int flow_junction(); // tests: a three-arm junction on automatic with no signal, or -1
 	godot::Dictionary flow_push(int n, int seconds); // tests: that much traffic through it, the choice applied; empty while the clock runs
 	godot::Dictionary flow_state(int n); // tests: what is measured, and the control of `n`

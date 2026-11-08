@@ -57,6 +57,7 @@ void CityProbes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("amber_wanted", "kmh"), &CityProbes::amber_wanted);
 	ClassDB::bind_method(D_METHOD("job_pool_probe"), &CityProbes::job_pool_probe);
 	ClassDB::bind_method(D_METHOD("flow_replay"), &CityProbes::flow_replay);
+	ClassDB::bind_method(D_METHOD("flow_warrant", "major", "minor_max", "minor_total", "current"), &CityProbes::flow_warrant);
 	ClassDB::bind_method(D_METHOD("flow_junction"), &CityProbes::flow_junction);
 	ClassDB::bind_method(D_METHOD("flow_push", "n", "seconds"), &CityProbes::flow_push);
 	ClassDB::bind_method(D_METHOD("flow_state", "n"), &CityProbes::flow_state);
