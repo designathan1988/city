@@ -350,5 +350,28 @@
   "rider_back_m": 4,
   "rider_push": 0.15,
   "rider_hit_m": 1.2
+ },
+ "junction": {
+  "_doc": "The road geometry's junctions (sim/roads/geometry.cpp arm_retreats, junction.cpp; the 4.0's roads/geometry.ts numbers, no source behind them yet): the longest a mouth retreats from its node (max_retreat); two arms' crossing counted only nearer than far_hit m behind their mouths and when they are not opposed beyond opposite_dot; a bend under taper_turn_deg degrees whose widths step by taper_step m or more tapers over max(taper_min, step x taper_slope) m, a width jump over width_jump m runs width_jump_run m; the bend's half-angle capped at max_bend radians; a two-arm node's corner radius bent_radius m; a dead end's bulb only on roads of at most bulb_half_max m a side and bulb_len_min m long. A kerb return: at least kerb_radius_min m and fillet_share of the narrower width, a width step under taper_angle_deg degrees off straight tapered (its step at least taper_min_step m), a corner of acute_deg degrees or more filleted while its miter stays within corner_miter of the wider arm, a bevel set back bevel_pad times the half widths.",
+  "max_retreat": 60.0,
+  "far_hit": -50.0,
+  "opposite_dot": -0.97,
+  "taper_step": 0.3,
+  "taper_min": 9.6,
+  "taper_slope": 8.0,
+  "width_jump": 0.5,
+  "width_jump_run": 3.0,
+  "max_bend": 2.6,
+  "kerb_radius_min": 2.8,
+  "corner_miter": 2.5,
+  "bulb_half_max": 6.5,
+  "bulb_len_min": 40.0,
+  "bent_radius": 0.3,
+  "bevel_pad": 1.02,
+  "taper_min_step": 0.05,
+  "fillet_share": 0.5,
+  "taper_turn_deg": 30,
+  "taper_angle_deg": 12,
+  "acute_deg": 12
  }
 }

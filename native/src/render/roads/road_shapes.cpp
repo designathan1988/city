@@ -41,9 +41,9 @@ std::vector<End> ends_of(const RoadEmit &e, int n) {
 }
 
 // The kerb line from a's left side (u = ua) to b's right side (u = -ub).
-std::vector<Vector3> corner(const StreetLook &L, const Vector3 &node, const End &a, double ua, const End &b, double ub) {
+std::vector<Vector3> corner(const Tuning &tn, const StreetLook &L, const Vector3 &node, const End &a, double ua, const End &b, double ub) {
 	std::vector<Vector3> out;
-	Corner fc = corner_fillet(a.arm, b.arm);
+	Corner fc = corner_fillet(tn, a.arm, b.arm);
 	Vector3 pa = side(a, ua), pb = side(b, -ub);
 	if (fc.mode == CornerMode::FILLET && a.at >= fc.trim_a - FILLET_SLACK && b.at >= fc.trim_b - FILLET_SLACK) {
 		double ccx = node.x + fc.cx, ccz = node.z + fc.cz;
@@ -106,10 +106,10 @@ std::vector<Vector3> outside(const std::vector<Vector3> &line, const End &a, con
 namespace {
 // The lot's line round a kerb return: the two arms' edges run on until they meet, so the footway fills the corner and the lot ends
 // in a point, however round the kerb. Gives the index of the point, 0 where the corner has none.
-size_t sharpen(std::vector<Vector3> &out, const End &a, const End &b) {
+size_t sharpen(const Tuning &tn, std::vector<Vector3> &out, const End &a, const End &b) {
 	const size_t n = out.size(), tip = n / 2;
 	const double den = a.d.x * b.d.z - a.d.z * b.d.x;
-	if (corner_fillet(a.arm, b.arm).mode != CornerMode::FILLET || std::fabs(den) < PARALLEL || tip == 0) return 0;
+	if (corner_fillet(tn, a.arm, b.arm).mode != CornerMode::FILLET || std::fabs(den) < PARALLEL || tip == 0) return 0;
 	const Vector3 from = out.front(), to = out.back(), w = to - from;
 	// A mouth may stand past the point, its arm's footway overrunning it: the line goes back along that edge, over paving already there.
 	Vector3 point = from + a.d * float((w.x * b.d.z - w.z * b.d.x) / den);
@@ -140,9 +140,9 @@ std::shared_ptr<const NodeShape> node_shape(const RoadEmit &e, int n) {
 			for (size_t i = 0; i < ends.size(); i++) {
 				const End &a = ends[i], &b = ends[(i + 1) % ends.size()];
 				NodeShape::Corner c;
-				c.in = corner(e.L, node, a, a.arm.asph_left, b, b.arm.asph_right);
+				c.in = corner(e.s.catalog.tune, e.L, node, a, a.arm.asph_left, b, b.arm.asph_right);
 				c.out = outside(c.in, a, b, float(a.arm.left - a.arm.asph_left), float(b.arm.right - b.arm.asph_right));
-				c.tip = sharpen(c.out, a, b);
+				c.tip = sharpen(e.s.catalog.tune, c.out, a, b);
 				shape->corners.push_back(std::move(c));
 			}
 		}

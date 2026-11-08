@@ -55,7 +55,12 @@
 	XI(roundabout, refuse_samples) XI(roundabout, water_samples) XI(roundabout, cross_samples) XI(roundabout, bisect_steps) \
 	XI(roundabout, empty_ring_nodes) XI(roundabout, vacant_arms) XD(roundabout, water_clear_m) \
 	X(shoot, rider_back_m) X(shoot, rider_push) X(shoot, rider_hit_m) \
-	X(strike, furniture_reach_m) X(strike, splinter_share) X(strike, splinter_chance)
+	X(strike, furniture_reach_m) X(strike, splinter_share) X(strike, splinter_chance) \
+	XD(junction, max_retreat) XD(junction, far_hit) XD(junction, opposite_dot) XD(junction, taper_step) \
+	XD(junction, taper_min) XD(junction, taper_slope) XD(junction, width_jump) XD(junction, width_jump_run) \
+	XD(junction, max_bend) XD(junction, kerb_radius_min) XD(junction, corner_miter) XD(junction, bulb_half_max) \
+	XD(junction, bulb_len_min) XD(junction, bent_radius) XD(junction, bevel_pad) XD(junction, taper_min_step) \
+	XD(junction, fillet_share) XD(junction, taper_turn_deg) XD(junction, taper_angle_deg) XD(junction, acute_deg)
 
 #define CITY_TUNING_DECLARE(group, name) float group##_##name = 0;
 #define CITY_TUNING_DECLARE_COUNT(group, name) int group##_##name = 0;

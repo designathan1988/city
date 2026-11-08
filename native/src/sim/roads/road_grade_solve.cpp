@@ -6,6 +6,7 @@
 #include "sim/roads/road_grade_internal.h"
 
 #include "core/job_pool.h"
+#include "core/math.h"
 
 #include "sim/roads/road_network.h"
 
@@ -24,9 +25,8 @@ constexpr float MOVED_EPS = 1e-4f; // a profile moved: past what a station's rou
 constexpr float DISC_MIN_M = 2.4f; // balancedAtNode: the least radius of a node's disc of ground
 constexpr float PROFILE_FADE_M = 44.f; // roadField.ts PROFILE_FADE: how far out a road's influence fades
 constexpr float DISC_INSIDE_FADE_M = 8.f; // balancedAtNode: the disc stops this far inside the fade
-constexpr int DISC_RINGS = 2, DISC_POINTS = 8;
+constexpr int DISC_RINGS = 2, DISC_POINTS = 8; // balancedAtNode: the disc's rings and the points of each
 constexpr float DISC_TWIST = 0.4f; // radians a ring turns from the one inside it
-constexpr float TAU_F = 6.28318531f;
 const float NONE = INFINITY;
 
 struct Solve {

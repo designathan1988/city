@@ -1,6 +1,8 @@
 // Port of Roadcraft src/roads/geometry.ts.
 #include "core/math.h"
 #include "core/plane_geometry.h"
+#include "core/units.h"
+#include "sim/catalog/catalog.h"
 #include "sim/roads/geometry.h"
 
 #include <algorithm>
@@ -10,15 +12,15 @@
 namespace city {
 
 namespace {
-constexpr double STRAIGHT_CROSS = 1e-9;
+constexpr double STRAIGHT_CROSS = 1e-9; // a cross product this near nought is a straight line
 constexpr int FIT_STEPS = 40; // bisections: the bend to a part in 2^40
 } // namespace
 
 namespace {
+// the nearest point of a curve: samples along it, then halvings of the step round the best (a part in 2^12 of a sample)
 constexpr int CLOSEST_SAMPLES = 32, CLOSEST_REFINE = 12;
-constexpr double LINE_PARALLEL = 1e-9, SEG_PARALLEL = 1e-12, MAX_RETREAT = 60, FAR_HIT = -50, OPPOSITE_DOT = -0.97;
-constexpr double TAPER_TURN = PI_D / 6, TAPER_STEP = 0.3, TAPER_MIN = 9.6, TAPER_SLOPE = 8, WIDTH_JUMP = 0.5, WIDTH_JUMP_RUN = 3;
-constexpr double MAX_BEND = 2.6;
+// rounding: two lines or segments this near parallel do not cross; a curve's span this short has no length
+constexpr double LINE_PARALLEL = 1e-9, SEG_PARALLEL = 1e-12;
 constexpr double ARC_SPAN_EPS = 1e-9;
 } // namespace
 
@@ -107,7 +109,7 @@ bool line_line(double px, double pz, double dx, double dz, double qx, double qz,
 
 double arm_angle(double dx, double dz) { return std::atan2(-dz, dx); }
 
-void arm_retreats(const std::vector<Arm> &arms, double corner_radius, std::vector<double> &out) {
+void arm_retreats(const Tuning &tn, const std::vector<Arm> &arms, double corner_radius, std::vector<double> &out) {
 	size_t n = arms.size();
 	out.assign(n, 0.0);
 	if (n < 2) return;
@@ -119,23 +121,23 @@ void arm_retreats(const std::vector<Arm> &arms, double corner_radius, std::vecto
 		double width_change = std::fabs(a.left - b.right) + std::fabs(a.right - b.left);
 		double step = std::max({ std::fabs(a.left - b.right), std::fabs(a.right - b.left), std::fabs(a.asph_left - b.asph_right),
 				std::fabs(a.asph_right - b.asph_left) });
-		double taper = turn < TAPER_TURN && step >= TAPER_STEP ? std::max(TAPER_MIN, step * TAPER_SLOPE) / 2
-				: width_change > WIDTH_JUMP ? WIDTH_JUMP_RUN : 0;
-		double r = std::min(MAX_RETREAT, w * std::tan(std::min(turn, MAX_BEND) / 2) + taper);
+		double taper = turn < tn.junction_taper_turn_deg * PI_D / DEG_PER_HALF_TURN && step >= tn.junction_taper_step ? std::max(tn.junction_taper_min, step * tn.junction_taper_slope) / 2
+				: width_change > tn.junction_width_jump ? tn.junction_width_jump_run : 0;
+		double r = std::min(tn.junction_max_retreat, w * std::tan(std::min(turn, tn.junction_max_bend) / 2) + taper);
 		out[0] = out[1] = r;
 		return;
 	}
 	for (size_t i = 0; i < n; i++) {
 		const Arm &a = arms[i], &b = arms[(i + 1) % n];
-		if (a.dx * b.dx + a.dz * b.dz < OPPOSITE_DOT) continue;
+		if (a.dx * b.dx + a.dz * b.dz < tn.junction_opposite_dot) continue;
 		double s, t, ta = 0, tb = 0;
 		bool hit = line_line(a.dz * a.left, -a.dx * a.left, a.dx, a.dz, -b.dz * b.right, b.dx * b.right, b.dx, b.dz, s, t);
-		if (hit && s > FAR_HIT && t > FAR_HIT) { ta = s; tb = t; }
+		if (hit && s > tn.junction_far_hit && t > tn.junction_far_hit) { ta = s; tb = t; }
 		else if (!hit) ta = tb = std::max(a.left, b.right);
 		out[i] = std::max(out[i], ta + corner_radius);
 		out[(i + 1) % n] = std::max(out[(i + 1) % n], tb + corner_radius);
 	}
-	for (double &v : out) v = std::max(0.0, std::min(v, MAX_RETREAT));
+	for (double &v : out) v = std::max(0.0, std::min(v, tn.junction_max_retreat));
 }
 
 double quad_min_radius(const Quad &q) {

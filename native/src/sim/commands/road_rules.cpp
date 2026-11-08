@@ -30,7 +30,7 @@ double wanted_retreat(const RoadNetwork &net, int n, int seg) {
 	std::vector<int> order;
 	for (int s : nd.segs) arms.push_back(arm_of(net.segs[size_t(s)].q, net.profile_of(s), net.segs[size_t(s)].a == n ? 0 : 1));
 	const std::vector<double> lens(arms.size(), std::numeric_limits<double>::max());
-	junction_retreats(arms, lens, out, order, nd.bulb);
+	junction_retreats(net.cat->tune, arms, lens, out, order, nd.bulb);
 	const size_t at = size_t(std::find(nd.segs.begin(), nd.segs.end(), seg) - nd.segs.begin());
 	return at < out.size() ? out[at] : 0;
 }
@@ -77,7 +77,7 @@ EndMouth end_mouth(const CityState &s, const Anchor &at, const Quad &q, int end,
 	const std::vector<double> lens(arms.size(), std::numeric_limits<double>::max());
 	std::vector<double> out;
 	std::vector<int> order;
-	junction_retreats(arms, lens, out, order, false);
+	junction_retreats(s.catalog.tune, arms, lens, out, order, false);
 	m.own = out.back();
 	for (size_t i = 0; i < met.size(); i++) m.met.emplace_back(met[i], out[i]);
 	return m;

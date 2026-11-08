@@ -7,7 +7,7 @@
 namespace city {
 
 namespace {
-constexpr float SAME_WIDTH_M = 1e-3f;
+constexpr float SAME_WIDTH_M = 1e-3f; // two lanes this near in width are alike (float rounding)
 
 void add(std::vector<SpecIssue> &out, const char *problem, const std::vector<int> &elements) {
 	for (SpecIssue &i : out)

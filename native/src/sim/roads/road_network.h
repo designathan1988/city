@@ -30,7 +30,7 @@ enum SegFlag : uint16_t {
 	SEG_RULE_B_MASK = 0x3000,
 	SEG_STRUCTURE_MASK = 0xC000, // bits 14-15: how it is built (Structure: ground, elevated, bridge, tunnel)
 };
-constexpr int SEG_FURNITURE_SHIFT = 1, SEG_STRUCTURE_SHIFT = 14;
+constexpr int SEG_FURNITURE_SHIFT = 1, SEG_STRUCTURE_SHIFT = 14; // where their masks' bits start
 // The street furniture a segment carries (its SEG_FURNITURE_MASK bits).
 enum FurnitureLevel : uint8_t { FURN_FULL, FURN_BASIC, FURN_NONE };
 // ray_deck: a ray is marched over a deck in steps of this, horizontal metres, then the crossing bisected this many times.
@@ -42,7 +42,7 @@ constexpr Structure structure_of(uint16_t flags) { return Structure((flags & SEG
 constexpr uint16_t with_structure(uint16_t flags, Structure s) {
 	return uint16_t((flags & ~SEG_STRUCTURE_MASK) | (uint16_t(s) << SEG_STRUCTURE_SHIFT));
 }
-constexpr int SEG_RULE_A_SHIFT = 10, SEG_RULE_B_SHIFT = 12;
+constexpr int SEG_RULE_A_SHIFT = 10, SEG_RULE_B_SHIFT = 12; // where their masks' bits start
 enum SegRule : uint16_t { RULE_NONE = 0, RULE_STOP = 1, RULE_YIELD = 2 };
 constexpr int8_t AUTO_SIGNAL = 1, AUTO_ALL_STOP = 2;
 constexpr uint16_t seg_rule_mask(int end) { return end == 0 ? SEG_RULE_A_MASK : SEG_RULE_B_MASK; }
@@ -116,9 +116,9 @@ struct StreetRun {
 	double start = 0, total = 0;
 };
 
-constexpr int ROAD_ARC_STEPS = 48;
+constexpr int ROAD_ARC_STEPS = 48; // chords a road's arc table holds
 constexpr int CROSSWALK_ARMS = 3; // crosswalks are painted at nodes of this many arms or more
-constexpr float ROAD_HASH_CELL = 64.f;
+constexpr float ROAD_HASH_CELL = 64.f; // the cells roads are filed in, for the queries near a point
 
 class RoadNetwork {
 public:

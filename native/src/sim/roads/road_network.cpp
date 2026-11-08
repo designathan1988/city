@@ -10,7 +10,7 @@ namespace city {
 
 namespace {
 constexpr double STRAIGHT_ANGLE_COS = -0.9986; // two arms this close to opposite are one street going on
-constexpr double BULB_REACH_PAD = 3, BULB_SEARCH_PAD = 30;
+constexpr double BULB_REACH_PAD = 3, BULB_SEARCH_PAD = 30; // past a bulb's walk, the room it keeps; past that, how far it looks
 constexpr double BULB_REACH_M = BULB_R + BULB_WALK + BULB_REACH_PAD; // a road closer than this to a dead end leaves no room for a bulb
 constexpr double BULB_LOOK_M = BULB_REACH_M + BULB_SEARCH_PAD; // the roads a dead end looks at for its bulb lie within this
 constexpr float LOT_LOOK_M = 160.f; // lots look this far for their streets (sim/citygen/lot_gen.h LOT_MARGIN + setbacks)
@@ -287,7 +287,7 @@ bool RoadNetwork::bulb_clear(int n) const {
 	int s = nd.segs[0];
 	const RoadSegment &g = segs[s];
 	if (cat->profile(g.profile).rail) return false;
-	if (bulb_retreat(arm_of(g.q, cat->profile(g.profile), g.a == n ? 0 : 1), g.len) <= 0) return false;
+	if (bulb_retreat(cat->tune, arm_of(g.q, cat->profile(g.profile), g.a == n ? 0 : 1), g.len) <= 0) return false;
 	const double reach = BULB_REACH_M, pad = BULB_LOOK_M;
 	bool clear = true;
 	for_segments_near(nd.x - pad, nd.z - pad, nd.x + pad, nd.z + pad, [&](int o) {
@@ -344,7 +344,7 @@ bool RoadNetwork::refresh_node(int n, bool arms_changed) {
 	// outline and connectors read every arm)
 	const bool whole = arms_changed || nd.joint != was_joint || nd.bulb != was_bulb;
 	if (arms_changed || nd.joint != was_joint) run_dirty_.insert(run_dirty_.end(), nd.segs.begin(), nd.segs.end()); // the street goes on here, or no more
-	junction_retreats(arms, lens, out, order, nd.bulb);
+	junction_retreats(cat->tune, arms, lens, out, order, nd.bulb);
 	bool changed = whole;
 	for (size_t i = 0; i < k; i++) {
 		RoadSegment &g = segs[nd.segs[i]];

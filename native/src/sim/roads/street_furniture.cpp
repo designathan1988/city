@@ -13,7 +13,7 @@ using namespace furniture;
 
 namespace {
 constexpr int MAX_BESIDE = 16; // pieces a passage check looks at across one cross-section
-constexpr double SQRT2 = 1.4142135623730951;
+constexpr double SQRT2 = 1.4142135623730951; // the square root of two: a square's diagonal per side
 constexpr int SLOT_TRIES = 64; // a piece is moved along past at most this many others before it gives up
 // Two places closer than what they need by under this are apart: a piece moved to just touch another must not find it
 // in the way again through the rounding of the sum it was moved by.

@@ -114,7 +114,7 @@ void add_junction(const GenShapes &S, const RoadNetwork &net, int node, Paths64 
 		ring.push_back(unit_point(a.left.x, a.left.z));
 		// The two footways run on until they meet: the lot on that corner ends in a point, however round the kerb.
 		const double den = a.dx * b.dz - a.dz * b.dx;
-		if (corner_fillet(a.arm, b.arm).mode != CornerMode::FILLET || std::fabs(den) < PARALLEL) continue;
+		if (corner_fillet(net.cat->tune, a.arm, b.arm).mode != CornerMode::FILLET || std::fabs(den) < PARALLEL) continue;
 		const double wx = b.right.x - a.left.x, wz = b.right.z - a.left.z, along = (wx * b.dz - wz * b.dx) / den;
 		ring.push_back(unit_point(a.left.x + a.dx * along, a.left.z + a.dz * along));
 	}

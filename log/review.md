@@ -3335,6 +3335,20 @@ Numerical Recipes multipliers, the tolerances, a junction's three arms, the grou
 
 **What changes.** Nothing: the generated and scenic cities' hashes, the numbers and every photo the same (`quick`: 44 of 46).
 
+### 6.48 B2, C14 (the roads): the junctions' geometry in tuning, the roads' definitions sourced (2026-11-08)
+
+**Cause and fix.** The road geometry's junction rules held the 4.0's numbers (roads/geometry.ts) beside their tolerances: how far a
+mouth retreats, when a bend tapers and over how long, a dead end's bulb, a kerb return's radius, taper, fillet and bevel. They went
+to a `junction` group of tuning (doubles, as the code computes them), read through the `Tuning` the four functions now take
+(`arm_retreats`, `bulb_retreat`, `junction_retreats`, `corner_fillet`), handed by their callers from the catalogue the network holds
+(`net.cat->tune`) or the state's. The angles are data in degrees and the code turns them as it did (`deg * PI_D / DEG_PER_HALF_TURN`:
+the same doubles, 30 degrees giving `PI_D / 6` bit for bit). The longest retreat, written in both files, is one field. The
+definitions stay and say what they are: the tolerances, the nearest-point search's samples and halvings, the arc tables' chords, the
+road hash's cells, the flags' bit shifts, the grade solver's passes and disc, √2; the solver's own 2π is the core's `TAU_F` (the
+same float).
+
+**What changes.** Nothing: the hashes, the numbers and every photo the same (`quick`: 44 of 46).
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at
