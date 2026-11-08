@@ -50,7 +50,7 @@ struct Hurt {
 	float x = 0, z = 0, amount = 0;
 };
 
-// A blow that broke part of a standing building (destruction.ts `strike`): what it reached falls, and what hung on that with it;
+// A blow that broke part of a standing building: what it reached falls, and what hung on that with it;
 // the rest stands. `seed`, `bx`, `bz` name the building as `Hurt` does; x y z is where it struck, `force` how hard. One blow, one scar.
 struct Scar {
 	uint32_t seed = 0;

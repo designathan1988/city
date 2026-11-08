@@ -17,13 +17,13 @@ namespace {
 constexpr float RANDOM_SPIN_RANGE = 8.f; // rad/s of the random spin a piece is thrown with, either way
 constexpr float TINT_MIN = 0.85f, TINT_SPAN = 0.3f; // each piece's shade varies a little
 constexpr float CYL_SIDES = 9.f;
-constexpr int ROUND_SIDES = 10, ROUND_RINGS = 7; // gore.ts: an organ is a sphere of ten by seven
+constexpr int ROUND_SIDES = 10, ROUND_RINGS = 7; // an organ is a sphere of ten by seven
 constexpr float UNIT_RADIUS = 0.5f; // a round one across, as the unit box
 constexpr float FLAME_OVER_M = 0.3f; // flames rise from a burning piece
 constexpr float SMOKE_OVER_M = 1.0f;
 constexpr float SMOKE_SPREAD_M = 0.4f;
 constexpr float FLAME_FOLLOW_SHARE = 0.4f; // the flame's size follows the piece's, to this share
-constexpr int WRECKS_KEPT = 40; // of a model (blast.ts): past it the oldest goes
+constexpr int WRECKS_KEPT = 40; // of a model: past it the oldest goes
 } // namespace
 
 void Debris::init(const RID &scenario, const RID &material, const EffectParams &params) {

@@ -14,10 +14,10 @@ namespace city {
 namespace {
 // The pieces' sizes in metres: a pole, a post, a hydrant, a bench, a bin, a trunk and a leaf.
 constexpr float MAST_R = 0.15f, POST_RAD = 0.1f, POST_H = 6.2f, HYDRANT_R = 0.2f, HYDRANT_H = 0.7f;
-constexpr float STUMP_WIDEN = 1.1f; // a snapped pole's stump, a little wider than its top (playEffects.ts)
+constexpr float STUMP_WIDEN = 1.1f; // a snapped pole's stump, a little wider than its top
 constexpr float SNAP_GAP_M = 0.1f; // the top starts this far over the break
 constexpr float SNAP_THROW = 0.7f, LAMP_THROW = 1.2f; // of the push: a snapped top, a lamp's head
-// A lighting column (streets.json props: about 9 m, 0.12 m across at its top), a shrub and a small box (playEffects.ts items).
+// A lighting column (streets.json props: about 9 m, 0.12 m across at its top), a shrub and a small box.
 constexpr float COLUMN_H = 9.f, COLUMN_R = 0.12f, COLUMN_SPIN = 1.6f, COLUMN_HEAD_LIFT = 4.f;
 constexpr float COLUMN_HEAD_L = 0.78f, COLUMN_HEAD_T = 0.14f, COLUMN_HEAD_W = 0.38f;
 constexpr float BUSH_TALL = 1.2f, BUSH_STEM = 0.14f, BUSH_LEAF = 0.3f, BUSH_LEAF_THICK = 0.05f, BUSH_TOP_SHARE = 0.8f;
@@ -41,7 +41,7 @@ constexpr float BLOOD_PUFFS = 40.f, BLOOD_SPREAD_M = 0.2f, BLOOD_SIZE_M = 0.04f,
 constexpr float CHEST_RISE_M = 0.5f; // blood sprays from the chest of someone falling
 constexpr float SCATTER_BLOOD_M = 1.2f, POOL_MIN = 0.6f, POOL_SPAN = 0.8f, POOL_TORN = 1.4f;
 constexpr int TORN_POOLS = 3;
-constexpr float DRIP_SCATTER_M = 0.3f, DRIP_MIN_M = 0.12f, DRIP_SPAN_M = 0.16f; // playEffects.ts: 6 to 14 cm of radius
+constexpr float DRIP_SCATTER_M = 0.3f, DRIP_MIN_M = 0.12f, DRIP_SPAN_M = 0.16f; // 6 to 14 cm of radius
 constexpr uint32_t VEHICLE_TYPE_MASK = 255; // VEHICLE_BLOWN u: the vehicle's type in the low byte
 
 Vector3 scatter(Rng &r, float k) { return Vector3((r.f() - 0.5f) * k, r.f() * k, (r.f() - 0.5f) * k); }

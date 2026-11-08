@@ -14,7 +14,7 @@
 namespace city {
 
 namespace {
-constexpr double STILL_THERE_M = 0.5; // execute.ts stillThere: the point is still on the segment, away from its ends
+constexpr double STILL_THERE_M = 0.5; // the point is still on the segment, away from its ends
 constexpr double CLEAR_STEP_M = 2; // clearAndConform samples the centreline every 2 m
 constexpr double CLEAR_SLACK_M = 0.3; // the lot rectangle grown by the half width minus this
 
@@ -59,7 +59,7 @@ int anchor_node(CityState &s, const Anchor &a, float lift) {
 		closest_t(net.segs[a.seg].q, a.x, a.z, t, d);
 		return split_segment(s, a.seg, t);
 	}
-	// What stands at another height there is passed, not joined (commit.ts materializeFree).
+	// What stands at another height there is passed, not joined.
 	const Anchor again = snap_point(s, a.x, a.z, s.catalog.tune.road_merge_m);
 	const float join = s.catalog.tune.grade_join_m;
 	if (again.node >= 0 && std::fabs(net.nodes[size_t(again.node)].lift - lift) <= join) return again.node;
@@ -69,7 +69,7 @@ int anchor_node(CityState &s, const Anchor &a, float lift) {
 
 int clear_under(CityState &s, int seg) {
 	const RoadSegment &g = s.roads.segs[seg];
-	if (structure_of(g.flags) == Structure::TUNNEL) return 0; // what stands over a bore stays (validate.ts touchesRoad)
+	if (structure_of(g.flags) == Structure::TUNNEL) return 0; // what stands over a bore stays
 	double half = s.catalog.profile(g.profile).right;
 	int n = std::max(2, int(std::ceil(g.len / CLEAR_STEP_M)) + 1);
 	std::vector<double> px(static_cast<size_t>(n)), pz(static_cast<size_t>(n));

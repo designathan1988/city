@@ -36,9 +36,9 @@ struct LandLot {
 bool land_lot_at(const CityState &s, const LotPoint &p, int propose, LandLot &out);
 // That lot made the player's, of `zone` (0 takes what grew there).
 EditResult take_land_lot(CityState &s, const LandLot &lot, int zone);
-// The land lot under p made the player's with its own zone, to be edited as a lot (lotTool.ts adoptProposal); `placed` its id.
+// The land lot under p made the player's with its own zone, to be edited as a lot; `placed` its id.
 EditResult take_lot_at(CityState &s, const LotPoint &p);
-// The Lots tab's delete stroke (lotTool.ts erase): the player's lots under its dabs, what stands on them, and every building whose
+// The Lots tab's delete stroke: the player's lots under its dabs, what stands on them, and every building whose
 // footprint is under a dab, on a lot or not.
 EditResult erase_lots_path(CityState &s, const std::vector<StrokePoint> &dabs);
 // The zone brush (Zones › Zone): the dabs of one pointer move, in order, as one command, each zoning the lot under it whole: the

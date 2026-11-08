@@ -3,7 +3,7 @@
 // the share of the collapse limit (Glasstone: a house is demolished at 5 psi), so a small bomb must be repeated to bring
 // a building down (the 4.0's "keep hitting"); at 1.0 it falls and leaves a ruin; past the structural limit it catches fire.
 // A framed block answers at 20 psi, a house at 5 (Glasstone and Dolan 1977, as tabled by HYDESim and DTIC ADA072246). Close to the
-// blow part of it breaks off first (destruction.ts `strike`): a scar, and when little would be left standing, the rest comes down.
+// blow part of it breaks off first: a scar, and when little would be left standing, the rest comes down.
 #include "sim/commands/strike_internal.h"
 
 #include "sim/buildings/b40/record.h"
@@ -30,7 +30,7 @@ float felt_by(const Blow &b, const Building &bd) {
 	return blast::felt_pressure(b.p, blast::airblast(b.p, b.kg, std::hypot(near, depth)));
 }
 
-// Where and how hard a blow breaks a building (actionsWiring.ts explodeAt): at full force the one it landed on, else less with the
+// Where and how hard a blow breaks a building: at full force the one it landed on, else less with the
 // distance, at the wall nearest the burst.
 struct Aim {
 	float x = 0, y = 0, z = 0, force = 0;
@@ -136,7 +136,7 @@ bool nearest_wall(const Building &bd, const b40::Body &body, float x, float z, W
 	return best < std::numeric_limits<float>::max();
 }
 
-// Its wiring shorting and its pipes bursting (actionsWiring.ts explodeAt): the first blow a building takes and stands leaves a few
+// Its wiring shorting and its pipes bursting: the first blow a building takes and stands leaves a few
 // points of the wall nearest the burst, at storeys drawn at random, sparking or spurting water a while (SPARK, LEAK).
 void short_out(Blow &b, int id, const Building &bd, const Aim &aim) {
 	const Tuning &t = b.s.catalog.tune;

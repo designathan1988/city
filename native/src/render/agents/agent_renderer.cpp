@@ -243,7 +243,7 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 	const float people_r2 = people_r_ * people_r_;
 	const float close2 = std::min(cabin_close_m_ * cabin_close_m_, near2);
 	auto plain_level = [&](float d2) { return d2 < close2 ? CABIN_LEVEL : (d2 < near2 ? MID_DRAW : (d2 < far2 ? BODY_LEVEL : FAR_LEVEL)); };
-	// A vehicle keeps its level until it is past the edge by the hold (agents.ts VEHICLE_HYSTERESIS), or it flickers there.
+	// A vehicle keeps its level until it is past the edge by the hold, or it flickers there.
 	const float hold2 = (1 + level_hold_) * (1 + level_hold_);
 	auto rank = [](int level) { return level == CABIN_LEVEL ? 0 : level == MID_DRAW ? 1 : level == BODY_LEVEL ? 2 : 3; };
 	auto level_of = [&](uint64_t key, float d2) {

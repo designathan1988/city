@@ -1,5 +1,4 @@
-## Tool previews drawn over the world: the road as it will be laid (Roadcraft main.ts drawRoadPreview: a green or red
-## outline, the verge, footway, kerb, carriageway and its paint, a ring at each end), a plain ribbon for the other tools,
+## Tool previews drawn over the world: the road as it will be laid, a plain ribbon for the other tools,
 ## a brush's disc, and the lots the zone brush lights. Colours and widths are the preview tokens of data/ui/tokens.json; nothing
 ## here tests depth but the lit lots, so buildings never hide it, and each band's material draws after the one under it. Outlines that stay while the view moves
 ## (the Lots tool's lots) are one mesh of their own, built when they change, their width in screen pixels kept by its shader.

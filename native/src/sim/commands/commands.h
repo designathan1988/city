@@ -78,7 +78,7 @@ struct SnappedEnd {
 	double angle = 0, length = 0; // radians from +x towards +z, metres from the start
 };
 
-// How a road follows the gesture (Roadcraft roadTool.ts alignment).
+// How a road follows the gesture.
 enum class RoadAlignment : uint8_t { STRAIGHT, CURVE, FREE };
 
 struct StrokePoint {
@@ -119,10 +119,10 @@ RoadPlan plan_road(const CityState &s, const Anchor &a, bool has_control, double
 // Builds a planned road: splits crossed segments, cuts pieces longer than road_max_seg_m, removes buildings in the way,
 // conforms the terrain and charges the price. Refuses without enough money.
 EditResult build_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile);
-// A connection of a junction toggled by hand (connectors.ts toggleLaneLink): an arriving lane first taken by hand starts from what the traffic
+// A connection of a junction toggled by hand: an arriving lane first taken by hand starts from what the traffic
 // built (`built`); a lane left with none is refused.
 EditResult toggle_lane_link(CityState &s, int node, const LaneLink &link, const std::vector<LaneLink> &built);
-// Nobody goes from one arm of a junction to another (junctionPanel.ts moveChip), or they may again; a node taken away with the roads that meet there.
+// Nobody goes from one arm of a junction to another, or they may again; a node taken away with the roads that meet there.
 EditResult set_movement_banned(CityState &s, int node, int from, int to, bool banned);
 EditResult remove_node(CityState &s, int node);
 
@@ -162,7 +162,7 @@ EditResult duplicate_road(CityState &s, int seg);
 EditResult set_marking_style(CityState &s, int style);
 // Puts `profile` on the segment under (x, z), or on its whole street; charges the difference or refunds a share.
 EditResult change_profile_at(CityState &s, double x, double z, int profile, bool whole_street);
-// How a dead end finishes (Roadcraft doc.ts setNodeEnd): a straight cut, or a turning bulb when there is room for one.
+// How a dead end finishes: a straight cut, or a turning bulb when there is room for one.
 EditResult set_road_end(CityState &s, int node, bool bulb);
 // A road as it was drawn, its pieces being cuts of one curve; how far its curve stands from the line between its ends, metres, and where along that line.
 Quad road_line(const RoadNetwork &net, int seg);

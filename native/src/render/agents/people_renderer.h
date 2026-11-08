@@ -1,5 +1,5 @@
 // Pedestrians near the camera drawn with the cooked MakeHuman people (people_asset.h): one MultiMesh per variation and
-// level, refilled every frame. A body of the pedestrian's age, tints and phase come from its look hash (Roadcraft looks.ts);
+// level, refilled every frame. A body of the pedestrian's age, tints and phase come from its look hash;
 // the walk phase follows the metres walked over the variation's stride, and one standing plays the idle or what the simulation says
 // they are doing (PedAct), with what that holds in the hand (held_things.h). Past blob_from_m
 // a person casts no real shadow: a soft disc lies under it (material "people_blob"). Material "people"

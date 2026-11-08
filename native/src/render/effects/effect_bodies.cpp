@@ -1,6 +1,6 @@
 // The people a blow or a bullet struck, thrown as themselves: the walker's own body on a ragdoll (render/agents/body_renderer.h). A limb already lost is
-// not there; a limb that comes off at this blow is the person's own piece, a body of its own thrown clear (ragdoll.ts detach), now and then a bone out of
-// the stump or the piece, with a spray of blood; a body a blast tears open spills its guts and organs (gore.ts). Someone knocked down lies for as long as
+// not there; a limb that comes off at this blow is the person's own piece, a body of its own thrown clear, now and then a bone out of
+// the stump or the piece, with a spray of blood; a body a blast tears open spills its guts and organs. Someone knocked down lies for as long as
 // the simulation keeps them down (the walker is not drawn meanwhile) and the body goes when they get up. Also what a bullet draws: the tracer, the
 // wound's spray and a car's bodywork hit.
 #include "render/effects/effect_world.h"
@@ -31,7 +31,7 @@ constexpr float SPARK_COUNT = 10.f, SPARK_SPREAD_M = 0.15f, SPARK_SIZE_M = 0.1f,
 constexpr int SHARDS = 10;
 constexpr float SHARD_SIZE_M = 0.06f, SHARD_THICK_M = 0.01f, SHARD_SPEED_MS = 3.f, SHARD_LIFE_S = 6.f;
 
-// The ragdoll's parts a loss takes (ragdoll.ts LOST_PARTS), every limb in `limbs` (CasLimb bits, RagdollLimb order).
+// The ragdoll's parts a loss takes, every limb in `limbs` (CasLimb bits, RagdollLimb order).
 uint32_t parts_gone(uint32_t limbs) {
 	uint32_t parts = 0;
 	for (int k = 0; k < LIMBS; k++)
@@ -40,7 +40,7 @@ uint32_t parts_gone(uint32_t limbs) {
 }
 } // namespace
 
-// What was inside a body opened (gore.ts scatter): flattened rounds of dark reds, thrown out of `at` by `kick` and their own scatter.
+// What was inside a body opened: flattened rounds of dark reds, thrown out of `at` by `kick` and their own scatter.
 void EffectWorld::organs(const Vector3 &at, int count, const Vector3 &kick) {
 	const GoreLook &g = params_.gore;
 	for (int k = 0; k < count; k++) {
@@ -81,7 +81,7 @@ void EffectWorld::body(const DamageEvent &e, const CityState &s) {
 		b.rises = kind == CAS_KNOCKED;
 		b.walls = walls_near(s, e.x, e.z, WALLS_REACH_M);
 		b.variation = people_->variation_of(e.u, cas_age_of(e.v)); // the age the walker had (damage_event.h)
-		// Now and then the bone shows at a cut: out of the stump, out of the piece, or both (one draw for the two, ragdoll.ts detach).
+		// Now and then the bone shows at a cut: out of the stump, out of the piece, or both (one draw for the two).
 		float bone_roll[LIMBS] = {};
 		for (int k = 0; k < LIMBS; k++) {
 			bone_roll[k] = rng_.f();

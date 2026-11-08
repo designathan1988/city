@@ -27,7 +27,7 @@ constexpr uint32_t SALT_PULL = 0x70756c6cU;
 constexpr uint32_t POLE_WHO_BASE = 0x40000000U; // a utility pole's draws, apart from the street furniture's (by its arc)
 
 // How a pole at `d` from the burst goes (`who` its draw): one pulled over from past the reach falls whole; near the burst it
-// bursts into splinters now and then; else it snaps or falls whole (actionsWiring.ts explodeAt).
+// bursts into splinters now and then; else it snaps or falls whole.
 float pole_fate(const Blow &b, float d, float reach, uint32_t who) {
 	const Tuning &t = b.s.catalog.tune;
 	if (d > reach) return FURNITURE_WHOLE;
@@ -99,7 +99,7 @@ void knock_out_furniture(Blow &b, float reach) {
 }
 
 // The utility poles the player built (sim/street): those within the reach break, and the wires torn off a broken pole pull the
-// next one over in its turn, now and then, out to a share past the reach (actionsWiring.ts explodeAt). Each span left with one
+// next one over in its turn, now and then, out to a share past the reach. Each span left with one
 // end standing hangs from that end; the poles go through the journal, their spans with them, so undoing the blow stands them again.
 void knock_out_poles(Blow &b, float reach) {
 	const Tuning &t = b.s.catalog.tune;

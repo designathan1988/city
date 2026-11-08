@@ -83,7 +83,7 @@ struct ArcLook {
 	godot::Color color;
 };
 
-// What a body opened or torn shows (gore.json "gore", the 4.0's gore.ts and ragdoll.ts detach and openBelly). Guts: chains of
+// What a body opened or torn shows (gore.json "gore"). Guts: chains of
 // `links` links, link_min_m + link_span_m x u each, coiled coil_m round as they leave (coil_turn rad a link) and drop_share of a link
 // lower each, gut_r_min_m + gut_r_span_m x u thick, a tint of gut_tints; held to the wound, or at hold_chance torn loose after hold_min_s +
 // hold_span_s x u; `damp` of their speed kept a step, `passes` passes of their lengths, `friction` of it on the ground, still under

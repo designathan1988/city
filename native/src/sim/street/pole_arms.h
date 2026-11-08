@@ -1,4 +1,4 @@
-// Which way a pole's cross-arms lie (Roadcraft utilities.ts poleArms, as line construction standards frame a pole): one
+// Which way a pole's cross-arms lie: one
 // arm square to a straight line or on the bisector of a gentle bend, and at a corner (poles.corner_deflection_deg or more)
 // or a branching an arm for each line leaving it, two lines straight through each other sharing theirs.
 #pragma once

@@ -145,7 +145,7 @@ func _show_layer(name: String) -> void:
 		CityStore.dispatch(&"set_overlay", [name, layer_on(name)])
 
 
-## The zones show with their tool in hand, and, with the layer on, where the player zoned once it is put down (main.ts showLots).
+## The zones show with their tool in hand, and, with the layer on, where the player zoned once it is put down.
 func set_zone_tool(on: bool, zone := 0) -> void:
 	zone_tool = on
 	zone_painted = zone

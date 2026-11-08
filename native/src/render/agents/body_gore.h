@@ -1,4 +1,4 @@
-// What hangs off a body opened or cut (Roadcraft gore.ts): the guts out of the belly, a chain of links stepped by Verlet, its
+// What hangs off a body opened or cut: the guts out of the belly, a chain of links stepped by Verlet, its
 // first link held to the wound while it holds (some tear loose after a while) and the rest lying where they fall; and a bone's
 // end out of a stump, drawn from the joint along the limb it ends, with the cuff of flesh round it. Each belongs to a body (its
 // slot in render/agents/body_renderer.h, which steps them and asks it for the body's particles), and goes with it. Three layers

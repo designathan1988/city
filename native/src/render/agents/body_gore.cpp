@@ -15,7 +15,7 @@ namespace city {
 
 namespace {
 constexpr int FIRST_ROOM = 64;
-constexpr int SIDES = 7; // gore.ts: a gut and a bone are seven-sided
+constexpr int SIDES = 7; // a gut and a bone are seven-sided
 constexpr float STEP_S = 1.f / 60.f;
 constexpr float STALL_CAP_S = 0.05f; // a stalled frame steps them no more than this
 constexpr float MM_TO_M = 0.001f;

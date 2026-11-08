@@ -72,7 +72,7 @@ private:
 		float carry = 0;
 		bool weak = false; // a burst pipe's spurt (LEAK), not a hydrant's jet
 	};
-	struct Arc { // an electric discharge, repeated a while (blast.ts arc)
+	struct Arc { // an electric discharge, repeated a while
 		godot::Vector3 at;
 		double until = 0, next = 0;
 	};
@@ -99,7 +99,7 @@ private:
 	void step_arcs();
 	void wire(const DamageEvent &e); // a wire torn loose, hanging from the pole left standing (ropes.h)
 	void arc(const godot::Vector3 &at, float seconds) { arcs_.push_back({ at, now_ + double(seconds), now_ }); }
-	// The one light flashes `colour` at `at`: a flash of another colour brighter than FLASH_YIELD of this one keeps it (blast.ts flashAt).
+	// The one light flashes `colour` at `at`: a flash of another colour brighter than FLASH_YIELD of this one keeps it.
 	void flash_at(const godot::Vector3 &at, const godot::Color &colour, float energy, float range, float life);
 	void step_sources(float dt); // the flame sources a blast leaves (effect_blast.cpp)
 	void flash(float radius);

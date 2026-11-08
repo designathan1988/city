@@ -14,7 +14,7 @@ enum Ref { REF_SIDE, REF_LARM, REF_RARM, REF_LLEG, REF_RLEG };
 struct PartFrame {
 	int origin, to, ref;
 };
-constexpr PartFrame PART_FRAMES[RAGDOLL_PARTS] = { // torso, neck, head; arms; legs (ragdoll.ts PARTS)
+constexpr PartFrame PART_FRAMES[RAGDOLL_PARTS] = { // torso, neck, head; arms; legs
 	{ PEL, CHE, REF_SIDE }, { NEC, HEA, REF_SIDE }, { HEA, TOP, REF_SIDE }, { LS, LE, REF_LARM }, { LE, LW, REF_LARM }, { RS, RE, REF_RARM }, { RE, RW, REF_RARM },
 	{ LH, LK, REF_LLEG }, { LK, LA, REF_LLEG }, { LA, LT, REF_LLEG }, { RH, RK, REF_RLEG }, { RK, RA, REF_RLEG }, { RA, RT, REF_RLEG },
 };
@@ -30,7 +30,7 @@ constexpr float KNEE_LEAST = 0.45f, ELBOW_LEAST = 0.35f, FOLD_LEAST = 0.62f; // 
 constexpr float RESTING_MS = 0.12f, RESTING_S = 0.6f;
 constexpr float NOTHING_M = 1e-5f;
 constexpr float ONE_STEP_S = 1.f / 60.f;
-// The parts each limb takes off, by part index (PART_FRAMES), and its stumps: the body's and the piece's (ragdoll.ts STUMP).
+// The parts each limb takes off, by part index (PART_FRAMES), and its stumps: the body's and the piece's.
 constexpr uint32_t LIMB_PARTS[LIMBS] = { 1u << 2, 1u << 4, 1u << 6, (1u << 8) | (1u << 9), (1u << 11) | (1u << 12) };
 constexpr RagdollStump BODY_STUMP[LIMBS] = { { CHE, NEC }, { LS, LE }, { RS, RE }, { LH, LK }, { RH, RK } };
 constexpr RagdollStump PIECE_STUMP[LIMBS] = { { TOP, HEA }, { LW, LE }, { RW, RE }, { LA, LK }, { RA, RK } };

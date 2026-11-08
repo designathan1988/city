@@ -1,4 +1,4 @@
-// A body that has lost its footing (the 4.0's ragdoll.ts, there on Jolt): twenty particles on the skeleton's joints held by distance constraints
+// A body that has lost its footing: twenty particles on the skeleton's joints held by distance constraints
 // (Position Based Dynamics, Mueller et al. 2007; Jakobsen's Verlet particles, GDC 2001), with limits at the knees and elbows, and thirteen rigid parts
 // read from them that carry the bones. Pure: positions in, frames out.
 #pragma once
@@ -20,7 +20,7 @@ constexpr int RAGDOLL_PARTS = 13; // in cook_people.py RAGDOLL_PARTS order
 constexpr uint32_t RAGDOLL_ALL_PARTS = (1u << RAGDOLL_PARTS) - 1;
 // What can come off a body, in the order of the casualty's limb bits (sim/demolition/damage_event.h CasLimb).
 enum RagdollLimb : int { LIMB_HEAD = 0, LIMB_ARM_L, LIMB_ARM_R, LIMB_LEG_L, LIMB_LEG_R, LIMBS };
-// The end of a bone at a cut: the joint it shows at and the particle it points from (ragdoll.ts STUMP), on the body or on the piece.
+// The end of a bone at a cut: the joint it shows at and the particle it points from, on the body or on the piece.
 struct RagdollStump {
 	int from = 0, at = 0;
 };
@@ -45,11 +45,11 @@ public:
 	godot::Vector3 pelvis() const;
 	godot::Vector3 belly() const;
 	godot::Vector3 point(int particle) const { return now_[particle]; }
-	// A piece cut off the body (ragdoll.ts detach): only the particles of `parts` stay held together, each other stick let go; the rest
+	// A piece cut off the body: only the particles of `parts` stay held together, each other stick let go; the rest
 	// of the particles fly loose and unseen (the piece's body draws only `parts`). Its hinges go, and its frames keep the roll they had.
 	void cut_to(uint32_t parts);
 	static RagdollStump stump(RagdollLimb limb, bool piece);
-	static uint32_t parts_of(RagdollLimb limb); // the parts a limb takes (ragdoll.ts LOST_PARTS: the arm from the forearm, the leg from the calf)
+	static uint32_t parts_of(RagdollLimb limb); // the parts a limb takes
 	static constexpr int PELVIS = 0, BELLY = RAGDOLL_JOINTS + 1; // the particles guts hang from (ragdoll.cpp Joint)
 
 private:

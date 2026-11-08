@@ -139,7 +139,7 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 		const int act = rec.act < int(PedAct::COUNT) ? rec.act : 0;
 		float doing = rec.act_share > 0 ? float(act_clips_[act]) + rec.act_share * PEOPLE_ACT_SPAN : 0.f;
 		float walk = phase - std::floor(phase);
-		if (act == int(PedAct::CROUCH) && doing > 0) { // down, a while there and up again (citizenGait.ts): played from its start, not by the clock
+		if (act == int(PedAct::CROUCH) && doing > 0) { // down, a while there and up again: played from its start, not by the clock
 			const Played at_it = crouch_at(pv.female ? 1 : 0, rec.act_since, rec.act_left);
 			doing = -(float(at_it.clip) + rec.act_share * PEOPLE_ACT_SPAN);
 			walk = at_it.phase;

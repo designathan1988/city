@@ -49,7 +49,7 @@ bool on_street_lot(const CityState &s, const LotPoint &p) {
 }
 } // namespace
 
-// A lot coloured on the ground (lotOverlay.ts FLAG_FILL): cut to the cells of the relief's own grid (lot_cover), each point laid on
+// A lot coloured on the ground: cut to the cells of the relief's own grid (lot_cover), each point laid on
 // the relief: the terrain never rises through it.
 void OverlayRenderer::lot_cover(Ribbon &out, const CityState &s, const std::vector<LotPoint> &ring, const Color &col) const {
 	const double corner = s.terrain.x_of(0);
@@ -80,7 +80,7 @@ void OverlayRenderer::edge(Ribbon &out, const CityState &s, const LotPoint &a, c
 	}
 }
 
-// One lot as the layer shows it (lotTool.ts drawLot): its zone's colour (fainter once built on, and with another tool in hand only
+// One lot as the layer shows it: its zone's colour (fainter once built on, and with another tool in hand only
 // the unbuilt zoned lots), and with the Zones tool its outline, and its front with an arrow from inside out through its middle.
 void OverlayRenderer::lot_shape(Ribbon &out, const CityState &s, const std::vector<LotPoint> &ring, int zone, bool built, bool tool) const {
 	if (ring.size() < 3) return;

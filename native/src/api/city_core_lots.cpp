@@ -193,7 +193,7 @@ Vector3 CityCore::lot_corner_near(const Vector3 &p, double reach) {
 }
 
 // The side of the player's lots nearest p within `reach` metres (of two lots sharing it, the one p is in): {id, side, a, b}, empty
-// on none (lotTool.ts sideAt).
+// on none.
 Dictionary CityCore::lot_side_near(const Vector3 &p, double reach) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;

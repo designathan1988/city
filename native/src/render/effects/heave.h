@@ -1,4 +1,4 @@
-// The ground a crater heaved up round it (Roadcraft blast.ts crater): broken slabs of the surface tipped at the lip of the hole,
+// The ground a crater heaved up round it: broken slabs of the surface tipped at the lip of the hole,
 // plates of the ground thrown up and tilted round it, clods between them. Laid at rest and never moved, from the damage state's
 // craters: each crater's pieces are drawn from its own seed, so an opened save, an undo or a redo lays the same ones, as the
 // craters' decals (marks.h); a blow lays only its own. Two layers of the debris material (debris.gdshader): the jagged plate and

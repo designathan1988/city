@@ -1,4 +1,4 @@
-// The bomb (Roadcraft actionsWiring.ts strikeAt / explodeAt): a blow of the player's force at a point. The blast model
+// The bomb: a blow of the player's force at a point. The blast model
 // (sim/demolition/blast_model.h) says how hard it hits at each distance; this applies it to the city through the
 // journal, so the whole blow is one undo step: buildings brought down or worn, the crater in the ground, the roads it
 // cuts, the furniture it knocks out, the vehicles and walkers it reaches. The render is told by events.

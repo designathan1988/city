@@ -1,4 +1,4 @@
-// The wires a blow tore loose (Roadcraft blast.ts wire): each pinned at its seat on the pole left standing, its loose end thrown
+// The wires a blow tore loose: each pinned at its seat on the pole left standing, its loose end thrown
 // out from the burst, a chain of points stepped by Verlet with its links kept to their length (a link is only pulled shorter,
 // never pushed: a wire goes slack), lying on the ground where it falls. Its end, live while it lies near the ground, sparks and
 // now and then flashes blue. Drawn as thin boxes, one a link, in a layer of the debris material, written only while one moves;

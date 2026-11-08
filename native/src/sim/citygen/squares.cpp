@@ -135,7 +135,7 @@ void set_down(CityState &s, const std::vector<Plot> &plots, const Chosen &c, uin
 		return std::any_of(c.block.begin(), c.block.end(), [&](int i) { return inside(plots[size_t(i)], p); });
 	};
 	const float step = float(d.square_tree_grid_m), clear = float(d.square_tree_edge_m);
-	for (float a = -LATTICE_FROM_M; a <= LATTICE_FROM_M; a += step) // squares.ts: the grid starts here, so it lies the same on any block
+	for (float a = -LATTICE_FROM_M; a <= LATTICE_FROM_M; a += step) // the grid starts here, so it lies the same on any block
 		for (float b = -LATTICE_FROM_M; b <= LATTICE_FROM_M; b += step) {
 			if (!in_block(a, b) || std::fabs(a) < w || std::fabs(b) < w || std::hypot(a, b) < plaza) continue;
 			if (!in_block(a + clear, b) || !in_block(a - clear, b) || !in_block(a, b + clear) || !in_block(a, b - clear)) continue;

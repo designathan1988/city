@@ -202,7 +202,7 @@ func toggle_effects() -> void:
 	effects.toggle()
 
 
-## Escape, one step back (Roadcraft main.ts escape): the open panel, what is being drawn, the inspector, then the tool in
+## Escape, one step back: the open panel, what is being drawn, the inspector, then the tool in
 ## hand; false: nothing to put down.
 func escape() -> bool:
 	if popover.close() or health.close() or effects.close():

@@ -1,5 +1,5 @@
 // The undo / redo stacks (Roadcraft core/commands.ts CommandStack: limit 500 steps / 512 MiB, groups for strokes,
-// redo cleared by a new step) and the inverse of each recorded op (journal.ts exec).
+// redo cleared by a new step) and the inverse of each recorded op.
 #include "sim/commands/edit_journal.h"
 
 #include "sim/commands/commands.h"
