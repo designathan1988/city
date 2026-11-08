@@ -5,7 +5,7 @@
 
 #define CITY_TUNING_FIELDS(X) \
 	X(sim, tick_hz) X(sim, minutes_per_second) X(sim, speed_fast) X(sim, speed_fastest) X(sim, day_start_min) \
-	X(sim, growth_per_s) X(sim, growth_tries) \
+	X(sim, growth_per_s) X(sim, growth_tries) X(sim, body_cache_mb) \
 	X(road, min_len_m) X(road, uturn_opening_m) X(road, uturn_radius_m) X(road, snap_m) X(road, snap_end_m) X(road, max_seg_m) X(road, fixed_gap_m) X(road, merge_m) \
 	X(road, sharp_cos) X(road, level_dy_m) X(road, max_degree) X(road, pick_m) X(road, overlap_share) \
 	X(road, overlap_run_m) X(road, parallel_cos) \

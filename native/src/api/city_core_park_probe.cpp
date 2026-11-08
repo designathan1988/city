@@ -34,8 +34,8 @@ bool clear_of_towers(const CityState &s, float x, float z) {
 // Nothing of the lot reaches `up` metres over the ground within `radius` of the point: a volume with its roof, an element, a tree. A
 // lawn under the camera is no wall.
 bool clear_of_lot(const CityState &s, const Building &rec, const V2 &p, float radius, float up) {
-	b40::Body body;
-	b40::record_body(s.buildings.designs, rec, body);
+	const std::shared_ptr<const b40::Body> body_held = b40::record_body(s.buildings.designs, rec);
+	const b40::Body &body = *body_held;
 	const b40::LotFrame f = b40::lot_frame(rec);
 	const V2 d = p - f.o;
 	const float x = d.dot(f.e0), y = d.dot(f.e1);
@@ -276,11 +276,9 @@ int CityProbes::dock_count() {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
 	int docks = 0;
-	b40::Body body;
 	for (const Building &rec : s.buildings.items) {
 		if (!rec.alive) continue;
-		b40::record_body(s.buildings.designs, rec, body);
-		for (const b40::LotElement &e : body.elements) docks += e.kind == b40::EL_DOCK ? 1 : 0;
+		for (const b40::LotElement &e : b40::record_body(s.buildings.designs, rec)->elements) docks += e.kind == b40::EL_DOCK ? 1 : 0;
 	}
 	return docks;
 }

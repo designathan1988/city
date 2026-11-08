@@ -59,8 +59,9 @@ Array CityBuilder::body_handles(int id, int vol, bool points, const Vector3 &eye
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	Array out;
 	const CityState &s = *state_;
-	b40::Body body;
-	if (!body_of_record(s, id, body) || vol < 0 || vol >= int(body.volumes.size())) return out;
+	const std::shared_ptr<const b40::Body> held = body_of_record(s, id);
+	if (!held || vol < 0 || vol >= int(held->volumes.size())) return out;
+	const b40::Body &body = *held;
 	const Building &rec = s.buildings.items[id];
 	const b40::Volume &v = body.volumes[size_t(vol)];
 	const b40::LotFrame f = b40::lot_frame(rec);
@@ -140,8 +141,9 @@ Dictionary CityBuilder::body_draft(int id, const Dictionary &spec) const {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	Dictionary d;
 	const CityState &s = *state_;
-	b40::Body body;
-	if (!body_of_record(s, id, body)) return d;
+	const std::shared_ptr<const b40::Body> held = body_of_record(s, id);
+	if (!held) return d;
+	b40::Body body = *held; // a copy: the drag's draft is drawn, never kept
 	const Building &rec = s.buildings.items[id];
 	const std::string done = op_handle(body, s.catalog.tune, edit_of(lot_frame_of(s, id), spec));
 	const std::string problem = !done.empty() ? done : body_problem(s.catalog.tune, body);

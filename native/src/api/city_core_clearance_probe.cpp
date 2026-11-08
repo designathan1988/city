@@ -63,11 +63,9 @@ Ring car_box(const OffPose &q, float half_len, float half_w) {
 
 // What is solid to a car near a point: every lot's volumes and walls, its own included.
 void solids_near(const CityState &s, float x, float z, std::vector<Ring> &out, std::vector<int> &kinds) {
-	b40::Body body;
 	s.buildings.query(x - LOOK_M, z - LOOK_M, x + LOOK_M, z + LOOK_M, [&](int id) {
 		const Building &rec = s.buildings.items[size_t(id)];
-		b40::record_body(s.buildings.designs, rec, body);
-		lot_solids(s.buildings.designs, body, b40::lot_frame(rec), FOOT_NO_ROOF_M, out, &kinds);
+		lot_solids(s.buildings.designs, *b40::record_body(s.buildings.designs, rec), b40::lot_frame(rec), FOOT_NO_ROOF_M, out, &kinds);
 	});
 }
 

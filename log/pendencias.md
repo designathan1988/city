@@ -2,6 +2,10 @@
 
 O que falta fazer, por área.
 
+- Growth's look memory (B3, log/review.md §6.11): `record_for` stores the chosen candidate's look under the key of the record with
+  the storeys that candidate reached, though the cap may make that record's body another; after a load the look is the standing
+  body's. Derive looks from the kept body (`b40/body_cache.h`), delete `BuildingStore::looks`; the generated city moves.
+
 - Sombra nas ruas: 7 a 37% abaixo do 4.0 no lado escuro (linear, pixels escuros cinzas em quatro vistas do par), com o lado claro igual; a causa não foi achada, e a do reflexo do céu não fecha (`envMapIntensity` 0,55 da via).
 - Schemas (user decision): `streets.json lamp_light.pool_along`, `pool_sides` and `pool_lift_m` are read by nothing and stay only because the schema asks for them (`materials.json lamp_glow.params.pool_gain` IS read: `road_body.gdshaderinc`, `light_color_test.gd`).
 - Nomes só em inglês (regra do usuário, 2026-11-05: arquivos, pastas e código; nada misturado com português). Feito:

@@ -5,6 +5,7 @@
 #pragma once
 
 #include "sim/buildings/b40/types.h"
+#include "sim/buildings/b40/body_cache.h"
 #include "sim/buildings/b40/body_table.h"
 #include "sim/buildings/b40/model.h"
 #include "sim/buildings/interior/tables.h"
@@ -69,6 +70,7 @@ struct Data {
 	uint64_t generation = new_generation();
 	ModelTable models; // the Build > Models catalogue (data/render/models.json)
 	std::shared_ptr<BodyTable> edited = std::make_shared<BodyTable>(); // the bodies the player made; the rest of Data is read-only
+	std::shared_ptr<BodyCache> made = std::make_shared<BodyCache>(); // the records' bodies made from these tables (record.h), shared by a copy
 	LotRules lots;
 	InteriorTables interior;
 	std::vector<StyleDef> styles;

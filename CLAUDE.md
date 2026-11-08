@@ -184,6 +184,8 @@ the same sources give the same bytes, so a rebuild of unchanged sources leaves t
 - `ChangeLog` é o único canal de "sujo", drenado sob trava compartilhada e o mutex do log.
 - `RenderWorld.sync` nunca toma o mapa exclusivo. Manda as malhas ao `JobPool`, que leem só o mapa, nunca o tráfego.
 - O job de prédio copia o que lê sob trava curta (`HeightPatch`).
+- A building's body is made once and kept by the generator tables' cache (`sim/buildings/b40/body_cache.h`, through
+  `record_body`/`record_mass`), read by the simulation and the render alike.
 - A conversão de malha entra em `render.upload_budget_mb` por quadro; o commit só troca malhas, em `render.commit_budget_ms`.
 - Poses por `PoseBuffer`. O save grava em thread própria.
 

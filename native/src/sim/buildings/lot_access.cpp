@@ -219,12 +219,11 @@ void street_gates(const RoadNetwork &net, const BuildingStore &lots, int sid, st
 	const TrafficParams &tp = net.cat->traffic;
 	const Profile &p = net.profile_of(sid);
 	const float reach = std::max(p.left, p.right) + tp.kerb_gate_reach_m;
-	Body body;
 	lots.query(g.minx - reach, g.minz - reach, g.maxx + reach, g.maxz + reach, [&](int id) {
 		const Building &rec = lots.items[size_t(id)];
-		record_mass(lots.designs, rec, body);
+		const std::shared_ptr<const Body> body = record_mass(lots.designs, rec);
 		const LotFrame f = lot_frame(rec);
-		for (const LotElement &e : body.elements) {
+		for (const LotElement &e : body->elements) {
 			if (e.kind != EL_CAR_GATE) continue;
 			const V2 w = f.at(e.x, e.y);
 			double t, dist, x, z, dx, dz;

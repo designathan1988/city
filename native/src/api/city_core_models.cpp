@@ -88,8 +88,7 @@ Dictionary CityBuilder::building_bytes(int id) const {
 	const CityState &s = *state_;
 	if (id < 0 || id >= int(s.buildings.items.size()) || !s.buildings.items[size_t(id)].alive) return d;
 	const Building &rec = s.buildings.items[size_t(id)];
-	b40::Body b;
-	b40::record_body(s.buildings.designs, rec, b);
+	b40::Body b = *b40::record_body(s.buildings.designs, rec); // a copy: fit_plan moves it onto its plan
 	fit_plan(b);
 	d["bytes"] = bytes_of(b);
 	d["function"] = rec.fn;

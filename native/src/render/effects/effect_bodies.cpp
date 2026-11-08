@@ -122,7 +122,7 @@ void EffectWorld::body(const DamageEvent &e, const CityState &s) {
 		b.charred = charred;
 		b.lost = parts_gone(lost | severed);
 		b.rises = kind == CAS_KNOCKED;
-		b.walls = walls_.near(s, e.x, e.z, WALLS_REACH_M);
+		b.walls = walls_near(s, e.x, e.z, WALLS_REACH_M);
 		b.variation = people_->variation_of(e.u, cas_age_of(e.v)); // the age the walker had (damage_event.h)
 		people_->bodies().add(b);
 		for (int k = 1; k < PART_KINDS; k++)

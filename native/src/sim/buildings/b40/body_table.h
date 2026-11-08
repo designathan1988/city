@@ -30,6 +30,7 @@ public:
 	bool operator!=(std::nullptr_t) const { return v_ != nullptr; }
 	const Body &operator*() const { return v_->body; }
 	const Body *operator->() const { return &v_->body; }
+	std::shared_ptr<const Body> shared() const { return std::shared_ptr<const Body>(v_, &v_->body); } // held as long as the version
 	uint64_t stamp() const { return v_ ? v_->stamp : 0; } // 0: none
 
 private:
@@ -53,12 +54,13 @@ private:
 };
 
 // What names a record's body exactly (record.h body_key): an edited one by its version's stamp, one made from the seed by all it
-// is made from (seed, zone, floors, frontage and depth to a decimetre). The function is in both: what is derived from a body with
-// it (its look, its rooms) differs by it. Two records with the same key have the same body, wherever they stand.
+// is made from (seed, zone, floors, frontage and depth, the last two to the bit, as the generator reads them). The function and
+// the seed are in both: what is derived from a body with them (its look, its rooms, its purpose) differs by them. Two records
+// with the same key have the same body and the same derived things, wherever they stand.
 struct BodyKey {
 	uint64_t stamp = 0; // the edited version (BodyRef::stamp), 0 for a body made from the seed
 	uint32_t seed = 0;
-	int32_t w = 0, d = 0; // decimetres
+	uint32_t w = 0, d = 0; // frontage and depth: the floats' bits
 	uint16_t floors = 0;
 	uint8_t zone = 0, fn = 0;
 	bool operator==(const BodyKey &o) const {

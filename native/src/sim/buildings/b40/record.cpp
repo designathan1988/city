@@ -6,12 +6,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 
 namespace city::b40 {
-
-namespace {
-constexpr float SIZE_Q = 10; // a key's sizes in decimetres
-} // namespace
 
 LotFrame lot_frame(const Building &rec) {
 	const float sn = std::sin(rec.rot), cs = std::cos(rec.rot);
@@ -19,16 +16,11 @@ LotFrame lot_frame(const Building &rec) {
 	return LotFrame{ V2(rec.x + rec.d / 2 * sn, rec.z + rec.d / 2 * cs), V2(cs, -sn), V2(-sn, -cs) };
 }
 
-void record_mass(const Data &data, const Building &rec, Body &b) {
-	record_body(data, rec, b);
-	resolve_blocks(b);
-}
+std::shared_ptr<const Body> record_body(const Data &data, const Building &rec) { return data.made->body(data, rec); }
 
-void record_body(const Data &data, const Building &rec, Body &b) {
-	if (rec.body) {
-		b = *rec.body;
-		return;
-	}
+std::shared_ptr<const Body> record_mass(const Data &data, const Building &rec) { return data.made->mass(data, rec); }
+
+void make_seed_body(const Data &data, const Building &rec, Body &b) {
 	if (is_open_lot(rec.fn)) open_lot_body(data, b, rec.fn, rec.w, rec.d);
 	else if (is_civic(rec.fn)) civic_body(data, b, rec.fn, rec.floors, rec.w, rec.d, rec.seed);
 	else make_body(data, b, rec.zone, rec.floors, rec.w, rec.d, rec.seed);
@@ -37,15 +29,15 @@ void record_body(const Data &data, const Building &rec, Body &b) {
 BodyKey body_key(const Building &r) {
 	BodyKey k;
 	k.fn = r.fn;
-	if (r.body) { // an edited body is its own, whatever its seed says
+	k.seed = r.seed; // an edited body's purpose reads it too (interior.h purpose_of)
+	if (r.body) { // an edited body is its own, whatever the rest of the record says
 		k.stamp = r.body.stamp();
 		return k;
 	}
-	k.seed = r.seed;
 	k.zone = r.zone;
 	k.floors = r.floors;
-	k.w = int32_t(std::lround(r.w * SIZE_Q));
-	k.d = int32_t(std::lround(r.d * SIZE_Q));
+	std::memcpy(&k.w, &r.w, sizeof k.w);
+	std::memcpy(&k.d, &r.d, sizeof k.d);
 	return k;
 }
 

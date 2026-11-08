@@ -79,7 +79,6 @@ private:
 	const StreetLook *look_ = nullptr;
 	TreeLook trees_;
 	TreeKit kit_;
-	mutable GardenBook gardens_; // the workers' build_near and build_far fill it
 	std::unordered_map<int64_t, Near> near_;
 	std::unordered_map<int64_t, FarDraw> far_;
 	Tier tier_[2]; // near, far

@@ -5,6 +5,7 @@
 #include "api/interiors_loader.h"
 #include "api/models_loader.h"
 #include "api/catalog_loader.h"
+#include "core/units.h"
 #include "sim/citygen/city_gen.h"
 #include "sim/traffic/traffic_system.h"
 
@@ -78,6 +79,7 @@ PackedStringArray CityCore::setup_render(const Dictionary &tables, const Diction
 	}
 	// The building generator's tables belong to the simulation (lots are world data): read before any body is made.
 	state_->buildings.designs = b40::Data{};
+	state_->buildings.designs.made->set_budget(size_t(state_->catalog.tune.sim_body_cache_mb * BYTES_PER_MIB));
 	if (!load_buildings(tables.get("buildings", Dictionary()), state_->buildings.designs, errors)) return errors;
 	if (!load_models(tables.get("models", Dictionary()), state_->buildings.designs, errors)) return errors;
 	if (!load_interiors(tables.get("interiors", Dictionary()), state_->buildings.designs.interior, errors)) return errors;

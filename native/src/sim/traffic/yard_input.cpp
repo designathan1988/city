@@ -104,8 +104,8 @@ bool yard_input(const CityState &s, int building, YardInput &out) {
 	const TrafficParams &p = s.catalog.traffic;
 	const Building &rec = s.buildings.items[size_t(building)];
 	if (!rec.alive) return false;
-	b40::Body body;
-	b40::record_body(s.buildings.designs, rec, body);
+	const std::shared_ptr<const b40::Body> body_held = b40::record_body(s.buildings.designs, rec);
+	const b40::Body &body = *body_held;
 	const b40::LotFrame f = b40::lot_frame(rec);
 	LotAccess acc;
 	lot_bays(body, f, acc);

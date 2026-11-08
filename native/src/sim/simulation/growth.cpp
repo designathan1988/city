@@ -43,8 +43,8 @@ MapCell map_cell_of(const CityState &s, double x, double z) {
 }
 
 int body_floors(const b40::Data &data, const Building &rec) {
-	b40::Body body;
-	b40::record_body(data, rec, body);
+	const std::shared_ptr<const b40::Body> body_held = b40::record_body(data, rec);
+	const b40::Body &body = *body_held;
 	int top = 0;
 	for (const b40::Volume &v : body.volumes) top = std::max(top, v.top());
 	return top;
@@ -94,8 +94,8 @@ BodyLook look_of(CityState &s, const Building &rec) {
 	const b40::BodyKey key = b40::body_key(rec);
 	auto it = s.buildings.looks.find(key);
 	if (it != s.buildings.looks.end()) return it->second;
-	b40::Body body;
-	b40::record_body(s.buildings.designs, rec, body);
+	const std::shared_ptr<const b40::Body> body_held = b40::record_body(s.buildings.designs, rec);
+	const b40::Body &body = *body_held;
 	return s.buildings.looks[key] = body_look(body, rec.fn);
 }
 
@@ -124,8 +124,8 @@ Candidate draw_candidate(const CityState &s, const Building &lot, uint32_t seed)
 	Building rec = lot;
 	rec.seed = seed;
 	rec.style = uint16_t(seed & BUILDING_AUTO_STYLE_MASK);
-	b40::Body body;
-	b40::record_body(s.buildings.designs, rec, body);
+	const std::shared_ptr<const b40::Body> body_held = b40::record_body(s.buildings.designs, rec);
+	const b40::Body &body = *body_held;
 	Candidate c;
 	c.seed = seed;
 	c.look = body_look(body, rec.fn);

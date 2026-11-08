@@ -118,8 +118,8 @@ BodyHit pick_body(const CityState &s, const Ray3 &ray, float reach) {
 		// A body the player edited may stand past its lot, by as much as a block may measure.
 		float radius = std::hypot(rec.w, rec.d) / 2 + (rec.body ? wide : 0);
 		if (!passes_near(ray, flat, rec.x, rec.z, radius)) return;
-		Body body;
-		record_body(s.buildings.designs, rec, body);
+		const std::shared_ptr<const Body> body_held = record_body(s.buildings.designs, rec);
+		const Body &body = *body_held;
 		LotFrame frame = lot_frame(rec);
 		float floor = lot_floor(body, rec, frame, [&](float x, float z) { return s.terrain.height_at(x, z); });
 		LocalRay r = in_lot(ray, frame, floor);

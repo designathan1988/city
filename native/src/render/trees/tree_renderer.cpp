@@ -73,7 +73,6 @@ void TreeRenderer::reset() {
 	near_.clear();
 	far_.clear();
 	pending_ = 0;
-	gardens_.clear();
 }
 
 int TreeRenderer::near_trees() const {
@@ -104,7 +103,7 @@ void TreeRenderer::mark_dirty(int64_t key) {
 std::shared_ptr<TreeRenderer::Built> TreeRenderer::build_near(const CityState &s, int64_t key) const {
 	auto out = std::make_shared<Built>();
 	std::vector<TreeInstance> trees;
-	place_trees(s, *look_, trees_, kit_, gardens_, key, trees);
+	place_trees(s, *look_, trees_, kit_, key, trees);
 	out->bufs.resize(size_t(kit_.count()));
 	for (const TreeInstance &t : trees) {
 		const float c = std::cos(t.yaw), sn = std::sin(t.yaw), deep = t.depth > 0 ? t.depth : t.width;
@@ -124,7 +123,7 @@ std::shared_ptr<TreeRenderer::Built> TreeRenderer::build_far(const CityState &s,
 	out->far = true;
 	for (int j = 0; j < CHUNKS_PER_SUPER; j++)
 		for (int i = 0; i < CHUNKS_PER_SUPER; i++)
-			place_far(s, *look_, trees_, kit_, gardens_, cell_key(key_x(key) * CHUNKS_PER_SUPER + i, key_y(key) * CHUNKS_PER_SUPER + j), out->cards);
+			place_far(s, *look_, trees_, kit_, cell_key(key_x(key) * CHUNKS_PER_SUPER + i, key_y(key) * CHUNKS_PER_SUPER + j), out->cards);
 	out->centre = FAR_CARD_CENTRE;
 	out->half_tall = kit_.pictures().frame_share() * HALF;
 	out->upload = far_cards_bytes(out->cards.size());

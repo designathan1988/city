@@ -2294,6 +2294,52 @@ commands and the mesh jobs, which hold it for their whole build; the frame's mai
 asking the core several times a frame and at every pointer move; the Street tab's settings stored in the state): a design of
 its own, with the measures that judge it (`sampler.py`), not an identity change.
 
+### 6.11 B2, C7 (R1, L6, A7): one owner of the buildings' derived bodies (2026-11-08)
+
+**Cause.** A building record holds only what its body is made from, and `record_body`/`record_mass` (`b40/record.h`) ran the
+generator into the caller's own `Body` each time. Every reader paid the whole generator per call: picking on every pointer move
+(`body_pick.cpp`), parking gates per segment layout (`lot_access.cpp street_gates`), growth's neighbours and candidates
+(`growth.cpp`), the interior view (`interior_commands.cpp`), doors, bays and the yard (`ped_doors.cpp`, `parking_*.cpp`,
+`yard_input.cpp`), every handle drag frame (`city_core_handles.cpp`) and the API's queries; and five readers kept a private copy to
+escape the cost: the render's `BuildingBodies` (emptied whole at 8,192 entries, every body made again in a storm), a second one
+per canyon job, `BodyWalls` (cleared on any revision), `GardenBook` (cleared whole at 65,536) and the inspector's
+`InspectCache.solids` (never evicted, and written under a shared lock).
+
+**Fix.** The bodies made from the generator's tables are kept by the tables themselves: `b40::BodyCache`
+(`sim/buildings/b40/body_cache.h`), held by `Data::made` like the edited bodies' `BodyTable`, so a new filling of the tables
+starts empty and a copy of them shares it. `record_body` and `record_mass` are its front and return a shared, never-changed body;
+an edited body is the record's own version (`BodyRef::shared`, no copy), its mass kept like a seed body's; an editor copies
+(`body_edit.cpp`, `land_commands.cpp`, the handle draft, `fit_plan`, `piece_at`). The bound is memory (`sim.body_cache_mb`,
+128), the least recently asked pushed out by `core/lru_cache.h`, which also keeps the render's rooms and cut bodies, the two
+derived things that are the render's alone (no more storms). The private caches are gone: `BuildingBodies` places and derives
+rooms and cuts only, the canyon job, the walls (`walls_near`), the gardens and the camera's solids read the shared bodies.
+
+**The key had to be exact first.** `body_key` named the frontage and depth to a decimetre while the generator reads them whole, so
+two records with one seed and widths 5 cm apart shared one body in the render's cache: the second was drawn with the first's
+walls. A shared cache read by the simulation would have handed that wrong body to picking and parking too. The key now holds
+the floats' bits, and the function and seed for an edited body as well (an edited body's purpose reads the seed:
+`interior.h purpose_of`), so two records with one key have one body and the same derived things; the render's rooms key needs no
+seed of its own.
+
+**Why the symptoms do not come back.** Nothing outside the cache makes a record's body: `record_body`/`record_mass` are the only
+callers of the generator for a record (`make_seed_body` is called by the cache alone), and a reader holds the shared body it was
+given, so no reader has a reason to keep its own. Derived from a body only by the render (rooms, cuts) stays in the render, keyed
+by the same exact key.
+
+**Verified** (`city-verify`, `quick --all`): both DLLs, 43 of 45, the digest equal (the city state is the same), `gates_changed`
+only the eleven violations the files already had. `photos_check`: `01-bairro`, `02-rua`, `03-rua_noite` equal; `00-cidade` 7 or 8
+single pixels of 1 level, in two states over four runs, one of them byte-equal to the state `27ba…` the C6 tree gave at 23:51
+(the task cache keeps each run's photos). Two pixels, (122,546) and (123,546), stood in every run of this DLL against the golden
+and the other saved state; the one candidate for a real change, the exact key, was tested by building this commit with the old
+decimetre key: the same two pixels stood, so they are not the key. They are part of the C6 tree's own state `27ba…`.
+
+**Found on the way, left for B3 (it changes the generated city).** Growth remembers a building's look as the look of the
+candidate it chose, made with the middling floors, under the key of the record with the storeys that candidate reached
+(`growth.cpp record_for`, `looks[body_key(b)] = kept.look`): when the cap shaped the body (`massing_tall.cpp:146,172,182`), the
+standing body is another, and after a load the look is worked out again from the standing body, so growth after a save and a
+load differs from growth without them. The fix (looks derived from the kept body, `BuildingStore::looks` deleted, `look_twins`
+under the shared lock: A7) moves the generated city where a cap shaped a candidate.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at
