@@ -51,11 +51,10 @@ void write_nature(ByteWriter &w, const CityState &s) {
 	w.put_vec(n.fog);
 	w.put<int32_t>(n.nature.region);
 	w.put<uint32_t>(n.nature.seed);
-	w.put<uint32_t>(uint32_t(n.ground.all().size()));
-	for (const auto &kv : n.ground.all()) {
+	w.put_by_key(n.ground.all(), [&](const auto &kv) {
 		w.put<int32_t>(kv.first);
 		w.put_bytes(kv.second->data(), sizeof(PaintTile));
-	}
+	});
 	put_slots(w, n.planted.trees);
 	put_slots(w, n.planted.clearings);
 	const Heightfield &t = s.terrain;
@@ -67,7 +66,7 @@ void write_nature(ByteWriter &w, const CityState &s) {
 	for (uint32_t i : index) level.push_back(t.water[i]);
 	w.put_vec(index);
 	w.put_vec(level);
-	w.put_vec(n.elements.all());
+	w.put_set(n.elements.all(), ElementItem::before);
 }
 
 bool read_nature(ByteReader &r, CityState &s) {

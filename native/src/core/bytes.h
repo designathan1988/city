@@ -39,6 +39,25 @@ struct ByteWriter {
 		put<uint32_t>(uint32_t(s.size()));
 		put_bytes(s.data(), s.size());
 	}
+	// The one owner of order for what the state keeps unordered: the save and the state hash are functions of the state, so
+	// equal contents give equal bytes whatever history built them. A hash map: its count, then `entry` for each (key, value)
+	// in key order.
+	template <typename Map, typename Entry>
+	void put_by_key(const Map &m, Entry entry) {
+		std::vector<const typename Map::value_type *> order;
+		order.reserve(m.size());
+		for (const auto &kv : m) order.push_back(&kv);
+		std::sort(order.begin(), order.end(), [](const auto *a, const auto *b) { return a->first < b->first; });
+		put<uint32_t>(uint32_t(order.size()));
+		for (const auto *kv : order) entry(*kv);
+	}
+	// A list whose order means nothing (a set kept in hash cells, or removed from by swap): as put_vec, in the order `less`
+	// gives its values.
+	template <typename T, typename Less>
+	void put_set(std::vector<T> items, Less less) {
+		std::sort(items.begin(), items.end(), less);
+		put_vec(items);
+	}
 };
 
 // The reader is the one owner of what a count may claim: every count is read with the least bytes each of its items takes, and

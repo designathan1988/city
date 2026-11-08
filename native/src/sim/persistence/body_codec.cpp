@@ -5,7 +5,6 @@
 #include "sim/buildings/b40/body_table.h"
 #include "sim/buildings/b40/data.h"
 
-#include <algorithm>
 #include <cstring>
 #include <utility>
 #include <vector>
@@ -83,16 +82,13 @@ FaceGeometry get_face(ByteReader &r) {
 	return f;
 }
 
-// A map by key order: the same entries give the same bytes, whatever the order they went in.
+// A map by key order (ByteWriter::put_by_key): the same entries give the same bytes, whatever the order they went in.
 template <typename V>
 void put_map(ByteWriter &w, const std::unordered_map<uint32_t, V> &m) {
-	std::vector<std::pair<uint32_t, V>> sorted(m.begin(), m.end());
-	std::sort(sorted.begin(), sorted.end(), [](const auto &a, const auto &b) { return a.first < b.first; });
-	w.put<uint32_t>(uint32_t(sorted.size()));
-	for (const auto &e : sorted) {
-		w.put<uint32_t>(e.first);
-		w.put<V>(e.second);
-	}
+	w.put_by_key(m, [&](const auto &kv) {
+		w.put<uint32_t>(kv.first);
+		w.put<V>(kv.second);
+	});
 }
 
 template <typename V>
