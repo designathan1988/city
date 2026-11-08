@@ -23,6 +23,8 @@ var flag_slot := 0
 ## The model in hand: {bytes, function, zone}, {} for none.
 var hand := {}
 var turn := 0.0
+## R turns the model in hand by this (data/game/tools.json building.turn_steps a turn).
+static var plain_turn: float = TAU / DataTables.game("tools").building.turn_steps
 
 var hands: BuildHands
 var handles: HandleDrag
@@ -85,7 +87,7 @@ func key(code: Key) -> void:
 	hands.key(code, picked, _report)
 	if hand.is_empty() or code != KEY_R:
 		return
-	turn += deg_to_rad(DataTables.tuning("build_gear_turn_deg")) if Input.is_key_pressed(KEY_SHIFT) else PI / 2.0
+	turn += deg_to_rad(DataTables.tuning("build_gear_turn_deg")) if Input.is_key_pressed(KEY_SHIFT) else plain_turn
 	if _last != Vector3.INF:
 		hover(_last)
 

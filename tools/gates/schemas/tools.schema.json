@@ -39,6 +39,30 @@
    ],
    "strict": true
   },
+  "building": {
+   "type": "object",
+   "properties": {
+    "turn_steps": {
+     "type": "integer"
+    }
+   },
+   "required": [
+    "turn_steps"
+   ],
+   "strict": true
+  },
+  "road": {
+   "type": "object",
+   "properties": {
+    "height_step_m": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "height_step_m"
+   ],
+   "strict": true
+  },
   "lots": {
    "type": "object",
    "properties": {
@@ -113,6 +137,8 @@
   "drawn_px",
   "brush",
   "handle",
+  "building",
+  "road",
   "lots",
   "roundabout",
   "terrain",

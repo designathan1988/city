@@ -1,5 +1,5 @@
 {
- "_doc": "How the player's tools step and reach (game/tools), interaction choices of this game with no norm behind them. drawn_px: the width of an outline a tool draws (a lot, a demolition), screen pixels. brush: between dabs along a stroke a share of the radius (step_share) and never closer than step_least_m; a pointer back from far away lays at most most_steps dabs at once. handle: a building handle turns in turn_steps steps a turn (Shift free). lots: what of a corner or a side the pointer takes (take_px, screen pixels); how far a lot's point reaches for a footway or a corner (catch_px at this zoom, never less than snap_least_m); the marks' size (mark_m). roundabout: [ and ] scale by scale_step. terrain: one dab per dab_s held, which keeps each step above the 1 cm height quantum. zone: a new dab once the brush moved dab_spacing of its radius; a fast drag paints the whole way, up to most_dabs at a report; the zone a stroke paints when none was chosen (default_zone, a zones.json id).",
+ "_doc": "How the player's tools step and reach (game/tools), interaction choices of this game with no norm behind them. drawn_px: the width of an outline a tool draws (a lot, a demolition), screen pixels. brush: between dabs along a stroke a share of the radius (step_share) and never closer than step_least_m; a pointer back from far away lays at most most_steps dabs at once. handle: a building handle turns in turn_steps steps a turn (Shift free). building: R turns the model in hand by a turn in turn_steps (Shift: tuning build_gear_turn_deg). lots: what of a corner or a side the pointer takes (take_px, screen pixels); how far a lot's point reaches for a footway or a corner (catch_px at this zoom, never less than snap_least_m); the marks' size (mark_m). road: the height keys and buttons step the road in hand by height_step_m, landing on whole steps. roundabout: [ and ] scale by scale_step. terrain: one dab per dab_s held, which keeps each step above the 1 cm height quantum. zone: a new dab once the brush moved dab_spacing of its radius; a fast drag paints the whole way, up to most_dabs at a report; the zone a stroke paints when none was chosen (default_zone, a zones.json id).",
  "drawn_px": 2.0,
  "brush": {
   "step_share": 0.2,
@@ -9,11 +9,17 @@
  "handle": {
   "turn_steps": 24
  },
+ "building": {
+  "turn_steps": 4
+ },
  "lots": {
   "take_px": 14.0,
   "catch_px": 16.0,
   "snap_least_m": 2.5,
   "mark_m": 0.9
+ },
+ "road": {
+  "height_step_m": 1
  },
  "roundabout": {
   "scale_step": 1.2

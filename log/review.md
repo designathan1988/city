@@ -3013,6 +3013,31 @@ section's and the swatch's pixel sizes, the shader look values and the other num
 `gates_changed` reports only lines the baseline holds; `photos_check` differs by 0.001 % on two photos whose bytes are states
 already captured before this batch, the capture's known variation).
 
+### 6.34 B2, C14 (second part): the road views' sizes, the turn and height steps, the texts' measures (2026-11-08)
+
+**Causes and fixes.**
+- **Pixel sizes in interface code** (CLAUDE.md: sizes only through `data/ui/tokens.json`): the profile editor's section kept its
+  label threshold (34 px), its way mark (7 px) and its divider (1 px) as constants, and the catalogue card drew its centre lines
+  and rails at offsets typed in the calls (-2, +1, -1; 1 and 2 px). They are tokens (`rp_label_least`, `rp_way_mark`,
+  `rp_divider`; `rc_line`, `rc_solid`, `rc_double_gap`), and the offsets follow from them: a double line is two lines
+  `rc_double_gap` apart around the edge, a solid one `rc_solid` thick across it.
+- **The plain quarter turn of a model in hand was `PI / 2` while the Shift turn was data**: `tools.json` `building.turn_steps`
+  (4), the turn `TAU / turn_steps`, as the handle's.
+- **The road's height step was the number 1 in the calls** (`road_tool.gd` `step_height(1)`, the option buttons and the keys),
+  and its texts typed "1 m": the step is `tools.json` `road.height_step_m`, `step_height` takes a direction and lands on whole
+  steps, and `roadKeys.height*` take `{step_m}` from it.
+- **Measures typed in texts whose owner is a table**: the footway's clear width (`roadFurniture.tip`, "1,20 m", from
+  `street_furniture.json` `sidewalk.free_width_m`, written with two decimals by the new `Formatters.format_hundredths`) and the
+  snap grid (`v2.snap.grid`, from tuning `road_grid_m`, filled by the road options' one table of fills).
+
+**Not here, and why.** `v2.snap.angles` lists "90°, 45°, 15°" where the rule is multiples of `road_snap_step_deg`: its text has to
+say the rule, a change the player reads (B3). `confirm.newWorld` and `confirm.newLargeWorld` give wrong sizes (B3, recorded).
+`inspector.impossibleBody`, `road.bend.sharp`, `road.sub.*`, `ui.catalog.tooMany`, `ui.problem.maxLanes`, `ui.problem.wide` and
+`ui.money.unlimited` hold numbers too, but no code reads them: they go with the unreached keys (C13), not filled.
+
+**What changes.** Nothing: the same pixels, turns, steps and texts (`quick`: 45 of 46 pass; `photos_check` differs by 0.001 % on
+one photo whose bytes are a state captured before this batch).
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

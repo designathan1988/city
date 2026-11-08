@@ -140,9 +140,9 @@ func _height_rows() -> void:
 		CityStore.dispatch(&"set_road_walls", [on]))
 
 
-func _height_step(row: Control, icon: String, metres: int) -> void:
+func _height_step(row: Control, icon: String, dir: int) -> void:
 	var b := HudWidgets.button(&"IconButton", icon, "", "palette.height", "icon_btn", "icon_btn")
-	b.pressed.connect(func() -> void: tools.step_road_height(metres))
+	b.pressed.connect(func() -> void: tools.step_road_height(dir))
 	row.add_child(b)
 
 
@@ -150,7 +150,8 @@ func _height_step(row: Control, icon: String, metres: int) -> void:
 ## parking, as the reference orders the rows.
 func _furniture_row(spec: Dictionary) -> void:
 	var row := _row(spec.label_key)
-	row.tooltip_text = tr(spec.tip_key)
+	var free_m: float = DataTables.catalog_table("street_furniture").sidewalk.free_width_m
+	row.tooltip_text = tr(spec.tip_key).format({"free_m": Formatters.format_hundredths(free_m)})
 	var items := []
 	for c: Dictionary in spec.choices:
 		items.push_back([c.level, tr(c.label_key)])
@@ -192,8 +193,15 @@ func _row(label_key: String) -> HBoxContainer:
 	return row
 
 
+## The values the option rows' texts take: {grid_m}, the snap grid (v2.snap.grid).
+func _fills() -> Dictionary:
+	return {"grid_m": Formatters.format_measure(DataTables.tuning("road_grid_m"))}
+
+
 func _toggle(row: Control, c: Dictionary, on: bool, enabled: bool, pick: Callable) -> void:
-	var b := HudWidgets.button(&"IconButton", c.icon, "", c.get("label_key", ""), "icon_btn", "icon_btn")
+	var b := HudWidgets.button(&"IconButton", c.icon, "", "", "icon_btn", "icon_btn")
+	if c.get("label_key", "") != "":
+		HudWidgets.tip_for(b, tr(c.label_key).format(_fills()))
 	b.toggle_mode = true
 	b.set_pressed_no_signal(on)
 	b.disabled = not enabled

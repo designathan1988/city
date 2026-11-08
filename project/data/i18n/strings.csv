@@ -884,10 +884,10 @@ roadFurniture.basic,Básico,Basic
 roadFurniture.complete,Completo,Complete
 roadFurniture.none,Nenhum,None
 roadFurniture.row,Mobiliário,Furniture
-roadFurniture.tip,"Com o que as vias novas são construídas: postes, lixeiras, hidrantes, bancos e árvores nas calçadas (faixa livre de 1,20 m mantida)","What new roads are built with: lamps, bins, hydrants, benches and trees on the footways (clear walk of 1.20 m kept)"
+roadFurniture.tip,"Com o que as vias novas são construídas: postes, lixeiras, hidrantes, bancos e árvores nas calçadas (faixa livre de {free_m} m mantida)","What new roads are built with: lamps, bins, hydrants, benches and trees on the footways (clear walk of {free_m} m kept)"
 roadKeys.alignment,Trocar o traçado,Change the plan
-roadKeys.heightDown,Descer a via 1 m,Lower the road 1 m
-roadKeys.heightUp,Subir a via 1 m,Raise the road 1 m
+roadKeys.heightDown,Descer a via {step_m} m,Lower the road {step_m} m
+roadKeys.heightUp,Subir a via {step_m} m,Raise the road {step_m} m
 roadKeys.press,Aperte uma tecla…,Press a key…
 roadKeys.reserved,{key} já é usada pelo jogo. Escolha outra.,{key} is already used by the game. Pick another.
 roadKeys.reset,Restaurar padrão,Restore defaults
@@ -1359,7 +1359,7 @@ v2.s.lightning,Raios,Lightning
 v2.s.thunder,Trovão,Thunder
 v2.s.variation,Variação,Variation
 v2.snap.angles,"Ângulos: 90°, 45°, 15°","Angles: 90°, 45°, 15°"
-v2.snap.grid,Pontos na grade de 1 m,Points on the 1 m grid
+v2.snap.grid,Pontos na grade de {grid_m} m,Points on the {grid_m} m grid
 v2.snap.on,Encaixe ligado,Snapping on
 v2.snap.title,Encaixe,Snapping
 v2.terrain.brush,Pincel de terreno,Terrain brush

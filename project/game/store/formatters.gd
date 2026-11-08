@@ -28,6 +28,11 @@ static func format_tenths(v: float) -> String:
 	return ("%.1f" % v).replace(".", TranslationServer.translate(&"economy.decimal"))
 
 
+## Two decimals, with the language's decimal mark (a norm's measure as it is written: "1,20 m").
+static func format_hundredths(v: float) -> String:
+	return ("%.2f" % v).replace(".", TranslationServer.translate(&"economy.decimal"))
+
+
 ## A measure as the catalogue writes it (Roadcraft crossSection.ts metresText): whole numbers bare, else one decimal.
 static func format_measure(v: float) -> String:
 	return str(int(round(v))) if absf(v - round(v)) < WHOLE_EPS else format_tenths(v)
