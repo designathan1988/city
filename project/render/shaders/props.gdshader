@@ -11,10 +11,10 @@ shader_type spatial;
 
 global uniform float night;
 uniform vec3 glow_color : source_color;
-uniform float glow_gain; // materials.json prop, as every uniform below with no value of its own
+global uniform float street_lamp_lens; // the street lamp's lens as a light (render/lamp_photometry.h)
+// materials.json prop: every uniform below with no value of its own
 uniform float roughness;
 uniform vec3 lit_radiance[LENS_COUNT]; // per lens
-uniform vec3 dark_radiance[LENS_COUNT]; // an unlit lens's faint glow (render/lamp_radiance.gd)
 uniform float lens_roughness = 0.0;
 uniform float lens_ior = 1.5;
 uniform float wire_min_px; // a wire never narrower than this on the screen
@@ -44,6 +44,7 @@ varying vec3 v_seen; // where it is in the world, and which way it faces
 varying vec3 v_faces;
 
 #include "res://render/shaders/color_space.gdshaderinc"
+#include "res://render/shaders/emission_light.gdshaderinc"
 #include "res://render/shaders/lattice_noise.gdshaderinc"
 
 // A span's phase and its poles' kinds share INSTANCE_CUSTOM.y (street_props.cpp push_span): phase + PROP_SPAN_KIND_STRIDE (kind_a +
@@ -132,7 +133,7 @@ void vertex() {
 		float lens = UV2.y;
 		v_lit = abs(lens - INSTANCE_CUSTOM.r) < 0.5 || abs(lens - INSTANCE_CUSTOM.g) < 0.5 ? 1.0 : 0.0;
 		int which = clamp(int(lens + 0.5), 0, LENS_COUNT - 1);
-		v_light = mix(dark_radiance[which], lit_radiance[which], v_lit);
+		v_light = lit_radiance[which] * v_lit;
 	}
 }
 
@@ -173,8 +174,8 @@ void fragment() {
 		// Godot's dielectric reflectance at normal incidence is 0.16 SPECULAR^2 (scene_forward_lights_inc.glsl F0);
 		// Fresnel's ((n - 1) / (n + 1))^2 for the lens's index of refraction. A lit lens reflects nothing.
 		SPECULAR = sqrt(pow((lens_ior - 1.0) / (lens_ior + 1.0), 2.0) / GODOT_F0_PER_SPECULAR2) * (1.0 - v_lit);
-		EMISSION = linear_out(v_light);
+		EMISSION = linear_out(emission_light(v_light));
 	} else if (abs(v_tag - 2.0) < 0.5) {
-		EMISSION = linear_out(source_linear(glow_color) * c * night * glow_gain);
+		EMISSION = linear_out(emission_light(source_linear(glow_color) * c * night * street_lamp_lens));
 	}
 }

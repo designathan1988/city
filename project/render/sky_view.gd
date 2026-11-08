@@ -48,7 +48,7 @@ func _ready() -> void:
 	_mat.render_priority = RenderingServer.MATERIAL_RENDER_PRIORITY_MAX
 	_mat.set_shader_parameter("noise_volume", _noise())
 	_mat.set_shader_parameter("start_noise", load(_d.start_noise))
-	_mat.set_shader_parameter("air_gain", DataTables.game("daylight").sky_gain)
+	_mat.set_shader_parameter("cloud_albedo", DataTables.game("daylight").sky_glow.cloud_reflect)
 	_mat.set_shader_parameter("fog_extinction", _d.fog_extinction_km / METRES_A_KM)
 	for key in ["mist_beta", "mist_reach", "shadow_strength"]:
 		_mat.set_shader_parameter(key, _d[key])
@@ -148,11 +148,7 @@ func _light(way: Vector2) -> void:
 	_mat.set_shader_parameter("wind_dir", way)
 	_mat.set_shader_parameter("sun_dir", _world.sun.global_basis.z.normalized())
 	var c := _world.sun.light_color
-	_mat.set_shader_parameter("sun_light", Vector3(c.r, c.g, c.b) * _world.sun.light_energy * _d.sun_gain)
-	# The air takes the sky's colour at the horizon, overcast with it; the pass works in linear light.
-	var horizon := _world.daylight.horizon_linear
-	_mat.set_shader_parameter("sky_light", Vector3(horizon.r, horizon.g, horizon.b))
-	_mat.set_shader_parameter("mist_color", Vector3(horizon.r, horizon.g, horizon.b))
+	_mat.set_shader_parameter("sun_light", Vector3(c.r, c.g, c.b) * _world.sun.light_energy) # the sun's (or the moon's) own light
 	_mat.set_shader_parameter("dark", _world.daylight.night)
 
 
@@ -166,7 +162,7 @@ func _lay() -> void:
 		var t := -cam.global_position.y / ahead.y if ahead.y < -LEVEL_VIEW else 0.0
 		about = Vector2(cam.global_position.x + ahead.x * t, cam.global_position.z + ahead.z * t)
 	var n := mini(clouds.size(), CloudPuffs.SLOTS) if clouds_drawn else 0
-	_quad.visible = n > 0 or _air > 0.0 or bool(_fog_field.get("any", false)) or bool(_canyon_field.get("any", false))
+	_quad.visible = n > 0 or _air > 0.0 or bool(_fog_field.get("any", false))
 	if about == _laid_about and drift == _laid_drift and n == _laid_count and _seen == _laid_revision:
 		return
 	_laid_about = about
@@ -187,13 +183,13 @@ func _lay() -> void:
 	_mat.set_shader_parameter("cloud_look", _clouds.looks)
 
 
-## The sky's share of the light is what the streets lose (render/shaders/canyon_light.gdshaderinc).
+## The sky the streets see past the buildings, for every surface's ambient occlusion (render/shaders/canyon_light.gdshaderinc).
 func _apply_canyon() -> void:
 	var on: bool = _canyon_field.get("any", false)
-	_mat.set_shader_parameter("canyon_sky", _d.canyon_sky_most - _d.canyon_sun_cut * _world.daylight.direct_share if on else 0.0)
+	RenderingServer.global_shader_parameter_set(&"canyon_on", 1.0 if on else 0.0)
 	if on:
-		_mat.set_shader_parameter("canyon_map", _canyon_field.texture)
-		_mat.set_shader_parameter("canyon_window", _canyon_field.window)
+		RenderingServer.global_shader_parameter_set(&"canyon_map", _canyon_field.texture)
+		RenderingServer.global_shader_parameter_set(&"canyon_window", _canyon_field.window)
 
 
 func _apply_fog() -> void:

@@ -15,7 +15,7 @@ namespace city {
 namespace traffic {
 
 namespace {
-constexpr float HALF = 0.5f, ASPHALT_STEP_M = 4.f;
+constexpr float HALF = 0.5f, YARD_ROAD_QUAD_M = 4.f;
 constexpr float UNBOUNDED = std::numeric_limits<float>::max();
 
 std::vector<V2> rect_ring(const b40::LotFrame &f, float x0, float y0, float x1, float y1) {
@@ -28,7 +28,7 @@ void asphalt_near(const CityState &s, double x0, double z0, double x1, double z1
 	s.roads.for_segments_near(x0, z0, x1, z1, [&](int seg) {
 		const RoadSegment &g = s.roads.segs[size_t(seg)];
 		const Profile &p = s.roads.profile_of(seg);
-		const int steps = std::max(1, int(std::ceil(g.len / ASPHALT_STEP_M)));
+		const int steps = std::max(1, int(std::ceil(g.len / YARD_ROAD_QUAD_M)));
 		const float over = s.catalog.traffic.lorry_kerb_over_m;
 		Pose l0, r0;
 		seg_point(s, seg, 0, p.asph_left + over, l0);
@@ -45,13 +45,13 @@ void asphalt_near(const CityState &s, double x0, double z0, double x1, double z1
 	});
 }
 
-// The lane each car gate opens onto, the stop before it and the join past it; its mouth across the footway.
+// The lane each car gate opens onto and the lane across from it (gate_lane_across), the stop before it and the join past it on
+// each; its mouth across the footway.
 void gates_of(const CityState &s, const LotAccess &acc, YardInput &out) {
 	const TrafficParams &p = s.catalog.traffic;
 	const LaneGraph &g = s.traffic.g;
-	for (const LotGate &gate : acc.gates) {
-		LaneSpot spot;
-		if (!gate.car || !gate_lane(s, gate.at, spot, &out.reads)) continue;
+	// One way to the gate by a lane: the stop before it and the join past it, on that lane.
+	const auto by_lane = [&](const LotGate &gate, const LaneSpot &spot) {
 		const DirSeg &d = g.ds[size_t(spot.ds)];
 		const float foot = (spot.at - p.gate_join_past_m + spot.entry + p.gate_stop_before_m) * HALF;
 		YardGate yg;
@@ -68,8 +68,20 @@ void gates_of(const CityState &s, const LotAccess &acc, YardInput &out) {
 		yg.inner = gate.at + gate.in * p.lorry_gate_in_m;
 		yg.outer = spot.p;
 		out.gates.push_back(yg);
+	};
+	for (const LotGate &gate : acc.gates) {
+		LaneSpot spot;
+		if (!gate.car || !gate_lane(s, gate.at, spot, &out.reads)) continue;
+		by_lane(gate, spot); // its own lane first: the planner tries a dock's gates nearest first, and these two in this order
+		LaneSpot across_spot;
+		if (gate_lane_across(s, gate.at, spot, across_spot)) {
+			by_lane(gate, across_spot);
+			const int own = int(out.gates.size()) - 2;
+			out.gates[size_t(own)].twin = own + 1;
+			out.gates[size_t(own) + 1].twin = own;
+		}
 		// the paved mouth in front of the gate a lorry may cross the footway by: the gate and a flare either side
-		const V2 across(-gate.in.y, gate.in.x), a = yg.inner, b = yg.outer;
+		const V2 across(-gate.in.y, gate.in.x), a = gate.at + gate.in * p.lorry_gate_in_m, b = spot.p;
 		const float half = gate.w * HALF + p.lorry_mouth_flare_m;
 		out.open.push_back({ a - across * half, a + across * half, b + across * half, b - across * half });
 	}

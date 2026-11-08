@@ -344,6 +344,18 @@
      "timeout_s": 600
     },
     {
+     "name": "sky_exposure_test",
+     "scene": "tests/core/sky_exposure_test",
+     "renderer": "gl_compatibility",
+     "timeout_s": 600
+    },
+    {
+     "name": "sky_exposure_test@forward_plus",
+     "scene": "tests/core/sky_exposure_test",
+     "renderer": "forward_plus",
+     "timeout_s": 600
+    },
+    {
      "name": "building_light_test",
      "scene": "tests/core/building_light_test",
      "renderer": "gl_compatibility",

@@ -76,7 +76,8 @@ enum LorryCall { CALL_NO_DOCK, CALL_PLANNING, CALL_NO_WAY, CALL_NO_TRUCK, CALL_N
 struct Lorry {
 	int id = -1, building = -1, bay = -1;
 	LorryPhase phase = LorryPhase::COMING;
-	traffic::YardGate gate;
+	traffic::YardGate gate; // the gate it comes in by: its lane and the stop before it
+	traffic::YardGate out_gate; // the gate whose lane it joins on the way out: the same, or the same gate by the other way's lane
 	std::vector<traffic::AxlePose> into, away;
 	int into_street = 0, away_street = 0;
 	float street_at = 0; // along `path`, where the part on the street ends (arriving) or begins (leaving)

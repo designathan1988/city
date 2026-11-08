@@ -3,6 +3,7 @@
 #include "sim/buildings/b40/record.h"
 
 #include "sim/buildings/b40/civic.h"
+#include "sim/buildings/b40/era.h"
 
 #include <algorithm>
 #include <cmath>
@@ -23,10 +24,10 @@ std::shared_ptr<const Body> record_mass(const Data &data, const Building &rec) {
 void make_seed_body(const Data &data, const Building &rec, Body &b) {
 	if (is_open_lot(rec.fn)) open_lot_body(data, b, rec.fn, rec.w, rec.d);
 	else if (is_civic(rec.fn)) civic_body(data, b, rec.fn, rec.floors, rec.w, rec.d, rec.seed);
-	else make_body(data, b, rec.zone, rec.floors, rec.w, rec.d, rec.seed);
+	else make_body(data, b, rec.zone, rec.floors, rec.w, rec.d, rec.seed, era_at(data, rec.x, rec.z, rec.seed));
 }
 
-BodyKey body_key(const Building &r) {
+BodyKey body_key(const Data &data, const Building &r) {
 	BodyKey k;
 	k.fn = r.fn;
 	k.seed = r.seed; // an edited body's purpose reads it too (interior.h purpose_of)
@@ -36,6 +37,7 @@ BodyKey body_key(const Building &r) {
 	}
 	k.zone = r.zone;
 	k.floors = r.floors;
+	k.era = uint8_t(era_at(data, r.x, r.z, r.seed));
 	std::memcpy(&k.w, &r.w, sizeof k.w);
 	std::memcpy(&k.d, &r.d, sizeof k.d);
 	return k;

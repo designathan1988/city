@@ -12,7 +12,6 @@ render_mode cull_back;
 global uniform float night;
 global uniform float building_recess; // 0 turns the worked-out recess off: an A/B of what it costs
 global uniform vec3 sun_direction; // towards the sun, world space (daylight.gd)
-global uniform float room_daylight; // how bright a room seen through its glass is by day, as light it sends out
 global uniform float outside_on; // the share of outside lights lit at this hour
 uniform sampler2DArray finish_map : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2DArray finish_normal : filter_linear_mipmap, repeat_enable;
@@ -21,11 +20,10 @@ uniform float finish_m[FIN_COUNT];
 uniform float finish_normal_k[FIN_COUNT];
 uniform float finish_metal[FIN_COUNT];
 uniform float wall_gain = 1.0;
-uniform float lamp_glow;
+uniform float lamp_cd_m2; // materials.json lantern: an outside lamp's glass's luminance
 uniform vec3 lamp_light : source_color; // what a lit lamp gives, whatever its body is by day
 uniform vec4 lawn_tone; // a lawn's tone: its floor, its wide noise's share, its fine noise's share; its roughness
 uniform vec2 lawn_noise; // the wide and the fine noise a metre
-uniform float far_glass_rough; // the far wall's painted glass, its roughness
 const float FINISH_ROUND = 0.001; // a finish's layer + 1, carried in a float, read up past its rounding
 #include "res://render/shaders/building_glass_set.gdshaderinc"
 
@@ -83,7 +81,9 @@ void vertex() {
 #include "res://render/shaders/building_common.gdshaderinc"
 #include "res://render/shaders/building_lamps.gdshaderinc"
 #include "res://render/shaders/building_room_tone.gdshaderinc"
-#include "res://render/shaders/building_sky_glass.gdshaderinc"
+#include "res://render/shaders/sky_level_map.gdshaderinc"
+#include "res://render/shaders/emission_light.gdshaderinc"
+#include "res://render/shaders/canyon_light.gdshaderinc"
 #include "res://render/shaders/building_far_window.gdshaderinc"
 
 void fragment() {
@@ -96,7 +96,7 @@ void fragment() {
 	vec3 albedo = srgb_to_linear(COLOR.rgb), emit = vec3(0.0), nn = n;
 	float rough = BUILDING_WALL_ROUGHNESS, metal = 0.0;
 	if (kind == SK_LAMP) {
-		emit = uniform_linear(lamp_light) * night * lamp_glow * outside_lamp(v_world.xz, outside_on);
+		emit = lantern_light(uniform_linear(lamp_light), lamp_cd_m2) * night * outside_lamp(v_world.xz, outside_on);
 	} else if (kind == SK_LAWN) {
 		albedo *= lawn_tone.x + lawn_tone.y * vnoise(v_world.xz * lawn_noise.x) + lawn_tone.z * vnoise(v_world.xz * lawn_noise.y);
 		rough = lawn_tone.w;
@@ -106,12 +106,14 @@ void fragment() {
 		if (kind == SK_FAR_WALL) {
 			float glass;
 			far_window(UV, v_room0, uint(fract(UV2.x) * BYTE_STEPS + 0.5), n, V, v_recess, albedo, emit, glass);
-			rough = mix(rough, far_glass_rough, glass);
+			rough = mix(rough, GLASS_ROUGHNESS, glass);
+			metal = mix(metal, 1.0, glass); // the glass a mirror (building_lamps.gdshaderinc glazing_f0)
 			nn = normalize(mix(nn, n, glass));
 		}
 	}
 	ALBEDO = surface_out(albedo);
-	EMISSION = surface_out(emit);
+	EMISSION = surface_out(emission_light(emit));
+	AO = canyon_sky_seen(v_world, n); // the sky the street round it leaves this face
 	ROUGHNESS = rough;
 	METALLIC = metal;
 #ifdef RUIN

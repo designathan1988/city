@@ -76,8 +76,8 @@ void forget(CityState &s, int index) {
 void join(CityState &s, int index) {
 	TrafficState &t = s.traffic;
 	Lorry &l = t.park.lorries[size_t(index)];
-	const int id = l.id, ds = l.gate.ds, lane = l.gate.lane;
-	const float at = l.gate.join_at + s.catalog.traffic.classes[int(VehicleType::TRUCK)].length * 0.5f;
+	const int id = l.id, ds = l.out_gate.ds, lane = l.out_gate.lane;
+	const float at = l.out_gate.join_at + s.catalog.traffic.classes[int(VehicleType::TRUCK)].length * 0.5f;
 	t.park.lorries_left++;
 	forget(s, index);
 	Vehicle &v = t.vehicles[size_t(id)];
@@ -277,6 +277,7 @@ void call(CityState &s) {
 	l.building = bay.source;
 	l.bay = b;
 	l.gate = gate;
+	l.out_gate = plan->gates[size_t(ways->gate_out >= 0 ? ways->gate_out : ways->gate)];
 	l.into = ways->into;
 	l.away = ways->away;
 	l.into_street = ways->into_street;

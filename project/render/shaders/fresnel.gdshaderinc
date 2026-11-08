@@ -6,7 +6,10 @@
 const float DIELECTRIC_F0 = 0.04; // the reflectance head-on of index 1.5: ((1.5 - 1) / (1.5 + 1))^2
 const float SCHLICK_POWER = 5.0; // Schlick 1994
 
-// The share reflected, `cosv` the cosine between the view and the normal.
-float schlick(float cosv) { return DIELECTRIC_F0 + (1.0 - DIELECTRIC_F0) * pow(1.0 - cosv, SCHLICK_POWER); }
+// The share reflected by a surface of head-on reflectance `f0`, `cosv` the cosine between the view and the normal.
+float schlick_f0(float f0, float cosv) { return f0 + (1.0 - f0) * pow(1.0 - cosv, SCHLICK_POWER); }
+
+// The share an uncoated dielectric reflects.
+float schlick(float cosv) { return schlick_f0(DIELECTRIC_F0, cosv); }
 
 #endif

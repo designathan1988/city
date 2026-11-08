@@ -1,5 +1,5 @@
 ## The materials the C++ renderers draw with (data/render/materials.json), made once: each row's shared sets under its own
-## params, the road's surface means, the verge's grass, the lenses' and the vehicles' radiance, and the copies a level asks for
+## params, the road's surface means, the verge's grass, the lenses' radiance, and the copies a level asks for
 ## (fade, ruin, body, layers). CityWorld keeps them alive: the core draws with their RIDs.
 class_name WorldMaterials
 extends RefCounted
@@ -69,9 +69,7 @@ static func make_all(environment: Environment, ground: Callable) -> Dictionary:
 		elif key == "verge":
 			ground.call(m)
 		elif key == "prop":
-			LampRadiance.lenses(m, environment)
-		elif key == "agent":
-			LampRadiance.vehicles(m, environment)
+			LampRadiance.lenses(m)
 		out[key] = m
 		if table[key].has("fade_shader"): # the same material for what is handing over to another level (building_level.gdshaderinc)
 			var fade: ShaderMaterial = m.duplicate()

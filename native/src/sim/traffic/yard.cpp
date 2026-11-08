@@ -187,7 +187,8 @@ void YardPlanner::next_dock(int &work) {
 	docked_ = { d.door.x + d.out.x * centre, d.door.y + d.out.y * centre, std::atan2(double(d.out.y), double(d.out.x)), true };
 	order_.clear();
 	for (int g = 0; g < int(in_.gates.size()); g++) order_.push_back(g);
-	std::sort(order_.begin(), order_.end(), [&](int a, int b) { return (in_.gates[size_t(a)].inner - d.door).len() < (in_.gates[size_t(b)].inner - d.door).len(); });
+	// nearest first; a gate's two lanes stand at one distance and keep their order, its own lane before the one across
+	std::stable_sort(order_.begin(), order_.end(), [&](int a, int b) { return (in_.gates[size_t(a)].inner - d.door).len() < (in_.gates[size_t(b)].inner - d.door).len(); });
 	gate_ = 0;
 	work -= DOCK_WORK;
 	if (pre_dock(in_, field_, docked_, d.out, pre_)) stage_ = Stage::GATE;
@@ -232,12 +233,20 @@ void YardPlanner::search_step(int &work) {
 	const YardGate &g = in_.gates[size_t(order_[gate_])];
 	const bool found = search_->found();
 	work -= SETTLE_WORK; // the way found brought onto its goal, below
-	const int kind = stage_ == Stage::WAY_IN ? YARD_SEARCH_IN : stage_ == Stage::WAY_OUT ? YARD_SEARCH_OUT : stage_ == Stage::WAY_GRADUATED ? YARD_SEARCH_GRADUATED : YARD_SEARCH_FINE;
+	const int kind = stage_ == Stage::WAY_IN ? YARD_SEARCH_IN : stage_ == Stage::WAY_OUT || stage_ == Stage::WAY_OUT_TWIN ? YARD_SEARCH_OUT
+			: stage_ == Stage::WAY_GRADUATED ? YARD_SEARCH_GRADUATED : YARD_SEARCH_FINE;
 	plan.cost.searches[kind]++;
 	plan.cost.found[kind] += found ? 1 : 0;
 	plan.cost.search[kind].add(search_->cost());
-	if (stage_ == Stage::WAY_OUT) {
-		found_out_ = found && settled(in_, field_, search_->way(), g.join, false, away_);
+	if (stage_ == Stage::WAY_OUT || stage_ == Stage::WAY_OUT_TWIN) {
+		const int target = stage_ == Stage::WAY_OUT ? order_[gate_] : g.twin;
+		found_out_ = found && settled(in_, field_, search_->way(), in_.gates[size_t(target)].join, false, away_);
+		out_ = found_out_ ? target : -1;
+		// in by this lane and no room past the gate on it (the street ends there): out by the other way's lane, as at a dead end
+		if (stage_ == Stage::WAY_OUT && found_in_ && !found_out_ && g.twin >= 0) {
+			search_for(pre_, in_.gates[size_t(g.twin)].join, false, WayGrain::COARSE, Stage::WAY_OUT_TWIN);
+			return;
+		}
 		if (!found_in_ && !found_out_) {
 			search_for(g.stop, pre_, true, WayGrain::GRADUATED, Stage::WAY_GRADUATED);
 			return;
@@ -257,6 +266,7 @@ void YardPlanner::search_step(int &work) {
 	work -= JOIN_WORK;
 	if (join_ways(g)) {
 		ways_.gate = order_[gate_];
+		ways_.gate_out = out_ >= 0 ? out_ : order_[gate_];
 		close_dock();
 	} else {
 		gate_++;
@@ -264,18 +274,19 @@ void YardPlanner::search_step(int &work) {
 	}
 }
 
-// Both ways of a dock through one gate. The lorry backs in from past the gate, or backs out to the stop, when only the other way was
-// found: the street is closed for it all the same (sweep_lanes).
+// Both ways of a dock through one gate, the way out joining its own lane or its twin's (out_). The lorry backs in from past the gate,
+// or backs out to the stop, when only the other way was found on its own lane: the street is closed for it all the same (sweep_lanes).
 bool YardPlanner::join_ways(const YardGate &g) {
 	if (!found_in_ && !found_out_) return false;
-	if (!found_in_ || !found_out_) {
+	if (found_in_ && found_out_) ways_.reached = std::max(ways_.reached, int(YARD_BOTH_WAYS)); // through one lane or in by one and out by the other
+	else {
 		ways_.reached = std::max(ways_.reached, int(YARD_NO_LANE));
 		const std::vector<AxlePose> lane = settle(g.stop, g.join, false, in_.settle_step);
 		if (!all_fit(field_, in_.body, lane, in_.fit_margin)) return false;
 		ways_.reached = std::max(ways_.reached, int(YARD_ONE_WAY));
 		if (found_in_) joined(driven_back(onto_), lane, away_);
 		else joined(lane, driven_back(away_), onto_);
-	} else ways_.reached = std::max(ways_.reached, int(YARD_BOTH_WAYS));
+	}
 	ways_.into = onto_;
 	const std::vector<AxlePose> to_dock = straight(pre_, docked_, true, in_.settle_step);
 	ways_.into.insert(ways_.into.end(), to_dock.begin() + 1, to_dock.end());

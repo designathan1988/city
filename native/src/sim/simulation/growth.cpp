@@ -89,7 +89,7 @@ bool lot_occupied(const CityState &s, const Lot &l) {
 }
 
 BodyLook look_of(CityState &s, const Building &rec) {
-	const b40::BodyKey key = b40::body_key(rec);
+	const b40::BodyKey key = b40::body_key(s.buildings.designs, rec);
 	auto it = s.buildings.looks.find(key);
 	if (it != s.buildings.looks.end()) return it->second;
 	const std::shared_ptr<const b40::Body> body_held = b40::record_body(s.buildings.designs, rec);
@@ -175,7 +175,7 @@ Building record_for(CityState &s, const std::vector<Lot> &cell_lots, int i) {
 	b.seed = kept.seed;
 	b.style = uint16_t(kept.seed & BUILDING_AUTO_STYLE_MASK);
 	b.floors = uint16_t(kept.storeys); // the body is the height: a record never says another
-	s.buildings.looks[b40::body_key(b)] = kept.look;
+	s.buildings.looks[b40::body_key(s.buildings.designs, b)] = kept.look;
 	return b;
 }
 

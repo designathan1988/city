@@ -10,15 +10,11 @@ render_mode cull_back;
 #include "res://render/shaders/fresnel.gdshaderinc"
 
 global uniform float night;
-global uniform float room_daylight;
 
-uniform vec3 glass_sky : source_color; // materials.json sky_in_glass
-uniform float glass_floor; // materials.json building_far, as the next
-uniform vec3 far_glass_dark; // the painted glass's own tone, under the sky it shows by its floor
-uniform float far_glass_night; // what night takes of the glass
-uniform vec2 far_rough; // the far mass's roughness: its walls, its glass
 uniform float wall_gain = 1.0;
-uniform float window_glow = 1.5;
+uniform float paint_chroma; // the near level's dust on the paint (building_common.gdshaderinc dusty), so a hand-over keeps the colour
+uniform vec3 lamp_light : source_color; // materials.json lantern: an outside lamp's glass lit
+uniform float lamp_cd_m2; // and its luminance
 
 // The superchunk's chunks drawn in their own detail (building_renderer.h): their buildings fold away here, so the far
 // masses never draw over them. COLOR.a carries the surface kind (low 3 bits) and the building's chunk in the
@@ -30,15 +26,14 @@ varying vec3 v_world;
 varying vec3 v_wn;
 varying flat vec4 v_opening; // width, sill and head as shares of the bay and the storey; flags
 
-const float FOOT_SHADE = 0.62; // the foot of a wall in the street's shade
-const float FOOT_STOREYS = 0.47; // its height, storeys (1.4 m of a 3 m storey)
 #include "res://render/shaders/building_room_tone.gdshaderinc"
 
 #include "res://render/shaders/building_colour.gdshaderinc"
 #include "res://render/shaders/hash.gdshaderinc"
 #include "res://render/shaders/building_lamps.gdshaderinc"
-#define glass_sky_floor 0.0
-#include "res://render/shaders/building_sky_glass.gdshaderinc"
+#include "res://render/shaders/emission_light.gdshaderinc"
+#include "res://render/shaders/sky_level_map.gdshaderinc"
+#include "res://render/shaders/canyon_light.gdshaderinc"
 
 void vertex() {
 	int chunk = (int(COLOR.a * BYTE_TOP + 0.5) & ~FAR_OFFICE_BIT) >> SURFACE_KIND_BITS;
@@ -54,12 +49,14 @@ void fragment() {
 	int kind = int(COLOR.a * BYTE_TOP + 0.5) & KIND_MASK;
 	vec3 n = normalize(v_wn);
 	vec3 albedo = srgb_to_linear(COLOR.rgb);
-	vec3 glass = mix(far_glass_dark, uniform_linear(glass_sky), glass_floor) * (1.0 - far_glass_night * night);
+	albedo = keep_chroma(albedo, paint_chroma) * wall_gain; // the near level's dust
 	vec3 emit = vec3(0.0);
 	float rough = BUILDING_FAR_ROUGHNESS, metal = 0.0;
-	if (kind == SK_PANE || kind == SK_PANE_DARK) {
-		albedo = glass;
-		rough = far_rough.x;
+	float office = (int(COLOR.a * BYTE_TOP + 0.5) & FAR_OFFICE_BIT) != 0 ? 1.0 : 0.0;
+	if (kind == SK_PANE || kind == SK_PANE_DARK) { // the glazing a mirror (building_lamps.gdshaderinc glazing_f0)
+		albedo = vec3(glazing_f0(office));
+		rough = GLASS_ROUGHNESS;
+		metal = 1.0;
 	}
 	if (kind == SK_FAR_WALL) {
 		vec2 foot = grid_footprint(UV);
@@ -68,21 +65,22 @@ void fragment() {
 		vec2 room = floor(UV);
 		float lot = h01(room_cell(room));
 		float sub = smoothstep(0.5, 1.5, max(foot.x, foot.y));
-		float office = (int(COLOR.a * BYTE_TOP + 0.5) & FAR_OFFICE_BIT) != 0 ? 1.0 : 0.0;
 		vec3 lamp = far_room_lamp(lot, office, sub);
-		float lit = far_room_lit(lot, sub);
-		// the glass of the levels before it (building_far_window.gdshaderinc): next to nothing scattered, the room through it and the sky on it
+		float lit = far_room_lit(lot, sub, office);
+		// the glazing of the levels before it (building_far_window.gdshaderinc): a mirror of the sky, the room through it
 		vec3 V = normalize(v_world - CAMERA_POSITION_WORLD);
 		float cosv = clamp(dot(-V, n), 0.0, 1.0);
-		float fresnel = schlick(cosv);
-		albedo = mix(albedo, PANE_ALBEDO, m) * mix(FOOT_SHADE, 1.0, smoothstep(0.0, FOOT_STOREYS, UV.y));
-		rough = mix(rough, far_rough.y, m);
-		emit = ((lamp * lit * night * window_glow + pane_mean(room_tone(V, n, FLOOR_HOME)) * room_daylight) * (1.0 - fresnel) + glass_reflection(V, n, fresnel, GLASS_ENV)) * m;
+		float f0 = glazing_f0(office);
+		albedo = mix(albedo, vec3(f0), m);
+		rough = mix(rough, GLASS_ROUGHNESS, m);
+		metal = m;
+		vec3 seen = pane_mean(room_tone(V, n, office > 0.5 ? FLOOR_STONE : FLOOR_HOME));
+		emit = seen * (lamp * lit * night * room_light_level(office) + room_daylight()) * glazing_through(f0, cosv) * m;
 	}
-	albedo *= wall_gain;
-	if (kind == SK_LAMP) emit += albedo * night;
+	if (kind == SK_LAMP) emit += lantern_light(uniform_linear(lamp_light), lamp_cd_m2) * night;
 	ALBEDO = surface_out(albedo);
-	EMISSION = surface_out(emit);
+	EMISSION = surface_out(emission_light(emit));
+	AO = canyon_sky_seen(v_world, n); // the sky the street round it leaves this face
 	ROUGHNESS = rough;
 	METALLIC = metal;
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);

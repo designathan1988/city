@@ -15,6 +15,9 @@ var daylight: Daylight
 var sky: SkyView
 var occlusion: MeshInstance3D = preload("res://render/occlusion_pass.gd").new() # the corners of the town: the one owner of the screen-space occlusion
 var contact: MeshInstance3D = preload("res://render/contact_pass.gd").new() # the sun's shade where things touch
+var sky_probe := SkyLightProbe.new() # the sky's light on level ground, one texel: the rooms' daylight and the contact shade read it
+var sky_table := SkyLevelTable.new() # the sky's level light over the sun's heights, read back once: the eye's meter (render/daylight.gd)
+var eye_attributes := CameraAttributesPractical.new() # the eye's adaptation as the picture's pre-exposure (render/eye.gd)
 var _materials := {} # kept alive here: the core draws with their RIDs
 var _dither := 0.0
 var _terrain_material: Resource
@@ -112,12 +115,6 @@ func _build_environment(_palette: Dictionary) -> void:
 	var day: Dictionary = DataTables.game("daylight")
 	sun = DaylightRig.sun(day)
 	add_child(sun)
-	var fill := DaylightRig.plain()
-	add_child(fill)
-	var sky_top := DaylightRig.top()
-	add_child(sky_top)
-	var under := DaylightRig.under()
-	add_child(under)
 	var sky_mat := ShaderMaterial.new()
 	sky_mat.shader = load(SKY_SHADER)
 	var sky := Sky.new()
@@ -126,18 +123,18 @@ func _build_environment(_palette: Dictionary) -> void:
 	environment = Environment.new()
 	environment.background_mode = Environment.BG_SKY
 	environment.sky = sky
-	# The same shade on every renderer: a flat ambient colour and the sky's top light (daylight.gd), no sky share;
-	# only the specular reflections come from the sky. Forward+ renders in RGBA16F and Compatibility in RGBA8 with the
-	# tonemap in the material pass; both support these modes (docs: Environment and post-processing).
-	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.ambient_light_sky_contribution = 0.0
+	# The sky is the light of everything the sun does not reach: the ambient and the reflections both read its radiance map, in the
+	# lights' own unit (render/shaders/sky_model.gdshaderinc), so a shaded wall takes the sky in front of it and the ground under it.
+	environment.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 	environment.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
-	environment.tonemap_mode = Environment.TONE_MAPPER_ACES
+	environment.tonemap_mode = Environment.TONE_MAPPER_AGX
 	environment.tonemap_exposure = day.exposure
-	environment.tonemap_white = day.tonemap_white
+	environment.tonemap_agx_white = day.agx_white
+	environment.tonemap_agx_contrast = day.agx_contrast
+	# The haze takes its colour from the sky along the view: aerial perspective (render/daylight.gd follow_view sets its density).
 	environment.fog_enabled = true
+	environment.fog_aerial_perspective = 1.0
 	environment.fog_sky_affect = 0.0
-	environment.fog_light_energy = day.sky_gain
 	environment.glow_hdr_threshold = day.glow_threshold
 	environment.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
 	environment.ssil_radius = day.ssil.radius_m
@@ -145,13 +142,16 @@ func _build_environment(_palette: Dictionary) -> void:
 	FilmLook.grade(environment, day.grade)
 	var we := WorldEnvironment.new()
 	we.environment = environment
+	we.camera_attributes = eye_attributes
 	add_child(we)
 	occlusion.setup(day.occlusion)
 	add_child(occlusion)
 	contact.setup()
 	add_child(contact)
 	FilmLook.vignette(self, day.vignette)
-	daylight = Daylight.new(day, sun, fill, sky_top, under, environment, sky_mat)
+	add_child(sky_probe)
+	add_child(sky_table)
+	daylight = Daylight.new(day, sun, environment, sky_mat, sky_probe, sky_table, eye_attributes)
 	add_child(ElementEffects.new())
 	add_child(ShoreView.new(self))
 	daylight.set_hour(day.day_hour)
@@ -188,7 +188,8 @@ func _process(_delta: float) -> void:
 	_follow_view(cam)
 	if sky.step(_delta):
 		var toward: Vector3 = sun.global_basis.z
-		contact.follow(toward, _sky_table.contact_most * daylight.direct_share * clampf(toward.y * _sky_table.contact_sun_gain, 0.0, 1.0))
+		var light := sun.light_energy * maxf(toward.y, 0.0) # the sun's light on level ground; the pass weighs it against the sky's
+		contact.follow(toward, _sky_table.contact_most * clampf(toward.y * _sky_table.contact_sun_gain, 0.0, 1.0), light)
 
 
 ## The terrain's clipmap and LODs centre on the camera that draws the city, or on the world's origin while none does (a test of the

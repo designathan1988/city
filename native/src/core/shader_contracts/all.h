@@ -8,6 +8,7 @@
 #include "core/shader_contracts/trees.h"
 #include "core/shader_contracts/streets.h"
 #include "core/shader_contracts/land.h"
+#include "core/shader_contracts/sky.h"
 #include "core/shader_contracts/tone.h"
 
 #include <iterator>
@@ -22,6 +23,7 @@ constexpr ShaderContractGroup SHADER_CONTRACT_GROUPS[] = {
 	{ SHADER_CONTRACTS_TREES, std::size(SHADER_CONTRACTS_TREES) },
 	{ SHADER_CONTRACTS_STREETS, std::size(SHADER_CONTRACTS_STREETS) },
 	{ SHADER_CONTRACTS_LAND, std::size(SHADER_CONTRACTS_LAND) },
+	{ SHADER_CONTRACTS_SKY, std::size(SHADER_CONTRACTS_SKY) },
 	{ SHADER_CONTRACTS_TONE, std::size(SHADER_CONTRACTS_TONE) },
 };
 

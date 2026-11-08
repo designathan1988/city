@@ -96,11 +96,79 @@ rooms_in_use={
 "type": "float",
 "value": 0.64
 }
-room_daylight={
+offices_lit={
 "type": "float",
-"value": 0.2
+"value": 0.9
+}
+daylight_factor={
+"type": "float",
+"value": 0.02
+}
+sky_level_map={
+"type": "sampler2D",
+"value": ""
+}
+pre_exposure={
+"type": "float",
+"value": 1.0
+}
+lux={
+"type": "float",
+"value": 0.0
+}
+room_lux={
+"type": "vec2",
+"value": Vector2(0, 0)
+}
+town_light={
+"type": "vec3",
+"value": Vector3(0, 0, 0)
+}
+street_lamp_lens={
+"type": "float",
+"value": 0.0
+}
+street_lamp_foot={
+"type": "float",
+"value": 0.0
 }
 outside_on={
 "type": "float",
 "value": 0.79
+}
+solar_direction={
+"type": "vec3",
+"value": Vector3(0, 1, 0)
+}
+solar_top={
+"type": "vec3",
+"value": Vector3(1, 1, 1)
+}
+air_rayleigh={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 8000)
+}
+air_mie={
+"type": "vec4",
+"value": Vector4(0, 0.9, 0.8, 1200)
+}
+air_ozone={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 25000)
+}
+air_ground={
+"type": "vec3",
+"value": Vector3(0, 0, 0)
+}
+canyon_map={
+"type": "sampler2D",
+"value": ""
+}
+canyon_window={
+"type": "vec3",
+"value": Vector3(0, 0, 1)
+}
+canyon_on={
+"type": "float",
+"value": 0.0
 }

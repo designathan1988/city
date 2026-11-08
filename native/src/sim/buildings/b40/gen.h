@@ -33,7 +33,7 @@ void dress_building(const Data &data, Body &b, Xoshiro128 &r, float entrance, in
 // The lot round the building (lot_layout.h): grounds, drives and garages, yards, bays and docks, boundary, gates; lot frame.
 void lay_out_lot(const Data &data, Body &b, Xoshiro128 &r);
 // The whole body of a record: kind from the zone, all steps, shifted to the lot frame (x from the lot's middle). It chooses its own
-// storeys; `floors` only caps a middling block, so the storeys it answers with give the same body back.
-void make_body(const Data &data, Body &b, int zone, int floors, float W, float D, uint32_t seed);
+// storeys; `floors` only caps a middling block, so the storeys it answers with give the same body back. `era`: the lot's (era.h).
+void make_body(const Data &data, Body &b, int zone, int floors, float W, float D, uint32_t seed, int era);
 
 } // namespace city::b40

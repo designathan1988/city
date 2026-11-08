@@ -25,9 +25,6 @@
     "mist_most": {
      "type": "number"
     },
-    "mist_night": {
-     "type": "number"
-    },
     "fog_billow": {
      "type": "array",
      "items": {
@@ -73,62 +70,6 @@
     "fog_done": {
      "type": "number"
     },
-    "fog_tone": {
-     "type": "array",
-     "items": {
-      "type": "number"
-     },
-     "minItems": 3,
-     "maxItems": 3
-    },
-    "fog_sun_tone": {
-     "type": "array",
-     "items": {
-      "type": "number"
-     },
-     "minItems": 3,
-     "maxItems": 3
-    },
-    "fog_glow": {
-     "type": "array",
-     "items": {
-      "type": "number"
-     },
-     "minItems": 4,
-     "maxItems": 4
-    },
-    "cloud_base_day": {
-     "type": "array",
-     "items": {
-      "type": "number"
-     },
-     "minItems": 3,
-     "maxItems": 3
-    },
-    "cloud_base_night": {
-     "type": "array",
-     "items": {
-      "type": "number"
-     },
-     "minItems": 3,
-     "maxItems": 3
-    },
-    "cloud_fill": {
-     "type": "array",
-     "items": {
-      "type": "number"
-     },
-     "minItems": 2,
-     "maxItems": 2
-    },
-    "cloud_fill_night": {
-     "type": "array",
-     "items": {
-      "type": "number"
-     },
-     "minItems": 3,
-     "maxItems": 3
-    },
     "cloud_done": {
      "type": "number"
     },
@@ -158,14 +99,6 @@
      },
      "minItems": 2,
      "maxItems": 2
-    },
-    "cloud_light": {
-     "type": "array",
-     "items": {
-      "type": "number"
-     },
-     "minItems": 4,
-     "maxItems": 4
     },
     "cloud_extinction": {
      "type": "array",
@@ -226,7 +159,6 @@
     "_doc",
     "shadow_depth",
     "mist_most",
-    "mist_night",
     "fog_billow",
     "fog_octaves",
     "fog_reach_m",
@@ -237,19 +169,11 @@
     "fog_drift",
     "fog_wisp",
     "fog_done",
-    "fog_tone",
-    "fog_sun_tone",
-    "fog_glow",
-    "cloud_base_day",
-    "cloud_base_night",
-    "cloud_fill",
-    "cloud_fill_night",
     "cloud_done",
     "cloud_near",
     "cloud_least",
     "cloud_sun_probe",
     "cloud_facing",
-    "cloud_light",
     "cloud_extinction",
     "puff_flat",
     "puff_blend",

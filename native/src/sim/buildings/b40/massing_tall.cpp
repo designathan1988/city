@@ -192,7 +192,8 @@ void office(const Data &data, Body &b, const Envelope &env, Xoshiro128 &r) {
 	b.storey_h = mixr(r, K.office_storey_lo, K.office_storey_hi);
 	look(b, wall, data.color("office_roof"), trim);
 	b.ground = GROUND_LOBBY;
-	int floors = r.irange(K.workplace_min_f, K.office_max_f);
+	// the skyline's tail as the residential towers have it: an eighth of them stand out of the rest
+	int floors = r.f() < K.tall_share ? r.irange(K.min_tall, K.max_tall) : r.irange(K.workplace_min_f, K.office_max_f);
 	float w = snap(env.W), d = snap(env.D);
 	if (r.f() < K.podium_share && w >= K.podium_min && d >= K.podium_min) {
 		int podium = r.irange(1, 3);
@@ -201,17 +202,25 @@ void office(const Data &data, Body &b, const Envelope &env, Xoshiro128 &r) {
 		add_block(b, { 0, 0, w, std::min(d, td + 2 * inset), 0, podium, ROOF_TERRACE });
 		int shaft = floors - podium;
 		int form = b.style == STYLE_ART_DECO ? 0 : tw >= K.twin_tower_w ? choose(r, { 0, 1, 2, 3 }) : choose(r, { 0, 1, 3 });
-		if (form == 0) setbacks(data, b, r, inset, inset, tw, td, podium, shaft, ROOF_FLAT, nullptr);
+		// a tower's plan as the residential ones take theirs (cut corners, round): an art deco block keeps its square steps
+		std::vector<V2> shape = b.style == STYLE_ART_DECO ? std::vector<V2>{} : tower_shape(data, r);
+		const std::vector<V2> *sp = shape.empty() ? nullptr : &shape;
+		auto block = [&](float x, float y, float bw, float bd, int base, int n, Roof rf) {
+			BlockSpec s{ x, y, bw, bd, base, n, rf };
+			s.shape = sp;
+			add_block(b, s);
+		};
+		if (form == 0) setbacks(data, b, r, inset, inset, tw, td, podium, shaft, ROOF_FLAT, sp);
 		else if (form == 2) {
 			float gap = snap(mixr(r, K.gap_lo, K.gap_hi)), each = snap((tw - gap) / 2);
-			add_block(b, { inset, inset, each, td, podium, shaft, ROOF_FLAT });
-			add_block(b, { inset + each + gap, inset, each, td, podium, std::max(K.office_twin_min, shaft + choose(r, K.office_twin_steps)), ROOF_FLAT });
+			block(inset, inset, each, td, podium, shaft, ROOF_FLAT);
+			block(inset + each + gap, inset, each, td, podium, std::max(K.office_twin_min, shaft + choose(r, K.office_twin_steps)), ROOF_FLAT);
 		} else if (form == 3) {
 			int top = r.irange(2, 3);
 			float cin = snap(mixr(r, K.office_crown_lo, K.office_crown_hi));
-			add_block(b, { inset, inset, tw, td, podium, shaft - top, ROOF_TERRACE });
-			add_block(b, { inset + cin, inset + cin, std::max(K.crown_min, tw - 2 * cin), std::max(K.crown_min, td - 2 * cin), podium + shaft - top, top, ROOF_FLAT });
-		} else add_block(b, { inset, inset, tw, td, podium, shaft, ROOF_FLAT });
+			block(inset, inset, tw, td, podium, shaft - top, ROOF_TERRACE);
+			block(inset + cin, inset + cin, std::max(K.crown_min, tw - 2 * cin), std::max(K.crown_min, td - 2 * cin), podium + shaft - top, top, ROOF_FLAT);
+		} else block(inset, inset, tw, td, podium, shaft, ROOF_FLAT);
 	} else add_block(b, { 0, 0, w, d, 0, floors, ROOF_FLAT });
 	b.cores.push_back(Core{ snap(w / 2 - CORE_HALF), snap(std::min(d, K.office_core_d) / 2 - CORE_HALF), floors });
 	finish_body(data, b, env, r, BAY_DOUBLE_DOOR, -1);

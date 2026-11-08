@@ -1,6 +1,6 @@
 ## A material of data/render/materials.json as a ShaderMaterial, with what the blast effects ask of the Environment's tone mapping
 ## (render/tone_map.gd): the unlit puffs draw smoke and dust as the colours the screen should show (puffs.gdshader,
-## tone_inverse.gdshaderinc), and the crater's colours (display_colors) become the scene radiance the ACES shows as each.
+## tone_inverse.gdshaderinc), and the crater's colours (display_colors) become the scene radiance the AgX shows as each.
 class_name EffectMaterials
 extends RefCounted
 
@@ -14,10 +14,10 @@ static func make(key: String, row: Dictionary, environment: Environment) -> Shad
 	m.render_priority = int(row.get("render_priority", 0))
 	if key in TONE_INVERTED:
 		m.set_shader_parameter("tone_exposure", environment.tonemap_exposure)
-		m.set_shader_parameter("tone_white", environment.tonemap_white)
+		m.set_shader_parameter("tone_curve", ToneMap.params_of(environment))
 	elif key == "marks":
 		var rad := PackedVector3Array()
 		for html: String in row.display_colors.crater:
-			rad.append(ToneMap.radiance(Color.html(html), environment.tonemap_exposure, environment.tonemap_white))
+			rad.append(ToneMap.radiance(Color.html(html), environment))
 		m.set_shader_parameter("crater_rad", rad)
 	return m

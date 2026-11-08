@@ -45,7 +45,7 @@ uniform float cobble_per_m;
 uniform vec3 pool_color : source_color;
 uniform float pool_along_m; // a lamp's pool along the road: where it ends; across, the street furniture owner sets it
 uniform float pool_step = 1.0; // the lamp step, set by the road renderer from the street furniture catalog
-uniform float pool_gain;
+global uniform float street_lamp_foot; // the illuminance under a street lamp, as a white floor's radiance (render/lamp_photometry.h)
 uniform float plate_glow;
 uniform vec2 blotch_look; // the asphalt's blotches: their noise a metre, how far they move the tone
 uniform float lane_grain_scale; // the grain a lane's and a footway's wear reads, the asphalt map's scale times this
@@ -110,6 +110,7 @@ void vertex() {
 }
 
 #include "res://render/shaders/lamp_pool.gdshaderinc"
+#include "res://render/shaders/emission_light.gdshaderinc"
 
 float lamp_pools() {
 	if (v_pool.x < 0.5 * ROAD_POOL_PLATE) {
@@ -123,6 +124,8 @@ float lamp_pools() {
 	float far = pool_step - abs(dv);
 	return pool_fall(length(vec2(du, dv / pool_along_m))) + pool_fall(length(vec2(du, far / pool_along_m)));
 }
+
+#include "res://render/shaders/canyon_light.gdshaderinc"
 
 void fragment() {
 	vec3 base = srgb_to_linear(COLOR.rgb); // the strip colour, sRGB in the mesh; everything below in linear
@@ -228,9 +231,10 @@ void fragment() {
 	ALBEDO = linear_out(albedo);
 	ROUGHNESS = rough;
 	SPECULAR = 0.5; // the F0 of 0.04 of the roads of the Roadcraft (three: dielectric default; Godot: 0.08 * specular)
+	AO = canyon_sky_seen(v_world, normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz)); // the sky the buildings leave the street
 	float fade = 1.0 - smoothstep(bend_fade.x, bend_fade.y, pix);
 	NORMAL = bent_normal(NORMAL, VERTEX, frame, bend * bend_scale * fade + fine);
 	float far = pool_handed_over(v_eye_m, lamp_lit);
 	float pools = night > 0.0 && far > 0.0 ? lamp_pools() * far : 0.0; // daylight and near: skip the two falls per pixel
-	EMISSION = linear_out(albedo * source_linear(pool_color) * pools * night * pool_gain); // the surface's own colour: dark asphalt stays dark, the paint shows
+	EMISSION = linear_out(emission_light(albedo * source_linear(pool_color) * pools * night * street_lamp_foot)); // the surface's own colour: dark asphalt stays dark, the paint shows
 }

@@ -145,3 +145,23 @@ O que falta fazer, por área.
   - The Minhocao (an elevated road over Avenida Sao Joao) waits for the same uncut crossings as the flyovers.
   - A district's look (the Centro's older facades, the Jardins' houses) comes from its zone and density alone: the building
     styles are not chosen by district.
+
+- Realism (2026-11-08, log/work-log.md "Physical sky"): the clouds' bodies keep their authored light (`atmosphere.gdshader` cloud_bodies); the far level (past building_mid_end_m) paints
+  every bay of a side as its middle one, so balconies and brise fins go flat out there;
+  HDR output (Godot 4.7) is not asked for: it needs HDR 2D on every viewport, which changes the interface's own colours, and the
+  lens radiances would have to read the window's output maximum; reflection probes per district (octahedral since 4.6) are not
+  laid, so glass off the screen reflects only the sky; the terrain's and water's albedos in `palette.json` were held to pictures
+  under the former ACES and light, and are not re-derived; photo-scanned surface textures (2K) and decals for wear were not
+  added (a download the user must approve).
+- The physical night (2026-11-08, log/work-log.md "The physical night"):
+  - The placing ghost and a signature's own glow stay authored as the screen shows them (`emission_shown`): the first is the
+    interface's tint, the second the cooked model's emissive factor, which has no luminance behind it.
+  - Compatibility: its sky map is mipmapped and filtered on sRGB codes,
+    so its ambient bends from proportional in the dark (sky_exposure_test holds it to the nearer of once, never and twice), and a
+    mirror's sky (the map's unfiltered level) is a little brighter in the darkest tones.
+  - The clouds and the mist keep their authored night light (`atmosphere.gdshader` NIGHT_AIR, cloud_bodies' dark terms); only their
+    physical parts are pre-exposed.
+  - Compatibility draws the far level's towers with no window grid (plain boxes by day, nothing lit at night) and some facade parts
+    (the air-conditioner units on the balconies) bright green, where Forward+ draws both right: seen on the frozen views and the
+    Centro captures run with --rendering-method gl_compatibility (2026-11-08); outside the light's paths changed here, to read in
+    `building_far.gdshader` (the SK_FAR_WALL mask from v_opening) and the parts' shader on that renderer.

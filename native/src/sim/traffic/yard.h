@@ -34,6 +34,7 @@ struct YardGate {
 	AxlePose stop, join; // the rear axle standing on the lane before the gate and past it
 	int ds = -1, lane = 0;
 	float stop_at = 0, join_at = 0; // the same along the lane, the body's middle
+	int twin = -1; // the same gate by the other way's lane (gate_lane_across), -1 none: a way out may join that lane instead
 };
 
 struct YardDock {
@@ -61,6 +62,7 @@ enum YardReach { YARD_NO_PRE, YARD_NO_STOP, YARD_NO_WAY, YARD_NO_LANE, YARD_ONE_
 
 struct DockWays {
 	int bay = -1, gate = -1; // -1: no way
+	int gate_out = -1; // the gate whose lane the way out joins: `gate`'s own, or its twin when its own lane has no room past it
 	int reached = YARD_NO_PRE;
 	std::vector<AxlePose> into, away;
 	int into_street = 0, away_street = 0;
@@ -96,7 +98,7 @@ public:
 	YardPlan plan;
 
 private:
-	enum class Stage { LAY, OPEN, STREET, SHUT, CLEARANCE, DOCK, GATE, WAY_IN, WAY_OUT, WAY_GRADUATED, WAY_FINE, DONE };
+	enum class Stage { LAY, OPEN, STREET, SHUT, CLEARANCE, DOCK, GATE, WAY_IN, WAY_OUT, WAY_OUT_TWIN, WAY_GRADUATED, WAY_FINE, DONE };
 	YardInput in_;
 	Field field_, lot_;
 	Stage stage_ = Stage::LAY;
@@ -112,6 +114,7 @@ private:
 	std::vector<int> order_;
 	std::vector<AxlePose> onto_, away_;
 	bool found_in_ = false, found_out_ = false;
+	int out_ = -1; // the gate the way out found joins
 	void lay_step(int &work);
 	std::unique_ptr<RingFill> open_ring(size_t k);
 	void open_step(int &work);

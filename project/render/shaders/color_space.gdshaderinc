@@ -47,6 +47,18 @@ vec3 gles_output_inverse(vec3 e) {
 	return pow((max(e, vec3(0.0)) + SRGB_OFFSET) / SRGB_SCALE, vec3(SRGB_GAMMA));
 }
 
+// A linear colour's luminance: ITU-R BT.709's weights of its primaries (the sRGB primaries, IEC 61966-2-1).
+const vec3 LUMA_709 = vec3(0.2126, 0.7152, 0.0722);
+
+float luminance(vec3 c) {
+	return dot(c, LUMA_709);
+}
+
+// A linear colour with `keep` of its chroma, the rest towards its own luminance.
+vec3 keep_chroma(vec3 c, float keep) {
+	return mix(vec3(luminance(c)), c, keep);
+}
+
 // A source_color texture sample or a colour uniform, in linear. (The renderer test is the preprocessor's, the same as
 // OUTPUT_IS_SRGB, so that sky shaders, which have no OUTPUT_IS_SRGB, can include this file too.)
 vec3 source_linear(vec3 c) {

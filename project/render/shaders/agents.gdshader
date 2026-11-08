@@ -11,20 +11,28 @@ shader_type spatial;
 #include "res://render/shaders/color_space.gdshaderinc"
 #include "res://render/shaders/fresnel.gdshaderinc"
 #include "res://render/shaders/hash.gdshaderinc"
+#include "res://render/shaders/emission_light.gdshaderinc"
+
+// The lamps lit, by their lens's luminance in cd/m^2 (materials.json agent): a light in the scene's unit, a luminance L the radiance
+// L pi lux (render/daylight.gd lux), its colour of luminance 1.
+uniform float head_cd_m2;
+uniform float tail_cd_m2;
+uniform float brake_cd_m2;
+uniform float sign_cd_m2;
+global uniform float lux;
+
+const float LEAST_LUMA = 1e-4; // a black lamp colour stays a number
+
+vec3 lamp_light(vec3 colour, float cd_m2) {
+	return colour / max(luminance(colour), LEAST_LUMA) * cd_m2 * PI * lux;
+}
 
 global uniform float night;
 uniform vec3 head_glow : source_color;
 uniform vec3 tail_glow : source_color;
-uniform float head_power;
-uniform float tail_power;
-uniform float brake_ratio; // a stop lamp's light against its rear position lamp's
-uniform vec3 head_lit; // a lens burning, by day: the radiance the tone mapping shows as its colour (render/tone_map.gd)
-uniform vec3 tail_lit;
-uniform vec3 brake_lit;
 uniform vec3 black_roof : source_color;
 uniform float black_roof_share;
 uniform vec3 sign_glow : source_color;
-uniform float sign_power;
 // roughness by surface (materials.json agent: sources there); every surface is a dielectric
 uniform float paint_roughness;
 uniform vec3 sheen_sky : source_color; // what a clear coat mirrors above the horizon and below it
@@ -92,23 +100,23 @@ void fragment() {
 		emit = coat;
 	} else if (tag == TAG_HEAD) {
 		bool on = v_custom.b > -0.5;
-		emit = on ? head_lit + source_linear(head_glow) * night * head_power : vec3(0.0);
+		emit = on ? lamp_light(source_linear(head_glow), head_cd_m2) : vec3(0.0);
 		c = on ? vec3(0.0) : c;
 		rough = lens_roughness;
 	} else if (tag == TAG_TAIL) {
 		bool on = v_custom.b > -0.5;
-		bool braking = mod(v_custom.g, AGENT_DOOR_STEP) >= AGENT_BRAKE_FLAG; // by day each shows as its colour: more red than that, and ACES turns it cream
-		emit = on ? (braking ? brake_lit : tail_lit) + source_linear(tail_glow) * tail_power * night * (braking ? brake_ratio : 1.0) : vec3(0.0);
+		bool braking = mod(v_custom.g, AGENT_DOOR_STEP) >= AGENT_BRAKE_FLAG;
+		emit = on ? lamp_light(source_linear(tail_glow), braking ? brake_cd_m2 : tail_cd_m2) : vec3(0.0);
 		c = on ? vec3(0.0) : c;
 		rough = lens_roughness;
 	} else if (tag == TAG_GLASS) {
 		rough = lens_roughness;
 	} else if (tag == TAG_SIGN) {
-		emit = source_linear(sign_glow) * sign_power;
+		emit = lamp_light(source_linear(sign_glow), sign_cd_m2);
 		rough = lens_roughness;
 	}
 	ALBEDO = linear_out(c);
 	ROUGHNESS = rough;
 	METALLIC = 0.0;
-	EMISSION = linear_out(emit);
+	EMISSION = linear_out(emission_light(emit)); // the clear coat's sheen and the lamps, lights in the scene's unit
 }

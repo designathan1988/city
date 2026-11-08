@@ -3,6 +3,7 @@
 #include "res://render/shaders/contracts/buildings.gdshaderinc"
 
 #include "res://render/shaders/hash.gdshaderinc"
+#include "res://render/shaders/color_space.gdshaderinc"
 
 // The lattice's values, one a texel (tools/assets/make_lattice_noise.py): value noise is the sampler's bilinear filter at a point
 // moved by the smooth step, one fetch where four hashes ran on every pixel of every wall.
@@ -56,13 +57,20 @@ float weather(vec3 n) {
 	return (weather_tone.x + weather_tone.y * macro) * (1.0 - stain);
 }
 
+// Paint under dust: its chroma towards its own luminance.
+uniform float paint_chroma; // materials.json dust: the share of its chroma a wall's paint keeps under the dust
+vec3 dusty(vec3 albedo) {
+	return keep_chroma(albedo, paint_chroma);
+}
+
 // A face's finish `fin` (-1: none) laid on its colour: the finish's tone, normal, roughness and metalness, and the weathering of
-// every finish but glass and metal. What the face had stays where it has no finish.
+// every finish but glass and metal, whose paint also loses chroma to the city's dust (paint_chroma, towards its own luminance:
+// a grey film over it). What the face had stays where it has no finish.
 void finish_surface(int fin, vec3 n, inout vec3 albedo, inout vec3 nn, inout float rough, inout float metal) {
 	if (fin >= 0 && fin < FIN_COUNT) {
 		vec3 tone;
 		finish_layer(fin, n, tone, nn, rough, metal);
 		albedo *= tone;
-		if (fin != FIN_GLASS && fin != FIN_METAL) albedo *= weather(n);
+		if (fin != FIN_GLASS && fin != FIN_METAL) albedo = dusty(albedo) * weather(n);
 	}
 }

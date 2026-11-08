@@ -2,7 +2,7 @@
 // the lamp, only at night and only where the lantern is on (the same lot as its glass, building.gdshader kind 4). UV over the quad, UV2 the
 // lantern's place. It scatters nothing: no shadow, no depth.
 // The reference game adds it after the tone mapping, to the colours on the screen; here the sum comes before, so what is added is the radiance
-// the Environment's ACES shows as that colour (added to radiance, a saturated light would come out orange where the screen only warms).
+// the Environment's AgX shows as that colour (added to radiance, a saturated light would come out orange where the screen only warms).
 shader_type spatial;
 render_mode blend_add, unshaded, cull_back, depth_draw_never, shadows_disabled;
 

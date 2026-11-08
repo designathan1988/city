@@ -770,3 +770,234 @@ Ressalvas abertas:
   audit session rebuilds both from HEAD with its folder-independent build (`-ffile-prefix-map`, the retrained profile) in its
   next commit. The checks above ran on DLLs built from this commit's sources in the worktree `city-scenic` (HEAD + this change
   only); the user's `dist/windows/Roadcraft.exe` was exported from it.
+
+## Physical sky, sky light and haze, AgX (2026-11-08, branch `realism`, worktree `city-realism`)
+
+The user asked for the realistic look the reading of the renderer found within reach without weight, in a worktree, fast.
+- Problems found (reading): the light was a studio rig, a sun plus a fill from 100 degrees off it, a top and a negative under light
+  over a flat ambient colour (`daylight_rig.gd`, `daylight.gd`), so a shade had neither the sky's direction nor its colour; the sky
+  a painted gradient (`sky.gdshader`) that nothing else shared; the haze a grey exponential fog with no aerial perspective, so
+  towers 2 km off kept the contrast of the near ones; ACES with a grade of +0.25 contrast and +0.3 vibrance; the street canyons'
+  sky occlusion multiplied over the finished picture (`atmosphere.gdshader`), the sunlit floor losing as much as the shaded one.
+- Sources: Godot 4.7.2-stable source (light_storage.cpp: a directional energy times pi; scene_forward_lights_inc.glsl: the diffuse
+  BRDF over pi; scene_forward_clustered.glsl and render_scene_data_rd.cpp: the sky ambient read from the radiance map and scaled by
+  the background energy, not by ambient_light_energy; tonemap.glsl, environment_storage.cpp: AgX's matrices and the allenwp curve;
+  drivers/gles3: Compatibility's picture clamped at 1 before its tone mapping); Godot docs (Environment, Sky, HDR output, global
+  illumination); Hillaire 2020 (sky and aerial perspective, 0.31 ms on a GTX 1080 at 720p), Bruneton & Neyret 2008 (the air's
+  coefficients), Hoffman & Preetham 2002 (closed-form single scattering), Koschmieder (visibility), Kasten & Czeplak 1980
+  (overcast light), Darula et al. 2005 (extraterrestrial illuminance), Pomerantz et al. 2000 (aged asphalt), St-Amour 2013 (World AO).
+- Plan and code: one air for everything. `render/shaders/sky_model.gdshaderinc` (Rayleigh, aerosol and ozone as exponential layers,
+  single scattering in closed form, higher orders as a geometric series, the sun's light through the air) in the lights' own unit,
+  so the sky's brightness follows from the sun's energy with no gain; `render/air.gd` holds its values (`daylight.json` "air",
+  the aerosol from the visibility) and mirrors the sun's light through it, which colours the DirectionalLight3D. The sky
+  (`sky.gdshader`) is that air plus an overcast deck (CIE overcast) and the night's two colours; the Environment's ambient and
+  reflections read its radiance map, so the three studio lights are gone; the haze is the fog at the air's extinction, thinned
+  with height, its colour the sky's along the view (aerial perspective). The canyon field became the surfaces' AO
+  (`canyon_light.gdshaderinc`, global uniforms): it darkens only the sky's light. AgX with the engine's defaults and a neutral grade;
+  the tone contract (`shader_contracts.json` tone, both DLLs) and its mirrors (`tone_map.gd`, `tone_inverse.gdshaderinc`) moved to
+  AgX. Exposure 2.47 from a grey card in sun. Aged asphalt (0.09 to 0.14). Paint loses 40 % of its chroma to dust in the render
+  (`building_common.gdshaderinc` dusty, `paint_chroma`): first tried in the palettes' data, which moved the digest, the yard docks and
+  a crossing, because the generator reads a wall's lightness (`paint.h` is_light steers the trims and the random stream), so the
+  palettes stayed as drawn. SSR on the high and ultra tiers; glow by day too (the camera's bloom).
+- Tests moved with their cause: `building_light_test` turns the glow off by day like the fog, the ambient off by the sky's share,
+  and holds its lamp under Compatibility's clamp for any exposure (LAMP_REACH / exposure); `light_color_test` the same for the
+  ambient, the signal lenses are the nearest colours AgX shows (`streets.json`), the grade check holds the neutral grade.
+- Split for the gates: `cloud_puffs.gd` (the clouds' lobes, out of `sky_view.gd`), `map_frame.gdshaderinc` (the map's edge and the
+  zoning grid, out of `terrain.gdshader`).
+- Verified: both DLLs rebuilt from these sources; `quick.sh --ready --bless`: 46 of 46, the digest equal to HEAD's (4040792916cf7d78:
+  the simulation untouched), the four frozen photos blessed after looking at each against the old ones (haze over the distance,
+  the sun warm at 16h, shade lit by the sky, aged asphalt, muted paint); captures `sao_paulo`, `frozen`, `city` looked at; the light
+  tests at HEAD (worktree `city-headcheck`) passed, which located each failure here in this change; gates of the changed files OK
+  (the full run's 393 findings are the old backlog in other files). Exported `dist/windows/Roadcraft.exe` from the worktree.
+- Created `project/render/air.gd`, `project/render/cloud_puffs.gd`, `project/render/shaders/sky_model.gdshaderinc`,
+  `air_globals.gdshaderinc`, `map_frame.gdshaderinc`; changed the rest listed in this commit; deleted nothing.
+- Ultra-realism, what the research found within reach next (not done here): photo-scanned 2K PBR surfaces with hex-tiling
+  (Mikkelsen 2022, 3 samples) and decals for wear, both needing the user's approval of the downloads; reflection probes per district;
+  AreaLight3D (4.7) for shopfronts at night; auto exposure (CameraAttributesPractical, a moderate cost) for the day's whole arc;
+  HDR output once the interface takes HDR 2D. Real-time GI past SSIL and the World AO waits for the engine (4.7 ships only the
+  ray-tracing foundation).
+
+## Glass that mirrors, rooms lit by the sky, towers by neighbourhood (2026-11-08, branch `realism`)
+
+The user: graphics alone are not enough, every building looks the same. Read at three distances (scratch plan, hidden captures).
+- Problems found: (1) by day every window showed a bright flat room (`room_daylight` 0.2 of emission, nearly a sunlit wall) and
+  every pane added a constant sky colour (`building_sky_glass.gdshaderinc` glass_sky), so every facade read as the same grid of
+  light cells, whatever it faced; (2) a lot's era came from its seed alone (`massing_core.cpp`), so styles were a uniform mixture
+  everywhere, and offices took `glass` 4 to 1 with no neighbourhood behind it; (3) offices never took a shaped plan and never the
+  tall tail (`massing_tall.cpp`), so the centre was boxes of 8 to 24 storeys; (4) the far level's foot shade faked what the canyon
+  AO now does.
+- Sources: CIBSE LG10 / BS 8206-2 (average daylight factor 2 %), Pilkington glazing data (clear double glazing about 15 % light
+  reflectance, Suncool 11 to 38 %), physicallybased.info (glass roughness 0), Conzen 1960 (plan units built in waves), Godot
+  4.7.2 forward_clustered (metallic F0 and Schlick).
+- Code: glass is the mirror it is: METALLIC 1 with the glazing's reflectance as F0 (materials.json glass: glazing_reflect for homes,
+  coated_reflect for offices), roughness 0, the engine's reflections (sky, SSR) its only reflection; the room through it is its
+  emission, the daylight factor of the sky's level light. That level light is rendered once a change into one texel by
+  `render/sky_light_probe.gd` from `sky_level.gdshader`, the sky's own composition (`sky_model.gdshaderinc` sky_seen, now shared by
+  the sky and the probe; `sky_weather.gdshaderinc` its uniforms; `sky_level_map.gdshaderinc` the read), so nothing integrates the
+  sky on the CPU; the contact shade reads it too. A lot's era is its neighbourhood's (`b40/era.h`: a Voronoi cell of the plan,
+  buildings.json eras), part of the body's key; offices take the towers' shaped plans and tall tail.
+- The new city moved `yard_test`'s sites (they follow the traffic) onto yards whose gate stood near a straight-cut dead end: no room
+  for a lorry to stop before the gate on its own lane (diagnosed with a temporary print in `yard.cpp`, removed). Fixed in the
+  planner: each gate also offers the lane across (`parking_lanes.cpp` gate_lane_across), a way in may come by either, and a way
+  out may join the gate's twin lane (`YardGate::twin`, `DockWays::gate_out`, `Lorry::out_gate`), as a lorry does at a dead end.
+  Six sites sampled (`--sites=6`): every dock has a way, a lorry made the round.
+- Gates: the second-owner names in `massing_tall.cpp`, `buildings_loader.cpp` and `yard_input.cpp` only shared words with
+  unrelated data keys (TOWER_MIN against kind_weights.tower): renamed to say what they measure (TOWER_SIDE_LEAST, TOWER_STOREYS_MOST,
+  ...), rules.json untouched (its empty mirror table fails any change of it). The sky model's shape constants that `air.gd`
+  repeated went to the shader contract (`shader_contracts.json` sky: `core/shader_contracts/sky.h`, `contracts/sky.gdshaderinc`).
+- Created `render/sky_light_probe.gd`, `render/shaders/{sky_level.gdshader, sky_level_map.gdshaderinc, sky_weather.gdshaderinc}`,
+  `sim/buildings/b40/era.{h,cpp}`; deleted `render/shaders/building_sky_glass.gdshaderinc`.
+
+## Helipads on the tall office towers (2026-11-08 11:10, branch `realism`)
+
+The towers of the centre all ended in the same box of roof plant; a tall office tower in a real centre often carries a landing
+deck over its plant (Sao Paulo has the most rooftop helipads of any city).
+- Problem: `roof_plant.cpp` packed the same twelve kinds on every flat roof by use and age, so at the city's distance every tower top
+  read alike; nothing on a roof said "a tall office" apart from its height.
+- Sources: ICAO Annex 14 Vol II (Heliports), 4th ed.: a rooftop FATO/TLOF at least 1 D, the touchdown/positioning circle's inner
+  diameter 0.5 D and line 1 m wide (yellow), the perimeter line 0.3 m (white), the heliport "H" 3 m by 1.8 m with 0.4 m strokes
+  (white), the safety net at least 1.5 m wide round an elevated deck; D of an AS350 (the most common helicopter over Sao Paulo)
+  12.94 m.
+- Code: buildings.json roof.helipad (the least storeys, the share of such towers, the deck's side and rise over the plant, the
+  marking sizes, the net) read by `building_look.cpp` into `HelipadLook`; `PlantEmit::helipad` builds the slab on four legs over
+  the machine rooms, the net, the perimeter, the ring and the H; a commercial volume of 20 storeys or more whose roof takes the deck
+  and its net picks it by its building and volume (hash, salt of its own, not the plant's random stream, so the rest of the roof
+  is unchanged), and the packer keeps the plant off the deck's footprint. Render only: the digest is unchanged.
+- Gates: the file's old single-word constants (CELL, MARGIN, DOOR_W, ...) matched single-word data keys once the file changed:
+  renamed to say what they are (GRID_CELL, PARAPET_MARGIN, ROOM_DOOR_W, ...).
+- Verified: both DLLs; `quick.sh`: 43 of 45 then the gates fixed; `00-cidade` and `01-bairro` changed: the decks on about a dozen towers,
+  and one-pixel shadow edges elsewhere (a taller caster changes the cascade's depth range), so those two were accepted after looking;
+  `03-rua_noite` keeps the known 10 x 1 px of the C12 wire joint, not blessed.
+- Changed `native/src/render/buildings/{roof_plant.cpp, building_look.h, building_look.cpp}`, `project/data/render/buildings.json`,
+  `tools/gates/schemas/buildings.schema.json`; created and deleted nothing.
+
+## The physical night (2026-11-08 12:20, branch `realism`)
+
+The night was a day for night: a moon of a quarter of the sun's energy, the night sky two colours of the data, street lamps that put
+a sun's illuminance on the road (energy 6 at decay 1), every emitter authored for the day's fixed exposure, so a street at 22h read
+as an evenly lit grey-blue afternoon.
+- Problems: (1) the exposure was the day's at every hour, so the night could only show by making its lights unphysical; (2) the
+  moon's energy and the night sky's colours were data, not the air; (3) lamps, rooms, lanterns and pools were gains tuned to that
+  exposure; (4) found on the way, in Godot 4.7.2: Forward+ pre-exposes the sky's radiance map once and its ambient twice; the
+  ambient takes the background's energy twice on both renderers; Compatibility multiplies a sky's COLOR by its energy before
+  decoding it, bakes the Environment's exposure into its radiance map, and encodes and decodes that map with transfer functions
+  that are not inverses in the dark; Compatibility pre-exposes no EMISSION; our sky shader wrote linear light where Compatibility
+  decodes sRGB (since the physical sky).
+- Sources: Ward 1994, Graphics Gems IV (contrast-based scale factor); IEC 61966-2-1 (80 cd/m^2 display); EN 13201-2:2015 (M3,
+  1 cd/m^2); Allen's Astrophysical Quantities (sun -26.74, full moon -12.74, the moon's B-V and radius); Kieffer & Stone 2005 (ROLO
+  slope); Volpe et al., Boletim da SAB 2024 and RMxAC 60 (16.49 mag/arcsec^2 at the IAG inside Sao Paulo); Falchi et al. 2016
+  (0.171 mcd/m^2 at 22.0); Kyba et al. 2011 (overcast amplification); Liou (stratus albedo 0.6); EN 12464-1:2021 (500 lx offices);
+  IES RP-11 (homes); UNECE R112 (75R, 10 100 cd); the Godot 4.7.2 sources read for each claim (light_storage.cpp, sky.cpp, sky.glsl,
+  render_scene_data_rd.cpp, render_forward_clustered.cpp, scene_forward_clustered.glsl, rasterizer_scene_gles3.cpp, scene.glsl,
+  drivers/gles3 sky.glsl, tonemap_inc.glsl, effects/cubemap_filter.glsl).
+- Code: the eye adapts (`render/eye.gd`, Ward's scale factor over the day hour's, so the day keeps its grey-card exposure) to the
+  luminance metered by `render/light_meter.gd` (a grey card under the sun's, the moon's and the sky's level light and the town's,
+  plus the lit street), on the sky's row rendered and read back once (`render/sky_level_table.gd` + `sky_level_table.gdshader`: the
+  shader stays the one owner of the sky's light); the picture is pre-exposed by CameraAttributesPractical.exposure_multiplier, the
+  sky by its own shader with the background's energy at 1 / e on Forward+ (the ambient then e x e^-2 x e^2 = e), the Compatibility
+  sky by the code its renderer decodes to the light (both transfer steps inverted for the filtered levels), and EMISSION by
+  `emission_light.gdshaderinc` (pre-exposed by hand on Compatibility; display-authored lights taken back out on Forward+). The moon
+  is the sun's light times 10^(-0.4 x 14.0) and the moon's reflectance, through the same air, with its own sky and disc; the night
+  sky is that and the town's light scattered by the air (`sky_model.gdshaderinc` sky_glow: Rayleigh's half-space phase 1/2, the
+  aerosol's from 1/2 at the horizon to its back hemisphere at the zenith), its upward radiance set so its zenith is the measured
+  one, cloud_reflect of it sent back by an overcast deck. Lamps by photometry (`native/src/render/lamp_photometry.h`, the light unit
+  moved to tuning.json render.light_unit_lx for C++ and GDScript alike): 10 000 lm over the spot's cone, decay 2, the lens's
+  luminance and the pools' foot light as shader globals; headlamps at 10 100 cd; rooms at 100 / 500 lx times what their surfaces
+  show; lanterns at 1 600 cd/m^2 (materials.json lantern). Daylight's cascades moved to `render/sun_cascades.gd` (its size gate),
+  the meter out of it to `render/light_meter.gd`.
+- Tests moved with their cause: building_light_test and light_color_test read the lights in their physical units and the
+  pre-exposure (`ToneMap.shown(..., pre)`); the new `sky_exposure_test` (both renderers) holds the sky's light to the pre-exposure
+  once, and fails without the fix (1/64 of it on Forward+: checked by undoing the fix).
+- Verified: both DLLs; `quick.sh`: every test passed (save_undo_test once failed under the full parallel run and passed alone twice:
+  a race in the save path, logged); photos: `03-rua_noite` the night itself, `00-cidade` 27 pixels one 8-bit level off at the top
+  (the sky function's new order of evaluation), both accepted after looking; hidden captures of the Centro at 22h, 18:18 and 17:36
+  looked at (dark facades and lit rooms, the pools under the lamps, the golden hour's exposure); gates of the changed files OK.
+- Created `project/render/{eye.gd, light_meter.gd, sun_cascades.gd, sky_level_table.gd}`, `project/render/shaders/
+  {sky_level_table.gdshader, emission_light.gdshaderinc}`, `native/src/render/lamp_photometry.h`,
+  `project/tests/core/sky_exposure_test.{gd,tscn}`; changed the rest listed in this commit; deleted nothing.
+
+## Offices lit by their own schedule (2026-11-08 12:30, branch `realism`)
+
+From above at 22h the centre was a carpet of lit windows: every room, office or home, took the share of people awake at home
+(`awake_by_hour`, 63 % at 22h), and the far level took it whole while the near level took 64 % of it (the rooms in use).
+- Cause: one share for every use; the rooms-in-use share written three times (`building_pane.gdshaderinc` 0.64, `signature_look`
+  ROOMS_IN_USE) and missing from `far_room_lit`.
+- Source: the DOE Commercial Reference Building, large office, new construction (ASHRAE 90.1-2004), weekday lighting schedule
+  BLDG_LIGHT_SCH (EnergyPlus testfiles/RefBldgLargeOfficeNew2004_Chicago.idf): 0.9 from 8 to 17h, 0.3 at 20-21h, 0.1 at 22h, 0.05
+  at night.
+- Code: daylight.json office_lit_by_hour, published by Daylight as the shader global offices_lit; `building_lamps.gdshaderinc`
+  rooms_lit(office) is the one rule (a home's awake share times ROOMS_IN_USE, an office's schedule), read by the near panes, the far
+  levels and the signature buildings alike.
+- Verified: `quick.sh` 46 of 47 then the photo: `03-rua_noite`'s near building is offices, dark at 22h (none of its ten windows drew
+  the 10 %), accepted; hidden capture of the Centro at 22h from above looked at: dark towers, scattered lit flats.
+- Changed `project/data/game/daylight.json`, its schema, `project/project.godot`, `project/render/daylight.gd`,
+  `project/render/shaders/{building_lamps.gdshaderinc, building_pane.gdshaderinc, building_far.gdshader,
+  building_far_window.gdshaderinc, signature_look.gdshaderinc}`; created and deleted nothing.
+
+## Twilight and the blue hour (2026-11-08 12:40, branch `realism`)
+
+Hidden captures at 17:48, 18:12, 18:30 and 18:54 showed the whole town saturated orange two degrees after sunset and black a degree
+later: no blue hour.
+- Cause: `sky_model.gdshaderinc` lit each layer with the sun's light at its scale height over the eye: until the sun set behind
+  that height's horizon (2.9 degrees under, for the Rayleigh layer) the whole layer took the light that grazed the low air, all red,
+  and then none. The earth's shadow rising through the layer, the sun's height changing along the view, and the grazing ozone
+  path of the light that reaches the lit top (Chappuis absorption, what makes the dusk's zenith blue) were all missing.
+- Code: `sky_layer_lit`: a layer scatters most at its scale height over the point under it, reach = H / tan(elevation) away (at most
+  its own horizon, sqrt(2 R H)); the sun there is higher by reach / R towards it and lower away (the Belt of Venus); under that
+  point's horizon the earth's shadow fills the layer to R (1 / cos d - 1), and the share above it, exp(-h_s / H), takes the sun's
+  light at h_s + H. `sky_sun_from` is the sun's light from any height with its own sun elevation, and `sky_ozone_path` the ozone a
+  ray crosses from that height (once from under the layer, twice when it dips under it from over it). The sky's row for the meter
+  reaches 18 degrees under (astronomical twilight).
+- Verified: hidden captures over the roofs at 16h, 17:48, 18:12, 18:30, 18:54 and 22h: neutral warm light at 18:12, a blue hour at
+  18:30 with the rooms lit, night at 18:54; `quick.sh` 46 of 47 then the photos: the day's three changed one 8-bit level in 4 to 5 %
+  of their pixels (the sky near the horizon now takes the sun's height along the view, and the ambient follows), the night's 0.06 %,
+  accepted after looking.
+- Changed `project/render/shaders/sky_model.gdshaderinc`, `project/render/sky_level_table.gd`, logs; created and deleted nothing.
+
+## The save's replacing rename, and the haze on Compatibility (2026-11-08 12:50, branch `realism`)
+
+- `save_undo_test`'s old-format case failed once under the parallel suite ("save.file.damaged") and passed alone. Read in the code:
+  the core writes a save to `.tmp` and replaces the file with one rename (`city_core_persist.cpp` write_atomic), which Windows
+  refuses while another process holds the old file open without sharing its deletion (an antivirus or the indexer reading a file
+  just written: MoveFileEx, sharing violation); the core gave up at once (save.writeFailed), and `save_land_cases.gd` never looked at
+  the save's result, so it cut back the slot's previous file, another city on another map, and opened it as the old format:
+  damaged. Godot's own safe save tries the replacement again for that reason (drivers/windows/file_access_windows.cpp _close, 1000
+  tries a millisecond apart): the core now does the same on its save thread while the error is a held file, and the test checks
+  the save before cutting the file back.
+- Compatibility reads no radiance map for the haze (aerial perspective is commented out in drivers/gles3 scene.glsl), so its fog was
+  `fog_light_color`'s default grey, never pre-exposed. The sky's table has a second row, the sky at the horizon round the eye
+  (`sky_model.gdshaderinc` sky_horizon_seen), and `LightMeter.haze` gives the Environment's fog that light (the sun's horizon or
+  the overcast deck's, the moon's, the town's), pre-exposed; Forward+'s aerial perspective reads the sky itself and leaves it aside.
+- Verified: both DLLs; `quick.sh` 47 of 47, the photos equal; hidden captures on both renderers at 16h, 18:24 and 22h.
+- Changed `native/src/api/city_core_persist.cpp`, `project/tests/core/save_land_cases.gd`, `project/render/{light_meter.gd,
+  daylight.gd, sky_level_table.gd}`, `project/render/shaders/{sky_model.gdshaderinc, sky_level_table.gdshader}`, logs.
+
+## Signal lenses and vehicle lamps as lights (2026-11-08 13:05, branch `realism`)
+
+- Cause: the lenses and the vehicles' lamps were display colours run back through the tone mapping (`lamp_radiance.gd`), plus
+  night "powers" set on a photo, so they never outshone their surroundings at night nor faded in the sun.
+- Sources: ITE LED signal supplement (2005: 12-inch red 365, yellow 910, green 475 cd), ITE PTCSI 2010 (hand 3 750, person
+  5 300 cd/m^2), UNECE R112 (75R 10 100 cd), R7 (rear position 4 to 17 cd, stop 60 to 185 cd, a stop lamp 5 times at least), R6
+  (category 1 indicator 175 cd).
+- Code: `lamp_radiance.gd` gives each lens its colour of luminance 1 times streets.json props.lens_cd_m2 in the scene's unit;
+  `agents.gdshader` lamp_light: each lamp its colour times materials.json agent head/tail/brake/sign_cd_m2; both through
+  `emission_light`. The unlit lens's authored glow and the trims head_lit/tail_lit/brake_lit are gone (`prop_kit.cpp` reads
+  lens_dark as one colour a lens).
+- Verified: both DLLs; light_color_test on both renderers (the lenses as the tone mapping shows their light, Compatibility's clamp at
+  1 mirrored); `quick.sh` 46 of 47 then the gates fixed (the agents doc folded to ASCII, the shader's PI); e2e passed.
+
+## Clouds, fog banks and mist lit by the light that is there (2026-11-08 13:30, branch `realism`)
+
+- Cause: `atmosphere.gdshader` lit the clouds with authored shades (day 0.22/0.24/0.30, night 0.02..0.05, a fill of +0.12), the sun
+  times an authored sun_gain (3.236) and everything times daylight.json sky_gain; the mist took the sun's sky plus an authored
+  NIGHT_AIR, the fog banks an authored white and warm.
+- Code: `cloud_light.gdshaderinc` (new): a cloud is white and diffuse, cloud_albedo (daylight.json sky_glow.cloud_reflect, a
+  stratus's 0.6, one owner with the overcast deck's reflection) of the sun's or the moon's own light where it reaches, the sky's
+  level light from above (the probe: sun, moon and town skies) and the ground's and the town's light from below, by the point's
+  height in the cloud; the mist and the fog banks the same deep inside. Pre-exposed as the scene. sky.json sun_gain removed; the
+  global town_light published by Daylight.
+- Verified: hidden captures with 24 scattered clouds at 14h, 18:06, 18:27 and 22h; `quick.sh` 45 of 47 (the photos task timed out
+  under the other sessions' load, then passed alone: three photos equal, `02-rua` the known 8 x 1 px of the C12 wire joint, not
+  blessed).
+- Created `project/render/shaders/cloud_light.gdshaderinc`; changed `atmosphere.gdshader`, `render/sky_view.gd`, `render/daylight.gd`,
+  `project.godot`, `data/game/{sky.json, daylight.json}`, the sky schema, `log/mapa.md`.

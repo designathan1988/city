@@ -1,6 +1,6 @@
 // The banks of painted fog for atmosphere.gdshader: the slab a ray crosses, read from the fog window the core paints
-// (render/sky_view.gd sets the map, the slab, the window and the wind every frame), broken into wisps the wind carries, and
-// the light they give off. Needs sun_dir and dark; its look is data/game/sky.json atmosphere.
+// (render/sky_view.gd sets the map, the slab, the window and the wind every frame), broken into wisps the wind carries; their
+// light is cloud_light.gdshaderinc's. Its look is data/game/sky.json atmosphere.
 
 uniform sampler2D fog_map : repeat_enable, filter_linear;
 uniform float fog_density = 1.0;
@@ -19,9 +19,6 @@ uniform float fog_least_thick; // the least thickness its height thins over (m)
 uniform float fog_drift; // how far the wind carries the wisps over a flow's period, of the wind
 uniform vec4 fog_wisp; // a wisp's edges in the noise; its noise taken from and over the thin share
 uniform float fog_done; // a ray this hidden stops marching
-uniform vec3 fog_tone; // the fog's light, and towards the sun
-uniform vec3 fog_sun_tone;
-uniform vec4 fog_glow; // the sun's glow's power; the light from and over the sun's height; what night takes
 
 const int FOG_STEPS = 36; // the grain of the start goes with the length of a step: 2.1 grey levels at 24, measured on a bank
 // Inigo Quilez's 3D hash: p = fract(p / pi + 0.1) * 17, then the product of its parts by their sum.
@@ -109,7 +106,3 @@ float fog_amount(vec3 ro, vec3 rd, float t_scene, float jitter, float time) {
 	return 1.0 - keep;
 }
 
-// The light a bank gives off along `rd`: its own, warmer towards the sun, brighter as the sun stands higher.
-vec3 fog_light(vec3 rd) {
-	return mix(fog_tone, fog_sun_tone, pow(max(dot(rd, sun_dir), 0.0), fog_glow.x)) * (fog_glow.y + fog_glow.z * max(sun_dir.y, 0.0));
-}

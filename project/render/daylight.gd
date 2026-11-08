@@ -1,58 +1,77 @@
-## Time of day (Roadcraft render/scene.ts setTimeOfDay): sun or moon direction, colour and energy, the ambient
-## light, the gradient sky, fog, night glow and the global shader parameter `night` that lamps, windows and the road
-## light pools read; the sun's shadow cascades are render/sun_cascades.gd's. All numbers come from data/game/daylight.json.
+## Time of day: the sun's place, its light after the air (render/air.gd), the sky the air makes of it (render/shaders/sky.gdshader),
+## which is also every surface's ambient light and reflections (the Environment reads the sky's radiance map), the air's
+## haze over the distance, the moon by night and the town's own light in its sky, the eye's adaptation to all of it (render/eye.gd,
+## metered here), glow, and the global shader parameters that lamps, windows and the road light pools read. All numbers come from
+## data/game/daylight.json.
 class_name Daylight
 extends RefCounted
 
-const LEAST_LIGHT := 0.001 # a share of no light at all stays a number
+const SKY_LIT := 1.0 # the sky's share of the ambient: all of it
+const SHADED := 0.0 # what an ambient switched off leaves
 
 var _d: Dictionary
 var _sun: DirectionalLight3D
-var _fill: DirectionalLight3D
-var _top: DirectionalLight3D
-var _under: DirectionalLight3D
 var _env: Environment
 var _sky: ShaderMaterial
+var _probe: SkyLightProbe
+var air: Air
+var meter: LightMeter # the night's lights, the eye's meter and its pre-exposure
+var lux: float:
+	get:
+		return meter.lux
+var pre_exposure: float:
+	get:
+		return meter.pre_exposure
+var _moon_dir := Vector3.UP # towards the moon
 var night := 0.0
 var shadows_on := true: # what the graphics tier asks of the sun; the moon's shadow goes with the night (_cast)
 	set(on):
 		shadows_on = on
 		_cast()
-var direct_share := 0.0 # the sun's or moon's share of the light on level ground
-var horizon_linear := Color.BLACK # the sky's colour at the horizon, linear: what the air takes (sky_view.gd)
+var cascades: SunCascades # the sun's shadow cascades fitted to the view
+var solar := Vector3.UP # towards the sun, wherever the light of the night points
 var mode := "day"
 var _clock_shown := -1.0
 var _hour := 0.0
 var _overcast := 0.0
-var _dark := 0.0
 var _flash := 0.0
 ## The values last given to the engine (it keeps them in single precision, so its own copy does not compare): each is set only
 ## when it moves.
 var _air_density := NAN
-var cascades: SunCascades # the sun's shadow cascades fitted to the view (render/sun_cascades.gd)
 ## The Effects panel's switches: bloom and the ambient light drawn or not.
 var glow_on := true
 var ambient_on := true
 
 
-func _init(day: Dictionary, sun: DirectionalLight3D, fill: DirectionalLight3D, top: DirectionalLight3D, under: DirectionalLight3D, env: Environment, sky: ShaderMaterial) -> void:
+func _init(day: Dictionary, sun: DirectionalLight3D, env: Environment, sky: ShaderMaterial, probe: SkyLightProbe,
+		table: SkyLevelTable, camera: CameraAttributesPractical) -> void:
 	_d = day
 	_sun = sun
-	_fill = fill
-	_top = top
-	_under = under
 	_env = env
 	_sky = sky
+	_probe = probe
+	air = Air.new(day.air)
 	cascades = SunCascades.new(day, sun)
+	meter = LightMeter.new(day, air, table, camera, env, sky)
+	_moon_dir = _toward(day.moon_elev_deg, day.moon_az_deg)
+	_sky.set_shader_parameter("tone_exposure", env.tonemap_exposure)
+	for m: ShaderMaterial in [_sky, _probe.material]:
+		m.set_shader_parameter("moon_dir", _moon_dir)
+		m.set_shader_parameter("cloud_reflect", day.sky_glow.cloud_reflect)
+		m.set_shader_parameter("overcast_pass", _d.overcast_pass)
+	RenderingServer.global_shader_parameter_set(&"daylight_factor", _d.daylight_factor)
 	RenderingServer.global_shader_parameter_set(&"rooms_in_use", day.rooms_in_use)
-	var kinds := WorldMaterials.uniform_kinds(sky.shader)
-	for key: String in day.sky_shader: # the gradient's own shape, once
-		if not key.begins_with("_"):
-			sky.set_shader_parameter(key, WorldMaterials.typed(kinds, key, day.sky_shader[key]))
+	table.filled.connect(_on_table)
 
 
-func _c(key: String) -> Color:
-	return Color.html(_d[key])
+## The sky's row is read (render/sky_level_table.gd): the meter takes the town's light and the day hour's clear light as the eye's
+## reference, and the light is metered again.
+func _on_table() -> void:
+	meter.fill(func() -> float:
+		var day := _place(_d.day_hour)
+		var toward: Vector3 = day[0]
+		return meter.adapted(toward, air.sun_at(toward, 0.0), _moon_dir, Vector3.ZERO, 0.0, 0.0, day[3]))
+	relight()
 
 
 ## The same hour again, after a switch changed what the light draws.
@@ -69,7 +88,7 @@ func set_weather(overcast: float, flash: float) -> void:
 	set_hour(_hour)
 
 
-## "day" and "night" hold the light at their hours, as the 4.0's top bar does; "cycle" follows the city's clock.
+## "day" and "night" hold the light at their hours; "cycle" follows the city's clock.
 func set_mode(sky: String) -> void:
 	mode = sky
 	_clock_shown = -1.0
@@ -86,50 +105,72 @@ func follow_clock(hour: float) -> void:
 		set_hour(hour)
 
 
-func set_hour(hour: float) -> void:
-	_hour = hour
+## The sun at a clock time: towards it, its height (the sine of the arc's angle), its azimuth in degrees and how dark it is.
+func _place(hour: float) -> Array:
 	var k: float = (hour - _d.sunrise_h) / _d.day_span_h
 	var height := sin(PI * k)
 	var elev: float = _d.max_elev_deg * height
 	var az: float = _d.az_start_deg + _d.az_span_deg * clampf(k, 0.0, 1.0)
-	var light := clampf((height + _d.light_from) / _d.light_span, 0.0, 1.0)
-	var clear: float = 1.0 - _overcast * _d.overcast_sun
-	_dark = 1.0 - light
-	night = smoothstep(_d.night_from_deg, _d.night_to_deg, elev)
-	if height > -_d.light_from:
-		var aim: float = maxf(height, _d.low_height) * _d.max_elev_deg
-		_aim(_sun, aim, az)
-		_sun.light_color = _c("sun_day").lerp(_c("sun_low"), minf(1.0, maxf(0.0, 1.0 - _d.warm_k * height)))
-		_sun.light_energy = _d.sun_energy * lerpf(_d.sun_low_share, 1.0, minf(1.0, height * _d.sun_rise_k + _d.sun_rise_from)) * light * clear
-		_set_fill(aim, az, light * (1.0 - _overcast * _d.overcast_fill))
-	else:
+	return [_toward(elev, az), height, az, smoothstep(_d.night_from_deg, _d.night_to_deg, elev)]
+
+
+func set_hour(hour: float) -> void:
+	_hour = hour
+	var place := _place(hour)
+	solar = place[0]
+	var height: float = place[1]
+	night = place[3]
+	var dim: float = 1.0 - _overcast * _d.overcast_sun # what the weather leaves of a disc's own light
+	var sun_lit: Vector3 = air.sun_at(solar, 0.0) * dim
+	var moon_up: bool = height <= -_d.light_from # the moon lights the town once the sun is gone
+	var moon_lit: Vector3 = air.light_at(_moon_dir, 0.0, meter.moon_top) * dim if moon_up else Vector3.ZERO
+	if moon_up:
 		_aim(_sun, _d.moon_elev_deg, _d.moon_az_deg)
-		_sun.light_color = _c("moon")
-		_sun.light_energy = _d.moon_energy * night
-		_fill.visible = false
-	var hemi: float = _d.hemi_day_k * light + _d.hemi_night_k * night
-	_env.ambient_light_color = _c("hemi_night").lerp(_c("hemi_day"), light)
-	var sky: float = _d.ambient_scale * (1.0 + _flash * _d.flash_ambient) * (1.0 - _overcast * _d.overcast_ambient)
-	_env.ambient_light_energy = hemi * sky if ambient_on else 0.0
-	_top.light_color = _c("sky_top")
-	_top.light_energy = _d.sky_top_energy * light * sky if ambient_on else 0.0
-	_top.visible = _top.light_energy > 0.0
-	_under.light_color = _c("ground_under")
-	_under.light_energy = _d.ground_under_k * _env.ambient_light_energy
-	_under.visible = _under.light_energy > 0.0
-	var direct: float = _sun.light_energy * maxf(_sun.basis.z.y, 0.0)
-	var fill: float = _fill.light_energy * maxf(_fill.basis.z.y, 0.0) if _fill.visible else 0.0
-	direct_share = direct / maxf(direct + fill + _env.ambient_light_energy + _top.light_energy, LEAST_LIGHT)
-	_set_sky(elev)
+		_shine(moon_lit)
+	else:
+		_aim(_sun, maxf(height, _d.low_height) * _d.max_elev_deg, place[2])
+		_shine(sun_lit)
+	# The sky's radiance map is the ambient, scaled by the background's energy and not by ambient_light_energy (that one scales only
+	# the flat colour it mixes out: render_scene_data_rd.cpp, 4.7.2): the switch takes the sky's share away, and the colour is none.
+	_env.ambient_light_sky_contribution = SKY_LIT if ambient_on else SHADED
+	_env.ambient_light_energy = SHADED
+	air.publish(_sky, solar)
+	for m: ShaderMaterial in [_sky, _probe.material]: # the sky drawn and the one its level light is taken from: the same weather
+		m.set_shader_parameter("moon_top", meter.moon_top if moon_up else Vector3.ZERO)
+		m.set_shader_parameter("city_up", meter.town * night)
+		m.set_shader_parameter("overcast", _overcast * _d.overcast_sky)
+		m.set_shader_parameter("flash", _flash * _d.flash_sky)
+	RenderingServer.global_shader_parameter_set(&"town_light", meter.town * night)
+	_probe.refresh()
+	if meter.is_ready():
+		meter.expose(meter.adapted(solar, sun_lit, _moon_dir, moon_lit, _overcast * _d.overcast_sky, _flash * _d.flash_sky, night))
+		_haze_light(meter.haze(solar, _moon_dir, moon_up, _overcast * _d.overcast_sky, _flash * _d.flash_sky, night))
 	_cast()
-	_env.glow_enabled = glow_on and night > _d.glow_from_night
-	_env.glow_intensity = _d.glow_intensity * night
+	_env.glow_enabled = glow_on
+	_env.glow_intensity = _d.glow_intensity
 	RenderingServer.global_shader_parameter_set(&"night", night)
 	RenderingServer.global_shader_parameter_set(&"sun_direction", _sun.global_basis.z)
-	var awake := _awake_share(hour)
+	var awake := _by_hour(_d.awake_by_hour, hour)
 	RenderingServer.global_shader_parameter_set(&"rooms_awake", awake)
+	RenderingServer.global_shader_parameter_set(&"offices_lit", _by_hour(_d.office_lit_by_hour, hour))
 	RenderingServer.global_shader_parameter_set(&"outside_on", _d.outside_all_night + (1.0 - _d.outside_all_night) * awake)
-	RenderingServer.global_shader_parameter_set(&"room_daylight", (1.0 - night) * _d.room_daylight)
+
+
+## The fog's own light: its colour (sRGB, as the engine decodes it) and its energy, from a radiance.
+func _haze_light(light: Vector3) -> void:
+	var most := maxf(light.x, maxf(light.y, light.z))
+	if most <= 0.0:
+		_env.fog_light_energy = 0.0
+		return
+	_env.fog_light_color = Color(light.x / most, light.y / most, light.z / most).linear_to_srgb()
+	_env.fog_light_energy = most
+
+
+## The directional light shines with `lit`, its colour and its energy.
+func _shine(lit: Vector3) -> void:
+	var most := maxf(lit.x, maxf(lit.y, lit.z))
+	_sun.light_color = Color(lit.x, lit.y, lit.z) / most if most > 0.0 else Color.WHITE
+	_sun.light_energy = most
 
 
 ## Under the street lamps no one can see the moon's shadow, and it is the whole city drawn again for its maps: it fades with the dusk and the pass goes.
@@ -140,69 +181,36 @@ func _cast() -> void:
 	_sun.shadow_enabled = shadows_on and night < _d.moon_casts_until
 
 
-## The share of people awake at a clock time, between the survey's hourly figures: the rooms lit at night.
-func _awake_share(hour: float) -> float:
-	var table: Array = _d.awake_by_hour
+## A share by the clock, between a table's hourly figures from midnight: the people awake, the offices lit.
+func _by_hour(table: Array, hour: float) -> float:
 	var h := fposmod(hour, float(table.size()))
 	var i := int(h)
 	return lerpf(table[i], table[(i + 1) % table.size()], h - float(i))
 
 
-## The air the eye sees through at its height, and the sun's cascades fitted to the view.
+## The haze between the eye and what it sees: the air's extinction at the ground (render/air.gd, from the visibility), thinned with
+## height as the aerosol is, its colour the sky's own along the view (aerial perspective, the Environment's fog reading the radiance
+## map); and the sun's cascades fitted to the view (render/sun_cascades.gd).
 func follow_view(camera: Camera3D) -> void:
 	if camera == null:
 		return
-	var low := 1.0 - smoothstep(_d.low_from_m, _d.low_to_m, camera.global_position.y)
-	var air: Color = _c("air_high").lerp(_c("low_horizon"), low) * (1.0 - _d.air_night_cut * _dark)
-	if _env.fog_light_color != air:
-		_env.fog_light_color = air
 	var y: float = maxf(camera.global_position.y, 1.0)
-	var density: float = _d.fog_density * _d.air_height_m / y * (1.0 - exp(-y / _d.air_height_m)) # the air thins with height
+	var scale_h: float = air.mie.w
+	var density: float = air.extinction * scale_h / y * (1.0 - exp(-y / scale_h)) # the mean density of the column under the eye
 	if density != _air_density:
 		_air_density = density
 		_env.fog_density = density
 	cascades.follow(camera)
 
 
-## The fill: a light round from the sun and lower, that keeps the side away from it readable, never more than a share of
-## the sun on level ground (three-point lighting).
-func _set_fill(sun_elev: float, sun_az: float, light: float) -> void:
-	var low := sin(deg_to_rad(_d.fill_elev_deg))
-	var key: float = _sun.light_energy * sin(deg_to_rad(sun_elev))
-	_fill.light_energy = minf(_d.fill_energy * light, _d.fill_key_share * key / low)
-	_fill.light_color = _c("fill")
-	_fill.visible = _fill.light_energy > 0.0
-	_aim(_fill, _d.fill_elev_deg, sun_az - _d.fill_turn_deg)
-
-
-## Points a light from the direction (elevation, azimuth) in degrees: noon toward -Z.
-func _aim(lamp: DirectionalLight3D, elev_deg: float, az_deg: float) -> void:
+## The direction (elevation, azimuth) in degrees, towards it: noon toward -Z.
+static func _toward(elev_deg: float, az_deg: float) -> Vector3:
 	var e := deg_to_rad(elev_deg)
 	var a := deg_to_rad(az_deg)
-	var toward := Vector3(cos(e) * sin(a), sin(e), cos(e) * cos(a))
+	return Vector3(cos(e) * sin(a), sin(e), cos(e) * cos(a))
+
+
+## Points a light from the direction (elevation, azimuth) in degrees.
+func _aim(lamp: DirectionalLight3D, elev_deg: float, az_deg: float) -> void:
+	var toward := _toward(elev_deg, az_deg)
 	lamp.basis = Basis.looking_at(-toward, Vector3.UP if absf(toward.y) < _d.vertical_dot else Vector3.FORWARD)
-
-
-func _set_sky(elev: float) -> void:
-	var height := sin(deg_to_rad(elev))
-	var light := clampf((height + _d.light_from) / _d.light_span, 0.0, 1.0)
-	var warm := maxf(0.0, 1.0 - _d.warm_k * height)
-	var zenith := _c("zenith_day").lerp(_c("zenith_night"), 1.0 - light)
-	var horizon := _c("horizon_day").lerp(_c("horizon_dusk"), warm * light * _d.dusk_share)
-	horizon = horizon.lerp(_c("horizon_night"), 1.0 - light)
-	var sun_col := _c("sun_day").lerp(_c("sun_low"), minf(1.0, warm)) * light
-	var grey: Color = _c("overcast_grey") * light
-	zenith = zenith.lerp(grey, _overcast * _d.overcast_sky)
-	horizon = horizon.lerp(grey, _overcast * _d.overcast_sky)
-	_sky.set_shader_parameter("zenith", zenith)
-	_sky.set_shader_parameter("horizon", horizon)
-	horizon_linear = horizon.srgb_to_linear()
-	_sky.set_shader_parameter("ground", _c("sky_ground").lerp(_c("horizon_night"), 1.0 - light))
-	_sky.set_shader_parameter("low_zenith", _c("low_zenith"))
-	_sky.set_shader_parameter("low_horizon", _c("low_horizon"))
-	_sky.set_shader_parameter("low", _d.low_sky)
-	_sky.set_shader_parameter("dark", 1.0 - light)
-	_sky.set_shader_parameter("low_from_m", _d.low_from_m)
-	_sky.set_shader_parameter("low_to_m", _d.low_to_m)
-	_sky.set_shader_parameter("sun_color", sun_col)
-	_sky.set_shader_parameter("gain", _d.sky_gain * (1.0 + _flash * _d.flash_sky))

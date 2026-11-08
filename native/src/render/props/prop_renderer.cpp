@@ -1,7 +1,11 @@
 // Builds the street furniture chunk meshes and instances.
 #include "render/props/prop_renderer.h"
 
+#include "render/lamp_photometry.h"
+
 #include <algorithm>
+
+#include <godot_cpp/variant/string_name.hpp>
 
 using namespace godot;
 
@@ -46,6 +50,12 @@ bool PropRenderer::init(const RenderContext &ctx, const StreetLook &look, Packed
 	kit_.drop_baked();
 	lamps_.init(scenario_, material_, kit_);
 	lights_.init(scenario_, ctx.catalog->tune, RenderingServer::get_singleton()->material_get_param(glow_material_, "glow_color"));
+	// The lamp's own light where the lights of the pool do not go, as shader globals every material that draws it reads: its lens
+	// (props.gdshader) and the pools the road draws past them (road_body.gdshaderinc), the illuminance under a lamp at the utility
+	// pole's height (render/lamp_photometry.h, the one owner of its photometry).
+	RenderingServer *rs = RenderingServer::get_singleton();
+	rs->global_shader_parameter_set(StringName("street_lamp_lens"), lamp_lens_light(ctx.catalog->tune));
+	rs->global_shader_parameter_set(StringName("street_lamp_foot"), lamp_foot_light(ctx.catalog->tune, furniture_.lamp_height));
 	return true;
 }
 
@@ -128,7 +138,7 @@ void PropRenderer::commit_one(Built &b) {
 }
 
 void PropRenderer::submit(const CityState &s, int64_t key, JobPool &pool, float priority) {
-	submit_job(s, pool, JobKey{ JobLane::PROPS, key }, key, priority, [this, &s, key](MeshBuilder &mb, StreetInstances &inst) { build_cpu(s, key, mb, inst); });
+	submit_job(s, pool, JobKey::of(JobLane::PROPS, key), key, priority, [this, &s, key](MeshBuilder &mb, StreetInstances &inst) { build_cpu(s, key, mb, inst); });
 }
 
 void PropRenderer::drop_chunk(int64_t key) {

@@ -7,7 +7,6 @@ render_mode cull_back;
 #include "res://render/shaders/bytes.gdshaderinc"
 
 global uniform float night;
-global uniform float room_daylight; // how bright a room seen through its glass is by day, as light it sends out
 global uniform float building_glass; // the Effects panel: 0 leaves the panes out
 #include "res://render/shaders/building_glass_set.gdshaderinc"
 const int FURNITURE_FLOATS = 120; // three linear floats each of the furniture kinds pane_rooms.cpp picks from (materials.json furniture_tone)
@@ -47,7 +46,8 @@ void vertex() {
 #include "res://render/shaders/hash.gdshaderinc"
 #include "res://render/shaders/building_lamps.gdshaderinc"
 #include "res://render/shaders/building_room_tone.gdshaderinc"
-#include "res://render/shaders/building_sky_glass.gdshaderinc"
+#include "res://render/shaders/sky_level_map.gdshaderinc"
+#include "res://render/shaders/emission_light.gdshaderinc"
 #include "res://render/shaders/building_pane.gdshaderinc"
 
 void fragment() {
@@ -75,7 +75,7 @@ void fragment() {
 	v_axis_y = (VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz;
 	v_axis_z = (VIEW_MATRIX * vec4(n, 0.0)).xyz;
 	ALBEDO = surface_out(albedo);
-	EMISSION = surface_out(emit);
+	EMISSION = surface_out(emission_light(emit));
 	ROUGHNESS = rough;
 	METALLIC = metal;
 	AO = open;

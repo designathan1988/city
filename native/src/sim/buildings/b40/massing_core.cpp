@@ -11,8 +11,8 @@ namespace city::b40 {
 
 namespace {
 constexpr float TINY = 1e-6f, HALF = 0.5f; // a pitch this small is none
-// A lot's seed holds its character in the low 16 bits and its era above them.
-constexpr uint32_t CHARACTER_MASK = 0xffff, ERA_SHIFT = 16;
+// A lot's seed holds its character in the low 16 bits; its era is its neighbourhood's (era.h).
+constexpr uint32_t CHARACTER_MASK = 0xffff;
 
 bool closed_roof(Roof r) { return r == ROOF_FLAT || r == ROOF_TERRACE; }
 
@@ -131,7 +131,7 @@ void made_to_measure(const Data &data, Body &b, const Envelope &env, Xoshiro128 
 	}
 }
 
-void make_body(const Data &data, Body &b, int zone, int floors, float W, float D, uint32_t seed) {
+void make_body(const Data &data, Body &b, int zone, int floors, float W, float D, uint32_t seed, int era) {
 	b = Body{};
 	b.kind = data.kind_of_zone(zone);
 	b.use = b.kind == KIND_WORKS ? USE_INDUSTRIAL : b.kind == KIND_SHOP || b.kind == KIND_OFFICE ? USE_COMMERCIAL : USE_RESIDENTIAL;
@@ -142,7 +142,7 @@ void make_body(const Data &data, Body &b, int zone, int floors, float W, float D
 	env.D = b.plan.y1 - b.plan.y0;
 	env.back_door = b.plan.back != BACK_NONE && b.plan.back != BACK_LOADING;
 	env.character = seed & CHARACTER_MASK;
-	env.era = int((seed >> ERA_SHIFT) % ERAS);
+	env.era = era;
 	env.cap = floors;
 	env.low = data.low_shop(zone);
 	made_to_measure(data, b, env, r);

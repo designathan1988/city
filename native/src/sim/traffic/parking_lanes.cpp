@@ -29,6 +29,28 @@ void seg_point(const CityState &s, int seg, float arc, float u, Pose &out) {
 	out.fz = float(dz);
 }
 
+namespace {
+// Where on lane `lane` of dirseg `ds` a car stops before a gate at the segment's parameter `t` and where it joins past it.
+bool spot_on(const CityState &s, const RoadSegment &r, double t, int ds, int lane, LaneSpot &out) {
+	const TrafficParams &p = s.catalog.traffic;
+	const DirSeg &d = s.traffic.g.ds[size_t(ds)];
+	if (!d.ok || d.len < p.gate_lane_min_m) return false;
+	const float foot = d.sign > 0 ? float(arc_of_t(r, t)) - d.at0 : d.at0 - float(arc_of_t(r, t));
+	const float lo = p.gate_lane_end_m, hi = d.len - p.gate_lane_end_m;
+	const float at = clampf(foot + p.gate_join_past_m, lo, hi), entry = clampf(foot - p.gate_stop_before_m, lo, hi);
+	if (at - entry < p.gate_span_min_m) return false; // the gate must lie between where a car stops and where one joins
+	Pose q;
+	lane_pose(s, ds, lane, at, q);
+	out.ds = ds;
+	out.lane = lane;
+	out.at = at;
+	out.entry = entry;
+	out.p = V2(q.x, q.z);
+	out.t = V2(q.fx, q.fz);
+	return true;
+}
+} // namespace
+
 bool gate_lane(const CityState &s, const V2 &gate, LaneSpot &out, YardReads *reads) {
 	const TrafficParams &p = s.catalog.traffic;
 	const LaneGraph &g = s.traffic.g;
@@ -51,24 +73,22 @@ bool gate_lane(const CityState &s, const V2 &gate, LaneSpot &out, YardReads *rea
 			ds = seg * 2 + 1 - side;
 			lane = g.ds[size_t(ds)].lanes - 1;
 		}
-		const DirSeg &d = g.ds[size_t(ds)];
-		if (!d.ok || d.len < p.gate_lane_min_m) return;
-		const float foot = d.sign > 0 ? float(arc_of_t(r, t)) - d.at0 : d.at0 - float(arc_of_t(r, t));
-		const float lo = p.gate_lane_end_m, hi = d.len - p.gate_lane_end_m;
-		const float at = clampf(foot + p.gate_join_past_m, lo, hi), entry = clampf(foot - p.gate_stop_before_m, lo, hi);
-		if (at - entry < p.gate_span_min_m) return; // the gate must lie between where a car stops and where one joins
-		Pose q;
-		lane_pose(s, ds, lane, at, q);
-		out.ds = ds;
-		out.lane = lane;
-		out.at = at;
-		out.entry = entry;
-		out.p = V2(q.x, q.z);
-		out.t = V2(q.fx, q.fz);
-		best = float(dist);
-		found = true;
+		if (spot_on(s, r, t, ds, lane, out)) {
+			best = float(dist);
+			found = true;
+		}
 	});
 	return found;
+}
+
+bool gate_lane_across(const CityState &s, const V2 &gate, const LaneSpot &own, LaneSpot &out) {
+	const LaneGraph &g = s.traffic.g;
+	const int seg = own.ds / 2, ds = seg * 2 + 1 - own.ds % 2;
+	if (!g.ds[size_t(own.ds)].ok || !g.ds[size_t(ds)].ok) return false; // a one-way street has one lane to come by
+	const RoadSegment &r = s.roads.segs[size_t(seg)];
+	double t, dist;
+	closest_t(r.q, gate.x, gate.y, t, dist);
+	return spot_on(s, r, t, ds, g.ds[size_t(ds)].lanes - 1, out); // the lane next to the middle: the one across from the gate
 }
 
 // Through the gate square on: a curve cut across the wall's line would swing the car's corners into the posts. The way's end is

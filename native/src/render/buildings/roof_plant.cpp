@@ -28,6 +28,12 @@ constexpr float USE_CHANCE[PLANT_KINDS][3] = { {}, { 0.7f, 0.5f, 0.2f }, { 0.75f
 constexpr int TRIES = 24, RING = 2;
 constexpr uint32_t GOLDEN = 2654435761u, VOL_K = 40503u, VOL_OFF = 7, MAGIC = 0x5f3759df, AGE_MUL = 2246822519u, AGE_MOD = 1000;
 constexpr int CYL_SIDES = 12, CYL_SIDES_COARSE = 6;
+// The helipad (buildings.json roof.helipad): its pick by the building and block, the deck slab's thickness and its four legs, the
+// markings' lift off the deck, the touchdown circle's segments (a chord's sag under a centimetre on a 6.5 m ring at 48).
+constexpr uint32_t HELIPAD_SALT = 0x4e11;
+constexpr float PICK_SPAN = 65536.f, HELIDECK_SLAB = 0.3f, LEG = 0.35f, MARK_LIFT = 0.01f, NET_DROP = 0.25f;
+constexpr int CIRCLE_SIDES = 48;
+constexpr uint32_t PICK_MASK = 0xffff;
 
 struct Packer {
 	int nx = 0, ny = 0;
@@ -52,7 +58,39 @@ struct PlantEmit {
 	Lin c(const char *n) const { return paint_lin(pl.data->color(n)); }
 	void piece(PlantKind k, float x, float y, float w, float d, float h, int variant);
 	const RoofPlantLook &K = pl.look->shapes.roof_plant; // last: it reads pl
+	void helipad(float x0, float y0, const HelipadLook &h);
 };
+
+// A landing deck of side h.side_m with its corner at (x0, y0) on the roof: the slab on its frame over the lift's machine room (it stands
+// on that room's roof, clear of what else stands up there), the safety net round it,
+// the perimeter line, the touchdown circle and the H (ICAO Annex 14 Vol. II 5.2), the H's bar along the roof's y.
+void PlantEmit::helipad(float x0, float y0, const HelipadLook &h) {
+	const float s = h.side_m, z = MACHINE_H + h.deck_up_m, cx = x0 + s / 2, cy = y0 + s / 2, mz = z + MARK_LIFT;
+	const Lin deck = c("helideck"), white = c("helipad_white"), yellow = c("helipad_yellow"), dark = c("plant_dark");
+	shell.box(f, x0, x0 + s, y0, y0 + s, z - HELIDECK_SLAB, z, deck, FIN_CONCRETE, SKIP_NONE);
+	for (float lx : { x0, x0 + s - LEG })
+		for (float ly : { y0, y0 + s - LEG }) parts.box(f, lx, lx + LEG, ly, ly + LEG, 0, z - HELIDECK_SLAB, dark, FIN_METAL, SKIP_E2_NEG);
+	const float n0 = -h.net_m, nz = z - NET_DROP; // the net, a dark band round the deck just under its edge
+	parts.rect(f, x0 + n0, x0 + s - n0, y0 + n0, y0, nz, dark, FIN_METAL);
+	parts.rect(f, x0 + n0, x0 + s - n0, y0 + s, y0 + s - n0, nz, dark, FIN_METAL);
+	parts.rect(f, x0 + n0, x0, y0, y0 + s, nz, dark, FIN_METAL);
+	parts.rect(f, x0 + s, x0 + s - n0, y0, y0 + s, nz, dark, FIN_METAL);
+	const float e = h.edge_line_m;
+	shell.rect(f, x0, x0 + s, y0, y0 + e, mz, white, FIN_PLASTER);
+	shell.rect(f, x0, x0 + s, y0 + s - e, y0 + s, mz, white, FIN_PLASTER);
+	shell.rect(f, x0, x0 + e, y0 + e, y0 + s - e, mz, white, FIN_PLASTER);
+	shell.rect(f, x0 + s - e, x0 + s, y0 + e, y0 + s - e, mz, white, FIN_PLASTER);
+	const float r0 = s / 4, r1 = r0 + h.circle_line_m; // the circle's inner diameter half the D-value
+	for (int i = 0; i < CIRCLE_SIDES; i++) {
+		const float a0 = TAU_F * float(i) / float(CIRCLE_SIDES), a1 = TAU_F * float(i + 1) / float(CIRCLE_SIDES);
+		shell.quad(f.at(cx + r0 * std::cos(a0), cy + r0 * std::sin(a0), mz), f.at(cx + r1 * std::cos(a0), cy + r1 * std::sin(a0), mz),
+				f.at(cx + r1 * std::cos(a1), cy + r1 * std::sin(a1), mz), f.at(cx + r0 * std::cos(a1), cy + r0 * std::sin(a1), mz), f.e2, yellow, FIN_PLASTER);
+	}
+	const float hw = h.h_wide_m / 2, ht = h.h_tall_m / 2, k = h.h_stroke_m;
+	shell.rect(f, cx - hw, cx - hw + k, cy - ht, cy + ht, mz, white, FIN_PLASTER);
+	shell.rect(f, cx + hw - k, cx + hw, cy - ht, cy + ht, mz, white, FIN_PLASTER);
+	shell.rect(f, cx - hw + k, cx + hw - k, cy - k / 2, cy + k / 2, mz, white, FIN_PLASTER);
+}
 
 void PlantEmit::piece(PlantKind k, float x, float y, float w, float d, float h, int variant) {
 	Lin metal = c("plant_metal"), dark = c("plant_dark"), top = c("machine_top"), trim = paint_lin(pl.b->paints[size_t(pl.b->trim)]);
@@ -162,6 +200,17 @@ void emit_roof_plant(Shell &shell, Shell &parts, const Placed &pl, const Volume 
 	pk.used.assign(size_t(pk.nx * pk.ny), 0);
 	for (const Core &c : b.cores) // the machine room square
 		pk.mark(int((c.x - v.x - K.margin) / K.cell), int((c.y - v.y - K.margin) / K.cell), int(MACHINE_ROOM_M / K.cell), int(MACHINE_ROOM_M / K.cell));
+	// an office tower's landing deck, in the middle of a top that has room for the deck (its net hangs out past the edge, as on a
+	// real elevated deck): the plant packs round it
+	const HelipadLook &hp = pl.look->helipad;
+	const float pad = hp.side_m + 2 * hp.net_m;
+	if (b.use == USE_COMMERCIAL && v.top() >= hp.storeys_least && v.w >= hp.side_m + 2 * K.margin && v.d >= hp.side_m + 2 * K.margin &&
+			float(hash2(int(pl.id), vol, HELIPAD_SALT) & PICK_MASK) / PICK_SPAN < hp.share) {
+		const float x0 = (v.w - hp.side_m) / 2, y0 = (v.d - hp.side_m) / 2;
+		pe.helipad(x0, y0, hp);
+		const int c0 = int((x0 - hp.net_m - K.margin) / K.cell), r0 = int((y0 - hp.net_m - K.margin) / K.cell), n = int(std::ceil(pad / K.cell));
+		pk.mark(c0, r0, n, n);
+	}
 	Mulberry32 r((pl.id * GOLDEN) ^ (uint32_t(vol + VOL_OFF) * VOL_K) ^ MAGIC);
 	int use = b.use == USE_RESIDENTIAL ? 0 : b.use == USE_COMMERCIAL ? 1 : 2;
 	float age = float((pl.id * AGE_MUL) % AGE_MOD) / float(AGE_MOD), area = v.w * v.d;

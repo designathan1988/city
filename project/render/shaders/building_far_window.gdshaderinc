@@ -73,15 +73,15 @@ void far_window(vec2 uv, vec4 code, uint seed, vec3 n, vec3 V, float depth, inou
 	float frame = max(hole - pan, 0.0);
 	vec3 trim = srgb_to_linear(v_trim.rgb), shutter = shutter_tone;
 	float cosv = clamp(dot(-V, n), 0.0, 1.0);
-	float F = max(schlick(cosv), glass_reflect);
 	frame = max(frame - reveal, 0.0);
-	albedo = albedo * (1.0 - frame - glass - solid - reveal) + wall_seen * reveal + trim * frame + mix(PANE_ALBEDO, PANE_ALBEDO_DARK, dark) * glass + shutter * solid;
+	albedo = albedo * (1.0 - frame - glass - solid - reveal) + wall_seen * reveal + trim * frame + vec3(glazing_f0((flags & WINDOW_FLAG_OFFICE) != 0 ? 1.0 : 0.0)) * glass + shutter * solid;
 	float lot = float((h >> BYTE_SHIFT) & LOT_MASK) / LOT_SPAN, office = (flags & WINDOW_FLAG_OFFICE) != 0 ? 1.0 : 0.0;
 	float far_sub = smoothstep(0.5, 1.5, max(foot.x, foot.y));
-	float lit = far_room_lit(lot, far_sub);
+	float lit = far_room_lit(lot, far_sub, office);
 	vec3 lamp = far_room_lamp(lot, office, far_sub);
-	float through = 1.0 - schlick(cosv); // what the glass lets out at this angle
+	float through = glazing_through(glazing_f0(office), cosv); // what the glazing lets out at this angle
 	vec3 room = room_tone(V, n, office > 0.5 ? FLOOR_STONE : fract(lot * LOT_FLOOR) < 0.5 ? FLOOR_BOARD : FLOOR_TILE);
 	vec3 seen = mix(pane_tone(lot, room), pane_mean(room_tone(V, n, office > 0.5 ? FLOOR_STONE : FLOOR_HOME)), far_sub);
-	emit = ((lamp * lit * night * window_glow * FAR_ROOM_LEVEL + seen * room_daylight) * through * mix(1.0, dark_glass, dark) + glass_reflection(V, n, F, mix(GLASS_ENV, GLASS_ENV_DARK, dark))) * glass;
+	// the glazing a mirror (the engine's reflections, glazing_f0) with the room through it: its lamp by night, the sky's daylight by day
+	emit = seen * (lamp * lit * night * room_light_level(office) * FAR_ROOM_LEVEL + room_daylight()) * through * mix(1.0, dark_glass, dark) * glass;
 }

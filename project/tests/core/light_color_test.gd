@@ -1,15 +1,16 @@
 ## The lights of the street as the screen shows them, through the game's own Environment and "prop" and "road" materials
 ## (CityWorld), on each renderer (tools/build/run_tests.sh runs it on Forward+ and on Compatibility):
-## - by day, each signal lens lit must show the lens colour of data/render/streets.json props.signal (render/tone_map.gd
-##   mirrors Godot's ACES by hand; this checks the mirror against the engine);
+## - by day, each signal lens lit must show its light (render/lamp_radiance.gd: its colour times its luminance, streets.json
+##   props.lens_cd_m2) pre-exposed and tone mapped as render/tone_map.gd does (the mirror of Godot's AgX, checked against the engine);
 ## - by night, with the ambient, the moon and the glow (a screen effect added after) off so only the part's own light
 ##   is left, a part that glows at night
-##   (PropTag::NIGHT_GLOW, lamp glass) must show glow_color x its colour x glow_gain x night, tone mapped as
-##   render/tone_map.gd does. Its colour is a mid grey so that the glow stays inside ACES's range (a white one would
-##   saturate and hide an error);
+##   (PropTag::NIGHT_GLOW, lamp glass) must show glow_color x its colour x the lamp's lens light (the shader global
+##   street_lamp_lens, render/lamp_photometry.h) x night, pre-exposed by the eye's adaptation and tone mapped as render/tone_map.gd
+##   does. The test sets the lens light so that the glow stays inside AgX's range (a saturated one would hide an error);
 ## - by night likewise, a grey road surface under the even light of a junction plate, seen as the road draws it past the lamps
-##   with a light of their own (`lamp_lit` 0), must show its albedo x pool_color x plate_glow x pool_gain x night (road.gdshader);
-##   the concrete's own mottle is +-6% of that, so this one is looser.
+##   with a light of their own (`lamp_lit` 0), must show its albedo x pool_color x plate_glow x the light under a lamp (the global
+##   street_lamp_foot, set by the test likewise) x night (road.gdshader); the concrete's own mottle is +-6% of that, so this one
+##   is looser.
 ## The tolerance is one 8-bit step: the screen keeps 8 bits a channel, and the scene radiance (half floats, 11-bit
 ## mantissa) is far finer than that.
 ## Run: godot --path project [--rendering-method gl_compatibility] res://tests/core/light_color_test.tscn -- --no-flow
@@ -17,7 +18,7 @@ extends TestCase
 
 const BYTE_TOP := 255.0
 const GRADE_LEVELS_OFF := 1.0
-const GRADE_TABLE := {0.0: [0.0, 0.0, 0.0], 46.0: [38.2, 38.2, 38.1], 127.0: [129.4, 127.9, 125.1], 255.0: [255.0, 255.0, 251.4]}
+const GRADE_TABLE := {0.0: [0.0, 0.0, 0.0], 46.0: [46.0, 46.0, 46.0], 127.0: [127.0, 127.0, 127.0], 255.0: [255.0, 255.0, 255.0]}
 const NONE_LIT := -1.0 # INSTANCE_CUSTOM of the other lens slot (signal_lamps.cpp)
 const SIDE_M := 1.0 # each part: a square this wide, facing the camera
 const PITCH_M := 1.5
@@ -30,6 +31,8 @@ const ROAD_STEPS := 16 # the mottle
 const ROAD_PLATE_GLOW := 1.0
 const GLOW_GREY := 0.2 # sRGB
 const FRAMES := 10 # the sky's radiance and the tone mapping settle
+const COMPATIBILITY := "gl_compatibility"
+const LIGHT_REACH := 0.5 # the brightest channel of a lamp's light after the exposure: inside AgX's range and Compatibility's clamp
 
 # The shaders' encodings (CityStore.constants.shader, tools/build/shader_contracts.json), read when the test starts: the lenses, a
 # prop vertex's tag (UV2.x), the road material with no map (its albedo the strip colour) and its scale in COLOR.a, a junction
@@ -42,7 +45,6 @@ var road_ids := 0.0
 var road_plate := Vector2.ZERO
 const BYTE := 255.0
 const TOLERANCE := 1 # in 8-bit steps
-const LENS_STEPS := 3 # the signal green sits at the edge of the gamut: ACES has no radiance that lands on it exactly
 
 var cam: Camera3D
 
@@ -64,6 +66,8 @@ func _ready() -> void:
 	cam.position = Vector3(0, 0, CAMERA_Z)
 	add_child(cam)
 	cam.make_current()
+	if not world.sky_table.is_filled(): # the eye's meter reads the sky's row: the pre-exposure is final once it is in
+		await world.sky_table.filled
 	await _lenses(material)
 	await _night(material, world.materials()["road"])
 	print("renderer: ", RenderingServer.get_current_rendering_method())
@@ -93,16 +97,20 @@ func _lenses(material: ShaderMaterial) -> void:
 		centres.push_back(at)
 	await _frames(FRAMES)
 	var img := get_viewport().get_texture().get_image()
-	var want := _lens_colours()
+	var lit: PackedVector3Array = material.get_shader_parameter("lit_radiance")
 	for k in lenses:
-		_compare(img, centres[k], want[k], "lens %d" % k, LENS_STEPS)
+		var light: Vector3 = lit[k] * world.daylight.pre_exposure
+		if RenderingServer.get_current_rendering_method() == COMPATIBILITY: # its picture stops at 1 before the tone mapping
+			light = light.min(Vector3.ONE / world.environment.tonemap_exposure)
+		var shown := ToneMap.shown(light, world.environment)
+		_compare(img, centres[k], Color(shown.x, shown.y, shown.z).linear_to_srgb(), "lens %d" % k)
 	for n in nodes:
 		n.queue_free()
 
 
 func _night(material: ShaderMaterial, road: ShaderMaterial) -> void:
 	world.set_hour(DataTables.game("daylight").night_hour)
-	world.environment.ambient_light_energy = 0.0
+	world.environment.ambient_light_sky_contribution = 0.0 # the sky is the ambient: its share, not ambient_light_energy, turns it off
 	world.sun.light_energy = 0.0
 	world.environment.glow_enabled = false
 	road = road.duplicate()
@@ -120,31 +128,35 @@ func _night(material: ShaderMaterial, road: ShaderMaterial) -> void:
 	plate.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	plate.position = ROAD_AT
 	add_child(plate)
-	await _frames(FRAMES)
-	var night: float = world.daylight.night # what daylight.gd published to the shaders
+	var exposed: float = world.daylight.pre_exposure * world.environment.tonemap_exposure
 	var g: Color = Color(material.get_shader_parameter("glow_color")).srgb_to_linear()
 	var c := Color(GLOW_GREY, GLOW_GREY, GLOW_GREY).srgb_to_linear()
-	var k: float = float(material.get_shader_parameter("glow_gain")) * night
-	var radiance := Vector3(g.r * c.r, g.g * c.g, g.b * c.b) * k
-	var shown := ToneMap.aces(radiance, world.environment.tonemap_exposure, world.environment.tonemap_white)
+	var glass := Vector3(g.r * c.r, g.g * c.g, g.b * c.b)
+	var lens := LIGHT_REACH / (exposed * maxf(glass.x, maxf(glass.y, glass.z)))
+	RenderingServer.global_shader_parameter_set(&"street_lamp_lens", lens)
+	var p: Color = Color(road.get_shader_parameter("pool_color")).srgb_to_linear()
+	var albedo: float = Color(ROAD_GREY, ROAD_GREY, ROAD_GREY).srgb_to_linear().r
+	var pool := Vector3(p.r, p.g, p.b) * float(road.get_shader_parameter("plate_glow")) * albedo
+	var foot := LIGHT_REACH / (exposed * maxf(pool.x, maxf(pool.y, pool.z)))
+	RenderingServer.global_shader_parameter_set(&"street_lamp_foot", foot)
+	await _frames(FRAMES)
+	var night: float = world.daylight.night # what daylight.gd published to the shaders
+	var shown := ToneMap.shown(glass * lens * night, world.environment, world.daylight.pre_exposure)
 	var want := Color(shown.x, shown.y, shown.z).linear_to_srgb()
 	var img := get_viewport().get_texture().get_image()
 	_compare(img, GLOW_AT, want, "night glow (night %.2f)" % night)
-	var p: Color = Color(road.get_shader_parameter("pool_color")).srgb_to_linear()
-	var lit: float = float(road.get_shader_parameter("plate_glow")) * float(road.get_shader_parameter("pool_gain")) * night
-	var albedo: float = Color(ROAD_GREY, ROAD_GREY, ROAD_GREY).srgb_to_linear().r
-	var pool := ToneMap.aces(Vector3(p.r, p.g, p.b) * lit * albedo, world.environment.tonemap_exposure, world.environment.tonemap_white)
-	_compare(img, ROAD_AT, Color(pool.x, pool.y, pool.z).linear_to_srgb(), "road light (junction plate)", ROAD_STEPS)
+	var road_shown := ToneMap.shown(pool * foot * night, world.environment, world.daylight.pre_exposure)
+	_compare(img, ROAD_AT, Color(road_shown.x, road_shown.y, road_shown.z).linear_to_srgb(), "road light (junction plate)", ROAD_STEPS)
 
 
-## The grade against the 4.0's own (postprocess.ts GRADED_OUTPUT_FRAGMENT), levels of grey in and out.
+## The grade as data/game/daylight.json sets it, neutral: levels of grey in and out, each as it came in (the picture is AgX's own).
 func _check_grade() -> void:
 	var grade: Dictionary = DataTables.game("daylight").grade
 	for level: float in GRADE_TABLE:
 		var got: Color = CityStore.query(&"film_graded", [grade, Color(level / BYTE_TOP, level / BYTE_TOP, level / BYTE_TOP)])
 		var want: Array = GRADE_TABLE[level]
 		var off := maxf(maxf(absf(got.r * BYTE_TOP - want[0]), absf(got.g * BYTE_TOP - want[1])), absf(got.b * BYTE_TOP - want[2]))
-		check(off <= GRADE_LEVELS_OFF, "grade of %d: %s, the 4.0 gives %s" % [int(level), got.to_html(false), want])
+		check(off <= GRADE_LEVELS_OFF, "grade of %d: %s, a neutral grade gives %s" % [int(level), got.to_html(false), want])
 
 
 func _compare(img: Image, at: Vector3, wanted: Color, what: String, steps := TOLERANCE) -> void:
@@ -168,16 +180,6 @@ func _square(tag: Vector2, col: Color) -> ArrayMesh:
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	return mesh
-
-
-## Each lens's colour (sRGB), from its parts in streets.json props.signal.
-func _lens_colours() -> Array[Color]:
-	var out: Array[Color] = []
-	out.resize(lenses)
-	for part: Dictionary in DataTables.render_table("streets").props.signal:
-		if part.has("lens"):
-			out[int(part.lens)] = Color.html(part.color)
-	return out
 
 
 func _step(a: float, b: float) -> int:

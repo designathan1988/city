@@ -17,37 +17,32 @@ uniform vec4 puff[MAX_CLOUDS * PUFFS]; // x, y, z, radius
 uniform vec4 cloud_look[MAX_CLOUDS]; // base height, thickness (life), how much shows, -
 uniform vec3 sun_dir; // set every frame by render/sky_view.gd, before the pass is shown
 uniform vec3 sun_light;
-uniform vec3 sky_light;
-uniform vec3 mist_color;
 uniform float dark = 0.0;
 uniform float shadow_strength; // sky.json, set when the pass is made
 uniform float mist = 0.0;
 uniform float mist_height; // the weather's, set when it is read
 uniform float mist_beta;
 uniform float mist_reach; // sky.json
-uniform float air_gain = 1.0; // daylight.json sky_gain: what the air gives off meets the curve as the sky does
 uniform float fog_on = 0.0;
 // The look of the air: data/game/sky.json atmosphere (render/sky_view.gd sets them), by eye as the 4.0's air. Colours are linear
 // light, lengths metres; each vector's parts are said here.
 uniform float shadow_depth; // how fast a cloud's heap darkens the ground under it
 uniform float mist_most; // the most the mist hides
-uniform float mist_night; // the mist's light at night, of its day's
-uniform vec3 cloud_base_day; // a cloud's shaded base by day and by night
-uniform vec3 cloud_base_night;
-uniform vec2 cloud_fill; // its fill: the sky's share and a floor
-uniform vec3 cloud_fill_night;
 uniform float cloud_done; // a ray this hidden stops marching the clouds
 uniform vec2 cloud_near; // a cloud fades in from the eye between these shares of its size
 uniform float cloud_least; // a density under this adds nothing
 uniform vec3 cloud_sun_probe; // the sun's light in it: how far towards the sun it looks (of its size), how fast it darkens, the facing's floor
 uniform vec2 cloud_facing; // which way the heap faces, between these depths
-uniform vec4 cloud_light; // the fill's share from and over its height; the shade's share; the sun's share
 uniform vec2 cloud_extinction; // the density's extinction and the size it is reckoned on
 
 #include "res://render/shaders/screen_depth.gdshaderinc"
 #include "res://render/shaders/color_space.gdshaderinc"
 #include "res://render/shaders/cloud_field.gdshaderinc"
-#include "res://render/shaders/canyon_light.gdshaderinc"
+#include "res://render/shaders/sky_model.gdshaderinc"
+#include "res://render/shaders/air_globals.gdshaderinc"
+#include "res://render/shaders/emission_light.gdshaderinc"
+#include "res://render/shaders/sky_level_map.gdshaderinc"
+#include "res://render/shaders/cloud_light.gdshaderinc"
 #include "res://render/shaders/fog_bank.gdshaderinc"
 
 const int CLOUD_STEPS = 16; // the steps through one cloud: a design value, the start's blue noise hides their grain
@@ -108,8 +103,6 @@ float cloud_bodies(vec3 ro, vec3 rd, float t_scene, float jitter, float time, ou
 			if (max(span.x, 0.0) < t_scene) spans[c] = span;
 		}
 	}
-	vec3 base_shade = mix(cloud_base_day, cloud_base_night, dark);
-	vec3 fill = mix(sky_light * cloud_fill.x + vec3(cloud_fill.y), cloud_fill_night, dark);
 	float done = -1.0;
 	for (int pass = 0; pass < MAX_CLOUDS; pass++) {
 		if (pass >= cloud_count || keep < cloud_done) break;
@@ -136,7 +129,7 @@ float cloud_bodies(vec3 ro, vec3 rd, float t_scene, float jitter, float time, ou
 			float towards = clamp(heap(best, q + sun_dir * size * cloud_sun_probe.x), 0.0, 1.0);
 			float lit = exp(-towards * cloud_sun_probe.y) * mix(cloud_sun_probe.z, 1.0, smoothstep(cloud_facing.x, cloud_facing.y, here - towards));
 			float up = clamp((q.y - cloud_look[best].x) / size, 0.0, 1.0);
-			vec3 c = mix(base_shade, fill, cloud_light.x + cloud_light.y * up) * cloud_light.z + sun_light * cloud_light.w * lit * (1.0 - dark);
+			vec3 c = cloud_light(lit, up);
 			float alpha = 1.0 - exp(-density * step_len * cloud_extinction.x * cloud_extinction.y / size);
 			light += keep * alpha * c;
 			keep *= 1.0 - alpha;
@@ -164,15 +157,14 @@ void fragment() {
 	vec3 add = vec3(0.0);
 	float jitter = texture(start_noise, FRAGCOORD.xy / vec2(textureSize(start_noise, 0))).r;
 	if (!sky && cloud_count > 0) keep *= cloud_shade(hit);
-	if (!sky && canyon_sky > 0.0) keep *= canyon_keep(hit, ro, SCREEN_UV, 1.0 / VIEWPORT_SIZE, INV_PROJECTION_MATRIX, INV_VIEW_MATRIX);
 	if (mist > 0.0) {
 		float a = mist_amount(ro, rd, t_scene, sky ? mist_height : hit.y);
-		add = add * (1.0 - a) + mix(mist_color, mist_color * mist_night, dark) * a;
+		add = add * (1.0 - a) + cloud_light(max(sun_dir.y, 0.0), 0.0) * a; // the mist's droplets lit as a cloud's, deep in it
 		keep *= 1.0 - a;
 	}
 	if (fog_on > 0.5) {
 		float a = fog_amount(ro, rd, t_scene, jitter, TIME);
-		add = add * (1.0 - a) + fog_light(rd) * (1.0 - fog_glow.w * dark) * a;
+		add = add * (1.0 - a) + cloud_light(max(sun_dir.y, 0.0), 0.0) * a; // a fog bank, a cloud on the ground
 		keep *= 1.0 - a;
 	}
 	if (cloud_count > 0) {
@@ -183,5 +175,5 @@ void fragment() {
 	}
 	if (keep > CLEAR_KEEP) discard;
 	ALPHA = 1.0 - keep;
-	ALBEDO = linear_out(add * air_gain / max(ALPHA, LEAST_ALPHA));
+	ALBEDO = linear_out(add / max(ALPHA, LEAST_ALPHA));
 }

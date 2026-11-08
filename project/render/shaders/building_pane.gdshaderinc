@@ -69,7 +69,6 @@ uniform vec2 venetian_shade; // a slat's shade, from and over
 uniform vec4 sheer_look; // a sheer's cover, from and over; its waves a metre (by 2 pi), the lot's phase
 uniform vec3 sheer_albedo;
 uniform float hung_dim; // what hangs, its light
-uniform vec4 lamp_lift; // a lamp's light: its floor, its gain on what the room shows, the tone it is taken over, its top
 uniform vec2 tiny_edges; // the room is traced under the first footprint of the pane's uv a pixel and given up over the second
 uniform vec3 pane_rough; // the roughness of the glass, of a pane too small to trace and of the frame, of the reveal
 uniform float frame_metal;
@@ -251,14 +250,16 @@ vec3 room_hung(vec3 room, vec3 o, vec3 d, vec2 size, float lot) {
 	return mix(room, hung * hung_dim, cover);
 }
 
-// The lamp of a room at night, multiplied by what the room shows. Who is awake is the room's; whether this stretch of it is lit and how much is `lot`, a bay's, as the
+// The lamp of a room at night: the room's surfaces as it lights them, its working plane's illuminance (room_light_level) times what
+// they show. Who is awake is the room's (an office's lights follow its schedule); whether this stretch of it is lit and how much is `lot`, a bay's, as the
 // 4.0's vRoomLot is of what stands within 2.7 m: a wide floor is lit in patches, never all or nothing.
 vec3 pane_lamp(uint slot, float lot, float office, vec3 seen) {
-	float awake = step(1.0 - rooms_awake, h01(slot * KNUTH_HASH + AWAKE_SALT));
-	float lit = step(fract(lot * LOT_LIT), rooms_in_use) * awake * room_level(lot) * building_night_windows;
+	float awake = step(1.0 - (office > 0.5 ? offices_lit : rooms_awake), h01(slot * KNUTH_HASH + AWAKE_SALT));
+	float in_use = office > 0.5 ? 1.0 : step(fract(lot * LOT_LIT), rooms_in_use);
+	float lit = in_use * awake * room_level(lot) * building_night_windows;
 	vec3 tint = room_lamp(lot, office);
 	tint = mix(tint, tv_light(TIME, lot), (1.0 - office) * step(1.0 - tv_share, fract(lot * LOT_TV)));
-	return tint * lit * (vec3(lamp_lift.x) + lamp_lift.y * clamp(seen / lamp_lift.z, vec3(0.0), vec3(lamp_lift.w)));
+	return tint * lit * seen * room_light_level(office);
 }
 
 // A pane: uv 0..1 over the glass, `size` metres, `slot` its room's seed, `bay` its own. Out: what the surface is.
@@ -295,30 +296,28 @@ void pane(vec2 uv, vec2 size, uint slot, uint bay, bool dark, float deep, vec3 n
 		vec3 room = room_hung(room_trace(o, d, lot, lo, hi, kind), o, d, size, lot);
 		seen = mix(room, seen, tiny);
 	}
-	// Less of the room as the glass turns to a mirror (Schlick, F0 4 %): at every size, or a pane seen edge-on burns as a bright sliver.
+	// Less of the room as the glass turns to a mirror (Schlick at the glazing's F0): at every size, or a pane seen edge-on burns as a
+	// bright sliver.
 	float seen_cos = clamp(ray.z / max(length(ray), LEAST_RAY), 0.0, 1.0);
-	seen *= 1.0 - schlick(seen_cos);
 	float office = kind > 0.5 && kind < 1.5 ? 1.0 : 0.0, glass_k = dark ? dark_glass : 1.0;
-	float cosv = clamp(dot(-V, n), 0.0, 1.0);
-	float F = max(schlick(cosv), glass_reflect);
-	// The glass scatters next to nothing: what a pane shows is the room through it and the sky's reflection, as light leaving it.
-	vec3 refl = glass_reflection(V, n, F, dark ? GLASS_ENV_DARK : GLASS_ENV);
+	float f0 = glazing_f0(office);
+	seen *= glazing_through(f0, seen_cos);
+	// The glass scatters next to nothing: what a pane shows is the room through it, as light leaving it, and what it mirrors (the
+	// engine's reflections of the sky and the street, Fresnel's share at this angle).
 	vec3 trim = srgb_to_linear(v_trim.rgb);
-	albedo = mix(mix(PANE_ALBEDO * glass_k, trim, frame), trim * REVEAL_ALBEDO * side_shade, solid);
-	emit = (seen * room_daylight * glass_k + pane_lamp(slot, lot, office, seen) * night * window_glow * glass_k + refl * open) * (1.0 - max(frame, solid));
+	albedo = mix(mix(vec3(f0), trim, frame), trim * REVEAL_ALBEDO * side_shade, solid);
+	emit = (seen * room_daylight() + pane_lamp(slot, lot, office, seen) * night) * glass_k * (1.0 - max(frame, solid));
 	nn = normalize(mix(n, normalize(t * face.x + vec3(0.0, face.y, 0.0) + n * face.z), step(0.5, frame)));
 	nn = normalize(mix(nn, normalize(t * side.x + vec3(0.0, side.y, 0.0) - n * side.z), step(0.5, solid)));
 	rough = mix(mix(mix(pane_rough.x, pane_rough.y, tiny), pane_rough.y, frame), pane_rough.z, solid);
-	metal = mix(mix(0.0, frame_metal, frame), 0.0, solid);
+	metal = mix(mix(1.0, frame_metal, frame), 0.0, solid);
 }
 
-// The glass of a building cut open: nothing behind it to trace (the inside is real geometry), only what the glass reflects.
+// The glass of a building cut open: nothing behind it to trace (the inside is real geometry), only what the glass mirrors.
 void pane_clear(vec3 n, vec3 V, out vec3 albedo, out vec3 emit, out vec3 nn, out float rough, out float metal) {
-	float cosv = clamp(dot(-V, n), 0.0, 1.0);
-	float F = max(schlick(cosv), glass_reflect);
-	albedo = PANE_ALBEDO;
-	emit = glass_reflection(V, n, F, GLASS_ENV);
+	albedo = vec3(glazing_reflect);
+	emit = vec3(0.0);
 	nn = n;
 	rough = pane_rough.x;
-	metal = 0.0;
+	metal = 1.0;
 }

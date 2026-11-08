@@ -1,6 +1,8 @@
 // A material of a signature building (tools/assets/cook_signatures.py): a colour, a picture over it, how it reflects. Both signature shaders read it.
 #include "res://render/shaders/hash.gdshaderinc"
 #include "res://render/shaders/building_lamps.gdshaderinc"
+#include "res://render/shaders/building_room_tone.gdshaderinc"
+#include "res://render/shaders/emission_light.gdshaderinc"
 
 uniform vec4 albedo : source_color = vec4(1.0);
 uniform sampler2D picture : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
@@ -17,15 +19,15 @@ global uniform float night;
 
 const float GLASS_CELL_M = 3.2; // cook_signatures.py ROOM_M
 const uint LIT_SALT = 977u; // a cell's lit pick, its own stream of the hash
-const float ROOM_GLOW = 0.62; // window_glow of the plain buildings (materials.json)
 
-// What the room behind a cell gives at night, by the rule of the plain buildings (pane_lamp), with an office's lamps.
-vec3 room_light(vec2 uv, float glass) {
+// What the room behind a cell gives at night, by the rule of the plain buildings (pane_lamp), with an office's lamps: its surfaces,
+// the far levels' mean room seen along V (world space), under its working plane's light.
+vec3 room_light(vec2 uv, float glass, vec3 V, vec3 n) {
 	ivec2 cell = ivec2(floor(painted_windows ? uv : uv / GLASS_CELL_M));
 	uint slot = spatial_hash(uint(cell.x), uint(cell.y));
 	float lot = h01(slot);
-	float lit = step(h01(slot + LIT_SALT), rooms_awake * rooms_in_use) * room_level(lot) * building_night_windows;
-	return room_lamp(lot, 1.0) * (lit * night * ROOM_GLOW * glass);
+	float lit = step(h01(slot + LIT_SALT), rooms_lit(1.0)) * room_level(lot) * building_night_windows;
+	return room_lamp(lot, 1.0) * pane_mean(room_tone(V, n, FLOOR_STONE)) * (lit * night * room_light_level(1.0) * glass);
 }
 
 vec4 look_colour(vec2 uv) {
