@@ -34,7 +34,6 @@ const char *const PLASTIC = "plastic";
 // The note a table carries for its readers (skipped where a table's keys are its rows).
 const char *const DOC_KEY = "_doc";
 constexpr int PAIR = 2; // [finish, colour], [style, weight], [min, max]
-constexpr int ERAS = 3; // era_affinity: old, middle, new
 
 int8_t finish_of(const std::string &s, DataReader &r) {
 	if (s == NO_FINISH) return FIN_NONE;
@@ -162,6 +161,41 @@ void lot_rules(DataReader r, const Dictionary &d, LotRules &l) {
 	boundaries(r.in("boundary"), r.table(d, "boundary"), l);
 }
 
+// Every block of "shapes": each field of its list read under its own name, of its own type.
+std::vector<float> floats_of(DataReader r, const Dictionary &d, const char *key) {
+	const Array a = r.list(d, key);
+	std::vector<float> out;
+	for (int i = 0; i < a.size(); i++) out.push_back(float(r.in(key).num_at(a, i)));
+	return out;
+}
+std::vector<int> counts_of(DataReader r, const Dictionary &d, const char *key) {
+	const Array a = r.list(d, key);
+	std::vector<int> out;
+	for (int i = 0; i < a.size(); i++) out.push_back(r.in(key).integer_at(a, i));
+	return out;
+}
+void shapes(DataReader r, const Dictionary &t, Shapes &out) {
+#define B40_READ_FLOAT(n) o.n = float(rb.num(d, #n));
+#define B40_READ_COUNT(n) o.n = rb.integer(d, #n);
+#define B40_READ_DOUBLE(n) o.n = rb.num(d, #n);
+#define B40_READ_FLOATS(n) o.n = floats_of(rb, d, #n);
+#define B40_READ_COUNTS(n) o.n = counts_of(rb, d, #n);
+#define B40_READ_BLOCK(key, Type, LIST) \
+	{ \
+		DataReader rb = r.in(#key); \
+		const Dictionary d = r.table(t, #key); \
+		Type &o = out.key; \
+		LIST(B40_READ_FLOAT, B40_READ_COUNT, B40_READ_DOUBLE, B40_READ_FLOATS, B40_READ_COUNTS) \
+	}
+	B40_SHAPES(B40_READ_BLOCK)
+#undef B40_READ_BLOCK
+#undef B40_READ_FLOAT
+#undef B40_READ_COUNT
+#undef B40_READ_DOUBLE
+#undef B40_READ_FLOATS
+#undef B40_READ_COUNTS
+}
+
 void kind_weights(DataReader r, const Dictionary &kw, Data &d) { // per kind, [style, weight] pairs
 	for (int k = 0; k < KIND_COUNT; k++) {
 		const Array list = r.list(kw, KIND_NAMES[k]);
@@ -244,6 +278,7 @@ bool load_buildings(const Dictionary &table, Data &d, PackedStringArray &errors)
 	colors(r.in("colors"), r.table(t, "colors"), d);
 	openings(r.in("openings"), r.table(t, "openings"), d);
 	lot_rules(r.in("lots"), r.table(t, "lots"), d.lots);
+	shapes(r.in("shapes"), r.table(t, "shapes"), d.shapes);
 	DataReader rl = r.in("props");
 	const Array lit = rl.list(r.table(t, "props"), "lit_share", PAIR);
 	d.lit_share[0] = float(rl.in("lit_share").num_at(lit, 0));

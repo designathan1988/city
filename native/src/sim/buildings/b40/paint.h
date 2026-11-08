@@ -3,6 +3,7 @@
 #pragma once
 
 #include "core/seeded.h"
+#include "sim/buildings/b40/shapes.h"
 #include "sim/buildings/b40/types.h"
 
 #include <algorithm>
@@ -47,7 +48,7 @@ inline uint32_t tint(uint32_t c, Xoshiro128 &r) {
 	return scale_rgb(c, float(LO + r.f() * SPAN));
 }
 
-uint32_t nudge(uint32_t c, Xoshiro128 &r, float amount = 1.f); // three floats
+uint32_t nudge(const PaintShape &K, uint32_t c, Xoshiro128 &r, float amount = 1.f); // three floats, steps of `K`
 
 // Linear <-> sRGB per channel (vertex colours are stored sRGB; shading is done on linear values).
 struct Lin {

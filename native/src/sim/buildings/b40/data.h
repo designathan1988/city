@@ -8,6 +8,7 @@
 #include "sim/buildings/b40/body_cache.h"
 #include "sim/buildings/b40/body_table.h"
 #include "sim/buildings/b40/model.h"
+#include "sim/buildings/b40/shapes.h"
 #include "sim/buildings/interior/tables.h"
 
 #include <atomic>
@@ -78,10 +79,11 @@ struct Data {
 	Kind kind_of_zone(int code) const { return code >= 0 && code < int(zone_kind.size()) ? zone_kind[size_t(code)] : KIND_HOUSE; }
 	bool low_shop(int code) const { return code >= 0 && code < int(zone_low_shop.size()) && zone_low_shop[size_t(code)]; }
 	LotRules lots;
+	Shapes shapes; // every generator file's values (buildings.json "shapes")
 	InteriorTables interior;
 	std::vector<StyleDef> styles;
 	std::vector<std::pair<int, float>> weights[KIND_COUNT];
-	float era[STYLE_COUNT][3] = {};
+	float era[STYLE_COUNT][ERAS] = {};
 	std::vector<Paint> bricks, hard, roof_tiles, flat_roofs, works_roofs, lot_walls;
 	std::vector<uint32_t> awnings, shop_awnings, tanks, warehouse_walls;
 	std::unordered_map<std::string, Paint> colors;
@@ -95,6 +97,8 @@ struct Data {
 		return it == colors.end() ? MISSING : it->second;
 	}
 	bool is_clay(const Paint &p) const { return p.finish == FIN_TILE; }
+	// The last palette a generator may give a body: a body's palette picks its lot walls (lot_boundary.cpp).
+	int last_palette() const { return int(lot_walls.size()) - 1; }
 };
 
 } // namespace city::b40

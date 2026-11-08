@@ -3099,6 +3099,26 @@ not a person going down: both go to data with their domains (the citygen and eff
 **What changes.** Nothing: the digest of the generated maps, the hash tests and the numbers are the same (`quick`: 44 of 46; the
 photo that differed by 0.004 % was a state of the capture's variation: taken again with the same DLL it is one seen before).
 
+### 6.37 B2, C14 (the building generator, bodies): every value of a generator file in buildings.json "shapes" (2026-11-08)
+
+**Cause and fix.** Every massing file opened with a block of `constexpr float` (storey heights, shares, counts: §3b), passing
+the magic-number rule by being named; the review's fix was to read them from the buildings table. A generator file's values are
+now a block of `buildings.json` `styles.roadcraft.shapes` (`civic`, `services`, `facade`, `massing`, `house`, `tall`, `works`,
+`paint`: 318 values), typed by an X-macro list per block in `sim/buildings/b40/shapes.h` (float, count, double, lists), read
+by `buildings_loader.cpp` (a missing key refuses the catalogue), checked by a strict schema, each block with a `_doc` that
+carries the sources the code's comments held (the COE and NBR heights, the CTBUH comparison). A function reaches its block
+through the `Data` it is given (`roof_shape`, `roof_of`, the house's and the tall bodies' helpers now take it; `nudge` takes
+the paint block). The values were moved by a tool that rewrites the declarations and the uses and checks, value by value, that
+the float the loader makes from the JSON double is the float the literal made.
+
+Not moved, and named with their sources: the facade grammar's bay rules (`DEFAULT_BAY`, `BEST_WITHIN`), which every saved body
+and the commands depend on; the hash constants and the HSL hexcone; tolerances. Three copies made one: the era count was in
+`buildings_loader.cpp`, `massing_core.cpp` and the size of `Data::era` (now `ERAS` in `types.h`); the palette count `PALETTES`
+(7) in three massing files was the lot walls' last index (now `Data::last_palette()`, eight walls in the table).
+
+**What changes.** Nothing: the generated maps' digest, the hashes and the numbers are the same (`quick`: 44 of 46; the photos
+are states seen before).
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

@@ -8,6 +8,8 @@
 namespace city::b40 {
 
 namespace {
+// An area this small is none; an offset corner's mitre is at least MITRE_FLOOR of the offset (a sharp corner is not
+// pushed out to infinity); a box's area tolerance; its corners.
 constexpr float AREA_EPS = 1e-6f, MITRE_FLOOR = .3f, BOX_AREA_EPS = 1e-3f;
 constexpr size_t BOX_CORNERS = 4;
 
