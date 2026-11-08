@@ -21,8 +21,6 @@ const STROKE_SWING_M := 34.0
 const POINTER_AIMS := 40
 const POINTER_VIEWS_M: Array[float] = [NEAR_M, CLOSE_M, WIDE_M]
 const WEAR_UPLOAD_S := 3.0
-const FURNITURE_LAMP := 1 # furniture_types.h FurnitureKind
-const FURNITURE_COLUMN := 6
 
 var out_dir := "user://captures"
 var world: CityWorld
@@ -140,7 +138,7 @@ func _spots(p: Vector3) -> void:
 		return
 	print("poles of road %d (profile %d) at %s:" % [seg.seg, seg.profile, p])
 	for s: Dictionary in CityStore.query(&"furniture_spots", [seg.seg]):
-		if s.kind == FURNITURE_LAMP or s.kind == FURNITURE_COLUMN:
+		if s.kind == CityStore.code(&"FurnitureKind", &"LAMP") or s.kind == CityStore.code(&"FurnitureKind", &"COLUMN"):
 			print("  kind %d row %d side %d station %d v %.1f u %.2f at %s" % [s.kind, s.row, s.side, s.station, s.v, s.u, s.position])
 
 

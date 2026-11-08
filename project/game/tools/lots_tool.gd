@@ -3,10 +3,6 @@
 ## clicked becomes the front), split (across, along or by a drawn line), join (one lot, then its neighbour), delete. The zone brush paints them.
 extends ToolBase
 
-## The kinds of cut, as the core takes them (LotCutKind).
-const CUT_ACROSS := 0
-const CUT_ALONG := 1
-const CUT_DRAWN := 2
 ## What of a corner or a side the pointer takes, in screen pixels.
 const TAKE_PX := 14.0
 const DRAWN_PX := 2.0
@@ -16,7 +12,7 @@ const SNAP_LEAST_M := 2.5
 const MARK_M := 0.9
 
 var mode := "add"
-var cut_kind := CUT_ACROSS
+var cut_kind := CityStore.code(&"LotCutKind", &"ACROSS")
 var parts := 2
 var _lots := LotOutlines.new()
 var _from := Vector3.INF # where the gesture began
@@ -30,7 +26,7 @@ var _erasing: Dictionary = {} # the delete stroke: the lots it passed over, by i
 
 func enter() -> void:
 	mode = params.get("mode", "add")
-	cut_kind = params.get("cut", CUT_ACROSS)
+	cut_kind = params.get("cut", CityStore.code(&"LotCutKind", &"ACROSS"))
 	parts = params.get("parts", 2)
 	_read()
 	_show()
@@ -128,7 +124,7 @@ func click(p: Vector3) -> void:
 				var k := LotOutlines.side_near(lot, p, INF)
 				_done(CityStore.dispatch(&"lot_set_front", [id, k]))
 		"split":
-			if cut_kind == CUT_DRAWN:
+			if cut_kind == CityStore.code(&"LotCutKind", &"LINE"):
 				_from = p
 			elif id != 0:
 				_done(CityStore.dispatch(&"lot_split", [id, cut_kind, parts, p, p]))
@@ -198,14 +194,14 @@ func release(p: Vector3) -> void:
 		"split":
 			var id: int = CityStore.query(&"lot_at", [_from.lerp(p, 0.5)])
 			if id != 0:
-				_done(CityStore.dispatch(&"lot_split", [id, CUT_DRAWN, parts, _from, p]))
+				_done(CityStore.dispatch(&"lot_split", [id, CityStore.code(&"LotCutKind", &"LINE"), parts, _from, p]))
 	_from = Vector3.INF
 
 
 func hover(p: Vector3) -> void:
 	var extra := []
 	var id: int = CityStore.query(&"lot_at", [p]) # the lot under the pointer, asked once
-	if mode == "split" and cut_kind != CUT_DRAWN:
+	if mode == "split" and cut_kind != CityStore.code(&"LotCutKind", &"LINE"):
 		var lines: PackedVector3Array = CityStore.query(&"lot_cut_lines", [id, cut_kind, parts, p, p]) if id != 0 else PackedVector3Array()
 		for i in range(0, lines.size() - 1, 2):
 			extra.push_back({"points": PackedVector3Array([lines[i], lines[i + 1]]), "half_width": _width(p) * 2.0})

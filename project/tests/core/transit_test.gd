@@ -5,7 +5,6 @@ extends TestCase
 
 const TOWN_MAP := 0
 const SEED := 1
-const TRAIN := 1
 const STEP_M := 60.0
 const RUN_TICKS := 6000
 const SLOT := "transit_test"
@@ -91,11 +90,11 @@ func _lay_across(at: Vector3) -> bool:
 	var road: Vector3 = way.at - way.out * CROSSING_OFF_M
 	for half: float in CROSSING_HALVES:
 		var run := PackedVector3Array([road - way.out * half, road + way.out * half])
-		if not CityStore.dispatch(&"transit_track", [run, TRAIN]).get("ok", false):
+		if not CityStore.dispatch(&"transit_track", [run, CityStore.code(&"TransitMode", &"TRAIN")]).get("ok", false):
 			continue
 		var before: Array = CityStore.query(&"transit_plan").stops.map(func(q: Dictionary) -> int: return q.id)
 		for side: float in [-1.0, 1.0]:
-			CityStore.dispatch(&"transit_station", [road + way.out * side * half * CROSSING_STATION, TRAIN])
+			CityStore.dispatch(&"transit_station", [road + way.out * side * half * CROSSING_STATION, CityStore.code(&"TransitMode", &"TRAIN")])
 		var ids := PackedInt32Array()
 		for q: Dictionary in CityStore.query(&"transit_plan").stops:
 			if not before.has(q.id):
@@ -108,12 +107,12 @@ func _trains() -> void:
 	var b: Dictionary = CityStore.query(&"city_bounds")
 	var a := Vector3(b.max.x + TRACK_OUT_M, 0, b.min.z)
 	var e := a + Vector3(0, 0, TRACK_LONG_M)
-	check(CityStore.dispatch(&"transit_track", [PackedVector3Array([a, e]), TRAIN]).get("ok", false), "track")
-	check(CityStore.dispatch(&"transit_station", [a.lerp(e, 0.1), TRAIN]).get("ok", false), "station 1")
-	check(CityStore.dispatch(&"transit_station", [a.lerp(e, 0.9), TRAIN]).get("ok", false), "station 2")
+	check(CityStore.dispatch(&"transit_track", [PackedVector3Array([a, e]), CityStore.code(&"TransitMode", &"TRAIN")]).get("ok", false), "track")
+	check(CityStore.dispatch(&"transit_station", [a.lerp(e, 0.1), CityStore.code(&"TransitMode", &"TRAIN")]).get("ok", false), "station 1")
+	check(CityStore.dispatch(&"transit_station", [a.lerp(e, 0.9), CityStore.code(&"TransitMode", &"TRAIN")]).get("ok", false), "station 2")
 	var ids := PackedInt32Array()
 	for s: Dictionary in CityStore.query(&"transit_plan").stops:
-		if int(s.mode) == TRAIN:
+		if int(s.mode) == CityStore.code(&"TransitMode", &"TRAIN"):
 			ids.append(s.id)
 	check(CityStore.dispatch(&"transit_line", [ids]).get("ok", false), "train line")
 	ticks(RUN_TICKS)

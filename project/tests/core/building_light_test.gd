@@ -11,11 +11,8 @@
 ## Run: godot --path project [--rendering-method gl_compatibility] res://tests/core/building_light_test.tscn -- --no-flow
 extends TestCase
 
-const LAMP_KIND := 4 # shell.h SK_LAMP (COLOR.a), the near level; the far level reads kind 4 the same (building_far)
-const SHELL_KIND := 0 # shell.h SK_SHELL, no finish layer (UV2.x = 0)
 const WALL_ROUGHNESS := 0.86 # building.gdshader and building_parts.gdshader, a face with no finish
 const FAR_ROUGHNESS := 0.9 # building_far.gdshader
-const NO_FINISH := -1.0 # BoxInstance::fin of a part with no finish layer (INSTANCE_CUSTOM.a)
 const SIDE_M := 1.0
 const PITCH_M := 1.5
 const VIEW_M := 6.0
@@ -53,7 +50,7 @@ func _wall_by_day() -> void:
 	for k in cases.size():
 		var m: ShaderMaterial = world.materials()[cases[k][1]]
 		var x := (k - (cases.size() - 1) * 0.5) * PITCH_M
-		var ours: Node3D = _part(m, Vector3(x, PITCH_M * 0.5, 0)) if cases[k][3] else _quad(Color(GREY, GREY, GREY, SHELL_KIND / BYTE), m, Vector3(x, PITCH_M * 0.5, 0))
+		var ours: Node3D = _part(m, Vector3(x, PITCH_M * 0.5, 0)) if cases[k][3] else _quad(Color(GREY, GREY, GREY, CityStore.code(&"SurfaceKind", &"SK_SHELL") / BYTE), m, Vector3(x, PITCH_M * 0.5, 0))
 		var ref := StandardMaterial3D.new()
 		ref.vertex_color_use_as_albedo = true
 		ref.vertex_color_is_srgb = true
@@ -80,7 +77,7 @@ func _part(m: ShaderMaterial, at: Vector3) -> MultiMeshInstance3D:
 	mm.mesh = _square(Color.WHITE)
 	mm.instance_count = 1
 	mm.set_instance_transform(0, Transform3D())
-	mm.set_instance_custom_data(0, Color(GREY, GREY, GREY, NO_FINISH))
+	mm.set_instance_custom_data(0, Color(GREY, GREY, GREY, float(CityStore.code(&"Finish", &"FIN_NONE"))))
 	var node := MultiMeshInstance3D.new()
 	node.multimesh = mm
 	node.material_override = m
@@ -98,8 +95,8 @@ func _lamps_by_night() -> void:
 	world.sun.light_energy = 0.0
 	var near: ShaderMaterial = world.materials()["building"]
 	var far: ShaderMaterial = world.materials()["building_far"]
-	var a := _quad(Color(GREY, GREY, GREY, LAMP_KIND / BYTE), near, Vector3(-PITCH_M * 0.5, 0, 0))
-	var b := _quad(Color(GREY, GREY, GREY, LAMP_KIND / BYTE), far, Vector3(PITCH_M * 0.5, 0, 0))
+	var a := _quad(Color(GREY, GREY, GREY, CityStore.code(&"SurfaceKind", &"SK_LAMP") / BYTE), near, Vector3(-PITCH_M * 0.5, 0, 0))
+	var b := _quad(Color(GREY, GREY, GREY, CityStore.code(&"SurfaceKind", &"SK_LAMP") / BYTE), far, Vector3(PITCH_M * 0.5, 0, 0))
 	await _frames(FRAMES)
 	var night: float = world.daylight.night
 	var img := get_viewport().get_texture().get_image()

@@ -3,11 +3,9 @@
 class_name TransitOverlay
 extends Control
 
-const MODE_BUS := 0
-const MODE_TRAIN := 1
-const MODE_METRO := 2
-const MARK_KEYS := { MODE_BUS: "transit.mark.bus", MODE_TRAIN: "transit.mark.train", MODE_METRO: "transit.mark.metro" }
-const FILL_TOKENS := { MODE_BUS: "transit_bus", MODE_TRAIN: "transit_train", MODE_METRO: "transit_metro" }
+## By the name of the core's TransitMode.
+const MARK_KEYS := { &"BUS": "transit.mark.bus", &"TRAIN": "transit.mark.train", &"METRO": "transit.mark.metro" }
+const FILL_TOKENS := { &"BUS": "transit_bus", &"TRAIN": "transit_train", &"METRO": "transit_metro" }
 const RGB_BITS := 8
 const RING_POINTS := 24
 const LINE_ALPHA := 0.85
@@ -69,7 +67,7 @@ func _stroke(cam: Camera3D, places: PackedVector3Array, colour: Color, width: fl
 
 
 func _mark(at: Vector2, s: Dictionary) -> void:
-	var mode := int(s.mode)
+	var mode := CityStore.code_name(&"TransitMode", int(s.mode))
 	var fill := ThemeBuilder.color(FILL_TOKENS[mode])
 	var ring := ThemeBuilder.color("white")
 	var width := ThemeBuilder.size("transit_ring_w")
@@ -79,7 +77,7 @@ func _mark(at: Vector2, s: Dictionary) -> void:
 		draw_rect(box, fill)
 		draw_rect(box, ring, false, width)
 	else:
-		var r := ThemeBuilder.size("transit_stop_r" if mode == MODE_BUS else "transit_station_r")
+		var r := ThemeBuilder.size("transit_stop_r" if mode == &"BUS" else "transit_station_r")
 		draw_circle(at, r, fill)
 		draw_arc(at, r, 0, TAU, RING_POINTS, ring, width, true)
 	var size := int(ThemeBuilder.size("transit_font"))

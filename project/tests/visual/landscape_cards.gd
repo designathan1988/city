@@ -14,7 +14,6 @@ const TREE_KINDS := 3
 const PILLAR_SIZE := Vector3(6.0, 50.0, 6.0)
 const PILLAR_LIFT_M := 30.0
 const PILLARS: Array[Vector2] = [Vector2(37.0, -20.0), Vector2(17.0, -40.0)]
-const SHADOW_FILTERS: Array[int] = [2, 3, 4, 5]
 const SHADOW_BLURS: Array[float] = [1.0, 0.6]
 const BLUR_TENTHS := 10.0
 const TREE_APART_M := 20.0
@@ -82,7 +81,7 @@ static func weave(on: Node3D, at: Vector3) -> void:
 		node.mesh = box
 		node.position = Vector3(at.x, 0.0 if spot == Vector3.ZERO else PILLAR_LIFT_M, at.z) + spot
 		on.add_child(node)
-	for f in SHADOW_FILTERS:
+	for f in [RenderingServer.SHADOW_QUALITY_SOFT_LOW, RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM, RenderingServer.SHADOW_QUALITY_SOFT_HIGH, RenderingServer.SHADOW_QUALITY_SOFT_ULTRA]:
 		for b in SHADOW_BLURS:
 			RenderingServer.directional_soft_shadow_filter_set_quality(f as RenderingServer.ShadowQuality)
 			on.world.sun.shadow_blur = b

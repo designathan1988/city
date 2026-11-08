@@ -4,7 +4,6 @@
 class_name HudActions
 extends Node
 
-const TOWN_MAP := 0
 const MS_PER_S := 1000.0
 ## What asks first (Roadcraft window.confirm): the map on screen is saved, then the new one takes its place.
 const CONFIRM := {"new_empty": "confirm.newMap", "new_city": "confirm.newWorld", "new_large": "confirm.newLargeWorld"}
@@ -44,7 +43,7 @@ func menu(action: String) -> void:
 
 ## The confirmed new map: what the player had is written first, as the question says.
 func new_city(action: String) -> void:
-	var map := _large_map() if action == "new_large" else TOWN_MAP
+	var map := _large_map() if action == "new_large" else DataTables.map_index("town")
 	open_new(map, randi_range(1, int(DataTables.game("start").seed_max)), action != "new_empty")
 	if action == "new_empty":
 		_hud().flash(tr("hint.newMap"), true)
@@ -76,7 +75,7 @@ func _large_map() -> int:
 	for id: String in DataTables.ui("drawers").popovers.menu.large_maps:
 		if map_index(id) >= 0:
 			return map_index(id)
-	return TOWN_MAP
+	return DataTables.map_index("town")
 
 
 ## Open a file from anywhere: the system's own dialog.

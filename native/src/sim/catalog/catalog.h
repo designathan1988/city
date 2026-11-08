@@ -33,14 +33,16 @@ struct MapDef {
 };
 
 // A zone id written on segment sides (Roadcraft src/roads/zones.ts).
+// What a zone is at bottom (zones.json "base"): the one owner of the base kinds' codes.
+enum BaseZone : uint8_t { BASE_NONE, BASE_RESIDENTIAL, BASE_COMMERCIAL, BASE_INDUSTRIAL, BASE_MIXED, BASE_COUNT };
 struct ZoneDef {
 	std::string id, name_key;
-	int base = 0; // 0 none, 1 residential, 2 commercial, 3 industrial, 4 mixed
+	int base = BASE_NONE; // BaseZone
 	int density = 1; // 0 low, 1 medium, 2 high
 	uint32_t color = 0; // RGBA8
 };
 constexpr int ZONE_CODES = 9;
-constexpr int BASE_ZONE_SLOTS = 5; // none, residential, commercial, industrial, mixed
+constexpr int BASE_ZONE_SLOTS = BASE_COUNT;
 
 // Residents and jobs of a building: floor area = w * d * floor_share * floors (Roadcraft world/world.ts).
 struct OccupancyDef {

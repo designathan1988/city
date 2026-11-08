@@ -25,7 +25,6 @@ const HEAD_M := 1.7
 const LEG_M := 0.4
 const GLASS_M := 1.2
 const BURST_SHOTS := 14
-const NORMAL_SPEED := 2 # SimSpeed::NORMAL
 const MOTO := 5
 const FIRST_HEAVY := 6
 const FLOORS_LOW := 2
@@ -185,7 +184,7 @@ func _shoot_walker(label: String, first: Dictionary, aim_m: float, moments: Arra
 	await ui.shot("%s_antes" % label)
 	var r := _fire(w.position + Vector3(0, aim_m * w.scale, 0))
 	_check(r.get("hit", 0) == 1, "%s: acertou %s" % [label, r])
-	CityStore.dispatch(&"set_speed", [NORMAL_SPEED]) # the clocks of the wound run: the fallen get up, the bleeding bleeds
+	CityStore.dispatch(&"set_speed", [CityStore.code(&"SimSpeed", &"NORMAL")]) # the clocks of the wound run: the fallen get up, the bleeding bleeds
 	await ui.frames(SETTLE_FRAMES)
 	var elapsed := 0.0
 	for t in moments:

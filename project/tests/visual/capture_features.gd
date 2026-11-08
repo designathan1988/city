@@ -11,8 +11,6 @@ const VIEW_AHEAD_M := 120.0
 const ROAD_IN_M := 40.0
 const ROAD_OUT_M := 300.0
 const HOLD_FRAMES := 90
-const MODE_RAISE := 0
-const MODE_MESA := 4
 
 var out_dir := "user://captures"
 var rig: CityCamera
@@ -133,10 +131,10 @@ func _relief(e: Vector3) -> void:
 	await ui.drawn()
 	hud.open_category("landscape")
 	await ui.frames(4)
-	await ui.press(_land_card(MODE_MESA))
+	await ui.press(_land_card(CityStore.code(&"BrushMode", &"MESA")))
 	var h0 := ui.ground(hill.x, hill.z).y
 	await ui.hold(hill, HOLD_FRAMES)
-	await ui.press(_land_card(MODE_RAISE))
+	await ui.press(_land_card(CityStore.code(&"BrushMode", &"RAISE")))
 	await ui.hold(hill + Vector3(-140, 0, 0), HOLD_FRAMES)
 	await ui.drawn()
 	var h1 := ui.ground(hill.x, hill.z).y

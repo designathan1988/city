@@ -2,7 +2,7 @@
 class_name TransitStrip
 extends RefCounted
 
-const MODE_KEYS := ["transit.mode.bus", "transit.mode.train", "transit.mode.metro"]
+const MODE_KEYS := { &"BUS": "transit.mode.bus", &"TRAIN": "transit.mode.train", &"METRO": "transit.mode.metro" } # by the core's TransitMode
 const RGB_BITS := 8
 
 
@@ -29,7 +29,7 @@ static func _fill(list: Control) -> void:
 		row.add_child(swatch)
 		HudWidgets.label(row, &"", line.name)
 		var stops := TranslationServer.translate("transit.stops").replace("{n}", str(line.stops.size()))
-		HudWidgets.label(row, &"MutedLabel", "%s · %s" % [TranslationServer.translate(MODE_KEYS[int(line.mode)]), stops])
+		HudWidgets.label(row, &"MutedLabel", "%s · %s" % [TranslationServer.translate(MODE_KEYS[CityStore.code_name(&"TransitMode", int(line.mode))]), stops])
 		_button(row, "minus", "transit.fewer", _change.bind(list, line.id, line.vehicles - 1))
 		HudWidgets.label(row, &"", str(line.vehicles))
 		_button(row, "plus", "transit.more", _change.bind(list, line.id, line.vehicles + 1))

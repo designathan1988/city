@@ -1,7 +1,6 @@
 ## The Interior tab through the store (building_edit_test.gd): a core of each kind goes through the building and comes out where it is clicked; a floor's first edit keeps what
 ## was made for it, and a piece is put down, found, moved, turned and taken away; all of it undone to the very body.
 
-const CORE_KINDS := [0, 1, 2]
 const LEVEL := 0
 const PIECE := "sofa"
 const MOVE_M := 2.0
@@ -11,7 +10,7 @@ const NO_PIECE := -1
 static func run(id: int, made: int, check: Callable) -> void:
 	var box: PackedVector3Array = CityStore.query(&"body_outline", [id, 0])
 	var at: Vector3 = (box[0] + box[box.size() / 4]) * 0.5
-	for kind: int in CORE_KINDS:
+	for kind: int in CityStore.constants.enums.CoreKind.values():
 		var r: Dictionary = CityStore.dispatch(&"body_add_core", [id, at, kind])
 		check.call(r.get("ok", false) and BuildingProbe.info(id).digest != made, "core %d went in: %s" % [kind, r])
 		r = CityStore.dispatch(&"body_remove_core", [id, at])

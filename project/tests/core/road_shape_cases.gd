@@ -5,7 +5,6 @@ extends RefCounted
 
 const OFF_M := 1100.0
 const ROAD_M := 200.0
-const URBAN := 0
 const PX := 0.25
 const LIFT_M := 3.0
 const TOO_HIGH_M := 500.0
@@ -38,7 +37,7 @@ func _init(test: Node) -> void:
 func run(e: Vector3) -> void:
 	var a := e + Vector3(OFF_M, 0, 0)
 	var b := a + Vector3(ROAD_M, 0, 0)
-	var laid: Dictionary = CityStore.dispatch(&"build_road", [a, b, false, Vector3.ZERO, URBAN, PX, 0.0])
+	var laid: Dictionary = CityStore.dispatch(&"build_road", [a, b, false, Vector3.ZERO, CityStore.code(&"PoleKind", &"URBAN"), PX, 0.0])
 	t.check(laid.get("ok", false), "a road for the Inspect edits: %s" % [laid])
 	var mid := (a + b) * 0.5
 	_mid = mid
@@ -81,7 +80,7 @@ func _bend(info: Dictionary, mid: Vector3) -> void:
 
 func _crossing(at: Vector3) -> void:
 	var before: Dictionary = CityStore.query(&"state_hash")
-	for kind: int in [RoadPanel.CROSS_ZEBRA, RoadPanel.CROSS_SIGNAL]:
+	for kind: int in [CityStore.code(&"NodeCrossing", &"CROSSING_ZEBRA"), CityStore.code(&"NodeCrossing", &"CROSSING_SIGNAL")]:
 		var made: Dictionary = CityStore.dispatch(&"add_crossing", [at, kind])
 		t.check(made.get("ok", false), "a mid-block crossing: %s" % [made])
 		var node: Dictionary = CityStore.query(&"inspect", [at])
@@ -91,9 +90,9 @@ func _crossing(at: Vector3) -> void:
 		CityStore.dispatch(&"undo")
 		CityStore.dispatch(&"undo")
 	t.check(CityStore.query(&"state_hash").whole == before.whole, "undoing the crossing returns to the same city")
-	var near_end: Dictionary = CityStore.dispatch(&"add_crossing", [at - Vector3(ROAD_M * QUARTER - 1.0, 0, 0), RoadPanel.CROSS_ZEBRA])
+	var near_end: Dictionary = CityStore.dispatch(&"add_crossing", [at - Vector3(ROAD_M * QUARTER - 1.0, 0, 0), CityStore.code(&"NodeCrossing", &"CROSSING_ZEBRA")])
 	t.check(not near_end.get("ok", true), "with no room for cars to stop, the crossing is refused")
-	for kind: int in [RoadPanel.CROSS_ZEBRA, RoadPanel.CROSS_SIGNAL]: # the lanes and the junction are made again round it, with the fleet on
+	for kind: int in [CityStore.code(&"NodeCrossing", &"CROSSING_ZEBRA"), CityStore.code(&"NodeCrossing", &"CROSSING_SIGNAL")]: # the lanes and the junction are made again round it, with the fleet on
 		CityStore.dispatch(&"add_crossing", [at, kind])
 		t.ticks(TICKS)
 		CityStore.dispatch(&"undo")
@@ -196,8 +195,8 @@ func stubs(e: Vector3) -> void:
 func ring_stub(e: Vector3) -> void:
 	var a := e + Vector3(0, 0, RING_OFF_M)
 	var cross := a + Vector3(RING_ROAD_M, 0, 0)
-	var laid: bool = CityStore.dispatch(&"build_road", [a, a + Vector3(RING_ROAD_M * 2, 0, 0), false, Vector3.ZERO, URBAN, PX]).get("ok", false)
-	laid = laid and CityStore.dispatch(&"build_road", [cross - Vector3(0, 0, ROAD_M), cross + Vector3(0, 0, ROAD_M), false, Vector3.ZERO, URBAN, PX]).get("ok", false)
+	var laid: bool = CityStore.dispatch(&"build_road", [a, a + Vector3(RING_ROAD_M * 2, 0, 0), false, Vector3.ZERO, CityStore.code(&"PoleKind", &"URBAN"), PX]).get("ok", false)
+	laid = laid and CityStore.dispatch(&"build_road", [cross - Vector3(0, 0, ROAD_M), cross + Vector3(0, 0, ROAD_M), false, Vector3.ZERO, CityStore.code(&"PoleKind", &"URBAN"), PX]).get("ok", false)
 	t.check(laid, "the roads a ring will cut")
 	CityStore.refresh()
 	var before: int = CityStore.snapshot.segments

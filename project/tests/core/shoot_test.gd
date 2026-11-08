@@ -21,10 +21,7 @@ const SKY_ORIGIN := Vector3(0.0, 300.0, 0.0)
 const BLEED_SOON_TICKS := 60
 const BLEED_TICKS := 2400
 const SAME_SPOT_M := 0.5
-const SHOTS_TO_BURST := 14
 const GLASS_AIM_M := 1.2
-const MOTO := 5
-const FIRST_HEAVY := 6
 const BIG_FORCE := 45
 const BOX_HALF_M := 120.0
 const ROOF_M := 6.0
@@ -163,7 +160,7 @@ func _vehicles() -> void:
 	var found: Dictionary = CityStore.query(&"shot_targets", [LIMIT])
 	var car: Dictionary = {}
 	for v in found.vehicles:
-		if v.type != MOTO and v.type < FIRST_HEAVY:
+		if v.type != CityStore.code(&"VehicleType", &"MOTO") and v.type < CityStore.code(&"VehicleType", &"BUS"):
 			car = v
 			break
 	check(not car.is_empty(), "there is a car for the shot")
@@ -172,7 +169,7 @@ func _vehicles() -> void:
 	var before: int = CityStore.query(&"damage_probe").vehicles
 	var burst := false
 	var shots := 0
-	while shots < SHOTS_TO_BURST and not burst:
+	while shots < int(DataTables.catalog_table("blast").shot.vehicle_shots_to_burst) and not burst:
 		var now: Dictionary = {}
 		for v in CityStore.query(&"shot_targets", [LIMIT * 4]).vehicles:
 			if v.id == car.id:

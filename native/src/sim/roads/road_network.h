@@ -31,6 +31,8 @@ enum SegFlag : uint16_t {
 	SEG_STRUCTURE_MASK = 0xC000, // bits 14-15: how it is built (Structure: ground, elevated, bridge, tunnel)
 };
 constexpr int SEG_FURNITURE_SHIFT = 1, SEG_STRUCTURE_SHIFT = 14;
+// The street furniture a segment carries (its SEG_FURNITURE_MASK bits).
+enum FurnitureLevel : uint8_t { FURN_FULL, FURN_BASIC, FURN_NONE };
 // ray_deck: a ray is marched over a deck in steps of this, horizontal metres, then the crossing bisected this many times.
 constexpr double DECK_RAY_STEP_M = 0.5;
 constexpr int DECK_RAY_REFINE = 16;

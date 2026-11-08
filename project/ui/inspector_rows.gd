@@ -3,7 +3,7 @@
 class_name InspectorRows
 extends RefCounted
 
-const CONTROL_KEYS := ["control.none", "control.priority", "control.signal"]
+const CONTROL_KEYS := { &"NONE": "control.none", &"PRIORITY": "control.priority", &"SIGNAL": "control.signal" } # by the core's Control
 const LIGHT_KEYS := ["signal.green", "signal.amber", "signal.red"]
 const NO_VALUE := "—"
 const CLEARING := 1 # the lamp between green and red
@@ -41,7 +41,7 @@ static func node_traffic(id: int) -> Dictionary:
 static func node_rows(t: Dictionary) -> Array:
 	if t.is_empty():
 		return []
-	var control := tr_key("control.disconnected") if not t.known else tr_key(CONTROL_KEYS[t.control])
+	var control := tr_key("control.disconnected") if not t.known else tr_key(CONTROL_KEYS[CityStore.code_name(&"Control", int(t.control))])
 	var rows := [["inspector.control", control], ["inspector.connections", str(t.connections)], ["inspector.movements", str(t.get("movements", 0))],
 		["inspector.vehicles", Formatters.format_int(t.vehicles)], ["inspector.queue", Formatters.format_int(t.queued)],
 		["inspector.meanSpeed", _speed(t.mean_speed_ms)], ["inspector.capacity", Formatters.count_label("inspector.capacityValue", t.capacity)],

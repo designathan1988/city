@@ -1,5 +1,7 @@
 // Read-only views for the UI and the tests. Values are derived here from CityState; the UI never recomputes them.
 #include "api/city_core.h"
+#include "api/frame_sections.h"
+#include "api/script_enums.h"
 
 #include "render/render_layers.h"
 
@@ -100,6 +102,11 @@ Dictionary CityCore::constants() const {
 	Dictionary layers;
 	for (const RenderLayerName &l : RENDER_LAYERS) layers[l.name] = int64_t(l.bit);
 	d["render_layers"] = layers;
+	d["enums"] = script_enums(); // every enum a script names (script_enums.h)
+	d["chunk_m"] = CHUNK; // the core's cell: lots, props and the far levels are read a cell at a time
+	Array sections;
+	for (const char *name : FRAME_SECTIONS) sections.push_back(name);
+	d["frame_sections"] = sections;
 	return d;
 }
 

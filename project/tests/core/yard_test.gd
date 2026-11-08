@@ -10,7 +10,6 @@ const SITES := 2
 const WARM_TICKS := 2400
 const SAMPLE := 400
 const PX := 0.25 # metres a screen pixel covers: how near a click snaps to a road or a node
-const ZONE_INDUSTRIAL := 3 # catalog/zones.json order
 const ZONE_RADIUS_M := 160.0
 const STREET_M := 300.0
 const PROFILE := 0
@@ -66,7 +65,7 @@ func _site(camera: Camera3D, far: Vector3) -> void:
 		if built.ok:
 			break
 	var at := from + out * STREET_M * 0.5
-	var zoned: Dictionary = CityStore.dispatch(&"paint_zone", [at, ZONE_RADIUS_M, ZONE_INDUSTRIAL])
+	var zoned: Dictionary = CityStore.dispatch(&"paint_zone", [at, ZONE_RADIUS_M, DataTables.zone_code("industrial")])
 	print("site ", at, " road ", built.ok, " ", built.error, " zoned sides ", zoned.zoned_sides)
 	camera.global_position = at + Vector3.UP * CAMERA_UP_M
 	for i in GROW_STEPS:

@@ -5,15 +5,8 @@ extends Node3D
 
 const TOWN_MAP := 0
 const SEED := 1
-const DAY := 16.0
-const NIGHT := 22.0
-const ITEM_BIN := 3
-const ITEM_SIGN := 10
 const SIGN_WORDS := "40"
-const FENCE := 0
 const REACH := 6.0
-const LAMPS_ALL := 2
-const URBAN := 0 # drawers.json pole_kinds
 const SCAN_STEPS := 300
 const SCAN_ROWS := 40
 const SCAN_M := 3.0
@@ -76,7 +69,7 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	CityStore.new_map(TOWN_MAP, SEED, true, true)
-	UiDriver.at_hour(world, DAY)
+	UiDriver.at_hour(world, float(DataTables.game("daylight").day_hour))
 	ui = UiDriver.new(rig, get_tree(), out_dir)
 	tools = ToolController.new(rig)
 	add_child(tools)
@@ -120,7 +113,7 @@ func _footway() -> Vector3:
 	var mid: Vector3 = (box.min + box.max) * 0.5
 	for i in SCAN_STEPS:
 		for j in SCAN_ROWS:
-			var at: Dictionary = CityStore.query(&"preview_item", [mid + Vector3(i * SCAN_M, 0, j * SCAN_M), ITEM_BIN, 1.0])
+			var at: Dictionary = CityStore.query(&"preview_item", [mid + Vector3(i * SCAN_M, 0, j * SCAN_M), CityStore.code(&"ItemKind", &"BIN"), 1.0])
 			if at.get("ok", false) and _run_end(at.position) != Vector3.INF:
 				return at.position
 	return Vector3.INF
@@ -129,7 +122,7 @@ func _footway() -> Vector3:
 func _run_end(a: Vector3) -> Vector3:
 	for i in RUN_TRIES:
 		var end := a + Vector3.RIGHT.rotated(Vector3.UP, TAU * i / RUN_TRIES) * RUN_M
-		var plan: Dictionary = CityStore.query(&"preview_pole_run", [a, end, REACH, LAMPS_ALL, URBAN])
+		var plan: Dictionary = CityStore.query(&"preview_pole_run", [a, end, REACH, CityStore.code(&"LampMode", &"ALL"), CityStore.code(&"PoleKind", &"URBAN")])
 		if plan.get("ok", false) and plan.poles.size() >= MIN_RUN_POLES:
 			return end
 	return Vector3.INF
@@ -162,7 +155,7 @@ func _poles(a: Vector3, b: Vector3) -> void:
 	var before: Dictionary = CityStore.query(&"street_counts")
 	await ui.hover(a)
 	await ui.button(rig.camera.unproject_position(ui.ground(a.x, a.z)), true)
-	var first: Vector3 = CityStore.query(&"preview_item", [a.lerp(b, CHAIN_SHARE), ITEM_BIN, REACH]).position
+	var first: Vector3 = CityStore.query(&"preview_item", [a.lerp(b, CHAIN_SHARE), CityStore.code(&"ItemKind", &"BIN"), REACH]).position
 	await ui.hover(first)
 	await _shot_low("rua_03_postes_previa", a, b)
 	await ui.button(rig.camera.unproject_position(ui.ground(first.x, first.z)), false)

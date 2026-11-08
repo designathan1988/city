@@ -5,7 +5,6 @@
 extends TestCase
 
 const TOWN_MAP := 0
-const LARGE_MAP := 5
 const SEED := 7
 const BANDS: Array[float] = [0.0, 0.15, 0.3, 0.5, 0.75, 1.01]
 const TOWER_FLOORS := 10
@@ -66,7 +65,7 @@ func _ready() -> void:
 
 ## The large city, on its own radius: every record still says what its body has.
 func _large_city() -> void:
-	var made: Dictionary = new_map(LARGE_MAP, SEED, true)
+	var made: Dictionary = new_map(DataTables.map_index("metropolis"), SEED, true)
 	print("big city: %d nodes, %d streets, %d buildings, %d squares" % [made.nodes, made.segments, made.buildings, made.squares])
 	var apart: Array = []
 	for id: int in CityStore.query(&"list_buildings"):

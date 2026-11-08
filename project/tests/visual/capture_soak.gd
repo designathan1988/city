@@ -5,7 +5,6 @@
 class_name CaptureSoak
 extends RefCounted
 
-const TICKS_PER_SECOND := 20
 const SECONDS_PER_MINUTE := 60
 const SOAK_JAMS := 24
 const USEC_PER_MS := 1000.0
@@ -21,7 +20,7 @@ static func report(minutes: int) -> void:
 		var p: Dictionary
 		for second in SECONDS_PER_MINUTE:
 			var started := Time.get_ticks_usec()
-			CityStore.step_ticks(TICKS_PER_SECOND)
+			CityStore.step_ticks(int(DataTables.tuning("sim_tick_hz")))
 			spent += (Time.get_ticks_usec() - started) / USEC_PER_MS
 			p = CityStore.query(&"traffic_probe", [0])
 			held_seconds += int(p.waiting)
@@ -45,7 +44,7 @@ static func report(minutes: int) -> void:
 			p.get("lot_cars", 0), p.get("lot_coming", 0), p.get("lot_moving", 0), p.get("lot_called", 0), p.get("lot_parked_in", 0),
 			p.get("lot_left_by", 0), p.get("parked_rows", 0), p.get("bays", 0)])
 		print("  step, ms summed (bays, fleet, lots, pedestrians, glance: exits, calls, publishing): ", p.get("step_ms", []), "; last entry on red (kind, m/s, ds, time): ", p.get("red_last", []))
-		var ticks := TICKS_PER_SECOND * SECONDS_PER_MINUTE
+		var ticks := int(DataTables.tuning("sim_tick_hz")) * SECONDS_PER_MINUTE
 		print("  queued behind: ", p.get("queued_behind", []), ", core %.0f ms in the minute (%.3f ms/step)" % [spent, spent / ticks])
 		print("  pedestrians overlapping another (walking, waiting): ", p.get("people_overlaps", []), ", on average in the minute: %.1f, %.1f" % [
 			float(overlap_seconds[0]) / SECONDS_PER_MINUTE, float(overlap_seconds[1]) / SECONDS_PER_MINUTE],

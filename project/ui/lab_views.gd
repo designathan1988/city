@@ -6,7 +6,6 @@ extends RefCounted
 const MIB := 1048576.0
 const BAR_FULL_MS := 0.01 # the bars' full length, when nothing took longer
 const SECTIONS := ["near_walls", "near_panes", "near_guards", "near_cards", "near_pieces", "mid_walls", "mid_panes", "mid_cards", "far"]
-const CORE_SECTIONS := ["agents", "stream", "levels", "flush", "roads", "props", "buildings"]
 
 
 static func _row(body: Control, name_text: String, value: String, share: float) -> void:
@@ -38,15 +37,15 @@ static func consumers(body: Control) -> void:
 	HudWidgets.label(body, &"TitleLabel", body.tr("lab.consumers.frame"))
 	var frame: Dictionary = CityStore.query(&"render_cost")
 	var longest := BAR_FULL_MS
-	for key: String in CORE_SECTIONS:
+	for key: String in CityStore.constants.frame_sections:
 		longest = maxf(longest, float(frame.get(key, 0.0)))
-	for key: String in CORE_SECTIONS:
+	for key: String in CityStore.constants.frame_sections:
 		_row(body, body.tr("lab.core." + key), "%.2f ms" % float(frame.get(key, 0.0)), float(frame.get(key, 0.0)) / longest)
 
 
 static func core_zones() -> Array[String]:
 	var out: Array[String] = []
-	out.assign(CORE_SECTIONS)
+	out.assign(CityStore.constants.frame_sections)
 	return out
 
 

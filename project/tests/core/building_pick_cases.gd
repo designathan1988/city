@@ -5,8 +5,6 @@ const HEIGHT_M := 40.0
 const SKY_M := 3000.0
 const WALL_M := 2.0
 const OFF_M := 1.0
-const ROOF_FLAT := 0
-const ROOF_GABLE := 2
 
 
 static func run(id: int, check: Callable) -> void:
@@ -27,9 +25,9 @@ static func run(id: int, check: Callable) -> void:
 
 ## On the same block a ray stops at the eaves of a flat roof and higher, on the slope, of a gable.
 static func _pitched(id: int, over: Vector3, check: Callable) -> void:
-	CityStore.dispatch(&"body_set_roof", [id, 0, ROOF_FLAT])
+	CityStore.dispatch(&"body_set_roof", [id, 0, CityStore.code(&"Roof", &"ROOF_FLAT")])
 	var flat: Dictionary = CityStore.query(&"body_pick", [over, Vector3.DOWN])
-	CityStore.dispatch(&"body_set_roof", [id, 0, ROOF_GABLE])
+	CityStore.dispatch(&"body_set_roof", [id, 0, CityStore.code(&"Roof", &"ROOF_GABLE")])
 	var slope: Dictionary = CityStore.query(&"body_pick", [over, Vector3.DOWN])
 	var rise: float = slope.point.y - flat.point.y
 	check.call(slope.id == id and rise > 1.0, "a ray hits the roof slope, %.2f m above the eave" % rise)

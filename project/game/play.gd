@@ -2,7 +2,6 @@
 ## generated from a random seed on entry.
 extends Node3D
 
-const TOWN_MAP := 0
 const SHOT_DELAY_S := 25.0
 const LIVE_DRIVER := "res://tests/visual/live_driver.gd"
 
@@ -20,7 +19,7 @@ func _ready() -> void:
 	cam.look_at_ground(Vector3.ZERO)
 	var saved := _open_last()
 	if not saved:
-		print("cidade: ", CityStore.new_map(TOWN_MAP, randi_range(1, int(DataTables.game("start").seed_max)), true))
+		print("cidade: ", CityStore.new_map(DataTables.map_index("town"), randi_range(1, int(DataTables.game("start").seed_max)), true))
 	Settings.attach(world, get_viewport())
 	var tools := ToolController.new(cam)
 	add_child(tools)

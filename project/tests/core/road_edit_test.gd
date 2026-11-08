@@ -20,7 +20,6 @@ const MOVE_LEN_M := 60.0
 const MOVE_BY_M := 30.0
 const CONTROL_OFF_M := 420.0
 const TICKS_FOR_GRAPH := 3
-const RULE_STOP := 1
 const RULES_OFF_M := 540.0
 const SHARP_DEG := 15.0
 const OPEN_DEG := 40.0
@@ -124,9 +123,9 @@ func _control(e: Vector3) -> void:
 	_lanes_by_hand(hit.node)
 	var legs: Array = CityStore.query(&"node_legs", [hit.node])
 	check(legs.size() == 3, "rules: three roads at the junction (%d)" % legs.size())
-	var rule: Dictionary = CityStore.dispatch(&"set_approach_rule", [hit.node, legs[0].seg, RULE_STOP])
+	var rule: Dictionary = CityStore.dispatch(&"set_approach_rule", [hit.node, legs[0].seg, CityStore.code(&"SegRule", &"RULE_STOP")])
 	check(rule.get("ok", false), "rules: Stop put on a road")
-	check(int(CityStore.query(&"node_legs", [hit.node])[0].rule) == RULE_STOP, "rules: the road kept the Stop")
+	check(int(CityStore.query(&"node_legs", [hit.node])[0].rule) == CityStore.code(&"SegRule", &"RULE_STOP"), "rules: the road kept the Stop")
 	CityStore.dispatch(&"undo")
 	check(int(CityStore.query(&"node_legs", [hit.node])[0].rule) == 0, "rules: undo takes the rule away")
 

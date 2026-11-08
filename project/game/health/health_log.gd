@@ -7,7 +7,6 @@ extends Node
 const KEPT_PATH := "user://health.json"
 const STATUS_ORDER := ["ok", "slow", "broken"]
 ## The sections of the core's frame, as render_cost names them.
-const COST_PARTS := ["lock", "stream", "levels", "flush", "roads", "props", "buildings", "trees", "agents"]
 
 var entries: Array[Dictionary] = []
 var changes := 0
@@ -109,7 +108,7 @@ func _slow_frame(ms: float) -> void:
 	var top := ""
 	var most := 0.0
 	var steps := PackedStringArray()
-	for part: String in COST_PARTS:
+	for part: String in CityStore.constants.frame_sections:
 		var took := float(cost.get(part, 0.0))
 		if took > most:
 			top = part

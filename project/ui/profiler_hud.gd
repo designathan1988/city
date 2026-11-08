@@ -44,7 +44,7 @@ func _refresh() -> void:
 		Performance.get_monitor(Performance.TIME_PROCESS) * ProfilerHud.ms_per_s(),
 		Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
 		Formatters.format_int(int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)))]]
-	for k: String in Health.COST_PARTS:
+	for k: String in CityStore.constants.frame_sections:
 		lines.append("  %-10s %6.2f ms" % [k, float(cost.get(k, 0.0))])
 	lines.append("video %d MiB · texture %d MiB · static %d MiB" % [Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / MIB,
 		Performance.get_monitor(Performance.RENDER_TEXTURE_MEM_USED) / MIB, Performance.get_monitor(Performance.MEMORY_STATIC) / MIB])

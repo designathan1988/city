@@ -57,7 +57,7 @@ int civic_for(const GrowthDef &g, int cell_id, int zone, bool is_biggest, float 
 	h *= CIVIC_MIX;
 	h ^= h >> HASH_SHIFT_13;
 	if (double(h & CIVIC_CHANCE_BITS) / (CIVIC_CHANCE_BITS + 1) > g.civic_chance) return FN_NONE;
-	if (zone < 0 || zone > 4 || g.civic_by_zone[zone].empty()) return FN_NONE;
+	if (zone < 0 || zone >= BASE_COUNT || g.civic_by_zone[zone].empty()) return FN_NONE;
 	const auto &list = g.civic_by_zone[zone];
 	int total = 0;
 	for (const auto &e : list) total += e.second;

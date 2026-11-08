@@ -11,7 +11,6 @@ const LOW_DEG := 15.0
 const HIGH_DEG := 80.0
 const ORBIT_DEG := [45.0, 135.0, 225.0, 315.0]
 const ZOOM_YAW_DEG := 45.0
-const SCHOOL := 1 # BuildingFn escola (sim/buildings/building_store.h), as capture.gd's CIVIC_SHOTS
 ## Per target the height looked at (metres over the ground) and the distances far, mid and near.
 const TARGETS := {
 	"cruzamento": {"look_m": 0.0, "from_m": [160.0, 60.0, 20.0]},
@@ -32,7 +31,7 @@ const PAN_YAW_DEG := 0.0
 
 ## `cap` is the capture scene (its _shot and _ground).
 static func shots(cap: Node) -> void:
-	await CaptureSignals.at_hour(cap, CaptureViews.DAY)
+	await CaptureSignals.at_hour(cap, float(DataTables.game("daylight").day_hour))
 	var places := _places()
 	for name: String in TARGETS:
 		if not places.has(name):
@@ -54,7 +53,7 @@ static func _places() -> Dictionary:
 	places["borda"] = Vector3(b.max.x, 0.0, mid.z)
 	for id in CityStore.query(&"list_buildings"):
 		var info: Dictionary = CityStore.query(&"probe_building", [id])
-		if info.get("fn", 0) == SCHOOL:
+		if info.get("fn", 0) == CityStore.code(&"BuildingFn", &"FN_SCHOOL"):
 			places["escola"] = info.position
 			break
 	return places

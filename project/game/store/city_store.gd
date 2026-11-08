@@ -155,6 +155,31 @@ func refresh() -> void:
 	_change_coming()
 
 
+## The index of road profile `id` (road_profiles.json), -1 when the catalogue has none.
+func profile_index(id: String) -> int:
+	for p in cached(&"road_profiles"):
+		if p.id == id:
+			return p.index
+	return -1
+
+
+## The value the core gives enumerator `value` of its enum `of` (constants "enums": native/src/api/script_enums.cpp): what a
+## script names instead of typing the core's number. A name the core does not have is an error.
+func code(of: StringName, value: StringName) -> int:
+	var values: Dictionary = constants.enums.get(String(of), {})
+	assert(values.has(String(value)), "the core has no %s.%s" % [of, value])
+	return int(values.get(String(value), -1))
+
+
+## The name of value `value` of the core's enum `of`; empty when it has none.
+func code_name(of: StringName, value: int) -> StringName:
+	var values: Dictionary = constants.enums.get(String(of), {})
+	for name: String in values:
+		if int(values[name]) == value:
+			return StringName(name)
+	return &""
+
+
 ## The core may have moved: the snapshot is read again when next read, and `changed` follows at the frame's end.
 func _mark() -> void:
 	_stale = true

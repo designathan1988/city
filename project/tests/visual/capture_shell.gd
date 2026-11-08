@@ -13,9 +13,6 @@ const TIP_WAIT_S := 1.2
 const STREET_M := 120.0
 const PHOTO_HOUR := 12.0
 const CLOCK_BUTTON := 2
-const SPEED_PAUSED := 0
-const SPEED_NORMAL := 1
-const SPEED_FASTEST := 3
 const INSPECT_PITCH := 75.0
 const PAIRED_TABS := ["build_draw", "landscape_ground", "landscape_nature", "landscape_sky"]
 const SEARCH_M := 600.0
@@ -54,10 +51,10 @@ func _ready() -> void:
 ## The bar's clock button and its fastest speed, up to the hour the reference's photos were taken at: same clock, same sun.
 func _to_noon() -> void:
 	hud.top_bar._sky_buttons[CLOCK_BUTTON].pressed.emit()
-	CityStore.dispatch(&"set_speed", [SPEED_FASTEST])
+	CityStore.dispatch(&"set_speed", [CityStore.code(&"SimSpeed", &"FASTEST")])
 	while float(CityStore.snapshot.hour) < PHOTO_HOUR:
 		await get_tree().process_frame
-	CityStore.dispatch(&"set_speed", [SPEED_PAUSED])
+	CityStore.dispatch(&"set_speed", [CityStore.code(&"SimSpeed", &"PAUSED")])
 
 
 func _run() -> void:
@@ -206,11 +203,11 @@ func _tabs(cat: String) -> void:
 
 ## The clock stands still between the photos; it runs for each, so the bar shows the game at 1x.
 func _shot(name: String) -> void:
-	CityStore.dispatch(&"set_speed", [SPEED_NORMAL])
+	CityStore.dispatch(&"set_speed", [CityStore.code(&"SimSpeed", &"NORMAL")])
 	await _frames(SETTLE)
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png("%s/shell_%s.png" % [out_dir, name])
-	CityStore.dispatch(&"set_speed", [SPEED_PAUSED])
+	CityStore.dispatch(&"set_speed", [CityStore.code(&"SimSpeed", &"PAUSED")])
 	print("hora %s %.3f" % [name, CityStore.snapshot.hour])
 	print("view %s: eye %s, city %s, %d vehicles, %d people" % [name, rig.camera.global_position, CityStore.query(&"city_bounds"),
 		CityStore.snapshot.vehicles, CityStore.snapshot.people])

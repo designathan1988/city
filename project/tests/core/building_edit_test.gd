@@ -27,21 +27,11 @@ const GROUND_H := 4.5
 const STOREY_H := 3.2
 const FAR_TOO_MANY := 100000
 const FACE := 0
-const BAY_WIDE := 6
-const BAY_BALCONY := 7
-const SCOPE_BAY := 0
-const SCOPE_ROW := 1
-const SCOPE_COLUMN := 2
-const PATTERN_OFFICE := 2
 const RELIEF_M := 0.5
 const FACE_BAYS := 7
 const FEW_BLOCKS := 2
 const BAY_WIDTH_M := 3.0
-const ROOF_GABLE := 2
-const ROOF_HIP := 3
 const ROOF_PITCH := 30.0
-const PAINT_SCOPES := [0, 1, 2, 3, 4, 5, 6]
-const FINISH_BRICK := 3
 const PAINT_RGB := "#a04030"
 const SHOWN_CASES := 6
 
@@ -126,16 +116,16 @@ func _mass_edits(id: int, made: int) -> void:
 
 func _facade_edits(id: int, made: int) -> void:
 	var at := func(storey: int, bay: int) -> int: return CityStore.query(&"body_bay", [id, 0, storey, FACE, bay])
-	_round(id, made, "bay", &"body_set_bay", [id, 0, 1, FACE, 0, BAY_BALCONY, SCOPE_BAY], func(_i: Dictionary) -> bool:
-		return at.call(1, 0) == BAY_BALCONY)
-	_round(id, made, "row", &"body_set_bay", [id, 0, 1, FACE, 0, BAY_BALCONY, SCOPE_ROW], func(_i: Dictionary) -> bool:
-		return at.call(1, 0) == BAY_BALCONY and at.call(1, 1) == BAY_BALCONY)
-	_round(id, made, "column", &"body_set_bay", [id, 0, 1, FACE, 0, BAY_BALCONY, SCOPE_COLUMN], func(_i: Dictionary) -> bool:
-		return at.call(0, 0) == BAY_BALCONY and at.call(2, 0) == BAY_BALCONY)
-	_round(id, made, "zone", &"body_set_zone", [id, 0, FACE, 1, 2, 0, 1, BAY_BALCONY], func(_i: Dictionary) -> bool:
-		return at.call(2, 1) == BAY_BALCONY)
-	_round(id, made, "pattern", &"body_set_pattern", [id, 0, -1, -1, PATTERN_OFFICE], func(_i: Dictionary) -> bool:
-		return at.call(1, 0) == BAY_WIDE)
+	_round(id, made, "bay", &"body_set_bay", [id, 0, 1, FACE, 0, CityStore.code(&"Bay", &"BAY_BALCONY"), CityStore.code(&"FacadeScope", &"SCOPE_BAY")], func(_i: Dictionary) -> bool:
+		return at.call(1, 0) == CityStore.code(&"Bay", &"BAY_BALCONY"))
+	_round(id, made, "row", &"body_set_bay", [id, 0, 1, FACE, 0, CityStore.code(&"Bay", &"BAY_BALCONY"), CityStore.code(&"FacadeScope", &"SCOPE_ROW")], func(_i: Dictionary) -> bool:
+		return at.call(1, 0) == CityStore.code(&"Bay", &"BAY_BALCONY") and at.call(1, 1) == CityStore.code(&"Bay", &"BAY_BALCONY"))
+	_round(id, made, "column", &"body_set_bay", [id, 0, 1, FACE, 0, CityStore.code(&"Bay", &"BAY_BALCONY"), CityStore.code(&"FacadeScope", &"SCOPE_COLUMN")], func(_i: Dictionary) -> bool:
+		return at.call(0, 0) == CityStore.code(&"Bay", &"BAY_BALCONY") and at.call(2, 0) == CityStore.code(&"Bay", &"BAY_BALCONY"))
+	_round(id, made, "zone", &"body_set_zone", [id, 0, FACE, 1, 2, 0, 1, CityStore.code(&"Bay", &"BAY_BALCONY")], func(_i: Dictionary) -> bool:
+		return at.call(2, 1) == CityStore.code(&"Bay", &"BAY_BALCONY"))
+	_round(id, made, "pattern", &"body_set_pattern", [id, 0, -1, -1, CityStore.code(&"FacadeKind", &"PATTERN_OFFICE")], func(_i: Dictionary) -> bool:
+		return at.call(1, 0) == CityStore.code(&"Bay", &"BAY_WIDE"))
 	_round(id, made, "relief", &"body_set_relief", [id, 0, {"side": FACE, "bay1": 1, "storey1": 1, "depth": RELIEF_M}, true], func(i: Dictionary) -> bool:
 		return i.edited)
 	_round(id, made, "rhythm", &"body_set_face", [id, 0, FACE, {"bays": FACE_BAYS}], func(i: Dictionary) -> bool:
@@ -144,11 +134,11 @@ func _facade_edits(id: int, made: int) -> void:
 
 func _finish_edits(id: int, made: int) -> void:
 	var was: int = BuildingProbe.info(id).volumes[0].roof
-	var other := ROOF_GABLE if was != ROOF_GABLE else ROOF_HIP
+	var other := CityStore.code(&"Roof", &"ROOF_GABLE") if was != CityStore.code(&"Roof", &"ROOF_GABLE") else CityStore.code(&"Roof", &"ROOF_HIP")
 	_round(id, made, "roof", &"body_set_roof", [id, 0, other], func(i: Dictionary) -> bool: return i.volumes[0].roof == other)
 	_round(id, made, "roof shape", &"body_roof_shape", [id, 0, ROOF_PITCH, 1, -1], func(i: Dictionary) -> bool: return i.edited)
-	for scope: int in PAINT_SCOPES:
-		_round(id, made, "paint %d" % scope, &"body_paint", [id, scope, 0, FACE, 1, FINISH_BRICK, PAINT_RGB], func(i: Dictionary) -> bool:
+	for scope: int in CityStore.constants.enums.PaintScope.values():
+		_round(id, made, "paint %d" % scope, &"body_paint", [id, scope, 0, FACE, 1, CityStore.code(&"Finish", &"FIN_BRICK"), PAINT_RGB], func(i: Dictionary) -> bool:
 			return i.edited)
 
 
@@ -163,12 +153,12 @@ func _bays_stay_put(id: int, made: int) -> void:
 	var wing: int = BuildingProbe.info(id).volumes.size() - 1
 	var count: int = BuildingProbe.info(id).volumes[wing].bays[back]
 	check(count == int(round(WING_DEPTH / BAY_WIDTH_M)), "the wing counts its own bays: %d in %.0f m, the wall it came from has %s" % [count, WING_DEPTH, parent.bays])
-	CityStore.dispatch(&"body_set_bay", [id, wing, 1, back, 0, BAY_BALCONY, SCOPE_BAY])
+	CityStore.dispatch(&"body_set_bay", [id, wing, 1, back, 0, CityStore.code(&"Bay", &"BAY_BALCONY"), CityStore.code(&"FacadeScope", &"SCOPE_BAY")])
 	CityStore.dispatch(&"body_resize", [id, wing, pulled, BAY_WIDTH_M * 2.0, true])
 	var grown: int = BuildingProbe.info(id).volumes[wing].bays[back] - count
 	check(grown == 2, "the wing gained two bays: %d" % grown)
-	check(CityStore.query(&"body_bay", [id, wing, 1, back, grown]) == BAY_BALCONY, "the balcony followed the wall")
-	check(CityStore.query(&"body_bay", [id, wing, 1, back, 0]) != BAY_BALCONY, "the new bay is no balcony")
+	check(CityStore.query(&"body_bay", [id, wing, 1, back, grown]) == CityStore.code(&"Bay", &"BAY_BALCONY"), "the balcony followed the wall")
+	check(CityStore.query(&"body_bay", [id, wing, 1, back, 0]) != CityStore.code(&"Bay", &"BAY_BALCONY"), "the new bay is no balcony")
 	for i in 3:
 		CityStore.dispatch(&"undo")
 	check(BuildingProbe.info(id).digest == made, "three undos return to the generated body")

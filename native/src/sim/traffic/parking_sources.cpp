@@ -18,7 +18,6 @@ namespace {
 constexpr float ROW_CELL_M = 0.4f; // a bay's seed: where it is in steps of this (the same car whatever the float rounding)
 constexpr uint32_t ROW_SALT = 0x9e3779b9u;
 constexpr uint8_t FILED_NONE = 0, FILED_FREE = 1, FILED_ROW = 2;
-constexpr int ZONE_OF_SHOPS = 2, ZONE_OF_WORKS = 3; // ZoneDef::base
 
 int take_bay(ParkingState &p) {
 	int b;
@@ -56,7 +55,7 @@ void stand(CityState &s, int b) {
 PlaceKind place_of(const CityState &s, const Building &rec) {
 	if (rec.fn != FN_NONE) return rec.fn == FN_SUPERMARKET || rec.fn == FN_MALL || rec.fn == FN_GAS_STATION ? PlaceKind::SHOP : PlaceKind::CIVIC;
 	const int base = s.catalog.zone(rec.zone).base;
-	return base == ZONE_OF_SHOPS ? PlaceKind::SHOP : base == ZONE_OF_WORKS ? PlaceKind::WORK : PlaceKind::HOME;
+	return base == BASE_COMMERCIAL ? PlaceKind::SHOP : base == BASE_INDUSTRIAL ? PlaceKind::WORK : PlaceKind::HOME;
 }
 
 void read_lot(CityState &s, int id) {

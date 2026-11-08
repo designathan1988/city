@@ -15,8 +15,6 @@ const CURVE_TO := 0.85
 const AT_STEP := 0.01
 const AT_MIDDLE := 0.5
 const JOINT_ARMS := 2
-const CROSS_ZEBRA := 1 # road_network.h NodeCrossing
-const CROSS_SIGNAL := 2
 
 
 ## `changed`: the panel is read again.
@@ -112,8 +110,8 @@ static func _work(row: Control, text: String, command: StringName, args: Array, 
 ## What can be put on a road: a height point, a crossing, a way back through its median.
 static func works(row: Control, info: Dictionary, at: Vector3, redraw: Callable) -> void:
 	_work(row, row.tr("inspector.addHeightPoint"), &"split_road", [at], redraw)
-	_work(row, row.tr("inspector.addZebra"), &"add_crossing", [at, CROSS_ZEBRA], redraw)
-	_work(row, row.tr("inspector.addSignalCrossing"), &"add_crossing", [at, CROSS_SIGNAL], redraw)
+	_work(row, row.tr("inspector.addZebra"), &"add_crossing", [at, CityStore.code(&"NodeCrossing", &"CROSSING_ZEBRA")], redraw)
+	_work(row, row.tr("inspector.addSignalCrossing"), &"add_crossing", [at, CityStore.code(&"NodeCrossing", &"CROSSING_SIGNAL")], redraw)
 	if info.median:
 		_work(row, row.tr("inspector.addUturnToEnd"), &"add_uturn", [at, true], redraw)
 		_work(row, row.tr("inspector.addUturnToStart"), &"add_uturn", [at, false], redraw)

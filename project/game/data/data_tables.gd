@@ -150,6 +150,23 @@ static func maps() -> Array:
 	return _read(CATALOG.maps).maps
 
 
+## The index the core numbers map `id` by (maps.json), -1 when there is none.
+static func map_index(id: String) -> int:
+	var list := maps()
+	for i in list.size():
+		if list[i].id == id:
+			return i
+	return -1
+
+
+## The code of zone `id` (zones.json), -1 when there is none.
+static func zone_code(id: String) -> int:
+	for z: Dictionary in catalog_table("zones").zones:
+		if z.id == id:
+			return int(z.code)
+	return -1
+
+
 static func render() -> Dictionary:
 	return _group(RENDER_TABLES)
 

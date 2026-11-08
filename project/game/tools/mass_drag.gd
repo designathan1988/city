@@ -3,8 +3,7 @@
 class_name MassDrag
 extends RefCounted
 
-const WING := 0
-const SLIDE := 3
+const SLIDE := 3 # the tool's own action, past the core's MassAction (builder.json gives it)
 const NONE := -1
 
 var action := NONE
@@ -77,7 +76,7 @@ func cancel() -> void:
 
 ## Where the pointer is: the ground for a wing; else the point of its ray at the height of the roof.
 func _at(ground: Vector3) -> Vector3:
-	if action == WING:
+	if action == CityStore.code(&"MassAction", &"MASS_GROUND"): # a wing stands on the ground
 		return ground
 	var cam: Camera3D = _ctl.rig.camera
 	var origin := cam.project_ray_origin(_ctl.pointer)

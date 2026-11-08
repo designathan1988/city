@@ -12,7 +12,6 @@ const PROFILE := 0
 const OUT_M := 260.0
 const GROW_TICKS := 1200
 const ZONE_RADIUS := 60.0
-const ZONE_RES := 1
 ## Metres a screen pixel covers (the tool asks the camera; here a close view).
 const PX := 0.25
 ## How far past the road the snapping and the freehand stroke are tried, on open ground.
@@ -53,7 +52,7 @@ func _ready() -> void:
 	_road_end(e)
 	_snapping(a, e)
 	_freehand(e)
-	var z: Dictionary = CityStore.dispatch(&"paint_zone", [(a + e) * 0.5, ZONE_RADIUS, ZONE_RES])
+	var z: Dictionary = CityStore.dispatch(&"paint_zone", [(a + e) * 0.5, ZONE_RADIUS, DataTables.zone_code("residential")])
 	print("zone: ", z, " cells growing: ", CityStore.snapshot.growth_cells)
 	check(z.ok and z.zoned_sides > 0, "zoned sides: %d" % z.get("zoned_sides", 0))
 	check(CityStore.snapshot.player_zones == z.zoned_sides, "counts the player's sides")

@@ -175,6 +175,9 @@ lab.core.flush,Envio,Flush
 lab.core.roads,Vias,Roads
 lab.core.props,Mobiliário,Street furniture
 lab.core.buildings,Prédios,Buildings
+lab.core.lock,Espera pelo mapa,Waiting for the map
+lab.core.trees,Árvores,Trees
+lab.core.overlays,Sobreposições,Overlays
 lab.inspector.none,Ponha o ponteiro sobre o mapa,Put the pointer over the map
 lab.inspector.point,Ponto,Point
 lab.inspector.ground,Altura do chão,Ground height

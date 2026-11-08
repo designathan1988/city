@@ -2475,6 +2475,35 @@ The lots tool, one line too long with this, gave its picks of the drawn lots to 
 split, `import`, `scripts`, `e2e` and `building_tool_test` pass; `gates_changed` only what the files had (`inspector_panel.gd`'s size
 and two untranslated strings, `profile_types.h`'s two constants, `city_core_query.cpp`'s two lines).
 
+### 6.18 B2, C3 (P3): the core names its enums; scripts, tests and captures read them (2026-11-08)
+
+**Cause.** `constants()` gave the scripts two speeds, the zone count, two minute counts and the render layers, so every other code
+the core means was typed again by hand: transit modes, junction rules and controls, crossings, lot cuts, mass actions, the
+building enums, vehicle and furniture kinds, items, barriers, lamps, pole kinds, brush modes, plan shapes, building functions,
+map and profile indexes by catalogue position, hours, tuning values. Copies had already gone wrong: `capture_demolition.gd`'s
+"NORMAL_SPEED 2" is FAST, `shoot_test.gd` capped the shots to burst a car at 14 against the data's 12, `save_undo_test.gd` named
+two marking styles where `streets.json` has five; the frame's sections were listed three times, two of them disagreeing (the CPU tab
+never showed "lock" or "trees").
+
+**Fix.** `api/script_enums.cpp`: each enum by its C++ name, each value by its enumerator's own name (stringified) and value, so
+neither can drift; where the enum states a count, a `static_assert` refuses a list that leaves one out. `constants()` carries it as
+"enums", with `chunk_m` (the core's cell) and `frame_sections` (`api/frame_sections.h`). Scripts ask `CityStore.code(&"Enum",
+&"NAME")` (an error for a name the core lacks) and `code_name`; tables keyed by a code are keyed by the enumerator's name. Profiles,
+maps and zones are found by their ids (`CityStore.profile_index`, `DataTables.map_index`, `DataTables.zone_code`), hours by
+`daylight.json`, tunings by `tuning.json`. Owners given on the way: `BaseZone` (the base kinds three `.cpp` typed as 1..4, the
+loader now refusing a base past them), `FurnitureLevel` (a constant local to `street_furniture.cpp` that a capture copied). The
+hour tables of the captures name `day_hour` or `night_hour`; the speed pill reads its multipliers from the tuning.
+
+**What changes.** The F7 CPU tab shows every section of the frame, "lock", "trees" and "overlays" too (with their translations);
+`capture_demolition` runs its wound clocks at the normal speed it names; the shoot test fires the data's twelve shots.
+
+**Left for B4 (data rewrite).** Codes written as numbers in data: the UI's tool values (`builder.json`, `drawers.json`,
+`land_panels.json` and the mass tool's SLIDE), positional rows (`blast.json` vehicle boxes, `growth.json` civic kinds, the 18
+element kinds in four files, marking styles by index). They become names resolved at load against these same enums.
+
+**Verified** (`city-verify`, `quick`, both DLLs): every test passes (42 of 44, the shoot test with the data's twelve shots), the
+digest equal, every photo byte-equal to runs before C7, `scripts` compiling every script; `gates_changed` only lines the files had.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

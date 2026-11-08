@@ -10,10 +10,8 @@ const SEED := 1
 const OTHER_SEED := 7
 const VARIANT_OFF := Vector3(40, 0, 90) # clear of the city: no generated road end beside it
 const PROFILE := 0
-const UPGRADE_PROFILE := 3
 const OUT_M := 260.0
 const ZONE_RADIUS := 60.0
-const ZONE_RES := 1
 const BRUSH_RADIUS := 60.0
 const BRUSH_STRENGTH := 0.4
 const BRUSH_DT := 0.5
@@ -22,12 +20,11 @@ const RING_RADIUS := 22.0
 const RING_OUT_M := 700.0
 const LOT_M := 30.0
 const GROW_TICKS := 600
-const PARK_FN := 6
 const SLOT := "round_trip_test"
 const MONEY_STEP := 0.01
 ## The balance and an edit of the open city, which a file refused on opening must leave as they were.
 const KEPT_MONEY := 123456.0
-const MARKING_STYLES := 2
+const STYLES_TRIED := 2 # the first two of streets.json's marking styles, in turn
 const NATURE_OUT_M := 900.0
 const RAIN := 0.7
 const PAINT_KIND := 0
@@ -58,18 +55,18 @@ func _undo_cases(a: Vector3, e: Vector3) -> void:
 		return CityStore.dispatch(&"build_road", [a + VARIANT_OFF, e + VARIANT_OFF, false, Vector3.ZERO, four, 0.25]))
 	_round("zone (stroke)", func() -> Dictionary:
 		CityStore.dispatch(&"begin_stroke", ["cmd.place.zone"])
-		var r: Dictionary = CityStore.dispatch(&"paint_zone", [mid, ZONE_RADIUS, ZONE_RES])
-		CityStore.dispatch(&"paint_zone", [mid + Vector3(ZONE_RADIUS, 0, 0), ZONE_RADIUS, ZONE_RES])
+		var r: Dictionary = CityStore.dispatch(&"paint_zone", [mid, ZONE_RADIUS, DataTables.zone_code("residential")])
+		CityStore.dispatch(&"paint_zone", [mid + Vector3(ZONE_RADIUS, 0, 0), ZONE_RADIUS, DataTables.zone_code("residential")])
 		CityStore.dispatch(&"end_stroke")
 		return r)
-	_round("upgrade", func() -> Dictionary: return CityStore.dispatch(&"upgrade_road", [mid, UPGRADE_PROFILE, true]))
+	_round("upgrade", func() -> Dictionary: return CityStore.dispatch(&"upgrade_road", [mid, CityStore.profile_index("avenue"), true]))
 	_round("split", func() -> Dictionary: return CityStore.dispatch(&"split_road", [mid]))
 	_round("demolish", func() -> Dictionary: return CityStore.dispatch(&"demolish", [mid]))
 	var ring := e + Vector3(RING_OUT_M, 0, 0)
 	_round("roundabout", func() -> Dictionary: return CityStore.dispatch(&"roundabout", [ring, RING_RADIUS, false]))
 	var lot := mid + Vector3(0, 0, LOT_M)
 	_round("drawn building", func() -> Dictionary:
-		return CityStore.dispatch(&"draw_building", [lot, lot + Vector3(LOT_M, 0, LOT_M), PARK_FN, ZONE_RES, 0]))
+		return CityStore.dispatch(&"draw_building", [lot, lot + Vector3(LOT_M, 0, LOT_M), CityStore.code(&"BuildingFn", &"FN_PARK"), DataTables.zone_code("residential"), 0]))
 	var hill := _hill(e)
 	var h0 := _height(hill)
 	CityStore.dispatch(&"begin_stroke", ["cmd.place.terrainBrush"])
@@ -142,7 +139,7 @@ func _refuses_bad_balance() -> void:
 	var w: Dictionary = await save(SLOT)
 	check(w.get("ok", false), "saved an infinite balance for the test")
 	CityStore.query(&"probe_set_money", [KEPT_MONEY])
-	CityStore.dispatch(&"set_marking_style", [(int(CityStore.snapshot.marking_style) + 1) % MARKING_STYLES, true])
+	CityStore.dispatch(&"set_marking_style", [(int(CityStore.snapshot.marking_style) + 1) % STYLES_TRIED, true])
 	var before := _counts()
 	var could_undo: bool = CityStore.snapshot.can_undo
 	var r: Dictionary = CityStore.saves.load_game(SLOT, true)
@@ -158,7 +155,7 @@ func _drop(slot: String) -> void:
 
 
 func _save_round_trip(a: Vector3, e: Vector3) -> void:
-	CityStore.dispatch(&"paint_zone", [(a + e) * 0.5, ZONE_RADIUS, ZONE_RES])
+	CityStore.dispatch(&"paint_zone", [(a + e) * 0.5, ZONE_RADIUS, DataTables.zone_code("residential")])
 	ticks(GROW_TICKS)
 	var sculpted := _hill(e)
 	var saved := _counts()

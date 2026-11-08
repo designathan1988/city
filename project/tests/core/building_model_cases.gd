@@ -8,7 +8,6 @@ const BEVEL_M := 1.0
 const TURN_DEG := 15.0
 const SLIDE_M := 3.0
 const SIDE := 1
-const CHAMFERED := 6
 const CHAMFERED_SIDES := 8
 const EYE_M := 100.0
 const SCALE := 1.2
@@ -34,7 +33,7 @@ static func run(id: int, made: int, check: Callable) -> void:
 
 ## A point moved; a corner added on a side and taken away again is the plan it was.
 static func _points(id: int, vol: int, made: int, check: Callable) -> void:
-	CityStore.dispatch(&"body_set_plan", [id, vol, CHAMFERED])
+	CityStore.dispatch(&"body_set_plan", [id, vol, CityStore.code(&"PlanShape", &"PLAN_CHAMFERED")])
 	var shaped: int = BuildingProbe.info(id).digest
 	var r: Dictionary = CityStore.dispatch(&"body_change_point", [id, vol, 0, false])
 	check.call(r.get("ok", false) and BuildingProbe.info(id).volumes[vol].bays.size() == CHAMFERED_SIDES + 1, "one corner more: %s" % r)

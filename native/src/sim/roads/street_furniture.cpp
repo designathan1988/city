@@ -12,8 +12,6 @@ namespace city {
 using namespace furniture;
 
 namespace {
-constexpr int FURN_FULL = 0, FURN_NONE = 2; // RoadSegment furniture level (SEG_FURNITURE_MASK)
-constexpr int BASE_RESIDENTIAL = 1, BASE_INDUSTRIAL = 3; // ZoneDef::base
 constexpr int MAX_BESIDE = 16; // pieces a passage check looks at across one cross-section
 constexpr double SQRT2 = 1.4142135623730951;
 constexpr int SLOT_TRIES = 64; // a piece is moved along past at most this many others before it gives up

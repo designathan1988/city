@@ -4,8 +4,6 @@
 class_name CaptureTransit
 extends RefCounted
 
-const TRAIN := 1
-const METRO := 2
 const HOUR := 16.0
 const STOP_REACH_M := 18.0
 const DOORS_OPEN_TICKS := 40
@@ -89,7 +87,7 @@ static func _tool_shots(cap: Node, bus: Array) -> void:
 	tools.hover_world(bus[2].at)
 	await _view(cap, "50_ferramenta_linha", bus[1], PLAN)
 	tools.active.cancel()
-	tools.set_tool(ToolController.Tool.TRANSIT, { "kind": "track", "mode": METRO })
+	tools.set_tool(ToolController.Tool.TRANSIT, { "kind": "track", "mode": CityStore.code(&"TransitMode", &"METRO") })
 	var a: Vector3 = bus[1].at + bus[1].out * RUN_OFF_M
 	tools.click_world(a)
 	tools.hover_world(a + bus[1].along * RUN_LONG_M)
@@ -165,13 +163,13 @@ static func _lay_rail(bus: Array) -> Dictionary:
 static func _lay_run(road: Vector3, across: Vector3) -> bool:
 	for half: float in TRACK_HALVES:
 		var run := PackedVector3Array([road - across * half, road + across * half])
-		if not CityStore.dispatch(&"transit_track", [run, TRAIN]).get("ok", false):
+		if not CityStore.dispatch(&"transit_track", [run, CityStore.code(&"TransitMode", &"TRAIN")]).get("ok", false):
 			continue
 		var ids := PackedInt32Array()
 		for side: float in [-1.0, 1.0]:
-			CityStore.dispatch(&"transit_station", [road + across * side * half * STATION_SHARE, TRAIN])
+			CityStore.dispatch(&"transit_station", [road + across * side * half * STATION_SHARE, CityStore.code(&"TransitMode", &"TRAIN")])
 		for q: Dictionary in CityStore.query(&"transit_plan").stops:
-			if int(q.mode) == TRAIN:
+			if int(q.mode) == CityStore.code(&"TransitMode", &"TRAIN"):
 				ids.append(q.id)
 		CityStore.dispatch(&"transit_line", [ids])
 		return true
@@ -183,13 +181,13 @@ static func _lay_metro(bus: Array, entrance: Vector3) -> Array:
 	var far: Vector3 = bus[0].at if bus[0].at.distance_to(entrance) > bus[2].at.distance_to(entrance) else bus[2].at
 	var d := (far - entrance).normalized()
 	var run := PackedVector3Array([entrance - d * METRO_PAST_M, far + d * METRO_PAST_M])
-	CityStore.dispatch(&"transit_track", [run, METRO])
-	CityStore.dispatch(&"transit_station", [entrance, METRO])
-	CityStore.dispatch(&"transit_station", [far + d * METRO_STATION_M, METRO])
+	CityStore.dispatch(&"transit_track", [run, CityStore.code(&"TransitMode", &"METRO")])
+	CityStore.dispatch(&"transit_station", [entrance, CityStore.code(&"TransitMode", &"METRO")])
+	CityStore.dispatch(&"transit_station", [far + d * METRO_STATION_M, CityStore.code(&"TransitMode", &"METRO")])
 	var out: Array = []
 	var ids := PackedInt32Array()
 	for q: Dictionary in CityStore.query(&"transit_plan").stops:
-		if int(q.mode) == METRO:
+		if int(q.mode) == CityStore.code(&"TransitMode", &"METRO"):
 			out.append(q)
 			ids.append(q.id)
 	CityStore.dispatch(&"transit_line", [ids])
@@ -242,7 +240,7 @@ static func _rail_shots(cap: Node, rail: Dictionary) -> void:
 	var middle: Vector3 = (b.min + b.max) / 2
 	var station: Dictionary = {} # the one out of the town: the other may stand among its lots
 	for q: Dictionary in CityStore.query(&"transit_plan").stops:
-		if int(q.mode) == TRAIN and (station.is_empty() or q.at.distance_to(middle) > station.at.distance_to(middle)):
+		if int(q.mode) == CityStore.code(&"TransitMode", &"TRAIN") and (station.is_empty() or q.at.distance_to(middle) > station.at.distance_to(middle)):
 			station = q
 	await _view(cap, "46_estacao_perto", station, STATION_NEAR)
 	await _view(cap, "47_estacao_predio", station, STATION_HALL)

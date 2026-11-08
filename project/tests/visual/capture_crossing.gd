@@ -17,7 +17,7 @@ static func views(cap: Node, cross: Vector3) -> void:
 ## The close view again under each regional paint standard of Menu > Paint, by day, the paint the only thing that changes:
 ## the dashes of the arms, the lines and the zebra. The map goes back to its first standard.
 static func paint(cap: Node, cross: Vector3) -> void:
-	await CaptureSignals.at_hour(cap, CaptureViews.DAY)
+	await CaptureSignals.at_hour(cap, float(DataTables.game("daylight").day_hour))
 	var styles: Array = DataTables.render().streets.markings.styles
 	for i in styles.size():
 		CityStore.dispatch(&"set_marking_style", [i, false])

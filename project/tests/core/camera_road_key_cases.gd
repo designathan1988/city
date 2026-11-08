@@ -6,7 +6,6 @@ const ZONE_ROAD_X := 700.0
 const ZONE_ROAD_Z := 620.0
 const ZONE_ROAD_M := 300.0
 const ZONE_BRUSH_M := 30.0
-const ZONE_KIND := 1
 
 var t: Node
 
@@ -50,12 +49,12 @@ func _zone_brush() -> void:
 	var mid := a.lerp(b, 0.5)
 	var built: Dictionary = CityStore.dispatch(&"build_road", [a, b, false, Vector3.ZERO, 0, 0.25])
 	t.check(built.get("ok", false), "a road for the zone brush: %s" % [built])
-	t.tools.set_tool(ToolController.Tool.ZONE, {"zone": ZONE_KIND, "radius": ZONE_BRUSH_M})
+	t.tools.set_tool(ToolController.Tool.ZONE, {"zone": DataTables.zone_code("residential"), "radius": ZONE_BRUSH_M})
 	var brush: Variant = t.tools.active
 	brush.click(a)
 	brush.drag(b)
 	brush.release(b)
-	var again: Dictionary = CityStore.dispatch(&"paint_zone", [mid, ZONE_BRUSH_M, ZONE_KIND])
+	var again: Dictionary = CityStore.dispatch(&"paint_zone", [mid, ZONE_BRUSH_M, DataTables.zone_code("residential")])
 	t.check(again.get("error", "") == "tools.toast.zoneSame", "a fast drag zones the middle of the way: %s" % [again])
 	var shift := InputEventKey.new()
 	shift.keycode = KEY_SHIFT

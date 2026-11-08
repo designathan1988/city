@@ -25,7 +25,6 @@ const MINUTES_AN_HOUR := 60.0
 const CLOCK_SHOTS := 4
 const CLOCK_STEP_H := 5
 const CLEAR_DABS := 11
-const NIGHT_HOUR := 22.0
 const ELEMENT_KINDS := 18
 const TREE_CUT := 2
 const RIVER_DABS := 60
@@ -120,7 +119,7 @@ func _city_light(field: Vector3) -> void:
 	await shot("luz_parede", mid, 120.0, 14.0, 30.0)
 	await shot("ceu_baixo", field, 45.0, -14.0, 200.0)
 	await shot("ceu_alto", field, 45.0, -30.0, 200.0)
-	UiDriver.at_hour(world, NIGHT_HOUR)
+	UiDriver.at_hour(world, float(DataTables.game("daylight").night_hour))
 	await shot("ceu_noite", field, 45.0, -14.0, 200.0)
 	await shot("noite_campo", field, 45.0, 24.0, 2.0)
 	await shot("noite_cidade", mid, 30.0, 26.0, 6.0)

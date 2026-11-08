@@ -40,9 +40,9 @@ const ALL_LAYERS := 0xFFFFFFFF
 const US_PER_MS := 1000.0
 const PERCENTILES := [0.5, 0.95, 0.99]
 const BROKEN_DOWN := 3
-## render_cost sections, in the order of the core's frame.
-const COST_PARTS := [&"agents", &"lock", &"stream", &"levels", &"flush", &"roads", &"props", &"buildings", &"chunk_max",
-	&"super_max", &"b_scan", &"b_freed", &"b_sort", &"b_admit", &"b_hand", &"b_tail", &"super_mb_max", &"trees", &"overlays"]
+## What of render_cost the pan reports past the frame's sections (CityStore.constants.frame_sections): the largest jobs and the
+## building stream's steps.
+const DETAIL_PARTS := [&"chunk_max", &"super_max", &"b_scan", &"b_freed", &"b_sort", &"b_admit", &"b_hand", &"b_tail", &"super_mb_max"]
 
 var rig: CityCamera
 var map := 0
@@ -211,7 +211,8 @@ func _report(name: String) -> void:
 	var order := range(frames.size())
 	order.sort_custom(func(a: int, b: int) -> bool: return frames[a] > frames[b])
 	for i in order.slice(0, BROKEN_DOWN):
-		var parts := COST_PARTS.map(func(k: StringName) -> String: return "%s %.1f" % [k, costs[i][k]])
+		var keys: Array = CityStore.constants.frame_sections + DETAIL_PARTS
+		var parts := keys.map(func(k: Variant) -> String: return "%s %.1f" % [k, costs[i][StringName(k)]])
 		print("    frame %d of %d: %.0f ms | core %.1f ms (%s; uploads %.1f MiB) | gpu %.1f ms, render cpu %.1f ms" % [i,
 			frames.size(), frames[i], process_ms[i], ", ".join(parts), costs[i].uploads, gpu_ms[i], cpu_ms[i]])
 	print("  gpu %s | render cpu %s | core %s" % [_stats(gpu_ms), _stats(cpu_ms), _stats(process_ms)])

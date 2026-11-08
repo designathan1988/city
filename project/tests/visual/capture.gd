@@ -20,8 +20,6 @@ const JAM_SHOTS := 1
 ## Close look at the pedestrian nearest to the centre (same frame as the car view) and the height looked at.
 const PERSON_VIEW_FROM := Vector3(1.5, 1.4, 4.5)
 const PERSON_VIEW_AT_Y := 0.95
-const DAY := CaptureViews.DAY
-const NIGHT := CaptureViews.NIGHT
 
 ## Functions shot by _civic_tour (sim/buildings/building_store.h BuildingFn) and the view offset per lot size.
 const CIVIC_SHOTS := {1: "escola", 2: "igreja", 3: "hospital", 4: "clinica", 5: "praca", 6: "parque", 7: "posto", 8: "mercado",
@@ -113,14 +111,14 @@ func _wait_render() -> void:
 func _capture_all(probe: Dictionary, ground: Vector3) -> void:
 	if await CaptureDirected.run(self, only):
 		return
-	var hour := DAY
+	var hour := float(DataTables.game("daylight").day_hour)
 	await CaptureSignals.at_hour(self, hour)
 	if await CaptureTraffic.directed(self, probe, ground):
 		return
 	for v in CaptureViews.VIEWS:
 		if not only.is_empty() and not only.has(v[0]):
 			continue
-		var h: float = v[3] if v.size() > 3 else DAY
+		var h := float(DataTables.game("daylight")[v[3] if v.size() > 3 else &"day_hour"])
 		if h != hour: # the sky's radiance (ambient and reflections) follows a new hour over several frames
 			hour = h
 			await CaptureSignals.at_hour(self, h)
@@ -134,7 +132,7 @@ func _capture_all(probe: Dictionary, ground: Vector3) -> void:
 		var cross: Vector3 = CityStore.query(&"traffic_probe", [0]).get("busy_crossing", Vector3.ZERO)
 		await CaptureCrossing.views(self, cross)
 		await CaptureKerb.shots(self, CityStore.query(&"traffic_probe", [0]).get("crossing_kerb", []))
-		await CaptureSignals.shots(self, cross, [DAY, NIGHT])
+		await CaptureSignals.shots(self, cross, [float(DataTables.game("daylight").day_hour), float(DataTables.game("daylight").night_hour)])
 		await CaptureCrossing.paint(self, cross)
 	for i in mini(JAM_SHOTS, probe.jams.size()):
 		var j: Vector3 = probe.jams[i]

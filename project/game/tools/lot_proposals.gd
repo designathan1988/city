@@ -2,7 +2,6 @@
 class_name LotProposals
 extends RefCounted
 
-const CORE_CELL_M := 256.0 # core/grid.h CHUNK: proposals are read a cell at a time
 const UNREAD := Vector2i(1 << 30, 0)
 const SHOWN_M := 0.1
 
@@ -18,7 +17,8 @@ func forget() -> void:
 
 ## The proposal under `p`, or an empty ring.
 func at(p: Vector3) -> PackedVector3Array:
-	var cell := Vector2i(floori(p.x / CORE_CELL_M), floori(p.z / CORE_CELL_M))
+	var cell_m: float = CityStore.constants.chunk_m # proposals are read a cell of the core's at a time
+	var cell := Vector2i(floori(p.x / cell_m), floori(p.z / cell_m))
 	if cell != _cell:
 		_cell = cell
 		_rings = CityStore.query(&"lot_proposals", [p])

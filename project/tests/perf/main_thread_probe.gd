@@ -7,16 +7,14 @@
 extends Node3D
 
 const SEED := 1
-const MAP_DEFAULT := 5 # metropolis (data/catalog/maps.json): the most traffic of the medium maps
 const BUILD_FRAMES := 1200
 const SETTLE_FRAMES := 30
 const RUN_S := 20.0
 const READS := 300 # calls of each per-frame read timed one after another
-const SPEED_FASTEST := 3
 const US_PER_MS := 1000.0
 const PERCENTILES := [0.5, 0.95, 0.99]
 
-var map := MAP_DEFAULT
+var map := DataTables.map_index("metropolis")
 var seconds := RUN_S
 
 
@@ -46,7 +44,7 @@ func _ready() -> void:
 	while CityStore.query(&"render_pending") > 0 and waited < BUILD_FRAMES:
 		await get_tree().process_frame
 		waited += 1
-	CityStore.dispatch(&"set_speed", [SPEED_FASTEST])
+	CityStore.dispatch(&"set_speed", [CityStore.code(&"SimSpeed", &"FASTEST")])
 	await _snapshot_wait()
 	_reads()
 	var keys: int = await _idle_keys()

@@ -11,7 +11,6 @@ const FACE_ROAD_M := 1.6
 const SHEET_FRAMES := 4 # a cell asked for is painted on the next frames
 const INK_NEAR := 0.3 # how near the ink a pixel of the sheet reads as ink
 const INK_LEAST := 0.01 # of a cell, however short its word
-const ITEM_NAME := 11
 const NAMES_TRIED := 312 # three times what one sheet of 104 held
 const NAMES_FRAMES := 1200 # a chunk job, then a layer each sheet_round_s
 const LIFT_STEP_M := 10.0 # a view from above rises this much at a time over a building in its way
@@ -127,7 +126,7 @@ static func many_names(cap: Node, road: Vector3) -> void:
 	var sheet: SignSheet = _sheet(cap)
 	var had: int = CityStore.query(&"street_counts").sign_cells
 	for i in NAMES_TRIED:
-		CityStore.dispatch(&"place_item", [road, ITEM_NAME, 0, "Rua Teste %d" % i, 1.0])
+		CityStore.dispatch(&"place_item", [road, CityStore.code(&"ItemKind", &"STREETNAME"), 0, "Rua Teste %d" % i, 1.0])
 	var counts: Dictionary = {}
 	for f in NAMES_FRAMES:
 		counts = CityStore.query(&"street_counts")

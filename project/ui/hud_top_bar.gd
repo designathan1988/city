@@ -8,7 +8,8 @@ signal history_pressed(action: String)
 signal impossible_pressed
 
 const SKY := [["sun", "sky.day", "day"], ["moon", "sky.night", "night"], ["cycle", "sky.cycle", "cycle"]]
-const SPEEDS := [["", 0], ["1×", 1], ["2×", 2], ["4×", 3]]
+## The speeds of the core's SimSpeed, each with the steps a tick its label shows (tuning sim.speed_fast and sim.speed_fastest).
+const SPEEDS := [[&"PAUSED", ""], [&"NORMAL", ""], [&"FAST", "sim_speed_fast"], [&"FASTEST", "sim_speed_fastest"]]
 
 var action_buttons: Dictionary = {}
 @export var world: CityWorld
@@ -51,9 +52,12 @@ func _ready() -> void:
 	_stats.mouse_filter = Control.MOUSE_FILTER_PASS
 	var pill := HudWidgets.hbox(HudWidgets.panel(row, &"Seg"))
 	for s in SPEEDS:
-		var b := HudWidgets.button(&"SegButton", "pause" if s[0] == "" else "", s[0], "sim.speed", "seg_min_w", "seg_h")
+		var paused: bool = s[0] == &"PAUSED"
+		var label := "" if paused else "%d×" % (int(DataTables.tuning(s[1])) if s[1] != "" else 1)
+		var setting := CityStore.code(&"SimSpeed", s[0])
+		var b := HudWidgets.button(&"SegButton", "pause" if paused else "", label, "sim.speed", "seg_min_w", "seg_h")
 		b.toggle_mode = true
-		b.pressed.connect(func() -> void: CityStore.dispatch(&"set_speed", [s[1]]))
+		b.pressed.connect(func() -> void: CityStore.dispatch(&"set_speed", [setting]))
 		pill.add_child(b)
 		_speed_buttons.append(b)
 		_tipped.append([b, "sim.speed"])
@@ -112,7 +116,7 @@ func _on_changed(s: Dictionary) -> void:
 		"jobs": Formatters.format_int(s.jobs), "buildings": Formatters.format_int(s.buildings), "speed": "—"})
 	_sync_impossible()
 	for i in SPEEDS.size():
-		_speed_buttons[i].set_pressed_no_signal(SPEEDS[i][1] == int(s.speed))
+		_speed_buttons[i].set_pressed_no_signal(CityStore.code(&"SimSpeed", SPEEDS[i][0]) == int(s.speed))
 	for action in _history_buttons:
 		var b: Button = _history_buttons[action]
 		b.disabled = not s.get("can_" + action, false)
