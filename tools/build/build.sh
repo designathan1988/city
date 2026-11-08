@@ -27,7 +27,7 @@ core_windows() { # template_release ships in the export; template_debug is what 
 
 # One DLL, incrementally (the build folder is configured the first time): the build tasks of tools/tasks/suites.json.
 dll() { # <template_debug|template_release> <build dir>
-	bash "$ROOT/tools/build/free_dll.sh"
+	bash "$ROOT/tools/build/free_dll.sh" "libcitycore.windows.$1.x86_64.dll"
 	[ -f "$2/build.ninja" ] || cmake -S "$ROOT/native" -B "$2" -G Ninja -DCMAKE_BUILD_TYPE=Release -DGODOTCPP_TARGET="$1" \
 		-DCMAKE_TOOLCHAIN_FILE="$ROOT/native/toolchain-mingw.cmake" || return 1
 	cmake --build "$2" --target citycore -j "$JOBS"
