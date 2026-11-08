@@ -4,7 +4,7 @@
 // angle, since the Compatibility renderer keeps custom data as halfs; the instance colour's alpha a seed of the vehicle. Walkers
 // and whoever rides go to PeopleRenderer.
 #include "render/agents/agent_renderer.h"
-#include "core/shader_contracts.h"
+#include "core/shader_contracts/agents.h"
 
 #include "render/agents/agent_lod.h"
 

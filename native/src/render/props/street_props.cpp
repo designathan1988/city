@@ -2,6 +2,7 @@
 // street_props.h. A pole is one instance of the pole mesh with the parts it shows in INSTANCE_CUSTOM.a (prop_kit.h
 // PolePart); a wire is one instance whose transform carries its chord and INSTANCE_CUSTOM its sag and phase (props.gdshader).
 #include "render/props/street_props.h"
+#include "core/shader_contracts/streets.h"
 
 #include "render/owned_segments.h"
 
@@ -28,7 +29,6 @@ constexpr int CAN_PERIOD = 5, CAN_PHASE = 3; // a transformer on one pole in fiv
 constexpr float PHASE_STEP = 2.399f; // the golden angle: neighbouring spans swing out of step
 // A span's phase in the wind and the kinds of its two poles share INSTANCE_CUSTOM.y: the phase (under a turn) plus this times
 // kind_a + 2 kind_b, which props.gdshader takes apart to pick each end's seats.
-constexpr float KIND_STRIDE = 8.f;
 constexpr int KIND_B_WEIGHT = 2;
 constexpr int JOINT_ARMS = 2; // a street going on through a node
 const Vector3 UP(0, 1, 0);
@@ -57,7 +57,7 @@ void push_span(StreetInstances &inst, const WireLook &w, const Vector3 &a, const
 	const float span = Vector2(d.x, d.z).length();
 	if (span < w.min_span || span > w.max_span) return;
 	const Vector3 across = Vector3(-d.z, 0, d.x).normalized();
-	const float kinds = KIND_STRIDE * float(int(kind_a) + KIND_B_WEIGHT * int(kind_b));
+	const float kinds = PROP_SPAN_KIND_STRIDE * float(int(kind_a) + KIND_B_WEIGHT * int(kind_b));
 	mm_push_plain(inst.wires, d, UP, across, a, std::min(w.max_sag, span * w.sag), std::fmod(phase, TAU_F) + kinds, heading(arm_a), heading(arm_b));
 }
 

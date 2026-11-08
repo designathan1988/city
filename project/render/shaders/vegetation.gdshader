@@ -2,6 +2,7 @@
 // each in its own tone, bent by the wind and faded against the far cards (vegetation.gdshaderinc).
 shader_type spatial;
 render_mode skip_vertex_transform, cull_back;
+#include "res://render/shaders/contracts/trees.gdshaderinc"
 
 #include "res://render/shaders/vegetation.gdshaderinc"
 #include "res://render/shaders/lattice_noise.gdshaderinc"

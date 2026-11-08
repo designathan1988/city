@@ -3,8 +3,9 @@
 // biome and the uv bits how much of it; the reserved bits the gullies. Each corner of the height grid holds one of each,
 // read at the four corners and mixed by distance (ids cannot be filtered).
 // Needs: _control_maps, get_index_coord, land_triplanar, the uniforms below.
+#include "res://render/shaders/contracts/land.gdshaderinc"
 
-uniform vec3 biome_tint[7] : source_color; // none, then the biomes of data/catalog/nature.json
+uniform vec3 biome_tint[1 << PAINT_ID_BITS] : source_color; // by the overlay id: none, then the biomes of data/catalog/nature.json
 uniform int map_biome = 0; // 0 none, else the biome's index + 1
 uniform float gully_auto = 0.25;
 uniform float gully_m = 9.0;
@@ -12,10 +13,9 @@ uniform float gully_depth = 1.4;
 uniform float gully_slope_from = 0.1;
 uniform float gully_slope_to = 0.3;
 
-const float BLEND_FULL = 255.0;
-const float BIOME_FULL = 127.0;
-const float GULLY_FULL = 7.0;
-const uint BIT_WIPE = 8u;
+const uint ID_MASK = (1u << uint(PAINT_ID_BITS)) - 1u, BLEND_MASK = (1u << uint(PAINT_BLEND_BITS)) - 1u, BIOME_MASK = (1u << uint(PAINT_BIOME_BITS)) - 1u;
+const uint GULLY_MASK = (1u << uint(PAINT_GULLY_BITS)) - 1u, BIT_WIPE = 1u << uint(PAINT_GULLY_BITS); // the wipe: the reserved bit over the gully's
+const float BLEND_FULL = float(BLEND_MASK), BIOME_FULL = float(BIOME_MASK), GULLY_FULL = float(GULLY_MASK);
 const float ROCK_GRANITE = 2.0, ROCK_SANDSTONE = 4.0, ROCK_BASALT = 6.0; // the rock faces among the layers of the land map
 
 struct PaintCorner {
@@ -30,12 +30,12 @@ struct PaintCorner {
 PaintCorner read_paint(ivec3 at) {
 	uint c = floatBitsToUint(texelFetch(_control_maps, at, 0)).r;
 	PaintCorner p;
-	p.surface = int(c >> 27u & 0x1Fu);
-	p.biome = int(c >> 22u & 0x1Fu);
-	p.amount = float(c >> 14u & 0xFFu) / BLEND_FULL;
-	p.biome_amount = float(c >> 7u & 0x7Fu) / BIOME_FULL;
-	uint g = c >> 3u & 0xFu;
-	p.gully = float(g & 7u) / GULLY_FULL;
+	p.surface = int(c >> uint(PAINT_BASE_SHIFT) & ID_MASK);
+	p.biome = int(c >> uint(PAINT_OVERLAY_SHIFT) & ID_MASK);
+	p.amount = float(c >> uint(PAINT_BLEND_SHIFT) & BLEND_MASK) / BLEND_FULL;
+	p.biome_amount = float(c >> uint(PAINT_BIOME_SHIFT) & BIOME_MASK) / BIOME_FULL;
+	uint g = c >> uint(PAINT_GULLY_SHIFT) & (BIT_WIPE | GULLY_MASK);
+	p.gully = float(g & GULLY_MASK) / GULLY_FULL;
 	p.wipe = float((g & BIT_WIPE) != 0u);
 	return p;
 }

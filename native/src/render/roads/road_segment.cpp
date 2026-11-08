@@ -71,7 +71,7 @@ struct Ctx {
 	const std::vector<Sample> &sm;
 	LampRow lamp;
 	Vector2 pool(float u, float at) const {
-		if (!lamp.any) return Vector2(POOL_NONE, 0);
+		if (!lamp.any) return Vector2(ROAD_POOL_NONE, 0);
 		float du, dv;
 		lamp.pool(u, at, du, dv);
 		return Vector2(du, dv);

@@ -9,6 +9,7 @@
 #include "sim/buildings/building_store.h"
 #include "sim/catalog/catalog.h"
 #include "sim/catalog/furniture_types.h"
+#include "sim/catalog/profile_types.h"
 #include "sim/catalog/traffic_params.h"
 #include "sim/commands/body_ops.h"
 #include "sim/commands/street_commands.h"
@@ -55,6 +56,8 @@ Dictionary script_enums() {
 	CITY_ENUM_ALL("BaseZone", BASE_COUNT, CITY_ROW_PLAIN(BASE_NONE), CITY_ROW_PLAIN(BASE_RESIDENTIAL), CITY_ROW_PLAIN(BASE_COMMERCIAL),
 			CITY_ROW_PLAIN(BASE_INDUSTRIAL), CITY_ROW_PLAIN(BASE_MIXED))
 	CITY_ENUM("FurnitureLevel", CITY_ROW_PLAIN(FURN_FULL), CITY_ROW_PLAIN(FURN_BASIC), CITY_ROW_PLAIN(FURN_NONE))
+	CITY_ENUM_ALL("RoadClass", int64_t(RoadClass::COUNT), CITY_ROW(RoadClass, LOCAL), CITY_ROW(RoadClass, URBAN), CITY_ROW(RoadClass, AVENUE),
+			CITY_ROW(RoadClass, BOULEVARD), CITY_ROW(RoadClass, HIGHWAY), CITY_ROW(RoadClass, RAMP), CITY_ROW(RoadClass, RAIL))
 	CITY_ENUM("TransitMode", CITY_ROW(TransitMode, BUS), CITY_ROW(TransitMode, TRAIN), CITY_ROW(TransitMode, METRO))
 	CITY_ENUM("SegRule", CITY_ROW_PLAIN(RULE_NONE), CITY_ROW_PLAIN(RULE_STOP), CITY_ROW_PLAIN(RULE_YIELD))
 	CITY_ENUM("NodeCrossing", CITY_ROW_PLAIN(CROSSING_NONE), CITY_ROW_PLAIN(CROSSING_ZEBRA), CITY_ROW_PLAIN(CROSSING_SIGNAL))

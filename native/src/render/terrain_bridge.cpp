@@ -1,6 +1,7 @@
 // Terrain3D 1.1 scripting API (get_data, add_region_blank, get_region, set_height_map, update_maps).
 // Control map: FORMAT_RF memory holding uint32 bit fields; bit 0 = autoshader (Terrain3D control map docs).
 #include "render/terrain_bridge.h"
+#include "core/shader_contracts/land.h"
 
 #include "core/grid.h"
 
@@ -18,16 +19,17 @@ namespace city {
 namespace {
 constexpr uint32_t CONTROL_AUTOSHADER = 1u;
 constexpr int MAP_TYPE_HEIGHT = 0, MAP_TYPE_CONTROL = 1, MAP_TYPE_ALL = 3; // Terrain3DRegion.MapType
-// Control map bits (Terrain3D docs, Control Map Format): base id 27, overlay id 22, blend 14, uv angle and scale 7 (the
-// biome's amount here), reserved 3 (the gullies: 3 bits of how much, the top bit a wipe).
-constexpr int BASE_SHIFT = 27, OVERLAY_SHIFT = 22, BLEND_SHIFT = 14, BIOME_SHIFT = 7, GULLY_SHIFT = 3;
-constexpr int BIOME_DROP = 1, GULLY_DROP = 5, WIPE_DROP = 7;
-constexpr uint32_t WIPE_BIT = 8u;
+// Control map bits (Terrain3D docs, Control Map Format; PaintBits, core/shader_contracts/land.h, which ground_paint.gdshaderinc reads):
+// base id, overlay id (the biome), blend, uv angle and scale (the biome's amount here), reserved (the gullies: how much, then a wipe).
+// A PaintCell value is a byte: each field takes its top bits.
+constexpr int CELL_BITS = 8;
+constexpr int BIOME_DROP = CELL_BITS - PAINT_BIOME_BITS, GULLY_DROP = CELL_BITS - PAINT_GULLY_BITS, WIPE_DROP = CELL_BITS - 1;
+constexpr uint32_t WIPE_BIT = 1u << PAINT_GULLY_BITS;
 
 uint32_t control_of(const PaintCell &c) {
 	uint32_t wipe = (c.gully_wipe >> WIPE_DROP) ? WIPE_BIT : 0u;
-	return (uint32_t(c.surface) << BASE_SHIFT) | (uint32_t(c.biome) << OVERLAY_SHIFT) | (uint32_t(c.amount) << BLEND_SHIFT) |
-			(uint32_t(c.biome_amount >> BIOME_DROP) << BIOME_SHIFT) | ((uint32_t(c.gully >> GULLY_DROP) | wipe) << GULLY_SHIFT) | CONTROL_AUTOSHADER;
+	return (uint32_t(c.surface) << PAINT_BASE_SHIFT) | (uint32_t(c.biome) << PAINT_OVERLAY_SHIFT) | (uint32_t(c.amount) << PAINT_BLEND_SHIFT) |
+			(uint32_t(c.biome_amount >> BIOME_DROP) << PAINT_BIOME_SHIFT) | ((uint32_t(c.gully >> GULLY_DROP) | wipe) << PAINT_GULLY_SHIFT) | CONTROL_AUTOSHADER;
 }
 constexpr int BYTES_PER_SAMPLE = 4;
 

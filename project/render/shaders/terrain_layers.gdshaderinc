@@ -2,9 +2,8 @@
 // (triplanar) and the grass map without visible tiling. Needs the uniforms land_map, land_layers and grass_map.
 
 #include "res://render/shaders/lattice_noise.gdshaderinc"
-#include "res://render/shaders/shader_contracts.gdshaderinc"
+#include "res://render/shaders/contracts/land.gdshaderinc"
 
-const vec3 LUMA = vec3(LUMA_R, LUMA_G, LUMA_B); // the weights a colour's luma is read with
 
 // One layer of the stacked land map at `p`, with the derivatives of the unwrapped coordinates taken by the caller in
 // uniform control flow (no seams at the wrap, no undefined derivatives inside a branch).

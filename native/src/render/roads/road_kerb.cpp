@@ -20,7 +20,7 @@ void band(const RoadEmit &e, const Section &a, const Section &b, float across, b
 	float top = kerbed ? L.h_curb : L.h_sidewalk, sh = L.h_sidewalk;
 	Vector3 up_t(0, top, 0), up_s(0, sh, 0), down(0, -L.skirt, 0);
 	Vector3 ak = kerbed ? a.k : a.i, bk = kerbed ? b.k : b.i;
-	const Vector2 none[4] = { Vector2(POOL_NONE, 0), Vector2(POOL_NONE, 0), Vector2(POOL_NONE, 0), Vector2(POOL_NONE, 0) };
+	const Vector2 none[4] = { Vector2(ROAD_POOL_NONE, 0), Vector2(ROAD_POOL_NONE, 0), Vector2(ROAD_POOL_NONE, 0), Vector2(ROAD_POOL_NONE, 0) };
 	auto xz = [](const Vector3 &p) { return Vector2(p.x, p.z); };
 	auto face = [&](const Vector3 p0, const Vector3 p1, const Vector3 p2, const Vector3 p3, const Color &c, const Vector3 &out) {
 		const Vector3 p[4] = { p0, p1, p2, p3 };

@@ -2,7 +2,7 @@
 // (body, walk frames, a seed, walk phase); on the far card (body, its height, the seed, 0). The instance colour's alpha: the share of the
 // walk in the pose, or from PEOPLE_CLIP_CODE_BASE a clip held (somebody in a vehicle). What it reads once is people_boot.cpp.
 #include "render/agents/people_renderer.h"
-#include "core/shader_contracts.h"
+#include "core/shader_contracts/people.h"
 
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/variant/array.hpp>

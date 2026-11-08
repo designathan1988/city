@@ -4,6 +4,7 @@
 // Kinds: 0 crater in paving, 1 crater in earth, 2 soot, 3 blood pool, 4 blood splat, 5 blood drops, 6 shock ring.
 shader_type spatial;
 render_mode unshaded, blend_mix, depth_draw_never, cull_disabled, shadows_disabled;
+#include "res://render/shaders/contracts/effects.gdshaderinc"
 
 global uniform float night;
 // The crater's four stops, as scene radiance (what the Environment's tone mapping shows as the reference game's crater colours,
@@ -29,7 +30,7 @@ void vertex() {
 	float age = now - INSTANCE_CUSTOM.z;
 	v_spread = clamp(0.2 + age / max(pool_spread_s, 0.001), 0.2, 1.0);
 	v_fade = 1.0;
-	if (v_kind > 5.5) { // the shock ring races out and fades
+	if (int(v_kind + 0.5) == MARK_RING) { // the shock ring races out and fades
 		float k = clamp(age / max(INSTANCE_CUSTOM.w, 0.001), 0.0, 1.0);
 		VERTEX.xz *= 1.0 - (1.0 - k) * (1.0 - k);
 		v_fade = 1.0 - k;
@@ -53,13 +54,13 @@ float vnoise(vec2 p) {
 void fragment() {
 	vec2 q = (UV - 0.5) * 2.0;
 	float r = length(q);
-	float k = v_kind;
+	int k = int(v_kind + 0.5);
 	vec3 c = vec3(0.0);
 	float a = 0.0;
 	float wob = 1.0 + 0.22 * (vnoise(q * 3.0 + v_seed * 17.0) - 0.5);
 	float rn = r / wob;
-	if (k < 1.5) { // crater: scorch spreading out, the hole, its lip, grit and (in paving) cracks
-		bool hard = k < 0.5;
+	if (k == MARK_CRATER_HARD || k == MARK_CRATER_EARTH) { // crater: scorch spreading out, the hole, its lip, grit and (in paving) cracks
+		bool hard = k == MARK_CRATER_HARD;
 		int base = hard ? 0 : 4;
 		vec3 lip_c = crater_rad[base + 3];
 		float scorch = (1.0 - smoothstep(0.35, 1.0, rn)) * 0.55 * (0.6 + 0.4 * vnoise(q * 6.0 + v_seed));
@@ -82,21 +83,21 @@ void fragment() {
 			c = mix(c, vec3(0.012), crack);
 			a = max(a, crack * 0.85);
 		}
-	} else if (k < 2.5) { // soot: soft dark blots
+	} else if (k == MARK_SOOT) { // soot: soft dark blots
 		float n = vnoise(q * 4.0 + v_seed * 11.0);
 		a = (1.0 - smoothstep(0.1, 1.0, rn)) * (0.25 + 0.4 * n);
 		c = soot_color;
-	} else if (k < 3.5) { // a pool that spreads
+	} else if (k == MARK_POOL) { // a pool that spreads
 		float s = max(v_spread, 0.05);
 		float blob = 1.0 - smoothstep(0.6, 0.72, rn / s);
 		c = mix(blood_deep, blood_thin, smoothstep(0.3, 0.7, rn / s));
 		a = blob * 0.97;
-	} else if (k < 4.5) { // a splat: a core and drops thrown out of it
+	} else if (k == MARK_SPLAT) { // a splat: a core and drops thrown out of it
 		float core = 1.0 - smoothstep(0.2, 0.3, rn);
 		float drops = step(0.78, vnoise(q * 14.0 + v_seed * 7.0)) * (1.0 - smoothstep(0.35, 0.95, rn));
 		a = max(core, drops) * 0.95;
 		c = blood_deep;
-	} else if (k < 5.5) { // a few drops
+	} else if (k == MARK_DROPS) { // a few drops
 		float drops = step(0.7, vnoise(q * 9.0 + v_seed * 3.0)) * (1.0 - smoothstep(0.1, 0.9, rn));
 		a = drops * 0.95;
 		c = blood_deep;
@@ -105,7 +106,7 @@ void fragment() {
 		a = w * 0.55 * v_fade;
 		c = ring_color;
 	}
-	c *= k > 5.5 ? 1.0 : mix(1.0, night_dim, clamp(night, 0.0, 1.0));
+	c *= k == MARK_RING ? 1.0 : mix(1.0, night_dim, clamp(night, 0.0, 1.0));
 	ALBEDO = c;
-	ALPHA = clamp(a * (k > 5.5 ? 1.0 : v_fade), 0.0, 1.0);
+	ALPHA = clamp(a * (k == MARK_RING ? 1.0 : v_fade), 0.0, 1.0);
 }

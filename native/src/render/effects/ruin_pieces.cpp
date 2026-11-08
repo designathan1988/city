@@ -1,6 +1,7 @@
 // A building's pieces, drawn (ruin_pieces.h).
 #include "render/effects/ruin_pieces.h"
-#include "core/shader_contracts.h"
+#include "core/shader_contracts/buildings.h"
+#include "core/shader_contracts/effects.h"
 
 #include "core/job_pool.h"
 #include "render/render_layers.h"

@@ -7,8 +7,7 @@
 
 namespace city {
 
-// Puff kinds, the shader's.
-enum PuffKind : int { PUFF_EXHAUST = 0, PUFF_DUST, PUFF_SMOKE, PUFF_CONCRETE, PUFF_BLOOD, PUFF_FLAME, PUFF_SPARK, PUFF_GRIT, PUFF_WATER, PUFF_PAPER };
+// Puff kinds (PuffKind) are core/shader_contracts/effects.h's, which puffs.gdshader reads.
 
 class Puffs {
 public:

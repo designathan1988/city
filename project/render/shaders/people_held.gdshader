@@ -3,7 +3,7 @@
 // with the body's axes; otherwise in the palm's frame (X along the fingers, Y to the thumb, Z out of the back of the hand). It grows out of the fist as the
 // act comes in, as a hand brings it out of a pocket.
 shader_type spatial;
-#include "res://render/shaders/shader_contracts.gdshaderinc"
+#include "res://render/shaders/contracts/people.gdshaderinc"
 
 #include "res://render/shaders/people_skin.gdshaderinc"
 #include "res://render/shaders/people_pose.gdshaderinc"
@@ -15,7 +15,7 @@ uniform vec4 palm_rows[PEOPLE_BODIES * PEOPLE_HAND_ROWS]; // by variation, three
 const float HELD_ROUGH = 0.7;
 
 void vertex() {
-	int at = int(INSTANCE_CUSTOM.r + 0.5) * 3;
+	int at = int(INSTANCE_CUSTOM.r + 0.5) * PEOPLE_HAND_ROWS;
 	vec4 x = palm_rows[at], y = palm_rows[at + 1], z = palm_rows[at + 2];
 	float grown = act_share(INSTANCE_CUSTOM);
 	bool upright = UV2.x > 0.5;

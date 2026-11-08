@@ -6,6 +6,7 @@
 // hard between regions. Fine (the cabin level) or coarse (fewer stations and rows, no seams, no frames, no mirrors nor
 // handles). The ends, parts and cabin: car_parts.cpp.
 #include "render/agents/car_shape.h"
+#include "core/shader_contracts/agents.h"
 
 #include <godot_cpp/variant/array.hpp>
 
@@ -22,7 +23,6 @@ namespace {
 constexpr float DEGENERATE_AREA = 1e-10f; // a band with no area: not drawn
 constexpr float BED_LIP_M = 0.04f; // a pick-up's bed cover stops this short of the cab
 constexpr float PANEL_IN_M = 0.03f; // a door's card, this far inside its skin
-constexpr float SILL_SPAN_M = 4.f; // a pane's colour: its sill's height over this (agent_door.gdshaderinc)
 constexpr int KERB_SIDE = -1; // the door that opens at the kerb: the front one on the -X side, the driver's on +X (kerb_stops.cpp door_places)
 constexpr int FINE_ROWS[RING] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
 constexpr int COARSE_ROWS[] = { 0, 1, 3, 4, RING_BELT, RING_PANE_TOP, 12, RING_ROOF, RING - 1 };
@@ -186,7 +186,7 @@ void gap(MeshBuilder &mb, const Loft &lf, const Rows &rows, const std::vector<fl
 		}
 		const bool door = on_kerb_door(lf, xm, k, k1);
 		// the front door's window goes down to its sill in the glass's shader: its colour is not drawn, so it says where the sill is
-		const Color col = door && reg[r] == Region::GLASS ? Color(at(i, RING_BELT).y / SILL_SPAN_M, 1, 0) : colour_of(reg[r], trim);
+		const Color col = door && reg[r] == Region::GLASS ? Color(at(i, RING_BELT).y / AGENT_SILL_SPAN_M, 1, 0) : colour_of(reg[r], trim);
 		const Vector2 t2 = agent_tag(tag_of(reg[r]));
 		const Vector2 hinge(KERB_SIDE * car_half_w(*lf.s, lf.s->doors[0]), lf.s->doors[0] * lf.s->L), door_t2 = agent_tag(tag_of(reg[r]), Limb::DOOR);
 		for (int side : { -1, 1 }) {

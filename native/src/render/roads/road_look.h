@@ -5,7 +5,7 @@
 #pragma once
 
 #include "sim/roads/profiles.h"
-#include "core/shader_contracts.h"
+#include "core/shader_contracts/streets.h"
 
 #include <godot_cpp/variant/color.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
@@ -15,25 +15,20 @@
 
 namespace city {
 
-// Road shader materials (render/shaders/road.gdshader decodes COLOR.a * MAT_SCALE).
-enum class RoadMat : int { ASPHALT = 0, PLATE, FOOTWAY, KERB, GRASS, CONCRETE, LANE, PAINT, PAVERS, STONE, COBBLE,
-	BALLAST, SKIRT, JOIN };
-constexpr float MAT_SCALE = 16.f;
+// A road vertex's material (RoadMat) in COLOR.a over ROAD_MAT_SCALE, at its middle; UV2.x of a vertex no lamp pool lights and of a
+// junction plate, lit evenly (ROAD_POOL_NONE, ROAD_POOL_PLATE): core/shader_contracts/streets.h's, which road_body.gdshaderinc reads.
 constexpr float MAT_HALF = 0.5f;
-// UV2.x of a vertex that is not lit by a lamp pool, and of a junction plate (lit evenly).
-constexpr float POOL_NONE = 1000.f, POOL_PLATE = -1000.f;
 
 inline godot::Color road_color(const godot::Color &srgb, RoadMat m) {
-	return godot::Color(srgb.r, srgb.g, srgb.b, (float(int(m)) + MAT_HALF) / MAT_SCALE);
+	return godot::Color(srgb.r, srgb.g, srgb.b, (float(int(m)) + MAT_HALF) / ROAD_MAT_SCALE);
 }
 
 // The wear (road_wear.gdshaderinc) reads how far a vertex is from its surface's two edges in place of a colour: R and G in
-// metres over WEAR_SPAN_M, interpolated exactly across a strip because they are linear in it. On a lane, B is the lane's
-// width over WEAR_LANE_M, and the class's tone travels in the fraction of the material id.
-constexpr float WEAR_SPAN_M = 25.5f, WEAR_LANE_M = 12.75f;
+// metres over ROAD_WEAR_SPAN_M, interpolated exactly across a strip because they are linear in it. On a lane, B is the lane's
+// width over ROAD_WEAR_LANE_M, and the class's tone travels in the fraction of the material id.
 constexpr float TONE_SLOTS = float(ROAD_TONE_SLOTS);
 inline godot::Color wear_color(float from_a, float from_b, float lane, RoadMat m, int tone) {
-	return godot::Color(from_a / WEAR_SPAN_M, from_b / WEAR_SPAN_M, lane / WEAR_LANE_M, (float(int(m)) + (float(tone) + MAT_HALF) / TONE_SLOTS) / MAT_SCALE);
+	return godot::Color(from_a / ROAD_WEAR_SPAN_M, from_b / ROAD_WEAR_SPAN_M, lane / ROAD_WEAR_LANE_M, (float(int(m)) + (float(tone) + MAT_HALF) / TONE_SLOTS) / ROAD_MAT_SCALE);
 }
 
 struct StreetLook {

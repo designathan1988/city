@@ -5,7 +5,7 @@
 #pragma once
 
 #include "sim/terrain/scenic_land.h"
-#include "core/shader_contracts.h"
+#include "core/shader_contracts/land.h"
 
 #include <cstdint>
 #include <memory>

@@ -6,7 +6,7 @@
 #pragma once
 
 #include "render/data_reader.h"
-#include "core/shader_contracts.h"
+#include "core/shader_contracts/streets.h"
 #include "render/mesh_builder.h"
 
 #include <godot_cpp/variant/basis.hpp>
@@ -15,18 +15,17 @@
 
 namespace city {
 
-enum class PropTag : int { FIXED = 0, TINT = 1, NIGHT_GLOW = 2, LENS, WIRE, WOOD, PLATE, FINISHED, SIGN_POST, PLANK }; // props.gdshader reads them
+// What a vertex is (PropTag, UV2.x) is core/shader_contracts/streets.h's, which props.gdshader reads too.
 enum class PropKind : int { SIGNAL = 0, HYDRANT, BIN, BENCH, POSTBOX, PHONE, DRAIN, TREE_PIT, MEADOW, COUNT };
 // The signal's lenses (streets.json props.signal "lens"): the cars' red, amber and green, the walkers' stop and walk.
 enum class Lens : int { RED = 0, AMBER, GREEN, STOP, WALK, COUNT };
-static_assert(int(Lens::COUNT) == LENS_COUNT, "a lens a radiance of props.gdshader (core/shader_contracts.h)");
+static_assert(int(Lens::COUNT) == LENS_COUNT, "a lens a radiance of props.gdshader (core/shader_contracts/streets.h)");
 // The parts of the pole mesh (streets.json props.pole "part"): an instance shows those of INSTANCE_CUSTOM.a, its UV2.y bits.
 // ARM and CAN are an urban pole's (the arm over the street with its rack, the transformer away from it); ARM_RURAL and CAN_RURAL
 // a rural pole's (the arm across the crown, the transformer toward the street): streets.json, tools/assets/make_pole_parts.py.
 enum class PolePart : int { MAST = 1, ARM = MAST << 1, CAN = ARM << 1, LAMP = CAN << 1, COLUMN = LAMP << 1, ARM_RURAL = COLUMN << 1, CAN_RURAL = ARM_RURAL << 1 };
-// A secondary wire's mark where a primary wire keeps its seat on a rural pole (UV2.y): props.gdshader draws it only between two
-// urban poles.
-constexpr float WIRE_SECONDARY_MARK = 10000.f;
+// A secondary wire's mark where a primary wire keeps its seat on a rural pole (UV2.y, WIRE_SECONDARY_MARK: core/shader_contracts/streets.h):
+// props.gdshader draws it only between two urban poles.
 
 // A placed prop: which mesh, where, facing.
 struct PropPlace {

@@ -45,7 +45,7 @@ Color walk_color(const StreetLook &L, const End &e, int hand) {
 // A plate from the node out to `ring`, each point in the tone of the road nearest it: the paving that is not asphalt and the turning
 // bulb, which have no tones to share.
 void fan(const RoadEmit &e, const Vector3 &centre, const std::vector<End> &ends, const std::vector<Vector3> &ring) {
-	const Vector2 pl(POOL_PLATE, 0);
+	const Vector2 pl(ROAD_POOL_PLATE, 0);
 	auto add = [&](const Vector3 &p, const Color &c) { return e.mb.add(p, UP, road_color(c, RoadMat::PLATE), Vector2(p.x, p.z), pl); };
 	Color mean(0, 0, 0);
 	for (const End &en : ends) mean += e.L.carriage(*en.prof);
@@ -68,7 +68,7 @@ void wedge(const RoadEmit &e, const Vector3 &node, const End &a, const End &b, c
 	tones.r = (float(int(b.prof->road_class)) + MAT_HALF) / TONE_SLOTS;
 	auto add = [&](const Vector3 &p) {
 		const Vector3 v = p - node;
-		return e.mb.add(p, UP, tones, Vector2(p.x, p.z), Vector2(POOL_PLATE, v.dot(left_a) + v.dot(left_b)));
+		return e.mb.add(p, UP, tones, Vector2(p.x, p.z), Vector2(ROAD_POOL_PLATE, v.dot(left_a) + v.dot(left_b)));
 	};
 	const int c0 = add(node);
 	int prev = add(a.p);
@@ -126,7 +126,7 @@ void road_cut(const RoadEmit &e, int n, const End &en) {
 		const Vector3 a = f.node + f.left * u0, b = f.node + f.left * u1, up(0, h, 0), down(0, -L.skirt, 0);
 		const Vector3 p[4] = { a + up, b + up, b + down, a + down };
 		const Vector2 uv[4] = { Vector2(u0, h), Vector2(u1, h), Vector2(u1, -L.skirt), Vector2(u0, -L.skirt) };
-		const Vector2 pool(POOL_NONE, 0), pools[4] = { pool, pool, pool, pool };
+		const Vector2 pool(ROAD_POOL_NONE, 0), pools[4] = { pool, pool, pool, pool };
 		emit_quad(e.mb, p, uv, pools, col, -f.d);
 	};
 	face(-f.r, -ar, walk);

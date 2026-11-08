@@ -1,6 +1,6 @@
 // A motorcyclist's helmet: its mesh, colours and instances (helmets.h).
 #include "render/agents/helmets.h"
-#include "core/shader_contracts.h"
+#include "core/shader_contracts/people.h"
 
 #include "core/color.h"
 #include "render/mesh_builder.h"

@@ -11,6 +11,7 @@
 
 #include <godot_cpp/classes/array_mesh.hpp>
 #include "render/data_reader.h"
+#include "core/shader_contracts/agents.h"
 #include "render/mesh_builder.h"
 
 #include <godot_cpp/variant/dictionary.hpp>
@@ -24,9 +25,8 @@ namespace city {
 constexpr int AGENT_CABIN_LEVEL = 0, AGENT_BODY_LEVEL = 1, AGENT_FAR_LEVEL = 2, AGENT_LEVELS = 3;
 constexpr int AGENT_HULL_LEVEL = AGENT_LEVELS; // the car with no wheels, what the far fleet casts (fleet_shadow.h): one more entry
 
-enum class AgentTag : int { FIXED, PAINT, HEAD, TAIL, GLASS, SIGN, ROOF, GLOSS };
-// Parts that move in the shader: WHEEL turns about X round its hub (UV = hub y, z) by the roll angle.
-enum class Limb : int { NONE = 0, WHEEL = 1, DOOR = 2, DOOR_BACK = 3 }; // what the vertex stage moves: UV its axle or its hinge; a door hung at its front edge, at its back edge
+// What a vertex is (AgentTag, UV2.x) and what the shader moves (Limb, UV2.y: a WHEEL turns about X round its hub, UV = hub y, z, by the
+// roll angle; a door about its hinge) are core/shader_contracts/agents.h's, which agents.gdshader reads too.
 
 // Fixed colours of the parts that are not painted (agents.json "trim").
 struct AgentTrim {

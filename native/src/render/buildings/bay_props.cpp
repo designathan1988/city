@@ -1,6 +1,7 @@
 // The models of bay_props.json made into meshes, part by part. A part's tone goes in the vertex colour, over the instance's colour; the
 // alpha marks the condenser's front, which building_props.gdshader draws.
 #include "render/buildings/bay_props.h"
+#include "core/shader_contracts/buildings.h"
 
 #include "core/color.h"
 #include "core/math.h"
@@ -16,16 +17,17 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
-constexpr float FRONT_MARK = 0.f, MIN_LENGTH = 1e-5f, LEAF_ARC = 0.75f, LEAF_BASE_LIFT = 0.05f, LEAF_TIP_FILL = 1.15f, LEAF_TIP_START = 0.08f;
+constexpr float MIN_LENGTH = 1e-5f, LEAF_ARC = 0.75f, LEAF_BASE_LIFT = 0.05f, LEAF_TIP_FILL = 1.15f, LEAF_TIP_START = 0.08f;
 constexpr float LEAF_RIM = 0.004f, BLADE_LONG = 1.4f, BLADE_NARROW = 0.55f, HALF = 0.5f;
 constexpr const char *MODEL_NAMES[BAY_PROPS] = { "ac", "pot", "foliage", "bush", "chair", "table", "airer", "dish", "lounger", "bike" };
 
 // [low, high]
 float low(const DataValue &v) { return v.list(2).size() == 2 ? v[0].f() : 0.f; }
 float high(const DataValue &v) { return v.list(2).size() == 2 ? v[1].f() : 0.f; }
+bool is_front(const DataValue &p) { return p.has("front") && p["front"].flag(); }
 Color tone_of(const DataValue &p) {
 	const Vector3 t = p["tone"].v3();
-	return Color(t.x, t.y, t.z, p.has("front") && p["front"].flag() ? FRONT_MARK : 1.f);
+	return Color(t.x, t.y, t.z, is_front(p) ? BAY_PROP_FRONT_MARK : 1.f);
 }
 float between(Mulberry32 &r, const DataValue &range) { return low(range) + float(r.next()) * (high(range) - low(range)); }
 uint32_t seed_of(const DataValue &p) { return uint32_t(int64_t(p["seed"].num())); }
@@ -161,6 +163,14 @@ bool BayPropLook::load(const DataValue &t, PackedStringArray &errors) {
 		models[size_t(k)] = MeshBuilder(); // a second read is the table again
 		for (int i = 0; i < parts.size(); i++) part(models[size_t(k)], parts[i]);
 	}
+	const DataValue ac = list[MODEL_NAMES[BAY_PROP_AC]];
+	bool cased = false;
+	for (int i = 0; i < ac.size() && !cased; i++)
+		if (is_front(ac[i]) && ac[i]["shape"].text() == "box") {
+			ac_case = ac[i]["max"].v3() - ac[i]["min"].v3();
+			cased = true;
+		}
+	if (!cased) ac.fail("the condenser has no case: a box marked front");
 	ac_cases = colours(c["ac_cases"]);
 	pots = colours(c["pots"]);
 	greens = colours(c["greens"]);

@@ -9,7 +9,7 @@
 // designs are the Roadcraft's fourteen (flags.ts FLAG_PATTERNS, native types.h FlagPattern). One shader for both, as
 // props.gdshader does: each spatial shader's variants cost ~3 MiB.
 render_mode cull_back, skip_vertex_transform;
-#include "res://render/shaders/shader_contracts.gdshaderinc"
+#include "res://render/shaders/contracts/buildings.gdshaderinc"
 
 global uniform float night;
 global uniform float wind_x; // the way the wind blows, x and z of a unit vector (render/sky_view.gd)
@@ -18,9 +18,9 @@ global uniform float wind_z;
 uniform sampler2DArray finish_map : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2DArray finish_normal : filter_linear_mipmap, repeat_enable;
 uniform sampler2DArray finish_rough : filter_linear_mipmap, repeat_enable;
-uniform float finish_m[FINISH_LAYERS];
-uniform float finish_normal_k[FINISH_LAYERS];
-uniform float finish_metal[FINISH_LAYERS];
+uniform float finish_m[FIN_COUNT];
+uniform float finish_normal_k[FIN_COUNT];
+uniform float finish_metal[FIN_COUNT];
 uniform float wall_gain = 1.0;
 uniform float cloth_roughness = 0.85; // the Roadcraft's flag material (flagLayer.ts MeshStandardMaterial)
 
@@ -117,13 +117,13 @@ void fragment() {
 		NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
 	} else {
 		vec3 albedo = to_linear(v_custom.rgb), nn = n;
-		float rough = 0.86, metal = 0.0;
+		float rough = BUILDING_WALL_ROUGHNESS, metal = 0.0;
 		int fin = int(floor(v_custom.a + 0.5)); // -1: no finish (int() would truncate -0.5 to layer 0)
-		if (fin >= 0 && fin < 13) {
+		if (fin >= 0 && fin < FIN_COUNT) {
 			vec3 tone;
 			finish_layer(fin, n, tone, nn, rough, metal);
 			albedo *= tone;
-			if (fin != 8 && fin != 7) albedo *= weather(n);
+			if (fin != FIN_GLASS && fin != FIN_METAL) albedo *= weather(n);
 		}
 		ALBEDO = surface_out(albedo * wall_gain);
 		ROUGHNESS = rough;

@@ -6,7 +6,7 @@
 // angle + 8 when braking, passengers, 0); COLOR.a is the vehicle's seed. The Compatibility renderer stores instance custom data as half
 // floats: whole numbers below 2048 exactly. Who rides is drawn by PeopleRenderer.
 shader_type spatial;
-#include "res://render/shaders/shader_contracts.gdshaderinc"
+#include "res://render/shaders/contracts/agents.gdshaderinc"
 
 #include "res://render/shaders/color_space.gdshaderinc"
 
@@ -48,7 +48,7 @@ void vertex() {
 	v_seed = COLOR.a;
 	if (UV2.y > DOOR_MARK) {
 		door_swing(VERTEX, NORMAL, UV, INSTANCE_CUSTOM.g, UV2.y);
-	} else if (UV2.y > 0.5) {
+	} else if (UV2.y > LIMB_WHEEL - 0.5) {
 		float a = mod(INSTANCE_CUSTOM.g, AGENT_BRAKE_FLAG);
 		vec2 d = VERTEX.yz - UV;
 		vec2 nd = NORMAL.yz;
@@ -73,31 +73,31 @@ void fragment() {
 	float rough = trim_roughness;
 	vec3 emit = vec3(0.0);
 	vec3 coat = sheen(mat3(INV_VIEW_MATRIX) * NORMAL, mat3(INV_VIEW_MATRIX) * VIEW);
-	if (tag == 1) {
+	if (tag == TAG_PAINT) {
 		c = srgb_to_linear(paints[int(v_custom.r + 0.5)]);
 		rough = paint_roughness;
 		emit = coat;
-	} else if (tag == 6) {
+	} else if (tag == TAG_ROOF) {
 		c = pick(v_seed, 0.0, 9.0) < black_roof_share ? source_linear(black_roof) : srgb_to_linear(paints[int(v_custom.r + 0.5)]);
 		rough = paint_roughness;
 		emit = coat;
-	} else if (tag == 7) {
+	} else if (tag == TAG_GLOSS) {
 		rough = paint_roughness;
 		emit = coat;
-	} else if (tag == 2) {
+	} else if (tag == TAG_HEAD) {
 		bool on = v_custom.b > -0.5;
 		emit = on ? head_lit + source_linear(head_glow) * night * head_power : vec3(0.0);
 		c = on ? vec3(0.0) : c;
 		rough = lens_roughness;
-	} else if (tag == 3) {
+	} else if (tag == TAG_TAIL) {
 		bool on = v_custom.b > -0.5;
 		bool braking = mod(v_custom.g, AGENT_DOOR_STEP) >= AGENT_BRAKE_FLAG; // by day each shows as its colour: more red than that, and ACES turns it cream
 		emit = on ? (braking ? brake_lit : tail_lit) + source_linear(tail_glow) * tail_power * night * (braking ? brake_ratio : 1.0) : vec3(0.0);
 		c = on ? vec3(0.0) : c;
 		rough = lens_roughness;
-	} else if (tag == 4) {
+	} else if (tag == TAG_GLASS) {
 		rough = lens_roughness;
-	} else if (tag == 5) {
+	} else if (tag == TAG_SIGN) {
 		emit = source_linear(sign_glow) * sign_power;
 		rough = lens_roughness;
 	}

@@ -2542,7 +2542,7 @@ back, and only the light test and the photos saw it. `tools/tasks/verdicts.py` f
 not stop a scene) but not on a `SHADER ERROR` (which does not either): it now does (`tools/tasks/tests/test_verdicts.py`, red
 before the rule, green after). The far level's shade is `FAR_REVEAL_SHADE`.
 
-**Left for the second part** (the same table; the review's §3s list, which this first pass did not cover whole): the bay's piece
+**Left for the second part** (§6.20; the same table; the review's §3s list, which this first pass did not cover whole): the bay's piece
 kinds, mesh mark, line names and code shifts (`bay_kit.cpp`, `shell.cpp` `Shell::bay`); the finishes by index in the shaders
 (`fin != 8 && fin != 7`, `fin == 8`: the `Finish` enum); the surface kinds by number (`building_body` 3, 4, 5; `building_far` 1..4),
 the kind bits and the far level's office bit (`shell.cpp`, `building_renderer_build.cpp`), the far windows' `PaneDark` codes, dark
@@ -2555,6 +2555,52 @@ its scale, the pool sentinels and the wear spans; the effect marks (debris, bodi
 **Verified** (`city-verify`, `quick --all` then `quick` and the photos, both DLLs): every test passes, the digest equal, every
 photo byte-equal to a run before C7, `scripts` compiling every script, `shader_contracts` passing; `gates_changed` only lines the
 files had (four fewer).
+
+### 6.20 B2, C3 (the shaders' side, second part): every C++/shader contract in the table, by domain (2026-11-08)
+
+**Cause.** The rest of §3s's list, and what a sweep of every shader's decode of its vertex and instance data found besides: the
+bay's piece kinds, mesh mark, line names and code shifts (`bay_kit.cpp`, `shell.cpp` `Shell::bay`) read back by thresholds and
+masks typed in `building_bay.gdshaderinc`; the finishes by index (`fin != 8 && fin != 7`, `fin == 8`, `fin < 13`); the surface
+kinds by number (`building_body` 3, 4, 5; `building_far` 1..4) and their bits (3, 7, 128 in two shaders, `PANE_KIND_BITS` and
+`FAR_KIND_BITS` in two C++ files); the far windows' flags (`& 4`, `& 8`, `>> 4 & 3`) and `PaneDark` codes; `CardKind`; the
+condenser's size typed in `facade_props.cpp` and in `building_props.gdshader`, both copies of its box in `bay_props.json`; the
+canyon cell; the control map's bit layout (`terrain_bridge.cpp` and `ground_paint.gdshaderinc`'s literal shifts and masks) and
+the biome tints sized by the data's biome count; the people's face table, palette span and texels, bone texels and bones;
+`AgentTag` and `Limb` as `tag == 1..7` and `UV2.y > 0.5, 1.5, 2.5`, the door pane's sill span; `PropTag` as `v_tag - 3.0..9.0`,
+the span's kind stride and the secondary wire's mark; `RoadMat` as `M_ROAD..M_ARM_MEET`, its scale 16, the pool sentinels
+±1000 and the wear spans; the debris marks, `PuffKind` and `MarkKind` as threshold ladders (`kind > 4.5 && kind < 5.5`); the
+engine's ACES in `tone_inverse.gdshaderinc` and again in `tone_map.gd`; the lane tones filled in the key order of
+`asphalt_by_class`; the light tests' copies (lens and glow tags, the road's material and scale, the plate's UV2, the walls'
+roughness).
+
+**Fix.** Every one is a row of `tools/build/shader_contracts.json`, which now holds its entries in groups by domain (agents,
+people, buildings, effects, trees, streets, land, tone): the generator writes one C++ header and one shader include a group
+(`native/src/core/shader_contracts/<group>.h`, `project/render/shaders/contracts/<group>.gdshaderinc`) and `all.h` of them for the
+scripts' export, so a renderer and its shaders take their own domain's contracts and nothing else (the single header had grown to
+409 lines of every domain). The table gained what these needed: a vec3 (a `Vector3` for the scripts, as their literals were),
+named sets of ints and floats, enums numbered from a start and declared in a C++ namespace (`b40::Finish` keeps its name). The
+shaders read the names and derive the rest (`halfway` between two bay lines, a mask from a field's bits, a threshold half a step
+below a mark); the C++ enums `Finish`, `PaneDark`, `CardKind`, `AgentTag`, `Limb`, `PropTag`, `RoadMat`, `PuffKind`, `MarkKind`
+and the bay's pieces are declared there, once. The condenser's case is read from its box marked front in `bay_props.json`
+(`BayPropLook::ac_case`): `facade_props.cpp` places by it and `BuildingRenderer` sends its front to `building_props.gdshader`. The
+people's loader now refuses an asset whose skeleton is not `PEOPLE_BONES`, which the skin shader clamps to. The lane tones are
+filled by `RoadClass` (exported to the scripts), not by key order. `--check` also fails on a file in the output folders the table
+does not make.
+
+**Kept outside the table.** Terrain3D's `MAX_REGIONS` (the addon's own size, which its shader override must match) and
+`signature_look`'s `GLASS_CELL_M` (the cooked signature asset's room, from a tool outside the repository): neither has a second copy
+in the game. The engine BRDF copied in `building_glass_body.gdshaderinc` `light()` and `people_look.gdshaderinc` (no test holds them
+to the engine's) and the positional data rows (`ground_paint`'s surfaces by slot with literal colours, the crater colours by
+index) go to `log/pendencias.md`, the latter with B4's named rows.
+
+**What changes.** Nothing a player sees: integers and marks are exact, every derived float is exact (a half of a dyadic step, a mask),
+the condenser's 0.72 x 0.48 x 0.23 m come out of the data's box bit for bit (a doubling of the half extents), and the scripts get
+the numbers they had.
+
+**Verified** (`city-verify`, `quick --all`, both DLLs, then the light tests again): every test passes, the digest equal, every
+photo byte-equal to a run before C7, `shader_contracts` passing; `gates_changed` only lines the files had. The first run failed
+`light_color_test`: it read `CityStore.constants` in member initialisers, before the store's `_ready` fills them; it reads them when
+it starts.
 
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 

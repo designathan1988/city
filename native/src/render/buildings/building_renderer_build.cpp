@@ -24,10 +24,9 @@ constexpr float LOT_GROUND_PAD_M = 4.f; // ground copied past a lot's corners (p
 constexpr int CHUNKS_PER_SUPER_AXIS = int(SUPERCHUNK / CHUNK);
 // The far mesh's COLOR.a: surface kind in the low bits (SurfaceKind < 8), the chunk in the superchunk above them;
 // the layout building_far.gdshader decodes (KIND_BITS, KIND_MASK).
-constexpr int FAR_KIND_BITS = 3, FAR_KIND_MASK = (1 << FAR_KIND_BITS) - 1, FAR_OFFICE_BIT = 128;
+constexpr int FAR_KIND_MASK = (1 << SURFACE_KIND_BITS) - 1;
 constexpr float BYTE_MAX = 255.f;
-static_assert(SK_COUNT <= (1 << FAR_KIND_BITS), "surface kinds must fit the far mesh's kind bits");
-static_assert(CHUNKS_PER_SUPER_AXIS * CHUNKS_PER_SUPER_AXIS << FAR_KIND_BITS <= FAR_OFFICE_BIT, "chunk index must fit COLOR.a under the office bit");
+static_assert(CHUNKS_PER_SUPER_AXIS * CHUNKS_PER_SUPER_AXIS << SURFACE_KIND_BITS <= FAR_OFFICE_BIT, "chunk index must fit COLOR.a under the office bit");
 
 constexpr float AABB_PAD = 1.f;
 constexpr int LINE_FLOATS = 4, LINE_ORIGIN = 3; // a plain MultiMesh buffer: three lines of a basis and an origin column
@@ -273,7 +272,7 @@ BuildingRenderer::SuperBuilt BuildingRenderer::build_super_cpu(const Inputs &in,
 		const int chunk = (key_y(ck) - sz) * CHUNKS_PER_SUPER_AXIS + (key_x(ck) - sx);
 		for (size_t v = first; v < far.col.size(); v++) {
 			const int kind = int(std::lround(far.col[v].a * BYTE_MAX)) & FAR_KIND_MASK;
-			far.col[v].a = float(kind | (chunk << FAR_KIND_BITS) | (pl.b->use == b40::USE_COMMERCIAL ? FAR_OFFICE_BIT : 0)) / BYTE_MAX;
+			far.col[v].a = float(kind | (chunk << SURFACE_KIND_BITS) | (pl.b->use == b40::USE_COMMERCIAL ? FAR_OFFICE_BIT : 0)) / BYTE_MAX;
 		}
 	}
 	return out;

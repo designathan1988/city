@@ -13,7 +13,7 @@ using godot::Vector3;
 namespace city::b40 {
 
 namespace {
-constexpr float AC_W = 0.72f, AC_H = 0.48f, AC_D = 0.23f, AC_GAP = 0.08f, AC_UNDER_SILL = 0.12f, AC_ROOM = 0.2f, AC_EDGE = 0.15f, MID = 0.5f, QUARTER_BACK = 0.75f;
+constexpr float AC_GAP = 0.08f, AC_UNDER_SILL = 0.12f, AC_ROOM = 0.2f, AC_EDGE = 0.15f, MID = 0.5f, QUARTER_BACK = 0.75f;
 constexpr float DISH_ROOM = 0.75f, DISH_OFF = 0.45f, DISH_DROP = 0.25f;
 constexpr float POT_HIGH = 0.32f, SOIL_DOWN = 0.03f, POT_MIN = 0.9f, POT_SPAN = 0.7f, POT_TALL = 0.9f, POT_TALL_SPAN = 0.4f, LEAF_WIDE = 0.7f, LEAF_WIDE_SPAN = 0.5f;
 constexpr float LEAF_HIGH = 0.7f, LEAF_HIGH_SPAN = 0.6f;
@@ -181,13 +181,14 @@ void Furnish::loggia(const Opening &o) {
 // A split under the sill, or a dish beside the window at its head.
 void Furnish::window(const Opening &o) {
 	const float ac = c_.use == USE_RESIDENTIAL ? s_.split_home : c_.use == USE_COMMERCIAL ? s_.split_shop : s_.split_works;
-	if (o.h0 - AC_UNDER_SILL - AC_H > AC_ROOM && rnd() < ac) {
+	const Vector3 &box = k_.ac_case; // the condenser's width, height and depth
+	if (o.h0 - AC_UNDER_SILL - box.y > AC_ROOM && rnd() < ac) {
 		const float side = rnd();
-		const float a = side < MID ? (o.a0 + o.a1) / 2 : side < QUARTER_BACK ? o.a0 + AC_W / 2 : o.a1 - AC_W / 2;
-		const float lo = AC_W / 2 + AC_EDGE, hi = c_.W - AC_W / 2 - AC_EDGE;
+		const float a = side < MID ? (o.a0 + o.a1) / 2 : side < QUARTER_BACK ? o.a0 + box.x / 2 : o.a1 - box.x / 2;
+		const float lo = box.x / 2 + AC_EDGE, hi = c_.W - box.x / 2 - AC_EDGE;
 		if (hi > lo) {
 			const uint32_t colour = rnd() < old_ * s_.ac_old ? k_.ac_old : pick(k_.ac_cases);
-			put(BAY_PROP_AC, Spot{ std::clamp(a, lo, hi), o.h0 - AC_UNDER_SILL - AC_H / 2, AC_GAP + AC_D / 2 }, colour);
+			put(BAY_PROP_AC, Spot{ std::clamp(a, lo, hi), o.h0 - AC_UNDER_SILL - box.y / 2, AC_GAP + box.z / 2 }, colour);
 		}
 	} else if (c_.use != USE_INDUSTRIAL && rnd() < s_.dish && o.a1 + DISH_ROOM < c_.W) {
 		put(BAY_PROP_DISH, Spot{ o.a1 + DISH_OFF, o.h1 - DISH_DROP, 0 }, k_.dish);

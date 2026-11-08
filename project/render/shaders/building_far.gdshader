@@ -5,7 +5,7 @@
 // at any distance.
 shader_type spatial;
 render_mode cull_back;
-#include "res://render/shaders/shader_contracts.gdshaderinc"
+#include "res://render/shaders/contracts/buildings.gdshaderinc"
 
 global uniform float night;
 global uniform float rooms_awake;
@@ -21,9 +21,7 @@ uniform float window_glow = 1.5;
 // masses never draw over them. COLOR.a carries the surface kind (low 3 bits) and the building's chunk in the
 // superchunk (0..15, the bits above), written by BuildingRenderer::build_super_cpu.
 instance uniform int chunk_mask = 0;
-const int KIND_BITS = 3;
-const int KIND_MASK = 7;
-const int OFFICE_BIT = 128; // COLOR.a's top bit: its rooms take the office lamps
+const int KIND_MASK = (1 << SURFACE_KIND_BITS) - 1;
 
 varying vec3 v_world;
 varying vec3 v_wn;
@@ -41,7 +39,7 @@ const vec3 PANE_ALBEDO = vec3(0.0075, 0.0096, 0.0115); // glass scatters next to
 #include "res://render/shaders/building_sky_glass.gdshaderinc"
 
 void vertex() {
-	int chunk = (int(COLOR.a * 255.0 + 0.5) & ~OFFICE_BIT) >> KIND_BITS;
+	int chunk = (int(COLOR.a * 255.0 + 0.5) & ~FAR_OFFICE_BIT) >> SURFACE_KIND_BITS;
 	if (((chunk_mask >> chunk) & 1) != 0) {
 		VERTEX = vec3(0.0); // every vertex of its triangles at one point: degenerate, never rasterized
 	}
@@ -56,19 +54,19 @@ void fragment() {
 	vec3 albedo = to_linear(COLOR.rgb);
 	vec3 glass = mix(vec3(0.05, 0.06, 0.07), uniform_linear(glass_sky), glass_floor) * (1.0 - 0.92 * night);
 	vec3 emit = vec3(0.0);
-	float rough = 0.9, metal = 0.0;
-	if (kind == 1 || kind == 2) {
+	float rough = BUILDING_FAR_ROUGHNESS, metal = 0.0;
+	if (kind == SK_PANE || kind == SK_PANE_DARK) {
 		albedo = glass;
 		rough = 0.2;
 	}
-	if (kind == 3) {
+	if (kind == SK_FAR_WALL) {
 		vec2 foot = grid_footprint(UV);
 		float open = (int(v_opening.a * 255.0 + 0.5) & WINDOW_FLAG_BLANK) != 0 ? 0.0 : 1.0;
 		float m = open * clamp(pulse(UV.x, foot.x, 0.5 - 0.5 * v_opening.r, 0.5 + 0.5 * v_opening.r) * pulse(UV.y, foot.y, v_opening.g, v_opening.b), 0.0, 1.0);
 		vec2 room = floor(UV);
 		float lot = h01(uint(room.x + 512.0) * 131u + uint(room.y + 512.0) * 7177u);
 		float sub = smoothstep(0.5, 1.5, max(foot.x, foot.y));
-		float office = (int(COLOR.a * 255.0 + 0.5) & OFFICE_BIT) != 0 ? 1.0 : 0.0;
+		float office = (int(COLOR.a * 255.0 + 0.5) & FAR_OFFICE_BIT) != 0 ? 1.0 : 0.0;
 		vec3 lamp = mix(room_lamp(fract(lot * 17.31), office), room_lamp_mean(office), sub);
 		float lit = mix(step(1.0 - rooms_awake, lot), rooms_awake, sub) * building_night_windows;
 		// the glass of the levels before it (building_far_window.gdshaderinc): next to nothing scattered, the room through it and the sky on it
@@ -80,7 +78,7 @@ void fragment() {
 		emit = ((lamp * lit * night * window_glow + pane_mean(room_tone(V, n, FLOOR_HOME)) * room_daylight) * (1.0 - fresnel) + glass_reflection(V, n, fresnel, GLASS_ENV)) * m;
 	}
 	albedo *= wall_gain;
-	if (kind == 4) emit += albedo * night;
+	if (kind == SK_LAMP) emit += albedo * night;
 	ALBEDO = surface_out(albedo);
 	EMISSION = surface_out(emit);
 	ROUGHNESS = rough;

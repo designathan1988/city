@@ -55,10 +55,10 @@
    "resources": {"cores": 2, "locks": {"dll": "shared"}}
   },
   "shader_contracts": {
-   "doc": "the values the shaders share with the core and the scripts are what their table makes (tools/build/shader_contracts.py --check: native/src/core/shader_contracts.h and project/render/shaders/shader_contracts.gdshaderinc)",
+   "doc": "the values the shaders share with the core and the scripts are what their table makes (tools/build/shader_contracts.py --check: native/src/core/shader_contracts/ and project/render/shaders/contracts/, nothing more and nothing stale)",
    "argv": ["{python}", "tools/build/shader_contracts.py", "--check"],
    "timeout_s": 60,
-   "inputs": ["tools/build/shader_contracts.json", "tools/build/shader_contracts.py", "native/src/core/shader_contracts.h", "project/render/shaders/shader_contracts.gdshaderinc"],
+   "inputs": ["tools/build/shader_contracts.json", "tools/build/shader_contracts.py", "native/src/core/shader_contracts/**", "project/render/shaders/contracts/**"],
    "resources": {"cores": 1}
   },
   "build_debug": {

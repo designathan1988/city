@@ -1,7 +1,7 @@
 // The paints pushed to the "agent" material and how full each type runs
 // (agents.json). Once, at boot; the frame's work is in agent_renderer.cpp.
 #include "render/agents/agent_renderer.h"
-#include "core/shader_contracts.h"
+#include "core/shader_contracts/agents.h"
 
 #include "render/agents/agent_meshes.h"
 

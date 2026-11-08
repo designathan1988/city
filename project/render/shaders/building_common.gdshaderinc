@@ -1,5 +1,6 @@
 // Helpers shared by building.gdshader and building_parts.gdshader: hash, noise, finish sampling and weathering.
 // Included after the uniforms and varyings they use.
+#include "res://render/shaders/contracts/buildings.gdshaderinc"
 
 #include "res://render/shaders/building_hash.gdshaderinc"
 
@@ -33,7 +34,7 @@ void finish_layer(int fin, vec3 n, out vec3 tone, out vec3 nn, out float rough, 
 	float k = finish_normal_k[fin] * (1.0 - seen);
 	nn = normalize(t * nm.x * k + b * nm.y * k + n * max(nm.z, 0.2));
 	rough = mix(r.g, textureLod(finish_rough, mean_at, FINISH_MEAN_LOD).g, seen);
-	metal = finish_metal[fin] * (fin == 8 ? r.b : 1.0);
+	metal = finish_metal[fin] * (fin == FIN_GLASS ? r.b : 1.0);
 }
 
 // Weathering of plain finishes: a macro tone and stains, streaks down the walls.

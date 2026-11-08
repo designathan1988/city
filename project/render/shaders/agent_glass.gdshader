@@ -6,6 +6,7 @@
 // is covered, the blend's alpha, is 1 - transmittance * (1 - R). Godot's SPECULAR is F0 / 0.08 (0.5: F0 = 4 %).
 shader_type spatial;
 render_mode blend_mix, depth_draw_opaque, cull_back;
+#include "res://render/shaders/contracts/agents.gdshaderinc"
 
 #include "res://render/shaders/color_space.gdshaderinc"
 #include "res://render/shaders/agent_door.gdshaderinc"
@@ -19,7 +20,7 @@ uniform float ior = 1.52;
 uniform float roughness = 0.0;
 
 void vertex() {
-	if (COLOR.g > PANE_MARK) VERTEX.y = mix(VERTEX.y, COLOR.r * SILL_SPAN_M, pane_drop(COLOR.a, VERTEX.x));
+	if (COLOR.g > PANE_MARK) VERTEX.y = mix(VERTEX.y, COLOR.r * AGENT_SILL_SPAN_M, pane_drop(COLOR.a, VERTEX.x));
 	if (UV2.y > DOOR_MARK) door_swing(VERTEX, NORMAL, UV, INSTANCE_CUSTOM.g, UV2.y);
 }
 

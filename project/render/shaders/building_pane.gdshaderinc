@@ -4,7 +4,7 @@
 // room at night. Each hit is an exact ray-plane or slab test.
 // Needs v_room0..2 and v_trim: room0 = back, ahead, depth, floor kind; room1 = sill, head, piece + 1, piece height;
 // room2 = piece centre (signed), half width, near, far; trim = sRGB frame colour, frame thickness.
-#include "res://render/shaders/shader_contracts.gdshaderinc"
+#include "res://render/shaders/contracts/buildings.gdshaderinc"
 const float FRAME_SHARE = 0.045; // the border of the frame, of the pane's side (buildings.json parts.frame_bar_m)
 const float FRAME_OUT_M = 0.03; // the frame's middle in front of the glass
 const float TV_SHARE = 0.12; // the share of a home's lit rooms lit by a television alone

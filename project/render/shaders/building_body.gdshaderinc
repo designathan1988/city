@@ -5,7 +5,7 @@
 // windows: building_far_window.gdshaderinc (CUSTOM0 and 3 written by shell.cpp). The mid level's bays are instances of one mesh
 // that the vertex stage places and turns into these same faces (building_bay.gdshaderinc).
 render_mode cull_back;
-#include "res://render/shaders/shader_contracts.gdshaderinc"
+#include "res://render/shaders/contracts/buildings.gdshaderinc"
 
 
 global uniform float night;
@@ -18,9 +18,9 @@ global uniform float outside_on; // the share of outside lights lit at this hour
 uniform sampler2DArray finish_map : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2DArray finish_normal : filter_linear_mipmap, repeat_enable;
 uniform sampler2DArray finish_rough : filter_linear_mipmap, repeat_enable;
-uniform float finish_m[FINISH_LAYERS];
-uniform float finish_normal_k[FINISH_LAYERS];
-uniform float finish_metal[FINISH_LAYERS];
+uniform float finish_m[FIN_COUNT];
+uniform float finish_normal_k[FIN_COUNT];
+uniform float finish_metal[FIN_COUNT];
 uniform float wall_gain = 1.0;
 uniform float lamp_glow = 3.4;
 uniform vec3 lamp_light : source_color = vec3(1.0, 0.83, 0.6); // what a lit lamp gives, whatever its body is by day
@@ -94,22 +94,22 @@ void fragment() {
 	vec3 n = normalize(v_wn);
 	vec3 V = normalize(v_world - CAMERA_POSITION_WORLD);
 	vec3 albedo = to_linear(COLOR.rgb), emit = vec3(0.0), nn = n;
-	float rough = 0.86, metal = 0.0;
-	if (kind == 4) {
+	float rough = BUILDING_WALL_ROUGHNESS, metal = 0.0;
+	if (kind == SK_LAMP) {
 		emit = uniform_linear(lamp_light) * night * lamp_glow * step(h01(uint(floor(v_world.x * 0.1) * 31.0 + floor(v_world.z * 0.1) * 977.0 + 65536.0)), outside_on);
-	} else if (kind == 5) {
+	} else if (kind == SK_LAWN) {
 		albedo *= 0.8 + 0.25 * vnoise(v_world.xz * 0.7) + 0.15 * vnoise(v_world.xz * 3.1);
 		rough = 0.95;
 	} else {
 		int fin = int(floor(UV2.x + 0.001)) - 1;
-		if (fin >= 0 && fin < 13) {
+		if (fin >= 0 && fin < FIN_COUNT) {
 			vec3 tone;
 			finish_layer(fin, n, tone, nn, rough, metal);
 			albedo *= tone;
-			if (fin != 8 && fin != 7) albedo *= weather(n);
+			if (fin != FIN_GLASS && fin != FIN_METAL) albedo *= weather(n);
 		}
 		albedo *= wall_gain;
-		if (kind == 3) {
+		if (kind == SK_FAR_WALL) {
 			float glass;
 			far_window(UV, v_room0, uint(fract(UV2.x) * 256.0 + 0.5), n, V, v_recess, albedo, emit, glass);
 			rough = mix(rough, 0.15, glass);

@@ -1,5 +1,6 @@
 // The blast's rigid pieces (debris.h).
 #include "render/effects/debris.h"
+#include "core/shader_contracts/effects.h"
 
 #include <godot_cpp/classes/box_mesh.hpp>
 #include <godot_cpp/classes/cylinder_mesh.hpp>
@@ -20,7 +21,6 @@ constexpr float SMOKE_OVER_M = 1.0f;
 constexpr float SMOKE_SPREAD_M = 0.4f;
 constexpr float FLAME_FOLLOW_SHARE = 0.4f; // the flame's size follows the piece's, to this share
 constexpr int WRECKS_KEPT = 40; // of a model (blast.ts): past it the oldest goes
-constexpr float MARK_CHARRED = 1.f, MARK_DUSTY = 2.f; // INSTANCE_CUSTOM.a (debris.gdshader)
 } // namespace
 
 void Debris::init(const RID &scenario, const RID &material, const EffectParams &params) {
@@ -129,7 +129,7 @@ void Debris::flush() {
 	for (MmLayer &l : wrecks_) l.clear_bounds();
 	for (const Piece &p : pieces_) {
 		const Basis rot(p.q);
-		const float mark = p.charred ? MARK_CHARRED : p.dusty ? MARK_DUSTY : 0.f;
+		const float mark = p.charred ? DEBRIS_CHARRED : p.dusty ? DEBRIS_DUSTY : DEBRIS_PLAIN; // debris.gdshader
 		if (p.wreck >= 0 && size_t(p.wreck) < wrecks_.size()) {
 			int &k = nw[size_t(p.wreck)];
 			if (k < WRECKS_KEPT) wrecks_[size_t(p.wreck)].put(k++, rot.get_column(0), rot.get_column(1), rot.get_column(2), p.p, p.tint.r, p.tint.g, p.tint.b, mark);

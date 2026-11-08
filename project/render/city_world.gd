@@ -104,8 +104,7 @@ func _set_ground(m: ShaderMaterial) -> void:
 
 func _grass_mean(ground: Dictionary) -> float:
 	var mean := SurfaceMeans.mean_color(shader_value(ground.grass_map)).srgb_to_linear()
-	var k: Dictionary = CityStore.constants.shader
-	var luma := Vector3(k.LUMA_R, k.LUMA_G, k.LUMA_B) # the weights terrain_layers.gdshaderinc reads a colour's luma with
+	var luma: Vector3 = CityStore.constants.shader.LUMA # the weights terrain_layers.gdshaderinc reads a colour's luma with
 	return mean.r * luma.x + mean.g * luma.y + mean.b * luma.z
 
 

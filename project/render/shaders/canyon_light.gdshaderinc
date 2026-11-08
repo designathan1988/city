@@ -1,12 +1,12 @@
 // How much of the sky a point of the town sees past the buildings round it (a horizon search over the height window of
 // render/atmosphere/canyon_field.h, 8 directions and 3 steps), for the atmosphere pass: the bottom of a street is darker than its
 // roofs. The sky's share of a pixel's light is canyon_sky. Needs depth_texture.
+#include "res://render/shaders/contracts/land.gdshaderinc"
 
 uniform sampler2D canyon_map : repeat_disable, filter_nearest;
 uniform vec3 canyon_window = vec3(0.0, 0.0, 1.0); // low corner x, z and side
 uniform float canyon_sky = 0.0;
 
-const float CANYON_CELL_M = 4.0;
 const float CANYON_LEAST_RISE = 0.15; // a wall sees only the sky in front of it
 const float CANYON_LIFT_FROM_M = 0.4; // under a roof's own height by this much, a level pixel starts to lose the sky
 const float CANYON_LIFT_TO_M = 1.5;

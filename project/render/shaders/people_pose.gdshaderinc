@@ -4,7 +4,7 @@
 // somebody in a vehicle. What they do standing is a clip's number and, as its fraction over PEOPLE_ACT_SPAN, how far into it they are (Pedestrian::act_share):
 // the rest of the standing is the idle. Below zero the clip is played from its start, at the phase in the fourth channel, and not by the clock:
 // somebody crouching, who stands still until it is over, so no walk reads that channel.
-#include "res://render/shaders/shader_contracts.gdshaderinc"
+#include "res://render/shaders/contracts/people.gdshaderinc"
 uniform sampler2D palette : filter_nearest, repeat_disable;
 uniform int block_rows; // a variation's rows of the palette; its walk first
 uniform int idle_clip; // the clip of somebody standing with nothing to do
@@ -15,20 +15,18 @@ uniform float clip_seconds[PEOPLE_CLIPS * 2]; // a man's and a woman's, by clip
 uniform int walk_frames[PEOPLE_BODIES]; // by variation
 uniform int body_female[PEOPLE_BODIES];
 
-const int TEXELS = 3;
 const float BYTE = 255.0;
-const float BODY_SPAN = 3.0; // cook_people.py PALETTE_SPAN
 const float IDLE_SPREAD = 0.61803; // each person in another place of the clip (the golden ratio spreads whole numbers evenly)
 
-// One palette row value: 16-bit fixed point over [-BODY_SPAN, BODY_SPAN], high bytes in texel 2x, low bytes in 2x + 1.
+// One palette row value: 16-bit fixed point over [-PEOPLE_PALETTE_SPAN, PEOPLE_PALETTE_SPAN], high bytes in its first texel, low bytes in the next.
 vec4 palette_row(int texel, int row) {
-	vec4 hi = texelFetch(palette, ivec2(texel * 2, row), 0);
-	vec4 lo = texelFetch(palette, ivec2(texel * 2 + 1, row), 0);
-	return (hi * 256.0 + lo) * BYTE / 65535.0 * 2.0 * BODY_SPAN - BODY_SPAN;
+	vec4 hi = texelFetch(palette, ivec2(texel * PEOPLE_PALETTE_TEXELS, row), 0);
+	vec4 lo = texelFetch(palette, ivec2(texel * PEOPLE_PALETTE_TEXELS + 1, row), 0);
+	return (hi * 256.0 + lo) * BYTE / 65535.0 * 2.0 * PEOPLE_PALETTE_SPAN - PEOPLE_PALETTE_SPAN;
 }
 
 BonePose walk_pose(int bone, int row) {
-	return BonePose(palette_row(bone * TEXELS, row), palette_row(bone * TEXELS + 1, row), palette_row(bone * TEXELS + 2, row));
+	return BonePose(palette_row(bone * PEOPLE_BONE_TEXELS, row), palette_row(bone * PEOPLE_BONE_TEXELS + 1, row), palette_row(bone * PEOPLE_BONE_TEXELS + 2, row));
 }
 
 // Adds the pose of a clip (its first row, frames and phase 0..1) at `share`: the linear blend of the four bones. A bone of weight

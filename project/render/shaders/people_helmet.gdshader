@@ -1,7 +1,7 @@
 // A motorcyclist's helmet (Roadcraft riderPoses.helmetShape): a shell fitted to each body's head at the cook, posed by the head's bone of the same clip
 // and phase as the rider it is on. Instances as the body's (people_pose.gdshaderinc).
 shader_type spatial;
-#include "res://render/shaders/shader_contracts.gdshaderinc"
+#include "res://render/shaders/contracts/people.gdshaderinc"
 
 #include "res://render/shaders/people_skin.gdshaderinc"
 #include "res://render/shaders/people_pose.gdshaderinc"
@@ -15,7 +15,7 @@ uniform float helmet_roughness = 0.3;
 varying vec3 v_colour;
 
 void vertex() {
-	int at = int(INSTANCE_CUSTOM.r + 0.5) * 3;
+	int at = int(INSTANCE_CUSTOM.r + 0.5) * PEOPLE_HAND_ROWS;
 	vec4 x = helmet_rows[at], y = helmet_rows[at + 1], z = helmet_rows[at + 2];
 	vec4 here = vec4(VERTEX, 1.0);
 	mat3 shape = mat3(vec3(x.x, y.x, z.x), vec3(x.y, y.y, z.y), vec3(x.z, y.z, z.z));

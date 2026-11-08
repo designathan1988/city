@@ -3,7 +3,7 @@
 // (trim x 0.68), sill (trim x 0.92) and head strips and the closing pane or leaf at the reveal depth; roller shutters, the
 // rain streak under the sill; then the component's parts.
 #include "render/buildings/facade_bay.h"
-#include "core/shader_contracts.h"
+#include "core/shader_contracts/buildings.h"
 
 using namespace godot;
 
@@ -11,7 +11,7 @@ namespace city::b40 {
 
 namespace {
 constexpr float MIN_SILL_ROOM = 0.65f, MIN_W = 0.4f, W_MARGIN = 0.2f, MIN_H = 0.5f, HEAD_ROOM = 0.15f, NO_OPENING = 0.2f;
-constexpr float THRESHOLD = 0.012f, THRESHOLD_BELOW = 0.02f; // REVEAL_SHADE, SILL_SHADE, HEAD_SHADE: core/shader_contracts.h
+constexpr float THRESHOLD = 0.012f, THRESHOLD_BELOW = 0.02f; // REVEAL_SHADE, SILL_SHADE, HEAD_SHADE: core/shader_contracts/buildings.h
 constexpr int PICKS = 20, DARK_PICKS = 5, ROLL_FROM = 9, ROLL_TO = 13, LOGGIA_DARK = 4, BRISE_DARK = 5;
 constexpr float ROLL_BASE = 0.25f, ROLL_STEP = 0.15f, ROLL_OUT = 0.05f, TALL_OPENING = 2.2f;
 constexpr float STREAK_OUT = 0.012f, STREAK_MIN_SILL = 0.5f, STREAK_LO = 0.05f, STREAK_BASE = 0.7f, STREAK_STEP = 0.12f;

@@ -4,7 +4,7 @@
 // far away (Golus, "Anti-aliased Alpha Test: The Esoteric Alpha To Coverage", 2017).
 shader_type spatial;
 render_mode skip_vertex_transform, cull_disabled, shadows_disabled, alpha_to_coverage;
-#include "res://render/shaders/shader_contracts.gdshaderinc"
+#include "res://render/shaders/contracts/trees.gdshaderinc"
 
 #include "res://render/shaders/vegetation.gdshaderinc"
 

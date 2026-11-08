@@ -2,6 +2,7 @@
 // tint in INSTANCE_CUSTOM.rgb (sRGB) and the burnt share in .a (a burning wreck goes black as it burns).
 shader_type spatial;
 render_mode cull_disabled;
+#include "res://render/shaders/contracts/effects.gdshaderinc"
 
 uniform float roughness = 0.9;
 uniform float burnt_tint = 0.12; // the share of its colour a wreck keeps when fully burnt
@@ -17,8 +18,8 @@ varying vec3 v_local;
 #include "res://render/shaders/color_space.gdshaderinc"
 
 void vertex() {
-	v_dust = step(1.5, INSTANCE_CUSTOM.a); // a piece of a building
-	v_char = INSTANCE_CUSTOM.a > 0.5 && v_dust < 0.5 ? 1.0 : 0.0;
+	v_dust = step(DEBRIS_DUSTY - 0.5, INSTANCE_CUSTOM.a); // a piece of a building
+	v_char = INSTANCE_CUSTOM.a > DEBRIS_CHARRED - 0.5 && v_dust < 0.5 ? 1.0 : 0.0;
 	v_tint = mix(INSTANCE_CUSTOM.rgb, INSTANCE_CUSTOM.rgb * burnt_tint, v_char);
 	v_local = VERTEX;
 }

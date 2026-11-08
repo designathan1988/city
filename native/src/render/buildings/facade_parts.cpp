@@ -3,7 +3,7 @@
 // louvred shutters, gourmet balconies, transoms. Every box is an instance in `parts` (a row of a band, not 20 vertices in the chunk's
 // mesh); what is no box (railing cards, awnings, door panels, glass guards) stays where its material is.
 #include "render/buildings/facade_bay.h"
-#include "core/shader_contracts.h"
+#include "core/shader_contracts/buildings.h"
 
 namespace city::b40 {
 

@@ -1,8 +1,7 @@
 // Where a street is dirty and where it is worn. COLOR holds how far the vertex is from the surface's two edges
 // (road_look.h wear_color), so a band follows the kerb round every curve without a texture of its own.
-const float WEAR_SPAN_M = 25.5;
-const float WEAR_LANE_M = 12.75;
-const float TONE_SLOTS = 8.0;
+#include "res://render/shaders/contracts/streets.gdshaderinc"
+const float TONE_SLOTS = float(ROAD_TONE_SLOTS);
 
 // The carriageway: darker and browner towards the kerb, each lane's wheel tracks polished and oil down its middle.
 vec3 lane_wear(float edge, float lane, float grain) {

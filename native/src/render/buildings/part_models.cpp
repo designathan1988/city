@@ -2,7 +2,7 @@
 // scaled by (sx, sy, sz) along / up / out and centred at (a, h, -depth). Railings with balusters, panelled
 // doors, louvred shutters, brise fins, awnings, split AC condensers and porch lamps.
 #include "render/buildings/facade_bay.h"
-#include "core/shader_contracts.h"
+#include "core/shader_contracts/buildings.h"
 
 #include "core/math.h"
 

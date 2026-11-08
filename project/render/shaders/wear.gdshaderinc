@@ -1,7 +1,7 @@
 // The wear of streets and footways (native/src/render/wear/wear_field.h): a window of bytes that wraps round the view, in
 // tiles of a texture array, red the wheels and green the feet. Bilinear by hand, four texel reads: a layer's filter stops at
 // its edge, and a seam every 1.28 km would show. Needs vnoise() of lattice_noise.gdshaderinc.
-#include "res://render/shaders/shader_contracts.gdshaderinc"
+#include "res://render/shaders/contracts/streets.gdshaderinc"
 uniform sampler2DArray wear_field : filter_nearest;
 uniform vec2 wear_origin = vec2(0.0); // the window's low corner, cells
 uniform float wear_cell_m = 5.0;

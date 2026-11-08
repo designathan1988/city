@@ -5,6 +5,7 @@
 #pragma once
 
 #include "render/effects/mm_layer.h"
+#include "core/shader_contracts/effects.h"
 #include "sim/demolition/damage_state.h"
 
 #include <algorithm>
@@ -13,8 +14,7 @@
 
 namespace city {
 
-// Mark kinds, the shader's.
-enum MarkKind : int { MARK_CRATER_HARD = 0, MARK_CRATER_EARTH, MARK_SOOT, MARK_POOL, MARK_SPLAT, MARK_DROPS, MARK_RING };
+// Mark kinds (MarkKind) are core/shader_contracts/effects.h's, which marks.gdshader reads.
 
 struct Mark {
 	float x = 0, y = 0, z = 0, size = 0, seed = 0;

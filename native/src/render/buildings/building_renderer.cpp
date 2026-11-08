@@ -68,6 +68,7 @@ bool BuildingRenderer::init(const RenderContext &ctx, PackedStringArray &errors)
 	const Dictionary t = ctx.table("buildings", errors), bay = ctx.table("bay_props", errors), furniture = ctx.table("furniture", errors);
 	if (!errors.is_empty() || !look_.load(t, bay, furniture, errors)) return false;
 	for (int k = 0; k < b40::BAY_PROPS; k++) prop_mesh_[size_t(k)] = look_.bay.models[size_t(k)].commit();
+	RenderingServer::get_singleton()->material_set_param(material_props_, "ac_case", Vector2(look_.bay.ac_case.x, look_.bay.ac_case.y)); // its front's width and height
 	MeshBuilder unit;
 	unit.box(Vector3(-HALF, -HALF, -HALF), Vector3(HALF, HALF, HALF), Color(1, 1, 1, 1), Vector2(), true);
 	unit_box_ = unit.commit();

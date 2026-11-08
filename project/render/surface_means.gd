@@ -14,10 +14,10 @@ static func apply(m: ShaderMaterial, params: Dictionary, load_param: Callable) -
 	var streets: Dictionary = DataTables.render_table("streets")
 	m.set_shader_parameter("asphalt_reference", Color.html(streets.surface_colors[0]))
 	var tones := PackedVector3Array()
-	for road_class in streets.asphalt_by_class:
+	tones.resize(int(CityStore.constants.shader.ROAD_TONE_SLOTS)) # road_body.gdshaderinc lane_tone, by RoadClass
+	for road_class: String in streets.asphalt_by_class:
 		var c := Color.html(streets.asphalt_by_class[road_class]).srgb_to_linear()
-		tones.push_back(Vector3(c.r, c.g, c.b))
-	tones.resize(int(CityStore.constants.shader.ROAD_TONE_SLOTS)) # road_body.gdshaderinc lane_tone
+		tones[CityStore.code(&"RoadClass", StringName(road_class.to_upper()))] = Vector3(c.r, c.g, c.b)
 	m.set_shader_parameter("lane_tone", tones)
 	m.set_shader_parameter("plate_blend", streets.plate_blend_m)
 	var walk := Color.html(streets.paving_colors[0]).srgb_to_linear()

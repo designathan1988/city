@@ -11,8 +11,6 @@
 ## Run: godot --path project [--rendering-method gl_compatibility] res://tests/core/building_light_test.tscn -- --no-flow
 extends TestCase
 
-const WALL_ROUGHNESS := 0.86 # building.gdshader and building_parts.gdshader, a face with no finish
-const FAR_ROUGHNESS := 0.9 # building_far.gdshader
 const SIDE_M := 1.0
 const PITCH_M := 1.5
 const VIEW_M := 6.0
@@ -43,8 +41,9 @@ func _ready() -> void:
 
 func _wall_by_day() -> void:
 	world.environment.fog_enabled = false # the surface under the same light: the air over it is another thing
-	var cases := [["near wall", "building", WALL_ROUGHNESS, false], ["far wall", "building_far", FAR_ROUGHNESS, false],
-			["a piece with no finish", "building_parts", WALL_ROUGHNESS, true]]
+	var shared: Dictionary = CityStore.constants.shader # a face with no finish, near and far (tools/build/shader_contracts.json)
+	var cases := [["near wall", "building", shared.BUILDING_WALL_ROUGHNESS, false], ["far wall", "building_far", shared.BUILDING_FAR_ROUGHNESS, false],
+			["a piece with no finish", "building_parts", shared.BUILDING_WALL_ROUGHNESS, true]]
 	var made: Array[Node3D] = []
 	var spots := []
 	for k in cases.size():

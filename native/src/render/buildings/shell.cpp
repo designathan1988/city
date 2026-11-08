@@ -2,7 +2,7 @@
 // grime), clockwise winding toward `out` (Godot front faces), the vertex code of each surface kind, and the commit of
 // one surface to a RenderingServer mesh.
 #include "render/buildings/shell.h"
-#include "core/shader_contracts.h"
+#include "core/shader_contracts/buildings.h"
 
 #include "render/mesh_order.h"
 
@@ -24,7 +24,6 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
-constexpr int PANE_KIND_BITS = 3, PANE_RECESS_MAX = 31;
 constexpr float MACRO_M = 12.f, TONE_BASE = 0.97f, TONE_SPAN = 0.06f, GRIME_M = 1.2f, GRIME_FLOOR = 0.8f, GRIME_SPAN = 0.2f;
 constexpr float SHELL_WALL_TOP = 0.5f, GAMMA_INV = 1.f / 2.2f, BYTE = 255.f, DEGENERATE = 1e-12f, BIG = 1e30f;
 constexpr uint32_t H1 = 0x27d4eb2d, H2 = 0x165667b1, H3 = 0x3c6ef372, H4 = 0x85ebca6b;
@@ -33,6 +32,7 @@ constexpr double U32 = 4294967296.0;
 constexpr uint32_t SEED_BYTE = 0xff;
 constexpr float HALF_STEP = 0.5f;
 constexpr int BYTE_BITS = 8, CORNERS = 8, FACES = 6, QUAD_INDICES = 6, BIT_A = 1, BIT_B = 2, BIT_C = 4;
+constexpr int PANE_RECESS_MAX = (1 << (BYTE_BITS - SURFACE_KIND_BITS)) - 1; // the alpha byte's bits above the kind
 // Box faces as corner quads (corner bit 1 = a1, 2 = b1, 4 = c1), in the order -e2, +e2, -e0, +e0, -e1, +e1.
 constexpr int BOX_QUADS[FACES][4] = { { 0, 1, 3, 2 }, { 4, 5, 7, 6 }, { 0, 2, 6, 4 }, { 1, 3, 7, 5 }, { 0, 1, 5, 4 }, { 2, 3, 7, 6 } };
 constexpr uint8_t BOX_SKIP[FACES] = { SKIP_E2_NEG, SKIP_E2_POS, SKIP_E0_NEG, SKIP_E0_POS, SKIP_E1_NEG, SKIP_E1_POS };
@@ -203,7 +203,7 @@ void Shell::pane(const Basis &f, float a0, float a1, float b0, float b1, float c
 	if (a1 - a0 <= 0 || b1 - b0 <= 0) return;
 	const int recess = std::min(int(std::lround(look.recess / PANE_RECESS_STEP_M)), PANE_RECESS_MAX);
 	Color code(float(look.slot & SEED_BYTE) / BYTE, float((look.slot >> BYTE_BITS) & SEED_BYTE) / BYTE, float(look.bay) / BYTE,
-			float((look.plain ? SK_PANE_CLEAR : look.dark ? SK_PANE_DARK : SK_PANE) | (recess << PANE_KIND_BITS)) / BYTE);
+			float((look.plain ? SK_PANE_CLEAR : look.dark ? SK_PANE_DARK : SK_PANE) | (recess << SURFACE_KIND_BITS)) / BYTE);
 	const int i0 = sheet(f, a0, a1, b0, b1, c, code, Vector2(a1 - a0, b1 - b0)), i1 = i0 + 1, i2 = i0 + 2, i3 = i0 + 3;
 	if (!rooms) return;
 	const PaneRoom &r = look.room;
@@ -221,7 +221,7 @@ void Shell::pane(const Basis &f, float a0, float a1, float b0, float b1, float c
 }
 
 void Shell::bay(const Basis &f, float W, float H, const Lin &wall, int8_t fin, uint32_t seed, const FarWindows &w, float depth) {
-	constexpr int DEPTH_MOST = 15, FIN_SHIFT = 8, FLAGS_SHIFT = 12, DEPTH_SHIFT = 20;
+	constexpr int DEPTH_MOST = 15;
 	auto byte = [](float v) { return uint32_t(std::clamp(v, 0.f, 1.f) * BYTE + HALF_STEP); };
 	auto three = [&](float r, float g, float b) { return float(byte(r) << (2 * BYTE_BITS) | byte(g) << BYTE_BITS | byte(b)); };
 	const Color tone = shaded(f.at(W / 2, H / 2, 0), far_tint(wall, fin), true, SK_SHELL);
@@ -234,7 +234,7 @@ void Shell::bay(const Basis &f, float W, float H, const Lin &wall, int8_t fin, u
 	b.wall = three(tone.r, tone.g, tone.b);
 	b.trim = three(gamma(w.trim.r), gamma(w.trim.g), gamma(w.trim.b));
 	const uint32_t steps = uint32_t(std::min(DEPTH_MOST, int(std::lround(depth / BAY_DEPTH_STEP_M))));
-	b.code = float((seed & SEED_BYTE) | uint32_t(fin + 1) << FIN_SHIFT | uint32_t(w.flags & SEED_BYTE) << FLAGS_SHIFT | steps << DEPTH_SHIFT);
+	b.code = float((seed & SEED_BYTE) | uint32_t(fin + 1) << BAY_FIN_SHIFT | uint32_t(w.flags & SEED_BYTE) << BAY_FLAGS_SHIFT | steps << BAY_DEPTH_SHIFT);
 	bays.push_back(b);
 }
 

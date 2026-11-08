@@ -6,7 +6,7 @@
 // The frame also carries what the signalled approaches near the camera show (their heads' lit lenses).
 #pragma once
 
-#include "core/shader_contracts.h"
+#include "core/shader_contracts/agents.h"
 
 #include <algorithm>
 #include <atomic>

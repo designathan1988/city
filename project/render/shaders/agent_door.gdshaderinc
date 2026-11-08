@@ -1,11 +1,10 @@
 // The kerb door of a vehicle swung by the vertex stage, the way a wheel turns: its vertices are marked in the mesh (UV2.y, UV the hinge)
-// and the instance says how far it stands open, over the wheel's angle (AGENT_DOOR_STEP, shader_contracts.gdshaderinc), so a door costs no draw.
-#include "res://render/shaders/shader_contracts.gdshaderinc"
+// and the instance says how far it stands open, over the wheel's angle (AGENT_DOOR_STEP, contracts/agents.gdshaderinc), so a door costs no draw.
+#include "res://render/shaders/contracts/agents.gdshaderinc"
 const float DOOR_SWING = 1.15; // radians, fully open (Roadcraft occupants.ts)
-const float DOOR_MARK = 1.5; // UV2.y over this: a door's vertex
-const float DOOR_BACK_MARK = 2.5; // and over this, one hung at its back edge
+const float DOOR_MARK = LIMB_DOOR - 0.5; // UV2.y over this: a door's vertex (Limb)
+const float DOOR_BACK_MARK = LIMB_DOOR_BACK - 0.5; // and over this, one hung at its back edge
 
-const float SILL_SPAN_M = 4.0; // a pane's COLOR.r: its sill's height over this
 const float PANE_MARK = 0.5; // COLOR.g over this: a front door's pane, which goes down
 
 // How far a car's front window on the side of `x` is down: three cars in ten with one or both open, half of those part-way (Roadcraft

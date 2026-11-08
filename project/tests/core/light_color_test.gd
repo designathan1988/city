@@ -18,9 +18,6 @@ extends TestCase
 const BYTE_TOP := 255.0
 const GRADE_LEVELS_OFF := 1.0
 const GRADE_TABLE := {0.0: [0.0, 0.0, 0.0], 46.0: [38.2, 38.2, 38.1], 127.0: [129.4, 127.9, 125.1], 255.0: [255.0, 255.0, 251.4]}
-const LENSES := 5 # prop_kit.h Lens::COUNT
-const LENS_TAG := 3.0 # prop_kit.h PropTag::LENS (UV2.x)
-const GLOW_TAG := 2.0 # prop_kit.h PropTag::NIGHT_GLOW
 const NONE_LIT := -1.0 # INSTANCE_CUSTOM of the other lens slot (signal_lamps.cpp)
 const SIDE_M := 1.0 # each part: a square this wide, facing the camera
 const PITCH_M := 1.5
@@ -28,14 +25,21 @@ const VIEW_M := 9.0 # orthographic camera's height
 const CAMERA_Z := 5.0
 const GLOW_AT := Vector3(-1.0, -2.0, 0)
 const ROAD_AT := Vector3(1.0, -2.0, 0)
-const ROAD_CONCRETE := 5 # road.gdshader M_CONCRETE: no map, albedo = the strip colour
 const ROAD_GREY := 0.5 # sRGB
 const ROAD_STEPS := 16 # the mottle
-const ROAD_IDS := 16.0 # road.gdshader: the material id is COLOR.a * 16
-const ROAD_PLATE := Vector2(-1000.0, 0.0) # road.gdshader UV2 of a junction plate, lit evenly
 const ROAD_PLATE_GLOW := 1.0
 const GLOW_GREY := 0.2 # sRGB
 const FRAMES := 10 # the sky's radiance and the tone mapping settle
+
+# The shaders' encodings (CityStore.constants.shader, tools/build/shader_contracts.json), read when the test starts: the lenses, a
+# prop vertex's tag (UV2.x), the road material with no map (its albedo the strip colour) and its scale in COLOR.a, a junction
+# plate's UV2 (lit evenly).
+var lenses := 0
+var lens_tag := 0.0
+var glow_tag := 0.0
+var road_concrete := 0
+var road_ids := 0.0
+var road_plate := Vector2.ZERO
 const BYTE := 255.0
 const TOLERANCE := 1 # in 8-bit steps
 const LENS_STEPS := 3 # the signal green sits at the edge of the gamut: ACES has no radiance that lands on it exactly
@@ -44,6 +48,13 @@ var cam: Camera3D
 
 
 func _ready() -> void:
+	var shared: Dictionary = CityStore.constants.shader
+	lenses = int(shared.LENS_COUNT)
+	lens_tag = shared.PROP_LENS
+	glow_tag = shared.PROP_NIGHT_GLOW
+	road_concrete = int(shared.ROAD_MAT_CONCRETE)
+	road_ids = shared.ROAD_MAT_SCALE
+	road_plate = Vector2(shared.ROAD_POOL_PLATE, 0.0)
 	world = CityWorld.new()
 	add_child(world)
 	var material: ShaderMaterial = world.materials()["prop"]
@@ -64,12 +75,12 @@ func _lenses(material: ShaderMaterial) -> void:
 	world.environment.glow_enabled = false # a lens's own colour: the glow of the one beside it is another thing
 	var centres: Array[Vector3] = []
 	var nodes: Array[Node3D] = []
-	for k in LENSES:
-		var at := Vector3((k - (LENSES - 1) * 0.5) * PITCH_M, 0, 0)
+	for k in lenses:
+		var at := Vector3((k - (lenses - 1) * 0.5) * PITCH_M, 0, 0)
 		var mm := MultiMesh.new()
 		mm.transform_format = MultiMesh.TRANSFORM_3D
 		mm.use_custom_data = true
-		mm.mesh = _square(Vector2(LENS_TAG, k), Color.WHITE)
+		mm.mesh = _square(Vector2(lens_tag, k), Color.WHITE)
 		mm.instance_count = 1
 		mm.set_instance_transform(0, Transform3D(Basis(), at))
 		mm.set_instance_custom_data(0, Color(k, NONE_LIT, 0, 0)) # lens k lit, as signal_lamps.h draws it
@@ -83,7 +94,7 @@ func _lenses(material: ShaderMaterial) -> void:
 	await _frames(FRAMES)
 	var img := get_viewport().get_texture().get_image()
 	var want := _lens_colours()
-	for k in LENSES:
+	for k in lenses:
 		_compare(img, centres[k], want[k], "lens %d" % k, LENS_STEPS)
 	for n in nodes:
 		n.queue_free()
@@ -98,13 +109,13 @@ func _night(material: ShaderMaterial, road: ShaderMaterial) -> void:
 	road.set_shader_parameter("plate_glow", ROAD_PLATE_GLOW)
 	RenderingServer.global_shader_parameter_set(&"lamp_lit", Vector2.ZERO)
 	var node := MeshInstance3D.new()
-	node.mesh = _square(Vector2(GLOW_TAG, 0), Color(GLOW_GREY, GLOW_GREY, GLOW_GREY))
+	node.mesh = _square(Vector2(glow_tag, 0), Color(GLOW_GREY, GLOW_GREY, GLOW_GREY))
 	node.material_override = material
 	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	node.position = GLOW_AT
 	add_child(node)
 	var plate := MeshInstance3D.new()
-	plate.mesh = _square(ROAD_PLATE, Color(ROAD_GREY, ROAD_GREY, ROAD_GREY, (ROAD_CONCRETE + 0.5) / ROAD_IDS))
+	plate.mesh = _square(road_plate, Color(ROAD_GREY, ROAD_GREY, ROAD_GREY, (road_concrete + 0.5) / road_ids))
 	plate.material_override = road
 	plate.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	plate.position = ROAD_AT
@@ -162,7 +173,7 @@ func _square(tag: Vector2, col: Color) -> ArrayMesh:
 ## Each lens's colour (sRGB), from its parts in streets.json props.signal.
 func _lens_colours() -> Array[Color]:
 	var out: Array[Color] = []
-	out.resize(LENSES)
+	out.resize(lenses)
 	for part: Dictionary in DataTables.render_table("streets").props.signal:
 		if part.has("lens"):
 			out[int(part.lens)] = Color.html(part.color)

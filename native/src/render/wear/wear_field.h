@@ -6,7 +6,7 @@
 #pragma once
 
 #include "render/render_context.h"
-#include "core/shader_contracts.h"
+#include "core/shader_contracts/streets.h"
 #include "sim/state/pose_buffer.h"
 
 #include <godot_cpp/variant/packed_byte_array.hpp>

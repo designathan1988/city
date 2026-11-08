@@ -1,6 +1,6 @@
 // Bakes a superchunk's far cards into one mesh (see far_cards.h).
 #include "render/trees/far_cards.h"
-#include "core/shader_contracts.h"
+#include "core/shader_contracts/trees.h"
 
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/core/math.hpp>

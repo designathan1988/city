@@ -1,14 +1,11 @@
 // A person's face this instant (faceExpression.ts faceAt), worked out on the GPU from what the instance already says: its seed, the clock, what it is
 // doing and whether it is frightened. Only the near mesh's face vertices carry a row of face_table (tools/assets/cook_people.py): where each moves, by
 // channel; no other vertex pays for any of it.
-#include "res://render/shaders/shader_contracts.gdshaderinc"
+#include "res://render/shaders/contracts/people.gdshaderinc"
 uniform sampler2D face_table : filter_nearest, repeat_disable;
 uniform int act_face[PEOPLE_CLIPS]; // by clip: what the face does at it (FACE_ACT_*)
 uniform float body_mood[PEOPLE_BODIES]; // by variation: -1 low .. 1 bright (cast.json)
 
-const float FACE_ROW_STEP = 4.0; // cook_people.py: UV2.x is the region plus this many a row
-const int FACE_CHANNELS = 13;
-const int FACE_SPAN = 8; // rows side by side in the table
 const int BLINK = 0, JOY = 1, SADNESS = 2, ANGER = 3, SURPRISE = 4, BROW_RAISE = 5, OPEN = 6, ROUND = 7, PUCKERED = 8, SPREAD = 9, SHUT = 10, LOOK_LEFT = 11, LOOK_RIGHT = 12;
 const int VISEME_COUNT = 9;
 const int VISEMES[VISEME_COUNT] = { OPEN, SPREAD, SPREAD, ROUND, PUCKERED, SHUT, SHUT, OPEN, SPREAD };
@@ -21,7 +18,6 @@ const float GAZE_RATE = 0.55, GAZE_REACH = 0.32;
 const float STRESSED_BROW = 0.4;
 const int STRESS_EVERY = 5;
 const uint STRESS_SALT = 7u;
-const float FACE_PI = 3.14159265;
 
 uint person_hash(uint id) {
 	uint h = id + 0x9e3779b9u;
@@ -31,13 +27,13 @@ uint person_hash(uint id) {
 }
 
 int face_row(float uv2_x) {
-	return int(uv2_x / FACE_ROW_STEP);
+	return int(uv2_x / PEOPLE_FACE_ROW_STEP);
 }
 
 // What the vertex of `row` moves by, at rest. `code`: the instance colour's alpha (people_pose.gdshaderinc).
 vec3 face_move(int row, vec4 custom, float code) {
-	float w[FACE_CHANNELS];
-	for (int c = 0; c < FACE_CHANNELS; c++) {
+	float w[PEOPLE_FACE_CHANNELS];
+	for (int c = 0; c < PEOPLE_FACE_CHANNELS; c++) {
 		w[c] = 0.0;
 	}
 	float time = idle_clock;
@@ -47,7 +43,7 @@ vec3 face_move(int row, vec4 custom, float code) {
 	bool frightened = custom.b < 0.0;
 
 	float blink = fract(time * (BLINK_RATE + float((hash >> 8u) & 15u) * BLINK_RATE_STEP) + low / BYTE_MAX);
-	w[BLINK] = blink > BLINK_FROM ? sin((blink - BLINK_FROM) / (1.0 - BLINK_FROM) * FACE_PI) : 0.0;
+	w[BLINK] = blink > BLINK_FROM ? sin((blink - BLINK_FROM) / (1.0 - BLINK_FROM) * PI) : 0.0;
 	float gaze = sin(time * GAZE_RATE + float((hash >> 5u) & 1023u)) * GAZE_REACH;
 	w[LOOK_LEFT] = max(gaze, 0.0);
 	w[LOOK_RIGHT] = max(-gaze, 0.0);
@@ -74,7 +70,7 @@ vec3 face_move(int row, vec4 custom, float code) {
 		if (doing == FACE_ACT_TALK || doing == FACE_ACT_PHONE) {
 			float beat = time * SYLLABLES + float((hash >> 16u) & BYTE_MASK) / 64.0;
 			float syllable = floor(beat);
-			float open = sin((beat - syllable) * FACE_PI);
+			float open = sin((beat - syllable) * PI);
 			uint said = uint(syllable);
 			w[VISEMES[int(person_hash(hash ^ said) % uint(VISEME_COUNT))]] += open;
 			if (person_hash(hash ^ (said * STRESS_SALT)) % uint(STRESS_EVERY) == 0u) {
@@ -83,9 +79,9 @@ vec3 face_move(int row, vec4 custom, float code) {
 		}
 	}
 
-	ivec2 at = ivec2((row % FACE_SPAN) * FACE_CHANNELS, row / FACE_SPAN);
+	ivec2 at = ivec2((row % PEOPLE_FACE_SPAN) * PEOPLE_FACE_CHANNELS, row / PEOPLE_FACE_SPAN);
 	vec3 move = vec3(0.0);
-	for (int c = 0; c < FACE_CHANNELS; c++) {
+	for (int c = 0; c < PEOPLE_FACE_CHANNELS; c++) {
 		if (w[c] > 0.0) {
 			move += min(w[c], 1.0) * texelFetch(face_table, at + ivec2(c, 0), 0).rgb;
 		}

@@ -4,6 +4,7 @@
 // (personMaterial.ts): skin wrapped past the terminator with the red of what scatters under it, hair lit along its strands (Kajiya-Kay, Marschner's two
 // shifted lobes), and neither mirroring much of the sky.
 render_mode cull_disabled; // the hair's cards and the clothes' open edges are seen from both sides
+#include "res://render/shaders/contracts/people.gdshaderinc"
 
 #include "res://render/shaders/people_skin.gdshaderinc"
 #include "res://render/shaders/people_pose.gdshaderinc"
@@ -74,7 +75,7 @@ void vertex() {
 	VERTEX = pos;
 	NORMAL = nor / max(length(nor), STRAND_ROOM); // a part gone closes on its joint: nothing left to face
 	v_layer = INSTANCE_CUSTOM.r;
-	v_region = UV2.x - float(row) * FACE_ROW_STEP;
+	v_region = UV2.x - float(row) * PEOPLE_FACE_ROW_STEP;
 	v_rough = UV2.y;
 }
 

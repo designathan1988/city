@@ -3,12 +3,12 @@
 // front this draws: the fan's hole, its grille and the coil's louvres, a pixel's smoothing on each edge so they do not crawl.
 shader_type spatial;
 render_mode cull_disabled;
+#include "res://render/shaders/contracts/buildings.gdshaderinc"
 
 uniform float wall_gain = 1.0;
 uniform float roughness = 0.75;
 
-const float AC_W = 0.72;
-const float AC_H = 0.48;
+uniform vec2 ac_case; // the condenser case's front, width and height (bay_props.json, set by BuildingRenderer)
 const float AC_FAN_IN = 0.27;
 const float AC_COIL_IN = 0.14;
 
@@ -27,7 +27,7 @@ void vertex() {
 float band(float x, float a, float b, float aa) { return smoothstep(a - aa, a + aa, x) - smoothstep(b - aa, b + aa, x); }
 
 float ac_front(vec3 p) {
-	vec2 q = p.xy - vec2(-AC_W * 0.5 + AC_FAN_IN, 0.0);
+	vec2 q = p.xy - vec2(-ac_case.x * 0.5 + AC_FAN_IN, 0.0);
 	float d = length(q), aa = max(fwidth(d), 1e-5);
 	float hole = 1.0 - smoothstep(0.19 - aa, 0.19 + aa, d);
 	float rings = band(d, 0.055, 0.07, aa) + band(d, 0.115, 0.13, aa) + band(d, 0.195 - 0.02, 0.195, aa);
@@ -36,10 +36,10 @@ float ac_front(vec3 p) {
 	float spokes = max(1.0 - smoothstep(0.006 - ra, 0.006 + ra, abs(r.x)), 1.0 - smoothstep(0.006 - ra, 0.006 + ra, abs(r.y))) * step(d, 0.19);
 	float tone = mix(1.0, 0.1, hole);
 	tone = mix(tone, 0.82, clamp(rings + spokes, 0.0, 1.0));
-	float lx = abs(p.x - (AC_W * 0.5 - AC_COIL_IN)), la = max(fwidth(p.x), 1e-5);
+	float lx = abs(p.x - (ac_case.x * 0.5 - AC_COIL_IN)), la = max(fwidth(p.x), 1e-5);
 	float slats = 0.0;
 	for (int k = 0; k < 5; k++) {
-		float y = -AC_H * 0.5 + 0.09 + float(k) * 0.07;
+		float y = -ac_case.y * 0.5 + 0.09 + float(k) * 0.07;
 		slats += band(p.y, y - 0.007, y + 0.007, max(fwidth(p.y), 1e-5));
 	}
 	slats *= 1.0 - smoothstep(0.1 - la, 0.1 + la, lx);
@@ -48,7 +48,7 @@ float ac_front(vec3 p) {
 
 void fragment() {
 	vec3 albedo = to_linear(v_custom) * COLOR.rgb;
-	if (COLOR.a < 0.5 && v_model_n.z > 0.5) albedo *= ac_front(v_model);
+	if (COLOR.a < 0.5 * (BAY_PROP_FRONT_MARK + 1.0) && v_model_n.z > 0.5) albedo *= ac_front(v_model);
 	ALBEDO = surface_out(albedo * wall_gain);
 	ROUGHNESS = roughness;
 }

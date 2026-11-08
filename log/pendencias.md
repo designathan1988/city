@@ -9,6 +9,13 @@ O que falta fazer, por área.
   (style, palette, roof kind, storeys) before making one body; the generated city moves.
 - Lots derived per block in jobs outside the exclusive lock (B3, log/review.md §6.14, R4): lots appear later than the edit that
   made them, and growth with them; the three constants of one reach (`lot_cache.cpp:15`, `lot_gen.h:20`, `road_network.cpp:16`) go.
+- The engine's BRDF copied by hand with no test (C3, log/review.md §6.20): `building_glass_body.gdshaderinc` `light()` (Lambert and
+  GGX, to give the recess its shadow) and `people_look.gdshaderinc` `ggx_specular` follow Godot's model by a copy. `building_light_test`
+  holds the walls' albedo path to the engine's StandardMaterial3D; a test that lights a pane and a person beside a StandardMaterial3D
+  of the same roughness would hold these the same way.
+- Positional rows a shader reads (B4, log/review.md §6.20): `ground_paint.gdshaderinc` `surface_colour` picks each surface by its slot
+  + 1 in `nature.json` `paint.kinds`, its colours literals in the shader; `marks.gdshader` reads `crater_rad` four colours a crater kind
+  by index (`materials.json` `display_colors.crater`). Both become named rows of data, sent by the slot the core gives them.
 - Street items keep their footway place when put down (B3, log/review.md §6.13, R3): what an item does when its road moves changes.
 
 - Sombra nas ruas: 7 a 37% abaixo do 4.0 no lado escuro (linear, pixels escuros cinzas em quatro vistas do par), com o lado claro igual; a causa não foi achada, e a do reflexo do céu não fecha (`envMapIntensity` 0,55 da via).

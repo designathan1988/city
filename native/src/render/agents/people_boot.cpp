@@ -2,7 +2,7 @@
 // shaders, the held things and helmets, the blob under each walker, and agents.json's people block through the strict reader's
 // values (render/data_reader.h). The frame's work is people_renderer.cpp.
 #include "render/agents/people_renderer.h"
-#include "core/shader_contracts.h"
+#include "core/shader_contracts/people.h"
 
 #include "core/color.h"
 #include "render/mesh_builder.h"

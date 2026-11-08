@@ -5,6 +5,7 @@
 #pragma once
 
 #include "render/buildings/facade.h"
+#include "core/shader_contracts/buildings.h"
 
 #include <functional>
 
@@ -43,8 +44,9 @@ void emit_reveal(Shell &shell, const BayCtx &c, const Opening &o, float from, fl
 		float sill_h);
 // What the pane of an opening draws (pane_rooms.cpp): `frame` the thickness of its frame, 0 none.
 PaneLook pane_look(const Placed &pl, const BayCtx &c, float a0, float a1, float h0, float h1, bool dark, float frame);
-// How many of a component's panes take the darker glass: the far level's grid fades to the same share (far_window).
-enum PaneDark { PANE_DARK_PICK, PANE_DARK_NONE, PANE_DARK_QUARTER, PANE_DARK_FIFTH };
+// How many of a component's panes take the darker glass (PaneDark, core/shader_contracts/buildings.h): the far level's grid fades to the same
+// share (building_far_window.gdshaderinc).
+static_assert(PANE_DARK_COUNT <= 1 << WINDOW_DARK_BITS, "a PaneDark fits its bits of the window flags");
 PaneDark pane_dark(uint8_t comp);
 // The wall of bays side by side with nothing cut in it, as one face: a flush pane stands on it, so a storey of windows is a few faces
 // and a pane each, not four rectangles a bay. Short enough that the macro tone, written per vertex, still moves along it.
