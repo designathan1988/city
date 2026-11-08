@@ -71,7 +71,7 @@ void far_window(vec2 uv, vec4 code, uint seed, vec3 n, vec3 V, float depth, inou
 	float solid = picks == PANE_DARK_PICK ? mix(solid_near, shutter_far.x * pan * min(shutter_far.y * (code.b - code.g) / pane_h, 1.0), sub) : 0.0;
 	glass = max(pan - solid, 0.0);
 	float frame = max(hole - pan, 0.0);
-	vec3 trim = to_linear(v_trim.rgb), shutter = shutter_tone;
+	vec3 trim = srgb_to_linear(v_trim.rgb), shutter = shutter_tone;
 	float cosv = clamp(dot(-V, n), 0.0, 1.0);
 	float F = max(schlick(cosv), glass_reflect);
 	frame = max(frame - reveal, 0.0);

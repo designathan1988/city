@@ -47,7 +47,7 @@ float ac_front(vec3 p) {
 }
 
 void fragment() {
-	vec3 albedo = to_linear(v_custom) * COLOR.rgb;
+	vec3 albedo = srgb_to_linear(v_custom) * COLOR.rgb;
 	if (COLOR.a < 0.5 * (BAY_PROP_FRONT_MARK + 1.0) && v_model_n.z > 0.5) albedo *= ac_front(v_model);
 	ALBEDO = surface_out(albedo * wall_gain);
 	ROUGHNESS = roughness;

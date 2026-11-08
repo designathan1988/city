@@ -111,12 +111,12 @@ void fragment() {
 	vec3 n = normalize(v_wn);
 	if (v_cloth > 0.5) {
 		vec3 c = flag_colour(v_uv, int(v_custom.a + PACKED_ROUND), unpack_rgb(v_custom.r), unpack_rgb(v_custom.g), unpack_rgb(v_custom.b));
-		ALBEDO = surface_out(to_linear(c));
+		ALBEDO = surface_out(srgb_to_linear(c));
 		ROUGHNESS = cloth_roughness;
 		METALLIC = 0.0;
 		NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
 	} else {
-		vec3 albedo = to_linear(v_custom.rgb), nn = n;
+		vec3 albedo = srgb_to_linear(v_custom.rgb), nn = n;
 		float rough = BUILDING_WALL_ROUGHNESS, metal = 0.0;
 		finish_surface(int(floor(v_custom.a + 0.5)), n, albedo, nn, rough, metal); // -1: no finish (int() would truncate -0.5 to layer 0)
 		ALBEDO = surface_out(albedo * wall_gain);

@@ -95,7 +95,7 @@ void fragment() {
 	int kind = int(COLOR.a * BYTE_TOP + 0.5);
 	vec3 n = normalize(v_wn);
 	vec3 V = normalize(v_world - CAMERA_POSITION_WORLD);
-	vec3 albedo = to_linear(COLOR.rgb), emit = vec3(0.0), nn = n;
+	vec3 albedo = srgb_to_linear(COLOR.rgb), emit = vec3(0.0), nn = n;
 	float rough = BUILDING_WALL_ROUGHNESS, metal = 0.0;
 	if (kind == SK_LAMP) {
 		emit = uniform_linear(lamp_light) * night * lamp_glow * step(h01(uint(floor(v_world.x * LAMP_CELL_PER_M) * LAMP_CELL_X + floor(v_world.z * LAMP_CELL_PER_M) * LAMP_CELL_Z + LAMP_CELL_SHIFT)), outside_on);

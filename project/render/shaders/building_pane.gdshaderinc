@@ -303,7 +303,7 @@ void pane(vec2 uv, vec2 size, uint slot, uint bay, bool dark, float deep, vec3 n
 	float F = max(schlick(cosv), glass_reflect);
 	// The glass scatters next to nothing: what a pane shows is the room through it and the sky's reflection, as light leaving it.
 	vec3 refl = glass_reflection(V, n, F, dark ? GLASS_ENV_DARK : GLASS_ENV);
-	vec3 trim = to_linear(v_trim.rgb);
+	vec3 trim = srgb_to_linear(v_trim.rgb);
 	albedo = mix(mix(PANE_ALBEDO * glass_k, trim, frame), trim * REVEAL_ALBEDO * side_shade, solid);
 	emit = (seen * room_daylight * glass_k + pane_lamp(slot, lot, office, seen) * night * window_glow * glass_k + refl * open) * (1.0 - max(frame, solid));
 	nn = normalize(mix(n, normalize(t * face.x + vec3(0.0, face.y, 0.0) + n * face.z), step(0.5, frame)));

@@ -3713,6 +3713,24 @@ a tool that left the repository; it names the asset reader now.
 
 **What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56).
 
+### 6.67 B2, C16 and C14 (one sRGB curve; the trees): the transfer functions owned once, the vegetation's dead defaults gone (2026-11-08)
+
+**Cause and fix.** sRGB's transfer curve (IEC 61966-2-1) was written three times: `color_space` (`srgb_to_linear`,
+`linear_to_srgb`), `building_colour` (`to_linear`, `to_srgb`, whose constants §6.64 had just named) and `vegetation` (`to_linear`),
+and Compatibility's own power segment in `color_space` typed its constants again. `color_space.gdshaderinc` (guarded) owns the
+curve and its named constants; `building_colour` includes it and keeps only the renderer's in-and-out, `vegetation` includes it,
+and the fifteen calls in ten shaders use the two names.
+
+The vegetation's uniform defaults drew nothing: the tree and cover renderers set the switch distance, its spread and the card's
+frames (`tree_renderer.cpp`, `cover_renderer.cpp`), every row sets its roughness and sheen, the `gust` and `sway` or `stone` sets
+the wind. The bend's height limit (1.4 tree heights) joins the `gust` set, the bark's grain the `vegetation` row; each tree's switch
+and swing steps are named.
+
+**Proof.** Each touched shader with its consts and moved values put back is HEAD's code, the removed curves being the one
+`color_space` keeps, formula for formula. `quick`: every test passes, the photos byte-equal to the states the earlier changes left.
+
+**What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56).
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

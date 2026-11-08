@@ -53,7 +53,7 @@ void vertex() {
 void fragment() {
 	int kind = int(COLOR.a * BYTE_TOP + 0.5) & KIND_MASK;
 	vec3 n = normalize(v_wn);
-	vec3 albedo = to_linear(COLOR.rgb);
+	vec3 albedo = srgb_to_linear(COLOR.rgb);
 	vec3 glass = mix(far_glass_dark, uniform_linear(glass_sky), glass_floor) * (1.0 - far_glass_night * night);
 	vec3 emit = vec3(0.0);
 	float rough = BUILDING_FAR_ROUGHNESS, metal = 0.0;

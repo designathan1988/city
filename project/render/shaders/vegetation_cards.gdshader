@@ -10,10 +10,10 @@ render_mode skip_vertex_transform, cull_disabled, shadows_disabled, alpha_to_cov
 
 const float CUT = 0.5;
 uniform sampler2D leaf_atlas : source_color, filter_linear_mipmap_anisotropic, repeat_disable;
-uniform float cover_per_mip = 0.25;
-uniform float leaf_edge = 0.3; // below the cut: the alpha a leaf's rim goes to coverage from, so MSAA smooths what the cut alone leaves in steps
-uniform float leaf_near_m = 22.0; // the near tuft whole up to here
-uniform float leaf_far_m = 70.0; // and gone from here
+uniform float cover_per_mip; // materials.json vegetation_cards, as the next three
+uniform float leaf_edge; // below the cut: the alpha a leaf's rim goes to coverage from, so MSAA smooths what the cut alone leaves in steps
+uniform float leaf_near_m; // the near tuft whole up to here
+uniform float leaf_far_m; // and gone from here
 uniform sampler2D tree_albedo : source_color, filter_linear_mipmap, repeat_disable;
 uniform sampler2D tree_normal : hint_normal, filter_linear_mipmap, repeat_disable;
 

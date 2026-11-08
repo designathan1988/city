@@ -55,7 +55,7 @@ void fragment() {
 	// the share of the pixel kept as a share of the pixels that stay: a screen of bars under a pixel is a veil and no moire; the frames resolve the grain
 	float grain = level_noise(FRAGCOORD.xy);
 	if (cover(kind, UV, fw, UV2.y) <= grain) discard;
-	ALBEDO = surface_out(to_linear(COLOR.rgb));
+	ALBEDO = surface_out(srgb_to_linear(COLOR.rgb));
 	ROUGHNESS = roughness;
 	METALLIC = metalness;
 }

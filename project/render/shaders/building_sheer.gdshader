@@ -12,7 +12,7 @@ uniform float metalness;
 #include "res://render/shaders/building_level.gdshaderinc"
 
 void fragment() {
-	ALBEDO = surface_out(to_linear(COLOR.rgb));
+	ALBEDO = surface_out(srgb_to_linear(COLOR.rgb));
 	ALPHA = opacity * level_keep;
 	ROUGHNESS = roughness;
 	METALLIC = metalness;

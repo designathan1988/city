@@ -29,7 +29,7 @@
    "blind_mean": [0.53, 0.523, 0.496, 0.55],
    "sheer_mean": [0.698, 0.691, 0.667, 0.5]
   },
-  "gust": { "gust_m": 220.0 },
+  "gust": { "gust_m": 220.0, "bend_most": 1.4 },
   "sway": { "sway_per_ms2": 0.000161, "turbulence": 0.189, "sway_hz": 0.25 },
   "stone": { "sway_per_ms2": 0.0, "turbulence": 0.0, "sway_hz": 0.0, "roughness": 0.94, "leaf_specular": 0.5 }
  },
@@ -360,7 +360,8 @@
    "bark_ridges": 9.0,
    "bark_run_m": 1.1,
    "bark_deep": 0.55,
-   "bark_far_m": 60.0
+   "bark_far_m": 60.0,
+   "bark_grain": [0.7, 0.3, 0.3, 0.62]
   }
  },
  "cover_plant": { "shader": "res://render/shaders/vegetation.gdshader", "uses": ["gust", "sway"], "params": { "roughness": 0.85, "leaf_specular": 0.15 } },
