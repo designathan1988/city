@@ -11,10 +11,12 @@
 #include <godot_cpp/classes/project_settings.hpp>
 
 #include <algorithm>
+#include <chrono>
 #include <filesystem>
 #include <memory>
 #include <string>
 #include <system_error>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -23,6 +25,13 @@ using namespace godot;
 namespace city {
 
 namespace {
+
+// A replacing rename fails while another process holds the old file open without sharing its deletion (an antivirus or the indexer
+// reading a file just written: Windows' MoveFileEx, ERROR_SHARING_VIOLATION / ERROR_ACCESS_DENIED); the holder lets go within
+// moments. Godot's own safe save tries again for as long (drivers/windows/file_access_windows.cpp _close: 1000 tries a millisecond
+// apart), on the save thread here, never the frame's.
+constexpr int REPLACE_TRIES = 1000;
+constexpr int REPLACE_WAIT_MS = 1;
 
 std::string utf8(const String &s) {
 	return std::string(s.utf8().get_data());
@@ -49,7 +58,11 @@ bool write_atomic(const SaveTarget &target, const std::vector<uint8_t> &bytes, s
 	f->store_buffer(bytes.data(), bytes.size());
 	f->close();
 	std::error_code ec;
-	std::filesystem::rename(target.tmp_os, target.to_os, ec);
+	for (int tries = 0; tries < REPLACE_TRIES; tries++) {
+		std::filesystem::rename(target.tmp_os, target.to_os, ec);
+		if (!ec || (ec != std::errc::permission_denied && ec != std::errc::device_or_resource_busy)) break; // held by another, or done
+		std::this_thread::sleep_for(std::chrono::milliseconds(REPLACE_WAIT_MS));
+	}
 	if (ec) {
 		std::filesystem::remove(target.tmp_os, ec);
 		error = "save.writeFailed";

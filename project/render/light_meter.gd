@@ -7,7 +7,9 @@ extends RefCounted
 
 const POGSON := 0.4 # a magnitude is 10^0.4 in brightness (Pogson's ratio)
 const DECADE := 10.0 # the base magnitudes are counted in
-const COMPATIBILITY := "gl_compatibility" # RenderingServer.get_current_rendering_method() of the renderer that pre-exposes its sky right
+const COMPATIBILITY := "gl_compatibility"
+const HORIZON_ZENITH := 9.0 / 7.0 # the CIE overcast sky's zenith over its level light, Lz = 9 / (7 pi) E (sky_model.gdshaderinc sky_lit)
+const HORIZON_THIRDS := 3.0 # its horizon a third of its zenith, (1 + 2 sin 0) / 3 # RenderingServer.get_current_rendering_method() of the renderer that pre-exposes its sky right
 
 var lux := 0.0 # the radiance of a white floor under 1 lx
 var pre_exposure := 1.0 # the eye's adaptation, as the picture's pre-exposure
@@ -85,6 +87,25 @@ func _lit_sky(toward: Vector3, top: Vector3, overcast: float) -> float:
 	var clear := ToneMap.luminance(_table.level(toward.y) * top / _air.sun_top)
 	var deck: float = _d.overcast_pass * ToneMap.luminance(_air.light_at(toward, 0.0, top)) * maxf(toward.y, 0.0)
 	return lerpf(clear, deck, overcast)
+
+
+## The haze's light, a radiance (the sky at the horizon round the eye, the mean of its row, render/sky_level_table.gd): the sun's
+## clear horizon or the overcast deck's (the CIE overcast sky at the horizon, a third of its zenith), the moon's alike, the town's;
+## pre-exposed as the picture is. The Environment's fog takes it as its own light (Compatibility reads no radiance map for the haze;
+## Forward+'s aerial perspective reads the sky itself and leaves it aside).
+func haze(toward_sun: Vector3, toward_moon: Vector3, moon_up: bool, overcast: float, flash: float, lamps: float) -> Vector3:
+	var light := _lit_horizon(toward_sun, _air.sun_top, overcast)
+	if moon_up:
+		light += _lit_horizon(toward_moon, moon_top, overcast)
+	var up := town * lamps
+	light += (_table.town_horizon * up).lerp(up * float(_d.sky_glow.cloud_reflect), overcast)
+	return light * (1.0 + flash) * pre_exposure
+
+
+func _lit_horizon(toward: Vector3, top: Vector3, overcast: float) -> Vector3:
+	var clear := _table.horizon(toward.y) * top / _air.sun_top
+	var zenith: float = HORIZON_ZENITH * _d.overcast_pass * ToneMap.luminance(_air.light_at(toward, 0.0, top)) * maxf(toward.y, 0.0)
+	return clear.lerp(Vector3.ONE * zenith / HORIZON_THIRDS, overcast)
 
 
 ## The eye adapted to `adapted_cd_m2`: the picture's pre-exposure, given to the camera and to the shaders that pre-expose by hand.

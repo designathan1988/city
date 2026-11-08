@@ -137,12 +137,12 @@ O que falta fazer, por área.
 - The physical night (2026-11-08, log/work-log.md "The physical night"):
   - Signal lenses, vehicle lamps, the placing ghost and a signature's own glow stay authored as the screen shows them
     (`emission_shown`): their luminance in cd/m^2 (EN 12368, UNECE R7) would make them physical lights too.
-  - Compatibility: its fog takes `fog_light_color` (aerial perspective is commented out in drivers/gles3 scene.glsl), which is not
-    pre-exposed, so its haze is the default grey by day and too bright at night; its sky map is mipmapped and filtered on sRGB codes,
+  - Compatibility: its sky map is mipmapped and filtered on sRGB codes,
     so its ambient bends from proportional in the dark (sky_exposure_test holds it to the nearer of once, never and twice), and a
     mirror's sky (the map's unfiltered level) is a little brighter in the darkest tones.
   - The clouds and the mist keep their authored night light (`atmosphere.gdshader` NIGHT_AIR, cloud_bodies' dark terms); only their
     physical parts are pre-exposed.
-  - `save_undo_test`'s old-format case failed once under the full parallel suite ("save.file.damaged", 22 s against 6.5 s alone)
-    and passed alone twice: a race between the core's save thread finishing and the file being read back (city_saves.gd
-    `_settle_save`, the core's save status), unrelated to the light; to read in the persistence code.
+  - Compatibility draws the far level's towers with no window grid (plain boxes by day, nothing lit at night) and some facade parts
+    (the air-conditioner units on the balconies) bright green, where Forward+ draws both right: seen on the frozen views and the
+    Centro captures run with --rendering-method gl_compatibility (2026-11-08); outside the light's paths changed here, to read in
+    `building_far.gdshader` (the SK_FAR_WALL mask from v_opening) and the parts' shader on that renderer.

@@ -953,3 +953,21 @@ later: no blue hour.
   of their pixels (the sky near the horizon now takes the sun's height along the view, and the ambient follows), the night's 0.06 %,
   accepted after looking.
 - Changed `project/render/shaders/sky_model.gdshaderinc`, `project/render/sky_level_table.gd`, logs; created and deleted nothing.
+
+## The save's replacing rename, and the haze on Compatibility (2026-11-08 12:50, branch `realism`)
+
+- `save_undo_test`'s old-format case failed once under the parallel suite ("save.file.damaged") and passed alone. Read in the code:
+  the core writes a save to `.tmp` and replaces the file with one rename (`city_core_persist.cpp` write_atomic), which Windows
+  refuses while another process holds the old file open without sharing its deletion (an antivirus or the indexer reading a file
+  just written: MoveFileEx, sharing violation); the core gave up at once (save.writeFailed), and `save_land_cases.gd` never looked at
+  the save's result, so it cut back the slot's previous file, another city on another map, and opened it as the old format:
+  damaged. Godot's own safe save tries the replacement again for that reason (drivers/windows/file_access_windows.cpp _close, 1000
+  tries a millisecond apart): the core now does the same on its save thread while the error is a held file, and the test checks
+  the save before cutting the file back.
+- Compatibility reads no radiance map for the haze (aerial perspective is commented out in drivers/gles3 scene.glsl), so its fog was
+  `fog_light_color`'s default grey, never pre-exposed. The sky's table has a second row, the sky at the horizon round the eye
+  (`sky_model.gdshaderinc` sky_horizon_seen), and `LightMeter.haze` gives the Environment's fog that light (the sun's horizon or
+  the overcast deck's, the moon's, the town's), pre-exposed; Forward+'s aerial perspective reads the sky itself and leaves it aside.
+- Verified: both DLLs; `quick.sh` 47 of 47, the photos equal; hidden captures on both renderers at 16h, 18:24 and 22h.
+- Changed `native/src/api/city_core_persist.cpp`, `project/tests/core/save_land_cases.gd`, `project/render/{light_meter.gd,
+  daylight.gd, sky_level_table.gd}`, `project/render/shaders/{sky_model.gdshaderinc, sky_level_table.gdshader}`, logs.

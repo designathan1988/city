@@ -142,6 +142,7 @@ func set_hour(hour: float) -> void:
 	_probe.refresh()
 	if meter.is_ready():
 		meter.expose(meter.adapted(solar, sun_lit, _moon_dir, moon_lit, _overcast * _d.overcast_sky, _flash * _d.flash_sky, night))
+		_haze_light(meter.haze(solar, _moon_dir, moon_up, _overcast * _d.overcast_sky, _flash * _d.flash_sky, night))
 	_cast()
 	_env.glow_enabled = glow_on
 	_env.glow_intensity = _d.glow_intensity
@@ -151,6 +152,16 @@ func set_hour(hour: float) -> void:
 	RenderingServer.global_shader_parameter_set(&"rooms_awake", awake)
 	RenderingServer.global_shader_parameter_set(&"offices_lit", _by_hour(_d.office_lit_by_hour, hour))
 	RenderingServer.global_shader_parameter_set(&"outside_on", _d.outside_all_night + (1.0 - _d.outside_all_night) * awake)
+
+
+## The fog's own light: its colour (sRGB, as the engine decodes it) and its energy, from a radiance.
+func _haze_light(light: Vector3) -> void:
+	var most := maxf(light.x, maxf(light.y, light.z))
+	if most <= 0.0:
+		_env.fog_light_energy = 0.0
+		return
+	_env.fog_light_color = Color(light.x / most, light.y / most, light.z / most).linear_to_srgb()
+	_env.fog_light_energy = most
 
 
 ## The directional light shines with `lit`, its colour and its energy.

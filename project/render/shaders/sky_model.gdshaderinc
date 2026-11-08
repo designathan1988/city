@@ -246,4 +246,17 @@ vec3 sky_level_seen(Air a, SkyWeather w, float h) {
 	return sum / weight;
 }
 
+// The sky at the horizon along a level view, the mean round it: what a long level path through the air sends back, the haze's colour
+// where the engine cannot read it from the radiance map (Compatibility: render/light_meter.gd haze). Worked once a change of the
+// hour or the weather, never once a pixel.
+vec3 sky_horizon_seen(Air a, SkyWeather w, float h) {
+	const int AROUND = 16;
+	vec3 sum = vec3(0.0);
+	for (int k = 0; k < AROUND; k++) {
+		float az = (float(k) + 0.5) * 2.0 * SKY_PI / float(AROUND);
+		sum += sky_seen(a, w, vec3(cos(az), LEAST_MU, sin(az)), h);
+	}
+	return sum / float(AROUND);
+}
+
 #endif

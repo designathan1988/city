@@ -16,7 +16,10 @@ const OLD_HALF_M := 5120.0
 ## `t`: the save_undo_test (TestCase), whose map, save and check these are.
 static func run(t: Node, slot: String) -> void:
 	t.new_map(TEN_KM_MAP, SEED, false)
-	await t.save(slot)
+	var written: Dictionary = await t.save(slot)
+	t.check(written.get("ok", false), "the file to cut back is written: %s" % written) # else what is read is another city's
+	if not written.get("ok", false):
+		return
 	var path: String = CityStore.saves.save_path(slot)
 	var f := FileAccess.open_compressed(path, FileAccess.READ, FileAccess.COMPRESSION_ZSTD)
 	var bytes := f.get_buffer(f.get_length())
