@@ -7,11 +7,11 @@ uniform sampler2D concrete_detail : filter_linear_mipmap_anisotropic, repeat_ena
 uniform sampler2D concrete_detail_normal : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D grass_detail : filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D grass_detail_normal : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
-uniform float asphalt_detail_m = 1.28;
-uniform float concrete_detail_m = 1.04;
-uniform float grass_detail_m = 1.6;
-uniform float detail_near_m = 0.018; // metres a pixel: fully shown below, gone above detail_far_m
-uniform float detail_far_m = 0.064;
+uniform float asphalt_detail_m; // metres a repeat of each detail map covers (data/render/materials.json road.params)
+uniform float concrete_detail_m;
+uniform float grass_detail_m;
+uniform float detail_near_m; // metres a pixel: fully shown below, gone above detail_far_m
+uniform float detail_far_m;
 
 #include "res://render/shaders/detail_pair.gdshaderinc"
 

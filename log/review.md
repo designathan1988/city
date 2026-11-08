@@ -3601,6 +3601,25 @@ photos' town is 20 tiles: a view that reaches past 5120 m changes there and nowh
 the town looking at the ground 6.5 km east and at the corner 5.2 km out on both axes: HEAD draws the wall's rock smeared over
 the land there, two planes meeting at the corner; the fix draws the grass that stands there.
 
+### 6.61 B2, C14 and C16 (the streets): the road's look in materials.json, the lamp's pool shared (2026-11-08)
+
+**Cause and fix.** The road shader and its includes held their look as bare numbers or as uniform defaults (road_body 49,
+road_wear 29, wear 25, lamp_pool 12, road_detail 5): the close-up detail of each surface, the asphalt's blotches, the roughness
+of asphalt, paint, kerb and verge, the pavers' and cobbles' joints, concrete's tone, the normal maps' fade, the far level's lane
+lines, the bands of wear by the kerb, the lanes' tracks and oil, the footway's grime and damp, rubber, potholes, cracks and stains.
+They are `materials.json` `road.params`; the guards, the byte top, the top-face test and the channel average are named consts.
+The defaults data or the core always set (the maps' scales and normals, the pavers, cobbles and pool, the plate's blend, the wear
+field's cell, the detail scales) are gone.
+
+`lamp_pool`'s fall of a lamp's pool (the 4.0's lightLevels.ts) is read by the road and by `building_wash`: its stops are the
+`_shared` set `lamp_pool` both rows use, its spans worked out from them (`0.7 - 0.35` is the float `0.35` is, `1.0 - 0.7` the
+float `0.3`).
+
+**Proof.** Each include with the moved params and consts put back is HEAD's code line for line; `road_body` too, but where HEAD
+swizzled its default vectors (`vec3(0.7, 0.8, 0.6).x`) against the same number from data. `quick`: every test passes, the four photos byte-equal to known states.
+
+**What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56).
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

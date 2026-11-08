@@ -1,7 +1,7 @@
 {
  "_doc": "Materials the native renderers draw with, by name (native/src/render/render_context.h). pool_gain 0.2115 (lamp_glow; the road's is its own, 0.9): the Roadcraft 4.0's pool, opacity 0.32 of a #ffe2c4 light, times daylight.json sky_gain 0.661, which carries a colour drawn without light from three.js's tone chain into this game's; computed and not fitted to a picture. Colours as '#rrggbb', textures as res:// paths. prop lens_roughness and lens_ior: the signal lens, polished polycarbonate (Physically Based database, physicallybased.info, 'Plastic (PC)': roughness 0, index of refraction 1.5848 from refractiveindex.info). Vegetation wind (_shared gust and sway; vegetation.gdshaderinc; its speed and direction are shader globals, not material values): sway_per_ms2 = top bend per (m/s)^2 from Peltola et al. 1993 (crown-centre bending under 5 cm on a 13.5 m pine at 8 m/s: 0.0037 of the height, times (1/0.6)^2 to the top, over 64); gust_m = 22 x 10 m (Kaimal et al. 1972 spectral peak n z / U = 1/22); turbulence = 1 / ln(10 m / 0.05 m) (EN 1991-1-4 eq. 4.7, terrain category II); sway_hz = natural frequency of leafy trees of 8-15 m, 0.2-0.3 Hz (Jackson et al. 2019). vegetation_cards cover_per_mip 0.25: alpha rescaled by mip level so a card keeps its coverage far away (Golus 2017, Anti-aliased Alpha Test: The Esoteric Alpha To Coverage). vegetation roughness 0.8: modelling choice for matte leaves, no published value.",
  "_shared": {
-  "_doc": "Parameter sets several materials read alike, laid under a material's own params by its uses (render/world_materials.gd params): finishes, the building finishes' maps and scales (building, building_parts); glass, the near levels' glass (building, building_glass; building_glass_set.gdshaderinc declares it and sky_in_glass); sky_in_glass, the sky every level's glass shows (building, building_glass, building_far); gust and sway, the vegetation wind (vegetation, cover_plant, vegetation_cards); stone, a still, rough cover (cover_rock, cover_shore).",
+  "_doc": "Parameter sets several materials read alike, laid under a material's own params by its uses (render/world_materials.gd params): finishes, the building finishes' maps and scales (building, building_parts); glass, the near levels' glass (building, building_glass; building_glass_set.gdshaderinc declares it and sky_in_glass); sky_in_glass, the sky every level's glass shows (building, building_glass, building_far); lamp_pool, the fall of a street lamp's pool, the 4.0's lightLevels.ts (road, building_wash: lamp_pool.gdshaderinc); gust and sway, the vegetation wind (vegetation, cover_plant, vegetation_cards); stone, a still, rough cover (cover_rock, cover_shore).",
   "finishes": {
    "noise_lattice": "res://assets/noise/lattice.png",
    "finish_map": "res://assets/surfaces/building-finishes.map.png",
@@ -13,6 +13,7 @@
   },
   "glass": { "glass_reflect": 0.04, "glass_sky_floor": 0.0, "window_glow": 0.62, "dark_glass": 0.64 },
   "sky_in_glass": { "glass_sky": "#7f95ad" },
+  "lamp_pool": { "pool_stops": [0.35, 0.55, 0.7, 0.15] },
   "gust": { "gust_m": 220.0 },
   "sway": { "sway_per_ms2": 0.000161, "turbulence": 0.189, "sway_hz": 0.25 },
   "stone": { "sway_per_ms2": 0.0, "turbulence": 0.0, "sway_hz": 0.0, "roughness": 0.94, "leaf_specular": 0.5 }
@@ -20,6 +21,8 @@
  "verge": { "shader": "res://render/shaders/verge.gdshader", "params": {} },
  "road": {
   "fade_shader": "res://render/shaders/road_far.gdshader",
+  "_doc": "The streets' surfaces (render/shaders/road_body.gdshaderinc): each map's scale and normal strength, the close-up detail of each surface, pavers, cobbles, the lamps' pools, and the look the shader worked out by hand (blotches, roughness, joints, the far level's lines; the wear bands by the kerb, the lanes' tracks and the footway's grime, road_wear.gdshaderinc; what wear does, wear.gdshaderinc), by eye as the 4.0's streets; each vector's parts are said at its uniform.",
+  "uses": ["lamp_pool"],
   "shader": "res://render/shaders/road.gdshader",
   "params": {
    "asphalt_map": "res://assets/surfaces/asphalt.map.png",
@@ -55,7 +58,39 @@
    "pool_color": "#ffe2c4",
    "pool_gain": 0.9,
    "plate_glow": 0.3,
-   "pool_along_m": 11.5
+   "pool_along_m": 11.5,
+   "detail_asphalt": [0.6, 0.65, 1.6],
+   "detail_footway": [0.7, 0.8, 0.6],
+   "detail_kerb": [0.55, 0.7, 0.8],
+   "detail_verge": [1.0, 1.2, 2.0],
+   "blotch_look": [0.08, 0.12],
+   "lane_grain_scale": 2.7,
+   "road_rough": [0.92, 0.62, 0.82, 0.95],
+   "paver_joint": [0.3, 0.016],
+   "cobble_look": [0.18, 0.4, 0.9, 0.2],
+   "concrete_look": [0.94, 0.12],
+   "joint_fade": [0.05, 0.25],
+   "bend_fade": [0.02, 0.5],
+   "far_line": [0.12, 0.6, 0.78],
+   "wear_grain": [0.6, 0.8],
+   "gutter_band": [0.05, 0.65],
+   "gutter_look": [0.3, 0.6],
+   "gutter_tint": [1.06, 0.99, 0.9],
+   "lane_tracks": [0.85, 0.3, 0.32],
+   "track_look": [0.11, 0.14, 0.7, 0.6],
+   "kerb_band": [0.1, 0.6],
+   "lot_band": 0.55,
+   "walk_band": [0.22, 0.3],
+   "footway_look": [0.2, 0.24, 0.07, 0.4],
+   "lot_tint": [0.9, 1.0, 0.86],
+   "rubber_look": [0.38, 0.8],
+   "pothole_look": [0.55, 1.0, 0.632, 0.812],
+   "pothole_dark": [0.06, 0.06, 0.065],
+   "pothole_more": [0.45, 0.9],
+   "crack_look": [0.3, 0.9, 0.47, 0.5],
+   "crack_more": [1.7, 0.3],
+   "stain_look": [0.9, 0.6, 0.4, 0.8],
+   "stain_tint": [0.62, 0.6, 0.55]
   }
  },
  "building": {
@@ -129,6 +164,7 @@
   }
  },
  "building_wash": {
+  "uses": ["lamp_pool"],
   "shader": "res://render/shaders/building_wash.gdshader",
   "params": {
    "display_colour": "#e4d3b3",
