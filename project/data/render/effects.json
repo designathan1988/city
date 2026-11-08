@@ -26,6 +26,6 @@
  "geyser": { "seconds": 45, "fade_s": 6.0, "jet_hz": 110, "size_m": 0.8 },
  "blood": { "max_decals": 400, "pool_spread_s": 6.0, "pool_size_m": 1.1, "splat_m": 0.6, "drop_m": 0.3 },
  "paper": { "count": 120, "size_m": 0.35, "life_s": 22.0, "spread_m": 8.0 },
- "down": { "dust_count": 60, "dust_size_m": 5.0, "dust_life_s": 6.0, "dust_spread_m": 10.0, "body_life_s": 90.0, "push_ms": 9.0, "lift_ms": 3.5, "tracer_life_s": 0.12, "tracer_m": 0.03, "flash_m": 0.5, "body_lead_s": 0.5 },
+ "down": { "dust_count": 60, "dust_size_m": 5.0, "dust_life_s": 6.0, "dust_spread_m": 10.0, "body_life_s": 90.0, "push_ms": 9.0, "lift_ms": 3.5, "tracer_life_s": 0.12, "tracer_m": 0.03, "flash_m": 0.5 },
  "tints": { "asphalt": "#2b2b2d", "concrete": "#9a968e", "earth": "#5b4632", "brick": "#8a4a35", "glass": "#9fb8c4", "wood": "#5f4830", "metal": "#2a2d31", "char": "#1c1a19", "leaf": "#3d6b2a", "paint": "#737378", "dirt": "#6e6357" }
 }

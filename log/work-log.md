@@ -899,3 +899,17 @@ responsibility (the blast; what it leaves and the gore, `effect_params_aftermath
 stands every one again (and the state hash); `bomb_street_plan.json` plants the same grove and shows stumps, burning trunks and leaves
 inside the reach and the grove standing past it; `strike_test`, `bomb_street`, `bomb_gore`, `shoot_test`, `edit_fuzz_test`,
 `save_undo_test` pass.
+
+## 2026-11-08 11:05: a body knocked down gets up by the simulation's clock (English)
+**Problem:** paused, a body knocked down got up and went, and its walker came back only some time after the game ran again.
+**Cause:** the body's seconds ran on the effects' clock (`body_renderer.cpp` `update`: `b.left -= dt`, the wall clock), while the
+walker stays down by the simulation's (`down_until`, `traffic_system.cpp` leaves it out of the publication): two clocks for one
+state; `effects.json` `body_lead_s` covered the gap at normal speed only (a patch, removed).
+**Design:** the pose frame carries the simulated second of its publication (`PoseFrame::sim_s`) and every damage event the second
+it happened (`DamageEvent::sim_s`, stamped by `emit_damage_event`, its one owner). A knocked body gets up when the simulation stands
+its walker again (`BodySpec::up_s` = the event's second + its lie): its seconds left are `up_s` less the newest publication's
+second, so paused it lies on, at any speed it gets up with the walker, and it is gone the frame the walker is drawn again. Its fall
+stays an effect on the effects' clock, as the debris'.
+**Checks:** `shoot_test` `_rises`: 60 frames paused leave the knocked body's seconds unchanged (`damage_probe.bodies_rising_left`;
+the old clock lost them every frame), then the ticks of the longest lie bring the walker back and the body goes; `strike_test`,
+`edit_fuzz_test` pass.

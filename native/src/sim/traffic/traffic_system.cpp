@@ -212,6 +212,7 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 	publish_parked(s, f);
 	for (int i = 0; i < POSE_TRAIL; i++) f.stamp_ns[i] = t.stamp_ns[i];
 	f.period_ns = int64_t(NS_PER_S / double(s.catalog.tune.sim_tick_hz));
+	f.sim_s = t.time;
 	s.poses.publish();
 	view_end(s, view);
 	t.step_ms[STAGE_PUBLISH] += lap.lap();

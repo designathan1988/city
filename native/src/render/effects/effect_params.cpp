@@ -163,7 +163,6 @@ void EffectParams::load_things(const Dictionary &t, PackedStringArray &errors) {
 	tracer_life = down.num("tracer_life_s");
 	tracer_m = down.num("tracer_m");
 	flash_m = down.num("flash_m");
-	body_lead = down.num("body_lead_s");
 }
 
 } // namespace city

@@ -104,6 +104,7 @@ public:
 	uint32_t ruin_digest(uint32_t seed) const { return effects_.ruin_digest(seed); }
 	int bodies() const { return effects_.bodies(); }
 	int bodies_moving() const { return effects_.bodies_moving(); }
+	float bodies_rising_left() const { return effects_.bodies_rising_left(); }
 	int effect_pieces() const { return effects_.pieces(); }
 	int heave_pieces() const { return effects_.heave_pieces(); } // the ground the craters heaved
 	int wires_down() const { return effects_.wires_down(); } // the wires a blow tore loose

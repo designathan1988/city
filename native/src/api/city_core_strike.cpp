@@ -55,6 +55,7 @@ Dictionary CityCore::damage_probe() const {
 	d["gore_chains"] = render_.gore_chains();
 	d["gore_bones"] = render_.gore_bones();
 	d["bodies"] = render_.bodies();
+	d["bodies_rising_left"] = render_.bodies_rising_left(); // seconds before the last knocked down stands, by the simulation's clock
 	d["body_places"] = render_.body_places();
 	d["blood_marks"] = render_.blood_marks();
 	d["events"] = int64_t(state_->log.damage_events.size()); // not yet played: no render, as in a test with no view, leaves them here

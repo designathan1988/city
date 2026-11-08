@@ -19,8 +19,8 @@ namespace city {
 
 struct BodySpec {
 	godot::Vector3 at, velocity, tip; // at: the feet; tip: Ragdoll::begin
-	float heading = 0, scatter = 0, life_s = 0; // radians; m/s between its joints; seconds it stays
-	bool rises = false; // gets up at the end of them, to where it stood: the walker goes on from there
+	float heading = 0, scatter = 0, life_s = 0; // radians; m/s between its joints; seconds it stays (one that rises: it lies)
+	double up_s = -1; // one that rises: the simulated second its walker stands again (PoseFrame::sim_s), where it got up to; none below 0
 	std::vector<BodyWall> walls; // of the buildings around it
 	int variation = 0;
 	uint32_t lost = 0; // parts gone, a bit each (ragdoll.h order)
@@ -46,7 +46,9 @@ public:
 	godot::PackedVector3Array places() const; // where each body's pelvis lies now (a probe)
 	int gore_bones() const { return gore_.bones(); }
 	void update(float dt, const Ragdoll::Ground &ground);
+	void sim_now(double sim_s) { sim_s_ = sim_s; } // the newest pose publication's simulated second (PoseFrame::sim_s)
 	int count() const { return int(bodies_.size()); }
+	float rising_left() const; // the most seconds left to a body knocked down before its walker stands again; -1 with none
 	int moving() const;
 
 private:
@@ -56,6 +58,7 @@ private:
 		godot::Transform3D stood[RAGDOLL_PARTS]; // the parts' frames, inverted, as it stood
 		float left = 0, floor = 0; // the pavement it stood on: the ground under a street lies lower
 		float rise_s = 0; // how long it takes to get up, 0 when it does not
+		double up_s = -1; // BodySpec::up_s: its seconds left are the simulation's, never the effects' clock
 		godot::Transform3D stands; // where it gets up to
 		std::vector<godot::Transform3D> lying; // each bone when it began to
 		int variation = 0, slot = 0;
@@ -82,6 +85,7 @@ private:
 	static constexpr uint64_t BODIES_STREAM = 0xb0d1e5ULL; // the bodies' own stream
 	Rng rng_{ BODIES_STREAM };
 	float clock_ = 0;
+	double sim_s_ = 0; // the newest publication's simulated second (sim_now)
 	int bones_ = 0, idle_clip_ = 0, crouch_clip_ = 0, up_clip_ = 0;
 	bool rows_dirty_ = false, layers_dirty_ = false;
 };

@@ -59,6 +59,7 @@ public:
 	std::vector<int64_t> take_repaint() { return ruins_.take_repaint(); }
 	int bodies() const { return people_ ? people_->bodies().count() : 0; }
 	int bodies_moving() const { return people_ ? people_->bodies().moving() : 0; }
+	float bodies_rising_left() const { return people_ ? people_->bodies().rising_left() : -1.f; }
 	int ruin_pieces_flying() const { return ruins_.flying(); }
 	uint32_t ruin_digest(uint32_t seed) const { return ruins_.digest(seed); }
 	int blood_marks() const { return marks_.blood(); }

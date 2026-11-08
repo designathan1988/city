@@ -82,9 +82,6 @@ O que falta fazer, por área.
   same camera): flame about 8% paler (ACES), crater about 30% darker; the ring now races to 2.4 fireball radii as the 4.0's; the
   visible crater disc about 22.5 m at force 45, the physical hole 15.9 m at 45 and 3.7 m at 5 (the 4.0's law is linear in the
   force, this game's follows the cube root of the charge); smoke, dust and blood through the inverse of ACES, flame and spark not.
-- A body knocked down rises on the effects' clock, which runs while the game stands paused, while the simulation keeps the walker
-  down by its own clock: paused, the body gets up and goes, and the walker is drawn again only some time after the game runs again
-  (found by the gore photos, 2026-11-08).
 - The frozen photos are not the same between two runs of the same code: 55 pixels of a tree's crown in 02-rua and six at a wire in
   03-rua_noite (found by the gore round; `photos_check` fails on them, the goldens cannot hold them).
 - `agent_renderer.cpp` (384 lines, max 350) and its `update` (93, max 90) were over the limits before the gore round, which added the

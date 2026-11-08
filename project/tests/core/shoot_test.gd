@@ -31,6 +31,8 @@ const RISE_FORCE := 3
 const RISE_KPA := 130.0
 const RISE_TRIES := 8
 const RISE_LOOK_FRAMES := 20
+const PAUSED_FRAMES := 60 # frames drawn with the clock stopped: a body knocked down keeps every second it has left
+const RISE_SPARE_TICKS := 2 # past the longest lie: the publication that holds the walker standing again
 const SLOT := "shoot_test_slot"
 
 
@@ -132,23 +134,34 @@ func _fallen() -> void:
 	await _rises()
 
 
-## Somebody knocked over by a small blast gets up: their body goes and they are walking again. Far enough off that nobody dies, and a drum goes one time in two: several tries.
+## Somebody knocked over by a small blast gets up when the simulation stands them again: with the clock stopped the body lies on,
+## losing none of its seconds; the ticks of the longest lie bring the walker back and the body goes. Far enough off that nobody
+## dies, and a drum goes one time in two: several tries.
 func _rises() -> void:
 	var off := 1.0
 	while CityStore.query(&"blast_probe", [float(RISE_FORCE), off]).pressure_kpa > RISE_KPA:
 		off += 0.5
+	var people: Dictionary = DataTables.catalog_table("blast").people
+	var lie_ticks := ceili((float(people.knock_min_s) + float(people.knock_span_s)) * float(DataTables.tuning("sim_tick_hz"))) + RISE_SPARE_TICKS
 	var risen := 0
 	var found: Array = _alone(CityStore.query(&"shot_targets", [LIMIT]).walkers)
 	for who: Dictionary in found.slice(0, RISE_TRIES):
 		var before: int = CityStore.query(&"effects_bodies")
 		CityStore.dispatch(&"strike", [who.position + Vector3(off, 0, 0), RISE_FORCE])
 		var most := before
-		for f in BODY_FRAMES:
-			most = maxi(most, CityStore.query(&"effects_bodies"))
-			if f > RISE_LOOK_FRAMES and most == before or most > before and CityStore.query(&"effects_bodies") <= before:
-				break
+		for f in RISE_LOOK_FRAMES:
 			await get_tree().process_frame
-		risen += most - CityStore.query(&"effects_bodies")
+			most = maxi(most, CityStore.query(&"effects_bodies"))
+		var left: float = CityStore.query(&"damage_probe").bodies_rising_left
+		if most > before and left > 0.0: # somebody only knocked down (a body that gets up): the others of a try stay down
+			for f in PAUSED_FRAMES:
+				await get_tree().process_frame
+			var still: Dictionary = CityStore.query(&"damage_probe")
+			check(still.bodies_rising_left == left and still.bodies == most, "paused, who fell lies on (%.2f s left, then %.2f)" % [left, still.bodies_rising_left])
+			ticks(lie_ticks)
+			for f in RISE_LOOK_FRAMES:
+				await get_tree().process_frame
+			risen += most - CityStore.query(&"effects_bodies")
 		CityStore.dispatch(&"undo")
 		if risen > 0:
 			break

@@ -96,6 +96,7 @@ struct PoseFrame {
 	const SignalRecord *signal(uint32_t ds) const { return find_signal(signals, ds); }
 	int64_t stamp_ns[POSE_TRAIL] = {}; // scheduled times of the last publications (oldest first; 0: none yet)
 	int64_t period_ns = 0; // tick period
+	double sim_s = 0; // the simulated second of the newest publication: what the bodies knocked down get up by (body_renderer.h)
 	// The pair that holds `when` (ns, the render's clock less its delay), clamped to the trail's ends.
 	PoseSample sample(int64_t when) const {
 		PoseSample out;

@@ -111,6 +111,7 @@ void PeopleRenderer::seat(uint64_t key, const Pose &vehicle, const SeatSpot &spo
 }
 
 int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCull &view, const PoseSample &at, float radius, const TakenAgents &taken) {
+	bodies_.sim_now(f.sim_s);
 	if (draws_.empty()) return 0;
 	const float r2 = radius * radius;
 	const int nv = int(asset_.variations.size()), lods = asset_.lods, levels = lods + 1;

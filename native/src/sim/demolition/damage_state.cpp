@@ -15,6 +15,7 @@ constexpr size_t EVENT_CAP = 8192; // events kept when nothing drains them (a he
 
 void emit_damage_event(CityState &s, DamageEvent e) {
 	e.published = s.traffic.stamp_ns[POSE_TRAIL - 1];
+	e.sim_s = s.traffic.time;
 	if (s.log.damage_events.size() < EVENT_CAP) s.log.damage_events.push_back(e);
 }
 

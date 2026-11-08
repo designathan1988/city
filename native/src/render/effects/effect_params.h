@@ -153,7 +153,7 @@ struct EffectParams {
 	float paper_size = 0, paper_life = 0, paper_spread = 0;
 	int down_dust_count = 0;
 	float down_dust_size = 0, down_dust_life = 0, down_dust_spread = 0;
-	float body_life = 0, push_ms = 0, lift_ms = 0, tracer_life = 0, tracer_m = 0, flash_m = 0, body_lead = 0; // bodies, tracers and the muzzle
+	float body_life = 0, push_ms = 0, lift_ms = 0, tracer_life = 0, tracer_m = 0, flash_m = 0; // bodies, tracers and the muzzle
 
 	bool load(const godot::Dictionary &t, const godot::Dictionary &aftermath, const godot::Dictionary &gore_table, godot::PackedStringArray &errors);
 

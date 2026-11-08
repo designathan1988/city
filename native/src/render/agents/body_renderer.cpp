@@ -117,7 +117,10 @@ void BodyRenderer::add(const BodySpec &spec) {
 	if (spec.guts > 0) gore_.spill(b.slot, Ragdoll::BELLY, b.doll.belly(), spec.guts_kick);
 	if (spec.guts > 1) gore_.spill(b.slot, Ragdoll::PELVIS, b.doll.pelvis(), spec.second_kick);
 	b.stands = stands;
-	if (spec.rises) b.rise_s = std::min(GET_UP_S, spec.life_s * RISE_SHARE_MOST);
+	if (spec.up_s >= 0) {
+		b.up_s = spec.up_s;
+		b.rise_s = std::min(GET_UP_S, spec.life_s * RISE_SHARE_MOST);
+	}
 	b.doll.frames(b.stood);
 	for (Transform3D &t : b.stood) t = t.affine_inverse();
 	pose(b);
@@ -210,7 +213,8 @@ void BodyRenderer::update(float dt, const Ragdoll::Ground &ground) {
 	const int steps = int(clock_ / STEP_S);
 	clock_ -= float(steps) * STEP_S;
 	for (Body &b : bodies_) {
-		b.left -= dt;
+		// one knocked down lies while the simulation keeps its walker down: paused, it lies on; it is gone the frame its walker is drawn again
+		b.left = b.up_s >= 0 ? float(b.up_s - sim_s_) : b.left - dt;
 		if (b.left <= b.rise_s && b.rise_s > 0.f) {
 			rise(b);
 			continue;
@@ -250,6 +254,13 @@ PackedVector3Array BodyRenderer::places() const {
 	PackedVector3Array out;
 	for (const Body &b : bodies_) out.push_back(b.doll.pelvis());
 	return out;
+}
+
+float BodyRenderer::rising_left() const {
+	float most = -1.f;
+	for (const Body &b : bodies_)
+		if (b.up_s >= 0) most = std::max(most, b.left);
+	return most;
 }
 
 int BodyRenderer::moving() const {

@@ -65,8 +65,9 @@ void EffectWorld::body(const DamageEvent &e, const CityState &s) {
 	const float pl = std::hypot(px, pz);
 	if (pl > NO_PUSH_BELOW_M) { px /= pl; pz /= pl; } else { px = std::cos(e.a); pz = std::sin(e.a); }
 	const float power = bled ? 0.f : e.d * (kind == CAS_TORN ? TORN_PUSH : 1.f);
-	// Someone knocked down gets up when the simulation says; the effects clock runs a little late, so the body goes a moment early.
-	const float life = kind == CAS_KNOCKED && e.dx > 0.f ? std::max(LEAST_LIFE_S, std::min(e.dx, params_.body_life) - params_.body_lead) : params_.body_life;
+	// Someone knocked down gets up when the simulation stands its walker again (dx of its seconds after the blow), by its clock.
+	const bool rises = kind == CAS_KNOCKED && e.dx > 0.f;
+	const float life = rises ? std::max(LEAST_LIFE_S, e.dx) : params_.body_life;
 	const GoreLook &g = params_.gore;
 	if (people_) {
 		BodySpec b;
@@ -78,7 +79,7 @@ void EffectWorld::body(const DamageEvent &e, const CityState &s) {
 		b.life_s = life;
 		b.charred = charred;
 		b.lost = parts_gone(lost | severed);
-		b.rises = kind == CAS_KNOCKED;
+		b.up_s = rises ? e.sim_s + double(e.dx) : -1.0;
 		b.walls = walls_near(s, e.x, e.z, WALLS_REACH_M);
 		b.variation = people_->variation_of(e.u, cas_age_of(e.v)); // the age the walker had (damage_event.h)
 		// Now and then the bone shows at a cut: out of the stump, out of the piece, or both (one draw for the two).
@@ -101,7 +102,7 @@ void EffectWorld::body(const DamageEvent &e, const CityState &s) {
 			if ((severed >> k & 1u) == 0) continue;
 			BodySpec piece = b;
 			piece.piece = Ragdoll::parts_of(RagdollLimb(k));
-			piece.rises = false;
+			piece.up_s = -1.0;
 			piece.guts = 0;
 			piece.bones.clear();
 			piece.tip = Vector3();
