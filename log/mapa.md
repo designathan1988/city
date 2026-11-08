@@ -395,6 +395,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `project/render/daylight.gd` · `project/render/daylight_rig.gd` — dia/noite; as luzes do dia feitas uma vez (sol com sombras, luzes planas do céu e do chão)
 - `project/render/transit_overlay.gd` — o plano do transporte sobre o mapa com a ferramenta ligada
 - `project/game/tools/pole_tool.gd` · `project/game/tools/barrier_tool.gd` · `project/game/tools/streetscape_tool.gd` · `project/render/sign_sheet.gd` — postes com prévia 3D; muros ponto a ponto; peças da rua, fileira e placa que vira regra; folhas das placas: pinta as células pedidas pelo núcleo num viewport e passa a foto à camada do Texture2DArray lido pelo material prop
+- `project/render/cloud_puffs.gd` — the clouds' puffs atmosphere.gdshader reads: each cloud's lobes shaped once a sky revision and laid where the wind and the view put it, the hash that jitters them
 - `project/render/sky_view.gd` · `project/render/thunder.gd` · `project/render/weather_view.gd` — céu desenhado: nuvens levadas pelo vento, globais do vento e tempo fechado; trovão; chuva e raios
 - `project/render/shore_view.gd` — entrega ao terreno os níveis da água ao lado da terra
 - `project/render/element_effects.gd` — emissores dos efeitos do pincel de elementos

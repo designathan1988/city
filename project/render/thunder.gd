@@ -5,7 +5,7 @@ extends Node
 
 const BOLT_LANE := &"Thunder"
 const PCM_BYTES := 2
-const PCM_TOP := 32767.0
+const PCM_TOP := 32767.0 # a 16-bit PCM sample's top
 
 var _d: Dictionary
 var _player: AudioStreamPlayer

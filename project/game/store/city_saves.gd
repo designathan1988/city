@@ -5,7 +5,7 @@
 class_name CitySaves
 extends RefCounted
 
-const SAVE_WAIT_MS := 10
+const SAVE_WAIT_MS := 10 # between two looks at whether the save's thread is done
 
 var _store: Node
 var _core: Node3D

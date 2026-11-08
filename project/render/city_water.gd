@@ -5,7 +5,7 @@ extends MeshInstance3D
 
 const WATER_SHADER := "res://render/shaders/water.gdshader"
 const PLAIN_SHADER := "res://render/shaders/water_plain.gdshader"
-const WATER_EXTENT_M := 70000.0
+const WATER_EXTENT_M := 70000.0 # past any map and its horizon: the sea's plane
 
 var own: ShaderMaterial # the lakes and rivers of the core (render/water) wear it too
 

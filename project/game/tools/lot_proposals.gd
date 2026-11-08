@@ -2,8 +2,8 @@
 class_name LotProposals
 extends RefCounted
 
-const UNREAD := Vector2i(1 << 30, 0)
-const SHOWN_M := 0.1
+const UNREAD := Vector2i(1 << 30, 0) # a cell no map reaches: nothing read yet
+const SHOWN_M := 0.1 # a lot's size is told to the decimetre
 
 var _rings: Array = []
 var _flat: Array[PackedVector2Array] = [] # each ring on the ground plane, made once a cell is read

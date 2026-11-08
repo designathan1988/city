@@ -5,15 +5,15 @@
 class_name ReferenceModel
 extends Node3D
 
-const PX_PER_M := 8.0
-const PICTURE_CAP := 2048.0
-const PICTURE_FLOOR := 8
-const OPACITY_GRAIN := 0.1
-const LEAST_OPACITY := 0.1
+static var PX_PER_M: float = DataTables.game("tools").reference_model.px_per_m # data/game/tools.json reference_model
+static var PICTURE_CAP: float = DataTables.game("tools").reference_model.picture_cap_px
+static var PICTURE_FLOOR: int = int(DataTables.game("tools").reference_model.picture_floor_px)
+static var OPACITY_GRAIN: float = DataTables.game("tools").reference_model.opacity_grain
+static var LEAST_OPACITY: float = DataTables.game("tools").reference_model.least_opacity
 const QUARTER := PI / 2.0
-const REACH_PAD_M := 10.0
+static var REACH_PAD_M: float = DataTables.game("tools").reference_model.reach_pad_m
 const DRAWN_FRAMES := 2
-const OPAQUE := 0.999
+const OPAQUE := 0.999 # an opacity this near one is drawn opaque (no blending)
 ## Where each picture looks from: front (plan -y), right, back, left and above, in Godot's axes.
 const SIDES: Array[Vector3] = [Vector3.BACK, Vector3.RIGHT, Vector3.FORWARD, Vector3.LEFT, Vector3.UP]
 

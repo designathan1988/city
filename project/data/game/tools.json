@@ -7,7 +7,10 @@
   "most_steps": 12
  },
  "handle": {
-  "turn_steps": 24
+  "turn_steps": 24,
+  "arrow_back": 0.6,
+  "chevron": 0.7,
+  "_doc": " arrow_back: an arrow's barbs reach back this share of its length; chevron: the roof's chevron this share of its width (render/handle_marks.gd)."
  },
  "building": {
   "turn_steps": 4
@@ -31,5 +34,50 @@
   "dab_spacing": 0.5,
   "most_dabs": 400,
   "default_zone": "residential"
+ },
+ "inspector": {
+  "_doc": "The Inspector's road panel (ui/road_panel.gd): an end raised by raise_by_m; a curve's depth between curve_least_m and curve_most_m, at most curve_share of the road's length, straight under curve_straight_m, stepped by curve_step_m; where along it the curve stands, from curve_from to curve_to in steps of at_step.",
+  "raise_by_m": 0.5,
+  "curve_least_m": 20.0,
+  "curve_most_m": 280.0,
+  "curve_share": 0.65,
+  "curve_straight_m": 0.5,
+  "curve_step_m": 1.0,
+  "curve_from": 0.15,
+  "curve_to": 0.85,
+  "at_step": 0.01
+ },
+ "profile_editor": {
+  "_doc": "The road profile editor (ui/road_profile_panel.gd): an element widened by widen_by_m; the speed limit stepped by pace_by_kmh between speed_least_kmh and speed_most_kmh.",
+  "widen_by_m": 0.5,
+  "pace_by_kmh": 10.0,
+  "speed_least_kmh": 10.0,
+  "speed_most_kmh": 130.0
+ },
+ "split": {
+  "_doc": "The split tool (game/tools/split_tool.gd): the mark where a road will be cut is mark_share of its half width.",
+  "mark_share": 0.6
+ },
+ "model_studio": {
+  "_doc": "The Models shelf's studio (render/model_studio.gd), by eye: a picture picture_px square, the body framed with frame_margin round it, the camera camera_reach_m out; the sun at light_angles_deg (x, y, z degrees) with light_gain, the ambient ambient_energy.",
+  "picture_px": 128,
+  "frame_margin": 1.12,
+  "camera_reach_m": 600.0,
+  "light_angles_deg": [
+   -48.0,
+   35.0,
+   0.0
+  ],
+  "light_gain": 1.1,
+  "ambient_energy": 0.55
+ },
+ "reference_model": {
+  "_doc": "A reference 3D model over the city (render/reference_model.gd): its pictures px_per_m pixels a metre, at most picture_cap_px and at least picture_floor_px a side, read reach_pad_m past its box; its opacity stepped by opacity_grain, never under least_opacity.",
+  "px_per_m": 8.0,
+  "picture_cap_px": 2048.0,
+  "picture_floor_px": 8,
+  "reach_pad_m": 10.0,
+  "opacity_grain": 0.1,
+  "least_opacity": 0.1
  }
 }

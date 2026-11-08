@@ -8,10 +8,10 @@ signal applied(index: int, street: bool) # the road the Inspector has picked
 signal saved
 signal closed
 
-const WIDEN_BY_M := 0.5
-const PACE_BY := 10.0
-const SPEED_LEAST := 10.0
-const SPEED_MOST := 130.0
+static var WIDEN_BY_M: float = DataTables.game("tools").profile_editor.widen_by_m # data/game/tools.json profile_editor
+static var PACE_BY: float = DataTables.game("tools").profile_editor.pace_by_kmh
+static var SPEED_LEAST: float = DataTables.game("tools").profile_editor.speed_least_kmh
+static var SPEED_MOST: float = DataTables.game("tools").profile_editor.speed_most_kmh
 
 @export var edit := RoadSpecEdit.new()
 var _view: RoadSectionView

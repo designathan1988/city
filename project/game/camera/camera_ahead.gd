@@ -3,7 +3,7 @@
 class_name CameraAhead
 extends RefCounted
 
-const PARALLEL := 1e-6
+const PARALLEL := 1e-6 # a ray this near parallel to the ground never meets it
 
 var over := CameraDamp.new() # how far the whole view stands over the roof the point looked at is in
 var out := CameraDamp.new() # the share of the line of sight taken off to leave a building

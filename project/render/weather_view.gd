@@ -5,6 +5,7 @@ extends Node3D
 
 ## A bolt's channel: midpoint displacement generations of the main channel and of a branch.
 const MAIN_GENERATIONS := 7
+const STILL_WIND := 1e-6 # a wind this weak has no direction: the rain falls straight
 const BRANCH_GENERATIONS := 5
 const LEVEL_VIEW := 0.0015
 
@@ -113,7 +114,7 @@ func _advance(ground: Vector3, span: float, wind: Vector2, dt: float) -> void:
 	var scale: float = fall / _d.rain_fall_ms
 	var length := wind.length()
 	var across := minf(_d.rain_slant * fall, length * scale)
-	var k := across / length if length > 1e-6 else 0.0
+	var k := across / length if length > STILL_WIND else 0.0
 	var v := Vector3(wind.x * k, -fall, wind.y * k)
 	o += v * dt
 	_box = Vector3(side, tall, side)

@@ -3,10 +3,10 @@
 class_name HandleMarks
 extends Control
 
-const ARROW_BACK := 0.6
-const CHEVRON := 0.7
+static var ARROW_BACK: float = DataTables.game("tools").handle.arrow_back # data/game/tools.json handle
+static var CHEVRON: float = DataTables.game("tools").handle.chevron
 const FAR_ANGLE := 1.5 * PI
-const ARC_POINTS := 16
+const ARC_POINTS := 16 # chords of a turn handle's arc
 
 var handles: Array = []:
 	set(value):

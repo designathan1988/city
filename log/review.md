@@ -3420,6 +3420,25 @@ table's rows, the units, the sentinels and tolerances.
 
 **What changes.** Nothing: the hashes, the numbers and every photo the same.
 
+### 6.53 B2, C14 (the scripts): the interface's tunables in data/game/tools.json, the scripts' definitions sourced (2026-11-08)
+
+**Cause and fix.** The scripts held what one tunes in the interface beside their units and tolerances: the Inspector's road panel
+(how much a curve and a raise move, where a curve may stand), the profile editor's widening and speed steps, the split mark, the
+handles' arrow and chevron, the Models shelf studio's picture, frame, sun and ambient, a reference model's picture resolution and
+opacity steps. They went to data/game/tools.json, blocks `inspector`, `profile_editor`, `split`, `model_studio`, `reference_model`
+and the `handle` block's `arrow_back` and `chevron` (schema in step), read the way the tools already read it (`static var ... =
+DataTables.game("tools")...`). The sky's clouds hashed with bare numbers: they are named (xxHash's PRIME32_5 and PRIME32_4, an odd
+multiplier, two xorshifts, a word and its range), the sky's kilometre is the units' one, the rain's still wind is named. The
+definitions say what they are: the units, a frame's least time, the short hash, the compass points, the --shot wait (a developer's
+picture, not a test), the save thread's poll, the unread cell, the sea plane's extent, the chords of discs, arcs and caps, the
+clouds' slots and puffs (the shader's array sizes), a PCM sample's top, the vignette's side.
+
+`sky_view.gd` was over the scripts' limit before and the named hash made it more: the clouds' puffs (their shape per cloud, their
+laying where the wind and the view put them, the hash that jitters them, the arrays the shader reads) are a class of their own,
+`render/cloud_puffs.gd`, which the sky owns; the sky is under the limit.
+
+**What changes.** Nothing: the numbers and every photo the same.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

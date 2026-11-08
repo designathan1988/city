@@ -2,7 +2,7 @@
 ## generated from a random seed on entry.
 extends Node3D
 
-const SHOT_DELAY_S := 25.0
+const SHOT_DELAY_S := 25.0 # --shot: the city loaded and settled by then (a developer's picture, not a test: tests wait on states)
 const LIVE_DRIVER := "res://tests/visual/live_driver.gd"
 
 

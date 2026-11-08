@@ -4,17 +4,17 @@
 class_name RoadPanel
 extends RefCounted
 
-const RAISE_BY_M := 0.5
-const CURVE_LEAST_M := 20.0
-const CURVE_MOST_M := 280.0
-const CURVE_SHARE := 0.65 # of the road's length
-const CURVE_STRAIGHT_M := 0.5
-const CURVE_STEP_M := 1.0
-const CURVE_FROM := 0.15
-const CURVE_TO := 0.85
-const AT_STEP := 0.01
-const AT_MIDDLE := 0.5
-const JOINT_ARMS := 2
+static var RAISE_BY_M: float = DataTables.game("tools").inspector.raise_by_m # data/game/tools.json inspector
+static var CURVE_LEAST_M: float = DataTables.game("tools").inspector.curve_least_m
+static var CURVE_MOST_M: float = DataTables.game("tools").inspector.curve_most_m
+static var CURVE_SHARE: float = DataTables.game("tools").inspector.curve_share
+static var CURVE_STRAIGHT_M: float = DataTables.game("tools").inspector.curve_straight_m
+static var CURVE_STEP_M: float = DataTables.game("tools").inspector.curve_step_m
+static var CURVE_FROM: float = DataTables.game("tools").inspector.curve_from
+static var CURVE_TO: float = DataTables.game("tools").inspector.curve_to
+static var AT_STEP: float = DataTables.game("tools").inspector.at_step
+const AT_MIDDLE := 0.5 # a road's middle
+const JOINT_ARMS := 2 # a point joins two roads in line
 
 
 ## `changed`: the panel is read again.

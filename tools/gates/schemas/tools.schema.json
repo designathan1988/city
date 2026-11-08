@@ -30,12 +30,24 @@
   "handle": {
    "type": "object",
    "properties": {
+    "_doc": {
+     "type": "string"
+    },
     "turn_steps": {
      "type": "integer"
+    },
+    "arrow_back": {
+     "type": "number"
+    },
+    "chevron": {
+     "type": "number"
     }
    },
    "required": [
-    "turn_steps"
+    "_doc",
+    "turn_steps",
+    "arrow_back",
+    "chevron"
    ],
    "strict": true
   },
@@ -130,6 +142,175 @@
     "default_zone"
    ],
    "strict": true
+  },
+  "inspector": {
+   "type": "object",
+   "properties": {
+    "_doc": {
+     "type": "string"
+    },
+    "raise_by_m": {
+     "type": "number"
+    },
+    "curve_least_m": {
+     "type": "number"
+    },
+    "curve_most_m": {
+     "type": "number"
+    },
+    "curve_share": {
+     "type": "number"
+    },
+    "curve_straight_m": {
+     "type": "number"
+    },
+    "curve_step_m": {
+     "type": "number"
+    },
+    "curve_from": {
+     "type": "number"
+    },
+    "curve_to": {
+     "type": "number"
+    },
+    "at_step": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "_doc",
+    "raise_by_m",
+    "curve_least_m",
+    "curve_most_m",
+    "curve_share",
+    "curve_straight_m",
+    "curve_step_m",
+    "curve_from",
+    "curve_to",
+    "at_step"
+   ],
+   "strict": true
+  },
+  "profile_editor": {
+   "type": "object",
+   "properties": {
+    "_doc": {
+     "type": "string"
+    },
+    "widen_by_m": {
+     "type": "number"
+    },
+    "pace_by_kmh": {
+     "type": "number"
+    },
+    "speed_least_kmh": {
+     "type": "number"
+    },
+    "speed_most_kmh": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "_doc",
+    "widen_by_m",
+    "pace_by_kmh",
+    "speed_least_kmh",
+    "speed_most_kmh"
+   ],
+   "strict": true
+  },
+  "split": {
+   "type": "object",
+   "properties": {
+    "_doc": {
+     "type": "string"
+    },
+    "mark_share": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "_doc",
+    "mark_share"
+   ],
+   "strict": true
+  },
+  "model_studio": {
+   "type": "object",
+   "properties": {
+    "_doc": {
+     "type": "string"
+    },
+    "picture_px": {
+     "type": "integer"
+    },
+    "frame_margin": {
+     "type": "number"
+    },
+    "camera_reach_m": {
+     "type": "number"
+    },
+    "light_angles_deg": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 3,
+     "maxItems": 3
+    },
+    "light_gain": {
+     "type": "number"
+    },
+    "ambient_energy": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "_doc",
+    "picture_px",
+    "frame_margin",
+    "camera_reach_m",
+    "light_angles_deg",
+    "light_gain",
+    "ambient_energy"
+   ],
+   "strict": true
+  },
+  "reference_model": {
+   "type": "object",
+   "properties": {
+    "_doc": {
+     "type": "string"
+    },
+    "px_per_m": {
+     "type": "number"
+    },
+    "picture_cap_px": {
+     "type": "number"
+    },
+    "picture_floor_px": {
+     "type": "integer"
+    },
+    "reach_pad_m": {
+     "type": "number"
+    },
+    "opacity_grain": {
+     "type": "number"
+    },
+    "least_opacity": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "_doc",
+    "px_per_m",
+    "picture_cap_px",
+    "picture_floor_px",
+    "reach_pad_m",
+    "opacity_grain",
+    "least_opacity"
+   ],
+   "strict": true
   }
  },
  "required": [
@@ -142,7 +323,12 @@
   "lots",
   "roundabout",
   "terrain",
-  "zone"
+  "zone",
+  "inspector",
+  "profile_editor",
+  "split",
+  "model_studio",
+  "reference_model"
  ],
  "strict": true
 }
