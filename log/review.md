@@ -2927,6 +2927,40 @@ lock or read whole tables. Six rounds of the opening tests after it: none died.
 **Verified** (`city-verify`, `quick --all`, both DLLs, and the six save-opening tests six times): every test passes, the digest
 equal, the photos byte-equal to known states; `gates_changed` reports only what the files had.
 
+### 6.31 B2, C16 (first part): one owner for each of the tools' mechanisms (2026-11-08)
+
+**Causes and fixes.**
+- **A build freed the DLL it did not write** (found by the C12 runs): `free_dll.sh` moved every DLL aside, so the release build
+  took the debug DLL away while the tests keyed their inputs on it; it frees the DLLs it is named, `build.sh`'s one-DLL target
+  names its own (`f8a6c765`).
+- **The orchestrator re-read git after every task and sorted in quadratic steps** (`pool.py`): the snapshot keeps the index for a
+  run (a task writes files, it never stages them) and reads git status and the changed files' hashes again (`Snapshot.refresh`);
+  a task's users and the ready order are worked out in one pass each.
+- **Three git wrappers, one without a deadline**: `tasks.inputs.git` is the tools' one (deadline, no window, no optional locks)
+  and the gates' scope asks it.
+- **Two JSON Schema checkers** (`gate_data.py`, `tasks/schema.py`): `tasks/schema.py` holds both dialects (the suites' standard
+  keywords, the data tables' `strict`, `additional`, `pattern_prefix`, `unique_key`, and `pattern`, `maxItems`, `maximum`), and the
+  data gate asks it. The old checker never read `additionalProperties`, so nothing under a style, a builder tool or the road options
+  was checked: one colour, three tool keys and three road options the schemas did not name are named now.
+- **A generated table out of step with its generator** (T3): `make_furniture.py` read a `sizes` the interiors' table no longer
+  had at its top; it reads them under the style the game plays (`start.json` `default_style`), the table is its output again (two
+  palette rows had swapped places by hand), and `--check` is the quick suite's `furniture_table` task.
+- **The line limits drove splits of data tables** (T5): a table is one owner whatever its length, and the `.json` and `.csv` caps
+  could only split by size. They are gone from `max_lines`; the profiles are one `road_profiles.json` again (in the order the core
+  numbers them, the fragments' merge in `DataTables` gone), `land_elements` is `land_panels`' block again, and the text is one
+  `strings.csv`.
+- **`JOB_SEM_CHAVE` contradicted itself and failed twenty correct lines**: its pattern allowed `submit(JobKey{`, its check forbade any
+  `JobKey{` outside `job_pool.h`. With `JobLane` a key collides only when two producers share a lane, so `JOB_LANE_SHARED` (a
+  whole-repo rule, its passing and failing fixtures) reports a lane named by more than one file, and `JOB_SEM_CHAVE` reports a job
+  given a braced key with no type. The pool's probe keys its own pool on lanes of its own (`PROBE_*`).
+
+**Not here, and why.** The four C++ readers of the tools (the gates' lexers, `code_parse.py`, the analyzer's libclang and
+tree-sitter adapters) and the analyzer's own git and compiler calls are the analysis tools' rewrite, next. `bleed_alpha.py` and
+`calm_stone.py` edited 4.0 assets in place; their sources go with those assets in B4. The code files' line limits stay, read as
+"split by responsibility".
+
+**What changes.** Nothing in the game: the same profiles in the same order, the same panels, the same text, the same furniture.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

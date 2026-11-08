@@ -17,7 +17,8 @@ GIT_TIMEOUT_S = 120  # one git listing or hashing call; a git that hangs is an e
 GITLINK = "160000"  # a submodule entry: a commit id, not a file
 
 
-def _git(root: Path, *args: str, stdin: str | None = None) -> str:
+def git(root: Path | str, *args: str, stdin: str | None = None) -> str:
+    """git's answer, text: the one wrapper of the tools (a deadline, no console window, no optional locks)."""
     r = subprocess.run(["git", "--no-optional-locks", "-C", str(root), *args], input=stdin, capture_output=True,
                        text=True, encoding="utf-8", errors="surrogateescape", timeout=GIT_TIMEOUT_S,
                        creationflags=NO_WINDOW)
@@ -69,33 +70,46 @@ def _is_glob(pattern: str) -> bool:
 
 class Snapshot:
     """The worktree as git sees it: tracked files with their index blob ids, which of them differ on disk, the untracked ones.
-    Built on demand, dropped by `invalidate()` when a task may have written files."""
+    Built on demand. `refresh()` after a task ran: what is on disk is read again (git status, the hashes of changed and untracked
+    files) and the index is kept, since a task writes files and never stages them; `invalidate()` drops everything."""
 
     def __init__(self, root: Path | str | None = None):
         self.root = Path(root or ROOT).resolve()
         self._lock = threading.RLock()
         self._state = None
+        self._index = None
         self._hashed: dict[str, str] = {}
 
     def invalidate(self) -> None:
         with self._lock:
+            self._index = None
+            self.refresh()
+
+    def refresh(self) -> None:
+        with self._lock:
             self._state = None
             self._hashed = {}
 
-    def _load(self) -> dict:
-        with self._lock:
-            if self._state is not None:
-                return self._state
+    def _index_of(self) -> dict:
+        if self._index is None:
             index = {}
-            for entry in _git(self.root, "ls-files", "-s", "-z").split("\0"):
+            for entry in git(self.root, "ls-files", "-s", "-z").split("\0"):
                 if not entry:
                     continue
                 meta, path = entry.split("\t", 1)
                 mode, blob, _stage = meta.split()
                 if mode != GITLINK:
                     index[path] = blob
+            self._index = index
+        return self._index
+
+    def _load(self) -> dict:
+        with self._lock:
+            if self._state is not None:
+                return self._state
+            index = self._index_of()
             dirty, gone, untracked, changed = set(), set(), set(), []
-            parts = _git(self.root, "status", "--porcelain=v1", "-z", "--untracked-files=all", "--no-renames").split("\0")
+            parts = git(self.root, "status", "--porcelain=v1", "-z", "--untracked-files=all", "--no-renames").split("\0")
             for entry in parts:
                 if len(entry) < 4:
                     continue
@@ -187,7 +201,7 @@ class Snapshot:
                     full = Path(p) if os.path.isabs(p) else self.root / p
                     out[p] = self._hashed[p] = blob_id(full)
         if ask:
-            ids = _git(self.root, "hash-object", "--stdin-paths", stdin="\n".join(ask) + "\n").split()
+            ids = git(self.root, "hash-object", "--stdin-paths", stdin="\n".join(ask) + "\n").split()
             if len(ids) != len(ask):
                 raise RuntimeError(f"git hash-object gave {len(ids)} ids for {len(ask)} files")
             with self._lock:

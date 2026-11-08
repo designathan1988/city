@@ -61,6 +61,13 @@
    "inputs": ["tools/build/shader_contracts.json", "tools/build/shader_contracts.py", "native/src/core/shader_contracts/**", "project/render/shaders/contracts/**"],
    "resources": {"cores": 1}
   },
+  "furniture_table": {
+   "doc": "project/data/render/furniture.json is what tools/assets/make_furniture.py makes of the interiors' sizes (--check): a generated table edited by hand, or a generator out of step with its inputs, fails",
+   "argv": ["{python}", "tools/assets/make_furniture.py", "--check"],
+   "timeout_s": 60,
+   "inputs": ["tools/assets/make_furniture.py", "project/data/catalog/interiors.json", "project/data/game/start.json", "project/data/render/furniture.json"],
+   "resources": {"cores": 1}
+  },
   "build_debug": {
    "doc": "the debug DLL, the one the editor, tests and captures load",
    "argv": ["{bash}", "tools/build/build.sh", "dll-debug"],
@@ -349,8 +356,8 @@
  },
  "suites": {
   "quick": {
-   "doc": "what a change asks for: scripts, the shader contracts, debug DLL, gates of the changed files, every scene whose inputs moved, the digest and the frozen photos against their goldens",
-   "tasks": ["import", "scripts", "shader_contracts", "build_debug", "gates_changed", "@test_scenes", "digest", "photos", "photos_check"],
+   "doc": "what a change asks for: scripts, the shader contracts, the generated furniture table, debug DLL, gates of the changed files, every scene whose inputs moved, the digest and the frozen photos against their goldens",
+   "tasks": ["import", "scripts", "shader_contracts", "furniture_table", "build_debug", "gates_changed", "@test_scenes", "digest", "photos", "photos_check"],
    "variants": {
     "ready": {
      "doc": "the check before a commit: also the release DLL; when all of it holds it leaves dist/quick/passed",

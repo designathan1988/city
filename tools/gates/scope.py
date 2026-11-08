@@ -16,10 +16,13 @@ class GitError(Exception):
 
 
 def _git(root, *args):
-    proc = subprocess.run(["git", "-c", "core.quotePath=false", "-C", root, *args], capture_output=True)
-    if proc.returncode != 0:
-        raise GitError(f"git {' '.join(args)}: {proc.stderr.decode('utf-8', 'replace').strip()}")
-    return proc.stdout.decode("utf-8", "replace")
+    if TOOLS_DIR not in sys.path:
+        sys.path.insert(0, TOOLS_DIR)
+    from tasks.inputs import git  # the one git wrapper of the tools: a deadline, no window
+    try:
+        return git(root, "-c", "core.quotePath=false", *args)
+    except (RuntimeError, subprocess.TimeoutExpired) as e:
+        raise GitError(str(e)) from e
 
 
 def _snapshot(root):

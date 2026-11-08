@@ -85,8 +85,11 @@ class Pool:
     # scheduling -----------------------------------------------------------------------------------------------------
     def _prioritise(self) -> None:
         """Longest path first: a task's own recorded time plus the longest chain of tasks that wait for it."""
-        after = {i: [d for d in self.tasks[i].after if d in self.tasks] for i in self.tasks}
-        users = {i: [j for j in self.tasks if i in after[j]] for i in self.tasks}
+        users: dict[str, list[str]] = {i: [] for i in self.tasks}
+        for j in self.tasks:
+            for d in self.tasks[j].after:
+                if d in users:
+                    users[d].append(j)
         memo: dict[str, float] = {}
 
         def path(i: str, seen: frozenset) -> float:
@@ -121,8 +124,8 @@ class Pool:
             self.state[i] = "keying"
             threading.Thread(target=self._key, args=(i,), name=f"key {i}", daemon=True).start()
         self._waiting_on_locks = False
-        ready = sorted((i for i in self.order if self.state[i] == "ready"),
-                       key=lambda i: (-self.prio.get(i, 0.0), self.order.index(i)))
+        place = {i: n for n, i in enumerate(self.order)}
+        ready = sorted((i for i in self.order if self.state[i] == "ready"), key=lambda i: (-self.prio.get(i, 0.0), place[i]))
         blocked_locks: set[str] = set()
         blocked_counts: set[str] = set()
         for i in ready:
@@ -247,7 +250,7 @@ class Pool:
         self.results[i] = result
         self.state[i] = "done"
         if wrote:
-            self.snapshot.invalidate()
+            self.snapshot.refresh()
         self.record.event({"event": "finish", "task": i, **result.to_json()})
         try:
             if self.on_result:

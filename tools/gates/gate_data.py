@@ -1,51 +1,19 @@
-"""Data gates: every data table parses, names each key of an object once, and matches its schema (minimal JSON-Schema
-subset, stdlib only)."""
+"""Data gates: every data table parses, names each key of an object once, and matches its schema (tools/tasks/schema.py,
+the tools' one checker)."""
 import os
+import sys
 
 import jsonfile
 
-TYPES = {"object": dict, "array": list, "string": str, "boolean": bool, "integer": int, "number": (int, float)}
+TOOLS_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
 
-def validate(value, schema, where, errors):
-    t = schema.get("type")
-    if t:
-        ok = isinstance(value, TYPES[t]) and not (t in ("integer", "number") and isinstance(value, bool))
-        if not ok:
-            errors.append(f"{where}: expected {t}")
-            return
-    if "enum" in schema and value not in schema["enum"]:
-        errors.append(f"{where}: value {value!r} not in {schema['enum']}")
-    if "minimum" in schema and isinstance(value, (int, float)) and value < schema["minimum"]:
-        errors.append(f"{where}: {value} < minimum {schema['minimum']}")
-    if "maximum" in schema and isinstance(value, (int, float)) and value > schema["maximum"]:
-        errors.append(f"{where}: {value} > maximum {schema['maximum']}")
-    if "pattern_prefix" in schema and isinstance(value, str) and not value.startswith(schema["pattern_prefix"]):
-        errors.append(f"{where}: must start with {schema['pattern_prefix']!r}")
-    if isinstance(value, dict):
-        for key in schema.get("required", []):
-            if key not in value:
-                errors.append(f"{where}: missing key '{key}'")
-        props = schema.get("properties", {})
-        for key, sub in value.items():
-            if key in props:
-                validate(sub, props[key], f"{where}.{key}", errors)
-            elif "additional" in schema:
-                validate(sub, schema["additional"], f"{where}.{key}", errors)
-            elif schema.get("strict"):
-                errors.append(f"{where}: unknown key '{key}'")
-    if isinstance(value, list):
-        if "minItems" in schema and len(value) < schema["minItems"]:
-            errors.append(f"{where}: at least {schema['minItems']} items")
-        if "maxItems" in schema and len(value) > schema["maxItems"]:
-            errors.append(f"{where}: at most {schema['maxItems']} items")
-        for i, item in enumerate(value):
-            if "items" in schema:
-                validate(item, schema["items"], f"{where}[{i}]", errors)
-        if schema.get("unique_key"):
-            keys = [v.get(schema["unique_key"]) for v in value if isinstance(v, dict)]
-            if len(keys) != len(set(keys)):
-                errors.append(f"{where}: '{schema['unique_key']}' repeated")
+def _schema_errors(value, schema):
+    """The one JSON Schema checker of the tools (tools/tasks/schema.py), its data-table keywords included."""
+    if TOOLS_DIR not in sys.path:
+        sys.path.insert(0, TOOLS_DIR)
+    from tasks.schema import errors
+    return errors(value, schema)
 
 
 def inputs(ctx, path):
@@ -68,7 +36,5 @@ def check_data(ctx, err):
         except (OSError, ValueError) as e:  # malformed, or a key written twice (jsonfile)
             err("DADOS", data_path, f"invalid JSON: {e}")
             continue
-        errors = []
-        validate(data, schema, "$", errors)
-        for e in errors:
+        for e in _schema_errors(data, schema):
             err("DADOS", data_path, e)

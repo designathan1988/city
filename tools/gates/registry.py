@@ -92,6 +92,7 @@ def whole_rules(rules):
         Whole("sidecars", ["SIDECAR_WITHOUT_SOURCE"], _in_scope(lambda ctx, p: p.endswith(SIDECARS)), gate_files.check_sidecars,
               lambda ctx: sorted(ctx.listed)),
         Whole("orphans", ["ORFAO"], _in_scope(gate_code.orphan_inputs), gate_code.check_orphans),
+        Whole("job_lanes", ["JOB_LANE_SHARED"], _in_scope(gate_code.lane_inputs), gate_code.check_lanes),
         Whole("map", ["CLAUDE_MD", "MAPA_DESATUALIZADO"], gate_docs.inputs, gate_docs.check_claude_md,
               lambda ctx: sorted(ctx.listed)),
         Whole("data", ["DADOS", "DADOS_SEM_SCHEMA"], _in_scope(gate_data.inputs), gate_data.check_data),

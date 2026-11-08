@@ -17,13 +17,6 @@ const CATALOG := {
 	"models": "res://data/catalog/models.json",
 	"interiors": "res://data/catalog/interiors.json",
 }
-## Tables split only to keep each file small; merged under the same key they extend.
-const CATALOG_FRAGMENTS := {
-	"road_profiles": [
-		"res://data/catalog/road_profiles_a.json",
-		"res://data/catalog/road_profiles_b.json",
-	],
-}
 static var _catalog_cache := {}
 const RENDER_TABLES := {
 	"palette": "res://data/render/palette.json",
@@ -41,7 +34,6 @@ const RENDER_TABLES := {
 const UI := {
 	"tokens": "res://data/ui/tokens.json",
 	"land_panels": "res://data/ui/land_panels.json",
-	"land_elements": "res://data/ui/land_elements.json",
 	"hud": "res://data/ui/hud.json",
 	"drawers": "res://data/ui/drawers.json",
 	"keys": "res://data/ui/keys.json",
@@ -67,14 +59,7 @@ const REGIONAL_STYLE := "roadcraft"
 const LOT_PROJECTS := "res://assets/lots"
 const LOT_EXT := "json"
 const STYLED := ["res://data/catalog/street_furniture.json", "res://data/render/streets.json"]
-const STRINGS := [
-	"res://data/i18n/strings.csv",
-	"res://data/i18n/strings_b.csv",
-	"res://data/i18n/strings_c.csv",
-	"res://data/i18n/strings_ui.csv",
-	"res://data/i18n/strings_d.csv",
-	"res://data/i18n/strings_e.csv",
-]
+const STRINGS := ["res://data/i18n/strings.csv"]
 
 static var _cache: Dictionary = {}
 
@@ -137,13 +122,7 @@ static func catalog_table(key: String) -> Dictionary:
 
 
 static func catalog() -> Dictionary:
-	var out := _group(CATALOG)
-	for key in CATALOG_FRAGMENTS:
-		var list: Array = out[key].get("profiles", [])
-		for path in CATALOG_FRAGMENTS[key]:
-			list.append_array(_read(path).get("profiles", []))
-		out[key]["profiles"] = list
-	return out
+	return _group(CATALOG)
 
 
 ## The maps of the catalogue, in the order the core numbers them.
@@ -172,16 +151,10 @@ static func release_boot_tables() -> void:
 			if path != CATALOG.tuning:
 				_cache.erase(path)
 	_catalog_cache.clear() # catalog_table's own copies: read anew too
-	for paths: Array in CATALOG_FRAGMENTS.values():
-		for path: String in paths:
-			_cache.erase(path)
 
 
 static func ui(name: String) -> Dictionary:
-	var table: Dictionary = _read(UI[name])
-	if name == "land_panels" and not table.has("ELEMENTS"):
-		table.merge(_read(UI.land_elements)) # one panel, kept apart for the size of the file
-	return table
+	return _read(UI[name])
 
 
 ## The lots of the lot lab: each document with `key`, its file's name (LotProjects).
@@ -204,8 +177,7 @@ static func tuning(key: String) -> float:
 	return float(_read(CATALOG.tuning)[parts[0]][parts[1]])
 
 
-## Registers data/i18n/strings*.csv (key, pt_BR, en) as translations. The catalog is split only to keep
-## each file small; every part repeats the header.
+## Registers data/i18n/strings.csv (key, then one column per language) as translations.
 static func load_translations() -> void:
 	var first := FileAccess.open(STRINGS[0], FileAccess.READ)
 	if first == null:

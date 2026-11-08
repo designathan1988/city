@@ -58,10 +58,8 @@
     ".gdshader": 260,
     ".glsl": 200,
     ".py": 300,
-    ".json": 700,
     ".sh": 90,
-    ".tscn": 400,
-    ".csv": 600
+    ".tscn": 400
   },
   "max_function_lines": {
     ".gd": 60,
@@ -222,7 +220,7 @@
         "native/src/"
       ],
       "pattern": "(jobs->|pool\\.)submit\\(\\s*(?!JobKey\\{|job,|b->job\\.bake\\(\\))",
-      "message": "todo job vai à fila com uma JobKey (lane e id, core/job_pool.h): a fila substitui o job da mesma chave em silêncio, e uma chave feita à mão colide com a de outro renderizador"
+      "message": "every job goes to the queue with its JobKey written (lane and id, core/job_pool.h): a braced key with no type names no lane"
     },
     {
       "id": "SIM_SEM_GODOT",
@@ -323,12 +321,9 @@
     "project/data/game/sky.json": "tools/gates/schemas/sky.schema.json",
     "project/data/render/cover.json": "tools/gates/schemas/cover.schema.json",
     "project/data/ui/land_panels.json": "tools/gates/schemas/land_panels.schema.json",
-    "project/data/ui/land_elements.json": "tools/gates/schemas/land_elements.schema.json",
     "project/data/catalog/zones.json": "tools/gates/schemas/zones.schema.json",
     "project/data/catalog/growth.json": "tools/gates/schemas/growth.schema.json",
     "project/data/catalog/road_profiles.json": "tools/gates/schemas/road_profiles.schema.json",
-    "project/data/catalog/road_profiles_a.json": "tools/gates/schemas/road_profiles_fragment.schema.json",
-    "project/data/catalog/road_profiles_b.json": "tools/gates/schemas/road_profiles_fragment.schema.json",
     "project/data/catalog/traffic.json": "tools/gates/schemas/traffic.schema.json",
     "project/data/catalog/street_furniture.json": "tools/gates/schemas/street_furniture.schema.json",
     "project/data/catalog/blast.json": "tools/gates/schemas/blast.schema.json",

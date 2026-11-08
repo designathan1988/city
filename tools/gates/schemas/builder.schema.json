@@ -60,6 +60,15 @@
            },
            "drop_m": {
             "type": "number"
+           },
+           "piece": {
+            "type": "string"
+           },
+           "top_kind": {
+            "type": "integer"
+           },
+           "top_deg": {
+            "type": "number"
            }
           },
           "required": [

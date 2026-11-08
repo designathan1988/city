@@ -24,10 +24,10 @@ Dictionary CityProbes::job_pool_probe() const {
 	std::atomic<int> older{ 0 }, newer{ 0 }, other_lane{ 0 };
 	JobPool pool(1);
 	gate.lock();
-	pool.submit(JobKey{ JobLane::FOG, 0 }, 0.f, [&gate]() { std::lock_guard<std::mutex> hold(gate); });
-	pool.submit(JobKey{ JobLane::BUILDING, CHUNK_ID }, 1.f, [&older]() { older++; });
-	pool.submit(JobKey{ JobLane::COVER, CHUNK_ID }, 1.f, [&other_lane]() { other_lane++; });
-	pool.submit(JobKey{ JobLane::BUILDING, CHUNK_ID }, 1.f, [&newer]() { newer++; });
+	pool.submit(JobKey{ JobLane::PROBE_HOLD, 0 }, 0.f, [&gate]() { std::lock_guard<std::mutex> hold(gate); });
+	pool.submit(JobKey{ JobLane::PROBE_KEY, CHUNK_ID }, 1.f, [&older]() { older++; });
+	pool.submit(JobKey{ JobLane::PROBE_OTHER, CHUNK_ID }, 1.f, [&other_lane]() { other_lane++; });
+	pool.submit(JobKey{ JobLane::PROBE_KEY, CHUNK_ID }, 1.f, [&newer]() { newer++; });
 	gate.unlock();
 	pool.wait_idle();
 	Dictionary d;

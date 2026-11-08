@@ -1,8 +1,0 @@
-{
- "type": "object",
- "properties": {
-  "ELEMENTS": { "type": "object" }
- },
- "required": ["ELEMENTS"],
- "strict": true
-}
