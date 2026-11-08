@@ -971,3 +971,17 @@ later: no blue hour.
 - Verified: both DLLs; `quick.sh` 47 of 47, the photos equal; hidden captures on both renderers at 16h, 18:24 and 22h.
 - Changed `native/src/api/city_core_persist.cpp`, `project/tests/core/save_land_cases.gd`, `project/render/{light_meter.gd,
   daylight.gd, sky_level_table.gd}`, `project/render/shaders/{sky_model.gdshaderinc, sky_level_table.gdshader}`, logs.
+
+## Signal lenses and vehicle lamps as lights (2026-11-08 13:05, branch `realism`)
+
+- Cause: the lenses and the vehicles' lamps were display colours run back through the tone mapping (`lamp_radiance.gd`), plus
+  night "powers" set on a photo, so they never outshone their surroundings at night nor faded in the sun.
+- Sources: ITE LED signal supplement (2005: 12-inch red 365, yellow 910, green 475 cd), ITE PTCSI 2010 (hand 3 750, person
+  5 300 cd/m^2), UNECE R112 (75R 10 100 cd), R7 (rear position 4 to 17 cd, stop 60 to 185 cd, a stop lamp 5 times at least), R6
+  (category 1 indicator 175 cd).
+- Code: `lamp_radiance.gd` gives each lens its colour of luminance 1 times streets.json props.lens_cd_m2 in the scene's unit;
+  `agents.gdshader` lamp_light: each lamp its colour times materials.json agent head/tail/brake/sign_cd_m2; both through
+  `emission_light`. The unlit lens's authored glow and the trims head_lit/tail_lit/brake_lit are gone (`prop_kit.cpp` reads
+  lens_dark as one colour a lens).
+- Verified: both DLLs; light_color_test on both renderers (the lenses as the tone mapping shows their light, Compatibility's clamp at
+  1 mirrored); `quick.sh` 46 of 47 then the gates fixed (the agents doc folded to ASCII, the shader's PI); e2e passed.

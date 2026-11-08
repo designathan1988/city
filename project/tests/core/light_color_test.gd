@@ -1,7 +1,7 @@
 ## The lights of the street as the screen shows them, through the game's own Environment and "prop" and "road" materials
 ## (CityWorld), on each renderer (tools/build/run_tests.sh runs it on Forward+ and on Compatibility):
-## - by day, each signal lens lit must show the lens colour of data/render/streets.json props.signal (render/tone_map.gd
-##   mirrors Godot's AgX by hand; this checks the mirror against the engine);
+## - by day, each signal lens lit must show its light (render/lamp_radiance.gd: its colour times its luminance, streets.json
+##   props.lens_cd_m2) pre-exposed and tone mapped as render/tone_map.gd does (the mirror of Godot's AgX, checked against the engine);
 ## - by night, with the ambient, the moon and the glow (a screen effect added after) off so only the part's own light
 ##   is left, a part that glows at night
 ##   (PropTag::NIGHT_GLOW, lamp glass) must show glow_color x its colour x the lamp's lens light (the shader global
@@ -31,6 +31,7 @@ const ROAD_STEPS := 16 # the mottle
 const ROAD_PLATE_GLOW := 1.0
 const GLOW_GREY := 0.2 # sRGB
 const FRAMES := 10 # the sky's radiance and the tone mapping settle
+const COMPATIBILITY := "gl_compatibility"
 const LIGHT_REACH := 0.5 # the brightest channel of a lamp's light after the exposure: inside AgX's range and Compatibility's clamp
 
 # The shaders' encodings (CityStore.constants.shader, tools/build/shader_contracts.json), read when the test starts: the lenses, a
@@ -44,7 +45,6 @@ var road_ids := 0.0
 var road_plate := Vector2.ZERO
 const BYTE := 255.0
 const TOLERANCE := 1 # in 8-bit steps
-const LENS_STEPS := 3 # the signal green sits at the edge of the gamut: AgX has no radiance that lands on it exactly
 
 var cam: Camera3D
 
@@ -97,9 +97,13 @@ func _lenses(material: ShaderMaterial) -> void:
 		centres.push_back(at)
 	await _frames(FRAMES)
 	var img := get_viewport().get_texture().get_image()
-	var want := _lens_colours()
+	var lit: PackedVector3Array = material.get_shader_parameter("lit_radiance")
 	for k in lenses:
-		_compare(img, centres[k], want[k], "lens %d" % k, LENS_STEPS)
+		var light: Vector3 = lit[k] * world.daylight.pre_exposure
+		if RenderingServer.get_current_rendering_method() == COMPATIBILITY: # its picture stops at 1 before the tone mapping
+			light = light.min(Vector3.ONE / world.environment.tonemap_exposure)
+		var shown := ToneMap.shown(light, world.environment)
+		_compare(img, centres[k], Color(shown.x, shown.y, shown.z).linear_to_srgb(), "lens %d" % k)
 	for n in nodes:
 		n.queue_free()
 
@@ -176,16 +180,6 @@ func _square(tag: Vector2, col: Color) -> ArrayMesh:
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	return mesh
-
-
-## Each lens's colour (sRGB), from its parts in streets.json props.signal.
-func _lens_colours() -> Array[Color]:
-	var out: Array[Color] = []
-	out.resize(lenses)
-	for part: Dictionary in DataTables.render_table("streets").props.signal:
-		if part.has("lens"):
-			out[int(part.lens)] = Color.html(part.color)
-	return out
 
 
 func _step(a: float, b: float) -> int:

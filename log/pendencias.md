@@ -135,8 +135,8 @@ O que falta fazer, por área.
   under the former ACES and light, and are not re-derived; photo-scanned surface textures (2K) and decals for wear were not
   added (a download the user must approve).
 - The physical night (2026-11-08, log/work-log.md "The physical night"):
-  - Signal lenses, vehicle lamps, the placing ghost and a signature's own glow stay authored as the screen shows them
-    (`emission_shown`): their luminance in cd/m^2 (EN 12368, UNECE R7) would make them physical lights too.
+  - The placing ghost and a signature's own glow stay authored as the screen shows them (`emission_shown`): the first is the
+    interface's tint, the second the cooked model's emissive factor, which has no luminance behind it.
   - Compatibility: its sky map is mipmapped and filtered on sRGB codes,
     so its ambient bends from proportional in the dark (sky_exposure_test holds it to the nearer of once, never and twice), and a
     mirror's sky (the map's unfiltered level) is a little brighter in the darkest tones.

@@ -69,9 +69,7 @@ func materials() -> Dictionary:
 			elif key == "verge":
 				_set_ground(m)
 			elif key == "prop":
-				LampRadiance.lenses(m, environment)
-			elif key == "agent":
-				LampRadiance.vehicles(m, environment)
+				LampRadiance.lenses(m)
 			_materials[key] = m
 			if table[key].has("fade_shader"): # the same material for what is handing over to another level (building_level.gdshaderinc)
 				var fade: ShaderMaterial = m.duplicate()

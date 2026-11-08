@@ -216,7 +216,7 @@ bool PropKit::build(const DataValue &props, const DataValue &wires, const DataVa
 	box_.box(Vector3(-0.5f, -0.5f, -0.5f), Vector3(0.5f, 0.5f, 0.5f), WHITE, Vector2(float(int(PropTag::FINISHED)), 0), true);
 	sheet_mesh(beam_, beam_section);
 	light_mesh(light_);
-	const DataValue dark = props["lens_dark"]; // each lens unlit: its colour and its own faint glow
+	const DataValue dark = props["lens_dark"]; // each lens unlit: its colour
 	bool seen[int(Lens::COUNT)] = {};
 	const DataValue list = props["signal"];
 	for (int i = 0; i < list.size(); i++) {
@@ -227,7 +227,7 @@ bool PropKit::build(const DataValue &props, const DataValue &wires, const DataVa
 			p["lens"].fail("a lens outside 0..4");
 			continue;
 		}
-		const DataValue unlit = dark[k][0];
+		const DataValue unlit = dark[k];
 		unlit.colour(); // '#rrggbb', or an error
 		shape(lenses_, p, Color::html(unlit.text()), Vector2(float(int(PropTag::LENS)), float(k)));
 		seen[k] = true;
