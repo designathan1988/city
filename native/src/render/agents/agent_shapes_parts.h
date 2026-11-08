@@ -1,4 +1,4 @@
-// The traffic agents' shapes of the shared parts and the heavy vehicles: the cabin, the parts, a wreck, the bicycle, the bus, what bus and truck share, the truck and the motorbike (agents.json "shapes", read by agent_renderer.cpp).
+// The traffic agents' shapes of the shared parts and the heavy vehicles: the cabin, the parts, a wreck, the bicycle, the bus, what bus and truck share, the truck and the motorbike, the ragdoll (agents.json "shapes", read by agent_renderer.cpp).
 #pragma once
 
 #include "core/shape_fields.h"
@@ -51,6 +51,13 @@ struct HeavyShape {
 	X(mirror_w) X(mirror_h) X(mirror_d) X(cab_door_seam) X(tail_lens_h_m) X(moto_lamp_d)
 struct HeavyMeshesShape {
 	SHAPE_DECLARE(AGENT_SHAPE_HEAVY_MESHES)
+};
+
+#define AGENT_SHAPE_RAGDOLL(X, XI, XD, XV, XVI) \
+	X(air_keep) X(limb_half_m) X(slide_keep) XI(iterations) X(top_over_head) X(belly_out_m) X(knee_least) \
+	X(elbow_least) X(fold_least) X(resting_ms) X(resting_s) X(step_s) XI(steps_most)
+struct RagdollShape {
+	SHAPE_DECLARE(AGENT_SHAPE_RAGDOLL)
 };
 
 } // namespace city

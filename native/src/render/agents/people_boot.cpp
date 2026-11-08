@@ -93,7 +93,7 @@ void PeopleRenderer::set_tables(const RID &material) const {
 	rs->material_set_param(material, "body_female", female);
 }
 
-bool PeopleRenderer::init(const RenderContext &ctx, const DataValue &people, const DataValue &held, PackedStringArray &errors) {
+bool PeopleRenderer::init(const RenderContext &ctx, const DataValue &people, const DataValue &held, const AgentShapes &shapes, PackedStringArray &errors) {
 	reset();
 	scenario_ = ctx.scenario;
 	material_ = ctx.material("people", errors);
@@ -162,7 +162,7 @@ bool PeopleRenderer::init(const RenderContext &ctx, const DataValue &people, con
 	rs->material_set_param(held_.material(), "fist", held["fist"].v3());
 	rs->material_set_param(material_, "atlas", asset_.atlas->get_rid());
 	rs->material_set_param(material_, "alpha_test", asset_.variations.front().alpha_test);
-	if (!bodies_.init(ctx, asset_, errors)) return false;
+	if (!bodies_.init(ctx, asset_, shapes.ragdoll, errors)) return false;
 	rs->material_set_param(far_material_, "atlas", asset_.atlas->get_rid());
 	rs->material_set_param(far_material_, "strip", asset_.card_strip);
 	rs->material_set_param(far_material_, "frames", float(asset_.card_frames));

@@ -14,8 +14,6 @@ namespace city {
 namespace {
 constexpr int MOST_BODIES = 64; // past it the oldest goes: a row of the texture each
 constexpr int TEXELS_A_BONE = 3, FLOATS_A_TEXEL = 4, FLOATS_A_BONE = TEXELS_A_BONE * FLOATS_A_TEXEL;
-constexpr float STEP_S = 1.f / 60.f;
-constexpr int STEPS_MOST = 4;
 constexpr float CHARRED_MARK = 1.f;
 constexpr float GET_UP_S = 1.7f, RISE_SHARE_MOST = 0.7f, RISE_TO_CROUCH = 0.45f; // how long getting up takes, at most of the time down; and the blend's part of it
 const Vector3 AXIS_X(1, 0, 0), AXIS_Y(0, 1, 0), AXIS_Z(0, 0, 1);
@@ -27,7 +25,8 @@ Transform3D rows_to_transform(const float *r) {
 }
 } // namespace
 
-bool BodyRenderer::init(const RenderContext &ctx, const PeopleAsset &asset, PackedStringArray &errors) {
+bool BodyRenderer::init(const RenderContext &ctx, const PeopleAsset &asset, const RagdollShape &law, PackedStringArray &errors) {
+	law_ = &law;
 	asset_ = &asset;
 	scenario_ = ctx.scenario;
 	material_ = ctx.material_objects.get("people_body", Variant());
@@ -104,7 +103,7 @@ void BodyRenderer::add(const BodySpec &spec) {
 	Vector3 joints[RAGDOLL_JOINTS];
 	const float *rest = asset_->variations[size_t(spec.variation)].joints;
 	for (int j = 0; j < RAGDOLL_JOINTS; j++) joints[j] = b.base[size_t(asset_->joint_bone[size_t(j)])].xform(Vector3(rest[j * 3], rest[j * 3 + 1], rest[j * 3 + 2]));
-	b.doll.begin(joints, spec.velocity, spec.tip, spec.scatter, rng_);
+	b.doll.begin(*law_, joints, spec.velocity, spec.tip, spec.scatter, rng_);
 	b.doll.set_walls(spec.walls);
 	b.stands = stands;
 	if (spec.rises) b.rise_s = std::min(GET_UP_S, spec.life_s * RISE_SHARE_MOST);
@@ -196,9 +195,10 @@ void BodyRenderer::bound_layers() {
 }
 
 void BodyRenderer::update(float dt, const Ragdoll::Ground &ground) {
-	clock_ = std::min(clock_ + dt, STEP_S * float(STEPS_MOST));
-	const int steps = int(clock_ / STEP_S);
-	clock_ -= float(steps) * STEP_S;
+	const RagdollShape &K = *law_;
+	clock_ = std::min(clock_ + dt, K.step_s * float(K.steps_most));
+	const int steps = int(clock_ / K.step_s);
+	clock_ -= float(steps) * K.step_s;
 	for (Body &b : bodies_) {
 		b.left -= dt;
 		if (b.left <= b.rise_s && b.rise_s > 0.f) {
@@ -207,7 +207,7 @@ void BodyRenderer::update(float dt, const Ragdoll::Ground &ground) {
 		}
 		if (b.doll.asleep() || steps == 0) continue;
 		const float floor = b.floor;
-		for (int k = 0; k < steps; k++) b.doll.step(STEP_S, [&](float x, float z) { return std::max(ground(x, z), floor); });
+		for (int k = 0; k < steps; k++) b.doll.step(K.step_s, [&](float x, float z) { return std::max(ground(x, z), floor); });
 		pose(b);
 	}
 	const auto gone = std::remove_if(bodies_.begin(), bodies_.end(), [this](const Body &b) {

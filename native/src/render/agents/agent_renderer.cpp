@@ -63,7 +63,7 @@ bool AgentRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	jump_m_ = t["wheel_jump_m"].f();
 	if (!errors.is_empty()) return false;
 	people_.set_level_hold(level_hold_);
-	return people_.init(ctx, t["people"], t["held"], errors);
+	return people_.init(ctx, t["people"], t["held"], shapes_, errors);
 }
 
 void AgentRenderer::commit_mesh(int model, int draw, const MeshBuilder &mb) {

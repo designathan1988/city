@@ -3370,6 +3370,18 @@ fixed step two files write) are the next batch: their owner is the body renderer
 
 **What changes.** Nothing: the hashes, the numbers and every photo the same (`quick`: 44 of 46).
 
+### 6.50 B2, C14 (the ragdoll): the bodies' law in agents.json shapes, the step one field (2026-11-08)
+
+**Cause and fix.** The ragdoll held the 4.0's numbers (ragdoll.ts) beside its definitions: how much speed a particle keeps in the
+air and dragging on the ground, a limb's half thickness, the relaxation's passes, the head's top and the belly, how far a knee, an
+elbow and the hip fold, when a body lies still; the body renderer held the fixed step and the most steps a frame. They are a
+`ragdoll` block of agents.json shapes, handed from the agents' renderer to the people's and the bodies' renderer at init, and from
+there to each ragdoll at `begin`, which keeps it. The step was written twice (`ONE_STEP_S` of the ragdoll's first move, `STEP_S` of
+the bodies' clock): one field, the same float (1/60). The definitions stay and say what they are: gravity to three figures, the
+tolerance, the limbs' and parts' joint tables, the bodies' seed.
+
+**What changes.** Nothing: the hashes, the numbers and every photo the same.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

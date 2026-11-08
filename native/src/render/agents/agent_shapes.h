@@ -15,6 +15,7 @@ namespace city {
 	S(bus_body, BusShape, AGENT_SHAPE_BUS_BODY) \
 	S(heavy, HeavyShape, AGENT_SHAPE_HEAVY) \
 	S(heavy_meshes, HeavyMeshesShape, AGENT_SHAPE_HEAVY_MESHES) \
+	S(ragdoll, RagdollShape, AGENT_SHAPE_RAGDOLL) \
 	S(car_body, CarBodyShape, AGENT_SHAPE_CAR_BODY) \
 	S(car_parts, CarPartsShape, AGENT_SHAPE_CAR_PARTS) \
 	S(car_shape, CarShapeShape, AGENT_SHAPE_CAR_SHAPE)
