@@ -8,17 +8,18 @@ render_mode unshaded, fog_disabled, depth_test_disabled, depth_draw_never, cull_
 
 #include "res://render/shaders/screen_depth.gdshaderinc"
 
-uniform float reach_m = 0.75; // how far a slice looks
-uniform float reach_curve = 1.6; // its steps crowd by the pixel, where a corner's shade is
-uniform float thickness_m = 0.8; // what stands further than this from the pixel, along the view, passes behind nothing
-uniform float power = 1.05;
-uniform float strength = 0.85;
+// daylight.json occlusion sets these (render/occlusion_pass.gd).
+uniform float reach_m; // how far a slice looks
+uniform float reach_curve; // its steps crowd by the pixel, where a corner's shade is
+uniform float thickness_m; // what stands further than this from the pixel, along the view, passes behind nothing
+uniform float power;
+uniform float strength;
 
 const int SLICES = 4;
 const int STEPS = 4;
 const float LEAST_PIXELS = 2.0; // a reach shorter than this on the screen finds no corner
 const float MOST_SCREEN = 0.15; // of the height: past this a step lands so far off that its edge shows as a band (HBAO's largest radius in pixels)
-const float LEAST_SQUARED = 1e-8;
+const float LEAST_SQUARED = 1e-8; // a squared length divided by never under this
 
 void vertex() {
 	POSITION = vec4(VERTEX.xy, 1.0, 1.0);

@@ -3,6 +3,7 @@
 // servers/rendering/renderer_rd/shaders/effects/tonemap.glsl tonemap_aces, mirrored by render/tone_map.gd (ToneMap.radiance is the
 // same inverse, with a search for the nearest colour where a channel would need negative radiance).
 // Needs color_space.gdshaderinc (srgb_to_linear); the material sets tone_exposure and tone_white to the Environment's.
+const vec3 REC709_LUMA = vec3(0.2126, 0.7152, 0.0722); // ITU-R BT.709's luma weights
 #ifndef TONE_INVERSE_INC
 #define TONE_INVERSE_INC
 #include "res://render/shaders/contracts/tone.gdshaderinc"
@@ -33,7 +34,7 @@ vec3 display_to_radiance(vec3 shown) {
 	float scale = aces_curve(max(tone_white, 1.0) * ACES_BIAS);
 	mat3 odt_inverse = inverse(ACES_ODT);
 	vec3 y_goal = odt_inverse * (goal * scale);
-	vec3 y_grey = odt_inverse * (vec3(dot(goal, vec3(0.2126, 0.7152, 0.0722))) * scale);
+	vec3 y_grey = odt_inverse * (vec3(dot(goal, REC709_LUMA)) * scale);
 	vec3 step_y = y_goal - y_grey;
 	float top = ACES_TOP / ACES_C;
 	float keep = 1.0;

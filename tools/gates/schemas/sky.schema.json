@@ -260,6 +260,59 @@
     "cloud_erode"
    ],
    "strict": true
+  },
+  "bolt_core": {
+   "type": "array",
+   "items": {
+    "type": "number"
+   },
+   "minItems": 3,
+   "maxItems": 3
+  },
+  "rain_colour": {
+   "type": "array",
+   "items": {
+    "type": "number"
+   },
+   "minItems": 3,
+   "maxItems": 3
+  },
+  "rain_fade": {
+   "type": "array",
+   "items": {
+    "type": "number"
+   },
+   "minItems": 4,
+   "maxItems": 4
+  },
+  "contact_shader": {
+   "type": "object",
+   "properties": {
+    "_doc": {
+     "type": "string"
+    },
+    "contact_ray_m": {
+     "type": "number"
+    },
+    "contact_fade_m": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 2,
+     "maxItems": 2
+    },
+    "contact_least_sun": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "_doc",
+    "contact_ray_m",
+    "contact_fade_m",
+    "contact_least_sun"
+   ],
+   "strict": true
   }
  },
  "additional": {}

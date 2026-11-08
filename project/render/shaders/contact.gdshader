@@ -10,12 +10,12 @@ render_mode fog_disabled, depth_test_disabled, depth_draw_never, cull_disabled, 
 uniform vec3 sun_direction = vec3(0.0, 1.0, 0.0); // towards the sun, in the world
 uniform float strength = 0.0;
 
-const int STEPS = 8;
-const float RAY_M = 1.2;
+const int STEPS = 8; // the march's steps towards the sun (a design value: the ray's length over them stays under a pixel's shade)
+uniform float contact_ray_m; // how far towards the sun the march looks (data/game/sky.json contact_shader)
 const float OFF_M = 0.04; // off the surface, or a pixel shades itself
 const float SAME_SURFACE_M = 0.03, TOUCHING_M = 0.8; // what stands in front by less is the same surface, by more is not touching
-const float FADE_FROM_M = 70.0, END_M = 120.0;
-const float LEAST_SUN = 0.05;
+uniform vec2 contact_fade_m; // the shade fades out between these distances from the eye
+uniform float contact_least_sun; // a sun lower than this (its direction's height) casts none
 
 varying float shade;
 
@@ -26,7 +26,7 @@ void vertex() {
 // Whether a surface stands between the pixel and the sun, within the steps.
 bool touching(vec3 p, vec3 n, vec3 sun, mat4 projection, mat4 inv_projection) {
 	for (int i = 1; i <= STEPS; i++) {
-		vec3 q = p + n * OFF_M + sun * (float(i) / float(STEPS) * RAY_M);
+		vec3 q = p + n * OFF_M + sun * (float(i) / float(STEPS) * contact_ray_m);
 		vec4 clip = projection * vec4(q, 1.0);
 		vec2 at = clip.xy / clip.w * 0.5 + 0.5;
 		if (at.x < 0.0 || at.y < 0.0 || at.x > 1.0 || at.y > 1.0) return false;
@@ -39,11 +39,11 @@ bool touching(vec3 p, vec3 n, vec3 sun, mat4 projection, mat4 inv_projection) {
 void fragment() {
 	vec3 p = view_at(SCREEN_UV, INV_PROJECTION_MATRIX);
 	float far = length(p);
-	if (!(far < END_M)) discard;
+	if (!(far < contact_fade_m.y)) discard;
 	vec3 sun = mat3(VIEW_MATRIX) * sun_direction;
 	vec3 n = view_normal(p, SCREEN_UV, 1.0 / VIEWPORT_SIZE, INV_PROJECTION_MATRIX);
-	if (dot(n, sun) <= LEAST_SUN || !touching(p, n, sun, PROJECTION_MATRIX, INV_PROJECTION_MATRIX)) discard;
-	shade = strength * (1.0 - smoothstep(FADE_FROM_M, END_M, far));
+	if (dot(n, sun) <= contact_least_sun || !touching(p, n, sun, PROJECTION_MATRIX, INV_PROJECTION_MATRIX)) discard;
+	shade = strength * (1.0 - smoothstep(contact_fade_m.x, contact_fade_m.y, far));
 	ALBEDO = vec3(1.0);
 	SPECULAR = 0.0;
 	LIGHT_VERTEX = p;

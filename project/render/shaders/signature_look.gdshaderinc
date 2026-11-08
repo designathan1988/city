@@ -5,7 +5,7 @@
 uniform vec4 albedo : source_color = vec4(1.0);
 uniform sampler2D picture : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform bool pictured = false;
-uniform float roughness = 0.8;
+uniform float roughness; // signature_bodies.cpp sets it and metallic
 uniform float metallic = 0.0;
 uniform vec3 emission : source_color = vec3(0.0);
 uniform float alpha_cut = 0.0;
@@ -16,6 +16,7 @@ uniform bool painted_windows = false; // the alpha of its picture says what is g
 global uniform float night;
 
 const float GLASS_CELL_M = 3.2; // cook_signatures.py ROOM_M
+const uint LIT_SALT = 977u; // a cell's lit pick, its own stream of the hash
 const float ROOM_GLOW = 0.62; // window_glow of the plain buildings (materials.json)
 
 // What the room behind a cell gives at night, by the rule of the plain buildings (pane_lamp), with an office's lamps.
@@ -23,7 +24,7 @@ vec3 room_light(vec2 uv, float glass) {
 	ivec2 cell = ivec2(floor(painted_windows ? uv : uv / GLASS_CELL_M));
 	uint slot = spatial_hash(uint(cell.x), uint(cell.y));
 	float lot = h01(slot);
-	float lit = step(h01(slot + 977u), rooms_awake * rooms_in_use) * room_level(lot) * building_night_windows;
+	float lit = step(h01(slot + LIT_SALT), rooms_awake * rooms_in_use) * room_level(lot) * building_night_windows;
 	return room_lamp(lot, 1.0) * (lit * night * ROOM_GLOW * glass);
 }
 

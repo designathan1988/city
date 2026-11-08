@@ -6,7 +6,7 @@ render_mode world_vertex_coords, unshaded, cull_disabled, depth_test_disabled, d
 
 uniform vec4 colour : source_color;
 uniform float half_px = 2.0;
-uniform float screen_h = 1080.0; // the viewport's visible height, pixels (what px_at divides by)
+uniform float screen_h; // the viewport's visible height, pixels (what px_at divides by)
 
 void vertex() {
 	// UV: the unit vector to the line's left at this point, signed by the side the vertex stands on.

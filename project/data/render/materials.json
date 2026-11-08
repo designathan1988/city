@@ -1,7 +1,7 @@
 {
  "_doc": "Materials the native renderers draw with, by name (native/src/render/render_context.h). pool_gain 0.2115 (lamp_glow; the road's is its own, 0.9): the Roadcraft 4.0's pool, opacity 0.32 of a #ffe2c4 light, times daylight.json sky_gain 0.661, which carries a colour drawn without light from three.js's tone chain into this game's; computed and not fitted to a picture. Colours as '#rrggbb', textures as res:// paths. prop lens_roughness and lens_ior: the signal lens, polished polycarbonate (Physically Based database, physicallybased.info, 'Plastic (PC)': roughness 0, index of refraction 1.5848 from refractiveindex.info). Vegetation wind (_shared gust and sway; vegetation.gdshaderinc; its speed and direction are shader globals, not material values): sway_per_ms2 = top bend per (m/s)^2 from Peltola et al. 1993 (crown-centre bending under 5 cm on a 13.5 m pine at 8 m/s: 0.0037 of the height, times (1/0.6)^2 to the top, over 64); gust_m = 22 x 10 m (Kaimal et al. 1972 spectral peak n z / U = 1/22); turbulence = 1 / ln(10 m / 0.05 m) (EN 1991-1-4 eq. 4.7, terrain category II); sway_hz = natural frequency of leafy trees of 8-15 m, 0.2-0.3 Hz (Jackson et al. 2019). vegetation_cards cover_per_mip 0.25: alpha rescaled by mip level so a card keeps its coverage far away (Golus 2017, Anti-aliased Alpha Test: The Esoteric Alpha To Coverage). vegetation roughness 0.8: modelling choice for matte leaves, no published value.",
  "_shared": {
-  "_doc": "Parameter sets several materials read alike, laid under a material's own params by its uses (render/world_materials.gd params): finishes, the building finishes' maps and scales and the plain finishes' weathering (building, building_parts: building_common.gdshaderinc); glass, the near levels' glass (building, building_glass; building_glass_set.gdshaderinc declares it and sky_in_glass); sky_in_glass, the sky every level's glass shows (building, building_glass, building_far); rooms, what hangs in a room's window, its picks, cloths and the means of its blinds (building, building_glass, building_far: building_room_tone.gdshaderinc, read by building_pane's room_hung too); lamp_pool, the fall of a street lamp's pool, the 4.0's lightLevels.ts (road, building_wash: lamp_pool.gdshaderinc); gust and sway, the vegetation wind (vegetation, cover_plant, vegetation_cards); stone, a still, rough cover (cover_rock, cover_shore).",
+  "_doc": "Parameter sets several materials read alike, laid under a material's own params by its uses (render/world_materials.gd params): finishes, the building finishes' maps and scales and the plain finishes' weathering (building, building_parts: building_common.gdshaderinc); glass, the near levels' glass (building, building_glass; building_glass_set.gdshaderinc declares it and sky_in_glass); sky_in_glass, the sky every level's glass shows (building, building_glass, building_far); rooms, what hangs in a room's window, its picks, cloths and the means of its blinds (building, building_glass, building_far: building_room_tone.gdshaderinc, read by building_pane's room_hung too); blast_dust, the concrete dust of a blast (debris, rubble); lamp_pool, the fall of a street lamp's pool, the 4.0's lightLevels.ts (road, building_wash: lamp_pool.gdshaderinc); gust and sway, the vegetation wind (vegetation, cover_plant, vegetation_cards); stone, a still, rough cover (cover_rock, cover_shore).",
   "finishes": {
    "noise_lattice": "res://assets/noise/lattice.png",
    "finish_map": "res://assets/surfaces/building-finishes.map.png",
@@ -19,6 +19,7 @@
   "glass": { "glass_reflect": 0.04, "glass_sky_floor": 0.0, "window_glow": 0.62, "dark_glass": 0.64 },
   "sky_in_glass": { "glass_sky": "#7f95ad", "sky_glass_lift": [0.75, 1.15, 0.2] },
   "lamp_pool": { "pool_stops": [0.35, 0.55, 0.7, 0.15] },
+  "blast_dust": { "dust": [0.56, 0.54, 0.5] },
   "rooms": {
    "hung_kinds": [0.36, 0.56, 0.68, 0.8],
    "curtain_side": [0.14, 0.2],
@@ -215,7 +216,8 @@
   "params": {
    "tint": "#65e5c3",
    "glow": "#1d5a4a",
-   "opacity": 0.5
+   "opacity": 0.5,
+   "ghost_rough": 0.7
   }
  },
  "building_far": {
@@ -431,12 +433,35 @@
   }
  },
  "debris": {
+  "_doc": "A blast's thrown pieces (render/shaders/debris.gdshader): their roughness, what a burnt wreck keeps of its colour, the concrete dust over a piece of a building, its chips and a burnt piece's soot, by eye as the 4.0's debris; each vector's parts are said at its uniform.",
+  "uses": ["blast_dust"],
   "shader": "res://render/shaders/debris.gdshader",
-  "params": {}
+  "params": {
+   "roughness": 0.9,
+   "burnt_tint": 0.12,
+   "dust_cover": 0.62,
+   "debris_noise": [7.0, 5.0, 31.0, 23.0],
+   "dust_patches": [0.2, 0.7],
+   "chip_shade": 0.62,
+   "char_shade": [0.45, 1.9],
+   "debris_metal": 0.05
+  }
  },
  "rubble": {
+  "uses": ["blast_dust"],
+  "_doc": "A blast's rubble mounds (render/shaders/rubble.gdshader): how long the building takes to fall into one, its slumps and chunks, the concrete and the wall's colour in its pieces, its gaps and roughness, by eye as the 4.0's rubble; each vector's parts are said at its uniform; the dust is the blast_dust set's.",
   "shader": "res://render/shaders/rubble.gdshader",
-  "params": {}
+  "params": {
+   "fall_s": 2.2,
+   "concrete": [0.47, 0.455, 0.43],
+   "grain_gap": 0.72,
+   "mound_shape": [0.35, 1.1, 0.72, 0.56],
+   "mound_noise": [0.09, 0.62],
+   "rubble_noise": [0.21, 0.9, 3.7],
+   "rubble_mix": [0.6, 0.4],
+   "rubble_wall": 0.32,
+   "roughness": 0.96
+  }
  },
  "marks": {
   "_doc": "What a blast leaves on the ground (render/shaders/marks.gdshader), by eye as the 4.0's marks drew them, a mark's radius running 0..1; each vector's parts are said at its uniform. soot_color is sRGB (a source_color), ring_color and crack_grey linear; night_dim what a mark keeps of its colour at night; a pool starts at pool_start of its size and spreads over pool_spread_s; eye_pull_m draws every mark nearer the eye along its ray, so the ground's bumps do not bury it.",

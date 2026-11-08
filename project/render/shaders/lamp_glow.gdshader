@@ -6,13 +6,13 @@ render_mode blend_add, unshaded, cull_disabled, depth_draw_never, shadows_disabl
 
 global uniform float night;
 uniform vec3 glow_color : source_color;
-uniform float beam_gain = 0.4;
-uniform float beam_softness = 1.6; // how hard the cone's edges are seen from the side: higher, softer
-uniform float beam_fade_near_m = 60.0;
-uniform float beam_fade_far_m = 140.0;
+uniform float beam_gain; // materials.json lamp_glow, as the rest
+uniform float beam_softness; // how hard the cone's edges are seen from the side: higher, softer
+uniform float beam_fade_near_m;
+uniform float beam_fade_far_m;
 uniform float haze = 0.0;
 
-const float HAZE_SHOWN = 0.02;
+const float HAZE_SHOWN = 0.02; // a haze under this shows no beam: the cone is not drawn
 
 varying float v_along; // the beam: 0 lens, 1 ground
 varying float v_fade;

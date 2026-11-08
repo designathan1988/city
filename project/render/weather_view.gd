@@ -35,6 +35,9 @@ func _ready() -> void:
 	_rain_mat = ShaderMaterial.new()
 	_rain_mat.shader = load("res://render/shaders/rain.gdshader")
 	_rain_mat.set_shader_parameter("streak", _d.rain_streak_s)
+	var rain_kinds := WorldMaterials.uniform_kinds(_rain_mat.shader)
+	_rain_mat.set_shader_parameter("colour", WorldMaterials.typed(rain_kinds, "colour", _d.rain_colour))
+	_rain_mat.set_shader_parameter("rain_fade", WorldMaterials.typed(rain_kinds, "rain_fade", _d.rain_fade))
 	_rain = MeshInstance3D.new()
 	_rain.mesh = _rain_mesh()
 	_rain.material_override = _rain_mat
@@ -44,6 +47,7 @@ func _ready() -> void:
 	add_child(_rain)
 	_bolt_mat = ShaderMaterial.new()
 	_bolt_mat.shader = load("res://render/shaders/lightning.gdshader")
+	_bolt_mat.set_shader_parameter("core", WorldMaterials.typed(WorldMaterials.uniform_kinds(_bolt_mat.shader), "core", _d.bolt_core))
 	_thunder = Thunder.new(_d)
 	add_child(_thunder)
 

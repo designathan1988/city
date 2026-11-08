@@ -3695,6 +3695,24 @@ a tool that left the repository; it names the asset reader now.
 
 **What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56).
 
+### 6.66 B2, C14 and C16 (the blast's pieces and the small passes): their looks in data, one blast dust, the dead defaults gone (2026-11-08)
+
+**Cause and fix.** Ten shaders and the blast's two held looks as bare numbers or as uniform defaults:
+- `debris` and `rubble` set nothing from data, so their defaults drew: the pieces' roughness, burnt tint, dust cover, patches,
+  chips and soot, the mound's fall time, slumps and chunks, concrete, noises and gaps. They are `debris` and `rubble` params;
+  the dust both typed alike is the `_shared` set `blast_dust` both rows use. Rubble's wall colour unpacks with `bytes`'s names.
+- The bolt's core light and the rain's colour and fade drew from defaults too: `sky.json` `bolt_core`, `rain_colour`,
+  `rain_fade`, set by `WeatherView` when it makes the two materials. The contact shadows' reach, fade and least sun were
+  unsourced consts: `sky.json` `contact_shader`, set by `contact_pass`. The ghost's roughness is its row's.
+- Defaults something else always set are gone: the lamp glow's beam (its row), the occlusion's five (`daylight.json`
+  occlusion), the rain's streak, reach and opacity and the bolt's screen (`WeatherView`), the outline's screen height
+  (`preview_line` at setup), the sheer's three (its row), the signature's roughness (`signature_bodies.cpp`).
+- Definitions named: Rec. 709's luma weights, the signature's lit salt, the guards.
+
+**Proof.** Each shader with its moved values and dead defaults put back is HEAD's code. `quick`: every test passes, the four photos byte-equal to known states.
+
+**What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56).
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at
