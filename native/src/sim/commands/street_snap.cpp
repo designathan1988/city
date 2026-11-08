@@ -25,8 +25,8 @@ float radius_of(const StreetFurnitureDef &d, FurnitureKind k) {
 	return std::max(f.x_m, f.z_m) * 0.5f;
 }
 
-// What stands within `radius` of (x, z): what the player placed and the street's own kit on `seg`.
-bool occupied(const CityState &s, double x, double z, float radius, int seg) {
+// What stands within `radius` of (x, z): what the player placed and the street's own kit on `seg`, read as `read` says.
+bool occupied(const CityState &s, double x, double z, float radius, int seg, FurnitureRead read) {
 	const StreetFurnitureDef &d = s.catalog.furniture;
 	const float reach = radius + d.items.gap_m + radius_of(d, FurnitureKind::BENCH), fx = float(x), fz = float(z);
 	bool taken = false;
@@ -42,7 +42,7 @@ bool occupied(const CityState &s, double x, double z, float radius, int seg) {
 	});
 	if (taken || seg < 0) return taken;
 	std::vector<FurnitureSpot> spots;
-	traffic::street_furniture_of(s, seg, FURNITURE_ALL, spots);
+	traffic::street_furniture_of(s, seg, FURNITURE_ALL, spots, read);
 	for (const FurnitureSpot &p : spots) {
 		double px, pz, py;
 		footway_point(s.roads, p.seg, p.v, p.u, px, pz, py);
@@ -52,7 +52,7 @@ bool occupied(const CityState &s, double x, double z, float radius, int seg) {
 }
 } // namespace
 
-ItemSnap snap_item(const CityState &s, ItemKind kind, double x, double z, double reach) {
+ItemSnap snap_item(const CityState &s, ItemKind kind, double x, double z, double reach, FurnitureRead read) {
 	ItemSnap out;
 	out.x = x;
 	out.z = z;
@@ -82,7 +82,7 @@ ItemSnap snap_item(const CityState &s, ItemKind kind, double x, double z, double
 		if (m.ok) {
 			double y;
 			footway_point(net, m.seg, m.v, m.u, out.x, out.z, y);
-			out.ok = !occupied(s, out.x, out.z, radius, -1);
+			out.ok = !occupied(s, out.x, out.z, radius, -1, read);
 			if (!out.ok) out.reason = OCCUPIED;
 			return out;
 		}
@@ -100,7 +100,7 @@ ItemSnap snap_item(const CityState &s, ItemKind kind, double x, double z, double
 	double y;
 	footway_point(net, hit.seg, hit.v, u, out.x, out.z, y);
 	if (on_landing(net, hit, radius, d.poles.landing_clear_m)) out.reason = CROSSING;
-	else if (occupied(s, out.x, out.z, radius, hit.seg)) out.reason = OCCUPIED;
+	else if (occupied(s, out.x, out.z, radius, hit.seg, read)) out.reason = OCCUPIED;
 	out.ok = out.reason.empty();
 	return out;
 }

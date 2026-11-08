@@ -18,6 +18,7 @@
 #include "sim/state/pose_buffer.h"
 #include "sim/simulation/city_growth.h"
 #include "sim/state/change_log.h"
+#include "sim/street/furniture_kept.h"
 #include "sim/street/pole_routes.h"
 #include "sim/street/street_works.h"
 #include "sim/terrain/heightfield.h"
@@ -100,6 +101,7 @@ struct CityState : CityData {
 
 	ChangeLog log;
 	InteriorView interior; // the Interior layer: which buildings are drawn cut open (a view, not saved)
+	mutable FurnitureKept furniture_kept; // each segment's street furniture placed once for the city's revision (furniture_kept.h)
 	TrafficState traffic; // vehicles and pedestrians (sim/traffic)
 	TrafficLevels traffic_levels; // the panels' choices: written by the main thread, read by the traffic (traffic_view.h)
 	uint64_t lane_graph_serial = 0; // moves when the lane graph changes; outlives TrafficState, as the views do

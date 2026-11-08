@@ -2358,6 +2358,29 @@ the tests the old pads held the exact reach, so nothing moves; on a wider road t
 **Verified** (`city-verify`, `quick --all`): 44 of 45, the digest equal, `gates_changed` clean, `00-cidade` byte-equal to the
 state the B0 DLL gave (22:49) and to five other runs before C7.
 
+### 6.13 B2, C7 (R3, L8's furniture): a segment's street furniture placed once (2026-11-08)
+
+**Cause.** `traffic::street_furniture_of` placed a segment's kit (`segment_furniture`, O(n2) slot loops), merged what the player put
+up and cut (`merge_street`: `footway_at` over every segment in reach for every item) and filtered what a blow knocked out on every
+call: three times per segment per props chunk (`street_props.cpp` lamps, props, trees), at every pointer move of the Street tab
+(`street_snap.cpp`), and in four probes; only the walkers kept their own derived copy.
+
+**Fix.** `FurnitureKept` (`sim/street/furniture_kept.h`, on the session's `CityState`) keeps each segment's placement of every kind
+for the city's revision: every change to the map moves it (`touch()`, which a new map and a load also call, so the revision never
+comes back), and the entries are dropped together when it moves. The kinds only choose among the pieces placed (each of the three
+steps filters a piece by itself), so the kept placement of every kind, filtered, is the placement of the kinds asked. Only a
+reader under the map's shared lock reads it kept (the render's jobs, the walkers, previews, probes): nothing changes while it
+reads. An edit may read a segment before and after it changes something in the same command (a row of items: each one placed
+counts for the next), so the editors ask `FurnitureRead::PLACED` and place it anew: removing a kit piece, the blow knocking pieces
+out, and `snap_item` when a command calls it (the preview passes `KEPT`).
+
+**Left of R3 for B3 and B4.** Items keep only (x, z) and find their footway again on every placement; storing the footway place
+when an item is put down changes what an item does when its road moves (B3). The placement living in `city::traffic` (with
+`junction_control`) is the misplaced owner the C16 pass moves.
+
+**Verified** (`city-verify`, `quick --all`): 44 of 45, the digest equal, `gates_changed` clean; `00-cidade`, `02-rua` and
+`03-rua_noite` each byte-equal to runs before C7 (the last two to the saved state of 21:21).
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

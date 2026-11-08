@@ -94,8 +94,8 @@ void free_kerb_place(TrafficState &t, int id);
 bool step_to_nearer_place(CityState &s, int id);
 
 // ped_furniture.cpp: the street furniture (sim/roads/street_furniture.h) as the walkers and the render meet it
-// The pieces of segment `sid` of the kinds in `kinds`, the signal posts where control_of signals its ends.
-void street_furniture_of(const CityState &s, int sid, uint32_t kinds, std::vector<FurnitureSpot> &out);
+// The pieces of segment `sid` of the kinds in `kinds`, the signal posts where control_of signals its ends, appended to `out`.
+void street_furniture_of(const CityState &s, int sid, uint32_t kinds, std::vector<FurnitureSpot> &out, FurnitureRead read = FurnitureRead::KEPT);
 // Where a piece on a sidewalk stands in the world; false for a piece with no sidewalk (it cannot be knocked out).
 bool furniture_xz(const CityState &s, int seg, const FurnitureSpot &f, float &x, float &z);
 const SidewalkFurniture &sidewalk_furniture(CityState &s, int seg); // its footprints as bodies, built once per edit

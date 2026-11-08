@@ -38,7 +38,7 @@ void knock_out_furniture(Blow &b) {
 	std::vector<FurnitureSpot> spots;
 	b.s.roads.for_segments_near(b.x - reach, b.z - reach, b.x + reach, b.z + reach, [&](int sid) {
 		spots.clear();
-		traffic::street_furniture_of(b.s, sid, FURNITURE_ALL, spots);
+		traffic::street_furniture_of(b.s, sid, FURNITURE_ALL, spots, FurnitureRead::PLACED); // the blow knocks pieces out as it goes
 		for (const FurnitureSpot &f : spots) {
 			float x, z;
 			if (!traffic::furniture_xz(b.s, sid, f, x, z)) continue;
