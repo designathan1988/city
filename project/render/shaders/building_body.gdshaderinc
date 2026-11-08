@@ -6,6 +6,7 @@
 // that the vertex stage places and turns into these same faces (building_bay.gdshaderinc).
 render_mode cull_back;
 #include "res://render/shaders/contracts/buildings.gdshaderinc"
+#include "res://render/shaders/bytes.gdshaderinc"
 
 
 global uniform float night;
@@ -20,8 +21,14 @@ uniform float finish_m[FIN_COUNT];
 uniform float finish_normal_k[FIN_COUNT];
 uniform float finish_metal[FIN_COUNT];
 uniform float wall_gain = 1.0;
-uniform float lamp_glow = 3.4;
-uniform vec3 lamp_light : source_color = vec3(1.0, 0.83, 0.6); // what a lit lamp gives, whatever its body is by day
+uniform float lamp_glow;
+uniform vec3 lamp_light : source_color; // what a lit lamp gives, whatever its body is by day
+uniform vec4 lawn_tone; // a lawn's tone: its floor, its wide noise's share, its fine noise's share; its roughness
+uniform vec2 lawn_noise; // the wide and the fine noise a metre
+uniform float far_glass_rough; // the far wall's painted glass, its roughness
+// The outside lamps switched on by 10 m cells, each its own pick: its column and row times two primes, offset to stay positive.
+const float LAMP_CELL_PER_M = 0.1, LAMP_CELL_X = 31.0, LAMP_CELL_Z = 977.0, LAMP_CELL_SHIFT = 65536.0;
+const float FINISH_ROUND = 0.001; // a finish's layer + 1, carried in a float, read up past its rounding
 #include "res://render/shaders/building_glass_set.gdshaderinc"
 
 varying vec3 v_world;
@@ -60,8 +67,8 @@ void vertex() {
 	v_wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 #ifdef RUIN
 	// The finishes keep to the wall as it stood, in v_world and v_wn; only where it is drawn and how it faces the light move.
-	ivec4 id = ivec4(CUSTOM0 * 255.0 + 0.5);
-	int piece = id.r + id.g * 256 + id.b * 65536;
+	ivec4 id = ivec4(CUSTOM0 * BYTE_TOP + 0.5);
+	int piece = id.r + id.g * BYTE_SPAN + id.b * TWO_BYTES_SPAN;
 	ivec2 at = ivec2((piece % RUIN_PIECES_A_ROW) * 3, piece / RUIN_PIECES_A_ROW);
 	vec4 r0 = texelFetch(pieces, at, 0), r1 = texelFetch(pieces, at + ivec2(1, 0), 0), r2 = texelFetch(pieces, at + ivec2(2, 0), 0);
 	VERTEX = vec3(dot(r0, vec4(VERTEX, 1.0)), dot(r1, vec4(VERTEX, 1.0)), dot(r2, vec4(VERTEX, 1.0)));
@@ -71,7 +78,7 @@ void vertex() {
 	v_turn2 = r2.xyz;
 #endif
 	// What lies on the lot stays there: stepped back it sinks under the lawn, which is drawn by another material and stands still.
-	if (level_back > 0.0 && !IN_SHADOW_PASS && int(COLOR.a * 255.0 + 0.5) != SK_GROUND) VERTEX += level_local(MODEL_MATRIX, normalize(v_world - CAMERA_POSITION_WORLD) * level_back);
+	if (level_back > 0.0 && !IN_SHADOW_PASS && int(COLOR.a * BYTE_TOP + 0.5) != SK_GROUND) VERTEX += level_local(MODEL_MATRIX, normalize(v_world - CAMERA_POSITION_WORLD) * level_back);
 }
 
 #include "res://render/shaders/building_colour.gdshaderinc"
@@ -85,23 +92,23 @@ void fragment() {
 #ifdef LEVEL_FADE
 	if (!IN_SHADOW_PASS && level_noise(FRAGCOORD.xy) >= level_keep) discard;
 #endif
-	int kind = int(COLOR.a * 255.0 + 0.5);
+	int kind = int(COLOR.a * BYTE_TOP + 0.5);
 	vec3 n = normalize(v_wn);
 	vec3 V = normalize(v_world - CAMERA_POSITION_WORLD);
 	vec3 albedo = to_linear(COLOR.rgb), emit = vec3(0.0), nn = n;
 	float rough = BUILDING_WALL_ROUGHNESS, metal = 0.0;
 	if (kind == SK_LAMP) {
-		emit = uniform_linear(lamp_light) * night * lamp_glow * step(h01(uint(floor(v_world.x * 0.1) * 31.0 + floor(v_world.z * 0.1) * 977.0 + 65536.0)), outside_on);
+		emit = uniform_linear(lamp_light) * night * lamp_glow * step(h01(uint(floor(v_world.x * LAMP_CELL_PER_M) * LAMP_CELL_X + floor(v_world.z * LAMP_CELL_PER_M) * LAMP_CELL_Z + LAMP_CELL_SHIFT)), outside_on);
 	} else if (kind == SK_LAWN) {
-		albedo *= 0.8 + 0.25 * vnoise(v_world.xz * 0.7) + 0.15 * vnoise(v_world.xz * 3.1);
-		rough = 0.95;
+		albedo *= lawn_tone.x + lawn_tone.y * vnoise(v_world.xz * lawn_noise.x) + lawn_tone.z * vnoise(v_world.xz * lawn_noise.y);
+		rough = lawn_tone.w;
 	} else {
-		finish_surface(int(floor(UV2.x + 0.001)) - 1, n, albedo, nn, rough, metal);
+		finish_surface(int(floor(UV2.x + FINISH_ROUND)) - 1, n, albedo, nn, rough, metal);
 		albedo *= wall_gain;
 		if (kind == SK_FAR_WALL) {
 			float glass;
-			far_window(UV, v_room0, uint(fract(UV2.x) * 256.0 + 0.5), n, V, v_recess, albedo, emit, glass);
-			rough = mix(rough, 0.15, glass);
+			far_window(UV, v_room0, uint(fract(UV2.x) * BYTE_STEPS + 0.5), n, V, v_recess, albedo, emit, glass);
+			rough = mix(rough, far_glass_rough, glass);
 			nn = normalize(mix(nn, n, glass));
 		}
 	}

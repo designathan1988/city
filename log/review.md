@@ -3656,6 +3656,28 @@ before the sky is drawn.
 
 **What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56).
 
+### 6.64 B2, C14 and C16 (the buildings' shared shaders): definitions named with their sources, the weathering and the far glass in data (2026-11-08)
+
+**Cause and fix.** The building family's shared includes and bodies held definitions and looks as bare numbers (lamps 26,
+common 19, colour 10, hash 8, level 7, sky glass 3, body 21, glass body 13, far 14, far window 24). The definitions are named
+consts with their sources: sRGB's transfer curve (IEC 61966-2-1), PCG's constants (O'Neill 2014) and Teschner's primes,
+interleaved gradient noise (Jimenez 2014), the lit-room model (the lamp mix whose means are worked out from it, the level's range,
+the far rooms' cell hash, the television's cuts and flicker), the outside lamps' 10 m cells, the bays' picks of dark panes and
+shutters, the guards. `building_lamps` is read by the signature shaders too, whose materials the core makes without params:
+its model stays consts. The looks are data: the plain finishes' weathering in the `finishes` set (building and building_parts,
+`building_common`), the sky in the glass's lift in `sky_in_glass` (every level, `building_sky_glass`), the lawn, the far wall's
+glass and the mid level's shutters in the `building` row, the far masses' glass and roughness in `building_far`. The defaults rows
+always set are gone (lamp glow and light, the far glass's sky and floor).
+
+Held twice, one owner each: the byte's top (255) and an id's byte spans, typed in every building shader and the pane, are
+`bytes.gdshaderinc` (included where each starts, as the vertex stages read bytes before the colour helpers; `building_bay`'s own byte consts are its ints); Knuth's multiplier,
+named in the lamps and the pane, is `hash.gdshaderinc`'s; the glass body's GGX takes F0 and Schlick's power from `fresnel` (its
+differences from `people_look`'s copy stay B3, §6.25).
+
+**Proof.** Each file with every const, macro and moved param put back is HEAD's code line for line. `quick`: every test passes, the photos byte-equal to the states §6.62 left; one run lost `save_undo_test` to another test in parallel (log/pendencias.md), alone it passes.
+
+**What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56).
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

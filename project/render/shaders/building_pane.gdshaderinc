@@ -6,6 +6,7 @@
 // room2 = piece centre (signed), half width, near, far; trim = sRGB frame colour, frame thickness.
 #include "res://render/shaders/contracts/buildings.gdshaderinc"
 #include "res://render/shaders/fresnel.gdshaderinc"
+#include "res://render/shaders/bytes.gdshaderinc"
 const float FRAME_SHARE = 0.045; // the border of the frame, of the pane's side (buildings.json parts.frame_bar_m)
 const float REVEAL_ALBEDO = 0.9; // the mean of the trim finishes' maps (render, stone, concrete)
 const int FRAME_BARS = 6, TRANSOM = 5; // the frame's bars: its four sides, the mullion (4) and the transom
@@ -13,13 +14,12 @@ const float FULL_SPAN = 0.99; // a bar this much of the pane's width across lies
 // Guards, far under a pixel: a footprint or a ray's part never under LEAST_M (LEAST_RAY into a pane), normalize never of two
 // corners seen in one line, a lit point off its surface by a hair, what hangs laid on a pane of at least LEAST_PANE_M.
 const float LEAST_M = 1e-5, LEAST_RAY = 1e-4, LEAST_CROSS = 1e-9, OFF_SURFACE_M = 1e-3, LEAST_PANE_M = 0.1;
-const float BYTE_TOP = 255.0; // a code in a colour byte reads byte / 255
 // A floor cell's seed: its column plus its row times CELL_ROW (more than a room's tiles a row), offset to stay positive.
 const float CELL_ROW = 17.0, CELL_OFFSET = 4096.0;
 // A room's independent picks from its lot: fract(lot * k), each k far from a simple ratio of the others.
 const float LOT_PICTURE = 29.17, LOT_ART = 41.3, LOT_LIT = 5.31, LOT_TV = 3.71; // (LOT_HUNG, LOT_CLOTH, LOT_SIDE: building_room_tone)
-// A room's and a bay's seeds: Knuth's multiplicative hash (2^32 over the golden ratio), a salt, and two primes.
-const uint KNUTH = 2654435761u, AWAKE_SALT = 977u, BAY_PRIME = 7919u, SLOT_PRIME = 31u;
+// A room's and a bay's seeds: Knuth's multiplicative hash (hash.gdshaderinc), a salt, and two primes.
+const uint AWAKE_SALT = 977u, BAY_PRIME = 7919u, SLOT_PRIME = 31u;
 
 // The room and what hangs in its window: data/render/materials.json building_glass.params, by eye (the 4.0's rooms). Colours are
 // linear albedo, lengths metres; a pick of h (a lot) is from + over * h.
@@ -254,7 +254,7 @@ vec3 room_hung(vec3 room, vec3 o, vec3 d, vec2 size, float lot) {
 // The lamp of a room at night, multiplied by what the room shows. Who is awake is the room's; whether this stretch of it is lit and how much is `lot`, a bay's, as the
 // 4.0's vRoomLot is of what stands within 2.7 m: a wide floor is lit in patches, never all or nothing.
 vec3 pane_lamp(uint slot, float lot, float office, vec3 seen) {
-	float awake = step(1.0 - rooms_awake, h01(slot * KNUTH + AWAKE_SALT));
+	float awake = step(1.0 - rooms_awake, h01(slot * KNUTH_HASH + AWAKE_SALT));
 	float lit = step(fract(lot * LOT_LIT), rooms_in_use) * awake * room_level(lot) * building_night_windows;
 	vec3 tint = room_lamp(lot, office);
 	tint = mix(tint, tv_light(TIME, lot), (1.0 - office) * step(1.0 - tv_share, fract(lot * LOT_TV)));

@@ -115,6 +115,11 @@ O que falta fazer, por área.
     with the suite in parallel; the terrain's look change); alone they passed in 10 s, byte-equal to known states. The scene waits
     in `CaptureWait.until_drawn` on the render's pending work: to read there and in the render's pending counters which one
     did not drain.
+  - `save_undo_test` failed twice in one quick run with the suite in parallel (2026-11-08 12:17, the buildings' shared shaders):
+    after a save and an open "the same buildings" differed, and a save it had just written opened as `save.none`; alone it
+    passed (7.6 s), and the same DLL passed it in the run before. Each test saves to a slot of its own in `user://saves_tests`,
+    but `inspector_test` and `shell_test` work on the city's own slot (`SaveSlots.city_slot`) and `inspector_test` empties the
+    shared quarantine folder a damaged save is moved into (`load_game`): to read there which file two tests share.
 - The exported game leaks six render resources when it quits (`--quit-after`: a shadow atlas, a render target, two textures, a
   viewport, a font, "RID allocations ... leaked at exit"): the same six at the C3 and C4 closes (2026-11-08), so older than
   both; which owner frees them too late, or never, is to read in the quit path (`GameFlow` QUITTING).
