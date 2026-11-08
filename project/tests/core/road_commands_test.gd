@@ -21,7 +21,7 @@ const TANGENT_DOT := 0.999
 const COST_RUNS := 20
 const TOWN_STEPS := 400
 const TOWN_SWING_M := 60.0
-const FILLED_STYLES := ["roadcraft", "brasil"] # session-rules.md, section 10
+const FILLED_STYLES := ["roadcraft", "brasil", "eua", "europa"] # session-rules.md, section 10
 
 const RAY_FROM_M := 400.0
 const OFF_ROAD_M := 120.0
@@ -200,3 +200,23 @@ func _styles() -> void:
 		check(kerb.plate_kerb_curve_m >= kerb.plate_kerb_m, "style %s: a sign on a curve no nearer the carriageway" % id)
 		var c: Dictionary = DataTables.style_of(DataTables.CATALOG.street_furniture, id).crossing
 		check(c.zebra_from_m < c.zebra_to_m and c.zebra_to_m < c.stop_from_m and c.stop_from_m < c.stop_to_m, "style %s: the crossing before the stop line" % id)
+		var roads: Dictionary = DataTables.style_of(DataTables.CATALOG.road_profiles, id)
+		var paints: Array = DataTables.render_table("streets").markings.styles.map(func(s: Dictionary) -> String: return s.id)
+		check(roads.marking_style in paints, "style %s: a new city's paint is one of Menu > Paint" % id)
+		check(not roads.has("styles") and roads.has("prices"), "style %s: the money laid over the roads" % id)
+		var props: Dictionary = DataTables.style_of(DataTables.RENDER_TABLES.streets, id).props
+		check(props.signal.all(func(p: Dictionary) -> bool: return p.get("sway", false)), "style %s: every part of the signal sways" % id)
+	var base: Dictionary = DataTables.style_of(DataTables.CATALOG.road_profiles, "roadcraft")
+	var us: Dictionary = DataTables.style_of(DataTables.CATALOG.road_profiles, "eua")
+	check(_lane_m(us, "localStreet") != _lane_m(base, "localStreet") and _lane_m(us, "ramp") == _lane_m(base, "ramp"),
+			"a style's block changes its profiles by id and leaves the rest")
+	check(CityStore.start_marking_style() == 0, "a roadcraft city starts with the first paint")
+
+
+func _lane_m(table: Dictionary, id: String) -> float:
+	for p: Dictionary in table.profiles:
+		if p.id == id:
+			for s: Dictionary in p.strips:
+				if s.kind == "lane":
+					return s.width
+	return -1.0

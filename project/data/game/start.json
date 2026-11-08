@@ -8,6 +8,18 @@
    "speed_unit": "kmh",
    "length_unit": "m",
    "currency": "R$"
+  },
+  "eua": {
+   "name_key": "style.eua",
+   "speed_unit": "mph",
+   "length_unit": "ft",
+   "currency": "US$"
+  },
+  "europa": {
+   "name_key": "style.europa",
+   "speed_unit": "kmh",
+   "length_unit": "m",
+   "currency": "€"
   }
  },
  "units": {

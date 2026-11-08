@@ -1,6 +1,6 @@
 ## LOOK AT THE GAME FROM A PLAN, as the Roadcraft 4.0's scripts/look.mjs does: a JSON plan of steps, so a view is a line of
 ## data and not a scene of its own, and one plan serves both games (the same setView, in metres, gives the same camera:
-## PairCamera; its y is the 4.0's, whose map north is our -z). The plan: {"city": {"map": 0, "seed": 1, "generate": true}, "steps": [...]}; `generate` false opens the
+## PairCamera; its y is the 4.0's, whose map north is our -z). The plan: {"city": {"map": 0, "seed": 1, "generate": true, "style": id}, "steps": [...]} (`style` optional: the regional style the tables are read in, start.json's default without it); `generate` false opens the
 ## bare land of the map, with no town to make and draw.
 ## Steps: {"setView": [x, y, zoom, azimuth, elevation]} (the 4.0's map and degrees), {"shot": name} (after the world is drawn),
 ## {"frames": n}, {"hour": h} (light and clock together), {"dispatch": command, "args": [...]},
@@ -50,12 +50,15 @@ func _ready() -> void:
 	PairCamera.quality(world, get_viewport())
 	rig = CityCamera.new()
 	add_child(rig)
+	var city: Dictionary = plan.get("city", {})
+	if city.has("style") and not DataTables.choose_style(str(city.style)): # the regional style, before the core takes its tables
+		get_tree().quit(2)
+		return
 	var errors := CityStore.boot(world.terrain, world.materials())
 	if not errors.is_empty():
 		push_error("boot: %s" % errors)
 		get_tree().quit(1)
 		return
-	var city: Dictionary = plan.get("city", {})
 	var t0 := Time.get_ticks_msec()
 	CityStore.new_map(int(city.get("map", 0)), int(city.get("seed", 1)), bool(city.get("generate", true)), true)
 	print("city opened in %d ms" % (Time.get_ticks_msec() - t0))

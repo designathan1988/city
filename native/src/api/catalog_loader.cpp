@@ -45,9 +45,6 @@ RoadClass road_class(const String &k, DataReader &r) {
 	return RoadClass::LOCAL;
 }
 
-// The regional style the prices come from, until the style lives in the CityState.
-const char *const STYLE = "roadcraft";
-
 // A strip writes only the flags it has (absent: false or 0).
 Strip strip_of(DataReader r, const Dictionary &sd) {
 	Strip s;
@@ -64,10 +61,9 @@ Strip strip_of(DataReader r, const Dictionary &sd) {
 }
 
 void load_profiles(DataReader top, const Dictionary &t, Catalog &c) {
-	DataReader rs = top.in("styles").in(STYLE);
-	const Dictionary style = top.in("styles").table(top.table(t, "styles"), STYLE);
-	const Dictionary pr = rs.table(style, "prices"), st = rs.table(style, "structure");
-	DataReader rp = rs.in("prices"), rt = rs.in("structure");
+	// The prices and the structure of the city's regional style, laid over the table by DataTables (its one reader of the style).
+	const Dictionary pr = top.table(t, "prices"), st = top.table(t, "structure");
+	DataReader rp = top.in("prices"), rt = top.in("structure");
 	c.prices = { num(rp, pr, "carriageway"), num(rp, pr, "median"), num(rp, pr, "footway") };
 	c.structure = { num(rt, st, "ground"), num(rt, st, "embankment"), num(rt, st, "trench"), num(rt, st, "bridge"), num(rt, st, "tunnel") };
 	const Array list = top.list(t, "profiles");

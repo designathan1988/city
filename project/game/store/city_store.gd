@@ -67,6 +67,7 @@ func boot(terrain: Node, materials: Dictionary, catalog: Dictionary = {}, render
 	var tables: Dictionary = (DataTables.render() if render.is_empty() else render).duplicate()
 	tables["camera"] = DataTables.game("camera") # the camera's far lens, which the building levels' bands are measured for
 	var problems: PackedStringArray = _core.setup_render(tables, materials)
+	_core.set_style(DataTables.regional_style()) # the style its tables were read in
 	DataTables.release_boot_tables()
 	return problems
 
@@ -75,9 +76,22 @@ func boot(terrain: Node, materials: Dictionary, catalog: Dictionary = {}, render
 ## `paused`: the clock starts stopped, for a test or a capture that steps it: no tick slips in before it says so.
 func new_map(map: int, seed: int, with_city: bool, paused := false) -> Dictionary:
 	var report: Dictionary = _core.new_map(map, seed, with_city, paused) # waits for a save in flight first
+	_core.set_marking_style(start_marking_style(), false)
 	saves.new_city()
 	refresh()
 	return report
+
+
+## The paint standard a new city of the regional style starts with: road_profiles.json's marking_style, by its place in
+## streets.json markings.styles (the index Menu > Paint and the core use).
+static func start_marking_style() -> int:
+	var id: String = DataTables.catalog_table("road_profiles").marking_style
+	var styles: Array = DataTables.render_table("streets").markings.styles
+	for i in styles.size():
+		if styles[i].id == id:
+			return i
+	push_error("marking_style '%s' is not in streets.json markings.styles" % id)
+	return 0
 
 
 ## The core is up and holds a map (views that read it each frame wait for this).

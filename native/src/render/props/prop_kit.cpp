@@ -77,11 +77,17 @@ PropTag part_tag(const DataValue &p) {
 // The pole part a part is (props.gdshader shows or hides each per pole), 0 when it says none.
 float part_of(const DataValue &p) { return p.has("part") ? p["part"].f() : 0.f; }
 
-// Where on itself a part's vertices lie, for the surface the shader gives it: a plank's length and across it, anything else its height off the ground (props.gdshader).
-void mark_surface(MeshBuilder &b, int64_t from, PropTag tag) {
+// Whether a part sways in the wind with its post ("sway": the signal's post, arm and heads).
+bool part_sways(const DataValue &p) { return p.has("sway") && p["sway"].flag(); }
+
+// Where on itself a part's vertices lie, for the surface the shader gives it: a plank's length and across it, anything else its
+// height off the ground in y; a part that sways also PROP_SWAY_MARK plus its reach from the post's axis in x, which
+// props.gdshader bends and lifts it by (a plank never sways: its x is its length).
+void mark_surface(MeshBuilder &b, int64_t from, PropTag tag, bool sways) {
 	for (int64_t i = from; i < b.v.size(); i++) {
 		const Vector3 &v = b.v[i];
-		b.uv.set(i, tag == PropTag::PLANK ? Vector2(v.x, v.y + v.z) : Vector2(0, v.y));
+		const float reach = std::sqrt(v.x * v.x + v.z * v.z);
+		b.uv.set(i, tag == PropTag::PLANK ? Vector2(v.x, v.y + v.z) : Vector2(sways ? PROP_SWAY_MARK + reach : 0.f, v.y));
 	}
 }
 
@@ -94,7 +100,7 @@ MeshBuilder parts(const DataValue &props, const char *name) {
 		if (p.has("lens")) continue;
 		const int64_t from = b.v.size();
 		shape(b, p, part_color(p), Vector2(float(int(part_tag(p))), part_of(p)));
-		mark_surface(b, from, part_tag(p));
+		mark_surface(b, from, part_tag(p), part_sways(p));
 	}
 	return b;
 }
@@ -229,7 +235,9 @@ bool PropKit::build(const DataValue &props, const DataValue &wires, const DataVa
 		}
 		const DataValue unlit = dark[k][0];
 		unlit.colour(); // '#rrggbb', or an error
+		const int64_t from = lenses_.v.size();
 		shape(lenses_, p, Color::html(unlit.text()), Vector2(float(int(PropTag::LENS)), float(k)));
+		mark_surface(lenses_, from, PropTag::LENS, part_sways(p)); // a lens sways with its head
 		seen[k] = true;
 	}
 	for (bool s : seen)

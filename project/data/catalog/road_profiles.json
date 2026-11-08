@@ -1,6 +1,6 @@
 {
  "styles": {
-  "_doc": "What the regional style of a city changes in the money. Until the style lives in the CityState the loader reads roadcraft. prices: R$ per m2 of each part of the cross-section. roadcraft: modelling choices, the balance of the game. brasil: carriageway from DNIT, Custos Medios Gerenciais, Anexo IX, base July 2016, single carriageway, 3.6 m lanes and 2.5 m shoulders, mean R$ 3,241,000 per km over a 12.2 m platform; median and footway have no source and stay modelling choices. structure: price multiplier by how the road is built, modelling choices in both (no published ratio found). Also modelling choices, in tuning.json: economy.start_money, refund_share, fill_from_m (height from which a road at grade is an embankment, or a trench below its negative) and on_piers_from_m (height from which it stands on piers).",
+  "_doc": "What the regional style of a city changes in its roads, laid over this table by DataTables (data_tables.gd): prices and structure replace the table's, a block under profiles is laid over the profile of that id, and marking_style is the paint standard of streets.json markings.styles a new city starts with. prices: money per m2 of each part of the cross-section. roadcraft: modelling choices, the balance of the game. brasil: carriageway from DNIT, Custos Medios Gerenciais, Anexo IX, base July 2016, single carriageway, 3.6 m lanes and 2.5 m shoulders, mean R$ 3,241,000 per km over a 12.2 m platform; median and footway have no source and stay modelling choices; it paints CONTRAN's norm (br_norm). eua and europa: prices and structure are roadcraft's, no published price per m2 read for them. eua: lanes of 11 ft on local streets and 12 ft on urban streets and avenues (AASHTO Green Book 2018, 5.3.3.1 and 6.2.2.1: 10 to 12 ft), footways of 5 ft (AASHTO Guide for the Planning, Design and Operation of Pedestrian Facilities 2021, 3.2.3; PROWAG R302.3 asks 4 ft at least), MUTCD markings (us). europa: lanes of 3.25 m on urban streets and avenues and 2.75 m on local streets (RASt 06, FGSV, 6.1.1.1 and table 7: a local street of 5.50 m), footways of 2.50 m (RASt 06 4.7: 2.50 m the least side room), the white lines of the Vienna Convention (eu). structure: price multiplier by how the road is built, modelling choices in all (no published ratio found). Also modelling choices, in tuning.json: economy.start_money, refund_share, fill_from_m and on_piers_from_m.",
   "roadcraft": {
    "prices": {
     "carriageway": 150,
@@ -13,7 +13,8 @@
     "trench": 1.8,
     "bridge": 2.5,
     "tunnel": 6
-   }
+   },
+   "marking_style": "br"
   },
   "brasil": {
    "prices": {
@@ -27,6 +28,467 @@
     "trench": 1.8,
     "bridge": 2.5,
     "tunnel": 6
+   },
+   "marking_style": "br_norm"
+  },
+  "eua": {
+   "prices": {
+    "carriageway": 150,
+    "median": 40,
+    "footway": 80
+   },
+   "structure": {
+    "ground": 1,
+    "embankment": 1.4,
+    "trench": 1.8,
+    "bridge": 2.5,
+    "tunnel": 6
+   },
+   "marking_style": "us",
+   "profiles": {
+    "localStreet": {
+     "strips": [
+      {
+       "kind": "sidewalk",
+       "width": 1.524
+      },
+      {
+       "kind": "curb",
+       "width": 0.15
+      },
+      {
+       "kind": "lane",
+       "width": 3.3528,
+       "dir": 1
+      },
+      {
+       "kind": "lane",
+       "width": 3.3528,
+       "dir": -1
+      },
+      {
+       "kind": "curb",
+       "width": 0.15
+      },
+      {
+       "kind": "sidewalk",
+       "width": 1.524
+      }
+     ]
+    },
+    "cityLocal": {
+     "strips": [
+      {
+       "kind": "sidewalk",
+       "width": 1.524
+      },
+      {
+       "kind": "curb",
+       "width": 0.15
+      },
+      {
+       "kind": "lane",
+       "width": 3.3528,
+       "dir": 1
+      },
+      {
+       "kind": "lane",
+       "width": 3.3528,
+       "dir": -1
+      },
+      {
+       "kind": "curb",
+       "width": 0.15
+      },
+      {
+       "kind": "sidewalk",
+       "width": 1.524
+      }
+     ]
+    },
+    "urbanStreet": {
+     "strips": [
+      {
+       "kind": "sidewalk",
+       "width": 1.524
+      },
+      {
+       "kind": "curb",
+       "width": 0.15
+      },
+      {
+       "kind": "lane",
+       "width": 3.6576,
+       "dir": 1
+      },
+      {
+       "kind": "lane",
+       "width": 3.6576,
+       "dir": -1
+      },
+      {
+       "kind": "curb",
+       "width": 0.15
+      },
+      {
+       "kind": "sidewalk",
+       "width": 1.524
+      }
+     ]
+    },
+    "cityUrban": {
+     "strips": [
+      {
+       "kind": "sidewalk",
+       "width": 1.524
+      },
+      {
+       "kind": "curb",
+       "width": 0.15
+      },
+      {
+       "kind": "lane",
+       "width": 3.6576,
+       "dir": 1
+      },
+      {
+       "kind": "lane",
+       "width": 3.6576,
+       "dir": -1
+      },
+      {
+       "kind": "curb",
+       "width": 0.15
+      },
+      {
+       "kind": "sidewalk",
+       "width": 1.524
+      }
+     ]
+    },
+    "avenue": {
+     "strips": [
+      {
+       "kind": "sidewalk",
+       "width": 1.524
+      },
+      {
+       "kind": "curb",
+       "width": 0.15
+      },
+      {
+       "kind": "lane",
+       "width": 3.6576,
+       "dir": 1
+      },
+      {
+       "kind": "lane",
+       "width": 3.6576,
+       "dir": 1
+      },
+      {
+       "kind": "lane",
+       "width": 3.6576,
+       "dir": -1
+      },
+      {
+       "kind": "lane",
+       "width": 3.6576,
+       "dir": -1
+      },
+      {
+       "kind": "curb",
+       "width": 0.15
+      },
+      {
+       "kind": "sidewalk",
+       "width": 1.524
+      }
+     ]
+    },
+    "cityAvenue": {
+     "strips": [
+      {
+       "kind": "sidewalk",
+       "width": 1.524
+      },
+      {
+       "kind": "curb",
+       "width": 0.15
+      },
+      {
+       "kind": "lane",
+       "width": 3.6576,
+       "dir": 1
+      },
+      {
+       "kind": "lane",
+       "width": 3.6576,
+       "dir": 1
+      },
+      {
+       "kind": "curb",
+       "width": 0.15
+      },
+      {
+       "kind": "median",
+       "width": 1.7,
+       "pave": 3
+      },
+      {
+       "kind": "curb",
+       "width": 0.15
+      },
+      {
+       "kind": "lane",
+       "width": 3.6576,
+       "dir": -1
+      },
+      {
+       "kind": "lane",
+       "width": 3.6576,
+       "dir": -1
+      },
+      {
+       "kind": "curb",
+       "width": 0.15
+      },
+      {
+       "kind": "sidewalk",
+       "width": 1.524
+      }
+     ]
+    }
+   }
+  },
+  "europa": {
+   "prices": {
+    "carriageway": 150,
+    "median": 40,
+    "footway": 80
+   },
+   "structure": {
+    "ground": 1,
+    "embankment": 1.4,
+    "trench": 1.8,
+    "bridge": 2.5,
+    "tunnel": 6
+   },
+   "marking_style": "eu",
+   "profiles": {
+    "localStreet": {
+     "strips": [
+      {
+       "kind": "sidewalk",
+       "width": 2.5
+      },
+      {
+       "kind": "curb",
+       "width": 0.15
+      },
+      {
+       "kind": "lane",
+       "width": 2.75,
+       "dir": 1
+      },
+      {
+       "kind": "lane",
+       "width": 2.75,
+       "dir": -1
+      },
+      {
+       "kind": "curb",
+       "width": 0.15
+      },
+      {
+       "kind": "sidewalk",
+       "width": 2.5
+      }
+     ]
+    },
+    "cityLocal": {
+     "strips": [
+      {
+       "kind": "sidewalk",
+       "width": 2.5
+      },
+      {
+       "kind": "curb",
+       "width": 0.15
+      },
+      {
+       "kind": "lane",
+       "width": 2.75,
+       "dir": 1
+      },
+      {
+       "kind": "lane",
+       "width": 2.75,
+       "dir": -1
+      },
+      {
+       "kind": "curb",
+       "width": 0.15
+      },
+      {
+       "kind": "sidewalk",
+       "width": 2.5
+      }
+     ]
+    },
+    "urbanStreet": {
+     "strips": [
+      {
+       "kind": "sidewalk",
+       "width": 2.5
+      },
+      {
+       "kind": "curb",
+       "width": 0.15
+      },
+      {
+       "kind": "lane",
+       "width": 3.25,
+       "dir": 1
+      },
+      {
+       "kind": "lane",
+       "width": 3.25,
+       "dir": -1
+      },
+      {
+       "kind": "curb",
+       "width": 0.15
+      },
+      {
+       "kind": "sidewalk",
+       "width": 2.5
+      }
+     ]
+    },
+    "cityUrban": {
+     "strips": [
+      {
+       "kind": "sidewalk",
+       "width": 2.5
+      },
+      {
+       "kind": "curb",
+       "width": 0.15
+      },
+      {
+       "kind": "lane",
+       "width": 3.25,
+       "dir": 1
+      },
+      {
+       "kind": "lane",
+       "width": 3.25,
+       "dir": -1
+      },
+      {
+       "kind": "curb",
+       "width": 0.15
+      },
+      {
+       "kind": "sidewalk",
+       "width": 2.5
+      }
+     ]
+    },
+    "avenue": {
+     "strips": [
+      {
+       "kind": "sidewalk",
+       "width": 2.5
+      },
+      {
+       "kind": "curb",
+       "width": 0.15
+      },
+      {
+       "kind": "lane",
+       "width": 3.25,
+       "dir": 1
+      },
+      {
+       "kind": "lane",
+       "width": 3.25,
+       "dir": 1
+      },
+      {
+       "kind": "lane",
+       "width": 3.25,
+       "dir": -1
+      },
+      {
+       "kind": "lane",
+       "width": 3.25,
+       "dir": -1
+      },
+      {
+       "kind": "curb",
+       "width": 0.15
+      },
+      {
+       "kind": "sidewalk",
+       "width": 2.5
+      }
+     ]
+    },
+    "cityAvenue": {
+     "strips": [
+      {
+       "kind": "sidewalk",
+       "width": 2.5
+      },
+      {
+       "kind": "curb",
+       "width": 0.15
+      },
+      {
+       "kind": "lane",
+       "width": 3.25,
+       "dir": 1
+      },
+      {
+       "kind": "lane",
+       "width": 3.25,
+       "dir": 1
+      },
+      {
+       "kind": "curb",
+       "width": 0.15
+      },
+      {
+       "kind": "median",
+       "width": 1.7,
+       "pave": 3
+      },
+      {
+       "kind": "curb",
+       "width": 0.15
+      },
+      {
+       "kind": "lane",
+       "width": 3.25,
+       "dir": -1
+      },
+      {
+       "kind": "lane",
+       "width": 3.25,
+       "dir": -1
+      },
+      {
+       "kind": "curb",
+       "width": 0.15
+      },
+      {
+       "kind": "sidewalk",
+       "width": 2.5
+      }
+     ]
+    }
    }
   }
  },

@@ -1,0 +1,26 @@
+{
+ "_doc": "The street furniture of one regional style (city.style; the same views as style_roadcraft_plan.json): two avenues crossed on bare land, their junction signalled, hydrants, post boxes, lamps and signs laid by the style's tables; the junction, a corner close, the corner at night, and the corner again in a 25 m/s wind (the signal sways, props.gdshader).",
+ "city": {"map": 0, "seed": 1, "generate": false, "style": "europa"},
+ "steps": [
+  {"hour": 16},
+  {"dispatch": "build_road", "args": [{"at": [-120, 0]}, {"at": [120, 0]}, false, {"v3": [0, 0, 0]}, {"profile": "avenue"}, 0.25]},
+  {"dispatch": "build_road", "args": [{"at": [0, -120]}, {"at": [0, 120]}, false, {"v3": [0, 0, 0]}, {"profile": "avenue"}, 0.25]},
+  {"frames": 10},
+  {"setView": [0, 0, 22, 225, 32]},
+  {"shot": "junction"},
+  {"setView": [-12, -12, 60, 225, 10]},
+  {"shot": "corner"},
+  {"setView": [12, 12, 60, 45, 10]},
+  {"shot": "corner_far"},
+  {"setView": [40, -14, 55, 200, 8]},
+  {"shot": "kerb"},
+  {"hour": 22},
+  {"setView": [-12, -12, 60, 225, 10]},
+  {"shot": "corner_night"},
+  {"hour": 16},
+  {"dispatch": "set_weather", "args": [{"wind": 25.0}]},
+  {"frames": 20},
+  {"setView": [-12, -12, 60, 225, 10]},
+  {"shot": "corner_wind"}
+ ]
+}

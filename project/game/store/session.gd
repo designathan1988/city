@@ -49,6 +49,14 @@ static func _nearest(v: float, among: Array) -> float:
 	return best
 
 
+## The regional style the city in `slot` was made in ("" when its file has none, or does not read).
+static func style_of(slot: String) -> String:
+	var cfg := ConfigFile.new()
+	if cfg.load(path(slot)) != OK:
+		return ""
+	return str(cfg.get_value(SECTION, "style", ""))
+
+
 static func read(slot: String, rig: CityCamera, paused := false) -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(path(slot)) != OK:

@@ -12,6 +12,7 @@ func _ready() -> void:
 	add_child(world)
 	var cam := CityCamera.new()
 	add_child(cam)
+	_choose_style()
 	var errors := CityStore.boot(world.terrain, world.materials())
 	if not errors.is_empty():
 		push_error("Falha ao iniciar: %s" % "\n".join(errors))
@@ -36,6 +37,17 @@ func _maybe_live() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--live="):
 			add_child(load(LIVE_DRIVER).new())
+
+
+## The regional style the tables are read in, before the core takes them: the last session's city's (Session.style_of), so a
+## city opens in the style it was made in; a run driven by a test plays the data's default.
+func _choose_style() -> void:
+	var slot := SaveSlots.last()
+	if slot.is_empty() or GameFlow.tests_drive:
+		return
+	var id := Session.style_of(slot)
+	if id != "":
+		DataTables.choose_style(id)
 
 
 ## The city of the last session, if it reads; one that does not goes aside and the game starts afresh.

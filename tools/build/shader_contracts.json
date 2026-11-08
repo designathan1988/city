@@ -89,7 +89,8 @@
     {"name": "RoadCodes", "type": "floats", "values": {"ROAD_MAT_SCALE": "16.0", "ROAD_POOL_NONE": "1000.0", "ROAD_POOL_PLATE": "-1000.0", "ROAD_WEAR_SPAN_M": "25.5", "ROAD_WEAR_LANE_M": "12.75"}, "doc": "a road vertex's codes (road_look.h): the material's scale in the alpha; UV2.x of a vertex no lamp pool lights and of a junction plate, lit evenly (road_body.gdshaderinc reads past half of each); the distances to a surface's edges and a lane's width over these (road_wear.gdshaderinc)"},
     {"name": "LENS_COUNT", "type": "int", "value": 5, "doc": "the lenses of the street props (prop_kit.h Lens::COUNT; props.gdshader lit_radiance and dark_radiance; lamp_radiance.gd)"},
     {"name": "PropTag", "type": "enum", "cpp": "enum class PropTag : int", "values": ["FIXED", "TINT", "NIGHT_GLOW", "LENS", "WIRE", "WOOD", "PLATE", "FINISHED", "SIGN_POST", "PLANK"], "shader_prefix": "PROP_", "shader_type": "float", "doc": "what a street prop's vertex is, in its UV2.x (prop_kit.h; props.gdshader)"},
-    {"name": "PropSpan", "type": "floats", "values": {"PROP_SPAN_KIND_STRIDE": "8.0", "WIRE_SECONDARY_MARK": "10000.0"}, "doc": "a wire span's INSTANCE_CUSTOM.y is its phase plus this stride times kind_a + 2 kind_b; a secondary wire carries the mark in its rural seat (street_props.cpp, prop_kit.h; props.gdshader)"}
+    {"name": "PropSpan", "type": "floats", "values": {"PROP_SPAN_KIND_STRIDE": "8.0", "WIRE_SECONDARY_MARK": "10000.0"}, "doc": "a wire span's INSTANCE_CUSTOM.y is its phase plus this stride times kind_a + 2 kind_b; a secondary wire carries the mark in its rural seat (street_props.cpp, prop_kit.h; props.gdshader)"},
+    {"name": "PROP_SWAY_MARK", "type": "float", "value": "1.0", "doc": "a part that sways in the wind carries this plus its reach from the post's axis in UV.x, a fixed or lens part (prop_kit.cpp mark_surface; props.gdshader signal_sway)"}
    ]
   },
   "land": {

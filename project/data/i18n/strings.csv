@@ -1622,6 +1622,8 @@ start.size,Tamanho,Size
 start.tagline,"Construa as ruas, a cidade cresce sozinha.","Build the streets, the city grows by itself."
 style.label,Estilo regional,Regional style
 style.roadcraft,Roadcraft,Roadcraft
+style.eua,Estados Unidos,United States
+style.europa,Europa,Europe
 tool.building,Construção,Build
 tool.road,Via,Road
 tool.transit,Transporte público,Public transport

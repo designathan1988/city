@@ -361,7 +361,10 @@
    "doc": "the look plans the capture suite photographs",
    "template": "look",
    "items": [{"name": "frozen", "plan": "res://tests/visual/frozen_plan.json", "resolution": "1280x720", "timeout_s": 90},
-    {"name": "sao_paulo", "plan": "res://tests/visual/sao_paulo_plan.json", "resolution": "1600x900", "timeout_s": 900}]
+    {"name": "sao_paulo", "plan": "res://tests/visual/sao_paulo_plan.json", "resolution": "1600x900", "timeout_s": 900},
+    {"name": "style_roadcraft", "plan": "res://tests/visual/style_roadcraft_plan.json", "resolution": "1280x720", "timeout_s": 300},
+    {"name": "style_eua", "plan": "res://tests/visual/style_eua_plan.json", "resolution": "1280x720", "timeout_s": 300},
+    {"name": "style_europa", "plan": "res://tests/visual/style_europa_plan.json", "resolution": "1280x720", "timeout_s": 300}]
   },
   "capture_scenes": {
    "doc": "the reference views (capture.tscn: street from above, neighbourhood, whole town)",

@@ -45,5 +45,7 @@ const float PROP_PLANK = 9.0;
 // a wire span's INSTANCE_CUSTOM.y is its phase plus this stride times kind_a + 2 kind_b; a secondary wire carries the mark in its rural seat (street_props.cpp, prop_kit.h; props.gdshader)
 const float PROP_SPAN_KIND_STRIDE = 8.0;
 const float WIRE_SECONDARY_MARK = 10000.0;
+// a part that sways in the wind carries this plus its reach from the post's axis in UV.x, a fixed or lens part (prop_kit.cpp mark_surface; props.gdshader signal_sway)
+const float PROP_SWAY_MARK = 1.0;
 
 #endif

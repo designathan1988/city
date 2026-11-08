@@ -167,7 +167,7 @@
   ]
  },
  "styles": {
-  "_doc": "What changes with a city's regional style (session-rules.md, section 10), laid over this table by DataTables: a block here replaces the same keys above, a list replaces the list. signals: the same in both for now, nothing of the Roadcraft 4.0 was measured to tell them apart.",
+  "_doc": "What changes with a city's regional style (session-rules.md, section 10), laid over this table by DataTables: a block here replaces the same keys above, a list replaces the list. Each block says its sources (roadcraft its own look; brasil, eua and europa their norms).",
   "roadcraft": {
    "lamps": {"pole_lit_every": 1, "column_every_m": 30, "column_first_m": 6},
    "street_names": {"names": ["Brasil", "Sete de Setembro", "Quinze de Novembro", "Tiradentes", "Santos Dumont", "Getúlio Vargas", "Rui Barbosa", "Duque de Caxias", "Marechal Deodoro", "Princesa Isabel", "Dom Pedro II", "Castro Alves", "Machado de Assis", "José de Alencar", "Carlos Gomes", "Barão do Rio Branco", "Anita Garibaldi", "Benjamin Constant", "Floriano Peixoto", "das Flores", "dos Ipês", "das Palmeiras", "das Acácias", "dos Jacarandás", "das Mangueiras", "dos Pinheiros", "da Paz", "da Liberdade", "da Esperança", "da Independência", "da República", "XV de Agosto", "Primeiro de Maio", "São Paulo", "Minas Gerais", "Bahia", "Paraná", "Pernambuco", "Goiás", "Amazonas", "Ceará", "Santa Catarina", "Cecília Meireles", "Monteiro Lobato", "Oscar Niemeyer", "Tom Jobim", "Portinari", "Villa-Lobos", "Clarice Lispector", "do Comércio", "da Estação", "do Porto", "da Matriz", "do Rosário", "São João", "São José", "Santo Antônio"]},
@@ -215,7 +215,129 @@
    "poles": {"height_m": 10.2},
    "signs": {"plate_kerb_m": 0.75, "plate_kerb_curve_m": 0.85}
   },
-  "eua": {"_doc": "To fill from the MUTCD (FHWA) and the AASHTO Green Book."},
-  "europa": {"_doc": "To fill from the Vienna Convention on Road Signs and Signals (1968) and the European norms."}
+  "eua": {
+   "_doc": "United States. signals.kerb_m: AASHTO Roadside Design Guide (2011) 10.1, a support at least 1.5 ft behind the face of the kerb; 2 ft taken. hydrants.reach_m: International Fire Code Appendix C, table C102.1: no point of a street more than 250 ft from a hydrant. crossing: MUTCD 3B.18, crosswalk lines at least 6 ft apart, 10 ft taken; 3B.16, a stop line 12 to 24 in wide (18 in) and at least 4 ft before the crosswalk. poles.height_m: a 40 ft class pole set 10 % plus 2 ft deep (RUS Bulletin 1724E-200), the mesh of the render table's eua block. signs.plate_kerb_m: MUTCD 2A.19, a plate edge at least 2 ft from the face of the kerb, with the 0.38 m half of a 30 in plate. furniture, trees and lamps: modelling choices of this game, roadcraft's.",
+   "lamps": {
+    "pole_lit_every": 1,
+    "column_every_m": 30,
+    "column_first_m": 6
+   },
+   "street_names": {
+    "names": [
+     "Main",
+     "Oak",
+     "Maple",
+     "Pine",
+     "Cedar",
+     "Elm",
+     "Walnut",
+     "Willow",
+     "Park",
+     "Lake",
+     "Hill",
+     "View",
+     "Washington",
+     "Lincoln",
+     "Jefferson",
+     "Madison",
+     "Franklin",
+     "Jackson",
+     "Church",
+     "Spring",
+     "Center",
+     "Highland",
+     "Ridge",
+     "Sunset",
+     "River",
+     "Mill",
+     "Market",
+     "School",
+     "Railroad",
+     "Front",
+     "First",
+     "Second",
+     "Third",
+     "Fourth",
+     "Fifth",
+     "Sixth",
+     "Seventh",
+     "Eighth",
+     "Ninth",
+     "Tenth"
+    ]
+   },
+   "signals": {
+    "_doc": "AASHTO Roadside Design Guide 10.1 (see above).",
+    "kerb_m": 0.61
+   },
+   "hydrants": {
+    "_doc": "International Fire Code Appendix C, table C102.1 (see above), the squares of this rule as the base table cuts them.",
+    "reach_m": 76.2
+   },
+   "crossing": {
+    "_doc": "MUTCD 3B.16 and 3B.18 (see above); the zebra from the crossing street's kerb line as the base table measures it.",
+    "zebra_from_m": 1.0,
+    "zebra_to_m": 4.048,
+    "stop_from_m": 5.2672,
+    "stop_to_m": 5.7244
+   },
+   "furniture": {
+    "bin_every_m": 60,
+    "bin_first_m": 9,
+    "bench_every_m": 60,
+    "bench_first_m": 24,
+    "row_end_m": 4
+   },
+   "trees": {
+    "in_generated_city": 1
+   },
+   "poles": {
+    "height_m": 10.3632
+   },
+   "signs": {
+    "plate_kerb_m": 0.9906,
+    "plate_kerb_curve_m": 0.9906
+   }
+  },
+  "europa": {
+   "_doc": "Europe. signals.kerb_m: RASt 06 (FGSV) 4.2, a safety room of 0.50 m between the kerb and anything standing on the footway. hydrants.reach_m: DVGW W 400-1, hydrants at most 150 m apart along the mains of a built-up area: any point within about 75 m of one. crossing: R-FGU 2001 (zebra crossings), a crossing 3 m wide at least, 4 m in the rule; RMS (road markings), a stop line 0.50 m wide, 1 m before the crossing. signs.plate_kerb_m: VwV-StVO to sections 39 to 43, III 8, a plate edge at least 0.50 m from the carriageway, with the 0.30 m half of a 600 mm plate. poles.height_m: the base mesh, 8.5 m. furniture, trees and lamps: modelling choices of this game, roadcraft's.",
+   "lamps": {
+    "pole_lit_every": 1,
+    "column_every_m": 30,
+    "column_first_m": 6
+   },
+   "signals": {
+    "_doc": "RASt 06 4.2 (see above).",
+    "kerb_m": 0.5
+   },
+   "hydrants": {
+    "_doc": "DVGW W 400-1 (see above).",
+    "reach_m": 75
+   },
+   "crossing": {
+    "_doc": "R-FGU 2001 and RMS (see above).",
+    "zebra_from_m": 1.0,
+    "zebra_to_m": 5.0,
+    "stop_from_m": 6.0,
+    "stop_to_m": 6.5
+   },
+   "furniture": {
+    "bin_every_m": 60,
+    "bin_first_m": 9,
+    "bench_every_m": 60,
+    "bench_first_m": 24,
+    "row_end_m": 4
+   },
+   "trees": {
+    "in_generated_city": 1
+   },
+   "poles": {
+    "height_m": 8.5
+   },
+   "signs": {
+    "plate_kerb_m": 0.8,
+    "plate_kerb_curve_m": 0.8
+   }
+  }
  }
 }

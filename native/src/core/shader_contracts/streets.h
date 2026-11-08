@@ -30,6 +30,8 @@ enum class PropTag : int { FIXED, TINT, NIGHT_GLOW, LENS, WIRE, WOOD, PLATE, FIN
 // a wire span's INSTANCE_CUSTOM.y is its phase plus this stride times kind_a + 2 kind_b; a secondary wire carries the mark in its rural seat (street_props.cpp, prop_kit.h; props.gdshader)
 constexpr float PROP_SPAN_KIND_STRIDE = float(8.0);
 constexpr float WIRE_SECONDARY_MARK = float(10000.0);
+// a part that sways in the wind carries this plus its reach from the post's axis in UV.x, a fixed or lens part (prop_kit.cpp mark_surface; props.gdshader signal_sway)
+constexpr float PROP_SWAY_MARK = float(1.0);
 
 // Every value above by the name the shaders give it, for the scripts.
 constexpr ShaderContract SHADER_CONTRACTS_STREETS[] = {
@@ -68,6 +70,7 @@ constexpr ShaderContract SHADER_CONTRACTS_STREETS[] = {
 	{ "PROP_PLANK", 1, { double(PropTag::PLANK) } },
 	{ "PROP_SPAN_KIND_STRIDE", 1, { double(8.0) } },
 	{ "WIRE_SECONDARY_MARK", 1, { double(10000.0) } },
+	{ "PROP_SWAY_MARK", 1, { double(1.0) } },
 };
 
 } // namespace city

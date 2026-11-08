@@ -23,6 +23,16 @@ uniform float wood_grain = 0.5;
 uniform float post_metal = 0.6; // a sign post, galvanised
 uniform float post_roughness = 0.45;
 uniform sampler2DArray sign_atlas : source_color, filter_linear;
+global uniform float wind_x; // the way the wind blows, x and z of a unit vector, and its speed (render/sky_view.gd)
+global uniform float wind_z;
+global uniform float wind_ms;
+uniform float gust_m; // materials.json _shared gust: one gust a gust_m, carried by the mean wind
+uniform float signal_turbulence; // the share of the drag that is turbulent, either way (materials.json prop)
+uniform float signal_bend_per_ms2; // the post's top bend, a share of its height, per (m/s) squared of wind
+uniform float signal_height_m; // the post's height, which the bend grows to with the square of the height
+uniform float signal_sway_hz; // the post's and the arm's first mode
+uniform float signal_arm_per_ms; // the arm's tip's swing up and down, metres per m/s of wind
+uniform float signal_arm_m; // the arm's reach to its head, which the swing grows to with the square of the reach
 
 varying flat float v_tag;
 varying flat vec3 v_tint;
@@ -102,8 +112,27 @@ void plank(float along, float across, float width, inout vec3 c, inout float rou
 	rough = mix(rough, 0.5 + 0.3 * fibre, keep);
 }
 
+// The wind's push on a part of a signal that sways (UV.x = PROP_SWAY_MARK + its reach from the post's axis, UV.y its height;
+// `p` where it stands in the world): the post a cantilever bent downwind with the square of the height under a drag that goes
+// with the square of the wind, its turbulent share swinging at the first mode and riding the gust frozen in the mean wind
+// (as the trees, vegetation.gdshaderinc); the arm swinging up and down at the same mode, with the square of the reach.
+const float CALM_EPS = 1e-6; // keeps the way the wind blows a direction when the globals are still zero
+vec3 signal_sway(vec2 uv, vec3 p, float t) {
+	vec2 way = normalize(vec2(wind_x, wind_z) + vec2(CALM_EPS, 0.0));
+	float h = uv.y / signal_height_m, reach = (uv.x - PROP_SWAY_MARK) / signal_arm_m;
+	float gust = sin(TAU * (dot(p.xz, way) - wind_ms * t) / gust_m);
+	float swing = sin(TAU * (signal_sway_hz * t + dot(p.xz, way) / gust_m));
+	float bend = signal_bend_per_ms2 * wind_ms * wind_ms * h * h * signal_height_m * (1.0 + 2.0 * signal_turbulence * (gust + swing));
+	float lift = signal_arm_per_ms * wind_ms * reach * reach * swing;
+	return vec3(way.x * bend, lift, way.y * bend);
+}
+
 void vertex() {
 	v_tag = UV2.x;
+	if (UV.x > 0.5 * PROP_SWAY_MARK && (abs(v_tag - PROP_FIXED) < 0.5 || abs(v_tag - PROP_LENS) < 0.5)) {
+		vec3 push = signal_sway(UV, (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz, TIME);
+		VERTEX += transpose(mat3(MODEL_MATRIX)) * push; // the world's push in the model's axes (a chunk's or a head's: no scale)
+	}
 	v_tint = INSTANCE_CUSTOM.rgb;
 	v_lit = 0.0;
 	v_light = vec3(0.0);

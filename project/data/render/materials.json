@@ -127,8 +127,16 @@
   }
  },
  "prop": {
+  "_doc": "The street props (props.gdshader). The signal's sway in the wind (signal_*; its speed and direction are shader globals, the gust _shared's): signal_bend_per_ms2 = the post's top bend per (m/s)^2 as a share of its height, computed and not measured: a steel tube of 0.25 m and a 6 mm wall (E 200 GPa, EI 7.4 MN m2) carrying at its top the drag of its post, arm and heads, about 2.4 m2 at a drag coefficient of 1.2 (0.5 x 1.2 kg/m3 x 1.2 x 2.4 = 1.7 v^2 N), bends PL^3/3EI = 1.5e-5 v^2 m at 5.8 m, 2.6e-6 of the height per (m/s)^2: a few millimetres in a strong wind, as a post stands; signal_turbulence = 1 / ln(10 m / 0.05 m), the trees' (EN 1991-1-4 eq. 4.7, terrain category II); signal_sway_hz and signal_arm_per_ms: modelling choices, no measured value read: the wind shakes a mast arm up and down at its first mode (galloping and vortex shedding, NCHRP Report 412, Kaczinski et al. 1998), here 1 Hz and 6 mm a m/s at the head, 12 cm in a 20 m/s wind; signal_height_m and signal_arm_m: the base table's post and the reach of its head (streets.json props.signal).",
+  "uses": ["gust"],
   "shader": "res://render/shaders/props.gdshader",
   "params": {
+   "signal_turbulence": 0.189,
+   "signal_bend_per_ms2": 0.0000026,
+   "signal_height_m": 5.8,
+   "signal_sway_hz": 1.0,
+   "signal_arm_per_ms": 0.006,
+   "signal_arm_m": 3.2,
    "post_metal": 0.6,
    "post_roughness": 0.45,
    "wire_min_px": 0.7,

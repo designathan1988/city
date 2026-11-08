@@ -54,23 +54,44 @@ const GAME := {
 	"start": "res://data/game/start.json",
 	"tools": "res://data/game/tools.json",
 }
-## The regional style a city's tables read (session-rules.md, section 10): this one until a city carries its own. The tables that
-## keep what changes with it under `styles.<id>`, laid over the table when it is read.
-const REGIONAL_STYLE := "roadcraft"
+## The tables that keep what changes with a city's regional style (session-rules.md, section 10) under `styles.<id>`, laid over
+## the table when it is read: the one reader of the style, for the core and the scripts alike.
 const LOT_PROJECTS := "res://assets/lots"
 const LOT_EXT := "json"
-const STYLED := ["res://data/catalog/street_furniture.json", "res://data/render/streets.json"]
+const STYLED := ["res://data/catalog/street_furniture.json", "res://data/render/streets.json", "res://data/catalog/road_profiles.json"]
 const STRINGS := ["res://data/i18n/strings.csv"]
+const ENTRY_ID := "id" # a list whose entries carry this key takes a style's block by entry id (_lay)
 
 static var _cache: Dictionary = {}
+static var _style := "" # the regional style the tables are read in: chosen once, before the core boots (choose_style)
 
 
 static func _read(path: String) -> Variant:
 	if _cache.has(path):
 		return _cache[path]
 	var parsed: Variant = _parse(path)
-	_cache[path] = _styled(parsed, REGIONAL_STYLE) if path in STYLED else parsed
+	_cache[path] = _styled(parsed, regional_style()) if path in STYLED else parsed
 	return _cache[path]
+
+
+## The regional style the tables are read in: the one chosen before the core booted, else data/game/start.json default_style.
+static func regional_style() -> String:
+	if _style == "":
+		_style = str(game("start").default_style)
+	return _style
+
+
+## Chooses the regional style the styled tables are read in. The core takes its tables once, at boot (CityStore.boot): the
+## style is chosen before that, and a table read in another style is read anew. An id start.json does not list is refused.
+static func choose_style(id: String) -> bool:
+	if not game("start").styles.has(id):
+		push_error("unknown regional style: %s" % id)
+		return false
+	_style = id
+	for path: String in STYLED:
+		_cache.erase(path)
+	_catalog_cache.clear()
+	return true
 
 
 static func _parse(path: String) -> Variant:
@@ -94,12 +115,26 @@ static func _styled(table: Dictionary, id: String) -> Dictionary:
 	return table
 
 
+## A block laid over a block key by key; a list replaces a list; a block laid over a list of entries with ENTRY_ID is laid over
+## each entry by its id (a style changes some road profiles, the rest stay).
 static func _lay(under: Dictionary, over: Dictionary) -> void:
 	for key: String in over:
 		if over[key] is Dictionary and under.get(key) is Dictionary:
 			_lay(under[key], over[key])
+		elif over[key] is Dictionary and under.get(key) is Array:
+			_lay_by_id(under[key], over[key])
 		else:
 			under[key] = over[key]
+
+
+static func _lay_by_id(entries: Array, over: Dictionary) -> void:
+	var left := over.keys()
+	for entry: Variant in entries:
+		if entry is Dictionary and over.has(entry.get(ENTRY_ID, "")):
+			_lay(entry, over[entry[ENTRY_ID]])
+			left.erase(entry[ENTRY_ID])
+	for id: String in left:
+		push_error("a style's block for an entry the table does not have: %s" % id)
 
 
 static func _group(paths: Dictionary) -> Dictionary:

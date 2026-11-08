@@ -10,115 +10,282 @@
     "roadcraft": {
      "type": "object",
      "properties": {
-          "prices": {
-           "type": "object",
-           "properties": {
-            "carriageway": {
-             "type": "integer"
-            },
-            "median": {
-             "type": "integer"
-            },
-            "footway": {
-             "type": "integer"
-            }
-           },
-           "required": [
-            "carriageway",
-            "median",
-            "footway"
-           ],
-           "strict": true
-          },
-          "structure": {
-           "type": "object",
-           "properties": {
-            "ground": {
-             "type": "integer"
-            },
-            "embankment": {
-             "type": "number"
-            },
-            "trench": {
-             "type": "number"
-            },
-            "bridge": {
-             "type": "number"
-            },
-            "tunnel": {
-             "type": "integer"
-            }
-           },
-           "required": [
-            "ground",
-            "embankment",
-            "trench",
-            "bridge",
-            "tunnel"
-           ],
-           "strict": true
-          }
+      "prices": {
+       "type": "object",
+       "properties": {
+        "carriageway": {
+         "type": "integer"
+        },
+        "median": {
+         "type": "integer"
+        },
+        "footway": {
+         "type": "integer"
+        }
+       },
+       "required": [
+        "carriageway",
+        "median",
+        "footway"
+       ],
+       "strict": true
+      },
+      "structure": {
+       "type": "object",
+       "properties": {
+        "ground": {
+         "type": "integer"
+        },
+        "embankment": {
+         "type": "number"
+        },
+        "trench": {
+         "type": "number"
+        },
+        "bridge": {
+         "type": "number"
+        },
+        "tunnel": {
+         "type": "integer"
+        }
+       },
+       "required": [
+        "ground",
+        "embankment",
+        "trench",
+        "bridge",
+        "tunnel"
+       ],
+       "strict": true
+      },
+      "marking_style": {
+       "type": "string"
+      },
+      "profiles": {
+       "type": "object",
+       "additionalProperties": {
+        "type": "object"
+       }
+      }
      },
-     "required": ["prices", "structure"],
+     "required": [
+      "prices",
+      "structure",
+      "marking_style"
+     ],
      "strict": true
     },
     "brasil": {
      "type": "object",
      "properties": {
-          "prices": {
-           "type": "object",
-           "properties": {
-            "carriageway": {
-             "type": "integer"
-            },
-            "median": {
-             "type": "integer"
-            },
-            "footway": {
-             "type": "integer"
-            }
-           },
-           "required": [
-            "carriageway",
-            "median",
-            "footway"
-           ],
-           "strict": true
-          },
-          "structure": {
-           "type": "object",
-           "properties": {
-            "ground": {
-             "type": "integer"
-            },
-            "embankment": {
-             "type": "number"
-            },
-            "trench": {
-             "type": "number"
-            },
-            "bridge": {
-             "type": "number"
-            },
-            "tunnel": {
-             "type": "integer"
-            }
-           },
-           "required": [
-            "ground",
-            "embankment",
-            "trench",
-            "bridge",
-            "tunnel"
-           ],
-           "strict": true
-          }
+      "prices": {
+       "type": "object",
+       "properties": {
+        "carriageway": {
+         "type": "integer"
+        },
+        "median": {
+         "type": "integer"
+        },
+        "footway": {
+         "type": "integer"
+        }
+       },
+       "required": [
+        "carriageway",
+        "median",
+        "footway"
+       ],
+       "strict": true
+      },
+      "structure": {
+       "type": "object",
+       "properties": {
+        "ground": {
+         "type": "integer"
+        },
+        "embankment": {
+         "type": "number"
+        },
+        "trench": {
+         "type": "number"
+        },
+        "bridge": {
+         "type": "number"
+        },
+        "tunnel": {
+         "type": "integer"
+        }
+       },
+       "required": [
+        "ground",
+        "embankment",
+        "trench",
+        "bridge",
+        "tunnel"
+       ],
+       "strict": true
+      },
+      "marking_style": {
+       "type": "string"
+      },
+      "profiles": {
+       "type": "object",
+       "additionalProperties": {
+        "type": "object"
+       }
+      }
      },
-     "required": ["prices", "structure"],
+     "required": [
+      "prices",
+      "structure",
+      "marking_style"
+     ],
+     "strict": true
+    },
+    "eua": {
+     "type": "object",
+     "properties": {
+      "prices": {
+       "type": "object",
+       "properties": {
+        "carriageway": {
+         "type": "integer"
+        },
+        "median": {
+         "type": "integer"
+        },
+        "footway": {
+         "type": "integer"
+        }
+       },
+       "required": [
+        "carriageway",
+        "median",
+        "footway"
+       ],
+       "strict": true
+      },
+      "structure": {
+       "type": "object",
+       "properties": {
+        "ground": {
+         "type": "integer"
+        },
+        "embankment": {
+         "type": "number"
+        },
+        "trench": {
+         "type": "number"
+        },
+        "bridge": {
+         "type": "number"
+        },
+        "tunnel": {
+         "type": "integer"
+        }
+       },
+       "required": [
+        "ground",
+        "embankment",
+        "trench",
+        "bridge",
+        "tunnel"
+       ],
+       "strict": true
+      },
+      "marking_style": {
+       "type": "string"
+      },
+      "profiles": {
+       "type": "object",
+       "additionalProperties": {
+        "type": "object"
+       }
+      }
+     },
+     "required": [
+      "prices",
+      "structure",
+      "marking_style"
+     ],
+     "strict": true
+    },
+    "europa": {
+     "type": "object",
+     "properties": {
+      "prices": {
+       "type": "object",
+       "properties": {
+        "carriageway": {
+         "type": "integer"
+        },
+        "median": {
+         "type": "integer"
+        },
+        "footway": {
+         "type": "integer"
+        }
+       },
+       "required": [
+        "carriageway",
+        "median",
+        "footway"
+       ],
+       "strict": true
+      },
+      "structure": {
+       "type": "object",
+       "properties": {
+        "ground": {
+         "type": "integer"
+        },
+        "embankment": {
+         "type": "number"
+        },
+        "trench": {
+         "type": "number"
+        },
+        "bridge": {
+         "type": "number"
+        },
+        "tunnel": {
+         "type": "integer"
+        }
+       },
+       "required": [
+        "ground",
+        "embankment",
+        "trench",
+        "bridge",
+        "tunnel"
+       ],
+       "strict": true
+      },
+      "marking_style": {
+       "type": "string"
+      },
+      "profiles": {
+       "type": "object",
+       "additionalProperties": {
+        "type": "object"
+       }
+      }
+     },
+     "required": [
+      "prices",
+      "structure",
+      "marking_style"
+     ],
      "strict": true
     }
    },
-   "required": ["roadcraft", "brasil"]
+   "required": [
+    "roadcraft",
+    "brasil",
+    "eua",
+    "europa"
+   ]
   },
   "profiles": {
    "type": "array",
