@@ -86,6 +86,10 @@ e apagados.
 
 ## Testes
 - Conferem o que o jogador vê: HUD, buffer de instâncias enviado à GPU, sondas do núcleo.
+- **One harness:** every core and end-to-end test extends `TestCase` (`project/tests/test_case.gd`): one `check` a line,
+  `FAILURES: n` and the exit code, and a test that checked nothing fails. Its maps open paused and move only by `ticks()`: the
+  core refuses steps while its clock runs (`Simulation::hold_still`). Waits are on a state, never on the wall clock; a test's
+  own files go to `user://tests`.
 - **Hash do estado:** `probes/state_hash` é a cidade como um número. O `edit_fuzz_test` exige que desfazer, refazer, salvar e
   abrir passem pelos mesmos hashes: toda edição nova entra no sorteio dele.
 - **Testes e capturas (`--no-flow`) rodam nos dados:** não leem nem gravam `settings.cfg`, nem leem `health.json`. Abrem no
@@ -108,7 +112,7 @@ e apagados.
 | Exportar e empacotar | `tools/build/build.sh export && tools/build/build.sh package` |
 | Captures | `tools/build/build.sh capture [folder]` (= `cli.py run capture`, hidden, one task per plan) |
 | Olhar o jogo por um plano | `godot --path project --resolution 1920x1080 res://tests/visual/look.tscn -- --no-flow --plan=<json> --capture-dir=<pasta>` |
-| Photo difference | `python tools/build/photodiff.py <before> <after> <out>` (a missing side, an empty set or any changed pixel fails) |
+| Photo difference | `python tools/build/photodiff.py <before> <after> <out>` (a missing side, an empty set or any changed pixel fails); its tests: `python -m unittest discover tools/build/tests` |
 | Onde cada thread gasta | `python tools/analysis/sampler.py --hidden --cmd "<godot> --path project <cena>" --seconds 30 --symbolizer <llvm-symbolizer>` |
 | Causas pela forma do código | `python tools/analysis/causes.py` |
 | Causas pela arquitetura | `python tools/analysis/arch.py scan`, `status`, `next`, `explain <id>`, `predict <id>`, `done <id>`, `selfcheck` (`--only x` refaz só o que falhou; fila em `dist/arch/queue.json`) |
@@ -118,7 +122,8 @@ e apagados.
 compilar. Meshoptimizer e Clipper2 vêm pelo CMake na primeira compilação. À parte: Godot 4.7.2, llvm-mingw
 `20261020-ucrt-x86_64` (`C:/Projects/toolchains`), CMake 4.4, Node 23.6+, Python 3.12. A DLL pede x86-64-v3 (AVX2, FMA, BMI).
 
-**DLLs em rebase:** conflitam sempre. Nunca escolha um lado: refaça as duas a partir das fontes juntas e rode a suíte.
+**DLLs in a rebase:** never pick a side: rebuild both from the merged sources and run the suite. The link is reproducible
+(`--no-insert-timestamp`): the same sources give the same bytes, so a rebuild of unchanged sources leaves the DLLs unchanged.
 
 ## Estrutura do projeto
 `C:\Users\Jonathan\Desktop\city` é o projeto inteiro. O detalhe arquivo por arquivo está em `log/mapa.md`.

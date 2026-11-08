@@ -2037,7 +2037,7 @@ finding under its cause. 14 bullets are notes, not defects (marked N in §7).
 
 | Batch | Causes | What changes | Files (main sets) | Expected break if wrong |
 |---|---|---|---|---|
-| B0 | C2, C9 (R7 only), C6 (`step_ticks` guard) | Test base class; `new_map(..., paused)` everywhere and tick stepping; one capture wait; `transit_test` await; `edit_fuzz_test` without the growth exemption (needs R7); gates: populated mirror table, `_doc` in tuning, repeated keys refused, i18n gate, every folder in scope, per-scene inputs in `suites.json`; UI interaction state allowed by rule, `@onready` dodges removed | `project/tests/**`, `tools/gates/**`, `tools/tasks/suites.json`, `core/bytes.h`, `save_nature.cpp`, `elements.cpp`, `city_core.cpp:250` | New gate reds are the known list of findings (i18n keys, duplicate keys, mirrors): recorded, fixed by C3/C4/C13. A test that now fails was hiding a defect (it names it). |
+| B0 | C2, C9 (R7 only), C6 (`step_ticks` guard) | Test base class; `new_map(..., paused)` everywhere and tick stepping; one capture wait; `transit_test` await; gates: an empty mirror table fails, `_doc` in tuning, repeated keys refused, i18n gate, `log/` in scope; the UI rule on copies of the store's numbers, `@onready` dodges removed (as done: §6.6) | `project/tests/**`, `tools/gates/**`, `core/bytes.h`, `save_nature.cpp`, `elements.cpp`, `simulation.*`, `city_core.cpp:250` | New gate reds are the known list of findings (mirrors, render magic numbers): recorded, fixed by C3/C14. A test that now fails was hiding a defect (it names it). |
 | B1 | C1 (copies and porting tools), C13, C16 (one-shot tools), C17 (unused addon parts) | Deletions only: `tools/oracle-4.0`, `features-4.0`, `converter-old`, `converter`, `converter-slice`, `ports`, porting scripts, `live40.mjs`, `export_builder_ui.py`, `rename_english.py`, orphan schemas, dead tables and keys with their schema entries, unreached translation keys, probes and shims, `project/dist`, Terrain3D foreign binaries and editor scripts | `tools/**`, `project/data/**` (dead keys), `project/data/i18n/*`, `project/tests/perf/*` | Nothing at run time: hashes and photos identical. A load error names a key still read by someone (the census missed a reader). |
 | B2 | C3, C4 (equal pairs), C6, C7, C10, C12, C14, C16 (parsers, deadlines) | Restructuring with identical outputs: caches, locks, strict reader, contract tables and generated shader include, data keyed by names, values moved to data unchanged, one owner per equal pair, pipeline owners | `native/src/**`, `project/game/**`, `project/ui/**`, `project/render/**`, `project/data/**` | Any change of a state hash, a photo or a test number: this batch broke it. Hash or count differs: a cache invalidation (C7) or a data row resolved to another enum (C3). Hang or timeout: a lock order (C6). Boot refusal: a key the strict reader now checks (C10, the message names it). |
 | B3 | C4 (unequal pairs), C5, C8, C9, C11, C15, C17 (import), C18, C19, C20 (float-changing) | Intended behaviour changes, one commit each, each with its predicted diff (§6.4) | as each cause lists | Only the outputs in its prediction may move; anything else is bisected inside B3. |
@@ -2045,7 +2045,7 @@ finding under its cause. 14 bullets are notes, not defects (marked N in §7).
 
 ### 6.4 What each batch may change (the prediction the final run is checked against)
 
-- B0: test output format and exit codes; gate reports (new rules). Game outputs identical.
+- B0: test output format and exit codes; gate reports (new rules); state hash values of cities with painted ground or elements (R7 writes them in key and value order: the layout of the bytes, not their meaning). Game outputs identical (digest, test numbers).
 - B1: nothing at run time. The product zip loses `fonte/tools/oracle-4.0` (`build.sh:67`).
 - B2: nothing observable. State hashes, `open_probe --digest`, every photo (photodiff zero) and every test number identical.
 - B3, by commit:
@@ -2080,6 +2080,64 @@ Decided by the user, 2026-11-07:
   "roadcraft" blocks are deleted and "brasil" stays a regional option, not the default.
 - D3: a new automatic junction rule designed now, from published signal warrants, in B4 with the translated code's removal.
 - D4: no compatibility with old saves: the save names, extensions and format change without a migration reader (C9, C15).
+
+### 6.6 B0 as done (2026-11-07)
+
+**Baseline** (`fix-baseline` = `a1a771c4`, the sources of `33c8cf79` with their DLLs; outputs in `dist/baseline/fix-baseline`):
+`run_gates.py` 493 problems; `quick.sh --all` 41/43: `camera_input_test` (a jolt of 1.04 m in a frame walking at 25 m and at
+90 m, another run 1.72 m: it measured real frame times) and `photos_check` (golden of 2026-11-06, older than `752e4e02`); the
+digest `4040792916cf7d78`. Two runs of the frozen photos on the same commit differed in 23% / 21% / 10% / 0.04% of their pixels:
+the frozen photos could not hold any golden.
+
+**What B0 changed, by cause:**
+- C6: `Simulation::hold_still` (simulation.h/.cpp): true once no tick runs or can run (stopped, or paused with the thread parked:
+  a tick in flight when the pause came is waited for); `Simulation::step`, `CityCore::step_ticks` (now bool) and the two probes
+  that step the city on the caller's thread (`traffic_hashes`, `flow_push`) refuse otherwise.
+- C9 (R7): `ByteWriter::put_by_key` and `put_set` (core/bytes.h), the one owner of order for what the state keeps unordered;
+  the painted tiles, the elements (`ElementItem::before`) and the bodies' maps are written through them.
+- C17 (found here): the DLLs were rebuilt with a new PE timestamp by every `--all` run (2 bytes at offset 128): the link takes
+  `--no-insert-timestamp` (native/CMakeLists.txt), the same sources give the same bytes.
+- C2, tests: `TestCase` (project/tests/test_case.gd) for every core and e2e test: one check, one ending, a test with no check
+  fails, maps opened paused and moved by `ticks()`, one `save()` that waits on the state, the tests' files in `user://tests`.
+  Case files take the test (`t.check`, `t.ticks`). Fixed on the way: `transit_test` (its save checks never ran, and its
+  `await CityStore.loaded` after the synchronous `load_game` would have hung); `camera_walk_cases` steps the rig at a fixed step
+  (the jolt was the frame time); `flow_control_test`, `lamp_light_test`, `quality_test` run traffic by ticks; `boot_refusal_test`
+  through `CityStore.boot(..., catalog)`; `model_test` counts from models.json and the lot files; `city_mass_test` one check;
+  `lab_test` waits on `LabRecorder.measuring()` and holds no GPU time; `yard_test` holds every dock to a way (it passes); the
+  lot frame read from the core (`body_at`, `BuildingProbe`) instead of three GDScript copies; `_back_to`/`_info` owned once;
+  private members replaced by public surfaces (`CityCamera.settle/apply/springs`, `StartScreen.pick`, `HudActions.open_new`,
+  `InteriorController.open`); `road_commands_test` reads `terrain.road_sink_m`; scene roots named after their tests.
+- C2, captures: `UiDriver.drawn` delegates to `CaptureWait` (one wait, counting incomplete photos); `drag` takes the shot as a
+  callback; look's wall-clock `wait` step deleted; capture maps opened paused; the parity key owned by `CaptureParity.ONLY`;
+  `Settings.apply` once; the interior capture finds buildings by kind. Frozen photos: the cause of the 23% was timing-dependent
+  rendering state, FSR2's history at the `high` tier and pipelines specialized in the background (Godot docs, "Reducing stutter
+  from shader compilations"; the compile counter rises at submission, `pipeline_hash_map_rd.h`, so it cannot be waited on). The
+  frozen look keeps no temporal filter (`Settings.kept.temporal`) and photographs only when two looks 16 frames apart are the
+  same bytes (`CaptureWait.until_steady`). Two runs now differ in 3 to 7 pixels, all at the joints of utility wires (probable
+  cause: ties in depth between coincident geometry broken by draw order, which follows the order jobs finish): a render
+  finding for B2 (C12), before B2 relies on photodiff zero.
+- C2, gates: the UI rule now forbids what the principle forbids, a member holding a copy of the store's numbers (75 -> 2 real
+  ones, fixed: `StartScreen._first_seed`, `HudDialog.width_token`); 111 `@onready` on plain values removed; one strict JSON reader
+  (`jsonfile.py`: a key written twice fails; `furniture.json` "step" and `tokens.json` "bg_solid" fixed); `_doc` per tuning
+  group, required by the schema (16 written); an empty mirror table fails; the i18n gate (one key once, cells as the header,
+  no broken encoding) found `hint.transit.trackOnRoad` split in five cells (the English player read Portuguese), fixed with
+  the two repeated keys and the two garbled rows; `log/` and `project/render` (magic numbers) in scope; `data_copy_allow`
+  deduplicated; tools tests: no stopwatch in `test_pool`, temp folders removed, photodiff's test beside its tool.
+
+**Moved to the batch of their cause** (the B0 row of §6.3 listed them): the growth exemption of `edit_fuzz_test` is C9 (an
+edit outside the journal; journalling the queue changes which lot grows on a tie: B3); per-scene inputs in `suites.json` and
+the scope diff by paths are speed, not verdicts (C16, B2); populating mirrors (C3 generates the shader constants, B2); the
+lot documents' schema (with their conversion, C18, B3); unreached translation keys (with the census, C13, B1); `cloud_shadows`
+(a dead setting, C13, B1); capture names, their order prefixes and the `--only` keys in English (C15, B3); the eye-in-building
+measure of `camera_feel_test` (C8, B3); the magic-number rule satisfied by naming, render reads by include path, `gate_text`
+coverage, the data-copy threshold and `owners.json` (C4/C16, B2).
+
+**Verification** (`dist/baseline/b0`): `quick.sh --all` 42/44, every test scene passes (`camera_input_test` too); the digest
+equal to the baseline's; `photos_check` changed as predicted (no temporal filter) and re-blessed with that reason;
+`gates_changed` shows only problems the baseline had and the predicted ESPELHO; `run_gates.py` 431 (DONO_UNICO 9, ESPELHO 1,
+JOB_SEM_CHAVE 21, NUMERO_MAGICO 41 with project/render in scope, SEGUNDO_DONO 307, SIDECAR_WITHOUT_SOURCE 2, TAMANHO_ARQUIVO 19,
+TAMANHO_FUNCAO 4, TEXTO_VIA_TR 26, UI_SEM_ESTILO_SOLTO 1); gate selftest 64 cases OK; tools tests 20 + 6 OK. Non-vacuity: with
+`TestCase.new_map` turned to a running clock, `traffic_hash_test`, `street_crossing_test` and `transit_test` fail and say why.
 
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
