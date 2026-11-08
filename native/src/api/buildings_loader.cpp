@@ -29,7 +29,7 @@ const char *const CROWN_NAMES[] = { "cornice", "deco", "slab", "attic", "none" }
 const char *const BOUNDARY_NAMES[] = { "wall", "fence", "railing", "hedge" };
 const Element BOUNDARY_KINDS[] = { EL_WALL, EL_FENCE, EL_RAILING, EL_HEDGE };
 // Finish names outside the cooked layers: lawn/hedge ground has no finish, plastic reads as plaster.
-const char *const NO_FINISH = "grass";
+const char *const FINISH_NONE_NAME = "grass";
 const char *const PLASTIC = "plastic";
 // The note a table carries for its readers (skipped where a table's keys are its rows).
 const char *const DOC_KEY = "_doc";
@@ -37,7 +37,7 @@ constexpr int PAIR = 2; // [finish, colour], [style, weight], [min, max]
 constexpr int ERAS = 3; // era_affinity: old, middle, new
 
 int8_t finish_of(const std::string &s, DataReader &r) {
-	if (s == NO_FINISH) return FIN_NONE;
+	if (s == FINISH_NONE_NAME) return FIN_NONE;
 	if (s == PLASTIC) return FIN_PLASTER;
 	return int8_t(r.index_of(FINISH_NAMES, s, "finish"));
 }
@@ -244,6 +244,10 @@ bool load_buildings(const Dictionary &table, Data &d, PackedStringArray &errors)
 	colors(r.in("colors"), r.table(t, "colors"), d);
 	openings(r.in("openings"), r.table(t, "openings"), d);
 	lot_rules(r.in("lots"), r.table(t, "lots"), d.lots);
+	DataReader re = r.in("eras");
+	const Dictionary eras = r.table(t, "eras");
+	d.era_cell_m = float(re.num(eras, "neighbourhood_m"));
+	d.era_infill = float(re.num(eras, "infill_share"));
 	DataReader rl = r.in("props");
 	const Array lit = rl.list(r.table(t, "props"), "lit_share", PAIR);
 	d.lit_share[0] = float(rl.in("lit_share").num_at(lit, 0));

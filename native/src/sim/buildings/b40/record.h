@@ -28,8 +28,8 @@ std::shared_ptr<const Body> record_mass(const Data &data, const Building &rec);
 // The generator behind both, which only the cache calls: the body of a record that holds no edited version.
 void make_seed_body(const Data &data, const Building &rec, Body &b);
 // What names that body exactly (body_table.h BodyKey): an edited one by its version's stamp, one made from the seed by all it is
-// made from. Two records with the same key have the same body, wherever they stand.
-BodyKey body_key(const Building &rec);
+// made from, its place's era with it (era.h). Two records with the same key have the same body, wherever they stand.
+BodyKey body_key(const Data &data, const Building &rec);
 
 // The ground under a body's ground blocks, from `height(x, z)` in the world: its highest and lowest points (corners and a 1.5 m
 // grid), and the floor those give, the highest + the plinth. The render draws on it and a click on a wall is measured from it.

@@ -54,7 +54,8 @@ private:
 };
 
 // What names a record's body exactly (record.h body_key): an edited one by its version's stamp, one made from the seed by all it
-// is made from (seed, zone, floors, frontage and depth, the last two to the bit, as the generator reads them). The function and
+// is made from (seed, zone, floors, frontage and depth, the last two to the bit, as the generator reads them, and the era of its
+// place). The function and
 // the seed are in both: what is derived from a body with them (its look, its rooms, its purpose) differs by them. Two records
 // with the same key have the same body and the same derived things, wherever they stand.
 struct BodyKey {
@@ -62,9 +63,9 @@ struct BodyKey {
 	uint32_t seed = 0;
 	uint32_t w = 0, d = 0; // frontage and depth: the floats' bits
 	uint16_t floors = 0;
-	uint8_t zone = 0, fn = 0;
+	uint8_t zone = 0, fn = 0, era = 0;
 	bool operator==(const BodyKey &o) const {
-		return stamp == o.stamp && seed == o.seed && w == o.w && d == o.d && floors == o.floors && zone == o.zone && fn == o.fn;
+		return stamp == o.stamp && seed == o.seed && w == o.w && d == o.d && floors == o.floors && zone == o.zone && fn == o.fn && era == o.era;
 	}
 	bool operator!=(const BodyKey &o) const { return !(*this == o); }
 };
@@ -78,7 +79,7 @@ struct BodyKeyHash {
 	size_t operator()(const BodyKey &k) const {
 		uint64_t h = mix(k.stamp, uint64_t(k.seed) | (uint64_t(uint32_t(k.w)) << HALF_BITS));
 		h = mix(h, uint64_t(uint32_t(k.d)) | (uint64_t(k.floors) << HALF_BITS));
-		return size_t(mix(h, uint64_t(k.zone) | (uint64_t(k.fn) << BYTE_BITS)));
+		return size_t(mix(h, uint64_t(k.zone) | (uint64_t(k.fn) << BYTE_BITS) | (uint64_t(k.era) << (2 * BYTE_BITS))));
 	}
 };
 

@@ -5,13 +5,14 @@
 class_name Air
 extends RefCounted
 
-const PLANET_RADIUS_M := 6.371e6 # sky_model.gdshaderinc PLANET_RADIUS_M
-const SUN_RADIUS_RAD := 0.004654 # sky_model.gdshaderinc SUN_RADIUS_RAD
+## The air's shape (tools/build/shader_contracts.json SkyShape), the shaders' own: CityStore.constants.shader.
+static func _k() -> Dictionary:
+	return CityStore.constants.shader
+
 ## Koschmieder (1924): the meteorological visibility is where a black target's contrast falls to 2 %, V = ln(50) / beta.
 const KOSCHMIEDER := 3.912
 const METRES_A_KM := 1000.0
 const GREEN := 1 # the channel the visibility is measured in (550 nm, the eye's peak)
-const LEAST_SLANT := 1e-4 # sky_model.gdshaderinc sky_ozone_airmass: a grazing path's floor
 
 var rayleigh := Vector4.ZERO # beta r g b per m, scale height m
 var mie := Vector4.ZERO # extinction per m, single-scattering albedo, phase g, scale height m
@@ -36,13 +37,14 @@ func _init(air: Dictionary) -> void:
 
 ## The shell's air mass (sky_model.gdshaderinc sky_airmass).
 static func airmass(mu: float, h: float, scale_h: float) -> float:
-	var x := (PLANET_RADIUS_M + h) / scale_h
+	var x: float = (_k().PLANET_RADIUS_M + h) / scale_h
 	return sqrt(x * x * mu * mu + 2.0 * x + 1.0) - x * mu
 
 
 static func ozone_airmass(mu: float, layer_h: float) -> float:
-	var k := PLANET_RADIUS_M / (PLANET_RADIUS_M + layer_h)
-	return 1.0 / sqrt(maxf(1.0 - k * k * (1.0 - mu * mu), LEAST_SLANT))
+	var c := _k()
+	var k: float = c.PLANET_RADIUS_M / (c.PLANET_RADIUS_M + layer_h)
+	return 1.0 / sqrt(maxf(1.0 - k * k * (1.0 - mu * mu), c.SKY_LEAST_SLANT))
 
 
 ## The sun's light after the air at height h (sky_model.gdshaderinc sky_sun_at), towards `sun` (towards the sun).
@@ -51,9 +53,10 @@ func sun_at(sun: Vector3, h: float) -> Vector3:
 	var r := Vector3(rayleigh.x, rayleigh.y, rayleigh.z) * rayleigh.w * exp(-h / rayleigh.w) * airmass(mu, h, rayleigh.w)
 	var m := mie.x * mie.w * exp(-h / mie.w) * airmass(mu, h, mie.w)
 	var o := Vector3(ozone.x, ozone.y, ozone.z) * ozone_airmass(mu, ozone.w)
-	var dip := -sqrt(2.0 * maxf(h, 1.0) / PLANET_RADIUS_M)
+	var c := _k()
+	var dip: float = -sqrt(2.0 * maxf(h, 1.0) / c.PLANET_RADIUS_M)
 	var t := r + Vector3.ONE * m + o
-	var seen := smoothstep(dip - SUN_RADIUS_RAD, dip + SUN_RADIUS_RAD, mu)
+	var seen := smoothstep(dip - c.SUN_RADIUS_RAD, dip + c.SUN_RADIUS_RAD, mu)
 	return sun_top * Vector3(exp(-t.x), exp(-t.y), exp(-t.z)) * seen
 
 

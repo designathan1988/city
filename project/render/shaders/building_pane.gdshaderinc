@@ -234,28 +234,26 @@ void pane(vec2 uv, vec2 size, uint slot, uint bay, bool dark, float deep, vec3 n
 	}
 	// Less of the room as the glass turns to a mirror (Schlick, F0 4 %): at every size, or a pane seen edge-on burns as a bright sliver.
 	float seen_cos = clamp(ray.z / max(length(ray), 1e-4), 0.0, 1.0);
-	seen *= 1.0 - (0.04 + 0.96 * pow(1.0 - seen_cos, 5.0));
 	float office = kind > 0.5 && kind < 1.5 ? 1.0 : 0.0, glass_k = dark ? 0.64 : 1.0;
-	float cosv = clamp(dot(-V, n), 0.0, 1.0);
-	float F = max(0.04 + 0.96 * pow(1.0 - cosv, 5.0), glass_reflect);
-	// The glass scatters next to nothing: what a pane shows is the room through it and the sky's reflection, as light leaving it.
-	vec3 refl = glass_reflection(V, n, F, dark ? GLASS_ENV_DARK : GLASS_ENV);
+	float f0 = glazing_f0(office);
+	seen *= glazing_through(f0, seen_cos);
+	// The glass scatters next to nothing: what a pane shows is the room through it, as light leaving it, and what it mirrors (the
+	// engine's reflections of the sky, Fresnel's share at this angle).
 	vec3 trim = to_linear(v_trim.rgb);
-	albedo = mix(mix(PANE_ALBEDO * glass_k, trim, frame), trim * REVEAL_ALBEDO * side_shade, solid);
-	emit = (seen * room_daylight * glass_k + pane_lamp(slot, lot, office, seen) * night * window_glow * glass_k + refl * open) * (1.0 - max(frame, solid));
+	albedo = mix(mix(vec3(f0), trim, frame), trim * REVEAL_ALBEDO * side_shade, solid);
+	emit = (seen * room_daylight() + pane_lamp(slot, lot, office, seen) * night * window_glow) * glass_k * (1.0 - max(frame, solid));
 	nn = normalize(mix(n, normalize(t * face.x + vec3(0.0, face.y, 0.0) + n * face.z), step(0.5, frame)));
 	nn = normalize(mix(nn, normalize(t * side.x + vec3(0.0, side.y, 0.0) - n * side.z), step(0.5, solid)));
 	rough = mix(mix(mix(0.12, 0.55, tiny), 0.55, frame), 0.9, solid);
-	metal = mix(mix(0.0, 0.05, frame), 0.0, solid);
+	metal = mix(mix(1.0, 0.05, frame), 0.0, solid);
 }
 
-// The glass of a building cut open: nothing behind it to trace (the inside is real geometry), only what the glass reflects.
+// The glass of a building cut open: nothing behind it to trace (the inside is real geometry), only what the glass reflects (the
+// engine's reflections).
 void pane_clear(vec3 n, vec3 V, out vec3 albedo, out vec3 emit, out vec3 nn, out float rough, out float metal) {
-	float cosv = clamp(dot(-V, n), 0.0, 1.0);
-	float F = max(0.04 + 0.96 * pow(1.0 - cosv, 5.0), glass_reflect);
-	albedo = PANE_ALBEDO;
-	emit = glass_reflection(V, n, F, GLASS_ENV);
+	albedo = vec3(glazing_reflect);
+	emit = vec3(0.0);
 	nn = n;
-	rough = 0.12;
-	metal = 0.0;
+	rough = GLASS_ROUGHNESS;
+	metal = 1.0;
 }

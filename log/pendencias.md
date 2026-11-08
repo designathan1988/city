@@ -129,7 +129,8 @@ O que falta fazer, por área.
 
 - Realism (2026-11-08, log/work-log.md "Physical sky"): the night sky is still the data's two colours, not the moon through the
   air; twilight loses its blue a few degrees after sunset (the sky model takes the sun's light at one height a layer, so the
-  high, ozone-blue light of dusk is missing); the clouds' bodies keep their authored light (`atmosphere.gdshader` cloud_bodies);
+  high, ozone-blue light of dusk is missing); the clouds' bodies keep their authored light (`atmosphere.gdshader` cloud_bodies); the far level (past building_mid_end_m) paints
+  every bay of a side as its middle one, so balconies and brise fins go flat out there;
   HDR output (Godot 4.7) is not asked for: it needs HDR 2D on every viewport, which changes the interface's own colours, and the
   lens radiances would have to read the window's output maximum; reflection probes per district (octahedral since 4.6) are not
   laid, so glass off the screen reflects only the sky; the terrain's and water's albedos in `palette.json` were held to pictures

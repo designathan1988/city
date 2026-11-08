@@ -16,6 +16,7 @@ var _d: Dictionary
 var _sun: DirectionalLight3D
 var _env: Environment
 var _sky: ShaderMaterial
+var _probe: SkyLightProbe
 var air: Air
 var night := 0.0
 var shadows_on := true: # what the graphics tier asks of the sun; the moon's shadow goes with the night (_cast)
@@ -44,16 +45,19 @@ var glow_on := true
 var ambient_on := true
 
 
-func _init(day: Dictionary, sun: DirectionalLight3D, env: Environment, sky: ShaderMaterial) -> void:
+func _init(day: Dictionary, sun: DirectionalLight3D, env: Environment, sky: ShaderMaterial, probe: SkyLightProbe) -> void:
 	_d = day
 	_sun = sun
 	_env = env
 	_sky = sky
+	_probe = probe
 	air = Air.new(day.air)
-	_sky.set_shader_parameter("night_zenith", _c("zenith_night"))
-	_sky.set_shader_parameter("night_horizon", _c("horizon_night"))
-	_sky.set_shader_parameter("night_gain", _d.sky_gain)
-	_sky.set_shader_parameter("overcast_pass", _d.overcast_pass)
+	for m: ShaderMaterial in [_sky, _probe.material]:
+		m.set_shader_parameter("night_zenith", _c("zenith_night"))
+		m.set_shader_parameter("night_horizon", _c("horizon_night"))
+		m.set_shader_parameter("night_gain", _d.sky_gain)
+		m.set_shader_parameter("overcast_pass", _d.overcast_pass)
+	RenderingServer.global_shader_parameter_set(&"daylight_factor", _d.daylight_factor)
 
 
 func _c(key: String) -> Color:
@@ -114,9 +118,11 @@ func set_hour(hour: float) -> void:
 	_env.ambient_light_sky_contribution = SKY_LIT if ambient_on else SHADED
 	_env.ambient_light_energy = SHADED
 	air.publish(_sky, solar)
-	_sky.set_shader_parameter("dark", night)
-	_sky.set_shader_parameter("overcast", _overcast * _d.overcast_sky)
-	_sky.set_shader_parameter("flash", _flash * _d.flash_sky)
+	for m: ShaderMaterial in [_sky, _probe.material]: # the sky drawn and the one its level light is taken from: the same weather
+		m.set_shader_parameter("dark", night)
+		m.set_shader_parameter("overcast", _overcast * _d.overcast_sky)
+		m.set_shader_parameter("flash", _flash * _d.flash_sky)
+	_probe.refresh()
 	_cast()
 	_env.glow_enabled = glow_on
 	_env.glow_intensity = _d.glow_intensity
@@ -125,7 +131,6 @@ func set_hour(hour: float) -> void:
 	var awake := _awake_share(hour)
 	RenderingServer.global_shader_parameter_set(&"rooms_awake", awake)
 	RenderingServer.global_shader_parameter_set(&"outside_on", _d.outside_all_night + (1.0 - _d.outside_all_night) * awake)
-	RenderingServer.global_shader_parameter_set(&"room_daylight", (1.0 - night) * _d.room_daylight)
 
 
 ## Under the street lamps no one can see the moon's shadow, and it is the whole city drawn again for its maps: it fades with the dusk and the pass goes.

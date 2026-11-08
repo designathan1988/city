@@ -87,6 +87,7 @@ struct Data {
 	std::unordered_map<std::string, Paint> colors;
 	OpeningDef openings[BAY_COUNT];
 	float lit_share[2] = {};
+	float era_cell_m = 0, era_infill = 0; // the neighbourhoods an era is laid in, and the share of lots of another (era.h)
 
 	// A named colour of "colors" (magenta when missing: the loader rejects a table without the names asked for).
 	const Paint &color(const char *name) const {

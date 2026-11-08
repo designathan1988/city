@@ -1,14 +1,13 @@
 // The sun's contact shadows: a few steps towards the sun along the depth, for the thin shade the shadow map does not resolve where
-// a thing meets what it stands on. What a shade takes is the sun's share of the light on level ground, the sky's worked out once a
-// draw from the same air the sky is drawn with (sky_model.gdshaderinc). Only where the sun does reach, or a shadow would be shaded twice;
+// a thing meets what it stands on. What a shade takes is the sun's share of the light on level ground, the sky's from the level
+// light the sky's own probe renders (sky_level_map.gdshaderinc). Only where the sun does reach, or a shadow would be shaded twice;
 // and a full-screen pass cannot read the shadow atlas, so this one is lit: LIGHT_VERTEX sets the pixel's place for light and
 // shadows without moving the fragment, and ATTENUATION is then the sun's own shadow at that place. render/contact_pass.gd lays it.
 shader_type spatial;
 render_mode fog_disabled, depth_test_disabled, depth_draw_never, cull_disabled, ambient_light_disabled, specular_disabled, blend_mul;
 
 #include "res://render/shaders/screen_depth.gdshaderinc"
-#include "res://render/shaders/sky_model.gdshaderinc"
-#include "res://render/shaders/air_globals.gdshaderinc"
+#include "res://render/shaders/sky_level_map.gdshaderinc"
 
 uniform vec3 sun_direction = vec3(0.0, 1.0, 0.0); // towards the sun, in the world
 uniform float strength = 0.0;
@@ -26,7 +25,7 @@ varying float v_sun_share;
 
 void vertex() {
 	POSITION = vec4(VERTEX.xy, 1.0, 1.0);
-	float sky = dot(sky_level_light(air_now(), 0.0), vec3(0.2126, 0.7152, 0.0722));
+	float sky = dot(sky_level(), vec3(0.2126, 0.7152, 0.0722));
 	v_sun_share = sun_level / max(sun_level + sky, 1e-4);
 }
 

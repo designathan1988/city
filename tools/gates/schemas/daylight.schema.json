@@ -139,9 +139,6 @@
         "type": "number"
       }
     },
-    "room_daylight": {
-      "type": "number"
-    },
     "outside_all_night": {
       "type": "number"
     },

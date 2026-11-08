@@ -14,8 +14,8 @@ constexpr float MIN_PITCH = 5.f, FLAT_BELOW = 0.66f, RIDGE_TO_STREET = 0.33f, SA
 constexpr float RISE_GABLE = 3.2f, RISE_SHED = 1.2f, RISE_SAWTOOTH = 2.f, RISE_OTHER = 3.f;
 constexpr float PITCH_GABLE[2] = { 20, 35 }, PITCH_HIP[2] = { 20, 32 }, PITCH_SHED[2] = { 5, 14 }, PITCH_SAW[2] = { 22, 30 };
 constexpr float PITCH_OTHER[2] = { 20, 30 }, TINY = 1e-6f, HALF = 0.5f, SECOND_SKIN_LIGHT = 0.04f, SECOND_SKIN_NUDGE = 3.f;
-constexpr int SECOND_SKIN_TRIES = 4, ERAS = 3;
-constexpr uint32_t CHARACTER_MASK = 0xffff, ERA_SHIFT = 16;
+constexpr int SECOND_SKIN_TRIES = 4;
+constexpr uint32_t CHARACTER_MASK = 0xffff;
 constexpr float MEMBRANE_NUDGE = 0.6f;
 
 bool closed_roof(Roof r) { return r == ROOF_FLAT || r == ROOF_TERRACE; }
@@ -132,7 +132,7 @@ void made_to_measure(const Data &data, Body &b, const Envelope &env, Xoshiro128 
 	}
 }
 
-void make_body(const Data &data, Body &b, int zone, int floors, float W, float D, uint32_t seed) {
+void make_body(const Data &data, Body &b, int zone, int floors, float W, float D, uint32_t seed, int era) {
 	b = Body{};
 	b.kind = data.kind_of_zone(zone);
 	b.use = b.kind == KIND_WORKS ? USE_INDUSTRIAL : b.kind == KIND_SHOP || b.kind == KIND_OFFICE ? USE_COMMERCIAL : USE_RESIDENTIAL;
@@ -143,7 +143,7 @@ void make_body(const Data &data, Body &b, int zone, int floors, float W, float D
 	env.D = b.plan.y1 - b.plan.y0;
 	env.back_door = b.plan.back != BACK_NONE && b.plan.back != BACK_LOADING;
 	env.character = seed & CHARACTER_MASK;
-	env.era = int((seed >> ERA_SHIFT) % ERAS);
+	env.era = era;
 	env.cap = floors;
 	env.low = data.low_shop(zone);
 	made_to_measure(data, b, env, r);

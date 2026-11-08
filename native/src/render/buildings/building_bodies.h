@@ -49,7 +49,7 @@ private:
 	};
 	LruCache<Key, b40::PaneRooms, KeyHash> rooms_;
 	LruCache<CutKey, const b40::Body, KeyHash> cuts_;
-	static Key key_of(const b40::Data &data, const Building &rec) { return Key{ b40::body_key(rec), data.generation }; }
+	static Key key_of(const b40::Data &data, const Building &rec) { return Key{ b40::body_key(data, rec), data.generation }; }
 	std::shared_ptr<b40::PaneRooms> rooms(const b40::Data &data, const Key &k, const std::shared_ptr<const b40::Body> &whole, const Building &rec);
 	std::shared_ptr<const b40::Body> cut_body(const Key &k, const b40::Body &whole, const Building &rec, const b40::LotFrame &f, const b40::CutView &cut);
 };

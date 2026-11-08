@@ -12,10 +12,9 @@
 // mirrors sky_sun_at for the sun's own light.
 #ifndef SKY_MODEL_INC
 #define SKY_MODEL_INC
+#include "res://render/shaders/contracts/sky.gdshaderinc"
 
 const float SKY_PI = 3.14159265;
-const float PLANET_RADIUS_M = 6.371e6;
-const float SUN_RADIUS_RAD = 0.004654; // the sun's angular radius, 0.2666 degrees
 const float SUN_LIMB_DARKENING = 0.6; // the linear limb darkening of the visible disc (Allen's Astrophysical Quantities, 4th ed., 14.7)
 const float LEAST_MU = 0.001; // a ray this close to level still meets the ground or the top of the air
 
@@ -40,7 +39,7 @@ float sky_airmass(float mu, float h, float scale_h) {
 // The ozone sits in a thin layer high up: its path is a thin shell's at that height.
 float sky_ozone_airmass(float mu, float layer_h) {
 	float k = PLANET_RADIUS_M / (PLANET_RADIUS_M + layer_h);
-	return 1.0 / sqrt(max(1.0 - k * k * (1.0 - mu * mu), 1e-4));
+	return 1.0 / sqrt(max(1.0 - k * k * (1.0 - mu * mu), SKY_LEAST_SLANT));
 }
 
 // The optical depth from height h along elevation sine mu, to the top of the air or to the ground: Rayleigh (rgb), aerosol
@@ -129,21 +128,44 @@ vec3 sky_sun_disc(Air a, vec3 dir, float h) {
 	return sky_sun_at(a, h) * limb / (SUN_RADIUS_RAD * SUN_RADIUS_RAD) / (1.0 - SUN_LIMB_DARKENING / 3.0);
 }
 
-// The irradiance the clear sky gives level ground, over pi (the radiance of a white diffuse floor under it): a cosine-weighted mean
-// of the upper hemisphere over a fixed set of directions. For what is worked once a draw (a vertex stage), not once a pixel.
-vec3 sky_level_light(Air a, float h) {
-	const int RINGS = 4, AROUND = 8;
+// What the weather and the hour lay over the clear air (render/daylight.gd): the night's two colours and their gain, how dark it is,
+// the overcast deck's cover and the light it lets down, a bolt's flash.
+struct SkyWeather {
+	vec3 night_zenith;
+	vec3 night_horizon;
+	float night_gain;
+	float dark;
+	float overcast;
+	float overcast_pass;
+	float flash;
+};
+
+const float NIGHT_CURVE = 0.62; // how fast the night's sky darkens from the horizon up
+
+// The sky as seen along `dir` from height h: the clear air, an overcast deck over it as the weather has it (the CIE overcast sky,
+// CIE S 011/E:2003 type 1: L = Lz (1 + 2 sin(elevation)) / 3, its level light E = 7/9 pi Lz a share of the clear sky's direct light
+// on level ground), the night's own sky, a bolt's light. The sun's disc is the picture's own (sky_sun_disc).
+vec3 sky_seen(Air a, SkyWeather w, vec3 dir, float h) {
+	vec3 col = sky_radiance(a, dir, h);
+	float lz = 9.0 / 7.0 * w.overcast_pass * dot(sky_sun_at(a, 0.0), vec3(0.2126, 0.7152, 0.0722)) * max(a.sun_dir.y, 0.0);
+	col = mix(col, vec3(lz * (1.0 + 2.0 * max(dir.y, 0.0)) / 3.0), w.overcast);
+	vec3 night = mix(w.night_horizon, w.night_zenith, pow(clamp(dir.y, 0.0, 1.0), NIGHT_CURVE));
+	return (col + night * w.dark * w.night_gain) * (1.0 + w.flash);
+}
+
+// The irradiance that sky gives level ground, over pi (the radiance of a white diffuse floor under it): a cosine-weighted mean of the
+// upper hemisphere over a fixed set of directions. Worked once a change of the hour or the weather (render/sky_light_probe.gd), never
+// once a pixel.
+vec3 sky_level_seen(Air a, SkyWeather w, float h) {
+	const int RINGS = 8, AROUND = 16;
 	vec3 sum = vec3(0.0);
 	float weight = 0.0;
 	for (int i = 0; i < RINGS; i++) {
-		float mu = (float(i) + 0.5) / float(RINGS); // equal steps of sin(elevation): equal steps of the cosine-weighted measure's root
+		float mu = (float(i) + 0.5) / float(RINGS); // equal steps of sin(elevation)
 		float across = sqrt(1.0 - mu * mu);
 		for (int k = 0; k < AROUND; k++) {
 			float az = (float(k) + 0.5) * 2.0 * SKY_PI / float(AROUND);
-			vec3 d = vec3(across * cos(az), mu, across * sin(az));
-			vec3 t;
-			bool g;
-			sum += sky_inscatter(a, d, h, t, g) * mu;
+			sum += sky_seen(a, w, vec3(across * cos(az), mu, across * sin(az)), h) * mu;
 			weight += mu;
 		}
 	}

@@ -11,7 +11,6 @@ render_mode cull_back;
 global uniform float night;
 global uniform float building_recess; // 0 turns the worked-out recess off: an A/B of what it costs
 global uniform vec3 sun_direction; // towards the sun, world space (daylight.gd)
-global uniform float room_daylight; // how bright a room seen through its glass is by day, as light it sends out
 global uniform float outside_on; // the share of outside lights lit at this hour
 uniform sampler2DArray finish_map : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2DArray finish_normal : filter_linear_mipmap, repeat_enable;
@@ -24,9 +23,6 @@ uniform float paint_chroma = 1.0; // the share of its chroma a wall's paint keep
 uniform float lamp_glow = 3.4;
 uniform vec3 lamp_light : source_color = vec3(1.0, 0.83, 0.6); // what a lit lamp gives, whatever its body is by day
 uniform float window_glow = 1.5;
-uniform float glass_reflect = 0.08;
-uniform vec3 glass_sky : source_color = vec3(0.45, 0.55, 0.66);
-uniform float glass_sky_floor = 0.15;
 
 varying vec3 v_world;
 varying vec3 v_wn;
@@ -82,7 +78,7 @@ void vertex() {
 #include "res://render/shaders/building_common.gdshaderinc"
 #include "res://render/shaders/building_lamps.gdshaderinc"
 #include "res://render/shaders/building_room_tone.gdshaderinc"
-#include "res://render/shaders/building_sky_glass.gdshaderinc"
+#include "res://render/shaders/sky_level_map.gdshaderinc"
 #include "res://render/shaders/building_far_window.gdshaderinc"
 #include "res://render/shaders/canyon_light.gdshaderinc"
 
@@ -106,7 +102,8 @@ void fragment() {
 		if (kind == SK_FAR_WALL) {
 			float glass;
 			far_window(UV, v_room0, uint(fract(UV2.x) * 256.0 + 0.5), n, V, v_recess, albedo, emit, glass);
-			rough = mix(rough, 0.15, glass);
+			rough = mix(rough, GLASS_ROUGHNESS, glass);
+			metal = mix(metal, 1.0, glass); // the glass a mirror (building_lamps.gdshaderinc glazing_f0)
 			nn = normalize(mix(nn, n, glass));
 		}
 	}

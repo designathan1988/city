@@ -92,9 +92,13 @@ rooms_awake={
 "type": "float",
 "value": 0.63
 }
-room_daylight={
+daylight_factor={
 "type": "float",
-"value": 0.2
+"value": 0.02
+}
+sky_level_map={
+"type": "sampler2D",
+"value": ""
 }
 outside_on={
 "type": "float",

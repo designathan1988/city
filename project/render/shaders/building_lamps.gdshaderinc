@@ -17,8 +17,18 @@ const vec3 LAMP_OFFICE_MEAN = vec3(1.3902, 0.9254, 0.5895);
 global uniform float rooms_awake; // the share of people awake at this hour (daylight.gd)
 global uniform float building_night_windows; // the Effects panel: 0 puts the lit rooms out
 
-const vec3 PANE_ALBEDO = vec3(0.0075, 0.0096, 0.0115); // glass scatters next to nothing
-const vec3 PANE_ALBEDO_DARK = vec3(0.0047, 0.0061, 0.0074); // a dark pane's
+const float GLASS_ROUGHNESS = 0.0; // float glass (physicallybased.info, Glass: roughness 0): it mirrors, through the engine's reflections
+// A glazed opening's reflectance at normal incidence (materials.json glass): double glazing in a home, a solar-control coating in an
+// office. Glass scatters next to nothing, so a pane is drawn as the mirror it is, METALLIC 1 with this F0 (the engine's Schlick takes it
+// to 1 at grazing), the room through it its emission, times what the glazing lets through at that angle.
+uniform float glazing_reflect = 0.15;
+uniform float coated_reflect = 0.25;
+float glazing_f0(float office) {
+	return mix(glazing_reflect, coated_reflect, office);
+}
+float glazing_through(float f0, float cosv) {
+	return 1.0 - (f0 + (1.0 - f0) * pow(1.0 - cosv, 5.0));
+}
 
 // The lamp of a room by its lot `room`: the colour takes a lot of its own from it.
 vec3 room_lamp(float room, float office) {

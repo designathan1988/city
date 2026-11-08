@@ -50,6 +50,9 @@ void publish_parked(CityState &s, PoseFrame &f); // the standing cars, made agai
 void seg_point(const CityState &s, int seg, float arc, float u, Pose &out); // the point (arc, u) of a segment, its a -> b heading
 // The lane a lot's gate opens onto, on the lot's kerb; `reads` (a yard's) gets the box and segments looked at.
 bool gate_lane(const CityState &s, const V2 &gate, LaneSpot &out, YardReads *reads = nullptr);
+// The lane of the other way at the same gate, the one next to the middle: a lorry the gate's own lane cannot hold before it (the
+// street ends too near) comes by it and crosses to the gate, as one does at a dead end. False on a one-way street.
+bool gate_lane_across(const CityState &s, const V2 &gate, const LaneSpot &own, LaneSpot &out);
 
 // lot_traffic.cpp
 void step_lots(CityState &s, float dt);

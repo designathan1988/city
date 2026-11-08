@@ -8,10 +8,7 @@ render_mode cull_back;
 #include "res://render/shaders/contracts/buildings.gdshaderinc"
 
 global uniform float night;
-global uniform float room_daylight;
 
-uniform vec3 glass_sky : source_color = vec3(0.45, 0.55, 0.66);
-uniform float glass_floor = 0.18;
 uniform float wall_gain = 1.0;
 uniform float paint_chroma = 1.0; // the near level's dust on the paint (building_common.gdshaderinc dusty), so a hand-over keeps the colour
 uniform float window_glow = 1.5;
@@ -26,15 +23,12 @@ varying vec3 v_world;
 varying vec3 v_wn;
 varying flat vec4 v_opening; // width, sill and head as shares of the bay and the storey; flags
 
-const float FOOT_SHADE = 0.62; // the foot of a wall in the street's shade
-const float FOOT_STOREYS = 0.47; // its height, storeys (1.4 m of a 3 m storey)
 #include "res://render/shaders/building_room_tone.gdshaderinc"
 
 #include "res://render/shaders/building_colour.gdshaderinc"
 #include "res://render/shaders/hash.gdshaderinc"
 #include "res://render/shaders/building_lamps.gdshaderinc"
-#define glass_sky_floor 0.0
-#include "res://render/shaders/building_sky_glass.gdshaderinc"
+#include "res://render/shaders/sky_level_map.gdshaderinc"
 
 void vertex() {
 	int chunk = (int(COLOR.a * 255.0 + 0.5) & ~FAR_OFFICE_BIT) >> SURFACE_KIND_BITS;
@@ -52,13 +46,14 @@ void fragment() {
 	int kind = int(COLOR.a * 255.0 + 0.5) & KIND_MASK;
 	vec3 n = normalize(v_wn);
 	vec3 albedo = to_linear(COLOR.rgb);
-	albedo = mix(vec3(dot(albedo, vec3(0.2126, 0.7152, 0.0722))), albedo, paint_chroma);
-	vec3 glass = mix(vec3(0.05, 0.06, 0.07), uniform_linear(glass_sky), glass_floor) * (1.0 - 0.92 * night);
+	albedo = mix(vec3(dot(albedo, vec3(0.2126, 0.7152, 0.0722))), albedo, paint_chroma) * wall_gain;
 	vec3 emit = vec3(0.0);
 	float rough = BUILDING_FAR_ROUGHNESS, metal = 0.0;
-	if (kind == SK_PANE || kind == SK_PANE_DARK) {
-		albedo = glass;
-		rough = 0.2;
+	float office = (int(COLOR.a * 255.0 + 0.5) & FAR_OFFICE_BIT) != 0 ? 1.0 : 0.0;
+	if (kind == SK_PANE || kind == SK_PANE_DARK) { // the glazing a mirror (building_lamps.gdshaderinc glazing_f0)
+		albedo = vec3(glazing_f0(office));
+		rough = GLASS_ROUGHNESS;
+		metal = 1.0;
 	}
 	if (kind == SK_FAR_WALL) {
 		vec2 foot = grid_footprint(UV);
@@ -67,18 +62,17 @@ void fragment() {
 		vec2 room = floor(UV);
 		float lot = h01(room_cell(room));
 		float sub = smoothstep(0.5, 1.5, max(foot.x, foot.y));
-		float office = (int(COLOR.a * 255.0 + 0.5) & FAR_OFFICE_BIT) != 0 ? 1.0 : 0.0;
 		vec3 lamp = far_room_lamp(lot, office, sub);
 		float lit = far_room_lit(lot, sub);
-		// the glass of the levels before it (building_far_window.gdshaderinc): next to nothing scattered, the room through it and the sky on it
+		// the glazing of the levels before it (building_far_window.gdshaderinc): a mirror of the sky, the room through it
 		vec3 V = normalize(v_world - CAMERA_POSITION_WORLD);
 		float cosv = clamp(dot(-V, n), 0.0, 1.0);
-		float fresnel = 0.04 + 0.96 * pow(1.0 - cosv, 5.0);
-		albedo = mix(albedo, PANE_ALBEDO, m) * mix(FOOT_SHADE, 1.0, smoothstep(0.0, FOOT_STOREYS, UV.y));
-		rough = mix(rough, 0.35, m);
-		emit = ((lamp * lit * night * window_glow + pane_mean(room_tone(V, n, FLOOR_HOME)) * room_daylight) * (1.0 - fresnel) + glass_reflection(V, n, fresnel, GLASS_ENV)) * m;
+		float f0 = glazing_f0(office);
+		albedo = mix(albedo, vec3(f0), m);
+		rough = mix(rough, GLASS_ROUGHNESS, m);
+		metal = m;
+		emit = (lamp * lit * night * window_glow + pane_mean(room_tone(V, n, FLOOR_HOME)) * room_daylight()) * glazing_through(f0, cosv) * m;
 	}
-	albedo *= wall_gain;
 	if (kind == SK_LAMP) emit += albedo * night;
 	ALBEDO = surface_out(albedo);
 	EMISSION = surface_out(emit);

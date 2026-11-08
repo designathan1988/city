@@ -816,3 +816,34 @@ The user asked for the realistic look the reading of the renderer found within r
   AreaLight3D (4.7) for shopfronts at night; auto exposure (CameraAttributesPractical, a moderate cost) for the day's whole arc;
   HDR output once the interface takes HDR 2D. Real-time GI past SSIL and the World AO waits for the engine (4.7 ships only the
   ray-tracing foundation).
+
+## Glass that mirrors, rooms lit by the sky, towers by neighbourhood (2026-11-08, branch `realism`)
+
+The user: graphics alone are not enough, every building looks the same. Read at three distances (scratch plan, hidden captures).
+- Problems found: (1) by day every window showed a bright flat room (`room_daylight` 0.2 of emission, nearly a sunlit wall) and
+  every pane added a constant sky colour (`building_sky_glass.gdshaderinc` glass_sky), so every facade read as the same grid of
+  light cells, whatever it faced; (2) a lot's era came from its seed alone (`massing_core.cpp`), so styles were a uniform mixture
+  everywhere, and offices took `glass` 4 to 1 with no neighbourhood behind it; (3) offices never took a shaped plan and never the
+  tall tail (`massing_tall.cpp`), so the centre was boxes of 8 to 24 storeys; (4) the far level's foot shade faked what the canyon
+  AO now does.
+- Sources: CIBSE LG10 / BS 8206-2 (average daylight factor 2 %), Pilkington glazing data (clear double glazing about 15 % light
+  reflectance, Suncool 11 to 38 %), physicallybased.info (glass roughness 0), Conzen 1960 (plan units built in waves), Godot
+  4.7.2 forward_clustered (metallic F0 and Schlick).
+- Code: glass is the mirror it is: METALLIC 1 with the glazing's reflectance as F0 (materials.json glass: glazing_reflect for homes,
+  coated_reflect for offices), roughness 0, the engine's reflections (sky, SSR) its only reflection; the room through it is its
+  emission, the daylight factor of the sky's level light. That level light is rendered once a change into one texel by
+  `render/sky_light_probe.gd` from `sky_level.gdshader`, the sky's own composition (`sky_model.gdshaderinc` sky_seen, now shared by
+  the sky and the probe; `sky_weather.gdshaderinc` its uniforms; `sky_level_map.gdshaderinc` the read), so nothing integrates the
+  sky on the CPU; the contact shade reads it too. A lot's era is its neighbourhood's (`b40/era.h`: a Voronoi cell of the plan,
+  buildings.json eras), part of the body's key; offices take the towers' shaped plans and tall tail.
+- The new city moved `yard_test`'s sites (they follow the traffic) onto yards whose gate stood near a straight-cut dead end: no room
+  for a lorry to stop before the gate on its own lane (diagnosed with a temporary print in `yard.cpp`, removed). Fixed in the
+  planner: each gate also offers the lane across (`parking_lanes.cpp` gate_lane_across), a way in may come by either, and a way
+  out may join the gate's twin lane (`YardGate::twin`, `DockWays::gate_out`, `Lorry::out_gate`), as a lorry does at a dead end.
+  Six sites sampled (`--sites=6`): every dock has a way, a lorry made the round.
+- Gates: the second-owner names in `massing_tall.cpp`, `buildings_loader.cpp` and `yard_input.cpp` only shared words with
+  unrelated data keys (TOWER_MIN against kind_weights.tower): renamed to say what they measure (TOWER_SIDE_LEAST, TOWER_STOREYS_MOST,
+  ...), rules.json untouched (its empty mirror table fails any change of it). The sky model's shape constants that `air.gd`
+  repeated went to the shader contract (`shader_contracts.json` sky: `core/shader_contracts/sky.h`, `contracts/sky.gdshaderinc`).
+- Created `render/sky_light_probe.gd`, `render/shaders/{sky_level.gdshader, sky_level_map.gdshaderinc, sky_weather.gdshaderinc}`,
+  `sim/buildings/b40/era.{h,cpp}`; deleted `render/shaders/building_sky_glass.gdshaderinc`.

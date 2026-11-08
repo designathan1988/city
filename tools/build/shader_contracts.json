@@ -101,6 +101,12 @@
     {"name": "LUMA", "type": "vec3", "value": ["0.3", "0.6", "0.1"], "doc": "the weights of a colour's luma (terrain_layers.gdshaderinc; city_world.gd the grass map's mean)"}
    ]
   },
+  "sky": {
+   "doc": "the air's shape the sky model and the sun's light through it share (render/shaders/sky_model.gdshaderinc, render/air.gd)",
+   "entries": [
+    {"name": "SkyShape", "type": "floats", "values": {"PLANET_RADIUS_M": "6.371e6", "SUN_RADIUS_RAD": "0.004654", "SKY_LEAST_SLANT": "1e-4"}, "doc": "the earth's mean radius (IUGG), the sun's angular radius (0.2666 degrees), the floor of a grazing path's thin-shell term (sky_model.gdshaderinc sky_ozone_airmass, air.gd ozone_airmass)"}
+   ]
+  },
   "tone": {
    "doc": "the engine's AgX tone mapping, which tone_inverse.gdshaderinc and render/tone_map.gd both invert",
    "entries": [
