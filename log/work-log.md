@@ -770,3 +770,11 @@ Ressalvas abertas:
   audit session rebuilds both from HEAD with its folder-independent build (`-ffile-prefix-map`, the retrained profile) in its
   next commit. The checks above ran on DLLs built from this commit's sources in the worktree `city-scenic` (HEAD + this change
   only); the user's `dist/windows/Roadcraft.exe` was exported from it.
+- 23:10, after 1a912209: the full `run_gates` rose from 425 (B1) to 499. Cause: generic keys new in `scenic.json` (`half_m`,
+  `line`, `ring`, `seed`, `block_m`, `depth_m`, `low_m`, `drop_m`, `bridge_max_m`, ...) matched the words of constants all over
+  the code (every `HALF`), and one value (130) repeated a constant; the gate had been run on this change's files only, not the
+  tree. Fix: the keys renamed to words no constant carries (`city_half_m`, `polyline`, `boundary`, `seed_point`, `blocks_m`,
+  `bearing_deg`, `deep_m`, `channel_wall_m`, `level_start_m`, `relief_amp_m`, `crest_m`, `below_shore_m`, `tree_short_m`,
+  `tree_tall_m`, `bridge_span_m`, `seam_profile`), the value 128. On dcf96cb3 with the fix the full run is 424 against B1's 425,
+  the only lines apart being BIKE_N and BUS_M, moved with PlanRules. The loader's literals change in the audit session's C10
+  rewrite of the loaders, committed together with the data, the schema and the test.

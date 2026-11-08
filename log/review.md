@@ -3897,6 +3897,59 @@ The arithmetic of the measure and the rule is the same as before, so a city's ch
 - The save row's name and date sit in a translated format.
 - `gfx.gpu` is unused and removed.
 
+### 6.76 C16/C2 (the verification's reach): a Godot task is keyed by what it loads, and a tool's version keys its result (2026-11-08)
+
+**Causes.**
+- Every Godot task (the 37 test scenes, the digest, the frozen photos, the looks and captures) was keyed by `@project`
+  (`tools/tasks/suites.json`): one changed script, table, capture or test reran all of them (~1,000 s of scenes). No scene
+  declared what it loads, so the orchestrator could not know what a change reaches (§3, the first finding of the review).
+- A build's result follows from the machine's tools as much as from the sources, and only Godot's version was keyed: when
+  `ninja.exe` vanished from the machine (the WinGet links folder rebuilt at 15:00), `build_debug` and `build_release` failed and
+  that FAIL was cached under the sources' key, replayed without running after the tool came back.
+- Found on the way: the two DLLs in the worktree (modified, uncommitted) were older builds (they asked for `decay_grace_min`,
+  `curb_m` and the scenic keys C10 renamed); rebuilt from HEAD they are the committed ones byte for byte. And every test that never
+  saved printed `ERROR: Couldn't open directory user://saves_tests/<pid>` (`TestCase._remove_saves` listed a folder that did not exist).
+
+**Research.** Godot's `ResourceLoader::_load` prints `Loading resource: <path>` under `--verbose` (4.4: that alone; master:
+`... remapped: <path>`; core/io/resource_loader.cpp); a resource already cached prints nothing, and GDScript's own dependencies
+(class_name, preload inside scripts) go through its script cache, not ResourceLoader, so the log cannot see them.
+
+**Fix.**
+- `tools/tasks/godot_deps.py`: the closure of what a Godot run may load, by every link Godot follows and nothing named after
+  this project: a res:// literal in any text the run reads (a file; a directory's every file; a literal with a format or naming
+  nothing whole: every file its fixed parts allow); the scheme alone only where a path is built on it (`"res://" + x`), never in
+  prose or a `begins_with("res://")`; a GDScript identifier that is a class_name or an autoload (read outside strings and comments:
+  `&"PreviewTag"` is a theme variation, not the class); relative shader includes; uid://; a glTF's images and buffers; every
+  `.gdextension` and its libraries; the import and uid sidecars; the res:// paths of the core's C++; the project settings but its
+  main scene, which a run opens only when its command line names none.
+- `suites.json`: `{loads}` in a Godot task's inputs (with `!@release_libraries`, a set excluded by name) and `--verbose` in its argv,
+  both required together by `suites.py`, and an empty closure refused. The verdict holds every `Loading resource` of the log to the
+  declared inputs (`verdicts.undeclared_loads`): a link the closure misses fails the task, and a log with no load fails too. This is
+  the oracle on real data, run by every scene on every run.
+- `versions` in `suites.json`: Godot's, CMake's, Ninja's and the Windows compiler's whole `--version` output, keyed by the tasks
+  that follow from them; a tool that is missing or fails stops the selection (nothing runs, nothing is cached).
+
+**Why it does not come back.** A scene's key is the files it can load, derived from the files themselves; a new link of a kind
+ResourceLoader takes is checked by the log at the next run, and a link of a kind the closure does not know fails that run.
+
+**Proof.** `python -m unittest discover tools/tasks/tests`: 37 OK (the new `test_godot_deps.py`: every link reached, the unreached
+left out, the loads check failing on an undeclared load and on none, `{loads}` refused without `--verbose`, a missing tool refused).
+`cli.py run tests`: 40/40, every scene `N loaded resources, all declared` (119 to 223). What a change now reruns, of the 39 Godot
+tasks of `quick`: `tests/core/job_pool_test.gd` 1 (was 39), `tests/visual/capture.gd` 0, `ui/roadcraft_hud.gd` and
+`game/tools/road_tool.gd` 9 (the scenes that build the interface), `test_case.gd` 37, a data table, a shader or the debug DLL 39,
+the release DLL 0. `quick --ready`: the digest equal; `photos_check` off its golden only in the known pixels (02-rua's sign edge
+(1157-1165, 264-265), §6.9; 03-rua_noite's (919,248), §6.56; three single pixels of 1-3 levels in 00-cidade) with the debug DLL byte
+for byte HEAD's and no render file changed: not blessed. `run_gates.py`: ESPELHO (as before) and `hooks2/`, an untracked folder
+another hand left at the root (42 NON_ENGLISH_TEXT, RAIZ_LIMPA), not touched here.
+
+**Files.** Created `tools/tasks/godot_deps.py`, `tools/tasks/tests/test_godot_deps.py`. Changed `tools/tasks/suites.py`,
+`tools/tasks/suites.json`, `tools/tasks/verdicts.py`, `tools/tasks/tests/test_verdicts.py`, `tools/gates/schemas/suites.schema.json`,
+`project/tests/test_case.gd`, `log/mapa.md`, `log/ferramentas.md`, this record.
+
+**Left.** `import` and `scripts` keep `@project` (Godot's import and the script check read the whole project); `gates_changed`
+keeps `**` (its rules compare the changed files with the whole tree, and its list of changed files moves with every change, so its
+key is right). Data tables reach every scene through `DataTables`, which names them all: file granularity, sound.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

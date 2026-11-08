@@ -79,8 +79,11 @@ func finish() -> void:
 	get_tree().quit(1 if failures > 0 else 0)
 
 
-## The saves of this test's process (SaveSlots.dir) go with it: no other process ever reads them.
+## The saves of this test's process (SaveSlots.dir) go with it: no other process ever reads them. A test that never saved
+## has no folder, and nothing to remove.
 static func _remove_saves(folder: String) -> void:
+	if not DirAccess.dir_exists_absolute(folder):
+		return
 	for sub: String in DirAccess.get_directories_at(folder):
 		_remove_saves("%s/%s" % [folder, sub])
 	for file: String in DirAccess.get_files_at(folder):

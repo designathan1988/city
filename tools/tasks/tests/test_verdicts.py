@@ -9,7 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from tasks import verdicts  # noqa: E402
-from tasks.task import FAIL, PASS  # noqa: E402
+from tasks.task import FAIL, PASS, Task  # noqa: E402
 
 
 class GodotVerdictTest(unittest.TestCase):
@@ -20,7 +20,8 @@ class GodotVerdictTest(unittest.TestCase):
     def verdict(self, text: str, code: int = 0):
         log = self.dir / "run.log"
         log.write_text(text, encoding="utf-8")
-        return verdicts.godot(None, str(log), code, self.dir)[0]
+        task = Task(name="scene", argv=["godot"], timeout_s=1)  # a scene task that declares no {loads}
+        return verdicts.godot(task, str(log), code, self.dir)[0]
 
     def test_clean_run_passes(self):
         self.assertEqual(self.verdict("PASS a check\nFAILURES: 0\n"), PASS)

@@ -163,8 +163,8 @@ the same sources give the same bytes, so a rebuild of unchanged sources leaves t
 
 **`tools`**
 - `gates/`: regras verificadas, `rules.json`, `owners.json`, `schemas/`.
-- `tasks/`: the one orchestration owner of every support tool (tasks as data: inputs keyed by content, a deadline each,
-  a verdict; parallel pool, cache in `dist/cache/tasks`, Job Object kill, hidden desktop; `suites.json`).
+- `tasks/`: the one orchestration owner of every support tool (tasks as data: inputs keyed by content, a deadline each, a verdict;
+  parallel pool, cache in `dist/cache/tasks`, Job Object kill, hidden desktop; `suites.json`; a Godot task keyed by what it can load, `{loads}`).
 - `build/`: `build.sh`, `android.sh` (the Android library and APK), `quick.sh` (a thin call of `tools/tasks`), `pgo.sh`, `photodiff.py`, `free_dll.sh`,
   `check_scripts.gd` (scripts that do not compile), `shader_contracts.py` (what shaders, core and scripts share, from its JSON).
 - `analysis/`: `sampler.py` with `sampler_report.py`, `unwind.py` and `win_process.py`, `causes.py` with `detectors.py` and `code_parse.py`,

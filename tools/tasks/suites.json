@@ -1,5 +1,5 @@
 {
- "_doc": "The support tools' work as data, run by tools/tasks/cli.py (schema: tools/gates/schemas/suites.schema.json). A task is a process with its own deadline (timeout_s), the inputs and extra strings that key its result, the outputs restored on a cache hit, the tasks it runs after, its resources and its verdict. {name} is a var (vars, or the built-in root, python, godot_version); an inputs element @name is a set; a suite element @name is a group or another suite; an argv element {changed_list:--files-from} expands to --files-from and a file listing the changed files (the task is dropped when none changed) and {changed} in inputs to the changed files. Every Godot task loads the debug DLL: it runs after build_debug, whose output that DLL is, and the DLL is among its inputs (the project set), so a scene reruns exactly when what it loads changed.",
+ "_doc": "The support tools' work as data, run by tools/tasks/cli.py (schema: tools/gates/schemas/suites.schema.json). A task is a process with its own deadline (timeout_s), the inputs and extra strings that key its result, the outputs restored on a cache hit, the tasks it runs after, its resources and its verdict. {name} is a var (vars, versions, or the built-in root, python); an inputs element @name is a set; a suite element @name is a group or another suite; an argv element {changed_list:--files-from} expands to --files-from and a file listing the changed files (the task is dropped when none changed) and {changed} in inputs to the changed files; {loads} in inputs is every file the Godot run of the task's argv may load (tools/tasks/godot_deps.py: the scene, the plan, the project settings, the extensions, and every script, scene, shader, table and asset they reach), and such a run is --verbose so its verdict fails on a resource it loaded outside them. Every Godot task loads the debug DLL: it runs after build_debug, whose output that DLL is, and the DLL is among what it loads (bin/citycore.gdextension), so a scene reruns exactly when what it loads changed.",
  "vars": {
   "godot": {
    "doc": "Godot 4.7 console binary",
@@ -26,13 +26,24 @@
    "posix": "{root}/dist/captures"
   }
  },
+ "versions": {
+  "godot_version": {"doc": "the Godot that runs the scenes", "argv": ["{godot}", "--headless", "--version"]},
+  "cmake_version": {"doc": "the CMake that configures the core's build", "argv": ["cmake", "--version"]},
+  "ninja_version": {"doc": "the Ninja that runs the core's build", "argv": ["ninja", "--version"]},
+  "clang_version": {"doc": "the compiler of the Windows DLLs (llvm-mingw)", "argv": ["{mingw}/bin/clang++", "--version"]}
+ },
+ "loads": {
+  "doc": "{loads}: the C++ folders whose res:// paths the loaded core library opens",
+  "native": ["native/src"]
+ },
  "changed": {
   "doc": "the changed files the gates look at (run_gates.py --files-from: a path outside every gate is reported and skipped there)",
   "include": ["**"],
   "exclude": ["log/**"]
  },
  "sets": {
-  "project": ["project/**", "!project/bin/libcitycore.windows.template_release.x86_64.dll", "!project/bin/*.so"],
+  "project": ["project/**", "!@release_libraries"],
+  "release_libraries": ["project/bin/libcitycore.windows.template_release.x86_64.dll", "project/bin/*.so"],
   "native": ["native/**"]
  },
  "tasks": {
@@ -88,6 +99,7 @@
    "argv": ["{bash}", "tools/build/build.sh", "dll-debug"],
    "timeout_s": 3600,
    "inputs": ["@native", "tools/build/build.sh", "tools/build/free_dll.sh"],
+   "extra": ["{cmake_version}", "{ninja_version}", "{clang_version}"],
    "env": {"MINGW": "{mingw}"},
    "outputs": ["project/bin/libcitycore.windows.template_debug.x86_64.dll"],
    "resources": {"cores": "all", "locks": {"dll": "exclusive"}}
@@ -97,6 +109,7 @@
    "argv": ["{bash}", "tools/build/build.sh", "dll-release"],
    "timeout_s": 3600,
    "inputs": ["@native", "tools/build/build.sh", "tools/build/free_dll.sh"],
+   "extra": ["{cmake_version}", "{ninja_version}", "{clang_version}"],
    "env": {"MINGW": "{mingw}"},
    "outputs": ["project/bin/libcitycore.windows.template_release.x86_64.dll"],
    "resources": {"cores": "all", "locks": {"dll": "exclusive"}}
@@ -117,9 +130,9 @@
   },
   "digest": {
    "doc": "a fixed city hashed (open_probe --digest) and held to its golden: an optimisation leaves it equal",
-   "argv": ["{godot}", "--headless", "--path", "project", "res://tests/perf/open_probe.tscn", "--", "--no-flow", "--digest"],
+   "argv": ["{godot}", "--verbose", "--headless", "--path", "project", "res://tests/perf/open_probe.tscn", "--", "--no-flow", "--digest"],
    "timeout_s": 600,
-   "inputs": ["@project", "dist/quick/golden.txt"],
+   "inputs": ["{loads}", "!@release_libraries", "dist/quick/golden.txt"],
    "extra": ["{godot_version}"],
    "after": ["build_debug", "import", "scripts"],
    "verdict": "matches_golden",
@@ -129,9 +142,9 @@
   },
   "digest_bless": {
    "doc": "--bless: the digest of this run becomes the golden",
-   "argv": ["{godot}", "--headless", "--path", "project", "res://tests/perf/open_probe.tscn", "--", "--no-flow", "--digest"],
+   "argv": ["{godot}", "--verbose", "--headless", "--path", "project", "res://tests/perf/open_probe.tscn", "--", "--no-flow", "--digest"],
    "timeout_s": 600,
-   "inputs": ["@project"],
+   "inputs": ["{loads}", "!@release_libraries"],
    "extra": ["{godot_version}"],
    "after": ["build_debug", "import", "scripts"],
    "outputs": ["dist/quick/golden.txt"],
@@ -143,6 +156,7 @@
    "doc": "the still world photographed frozen (look --frozen: no clock, no TIME, waits by frames)",
    "argv": [
     "{godot}",
+    "--verbose",
     "--path",
     "project",
     "--resolution",
@@ -156,7 +170,7 @@
    ],
    "timeout_s": 90,
    "hidden": true,
-   "inputs": ["@project"],
+   "inputs": ["{loads}", "!@release_libraries"],
    "extra": ["{godot_version}"],
    "after": ["build_debug", "import", "scripts"],
    "outputs": ["dist/quick/photos"],
@@ -186,9 +200,9 @@
  },
  "templates": {
   "godot_test": {
-   "argv": ["{godot}", "--path", "project", "--rendering-method", "{renderer}", "res://{scene}.tscn", "--", "--no-flow"],
+   "argv": ["{godot}", "--verbose", "--path", "project", "--rendering-method", "{renderer}", "res://{scene}.tscn", "--", "--no-flow"],
    "hidden": true,
-   "inputs": ["@project"],
+   "inputs": ["{loads}", "!@release_libraries"],
    "extra": ["{godot_version}"],
    "after": ["build_debug", "import", "scripts"],
    "verdict": "godot",
@@ -197,6 +211,7 @@
   "look": {
    "argv": [
     "{godot}",
+    "--verbose",
     "--path",
     "project",
     "--resolution",
@@ -208,7 +223,7 @@
     "--capture-dir={captures}/{name}"
    ],
    "hidden": true,
-   "inputs": ["@project"],
+   "inputs": ["{loads}", "!@release_libraries"],
    "extra": ["{godot_version}"],
    "after": ["build_debug", "import", "scripts"],
    "outputs": ["{captures}/{name}"],
@@ -219,6 +234,7 @@
   "capture_scene": {
    "argv": [
     "{godot}",
+    "--verbose",
     "--path",
     "project",
     "--resolution",
@@ -229,7 +245,7 @@
     "--capture-dir={captures}/{name}"
    ],
    "hidden": true,
-   "inputs": ["@project"],
+   "inputs": ["{loads}", "!@release_libraries"],
    "extra": ["{godot_version}"],
    "after": ["build_debug", "import", "scripts"],
    "outputs": ["{captures}/{name}"],
