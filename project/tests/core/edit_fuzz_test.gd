@@ -37,6 +37,7 @@ var last_kind := 0
 const BEND_M := 30.0
 const BEND_AT_LEAST := 0.2
 const BEND_LIFT_M := 4.0
+const CONTROLS := 7 # NodeControl's kinds (road_network.h CTL_COUNT)
 const PATH_KIND := 25 # a held brush's pointer move: the dabs of one move as one command
 const PATH_DABS := 3
 const PATH_BRUSHES := 4
@@ -173,7 +174,10 @@ func _shape(kind: int, road: Vector3) -> void:
 		if legs.size() >= 2:
 			CityStore.dispatch(&"set_movement_banned", [node, legs[0].seg, legs[1].seg, legs[0].banned.is_empty()])
 	elif kind == 24 and node >= 0:
-		CityStore.dispatch(&"remove_node", [node])
+		if rng.randf() < 0.5: # the junction's control (its arms' posts and paint drawn again)
+			CityStore.dispatch(&"set_node_control", [node, rng.randi_range(0, CONTROLS - 1)])
+		else:
+			CityStore.dispatch(&"remove_node", [node])
 
 
 ## What is not a road: relief, street pieces, a barrier, a drawn building, a stop, a bomb, the demolish box.
