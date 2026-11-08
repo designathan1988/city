@@ -1,0 +1,27 @@
+{
+ "_doc": "The bomb looked at in play (look.gd): the generated town with its people walking, the Demolish drawer's Bomb tab, one charge on a block, the blast at 0.4, 1.2 and 4 s of its own clock, then what is left from above and from close by.",
+ "city": {"map": 0, "seed": 1, "generate": true},
+ "steps": [
+  {"hour": 16},
+  {"dispatch": "set_speed", "args": [1]},
+  {"setView": [60, -40, 12, 30, 40]},
+  {"frames": 300},
+  {"shot": "before"},
+  {"control": "Demolir"},
+  {"frames": 5},
+  {"control": "Bomba"},
+  {"frames": 5},
+  {"click": [60, 40]},
+  {"blastShot": "blast-0.4s", "at": 0.4},
+  {"blastShot": "blast-1.2s", "at": 1.2},
+  {"blastShot": "blast-4s", "at": 4.0},
+  {"frames": 300},
+  {"shot": "after"},
+  {"setView": [60, -40, 30, 120, 30]},
+  {"frames": 60},
+  {"shot": "ruins-close"},
+  {"setView": [60, -40, 45, 210, 18]},
+  {"frames": 60},
+  {"shot": "street-level"}
+ ]
+}

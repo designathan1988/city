@@ -242,10 +242,10 @@ Dictionary CityCore::segment_at(const Vector3 &p) {
 	return d;
 }
 
-Dictionary CityCore::paint_zone_path(const PackedVector3Array &points, float radius, int zone) {
+Dictionary CityCore::paint_zone_path(const PackedVector3Array &points, int zone) {
 	std::vector<StrokePoint> dabs;
 	for (int i = 0; i < points.size(); i++) dabs.push_back({ points[i].x, points[i].z });
-	return run_edit(*state_, "cmd.place.zone", [&](CityState &s) { return city::paint_zone_path(s, dabs, radius, zone); });
+	return run_edit(*state_, "cmd.place.zone", [&](CityState &s) { return city::paint_zone_path(s, dabs, zone); });
 }
 
 Dictionary CityCore::terrain_brush(const Vector3 &p, float radius, float strength, float dt, int mode, float hardness) {

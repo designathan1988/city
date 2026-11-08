@@ -253,11 +253,6 @@
   "portal_coping_m": 0.24,
   "portal_cover_m": 0.6
  },
- "zone": {
-  "_doc": "The zone brush: the side offset of a zoned lot and the spacing of its samples.",
-  "side_offset_m": 14,
-  "sample_m": 8
- },
  "strike": {
   "_doc": "The bomb: the force steps of its strip, the pressure that brings a frame down, the storey a fall counts, and the size and reach of the scars a blast leaves.",
   "force_start": 5,

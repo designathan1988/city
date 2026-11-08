@@ -5,7 +5,6 @@ extends RefCounted
 const ZONE_ROAD_X := 700.0
 const ZONE_ROAD_Z := 620.0
 const ZONE_ROAD_M := 300.0
-const ZONE_BRUSH_M := 30.0
 
 var t: Node
 
@@ -42,33 +41,37 @@ func _blocks() -> void:
 	t.check(CityStore.query(&"inspect", [at]).size() == had, "blocks by the tool: undone in one step")
 
 
-## A fast drag reports two points far apart: the whole way between them is zoned, and with Shift held the same stroke takes the zone away.
+## A fast drag reports two points far apart: every lot on the way between them is zoned, and with Shift held the same stroke takes
+## the zone away. The stroke runs over the land on the road's left, where its lots stand.
 func _zone_brush() -> void:
 	var a := Vector3(ZONE_ROAD_X, 0, ZONE_ROAD_Z)
 	var b := a + Vector3(ZONE_ROAD_M, 0, 0)
-	var mid := a.lerp(b, 0.5)
 	var built: Dictionary = CityStore.dispatch(&"build_road", [a, b, false, Vector3.ZERO, 0, 0.25])
 	t.check(built.get("ok", false), "a road for the zone brush: %s" % [built])
-	t.tools.set_tool(ToolController.Tool.ZONE, {"zone": DataTables.zone_code("residential"), "radius": ZONE_BRUSH_M})
+	var side := Vector3(0, 0, -ZoneStroke.SIDE_M)
+	var line := PackedVector3Array()
+	for k in int(ZONE_ROAD_M / ZoneStroke.STEP_M) + 1:
+		line.append(a + side + Vector3(k * ZoneStroke.STEP_M, 0, 0))
+	t.tools.set_tool(ToolController.Tool.ZONE, {"zone": DataTables.zone_code("residential")})
 	var brush: Variant = t.tools.active
-	brush.click(a)
-	brush.drag(b)
-	brush.release(b)
-	var again: Dictionary = CityStore.dispatch(&"paint_zone", [mid, ZONE_BRUSH_M, DataTables.zone_code("residential")])
-	t.check(again.get("error", "") == "tools.toast.zoneSame", "a fast drag zones the middle of the way: %s" % [again])
+	brush.click(a + side)
+	brush.drag(b + side)
+	brush.release(b + side)
+	var again: Dictionary = CityStore.dispatch(&"paint_zone_path", [line, DataTables.zone_code("residential")])
+	t.check(again.get("error", "") == "tools.toast.zoneSame", "a fast drag zones every lot of the way: %s" % [again])
 	var shift := InputEventKey.new()
 	shift.keycode = KEY_SHIFT
 	shift.pressed = true
 	Input.parse_input_event(shift)
 	Input.flush_buffered_events()
-	brush.click(a)
-	brush.drag(b)
-	brush.release(b)
+	brush.click(a + side)
+	brush.drag(b + side)
+	brush.release(b + side)
 	shift = shift.duplicate()
 	shift.pressed = false
 	Input.parse_input_event(shift)
 	Input.flush_buffered_events()
-	var none: Dictionary = CityStore.dispatch(&"paint_zone", [mid, ZONE_BRUSH_M, 0])
+	var none: Dictionary = CityStore.dispatch(&"paint_zone_path", [line, 0])
 	t.check(none.get("error", "") == "tools.toast.zoneSame", "with Shift the stroke takes the zone off: %s" % [none])
 
 

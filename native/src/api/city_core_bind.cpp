@@ -52,8 +52,7 @@ void CityCore::bind_edits() {
 	ClassDB::bind_method(D_METHOD("preview_road", "start", "end", "has_control", "control", "profile", "px", "from_lift"), &CityCore::preview_road, DEFVAL(HEIGHT_IN_HAND));
 	ClassDB::bind_method(D_METHOD("build_road", "start", "end", "has_control", "control", "profile", "px", "from_lift"), &CityCore::build_road, DEFVAL(HEIGHT_IN_HAND));
 	ClassDB::bind_method(D_METHOD("demolish", "position"), &CityCore::demolish);
-	ClassDB::bind_method(D_METHOD("paint_zone", "position", "radius", "zone"), &CityCore::paint_zone);
-	ClassDB::bind_method(D_METHOD("paint_zone_path", "points", "radius", "zone"), &CityCore::paint_zone_path);
+	ClassDB::bind_method(D_METHOD("paint_zone_path", "points", "zone"), &CityCore::paint_zone_path);
 	ClassDB::bind_method(D_METHOD("road_profiles"), &CityCore::road_profiles);
 	ClassDB::bind_method(D_METHOD("road_variant", "base", "lanes", "width", "parking"), &CityCore::road_variant);
 	ClassDB::bind_method(D_METHOD("undo"), &CityCore::undo);
@@ -119,7 +118,13 @@ void CityCore::bind_queries() {
 	ClassDB::bind_method(D_METHOD("lot_add_rect", "a", "b", "angle"), &CityCore::lot_add_rect);
 	ClassDB::bind_method(D_METHOD("lot_add_polygon", "points"), &CityCore::lot_add_polygon);
 	ClassDB::bind_method(D_METHOD("lot_land", "a", "b", "angle"), &CityCore::lot_land);
-	ClassDB::bind_method(D_METHOD("lot_proposals", "point"), &CityCore::lot_proposals);
+	ClassDB::bind_method(D_METHOD("lot_proposals", "point", "zone"), &CityCore::lot_proposals);
+	ClassDB::bind_method(D_METHOD("lot_under", "point", "zone"), &CityCore::lot_under);
+	ClassDB::bind_method(D_METHOD("lot_take", "point"), &CityCore::lot_take);
+	ClassDB::bind_method(D_METHOD("lot_erase_path", "points"), &CityCore::lot_erase_path);
+	ClassDB::bind_method(D_METHOD("lot_corner_near", "point", "reach"), &CityCore::lot_corner_near);
+	ClassDB::bind_method(D_METHOD("lot_side_near", "point", "reach"), &CityCore::lot_side_near);
+	ClassDB::bind_method(D_METHOD("lot_ring", "id"), &CityCore::lot_ring);
 	ClassDB::bind_method(D_METHOD("lot_snap_point", "point", "reach", "apart"), &CityCore::lot_snap_point);
 	ClassDB::bind_method(D_METHOD("lot_move_corner", "from", "to"), &CityCore::lot_move_corner);
 	ClassDB::bind_method(D_METHOD("lot_curve_side", "a", "b", "through"), &CityCore::lot_curve_side);
@@ -145,7 +150,7 @@ void CityCore::bind_queries() {
 	ClassDB::bind_method(D_METHOD("set_signal", "node", "fixed", "greens", "offset"), &CityCore::set_signal);
 	ClassDB::bind_method(D_METHOD("green_wave", "node"), &CityCore::green_wave);
 	ClassDB::bind_method(D_METHOD("set_overlay", "name", "on"), &CityCore::set_overlay);
-	ClassDB::bind_method(D_METHOD("show_every_zone", "on"), &CityCore::show_every_zone);
+	ClassDB::bind_method(D_METHOD("show_zone_tool", "on", "zone"), &CityCore::show_zone_tool);
 	ClassDB::bind_method(D_METHOD("set_style", "id"), &CityCore::set_style);
 	ClassDB::bind_method(D_METHOD("overlays"), &CityCore::overlays);
 	ClassDB::bind_method(D_METHOD("set_interior", "on", "target", "level", "dir"), &CityCore::set_interior);

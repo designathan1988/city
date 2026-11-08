@@ -30,10 +30,6 @@ bool inverse(const EditOp &a, const EditOp &b) {
 		const ProfileChange &p = a.get<ProfileChange>(), &q = b.get<ProfileChange>();
 		return p.from == q.to && p.to == q.from;
 	}
-	if (a.kind == OpKind::ZONE && b.kind == OpKind::ZONE) {
-		const Change &p = a.get<Change>(), &q = b.get<Change>();
-		return p.side == q.side && p.from == q.to && p.to == q.from && p.player == q.player;
-	}
 	if (either(a.kind, b.kind, OpKind::ADD_ITEM, OpKind::REM_ITEM)) return same_payload<StreetItem>(a, b);
 	if (either(a.kind, b.kind, OpKind::ADD_POLE, OpKind::REM_POLE)) return same_payload<UtilityPole>(a, b);
 	if (either(a.kind, b.kind, OpKind::ADD_SPAN, OpKind::REM_SPAN)) return same_payload<UtilitySpan>(a, b);

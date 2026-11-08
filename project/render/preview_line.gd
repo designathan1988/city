@@ -1,7 +1,7 @@
 ## Tool previews drawn over the world: the road as it will be laid (Roadcraft main.ts drawRoadPreview: a green or red
 ## outline, the verge, footway, kerb, carriageway and its paint, a ring at each end), a plain ribbon for the other tools,
-## and the zone brush disc. Colours and widths are the preview tokens of data/ui/tokens.json; nothing here tests depth,
-## so buildings never hide it, and each band's material draws after the one under it. Outlines that stay while the view moves
+## a brush's disc, and the lots the zone brush lights. Colours and widths are the preview tokens of data/ui/tokens.json; nothing
+## here tests depth but the lit lots, so buildings never hide it, and each band's material draws after the one under it. Outlines that stay while the view moves
 ## (the Lots tool's lots) are one mesh of their own, built when they change, their width in screen pixels kept by its shader.
 class_name PreviewLine
 extends MeshInstance3D
@@ -21,6 +21,7 @@ var _ring_ok: StandardMaterial3D
 var _ring_bad: StandardMaterial3D
 var _outlines: MeshInstance3D # show_outlines: one surface for every ring
 var _outline_mat: ShaderMaterial
+var _fill: StandardMaterial3D # show_fills: lots on the ground, each in its colour, hidden by what stands on them
 
 
 func _ready() -> void:
@@ -44,6 +45,11 @@ func _ready() -> void:
 	_outlines.material_override = _outline_mat
 	_outlines.visible = false
 	add_child(_outlines)
+	_fill = StandardMaterial3D.new()
+	_fill.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_fill.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_fill.cull_mode = BaseMaterial3D.CULL_DISABLED
+	_fill.vertex_color_use_as_albedo = true
 	get_viewport().size_changed.connect(_follow_screen)
 	_follow_screen()
 
@@ -204,6 +210,25 @@ func _ring(centre: Vector3, px: float, material: StandardMaterial3D) -> void:
 		var r := Vector3(cos(a), 0, sin(a))
 		_mesh.surface_add_vertex(centre + lift + r * outer)
 		_mesh.surface_add_vertex(centre + lift + r * inner)
+	_mesh.surface_end()
+
+
+## Lots on the ground, each filled in its colour ([{cover, colour}]: `cover` the lot's ground in triangles laid on the relief, as
+## the core cuts it): the zone brush's lot under the pointer and those its stroke passed. Tested against depth, so a building
+## standing on a lot hides it.
+func show_fills(fills: Array) -> void:
+	_mesh.clear_surfaces()
+	var lift := Vector3.UP * ThemeBuilder.size("preview_lift")
+	var count := 0
+	for f: Dictionary in fills:
+		count += (f.cover as PackedVector3Array).size()
+	if count == 0:
+		return
+	_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, _fill)
+	for f: Dictionary in fills:
+		for q: Vector3 in f.cover:
+			_mesh.surface_set_color(f.colour)
+			_mesh.surface_add_vertex(q + lift)
 	_mesh.surface_end()
 
 

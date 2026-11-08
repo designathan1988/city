@@ -1,7 +1,6 @@
 {
  "type": "object",
  "required": [
-  "zone_depth_m",
   "lift_m",
   "sample_m",
   "refresh_s",
@@ -9,16 +8,12 @@
   "free_share",
   "jam_share",
   "zone_alpha",
-  "zone_alpha_tool",
-  "congestion_alpha"
+  "congestion_alpha",
+  "lots"
  ],
  "properties": {
   "_doc": {
    "type": "string"
-  },
-  "zone_depth_m": {
-   "type": "number",
-   "minimum": 1
   },
   "lift_m": {
    "type": "number",
@@ -55,15 +50,104 @@
    "minimum": 0,
    "maximum": 1
   },
-  "zone_alpha_tool": {
-   "type": "number",
-   "minimum": 0,
-   "maximum": 1
-  },
   "congestion_alpha": {
    "type": "number",
    "minimum": 0,
    "maximum": 1
+  },
+  "lots": {
+   "type": "object",
+   "required": [
+    "line_m",
+    "line",
+    "proposal_m",
+    "proposal",
+    "front_m",
+    "front",
+    "arrow_m",
+    "alpha_tool",
+    "alpha_built",
+    "arrow_most_m",
+    "arrow_least_m",
+    "arrow_of_front",
+    "arrow_of_depth",
+    "arrow_tip",
+    "arrow_head",
+    "arrow_spread"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "line_m": {
+     "type": "number",
+     "minimum": 0
+    },
+    "line": {
+     "type": "string",
+     "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
+    },
+    "proposal_m": {
+     "type": "number",
+     "minimum": 0
+    },
+    "proposal": {
+     "type": "string",
+     "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
+    },
+    "front_m": {
+     "type": "number",
+     "minimum": 0
+    },
+    "front": {
+     "type": "string",
+     "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
+    },
+    "arrow_m": {
+     "type": "number",
+     "minimum": 0
+    },
+    "alpha_tool": {
+     "type": "number",
+     "minimum": 0,
+     "maximum": 1
+    },
+    "alpha_built": {
+     "type": "number",
+     "minimum": 0,
+     "maximum": 1
+    },
+    "arrow_most_m": {
+     "type": "number",
+     "minimum": 0
+    },
+    "arrow_least_m": {
+     "type": "number",
+     "minimum": 0
+    },
+    "arrow_of_front": {
+     "type": "number",
+     "minimum": 0,
+     "maximum": 1
+    },
+    "arrow_of_depth": {
+     "type": "number",
+     "minimum": 0,
+     "maximum": 1
+    },
+    "arrow_tip": {
+     "type": "number",
+     "minimum": 0,
+     "maximum": 1
+    },
+    "arrow_head": {
+     "type": "number",
+     "minimum": 0,
+     "maximum": 1
+    },
+    "arrow_spread": {
+     "type": "number",
+     "minimum": 0
+    }
+   }
   }
  },
  "strict": true

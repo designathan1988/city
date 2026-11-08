@@ -12,7 +12,7 @@ hint.tool.river,"Clique os pontos do rio, de cima para baixo; Enter ou duplo cli
 hint.tool.smooth,Arraste para alisar o terreno.,Drag to smooth the terrain.
 hint.tool.transit,Clique na calçada para pôr paradas na linha; clique numa parada para tirar; Shift+clique torna a parada terminal.,Click a sidewalk to add stops to the line; click a stop to remove it; Shift+click makes it a terminal.
 hint.tool.weather,"Ajuste chuva, vento e raios; clique no mapa para cair um raio ali.","Set rain, wind and lightning; click the map to strike lightning there."
-hint.tool.zone,Arraste para pintar a zona dos lados das vias; os prédios crescem sozinhos.,Drag to paint the zone along the roads; buildings grow by themselves.
+hint.tool.zone,Pinte os lotes junto às vias; os prédios crescem neles sozinhos · Shift apaga,Paint the lots along the streets; buildings grow on them by themselves · Shift erases
 hint.uturn.placed,Retorno aberto no canteiro.,U-turn opened in the median.
 history.redoFailed,"Não foi possível refazer ""{label}"": {message}. Nada mudou; o passo continua lá para refazer.","Could not redo ""{label}"": {message}. Nothing was changed; the step is still there to redo."
 history.undoFailed,"Não foi possível desfazer ""{label}"": {message}. Nada mudou; o passo continua lá para desfazer.","Could not undo ""{label}"": {message}. Nothing was changed; the step is still there to undo."

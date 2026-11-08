@@ -11,7 +11,6 @@ const OTHER_SEED := 7
 const VARIANT_OFF := Vector3(40, 0, 90) # clear of the city: no generated road end beside it
 const PROFILE := 0
 const OUT_M := 260.0
-const ZONE_RADIUS := 60.0
 const BRUSH_RADIUS := 60.0
 const BRUSH_STRENGTH := 0.4
 const BRUSH_DT := 0.5
@@ -29,7 +28,7 @@ const NATURE_OUT_M := 900.0
 const RAIN := 0.7
 const PAINT_KIND := 0
 const TREES := {"density": 200.0, "height": 14.0, "variation": 0.3, "spacing": 6.0}
-const KEYS := ["segments", "nodes", "buildings", "money", "zoned_sides"]
+const KEYS := ["segments", "nodes", "buildings", "money", "zoned_sides", "player_zones"]
 
 
 func _ready() -> void:
@@ -55,8 +54,8 @@ func _undo_cases(a: Vector3, e: Vector3) -> void:
 		return CityStore.dispatch(&"build_road", [a + VARIANT_OFF, e + VARIANT_OFF, false, Vector3.ZERO, four, 0.25]))
 	_round("zone (stroke)", func() -> Dictionary:
 		CityStore.dispatch(&"begin_stroke", ["cmd.place.zone"])
-		var r: Dictionary = CityStore.dispatch(&"paint_zone", [mid, ZONE_RADIUS, DataTables.zone_code("residential")])
-		CityStore.dispatch(&"paint_zone", [mid + Vector3(ZONE_RADIUS, 0, 0), ZONE_RADIUS, DataTables.zone_code("residential")])
+		var r: Dictionary = ZoneStroke.along(a, mid, DataTables.zone_code("residential"))
+		ZoneStroke.along(mid, e, DataTables.zone_code("residential"))
 		CityStore.dispatch(&"end_stroke")
 		return r)
 	_round("upgrade", func() -> Dictionary: return CityStore.dispatch(&"upgrade_road", [mid, CityStore.profile_index("avenue"), true]))
@@ -155,7 +154,7 @@ func _drop(slot: String) -> void:
 
 
 func _save_round_trip(a: Vector3, e: Vector3) -> void:
-	CityStore.dispatch(&"paint_zone", [(a + e) * 0.5, ZONE_RADIUS, DataTables.zone_code("residential")])
+	ZoneStroke.along(a, e, DataTables.zone_code("residential"))
 	ticks(GROW_TICKS)
 	var sculpted := _hill(e)
 	var saved := _counts()

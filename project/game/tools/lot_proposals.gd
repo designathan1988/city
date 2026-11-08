@@ -1,4 +1,5 @@
-## What the Lots tab reads about the land: the lots the streets propose where the pointer is, a cell at a time, and the size of a ring as the tag writes it.
+## What the Lots tab reads about the land: the lots the streets propose where the pointer is (cut for `zone`: works are cut deeper and
+## wider), a cell at a time, and the size of a ring as the tag writes it.
 class_name LotProposals
 extends RefCounted
 
@@ -8,6 +9,7 @@ const SHOWN_M := 0.1
 var _rings: Array = []
 var _flat: Array[PackedVector2Array] = [] # each ring on the ground plane, made once a cell is read
 var _cell := UNREAD
+var zone := 0 # what the proposal is cut for (0: any use but works)
 
 
 ## What stands changed: read them again.
@@ -21,7 +23,7 @@ func at(p: Vector3) -> PackedVector3Array:
 	var cell := Vector2i(floori(p.x / cell_m), floori(p.z / cell_m))
 	if cell != _cell:
 		_cell = cell
-		_rings = CityStore.query(&"lot_proposals", [p])
+		_rings = CityStore.query(&"lot_proposals", [p, zone])
 		_flat.clear()
 		for ring: PackedVector3Array in _rings:
 			var flat := PackedVector2Array()

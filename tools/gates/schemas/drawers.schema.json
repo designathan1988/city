@@ -416,11 +416,6 @@
         "type": "string"
       }
     },
-    "zone_radius": {
-      "type": "number",
-      "minimum": 10,
-      "maximum": 200
-    },
     "actions": {
       "type": "array",
       "items": {

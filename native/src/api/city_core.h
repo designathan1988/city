@@ -74,8 +74,7 @@ public:
 	godot::Dictionary build_road(const godot::Vector3 &a, const godot::Vector3 &b, bool has_control, const godot::Vector3 &c, int profile, double px, float from_lift);
 	godot::Dictionary demolish(const godot::Vector3 &p);
 	godot::Dictionary demolish_box(const godot::Vector3 &a, const godot::Vector3 &b); // everything in the box, one undo step
-	godot::Dictionary paint_zone(const godot::Vector3 &p, float radius, int zone);
-	godot::Dictionary paint_zone_path(const godot::PackedVector3Array &points, float radius, int zone);
+	godot::Dictionary paint_zone_path(const godot::PackedVector3Array &points, int zone);
 	godot::Array road_profiles() const; // the catalogue as the drawer shows it (derived width and price per metre)
 	int road_variant(int base, int lanes, float width, int parking);
 	godot::Array node_legs(int node);
@@ -130,7 +129,13 @@ public:
 	godot::Dictionary lot_join(int a, int b), lot_delete(int id), lot_zone(int id, int zone);
 	godot::PackedVector3Array lot_land(const godot::Vector3 &a, const godot::Vector3 &b, double angle);
 	godot::Vector3 lot_snap_point(const godot::Vector3 &p, double reach, const godot::Vector3 &apart);
-	godot::Array lot_proposals(const godot::Vector3 &p);
+	godot::Array lot_proposals(const godot::Vector3 &p, int zone);
+	godot::Dictionary lot_under(const godot::Vector3 &p, int zone);
+	godot::Dictionary lot_take(const godot::Vector3 &p);
+	godot::Dictionary lot_erase_path(const godot::PackedVector3Array &points);
+	godot::Vector3 lot_corner_near(const godot::Vector3 &p, double reach);
+	godot::Dictionary lot_side_near(const godot::Vector3 &p, double reach);
+	godot::PackedVector3Array lot_ring(int id);
 	int lot_at(const godot::Vector3 &p);
 	double lot_angle_at(const godot::Vector3 &p);
 	godot::Array lots();
@@ -180,7 +185,7 @@ public:
 	godot::Dictionary interior() const; // on, target, level, dir, revision, floors, lamps of the floor seen (not for every frame)
 	int interior_revision() const; // cheap: changes with every command and resets with the city (the script reads `interior` when it does)
 	godot::Dictionary interior_cost(int id, int level, int dir) const; // triangles, boxes and bytes of a building's inside (tests, render_cost)
-	void show_every_zone(bool on);
+	void show_zone_tool(bool on, int zone);
 	godot::Dictionary set_style(const godot::String &id); // the regional style of this city
 	godot::Dictionary overlays() const;
 	int render_pending() const { return render_.pending(); } // chunks still waiting to be drawn

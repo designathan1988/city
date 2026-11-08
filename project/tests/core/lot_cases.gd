@@ -72,7 +72,7 @@ func _against_a_road(at: Vector3, before: int) -> void:
 	for q: Vector3 in drawn[-1].points:
 		deepest = maxf(deepest, q.z)
 	t.check(deepest < at.z + SIDE_M * 0.45, "lot: cut back to the pavement (%.1f)" % deepest)
-	var offered: Array = CityStore.query(&"lot_proposals", [(a + b) * 0.5])
+	var offered: Array = CityStore.query(&"lot_proposals", [(a + b) * 0.5, 0])
 	t.check(not offered.is_empty(), "lot: the road proposes lots (%d)" % offered.size())
 	var taken: Dictionary = CityStore.dispatch(&"lot_add_polygon", [offered[0]])
 	t.check(taken.get("ok", false), "lot: the proposal becomes a lot (%s)" % taken.get("error", ""))

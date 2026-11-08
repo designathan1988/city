@@ -8,7 +8,7 @@ extends RefCounted
 const COMMANDS := {
 	&"set_speed": "set_speed", &"set_day_hour": "set_day_hour", &"build_road": "build_road", &"build_blocks": "build_blocks",
 	&"lot_add_rect": "lot_add_rect", &"lot_add_polygon": "lot_add_polygon", &"lot_move_corner": "lot_move_corner", &"lot_curve_side": "lot_curve_side",
-	&"lot_set_front": "lot_set_front", &"lot_split": "lot_split", &"lot_join": "lot_join", &"lot_delete": "lot_delete", &"lot_zone": "lot_zone", &"demolish": "demolish", &"paint_zone": "paint_zone", &"paint_zone_path": "paint_zone_path",
+	&"lot_set_front": "lot_set_front", &"lot_split": "lot_split", &"lot_join": "lot_join", &"lot_delete": "lot_delete", &"lot_zone": "lot_zone", &"lot_take": "lot_take", &"lot_erase_path": "lot_erase_path", &"demolish": "demolish", &"paint_zone_path": "paint_zone_path",
 	&"preview_road": "preview_road", &"preview_road_path": "preview_road_path",
 	&"build_road_path": "build_road_path", &"undo": "undo", &"redo": "redo", &"begin_stroke": "begin_stroke",
 	&"end_stroke": "end_stroke", &"split_road": "split_road", &"set_road_end": "set_road_end",
@@ -40,12 +40,12 @@ const COMMANDS := {
 	&"transit_drop_line": "transit/transit_drop_line", &"transit_vehicles": "transit/transit_vehicles",
 	&"set_interior": "set_interior", &"set_lamp_lights": "set_lamp_lights", &"set_lamp_night": "set_lamp_night",
 	&"strike": "strike", &"shoot": "shoot", &"demolish_box": "demolish_box",
-	&"show_every_zone": "show_every_zone", &"set_style": "set_style", &"reverse_road": "reverse_road", &"duplicate_road": "duplicate_road", &"set_marking_style": "set_marking_style", &"set_detail_scale": "set_detail_scale", &"set_vegetation": "set_vegetation", &"set_agent_detail": "set_agent_detail", &"set_population": "set_population", &"set_upload_every": "set_upload_every", &"set_lots_drawn": "set_lots_drawn",
+	&"show_zone_tool": "show_zone_tool", &"set_style": "set_style", &"reverse_road": "reverse_road", &"duplicate_road": "duplicate_road", &"set_marking_style": "set_marking_style", &"set_detail_scale": "set_detail_scale", &"set_vegetation": "set_vegetation", &"set_agent_detail": "set_agent_detail", &"set_population": "set_population", &"set_upload_every": "set_upload_every", &"set_lots_drawn": "set_lots_drawn",
 	&"place_item": "street/place_item", &"place_item_row": "street/place_item_row", &"build_barrier": "street/build_barrier", &"remove_street": "street/remove_street",
 	&"build_pole_run": "street/build_pole_run", &"preview_pole_line": "street/show_pole_preview", &"set_road_furniture": "street/set_road_furniture", &"set_road_height": "street/set_road_height", &"set_road_walls": "street/set_road_walls",
 }
 const QUERIES := {
-	&"block_lines": "block_lines", &"node_lanes": "node_lanes", &"node_legs": "node_legs", &"road_spec": "road_spec", &"road_spec_limits": "road_spec_limits", &"road_spec_issues": "road_spec_issues", &"road_spec_make": "road_spec_make", &"lot_at": "lot_at", &"lot_angle_at": "lot_angle_at", &"lot_land": "lot_land", &"lot_proposals": "lot_proposals", &"lot_snap_point": "lot_snap_point", &"lots": "lots", &"lot_cut_lines": "lot_cut_lines",
+	&"block_lines": "block_lines", &"node_lanes": "node_lanes", &"node_legs": "node_legs", &"road_spec": "road_spec", &"road_spec_limits": "road_spec_limits", &"road_spec_issues": "road_spec_issues", &"road_spec_make": "road_spec_make", &"lot_at": "lot_at", &"lot_angle_at": "lot_angle_at", &"lot_land": "lot_land", &"lot_proposals": "lot_proposals", &"lot_under": "lot_under", &"lot_corner_near": "lot_corner_near", &"lot_side_near": "lot_side_near", &"lot_ring": "lot_ring", &"lot_snap_point": "lot_snap_point", &"lots": "lots", &"lot_cut_lines": "lot_cut_lines",
 	&"body_census": "body_census", &"road_census": "road_census", &"raycast": "raycast", &"height_at": "height_at", &"heights_at": "heights_at", &"map_revision": "map_revision", &"inspect": "inspect", &"probe_building": "probe_building",
 	&"list_buildings": "list_buildings", &"building_chunk": "building_chunk", &"job_pool_probe": "probes/job_pool_probe", &"flow_replay": "probes/flow_replay", &"flow_junction": "probes/flow_junction", &"flow_push": "probes/flow_push", &"flow_state": "probes/flow_state", &"street_watch": "probes/street_watch", &"city_bounds": "city_bounds", &"film_grade": "film_grade", &"film_graded": "film_graded", &"render_pending": "render_pending",
 	&"render_cost": "render_cost", &"wear_probe": "wear_probe", &"road_mesh_counts": "road_mesh_counts", &"draw_verges": "draw_verges", &"wear_paint": "wear_paint", &"pose_stats": "pose_stats", &"agent_cost": "agent_cost", &"building_cost": "building_cost",

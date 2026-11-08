@@ -241,8 +241,9 @@ void CityCore::set_overlay(const String &name, bool on) {
 		if (name == OVERLAY_NAMES[i]) render_.set_overlay(Overlay(i), on);
 }
 
-void CityCore::show_every_zone(bool on) {
-	render_.show_every_zone(on);
+// The Zones tool in hand or put down; `zone` the one it paints, whose cut the proposal shows (the catalogue is the boot's: no lock).
+void CityCore::show_zone_tool(bool on, int zone) {
+	render_.show_zone_tool(on, cut_for_works(state_->catalog, zone));
 }
 
 Dictionary CityCore::overlays() const {

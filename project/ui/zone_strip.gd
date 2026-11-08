@@ -26,6 +26,17 @@ static func pick(drawer: HudDrawer, zone: int) -> void:
 	drawer.tool_requested.emit("ZONE", {"zone": DrawerStrips.zone_at(DrawerStrips.use_of(zone), drawer.density)})
 
 
+## The token a zone's card is painted with (its use's swatch), what the brush lights that zone's lots with; the eraser's for zone 0.
+static func swatch_of(zone: int) -> String:
+	for cat: Dictionary in DataTables.ui("drawers").categories:
+		if cat.get("strip", "") != "zone_cards":
+			continue
+		for c: Dictionary in cat.cards:
+			if c.zone == DrawerStrips.use_of(zone) and c.has("swatch"):
+				return c.swatch
+	return "preview_zone_erase"
+
+
 static func _card(drawer: HudDrawer, c: Dictionary) -> Button:
 	var variation := &"SwatchCard" if c.has("swatch") else &"Card"
 	var b := HudWidgets.button(variation, c.get("icon", ""), TranslationServer.translate(c.label_key), "", "card_w", "card_h")

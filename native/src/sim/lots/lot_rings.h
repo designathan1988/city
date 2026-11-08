@@ -41,6 +41,10 @@ bool lots_overlap(const std::vector<LotPoint> &a, const std::vector<LotPoint> &b
 bool big_enough(const std::vector<LotPoint> &ring);
 // The ring in triangles by ear clipping, three indices each: a lot may be concave.
 std::vector<int> lot_triangles(const std::vector<LotPoint> &ring);
+// The ring in triangles cut to the cells of a square grid `cell` metres a side with a corner at `origin`, three points each. Cut on
+// the relief's own grid (Heightfield: the terrain's mesh has a vertex at each of its samples) and laid on it point by point, a lot's
+// colour has its corners on the terrain's and is flat only within one of its cells.
+std::vector<LotPoint> lot_cover(const std::vector<LotPoint> &ring, double cell, const LotPoint &origin);
 // A piece of a cut lot with its front: the side along the old front fa -> fb, or the side nearest it.
 std::vector<LotPoint> piece_with_front(const std::vector<LotPoint> &piece, const LotPoint &fa, const LotPoint &fb);
 // The side from a to b bent through `through`: the points between them, a quadratic curve.

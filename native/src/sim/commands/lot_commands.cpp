@@ -5,6 +5,7 @@
 #include "sim/commands/road_edit.h"
 #include "core/grid.h"
 #include "sim/lots/lot_book.h"
+#include "sim/lots/lot_cache.h"
 #include "sim/citygen/lot_land.h"
 #include "sim/state/city_state.h"
 
@@ -79,19 +80,86 @@ int add_piece(CityState &s, const std::vector<LotPoint> &corners, int zone) {
 	return j_add_lot(s, std::move(made));
 }
 
-EditResult add_lot(CityState &s, const std::vector<LotPoint> &ring) {
+EditResult add_lot(CityState &s, const std::vector<LotPoint> &ring, int zone) {
 	if (!big_enough(ring)) return refused("hint.lot.small");
 	std::vector<LotPoint> land = lot_on_land(s.roads, ring);
 	if (land.empty()) return refused("hint.lot.road");
 	std::rotate(land.begin(), land.begin() + lot_front_side(s.roads, land), land.end());
 	const std::vector<LotPoint> corners = facing_corners(land);
 	if (!free_of_lots(s.lot_book, corners)) return refused("hint.lot.overlap");
-	const int id = add_piece(s, corners, 0);
+	const int id = add_piece(s, corners, zone);
 	EditResult r = commit(s, { corners });
 	r.placed = id;
 	return r;
 }
+
+// Whether a ring runs deep into a zoned lot of the streets' the player does not hold (what a proposal must leave alone).
+bool over_street_lot(const CityState &s, const std::vector<LotPoint> &ring) {
+	return any_street_lot(s.lots, s.lot_book, ring[0], [&](const Lot &l) { return lots_overlap(ring, lot_ring(l)); });
+}
 } // namespace
+
+bool land_lot_at(const CityState &s, const LotPoint &p, int propose, LandLot &out) {
+	bool found = any_street_lot(s.lots, s.lot_book, p, [&](const Lot &l) {
+		if (!on_lot(l, p)) return false;
+		out = { lot_ring(l), l.zone };
+		return true;
+	});
+	if (found || propose < 0) return found;
+	each_cell_round(p, [&](int64_t key) {
+		if (found) return;
+		for (const Lot &l : *LotCache::proposed(s, key, propose != 0)) {
+			if (!on_lot(l, p) || s.lot_book.at(l.x, l.z) != 0) continue;
+			std::vector<LotPoint> ring = lot_ring(l);
+			if (!free_of_lots(s.lot_book, ring) || over_street_lot(s, ring)) return;
+			out = { std::move(ring), 0 };
+			found = true;
+			return;
+		}
+	});
+	return found;
+}
+
+EditResult take_lot_at(CityState &s, const LotPoint &p) {
+	LandLot land;
+	if (!land_lot_at(s, p, 0, land)) return refused("hint.lot.pick");
+	return take_land_lot(s, land, land.zone);
+}
+
+EditResult erase_lots_path(CityState &s, const std::vector<StrokePoint> &dabs) {
+	std::vector<int> lots, buildings;
+	const auto once = [](std::vector<int> &v, int id) {
+		if (std::find(v.begin(), v.end(), id) == v.end()) v.push_back(id);
+	};
+	for (const StrokePoint &p : dabs) {
+		if (const int id = s.lot_book.at(p.x, p.z)) once(lots, id);
+		s.buildings.query(float(p.x), float(p.z), float(p.x), float(p.z), [&](int id) {
+			if (BuildingStore::covers(s.buildings.items[size_t(id)], float(p.x), float(p.z), 0.f)) once(buildings, id);
+		});
+	}
+	EditResult r;
+	for (int id : lots) {
+		const EditResult one = delete_lot(s, id);
+		r.ok = r.ok || one.ok;
+		r.buildings_removed += one.buildings_removed;
+	}
+	for (int id : buildings) {
+		if (!s.buildings.items[size_t(id)].alive) continue; // it stood on one of the lots, and went with it
+		j_remove_building(s, id);
+		r.ok = true;
+		r.buildings_removed++;
+	}
+	if (!r.ok) r.error = "hint.lot.pick";
+	return r;
+}
+
+EditResult take_land_lot(CityState &s, const LandLot &lot, int zone) {
+	EditResult razed;
+	if (zone == 0) raze(s, lot.ring, razed); // the zone taken off takes what grew there
+	EditResult r = add_lot(s, lot.ring, zone);
+	r.buildings_removed += razed.buildings_removed;
+	return r;
+}
 
 void mark_lot_cells(CityState &s, const std::vector<LotPoint> &ring) {
 	double x0 = FAR_OFF_M, z0 = FAR_OFF_M, x1 = -FAR_OFF_M, z1 = -FAR_OFF_M;
@@ -99,9 +167,9 @@ void mark_lot_cells(CityState &s, const std::vector<LotPoint> &ring) {
 	mark_box(s, x0, z0, x1, z1);
 }
 
-EditResult add_lot_rect(CityState &s, const LotPoint &a, const LotPoint &b, double angle) { return add_lot(s, lot_rect(a, b, angle)); }
+EditResult add_lot_rect(CityState &s, const LotPoint &a, const LotPoint &b, double angle) { return add_lot(s, lot_rect(a, b, angle), 0); }
 
-EditResult add_lot_polygon(CityState &s, const std::vector<LotPoint> &points) { return add_lot(s, points); }
+EditResult add_lot_polygon(CityState &s, const std::vector<LotPoint> &points) { return add_lot(s, points, 0); }
 
 void cut_lots_by_roads(CityState &s, double minx, double minz, double maxx, double maxz) {
 	struct Crossed {
@@ -243,7 +311,7 @@ EditResult zone_lot(CityState &s, int id, int zone) {
 	if (found->zone == zone) return refused("tools.toast.zoneSame");
 	PlayerLot l = *found;
 	EditResult razed;
-	if (l.zone != 0) raze(s, l.corners, razed); // what grew for the old zone goes
+	if (zone == 0) raze(s, l.corners, razed); // taking the zone off takes what grew there; another zone keeps it standing
 	l.zone = zone;
 	j_edit_lot(s, id, l);
 	EditResult r = commit(s, { l.corners });

@@ -80,14 +80,6 @@
   "tool_options": {
    "type": "object",
    "properties": {
-    "zone_radius": {
-     "type": "array",
-     "items": {
-      "type": "number"
-     },
-     "minItems": 3,
-     "maxItems": 3
-    },
     "terrain_radius": {
      "type": "array",
      "items": {
@@ -106,7 +98,6 @@
     }
    },
    "required": [
-    "zone_radius",
     "terrain_radius",
     "terrain_strength"
    ],

@@ -13,6 +13,7 @@
 #include "sim/demolition/damage_state.h"
 #include "sim/lots/lot_book.h"
 #include "sim/lots/lot_cache.h"
+#include "sim/lots/proposed_lots.h"
 #include "sim/nature/nature_state.h"
 #include "sim/roads/road_network.h"
 #include "sim/state/pose_buffer.h"
@@ -102,6 +103,7 @@ struct CityState : CityData {
 	ChangeLog log;
 	InteriorView interior; // the Interior layer: which buildings are drawn cut open (a view, not saved)
 	mutable FurnitureKept furniture_kept; // each segment's street furniture placed once for the city's revision (furniture_kept.h)
+	mutable ProposedLots proposed; // the lots the streets would cut in each cell, kept while its streets stay (proposed_lots.h)
 	TrafficState traffic; // vehicles and pedestrians (sim/traffic)
 	TrafficLevels traffic_levels; // the panels' choices: written by the main thread, read by the traffic (traffic_view.h)
 	uint64_t lane_graph_serial = 0; // moves when the lane graph changes; outlives TrafficState, as the views do

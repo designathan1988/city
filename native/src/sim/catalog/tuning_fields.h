@@ -24,7 +24,6 @@
 	X(structure, parapet_step_m) X(structure, parapet_from_m) X(structure, parapet_full_m) X(structure, abutment_lift_m) \
 	X(structure, abutment_depth_m) X(structure, pier_abutment_gap_m) X(structure, portal_wing_m) X(structure, portal_thickness_m) \
 	X(structure, portal_slice_m) X(structure, portal_coping_m) X(structure, portal_cover_m) \
-	X(zone, side_offset_m) X(zone, sample_m) \
 	X(economy, start_money) X(economy, refund_share) X(economy, fill_from_m) X(economy, on_piers_from_m) \
 	X(world, tile_m) X(world, height_spacing_m) X(world, water_spacing_m) \
 	X(terrain, min_height_m) X(terrain, max_height_m) \

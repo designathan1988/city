@@ -22,8 +22,6 @@ enum SegFlag : uint16_t {
 	SEG_GENERATED = 0x80, // laid by the city generator: its footways carry the generated city's kit (the 4.0 plants no street
 	// trees there). Money does not read it: a generated road is worth its price, as in the 4.0 (saves before the economy
 	// carry this bit as SEG_FREE, with the same meaning)
-	SEG_ZONED_LEFT = 0x100, // the player zoned this side (what the Zones layer shows)
-	SEG_ZONED_RIGHT = 0x200,
 	SEG_CUT_WALLS = 0x40, // its cutting is held by retaining walls (Roadcraft 4.0 RoadSegment.cutWalls)
 	SEG_RUNS_ON_A = 0x08, SEG_RUNS_ON_B = 0x10, // the road goes on past this end: a cut of the laying, no node the player made
 	SEG_RULE_A_MASK = 0x0C00, // bits 10-11, 12-13: the plate the player put on its a and b approach (SegRule)
@@ -49,11 +47,10 @@ constexpr uint16_t seg_rule_mask(int end) { return end == 0 ? SEG_RULE_A_MASK : 
 constexpr int seg_rule_shift(int end) { return end == 0 ? SEG_RULE_A_SHIFT : SEG_RULE_B_SHIFT; }
 // The flags of a segment laid the other way round: what was on its left is on its right, its a end is its b end.
 constexpr uint16_t flags_reversed(uint16_t f) {
-	const uint16_t keep = uint16_t(f & ~(SEG_ZONED_LEFT | SEG_ZONED_RIGHT | SEG_RULE_A_MASK | SEG_RULE_B_MASK | SEG_RUNS_ON_A | SEG_RUNS_ON_B));
-	const uint16_t sides = uint16_t(((f & SEG_ZONED_LEFT) ? SEG_ZONED_RIGHT : 0) | ((f & SEG_ZONED_RIGHT) ? SEG_ZONED_LEFT : 0));
+	const uint16_t keep = uint16_t(f & ~(SEG_RULE_A_MASK | SEG_RULE_B_MASK | SEG_RUNS_ON_A | SEG_RUNS_ON_B));
 	const uint16_t rules = uint16_t((((f & SEG_RULE_A_MASK) >> SEG_RULE_A_SHIFT) << SEG_RULE_B_SHIFT) | (((f & SEG_RULE_B_MASK) >> SEG_RULE_B_SHIFT) << SEG_RULE_A_SHIFT));
 	const uint16_t runs = uint16_t(((f & SEG_RUNS_ON_A) ? SEG_RUNS_ON_B : 0) | ((f & SEG_RUNS_ON_B) ? SEG_RUNS_ON_A : 0));
-	return uint16_t(keep | sides | rules | runs);
+	return uint16_t(keep | rules | runs);
 }
 
 // A crossing on a road between junctions (Roadcraft editor/streetObjects.ts commitPedestrianCrossing): a node of two arms with a crosswalk over one of them.
@@ -127,7 +124,6 @@ public:
 	SlotIds free_nodes, free_segs;
 	SpatialHash seg_hash, node_hash;
 	int version = 0; // bumps on every topology change
-	int player_sides = 0; // road sides the player zoned
 	const Catalog *cat = nullptr;
 	ChangeLog *log = nullptr;
 	RoadGrade grade; // the solved heights (sim/commands/road_grade_sync.cpp solves what each edit told it)
@@ -143,8 +139,6 @@ public:
 	void put_node(int id, const RoadNode &rec);
 	void put_segment(int id, const RoadSegment &rec);
 	void set_profile(int s, int profile);
-	void set_zone(int s, int side, int zone);
-	void set_player_zone(int seg, int side, bool on);
 	int find_node_near(double x, double z, double radius) const;
 	// The nearest whose height over the grade line `level` takes.
 	int find_node_near(double x, double z, double radius, const std::function<bool(float)> &level) const;

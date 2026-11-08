@@ -33,8 +33,9 @@ var optimizations: Dictionary = {}: # the Effects panel: option id -> value over
 		optimizations = value
 		_resolved = {}
 var layers: Dictionary = {} # what shows over the map: layer -> on
-var zone_tool := false # the zone brush is in hand
-var _zoned := false # the player has zoned sides on this city, as last shown
+var zone_tool := false # the Zones tool is in hand (its Zone or Lots tab)
+var zone_painted := 0 # the zone its brush paints: the proposal it shows is cut for it
+var _zoned := false # the player has zoned lots on this city, as last shown
 var _world: CityWorld
 var _viewport: Viewport
 var _quality_governor: FrameGovernor.Quality
@@ -138,15 +139,16 @@ func _show_layer(name: String) -> void:
 	if name == "grid":
 		switches.set_global(&"map_grid", 1.0 if layer_on(name) else 0.0)
 	elif name == "zones":
-		CityStore.dispatch(&"show_every_zone", [zone_tool])
+		CityStore.dispatch(&"show_zone_tool", [zone_tool, zone_painted])
 		CityStore.dispatch(&"set_overlay", [name, zone_tool or (layer_on(name) and _zoned)])
 	else:
 		CityStore.dispatch(&"set_overlay", [name, layer_on(name)])
 
 
 ## The zones show with their tool in hand, and, with the layer on, where the player zoned once it is put down (main.ts showLots).
-func set_zone_tool(on: bool) -> void:
+func set_zone_tool(on: bool, zone := 0) -> void:
 	zone_tool = on
+	zone_painted = zone
 	_show_layer("zones")
 
 

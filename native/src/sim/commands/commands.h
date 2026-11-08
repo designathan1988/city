@@ -11,6 +11,10 @@
 #include "sim/roads/geometry.h"
 #include "sim/street/street_works.h"
 
+// The Zones tool's and the Landscape drawer's edits, each in its own header.
+#include "sim/commands/lot_commands.h"
+#include "sim/commands/nature_commands.h"
+
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -122,19 +126,6 @@ EditResult toggle_lane_link(CityState &s, int node, const LaneLink &link, const 
 EditResult set_movement_banned(CityState &s, int node, int from, int to, bool banned);
 EditResult remove_node(CityState &s, int node);
 
-// Zones > Lots (lot_commands.cpp): the lots the player draws. Refusals name the hint.
-EditResult add_lot_rect(CityState &s, const LotPoint &a, const LotPoint &b, double angle);
-EditResult add_lot_polygon(CityState &s, const std::vector<LotPoint> &points);
-// A road edit cuts the lots it crosses, in its own step of undo (cutLotsByRoads): each is replaced by the pieces left on land, of its
-// zone where they are big enough, and what stood on it goes.
-void cut_lots_by_roads(CityState &s, double minx, double minz, double maxx, double maxz);
-EditResult move_lot_corner(CityState &s, const LotPoint &from, const LotPoint &to);
-EditResult curve_lot_side(CityState &s, const LotPoint &a, const LotPoint &b, const LotPoint &through);
-EditResult set_lot_front(CityState &s, int id, int side);
-EditResult split_lot(CityState &s, int id, const LotCut &cut);
-EditResult join_lots(CityState &s, int a, int b);
-EditResult delete_lot(CityState &s, int id);
-EditResult zone_lot(CityState &s, int id, int zone);
 // Bulldoze at (x, z) (Roadcraft tool `bulldoze`): the building under the point, else the nearest segment within
 // road_pick_m (loose nodes go with it; refund road_refund_share of its value unless it was free).
 EditResult demolish_at(CityState &s, double x, double z);
@@ -142,13 +133,6 @@ EditResult demolish_at(CityState &s, double x, double z);
 // fixed plans of the signals along the main road through `node` in one step.
 EditResult set_signal(CityState &s, int node, const SignalSettings &to);
 EditResult green_wave(CityState &s, int node);
-// Zone brush (Roadcraft zoneTool.dab): paints `zone` on every road side whose frontage passes within `radius`;
-// buildings of another base zone facing a repainted side are knocked down.
-EditResult paint_zone(CityState &s, double x, double z, double radius, int zone);
-// The zone brush's dabs of one pointer move, in order, as one command: a dab on a lot the player drew zones that lot whole
-// (zone_lot), any other paints the road sides (paint_zone). `error`: the last refusal of a road dab that found something
-// other than its zone already there (a lot dab, or a side already of the zone, says nothing).
-EditResult paint_zone_path(CityState &s, const std::vector<StrokePoint> &dabs, double radius, int zone);
 
 // The dabs a held brush lays along one pointer move, as one command: each laid in order by `dab` (refused dabs change
 // nothing); ok when any was laid, the counts summed, `error` the last refusal. What they derive settles once, when the
@@ -241,31 +225,5 @@ ShotResult shoot_at(CityState &s, double ox, double oy, double oz, double dx, do
 // Bulldoze everything in the box between two corners: the buildings whose centre is in it, the rubble, the road segments
 // whose middle is in it (their refund added up). One undo step.
 EditResult demolish_box(CityState &s, double ax, double az, double bx, double bz);
-
-// --- Landscape drawer (nature_commands.cpp): the sky, the painted ground, the planted trees, the map's biome
-constexpr int TREE_PLANT = 0, TREE_ONE = 1, TREE_CUT = 2; // what a dab of the tree brush does
-EditResult set_weather(CityState &s, const Weather &next);
-EditResult add_cloud(CityState &s, const PlacedCloud &c);
-EditResult edit_cloud(CityState &s, int id, const PlacedCloud &c);
-EditResult remove_cloud(CityState &s, int id);
-// Up to `count` clouds over the sky, each like `like` varied by `variation` (0..1).
-EditResult scatter_sky(CityState &s, int count, const PlacedCloud &like, float variation);
-EditResult clear_clouds(CityState &s);
-EditResult fog_dab(CityState &s, const FogDab &dab);
-EditResult clear_fog(CityState &s);
-EditResult paint_dab(CityState &s, const PaintDab &dab);
-EditResult clear_gullies(CityState &s);
-EditResult tree_dab(CityState &s, double x, double z, double radius, int mode, int kind, const TreeBrush &brush);
-EditResult clear_trees(CityState &s);
-// One dab of the element brush: its density per ElementDef::area_m2, size and spacing in metres, the rest shares.
-struct ElementBrush {
-	float density = 0, size = 0, variation = 0, spacing = 0, strength = 0, intensity = 0;
-};
-EditResult element_dab(CityState &s, double x, double z, double radius, int kind, const ElementBrush &b, bool erase);
-EditResult clear_elements(CityState &s);
-// The map's ecosystem: a Biome, or Biome::NONE.
-EditResult set_biome(CityState &s, int region);
-// Takes the planted trees in a circle away and leaves a clearing there (the woods' trees go too); false when full.
-bool cut_trees_at(CityState &s, float x, float z, float radius);
 
 } // namespace city

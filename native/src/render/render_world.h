@@ -142,7 +142,7 @@ public:
 	BodyStage &stage() { return stage_; }
 	const BodyStage &stage() const { return stage_; }
 	void set_overlay(Overlay o, bool on) { overlays_.set(o, on); }
-	void show_every_zone(bool on) { overlays_.show_every_zone(on); }
+	void show_zone_tool(bool on, bool works) { overlays_.show_zone_tool(on, works); }
 	bool overlay_on(Overlay o) const { return overlays_.is_on(o); }
 	BuildingInteriorCost interior_cost(const CityState &s, int id, int level, int dir) const { return buildings_.interior_cost(s, id, level, dir); }
 	// After sync, in the same frame's admission (its deadline, credits and ledger).
@@ -190,7 +190,7 @@ private:
 	ChunkStream road_stream_, props_stream_, building_stream_;
 	ChunkStream raised_stream_; // the chunks with a bridge, a viaduct or a tunnel: those stand out from afar, as far as the buildings
 	// The ChangeLog's render lists are swapped into these each frame (capacity kept on both sides).
-	std::vector<int64_t> road_keys_, building_keys_, view_keys_, prop_keys_;
+	std::vector<int64_t> road_keys_, building_keys_, view_keys_, prop_keys_, lot_keys_;
 	std::vector<int> terrain_rects_, paint_rects_;
 	std::vector<int64_t> nature_keys_, water_keys_;
 	Cost cost_;

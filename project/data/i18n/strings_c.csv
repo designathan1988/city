@@ -99,8 +99,6 @@ tools.toast.row,Fileira posta ao longo da calçada.,Row placed along the sidewal
 tools.toast.signStop,Placa de Pare: quem chega por esta via para no cruzamento.,Stop sign: whoever comes along this road stops at the junction.
 tools.toast.signYield,Dê a preferência: quem chega por esta via dá a vez no cruzamento.,Give way: whoever comes along this road gives way at the junction.
 tools.toast.splitNearEnd,Perto demais da ponta: clique mais para o meio.,Too close to the end: click nearer the middle.
-tools.toast.zoneNoRoad,Nenhuma via perto: desenhe as ruas da quadra primeiro.,No road nearby: draw the block streets first.
-tools.toast.zoneNotBlock,Isso não é uma quadra fechada: feche as ruas em volta.,This is not a closed block: close the streets around it.
 tools.toast.zoneSame,Essa quadra já tem essa zona.,This block already has that zone.
 transit.fewer,Menos veículos,Fewer vehicles
 transit.lines,Linhas,Lines

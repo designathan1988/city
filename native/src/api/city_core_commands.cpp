@@ -207,10 +207,6 @@ Dictionary CityCore::demolish(const Vector3 &p) {
 	return run_edit(*state_, "cmd.demolish.road", [&](CityState &s) { return demolish_at(s, p.x, p.z); });
 }
 
-Dictionary CityCore::paint_zone(const Vector3 &p, float radius, int zone) {
-	return run_edit(*state_, "cmd.place.zone", [&](CityState &s) { return city::paint_zone(s, p.x, p.z, radius, zone); });
-}
-
 int CityCore::road_variant(int base, int lanes, float width, int parking) {
 	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
 	RoadVariant v;

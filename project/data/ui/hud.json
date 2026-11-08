@@ -78,11 +78,6 @@
   }
  ],
  "tool_options": {
-  "zone_radius": [
-   8,
-   64,
-   24
-  ],
   "terrain_radius": [
    10,
    120,

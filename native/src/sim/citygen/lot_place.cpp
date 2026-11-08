@@ -13,7 +13,7 @@
 namespace city {
 
 namespace {
-constexpr double FRONT_PAD = 0.3, WIDTH_TRIM = 0.6;
+constexpr double FRONT_PAD = 0.3;
 constexpr double STRIP_DEPTH = 32, STRIP_FRONTAGE = 22, STRIP_LEAST = 10; // lots.ts LOT_DEPTH, LOT_FRONTAGE, MIN_LOT
 // Works take more than the 4.0 gives them: a lorry has to turn in the yard. On its lots a tenth of the docks had no way in (yard_test).
 constexpr double WORKS_DEPTH = 50, WORKS_FRONTAGE = 42;
@@ -29,7 +29,7 @@ void LotStrips::keep(const Frame &f, int zone, int profile) {
 	mark_lot(f);
 	if (std::floor((f.cx - cx0_) / LOT_CELL) != 0 || std::floor((f.cz - cz0_) / LOT_CELL) != 0) return;
 	Lot l;
-	l.x = f.cx; l.z = f.cz; l.w = f.w - WIDTH_TRIM; l.d = f.d;
+	l.x = f.cx; l.z = f.cz; l.w = f.w; l.d = f.d; // the whole piece of the run: two lots side by side share their side, no strip between them
 	l.rot = std::atan2(-f.lx, -f.lz);
 	l.zone = zone;
 	l.profile = profile;

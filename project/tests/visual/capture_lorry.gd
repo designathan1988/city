@@ -3,7 +3,6 @@
 class_name CaptureLorry
 extends RefCounted
 
-const ZONE_RADIUS_M := 160.0
 const STREET_M := 300.0
 const SAMPLE := 400
 const PX := 0.25 # metres a screen pixel covers: how near a click snaps to a road or a node
@@ -17,7 +16,7 @@ const CAMERA_BACK := 6.0
 
 ## A new street out of the far end of the town, where a works has the depth its yard needs (the lots of the built streets are too
 ## shallow): out from the vehicle farthest from the middle. Its middle.
-static func _new_street() -> Vector3:
+static func _new_street() -> Array:
 	var far := Vector3.ZERO
 	for p: Vector3 in CityStore.query(&"traffic_probe", [SAMPLE]).sample:
 		if Vector2(p.x, p.z).length() > Vector2(far.x, far.z).length():
@@ -25,13 +24,14 @@ static func _new_street() -> Vector3:
 	var out := Vector3(far.x, 0, far.z).normalized()
 	var end := far + out * STREET_M
 	print("new road: ", CityStore.dispatch(&"build_road", [far, end, false, Vector3.ZERO, PROFILE, PX]))
-	return (far + end) * 0.5
+	return [far, end]
 
 
 ## `cap` is the capture scene (its camera, _frames and _shot).
 static func shots(cap: Node) -> void:
-	var at := _new_street()
-	print("industrial zone at ", at, ": ", CityStore.dispatch(&"paint_zone", [at, ZONE_RADIUS_M, DataTables.zone_code("industrial")]))
+	var street := _new_street()
+	var at: Vector3 = (street[0] + street[1]) * 0.5
+	print("industrial zone at ", at, ": ", ZoneStroke.along(street[0], street[1], DataTables.zone_code("industrial")))
 	cap.camera.global_position = at + Vector3(CAMERA_BACK, CAMERA_UP, CAMERA_BACK)
 	for i in GROW_STEPS:
 		await cap._frames(1)

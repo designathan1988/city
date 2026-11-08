@@ -18,6 +18,11 @@ static func color(key: String) -> Color:
 	return Color.html(tokens()[key])
 
 
+## One token's colour at another token's alpha (the zone brush's lit lots: the zone's swatch, faint).
+static func tinted(key: String, alpha_key: String) -> Color:
+	return Color(color(key), size(alpha_key))
+
+
 ## A square of one token's colour (zone cards' swatch picture).
 static func swatch(key: String, px: int) -> Texture2D:
 	return ThemeArt.swatch(color(key), px, size("swatch_radius"), size("swatch_ring"), color("swatch_ring_colour"))

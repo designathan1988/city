@@ -1,0 +1,20 @@
+{
+ "_doc": "The zoning tool over the generated town (look.gd): its lots, which the streets' zoned sides cut, coloured by their zone with their outlines and fronts once the Zones tool is in hand, the lot under the pointer lit, then the eraser across a few of them (each becomes the player's, unzoned, and what grew there goes). setView's y is the ground's -z; drag takes x and z.",
+ "city": {"map": 0, "seed": 1, "generate": true},
+ "steps": [
+  {"hour": 16},
+  {"setView": [0, 0, 4, 20, 60]},
+  {"frames": 120},
+  {"shot": "town"},
+  {"control": "Zonas"},
+  {"frames": 120},
+  {"moveTo": [800, 450]},
+  {"frames": 10},
+  {"shot": "town-zone-tool"},
+  {"control": "Tirar zona"},
+  {"frames": 5},
+  {"drag": [[-250, 120], [250, 120]]},
+  {"frames": 120},
+  {"shot": "town-erased"}
+ ]
+}

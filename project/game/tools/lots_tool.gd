@@ -1,6 +1,8 @@
 ## Zones > Lots (Roadcraft editor/lotTool.ts): the lots the player draws. `mode` says what a gesture does: add (a rectangle dragged square to the
 ## street), polygon (point by point, closed on its first), edit (a corner dragged), curve (a side bent through the pointer), front (the side
-## clicked becomes the front), split (across, along or by a drawn line), join (one lot, then its neighbour), delete. The zone brush paints them.
+## clicked becomes the front), split (across, along or by a drawn line), join (one lot, then its neighbour), delete (a stroke: the lots and the
+## buildings it passes over). The zone layer draws every lot, its front and the lots the streets propose while this tab is open; a gesture on
+## a proposed lot, or on a lot of the generated city, takes it as the player's first (one undo step with the edit). The zone brush paints them.
 extends ToolBase
 
 ## What of a corner or a side the pointer takes, in screen pixels.
@@ -14,21 +16,21 @@ const MARK_M := 0.9
 var mode := "add"
 var cut_kind := CityStore.code(&"LotCutKind", &"ACROSS")
 var parts := 2
-var _lots := LotOutlines.new()
 var _from := Vector3.INF # where the gesture began
 var _angle := 0.0 # the street's angle at `_from` (lot_angle_at), read once when an "add" gesture began
 var _side: Array = [] # the side picked: [a, b]
 var _points := PackedVector3Array() # the polygon so far
 var _first_lot := 0 # join: the lot picked first
 var _land := LotProposals.new()
-var _erasing: Dictionary = {} # the delete stroke: the lots it passed over, by id
+var _erase := LotEraseStroke.new() # the delete stroke
+var _stroke := false # an undo stroke is open: the land lot taken and the edit on it are one step (_lot_for, _close)
 
 
 func enter() -> void:
 	mode = params.get("mode", "add")
 	cut_kind = params.get("cut", CityStore.code(&"LotCutKind", &"ACROSS"))
 	parts = params.get("parts", 2)
-	_read()
+	_land.forget()
 	_show()
 	ctl.hint.emit("zone.lots.help", true)
 
@@ -39,30 +41,47 @@ func exit() -> void:
 
 
 func cancel() -> void:
+	_close()
 	_from = Vector3.INF
 	_side = []
 	_points = PackedVector3Array()
 	_first_lot = 0
-	_erasing = {}
+	_erase.clear()
 	ctl.tagged.emit("", Vector3.ZERO, true)
 	_show()
 
 
-## The lots again (after an edit): their outlines are built once here, a band DRAWN_PX pixels to each side at any zoom.
-func _read() -> void:
-	_lots.read()
-	_land.forget()
-	var rings := []
-	for l: Dictionary in _lots.all:
-		rings.push_back(l.points)
-	ctl.preview.show_outlines(rings, DRAWN_PX)
+func in_progress() -> bool:
+	return _from != Vector3.INF or not _points.is_empty() or _first_lot != 0
 
 
-func _done(r: Dictionary) -> void:
-	if not r.get("ok", false):
+## An edit done: its stroke closed, its hint (`said` when it stood, the refusal otherwise), the land read again.
+func _done(r: Dictionary, said := "") -> void:
+	_close()
+	var ok: bool = r.get("ok", false)
+	if not ok:
 		ctl.hint.emit(refusal(r), false)
-	_read()
+	elif not said.is_empty():
+		ctl.hint.emit(tr(said), true)
+	_land.forget()
 	cancel()
+
+
+## The player's lot at `p`, taking the land lot there first (a proposed lot, or one of the generated city) inside the stroke that
+## `name` opens: its id, 0 on none. The stroke stays open until the edit is done (_done) or dropped (_close).
+func _lot_for(p: Vector3, name: String) -> int:
+	CityStore.dispatch(&"begin_stroke", [name])
+	_stroke = true
+	var id: int = CityStore.query(&"lot_at", [p])
+	if id == 0:
+		id = int(CityStore.dispatch(&"lot_take", [p]).get("placed", 0))
+	return maxi(id, 0)
+
+
+func _close() -> void:
+	if _stroke:
+		CityStore.dispatch(&"end_stroke")
+		_stroke = false
 
 
 func _width(at: Vector3) -> float:
@@ -75,7 +94,7 @@ func _closed(points: PackedVector3Array) -> PackedVector3Array:
 	return ring
 
 
-## What the gesture shows over the lots' outlines (_read): `extra` and the polygon so far.
+## What the gesture shows over the zone layer: `extra` and the polygon so far.
 func _show(extra: Array = []) -> void:
 	var roads := extra.duplicate()
 	var at: Vector3 = _from if _from != Vector3.INF else Vector3.ZERO
@@ -93,60 +112,64 @@ func _mark(p: Vector3) -> Dictionary:
 	return {"points": PackedVector3Array([p + Vector3.LEFT * MARK_M, p + Vector3.RIGHT * MARK_M]), "half_width": MARK_M}
 
 
-## The corner under `p`, or INF.
-func _corner(p: Vector3) -> Vector3:
-	return _lots.corner_near(p, ctl.px_at(p) * TAKE_PX)
-
-
 func click(p: Vector3) -> void:
-	var id: int = CityStore.query(&"lot_at", [p])
 	match mode:
 		"add":
 			_from = _snap(p)
 			_angle = CityStore.query(&"lot_angle_at", [_from])
 		"polygon":
 			if _points.size() >= 3 and Vector2(p.x - _points[0].x, p.z - _points[0].z).length() < ctl.px_at(p) * TAKE_PX:
-				_done(CityStore.dispatch(&"lot_add_polygon", [_points]))
+				_done(CityStore.dispatch(&"lot_add_polygon", [_points]), "game.toast.lotCreated")
 			else:
 				_points.push_back(_snap(p))
 				_show()
 		"edit":
-			_from = _corner(p)
+			_lot_for(p, "cmd.lot.edit")
+			_from = CityStore.query(&"lot_corner_near", [p, ctl.px_at(p) * TAKE_PX])
+			if _from == Vector3.INF:
+				_close()
 		"curve":
-			for l: Dictionary in _lots.all:
-				var k := LotOutlines.side_near(l, p, ctl.px_at(p) * TAKE_PX)
-				if k >= 0:
-					_side = [l.points[k], l.points[(k + 1) % l.points.size()]]
-					_from = p
+			_lot_for(p, "cmd.lot.edit")
+			var side: Dictionary = CityStore.query(&"lot_side_near", [p, ctl.px_at(p) * TAKE_PX])
+			_side = [side.a, side.b] if not side.is_empty() else []
+			_from = p if not side.is_empty() else Vector3.INF
+			if side.is_empty():
+				_close()
 		"front":
-			var lot := _lots.of(id)
-			if not lot.is_empty():
-				var k := LotOutlines.side_near(lot, p, INF)
-				_done(CityStore.dispatch(&"lot_set_front", [id, k]))
+			_lot_for(p, "cmd.lot.edit")
+			var side: Dictionary = CityStore.query(&"lot_side_near", [p, ctl.px_at(p) * TAKE_PX])
+			if side.is_empty():
+				_close()
+				ctl.hint.emit(tr("hint.lot.frontPick"), false)
+			else:
+				_done(CityStore.dispatch(&"lot_set_front", [side.id, side.side]), "hint.lot.front")
 		"split":
 			if cut_kind == CityStore.code(&"LotCutKind", &"LINE"):
 				_from = p
-			elif id != 0:
-				_done(CityStore.dispatch(&"lot_split", [id, cut_kind, parts, p, p]))
+			else:
+				var id := _lot_for(p, "cmd.lot.split")
+				_done(CityStore.dispatch(&"lot_split", [id, cut_kind, parts, p, p]) if id != 0 else {}, "game.toast.lotSplit")
 		"join":
-			if id != 0 and _first_lot == 0:
+			var id := _lot_for(p, "cmd.lot.join")
+			if id != 0 and _first_lot != 0:
+				_done(CityStore.dispatch(&"lot_join", [_first_lot, id]), "game.toast.lotsJoined")
+				return
+			_close()
+			if id != 0:
 				_first_lot = id
-			elif id != 0:
-				_done(CityStore.dispatch(&"lot_join", [_first_lot, id]))
+				ctl.hint.emit(tr("game.hint.lot.joinSecond"), true)
 		"delete":
 			_from = p # a stroke: all it passes over goes when it is let go
-			_erase_under(p)
+			_erase.start(p)
+			_show_erase(p)
 
 
 ## The lots under the delete stroke, drawn thicker until it is let go.
-func _erase_under(p: Vector3) -> void:
-	var id: int = CityStore.query(&"lot_at", [p])
-	if id != 0:
-		_erasing[id] = true
+func _show_erase(p: Vector3) -> void:
 	var marked := []
-	for l: Dictionary in _lots.all:
-		if _erasing.has(l.id):
-			marked.push_back({"points": _closed(l.points), "half_width": _width(p) * 3.0})
+	for ring: PackedVector3Array in _erase.rings():
+		if ring.size() >= 3:
+			marked.push_back({"points": _closed(ring), "half_width": _width(p) * 3.0})
 	_show(marked)
 
 
@@ -154,7 +177,8 @@ func drag(p: Vector3) -> void:
 	if _from == Vector3.INF:
 		return
 	if mode == "delete":
-		_erase_under(p)
+		_erase.reach(p)
+		_show_erase(p)
 		return
 	if mode == "curve" and not _side.is_empty():
 		_show([{"points": PackedVector3Array([_side[0], p, _side[1]]), "half_width": _width(p) * 2.0}])
@@ -169,32 +193,28 @@ func drag(p: Vector3) -> void:
 
 
 func release(p: Vector3) -> void:
-	if mode == "delete" and not _erasing.is_empty():
-		CityStore.dispatch(&"begin_stroke", ["cmd.lot.delete"])
-		for id: int in _erasing:
-			CityStore.dispatch(&"lot_delete", [id])
-		CityStore.dispatch(&"end_stroke")
-		_read()
-		cancel()
+	if mode == "delete" and not _erase.points.is_empty():
+		_done(_erase.send(), "hint.lot.deleted")
+		return
 	if _from == Vector3.INF or p == Vector3.INF:
+		_close()
 		_from = Vector3.INF
 		return
 	match mode:
 		"add":
 			var ring := _land.at(p)
 			if Vector2(p.x - _from.x, p.z - _from.z).length() < ctl.px_at(p) * TAKE_PX and not ring.is_empty():
-				_done(CityStore.dispatch(&"lot_add_polygon", [ring])) # a click takes what the streets propose
+				_done(CityStore.dispatch(&"lot_add_polygon", [ring]), "game.toast.lotCreated") # a click takes what the streets propose
 			else:
-				_done(CityStore.dispatch(&"lot_add_rect", [_from, _snap(p), _angle]))
+				_done(CityStore.dispatch(&"lot_add_rect", [_from, _snap(p), _angle]), "game.toast.lotCreated")
 		"edit":
 			_done(CityStore.dispatch(&"lot_move_corner", [_from, _snap(p, _from)]))
 		"curve":
-			if not _side.is_empty():
-				_done(CityStore.dispatch(&"lot_curve_side", [_side[0], _side[1], p]))
+			_done(CityStore.dispatch(&"lot_curve_side", [_side[0], _side[1], p]) if not _side.is_empty() else {})
 		"split":
 			var id: int = CityStore.query(&"lot_at", [_from.lerp(p, 0.5)])
 			if id != 0:
-				_done(CityStore.dispatch(&"lot_split", [id, CityStore.code(&"LotCutKind", &"LINE"), parts, _from, p]))
+				_done(CityStore.dispatch(&"lot_split", [id, CityStore.code(&"LotCutKind", &"LINE"), parts, _from, p]), "game.toast.lotSplit")
 	_from = Vector3.INF
 
 
@@ -213,6 +233,10 @@ func hover(p: Vector3) -> void:
 			extra.push_back({"points": _closed(ring), "half_width": _width(p) * 2.0})
 		if _points.size() >= 1:
 			extra.push_back({"points": PackedVector3Array([_points[-1], at]), "half_width": _width(p) * 2.0})
-	var over: PackedVector3Array = _lots.of(id).get("points", _land.at(p) if mode == "add" else PackedVector3Array())
+	elif mode == "front" or mode == "curve":
+		var side: Dictionary = CityStore.query(&"lot_side_near", [p, ctl.px_at(p) * TAKE_PX])
+		if not side.is_empty():
+			extra.push_back({"points": PackedVector3Array([side.a, side.b]), "half_width": _width(p) * 2.0})
+	var over: PackedVector3Array = CityStore.query(&"lot_ring", [id]) if id != 0 else (_land.at(p) if mode == "add" else PackedVector3Array())
 	ctl.tagged.emit(LotProposals.size_of(over) if over.size() >= 3 else "", LotProposals.middle(over) if over.size() >= 3 else p, true)
 	_show(extra)

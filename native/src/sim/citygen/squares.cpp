@@ -57,7 +57,7 @@ bool inside(const Plot &p, V2 at) {
 	const Lot &l = *p.lot;
 	const float sn = std::sin(float(l.rot)), cs = std::cos(float(l.rot));
 	const V2 rel = at - p.centre;
-	// a lot stands a little short of the next (lot_place.cpp WIDTH_TRIM): the seam between two is the block's, and no edge to a tree
+	// two lots side by side share their side: a point on the seam, and a little past it for the rounding, is on both
 	return std::fabs(rel.x * cs - rel.y * sn) <= float(l.w) / 2 + SEAM_M && std::fabs(rel.x * sn + rel.y * cs) <= float(l.d) / 2 + SEAM_M;
 }
 

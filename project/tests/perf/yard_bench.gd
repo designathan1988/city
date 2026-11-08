@@ -11,7 +11,6 @@ const SITES := 2
 const WARM_TICKS := 2400
 const SAMPLE := 400
 const PX := 0.25 # metres a screen pixel covers: how near a click snaps to a road or a node
-const ZONE_RADIUS_M := 160.0
 const STREET_M := 300.0
 const PROFILE := 0
 const STEP_TICKS := 200
@@ -58,7 +57,7 @@ func _make(slot: String) -> void:
 		var far := _far_in(sample, TAU * i / SITES, TAU / SITES)
 		var end := far + Vector3(far.x, 0, far.z).normalized() * STREET_M
 		CityStore.dispatch(&"build_road", [far, end, false, Vector3.ZERO, PROFILE, PX])
-		CityStore.dispatch(&"paint_zone", [(far + end) * 0.5, ZONE_RADIUS_M, DataTables.zone_code("industrial")])
+		ZoneStroke.along(far, end, DataTables.zone_code("industrial"))
 		for k in GROW_STEPS:
 			await get_tree().process_frame
 			CityStore.step_ticks(STEP_TICKS)

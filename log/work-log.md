@@ -770,3 +770,42 @@ Ressalvas abertas:
   audit session rebuilds both from HEAD with its folder-independent build (`-ffile-prefix-map`, the retrained profile) in its
   next commit. The checks above ran on DLLs built from this commit's sources in the worktree `city-scenic` (HEAD + this change
   only); the user's `dist/windows/Roadcraft.exe` was exported from it.
+
+## 2026-11-08 05:10: zoning by whole lots, as the source game does (English)
+**Problems (photos `dist/captures/zoning`, before):** the brush was a 40 m disc that zoned whole road sides: one short stroke
+zoned both sides of the street and the cross streets' sides; no lot the streets propose was shown with the Zones tool in hand;
+the disc was drawn over the buildings; the Lots tab drew no lot, no front; lots stood 0.6 m apart (`lot_place.cpp`
+`WIDTH_TRIM`), so every seam showed two lines with grass between them (the user's photo); the zone colour was cut on an 8 m grid
+of its own while the terrain's mesh has a vertex every 4 m (`terrain_bridge.cpp` vertex_spacing = the heightfield's spacing),
+so the ground rose through it between its samples.
+**Source read:** the converter's extraction `zoning` (60 files, `editor/lotTool.ts`, `world/lots.ts`, `world/openLots.ts`,
+`world/growth/zoning.ts`, `render/lotOverlay.ts`) and the whole-program ledger (`ports/all/conversion`). What the player sees
+there: the street land cut into proposed lots in every mode of the tool; the brush zones the lots it passes (a proposed one
+becomes a lot), the lot under the pointer lit; zoned lots coloured (alpha 0.45, 0.22 built, 0.25 with another tool), outlined,
+their front marked with an arrow; the Lots tab's gestures take a proposed lot first; the delete stroke takes buildings off
+lots too; changing a lot's zone keeps what stands, taking it off takes what grew.
+**Design in this game:** the proposal is `LotCache::proposal` cut once per cell and per cut (works or not: `lot_gen` cuts works
+deeper and wider) and kept in `CityState::proposed` (`sim/lots/proposed_lots.h`), dropped only by the new ChangeLog list
+`street_cells` (streets or ground changed), never by the player's lot edits; the brush (`zone_commands.cpp` `paint_zone_path`)
+zones the player's lot under each dab, else takes the land lot there (`land_lot_at`: a zoned street lot, else the proposal
+for the zone painted) as the player's; the eraser makes no lot of unzoned land. The zone layer (`overlay_build.cpp`) draws every
+lot whole from the chunk its middle stands in, cut on the relief's own grid (`lot_rings` `lot_cover`), with outline, front
+and arrow while the tool (either tab) is in hand; the render learns of lot and building changes through the new ChangeLog list
+`lot_chunks` (it was never rebuilt after a lot edit before). The Lots tab asks the core near a point (`lot_corner_near`,
+`lot_side_near`, `lot_ring`) instead of reading the whole book each edit, and the book files a lot added or changed alone
+(`LotBook::file_one`: the brush grows it to the thousands). The side-painting machinery went (`paint_zone`, `j_set_zone`,
+`OpKind::ZONE`, `SEG_ZONED_*`, `RoadNetwork::set_zone`/`player_sides`, `zone.side_offset_m`/`sample_m`, the brush radius).
+**Checks:** `zoning_plan.json` and `zones_town_plan.json` photographed before and after (lots touching, the proposal outlined,
+the lot under the pointer lit on the relief, two lots zoned by a short stroke with colour, outline, front and arrow, one
+building grown on each, a proposed lot split, the eraser taking the zone and what grew; the generated town's lots coloured
+by zone with fronts); `road_commands_test`, `save_undo_test`, `camera_input_test`, `edit_fuzz_test` pass (tests and captures
+now zone through `tests/zone_stroke.gd`, the player's path). Gates on the changed files: what remains failed at HEAD already
+(listed in log/pendencias.md).
+**Files:** created `native/src/sim/lots/proposed_lots.h`, `native/src/sim/commands/lot_commands.h`,
+`native/src/sim/commands/nature_commands.h` (commands.h split by responsibility), `project/game/tools/lot_erase_stroke.gd`,
+`project/tests/zone_stroke.gd`, `project/tests/visual/{zoning,zones_town,bomb}_plan.json`; deleted
+`project/game/tools/lot_outlines.gd`; changed the lot cache and book, lot and zone commands, journal and history, road
+network, overlay renderer, city state and take, city gen, lot placement and squares, the API (lots, edit, commands, query,
+bind), `zone_tool.gd`, `lots_tool.gd`, `lot_proposals.gd`, `preview_line.gd`, `settings.gd`, `roadcraft_hud.gd`,
+`zone_strip.gd`, `theme_builder.gd`, `store_api.gd`, `overlays.json` and its schema, `tokens.json`, `drawers.json`, `hud.json`
+and their schemas, `tuning.json`, the strings, eight tests and captures, `suites.json`, `log/mapa.md`.

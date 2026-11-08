@@ -1,7 +1,8 @@
-// Zone-colour chunk jobs and the congestion layer's refresh cycle (see overlay_renderer.h).
+// Zone-layer chunk jobs, what a lot is drawn with, and the congestion layer's refresh cycle (see overlay_renderer.h).
 #include "render/overlays/overlay_renderer.h"
 
 #include "render/data_reader.h"
+#include "render/mesh_builder.h"
 
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/variant/array.hpp>
@@ -15,9 +16,7 @@ namespace city {
 
 namespace {
 constexpr float HALF = 0.5f, DROP_K = 1.5f;
-constexpr float RGBA_MAX = 255.f;
-constexpr int R_SHIFT = 24, G_SHIFT = 16, B_SHIFT = 8, JAM_STOPS = 3;
-constexpr uint32_t BYTE = 0xff;
+constexpr int JAM_STOPS = 3;
 } // namespace
 
 OverlayRenderer::OverlayRenderer() {
@@ -31,10 +30,26 @@ bool OverlayRenderer::init(const RenderContext &ctx, PackedStringArray &errors) 
 	if (!errors.is_empty()) return false;
 	const int64_t before = errors.size();
 	DataReader r{ errors, "overlays.json" }; // render/data_reader.h: every key present and of its type
-	zone_depth_ = float(r.num(t, "zone_depth_m"));
 	zone_alpha_ = float(r.num(t, "zone_alpha"));
-	zone_alpha_tool_ = float(r.num(t, "zone_alpha_tool"));
 	congestion_alpha_ = float(r.num(t, "congestion_alpha"));
+	const Dictionary lots = r.table(t, "lots");
+	DataReader l = r.in("lots");
+	look_.line_m = float(l.num(lots, "line_m"));
+	look_.proposal_m = float(l.num(lots, "proposal_m"));
+	look_.front_m = float(l.num(lots, "front_m"));
+	look_.arrow_m = float(l.num(lots, "arrow_m"));
+	look_.line = rgba8_to_color(l.colour(lots, "line"));
+	look_.proposal = rgba8_to_color(l.colour(lots, "proposal"));
+	look_.front = rgba8_to_color(l.colour(lots, "front"));
+	look_.alpha_tool = float(l.num(lots, "alpha_tool"));
+	look_.alpha_built = float(l.num(lots, "alpha_built"));
+	look_.arrow_most_m = float(l.num(lots, "arrow_most_m"));
+	look_.arrow_least_m = float(l.num(lots, "arrow_least_m"));
+	look_.arrow_of_front = float(l.num(lots, "arrow_of_front"));
+	look_.arrow_of_depth = float(l.num(lots, "arrow_of_depth"));
+	look_.arrow_tip = float(l.num(lots, "arrow_tip"));
+	look_.arrow_head = float(l.num(lots, "arrow_head"));
+	look_.arrow_spread = float(l.num(lots, "arrow_spread"));
 	lift_ = float(r.num(t, "lift_m"));
 	sample_ = std::max(1.f, float(r.num(t, "sample_m")));
 	refresh_ = float(r.num(t, "refresh_s"));
@@ -42,11 +57,7 @@ bool OverlayRenderer::init(const RenderContext &ctx, PackedStringArray &errors) 
 	jam_share_ = float(r.num(t, "jam_share"));
 	const Array cols = r.list(t, "congestion", JAM_STOPS);
 	if (errors.size() != before) return false;
-	for (int i = 0; i < JAM_STOPS; i++) {
-		const uint32_t c = r.in("congestion").colour_at(cols, i);
-		jam_colors_[i] = Color(float((c >> R_SHIFT) & BYTE) / RGBA_MAX, float((c >> G_SHIFT) & BYTE) / RGBA_MAX,
-				float((c >> B_SHIFT) & BYTE) / RGBA_MAX, float(c & BYTE) / RGBA_MAX);
-	}
+	for (int i = 0; i < JAM_STOPS; i++) jam_colors_[i] = rgba8_to_color(r.in("congestion").colour_at(cols, i));
 	return true;
 }
 
@@ -57,21 +68,25 @@ void OverlayRenderer::reset() {
 	congestion_.clear();
 	lanes_.clear();
 	roads_known_.clear();
+	lots_known_.clear();
 	zones_all_ = true;
 	since_ = refresh_;
 	zone_queue_.clear();
 }
 
-void OverlayRenderer::show_every_zone(bool on) {
-	if (every_zone_.exchange(on) != on) zones_all_ = on_[int(Overlay::ZONES)];
+void OverlayRenderer::show_zone_tool(bool on, bool works) {
+	const bool tool = every_zone_.exchange(on) != on, cut = zone_works_.exchange(works) != works && on;
+	if (tool || cut) zones_all_ = on_[int(Overlay::ZONES)];
 }
 
 void OverlayRenderer::set(Overlay o, bool on) {
 	on_[int(o)] = on;
 	if (o == Overlay::ZONES) {
 		if (on) zones_all_ = true;
-		else
+		else {
 			for (int64_t key : roads_known_) zone_queue_.revs.unwant(key);
+			for (int64_t key : lots_known_) zone_queue_.revs.unwant(key);
+		}
 		for (auto &kv : zones_) kv.second.visible(on);
 	} else {
 		if (on) since_ = refresh_;
@@ -82,6 +97,11 @@ void OverlayRenderer::set(Overlay o, bool on) {
 void OverlayRenderer::mark_dirty(int64_t key) {
 	roads_known_.insert(key);
 	lanes_.erase(key); // its roads changed: the congestion ribbons are laid again
+	if (on_[int(Overlay::ZONES)]) zone_queue_.revs.mark(key);
+}
+
+void OverlayRenderer::mark_zones(int64_t key) {
+	lots_known_.insert(key);
 	if (on_[int(Overlay::ZONES)]) zone_queue_.revs.mark(key);
 }
 
@@ -153,6 +173,7 @@ void OverlayRenderer::update(const CityState &s, const PoseFrame &f, double dt, 
 	if (on_[int(Overlay::ZONES)]) {
 		if (zones_all_) {
 			for (int64_t key : roads_known_) zone_queue_.revs.mark(key);
+			for (int64_t key : lots_known_) zone_queue_.revs.mark(key);
 			zones_all_ = false;
 		}
 		// The marked chunks nearest first, a credit each while the frame has them; a chunk whose result is on its way keeps its

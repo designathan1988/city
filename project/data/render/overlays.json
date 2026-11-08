@@ -1,6 +1,5 @@
 {
- "_doc": "Map layers (Layers popover, Roadcraft hud.ts:508-522) drawn by native/src/render/overlays: zone colours beside the zoned road sides and the congestion map over the carriageways. zone_alpha and zone_alpha_tool: a built lot under the Zoning tool and a zone with another tool (Roadcraft lotTool.ts fillAlpha); the tool shows every zoned side, the other tools only the player's.",
- "zone_depth_m": 28,
+ "_doc": "Map layers (Layers popover) drawn by native/src/render/overlays: the lots coloured by their zone (cut on the relief's own grid, so the terrain never rises through them) and the congestion map over the carriageways, laid along each road every sample_m. zone_alpha: an unbuilt zoned lot with another tool in hand (built ones are not drawn then). lots: what the Zones tool shows of each lot (the 4.0's lot overlay, lotTool.ts drawLot): its zone's colour at alpha_tool, alpha_built once a building stands on it; its outline (line, line_m wide) and its front, the side its building faces (front, front_m wide), with an arrow from inside out through the front's middle, arrow_of_front of the front's length and arrow_of_depth of the middle's distance from the lot's centre, between arrow_least_m and arrow_most_m long, its tip arrow_tip of that short of the front, its head arrow_head of it long and arrow_spread of the head wide, each stroke arrow_m wide; the lots the streets propose outlined faint (proposal, proposal_m wide).",
  "lift_m": 0.35,
  "sample_m": 8,
  "refresh_s": 1,
@@ -12,6 +11,23 @@
  "free_share": 0.7,
  "jam_share": 0.25,
  "zone_alpha": 0.25,
- "zone_alpha_tool": 0.22,
- "congestion_alpha": 0.6
+ "congestion_alpha": 0.6,
+ "lots": {
+  "line_m": 0.35,
+  "line": "#ffffffd9",
+  "proposal_m": 0.25,
+  "proposal": "#ffffff59",
+  "front_m": 0.8,
+  "front": "#5ee0ff",
+  "arrow_m": 1.0,
+  "alpha_tool": 0.45,
+  "alpha_built": 0.22,
+  "arrow_most_m": 7,
+  "arrow_least_m": 2,
+  "arrow_of_front": 0.35,
+  "arrow_of_depth": 0.6,
+  "arrow_tip": 0.15,
+  "arrow_head": 0.4,
+  "arrow_spread": 0.7
+ }
 }

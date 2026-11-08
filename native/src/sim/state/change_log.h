@@ -1,6 +1,6 @@
 // The one channel through which the simulation announces what changed: each consumer drains its own lists. Render adapters
 // consume and clear theirs on the main thread; the traffic drains the net_* lists; the transit drains transit_segs; the lot
-// cache consumes lot_cells. Nothing else keeps its own dirty flags: what an owner has still to work out of its own data (the
+// cache consumes lot_cells and street_cells. Nothing else keeps its own dirty flags: what an owner has still to work out of its own data (the
 // network's shapes and grades left to settle, growth's queue of cells) is that owner's state, and what is kept by the city's
 // revision (sim/street/furniture_kept.h) or by an exact key (sim/buildings/b40/body_cache.h) needs no mark.
 // Locking: producers append while holding CityState::map_mutex exclusively (commands, growth, load); a consumer that holds
@@ -22,6 +22,8 @@ struct ChangeLog {
 	std::vector<int64_t> road_chunks; // CHUNK keys whose road meshes and street props must be rebuilt
 	std::vector<int64_t> prop_chunks; // CHUNK keys whose street props alone must be rebuilt (what the player placed)
 	std::vector<int64_t> lot_cells; // CHUNK keys whose proposed lots must be recomputed (streets or zones changed)
+	std::vector<int64_t> street_cells; // CHUNK keys whose streets or ground changed: the lots proposed there are cut again (proposed_lots.h)
+	std::vector<int64_t> lot_chunks; // CHUNK keys whose lots were derived again (the streets', the player's): the zone layer draws them again
 	std::vector<int64_t> building_chunks; // CHUNK keys whose building meshes must be rebuilt
 	std::vector<int64_t> view_chunks; // CHUNK keys whose near building meshes must be drawn again though no building changed (Interior layer)
 	std::vector<int> terrain_rects; // x0, z0, x1, z1 height-sample rectangles (inclusive)
@@ -80,6 +82,8 @@ struct ChangeLog {
 		add(road_chunks, from.road_chunks);
 		add(prop_chunks, from.prop_chunks);
 		add(lot_cells, from.lot_cells);
+		add(street_cells, from.street_cells);
+		add(lot_chunks, from.lot_chunks);
 		add(building_chunks, from.building_chunks);
 		add(view_chunks, from.view_chunks);
 		add(terrain_rects, from.terrain_rects);
@@ -100,6 +104,7 @@ struct ChangeLog {
 	void clear_render() {
 		road_chunks.clear();
 		prop_chunks.clear();
+		lot_chunks.clear();
 		building_chunks.clear();
 		view_chunks.clear();
 		terrain_rects.clear();

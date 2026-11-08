@@ -32,6 +32,7 @@ void take_city(CityState &live, CityState &read) {
 	live.damage.continue_after(read.damage); // `read` holds the old city now
 	live.bind();
 	live.log.absorb(read.log);
+	live.proposed.clear(); // the lots proposed were cut from the old city's streets
 }
 
 } // namespace city

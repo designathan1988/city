@@ -47,9 +47,17 @@ O que falta fazer, por área.
 - Interface: o painel de efeitos só traz as chaves do que já existe (nuvens, clima, partículas e transporte vêm com as sessões donas); o laboratório de objetos do 4.0 não tem par. Avisos: o 4.0 tem um só, trocado a cada resposta (`flashHint`, 2,4 s, 520 px, sem variante vermelha) e a barra de dica escondida (`shell.css .v2-hint`); o jogo manda as falas das ferramentas a uma barra fixa (`HudMessages.hint`) com recusa em vermelho, e mistura resultado, nota da ferramenta e recusa a cada movimento no mesmo sinal.
 - Lotes: sem lote de esquina e garagem em encosta; escritórios do mapa 0 (29-30 m, praça 5-7 m) sem fundo para estacionamento.
 - Estilo regional: o seletor da tela inicial, `CityState::style` e as unidades dos formatadores existem, com um só estilo (`roadcraft`); o bloco no save (hoje vai no arquivo da sessão) e a leitura única pelo render e pela simulação esperam o mecanismo. O catálogo de vias ainda escreve "m" no texto de `strings`.
-- Lotes do jogador: a proposta da aba Lotes (`lot_proposals`) sai das ruas como se todo lado estivesse zoneado e um clique a toma; a etiqueta de medidas e o apagar em traço existem; o apagar em traço leva só lotes, sem os prédios fora de lote do 4.0, e o traço de zona do 4.0 sobre várias propostas é o pincel de zona nas vias: o mesmo resultado por outro modelo (aqui o lote zoneado nasce do lado da via, lá a proposta vira lote), com o caminho inteiro pintado num arrasto rápido e Shift apagando. Salvar é
-  um arquivo por cidade (sem as gerações do Roadcraft; o arquivo que não abre vai para a quarentena); o autosave não grava cidade gerada
-  que o jogador não editou nem salvou (o Roadcraft grava e poda as não tocadas).
+- Zoning (2026-11-08, log/work-log.md): the brush zones whole lots, the proposal shows in both tabs, a proposed lot is taken
+  by the Lots tab's gestures. Left: a grown building is made for the lot's stand (its rectangle), not fitted to a lot of any
+  shape with the source's tries (set back, narrower, a density lower: `world/growth/zoning.ts` designOnLot/fitToLot), so a
+  polygon or curved lot may stay empty; growth picks the free lot nearest the last grown among the queued cells, with no
+  reach and no random pick past it; the delete stroke's buildings outside lots are taken by footprint, not by the source's
+  solid footprints. Saving is one file per city (no generations; a file that does not open goes to quarantine); autosave does
+  not write a generated city the player neither edited nor saved.
+- Gate findings met in files the zoning change touched, there at HEAD before it: DONO_UNICO `city_core_query.cpp` (unsaved
+  changes), JOB_SEM_CHAVE `overlay_renderer.cpp` (hand-made JobKey: the key factory per lane comes first), NUMERO_MAGICO
+  `render_world.cpp:296`, SEGUNDO_DONO name likenesses (rule wording, user decision), TAMANHO_ARQUIVO `edit_history.cpp`,
+  `journal_ops.cpp`, `road_network.cpp`, `settings.gd`, `edit_fuzz_test.gd`, TAMANHO_FUNCAO `edit_history.cpp` exec.
 - Dinheiro: o 4.0 não tem imposto nem manutenção: a única entrada é a devolução ao demolir. Estilos em `road_profiles.json`; `eua` e `europa` faltam.
 - Oclusão: o preset padrão do jogo (`medium`) não liga o passe (`occlusion.gdshader`), e o 4.0 abre em `high`.
 - Vias do jogador: a altura é o greide resolvido por estação (`road_grade`), o chão moldado a ela (o editor: ver Elevação), e o talude leva a grama do terreno, sem o que foi pintado no chão;

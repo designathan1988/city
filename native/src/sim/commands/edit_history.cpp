@@ -137,13 +137,6 @@ void exec(CityState &s, const EditOp &op, bool fwd) {
 			mark_seg(s, op.id, false);
 			break;
 		}
-		case OpKind::ZONE: {
-			const Change &c = op.get<Change>();
-			net.set_zone(op.id, c.side, fwd ? c.to : c.from);
-			net.set_player_zone(op.id, c.side, fwd ? c.to != 0 : c.player);
-			mark_furniture(s, op.id);
-			break;
-		}
 		case OpKind::ADD_BLD: if (fwd) s.buildings.put(op.id, op.get<Building>(), true); else s.buildings.remove(op.id); break;
 		case OpKind::REM_BLD: if (fwd) s.buildings.remove(op.id); else s.buildings.put(op.id, op.get<Building>(), true); break;
 		case OpKind::EDIT_BLD: {

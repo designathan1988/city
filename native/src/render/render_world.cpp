@@ -116,6 +116,7 @@ void RenderWorld::drain_log(CityState &s) {
 	std::lock_guard<std::mutex> log(s.log.mutex);
 	road_keys_.swap(s.log.road_chunks);
 	prop_keys_.swap(s.log.prop_chunks);
+	lot_keys_.swap(s.log.lot_chunks);
 	building_keys_.swap(s.log.building_chunks);
 	view_keys_.swap(s.log.view_chunks);
 	terrain_rects_.swap(s.log.terrain_rects);
@@ -149,6 +150,7 @@ void RenderWorld::mark_changed(const CityState &s) {
 	ChangeLog::dedup(building_keys_);
 	ChangeLog::dedup(view_keys_);
 	ChangeLog::dedup(prop_keys_);
+	ChangeLog::dedup(lot_keys_);
 	for (int64_t k : road_keys_) {
 		road_stream_.mark(k);
 		far_roads_.mark(k);
@@ -165,7 +167,9 @@ void RenderWorld::mark_changed(const CityState &s) {
 		building_stream_.mark(k);
 		trees_.mark_dirty(k);
 		cover_.mark_dirty(k);
+		overlays_.mark_zones(k); // a lot built on or cleared is coloured otherwise
 	}
+	for (int64_t k : lot_keys_) overlays_.mark_zones(k);
 	for (int64_t k : prop_keys_) { // what the player built on a street (sim/street): its props and the trees round it
 		props_stream_.mark(k);
 		trees_.mark_dirty(k);
@@ -177,6 +181,7 @@ void RenderWorld::mark_changed(const CityState &s) {
 	building_keys_.clear();
 	view_keys_.clear();
 	prop_keys_.clear();
+	lot_keys_.clear();
 }
 
 int64_t RenderWorld::baking() const {

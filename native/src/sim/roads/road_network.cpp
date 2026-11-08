@@ -28,7 +28,6 @@ void RoadNetwork::init(const Catalog *c, ChangeLog *l) {
 }
 
 void RoadNetwork::clear() {
-	player_sides = 0;
 	live_segs_ = live_nodes_ = zoned_sides_ = 0;
 	shape_nodes_.clear();
 	shape_boxes_.clear();
@@ -91,7 +90,6 @@ int RoadNetwork::add_segment(int a, int b, const Quad &q, int profile, int zl, i
 	g.alive = true;
 	g.a = a; g.b = b; g.q = q; g.profile = profile;
 	g.zl = uint8_t(zl); g.zr = uint8_t(zr); g.flags = flags;
-	player_sides += int((flags & SEG_ZONED_LEFT) != 0) + int((flags & SEG_ZONED_RIGHT) != 0);
 	g.table = arc_table(q, ROAD_ARC_STEPS);
 	g.len = g.table.back();
 	update_bounds(id);
@@ -114,7 +112,6 @@ void RoadNetwork::remove_segment(int s) {
 	shape_changed(s);
 	live_segs_--;
 	zoned_sides_ -= zoned_of(g);
-	player_sides -= int((g.flags & SEG_ZONED_LEFT) != 0) + int((g.flags & SEG_ZONED_RIGHT) != 0);
 	seg_hash.remove_aabb(s, g.minx, g.minz, g.maxx, g.maxz);
 	for (int n : { g.a, g.b }) {
 		auto &l = nodes[n].segs;
@@ -164,7 +161,6 @@ void RoadNetwork::put_segment(int id, const RoadSegment &rec) {
 	zoned_sides_ -= g.alive ? zoned_of(g) : 0;
 	g = rec;
 	g.alive = true;
-	player_sides += int((g.flags & SEG_ZONED_LEFT) != 0) + int((g.flags & SEG_ZONED_RIGHT) != 0);
 	g.table = arc_table(g.q, ROAD_ARC_STEPS);
 	g.len = g.table.back();
 	update_bounds(id);
@@ -194,29 +190,10 @@ void RoadNetwork::set_profile(int s, int profile) {
 	if (log) log->network_changed = true;
 }
 
-void RoadNetwork::set_zone(int s, int side, int zone) {
-	zoned_sides_ -= zoned_of(segs[size_t(s)]);
-	(side == 0 ? segs[s].zl : segs[s].zr) = uint8_t(zone);
-	zoned_sides_ += zoned_of(segs[size_t(s)]);
-	mark_segment(s);
-}
-
 void RoadNetwork::set_plain(int n, bool plain) {
 	if (nodes[size_t(n)].plain == plain) return;
 	nodes[size_t(n)].plain = plain;
 	shape_nodes_.push_back(n);
-}
-
-static int player_sides_of(uint16_t flags) {
-	return int((flags & SEG_ZONED_LEFT) != 0) + int((flags & SEG_ZONED_RIGHT) != 0);
-}
-
-void RoadNetwork::set_player_zone(int s, int side, bool on) {
-	uint16_t &flags = segs[s].flags;
-	player_sides -= player_sides_of(flags);
-	const uint16_t bit = side == 0 ? SEG_ZONED_LEFT : SEG_ZONED_RIGHT;
-	flags = on ? uint16_t(flags | bit) : uint16_t(flags & ~bit);
-	player_sides += player_sides_of(flags);
 }
 
 int RoadNetwork::find_node_near(double x, double z, double radius) const {
@@ -452,6 +429,7 @@ void RoadNetwork::mark_segment(int s) {
 	};
 	mark(log->road_chunks, g.minx, g.minz, g.maxx, g.maxz);
 	mark(log->lot_cells, g.minx - LOT_LOOK_M, g.minz - LOT_LOOK_M, g.maxx + LOT_LOOK_M, g.maxz + LOT_LOOK_M);
+	mark(log->street_cells, g.minx - LOT_LOOK_M, g.minz - LOT_LOOK_M, g.maxx + LOT_LOOK_M, g.maxz + LOT_LOOK_M);
 }
 
 } // namespace city

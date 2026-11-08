@@ -248,3 +248,9 @@ lab.layer.signals,Semáforos,Signals
 lab.layer.vehicles,Veículos,Vehicles
 lab.layer.people,Pessoas,People
 lab.layer.overlays,Camadas,Overlays
+hint.zone.painted,Zona pintada: os prédios vão crescendo nela,Zone painted: buildings will grow on it
+hint.zone.removed,Zona removida,Zone removed
+hint.zone.empty,Nenhum lote aqui: desenhe um lote para zonear,No lot here: draw a lot to zone it
+hint.lot.front,Frente definida: o prédio vai olhar para esse lado.,Front set: the building will face this side.
+hint.lot.frontPick,Clique perto de um lado de um lote.,Click near a side of a lot.
+hint.lot.deleted,Apagado.,Deleted.

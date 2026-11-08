@@ -62,7 +62,10 @@ void insert_roads(CityState &s, const GeneratedRoads &r) {
 void mark_all_lot_cells(CityState &s) {
 	int cells = int(std::lround(s.map_half * 2 / CHUNK)), first = -cells / 2;
 	for (int j = first; j < first + cells; j++)
-		for (int i = first; i < first + cells; i++) s.log.lot_cells.push_back(cell_key(i, j));
+		for (int i = first; i < first + cells; i++) {
+			s.log.lot_cells.push_back(cell_key(i, j));
+			s.log.street_cells.push_back(cell_key(i, j));
+		}
 }
 
 std::unique_ptr<TerrainGen> found_land(CityState &s, int map_index, uint32_t exact_seed, bool generate, int tiles) {
@@ -79,6 +82,7 @@ std::unique_ptr<TerrainGen> found_land(CityState &s, int map_index, uint32_t exa
 	s.lot_book.clear();
 	s.buildings.init(&s.log, &s.catalog.occupancy);
 	s.lots.clear();
+	s.proposed.clear(); // the last map's streets: the cells of a larger one past this map's edge are never marked again
 	s.growth.clear();
 	s.damage.clear(); // what blows left on the last map is not on this one
 	s.history.reset(c.tune);

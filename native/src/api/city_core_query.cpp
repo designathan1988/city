@@ -149,7 +149,7 @@ Dictionary CityCore::snapshot() {
 	d["marking_style"] = s.marking_style.load();
 	d["edit_revision"] = int64_t(s.edit_revision);
 	d["profiles_revision"] = int64_t(s.catalog.profiles_stamp()); // the road list (CityStore.cached)
-	d["player_zones"] = s.roads.player_sides;
+	d["player_zones"] = s.lot_book.zoned_count();
 	d["style"] = String(s.style.c_str());
 	d["nodes"] = s.roads.alive_nodes();
 	d["zoned_sides"] = s.roads.zoned_sides();

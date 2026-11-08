@@ -271,4 +271,44 @@ std::vector<LotPoint> curved_side(const LotPoint &a, const LotPoint &b, const Lo
 
 bool lot_point_near(const LotPoint &p, const LotPoint &q, double reach) { return std::hypot(p.x - q.x, p.z - q.z) < reach; }
 
+namespace {
+// A convex polygon cut by a line of constant x (or z): what lies on the side `keep` looks to.
+std::vector<LotPoint> clipped(const std::vector<LotPoint> &q, bool on_x, double line, double keep) {
+	std::vector<LotPoint> out;
+	const auto off = [&](const LotPoint &p) { return ((on_x ? p.x : p.z) - line) * keep; };
+	for (size_t i = 0; i < q.size(); i++) {
+		const LotPoint &p = q[i], &r = q[(i + 1) % q.size()];
+		const double a = off(p), b = off(r);
+		if (a >= 0) out.push_back(p);
+		if ((a >= 0) != (b >= 0)) {
+			const double t = a / (a - b);
+			out.push_back({ p.x + (r.x - p.x) * t, p.z + (r.z - p.z) * t });
+		}
+	}
+	return out;
+}
+} // namespace
+
+std::vector<LotPoint> lot_cover(const std::vector<LotPoint> &ring, double cell, const LotPoint &origin) {
+	std::vector<LotPoint> out;
+	const std::vector<int> tris = lot_triangles(ring);
+	for (size_t t = 0; t + 2 < tris.size(); t += 3) {
+		const std::vector<LotPoint> tri = { ring[size_t(tris[t])], ring[size_t(tris[t + 1])], ring[size_t(tris[t + 2])] };
+		double x0 = tri[0].x, z0 = tri[0].z, x1 = x0, z1 = z0;
+		for (const LotPoint &p : tri) {
+			x0 = std::min(x0, p.x);
+			z0 = std::min(z0, p.z);
+			x1 = std::max(x1, p.x);
+			z1 = std::max(z1, p.z);
+		}
+		for (int j = int(std::floor((z0 - origin.z) / cell)); j < int(std::ceil((z1 - origin.z) / cell)); j++)
+			for (int i = int(std::floor((x0 - origin.x) / cell)); i < int(std::ceil((x1 - origin.x) / cell)); i++) {
+				const double ax = origin.x + double(i) * cell, az = origin.z + double(j) * cell;
+				const std::vector<LotPoint> piece = clipped(clipped(clipped(clipped(tri, true, ax, 1), true, ax + cell, -1), false, az, 1), false, az + cell, -1);
+				for (size_t k = 1; k + 1 < piece.size(); k++) out.insert(out.end(), { piece[0], piece[k], piece[k + 1] });
+			}
+	}
+	return out;
+}
+
 } // namespace city

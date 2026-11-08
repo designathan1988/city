@@ -195,7 +195,6 @@
   "building.fn.mall",
   "building.fn.sportsCourt"
  ],
- "zone_radius": 40,
  "actions": [
   {"icon": "layers", "tip_key": "v2.layers", "popover": "layers"},
   {"icon": "advanced", "tip_key": "builder.menu.simulation", "popover": "sim"},

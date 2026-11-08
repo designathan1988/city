@@ -18,6 +18,30 @@ constexpr size_t LOT_SERIAL_MAX = 4; // below this, the pool's hand-off costs mo
 
 namespace {
 constexpr uint32_t PLAYER_LOT_SALT = 0x10755eedu;
+// A lot's corners in its own frame, front first: signs of the half width and half depth (+z is the street's side).
+constexpr double LOT_CORNERS[4][2] = { { -1, 1 }, { 1, 1 }, { 1, -1 }, { -1, -1 } };
+} // namespace
+
+std::vector<LotPoint> lot_ring(const Lot &l) {
+	const double c = std::cos(l.rot), n = std::sin(l.rot), hw = l.w / 2, hd = l.d / 2;
+	std::vector<LotPoint> ring;
+	ring.reserve(4);
+	for (const auto &corner : LOT_CORNERS) {
+		const double kx = corner[0] * hw, kz = corner[1] * hd;
+		ring.push_back({ l.x + kx * c + kz * n, l.z - kx * n + kz * c });
+	}
+	return ring;
+}
+
+bool cut_for_works(const Catalog &c, int zone) { return c.zone(zone).base == BASE_INDUSTRIAL; }
+
+bool on_lot(const Lot &l, const LotPoint &p) {
+	// lot_ring's corners turned back: kx along the front, kz towards the street
+	const double c = std::cos(l.rot), n = std::sin(l.rot), dx = p.x - l.x, dz = p.z - l.z;
+	return std::fabs(dx * c - dz * n) <= l.w / 2 && std::fabs(dx * n + dz * c) <= l.d / 2;
+}
+
+namespace {
 
 // The lots the streets propose give way to those the player drew, and a zoned one of the player's whose middle is in the cell joins them.
 std::vector<Lot> with_player_lots(std::vector<Lot> lots, int64_t key, const LotBook &players) {
@@ -73,9 +97,16 @@ static std::vector<Lot> lots_of_cell(const CityState &s, int64_t key, int every_
 
 std::vector<Lot> LotCache::compute(const CityState &s, int64_t key) { return with_player_lots(lots_of_cell(s, key, 0), key, s.lot_book); }
 
-std::vector<Lot> LotCache::proposal(const CityState &s, int64_t key) { return lots_of_cell(s, key, ZONE_RES_LOW); }
+std::vector<Lot> LotCache::proposal(const CityState &s, int64_t key, bool works) { return lots_of_cell(s, key, works ? ZONE_IND : ZONE_RES_LOW); }
+
+ProposedLots::Cell LotCache::proposed(const CityState &s, int64_t key, bool works) {
+	return s.proposed.of(key, works, [&] { return proposal(s, key, works); });
+}
 
 void LotCache::process_dirty(CityState &s) {
+	ChangeLog::dedup(s.log.street_cells);
+	s.proposed.forget(s.log.street_cells);
+	s.log.street_cells.clear();
 	std::vector<int64_t> cells = s.log.lot_cells;
 	s.log.lot_cells.clear();
 	ChangeLog::dedup(cells);
@@ -92,6 +123,7 @@ void LotCache::process_dirty(CityState &s) {
 		if (results[i].empty()) by_cell.erase(cells[i]);
 		else by_cell[cells[i]] = std::move(results[i]);
 	}
+	s.log.lot_chunks.insert(s.log.lot_chunks.end(), cells.begin(), cells.end());
 }
 
 } // namespace city

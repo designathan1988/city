@@ -14,7 +14,6 @@ const CELLS := 12
 const FIELD_OUT := Vector3(1600, 0, 900)
 const PX := 0.25
 const LIFTS := [0.0, 0.0, 0.0, 6.0, 8.0, -4.0, -12.0]
-const ZONE_RADIUS := 30.0
 const SLOT := "edit_fuzz"
 const SHOWN_PARTS := 6
 const BRUSH_M := 30.0
@@ -147,7 +146,7 @@ func _edit() -> void:
 		CityStore.dispatch(&"upgrade_road", [road, rng.randi_range(0, 3), false])
 	elif kind == 8:
 		CityStore.dispatch(&"begin_stroke", ["cmd.place.zone"])
-		CityStore.dispatch(&"paint_zone", [road, ZONE_RADIUS, DataTables.zone_code("residential")])
+		ZoneStroke.around(road, DataTables.zone_code("residential"))
 		CityStore.dispatch(&"end_stroke")
 	else:
 		var seg: Dictionary = CityStore.query(&"segment_at", [road])
@@ -230,7 +229,7 @@ func _brush_path(road: Vector3) -> void:
 	CityStore.dispatch(&"begin_stroke", ["cmd.place.paint"])
 	match which:
 		0:
-			CityStore.dispatch(&"paint_zone_path", [PackedVector3Array([road, road + Vector3(ZONE_RADIUS, 0, 0)]), ZONE_RADIUS, DataTables.zone_code("residential")])
+			ZoneStroke.around(road, DataTables.zone_code("residential"))
 		1:
 			CityStore.dispatch(&"paint_path", [dabs, BRUSH_M, 1.0, 0.5, rng.randi_range(0, BRUSH_MODES)])
 		2:

@@ -19,7 +19,6 @@ constexpr uint32_t CIVIC_MUL = 2654435761U, CIVIC_MIX = 2246822519U;
 constexpr uint32_t AGE_MIX = 0x9e3779b9U, AGE_MUL1 = 0x85ebca6bU, AGE_MUL2 = 0xc2b2ae35U;
 constexpr uint32_t CIVIC_CHANCE_BITS = 1023, CIVIC_PICK_SHIFT = 10, CIVIC_PICK_STEPS = 1000;
 constexpr double DECAY_TENTHS = 10;
-constexpr uint8_t ZONE_RES_LOW = 5, ZONE_RES_HIGH = 6, ZONE_IND_LOW = 7, ZONE_IND_HIGH = 8;
 constexpr uint32_t HASH_SHIFT_15 = 15, HASH_SHIFT_13 = 13, HASH_SHIFT_16 = 16;
 
 int biggest(const std::vector<Lot> &l) {
@@ -30,8 +29,7 @@ int biggest(const std::vector<Lot> &l) {
 }
 } // namespace
 
-int base_zone(int z) { return z == ZONE_RES_LOW || z == ZONE_RES_HIGH ? 1 : z == ZONE_IND_LOW || z == ZONE_IND_HIGH ? 2 : z; }
-int zone_density(int z) { return z == ZONE_RES_LOW || z == ZONE_IND_LOW ? 0 : z == ZONE_RES_HIGH || z == ZONE_IND_HIGH ? 2 : 1; }
+int base_zone(const Catalog &c, int z) { return c.zone(z).base; }
 
 MapCell map_cell_of(const CityState &s, double x, double z) {
 	MapCell c;
@@ -157,7 +155,7 @@ Building record_for(CityState &s, const std::vector<Lot> &cell_lots, int i) {
 	const Lot &l = cell_lots[i];
 	const GrowthDef &g = s.catalog.growth;
 	MapCell cell = map_cell_of(s, l.x, l.z);
-	int fn = civic_for(g, cell.id, base_zone(l.zone), biggest(cell_lots) == i, float(l.w * l.d));
+	int fn = civic_for(g, cell.id, base_zone(s.catalog, l.zone), biggest(cell_lots) == i, float(l.w * l.d));
 	if (fn == FN_SQUARE) fn = FN_NONE; // the squares are the plan's (sim/citygen/squares.h)
 	int tallest = -1;
 	const float reach = g.organic_reach_m;

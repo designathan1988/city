@@ -267,19 +267,6 @@ void j_set_profile(CityState &s, int seg, int profile) {
 	if (s.history.recording) grow_seg(s, s.roads.segs[seg]);
 }
 
-void j_set_zone(CityState &s, int seg, int side, int zone) {
-	RoadSegment &g = s.roads.segs[seg];
-	int cur = side == 0 ? g.zl : g.zr;
-	if (cur == zone) return;
-	if (s.history.recording) {
-		record(s, OpKind::ZONE, seg, Change{ side, cur, zone, (g.flags & (side == 0 ? SEG_ZONED_LEFT : SEG_ZONED_RIGHT)) != 0 });
-		grow_seg(s, g);
-	}
-	s.roads.set_zone(seg, side, zone);
-	s.roads.set_player_zone(seg, side, zone != 0);
-	mark_furniture(s, seg);
-}
-
 int j_add_building(CityState &s, const Building &b) {
 	int id = s.buildings.add(b);
 	if (s.history.recording) {

@@ -96,6 +96,7 @@ void mark_ground(CityState &s, double minx, double minz, double maxx, double max
 		s.log.road_chunks.push_back(k);
 		s.log.building_chunks.push_back(k);
 		s.log.lot_cells.push_back(k);
+		s.log.street_cells.push_back(k);
 		s.log.nature_chunks.push_back(k);
 		s.log.water_chunks.push_back(k);
 	});

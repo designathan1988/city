@@ -29,7 +29,7 @@ namespace city {
 
 struct CityState;
 
-enum class OpKind : uint8_t { ADD_NODE, REM_NODE, NODE_PLAIN, NODE_CTL, NODE_SIGNAL, ADD_SEG, REM_SEG, PROFILE, ZONE, ADD_BLD, REM_BLD, EDIT_BLD, ADD_MOD,
+enum class OpKind : uint8_t { ADD_NODE, REM_NODE, NODE_PLAIN, NODE_CTL, NODE_SIGNAL, ADD_SEG, REM_SEG, PROFILE, ADD_BLD, REM_BLD, EDIT_BLD, ADD_MOD,
 	MONEY, MARKING, NATURE, DMG_CRATER, DMG_RUIN, DMG_GONE, DMG_HURT, ADD_ITEM, REM_ITEM, ADD_POLE, REM_POLE, ADD_SPAN, REM_SPAN,
 	ADD_BARRIER, REM_BARRIER, ADD_CUT, REM_CUT, SEG_RULE, NODE_LINKS, NODE_LIFT, NODE_CROSSING, NODE_UTURN,
 	ADD_LOT, REM_LOT, EDIT_LOT, // the player's lots, one record each (LotBook)
@@ -39,9 +39,8 @@ enum class OpKind : uint8_t { ADD_NODE, REM_NODE, NODE_PLAIN, NODE_CTL, NODE_SIG
 using NatureEdit = std::function<void(CityState &, bool forward)>;
 
 // The payload of each kind of op.
-struct Change { // NODE_PLAIN, NODE_CTL, NODE_CROSSING, NODE_UTURN, MARKING, ZONE (side, player: the side was the player's before),
-	int side = 0, from = 0, to = 0; // SEG_RULE (side: the end), TRANSIT_NEXT (the plan's next id)
-	bool player = false;
+struct Change { // NODE_PLAIN, NODE_CTL, NODE_CROSSING, NODE_UTURN, MARKING, SEG_RULE (side: the end), TRANSIT_NEXT (the plan's next id)
+	int side = 0, from = 0, to = 0;
 };
 struct ProfileChange { // PROFILE: the segment as it was (what the change is worth: its length, structure and end heights)
 	int from = 0, to = 0;
@@ -186,7 +185,6 @@ int j_add_segment(CityState &s, int a, int b, const Quad &q, int profile, int zl
 void j_remove_segment(CityState &s, int seg);
 void j_set_profile(CityState &s, int seg, int profile);
 void j_set_marking(CityState &s, int style);
-void j_set_zone(CityState &s, int seg, int side, int zone);
 int j_add_building(CityState &s, const Building &b);
 void j_remove_building(CityState &s, int id);
 void j_edit_building(CityState &s, int id, const Building &after);
