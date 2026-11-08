@@ -3,6 +3,7 @@
 
 #include "render/render_layers.h"
 
+#include "core/color.h"
 #include "core/math.h"
 #include "core/units.h"
 #include "render/film_grade.h"
@@ -19,8 +20,6 @@
 using namespace godot;
 
 namespace city {
-
-static constexpr int HEX_BASE = 16;
 
 namespace {
 constexpr float RAY_MAX_M = 30000.f;

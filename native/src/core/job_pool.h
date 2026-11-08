@@ -8,6 +8,8 @@
 // at its natural boundaries and returns early once a newer job of its key was submitted.
 #pragma once
 
+#include "core/random.h"
+
 #include <atomic>
 #include <condition_variable>
 #include <cstddef>
@@ -36,7 +38,7 @@ struct JobKey {
 
 struct JobKeyHash {
 	size_t operator()(const JobKey &k) const {
-		return std::hash<int64_t>()(k.id) ^ (size_t(k.lane) << 1 | size_t(k.baked)) * 0x9e3779b97f4a7c15ull;
+		return std::hash<int64_t>()(k.id) ^ (size_t(k.lane) << 1 | size_t(k.baked)) * GOLDEN_GAMMA_64;
 	}
 };
 

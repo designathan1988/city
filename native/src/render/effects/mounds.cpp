@@ -27,7 +27,7 @@ constexpr float COARSE_SHARE = 0.55f, MID_SHARE = 0.3f, FINE_SHARE = 0.15f;
 // rubble.gdshader stretches the hill's height by smoothstep(age) * slump * chunk, each noise 0..1: at most these
 constexpr float RUBBLE_SLUMP_MOST = 0.35f + 1.1f, RUBBLE_CHUNK_MOST = 0.72f + 0.56f;
 
-float lattice(int i, int j) { return float(hash_u32(uint32_t(i) * 73856093u ^ uint32_t(j) * 19349663u ^ LATTICE_SEED) & 0xFFFFu) / HASH_TOP; }
+float lattice(int i, int j) { return float(hash_u32(uint32_t(i) * SPATIAL_PRIME_X ^ uint32_t(j) * SPATIAL_PRIME_Y ^ LATTICE_SEED) & 0xFFFFu) / HASH_TOP; }
 
 float value_noise(float x, float z) {
 	const int i = int(std::floor(x)), j = int(std::floor(z));

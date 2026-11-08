@@ -1,5 +1,6 @@
 // The wear field: what agents leave on the ground and which tiles go to the GPU (wear_field.h).
 #include "render/wear/wear_field.h"
+#include "core/random.h"
 #include "render/data_reader.h"
 
 #include <godot_cpp/classes/image.hpp>
@@ -17,8 +18,7 @@ namespace city {
 
 namespace {
 constexpr float BYTE_MAX = 255.f, U32_SCALE = 4294967296.f;
-constexpr int BYTE_TOP = 255, XORSHIFT_A = 13, XORSHIFT_B = 17, XORSHIFT_C = 5, HOLD_SHARE = 8;
-constexpr uint32_t RNG_START = 0x9e3779b9u;
+constexpr int BYTE_TOP = 255, HOLD_SHARE = 8;
 const char *const ORIGIN_PARAM = "wear_origin"; // road.gdshader
 const char *const FIELD_PARAM = "wear_field";
 const char *const CELL_PARAM = "wear_cell_m";
@@ -66,7 +66,7 @@ void WearField::free() {
 
 void WearField::reset() {
 	if (!texture_.is_valid()) return;
-	state_ = RNG_START;
+	state_ = GOLDEN_GAMMA_32;
 	ox_ = oy_ = -RES / 2;
 	pending_.clear();
 	for (size_t i = 0; i < tiles_.size(); i++) {
@@ -81,13 +81,8 @@ void WearField::send_origin() const {
 	RenderingServer::get_singleton()->material_set_param(material_, ORIGIN_PARAM, Vector2(float(ox_), float(oy_)));
 }
 
-// Xorshift32 (Marsaglia, "Xorshift RNGs", J. Stat. Softw. 2003) for the stochastic rounding of `add`.
-float WearField::random() {
-	state_ ^= state_ << XORSHIFT_A;
-	state_ ^= state_ >> XORSHIFT_B;
-	state_ ^= state_ << XORSHIFT_C;
-	return float(state_) / U32_SCALE;
-}
+// Xorshift32 (core/random.h) for the stochastic rounding of `add`.
+float WearField::random() { return float(xorshift32(state_)) / U32_SCALE; }
 
 void WearField::touch(int tile) {
 	if (dirty_[size_t(tile)]) return;

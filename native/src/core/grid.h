@@ -20,9 +20,12 @@ constexpr float SUPERCHUNK = 1024.f;
 constexpr int CHUNKS_PER_SUPER = int(SUPERCHUNK / CHUNK); // chunks a superchunk spans, per axis
 constexpr int SUBCHUNKS_PER_CHUNK = int(CHUNK / SUBCHUNK); // sub-chunks a chunk holds, per axis
 
-inline int64_t cell_key(int cx, int cy) { return (int64_t(cx) << 32) ^ int64_t(uint32_t(cy)); }
-inline int key_x(int64_t k) { return int(k >> 32); }
-inline int key_y(int64_t k) { return int(int32_t(uint32_t(k & 0xFFFFFFFF))); }
+// A cell key holds the column in its high 32 bits and the row in its low 32.
+constexpr int KEY_HALF_BITS = 32;
+constexpr int64_t KEY_LOW_MASK = 0xFFFFFFFF;
+inline int64_t cell_key(int cx, int cy) { return (int64_t(cx) << KEY_HALF_BITS) ^ int64_t(uint32_t(cy)); }
+inline int key_x(int64_t k) { return int(k >> KEY_HALF_BITS); }
+inline int key_y(int64_t k) { return int(int32_t(uint32_t(k & KEY_LOW_MASK))); }
 inline int64_t chunk_of(float x, float z, float size = CHUNK) {
 	return cell_key(int(std::floor(x / size)), int(std::floor(z / size)));
 }
@@ -40,7 +43,9 @@ struct SpatialHash {
 		int id;
 		int x0, y0;
 	};
-	float cell = 64.f;
+	// The cell's side, metres, for a hash given none: a few lots across. A hash that knows its reach gives its own.
+	static constexpr float DEFAULT_CELL_M = 64.f;
+	float cell = DEFAULT_CELL_M;
 	std::unordered_map<int64_t, std::vector<Entry>> cells;
 
 	void clear() { cells.clear(); }

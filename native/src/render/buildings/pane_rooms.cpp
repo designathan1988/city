@@ -3,6 +3,7 @@
 // and the largest piece of furniture seen, the most of it across and up, is drawn as a box (building_pane.gdshaderinc).
 #include "render/buildings/pane_rooms.h"
 
+#include "core/random.h"
 #include "render/buildings/facade_bay.h"
 
 #include <algorithm>
@@ -15,7 +16,6 @@ namespace {
 constexpr float MOST_DEEP = 12.f, MOST_WIDE = 10.f, INSIDE = 0.5f, OFF_GLASS = 0.02f, LEAST_DEEP = 0.8f, LEAST_WIDE = 0.3f;
 constexpr float NEAREST_PIECE = 0.2f, OFF_CENTRE_K = 0.3f, HIT_EPS = 1e-3f, PARALLEL = 1e-9f, ENDS = 1e-6f;
 constexpr uint32_t FNV_BASIS = 0x811c9dc5u, FNV_PRIME = 0x01000193u, BAY_BYTE = 0xff, SLOT_MASK = 0xffff, CORNER_Q = 10;
-constexpr uint64_t MIX = 0x9e3779b97f4a7c15ull;
 constexpr int BAY_BYTE_SHIFT = 8, MIX_SHIFT = 29, CORNERS = 4;
 
 // Where a ray (origin, unit direction) first crosses one of the segments, or `far`.
@@ -43,7 +43,7 @@ uint64_t mix(uint64_t h, float v) {
 	uint32_t bits;
 	v += 0.f; // -0 as 0
 	std::memcpy(&bits, &v, sizeof bits);
-	h = (h ^ bits) * MIX;
+	h = (h ^ bits) * GOLDEN_GAMMA_64;
 	return h ^ (h >> MIX_SHIFT);
 }
 

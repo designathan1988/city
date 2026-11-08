@@ -67,7 +67,7 @@ def per_file_rules(rules):
         PerFile("headers", ["CABECALHO"], _ext_in("header_comment_extensions"), gate_files.check_headers),
         PerFile("layers", ["CAMADA", "CAMADA_DESCONHECIDA"], gate_code.applies_layers, gate_code.check_layers),
         *[_forbidden(e) for e in rules["forbidden"]],
-        PerFile("magic_numbers", ["NUMERO_MAGICO"], gate_defs.applies_magic, gate_defs.check_magic_numbers),
+        PerFile("magic_numbers", ["NUMERO_MAGICO", "CONSTANT_WITHOUT_SOURCE"], gate_defs.applies_magic, gate_defs.check_magic_numbers),
         PerFile("ui_state", ["ESTADO_NA_UI"], gate_ui.applies, gate_ui.check_ui_state),
         PerFile("single_owner", ["DONO_UNICO"], gate_defs.applies_owners, gate_defs.check_single_owner),
         PerFile("data_copies", ["SEGUNDO_DONO", "VALOR_DUPLICADO"], gate_defs.applies_data_copies,

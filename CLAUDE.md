@@ -78,7 +78,7 @@ e apagados.
 - **Um dono por definição:** regras com dono único em `tools/gates/owners.json`. Sem código duplicado: extraia um dono.
 - **Dados:** valores ajustáveis só em `project/data/**` (JSON com schema), lidos só por `DataTables`. Nomes do tuning na
   X-macro `CITY_TUNING_FIELDS`, valores em `project/data/catalog/tuning.json`.
-- **Sem números mágicos** em `native/src`, `project/game`, `project/ui`: dê nome ou mova para dados.
+- **No magic numbers** in `native/src`, `project/game`, `project/ui`, `project/render`: tunables to data; a constant's comment says its source.
 - **Interface:** não guarda números do jogo: lê `CityStore.snapshot` e envia `CityStore.dispatch(...)`. Cores e tamanhos só
   por `data/ui/tokens.json` e `ui/theme/theme_builder.gd`; textos só por `tr("CHAVE")`; botões e opções em `data/ui/*.json`.
 - **Fluxo:** troca de tela, pausa e saída só por `GameFlow`.

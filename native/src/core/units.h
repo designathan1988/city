@@ -5,6 +5,7 @@
 
 namespace city {
 
+// Definitions: the hour, the day, the kilometre, the second's parts, the mebibyte and the turn.
 constexpr double MINUTES_PER_HOUR = 60.0;
 constexpr double SECONDS_PER_HOUR = 3600.0;
 constexpr double HOURS_PER_DAY = 24.0;

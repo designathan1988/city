@@ -3038,6 +3038,41 @@ say the rule, a change the player reads (B3). `confirm.newWorld` and `confirm.ne
 **What changes.** Nothing: the same pixels, turns, steps and texts (`quick`: 45 of 46 pass; `photos_check` differs by 0.001 % on
 one photo whose bytes are a state captured before this batch).
 
+### 6.35 B2, C16 (the gates' rules on numbers): a copy by name, place and value; a constant says its source (2026-11-08)
+
+**Causes and fixes.**
+- **`SEGUNDO_DONO` matched names alone** (`gate_defs.py` `check_data_copies`): two words shared by a constant and any data key
+  anywhere was a hit, so `SEED_SCALE` was a copy of `cover.json` `rocks.seed` and `KEEP` of a tree band's `keep`: 289 lines on the
+  tree, almost all coincidences, which nobody can act on and everybody learns to skip (T2). Measured on the tree: names alone 289,
+  names and values 79 (still `DOOR_W` 0.9 against a bus's door), exact names 67 (`W`, `D`, `PAD`). A copy is about the same
+  thing, so the rule now asks for the place too: a word of the code file's path must be a word of the key's table or path (the
+  repository's places, `data_copy_places` in `rules.json`, and a style's id are not words of a domain), and then either the
+  constant bears the key's whole name of two words or more (a drifted copy keeps the name), or shares two words of it and holds
+  one of its values (not a trivial one). `VALOR_DUPLICADO` (a distinctive value typed again) asks for the place too: its 13
+  shader hits were the coordinates of a clothes airer and of a scenic lake. What is left are eight copies one can act on:
+  `ruin_pieces.cpp` `DUST_*` against `effects.json` `down.dust_*`, `civic_services.cpp` `STALL_W`/`STALL_D` against
+  `buildings.json` `lots` (the second one drifted, 5 m against 5.5 m), `road_gen_graph.cpp` `PARALLEL_COS` against tuning
+  `road.parallel_cos`, and `terrain_gen.cpp` `RIVER_BED_FLOOR`/`ROUGH_REACH_MIN` against tuning `terrain` (the same profile
+  read by the brush from data and by the generator from code). The hand list of 22 exceptions (`data_copy_allow`) existed only
+  for the old matching and is gone, with the unused `data_copy_min_abs`.
+- **The magic-number rule was satisfied by naming** (`constexpr float K = 0.37f;` passed with no source): a constant holding a
+  value that is not trivial says in a comment what it is (a definition, a norm, a derivation), on its own line or in the comment
+  over the block of constants it belongs to; a value one tunes goes to data (`CONSTANT_WITHOUT_SOURCE`). Enumerator lists name
+  codes and are left out. CLAUDE.md says the rule.
+- **The core and the shaders were outside the rule** (`rules.json` exempted `native/src/core/` whole and `catalog_loader.cpp`;
+  `.gdshader` and `.gdshaderinc` were not in its extensions): both are in. Exempt stay only the runtime translated from the
+  source game (`core/js_*`) and its stream (`core/seeded.h`), which B4 replaces. The core's numbers are named with their
+  sources: the hash finaliser is Wellons' lowbias32, the generators Marsaglia's xorshift (the 64-bit one of `Rng` and the 32-bit
+  one `wear_field.cpp` had written again, now `xorshift32` in `core/random.h`), the golden-ratio gamma (three copies:
+  `job_pool.h`, `pane_rooms.cpp`, `kept_by_revision.h`), Teschner's spatial primes (two copies, `mounds.cpp`), the cell key's
+  halves, the colour parser's digits, the geometry's tolerances; `city_core_query.cpp` read the colour base from its own copy.
+  The DLLs built from these sources are byte for byte the ones of the commit before.
+
+**What the gates say now.** 2,172 problems on the whole tree (it was 401): `NUMERO_MAGICO` 1,392 (1,356 of them in the shaders,
+now under the rule), `CONSTANT_WITHOUT_SOURCE` 719, `SEGUNDO_DONO` 8, and the rest as before (`TEXTO_VIA_TR` 23, `TAMANHO_ARQUIVO`
+17, `DONO_UNICO` 9, `TAMANHO_FUNCAO` 3, `ESPELHO` 1). The two new counts are the values of C14 the old rules hid: they are the rest
+of C14, domain by domain.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at
