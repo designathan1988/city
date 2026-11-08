@@ -107,7 +107,7 @@ void exec(CityState &s, const EditOp &op, bool fwd) {
 		case OpKind::NODE_CTL: {
 			const Change &c = op.get<Change>();
 			net.nodes[op.id].ctl = uint8_t(fwd ? c.to : c.from);
-			s.log.net_node(op.id);
+			mark_control(s, op.id);
 			break;
 		}
 		case OpKind::NODE_SIGNAL: {

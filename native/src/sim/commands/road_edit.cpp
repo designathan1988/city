@@ -119,6 +119,11 @@ void mark_furniture(CityState &s, int seg) {
 		for (int i = int(std::floor(g.minx / CHUNK)); i <= int(std::floor(g.maxx / CHUNK)); i++) s.log.road_chunks.push_back(cell_key(i, j));
 }
 
+void mark_control(CityState &s, int node) {
+	s.log.net_node(node);
+	for (int seg : s.roads.nodes[size_t(node)].segs) mark_furniture(s, seg);
+}
+
 void mark_street(CityState &s, double x, double z) {
 	s.log.prop_chunks.push_back(chunk_of(float(x), float(z)));
 	const double r = footway_reach(s.roads, s.catalog.furniture.items.stand_reach_m); // the segments whose footway it may stand on

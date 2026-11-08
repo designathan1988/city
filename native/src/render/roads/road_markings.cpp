@@ -6,6 +6,7 @@
 #include "render/roads/road_section.h"
 
 #include "sim/buildings/lot_access.h"
+#include "sim/traffic/traffic_system.h"
 
 #include <algorithm>
 #include <cmath>
@@ -44,7 +45,10 @@ struct Painter {
 	}
 };
 
-void lines(const Painter &pt, const Profile &p, double l0, double l1) {
+// The lane lines from l0 to l1 metres along; `solid_a` and `solid_b`: how far from l0 and back from l1 the lines between lanes of the
+// traffic arriving there run solid (a signalled approach: no change of lane in the queue, MBST vol. IV 5.2.1 LMS-1). The traffic
+// arriving at end a keeps to the +u side of the centre; a road one way arrives at the end its lanes run to.
+void lines(const Painter &pt, const Profile &p, double l0, double l1, double solid_a, double solid_b) {
 	const StreetLook &L = pt.e.L;
 	const StreetLook::PaintStyle &st = L.styles[size_t(pt.e.s.marking_style.load())];
 	const bool fast = p.speed >= st.fast_kmh;
@@ -52,17 +56,27 @@ void lines(const Painter &pt, const Profile &p, double l0, double l1) {
 	size_t band = 0; // the dash pattern of the road's speed
 	while (band < st.dash_kmh.size() && p.speed >= st.dash_kmh[band]) band++;
 	const double dash = st.dash[band], period = dash + st.gap[band];
+	const bool one_way = p.lanes_back() == 0 || p.lanes_fwd() == 0;
+	float middle = 0.f;
+	for (const MarkLine &m : p.lines)
+		if (m.centre) middle = m.u;
 	for (const MarkLine &m : p.lines) {
 		Color c = m.color == LineColor::YELLOW && !st.all_white ? L.yellow : L.white;
 		const float w = m.exclusive ? st.exclusive_w : m.centre ? (fast ? st.fast_centre_w : st.centre_w) : (fast ? st.fast_lane_w : st.lane_w);
 		const LineKind kind = m.centre && m.kind == LineKind::SOLID && st.multi_lane_double && many ? LineKind::DOUBLE : m.kind;
+		// a dashed line between lanes of one direction: solid on the approach its traffic arrives at, when that one is signalled
+		const bool to_a = one_way ? p.lanes_fwd() == 0 : m.u > middle;
+		const double from = kind == LineKind::DASHED && !m.centre && to_a ? std::min(l1, l0 + solid_a) : l0;
+		const double to = kind == LineKind::DASHED && !m.centre && !to_a ? std::max(from, l1 - solid_b) : l1;
 		auto line = [&](float u, float hw) {
 			if (kind != LineKind::DASHED) {
 				if (l1 > l0) pt.rect(u - hw, u + hw, l0, l1, c);
 				return;
 			}
-			for (double v = std::floor(l0 / period) * period; v < l1; v += period) {
-				double a = std::max(v, l0), b = std::min(v + dash, l1);
+			if (from > l0) pt.rect(u - hw, u + hw, l0, from, c);
+			if (l1 > to) pt.rect(u - hw, u + hw, to, l1, c);
+			for (double v = std::floor(from / period) * period; v < to; v += period) {
+				double a = std::max(v, from), b = std::min(v + dash, to);
 				if (b > a) pt.rect(u - hw, u + hw, a, b, c);
 			}
 		};
@@ -149,7 +163,9 @@ void emit_markings(const RoadEmit &e, int sid) {
 	const double clear = e.s.catalog.furniture.crossing.stop_to_m; // the lines end at the stop line
 	crossings(pt, p, v0, v1, ca, cb, e.s.roads.crosswalk_on(g.a, sid), e.s.roads.crosswalk_on(g.b, sid));
 	if (e.far) return; // the lane lines are filtered by the road's shader there
-	lines(pt, p, v0 + (ca ? clear : 0), v1 - (cb ? clear : 0));
+	const double solid = e.L.styles[size_t(e.s.marking_style.load())].signal_solid;
+	const bool sa = traffic::control_of(e.s, g.a) == Control::SIGNAL, sb = traffic::control_of(e.s, g.b) == Control::SIGNAL;
+	lines(pt, p, v0 + (ca ? clear : 0), v1 - (cb ? clear : 0), sa ? solid : 0.0, sb ? solid : 0.0);
 	parking_paint(pt);
 }
 

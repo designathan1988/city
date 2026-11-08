@@ -170,7 +170,7 @@ void j_set_control(CityState &s, int n, uint8_t ctl) {
 		grow_point(s, nd.x, nd.z, 0);
 	}
 	nd.ctl = ctl;
-	s.log.net_node(n);
+	mark_control(s, n);
 }
 
 void j_set_lift(CityState &s, int n, float lift) {

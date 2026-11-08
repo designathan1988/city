@@ -1,0 +1,15 @@
+{
+ "_doc": "The paint of a signalled approach looked at in play (look.gd): two avenues of two lanes a way crossing on bare land, the junction under signals (the control the network gives two avenues); the lines between the lanes of one way run solid for the last 30 m before the stop line (LMS-1, MBST vol. IV 5.2.1) and dashed before it. Views along one arm from above and from a driver's height. setView's y is the ground's -z.",
+ "city": {"map": 0, "seed": 1, "generate": false},
+ "steps": [
+  {"hour": 16},
+  {"dispatch": "build_road", "args": [{"at": [-200, 0]}, {"at": [200, 0]}, false, {"v3": [0, 0, 0]}, {"profile": "avenue"}, 0.25]},
+  {"dispatch": "build_road", "args": [{"at": [0, -200]}, {"at": [0, 200]}, false, {"v3": [0, 0, 0]}, {"profile": "avenue"}, 0.25]},
+  {"setView": [0, -45, 9, 90, 62]},
+  {"frames": 240},
+  {"shot": "approach-above"},
+  {"setView": [0, -20, 22, 90, 12]},
+  {"frames": 60},
+  {"shot": "approach-driver"}
+ ]
+}

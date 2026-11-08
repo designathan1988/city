@@ -34,6 +34,9 @@ void mark_paint(CityState &s, const int rect[4]);
 void mark_nature(CityState &s, double minx, double minz, double maxx, double maxz);
 // The segment's street furniture is placed and drawn again (its zones changed, or its square's hydrant may move).
 void mark_furniture(CityState &s, int seg);
+// A junction's control changed: its connectors are made again, and what its arms show of it (the signal posts, the paint of the
+// approaches) drawn again.
+void mark_control(CityState &s, int node);
 // What a road keeps when it is laid again (moved): its zones and flags.
 struct RoadKeeps {
 	int zl = 0, zr = 0;

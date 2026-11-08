@@ -92,6 +92,7 @@ StreetLook::PaintStyle style_of(DataReader r, const Dictionary &d, DataReader rb
 	st.zebra_period = width("zebra_period_m");
 	st.zebra_bar = width("zebra_bar_m");
 	st.zebra_edge = width("zebra_edge_m");
+	st.signal_solid = width("signal_solid_m");
 	st.multi_lane_double = d.has("multi_lane_double") ? r.flag(d, "multi_lane_double") : rb.flag(base, "multi_lane_double");
 	st.all_white = r.flag(d, "all_white");
 	st.dash_kmh = floats(r.in("dash_kmh"), r.list(d, "dash_kmh"));

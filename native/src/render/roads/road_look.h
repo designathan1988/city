@@ -50,6 +50,7 @@ struct StreetLook {
 	struct PaintStyle {
 		float centre_w = 0, lane_w = 0, fast_kmh = 0, fast_centre_w = 0, fast_lane_w = 0, exclusive_w = 0, double_w = 0, double_gap = 0;
 		float zebra_period = 1, zebra_bar = 0, zebra_edge = 0;
+		float signal_solid = 0; // the lane lines of a signalled approach run solid this far back from where they end
 		bool multi_lane_double = false, all_white = false;
 		std::vector<float> dash_kmh, dash, gap;
 	};
