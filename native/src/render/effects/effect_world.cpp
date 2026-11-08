@@ -218,7 +218,7 @@ void EffectWorld::sync(CityState &s, FrameAdmission &admission) {
 	if (craters_seen_ != craters.revision()) {
 		// only blows since (the layout held): the craters laid are still the list's first, and only the new ones are laid
 		const bool grew = crater_layout_seen_ == craters.layout_revision();
-		marks_.set_craters(craters.items(), grew ? marks_.craters() : 0, [&](float x, float z) { return GroundCells::laid(s, x, z); });
+		marks_.set_craters(craters.items(), grew ? marks_.craters() : 0, [&](float x, float z) { return GroundCells::laid(s, x, z); }); // none where its deck is gone
 		heave_.set_craters(craters.items(), grew ? heave_.craters() : 0, s);
 		craters_seen_ = craters.revision();
 		crater_layout_seen_ = craters.layout_revision();

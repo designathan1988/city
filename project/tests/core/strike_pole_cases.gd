@@ -17,6 +17,11 @@ const GROVE_M := 8.0
 const GROVE := {"density": 400.0, "height": 8.0, "variation": 0.0, "spacing": 3.0} # trees a hectare
 const PARK_FROM := Vector3(-12, 0, -8) # a park drawn across the street from the grove: undo and redo hold it with the rest (its trees thrown: bomb_street_plan.json, the render throws only near the camera)
 const PARK_TO := Vector3(12, 0, -24)
+const BRIDGE_OFF_M := 300.0 # the bridge's road, off the poles' street
+const BRIDGE_LIFT_M := 9.0 # its deck over the ground, at both ends
+const DECK_LEAST_M := 6.0 # more than the crater of a charge digs
+const BRIDGE_FORCE := 45 # a charge whose crater leaves no way over the deck
+const GROUND_STILL_M := 0.01
 
 var t: Node # the test (TestCase): its check and frames
 
@@ -74,3 +79,28 @@ func run() -> void:
 	t.check(CityStore.query(&"state_hash").whole == before.whole, "and left the city as it was")
 	t.check(CityStore.dispatch(&"redo", []), "redid the charge")
 	t.check(CityStore.query(&"state_hash").whole == after.whole, "redo brought the same down")
+
+
+## A charge on a bridge cuts its deck and digs no crater in the ground under it; a charge on that ground digs its crater and leaves
+## the bridge over it standing.
+func bridge() -> void:
+	var b: Dictionary = CityStore.query(&"city_bounds")
+	var a := Vector3(b.max.x + FIELD_M, 0, (b.min.z + b.max.z) * 0.5 - BRIDGE_OFF_M)
+	var e := a + Vector3(ROAD_LEN_M, 0, 0)
+	CityStore.dispatch(&"set_road_height", [BRIDGE_LIFT_M])
+	var laid: Dictionary = CityStore.dispatch(&"build_road", [a, e, false, Vector3.ZERO, CityStore.first_road(), PX, BRIDGE_LIFT_M])
+	CityStore.dispatch(&"set_road_height", [0.0])
+	t.check(laid.get("ok", false), "a road raised over the ground: %s" % [laid])
+	var mid := a.lerp(e, MIDDLE)
+	var hit: Dictionary = CityStore.query(&"raycast", [mid + Vector3.UP * FIELD_M, Vector3.DOWN])
+	var ground: float = CityStore.query(&"height_at", [mid.x, mid.z])
+	var deck: Vector3 = hit.get("position", mid)
+	t.check(deck.y - ground > DECK_LEAST_M, "it stands as a bridge (%.1f m over the ground)" % (deck.y - ground))
+	var damage: Dictionary = CityStore.query(&"damage_probe")
+	var on_deck: Dictionary = CityStore.dispatch(&"strike", [deck, BRIDGE_FORCE])
+	var heights: float = CityStore.query(&"height_at", [mid.x, mid.z])
+	t.check(on_deck.get("segments", 0) > 0 and absf(heights - ground) < GROUND_STILL_M, "a strong charge on the deck cut it and dug nothing in the ground under it")
+	CityStore.dispatch(&"undo", [])
+	var under: Dictionary = CityStore.dispatch(&"strike", [Vector3(mid.x, ground, mid.z), FORCE])
+	t.check(under.get("segments", 0) == 0 and CityStore.query(&"damage_probe").craters == damage.craters + 1, "a charge on the ground under it dug its crater and left the bridge over it")
+	CityStore.dispatch(&"undo", [])

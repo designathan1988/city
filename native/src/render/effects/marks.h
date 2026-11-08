@@ -62,6 +62,7 @@ public:
 		m.kind = c.hard ? MARK_CRATER_HARD : MARK_CRATER_EARTH;
 		m.x = c.x; m.z = c.z; m.size = c.radius * 2.f * CRATER_SCALE; m.seed = float(c.seed & SEED_MASK) / float(SEED_MASK);
 		m.y = top_ground(c.x, c.z, m.size * 0.5f, ground_of) + SURFACE_LIFT_M; // the pit the dig leaves lies below it
+		if (c.surface_gone(ground_of(c.x, c.z))) m.size = 0.f; // dug in a deck cut away since: nothing of it on the ground under it
 		return m;
 	}
 	// One flat quad over rolling ground is laid at the highest ground under it (`half` metres out each way), so no part of it is buried.

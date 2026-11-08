@@ -33,7 +33,7 @@ struct Blow {
 // The distance (m) from a point to a building's lot rectangle (0 inside it).
 float lot_distance(const Building &b, float x, float z);
 
-void cut_roads(Blow &b, float radius); // strike_roads.cpp: a crater that leaves no way past takes the stretch out of the network
+void cut_roads(Blow &b, float radius, float depth); // strike_roads.cpp: a crater that leaves no way past takes the stretch at its height out of the network
 void strike_buildings(Blow &b);
 void strike_ground(Blow &b); // the crater, the terrain, the roads it cuts, the furniture
 void strike_traffic(Blow &b); // the vehicles

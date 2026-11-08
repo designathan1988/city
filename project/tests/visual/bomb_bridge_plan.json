@@ -1,0 +1,24 @@
+{
+ "_doc": "The bomb on a bridge looked at in play (look.gd): a road raised 9 m over bare land at both ends (set_road_height), the strongest charge on its deck; the deck is cut and the ground under it keeps no crater, its heave nor its decal (the crater was dug in the deck, Crater::y). Then a small charge on the deck further on (the pointer's point is the deck): its crater's mark lies on the deck, which stands. setView's y is the ground's -z.",
+ "city": {"map": 0, "seed": 1, "generate": false},
+ "steps": [
+  {"hour": 16},
+  {"dispatch": "set_road_height", "args": [9.0]},
+  {"dispatch": "build_road", "args": [{"at": [-150, 0]}, {"at": [150, 0]}, false, {"v3": [0, 0, 0]}, {"profile": "urbanStreet"}, 0.25, 9.0]},
+  {"dispatch": "set_road_height", "args": [0.0]},
+  {"setView": [0, 0, 12, 60, 22]},
+  {"frames": 120},
+  {"shot": "bridge-before"},
+  {"dispatch": "strike", "args": [{"v3": [0, 29.1, 0]}, 45]},
+  {"blastShot": "bridge-blast-1.2s", "at": 1.2},
+  {"blastShot": "bridge-cut", "at": 20.0},
+  {"setView": [0, 0, 18, 60, 60]},
+  {"frames": 60},
+  {"shot": "bridge-cut-above"},
+  {"dispatch": "strike", "args": [{"at": [60, 0]}, 5]},
+  {"blastShot": "deck-small", "at": 12.0},
+  {"setView": [60, 0, 16, 30, 35]},
+  {"frames": 60},
+  {"shot": "deck-small-close"}
+ ]
+}

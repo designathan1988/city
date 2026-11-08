@@ -976,3 +976,17 @@ before the blow's clearing and keeps those it hides now; they are thrown as the 
 **Checks:** `bomb_street_plan.json` draws a park across the street (draw_building, FN_PARK): after the blow its trees lie thrown and
 burning, its paths and hedge stay; in the town's strikes of `strike_test` the gardens' trees in reach are thrown (`trees_thrown` in
 its log); `strike_test` (the park held by undo and redo with the rest), `edit_fuzz_test`, `save_undo_test` pass.
+
+## 2026-11-08 12:35: a charge on a bridge cuts its deck, never the ground under it (English)
+**Problem:** a charge on a bridge cut the deck and laid its crater's decal and heaved ground on the terrain under it; a crater in the
+ground under a bridge could cut the bridge over it.
+**Causes:** a crater kept no height (`Crater` x, z, radius, depth): once its deck was cut away its marks fell to the ground the
+render found there (`GroundCells::laid`); and `cut_roads` took every road the crater's disc covered, whatever its height.
+**Design:** a crater keeps the height of the surface it was dug in (`Crater::y`, the burst's; saved after the scars, a save from
+before reads the ground there); its decal and its heave are not laid where that surface is gone (`Crater::surface_gone`, one owner,
+read by `Marks::crater_mark` and `Heave::lay`). `cut_roads` takes only a road whose deck at the crater is within the crater's depth of
+the burst's height: a crater in the ground leaves the bridge over it, one in a deck the road under it.
+**Checks:** `strike_pole_cases.gd` `bridge()`: a road raised 9 m (set_road_height), the strongest charge on its deck cuts it and the
+ground under it keeps its height; a charge on that ground digs its crater and leaves the bridge; `bomb_bridge_plan.json`: the cut
+bridge with bare grass under the gap, a small charge's mark on the deck that stands. `strike_test`, `shoot_test` and `save_undo_test`
+(saves with craters, round trip), `edit_fuzz_test`, `bomb`, `bomb_street` pass.

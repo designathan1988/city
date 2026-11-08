@@ -52,6 +52,7 @@ void put_block(ByteWriter &w, const DamageState &d) {
 		w.put<uint32_t>(c.seed);
 		for (float v : { c.bx, c.bz, c.x, c.y, c.z, c.force }) w.put<float>(v);
 	}
+	for (const Crater &c : d.craters) w.put<float>(c.y);
 }
 
 bool get_block(ByteReader &r, DamageState &d) {
@@ -108,6 +109,8 @@ bool get_block(ByteReader &r, DamageState &d) {
 			c.bx = r.get<float>(); c.bz = r.get<float>(); c.x = r.get<float>(); c.y = r.get<float>(); c.z = r.get<float>(); c.force = r.get<float>();
 		}
 	}
+	if (r.o < r.n) // a save from before the craters' heights ends here: each lies in the ground under it
+		for (Crater &c : craters) c.y = r.get<float>();
 	if (!r.ok) return false;
 	d.restore(std::move(craters), std::move(ruins), std::move(scars));
 	return true;

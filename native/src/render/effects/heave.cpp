@@ -111,6 +111,10 @@ void Heave::lay(const Crater &c, const CityState &s) {
 	laid.z = c.z;
 	laid.reach = reach * (h.plate_in + h.plate_span) + (h.plate_w_min + h.plate_w_span) * h.scale_most;
 	laid.first = pieces_.size();
+	if (c.surface_gone(GroundCells::laid(s, c.x, c.z))) { // its deck was cut away: nothing heaved lies on the ground under it
+		laid_.push_back(laid);
+		return;
+	}
 	const auto place = [&](float a, float r) { return Vector3(c.x + std::cos(a) * r, 0, c.z + std::sin(a) * r); };
 	// The slabs of the surface broken at the lip, tipped, sunk a little where they came down.
 	const int slabs = int(std::lround(float(h.slabs_base) + reach * h.slabs_per_m));

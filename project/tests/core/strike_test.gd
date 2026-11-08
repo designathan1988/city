@@ -42,7 +42,9 @@ func _ready() -> void:
 	await _fall()
 	_effects()
 	_roads()
-	await StrikePoleCases.new(self).run()
+	var poles := StrikePoleCases.new(self)
+	await poles.run()
+	poles.bridge()
 	await StrikeLandmarkCases.new(self).run()
 	finish()
 

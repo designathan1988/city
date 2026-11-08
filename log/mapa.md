@@ -491,6 +491,8 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
   to rest (the pieces cut off, the bones, the guts), the damage probe's counts of them
 - `project/tests/visual/bomb_street_plan.json` — the bomb on a street with the player's utility poles: the crater on the raised road and
   the ground it heaved, the poles brought down, the wires hanging from those left standing
+- `project/tests/visual/bomb_bridge_plan.json` — the bomb on a bridge: the strongest charge cuts its deck and leaves the ground under
+  it bare; a small charge's mark lies on the deck that stands
 - `project/tests/visual/bomb_landmark_plan.json` — the bomb on the lot lab's church: broken in part (its own faces, its colours), then
   brought down in pieces of them, the heap lying on the ground
 - `project/tests/visual/signal_approach_plan.json` — two avenues crossing under signals: the lines between the lanes of one way solid

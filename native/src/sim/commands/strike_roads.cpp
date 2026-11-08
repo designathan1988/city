@@ -78,12 +78,15 @@ void cut(Blow &b, int seg, const Span &sp) {
 }
 } // namespace
 
-void cut_roads(Blow &b, float radius) {
+void cut_roads(Blow &b, float radius, float depth) {
 	std::vector<std::pair<int, Span>> hits;
 	b.s.roads.for_segments_near(b.x - radius, b.z - radius, b.x + radius, b.z + radius, [&](int sg) {
 		const RoadSegment &g = b.s.roads.segs[size_t(sg)];
 		const Span sp = covered(g, b.x, b.z, radius);
-		if (sp.any() && blocks(b, g, sp, radius)) hits.push_back({ sg, sp });
+		if (!sp.any()) return;
+		// only a road at the burst's own height: a crater in the ground leaves the bridge over it, a deck's the road under it
+		if (std::fabs(b.s.roads.seg_y(sg, (sp.t0 + sp.t1) * 0.5 * g.len) - double(b.height)) > double(depth)) return;
+		if (blocks(b, g, sp, radius)) hits.push_back({ sg, sp });
 	});
 	std::sort(hits.begin(), hits.end(), [](const auto &l, const auto &r) { return l.first < r.first; });
 	for (const auto &h : hits) {

@@ -185,7 +185,9 @@ void strike_ground(Blow &b) {
 	fell_trees(b, reach); // a tree falls to the blow that topples a pole
 	if (b.on_building) return; // a burst on a roof digs no crater
 	const float radius = blast::crater_radius(p, b.kg, b.soil), depth = blast::crater_depth(p, b.kg, b.soil);
-	j_add_crater(b.s, { b.x, b.z, radius, depth, uint8_t(b.soil == blast::Surface::HARD), b.bits(SALT_CRATER, 0) });
+	Crater c{ b.x, b.z, radius, depth, uint8_t(b.soil == blast::Surface::HARD), b.bits(SALT_CRATER, 0) };
+	c.y = b.height; // on a deck over the ground (a bridge) it is the deck's: cut away, it leaves nothing on the ground under it
+	j_add_crater(b.s, c);
 	if (b.soil == blast::Surface::EARTH) {
 		BrushDab d;
 		d.x = b.x; d.z = b.z; d.radius = radius; d.strength = depth; d.dt = 1.f; d.mode = BrushMode::LOWER;
@@ -193,7 +195,7 @@ void strike_ground(Blow &b) {
 		b.s.terrain.brush(d);
 		mark_ground(b.s, b.x - radius, b.z - radius, b.x + radius, b.z + radius);
 	}
-	cut_roads(b, radius);
+	cut_roads(b, radius, depth);
 }
 
 } // namespace city

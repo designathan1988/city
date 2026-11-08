@@ -18,9 +18,13 @@ namespace city {
 
 // A hole in the ground (or in the paving: `hard`), as dug by a surface burst.
 struct Crater {
+	static constexpr float UNKNOWN_Y = -1e30f; // a crater of a save from before its height: dug in whatever ground lies there
 	float x = 0, z = 0, radius = 0, depth = 0;
 	uint8_t hard = 0;
 	uint32_t seed = 0;
+	float y = UNKNOWN_Y; // the height of the surface it was dug in: the ground, or a deck over it
+	// Whether that surface is gone where it lies, the ground there now at `surface_y` (a deck cut away): nothing of it is laid there.
+	bool surface_gone(float surface_y) const { return y > UNKNOWN_Y && surface_y < y - depth; }
 };
 
 // What a building brought down leaves: its record (the render breaks the same body into the same pieces) and the lot it
