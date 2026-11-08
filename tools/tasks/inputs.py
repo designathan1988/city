@@ -18,9 +18,12 @@ GITLINK = "160000"  # a submodule entry: a commit id, not a file
 
 
 def _git(root: Path, *args: str, stdin: str | None = None) -> str:
-    r = subprocess.run(["git", "--no-optional-locks", "-C", str(root), *args], input=stdin, capture_output=True,
-                       text=True, encoding="utf-8", errors="surrogateescape", timeout=GIT_TIMEOUT_S,
-                       creationflags=NO_WINDOW)
+    # A git given no input reads NUL, never this process's own stdin: inherited, `cli.py serve`'s request pipe, on which a thread
+    # waits in a synchronous read, hung git at its start (Git for Windows asks each standard handle's name, and that query on a
+    # synchronous pipe waits for the pending read) until the next request came, or for ever when none would (2026-11-08).
+    feed = {"input": stdin} if stdin is not None else {"stdin": subprocess.DEVNULL}
+    r = subprocess.run(["git", "--no-optional-locks", "-C", str(root), *args], capture_output=True, text=True,
+                       encoding="utf-8", errors="surrogateescape", timeout=GIT_TIMEOUT_S, creationflags=NO_WINDOW, **feed)
     if r.returncode != 0:
         raise RuntimeError(f"git {' '.join(args)} failed ({r.returncode}): {r.stderr.strip()}")
     return r.stdout

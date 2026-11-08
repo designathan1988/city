@@ -3,6 +3,7 @@
 import json
 import subprocess
 import sys
+import threading
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
@@ -16,6 +17,7 @@ from support import PY, TOOLS, RepoCase, proc  # noqa: E402
 from tasks import cli  # noqa: E402
 
 SERVE_TIMEOUT_S = 120
+ANSWER_S = 60  # well under git's own deadline (inputs.GIT_TIMEOUT_S): a git hung on the pipe answers only past it
 
 
 class CliTest(RepoCase):
@@ -67,6 +69,24 @@ class CliTest(RepoCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         got = {d["id"]: d["status"] for d in map(json.loads, r.stdout.splitlines())}
         self.assertEqual(got, {"a": "PASS", "b": "FAIL", "c": "BROKEN"})
+
+    def test_serve_answers_with_its_request_pipe_open(self):
+        # One request and the pipe left open, as the converter keeps it: the answer comes with no other line. Its keying runs git,
+        # which once inherited the pipe and hung at its start while serve waited on it for the next line.
+        line = json.dumps({"id": "a", "name": "ok", "argv": [PY, "-c", "pass"], "timeout_s": 60, "inputs": ["a.txt"]})
+        p = subprocess.Popen([PY, str(TOOLS / "tasks" / "cli.py"), "serve", "--root", str(self.root)], stdin=subprocess.PIPE,
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, creationflags=proc.NO_WINDOW)
+        try:
+            p.stdin.write(line + "\n")
+            p.stdin.flush()
+            got = []
+            reader = threading.Thread(target=lambda: got.append(p.stdout.readline()), daemon=True)
+            reader.start()
+            reader.join(ANSWER_S)
+            self.assertTrue(got and json.loads(got[0])["status"] == "PASS", f"no answer in {ANSWER_S} s with the pipe open")
+        finally:
+            p.stdin.close()
+            p.wait(timeout=SERVE_TIMEOUT_S)
 
 
 if __name__ == "__main__":

@@ -127,6 +127,24 @@ replaced and read under their own lock (`cache.py` `write_atomic`, `read_shared`
 one takes the stored result, the cache holds the whole file); without the output locks it fails. The 24 tests that
 `unittest discover` finds pass; the gates pass on the six files.
 
+## 2026-11-08 04:35: a git started by `cli.py serve` hung on serve's own request pipe (English)
+**Problem:** the converter's whole-program convert died three times at the same step ("the compile of all_headers.cpp:
+BROKEN after 0 s", keying failed: `git ls-files` past its 120 s). Watched live: the git had one thread waiting in the kernel,
+no CPU, five modules loaded, a console of its own; its parent, a `serve` started that same second. Cause: `inputs._git` ran
+`subprocess.run` with no `stdin` when it had no input, so git inherited serve's stdin, the request pipe from the converter, on
+which serve's reader thread waits in a synchronous read. Git for Windows asks each standard handle's name at its start (to
+know a MSYS terminal), and that query on a synchronous pipe waits for the pending read: git went on only when another request
+came, never when the request that needed it was the only one (a single header compile, a fresh serve). Not the machine's load,
+not the worktree's sandbox (both were suspected first and ruled out by the stuck process itself).
+**Fix:** a git given no input reads NUL (`inputs._git`); every other child of the orchestrator already did (`proc.py`,
+`win32.JobTree`). Test: `test_serve_answers_with_its_request_pipe_open` (one request, the pipe left open: the answer must come
+in 60 s); with the old spawn it fails after 60 s, with the fix it passes.
+**And:** the pool read the repository again after every task (`snapshot.invalidate` on each finish), so each of the
+converter's hundreds of compiles, run in its cache outside the repository, listed it with git anew. Now only a task that may
+write into the repository does: a declared output inside it, or no declared output and a run inside it (`pool._writes_repo`,
+the contract in `Task`'s docstring). Test: `test_a_run_outside_the_repository_keeps_its_snapshot` (fails if every finish
+invalidates). The task's locks are named by `locks.task_lock_names` (pool.py stays under its 300 lines). 26 tests pass.
+
 
 # Texto completo das seções resumidas no CLAUDE.md (até 2026-11-06)
 

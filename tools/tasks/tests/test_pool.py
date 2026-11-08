@@ -1,7 +1,9 @@
 # pool: a hung task does not block a sibling, a failure SKIPs its dependents only, results are cached by content (hit on
 # unchanged inputs, miss on changed content), timeouts are never cached, outputs come back on a hit, two runs never write
 # one output together.
+import shutil
 import sys
+import tempfile
 import threading
 import time
 import unittest
@@ -13,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))  # tools:
 from support import RepoCase, py  # noqa: E402
 
 from tasks import Task, key_of, memo, run  # noqa: E402
+from tasks.pool import Pool  # noqa: E402
 from tasks.inputs import invalidate  # noqa: E402
 from tasks.task import CACHED_PASS, FAIL, PASS, SKIPPED, TIMEOUT  # noqa: E402
 
@@ -109,6 +112,23 @@ class PoolTest(RepoCase):
         again = run([Task("torn", py(code), timeout_s=60, inputs=["a.txt"], outputs=["out/y.txt"])], root=self.root)[0]
         self.assertEqual(again.status, CACHED_PASS)
         self.assertEqual(out.read_text(), "first second")
+
+    def test_a_run_outside_the_repository_keeps_its_snapshot(self):
+        # A task run elsewhere with no output in the repository cannot change what the next keys read: the repository is listed
+        # again only after the task run inside it.
+        outside = Path(tempfile.mkdtemp(prefix="tasks-outside-"))
+        try:
+            pool = Pool(root=self.root)
+            read_again = []
+            invalidate = pool.snapshot.invalidate
+            pool.snapshot.invalidate = lambda: (read_again.append(1), invalidate())
+            pool.submit(Task("elsewhere", py("pass"), timeout_s=60, cwd=str(outside)))
+            pool.submit(Task("here", py("pass"), timeout_s=60, after=["elsewhere"]))
+            pool.wait_all()
+            pool.close()
+            self.assertEqual(len(read_again), 1, "only the run inside the repository has it read again")
+        finally:
+            shutil.rmtree(outside, ignore_errors=True)
 
     def test_a_missing_declared_output_fails(self):
         t = Task("forgets", py("pass"), timeout_s=60, outputs=["never.txt"])

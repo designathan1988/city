@@ -3,7 +3,6 @@
 # deadline; recorded times order the queue (longest path first) and never stop anything.
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import threading
@@ -14,7 +13,7 @@ from typing import Callable
 
 from . import inputs, proc, verdicts
 from .cache import Cache, remove, safe
-from .locks import FileLock, take_all
+from .locks import FileLock, take_all, task_lock_names
 from .runs import RunRecord, check_graph
 from .task import (BROKEN, CACHEABLE, CACHED_FAIL, CACHED_PASS, FAIL, HERE, PASS, ROOT, SKIPPED, TIMEOUT, Result,
                    Task)
@@ -163,14 +162,8 @@ class Pool:
         return need
 
     def _lock_names(self, t: Task) -> list[tuple[str, bool]]:
-        """The OS locks a task holds while it runs, (name, shared), in one global order: its named resources, and one
-        exclusive lock per declared output. Two processes never write one output at once: a run that stored a result
-        while another still wrote the same file in place cached the half-written file (two converter extractions shared
-        one Jelly analysis and stored it torn, 2026-11-08)."""
-        named = [(safe(name), mode == "shared") for name, mode in (t.resources or {}).get("locks", {}).items()]
-        outputs = [(f"output-{hashlib.sha1(str(self.cache.output_path(o).resolve()).lower().encode()).hexdigest()}", False)
-                   for o in t.outputs]
-        return sorted(named + outputs)
+        named = {safe(name): mode for name, mode in (t.resources or {}).get("locks", {}).items()}
+        return task_lock_names(named, [self.cache.output_path(o) for o in t.outputs])
 
     def _take_locks(self, t: Task) -> list[FileLock] | None:
         return take_all(self.root / LOCKS, self._lock_names(t))
@@ -198,7 +191,7 @@ class Pool:
             hit = self._hit(t, key)
             if hit is not None:
                 with self.cond:
-                    self._finish(i, hit[0], wrote=hit[1])
+                    self._finish(i, hit[0], wrote=hit[1] and self._writes_repo(t))
                 return
         except Exception:
             with self.cond:
@@ -260,11 +253,21 @@ class Pool:
                 self.used[k] -= v
             for lock in self.held.pop(i, []):
                 lock.release()
-            self._finish(i, result, wrote=True)
+            self._finish(i, result, wrote=self._writes_repo(self.tasks[i]))
+
+    def _writes_repo(self, t: Task) -> bool:
+        """Whether what the task wrote may be a file the next key reads (Task's contract): a declared output inside the repository,
+        or no declared output and a run inside it. A run elsewhere with its outputs elsewhere (the converter's compiles, Jelly)
+        leaves the repository's snapshot as it was: each such task listed the repository again (2026-11-08)."""
+        def inside(p: Path) -> bool:
+            return p.resolve().is_relative_to(self.root)
+        if t.outputs:
+            return any(inside(self.cache.output_path(o)) for o in t.outputs)
+        return t.cwd is None or inside(Path(t.cwd) if os.path.isabs(t.cwd) else self.root / t.cwd)
 
     def _finish(self, i: str, result: Result, wrote: bool = False) -> None:
         """Under the condition: records the result, tells whoever listens, wakes the scheduler. `wrote`: a process ran or
-        outputs were restored, so the files the next key reads may have changed."""
+        outputs were restored where the next key reads (_writes_repo), so the repository's snapshot is read again."""
         self.results[i] = result
         self.state[i] = "done"
         if wrote:

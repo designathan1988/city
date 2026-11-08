@@ -3,6 +3,7 @@
 # and the build-once lock of materialize.
 from __future__ import annotations
 
+import hashlib
 import os
 from pathlib import Path
 
@@ -98,3 +99,13 @@ def take_all(folder: Path, names: list[tuple[str, bool]]) -> list[FileLock] | No
             return None
         got.append(lock)
     return got
+
+
+def task_lock_names(named: dict, outputs: list[Path]) -> list[tuple[str, bool]]:
+    """The OS locks a task holds while it runs, (name, shared), in one global order: its named resources (a file-safe name ->
+    "shared" or not), and one exclusive lock per declared output. Two processes never write one output at once: a run that stored
+    a result while another still wrote the same file in place cached the half-written file (two converter extractions shared one
+    Jelly analysis and stored it torn, 2026-11-08)."""
+    locks = [(name, mode == "shared") for name, mode in named.items()]
+    locks += [(f"output-{hashlib.sha1(str(p.resolve()).lower().encode()).hexdigest()}", False) for p in outputs]
+    return sorted(locks)

@@ -23,7 +23,9 @@ SPECS = "dist/tasks/specs"  # spec files of Python callables, named by their con
 @dataclass
 class Task:
     """A process with a deadline. `inputs` (repo-relative paths or globs, `!` excludes) and `extra` key its result;
-    `outputs` are restored from the cache on a hit; `after` names the tasks whose results it needs."""
+    `outputs` are restored from the cache on a hit; `after` names the tasks whose results it needs. A task that writes into the
+    repository runs there (`cwd` inside it) or declares what it writes there in `outputs`: the next keys read the repository again
+    only after such a task (Pool._writes_repo)."""
     name: str
     argv: list
     timeout_s: float
