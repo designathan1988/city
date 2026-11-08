@@ -25,7 +25,7 @@ namespace city {
 using namespace b40;
 
 namespace {
-constexpr float RING_TOLERANCE_M = 0.01f;
+constexpr float RING_TOLERANCE_M = 0.01f; // two ring points this near are one (a model's float rounding)
 enum { SPEC_NAME, SPEC_W, SPEC_D, SPEC_H, SPEC_SIZE };     // part_sizes rows
 enum { RECT_X, RECT_Y, RECT_WIDTH, RECT_DEPTH, RECT_SIZE }; // "at" of a block, a ring, an open ground
 constexpr int POINT = 2;                                    // [x, y]

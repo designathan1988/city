@@ -50,7 +50,7 @@ void panel(Gear &g, const Volume &v, const RoofPart &p, float eaves, const char 
 	float c = std::cos(p.turn), s = std::sin(p.turn);
 	auto corner = [&](float dx, float dy, float lift) {
 		float px = p.x + dx * c - dy * s, py = p.y + dx * s + dy * c;
-		return g.pl.lot.at(px, py, eaves + roof_height_at(v, px, py) + lift);
+		return g.pl.lot.at(px, py, eaves + roof_height_at(g.pl.data->shapes.roof, v, px, py) + lift);
 	};
 	float hw = p.w / 2, hd = p.d / 2, r = K.panel_rim;
 	g.shell.quad(corner(-hw - r, -hd - r, K.panel_lift), corner(hw + r, -hd - r, K.panel_lift), corner(hw + r, hd + r, K.panel_lift), corner(-hw - r, hd + r, K.panel_lift), g.pl.lot.e2,
@@ -104,7 +104,7 @@ void emit_roof_gear(Shell &shell, const Placed &pl, const Volume &v, float eaves
 	if (pl.coarse) return;
 	for (const RoofPart &p : v.gear) {
 		Gear g{ shell, pl, p.x, p.y };
-		float z = eaves + roof_height_at(v, p.x, p.y), hw = p.w / 2, hd = p.d / 2;
+		float z = eaves + roof_height_at(pl.data->shapes.roof, v, p.x, p.y), hw = p.w / 2, hd = p.d / 2;
 		switch (p.kind) {
 			case GEAR_SOLAR: panel(g, v, p, eaves, "gear_panel"); break;
 			case GEAR_SKYLIGHT: panel(g, v, p, eaves, "gear_glazing"); break;

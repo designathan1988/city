@@ -16,7 +16,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr int SEG_PREVIEW_STEPS = 24;
+constexpr int SEG_PREVIEW_STEPS = 24; // chords a segment's preview line is drawn with
 constexpr size_t JUNCTION_MARK_ARMS = 3;
 } // namespace
 

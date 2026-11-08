@@ -124,7 +124,7 @@ void emit_pitched(Shell &shell, const Placed &pl, const Volume &v, float eaves) 
 	const Body &b = *pl.b;
 	const Paint &rp = b.roof_of(v), &tp = b.paints[size_t(b.trim)], &wp = b.wall_of(v);
 	Lin trim = paint_lin(tp);
-	Pitch P{ shell, Basis{}, 0, 0, roof_slope(v), paint_lin(rp), trim * K.fascia, trim * K.soffit, wall_lin(pl, v, v.storeys - 1, 0),
+	Pitch P{ shell, Basis{}, 0, 0, roof_slope(pl.data->shapes.roof, v), paint_lin(rp), trim * K.fascia, trim * K.soffit, wall_lin(pl, v, v.storeys - 1, 0),
 		rp.finish, tp.finish, wp.finish };
 	shell.grime_floor = -FAR_AWAY;
 	RoofHide hidden(pl, v);
@@ -155,7 +155,7 @@ void emit_pitched(Shell &shell, const Placed &pl, const Volume &v, float eaves) 
 		P.L = v.w;
 		P.S = v.d;
 		const Paint &g = pl.data->color("sawtooth_glass");
-		P.sawtooth(saw_step(v), paint_lin(g), g.finish);
+		P.sawtooth(saw_step(pl.data->shapes.roof, v), paint_lin(g), g.finish);
 		return;
 	}
 	bool along_x = ridge_along_x(v);

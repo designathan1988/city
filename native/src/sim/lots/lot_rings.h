@@ -8,6 +8,8 @@
 
 namespace city {
 
+struct GenShapes; // the generator's shapes (sim/catalog/gen_shapes.h, reached through the state): the least lot and the lot rings' rules
+
 // Where a building can stand on a lot: the middle of its rectangle, its width along the front, its depth and which way it faces.
 struct LotStand {
 	double x = 0, z = 0, w = 0, d = 0, rot = 0;
@@ -27,20 +29,20 @@ bool inside_lot(const XZ &p, const std::vector<XZ> &ring);
 std::vector<XZ> facing_corners(const std::vector<XZ> &ring);
 LotStand lot_stand(const std::vector<XZ> &ring);
 // The rectangle from a to b square to `angle`, empty when under the least lot.
-std::vector<XZ> lot_rect(const XZ &a, const XZ &b, double angle);
+std::vector<XZ> lot_rect(const GenShapes &S, const XZ &a, const XZ &b, double angle);
 // The lines a cut runs along, in pairs of points: what the tool shows.
-std::vector<XZ> cut_lines(const std::vector<XZ> &ring, const LotCut &cut);
+std::vector<XZ> cut_lines(const GenShapes &S, const std::vector<XZ> &ring, const LotCut &cut);
 // The pieces of a ring after a cut, each with its front; fewer than two when nothing worth a lot is left on a side.
-std::vector<std::vector<XZ>> cut_lot(const std::vector<XZ> &ring, const LotCut &cut);
+std::vector<std::vector<XZ>> cut_lot(const GenShapes &S, const std::vector<XZ> &ring, const LotCut &cut);
 // Two rings that share a side as one, the first's front kept; empty when they share none.
-std::vector<XZ> joined_lots(const std::vector<XZ> &a, const std::vector<XZ> &b);
+std::vector<XZ> joined_lots(const GenShapes &S, const std::vector<XZ> &a, const std::vector<XZ> &b);
 // Whether a ring lies deep in another (a corner or the middle of one well inside the other).
-bool lots_overlap(const std::vector<XZ> &a, const std::vector<XZ> &b);
-bool big_enough(const std::vector<XZ> &ring);
+bool lots_overlap(const GenShapes &S, const std::vector<XZ> &a, const std::vector<XZ> &b);
+bool big_enough(const GenShapes &S, const std::vector<XZ> &ring);
 // The ring in triangles by ear clipping, three indices each: a lot may be concave.
 std::vector<int> lot_triangles(const std::vector<XZ> &ring);
 // A piece of a cut lot with its front: the side along the old front fa -> fb, or the side nearest it.
-std::vector<XZ> piece_with_front(const std::vector<XZ> &piece, const XZ &fa, const XZ &fb);
+std::vector<XZ> piece_with_front(const GenShapes &S, const std::vector<XZ> &piece, const XZ &fa, const XZ &fb);
 // The side from a to b bent through `through`: the points between them, a quadratic curve.
 std::vector<XZ> curved_side(const XZ &a, const XZ &b, const XZ &through);
 // What the corners near `at` take: the points move to `to`.

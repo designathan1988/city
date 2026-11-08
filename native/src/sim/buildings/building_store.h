@@ -85,7 +85,7 @@ private:
 	void mark_into(int id, std::vector<int64_t> &out) const;
 };
 
-constexpr float BUILDING_HASH_CELL = 64.f;
+constexpr float BUILDING_HASH_CELL = 64.f; // the cells buildings are filed in, for the queries near a point
 constexpr uint16_t BUILDING_AUTO_STYLE_MASK = 127; // style values below 128 are drawn from the seed
 
 } // namespace city

@@ -17,7 +17,7 @@ constexpr size_t LOT_SERIAL_MAX = 4; // below this, the pool's hand-off costs mo
 } // namespace
 
 namespace {
-constexpr uint32_t PLAYER_LOT_SALT = 0x10755eedu;
+constexpr uint32_t PLAYER_LOT_SALT = 0x10755eedu; // the player's lots' stream of a lot's id (any word)
 
 // The lots the streets propose give way to those the player drew, and a zoned one of the player's whose middle is in the cell joins them.
 std::vector<Lot> with_player_lots(std::vector<Lot> lots, int64_t key, const LotBook &players) {

@@ -46,11 +46,11 @@ EditResult refused(const char *why) {
 	return r;
 }
 
-bool free_of_lots(const LotBook &book, const std::vector<XZ> &q) {
+bool free_of_lots(const GenShapes &S, const LotBook &book, const std::vector<XZ> &q) {
 	double x0 = FAR_OFF_M, z0 = FAR_OFF_M, x1 = -FAR_OFF_M, z1 = -FAR_OFF_M;
 	bounds(q, x0, z0, x1, z1);
 	for (int i : book.near(x0, z0, x1, z1)) // two rings deep in each other share their bounds
-		if (lots_overlap(q, book.all()[size_t(i)].corners)) return false;
+		if (lots_overlap(S, q, book.all()[size_t(i)].corners)) return false;
 	return true;
 }
 
@@ -78,12 +78,12 @@ int add_piece(CityState &s, const std::vector<XZ> &corners, int zone) {
 }
 
 EditResult add_lot(CityState &s, const std::vector<XZ> &ring) {
-	if (!big_enough(ring)) return refused("hint.lot.small");
+	if (!big_enough(s.catalog.growth.shapes, ring)) return refused("hint.lot.small");
 	std::vector<XZ> land = lot_on_land(s.catalog.growth.shapes, s.roads, ring);
 	if (land.empty()) return refused("hint.lot.road");
 	std::rotate(land.begin(), land.begin() + lot_front_side(s.catalog.growth.shapes, s.roads, land), land.end());
 	const std::vector<XZ> corners = facing_corners(land);
-	if (!free_of_lots(s.lot_book, corners)) return refused("hint.lot.overlap");
+	if (!free_of_lots(s.catalog.growth.shapes, s.lot_book, corners)) return refused("hint.lot.overlap");
 	const int id = add_piece(s, corners, 0);
 	EditResult r = commit(s, { corners });
 	r.placed = id;
@@ -97,7 +97,7 @@ void mark_lot_cells(CityState &s, const std::vector<XZ> &ring) {
 	mark_box(s, x0, z0, x1, z1);
 }
 
-EditResult add_lot_rect(CityState &s, const XZ &a, const XZ &b, double angle) { return add_lot(s, lot_rect(a, b, angle)); }
+EditResult add_lot_rect(CityState &s, const XZ &a, const XZ &b, double angle) { return add_lot(s, lot_rect(s.catalog.growth.shapes, a, b, angle)); }
 
 EditResult add_lot_polygon(CityState &s, const std::vector<XZ> &points) { return add_lot(s, points); }
 
@@ -123,7 +123,7 @@ void cut_lots_by_roads(CityState &s, double minx, double minz, double maxx, doub
 		raze(s, c.lot.corners, razed);
 		j_remove_lot(s, c.lot.id);
 		for (const std::vector<XZ> &piece : c.pieces)
-			add_piece(s, facing_corners(piece_with_front(piece, c.lot.corners[0], c.lot.corners[1])), c.lot.zone);
+			add_piece(s, facing_corners(piece_with_front(s.catalog.growth.shapes, piece, c.lot.corners[0], c.lot.corners[1])), c.lot.zone);
 		touched.push_back(c.lot.corners);
 	}
 	commit(s, touched);
@@ -196,7 +196,7 @@ EditResult set_lot_front(CityState &s, int id, int side) {
 EditResult split_lot(CityState &s, int id, const LotCut &cut) {
 	const PlayerLot *l = s.lot_book.find(id);
 	if (!l) return refused("hint.lot.pick");
-	const std::vector<std::vector<XZ>> pieces = cut_lot(l->corners, cut);
+	const std::vector<std::vector<XZ>> pieces = cut_lot(s.catalog.growth.shapes, l->corners, cut);
 	if (pieces.size() < 2) return refused("hint.lot.small");
 	const PlayerLot old = *l;
 	EditResult razed;
@@ -211,7 +211,7 @@ EditResult split_lot(CityState &s, int id, const LotCut &cut) {
 EditResult join_lots(CityState &s, int a, int b) {
 	const PlayerLot *la = s.lot_book.find(a), *lb = s.lot_book.find(b);
 	if (!la || !lb || a == b) return refused("hint.lot.pick");
-	const std::vector<XZ> ring = joined_lots(la->corners, lb->corners);
+	const std::vector<XZ> ring = joined_lots(s.catalog.growth.shapes, la->corners, lb->corners);
 	if (ring.empty()) return refused("hint.lot.apart");
 	const PlayerLot first = *la, second = *lb;
 	EditResult razed;

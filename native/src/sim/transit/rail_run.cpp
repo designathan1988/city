@@ -19,7 +19,7 @@ constexpr float BRAKE_MARGIN = 1.5f; // braking harder than it plans to, when it
 constexpr float SHORT_LOOP = 0.6f, TRAIN_ROOM_M = 10.f; // the headway on a short line: a share of the loop each train has, at least a train and this
 constexpr float FREE_LINE_M = std::numeric_limits<float>::max();
 constexpr float ROAD_STEP_M = 4.f; // a road's middle line sampled this often for the crossings
-constexpr float CROSS_EPS = 1e-9f;
+constexpr float CROSS_EPS = 1e-9f; // a cross product this near nought: parallel
 
 float mod_loop(float s, float length) {
 	const float m = std::fmod(s, length);

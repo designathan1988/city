@@ -1,4 +1,4 @@
-// The building generator's shapes of the bodies: civic and service buildings, the facade grammar, the massing of houses, flats, shops, offices and works, the colours' nudge, a body read off a model: each block's fields (buildings.json "shapes", read by
+// The building generator's shapes of the bodies: civic and service buildings, the facade grammar, the massing of houses, flats, shops, offices and works, the colours' nudge, a body read off a model, a roof's defaults: each block's fields (buildings.json "shapes", read by
 // api/buildings_loader.cpp) and its struct.
 #pragma once
 
@@ -102,6 +102,12 @@ struct PaintShape {
 	XI(least_based_top) X(least_cell_m) X(hidden_m)
 struct SurveyShape {
 	SHAPE_DECLARE(B40_SURVEY)
+};
+
+#define B40_ROOF(X, XI, XD, XV, XVI) \
+	X(gable_deg) X(shed_deg) X(saw_step_m)
+struct RoofShape {
+	SHAPE_DECLARE(B40_ROOF)
 };
 
 } // namespace city::b40

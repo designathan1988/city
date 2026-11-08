@@ -1,4 +1,4 @@
-// The city generator's shapes of the lots: the blocks, the strips along the streets, the lots' sizes, a lot cut back to the land, the paving and the squares (growth.json "shapes", read by api/catalog_loader.cpp).
+// The city generator's shapes of the lots: the blocks, the strips along the streets, the lots' sizes, a lot cut back to the land, the paving, the squares and the drawn lots' cuts and joins (growth.json "shapes", read by api/catalog_loader.cpp).
 #pragma once
 
 #include "core/shape_fields.h"
@@ -43,6 +43,12 @@ struct PavingShape {
 	XD(file_cell_m) X(lawn_h) X(lattice_from_m) X(seam_m) X(plaza_wide)
 struct SquaresShape {
 	SHAPE_DECLARE(GEN_SHAPE_SQUARES)
+};
+
+#define GEN_SHAPE_LOT_RINGS(X, XI, XD, XV, XVI) \
+	XD(near_m) XD(cut_past_m) XD(side_least_m) XD(off_angle_m) XD(inner_share)
+struct LotRingsShape {
+	SHAPE_DECLARE(GEN_SHAPE_LOT_RINGS)
 };
 
 } // namespace city

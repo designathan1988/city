@@ -43,7 +43,7 @@ struct ZoneDef {
 	std::string building; // what the generator builds on it (b40 Kind by name: house, flats, tower, shop, office, works)
 	uint32_t color = 0; // RGBA8
 };
-constexpr int ZONE_CODES = 9;
+constexpr int ZONE_CODES = 9; // the zones table's rows (zones.json): the codes a road side and a lot carry
 constexpr int BASE_ZONE_SLOTS = BASE_COUNT;
 constexpr int ZONE_DENSITIES = 3; // low, medium, high
 // The zone codes the generator lays, by what each is (its base and density in zones.json), resolved and checked by the loader.
@@ -93,6 +93,7 @@ struct GrowthDef {
 	float organic_reach_m = 0;
 	int organic_extra_floors = 0;
 	float decay_span_min = 0;
+	float occupied_share = 0; // a lot is taken when a building stands within this share of their two half sizes
 	GenShapes shapes; // every value a city generator file tunes (growth.json "shapes")
 };
 

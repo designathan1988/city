@@ -19,8 +19,8 @@ namespace city {
 namespace {
 constexpr int ALPHA_BITS = 8; // parse_hex_color packs RGBA; a body paints in RGB
 constexpr float PICK_REACH_M = 20000.f; // past any camera the game has
-constexpr int RGB_BASE = 16;
-constexpr uint32_t RGB_LEAD = 1u << 24;
+constexpr int RGB_BASE = 16; // a colour written in hexadecimal
+constexpr uint32_t RGB_LEAD = 1u << 24; // a digit over RGB's 24 bits, dropped after: the leading zeros stay
 } // namespace
 
 Dictionary CityBuilder::body_info(int id) const {

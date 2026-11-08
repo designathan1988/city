@@ -47,9 +47,9 @@ void hip_patches(const Volume &v, float slope, std::vector<Patch> &out) {
 	}
 }
 
-std::vector<Patch> patches_of(const Volume &v) {
+std::vector<Patch> patches_of(const RoofShape &K, const Volume &v) {
 	std::vector<Patch> out;
-	const float slope = roof_slope(v), x0 = v.x, y0 = v.y, x1 = v.x + v.w, y1 = v.y + v.d;
+	const float slope = roof_slope(K, v), x0 = v.x, y0 = v.y, x1 = v.x + v.w, y1 = v.y + v.d;
 	switch (v.roof) {
 		case ROOF_GABLE:
 			if (ridge_along_x(v)) {
@@ -70,7 +70,7 @@ std::vector<Patch> patches_of(const Volume &v) {
 			else add(out, rect(x0, y0, x1, y1), 0, slope, -y0 * slope);
 			break;
 		default: { // sawtooth: a plan's walls leave no straight run for the glazing, so the teeth are ridges
-			const float run = saw_step(v);
+			const float run = saw_step(K, v);
 			for (float from = y0; from < y1 - SHORTEST_M; from += run) {
 				const float to = std::min(y1, from + run), mid = (from + to) * HALF;
 				add(out, rect(x0, from, x1, mid), 0, slope, -from * slope);
@@ -115,7 +115,7 @@ void emit_outline_roof(Shell &shell, const Placed &pl, const Volume &v, float ea
 	const Draw draw{ shell, hide };
 	const Ring plan = ring_of(v);
 	const std::vector<Ring> pieces = plan_triangles(plan);
-	const std::vector<Patch> patches = patches_of(v);
+	const std::vector<Patch> patches = patches_of(pl.data->shapes.roof, v);
 	for (const Patch &patch : patches) {
 		const Vector3 up = (lot.e2 - lot.e0 * patch.gx - lot.e1 * patch.gy).normalized();
 		auto at = [&](V2 p) { return lot.at(p.x, p.y, eaves + patch.at(p)); };

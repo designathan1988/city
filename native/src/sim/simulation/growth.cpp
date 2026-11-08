@@ -14,7 +14,9 @@
 namespace city {
 
 namespace {
-constexpr float OCCUPIED_SHARE = 0.8f;
+// two integer mixes: the civic pick's (Knuth's 2^32 over the golden ratio, xxHash's PRIME32_2, xorshifts of 15 and 13) and the age's
+// (the golden ratio, MurmurHash3's fmix32 multipliers, xorshifts of 13 and 16); a pick's chance in its low ten bits and its row in the
+// rest, out of a thousand; a decay span in tenths
 constexpr uint32_t CIVIC_MUL = 2654435761U, CIVIC_MIX = 2246822519U;
 constexpr uint32_t AGE_MIX = 0x9e3779b9U, AGE_MUL1 = 0x85ebca6bU, AGE_MUL2 = 0xc2b2ae35U;
 constexpr uint32_t CIVIC_CHANCE_BITS = 1023, CIVIC_PICK_SHIFT = 10, CIVIC_PICK_STEPS = 1000;
@@ -74,7 +76,7 @@ bool lot_occupied(const CityState &s, const Lot &l) {
 	bool hit = false;
 	s.buildings.query(float(l.x) - r, float(l.z) - r, float(l.x) + r, float(l.z) + r, [&](int id) {
 		const Building &b = s.buildings.items[id];
-		float reach = (float(std::min(l.w, l.d)) / 2 + std::min(b.w, b.d) / 2) * OCCUPIED_SHARE;
+		float reach = (float(std::min(l.w, l.d)) / 2 + std::min(b.w, b.d) / 2) * s.catalog.growth.occupied_share;
 		if (std::hypot(b.x - float(l.x), b.z - float(l.z)) < reach) hit = true;
 	});
 	// A square stands over many lots, its middle far from theirs.
@@ -92,7 +94,7 @@ BodyLook look_of(CityState &s, const Building &rec) {
 	if (it != s.buildings.looks.end()) return it->second;
 	const std::shared_ptr<const b40::Body> body_held = b40::record_body(s.buildings.designs, rec);
 	const b40::Body &body = *body_held;
-	return s.buildings.looks[key] = body_look(body, rec.fn);
+	return s.buildings.looks[key] = body_look(s.catalog.tune, body, rec.fn);
 }
 
 namespace {
@@ -124,7 +126,7 @@ Candidate draw_candidate(const CityState &s, const Building &lot, uint32_t seed)
 	const b40::Body &body = *body_held;
 	Candidate c;
 	c.seed = seed;
-	c.look = body_look(body, rec.fn);
+	c.look = body_look(s.catalog.tune, body, rec.fn);
 	for (const b40::Volume &v : body.volumes) c.storeys = std::max(c.storeys, v.top());
 	return c;
 }
@@ -137,9 +139,9 @@ Candidate best_candidate(CityState &s, const Building &lot) {
 	std::array<Candidate, LOOK_CANDIDATES> c;
 	s.jobs->parallel_for(c.size(), [&](size_t k) { c[k] = draw_candidate(s, lot, k == 0 ? lot.seed : hash_combine(lot.seed, uint32_t(k))); });
 	size_t best = 0;
-	float score = unlikeness(c[0].look, near);
+	float score = unlikeness(s.catalog.tune, c[0].look, near);
 	for (size_t k = 1; k < c.size(); k++) {
-		const float u = unlikeness(c[k].look, near);
+		const float u = unlikeness(s.catalog.tune, c[k].look, near);
 		if (u > score) {
 			score = u;
 			best = k;

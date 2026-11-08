@@ -11,6 +11,8 @@
 namespace city {
 
 namespace {
+// a ray's march over the ground: its step, and its longer steps while it is high over it (from 40 m up, at most 60 m), then halvings
+// round the crossing
 constexpr float RAY_STEP = 0.75f, RAY_FAST_ABOVE = 40.f, RAY_FAST_MAX = 60.f;
 constexpr int RAY_REFINE = 18;
 } // namespace

@@ -36,7 +36,7 @@ struct DamageEvent {
 enum CasualtyKind : uint32_t { CAS_DEAD = 0, CAS_TORN = 1, CAS_KNOCKED = 2 };
 enum CasLimb : uint32_t { CAS_LIMB_HEAD = 1u << 0, CAS_LIMB_ARM_L = 1u << 1, CAS_LIMB_ARM_R = 1u << 2, CAS_LIMB_LEG_L = 1u << 3, CAS_LIMB_LEG_R = 1u << 4 };
 constexpr uint32_t VEHICLE_PAINT_SHIFT = 8; // VEHICLE_BLOWN / VEHICLE_DROP: u = type | paint << this
-constexpr uint32_t CAS_KIND_MASK = 3, CAS_LOST_SHIFT = 2, CAS_SEVERED_SHIFT = 7, CAS_LIMB_MASK = 31;
+constexpr uint32_t CAS_KIND_MASK = 3, CAS_LOST_SHIFT = 2, CAS_SEVERED_SHIFT = 7, CAS_LIMB_MASK = 31; // a casualty's word: its kind's two bits, then the lost and the severed limbs' five each
 constexpr uint32_t CAS_CHARRED = 1u << 12, CAS_CRAWL = 1u << 13, CAS_OPENED = 1u << 14, CAS_BLED = 1u << 15, CAS_STRUCK_SHIFT = 16; // struck part 0 none, 1 head ... 6 legR
 constexpr int VEHICLE_BODY_ID_BASE = 8'000'000; // CASUALTY ids of a vehicle's occupants (the 4.0's convention)
 // CASUALTY: the walker's age (PedAge) + 1, 0 for an occupant, who has none. It travels in the event: the walker may be gone by

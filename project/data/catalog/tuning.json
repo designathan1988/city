@@ -213,12 +213,13 @@
   "duplicate_gap_m": 4.8
  },
  "inspect": {
-  "_doc": "The Inspector: the length a vehicle takes in a lane, and the least angle between the legs of a junction.",
+  "_doc": "The Inspector: the length a vehicle takes in a lane, and the least angle between the legs of a junction. radius_m: how far round a click the inspector looks for a building or a road.",
   "lane_vehicle_m": 12,
-  "min_leg_deg": 25
+  "min_leg_deg": 25,
+  "radius_m": 30
  },
  "build": {
-  "_doc": "The Build tools: the grid and module, the primitives' sizes, the limits of a body's sides, storeys, openings, projections, roofs and parts, and the snapping to roads and buildings. The body editor (sim/commands/body_*.cpp): a free relief steps by free_relief_step_m; a wing is wing_share of the block, a shaped block's inset shaped_inset_share; a block clicked in lands within click_in_m of another; stairs and bands: the shortest leg shortest_leg_m, the lowest flight lowest_flight_m and step lowest_step_m, a flight flight_width_m wide, a band band_width_m wide, nothing thinner than thinnest_m; a model placed against a road runs along its side when within along_side_cos of its depth, flush within flush_pad_m.",
+  "_doc": "The Build tools: the grid and module, the primitives' sizes, the limits of a body's sides, storeys, openings, projections, roofs and parts, and the snapping to roads and buildings. The body editor (sim/commands/body_*.cpp): a free relief steps by free_relief_step_m; a wing is wing_share of the block, a shaped block's inset shaped_inset_share; a block clicked in lands within click_in_m of another; stairs and bands: the shortest leg shortest_leg_m, the lowest flight lowest_flight_m and step lowest_step_m, a flight flight_width_m wide, a band band_width_m wide, nothing thinner than thinnest_m; a model placed against a road runs along its side when within along_side_cos of its depth, flush within flush_pad_m. handle_*: where the body editor's handles stand, by eye: a wall's arrows side_out_m out, the move and turn corner_out_m off the corners, the scale scale_out_m, the storeys above_roof_m over the roof, the floor's handles off_floor_m up, a lift lift_out_m out, a relief relief_out_m out.",
   "grid_m": 0.5,
   "module_m": 3,
   "wing_modules": 3,
@@ -271,7 +272,14 @@
   "band_width_m": 1.6,
   "thinnest_m": 0.12,
   "along_side_cos": 0.9,
-  "flush_pad_m": 8.0
+  "flush_pad_m": 8.0,
+  "handle_side_out_m": 1.6,
+  "handle_corner_out_m": 1.4,
+  "handle_scale_out_m": 0.8,
+  "handle_above_roof_m": 1.8,
+  "handle_off_floor_m": 0.3,
+  "handle_lift_out_m": 0.6,
+  "handle_relief_out_m": 1.12
  },
  "structure": {
   "_doc": "Bridges, viaducts, walls and tunnels: span and cable spacing, towers, piers and their caps, parapets, abutments and tunnel portals.",
@@ -341,9 +349,10 @@
   "splinter_chance": 0.6
  },
  "lot": {
-  "_doc": "The lot editor (sim/commands/lot_commands.cpp): a pointer within corner_take_m of a corner takes it, within side_reach_m of a side reaches it.",
+  "_doc": "The lot editor (sim/commands/lot_commands.cpp): a pointer within corner_take_m of a corner takes it, within side_reach_m of a side reaches it. angle_look_m: how far round a point a drawn lot looks for the street it squares to.",
   "corner_take_m": 0.8,
-  "side_reach_m": 1.2
+  "side_reach_m": 1.2,
+  "angle_look_m": 80
  },
  "shoot": {
   "_doc": "A round (sim/commands/shoot_*.cpp): a two-wheeler's rider is thrown from rider_back_m behind it with rider_push of the round's push, the wound drawn rider_hit_m over its ground.",
@@ -373,5 +382,17 @@
   "taper_turn_deg": 30,
   "taper_angle_deg": 12,
   "acute_deg": 12
+ },
+ "likeness": {
+  "_doc": "How alike two buildings look (sim/buildings/likeness.cpp), by eye: another form adds form_apart, another roof roof_apart, storeys apart by storeys_span or more storeys_apart (less in proportion), colours a colour_span of the three 8-bit channels apart a whole one; a neighbour LOOK_REACH_M off adds distance_weight; a volume is read in columns columns across, in the front row within front_row_m, spanning the body past whole_share of its width.",
+  "form_apart": 1.5,
+  "roof_apart": 0.7,
+  "storeys_apart": 0.8,
+  "storeys_span": 2,
+  "colour_span": 90,
+  "distance_weight": 2.5,
+  "front_row_m": 1,
+  "whole_share": 0.8,
+  "columns": 2
  }
 }

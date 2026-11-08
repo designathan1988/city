@@ -21,6 +21,7 @@ namespace city::b40 {
 	S(works, WorksShape, B40_WORKS) \
 	S(paint, PaintShape, B40_PAINT) \
 	S(survey, SurveyShape, B40_SURVEY) \
+	S(roof, RoofShape, B40_ROOF) \
 	S(parts, LotPartShape, B40_PARTS) \
 	S(back, LotBackShape, B40_BACK) \
 	S(boundary, LotBoundaryShape, B40_BOUNDARY) \

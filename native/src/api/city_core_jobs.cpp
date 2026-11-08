@@ -19,7 +19,7 @@ Dictionary CityProbes::bay_census() { return render_->bay_census(); }
 
 // The pool's rule on a pool of one worker, held busy while the jobs queue: a key's newest job replaces a queued one, and only that.
 Dictionary CityProbes::job_pool_probe() const {
-	constexpr int64_t CHUNK_ID = 7;
+	constexpr int64_t CHUNK_ID = 7; // any chunk's id: the probe's two jobs share it
 	std::mutex gate;
 	std::atomic<int> older{ 0 }, newer{ 0 }, other_lane{ 0 };
 	JobPool pool(1);

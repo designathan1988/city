@@ -19,9 +19,8 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float SIDE_OUT_M = 1.6f, CORNER_OUT_M = 1.4f, SCALE_OUT_M = 0.8f, ABOVE_ROOF_M = 1.8f, OFF_FLOOR_M = 0.3f, LIFT_OUT_M = 0.6f, RELIEF_OUT_M = 1.12f;
-constexpr float SHORTEST_M = 1e-3f;
-constexpr int MOST_SIDES_WITH_ARROWS = 8, BOX_CORNERS = 4;
+constexpr float SHORTEST_M = 1e-3f; // a side this short has no direction
+constexpr int MOST_SIDES_WITH_ARROWS = 8, BOX_CORNERS = 4; // past this many sides a volume's walls get no arrows (they crowd); a box's corners
 constexpr const char *MOVE_LABEL = "cmd.place.editBuilding";
 
 // A handle's name, as the scripts read it in a handle and send it back as a drag's "op": one table both ways.
@@ -81,6 +80,7 @@ Array CityBuilder::body_handles(int id, int vol, bool points, const Vector3 &eye
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	Array out;
 	const CityState &s = *state_;
+	const Tuning &tn = s.catalog.tune;
 	const std::shared_ptr<const b40::Body> held = body_of_record(s, id);
 	if (!held || vol < 0 || vol >= int(held->volumes.size())) return out;
 	const b40::Body &body = *held;
@@ -96,13 +96,13 @@ Array CityBuilder::body_handles(int id, int vol, bool points, const Vector3 &eye
 		const V2 d = f.dir(x, y);
 		return Vector3(d.x, 0, d.y);
 	};
-	out.push_back(handle(HandleKind::STOREYS, world(v.x + v.w / 2, v.y + v.d / 2, floor + body.block_z(v, v.top()) + b40::roof_rise(v) + ABOVE_ROOF_M), Vector3(0, 1, 0), -1, -1));
-	const float foot = floor + body.block_z(v, v.base) + OFF_FLOOR_M;
+	out.push_back(handle(HandleKind::STOREYS, world(v.x + v.w / 2, v.y + v.d / 2, floor + body.block_z(v, v.top()) + b40::roof_rise(s.buildings.designs.shapes.roof, v) + tn.build_handle_above_roof_m), Vector3(0, 1, 0), -1, -1));
+	const float foot = floor + body.block_z(v, v.base) + tn.build_handle_off_floor_m;
 	const b40::Ring ring = b40::ring_of(v);
 	if (v.sides() <= MOST_SIDES_WITH_ARROWS)
 		for (int side = 0; side < v.sides(); side++) {
 			const BlockWall w = block_wall(v, side);
-			const float mx = w.a.x + w.tx * w.length / 2 + w.nx * SIDE_OUT_M, my = w.a.y + w.ty * w.length / 2 + w.ny * SIDE_OUT_M;
+			const float mx = w.a.x + w.tx * w.length / 2 + w.nx * tn.build_handle_side_out_m, my = w.a.y + w.ty * w.length / 2 + w.ny * tn.build_handle_side_out_m;
 			out.push_back(handle(HandleKind::SIDE, world(mx, my, foot), along(w.nx, w.ny), side, -1));
 		}
 	if (points || v.sides() > BOX_CORNERS)
@@ -127,8 +127,8 @@ Array CityBuilder::body_handles(int id, int vol, bool points, const Vector3 &eye
 		const float dx = c.x - mid_x, dy = c.y - mid_y, length = std::max(std::hypot(dx, dy), SHORTEST_M);
 		return world(c.x + dx / length * by, c.y + dy / length * by, z);
 	};
-	out.push_back(handle(HandleKind::MOVE, off_corner(order[0], CORNER_OUT_M, floor), Vector3(), -1, -1));
-	out.push_back(handle(HandleKind::ROTATE, off_corner(order[1], CORNER_OUT_M, floor), Vector3(), -1, -1));
+	out.push_back(handle(HandleKind::MOVE, off_corner(order[0], tn.build_handle_corner_out_m, floor), Vector3(), -1, -1));
+	out.push_back(handle(HandleKind::ROTATE, off_corner(order[1], tn.build_handle_corner_out_m, floor), Vector3(), -1, -1));
 	if (v.base == 0) { // the block's own floor, raised or lowered: at its nearest corner
 		float lx = v.x, ly = v.y, nearest = BIG;
 		for (const V2 &p : ring) {
@@ -140,12 +140,12 @@ Array CityBuilder::body_handles(int id, int vol, bool points, const Vector3 &eye
 			}
 		}
 		const float dx = lx - (v.x + v.w / 2), dy = ly - (v.y + v.d / 2), length = std::max(std::hypot(dx, dy), SHORTEST_M);
-		out.push_back(handle(HandleKind::LIFT, world(lx + dx / length * LIFT_OUT_M, ly + dy / length * LIFT_OUT_M, floor + body.block_z(v, 0) + body.level_h(0) / 2), Vector3(0, 1, 0), -1, -1));
+		out.push_back(handle(HandleKind::LIFT, world(lx + dx / length * tn.build_handle_lift_out_m, ly + dy / length * tn.build_handle_lift_out_m, floor + body.block_z(v, 0) + body.level_h(0) / 2), Vector3(0, 1, 0), -1, -1));
 	}
 	const int side = int(pick.get("side", -1)), bay = int(pick.get("bay", -1)), storey = int(pick.get("storey", 0));
 	if (side >= 0 && side < v.sides() && bay >= 0) { // the bay picked pushed and pulled: an arrow off its middle, at the depth it stands at
 		const BlockWall w = block_wall(v, side);
-		const float a = (float(bay) + 0.5f) * w.length / float(b40::bays_of(v, side)), depth = b40::relief_depth(v, side, bay, storey), off = depth + RELIEF_OUT_M;
+		const float a = (float(bay) + 0.5f) * w.length / float(b40::bays_of(v, side)), depth = b40::relief_depth(v, side, bay, storey), off = depth + tn.build_handle_relief_out_m;
 		const float z = floor + body.block_z(v, v.base + storey) + body.level_h(v.base + storey) / 2;
 		Dictionary h = handle(HandleKind::RELIEF, world(w.a.x + w.tx * a + w.nx * off, w.a.y + w.ty * a + w.ny * off, z), along(w.nx, w.ny), side, -1);
 		h["depth"] = depth;
@@ -154,7 +154,7 @@ Array CityBuilder::body_handles(int id, int vol, bool points, const Vector3 &eye
 		out.push_back(h);
 	}
 	const V2 near = box[size_t(order[0])];
-	out.push_back(handle(HandleKind::SCALE, off_corner(order[0], SCALE_OUT_M, floor + eaves), along(near.x - mid_x, near.y - mid_y).normalized(), -1, -1));
+	out.push_back(handle(HandleKind::SCALE, off_corner(order[0], tn.build_handle_scale_out_m, floor + eaves), along(near.x - mid_x, near.y - mid_y).normalized(), -1, -1));
 	return out;
 }
 

@@ -69,8 +69,8 @@ struct BodyKey {
 	bool operator!=(const BodyKey &o) const { return !(*this == o); }
 };
 struct BodyKeyHash {
-	static constexpr uint64_t MIX = 0x9e3779b97f4a7c15ull;
-	static constexpr int SHIFT = 31, HALF_BITS = 32, BYTE_BITS = 8;
+	static constexpr uint64_t MIX = 0x9e3779b97f4a7c15ull; // 2^64 over the golden ratio
+	static constexpr int SHIFT = 31, HALF_BITS = 32, BYTE_BITS = 8; // the product's high half folded down; a word's halves; a byte
 	static uint64_t mix(uint64_t h, uint64_t v) {
 		h = (h ^ v) * MIX;
 		return h ^ (h >> SHIFT);

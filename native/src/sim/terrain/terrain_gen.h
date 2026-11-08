@@ -19,7 +19,7 @@ class JobPool;
 
 class TerrainGen {
 public:
-	static constexpr uint32_t FLAT_BIT = 0x80000000U;
+	static constexpr uint32_t FLAT_BIT = 0x80000000U; // a seed's top bit: the land is flat
 	static constexpr double OCEAN_Y = 0; // the sea plane; the visual palette reads the same level
 
 	static constexpr float NO_WATER = TERRAIN_NO_WATER;

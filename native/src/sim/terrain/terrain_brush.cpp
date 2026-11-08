@@ -23,6 +23,7 @@ constexpr float SUGARLOAF_TALL = 1.6f, SUGARLOAF_POWER = 0.7f;
 constexpr float NEIGHBOURS = 4.f;
 
 constexpr float RAISE_LOBE = 0.45f, RIVER_LOBE = 0.6f; // the outline's noise cell, as a share of the radius
+// where in the noise the raise's and the river's outlines are read (any offsets apart), and its seed: "land" in ASCII
 constexpr float RAISE_SALT_X = 41.3f, RAISE_SALT_Z = -17.9f, RIVER_SALT_X = 23.9f, RIVER_SALT_Z = 31.4f;
 constexpr uint32_t OUTLINE_SEED = 0x6c616e64u;
 

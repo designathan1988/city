@@ -22,7 +22,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float RAY_MAX_M = 30000.f;
+constexpr float RAY_MAX_M = 30000.f; // past any map: a ray that meets nothing by here meets nothing
 constexpr float RAY_DIR_MIN = 1e-6f; // a ray with a shorter ground direction is vertical
 constexpr float UNSEEN_BOUND = 1e9f; // an empty city_bounds still has finite numbers
 constexpr float HALF = 0.5f;

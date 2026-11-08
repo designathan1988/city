@@ -17,7 +17,8 @@ namespace city {
 	S(lots, LotsShape, GEN_SHAPE_LOTS) \
 	S(lot_land, LotLandShape, GEN_SHAPE_LOT_LAND) \
 	S(paving, PavingShape, GEN_SHAPE_PAVING) \
-	S(squares, SquaresShape, GEN_SHAPE_SQUARES)
+	S(squares, SquaresShape, GEN_SHAPE_SQUARES) \
+	S(lot_rings, LotRingsShape, GEN_SHAPE_LOT_RINGS)
 
 struct GenShapes {
 #define GEN_SHAPE_MEMBER(key, Type, LIST) Type key;

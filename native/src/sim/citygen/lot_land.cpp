@@ -103,7 +103,7 @@ std::vector<XZ> lot_on_land(const GenShapes &S, const RoadNetwork &net, const st
 		}
 	if (!best) return {};
 	const std::vector<XZ> land = paving_ring(*best);
-	return big_enough(land) ? square_corners(S, land) : std::vector<XZ>();
+	return big_enough(S, land) ? square_corners(S, land) : std::vector<XZ>();
 }
 
 std::vector<std::vector<XZ>> lot_pieces(const GenShapes &S, const RoadNetwork &net, const std::vector<XZ> &ring, bool &crossed) {
@@ -116,7 +116,7 @@ std::vector<std::vector<XZ>> lot_pieces(const GenShapes &S, const RoadNetwork &n
 	for (const Path64 &p : land_of(S, ring, paving)) {
 		std::vector<XZ> piece = paving_ring(p);
 		left += std::abs(lot_area(piece));
-		if (big_enough(piece)) pieces.push_back(std::move(piece));
+		if (big_enough(S, piece)) pieces.push_back(std::move(piece));
 	}
 	crossed = std::abs(lot_area(ring)) - left >= K.crossed_area_m2;
 	return pieces;

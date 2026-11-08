@@ -205,6 +205,7 @@ void load_growth(DataReader r, const Dictionary &t, Catalog &c) {
 	g.organic_reach_m = num(r, t, "organic_reach_m");
 	g.organic_extra_floors = r.integer(t, "organic_extra_floors");
 	g.decay_span_min = num(r, t, "decay_span_min");
+	g.occupied_share = num(r, t, "occupied_share");
 }
 
 void load_maps(DataReader top, const Dictionary &t, Catalog &c, std::vector<std::string> &scenic) {

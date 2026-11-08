@@ -38,7 +38,7 @@ String hex_of(const uint8_t *from, const uint8_t *to) {
 }
 
 constexpr uint64_t WORD_MUL = 0xff51afd7ed558ccdull; // eight bytes at a time: a whole map's heights in milliseconds
-constexpr int WORD_SHIFT = 33;
+constexpr int WORD_SHIFT = 33; // the finaliser's shift (MurmurHash3's fmix64), with WORD_MUL its multiplier
 
 uint64_t fold(uint64_t h, const void *data, size_t bytes) {
 	const uint8_t *p = static_cast<const uint8_t *>(data);

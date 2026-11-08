@@ -14,7 +14,6 @@ namespace city {
 static constexpr double SHORTEST_SIDE2_M2 = 1e-6; // a side this short has no direction
 
 namespace {
-constexpr double LOT_ANGLE_LOOK_M = 80;
 
 XZ point(const Vector3 &v) { return { v.x, v.z }; }
 
@@ -76,8 +75,8 @@ Dictionary CityCore::lot_zone(int id, int zone) {
 double CityCore::lot_angle_at(const Vector3 &p) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
-	double best = LOT_ANGLE_LOOK_M * LOT_ANGLE_LOOK_M, angle = 0;
-	s.roads.for_segments_near(p.x - LOT_ANGLE_LOOK_M, p.z - LOT_ANGLE_LOOK_M, p.x + LOT_ANGLE_LOOK_M, p.z + LOT_ANGLE_LOOK_M, [&](int seg) {
+	double best = s.catalog.tune.lot_angle_look_m * s.catalog.tune.lot_angle_look_m, angle = 0;
+	s.roads.for_segments_near(p.x - s.catalog.tune.lot_angle_look_m, p.z - s.catalog.tune.lot_angle_look_m, p.x + s.catalog.tune.lot_angle_look_m, p.z + s.catalog.tune.lot_angle_look_m, [&](int seg) {
 		const Quad &q = s.roads.segs[size_t(seg)].q;
 		const double dx = q.x1 - q.x0, dz = q.z1 - q.z0, len2 = std::max(dx * dx + dz * dz, SHORTEST_SIDE2_M2);
 		const double t = std::clamp(((p.x - q.x0) * dx + (p.z - q.z0) * dz) / len2, 0.0, 1.0);
@@ -94,7 +93,7 @@ double CityCore::lot_angle_at(const Vector3 &p) {
 PackedVector3Array CityCore::lot_land(const Vector3 &a, const Vector3 &b, double angle) {
 	PackedVector3Array out;
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
-	const std::vector<XZ> rect = lot_rect({ a.x, a.z }, { b.x, b.z }, angle);
+	const std::vector<XZ> rect = lot_rect(state_->catalog.growth.shapes, { a.x, a.z }, { b.x, b.z }, angle);
 	if (rect.empty()) return out;
 	for (const XZ &p : lot_on_land(state_->catalog.growth.shapes, state_->roads, rect)) out.push_back(Vector3(float(p.x), state_->terrain.height_at(float(p.x), float(p.z)), float(p.z)));
 	return out;
@@ -155,7 +154,7 @@ Array CityCore::lots() {
 PackedVector3Array CityCore::lot_cut_lines(int id, int kind, int parts, const Vector3 &a, const Vector3 &b) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const PlayerLot *l = state_->lot_book.find(id);
-	return l ? on_ground(*state_, cut_lines(l->corners, cut_of(kind, parts, a, b))) : PackedVector3Array();
+	return l ? on_ground(*state_, cut_lines(state_->catalog.growth.shapes, l->corners, cut_of(kind, parts, a, b))) : PackedVector3Array();
 }
 
 } // namespace city

@@ -63,15 +63,15 @@ void hit_sides(const Body &b, const Volume &v, int vol, const LocalRay &r, BodyH
 	}
 }
 
-void hit_top(const Body &b, const Volume &v, int vol, const LocalRay &r, BodyHit &best) {
+void hit_top(const RoofShape &K, const Body &b, const Volume &v, int vol, const LocalRay &r, BodyHit &best) {
 	if (r.dz > -GRAZING) return;
 	// Down from the ridge's height to the eaves, the first point under the roof's surface: a pitched roof is hit on its slope.
-	float eaves = b.block_z(v, v.top()), rise = roof_rise(v), t = -1;
+	float eaves = b.block_z(v, v.top()), rise = roof_rise(K, v), t = -1;
 	const Ring ring = ring_of(v);
 	for (int i = 0; i <= ROOF_STEPS; i++) {
 		float z = eaves + rise * (1 - float(i) / float(ROOF_STEPS)), at = (z - r.oz) / r.dz, x = r.ox + r.dx * at, y = r.oy + r.dy * at;
 		if (at <= 0 || !contains_point(ring, { x, y })) continue;
-		if (z <= eaves + roof_height_at(v, x, y) + EPS) {
+		if (z <= eaves + roof_height_at(K, v, x, y) + EPS) {
 			t = at;
 			break;
 		}
@@ -128,7 +128,7 @@ BodyHit pick_body(const CityState &s, const Ray3 &ray, float reach) {
 		for (size_t i = 0; i < body.volumes.size(); i++) {
 			if (body.volumes[i].mode == BLOCK_VOID || body.volumes[i].mode == BLOCK_INTERSECT) continue; // space, not a wall to hit
 			hit_sides(body, body.volumes[i], int(i), r, best);
-			hit_top(body, body.volumes[i], int(i), r, best);
+			hit_top(s.buildings.designs.shapes.roof, body, body.volumes[i], int(i), r, best);
 		}
 		if (best.t < was || best.volume != before) {
 			best.id = id;

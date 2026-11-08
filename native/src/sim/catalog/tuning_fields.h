@@ -60,7 +60,14 @@
 	XD(junction, taper_min) XD(junction, taper_slope) XD(junction, width_jump) XD(junction, width_jump_run) \
 	XD(junction, max_bend) XD(junction, kerb_radius_min) XD(junction, corner_miter) XD(junction, bulb_half_max) \
 	XD(junction, bulb_len_min) XD(junction, bent_radius) XD(junction, bevel_pad) XD(junction, taper_min_step) \
-	XD(junction, fillet_share) XD(junction, taper_turn_deg) XD(junction, taper_angle_deg) XD(junction, acute_deg)
+	XD(junction, fillet_share) XD(junction, taper_turn_deg) XD(junction, taper_angle_deg) XD(junction, acute_deg) \
+	X(likeness, form_apart) X(likeness, roof_apart) X(likeness, storeys_apart) X(likeness, storeys_span) \
+	X(likeness, colour_span) X(likeness, distance_weight) X(likeness, front_row_m) X(likeness, whole_share) \
+	X(likeness, columns) \
+	X(inspect, radius_m) \
+	XD(lot, angle_look_m) \
+	X(build, handle_side_out_m) X(build, handle_corner_out_m) X(build, handle_scale_out_m) X(build, handle_above_roof_m) \
+	X(build, handle_off_floor_m) X(build, handle_lift_out_m) X(build, handle_relief_out_m)
 
 #define CITY_TUNING_DECLARE(group, name) float group##_##name = 0;
 #define CITY_TUNING_DECLARE_COUNT(group, name) int group##_##name = 0;

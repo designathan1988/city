@@ -11,7 +11,7 @@ namespace city {
 
 namespace {
 constexpr float HASH_CELL_M = 32.f; // about the widest dab the spacing test looks round
-constexpr int STREAMS = 8;
+constexpr int STREAMS = 8; // a dab's hash makes room for this many streams of draws
 
 template <typename T>
 int take_slot(std::vector<T> &list, SlotIds &free) {

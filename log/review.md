@@ -3400,6 +3400,26 @@ the tolerances. The structures' and the stays' tones join the pending render pal
 
 **What changes.** Nothing: the hashes, the numbers and every photo the same.
 
+### 6.52 B2, C14 (the rest of the simulation and the core's tools): their tunables to their tables, their definitions sourced (2026-11-08)
+
+**Cause and fix.** The last tunables of `sim` and `api` sat beside their definitions: how alike two buildings look (form, roof,
+storeys, colour, a neighbour's distance, the columns a body is read in), when a lot is taken by a building, the roof a volume
+takes when it names no pitch (a 30 degree gable, a 12 degree shed, sawtooth teeth of 6 m), the drawn lots' cut and join rules, how
+far the inspector and a drawn lot look round a point, where the body editor's handles stand. They went to their tables: a
+`likeness` group of tuning (the `Tuning` growth and the park probe hand the likeness functions), `growth.json` `occupied_share`
+(`GrowthDef`), a `roof` block of buildings.json shapes (the roof helpers take it, from the generator's data their five callers
+hold), a `lot_rings` block of growth.json shapes (the lot ring functions the commands, the core's lot tools and the lot land call
+take the generator's shapes), tuning's `inspect.radius_m`, `lot.angle_look_m` and `build.handle_*`.
+
+The least lot was written twice (`MIN_LOT_M` of the lot rings, the generator's `lots.least_m`, both lots.ts's `MIN_LOT`): the lot
+rings read the generator's. A degree was written by hand beside the core's (`180 / 3.14159...` in the commands: the core's
+`RAD_TO_DEG_D`, added beside its float, the same double), a quarter turn too (`PI_F / 2`, the same float). The stand's search, a
+curved side's chords and the ray's march stay as the methods' resolution, said so. The definitions say what they are: the integer
+mixes (Knuth's, xxHash's PRIME32_2, MurmurHash3's fmix32 and fmix64), the save versions, the casualty word's layout, the zone
+table's rows, the units, the sentinels and tolerances.
+
+**What changes.** Nothing: the hashes, the numbers and every photo the same.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

@@ -612,6 +612,38 @@
       "plaza_wide"
      ],
      "strict": true
+    },
+    "lot_rings": {
+     "type": "object",
+     "properties": {
+      "_doc": {
+       "type": "string"
+      },
+      "near_m": {
+       "type": "number"
+      },
+      "cut_past_m": {
+       "type": "number"
+      },
+      "side_least_m": {
+       "type": "number"
+      },
+      "off_angle_m": {
+       "type": "number"
+      },
+      "inner_share": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "_doc",
+      "near_m",
+      "cut_past_m",
+      "side_least_m",
+      "off_angle_m",
+      "inner_share"
+     ],
+     "strict": true
     }
    },
    "required": [
@@ -625,9 +657,13 @@
     "lots",
     "lot_land",
     "paving",
-    "squares"
+    "squares",
+    "lot_rings"
    ],
    "strict": true
+  },
+  "occupied_share": {
+   "type": "number"
   }
  },
  "required": [
@@ -638,7 +674,8 @@
   "organic_extra_floors",
   "decay_span_min",
   "plan",
-  "shapes"
+  "shapes",
+  "occupied_share"
  ],
  "strict": true
 }
