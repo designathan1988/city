@@ -12,7 +12,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr uint32_t CABLE_RGB = 0xd8dcdeU;
+constexpr uint32_t CABLE_RGB = 0xd8dcdeU; // the stays' steel, by eye (a render palette's: log/pendencias.md)
 constexpr float HALF = 0.5f;
 const Vector3 UP(0, 1, 0);
 

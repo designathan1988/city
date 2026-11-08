@@ -18,7 +18,7 @@ using Clipper2Lib::Paths64;
 using Clipper2Lib::Point64;
 
 namespace {
-constexpr double PARALLEL = 1e-6;
+constexpr double PARALLEL = 1e-6; // two edges this near parallel do not meet
 
 Point64 unit_point(double x, double z) { return Point64(std::llround(x * PAVING_UNITS_PER_M), std::llround(z * PAVING_UNITS_PER_M)); }
 

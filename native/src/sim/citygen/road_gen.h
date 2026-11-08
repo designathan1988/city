@@ -19,7 +19,7 @@ struct GenProfiles : RoadRoles {
 	std::vector<double> asph_right; // per profile id
 };
 
-constexpr int NODE_FIELDS = 3, SEG_FIELDS = 5;
+constexpr int NODE_FIELDS = 3, SEG_FIELDS = 5; // a node's numbers (x, z, y) and a segment's (a, b, profile, zone left, zone right)
 
 struct GeneratedRoads {
 	std::vector<double> nodes; // x, z, y per node

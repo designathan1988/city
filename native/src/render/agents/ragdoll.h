@@ -52,7 +52,7 @@ private:
 	std::vector<BodyWall> walls_;
 	godot::Vector3 now_[PARTICLES], was_[PARTICLES];
 	godot::Vector3 last_side_[RAGDOLL_PARTS];
-	static constexpr int MOST_STICKS = 48;
+	static constexpr int MOST_STICKS = 48; // room for every stick begin links (the limbs, the braces and the folds)
 	Stick sticks_[MOST_STICKS];
 	int sticks_used_ = 0;
 	float still_ = 0;
