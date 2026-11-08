@@ -110,6 +110,7 @@ e apagados.
 | Scripts that do not compile | `python tools/tasks/cli.py run scripts` (`tools/build/check_scripts.gd`) |
 | Orchestrator | `python tools/tasks/cli.py run <suite or task> [--list]`, `serve` (JSON lines, for Node tools), `status`; its tests: `python -m unittest discover tools/tasks/tests` |
 | Exportar e empacotar | `tools/build/build.sh export && tools/build/build.sh package` |
+| Android library and APK | `tools/build/android.sh core`, then `tools/build/android.sh export` (`dist/android/Roadcraft.apk`; tools from `C:/Projects/toolchains`, release keystore from `KEYSTORE_ENV`) |
 | Captures | `tools/build/build.sh capture [folder]` (= `cli.py run capture`, hidden, one task per plan) |
 | Olhar o jogo por um plano | `godot --path project --resolution 1920x1080 res://tests/visual/look.tscn -- --no-flow --plan=<json> --capture-dir=<pasta>` |
 | Photo difference | `python tools/build/photodiff.py <before> <after> <out>` (a missing side, an empty set or any changed pixel fails); its tests: `python -m unittest discover tools/build/tests` |
@@ -121,6 +122,8 @@ e apagados.
 **O que um clone precisa:** `native/godot-cpp` (API 4.7) e as DLLs em `project/bin` já vêm no repositório: o jogo abre sem
 compilar. Meshoptimizer e Clipper2 vêm pelo CMake na primeira compilação. À parte: Godot 4.7.2, llvm-mingw
 `20261020-ucrt-x86_64` (`C:/Projects/toolchains`), CMake 4.4, Node 23.6+, Python 3.12. A DLL pede x86-64-v3 (AVX2, FMA, BMI).
+Android (arm64, armv8-a): JDK 17, Android SDK with build-tools 35.0.1 and platform 35, NDK r28b (all in `C:/Projects/toolchains`;
+the JDK and SDK paths go in Godot's editor settings, `export/android/*`) and a release keystore outside the repository.
 
 **DLLs in a rebase:** never pick a side: rebuild both from the merged sources and run the suite. The link is reproducible
 (`--no-insert-timestamp`): the same sources give the same bytes, so a rebuild of unchanged sources leaves the DLLs unchanged.
@@ -160,7 +163,7 @@ compilar. Meshoptimizer e Clipper2 vêm pelo CMake na primeira compilação. À 
 - `gates/`: regras verificadas, `rules.json`, `owners.json`, `schemas/`.
 - `tasks/`: the one orchestration owner of every support tool (tasks as data: inputs keyed by content, a deadline each,
   a verdict; parallel pool, cache in `dist/cache/tasks`, Job Object kill, hidden desktop; `suites.json`).
-- `build/`: `build.sh`, `quick.sh` (a thin call of `tools/tasks`), `pgo.sh`, `photodiff.py`, `free_dll.sh`,
+- `build/`: `build.sh`, `android.sh` (the Android library and APK), `quick.sh` (a thin call of `tools/tasks`), `pgo.sh`, `photodiff.py`, `free_dll.sh`,
   `check_scripts.gd` (scripts that do not compile), `rename_english.py` (the English rename, with `--check`).
 - `analysis/`: `sampler.py` with `sampler_report.py` and `unwind.py`, `causes.py` with `detectors.py` and `code_parse.py`,
   `arch.py` e `arch/` (o analisador de arquitetura), `arch_eval/` (gabaritos

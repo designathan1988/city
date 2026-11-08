@@ -690,3 +690,40 @@ Ressalvas abertas:
 - `FORCE_SCALE` was removed: the force goes from 1 to 50 directly.
 - The smaller cloud is not a defect: in the city the click hit a low building between towers; on open land it is full size.
 - Os 15 gates restantes estão em `tools/gates/rules.json` e nos schemas, que só o usuário altera; a ordem "você muda o hook" foi sobre a prova do commit.
+
+## 2026-11-07 22:20: the Android APK
+- User's order: an Android version, the APK now, download what is needed. Delivered `dist/android/Roadcraft.apk` (80 MB, arm64-v8a,
+  targetSdk 36, signed v2 and v3). Not run on a device: none was connected.
+- Toolchain in `C:/Projects/toolchains`: JDK 17 (Adoptium 17.0.21+9), the SDK's platform-tools, build-tools 35.0.1, platform 35 and
+  NDK r28b, the versions the Godot 4.7 Android export page lists. The new `sdkmanager` (cmdline-tools 16111833) is a shim over the
+  "android" CLI and refused the package names, so the packages came straight from Google's `repository2-3.xml`. Godot's editor
+  settings point `export/android/java_sdk_path` and `android_sdk_path` there.
+- Causes, each with its fix:
+  - `native/CMakeLists.txt` coded for x86-64-v3 on every target: `-march=x86-64-v3` now only when the target processor is x86_64;
+    arm64 keeps armv8-a. `-ffp-contract=off` stays on both (arm64 compilers fuse by default), so a city is the same number on both.
+  - `way_body.cpp` read the clearance only with AVX2 gathers: the gather path is under `__AVX2__`, and a machine without it goes
+    through the scalar loops that already finished the quads (the same `Field::clear_at` sum, floor and bounds, the same count of
+    looks). The PC is untouched: the x86 objects built with both build folders' exact flags, before and after, are the same (the
+    release bitcode byte for byte, the debug object but for the COFF timestamp byte); the Windows DLLs were not rebuilt.
+  - `CITY_PROFILE` had no "off": any value but `generate` read the profile. `none` is now none (the profile is of the PC build, and
+    the NDK's clang is older than the one that wrote it).
+  - `LINK_SEARCH_START/END_STATIC` would ask for a static libc, libm and libdl on Android: set for the other targets only. The
+    library needs only the system's `libc.so`, `libm.so` and `libdl.so`, exports `citycore_library_init` and has 16 KB segments
+    (Android 15+). A scratch configure of both Windows folders gives the same compile line for all 458 files and the same link.
+  - Terrain3D's `.gdextension` header, written with `#` (uncommitted work of the audit session), made Godot's ConfigFile lose
+    `[configuration]`: `entry_symbol` read as missing and Terrain3D loaded on no platform. ConfigFile.load of HEAD, of the header
+    stripped and of a `;` header keeps the key, only `#` loses it: the header is `;` now. The Android arm64 libraries came back
+    from HEAD (upstream 1.1.0).
+  - Android needs ETC2/ASTC: `import_etc2_astc` is on, and the 23 VRAM textures import both (21 ETC2 and 2 ASTC in the APK); the
+    PC's BPTC is unchanged.
+- `tools/build/android.sh` (`core`, `export`): its own script, since `build.sh` sits at the 90-line limit and the Android toolchain
+  is its own concern. The release keystore (keytool, RSA 2048) and its env file are in `C:/Projects/toolchains/keystores`, never in
+  the repository.
+- Verified: both `android.sh` targets end to end, `apksigner verify`, `aapt2 dump badging`, the APK's libraries and data. Gates on
+  the changed files: only `MAPA_DESATUALIZADO` for files the audit session moved out or added (its batch updates the map). Open:
+  the run on a phone, touch, the renderer on mobile (`log/pendencias.md`).
+- Files: created `tools/build/android.sh` and `project/bin/libcitycore.android.template_release.arm64.so` (ignored by git);
+  changed `native/CMakeLists.txt`, `native/src/sim/traffic/way_body.cpp`, `tools/build/build.sh` (header),
+  `project/bin/citycore.gdextension`, `project/addons/terrain_3d/terrain.gdextension`, `project/export_presets.cfg`,
+  `project/project.godot`, 23 `.import` files, `CLAUDE.md`, `log/mapa.md`, `log/pendencias.md`; restored
+  `project/addons/terrain_3d/bin/libterrain.android.{debug,release}.arm64.so`.

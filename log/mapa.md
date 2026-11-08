@@ -4,9 +4,9 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 
 <!-- MAPA:INICIO -->
 **Raiz e ferramentas**
-- `native/CMakeLists.txt` — Godot 4.7 API, precisão simples, saída em `project/bin`
+- `native/CMakeLists.txt` — Godot 4.7 API, single precision, output in `project/bin`: the Windows DLLs (x86-64-v3) and the Android library (arm64)
 - `native/toolchain-mingw.cmake` — compilação cruzada Windows via llvm-mingw
-- `project/export_presets.cfg` · `project/project.godot` — exportação Windows e projeto Godot (autoloads, cena inicial)
+- `project/export_presets.cfg` · `project/project.godot` — the Windows and Android (arm64 APK) exports and the Godot project (autoloads, first scene, ETC2/ASTC import for Android)
 
 **API GDExtension — native/src/api**
 - `native/src/api/body_doc.cpp` · `native/src/api/body_doc.h` — a building as a document (a lot project, a building of a city) made into a body
@@ -487,6 +487,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `tools/assets/make_furniture.py` — furniture.json: do que cada móvel é feito, parte por parte, nos tamanhos de interiors.json
 - `tools/assets/make_pole_parts.py` — the poles of each style in streets.json: urban (cross-arm over the street, B1, and the S1 rack) and rural (cross-arm on top, N1), the wire seats and the light height, from CELESC E-313.0002
 - `tools/build/build.sh` — build the two DLLs, export and package; tests and captures run through `tools/tasks` (hidden, on a private desktop: never a window on the user's screen)
+- `tools/build/android.sh` — the Android build: the arm64 core library (NDK r28b) and the signed APK (`dist/android/Roadcraft.apk`)
 - `tools/build/free_dll.sh` — a DLL presa por um jogo aberto vai para `dist/held`, e a compilação segue sem fechar o jogo
 - `tools/build/pgo.sh` — o perfil da DLL de release: uma DLL instrumentada joga escondida e as contagens vão para `native/pgo/citycore.profdata`
 - `tools/build/quick.sh` · `tools/build/check_scripts.gd` · `tools/build/photodiff.py` · `tools/build/rename_english.py` — a change checked in one command (a thin call of `tools/tasks`: only the tasks whose inputs changed); every GDScript compiled at once; the difference of two photo runs; the English rename of the tool folders (pending: the plan without `--apply`)

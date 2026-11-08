@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build, test and package commands (documented in CLAUDE.md > Comandos). Usage: tools/build/build.sh <target>. Game ships for Windows only.
+# Build, test and package commands (documented in CLAUDE.md > Comandos). Usage: tools/build/build.sh <target>. Windows here; the Android library and APK in android.sh.
 # Env: GODOT (Godot 4.7 binary), MINGW (llvm-mingw root, Windows cross-build), OUT (package folder). The Windows build uses
 # Ninja: on a Windows host CMake would otherwise pick NMake, which is not installed.
 set -euo pipefail

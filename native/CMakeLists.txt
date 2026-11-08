@@ -10,19 +10,24 @@ set(GODOTCPP_TARGET "template_release" CACHE STRING "template_release for the ex
 set(GODOTCPP_PRECISION "single" CACHE STRING "" FORCE)
 set(GODOTCPP_DISABLE_EXCEPTIONS ON CACHE BOOL "" FORCE)
 
-# Code for what the renderer already asks of the machine: AVX2, FMA and BMI (x86-64-v3, Haswell in 2013 and Excavator on; Vulkan on
-# Windows starts there). floor and round are one instruction and not a call into the C library, and the vectorizer has eight lanes.
+# The PC build codes for what the renderer already asks of the machine: AVX2, FMA and BMI (x86-64-v3, Haswell in 2013 and Excavator
+# on; Vulkan on Windows starts there). floor and round are one instruction and not a call into the C library, and the vectorizer has
+# eight lanes. The Android build (arm64) keeps the ISA's baseline, armv8-a, where floor and round are one instruction as well.
 # Contraction stays off: a product and a sum rounded apart give the same bits with or without FMA, so a city is the same number on
-# any machine and the goldens hold. No errno: sqrt is one instruction too. Everything compiled here takes these: godot-cpp and
-# meshoptimizer are called from the same loops.
+# any machine and the goldens hold (arm64 compilers fuse by default). No errno: sqrt is one instruction too. Everything compiled here
+# takes these: godot-cpp and meshoptimizer are called from the same loops.
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
-    add_compile_options(-march=x86-64-v3 -ffp-contract=off -fno-math-errno -fno-trapping-math -fvisibility-inlines-hidden)
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|amd64)$")
+        add_compile_options(-march=x86-64-v3)
+    endif()
+    add_compile_options(-ffp-contract=off -fno-math-errno -fno-trapping-math -fvisibility-inlines-hidden)
 endif()
 
 # The export's DLL: one program for the optimizer across every file (ThinLTO, https://clang.llvm.org/docs/ThinLTO.html), and with the
 # profile of a run of the game (native/pgo, tools/build/pgo.sh) it knows which branch is taken and what is worth inlining. The tests'
-# DLL leaves both out: it is linked many times an hour. CITY_PROFILE=generate is the instrumented build pgo.sh trains.
-set(CITY_PROFILE "use" CACHE STRING "use: the release DLL reads native/pgo/citycore.profdata; generate: instrumented, for tools/build/pgo.sh")
+# DLL leaves both out: it is linked many times an hour. CITY_PROFILE=generate is the instrumented build pgo.sh trains; none is a build
+# the profile was not trained on (the Android arm64 library: pgo.sh runs the PC game, and the NDK's clang is an older one).
+set(CITY_PROFILE "use" CACHE STRING "use: the release DLL reads native/pgo/citycore.profdata; generate: instrumented, for tools/build/pgo.sh; none: no profile")
 set(CITY_PROFILE_DATA "${CMAKE_CURRENT_SOURCE_DIR}/pgo/citycore.profdata")
 if(GODOTCPP_TARGET STREQUAL "template_release" AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options(-flto=thin)
@@ -30,7 +35,7 @@ if(GODOTCPP_TARGET STREQUAL "template_release" AND CMAKE_CXX_COMPILER_ID MATCHES
     if(CITY_PROFILE STREQUAL "generate")
         add_compile_options(-fprofile-generate)
         add_link_options(-fprofile-generate)
-    elseif(EXISTS "${CITY_PROFILE_DATA}")
+    elseif(CITY_PROFILE STREQUAL "use" AND EXISTS "${CITY_PROFILE_DATA}")
         add_compile_options("-fprofile-use=${CITY_PROFILE_DATA}" -Wno-profile-instr-out-of-date -Wno-profile-instr-unprofiled -Wno-backend-plugin)
         add_link_options("-fprofile-use=${CITY_PROFILE_DATA}")
     endif()
@@ -119,10 +124,13 @@ set_target_properties(citycore PROPERTIES
     CXX_EXTENSIONS OFF
     CXX_VISIBILITY_PRESET hidden
     POSITION_INDEPENDENT_CODE ON
-    LINK_SEARCH_START_STATIC ON
-    LINK_SEARCH_END_STATIC ON
     LIBRARY_OUTPUT_DIRECTORY "$<1:${OUTPUT_DIR}>"
     RUNTIME_OUTPUT_DIRECTORY "$<1:${OUTPUT_DIR}>"
     PREFIX "lib"
     OUTPUT_NAME "citycore${GODOTCPP_SUFFIX}"
 )
+# The library carries its own runtime, nothing to ship beside it. On Android the NDK already links the C++ runtime statically
+# (ANDROID_STL=c++_static), and libc, libm and libdl are the system's: a shared object finds them only as shared libraries.
+if(NOT ANDROID)
+    set_target_properties(citycore PROPERTIES LINK_SEARCH_START_STATIC ON LINK_SEARCH_END_STATIC ON)
+endif()

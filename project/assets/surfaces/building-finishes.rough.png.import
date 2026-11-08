@@ -4,15 +4,16 @@ importer="2d_array_texture"
 type="CompressedTexture2DArray"
 uid="uid://cj11n52fu57h2"
 path.s3tc="res://.godot/imported/building-finishes.rough.png-e64a12ff37ef33eb3011947ed1181d5b.s3tc.ctexarray"
+path.etc2="res://.godot/imported/building-finishes.rough.png-e64a12ff37ef33eb3011947ed1181d5b.etc2.ctexarray"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/surfaces/building-finishes.rough.png"
-dest_files=["res://.godot/imported/building-finishes.rough.png-e64a12ff37ef33eb3011947ed1181d5b.s3tc.ctexarray"]
+dest_files=["res://.godot/imported/building-finishes.rough.png-e64a12ff37ef33eb3011947ed1181d5b.s3tc.ctexarray", "res://.godot/imported/building-finishes.rough.png-e64a12ff37ef33eb3011947ed1181d5b.etc2.ctexarray"]
 
 [params]
 

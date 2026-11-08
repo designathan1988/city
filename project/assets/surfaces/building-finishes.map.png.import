@@ -4,15 +4,16 @@ importer="2d_array_texture"
 type="CompressedTexture2DArray"
 uid="uid://k520h3ot0boi"
 path.s3tc="res://.godot/imported/building-finishes.map.png-efce679442a22df9a26ba94868614b9f.s3tc.ctexarray"
+path.etc2="res://.godot/imported/building-finishes.map.png-efce679442a22df9a26ba94868614b9f.etc2.ctexarray"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/surfaces/building-finishes.map.png"
-dest_files=["res://.godot/imported/building-finishes.map.png-efce679442a22df9a26ba94868614b9f.s3tc.ctexarray"]
+dest_files=["res://.godot/imported/building-finishes.map.png-efce679442a22df9a26ba94868614b9f.s3tc.ctexarray", "res://.godot/imported/building-finishes.map.png-efce679442a22df9a26ba94868614b9f.etc2.ctexarray"]
 
 [params]
 

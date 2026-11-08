@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://bj2fq3ag7fjlu"
 path.s3tc="res://.godot/imported/kerb.normal.png-d8378201a51f90a96a1bf59d563b29dc.s3tc.ctex"
+path.etc2="res://.godot/imported/kerb.normal.png-d8378201a51f90a96a1bf59d563b29dc.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/surfaces/kerb.normal.png"
-dest_files=["res://.godot/imported/kerb.normal.png-d8378201a51f90a96a1bf59d563b29dc.s3tc.ctex"]
+dest_files=["res://.godot/imported/kerb.normal.png-d8378201a51f90a96a1bf59d563b29dc.s3tc.ctex", "res://.godot/imported/kerb.normal.png-d8378201a51f90a96a1bf59d563b29dc.etc2.ctex"]
 
 [params]
 

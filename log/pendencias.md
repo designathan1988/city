@@ -77,3 +77,15 @@ O que falta fazer, por área.
   - `look.gd` does not count incomplete photos (`failures += CaptureWait.incomplete`): left out because the file holds the
     user's uncommitted work; `tools/ports/landscape/plan-poses.json` takes zero shots and now fails.
   - `dist/cache/tasks` grows without a bound (tools/tasks keeps every result).
+- Android (the first APK, 2026-11-07, `tools/build/android.sh`): built and signed, never run on a device (none was connected), so
+  whether it opens, and at what frame rate, is unknown.
+  - Touch: the camera has only mouse gestures (`camera_gestures.gd`). A finger is the left button through Godot's mouse emulation,
+    so the tools work but the camera cannot turn, pan or zoom: pinch, twist and two-finger drag are missing. The HUD is laid out
+    for a desktop screen.
+  - Renderer: `rendering_method.mobile` is `forward_plus`, as on the PC; whether a phone holds it, or the Mobile renderer is
+    needed (and which shaders that breaks), waits for a device.
+  - The search's clearance reads (`way_body.cpp`) are scalar on arm64 (no gather there), and the Android library has no PGO
+    profile (`pgo.sh` trains the PC DLL): both to measure once a device runs the game.
+  - No project icon (`application/config/icon`): the export warns and the launcher shows Godot's.
+  - The Android library is not in git (`project/bin/*.so` is ignored, like the Linux one): a clone runs `android.sh core` first.
+  - The release keystore is in `C:/Projects/toolchains/keystores`, outside the repository; a store upload needs the user's own key.
