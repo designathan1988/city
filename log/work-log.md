@@ -915,3 +915,21 @@ as an evenly lit grey-blue afternoon.
 - Created `project/render/{eye.gd, light_meter.gd, sun_cascades.gd, sky_level_table.gd}`, `project/render/shaders/
   {sky_level_table.gdshader, emission_light.gdshaderinc}`, `native/src/render/lamp_photometry.h`,
   `project/tests/core/sky_exposure_test.{gd,tscn}`; changed the rest listed in this commit; deleted nothing.
+
+## Offices lit by their own schedule (2026-11-08 12:30, branch `realism`)
+
+From above at 22h the centre was a carpet of lit windows: every room, office or home, took the share of people awake at home
+(`awake_by_hour`, 63 % at 22h), and the far level took it whole while the near level took 64 % of it (the rooms in use).
+- Cause: one share for every use; the rooms-in-use share written three times (`building_pane.gdshaderinc` 0.64, `signature_look`
+  ROOMS_IN_USE) and missing from `far_room_lit`.
+- Source: the DOE Commercial Reference Building, large office, new construction (ASHRAE 90.1-2004), weekday lighting schedule
+  BLDG_LIGHT_SCH (EnergyPlus testfiles/RefBldgLargeOfficeNew2004_Chicago.idf): 0.9 from 8 to 17h, 0.3 at 20-21h, 0.1 at 22h, 0.05
+  at night.
+- Code: daylight.json office_lit_by_hour, published by Daylight as the shader global offices_lit; `building_lamps.gdshaderinc`
+  rooms_lit(office) is the one rule (a home's awake share times ROOMS_IN_USE, an office's schedule), read by the near panes, the far
+  levels and the signature buildings alike.
+- Verified: `quick.sh` 46 of 47 then the photo: `03-rua_noite`'s near building is offices, dark at 22h (none of its ten windows drew
+  the 10 %), accepted; hidden capture of the Centro at 22h from above looked at: dark towers, scattered lit flats.
+- Changed `project/data/game/daylight.json`, its schema, `project/project.godot`, `project/render/daylight.gd`,
+  `project/render/shaders/{building_lamps.gdshaderinc, building_pane.gdshaderinc, building_far.gdshader,
+  building_far_window.gdshaderinc, signature_look.gdshaderinc}`; created and deleted nothing.

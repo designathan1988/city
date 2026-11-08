@@ -147,8 +147,9 @@ func set_hour(hour: float) -> void:
 	_env.glow_intensity = _d.glow_intensity
 	RenderingServer.global_shader_parameter_set(&"night", night)
 	RenderingServer.global_shader_parameter_set(&"sun_direction", _sun.global_basis.z)
-	var awake := _awake_share(hour)
+	var awake := _by_hour(_d.awake_by_hour, hour)
 	RenderingServer.global_shader_parameter_set(&"rooms_awake", awake)
+	RenderingServer.global_shader_parameter_set(&"offices_lit", _by_hour(_d.office_lit_by_hour, hour))
 	RenderingServer.global_shader_parameter_set(&"outside_on", _d.outside_all_night + (1.0 - _d.outside_all_night) * awake)
 
 
@@ -167,9 +168,8 @@ func _cast() -> void:
 	_sun.shadow_enabled = shadows_on and night < _d.moon_casts_until
 
 
-## The share of people awake at a clock time, between the survey's hourly figures: the rooms lit at night.
-func _awake_share(hour: float) -> float:
-	var table: Array = _d.awake_by_hour
+## A share by the clock, between a table's hourly figures from midnight: the people awake, the offices lit.
+func _by_hour(table: Array, hour: float) -> float:
 	var h := fposmod(hour, float(table.size()))
 	var i := int(h)
 	return lerpf(table[i], table[(i + 1) % table.size()], h - float(i))

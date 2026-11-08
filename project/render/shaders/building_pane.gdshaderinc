@@ -192,8 +192,10 @@ vec3 room_hung(vec3 room, vec3 o, vec3 d, vec2 size, float lot) {
 // they show. Who is awake is the room's; whether this stretch of it is lit and how much is `lot`, a bay's, as the
 // 4.0's vRoomLot is of what stands within 2.7 m: a wide floor is lit in patches, never all or nothing.
 vec3 pane_lamp(uint slot, float lot, float office, vec3 seen) {
-	float awake = step(1.0 - rooms_awake, h01(slot * 2654435761u + 977u));
-	float lit = step(fract(lot * 5.31), 0.64) * awake * room_level(lot) * building_night_windows;
+	// a home: who is awake there, and of their rooms the ones in use; an office: its lighting schedule
+	float awake = step(1.0 - (office > 0.5 ? offices_lit : rooms_awake), h01(slot * 2654435761u + 977u));
+	float in_use = office > 0.5 ? 1.0 : step(fract(lot * 5.31), ROOMS_IN_USE);
+	float lit = in_use * awake * room_level(lot) * building_night_windows;
 	vec3 tint = room_lamp(lot, office);
 	tint = mix(tint, tv_light(TIME, lot), (1.0 - office) * step(1.0 - TV_SHARE, fract(lot * 3.71)));
 	return tint * lit * seen * room_light_level(office);

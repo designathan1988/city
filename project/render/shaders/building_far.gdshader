@@ -65,7 +65,7 @@ void fragment() {
 		float lot = h01(room_cell(room));
 		float sub = smoothstep(0.5, 1.5, max(foot.x, foot.y));
 		vec3 lamp = far_room_lamp(lot, office, sub);
-		float lit = far_room_lit(lot, sub);
+		float lit = far_room_lit(lot, sub, office);
 		// the glazing of the levels before it (building_far_window.gdshaderinc): a mirror of the sky, the room through it
 		vec3 V = normalize(v_world - CAMERA_POSITION_WORLD);
 		float cosv = clamp(dot(-V, n), 0.0, 1.0);

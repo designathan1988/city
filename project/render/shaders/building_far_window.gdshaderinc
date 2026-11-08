@@ -65,7 +65,7 @@ void far_window(vec2 uv, vec4 code, uint seed, vec3 n, vec3 V, float depth, inou
 	albedo = albedo * (1.0 - frame - glass - solid - reveal) + wall_seen * reveal + trim * frame + vec3(glazing_f0((flags & WINDOW_FLAG_OFFICE) != 0 ? 1.0 : 0.0)) * glass + shutter * solid;
 	float lot = float((h >> 8u) & 1023u) / 1024.0, office = (flags & WINDOW_FLAG_OFFICE) != 0 ? 1.0 : 0.0;
 	float far_sub = smoothstep(0.5, 1.5, max(foot.x, foot.y));
-	float lit = far_room_lit(lot, far_sub);
+	float lit = far_room_lit(lot, far_sub, office);
 	vec3 lamp = far_room_lamp(lot, office, far_sub);
 	float through = glazing_through(glazing_f0(office), cosv); // what the glazing lets out at this angle
 	vec3 room = room_tone(V, n, office > 0.5 ? FLOOR_STONE : fract(lot * 11.3) < 0.5 ? FLOOR_BOARD : FLOOR_TILE);

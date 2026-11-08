@@ -136,9 +136,6 @@ O que falta fazer, por área.
   under the former ACES and light, and are not re-derived; photo-scanned surface textures (2K) and decals for wear were not
   added (a download the user must approve).
 - The physical night (2026-11-08, log/work-log.md "The physical night"):
-  - Office towers light their rooms by the share of people awake at home (`awake_by_hour`), so at 22h the centre's towers are lit
-    like flats; offices need their own occupancy by hour (a lighting schedule such as ASHRAE 90.1's), and the far level's lit share
-    (`far_room_lit`) leaves out the near level's rooms-in-use share (`pane_lamp`, 0.64).
   - Signal lenses, vehicle lamps, the placing ghost and a signature's own glow stay authored as the screen shows them
     (`emission_shown`): their luminance in cd/m^2 (EN 12368, UNECE R7) would make them physical lights too.
   - Compatibility: its fog takes `fog_light_color` (aerial perspective is commented out in drivers/gles3 scene.glsl), which is not

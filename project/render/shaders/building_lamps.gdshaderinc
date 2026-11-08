@@ -15,6 +15,13 @@ const vec3 LAMP_HOME_MEAN = vec3(1.6241, 0.8671, 0.4790);
 const vec3 LAMP_OFFICE_MEAN = vec3(1.3902, 0.9254, 0.5895);
 
 global uniform float rooms_awake; // the share of people awake at this hour (daylight.gd)
+global uniform float offices_lit; // the share of an office's lights on at this hour (daylight.json office_lit_by_hour)
+const float ROOMS_IN_USE = 0.64; // of the people awake at home, the rooms with the lamp on (the Roadcraft 4.0's vRoomLot)
+
+// The share of a building's rooms lit now: a home's by who is awake and the rooms in use, an office's by its lighting schedule.
+float rooms_lit(float office) {
+	return mix(rooms_awake * ROOMS_IN_USE, offices_lit, office);
+}
 global uniform float building_night_windows; // the Effects panel: 0 puts the lit rooms out
 global uniform float lux; // the radiance of a white floor under 1 lx (render/daylight.gd, tuning.json render.light_unit_lx)
 // A lit room's working plane, home and office (daylight.json rooms), as the radiance of a white floor under it: its surfaces show
@@ -55,9 +62,12 @@ vec3 room_lamp_mean(float office) { return office > 0.5 ? LAMP_OFFICE_MEAN : LAM
 float room_level(float lot) { return 0.3 + 0.85 * fract(lot * 7.13) * fract(lot * 2.17 + 0.4); }
 
 // A room of the far levels (building_far.gdshader, building_far_window.gdshaderinc), its cell `cell` of the bay grid: its own lot,
-// lamp and whether it is lit while the cell covers a pixel or more, the share of rooms awake and the mean lamp as `sub` goes to 1.
+// lamp and whether it is lit while the cell covers a pixel or more, the share of rooms lit and the mean lamp as `sub` goes to 1.
 uint room_cell(vec2 cell) { return uint(cell.x + 512.0) * 131u + uint(cell.y + 512.0) * 7177u; }
-float far_room_lit(float lot, float sub) { return mix(step(1.0 - rooms_awake, lot), rooms_awake, sub) * building_night_windows; }
+float far_room_lit(float lot, float sub, float office) {
+	float share = rooms_lit(office);
+	return mix(step(1.0 - share, lot), share, sub) * building_night_windows;
+}
 vec3 far_room_lamp(float lot, float office, float sub) { return mix(room_lamp(lot, office), room_lamp_mean(office), sub); }
 
 // A television alone in the room: the cuts of a picture, about one every 1.7 s, and the small flicker over them.

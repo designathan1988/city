@@ -92,6 +92,10 @@ rooms_awake={
 "type": "float",
 "value": 0.63
 }
+offices_lit={
+"type": "float",
+"value": 0.9
+}
 daylight_factor={
 "type": "float",
 "value": 0.02
