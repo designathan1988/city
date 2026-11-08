@@ -18,15 +18,8 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr int MOST_FALLS = 24; // ruins drawn as pieces at once: the rest of a razed block falls as plain heaps
 constexpr int64_t MOST_VERTICES = 6000000; // of them all, about 170 MB: past it the oldest at rest leaves its mound alone
 constexpr int TEXELS_A_PIECE = 3;
-constexpr float BOX_SPREAD = 2.f; // of the building's height, how far a piece may end from it
-constexpr int STEPS_MOST = 4;
-constexpr int DUST_A_FRAME = 12, DUST_COUNT = 3;
-constexpr float DUST_CHANCE = 0.5f, DUST_SIZE_M = 2.5f, DUST_LIFE_S = 3.5f, DUST_SPREAD = 0.6f;
-constexpr float LAND_RADIUS_M = 1.2f, LAND_CHANCE = 0.3f, LAND_LIFE_S = 4.f, LAND_SPREAD_M = 1.5f;
-constexpr float LOT_PAD_M = 1.f;
 } // namespace
 
 void RuinPieces::init(const RID &scenario, const Ref<ShaderMaterial> &material, const EffectParams &params) {
@@ -113,7 +106,8 @@ std::vector<int64_t> RuinPieces::take_repaint() {
 }
 
 bool RuinPieces::room() {
-	if (int(falls_.size()) < MOST_FALLS) return true;
+	const PiecesShape &K = law_.shapes.ruin_pieces;
+	if (int(falls_.size()) < K.most_falls) return true;
 	// The oldest at rest makes way, a heap before a building still standing: that one would come back whole. With all of them still
 	// coming down this one is a plain heap.
 	auto at_rest = [](const auto &e) { return e.second.ready && e.second.sim->resting(); };
@@ -126,10 +120,11 @@ bool RuinPieces::room() {
 }
 
 void RuinPieces::start(const CityState &s, Fall &f, float heap) {
+	const PiecesShape &K = law_.shapes.ruin_pieces;
 	const Ruin &r = f.ruin;
 	const bool falling = f.falling, standing = f.standing;
 	const std::vector<Scar> scars = f.scars;
-	const float reach = 0.5f * std::hypot(r.w, r.d) + LOT_PAD_M, ground = s.terrain.height_at(r.x, r.z);
+	const float reach = 0.5f * std::hypot(r.w, r.d) + K.lot_pad_m, ground = s.terrain.height_at(r.x, r.z);
 	auto patch = std::make_shared<HeightPatch>(s.terrain.patch(r.x - reach, r.z - reach, r.x + reach, r.z + reach));
 	const b40::Data *data = &s.buildings.designs;
 	s.jobs->submit(JobKey{ JobLane::RUINS, int64_t(r.seed) }, 0.f, [inbox = inbox_, maker = maker_, law = law_, data, patch, r, scars, standing, ground, heap, falling]() {
@@ -173,6 +168,7 @@ int64_t rows_bytes(int rows) { return int64_t(RUIN_PIECES_A_ROW) * rows * RuinSi
 
 // The mesh on its instance, the pieces as the sim has them.
 void RuinPieces::adopt(Fall &f, const Done &done) {
+	const PiecesShape &K = law_.shapes.ruin_pieces;
 	make_room(done.cut->vertices);
 	f.cut = done.cut;
 	f.sim = done.sim;
@@ -189,7 +185,7 @@ void RuinPieces::adopt(Fall &f, const Done &done) {
 	rs->mesh_surface_set_material(mesh, 0, f.material->get_rid());
 	f.inst = rs->instance_create2(mesh, scenario_);
 	rs->instance_set_layer_mask(f.inst, LAYER_BASE);
-	const Vector3 out_box = Vector3(1, 0, 1) * ((f.cut->hi.y - f.cut->lo.y) * BOX_SPREAD);
+	const Vector3 out_box = Vector3(1, 0, 1) * ((f.cut->hi.y - f.cut->lo.y) * K.box_spread);
 	rs->instance_set_custom_aabb(f.inst, AABB(f.cut->lo - out_box, f.cut->hi - f.cut->lo + out_box * 2.f));
 	f.ready = true;
 	f.scars_done = done.scars_done;
@@ -199,12 +195,13 @@ void RuinPieces::adopt(Fall &f, const Done &done) {
 }
 
 void RuinPieces::dust(const std::vector<RuinSim::Note> &notes, Puffs &puffs) {
+	const PiecesShape &K = law_.shapes.ruin_pieces;
 	for (const RuinSim::Note &n : notes) {
 		if (dust_left_ <= 0) return;
-		if (n.landing && (n.radius <= LAND_RADIUS_M || rng_.f() >= LAND_CHANCE)) continue;
-		if (!n.landing && rng_.f() >= DUST_CHANCE) continue;
+		if (n.landing && (n.radius <= K.land_radius_m || rng_.f() >= K.land_chance)) continue;
+		if (!n.landing && rng_.f() >= K.dust_chance) continue;
 		dust_left_--;
-		puffs.burst(n.at.x, n.at.y, n.at.z, DUST_COUNT, PUFF_CONCRETE, n.landing ? LAND_SPREAD_M : n.radius * DUST_SPREAD, DUST_SIZE_M, n.landing ? LAND_LIFE_S : DUST_LIFE_S);
+		puffs.burst(n.at.x, n.at.y, n.at.z, K.dust_count, PUFF_CONCRETE, n.landing ? K.land_spread_m : n.radius * K.dust_spread, K.dust_size_m, n.landing ? K.land_life_s : K.dust_life_s);
 	}
 }
 
@@ -247,9 +244,10 @@ void RuinPieces::take_done(FrameAdmission &admission) {
 }
 
 void RuinPieces::update(float dt, Puffs &puffs, FrameAdmission &admission) {
+	const PiecesShape &K = law_.shapes.ruin_pieces;
 	take_done(admission);
-	dust_left_ = DUST_A_FRAME;
-	clock_ = std::min(clock_ + dt, RIGID_STEP_S * float(STEPS_MOST));
+	dust_left_ = K.dust_a_frame;
+	clock_ = std::min(clock_ + dt, RIGID_STEP_S * float(K.steps_most));
 	while (clock_ >= RIGID_STEP_S) {
 		clock_ -= RIGID_STEP_S;
 		notes_.clear();

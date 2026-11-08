@@ -28,7 +28,7 @@ func _ready() -> void:
 	if OS.get_cmdline_user_args().has("--make"):
 		await _make(slot)
 	CityStore.new_map(TOWN_MAP, SEED, false) # nothing of the city made survives the load
-	var opened: Dictionary = CityStore.saves.load_game(slot)
+	var opened: Dictionary = await CityStore.saves.load_game(slot)
 	if not opened.get("ok", false):
 		_quit("FAIL: opening %s %s" % [slot, opened])
 		return
@@ -57,7 +57,7 @@ func _make(slot: String) -> void:
 		var far := _far_in(sample, TAU * i / SITES, TAU / SITES)
 		var end := far + Vector3(far.x, 0, far.z).normalized() * STREET_M
 		CityStore.dispatch(&"build_road", [far, end, false, Vector3.ZERO, PROFILE, PX])
-		ZoneStroke.along(far, end, DataTables.zone_code("industrial"))
+		ZoneStroke.along(far, end, ZoneTable.code("industrial"))
 		for k in GROW_STEPS:
 			await get_tree().process_frame
 			CityStore.step_ticks(STEP_TICKS)

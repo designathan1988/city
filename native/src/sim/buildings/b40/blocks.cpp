@@ -11,11 +11,12 @@
 namespace city::b40 {
 
 namespace {
+// A piece narrower than SLIVER_M is a sliver and goes; two pieces sharing less than TOUCH_AREA_M2 do not touch.
 constexpr float SLIVER_M = 0.75f, TOUCH_AREA_M2 = 1e-3f;
 
 PlanRing plan_of(const Volume &v) {
 	PlanRing out;
-	for (const Point2 &p : ring_of(v)) out.push_back(V2(p.x, p.y));
+	for (const V2 &p : ring_of(v)) out.push_back(V2(p.x, p.y));
 	return out;
 }
 

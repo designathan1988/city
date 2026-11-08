@@ -28,7 +28,7 @@ using SurveyColour = std::array<float, 3>;
 // How near the model comes at each pixel of a picture, the model laid over it triangle by triangle: what stands in front of a face hides it.
 void survey_depth(SurveyView &v, const std::vector<SurveyTriangle> &tris);
 // What the model shows at a point of its surface, seen along the normal; false for nothing there.
-bool survey_sample(const std::vector<SurveyView> &views, const SurveyPoint &p, float nx, float ny, SurveyColour &out);
+bool survey_sample(const b40::SurveyShape &K, const std::vector<SurveyView> &views, const SurveyPoint &p, float nx, float ny, SurveyColour &out);
 
 // Fills `b`; false when the model has no block big enough to be a room. Pure: it reads only the model and the generator's
 // tables (b40::Data, read-only after boot), so a command runs it before it locks the map.

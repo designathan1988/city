@@ -8,10 +8,6 @@ const BOOT_FRAMES := 300
 const SETTLE_FRAMES := 30
 const HOURS_APART := 2.0
 const SHOTS := 4
-const FASTEST := 3 # the bar's "4x" (ui/roadcraft_hud.gd SPEEDS)
-const SUN_BUTTON := 0
-const MOON_BUTTON := 1
-const CLOCK_BUTTON := 2
 const HOURS_A_DAY := 24.0
 
 var out_dir := "user://captures"
@@ -27,10 +23,10 @@ func _ready() -> void:
 	await _frames(BOOT_FRAMES)
 	var hud: Node = play.find_children("*", "RoadcraftHud", true, false)[0]
 	var world: CityWorld = play.find_children("*", "CityWorld", true, false)[0]
-	await _press(hud.top_bar._sky_buttons[MOON_BUTTON], world, "modo_noite")
-	await _press(hud.top_bar._sky_buttons[SUN_BUTTON], world, "modo_dia")
-	await _press(hud.top_bar._sky_buttons[CLOCK_BUTTON], world, "modo_relogio")
-	hud.top_bar._speed_buttons[FASTEST].pressed.emit()
+	await _press(hud.top_bar.sky_button("night"), world, "modo_noite")
+	await _press(hud.top_bar.sky_button("day"), world, "modo_dia")
+	await _press(hud.top_bar.sky_button("cycle"), world, "modo_relogio")
+	hud.top_bar.speed_button(&"FASTEST").pressed.emit()
 	var hour: float = CityStore.snapshot.hour
 	for i in SHOTS:
 		var next := fmod(hour + HOURS_APART, HOURS_A_DAY)

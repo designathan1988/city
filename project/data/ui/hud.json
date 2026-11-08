@@ -8,8 +8,10 @@
   {"glyph": "\u2013", "token": "control_none", "label_key": "control.none"},
   {"glyph": "\u25cb", "token": "control_mini", "label_key": "control.mini"}
  ],
- "_doc": "Top-bar statistics: key in CityStore.snapshot and the formatter (game/store/formatters.gd) that shows it. signal_step_s: what one press changes of a signal's green or offset.",
+ "_doc": "Top-bar statistics: key in CityStore.snapshot and the formatter (game/store/formatters.gd) that shows it. signal_step_s: what one press changes of a signal's green or offset. timings, seconds: how long the pointer rests before a tooltip shows (ui/hud_tip.gd), how long after a lane link's edit the connector panel reads the junction again (ui/connector_panel.gd), how long a toast stays (ui/hud_messages.gd), how often the inspector asks its live numbers again (ui/inspector_panel.gd), how fast a road just laid lights up and fades out (render/road_flash.gd). changes_shown: the edits F8 marks (render/change_marks.gd). tool_options.road_blocks: the road tool's blocks (game/tools/road_blocks.gd, ui/road_options.gd): the grid a player starts with (cols, rows, size_m), its limits (most, least_m, widest_m), its steps (step_m, turn_step_deg) and its preview (preview_step_m apart, preview_half_px wide).",
  "signal_step_s": 2,
+ "timings": {"tip_wait_s": 0.35, "lane_reread_s": 0.25, "toast_s": 3, "inspector_refresh_s": 1, "flash_in_s": 0.1, "flash_out_s": 0.75},
+ "changes_shown": 20,
  "stats": [
   {
    "key": "money",
@@ -87,6 +89,7 @@
    0.1,
    3.0,
    1.0
-  ]
+  ],
+  "road_blocks": {"cols": 3, "rows": 2, "size_m": 100, "most": 12, "least_m": 30, "widest_m": 300, "step_m": 10, "turn_step_deg": 15, "preview_step_m": 20, "preview_half_px": 3}
  }
 }

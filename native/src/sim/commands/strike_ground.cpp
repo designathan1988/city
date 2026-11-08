@@ -19,13 +19,12 @@
 namespace city {
 
 namespace {
-constexpr float FURNITURE_REACH_M = 200.f; // furniture is looked for this far (the segments the blow could touch)
-constexpr float MIN_NORMAL_M = 1.f;
+constexpr float MIN_NORMAL_M = 1.f; // a direction is taken over at least a metre (no division by a near zero)
 constexpr float ARC_DRAW_SCALE = 8.f; // the arc a piece stands at, as the draw's identity
-constexpr uint32_t SALT_CRATER = 0x63726174U;
-constexpr uint32_t SALT_THROW = 0x7468726fU;
-constexpr uint32_t SALT_SNAP = 0x736e6170U;
-constexpr uint32_t SALT_PULL = 0x70756c6cU;
+constexpr uint32_t SALT_CRATER = 0x63726174U; // a stream's salt: the word it names, in ASCII
+constexpr uint32_t SALT_THROW = 0x7468726fU; // a stream's salt: the word it names, in ASCII
+constexpr uint32_t SALT_SNAP = 0x736e6170U; // a stream's salt: the word it names, in ASCII
+constexpr uint32_t SALT_PULL = 0x70756c6cU; // a stream's salt: the word it names, in ASCII
 constexpr uint32_t POLE_WHO_BASE = 0x40000000U; // a utility pole's draws, apart from the street furniture's (by its arc)
 
 // How a pole at `d` from the burst goes (`who` its draw): one pulled over from past the reach falls whole; near the burst it
@@ -217,7 +216,7 @@ void fell_trees(Blow &b, float reach) {
 
 void strike_ground(Blow &b) {
 	const BlastParams &p = b.p;
-	const float reach = std::min(blast::range_at_pressure(p, b.kg, p.pole_kpa), FURNITURE_REACH_M);
+	const float reach = std::min(blast::range_at_pressure(p, b.kg, p.pole_kpa), b.s.catalog.tune.strike_furniture_reach_m);
 	knock_out_furniture(b, reach);
 	knock_out_poles(b, reach);
 	fell_trees(b, reach); // a tree falls to the blow that topples a pole

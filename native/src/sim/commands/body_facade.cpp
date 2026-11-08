@@ -12,7 +12,7 @@ using namespace b40;
 
 namespace {
 constexpr const char *NO_TARGET = "tool.failed";
-constexpr float NO_DEPTH = 1e-4f, FREE_RELIEF_STEP_M = 0.01f;
+constexpr float NO_DEPTH = 1e-4f; // a recess this shallow is none
 constexpr int SIDE_MASK = (1 << KEY_SIDE_SHIFT) - 1;
 
 Volume *volume_at(Body &b, int vol) { return vol >= 0 && vol < int(b.volumes.size()) ? &b.volumes[size_t(vol)] : nullptr; }
@@ -170,13 +170,13 @@ std::string op_set_face(Body &b, const Tuning &t, int vol, int side, const FaceG
 	int was = bays_of(*v, side);
 	FaceGeometry &f = v->faces[side];
 	float lo = float(t.build_least_opening), hi = float(t.build_most_opening), out = float(t.build_max_projection_m);
-	if (patch.bays >= 0) f.bays = std::clamp(patch.bays, 1, int(t.build_max_bays));
+	if (patch.bays >= 0) f.bays = std::clamp(patch.bays, 1, t.build_max_bays);
 	if (patch.window_w > 0) f.window_w = std::clamp(patch.window_w, lo, hi);
 	if (patch.window_h > 0) f.window_h = std::clamp(patch.window_h, lo, hi);
 	if (patch.sill >= 0) f.sill = std::clamp(patch.sill, 0.f, out);
 	if (patch.pier_w >= 0) f.pier_w = std::clamp(patch.pier_w, 0.f, out);
 	if (patch.pier_d >= 0) f.pier_d = std::clamp(patch.pier_d, 0.f, out);
-	if (patch.pier_every >= 0) f.pier_every = std::clamp(patch.pier_every, 1, int(t.build_max_pier_every));
+	if (patch.pier_every >= 0) f.pier_every = std::clamp(patch.pier_every, 1, t.build_max_pier_every);
 	int now = bays_of(*v, side);
 	if (now == was) return "";
 	// Fewer or more bays: what was set on one bay goes to the bay at the same place along the face.
@@ -198,7 +198,7 @@ std::string op_set_face(Body &b, const Tuning &t, int vol, int side, const FaceG
 std::string op_set_relief(Body &b, const Tuning &t, int vol, const Relief &region, bool snap) {
 	Volume *v = volume_at(b, vol);
 	if (!v || region.side < 0 || region.side >= v->sides()) return NO_TARGET;
-	float step = snap ? float(t.build_relief_step_m) : FREE_RELIEF_STEP_M;
+	float step = snap ? float(t.build_relief_step_m) : t.build_free_relief_step_m;
 	float d = std::clamp(std::round(region.depth / step) * step, -float(t.build_max_recess_m), float(t.build_max_projection_m));
 	std::vector<Relief> kept;
 	for (const Relief &r : v->reliefs) cut_relief(r, region, kept);

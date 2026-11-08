@@ -69,8 +69,8 @@ struct BodyKey {
 	bool operator!=(const BodyKey &o) const { return !(*this == o); }
 };
 struct BodyKeyHash {
-	static constexpr uint64_t MIX = 0x9e3779b97f4a7c15ull;
-	static constexpr int SHIFT = 31, HALF_BITS = 32, BYTE_BITS = 8;
+	static constexpr uint64_t MIX = 0x9e3779b97f4a7c15ull; // 2^64 over the golden ratio
+	static constexpr int SHIFT = 31, HALF_BITS = 32, BYTE_BITS = 8; // the product's high half folded down; a word's halves; a byte
 	static uint64_t mix(uint64_t h, uint64_t v) {
 		h = (h ^ v) * MIX;
 		return h ^ (h >> SHIFT);
@@ -88,7 +88,7 @@ inline size_t heap_bytes(const Body &b) {
 	size_t n = b.paints.capacity() * sizeof(Paint) + b.volumes.capacity() * sizeof(Volume) + b.elements.capacity() * sizeof(LotElement) +
 			b.cores.capacity() * sizeof(Core);
 	for (const Volume &v : b.volumes) {
-		n += v.outline.capacity() * sizeof(Point2) + v.fill.capacity() + v.reliefs.capacity() * sizeof(Relief) + v.gear.capacity() * sizeof(RoofPart);
+		n += v.outline.capacity() * sizeof(V2) + v.fill.capacity() + v.reliefs.capacity() * sizeof(Relief) + v.gear.capacity() * sizeof(RoofPart);
 		n += (v.bays.size() + v.side_fill.size()) * (sizeof(std::pair<uint32_t, uint8_t>) + MAP_NODE_BYTES);
 		n += v.storey_paint.size() * (sizeof(std::pair<uint32_t, int>) + MAP_NODE_BYTES);
 	}

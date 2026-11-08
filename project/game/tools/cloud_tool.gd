@@ -5,7 +5,6 @@ extends ToolBase
 
 enum Mode { ADD, MOVE, EDIT, REMOVE }
 
-const PERCENT := 100.0
 ## The way a new cloud's puffs lie follows where it is put.
 const YAW_PER_M_X := 0.013
 const YAW_PER_M_Z := 0.007
@@ -26,7 +25,7 @@ func enter() -> void:
 	mode = s.mode
 	size = s.size
 	height = s.height
-	density = s.density / PERCENT
+	density = s.density / Units.PERCENT
 	ctl.hint.emit(tr("hint.tool.cloud"), true)
 
 
@@ -64,7 +63,7 @@ func click(_p: Vector3) -> void:
 		var at := _at_height(height + size * _spec.grip_height)
 		var r: Dictionary = CityStore.dispatch(&"add_cloud", [_like(at.x - drift.x, at.z - drift.y, fposmod(at.x * YAW_PER_M_X + at.z * YAW_PER_M_Z, TAU))])
 		if not r.get("ok", false):
-			ctl.hint.emit(refusal(r), false)
+			ctl.hint.emit(refusal(r).format({"n": int(DataTables.catalog_table("nature").clouds.max_clouds)}), false) # hint.cloud.full names the most
 		return
 	var ray := _ray()
 	var id: int = CityStore.query(&"cloud_at", [ray[0], ray[1], drift.x, drift.y])

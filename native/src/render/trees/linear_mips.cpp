@@ -10,6 +10,7 @@ using namespace godot;
 namespace city {
 
 namespace {
+// a texel's four bytes, alpha the last; a byte's 256 levels and its largest value; a half rounds to nearest
 constexpr int RGBA = 4, ALPHA = 3, LEVELS = 256;
 constexpr float BYTE_TOP = 255.f, ROUND_UP = 0.5f;
 // The sRGB transfer function (IEC 61966-2-1).

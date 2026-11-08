@@ -3,15 +3,12 @@
 class_name ZoneStrip
 extends RefCounted
 
-const DENSITIES := [[0, "zone.low", "low"], [1, "zone.medium", "medium"], [2, "zone.high", "high"]]
-
-
 static func build(drawer: HudDrawer) -> void:
 	for c: Dictionary in drawer.category.cards:
 		drawer.strip.add_child(_card(drawer, c))
 	var items := []
-	for d: Array in DENSITIES:
-		items.append([d[0], "", d[2], "%s: %s" % [TranslationServer.translate("v2.zone.density"), TranslationServer.translate(d[1])]])
+	for d: Dictionary in DataTables.ui("drawers").zone_densities: # zones.json's densities, as the row shows them
+		items.append([int(d.density), "", d.icon, "%s: %s" % [TranslationServer.translate("v2.zone.density"), TranslationServer.translate(d.label_key)]])
 	var row := HudWidgets.option_row(drawer.options, TranslationServer.translate("v2.zone.density"))
 	HudWidgets.choices(row, items, drawer.density, func(v: int) -> void:
 		drawer.density = v

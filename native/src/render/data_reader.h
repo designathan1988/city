@@ -17,6 +17,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace city {
 
@@ -39,6 +40,9 @@ struct DataReader {
 	std::string utf8(const godot::Dictionary &d, const char *key);
 	godot::Array list(const godot::Dictionary &d, const char *key, int size = -1);
 	godot::Dictionary table(const godot::Dictionary &d, const char *key);
+	// A list of numbers, each a float or each a whole number.
+	std::vector<float> floats(const godot::Dictionary &d, const char *key);
+	std::vector<int> counts(const godot::Dictionary &d, const char *key);
 	// '#rrggbb' or '#rrggbbaa' as 0xRRGGBBAA (core/color.h).
 	uint32_t colour(const godot::Dictionary &d, const char *key);
 	// A key the table may leave out: absent, the value the format gives it; present, checked as any other.

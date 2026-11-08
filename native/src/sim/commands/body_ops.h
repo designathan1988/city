@@ -38,22 +38,25 @@ std::string op_set_storeys(b40::Body &b, const Tuning &t, int vol, int count);
 std::string op_insert_storey(b40::Body &b, const Tuning &t, int vol, int at, bool above);
 std::string op_resize(b40::Body &b, const Tuning &t, int vol, int side, float delta, bool snap);
 std::string op_add_wing(b40::Body &b, const Tuning &t, int vol, int side, float depth, float length);
+// A setback `storeys` high over block `vol`, in by `inset` metres; an inset under 0 (SETBACK_BY_MODULE) takes the Build module, on a
+// shaped block a share of its narrower side.
+constexpr float SETBACK_BY_MODULE = -1.f;
 std::string op_add_setback(b40::Body &b, const Tuning &t, int vol, float inset, int storeys);
 std::string op_split_at_floor(b40::Body &b, const Tuning &t, int vol, int level);
 // A block's plan in a shape (body_plan.cpp), on its box; what was set on its walls stays on the wall facing the same way. `whole`: the body as that one block, its height kept.
 enum PlanShape : int { PLAN_RECTANGLE, PLAN_L, PLAN_U, PLAN_CIRCLE, PLAN_HEXAGON, PLAN_OCTAGON, PLAN_CHAMFERED, PLAN_CROSS, PLAN_STEPPED, PLAN_COUNT };
 std::string op_set_plan(b40::Body &b, const Tuning &t, int vol, int shape);
 std::string op_whole_plan(b40::Body &b, const Tuning &t, int shape);
-std::vector<b40::Point2> plan_ring(int shape); // the shape in the unit square, counter-clockwise
+std::vector<V2> plan_ring(int shape); // the shape in the unit square, counter-clockwise
 // A rectangle dragged against a block (body_blocks.cpp): a block beside it on the ground, on its roof, or a void cut out of it; `from` and `to` in the lot frame.
 enum MassAction : int { MASS_GROUND, MASS_ROOF, MASS_CUT };
-std::string op_add_mass(b40::Body &b, const Tuning &t, int vol, b40::Point2 from, b40::Point2 to, int action);
+std::string op_add_mass(b40::Body &b, const Tuning &t, int vol, V2 from, V2 to, int action);
 std::string op_set_block_mode(b40::Body &b, int vol, int mode);
 
 // Modelling a block (body_model.cpp). A primitive is a plan (PlanShape) and a roof thrown at the building: on a roof (`side` < 0), against a wall, or alone on the ground.
 // A wall of a block: where it starts, along it and out of it.
 struct BlockWall {
-	b40::Point2 a;
+	V2 a;
 	float tx = 0, ty = 0, nx = 0, ny = 0, length = 0;
 };
 BlockWall block_wall(const b40::Volume &v, int side);
@@ -62,9 +65,12 @@ struct PrimitiveSpec {
 	int shape = 0, roof = 0;
 	float pitch = 0;
 };
+// What a handle is: the API reads its name once (city_core_handles.cpp HANDLE_NAMES); MOVE and ROTATE move the whole building and
+// are not op_handle's; UNKNOWN a name no handle has.
+enum class HandleKind : uint8_t { NONE, STOREYS, SIDE, VERTEX, SCALE, LIFT, RELIEF, MOVE, ROTATE, PART, PRIMITIVE, UNKNOWN };
 // What a drag on a handle asks (city_core_handles.cpp): `kind` the handle's, the rest what it reads.
 struct HandleEdit {
-	std::string kind;
+	HandleKind kind = HandleKind::NONE;
 	int vol = 0, side = 0, index = 0, count = 0;
 	float along = 0, factor = 1, x = 0, y = 0;
 	bool wing = false, snap = true;
@@ -79,6 +85,8 @@ std::string op_extrude_face(b40::Body &b, const Tuning &t, int vol, int side, fl
 std::string op_extrude_block(b40::Body &b, const Tuning &t, int vol, int side, float depth);
 std::string op_inset_face(b40::Body &b, const Tuning &t, int vol, int side, float depth);
 std::string op_offset_block(b40::Body &b, int vol, float distance);
+// The corners of block `vol` cut by `distance`: only corner `only`, or EVERY_CORNER.
+constexpr int EVERY_CORNER = -1;
 std::string op_bevel(b40::Body &b, int vol, float distance, int only);
 std::string op_move_point(b40::Body &b, const Tuning &t, int vol, int index, float x, float y, bool snap);
 std::string op_change_point(b40::Body &b, int vol, int index, bool remove);
@@ -107,7 +115,7 @@ std::string op_remove_piece(b40::Body &b, const FloorEdit &e, float x, float y);
 // A new block in the look of `v`; the storey it grows by; what stands on `v`'s roof inside `plan` goes.
 b40::Volume block_like(const b40::Volume &v, int count);
 uint8_t next_fill(const b40::Volume &v);
-void clear_roof_under(b40::Volume &v, const std::vector<b40::Point2> &plan);
+void clear_roof_under(b40::Volume &v, const std::vector<V2> &plan);
 std::string op_remove_volume(b40::Body &b, const Tuning &t, int vol);
 std::string op_set_heights(b40::Body &b, const Tuning &t, float ground_h, float storey_h);
 
@@ -137,7 +145,7 @@ std::string op_flag_colour(b40::Body &b, int vol, float x, float y, int slot, ui
 std::string op_add_part(b40::Body &b, const Tuning &t, int vol, int storey, int side, int bay, const PartSpec &s);
 std::string op_add_part_at(b40::Body &b, const Tuning &t, float x, float y, int facing, const PartSpec &s);
 // A wall, fence, footpath or stair along a path in the lot frame, one piece a leg; a stair climbs `level` over the whole of it.
-std::string op_add_run(b40::Body &b, const Tuning &t, const std::vector<b40::Point2> &path, int level, const PartSpec &s);
+std::string op_add_run(b40::Body &b, const Tuning &t, const std::vector<V2> &path, int level, const PartSpec &s);
 std::string op_remove_part(b40::Body &b, int part);
 std::string op_turn_part(b40::Body &b, int part);
 std::string op_repeat_part(b40::Body &b, const Tuning &t, int part, float spacing);

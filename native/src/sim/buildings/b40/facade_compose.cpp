@@ -9,15 +9,11 @@
 namespace city::b40 {
 
 namespace {
-constexpr double GOLDEN = 2654435761.0, U32 = 4294967296.0;
-constexpr float HALF = 0.5f, STEPS_ROUND = 1e6f, BEST_WITHIN = 0.75f, DEFAULT_BAY = 3.f;
-constexpr int LOW_STOREYS = 3, CROWN_MIN_LEVELS = 4;
-constexpr float CANOPY_EDGE = 0.6f, CANOPY_WIDE_BAYS = 5, CANOPY_PAD = 1.2f, CANOPY_DROP = 0.45f, CANOPY_MAX_Z = 3.6f;
-constexpr float CANOPY_OUT = 1.2f, CANOPY_DEEP = 2.4f, CANOPY_THICK = 0.22f, RECESS = -1.2f, RECESS_MIN_W = 6.f, RECESS_SHARE = 0.45f;
-constexpr float SMALL_CANOPY_MAX = 4.f, SMALL_DROP = 0.35f, SMALL_MAX_Z = 3.1f, SMALL_OUT = 0.8f, SMALL_DEEP = 1.6f, SMALL_THICK = 0.18f;
-constexpr int RELIEF_MIN_STOREYS = 6, RELIEF_MIN_BAYS = 5, RELIEF_WIDE_BAYS = 9, PIER_MIN_STOREYS = 4;
-constexpr float STONE_BASE_K = 0.86f;
-constexpr float RELIEF_SKIP = 0.45f, RELIEF_OUT = 0.6f, PIER_OUT = 0.5f;
+constexpr double GOLDEN = 2654435761.0, U32 = 4294967296.0; // Knuth's multiplicative hash (2^32 over the golden ratio), and 2^32
+constexpr float HALF = 0.5f, STEPS_ROUND = 1e6f; // a share of a step is rounded to millionths: a length is a whole count of steps
+// The facade grammar's counts, which every body's saved bays and the commands' answers depend on: a face given no count is
+// divided into bays of DEFAULT_BAY metres, and an even count is swapped for the nearer odd one within BEST_WITHIN of a bay.
+constexpr float DEFAULT_BAY = 3.f, BEST_WITHIN = 0.75f;
 
 float steps_in(float units, float step) { return std::round(units / step * STEPS_ROUND) / STEPS_ROUND; }
 bool overlaps(const Volume &a, const Volume &b) {
@@ -32,11 +28,11 @@ void canopy(Body &b, float x, float y, float w, float d, float z, float h) {
 	b.elements.push_back(e);
 }
 
-void compose_storeys(const StyleDef &s, const std::vector<uint8_t> &rhythm, Volume &v, Ground ground, int tallest, const int *counts) {
+void compose_storeys(const FacadeShape &K, const StyleDef &s, const std::vector<uint8_t> &rhythm, Volume &v, Ground ground, int tallest, const int *counts) {
 	int top = v.top() - 1;
 	for (int k = 0; k < v.storeys; k++) {
 		int level = v.base + k;
-		bool crown_floor = s.top != BAY_NONE && tallest >= CROWN_MIN_LEVELS && level == tallest - 1 && level == top && level > 0;
+		bool crown_floor = s.top != BAY_NONE && tallest >= K.crown_min_levels && level == tallest - 1 && level == top && level > 0;
 		uint8_t fill;
 		bool rhythm_bays = false;
 		if (level == 0) fill = ground == GROUND_SHOP ? BAY_SHOPFRONT : ground == GROUND_WORKS ? BAY_WALL : s.ground_fill;
@@ -71,7 +67,7 @@ int style_for(const Data &data, Kind kind, Xoshiro128 &r, uint32_t character, in
 void paints_of(const Data &data, int style, Xoshiro128 &r, Paint &wall, Paint &trim) {
 	const StyleDef &s = data.styles[size_t(style)];
 	const Paint &skin = choose(r, s.skins);
-	wall = Paint{ skin.finish, tint(skin.rgb, r) };
+	wall = Paint{ skin.finish, tint(data.shapes.paint, skin.rgb, r) };
 	std::vector<Paint> dark;
 	for (const Paint &t : s.trims)
 		if (!is_light(t.rgb)) dark.push_back(t);
@@ -103,6 +99,7 @@ int bays_of(const Volume &v, int side) {
 }
 
 void compose_facades(const Data &data, Body &b, Xoshiro128 &r) {
+	const FacadeShape &K = data.shapes.facade;
 	const StyleDef &s = data.styles[b.style];
 	const std::vector<uint8_t> &rhythm = choose(r, s.rhythms);
 	float ww = s.win_w0 + (s.win_w1 - s.win_w0) * float(r.f());
@@ -121,23 +118,24 @@ void compose_facades(const Data &data, Body &b, Xoshiro128 &r) {
 		int counts[MAX_FACES] = {};
 		for (int side = 0; side < v.sides() && side < MAX_FACES; side++) {
 			counts[side] = columns_for(side_length(v, side), s.module);
-			bool low = v.storeys < LOW_STOREYS;
+			bool low = v.storeys < K.low_storeys;
 			FaceGeometry &g = v.faces[side];
 			g = FaceGeometry{ counts[side], ww, wh, s.sill, 0, 0, -1 };
 			if (s.piers && !low) { g.pier_w = s.pier_w; g.pier_d = s.pier_d; g.pier_every = s.pier_every; }
 		}
-		compose_storeys(s, rhythm, v, b.ground, tallest, counts);
+		compose_storeys(K, s, rhythm, v, b.ground, tallest, counts);
 	}
 }
 
 void dress_building(const Data &data, Body &b, Xoshiro128 &r, float entrance, int front) {
+	const FacadeShape &K = data.shapes.facade;
 	const StyleDef &s = data.styles[b.style];
 	int style = b.style;
 	if (s.stone_base) {
 		for (Volume &v : b.volumes) {
 			if (v.keep || v.base != 0 || v.storeys < 2) continue;
 			const Paint &w = b.wall_of(v);
-			int ref = b.add_paint(Paint{ FIN_STONE, scale_rgb(w.rgb, STONE_BASE_K) });
+			int ref = b.add_paint(Paint{ FIN_STONE, scale_rgb(w.rgb, K.stone_base_k) });
 			for (int side = 0; side < 4; side++) v.storey_paint[side_key(0, side)] = ref;
 		}
 	}
@@ -147,29 +145,29 @@ void dress_building(const Data &data, Body &b, Xoshiro128 &r, float entrance, in
 		int bay = std::clamp(int(std::floor((entrance - fv.x) / fv.w * float(across))), 0, across - 1);
 		float bw = fv.w / float(across), cx = fv.x + (float(bay) + HALF) * bw;
 		if (b.ground == GROUND_LOBBY && modern(style)) {
-			float span = std::min(fv.w - CANOPY_EDGE, bw * (across >= CANOPY_WIDE_BAYS ? 3 : 1) + CANOPY_PAD);
-			canopy(b, cx, fv.y - CANOPY_OUT, span, CANOPY_DEEP, std::min(b.ground_h - CANOPY_DROP, CANOPY_MAX_Z), CANOPY_THICK);
-		} else if (b.ground != GROUND_SHOP && style != STYLE_COLONIAL && style != STYLE_COLONIAL_HOUSE && fv.w > RECESS_MIN_W && r.f() < RECESS_SHARE) {
-			fv.reliefs.push_back(Relief{ 0, bay, bay, 0, 0, RECESS });
+			float span = std::min(fv.w - K.canopy_edge, bw * (across >= K.canopy_wide_bays ? 3 : 1) + K.canopy_pad);
+			canopy(b, cx, fv.y - K.canopy_out, span, K.canopy_deep, std::min(b.ground_h - K.canopy_drop, K.canopy_max_z), K.canopy_thick);
+		} else if (b.ground != GROUND_SHOP && style != STYLE_COLONIAL && style != STYLE_COLONIAL_HOUSE && fv.w > K.recess_min_w && r.f() < K.recess_share) {
+			fv.reliefs.push_back(Relief{ 0, bay, bay, 0, 0, K.recess });
 		} else if (b.ground != GROUND_SHOP) {
-			canopy(b, cx, fv.y - SMALL_OUT, std::min(SMALL_CANOPY_MAX, bw + 1), SMALL_DEEP, std::min(b.ground_h - SMALL_DROP, SMALL_MAX_Z), SMALL_THICK);
+			canopy(b, cx, fv.y - K.small_out, std::min(K.small_canopy_max, bw + 1), K.small_deep, std::min(b.ground_h - K.small_drop, K.small_max_z), K.small_thick);
 		}
 	}
 	if (style == STYLE_CONTEMPORARY || style == STYLE_MODERNIST || style == STYLE_TROPICAL || style == STYLE_BRICK) {
 		for (Volume &v : b.volumes) {
 			int across = bays_of(v, 0);
-			if (v.keep || !v.outline.empty() || v.storeys < RELIEF_MIN_STOREYS || across < RELIEF_MIN_BAYS || r.f() < RELIEF_SKIP) continue;
-			int mid = across / 2, spread = across >= RELIEF_WIDE_BAYS ? 1 : 0, lo = v.base == 0 ? 1 : 0;
-			for (int side : { 0, 2 }) v.reliefs.push_back(Relief{ side, mid - spread, mid + spread, lo, v.storeys - 1, RELIEF_OUT });
+			if (v.keep || !v.outline.empty() || v.storeys < K.relief_min_storeys || across < K.relief_min_bays || r.f() < K.relief_skip) continue;
+			int mid = across / 2, spread = across >= K.relief_wide_bays ? 1 : 0, lo = v.base == 0 ? 1 : 0;
+			for (int side : { 0, 2 }) v.reliefs.push_back(Relief{ side, mid - spread, mid + spread, lo, v.storeys - 1, K.relief_out });
 		}
 	}
 	if (style == STYLE_ART_DECO || style == STYLE_COLONIAL) {
 		for (Volume &v : b.volumes) {
 			int across = bays_of(v, 0);
-			if (v.keep || v.storeys < PIER_MIN_STOREYS || across < RELIEF_MIN_BAYS) continue;
+			if (v.keep || v.storeys < K.pier_min_storeys || across < K.relief_min_bays) continue;
 			int lo = v.base == 0 ? 1 : 0;
-			v.reliefs.push_back(Relief{ 0, 0, 0, lo, v.storeys - 1, PIER_OUT });
-			v.reliefs.push_back(Relief{ 0, across - 1, across - 1, lo, v.storeys - 1, PIER_OUT });
+			v.reliefs.push_back(Relief{ 0, 0, 0, lo, v.storeys - 1, K.pier_out });
+			v.reliefs.push_back(Relief{ 0, across - 1, across - 1, lo, v.storeys - 1, K.pier_out });
 		}
 	}
 }

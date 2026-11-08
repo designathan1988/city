@@ -3,6 +3,7 @@
 class_name SelectionOverlay
 extends Control
 
+## Chords of a line's round cap, and of a ring.
 const CAP_POINTS := 8
 const RING_POINTS := 32
 

@@ -18,7 +18,7 @@ using namespace b40;
 
 namespace {
 constexpr const char *NO_BLOCK = "tool.failed";
-constexpr int CIRCLE_SIDES = 24, HEXAGON_SIDES = 6, OCTAGON_SIDES = 8, MOST_BAYS = 64;
+constexpr int CIRCLE_SIDES = 24, HEXAGON_SIDES = 6, OCTAGON_SIDES = 8, MOST_BAYS = 64; // a round plan's sides, the polygons', the most bays a side
 constexpr uint32_t KEY_FIELD = (1u << KEY_SIDE_SHIFT) - 1;
 // Shares of the box, the 4.0's: the width of an L's arms; where the arms of a U and a cross stand; a stepped cross's steps; a chamfer, the same as the step's rise.
 constexpr float ELL_LEG = .4f, ARM = .3f, FAR_ARM = 1 - ARM, STEP = .15f, FAR_STEP = 1 - STEP, RISE = .12f, FAR_RISE = 1 - RISE;
@@ -57,7 +57,7 @@ std::vector<Wall> walls_of(const Volume &v) {
 	const Ring ring = ring_of(v);
 	std::vector<Wall> out;
 	for (size_t i = 0; i < ring.size(); i++) {
-		const Point2 &a = ring[i], &b = ring[(i + 1) % ring.size()];
+		const V2 &a = ring[i], &b = ring[(i + 1) % ring.size()];
 		const float length = std::hypot(b.x - a.x, b.y - a.y), scale = length > 0 ? 1.f / length : 0.f;
 		out.push_back({ (b.y - a.y) * scale, (a.x - b.x) * scale, length });
 	}
@@ -131,15 +131,15 @@ std::string op_set_plan(Body &b, const Tuning &, int vol, int shape) {
 	// Stretched over the box, unlike the 4.0's, where a hexagon narrower than its box shrinks the block at every click.
 	Ring ring = shape_points(shape);
 	float lo_x = 1, lo_y = 1, hi_x = 0, hi_y = 0;
-	for (const Point2 &p : ring) {
+	for (const V2 &p : ring) {
 		lo_x = std::min(lo_x, p.x);
 		lo_y = std::min(lo_y, p.y);
 		hi_x = std::max(hi_x, p.x);
 		hi_y = std::max(hi_y, p.y);
 	}
 	v.outline.clear();
-	for (const Point2 &p : ring) v.outline.push_back(Point2{ (p.x - lo_x) / (hi_x - lo_x), (p.y - lo_y) / (hi_y - lo_y) });
-	const auto same_point = [](const Point2 &a, const Point2 &c) { return a.x == c.x && a.y == c.y; };
+	for (const V2 &p : ring) v.outline.push_back(V2{ (p.x - lo_x) / (hi_x - lo_x), (p.y - lo_y) / (hi_y - lo_y) });
+	const auto same_point = [](const V2 &a, const V2 &c) { return a.x == c.x && a.y == c.y; };
 	const bool same = v.outline.size() == old.outline.size() && std::equal(v.outline.begin(), v.outline.end(), old.outline.begin(), same_point);
 	if (!same) carry_walls(old, v); // the plan it had: its walls are where they were, and in a concave plan several face one way
 	return "";

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "sim/buildings/interior/interior.h"
+#include "core/math.h"
 
 #include <array>
 #include <cmath>
@@ -11,7 +12,8 @@
 
 namespace city::b40 {
 
-constexpr float PI_F = 3.14159265f, RIGHT_ANGLE = PI_F / 2;
+constexpr float RIGHT_ANGLE = PI_F / 2;
+constexpr float HALF_DOOR = 0.5f; // half the opening a room's door leaves in its wall (a 1 m doorway)
 // The way a piece faces, as a direction in the floor's own axes (+y away from the street).
 inline float face(float dx, float dy) { return std::atan2(dx, -dy); }
 
@@ -26,7 +28,7 @@ struct FlatPlan {
 };
 // A floor of one block as homes of `group_bays` bays: a corridor down its long axis when it is deep enough for homes
 // both sides.
-FlatPlan flat_plan(const Volume &v, int group_bays);
+FlatPlan flat_plan(const Data &data, const Volume &v, int group_bays);
 
 class Plan {
 public:
@@ -57,7 +59,7 @@ public:
 
 private:
 	bool inside(float x, float y) const;
-	std::vector<Point2> ring_;
+	std::vector<V2> ring_;
 	std::vector<std::array<float, 4>> cores_;
 	std::unordered_map<int64_t, std::vector<int>> filed_; // items by the cells their padded boxes cover
 };

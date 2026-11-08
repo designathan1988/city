@@ -8,8 +8,7 @@
 namespace city {
 
 namespace {
-constexpr float HIDDEN_M = 1.2f;
-constexpr int ALPHA_SEEN = 128, RGB_MAX = 255;
+constexpr int ALPHA_SEEN = 128, RGB_MAX = 255; // a pixel seen past half alpha; a channel's top
 
 float dot(const SurveyPoint &a, const SurveyPoint &b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
 SurveyPoint minus(const SurveyPoint &a, const SurveyPoint &b) { return { a.x - b.x, a.y - b.y, a.z - b.z }; }
@@ -44,7 +43,7 @@ void survey_depth(SurveyView &v, const std::vector<SurveyTriangle> &tris) {
 }
 
 // What the model shows at a point of its surface, seen along the normal; false for nothing there.
-bool survey_sample(const std::vector<SurveyView> &views, const SurveyPoint &p, float nx, float ny, SurveyColour &out) {
+bool survey_sample(const b40::SurveyShape &K, const std::vector<SurveyView> &views, const SurveyPoint &p, float nx, float ny, SurveyColour &out) {
 	const SurveyPoint look = nx == 0 && ny == 0 ? SurveyPoint{ 0, 0, 1 } : SurveyPoint{ nx, ny, 0 };
 	const SurveyView *v = &views.front();
 	for (const SurveyView &o : views)
@@ -53,7 +52,7 @@ bool survey_sample(const std::vector<SurveyView> &views, const SurveyPoint &p, f
 	const int col = int(at.col), row = int(at.row);
 	if (at.col < 0 || at.row < 0 || col >= v->w || row >= v->h) return false;
 	const size_t i = size_t(row) * size_t(v->w) + size_t(col);
-	if (v->rgba[i * 4 + 3] < ALPHA_SEEN || v->nearest[i] > at.depth + HIDDEN_M) return false;
+	if (v->rgba[i * 4 + 3] < ALPHA_SEEN || v->nearest[i] > at.depth + K.hidden_m) return false;
 	for (int c = 0; c < 3; c++) out[size_t(c)] = float(v->rgba[i * 4 + size_t(c)]) / float(RGB_MAX);
 	return true;
 }

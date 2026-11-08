@@ -20,7 +20,6 @@ const LEAVE_TRIES := 12
 const LEAVE_STEP_M := 12.0
 const ROUND_STEPS := 120
 const CAMERA_UP_M := 30.0
-const NO_STOP := 1 # traffic::YardReach YARD_NO_STOP
 
 
 func _ready() -> void:
@@ -64,7 +63,7 @@ func _site(camera: Camera3D, far: Vector3) -> void:
 		if built.ok:
 			break
 	var at := from + out * STREET_M * 0.5
-	var zoned: Dictionary = ZoneStroke.along(from, from + out * STREET_M, DataTables.zone_code("industrial"))
+	var zoned: Dictionary = ZoneStroke.along(from, from + out * STREET_M, ZoneTable.code("industrial"))
 	print("site ", at, " road ", built.ok, " ", built.error, " zoned lots ", zoned.zoned_sides)
 	camera.global_position = at + Vector3.UP * CAMERA_UP_M
 	for i in GROW_STEPS:
@@ -82,7 +81,7 @@ func _site(camera: Camera3D, far: Vector3) -> void:
 		ticks(STEP_TICKS)
 		s = CityStore.query(&"park_sample", [])
 	check(s.docks_planned > 0, "docks planned at %s: %d" % [at, s.docks_planned])
-	check(s.docks_reached[NO_STOP] == 0, "no dock without room for the lorry in its own lane at %s: %d" % [at, s.docks_reached[NO_STOP]])
+	check(s.docks_reached[CityStore.code(&"YardReach", &"YARD_NO_STOP")] == 0, "no dock without room for the lorry in its own lane at %s: %d" % [at, s.docks_reached[CityStore.code(&"YardReach", &"YARD_NO_STOP")]])
 	check(s.docks_with_way == s.docks_planned, "every dock has a way at %s: %d of %d (reach by kind %s)" % [at, s.docks_with_way, s.docks_planned, s.docks_reached])
 	_mark("planned")
 	for y: Dictionary in s.get("yard_costs", []):

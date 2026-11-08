@@ -4,6 +4,7 @@
 #include "api/catalog_loader.h"
 
 #include "render/data_reader.h"
+#include "render/shape_reader.h"
 #include "sim/roads/profiles.h"
 
 #include <godot_cpp/variant/array.hpp>
@@ -21,8 +22,12 @@ float num(DataReader &r, const Dictionary &d, const char *key) { return float(r.
 
 void load_tuning(DataReader r, const Dictionary &t, Tuning &tn) {
 #define CITY_TUNING_LOAD(group, name) tn.group##_##name = float(r.in(#group).num(r.table(t, #group), #name));
-	CITY_TUNING_FIELDS(CITY_TUNING_LOAD)
+#define CITY_TUNING_LOAD_COUNT(group, name) tn.group##_##name = r.in(#group).integer(r.table(t, #group), #name);
+#define CITY_TUNING_LOAD_DOUBLE(group, name) tn.group##_##name = r.in(#group).num(r.table(t, #group), #name);
+	CITY_TUNING_FIELDS(CITY_TUNING_LOAD, CITY_TUNING_LOAD_COUNT, CITY_TUNING_LOAD_DOUBLE)
 #undef CITY_TUNING_LOAD
+#undef CITY_TUNING_LOAD_COUNT
+#undef CITY_TUNING_LOAD_DOUBLE
 }
 
 StripKind strip_kind(const String &k, DataReader &r) {
@@ -103,11 +108,25 @@ void load_zones(DataReader top, const Dictionary &t, Catalog &c) {
 		}
 		ZoneDef &z = c.zones[code];
 		z.id = r.utf8(d, "id");
-		z.name_key = r.utf8(d, "name_key");
 		z.base = r.integer(d, "base");
 		if (z.base < 0 || z.base >= BASE_COUNT) r.fail("a base past the base zones (BaseZone)");
 		z.density = r.integer(d, "density");
+		z.building = r.utf8(d, "building");
 		z.color = r.colour(d, "color");
+	}
+	// The zones the generator lays: each must be in the table.
+	auto gen = [&](int base, int density) {
+		const int code = c.zone_code(base, density);
+		if (code < 0) top.in("zones").fail(String("the generator lays a zone of base ") + String::num_int64(base) + String(" at density ") + String::num_int64(density) + String(": none"));
+		return code < 0 ? 0 : code;
+	};
+	constexpr int MEDIUM = 1;
+	c.gen_zones.none = gen(BASE_NONE, MEDIUM);
+	c.gen_zones.industrial = gen(BASE_INDUSTRIAL, MEDIUM);
+	c.gen_zones.mixed = gen(BASE_MIXED, MEDIUM);
+	for (int k = 0; k < ZONE_DENSITIES; k++) {
+		c.gen_zones.commercial[k] = gen(BASE_COMMERCIAL, k);
+		c.gen_zones.residential[k] = gen(BASE_RESIDENTIAL, k);
 	}
 	const Dictionary o = top.table(t, "residents");
 	DataReader ro = top.in("residents");
@@ -149,8 +168,26 @@ void load_plan(DataReader r, const Dictionary &p, CityPlanDef &d) {
 	for (int i = 0; i < roads.size(); i++) d.square_main_roads.push_back(rq.in("green_main_roads").utf8_at(roads, i));
 }
 
-void load_growth(DataReader r, const Dictionary &t, GrowthDef &g) {
+// A road role names a profile the catalogue has (load_profiles before).
+int road_role(DataReader r, const Dictionary &roles, const char *role, const Catalog &c) {
+	const std::string id = r.utf8(roles, role);
+	const int p = c.profile_id(id);
+	if (p < 0) r.in(role).fail(String("no road profile '") + String(id.c_str()) + String("'"));
+	return p;
+}
+
+// The generator's shapes: every block of GEN_SHAPE_BLOCKS, each field under its own name (render/shape_reader.h).
+void gen_shapes_of(DataReader r, const Dictionary &t, GenShapes &out) { GEN_SHAPE_BLOCKS(SHAPE_READ_BLOCK) }
+
+void load_growth(DataReader r, const Dictionary &t, Catalog &c) {
+	GrowthDef &g = c.growth;
+	gen_shapes_of(r.in("shapes"), r.table(t, "shapes"), g.shapes);
 	load_plan(r.in("plan"), r.table(t, "plan"), g.plan);
+	const Dictionary roles = r.table(t, "road_roles");
+	DataReader rr = r.in("road_roles");
+#define X(role) g.roads.role = road_role(rr, roles, #role, c);
+	CITY_ROAD_ROLES(X)
+#undef X
 	const Dictionary cv = r.table(t, "civic");
 	DataReader rc = r.in("civic");
 	g.civic_min_area = num(rc, cv, "min_area");
@@ -180,6 +217,7 @@ void load_growth(DataReader r, const Dictionary &t, GrowthDef &g) {
 	g.organic_reach_m = num(r, t, "organic_reach_m");
 	g.organic_extra_floors = r.integer(t, "organic_extra_floors");
 	g.decay_span_min = num(r, t, "decay_span_min");
+	g.occupied_share = num(r, t, "occupied_share");
 }
 
 void load_maps(DataReader top, const Dictionary &t, Catalog &c, std::vector<std::string> &scenic) {
@@ -210,7 +248,7 @@ bool CatalogLoader::load(const Dictionary &tables, Catalog &out, PackedStringArr
 	load_maps(DataReader{ errors, "maps.json" }, r.table(tables, "maps"), c, scenic_names);
 	load_profiles(DataReader{ errors, "road_profiles.json" }, r.table(tables, "road_profiles"), c);
 	load_zones(DataReader{ errors, "zones.json" }, r.table(tables, "zones"), c);
-	load_growth(DataReader{ errors, "growth.json" }, r.table(tables, "growth"), c.growth);
+	load_growth(DataReader{ errors, "growth.json" }, r.table(tables, "growth"), c);
 	load_traffic_params(r.table(tables, "traffic"), c.traffic, errors);
 	load_street_furniture(r.table(tables, "street_furniture"), c.furniture, errors);
 	load_blast_params(r.table(tables, "blast"), c.blast, errors);

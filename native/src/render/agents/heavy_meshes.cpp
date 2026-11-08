@@ -13,11 +13,8 @@ namespace city {
 
 namespace {
 
-constexpr float LITRES_PER_M3 = 1000.f;
-constexpr float MIRROR_W = 0.08f, MIRROR_H = 0.32f, MIRROR_D = 0.12f, DOOR_SPLIT_W = 0.04f, CAB_DOOR_SEAM = 0.03f;
-constexpr float TAIL_LENS_H_M = 0.05f;
+constexpr float LITRES_PER_M3 = 1000.f; // the litre: a cubic decimetre
 // motorbike proportions (shares of the axle distance or of the body half width)
-constexpr float MOTO_LAMP_D = 0.03f;
 
 struct Truck {
 	float L = 0, hl = 0, chw = 0, cab_back = 0, cab_bottom = 0, floor = 0, belt = 0, glass_top = 0, cab_top = 0, wall = 0;
@@ -25,14 +22,14 @@ struct Truck {
 	Running g;
 };
 
-Truck read_truck(const DataValue &d) {
+Truck read_truck(const AgentShapes &shapes, const DataValue &d) {
 	Truck k;
 	k.L = d["length"].f(); k.hl = k.L * 0.5f; k.wall = d["wall_m"].f();
 	k.g = heavy_running(d, k.L);
 	k.chw = d["cab_w"].f() * 0.5f;
 	k.rails_hw = d["rails_m"].f() * 0.5f;
 	k.cab_back = k.g.axles[0] - d["body_from_axle_m"].f();
-	k.cab_bottom = 2 * k.g.r + HEAVY_ARCH_PAD_M; // over the front wheel
+	k.cab_bottom = 2 * k.g.r + shapes.agent_parts.arch_pad_m; // over the front wheel
 	k.floor = k.cab_bottom + k.wall;
 	k.cab_top = d["cab_top"].f();
 	const Vector2 lines = agent_v2(d["cab_lines"]); // the belt and the glass's top, shares of the cab's height
@@ -50,25 +47,27 @@ Truck read_truck(const DataValue &d) {
 // The cab: hollow under the belt over its floor, the blind back, the roof over the glass, the windscreen and side glass
 // between their pillars, the door's back edge; the bumper under the cab's front down to the axle's height.
 void cab(MeshBuilder &mb, const Truck &k, const AgentTrim &trim) {
+	const HeavyShape &H = trim.shapes->heavy;
+	const HeavyMeshesShape &K = trim.shapes->heavy_meshes;
 	Tub t;
 	t.half_w = k.chw; t.wall = k.wall; t.y0 = k.cab_bottom; t.y1 = k.belt; t.z0 = k.cab_back; t.z1 = k.hl; t.floor = k.floor;
 	t.axles = k.g.axles;
-	t.arch_r = k.g.r + HEAVY_ARCH_PAD_M;
+	t.arch_r = k.g.r + trim.shapes->agent_parts.arch_pad_m;
 	t.arch_top = k.cab_bottom; // the cab clears the wheel: nothing to cut
 	t.pan_half_w = k.rails_hw;
 	agent_tub(mb, t, trim);
 	agent_box(mb, Vector3(-k.chw, k.cab_bottom, k.hl - k.wall), Vector3(k.chw, k.belt, k.hl), AGENT_WHITE, AgentTag::PAINT);
 	agent_box(mb, Vector3(-k.chw, k.cab_bottom, k.cab_back), Vector3(k.chw, k.cab_top, k.cab_back + k.wall), AGENT_WHITE, AgentTag::PAINT);
 	agent_box(mb, Vector3(-k.chw, k.glass_top, k.cab_back), Vector3(k.chw, k.cab_top, k.hl), AGENT_WHITE, AgentTag::PAINT);
-	agent_box(mb, Vector3(-k.chw, k.g.r, k.hl - k.wall), Vector3(k.chw, k.cab_bottom, k.hl + HEAVY_PROUD_M), trim.grille, AgentTag::FIXED);
-	const float zg = k.hl - HEAVY_GLASS_INSET_M, xg = k.chw - HEAVY_PILLAR_M, door = k.cab_back + HEAVY_PILLAR_M;
+	agent_box(mb, Vector3(-k.chw, k.g.r, k.hl - k.wall), Vector3(k.chw, k.cab_bottom, k.hl + H.proud_m), trim.grille, AgentTag::FIXED);
+	const float zg = k.hl - H.glass_inset_m, xg = k.chw - H.pillar_m, door = k.cab_back + H.pillar_m;
 	agent_pane(mb, Vector3(-xg, k.belt, zg), Vector3(xg, k.belt, zg), Vector3(xg, k.glass_top, zg), Vector3(-xg, k.glass_top, zg), Vector3(0, 0, 1), trim);
 	for (int side : { -1, 1 }) {
-		const float x = side * (k.chw - HEAVY_GLASS_INSET_M), z1 = k.hl - HEAVY_PILLAR_M;
+		const float x = side * (k.chw - H.glass_inset_m), z1 = k.hl - H.pillar_m;
 		agent_pane(mb, Vector3(x, k.belt, door), Vector3(x, k.belt, z1), Vector3(x, k.glass_top, z1), Vector3(x, k.glass_top, door), Vector3(side, 0, 0), trim);
 		agent_box(mb, Vector3(side * xg, k.belt, z1), Vector3(side * k.chw, k.glass_top, k.hl), AGENT_WHITE, AgentTag::PAINT);
 		agent_box(mb, Vector3(side * (k.chw - k.wall), k.belt, k.cab_back), Vector3(side * k.chw, k.glass_top, door), AGENT_WHITE, AgentTag::PAINT);
-		agent_box(mb, Vector3(side * (k.chw - HEAVY_PROUD_M), k.cab_bottom, door), Vector3(side * (k.chw + HEAVY_PROUD_M), k.glass_top, door + CAB_DOOR_SEAM),
+		agent_box(mb, Vector3(side * (k.chw - H.proud_m), k.cab_bottom, door), Vector3(side * (k.chw + H.proud_m), k.glass_top, door + K.cab_door_seam),
 				trim.blackout, AgentTag::FIXED);
 	}
 }
@@ -106,9 +105,10 @@ int cab_inside(MeshBuilder &mb, const Truck &k, const DataValue &in, const Cabin
 // The chassis (rails as wide as the sheet's, from the axles' height to the platform), the box with its rear doors' split,
 // the fuel tank on the chassis behind the cab (its volume over its length and depth).
 void chassis_and_box(MeshBuilder &mb, const Truck &k, const DataValue &d, const AgentTrim &trim) {
+	const HeavyShape &H = trim.shapes->heavy;
 	agent_box(mb, Vector3(-k.rails_hw, k.g.r, -k.hl), Vector3(k.rails_hw, k.box_bottom, k.cab_back), trim.blackout, AgentTag::FIXED);
 	agent_box(mb, Vector3(-k.box_hw, k.box_bottom, -k.hl), Vector3(k.box_hw, k.box_top, k.box_front), trim.truck_box, AgentTag::FIXED);
-	agent_box(mb, Vector3(-DOOR_SPLIT_W * 0.5f, k.box_bottom, -k.hl - HEAVY_PROUD_M), Vector3(DOOR_SPLIT_W * 0.5f, k.box_top, -k.hl), trim.blackout,
+	agent_box(mb, Vector3(-H.door_split_m * 0.5f, k.box_bottom, -k.hl - H.proud_m), Vector3(H.door_split_m * 0.5f, k.box_top, -k.hl), trim.blackout,
 			AgentTag::FIXED);
 	const Vector2 tank = agent_v2(d["fuel_tank_m"]); // length, depth
 	const float h = d["fuel_l"].f() / LITRES_PER_M3 / (tank.x * tank.y);
@@ -148,6 +148,7 @@ void heavy_wheels(MeshBuilder &mb, const Running &g, int sides, const AgentTrim 
 }
 
 void heavy_lamps(MeshBuilder &mb, const DataValue &lamps, float W, float L, const AgentTrim &trim) {
+	const HeavyShape &H = trim.shapes->heavy;
 	const DataValue head = lamps["head"], tail = lamps["tail"]; // [centre height, outer edge in from the side, w, h]
 	head.list(4);
 	tail.list(4);
@@ -155,28 +156,30 @@ void heavy_lamps(MeshBuilder &mb, const DataValue &lamps, float W, float L, cons
 		for (int end : { 1, -1 }) {
 			const DataValue &l = end > 0 ? head : tail;
 			const float y = l[0].f(), w = l[2].f(), h = l[3].f(), x = side * (W * 0.5f - l[1].f() - w * 0.5f), z = end * L * 0.5f;
-			agent_box(mb, Vector3(x - w * 0.5f, y - h * 0.5f, z - HEAVY_PROUD_M), Vector3(x + w * 0.5f, y + h * 0.5f, z + HEAVY_PROUD_M),
+			agent_box(mb, Vector3(x - w * 0.5f, y - h * 0.5f, z - H.proud_m), Vector3(x + w * 0.5f, y + h * 0.5f, z + H.proud_m),
 					end > 0 ? trim.headlamp : trim.tail, end > 0 ? AgentTag::HEAD : AgentTag::TAIL);
 		}
 }
 
 void heavy_mirrors(MeshBuilder &mb, float hw, float z, float y, float out, const AgentTrim &trim) {
+	const HeavyMeshesShape &K = trim.shapes->heavy_meshes;
 	for (int side : { -1, 1 }) {
-		const float x1 = side * (hw + out - MIRROR_W * 0.5f);
-		agent_box(mb, Vector3(side * hw, y + MIRROR_H - MIRROR_W, z - MIRROR_W * 0.5f), Vector3(x1, y + MIRROR_H, z + MIRROR_W * 0.5f), trim.blackout,
+		const float x1 = side * (hw + out - K.mirror_w * 0.5f);
+		agent_box(mb, Vector3(side * hw, y + K.mirror_h - K.mirror_w, z - K.mirror_w * 0.5f), Vector3(x1, y + K.mirror_h, z + K.mirror_w * 0.5f), trim.blackout,
 				AgentTag::FIXED);
-		agent_box(mb, Vector3(x1 - MIRROR_W * 0.5f, y, z - MIRROR_D * 0.5f), Vector3(x1 + MIRROR_W * 0.5f, y + MIRROR_H, z + MIRROR_D * 0.5f), trim.blackout,
+		agent_box(mb, Vector3(x1 - K.mirror_w * 0.5f, y, z - K.mirror_d * 0.5f), Vector3(x1 + K.mirror_w * 0.5f, y + K.mirror_h, z + K.mirror_d * 0.5f), trim.blackout,
 				AgentTag::FIXED);
 	}
 }
 
 int build_truck(MeshBuilder &mb, const DataValue &d, int sides, const CabinLook *look, const AgentTrim &trim) {
-	const Truck k = read_truck(d);
+	const HeavyShape &H = trim.shapes->heavy;
+	const Truck k = read_truck(*trim.shapes, d);
 	const int passengers = look ? cab_inside(mb, k, d["interior"], *look) : 0;
 	cab(mb, k, trim);
 	deflector(mb, k);
 	chassis_and_box(mb, k, d, trim);
-	heavy_mirrors(mb, k.chw, k.hl - HEAVY_PILLAR_M, k.belt, d["mirror_out_m"].f(), trim);
+	heavy_mirrors(mb, k.chw, k.hl - H.pillar_m, k.belt, d["mirror_out_m"].f(), trim);
 	heavy_lamps(mb, d["lamps_m"], d["cab_w"].f(), k.L, trim);
 	heavy_wheels(mb, k.g, sides, trim);
 	return passengers;
@@ -216,6 +219,7 @@ static void moto_frame(MeshBuilder &mb, const DataValue &sh, float rear_z, float
 }
 
 int build_moto(MeshBuilder &mb, const DataValue &d, int sides, const AgentTrim &trim) {
+	const HeavyMeshesShape &K = trim.shapes->heavy_meshes;
 	const Vector2 rear = agent_tyre(d["tyre"]), front = agent_tyre(d["front_tyre"]);
 	const float az = d["wheelbase_m"].f() * 0.5f;
 	const DataValue sh = d["shape"];
@@ -228,12 +232,12 @@ int build_moto(MeshBuilder &mb, const DataValue &d, int sides, const AgentTrim &
 	const Vector3 nac = agent_v3(sh["nacelle_m"]), guard = agent_v3(sh["guard_m"]), bar = agent_v3(sh["bar_m"]);
 	const Vector2 lens = agent_v2(sh["lens_m"]);
 	agent_box(mb, Vector3(-nac.x * 0.5f, head.y - nac.y, head.x), Vector3(nac.x * 0.5f, head.y, head.x + nac.z), trim.blackout, AgentTag::FIXED);
-	agent_box(mb, Vector3(-lens.x * 0.5f, head.y - nac.y * 0.5f - lens.y * 0.5f, head.x + nac.z), Vector3(lens.x * 0.5f, head.y - nac.y * 0.5f + lens.y * 0.5f, head.x + nac.z + MOTO_LAMP_D), trim.headlamp, AgentTag::HEAD);
+	agent_box(mb, Vector3(-lens.x * 0.5f, head.y - nac.y * 0.5f - lens.y * 0.5f, head.x + nac.z), Vector3(lens.x * 0.5f, head.y - nac.y * 0.5f + lens.y * 0.5f, head.x + nac.z + K.moto_lamp_d), trim.headlamp, AgentTag::HEAD);
 	for (float z : { az, -az })
 		agent_box(mb, Vector3(-guard.x * 0.5f, front.x * 2 + guard.y, z - guard.z * 0.5f), Vector3(guard.x * 0.5f, front.x * 2 + guard.y * 2, z + guard.z * 0.5f), trim.blackout, AgentTag::FIXED);
 	agent_strut(mb, Vector3(-bar.x, bar.y, bar.z), Vector3(bar.x, bar.y, bar.z), sh["grip_m"].f() * 2, sh["grip_m"].f() * 2, trim.blackout, AgentTag::FIXED);
 	const Vector2 tail = agent_v2(sh["cowl"]["at"][2]);
-	agent_box(mb, Vector3(-lens.x * 0.5f, tail.y - TAIL_LENS_H_M, tail.x - MOTO_LAMP_D), Vector3(lens.x * 0.5f, tail.y, tail.x), trim.tail, AgentTag::TAIL);
+	agent_box(mb, Vector3(-lens.x * 0.5f, tail.y - K.tail_lens_h_m, tail.x - K.moto_lamp_d), Vector3(lens.x * 0.5f, tail.y, tail.x), trim.tail, AgentTag::TAIL);
 	return 0;
 }
 

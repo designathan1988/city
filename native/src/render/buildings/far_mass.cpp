@@ -3,6 +3,7 @@
 // plinth. A few dozen triangles per building; `lean` (the far level) keeps one band per side and drops the coping and
 // machine rooms.
 #include "render/buildings/facade_bay.h"
+#include "render/buildings/roof_sizes.h"
 #include "sim/buildings/b40/gen.h"
 #include "render/buildings/roof_util.h"
 
@@ -15,16 +16,14 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
-constexpr float ROOF_EDGE_H = 0.85f, ATTIC_H = 1.5f, COPING = 0.3f;
-constexpr float PLINTH_BURY = 0.8f, TEST_OUT = 0.03f, MACHINE_H = 3.f, MODULE = 3.f, SLAB_LIFT = 0.002f;
-constexpr float MASS_IN_M = 0.7f, HALF = 0.5f; // the plain side stands this far behind the bays: past the deepest opening
+constexpr float HALF = 0.5f; // the plain side stands this far behind the bays: past the deepest opening
 constexpr uint32_t CELL_OFFSETS = 64; // bays the far level's grid starts from, by building: two buildings light other rooms
 
 FarWindows windows_of(const Placed &pl, const Volume &v, int k, int side, float W, float H, uint8_t comp) {
 	BayCtx c;
 	c.W = W; c.H = H; c.level = v.base + k; c.geo = &v.faces[side];
 	c.comp = comp;
-	Opening o = opening_of(*pl.data, c);
+	Opening o = opening_of(pl, c);
 	FarWindows w;
 	w.width = o.w / W; w.sill = o.h0 / H; w.head = o.h1 / H;
 	w.flags = (o.has ? 0 : WINDOW_FLAG_BLANK) | (pl.b->use == USE_COMMERCIAL ? WINDOW_FLAG_OFFICE : 0) | (pane_dark(c.comp) << WINDOW_DARK_SHIFT);
@@ -69,7 +68,7 @@ struct OpenCell {
 	float W;
 	bool operator()(int k, int i) const {
 		const float along = W * (float(i) + HALF) / sd.length;
-		return !covered(b, v, v.base + k, Point2{ sd.p0.x + (sd.p1.x - sd.p0.x) * along + sd.n.x * TEST_OUT, sd.p0.y + (sd.p1.y - sd.p0.y) * along + sd.n.y * TEST_OUT });
+		return !covered(b, v, v.base + k, V2{ sd.p0.x + (sd.p1.x - sd.p0.x) * along + sd.n.x * ROOF_TEST_OUT, sd.p0.y + (sd.p1.y - sd.p0.y) * along + sd.n.y * ROOF_TEST_OUT });
 	}
 };
 
@@ -92,7 +91,7 @@ void flat_bays(Shell &s, const Placed &pl, const Volume &v, const Side &sd, int 
 		BayCtx c;
 		c.W = W; c.H = b.level_h(v.base + k); c.level = v.base + k; c.geo = &v.faces[sd.side];
 		c.comp = bay_at(v, k, sd.side, i);
-		return opening_of(*pl.data, c).has;
+		return opening_of(pl, c).has;
 	};
 	s.grime_floor = pl.lot.o.y + b.level_z(v.base);
 	rectangles(v.storeys, n, [&](int k, int i) { return open(k, i) && opening(k, i); },
@@ -106,6 +105,7 @@ void flat_bays(Shell &s, const Placed &pl, const Volume &v, const Side &sd, int 
 // The mid level's wall of a side, bay by bay as the near level has it: each opening an instance (bay_kit.h), the blank bays in
 // rectangles of one push, and behind them all the plain side, which no eye reaches and which throws the building's shadow.
 void bay_walls(Shell &s, const Placed &pl, const Volume &v, const Side &sd, int n, float W, int8_t fin) {
+	const FarMassLook &K = pl.look->shapes.far_mass;
 	const Body &b = *pl.b;
 	const OpenCell open{ b, v, sd, W };
 	std::vector<char> done(size_t(n) * size_t(v.storeys), 0);
@@ -120,7 +120,7 @@ void bay_walls(Shell &s, const Placed &pl, const Volume &v, const Side &sd, int 
 			BayCtx c;
 			c.W = W; c.H = H; c.level = v.base + k; c.geo = &v.faces[sd.side];
 			c.comp = bay_at(v, k, sd.side, i);
-			const Opening o = opening_of(*pl.data, c);
+			const Opening o = opening_of(pl, c);
 			if (!o.has) continue;
 			cell_of(k, i) = 1;
 			const Basis f{ sd.f.at(W * float(i), z, relief_push(v, sd.side, i, k)), sd.f.e0, sd.f.e1, sd.f.e2 };
@@ -135,7 +135,7 @@ void bay_walls(Shell &s, const Placed &pl, const Volume &v, const Side &sd, int 
 		s.rect(Basis{ sd.f.at(W * float(i), b.level_z(v.base + k), relief_push(v, sd.side, i, k)), sd.f.e0, sd.f.e1, sd.f.e2 }, 0, W * float(i1 - i), 0,
 				b.level_z(v.base + k1) - b.level_z(v.base + k), 0, wall_lin(pl, v, k, sd.side), fin);
 	});
-	s.rect(sd.f, 0, sd.length, b.level_z(v.base), b.level_z(v.top()), -MASS_IN_M, wall_lin(pl, v, 0, sd.side), fin);
+	s.rect(sd.f, 0, sd.length, b.level_z(v.base), b.level_z(v.top()), -K.mass_in_m, wall_lin(pl, v, 0, sd.side), fin);
 }
 
 // The far level's wall of a side: what of it stands in the open, in rectangles of bays and storeys that read alike. A neighbour covers a side only
@@ -154,13 +154,14 @@ void lean_walls(Shell &s, const Placed &pl, const Volume &v, const Side &sd, int
 }
 
 void walls(Shell &s, const Placed &pl, const Volume &v, bool roofs) {
+	const FarMassLook &K = pl.look->shapes.far_mass;
 	const Body &b = *pl.b;
 	float z0 = b.level_z(v.base);
 	bool parapet = roofs && roof_flat(v.roof) && v.roof != ROOF_TERRACE && !covered_by_above(b, v);
 	float ph = v.crown == CROWN_ATTIC ? ATTIC_H : ROOF_EDGE_H;
 	Paint mp = moulding_of(pl);
 	for (const Side &sd : sides_of(pl, v, 0)) {
-		Point2 mid{ (sd.p0.x + sd.p1.x) / 2 + sd.n.x * TEST_OUT, (sd.p0.y + sd.p1.y) / 2 + sd.n.y * TEST_OUT };
+		V2 mid{ (sd.p0.x + sd.p1.x) / 2 + sd.n.x * ROOF_TEST_OUT, (sd.p0.y + sd.p1.y) / 2 + sd.n.y * ROOF_TEST_OUT };
 		int n = bays_of(v, sd.side);
 		float W = sd.length / float(n);
 		int8_t fin = b.wall_of(v).finish;
@@ -171,10 +172,10 @@ void walls(Shell &s, const Placed &pl, const Volume &v, bool roofs) {
 		if (parapet) {
 			s.rect(Basis{ sd.f.o + sd.f.e1 * top, sd.f.e0, sd.f.e1, sd.f.e2 }, 0, sd.length, 0, ph, 0, wall_lin(pl, v, v.storeys - 1, sd.side), fin);
 			Basis cap{ sd.f.at(0, top + ph, 0), sd.f.e0, -sd.f.e2, sd.f.e1 };
-			s.rect(cap, 0, sd.length, 0, COPING, 0, paint_lin(mp), mp.finish);
+			s.rect(cap, 0, sd.length, 0, COPING_IN, 0, paint_lin(mp), mp.finish);
 		}
 		if (v.base == 0 && !covered(b, v, 0, mid))
-			s.rect(sd.f, 0, sd.length, pl.ground_lo - PLINTH_BURY, 0, 0, paint_lin(pl.data->color("plinth")), FIN_STONE);
+			s.rect(sd.f, 0, sd.length, pl.ground_lo - K.plinth_bury, 0, 0, paint_lin(pl.data->color("plinth")), FIN_STONE);
 	}
 }
 
@@ -187,15 +188,15 @@ void roof(Shell &s, const Placed &pl, const Volume &v, int vol) {
 	std::vector<Vector3> p;
 	if (v.outline.empty()) p = { pl.lot.at(v.x, v.y, eaves), pl.lot.at(v.x + v.w, v.y, eaves), pl.lot.at(v.x + v.w, v.y + v.d, eaves), pl.lot.at(v.x, v.y + v.d, eaves) };
 	else
-		for (const Point2 &q : v.outline) p.push_back(pl.lot.at(v.x + q.x * v.w, v.y + q.y * v.d, eaves + SLAB_LIFT));
+		for (const V2 &q : v.outline) p.push_back(pl.lot.at(v.x + q.x * v.w, v.y + q.y * v.d, eaves + SLAB_LIFT));
 	Vector3 c = pl.lot.at(v.x + v.w / 2, v.y + v.d / 2, eaves + SLAB_LIFT);
 	s.grime_floor = -FAR_AWAY;
 	for (size_t i = 0; i < p.size(); i++) s.tri(c, p[i], p[(i + 1) % p.size()], pl.lot.e2, lin, rp.finish);
 	for (const Core &cr : b.cores) {
-		float cx = cr.x + MODULE / 2, cy = cr.y + MODULE / 2;
+		float cx = cr.x + MACHINE_ROOM_M / 2, cy = cr.y + MACHINE_ROOM_M / 2;
 		if (!(cx > v.x && cx < v.x + v.w && cy > v.y && cy < v.y + v.d) || covered_by_above(b, v)) continue;
 		const Paint &wp = b.wall_of(v);
-		s.box(pl.lot, cr.x, cr.x + MODULE, cr.y, cr.y + MODULE, eaves, eaves + MACHINE_H, paint_lin(wp) * pl.shade, wp.finish, SKIP_E2_NEG);
+		s.box(pl.lot, cr.x, cr.x + MACHINE_ROOM_M, cr.y, cr.y + MACHINE_ROOM_M, eaves, eaves + MACHINE_H, paint_lin(wp) * pl.shade, wp.finish, SKIP_E2_NEG);
 	}
 	if (pl.lean && v.roof != ROOF_TERRACE && v.outline.empty() && !covered_by_above(b, v)) { // its plant a metre or more across, the same as near; what is finer goes
 		Shell finer;

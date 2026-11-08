@@ -4,10 +4,13 @@
 
 #include "sim/buildings/b40/record.h"
 #include "sim/roads/junction.h"
+#include "sim/persistence/save_format.h"
+#include "sim/state/city_state.h"
 #include "sim/state/pose_buffer.h"
 
 #include <atomic>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -27,6 +30,17 @@ struct SaveJob {
 	std::atomic<int> state{ 0 }; // 0 idle, 1 writing, 2 ok, 3 error
 	std::atomic<int64_t> bytes{ 0 };
 	std::string error; // set by the save thread before the state turns 3, read only then
+};
+
+// A city being opened: the file read and decoded aside on a thread of its own while the open one runs on and the frames go on;
+// the main thread takes it in whole once it is read (CityCore::load_poll).
+struct LoadJob {
+	std::thread thread;
+	std::atomic<int> state{ 0 }; // 0 idle, 1 reading, 2 read (to take in), 3 refused
+	std::unique_ptr<CityState> read; // the city read aside: the thread's until the state turns 2 or 3
+	std::string error; // set by the thread before the state turns 2 or 3, read only then
+	OpenTimes times;
+	bool paused = false;
 };
 
 // What the Inspect tool asks for each frame, kept until the network changes (city_core_inspect.cpp).

@@ -10,7 +10,7 @@ using namespace godot;
 
 namespace city {
 
-static constexpr float NOBODY_M = 1e9f;
+static constexpr float NOBODY_M = 1e9f; // farther than anybody: none near
 static constexpr float STOPPED_MS = 0.5f;
 
 Dictionary CityProbes::street_watch(float near_m) {

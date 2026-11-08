@@ -8,6 +8,8 @@
 #include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/vector3.hpp>
 
+#include "render/effects/effect_shapes.h"
+
 #include <vector>
 
 namespace city {
@@ -111,7 +113,8 @@ struct GoreLook {
 
 struct EffectParams {
 	int pool = 0;
-	float wind_x = 0, wind_z = 0, fireball_base = 0, fireball_per_force = 0;
+	float wind_x = 0, wind_z = 0;
+	float fireball_base = 0, fireball_per_force = 0; // the scar's reach (tuning strike.scar_radius_*), set by EffectWorld::init
 	std::vector<BurstDef> bursts;
 	std::vector<SourceDef> sources;
 	// What each puff of a source is (flame, a chimney of dark smoke, a light smoke).
@@ -154,6 +157,8 @@ struct EffectParams {
 	int down_dust_count = 0;
 	float down_dust_size = 0, down_dust_life = 0, down_dust_spread = 0;
 	float body_life = 0, push_ms = 0, lift_ms = 0, tracer_life = 0, tracer_m = 0, flash_m = 0; // bodies, tracers and the muzzle
+
+	EffectShapes shapes; // every effects file's sizes, counts and speeds (effects.json "shapes")
 
 	bool load(const godot::Dictionary &t, const godot::Dictionary &aftermath, const godot::Dictionary &gore_table, godot::PackedStringArray &errors);
 

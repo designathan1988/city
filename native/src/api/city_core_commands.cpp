@@ -4,6 +4,7 @@
 #include "api/city_core.h"
 
 #include "api/edit_result.h"
+#include "core/units.h"
 #include "sim/commands/road_blocks.h"
 #include "sim/roads/road_variants.h"
 #include "sim/economy/road_economy.h"
@@ -19,7 +20,6 @@ namespace city {
 
 namespace {
 constexpr int PREVIEW_STEPS = 32; // points of each piece of the preview polyline (on the ground; the ribbon lifts itself)
-constexpr double RAD_TO_DEG = 180 / 3.14159265358979323846;
 constexpr int PIECE_POINTS = 3; // a piece crosses the API as its start, control and end
 
 Dictionary anchor_dict(const CityState &s, const Anchor &a) {
@@ -109,7 +109,7 @@ Dictionary CityCore::road_end(const Vector3 &start, const Vector3 &p, double px,
 	Dictionary d;
 	d["position"] = Vector3(float(e.x), s.terrain.height_at(float(e.x), float(e.z)), float(e.z));
 	d["guide"] = String(guide_name(e.guide));
-	d["angle_deg"] = e.angle * RAD_TO_DEG;
+	d["angle_deg"] = e.angle * RAD_TO_DEG_D;
 	d["length"] = e.length;
 	return d;
 }

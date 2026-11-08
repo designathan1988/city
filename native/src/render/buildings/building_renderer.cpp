@@ -20,9 +20,9 @@ using namespace godot;
 namespace city {
 
 namespace {
+// A chunk's box is dropped DROP_K of its height below the ground (its plinths and walls go down); a part band's bits.
 constexpr float HALF = 0.5f, DROP_K = 1.25f;
 constexpr int BAND_BIT_NEAR = 2, BAND_BIT_MID = 4;
-constexpr int CHUNKS_PER_SUPER = int(SUPERCHUNK / CHUNK); // per axis
 
 int64_t super_of(const Vector3 &centre) { return chunk_of(centre.x, centre.z, SUPERCHUNK); }
 
@@ -65,8 +65,8 @@ bool BuildingRenderer::init(const RenderContext &ctx, PackedStringArray &errors)
 	material_lawn_ = ctx.material("verge", errors);
 	material_wash_ = ctx.material("building_wash", errors);
 	material_parts_ = ctx.material("building_parts", errors);
-	const Dictionary t = ctx.table("buildings", errors), bay = ctx.table("bay_props", errors), furniture = ctx.table("furniture", errors);
-	if (!errors.is_empty() || !look_.load(t, bay, furniture, errors)) return false;
+	const Dictionary t = ctx.table("building_look", errors), bay = ctx.table("bay_props", errors), furniture = ctx.table("furniture", errors);
+	if (!errors.is_empty() || !look_.load(t, bay, furniture, ctx.table("camera", errors), errors)) return false;
 	for (int k = 0; k < b40::BAY_PROPS; k++) prop_mesh_[size_t(k)] = look_.bay.models[size_t(k)].commit();
 	RenderingServer::get_singleton()->material_set_param(material_props_, "ac_case", Vector2(look_.bay.ac_case.x, look_.bay.ac_case.y)); // its front's width and height
 	MeshBuilder unit;

@@ -19,9 +19,9 @@ namespace city {
 namespace {
 constexpr float LOT_REACH_M = 80.f; // the widest lot: a centre this far outside the reach may still have a wall inside it
 constexpr float STANDOFF_DEPTH = 0.5f; // the load on a wall is that at its distance plus half the depth of its block
-constexpr uint32_t SALT_FIRE = 0x66697265U;
+constexpr uint32_t SALT_FIRE = 0x66697265U; // a stream's salt: the word it names, in ASCII
 constexpr uint32_t SALT_SHORT_ALONG = 0x73686f61U, SALT_SHORT_STOREY = 0x73686f73U, SALT_SHORT_KIND = 0x73686f6bU, SALT_SHORT_RISE = 0x73686f6cU,
-		SALT_SHORT_TIME = 0x73686f74U;
+		SALT_SHORT_TIME = 0x73686f74U; // streams' salts: the words they name, in ASCII
 constexpr uint32_t SHORT_DRAWS = 8; // the draws of a building's shorted points: its id times this, plus the point's
 constexpr float SPHERE_VOLUME = 4.18879f; // 4/3 of pi
 
@@ -208,7 +208,7 @@ void strike_buildings(Blow &b) {
 		const bool felt_all = felt >= p.light_kpa; // a big building may feel little of a blow that still breaks the wall it lands on
 		if (!felt_all && !scarred) continue;
 		const int at = b.s.damage.hurt_of(bd.seed, bd.x, bd.z);
-		const float limit = float(bd.floors) >= t.strike_frame_floors ? t.strike_frame_collapse_kpa : p.collapse_kpa;
+		const float limit = bd.floors >= t.strike_frame_floors ? t.strike_frame_collapse_kpa : p.collapse_kpa;
 		const float taken = (at >= 0 ? b.s.damage.hurt[size_t(at)].amount : 0.f) + (felt_all ? felt / limit : 0.f);
 		if (scarred) j_add_scar(b.s, Scar{ bd.seed, bd.x, bd.z, aim.x, aim.y, aim.z, aim.force });
 		if (taken >= 1.f || standing_share(b, bd, *body) < t.strike_standing_least) {

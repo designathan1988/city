@@ -15,9 +15,10 @@ using namespace godot;
 namespace city {
 
 namespace {
+// a chunk's box from under the deepest ground to over the highest (it is culled by it, never drawn); a chunk is dropped two chunks
+// past its reach, so it is not dropped and loaded again at one border; the cover's stream of a cell's hash
 constexpr float COVER_MIN_Y = -100.f, COVER_SPAN_Y = 700.f, HALF = 0.5f, DROP_CHUNKS = 2.f;
 constexpr uint32_t COVER_SALT = 0xc07e12u;
-const float DIAGONAL = std::sqrt(2.f);
 // Hash streams of one lattice cell.
 enum Stream : uint32_t { KEEP = 0, POS_X, POS_Z, SIZE, YAW, TINT, VARIANT };
 
@@ -58,8 +59,13 @@ bool CoverRenderer::init(const RenderContext &ctx, GroundKept &ground, PackedStr
 	shore_material_ = ctx.material("cover_shore", errors);
 	const Dictionary table = ctx.table("cover", errors);
 	if (!errors.is_empty()) return false;
+	if (!ctx.catalog) {
+		errors.push_back("cover: the render has no catalogue");
+		return false;
+	}
 	const DataValue t = DataReader{ errors, "cover.json" }.at(table); // render/data_reader.h
-	if (!kit_.build(t, errors) || !models_.load(t["elements"], errors) || !shore_.load(t["shore"], errors)) return false;
+	const int laid = ctx.catalog->nature.elements.first_effect;
+	if (!kit_.build(t, errors) || !models_.load(t["elements"], laid, errors) || !shore_.load(t["shore"], errors)) return false;
 	draws_ = 0;
 	for (int i = 0; i < COVER_PIECES; i++) {
 		first_[size_t(i)] = draws_;
@@ -164,7 +170,7 @@ void CoverRenderer::commit_one(Built &b) {
 	const size_t stones = size_t(draws_) + models_.all().size();
 	ch.resize(stones + rocks.variants.size());
 	AABB box(Vector3(key_x(b.key) * CHUNK, COVER_MIN_Y, key_y(b.key) * CHUNK), Vector3(CHUNK, COVER_SPAN_Y, CHUNK));
-	float end = kit_.reach_m + kit_.fade_m + CHUNK * DIAGONAL * HALF;
+	float end = kit_.reach_m + kit_.fade_m + CHUNK * SQRT2_F * HALF;
 	for (int p = 0; p < COVER_PIECES; p++) {
 		const CoverLook &k = kit_.look(CoverPiece(p));
 		for (size_t v = 0; v < k.variants.size(); v++) {
@@ -180,7 +186,7 @@ void CoverRenderer::commit_one(Built &b) {
 	}
 	for (size_t v = 0; v < rocks.variants.size(); v++) {
 		ch[stones + v].set(scenario_, rocks.variants[v]->get_rid(), shore_material_, b.bufs[stones + v], box, rocks.casts, LAYER_VEGETATION);
-		ch[stones + v].range(0, shore_.reach_m + kit_.fade_m + CHUNK * DIAGONAL * HALF);
+		ch[stones + v].range(0, shore_.reach_m + kit_.fade_m + CHUNK * SQRT2_F * HALF);
 	}
 }
 
@@ -244,7 +250,7 @@ void CoverRenderer::offer(const CityState &s, const Vector3 &cam, std::vector<Fr
 			int64_t k = cell_key(i, j);
 			float d = distance_to(k, cam);
 			if (d > reach || chunks_.count(k) != 0) continue;
-			if (d > reach_of(s, k) + CHUNK * DIAGONAL * HALF || !s.terrain.in_bounds((i + HALF) * CHUNK, (j + HALF) * CHUNK, -CHUNK * HALF)) continue;
+			if (d > reach_of(s, k) + CHUNK * SQRT2_F * HALF || !s.terrain.in_bounds((i + HALF) * CHUNK, (j + HALF) * CHUNK, -CHUNK * HALF)) continue;
 			if (!queue_.revs.busy(k)) unit(k, d, 0);
 		}
 }

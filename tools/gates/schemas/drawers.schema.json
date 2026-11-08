@@ -5,7 +5,8 @@
     "first_road",
     "catalog_tabs",
     "road_options",
-    "street"
+    "street",
+    "zone_densities"
   ],
   "properties": {
     "first_road": {
@@ -85,7 +86,8 @@
                     "ROUNDABOUT",
                     "TERRAIN",
                     "BUILD",
-                    "LOT", "LOTS",
+                    "LOT",
+                    "LOTS",
                     "MOVE",
                     "CONTROL",
                     "PAINT",
@@ -258,7 +260,9 @@
         "furniture"
       ],
       "properties": {
-        "cell_m": {"type": "number"},
+        "cell_m": {
+          "type": "number"
+        },
         "_doc": {
           "type": "string"
         },
@@ -393,6 +397,94 @@
               "type": "string"
             }
           }
+        },
+        "lanes": {
+          "type": "object",
+          "required": [
+            "label_key",
+            "median_road",
+            "choices"
+          ],
+          "properties": {
+            "label_key": {
+              "type": "string"
+            },
+            "median_road": {
+              "type": "string"
+            },
+            "choices": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "icon"
+                ],
+                "properties": {
+                  "icon": {
+                    "type": "string"
+                  },
+                  "label_key": {
+                    "type": "string"
+                  },
+                  "count": {
+                    "type": "integer"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "width": {
+          "type": "object",
+          "required": [
+            "label_key",
+            "step_m"
+          ],
+          "properties": {
+            "label_key": {
+              "type": "string"
+            },
+            "step_m": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false
+        },
+        "parking": {
+          "type": "object",
+          "required": [
+            "label_key",
+            "choices"
+          ],
+          "properties": {
+            "label_key": {
+              "type": "string"
+            },
+            "choices": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "icon"
+                ],
+                "properties": {
+                  "icon": {
+                    "type": "string"
+                  },
+                  "label_key": {
+                    "type": "string"
+                  },
+                  "count": {
+                    "type": "integer"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -408,8 +500,23 @@
         "maxItems": 2
       }
     },
-    "profile_palette": {"type": "array", "items": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 2}},
-    "profile_defaults": {"type": "object", "additionalProperties": {"type": "number"}},
+    "profile_palette": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "minItems": 2,
+        "maxItems": 2
+      }
+    },
+    "profile_defaults": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "number"
+      }
+    },
     "fn_keys": {
       "type": "array",
       "items": {
@@ -469,6 +576,30 @@
     },
     "lot_cards": {
       "type": "object"
+    },
+    "zone_densities": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "density",
+          "label_key",
+          "icon"
+        ],
+        "properties": {
+          "density": {
+            "type": "integer"
+          },
+          "label_key": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
     }
   },
   "strict": true

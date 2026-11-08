@@ -210,7 +210,7 @@ func _save_round_trip(id: int) -> void:
 	var outcome: Dictionary = await save(SLOT)
 	check(outcome.get("ok", false), "saved %s" % outcome)
 	new_map(TOWN_MAP, OTHER_SEED, false)
-	var r: Dictionary = CityStore.saves.load_game(SLOT, true)
+	var r: Dictionary = await CityStore.saves.load_game(SLOT, true)
 	check(r.ok, "opened %s" % r)
 	check(BuildingProbe.info(id).edited and BuildingProbe.info(id).digest == edited, "the edited body came back the same")
 	DirAccess.remove_absolute(CityStore.saves.save_path(SLOT))

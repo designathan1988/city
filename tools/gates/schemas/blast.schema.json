@@ -340,8 +340,6 @@
     "bleed_limb",
     "bleed_leg",
     "bleed_hurt",
-    "knock_min_s",
-    "knock_span_s",
     "glass_above",
     "two_wheeler_rider_m",
     "open_hits",
@@ -399,12 +397,6 @@
      "type": "number"
     },
     "bleed_hurt": {
-     "type": "number"
-    },
-    "knock_min_s": {
-     "type": "number"
-    },
-    "knock_span_s": {
      "type": "number"
     },
     "glass_above": {

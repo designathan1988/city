@@ -9,19 +9,8 @@
 namespace city::b40 {
 
 namespace {
-constexpr float LINE_LIFT = 0.09f; // over the ground covers (lot_space.cpp lays them up to 0.10 m)
-constexpr float BUMPER = 0.3f, BUMPER_T = 0.15f, BUMPER_LO = 0.9f, BUMPER_HI = 1.3f, BUMPER_IN = 0.4f;
-constexpr float SHADE_SPAN = 0.2f;
-constexpr float BED_KERB_H = 0.16f, BED_KERB_W = 0.12f, BED_SOIL_H = 0.2f; // the 4.0's (buildingMesh.ts emitFlowers)
-constexpr float WATER_LIFT = 0.02f, COPING_W = 0.3f, COPING_OVER = 0.07f; // water over the covers, coping over the water
-constexpr float LOUNGER_SEAT = 0.3f, LOUNGER_T = 0.07f, LOUNGER_HEAD = 0.5f, LOUNGER_BACK = 0.65f;
-constexpr float TABLE_TOP = 0.05f, LEG = 0.1f, SWING_POST = 0.08f, SWING_SEAT_Z = 0.45f, SWING_SEAT = 0.5f, SWING_SEAT_D = 0.25f;
-constexpr float SWING_SEAT_T = 0.05f, ROPE = 0.02f, ROPE_X = 0.22f;
-constexpr float SHED_ROOF = 0.15f, SHED_EAVE = 0.3f, EDICULA_AREA = 12.f, DOOR_W = 0.9f, DOOR_H = 2.f, DOOR_OUT = 0.02f;
-constexpr float LINE_POST = 0.06f, WIRE = 0.02f, WIRE_DOWN = 0.1f, CLOTH = 0.6f, CLOTH_H = 0.5f, CLOTH_AT = 0.3f;
-constexpr float PALLET_T = 0.14f, CAGE_POST = 0.06f, CAGE_RAIL = 0.05f, CAGE_BAR = 0.02f, CAGE_BAR_EVERY = 0.15f;
-constexpr float CYLINDER = 0.32f, CYLINDER_H = 0.9f, CYLINDER_EVERY = 0.5f, HALF = 0.5f;
-constexpr uint32_t BLUE_GAS = 0x3a6fb0, BUMPER_BLACK = 0x1c1d1f, DOOR_DARK = 0x4a3a2c;
+constexpr float HALF = 0.5f;
+constexpr uint32_t BLUE_GAS = 0x3a6fb0, BUMPER_BLACK = 0x1c1d1f, DOOR_DARK = 0x4a3a2c; // gas cylinders, bay bumpers, a shed's door (the source game's)
 
 struct PropEmit {
 	Shell &shell, &parts;
@@ -34,7 +23,7 @@ struct PropEmit {
 	float y0() const { return e.y - e.d * HALF; }
 	float y1() const { return e.y + e.d * HALF; }
 	Lin named(const char *n) const { return paint_lin(pl.data->color(n)); }
-	void mark(float a0, float a1, float b0, float b1, const Lin &l) const { shell.rect(pl.lot, a0, a1, b0, b1, g + LINE_LIFT, l, FIN_NONE); }
+	void mark(float a0, float a1, float b0, float b1, const Lin &l) const { shell.rect(pl.lot, a0, a1, b0, b1, g + K.line_lift, l, FIN_NONE); }
 
 	void stall() const {
 		const float t = pl.data->lots.stall_line * HALF;
@@ -53,75 +42,76 @@ struct PropEmit {
 	}
 	void dock() const {
 		mark(x0(), x1(), y0(), y1(), lin);
-		for (float x : { x0() + BUMPER_IN, x1() - BUMPER_IN - BUMPER })
-			parts.box(pl.lot, x, x + BUMPER, y0(), y0() + BUMPER_T, g + BUMPER_LO, g + BUMPER_HI, lin_of(BUMPER_BLACK), FIN_NONE);
+		for (float x : { x0() + K.bumper_in, x1() - K.bumper_in - K.bumper })
+			parts.box(pl.lot, x, x + K.bumper, y0(), y0() + K.bumper_t, g + K.bumper_lo, g + K.bumper_hi, lin_of(BUMPER_BLACK), FIN_NONE);
 	}
 	// The bed's kerb and its soil; the flowers are the gardens' plants (render/trees/garden_place.h).
 	void flowers() const {
-		shell.box(pl.lot, x0(), x1(), y0(), y1(), g, g + BED_KERB_H, named("planter"), FIN_NONE, SKIP_E2_NEG);
-		shell.box(pl.lot, x0() + BED_KERB_W, x1() - BED_KERB_W, y0() + BED_KERB_W, y1() - BED_KERB_W, g + BED_KERB_H, g + BED_SOIL_H, named("planter_soil"), FIN_NONE, SKIP_E2_NEG);
+		shell.box(pl.lot, x0(), x1(), y0(), y1(), g, g + K.bed_kerb_h, named("planter"), FIN_NONE, SKIP_E2_NEG);
+		shell.box(pl.lot, x0() + K.bed_kerb_w, x1() - K.bed_kerb_w, y0() + K.bed_kerb_w, y1() - K.bed_kerb_w, g + K.bed_kerb_h, g + K.bed_soil_h, named("planter_soil"), FIN_NONE, SKIP_E2_NEG);
 	}
 	// The water just over the ground covers, the stone coping round it higher still: a pool read from above.
 	void pool() const {
-		const float water = g + LINE_LIFT + WATER_LIFT, top = water + COPING_OVER;
+		const float water = g + K.line_lift + K.water_lift, top = water + K.coping_over;
 		shell.rect(pl.lot, x0(), x1(), y0(), y1(), water, lin, FIN_NONE);
 		const Lin coping = named("pool_coping");
-		const float c = COPING_W;
+		const float c = K.coping_w;
 		shell.box(pl.lot, x0() - c, x1() + c, y0() - c, y0(), g, top, coping, FIN_STONE, SKIP_E2_NEG);
 		shell.box(pl.lot, x0() - c, x1() + c, y1(), y1() + c, g, top, coping, FIN_STONE, SKIP_E2_NEG);
 		shell.box(pl.lot, x0() - c, x0(), y0(), y1(), g, top, coping, FIN_STONE, SKIP_E2_NEG);
 		shell.box(pl.lot, x1(), x1() + c, y0(), y1(), g, top, coping, FIN_STONE, SKIP_E2_NEG);
 	}
 	void lounger() const {
-		parts.box(pl.lot, x0(), x1(), y0(), y1(), g + LOUNGER_SEAT - LOUNGER_T, g + LOUNGER_SEAT, lin, FIN_WOOD);
-		parts.box(pl.lot, x0(), x1(), y1() - LOUNGER_HEAD, y1(), g + LOUNGER_SEAT, g + LOUNGER_BACK, lin, FIN_WOOD);
+		parts.box(pl.lot, x0(), x1(), y0(), y1(), g + K.lounger_seat - K.lounger_t, g + K.lounger_seat, lin, FIN_WOOD);
+		parts.box(pl.lot, x0(), x1(), y1() - K.lounger_head, y1(), g + K.lounger_seat, g + K.lounger_back, lin, FIN_WOOD);
 	}
 	void table() const {
-		parts.box(pl.lot, x0(), x1(), y0(), y1(), g + e.h - TABLE_TOP, g + e.h, lin, FIN_WOOD);
-		parts.box(pl.lot, e.x - LEG * HALF, e.x + LEG * HALF, e.y - LEG * HALF, e.y + LEG * HALF, g, g + e.h - TABLE_TOP, lin * HALF, FIN_METAL);
+		parts.box(pl.lot, x0(), x1(), y0(), y1(), g + e.h - K.table_top, g + e.h, lin, FIN_WOOD);
+		parts.box(pl.lot, e.x - K.leg * HALF, e.x + K.leg * HALF, e.y - K.leg * HALF, e.y + K.leg * HALF, g, g + e.h - K.table_top, lin * HALF, FIN_METAL);
 	}
 	void swing() const {
-		for (float x : { x0(), x1() - SWING_POST })
-			for (float y : { y0(), y1() - SWING_POST }) parts.box(pl.lot, x, x + SWING_POST, y, y + SWING_POST, g, g + e.h, lin, FIN_METAL);
-		parts.box(pl.lot, x0(), x1(), e.y - SWING_POST * HALF, e.y + SWING_POST * HALF, g + e.h - SWING_POST, g + e.h, lin, FIN_METAL);
-		for (float dx : { -ROPE_X, ROPE_X })
-			parts.box(pl.lot, e.x + dx, e.x + dx + ROPE, e.y, e.y + ROPE, g + SWING_SEAT_Z, g + e.h - SWING_POST, lin, FIN_METAL);
-		parts.box(pl.lot, e.x - SWING_SEAT * HALF, e.x + SWING_SEAT * HALF, e.y - SWING_SEAT_D * HALF, e.y + SWING_SEAT_D * HALF, g + SWING_SEAT_Z - SWING_SEAT_T,
-				g + SWING_SEAT_Z, named("bench"), FIN_WOOD);
+		for (float x : { x0(), x1() - K.swing_post })
+			for (float y : { y0(), y1() - K.swing_post }) parts.box(pl.lot, x, x + K.swing_post, y, y + K.swing_post, g, g + e.h, lin, FIN_METAL);
+		parts.box(pl.lot, x0(), x1(), e.y - K.swing_post * HALF, e.y + K.swing_post * HALF, g + e.h - K.swing_post, g + e.h, lin, FIN_METAL);
+		for (float dx : { -K.rope_x, K.rope_x })
+			parts.box(pl.lot, e.x + dx, e.x + dx + K.rope, e.y, e.y + K.rope, g + K.swing_seat_z, g + e.h - K.swing_post, lin, FIN_METAL);
+		parts.box(pl.lot, e.x - K.swing_seat * HALF, e.x + K.swing_seat * HALF, e.y - K.swing_seat_d * HALF, e.y + K.swing_seat_d * HALF, g + K.swing_seat_z - K.swing_seat_t,
+				g + K.swing_seat_z, named("bench"), FIN_WOOD);
 	}
 	void shed() const {
 		shell.box(pl.lot, x0(), x1(), y0(), y1(), g, g + e.h, lin, pl.b->paints[size_t(e.paint)].finish, SKIP_E2_NEG);
-		const bool big = e.w * e.d >= EDICULA_AREA;
+		const bool big = e.w * e.d >= K.edicula_area;
 		Lin roof = named(big ? "edicula_roof" : "shed_roof");
-		shell.box(pl.lot, x0() - SHED_EAVE, x1() + SHED_EAVE, y0() - SHED_EAVE, y1() + SHED_EAVE, g + e.h, g + e.h + SHED_ROOF, roof, big ? FIN_TILE : FIN_METAL);
-		const float dw = std::fmin(DOOR_W, e.w * HALF);
+		shell.box(pl.lot, x0() - K.shed_eave, x1() + K.shed_eave, y0() - K.shed_eave, y1() + K.shed_eave, g + e.h, g + e.h + K.shed_roof, roof, big ? FIN_TILE : FIN_METAL);
+		const float dw = std::fmin(K.door_w, e.w * HALF);
 		Basis front{ pl.lot.o, pl.lot.e0, pl.lot.e2, -pl.lot.e1 };
-		shell.rect(front, e.x - dw * HALF, e.x + dw * HALF, g, g + std::fmin(DOOR_H, e.h), -y0() + DOOR_OUT, lin_of(DOOR_DARK), FIN_WOOD);
+		shell.rect(front, e.x - dw * HALF, e.x + dw * HALF, g, g + std::fmin(K.door_h, e.h), -y0() + K.door_out, lin_of(DOOR_DARK), FIN_WOOD);
 	}
 	void line() const {
-		for (float x : { x0(), x1() - LINE_POST })
-			parts.box(pl.lot, x, x + LINE_POST, e.y - LINE_POST * HALF, e.y + LINE_POST * HALF, g, g + e.h, lin, FIN_METAL);
-		const float wire = g + e.h - WIRE_DOWN;
-		parts.box(pl.lot, x0(), x1(), e.y - WIRE * HALF, e.y + WIRE * HALF, wire - WIRE, wire, lin, FIN_METAL);
+		for (float x : { x0(), x1() - K.line_post })
+			parts.box(pl.lot, x, x + K.line_post, e.y - K.line_post * HALF, e.y + K.line_post * HALF, g, g + e.h, lin, FIN_METAL);
+		const float wire = g + e.h - K.wire_down;
+		parts.box(pl.lot, x0(), x1(), e.y - K.wire * HALF, e.y + K.wire * HALF, wire - K.wire, wire, lin, FIN_METAL);
 		const Lin cloth[2] = { named("flowers"), named("canopy") };
 		for (int k = 0; k < 2; k++) { // a cloth folds over the wire: its top half a wire above the wire's (no shared face)
-			float a = x0() + (x1() - x0()) * (CLOTH_AT + CLOTH_AT * float(k));
-			parts.box(pl.lot, a, a + CLOTH, e.y - WIRE, e.y + WIRE, wire - CLOTH_H, wire + WIRE * HALF, cloth[k], FIN_NONE);
+			float a = x0() + (x1() - x0()) * (K.cloth_at + K.cloth_at * float(k));
+			parts.box(pl.lot, a, a + K.cloth, e.y - K.wire, e.y + K.wire, wire - K.cloth_h, wire + K.wire * HALF, cloth[k], FIN_NONE);
 		}
 	}
 	void pallet() const {
-		parts.box(pl.lot, x0(), x1(), y0(), y1(), g, g + PALLET_T, lin, FIN_WOOD);
-		parts.box(pl.lot, x0(), x1(), y0(), y1(), g + PALLET_T, g + 2 * PALLET_T, lin * (1 - SHADE_SPAN * HALF), FIN_WOOD);
+		parts.box(pl.lot, x0(), x1(), y0(), y1(), g, g + K.pallet_t, lin, FIN_WOOD);
+		parts.box(pl.lot, x0(), x1(), y0(), y1(), g + K.pallet_t, g + 2 * K.pallet_t, lin * (1 - K.shade_span * HALF), FIN_WOOD);
 	}
 	void cage() const {
-		for (float x : { x0(), x1() - CAGE_POST })
-			for (float y : { y0(), y1() - CAGE_POST }) parts.box(pl.lot, x, x + CAGE_POST, y, y + CAGE_POST, g, g + e.h, lin, FIN_METAL);
-		parts.box(pl.lot, x0(), x1(), y0(), y1(), g + e.h - CAGE_RAIL, g + e.h, lin, FIN_METAL);
-		for (float x = x0() + CAGE_BAR_EVERY; x < x1() - CAGE_POST; x += CAGE_BAR_EVERY)
-			parts.box(pl.lot, x, x + CAGE_BAR, y0(), y0() + CAGE_BAR, g, g + e.h, lin, FIN_METAL);
-		for (float x = x0() + CYLINDER; x + CYLINDER < x1(); x += CYLINDER_EVERY)
-			parts.box(pl.lot, x, x + CYLINDER, e.y - CYLINDER * HALF, e.y + CYLINDER * HALF, g, g + CYLINDER_H, lin_of(BLUE_GAS), FIN_METAL);
+		for (float x : { x0(), x1() - K.cage_post })
+			for (float y : { y0(), y1() - K.cage_post }) parts.box(pl.lot, x, x + K.cage_post, y, y + K.cage_post, g, g + e.h, lin, FIN_METAL);
+		parts.box(pl.lot, x0(), x1(), y0(), y1(), g + e.h - K.cage_rail, g + e.h, lin, FIN_METAL);
+		for (float x = x0() + K.cage_bar_every; x < x1() - K.cage_post; x += K.cage_bar_every)
+			parts.box(pl.lot, x, x + K.cage_bar, y0(), y0() + K.cage_bar, g, g + e.h, lin, FIN_METAL);
+		for (float x = x0() + K.cylinder; x + K.cylinder < x1(); x += K.cylinder_every)
+			parts.box(pl.lot, x, x + K.cylinder, e.y - K.cylinder * HALF, e.y + K.cylinder * HALF, g, g + K.cylinder_h, lin_of(BLUE_GAS), FIN_METAL);
 	}
+	const LotPropsLook &K = pl.look->shapes.lot_props; // last: it reads pl
 };
 } // namespace
 

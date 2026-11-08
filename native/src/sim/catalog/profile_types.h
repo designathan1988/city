@@ -48,7 +48,10 @@ struct LaneInfo {
 };
 
 // A road the player composes (road_spec.h): its elements, the left edge to the right looking from a to b.
-enum class SpecKind : uint8_t { FOOTWAY, PARKING, CYCLE, LANE, MEDIAN };
+enum class SpecKind : uint8_t { FOOTWAY, PARKING, CYCLE, LANE, MEDIAN, COUNT };
+// The editor's names of them (the scripts' road specs); the catalogue's strip each draws as is road_spec.h strip_of.
+constexpr const char *SPEC_KIND_NAMES[] = { "footway", "parking", "cycle", "lane", "median" };
+static_assert(sizeof(SPEC_KIND_NAMES) / sizeof(SPEC_KIND_NAMES[0]) == size_t(SpecKind::COUNT), "a name for every spec kind");
 struct SpecElement {
 	SpecKind kind = SpecKind::LANE;
 	float width = 0;

@@ -19,7 +19,6 @@ constexpr float OUTSIDE = 2.f; // the grid reaches this far out over the footway
 constexpr float GATE_IN = 2.f; // a gate's way starts this far inside it
 constexpr float LEAD = 1.f; // a bay's way starts this far in front of its open end
 constexpr int FREE_LOOK = 6; // cells looked round a point for a free one
-constexpr float GARAGE_WALL = 0.2f; // a garage's walls (its door side is open)
 constexpr float LOOK_STEP = 0.5f; // cells between two looks along a line of sight
 constexpr float HALF = 0.5f;
 const float NONE = std::numeric_limits<float>::infinity();
@@ -109,9 +108,9 @@ Grid grid_of(const Data &data, const Body &b, float half) {
 	for (const Volume &v : b.volumes) {
 		if (v.base != 0) continue;
 		if (!is_garage(v)) { g.block(v.x - half, v.y - half, v.x + v.w + half, v.y + v.d + half); continue; }
-		g.block(v.x - half, v.y - half, v.x + GARAGE_WALL + half, v.y + v.d + half);
-		g.block(v.x + v.w - GARAGE_WALL - half, v.y - half, v.x + v.w + half, v.y + v.d + half);
-		g.block(v.x - half, v.y + v.d - GARAGE_WALL - half, v.x + v.w + half, v.y + v.d + half);
+		g.block(v.x - half, v.y - half, v.x + data.shapes.cars.garage_wall + half, v.y + v.d + half);
+		g.block(v.x + v.w - data.shapes.cars.garage_wall - half, v.y - half, v.x + v.w + half, v.y + v.d + half);
+		g.block(v.x - half, v.y + v.d - data.shapes.cars.garage_wall - half, v.x + v.w + half, v.y + v.d + half);
 	}
 	for (const LotElement &e : b.elements)
 		if (solid(e, data.lots.car_clear_h)) g.block(e.x - e.w * HALF - half, e.y - e.d * HALF - half, e.x + e.w * HALF + half, e.y + e.d * HALF + half);
@@ -254,7 +253,7 @@ void lot_bays(const Body &b, const LotFrame &f, LotAccess &out) {
 	}
 }
 
-void lot_solids(const Data &, const Body &b, const LotFrame &f, float headroom, std::vector<std::vector<V2>> &out, std::vector<int> *kinds) {
+void lot_solids(const Data &data, const Body &b, const LotFrame &f, float headroom, std::vector<std::vector<V2>> &out, std::vector<int> *kinds) {
 	int kind = -1;
 	auto box = [&](float x0, float y0, float x1, float y1) {
 		out.push_back({ f.at(x0, y0), f.at(x1, y0), f.at(x1, y1), f.at(x0, y1) });
@@ -262,9 +261,9 @@ void lot_solids(const Data &, const Body &b, const LotFrame &f, float headroom, 
 	};
 	for (const Volume &v : b.volumes) {
 		if (!is_garage(v)) { box(v.x, v.y, v.x + v.w, v.y + v.d); continue; }
-		box(v.x, v.y, v.x + GARAGE_WALL, v.y + v.d); // a car drives into a garage: its walls only, the door side open
-		box(v.x + v.w - GARAGE_WALL, v.y, v.x + v.w, v.y + v.d);
-		box(v.x, v.y + v.d - GARAGE_WALL, v.x + v.w, v.y + v.d);
+		box(v.x, v.y, v.x + data.shapes.cars.garage_wall, v.y + v.d); // a car drives into a garage: its walls only, the door side open
+		box(v.x + v.w - data.shapes.cars.garage_wall, v.y, v.x + v.w, v.y + v.d);
+		box(v.x, v.y + v.d - data.shapes.cars.garage_wall, v.x + v.w, v.y + v.d);
 	}
 	for (const LotElement &e : b.elements) {
 		if (!solid(e, headroom)) continue;

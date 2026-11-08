@@ -4,6 +4,7 @@
 
 #include "render/data_reader.h"
 #include "render/effects/effect_params_read.h"
+#include "render/shape_reader.h"
 
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/variant.hpp>
@@ -14,6 +15,11 @@ namespace city {
 
 using namespace effect_read;
 
+namespace {
+// Every block of "shapes" (render/shape_reader.h).
+void shapes_of(DataReader r, const Dictionary &t, EffectShapes &out) { EFFECT_SHAPE_BLOCKS(SHAPE_READ_BLOCK) }
+} // namespace
+
 bool EffectParams::load(const Dictionary &t, const Dictionary &aftermath, const Dictionary &gore_table, PackedStringArray &errors) {
 	const int64_t before = errors.size();
 	DataReader r{ errors, "effects.json" };
@@ -21,9 +27,6 @@ bool EffectParams::load(const Dictionary &t, const Dictionary &aftermath, const 
 	pool = puffs.integer("pool");
 	wind_x = puffs.num("wind_x");
 	wind_z = puffs.num("wind_z");
-	Group fireball(r, t, "fireball");
-	fireball_base = fireball.num("base_m");
-	fireball_per_force = fireball.num("per_force_m");
 	const Array list = r.list(t, "bursts");
 	for (int i = 0; i < list.size(); i++) {
 		DataReader rb = r.in("bursts").in(i);
@@ -71,6 +74,7 @@ bool EffectParams::load(const Dictionary &t, const Dictionary &aftermath, const 
 	load_heave(aftermath, errors);
 	load_wires(aftermath, errors);
 	load_gore(gore_table, errors);
+	shapes_of(r.in("shapes"), r.table(t, "shapes"), shapes);
 	if (bursts.empty()) r.in("bursts").fail("no burst");
 	return errors.size() == before;
 }

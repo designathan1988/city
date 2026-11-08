@@ -14,7 +14,9 @@
 namespace city {
 
 namespace {
-constexpr float OCCUPIED_SHARE = 0.8f;
+// two integer mixes: the civic pick's (Knuth's 2^32 over the golden ratio, xxHash's PRIME32_2, xorshifts of 15 and 13) and the age's
+// (the golden ratio, MurmurHash3's fmix32 multipliers, xorshifts of 13 and 16); a pick's chance in its low ten bits and its row in the
+// rest, out of a thousand; a decay span in tenths
 constexpr uint32_t CIVIC_MUL = 2654435761U, CIVIC_MIX = 2246822519U;
 constexpr uint32_t AGE_MIX = 0x9e3779b9U, AGE_MUL1 = 0x85ebca6bU, AGE_MUL2 = 0xc2b2ae35U;
 constexpr uint32_t CIVIC_CHANCE_BITS = 1023, CIVIC_PICK_SHIFT = 10, CIVIC_PICK_STEPS = 1000;
@@ -28,8 +30,6 @@ int biggest(const std::vector<Lot> &l) {
 	return int(b);
 }
 } // namespace
-
-int base_zone(const Catalog &c, int z) { return c.zone(z).base; }
 
 MapCell map_cell_of(const CityState &s, double x, double z) {
 	MapCell c;
@@ -76,7 +76,7 @@ bool lot_occupied(const CityState &s, const Lot &l) {
 	bool hit = false;
 	s.buildings.query(float(l.x) - r, float(l.z) - r, float(l.x) + r, float(l.z) + r, [&](int id) {
 		const Building &b = s.buildings.items[id];
-		float reach = (float(std::min(l.w, l.d)) / 2 + std::min(b.w, b.d) / 2) * OCCUPIED_SHARE;
+		float reach = (float(std::min(l.w, l.d)) / 2 + std::min(b.w, b.d) / 2) * s.catalog.growth.occupied_share;
 		// near enough its middle, or standing with its own middle on the lot (a body fitted to the lot stands back from its middle)
 		if (std::hypot(b.x - float(l.x), b.z - float(l.z)) < reach || on_lot(l, { b.x, b.z })) hit = true;
 	});
@@ -95,7 +95,7 @@ BodyLook look_of(CityState &s, const Building &rec) {
 	if (it != s.buildings.looks.end()) return it->second;
 	const std::shared_ptr<const b40::Body> body_held = b40::record_body(s.buildings.designs, rec);
 	const b40::Body &body = *body_held;
-	return s.buildings.looks[key] = body_look(body, rec.fn);
+	return s.buildings.looks[key] = body_look(s.catalog.tune, body, rec.fn);
 }
 
 namespace {
@@ -121,9 +121,9 @@ struct Candidate {
 };
 
 // Whether every solid ground block of the body lies inside the ring.
-bool body_fits(const GrowthDef &g, const b40::Body &body, const Building &rec, const std::vector<LotPoint> &ring) {
+bool body_fits(const GrowthDef &g, const b40::Body &body, const Building &rec, const std::vector<XZ> &ring) {
 	const std::vector<V2> corners = b40::ground_corners(body, rec, g.fit_inset_m);
-	std::vector<LotPoint> block(b40::BLOCK_CORNERS);
+	std::vector<XZ> block(b40::BLOCK_CORNERS);
 	for (size_t k = 0; k + b40::BLOCK_CORNERS <= corners.size(); k += b40::BLOCK_CORNERS) {
 		for (size_t i = 0; i < b40::BLOCK_CORNERS; i++) block[i] = { corners[k + i].x, corners[k + i].y };
 		if (!ring_holds(ring, block)) return false;
@@ -131,7 +131,7 @@ bool body_fits(const GrowthDef &g, const b40::Body &body, const Building &rec, c
 	return true;
 }
 
-Candidate draw_candidate(const CityState &s, const Building &lot, uint32_t seed, const std::vector<LotPoint> &ring) {
+Candidate draw_candidate(const CityState &s, const Building &lot, uint32_t seed, const std::vector<XZ> &ring) {
 	Building rec = lot;
 	rec.seed = seed;
 	rec.style = uint16_t(seed & BUILDING_AUTO_STYLE_MASK);
@@ -139,7 +139,7 @@ Candidate draw_candidate(const CityState &s, const Building &lot, uint32_t seed,
 	const b40::Body &body = *body_held;
 	Candidate c;
 	c.seed = seed;
-	c.look = body_look(body, rec.fn);
+	c.look = body_look(s.catalog.tune, body, rec.fn);
 	for (const b40::Volume &v : body.volumes) c.storeys = std::max(c.storeys, v.top());
 	c.fits = body_fits(s.catalog.growth, body, rec, ring);
 	return c;
@@ -148,7 +148,7 @@ Candidate draw_candidate(const CityState &s, const Building &lot, uint32_t seed,
 // The lot's body: the lot's own seed when it fits and nothing stands near to look like, else of the candidates that fit the one least
 // like its neighbours (the first that fits when none stands near), and of all of them when none fits. A candidate's seed is the lot's
 // own, then hashes of it, so a city is the same every time.
-Candidate best_candidate(CityState &s, const Building &lot, const std::vector<LotPoint> &ring) {
+Candidate best_candidate(CityState &s, const Building &lot, const std::vector<XZ> &ring) {
 	const std::vector<NearLook> near = looks_near(s, lot.x, lot.z);
 	const auto seed_of = [&](size_t k) { return k == 0 ? lot.seed : hash_combine(lot.seed, uint32_t(k)); };
 	std::array<Candidate, LOOK_CANDIDATES> c;
@@ -164,7 +164,7 @@ Candidate best_candidate(CityState &s, const Building &lot, const std::vector<Lo
 	float score = 0;
 	for (size_t k = 0; k < c.size(); k++) {
 		if (any_fits && !c[k].fits) continue;
-		const float u = near.empty() ? 0.f : unlikeness(c[k].look, near);
+		const float u = near.empty() ? 0.f : unlikeness(s.catalog.tune, c[k].look, near);
 		if (best == c.size() || u > score) {
 			score = u;
 			best = k;
@@ -196,7 +196,7 @@ Building fitted(const Catalog &cat, const Building &b, const FitTry &t) {
 }
 
 // The ring a lot stands in: the player's lot round its middle (a zoned one's stand stands in it), else the lot's own rectangle.
-std::vector<LotPoint> ring_of(const CityState &s, const Lot &l) {
+std::vector<XZ> ring_of(const CityState &s, const Lot &l) {
 	if (const PlayerLot *p = s.lot_book.find(s.lot_book.at(l.x, l.z))) return p->corners;
 	return lot_ring(l);
 }
@@ -206,7 +206,7 @@ Building record_for(CityState &s, const std::vector<Lot> &cell_lots, int i) {
 	const Lot &l = cell_lots[i];
 	const GrowthDef &g = s.catalog.growth;
 	MapCell cell = map_cell_of(s, l.x, l.z);
-	int fn = civic_for(g, cell.id, base_zone(s.catalog, l.zone), biggest(cell_lots) == i, float(l.w * l.d));
+	int fn = civic_for(g, cell.id, s.catalog.zone(l.zone).base, biggest(cell_lots) == i, float(l.w * l.d));
 	if (fn == FN_SQUARE) fn = FN_NONE; // the squares are the plan's (sim/citygen/squares.h)
 	int tallest = -1;
 	const float reach = g.organic_reach_m;
@@ -223,7 +223,7 @@ Building record_for(CityState &s, const std::vector<Lot> &cell_lots, int i) {
 	b.profile = uint16_t(l.profile);
 	b.floors = uint16_t(fn == FN_NONE && tallest >= 0 ? std::max(1, tallest) + g.organic_extra_floors : 0);
 	// The tries in order, the first whose body fits the lot's ring kept; the last stands when none does, so no lot stays empty.
-	const std::vector<LotPoint> ring = ring_of(s, l);
+	const std::vector<XZ> ring = ring_of(s, l);
 	const Building stand = b;
 	Candidate kept;
 	for (const FitTry &t : g.fit_tries) {

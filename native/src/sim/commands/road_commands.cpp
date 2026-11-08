@@ -1,6 +1,7 @@
 // Building and bulldozing roads (Roadcraft construction/execute.ts buildLive, streetEdits.ts demolishSeg, the bulldoze
 // tool) and the money they move (roads/economy.ts chargeFor, journal.ts settle).
 #include "sim/commands/commands.h"
+#include "sim/commands/edit_journal.h"
 #include "sim/commands/street_commands.h"
 #include "sim/commands/road_edit.h"
 #include "sim/commands/road_grade_sync.h"
@@ -30,7 +31,7 @@ double dir_turn(const Quad &first, const Quad &second) {
 	return l > 0 ? -(ax * bx + az * bz) / l : 0;
 }
 
-constexpr int ARC_STEPS = 64;
+constexpr int ARC_STEPS = 64; // a curve's preview drawn in this many pieces
 
 struct Stop {
 	double t = 0;

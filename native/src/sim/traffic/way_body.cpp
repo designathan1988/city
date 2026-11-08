@@ -16,7 +16,7 @@ namespace city {
 namespace traffic {
 
 namespace {
-constexpr double HALF = 0.5, ROOT_HALF = 0.70710678118654752;
+constexpr double HALF = 0.5, ROOT_HALF = 0.70710678118654752; // the square root of a half: a square's half diagonal per side
 constexpr double DISC_STEP = 1, DISC_SPREAD = 1.9; // two discs this far apart, in chord lengths, still cover the side between them
 constexpr double QUARTER_STEP = 0.25; // a corner of the body is tested in squares about this wide: 5 cm past the flank at most
 constexpr double FIT_SQUARE = 0.5; // the squares body_fits reads the clearance in

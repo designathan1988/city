@@ -78,7 +78,7 @@ func act(spec: Dictionary, value: int, picked: Dictionary, report: Callable) -> 
 
 func _tell(armed_now: bool, spec: Dictionary) -> void:
 	if armed_now:
-		_ctl.hint.emit(_ctl.tr("hint.builder.%s" % spec.id), true)
+		_ctl.hint.emit(_ctl.tr(spec.get("hint_key", "hint.builder.%s" % spec.id)), true)
 
 
 ## A press with something in hand; true when it was for the hand.

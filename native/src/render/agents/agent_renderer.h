@@ -6,6 +6,7 @@
 #pragma once
 
 #include "render/agents/agent_meshes.h"
+#include "render/agents/agent_shapes.h"
 #include "render/agents/head_lights.h"
 #include "render/agents/fleet_shadow.h"
 #include "render/view_cull.h"
@@ -54,6 +55,7 @@ public:
 
 private:
 	HeadLights heads_;
+	AgentShapes shapes_; // every size the part builders draw with (agents.json "shapes"): the meshes are built from it at init
 	std::array<AgentWreck, AGENT_MODELS> wrecks_;
 	float level_hold_ = 0; // of a level's edge: how far past it a vehicle or a walker changes level
 	static constexpr int CABIN_LEVEL = AGENT_CABIN_LEVEL, BODY_LEVEL = AGENT_BODY_LEVEL, FAR_LEVEL = AGENT_FAR_LEVEL, LEVELS = AGENT_LEVELS;
@@ -71,11 +73,25 @@ private:
 	};
 	// Wheel roll angle of a vehicle slot: metres moved since the last frame over the wheel radius (render-side odometer).
 	float roll(int id, const Pose &p, float wheel_r);
+	bool read_shapes(const godot::Dictionary &table, godot::PackedStringArray &errors); // agent_looks.cpp
 	bool build_meshes(const DataValue &t, godot::PackedStringArray &errors);
 	bool push_palettes(const DataValue &t, const std::vector<uint32_t> &lines, godot::PackedStringArray &errors);
 	bool read_loads(const DataValue &loads, godot::PackedStringArray &errors);
 	// A vehicle's passengers and the order its seats fill in (stride * seats + first), from its id.
 	void riders(int type, uint32_t id, float &passengers, float &order) const;
+	// The frame's level edges, distances squared (level_rule, from the tier's reach and the table's radii), and the hold past them.
+	struct LevelRule {
+		float reach, r2, near2, far2, people_r2, close2, hold2;
+		int plain_level(float d2) const; // the level at d2, with no hold
+		static int rank(int level); // the levels from the nearest: cabin, mid, body, far
+	};
+	LevelRule level_rule() const;
+	int level_of(const LevelRule &rule, uint64_t key, float d2) const; // the plain level, or the one the vehicle had while within the hold
+	void count_for_cap(const LevelRule &rule, int level, float d2); // a seen vehicle in the race for the cabins (near_d2_)
+	bool in_view(const ViewCull &view, int model, const Pose &p, float d2) const; // goes to the camera's lists
+	// The frame's rows of the fleet and of the bays' cars: the camera's by key (keeper_), the sun's in order; `placed` counts the seen.
+	void place_vehicles(const PoseFrame &f, const godot::Vector3 &cam, const ViewCull &view, const PoseSample &at, const TakenAgents &taken, const LevelRule &rule, int &placed);
+	void place_parked(const PoseFrame &f, const godot::Vector3 &cam, const ViewCull &view, const LevelRule &rule, int &placed);
 	void limit_cabins(); // the next frame's limit of who has a cabin
 	// The bays' cars by cell of vehicle_r_ (their indices in the published list, ascending), made again only when the simulation
 	// publishes a new list; and this frame's, those of the cells round the camera, ascending: the list's own order.

@@ -49,6 +49,7 @@ Vector3 ground_seen(const Camera3D &cam) {
 CityCore::~CityCore() {
 	free_areas(); // first: they point at the state and the render
 	join_save();
+	join_load();
 	sim_.stop();
 	if (state_ && state_->jobs) state_->jobs->wait_idle();
 	render_.reset();
@@ -63,7 +64,21 @@ Object *CityCore::terrain3d() const {
 PackedStringArray CityCore::load_catalog(const Dictionary &tables) {
 	PackedStringArray errors;
 	sim_.stop();
-	catalog_ok_ = CatalogLoader::load(tables, state_->catalog, errors);
+	// Read aside and taken in whole: a refused table leaves the core as it was, never a catalogue without its building tables.
+	// The building generator's tables belong to the simulation (lots are world data): read before any body is made.
+	Catalog catalog;
+	b40::Data designs;
+	bool ok = CatalogLoader::load(tables, catalog, errors);
+	if (ok) {
+		designs.made->set_budget(size_t(catalog.tune.sim_body_cache_mb * BYTES_PER_MIB));
+		ok = load_buildings(tables.get("buildings", Dictionary()), designs, errors) && set_zone_kinds(catalog, designs, errors) &&
+				load_models(tables.get("models", Dictionary()), designs, errors) && load_interiors(tables.get("interiors", Dictionary()), designs.interior, errors);
+	}
+	if (ok) {
+		state_->catalog = std::move(catalog);
+		state_->buildings.designs = std::move(designs);
+	}
+	catalog_ok_ = ok;
 	return errors;
 }
 
@@ -77,12 +92,6 @@ PackedStringArray CityCore::setup_render(const Dictionary &tables, const Diction
 		errors.push_back("render antes do catalogo");
 		return errors;
 	}
-	// The building generator's tables belong to the simulation (lots are world data): read before any body is made.
-	state_->buildings.designs = b40::Data{};
-	state_->buildings.designs.made->set_budget(size_t(state_->catalog.tune.sim_body_cache_mb * BYTES_PER_MIB));
-	if (!load_buildings(tables.get("buildings", Dictionary()), state_->buildings.designs, errors)) return errors;
-	if (!load_models(tables.get("models", Dictionary()), state_->buildings.designs, errors)) return errors;
-	if (!load_interiors(tables.get("interiors", Dictionary()), state_->buildings.designs.interior, errors)) return errors;
 	RenderContext ctx;
 	ctx.scenario = get_world_3d()->get_scenario();
 	materials_ = materials;
@@ -103,6 +112,7 @@ Dictionary CityCore::new_map(int map, int seed, bool with_city, bool paused) {
 	d["ok"] = false;
 	if (!catalog_ok_) return d;
 	join_save();
+	join_load();
 	sim_.stop();
 	CityGenReport r;
 	{

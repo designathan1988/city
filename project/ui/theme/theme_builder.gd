@@ -102,7 +102,7 @@ static func _panels() -> void:
 		_theme.set_stylebox(state, &"LineEdit", _margins(box("raise", "kbd_radius", "line"), "pad", "pad_s", "pad_s"))
 	_panel(&"SidePanel", _pad(box("bg", "radius", "line", true), "gap"))
 	var icons := box("bg_strong", "radius", "line", true)
-	icons.set_content_margin_all(size("pad_s") + 1.0)
+	icons.set_content_margin_all(size("icons_pad"))
 	_panel(&"PopoverIcons", icons)
 	_theme.set_type_variation(&"Inset", &"MarginContainer")
 	for side in [&"margin_left", &"margin_right"]:
@@ -184,8 +184,8 @@ static func _button(name: StringName, boxes: Array, colours: Array, font: String
 
 ## A box whose text keeps room at its sides (.v2-choice padding).
 static func _wide(sb: StyleBoxFlat) -> StyleBoxFlat:
-	sb.content_margin_left = size("card_radius")
-	sb.content_margin_right = size("card_radius")
+	sb.content_margin_left = size("choice_pad")
+	sb.content_margin_right = size("choice_pad")
 	return sb
 
 

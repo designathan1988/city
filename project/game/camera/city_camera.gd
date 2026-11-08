@@ -8,7 +8,6 @@ signal right_clicked
 
 ## Below this the ray runs along the plane and meets it nowhere.
 const PARALLEL := 1e-6
-const CM := 0.01
 const EARLIEST := -100
 
 var cfg: Dictionary
@@ -204,19 +203,6 @@ func _ask_tilt(next: float) -> void:
 	far_tilt = now - CameraProfile.profile_tilt(cfg, half) + deg_to_rad(cfg.far_tilt_deg)
 
 
-## What the player sees at (x, z), the plane the eye stays above and the focus rests on: a road deck where one is, the
-## ground elsewhere (the pointer's rule, the 4.0's sceneHeightAt); the terrain where the ray finds nothing (off the map). Asked
-## during a settle (`queries`).
-func seen_height(x: float, z: float) -> float:
-	var hit: Dictionary = queries.ask(&"raycast", [Vector3(x, cfg.ray_top, z), Vector3.DOWN])
-	return hit.position.y if hit.get("hit", false) else queries.ask(&"height_at", [x, z])
-
-
-## The terrain's height under a camera's eye: the one reading of it the daylight's shadows and the weather's rain take.
-static func ground_below(cam: Camera3D) -> float:
-	return CityStore.query(&"height_at", [cam.global_position.x, cam.global_position.z])
-
-
 ## What each of the rig's springs holds now, metres and shares: a view that jumps names the spring that moved it.
 func springs() -> Dictionary:
 	return {"ground": _ground.x, "rise": _rise.x, "over": ahead.over.x, "out": ahead.out.x, "pull": pull.shown(), "floor": _eye_ground}
@@ -245,7 +231,7 @@ func apply() -> void:
 ## a road's edge, a roof or a wall asks of the view reaches the screen as a step. `dt` 0 takes it all at once (a jump).
 func settle(dt: float) -> void:
 	queries.next_settle()
-	_ground.to(seen_height(focus.x, focus.z), dt, cfg.ground_smooth_s) if dt > 0.0 else _ground.snap(seen_height(focus.x, focus.z))
+	_ground.to(queries.seen_height(cfg.ray_top, focus.x, focus.z), dt, cfg.ground_smooth_s) if dt > 0.0 else _ground.snap(queries.seen_height(cfg.ray_top, focus.x, focus.z))
 	var base := Vector3(focus.x, _ground.x + CameraProfile.eye_lift(cfg, half), focus.z)
 	var far_eye := base + Basis.from_euler(Vector3(-pitch, yaw, 0.0)).z * distance
 	pull.ask(base, far_eye, half)
@@ -254,7 +240,7 @@ func settle(dt: float) -> void:
 	else:
 		pull.snap()
 	var eye := far_eye.lerp(base, pull.shown())
-	_eye_ground = seen_height(eye.x, eye.z)
+	_eye_ground = queries.seen_height(cfg.ray_top, eye.x, eye.z)
 	var rise := maxf(0.0, _eye_ground + cfg.ground_clearance - eye.y)
 	ahead.settle(dt, base, eye + Vector3.UP * rise, far_eye.distance_to(base))
 	if dt > 0.0:

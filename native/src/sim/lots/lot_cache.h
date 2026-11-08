@@ -18,14 +18,14 @@ struct CityState;
 struct Catalog;
 
 // A lot of the streets' as a ring on the ground: its front (the side on the street, local +z) first, as the player's lots hold it.
-std::vector<LotPoint> lot_ring(const Lot &l);
+std::vector<XZ> lot_ring(const Lot &l);
 // Whether the lots of `zone` are cut as works: its base is industrial (lot_gen cuts works' strips deeper and wider).
 bool cut_for_works(const Catalog &c, int zone);
 // Whether p lies on a lot of the streets' (its rectangle, in its own frame).
-bool on_lot(const Lot &l, const LotPoint &p);
+bool on_lot(const Lot &l, const XZ &p);
 // The CHUNK cells whose lots may hold a point: its own and the eight round it (a lot reaches past the cell its middle is in).
 template <typename F>
-void each_cell_round(const LotPoint &p, F &&fn) {
+void each_cell_round(const XZ &p, F &&fn) {
 	const int ci = int(std::floor(p.x / CHUNK)), cj = int(std::floor(p.z / CHUNK));
 	for (int j = cj - 1; j <= cj + 1; j++)
 		for (int i = ci - 1; i <= ci + 1; i++) fn(cell_key(i, j));
@@ -60,7 +60,7 @@ public:
 // Whether `fn` holds for one of the zoned lots of the streets' round p that the player does not hold (the land a lot of theirs
 // takes, or must not run into); it is asked of each such lot until it holds.
 template <typename F>
-bool any_street_lot(const LotCache &lots, const LotBook &book, const LotPoint &p, F &&fn) {
+bool any_street_lot(const LotCache &lots, const LotBook &book, const XZ &p, F &&fn) {
 	bool hit = false;
 	each_cell_round(p, [&](int64_t key) {
 		const std::vector<Lot> *cell = lots.lots_of(key);

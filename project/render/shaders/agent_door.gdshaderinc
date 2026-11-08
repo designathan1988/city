@@ -9,10 +9,12 @@ const float PANE_MARK = 0.5; // COLOR.g over this: a front door's pane, which go
 
 // How far a car's front window on the side of `x` is down: three cars in ten with one or both open, half of those part-way (Roadcraft
 // agents.ts windowsDown, windowDrop). `seed` the vehicle's own.
+const float LOT_WINDOW = 91.7, LOT_PART = 37.3; // a vehicle's two picks from its seed: fract(seed * k), k off a simple ratio
+uniform vec4 windows_down; // the picks from which the left, the right and both are open; how far a part-way window is down (materials.json windows set)
 float pane_drop(float seed, float x) {
-	float pick = fract(seed * 91.7), part = fract(seed * 37.3);
-	bool down = pick >= 0.9 || (pick >= 0.8 && x > 0.0) || (pick >= 0.7 && pick < 0.8 && x < 0.0);
-	return down ? (part < 0.5 ? 0.45 : 1.0) : 0.0;
+	float pick = fract(seed * LOT_WINDOW), part = fract(seed * LOT_PART);
+	bool down = pick >= windows_down.z || (pick >= windows_down.y && x > 0.0) || (pick >= windows_down.x && pick < windows_down.y && x < 0.0);
+	return down ? (part < 0.5 ? windows_down.w : 1.0) : 0.0;
 }
 
 void door_swing(inout vec3 p, inout vec3 n, vec2 hinge, float wheel_and_door, float mark) {

@@ -2602,6 +2602,1233 @@ photo byte-equal to a run before C7, `shader_contracts` passing; `gates_changed`
 `light_color_test`: it read `CityStore.constants` in member initialisers, before the store's `_ready` fills them; it reads them when
 it starts.
 
+### 6.21 B2, C3 (the scripts' and the interface's side): contracts the scripts kept by hand (2026-11-08)
+
+**Cause.** What §3q, §3r and two §3c/§3d findings left after C3a: the popovers built by `call("_build_" + which)` and
+`call("_seg_" + r.seg)`, a name in `drawers.json` with no method failing only when pressed; times stored as design tokens and read
+through the size reader (`tip_wait_ms`, `cn_reread_s`, `toast_s`); two conventions for the hint signal (`ToolController.hint` says the
+text comes translated, `lots_tool` and `road_blocks` sent raw keys, which showed translated only because the label translates again);
+four places cutting a translated name at " (" and the sliders recognising metres by the display string " m"; `MS_PER_S`, `PERCENT`,
+`MIB` declared again in 30 scripts (`HudWidgets`, `Formatters`, `QualityTier`, `CityCamera` and an inner class of the profiler each
+holding one); the editor's strip names mapped to the catalogue's three times (`road_spec.cpp` once each way, `road_spec_ops.gd` again);
+a padding read from the `card_radius` token and a bare pixel added to `pad_s`; the element kinds split into things and effects by the
+length of a render table's row list (`element_effects.gd` passing `cover.json` `props.size()` to `effects_near`); a transit line's
+colour sent as a packed number and unpacked in two scripts, and one text placed by `replace("{n}")`; the setback's and the bevel's
+sentinels typed bare (`-1.0, 2`, `-1`); fourteen generator road roles named by profile id in `city_gen.cpp`, two of them the same
+profile, an unknown name giving -1 unchecked; the Build tool's handle edit comparing its kind as a string, nine times a drag tick.
+
+**Fix.** The popovers and the menu's segments are tables of callables, every popover and segment of the data checked against them at
+start (the segments moved to `ui/pop_menu_rows.gd`, the popover script past its size). The timings live in `hud.json` `timings`, in
+seconds, with a schema. The emitters translate (`lots_tool`, `road_blocks`) and the hint and toast labels no longer translate again:
+a key that slipped through shows as one. The asides nothing showed are gone from the translations (24 keys, both languages), the
+three street cards whose tooltip shows the whole name have a short key and a `.tip` key named by their data (`tip_key`), and no code
+cuts text; a slider's unit is an id (`length` formatted as the style writes lengths, the others by an i18n pattern `unit.<id>`).
+`game/units.gd` (`Units`) holds the units once. The core maps a composed element to its catalogue strip in one function
+(`road_spec.h` `strip_of`), which the reverse reading and the scripts' table (`constants.spec_strips`) use; `SPEC_KIND_NAMES` sits
+beside `STRIP_KIND_NAMES`. The theme has its own `choice_pad` and `icons_pad`. `nature.json` names the first effect kind
+(`first_effect`, resolved and checked by the loader); `effects_near` reads it, and the element models refuse a props table whose row
+count is not the catalogue's laid kinds. The line colour comes as a `Color` (`rgb8_to_color`, the scripts' own float maths), the
+stops through `format`. The sentinels are the core's (`SETBACK_BY_MODULE`, `EVERY_CORNER`, exported by `constants()`), the setback's
+storeys the card's value in `builder.json`. The road roles are `growth.json` `road_roles` (a schema, the loader refusing a profile it
+lacks; `CITY_ROAD_ROLES` the one list, which `GenProfiles` takes). The handle kind is `HandleKind`, read once from its name where the
+API parses the request; one name table serves the handles the core sends and the edits it reads.
+
+**Not changed, and why.** The cloud tool's yaw from where a cloud is put and the core's random yaw of the clouds it scatters are two
+rules for two origins, not one value copied: moving the tool's rule into the core would change a placed cloud (B3 at most). The UI
+data's mode codes written as numbers (`land_panels.json`, the element and cloud tools) were put to B4's named rows in §6.18. The zone
+codes typed again (`parking_sources.cpp` and others) go with C4's "six owners", the same cause and the same fix.
+
+**What changes.** Nothing a player sees: every shown text is the one shown before (the cut gave the same words; the tooltips are the
+same), and the numbers are the same. The loaders refuse data that would have gone wrong silently: a road role naming no profile, a
+`first_effect` that is not a kind, a props table that does not match the kinds.
+
+**Verified** (`city-verify`, `quick --all` then `quick`, both DLLs): every test passes, the digest equal, every photo byte-equal to a
+run before C7, `scripts` compiling every script; `gates_changed` only lines the files had. The first run failed `scripts`: four tools
+read `PERCENT` inherited from `BrushTool`, whose own copy had gone; every unqualified use now names `Units`.
+
+### 6.22 B2, C3 (the tests' side): what the tests and captures copied (2026-11-08)
+
+**Cause.** What §3u listed and C3a had not reached: the town's node count typed (`flow_control_test` STOP_NODES 320, for map 0 seed
+1 only); the Build strip's sections and cards by position (`building_plan_cases` `sections[1]`, `building_tool_test`
+`sections[0].tools[0..2]`, the lot cards `cards[1]`, `cards[2]` of `capture_features`, the street signs' first two and from the
+eighth on in `capture_street_views`); the street block's tag as four bytes (`street_save_cases`); the yard's reach, a vehicle
+type, the turn speed in m/s, the speeds, a zone, a brush mode and the civic functions by number; the chunk's flags as bits (1 near,
+2 mid...) read from an int; the crater's decal scale (`marks.h` CRATER_SCALE) and the lantern's height (`builder.json`) typed; 3 m a
+floor; the element kinds' count; a sheet's capacity of street names ("three times what one sheet of 104 held"); the fuzz tests' own
+edits as bare numbers with ranges by comparison, the primitive and the wall run copied from the strip, the bevel's sentinel typed.
+
+**Fix.** The core gives what a test reads: the chunk as named fields (`BuildingRenderer::chunk_view`), the blast's decal reach
+(`blast_probe` `decal_half_m`), `YardReach` among the scripts' enums, the street block's tag (`save_tag_street`); `constants()`
+moved to `api/city_core_constants.cpp`, the query file past its size. The tests find a section by its title, a card by its id or the
+function it lays, a sign by its type (`SignType`), a speed button and a sky button by what they set (`HudTopBar.sky_button`,
+`speed_button`); they read the node count from the snapshot, the turn speed from `traffic.json` (`Units.KMH_PER_M_S`), the kinds
+from the catalogue, a roof from the body's storeys, the lantern from the strip; the names test fills the sign sheet until three
+layers are in use. The fuzz tests name their edits (`Edit`, `BodyEdit`, the same numbers, so the same draws and the same hashes) and
+take the primitive and the run from the strip's cards.
+
+**Left, and why.** `save_land_cases` (the save header's byte offsets) and the street save test's file without a street block test
+the reading of an older format, which D4 drops with C9's save layout: they go with that change.
+
+**What changes.** No test asks less: the stop test now covers every node of whatever town it opens, the names test fills three
+layers however many names a layer holds, and the captures aim at the same places by their names.
+
+**Verified** (`city-verify`, `quick --all`, both DLLs): every test passes (the fuzz tests with their hashes, the flow test over every
+node), the digest equal, every photo byte-equal to a run before C7; `gates_changed` only lines the files had.
+
+### 6.23 B2, C4 (the core, first part): what the core wrote twice and merges without a bit moving (2026-11-08)
+
+**Cause.** §3a/§3b/§3c/§3e/§3j/§3l/§3n's copies of one value or one primitive: lowbias32 twice (`core/random.h` `hash_u32`,
+`seeded.h` `hash32`); pi and a turn typed again in eleven files (`interior/plan.h` even shadowing `PI_F` in `b40`); the chunks a
+superchunk spans in four files and the sub-chunks a chunk holds in two; √2 computed in two; a ruin piece's size twice
+(`ruin_fracture.cpp` `LONGEST_SIDE_M`, `ruin_cells.h` `VORONOI_EDGE_M`) and a mound's spread twice; a roof's parapet, attic, coping,
+machine room and slab lift in both levels (`roof_emit.cpp`, `far_mass.cpp`) and the machine room once more as `3` in `roof_plant.cpp`;
+the casing three times (`road_grade.cpp`, `road_structures.cpp`, `road_walls.cpp`); `in_ds` twice; the clock's hour set by hand beside
+`CityClock::set_hour`; the convex hull twice; the point-in-ring test three times; where two lines meet three times; the chunks a box
+touches written by hand five times beside `for_chunks`; the arc table read at a share three times.
+
+**Fix.** One owner each, and only where the merge is exact: `hash_u32`; `core/math.h`'s `PI_F`, `TAU_F`, `PI_D`, `TAU_D`, `SQRT2_F`
+and `core/units.h`'s `DEG_TO_RAD_D` (every replaced literal was checked to round to the same float or double); `core/grid.h`'s
+`CHUNKS_PER_SUPER` and `SUBCHUNKS_PER_CHUNK`; `VORONOI_EDGE_M`; `MOUND_SPREAD` in `mounds.h`; `render/buildings/roof_sizes.h`;
+`casing_half` declared in `road_grade.h`; `traffic::in_ds`; `CityClock::set_hour`; `core/plane_geometry.h` with `line_shares`,
+`inside_ring` and `monotone_hull`, written once over any point type, each caller keeping its own tolerance and range (the hull of the
+survey still rounds and dedups its points first; the open segment of `segments_cross` still drops its ends); `for_chunks`; `arc_at`.
+
+**Not merged here, and why.** Each would move a number, so it is B3 with a predicted diff: two chunk half-diagonals that differ
+(`lamp_lights.cpp` 0.7072, `prop_renderer.cpp` 0.7071); two truncated π (`agent_cabin.cpp` 3.14159f, `car_shape.cpp` 1.5707963f);
+two value noises that are not one (`mounds.cpp` 2D, `shell.cpp` 3D); the private hashes of `growth.cpp` and `street_names.cpp`;
+RDP twice with different metrics; `closest_t` in closed form; the float polygon engine (`plan_area.cpp`) against Clipper2; paints
+deduplicated in `Body::add_paint`; the squares' LCG; the three rules for a junction's main road, the two for what kind of place a
+building is and the two for the micro window. The seeded generators (`Mulberry32`, the double noises) go with B4's removal of the
+parity code. The seven 2D vector types are the next part.
+
+**What changes.** Nothing: every merge is the same arithmetic on the same types.
+
+**Verified** (`city-verify`, `quick --all`, both DLLs): every test passes, the digest equal, every photo byte-equal to a run before C7
+(02-rua once off by the known residual's pixels, equal on two reruns); `gates_changed` only lines the files had.
+
+### 6.24 B2, C4 (the zones): the zone codes read from their table (2026-11-08)
+
+**Cause.** `data/catalog/zones.json` gives each zone code its base and density, and `Catalog::zones` carries them; the codes were
+typed again in six places (the "six owners" of §3c, and §3h's copies left from C3): the generator's own `enum Zone`
+(`road_gen.h`), `massing_core.cpp`'s mapping of codes to building kinds (an unknown code falling to a house by `default:`),
+`building_store.cpp` and `growth.cpp` (both calling codes 7 and 8 `ZONE_IND_LOW`/`ZONE_IND_HIGH`, though the table says
+`com_low`/`com_high`, and mapping them to the commercial base: right by accident), `models_loader.cpp`'s use names, and
+`lot_cache.cpp`'s proposal zone.
+
+**Fix.** `zones.json` says what the generator builds on each zone (`building`, a b40 kind by name, in the schema); the catalogue
+resolves the zones the generator lays by what they are (`Catalog::zone_code(base, density)`, `gen_zones`: none, industrial, mixed,
+commercial and residential by density), and the loader refuses a table without one. The generator's plan carries those codes
+(`CityPlan::zones`, `zone_of(zones, ...)`), and the road rules, the scenic rules, the lot strips and the lot cache read them; the
+generator tables take each zone's kind and whether it is a low shop street at boot (`set_zone_kinds`), so the body generator never
+sees a code. The store and growth read a zone's base from the catalogue (`BuildingStore` holds the catalogue, not its occupancy alone;
+`occupancy(b, base, ...)`); the use names are the `BaseZone` values.
+
+**Why it does not come back.** A zone's code exists once, in its table; what it means is read from the table everywhere.
+
+**What changes.** Nothing: every zone resolves to the code and the kind it had (checked against the table: none 0, industrial 3,
+mixed 4, commercial 7/2/8 and residential 5/1/6 by density; house, flats, tower, shop, office, works as before).
+
+**Verified** (`city-verify`, `quick --all`, both DLLs): every test passes, the digest equal, every photo byte-equal to a run before C7;
+`gates_changed` only lines the files had.
+
+### 6.25 B2, C4 (the shaders): what the shaders wrote twice, merged where not a pixel moves (2026-11-08)
+
+**Cause.** §3s's copies between shaders, and two lists kept beside their owner: the pane's albedo typed four times
+(`building_far.gdshader`, `building_far_window.gdshaderinc`, twice in `building_pane.gdshaderinc`) and the dark pane's once; the far
+room's cell hash, lit rule and lamp mix written in both far levels; the lamp's own lot (`fract(lot * 17.31)`) at every caller of
+`room_lamp` and the lamp level of `pane_lamp` copied into `signature_look`; the integer hash `pcg` in two includes that could not
+share a shader (`building_hash`, `lattice_noise`) and the lattice cell's primes in two; the finish laid on a face twice
+(`building_body`, `building_parts_body`); the lantern's pool pasted into `building_wash` beside `lamp_pool`'s; a local tau in
+`people_far`; the detail layer's second read in `road_detail` and again in `terrain_layers`; the mip expression twice in
+`vegetation_cards` (its leaf branch not indented); the wind's direction normalized three times a pixel in `water`; the sky's horizon
+read back from the sky material by `sky_view` though `Daylight` computes it; and the shader lists of `city_world.gd`
+(`NATIVE_SHADERS`) and `effect_materials.gd` (`SHADERS`), copies of `materials.json` and of the core's names kept only so the orphan
+gate would see them.
+
+**Fix.** `building_lamps.gdshaderinc` owns the glass's albedo (`PANE_ALBEDO`, `PANE_ALBEDO_DARK`), the lamp by the room's lot
+(`room_lamp` takes its own lot), `room_level`, the far room (`room_cell`, `far_room_lit`, `far_room_lamp`) and the two globals the
+lit rooms read (`rooms_awake`, `building_night_windows`, no longer declared by each includer). `hash.gdshaderinc` (the renamed
+`building_hash`, guarded) is the one integer hash, with `spatial_hash` (Teschner's primes), and `lattice_noise` includes it.
+`building_common`'s `finish_surface` lays a finish; `building_wash` includes `lamp_pool`; `people_far` uses the language's `TAU`;
+`detail_pair.gdshaderinc` reads a close-up map twice for the streets and the grass (`detail_tone`, `detail_bend`);
+`vegetation_cards`' `texel_mip`; `water` takes the wind and the drift once. `Daylight.horizon_linear` is the horizon the air takes.
+The orphan gate reads what else names a resource by path, the data tables and the core's strings (`gate_code.py`
+`OTHER_REFERRERS`, `facts.py` reads a data file's whole text), and the two lists are gone; its fixtures show a shader named only by
+a table and only by the core passing, and a name in a C++ comment or a tool's JSON naming nothing.
+
+**Why it does not come back.** Each value and rule has one file; a shader that needs it includes that file, and the hash and detail
+includes are guarded so two paths to them are one.
+
+**Not merged here, and why** (each would move pixels: B3 with a predicted diff). The two hand copies of the engine's GGX
+(`building_glass_body` light(), `people_look` `ggx_specular`) differ (a roughness floor, the visibility's epsilon, the view's clamp);
+`water`'s view depth is the full inverse where `screen_depth`'s `view_at` takes six terms, and `canyon_light`'s normal picks its side
+by another rule; `sky_view`'s cloud hash has seeded.h's constants but 64-bit arithmetic, so it is not seeded.h's hash; the sin
+hashes (`agents`, `people_look`), `person_hash`, `marks`' and `atmosphere`'s noises; `FAR_ROOM_LEVEL` 0.68 is not the mean of
+`room_level` (0.3 + 0.85 / 4 = 0.5125 for two independent uniform lots), and `materials.json`'s far `window_glow` 0.42 and
+`signature_look`'s `ROOM_GLOW` 0.62 are worked out from it and from the near glow by hand; `building_room_tone`'s `HUNG_*` means and
+`buildings.json`'s far finish tones typed by hand; the near and mid levels' reveal and sill shades; `building_pane`'s frame share
+read from a value in metres; the far foot shade; `building_card`'s railing beside the near level's models; the bay picks in C++ and
+in the mid level's shader.
+
+**What changes.** Nothing: the same arithmetic in the same order (a uint sum regrouped, which is exact; the constants the same
+floats; `TAU_RAD` 6.28318530718 rounds to `TAU`'s float).
+
+**Verified** (`city-verify`, `quick --all`): every test passes with no shader error, the digest equal, the four photos byte-equal to
+known states (00-cidade off its golden in the known residual box, equal to an earlier run); the gate self-test passes and fails with
+the old gate on the new case; `gates_changed` reports only what the touched files had (`daylight.gd`'s and `sky_view.gd`'s length,
+`sky_view.gd`'s hash literals, `daylight.gd`'s cascade side).
+
+### 6.26 B2, C4 (the scripts): one owner each for the scripts' doubled values (2026-11-08)
+
+**Cause.** §3q/§3r/§3s/§3 copies on the script side: the decimal mark chosen by `get_locale().begins_with("pt")` in
+`formatters.gd` while the thousands mark comes from a translation (`economy.group`); the inspector's refresh and the edits F8 marks
+read from the health monitor's table (`health.json` `refresh_s`, `changes_shown`), a pace and a count filed under another owner's
+name; the road-blocks grid's first values merged by `road_options.gd` as a copy of `RoadBlocks.settings()`, and the base road looked
+up twice a refresh; `pgo.sh` naming its own Godot and llvm-mingw (not overridable for Godot) and `build.sh` defaulting Godot to
+`godot`, beside the machine vars `tools/tasks/suites.json` owns.
+
+**Fix.** `economy.decimal` beside `economy.group` (`format_tenths` replaces the point by it); `hud.json` holds
+`timings.inspector_refresh_s` and `changes_shown` (schema), `health.json` keeps what is the monitor's; `road_options.gd` takes
+`RoadBlocks.settings()` and hands the base road to `_class_rows`; `python tools/tasks/cli.py var <name>` prints a machine var as
+the tasks resolve it (its environment variable first, then the platform's default; no newline, so `$(...)` holds no `\r`), and
+`pgo.sh` and `build.sh` take Godot and llvm-mingw from it (tests: the default, the environment first, an unknown var exits 2).
+
+**Why it does not come back.** A locale rule, a panel's pace and a tool's path each have one table; the scripts read it.
+
+**Not here, and why.** The cut-walls choice kept by `Settings` and by `CityState.new_road_flags` (and dispatched twice by
+`road_options.gd`) is tool state in the city state: C5, with the state's hash moving. `road_catalog.gd` drawing a profile's picture
+from the JSON strips while a variant the core made has none draws the variants' pictures: B3. `android.sh` keeps its own Godot
+default while the Android session edits it (log/pendencias.md).
+
+**What changes.** Nothing: Portuguese still shows a comma and English a point (a `pt_*` locale picks the `pt_BR` column, any other
+the fallback's), the same pace and count, the same grid, the same Godot 4.7.2 (the console build of the same install).
+
+**Verified** (`city-verify`, `quick --all`): every test passes, the digest equal, the four photos byte-equal to known states;
+`tools/tasks` tests 26 OK; `gates_changed` reports only what `inspector_panel.gd` had (its length, two texts).
+
+### 6.27 B2, C4 (the data): one owner for each value the tables held twice (2026-11-08)
+
+**Cause.** §3t's and §3u's equal pairs: a person's stay at work or on an errand under two key pairs in `traffic.json`
+(`work_stay_h`/`errand_stay_h` read by `ped_demand.cpp`, `stay_work_h`/`stay_errand_h` by `lot_demand.cpp`); the footway's height in
+`traffic.json` `curb_m` (the walkers, `lane_geometry.cpp`) and in `streets.json` `heights.sidewalk` (the road, the furniture and a
+tram's flush track); `buildings.json` `lod.fov_deg` copying `camera.json` `far_fov_deg` because render data could not read a game
+table; the fireball's law in `effects.json` beside the scar's in `tuning.json`; a knocked-down person's time down under `people` and
+under `shot` in `blast.json`; `materials.json` carrying the finishes' maps and scales twice, the glass three times and the vegetation
+wind four (`cover_rock` and `cover_shore` whole twins); the road-blocks tool's grid in `settings.json`, the graphics options; the
+zones' names twice (`zone.name.0..8` read by the inspector, `zones.json` `name_key` read by nothing and five of its keys untranslated);
+the eight primitive tools' one hint under eight keys; and 83 translation keys reached by no code whose text another, live key holds
+(`builder.lot.*` beside `lot.*`, `design.finish.*` beside `building.finish.*`, `ui.toolName.*` beside `tool.*`, the
+`game.hint.*`/`hint.tool.*` twins, `game.toast.missed`/`hit`/`saveBlocked`, `game.confirm.flattenMap`, `cmd.place.bomb`/
+`junctionControl`, `save.file.notMap`, `save.importFailed`, `economy.money` with its dollar sign for reais); and `road_grade_test.gd`
+typing the clearances and the bore's cover it judges.
+
+**Fix.** One pair of stays, both readers on it; `street_furniture.json` `sidewalk.height_m` (schema), read by the walkers through the
+catalogue and by the road, prop and transit renderers through `RenderContext::catalog`; the boot hands the camera table to the render
+(`CityStore.boot`) and `BuildingLook::load` reads `far_fov_deg` from it; `EffectWorld::init` takes the fireball from
+`strike.scar_radius_*`; the shot reads `people.knock_*`; `materials.json` `_shared` holds `finishes`, `glass`, `sky_in_glass`, `gust`,
+`sway` and `stone`, a row names what it `uses` and `CityWorld.material_params` lays them under its own params (the schema keeps a
+shared key out of the rows); `hud.json` `tool_options.road_blocks`; the inspector reads `zones.json` `name_key`
+(`DataTables.zone_name_key`), the missing five carry the texts `zone.name.N` had, and the core no longer stores a name it never read;
+`hint.builder.prim` and a tool's `hint_key`; the dead twins deleted (each checked: no code, scene or table names it, no prefix
+builds it); the grade test reads the tuning.
+
+**Why it does not come back.** Each value is in one table; the schemas are strict, so a shared key written again in a material row,
+or a moved key left behind, is refused.
+
+**Not here, and why.** Through the styles, which B4 rebuilds (D2): the 57 street names and the signals copied into both
+`street_furniture.json` styles (moved to the base they would name the `eua` and `europa` streets), `models.json`'s module and
+storeys beside `tuning.json` `build.*` and its fence and wall beside the barrier kinds, the plates' "Rua" beside `street_names.prefix`,
+the flags' colours. Unequal pairs (B3): the train car (18 m simulated, 17.5 m drawn), the zone colours of the drawer and the map,
+`cityAvenue` and `boulevard`, the railing's height, a model and its plain twin under one name; the numbers derived by hand
+(`daylight.json`, `agents.json`, the far finish tones) and the bore's cover typed in `road_shape.cpp` (0.4 + 0.16) beside
+`structure.bore_over_m` 0.56, whose sums round apart. Not one value: `transit.json` `default_line` (a stop no line serves) and the
+`transit_bus` token (the bus mode's colour in the HUD) equal a line colour without being one.
+
+**What changes.** Nothing: every reader gets the value it had (0.15 m, 35 degrees, 2.5 + 1.1 x force, 3.2 + 1.8 s, the same
+material parameters, checked key by key by the script that moved them), every text shown is the one it was.
+
+**Verified** (`city-verify`, `quick --all`, both DLLs): every test passes, the digest equal, the four photos byte-equal to known
+states; `gates_changed` reports nothing the files did not have at HEAD.
+
+### 6.28 B2, C4 (the core, second part): two point types where seven stood (2026-11-08)
+
+**Cause.** R10's seven 2D vector types: `core/math.h` `V2` (float x, y, with its operations), b40's `Point2` (float x, y, bare),
+`LotPoint` (`lot_rings.h`), `RoutePoint` (`pole_routes.h`) and `StrokePoint` (`commands.h`), each double x, z and bare, the
+snap's private `Vec` (double x, z with its own operators, `place_snap.cpp`) and the block cutter's `std::pair<double, double>`
+(`block_lots.cpp`). A point of the plan and a point of the ground were spelled anew by each area, and code moving one into another
+copied it field by field.
+
+**Fix.** Two types in `core/math.h`: `V2` for the float plans (every `Point2`) and `XZ`, an aggregate of doubles with the
+operations `Vec` had, for the ground (`LotPoint`, `RoutePoint`, `StrokePoint`, `Vec`, the pair, which sorts as a pair did).
+
+**Why it does not come back.** A new area finds the two types in `core`; the plain duplicates are gone, so nothing invites a third.
+
+**What changes.** Nothing: the same fields of the same types in the same order, the same arithmetic; every overload a call could now
+reach through `city` was checked (each pair of same-named functions is a declaration and its definition, or lives in one file).
+
+**Verified** (`city-verify`, `quick --all`, both DLLs): every test passes, the digest equal, the four photos byte-equal to known
+states; `gates_changed` reports only `commands.h`'s length, shorter than it was.
+
+### 6.29 B2, C12 (first part): the pipeline's owners where nothing moves (2026-11-08)
+
+**Causes and fixes.**
+- **The source of truth included the layer that mutates it** (`city_state.h:12` included `sim/commands/edit_journal.h` for
+  `EditHistory`, and through it every render file saw the journal's mutations). The history's records (operations, entries,
+  `EditHistory`) are the state's data: `sim/state/edit_history.h`; the journal that writes them and runs them backwards and forwards
+  stays `sim/commands/edit_journal.h`, included by the eleven commands and the survey that call it. `rules.json` `cpp_layers` lists
+  what `sim/state` may include, `sim/commands` not among it, so the dependency cannot come back.
+- **The frame's upload flush rested on an engine internal (L12)**: `frame_admission.h` called `get_video_adapter_name()` for its side
+  effect; it calls `RenderingServer::force_sync`, the call Godot binds for it.
+- **Two protocols for a revisioned field**: `shore_view.gd` built the shore's whole Dictionary every frame to compare a revision;
+  `shore_revision` (`ShoreField::view_revision`) is asked each frame and the field only when it moved, as the fog and the canyon.
+- **The sky view owned what is not the sky**: it set the map's biome and the water's look from its landscape read and drove the
+  contact shade. It tells what it read (`landscape_read`) and CityWorld lays the biome and the water; CityWorld drives the sky's step
+  (`step`, after its own frame, the order it had) and the contact shade from the sun it owns.
+- **The simulation's data loaded in the render setup, from render files (A5)**: the building generator's tables, the Build > Models
+  catalogue and the interiors' recipes go to `data/catalog/` (`buildings.json`, `models.json`, `interiors.json`) and load in
+  `load_catalog`; what the render draws them with stays `data/render/building_look.json` (the facade parts, the lot fence, the roof
+  plant by style, the far finishes, the levels of detail). The catalogue and the building tables are read aside and taken in whole:
+  a refused building table no longer leaves the core with a catalogue and no generator (the refusal test's "no roads to offer"
+  found it when the cases moved). Schemas follow the files.
+- With these, `city_world.gd` and `data_tables.gd` passed their length: the world's materials are a responsibility of their own
+  (`render/world_materials.gd`, `WorldMaterials`), and so are the zones' lookups (`game/data/zone_table.gd`, `ZoneTable`).
+
+**Not here, and why.** Transit built on the main thread (L3) and the buildings' second result protocol (L4) are the pipeline's
+redesign; `DetailView` (L5) is either the families' levels chosen by their error (a behaviour change, B3) or deleted; the god classes
+(L9, A6, `RenderWorld`) and opening a city in a job are refactors of their own, next. `JOB_SEM_CHAVE` is the gate contradicting
+itself (its pattern in `rules.json` allows `submit(JobKey{`, its check forbids it): C16. The jobs' own lock (C6's architecture) is
+the measured design §6.10 left.
+
+**What changes.** Nothing: the same tables, read in the same order before any body; the same frame order; the same shore and sky.
+
+**Verified** (`city-verify`, `quick --all`, both DLLs): every test passes, the digest equal, the four photos byte-equal to known
+states; `gates_changed` reports only what the files had (`sky_view.gd`'s length and hash literals, `inspector_panel.gd`'s, the
+flag colours in `types.h`, the fuzz test's length).
+
+### 6.30 B2, C12 (opening a city): the file decoded aside, the city taken in with no job inside it (2026-11-08)
+
+**Cause.** Opening a city froze the frame (§3n `city_core_persist.cpp:109-136`, §3q `city_saves.gd:81-92`): `load_city` read the
+file, decoded it (`decode_city`: the land from its seed, every road graded, every lot cell) and took it in, all on the main thread.
+
+**Fix.** `load_city` reads the file on the main thread (the engine's compressed `FileAccess`) and decodes it on a thread of its own
+into the city aside (`LoadJob`); `load_poll` answers `pending` until it is read, then takes it in as before. `CitySaves.load_game`,
+`load_last` and `open_file` wait frames for it (`_opened`), and the game and the tests `await` them.
+
+**What the change found.** With the frames going on during the decode, two tests died off the main thread (an access violation, a
+division by zero, four rounds in five): `take_city` swaps the whole `CityData`, the catalogue and the building tables with it, and
+frees the old city, while render jobs that copied their inputs under a short lock went on reading those tables outside it (the
+canyon's `record_mass` on `s.buildings.designs`, the ruins' pointer to them, the shore's and the fog's reads of the catalogue). The
+synchronous opening had the same race, hidden by timing: no frame submitted jobs while it decoded. `JobPool::pause` hands out no
+work and waits for the running jobs; the opening pauses the pool around the swap, and the jobs that start after it block on the map
+lock or read whole tables. Six rounds of the opening tests after it: none died.
+
+**What changes.** The frame no longer stops while a city decodes; the city taken in is the same (the digest equal).
+
+**Verified** (`city-verify`, `quick --all`, both DLLs, and the six save-opening tests six times): every test passes, the digest
+equal, the photos byte-equal to known states; `gates_changed` reports only what the files had.
+
+### 6.31 B2, C16 (first part): one owner for each of the tools' mechanisms (2026-11-08)
+
+**Causes and fixes.**
+- **A build freed the DLL it did not write** (found by the C12 runs): `free_dll.sh` moved every DLL aside, so the release build
+  took the debug DLL away while the tests keyed their inputs on it; it frees the DLLs it is named, `build.sh`'s one-DLL target
+  names its own (`f8a6c765`).
+- **The orchestrator re-read git after every task and sorted in quadratic steps** (`pool.py`): the snapshot keeps the index for a
+  run (a task writes files, it never stages them) and reads git status and the changed files' hashes again (`Snapshot.refresh`);
+  a task's users and the ready order are worked out in one pass each.
+- **Three git wrappers, one without a deadline**: `tasks.inputs.git` is the tools' one (deadline, no window, no optional locks)
+  and the gates' scope asks it.
+- **Two JSON Schema checkers** (`gate_data.py`, `tasks/schema.py`): `tasks/schema.py` holds both dialects (the suites' standard
+  keywords, the data tables' `strict`, `additional`, `pattern_prefix`, `unique_key`, and `pattern`, `maxItems`, `maximum`), and the
+  data gate asks it. The old checker never read `additionalProperties`, so nothing under a style, a builder tool or the road options
+  was checked: one colour, three tool keys and three road options the schemas did not name are named now.
+- **A generated table out of step with its generator** (T3): `make_furniture.py` read a `sizes` the interiors' table no longer
+  had at its top; it reads them under the style the game plays (`start.json` `default_style`), the table is its output again (two
+  palette rows had swapped places by hand), and `--check` is the quick suite's `furniture_table` task.
+- **The line limits drove splits of data tables** (T5): a table is one owner whatever its length, and the `.json` and `.csv` caps
+  could only split by size. They are gone from `max_lines`; the profiles are one `road_profiles.json` again (in the order the core
+  numbers them, the fragments' merge in `DataTables` gone), `land_elements` is `land_panels`' block again, and the text is one
+  `strings.csv`.
+- **`JOB_SEM_CHAVE` contradicted itself and failed twenty correct lines**: its pattern allowed `submit(JobKey{`, its check forbade any
+  `JobKey{` outside `job_pool.h`. With `JobLane` a key collides only when two producers share a lane, so `JOB_LANE_SHARED` (a
+  whole-repo rule, its passing and failing fixtures) reports a lane named by more than one file, and `JOB_SEM_CHAVE` reports a job
+  given a braced key with no type. The pool's probe keys its own pool on lanes of its own (`PROBE_*`).
+
+**Not here, and why.** The four C++ readers of the tools (the gates' lexers, `code_parse.py`, the analyzer's libclang and
+tree-sitter adapters) and the analyzer's own git and compiler calls are the analysis tools' rewrite, next. `bleed_alpha.py` and
+`calm_stone.py` edited 4.0 assets in place; their sources go with those assets in B4. The code files' line limits stay, read as
+"split by responsibility".
+
+**What changes.** Nothing in the game: the same profiles in the same order, the same panels, the same text, the same furniture.
+
+### 6.32 B2, C16 (the analysis tools): one C++ lexer, deadlines, a sampler that knows the main thread (2026-11-08)
+
+**Causes and fixes.**
+- **The analysers' C++ reader counted braces in strings and comments** (`code_parse.py`: line regexes and a brace count per line,
+  so a `{` in a string or a comment shifted every later function's span): heads and braces are read on the code the gates'
+  lexer leaves (`lex_c.py`, comments, strings and characters blanked), the bodies are the source as written, and the lexer's source
+  keys the parses with the parser's. A test function whose string holds `}{` and whose comment holds `}` keeps its five lines.
+- **The analyser's processes had no deadline** (`arch/repo.py` git, `arch/adapters/cpp_build.py` ninja and the compiler): each call
+  has one, and `causes` and `arch_scan` are tasks of the orchestrator (CLAUDE.md's commands run them through it), so the analyser's
+  long-lived `git cat-file` streams end with the task's deadline too.
+- **The sampler took the first thread Toolhelp32 listed for the main one** (no documented order), opened handles it never
+  closed, left the handle types at `int` (a 64-bit handle truncated) and stopped on any module whose debug file was elsewhere:
+  the main thread is the oldest (`GetThreadTimes`), the handles and dbghelp's state are given back (`Sampler.close`), the handle
+  types are declared, and a module whose PDB is not on the machine is reported as without debug information. Its Windows access is
+  a responsibility of its own (`win_process.py`), which also keeps the sampler under its length.
+
+**Not here, and why.** The analyser's libclang and tree-sitter adapters read C++ for a call graph, which a token lexer cannot
+give: they stay the analyser's, the other readers use the gates' lexer.
+
+**Verified.** The parse of a function with braces in a string and a comment; `causes` as a task (it passes); the sampler on a
+short Python process (1 392 samples, the main thread named, the modules without symbols said); the `tools/tasks` tests and the
+gates of the changed files.
+
+### 6.33 B2, C14 (first part): the tools' steps, the interface's choices and the numbers in text, from their tables (2026-11-08)
+
+**Causes and fixes.**
+- **The player's tools kept their steps as constants** (`brush_tool.gd`, `handle_drag.gd`, `lots_tool.gd`, `roundabout_tool.gd`,
+  `terrain_tool.gd`, `zone_tool.gd`, `demolish_tool.gd`): how far apart a brush lays its dabs, how many steps a handle turns in,
+  what a lot's corner catches, how a roundabout scales, the zone a stroke paints with none chosen. They are interaction choices of
+  this game, so they are one table, `data/game/tools.json` (its schema, its `_doc` giving each one's reason), read by `DataTables`
+  and taken by each tool as static values. The handle's step is `TAU / turn_steps` (24, the old `PI / 12`); the default zone is a
+  `zones.json` id resolved by `ZoneTable.code`, not the bare `1`.
+- **Interface choices typed in the scripts**: the zone densities (`drawers.json` `zone_densities`), the builder's choices
+  (`builder.json` `choices`, which `building_tool_test` reads too), the share of a help row the key takes (`tokens.json`
+  `help_key_share`), the road flash's fade times (`hud.json` `timings`), and the languages the start screen offers
+  (`start.json` `languages`). A language's own name is text, so it is `language.self` in `strings.csv` (each language
+  names itself), and `StartScreen.languages()` is the one list the start screen and the menu rows read.
+- **Numbers written into translations beside the value that decides them** (`strings.csv`): the health window's 30 s, the
+  junction step's 0.5 m and the most clouds (24) were typed in both languages, so a change of `health.json`, of the panel's step
+  or of `nature.json` left the text wrong. They are `{seconds}`, `{m}` and `{n}`, filled by `health_panel.gd`, `road_panel.gd`
+  and `cloud_tool.gd` from those owners. `game.toast.maxClouds` said the same as `hint.cloud.full` and nothing read it.
+- `weather_view.gd` divided by `60.0` where `Units.S_PER_MIN` is the owner; `camera_gestures.gd:128` held four statements on
+  one line.
+
+**Not here, and why.** `road_panel.gd`'s limits (the curve's least and most, the height step) are rules the core should give
+(B3, the panel asks the core); `WATER_EXTENT_M` comes from the map (B3); the plain quarter turn of `building_tool.gd`, the road
+section's and the swatch's pixel sizes, the shader look values and the other numbers typed in text are the next parts of C14.
+
+**What changes.** Nothing: the same steps, densities, choices, times and texts (verified by `quick --all`: 45 of 47 tasks pass;
+`gates_changed` reports only lines the baseline holds; `photos_check` differs by 0.001 % on two photos whose bytes are states
+already captured before this batch, the capture's known variation).
+
+### 6.34 B2, C14 (second part): the road views' sizes, the turn and height steps, the texts' measures (2026-11-08)
+
+**Causes and fixes.**
+- **Pixel sizes in interface code** (CLAUDE.md: sizes only through `data/ui/tokens.json`): the profile editor's section kept its
+  label threshold (34 px), its way mark (7 px) and its divider (1 px) as constants, and the catalogue card drew its centre lines
+  and rails at offsets typed in the calls (-2, +1, -1; 1 and 2 px). They are tokens (`rp_label_least`, `rp_way_mark`,
+  `rp_divider`; `rc_line`, `rc_solid`, `rc_double_gap`), and the offsets follow from them: a double line is two lines
+  `rc_double_gap` apart around the edge, a solid one `rc_solid` thick across it.
+- **The plain quarter turn of a model in hand was `PI / 2` while the Shift turn was data**: `tools.json` `building.turn_steps`
+  (4), the turn `TAU / turn_steps`, as the handle's.
+- **The road's height step was the number 1 in the calls** (`road_tool.gd` `step_height(1)`, the option buttons and the keys),
+  and its texts typed "1 m": the step is `tools.json` `road.height_step_m`, `step_height` takes a direction and lands on whole
+  steps, and `roadKeys.height*` take `{step_m}` from it.
+- **Measures typed in texts whose owner is a table**: the footway's clear width (`roadFurniture.tip`, "1,20 m", from
+  `street_furniture.json` `sidewalk.free_width_m`, written with two decimals by the new `Formatters.format_hundredths`) and the
+  snap grid (`v2.snap.grid`, from tuning `road_grid_m`, filled by the road options' one table of fills).
+
+**Not here, and why.** `v2.snap.angles` lists "90°, 45°, 15°" where the rule is multiples of `road_snap_step_deg`: its text has to
+say the rule, a change the player reads (B3). `confirm.newWorld` and `confirm.newLargeWorld` give wrong sizes (B3, recorded).
+`inspector.impossibleBody`, `road.bend.sharp`, `road.sub.*`, `ui.catalog.tooMany`, `ui.problem.maxLanes`, `ui.problem.wide` and
+`ui.money.unlimited` hold numbers too, but no code reads them: they go with the unreached keys (C13), not filled.
+
+**What changes.** Nothing: the same pixels, turns, steps and texts (`quick`: 45 of 46 pass; `photos_check` differs by 0.001 % on
+one photo whose bytes are a state captured before this batch).
+
+### 6.35 B2, C16 (the gates' rules on numbers): a copy by name, place and value; a constant says its source (2026-11-08)
+
+**Causes and fixes.**
+- **`SEGUNDO_DONO` matched names alone** (`gate_defs.py` `check_data_copies`): two words shared by a constant and any data key
+  anywhere was a hit, so `SEED_SCALE` was a copy of `cover.json` `rocks.seed` and `KEEP` of a tree band's `keep`: 289 lines on the
+  tree, almost all coincidences, which nobody can act on and everybody learns to skip (T2). Measured on the tree: names alone 289,
+  names and values 79 (still `DOOR_W` 0.9 against a bus's door), exact names 67 (`W`, `D`, `PAD`). A copy is about the same
+  thing, so the rule now asks for the place too: a word of the code file's path must be a word of the key's table or path (the
+  repository's places, `data_copy_places` in `rules.json`, and a style's id are not words of a domain), and then either the
+  constant bears the key's whole name of two words or more (a drifted copy keeps the name), or shares two words of it and holds
+  one of its values (not a trivial one). `VALOR_DUPLICADO` (a distinctive value typed again) asks for the place too: its 13
+  shader hits were the coordinates of a clothes airer and of a scenic lake. What is left are eight copies one can act on:
+  `ruin_pieces.cpp` `DUST_*` against `effects.json` `down.dust_*`, `civic_services.cpp` `STALL_W`/`STALL_D` against
+  `buildings.json` `lots` (the second one drifted, 5 m against 5.5 m), `road_gen_graph.cpp` `PARALLEL_COS` against tuning
+  `road.parallel_cos`, and `terrain_gen.cpp` `RIVER_BED_FLOOR`/`ROUGH_REACH_MIN` against tuning `terrain` (the same profile
+  read by the brush from data and by the generator from code). The hand list of 22 exceptions (`data_copy_allow`) existed only
+  for the old matching and is gone, with the unused `data_copy_min_abs`.
+- **The magic-number rule was satisfied by naming** (`constexpr float K = 0.37f;` passed with no source): a constant holding a
+  value that is not trivial says in a comment what it is (a definition, a norm, a derivation), on its own line or in the comment
+  over the block of constants it belongs to; a value one tunes goes to data (`CONSTANT_WITHOUT_SOURCE`). Enumerator lists name
+  codes and are left out. CLAUDE.md says the rule.
+- **The core and the shaders were outside the rule** (`rules.json` exempted `native/src/core/` whole and `catalog_loader.cpp`;
+  `.gdshader` and `.gdshaderinc` were not in its extensions): both are in. Exempt stay only the runtime translated from the
+  source game (`core/js_*`) and its stream (`core/seeded.h`), which B4 replaces. The core's numbers are named with their
+  sources: the hash finaliser is Wellons' lowbias32, the generators Marsaglia's xorshift (the 64-bit one of `Rng` and the 32-bit
+  one `wear_field.cpp` had written again, now `xorshift32` in `core/random.h`), the golden-ratio gamma (three copies:
+  `job_pool.h`, `pane_rooms.cpp`, `kept_by_revision.h`), Teschner's spatial primes (two copies, `mounds.cpp`), the cell key's
+  halves, the colour parser's digits, the geometry's tolerances; `city_core_query.cpp` read the colour base from its own copy.
+  The DLLs built from these sources are byte for byte the ones of the commit before.
+
+**What the gates say now.** 2,172 problems on the whole tree (it was 401): `NUMERO_MAGICO` 1,392 (1,356 of them in the shaders,
+now under the rule), `CONSTANT_WITHOUT_SOURCE` 719, `SEGUNDO_DONO` 8, and the rest as before (`TEXTO_VIA_TR` 23, `TAMANHO_ARQUIVO`
+17, `DONO_UNICO` 9, `TAMANHO_FUNCAO` 3, `ESPELHO` 1). The two new counts are the values of C14 the old rules hid: they are the rest
+of C14, domain by domain.
+
+### 6.36 B2, C14 (the tuning's types and the generated land): a count is an int, the land is data (2026-11-08)
+
+**Causes and fixes.**
+- **Every tunable was a float** (`tuning_fields.h` `CITY_TUNING_DECLARE`): counts were read back through `int(...)` at every
+  use (`build_max_volumes` in eight places), a fraction in the table passed silently, and a generator working in double could not
+  share a value with the brush. The X-macro gives each field its type: `X` a measure or share (float), `XI` a count (int, which
+  the loader refuses as a fraction: 24 fields), `XD` a value read in double precision. The casts the counts no longer need are
+  gone; the tuning gate reads all three.
+- **The generated land kept its whole shape in code** (`terrain_gen.cpp`, about forty `constexpr double`: hills, valley, canal,
+  lakes, ranges, the flood), and two of its values were second owners of tuning's `terrain` group (`RIVER_BED_FLOOR` and
+  `ROUGH_REACH_MIN`, the bed's profile the brush read from data and the generator from code; `SEGUNDO_DONO` named both). The
+  shape is tuning's `land` group (doubles, the counts as ints, a `_doc` saying each one's part), the generator keeps the tuning
+  it was made with and derives the canal's reach and cut from it, the bed reads `terrain` like the brush (which still works in
+  float, as before), and the height limits are tuning's (`MIN_Y`/`MAX_Y` were copies). What stays in code is named with its
+  source: the keys' packing, the lattice strides and salts, the neighbour tables, the end guard. Godot's JSON reader gives the
+  correctly rounded double for every value moved (checked bit by bit), and the build contracts no floating expression
+  (`-ffp-contract=off`), so the run-time products equal the folded ones.
+
+**Not here, and why.** `civic_services.cpp` `STALL_D` (5 m against `lots.stall_d` 5.5 m) is a second owner that drifted:
+reading the table changes the market's parking (B3, C4 unequal pairs). `road_gen_graph.cpp` `PARALLEL_COS` (0.93) is the city
+generator's own hugging test, not the road tool's overlap rule (0.9), and `ruin_pieces.cpp` `DUST_*` are a falling piece's dust,
+not a person going down: both go to data with their domains (the citygen and effects passes).
+
+**What changes.** Nothing: the digest of the generated maps, the hash tests and the numbers are the same (`quick`: 44 of 46; the
+photo that differed by 0.004 % was a state of the capture's variation: taken again with the same DLL it is one seen before).
+
+### 6.37 B2, C14 (the building generator, bodies): every value of a generator file in buildings.json "shapes" (2026-11-08)
+
+**Cause and fix.** Every massing file opened with a block of `constexpr float` (storey heights, shares, counts: §3b), passing
+the magic-number rule by being named; the review's fix was to read them from the buildings table. A generator file's values are
+now a block of `buildings.json` `styles.roadcraft.shapes` (`civic`, `services`, `facade`, `massing`, `house`, `tall`, `works`,
+`paint`: 318 values), typed by an X-macro list per block in `sim/buildings/b40/shapes.h` (float, count, double, lists), read
+by `buildings_loader.cpp` (a missing key refuses the catalogue), checked by a strict schema, each block with a `_doc` that
+carries the sources the code's comments held (the COE and NBR heights, the CTBUH comparison). A function reaches its block
+through the `Data` it is given (`roof_shape`, `roof_of`, the house's and the tall bodies' helpers now take it; `nudge` takes
+the paint block). The values were moved by a tool that rewrites the declarations and the uses and checks, value by value, that
+the float the loader makes from the JSON double is the float the literal made.
+
+Not moved, and named with their sources: the facade grammar's bay rules (`DEFAULT_BAY`, `BEST_WITHIN`), which every saved body
+and the commands depend on; the hash constants and the HSL hexcone; tolerances. Three copies made one: the era count was in
+`buildings_loader.cpp`, `massing_core.cpp` and the size of `Data::era` (now `ERAS` in `types.h`); the palette count `PALETTES`
+(7) in three massing files was the lot walls' last index (now `Data::last_palette()`, eight walls in the table).
+
+**What changes.** Nothing: the generated maps' digest, the hashes and the numbers are the same (`quick`: 44 of 46; the photos
+are states seen before).
+
+### 6.38 B2, C14 (the building generator, lots): the lot zones' values, and one owner for the parts they share (2026-11-08)
+
+**Cause and fix.** The same as §6.37 for the lot layout (`lot_back`, `lot_boundary`, `lot_cars`, `lot_front`, `lot_ground`,
+`lot_plan`, `lot_space`, `lot_yard`, `open_lots`): their values are blocks of `buildings.json` `shapes` (`back`, `boundary`,
+`cars`, `front`, `ground`, `plan`, `space`, `yard`, `open`), with the comments' meaning in each `_doc`. The lot plan takes the
+`Data` (`plan_lot`), the boundary's helpers, the open lots' layout and the tree test (`open_lot_tree_ok`, read by the tree
+renderer through `s.buildings.designs`) take their blocks.
+
+Several files laid the same part with the same number, written once a file: a ground cover's thickness (`COVER_H`,
+`SURFACE_H` in civic, services and open lots), the sports court (school and open lot: 15 x 28 m, 0.12 m lines), a bench's
+seat, a drain, a pallet, a lamp post, a yard swing, and a car way's margin (`WAY_SIDE`, in `lot_ground.cpp` and again in
+`lot_cars.cpp` with a comment pointing at the first). They are one block, `shapes.parts`, every file reading it. The market's
+bays read `lots.stall_w` (the second owner `SEGUNDO_DONO` named; same value); its `stall_d` drifted (5 m against 5.5 m) and
+waits for B3. Parts that only look alike stay their files' own: the bins, benches' widths, planters and lamps that differ.
+
+The headers' last constants say what they are (the packed colour's channels, the sRGB transfer, the bay key's bytes, the
+flag's default colours); the skin's lightness tint is the paint block's.
+
+**What changes.** Nothing: 681 values in 18 blocks, the generated maps' digest, the hashes and the numbers the same (`quick`:
+45 of 46; the photos are states seen before).
+
+### 6.39 B2, C14 (the interiors): flights, rooms and homes in buildings.json shapes (2026-11-08)
+
+**Cause and fix.** About 150 named constants in `interior_homes.cpp` and as many in `interior_rooms.cpp` placed every piece of
+furniture (§3c); `interior.cpp` held the flights' rise and tread and the rooms' counts, `plan.cpp` the floor plan's margins.
+They are four more blocks of `buildings.json` `shapes` (`interior`, `homes`, `rooms`, `floor_plan`: 260 values), read through
+the `Plan`, `RoomCell` and `Home` a function is given (`flat_plan`, `spaces_of`, `floor_finish` and `level_flights` take the
+`Data`; the render's three callers pass theirs). With 22 blocks the declarations are split by part of the generator
+(`shapes_bodies.h`, `shapes_lots.h`, `shapes_interior.h`, the field macros in `shape_fields.h`, the list in `shapes.h`).
+
+One owner each: a doorway's half width was `HALF_WAY` in two files and `HALF_DOOR` in a third (now `HALF_DOOR` in
+`plan.h`), and the lot access search wrote the garage's wall again (`GARAGE_WALL`, now `shapes.cars.garage_wall`, the
+`SEGUNDO_DONO` the gate named). The render's lift door share was `DOOR_SHARE`, like the flats' door share it is not: it is
+`LIFT_DOOR_SHARE`. Kept in code with their sources: the tolerances, the pick hash, the cooking line's count (its array's size).
+
+**What changes.** Nothing: the digest, the hashes, `interior_test` and the numbers the same (`quick`: 44 of 46; the photos are
+states seen before).
+
+### 6.40 B2, C14 (the building render, first part): facades, lots and roofs drawn from building_look.json shapes (2026-11-08)
+
+**Cause and fix.** The render files that draw a building's pieces held their sizes, shares and shades as constants (§3l: about
+90 in `facade_parts.cpp`, the lot props, the roof plant's 70, the terrace, the gear). Thirteen files now read blocks of
+`building_look.json` `styles.roadcraft.shapes` (408 values: `facade_parts`, `facade_emit`, `part_models`, `placed`, `lot_emit`,
+`lot_props`, `lot_parts`, `roof_emit`, `roof_plant`, `roof_terrace`, `roof_gear`, `interior_emit`, `far_mass`), typed by the
+X-macro lists of `render/buildings/look_shapes*.h` (by what they draw: facades, lots, roofs, levels) and read by
+`building_look.cpp` into `BuildingLook::shapes`. Each emitter reaches its block through the placed building it draws
+(`pl.look`): the emitter structs carry it as their last member (`Ctx`, `SideEmit`, `LotEmit`, `PropEmit`, `RoofEmit`,
+`PlantEmit`), the helpers that had no `Placed` take their block (`band`, `pilaster`, `relief_caps`, `chance`, the part models).
+Reading a list of numbers was written in two loaders: it is `DataReader::floats` and `counts`.
+
+The bay lines of a parking element were spaced by a `CAR_BAY_M` of 2.5 m: the lot rules' stall width (`lots.stall_w`, the same
+value), which they now read. Kept in code with their sources: the hash multipliers and stream keys, the lantern's glass share
+(measured on the source model), the entrance flight's most steps. The material colours a few files name (brass, gas cylinders,
+shutters, clocks) and the roof plant's catalogue array are commented as the source game's; their move to a render palette is
+the next part, with the files that remain (`facade_bay`, `facade_props`, `shell`, `ruin_fracture`, `roof_pitched`, the renderer).
+
+**What changes.** Nothing: every photo is a state captured before (`quick`: 45 of 46), the hashes and numbers the same.
+
+### 6.41 B2, C14 (the building render, second part): windows, balcony props, panes' rooms and pitched roofs (2026-11-08)
+
+**Cause and fix.** The rest of §3l's look numbers in the building render: the window grammar of `facade_bay.cpp` (the opening's
+least sizes, the pane picks, the rolled shutters, the rain streaks), the balcony and window props of `facade_props.cpp`, the
+rooms seen behind a pane (`pane_rooms.cpp`), the pitched roof (`roof_pitched.cpp`) and the body's tone (`building_bodies.cpp`):
+five more blocks of `building_look.json` `shapes` (511 values in 18 blocks now). The opening reads the placed building
+(`opening_of(pl, c)`, its six callers), the window helpers and the wall run take their block, `Furnish` and `Pitch` carry it.
+`facade_bay.cpp` drew the frames with `FRAME_D` and `FRAME_THIN` of its own, the facade parts' frames (`SEGUNDO_DONO`): it reads
+`shapes.facade_parts`. The structural numbers left in the render files say what they are (buffer layouts, the signature files'
+format, hash multipliers, tolerances, tessellations); the spatial primes of the ruin cells are `core/random.h`'s; an opaque white
+instance colour and a channel mask are named once.
+
+Found on the way: the body's place read `pl.look` before it set it; the binding reads the look it is handed.
+
+**Not here, and why.** The shell's baked tone and grime, the material colours some emitters name, the roof plant's catalogue
+arrays and the foliage leaf's shape: recorded in `log/pendencias.md` (their table is a render palette and the plant's rows).
+
+**What changes.** Nothing: every photo is a state seen before (`quick`: 45 of 46), hashes and numbers the same.
+
+### 6.42 B2, C14 (the effects): a blow's events, the ruins and the puffs from effects.json shapes (2026-11-08)
+
+**Cause and fix.** The effects files held their sizes, counts and speeds as constants (§3i: the blast's sparks and dust, the
+bodies' parts measured on NASA-STD-3000, the things thrown, the heap and the fall of a building, the mounds, the puffs): ten
+blocks of `effects.json` `shapes` (220 values), declared by what they play (`render/effects/effect_shapes*.h`) and read into
+`EffectParams::shapes`. The modules already kept a copy of the parameters (`params_`, `law_`); `Puffs` now keeps one too, the
+mounds' hill takes its block (and `Mounds::hill_at`, read by the fall), the pile reads under the ground from the height it is
+given, and `EffectWorld::heap_of` stopped being static to read its block. What stays in code says what it is: the blast's soil
+codes and the buffer's rows (they were moved by the tool and put back, an event's code and a layout are not values one tunes),
+the parts' count of a body (its array's size), the hashes, the random streams' seeds, the pieces' tints (sRGB, the source game's;
+with the building render's colours in `log/pendencias.md`).
+
+Reading a table's shapes was about to be written a third time: `render/shape_reader.h` is the one reader the buildings'
+loader, the look and the effects use.
+
+The `SEGUNDO_DONO` the gate named in `ruin_pieces.cpp` (`DUST_*` against `down.dust_*`) was two effects with one word: a falling
+piece's dust and a person going down's. They are the `ruin_pieces` block and `down`, each documented.
+
+**What changes.** Nothing: `strike_test`, `shoot_test` and `people_test` pass, every photo is a state seen before (`quick`:
+45 of 46).
+
+### 6.43 B2, C14 (the commands): their values in tuning and in buildings.json, their definitions sourced (2026-11-08)
+
+**Cause and fix.** The commands held their tunables beside their definitions with nothing to tell them apart (§3d: the survey's
+60 numbers, the body editor's sizes, the roundabout's samples, the shot's rider, the blow's splinters). The values one tunes
+went where their owner reads: the body editor's (`body_*.cpp`) to tuning's `build` group, the lot editor's to a new `lot`
+group, the roundabout's to `roundabout`, the shot's to a new `shoot`, the blow's to `strike`; the survey of a 3D model
+(`body_survey.cpp`, `survey_picture.cpp`) to a `survey` block of `buildings.json` `shapes` (it reads the generator's tables), and
+the furniture reach of the floor editor to the `interior` block (it is handed the generator's tables, not the tuning). The
+definitions stay and say what they are: the streams' salts are the words they name in ASCII, the tolerances and sentinels,
+the bay key's and the colours' layouts, the luma of ITU-R BT.601; three hand-written quarter turns and the degree are the
+core's (`PI_F / 2`, `DEG_TO_RAD`, the same floats); the survey's flag white and red are the default flag's.
+
+The mover moved a few definitions with the tunables (a polygon's least corners, the frame's two end bays, a tolerance, a
+search's sentinel, a direction's guard, a hash scale): each was put back with its reason, and the mover now refuses sentinels
+and tolerances unless told. `survey_body` passed its function limit by the binding: the plinth's reading is a function of its
+own (`plinth_of`).
+
+**Not here, and why.** `body_survey.cpp`, `journal_ops.cpp`, `edit_history.cpp` and `commands.h` are over the file limit as the
+baseline found them: their split by responsibility goes with the large files (C12).
+
+**What changes.** Nothing: the hashes, the numbers and every photo the same (`quick`: 44 of 46).
+
+### 6.44 B2, C14 (the traffic): the near and far models' numbers in traffic.json, the definitions sourced (2026-11-08)
+
+**Cause and fix.** The traffic files held what one tunes beside what is defined, with nothing to tell them apart: a car's tries
+at a spawn place, its free-speed spread and start, the arms that make a junction signalled, a forced lane change's gaps, the far
+model's headways, retries and handovers, a walker's tries and scale, the speeds under which a car waits or is stuck, the near
+window's pads and pace. The values one tunes went to traffic.json `params`, the one table of the traffic's numbers
+(`CITY_TRAFFIC_FIELDS`, `api/traffic_loader.cpp` refuses a missing key), named by the file that reads them (`demand_*`,
+`junction_*`, `lc_force_*`, `meso_*`, `ped_spawn_*`, `speed_drift_rate`, `vehicle_*`, `window_*`), each described in the table's
+`_doc` with the reason the code's comment gave. The definitions stay and say what they are: the tolerances (a stale heap entry,
+a leg's end, a straight step, Reeds and Shepp's rounding), the guards before a division (a step of no time, a leg of no length,
+the IDM's desired speed and gap), the IDM's exponent (Treiber, Hennecke and Helbing 2000: 4, squared twice in the code), the
+hash streams and the golden-ratio multiplier, the 24 bits a float holds, the walker cells (a power of two, so their index
+divides exactly), the largest Reeds-Shepp word, the planner's grains and its memory's blocks and chunks, √2 and √½.
+
+The mover bound the params where `p` already named a pose or a profile (`mid_of`, `in_window`, `check_window`,
+`grow_ped_window`) and missed a loop's own binding (`pick_seg`): each was bound by hand where the function reads it. Two
+bindings left unused by the last batches (`RuinSim::write`, `park` of the open lots) are gone: the build is again free of warnings.
+
+**What changes.** Nothing: the hashes, the numbers and every photo the same (`quick`: 45 of 46, the gate's two baseline counts
+in `traffic_params.h` sourced since).
+
+### 6.45 The DLLs' bytes changed with the link and the hour: the functions' order from native/pgo, mimalloc at the epoch (2026-11-08)
+
+**Symptom.** A change that expands to the same code (one owner for the shapes' field macros, §6.46) gave a debug DLL byte for byte
+the same and a release DLL with 834 thousand bytes changed. Rebuilt from HEAD's own sources, the release DLL differed from the
+committed one; linked twice from the same objects, it differed from itself (746 thousand bytes), single-threaded too. CLAUDE.md's
+"the same sources give the same bytes" held for the debug DLL only: every committed release DLL was one of many.
+
+**Cause.** The two links' maps lay the same sections out in another order, every difference among the sections lld's call-graph
+sort places (`.llvm.call-graph-profile`, written by the profile: on by default in lld COFF). The sort itself is ordered (a `MapVector`
+of edges, a stable sort by density, `lld/COFF/CallGraphSort.cpp`), but its result is a `DenseMap` keyed by the sections' addresses,
+walked to store each section's priority under its symbol's name (`lld/COFF/Writer.cpp`, `sortSections`: `for (auto it : order)`,
+`config.order[sym->getName()] = it.second`). Sections that share a name take whichever priority the walk gives last, and the walk
+follows the heap's addresses: this DLL has 48 such names (a `__cxx_global_var_init` per file, 227 of them; godot-cpp's static
+`make_property_info` six times), and every section after them moves. With the sort off, two links differ in one byte, the output's
+own name in the export table.
+
+**Fix.** The order is an input, as the profile is: `tools/build/pgo.sh` builds the release once more with the new profile and the
+sort on (`CITY_PROFILE=order`), which prints the order lld chose (`/print-symbol-order`) to `native/pgo/citycore.order`; the release
+link reads it (`/order`, the sort off, `native/CMakeLists.txt`) and relinks when it changes (`LINK_DEPENDS`). The profiled
+functions keep the sort's sequence; the rest follow in input order, the same names in one place. The order keeps only the names
+every folder gives alike: a local function ThinLTO promotes is named after its module's hash (`mi_free_generic_mt.llvm.<n>`), and
+the module holds its source's absolute path, so the 73 such names of a build in one folder are other names in another and their
+functions would move there. Left out, they follow in input order: 2,202 names stay. A name the code no longer has is an order out
+of date, as the profile's counts are: LNK4037 is left out as `-Wno-profile-instr-out-of-date` is. The order committed now is the
+current profile's.
+
+**Why it does not come back.** No priority comes from walking a map of addresses, and no name in the order depends on the folder:
+lld reads the file's names in order. The same objects linked twice give the same bytes; two copies of the repository in two
+folders, each built from scratch, give the same bytes.
+
+**The debug DLL and the hour.** Built from scratch, the debug DLL differed from the committed one in seven bytes: mimalloc's banner
+prints the date and hour it was compiled (`src/options.c`: `__DATE__`, `__TIME__`), so every compile of that file changed the DLL. Its
+sources compile with the clock at the epoch (`SOURCE_DATE_EPOCH=0` through the target's compiler launcher, read by Clang since
+D135045 and by GCC); mimalloc is the only source that reads the date. The release DLL had none of it (the banner is dropped at the
+link) and does not change; the debug DLL carries "Jan  1 1970" and is the same after its objects are compiled again.
+
+**Process.** The verifying checkout (`city-verify`) had been configured to take the fetched libraries' sources from the main
+checkout's build folder (`FETCHCONTENT_SOURCE_DIR_*`): its objects of mimalloc, Clipper2 and meshoptimizer were compiled from
+another path than a clone compiles them from, and its release DLL was not the one a clone builds. Its build folders were made
+again from scratch, fetching their own.
+
+**What changes.** The release DLL's layout once (the colliding initializers, the promoted functions and the unprofiled ones in input
+order) and the debug DLL's banner date; everything the game does, nothing. Upstream: `log/pendencias.md`.
+
+### 6.46 B2, C16 (one owner): the shapes' field macros written once (2026-11-08)
+
+**Cause and fix.** Each family of shapes (the building generator's, the building look's, the effects') had its own header of the
+same five macros, a float, a count, a double and the two lists, under its own prefix (`b40/shape_fields.h`,
+`look_shape_fields.h`, `effect_shape_fields.h`), and every block's struct spelled the five out. The city generator's shapes would
+have been the fourth copy. One header owns them (`core/shape_fields.h`, the core: the simulation and the render both declare
+shapes) with `SHAPE_DECLARE(LIST)`, which makes a block's list its struct's members; the three copies are gone and every block
+reads `SHAPE_DECLARE(<its list>)`. `render/shape_reader.h` reads them as before.
+
+**What changes.** Nothing: both DLLs are byte for byte the ones built before the change.
+
+### 6.47 B2, C14 (the city generator): every value of a sim/citygen file in growth.json shapes (2026-11-08)
+
+**Cause and fix.** The generator's files held the 4.0's numbers beside their definitions with nothing to tell them apart: the grid's
+blocks, avenues and grades, the graph's buckets, merges and caps, the tidy pass's angles and gaps, the lots' rasters, strips and
+sizes, a lot's fit to the land and the paving, the squares' lawn and plaza. Each file's values went to a block of growth.json
+`shapes` (the generator's table: its plan and road roles are there), read into `GrowthDef::shapes` by `api/catalog_loader.cpp`
+through the one reader of shapes, each block described with the reasons the code's comments gave. The blocks reach the functions
+as the earlier families do: the classes hold their block (`PlanRules`, `GraphBuilder`, `Tidy`, `Blocks`, `LotStrips`, the scenic
+`Layout`), the entry points take `GenShapes` (`generate_roads`, `build_graph`, `tidy_graph`, `dry_crossings`, `road_gen::land`,
+`build_lots`, the lot land and paving functions the lot commands and the core's lot tools call).
+
+Two values had two owners: the lots' frontage and least width (`LOT_FRONTAGE`/`MIN_LOT` of the block cutter, `STRIP_FRONTAGE`/
+`STRIP_LEAST` of the strips, both lots.ts's) are one `lots` block both read, and a node's most legs (the graph's `MAX_LINKS`, the
+tidy pass's `MAX_LEGS`) is the graph's `max_links`. The graph's hug test is `hug_cos`: the road tool's `road.parallel_cos` is
+another rule (a new road over an old one), not this one. A lot's end inset is derived, a cell and a half of the strips' grid,
+no longer a second number. The definitions stay and say what they are: the keys' layouts, the streams and the golden-ratio and
+Numerical Recipes multipliers, the tolerances, a junction's three arms, the ground's five probes.
+
+**What changes.** Nothing: the generated and scenic cities' hashes, the numbers and every photo the same (`quick`: 44 of 46).
+
+### 6.48 B2, C14 (the roads): the junctions' geometry in tuning, the roads' definitions sourced (2026-11-08)
+
+**Cause and fix.** The road geometry's junction rules held the 4.0's numbers (roads/geometry.ts) beside their tolerances: how far a
+mouth retreats, when a bend tapers and over how long, a dead end's bulb, a kerb return's radius, taper, fillet and bevel. They went
+to a `junction` group of tuning (doubles, as the code computes them), read through the `Tuning` the four functions now take
+(`arm_retreats`, `bulb_retreat`, `junction_retreats`, `corner_fillet`), handed by their callers from the catalogue the network holds
+(`net.cat->tune`) or the state's. The angles are data in degrees and the code turns them as it did (`deg * PI_D / DEG_PER_HALF_TURN`:
+the same doubles, 30 degrees giving `PI_D / 6` bit for bit). The longest retreat, written in both files, is one field. The
+definitions stay and say what they are: the tolerances, the nearest-point search's samples and halvings, the arc tables' chords, the
+road hash's cells, the flags' bit shifts, the grade solver's passes and disc, √2; the solver's own 2π is the core's `TAU_F` (the
+same float).
+
+**What changes.** Nothing: the hashes, the numbers and every photo the same (`quick`: 44 of 46).
+
+### 6.49 B2, C14 (the traffic agents' meshes): every part size in agents.json shapes (2026-11-08)
+
+**Cause and fix.** The vehicles' part builders held their sizes by eye beside their definitions: a steering wheel's spokes, a
+seat's nose and lap, a wheel's hub, rim, spokes and brake disc, a pod's squareness, a wreck's dents (the 4.0's waves), the bicycle's
+stays and saddle, the bus's partition, the heavy vehicles' pillars and seams, the car's lamps, grille, plates, handles and mirrors,
+the lofted shape's rows. They went to agents.json `shapes`, one block a builder file, read once at boot through the one reader of
+shapes into `AgentShapes`, which the trim (handed to every part builder), the cabin look and the car style carry; the pod, the
+wreck and the bus and truck readers take it. A size two files had is one field: a door's split (bus and truck), a wheel arch's room
+round its tyre (the car's `CAR_ARCH_PAD_M` and the heavy vehicles' pad: every vehicle's, in the shared parts). The blob under a
+walker gets its sides with its other sizes (agents.json `people.blob`). The definitions stay and say what they are: the pod's turns
+and rings (the sizes of its arrays), the cooked cast's file layout, the hash streams and primes, the ring rows each level keeps,
+the units, the tolerances. `people_asset.h` named a cooker no longer in the repository: it says where it is kept.
+
+`agent_renderer.cpp` was over the file limit and the reading made it more: the boot's mesh building and the shapes' reading went
+to `agent_looks.cpp`, the file of what the agents read of agents.json at boot, and the renderer is under the limit.
+
+**Not here, and why.** The ragdoll's and the bodies' numbers (air and ground friction, limb thickness, the folds, the rest, the
+fixed step two files write) are the next batch: their owner is the body renderer, not the part builders.
+
+**What changes.** Nothing: the hashes, the numbers and every photo the same (`quick`: 44 of 46).
+
+### 6.50 B2, C14 (the ragdoll): the bodies' law in agents.json shapes, the step one field (2026-11-08)
+
+**Cause and fix.** The ragdoll held the 4.0's numbers (ragdoll.ts) beside its definitions: how much speed a particle keeps in the
+air and dragging on the ground, a limb's half thickness, the relaxation's passes, the head's top and the belly, how far a knee, an
+elbow and the hip fold, when a body lies still; the body renderer held the fixed step and the most steps a frame. They are a
+`ragdoll` block of agents.json shapes, handed from the agents' renderer to the people's and the bodies' renderer at init, and from
+there to each ragdoll at `begin`, which keeps it. The step was written twice (`ONE_STEP_S` of the ragdoll's first move, `STEP_S` of
+the bodies' clock): one field, the same float (1/60). The definitions stay and say what they are: gravity to three figures, the
+tolerance, the limbs' and parts' joint tables, the bodies' seed.
+
+**What changes.** Nothing: the hashes, the numbers and every photo the same.
+
+### 6.51 B2, C14 and C16 (the rest of the render): the street emitters' sizes in streets.json shapes, one colour unpack (2026-11-08)
+
+**Cause and fix.** The street emitters held the 4.0's and by-eye sizes beside their definitions: a viaduct's build-up, piers,
+bents and parapets, a tunnel portal's jambs, crown, lintel, headwall and wings, a cable-stayed span's strands and struts, where a
+junction's kerb control point may stand, the reserve a ramp leaves of a footway, the street trees' scales. They went to
+streets.json `shapes`, read by `StreetLook::load` through the one reader of shapes and reached by every emitter through the street
+look it is handed (`e.L.shapes`, `L.shapes`). The street trees' choice of species (`hash % 2`, the first two of `trees.species`) is
+data too, a list of their indices, the same pick.
+
+Two overlays unpacked a packed colour by hand (`overlay_build.cpp` zone colours, `overlay_renderer.cpp` congestion ramp: shifts,
+masks and 255 a second and third time beside `rgba8_to_color`, `render/mesh_builder.cpp`): both call it, the same floats. The frame's
+cost read the committed queues' times by number (`hand_ms_[5]`): the queues are named in the order they are committed. The
+definitions stay and say what they are: byte tops, bit layouts, the FNV-1a offset basis and prime, the golden ratio and the
+icosahedron, a display's gamma, the hectare, a frustum's planes, the culling boxes' height, the hysteresis of a dropped chunk,
+the tolerances. The structures' and the stays' tones join the pending render palette (`log/pendencias.md`).
+
+**What changes.** Nothing: the hashes, the numbers and every photo the same.
+
+### 6.52 B2, C14 (the rest of the simulation and the core's tools): their tunables to their tables, their definitions sourced (2026-11-08)
+
+**Cause and fix.** The last tunables of `sim` and `api` sat beside their definitions: how alike two buildings look (form, roof,
+storeys, colour, a neighbour's distance, the columns a body is read in), when a lot is taken by a building, the roof a volume
+takes when it names no pitch (a 30 degree gable, a 12 degree shed, sawtooth teeth of 6 m), the drawn lots' cut and join rules, how
+far the inspector and a drawn lot look round a point, where the body editor's handles stand. They went to their tables: a
+`likeness` group of tuning (the `Tuning` growth and the park probe hand the likeness functions), `growth.json` `occupied_share`
+(`GrowthDef`), a `roof` block of buildings.json shapes (the roof helpers take it, from the generator's data their five callers
+hold), a `lot_rings` block of growth.json shapes (the lot ring functions the commands, the core's lot tools and the lot land call
+take the generator's shapes), tuning's `inspect.radius_m`, `lot.angle_look_m` and `build.handle_*`.
+
+The least lot was written twice (`MIN_LOT_M` of the lot rings, the generator's `lots.least_m`, both lots.ts's `MIN_LOT`): the lot
+rings read the generator's. A degree was written by hand beside the core's (`180 / 3.14159...` in the commands: the core's
+`RAD_TO_DEG_D`, added beside its float, the same double), a quarter turn too (`PI_F / 2`, the same float). The stand's search, a
+curved side's chords and the ray's march stay as the methods' resolution, said so. The definitions say what they are: the integer
+mixes (Knuth's, xxHash's PRIME32_2, MurmurHash3's fmix32 and fmix64), the save versions, the casualty word's layout, the zone
+table's rows, the units, the sentinels and tolerances.
+
+**What changes.** Nothing: the hashes, the numbers and every photo the same.
+
+### 6.53 B2, C14 (the scripts): the interface's tunables in data/game/tools.json, the scripts' definitions sourced (2026-11-08)
+
+**Cause and fix.** The scripts held what one tunes in the interface beside their units and tolerances: the Inspector's road panel
+(how much a curve and a raise move, where a curve may stand), the profile editor's widening and speed steps, the split mark, the
+handles' arrow and chevron, the Models shelf studio's picture, frame, sun and ambient, a reference model's picture resolution and
+opacity steps. They went to data/game/tools.json, blocks `inspector`, `profile_editor`, `split`, `model_studio`, `reference_model`
+and the `handle` block's `arrow_back` and `chevron` (schema in step), read the way the tools already read it (`static var ... =
+DataTables.game("tools")...`). The sky's clouds hashed with bare numbers: they are named (xxHash's PRIME32_5 and PRIME32_4, an odd
+multiplier, two xorshifts, a word and its range), the sky's kilometre is the units' one, the rain's still wind is named. The
+definitions say what they are: the units, a frame's least time, the short hash, the compass points, the --shot wait (a developer's
+picture, not a test), the save thread's poll, the unread cell, the sea plane's extent, the chords of discs, arcs and caps, the
+clouds' slots and puffs (the shader's array sizes), a PCM sample's top, the vignette's side.
+
+`sky_view.gd` was over the scripts' limit before and the named hash made it more: the clouds' puffs (their shape per cloud, their
+laying where the wind and the view put them, the hash that jitters them, the arrays the shader reads) are a class of their own,
+`render/cloud_puffs.gd`, which the sky owns; the sky is under the limit. `daylight.gd` was over it too, and naming the engine's
+default cascade side (Godot's 4096 atlas over two cascades a side) made it more: the sun's cascades fitted to the view are
+`render/sun_cascades.gd`, which the daylight owns and the graphics tier sets (`daylight.cascades`); the daylight is under the limit.
+
+**What changes.** Nothing: the numbers and every photo the same.
+
+### 6.54 B2, C12 (one file, one responsibility): the model survey's blocks apart from their looks (2026-11-08)
+
+**Cause and fix.** `body_survey.cpp` read a 3D model in two steps in one file: the blocks it stands on (the faces that look up,
+filed in a grid, joined into tops that merge, each a block with its hull) and what each block shows (wall shades, bays, the crown,
+a plinth of another colour) with the body made of them. It was over the file limit before the commands batch and that batch's
+bindings made it more (§6.43). The blocks are `survey_blocks.cpp` with their header (`SurveyBlock`, `survey_blocks`); the looks and
+the assembly stay in `body_survey.cpp`. Both under the limit; the stage closes with no file worse than the baseline found it.
+
+**What changes.** Nothing: the survey makes the same bodies (`quick`).
+
+### 6.55 B2, C14 (the shaders, first): the blast marks' look values in materials.json (2026-11-08)
+
+**Cause and fix.** A shader's look was written into its code as bare numbers: every share, edge, scale and alpha of
+`marks.gdshader` (the crater's scorch, hole, lip, grit and cracks, the soot, the blood's pool, splat and drops, the shock ring) and
+its colours as uniform defaults. Tuning one meant editing the shader, and NUMERO_MAGICO counts them by the hundred over the shaders.
+The look is data: each value is a uniform whose value is `data/render/materials.json` `marks.params` (schema typed, strict, every
+key required), grouped as vectors by what they shape (`scorch`, `lip`, `crack_wave`...), each part said at its uniform. What is
+not look is named: the noise hash's constants and the least time a share divides by are `const` with their source, the crater
+table's size is `CRATER_STOPS`. `WorldMaterials.typed` hands a param to its uniform by the uniform's type (the shader's own
+`get_shader_uniform_list`): a list of numbers is a `Vector2/3/4`, or a `Color` for a `source_color` uniform; a `float[]` keeps the
+list.
+
+The pilot showed the one trap of the move. `soot_color` is `source_color` with an sRGB value: Godot makes it linear only when the
+value is a `Color` (`servers/rendering/storage/variant_converters.h`, `convert_to_vector`: only the `Variant::COLOR` branch reads
+the flag; a `source_color` default is filled with it on, `material_storage.cpp` `update_uniform_buffer`). Handed as a plain vector,
+the soot was drawn eleven times too bright (0.078 instead of its linear 0.0069) (a blast's photos shifted R +0.22, G +0.18, B +0.15 against two runs of the same files,
+shift 0.00). The 4.7.2 engine lists a `source_color` vec3 or vec4 as `TYPE_COLOR` (a headless probe), so `typed` gives those a
+`Color`; no other material hands numbers to a colour uniform (every other numeric list feeds a `float[]`). Every shader that follows
+keeps its colour uniforms' hints.
+
+**Proof.** The shader with every param and const put back as the literal it holds is HEAD's line for line, but the three uniforms
+HEAD already had (6.0, 0.5, 0.4, the same defaults) and the hole's mid stop (`1.0 - 0.7`, the float the old `0.3` is). A blast on
+a road at 16:00 (force 5), photographed at 1, 3 and 8 s of the effects clock with HEAD's files and the new ones: no shift (b8 R
+-0.009, G -0.001, B -0.008), what differs is the run-to-run noise of leaves, line edges and the paving's sharpness, which differ
+already in the picture before the blast.
+
+**What changes.** Nothing: the marks look the same.
+
+### 6.56 B2, C14 and C16 (the near glass): the rooms behind the panes in materials.json, one Fresnel, one lit share (2026-11-08)
+
+**Cause and fix.** `building_pane.gdshaderinc` held the whole look of the rooms behind the near level's glass as bare numbers
+(189 findings): the floors' tiles, stone and boards, the ceiling and its office panels, the walls, the picture and the television,
+the daylight's fall into the room, the furniture's shades, the curtains, blinds and sheers, the lamp's lift, the roughness. They
+are uniforms whose values are `materials.json` `building_glass.params` (only that row's shaders reach the include), grouped by
+what they shape and said at the uniform; the guards, the byte top, the floor cell's seed, the lots' decorrelating multipliers and
+the room and bay hashes are named consts with their source. Moving them showed three values held twice:
+
+- Schlick's Fresnel for a dielectric, `0.04 + 0.96 * pow(1 - cos, 5)`, typed seven times in four shaders (`building_pane`,
+  `building_far_window`, `building_far`, `agents`): `fresnel.gdshaderinc` owns it (`schlick`, F0 from index 1.5).
+- The share of the awake whose room has the lamp on, 0.64 in `pane_lamp` and again as `signature_look`'s `ROOMS_IN_USE`. The
+  signature materials are made by the core (`signature_bodies.cpp`) and take no material params, so the share is a shader global
+  beside `rooms_awake`: `rooms_in_use`, from `daylight.json` (set by `Daylight`, declared in `building_lamps`).
+- What a dark pane lets through, 0.64 in the near pane and in the mid level's window (`building_far_window`, another material):
+  `dark_glass` joins `materials.json`'s `glass` set, which both rows use. That set's uniforms were declared in both bodies with
+  defaults no row ever used (data always sets them); `building_glass_set.gdshaderinc` declares the `glass` and `sky_in_glass` sets
+  once for both.
+
+`FRAME_SHARE` stays as it is: it reads a value in metres as a share (§3s), a change of what is drawn, so B3. The `HUNG_*` means of
+`building_room_tone` stay hand-derived from the picks now in data (§6.25: a re-derivation moves pixels, B3).
+
+**Proof.** Each touched shader with its consts, its uniform defaults and the moved params put back as literals is HEAD's code line
+for line, `schlick(x)` written out as the term it returns (`1.0 - 0.04` is the float `0.96` is) and the two shares as 0.64; the
+colours went from literals in code to plain vec3 uniforms, which Godot passes as set. `quick`: every test passes; of the four
+photos two are byte-equal to known states and two differ from their nearest known state by one pixel each, one level of 255, the
+same pixel in two runs: a near pane's Venetian slat (02-rua, 532,379) and a lit room at night (03-rua_noite, 919,248).
+
+**What changes.** The arithmetic is HEAD's, but not its compiled form: an operation on literals (a `smoothstep` between literal
+edges, a division by a literal) is folded when the shader is compiled into a multiply by a reciprocal worked out once, and on a
+uniform it runs on the GPU. The last bit of a value differs, and on two pixels of the near glass it crosses a level. Nothing to see;
+city-verify's photos re-blessed for it (`photos_bless`, an understood change). Every shader that follows can do the same.
+
+### 6.57 B2, C14 (the blast's puffs): their motions, edges and colours in materials.json, the kinds' tables by kind (2026-11-08)
+
+**Cause and fix.** `puffs.gdshader` wrote the reference game's puff motions as bare numbers (135 findings): how each kind rises,
+spreads, grows and peaks as chains of `k == PUFF_... ? value :`, the paper's flight, the hydrant's jet, what is flung, the flame's
+lick, the billow and edge of every kind, the flame's shape and flicker, the paper's turn and tones, and the colours as uniform
+defaults. They are `materials.json` `puffs.params`. The four chains are tables by `PuffKind` (`puff_rise`, `puff_spread`,
+`puff_grow`, `puff_peak`, sized `PUFF_PAPER + 1` from the contract), so a kind's value is one entry; the rest are uniforms grouped by
+what they move. The seeds' decorrelating multipliers, the step of the reference game's motions and the least life are named
+consts; `SEED_TURN` keeps the 6.28 it wrote (not `TAU`: that would move the bobs).
+
+Kept for B3, said in the data's `_doc`: the puffs blow along a fixed `wind_dir`, not the sky's wind, and fall under two gravities
+(`water_fall` 9.8 and `flung_fall` 12.25 steps a second squared).
+
+**Proof.** Each table equals its chain kind by kind (the chain evaluated for the ten kinds); the shader with every other param and
+const put back as literals is HEAD's code line for line (the local `flung` renamed `flung_kind`, the uniform taking its name).
+
+**What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56).
+
+### 6.58 B2, C14, C12 and C16 (the air): the atmosphere pass's look in sky.json, one cloud shape, the fog bank apart (2026-11-08)
+
+**Cause and fix.** `atmosphere.gdshader` and its `cloud_field.gdshaderinc` held the air's look as bare numbers (93 and 16
+findings): the clouds' shadow depth, the mist's ceiling and night, the fog bank's billows, flow, wisps, reach and light, the
+clouds' base and fill by day and night, their fade near the eye, the sun's light inside them, their extinction, the puffs'
+flattening and blend, the noise's boil and cells, the shape and erosion. They are `sky.json`'s `atmosphere` block (schema typed and
+strict), which `sky_view` sets by name and uniform type (`WorldMaterials.typed`). The far-plane depths, the sky's distance, the
+tie-break, the march's step counts, the hash's constants and offsets and the guards are named consts with their source; the arrays
+are sized by `MAX_CLOUDS` and `PUFFS` (render/cloud_puffs.gd's `SLOTS` and `LOBES`), the puffs' `MAX_CLOUDS * PUFFS`.
+
+The cloud's shadow (`shadow_density`) wrote the body's shape and erosion again with both noises at their mean: `cloud_field` owns
+them (`cloud_shape`, `cloud_worn`), the body passing its noises, the shadow `NOISE_MEAN`. The defaults of the uniforms `sky_view`
+sets before the pass is ever shown (the sun, the sky's and the mist's light, the wind, the mist's height and reach, the shadow's
+strength: the quad stays hidden until the first `step` has read the weather and lit it) are gone; they drew nothing.
+
+Moving the values took the shader over the shaders' file limit (291 of 260 lines): the fog bank, a responsibility of its own (its
+noise, its march through the painted slab, its light), is `fog_bank.gdshaderinc` with its uniforms; the pass is 187 lines.
+
+**Proof.** The pass with its includes pasted in, every param and const put back as literals, is HEAD's code line for line: the
+two shape functions' bodies are the old terms (the shadow's with 0.5), `fog_light(rd)` is the old expression, `time * cloud_boil`
+the old vector part by part (`-time * 0.04` is `time * -0.04`), `float(SHADOW_STEPS)` folds to `5.0`; the fog functions now come
+before the clouds'. `quick`: every test passes, the four photos byte-equal to known states.
+
+**What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56).
+
+### 6.59 B2, C14, C12 and C16 (the ground): the terrain's look in palette.json, the painted surfaces by table, one sand grain (2026-11-08)
+
+**Cause and fix.** The terrain's shaders held their look as bare numbers or look constants (terrain 22, terrain_layers 58,
+terrain_uniforms 9, ground_paint 55, shore 10, verge 6): the slope bands' wander and the rock's edge, the map wall's dimming, the
+roughness dry and wet, the grass's blotches, wide read, speckle and tufts, the dry season's straw patches, the land's macro tones,
+the patches' mix and shade, the gullies' stretch and shade, the painted surfaces' tones and grain, the shore's fade and wetness,
+the overlay grid. They are `palette.json` `terrain` keys (schema typed, strict, required), which `CityWorld` already lays on the
+terrain and on the verge; both loops now hand each key to its uniform by type (`WorldMaterials.typed`, which takes a list of vectors
+for a `vec3[]` or `vec4[]` uniform too). The painted surfaces' switch reads two tables by surface (`paint_tone`, `paint_mix`) with the
+surfaces named after `nature.json` paint.kinds; the turns, lattice shifts, Geiss's triplanar weights, the channel mean, the region
+grid of Terrain3D (its own defaults, named) and the guards are named consts. The uniform defaults the palette always overwrote are
+gone; `gully_auto`'s, which shows before the weather is read, is `nature.json`'s weather default, set with the palette.
+
+Held twice: the beach's sand grain (`shore`) is the painted sand's (`paint_mix[PAINT_SAND]`); the channel mean `vec3(0.33)` of
+`terrain` and `shore` is `CHANNEL_MEAN`; `biome_dry` is sized by the overlay id as `biome_tint` is, the verge's `biome_tint` too.
+`terrain.gdshader` was over the file limit (264 lines): the painted surfaces' blend is `ground_paint`'s `paint_over`; 238 lines.
+
+Found, not changed here: the shader's `map_half` is never set, so every map draws its edge at 5120 m, the half of a 10-tile map,
+though the 16- and 20-tile maps reach 8192 and 10240 m (§6.60 fixes it).
+
+**Proof.** The terrain with every include pasted in, the params, consts and macros put back as literals and the paint tables read
+at their surfaces, is HEAD's code line for line, `paint_over` being the old block with `world` the `v_vertex` it is passed, and
+the keys the palette always set showing HEAD's dead defaults. The verge the same. `quick`: every test passes, the four photos byte-equal to known states; the photos stopped once under the parallel suite and passed alone (log/pendencias.md).
+
+**What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56).
+
+### 6.60 B3 (the ground's edge): the terrain's map half from the core (2026-11-08)
+
+**Cause.** `terrain.gdshader` draws the map's edge (past it the land lies at its end, a wall of rock on its own plane, dimmed)
+at `map_half`, a uniform no script ever set: its default 5120 m held on every map. The maps run 10, 16 and 20 tiles of
+1024 m (`maps.json`, `found_land`: `map_half = tiles * world_tile_m / 2`), so on the 16- and 20-tile maps everything past
+5120 m from the centre was drawn as the wall, clamped and dimmed, though the land goes on to 8192 or 10240 m.
+
+**Fix.** The core's half (`city_bounds().half`, `state_->map_half`) is set on the terrain at every map's first read
+(`CityWorld._take_landscape`: a new map resets nature, which moves `sky_revision`, and an opened one adds its own), and the first
+map's half from the catalogue before any map is read, so the uniform is never left at 0, which would put the whole ground past
+its edge. The shader keeps no value of its own.
+
+**What changes (predicted).** On the 10-tile map nothing. On the larger maps the ground between 5120 m and the map's end is
+drawn as ground: its own normal and colour, at its own height, undimmed; the wall stands at the map's real end. The quick
+photos' town is 20 tiles: a view that reaches past 5120 m changes there and nowhere else.
+
+**Verified.** `quick`: every test passes, the four photos byte-equal to known states (none looks past 5120 m). A plan on
+the town looking at the ground 6.5 km east and at the corner 5.2 km out on both axes: HEAD draws the wall's rock smeared over
+the land there, two planes meeting at the corner; the fix draws the grass that stands there.
+
+### 6.61 B2, C14 and C16 (the streets): the road's look in materials.json, the lamp's pool shared (2026-11-08)
+
+**Cause and fix.** The road shader and its includes held their look as bare numbers or as uniform defaults (road_body 49,
+road_wear 29, wear 25, lamp_pool 12, road_detail 5): the close-up detail of each surface, the asphalt's blotches, the roughness
+of asphalt, paint, kerb and verge, the pavers' and cobbles' joints, concrete's tone, the normal maps' fade, the far level's lane
+lines, the bands of wear by the kerb, the lanes' tracks and oil, the footway's grime and damp, rubber, potholes, cracks and stains.
+They are `materials.json` `road.params`; the guards, the byte top, the top-face test and the channel average are named consts.
+The defaults data or the core always set (the maps' scales and normals, the pavers, cobbles and pool, the plate's blend, the wear
+field's cell, the detail scales) are gone.
+
+`lamp_pool`'s fall of a lamp's pool (the 4.0's lightLevels.ts) is read by the road and by `building_wash`: its stops are the
+`_shared` set `lamp_pool` both rows use, its spans worked out from them (`0.7 - 0.35` is the float `0.35` is, `1.0 - 0.7` the
+float `0.3`).
+
+**Proof.** Each include with the moved params and consts put back is HEAD's code line for line; `road_body` too, but where HEAD
+swizzled its default vectors (`vec3(0.7, 0.8, 0.6).x`) against the same number from data. `quick`: every test passes, the four photos byte-equal to known states.
+
+**What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56).
+
+### 6.62 B2, C14 and C16 (the rooms too small to trace): one owner for what hangs in a window, two backfill values in tuning (2026-11-08)
+
+**Cause and fix.** `building_room_tone.gdshaderinc`, which every level's glass reads (rows building, building_glass, building_far),
+wrote again what `room_hung` picks (§6.56 moved those to the `building_glass` row): the thresholds of curtains, roller blinds,
+Venetian blinds and sheers, a curtain's side, a blind's drop, the lots' three multipliers; and it held the cloths' seven tones by
+pick and the blinds' and sheers' mean tone and cover as bare numbers (43 findings). What hangs in a window is now the `_shared` set
+`rooms`, which the three rows use, declared once in `building_room_tone` and read by `room_hung` too; the lots' multipliers are its
+consts. The cloths are two tables (`cloth_until`, `cloth_tone`) walked in order, the same pick as the old chain. The blinds' and
+sheers' means stay as data said to be worked out by hand (B3, as the `HUNG_*` means).
+
+Two findings of the full gates, made by this stage's earlier data and caught only by a run over every file:
+- `HUNG_DIM` was a second owner of the new `hung_dim` key: it is not that value but `room_hung`'s `hung_dim` under the mean of its
+  daylight (0.776 against 0.8), worked out by hand, now named `HUNG_DAYLIT` and kept for B3.
+- `road_walls.cpp`'s `BACKFILL_OVER_M = 0.016` met the new `paver_joint` width in data: a design value of the road walls typed in
+  C++. It and `BACKFILL_IN_M` are tunings beside the walls' other sizes (`structure_backfill_in_m`, `structure_backfill_over_m`).
+
+The schema's list of shared sets (`uses`) takes `lamp_pool` and `rooms`; the road's and `building_wash`'s `uses` read the same list
+(§6.61 had left them open).
+
+**Proof.** The room tone with the set and consts put back is HEAD's code but the cloth's pick, a loop over the same thresholds and
+tones; the pane the same, its lots' multipliers now from the room tone. Both DLLs rebuilt; `quick`: every test passes; three photos byte-equal to known states, `00-cidade` one pixel off its nearest by one level, the same in two runs, on a tower's painted windows (the room tone, §6.56's cause); city-verify's photos re-blessed.
+
+**What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56); the road walls the same numbers from tuning.
+
+### 6.63 B2, C14 (the sky): its gradient's shape in daylight.json (2026-11-08)
+
+**Cause and fix.** `sky.gdshader` wrote the 4.0's gradient as bare numbers (31 findings): the zenith's power, the sun's warmth on
+the low band, what night takes of it, the ground's edge, the sun's glow and disc. They are `daylight.json`'s `sky_shader` block
+(schema typed and strict), which `Daylight` sets once by name and uniform type. The colours' defaults are gone: `Daylight` sets
+every colour, the low band's share and the gain at every hour, the first as soon as it is made (`CityWorld._build_environment`),
+before the sky is drawn.
+
+**Proof.** The shader with the block put back is HEAD's code line for line but for the dead defaults. `quick` with §6.62: every test passes.
+
+**What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56).
+
+### 6.64 B2, C14 and C16 (the buildings' shared shaders): definitions named with their sources, the weathering and the far glass in data (2026-11-08)
+
+**Cause and fix.** The building family's shared includes and bodies held definitions and looks as bare numbers (lamps 26,
+common 19, colour 10, hash 8, level 7, sky glass 3, body 21, glass body 13, far 14, far window 24). The definitions are named
+consts with their sources: sRGB's transfer curve (IEC 61966-2-1), PCG's constants (O'Neill 2014) and Teschner's primes,
+interleaved gradient noise (Jimenez 2014), the lit-room model (the lamp mix whose means are worked out from it, the level's range,
+the far rooms' cell hash, the television's cuts and flicker), the outside lamps' 10 m cells, the bays' picks of dark panes and
+shutters, the guards. `building_lamps` is read by the signature shaders too, whose materials the core makes without params:
+its model stays consts. The looks are data: the plain finishes' weathering in the `finishes` set (building and building_parts,
+`building_common`), the sky in the glass's lift in `sky_in_glass` (every level, `building_sky_glass`), the lawn, the far wall's
+glass and the mid level's shutters in the `building` row, the far masses' glass and roughness in `building_far`. The defaults rows
+always set are gone (lamp glow and light, the far glass's sky and floor).
+
+Held twice, one owner each: the byte's top (255) and an id's byte spans, typed in every building shader and the pane, are
+`bytes.gdshaderinc` (included where each starts, as the vertex stages read bytes before the colour helpers; `building_bay`'s own byte consts are its ints); Knuth's multiplier,
+named in the lamps and the pane, is `hash.gdshaderinc`'s; the glass body's GGX takes F0 and Schlick's power from `fresnel` (its
+differences from `people_look`'s copy stay B3, §6.25).
+
+**Proof.** Each file with every const, macro and moved param put back is HEAD's code line for line. `quick`: every test passes, the photos byte-equal to the states §6.62 left; one run lost `save_undo_test` to another test in parallel (log/pendencias.md), alone it passes.
+
+**What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56).
+
+### 6.65 B2, C14 and C16 (the walkers): the face's model and a person's light in materials.json (2026-11-08)
+
+**Cause and fix.** The people shaders held the 4.0's expression model and a person's light as bare numbers or unsourced
+constants (people_face 28 and 9, people_look 21 and 6, people_pose 3, people_helmet 1, people_far 2): the blink's cycle, the gaze,
+speech's syllables and stress, sobbing, terror, the mood's joy and sadness; the skin's wrap, scatter and sheen, the hair's shade and
+two strand lobes, the inside and charred tones; the helmet's and the far card's roughness. They are `materials.json` params of
+`people` (its body variant copies them), `people_helmet` and `people_far`. The person's hash is named as what it is (Wellons's
+lowbias32, the seed offset by the golden ratio's word), with its bit fields, the face table's channels and the visemes sourced, the
+sparkle's sin hash and the guards named. The byte's top and mask are `bytes.gdshaderinc`'s (`BYTE_MASK_U` for a uint); the skin's
+GGX takes `fresnel`'s `schlick`, its old term exactly (its other differences from the glass's copy stay B3). The face's header named
+a tool that left the repository; it names the asset reader now.
+
+**Proof.** Each file with the moved params and consts put back is HEAD's code line for line, `schlick(x)` the term it returns.
+`quick`: every test passes, the photos byte-equal to the states the earlier changes left (none moves on a walker).
+
+**What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56).
+
+### 6.66 B2, C14 and C16 (the blast's pieces and the small passes): their looks in data, one blast dust, the dead defaults gone (2026-11-08)
+
+**Cause and fix.** Ten shaders and the blast's two held looks as bare numbers or as uniform defaults:
+- `debris` and `rubble` set nothing from data, so their defaults drew: the pieces' roughness, burnt tint, dust cover, patches,
+  chips and soot, the mound's fall time, slumps and chunks, concrete, noises and gaps. They are `debris` and `rubble` params;
+  the dust both typed alike is the `_shared` set `blast_dust` both rows use. Rubble's wall colour unpacks with `bytes`'s names.
+- The bolt's core light and the rain's colour and fade drew from defaults too: `sky.json` `bolt_core`, `rain_colour`,
+  `rain_fade`, set by `WeatherView` when it makes the two materials. The contact shadows' reach, fade and least sun were
+  unsourced consts: `sky.json` `contact_shader`, set by `contact_pass`. The ghost's roughness is its row's.
+- Defaults something else always set are gone: the lamp glow's beam (its row), the occlusion's five (`daylight.json`
+  occlusion), the rain's streak, reach and opacity and the bolt's screen (`WeatherView`), the outline's screen height
+  (`preview_line` at setup), the sheer's three (its row), the signature's roughness (`signature_bodies.cpp`).
+- Definitions named: Rec. 709's luma weights, the signature's lit salt, the guards.
+
+**Proof.** Each shader with its moved values and dead defaults put back is HEAD's code. `quick`: every test passes, the four photos byte-equal to known states.
+
+**What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56).
+
+### 6.67 B2, C16 and C14 (one sRGB curve; the trees): the transfer functions owned once, the vegetation's dead defaults gone (2026-11-08)
+
+**Cause and fix.** sRGB's transfer curve (IEC 61966-2-1) was written three times: `color_space` (`srgb_to_linear`,
+`linear_to_srgb`), `building_colour` (`to_linear`, `to_srgb`, whose constants §6.64 had just named) and `vegetation` (`to_linear`),
+and Compatibility's own power segment in `color_space` typed its constants again. `color_space.gdshaderinc` (guarded) owns the
+curve and its named constants; `building_colour` includes it and keeps only the renderer's in-and-out, `vegetation` includes it,
+and the fifteen calls in ten shaders use the two names.
+
+The vegetation's uniform defaults drew nothing: the tree and cover renderers set the switch distance, its spread and the card's
+frames (`tree_renderer.cpp`, `cover_renderer.cpp`), every row sets its roughness and sheen, the `gust` and `sway` or `stone` sets
+the wind. The bend's height limit (1.4 tree heights) joins the `gust` set, the bark's grain the `vegetation` row; each tree's switch
+and swing steps are named.
+
+**Proof.** Each touched shader with its consts and moved values put back is HEAD's code, the removed curves being the one
+`color_space` keeps, formula for formula. `quick`: every test passes, the photos byte-equal to the states the earlier changes left.
+
+**What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56).
+
+### 6.68 B2, C14 and C16 (vehicles, water, the canyon's light, the lamps' wash, the cards): one sin hash, one outside lamp, looks in data (2026-11-08)
+
+**Cause and fix.** Eight shaders held their look or their definitions as bare numbers (agents 9, agent_door 7, agent_glass 3,
+people_held 1, water 18, canyon_light 9, building_wash 9, building_card 12):
+- The vehicles' coat lift and horizon are the `agent` row's; the front windows' picks (the 4.0's windowsDown), read by the agent and
+  agent-glass shaders alike, are the `_shared` set `windows`; the glass's local `SCHLICK_POWER` is `fresnel`'s; the held props'
+  roughness is their row's.
+- The water's froth, bed grain and paws are `palette.json` water keys, laid by uniform type; its waves, foam and current, which
+  drew from defaults until a map's weather is read, take `nature.json`'s weather defaults when `CityWater` is made.
+- `canyon_light`: the none height, the wall test, the eight directions (their step `TAU / 8`, the float the old 0.7853982 is), the
+  reach's steps and Jimenez et al.'s multi-bounce fit for albedo 0.5 are named consts with their source.
+- The card's railing shares are named (B3: the near level's models are their other owner); its brise veil distance is its row's,
+  worked out by hand from the first part band (B3).
+- Defaults rows always set are gone (the agent glass's three, the wash's two, the card's two).
+
+Held twice: the sin hash's constants, in `agents` and `people_look`, are `hash.gdshaderinc`'s (`SIN_HASH`, a vec3, the sparkle
+reading its first two); the outside lamps' 10 m switch, in `building_body` and `building_wash`, is `building_lamps`'s `outside_lamp`.
+
+**Proof.** Each shader with its moved values put back is HEAD's code, `outside_lamp` being the old expression and the folds above
+exact. `quick`: every test passes, the four photos byte-equal to known states.
+
+**What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56).
+
+### 6.69 B2, C14 (the last shaders): street props, the condenser's front, the flags; the shaders' findings closed (2026-11-08)
+
+**Cause and fix.** The last three shaders: `props` (24), `building_props` (32), `building_parts_body` (31). The props' wire gust,
+wear mix, planks and pole grain are `prop` params; the condenser's front and the fourteen flag designs are drawn geometry, named
+consts with their source (the designs' codes from `FlagPattern`, the border's far edges kept as the floats they were, `1.0 - 0.15`
+falling on a rounding tie); the flags' cloth roughness, which drew from its default, is the `building_parts` row's; Godot's
+`F0 = 0.16 SPECULAR^2` and the guards are named. Defaults the rows set are gone. The condenser's names carry `AC_`: `fan_r`,
+`slat_half` and `slat_reach` are other parts' keys in `building_look.json`.
+
+With §6.55-§6.69 the shaders hold no bare number and no unsourced constant (1356 and 43 findings at the start of the stage).
+
+**Proof.** Each shader with its consts and moved values put back is HEAD's code. `quick --ready`: every test passes, the four photos byte-equal to known states.
+
+**What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56).
+
+### 6.70 B2, C16 (the single-owner rules): two patterns that named the wrong thing (2026-11-08)
+
+**Cause and fix.** Nine DONO_UNICO findings were the rules' own: `money_format` forbade `%.2f` anywhere in the interface, so a
+frame time (`"%.2f ms"`) read as money; `unsaved_changes` forbade the word `unsaved`, so the core publishing
+`has_unsaved_work()` and the scripts reading the published flag read as a second dirty state. Neither code formats money or works
+out whether the city changed. The rules now name what a second owner would do: money is the currency's markers or a read of the
+style's `.currency` outside `formatters.gd`; a dirty state is comparing `revision` with `saved_revision` outside `city_state.h`. No
+code matches either; the gates' self-test passes.
+
+Left for their own stages: TEXTO_VIA_TR's 23 are helpers handed text their callers translated, which the rule cannot see through
+(C13: the helpers take keys); ESPELHO still registers no mirror (the furniture table's size and the clouds' slots are written
+twice, with owners the mirror table cannot read yet); C12's twelve files and three functions over their limits.
+
+### 6.71 B2, C12 (the scripts over their limit): four jobs out of four files (2026-11-08)
+
+**Cause and fix.** Four scripts each held a second job beside their own, so they ran over the size limits.
+- `settings.gd` (the options and their file) also drove the map's layers. That job is `MapLayers` (`game/settings/map_layers.gd`): the layers, the zone brush in hand, set and show, and following the player's zoning each frame. Settings keeps it as `Settings.map` and saves on its `changed`.
+- `inspector_panel.gd` also kept the live labels of a road or a junction. That job is `InspectorLive` (`ui/inspector_live.gd`): its rows, lamps and in-place rewrite.
+- `city_camera.gd` also answered ground questions for other scripts. `seen_height` and `ground_below` now belong to `camera_queries.gd`, which already owned the camera's rays; its callers `camera_ahead`, `sun_cascades` and `weather_view` ask it directly.
+- `edit_fuzz_test.gd` also held the held-brush edits. They are `fuzz_brush_edits.gd`, called with the test's grid, brush and road.
+Each piece moved verbatim; the callers changed only the name they reach it by.
+
+**Proof.** quick on the changed scripts: 44 of 46 passed. The two failures are both known:
+- `photos_check`: 02-rua's flicker box (831,264)-(1167,287), §6.9.
+- `gates_changed`: four TEXTO_VIA_TR findings, all baseline. The two in `inspector_live.gd` are the inspector's two, moved with their lines; hud_popover's two were there already. C13 handles them.
+
+**What changes.** Nothing seen.
+
+### 6.72 B2, C12 (the core's files over their limit): each second job in a file of its own (2026-11-08)
+
+**Cause and fix.** Twelve files and three functions were over their limits because each held a second job beside its own.
+- `commands.h` also declared the lot and Landscape commands: they are `lot_commands.h` and `nature_commands.h`, included where they are used.
+- `road_network.cpp` (455) also settled node shapes and street runs: `road_network_shape.cpp`.
+- `journal_ops.cpp` (416) also journalled the transit plan: `journal_transit.cpp`, which records through the public `j_record`.
+- `edit_history.cpp` (370) also applied the entries: `edit_apply.cpp`. Its `exec` (106 lines) became one switch that sends node ops to `exec_node` and segment ops to `exec_segment`; it still names every `OpKind` with no default, so the compiler still flags a missing kind.
+- `road_grade_solve.cpp` (373): `solve` (111 lines) became one helper per stage, and the rounds' state and machinery became `road_grade_rounds.{h,cpp}`.
+- `road_grade_profile.cpp` (352) also read the tuning: `road_grade_tune.cpp`.
+- `chunk_jobs.h` (324) also held the results queue: `chunk_results.h`.
+- `building_renderer.h` (253) also held a job's map copy: `building_job_inputs.h`.
+- `agent_renderer.cpp`'s `update` (92) became the level rule (`LevelRule`, computed at the same point), `place_vehicles` and `place_parked`.
+Four agents did the moves. Each moved line was checked against HEAD by content, and the only lines that differ are the ones the moves required: `record` → `j_record`, members defined out of line, lambdas made functions with their captures as arguments. The build has `-ffp-contract=off`, so moving a function between files cannot change its floats.
+
+**Proof.** Both DLLs built with no warning. quick on the changed sources: 45 of 46 passed, edit_fuzz, save_undo, road_grade and the e2e among them; the one failure is 03-rua_noite's flicker box (831,264)-(1167,287), §6.9. gates_changed passed.
+
+**What changes.** Nothing seen or simulated. The release DLL's function order (`native/pgo`) does not yet name the new functions, which affects speed only; it is refreshed with `pgo.sh` at the theme's close.
+
+### 6.73 B3, the tests' saves: one folder per test process (2026-11-08)
+
+**Cause.** `SaveSlots.dir()` gave every run driven by tests the same `user://saves_tests`. The suite runs each test in its own Godot, in parallel, and the user folder is the project's, so every checkout on the machine shares it too: the main checkout, city-verify and the sessions' worktrees. Three things in that folder were shared:
+- the index `cidades.cfg`, which names the last city;
+- the city slots `cidade-<seed>`, the same seed in every test that opens `tests_preset`, so a name one process just took is taken again by another;
+- the quarantine folder, which `inspector_test` empties.
+That is how `save_undo_test` read "the same buildings" from another process's file and found a save it had just written opening as `save.none` (log/pendencias.md, 2026-11-08 12:17). It is also the likely holder of the file in the realism branch's "save rename while the file is held": another test process with the same slot open.
+
+**Fix.** `save_slots.gd:23`: a run driven by tests saves under `user://saves_tests/<process id>`. `TestCase.finish` removes that folder, since no other process reads it. The player's folder is unchanged.
+
+**Why it does not come back.** Two processes alive at once never share an id, so they never share a file. Index, slots and quarantine all derive from `dir()`, the one owner of the folder. A test's own scratch files (`TestCase.SCRATCH`) are named per test, and no test that writes them runs in two variants at once.
+
+**Proof.** quick with the suite in parallel: save_undo, inspector and shell all passed. No `<id>` folder is left in `saves_tests` after the run; that folder's own root files are the other checkouts' runs.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

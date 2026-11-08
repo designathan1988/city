@@ -12,7 +12,7 @@ func enter() -> void:
 	radius = s.radius
 	var paint: Dictionary = DataTables.catalog_table("nature").paint
 	strength = maxf(paint.min_strength, minf(1.0, s.strength / paint.strength_scale))
-	hardness = s.hardness / PERCENT
+	hardness = s.hardness / Units.PERCENT
 	ctl.hint.emit(tr("hint.tool.paint"), true)
 
 

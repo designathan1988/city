@@ -1,25 +1,11 @@
-## Builds the 3D world around the core: Terrain3D (ground override shader), sun, sky, water, and the materials the
-## C++ renderers draw with (data/render/materials.json). Colours come from data/render/palette.json.
+## Builds the 3D world around the core: Terrain3D (ground override shader), sun, sky, water; keeps the materials the C++
+## renderers draw with (WorldMaterials makes them) and fans the landscape the sky reads out to the land and the water.
+## Colours come from data/render/palette.json.
 class_name CityWorld
 extends Node3D
 
 const TERRAIN_SHADER := "res://render/shaders/terrain.gdshader"
 const SKY_SHADER := "res://render/shaders/sky.gdshader"
-## Kept as text so the orphan gate sees every shader the native renderers load by name from materials.json.
-const NATIVE_SHADERS := [
-	"res://render/shaders/road.gdshader", "res://render/shaders/building.gdshader", "res://render/shaders/building_far.gdshader",
-	"res://render/shaders/building_parts.gdshader", "res://render/shaders/props.gdshader", "res://render/shaders/agents.gdshader",
-	"res://render/shaders/people.gdshader", "res://render/shaders/people_blob.gdshader", "res://render/shaders/overlay.gdshader", "res://render/shaders/agent_glass.gdshader",
-	"res://render/shaders/vegetation.gdshader", "res://render/shaders/lamp_glow.gdshader", "res://render/shaders/vegetation_cards.gdshader", "res://render/shaders/building_ghost.gdshader",
-	"res://render/shaders/building_glass.gdshader", "res://render/shaders/building_sheer.gdshader", "res://render/shaders/building_card.gdshader",
-	"res://render/shaders/building_wash.gdshader",
-	"res://render/shaders/verge.gdshader", "res://render/shaders/people_far.gdshader", "res://render/shaders/people_held.gdshader",
-	"res://render/shaders/people_helmet.gdshader", "res://render/shaders/rubble.gdshader", "res://render/shaders/signature.gdshader",
-	"res://render/shaders/signature_glass.gdshader",
-	"res://render/shaders/transit.gdshader", "res://render/shaders/transit_glass.gdshader", "res://render/shaders/transit_xray.gdshader",
-	"res://render/shaders/building_props.gdshader", "res://render/shaders/shadow_caster.gdshader",
-	"res://render/shaders/road_far.gdshader", "res://render/shaders/building_fade.gdshader", "res://render/shaders/building_ruin.gdshader", "res://render/shaders/people_body.gdshader", "res://render/shaders/building_glass_fade.gdshader", "res://render/shaders/building_parts_fade.gdshader",
-]
 const WIND_FULL_WAVES_MS := 40.0 # a wind this fast alone makes the roughest water
 
 var terrain: Node3D
@@ -38,6 +24,7 @@ var marks: ChangeMarks # F8
 var water: CityWater
 var _mesh_size := 0
 var _terrain_target: Node3D # what the terrain's clipmap centres on (_follow_view)
+var _sky_table: Dictionary # the contact shade's share of the sun (data/game/sky.json)
 var sky_mode: String:
 	get:
 		return daylight.mode
@@ -53,41 +40,15 @@ func _ready() -> void:
 	marks = ChangeMarks.new()
 	add_child(marks)
 	sky = SkyView.new(self)
+	sky.landscape_read.connect(_take_landscape)
 	add_child(sky)
+	_sky_table = DataTables.game("sky")
 
 
-## The materials of data/render/materials.json, by name (textures loaded from their res:// paths).
+## The materials of data/render/materials.json, by name (WorldMaterials), kept alive here, with the sign sheet the props read.
 func materials() -> Dictionary:
 	if _materials.is_empty():
-		var table: Dictionary = DataTables.render_table("materials")
-		for key in table:
-			if key.begins_with("_"):
-				continue
-			var m := EffectMaterials.make(key, table[key], environment)
-			for name in table[key].params:
-				m.set_shader_parameter(name, shader_value(table[key].params[name]))
-			if key == "road":
-				SurfaceMeans.apply(m, table[key].params, shader_value)
-			elif key == "verge":
-				_set_ground(m)
-			elif key == "prop":
-				LampRadiance.lenses(m, environment)
-			elif key == "agent":
-				LampRadiance.vehicles(m, environment)
-			_materials[key] = m
-			if table[key].has("fade_shader"): # the same material for what is handing over to another level (building_level.gdshaderinc)
-				var fade: ShaderMaterial = m.duplicate()
-				fade.shader = load(table[key].fade_shader)
-				_materials[key + "_fade"] = fade
-			for variant: String in ["ruin", "body"]: # the same material for a building coming down in pieces (ruin_pieces.h) and somebody off their feet (body_renderer.h)
-				if table[key].has(variant + "_shader"):
-					var other: ShaderMaterial = m.duplicate()
-					other.shader = load(table[key][variant + "_shader"])
-					_materials[key + "_" + variant] = other
-			for layer in int(table[key].get("layers", 0)): # the same material drawn in this order (render_priority)
-				var over: ShaderMaterial = m.duplicate()
-				over.render_priority = layer
-				_materials["%s_%d" % [key, layer]] = over
+		_materials = WorldMaterials.make_all(environment, _set_ground)
 		add_child(SignSheet.new(DataTables.render_table("streets").signs, _materials.prop))
 		_materials["water"] = water.own # the lakes and rivers of the core (render/water) wear the sea's material
 	return _materials
@@ -96,9 +57,10 @@ func materials() -> Dictionary:
 ## The verge wears the terrain's grass: the same table, the same values.
 func _set_ground(m: ShaderMaterial) -> void:
 	var ground: Dictionary = DataTables.render_table("palette").terrain
+	var kinds := WorldMaterials.uniform_kinds(m.shader)
 	for key in ground:
 		if not key.begins_with("_"):
-			m.set_shader_parameter(key, shader_value(ground[key]))
+			m.set_shader_parameter(key, WorldMaterials.typed(kinds, key, ground[key]))
 	m.set_shader_parameter("grass_mean", _grass_mean(ground))
 
 
@@ -121,6 +83,14 @@ static func shader_value(v: Variant) -> Variant:
 	if v is Array:
 		return PackedFloat32Array(v)
 	return v
+
+
+## What the landscape says of the land and the water, as the sky read it; every map's first read (a new map resets nature, an
+## opened one moves its revision) gives the terrain the map's half side, where its edge stands.
+func _take_landscape(land: Dictionary) -> void:
+	set_map_biome(land.biome)
+	set_water_look(land.weather)
+	_terrain_material.set_shader_param("map_half", float(CityStore.query(&"city_bounds").half))
 
 
 ## The map's biome tints the grass (0 none, else the biome's index + 1).
@@ -216,6 +186,9 @@ func _process(_delta: float) -> void:
 	var cam := get_viewport().get_camera_3d()
 	daylight.follow_view(cam)
 	_follow_view(cam)
+	if sky.step(_delta):
+		var toward: Vector3 = sun.global_basis.z
+		contact.follow(toward, _sky_table.contact_most * daylight.direct_share * clampf(toward.y * _sky_table.contact_sun_gain, 0.0, 1.0))
 
 
 ## The terrain's clipmap and LODs centre on the camera that draws the city, or on the world's origin while none does (a test of the
@@ -242,7 +215,10 @@ func _build_terrain(palette: Dictionary) -> void:
 	add_child(terrain)
 	_mesh_size = terrain.get("mesh_size")
 	# Terrain3D drops parameters set before it enters the tree: the look is applied once the terrain is in the scene
+	var kinds := WorldMaterials.uniform_kinds(load(TERRAIN_SHADER))
 	for key in palette.terrain:
 		if not key.begins_with("_"):
-			_terrain_material.set_shader_param(key, shader_value(palette.terrain[key]))
+			_terrain_material.set_shader_param(key, WorldMaterials.typed(kinds, key, palette.terrain[key]))
 	_terrain_material.set_shader_param("grass_mean", _grass_mean(palette.terrain))
+	_terrain_material.set_shader_param("gully_auto", DataTables.catalog_table("nature").weather.gully_auto.default) # until the weather is read
+	_terrain_material.set_shader_param("map_half", float(DataTables.maps()[0].tiles) * DataTables.tuning("world_tile_m") / 2.0) # the first map's, until a map is read

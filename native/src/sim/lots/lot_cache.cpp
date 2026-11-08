@@ -22,9 +22,9 @@ constexpr uint32_t PLAYER_LOT_SALT = 0x10755eedu;
 constexpr double LOT_CORNERS[4][2] = { { -1, 1 }, { 1, 1 }, { 1, -1 }, { -1, -1 } };
 } // namespace
 
-std::vector<LotPoint> lot_ring(const Lot &l) {
+std::vector<XZ> lot_ring(const Lot &l) {
 	const double c = std::cos(l.rot), n = std::sin(l.rot), hw = l.w / 2, hd = l.d / 2;
-	std::vector<LotPoint> ring;
+	std::vector<XZ> ring;
 	ring.reserve(4);
 	for (const auto &corner : LOT_CORNERS) {
 		const double kx = corner[0] * hw, kz = corner[1] * hd;
@@ -35,7 +35,7 @@ std::vector<LotPoint> lot_ring(const Lot &l) {
 
 bool cut_for_works(const Catalog &c, int zone) { return c.zone(zone).base == BASE_INDUSTRIAL; }
 
-bool on_lot(const Lot &l, const LotPoint &p) {
+bool on_lot(const Lot &l, const XZ &p) {
 	// lot_ring's corners turned back: kx along the front, kz towards the street
 	const double c = std::cos(l.rot), n = std::sin(l.rot), dx = p.x - l.x, dz = p.z - l.z;
 	return std::fabs(dx * c - dz * n) <= l.w / 2 && std::fabs(dx * n + dz * c) <= l.d / 2;
@@ -92,12 +92,12 @@ static std::vector<Lot> lots_of_cell(const CityState &s, int64_t key, int every_
 	LotGround ground;
 	ground.height = [&s](double x, double z) { return double(s.terrain.base_height_at(float(x), float(z))); };
 	ground.water = [&s](double x, double z) { return double(s.terrain.water_at(float(x), float(z))); };
-	return build_lots(g, s.catalog.profiles, ground, x0, z0);
+	return build_lots(s.catalog.growth.shapes, g, s.catalog.profiles, s.catalog.gen_zones, ground, x0, z0);
 }
 
 std::vector<Lot> LotCache::compute(const CityState &s, int64_t key) { return with_player_lots(lots_of_cell(s, key, 0), key, s.lot_book); }
 
-std::vector<Lot> LotCache::proposal(const CityState &s, int64_t key, bool works) { return lots_of_cell(s, key, works ? ZONE_IND : ZONE_RES_LOW); }
+std::vector<Lot> LotCache::proposal(const CityState &s, int64_t key, bool works) { return lots_of_cell(s, key, works ? s.catalog.gen_zones.industrial : s.catalog.gen_zones.residential[0]); } // a house's, or a works' cut for its yard
 
 ProposedLots::Cell LotCache::proposed(const CityState &s, int64_t key, bool works) {
 	return s.proposed.of(key, works, [&] { return proposal(s, key, works); });

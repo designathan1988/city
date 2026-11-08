@@ -10,11 +10,12 @@ import threading
 from .core import inside, own_prefixes, program_root, text_of
 
 GIT = ("git", "-c", "core.quotepath=off", "-c", "core.autocrlf=false")
+GIT_TIMEOUT_S = 120  # one git listing; a git that hangs is an error, not a wait (the stream readers run under the task's deadline)
 _IGNORED = {}
 
 
 def toplevel(path):
-    out = subprocess.run((*GIT, "-C", path, "rev-parse", "--show-toplevel"), capture_output=True, check=True)
+    out = subprocess.run((*GIT, "-C", path, "rev-parse", "--show-toplevel"), capture_output=True, check=True, timeout=GIT_TIMEOUT_S)
     return os.path.normpath(out.stdout.decode("utf8").strip())
 
 
@@ -85,7 +86,7 @@ class Repo:
         self._texts.update(zip(todo, self.stream(todo)))
 
     def git(self, *args, check=True):
-        out = subprocess.run((*GIT, "-C", self.root, *args), capture_output=True, check=False)
+        out = subprocess.run((*GIT, "-C", self.root, *args), capture_output=True, check=False, timeout=GIT_TIMEOUT_S)
         if check and out.returncode != 0:
             raise RuntimeError(f"git {args[0]}: {out.stderr.decode('utf8', 'replace')[:300]}")
         return out.stdout

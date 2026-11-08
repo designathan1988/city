@@ -32,7 +32,6 @@ const CLOSE_M := 120.0
 const CLOSE_PITCH_DEG := 15.0
 const STILL_S := 10.0
 const SLOW_MS := [33.0, 50.0]
-const MIB := 1024.0 * 1024.0
 const WORST := 10
 const CYCLE_FRAMES := 12
 const CYCLE_SKIP := 4
@@ -230,8 +229,8 @@ func _report(name: String) -> void:
 	print("  poses: %d published (interval %.1f-%.1f ms; %d together, %d late); of %d frames, %d past the last and %d before the oldest" % [
 		ps.publications, ps.gap_min_ms, ps.gap_max_ms, ps.early, ps.late, ps.frames, ps.held, ps.behind])
 	print("  memory: static %.0f MiB, video %.0f MiB, buffers %.0f MiB | chunks to draw: %d" % [
-		Performance.get_monitor(Performance.MEMORY_STATIC) / MIB, Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / MIB,
-		Performance.get_monitor(Performance.RENDER_BUFFER_MEM_USED) / MIB, CityStore.query(&"render_pending")])
+		Performance.get_monitor(Performance.MEMORY_STATIC) / Units.BYTES_PER_MIB, Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / Units.BYTES_PER_MIB,
+		Performance.get_monitor(Performance.RENDER_BUFFER_MEM_USED) / Units.BYTES_PER_MIB, CityStore.query(&"render_pending")])
 	print("  largest superchunk HLOD built: %.1f MiB" % float(CityStore.query(&"render_cost").get("super_mb_max", 0.0)))
 	print("  buildings: ", JSON.stringify(CityStore.query(&"building_cost")))
 	print("  vehicles: ", JSON.stringify(CityStore.query(&"agent_cost")))

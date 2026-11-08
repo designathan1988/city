@@ -54,12 +54,12 @@ struct Side {
 	Basis f;
 	float length = 0;
 	int side = 0;
-	Point2 p0, p1, n;
+	V2 p0, p1, n;
 };
 
 std::vector<Side> sides_of(const Placed &pl, const Volume &v, float z);
 // True when the plan point (lot frame) lies inside another closed volume standing at `level`.
-bool covered(const Body &b, const Volume &self, int level, Point2 p);
+bool covered(const Body &b, const Volume &self, int level, V2 p);
 Lin wall_lin(const Placed &pl, const Volume &v, int storey, int side);
 Lin trim_lin(const Placed &pl);
 Lin paint_lin(const Paint &p);
@@ -68,7 +68,7 @@ Paint moulding_of(const Placed &pl);
 Paint flat_roof_of(const Placed &pl, const Volume &v); // a flat roof's slab
 // A two-tier band: lower tier 0.45 out from -h/2 to -0.1h, upper tier from -0.1h to +h/2;
 // `flush`: one strip.
-void band(Shell &s, const Side &sd, float z, float out, float h, const Lin &lin, int8_t fin, bool flush);
+void band(const Placed &pl, Shell &s, const Side &sd, float z, float out, float h, const Lin &lin, int8_t fin, bool flush);
 uint32_t bay_hash(int vol, int level, int side, int index, float bx, float by);
 
 // Emitters. `parts` takes the small repeated pieces (frames, railings, louvres, AC units...) drawn only near.

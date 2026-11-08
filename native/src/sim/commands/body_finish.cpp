@@ -79,7 +79,7 @@ std::string op_roof_shape(Body &b, const Tuning &t, int vol, float pitch, int ri
 std::string op_add_gear(Body &b, const Tuning &t, int vol, int kind, float x, float y, float w, float d, float h) {
 	Volume *v = volume_at(b, vol);
 	if (!v || kind < 0 || kind >= GEAR_COUNT) return NO_TARGET;
-	if (int(v->gear.size()) >= int(t.build_max_gear)) return "building.problem.size";
+	if (int(v->gear.size()) >= t.build_max_gear) return "building.problem.size";
 	RoofPart p;
 	p.kind = uint8_t(kind);
 	p.x = x;

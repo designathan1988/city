@@ -14,36 +14,32 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float MAX_FRAME_S = 0.1f; // a stalled frame never advances the effects by more
-constexpr float MARK_SLOTS = 1400.f; // craters, soot, blood and rings drawn at once
-constexpr int MOUND_SLOTS = 2000; // the ruins of a city razed
-constexpr float ROOF_FLAME_BASE_M = 2.f; // a burning building flames from this high over its ground...
-constexpr float ROOF_FLAME_SPAN_M = 10.f; // ...up to this much higher
-constexpr float FLAME_SPAN_SHARE = 0.3f; // a flame's size is at most this share of the building's span
-constexpr float ROOF_FLAME_CAP_M = 3.f;
-constexpr float SHAKE_FLOOR = 1e-3f;
-constexpr float FLASH_DAMP = 2.f; // the flash dies off with the square of its life left
-constexpr float LIGHT_ATTEN = 2.f;
-constexpr float GEYSER_LIFT_M = 0.4f, JET_SPREAD_M = 0.1f, JET_LIFE_S = 4.2f;
-constexpr float JET_LEAST = 0.25f; // a hydrant's jet dying down keeps this share of its size
+constexpr float JET_LEAST = 0.25f; // a hydrant's jet dying down keeps this share of its size (a modelling choice)
 constexpr float FLASH_YIELD = 0.6f; // a weaker flash of another colour never takes the light from one brighter than this share of it
 } // namespace
 
 bool EffectWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
+	const WorldShape &K = params_.shapes.effect_world;
 	scenario_ = ctx.scenario;
 	if (!params_.load(ctx.table("effects", errors), ctx.table("aftermath", errors), ctx.table("gore", errors), errors)) return false;
+	if (!ctx.catalog) {
+		errors.push_back("effects without a catalogue");
+		return false;
+	}
+	params_.fireball_base = ctx.catalog->tune.strike_scar_radius_m; // the fireball is as wide as the scar it leaves: one law
+	params_.fireball_per_force = ctx.catalog->tune.strike_scar_radius_per_force;
 	const RID puffs = ctx.material("puffs", errors), debris = ctx.material("debris", errors), marks = ctx.material("marks", errors), rubble = ctx.material("rubble", errors);
 	if (!errors.is_empty()) return false;
-	puffs_.init(scenario_, puffs, params_.pool);
+	puffs_.init(scenario_, puffs, params_);
 	puffs_.set_wind(params_.wind_x, params_.wind_z);
-	marks_.init(scenario_, marks, int(MARK_SLOTS), params_.soot_kept, params_.blood_max);
+	marks_.init(scenario_, marks, int(K.mark_slots), params_.soot_kept, params_.blood_max);
 	debris_.init(scenario_, debris, params_);
 	heave_.init(scenario_, debris, params_.heave);
 	DataReader streets{ errors, "streets.json" };
 	if (!seats_.load(streets.at(ctx.table("streets", errors))["wires"])) return false;
 	ropes_.init(scenario_, debris, params_.rope, seats_.colour, seats_.radius, params_.gravity);
 	debris_material_ = debris;
-	mounds_.init(scenario_, rubble, MOUND_SLOTS);
+	mounds_.init(scenario_, rubble, K.mound_slots, params_.shapes.mounds);
 	const Ref<ShaderMaterial> ruin = ctx.material_objects.get("building_ruin", Variant());
 	if (ruin.is_null()) errors.push_back("material ausente: building_ruin");
 	ruins_.init(scenario_, ruin, params_);
@@ -53,7 +49,7 @@ bool EffectWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	rs->light_set_color(light_, params_.flash_color);
 	flash_colour_ = flash_sent_ = params_.flash_color;
 	rs->light_set_param(light_, RenderingServer::LIGHT_PARAM_ENERGY, 0.f);
-	rs->light_set_param(light_, RenderingServer::LIGHT_PARAM_ATTENUATION, LIGHT_ATTEN);
+	rs->light_set_param(light_, RenderingServer::LIGHT_PARAM_ATTENUATION, K.light_atten);
 	light_inst_ = rs->instance_create2(light_, scenario_);
 	return true;
 }
@@ -118,7 +114,7 @@ void EffectWorld::flash(float radius) {
 }
 
 void EffectWorld::flash_at(const Vector3 &at, const Color &colour, float energy, float range, float life) {
-	const float lit = flash_left_ > 0 ? flash_energy_ * std::pow(flash_left_ / std::max(flash_life_, SHAKE_FLOOR), FLASH_DAMP) : 0.f;
+	const float lit = flash_left_ > 0 ? flash_energy_ * std::pow(flash_left_ / std::max(flash_life_, params_.shapes.effect_world.shake_floor), params_.shapes.effect_world.flash_damp) : 0.f;
 	const bool same = colour == flash_colour_;
 	if (lit > energy * FLASH_YIELD && !same) return;
 	flash_at_ = at;
@@ -130,14 +126,15 @@ void EffectWorld::flash_at(const Vector3 &at, const Color &colour, float energy,
 }
 
 void EffectWorld::light_update(float dt) {
+	const WorldShape &K = params_.shapes.effect_world;
 	RenderingServer *rs = RenderingServer::get_singleton();
 	flash_left_ = std::max(0.f, flash_left_ - dt);
-	const float k = flash_left_ / std::max(flash_life_, SHAKE_FLOOR);
+	const float k = flash_left_ / std::max(flash_life_, K.shake_floor);
 	if (flash_colour_ != flash_sent_) {
 		rs->light_set_color(light_, flash_colour_);
 		flash_sent_ = flash_colour_;
 	}
-	rs->light_set_param(light_, RenderingServer::LIGHT_PARAM_ENERGY, flash_energy_ * std::pow(k, FLASH_DAMP));
+	rs->light_set_param(light_, RenderingServer::LIGHT_PARAM_ENERGY, flash_energy_ * std::pow(k, K.flash_damp));
 	rs->light_set_param(light_, RenderingServer::LIGHT_PARAM_RANGE, flash_range_);
 	rs->instance_set_transform(light_inst_, Transform3D(Basis(), flash_at_));
 	rs->instance_set_visible(light_inst_, flash_left_ > 0);
@@ -145,6 +142,7 @@ void EffectWorld::light_update(float dt) {
 
 // The fires the damage state holds: flames from a few points of each burning building and a chimney of smoke.
 void EffectWorld::burn_fires(const CityState &s, float dt) {
+	const WorldShape &K = params_.shapes.effect_world;
 	for (const Fire &f : s.damage.fires) {
 		if (uint32_t(f.building) >= s.buildings.items.size()) continue;
 		const Building &b = s.buildings.items[size_t(f.building)];
@@ -156,8 +154,8 @@ void EffectWorld::burn_fires(const CityState &s, float dt) {
 		while (carry >= 1.f) {
 			carry -= 1.f;
 			const float a = rng_.f() * TAU_F, r = std::sqrt(rng_.f()) * span * 0.5f;
-			const float x = b.x + std::cos(a) * r, z = b.z + std::sin(a) * r, y = ground + ROOF_FLAME_BASE_M + rng_.f() * ROOF_FLAME_SPAN_M;
-			puffs_.burst(x, y, z, 1, params_.flame_kind, 0.5f, std::min(span * FLAME_SPAN_SHARE, ROOF_FLAME_CAP_M), params_.flame_life);
+			const float x = b.x + std::cos(a) * r, z = b.z + std::sin(a) * r, y = ground + K.roof_flame_base_m + rng_.f() * K.roof_flame_span_m;
+			puffs_.burst(x, y, z, 1, params_.flame_kind, 0.5f, std::min(span * K.flame_span_share, K.roof_flame_cap_m), params_.flame_life);
 			if (rng_.f() < params_.column_chance) puffs_.burst(x, y, z, 1, params_.smoke_kind, 0.5f, params_.smoke_size, params_.smoke_life);
 		}
 	}
@@ -165,14 +163,15 @@ void EffectWorld::burn_fires(const CityState &s, float dt) {
 }
 
 void EffectWorld::step_geysers(float dt) {
+	const WorldShape &K = params_.shapes.effect_world;
 	for (Geyser &g : geysers_) {
 		const float strength = g.weak ? 1.f : std::min(1.f, float(g.until - now_) / params_.geyser_fade);
 		g.carry += (g.weak ? params_.leak_rate : params_.geyser_rate) * strength * dt;
 		const int n = int(g.carry);
 		g.carry -= float(n);
 		if (n == 0) continue;
-		if (g.weak) puffs_.burst(g.x, g.y, g.z, n, PUFF_WATER, JET_SPREAD_M, params_.leak_size, params_.leak_life);
-		else puffs_.burst(g.x, g.y + GEYSER_LIFT_M, g.z, n, PUFF_WATER, JET_SPREAD_M, params_.geyser_size * std::max(JET_LEAST, strength), JET_LIFE_S);
+		if (g.weak) puffs_.burst(g.x, g.y, g.z, n, PUFF_WATER, K.jet_spread_m, params_.leak_size, params_.leak_life);
+		else puffs_.burst(g.x, g.y + K.geyser_lift_m, g.z, n, PUFF_WATER, K.jet_spread_m, params_.geyser_size * std::max(JET_LEAST, strength), K.jet_life_s);
 	}
 	geysers_.erase(std::remove_if(geysers_.begin(), geysers_.end(), [&](const Geyser &g) { return now_ > g.until; }), geysers_.end());
 }
@@ -200,8 +199,9 @@ void EffectWorld::wire(const DamageEvent &e) {
 }
 
 void EffectWorld::sync(CityState &s, FrameAdmission &admission) {
+	const WorldShape &K = params_.shapes.effect_world;
 	const auto t = std::chrono::steady_clock::now();
-	const float dt = started_ ? std::min(MAX_FRAME_S, std::chrono::duration<float>(t - last_).count()) : 0.f;
+	const float dt = started_ ? std::min(K.max_frame_s, std::chrono::duration<float>(t - last_).count()) : 0.f;
 	started_ = true;
 	last_ = t;
 	now_ += dt;
@@ -247,7 +247,7 @@ void EffectWorld::sync(CityState &s, FrameAdmission &admission) {
 		pile(u.ruin, u.falling, false, true);
 	}
 	shake_ *= std::exp(-params_.shake_decay * dt);
-	if (shake_ < SHAKE_FLOOR) shake_ = 0;
+	if (shake_ < K.shake_floor) shake_ = 0;
 	light_update(dt);
 	marks_.update(now_);
 	mounds_.update(now_);

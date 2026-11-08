@@ -15,21 +15,10 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float TRUNK_CENTRE_M = 1.2f; // an adult's chest over the feet (NASA-STD-3000 vol. 1 table 3.3.1, the 50th percentile)
-constexpr float WALLS_REACH_M = 12.f; // farther than a body is thrown
-constexpr float TOPPLE_MS = 2.2f; // the head of somebody going down, over their feet
-constexpr float LIMB_SCATTER_MS = 1.5f; // each part leaves a little differently from its neighbour
-constexpr float TORN_PUSH = 1.5f; // a body blown apart flies faster
-constexpr float NO_PUSH_BELOW_M = 0.05f;
-constexpr float LEAST_LIFE_S = 0.2f;
 constexpr uint32_t STRUCK_MASK = 7; // the part a round struck (damage_event.h CAS_STRUCK_SHIFT): 0 none, a blast
+// A tracer's hot core and a shard of a car's glass (sRGB).
 const Color TRACER_HOT = Color(1.f, 0.82f, 0.35f);
 const Color GLASS_SHARD = Color(0.55f, 0.7f, 0.78f);
-constexpr float TRACER_REACH_M = 30.f; // the line is drawn this far back along the shot
-constexpr float WOUND_SPRAY = 8.f, WOUND_SIZE_M = 0.05f, WOUND_LIFE_S = 0.5f, WOUND_SPREAD_M = 0.1f;
-constexpr float SPARK_COUNT = 10.f, SPARK_SPREAD_M = 0.15f, SPARK_SIZE_M = 0.1f, SPARK_LIFE_S = 0.5f;
-constexpr int SHARDS = 10;
-constexpr float SHARD_SIZE_M = 0.06f, SHARD_THICK_M = 0.01f, SHARD_SPEED_MS = 3.f, SHARD_LIFE_S = 6.f;
 
 // The ragdoll's parts a loss takes, every limb in `limbs` (CasLimb bits, RagdollLimb order).
 uint32_t parts_gone(uint32_t limbs) {
@@ -57,30 +46,31 @@ void EffectWorld::organs(const Vector3 &at, int count, const Vector3 &kick) {
 }
 
 void EffectWorld::body(const DamageEvent &e, const CityState &s) {
+	const BodiesShape &K = params_.shapes.effect_bodies;
 	const uint32_t kind = e.v & CAS_KIND_MASK;
 	const uint32_t lost = (e.v >> CAS_LOST_SHIFT) & CAS_LIMB_MASK, severed = (e.v >> CAS_SEVERED_SHIFT) & CAS_LIMB_MASK;
 	const bool charred = (e.v & CAS_CHARRED) != 0, bled = (e.v & CAS_BLED) != 0, struck = ((e.v >> CAS_STRUCK_SHIFT) & STRUCK_MASK) != 0;
 	const float ground = GroundCells::surface(s, e.x, e.z);
 	float px = e.x - e.b, pz = e.z - e.c;
 	const float pl = std::hypot(px, pz);
-	if (pl > NO_PUSH_BELOW_M) { px /= pl; pz /= pl; } else { px = std::cos(e.a); pz = std::sin(e.a); }
-	const float power = bled ? 0.f : e.d * (kind == CAS_TORN ? TORN_PUSH : 1.f);
+	if (pl > K.no_push_below_m) { px /= pl; pz /= pl; } else { px = std::cos(e.a); pz = std::sin(e.a); }
+	const float power = bled ? 0.f : e.d * (kind == CAS_TORN ? K.torn_push : 1.f);
 	// Someone knocked down gets up when the simulation stands its walker again (dx of its seconds after the blow), by its clock.
 	const bool rises = kind == CAS_KNOCKED && e.dx > 0.f;
-	const float life = rises ? std::max(LEAST_LIFE_S, e.dx) : params_.body_life;
+	const float life = rises ? std::max(K.least_life_s, e.dx) : params_.body_life;
 	const GoreLook &g = params_.gore;
 	if (people_) {
 		BodySpec b;
 		b.at = Vector3(e.x, std::max(ground, e.y), e.z);
 		b.heading = e.a;
 		b.velocity = Vector3(px, 0, pz) * (params_.push_ms * power) + Vector3(0, power > 0.f ? params_.lift_ms : 0.f, 0);
-		b.tip = Vector3(px, 0, pz) * TOPPLE_MS;
-		b.scatter = power > 0.f ? LIMB_SCATTER_MS : 0.f;
+		b.tip = Vector3(px, 0, pz) * K.topple_ms;
+		b.scatter = power > 0.f ? K.limb_scatter_ms : 0.f;
 		b.life_s = life;
 		b.charred = charred;
 		b.lost = parts_gone(lost | severed);
 		b.up_s = rises ? e.sim_s + double(e.dx) : -1.0;
-		b.walls = walls_near(s, e.x, e.z, WALLS_REACH_M);
+		b.walls = walls_near(s, e.x, e.z, K.walls_reach_m);
 		b.variation = people_->variation_of(e.u, cas_age_of(e.v)); // the age the walker had (damage_event.h)
 		// Now and then the bone shows at a cut: out of the stump, out of the piece, or both (one draw for the two).
 		float bone_roll[LIMBS] = {};
@@ -115,42 +105,45 @@ void EffectWorld::body(const DamageEvent &e, const CityState &s) {
 				piece.bones.push_back({ Ragdoll::stump(RagdollLimb(k), true), k == LIMB_HEAD ? g.head_piece_bone_len_m : g.piece_bone_len_m });
 			people_->bodies().add(piece);
 		}
-		if (opened) organs(Vector3(e.x, ground + TRUNK_CENTRE_M, e.z), g.opened_organs_min + int(rng_.f() * float(g.opened_organs_span)), b.guts_kick);
+		if (opened) organs(Vector3(e.x, ground + K.trunk_centre_m, e.z), g.opened_organs_min + int(rng_.f() * float(g.opened_organs_span)), b.guts_kick);
 	}
-	if (severed != 0) puffs_.burst(e.x, ground + TRUNK_CENTRE_M, e.z, int(WOUND_SPRAY * 2.f), PUFF_BLOOD, WOUND_SPREAD_M * 2.f, WOUND_SIZE_M, WOUND_LIFE_S);
+	if (severed != 0) puffs_.burst(e.x, ground + K.trunk_centre_m, e.z, int(K.wound_spray * 2.f), PUFF_BLOOD, K.wound_spread_m * 2.f, K.wound_size_m, K.wound_life_s);
 }
 
 void EffectWorld::tracer(const DamageEvent &e) {
+	const BodiesShape &K = params_.shapes.effect_bodies;
 	Vector3 dir(e.dx, e.a, e.dz);
-	if (dir.length_squared() < NO_PUSH_BELOW_M) return;
+	if (dir.length_squared() < K.no_push_below_m) return;
 	dir = dir.normalized();
-	const Vector3 end(e.x, e.y, e.z), start = end - dir * TRACER_REACH_M;
+	const Vector3 end(e.x, e.y, e.z), start = end - dir * K.tracer_reach_m;
 	PieceSpec t;
-	t.size = Vector3(params_.tracer_m, params_.tracer_m, TRACER_REACH_M);
+	t.size = Vector3(params_.tracer_m, params_.tracer_m, K.tracer_reach_m);
 	t.at = (start + end) * 0.5f;
 	t.turn = Basis::looking_at(dir, Vector3(0, 1, 0)).get_rotation_quaternion();
 	t.tint = TRACER_HOT;
 	t.still = true;
 	t.life_s = params_.tracer_life;
 	debris_.add(t);
-	puffs_.burst(e.x, e.y, e.z, int(SPARK_COUNT), PUFF_SPARK, SPARK_SPREAD_M, SPARK_SIZE_M, SPARK_LIFE_S); // where it ends
+	puffs_.burst(e.x, e.y, e.z, int(K.spark_count), PUFF_SPARK, K.spark_spread_m, K.spark_size_m, K.spark_life_s); // where it ends
 }
 
 void EffectWorld::wound(const DamageEvent &e) {
-	puffs_.burst(e.x, e.y, e.z, int(WOUND_SPRAY), PUFF_BLOOD, WOUND_SPREAD_M, WOUND_SIZE_M, WOUND_LIFE_S);
+	const BodiesShape &K = params_.shapes.effect_bodies;
+	puffs_.burst(e.x, e.y, e.z, int(K.wound_spray), PUFF_BLOOD, K.wound_spread_m, K.wound_size_m, K.wound_life_s);
 }
 
 void EffectWorld::vehicle_hit(const DamageEvent &e) {
-	puffs_.burst(e.x, e.y, e.z, int(SPARK_COUNT), PUFF_SPARK, SPARK_SPREAD_M, SPARK_SIZE_M, SPARK_LIFE_S);
+	const BodiesShape &K = params_.shapes.effect_bodies;
+	puffs_.burst(e.x, e.y, e.z, int(K.spark_count), PUFF_SPARK, K.spark_spread_m, K.spark_size_m, K.spark_life_s);
 	if (e.u == 0) return; // metal: sparks only; glass: shards too
-	for (int k = 0; k < SHARDS; k++) {
+	for (int k = 0; k < K.shards; k++) {
 		PieceSpec p;
-		p.size = Vector3(SHARD_SIZE_M * (0.5f + rng_.f()), SHARD_THICK_M, SHARD_SIZE_M * (0.5f + rng_.f()));
+		p.size = Vector3(K.shard_size_m * (0.5f + rng_.f()), K.shard_thick_m, K.shard_size_m * (0.5f + rng_.f()));
 		p.at = Vector3(e.x, e.y, e.z);
 		p.turn = Quaternion(Vector3(0, 1, 0), rng_.f() * TAU_F);
 		p.tint = GLASS_SHARD;
-		p.velocity = Vector3((rng_.f() - 0.5f + e.dx) * SHARD_SPEED_MS, rng_.f() * SHARD_SPEED_MS, (rng_.f() - 0.5f + e.dz) * SHARD_SPEED_MS);
-		p.life_s = SHARD_LIFE_S;
+		p.velocity = Vector3((rng_.f() - 0.5f + e.dx) * K.shard_speed_ms, rng_.f() * K.shard_speed_ms, (rng_.f() - 0.5f + e.dz) * K.shard_speed_ms);
+		p.life_s = K.shard_life_s;
 		debris_.add(p);
 	}
 }

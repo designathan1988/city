@@ -10,35 +10,20 @@
 namespace city::b40 {
 
 namespace {
-constexpr float MIN_PITCH = 5.f, FLAT_BELOW = 0.66f, RIDGE_TO_STREET = 0.33f, SAWTOOTH_RUN = 6.f;
-constexpr float RISE_GABLE = 3.2f, RISE_SHED = 1.2f, RISE_SAWTOOTH = 2.f, RISE_OTHER = 3.f;
-constexpr float PITCH_GABLE[2] = { 20, 35 }, PITCH_HIP[2] = { 20, 32 }, PITCH_SHED[2] = { 5, 14 }, PITCH_SAW[2] = { 22, 30 };
-constexpr float PITCH_OTHER[2] = { 20, 30 }, TINY = 1e-6f, HALF = 0.5f, SECOND_SKIN_LIGHT = 0.04f, SECOND_SKIN_NUDGE = 3.f;
-constexpr int SECOND_SKIN_TRIES = 4, ZONE_RESIDENTIAL = 1, ZONE_COMMERCIAL = 2, ZONE_INDUSTRIAL = 3, ZONE_MIXED = 4, ZONE_COM_LOW = 7;
-constexpr int ZONE_COM_HIGH = 8, ZONE_RES_LOW = 5, ZONE_RES_HIGH = 6, ERAS = 3;
+constexpr float TINY = 1e-6f, HALF = 0.5f; // a pitch this small is none
+// A lot's seed holds its character in the low 16 bits and its era above them.
 constexpr uint32_t CHARACTER_MASK = 0xffff, ERA_SHIFT = 16;
-constexpr float MEMBRANE_NUDGE = 0.6f;
 
 bool closed_roof(Roof r) { return r == ROOF_FLAT || r == ROOF_TERRACE; }
 
-Kind kind_of(int zone) {
-	switch (zone) {
-		case ZONE_RES_LOW: return KIND_HOUSE;
-		case ZONE_RESIDENTIAL: return KIND_FLATS;
-		case ZONE_RES_HIGH: return KIND_TOWER;
-		case ZONE_COM_HIGH: return KIND_OFFICE;
-		case ZONE_INDUSTRIAL: return KIND_WORKS;
-		case ZONE_COMMERCIAL: case ZONE_MIXED: case ZONE_COM_LOW: return KIND_SHOP;
-		default: return KIND_HOUSE;
-	}
-}
 } // namespace
 
 void membranes(const Data &data, Body &b, Xoshiro128 &r) {
+	const MassingShape &K = data.shapes.massing;
 	if (b.roof < 0) return;
 	int8_t f = b.paints[size_t(b.roof)].finish;
 	if (f != FIN_TILE && f != FIN_SLATE && f != FIN_METAL) return;
-	int m = b.add_paint(Paint{ FIN_ROOFING, nudge(data.color("membrane").rgb, r, MEMBRANE_NUDGE) });
+	int m = b.add_paint(Paint{ FIN_ROOFING, nudge(data.shapes.paint, data.color("membrane").rgb, r, K.membrane_nudge) });
 	for (Volume &v : b.volumes)
 		if (closed_roof(v.roof) && v.roof_paint < 0) v.roof_paint = m;
 }
@@ -54,30 +39,31 @@ int add_block(Body &b, const BlockSpec &s) {
 	return int(b.volumes.size()) - 1;
 }
 
-void roof_shape(Volume &v, Xoshiro128 &r, int ridge_to_street) {
-	bool to_street = ridge_to_street < 0 ? r.f() < RIDGE_TO_STREET : ridge_to_street == 1;
+void roof_shape(const Data &data, Volume &v, Xoshiro128 &r, int ridge_to_street) {
+	const MassingShape &K = data.shapes.massing;
+	bool to_street = ridge_to_street < 0 ? r.f() < K.ridge_to_street : ridge_to_street == 1;
 	if (closed_roof(v.roof)) return;
 	if (v.roof == ROOF_GABLE || v.roof == ROOF_HIP) v.ridge = to_street ? 1 : 0;
 	if (v.roof == ROOF_SHED && v.fall < 0 && v.w < v.d) v.fall = 1;
-	const float *pr = v.roof == ROOF_GABLE ? PITCH_GABLE : v.roof == ROOF_HIP ? PITCH_HIP : v.roof == ROOF_SHED ? PITCH_SHED
-			: v.roof == ROOF_SAWTOOTH ? PITCH_SAW : PITCH_OTHER;
-	float rise = v.roof == ROOF_GABLE || v.roof == ROOF_HIP ? RISE_GABLE : v.roof == ROOF_SHED ? RISE_SHED
-			: v.roof == ROOF_SAWTOOTH ? RISE_SAWTOOTH : RISE_OTHER;
+	const std::vector<float> &pr = v.roof == ROOF_GABLE ? K.pitch_gable : v.roof == ROOF_HIP ? K.pitch_hip : v.roof == ROOF_SHED ? K.pitch_shed
+			: v.roof == ROOF_SAWTOOTH ? K.pitch_saw : K.pitch_other;
+	float rise = v.roof == ROOF_GABLE || v.roof == ROOF_HIP ? K.rise_gable : v.roof == ROOF_SHED ? K.rise_shed
+			: v.roof == ROOF_SAWTOOTH ? K.rise_sawtooth : K.rise_other;
 	float run;
 	if (v.roof == ROOF_SHED) run = (std::max(0, v.fall) % 2 == 0) ? v.d : v.w;
-	else if (v.roof == ROOF_SAWTOOTH) run = std::min(SAWTOOTH_RUN, v.d) / 2;
+	else if (v.roof == ROOF_SAWTOOTH) run = std::min(K.sawtooth_run, v.d) / 2;
 	else run = ((v.ridge >= 0 ? v.ridge == 0 : v.w >= v.d) ? v.d : v.w) / 2;
 	float cap = std::atan(rise / std::max(run, TINY)) * RAD_TO_DEG;
-	if (cap < MIN_PITCH * FLAT_BELOW) {
+	if (cap < K.min_pitch * K.flat_below) {
 		v.roof = ROOF_FLAT; v.pitch = -1; v.ridge = -1; v.fall = -1;
 		return;
 	}
-	v.pitch = std::max(MIN_PITCH, std::floor(std::min(mixr(r, pr[0], pr[1]), cap)));
+	v.pitch = std::max(K.min_pitch, std::floor(std::min(mixr(r, pr[0], pr[1]), cap)));
 }
 
-Paint roof_of(Xoshiro128 &r, const std::vector<Paint> &list) {
+Paint roof_of(const Data &data, Xoshiro128 &r, const std::vector<Paint> &list) {
 	const Paint &p = choose(r, list);
-	return Paint{ p.finish, nudge(p.rgb, r, HALF) };
+	return Paint{ p.finish, nudge(data.shapes.paint, p.rgb, r, HALF) };
 }
 
 std::vector<Paint> clay_of(const Data &data) {
@@ -88,12 +74,13 @@ std::vector<Paint> clay_of(const Data &data) {
 }
 
 Paint other_skin(const Data &data, int style, Xoshiro128 &r, const Paint &wall) {
-	for (int k = 0; k < SECOND_SKIN_TRIES; k++) {
+	const MassingShape &K = data.shapes.massing;
+	for (int k = 0; k < K.second_skin_tries; k++) {
 		Paint p, trim;
 		paints_of(data, style, r, p, trim);
-		if (std::abs(lightness(p.rgb) - lightness(wall.rgb)) > SECOND_SKIN_LIGHT || p.finish != wall.finish) return p;
+		if (std::abs(lightness(p.rgb) - lightness(wall.rgb)) > K.second_skin_light || p.finish != wall.finish) return p;
 	}
-	return Paint{ wall.finish, nudge(wall.rgb, r, SECOND_SKIN_NUDGE) };
+	return Paint{ wall.finish, nudge(data.shapes.paint, wall.rgb, r, K.second_skin_nudge) };
 }
 
 void look(Body &b, const Paint &wall, const Paint &roof, const Paint &trim) {
@@ -104,7 +91,7 @@ void look(Body &b, const Paint &wall, const Paint &roof, const Paint &trim) {
 
 void finish_body(const Data &data, Body &b, const Envelope &env, Xoshiro128 &r, uint8_t door_kind, int door_block) {
 	for (Volume &v : b.volumes)
-		if (v.pitch < 0) roof_shape(v, r);
+		if (v.pitch < 0) roof_shape(data, v, r);
 	membranes(data, b, r);
 	compose_facades(data, b, r);
 	int front = -1, back = -1;
@@ -146,10 +133,10 @@ void made_to_measure(const Data &data, Body &b, const Envelope &env, Xoshiro128 
 
 void make_body(const Data &data, Body &b, int zone, int floors, float W, float D, uint32_t seed) {
 	b = Body{};
-	b.kind = kind_of(zone);
+	b.kind = data.kind_of_zone(zone);
 	b.use = b.kind == KIND_WORKS ? USE_INDUSTRIAL : b.kind == KIND_SHOP || b.kind == KIND_OFFICE ? USE_COMMERCIAL : USE_RESIDENTIAL;
 	Xoshiro128 r(seed);
-	b.plan = plan_lot(data.lots, b.kind, W, D, r);
+	b.plan = plan_lot(data, b.kind, W, D, r);
 	Envelope env;
 	env.W = b.plan.x1 - b.plan.x0;
 	env.D = b.plan.y1 - b.plan.y0;
@@ -157,7 +144,7 @@ void make_body(const Data &data, Body &b, int zone, int floors, float W, float D
 	env.character = seed & CHARACTER_MASK;
 	env.era = int((seed >> ERA_SHIFT) % ERAS);
 	env.cap = floors;
-	env.low = zone == ZONE_COM_LOW;
+	env.low = data.low_shop(zone);
 	made_to_measure(data, b, env, r);
 	float dx = b.plan.x0 - W / 2, dy = b.plan.y0;
 	for (Volume &v : b.volumes) { v.x += dx; v.y += dy; }

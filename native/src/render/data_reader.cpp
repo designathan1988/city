@@ -60,6 +60,20 @@ String DataReader::text(const Dictionary &d, const char *key) { return string_of
 std::string DataReader::utf8(const Dictionary &d, const char *key) { return std::string(text(d, key).utf8().get_data()); }
 Array DataReader::list(const Dictionary &d, const char *key, int size) { return sized(array_of(typed(d, key, Variant::ARRAY)), size, String(key)); }
 Dictionary DataReader::table(const Dictionary &d, const char *key) { return dict_of(typed(d, key, Variant::DICTIONARY)); }
+std::vector<float> DataReader::floats(const Dictionary &d, const char *key) {
+	const Array a = list(d, key);
+	std::vector<float> out;
+	DataReader r = in(key);
+	for (int i = 0; i < a.size(); i++) out.push_back(float(r.num_at(a, i)));
+	return out;
+}
+std::vector<int> DataReader::counts(const Dictionary &d, const char *key) {
+	const Array a = list(d, key);
+	std::vector<int> out;
+	DataReader r = in(key);
+	for (int i = 0; i < a.size(); i++) out.push_back(r.integer_at(a, i));
+	return out;
+}
 uint32_t DataReader::colour(const Dictionary &d, const char *key) { return hex(typed(d, key, Variant::STRING), String(key)); }
 
 double DataReader::num_or(const Dictionary &d, const char *key, double fallback) { return d.has(key) ? num(d, key) : fallback; }

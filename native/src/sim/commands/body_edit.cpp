@@ -17,7 +17,7 @@ namespace city {
 using namespace b40;
 
 namespace {
-constexpr float SIZE_EPS = 1e-3f;
+constexpr float SIZE_EPS = 1e-3f; // a size this near another is the same
 
 // Whether `o` reaches `v`'s floor: by levels at the same height, by metres on a split level.
 bool bears(const Body &b, const Volume &o, const Volume &v) {
@@ -40,7 +40,7 @@ bool within(float x, double lo, double hi) { return x >= float(lo) - SIZE_EPS &&
 
 std::string body_problem(const Tuning &t, const Body &b) {
 	if (b.volumes.empty()) return ""; // an open lot, a square or a park: it has no mass to hold up
-	if (int(b.volumes.size()) > int(t.build_max_volumes)) return "building.problem.size";
+	if (int(b.volumes.size()) > t.build_max_volumes) return "building.problem.size";
 	if (!within(b.ground_h, t.build_min_storey_m, t.build_max_ground_m)) return "building.problem.size";
 	if (!within(b.storey_h, t.build_min_storey_m, t.build_max_storey_m)) return "building.problem.size";
 	bool on_ground = false;
@@ -48,7 +48,7 @@ std::string body_problem(const Tuning &t, const Body &b) {
 		on_ground = on_ground || v.base == 0;
 		if (!within(v.w, t.build_min_side_m, t.build_max_side_m) || !within(v.d, t.build_min_side_m, t.build_max_side_m))
 			return "building.problem.size";
-		if (v.base < 0 || v.storeys < 1 || v.top() > int(t.edit_max_floors)) return "building.problem.size";
+		if (v.base < 0 || v.storeys < 1 || v.top() > t.edit_max_floors) return "building.problem.size";
 	}
 	if (!on_ground) return "building.problem.footprint";
 	for (const Volume &v : b.volumes)

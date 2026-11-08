@@ -4,7 +4,6 @@ class_name HudWidgets
 extends RefCounted
 
 const ICONS := "res://ui/icons/%s.svg"
-const MS_PER_S := 1000.0
 
 
 static func icon(name: String) -> Texture2D:

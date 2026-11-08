@@ -4,9 +4,10 @@
 extends TestCase
 
 const U := 0.4
-const CLEARANCE := 0.12 # grade.clearance_m: a road at grade over its ground
-const ELEVATED := 5.6 # grade.clear_elevated_m
-const BORE := 4.4 + 0.6 + 0.4 + 0.16 # headroom, arch, the close and the band: where the ground closes over a bore
+var clearance: float = DataTables.tuning("grade_clearance_m") # a road at grade over its ground
+var elevated: float = DataTables.tuning("grade_clear_elevated_m")
+## Where the ground closes over a bore: headroom, arch and what the ground keeps over them (tuning structure.bore_over_m).
+var bore: float = DataTables.tuning("grade_tunnel_headroom_m") + DataTables.tuning("grade_tunnel_arch_m") + DataTables.tuning("structure_bore_over_m")
 const SAG := 12 # the first units of a ramp, its sag curve, are not judged for grade (the 4.0's anatomy)
 
 
@@ -52,7 +53,7 @@ func _flat_crossroads() -> void:
 	var worst := 0.0
 	for seg in r.segs:
 		for v in seg.h:
-			worst = maxf(worst, absf(v - CLEARANCE))
+			worst = maxf(worst, absf(v - clearance))
 	judge("flat: a span of clearance over the ground, and no step", worst < 1e-4, worst)
 
 
@@ -110,10 +111,10 @@ func _chain(structure: int, span: float, ground := {"kind": "flat"}) -> Dictiona
 
 func _elevated_chains() -> void:
 	var r := _chain(1, 900 * U)
-	judge("elevated: lands exactly on the ground road it joins", absf(r.nodes[1] - CLEARANCE) < 1e-4 and absf(r.nodes[2] - CLEARANCE) < 1e-4, [r.nodes[1], r.nodes[2]])
+	judge("elevated: lands exactly on the ground road it joins", absf(r.nodes[1] - clearance) < 1e-4 and absf(r.nodes[2] - clearance) < 1e-4, [r.nodes[1], r.nodes[2]])
 	var long := _chain(1, 1400 * U)
 	var h: PackedFloat32Array = long.segs[1].h
-	judge("elevated: reaches the design clearance on a long span", h[h.size() / 2] > ELEVATED * 0.9, h[h.size() / 2])
+	judge("elevated: reaches the design clearance on a long span", h[h.size() / 2] > elevated * 0.9, h[h.size() / 2])
 	var short := _chain(1, 220 * U)
 	judge("elevated: lowers the deck rather than steepen the ramp on a short span", steepest(short.segs[1]) < 0.165, steepest(short.segs[1]))
 
@@ -195,8 +196,8 @@ func _elevated_alone() -> void:
 		var where := "alone" if standalone else "between ground roads"
 		var r := _elevated(600 * U, {"kind": "flat"}, standalone)
 		var a := _anatomy(r.seg)
-		judge("ramp (%s): reaches the full height within 100 U and stays level between the ramps" % where, a.top > ELEVATED - 0.1 * U and a.ramp_a <= 100 and a.ramp_b <= 100 and a.deck >= 0.6 and a.steepest < 0.162 and _level(a), [a.ramp_a, a.ramp_b, a.deck, a.steepest, a.top])
-		judge("ramp (%s): comes down to the ground at both ends" % where, absf(r.nodes[0] - CLEARANCE) < 1e-3 and absf(r.nodes[1] - CLEARANCE) < 1e-3, r.nodes)
+		judge("ramp (%s): reaches the full height within 100 U and stays level between the ramps" % where, a.top > elevated - 0.1 * U and a.ramp_a <= 100 and a.ramp_b <= 100 and a.deck >= 0.6 and a.steepest < 0.162 and _level(a), [a.ramp_a, a.ramp_b, a.deck, a.steepest, a.top])
+		judge("ramp (%s): comes down to the ground at both ends" % where, absf(r.nodes[0] - clearance) < 1e-3 and absf(r.nodes[1] - clearance) < 1e-3, r.nodes)
 		var b := _anatomy(_elevated(600 * U, {"kind": "rolling"}, standalone).seg)
 		var h: PackedFloat32Array = b.h
 		var straight := 0.0
@@ -214,7 +215,7 @@ func _elevated_alone() -> void:
 		var s := _anatomy(sunk.segs[0])
 		judge("a landing sunk %d U: a clearance above it, a ramp up to 100 U" % depth, s.steepest < 0.162 and s.ramp_a <= 100, [s.steepest, s.ramp_a])
 	var short := _anatomy(alone(120 * U, {"kind": "flat"}).segs[0])
-	judge("a span too short for two ramps: lowers, never steepens", short.steepest < 0.162 and short.top < ELEVATED, [short.steepest, short.top])
+	judge("a span too short for two ramps: lowers, never steepens", short.steepest < 0.162 and short.top < elevated, [short.steepest, short.top])
 
 
 func _bridge_over_valley() -> void:

@@ -310,15 +310,15 @@
    {"label_key": "streetscape.shrub", "kind": 1, "icon": "ls_shrub", "row_m": 3},
    {"label_key": "streetscape.bin", "kind": 3, "icon": "ls_bin", "row_m": 30},
    {"label_key": "streetscape.hydrant", "kind": 5, "icon": "ls_hydrant", "row_m": 100},
-   {"label_key": "streetscape.phone", "kind": 7, "icon": "ls_phone"},
-   {"label_key": "streetscape.meadow", "kind": 9, "icon": "ls_meadow"},
+   {"label_key": "streetscape.phone", "tip_key": "streetscape.phone.tip", "kind": 7, "icon": "ls_phone"},
+   {"label_key": "streetscape.meadow", "tip_key": "streetscape.meadow.tip", "kind": 9, "icon": "ls_meadow"},
    {"label_key": "streetscape.streetname", "kind": 11, "icon": "ls_streetname"}],
   "barriers": [
    {"label_key": "barrier.kind.fence", "kind": 0, "icon": "fenceRun", "half_width_m": 0.2},
    {"label_key": "barrier.kind.hedge", "kind": 2, "icon": "hedge", "half_width_m": 0.4},
    {"label_key": "barrier.kind.railing", "kind": 4, "icon": "railing", "half_width_m": 0.15},
    {"label_key": "barrier.kind.wall", "kind": 1, "icon": "wallRun", "half_width_m": 0.2},
-   {"label_key": "barrier.kind.guardrail", "kind": 3, "icon": "guardrail", "half_width_m": 0.2}],
+   {"label_key": "barrier.kind.guardrail", "tip_key": "barrier.kind.guardrail.tip", "kind": 3, "icon": "guardrail", "half_width_m": 0.2}],
   "poles": [
    {"label_key": "pole.mode.build", "kind": "build", "icon": "pole_build"},
    {"label_key": "pole.mode.remove", "kind": "remove", "icon": "pole_remove"}],

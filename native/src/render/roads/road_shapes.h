@@ -4,6 +4,7 @@
 #pragma once
 
 #include "render/kept_by_revision.h"
+#include "render/roads/street_shapes.h"
 #include "sim/catalog/profile_types.h"
 #include "sim/roads/geometry.h"
 
@@ -50,7 +51,7 @@ inline godot::Vector3 side(const RoadEnd &e, double u) { return e.p + godot::Vec
 // The line `w` off a kerb line from a to b, away from the node (wa at a's end, wb at b's).
 std::vector<godot::Vector3> outside(const std::vector<godot::Vector3> &line, const RoadEnd &a, const RoadEnd &b, float wa, float wb);
 // Whether a node of several arms is drawn as a plate: one of its mouths stands back from it.
-bool is_plate(const std::vector<RoadEnd> &ends);
+bool is_plate(const NodeOutlineShape &K, const std::vector<RoadEnd> &ends);
 constexpr double FILLET_SLACK = 0.05; // how far short of its fillet's trim an end may stand and still turn its corner on it
 
 struct RoadEmit;

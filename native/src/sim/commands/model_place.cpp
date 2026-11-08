@@ -18,7 +18,7 @@ using namespace b40;
 
 namespace {
 constexpr double SEED_GRID_M = 0.5;
-constexpr uint32_t PLACE_SALT = 0x5bd1e995u;
+constexpr uint32_t PLACE_SALT = 0x5bd1e995u; // a stream's salt: any fixed odd number apart from the others
 constexpr float FACE_REACH_M = 40.f; // how far off a street a lot still takes that street as its own
 constexpr float TOUCH_M2 = 1e-3f; // lots meeting at an edge do not overlap
 
@@ -37,9 +37,9 @@ Building record_at(const Body &body, double ax, double az, double rot) {
 Ring lot_ring(const Building &b) {
 	LotFrame f = lot_frame(b);
 	Ring ring;
-	for (Point2 c : { Point2{ -b.w / 2, 0 }, Point2{ b.w / 2, 0 }, Point2{ b.w / 2, b.d }, Point2{ -b.w / 2, b.d } }) {
+	for (V2 c : { V2{ -b.w / 2, 0 }, V2{ b.w / 2, 0 }, V2{ b.w / 2, b.d }, V2{ -b.w / 2, b.d } }) {
 		V2 p = f.at(c.x, c.y);
-		ring.push_back(Point2{ p.x, p.y });
+		ring.push_back(V2{ p.x, p.y });
 	}
 	if (ring_area(ring) < 0) std::reverse(ring.begin(), ring.end());
 	return ring;

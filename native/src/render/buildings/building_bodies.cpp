@@ -14,7 +14,8 @@ namespace city {
 
 namespace {
 constexpr size_t ROOMS_KEPT = 8192, CUTS_KEPT = 1024; // bodies' rooms and cut bodies kept, each counted as one
-constexpr float SHADE_BASE = 0.93f, SHADE_SPAN = 0.12f, SHADE_MOD = 1000.f;
+// The body's shade from its id: Knuth's multiplicative hash, taken in thousandths.
+constexpr float SHADE_MOD = 1000.f;
 constexpr uint32_t GOLDEN = 2654435761u;
 
 template <typename T>
@@ -30,7 +31,7 @@ size_t BuildingBodies::KeyHash::operator()(const Key &k) const {
 	return size_t(b40::BodyKeyHash::mix(b40::BodyKeyHash()(k.body), k.generation));
 }
 size_t BuildingBodies::KeyHash::operator()(const CutKey &k) const {
-	constexpr int HALF_BITS = 32;
+	constexpr int HALF_BITS = 32; // the level in the low half of the key's second word, the direction in the high
 	const uint64_t h = b40::BodyKeyHash::mix((*this)(k.body), uint64_t(uint32_t(k.level)) | (uint64_t(uint32_t(k.dir)) << HALF_BITS));
 	return size_t(b40::BodyKeyHash::mix(h, k.turn));
 }
@@ -50,14 +51,15 @@ std::shared_ptr<const b40::Body> BuildingBodies::cut_body(const Key &k, const b4
 	uint32_t turn;
 	std::memcpy(&turn, &rec.rot, sizeof turn);
 	return cuts_.get(CutKey{ k, cut.level, cut.dir, turn }, [&]() {
-		const b40::Point2 world = b40::cut_direction(cut.dir);
-		const b40::Point2 local{ world.x * f.e0.x + world.y * f.e0.y, world.x * f.e1.x + world.y * f.e1.y }; // the camera's way in the lot's frame
+		const V2 world = b40::cut_direction(cut.dir);
+		const V2 local{ world.x * f.e0.x + world.y * f.e0.y, world.x * f.e1.x + world.y * f.e1.y }; // the camera's way in the lot's frame
 		return std::shared_ptr<const b40::Body>(std::make_shared<b40::Body>(b40::cut_open(whole, cut.level, local)));
 	}, one<b40::Body>);
 }
 
 void BuildingBodies::place(const b40::Data &data, const b40::BuildingLook &look, const HeightPatch &ground, const Building &rec, b40::Placed &pl,
 		const b40::CutView *cut) {
+	const b40::BuildingBodiesLook &K = look.shapes.building_bodies;
 	const b40::LotFrame f = b40::lot_frame(rec);
 	const Key k = key_of(data, rec);
 	pl.hold = b40::PlacedHold();
@@ -81,7 +83,7 @@ void BuildingBodies::place(const b40::Data &data, const b40::BuildingLook &look,
 	}
 	pl.lot = b40::Basis{ o + e2 * floor, e0, e1, e2 };
 	pl.id = rec.seed;
-	pl.shade = SHADE_BASE + std::fmod(float(rec.seed * GOLDEN), SHADE_MOD) / SHADE_MOD * SHADE_SPAN;
+	pl.shade = K.shade_base + std::fmod(float(rec.seed * GOLDEN), SHADE_MOD) / SHADE_MOD * K.shade_span;
 	pl.ground_lo = lo - floor;
 	const HeightPatch *patch = &ground;
 	pl.ground = [patch](const Vector3 &p) { return patch->height_at(p.x, p.z); };

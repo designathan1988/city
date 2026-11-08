@@ -14,6 +14,8 @@ using namespace godot;
 namespace city {
 
 namespace {
+// A reach no camera gets to; the screen height the pixel bands are measured on (1080 lines); the view angle when no camera
+// gives one, and the least pixel size worth a band.
 constexpr float NEVER_M = 1e9f;
 constexpr float PROJECTION_HEIGHT = 1080.f;
 constexpr float VIEW_ANGLE_FALLBACK = 90.f, MIN_SCREEN_PX = 1e-3f;

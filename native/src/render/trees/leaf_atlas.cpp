@@ -21,7 +21,7 @@ namespace city {
 
 namespace {
 constexpr int RGBA = 4, ALPHA = 3;
-constexpr float BYTE = 255.f;
+constexpr float BYTE = 255.f; // a byte's largest value
 // A frond's outline up its length: where the sine starts, how much of it the frond runs, and how full its shoulders stand.
 constexpr float FROND_FOOT = 0.06f, FROND_RUN = 0.95f, FROND_ARCH = 0.7f;
 constexpr int REGIONS = 3; // the far tuft, the near tuft, the frond

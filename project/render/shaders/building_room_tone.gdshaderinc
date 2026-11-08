@@ -7,28 +7,42 @@ const vec3 FLOOR_HOME = vec3(0.29, 0.235, 0.18); // homes: boards and tiles, hal
 const float ROOM_DEEP_SHARE = 1.8; // a room's depth over its height: how soon a ray going down or up meets the floor or the ceiling
 const float HUNG_COVER = 0.394; // what room_hung covers of a window, on the mean of its picks
 const vec3 HUNG_MEAN = vec3(0.515, 0.495, 0.461); // and the mean tone of what covers it
-const float HUNG_DIM = 0.776; // room_hung's last 0.8 under the mean of its daylight
+const float HUNG_DAYLIT = 0.776; // room_hung's hung_dim under the mean of its daylight, worked out by hand (log/review.md: B3)
+const float LEAST_INTO = 1e-3; // a ray's share into the wall divided by never under this
+// A room's independent picks from its lot: fract(lot * k), each k far from a simple ratio of the others (room_hung's too).
+const float LOT_HUNG = 13.71, LOT_CLOTH = 7.37, LOT_SIDE = 3.13;
+const int CLOTH_KINDS = 7; // the cloths a room may hang (cloth_tone)
+// What hangs in a room's window, read here and by room_hung (building_pane.gdshaderinc): data/render/materials.json _shared rooms.
+uniform vec4 hung_kinds; // the shares of lots under which a room has curtains, a roller blind, a Venetian blind, a sheer
+uniform vec2 curtain_side; // a curtain's width, of the pane: from and over
+uniform vec2 roller_down; // a roller blind's drop, of the pane: from and over
+uniform float cloth_until[CLOTH_KINDS - 1]; // a cloth's pick: under each share of lots, the cloth of its place
+uniform vec3 cloth_tone[CLOTH_KINDS]; // linear
+uniform vec4 blind_mean; // a Venetian blind's mean tone and cover over its slats, room_hung's worked out by hand (B3)
+uniform vec4 sheer_mean; // a sheer's
 
 // The colour of the cloth a room hangs, by its pick.
 vec3 pane_cloth(float h) {
-	return h < 0.25 ? vec3(0.86, 0.8, 0.68) : h < 0.45 ? vec3(0.9, 0.89, 0.86) : h < 0.6 ? vec3(0.5, 0.51, 0.53)
-			: h < 0.72 ? vec3(0.72, 0.6, 0.45) : h < 0.84 ? vec3(0.4, 0.47, 0.58) : h < 0.93 ? vec3(0.6, 0.34, 0.26) : vec3(0.42, 0.5, 0.38);
+	for (int i = 0; i < CLOTH_KINDS - 1; i++) {
+		if (h < cloth_until[i]) return cloth_tone[i];
+	}
+	return cloth_tone[CLOTH_KINDS - 1];
 }
 
 // A room looked into along `V` (into the wall `n`): the back wall square on, the floor or the ceiling more and more as the ray leans.
 vec3 room_tone(vec3 V, vec3 n, vec3 floor_tone) {
-	float lean = abs(V.y) / max(dot(V, -n), 1e-3) * ROOM_DEEP_SHARE;
+	float lean = abs(V.y) / max(dot(V, -n), LEAST_INTO) * ROOM_DEEP_SHARE;
 	return mix(ROOM_WALL, V.y < 0.0 ? floor_tone : ROOM_CEILING, min(lean, 1.0));
 }
 
 // The room `room` with what hangs in its window, each room its own by `lot`, as room_hung picks it.
 vec3 pane_tone(float lot, vec3 room) {
-	float h1 = fract(lot * 13.71), h2 = fract(lot * 7.37), h3 = fract(lot * 3.13);
-	vec3 cloth = pane_cloth(h2) * HUNG_DIM;
-	if (h1 < 0.36) return mix(room, cloth, min(2.0 * (0.14 + 0.2 * h3), 1.0));
-	if (h1 < 0.56) return mix(room, cloth, 0.15 + 0.65 * h3);
-	if (h1 < 0.68) return mix(room, vec3(0.53, 0.523, 0.496), 0.55);
-	if (h1 < 0.8) return mix(room, vec3(0.698, 0.691, 0.667), 0.5);
+	float h1 = fract(lot * LOT_HUNG), h2 = fract(lot * LOT_CLOTH), h3 = fract(lot * LOT_SIDE);
+	vec3 cloth = pane_cloth(h2) * HUNG_DAYLIT;
+	if (h1 < hung_kinds.x) return mix(room, cloth, min(2.0 * (curtain_side.x + curtain_side.y * h3), 1.0));
+	if (h1 < hung_kinds.y) return mix(room, cloth, roller_down.x + roller_down.y * h3);
+	if (h1 < hung_kinds.z) return mix(room, blind_mean.rgb, blind_mean.w);
+	if (h1 < hung_kinds.w) return mix(room, sheer_mean.rgb, sheer_mean.w);
 	return room;
 }
 

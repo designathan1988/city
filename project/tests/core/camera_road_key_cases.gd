@@ -52,12 +52,12 @@ func _zone_brush() -> void:
 	var line := PackedVector3Array()
 	for k in int(ZONE_ROAD_M / ZoneStroke.STEP_M) + 1:
 		line.append(a + side + Vector3(k * ZoneStroke.STEP_M, 0, 0))
-	t.tools.set_tool(ToolController.Tool.ZONE, {"zone": DataTables.zone_code("residential")})
+	t.tools.set_tool(ToolController.Tool.ZONE, {"zone": ZoneTable.code("residential")})
 	var brush: Variant = t.tools.active
 	brush.click(a + side)
 	brush.drag(b + side)
 	brush.release(b + side)
-	var again: Dictionary = CityStore.dispatch(&"paint_zone_path", [line, DataTables.zone_code("residential")])
+	var again: Dictionary = CityStore.dispatch(&"paint_zone_path", [line, ZoneTable.code("residential")])
 	t.check(again.get("error", "") == "tools.toast.zoneSame", "a fast drag zones every lot of the way: %s" % [again])
 	var shift := InputEventKey.new()
 	shift.keycode = KEY_SHIFT

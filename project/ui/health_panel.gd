@@ -97,7 +97,7 @@ func _render() -> void:
 
 
 func _render_health() -> void:
-	HudWidgets.label(_body, &"MutedLabel", tr("health.status." + Health.status()))
+	HudWidgets.label(_body, &"MutedLabel", tr("health.status." + Health.status()).format({"seconds": int(DataTables.game("health").status_window_s)}))
 	for e: Dictionary in Health.entries.slice(0, int(DataTables.game("health").rows)):
 		var row := HudWidgets.hbox(HudWidgets.panel(_body, &"RowBand"), &"Gap")
 		var dot := Panel.new()

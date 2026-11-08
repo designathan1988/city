@@ -5,13 +5,12 @@
 ## a proposed lot, or on a lot of the generated city, takes it as the player's first (one undo step with the edit). The zone brush paints them.
 extends ToolBase
 
-## What of a corner or a side the pointer takes, in screen pixels.
-const TAKE_PX := 14.0
-const DRAWN_PX := 2.0
-## How far a lot's point reaches for a footway or a corner: pixels at this zoom, and never less than these metres.
-const CATCH_PX := 16.0
-const SNAP_LEAST_M := 2.5
-const MARK_M := 0.9
+## What of a corner or a side the pointer takes, how far a lot's point reaches, the marks (data/game/tools.json lots).
+static var take_px: float = DataTables.game("tools").lots.take_px
+static var drawn_px: float = DataTables.game("tools").drawn_px
+static var catch_px: float = DataTables.game("tools").lots.catch_px
+static var snap_least_m: float = DataTables.game("tools").lots.snap_least_m
+static var mark_m: float = DataTables.game("tools").lots.mark_m
 
 var mode := "add"
 var cut_kind := CityStore.code(&"LotCutKind", &"ACROSS")
@@ -32,7 +31,7 @@ func enter() -> void:
 	parts = params.get("parts", 2)
 	_land.forget()
 	_show()
-	ctl.hint.emit("zone.lots.help", true)
+	ctl.hint.emit(tr("zone.lots.help"), true)
 
 
 func exit() -> void:
@@ -85,7 +84,7 @@ func _close() -> void:
 
 
 func _width(at: Vector3) -> float:
-	return ctl.px_at(at) * DRAWN_PX
+	return ctl.px_at(at) * drawn_px
 
 
 func _closed(points: PackedVector3Array) -> PackedVector3Array:
@@ -105,11 +104,11 @@ func _show(extra: Array = []) -> void:
 
 ## A point of a lot by the footways, the blocks' corners and the other lots' corners; `apart` is the corner being dragged.
 func _snap(p: Vector3, apart := Vector3.INF) -> Vector3:
-	return CityStore.query(&"lot_snap_point", [p, maxf(SNAP_LEAST_M, ctl.px_at(p) * CATCH_PX), apart])
+	return CityStore.query(&"lot_snap_point", [p, maxf(snap_least_m, ctl.px_at(p) * catch_px), apart])
 
 
 func _mark(p: Vector3) -> Dictionary:
-	return {"points": PackedVector3Array([p + Vector3.LEFT * MARK_M, p + Vector3.RIGHT * MARK_M]), "half_width": MARK_M}
+	return {"points": PackedVector3Array([p + Vector3.LEFT * mark_m, p + Vector3.RIGHT * mark_m]), "half_width": mark_m}
 
 
 func click(p: Vector3) -> void:
@@ -118,26 +117,26 @@ func click(p: Vector3) -> void:
 			_from = _snap(p)
 			_angle = CityStore.query(&"lot_angle_at", [_from])
 		"polygon":
-			if _points.size() >= 3 and Vector2(p.x - _points[0].x, p.z - _points[0].z).length() < ctl.px_at(p) * TAKE_PX:
+			if _points.size() >= 3 and Vector2(p.x - _points[0].x, p.z - _points[0].z).length() < ctl.px_at(p) * take_px:
 				_done(CityStore.dispatch(&"lot_add_polygon", [_points]), "game.toast.lotCreated")
 			else:
 				_points.push_back(_snap(p))
 				_show()
 		"edit":
 			_lot_for(p, "cmd.lot.edit")
-			_from = CityStore.query(&"lot_corner_near", [p, ctl.px_at(p) * TAKE_PX])
+			_from = CityStore.query(&"lot_corner_near", [p, ctl.px_at(p) * take_px])
 			if _from == Vector3.INF:
 				_close()
 		"curve":
 			_lot_for(p, "cmd.lot.edit")
-			var side: Dictionary = CityStore.query(&"lot_side_near", [p, ctl.px_at(p) * TAKE_PX])
+			var side: Dictionary = CityStore.query(&"lot_side_near", [p, ctl.px_at(p) * take_px])
 			_side = [side.a, side.b] if not side.is_empty() else []
 			_from = p if not side.is_empty() else Vector3.INF
 			if side.is_empty():
 				_close()
 		"front":
 			_lot_for(p, "cmd.lot.edit")
-			var side: Dictionary = CityStore.query(&"lot_side_near", [p, ctl.px_at(p) * TAKE_PX])
+			var side: Dictionary = CityStore.query(&"lot_side_near", [p, ctl.px_at(p) * take_px])
 			if side.is_empty():
 				_close()
 				ctl.hint.emit(tr("hint.lot.frontPick"), false)
@@ -203,7 +202,7 @@ func release(p: Vector3) -> void:
 	match mode:
 		"add":
 			var ring := _land.at(p)
-			if Vector2(p.x - _from.x, p.z - _from.z).length() < ctl.px_at(p) * TAKE_PX and not ring.is_empty():
+			if Vector2(p.x - _from.x, p.z - _from.z).length() < ctl.px_at(p) * take_px and not ring.is_empty():
 				_done(CityStore.dispatch(&"lot_add_polygon", [ring]), "game.toast.lotCreated") # a click takes what the streets propose
 			else:
 				_done(CityStore.dispatch(&"lot_add_rect", [_from, _snap(p), _angle]), "game.toast.lotCreated")
@@ -234,7 +233,7 @@ func hover(p: Vector3) -> void:
 		if _points.size() >= 1:
 			extra.push_back({"points": PackedVector3Array([_points[-1], at]), "half_width": _width(p) * 2.0})
 	elif mode == "front" or mode == "curve":
-		var side: Dictionary = CityStore.query(&"lot_side_near", [p, ctl.px_at(p) * TAKE_PX])
+		var side: Dictionary = CityStore.query(&"lot_side_near", [p, ctl.px_at(p) * take_px])
 		if not side.is_empty():
 			extra.push_back({"points": PackedVector3Array([side.a, side.b]), "half_width": _width(p) * 2.0})
 	var over: PackedVector3Array = CityStore.query(&"lot_ring", [id]) if id != 0 else (_land.at(p) if mode == "add" else PackedVector3Array())

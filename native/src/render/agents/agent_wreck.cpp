@@ -10,20 +10,19 @@ using namespace godot;
 
 namespace city {
 
-static constexpr float FLATTEST_HALF_M = 1e-3f;
+static constexpr float FLATTEST_HALF_M = 1e-3f; // a body's half height divides: never under this
 
 namespace {
-constexpr float DENT_WIDE_M = 0.45f, DENT_FINE_M = 0.18f, DENT_WIDE_DEEP_M = 0.04f, DENT_FINE_DEEP_M = 0.015f, SAG_M = 0.12f;
-constexpr float DENT_X = 0.5f, DENT_Z = 0.6f, Z_PACE = 1.3f, Y_PACE = 0.7f;
-constexpr int CORNERS = 3;
-constexpr float WRECK_HASH_A = 97.f, SEED_B = 61.f, SEED_C = 13.f;
+constexpr int CORNERS = 3; // a triangle's
+constexpr float WRECK_HASH_A = 97.f, SEED_B = 61.f, SEED_C = 13.f; // primes the seed is taken modulo: a phase a wave
 
-float wave(const Vector3 &p, float k, uint32_t seed) {
-	return std::sin(p.x * k + float(seed % uint32_t(WRECK_HASH_A))) * std::cos(p.z * k * Z_PACE + float(seed % uint32_t(SEED_B))) + std::sin(p.y * k * Y_PACE + float(seed % uint32_t(SEED_C)));
+float wave(const WreckShape &K, const Vector3 &p, float k, uint32_t seed) {
+	return std::sin(p.x * k + float(seed % uint32_t(WRECK_HASH_A))) * std::cos(p.z * k * K.z_pace + float(seed % uint32_t(SEED_B))) + std::sin(p.y * k * K.y_pace + float(seed % uint32_t(SEED_C)));
 }
 } // namespace
 
-AgentWreck agent_wreck(const MeshBuilder &mb, uint32_t seed) {
+AgentWreck agent_wreck(const AgentShapes &shapes, const MeshBuilder &mb, uint32_t seed) {
+	const WreckShape &K = shapes.agent_wreck;
 	AABB box;
 	bool first = true;
 	for (int64_t i = 0; i < mb.v.size(); i++) {
@@ -35,8 +34,8 @@ AgentWreck agent_wreck(const MeshBuilder &mb, uint32_t seed) {
 	const float half = std::max(box.size.y * 0.5f, FLATTEST_HALF_M);
 	const auto buckled = [&](const Vector3 &at) {
 		const Vector3 p = at - middle;
-		const float top = std::max(0.f, p.y / half), dent = wave(p, 1.f / DENT_WIDE_M, seed) * DENT_WIDE_DEEP_M + wave(p, 1.f / DENT_FINE_M, seed) * DENT_FINE_DEEP_M;
-		return Vector3(p.x + dent * DENT_X, p.y - top * top * SAG_M + dent, p.z + dent * DENT_Z);
+		const float top = std::max(0.f, p.y / half), dent = wave(K, p, 1.f / K.dent_wide_m, seed) * K.dent_wide_deep_m + wave(K, p, 1.f / K.dent_fine_m, seed) * K.dent_fine_deep_m;
+		return Vector3(p.x + dent * K.dent_x, p.y - top * top * K.sag_m + dent, p.z + dent * K.dent_z);
 	};
 	MeshBuilder out;
 	const float glass = agent_tag(AgentTag::GLASS).x;

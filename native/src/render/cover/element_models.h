@@ -20,7 +20,9 @@ struct ElementModel {
 
 class ElementModels {
 public:
-	bool load(const DataValue &elements, godot::PackedStringArray &errors); // cover.json elements, through the strict reader's values
+	// cover.json elements, through the strict reader's values: a row of models for each kind laid on the ground (`laid`, the
+	// catalogue's kinds before its first effect).
+	bool load(const DataValue &elements, int laid, godot::PackedStringArray &errors);
 	int kinds() const { return int(first_.size()); } // the prop kinds, effects not among them
 	int first(int kind) const { return first_[size_t(kind)]; }
 	int variants(int kind) const { return count_[size_t(kind)]; }

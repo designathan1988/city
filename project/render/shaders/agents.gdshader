@@ -9,6 +9,8 @@ shader_type spatial;
 #include "res://render/shaders/contracts/agents.gdshaderinc"
 
 #include "res://render/shaders/color_space.gdshaderinc"
+#include "res://render/shaders/fresnel.gdshaderinc"
+#include "res://render/shaders/hash.gdshaderinc"
 
 global uniform float night;
 uniform vec3 head_glow : source_color;
@@ -38,8 +40,12 @@ varying flat float v_tag;
 varying flat vec4 v_custom;
 varying flat float v_seed;
 // A number in [0, 1) from the vehicle's seed, a seat and a purpose.
+const float SEED_SPREAD = 251.0; // a vehicle's seed spread off the sin hash's period
+const float PICK_ROOF = 9.0; // the roof's purpose among a vehicle's picks
+uniform vec2 sheen_lift; // the sky in the coat brighter looking up: from and over the reflection's rise
+uniform vec2 sheen_horizon; // the street gives way to the sky in the coat between these rises
 float pick(float seed, float seat, float what) {
-	return fract(sin(dot(vec3(seed * 251.0, seat, what), vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+	return fract(sin(dot(vec3(seed * SEED_SPREAD, seat, what), SIN_HASH)) * SIN_HASH_SCALE);
 }
 
 void vertex() {
@@ -62,8 +68,8 @@ void vertex() {
 // running along the doors and the sky growing on the roof at a glancing view is what reads as car paint.
 vec3 sheen(vec3 n, vec3 v) {
 	vec3 r = reflect(-v, n);
-	float f = 0.04 + 0.96 * pow(1.0 - clamp(dot(n, v), 0.0, 1.0), 5.0);
-	vec3 world = mix(source_linear(sheen_ground), source_linear(sheen_sky) * (0.7 + 0.5 * clamp(r.y, 0.0, 1.0)), smoothstep(-0.04, 0.06, r.y));
+	float f = schlick(clamp(dot(n, v), 0.0, 1.0));
+	vec3 world = mix(source_linear(sheen_ground), source_linear(sheen_sky) * (sheen_lift.x + sheen_lift.y * clamp(r.y, 0.0, 1.0)), smoothstep(sheen_horizon.x, sheen_horizon.y, r.y));
 	return world * f * sheen_power * (1.0 - night);
 }
 
@@ -78,7 +84,7 @@ void fragment() {
 		rough = paint_roughness;
 		emit = coat;
 	} else if (tag == TAG_ROOF) {
-		c = pick(v_seed, 0.0, 9.0) < black_roof_share ? source_linear(black_roof) : srgb_to_linear(paints[int(v_custom.r + 0.5)]);
+		c = pick(v_seed, 0.0, PICK_ROOF) < black_roof_share ? source_linear(black_roof) : srgb_to_linear(paints[int(v_custom.r + 0.5)]);
 		rough = paint_roughness;
 		emit = coat;
 	} else if (tag == TAG_GLOSS) {

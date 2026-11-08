@@ -100,7 +100,7 @@ Vector3 CityBuilder::body_size(const PackedByteArray &bytes) const {
 	b40::Body b;
 	if (!body_of(bytes, b)) return Vector3();
 	float top = 0;
-	for (const b40::Volume &v : b.volumes) top = std::max(top, b.level_z(v.top()) + b40::roof_rise(v));
+	for (const b40::Volume &v : b.volumes) top = std::max(top, b.level_z(v.top()) + b40::roof_rise(state_->buildings.designs.shapes.roof, v));
 	return Vector3(b.plan.W, b.plan.D, top);
 }
 

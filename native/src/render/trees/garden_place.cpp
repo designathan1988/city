@@ -14,7 +14,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr uint32_t GARDEN_SALT = 0x6a4dU;
+constexpr uint32_t GARDEN_SALT = 0x6a4dU; // the gardens' stream of a lot's hash (any word)
 constexpr float PLANT_FOOT_BELOW = 0.05f; // a plant's foot under the ground
 // A tree: how wide against its height, and how much deeper than wide.
 constexpr float TREE_SPREAD = 0.82f, TREE_SPREAD_SPAN = 0.3f, TREE_DEEP = 0.9f, TREE_DEEP_SPAN = 0.2f;

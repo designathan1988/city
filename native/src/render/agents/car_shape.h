@@ -5,6 +5,7 @@
 // the side glass leaning in, round the roof edge to the crown.
 #pragma once
 
+#include "render/agents/agent_shapes.h"
 #include "render/agents/agent_meshes.h"
 
 namespace city {
@@ -13,9 +14,9 @@ namespace city {
 // from its middle), the side glass with its frame (7-10), the roof's rounded edge (10-14), the crown (14-17).
 constexpr int RING = 18;
 constexpr int RING_SILL = 3, RING_BELT = 7, RING_FRAME_TOP = 9, RING_PANE_TOP = 10, RING_ROOF = 14;
-constexpr float CAR_ARCH_PAD_M = 0.07f; // a wheel arch's room round its tyre
 
 struct CarStyle {
+	const AgentShapes *shapes = nullptr; // the parts' sizes (agents.json "shapes")
 	float L = 0, W = 0, H = 0, r = 0, tw = 0, clear = 0; // tw: the tyre's width
 	float axles[2] = {}, track[2] = {}; // front and rear: the axle (share of L from the middle), the track (metres)
 	std::vector<float> top_x, top_y, top_m; // the roof line, x ascending (share of L), y (share of H), slopes
@@ -30,7 +31,7 @@ struct CarStyle {
 	bool rear_glass = true; // "rear": [] is a blind back (the van)
 };
 
-CarStyle read_car_style(const DataValue &car, const DataValue &body);
+CarStyle read_car_style(const DataValue &car, const DataValue &body, const AgentShapes &shapes);
 float car_top_at(const CarStyle &s, float xf);
 float car_half_w(const CarStyle &s, float xf);
 void car_ring(const CarStyle &s, float xf, godot::Vector2 out[RING]);

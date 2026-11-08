@@ -18,9 +18,9 @@ namespace city {
 
 namespace {
 constexpr float HALF = 0.5f;
-constexpr int RGB_BITS = 8, RECT_INTS = 4;
-constexpr uint32_t OPAQUE = 0xFFu;
-constexpr uint64_t HASH_START = 14695981039346656037ull, HASH_STEP = 1099511628211ull;
+constexpr int RGB_BITS = 8, RECT_INTS = 4; // a line's colour shifted over its alpha byte; a rectangle's four ints
+constexpr uint32_t OPAQUE = 0xFFu; // that alpha byte
+constexpr uint64_t HASH_START = 14695981039346656037ull, HASH_STEP = 1099511628211ull; // FNV-1a, 64 bits: its offset basis and prime
 
 int64_t track_key(int id) { return int64_t(id) * 2; }
 int64_t stop_key(int id) { return int64_t(id) * 2 + 1; }
@@ -76,7 +76,7 @@ bool TransitRenderer::init(const RenderContext &ctx, PackedStringArray &errors) 
 	const Dictionary t = ctx.table("transit", errors);
 	if (!errors.is_empty() || !look_.read(t, errors)) return false;
 	const int64_t before = errors.size();
-	look_.kerb = DataReader{ errors, "streets.json" }.at(ctx.table("streets", errors))["heights"]["sidewalk"].f(); // render/data_reader.h
+	look_.kerb = ctx.catalog->furniture.sidewalk.height_m;
 	const DataValue table = DataReader{ errors, "transit.json" }.at(t);
 	radius_ = table["radius_m"].f();
 	per_frame_ = table["items_per_frame"].whole();

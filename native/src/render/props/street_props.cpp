@@ -20,8 +20,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr uint32_t TREE_SALT = 0x7ee5u, TREE_SPECIES = 2;
-constexpr float CANOPY_SCALE_MIN = 0.8f, TREE_SCALE_SPAN = 0.35f, SHRUB_SCALE = 0.18f;
+constexpr uint32_t TREE_SALT = 0x7ee5u; // the trees' stream of a segment's id (any word)
 constexpr uint32_t PROP_KINDS = furniture_bit(FurnitureKind::LAMP) | furniture_bit(FurnitureKind::HYDRANT) | furniture_bit(FurnitureKind::BIN) |
 		furniture_bit(FurnitureKind::BENCH) | furniture_bit(FurnitureKind::COLUMN) | furniture_bit(FurnitureKind::POSTBOX) |
 		furniture_bit(FurnitureKind::PHONE) | furniture_bit(FurnitureKind::DRAIN) | furniture_bit(FurnitureKind::TREE);
@@ -261,14 +260,15 @@ void place_pole_preview(const CityState &s, const StreetLook &L, const Furniture
 }
 
 void place_street_trees(const CityState &s, const StreetLook &L, int64_t key, std::vector<TreeSpot> &out) {
+	const StreetPropsShape &K = L.shapes.street_props;
 	std::vector<FurnitureSpot> spots;
 	each_owned_segment(s, key, [&](int sid) {
 		spots.clear();
 		traffic::street_furniture_of(s, sid, furniture_bit(FurnitureKind::TREE) | furniture_bit(FurnitureKind::SHRUB), spots);
 		for (const FurnitureSpot &p : spots) {
 			uint32_t h = hash_combine(uint32_t(sid) * TREE_SALT, uint32_t(p.v * p.side + p.v));
-			const float scale = (CANOPY_SCALE_MIN + TREE_SCALE_SPAN * hash_float(h)) * (p.kind == FurnitureKind::SHRUB ? SHRUB_SCALE : 1.f);
-			out.push_back({ world_of(s, L, p, nullptr), scale, TAU_F * hash_float(h + 1), int(hash_u32(h) % TREE_SPECIES) });
+			const float scale = (K.canopy_scale_min + K.tree_scale_span * hash_float(h)) * (p.kind == FurnitureKind::SHRUB ? K.shrub_scale : 1.f);
+			out.push_back({ world_of(s, L, p, nullptr), scale, TAU_F * hash_float(h + 1), K.species[size_t(hash_u32(h) % uint32_t(K.species.size()))] });
 		}
 	});
 }

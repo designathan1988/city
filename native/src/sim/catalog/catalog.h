@@ -4,6 +4,7 @@
 
 #include "sim/catalog/blast_params.h"
 #include "sim/catalog/furniture_types.h"
+#include "sim/catalog/gen_shapes.h"
 #include "sim/catalog/nature_types.h"
 #include "sim/catalog/profile_types.h"
 #include "sim/catalog/scenic.h"
@@ -19,7 +20,7 @@
 namespace city {
 
 struct Tuning {
-	CITY_TUNING_FIELDS(CITY_TUNING_DECLARE)
+	CITY_TUNING_FIELDS(CITY_TUNING_DECLARE, CITY_TUNING_DECLARE_COUNT, CITY_TUNING_DECLARE_DOUBLE)
 };
 
 // A map offered by the start screen: its size in 1 km tiles, whether its city is planned on flat ground, that city's radius (0: it
@@ -36,13 +37,20 @@ struct MapDef {
 // What a zone is at bottom (zones.json "base"): the one owner of the base kinds' codes.
 enum BaseZone : uint8_t { BASE_NONE, BASE_RESIDENTIAL, BASE_COMMERCIAL, BASE_INDUSTRIAL, BASE_MIXED, BASE_COUNT };
 struct ZoneDef {
-	std::string id, name_key;
+	std::string id; // its name is the interface's (zones.json name_key, DataTables.zone_name_key)
 	int base = BASE_NONE; // BaseZone
 	int density = 1; // 0 low, 1 medium, 2 high
+	std::string building; // what the generator builds on it (b40 Kind by name: house, flats, tower, shop, office, works)
 	uint32_t color = 0; // RGBA8
 };
-constexpr int ZONE_CODES = 9;
+constexpr int ZONE_CODES = 9; // the zones table's rows (zones.json): the codes a road side and a lot carry
 constexpr int BASE_ZONE_SLOTS = BASE_COUNT;
+constexpr int ZONE_DENSITIES = 3; // low, medium, high
+// The zone codes the generator lays, by what each is (its base and density in zones.json), resolved and checked by the loader.
+struct GenZones {
+	int none = 0, industrial = 0, mixed = 0;
+	int commercial[ZONE_DENSITIES] = {}, residential[ZONE_DENSITIES] = {}; // by density
+};
 
 // Residents and jobs of a building: floor area = w * d * floor_share * floors (Roadcraft world/world.ts).
 struct OccupancyDef {
@@ -65,7 +73,18 @@ struct CityPlanDef {
 	int centres = 0;
 };
 
-// Which lots become civic buildings and how a building's height answers its neighbours' (data/catalog/growth.json).
+// The generated city's road roles, each a profile of road_profiles.json (growth.json road_roles): the loader resolves every one
+// and refuses a name the catalogue lacks.
+#define CITY_ROAD_ROLES(X) X(local) X(avenue) X(avenue_bike) X(expressway) X(collector) X(wide) X(urban) X(cobble) X(green) X(concrete) \
+	X(bike) X(bus_side) X(boulevard) X(av4)
+struct RoadRoles {
+#define X(role) int role = -1;
+	CITY_ROAD_ROLES(X)
+#undef X
+};
+
+// Which lots become civic buildings, how a building's height answers its neighbours', and the generator's road roles
+// (data/catalog/growth.json).
 // One way a grown building is fitted to its lot (data/catalog/growth.json "fit"): its depth set back from the front by a share of it,
 // its width kept to a share of it, its zone dropped so many densities.
 struct FitTry {
@@ -75,6 +94,7 @@ struct FitTry {
 
 struct GrowthDef {
 	CityPlanDef plan;
+	RoadRoles roads;
 	float fit_inset_m = 0; // a body's ground blocks are tested this far inside themselves against the lot's ring
 	std::vector<FitTry> fit_tries; // in order; the first whose body fits the lot stands
 	float pick_reach_m = 0; // the next lot grown is drawn among the free ones this near the last
@@ -83,6 +103,8 @@ struct GrowthDef {
 	float organic_reach_m = 0;
 	int organic_extra_floors = 0;
 	float decay_span_min = 0;
+	float occupied_share = 0; // a lot is taken when a building stands within this share of their two half sizes
+	GenShapes shapes; // every value a city generator file tunes (growth.json "shapes")
 };
 
 struct Catalog {
@@ -93,6 +115,7 @@ struct Catalog {
 	RoadPrices prices;
 	StructureCost structure;
 	ZoneDef zones[ZONE_CODES];
+	GenZones gen_zones; // load_zones
 	OccupancyDef occupancy;
 	Tuning tune;
 	TrafficParams traffic; // data/catalog/traffic.json
@@ -114,6 +137,12 @@ struct Catalog {
 		return m.scenic >= 0 && size_t(m.scenic) < scenic.size() ? &scenic[size_t(m.scenic)] : nullptr;
 	}
 	const ZoneDef &zone(int code) const { return zones[(code >= 0 && code < ZONE_CODES) ? code : 0]; }
+	// The code of the zone of `base` at `density`, -1 when the table has none.
+	int zone_code(int base, int density) const {
+		for (int c = 0; c < ZONE_CODES; c++)
+			if (zones[c].base == base && zones[c].density == density) return c;
+		return -1;
+	}
 
 	// A profile added: the catalogue's own at load, a variant in play (road_variants.cpp). The one way a profile comes, so what is
 	// derived from all of them is kept here as each comes, never searched again per call. Returns its id.

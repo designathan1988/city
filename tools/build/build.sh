@@ -4,7 +4,7 @@
 # Ninja: on a Windows host CMake would otherwise pick NMake, which is not installed.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-GODOT="${GODOT:-godot}"
+GODOT="$("${PY:-python}" "$ROOT/tools/tasks/cli.py" var godot)" # suites.json vars: GODOT first, then this machine's
 OUT="${OUT:-$ROOT/dist}"
 JOBS="${JOBS:-$(nproc 2>/dev/null || echo 2)}"
 
@@ -27,7 +27,7 @@ core_windows() { # template_release ships in the export; template_debug is what 
 
 # One DLL, incrementally (the build folder is configured the first time): the build tasks of tools/tasks/suites.json.
 dll() { # <template_debug|template_release> <build dir>
-	bash "$ROOT/tools/build/free_dll.sh"
+	bash "$ROOT/tools/build/free_dll.sh" "libcitycore.windows.$1.x86_64.dll"
 	[ -f "$2/build.ninja" ] || cmake -S "$ROOT/native" -B "$2" -G Ninja -DCMAKE_BUILD_TYPE=Release -DGODOTCPP_TARGET="$1" \
 		-DCMAKE_TOOLCHAIN_FILE="$ROOT/native/toolchain-mingw.cmake" || return 1
 	cmake --build "$2" --target citycore -j "$JOBS"

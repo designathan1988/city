@@ -1,12 +1,10 @@
 // Read-only views for the UI and the tests. Values are derived here from CityState; the UI never recomputes them.
 #include "api/city_core.h"
-#include "api/frame_sections.h"
-#include "api/script_enums.h"
 
 #include "render/render_layers.h"
 
+#include "core/color.h"
 #include "core/math.h"
-#include "core/shader_contracts/all.h"
 #include "core/units.h"
 #include "render/film_grade.h"
 #include "sim/buildings/b40/record.h"
@@ -24,10 +22,8 @@ using namespace godot;
 
 namespace city {
 
-static constexpr int HEX_BASE = 16;
-
 namespace {
-constexpr float RAY_MAX_M = 30000.f;
+constexpr float RAY_MAX_M = 30000.f; // past any map: a ray that meets nothing by here meets nothing
 constexpr float RAY_DIR_MIN = 1e-6f; // a ray with a shorter ground direction is vertical
 constexpr float UNSEEN_BOUND = 1e9f; // an empty city_bounds still has finite numbers
 constexpr float HALF = 0.5f;
@@ -43,7 +39,7 @@ Dictionary body_probe(const b40::Body &body) {
 		if (!v.outline.empty()) {
 			float twice = 0;
 			for (size_t i = 0; i < v.outline.size(); i++) {
-				const b40::Point2 &a = v.outline[i], &b = v.outline[(i + 1) % v.outline.size()];
+				const V2 &a = v.outline[i], &b = v.outline[(i + 1) % v.outline.size()];
 				twice += a.x * b.y - b.x * a.y;
 			}
 			share = std::fabs(twice) * HALF;
@@ -93,31 +89,6 @@ Dictionary lot_probe(const CityState &s, const Building &rec) {
 	return d;
 }
 } // namespace
-
-Dictionary CityCore::constants() const {
-	Dictionary d;
-	d["speed_paused"] = int(SimSpeed::PAUSED);
-	d["speed_fastest"] = int(SimSpeed::FASTEST);
-	d["minutes_per_day"] = MINUTES_PER_DAY;
-	d["minutes_per_hour"] = MINUTES_PER_HOUR;
-	d["zone_codes"] = ZONE_CODES;
-	Dictionary layers;
-	for (const RenderLayerName &l : RENDER_LAYERS) layers[l.name] = int64_t(l.bit);
-	d["render_layers"] = layers;
-	d["enums"] = script_enums(); // every enum a script names (script_enums.h)
-	d["chunk_m"] = CHUNK; // the core's cell: lots, props and the far levels are read a cell at a time
-	Array sections;
-	for (const char *name : FRAME_SECTIONS) sections.push_back(name);
-	d["frame_sections"] = sections;
-	Dictionary shader; // what the shaders read too, by the shaders' names (core/shader_contracts/all.h)
-	for (const ShaderContractGroup &g : SHADER_CONTRACT_GROUPS)
-		for (size_t i = 0; i < g.count; i++) {
-			const ShaderContract &c = g.rows[i];
-			shader[String(c.name)] = c.size == 1 ? Variant(c.value[0]) : Variant(Vector3(real_t(c.value[0]), real_t(c.value[1]), real_t(c.value[2])));
-		}
-	d["shader"] = shader;
-	return d;
-}
 
 TypedArray<Image> CityCore::film_grade(const Dictionary &grade) const {
 	return film_grade_slices(grade);

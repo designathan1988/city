@@ -7,7 +7,6 @@
 #include "sim/roads/road_grade_internal.h"
 
 #include "core/math.h"
-#include "sim/catalog/catalog.h"
 
 #include <algorithm>
 #include <cmath>
@@ -23,13 +22,13 @@ constexpr float CREST_ROUND_RUN = 3.2f; // RAMP_CREST: the crest's rounding, as 
 constexpr float CURVE_PEAK = 1.5f; // CURVE_PEAK: peak-to-mean slope of the smoothstep of a vertical curve
 constexpr float TIE_REACH_M = 28.f; // TIE_REACH: how far past its plate a line is tied back to its node
 constexpr float TIE_MIN_M = 0.4f; // solveGround tieFor: the shortest tie, and its share of the road
-constexpr float TIE_ROAD_SHARE = 0.4f;
+constexpr float TIE_ROAD_SHARE = 0.4f; // solveGround tieFor: a tie's share of the road
 constexpr float PLATE_FADE_OUT = 16.f; // PLATE_BLEND: past a plate the ground stops being a ramp's floor
 constexpr float RAMP_RELAX = 0.8f; // RAMP_RELAX: the share of a ramp over which the ground stops being a floor
 constexpr float STEEP_SHARE = 0.75f; // roundPlateJoins: a join is rounded where the limiter held it this near the grade
 constexpr float GRADE_SLACK = 1.1f; // the grade a span is given over what its two ends need
-constexpr int SLOPE_PASSES = 6, ENVELOPE_PASSES = 4, PIN_ROUNDS = 3;
-constexpr float TINY = 1e-6f, TINY_RUN = 1e-3f;
+constexpr int SLOPE_PASSES = 6, ENVELOPE_PASSES = 4, PIN_ROUNDS = 3; // solveGround: the limiter's, the envelope's and the pins' passes
+constexpr float TINY = 1e-6f, TINY_RUN = 1e-3f; // the least a share and a step divide by
 
 std::vector<float> &scratch() {
 	thread_local std::vector<float> buf;
@@ -323,30 +322,6 @@ void solve_sunken(GradeProfile &p, float ha, float hb, float wanted, const Grade
 	});
 	envelope(p.h, p.step, t.tunnel, false);
 	flatten_plates(p, ha, hb);
-}
-
-GradeTune grade_tune(const Tuning &tn) {
-	GradeTune t;
-	t.ground = tn.grade_ground;
-	t.ramp = tn.grade_ramp;
-	t.deck = tn.grade_deck;
-	t.deck_tie = tn.grade_deck_tie;
-	t.tunnel = tn.grade_tunnel;
-	t.clearance = tn.grade_clearance_m;
-	for (size_t s = 0; s < STRUCTURE_COUNT; s++) t.structure[s] = structure_spec(Structure(s), tn);
-	return t;
-}
-
-StructureSpec structure_spec(Structure s, const Tuning &tn) {
-	switch (s) {
-		case Structure::ELEVATED: return { tn.grade_clear_elevated_m, tn.grade_deck_elevated_m, true };
-		case Structure::BRIDGE: return { tn.grade_clear_bridge_m, tn.grade_deck_bridge_m, true };
-		case Structure::TUNNEL:
-			// TUNNEL_DEPTH: headroom, arch and the depth past them, under the lowest ground.
-			return { -(tn.grade_tunnel_headroom_m + tn.grade_tunnel_arch_m + tn.grade_tunnel_floor_m), tn.grade_deck_tunnel_m, false };
-		case Structure::GROUND: break;
-	}
-	return { 0.f, tn.grade_deck_ground_m, false };
 }
 
 } // namespace city

@@ -14,7 +14,7 @@ namespace {
 
 constexpr double UTURN_NOSES = 3; // the entry side of a U-turn's opening, in median noses
 
-constexpr float BIG_D = 1e9f;
+constexpr float BIG_D = 1e9f; // farther than any ramp: none found
 constexpr float ROAD_MIN_SPAN = 0.05f, ISLAND_MIN_M = 1.f; // shorter than this no island is drawn
 
 // Share of the full kerb height at d metres from a crossing mouth: none over the dropped kerb, rising over its flare.

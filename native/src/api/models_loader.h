@@ -1,4 +1,4 @@
-// data/render/models.json -> the Build > Models catalogue kept with the generator's tables (Data::models).
+// data/catalog/models.json -> the Build > Models catalogue kept with the generator's tables (Data::models).
 #pragma once
 
 #include "sim/buildings/b40/data.h"

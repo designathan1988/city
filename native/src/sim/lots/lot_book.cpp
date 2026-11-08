@@ -85,10 +85,10 @@ void LotBook::file() {
 
 namespace {
 // A ring's box on the ground, padded as the book files it; false for a ring with no corner.
-bool filed_box(const std::vector<LotPoint> &q, float box[4]) {
+bool filed_box(const std::vector<XZ> &q, float box[4]) {
 	if (q.empty()) return false;
 	double x0 = std::numeric_limits<double>::max(), z0 = x0, x1 = std::numeric_limits<double>::lowest(), z1 = x1;
-	for (const LotPoint &p : q) {
+	for (const XZ &p : q) {
 		x0 = std::min(x0, p.x); z0 = std::min(z0, p.z);
 		x1 = std::max(x1, p.x); z1 = std::max(z1, p.z);
 	}

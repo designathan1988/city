@@ -14,7 +14,7 @@ const UNZONED := 0
 ## proposed lot taken by the player starts at its front).
 const MIDDLE_KEY_PER_M := 10.0
 
-var zone := 1
+var zone: int = ZoneTable.code(DataTables.game("tools").zone.default_zone)
 var _last := Vector3.INF
 var _painting := 0 # the zone of the stroke in hand
 var _lit := {} # the lots the stroke passed, by their middle: their ground (lot_under cover)
@@ -23,7 +23,7 @@ var _met := false # the stroke met a lot
 
 
 func enter() -> void:
-	zone = params.get("zone", 1)
+	zone = params.get("zone", ZoneTable.code(DataTables.game("tools").zone.default_zone))
 	ctl.hint.emit("", true)
 
 

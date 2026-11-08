@@ -1,8 +1,9 @@
-// Parses data/render/buildings.json into the building generator's tables (sim/buildings/b40/data.h) through the strict reader
+// Parses data/catalog/buildings.json into the building generator's tables (sim/buildings/b40/data.h) through the strict reader
 // (api/data_reader.h): every key, type, list length and name is checked, and a problem is an error at startup, never a default.
 #include "api/buildings_loader.h"
 
 #include "render/region_table.h"
+#include "render/shape_reader.h"
 
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/string.hpp>
@@ -15,6 +16,7 @@ namespace city {
 using namespace b40;
 
 namespace {
+// A table's colour is 0xRRGGBBAA (core/color.h): the body keeps 0xRRGGBB, the alpha byte shifted off.
 constexpr uint32_t RGB_MASK = 0xffffff;
 constexpr int RGBA_SHIFT = 8;
 const char *const BAY_NAMES[BAY_COUNT] = { "wall", "window", "sash", "french", "bayWindow", "ribbon", "wide", "balcony", "door",
@@ -34,7 +36,6 @@ const char *const PLASTIC = "plastic";
 // The note a table carries for its readers (skipped where a table's keys are its rows).
 const char *const DOC_KEY = "_doc";
 constexpr int PAIR = 2; // [finish, colour], [style, weight], [min, max]
-constexpr int ERAS = 3; // era_affinity: old, middle, new
 
 int8_t finish_of(const std::string &s, DataReader &r) {
 	if (s == NO_FINISH) return FIN_NONE;
@@ -162,6 +163,11 @@ void lot_rules(DataReader r, const Dictionary &d, LotRules &l) {
 	boundaries(r.in("boundary"), r.table(d, "boundary"), l);
 }
 
+// Every block of "shapes": each field of its list read under its own name, of its own type.
+void shapes(DataReader r, const Dictionary &t, Shapes &out) {
+	B40_SHAPES(SHAPE_READ_BLOCK)
+}
+
 void kind_weights(DataReader r, const Dictionary &kw, Data &d) { // per kind, [style, weight] pairs
 	for (int k = 0; k < KIND_COUNT; k++) {
 		const Array list = r.list(kw, KIND_NAMES[k]);
@@ -244,10 +250,26 @@ bool load_buildings(const Dictionary &table, Data &d, PackedStringArray &errors)
 	colors(r.in("colors"), r.table(t, "colors"), d);
 	openings(r.in("openings"), r.table(t, "openings"), d);
 	lot_rules(r.in("lots"), r.table(t, "lots"), d.lots);
+	shapes(r.in("shapes"), r.table(t, "shapes"), d.shapes);
 	DataReader rl = r.in("props");
 	const Array lit = rl.list(r.table(t, "props"), "lit_share", PAIR);
 	d.lit_share[0] = float(rl.in("lit_share").num_at(lit, 0));
 	d.lit_share[1] = float(rl.in("lit_share").num_at(lit, 1));
+	return errors.size() == before;
+}
+
+bool set_zone_kinds(const Catalog &catalog, Data &d, PackedStringArray &errors) {
+	const int64_t before = errors.size();
+	d.zone_kind.assign(ZONE_CODES, KIND_HOUSE);
+	d.zone_low_shop.assign(ZONE_CODES, false);
+	for (int code = 0; code < ZONE_CODES; code++) {
+		const ZoneDef &z = catalog.zones[code];
+		int kind = 0;
+		while (kind < KIND_COUNT && z.building != KIND_NAMES[kind]) kind++;
+		if (kind == KIND_COUNT) errors.push_back(String("zones.json: zone '") + String(z.id.c_str()) + String("' builds '") + String(z.building.c_str()) + String("', no building kind"));
+		else d.zone_kind[size_t(code)] = Kind(kind);
+		d.zone_low_shop[size_t(code)] = z.base == BASE_COMMERCIAL && z.density == 0;
+	}
 	return errors.size() == before;
 }
 

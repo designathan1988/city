@@ -7,8 +7,8 @@
 #pragma once
 
 #include "core/job_pool.h"
-#include "render/chunk_jobs.h"
 #include "render/chunk_queue.h"
+#include "render/chunk_results.h"
 #include "render/cover/cover_kit.h"
 #include "render/cover/element_models.h"
 #include "render/cover/shore_stones.h"

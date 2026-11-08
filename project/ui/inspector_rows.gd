@@ -1,5 +1,5 @@
 ## The inspector's live numbers, as the rows it shows: a road's and a junction's, from the core's queries. Holds nothing; the panel asks
-## again every refresh_s (data/game/health.json is the panels' pace).
+## again every inspector_refresh_s (data/ui/hud.json timings).
 class_name InspectorRows
 extends RefCounted
 

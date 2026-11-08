@@ -30,7 +30,7 @@ func _process(delta: float) -> void:
 		return
 	_wait = _d.read_every_s
 	var at := camera.global_position
-	var near: Array = CityStore.query(&"effects_near", [at, float(_d.reach_m), int(_d.props.size())])
+	var near: Array = CityStore.query(&"effects_near", [at, float(_d.reach_m)])
 	near.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.position.distance_squared_to(at) < b.position.distance_squared_to(at))
 	var used := mini(near.size(), int(_d.max_emitters))
 	while _pool.size() < used:

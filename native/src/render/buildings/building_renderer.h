@@ -15,6 +15,7 @@
 #include "core/job_pool.h"
 #include "sim/buildings/b40/data.h"
 #include "render/buildings/building_bodies.h"
+#include "render/buildings/building_job_inputs.h"
 #include "render/buildings/ruin_fracture.h"
 #include "render/buildings/shell.h"
 #include "render/buildings/signature_bodies.h"
@@ -64,8 +65,8 @@ public:
 	godot::Dictionary bay_census(); // how many bays the city has and how many different ones, at two grains of size
 	int pending() const; // what the view asks and has not got: unasked for want of budget, asked, or done and not yet drawn
 	BuildingViewNeed view_need() const;
-	// The chunk at a point as the frame left it (the tests read it): bit 0 near built, 1 mid built, 2 shown, 3 detail, 4 known, 5 far mesh.
-	int chunk_flags(float x, float z) const;
+	// The chunk at a point as the frame left it (the tests read it): known, near and mid built, shown, in detail, under a far mesh.
+	godot::Dictionary chunk_view(float x, float z) const;
 	int64_t baking() const { return baking_bytes(baking_) + baking_bytes(super_baking_); } // bytes still on a worker
 	int64_t waiting() const { return waiting_ + super_waiting_; } // bytes built and waiting to bake (last commit)
 	// The largest superchunk far mesh built so far, bytes of arrays (render_cost probe: against render.upload_budget_mb).
@@ -78,7 +79,7 @@ public:
 
 private:
 	enum Level { LEVEL_NEAR, LEVEL_MID, LEVELS };
-	static constexpr int SUBS = 2; // CHUNK / SUBCHUNK: sub-chunks per axis inside a 256 m chunk
+	static constexpr int SUBS = SUBCHUNKS_PER_CHUNK; // sub-chunks per axis inside a chunk (core/grid.h)
 	static constexpr int SUB_COUNT = SUBS * SUBS;
 	static constexpr int BAND_COUNT = 5; // of boxes; the kinds of bay_props.h follow them
 	static constexpr int BAND_DRAWS = BAND_COUNT + b40::BAY_PROPS;
@@ -172,15 +173,7 @@ private:
 		int64_t bytes() const { return far_shell.bytes(false); }
 		void bake();
 	};
-	// What a job reads from the map, copied while it holds the map lock shared for a moment (gather): the records
-	// of its chunks, in query order, and the final ground under their lots. The build itself runs without the lock.
-	struct Inputs {
-		std::vector<Building> records;
-		std::shared_ptr<const std::unordered_set<uint32_t>> broken; // standing in pieces (RuinPieces): only their lots are drawn here
-		std::vector<int> ids; // the id of each record
-		InteriorView view; // the Interior layer as the job started
-		HeightPatch ground;
-	};
+	using Inputs = BuildingJobInputs; // what a job reads from the map (building_job_inputs.h)
 	struct Want {
 		float d;
 		int64_t key;

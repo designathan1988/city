@@ -9,25 +9,32 @@ render_mode cull_disabled; // the hair's cards and the clothes' open edges are s
 #include "res://render/shaders/people_skin.gdshaderinc"
 #include "res://render/shaders/people_pose.gdshaderinc"
 #include "res://render/shaders/people_face.gdshaderinc"
+#include "res://render/shaders/fresnel.gdshaderinc"
+#include "res://render/shaders/hash.gdshaderinc"
 
 uniform sampler2DArray atlas : source_color, filter_linear_mipmap_anisotropic, repeat_disable;
 uniform float alpha_test; // the texels of the hair's cards that are drawn
 
-const vec3 INSIDE = vec3(0.09, 0.045, 0.045); // skin seen from inside (the cheeks through an open mouth) is the body's dark
 
 const float REFLECTS = 0.5; // what a dielectric mirrors (Godot's SPECULAR for an F0 of 4 %)
 const float DULL_REFLECTS = 0.125; // skin and hair: a quarter of that
-const float F0 = 0.04;
-const float SKIN_SPECULAR = 0.35;
-const float SKIN_WRAP = 0.4;
-const vec3 SKIN_SCATTER = vec3(0.32, 0.07, 0.04);
-const float HAIR_SHADE = 0.25; // the side away from the light still glows through the strands
-const float STRAND_ROOM = 1e-12;
+const float STRAND_ROOM = 1e-12; // a strand's or a normal's squared length under this is none
+const float LEAST_GGX_ALPHA = 0.002, LEAST_NV = 1e-3, LEAST_VIS = 1e-5; // guards: the lobe's width, the view's cosine, the visibility's sum
+const vec2 SPARKLE_CELLS = vec2(640.0, 48.0); // a strand's sparkle: the hair's cells across and down its atlas region, each its own by the sin hash
+// A person's light (materials.json people.params), by eye as the 4.0's personMaterial.ts; each vector's parts are said here.
+uniform vec3 inside_tone; // skin seen from inside (the cheeks through an open mouth) is the body's dark
+uniform float skin_specular; // what skin keeps of the sheen
+uniform float skin_wrap; // how far past the terminator the light wraps
+uniform vec3 skin_scatter; // the red that scatters under the skin, in a band of the wrapped light
+uniform vec2 skin_scatter_band; // the band rises to the first and falls by the second
+uniform float hair_shade; // the side away from the light still glows through the strands
+uniform vec4 hair_lobes; // the two lobes' cuticle tilts, their spread by the sparkle, the first's grey sheen
+uniform vec4 hair_shine; // the first lobe's exponent; the second's share of the hair's colour, its sparkle threshold, its exponent
 
 #ifdef BODY
 uniform sampler2D bodies : filter_nearest, repeat_disable; // a row a body, three texels a bone: bind -> world (body_renderer.cpp)
 varying flat float v_charred;
-const vec3 CHARRED = vec3(0.03, 0.028, 0.026);
+uniform vec3 charred_tone; // a burnt body's
 #endif
 varying flat float v_layer;
 varying flat float v_region;
@@ -47,12 +54,12 @@ float strand_lobe(vec3 t, vec3 h, float exponent) {
 
 // GGX with Smith's correlated visibility, as the engine's own for what has no light of its own.
 float ggx_specular(vec3 n, vec3 v, vec3 l, vec3 h, float rough) {
-	float a = max(rough * rough, 0.002), a2 = a * a;
-	float nh = clamp(dot(n, h), 0.0, 1.0), nl = clamp(dot(n, l), 0.0, 1.0), nv = clamp(dot(n, v), 1e-3, 1.0);
+	float a = max(rough * rough, LEAST_GGX_ALPHA), a2 = a * a;
+	float nh = clamp(dot(n, h), 0.0, 1.0), nl = clamp(dot(n, l), 0.0, 1.0), nv = clamp(dot(n, v), LEAST_NV, 1.0);
 	float d = nh * nh * (a2 - 1.0) + 1.0;
 	float ggx = a2 / (PI * d * d);
-	float vis = 0.5 / (nl * sqrt(nv * nv * (1.0 - a2) + a2) + nv * sqrt(nl * nl * (1.0 - a2) + a2) + 1e-5);
-	float fresnel = F0 + (1.0 - F0) * pow(1.0 - clamp(dot(l, h), 0.0, 1.0), 5.0);
+	float vis = 0.5 / (nl * sqrt(nv * nv * (1.0 - a2) + a2) + nv * sqrt(nl * nl * (1.0 - a2) + a2) + LEAST_VIS);
+	float fresnel = schlick(clamp(dot(l, h), 0.0, 1.0));
 	return ggx * vis * fresnel * nl;
 }
 
@@ -82,9 +89,9 @@ void vertex() {
 void fragment() {
 	vec4 texel = texture(atlas, vec3(UV, v_layer));
 	vec3 c = texel.rgb * COLOR.rgb;
-	if (!FRONT_FACING && v_region > 0.5 && v_region < 1.5) c *= INSIDE;
+	if (!FRONT_FACING && v_region > 0.5 && v_region < 1.5) c *= inside_tone;
 #ifdef BODY
-	c = mix(c, CHARRED, v_charred);
+	c = mix(c, charred_tone, v_charred);
 #endif
 	ALBEDO = c;
 	ALPHA = texel.a;
@@ -94,7 +101,7 @@ void fragment() {
 	vec3 along = dFdy(VERTEX) * dFdx(UV).x - dFdx(VERTEX) * dFdy(UV).x; // the strands run with the atlas's rows
 	along -= NORMAL * dot(along, NORMAL);
 	v_strand = dot(along, along) > STRAND_ROOM ? normalize(along) : vec3(0.0, 1.0, 0.0);
-	v_sparkle = fract(sin(dot(floor(UV * vec2(640.0, 48.0)), vec2(12.9898, 78.233))) * 43758.5453);
+	v_sparkle = fract(sin(dot(floor(UV * SPARKLE_CELLS), SIN_HASH.xy)) * SIN_HASH_SCALE);
 }
 
 void light() {
@@ -105,14 +112,14 @@ void light() {
 	vec3 lit = vec3(facing);
 	vec3 shine = vec3(ggx_specular(NORMAL, VIEW, LIGHT, h, ROUGHNESS));
 	if (in_region(1.0)) {
-		float wrapped = clamp((nl + SKIN_WRAP) / (1.0 + SKIN_WRAP), 0.0, 1.0);
-		lit = vec3(wrapped) + smoothstep(0.0, 0.3, wrapped) * smoothstep(0.62, 0.3, wrapped) * SKIN_SCATTER;
-		shine *= SKIN_SPECULAR;
+		float wrapped = clamp((nl + skin_wrap) / (1.0 + skin_wrap), 0.0, 1.0);
+		lit = vec3(wrapped) + smoothstep(0.0, skin_scatter_band.x, wrapped) * smoothstep(skin_scatter_band.y, skin_scatter_band.x, wrapped) * skin_scatter;
+		shine *= skin_specular;
 	} else if (in_region(2.0)) {
-		lit = vec3(mix(HAIR_SHADE, 1.0, facing));
+		lit = vec3(mix(hair_shade, 1.0, facing));
 		float shift = v_sparkle - 0.5;
-		vec3 t1 = normalize(v_strand + (-0.12 + 0.2 * shift) * NORMAL), t2 = normalize(v_strand + (0.22 + 0.2 * shift) * NORMAL);
-		shine = ((vec3(0.035) + ALBEDO * 0.25) * strand_lobe(t1, h, 140.0) + ALBEDO * 0.55 * step(0.4, v_sparkle) * strand_lobe(t2, h, 26.0)) * clamp(nl * 0.5 + 0.5, 0.0, 1.0);
+		vec3 t1 = normalize(v_strand + (hair_lobes.x + hair_lobes.z * shift) * NORMAL), t2 = normalize(v_strand + (hair_lobes.y + hair_lobes.z * shift) * NORMAL);
+		shine = ((vec3(hair_lobes.w) + ALBEDO * 0.25) * strand_lobe(t1, h, hair_shine.x) + ALBEDO * hair_shine.y * step(hair_shine.z, v_sparkle) * strand_lobe(t2, h, hair_shine.w)) * clamp(nl * 0.5 + 0.5, 0.0, 1.0);
 	}
 	DIFFUSE_LIGHT += lit * sun / PI;
 	SPECULAR_LIGHT += shine * sun * SPECULAR_AMOUNT;

@@ -3,7 +3,6 @@ class_name Formatters
 extends RefCounted
 
 const GROUP := 3
-const PERCENT := 100.0
 ## Below this a measure is whole: the float32 of the catalogue carries a few millionths.
 const WHOLE_EPS := 0.0001
 
@@ -24,10 +23,14 @@ static func format_int(v: float) -> String:
 	return ("-" if v < 0.0 and n != 0 else "") + digits + out
 
 
-## One decimal, with the comma of the Portuguese text.
+## One decimal, with the language's decimal mark (economy.decimal, as economy.group its thousands).
 static func format_tenths(v: float) -> String:
-	var text := "%.1f" % v
-	return text.replace(".", ",") if TranslationServer.get_locale().begins_with("pt") else text
+	return ("%.1f" % v).replace(".", TranslationServer.translate(&"economy.decimal"))
+
+
+## Two decimals, with the language's decimal mark (a norm's measure as it is written: "1,20 m").
+static func format_hundredths(v: float) -> String:
+	return ("%.2f" % v).replace(".", TranslationServer.translate(&"economy.decimal"))
 
 
 ## A measure as the catalogue writes it (Roadcraft crossSection.ts metresText): whole numbers bare, else one decimal.
@@ -85,7 +88,7 @@ static func format_points(v: float) -> String:
 
 
 static func format_percent(v: float) -> String:
-	return "%d%%" % int(round(v * PERCENT))
+	return "%d%%" % int(round(v * Units.PERCENT))
 
 
 static func format_value(v: Variant, kind: String) -> String:

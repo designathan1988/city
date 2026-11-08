@@ -11,7 +11,7 @@ struct BlockGrid {
 	double block_m = 0, angle = 0;
 };
 struct BlockLine {
-	StrokePoint a, b;
+	XZ a, b;
 };
 std::vector<BlockLine> block_lines(double x, double z, const BlockGrid &g);
 EditResult lay_blocks(CityState &s, double x, double z, const BlockGrid &g, int profile);

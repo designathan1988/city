@@ -1,6 +1,7 @@
 # cli: exit 2 for an empty selection, an unknown name or a task with nothing to do; 1 for a failure; 0 only when all pass;
 # serve answers each JSON line as its task finishes.
 import json
+import os
 import subprocess
 import sys
 import threading
@@ -54,6 +55,31 @@ class CliTest(RepoCase):
         from tasks.inputs import invalidate  # noqa: E402
         invalidate(self.root)
         self.assertEqual(self.cli("changed"), 0)
+
+    def var(self, name: str, env: dict | None = None) -> tuple[int, str]:
+        doc = json.loads(self.suites.read_text(encoding="utf-8"))
+        doc["vars"] = {"tool": {"doc": "a tool", "env": "CITY_TEST_TOOL", "windows": "C:/tool.exe", "posix": "tool"}}
+        self.suites.write_text(json.dumps(doc), encoding="utf-8")
+        out, err = StringIO(), StringIO()
+        saved = os.environ.pop("CITY_TEST_TOOL", None)
+        os.environ.update(env or {})
+        try:
+            with redirect_stdout(out), redirect_stderr(err):
+                code = cli.main(["var", name, "--suites", str(self.suites)])
+        finally:
+            os.environ.pop("CITY_TEST_TOOL", None)
+            if saved is not None:
+                os.environ["CITY_TEST_TOOL"] = saved
+        return code, out.getvalue().strip()
+
+    def test_var_is_the_platform_default(self):
+        self.assertEqual(self.var("tool"), (0, "C:/tool.exe" if os.name == "nt" else "tool"))
+
+    def test_var_takes_its_environment_first(self):
+        self.assertEqual(self.var("tool", {"CITY_TEST_TOOL": "/opt/tool"}), (0, "/opt/tool"))
+
+    def test_unknown_var_exits_2(self):
+        self.assertEqual(self.var("nothing")[0], 2)
 
     def test_exit_codes_of_a_run(self):
         self.assertEqual(self.cli("good"), 0)

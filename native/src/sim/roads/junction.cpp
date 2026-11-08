@@ -12,10 +12,8 @@
 namespace city {
 
 namespace {
-constexpr double KERB_RADIUS_MIN = 2.8, TAPER_ANGLE = 12 * PI_D / DEG_PER_HALF_TURN, ACUTE = 12 * PI_D / DEG_PER_HALF_TURN, CORNER_MITER = 2.5;
-constexpr double BULB_HALF_MAX = 6.5, BULB_LEN_MIN = 40, MAX_RETREAT = 60, BENT_RADIUS = 0.3;
-constexpr double BEVEL_PAD = 1.02, STRAIGHT_EPS = 1e-3, TAPER_MIN_STEP = 0.05, FILLET_SHARE = 0.5;
-constexpr double DEGENERATE_ARM_EPS = 1e-6;
+constexpr double STRAIGHT_EPS = 1e-3; // an angle this near a half turn is straight on, and the least the bevel divides by
+constexpr double DEGENERATE_ARM_EPS = 1e-6; // an arm's direction this short is none
 } // namespace
 
 Arm arm_of(const Quad &q, const Profile &p, int end) {
@@ -34,20 +32,20 @@ Arm arm_of(const Quad &q, const Profile &p, int end) {
 	return a;
 }
 
-double bulb_retreat(const Arm &arm, double len) {
+double bulb_retreat(const Tuning &tn, const Arm &arm, double len) {
 	double half = std::max(arm.asph_left, arm.asph_right);
-	if (half > BULB_HALF_MAX || half < 1 || len < BULB_LEN_MIN) return 0;
+	if (half > tn.junction_bulb_half_max || half < 1 || len < tn.junction_bulb_len_min) return 0;
 	return std::min(std::sqrt(BULB_R * BULB_R - half * half), len * MOUTH_SHARE);
 }
 
-void junction_retreats(const std::vector<Arm> &arms, const std::vector<double> &lens, std::vector<double> &out,
+void junction_retreats(const Tuning &tn, const std::vector<Arm> &arms, const std::vector<double> &lens, std::vector<double> &out,
 		std::vector<int> &order, bool bulb) {
 	size_t n = arms.size();
 	out.assign(n, 0.0);
 	order.resize(n);
 	std::iota(order.begin(), order.end(), 0);
 	if (n < 2) {
-		if (n == 1) out[0] = bulb ? bulb_retreat(arms[0], lens[0]) : 0;
+		if (n == 1) out[0] = bulb ? bulb_retreat(tn, arms[0], lens[0]) : 0;
 		return;
 	}
 	std::stable_sort(order.begin(), order.end(), [&](int a, int b) {
@@ -55,35 +53,36 @@ void junction_retreats(const std::vector<Arm> &arms, const std::vector<double> &
 	});
 	std::vector<double> tmp;
 	if (n == 2) {
-		arm_retreats({ arms[order[0]], arms[order[1]] }, BENT_RADIUS, tmp);
+		arm_retreats(tn, { arms[order[0]], arms[order[1]] }, tn.junction_bent_radius, tmp);
 		for (size_t k = 0; k < n; k++) out[order[k]] = std::min(tmp[k], lens[order[k]] * MOUTH_SHARE);
 		return;
 	}
 	tmp.assign(n, 0.0);
 	for (size_t k = 0; k < n; k++) {
-		Corner f = corner_fillet(arms[order[k]], arms[order[(k + 1) % n]]);
+		Corner f = corner_fillet(tn, arms[order[k]], arms[order[(k + 1) % n]]);
 		tmp[k] = std::max(tmp[k], f.trim_a);
 		tmp[(k + 1) % n] = std::max(tmp[(k + 1) % n], f.trim_b);
 	}
-	for (size_t k = 0; k < n; k++) out[order[k]] = std::max(0.0, std::min({ tmp[k], MAX_RETREAT, lens[order[k]] * MOUTH_SHARE }));
+	for (size_t k = 0; k < n; k++) out[order[k]] = std::max(0.0, std::min({ tmp[k], tn.junction_max_retreat, lens[order[k]] * MOUTH_SHARE }));
 }
 
-Corner corner_fillet(const Arm &a, const Arm &b) {
+Corner corner_fillet(const Tuning &tn, const Arm &a, const Arm &b) {
+	const double taper_angle = tn.junction_taper_angle_deg * PI_D / DEG_PER_HALF_TURN, acute = tn.junction_acute_deg * PI_D / DEG_PER_HALF_TURN;
 	Corner none;
 	double aw = a.asph_left, bw = b.asph_right;
 	double dot = std::max(-1.0, std::min(1.0, a.dx * b.dx + a.dz * b.dz));
 	double psi = std::acos(dot);
 	if (psi > PI_D - STRAIGHT_EPS) return none;
 	double step = std::fabs(aw - bw);
-	if (PI_D - psi < TAPER_ANGLE) {
-		if (step < TAPER_MIN_STEP) return none;
-		double run = step / std::tan(TAPER_ANGLE) / 2;
+	if (PI_D - psi < taper_angle) {
+		if (step < tn.junction_taper_min_step) return none;
+		double run = step / std::tan(taper_angle) / 2;
 		return { CornerMode::TAPER, run, run, 0, 0, 0 };
 	}
 	double s = 0, t = 0;
 	bool hit = line_line(a.dz * aw, -a.dx * aw, a.dx, a.dz, -b.dz * bw, b.dx * bw, b.dx, b.dz, s, t);
 	const double xx = a.dz * aw + a.dx * s, xz = -a.dx * aw + a.dz * s;
-	const double scaled = std::max(KERB_RADIUS_MIN, std::min(KERB_RADIUS_MAX, FILLET_SHARE * std::min(a.left, b.right)));
+	const double scaled = std::max(tn.junction_kerb_radius_min, std::min(KERB_RADIUS_MAX, tn.junction_fillet_share * std::min(a.left, b.right)));
 	// A kerb return of radius r on the corner: the arc's centre on the bisector, each leg cut where the arc leaves it.
 	const auto fillet = [&](double r) {
 		const double run = r / std::tan(psi / 2), k = r / std::sin(psi / 2);
@@ -91,12 +90,12 @@ Corner corner_fillet(const Arm &a, const Arm &b) {
 		if (bl == 0) bl = 1;
 		return Corner{ CornerMode::FILLET, s + run, t + run, r, xx + bx / bl * k, xz + bz / bl * k };
 	};
-	const double setback = BEVEL_PAD * (aw + bw) / (2 * std::sin(std::max(psi, STRAIGHT_EPS) / 2));
+	const double setback = tn.junction_bevel_pad * (aw + bw) / (2 * std::sin(std::max(psi, STRAIGHT_EPS) / 2));
 	if (!hit) return { CornerMode::BEVEL, setback, setback, 0, 0, 0 };
-	if (psi >= ACUTE && std::hypot(xx, xz) <= CORNER_MITER * std::max(aw, bw)) return fillet(scaled);
+	if (psi >= acute && std::hypot(xx, xz) <= tn.junction_corner_miter * std::max(aw, bw)) return fillet(scaled);
 	// A wedge too long to round at its own radius: rounded at the one the setback asks for, when that is a kerb's (corners.ts), else cut straight.
 	const double need = (setback - std::min(s, t)) * std::tan(psi / 2);
-	if (psi >= ACUTE && need <= KERB_RADIUS_MAX) return fillet(std::max(scaled, need));
+	if (psi >= acute && need <= KERB_RADIUS_MAX) return fillet(std::max(scaled, need));
 	return { CornerMode::BEVEL, setback, setback, 0, 0, 0 };
 }
 

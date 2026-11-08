@@ -133,10 +133,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
-## A step of the height the road tool draws at, from its options.
-func step_road_height(metres: int) -> void:
+## A step up (`dir` 1) or down (-1) of the height the road tool draws at, from its options.
+func step_road_height(dir: int) -> void:
 	if tool == Tool.ROAD:
-		active.step_height(metres)
+		active.step_height(dir)
 
 
 func _unhandled_input(event: InputEvent) -> void:

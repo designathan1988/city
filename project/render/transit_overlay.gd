@@ -6,7 +6,6 @@ extends Control
 ## By the name of the core's TransitMode.
 const MARK_KEYS := { &"BUS": "transit.mark.bus", &"TRAIN": "transit.mark.train", &"METRO": "transit.mark.metro" }
 const FILL_TOKENS := { &"BUS": "transit_bus", &"TRAIN": "transit_train", &"METRO": "transit_metro" }
-const RGB_BITS := 8
 const RING_POINTS := 24
 const LINE_ALPHA := 0.85
 
@@ -33,7 +32,7 @@ func _draw() -> void:
 	for s: Dictionary in plan.stops:
 		by_id[s.id] = s
 	for line: Dictionary in plan.lines:
-		var colour := Color.hex((int(line.colour) << RGB_BITS) | 0xff)
+		var colour: Color = line.colour
 		colour.a = LINE_ALPHA
 		_stroke(cam, _places(line.stops, by_id), colour, ThemeBuilder.size("transit_line_w"))
 	for s: Dictionary in plan.stops:

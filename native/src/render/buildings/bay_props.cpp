@@ -17,6 +17,8 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
+// The foliage models' leaf and blade (the source game's): a stem shorter than MIN_LENGTH has no direction; the leaf's arc,
+// base lift, tip fill and start, its rim; a blade's length and narrowing.
 constexpr float MIN_LENGTH = 1e-5f, LEAF_ARC = 0.75f, LEAF_BASE_LIFT = 0.05f, LEAF_TIP_FILL = 1.15f, LEAF_TIP_START = 0.08f;
 constexpr float LEAF_RIM = 0.004f, BLADE_LONG = 1.4f, BLADE_NARROW = 0.55f, HALF = 0.5f;
 constexpr const char *MODEL_NAMES[BAY_PROPS] = { "ac", "pot", "foliage", "bush", "chair", "table", "airer", "dish", "lounger", "bike" };

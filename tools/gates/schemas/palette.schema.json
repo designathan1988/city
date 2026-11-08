@@ -104,6 +104,36 @@
     },
     "paws_rough": {
      "type": "number"
+    },
+    "froth_look": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 4,
+     "maxItems": 4
+    },
+    "froth_edge": {
+     "type": "number"
+    },
+    "bed_grain": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 4,
+     "maxItems": 4
+    },
+    "bed_grain_noise": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 3,
+     "maxItems": 3
+    },
+    "paws_wide": {
+     "type": "number"
     }
    },
    "required": [
@@ -116,7 +146,12 @@
     "ripple_strength",
     "slope_sigma",
     "specular_f0",
-    "fetch_m"
+    "fetch_m",
+    "froth_look",
+    "froth_edge",
+    "bed_grain",
+    "bed_grain_noise",
+    "paws_wide"
    ],
    "strict": true
   },
@@ -299,6 +334,241 @@
     },
     "straw_share": {
      "type": "number"
+    },
+    "grid_m": {
+     "type": "number"
+    },
+    "grid_alpha": {
+     "type": "number"
+    },
+    "detail_fade_m": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 2,
+     "maxItems": 2
+    },
+    "slope_wander": {
+     "type": "number"
+    },
+    "rock_edge": {
+     "type": "number"
+    },
+    "wall_dim": {
+     "type": "number"
+    },
+    "ground_rough": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 2,
+     "maxItems": 2
+    },
+    "gully_stretch": {
+     "type": "number"
+    },
+    "gully_shade_k": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 3,
+     "maxItems": 3
+    },
+    "paint_least": {
+     "type": "number"
+    },
+    "paint_grain_per_m": {
+     "type": "number"
+    },
+    "paint_speck_per_m": {
+     "type": "number"
+    },
+    "paint_tone": {
+     "type": "array",
+     "items": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      },
+      "minItems": 3,
+      "maxItems": 3
+     }
+    },
+    "paint_mix": {
+     "type": "array",
+     "items": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      },
+      "minItems": 4,
+      "maxItems": 4
+     }
+    },
+    "shore_fade": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 3,
+     "maxItems": 3
+    },
+    "shore_wet": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 2,
+     "maxItems": 2
+    },
+    "grass_blotch": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 2,
+     "maxItems": 2
+    },
+    "grass_wide_scale": {
+     "type": "number"
+    },
+    "grain_lod": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 2,
+     "maxItems": 2
+    },
+    "tuft_wide_share": {
+     "type": "number"
+    },
+    "straw_patch": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 4,
+     "maxItems": 4
+    },
+    "straw_gold": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 2,
+     "maxItems": 2
+    },
+    "straw_mask": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 4,
+     "maxItems": 4
+    },
+    "straw_luma_share": {
+     "type": "number"
+    },
+    "straw_tone": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 3,
+     "maxItems": 3
+    },
+    "straw_gain": {
+     "type": "number"
+    },
+    "macro_m": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 4,
+     "maxItems": 4
+    },
+    "macro_mix": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 3,
+     "maxItems": 3
+    },
+    "macro_dry": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 4,
+     "maxItems": 4
+    },
+    "macro_lush": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 2,
+     "maxItems": 2
+    },
+    "macro_dark": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 3,
+     "maxItems": 3
+    },
+    "macro_green": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 3,
+     "maxItems": 3
+    },
+    "macro_straw": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 3,
+     "maxItems": 3
+    },
+    "macro_dry_share": {
+     "type": "number"
+    },
+    "patch_mix": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 3,
+     "maxItems": 3
+    },
+    "macro_clamp": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 2,
+     "maxItems": 2
+    },
+    "macro_share": {
+     "type": "number"
+    },
+    "patch_shade": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 2,
+     "maxItems": 2
     }
    },
    "required": [
@@ -313,7 +583,45 @@
     "rock_layer",
     "dirt_from",
     "dirt_to",
-    "rock_slope"
+    "rock_slope",
+    "grid_m",
+    "grid_alpha",
+    "detail_fade_m",
+    "slope_wander",
+    "rock_edge",
+    "wall_dim",
+    "ground_rough",
+    "gully_stretch",
+    "gully_shade_k",
+    "paint_least",
+    "paint_grain_per_m",
+    "paint_speck_per_m",
+    "paint_tone",
+    "paint_mix",
+    "shore_fade",
+    "shore_wet",
+    "grass_blotch",
+    "grass_wide_scale",
+    "grain_lod",
+    "tuft_wide_share",
+    "straw_patch",
+    "straw_gold",
+    "straw_mask",
+    "straw_luma_share",
+    "straw_tone",
+    "straw_gain",
+    "macro_m",
+    "macro_mix",
+    "macro_dry",
+    "macro_lush",
+    "macro_dark",
+    "macro_green",
+    "macro_straw",
+    "macro_dry_share",
+    "patch_mix",
+    "macro_clamp",
+    "macro_share",
+    "patch_shade"
    ],
    "strict": true
   }

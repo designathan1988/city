@@ -22,6 +22,8 @@ std::vector<SpecIssue> spec_issues(const RoadSpec &spec, RoadClass road_class);
 RoadSpec spec_of(const Profile &p);
 // Right edge to left edge, as the catalogue writes them: a footway and a median at their whole width, kerbs taken out of them.
 std::vector<Strip> spec_strips(const RoadSpec &spec, float kerb);
+// The catalogue's strip a composed element draws as: the editor's footway is a sidewalk, its cycle track a bike strip.
+StripKind strip_of(SpecKind kind);
 // What the line between the two directions is, on a road that does not say.
 std::string spec_centre(const RoadSpec &spec);
 

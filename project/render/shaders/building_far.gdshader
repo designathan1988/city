@@ -6,14 +6,17 @@
 shader_type spatial;
 render_mode cull_back;
 #include "res://render/shaders/contracts/buildings.gdshaderinc"
+#include "res://render/shaders/bytes.gdshaderinc"
+#include "res://render/shaders/fresnel.gdshaderinc"
 
 global uniform float night;
-global uniform float rooms_awake;
 global uniform float room_daylight;
-global uniform float building_night_windows; // the Effects panel: 0 puts the lit rooms out
 
-uniform vec3 glass_sky : source_color = vec3(0.45, 0.55, 0.66);
-uniform float glass_floor = 0.18;
+uniform vec3 glass_sky : source_color; // materials.json sky_in_glass
+uniform float glass_floor; // materials.json building_far, as the next
+uniform vec3 far_glass_dark; // the painted glass's own tone, under the sky it shows by its floor
+uniform float far_glass_night; // what night takes of the glass
+uniform vec2 far_rough; // the far mass's roughness: its walls, its glass
 uniform float wall_gain = 1.0;
 uniform float window_glow = 1.5;
 
@@ -30,16 +33,15 @@ varying flat vec4 v_opening; // width, sill and head as shares of the bay and th
 const float FOOT_SHADE = 0.62; // the foot of a wall in the street's shade
 const float FOOT_STOREYS = 0.47; // its height, storeys (1.4 m of a 3 m storey)
 #include "res://render/shaders/building_room_tone.gdshaderinc"
-const vec3 PANE_ALBEDO = vec3(0.0075, 0.0096, 0.0115); // glass scatters next to nothing (building_pane.gdshaderinc)
 
 #include "res://render/shaders/building_colour.gdshaderinc"
-#include "res://render/shaders/building_hash.gdshaderinc"
+#include "res://render/shaders/hash.gdshaderinc"
 #include "res://render/shaders/building_lamps.gdshaderinc"
 #define glass_sky_floor 0.0
 #include "res://render/shaders/building_sky_glass.gdshaderinc"
 
 void vertex() {
-	int chunk = (int(COLOR.a * 255.0 + 0.5) & ~FAR_OFFICE_BIT) >> SURFACE_KIND_BITS;
+	int chunk = (int(COLOR.a * BYTE_TOP + 0.5) & ~FAR_OFFICE_BIT) >> SURFACE_KIND_BITS;
 	if (((chunk_mask >> chunk) & 1) != 0) {
 		VERTEX = vec3(0.0); // every vertex of its triangles at one point: degenerate, never rasterized
 	}
@@ -49,32 +51,32 @@ void vertex() {
 }
 
 void fragment() {
-	int kind = int(COLOR.a * 255.0 + 0.5) & KIND_MASK;
+	int kind = int(COLOR.a * BYTE_TOP + 0.5) & KIND_MASK;
 	vec3 n = normalize(v_wn);
-	vec3 albedo = to_linear(COLOR.rgb);
-	vec3 glass = mix(vec3(0.05, 0.06, 0.07), uniform_linear(glass_sky), glass_floor) * (1.0 - 0.92 * night);
+	vec3 albedo = srgb_to_linear(COLOR.rgb);
+	vec3 glass = mix(far_glass_dark, uniform_linear(glass_sky), glass_floor) * (1.0 - far_glass_night * night);
 	vec3 emit = vec3(0.0);
 	float rough = BUILDING_FAR_ROUGHNESS, metal = 0.0;
 	if (kind == SK_PANE || kind == SK_PANE_DARK) {
 		albedo = glass;
-		rough = 0.2;
+		rough = far_rough.x;
 	}
 	if (kind == SK_FAR_WALL) {
 		vec2 foot = grid_footprint(UV);
-		float open = (int(v_opening.a * 255.0 + 0.5) & WINDOW_FLAG_BLANK) != 0 ? 0.0 : 1.0;
+		float open = (int(v_opening.a * BYTE_TOP + 0.5) & WINDOW_FLAG_BLANK) != 0 ? 0.0 : 1.0;
 		float m = open * clamp(pulse(UV.x, foot.x, 0.5 - 0.5 * v_opening.r, 0.5 + 0.5 * v_opening.r) * pulse(UV.y, foot.y, v_opening.g, v_opening.b), 0.0, 1.0);
 		vec2 room = floor(UV);
-		float lot = h01(uint(room.x + 512.0) * 131u + uint(room.y + 512.0) * 7177u);
+		float lot = h01(room_cell(room));
 		float sub = smoothstep(0.5, 1.5, max(foot.x, foot.y));
-		float office = (int(COLOR.a * 255.0 + 0.5) & FAR_OFFICE_BIT) != 0 ? 1.0 : 0.0;
-		vec3 lamp = mix(room_lamp(fract(lot * 17.31), office), room_lamp_mean(office), sub);
-		float lit = mix(step(1.0 - rooms_awake, lot), rooms_awake, sub) * building_night_windows;
+		float office = (int(COLOR.a * BYTE_TOP + 0.5) & FAR_OFFICE_BIT) != 0 ? 1.0 : 0.0;
+		vec3 lamp = far_room_lamp(lot, office, sub);
+		float lit = far_room_lit(lot, sub);
 		// the glass of the levels before it (building_far_window.gdshaderinc): next to nothing scattered, the room through it and the sky on it
 		vec3 V = normalize(v_world - CAMERA_POSITION_WORLD);
 		float cosv = clamp(dot(-V, n), 0.0, 1.0);
-		float fresnel = 0.04 + 0.96 * pow(1.0 - cosv, 5.0);
+		float fresnel = schlick(cosv);
 		albedo = mix(albedo, PANE_ALBEDO, m) * mix(FOOT_SHADE, 1.0, smoothstep(0.0, FOOT_STOREYS, UV.y));
-		rough = mix(rough, 0.35, m);
+		rough = mix(rough, far_rough.y, m);
 		emit = ((lamp * lit * night * window_glow + pane_mean(room_tone(V, n, FLOOR_HOME)) * room_daylight) * (1.0 - fresnel) + glass_reflection(V, n, fresnel, GLASS_ENV)) * m;
 	}
 	albedo *= wall_gain;

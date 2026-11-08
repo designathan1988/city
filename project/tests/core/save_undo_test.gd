@@ -54,8 +54,8 @@ func _undo_cases(a: Vector3, e: Vector3) -> void:
 		return CityStore.dispatch(&"build_road", [a + VARIANT_OFF, e + VARIANT_OFF, false, Vector3.ZERO, four, 0.25]))
 	_round("zone (stroke)", func() -> Dictionary:
 		CityStore.dispatch(&"begin_stroke", ["cmd.place.zone"])
-		var r: Dictionary = ZoneStroke.along(a, mid, DataTables.zone_code("residential"))
-		ZoneStroke.along(mid, e, DataTables.zone_code("residential"))
+		var r: Dictionary = ZoneStroke.along(a, mid, ZoneTable.code("residential"))
+		ZoneStroke.along(mid, e, ZoneTable.code("residential"))
 		CityStore.dispatch(&"end_stroke")
 		return r)
 	_round("upgrade", func() -> Dictionary: return CityStore.dispatch(&"upgrade_road", [mid, CityStore.profile_index("avenue"), true]))
@@ -65,7 +65,7 @@ func _undo_cases(a: Vector3, e: Vector3) -> void:
 	_round("roundabout", func() -> Dictionary: return CityStore.dispatch(&"roundabout", [ring, RING_RADIUS, false]))
 	var lot := mid + Vector3(0, 0, LOT_M)
 	_round("drawn building", func() -> Dictionary:
-		return CityStore.dispatch(&"draw_building", [lot, lot + Vector3(LOT_M, 0, LOT_M), CityStore.code(&"BuildingFn", &"FN_PARK"), DataTables.zone_code("residential"), 0]))
+		return CityStore.dispatch(&"draw_building", [lot, lot + Vector3(LOT_M, 0, LOT_M), CityStore.code(&"BuildingFn", &"FN_PARK"), ZoneTable.code("residential"), 0]))
 	var hill := _hill(e)
 	var h0 := _height(hill)
 	CityStore.dispatch(&"begin_stroke", ["cmd.place.terrainBrush"])
@@ -141,7 +141,7 @@ func _refuses_bad_balance() -> void:
 	CityStore.dispatch(&"set_marking_style", [(int(CityStore.snapshot.marking_style) + 1) % STYLES_TRIED, true])
 	var before := _counts()
 	var could_undo: bool = CityStore.snapshot.can_undo
-	var r: Dictionary = CityStore.saves.load_game(SLOT, true)
+	var r: Dictionary = await CityStore.saves.load_game(SLOT, true)
 	check(not r.get("ok", false) and r.get("error", "") == "save.file.damaged", "an infinite balance refused: %s" % r)
 	check(could_undo and CityStore.snapshot.can_undo and _counts() == before, "the open city stayed as it was, with what to undo: %s == %s" % [_counts(), before])
 	_drop(SLOT)
@@ -154,7 +154,7 @@ func _drop(slot: String) -> void:
 
 
 func _save_round_trip(a: Vector3, e: Vector3) -> void:
-	ZoneStroke.along(a, e, DataTables.zone_code("residential"))
+	ZoneStroke.along(a, e, ZoneTable.code("residential"))
 	ticks(GROW_TICKS)
 	var sculpted := _hill(e)
 	var saved := _counts()
@@ -174,7 +174,7 @@ func _save_round_trip(a: Vector3, e: Vector3) -> void:
 	new_map(TOWN_MAP, OTHER_SEED, false)
 	check(_counts() != saved, "a new map is another")
 	var t0 := Time.get_ticks_usec()
-	var r: Dictionary = CityStore.saves.load_game(SLOT, true)
+	var r: Dictionary = await CityStore.saves.load_game(SLOT, true)
 	print("opening: %d ms" % ((Time.get_ticks_usec() - t0) / 1000))
 	var got := _counts()
 	got.grown = CityStore.snapshot.grown

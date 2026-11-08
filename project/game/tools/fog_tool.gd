@@ -11,7 +11,7 @@ var erase := false
 func enter() -> void:
 	var s := settings("FOG")
 	radius = s.radius
-	strength = s.strength / PERCENT
+	strength = s.strength / Units.PERCENT
 	height = s.height
 	drift_ms = s.speed
 	erase = s.erase != 0

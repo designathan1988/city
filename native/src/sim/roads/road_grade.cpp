@@ -1,6 +1,7 @@
 // A road's profile made ready for the solve (Roadcraft 4.0 world/elevation.ts, the stations step and readStations): its
 // stations along the curve, the ground read under them across its casing, and its junction plates; and the reads of a
-// solved profile. The solve itself is road_grade_solve.cpp, one profile's solvers road_grade_profile.cpp.
+// solved profile. The solve itself is road_grade_solve.cpp with its rounds in road_grade_rounds.cpp, one profile's
+// solvers road_grade_profile.cpp, the figures it is tuned by road_grade_tune.cpp.
 #include "sim/roads/road_grade_internal.h"
 
 #include "core/math.h"
@@ -30,9 +31,6 @@ float read_line(const std::vector<float> &v, float at) {
 	const size_t lo = size_t(f), hi = std::min(v.size() - 1, lo + 1);
 	return v[lo] + (v[hi] - v[lo]) * (f - float(lo));
 }
-
-// Half the casing (roadTypes.ts casingHalf): the road's widest side, footway included, and the casing band past it.
-float casing_half(const Profile &p) { return p.half() + CASING_BAND_M; }
 
 // junction/build.ts MAX_CONTINUOUS_BEND: two legs bent less than this carry one road on through a transition, not a corner.
 constexpr double MAX_CONTINUOUS_BEND = 55.0 * PI_D / DEG_PER_HALF_TURN;
@@ -104,6 +102,8 @@ void read_stations(const RoadSegment &g, GradeProfile &p, int count, const Groun
 	dilate(p.ceil, DILATE_STATIONS);
 }
 } // namespace
+
+float casing_half(const Profile &p) { return p.half() + CASING_BAND_M; }
 
 // The inputs of segment s as they stand: stations, ground (read again only when its curve, casing or ground changed),
 // plates, structure; its heights left as they were (the solve starts them from the grade line when it takes them).

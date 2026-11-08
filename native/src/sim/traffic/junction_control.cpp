@@ -15,7 +15,6 @@ namespace {
 constexpr int RANK_MAIN = 3, RANK_YIELD = 1; // free arms keep DirSeg::rank's default
 constexpr int MAIN_PRIORITY = 2; // arms of this road priority or more push a junction toward signals
 constexpr int RING_PRIORITY = 100; // over every class of road: whoever circulates has the way, whatever comes in
-constexpr int SIGNAL_ARMS = 5, SIGNAL_MAIN_ARMS = 3;
 constexpr size_t MAIN_LEGS = 2; // the road that goes through a junction
 constexpr uint32_t OFFSET_HASH = 2654435761u, OFFSET_STEPS = 1000; // where in its first green each junction starts
 constexpr float STOPPED_MS = 0.5f, FIRST_COME_S = 0.3f; // stopped vehicles go first come, first served
@@ -85,7 +84,7 @@ Control decide(const RoadNode &node, const std::vector<Arm> &arms, const Traffic
 		hi = std::max(hi, arms[i].priority);
 	}
 	if (node.auto_signal == 0) return hi > lo ? Control::PRIORITY : Control::NONE;
-	if (int(arms.size()) >= SIGNAL_ARMS || int(high.size()) >= SIGNAL_MAIN_ARMS) return Control::SIGNAL;
+	if (int(arms.size()) >= tp.junction_signal_arms || int(high.size()) >= tp.junction_signal_main_arms) return Control::SIGNAL;
 	if (high.size() == 2 && arms[high[0]].out.dot(arms[high[1]].out) > tp.through_pair_dot) return Control::SIGNAL;
 	return hi > lo ? Control::PRIORITY : Control::NONE;
 }

@@ -165,7 +165,11 @@ bool load_nature(const Dictionary &t, NatureDef &n, PackedStringArray &errors) {
 	DataReader re = r.in("elements");
 	n.elements.max_items = re.integer(el, "max_items");
 	n.elements.max_per_dab = re.integer(el, "max_per_dab");
-	n.elements.kinds = int(re.list(el, "kinds").size());
+	const Array kinds = re.list(el, "kinds");
+	n.elements.kinds = int(kinds.size());
+	const String first_effect = re.text(el, "first_effect");
+	n.elements.first_effect = int(kinds.find(first_effect));
+	if (n.elements.first_effect < 0) re.in("first_effect").fail(String("not a kind: '") + first_effect + String("'"));
 	n.elements.area_m2 = float(re.num(el, "area_m2"));
 	n.elements.least_size_m = float(re.num(el, "least_size_m"));
 	return errors.size() == before;

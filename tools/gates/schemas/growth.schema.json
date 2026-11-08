@@ -75,6 +75,70 @@
   "pick_reach_m": {
    "type": "integer"
   },
+  "road_roles": {
+   "type": "object",
+   "properties": {
+    "local": {
+     "type": "string"
+    },
+    "avenue": {
+     "type": "string"
+    },
+    "avenue_bike": {
+     "type": "string"
+    },
+    "expressway": {
+     "type": "string"
+    },
+    "collector": {
+     "type": "string"
+    },
+    "wide": {
+     "type": "string"
+    },
+    "urban": {
+     "type": "string"
+    },
+    "cobble": {
+     "type": "string"
+    },
+    "green": {
+     "type": "string"
+    },
+    "concrete": {
+     "type": "string"
+    },
+    "bike": {
+     "type": "string"
+    },
+    "bus_side": {
+     "type": "string"
+    },
+    "boulevard": {
+     "type": "string"
+    },
+    "av4": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "local",
+    "avenue",
+    "avenue_bike",
+    "expressway",
+    "collector",
+    "wide",
+    "urban",
+    "cobble",
+    "green",
+    "concrete",
+    "bike",
+    "bus_side",
+    "boulevard",
+    "av4"
+   ],
+   "strict": true
+  },
   "organic_reach_m": {
    "type": "integer"
   },
@@ -86,6 +150,560 @@
   },
   "plan": {
    "type": "object"
+  },
+  "shapes": {
+   "type": "object",
+   "properties": {
+    "_doc": {
+     "type": "string"
+    },
+    "roads": {
+     "type": "object",
+     "properties": {
+      "_doc": {
+       "type": "string"
+      },
+      "block_along": {
+       "type": "number"
+      },
+      "block_across": {
+       "type": "number"
+      },
+      "grid_span": {
+       "type": "number"
+      },
+      "centre_share": {
+       "type": "number"
+      },
+      "avenue_every": {
+       "type": "integer"
+      },
+      "points_along": {
+       "type": "integer"
+      },
+      "points_across": {
+       "type": "integer"
+      },
+      "edge_pad": {
+       "type": "number"
+      },
+      "inside_margin": {
+       "type": "number"
+      },
+      "land_clear": {
+       "type": "number"
+      },
+      "max_wet": {
+       "type": "number"
+      },
+      "max_local_grade": {
+       "type": "number"
+      },
+      "max_art_grade": {
+       "type": "number"
+      },
+      "district_scale_n": {
+       "type": "number"
+      },
+      "noise_m_scale": {
+       "type": "number"
+      },
+      "avenue_share_n": {
+       "type": "number"
+      },
+      "urban_n": {
+       "type": "number"
+      },
+      "bike_n": {
+       "type": "number"
+      },
+      "cobble_d": {
+       "type": "number"
+      },
+      "cobble_m": {
+       "type": "number"
+      },
+      "urban_local_n": {
+       "type": "number"
+      },
+      "bus_offset": {
+       "type": "number"
+      },
+      "bus_m": {
+       "type": "number"
+      },
+      "boulevard_m": {
+       "type": "number"
+      },
+      "av4_n": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "_doc",
+      "block_along",
+      "block_across",
+      "grid_span",
+      "centre_share",
+      "avenue_every",
+      "points_along",
+      "points_across",
+      "edge_pad",
+      "inside_margin",
+      "land_clear",
+      "max_wet",
+      "max_local_grade",
+      "max_art_grade",
+      "district_scale_n",
+      "noise_m_scale",
+      "avenue_share_n",
+      "urban_n",
+      "bike_n",
+      "cobble_d",
+      "cobble_m",
+      "urban_local_n",
+      "bus_offset",
+      "bus_m",
+      "boulevard_m",
+      "av4_n"
+     ],
+     "strict": true
+    },
+    "graph": {
+     "type": "object",
+     "properties": {
+      "_doc": {
+       "type": "string"
+      },
+      "bucket": {
+       "type": "number"
+      },
+      "merge": {
+       "type": "number"
+      },
+      "collapse": {
+       "type": "number"
+      },
+      "hug_cos": {
+       "type": "number"
+      },
+      "hug_dist": {
+       "type": "number"
+      },
+      "gen_seg_len": {
+       "type": "number"
+      },
+      "max_links": {
+       "type": "integer"
+      },
+      "min_component": {
+       "type": "integer"
+      },
+      "node_probe": {
+       "type": "number"
+      },
+      "node_min_y": {
+       "type": "number"
+      },
+      "side_probe_m": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "_doc",
+      "bucket",
+      "merge",
+      "collapse",
+      "hug_cos",
+      "hug_dist",
+      "gen_seg_len",
+      "max_links",
+      "min_component",
+      "node_probe",
+      "node_min_y",
+      "side_probe_m"
+     ],
+     "strict": true
+    },
+    "tidy": {
+     "type": "object",
+     "properties": {
+      "_doc": {
+       "type": "string"
+      },
+      "min_leg_angle": {
+       "type": "number"
+      },
+      "end_gap": {
+       "type": "number"
+      },
+      "min_piece": {
+       "type": "number"
+      },
+      "cell": {
+       "type": "number"
+      },
+      "pad": {
+       "type": "number"
+      },
+      "on_road_min": {
+       "type": "number"
+      },
+      "on_road_default": {
+       "type": "number"
+      },
+      "on_road_dy": {
+       "type": "number"
+      },
+      "max_passes": {
+       "type": "integer"
+      },
+      "keeps_legs": {
+       "type": "integer"
+      }
+     },
+     "required": [
+      "_doc",
+      "min_leg_angle",
+      "end_gap",
+      "min_piece",
+      "cell",
+      "pad",
+      "on_road_min",
+      "on_road_default",
+      "on_road_dy",
+      "max_passes",
+      "keeps_legs"
+     ],
+     "strict": true
+    },
+    "scenic": {
+     "type": "object",
+     "properties": {
+      "_doc": {
+       "type": "string"
+      },
+      "longest_run_m": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "_doc",
+      "longest_run_m"
+     ],
+     "strict": true
+    },
+    "block_lots": {
+     "type": "object",
+     "properties": {
+      "_doc": {
+       "type": "string"
+      },
+      "two_rows": {
+       "type": "number"
+      },
+      "res": {
+       "type": "number"
+      },
+      "max_block": {
+       "type": "number"
+      },
+      "plate_share": {
+       "type": "number"
+      },
+      "lattice_start": {
+       "type": "number"
+      },
+      "lattice_step": {
+       "type": "number"
+      },
+      "land_share": {
+       "type": "number"
+      },
+      "street_probe": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "_doc",
+      "two_rows",
+      "res",
+      "max_block",
+      "plate_share",
+      "lattice_start",
+      "lattice_step",
+      "land_share",
+      "street_probe"
+     ],
+     "strict": true
+    },
+    "strips": {
+     "type": "object",
+     "properties": {
+      "_doc": {
+       "type": "string"
+      },
+      "res": {
+       "type": "number"
+      },
+      "road_pad": {
+       "type": "number"
+      },
+      "dry_min": {
+       "type": "number"
+      },
+      "wet_clear": {
+       "type": "number"
+      },
+      "max_relief": {
+       "type": "number"
+      },
+      "wet_step": {
+       "type": "number"
+      },
+      "facing_probe": {
+       "type": "number"
+      },
+      "facing_pad": {
+       "type": "number"
+      },
+      "arc_steps": {
+       "type": "integer"
+      },
+      "facing_samples": {
+       "type": "integer"
+      },
+      "straight_on": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "_doc",
+      "res",
+      "road_pad",
+      "dry_min",
+      "wet_clear",
+      "max_relief",
+      "wet_step",
+      "facing_probe",
+      "facing_pad",
+      "arc_steps",
+      "facing_samples",
+      "straight_on"
+     ],
+     "strict": true
+    },
+    "lots": {
+     "type": "object",
+     "properties": {
+      "_doc": {
+       "type": "string"
+      },
+      "front_pad": {
+       "type": "number"
+      },
+      "width_trim": {
+       "type": "number"
+      },
+      "depth_m": {
+       "type": "number"
+      },
+      "frontage_m": {
+       "type": "number"
+      },
+      "least_m": {
+       "type": "number"
+      },
+      "works_depth": {
+       "type": "number"
+      },
+      "works_frontage": {
+       "type": "number"
+      },
+      "along_step": {
+       "type": "number"
+      },
+      "behind_footway": {
+       "type": "number"
+      },
+      "back_in": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "_doc",
+      "front_pad",
+      "width_trim",
+      "depth_m",
+      "frontage_m",
+      "least_m",
+      "works_depth",
+      "works_frontage",
+      "along_step",
+      "behind_footway",
+      "back_in"
+     ],
+     "strict": true
+    },
+    "lot_land": {
+     "type": "object",
+     "properties": {
+      "_doc": {
+       "type": "string"
+      },
+      "crossed_area_m2": {
+       "type": "number"
+      },
+      "straight_back_m": {
+       "type": "number"
+      },
+      "square_share": {
+       "type": "number"
+      },
+      "square_reach_m": {
+       "type": "number"
+      },
+      "front_slack_m": {
+       "type": "number"
+      },
+      "front_search_m": {
+       "type": "number"
+      },
+      "lot_snap_share": {
+       "type": "number"
+      },
+      "back_span": {
+       "type": "number"
+      },
+      "apart_m": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "_doc",
+      "crossed_area_m2",
+      "straight_back_m",
+      "square_share",
+      "square_reach_m",
+      "front_slack_m",
+      "front_search_m",
+      "lot_snap_share",
+      "back_span",
+      "apart_m"
+     ],
+     "strict": true
+    },
+    "paving": {
+     "type": "object",
+     "properties": {
+      "_doc": {
+       "type": "string"
+      },
+      "along_pace_m": {
+       "type": "number"
+      },
+      "round_steps": {
+       "type": "integer"
+      },
+      "plate_reach_m": {
+       "type": "number"
+      },
+      "outline_slack_units": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "_doc",
+      "along_pace_m",
+      "round_steps",
+      "plate_reach_m",
+      "outline_slack_units"
+     ],
+     "strict": true
+    },
+    "squares": {
+     "type": "object",
+     "properties": {
+      "_doc": {
+       "type": "string"
+      },
+      "file_cell_m": {
+       "type": "number"
+      },
+      "lawn_h": {
+       "type": "number"
+      },
+      "lattice_from_m": {
+       "type": "number"
+      },
+      "seam_m": {
+       "type": "number"
+      },
+      "plaza_wide": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "_doc",
+      "file_cell_m",
+      "lawn_h",
+      "lattice_from_m",
+      "seam_m",
+      "plaza_wide"
+     ],
+     "strict": true
+    },
+    "lot_rings": {
+     "type": "object",
+     "properties": {
+      "_doc": {
+       "type": "string"
+      },
+      "near_m": {
+       "type": "number"
+      },
+      "cut_past_m": {
+       "type": "number"
+      },
+      "side_least_m": {
+       "type": "number"
+      },
+      "off_angle_m": {
+       "type": "number"
+      },
+      "inner_share": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "_doc",
+      "near_m",
+      "cut_past_m",
+      "side_least_m",
+      "off_angle_m",
+      "inner_share"
+     ],
+     "strict": true
+    }
+   },
+   "required": [
+    "_doc",
+    "roads",
+    "graph",
+    "tidy",
+    "scenic",
+    "block_lots",
+    "strips",
+    "lots",
+    "lot_land",
+    "paving",
+    "squares",
+    "lot_rings"
+   ],
+   "strict": true
+  },
+  "occupied_share": {
+   "type": "number"
   }
  },
  "required": [
@@ -93,10 +711,13 @@
   "civic",
   "fit",
   "pick_reach_m",
+  "road_roles",
   "organic_reach_m",
   "organic_extra_floors",
   "decay_span_min",
-  "plan"
+  "plan",
+  "shapes",
+  "occupied_share"
  ],
  "strict": true
 }

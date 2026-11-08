@@ -64,7 +64,7 @@ void grow_step(CityState &s, double dt) {
 	GrowthQueue &g = s.growth;
 	if (g.cells.empty() || s.damage.now < s.damage.growth_hold_until) return; // rubble lies: nothing is built over it yet
 	g.acc = std::min(g.acc + dt * s.catalog.tune.sim_growth_per_s, MAX_OWED);
-	for (int tries = int(s.catalog.tune.sim_growth_tries); g.acc >= 1 && tries > 0; tries--) {
+	for (int tries = s.catalog.tune.sim_growth_tries; g.acc >= 1 && tries > 0; tries--) {
 		Pick p = next_free(s);
 		if (p.lot < 0) {
 			g.acc = 0;

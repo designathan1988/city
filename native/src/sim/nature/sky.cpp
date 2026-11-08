@@ -9,7 +9,7 @@
 namespace city {
 
 namespace {
-constexpr float LEVEL_RAY = 1e-5f, NO_CLOUD_YET = 1e30f;
+constexpr float LEVEL_RAY = 1e-5f, NO_CLOUD_YET = 1e30f; // a ray this level never reaches a layer; farther than any cloud
 
 float wrapped(float v, float span) {
 	return v - span * std::floor(v / span + 0.5f);

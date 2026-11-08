@@ -3,7 +3,6 @@ class_name TransitStrip
 extends RefCounted
 
 const MODE_KEYS := { &"BUS": "transit.mode.bus", &"TRAIN": "transit.mode.train", &"METRO": "transit.mode.metro" } # by the core's TransitMode
-const RGB_BITS := 8
 
 
 static func build(parent: Control) -> void:
@@ -24,11 +23,11 @@ static func _fill(list: Control) -> void:
 	for line: Dictionary in plan.get("lines", []):
 		var row := HudWidgets.hbox(list)
 		var swatch := ColorRect.new()
-		swatch.color = Color.hex((int(line.colour) << RGB_BITS) | 0xff)
+		swatch.color = line.colour
 		swatch.custom_minimum_size = Vector2.ONE * HudWidgets.px("transit_swatch")
 		row.add_child(swatch)
 		HudWidgets.label(row, &"", line.name)
-		var stops := TranslationServer.translate("transit.stops").replace("{n}", str(line.stops.size()))
+		var stops := TranslationServer.translate("transit.stops").format({"n": line.stops.size()})
 		HudWidgets.label(row, &"MutedLabel", "%s · %s" % [TranslationServer.translate(MODE_KEYS[CityStore.code_name(&"TransitMode", int(line.mode))]), stops])
 		_button(row, "minus", "transit.fewer", _change.bind(list, line.id, line.vehicles - 1))
 		HudWidgets.label(row, &"", str(line.vehicles))

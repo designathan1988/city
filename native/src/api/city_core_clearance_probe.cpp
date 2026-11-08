@@ -21,10 +21,10 @@ namespace {
 constexpr float WAY_STEP_M = 0.25f; // poses looked at along a way
 constexpr float LOOK_M = 20.f; // what is solid is read this far round a way's pose
 constexpr float FOOT_NO_ROOF_M = 2.f; // what stands over a car's roof is no obstacle
-constexpr float HALF = 0.5f, FAR_GAP_M = 1e6f;
+constexpr float HALF = 0.5f, FAR_GAP_M = 1e6f; // farther than any obstacle: none
 constexpr float NEAR_BAY_M = 3.f, NEAR_GATE_M = 5.f; // what counts as in its bay and at its gate
 constexpr size_t GATE_POINTS = 4;
-constexpr int CASES = 8;
+constexpr int CASES = 8; // the probe's cases, below
 
 using Ring = std::vector<V2>;
 

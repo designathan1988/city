@@ -250,6 +250,9 @@
     "outside_all_night": {
       "type": "number"
     },
+    "rooms_in_use": {
+      "type": "number"
+    },
     "ssil": {
       "type": "object",
       "properties": {
@@ -260,6 +263,67 @@
           "type": "number"
         }
       }
+    },
+    "sky_shader": {
+      "type": "object",
+      "properties": {
+        "_doc": {
+          "type": "string"
+        },
+        "zenith_power": {
+          "type": "number"
+        },
+        "sun_warm": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "low_dark": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "ground_edge": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "sun_glow": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "glow_edge": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      },
+      "required": [
+        "_doc",
+        "zenith_power",
+        "sun_warm",
+        "low_dark",
+        "ground_edge",
+        "sun_glow",
+        "glow_edge"
+      ],
+      "strict": true
     }
   },
   "additional": {

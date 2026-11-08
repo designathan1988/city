@@ -1,9 +1,10 @@
 // The building body: the vocabulary codes (bays, roofs, dress, finishes), in the order the lists of
-// data/render/buildings.json name them, and the
+// data/catalog/buildings.json name them, and the
 // plain structures the generator fills (lot plan, volumes with storeys and bay overrides, lot elements, cores).
 // Lengths in metres in the lot frame: x along the street front from the lot's middle, y away from the street, z up.
 #pragma once
 
+#include "core/math.h"
 #include "core/shader_contracts/buildings.h"
 
 #include <cstdint>
@@ -15,7 +16,9 @@
 namespace city::b40 {
 
 constexpr float EPS = 1e-3f, FAR_AWAY = 1e9f; // geometric tolerance; 'no bound yet'
+// The most faces a volume's outline has (a saved body's limit), and a bay key's packing: storey, side and bay in bytes.
 constexpr int MAX_FACES = 24, KEY_STOREY_SHIFT = 16, KEY_SIDE_SHIFT = 8;
+constexpr int ERAS = 3; // the eras a building is drawn from: old, middle, new (buildings.json era_affinity's columns)
 constexpr float RISER_M = 0.17f; // the rise of a step, drawn at entrances and flights (ABNT NBR 9050 6.8: 0.16 to 0.18 m)
 
 // The components a bay of a facade can hold (names in buildings.json "openings" and the styles' rhythms).
@@ -80,10 +83,6 @@ struct Relief {
 	float depth = 0; // > 0 projects out of the wall, < 0 recesses
 };
 
-struct Point2 {
-	float x = 0, y = 0;
-};
-
 // What the player sets on a roof, at a point of the plan; `turn` in radians, `h` what stands up from the roof.
 enum RoofGear : uint8_t { GEAR_SOLAR, GEAR_SKYLIGHT, GEAR_VENT, GEAR_CHIMNEY, GEAR_TANK, GEAR_SPIRE, GEAR_LANTERN, GEAR_COUNT };
 // A flag flown from a mast (a spire, a lantern): one of the Roadcraft's designs (flags.ts FLAG_PATTERNS, drawn by
@@ -93,9 +92,11 @@ enum FlagPattern : uint8_t {
 	FLAG_DIAGONAL, FLAG_SALTIRE, FLAG_CANTON, FLAG_STRIPES, FLAG_BORDER, FLAG_DISC, FLAG_CHEVRON, FLAG_COUNT
 };
 constexpr int FLAG_COLOURS = 3, FLAG_NONE = -1;
+// The source game's default design (flags.ts DEFAULT_FLAG): blue, white and red.
+constexpr uint32_t FLAG_BLUE = 0x0b5ea8, FLAG_WHITE = 0xffffff, FLAG_RED = 0xc8102e;
 struct FlagDesign {
 	int8_t pattern = FLAG_NONE; // a FlagPattern; FLAG_NONE: no flag flown
-	uint32_t rgb[FLAG_COLOURS] = { 0x0b5ea8, 0xffffff, 0xc8102e }; // the Roadcraft's default design (flags.ts DEFAULT_FLAG)
+	uint32_t rgb[FLAG_COLOURS] = { FLAG_BLUE, FLAG_WHITE, FLAG_RED };
 };
 constexpr FlagDesign DEFAULT_FLAG{ FLAG_TRICOLOUR_V }; // what a new lantern flies (buildingRoofs.ts); a spire flies none until set
 struct RoofPart {
@@ -114,7 +115,7 @@ struct Volume {
 	Roof roof = ROOF_FLAT;
 	float pitch = -1; // degrees; < 0 = not set yet
 	int ridge = -1, fall = -1;
-	std::vector<Point2> outline; // normalised to the rectangle, CCW; empty = rectangle
+	std::vector<V2> outline; // normalised to the rectangle, CCW; empty = rectangle
 	int wall = -1, roof_paint = -1; // paint indices into Body::paints (-1 = the building's)
 	std::vector<uint8_t> fill; // per storey
 	std::unordered_map<uint32_t, uint8_t> bays; // (storey, side, bay) -> Bay override
@@ -221,7 +222,7 @@ struct Body {
 	float signature_x = 0, signature_y = 0;
 	// Drawing only, never stored (interior/cut.h): this body cut open at this floor, for a camera looking along cut_view (lot frame).
 	int cut_level = -1;
-	Point2 cut_view;
+	V2 cut_view;
 	int add_paint(const Paint &p) {
 		paints.push_back(p);
 		return int(paints.size()) - 1;

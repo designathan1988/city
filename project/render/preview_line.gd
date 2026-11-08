@@ -5,7 +5,7 @@
 class_name PreviewLine
 extends MeshInstance3D
 
-const DISC_SEGMENTS := 48
+const DISC_SEGMENTS := 48 # chords of a disc mark
 const OUTLINE_SHADER := "res://render/shaders/preview_outline.gdshader"
 
 var _mesh := ImmediateMesh.new()

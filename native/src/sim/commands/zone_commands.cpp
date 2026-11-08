@@ -17,12 +17,12 @@ constexpr const char *ZONE_SAME = "tools.toast.zoneSame"; // every lot the strok
 constexpr const char *ZONE_EMPTY = "hint.zone.empty"; // the stroke met no lot, nor land a lot could be laid on
 constexpr double SAME_CORNER_M = 0.01; // two land lots met by two dabs are one when their first corners meet
 
-bool same_ring(const std::vector<LotPoint> &a, const std::vector<LotPoint> &b) {
+bool same_ring(const std::vector<XZ> &a, const std::vector<XZ> &b) {
 	return std::hypot(a[0].x - b[0].x, a[0].z - b[0].z) < SAME_CORNER_M;
 }
 } // namespace
 
-EditResult paint_zone_path(CityState &s, const std::vector<StrokePoint> &dabs, int zone) {
+EditResult paint_zone_path(CityState &s, const std::vector<XZ> &dabs, int zone) {
 	EditResult all;
 	if (zone < 0 || zone >= ZONE_CODES) {
 		all.error = "tool.failed";
@@ -33,7 +33,7 @@ EditResult paint_zone_path(CityState &s, const std::vector<StrokePoint> &dabs, i
 	std::vector<int> held; // the player's lots met, in order
 	std::vector<LandLot> land; // the land lots met, in order
 	bool met = false;
-	for (const StrokePoint &p : dabs) {
+	for (const XZ &p : dabs) {
 		const int id = s.lot_book.at(p.x, p.z);
 		if (id != 0) {
 			met = true;

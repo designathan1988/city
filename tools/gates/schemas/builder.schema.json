@@ -34,6 +34,9 @@
            "label_key": {
             "type": "string"
            },
+           "hint_key": {
+            "type": "string"
+           },
            "rgb": {
             "type": "string"
            },
@@ -56,6 +59,15 @@
             "type": "number"
            },
            "drop_m": {
+            "type": "number"
+           },
+           "piece": {
+            "type": "string"
+           },
+           "top_kind": {
+            "type": "integer"
+           },
+           "top_deg": {
             "type": "number"
            }
           },
@@ -91,10 +103,17 @@
    "items": {
     "type": "string"
    }
+  },
+  "choices": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   }
   }
  },
  "required": [
-  "tabs"
+  "tabs",
+  "choices"
  ],
  "additionalProperties": false
 }

@@ -1,8 +1,9 @@
-// Parses data/render/interiors.json into the interior tables (sim/buildings/interior/tables.h) through the strict reader
+// Parses data/catalog/interiors.json into the interior tables (sim/buildings/interior/tables.h) through the strict reader
 // (api/data_reader.h): every key, type, length and name is checked (an unknown piece, edge, purpose or step is an error at
 // startup, never a silent default); the keys a step may leave out take the value the format gives them.
 #include "api/interiors_loader.h"
 
+#include "core/math.h"
 #include "render/data_reader.h"
 #include "render/region_table.h"
 
@@ -28,7 +29,7 @@ const char *const OPS[STEP_COUNT] = { "put", "grid", "back", "left", "right", "w
 const char *const LEVELS[] = { "any", "ground", "upper" };
 const char *const ANGLES[] = { "front", "right", "back", "left" };
 const char *const DOC_KEY = "_doc";
-constexpr float RADIANS_PER_STEP = 1.57079633f;
+constexpr float RADIANS_PER_STEP = PI_F / 2; // a quarter turn a step
 enum { SIZE_NAME, SIZE_X, SIZE_Y, SIZE_Z, SIZE_ROW };
 enum { REF_EDGE, REF_OFF, REF_SIZE };
 

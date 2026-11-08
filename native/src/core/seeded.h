@@ -3,22 +3,16 @@
 // noise is computed in double like JavaScript numbers.
 #pragma once
 
+#include "core/random.h"
+
 #include <cmath>
 #include <cstdint>
 
 namespace city {
 
-// lowbias32
-inline uint32_t hash32(uint32_t x) {
-	x ^= x >> 16; x *= 0x7feb352dU;
-	x ^= x >> 15; x *= 0x846ca68bU;
-	x ^= x >> 16;
-	return x;
-}
-
 // `hash2(a, b, seed)`: a and b are taken as int32 (JavaScript `| 0`).
 inline uint32_t hash2(int32_t a, int32_t b, uint32_t seed = 0) {
-	return hash32(hash32(uint32_t(a) ^ seed) + uint32_t(b) * 0x9e3779b1U);
+	return hash_u32(hash_u32(uint32_t(a) ^ seed) + uint32_t(b) * 0x9e3779b1U); // core/random.h: lowbias32
 }
 
 // JavaScript `x | 0` for a double already integral and in range (rounded coordinates, indices).

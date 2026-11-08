@@ -58,10 +58,8 @@
     ".gdshader": 260,
     ".glsl": 200,
     ".py": 300,
-    ".json": 700,
     ".sh": 90,
-    ".tscn": 400,
-    ".csv": 600
+    ".tscn": 400
   },
   "max_function_lines": {
     ".gd": 60,
@@ -113,7 +111,18 @@
     ],
     "native/src/sim/state": [
       "core/",
-      "sim/"
+      "sim/buildings/",
+      "sim/catalog/",
+      "sim/demolition/",
+      "sim/lots/",
+      "sim/nature/",
+      "sim/roads/",
+      "sim/simulation/city_growth.h",
+      "sim/state/",
+      "sim/street/",
+      "sim/terrain/",
+      "sim/traffic/",
+      "sim/transit/"
     ],
     "native/src/sim/terrain": [
       "core/",
@@ -211,7 +220,7 @@
         "native/src/"
       ],
       "pattern": "(jobs->|pool\\.)submit\\(\\s*(?!JobKey\\{|job,|b->job\\.bake\\(\\))",
-      "message": "todo job vai à fila com uma JobKey (lane e id, core/job_pool.h): a fila substitui o job da mesma chave em silêncio, e uma chave feita à mão colide com a de outro renderizador"
+      "message": "every job goes to the queue with its JobKey written (lane and id, core/job_pool.h): a braced key with no type names no lane"
     },
     {
       "id": "SIM_SEM_GODOT",
@@ -305,19 +314,16 @@
   ],
   "schemas": {
     "project/data/catalog/tuning.json": "tools/gates/schemas/tuning.schema.json",
-    "project/data/render/models.json": "tools/gates/schemas/models.schema.json",
+    "project/data/catalog/models.json": "tools/gates/schemas/models.schema.json",
     "project/data/catalog/maps.json": "tools/gates/schemas/maps.schema.json",
     "project/data/catalog/nature.json": "tools/gates/schemas/nature.schema.json",
     "project/data/catalog/scenic.json": "tools/gates/schemas/scenic.schema.json",
     "project/data/game/sky.json": "tools/gates/schemas/sky.schema.json",
     "project/data/render/cover.json": "tools/gates/schemas/cover.schema.json",
     "project/data/ui/land_panels.json": "tools/gates/schemas/land_panels.schema.json",
-    "project/data/ui/land_elements.json": "tools/gates/schemas/land_elements.schema.json",
     "project/data/catalog/zones.json": "tools/gates/schemas/zones.schema.json",
     "project/data/catalog/growth.json": "tools/gates/schemas/growth.schema.json",
     "project/data/catalog/road_profiles.json": "tools/gates/schemas/road_profiles.schema.json",
-    "project/data/catalog/road_profiles_a.json": "tools/gates/schemas/road_profiles_fragment.schema.json",
-    "project/data/catalog/road_profiles_b.json": "tools/gates/schemas/road_profiles_fragment.schema.json",
     "project/data/catalog/traffic.json": "tools/gates/schemas/traffic.schema.json",
     "project/data/catalog/street_furniture.json": "tools/gates/schemas/street_furniture.schema.json",
     "project/data/catalog/blast.json": "tools/gates/schemas/blast.schema.json",
@@ -326,8 +332,9 @@
     "project/data/render/effects.json": "tools/gates/schemas/effects.schema.json",
     "project/data/render/aftermath.json": "tools/gates/schemas/aftermath.schema.json",
     "project/data/render/gore.json": "tools/gates/schemas/gore.schema.json",
-    "project/data/render/buildings.json": "tools/gates/schemas/buildings.schema.json",
-    "project/data/render/interiors.json": "tools/gates/schemas/interiors.schema.json",
+    "project/data/catalog/buildings.json": "tools/gates/schemas/buildings.schema.json",
+    "project/data/render/building_look.json": "tools/gates/schemas/building_look.schema.json",
+    "project/data/catalog/interiors.json": "tools/gates/schemas/interiors.schema.json",
     "project/data/render/furniture.json": "tools/gates/schemas/furniture.schema.json",
     "project/data/game/interior.json": "tools/gates/schemas/interior.schema.json",
     "project/data/render/materials.json": "tools/gates/schemas/materials.schema.json",
@@ -345,6 +352,7 @@
     "project/data/game/optimizations.json": "tools/gates/schemas/optimizations.schema.json",
     "project/data/game/health.json": "tools/gates/schemas/health.schema.json",
     "project/data/game/start.json": "tools/gates/schemas/start.schema.json",
+    "project/data/game/tools.json": "tools/gates/schemas/tools.schema.json",
     "project/data/game/lab.json": "tools/gates/schemas/lab.schema.json",
     "project/data/ui/keys.json": "tools/gates/schemas/keys.schema.json",
     "project/data/ui/help.json": "tools/gates/schemas/help.schema.json",
@@ -359,13 +367,16 @@
       "project/render/"
     ],
     "exempt": [
-      "native/src/core/",
-      "native/src/api/catalog_loader.cpp"
+      "native/src/core/js_",
+      "native/src/core/seeded.h"
     ],
+    "_exempt_doc": "The runtime translated from the source game (js_*.h) and its random stream (seeded.h): B4 of log/review.md replaces them, and their numbers go with them.",
     "extensions": [
       ".cpp",
       ".h",
-      ".gd"
+      ".gd",
+      ".gdshader",
+      ".gdshaderinc"
     ],
     "allowed_values": [
       0,
@@ -379,7 +390,6 @@
       1.5
     ],
     "named_constant_line": "^\\s*(static\\s+)?(inline\\s+)?(constexpr|const)\\s+[\\w:<>]+\\s+[A-Z][A-Z0-9_]*\\s*(=|\\[)|^\\s*const\\s+[A-Z][A-Z0-9_]*\\s*(:=|=|:)",
-    "data_copy_min_abs": 4.5,
     "data_copy_paths": [
       "native/src/",
       "project/game/",
@@ -390,31 +400,8 @@
       "project/data/render/furniture.json"
     ],
     "_data_copy_ignore_doc": "furniture.json holds the coordinates of each piece's parts (modelling), not values any code owns.",
-    "data_copy_allow": [
-      "native/src/render/trees/tree_look.cpp:CAL_SIDE",
-      "native/src/sim/lots/lot_cache.cpp:LOT_LOOK",
-      "native/src/sim/roads/road_network.cpp:LOT_LOOK_M",
-      "native/src/sim/terrain/heightfield.cpp:PLAIN_BASE",
-      "native/src/sim/terrain/heightfield.cpp:VALLEY_START",
-      "native/src/sim/terrain/heightfield.cpp:BANK_START",
-      "native/src/sim/terrain/terrain_gen.cpp:LAKE_GRID",
-      "native/src/sim/buildings/b40/model.h:NO_BAY",
-      "project/game/tools/building_tool.gd:NO_BAY",
-      "native/src/sim/buildings/b40/massing_house.cpp:STOREY_MIN_H",
-      "native/src/render/atmosphere/fog_field.cpp:BUCKET_M",
-      "native/src/render/effects/effect_blast.cpp:SOIL_TINT",
-      "native/src/render/effects/effect_things.cpp:FLESH",
-      "native/src/sim/traffic/way_search.cpp:FINE_HEADINGS",
-      "native/src/render/buildings/bay_kit.cpp:WALL_FOOT",
-      "native/src/render/buildings/facade_props.cpp:INSET_IN",
-      "native/src/sim/buildings/interior/plan.cpp:INSET",
-      "native/src/sim/roads/road_grade.h:MAX_STATIONS",
-      "native/src/sim/citygen/block_lots.cpp:MAX_BLOCK",
-      "native/src/sim/citygen/road_gen.cpp:MAX_WET",
-      "native/src/sim/citygen/block_lots.cpp:LOT_FRONTAGE",
-      "native/src/sim/citygen/road_gen.cpp:EDGE_PAD"
-    ],
-    "_data_copy_allow_doc": "file:CONSTANT pairs whose value coincides with an unrelated data value (landscape generator shape constants)."
+    "data_copy_places": ["project", "data", "native", "render", "catalog", "game", "json", "tools", "shaders", "core", "api", "look", "shapes"],
+    "_data_copy_places_doc": "Path words that name a place of the repository or a kind of table (a look, a block of shapes), not what a file or a key is about: data_copies compares the rest."
   },
   "clones": {
     "min_tokens": 80,

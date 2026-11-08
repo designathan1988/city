@@ -12,14 +12,15 @@ namespace city {
 
 struct CityPlan {
 	CityPlanDef def;
+	GenZones zones; // the codes it lays (the catalogue's)
 	double radius = 0, industry_angle = 0;
 	std::vector<std::array<double, 2>> centres; // x, y of the map (its north is -z); the first is the main one
 };
 
-CityPlan plan_city(uint32_t seed, double radius, const CityPlanDef &def);
+CityPlan plan_city(uint32_t seed, double radius, const CityPlanDef &def, const GenZones &zones);
 // The zone code of a lot at world (x, z); `on_main`: on an avenue or a collector.
 int zone_at(const CityPlan &plan, double x, double z, bool on_main);
 // The zone code of a use at a density (0 low, 1 medium, 2 high).
-int zone_of(bool commercial, int density);
+int zone_of(const GenZones &zones, bool commercial, int density);
 
 } // namespace city

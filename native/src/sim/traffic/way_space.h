@@ -52,7 +52,7 @@ public:
 	}
 
 private:
-	static constexpr int BLOCK_PAGES = 256;
+	static constexpr int BLOCK_PAGES = 256; // pages a block holds: a block is taken whole, so a search allocates rarely
 
 public:
 	int64_t taken = 0; // the pages taken, ever: a search reads what it took
@@ -72,7 +72,7 @@ using WayItem = std::pair<double, int>;
 // so std::push_heap and std::pop_heap order it exactly as they would a vector.
 template <typename T> class WayChunks {
 public:
-	static constexpr size_t CHUNK = size_t(1) << 16;
+	static constexpr size_t CHUNK = size_t(1) << 16; // items a chunk holds: a fine search's poses in a few dozen chunks
 	size_t size() const { return size_; }
 	bool empty() const { return size_ == 0; }
 	void clear() { size_ = 0; }

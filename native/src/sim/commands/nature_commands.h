@@ -1,13 +1,10 @@
-// The Landscape drawer's edits (nature_commands.cpp): the sky, the painted ground, the planted trees, the elements, the map's biome.
-// Included by commands.h, the one header of the player's edits.
+// The Landscape drawer's commands (nature_commands.cpp, element_commands.cpp): the sky, the fog, the painted ground, the planted trees,
+// the elements and the map's biome. Callers hold map_mutex exclusively, as for every command (commands.h).
 #pragma once
 
-#include "sim/nature/nature_state.h"
+#include "sim/commands/commands.h"
 
 namespace city {
-
-struct CityState;
-struct EditResult;
 
 constexpr int TREE_PLANT = 0, TREE_ONE = 1, TREE_CUT = 2; // what a dab of the tree brush does
 EditResult set_weather(CityState &s, const Weather &next);

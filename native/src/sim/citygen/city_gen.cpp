@@ -23,20 +23,7 @@ namespace city {
 namespace {
 GenProfiles gen_profiles(const Catalog &c) {
 	GenProfiles g;
-	g.local = c.profile_id("cityLocal"); // the three sections of the 4.0's cities (world/cityGen)
-	g.avenue = c.profile_id("cityAvenue");
-	g.avenue_bike = c.profile_id("avenueWithCycleTrack");
-	g.expressway = c.profile_id("expressway");
-	g.collector = c.profile_id("cityUrban");
-	g.wide = c.profile_id("wideSidewalks");
-	g.urban = c.profile_id("cityUrban");
-	g.cobble = c.profile_id("cobblestoneStreet");
-	g.green = c.profile_id("streetWithMedian");
-	g.concrete = c.profile_id("concreteRoad");
-	g.bike = c.profile_id("streetWithBikeLane");
-	g.bus_side = c.profile_id("curbsideBusLane");
-	g.boulevard = c.profile_id("boulevard");
-	g.av4 = c.profile_id("cityAvenue");
+	static_cast<RoadRoles &>(g) = c.growth.roads; // each resolved and checked by the loader
 	for (const Profile &p : c.profiles) g.asph_right.push_back(p.asph_right);
 	return g;
 }
@@ -80,7 +67,7 @@ std::unique_ptr<TerrainGen> found_land(CityState &s, int map_index, uint32_t exa
 	s.roads.init(&s.catalog, &s.log);
 	s.street.clear();
 	s.lot_book.clear();
-	s.buildings.init(&s.log, &s.catalog.occupancy);
+	s.buildings.init(&s.log, &s.catalog);
 	s.lots.clear();
 	s.proposed.clear(); // the last map's streets: the cells of a larger one past this map's edge are never marked again
 	s.growth.clear();
@@ -98,7 +85,7 @@ std::unique_ptr<TerrainGen> found_land(CityState &s, int map_index, uint32_t exa
 	const ScenicCity *scenic = c.scenic_of(map_index);
 	s.nature.reset(default_weather(c.nature.weather), scenic ? scenic->biome : c.nature.ecology.default_biome, s.seed & ~TerrainGen::FLAT_BIT);
 	if (!generate) return nullptr;
-	auto gen = std::make_unique<TerrainGen>(s.seed, s.map_half, c.tune.world_water_spacing_m, scenic ? &scenic->land : nullptr);
+	auto gen = std::make_unique<TerrainGen>(s.seed, s.map_half, c.tune, scenic ? &scenic->land : nullptr);
 	s.terrain.fill(*gen, c.tune.world_water_spacing_m);
 	return gen;
 }
@@ -127,7 +114,7 @@ CityGenReport generate_map(CityState &s, int map_index, uint32_t seed, bool with
 	const std::unique_ptr<TerrainGen> gen = found_land(s, map_index, medium ? (seed | TerrainGen::FLAT_BIT) : (seed & ~TerrainGen::FLAT_BIT));
 	CityGenReport rep;
 	if (with_city) {
-		GeneratedRoads r = scenic ? scenic_roads(*scenic, c, *gen) : generate_roads(s.seed, s.map_half, map.city_radius_m, *gen, gen_profiles(c), c.growth.plan);
+		GeneratedRoads r = scenic ? scenic_roads(*scenic, c, *gen) : generate_roads(s.seed, s.map_half, map.city_radius_m, *gen, gen_profiles(c), c.growth.plan, c.gen_zones, c.growth.shapes);
 		insert_roads(s, r);
 		s.roads.grade.everything(); // every street solved on the land, and the ground shaped to them
 		sync_grade(s);

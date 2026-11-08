@@ -25,7 +25,6 @@ struct FaceAct {
 };
 constexpr FaceAct FACE_ACTS[] = { { "talk", FACE_ACT_TALK }, { "listen", FACE_ACT_LISTEN }, { "phone", FACE_ACT_PHONE }, { "crouchDown", FACE_ACT_CROUCH },
 	{ "crouchIdle", FACE_ACT_CROUCH }, { "crouchUp", FACE_ACT_CROUCH } };
-constexpr int BLOB_SIDES = 10;
 constexpr int PALM_ROW_FLOATS = 4;
 constexpr const char *ACT_CLIPS[int(PedAct::COUNT)] = { nullptr, "talk", "listen", "look", "phone", "headphones", "bag", "crouchIdle", "photo", "chairSit" };
 // The clip of each SeatPose and, for who puts a foot down, the one stopped.
@@ -33,10 +32,10 @@ constexpr const char *SEAT_CLIPS[int(SeatPose::COUNT)] = { "carDrive", "carRide"
 constexpr const char *STOP_CLIPS[int(SeatPose::COUNT)] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, "motoStop", "bikeStop" };
 
 // The unit disc, its centre in the mesh's vertex 0: people_blob.gdshader fades it from the middle out.
-void disc_mesh(MeshBuilder &b) {
+void disc_mesh(MeshBuilder &b, int sides) {
 	const Vector3 up(0, 1, 0);
-	for (int i = 0; i < BLOB_SIDES; i++) {
-		const float a0 = float(i) * TAU_F / BLOB_SIDES, a1 = float(i + 1) * TAU_F / BLOB_SIDES;
+	for (int i = 0; i < sides; i++) {
+		const float a0 = float(i) * TAU_F / float(sides), a1 = float(i + 1) * TAU_F / float(sides);
 		const int first = int(b.v.size());
 		for (const Vector3 &p : { Vector3(0, 0, 0), Vector3(std::cos(a0), 0, std::sin(a0)), Vector3(std::cos(a1), 0, std::sin(a1)) }) {
 			b.v.push_back(p);
@@ -94,7 +93,7 @@ void PeopleRenderer::set_tables(const RID &material) const {
 	rs->material_set_param(material, "body_female", female);
 }
 
-bool PeopleRenderer::init(const RenderContext &ctx, const DataValue &people, const DataValue &held, PackedStringArray &errors) {
+bool PeopleRenderer::init(const RenderContext &ctx, const DataValue &people, const DataValue &held, const AgentShapes &shapes, PackedStringArray &errors) {
 	reset();
 	scenario_ = ctx.scenario;
 	material_ = ctx.material("people", errors);
@@ -163,7 +162,7 @@ bool PeopleRenderer::init(const RenderContext &ctx, const DataValue &people, con
 	rs->material_set_param(held_.material(), "fist", held["fist"].v3());
 	rs->material_set_param(material_, "atlas", asset_.atlas->get_rid());
 	rs->material_set_param(material_, "alpha_test", asset_.variations.front().alpha_test);
-	if (!bodies_.init(ctx, asset_, errors)) return false;
+	if (!bodies_.init(ctx, asset_, shapes.ragdoll, errors)) return false;
 	rs->material_set_param(far_material_, "atlas", asset_.atlas->get_rid());
 	rs->material_set_param(far_material_, "strip", asset_.card_strip);
 	rs->material_set_param(far_material_, "frames", float(asset_.card_frames));
@@ -172,9 +171,10 @@ bool PeopleRenderer::init(const RenderContext &ctx, const DataValue &people, con
 	view_reach_m_ = people["view_reach_m"].f();
 	blob_radius_m_ = blob["radius_m"].f();
 	blob_lift_m_ = blob["lift_m"].f();
+	const int blob_sides = blob["sides"].whole();
 	if (!errors.is_empty()) return false;
 	MeshBuilder disc;
-	disc_mesh(disc);
+	disc_mesh(disc, blob_sides);
 	blob_mesh_ = disc.bake();
 	size_t n = asset_.variations.size() * size_t(asset_.lods + 1);
 	draws_.assign(n, MultiMeshDraw());

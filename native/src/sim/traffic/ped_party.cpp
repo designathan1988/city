@@ -15,7 +15,7 @@ namespace traffic {
 namespace {
 
 constexpr float ARRIVED_M = 0.02f; // this near its place it stands
-constexpr float MIN_STEP_S = 1e-3f;
+constexpr float MIN_STEP_S = 1e-3f; // a pace divides by the step: a step of no time counts as this
 constexpr float LOOK_STEPS = 3; // it drops behind this many gaps before a piece of furniture, and comes back as far after
 
 PedAge partner_age(TrafficState &t, const TrafficParams &p, PedAge leader) {

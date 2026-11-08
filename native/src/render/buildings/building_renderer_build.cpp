@@ -19,14 +19,12 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr int CHUNK_SUBDIVISIONS = 2; // CHUNK / SUBCHUNK
 constexpr float LOT_GROUND_PAD_M = 4.f; // ground copied past a lot's corners (plinths, kerbs and fences reach out)
-constexpr int CHUNKS_PER_SUPER_AXIS = int(SUPERCHUNK / CHUNK);
 // The far mesh's COLOR.a: surface kind in the low bits (SurfaceKind < 8), the chunk in the superchunk above them;
 // the layout building_far.gdshader decodes (KIND_BITS, KIND_MASK).
 constexpr int FAR_KIND_MASK = (1 << SURFACE_KIND_BITS) - 1;
 constexpr float BYTE_MAX = 255.f;
-static_assert(CHUNKS_PER_SUPER_AXIS * CHUNKS_PER_SUPER_AXIS << SURFACE_KIND_BITS <= FAR_OFFICE_BIT, "chunk index must fit COLOR.a under the office bit");
+static_assert(CHUNKS_PER_SUPER * CHUNKS_PER_SUPER << SURFACE_KIND_BITS <= FAR_OFFICE_BIT, "chunk index must fit COLOR.a under the office bit");
 
 constexpr float AABB_PAD = 1.f;
 constexpr int LINE_FLOATS = 4, LINE_ORIGIN = 3; // a plain MultiMesh buffer: three lines of a basis and an origin column
@@ -56,11 +54,11 @@ AABB rows_box(const PackedFloat32Array &buf, int64_t key) {
 }
 
 int sub_index(const Building &b, int64_t key) {
-	int bx = int(std::floor(b.x / SUBCHUNK)) - key_x(key) * CHUNK_SUBDIVISIONS;
-	int bz = int(std::floor(b.z / SUBCHUNK)) - key_y(key) * CHUNK_SUBDIVISIONS;
-	bx = std::clamp(bx, 0, CHUNK_SUBDIVISIONS - 1);
-	bz = std::clamp(bz, 0, CHUNK_SUBDIVISIONS - 1);
-	return bz * CHUNK_SUBDIVISIONS + bx;
+	int bx = int(std::floor(b.x / SUBCHUNK)) - key_x(key) * SUBCHUNKS_PER_CHUNK;
+	int bz = int(std::floor(b.z / SUBCHUNK)) - key_y(key) * SUBCHUNKS_PER_CHUNK;
+	bx = std::clamp(bx, 0, SUBCHUNKS_PER_CHUNK - 1);
+	bz = std::clamp(bz, 0, SUBCHUNKS_PER_CHUNK - 1);
+	return bz * SUBCHUNKS_PER_CHUNK + bx;
 }
 } // namespace
 
@@ -174,7 +172,7 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 			}
 			if (cut) b40::emit_interior(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
 			if (lots_drawn_.load()) b40::emit_lot(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
-			if (!broken) out.walls.add(pl, int(state_->catalog.tune.render_occluder_min_storeys));
+			if (!broken) out.walls.add(pl, state_->catalog.tune.render_occluder_min_storeys);
 			out.cut = out.cut || cut;
 			if (!mid) continue; // both asked (first build close to the camera): the coarse mid level follows
 			if (cut) bodies.place(designs(), look_, in.ground, rec, pl);
@@ -257,7 +255,7 @@ BuildingRenderer::SuperBuilt BuildingRenderer::build_super_cpu(const Inputs &in,
 	far.rooms = true; // each side's windows, as the other levels code them
 	far.coarse = true;
 	far.custom_used = 1;
-	const int sx = key_x(super_key) * CHUNKS_PER_SUPER_AXIS, sz = key_y(super_key) * CHUNKS_PER_SUPER_AXIS;
+	const int sx = key_x(super_key) * CHUNKS_PER_SUPER, sz = key_y(super_key) * CHUNKS_PER_SUPER;
 	for (const Building &rec : in.records) {
 		b40::Placed pl;
 		bodies.place(designs(), look_, in.ground, rec, pl);
@@ -266,7 +264,7 @@ BuildingRenderer::SuperBuilt BuildingRenderer::build_super_cpu(const Inputs &in,
 		b40::emit_far(far, pl, true);
 		// the building's chunk in the superchunk above the kind bits of COLOR.a (building_far.gdshader chunk_mask)
 		const int64_t ck = chunk_of(rec.x, rec.z, CHUNK);
-		const int chunk = (key_y(ck) - sz) * CHUNKS_PER_SUPER_AXIS + (key_x(ck) - sx);
+		const int chunk = (key_y(ck) - sz) * CHUNKS_PER_SUPER + (key_x(ck) - sx);
 		for (size_t v = first; v < far.col.size(); v++) {
 			const int kind = int(std::lround(far.col[v].a * BYTE_MAX)) & FAR_KIND_MASK;
 			far.col[v].a = float(kind | (chunk << SURFACE_KIND_BITS) | (pl.b->use == b40::USE_COMMERCIAL ? FAR_OFFICE_BIT : 0)) / BYTE_MAX;

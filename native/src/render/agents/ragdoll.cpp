@@ -18,23 +18,15 @@ constexpr PartFrame PART_FRAMES[RAGDOLL_PARTS] = { // torso, neck, head; arms; l
 	{ PEL, CHE, REF_SIDE }, { NEC, HEA, REF_SIDE }, { HEA, TOP, REF_SIDE }, { LS, LE, REF_LARM }, { LE, LW, REF_LARM }, { RS, RE, REF_RARM }, { RE, RW, REF_RARM },
 	{ LH, LK, REF_LLEG }, { LK, LA, REF_LLEG }, { LA, LT, REF_LLEG }, { RH, RK, REF_RLEG }, { RK, RA, REF_RLEG }, { RA, RT, REF_RLEG },
 };
+// a limb's three joints, by its number (none, the left and right arms, the left and right legs)
 constexpr int LIMB_OF[5][3] = { { 0, 0, 0 }, { LS, LE, LW }, { RS, RE, RW }, { LH, LK, LA }, { RH, RK, RA } };
-constexpr float FALL_MS2 = 9.81f;
-constexpr float AIR_KEEP = 0.995f; // of a particle's speed a step
-constexpr float LIMB_HALF_M = 0.06f; // a limb's half thickness: what stands off the ground
-constexpr float SLIDE_KEEP = 0.25f; // of the speed along the ground a step on it: a body drags
-constexpr int ITERATIONS = 10;
-constexpr float TOP_OVER_HEAD = 0.9f; // of the neck to the head, above it
-constexpr float BELLY_OUT_M = 0.12f;
-constexpr float KNEE_LEAST = 0.45f, ELBOW_LEAST = 0.35f, FOLD_LEAST = 0.62f; // shares of a straight limb, of the thigh to the chest
-constexpr float RESTING_MS = 0.12f, RESTING_S = 0.6f;
-constexpr float NOTHING_M = 1e-5f;
-constexpr float ONE_STEP_S = 1.f / 60.f;
+constexpr float FALL_MS2 = 9.81f; // gravity at the surface (9.80665 standard), to three figures
+constexpr float NOTHING_M = 1e-5f; // a length this short has no direction
 // The parts each limb takes off, by part index (PART_FRAMES), and its stumps: the body's and the piece's.
 constexpr uint32_t LIMB_PARTS[LIMBS] = { 1u << 2, 1u << 4, 1u << 6, (1u << 8) | (1u << 9), (1u << 11) | (1u << 12) };
 constexpr RagdollStump BODY_STUMP[LIMBS] = { { CHE, NEC }, { LS, LE }, { RS, RE }, { LH, LK }, { RH, RK } };
 constexpr RagdollStump PIECE_STUMP[LIMBS] = { { TOP, HEA }, { LW, LE }, { RW, RE }, { LA, LK }, { RA, RK } };
-constexpr uint32_t ALL_KEPT = ~0u;
+constexpr uint32_t ALL_KEPT = ~0u; // every joint kept: a whole body
 } // namespace
 
 RagdollStump Ragdoll::stump(RagdollLimb limb, bool piece) { return piece ? PIECE_STUMP[limb] : BODY_STUMP[limb]; }
@@ -59,11 +51,13 @@ void Ragdoll::link(int a, int b, float share, bool least_only) {
 	s.least_only = least_only;
 }
 
-void Ragdoll::begin(const Vector3 joints[RAGDOLL_JOINTS], const Vector3 &velocity, const Vector3 &tip, float scatter, Rng &rng) {
+void Ragdoll::begin(const RagdollShape &law, const Vector3 joints[RAGDOLL_JOINTS], const Vector3 &velocity, const Vector3 &tip, float scatter, Rng &rng) {
+	law_ = &law;
+	const RagdollShape &K = law;
 	for (int i = 0; i < RAGDOLL_JOINTS; i++) now_[i] = joints[i];
-	now_[TOP] = now_[HEA] + (now_[HEA] - now_[NEC]) * TOP_OVER_HEAD;
+	now_[TOP] = now_[HEA] + (now_[HEA] - now_[NEC]) * K.top_over_head;
 	const Vector3 up = (now_[CHE] - now_[PEL]).normalized(), side = (now_[LS] - now_[RS]).normalized();
-	now_[BEL] = now_[PEL] + side.cross(up).normalized() * BELLY_OUT_M;
+	now_[BEL] = now_[PEL] + side.cross(up).normalized() * K.belly_out_m;
 	sticks_used_ = 0;
 	static constexpr int TRUNK_BONDS[][2] = { { PEL, CHE }, { CHE, NEC }, { LS, RS }, { LH, RH }, { LS, CHE }, { RS, CHE }, { LS, NEC }, { RS, NEC }, { LH, PEL }, { RH, PEL }, { LS, LH },
 		{ RS, RH }, { LS, RH }, { RS, LH }, { BEL, PEL }, { BEL, CHE }, { BEL, LH }, { BEL, RH }, { BEL, NEC }, { HEA, TOP }, { NEC, HEA }, { NEC, TOP }, { CHE, HEA } };
@@ -71,16 +65,16 @@ void Ragdoll::begin(const Vector3 joints[RAGDOLL_JOINTS], const Vector3 &velocit
 	const float feet = std::min(now_[LT].y, now_[RT].y), height = std::max(now_[TOP].y - feet, NOTHING_M);
 	for (const auto &p : TRUNK_BONDS) link(p[0], p[1]);
 	for (const auto &p : LIMB_BONDS) link(p[0], p[1]);
-	link(LS, LW, ELBOW_LEAST, true);
-	link(RS, RW, ELBOW_LEAST, true);
-	link(LH, LA, KNEE_LEAST, true);
-	link(RH, RA, KNEE_LEAST, true);
-	link(LK, CHE, FOLD_LEAST, true);
-	link(RK, CHE, FOLD_LEAST, true);
+	link(LS, LW, K.elbow_least, true);
+	link(RS, RW, K.elbow_least, true);
+	link(LH, LA, K.knee_least, true);
+	link(RH, RA, K.knee_least, true);
+	link(LK, CHE, K.fold_least, true);
+	link(RK, CHE, K.fold_least, true);
 	for (int i = 0; i < PARTICLES; i++) {
 		const float up = (now_[i].y - feet) / height;
 		const Vector3 own = velocity + tip * up + Vector3(rng.f() - 0.5f, rng.f() - 0.5f, rng.f() - 0.5f) * scatter;
-		was_[i] = now_[i] - own * ONE_STEP_S;
+		was_[i] = now_[i] - own * K.step_s;
 	}
 	for (Vector3 &s : last_side_) s = side;
 	still_ = 0;
@@ -116,6 +110,7 @@ void Ragdoll::relax() {
 
 // Out of a wall by the nearest side: the static collision of Position Based Dynamics, the point projected to the closest of the surface, and the speed along it damped.
 void Ragdoll::off_walls(int i) {
+	const RagdollShape &K = *law_;
 	Vector3 &p = now_[i];
 	for (const BodyWall &w : walls_) {
 		if (p.y >= w.top) continue;
@@ -125,36 +120,37 @@ void Ragdoll::off_walls(int i) {
 		const float west = lx - w.x0, east = w.x1 - lx, south = ly - w.y0, north = w.y1 - ly;
 		const float least = std::min({ west, east, south, north });
 		const Vector2 out = least == west ? -w.along : least == east ? w.along : least == south ? -w.deep : w.deep;
-		const Vector2 move = out * (least + LIMB_HALF_M);
+		const Vector2 move = out * (least + K.limb_half_m);
 		p.x += move.x;
 		p.z += move.y;
-		was_[i].x = p.x + (was_[i].x - p.x) * SLIDE_KEEP;
-		was_[i].z = p.z + (was_[i].z - p.z) * SLIDE_KEEP;
+		was_[i].x = p.x + (was_[i].x - p.x) * K.slide_keep;
+		was_[i].z = p.z + (was_[i].z - p.z) * K.slide_keep;
 	}
 }
 
 void Ragdoll::step(float dt, const Ground &ground) {
+	const RagdollShape &K = *law_;
 	float floor_y[PARTICLES];
 	float fastest = 0;
 	for (int i = 0; i < PARTICLES; i++) {
-		const Vector3 move = (now_[i] - was_[i]) * AIR_KEEP;
+		const Vector3 move = (now_[i] - was_[i]) * K.air_keep;
 		fastest = std::max(fastest, move.length() / dt);
 		was_[i] = now_[i];
 		now_[i] += move + Vector3(0, -FALL_MS2 * dt * dt, 0);
-		floor_y[i] = ground(now_[i].x, now_[i].z) + LIMB_HALF_M;
+		floor_y[i] = ground(now_[i].x, now_[i].z) + K.limb_half_m;
 	}
-	for (int k = 0; k < ITERATIONS; k++) {
+	for (int k = 0; k < K.iterations; k++) {
 		relax();
 		for (int i = 0; i < PARTICLES; i++) {
 			off_walls(i);
 			if (now_[i].y >= floor_y[i]) continue;
 			now_[i].y = floor_y[i];
-			was_[i].x = now_[i].x + (was_[i].x - now_[i].x) * SLIDE_KEEP;
-			was_[i].z = now_[i].z + (was_[i].z - now_[i].z) * SLIDE_KEEP;
+			was_[i].x = now_[i].x + (was_[i].x - now_[i].x) * K.slide_keep;
+			was_[i].z = now_[i].z + (was_[i].z - now_[i].z) * K.slide_keep;
 		}
 	}
-	still_ = fastest < RESTING_MS ? still_ + dt : 0.f;
-	asleep_ = still_ > RESTING_S;
+	still_ = fastest < K.resting_ms ? still_ + dt : 0.f;
+	asleep_ = still_ > K.resting_s;
 }
 
 void Ragdoll::frames(Transform3D out[RAGDOLL_PARTS]) {

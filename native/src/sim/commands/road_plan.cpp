@@ -130,7 +130,7 @@ bool degrees_fit(const CityState &s, const Anchor &a, const Anchor &b, const Roa
 	for (auto &e : extra) {
 		int k = int(net.nodes[e.first].segs.size());
 		for (auto &f : extra) k += f.first == e.first ? f.second : 0;
-		if (k > int(s.catalog.tune.road_max_degree)) return false;
+		if (k > s.catalog.tune.road_max_degree) return false;
 	}
 	return true;
 }

@@ -9,6 +9,8 @@ namespace city {
 namespace traffic {
 
 namespace {
+// the cells walkers are filed by: a power of two, so a cell's index divides exactly; a key is a row's index over the column's
+// 32 bits
 constexpr float WALKER_CELL_M = 8.f;
 constexpr int CELL_ROW_BITS = 32;
 

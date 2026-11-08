@@ -20,7 +20,7 @@ namespace city {
 
 namespace {
 
-constexpr double MS_PER_S = 1000.0;
+constexpr double MS_PER_S = 1000.0; // the millisecond
 
 std::vector<double> samples_of(const Variant &value) {
 	const PackedFloat64Array list = value;

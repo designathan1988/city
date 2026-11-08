@@ -129,7 +129,7 @@ func _session(rig: CityCamera) -> void:
 	var slot := CityStore.saves.city_slot()
 	CityStore.set_levels(1.0, 1.0, 1.0)
 	rig.jump(Vector3.ZERO, 0.0, 50.0, 400.0)
-	check(CityStore.saves.load_game(slot, true).get("ok", false), "opened the saved city")
+	check((await CityStore.saves.load_game(slot, true)).get("ok", false), "opened the saved city")
 	check(is_equal_approx(CityStore.snapshot.traffic_level, 2.0), "the levels came back with the city")
 	check(Vector2(rig.focus.x, rig.focus.z).distance_to(Vector2(100, 50)) < 1.0, "the view came back with the city (%s)" % rig.focus)
 	CityStore.set_levels(1.0, 1.0, 1.0)

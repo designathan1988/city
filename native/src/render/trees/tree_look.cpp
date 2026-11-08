@@ -16,7 +16,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float HA_M2 = 10000.f;
+constexpr float HA_M2 = 10000.f; // the hectare in square metres
 constexpr float THRESHOLD_GAP = 1e-6f; // a land with no chance at all keeps the scale finite
 // The sample of the patches: a square of CAL_SIDE² points CAL_STEP_M apart, past the largest patch's correlation.
 constexpr int CAL_SIDE = 200;

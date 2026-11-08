@@ -12,7 +12,7 @@ namespace city {
 using namespace b40;
 
 namespace {
-constexpr float CENTIMETRES = 100.f, AREA_EPS = 1e-3f, WING_SHARE = .6f, SHAPED_INSET_SHARE = .1f;
+constexpr float CENTIMETRES = 100.f, AREA_EPS = 1e-3f; // centimetres a metre; an area this small is none
 constexpr const char *NO_VOLUME = "tool.failed";
 
 bool has(const Body &b, int vol) { return vol >= 0 && vol < int(b.volumes.size()); }
@@ -98,14 +98,14 @@ namespace {
 // A wing off a wall of a shaped block: from the middle of the wall, along the wall's normal, itself a box at the wall's bearing.
 std::string wing_off_wall(Body &b, const Tuning &t, const Volume &v, int side, float depth, float length) {
 	const Ring ring = ring_of(v);
-	const Point2 a = ring[size_t(side)], c = ring[(size_t(side) + 1) % ring.size()];
+	const V2 a = ring[size_t(side)], c = ring[(size_t(side) + 1) % ring.size()];
 	const float run = std::hypot(c.x - a.x, c.y - a.y), lo = float(t.build_min_side_m);
 	if (run < lo) return "building.problem.size";
 	const float tx = (c.x - a.x) / run, ty = (c.y - a.y) / run, nx = ty, ny = -tx;
-	const float len = std::min(run, std::max(lo, snapped(t, length > 0 ? length : run * WING_SHARE)));
+	const float len = std::min(run, std::max(lo, snapped(t, length > 0 ? length : run * t.build_wing_share)));
 	const float out = std::max(lo, snapped(t, depth > 0 ? depth : float(t.build_wing_modules * t.build_module_m)));
 	const float from = (run - len) / 2;
-	const Point2 p{ a.x + tx * from, a.y + ty * from }, q{ p.x + tx * len, p.y + ty * len };
+	const V2 p{ a.x + tx * from, a.y + ty * from }, q{ p.x + tx * len, p.y + ty * len };
 	Volume wing = block_like(v, v.storeys);
 	for (FaceGeometry &f : wing.faces) f.bays = -1; // its openings' proportions, but as many bays as its own walls hold
 	set_block_ring(wing, { q, p, { p.x + nx * out, p.y + ny * out }, { q.x + nx * out, q.y + ny * out } });
@@ -114,7 +114,7 @@ std::string wing_off_wall(Body &b, const Tuning &t, const Volume &v, int side, f
 		int far = 0;
 		float most = -1;
 		for (int i = 0; i < int(plan.size()); i++) {
-			const Point2 e0 = plan[size_t(i)], e1 = plan[(size_t(i) + 1) % plan.size()];
+			const V2 e0 = plan[size_t(i)], e1 = plan[(size_t(i) + 1) % plan.size()];
 			const float along = (e1.y - e0.y) * nx - (e1.x - e0.x) * ny; // the wall's outward normal on the block's, scaled by the wall's length
 			if (along > most) {
 				most = along;
@@ -131,7 +131,7 @@ std::string wing_off_wall(Body &b, const Tuning &t, const Volume &v, int side, f
 std::string op_set_storeys(Body &b, const Tuning &t, int vol, int count) {
 	if (!has(b, vol)) return NO_VOLUME;
 	Volume &v = b.volumes[size_t(vol)];
-	int next = std::clamp(count, 1, std::max(1, int(t.edit_max_floors) - v.base));
+	int next = std::clamp(count, 1, std::max(1, t.edit_max_floors - v.base));
 	if (next == v.storeys) return "";
 	int old_top = v.top();
 	uint8_t fill = next_fill(v);
@@ -146,7 +146,7 @@ std::string op_set_storeys(Body &b, const Tuning &t, int vol, int count) {
 std::string op_insert_storey(Body &b, const Tuning &t, int vol, int at, bool above) {
 	if (!has(b, vol)) return NO_VOLUME;
 	Volume &v = b.volumes[size_t(vol)];
-	if (at < 0 || at >= v.storeys || v.top() >= int(t.edit_max_floors)) return "building.problem.size";
+	if (at < 0 || at >= v.storeys || v.top() >= t.edit_max_floors) return "building.problem.size";
 	int old_top = v.top(), place = above ? at + 1 : at;
 	uint8_t copy = v.fill[size_t(at)];
 	if (v.base + at == 0 && above) copy = above_street(copy);
@@ -194,7 +194,7 @@ std::string op_resize(Body &b, const Tuning &t, int vol, int side, float delta, 
 
 std::string op_add_wing(Body &b, const Tuning &t, int vol, int side, float depth, float length) {
 	if (!has(b, vol) || side < 0 || side >= b.volumes[size_t(vol)].sides()) return NO_VOLUME;
-	if (int(b.volumes.size()) >= int(t.build_max_volumes)) return "building.problem.size";
+	if (int(b.volumes.size()) >= t.build_max_volumes) return "building.problem.size";
 	const Volume v = b.volumes[size_t(vol)];
 	if (!v.outline.empty()) return wing_off_wall(b, t, v, side, depth, length);
 	float module = float(t.build_module_m), lo = float(t.build_min_side_m), hi = float(t.build_max_side_m);
@@ -218,12 +218,12 @@ std::string op_add_wing(Body &b, const Tuning &t, int vol, int side, float depth
 
 std::string op_add_setback(Body &b, const Tuning &t, int vol, float inset, int storeys) {
 	if (!has(b, vol)) return NO_VOLUME;
-	if (int(b.volumes.size()) >= int(t.build_max_volumes)) return "building.problem.size";
+	if (int(b.volumes.size()) >= t.build_max_volumes) return "building.problem.size";
 	Volume &v = b.volumes[size_t(vol)];
 	float step = std::max(0.f, snapped(t, inset >= 0 ? inset : float(t.build_module_m))), lo = float(t.build_min_side_m);
-	if (!v.outline.empty() && inset < 0) step = std::min(step, std::max(float(t.build_grid_m), snapped(t, std::min(v.w, v.d) * SHAPED_INSET_SHARE)));
+	if (!v.outline.empty() && inset < 0) step = std::min(step, std::max(float(t.build_grid_m), snapped(t, std::min(v.w, v.d) * t.build_shaped_inset_share)));
 	float ix = v.w - 2 * step >= lo ? step : 0, iy = v.d - 2 * step >= lo ? step : 0;
-	int count = std::clamp(storeys, 1, std::max(1, int(t.edit_max_floors) - v.top()));
+	int count = std::clamp(storeys, 1, std::max(1, t.edit_max_floors - v.top()));
 	Volume up = block_like(v, count);
 	up.base = v.top();
 	up.x = v.x + ix;
@@ -243,7 +243,7 @@ std::string op_add_setback(Body &b, const Tuning &t, int vol, float inset, int s
 }
 
 std::string op_split_at_floor(Body &b, const Tuning &t, int vol, int level) {
-	if (!has(b, vol) || int(b.volumes.size()) >= int(t.build_max_volumes)) return "building.problem.size";
+	if (!has(b, vol) || int(b.volumes.size()) >= t.build_max_volumes) return "building.problem.size";
 	Volume &low = b.volumes[size_t(vol)];
 	if (level <= low.base || level >= low.top()) return "building.problem.size";
 	int keep = level - low.base;

@@ -21,9 +21,8 @@ namespace city {
 namespace {
 
 constexpr float DEGENERATE_AREA = 1e-10f; // a band with no area: not drawn
-constexpr float BED_LIP_M = 0.04f; // a pick-up's bed cover stops this short of the cab
-constexpr float PANEL_IN_M = 0.03f; // a door's card, this far inside its skin
 constexpr int KERB_SIDE = -1; // the door that opens at the kerb: the front one on the -X side, the driver's on +X (kerb_stops.cpp door_places)
+// the ring's rows each level keeps: fine all of them, coarse the ones that carry a line (the sill, the belt, the panes' top, the roof)
 constexpr int FINE_ROWS[RING] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
 constexpr int COARSE_ROWS[] = { 0, 1, 3, 4, RING_BELT, RING_PANE_TOP, 12, RING_ROOF, RING - 1 };
 // One band per region (region_of): underneath, the flank, the side glass, the roof's edge, the top.
@@ -77,11 +76,12 @@ Region side_region(const Loft &lf, int k, float xm) {
 
 // The top of the section: the screens in their frames, the roof, the bonnet, the boot, the bed's cover.
 Region top_region(const Loft &lf, int k, float xm) {
+	const CarBodyShape &K = lf.s->shapes->car_body;
 	const CarStyle &s = *lf.s;
 	const bool edge_row = k == RING_ROOF;
 	if (on_screen(s, xm)) return lf.fine && (xm > s.screen[0] - lf.frame || xm < s.screen[1] + lf.frame || edge_row) ? Region::FRAME : Region::GLASS;
 	if (on_rear(s, xm)) return lf.fine && (xm > s.rear[0] - lf.frame || xm < s.rear[1] + lf.frame || edge_row) ? Region::FRAME : Region::GLASS;
-	if (xm < s.bed_from - BED_LIP_M / s.L) return Region::FRAME;
+	if (xm < s.bed_from - K.bed_lip_m / s.L) return Region::FRAME;
 	return on_roof(s, xm) ? Region::ROOF : Region::PAINT;
 }
 
@@ -123,6 +123,7 @@ bool same_surface(Region a, Region b) {
 }
 
 std::vector<float> stations(const Loft &lf, const DataValue &body) {
+	const CarBodyShape &K = lf.s->shapes->car_body;
 	const CarStyle &s = *lf.s;
 	const int k = lf.level, uniform = body["stations"][k].whole(), arch = body["arch_steps"][k].whole();
 	const int ends = body["end_steps"][k].whole(), rolls = body["end_roll_steps"][k].whole();
@@ -131,13 +132,13 @@ std::vector<float> stations(const Loft &lf, const DataValue &body) {
 	for (float f : { s.screen[0], s.screen[1], s.glass_front, s.glass_back }) xs.push_back(f);
 	for (float f : s.rear)
 		if (s.rear_glass) xs.push_back(f);
-	if (s.bed_from > -0.5f) xs.insert(xs.end(), { s.bed_from, s.bed_from - BED_LIP_M / s.L });
+	if (s.bed_from > -0.5f) xs.insert(xs.end(), { s.bed_from, s.bed_from - K.bed_lip_m / s.L });
 	if (lf.fine) {
 		for (float e : s.doors) xs.insert(xs.end(), { e - lf.seam * 0.5f, e + lf.seam * 0.5f, e - lf.pillar * 0.5f, e + lf.pillar * 0.5f });
 		xs.insert(xs.end(), { s.screen[0] - lf.frame, s.screen[1] + lf.frame, s.glass_front - lf.frame, s.glass_back + lf.frame, s.screen[0] + s.pillar_foot / s.L });
 		if (s.rear_glass) xs.insert(xs.end(), { s.rear[0] - lf.frame, s.rear[1] + lf.frame });
 	}
-	const float ar = (s.r + CAR_ARCH_PAD_M) / s.L;
+	const float ar = (s.r + s.shapes->agent_parts.arch_pad_m) / s.L;
 	for (float a : s.axles)
 		for (int j = -arch; j <= arch; j++) xs.push_back(a + ar * j / arch);
 	for (int j = 1; j <= ends; j++) { // the plan's rounding at each end
@@ -165,6 +166,7 @@ struct Rows {
 // inside the band's surface) and the tangent along the length (one station each way).
 template <typename At>
 void gap(MeshBuilder &mb, const Loft &lf, const Rows &rows, const std::vector<float> &xs, size_t i, const At &at, const AgentTrim &trim) {
+	const CarBodyShape &K = trim.shapes->car_body;
 	const size_t n = xs.size();
 	const float xm = (xs[i] + xs[i + 1]) * 0.5f;
 	Region reg[RING];
@@ -199,7 +201,7 @@ void gap(MeshBuilder &mb, const Loft &lf, const Rows &rows, const std::vector<fl
 			if (!swings || reg[r] == Region::GLASS) continue;
 			// Its inside: what an open door shows, facing the cabin.
 			const Vector2 card = agent_tag(AgentTag::FIXED, Limb::DOOR);
-			for (int c = 0; c < 4; c++) v[c] = mb.add((pos[c] - nrm[c] * PANEL_IN_M) * mirror, -nrm[c] * mirror, trim.blackout, hinge, card);
+			for (int c = 0; c < 4; c++) v[c] = mb.add((pos[c] - nrm[c] * K.panel_in_m) * mirror, -nrm[c] * mirror, trim.blackout, hinge, card);
 			mb.tri(v[0], v[2], v[1], -face * mirror);
 			mb.tri(v[0], v[3], v[2], -face * mirror);
 		}
@@ -222,7 +224,7 @@ void loft(MeshBuilder &mb, const Loft &lf, const std::vector<float> &xs, const A
 
 int build_car(MeshBuilder &mb, const DataValue &car, const DataValue &body, const DataValue &inside, const CabinLook *look, const AgentTrim &trim,
 		int level) {
-	const CarStyle s = read_car_style(car, body);
+	const CarStyle s = read_car_style(car, body, *trim.shapes);
 	const int passengers = look ? car_cabin(mb, s, inside, *look) : 0;
 	Loft lf;
 	lf.s = &s;

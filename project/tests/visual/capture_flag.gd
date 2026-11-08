@@ -17,7 +17,6 @@ const AIM_STEPS := 10
 const CLEAR := 0.999 # share of the line of sight free of buildings: the pull takes nothing off it
 const SAMPLES := 48
 const IN_FRAME := 0.8 # of the half lens: the flag well inside the picture
-const LANTERN_H := 19.4
 const HOLD_FRAMES := 90
 
 
@@ -73,7 +72,16 @@ static func _frame(rig: CityCamera, aim: Vector3, yaw: float) -> Vector3:
 static func _mast_top(id: int) -> Vector3:
 	var p: Dictionary = CityStore.query(&"probe_building", [id])
 	var info: Dictionary = CityStore.query(&"body_info", [id])
-	return p.position + Vector3(0, info.ground_h + info.storey_h * (info.volumes[0].storeys - 1) + LANTERN_H * 0.5, 0)
+	return p.position + Vector3(0, info.ground_h + info.storey_h * (info.volumes[0].storeys - 1) + _lantern_h() * 0.5, 0)
+
+
+## The lantern's height, as the Build strip's roof gear sizes it (data/ui/builder.json, the "lantern" tool).
+static func _lantern_h() -> float:
+	for s: Dictionary in DataTables.ui("builder").tabs.roof.sections:
+		for t: Dictionary in s.get("tools", []):
+			if t.get("id", "") == "lantern":
+				return float(t.size[2])
+	return 0.0
 
 
 ## Whether a point stands inside the frame of an eye at `eye` looking along the rig's view (vertical lens: KEEP_HEIGHT).

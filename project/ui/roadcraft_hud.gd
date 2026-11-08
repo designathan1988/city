@@ -75,7 +75,7 @@ func _ready() -> void:
 		tools.hint.connect(show_hint)
 		tools.inspected.connect(_on_inspector)
 		tools.tool_changed.connect(func(t: ToolController.Tool, p: Dictionary) -> void:
-			Settings.set_zone_tool(t == ToolController.Tool.ZONE or t == ToolController.Tool.LOTS, p.get("zone", 0)))
+			Settings.map.set_zone_tool(t == ToolController.Tool.ZONE or t == ToolController.Tool.LOTS, p.get("zone", 0)))
 		tools.set_tool(ToolController.Tool.INSPECT) # with nothing in hand a click asks what is there, as in the reference
 	top_bar.set_sky(world.sky_mode if world else "day")
 

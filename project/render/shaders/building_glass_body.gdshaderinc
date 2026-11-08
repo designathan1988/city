@@ -4,17 +4,17 @@
 // a point the wall hides from a light must take none of it with a sky above zero, which AO_LIGHT_AFFECT cannot say.
 render_mode cull_back;
 #include "res://render/shaders/contracts/buildings.gdshaderinc"
+#include "res://render/shaders/bytes.gdshaderinc"
 
 global uniform float night;
-global uniform float rooms_awake; // the share of people awake at this hour (daylight.gd)
 global uniform float room_daylight; // how bright a room seen through its glass is by day, as light it sends out
 global uniform float building_glass; // the Effects panel: 0 leaves the panes out
-global uniform float building_night_windows; // the Effects panel: 0 puts the lit rooms out
-uniform float window_glow = 1.5;
-uniform float glass_reflect = 0.08;
-uniform vec3 glass_sky : source_color = vec3(0.45, 0.55, 0.66);
-uniform float glass_sky_floor = 0.15;
-uniform float furniture_tone[120]; // linear tone of each furniture kind, three floats a kind (materials.json)
+#include "res://render/shaders/building_glass_set.gdshaderinc"
+const int FURNITURE_FLOATS = 120; // three linear floats each of the furniture kinds pane_rooms.cpp picks from (materials.json furniture_tone)
+const float LEAST_PANE_SIDE_M = 0.3; // a pane's size never under this
+// Guards of the light's sums: a direction's part, a lit point's depth, a view's cosine never under these.
+const float LEAST_LIGHT = 1e-5, LEAST_FACING = 1e-4, LEAST_VIEW = 1e-3;
+uniform float furniture_tone[FURNITURE_FLOATS]; // linear tone of each furniture kind, three floats a kind (materials.json)
 
 const int KIND_MASK = (1 << SURFACE_KIND_BITS) - 1;
 
@@ -44,7 +44,7 @@ void vertex() {
 }
 
 #include "res://render/shaders/building_colour.gdshaderinc"
-#include "res://render/shaders/building_hash.gdshaderinc"
+#include "res://render/shaders/hash.gdshaderinc"
 #include "res://render/shaders/building_lamps.gdshaderinc"
 #include "res://render/shaders/building_room_tone.gdshaderinc"
 #include "res://render/shaders/building_sky_glass.gdshaderinc"
@@ -54,10 +54,10 @@ void fragment() {
 #ifdef LEVEL_FADE
 	if (!IN_SHADOW_PASS && level_noise(FRAGCOORD.xy) >= level_keep) discard;
 #endif
-	int coded = int(COLOR.a * 255.0 + 0.5);
-	uint code = uint(COLOR.r * 255.0 + 0.5) | (uint(COLOR.g * 255.0 + 0.5) << 8u);
+	int coded = int(COLOR.a * BYTE_TOP + 0.5);
+	uint code = uint(COLOR.r * BYTE_TOP + 0.5) | (uint(COLOR.g * BYTE_TOP + 0.5) << BYTE_SHIFT);
 	float deep = float(coded >> SURFACE_KIND_BITS) * PANE_RECESS_STEP_M;
-	vec2 size = max(UV2, vec2(0.3));
+	vec2 size = max(UV2, vec2(LEAST_PANE_SIDE_M));
 	vec3 n = normalize(v_wn);
 	vec3 V = normalize(v_world - CAMERA_POSITION_WORLD);
 	vec3 albedo, emit, nn, at;
@@ -67,7 +67,7 @@ void fragment() {
 		at = vec3(0.0);
 		open = 1.0;
 	} else {
-		pane(UV, size, code, uint(COLOR.b * 255.0 + 0.5), (coded & KIND_MASK) == SK_PANE_DARK, deep, n, V, albedo, emit, nn, rough, metal, at, open);
+		pane(UV, size, code, uint(COLOR.b * BYTE_TOP + 0.5), (coded & KIND_MASK) == SK_PANE_DARK, deep, n, V, albedo, emit, nn, rough, metal, at, open);
 	}
 	v_at = at;
 	v_hole = deep > 0.0 ? 0.5 * size : vec2(0.0);
@@ -88,17 +88,17 @@ void light() {
 	float through = 1.0;
 	if (v_hole.x > 0.0) {
 		vec3 s = vec3(dot(LIGHT, v_axis_x), dot(LIGHT, v_axis_y), -dot(LIGHT, v_axis_z));
-		vec2 leaves = v_at.xy + s.xy * (v_at.z / max(-s.z, 1e-5));
-		through = s.z < -1e-4 ? step(abs(leaves.x), v_hole.x) * step(abs(leaves.y), v_hole.y) : 0.0;
+		vec2 leaves = v_at.xy + s.xy * (v_at.z / max(-s.z, LEAST_LIGHT));
+		through = s.z < -LEAST_FACING ? step(abs(leaves.x), v_hole.x) * step(abs(leaves.y), v_hole.y) : 0.0;
 	}
 	vec3 lit = LIGHT_COLOR * ATTENUATION * through;
 	float nl = clamp(dot(NORMAL, LIGHT), 0.0, 1.0);
 	DIFFUSE_LIGHT += lit * nl / PI;
 	vec3 half_way = normalize(VIEW + LIGHT);
-	float nv = max(dot(NORMAL, VIEW), 1e-3), nh = clamp(dot(NORMAL, half_way), 0.0, 1.0), lh = clamp(dot(LIGHT, half_way), 0.0, 1.0);
+	float nv = max(dot(NORMAL, VIEW), LEAST_VIEW), nh = clamp(dot(NORMAL, half_way), 0.0, 1.0), lh = clamp(dot(LIGHT, half_way), 0.0, 1.0);
 	float a2 = ROUGHNESS * ROUGHNESS * ROUGHNESS * ROUGHNESS;
 	float lobe = nh * nh * (a2 - 1.0) + 1.0;
-	float visible = 0.5 / max(nl * sqrt(nv * nv * (1.0 - a2) + a2) + nv * sqrt(nl * nl * (1.0 - a2) + a2), 1e-5);
-	vec3 f0 = mix(vec3(0.04), ALBEDO, METALLIC);
-	SPECULAR_LIGHT += lit * nl * a2 / (PI * lobe * lobe) * visible * (f0 + (1.0 - f0) * pow(1.0 - lh, 5.0)) * SPECULAR_AMOUNT;
+	float visible = 0.5 / max(nl * sqrt(nv * nv * (1.0 - a2) + a2) + nv * sqrt(nl * nl * (1.0 - a2) + a2), LEAST_LIGHT);
+	vec3 f0 = mix(vec3(DIELECTRIC_F0), ALBEDO, METALLIC);
+	SPECULAR_LIGHT += lit * nl * a2 / (PI * lobe * lobe) * visible * (f0 + (1.0 - f0) * pow(1.0 - lh, SCHLICK_POWER)) * SPECULAR_AMOUNT;
 }

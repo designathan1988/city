@@ -5,6 +5,7 @@
 #include "core/color.h"
 #include "render/data_reader.h"
 #include "render/mesh_builder.h"
+#include "render/shape_reader.h"
 
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/string.hpp>
@@ -44,7 +45,6 @@ void load_shape(StreetLook &L, DataReader &r, const Dictionary &t) {
 	DataReader rh = r.in("heights");
 	L.h_curb = num(rh, h, "curb");
 	L.h_curb_median = num(rh, h, "curb_by_median");
-	L.h_sidewalk = num(rh, h, "sidewalk");
 	L.h_median = num(rh, h, "median");
 	L.h_barrier = num(rh, h, "barrier");
 	L.skirt = num(rh, h, "skirt");
@@ -122,12 +122,16 @@ void load_marks(StreetLook &L, DataReader &r, const Dictionary &t) {
 }
 } // namespace
 
+// The emitters' sizes: every block of STREET_SHAPE_BLOCKS, each field under its own name (render/shape_reader.h).
+static void street_shapes_of(DataReader r, const Dictionary &t, StreetShapes &out) { STREET_SHAPE_BLOCKS(SHAPE_READ_BLOCK) }
+
 bool StreetLook::load(const Dictionary &t, PackedStringArray &errors) {
 	const int64_t before = errors.size();
 	DataReader r{ errors, "streets.json" };
 	load_colors(*this, r, t);
 	load_shape(*this, r, t);
 	load_marks(*this, r, t);
+	street_shapes_of(r.in("shapes"), r.table(t, "shapes"), shapes);
 	return errors.size() == before;
 }
 

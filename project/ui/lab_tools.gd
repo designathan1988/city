@@ -4,7 +4,6 @@ class_name LabTools
 extends RefCounted
 
 const DRAW_CONSTANT := "DEBUG_DRAW_"
-const PERCENT := 100
 
 
 static func _line(body: Control, name_text: String, value: String) -> void:

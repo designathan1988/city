@@ -27,6 +27,7 @@ bool RoadRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	if (!look_.load(t, errors)) return false;
 	look_.ramp_full = ctx.catalog->furniture.crossing.zebra_from_m; // a dropped kerb is the zebra's: its ramp lands where the zebra does
 	look_.ramp_flat = ctx.catalog->furniture.crossing.zebra_to_m;
+	look_.h_sidewalk = ctx.catalog->furniture.sidewalk.height_m; // the footway's top, where the walkers stand too
 	return true;
 }
 

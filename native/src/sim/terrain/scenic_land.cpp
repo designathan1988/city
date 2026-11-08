@@ -10,7 +10,7 @@ namespace city {
 
 namespace {
 constexpr int RELIEF_OCTAVES = 3;
-constexpr uint32_t RELIEF_SALT = 0x5ce41cU;
+constexpr uint32_t RELIEF_SALT = 0x5ce41cU; // the relief's stream of the seed (any word)
 constexpr float WATER_WALL_SHARE = 0.5f; // the water stands this share up the channel's walls
 constexpr float SHORE_SAMPLE_M = 8; // a lake's rim is read this often for its lowest land
 } // namespace

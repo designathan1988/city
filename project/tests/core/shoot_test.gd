@@ -233,7 +233,7 @@ func _save_marks() -> void:
 	check(w.get("ok", false), "saved %s" % w)
 	new_map(TOWN_MAP, OTHER_SEED, false)
 	check(CityStore.query(&"damage_probe").craters == 0, "a new map does not inherit the marks")
-	var r: Dictionary = CityStore.saves.load_game(SLOT, true)
+	var r: Dictionary = await CityStore.saves.load_game(SLOT, true)
 	check(r.ok, "opened %s" % r)
 	var got: Dictionary = CityStore.query(&"damage_probe")
 	for key in ["craters", "ruins", "gone", "hurt", "strikes"]:

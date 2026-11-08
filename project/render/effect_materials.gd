@@ -4,9 +4,7 @@
 class_name EffectMaterials
 extends RefCounted
 
-## Kept as text so the orphan gate sees the shaders the native effects load by name from materials.json.
 const TONE_INVERTED := ["puffs", "building_wash"] ## what tone_inverse.gdshaderinc reads
-const SHADERS := ["res://render/shaders/puffs.gdshader", "res://render/shaders/debris.gdshader", "res://render/shaders/marks.gdshader"]
 
 
 ## `row`: the material's row of data/render/materials.json; render_priority orders the transparent layers (the higher is drawn over).

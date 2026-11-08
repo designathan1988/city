@@ -19,7 +19,7 @@ class JobPool;
 constexpr int TERRAIN_REGION_SIZE = 256; // samples per Terrain3D region side
 constexpr int TERRAIN_MAX_REGIONS = 32; // Terrain3D limit per side
 constexpr float HEIGHT_Q_OFFSET = 100.f, HEIGHT_Q_SCALE = 100.f; // 1 cm steps from -100 m
-constexpr float QUANT_LIMIT = 65535.f;
+constexpr float QUANT_LIMIT = 65535.f; // a 16-bit height's top
 
 struct TerrainModifier {
 	bool alive = false;

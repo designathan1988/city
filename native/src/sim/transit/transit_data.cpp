@@ -12,7 +12,7 @@ namespace {
 constexpr float NO_DISTANCE = std::numeric_limits<float>::max();
 constexpr int MIN_LINE_STOPS = 2;
 
-constexpr int CELL_ROW_BITS = 32;
+constexpr int CELL_ROW_BITS = 32; // a cell's key: its row over the column's 32 bits
 
 int64_t cell_key(int i, int j) { return (int64_t(i) << CELL_ROW_BITS) ^ uint32_t(j); }
 

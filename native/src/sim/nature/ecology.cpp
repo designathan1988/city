@@ -16,10 +16,10 @@ namespace city {
 
 namespace {
 constexpr uint32_t SEED_MOD = 997u; // a seed moves the patches by up to this many cells
-constexpr float SHIFT_X = 1.731f, SHIFT_Z = 2.113f;
+constexpr float SHIFT_X = 1.731f, SHIFT_Z = 2.113f; // cells a seed's step moves the patches, apart so the axes do not repeat together
 constexpr int STRATA_MIX = 6; // the most communities one biome mixes
-constexpr float NO_WEIGHT = 1e-6f, MIN_WEIGHT = 0.01f, BYTE_MAX = 255.f;
-constexpr float UNREACHED_M = 1e9f;
+constexpr float NO_WEIGHT = 1e-6f, MIN_WEIGHT = 0.01f, BYTE_MAX = 255.f; // a sum of nothing; a paint under a hundredth counts for none; a byte's top
+constexpr float UNREACHED_M = 1e9f; // farther than any cell: not reached yet
 constexpr int CHAMFER_STRAIGHT = 3, CHAMFER_DIAGONAL = 4; // two-pass chamfer distance (Borgefors 1986)
 
 float smooth(float a, float b, float x) { return smooth01((x - a) / (b - a)); }

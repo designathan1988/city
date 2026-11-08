@@ -25,6 +25,8 @@
 
 namespace city {
 
+constexpr uint64_t EFFECT_SEED = 0xb1a57ULL; // the effects' own random stream: any fixed seed
+
 class EffectWorld {
 public:
 	bool init(const RenderContext &ctx, godot::PackedStringArray &errors);
@@ -85,7 +87,7 @@ private:
 	void building_down(const DamageEvent &e, const CityState &s);
 	void pile(const Ruin &r, bool falling, bool mound, bool loose); // the heap a building left (effect_ruins.cpp): its mound and the plain pieces on it
 	void rebuild_ruins(const CityState &s); // every ruin of the state as a heap lying (open, undo, redo)
-	static float heap_of(const Ruin &r); // how high its mound stands
+	float heap_of(const Ruin &r) const; // how high its mound stands
 	void furniture(const DamageEvent &e, const CityState &s);
 	void pole(const DamageEvent &e); // a pole or a signal post knocked out (effect_things.cpp)
 public:
@@ -125,8 +127,7 @@ private:
 	WireSeats seats_; // where a pole's wires sit (streets.json wires): a torn wire hangs from them
 	RuinPieces ruins_;
 	PeopleRenderer *people_ = nullptr; // whose bodies fall (render_world.cpp)
-	static constexpr uint64_t EFFECTS_STREAM = 0xb1a57ULL; // the effects' own stream, the same every run
-	Rng rng_{ EFFECTS_STREAM };
+	Rng rng_{ EFFECT_SEED };
 	godot::RID scenario_, light_, light_inst_;
 	std::vector<DamageEvent> events_, events_played_; // to play; played this frame
 	struct Source {

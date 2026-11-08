@@ -19,7 +19,7 @@ struct Envelope {
 	bool low = false; // a low-density commercial lot
 };
 
-LotPlan plan_lot(const LotRules &l, Kind kind, float W, float D, Xoshiro128 &r);
+LotPlan plan_lot(const Data &data, Kind kind, float W, float D, Xoshiro128 &r);
 // The building for the envelope of `b.plan` (volumes in the envelope frame, x from its left edge).
 void made_to_measure(const Data &data, Body &b, const Envelope &env, Xoshiro128 &r);
 // Facade grammar (facade_compose.cpp).

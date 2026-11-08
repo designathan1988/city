@@ -4,7 +4,6 @@
 class_name HudActions
 extends Node
 
-const MS_PER_S := 1000.0
 ## What asks first (Roadcraft window.confirm): the map on screen is saved, then the new one takes its place.
 const CONFIRM := {"new_empty": "confirm.newMap", "new_city": "confirm.newWorld", "new_large": "confirm.newLargeWorld"}
 
@@ -28,7 +27,7 @@ func menu(action: String) -> void:
 		"save_map":
 			_refused(CityStore.saves.export_map())
 		"load_last":
-			_loaded(CityStore.saves.load_last())
+			_loaded(await CityStore.saves.load_last())
 		"open":
 			_hud().open_popover("files")
 		"open_file":
@@ -94,7 +93,7 @@ func _pick_file() -> void:
 
 ## A city file: opened, or nothing changed and the player told so.
 func open_file(file: String) -> void:
-	var r := CityStore.saves.open_file(file)
+	var r: Dictionary = await CityStore.saves.open_file(file)
 	_hud().drawer.close()
 	_hud().flash(tr("hint.opened") if r.get("ok", false) else tr("hint.openFailed"), r.get("ok", false))
 
@@ -112,7 +111,7 @@ func show_impossible() -> void:
 
 
 func load_slot(slot: String) -> void:
-	_loaded(CityStore.saves.load_game(slot))
+	_loaded(await CityStore.saves.load_game(slot))
 
 
 func _loaded(r: Dictionary) -> void:
@@ -131,7 +130,7 @@ func _on_saved(_slot: String, r: Dictionary) -> void:
 	if r.get("ok", false):
 		_hud().flash(tr("save.auto" if r.get("auto", false) else "save.done"), true)
 		return
-	var now := Time.get_ticks_msec() / MS_PER_S
+	var now := Time.get_ticks_msec() / Units.MS_PER_S
 	if r.get("auto", false) and now - _failed_at < DataTables.game("saves").failed_hint_s:
 		return
 	_failed_at = now

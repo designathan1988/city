@@ -12,13 +12,13 @@ struct BlockSpec {
 	int base = 0, storeys = 1;
 	Roof roof = ROOF_FLAT;
 	uint8_t fill = BAY_WINDOW, ground = BAY_NONE;
-	const std::vector<Point2> *shape = nullptr;
+	const std::vector<V2> *shape = nullptr;
 };
 
 int add_block(Body &b, const BlockSpec &s);
 // Pitch and ridge of a volume's roof. `ridge_to_street` < 0 draws the default float (even for a flat roof).
-void roof_shape(Volume &v, Xoshiro128 &r, int ridge_to_street = -1);
-Paint roof_of(Xoshiro128 &r, const std::vector<Paint> &list);
+void roof_shape(const Data &data, Volume &v, Xoshiro128 &r, int ridge_to_street = -1);
+Paint roof_of(const Data &data, Xoshiro128 &r, const std::vector<Paint> &list);
 std::vector<Paint> clay_of(const Data &data);
 Paint other_skin(const Data &data, int style, Xoshiro128 &r, const Paint &wall);
 void look(Body &b, const Paint &wall, const Paint &roof, const Paint &trim);

@@ -12,7 +12,7 @@
 namespace city {
 
 namespace {
-constexpr float UNIT_EPS = 1e-9f;
+constexpr float UNIT_EPS = 1e-9f; // a vector this short has no direction
 
 ArmDir unit(float x, float z) {
 	const float l = std::hypot(x, z);

@@ -16,7 +16,6 @@ namespace {
 constexpr float MOVING_MS = 0.5f, NEAR_LINE_M = 3.f, COURTESY_NEAR_M = 4.f, MIN_BRAKE = 0.5f, MIN_FRONT_MS = 2.f; // MIN_FRONT_MS: the slowest top front_time assumes
 
 float body(const CityState &s, const Vehicle &v) { return s.catalog.traffic.classes[int(v.type)].length; }
-int in_ds(const CityState &s, int seg, int node) { return seg * 2 + (s.roads.segs[seg].b == node ? 0 : 1); }
 
 // Metres to the stop line of the head of lane `key` (negative: over it).
 float to_line(const CityState &s, int ds, const Vehicle &v) {
@@ -85,7 +84,7 @@ bool walk_ok(CityState &s, int node, int arm_seg) {
 	const Junction &j = s.traffic.g.junctions[size_t(node)];
 	bool ok = true;
 	if (j.ctl == Control::SIGNAL) {
-		const DirSeg &d = s.traffic.g.ds[size_t(in_ds(s, arm_seg, node))];
+		const DirSeg &d = s.traffic.g.ds[size_t(in_ds(s.roads, arm_seg, node))];
 		ok = walk_signal(s, node, arm_seg, d.ok ? d.stage : -1);
 	}
 	store(s, key, 0, ok);

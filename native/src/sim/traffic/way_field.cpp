@@ -10,7 +10,7 @@ namespace city {
 namespace traffic {
 
 namespace {
-constexpr double HALF = 0.5, ROOT_TWO = 1.41421356237309505;
+constexpr double HALF = 0.5, ROOT_TWO = 1.41421356237309505; // the square root of two: a diagonal step's length per cell
 const float NO_ROOM = -std::numeric_limits<float>::infinity();
 } // namespace
 

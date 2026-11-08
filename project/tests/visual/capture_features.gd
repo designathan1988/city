@@ -163,11 +163,14 @@ func _build(a: Vector3, e: Vector3) -> void:
 	await ui.frames(4)
 	await ui.press(hud.drawer._tabs.draw)
 	await ui.frames(2)
-	var cards := hud.drawer.strip.get_children().filter(func(c: Node) -> bool: return c.has_meta(&"pick"))
+	var cards := {} # the lot cards by the function each lays (the core's BuildingFn)
+	for c: Node in hud.drawer.strip.get_children():
+		if c.has_meta(&"pick"):
+			cards[String(CityStore.code_name(&"BuildingFn", int(c.get_meta(&"pick"))))] = c
 	var b0: int = CityStore.snapshot.buildings
-	await ui.press(cards[1]) # parque
+	await ui.press(cards["FN_PARK"])
 	await ui.drag(mid + Vector3(-30, 0, 16), mid + Vector3(30, 0, 56), func() -> void: await ui.shot("feat_build_previa"))
-	await ui.press(cards[2]) # escola
+	await ui.press(cards["FN_SCHOOL"])
 	await ui.drag(mid + Vector3(-30, 0, -16), mid + Vector3(20, 0, -50))
 	await ui.drawn()
 	_check(CityStore.snapshot.buildings >= b0 + 2, "park and school drawn (%d -> %d)" % [b0, CityStore.snapshot.buildings])
@@ -176,9 +179,9 @@ func _build(a: Vector3, e: Vector3) -> void:
 
 
 func _layers(a: Vector3, e: Vector3) -> void:
-	var zoned: Dictionary = ZoneStroke.along(a, e, DataTables.zone_code("commercial"))
+	var zoned: Dictionary = ZoneStroke.along(a, e, ZoneTable.code("commercial"))
 	_check(zoned.ok, "zoned the road: %s" % zoned)
-	CityStore.dispatch(&"set_speed", [1])
+	CityStore.dispatch(&"set_speed", [CityStore.code(&"SimSpeed", &"NORMAL")])
 	for i in 120:
 		await get_tree().process_frame
 	rig.jump(a + Vector3(0, 0, 0), 0.0, 60.0, 900.0)

@@ -14,13 +14,14 @@
 namespace city {
 
 namespace {
-constexpr uint32_t SALT_OPEN = 0x6f70656eU, SALT_KNOCK = 0x6b6e6f63U, SALT_FALL = 0x66616c6cU;
+constexpr uint32_t SALT_OPEN = 0x6f70656eU, SALT_KNOCK = 0x6b6e6f63U, SALT_FALL = 0x66616c6cU; // the streams' salts: the words they name, in ASCII
 constexpr float OPEN_SECOND_HIT_CHANCE = 0.4f; // the second round in the trunk opens the belly this often (the 4.0: 102 of 256)
 constexpr float KNOCK_TRUNK_CHANCE = 0.5f; // a light round in the trunk throws the walker down this often
 constexpr float PUSH_KILL = 0.25f, PUSH_KNOCK = 0.1f, PUSH_GRAVE = 0.15f, PUSH_SEVER = 0.35f; // how hard the body is pushed (0..1)
 constexpr uint32_t HITS_SALT_SHIFT = 8; // the draw of a hit differs from the same walker's next
 constexpr float LIE_FOR_GOOD_S = 600.f; // down until they bleed out
 constexpr float BULLET_BACK_M = 10.f; // the push comes from this far behind the walker along the round
+// The limb each of a ragdoll's six hit zones takes (the trunk none).
 constexpr uint32_t LIMB_OF[6] = { CAS_LIMB_HEAD, 0, CAS_LIMB_ARM_L, CAS_LIMB_ARM_R, CAS_LIMB_LEG_L, CAS_LIMB_LEG_R };
 constexpr int LIMB_INDEX[6] = { -1, -1, 0, 1, 2, 3 }; // into Pedestrian::hurt_limb
 
@@ -87,7 +88,7 @@ void shoot_walker(Round &r, int id, BodyPart part, float hx, float hy, float hz,
 	if (!lying && !grave) {
 		const bool leg = part == BodyPart::LEG_L || part == BodyPart::LEG_R;
 		if (leg || (part == BodyPart::TORSO && r.roll(SALT_KNOCK, uint32_t(id) ^ (uint32_t(w.hits) << HITS_SALT_SHIFT)) < KNOCK_TRUNK_CHANCE)) {
-			const float lie = p.shot_knock_min_s + p.shot_knock_span_s * r.roll(SALT_FALL, uint32_t(id));
+			const float lie = p.knock_min_s + p.knock_span_s * r.roll(SALT_FALL, uint32_t(id)); // as long down as a blast's (people.knock_*)
 			w.down_until = now + lie;
 			r.emit(casualty_of(r, id, w, CAS_KNOCKED | shared, PUSH_KNOCK, lie, hx, hz));
 		} else {

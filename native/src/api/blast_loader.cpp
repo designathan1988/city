@@ -94,8 +94,6 @@ bool load_blast_params(const Dictionary &t, BlastParams &p, PackedStringArray &e
 	p.bleed_limb = float(r.in("shot").num(shot, "bleed_limb"));
 	p.bleed_leg = float(r.in("shot").num(shot, "bleed_leg"));
 	p.bleed_hurt = float(r.in("shot").num(shot, "bleed_hurt"));
-	p.shot_knock_min_s = float(r.in("shot").num(shot, "knock_min_s"));
-	p.shot_knock_span_s = float(r.in("shot").num(shot, "knock_span_s"));
 	p.glass_above = float(r.in("shot").num(shot, "glass_above"));
 	p.two_wheeler_rider_m = float(r.in("shot").num(shot, "two_wheeler_rider_m"));
 	p.flinch_s = float(r.in("shot").num(shot, "flinch_s"));

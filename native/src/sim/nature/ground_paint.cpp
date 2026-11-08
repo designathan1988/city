@@ -13,14 +13,15 @@ namespace city {
 
 namespace {
 const PaintCell EMPTY_CELL{};
-static_assert(sizeof(PaintCell) == 6 + COVER_KINDS, "a cell is its bytes: compared whole");
+constexpr size_t PAINT_CELL_BYTES = 6; // a cell's own bytes before its covers' (PaintCell)
+static_assert(sizeof(PaintCell) == PAINT_CELL_BYTES + COVER_KINDS, "a cell is its bytes: compared whole");
 bool same(const PaintCell &a, const PaintCell &b) { return std::memcmp(&a, &b, sizeof(PaintCell)) == 0; }
 bool blank(const PaintTile &t) {
 	return std::all_of(t.begin(), t.end(), [](const PaintCell &c) { return same(c, EMPTY_CELL); });
 }
 bool has_biome(const PaintCell &c) { return c.biome != 0 && c.biome_amount != 0; }
 bool has_cover(const PaintCell &c) { return std::any_of(c.cover.begin(), c.cover.end(), [](uint8_t v) { return v != 0; }); }
-constexpr float BYTE_MAX = 255.f;
+constexpr float BYTE_MAX = 255.f; // a byte's top
 constexpr float SWITCH_BELOW = 24.f; // a surface this thin gives way to the one being laid (a tenth of full)
 
 uint8_t towards(uint8_t v, float target, float w) {

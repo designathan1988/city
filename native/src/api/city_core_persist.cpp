@@ -114,8 +114,15 @@ Dictionary CityCore::save_city(const String &path) {
 	return d;
 }
 
+void CityCore::join_load() {
+	if (load_.thread.joinable()) load_.thread.join();
+	load_.read.reset();
+	load_.state.store(0);
+}
+
 Dictionary CityCore::load_city(const String &path, bool paused) {
 	join_save();
+	join_load();
 	Dictionary d;
 	d["ok"] = false;
 	Ref<FileAccess> f = FileAccess::open_compressed(path, FileAccess::READ, FileAccess::COMPRESSION_ZSTD);
@@ -123,32 +130,68 @@ Dictionary CityCore::load_city(const String &path, bool paused) {
 		d["error"] = "save.none";
 		return d;
 	}
+	// The file is read here, by the engine, on the main thread; only the decoding, plain C++, runs aside.
 	std::vector<uint8_t> bytes(f->get_length());
-	uint64_t got = f->get_buffer(bytes.data(), bytes.size());
+	const uint64_t got = f->get_buffer(bytes.data(), bytes.size());
 	f->close();
-	std::string error = "save.file.damaged";
 	if (got != bytes.size()) {
-		d["error"] = String(error.c_str());
+		d["error"] = "save.file.damaged";
 		return d;
 	}
 	// The city is read once, aside, while the open one runs on: it is taken in whole only when the file is whole.
-	auto read = std::make_unique<CityState>(state_->jobs);
+	load_.read = std::make_unique<CityState>(state_->jobs);
 	{
 		std::shared_lock<std::shared_mutex> lk(state_->map_mutex); // the road variants change it under the exclusive lock
-		read->catalog = state_->catalog;
+		load_.read->catalog = state_->catalog;
 	}
-	OpenTimes times;
-	if (!decode_city(*read, bytes.data(), bytes.size(), error, &times)) {
+	load_.error.clear();
+	load_.times = OpenTimes{};
+	load_.paused = paused;
+	load_.state.store(1);
+	load_.thread = std::thread([this, bytes = std::move(bytes)]() {
+		std::string error = "save.file.damaged";
+		const bool whole = decode_city(*load_.read, bytes.data(), bytes.size(), error, &load_.times);
+		load_.error = error;
+		load_.state.store(whole ? 2 : 3);
+	});
+	d["ok"] = true;
+	d["error"] = "";
+	d["pending"] = true;
+	return d;
+}
+
+Dictionary CityCore::load_poll() {
+	Dictionary d;
+	const int state = load_.state.load();
+	if (state == 1) {
+		d["pending"] = true;
+		return d;
+	}
+	d["ok"] = false;
+	if (state == 0) {
+		d["error"] = "save.none"; // nothing is being opened
+		return d;
+	}
+	if (load_.thread.joinable()) load_.thread.join();
+	std::string error = load_.error;
+	if (state == 3) {
+		join_load();
 		d["error"] = String(error.c_str()); // refused before anything changed: the open city runs on
 		return d;
 	}
+	std::unique_ptr<CityState> read = std::move(load_.read);
+	const OpenTimes times = load_.times;
+	const bool paused = load_.paused;
+	join_load();
 	Dictionary spent;
 	Laps laps;
 	sim_.stop();
+	state_->jobs->pause(); // no job is inside the city while it is replaced: some read the catalogue and the tables outside the lock
 	{
 		std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
 		state_->interior = InteriorView(); // the layer closes with the city it showed
 		take_city(*state_, *read);
+		state_->jobs->resume();
 		spent["take"] = laps.lap();
 		traffic::reset_traffic(*state_); // a load: full lane graph and an empty fleet
 		spent["traffic"] = laps.lap();

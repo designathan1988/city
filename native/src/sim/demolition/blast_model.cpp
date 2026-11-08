@@ -10,11 +10,11 @@ namespace {
 constexpr float CDF_SCALE = 0.70710678f; // 1 / sqrt(2): erfc argument of the normal cdf
 constexpr int RANGE_BISECTIONS = 40; // 2^-40 of the search window: far below a millimetre
 constexpr float RANGE_LIMIT_M = 20000.f; // no scaled range is searched beyond this
-constexpr float NEAREST_RANGE_M = 0.05f;
+constexpr float NEAREST_RANGE_M = 0.05f; // the least range a blast is read at: the curves start there
 constexpr float MIN_KG = 1e-6f; // a charge of nothing still has a scaled distance
-constexpr float PA_PER_KPA = 1000.f;
+constexpr float PA_PER_KPA = 1000.f; // the kilopascal
 constexpr float QUANTILE_LIMIT = 8.f; // the standard normal's quantile is searched within +-8
-constexpr int QUANTILE_BISECTIONS = 48;
+constexpr int QUANTILE_BISECTIONS = 48; // halvings of that window: far below the curves' own precision
 
 // F = exp(A + B ln Z + C ln2 Z + ...) of the row holding Z. Nearer than the first row: its value at its start (DDESB
 // TP 20 2.4.3.2). Farther than the last row: a row that is a plain power law in the data (A + B ln Z, the pressure's and

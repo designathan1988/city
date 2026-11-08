@@ -9,6 +9,7 @@
 // instances: the engine's own shadow mesh is ignored for a material with a vertex(), as the agents' (uses_shared_shadow_material).
 #pragma once
 
+#include "render/agents/agent_shapes.h"
 #include <godot_cpp/classes/array_mesh.hpp>
 #include "render/data_reader.h"
 #include "core/shader_contracts/agents.h"
@@ -30,6 +31,7 @@ constexpr int AGENT_HULL_LEVEL = AGENT_LEVELS; // the car with no wheels, what t
 
 // Fixed colours of the parts that are not painted (agents.json "trim").
 struct AgentTrim {
+	const AgentShapes *shapes = nullptr; // the parts' sizes (agents.json "shapes"), handed with the trim to every part builder
 	godot::Color tyre, hub, under, blackout, grille, plate, glass, headlamp, tail, truck_box, chrome, roof, indicator, mirror;
 };
 
@@ -65,6 +67,7 @@ struct CabinPaint {
 	godot::Color lining, floor, seat, dash;
 };
 struct CabinLook {
+	const AgentShapes *shapes = nullptr; // the parts' sizes (agents.json "shapes")
 	float lining_inset_m = 0, liner_drop_m = 0, rim_m = 0;
 	Person person;
 	SeatStyle car, cab, chair;
@@ -110,9 +113,9 @@ CabinPaint read_cabin_paint(const DataValue &d);
 // A box with a tag; colour white for tinted tags.
 void agent_box(MeshBuilder &mb, const godot::Vector3 &mn, const godot::Vector3 &mx, const godot::Color &c, AgentTag tag, Limb limb = Limb::NONE);
 // A housing as a mirror's is: a rounded shell `depth` long towards +Z, closing to a blunt nose, flat at its back (`centre`, `half` wide and high).
-void agent_pod(MeshBuilder &mb, const godot::Vector3 &centre, const godot::Vector2 &half, float depth, const godot::Color &c, AgentTag tag);
+void agent_pod(MeshBuilder &mb, const AgentShapes &shapes, const godot::Vector3 &centre, const godot::Vector2 &half, float depth, const godot::Color &c, AgentTag tag);
 // The flat of that shape, facing -Z: its back, or the glass set in it.
-void agent_pod_face(MeshBuilder &mb, const godot::Vector3 &centre, const godot::Vector2 &half, const godot::Color &c, AgentTag tag);
+void agent_pod_face(MeshBuilder &mb, const AgentShapes &shapes, const godot::Vector3 &centre, const godot::Vector2 &half, const godot::Color &c, AgentTag tag);
 // A bar from a to b, `w` across (along X where it can be) and `d` the other way: limbs, torsos, steering wheels.
 void agent_strut(MeshBuilder &mb, const godot::Vector3 &a, const godot::Vector3 &b, float w, float d, const godot::Color &c, AgentTag tag,
 		Limb limb = Limb::NONE);
@@ -121,7 +124,7 @@ struct AgentWreck {
 	godot::Ref<godot::ArrayMesh> mesh;
 	godot::Vector3 size;
 };
-AgentWreck agent_wreck(const MeshBuilder &mb, uint32_t seed);
+AgentWreck agent_wreck(const AgentShapes &shapes, const MeshBuilder &mb, uint32_t seed);
 void agent_pane(MeshBuilder &mb, const godot::Vector3 &a, const godot::Vector3 &b, const godot::Vector3 &c, const godot::Vector3 &d, const godot::Vector3 &out,
 		const AgentTrim &trim);
 // A wheel turning about X: tyre tread, sidewall and hubcap on the outer face (`side` = +1 left, -1 right).
@@ -182,6 +185,5 @@ void heavy_wheels(MeshBuilder &mb, const Running &g, int sides, const AgentTrim 
 void heavy_lamps(MeshBuilder &mb, const DataValue &lamps, float width, float length, const AgentTrim &trim);
 // A mirror each side on an arm out from the body at z: the glass's bottom at y, its outer edge `out` beyond the side.
 void heavy_mirrors(MeshBuilder &mb, float half_w, float z, float y, float out, const AgentTrim &trim);
-constexpr float HEAVY_PROUD_M = 0.01f, HEAVY_GLASS_INSET_M = 0.02f, HEAVY_ARCH_PAD_M = 0.07f, HEAVY_PILLAR_M = 0.12f;
 
 } // namespace city

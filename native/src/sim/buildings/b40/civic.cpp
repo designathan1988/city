@@ -14,34 +14,24 @@
 namespace city::b40 {
 
 namespace {
-constexpr float HALF = 0.5f, FRONT_SHARE = 0.18f, FRONT_MIN = 4.f, FRONT_MAX = 12.f, SIDE_GAP = 2.f, BACK_GAP = 2.f, CIVIC_STOREY = 3.6f;
-// school
-constexpr float WING_D = 11.f, WING_D_SHARE = 0.45f, SIDE_WING_W = 11.f, SIDE_WING_SHARE = 0.35f, SCHOOL_ROOF_PITCH = 24.f;
-constexpr float COURT_W = 15.f, COURT_D = 28.f, COURT_LINE = 0.12f, COURT_EDGE = 1.5f, SURFACE_H = 0.06f;
-constexpr int SCHOOL_STOREYS_LO = 2, SCHOOL_STOREYS_HI = 3;
-// church
-constexpr float NAVE_W = 14.f, NAVE_W_SHARE = 0.6f, NAVE_D = 30.f, NAVE_H = 9.f, NAVE_PITCH = 42.f, TOWER_W = 4.4f;
-constexpr float TOWER_STOREY = 3.7f, TOWER_PITCH = 68.f, CROSS_H = 1.8f, CROSS_W = 1.f, CROSS_T = 0.18f, CROSS_ARM_Z = 0.65f;
-constexpr int TOWER_STOREYS = 4;
-// hospital
-constexpr float WARD_SHARE = 0.8f, WARD_D = 22.f, WARD_D_SHARE = 0.55f, PODIUM_D_SHARE = 0.75f, SIGN_W = 3.2f, SIGN_T = 0.25f;
-constexpr float SIGN_BAR = 0.75f, SIGN_OUT = 0.3f, BAND_H = 0.7f, BAND_OUT = 0.12f, CANOPY_W = 7.f, CANOPY_D = 4.f, CANOPY_T = 0.35f;
-constexpr int HOSPITAL_LO = 5, HOSPITAL_HI = 9, CLINIC_STOREYS = 2;
+constexpr float HALF = 0.5f;
 
 bool is_service(int fn) {
 	return fn == FN_GAS_STATION || fn == FN_SUPERMARKET || fn == FN_MALL || fn == FN_CITY_HALL || fn == FN_POLICE || fn == FN_FIRE_STATION;
 }
 
 void school(const Data &data, Body &b, float w, float d, Xoshiro128 &r) {
-	int storeys = r.irange(SCHOOL_STOREYS_LO, SCHOOL_STOREYS_HI);
-	float wd = std::min(WING_D, d * WING_D_SHARE), sw = std::min(SIDE_WING_W, w * SIDE_WING_SHARE);
+	const CivicShape &K = data.shapes.civic;
+	const LotPartShape &P = data.shapes.parts;
+	int storeys = r.irange(K.school_storeys_lo, K.school_storeys_hi);
+	float wd = std::min(K.wing_d, d * K.wing_d_share), sw = std::min(K.side_wing_w, w * K.side_wing_share);
 	bool left = r.f() < HALF;
 	int roof = b.add_paint(data.color("school_roof"));
 	int a = add_block(b, { 0, 0, w, wd, 0, storeys, ROOF_HIP, BAY_WIDE, BAY_WIDE });
 	int c = add_block(b, { left ? 0 : w - sw, wd, sw, d - wd, 0, storeys, ROOF_HIP, BAY_WIDE, BAY_WIDE });
 	for (int i : { a, c }) {
 		Volume &v = b.volumes[size_t(i)];
-		v.pitch = SCHOOL_ROOF_PITCH;
+		v.pitch = K.school_roof_pitch;
 		v.roof_paint = roof;
 		v.lines = LINES_BASE;
 		v.crown = CROWN_NONE;
@@ -49,55 +39,57 @@ void school(const Data &data, Body &b, float w, float d, Xoshiro128 &r) {
 	}
 	// the court: lawn round a painted sports court on the open side of the L
 	float x0 = left ? sw : 0, x1 = left ? w : w - sw;
-	put(b, EL_SURFACE, x0, wd, x1, d, SURFACE_H, b.add_paint(data.color("lawn")));
-	float cw = std::min(COURT_W, x1 - x0 - 2 * COURT_EDGE), cd = std::min(COURT_D, d - wd - 2 * COURT_EDGE);
+	put(b, EL_SURFACE, x0, wd, x1, d, P.cover_h, b.add_paint(data.color("lawn")));
+	float cw = std::min(P.court_w, x1 - x0 - 2 * K.court_edge), cd = std::min(P.court_d, d - wd - 2 * K.court_edge);
 	if (cw <= 0 || cd <= 0) return;
 	float cx = (x0 + x1) / 2, cy = (wd + d) / 2;
-	put_at(b, EL_SURFACE, cx, cy, cw, cd, SURFACE_H * 2, b.add_paint(data.color("court")));
+	put_at(b, EL_SURFACE, cx, cy, cw, cd, P.cover_h * 2, b.add_paint(data.color("court")));
 	int line = b.add_paint(data.color("court_line"));
-	put_at(b, EL_SURFACE, cx, cy, cw, COURT_LINE, SURFACE_H * 3, line);
+	put_at(b, EL_SURFACE, cx, cy, cw, P.court_line, P.cover_h * 3, line);
 	for (float s : { -1.f, 1.f }) {
-		put_at(b, EL_SURFACE, cx + s * (cw - COURT_LINE) / 2, cy, COURT_LINE, cd, SURFACE_H * 3, line);
-		put_at(b, EL_SURFACE, cx, cy + s * (cd - COURT_LINE) / 2, cw, COURT_LINE, SURFACE_H * 3, line);
+		put_at(b, EL_SURFACE, cx + s * (cw - P.court_line) / 2, cy, P.court_line, cd, P.cover_h * 3, line);
+		put_at(b, EL_SURFACE, cx, cy + s * (cd - P.court_line) / 2, cw, P.court_line, P.cover_h * 3, line);
 	}
 }
 
-void cross(Body &b, float x, float y, float z, int paint) {
-	put_at(b, EL_CANOPY, x, y, CROSS_T, CROSS_T, CROSS_H, paint, z);
-	put_at(b, EL_CANOPY, x, y, CROSS_W, CROSS_T, CROSS_T, paint, z + CROSS_H * CROSS_ARM_Z);
+void cross(const CivicShape &K, Body &b, float x, float y, float z, int paint) {
+	put_at(b, EL_CANOPY, x, y, K.cross_t, K.cross_t, K.cross_h, paint, z);
+	put_at(b, EL_CANOPY, x, y, K.cross_w, K.cross_t, K.cross_t, paint, z + K.cross_h * K.cross_arm_z);
 }
 
 int church(const Data &data, Body &b, float w, float d) {
-	b.ground_h = NAVE_H;
-	b.storey_h = TOWER_STOREY;
-	float nw = std::min(NAVE_W, w * NAVE_W_SHARE), nd = std::min(NAVE_D, d - TOWER_W / 2);
+	const CivicShape &K = data.shapes.civic;
+	b.ground_h = K.nave_h;
+	b.storey_h = K.tower_storey;
+	float nw = std::min(K.nave_w, w * K.nave_w_share), nd = std::min(K.nave_d, d - K.tower_w / 2);
 	float cx = w / 2;
-	int nave = add_block(b, { cx - nw / 2, TOWER_W / 2, nw, nd, 0, 1, ROOF_GABLE, BAY_WINDOW, BAY_WINDOW });
-	int tower = add_block(b, { cx - TOWER_W / 2, 0, TOWER_W, TOWER_W, 0, 1 + TOWER_STOREYS, ROOF_HIP, BAY_WINDOW, BAY_DOUBLE_DOOR });
+	int nave = add_block(b, { cx - nw / 2, K.tower_w / 2, nw, nd, 0, 1, ROOF_GABLE, BAY_WINDOW, BAY_WINDOW });
+	int tower = add_block(b, { cx - K.tower_w / 2, 0, K.tower_w, K.tower_w, 0, 1 + K.tower_storeys, ROOF_HIP, BAY_WINDOW, BAY_DOUBLE_DOOR });
 	int roof = b.add_paint(data.color("church_roof"));
 	Volume &n = b.volumes[size_t(nave)];
 	n.ridge = 1;
-	n.pitch = NAVE_PITCH;
+	n.pitch = K.nave_pitch;
 	n.roof_paint = roof;
 	Volume &t = b.volumes[size_t(tower)];
-	t.pitch = TOWER_PITCH;
+	t.pitch = K.tower_pitch;
 	t.roof_paint = roof;
 	for (Volume *v : { &n, &t }) {
 		v->keep = true;
 		v->lines = LINES_EVERY;
 		v->crown = CROWN_NONE;
 	}
-	float top = b.level_z(t.top()) + TOWER_W / 2 * std::tan(TOWER_PITCH * DEG_TO_RAD);
-	cross(b, cx, TOWER_W / 2, top, b.add_paint(data.color("gold")));
-	cross(b, cx, TOWER_W / 2 + nd, b.level_z(1) + nw / 2 * std::tan(NAVE_PITCH * DEG_TO_RAD), b.add_paint(data.color("gold")));
+	float top = b.level_z(t.top()) + K.tower_w / 2 * std::tan(K.tower_pitch * DEG_TO_RAD);
+	cross(K, b, cx, K.tower_w / 2, top, b.add_paint(data.color("gold")));
+	cross(K, b, cx, K.tower_w / 2 + nd, b.level_z(1) + nw / 2 * std::tan(K.nave_pitch * DEG_TO_RAD), b.add_paint(data.color("gold")));
 	return tower;
 }
 
 void hospital(const Data &data, Body &b, float w, float d, int floors, bool clinic, Xoshiro128 &r) {
-	int storeys = clinic ? CLINIC_STOREYS : std::clamp(floors, HOSPITAL_LO, HOSPITAL_HI);
-	if (!clinic && floors < HOSPITAL_LO) storeys = r.irange(HOSPITAL_LO, HOSPITAL_HI);
-	float ww = w * WARD_SHARE, wd = std::min(WARD_D, d * WARD_D_SHARE), x = (w - ww) / 2;
-	int podium = add_block(b, { 0, 0, w, d * PODIUM_D_SHARE, 0, 1, ROOF_FLAT, BAY_RIBBON, BAY_SHOPFRONT });
+	const CivicShape &K = data.shapes.civic;
+	int storeys = clinic ? K.clinic_storeys : std::clamp(floors, K.hospital_lo, K.hospital_hi);
+	if (!clinic && floors < K.hospital_lo) storeys = r.irange(K.hospital_lo, K.hospital_hi);
+	float ww = w * K.ward_share, wd = std::min(K.ward_d, d * K.ward_d_share), x = (w - ww) / 2;
+	int podium = add_block(b, { 0, 0, w, d * K.podium_d_share, 0, 1, ROOF_FLAT, BAY_RIBBON, BAY_SHOPFRONT });
 	int ward = add_block(b, { x, 0, ww, wd, 1, storeys - 1, ROOF_FLAT, BAY_RIBBON, BAY_NONE });
 	for (int i : { podium, ward }) {
 		Volume &v = b.volumes[size_t(i)];
@@ -107,13 +99,13 @@ void hospital(const Data &data, Body &b, float w, float d, int floors, bool clin
 	}
 	float top = b.level_z(storeys);
 	int band = b.add_paint(data.color("hospital_band")), red = b.add_paint(data.color("red_cross")), white = b.add_paint(data.color("sign_white"));
-	put(b, EL_CANOPY, x - BAND_OUT, -BAND_OUT, x + ww + BAND_OUT, 0, BAND_H, band, top - BAND_H * 2);
-	put(b, EL_CANOPY, -BAND_OUT, -BAND_OUT, w + BAND_OUT, 0, BAND_H, band, b.level_z(1) - BAND_H);
-	float sx = x + ww - SIGN_W, sz = top - BAND_H * 3 - SIGN_W, arm = SIGN_W * SIGN_BAR, bar = SIGN_W * (1 - SIGN_BAR);
-	put_at(b, EL_CANOPY, sx, -SIGN_OUT / 2, SIGN_W, SIGN_T, SIGN_W, white, sz);
-	put_at(b, EL_CANOPY, sx, -SIGN_OUT, bar, SIGN_T, arm, red, sz + (SIGN_W - arm) / 2);
-	put_at(b, EL_CANOPY, sx, -SIGN_OUT, arm, SIGN_T, bar, red, sz + (SIGN_W - bar) / 2);
-	put_at(b, EL_CANOPY, w / 2, -CANOPY_D / 2, CANOPY_W, CANOPY_D, CANOPY_T, b.add_paint(data.color("canopy")), b.ground_h - CANOPY_T);
+	put(b, EL_CANOPY, x - K.band_out, -K.band_out, x + ww + K.band_out, 0, K.band_h, band, top - K.band_h * 2);
+	put(b, EL_CANOPY, -K.band_out, -K.band_out, w + K.band_out, 0, K.band_h, band, b.level_z(1) - K.band_h);
+	float sx = x + ww - K.sign_w, sz = top - K.band_h * 3 - K.sign_w, arm = K.sign_w * K.sign_bar, bar = K.sign_w * (1 - K.sign_bar);
+	put_at(b, EL_CANOPY, sx, -K.sign_out / 2, K.sign_w, K.sign_t, K.sign_w, white, sz);
+	put_at(b, EL_CANOPY, sx, -K.sign_out, bar, K.sign_t, arm, red, sz + (K.sign_w - arm) / 2);
+	put_at(b, EL_CANOPY, sx, -K.sign_out, arm, K.sign_t, bar, red, sz + (K.sign_w - bar) / 2);
+	put_at(b, EL_CANOPY, w / 2, -K.canopy_d / 2, K.canopy_w, K.canopy_d, K.canopy_t, b.add_paint(data.color("canopy")), b.ground_h - K.canopy_t);
 }
 
 // The window geometry compose_facades would give (the style's mid sizes), for the volumes kept out of it.
@@ -131,19 +123,19 @@ void civic_faces(const Data &data, Body &b) {
 		}
 }
 
-LotPlan civic_plan(float W, float D) {
+LotPlan civic_plan(const CivicShape &K, float W, float D) {
 	LotPlan p;
 	p.kind = KIND_SHOP;
 	p.W = W;
 	p.D = D;
 	p.front = FRONT_PLAZA;
-	p.front_depth = std::clamp(D * FRONT_SHARE, FRONT_MIN, FRONT_MAX);
-	p.left = p.right = SidePlan{ SIDE_PATH, SIDE_GAP };
+	p.front_depth = std::clamp(D * K.front_share, K.front_min, K.front_max);
+	p.left = p.right = SidePlan{ SIDE_PATH, K.side_gap };
 	p.back = BACK_NONE;
-	p.x0 = SIDE_GAP;
-	p.x1 = W - SIDE_GAP;
+	p.x0 = K.side_gap;
+	p.x1 = W - K.side_gap;
 	p.y0 = p.front_depth;
-	p.y1 = D - BACK_GAP;
+	p.y1 = D - K.back_gap;
 	return p;
 }
 } // namespace
@@ -165,12 +157,13 @@ bool is_civic(int fn) { return fn == FN_SCHOOL || fn == FN_CHURCH || fn == FN_HO
 bool is_open_lot(int fn) { return fn == FN_SQUARE || fn == FN_PARK || fn == FN_SPORTS_COURT; }
 
 void civic_body(const Data &data, Body &b, int fn, int floors, float W, float D, uint32_t seed) {
+	const CivicShape &K = data.shapes.civic;
 	b = Body{};
 	b.kind = KIND_SHOP;
 	b.use = USE_COMMERCIAL;
 	b.ground = GROUND_LOBBY;
 	Xoshiro128 r(seed);
-	b.plan = civic_plan(W, D);
+	b.plan = civic_plan(data.shapes.civic, W, D);
 	Envelope env;
 	env.W = b.plan.x1 - b.plan.x0;
 	env.D = b.plan.y1 - b.plan.y0;
@@ -181,7 +174,7 @@ void civic_body(const Data &data, Body &b, int fn, int floors, float W, float D,
 	const char *skin = fn == FN_SCHOOL ? "civic_wall" : fn == FN_CHURCH ? "church_wall" : fn == FN_HOSPITAL || fn == FN_CLINIC ? "hospital_wall"
 			: fn == FN_CITY_HALL ? "civic_stone" : fn == FN_FIRE_STATION ? "fire_wall" : fn == FN_POLICE ? "police_wall" : nullptr;
 	look(b, skin ? data.color(skin) : wall, data.color("office_roof"), trim);
-	b.ground_h = b.storey_h = CIVIC_STOREY;
+	b.ground_h = b.storey_h = K.civic_storey;
 	int door = -1;
 	uint8_t door_kind = BAY_DOUBLE_DOOR;
 	switch (fn) {

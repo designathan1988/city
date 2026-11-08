@@ -8,8 +8,6 @@ const ROAD_LEN_M := 300.0
 const PX := 0.25 # metres a pixel the road tool snaps by (road_commands_test.gd)
 const SHARP_DEG := 12.0
 const TICKS := 600
-const KIB := 1024
-const MS_PER_S := 1000.0
 const THUNDER_M := 171.5
 
 
@@ -29,7 +27,7 @@ func _ready() -> void:
 	await _edits()
 	_units()
 	_sharp()
-	_saves()
+	await _saves()
 	_session()
 	finish()
 
@@ -43,7 +41,7 @@ func _save_time() -> void:
 		await get_tree().process_frame
 	var took := Time.get_ticks_msec() - from
 	var size := FileAccess.get_file_as_bytes(SaveSlots.path(slot)).size()
-	print("  saving the whole city: %d ms, %d KiB" % [took, size / KIB])
+	print("  saving the whole city: %d ms, %d KiB" % [took, size / Units.BYTES_PER_KIB])
 	check(size > 0, "the whole city saved: %d bytes" % size)
 	DirAccess.remove_absolute(SaveSlots.path(slot))
 	DirAccess.remove_absolute(Session.path(slot))
@@ -169,7 +167,7 @@ func _saves() -> void:
 	var f := FileAccess.open(bad, FileAccess.WRITE)
 	f.store_string("this is no city")
 	f.close()
-	var r: Dictionary = CityStore.saves.open_file(bad)
+	var r: Dictionary = await CityStore.saves.open_file(bad)
 	check(not r.get("ok", true), "a bad file is refused")
 	check(CityStore.snapshot.get("ready", false) and CityStore.snapshot.segments == before, "the city on screen stayed")
 	for i in 2:

@@ -7,7 +7,7 @@
 class_name InteriorController
 extends Node
 
-const STEPS := 8
+const STEPS := 8 # the ways a look is snapped to: the eight compass points
 const STEP_RAD := TAU / float(STEPS)
 ## Looking straight down the horizontal "forward" of the lens is nothing: the screen's up on the ground stands in for it.
 const FLAT_LOOK := 0.2

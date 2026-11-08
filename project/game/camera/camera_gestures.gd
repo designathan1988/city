@@ -9,7 +9,6 @@
 class_name CameraGestures
 extends RefCounted
 
-const MS_PER_S := 1000.0
 const TWIST_SIGN := -1.0 # the map turns with the fingers
 
 var rig: CityCamera
@@ -127,10 +126,16 @@ func _hand_speed() -> Vector2:
 	if samples.size() < 2 or samples[-1].z - samples[0].z < cfg.speed_min_span_ms:
 		return Vector2.ZERO
 	var t0 := samples[0].z
-	var st := 0.0; var stt := 0.0; var sp := Vector2.ZERO; var stp := Vector2.ZERO
+	var st := 0.0
+	var stt := 0.0
+	var sp := Vector2.ZERO
+	var stp := Vector2.ZERO
 	for s in samples:
-		var t := (s.z - t0) / MS_PER_S
-		st += t; stt += t * t; sp += Vector2(s.x, s.y); stp += Vector2(s.x, s.y) * t
+		var t := (s.z - t0) / Units.MS_PER_S
+		st += t
+		stt += t * t
+		sp += Vector2(s.x, s.y)
+		stp += Vector2(s.x, s.y) * t
 	var n := float(samples.size())
 	var den := n * stt - st * st
 	if absf(den) < CityCamera.PARALLEL:
@@ -207,7 +212,7 @@ func _tilt_room(towards: float) -> float:
 
 ## One frame of what the hand left: the turn still to make, then the coast, `dt` seconds.
 func advance(dt: float) -> void:
-	_clock_ms += dt * MS_PER_S
+	_clock_ms += dt * Units.MS_PER_S
 	if turn_left != Vector2.ZERO:
 		var keep := exp(-dt / cfg.orbit_smooth_s)
 		var spent := turn_left * (1.0 - keep) if turn_left.length() > cfg.coast_min_orbit * dt else turn_left

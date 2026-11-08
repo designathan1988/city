@@ -12,20 +12,17 @@ namespace traffic {
 
 namespace {
 
-constexpr int PICK_TRIES = 12, DEST_TRIES = 12;
-constexpr float SCALE_MIN = 0.9f, SCALE_MAX = 1.1f;
-
 bool has_side(const Profile &p, int side) { return side == 0 ? p.has_walk_right : p.has_walk_left; }
 
 // Only the walkable segments inside ped_window_m, by the people their zones have on the street now.
 int pick_seg(CityState &s, const PeopleNow &now) {
 	TrafficState &t = s.traffic;
+	const TrafficParams &p = s.catalog.traffic;
 	const int n = int(t.ped_segs.size());
-	for (int k = 0; k < PICK_TRIES && n > 0 && now.peak > 0; k++) {
+	for (int k = 0; k < p.ped_spawn_pick_tries && n > 0 && now.peak > 0; k++) {
 		const int seg = t.ped_segs[size_t(t.rng.next() % uint32_t(n))];
 		if (!walkable(s, seg)) continue;
 		const RoadSegment &g = s.roads.segs[size_t(seg)];
-		const TrafficParams &p = s.catalog.traffic;
 		const float here = std::max(zone_people(p, now, s.catalog.zone(g.zl).base % BASE_ZONES), zone_people(p, now, s.catalog.zone(g.zr).base % BASE_ZONES));
 		if (t.rng.f() * now.peak < here) return seg;
 	}
@@ -43,9 +40,10 @@ bool route_to(CityState &s, int from, int goal, std::vector<int> &route) {
 // A trip from `from`: to a street with doors, along it to its far end, on the sidewalk they open onto (`side`); with none in
 // reach, to a node of any street.
 bool plan_trip(CityState &s, int from, std::vector<int> &route, int &side) {
+	const TrafficParams &p = s.catalog.traffic;
 	TrafficState &t = s.traffic;
 	const int n = int(s.roads.segs.size());
-	for (int k = 0; k < DEST_TRIES; k++) {
+	for (int k = 0; k < p.ped_spawn_dest_tries; k++) {
 		const int key = door_sidewalk(s), seg = key / 2;
 		if (key < 0 || !walkable(s, seg)) continue;
 		const RoadSegment &g = s.roads.segs[size_t(seg)];
@@ -54,7 +52,7 @@ bool plan_trip(CityState &s, int from, std::vector<int> &route, int &side) {
 		side = key % 2;
 		return true;
 	}
-	for (int k = 0; k < DEST_TRIES && n > 0; k++) {
+	for (int k = 0; k < p.ped_spawn_dest_tries && n > 0; k++) {
 		const int seg = int(t.rng.next() % uint32_t(n));
 		if (walkable(s, seg) && route_to(s, from, s.roads.segs[size_t(seg)].a, route)) return true;
 	}
@@ -113,7 +111,7 @@ void dress_walker(TrafficState &t, const TrafficParams &p, Pedestrian &w, PedAge
 	const float pace = age == PedAge::CHILD ? p.ped_child_pace : age == PedAge::ELDER ? p.ped_elder_pace : 1.f;
 	w.speed = t.rng.range(p.walk_speed_min, p.walk_speed_max) * pace;
 	w.track = t.rng.range(p.walk_track_min, p.walk_track_max);
-	w.scale = t.rng.range(SCALE_MIN, SCALE_MAX);
+	w.scale = t.rng.range(p.ped_spawn_scale_min, p.ped_spawn_scale_max);
 	w.walked = t.rng.range(0.f, w.speed);
 }
 

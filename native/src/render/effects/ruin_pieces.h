@@ -19,6 +19,8 @@
 
 namespace city {
 
+constexpr uint64_t PIECES_SEED = 0x2a1f3ULL; // the falling pieces' own random stream: any fixed seed
+
 class RuinPieces {
 public:
 	// What cuts a building: run on a job's thread.
@@ -93,7 +95,7 @@ private:
 	std::unordered_set<uint32_t> broken_;
 	std::vector<int64_t> repaint_;
 	std::vector<RuinSim::Note> notes_;
-	Rng rng_{ 0x2a1f3ULL };
+	Rng rng_{ PIECES_SEED };
 	float clock_ = 0;
 	int dust_left_ = 0; // bursts this frame may still make
 };

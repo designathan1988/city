@@ -1,4 +1,4 @@
-// The building generator's tables, filled once from data/render/buildings.json by api/buildings_loader.cpp: styles,
+// The building generator's tables, filled once from data/catalog/buildings.json by api/buildings_loader.cpp: styles,
 // style weights per kind and era, palettes, named colours and the opening table. Plain data (no Godot types): the
 // simulation reads it to lay the lots out, the render to draw them. How far each level is drawn is the render's
 // (render/buildings/building_look.h).
@@ -8,6 +8,7 @@
 #include "sim/buildings/b40/body_cache.h"
 #include "sim/buildings/b40/body_table.h"
 #include "sim/buildings/b40/model.h"
+#include "sim/buildings/b40/shapes.h"
 #include "sim/buildings/interior/tables.h"
 
 #include <atomic>
@@ -68,14 +69,21 @@ struct Data {
 	// Which filling of the tables this is: a new Data (the catalogue loaded again) has another, a copy the same. What caches
 	// bodies made from the tables keys them by it.
 	uint64_t generation = new_generation();
-	ModelTable models; // the Build > Models catalogue (data/render/models.json)
+	ModelTable models; // the Build > Models catalogue (data/catalog/models.json)
 	std::shared_ptr<BodyTable> edited = std::make_shared<BodyTable>(); // the bodies the player made; the rest of Data is read-only
 	std::shared_ptr<BodyCache> made = std::make_shared<BodyCache>(); // the records' bodies made from these tables (record.h), shared by a copy
+	// By zone code, what the generator builds there and whether it is a low shop street (zones.json, set at boot: buildings_loader.h
+	// set_zone_kinds).
+	std::vector<Kind> zone_kind;
+	std::vector<bool> zone_low_shop;
+	Kind kind_of_zone(int code) const { return code >= 0 && code < int(zone_kind.size()) ? zone_kind[size_t(code)] : KIND_HOUSE; }
+	bool low_shop(int code) const { return code >= 0 && code < int(zone_low_shop.size()) && zone_low_shop[size_t(code)]; }
 	LotRules lots;
+	Shapes shapes; // every generator file's values (buildings.json "shapes")
 	InteriorTables interior;
 	std::vector<StyleDef> styles;
 	std::vector<std::pair<int, float>> weights[KIND_COUNT];
-	float era[STYLE_COUNT][3] = {};
+	float era[STYLE_COUNT][ERAS] = {};
 	std::vector<Paint> bricks, hard, roof_tiles, flat_roofs, works_roofs, lot_walls;
 	std::vector<uint32_t> awnings, shop_awnings, tanks, warehouse_walls;
 	std::unordered_map<std::string, Paint> colors;
@@ -84,11 +92,13 @@ struct Data {
 
 	// A named colour of "colors" (magenta when missing: the loader rejects a table without the names asked for).
 	const Paint &color(const char *name) const {
-		static const Paint MISSING{ FIN_PLASTER, 0xff00ff };
+		static const Paint MISSING{ FIN_PLASTER, 0xff00ff }; // magenta: a colour the table lacks shows
 		auto it = colors.find(name);
 		return it == colors.end() ? MISSING : it->second;
 	}
 	bool is_clay(const Paint &p) const { return p.finish == FIN_TILE; }
+	// The last palette a generator may give a body: a body's palette picks its lot walls (lot_boundary.cpp).
+	int last_palette() const { return int(lot_walls.size()) - 1; }
 };
 
 } // namespace city::b40

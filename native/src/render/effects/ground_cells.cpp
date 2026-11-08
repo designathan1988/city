@@ -22,7 +22,7 @@ uint64_t cell_key(float x, float z) {
 
 bool paved(const CityState &s, float x, float z, float &y) {
 	bool carriageway = false;
-	return transit_paved(s, V2(x, z), s.catalog.traffic.curb_m, y, carriageway);
+	return transit_paved(s, V2(x, z), s.catalog.furniture.sidewalk.height_m, y, carriageway);
 }
 } // namespace
 

@@ -32,10 +32,7 @@ var optimizations: Dictionary = {}: # the Effects panel: option id -> value over
 	set(value):
 		optimizations = value
 		_resolved = {}
-var layers: Dictionary = {} # what shows over the map: layer -> on
-var zone_tool := false # the Zones tool is in hand (its Zone or Lots tab)
-var zone_painted := 0 # the zone its brush paints: the proposal it shows is cut for it
-var _zoned := false # the player has zoned lots on this city, as last shown
+var map: MapLayers # what shows over the map (map_layers.gd)
 var _world: CityWorld
 var _viewport: Viewport
 var _quality_governor: FrameGovernor.Quality
@@ -60,7 +57,8 @@ func _ready() -> void:
 	language = cfg.get_value(SECTION, "language", "")
 	switches = RenderSwitches.new(cfg.get_value(SECTION, "switches", {}))
 	optimizations = cfg.get_value(SECTION, "optimizations", {})
-	layers = cfg.get_value(SECTION, "layers", t.layers.duplicate())
+	map = MapLayers.new(cfg.get_value(SECTION, "layers", t.layers.duplicate()), switches)
+	map.changed.connect(_save)
 	road.read(cfg)
 	hardware = QualityTier.tier_for_gpu(t, RenderingServer.get_video_adapter_name())
 	level = QualityTier.level_of(preset, hardware)
@@ -90,7 +88,7 @@ func _save() -> void:
 	cfg.set_value(SECTION, "language", language)
 	cfg.set_value(SECTION, "switches", switches.saved())
 	cfg.set_value(SECTION, "optimizations", optimizations)
-	cfg.set_value(SECTION, "layers", layers)
+	cfg.set_value(SECTION, "layers", map.layers)
 	road.write(cfg)
 	if not GameFlow.tests_drive:
 		cfg.save(PATH)
@@ -124,34 +122,6 @@ func current() -> Dictionary:
 	return _resolved
 
 
-func layer_on(name: String) -> bool:
-	return layers.get(name, false)
-
-
-## A row of the Layers popover: the grid is the ground's, the others the core's overlays.
-func set_layer(name: String, on: bool) -> void:
-	layers[name] = on
-	_show_layer(name)
-	_save()
-
-
-func _show_layer(name: String) -> void:
-	if name == "grid":
-		switches.set_global(&"map_grid", 1.0 if layer_on(name) else 0.0)
-	elif name == "zones":
-		CityStore.dispatch(&"show_zone_tool", [zone_tool, zone_painted])
-		CityStore.dispatch(&"set_overlay", [name, zone_tool or (layer_on(name) and _zoned)])
-	else:
-		CityStore.dispatch(&"set_overlay", [name, layer_on(name)])
-
-
-## The zones show with their tool in hand, and, with the layer on, where the player zoned once it is put down.
-func set_zone_tool(on: bool, zone := 0) -> void:
-	zone_tool = on
-	zone_painted = zone
-	_show_layer("zones")
-
-
 ## The play scene's world and viewport: from now on every choice reaches them.
 func attach(world: CityWorld, viewport: Viewport) -> void:
 	_world = world
@@ -159,8 +129,7 @@ func attach(world: CityWorld, viewport: Viewport) -> void:
 	RenderingServer.viewport_set_measure_render_time(viewport.get_viewport_rid(), true)
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if vsync else DisplayServer.VSYNC_DISABLED)
 	set_fullscreen(fullscreen)
-	for name: String in layers:
-		_show_layer(name)
+	map.show_all()
 	apply_now()
 
 
@@ -232,15 +201,8 @@ func switches_changed() -> void:
 	_save()
 
 
-func _follow_zones() -> void:
-	var zoned: bool = CityStore.snapshot.get("player_zones", 0) > 0
-	if zoned != _zoned:
-		_zoned = zoned
-		_show_layer("zones")
-
-
 func _process(delta: float) -> void:
-	_follow_zones()
+	map.follow_zones()
 	if _world == null:
 		return
 	switches.follow_zoom(_world, _viewport, current())

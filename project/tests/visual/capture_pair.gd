@@ -129,7 +129,7 @@ func _report_chunk(inside: Dictionary) -> void:
 	if id < 0:
 		return
 	var at: Vector3 = CityStore.query(&"probe_building", [id]).position
-	var flags: int = CityStore.query(&"building_chunk", [at.x, at.z])
+	var chunk: Dictionary = CityStore.query(&"building_chunk", [at.x, at.z])
 	var cost: Dictionary = CityStore.query(&"render_cost")
-	print("  chunk of building %d: flags %d (1 near, 2 mid, 4 shown, 8 detail, 16 known, 32 far); pending %d, asked %d, ready %d, no_turn %d" % [id, flags,
+	print("  chunk of building %d: %s; pending %d, asked %d, ready %d, no_turn %d" % [id, chunk,
 			CityStore.query(&"render_pending"), cost.b_requested, cost.b_done, cost.b_unmet])

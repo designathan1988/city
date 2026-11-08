@@ -11,7 +11,6 @@ namespace traffic {
 
 namespace {
 
-constexpr float FORCE_AFTER_S = 5.f, FORCE_GAP_M = 0.5f;
 
 struct Around {
 	int lead = -1, follow = -1;
@@ -69,7 +68,7 @@ float evaluate(const View &w, int id, int cur, int dst, float bias, bool force) 
 	const TrafficParams &p = w.s.catalog.traffic;
 	const Vehicle &v = t.vehicles[id];
 	Around n = around(t, dst, v.s, id), o = around(t, cur, v.s, id);
-	float front = force ? FORCE_GAP_M : p.lc_gap_front_m, back = force ? FORCE_GAP_M : p.lc_gap_back_m;
+	float front = force ? p.lc_force_gap_m : p.lc_gap_front_m, back = force ? p.lc_force_gap_m : p.lc_gap_back_m;
 	if (n.lead >= 0 && t.vehicles[n.lead].s - w.len(n.lead) - v.s < front) return -BIG;
 	if (n.follow >= 0 && v.s - w.len(id) - t.vehicles[n.follow].s < back) return -BIG;
 	if (force) return BIG;
@@ -98,12 +97,12 @@ int choose(const CityState &s, int id) {
 	int ci = pick_connector(s, v);
 	if (ci >= 0 && t.g.conns[ci].from_lane != v.lane) {
 		int cand = v.lane + (t.g.conns[ci].from_lane > v.lane ? 1 : -1);
-		bool force = v.wait > FORCE_AFTER_S;
+		bool force = v.wait > p.lc_force_after_s;
 		return evaluate(w, id, list(v.lane), list(cand), p.lc_mandatory_bias, force) > p.lc_threshold ? cand : -1;
 	}
 	if (v.stop_at >= 0 && v.ri + 1 >= v.route.len && v.lane != v.stop_lane) {
 		const int cand = v.lane + (v.stop_lane > v.lane ? 1 : -1);
-		return evaluate(w, id, list(v.lane), list(cand), p.lc_mandatory_bias, v.wait > FORCE_AFTER_S) > p.lc_threshold ? cand : -1;
+		return evaluate(w, id, list(v.lane), list(cand), p.lc_mandatory_bias, v.wait > p.lc_force_after_s) > p.lc_threshold ? cand : -1;
 	}
 	if (d.len - v.s < p.lc_free_m || v.type == VehicleType::BICYCLE) return -1;
 	const float bias[2] = { p.lc_bias_right, -p.lc_bias_right };

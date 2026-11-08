@@ -2,7 +2,7 @@
 class_name CityTerrain
 extends RefCounted
 
-const PLACEHOLDER_TEX_PX := 16
+const PLACEHOLDER_TEX_PX := 16 # a stand-in texture's side, until the real one loads
 
 
 static func make(mat: Resource, shader: Shader) -> Node3D:

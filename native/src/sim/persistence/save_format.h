@@ -19,6 +19,7 @@ constexpr uint32_t SAVE_END = 0x444E4523U; // '#END'
 constexpr uint32_t SAVE_BODIES = 0x53594442U; // 'BDYS': the section of edited bodies; a file without it has none
 constexpr uint32_t SPEC_SAVE_VERSION = 7; // the roads the player composed, among the variants
 constexpr uint32_t SAVE_VERSION = 8; // 2: the landscape after the buildings; 3: the road variants, before the roads that use them; 4: the junctions' signal settings; 5: public transport after the growth queue; 6: a node's authored height (lift) in place of its height, solved again on load; 8: the land's side in the header
+// the save versions that brought each section: a file of an older one lacks it
 constexpr uint32_t SIGNAL_SAVE_VERSION = 4, TRANSIT_SAVE_VERSION = 5, GRADE_SAVE_VERSION = 6, LAND_SAVE_VERSION = 8;
 
 // The line between a composed road's two directions, as saved.

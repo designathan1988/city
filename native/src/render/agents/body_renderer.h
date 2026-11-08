@@ -37,7 +37,7 @@ struct BodySpec {
 
 class BodyRenderer {
 public:
-	bool init(const RenderContext &ctx, const PeopleAsset &asset, godot::PackedStringArray &errors);
+	bool init(const RenderContext &ctx, const PeopleAsset &asset, const RagdollShape &law, godot::PackedStringArray &errors);
 	void reset();
 	void release();
 	void add(const BodySpec &spec);
@@ -82,8 +82,9 @@ private:
 	std::vector<float> clip_scratch_; // a clip's rows of one body, for a pose being worked out (add, rise)
 	std::vector<godot::Transform3D> bone_scratch_;
 	BodyGore gore_;
-	static constexpr uint64_t BODIES_STREAM = 0xb0d1e5ULL; // the bodies' own stream
-	Rng rng_{ BODIES_STREAM };
+	static constexpr uint64_t BODIES_SEED = 0xb0d1e5ULL; // any fixed seed: the same shot scatters the same bodies
+	Rng rng_{ BODIES_SEED };
+	const RagdollShape *law_ = nullptr; // the ragdolls' (agents.json shapes.ragdoll), from init on
 	float clock_ = 0;
 	double sim_s_ = 0; // the newest publication's simulated second (sim_now)
 	int bones_ = 0, idle_clip_ = 0, crouch_clip_ = 0, up_clip_ = 0;

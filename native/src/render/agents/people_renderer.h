@@ -6,6 +6,7 @@
 // (data/render/materials.json), settings in data/render/agents.json "people".
 #pragma once
 
+#include "render/agents/agent_shapes.h"
 #include "render/agents/agent_meshes.h"
 #include "render/agents/held_things.h"
 #include "render/agents/helmets.h"
@@ -52,7 +53,7 @@ inline void agent_row(float *row, const Pose &p, float scale, float c0, float c1
 
 class PeopleRenderer {
 public:
-	bool init(const RenderContext &ctx, const DataValue &people, const DataValue &held, godot::PackedStringArray &errors);
+	bool init(const RenderContext &ctx, const DataValue &people, const DataValue &held, const AgentShapes &shapes, godot::PackedStringArray &errors);
 	void reset();
 	void set_level_hold(float share) { level_hold_ = share; }
 	// Who rides is keyed from here on, past the walkers' ids.

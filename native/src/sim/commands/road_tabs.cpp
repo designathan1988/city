@@ -2,6 +2,7 @@
 // changeProfiles / streetChain / mirrorSymmetric / alongStreet): split a segment where clicked, upgrade a segment or a
 // whole street to the profile in hand (Shift), charging the difference in value or refunding a share of it.
 #include "sim/commands/commands.h"
+#include "sim/commands/edit_journal.h"
 #include "sim/commands/street_commands.h"
 #include "sim/commands/road_edit.h"
 #include "sim/economy/road_economy.h"
@@ -19,7 +20,7 @@ namespace city {
 
 namespace {
 constexpr size_t JUNCTION_ARMS = 3; // fewer arms need no control
-constexpr float SAME_WIDTH_M = 0.01f;
+constexpr float SAME_WIDTH_M = 0.01f; // two widths a centimetre apart are one
 
 // The profile reads the same from both ends (strips mirrored, lane directions turned).
 bool mirror_symmetric(const Profile &p) {

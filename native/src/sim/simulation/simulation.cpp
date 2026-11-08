@@ -55,8 +55,8 @@ int Simulation::steps_per_tick(SimSpeed sp) const {
 	if (!s_) return 0;
 	switch (sp) {
 		case SimSpeed::NORMAL: return 1;
-		case SimSpeed::FAST: return int(s_->catalog.tune.sim_speed_fast);
-		case SimSpeed::FASTEST: return int(s_->catalog.tune.sim_speed_fastest);
+		case SimSpeed::FAST: return s_->catalog.tune.sim_speed_fast;
+		case SimSpeed::FASTEST: return s_->catalog.tune.sim_speed_fastest;
 		default: return 0;
 	}
 }

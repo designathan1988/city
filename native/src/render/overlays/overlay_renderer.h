@@ -6,7 +6,7 @@
 // are laid once per change of its roads, a refresh only colours them). Only reads the state.
 #pragma once
 
-#include "render/chunk_jobs.h"
+#include "render/chunk_results.h"
 #include "render/frame_admission.h"
 #include "render/render_context.h"
 #include "render/rs_util.h"
@@ -67,9 +67,9 @@ private:
 		float arrow_most_m = 0, arrow_least_m = 0, arrow_of_front = 0, arrow_of_depth = 0, arrow_tip = 0, arrow_head = 0, arrow_spread = 0;
 	};
 	void strip(Ribbon &out, const CityState &s, int seg, float u0, float u1, const godot::Color &col, bool on_road) const;
-	void lot_cover(Ribbon &out, const CityState &s, const std::vector<LotPoint> &ring, const godot::Color &col) const;
-	void edge(Ribbon &out, const CityState &s, const LotPoint &a, const LotPoint &b, float width, const godot::Color &col) const;
-	void lot_shape(Ribbon &out, const CityState &s, const std::vector<LotPoint> &ring, int zone, bool built, bool tool) const;
+	void lot_cover(Ribbon &out, const CityState &s, const std::vector<XZ> &ring, const godot::Color &col) const;
+	void edge(Ribbon &out, const CityState &s, const XZ &a, const XZ &b, float width, const godot::Color &col) const;
+	void lot_shape(Ribbon &out, const CityState &s, const std::vector<XZ> &ring, int zone, bool built, bool tool) const;
 	Ribbon build_zone_cpu(const CityState &s, int64_t key) const;
 	Lanes lay_congestion(const CityState &s, int64_t key) const;
 	godot::Color congestion_colour(const PoseFrame &f, int seg) const;

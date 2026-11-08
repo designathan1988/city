@@ -5,6 +5,7 @@ extends Node3D
 
 ## A bolt's channel: midpoint displacement generations of the main channel and of a branch.
 const MAIN_GENERATIONS := 7
+const STILL_WIND := 1e-6 # a wind this weak has no direction: the rain falls straight
 const BRANCH_GENERATIONS := 5
 const LEVEL_VIEW := 0.0015
 
@@ -34,6 +35,9 @@ func _ready() -> void:
 	_rain_mat = ShaderMaterial.new()
 	_rain_mat.shader = load("res://render/shaders/rain.gdshader")
 	_rain_mat.set_shader_parameter("streak", _d.rain_streak_s)
+	var rain_kinds := WorldMaterials.uniform_kinds(_rain_mat.shader)
+	_rain_mat.set_shader_parameter("colour", WorldMaterials.typed(rain_kinds, "colour", _d.rain_colour))
+	_rain_mat.set_shader_parameter("rain_fade", WorldMaterials.typed(rain_kinds, "rain_fade", _d.rain_fade))
 	_rain = MeshInstance3D.new()
 	_rain.mesh = _rain_mesh()
 	_rain.material_override = _rain_mat
@@ -43,6 +47,7 @@ func _ready() -> void:
 	add_child(_rain)
 	_bolt_mat = ShaderMaterial.new()
 	_bolt_mat.shader = load("res://render/shaders/lightning.gdshader")
+	_bolt_mat.set_shader_parameter("core", WorldMaterials.typed(WorldMaterials.uniform_kinds(_bolt_mat.shader), "core", _d.bolt_core))
 	_thunder = Thunder.new(_d)
 	add_child(_thunder)
 
@@ -80,7 +85,7 @@ func step(dt: float, weather: Dictionary, way: Vector2) -> void:
 			_advance(ground, span, way * float(weather.wind), dt)
 			_rain_mat.set_shader_parameter("drops", roundi(_d.rain_max_drops * minf(1.0, rain)))
 			_rain_mat.set_shader_parameter("opacity", _d.rain_opacity + _d.rain_opacity_full * rain)
-		if rate > 0.0 and _rng.randf() < dt * rate / 60.0:
+		if rate > 0.0 and _rng.randf() < dt * rate / Units.S_PER_MIN:
 			var a := _rng.randf() * TAU
 			var r: float = _rng.randf() * span * _d.strike_reach
 			strike(ground + Vector3(cos(a) * r, 0.0, sin(a) * r))
@@ -92,7 +97,7 @@ func step(dt: float, weather: Dictionary, way: Vector2) -> void:
 
 func _ground_under(cam: Camera3D) -> Vector3:
 	var ahead := -cam.global_basis.z
-	var y := CityCamera.ground_below(cam)
+	var y := CameraQueries.ground_below(cam)
 	var t := (y - cam.global_position.y) / ahead.y if ahead.y < -LEVEL_VIEW else float(_d.rain_look_m)
 	return cam.global_position + ahead * minf(t, _d.rain_look_m)
 
@@ -113,7 +118,7 @@ func _advance(ground: Vector3, span: float, wind: Vector2, dt: float) -> void:
 	var scale: float = fall / _d.rain_fall_ms
 	var length := wind.length()
 	var across := minf(_d.rain_slant * fall, length * scale)
-	var k := across / length if length > 1e-6 else 0.0
+	var k := across / length if length > STILL_WIND else 0.0
 	var v := Vector3(wind.x * k, -fall, wind.y * k)
 	o += v * dt
 	_box = Vector3(side, tall, side)

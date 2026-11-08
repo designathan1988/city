@@ -3,6 +3,9 @@
  "properties": {
   "_doc": {
    "type": "string"
+  },
+  "ELEMENTS": {
+   "type": "object"
   }
  },
  "additional": {
@@ -14,6 +17,7 @@
   "TREES",
   "CLOUD",
   "FOG",
-  "WEATHER"
+  "WEATHER",
+  "ELEMENTS"
  ]
 }

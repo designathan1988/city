@@ -3,6 +3,7 @@
 // read from them that carry the bones. Pure: positions in, frames out.
 #pragma once
 
+#include "render/agents/agent_shapes.h"
 #include "core/random.h"
 
 #include <godot_cpp/variant/transform3d.hpp>
@@ -36,7 +37,7 @@ public:
 	using Ground = std::function<float(float, float)>;
 	// `joints`: where they are; thrown at `velocity`, each a little differently by `scatter` m/s, and tipped: `tip` is what the head moves at over the feet,
 	// so a body topples rather than dropping on its own feet.
-	void begin(const godot::Vector3 joints[RAGDOLL_JOINTS], const godot::Vector3 &velocity, const godot::Vector3 &tip, float scatter, Rng &rng);
+	void begin(const RagdollShape &law, const godot::Vector3 joints[RAGDOLL_JOINTS], const godot::Vector3 &velocity, const godot::Vector3 &tip, float scatter, Rng &rng);
 	void step(float dt, const Ground &ground);
 	void set_walls(std::vector<BodyWall> walls) { walls_ = std::move(walls); }
 	bool asleep() const { return asleep_; }
@@ -63,10 +64,11 @@ private:
 	void relax();
 	void hinge(int top, int middle, int end, float way);
 	void off_walls(int particle);
+	const RagdollShape *law_ = nullptr; // its friction, folds and rest (agents.json shapes.ragdoll), from begin on
 	std::vector<BodyWall> walls_;
 	godot::Vector3 now_[PARTICLES], was_[PARTICLES];
 	godot::Vector3 last_side_[RAGDOLL_PARTS];
-	static constexpr int MOST_STICKS = 48;
+	static constexpr int MOST_STICKS = 48; // room for every stick begin links (the limbs, the braces and the folds)
 	Stick sticks_[MOST_STICKS];
 	int sticks_used_ = 0;
 	float still_ = 0;

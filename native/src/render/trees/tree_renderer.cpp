@@ -2,6 +2,7 @@
 // foot, and in its custom data the tint and the species index the shader reads its
 // wind response by.
 #include "render/trees/tree_renderer.h"
+#include "core/math.h"
 
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/variant/packed_float32_array.hpp>
@@ -16,8 +17,6 @@ namespace city {
 namespace {
 constexpr float HALF = 0.5f, EVICT_CHUNKS = 2.f;
 constexpr int TIER_NEAR = 0, TIER_FAR = 1;
-constexpr int CHUNKS_PER_SUPER = int(SUPERCHUNK / CHUNK); // per axis
-const float DIAGONAL = std::sqrt(2.f);
 
 AABB box_of(int64_t key, float size) { return AABB(Vector3(key_x(key) * size, AABB_MIN_Y, key_y(key) * size), Vector3(size, AABB_H, size)); }
 
@@ -158,7 +157,7 @@ void TreeRenderer::commit_near(Built &b) {
 	for (int species : trees_.flowering_species) ch.plants += int(b.bufs[size_t(species)].size() / MM_STRIDE);
 	for (int species : trees_.bed_species) ch.plants += int(b.bufs[size_t(species)].size() / MM_STRIDE);
 	AABB box = box_of(b.key, CHUNK);
-	float end = trees_.near_m + trees_.fade_m + CHUNK * DIAGONAL * HALF;
+	float end = trees_.near_m + trees_.fade_m + CHUNK * SQRT2_F * HALF;
 	for (int i = 0; i < n; i++) {
 		const TreeSpecies &sp = kit_.species(i);
 		// A flower bed casts nothing: its shadow would not read, and the town's beds cost as much as its buildings'.
@@ -189,7 +188,7 @@ void TreeRenderer::commit_far(Built &b) {
 	if (!d.inst.is_valid()) return;
 	RenderingServer *rs = RenderingServer::get_singleton();
 	rs->instance_set_custom_aabb(d.inst, box_of(b.key, SUPERCHUNK));
-	rs->instance_geometry_set_visibility_range(d.inst, 0, trees_.far_m + SUPERCHUNK * DIAGONAL * HALF, 0, 0, RenderingServer::VISIBILITY_RANGE_FADE_DISABLED);
+	rs->instance_geometry_set_visibility_range(d.inst, 0, trees_.far_m + SUPERCHUNK * SQRT2_F * HALF, 0, 0, RenderingServer::VISIBILITY_RANGE_FADE_DISABLED);
 }
 
 void TreeRenderer::submit(const CityState &s, int64_t key, float priority, bool far) {
@@ -249,7 +248,7 @@ void TreeRenderer::stream(const CityState &s, const Vector3 &cam, bool far, std:
 		for (int i = cx - r; i <= cx + r; i++) {
 			int64_t k = cell_key(i, j);
 			float d = distance_to(k, size, cam);
-			if (d > reach + size * DIAGONAL * HALF || !s.terrain.in_bounds((i + HALF) * size, (j + HALF) * size, -size * HALF)) continue;
+			if (d > reach + size * SQRT2_F * HALF || !s.terrain.in_bounds((i + HALF) * size, (j + HALF) * size, -size * HALF)) continue;
 			if (!built(k, far) && !t.revs.busy(k)) unit(k, d, 0);
 		}
 	if (far) {

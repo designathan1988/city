@@ -2,6 +2,7 @@
 // ground, planted trees and clearings, the map's biome, and taking the relief back to the land the map started with.
 // Each records how to undo itself (j_nature, j_paint_touch); a held brush is one undo step.
 #include "sim/commands/commands.h"
+#include "sim/commands/nature_commands.h"
 #include "sim/commands/edit_journal.h"
 #include "sim/commands/road_edit.h"
 
@@ -16,7 +17,7 @@ namespace city {
 
 namespace {
 constexpr const char *FULL = "hint.tileFull";
-constexpr uint32_t DAB_SALT = 0x74726565u;
+constexpr uint32_t DAB_SALT = 0x74726565u; // a stream's salt: the word it names, in ASCII
 
 EditResult done() {
 	EditResult r;
@@ -292,7 +293,7 @@ EditResult clear_relief(CityState &s) {
 	Heightfield &t = s.terrain;
 	const Tuning &tn = s.catalog.tune;
 	const ScenicCity *scenic = s.catalog.scenic_of(s.map_index); // a scenic map's relief is its own laid-out land
-	TerrainGen gen(s.seed, s.map_half, tn.world_water_spacing_m, scenic ? &scenic->land : nullptr);
+	TerrainGen gen(s.seed, s.map_half, tn, scenic ? &scenic->land : nullptr);
 	for (int r = 0; r < int(t.tile_dirty.size()); r++) {
 		if (!t.tile_dirty[size_t(r)]) continue;
 		int x0 = (r % t.regions) * t.region_size, z0 = (r / t.regions) * t.region_size;

@@ -31,7 +31,7 @@ static func _new_street() -> Array:
 static func shots(cap: Node) -> void:
 	var street := _new_street()
 	var at: Vector3 = (street[0] + street[1]) * 0.5
-	print("industrial zone at ", at, ": ", ZoneStroke.along(street[0], street[1], DataTables.zone_code("industrial")))
+	print("industrial zone at ", at, ": ", ZoneStroke.along(street[0], street[1], ZoneTable.code("industrial")))
 	cap.camera.global_position = at + Vector3(CAMERA_BACK, CAMERA_UP, CAMERA_BACK)
 	for i in GROW_STEPS:
 		await cap._frames(1)

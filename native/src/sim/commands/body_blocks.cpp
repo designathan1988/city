@@ -23,7 +23,7 @@ using namespace b40;
 
 namespace {
 constexpr const char *NO_BLOCK = "tool.failed", *PRIMITIVE_ID = "primitive";
-constexpr float TOUCH_AREA_M2 = 1e-3f;
+constexpr float TOUCH_AREA_M2 = 1e-3f; // two blocks sharing less than this do not touch
 constexpr int PRIMITIVE_ZONE = 1;
 
 float on_grid(const Tuning &t, float x) { return std::round(x / float(t.build_grid_m)) * float(t.build_grid_m); }
@@ -40,8 +40,8 @@ std::shared_ptr<const Body> standing(const CityState &s, int id, EditResult &r) 
 // The biggest piece of `box` standing on the block: a mass on a roof is kept to the roof.
 Ring on_roof(const Ring &box, const Volume &v) {
 	PlanRing a, c;
-	for (const Point2 &p : box) a.push_back(V2(p.x, p.y));
-	for (const Point2 &p : ring_of(v)) c.push_back(V2(p.x, p.y));
+	for (const V2 &p : box) a.push_back(V2(p.x, p.y));
+	for (const V2 &p : ring_of(v)) c.push_back(V2(p.x, p.y));
 	Ring best;
 	float most = 0;
 	for (const PlanRing &piece : plan_intersection({ a }, { c })) {
@@ -57,9 +57,9 @@ Ring on_roof(const Ring &box, const Volume &v) {
 }
 } // namespace
 
-std::string op_add_mass(Body &b, const Tuning &t, int vol, Point2 from, Point2 to, int action) {
+std::string op_add_mass(Body &b, const Tuning &t, int vol, V2 from, V2 to, int action) {
 	if (vol < 0 || vol >= int(b.volumes.size()) || action < MASS_GROUND || action > MASS_CUT) return NO_BLOCK;
-	if (int(b.volumes.size()) >= int(t.build_max_volumes)) return "building.problem.size";
+	if (int(b.volumes.size()) >= t.build_max_volumes) return "building.problem.size";
 	Volume &source = b.volumes[size_t(vol)];
 	const float x0 = on_grid(t, std::min(from.x, to.x)), x1 = on_grid(t, std::max(from.x, to.x)), y0 = on_grid(t, std::min(from.y, to.y)), y1 = on_grid(t, std::max(from.y, to.y));
 	Ring ring{ { x0, y0 }, { x1, y0 }, { x1, y1 }, { x0, y1 } };
@@ -67,7 +67,7 @@ std::string op_add_mass(Body &b, const Tuning &t, int vol, Point2 from, Point2 t
 	if (action == MASS_ROOF) ring = on_roof(ring, source);
 	if (ring.size() < 3) return "building.problem.outline";
 	if (action == MASS_CUT && overlap_area(ring, ring_of(source)) <= TOUCH_AREA_M2) return "building.problem.cut";
-	Volume mass = block_like(source, action == MASS_ROOF ? std::min(int(t.build_roof_mass_storeys), std::max(1, int(t.edit_max_floors) - source.top())) : source.storeys);
+	Volume mass = block_like(source, action == MASS_ROOF ? std::min(t.build_roof_mass_storeys, std::max(1, t.edit_max_floors - source.top())) : source.storeys);
 	for (FaceGeometry &f : mass.faces) f.bays = -1; // its openings' proportions, but as many bays as its own walls hold
 	set_block_ring(mass, ring);
 	if (action == MASS_GROUND) {
@@ -92,7 +92,7 @@ std::string op_scale_plan(Body &b, const Tuning &t, float factor, bool snap) {
 	if (b.volumes.empty() || factor <= 0) return NO_BLOCK;
 	float x0 = std::numeric_limits<float>::max(), y0 = x0, x1 = -x0, y1 = -x0;
 	for (const Volume &v : b.volumes)
-		for (const Point2 &p : ring_of(v)) {
+		for (const V2 &p : ring_of(v)) {
 			x0 = std::min(x0, p.x);
 			y0 = std::min(y0, p.y);
 			x1 = std::max(x1, p.x);
@@ -138,9 +138,12 @@ std::string op_set_lift(Body &b, const Tuning &t, int vol, float lift, bool snap
 }
 
 std::string op_handle(Body &b, const Tuning &t, const HandleEdit &e) {
-	if (e.kind.empty()) return "";
-	if (e.kind == "lift") return op_set_lift(b, t, e.vol, e.along, e.snap);
-	if (e.kind == "relief") {
+	switch (e.kind) {
+	case HandleKind::NONE:
+		return "";
+	case HandleKind::LIFT:
+		return op_set_lift(b, t, e.vol, e.along, e.snap);
+	case HandleKind::RELIEF: {
 		Relief r;
 		r.side = e.side;
 		r.bay0 = r.bay1 = e.index;
@@ -148,12 +151,23 @@ std::string op_handle(Body &b, const Tuning &t, const HandleEdit &e) {
 		r.depth = e.along;
 		return op_set_relief(b, t, e.vol, r, e.snap);
 	}
-	if (e.kind == "part") return op_add_part(b, t, e.vol, e.count, e.side, e.index, e.part);
-	if (e.kind == "primitive") return op_primitive_on(b, t, e.vol, e.side, e.count, e.x, e.y, e.shape);
-	if (e.kind == "storeys") return op_set_storeys(b, t, e.vol, e.count);
-	if (e.kind == "vertex") return op_move_point(b, t, e.vol, e.index, e.x, e.y, e.snap);
-	if (e.kind == "scale") return op_scale_plan(b, t, e.factor, e.snap);
-	if (e.kind != "side") return NO_BLOCK;
+	case HandleKind::PART:
+		return op_add_part(b, t, e.vol, e.count, e.side, e.index, e.part);
+	case HandleKind::PRIMITIVE:
+		return op_primitive_on(b, t, e.vol, e.side, e.count, e.x, e.y, e.shape);
+	case HandleKind::STOREYS:
+		return op_set_storeys(b, t, e.vol, e.count);
+	case HandleKind::VERTEX:
+		return op_move_point(b, t, e.vol, e.index, e.x, e.y, e.snap);
+	case HandleKind::SCALE:
+		return op_scale_plan(b, t, e.factor, e.snap);
+	case HandleKind::SIDE:
+		break;
+	case HandleKind::MOVE:
+	case HandleKind::ROTATE:
+	case HandleKind::UNKNOWN:
+		return NO_BLOCK;
+	}
 	if (e.wing) return e.along >= float(t.build_min_side_m) ? op_add_wing(b, t, e.vol, e.side, e.along, 0) : "";
 	const float grid = float(t.build_grid_m), along = e.snap ? std::round(e.along / grid) * grid : e.along;
 	return along != 0 ? op_extrude_face(b, t, e.vol, e.side, along) : "";
@@ -181,12 +195,12 @@ std::string op_set_block_mode(Body &b, int vol, int mode) {
 
 std::string op_primitive_on(Body &b, const Tuning &t, int vol, int side, int storey, float x, float y, const PrimitiveSpec &p) {
 	if (vol < 0 || vol >= int(b.volumes.size())) return NO_BLOCK;
-	if (int(b.volumes.size()) >= int(t.build_max_volumes)) return "building.problem.size";
+	if (int(b.volumes.size()) >= t.build_max_volumes) return "building.problem.size";
 	const Volume &source = b.volumes[size_t(vol)];
 	const float size = float(t.build_primitive_m);
 	const bool top = side < 0;
 	float cx = x, cy = y, across = size, angle = 0;
-	int storeys = int(t.build_roof_mass_storeys);
+	int storeys = t.build_roof_mass_storeys;
 	if (!top) {
 		const BlockWall e = block_wall(source, side);
 		const float along = (x - e.a.x) * e.tx + (y - e.a.y) * e.ty, depth = float(t.build_primitive_depth_m);
@@ -198,7 +212,7 @@ std::string op_primitive_on(Body &b, const Tuning &t, int vol, int side, int sto
 	}
 	const float c = std::cos(angle), s = std::sin(angle);
 	Ring ring;
-	for (const Point2 &q : plan_ring(p.shape)) {
+	for (const V2 &q : plan_ring(p.shape)) {
 		const float lx = (q.x - 0.5f) * size, ly = (q.y - 0.5f) * across;
 		ring.push_back({ cx + lx * c - ly * s, cy + lx * s + ly * c });
 	}
@@ -280,7 +294,7 @@ EditResult place_primitive(CityState &s, double x, double z, const PrimitiveSpec
 	m.trim = data.color("wall_coping");
 	ModelBlock block;
 	block.w = block.d = float(t.build_primitive_m);
-	block.storeys = int(t.build_primitive_storeys);
+	block.storeys = t.build_primitive_storeys;
 	block.roof = Roof(p.roof);
 	block.pitch = p.roof == ROOF_FLAT ? -1 : p.pitch;
 	block.door_bay = MIDDLE_BAY;

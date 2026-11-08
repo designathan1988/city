@@ -1,9 +1,9 @@
 // CPU meshes of the overlay layers, one per 256 m chunk: the lots coloured by their zone (the streets' zoned lots and the player's,
 // each drawn whole by the chunk its middle stands in) with, while the Zones tool is in hand, their outlines, their fronts and the
 // lots the streets propose; and the congestion ribbons along each carriageway (see overlay_renderer.h).
+#include "render/mesh_builder.h"
 #include "render/overlays/overlay_renderer.h"
 
-#include "render/mesh_builder.h"
 #include "render/owned_segments.h"
 #include "sim/buildings/growth.h"
 
@@ -21,15 +21,15 @@ constexpr float HALF_JAM = 0.5f;
 constexpr double SHORTEST_EDGE_M = 1e-6; // an edge this short has no direction
 
 Color zone_color(const CityState &s, int code, float alpha) {
-	Color c = rgba8_to_color(s.catalog.zone(code).color);
+	Color c = rgba8_to_color(s.catalog.zone(code).color); // packed zone colours are RGBA8
 	c.a = alpha;
 	return c;
 }
 
 // Whether a building stands on a ring (its middle on it): the lot is built on.
-bool built_on(const CityState &s, const std::vector<LotPoint> &ring) {
+bool built_on(const CityState &s, const std::vector<XZ> &ring) {
 	float x0 = INFINITY, z0 = INFINITY, x1 = -INFINITY, z1 = -INFINITY;
-	for (const LotPoint &p : ring) {
+	for (const XZ &p : ring) {
 		x0 = std::min(x0, float(p.x));
 		z0 = std::min(z0, float(p.z));
 		x1 = std::max(x1, float(p.x));
@@ -44,23 +44,23 @@ bool built_on(const CityState &s, const std::vector<LotPoint> &ring) {
 }
 
 // Whether a point lies on a zoned lot of the streets' the player does not hold (a proposal there is no land to take).
-bool on_street_lot(const CityState &s, const LotPoint &p) {
+bool on_street_lot(const CityState &s, const XZ &p) {
 	return any_street_lot(s.lots, s.lot_book, p, [&](const Lot &l) { return on_lot(l, p); });
 }
 } // namespace
 
 // A lot coloured on the ground: cut to the cells of the relief's own grid (lot_cover), each point laid on
 // the relief: the terrain never rises through it.
-void OverlayRenderer::lot_cover(Ribbon &out, const CityState &s, const std::vector<LotPoint> &ring, const Color &col) const {
+void OverlayRenderer::lot_cover(Ribbon &out, const CityState &s, const std::vector<XZ> &ring, const Color &col) const {
 	const double corner = s.terrain.x_of(0);
-	for (const LotPoint &p : city::lot_cover(ring, s.terrain.spacing, { corner, corner })) {
+	for (const XZ &p : city::lot_cover(ring, s.terrain.spacing, { corner, corner })) {
 		out.v.push_back(Vector3(float(p.x), s.terrain.height_at(float(p.x), float(p.z)) + lift_, float(p.z)));
 		out.c.push_back(col);
 	}
 }
 
 // A stroke `width` wide along a->b on the ground, a quad each step of the relief's grid (it follows the terrain's mesh).
-void OverlayRenderer::edge(Ribbon &out, const CityState &s, const LotPoint &a, const LotPoint &b, float width, const Color &col) const {
+void OverlayRenderer::edge(Ribbon &out, const CityState &s, const XZ &a, const XZ &b, float width, const Color &col) const {
 	const double dx = b.x - a.x, dz = b.z - a.z, len = std::hypot(dx, dz);
 	if (len < SHORTEST_EDGE_M) return;
 	const double nx = -dz / len * width / 2, nz = dx / len * width / 2;
@@ -82,21 +82,21 @@ void OverlayRenderer::edge(Ribbon &out, const CityState &s, const LotPoint &a, c
 
 // One lot as the layer shows it: its zone's colour (fainter once built on, and with another tool in hand only
 // the unbuilt zoned lots), and with the Zones tool its outline, and its front with an arrow from inside out through its middle.
-void OverlayRenderer::lot_shape(Ribbon &out, const CityState &s, const std::vector<LotPoint> &ring, int zone, bool built, bool tool) const {
+void OverlayRenderer::lot_shape(Ribbon &out, const CityState &s, const std::vector<XZ> &ring, int zone, bool built, bool tool) const {
 	if (ring.size() < 3) return;
 	if (zone != 0 && (tool || !built)) lot_cover(out, s, ring, zone_color(s, zone, !tool ? zone_alpha_ : built ? look_.alpha_built : look_.alpha_tool));
 	if (!tool) return;
 	for (size_t k = 1; k < ring.size(); k++) edge(out, s, ring[k], ring[(k + 1) % ring.size()], look_.line_m, look_.line);
-	const LotPoint &a = ring[0], &b = ring[1];
+	const XZ &a = ring[0], &b = ring[1];
 	edge(out, s, a, b, look_.front_m, look_.front);
 	const double len = std::hypot(b.x - a.x, b.z - a.z);
 	if (len < look_.arrow_least_m) return;
-	LotPoint centre{ 0, 0 };
-	for (const LotPoint &p : ring) {
+	XZ centre{ 0, 0 };
+	for (const XZ &p : ring) {
 		centre.x += p.x / double(ring.size());
 		centre.z += p.z / double(ring.size());
 	}
-	const LotPoint mid{ (a.x + b.x) / 2, (a.z + b.z) / 2 };
+	const XZ mid{ (a.x + b.x) / 2, (a.z + b.z) / 2 };
 	double nx = -(b.z - a.z) / len, nz = (b.x - a.x) / len; // the front's normal, out of the lot
 	if ((mid.x - centre.x) * nx + (mid.z - centre.z) * nz < 0) {
 		nx = -nx;
@@ -104,7 +104,7 @@ void OverlayRenderer::lot_shape(Ribbon &out, const CityState &s, const std::vect
 	}
 	const double size = std::min({ double(look_.arrow_most_m), len * look_.arrow_of_front,
 			std::max(double(look_.arrow_least_m), std::hypot(mid.x - centre.x, mid.z - centre.z) * look_.arrow_of_depth) });
-	const LotPoint tail{ mid.x - nx * size, mid.z - nz * size }, tip{ mid.x - nx * size * look_.arrow_tip, mid.z - nz * size * look_.arrow_tip };
+	const XZ tail{ mid.x - nx * size, mid.z - nz * size }, tip{ mid.x - nx * size * look_.arrow_tip, mid.z - nz * size * look_.arrow_tip };
 	const double head = size * look_.arrow_head, spread = head * look_.arrow_spread;
 	edge(out, s, tail, tip, look_.arrow_m, look_.front);
 	edge(out, s, tip, { tip.x - nx * head - nz * spread, tip.z - nz * head + nx * spread }, look_.arrow_m, look_.front);
@@ -156,7 +156,7 @@ OverlayRenderer::Ribbon OverlayRenderer::build_zone_cpu(const CityState &s, int6
 	if (!tool) return r;
 	for (const Lot &l : *LotCache::proposed(s, key, zone_works_.load())) {
 		if (s.lot_book.at(l.x, l.z) != 0 || on_street_lot(s, { l.x, l.z })) continue;
-		const std::vector<LotPoint> ring = lot_ring(l);
+		const std::vector<XZ> ring = lot_ring(l);
 		for (size_t k = 0; k < ring.size(); k++) edge(r, s, ring[k], ring[(k + 1) % ring.size()], look_.proposal_m, look_.proposal);
 	}
 	return r;

@@ -78,7 +78,7 @@ e apagados.
 - **Um dono por definição:** regras com dono único em `tools/gates/owners.json`. Sem código duplicado: extraia um dono.
 - **Dados:** valores ajustáveis só em `project/data/**` (JSON com schema), lidos só por `DataTables`. Nomes do tuning na
   X-macro `CITY_TUNING_FIELDS`, valores em `project/data/catalog/tuning.json`.
-- **Sem números mágicos** em `native/src`, `project/game`, `project/ui`: dê nome ou mova para dados.
+- **No magic numbers** in `native/src`, `project/game`, `project/ui`, `project/render`: tunables to data; a constant's comment says its source.
 - **Interface:** não guarda números do jogo: lê `CityStore.snapshot` e envia `CityStore.dispatch(...)`. Cores e tamanhos só
   por `data/ui/tokens.json` e `ui/theme/theme_builder.gd`; textos só por `tr("CHAVE")`; botões e opções em `data/ui/*.json`.
 - **Fluxo:** troca de tela, pausa e saída só por `GameFlow`.
@@ -109,15 +109,15 @@ e apagados.
 | Suite in parallel | `python tools/tasks/cli.py run tests` (logs in `dist/tasks/<run>`, `cli.py status`; every task has its own deadline and is killed by PID) |
 | Gates | `python tools/gates/run_gates.py` (`--file X`, `--files-from F`, `--summary`, `--selftest`); changed files only: `python tools/tasks/cli.py run gates_changed` |
 | Scripts that do not compile | `python tools/tasks/cli.py run scripts` (`tools/build/check_scripts.gd`) |
-| Orchestrator | `python tools/tasks/cli.py run <suite or task> [--list]`, `serve` (JSON lines, for Node tools), `status`; its tests: `python -m unittest discover tools/tasks/tests` |
+| Orchestrator | `python tools/tasks/cli.py run <suite or task> [--list]`, `serve` (JSON lines, for Node tools), `status`, `var <name>` (a machine's tool, for scripts); its tests: `python -m unittest discover tools/tasks/tests` |
 | Exportar e empacotar | `tools/build/build.sh export && tools/build/build.sh package` |
 | Android library and APK | `tools/build/android.sh core`, then `tools/build/android.sh export` (`dist/android/Roadcraft.apk`; tools from `C:/Projects/toolchains`, release keystore from `KEYSTORE_ENV`) |
 | Captures | `tools/build/build.sh capture [folder]` (= `cli.py run capture`, hidden, one task per plan) |
 | Olhar o jogo por um plano | `godot --path project --resolution 1920x1080 res://tests/visual/look.tscn -- --no-flow --plan=<json> --capture-dir=<pasta>` |
 | Photo difference | `python tools/build/photodiff.py <before> <after> <out>` (a missing side, an empty set or any changed pixel fails); its tests: `python -m unittest discover tools/build/tests` |
 | Onde cada thread gasta | `python tools/analysis/sampler.py --hidden --cmd "<godot> --path project <cena>" --seconds 30 --symbolizer <llvm-symbolizer>` |
-| Causas pela forma do código | `python tools/analysis/causes.py` |
-| Causas pela arquitetura | `python tools/analysis/arch.py scan`, `status`, `next`, `explain <id>`, `predict <id>`, `done <id>`, `selfcheck` (`--only x` refaz só o que falhou; fila em `dist/arch/queue.json`) |
+| Causes by the code's shape | `python tools/tasks/cli.py run causes` (`tools/analysis/causes.py` under a deadline) |
+| Causes by the architecture | `python tools/tasks/cli.py run arch_scan`, then `python tools/analysis/arch.py status`, `next`, `explain <id>`, `predict <id>`, `done <id>`, `selfcheck` (`--only x` redoes only what failed; the queue in `dist/arch/queue.json`) |
 | Perfil da DLL de release | `tools/build/pgo.sh` (refazer depois de mudar laços quentes) |
 
 **O que um clone precisa:** `native/godot-cpp` (API 4.7) e as DLLs em `project/bin` já vêm no repositório: o jogo abre sem
@@ -127,7 +127,7 @@ Android (arm64, armv8-a): JDK 17, Android SDK with build-tools 35.0.1 and platfo
 the JDK and SDK paths go in Godot's editor settings, `export/android/*`) and a release keystore outside the repository.
 
 **DLLs in a rebase:** never pick a side: rebuild both from the merged sources and run the suite. The build is reproducible in any
-folder (`--no-insert-timestamp`; paths from the repository root in the binaries and in the profile's names, `native/CMakeLists.txt`):
+folder (no link time or compile clock, root-relative paths, the release's function order from `native/pgo`: `native/CMakeLists.txt`):
 the same sources give the same bytes, so a rebuild of unchanged sources leaves the DLLs unchanged, in a clone or a worktree too.
 
 ## Estrutura do projeto
@@ -167,7 +167,7 @@ the same sources give the same bytes, so a rebuild of unchanged sources leaves t
   a verdict; parallel pool, cache in `dist/cache/tasks`, Job Object kill, hidden desktop; `suites.json`).
 - `build/`: `build.sh`, `android.sh` (the Android library and APK), `quick.sh` (a thin call of `tools/tasks`), `pgo.sh`, `photodiff.py`, `free_dll.sh`,
   `check_scripts.gd` (scripts that do not compile), `shader_contracts.py` (what shaders, core and scripts share, from its JSON).
-- `analysis/`: `sampler.py` with `sampler_report.py` and `unwind.py`, `causes.py` with `detectors.py` and `code_parse.py`,
+- `analysis/`: `sampler.py` with `sampler_report.py`, `unwind.py` and `win_process.py`, `causes.py` with `detectors.py` and `code_parse.py`,
   `arch.py` e `arch/` (o analisador de arquitetura), `arch_eval/` (gabaritos
   que só o selfcheck dele lê).
 - `assets/`: what makes this game's assets: noise tiles, furniture parts, flag icons, texture fixes.
@@ -187,7 +187,7 @@ the same sources give the same bytes, so a rebuild of unchanged sources leaves t
 - A building's body is made once and kept by the generator tables' cache (`sim/buildings/b40/body_cache.h`, through
   `record_body`/`record_mass`), read by the simulation and the render alike.
 - A conversão de malha entra em `render.upload_budget_mb` por quadro; o commit só troca malhas, em `render.commit_budget_ms`.
-- Poses por `PoseBuffer`. O save grava em thread própria.
+- Poses through `PoseBuffer`. A save writes and an opening reads on threads of their own (the main thread takes the city in whole).
 
 ## Luz e relógio
 - `Daylight` é o dono do sol, do ambiente e do céu. À noite o sol vira lua sem sombra; a luz da rua é `LampLights`.

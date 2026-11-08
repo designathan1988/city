@@ -18,6 +18,8 @@
 
 namespace city::b40 {
 
+constexpr uint32_t WHITE_RGBA = 0xffffffff; // an instance's colour when none is given: opaque white
+
 // Surface kinds (COLOR.a byte: SurfaceKind) and a byte's 1.0 in CUSTOM0..3 (ROOM_SPAN_M, FRAME_SPAN_M: 5 cm and 1 mm steps, more than a
 // pane shows) are core/shader_contracts/buildings.h's, which the building shaders read too.
 
@@ -71,7 +73,7 @@ constexpr int BOX_BASIS_FLOATS = 9; // three basis columns of three floats
 struct BoxInstance {
 	float basis[BOX_BASIS_FLOATS] = {};
 	float origin[3] = {};
-	uint32_t color = 0xffffffff;
+	uint32_t color = WHITE_RGBA;
 	int8_t fin = -1;
 	float thick = 0;
 };
@@ -89,7 +91,7 @@ struct BayInstance {
 struct PropInstance {
 	float basis[BOX_BASIS_FLOATS] = {};
 	float origin[3] = {};
-	uint32_t color = 0xffffffff;
+	uint32_t color = WHITE_RGBA;
 	uint8_t kind = 0;
 };
 

@@ -1,8 +1,8 @@
 // Zone-layer chunk jobs, what a lot is drawn with, and the congestion layer's refresh cycle (see overlay_renderer.h).
+#include "render/mesh_builder.h"
 #include "render/overlays/overlay_renderer.h"
 
 #include "render/data_reader.h"
-#include "render/mesh_builder.h"
 
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/variant/array.hpp>
@@ -16,7 +16,7 @@ namespace city {
 
 namespace {
 constexpr float HALF = 0.5f, DROP_K = 1.5f;
-constexpr int JAM_STOPS = 3;
+constexpr int JAM_STOPS = 3; // the congestion ramp's colours: free, middling, jammed (overlays.json congestion)
 } // namespace
 
 OverlayRenderer::OverlayRenderer() {
@@ -57,7 +57,10 @@ bool OverlayRenderer::init(const RenderContext &ctx, PackedStringArray &errors) 
 	jam_share_ = float(r.num(t, "jam_share"));
 	const Array cols = r.list(t, "congestion", JAM_STOPS);
 	if (errors.size() != before) return false;
-	for (int i = 0; i < JAM_STOPS; i++) jam_colors_[i] = rgba8_to_color(r.in("congestion").colour_at(cols, i));
+	for (int i = 0; i < JAM_STOPS; i++) {
+		const uint32_t c = r.in("congestion").colour_at(cols, i);
+		jam_colors_[i] = rgba8_to_color(c);
+	}
 	return true;
 }
 

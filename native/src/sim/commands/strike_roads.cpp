@@ -15,7 +15,7 @@ namespace city {
 namespace {
 constexpr int CUT_SAMPLES = 64; // the centreline is walked in this many steps to find where the crater covers it
 constexpr double END_EPS = 0.01; // a cut this close to a segment's end is that end
-constexpr double UNBOUNDED_M = 1e9;
+constexpr double UNBOUNDED_M = 1e9; // farther than any road
 
 struct Span {
 	double t0 = 1, t1 = 0, nearest = UNBOUNDED_M; // the stretch of the curve inside the crater, and its closest approach to the centre

@@ -4,8 +4,8 @@ shader_type spatial;
 render_mode unshaded, fog_disabled, cull_disabled, shadows_disabled, depth_draw_never, blend_add;
 
 uniform float brightness = 0.0;
-uniform vec2 screen = vec2(1600.0, 900.0);
-uniform vec3 core = vec3(6.0, 6.4, 8.0);
+uniform vec2 screen; // the viewport, set every frame (render/weather_view.gd)
+uniform vec3 core; // the channel's light, brighter than white (data/game/sky.json bolt_core)
 
 #include "res://render/shaders/color_space.gdshaderinc"
 

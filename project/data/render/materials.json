@@ -1,8 +1,44 @@
 {
- "_doc": "Materials the native renderers draw with, by name (native/src/render/render_context.h). pool_gain 0.2115 (lamp_glow; the road's is its own, 0.9): the Roadcraft 4.0's pool, opacity 0.32 of a #ffe2c4 light, times daylight.json sky_gain 0.661, which carries a colour drawn without light from three.js's tone chain into this game's; computed and not fitted to a picture. Colours as '#rrggbb', textures as res:// paths. prop lens_roughness and lens_ior: the signal lens, polished polycarbonate (Physically Based database, physicallybased.info, 'Plastic (PC)': roughness 0, index of refraction 1.5848 from refractiveindex.info). Vegetation wind (vegetation.gdshaderinc; its speed and direction are shader globals, not material values): sway_per_ms2 = top bend per (m/s)^2 from Peltola et al. 1993 (crown-centre bending under 5 cm on a 13.5 m pine at 8 m/s: 0.0037 of the height, times (1/0.6)^2 to the top, over 64); gust_m = 22 x 10 m (Kaimal et al. 1972 spectral peak n z / U = 1/22); turbulence = 1 / ln(10 m / 0.05 m) (EN 1991-1-4 eq. 4.7, terrain category II); sway_hz = natural frequency of leafy trees of 8-15 m, 0.2-0.3 Hz (Jackson et al. 2019). vegetation_cards cover_per_mip 0.25: alpha rescaled by mip level so a card keeps its coverage far away (Golus 2017, Anti-aliased Alpha Test: The Esoteric Alpha To Coverage). vegetation roughness 0.8: modelling choice for matte leaves, no published value.",
+ "_doc": "Materials the native renderers draw with, by name (native/src/render/render_context.h). pool_gain 0.2115 (lamp_glow; the road's is its own, 0.9): the Roadcraft 4.0's pool, opacity 0.32 of a #ffe2c4 light, times daylight.json sky_gain 0.661, which carries a colour drawn without light from three.js's tone chain into this game's; computed and not fitted to a picture. Colours as '#rrggbb', textures as res:// paths. prop lens_roughness and lens_ior: the signal lens, polished polycarbonate (Physically Based database, physicallybased.info, 'Plastic (PC)': roughness 0, index of refraction 1.5848 from refractiveindex.info). Vegetation wind (_shared gust and sway; vegetation.gdshaderinc; its speed and direction are shader globals, not material values): sway_per_ms2 = top bend per (m/s)^2 from Peltola et al. 1993 (crown-centre bending under 5 cm on a 13.5 m pine at 8 m/s: 0.0037 of the height, times (1/0.6)^2 to the top, over 64); gust_m = 22 x 10 m (Kaimal et al. 1972 spectral peak n z / U = 1/22); turbulence = 1 / ln(10 m / 0.05 m) (EN 1991-1-4 eq. 4.7, terrain category II); sway_hz = natural frequency of leafy trees of 8-15 m, 0.2-0.3 Hz (Jackson et al. 2019). vegetation_cards cover_per_mip 0.25: alpha rescaled by mip level so a card keeps its coverage far away (Golus 2017, Anti-aliased Alpha Test: The Esoteric Alpha To Coverage). vegetation roughness 0.8: modelling choice for matte leaves, no published value.",
+ "_shared": {
+  "_doc": "Parameter sets several materials read alike, laid under a material's own params by its uses (render/world_materials.gd params): finishes, the building finishes' maps and scales and the plain finishes' weathering (building, building_parts: building_common.gdshaderinc); glass, the near levels' glass (building, building_glass; building_glass_set.gdshaderinc declares it and sky_in_glass); sky_in_glass, the sky every level's glass shows (building, building_glass, building_far); rooms, what hangs in a room's window, its picks, cloths and the means of its blinds (building, building_glass, building_far: building_room_tone.gdshaderinc, read by building_pane's room_hung too); blast_dust, the concrete dust of a blast (debris, rubble); windows, the picks of a car's front windows down, three in ten with one or both open, half of those part-way, the 4.0's windowsDown (agent, agent_glass: agent_door.gdshaderinc); lamp_pool, the fall of a street lamp's pool, the 4.0's lightLevels.ts (road, building_wash: lamp_pool.gdshaderinc); gust and sway, the vegetation wind (vegetation, cover_plant, vegetation_cards); stone, a still, rough cover (cover_rock, cover_shore).",
+  "finishes": {
+   "noise_lattice": "res://assets/noise/lattice.png",
+   "finish_map": "res://assets/surfaces/building-finishes.map.png",
+   "finish_normal": "res://assets/surfaces/building-finishes.normal.png",
+   "finish_rough": "res://assets/surfaces/building-finishes.rough.png",
+   "finish_m": [8, 6, 2, 2.4, 3.2, 9.6, 4.8, 3.2, 6, 4, 4, 4.8, 8],
+   "finish_normal_k": [0.2, 0.22, 0.25, 0.55, 0.3, 0.3, 0.45, 0.6, 0.3, 0.7, 0.6, 0.3, 0.35],
+   "finish_metal": [0, 0, 0, 0, 0, 0, 0, 0.55, 1.0, 0, 0, 0.15, 0],
+   "weather_macro": [0.021, 0.65, 0.075, 0.35],
+   "weather_streak": [0.55, 0.85, 0.55, 0.02],
+   "weather_stain": [0.3, 0.18, 0.12, 0.0275],
+   "weather_stain_more": [0.28, 0.1],
+   "weather_tone": [0.9, 0.2]
+  },
+  "glass": { "glass_reflect": 0.04, "glass_sky_floor": 0.0, "window_glow": 0.62, "dark_glass": 0.64 },
+  "sky_in_glass": { "glass_sky": "#7f95ad", "sky_glass_lift": [0.75, 1.15, 0.2] },
+  "lamp_pool": { "pool_stops": [0.35, 0.55, 0.7, 0.15] },
+  "blast_dust": { "dust": [0.56, 0.54, 0.5] },
+  "windows": { "windows_down": [0.7, 0.8, 0.9, 0.45] },
+  "rooms": {
+   "hung_kinds": [0.36, 0.56, 0.68, 0.8],
+   "curtain_side": [0.14, 0.2],
+   "roller_down": [0.15, 0.65],
+   "cloth_until": [0.25, 0.45, 0.6, 0.72, 0.84, 0.93],
+   "cloth_tone": [[0.86, 0.8, 0.68], [0.9, 0.89, 0.86], [0.5, 0.51, 0.53], [0.72, 0.6, 0.45], [0.4, 0.47, 0.58], [0.6, 0.34, 0.26], [0.42, 0.5, 0.38]],
+   "blind_mean": [0.53, 0.523, 0.496, 0.55],
+   "sheer_mean": [0.698, 0.691, 0.667, 0.5]
+  },
+  "gust": { "gust_m": 220.0, "bend_most": 1.4 },
+  "sway": { "sway_per_ms2": 0.000161, "turbulence": 0.189, "sway_hz": 0.25 },
+  "stone": { "sway_per_ms2": 0.0, "turbulence": 0.0, "sway_hz": 0.0, "roughness": 0.94, "leaf_specular": 0.5 }
+ },
  "verge": { "shader": "res://render/shaders/verge.gdshader", "params": {} },
  "road": {
   "fade_shader": "res://render/shaders/road_far.gdshader",
+  "_doc": "The streets' surfaces (render/shaders/road_body.gdshaderinc): each map's scale and normal strength, the close-up detail of each surface, pavers, cobbles, the lamps' pools, and the look the shader worked out by hand (blotches, roughness, joints, the far level's lines; the wear bands by the kerb, the lanes' tracks and the footway's grime, road_wear.gdshaderinc; what wear does, wear.gdshaderinc), by eye as the 4.0's streets; each vector's parts are said at its uniform.",
+  "uses": ["lamp_pool"],
   "shader": "res://render/shaders/road.gdshader",
   "params": {
    "asphalt_map": "res://assets/surfaces/asphalt.map.png",
@@ -38,81 +74,117 @@
    "pool_color": "#ffe2c4",
    "pool_gain": 0.9,
    "plate_glow": 0.3,
-   "pool_along_m": 11.5
+   "pool_along_m": 11.5,
+   "detail_asphalt": [0.6, 0.65, 1.6],
+   "detail_footway": [0.7, 0.8, 0.6],
+   "detail_kerb": [0.55, 0.7, 0.8],
+   "detail_verge": [1.0, 1.2, 2.0],
+   "blotch_look": [0.08, 0.12],
+   "lane_grain_scale": 2.7,
+   "road_rough": [0.92, 0.62, 0.82, 0.95],
+   "paver_joint": [0.3, 0.016],
+   "cobble_look": [0.18, 0.4, 0.9, 0.2],
+   "concrete_look": [0.94, 0.12],
+   "joint_fade": [0.05, 0.25],
+   "bend_fade": [0.02, 0.5],
+   "far_line": [0.12, 0.6, 0.78],
+   "wear_grain": [0.6, 0.8],
+   "gutter_band": [0.05, 0.65],
+   "gutter_look": [0.3, 0.6],
+   "gutter_tint": [1.06, 0.99, 0.9],
+   "lane_tracks": [0.85, 0.3, 0.32],
+   "track_look": [0.11, 0.14, 0.7, 0.6],
+   "kerb_band": [0.1, 0.6],
+   "lot_band": 0.55,
+   "walk_band": [0.22, 0.3],
+   "footway_look": [0.2, 0.24, 0.07, 0.4],
+   "lot_tint": [0.9, 1.0, 0.86],
+   "rubber_look": [0.38, 0.8],
+   "pothole_look": [0.55, 1.0, 0.632, 0.812],
+   "pothole_dark": [0.06, 0.06, 0.065],
+   "pothole_more": [0.45, 0.9],
+   "crack_look": [0.3, 0.9, 0.47, 0.5],
+   "crack_more": [1.7, 0.3],
+   "stain_look": [0.9, 0.6, 0.4, 0.8],
+   "stain_tint": [0.62, 0.6, 0.55]
   }
  },
  "building": {
+  "uses": ["finishes", "glass", "sky_in_glass", "rooms"],
+  "_doc": "The buildings' surfaces (render/shaders/building_body.gdshaderinc, building_far_window.gdshaderinc): the walls' gain, the outside lamps, a lawn's tone and noise, the far wall's painted glass, and the mid level's shutters (their drop by pick, what the far shutters cover, their tone), by eye as the 4.0's buildings; each vector's parts are said at its uniform.",
   "shader": "res://render/shaders/building.gdshader", "fade_shader": "res://render/shaders/building_fade.gdshader", "ruin_shader": "res://render/shaders/building_ruin.gdshader",
   "params": {
-   "noise_lattice": "res://assets/noise/lattice.png",
-   "finish_map": "res://assets/surfaces/building-finishes.map.png",
-   "finish_normal": "res://assets/surfaces/building-finishes.normal.png",
-   "finish_rough": "res://assets/surfaces/building-finishes.rough.png",
-   "finish_m": [
-    8,
-    6,
-    2,
-    2.4,
-    3.2,
-    9.6,
-    4.8,
-    3.2,
-    6,
-    4,
-    4,
-    4.8,
-    8
-   ],
-   "glass_reflect": 0.04,
-   "glass_sky": "#7f95ad",
-   "glass_sky_floor": 0.0,
-   "finish_normal_k": [
-    0.2,
-    0.22,
-    0.25,
-    0.55,
-    0.3,
-    0.3,
-    0.45,
-    0.6,
-    0.3,
-    0.7,
-    0.6,
-    0.3,
-    0.35
-   ],
-   "finish_metal": [
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0.55,
-    1.0,
-    0,
-    0,
-    0.15,
-    0
-   ],
    "wall_gain": 1.0,
    "lamp_glow": 3.4,
    "lamp_light": "#ffd49a",
-   "window_glow": 0.62
+   "lawn_tone": [0.8, 0.25, 0.15, 0.95],
+   "lawn_noise": [0.7, 3.1],
+   "far_glass_rough": 0.15,
+   "shutter_drop": [0.25, 0.15],
+   "shutter_far": [0.2, 0.475],
+   "shutter_tone": [0.32, 0.36, 0.37]
   }
  },
  "building_glass": {
+  "uses": ["glass", "sky_in_glass", "rooms"],
+  "_doc": "The near level's glass (render/shaders/building_pane.gdshaderinc): the room behind each pane by interior mapping and what hangs in its window, by eye as the 4.0's rooms; each vector's parts are said at its uniform. Colours are linear albedo (panel_light a radiance), lengths metres, a pick of a room's lot h is from + over * h. furniture_tone: three floats a furniture kind.",
   "shader": "res://render/shaders/building_glass.gdshader", "fade_shader": "res://render/shaders/building_glass_fade.gdshader",
   "params": {
-   "glass_reflect": 0.04,
-   "glass_sky": "#7f95ad",
-   "glass_sky_floor": 0.0,
-   "window_glow": 0.62,
-   "furniture_tone": [0.2051, 0.2918, 0.4179, 0.8879, 0.8632, 0.807, 0.159, 0.2122, 0.2747, 0.2307, 0.2874, 0.3467, 0.3231, 0.1441, 0.0561, 0.3231, 0.1441, 0.0561, 0.3231, 0.1441, 0.0561, 0.013, 0.0152, 0.0185, 0.3231, 0.1441, 0.0561, 0.1119, 0.0467, 0.0194, 0.3231, 0.1441, 0.0561, 0.9216, 0.9216, 0.8963, 0.4508, 0.4851, 0.5089, 0.855, 0.8714, 0.8632, 0.855, 0.8714, 0.8632, 0.855, 0.8714, 0.8632, 0.1119, 0.0467, 0.0194, 0.013, 0.0152, 0.0185, 0.0723, 0.2542, 0.0423, 0.3231, 0.1441, 0.0561, 0.159, 0.2122, 0.2747, 0.8879, 0.8632, 0.807, 0.4508, 0.4851, 0.5089, 0.9216, 0.9216, 0.8963, 0.3231, 0.1441, 0.0561, 0.4508, 0.4851, 0.5089, 0.4508, 0.4851, 0.5089, 0.4508, 0.4851, 0.5089, 0.4508, 0.4851, 0.5089, 0.1119, 0.0467, 0.0194, 0.1119, 0.0467, 0.0194, 0.0252, 0.0685, 0.0423, 0.4508, 0.4851, 0.5089, 0.013, 0.0152, 0.0185, 0.3231, 0.1441, 0.0561, 1.0, 0.8714, 0.6308, 1.0, 0.8714, 0.6308, 1.0, 0.8714, 0.6308, 0.3231, 0.1441, 0.0561, 0.3231, 0.1441, 0.0561]
+   "furniture_tone": [0.2051, 0.2918, 0.4179, 0.8879, 0.8632, 0.807, 0.159, 0.2122, 0.2747, 0.2307, 0.2874, 0.3467, 0.3231, 0.1441, 0.0561, 0.3231, 0.1441, 0.0561, 0.3231, 0.1441, 0.0561, 0.013, 0.0152, 0.0185, 0.3231, 0.1441, 0.0561, 0.1119, 0.0467, 0.0194, 0.3231, 0.1441, 0.0561, 0.9216, 0.9216, 0.8963, 0.4508, 0.4851, 0.5089, 0.855, 0.8714, 0.8632, 0.855, 0.8714, 0.8632, 0.855, 0.8714, 0.8632, 0.1119, 0.0467, 0.0194, 0.013, 0.0152, 0.0185, 0.0723, 0.2542, 0.0423, 0.3231, 0.1441, 0.0561, 0.159, 0.2122, 0.2747, 0.8879, 0.8632, 0.807, 0.4508, 0.4851, 0.5089, 0.9216, 0.9216, 0.8963, 0.3231, 0.1441, 0.0561, 0.4508, 0.4851, 0.5089, 0.4508, 0.4851, 0.5089, 0.4508, 0.4851, 0.5089, 0.4508, 0.4851, 0.5089, 0.1119, 0.0467, 0.0194, 0.1119, 0.0467, 0.0194, 0.0252, 0.0685, 0.0423, 0.4508, 0.4851, 0.5089, 0.013, 0.0152, 0.0185, 0.3231, 0.1441, 0.0561, 1.0, 0.8714, 0.6308, 1.0, 0.8714, 0.6308, 1.0, 0.8714, 0.6308, 0.3231, 0.1441, 0.0561, 0.3231, 0.1441, 0.0561],
+   "frame_out_m": 0.03,
+   "frame_cross": [0.4, 0.18],
+   "frame_thin": 0.8,
+   "tv_share": 0.12,
+   "floor_sizes": [0.6, 0.14, 2.4, 2.4],
+   "tile_look": [0.015, 0.8, 0.97, 0.03],
+   "tile_albedo": [0.694, 0.651, 0.571],
+   "stone_look": [0.035, 0.72, 0.94, 0.06],
+   "stone_albedo": [0.485, 0.445, 0.376],
+   "board_look": [0.06, 0.6, 0.85, 0.25],
+   "board_end": 0.02,
+   "board_albedo": [0.361, 0.178, 0.065],
+   "room_shades": [0.85, 0.9, 0.72, 0.84],
+   "ceiling_albedo": [0.905, 0.879, 0.823],
+   "panel_box": [0.35, 0.6, 0.25, 0.75],
+   "panel_light": [2.6, 2.55, 2.4],
+   "wall_albedo": [0.838, 0.791, 0.701],
+   "skirting": [0.62, 0.1],
+   "art_kinds": [0.45, 0.7],
+   "art_spread": 0.4,
+   "art_height": [1.6, 1.25],
+   "picture_size": [0.35, 0.4, 0.3, 0.15],
+   "picture_rim": [0.04, 0.26],
+   "canvas_a": [0.55, 0.32, 0.2],
+   "canvas_b": [0.25, 0.4, 0.55],
+   "picture_frame": [0.12, 0.1, 0.08],
+   "tv_size": [0.55, 0.32],
+   "tv_albedo": [0.02, 0.02, 0.025],
+   "daylight_fall": [7.0, 0.42, 0.45],
+   "corner_shade": [0.55, 0.6],
+   "piece_shades": [0.95, 0.62, 0.78],
+   "piece_foot": [0.7, 0.25],
+   "room_dim": 0.9,
+   "hung_back_m": 0.12,
+   "hung_daylight": [0.85, 0.25],
+   "curtain_sway": [0.03, 7.0, 6.0],
+   "curtain_folds": 70.0,
+   "curtain_shade": [0.72, 0.28, 0.6, 0.4],
+   "curtain_hem": [0.82, 0.04],
+   "roller_look": [0.92, 0.2, 0.012],
+   "venetian_look": [62.0, 0.3, 0.6, 0.9],
+   "venetian_albedo": [0.78, 0.77, 0.73],
+   "venetian_shade": [0.75, 0.25],
+   "sheer_look": [0.4, 0.2, 55.0, 5.0],
+   "sheer_albedo": [0.9, 0.89, 0.86],
+   "hung_dim": 0.8,
+   "lamp_lift": [0.35, 1.3, 0.55, 1.6],
+   "tiny_edges": [0.05, 0.3],
+   "pane_rough": [0.12, 0.55, 0.9],
+   "frame_metal": 0.05
   }
  },
  "building_wash": {
+  "uses": ["lamp_pool"],
   "shader": "res://render/shaders/building_wash.gdshader",
   "params": {
    "display_colour": "#e4d3b3",
@@ -128,10 +200,12 @@
   }
  },
  "building_card": {
+  "_doc": "The near level's railings and brise cards (render/shaders/building_card.gdshader): their roughness and metal, and where a brise's blades as boxes give way to the card, worked out by hand from building_look.json lod.part_bands' first band (log/review.md, B3).",
   "shader": "res://render/shaders/building_card.gdshader",
   "params": {
    "roughness": 0.45,
-   "metalness": 0.55
+   "metalness": 0.55,
+   "veil_from_m": 100.0
   }
  },
  "building_props": {
@@ -145,29 +219,29 @@
   "params": {
    "tint": "#65e5c3",
    "glow": "#1d5a4a",
-   "opacity": 0.5
+   "opacity": 0.5,
+   "ghost_rough": 0.7
   }
  },
  "building_far": {
+  "uses": ["sky_in_glass", "rooms"],
+  "_doc": "The far masses (render/shaders/building_far.gdshader): their glass's floor of the sky, its own tone and what night takes, the windows' glow, the walls' gain and the roughness of walls and glass; each vector's parts are said at its uniform.",
   "shader": "res://render/shaders/building_far.gdshader",
   "params": {
-   "glass_sky": "#7f95ad",
    "glass_floor": 0.18,
    "window_glow": 0.42,
-   "wall_gain": 1.0
+   "wall_gain": 1.0,
+   "far_glass_dark": [0.05, 0.06, 0.07],
+   "far_glass_night": 0.92,
+   "far_rough": [0.2, 0.35]
   }
  },
  "building_parts": {
+  "uses": ["finishes"],
   "shader": "res://render/shaders/building_parts.gdshader", "fade_shader": "res://render/shaders/building_parts_fade.gdshader",
   "params": {
-   "noise_lattice": "res://assets/noise/lattice.png",
-   "finish_map": "res://assets/surfaces/building-finishes.map.png",
-   "finish_normal": "res://assets/surfaces/building-finishes.normal.png",
-   "finish_rough": "res://assets/surfaces/building-finishes.rough.png",
-   "finish_m": [8, 6, 2, 2.4, 3.2, 9.6, 4.8, 3.2, 6, 4, 4, 4.8, 8],
-   "finish_normal_k": [0.2, 0.22, 0.25, 0.55, 0.3, 0.3, 0.45, 0.6, 0.3, 0.7, 0.6, 0.3, 0.35],
-   "finish_metal": [0, 0, 0, 0, 0, 0, 0, 0.55, 1.0, 0, 0, 0.15, 0],
-   "wall_gain": 1.0
+   "wall_gain": 1.0,
+   "cloth_roughness": 0.85
   }
  },
  "prop": {
@@ -182,11 +256,19 @@
    "glow_gain": 6.0,
    "roughness": 0.85,
    "lens_roughness": 0.0,
-   "lens_ior": 1.5848
+   "lens_ior": 1.5848,
+   "wire_gust": [0.55, 0.45, 1.9],
+   "wear_mix": [0.6, 0.4],
+   "plank_look": [0.7, 1.12, 0.86, 0.28],
+   "plank_rough": [0.5, 0.3],
+   "plank_wave_noise": [0.8, 5.0],
+   "plank_fade": 0.3,
+   "pole_grain_per_m": 0.7
   }
  },
  "agent": {
   "_doc": "Vehicles. Lamp colours: head_glow a halogen headlamp bulb, a black body at 3200 K (Philips H4 standard bulb); tail_glow the corner of UNECE R48 §2.30 red (y <= 0.335, z <= 0.008: x 0.657, y 0.335); sign_glow the middle of R48 amber (0.398 <= y <= 0.429 on z = 0.007), each from CIE 1931 (Wyman, Sloan & Shirley 2013 fit) to sRGB, out-of-gamut parts clipped, the brightest channel at 1. brake_ratio: a stop lamp at least 5 times its rear position lamp (UNECE R7 §6.2.4.2). Roughness (physicallybased.info): paint 0 (Car Paint: clear topcoat), lens 0 for lamps, signs and the far level's glass (Plastic (PC), Glass), skin 0.5 (Skin I-VI), helmet 0 (Plastic (PC) shell), trim 0.7 (Tire) for every unpainted part, cloth 1 (a matte textile: the database has none). head_power, tail_power, sign_power: how bright the lit lamps draw, set on the night photo (05_transito at 10_noite): a lamp's brightest channel at the top of the display range without bleeding into its body.",
+  "uses": ["windows"],
   "shader": "res://render/shaders/agents.gdshader",
   "params": {
    "sheen_sky": "#a9c4e2",
@@ -201,7 +283,9 @@
    "sign_power": 2.0,
    "paint_roughness": 0.0,
    "lens_roughness": 0.0,
-   "trim_roughness": 0.7
+   "trim_roughness": 0.7,
+   "sheen_lift": [0.7, 0.5],
+   "sheen_horizon": [-0.04, 0.06]
   }
  },
  "transit": {
@@ -220,6 +304,7 @@
  "shadow_caster": { "shader": "res://render/shaders/shadow_caster.gdshader", "params": {} },
  "agent_glass": {
   "_doc": "Vehicle glass (agent_glass.gdshader): transmittance 0.70, the least a windscreen and the windows the driver needs may let through (CONTRAN Resolução 960/2022 art. 4º I); ior 1.52, soda-lime glass, roughness 0 (physicallybased.info Glass); tint the 4.0's cool grey-blue (#7896a2), no source behind it, at 40 % in linear light: this sun lights it more than the 4.0's, and at its own value the panes showed milky over a dark cabin (par-hatch-frente).",
+  "uses": ["windows"],
   "shader": "res://render/shaders/agent_glass.gdshader",
   "params": {
    "tint": "#4f626b",
@@ -235,21 +320,47 @@
   }
  },
  "people": {
+  "_doc": "The walkers (render/shaders/people.gdshader, people_face, people_look): the face's expression model as the 4.0's faceExpression.ts drives it (blinks, gaze, speech, sobbing, terror, mood), each vector's parts said at its uniform.",
   "shader": "res://render/shaders/people.gdshader",
   "body_shader": "res://render/shaders/people_body.gdshader",
-  "params": {}
+  "params": {
+   "face_blink": [0.965, 0.22, 0.008],
+   "face_gaze": [0.55, 0.32],
+   "face_talk": [4.2, 0.4],
+   "face_stress_every": 5,
+   "face_sob": [5.5, 0.35, 0.15, 0.45],
+   "face_sob_blink": [0.55, 0.3],
+   "face_scream": [0.7, 0.75, 0.75, 23.0],
+   "face_terror": [0.45, 0.7],
+   "face_mood": [0.3, 0.25, 0.15, 0.35],
+   "inside_tone": [0.09, 0.045, 0.045],
+   "skin_specular": 0.35,
+   "skin_wrap": 0.4,
+   "skin_scatter": [0.32, 0.07, 0.04],
+   "skin_scatter_band": [0.3, 0.62],
+   "hair_shade": 0.25,
+   "hair_lobes": [-0.12, 0.22, 0.2, 0.035],
+   "hair_shine": [140.0, 0.55, 0.4, 26.0],
+   "charred_tone": [0.03, 0.028, 0.026]
+  }
  },
  "people_held": {
   "shader": "res://render/shaders/people_held.gdshader",
-  "params": {}
+  "params": {
+   "held_rough": 0.7
+  }
  },
  "people_helmet": {
   "shader": "res://render/shaders/people_helmet.gdshader",
-  "params": {}
+  "params": {
+   "helmet_roughness": 0.3
+  }
  },
  "people_far": {
   "shader": "res://render/shaders/people_far.gdshader",
-  "params": {}
+  "params": {
+   "card_rough": 0.85
+  }
  },
  "overlay": {
   "shader": "res://render/shaders/overlay.gdshader",
@@ -258,30 +369,25 @@
   }
  },
  "vegetation": {
+  "uses": ["gust", "sway"],
   "shader": "res://render/shaders/vegetation.gdshader",
   "params": {
-   "sway_per_ms2": 0.000161,
-   "gust_m": 220.0,
-   "turbulence": 0.189,
-   "sway_hz": 0.25,
    "roughness": 0.8,
    "leaf_specular": 0.5,
    "bark_ridges": 9.0,
    "bark_run_m": 1.1,
    "bark_deep": 0.55,
-   "bark_far_m": 60.0
+   "bark_far_m": 60.0,
+   "bark_grain": [0.7, 0.3, 0.3, 0.62]
   }
  },
- "cover_plant": { "shader": "res://render/shaders/vegetation.gdshader", "params": { "sway_per_ms2": 0.000161, "gust_m": 220.0, "turbulence": 0.189, "sway_hz": 0.25, "roughness": 0.85, "leaf_specular": 0.15 } },
- "cover_rock": { "shader": "res://render/shaders/vegetation.gdshader", "params": { "sway_per_ms2": 0.0, "gust_m": 220.0, "turbulence": 0.0, "sway_hz": 0.0, "roughness": 0.94, "leaf_specular": 0.5 } },
- "cover_shore": { "shader": "res://render/shaders/vegetation.gdshader", "params": { "sway_per_ms2": 0.0, "gust_m": 220.0, "turbulence": 0.0, "sway_hz": 0.0, "roughness": 0.94, "leaf_specular": 0.5 } },
+ "cover_plant": { "shader": "res://render/shaders/vegetation.gdshader", "uses": ["gust", "sway"], "params": { "roughness": 0.85, "leaf_specular": 0.15 } },
+ "cover_rock": { "shader": "res://render/shaders/vegetation.gdshader", "uses": ["gust", "stone"], "params": {} },
+ "cover_shore": { "shader": "res://render/shaders/vegetation.gdshader", "uses": ["gust", "stone"], "params": {} },
  "vegetation_cards": {
+  "uses": ["gust", "sway"],
   "shader": "res://render/shaders/vegetation_cards.gdshader",
   "params": {
-   "sway_per_ms2": 0.000161,
-   "gust_m": 220.0,
-   "turbulence": 0.189,
-   "sway_hz": 0.25,
    "roughness": 0.8,
    "leaf_specular": 0.5,
    "cover_per_mip": 0.25,
@@ -291,22 +397,127 @@
   }
  },
  "puffs": {
+  "_doc": "A blast's puffs (render/shaders/puffs.gdshader): the motions of the reference game's puffs in its steps (0.4 m), speeds in steps a second, falls in steps a second squared, rates in radians a second, a pick of a seed's h is from + over * h; each vector's parts are said at its uniform. Colours are linear (flame and spark radiance, brighter than white). puff_rise, puff_spread, puff_grow and puff_peak are by PuffKind (exhaust, dust, smoke, concrete, blood, flame, spark, grit, water, paper); rise and spread are read by the cloud kinds only. wind_dir is the reference game's fixed breeze, not the sky's wind (log/review.md, B3), and water_fall and flung_fall are its two gravities.",
   "shader": "res://render/shaders/puffs.gdshader",
   "render_priority": 1,
-  "params": {}
+  "params": {
+   "wind_dir": [0.6, 0.8],
+   "smoke_color": [0.55, 0.56, 0.58],
+   "dust_color": [0.6, 0.53, 0.43],
+   "dark_color": [0.16, 0.15, 0.15],
+   "concrete_color": [0.74, 0.71, 0.66],
+   "blood_color": [0.2, 0.008, 0.015],
+   "grit_color": [0.3, 0.24, 0.18],
+   "water_color": [0.82, 0.9, 0.97],
+   "spark_color": [4.0, 2.6, 1.0],
+   "flame_hot": [3.4, 2.6, 1.4],
+   "flame_warm": [2.4, 0.9, 0.18],
+   "night_dim": 0.35,
+   "puff_rise": [2.4, 1.0, 3.5, 1.8, 1.8, 1.8, 1.8, 1.8, 1.8, 1.8],
+   "puff_spread": [0.5, 1.2, 1.2, 2.2, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2],
+   "puff_grow": [2.0, 2.0, 2.6, 3.2, 0.6, 1.6, 0.2, 0.2, 1.2, 0.0],
+   "puff_peak": [0.16, 0.45, 0.5, 0.42, 0.95, 0.8, 1.0, 1.0, 0.55, 1.0],
+   "puff_fade": [0.06, 0.3],
+   "cloud_drift": [0.3, 0.15, 3.0],
+   "cloud_wind": [3.0, 0.6],
+   "paper_up": [9.0, 2.0, 0.55],
+   "paper_swing": [0.4, 2.3],
+   "paper_out": [5.0, 6.0, 1.5],
+   "paper_wind": 0.9,
+   "paper_flutter": [1.7, 1.3, 0.8],
+   "water_jet": [30.0, 6.0, 0.8, 0.15],
+   "water_fall": 9.8,
+   "water_out": [0.6, 1.6, 0.8],
+   "flung": [5.0, 10.0, 3.0, 8.0],
+   "flung_fall": 12.25,
+   "flame_rise": [6.0, 0.3, 9.0],
+   "flame_out": [4.0, 0.6, 1.5],
+   "billow": [0.9, 0.1, 9.0, 7.0],
+   "cloud_edge": [3.2, 0.7],
+   "rim_edge": 0.55,
+   "flame_shape": [1.6, 0.8, 1.1, 0.08],
+   "flame_flick": [0.75, 0.25, 14.0, 11.0],
+   "flame_flick_rate": 25.0,
+   "flame_heat": [0.7, 0.6, 0.9],
+   "flame_soot": [0.12, 0.1, 0.09],
+   "flame_dies": 0.6,
+   "flame_edge": [2.2, 1.2, 0.6],
+   "spark_edge": 0.2,
+   "paper_look": [40.0, 0.15, 0.42],
+   "paper_white": [0.95, 0.94, 0.9],
+   "paper_old": [0.85, 0.82, 0.74],
+   "water_edge": 2.5,
+   "puff_shade": [0.85, 0.3]
+  }
  },
  "debris": {
+  "_doc": "A blast's thrown pieces (render/shaders/debris.gdshader): their roughness, what a burnt wreck keeps of its colour, the concrete dust over a piece of a building, its chips and a burnt piece's soot, by eye as the 4.0's debris; each vector's parts are said at its uniform.",
+  "uses": ["blast_dust"],
   "shader": "res://render/shaders/debris.gdshader",
-  "params": {}
+  "params": {
+   "roughness": 0.9,
+   "burnt_tint": 0.12,
+   "dust_cover": 0.62,
+   "debris_noise": [7.0, 5.0, 31.0, 23.0],
+   "dust_patches": [0.2, 0.7],
+   "chip_shade": 0.62,
+   "char_shade": [0.45, 1.9],
+   "debris_metal": 0.05
+  }
  },
  "rubble": {
+  "uses": ["blast_dust"],
+  "_doc": "A blast's rubble mounds (render/shaders/rubble.gdshader): how long the building takes to fall into one, its slumps and chunks, the concrete and the wall's colour in its pieces, its gaps and roughness, by eye as the 4.0's rubble; each vector's parts are said at its uniform; the dust is the blast_dust set's.",
   "shader": "res://render/shaders/rubble.gdshader",
-  "params": {}
+  "params": {
+   "fall_s": 2.2,
+   "concrete": [0.47, 0.455, 0.43],
+   "grain_gap": 0.72,
+   "mound_shape": [0.35, 1.1, 0.72, 0.56],
+   "mound_noise": [0.09, 0.62],
+   "rubble_noise": [0.21, 0.9, 3.7],
+   "rubble_mix": [0.6, 0.4],
+   "rubble_wall": 0.32,
+   "roughness": 0.96
+  }
  },
  "marks": {
+  "_doc": "What a blast leaves on the ground (render/shaders/marks.gdshader), by eye as the 4.0's marks drew them, a mark's radius running 0..1; each vector's parts are said at its uniform. soot_color is sRGB (a source_color), ring_color and crack_grey linear; night_dim what a mark keeps of its colour at night; a pool starts at pool_start of its size and spreads over pool_spread_s; eye_pull_m draws every mark nearer the eye along its ray, so the ground's bumps do not bury it.",
   "shader": "res://render/shaders/marks.gdshader",
   "display_colors": { "crater": ["#231C15", "#493A2D", "#736C64", "#96918A", "#2A1F15", "#58412B", "#785C3E", "#8A6C4B"] },
-  "params": { "eye_pull_m": 0.5, "blood_deep": "#600609", "blood_thin": "#850C10" }
+  "params": {
+   "eye_pull_m": 0.5,
+   "blood_deep": "#600609",
+   "blood_thin": "#850C10",
+   "soot_color": [0.078, 0.067, 0.055],
+   "ring_color": [1.0, 0.945, 0.816],
+   "crack_grey": 0.012,
+   "night_dim": 0.4,
+   "pool_spread_s": 6.0,
+   "pool_start": 0.2,
+   "wobble": [0.22, 3.0, 17.0],
+   "scorch": [0.35, 0.55, 0.6, 0.4],
+   "scorch_scale": 6.0,
+   "hole": [0.5, 0.56],
+   "lip": [0.42, 0.52, 0.56, 0.62],
+   "hole_stops": [0.58, 0.7],
+   "grit": [0.72, 22.0, 5.0, 0.3],
+   "grit_share": 0.7,
+   "lip_look": [0.9, 1.1, 0.8],
+   "crack_wave": [0.06, 5.5, 9.0, 2.0],
+   "crack_bend": [3.0, 0.02],
+   "crack_span": [0.5, 0.58, 0.78, 0.85],
+   "soot": [4.0, 11.0, 0.1, 0.25],
+   "soot_share": 0.4,
+   "pool_edge": [0.6, 0.72, 0.3, 0.7],
+   "pool_look": [0.05, 0.97],
+   "splat_core": [0.2, 0.3, 0.35, 0.95],
+   "splat_drops": [0.78, 14.0, 7.0, 0.95],
+   "drops_noise": [0.7, 9.0, 3.0],
+   "drops_fade": [0.1, 0.9, 0.95],
+   "ring_edges": [0.86, 0.93, 0.97, 1.0],
+   "ring_alpha": 0.55
+  }
  },
  "lamp_glow": {
   "shader": "res://render/shaders/lamp_glow.gdshader",

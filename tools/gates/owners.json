@@ -28,7 +28,7 @@
       "id": "unsaved_changes",
       "owner": "native/src/sim/state/city_state.h",
       "symbol": "revision",
-      "forbidden_elsewhere": ["\\b(unsaved|is_dirty|has_changes|dirty_flag)\\b"],
+      "forbidden_elsewhere": ["\\b(is_dirty|has_changes|dirty_flag)\\b", "\\brevision\\s*!=\\s*\\w*saved_revision\\b"],
       "scope": ["native/src/", "project/game/", "project/ui/"]
     },
     {
@@ -58,7 +58,7 @@
       "id": "money_format",
       "owner": "project/game/store/formatters.gd",
       "symbol": "format_money",
-      "forbidden_elsewhere": ["\"\\$\"\\s*\\+", "%\\.2f", "R\\$"],
+      "forbidden_elsewhere": ["\"\\$\"\\s*\\+", "R\\$", "\\.currency\\b"],
       "scope": ["project/ui/", "project/game/"]
     },
     {

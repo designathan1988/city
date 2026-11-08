@@ -4,6 +4,7 @@
 // lane graph to the traffic, which drains the ChangeLog's net lists. Callers hold map_mutex exclusively.
 #pragma once
 
+#include "core/math.h"
 #include "sim/lots/lot_book.h"
 #include "sim/roads/road_network.h"
 #include "sim/catalog/furniture_types.h"
@@ -81,17 +82,13 @@ struct SnappedEnd {
 // How a road follows the gesture.
 enum class RoadAlignment : uint8_t { STRAIGHT, CURVE, FREE };
 
-struct StrokePoint {
-	double x = 0, z = 0;
-};
-
 // A gesture as the tool hands it in: its ends, the bend chosen by a click (has_control), the pointer's samples, and the
 // bend under which a dragged curve stays straight (metres: a few screen pixels).
 struct RoadStroke {
 	RoadAlignment alignment = RoadAlignment::STRAIGHT;
-	StrokePoint start, end, control;
+	XZ start, end, control;
 	bool has_control = false;
-	std::vector<StrokePoint> samples;
+	std::vector<XZ> samples;
 	int profile = 0;
 	double flat_m = 0;
 };
@@ -138,9 +135,9 @@ EditResult green_wave(CityState &s, int node);
 // nothing); ok when any was laid, the counts summed, `error` the last refusal. What they derive settles once, when the
 // command ends (EditHistory::end).
 template <typename F>
-EditResult lay_dabs(const std::vector<StrokePoint> &dabs, F &&dab) {
+EditResult lay_dabs(const std::vector<XZ> &dabs, F &&dab) {
 	EditResult all;
-	for (const StrokePoint &p : dabs) {
+	for (const XZ &p : dabs) {
 		const EditResult r = dab(p);
 		if (r.ok) {
 			all.ok = true;

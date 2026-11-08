@@ -21,6 +21,7 @@ public:
 	void sync(const CityState &s, FrameAdmission &f);
 	// { revision, texture, grid } for render/shore_view.gd; revision 0 until the first levels are in.
 	godot::Dictionary view() const;
+	uint64_t view_revision() const { return uploads_; } // view()'s revision, read alone: a new view is in when it moves
 	void touch() { revision_++; } // the land or the water changed
 	void reset();
 

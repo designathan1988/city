@@ -19,8 +19,6 @@ namespace city {
 
 namespace {
 
-constexpr float DOOR_SPLIT_W = 0.04f, PARTITION_THICK_M = 0.04f;
-constexpr float WELL_GAP_M = 0.02f; // the wheel wells clear of the twin tyres' inner faces
 
 struct Bus {
 	float L = 0, W = 0, H = 0, hw = 0, hl = 0, clear = 0, floor = 0, deck = 0, deck_z = 0, sill = 0, cant = 0, rear_sill = 0, wall = 0;
@@ -30,13 +28,15 @@ struct Bus {
 	std::vector<Vector2> doors; // kerb side, z spans
 };
 
-Bus read_bus(const DataValue &d) {
+Bus read_bus(const AgentShapes &shapes, const DataValue &d) {
+	const BusShape &K = shapes.bus_body;
+	const HeavyShape &H = shapes.heavy;
 	Bus b;
 	b.L = d["length"].f(); b.W = d["width"].f(); b.H = d["height"].f(); b.clear = d["clearance"].f(); b.floor = d["floor"].f(); b.wall = d["wall_m"].f();
 	b.hw = b.W * 0.5f; b.hl = b.L * 0.5f;
 	b.g = heavy_running(d, b.L);
-	b.arch_r = b.g.r + HEAVY_ARCH_PAD_M; b.arch_top = 2 * b.g.r + HEAVY_ARCH_PAD_M;
-	b.well_x = (b.g.rear_track - b.g.dual - b.g.w) * 0.5f - WELL_GAP_M;
+	b.arch_r = b.g.r + shapes.agent_parts.arch_pad_m; b.arch_top = 2 * b.g.r + shapes.agent_parts.arch_pad_m;
+	b.well_x = (b.g.rear_track - b.g.dual - b.g.w) * 0.5f - K.well_gap_m;
 	const Vector2 step = agent_v2(d["step_m"]); // rise, tread
 	b.rise = step.x; b.tread = step.y; b.steps = d["deck_steps"].whole();
 	b.deck = b.floor + b.steps * b.rise;
@@ -44,7 +44,7 @@ Bus read_bus(const DataValue &d) {
 	b.cant = b.deck + d["liner_m"].f();
 	b.pitch = d["window_max_m"].f();
 	// the first door behind the windscreen's corner pillar, the second midway between the first two axles
-	const float door = d["door_m"].f(), z1 = b.hl - HEAVY_PILLAR_M, mid = (b.g.axles[0] + b.g.axles[1]) * 0.5f;
+	const float door = d["door_m"].f(), z1 = b.hl - H.pillar_m, mid = (b.g.axles[0] + b.g.axles[1]) * 0.5f;
 	b.doors = { Vector2(z1 - door, z1), Vector2(mid - door * 0.5f, mid + door * 0.5f) };
 	// the deck from the last door's back edge, its steps' treads behind it on the low floor
 	b.deck_z = b.doors.back().x - b.steps * b.tread;
@@ -155,7 +155,8 @@ void deck(MeshBuilder &mb, const Bus &b, const Plan &p, const Cabin &c) {
 // wheel out to the wall, the well round the wheel dark. Seen through the arches too: at both levels (the far one without
 // the block: no cabin to stand in).
 void housings(MeshBuilder &mb, const Bus &b, const std::vector<Vector2> plat[2], float aisle, const Color &c, const AgentTrim &trim) {
-	const float eps = HEAVY_PROUD_M * 0.5f, cap = b.arch_top - HEAVY_PROUD_M;
+	const HeavyShape &H = trim.shapes->heavy;
+	const float eps = H.proud_m * 0.5f, cap = b.arch_top - H.proud_m;
 	for (int side : { -1, 1 })
 		for (const Vector2 &s : plat[sided(float(side))]) {
 			const float in = side * aisle, well = side * b.well_x, out = side * (b.hw - b.wall), base = floor_at(b, (s.x + s.y) * 0.5f);
@@ -172,9 +173,10 @@ void housings(MeshBuilder &mb, const Bus &b, const std::vector<Vector2> plat[2],
 // Stanchions along the aisle's edges alternating sides at most pole_m[1] apart and one in each doorway, from the floor
 // to the ceiling rails over the aisle's edges (rail_m over each floor), the partition behind the driver with glass above.
 void fittings(MeshBuilder &mb, const Bus &b, const Plan &p, const DataValue &in, const Cabin &c, const CabinLook &l, const AgentTrim &trim) {
+	const BusShape &K = trim.shapes->bus_body;
 	const Color pole = agent_hex(in["pole"]);
 	const Vector2 pm = agent_v2(in["pole_m"]), wall = agent_v2(in["partition_m"]); // diameter, spacing; height, gap over the floor
-	const float t = pm.x * 0.5f, rail = in["rail_m"].f(), liner = c.roof - l.liner_drop_m, front = p.partition - PARTITION_THICK_M;
+	const float t = pm.x * 0.5f, rail = in["rail_m"].f(), liner = c.roof - l.liner_drop_m, front = p.partition - K.partition_thick_m;
 	auto rail_at = [&](float z) { return std::min(floor_at(b, z) + rail, liner - pm.x); };
 	auto stanchion = [&](float x, float z) { // in the aisle, clear of the seats
 		const float xc = x - (x > 0 ? t : -t);
@@ -214,12 +216,13 @@ Cabin cabin_of(const Bus &b, const DataValue &in) {
 // The lower body: walls with the arches and doorways, the dark strip along the bottom and the line under the windows, the
 // panels at the ends under the windscreen and the rear window.
 void lower(MeshBuilder &mb, const Bus &b, float pan, const Vector2 &skirt, const AgentTrim &trim) {
+	const HeavyShape &H = trim.shapes->heavy;
 	Tub t;
 	t.half_w = b.hw; t.wall = b.wall; t.y0 = b.clear; t.y1 = b.sill; t.z0 = -b.hl; t.z1 = b.hl; t.floor = b.floor;
 	t.arch_r = b.arch_r; t.arch_top = b.arch_top; t.axles = b.g.axles; t.doors = b.doors; t.pan_half_w = pan;
 	agent_tub(mb, t, trim);
 	for (int side : { -1, 1 }) {
-		const float x0 = side * b.hw, x1 = side * (b.hw + HEAVY_PROUD_M);
+		const float x0 = side * b.hw, x1 = side * (b.hw + H.proud_m);
 		const std::vector<Vector2> spans = side < 0 ? spans_between(-b.hl, b.hl, b.doors) : std::vector<Vector2>{ Vector2(-b.hl, b.hl) };
 		for (const Vector2 &s : spans) {
 			agent_arched_box(mb, std::min(x0, x1), std::max(x0, x1), b.clear, b.clear + skirt.x, s.x, s.y, b.g.axles, b.arch_r, b.arch_top, trim.blackout,
@@ -245,24 +248,26 @@ std::vector<float> posts(const Bus &b, int side, float z0, float z1) {
 
 // One leaf of a door, from its hinge at `jamb` to `free`: the vertex stage swings what is marked with its hinge in UV.
 void leaf(MeshBuilder &mb, const Bus &b, float jamb, float free, Limb limb, const AgentTrim &trim) {
-	const float xd = -b.hw - HEAVY_PROUD_M, low = b.clear;
+	const HeavyShape &H = trim.shapes->heavy;
+	const float xd = -b.hw - H.proud_m, low = b.clear;
 	const Vector2 hinge(xd, jamb), uvs[4] = { hinge, hinge, hinge, hinge };
 	mb.quad(Vector3(xd, low, jamb), Vector3(xd, low, free), Vector3(xd, b.cant, free), Vector3(xd, b.cant, jamb), trim.glass, Vector3(-1, 0, 0), uvs, agent_tag(AgentTag::GLASS, limb));
 	const int64_t from = mb.uv.size();
 	for (float z : { jamb, free })
-		agent_box(mb, Vector3(xd - HEAVY_PROUD_M, low, z - DOOR_SPLIT_W), Vector3(-b.hw + HEAVY_PROUD_M, b.cant, z + DOOR_SPLIT_W), trim.blackout, AgentTag::FIXED, limb);
+		agent_box(mb, Vector3(xd - H.proud_m, low, z - H.door_split_m), Vector3(-b.hw + H.proud_m, b.cant, z + H.door_split_m), trim.blackout, AgentTag::FIXED, limb);
 	for (int64_t i = from; i < mb.uv.size(); i++) mb.uv[i] = hinge;
 }
 
 void band(MeshBuilder &mb, const Bus &b, const AgentTrim &trim) {
-	const float z0 = -b.hl + HEAVY_PILLAR_M, z1 = b.hl - HEAVY_PILLAR_M, hp = HEAVY_PILLAR_M * 0.5f;
+	const HeavyShape &H = trim.shapes->heavy;
+	const float z0 = -b.hl + H.pillar_m, z1 = b.hl - H.pillar_m, hp = H.pillar_m * 0.5f;
 	for (int side : { -1, 1 }) {
-		const float x = side * (b.hw - HEAVY_GLASS_INSET_M);
+		const float x = side * (b.hw - H.glass_inset_m);
 		const std::vector<Vector2> spans = side < 0 ? spans_between(z0, z1, b.doors) : std::vector<Vector2>{ Vector2(z0, z1) };
 		for (const Vector2 &s : spans)
 			agent_pane(mb, Vector3(x, b.sill, s.x), Vector3(x, b.sill, s.y), Vector3(x, b.cant, s.y), Vector3(x, b.cant, s.x), Vector3(side, 0, 0), trim);
 		for (float z : posts(b, side, z0, z1))
-			agent_box(mb, Vector3(side * (b.hw - HEAVY_PROUD_M), b.sill, z - hp), Vector3(side * (b.hw + HEAVY_PROUD_M), b.cant, z + hp), trim.blackout,
+			agent_box(mb, Vector3(side * (b.hw - H.proud_m), b.sill, z - hp), Vector3(side * (b.hw + H.proud_m), b.cant, z + hp), trim.blackout,
 					AgentTag::FIXED);
 	}
 	// the doors' leaves on the kerb side: glazed from the bottom strip to the cant rail, split in the middle, each hung at its jamb
@@ -276,14 +281,15 @@ void band(MeshBuilder &mb, const Bus &b, const AgentTrim &trim) {
 // The windscreen between its corner pillars with the lit destination sign along its top, the rear window, the roof and
 // its air conditioning.
 void ends_and_roof(MeshBuilder &mb, const Bus &b, const DataValue &d, const AgentTrim &trim) {
-	const float zf = b.hl + HEAVY_PROUD_M, sx = b.hw - HEAVY_PILLAR_M, zb = -b.hl - HEAVY_PROUD_M;
+	const HeavyShape &H = trim.shapes->heavy;
+	const float zf = b.hl + H.proud_m, sx = b.hw - H.pillar_m, zb = -b.hl - H.proud_m;
 	agent_pane(mb, Vector3(-sx, b.sill, zf), Vector3(sx, b.sill, zf), Vector3(sx, b.cant, zf), Vector3(-sx, b.cant, zf), Vector3(0, 0, 1), trim);
 	agent_pane(mb, Vector3(-sx, b.rear_sill, zb), Vector3(sx, b.rear_sill, zb), Vector3(sx, b.cant, zb), Vector3(-sx, b.cant, zb), Vector3(0, 0, -1), trim);
 	for (int side : { -1, 1 })
-		for (float z : { b.hl, -b.hl + HEAVY_PILLAR_M })
-			agent_box(mb, Vector3(side * sx, std::min(b.sill, b.rear_sill), z - HEAVY_PILLAR_M), Vector3(side * b.hw, b.cant, z), trim.blackout, AgentTag::FIXED);
+		for (float z : { b.hl, -b.hl + H.pillar_m })
+			agent_box(mb, Vector3(side * sx, std::min(b.sill, b.rear_sill), z - H.pillar_m), Vector3(side * b.hw, b.cant, z), trim.blackout, AgentTag::FIXED);
 	const Vector2 sign = agent_v2(d["sign_m"]); // height, in from each side
-	agent_box(mb, Vector3(-b.hw + sign.y, b.cant - sign.x, zf), Vector3(b.hw - sign.y, b.cant, zf + HEAVY_PROUD_M), trim.blackout, AgentTag::SIGN);
+	agent_box(mb, Vector3(-b.hw + sign.y, b.cant - sign.x, zf), Vector3(b.hw - sign.y, b.cant, zf + H.proud_m), trim.blackout, AgentTag::SIGN);
 	agent_box(mb, Vector3(-b.hw, b.cant, -b.hl), Vector3(b.hw, b.H, b.hl), AGENT_WHITE, AgentTag::PAINT);
 	const Vector3 ac = agent_v3(d["ac_m"]); // length, width, height
 	agent_box(mb, Vector3(-ac.y * 0.5f, b.H, -ac.x * 0.5f), Vector3(ac.y * 0.5f, b.H + ac.z, ac.x * 0.5f), trim.roof, AgentTag::FIXED);
@@ -292,7 +298,7 @@ void ends_and_roof(MeshBuilder &mb, const Bus &b, const DataValue &d, const Agen
 } // namespace
 
 int build_bus(MeshBuilder &mb, const DataValue &d, int sides, const CabinLook *look, const AgentTrim &trim) {
-	const Bus b = read_bus(d);
+	const Bus b = read_bus(*trim.shapes, d);
 	const DataValue in = d["interior"];
 	Cabin c = cabin_of(b, in);
 	int passengers = 0;

@@ -1,16 +1,11 @@
-// Value noise on an integer hash, shared by terrain.gdshader, water.gdshader and road.gdshader.
+// Value noise on the integer hash, shared by terrain.gdshader, water.gdshader and road.gdshader.
+#include "res://render/shaders/hash.gdshaderinc"
 
-// Integer hash (pcg, as building.gdshader): exact on every GPU, unlike fract(sin(...)).
-uint pcg(uint v) {
-	uint s = v * 747796405u + 2891336453u;
-	uint w = ((s >> ((s >> 28u) + 4u)) ^ s) * 277803737u;
-	return (w >> 22u) ^ w;
-}
+const int LATTICE_OFFSET = 32768; // 2^15: a cell's index stays positive within 32 km of the origin
 
 float hash2(vec2 p) {
 	ivec2 i = ivec2(floor(p));
-	uint h = uint(i.x + 32768) * 73856093u ^ uint(i.y + 32768) * 19349663u;
-	return float(pcg(h)) / 4294967295.0;
+	return h01(spatial_hash(uint(i.x + LATTICE_OFFSET), uint(i.y + LATTICE_OFFSET)));
 }
 
 float vnoise(vec2 p) {

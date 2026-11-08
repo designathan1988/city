@@ -10,7 +10,7 @@ import jsonfile
 HEADER = "native/src/sim/catalog/tuning_fields.h"
 DATA = "project/data/catalog/tuning.json"
 RULES = "tools/gates/rules.json"
-FIELD = re.compile(r"X\((\w+),\s*(\w+)\)")
+FIELD = re.compile(r"\bX[ID]?\((\w+),\s*(\w+)\)")  # X a float, XI a count, XD a double
 DOC = "_doc"
 
 

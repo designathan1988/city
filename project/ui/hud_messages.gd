@@ -15,6 +15,8 @@ func _init(root: Control) -> void:
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_toast = _bar(root, HudWidgets.px("toast_top"))
 	_toast_label = HudWidgets.label(_toast, &"BodyLabel")
+	for l: Label in [_hint, _toast_label]: # the text arrives translated (ToolController.hint): a key that slipped through shows as one
+		l.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 
 
 ## A panel hanging from the top edge, centred, hidden until it has something to say.
@@ -46,7 +48,7 @@ func flash(text: String, ok: bool) -> void:
 	_toast.reset_size()
 	_toast.offset_left = -_toast.size.x * 0.5
 	_toast.offset_right = _toast.size.x * 0.5
-	_toast_left = HudWidgets.px("toast_s")
+	_toast_left = float(DataTables.ui("hud").timings.toast_s)
 
 
 func _process(delta: float) -> void:

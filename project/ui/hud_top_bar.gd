@@ -18,6 +18,22 @@ var _money: Label
 var _stats: Label
 var _speed_buttons: Array[Button] = []
 var _sky_buttons: Array[Button] = []
+
+
+## The button that sets the sky to `mode` (SKY: "day", "night", "cycle").
+func sky_button(mode: String) -> Button:
+	for i in SKY.size():
+		if SKY[i][2] == mode:
+			return _sky_buttons[i]
+	return null
+
+
+## The button that sets the speed named `speed` (the core's SimSpeed).
+func speed_button(speed: StringName) -> Button:
+	for i in SPEEDS.size():
+		if SPEEDS[i][0] == speed:
+			return _speed_buttons[i]
+	return null
 var _history_buttons: Dictionary = {}
 var _tipped: Array = [] # [button, tip key]: drawn again when the language changes
 var _warn: Button
@@ -85,7 +101,7 @@ func _ready() -> void:
 func relabel() -> void:
 	for t: Array in _tipped:
 		HudWidgets.tip_for(t[0], tr(t[1]))
-	_money.tooltip_text = tr("ui.money.tip").format({"refund": int(round(DataTables.tuning("economy_refund_share") * Formatters.PERCENT))})
+	_money.tooltip_text = tr("ui.money.tip").format({"refund": int(round(DataTables.tuning("economy_refund_share") * Units.PERCENT))})
 	_on_changed(CityStore.snapshot)
 
 

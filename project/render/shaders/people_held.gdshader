@@ -12,7 +12,7 @@ uniform int hand_bone;
 uniform vec3 fist; // in the palm's frame
 uniform vec4 palm_rows[PEOPLE_BODIES * PEOPLE_HAND_ROWS]; // by variation, three rows each: the palm at rest
 
-const float HELD_ROUGH = 0.7;
+uniform float held_rough; // materials.json people_held
 
 void vertex() {
 	int at = int(INSTANCE_CUSTOM.r + 0.5) * PEOPLE_HAND_ROWS;
@@ -30,5 +30,5 @@ void vertex() {
 
 void fragment() {
 	ALBEDO = COLOR.rgb;
-	ROUGHNESS = HELD_ROUGH;
+	ROUGHNESS = held_rough;
 }

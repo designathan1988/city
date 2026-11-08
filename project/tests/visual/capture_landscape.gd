@@ -25,7 +25,6 @@ const MINUTES_AN_HOUR := 60.0
 const CLOCK_SHOTS := 4
 const CLOCK_STEP_H := 5
 const CLEAR_DABS := 11
-const ELEMENT_KINDS := 18
 const TREE_CUT := 2
 const RIVER_DABS := 60
 const RIVER_STEP_M := 20.0 # the dabs of a stroke (brush_tool.gd): a share of the radius apart
@@ -204,7 +203,7 @@ func _run() -> void:
 	await shot("cobertura", d + Vector3(-60.0, 0, 0), 90.0, 18.0, 10.0)
 	var e := d + Vector3(0, 0, -300.0)
 	CityStore.dispatch(&"begin_stroke", ["cmd.place.element"])
-	for k in ELEMENT_KINDS:
+	for k in DataTables.catalog_table("nature").elements.kinds.size():
 		var at := e + Vector3((k % 6) * 22.0 - 55.0, 0, (k / 6) * 22.0 - 22.0)
 		CityStore.dispatch(&"element_brush", [at, 9.0, k, {"density": 30.0, "size": 1.0, "variation": 0.4, "spacing": 0.4, "strength": 1.0, "intensity": 0.8}, false])
 	CityStore.dispatch(&"end_stroke")
@@ -217,7 +216,7 @@ func _run() -> void:
 	var r := _ground(RIVER_AT.x, RIVER_AT.y)
 	CityStore.dispatch(&"begin_stroke", ["cmd.place.terrainBrush"])
 	for i in RIVER_DABS:
-		CityStore.dispatch(&"terrain_brush", [r + Vector3(i * RIVER_STEP_M - 600.0, 0, -sin(i / 12.0) * 150.0), 125.0, 1.0, 0.1, 8, 0.0])
+		CityStore.dispatch(&"terrain_brush", [r + Vector3(i * RIVER_STEP_M - 600.0, 0, -sin(i / 12.0) * 150.0), 125.0, 1.0, 0.1, CityStore.code(&"BrushMode", &"RIVER"), 0.0])
 	CityStore.dispatch(&"end_stroke")
 	await shot("rio", r, 30.0, 24.0, 3.0)
 	await shot("mar", SEA_AT, 0.0, 20.0, 2.0)

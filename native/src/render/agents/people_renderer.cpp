@@ -15,7 +15,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr uint32_t VARIATION_SHIFT = 24, SEED_MASK = 1023;
+constexpr uint32_t VARIATION_SHIFT = 24, SEED_MASK = 1023; // a look's top byte picks the body; its low ten bits the shader's seed
 constexpr float FRIGHT_MARK = 0.25f; // people_face.gdshaderinc: a seed below zero is a frightened person's, this short of its number
 constexpr double NS_PER_S = 1e9, CLOCK_WRAP_S = 86400.0; // the idles' clock wraps once a day: a float keeps its milliseconds
 

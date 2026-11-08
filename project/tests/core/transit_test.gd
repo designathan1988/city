@@ -134,7 +134,7 @@ func _undo_and_save() -> void:
 	check(saved.get("ok", false), "the city is written: %s" % saved)
 	new_map(TOWN_MAP, SEED, true)
 	check(CityStore.query(&"transit_plan").lines.is_empty(), "a new map with no lines")
-	var opened: Dictionary = CityStore.saves.load_game(SLOT, true)
+	var opened: Dictionary = await CityStore.saves.load_game(SLOT, true)
 	check(opened.get("ok", false), "the file opens: %s" % opened)
 	var after: Dictionary = CityStore.query(&"transit_plan")
 	check(after.stops.size() == before.stops.size() and after.lines.size() == before.lines.size() and after.tracks == before.tracks, "the plan comes back from the file")

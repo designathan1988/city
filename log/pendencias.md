@@ -17,6 +17,16 @@ O que falta fazer, por área.
   + 1 in `nature.json` `paint.kinds`, its colours literals in the shader; `marks.gdshader` reads `crater_rad` four colours a crater kind
   by index (`materials.json` `display_colors.crater`). Both become named rows of data, sent by the slot the core gives them.
 - Street items keep their footway place when put down (B3, log/review.md §6.13, R3): what an item does when its road moves changes.
+- lld's call-graph sort at the release link (log/review.md §6.45): the link reads `native/pgo/citycore.order` and sorts nothing,
+  because lld COFF hands the sort's result on through a map of section addresses and stores it by symbol name (`lld/COFF/Writer.cpp`,
+  `sortSections`), so same-named sections took a priority that changed with every link. Reporting it to LLVM is the user's call (an
+  outside post); once lld orders it alike at every link, the link may sort again and `pgo.sh` drop its order build.
+- The building render's last look values in code (C14, log/review.md §6.41): the shell's baked tone and grime (`shell.cpp`
+  `MACRO_M`, `TONE_*`, `GRIME_*`, read by `Shell::shaded` with no look in reach: a tone block the builders hand each shell), the
+  material colours a few emitters name (brass, gas cylinders, shutters, clocks, lamps; the road structures' concrete and deck and the
+  stays' cable, `road_structures.cpp`, `road_stays.cpp`) and the roof plant's catalogue arrays
+  (`roof_plant.cpp` `PLANT`, `USE_CHANCE`), the foliage leaf's shape (`bay_props.cpp`). They carry their sources now; their table is a
+  render palette and the plant's rows in `building_look.json`.
 
 - Sombra nas ruas: 7 a 37% abaixo do 4.0 no lado escuro (linear, pixels escuros cinzas em quatro vistas do par), com o lado claro igual; a causa não foi achada, e a do reflexo do céu não fecha (`envMapIntensity` 0,55 da via).
 - Schemas (user decision): `streets.json lamp_light.pool_along`, `pool_sides` and `pool_lift_m` are read by nothing and stay only because the schema asks for them (`materials.json lamp_glow.params.pool_gain` IS read: `road_body.gdshaderinc`, `light_color_test.gd`).
@@ -137,6 +147,13 @@ O que falta fazer, por área.
     Godot draws with the ubershader until a specialized pipeline is compiled in the background and gives no signal when it is, so
     `photos_check` fails on an unchanged tree. Until a completion signal exists (an engine change), a change's photos are judged
     against the states the unchanged tree gives over several runs.
+  - The frozen photos (`photos`, quick) once stopped after "city opened" and were killed at their 90 s deadline (2026-11-08 11:34,
+    with the suite in parallel; the terrain's look change); alone they passed in 10 s, byte-equal to known states. The scene waits
+    in `CaptureWait.until_drawn` on the render's pending work: to read there and in the render's pending counters which one
+    did not drain.
+- The exported game leaks six render resources when it quits (`--quit-after`: a shadow atlas, a render target, two textures, a
+  viewport, a font, "RID allocations ... leaked at exit"): the same six at the C3 and C4 closes (2026-11-08), so older than
+  both; which owner frees them too late, or never, is to read in the quit path (`GameFlow` QUITTING).
 - Android (the first APK, 2026-11-07, `tools/build/android.sh`): built and signed, never run on a device (none was connected), so
   whether it opens, and at what frame rate, is unknown.
   - Touch: the camera has only mouse gestures (`camera_gestures.gd`). A finger is the left button through Godot's mouse emulation,
@@ -149,6 +166,8 @@ O que falta fazer, por área.
   - No project icon (`application/config/icon`): the export warns and the launcher shows Godot's.
   - The Android library is not in git (`project/bin/*.so` is ignored, like the Linux one): a clone runs `android.sh core` first.
   - The release keystore is in `C:/Projects/toolchains/keystores`, outside the repository; a store upload needs the user's own key.
+  - `android.sh` defaults Godot to `godot` on the PATH where `build.sh` and `pgo.sh` read `tools/tasks/cli.py var godot` (the
+    machine vars' owner): left while the Android session edits that script.
 - The scenic Sao Paulo (map `sao_paulo`, `data/catalog/scenic.json`, 2026-11-07):
   - The named avenues cross the marginal highways at grade (a junction on the highway): the graph builder cuts every crossing,
     and a flyover needs a crossing left uncut and a raised deck the grade solver lifts over the other road.

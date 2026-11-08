@@ -2,7 +2,7 @@
 ## generated from a random seed on entry.
 extends Node3D
 
-const SHOT_DELAY_S := 25.0
+const SHOT_DELAY_S := 25.0 # --shot: the city loaded and settled by then (a developer's picture, not a test: tests wait on states)
 const LIVE_DRIVER := "res://tests/visual/live_driver.gd"
 
 
@@ -17,7 +17,7 @@ func _ready() -> void:
 		push_error("Falha ao iniciar: %s" % "\n".join(errors))
 		return
 	cam.look_at_ground(Vector3.ZERO)
-	var saved := _open_last()
+	var saved := await _open_last()
 	if not saved:
 		print("cidade: ", CityStore.new_map(DataTables.map_index("town"), randi_range(1, int(DataTables.game("start").seed_max)), true))
 	Settings.attach(world, get_viewport())
@@ -43,7 +43,7 @@ func _open_last() -> bool:
 	var slot := SaveSlots.last()
 	if slot.is_empty() or GameFlow.tests_drive:
 		return false
-	if CityStore.saves.load_game(slot).get("ok", false):
+	if (await CityStore.saves.load_game(slot)).get("ok", false):
 		return true
 	CityStore.saves.quarantine(slot)
 	return false

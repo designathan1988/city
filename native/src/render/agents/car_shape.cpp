@@ -14,13 +14,7 @@ namespace city {
 
 namespace {
 
-constexpr float BOTTOM_IN_M = 0.03f, ARCH_CENTRE = 0.96f;
-constexpr float ROOF_GAP_M = 0.002f, SILL_ROOM_M = 0.01f, BELT_ROOM_M = 0.02f; // what keeps the ring's rows apart
-constexpr float FLANK_LOW = 0.4f, FLANK_HIGH = 0.78f; // the flank's middle rows, as shares from the sill to the belt
-constexpr float ROOF_EDGE_SHARE = 0.45f; // the roof edge's radius across, at most this share of the half width there
-constexpr float CROWN_ROWS[3] = { 0.66f, 0.33f, 0.f };
-constexpr float ROLL_DEPTH = 0.9f; // how much of the quarter circle the ends' roll follows
-constexpr float EPS_M = 1e-6f, HALF_PI = 1.5707963f;
+constexpr float EPS_M = 1e-6f, HALF_PI = 1.5707963f; // a length this short is none; a quarter turn to eight digits
 constexpr float FC_LIMIT = 3.f; // Fritsch-Carlson: slopes scaled back inside the circle of radius 3 keep a piece monotone
 
 void pair(const DataValue &d, const char *k, float out[2]) {
@@ -56,18 +50,20 @@ std::vector<float> monotone_slopes(const std::vector<float> &x, const std::vecto
 }
 
 float bottom_at(const CarStyle &s, float xf) {
-	float z = xf * s.L, ar = s.r + CAR_ARCH_PAD_M, y = car_low_at(s, xf);
+	const CarShapeShape &K = s.shapes->car_shape;
+	float z = xf * s.L, ar = s.r + s.shapes->agent_parts.arch_pad_m, y = car_low_at(s, xf);
 	for (float a : s.axles) {
 		float dz = z - a * s.L;
-		if (std::fabs(dz) < ar) y = std::max(y, s.r * ARCH_CENTRE + std::sqrt(ar * ar - dz * dz));
+		if (std::fabs(dz) < ar) y = std::max(y, s.r * K.arch_centre + std::sqrt(ar * ar - dz * dz));
 	}
 	return y;
 }
 
 } // namespace
 
-CarStyle read_car_style(const DataValue &d, const DataValue &body) {
+CarStyle read_car_style(const DataValue &d, const DataValue &body, const AgentShapes &shapes) {
 	CarStyle s;
+	s.shapes = &shapes;
 	s.L = d["length"].f(); s.W = d["width"].f(); s.H = d["height"].f(); s.clear = d["clearance"].f();
 	const Vector2 tyre = agent_tyre(d["tyre"]), track = agent_v2(d["track_m"]);
 	s.r = tyre.x;
@@ -132,21 +128,22 @@ float car_low_at(const CarStyle &s, float xf) {
 }
 
 void car_ring(const CarStyle &s, float xf, Vector2 out[RING]) {
+	const CarShapeShape &K = s.shapes->car_shape;
 	const float top = car_top_at(s, xf), hw = car_half_w(s, xf), yt = top - s.roof_r;
 	const float belt = xf >= s.screen[0] ? s.belt[0] * s.H : s.H * (s.belt[1] + (s.belt[0] - s.belt[1]) * (xf + 0.5f) / (s.screen[0] + 0.5f));
-	const float ys = std::min(belt, yt - ROOF_GAP_M), bot = std::min(bottom_at(s, xf), ys - BELT_ROOM_M);
+	const float ys = std::min(belt, yt - K.roof_gap_m), bot = std::min(bottom_at(s, xf), ys - K.belt_room_m);
 	const float mid = (bot + ys) * 0.5f, half = std::max(EPS_M, (ys - bot) * 0.5f);
 	auto flank = [&](float y) { const float t = (y - mid) / half; return hw * (1 - s.bulge * t * t); };
 	auto glass = [&](float y) { return flank(ys) - (y - ys) * s.lean; };
-	const float rb = std::min(s.bottom_round, ys - bot), zb = hw - BOTTOM_IN_M, low = bot + rb;
-	const float y2 = std::clamp(bot + s.sill, low + SILL_ROOM_M, std::max(low + SILL_ROOM_M, ys - BELT_ROOM_M));
-	const float f = std::min(s.frame, (yt - ys) * 0.5f), zt = glass(yt), rr = std::min(s.roof_r, zt * ROOF_EDGE_SHARE);
+	const float rb = std::min(s.bottom_round, ys - bot), zb = hw - K.bottom_in_m, low = bot + rb;
+	const float y2 = std::clamp(bot + s.sill, low + K.sill_room_m, std::max(low + K.sill_room_m, ys - K.belt_room_m));
+	const float f = std::min(s.frame, (yt - ys) * 0.5f), zt = glass(yt), rr = std::min(s.roof_r, zt * K.roof_edge_share);
 	int n = 0;
 	out[n++] = Vector2(0, bot);
 	out[n++] = Vector2(zb - rb, bot);
 	out[n++] = Vector2(zb - rb + (flank(low) - zb + rb) * std::sin(HALF_PI * 0.5f), bot + rb * (1 - std::cos(HALF_PI * 0.5f)));
 	out[n++] = Vector2(flank(low), low);
-	for (float t : { 0.f, FLANK_LOW, FLANK_HIGH, 1.f }) {
+	for (float t : { 0.f, K.flank_low, K.flank_high, 1.f }) {
 		const float y = y2 + (ys - y2) * t;
 		out[n++] = Vector2(flank(y), y);
 	}
@@ -157,17 +154,17 @@ void car_ring(const CarStyle &s, float xf, Vector2 out[RING]) {
 	}
 	out[n++] = Vector2(zt - rr, top);
 	const float crown = xf > s.screen[0] || xf < s.bed_from ? s.crown[0] : s.crown[1];
-	for (float c : CROWN_ROWS) out[n++] = Vector2((zt - rr) * c, top + crown * (1 - c * c));
+	for (float c : K.crown_rows) out[n++] = Vector2((zt - rr) * c, top + crown * (1 - c * c));
 	const float edge = (0.5f - std::fabs(xf)) * s.L;
 	if (edge >= s.roll[0]) return;
-	const float u = 1 - edge / s.roll[0], k = 1 - (1 - std::sqrt(std::max(0.f, 1 - u * u))) * ROLL_DEPTH, cy = (bot + top) * 0.5f;
+	const float u = 1 - edge / s.roll[0], k = 1 - (1 - std::sqrt(std::max(0.f, 1 - u * u))) * K.roll_depth, cy = (bot + top) * 0.5f;
 	for (int i = 0; i < RING; i++) out[i] = Vector2(out[i].x - (1 - k) * s.roll[1] * (out[i].x / std::max(EPS_M, hw)), cy + (out[i].y - cy) * (1 - (1 - k) * s.roll[2]));
 }
 
 bool car_within(float x, const float r[2]) { return x <= std::max(r[0], r[1]) && x >= std::min(r[0], r[1]); }
 
 bool car_overhang(const CarStyle &s, float xf) {
-	const float z = xf * s.L, room = s.r + CAR_ARCH_PAD_M;
+	const float z = xf * s.L, room = s.r + s.shapes->agent_parts.arch_pad_m;
 	return z > s.axles[0] * s.L + room || z < s.axles[1] * s.L - room;
 }
 

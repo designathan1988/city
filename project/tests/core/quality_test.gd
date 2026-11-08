@@ -167,9 +167,9 @@ func _switches(rig: CityCamera) -> void:
 	Settings.switches.reset()
 	Settings.switches_changed()
 	check(Settings.switches.globals[&"building_glass"] == 1.0, "glass back")
-	Settings.set_layer("grid", true)
+	Settings.map.set_layer("grid", true)
 	check(Settings.switches.globals[&"map_grid"] == 1.0, "the Grid layer turns on")
-	Settings.set_layer("grid", false)
+	Settings.map.set_layer("grid", false)
 	check(world.sun.shadow_caster_mask != 0 and rig != null, "a sun with a shadow mask")
 
 
@@ -202,7 +202,7 @@ func _player_file_read() -> void:
 		var hardware := QualityTier.tier_for_gpu(t, gpu)
 		check(QualityTier.level_of(Settings.preset, hardware) == t.tests_preset, "the tests' tier does not depend on the card: %s" % gpu)
 	check(Settings.level == t.tests_preset, "the test runs on the data's tier")
-	check(Settings.layers == t.layers, "a test starts on the data's layers")
+	check(Settings.map.layers == t.layers, "a test starts on the data's layers")
 
 
 ## A settings file from another version, or with no sense in it, never reaches the tier table: it opens at the default.

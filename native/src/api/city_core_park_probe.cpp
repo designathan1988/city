@@ -264,7 +264,7 @@ Dictionary CityProbes::look_twins(float reach_m, float alike) {
 		});
 		if (nearest < 0) continue;
 		pairs++;
-		twins += look_distance(look_of(s, b), look_of(s, s.buildings.items[size_t(nearest)])) < alike ? 1 : 0;
+		twins += look_distance(s.catalog.tune, look_of(s, b), look_of(s, s.buildings.items[size_t(nearest)])) < alike ? 1 : 0;
 	}
 	Dictionary d;
 	d["pairs"] = pairs;

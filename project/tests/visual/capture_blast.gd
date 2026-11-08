@@ -15,7 +15,6 @@ const EARTH_NEXT_M := 200.0
 const REF_CAMERA_OFFSET := Vector3(127.5, 109.3, 60.0)
 const REF_FOV_DEG := 35.0
 ## Straight down, for measuring: the height the camera looks from (pixels a metre are then the same everywhere on the ground).
-const DECAL_HALF_PER_RADIUS := 2.4 # marks.h CRATER_SCALE: the decal reaches this many crater radii out
 const RELIEF_STEPS := 8
 const TOP_HEIGHT_M := 120.0
 const TOP_TILT_M := 0.01 # a hair off the vertical: look_at needs an up that is not the view direction
@@ -67,7 +66,7 @@ func blow(label: String, at: Vector3, force: int, dist: float, moments: Array) -
 	var probe: Dictionary = CityStore.query(&"blast_probe", [float(force), 1.0])
 	print(label, " sonda: ", probe)
 	_report_scale(at, probe.crater_radius_m)
-	_report_relief(at, probe.crater_radius_m * DECAL_HALF_PER_RADIUS)
+	_report_relief(at, probe.decal_half_m)
 	var before: Dictionary = CityStore.query(&"damage_probe")
 	var since: float = CityStore.query(&"effects_since_blast")
 	var r: Dictionary = CityStore.dispatch(&"strike", [at, force])

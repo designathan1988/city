@@ -9,7 +9,6 @@ const FILTER_LEVELS := [Viewport.ANISOTROPY_DISABLED, Viewport.ANISOTROPY_2X, Vi
 	Viewport.ANISOTROPY_16X]
 ## Screen pixels per inch of a 1:1 display (Windows' 96 DPI): what a device pixel ratio is measured against.
 const BASE_DPI := 96.0
-const MS_PER_S := 1000.0
 ## Four cascades tile an atlas of twice their side (PSSM 4 splits).
 const ATLAS_PER_CASCADE := 2
 const COMPATIBILITY := "gl_compatibility"
@@ -42,7 +41,7 @@ static func level_of(preset: String, hardware: String) -> String:
 static func budget_ms(fps_limit: int) -> float:
 	var hz := DisplayServer.screen_get_refresh_rate()
 	var fps := float(fps_limit) if fps_limit > 0 else (hz if hz > 0.0 else float(DataTables.game("settings").frame_cap.max_fps))
-	return MS_PER_S / fps
+	return Units.MS_PER_S / fps
 
 
 ## The tier's fields with the kept choices over them; `shadows` kept 0 is no shadows, ao and smaa force their pass, `temporal`
@@ -100,11 +99,11 @@ static func cabin_reach(q: Dictionary, height_px: float) -> float:
 ## Everything a tier sets, live.
 static func apply(q: Dictionary, world: CityWorld, viewport: Viewport, dynamic_scale: float) -> void:
 	world.daylight.shadows_on = q.shadows
-	world.daylight.shadow_least_m = q.shadow_least_m
+	world.daylight.cascades.shadow_least_m = q.shadow_least_m
 	RenderingServer.directional_shadow_atlas_set_size(int(q.shadow_px) * ATLAS_PER_CASCADE, true)
 	RenderingServer.directional_soft_shadow_filter_set_quality(int(q.shadow_filter) as RenderingServer.ShadowQuality)
-	world.daylight.shadow_side_px = float(q.shadow_px)
-	world.daylight.set_filter(DataTables.game("settings").filter_radius[int(q.shadow_filter)])
+	world.daylight.cascades.shadow_side_px = float(q.shadow_px)
+	world.daylight.cascades.set_filter(DataTables.game("settings").filter_radius[int(q.shadow_filter)])
 	var smaa: bool = q.smaa and has_smaa()
 	var temporal: int = int(q.temporal) if has_temporal() else TEMPORAL_NONE
 	viewport.msaa_3d = Viewport.MSAA_DISABLED if temporal == TEMPORAL_FSR2 else MSAA_MODES[maxi(int(q.msaa), FALLBACK_AA if q.smaa and not smaa else 0)]

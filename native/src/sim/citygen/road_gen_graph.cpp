@@ -10,12 +10,11 @@
 namespace city {
 
 namespace {
-constexpr double BUCKET = 96, MERGE = 7, COLLAPSE = 16, PARALLEL_COS = 0.93, HUG_DIST = 26, GEN_SEG_LEN = 100;
+// a bucket's key (its row and column shifted positive, a row this wide) and a pair of nodes' (the larger id under a million); the
+// ground is read at a node and four points round it; rounding at a crossing's ends, and two lines this near parallel do not cross
 constexpr int64_t KEY_OFF = 2000, KEY_ROW = 4096, PAIR = 1000000;
-constexpr int MAX_LINKS = 6, MIN_COMPONENT = 30;
 constexpr int GROUND_PROBES = 5;
-constexpr double NODE_PROBE = 8, NODE_MIN_Y = 1.5, CROSS_EPS = 1e-6, PARALLEL_DEN = 1e-9;
-constexpr double SIDE_PROBE_M = 20; // about half a lot's depth, off the street's middle
+constexpr double CROSS_EPS = 1e-6, PARALLEL_DEN = 1e-9;
 
 int64_t key(int64_t i, int64_t j) { return (i + KEY_OFF) * KEY_ROW + (j + KEY_OFF); }
 
@@ -33,8 +32,8 @@ struct EdgeMap {
 
 class GraphBuilder {
 public:
-	GraphBuilder(const std::vector<road_gen::Piece> &p, TerrainGen &t, const std::vector<double> &asph_right, const road_gen::GraphRules &rules) :
-			pieces_(p), terrain_(t), asph_right_(asph_right), rules_(rules) {}
+	GraphBuilder(const GenShapes &s, const std::vector<road_gen::Piece> &p, TerrainGen &t, const std::vector<double> &asph_right, const road_gen::GraphRules &rules) :
+			S(s), K(s.graph), pieces_(p), terrain_(t), asph_right_(asph_right), rules_(rules) {}
 
 	GeneratedRoads build(double centre_r) {
 		bucket_pieces();
@@ -46,11 +45,13 @@ public:
 		drop_small_components();
 		node_heights();
 		zone_and_split(centre_r);
-		road_gen::tidy_graph(nx_, nz_, ny_, segs_, strength_, terrain_, asph_right_);
+		road_gen::tidy_graph(S, nx_, nz_, ny_, segs_, strength_, terrain_, asph_right_);
 		return compact(centre_r);
 	}
 
 private:
+	const GenShapes &S;
+	const GraphShape &K; // growth.json shapes.graph
 	const std::vector<road_gen::Piece> &pieces_;
 	TerrainGen &terrain_;
 	const std::vector<double> &asph_right_;
@@ -69,8 +70,8 @@ private:
 	void bucket_pieces() {
 		for (size_t s = 0; s < pieces_.size(); s++) {
 			const road_gen::Piece &p = pieces_[s];
-			int i0 = int(std::floor(std::min(p.x0, p.x1) / BUCKET)), i1 = int(std::floor(std::max(p.x0, p.x1) / BUCKET));
-			int j0 = int(std::floor(std::min(p.z0, p.z1) / BUCKET)), j1 = int(std::floor(std::max(p.z0, p.z1) / BUCKET));
+			int i0 = int(std::floor(std::min(p.x0, p.x1) / K.bucket)), i1 = int(std::floor(std::max(p.x0, p.x1) / K.bucket));
+			int j0 = int(std::floor(std::min(p.z0, p.z1) / K.bucket)), j1 = int(std::floor(std::max(p.z0, p.z1) / K.bucket));
 			for (int j = j0; j <= j1; j++)
 				for (int i = i0; i <= i1; i++) {
 					auto &l = buckets_[key(i, j)];
@@ -95,9 +96,9 @@ private:
 					if (rules_.yields(b.profile)) continue;
 					double dx = b.x1 - b.x0, dz = b.z1 - b.z0, lt = std::hypot(dx, dz);
 					if (lt == 0) lt = 1;
-					if (std::fabs(((a.x1 - a.x0) * dx + (a.z1 - a.z0) * dz) / (ls * lt)) < PARALLEL_COS) continue;
+					if (std::fabs(((a.x1 - a.x0) * dx + (a.z1 - a.z0) * dz) / (ls * lt)) < K.hug_cos) continue;
 					double u = std::max(0.0, std::min(1.0, ((mx - b.x0) * dx + (mz - b.z0) * dz) / (lt * lt)));
-					if (std::hypot(mx - (b.x0 + dx * u), mz - (b.z0 + dz * u)) < HUG_DIST) { dead_[s] = 1; break; }
+					if (std::hypot(mx - (b.x0 + dx * u), mz - (b.z0 + dz * u)) < K.hug_dist) { dead_[s] = 1; break; }
 				}
 			}
 		}
@@ -132,13 +133,13 @@ private:
 	}
 
 	int node_at(double x, double z) {
-		int i = int(std::floor(x / MERGE)), j = int(std::floor(z / MERGE));
+		int i = int(std::floor(x / K.merge)), j = int(std::floor(z / K.merge));
 		for (int dj = -1; dj <= 1; dj++)
 			for (int di = -1; di <= 1; di++) {
 				auto it = grid_.find(key(i + di, j + dj));
 				if (it == grid_.end()) continue;
 				for (int id : it->second)
-					if (std::hypot(nx_[id] - x, nz_[id] - z) < MERGE) return id;
+					if (std::hypot(nx_[id] - x, nz_[id] - z) < K.merge) return id;
 			}
 		int id = int(nx_.size());
 		nx_.push_back(x);
@@ -175,7 +176,7 @@ private:
 		for (size_t i = 0; i < root_.size(); i++) root_[i] = int(i);
 		for (const auto &e : edges_.items) {
 			int a = int(e.first / PAIR), b = int(e.first % PAIR);
-			if (std::hypot(nx_[a] - nx_[b], nz_[a] - nz_[b]) >= COLLAPSE) continue;
+			if (std::hypot(nx_[a] - nx_[b], nz_[a] - nz_[b]) >= K.collapse) continue;
 			int ra = find(a), rb = find(b);
 			if (ra != rb) root_[rb] = ra;
 		}
@@ -197,7 +198,7 @@ private:
 		EdgeMap kept;
 		for (const auto &e : sorted) {
 			int a = int(e.first / PAIR), b = int(e.first % PAIR);
-			if (deg[a] >= MAX_LINKS || deg[b] >= MAX_LINKS) continue;
+			if (deg[a] >= K.max_links || deg[b] >= K.max_links) continue;
 			deg[a]++;
 			deg[b]++;
 			kept.set(e.first, e.second);
@@ -230,23 +231,23 @@ private:
 		}
 		EdgeMap kept;
 		for (const auto &e : edges_.items)
-			if (size[comp[int(e.first / PAIR)]] >= MIN_COMPONENT) kept.set(e.first, e.second);
+			if (size[comp[int(e.first / PAIR)]] >= K.min_component) kept.set(e.first, e.second);
 		edges_ = std::move(kept);
 	}
 
 	void node_heights() {
-		static constexpr double PROBES[GROUND_PROBES][2] = { { 0, 0 }, { NODE_PROBE, 0 }, { -NODE_PROBE, 0 }, { 0, NODE_PROBE }, { 0, -NODE_PROBE } };
+		const double PROBES[GROUND_PROBES][2] = { { 0, 0 }, { K.node_probe, 0 }, { -K.node_probe, 0 }, { 0, K.node_probe }, { 0, -K.node_probe } };
 		ny_.resize(nx_.size());
 		for (size_t i = 0; i < nx_.size(); i++) {
 			double h = 0;
 			for (const auto &d : PROBES) h += terrain_.base_height(nx_[i] + d[0], nz_[i] + d[1]);
-			ny_[i] = std::max(TerrainGen::OCEAN_Y + NODE_MIN_Y, h / GROUND_PROBES);
+			ny_[i] = std::max(TerrainGen::OCEAN_Y + K.node_min_y, h / GROUND_PROBES);
 		}
 	}
 
 	// What the land beside a street is for, a lot's depth off its middle (+1 the street's left, -1 its right).
 	int zone_beside(int profile, double mx, double mz, double dx, double dz, double side) const {
-		const double length = std::max(std::hypot(dx, dz), 1.0), off = side * SIDE_PROBE_M / length;
+		const double length = std::max(std::hypot(dx, dz), 1.0), off = side * K.side_probe_m / length;
 		return rules_.zone_beside(profile, mx + dz * off, mz - dx * off);
 	}
 
@@ -256,7 +257,7 @@ private:
 			double mx = (nx_[a] + nx_[b]) / 2, mz = (nz_[a] + nz_[b]) / 2;
 			double d = std::hypot(mx, mz) / centre_r, dx = nx_[b] - nx_[a], dz = nz_[b] - nz_[a];
 			double L = std::hypot(dx, dz);
-			int count = int(std::ceil(L / GEN_SEG_LEN)), pv = rules_.section(profile, zone_beside(profile, mx, mz, dx, dz, 1), d, mx, mz);
+			int count = int(std::ceil(L / K.gen_seg_len)), pv = rules_.section(profile, zone_beside(profile, mx, mz, dx, dz, 1), d, mx, mz);
 			int from = a;
 			for (int k = 1; k <= count; k++) {
 				int to = b;
@@ -295,8 +296,9 @@ private:
 };
 } // namespace
 
-GeneratedRoads road_gen::build_graph(const std::vector<Piece> &pieces, double centre_r, TerrainGen &terrain, const std::vector<double> &asph_right, const GraphRules &rules) {
-	return GraphBuilder(pieces, terrain, asph_right, rules).build(centre_r);
+GeneratedRoads road_gen::build_graph(const GenShapes &S, const std::vector<Piece> &pieces, double centre_r, TerrainGen &terrain, const std::vector<double> &asph_right,
+	const GraphRules &rules) {
+	return GraphBuilder(S, pieces, terrain, asph_right, rules).build(centre_r);
 }
 
 } // namespace city

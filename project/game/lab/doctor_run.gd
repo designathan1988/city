@@ -6,7 +6,6 @@ extends Node
 
 signal changed
 
-const MS_PER_S := 1000.0
 
 var report := {}
 var results := {} # switch key -> its comparison
@@ -118,4 +117,4 @@ func _frames(ms: float) -> Dictionary:
 
 
 func _wait(ms: float) -> void:
-	await get_tree().create_timer(ms / MS_PER_S).timeout
+	await get_tree().create_timer(ms / Units.MS_PER_S).timeout

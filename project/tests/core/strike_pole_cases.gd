@@ -50,7 +50,7 @@ func run() -> void:
 	CityStore.dispatch(&"begin_stroke", ["cmd.place.trees"])
 	CityStore.dispatch(&"tree_path", [PackedVector3Array([mid + GROVE_OFF]), GROVE_M, 0, 0, GROVE])
 	CityStore.dispatch(&"end_stroke")
-	var park: Dictionary = CityStore.dispatch(&"draw_building", [mid + PARK_FROM, mid + PARK_TO, CityStore.code(&"BuildingFn", &"FN_PARK"), DataTables.zone_code("residential"), 0])
+	var park: Dictionary = CityStore.dispatch(&"draw_building", [mid + PARK_FROM, mid + PARK_TO, CityStore.code(&"BuildingFn", &"FN_PARK"), ZoneTable.code("residential"), 0])
 	t.check(park.get("ok", false), "a park across the street: %s" % [park])
 	var grove: Dictionary = CityStore.query(&"landscape")
 	t.check(grove.planted > 0, "a grove planted beside the street (%d trees)" % grove.planted)

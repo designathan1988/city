@@ -14,10 +14,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr int POD_SIDES = 12, POD_RINGS = 4;
-constexpr float POD_SQUARENESS = 3.f, POD_NOSE = 2.4f; // how flat its sides are, and how blunt its nose
-constexpr float HUB_SHARE = 0.62f, HUB_PROUD_M = 0.01f, RIM_SHARE = 0.5f, SPOKE_SHADE = 0.45f;
-constexpr float PAN_GAP_M = 0.02f; // the floor pan's top under the cabin floor
+constexpr int POD_SIDES = 12, POD_RINGS = 4; // a pod's turns round and rings along: the sizes of its arrays below
 constexpr float ALONG_X = 0.01f;   // a bar this close to X (its square off X) takes Y for its width
 constexpr float MM_PER_M = 1000.f, PERCENT = 100.f, M_PER_INCH = 0.0254f; // the inch: 25.4 mm exactly (1959)
 } // namespace
@@ -61,18 +58,19 @@ CabinPaint read_cabin_paint(const DataValue &d) {
 }
 
 // Round to the eye and flat at the sides: a superellipse, at one of its POD_SIDES turns.
-static Vector2 pod_turn(int i) {
-	const float a = TAU_F * float(i) / float(POD_SIDES), c = std::cos(a), s = std::sin(a), e = 2.f / POD_SQUARENESS;
+static Vector2 pod_turn(const PartsShape &K, int i) {
+	const float a = TAU_F * float(i) / float(POD_SIDES), c = std::cos(a), s = std::sin(a), e = 2.f / K.pod_squareness;
 	return Vector2(std::copysign(std::pow(std::fabs(c), e), c), std::copysign(std::pow(std::fabs(s), e), s));
 }
 
-void agent_pod_face(MeshBuilder &mb, const Vector3 &centre, const Vector2 &half, const Color &c, AgentTag tag) {
+void agent_pod_face(MeshBuilder &mb, const AgentShapes &shapes, const Vector3 &centre, const Vector2 &half, const Color &c, AgentTag tag) {
+	const PartsShape &K = shapes.agent_parts;
 	const Vector3 out(0, 0, -1);
 	const Vector2 t2 = agent_tag(tag);
 	const int hub = mb.add(centre, out, c, Vector2(), t2);
 	int first = -1, last = -1;
 	for (int i = 0; i < POD_SIDES; i++) {
-		const Vector2 r = pod_turn(i) * half;
+		const Vector2 r = pod_turn(K, i) * half;
 		const int v = mb.add(centre + Vector3(r.x, r.y, 0), out, c, Vector2(), t2);
 		if (last >= 0) mb.tri(hub, last, v, out);
 		else first = v;
@@ -81,12 +79,13 @@ void agent_pod_face(MeshBuilder &mb, const Vector3 &centre, const Vector2 &half,
 	mb.tri(hub, last, first, out);
 }
 
-void agent_pod(MeshBuilder &mb, const Vector3 &centre, const Vector2 &half, float depth, const Color &c, AgentTag tag) {
+void agent_pod(MeshBuilder &mb, const AgentShapes &shapes, const Vector3 &centre, const Vector2 &half, float depth, const Color &c, AgentTag tag) {
+	const PartsShape &K = shapes.agent_parts;
 	Vector3 p[POD_RINGS + 1][POD_SIDES];
 	for (int k = 0; k <= POD_RINGS; k++) {
-		const float t = float(k) / float(POD_RINGS), shrink = std::pow(1.f - std::pow(t, POD_NOSE), 1.f / POD_NOSE);
+		const float t = float(k) / float(POD_RINGS), shrink = std::pow(1.f - std::pow(t, K.pod_nose), 1.f / K.pod_nose);
 		for (int i = 0; i < POD_SIDES; i++) {
-			const Vector2 r = pod_turn(i) * half * shrink;
+			const Vector2 r = pod_turn(K, i) * half * shrink;
 			p[k][i] = centre + Vector3(r.x, r.y, t * depth);
 		}
 	}
@@ -111,7 +110,7 @@ void agent_pod(MeshBuilder &mb, const Vector3 &centre, const Vector2 &half, floa
 	const Vector3 forward(0, 0, 1);
 	const int tip = mb.add(centre + forward * depth, forward, c, Vector2(), t2);
 	for (int i = 0; i < POD_SIDES; i++) mb.tri(v[POD_RINGS - 1][i], v[POD_RINGS - 1][(i + 1) % POD_SIDES], tip, forward);
-	agent_pod_face(mb, centre, half, c, tag);
+	agent_pod_face(mb, shapes, centre, half, c, tag);
 }
 
 void agent_box(MeshBuilder &mb, const Vector3 &mn, const Vector3 &mx, const Color &c, AgentTag tag, Limb limb) {
@@ -140,17 +139,18 @@ void agent_pane(MeshBuilder &mb, const Vector3 &a, const Vector3 &b, const Vecto
 }
 
 void agent_wheel(MeshBuilder &mb, const Vector3 &c, float r, float w, int sides, int side, const AgentTrim &trim) {
-	const float xo = c.x + side * w * 0.5f, xi = c.x - side * w * 0.5f, xh = xo + side * HUB_PROUD_M;
+	const PartsShape &K = trim.shapes->agent_parts;
+	const float xo = c.x + side * w * 0.5f, xi = c.x - side * w * 0.5f, xh = xo + side * K.hub_proud_m;
 	const Vector2 t2 = agent_tag(AgentTag::FIXED, Limb::WHEEL), hub(c.y, c.z);
 	const Vector2 uvs[4] = { hub, hub, hub, hub };
 	const Vector3 face(float(side), 0, 0);
-	const Color spoke = trim.hub * SPOKE_SHADE;
+	const Color spoke = trim.hub * K.spoke_shade;
 	for (int i = 0; i < sides; i++) {
 		float a0 = TAU_F * i / sides, a1 = TAU_F * (i + 1) / sides, am = (a0 + a1) * 0.5f;
 		Vector3 d0(0, std::cos(a0), std::sin(a0)), d1(0, std::cos(a1), std::sin(a1)), dm(0, std::cos(am), std::sin(am));
 		Vector3 o0 = Vector3(0, c.y, c.z) + d0 * r, o1 = Vector3(0, c.y, c.z) + d1 * r;
-		Vector3 h0 = Vector3(0, c.y, c.z) + d0 * (r * HUB_SHARE), h1 = Vector3(0, c.y, c.z) + d1 * (r * HUB_SHARE);
-		Vector3 m0 = Vector3(0, c.y, c.z) + d0 * (r * RIM_SHARE), m1 = Vector3(0, c.y, c.z) + d1 * (r * RIM_SHARE);
+		Vector3 h0 = Vector3(0, c.y, c.z) + d0 * (r * K.hub_share), h1 = Vector3(0, c.y, c.z) + d1 * (r * K.hub_share);
+		Vector3 m0 = Vector3(0, c.y, c.z) + d0 * (r * K.rim_share), m1 = Vector3(0, c.y, c.z) + d1 * (r * K.rim_share);
 		mb.quad(o0 + Vector3(xi, 0, 0), o0 + Vector3(xo, 0, 0), o1 + Vector3(xo, 0, 0), o1 + Vector3(xi, 0, 0), trim.tyre, dm, uvs, t2);
 		mb.quad(h0 + Vector3(xo, 0, 0), o0 + Vector3(xo, 0, 0), o1 + Vector3(xo, 0, 0), h1 + Vector3(xo, 0, 0), trim.tyre, face, uvs, t2);
 		// rim ring, then alternating spoke / gap sectors so the turning wheel reads at a distance
@@ -163,12 +163,6 @@ void agent_wheel(MeshBuilder &mb, const Vector3 &c, float r, float w, int sides,
 }
 
 namespace {
-constexpr float TYRE_SECTION = 0.2f, TYRE_LIP = 0.9f; // the shoulder's radius, and the sidewall's reach in from it, as shares of r and of that
-constexpr int SHOULDER_STEPS = 4, SPOKES = 5, BOSS_SIDES = 8;
-constexpr float RIM_FACE = 0.25f; // how far out the rim's face stands, of the width
-constexpr float SPOKE_ROOT = 0.2f, SPOKE_TIP = 0.15f, SPOKE_FACE = 0.34f; // of r, the spoke flaring a little to the lip; its face of the width
-constexpr float LIP_IN = 0.86f, ROTOR_R = 0.74f, ROTOR_SHADE = 0.42f, ROTOR_DEEP = 0.004f; // of the rim's radius: the lip's inner edge, the brake's disc; its shade of the metal
-constexpr float BOSS_R = 0.18f, BOSS_FACE = 0.36f, WIRE_M = 0.006f;
 
 struct Lathe {
 	MeshBuilder &mb;
@@ -217,44 +211,46 @@ void spoke(Lathe &l, float angle, float reach, float root, float tip_w, float ax
 } // namespace
 
 void agent_wheel_near(MeshBuilder &mb, const Vector3 &c, float r, float w, int sides, int side, const AgentTrim &trim) {
+	const PartsShape &K = trim.shapes->agent_parts;
 	Lathe l{ mb, c, side, sides, Vector2(c.y, c.z), agent_tag(AgentTag::FIXED, Limb::WHEEL) };
-	const float h = r * TYRE_SECTION, outer = r - h, lip = outer - h * TYRE_LIP, half = w * 0.5f;
+	const float h = r * K.tyre_section, outer = r - h, lip = outer - h * K.tyre_lip, half = w * 0.5f;
 	std::vector<int> ring = lathe_ring(l, lip, -half, 0, -1, trim.tyre);
-	for (int i = 0; i <= SHOULDER_STEPS; i++) {
-		const float a = -PI_F * 0.5f + PI_F * float(i) / SHOULDER_STEPS, cs = std::cos(a), sn = std::sin(a);
+	for (int i = 0; i <= K.shoulder_steps; i++) {
+		const float a = -PI_F * 0.5f + PI_F * float(i) / K.shoulder_steps, cs = std::cos(a), sn = std::sin(a);
 		std::vector<int> next = lathe_ring(l, outer + cs * h, sn * half, cs, sn, trim.tyre);
 		lathe_band(l, ring, next);
 		ring = std::move(next);
 	}
 	std::vector<int> last = lathe_ring(l, lip, half, 0, 1, trim.tyre);
 	lathe_band(l, ring, last);
-	std::vector<int> sunk = lathe_ring(l, lip, w * RIM_FACE, -1, 0, trim.tyre); // the sidewall's inner edge down to the rim
+	std::vector<int> sunk = lathe_ring(l, lip, w * K.rim_face, -1, 0, trim.tyre); // the sidewall's inner edge down to the rim
 	lathe_band(l, last, sunk);
 	// The rim: its lip in metal, the well dark behind the spokes and the brake's disc in the well.
-	const float face = w * RIM_FACE;
-	lathe_disc(l, lip * LIP_IN, face, trim.under);
-	lathe_disc(l, lip * ROTOR_R, face + ROTOR_DEEP, trim.hub * ROTOR_SHADE);
-	std::vector<int> lip_out = lathe_ring(l, lip, face + HUB_PROUD_M, 0, 1, trim.hub), lip_in = lathe_ring(l, lip * LIP_IN, face + HUB_PROUD_M, 0, 1, trim.hub);
+	const float face = w * K.rim_face;
+	lathe_disc(l, lip * K.lip_in, face, trim.under);
+	lathe_disc(l, lip * K.rotor_r, face + K.rotor_deep, trim.hub * K.rotor_shade);
+	std::vector<int> lip_out = lathe_ring(l, lip, face + K.hub_proud_m, 0, 1, trim.hub), lip_in = lathe_ring(l, lip * K.lip_in, face + K.hub_proud_m, 0, 1, trim.hub);
 	lathe_band(l, lip_out, lip_in);
-	for (int i = 0; i < SPOKES; i++) spoke(l, TAU_F * i / SPOKES, lip * (LIP_IN + ROTOR_DEEP), r * SPOKE_ROOT, r * SPOKE_TIP, w * SPOKE_FACE, trim.hub);
-	Lathe boss{ mb, c, side, BOSS_SIDES, Vector2(c.y, c.z), agent_tag(AgentTag::FIXED, Limb::WHEEL) };
-	lathe_disc(boss, r * BOSS_R, w * BOSS_FACE, trim.hub);
+	for (int i = 0; i < K.spokes; i++) spoke(l, TAU_F * i / K.spokes, lip * (K.lip_in + K.rotor_deep), r * K.spoke_root, r * K.spoke_tip, w * K.spoke_face, trim.hub);
+	Lathe boss{ mb, c, side, K.boss_sides, Vector2(c.y, c.z), agent_tag(AgentTag::FIXED, Limb::WHEEL) };
+	lathe_disc(boss, r * K.boss_r, w * K.boss_face, trim.hub);
 }
 
 void agent_spoked_wheel(MeshBuilder &mb, const Vector3 &c, float r, float w, int sides, int spokes, const AgentTrim &trim) {
+	const PartsShape &K = trim.shapes->agent_parts;
 	const float half = w * 0.5f, inner = r - w;
 	for (int side : { -1, 1 }) {
 		Lathe l{ mb, c, side, sides, Vector2(c.y, c.z), agent_tag(AgentTag::FIXED, Limb::WHEEL) };
 		std::vector<int> ring = lathe_ring(l, r - half, 0, 1, 0, trim.tyre);
-		for (int i = 1; i <= SHOULDER_STEPS; i++) {
-			const float a = PI_F * float(i) / SHOULDER_STEPS, cs = std::cos(a), sn = std::sin(a);
+		for (int i = 1; i <= K.shoulder_steps; i++) {
+			const float a = PI_F * float(i) / K.shoulder_steps, cs = std::cos(a), sn = std::sin(a);
 			std::vector<int> next = lathe_ring(l, r - half + cs * half, sn * half, cs, sn, trim.tyre);
 			lathe_band(l, ring, next);
 			ring = std::move(next);
 		}
-		for (int i = 0; i < spokes / 2; i++) spoke(l, TAU_F * (float(i) + (side > 0 ? 0.f : 0.5f)) / float(spokes / 2), inner, WIRE_M, WIRE_M, half * RIM_FACE, trim.hub);
-		Lathe boss{ mb, c, side, BOSS_SIDES, Vector2(c.y, c.z), agent_tag(AgentTag::FIXED, Limb::WHEEL) };
-		lathe_disc(boss, r * BOSS_R * BOSS_R, half, trim.hub);
+		for (int i = 0; i < spokes / 2; i++) spoke(l, TAU_F * (float(i) + (side > 0 ? 0.f : 0.5f)) / float(spokes / 2), inner, K.wire_m, K.wire_m, half * K.rim_face, trim.hub);
+		Lathe boss{ mb, c, side, K.boss_sides, Vector2(c.y, c.z), agent_tag(AgentTag::FIXED, Limb::WHEEL) };
+		lathe_disc(boss, r * K.boss_r * K.boss_r, half, trim.hub);
 	}
 }
 
@@ -307,13 +303,14 @@ std::vector<Vector2> spans_between(float z0, float z1, const std::vector<Vector2
 }
 
 void agent_tub(MeshBuilder &mb, const Tub &t, const AgentTrim &trim) {
+	const PartsShape &K = trim.shapes->agent_parts;
 	for (int side : { -1, 1 }) {
 		const float xa = side * (t.half_w - t.wall), xb = side * t.half_w;
 		const std::vector<Vector2> spans = side < 0 ? spans_between(t.z0, t.z1, t.doors) : std::vector<Vector2>{ Vector2(t.z0, t.z1) };
 		for (const Vector2 &s : spans)
 			agent_arched_box(mb, std::min(xa, xb), std::max(xa, xb), t.y0, t.y1, s.x, s.y, t.axles, t.arch_r, t.arch_top, AGENT_WHITE, AgentTag::PAINT);
 	}
-	agent_box(mb, Vector3(-t.pan_half_w, t.y0, t.z0), Vector3(t.pan_half_w, t.floor - PAN_GAP_M, t.z1), trim.under, AgentTag::FIXED);
+	agent_box(mb, Vector3(-t.pan_half_w, t.y0, t.z0), Vector3(t.pan_half_w, t.floor - K.pan_gap_m, t.z1), trim.under, AgentTag::FIXED);
 }
 
 } // namespace city

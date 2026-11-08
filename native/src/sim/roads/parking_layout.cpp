@@ -39,9 +39,7 @@ double end_clear(const RoadNetwork &net, int node, double mouth) {
 } // namespace
 
 double arc_of_t(const RoadSegment &g, double t) {
-	const double at = std::max(0.0, std::min(1.0, t)) * (g.table.size() - 1);
-	const size_t i = std::min(size_t(at), g.table.size() - 2);
-	return g.table[i] + (g.table[i + 1] - g.table[i]) * (at - double(i));
+	return arc_at(g.table, t);
 }
 
 bool parks_along(const RoadNetwork &net, int sid) {

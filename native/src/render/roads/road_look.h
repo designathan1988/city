@@ -4,6 +4,7 @@
 // conventions shared with render/shaders/road.gdshader (material id in COLOR.a).
 #pragma once
 
+#include "render/roads/street_shapes.h"
 #include "sim/roads/profiles.h"
 #include "core/shader_contracts/streets.h"
 
@@ -32,6 +33,7 @@ inline godot::Color wear_color(float from_a, float from_b, float lane, RoadMat m
 }
 
 struct StreetLook {
+	StreetShapes shapes; // every size the emitters draw with beyond the section (streets.json "shapes")
 	godot::Color surface[4], paving[4], median[4], asphalt[int(RoadClass::COUNT)], bike, shoulder, curb, barrier;
 	float far_step = 0, far_pull = 0; // the far level: its stretches on a curve; how far towards the eye it is drawn, over the coarser ground out there
 	float h_curb = 0, h_curb_median = 0, h_sidewalk = 0, h_median = 0, h_barrier = 0, step = 1, skirt = 0, median_nose = 0;
