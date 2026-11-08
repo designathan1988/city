@@ -273,7 +273,7 @@ func _process(delta: float) -> void:
 	if not visible:
 		return
 	_since += delta
-	if _since >= DataTables.game("health").refresh_s:
+	if _since >= DataTables.ui("hud").timings.inspector_refresh_s:
 		_since = 0.0
 		refresh()
 

@@ -579,3 +579,4 @@ hint.rule.funds,Recusado: não há dinheiro para construir isto. Demolir vias de
 rule.short.funds,dinheiro insuficiente,not enough money
 economy.refund,devolve {value},refund {value}
 economy.group,.,","
+economy.decimal,",",.

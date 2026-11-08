@@ -23,10 +23,9 @@ static func format_int(v: float) -> String:
 	return ("-" if v < 0.0 and n != 0 else "") + digits + out
 
 
-## One decimal, with the comma of the Portuguese text.
+## One decimal, with the language's decimal mark (economy.decimal, as economy.group its thousands).
 static func format_tenths(v: float) -> String:
-	var text := "%.1f" % v
-	return text.replace(".", ",") if TranslationServer.get_locale().begins_with("pt") else text
+	return ("%.1f" % v).replace(".", TranslationServer.translate(&"economy.decimal"))
 
 
 ## A measure as the catalogue writes it (Roadcraft crossSection.ts metresText): whole numbers bare, else one decimal.

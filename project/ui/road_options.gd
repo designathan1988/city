@@ -56,9 +56,10 @@ func refresh() -> void:
 		_toggle(row, c, snap[key] and live, live, func() -> void:
 			Settings.set_road_snap(key, not snap[key])
 			refresh())
-	var class_card: bool = _base().class_card
+	var base := _base()
+	var class_card: bool = base.class_card
 	if class_card:
-		_class_rows(spec)
+		_class_rows(spec, base)
 	_height_rows()
 	_furniture_row(spec.furniture)
 	_keys_row()
@@ -76,8 +77,7 @@ func _param(key: String, fallback: Variant) -> Variant:
 
 
 ## Lanes and width tune a class's own road, and parking (_parking_row); a road of the catalogue carries its own (Roadcraft ui/v2/shell.ts).
-func _class_rows(spec: Dictionary) -> void:
-	var base := _base()
+func _class_rows(spec: Dictionary, base: Dictionary) -> void:
 	var chosen: int = _param("lanes", 0)
 	var row := _row(spec.lanes.label_key)
 	for c in spec.lanes.choices:
@@ -104,9 +104,7 @@ func _class_rows(spec: Dictionary) -> void:
 ## How many blocks and how big (shell.ts): columns and rows, the block's side and the grid's turn.
 func _block_rows(spec: Dictionary) -> void:
 	var d: Dictionary = DataTables.game("settings").road_blocks
-	var b: Dictionary = Settings.road.blocks
-	if b.cols == 0:
-		b.merge({"cols": int(d.cols), "rows": int(d.rows), "size": float(d.size_m), "turn": 0.0}, true)
+	var b := RoadBlocks.settings()
 	var row := _row(spec.count_key)
 	_stepper(row, "palette.blocks.cols", str(b.cols), func(by: int) -> void: b.cols = clampi(b.cols + by, 1, int(d.most)))
 	_stepper(row, "palette.blocks.rows", str(b.rows), func(by: int) -> void: b.rows = clampi(b.rows + by, 1, int(d.most)))

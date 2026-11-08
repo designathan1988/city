@@ -109,7 +109,7 @@ e apagados.
 | Suite in parallel | `python tools/tasks/cli.py run tests` (logs in `dist/tasks/<run>`, `cli.py status`; every task has its own deadline and is killed by PID) |
 | Gates | `python tools/gates/run_gates.py` (`--file X`, `--files-from F`, `--summary`, `--selftest`); changed files only: `python tools/tasks/cli.py run gates_changed` |
 | Scripts that do not compile | `python tools/tasks/cli.py run scripts` (`tools/build/check_scripts.gd`) |
-| Orchestrator | `python tools/tasks/cli.py run <suite or task> [--list]`, `serve` (JSON lines, for Node tools), `status`; its tests: `python -m unittest discover tools/tasks/tests` |
+| Orchestrator | `python tools/tasks/cli.py run <suite or task> [--list]`, `serve` (JSON lines, for Node tools), `status`, `var <name>` (a machine's tool, for scripts); its tests: `python -m unittest discover tools/tasks/tests` |
 | Exportar e empacotar | `tools/build/build.sh export && tools/build/build.sh package` |
 | Android library and APK | `tools/build/android.sh core`, then `tools/build/android.sh export` (`dist/android/Roadcraft.apk`; tools from `C:/Projects/toolchains`, release keystore from `KEYSTORE_ENV`) |
 | Captures | `tools/build/build.sh capture [folder]` (= `cli.py run capture`, hidden, one task per plan) |

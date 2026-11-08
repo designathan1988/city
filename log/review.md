@@ -2778,6 +2778,34 @@ known states (00-cidade off its golden in the known residual box, equal to an ea
 the old gate on the new case; `gates_changed` reports only what the touched files had (`daylight.gd`'s and `sky_view.gd`'s length,
 `sky_view.gd`'s hash literals, `daylight.gd`'s cascade side).
 
+### 6.26 B2, C4 (the scripts): one owner each for the scripts' doubled values (2026-11-08)
+
+**Cause.** §3q/§3r/§3s/§3 copies on the script side: the decimal mark chosen by `get_locale().begins_with("pt")` in
+`formatters.gd` while the thousands mark comes from a translation (`economy.group`); the inspector's refresh and the edits F8 marks
+read from the health monitor's table (`health.json` `refresh_s`, `changes_shown`), a pace and a count filed under another owner's
+name; the road-blocks grid's first values merged by `road_options.gd` as a copy of `RoadBlocks.settings()`, and the base road looked
+up twice a refresh; `pgo.sh` naming its own Godot and llvm-mingw (not overridable for Godot) and `build.sh` defaulting Godot to
+`godot`, beside the machine vars `tools/tasks/suites.json` owns.
+
+**Fix.** `economy.decimal` beside `economy.group` (`format_tenths` replaces the point by it); `hud.json` holds
+`timings.inspector_refresh_s` and `changes_shown` (schema), `health.json` keeps what is the monitor's; `road_options.gd` takes
+`RoadBlocks.settings()` and hands the base road to `_class_rows`; `python tools/tasks/cli.py var <name>` prints a machine var as
+the tasks resolve it (its environment variable first, then the platform's default; no newline, so `$(...)` holds no `\r`), and
+`pgo.sh` and `build.sh` take Godot and llvm-mingw from it (tests: the default, the environment first, an unknown var exits 2).
+
+**Why it does not come back.** A locale rule, a panel's pace and a tool's path each have one table; the scripts read it.
+
+**Not here, and why.** The cut-walls choice kept by `Settings` and by `CityState.new_road_flags` (and dispatched twice by
+`road_options.gd`) is tool state in the city state: C5, with the state's hash moving. `road_catalog.gd` drawing a profile's picture
+from the JSON strips while a variant the core made has none draws the variants' pictures: B3. `android.sh` keeps its own Godot
+default while the Android session edits it (log/pendencias.md).
+
+**What changes.** Nothing: Portuguese still shows a comma and English a point (a `pt_*` locale picks the `pt_BR` column, any other
+the fallback's), the same pace and count, the same grid, the same Godot 4.7.2 (the console build of the same install).
+
+**Verified** (`city-verify`, `quick --all`): every test passes, the digest equal, the four photos byte-equal to known states;
+`tools/tasks` tests 26 OK; `gates_changed` reports only what `inspector_panel.gd` had (its length, two texts).
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

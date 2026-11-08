@@ -4,7 +4,7 @@
 # Ninja: on a Windows host CMake would otherwise pick NMake, which is not installed.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-GODOT="${GODOT:-godot}"
+GODOT="$("${PY:-python}" "$ROOT/tools/tasks/cli.py" var godot)" # suites.json vars: GODOT first, then this machine's
 OUT="${OUT:-$ROOT/dist}"
 JOBS="${JOBS:-$(nproc 2>/dev/null || echo 2)}"
 

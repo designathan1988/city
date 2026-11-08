@@ -7,10 +7,13 @@
   "signal_step_s": {
    "type": "number"
   },
+  "changes_shown": {
+   "type": "integer"
+  },
   "timings": {
    "type": "object",
-   "properties": {"tip_wait_s": {"type": "number"}, "lane_reread_s": {"type": "number"}, "toast_s": {"type": "number"}},
-   "required": ["tip_wait_s", "lane_reread_s", "toast_s"],
+   "properties": {"tip_wait_s": {"type": "number"}, "lane_reread_s": {"type": "number"}, "toast_s": {"type": "number"}, "inspector_refresh_s": {"type": "number"}},
+   "required": ["tip_wait_s", "lane_reread_s", "toast_s", "inspector_refresh_s"],
    "strict": true
   },
   "stats": {
@@ -121,6 +124,7 @@
  },
  "required": [
   "_doc",
+  "changes_shown",
   "stats",
   "demand",
   "speeds",

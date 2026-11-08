@@ -4,8 +4,9 @@
 # needs no training. Stale functions only lose their counts, so a new profile is a choice, not a duty: after a change of the hot paths.
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT" || exit 2
-export MINGW="${MINGW:-C:/Projects/toolchains/llvm-mingw-20261020-ucrt-x86_64}"
-GODOT="C:/Users/Jonathan/AppData/Local/Microsoft/WinGet/Links/godot_console.exe"
+machine() { "${PY:-python}" "$ROOT/tools/tasks/cli.py" var "$1"; } # where the machine's tools are: suites.json vars, env first
+export MINGW="$(machine mingw)"
+GODOT="$(machine godot)"
 OUT="$ROOT/dist/pgo"
 BUILD="$ROOT/dist/build-pgo"
 SCENES="tests/perf/camera_pan tests/core/edit_fuzz_test tests/core/road_commands_test tests/core/people_test tests/core/yard_test"

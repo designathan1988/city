@@ -1,5 +1,5 @@
 ## F8: the latest edits marked on the map, a rectangle round what each touched (the core's undo steps). Off, it draws nothing and
-## reads nothing. Colour: the theme's warning; how many: data/game/health.json changes_shown.
+## reads nothing. Colour: the theme's warning; how many: data/ui/hud.json changes_shown.
 class_name ChangeMarks
 extends MeshInstance3D
 
@@ -36,7 +36,7 @@ func count() -> int:
 func _on_changed(_s: Dictionary) -> void:
 	if not visible:
 		return
-	var edits: Array = CityStore.query(&"recent_edits", [int(DataTables.game("health").changes_shown)])
+	var edits: Array = CityStore.query(&"recent_edits", [int(DataTables.ui("hud").changes_shown)])
 	if edits.size() == _shown and _shown > 0:
 		return
 	_shown = edits.size()
