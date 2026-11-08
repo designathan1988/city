@@ -31,10 +31,9 @@ void Ropes::init(const RID &scenario, const RID &material, const RopeLook &look,
 	links_.shown(false);
 }
 
-void Ropes::reset() {
+void Ropes::reset() { // written at the next update: a reset may come before init, with no layer to write
 	ropes_.clear();
 	dirty_ = true;
-	flush();
 }
 
 void Ropes::release() { links_.release(); }

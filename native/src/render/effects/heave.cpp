@@ -76,11 +76,12 @@ void Heave::init(const RID &scenario, const RID &material, const HeaveLook &look
 	boxes_.shown(false);
 }
 
+// The state only: the layers are written at the next set_craters (a reset lays every crater again, EffectWorld::reset), and a reset may come
+// before init, with no layer to write.
 void Heave::reset() {
 	pieces_.clear();
 	laid_.clear();
 	stale_ = false;
-	flush();
 }
 
 void Heave::release() {

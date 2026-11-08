@@ -849,6 +849,8 @@ commit, and six pixels of a wire's edge by one level of one channel (the wire's 
 `WireSeats` caller: float contraction, no geometry moved). The goldens of this worktree were blessed from it. `building_edit_test`
 aimed at the middle of a facade, which on a facade of an even number of bays is the line between two (the zoning round's lots
 gave its building six): it now aims at the middle of the middle bay (`building_pick_cases.gd`).
+The heave's and the wires' first reset wrote their layers before init (three `instance_set_visible` errors at every start, in
+the import and test logs; the commit after this round's): a reset now clears their state and the next frame writes it.
 **Files:** created `native/src/render/effects/{heave,ropes,ground_cells}.{h,cpp}`, `project/data/render/aftermath.json`,
 `tools/gates/schemas/aftermath.schema.json`, `project/tests/core/strike_pole_cases.gd`, `project/tests/visual/bomb_street_plan.json`;
 changed the strike commands (buildings, ground, commands), `damage_event.h`, `damage_state.{h,cpp}`, `pole_arms.{h,cpp}`,
