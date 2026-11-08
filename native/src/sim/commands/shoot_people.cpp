@@ -87,7 +87,7 @@ void shoot_walker(Round &r, int id, BodyPart part, float hx, float hy, float hz,
 	if (!lying && !grave) {
 		const bool leg = part == BodyPart::LEG_L || part == BodyPart::LEG_R;
 		if (leg || (part == BodyPart::TORSO && r.roll(SALT_KNOCK, uint32_t(id) ^ (uint32_t(w.hits) << HITS_SALT_SHIFT)) < KNOCK_TRUNK_CHANCE)) {
-			const float lie = p.shot_knock_min_s + p.shot_knock_span_s * r.roll(SALT_FALL, uint32_t(id));
+			const float lie = p.knock_min_s + p.knock_span_s * r.roll(SALT_FALL, uint32_t(id)); // as long down as a blast's (people.knock_*)
 			w.down_until = now + lie;
 			r.emit(casualty_of(r, id, w, CAS_KNOCKED | shared, PUSH_KNOCK, lie, hx, hz));
 		} else {

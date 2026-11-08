@@ -99,44 +99,6 @@ builder.help.select.text,"Clique num edifício, num volume ou numa face. Shift+c
 builder.hideOthers,Ocultar outros,Hide others
 builder.inspector.toggle,Recolher ou abrir o inspetor,Collapse or open the inspector
 builder.label,Área de construção,Builder workspace
-builder.lot.artDeco,Art déco,Art deco
-builder.lot.balconyMid,Varandas e madeira,Balconies and timber
-builder.lot.bank,Banco,Bank
-builder.lot.beauxArts,Hotel Beaux-Arts,Beaux-Arts hotel
-builder.lot.beigeClassic,Bege clássica,Classic beige
-builder.lot.brickFrame,Tijolo e vidro,Brick and glass
-builder.lot.cemetery,Cemitério,Cemetery
-builder.lot.church,Igreja,Church
-builder.lot.cityHallBrick,Prefeitura de tijolo,Brick town hall
-builder.lot.cityHallWhite,Prefeitura branca,White town hall
-builder.lot.cubeBalcony,Varandas em cubo,Cube balconies
-builder.lot.darkGlass,Vidro escuro,Dark glass
-builder.lot.darkGrid,Grade escura,Dark grid
-builder.lot.decoSpire,Art déco com pináculo,Deco spire
-builder.lot.decoTower,Torre art déco,Art Deco tower
-builder.lot.fireStation,Bombeiros,Fire station
-builder.lot.forum,Fórum,Courthouse
-builder.lot.glassBalcony,Vidro com varandas,Glass with balconies
-builder.lot.glassOffice,Escritório de vidro,Glass office
-builder.lot.glassSpire,Torre de vidro azul,Blue glass tower
-builder.lot.hexTerracotta,Hexagonal de terracota,Hexagonal terracotta
-builder.lot.hospitalA,Hospital,Hospital
-builder.lot.hospitalB,Hospital com ala,Hospital with a wing
-builder.lot.loftBrick,Lofts de tijolo,Brick lofts
-builder.lot.modernOffice,Escritório modernista,Modernist office
-builder.lot.octCopper,Octogonal de cobre,Octagonal copper
-builder.lot.pinkCorner,Esquina rosa,Pink corner
-builder.lot.police,Delegacia,Police station
-builder.lot.residentialTerrace,Residencial com terraços,Terraced flats
-builder.lot.roundGlass,Redonda de vidro,Round glass
-builder.lot.school,Escola,School
-builder.lot.stackedBlocks,Blocos empilhados,Stacked blocks
-builder.lot.stepGarden,Terraços-jardim,Terrace gardens
-builder.lot.triangleDark,Triangular escura,Dark triangle
-builder.lot.twinNavy,Gêmeas azul-marinho,Navy twins
-builder.lot.twistGreen,Torcida verde-água,Twisted teal
-builder.lot.waveWhite,Varandas em onda,Wave balconies
-builder.lot.whiteBalcony,Branca com varandas,White with balconies
 builder.needsSelection,Selecione um edifício para usar,Select a building to use this
 builder.noGroup,Nenhum edifício perto o bastante para agrupar,No building close enough to group
 builder.pickCorner,Ative Pontos e clique num ponto do bloco,Turn on Points and click a point of the block

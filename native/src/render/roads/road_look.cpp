@@ -44,7 +44,6 @@ void load_shape(StreetLook &L, DataReader &r, const Dictionary &t) {
 	DataReader rh = r.in("heights");
 	L.h_curb = num(rh, h, "curb");
 	L.h_curb_median = num(rh, h, "curb_by_median");
-	L.h_sidewalk = num(rh, h, "sidewalk");
 	L.h_median = num(rh, h, "median");
 	L.h_barrier = num(rh, h, "barrier");
 	L.skirt = num(rh, h, "skirt");

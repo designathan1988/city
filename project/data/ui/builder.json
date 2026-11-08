@@ -1,5 +1,5 @@
 {
- "_doc": "What the Build tabs offer (ui/builder_strip.gd, game/tools/building_tool.gd). A tool: id (its icon b_<id> and text builder.tool.<id>, unless icon or label_key say otherwise), do (what it does) and value: a bay, scope, pattern, roof or finish code of native/src/sim/buildings/b40/types.h, or the storeys to add. Colours are each finish's own.",
+ "_doc": "What the Build tabs offer (ui/builder_strip.gd, game/tools/building_tool.gd). A tool: id (its icon b_<id> and text builder.tool.<id>, unless icon or label_key say otherwise; its hint in hand hint.builder.<id> unless hint_key says otherwise), do (what it does) and value: a bay, scope, pattern, roof or finish code of native/src/sim/buildings/b40/types.h, or the storeys to add. Colours are each finish's own.",
  "model_groups": ["all", "homes", "public", "commerce", "work", "leisure", "generic", "lots", "mine"],
  "tabs": {
   "interior": {
@@ -49,14 +49,14 @@
     {
      "title_key": "builder.section.primitives",
      "tools": [
-      {"id": "primBox", "do": "primitive", "value": 0, "top_kind": 0, "top_deg": 0},
-      {"id": "primCylinder", "do": "primitive", "value": 3, "top_kind": 0, "top_deg": 0},
-      {"id": "primOctagonal", "do": "primitive", "value": 5, "top_kind": 0, "top_deg": 0},
-      {"id": "primPrism", "do": "primitive", "value": 0, "top_kind": 2, "top_deg": 35},
-      {"id": "primWedge", "do": "primitive", "value": 0, "top_kind": 4, "top_deg": 25},
-      {"id": "primPyramid", "do": "primitive", "value": 0, "top_kind": 3, "top_deg": 45},
-      {"id": "primCone", "do": "primitive", "value": 3, "top_kind": 3, "top_deg": 55},
-      {"id": "primCross", "do": "primitive", "value": 7, "top_kind": 0, "top_deg": 0}
+      {"id": "primBox", "do": "primitive", "value": 0, "top_kind": 0, "top_deg": 0, "hint_key": "hint.builder.prim"},
+      {"id": "primCylinder", "do": "primitive", "value": 3, "top_kind": 0, "top_deg": 0, "hint_key": "hint.builder.prim"},
+      {"id": "primOctagonal", "do": "primitive", "value": 5, "top_kind": 0, "top_deg": 0, "hint_key": "hint.builder.prim"},
+      {"id": "primPrism", "do": "primitive", "value": 0, "top_kind": 2, "top_deg": 35, "hint_key": "hint.builder.prim"},
+      {"id": "primWedge", "do": "primitive", "value": 0, "top_kind": 4, "top_deg": 25, "hint_key": "hint.builder.prim"},
+      {"id": "primPyramid", "do": "primitive", "value": 0, "top_kind": 3, "top_deg": 45, "hint_key": "hint.builder.prim"},
+      {"id": "primCone", "do": "primitive", "value": 3, "top_kind": 3, "top_deg": 55, "hint_key": "hint.builder.prim"},
+      {"id": "primCross", "do": "primitive", "value": 7, "top_kind": 0, "top_deg": 0, "hint_key": "hint.builder.prim"}
      ]
     },
     {

@@ -302,11 +302,8 @@ ui.strip.barrier,Mureta,Barrier
 ui.strip.curb,Meio-fio,Curb
 ui.strip.shoulder,Acostamento,Shoulder
 ui.title,Roadcraft,Roadcraft
-ui.toolName.barrier,Muros e cercas,Walls and fences
 ui.toolName.blocks,Quarteirões,Blocks
 ui.toolName.bomb,Bomba,Bomb
-ui.toolName.building,Prédios e lotes,Buildings and lots
-ui.toolName.bulldoze,Demolir,Demolish
 ui.toolName.camera,Câmera,Camera
 ui.toolName.curve,Via em curva,Curved road
 ui.toolName.elements,Elementos,Elements
@@ -316,22 +313,13 @@ ui.toolName.free,Via livre,Freehand road
 ui.toolName.inspect,Inspecionar,Inspect
 ui.toolName.landform,Relevos,Landforms
 ui.toolName.lower,Rebaixar,Lower
-ui.toolName.move,Mover,Move
 ui.toolName.paint,Pintar o chão,Paint ground
-ui.toolName.person,Pessoas,People
 ui.toolName.pistol,Pistola,Pistol
 ui.toolName.raise,Elevar,Raise
 ui.toolName.river,Rio,River
-ui.toolName.road,Via reta,Straight road
-ui.toolName.roundabout,Rotatória,Roundabout
 ui.toolName.sky,Céu,Sky
 ui.toolName.smooth,Alisar,Smooth
-ui.toolName.split,Dividir,Split
-ui.toolName.streetscape,Paisagismo,Streetscape
-ui.toolName.transit,Transporte,Transit
-ui.toolName.upgrade,Melhorar,Upgrade
 ui.toolName.weather,Clima,Weather
-ui.toolName.zone,Zonear,Zoning
 ui.touch.click,Clique,Click
 ui.touch.compassDo,Girar e inclinar a câmera; tocar nela põe o norte para cima,Turn and tilt the camera; tap it to face north
 ui.touch.compassKey,Arrastar a bússola,Drag the compass
@@ -453,15 +441,11 @@ zone.lots.help,"Crie lotes encostando nas calçadas (retângulo ou polígono) e 
 zone.low,Baixa,Low
 zone.medium,Média,Medium
 zone.mixed,Misto,Mixed
-zone.name.0,Sem zona,No zone
-zone.name.1,Residencial,Residential
-zone.name.2,Comercial,Commercial
-zone.name.3,Industrial,Industrial
-zone.name.4,Misto,Mixed
-zone.name.5,Residencial baixa,Low-density residential
-zone.name.6,Residencial alta,High-density residential
-zone.name.7,Comercial baixa,Low-density commercial
-zone.name.8,Comercial alta,High-density commercial
+zone.none,Sem zona,No zone
+zone.resLow,Residencial baixa,Low-density residential
+zone.resHigh,Residencial alta,High-density residential
+zone.comLow,Comercial baixa,Low-density commercial
+zone.comHigh,Comercial alta,High-density commercial
 zone.remove,Tirar zona,Remove zone
 zone.residential,Residencial,Residential
 zone.split.horizontal,Frente e fundos,Front and back

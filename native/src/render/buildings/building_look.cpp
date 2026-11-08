@@ -19,14 +19,16 @@ enum { TONE_R, TONE_G, TONE_B, TONE_SIZE }; // finish_far.tones rows: a linear c
 float num(DataReader &r, const Dictionary &d, const char *key) { return float(r.num(d, key)); }
 } // namespace
 
-bool BuildingLook::load(const Dictionary &t, const Dictionary &bay_props, const Dictionary &furniture, PackedStringArray &errors) {
+bool BuildingLook::load(const Dictionary &t, const Dictionary &bay_props, const Dictionary &furniture, const Dictionary &camera,
+		PackedStringArray &errors) {
 	const int64_t before = errors.size();
 	DataReader r{ errors, "buildings.json" };
+	DataReader rc{ errors, "camera.json" };
+	far_fov_deg = num(rc, camera, "far_fov_deg");
 	const Dictionary lod = r.table(t, "lod");
 	DataReader rl = r.in("lod");
 	parts_share = num(rl, lod, "parts_share");
 	near_share = num(rl, lod, "near_share");
-	far_fov_deg = num(rl, lod, "fov_deg");
 	far_hysteresis = num(rl, lod, "far_hysteresis");
 	far_per_eye = num(rl, lod, "far_per_eye");
 	cast_props_m = num(rl, lod, "cast_props_m");

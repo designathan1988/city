@@ -30,7 +30,7 @@ struct BuildingLook {
 	std::vector<PartBand> part_bands; // near-to-far, last one unbounded (thick_max large)
 	InteriorLook interior; // the furniture models and the paints of a building cut open (furniture.json)
 	std::vector<Lin> finish_far; // each finish from afar, by layer: the far level draws no map
-	float far_fov_deg = 0; // the camera's far lens (mirrors data/game/camera.json far_fov_deg)
+	float far_fov_deg = 0; // the camera's far lens (data/game/camera.json far_fov_deg): the levels' bands are measured for it
 	float cast_props_m = 0; // how far the balcony pieces throw a shadow
 	float hull_error_m = 0; // how far the mid level's shadow hull may stray from its walls
 	float level_fade_m = 0, level_back_m = 0; // the near level's hand-over (building_level.gdshaderinc)
@@ -40,7 +40,8 @@ struct BuildingLook {
 	BayPropLook bay; // bay_props.json
 
 	// buildings.json, bay_props.json and furniture.json (the look's own numbers, its bay props, the interior's furniture).
-	bool load(const godot::Dictionary &t, const godot::Dictionary &bay_props, const godot::Dictionary &furniture, godot::PackedStringArray &errors);
+	bool load(const godot::Dictionary &t, const godot::Dictionary &bay_props, const godot::Dictionary &furniture, const godot::Dictionary &camera,
+			godot::PackedStringArray &errors);
 };
 
 } // namespace city::b40

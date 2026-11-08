@@ -26,15 +26,15 @@ func _cover(r: Dictionary) -> float:
 func _tunnels() -> void:
 	var bored = _through(3, 900 * t.U)
 	var surface = _through(0, 900 * t.U)
-	t.judge("tunnel: dives under the hill it crosses", _cover(bored) > t.BORE, _cover(bored))
+	t.judge("tunnel: dives under the hill it crosses", _cover(bored) > t.bore, _cover(bored))
 	var ends: PackedFloat32Array = bored.segs[0].ground
-	t.judge("tunnel: meets the ground at both portals", absf(bored.nodes[0] - (ends[0] + t.CLEARANCE)) < 1.5 * t.U and absf(bored.nodes[1] - (ends[-1] + t.CLEARANCE)) < 1.5 * t.U, [bored.nodes, ends[0], ends[-1]])
+	t.judge("tunnel: meets the ground at both portals", absf(bored.nodes[0] - (ends[0] + t.clearance)) < 1.5 * t.U and absf(bored.nodes[1] - (ends[-1] + t.clearance)) < 1.5 * t.U, [bored.nodes, ends[0], ends[-1]])
 	var mid: int = bored.segs[0].h.size() / 2
 	t.judge("tunnel: solved quite unlike the same road on the ground", surface.segs[0].h[mid] > ends[mid] - 8 * t.U and bored.segs[0].h[mid] < surface.segs[0].h[mid] - 20 * t.U, [surface.segs[0].h[mid], bored.segs[0].h[mid]])
 	t.judge("tunnel: continuous all along", t.steepest(bored.segs[0]) < 0.13 * 2.5, t.steepest(bored.segs[0]))
 	var short = _cover(_through(3, 180 * t.U))
 	var shorter = _cover(_through(3, 90 * t.U))
-	t.judge("tunnel: shallower the shorter it is", _cover(bored) > short and short > shorter and shorter < t.BORE, [_cover(bored), short, shorter])
+	t.judge("tunnel: shallower the shorter it is", _cover(bored) > short and short > shorter and shorter < t.bore, [_cover(bored), short, shorter])
 
 
 ## Every leg of a crossroads of chains, on broken ground, flat over its plate at its node's height (worstSeam).

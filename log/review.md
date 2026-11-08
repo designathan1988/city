@@ -2806,6 +2806,50 @@ the fallback's), the same pace and count, the same grid, the same Godot 4.7.2 (t
 **Verified** (`city-verify`, `quick --all`): every test passes, the digest equal, the four photos byte-equal to known states;
 `tools/tasks` tests 26 OK; `gates_changed` reports only what `inspector_panel.gd` had (its length, two texts).
 
+### 6.27 B2, C4 (the data): one owner for each value the tables held twice (2026-11-08)
+
+**Cause.** §3t's and §3u's equal pairs: a person's stay at work or on an errand under two key pairs in `traffic.json`
+(`work_stay_h`/`errand_stay_h` read by `ped_demand.cpp`, `stay_work_h`/`stay_errand_h` by `lot_demand.cpp`); the footway's height in
+`traffic.json` `curb_m` (the walkers, `lane_geometry.cpp`) and in `streets.json` `heights.sidewalk` (the road, the furniture and a
+tram's flush track); `buildings.json` `lod.fov_deg` copying `camera.json` `far_fov_deg` because render data could not read a game
+table; the fireball's law in `effects.json` beside the scar's in `tuning.json`; a knocked-down person's time down under `people` and
+under `shot` in `blast.json`; `materials.json` carrying the finishes' maps and scales twice, the glass three times and the vegetation
+wind four (`cover_rock` and `cover_shore` whole twins); the road-blocks tool's grid in `settings.json`, the graphics options; the
+zones' names twice (`zone.name.0..8` read by the inspector, `zones.json` `name_key` read by nothing and five of its keys untranslated);
+the eight primitive tools' one hint under eight keys; and 83 translation keys reached by no code whose text another, live key holds
+(`builder.lot.*` beside `lot.*`, `design.finish.*` beside `building.finish.*`, `ui.toolName.*` beside `tool.*`, the
+`game.hint.*`/`hint.tool.*` twins, `game.toast.missed`/`hit`/`saveBlocked`, `game.confirm.flattenMap`, `cmd.place.bomb`/
+`junctionControl`, `save.file.notMap`, `save.importFailed`, `economy.money` with its dollar sign for reais); and `road_grade_test.gd`
+typing the clearances and the bore's cover it judges.
+
+**Fix.** One pair of stays, both readers on it; `street_furniture.json` `sidewalk.height_m` (schema), read by the walkers through the
+catalogue and by the road, prop and transit renderers through `RenderContext::catalog`; the boot hands the camera table to the render
+(`CityStore.boot`) and `BuildingLook::load` reads `far_fov_deg` from it; `EffectWorld::init` takes the fireball from
+`strike.scar_radius_*`; the shot reads `people.knock_*`; `materials.json` `_shared` holds `finishes`, `glass`, `sky_in_glass`, `gust`,
+`sway` and `stone`, a row names what it `uses` and `CityWorld.material_params` lays them under its own params (the schema keeps a
+shared key out of the rows); `hud.json` `tool_options.road_blocks`; the inspector reads `zones.json` `name_key`
+(`DataTables.zone_name_key`), the missing five carry the texts `zone.name.N` had, and the core no longer stores a name it never read;
+`hint.builder.prim` and a tool's `hint_key`; the dead twins deleted (each checked: no code, scene or table names it, no prefix
+builds it); the grade test reads the tuning.
+
+**Why it does not come back.** Each value is in one table; the schemas are strict, so a shared key written again in a material row,
+or a moved key left behind, is refused.
+
+**Not here, and why.** Through the styles, which B4 rebuilds (D2): the 57 street names and the signals copied into both
+`street_furniture.json` styles (moved to the base they would name the `eua` and `europa` streets), `models.json`'s module and
+storeys beside `tuning.json` `build.*` and its fence and wall beside the barrier kinds, the plates' "Rua" beside `street_names.prefix`,
+the flags' colours. Unequal pairs (B3): the train car (18 m simulated, 17.5 m drawn), the zone colours of the drawer and the map,
+`cityAvenue` and `boulevard`, the railing's height, a model and its plain twin under one name; the numbers derived by hand
+(`daylight.json`, `agents.json`, the far finish tones) and the bore's cover typed in `road_shape.cpp` (0.4 + 0.16) beside
+`structure.bore_over_m` 0.56, whose sums round apart. Not one value: `transit.json` `default_line` (a stop no line serves) and the
+`transit_bus` token (the bus mode's colour in the HUD) equal a line colour without being one.
+
+**What changes.** Nothing: every reader gets the value it had (0.15 m, 35 degrees, 2.5 + 1.1 x force, 3.2 + 1.8 s, the same
+material parameters, checked key by key by the script that moved them), every text shown is the one it was.
+
+**Verified** (`city-verify`, `quick --all`, both DLLs): every test passes, the digest equal, the four photos byte-equal to known
+states; `gates_changed` reports nothing the files did not have at HEAD.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

@@ -89,6 +89,7 @@
   "tool_options": {
    "type": "object",
    "properties": {
+    "road_blocks": {"type": "object", "properties": {"cols": {"type": "number"}, "rows": {"type": "number"}, "size_m": {"type": "number"}, "most": {"type": "number"}, "least_m": {"type": "number"}, "widest_m": {"type": "number"}, "step_m": {"type": "number"}, "turn_step_deg": {"type": "number"}, "preview_step_m": {"type": "number"}, "preview_half_px": {"type": "number"}}, "required": ["cols", "rows", "size_m", "most", "least_m", "widest_m", "step_m", "turn_step_deg", "preview_step_m", "preview_half_px"], "strict": true},
     "zone_radius": {
      "type": "array",
      "items": {
@@ -117,7 +118,8 @@
    "required": [
     "zone_radius",
     "terrain_radius",
-    "terrain_strength"
+    "terrain_strength",
+    "road_blocks"
    ],
    "strict": true
   }

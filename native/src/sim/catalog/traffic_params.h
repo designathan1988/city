@@ -33,7 +33,7 @@ namespace city {
 	X(ped_talk_stagger_s) \
 	X(ped_company_share) X(ped_company_child_share) X(ped_company_catch) X(ped_door_off_m) X(ped_gate_out_m) \
 	X(ped_door_reach_m) X(ped_door_budget) X(work_stay_h) X(errand_stay_h) \
-	X(curb_m) X(ped_spawn_per_step) X(ped_fill_per_step) \
+	X(ped_spawn_per_step) X(ped_fill_per_step) \
 	X(day_base) X(day_morning_h) X(day_morning_w) X(day_morning_amp) X(day_evening_h) X(day_evening_w) \
 	X(day_evening_amp) X(day_midday_h) X(day_midday_w) X(day_midday_amp) X(day_night_cut) X(day_night_from_h) \
 	X(day_night_to_h) X(morning_from_h) X(morning_to_h) X(evening_from_h) X(evening_to_h) \
@@ -54,7 +54,7 @@ namespace city {
 	X(parker_call_timeout_s) X(parker_lane_edge_m) X(parker_gap_behind_m) X(parker_gap_ahead_m) X(parker_join_ms) X(parker_ask_way_s) X(parker_stop_ms) \
 	X(parker_way_room_m) X(parker_way_wide_m) X(kerb_drop_share) X(kerb_pick_share) X(kerb_delivery_share) X(kerb_delivery_s) X(kerb_end_clear_m) X(kerb_plan_margin_m) X(kerb_stretch_m) X(kerb_stop_share) X(kerb_queue_m) X(kerb_door_along) X(kerb_door_out_m) X(kerb_door_clear_m) X(kerb_foot_clear_m) X(kerb_door_open_s) X(kerb_door_shut_s) X(kerb_seat_s) X(kerb_pace_ms) X(kerb_give_up_s) X(kerb_halt_s) X(kerb_find_reach_m) X(kerb_pick_fetch_m) X(parker_gate_margin_m) X(parker_gate_lead_m) X(parker_stop_slack_m) X(parker_past_gate_m) X(parker_give_up_s) X(gate_lane_reach_m) X(gate_lane_min_m) X(gate_lane_end_m) X(gate_stop_before_m) X(gate_join_past_m) \
 	X(gate_span_min_m) X(man_forward_ms) X(man_backward_ms) X(man_ramp_m) X(man_creep_ms) X(man_tangent) X(man_across_m) \
-	X(man_least_m) X(man_lead_m) X(man_disc_pad_m) X(man_disc_step_m) X(stay_work_h) X(stay_errand_h) \
+	X(man_least_m) X(man_lead_m) X(man_disc_pad_m) X(man_disc_step_m) \
 	X(lorry_most) X(lorry_radius_m) X(lorry_rear_m) X(lorry_margin_m) X(lorry_cell_m) X(lorry_street_reach_m) X(lorry_street_window_m) X(lorry_mouth_flare_m) X(lorry_gate_in_m) X(lorry_dock_gap_m) X(lorry_stop_before_m) X(lorry_join_past_m) X(lorry_pre_dock_m) X(lorry_pre_step_m) X(lorry_reach_m) X(lorry_turn_rad) X(lorry_settle_step_m) X(lorry_fit_margin_m) \
 	X(lorry_clear_h_m) X(lorry_call_reach_m) X(lorry_call_timeout_s) X(lorry_unload_min_s) X(lorry_unload_max_s) X(lorry_lane_half_m) X(lorry_closure_margin_m) X(lorry_clear_margin_m) X(lorry_join_ms) X(lorry_ask_way_s) X(lorry_walker_clear_m) X(lorry_look_m) X(lorry_forward_ms) X(lorry_backward_ms) X(lorry_ramp_m) X(lorry_creep_ms) X(lorry_stop_slack_m) X(lorry_plan_work) \
 	X(parker_look_ticks) X(bike_share) X(bike_speed_kmh) X(bike_edge_m) X(cycle_ease_m) X(cycle_clear_share) \

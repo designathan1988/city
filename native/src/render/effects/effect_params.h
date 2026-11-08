@@ -24,7 +24,8 @@ struct BurstDef {
 
 struct EffectParams {
 	int pool = 0;
-	float wind_x = 0, wind_z = 0, fireball_base = 0, fireball_per_force = 0;
+	float wind_x = 0, wind_z = 0;
+	float fireball_base = 0, fireball_per_force = 0; // the scar's reach (tuning strike.scar_radius_*), set by EffectWorld::init
 	std::vector<BurstDef> bursts;
 	std::vector<SourceDef> sources;
 	// What each puff of a source is (flame, a chimney of dark smoke, a light smoke).

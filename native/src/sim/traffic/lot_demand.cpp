@@ -22,7 +22,7 @@ void flows(const TrafficParams &p, PlaceKind kind, float hour, float &in, float 
 		return;
 	}
 	const float *table = kind == PlaceKind::WORK ? p.people_working : p.people_purchasing;
-	const float stay = kind == PlaceKind::WORK ? p.stay_work_h : p.stay_errand_h;
+	const float stay = kind == PlaceKind::WORK ? p.work_stay_h : p.errand_stay_h;
 	const float there = at_hour(table, hour), rise = at_hour(table, hour + 0.5f) - at_hour(table, hour - 0.5f);
 	in = std::max(0.f, rise) + there / stay;
 	out = std::max(0.f, -rise) + there / stay;

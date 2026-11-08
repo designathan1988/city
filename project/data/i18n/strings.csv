@@ -139,7 +139,6 @@ cmd.place.autoRules,regras automáticas,automatic rules
 cmd.place.bannedTurn,movimento proibido,banned movement
 cmd.place.bendRoad,curvar via,bend road
 cmd.place.blocks,quarteirões,blocks
-cmd.place.bomb,bomba,bomb
 cmd.place.buildingDesign,projeto do prédio,building design
 cmd.place.bus,ônibus,bus
 cmd.place.busPriority,prioridade ao ônibus,bus priority
@@ -152,7 +151,6 @@ cmd.place.greenWave,onda verde,green wave
 cmd.place.heightPoint,ponto de altura,height point
 cmd.place.item,pôr item,place item
 cmd.place.joinRoads,unir vias,join roads
-cmd.place.junctionControl,controle do cruzamento,junction control
 cmd.place.laneLink,conexão de faixa,lane connection
 cmd.place.lineColour,cor da linha,line colour
 cmd.place.lockControl,travar controle,lock control
@@ -257,16 +255,6 @@ creator.wing,Ala,Wing
 cutSides.batter,Talude,Slope
 cutSides.row,Corte,Cutting
 cutSides.walls,Muro,Walls
-design.finish.brick,Tijolo,Brick
-design.finish.ceramicTile,Cerâmica,Ceramic tile
-design.finish.concrete,Concreto,Concrete
-design.finish.glass,Vidro,Glass
-design.finish.metal,Metal,Metal
-design.finish.panel,Painel,Panel
-design.finish.plaster,Reboco,Plaster
-design.finish.scrapedRender,Massa raspada,Scraped render
-design.finish.stone,Pedra,Stone
-design.finish.wood,Madeira,Wood
 design.gear.airConditioning,Ar-condicionado,Air conditioning
 design.gear.antenna,Antena,Antenna
 design.gear.chimney,Chaminé,Chimney
@@ -295,7 +283,6 @@ design.wing.noWing,Sem ala,No wing
 design.wing.wingOnTheLeft,Ala à esquerda,Wing on the left
 design.wing.wingOnTheRight,Ala à direita,Wing on the right
 design.wing.wingsOnBothSides,Alas dos dois lados,Wings on both sides
-economy.money,R$ {value},$ {value}
 el.density,Densidade (por 100 m²),Density (per 100 m²)
 el.effects,Efeitos,Effects
 el.kind.clover,Trevo,Clover
@@ -325,17 +312,14 @@ fmt.thousands,{n} mil,{n}k
 fog.erase,Apagar,Erase
 fog.height,Altura,Height
 fog.lay,Pôr neblina,Lay fog
-game.confirm.flattenMap,Aplainar todo o terreno? Dá para desfazer com Ctrl+Z.,Flatten the whole terrain? Ctrl+Z undoes it.
 game.flow.generate,A geração da cidade,Generating the city
 game.flow.load,A abertura da cidade,Opening the city
 game.flow.newMap,O mapa novo,The new map
 game.flow.testCity,A cidade de teste,The test city
-game.hint.bomb,Clique onde a bomba cai: no chão ou num prédio. A força muda o tamanho da explosão.,Click where the bomb falls: on the ground or on a building. Force changes the size of the blast.
 game.hint.cloud.add,"Clique no mapa: uma nuvem nasce em cima do ponto, com o tamanho, a base e a densidade escolhidos.","Click the map: a cloud appears above the point with the chosen size, base and density."
 game.hint.cloud.edit,Clique numa nuvem para aplicar os valores das barras.,Click a cloud to apply the slider values.
 game.hint.cloud.move,Arraste uma nuvem (pela sombra no chão) para outro lugar.,Drag a cloud (by its spot on the ground) somewhere else.
 game.hint.cloud.remove,Clique numa nuvem para apagá-la.,Click a cloud to delete it.
-game.hint.elements,Arraste para espalhar o elemento escolhido (ou apagar); Raio e [ ] mudam o tamanho do pincel.,Drag to scatter the chosen element (or erase); Radius and [ ] change the brush size.
 game.hint.fog.erase,Arraste para apagar a neblina.,Drag to erase the fog.
 game.hint.fog.lay,Arraste para pôr neblina baixa (Raio muda o tamanho do pincel).,Drag to lay low fog (Radius changes the brush size).
 game.hint.forest,"Arraste para plantar um bosque, ou escolha Cortar para abrir clareira.","Drag to plant a wood, or choose Cut to open a clearing."
@@ -353,14 +337,8 @@ game.hint.lot.line,Clique dois pontos de uma linha que atravesse o lote: ele vir
 game.hint.lot.poly,"Clique os cantos do lote; Enter ou duplo clique fecha, Backspace volta um ponto.","Click the lot corners; Enter or double-click closes, Backspace steps back."
 game.hint.lot.rect,Clique no começo e no fim da frente do lote; depois no fundo.,Click the start and the end of the lot front; then the back.
 game.hint.lot.split,Clique num lote para dividi-lo (escolha lado a lado ou frente e fundos e em quantos).,"Click a lot to split it (choose side by side or front and back, and how many)."
-game.hint.paint,Arraste para pintar o chão (Grama apaga a pintura).,Drag to paint the ground (Grass erases the paint).
-game.hint.person,Escolha a roupa e a altura e clique: a pessoa fica ali parada ou sai andando pela calçada.,Choose the clothes and height and click: the person stands there or walks off along the sidewalk.
-game.hint.pistol,Clique numa pessoa: ela cai e some.,Click a person: they fall and disappear.
-game.hint.river,"Clique os pontos do rio, de cima para baixo; Enter ou duplo clique termina, Backspace volta, Esc descarta.","Click the river points from upstream down; Enter or double-click ends, Backspace steps back, Esc discards."
 game.hint.sky,Espalhe nuvens ou ponha neblina.,Scatter clouds or lay fog.
 game.hint.transit,Clique na calçada para pôr paradas na linha; clique numa parada para tirar; Shift+clique torna a parada terminal.,Click a sidewalk to put stops on the line; click a stop to remove it; Shift+click makes the stop a terminal.
-game.hint.weather,"Ajuste chuva, vento e raios nas barras; clique no mapa para cair um raio ali.","Set rain, wind and lightning with the sliders; click the map to strike lightning there."
-game.hint.zone,Arraste para pintar a zona dos lados das vias.,Drag to paint the zone on the sides of the roads.
 game.hint.zone.block,Clique dentro de uma quadra: todas as vias em volta dela recebem a zona.,Click inside a block: every road around it gets the zone.
 game.loading.city,Gerando a cidade…,Generating the city…
 game.loading.lots,Lotes e prédios…,Lots and buildings…
@@ -391,7 +369,6 @@ game.toast.followNone,Nenhum veículo perto do centro da tela: aproxime a câmer
 game.toast.following,Seguindo o veículo. Esc ou C solta; a roda aproxima.,Following the vehicle. Esc or C lets go; the wheel zooms.
 game.toast.frontSet,Frente definida: a construção olha para esse lado.,Front set: the building faces that side.
 game.toast.generated,Cidade gerada em {secs} s: {buildings} prédios e {roads} trechos de via.,City generated in {secs} s: {buildings} buildings and {roads} road segments.
-game.toast.hit,Atingido.,Hit.
 game.toast.insideNone,Nenhum prédio escolhido nem no centro da tela: clique num prédio ou aponte a vista para um.,No building chosen or at the centre of the screen: click a building or point the view at one.
 game.toast.lotCreated,Lote novo criado.,New lot created.
 game.toast.lotNarrow,Lote estreito demais.,Lot too narrow.
@@ -400,7 +377,6 @@ game.toast.lotSplitLine,Lote dividido pela linha.,Lot split along the line.
 game.toast.lotsJoined,Lotes juntados.,Lots joined.
 game.toast.mapTooBig,Sua placa de vídeo não comporta aquele tamanho de mapa: abri no maior que cabe.,Your graphics card cannot hold that map size: opened the largest that fits.
 game.toast.maxClouds,O céu já tem o máximo de nuvens ({n}).,The sky already has the most clouds ({n}).
-game.toast.missed,Ninguém aí: clique numa pessoa.,Nobody there: click a person.
 game.toast.noCloud,Nenhuma nuvem aqui: clique embaixo de uma.,No cloud here: click under one.
 game.toast.noLot,Nenhum lote aqui: desenhe um ou zoneie a rua.,No lot here: draw one or zone the street.
 game.toast.noSidewalk,Essa via não tem calçada.,This road has no sidewalk.
@@ -416,7 +392,6 @@ game.toast.renovatePick,Escolha um prédio para reformar.,Choose a building to r
 game.toast.renovated,Prédio reformado: novo de novo.,Building renovated: new again.
 game.toast.resumed,Continuando.,Resuming.
 game.toast.river,Rio feito: a água desce sempre pelo caminho desenhado.,River made: the water always flows down the drawn path.
-game.toast.saveBlocked,A cidade na tela está incompleta (a abertura ou a geração não terminou) e não é salva. Abra ou crie uma cidade.,The city on screen is incomplete (opening or generating did not finish) and is not saved. Open or make a city.
 game.toast.selectFirst,Selecione um prédio primeiro.,Select a building first.
 game.toast.sideCurved,Lado curvado.,Side curved.
 game.toast.stationOnTrack,Ponha a estação sobre um trilho (Via → Trilhos).,Put the station on a track (Transit → Train track).
@@ -499,5 +474,3 @@ hint.profile.toStreet,Perfil copiado para a rua inteira,Profile copied to the wh
 hint.roundabout,Clique em terreno livre para criar uma rotatória · Ligue os quatro acessos com a ferramenta de via,Click vacant ground to place a roundabout · Connect its four arms with the road tool
 hint.split,Clique numa via para dividir,Click a road to split it
 hint.streetscape.row,Fileira posta ao longo da calçada,Row laid along the footway
-hint.tool.bomb,Clique onde a bomba cai: no chão ou num prédio. A força muda o tamanho da explosão.,Click where the bomb falls: on the ground or a building. Strength changes the blast size.
-hint.tool.elements,Arraste para espalhar o elemento escolhido; [ e ] mudam o tamanho do pincel.,Drag to scatter the chosen element; [ and ] change the brush size.

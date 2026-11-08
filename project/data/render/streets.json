@@ -13,7 +13,6 @@
  "heights": {
   "curb": 0.15,
   "curb_by_median": 0.15,
-  "sidewalk": 0.15,
   "median": 0.17,
   "barrier": 0.81,
   "skirt": 0.7

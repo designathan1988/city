@@ -36,7 +36,7 @@ struct MapDef {
 // What a zone is at bottom (zones.json "base"): the one owner of the base kinds' codes.
 enum BaseZone : uint8_t { BASE_NONE, BASE_RESIDENTIAL, BASE_COMMERCIAL, BASE_INDUSTRIAL, BASE_MIXED, BASE_COUNT };
 struct ZoneDef {
-	std::string id, name_key;
+	std::string id; // its name is the interface's (zones.json name_key, DataTables.zone_name_key)
 	int base = BASE_NONE; // BaseZone
 	int density = 1; // 0 low, 1 medium, 2 high
 	std::string building; // what the generator builds on it (b40 Kind by name: house, flats, tower, shop, office, works)

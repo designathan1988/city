@@ -33,7 +33,7 @@ struct BlastParams {
 	// The pistol (shot): health of a walker and what each part costs, how a wound goes on.
 	float walker_hp = 0, damage_head = 0, damage_torso = 0, damage_limb = 0, sever_hits_hp = 0, sever_hp_cost = 0;
 	float body_reach_m = 0, body_height_m = 0, head_above_m = 0, torso_above_m = 0, arm_aside_m = 0, grave_hp = 0;
-	float bleed_limb = 0, bleed_leg = 0, bleed_hurt = 0, shot_knock_min_s = 0, shot_knock_span_s = 0, two_wheeler_rider_m = 0;
+	float bleed_limb = 0, bleed_leg = 0, bleed_hurt = 0, two_wheeler_rider_m = 0;
 	int open_hits = 0, vehicle_shots_to_burst = 0, burst_force = 0;
 	float glass_above = 0, flinch_s = 0, startle_m = 0, pace_light = 0, pace_leg = 0, pace_grave = 0, max_range_m = 0, drips_per_s = 0;
 	float vehicle_box_m[VEHICLE_TYPES] = {}; // the height of the box a bullet meets, by VehicleType

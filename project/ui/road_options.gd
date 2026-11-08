@@ -103,7 +103,7 @@ func _class_rows(spec: Dictionary, base: Dictionary) -> void:
 
 ## How many blocks and how big (shell.ts): columns and rows, the block's side and the grid's turn.
 func _block_rows(spec: Dictionary) -> void:
-	var d: Dictionary = DataTables.game("settings").road_blocks
+	var d: Dictionary = DataTables.ui("hud").tool_options.road_blocks
 	var b := RoadBlocks.settings()
 	var row := _row(spec.count_key)
 	_stepper(row, "palette.blocks.cols", str(b.cols), func(by: int) -> void: b.cols = clampi(b.cols + by, 1, int(d.most)))

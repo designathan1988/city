@@ -1,5 +1,22 @@
 {
- "_doc": "Materials the native renderers draw with, by name (native/src/render/render_context.h). pool_gain 0.2115 (lamp_glow; the road's is its own, 0.9): the Roadcraft 4.0's pool, opacity 0.32 of a #ffe2c4 light, times daylight.json sky_gain 0.661, which carries a colour drawn without light from three.js's tone chain into this game's; computed and not fitted to a picture. Colours as '#rrggbb', textures as res:// paths. prop lens_roughness and lens_ior: the signal lens, polished polycarbonate (Physically Based database, physicallybased.info, 'Plastic (PC)': roughness 0, index of refraction 1.5848 from refractiveindex.info). Vegetation wind (vegetation.gdshaderinc; its speed and direction are shader globals, not material values): sway_per_ms2 = top bend per (m/s)^2 from Peltola et al. 1993 (crown-centre bending under 5 cm on a 13.5 m pine at 8 m/s: 0.0037 of the height, times (1/0.6)^2 to the top, over 64); gust_m = 22 x 10 m (Kaimal et al. 1972 spectral peak n z / U = 1/22); turbulence = 1 / ln(10 m / 0.05 m) (EN 1991-1-4 eq. 4.7, terrain category II); sway_hz = natural frequency of leafy trees of 8-15 m, 0.2-0.3 Hz (Jackson et al. 2019). vegetation_cards cover_per_mip 0.25: alpha rescaled by mip level so a card keeps its coverage far away (Golus 2017, Anti-aliased Alpha Test: The Esoteric Alpha To Coverage). vegetation roughness 0.8: modelling choice for matte leaves, no published value.",
+ "_doc": "Materials the native renderers draw with, by name (native/src/render/render_context.h). pool_gain 0.2115 (lamp_glow; the road's is its own, 0.9): the Roadcraft 4.0's pool, opacity 0.32 of a #ffe2c4 light, times daylight.json sky_gain 0.661, which carries a colour drawn without light from three.js's tone chain into this game's; computed and not fitted to a picture. Colours as '#rrggbb', textures as res:// paths. prop lens_roughness and lens_ior: the signal lens, polished polycarbonate (Physically Based database, physicallybased.info, 'Plastic (PC)': roughness 0, index of refraction 1.5848 from refractiveindex.info). Vegetation wind (_shared gust and sway; vegetation.gdshaderinc; its speed and direction are shader globals, not material values): sway_per_ms2 = top bend per (m/s)^2 from Peltola et al. 1993 (crown-centre bending under 5 cm on a 13.5 m pine at 8 m/s: 0.0037 of the height, times (1/0.6)^2 to the top, over 64); gust_m = 22 x 10 m (Kaimal et al. 1972 spectral peak n z / U = 1/22); turbulence = 1 / ln(10 m / 0.05 m) (EN 1991-1-4 eq. 4.7, terrain category II); sway_hz = natural frequency of leafy trees of 8-15 m, 0.2-0.3 Hz (Jackson et al. 2019). vegetation_cards cover_per_mip 0.25: alpha rescaled by mip level so a card keeps its coverage far away (Golus 2017, Anti-aliased Alpha Test: The Esoteric Alpha To Coverage). vegetation roughness 0.8: modelling choice for matte leaves, no published value.",
+ "_shared": {
+  "_doc": "Parameter sets several materials read alike, laid under a material's own params by its uses (render/city_world.gd material_params): finishes, the building finishes' maps and scales (building, building_parts); glass, the near levels' glass (building, building_glass); sky_in_glass, the sky every level's glass shows (building, building_glass, building_far); gust and sway, the vegetation wind (vegetation, cover_plant, vegetation_cards); stone, a still, rough cover (cover_rock, cover_shore).",
+  "finishes": {
+   "noise_lattice": "res://assets/noise/lattice.png",
+   "finish_map": "res://assets/surfaces/building-finishes.map.png",
+   "finish_normal": "res://assets/surfaces/building-finishes.normal.png",
+   "finish_rough": "res://assets/surfaces/building-finishes.rough.png",
+   "finish_m": [8, 6, 2, 2.4, 3.2, 9.6, 4.8, 3.2, 6, 4, 4, 4.8, 8],
+   "finish_normal_k": [0.2, 0.22, 0.25, 0.55, 0.3, 0.3, 0.45, 0.6, 0.3, 0.7, 0.6, 0.3, 0.35],
+   "finish_metal": [0, 0, 0, 0, 0, 0, 0, 0.55, 1.0, 0, 0, 0.15, 0]
+  },
+  "glass": { "glass_reflect": 0.04, "glass_sky_floor": 0.0, "window_glow": 0.62 },
+  "sky_in_glass": { "glass_sky": "#7f95ad" },
+  "gust": { "gust_m": 220.0 },
+  "sway": { "sway_per_ms2": 0.000161, "turbulence": 0.189, "sway_hz": 0.25 },
+  "stone": { "sway_per_ms2": 0.0, "turbulence": 0.0, "sway_hz": 0.0, "roughness": 0.94, "leaf_specular": 0.5 }
+ },
  "verge": { "shader": "res://render/shaders/verge.gdshader", "params": {} },
  "road": {
   "fade_shader": "res://render/shaders/road_far.gdshader",
@@ -42,73 +59,18 @@
   }
  },
  "building": {
+  "uses": ["finishes", "glass", "sky_in_glass"],
   "shader": "res://render/shaders/building.gdshader", "fade_shader": "res://render/shaders/building_fade.gdshader", "ruin_shader": "res://render/shaders/building_ruin.gdshader",
   "params": {
-   "noise_lattice": "res://assets/noise/lattice.png",
-   "finish_map": "res://assets/surfaces/building-finishes.map.png",
-   "finish_normal": "res://assets/surfaces/building-finishes.normal.png",
-   "finish_rough": "res://assets/surfaces/building-finishes.rough.png",
-   "finish_m": [
-    8,
-    6,
-    2,
-    2.4,
-    3.2,
-    9.6,
-    4.8,
-    3.2,
-    6,
-    4,
-    4,
-    4.8,
-    8
-   ],
-   "glass_reflect": 0.04,
-   "glass_sky": "#7f95ad",
-   "glass_sky_floor": 0.0,
-   "finish_normal_k": [
-    0.2,
-    0.22,
-    0.25,
-    0.55,
-    0.3,
-    0.3,
-    0.45,
-    0.6,
-    0.3,
-    0.7,
-    0.6,
-    0.3,
-    0.35
-   ],
-   "finish_metal": [
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0.55,
-    1.0,
-    0,
-    0,
-    0.15,
-    0
-   ],
    "wall_gain": 1.0,
    "lamp_glow": 3.4,
-   "lamp_light": "#ffd49a",
-   "window_glow": 0.62
+   "lamp_light": "#ffd49a"
   }
  },
  "building_glass": {
+  "uses": ["glass", "sky_in_glass"],
   "shader": "res://render/shaders/building_glass.gdshader", "fade_shader": "res://render/shaders/building_glass_fade.gdshader",
   "params": {
-   "glass_reflect": 0.04,
-   "glass_sky": "#7f95ad",
-   "glass_sky_floor": 0.0,
-   "window_glow": 0.62,
    "furniture_tone": [0.2051, 0.2918, 0.4179, 0.8879, 0.8632, 0.807, 0.159, 0.2122, 0.2747, 0.2307, 0.2874, 0.3467, 0.3231, 0.1441, 0.0561, 0.3231, 0.1441, 0.0561, 0.3231, 0.1441, 0.0561, 0.013, 0.0152, 0.0185, 0.3231, 0.1441, 0.0561, 0.1119, 0.0467, 0.0194, 0.3231, 0.1441, 0.0561, 0.9216, 0.9216, 0.8963, 0.4508, 0.4851, 0.5089, 0.855, 0.8714, 0.8632, 0.855, 0.8714, 0.8632, 0.855, 0.8714, 0.8632, 0.1119, 0.0467, 0.0194, 0.013, 0.0152, 0.0185, 0.0723, 0.2542, 0.0423, 0.3231, 0.1441, 0.0561, 0.159, 0.2122, 0.2747, 0.8879, 0.8632, 0.807, 0.4508, 0.4851, 0.5089, 0.9216, 0.9216, 0.8963, 0.3231, 0.1441, 0.0561, 0.4508, 0.4851, 0.5089, 0.4508, 0.4851, 0.5089, 0.4508, 0.4851, 0.5089, 0.4508, 0.4851, 0.5089, 0.1119, 0.0467, 0.0194, 0.1119, 0.0467, 0.0194, 0.0252, 0.0685, 0.0423, 0.4508, 0.4851, 0.5089, 0.013, 0.0152, 0.0185, 0.3231, 0.1441, 0.0561, 1.0, 0.8714, 0.6308, 1.0, 0.8714, 0.6308, 1.0, 0.8714, 0.6308, 0.3231, 0.1441, 0.0561, 0.3231, 0.1441, 0.0561]
   }
  },
@@ -149,24 +111,18 @@
   }
  },
  "building_far": {
+  "uses": ["sky_in_glass"],
   "shader": "res://render/shaders/building_far.gdshader",
   "params": {
-   "glass_sky": "#7f95ad",
    "glass_floor": 0.18,
    "window_glow": 0.42,
    "wall_gain": 1.0
   }
  },
  "building_parts": {
+  "uses": ["finishes"],
   "shader": "res://render/shaders/building_parts.gdshader", "fade_shader": "res://render/shaders/building_parts_fade.gdshader",
   "params": {
-   "noise_lattice": "res://assets/noise/lattice.png",
-   "finish_map": "res://assets/surfaces/building-finishes.map.png",
-   "finish_normal": "res://assets/surfaces/building-finishes.normal.png",
-   "finish_rough": "res://assets/surfaces/building-finishes.rough.png",
-   "finish_m": [8, 6, 2, 2.4, 3.2, 9.6, 4.8, 3.2, 6, 4, 4, 4.8, 8],
-   "finish_normal_k": [0.2, 0.22, 0.25, 0.55, 0.3, 0.3, 0.45, 0.6, 0.3, 0.7, 0.6, 0.3, 0.35],
-   "finish_metal": [0, 0, 0, 0, 0, 0, 0, 0.55, 1.0, 0, 0, 0.15, 0],
    "wall_gain": 1.0
   }
  },
@@ -258,12 +214,9 @@
   }
  },
  "vegetation": {
+  "uses": ["gust", "sway"],
   "shader": "res://render/shaders/vegetation.gdshader",
   "params": {
-   "sway_per_ms2": 0.000161,
-   "gust_m": 220.0,
-   "turbulence": 0.189,
-   "sway_hz": 0.25,
    "roughness": 0.8,
    "leaf_specular": 0.5,
    "bark_ridges": 9.0,
@@ -272,16 +225,13 @@
    "bark_far_m": 60.0
   }
  },
- "cover_plant": { "shader": "res://render/shaders/vegetation.gdshader", "params": { "sway_per_ms2": 0.000161, "gust_m": 220.0, "turbulence": 0.189, "sway_hz": 0.25, "roughness": 0.85, "leaf_specular": 0.15 } },
- "cover_rock": { "shader": "res://render/shaders/vegetation.gdshader", "params": { "sway_per_ms2": 0.0, "gust_m": 220.0, "turbulence": 0.0, "sway_hz": 0.0, "roughness": 0.94, "leaf_specular": 0.5 } },
- "cover_shore": { "shader": "res://render/shaders/vegetation.gdshader", "params": { "sway_per_ms2": 0.0, "gust_m": 220.0, "turbulence": 0.0, "sway_hz": 0.0, "roughness": 0.94, "leaf_specular": 0.5 } },
+ "cover_plant": { "shader": "res://render/shaders/vegetation.gdshader", "uses": ["gust", "sway"], "params": { "roughness": 0.85, "leaf_specular": 0.15 } },
+ "cover_rock": { "shader": "res://render/shaders/vegetation.gdshader", "uses": ["gust", "stone"], "params": {} },
+ "cover_shore": { "shader": "res://render/shaders/vegetation.gdshader", "uses": ["gust", "stone"], "params": {} },
  "vegetation_cards": {
+  "uses": ["gust", "sway"],
   "shader": "res://render/shaders/vegetation_cards.gdshader",
   "params": {
-   "sway_per_ms2": 0.000161,
-   "gust_m": 220.0,
-   "turbulence": 0.189,
-   "sway_hz": 0.25,
    "roughness": 0.8,
    "leaf_specular": 0.5,
    "cover_per_mip": 0.25,

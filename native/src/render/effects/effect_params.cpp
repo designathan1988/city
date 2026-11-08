@@ -29,9 +29,6 @@ bool EffectParams::load(const Dictionary &t, PackedStringArray &errors) {
 	pool = puffs.integer("pool");
 	wind_x = puffs.num("wind_x");
 	wind_z = puffs.num("wind_z");
-	Group fireball(r, t, "fireball");
-	fireball_base = fireball.num("base_m");
-	fireball_per_force = fireball.num("per_force_m");
 	const Array list = r.list(t, "bursts");
 	for (int i = 0; i < list.size(); i++) {
 		DataReader rb = r.in("bursts").in(i);

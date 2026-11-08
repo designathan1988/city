@@ -219,14 +219,7 @@ hint.builder.place,Clique no mapa para colocar o prédio · R gira · Esc solta,
 hint.builder.planShape,Insira ou remova um canto da planta,Add or remove a corner of the plan
 hint.builder.planter,Aponte para uma fachada e clique,Point at a facade and click
 hint.builder.pointMode,Mostra os pontos do bloco: arraste para modelar,Shows the block's points: drag them to shape it
-hint.builder.primBox,"Clique num telhado, numa parede ou no chão para pôr a forma · Esc solta","Click a roof, a wall or the ground to put the shape there · Esc lets go"
-hint.builder.primCone,"Clique num telhado, numa parede ou no chão para pôr a forma · Esc solta","Click a roof, a wall or the ground to put the shape there · Esc lets go"
-hint.builder.primCross,"Clique num telhado, numa parede ou no chão para pôr a forma · Esc solta","Click a roof, a wall or the ground to put the shape there · Esc lets go"
-hint.builder.primCylinder,"Clique num telhado, numa parede ou no chão para pôr a forma · Esc solta","Click a roof, a wall or the ground to put the shape there · Esc lets go"
-hint.builder.primOctagonal,"Clique num telhado, numa parede ou no chão para pôr a forma · Esc solta","Click a roof, a wall or the ground to put the shape there · Esc lets go"
-hint.builder.primPrism,"Clique num telhado, numa parede ou no chão para pôr a forma · Esc solta","Click a roof, a wall or the ground to put the shape there · Esc lets go"
-hint.builder.primPyramid,"Clique num telhado, numa parede ou no chão para pôr a forma · Esc solta","Click a roof, a wall or the ground to put the shape there · Esc lets go"
-hint.builder.primWedge,"Clique num telhado, numa parede ou no chão para pôr a forma · Esc solta","Click a roof, a wall or the ground to put the shape there · Esc lets go"
+hint.builder.prim,"Clique num telhado, numa parede ou no chão para pôr a forma · Esc solta","Click a roof, a wall or the ground to put the shape there · Esc lets go"
 hint.builder.pushpull,Clique numa região da face e empurre ou puxe a seta amarela,"Click a face region, then push or pull the yellow arrow"
 hint.builder.railing,Aponte para uma fachada e clique: o corrimão corre ao longo dela,Point at a facade and click: a railing runs along it
 hint.builder.ramp,Aponte para uma fachada e clique: a rampa desce daquele pavimento,Point at a facade and click: the ramp runs down from that floor

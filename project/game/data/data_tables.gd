@@ -167,6 +167,14 @@ static func zone_code(id: String) -> int:
 	return -1
 
 
+## The text key of zone code `code` (zones.json name_key), "" when there is none.
+static func zone_name_key(code: int) -> String:
+	for z: Dictionary in catalog_table("zones").zones:
+		if int(z.code) == code:
+			return z.name_key
+	return ""
+
+
 static func render() -> Dictionary:
 	return _group(RENDER_TABLES)
 

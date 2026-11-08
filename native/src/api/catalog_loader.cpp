@@ -103,7 +103,6 @@ void load_zones(DataReader top, const Dictionary &t, Catalog &c) {
 		}
 		ZoneDef &z = c.zones[code];
 		z.id = r.utf8(d, "id");
-		z.name_key = r.utf8(d, "name_key");
 		z.base = r.integer(d, "base");
 		if (z.base < 0 || z.base >= BASE_COUNT) r.fail("a base past the base zones (BaseZone)");
 		z.density = r.integer(d, "density");

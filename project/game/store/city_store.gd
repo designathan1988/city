@@ -64,7 +64,9 @@ func boot(terrain: Node, materials: Dictionary, catalog: Dictionary = {}, render
 	if not errors.is_empty():
 		return errors
 	_core.terrain_path = _core.get_path_to(terrain)
-	var problems: PackedStringArray = _core.setup_render(DataTables.render() if render.is_empty() else render, materials)
+	var tables: Dictionary = (DataTables.render() if render.is_empty() else render).duplicate()
+	tables["camera"] = DataTables.game("camera") # the camera's far lens, which the building levels' bands are measured for
+	var problems: PackedStringArray = _core.setup_render(tables, materials)
 	DataTables.release_boot_tables()
 	return problems
 

@@ -3,7 +3,6 @@
  "strict": true,
  "required": [
   "_doc",
-  "fireball",
   "bursts",
   "puffs",
   "burn",
@@ -116,22 +115,6 @@
      "type": "number"
     },
     "light_life_s": {
-     "type": "number"
-    }
-   }
-  },
-  "fireball": {
-   "type": "object",
-   "strict": true,
-   "required": [
-    "base_m",
-    "per_force_m"
-   ],
-   "properties": {
-    "base_m": {
-     "type": "number"
-    },
-    "per_force_m": {
      "type": "number"
     }
    }

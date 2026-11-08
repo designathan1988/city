@@ -5,12 +5,8 @@ hint.tool.inspect,Clique num cruzamento para mudar o controle ou numa via para v
 hint.tool.landform,Arraste para erguer o relevo escolhido (o pão de açúcar também com um clique); [ e ] mudam o tamanho.,Drag to raise the chosen landform (the sugarloaf also with a click); [ and ] change the size.
 hint.tool.lower,Arraste para rebaixar o terreno; [ e ] mudam o tamanho do pincel.,Drag to lower the terrain; [ and ] change the brush size.
 hint.tool.paint,Arraste para pintar o chão (Grama apaga a pintura).,Drag to paint the ground (Grass erases paint).
-hint.tool.person,Escolha a roupa e a altura e clique: a pessoa fica ali parada ou sai andando pela calçada.,Choose clothes and height and click: the person stands there or walks off along the sidewalk.
-hint.tool.pistol,Clique numa pessoa: ela cai e some.,Click a person: they fall and disappear.
 hint.tool.raise,Arraste para elevar o terreno; [ e ] mudam o tamanho do pincel.,Drag to raise the terrain; [ and ] change the brush size.
-hint.tool.river,"Clique os pontos do rio, de cima para baixo; Enter ou duplo clique termina, Backspace volta, Esc descarta.","Click the river points from upstream down; Enter or double-click ends, Backspace steps back, Esc discards."
 hint.tool.smooth,Arraste para alisar o terreno.,Drag to smooth the terrain.
-hint.tool.transit,Clique na calçada para pôr paradas na linha; clique numa parada para tirar; Shift+clique torna a parada terminal.,Click a sidewalk to add stops to the line; click a stop to remove it; Shift+click makes it a terminal.
 hint.tool.weather,"Ajuste chuva, vento e raios; clique no mapa para cair um raio ali.","Set rain, wind and lightning; click the map to strike lightning there."
 hint.tool.zone,Arraste para pintar a zona dos lados das vias; os prédios crescem sozinhos.,Drag to paint the zone along the roads; buildings grow by themselves.
 hint.uturn.placed,Retorno aberto no canteiro.,U-turn opened in the median.
@@ -438,8 +434,6 @@ save.fallback,"O último salvamento estava danificado; foi aberto o salvamento a
 save.file.cut,o arquivo de mapa está cortado,the map file is cut short
 save.file.damaged,o arquivo de mapa está danificado,the map file is damaged
 save.file.newer,o mapa foi salvo por uma versão mais nova do jogo,the map was saved by a newer version of the game
-save.file.notMap,esse arquivo não é um mapa do Roadcraft,this file is not a Roadcraft map
-save.importFailed,Não abriu: {why}. O salvamento atual não foi tocado.,Not opened: {why}. The current save was not touched.
 save.keepFailed,Não foi possível salvar: a cidade salva antes não pôde ser guardada ({message}). Nada foi gravado.,Could not save: the city saved before could not be kept aside ({message}). Nothing was written.
 save.keptPrevious,"A cidade salva antes foi guardada em ""{folder}"".","The city saved before was kept in ""{folder}""."
 save.loaded,Cidade carregada.,City loaded.

@@ -76,7 +76,7 @@ bool TransitRenderer::init(const RenderContext &ctx, PackedStringArray &errors) 
 	const Dictionary t = ctx.table("transit", errors);
 	if (!errors.is_empty() || !look_.read(t, errors)) return false;
 	const int64_t before = errors.size();
-	look_.kerb = DataReader{ errors, "streets.json" }.at(ctx.table("streets", errors))["heights"]["sidewalk"].f(); // render/data_reader.h
+	look_.kerb = ctx.catalog->furniture.sidewalk.height_m;
 	const DataValue table = DataReader{ errors, "transit.json" }.at(t);
 	radius_ = table["radius_m"].f();
 	per_frame_ = table["items_per_frame"].whole();

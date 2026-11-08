@@ -15,12 +15,16 @@
     },
     "kerb_clear_m": {
      "type": "number"
+    },
+    "height_m": {
+     "type": "number"
     }
    },
    "required": [
     "_doc",
     "free_width_m",
-    "kerb_clear_m"
+    "kerb_clear_m",
+    "height_m"
    ],
    "strict": true
   },

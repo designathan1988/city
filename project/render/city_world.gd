@@ -41,6 +41,15 @@ func _ready() -> void:
 	add_child(sky)
 
 
+## A material's parameters: the shared sets it uses (materials.json _shared), then its own.
+static func material_params(table: Dictionary, key: String) -> Dictionary:
+	var out := {}
+	for set_name: String in table[key].get("uses", []):
+		out.merge(table._shared[set_name])
+	out.merge(table[key].params, true)
+	return out
+
+
 ## The materials of data/render/materials.json, by name (textures loaded from their res:// paths).
 func materials() -> Dictionary:
 	if _materials.is_empty():
@@ -49,10 +58,11 @@ func materials() -> Dictionary:
 			if key.begins_with("_"):
 				continue
 			var m := EffectMaterials.make(key, table[key], environment)
-			for name in table[key].params:
-				m.set_shader_parameter(name, shader_value(table[key].params[name]))
+			var params := material_params(table, key)
+			for name in params:
+				m.set_shader_parameter(name, shader_value(params[name]))
 			if key == "road":
-				SurfaceMeans.apply(m, table[key].params, shader_value)
+				SurfaceMeans.apply(m, params, shader_value)
 			elif key == "verge":
 				_set_ground(m)
 			elif key == "prop":
