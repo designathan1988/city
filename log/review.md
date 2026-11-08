@@ -3140,6 +3140,23 @@ flag's default colours); the skin's lightness tint is the paint block's.
 **What changes.** Nothing: 681 values in 18 blocks, the generated maps' digest, the hashes and the numbers the same (`quick`:
 45 of 46; the photos are states seen before).
 
+### 6.39 B2, C14 (the interiors): flights, rooms and homes in buildings.json shapes (2026-11-08)
+
+**Cause and fix.** About 150 named constants in `interior_homes.cpp` and as many in `interior_rooms.cpp` placed every piece of
+furniture (§3c); `interior.cpp` held the flights' rise and tread and the rooms' counts, `plan.cpp` the floor plan's margins.
+They are four more blocks of `buildings.json` `shapes` (`interior`, `homes`, `rooms`, `floor_plan`: 260 values), read through
+the `Plan`, `RoomCell` and `Home` a function is given (`flat_plan`, `spaces_of`, `floor_finish` and `level_flights` take the
+`Data`; the render's three callers pass theirs). With 22 blocks the declarations are split by part of the generator
+(`shapes_bodies.h`, `shapes_lots.h`, `shapes_interior.h`, the field macros in `shape_fields.h`, the list in `shapes.h`).
+
+One owner each: a doorway's half width was `HALF_WAY` in two files and `HALF_DOOR` in a third (now `HALF_DOOR` in
+`plan.h`), and the lot access search wrote the garage's wall again (`GARAGE_WALL`, now `shapes.cars.garage_wall`, the
+`SEGUNDO_DONO` the gate named). The render's lift door share was `DOOR_SHARE`, like the flats' door share it is not: it is
+`LIFT_DOOR_SHARE`. Kept in code with their sources: the tolerances, the pick hash, the cooking line's count (its array's size).
+
+**What changes.** Nothing: the digest, the hashes, `interior_test` and the numbers the same (`quick`: 44 of 46; the photos are
+states seen before).
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

@@ -13,6 +13,7 @@
 namespace city::b40 {
 
 constexpr float RIGHT_ANGLE = PI_F / 2;
+constexpr float HALF_DOOR = 0.5f; // half the opening a room's door leaves in its wall (a 1 m doorway)
 // The way a piece faces, as a direction in the floor's own axes (+y away from the street).
 inline float face(float dx, float dy) { return std::atan2(dx, -dy); }
 
@@ -27,7 +28,7 @@ struct FlatPlan {
 };
 // A floor of one block as homes of `group_bays` bays: a corridor down its long axis when it is deep enough for homes
 // both sides.
-FlatPlan flat_plan(const Volume &v, int group_bays);
+FlatPlan flat_plan(const Data &data, const Volume &v, int group_bays);
 
 class Plan {
 public:

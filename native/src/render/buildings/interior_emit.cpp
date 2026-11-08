@@ -20,7 +20,7 @@ constexpr float WALL_HALF = 0.06f; // an inner wall is 12 cm thick
 constexpr float WALL_CLEAR = 0.4f, WALL_MAX = 2.7f; // an inner wall stands the storey's height less this, at most this high
 constexpr float LOWER_DOT = 0.6f; // a wall whose normal is this close to the camera's line comes down
 constexpr float SHAFT_WALL = 0.2f, SHAFT_CLEAR = 0.3f; // the shaft's walls, and how far under the next floor it stops
-constexpr float LIFT_DOOR_W = 1.2f, DOOR_SHARE = 0.5f, DOOR_H = 2.2f; // the shaft's door at the floor
+constexpr float LIFT_DOOR_W = 1.2f, LIFT_DOOR_SHARE = 0.5f, DOOR_H = 2.2f; // the shaft's door at the floor: at most this wide, this share of the core
 constexpr float CAB_GAP = 0.1f, CAB_LIFT = 0.05f, CAB_H = 2.3f; // the car in the shaft
 
 // The floor of each block that reaches it.
@@ -48,7 +48,7 @@ void cores(Shell &shell, const Placed &pl, const InteriorLook &look, int cut) {
 		shell.box(pl.lot, x0, x1, y1 - SHAFT_WALL, y1, z, top, sl, shaft.finish, SKIP_E2_NEG);
 		shell.box(pl.lot, x0, x0 + SHAFT_WALL, y0, y1 - SHAFT_WALL, z, top, sl, shaft.finish, SKIP_E2_NEG);
 		shell.box(pl.lot, x1 - SHAFT_WALL, x1, y0, y1 - SHAFT_WALL, z, top, sl, shaft.finish, SKIP_E2_NEG);
-		const float door = std::min(b40::core_width(c) * DOOR_SHARE, LIFT_DOOR_W), mid = (x0 + x1) / 2;
+		const float door = std::min(b40::core_width(c) * LIFT_DOOR_SHARE, LIFT_DOOR_W), mid = (x0 + x1) / 2;
 		shell.box(pl.lot, x0 + SHAFT_WALL, mid - door / 2, y0, y0 + SHAFT_WALL, z, top, sl, shaft.finish, SKIP_E2_NEG);
 		shell.box(pl.lot, mid + door / 2, x1 - SHAFT_WALL, y0, y0 + SHAFT_WALL, z, top, sl, shaft.finish, SKIP_E2_NEG);
 		shell.box(pl.lot, mid - door / 2, mid + door / 2, y0, y0 + SHAFT_WALL, z + DOOR_H, top, sl, shaft.finish, SKIP_E2_NEG);
@@ -68,7 +68,7 @@ void cores(Shell &shell, const Placed &pl, const InteriorLook &look, int cut) {
 void flights(Shell &shell, const Placed &pl, const InteriorLook &look, int cut) {
 	const Paint &step = look.paint("step");
 	const Lin lin = paint_lin(step);
-	for (const LevelFlight &f : level_flights(*pl.whole, cut)) {
+	for (const LevelFlight &f : level_flights(*pl.data, *pl.whole, cut)) {
 		const float run = std::hypot(f.top.x - f.foot.x, f.top.y - f.foot.y), ux = (f.top.x - f.foot.x) / run, uy = (f.top.y - f.foot.y) / run;
 		const float tread = run / float(f.risers), rise = (f.z1 - f.z0) / float(f.risers), half = f.width / 2;
 		for (int k = 0; k < f.risers; k++) {
@@ -104,7 +104,7 @@ void emit_interior(Shell &shell, Shell &parts, const Placed &pl) {
 	Interior inside(*pl.data, *pl.whole, purpose_of(*pl.whole, pl.fn, pl.id));
 	const InteriorLook &look = pl.look->interior;
 	const FloorInterior &floor = inside.at(cut);
-	floors(shell, pl, look, cut, floor_finish(inside.purpose(), cut, pl.id));
+	floors(shell, pl, look, cut, floor_finish(*pl.data, inside.purpose(), cut, pl.id));
 	cores(shell, pl, look, cut);
 	partitions(shell, pl, look, cut, floor);
 	flights(shell, pl, look, cut);

@@ -39,12 +39,12 @@ struct LevelFlight {
 	float z0 = 0, z1 = 0, width = 0;
 	int risers = 0;
 };
-std::vector<LevelFlight> level_flights(const Body &b, int level);
+std::vector<LevelFlight> level_flights(const Data &data, const Body &b, int level);
 
 // What the record of function `fn` (BuildingFn) with this body is for; a shop's own trade comes from its seed.
 Purpose purpose_of(const Body &b, int fn, uint32_t seed);
 // A storey's floor: stone where people pass, wood or porcelain at home, one kind for the whole building.
-FloorFinish floor_finish(Purpose p, int level, uint32_t seed);
+FloorFinish floor_finish(const Data &data, Purpose p, int level, uint32_t seed);
 
 class Interior {
 public:

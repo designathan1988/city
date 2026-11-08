@@ -91,7 +91,7 @@ PaneRoom room_at(const Placed &pl, const BayCtx &c, const FloorInterior &floor, 
 	r.ahead = std::max(LEAST_WIDE, first_hit(walls, qx, qy, t.x, t.y, MOST_WIDE));
 	r.sill = h;
 	r.head = c.H - h;
-	r.floor = uint8_t(floor_finish(pl.rooms->purpose(), c.level, pl.id));
+	r.floor = uint8_t(floor_finish(*pl.data, pl.rooms->purpose(), c.level, pl.id));
 	piece_seen(*pl.data, floor, px, py, t, n, r);
 	return r;
 }
