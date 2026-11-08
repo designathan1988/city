@@ -3678,6 +3678,23 @@ differences from `people_look`'s copy stay B3, §6.25).
 
 **What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56).
 
+### 6.65 B2, C14 and C16 (the walkers): the face's model and a person's light in materials.json (2026-11-08)
+
+**Cause and fix.** The people shaders held the 4.0's expression model and a person's light as bare numbers or unsourced
+constants (people_face 28 and 9, people_look 21 and 6, people_pose 3, people_helmet 1, people_far 2): the blink's cycle, the gaze,
+speech's syllables and stress, sobbing, terror, the mood's joy and sadness; the skin's wrap, scatter and sheen, the hair's shade and
+two strand lobes, the inside and charred tones; the helmet's and the far card's roughness. They are `materials.json` params of
+`people` (its body variant copies them), `people_helmet` and `people_far`. The person's hash is named as what it is (Wellons's
+lowbias32, the seed offset by the golden ratio's word), with its bit fields, the face table's channels and the visemes sourced, the
+sparkle's sin hash and the guards named. The byte's top and mask are `bytes.gdshaderinc`'s (`BYTE_MASK_U` for a uint); the skin's
+GGX takes `fresnel`'s `schlick`, its old term exactly (its other differences from the glass's copy stay B3). The face's header named
+a tool that left the repository; it names the asset reader now.
+
+**Proof.** Each file with the moved params and consts put back is HEAD's code line for line, `schlick(x)` the term it returns.
+`quick`: every test passes, the photos byte-equal to the states the earlier changes left (none moves on a walker).
+
+**What changes.** Nothing seen: the same arithmetic, compiled from uniforms (§6.56).
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

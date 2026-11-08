@@ -303,9 +303,29 @@
   }
  },
  "people": {
+  "_doc": "The walkers (render/shaders/people.gdshader, people_face, people_look): the face's expression model as the 4.0's faceExpression.ts drives it (blinks, gaze, speech, sobbing, terror, mood), each vector's parts said at its uniform.",
   "shader": "res://render/shaders/people.gdshader",
   "body_shader": "res://render/shaders/people_body.gdshader",
-  "params": {}
+  "params": {
+   "face_blink": [0.965, 0.22, 0.008],
+   "face_gaze": [0.55, 0.32],
+   "face_talk": [4.2, 0.4],
+   "face_stress_every": 5,
+   "face_sob": [5.5, 0.35, 0.15, 0.45],
+   "face_sob_blink": [0.55, 0.3],
+   "face_scream": [0.7, 0.75, 0.75, 23.0],
+   "face_terror": [0.45, 0.7],
+   "face_mood": [0.3, 0.25, 0.15, 0.35],
+   "inside_tone": [0.09, 0.045, 0.045],
+   "skin_specular": 0.35,
+   "skin_wrap": 0.4,
+   "skin_scatter": [0.32, 0.07, 0.04],
+   "skin_scatter_band": [0.3, 0.62],
+   "hair_shade": 0.25,
+   "hair_lobes": [-0.12, 0.22, 0.2, 0.035],
+   "hair_shine": [140.0, 0.55, 0.4, 26.0],
+   "charred_tone": [0.03, 0.028, 0.026]
+  }
  },
  "people_held": {
   "shader": "res://render/shaders/people_held.gdshader",
@@ -313,11 +333,15 @@
  },
  "people_helmet": {
   "shader": "res://render/shaders/people_helmet.gdshader",
-  "params": {}
+  "params": {
+   "helmet_roughness": 0.3
+  }
  },
  "people_far": {
   "shader": "res://render/shaders/people_far.gdshader",
-  "params": {}
+  "params": {
+   "card_rough": 0.85
+  }
  },
  "overlay": {
   "shader": "res://render/shaders/overlay.gdshader",

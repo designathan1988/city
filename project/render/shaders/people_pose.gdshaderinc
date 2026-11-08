@@ -4,6 +4,7 @@
 // somebody in a vehicle. What they do standing is a clip's number and, as its fraction over PEOPLE_ACT_SPAN, how far into it they are (Pedestrian::act_share):
 // the rest of the standing is the idle. Below zero the clip is played from its start, at the phase in the fourth channel, and not by the clock:
 // somebody crouching, who stands still until it is over, so no walk reads that channel.
+#include "res://render/shaders/bytes.gdshaderinc"
 #include "res://render/shaders/contracts/people.gdshaderinc"
 uniform sampler2D palette : filter_nearest, repeat_disable;
 uniform int block_rows; // a variation's rows of the palette; its walk first
@@ -15,14 +16,14 @@ uniform float clip_seconds[PEOPLE_CLIPS * 2]; // a man's and a woman's, by clip
 uniform int walk_frames[PEOPLE_BODIES]; // by variation
 uniform int body_female[PEOPLE_BODIES];
 
-const float BYTE = 255.0;
+const float SIXTEEN_BIT_TOP = 65535.0; // a 16-bit value's top
 const float IDLE_SPREAD = 0.61803; // each person in another place of the clip (the golden ratio spreads whole numbers evenly)
 
 // One palette row value: 16-bit fixed point over [-PEOPLE_PALETTE_SPAN, PEOPLE_PALETTE_SPAN], high bytes in its first texel, low bytes in the next.
 vec4 palette_row(int texel, int row) {
 	vec4 hi = texelFetch(palette, ivec2(texel * PEOPLE_PALETTE_TEXELS, row), 0);
 	vec4 lo = texelFetch(palette, ivec2(texel * PEOPLE_PALETTE_TEXELS + 1, row), 0);
-	return (hi * 256.0 + lo) * BYTE / 65535.0 * 2.0 * PEOPLE_PALETTE_SPAN - PEOPLE_PALETTE_SPAN;
+	return (hi * BYTE_STEPS + lo) * BYTE_TOP / SIXTEEN_BIT_TOP * 2.0 * PEOPLE_PALETTE_SPAN - PEOPLE_PALETTE_SPAN;
 }
 
 BonePose walk_pose(int bone, int row) {

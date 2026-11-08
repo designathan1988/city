@@ -10,7 +10,7 @@ uniform int head_bone;
 uniform vec4 helmet_rows[PEOPLE_BODIES * PEOPLE_HAND_ROWS]; // by variation, three rows each: the shell at rest
 uniform vec3 helmet_colours[HELMET_COLOURS];
 uniform int colour_count = 1;
-uniform float helmet_roughness = 0.3;
+uniform float helmet_roughness; // materials.json people_helmet
 
 varying vec3 v_colour;
 
