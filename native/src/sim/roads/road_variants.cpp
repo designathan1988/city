@@ -137,9 +137,9 @@ int road_variant(Catalog &c, const RoadVariant &v) {
 	if (spec) {
 		Profile p = composed(c, b, s, v.spec);
 		derive_profile(p, c.prices);
-		c.profiles.push_back(std::move(p));
+		const int id = c.add_profile(std::move(p));
 		c.variants.push_back(v);
-		return int(c.profiles.size()) - 1;
+		return id;
 	}
 	const int lanes = v.lanes > 0 ? v.lanes : s.lanes;
 	if (v.width > 0) fit_width(s, lanes, v.width, c.tune);
@@ -154,14 +154,11 @@ int road_variant(Catalog &c, const RoadVariant &v) {
 	p.strips = strips_of(b, s, lanes, bands, c.tune.road_bay_m);
 	if (lanes != s.lanes) p.centre = lanes <= 1 || s.median > 0 ? "none" : lanes == 2 ? "dashed" : "solid";
 	derive_profile(p, c.prices);
-	c.profiles.push_back(std::move(p));
+	const int id = c.add_profile(std::move(p));
 	c.variants.push_back(v);
-	return int(c.profiles.size()) - 1;
+	return id;
 }
 
-void clear_variants(Catalog &c) {
-	c.profiles.resize(c.profiles.size() - c.variants.size());
-	c.variants.clear();
-}
+void clear_variants(Catalog &c) { c.drop_variants(); }
 
 } // namespace city

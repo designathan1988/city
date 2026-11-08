@@ -14,7 +14,6 @@ using namespace furniture;
 
 namespace {
 // The pieces are looked for this far round a segment's bounds: the widest street's footway.
-constexpr float SEGMENT_PAD_M = 40.f;
 constexpr int CHAIN_GUARD = 4000; // no street runs through more segments
 constexpr int MIN_CORNER_ARMS = 2; // a street's name stands where another street meets it or it goes on
 
@@ -77,8 +76,9 @@ FurnitureKind item_piece(ItemKind k) {
 void merge_street(const StreetWorks &w, const RoadNetwork &net, int sid, uint32_t kinds, std::vector<FurnitureSpot> &out, size_t first) {
 	if (w.empty()) return;
 	const RoadSegment &g = net.segs[size_t(sid)];
-	const float x0 = g.minx - SEGMENT_PAD_M, z0 = g.minz - SEGMENT_PAD_M, x1 = g.maxx + SEGMENT_PAD_M, z1 = g.maxz + SEGMENT_PAD_M;
 	const float stand = defs(net).items.stand_reach_m, cut = defs(net).items.cut_reach_m;
+	const float pad = float(footway_reach(net, stand)); // an item further off stands on no footway of this segment
+	const float x0 = g.minx - pad, z0 = g.minz - pad, x1 = g.maxx + pad, z1 = g.maxz + pad;
 	std::vector<FurnitureSpot> mine;
 	w.items_in(x0, z0, x1, z1, [&](int id) {
 		const StreetItem &it = w.items.items[size_t(id)];

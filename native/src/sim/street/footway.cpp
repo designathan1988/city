@@ -8,7 +8,6 @@
 namespace city {
 
 namespace {
-constexpr float BROADEST_M = 48.f; // no profile reaches farther from its centre line (a query's pad)
 constexpr int ARMS_WITH_CROSSWALK = 3;
 constexpr float BESIDE_M = 0.05f; // the closest-point search's own error: under this a point is beside the segment
 
@@ -29,10 +28,14 @@ bool strip_at(const Profile &p, float u, StripKind kind, float &centre) {
 }
 
 // Whether (x, z) lies along a segment at an offset `band` accepts.
+// The farthest a point beside a segment (`past` under BESIDE_M) and on its profile may stand from the centre line.
+double band_reach(const RoadNetwork &net) { return std::hypot(double(net.cat->widest_half()), double(BESIDE_M)); }
+
 template <typename F>
 bool on_band(const RoadNetwork &net, double x, double z, F &&band) {
 	bool on = false;
-	net.for_segments_near(x - BROADEST_M, z - BROADEST_M, x + BROADEST_M, z + BROADEST_M, [&](int sid) {
+	const double r = band_reach(net);
+	net.for_segments_near(x - r, z - r, x + r, z + r, [&](int sid) {
 		const Profile &p = net.profile_of(sid);
 		if (on || p.edges.empty()) return;
 		double v;
@@ -78,10 +81,12 @@ void segment_place(const RoadNetwork &net, int seg, double x, double z, double &
 	past = float(std::fabs((x - cx) * fx + (z - cz) * fz));
 }
 
+double footway_reach(const RoadNetwork &net, double reach) { return std::hypot(double(net.cat->widest_half()) + reach, reach); }
+
 FootwayHit footway_at(const RoadNetwork &net, double x, double z, double reach) {
 	FootwayHit best;
 	best.away = std::numeric_limits<float>::max();
-	const double r = reach + BROADEST_M;
+	const double r = footway_reach(net, reach);
 	net.for_segments_near(x - r, z - r, x + r, z + r, [&](int sid) {
 		const RoadSegment &g = net.segs[size_t(sid)];
 		const Profile &p = net.profile_of(sid);
@@ -113,7 +118,8 @@ FootwayHit footway_at(const RoadNetwork &net, double x, double z, double reach) 
 
 FootwayHit median_at(const RoadNetwork &net, double x, double z, double reach) {
 	FootwayHit hit;
-	net.for_segments_near(x - BROADEST_M, z - BROADEST_M, x + BROADEST_M, z + BROADEST_M, [&](int sid) {
+	const double r = band_reach(net);
+	net.for_segments_near(x - r, z - r, x + r, z + r, [&](int sid) {
 		const RoadSegment &g = net.segs[size_t(sid)];
 		const Profile &p = net.profile_of(sid);
 		double v;

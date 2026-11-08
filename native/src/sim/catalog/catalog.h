@@ -12,6 +12,7 @@
 
 #include <cstdint>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace city {
@@ -100,11 +101,44 @@ struct Catalog {
 		return m.scenic >= 0 && size_t(m.scenic) < scenic.size() ? &scenic[size_t(m.scenic)] : nullptr;
 	}
 	const ZoneDef &zone(int code) const { return zones[(code >= 0 && code < ZONE_CODES) ? code : 0]; }
-	float widest_half() const {
-		float w = 0;
-		for (const Profile &p : profiles) w = w > p.half() ? w : p.half();
-		return w;
+
+	// A profile added: the catalogue's own at load, a variant in play (road_variants.cpp). The one way a profile comes, so what is
+	// derived from all of them is kept here as each comes, never searched again per call. Returns its id.
+	int add_profile(Profile p) {
+		const int id = int(profiles.size());
+		derive_from(p, id);
+		profiles.push_back(std::move(p));
+		return id;
 	}
+	// The variants dropped (a new city): what is derived is worked out again over the catalogue's own.
+	void drop_variants() {
+		profiles.resize(profiles.size() - variants.size());
+		variants.clear();
+		widest_half_ = widest_sidewalk_half_ = 0;
+		ring_profile_ = -1;
+		for (size_t i = 0; i < profiles.size(); i++) derive_from(profiles[i], int(i));
+	}
+	// The widest reach either side of a centre line among the profiles.
+	float widest_half() const { return widest_half_; }
+	// The widest half of a kerbside sidewalk (the first or last strip) among the profiles.
+	float widest_sidewalk_half() const { return widest_sidewalk_half_; }
+	// The first profile a roundabout's ring is laid with, -1 when the catalogue has none.
+	int ring_profile() const { return ring_profile_; }
+
+private:
+	void derive_from(const Profile &p, int id) {
+		widest_half_ = widest_half_ > p.half() ? widest_half_ : p.half();
+		if (!p.edges.empty())
+			for (const StripEdge *e : { &p.edges.front(), &p.edges.back() })
+				if (e->strip.kind == StripKind::SIDEWALK) {
+					const float half = (e->u1 - e->u0) * HALF_OF;
+					widest_sidewalk_half_ = widest_sidewalk_half_ > half ? widest_sidewalk_half_ : half;
+				}
+		if (ring_profile_ < 0 && p.ring) ring_profile_ = id;
+	}
+	static constexpr float HALF_OF = 0.5f;
+	float widest_half_ = 0, widest_sidewalk_half_ = 0;
+	int ring_profile_ = -1;
 };
 
 } // namespace city

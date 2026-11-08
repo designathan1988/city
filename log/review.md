@@ -2340,6 +2340,24 @@ standing body is another, and after a load the look is worked out again from the
 load differs from growth without them. The fix (looks derived from the kept body, `BuildingStore::looks` deleted, `look_twins`
 under the shared lock: A7) moves the generated city where a cap shaped a candidate.
 
+### 6.12 B2, C7 (R8): what is derived from the profiles has an owner (2026-11-08)
+
+**Cause.** The profiles grow in play (a variant is a profile appended: `road_variants.cpp`) and nothing owned what is derived from
+all of them, so each reader searched them again: the widest half per call (`Catalog::widest_half`, again in `road_snap.cpp` per
+pointer move), the widest sidewalk per traffic tick (`ped_crowd.cpp`), the ring profile per roundabout command; and four places
+wrote their own guess of the widest street instead (`footway.cpp` 48, `street_spots.cpp` 40, `road_edit.cpp` 40,
+`transit_ground.cpp` 4 x 12), short of a player's own wide road (lanes up to 6 m, sidewalks up to 12 m).
+
+**Fix.** `Catalog::add_profile` is the one way a profile comes (the loader and a variant) and keeps the widest half, the widest
+kerbside sidewalk and the first ring profile as each comes; `drop_variants` works them out again over the catalogue's own. Each
+guessed pad is now the exact reach of what its search accepts, from the widest half: a point on a segment's band
+(`hypot(widest, BESIDE_M)`: `on_band`, `median_at`), a point whose footway is within `reach` (`footway_reach`: `footway_at`, the
+items a segment merges, the segments a placed item marks), a point within a profile's half (`transit_paved`). On every map of
+the tests the old pads held the exact reach, so nothing moves; on a wider road the search no longer misses what it accepts.
+
+**Verified** (`city-verify`, `quick --all`): 44 of 45, the digest equal, `gates_changed` clean, `00-cidade` byte-equal to the
+state the B0 DLL gave (22:49) and to five other runs before C7.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

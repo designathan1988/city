@@ -88,7 +88,7 @@ void load_profiles(DataReader top, const Dictionary &t, Catalog &c) {
 		for (int k = 0; k < strips.size(); k++) p.strips.push_back(strip_of(r.in("strips").in(k), r.in("strips").table_at(strips, k)));
 		if (p.strips.empty()) r.fail("a profile with no strips");
 		else derive_profile(p, c.prices);
-		c.profiles.push_back(p);
+		c.add_profile(std::move(p));
 	}
 }
 

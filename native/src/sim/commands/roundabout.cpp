@@ -30,12 +30,6 @@ struct Entry {
 	int node = -1;
 };
 
-int ring_profile(const Catalog &c) {
-	for (size_t i = 0; i < c.profiles.size(); i++)
-		if (c.profiles[i].ring) return int(i);
-	return -1;
-}
-
 double ring_angle(double x, double z, double cx, double cz) { return std::atan2(-(z - cz), x - cx); }
 
 struct Builder {
@@ -133,7 +127,7 @@ std::vector<int> Builder::ring_segments() {
 } // namespace
 
 std::string roundabout_refusal(const CityState &s, double cx, double cz, double radius, bool cut) {
-	int ring = ring_profile(s.catalog);
+	int ring = s.catalog.ring_profile();
 	const Tuning &tn = s.catalog.tune;
 	if (ring < 0 || radius < tn.roundabout_radius_min_m || radius > tn.roundabout_radius_max_m) return "tool.failed";
 	if (!s.terrain.in_bounds(float(cx), float(cz), float(radius + tn.roundabout_approach_m))) return "road.move.outside";
@@ -165,7 +159,7 @@ EditResult build_roundabout(CityState &s, double cx, double cz, double radius, b
 	EditResult r;
 	r.error = roundabout_refusal(s, cx, cz, radius, cut);
 	if (!r.error.empty()) return r;
-	int ring = ring_profile(s.catalog);
+	int ring = s.catalog.ring_profile();
 	const double reach = radius + s.catalog.profile(ring).right + s.catalog.tune.roundabout_approach_m;
 	RoadBox box;
 	box.add(cx - reach, cz - reach);
