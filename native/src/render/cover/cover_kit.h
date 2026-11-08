@@ -4,6 +4,8 @@
 // it. A kind says how far apart its plants may stand and how big they grow; where they stand is cover_renderer.cpp's.
 #pragma once
 
+#include "render/data_reader.h"
+
 #include <godot_cpp/classes/array_mesh.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
@@ -24,7 +26,7 @@ struct CoverLook {
 
 class CoverKit {
 public:
-	bool build(const godot::Dictionary &table, godot::PackedStringArray &errors);
+	bool build(const DataValue &table, godot::PackedStringArray &errors); // cover.json, through the strict reader's values
 	const CoverLook &look(CoverPiece p) const { return looks_[size_t(p)]; }
 	float reach_m = 0, fade_m = 0, tuft_share = 0;
 

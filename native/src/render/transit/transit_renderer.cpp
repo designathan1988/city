@@ -1,5 +1,6 @@
 // See transit_renderer.h. An item is a track or a stop; its signature is what it is drawn from, so a plan's edit makes again only what it moved.
 #include "render/transit/transit_renderer.h"
+#include "render/data_reader.h"
 
 #include "core/grid.h"
 #include "render/agents/people_renderer.h"
@@ -74,9 +75,12 @@ bool TransitRenderer::init(const RenderContext &ctx, PackedStringArray &errors) 
 	for (int i = 0; i < TRANSIT_XRAY_LAYERS; i++) xray_[i] = ctx.material((std::string("transit_xray_") + std::to_string(i)).c_str(), errors);
 	const Dictionary t = ctx.table("transit", errors);
 	if (!errors.is_empty() || !look_.read(t, errors)) return false;
-	look_.kerb = Dictionary(Dictionary(ctx.table("streets", errors))["heights"])["sidewalk"];
-	radius_ = t["radius_m"];
-	per_frame_ = t["items_per_frame"];
+	const int64_t before = errors.size();
+	look_.kerb = DataReader{ errors, "streets.json" }.at(ctx.table("streets", errors))["heights"]["sidewalk"].f(); // render/data_reader.h
+	const DataValue table = DataReader{ errors, "transit.json" }.at(t);
+	radius_ = table["radius_m"].f();
+	per_frame_ = table["items_per_frame"].whole();
+	if (errors.size() != before) return false;
 	TransitMeshes car;
 	transit_box(car, look_, look_.car_part, Vector3(0, look_.car_up, 0), V2(0, 1), look_.car);
 	RenderingServer *rs = RenderingServer::get_singleton();

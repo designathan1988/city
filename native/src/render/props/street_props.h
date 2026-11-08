@@ -4,6 +4,7 @@
 // world pose of each place and the wires' look. The meshes are render/props/prop_kit.h, the trees render/trees.
 #pragma once
 
+#include "render/data_reader.h"
 #include "render/props/prop_kit.h"
 #include "render/roads/road_look.h"
 #include "sim/state/city_state.h"
@@ -32,7 +33,7 @@ struct FurnitureLook {
 	WireLook wire;
 	bool beams = false;
 	float beam_radius = 0, lamp_height = 0, lamp_reach = 0, column_height = 0, column_reach = 0;
-	bool load(const godot::Dictionary &t, godot::PackedStringArray &errors);
+	bool load(const DataValue &t, godot::PackedStringArray &errors);
 };
 
 // A signal post: the approach it shows (directed segment into the junction) and its place (PropKind::SIGNAL).

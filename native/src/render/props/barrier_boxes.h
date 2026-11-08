@@ -1,6 +1,7 @@
 // The boxes of the barriers of a chunk, see barrier_boxes.cpp.
 #pragma once
 
+#include "render/data_reader.h"
 #include "render/props/street_props.h"
 
 #include <vector>
@@ -20,7 +21,7 @@ struct BarrierLook {
 	float rail_step_m = 0, rail_post_m = 0, bar_m = 0, bar_low_m = 0, bar_thin_m = 0, bar_step_m = 0, bar_top_m = 0, bar_foot_m = 0;
 	std::vector<float> rail_levels;
 	BarrierFinish wall, coping, hedge, fence, beam, guard_post, railing;
-	bool load(const godot::Dictionary &t, godot::PackedStringArray &errors);
+	bool load(const DataValue &t, godot::PackedStringArray &errors);
 };
 
 void place_barriers(const CityState &s, const StreetLook &L, const BarrierLook &B, int64_t key, godot::PackedFloat32Array &buf,

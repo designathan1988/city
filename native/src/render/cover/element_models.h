@@ -3,6 +3,7 @@
 // flat quad of their texture. An item picks its variant by its seed.
 #pragma once
 
+#include "render/data_reader.h"
 #include <godot_cpp/classes/mesh.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
@@ -19,7 +20,7 @@ struct ElementModel {
 
 class ElementModels {
 public:
-	bool load(const godot::Dictionary &elements, godot::PackedStringArray &errors);
+	bool load(const DataValue &elements, godot::PackedStringArray &errors); // cover.json elements, through the strict reader's values
 	int kinds() const { return int(first_.size()); } // the prop kinds, effects not among them
 	int first(int kind) const { return first_[size_t(kind)]; }
 	int variants(int kind) const { return count_[size_t(kind)]; }

@@ -67,25 +67,18 @@ void stand(MeshBuilder &mb, const SignLook &K, SignAtlas &atlas, const StreetLoo
 }
 } // namespace
 
-bool SignLook::load(const Dictionary &t, PackedStringArray &errors) {
-	if (!t.has("signs")) {
-		errors.push_back("streets.json: falta signs");
-		return false;
-	}
-	const Dictionary d = t["signs"], plates = d["plates"];
-	sheet_w = d["sheet_w_px"]; sheet_h = d["sheet_h_px"]; cell = d["plate_cell_px"]; blade_w = d["blade_cell_w_px"]; blade_h = d["blade_cell_h_px"];
-	post_radius = d["post_radius_m"]; post_sides = d["post_sides"]; face_out = d["face_out_m"]; blade_half = d["blade_half_m"];
-	post = rgba8_to_color(parse_hex_color(String(d["post_color"]).utf8().get_data()));
-	back = rgba8_to_color(parse_hex_color(String(d["back_color"]).utf8().get_data()));
+bool SignLook::load(const DataValue &t, PackedStringArray &errors) {
+	const int64_t before = errors.size();
+	const DataValue d = t["signs"], plates = d["plates"];
+	sheet_w = d["sheet_w_px"].whole(); sheet_h = d["sheet_h_px"].whole(); cell = d["plate_cell_px"].whole(); blade_w = d["blade_cell_w_px"].whole(); blade_h = d["blade_cell_h_px"].whole();
+	post_radius = d["post_radius_m"].f(); post_sides = d["post_sides"].whole(); face_out = d["face_out_m"].f(); blade_half = d["blade_half_m"].f();
+	post = rgba8_to_color(d["post_color"].colour());
+	back = rgba8_to_color(d["back_color"].colour());
 	for (int k = 0; k < SIGN_TYPES; k++) {
-		if (!plates.has(PLATE_KEYS[k])) {
-			errors.push_back(String("streets.json signs.plates: falta ") + PLATE_KEYS[k]);
-			continue;
-		}
-		const Dictionary p = plates[PLATE_KEYS[k]];
-		plate[k] = { float(p["w_m"]), float(p["h_m"]), float(p["z_m"]), float(p["rotation"]), int(p["outline_points"]) };
+		const DataValue p = plates[PLATE_KEYS[k]];
+		plate[k] = { p["w_m"].f(), p["h_m"].f(), p["z_m"].f(), p["rotation"].f(), p["outline_points"].whole() };
 	}
-	return errors.is_empty();
+	return errors.size() == before;
 }
 
 void place_signs(const CityState &s, const StreetLook &L, const SignLook &K, SignAtlas &atlas, int64_t key, MeshBuilder &mb) {

@@ -22,11 +22,6 @@ constexpr float BEAM_LENS = 0.075f; // the cut apex over the radius at the groun
 constexpr float LIGHT_BEAM_PART = 2.f;
 const Color WHITE(1, 1, 1, 1);
 
-Vector3 vec3(const Variant &v) {
-	Array a = v;
-	return a.size() == 3 ? Vector3(float(a[0]), float(a[1]), float(a[2])) : Vector3();
-}
-
 // A cylinder narrowing from r0 at its base to r1 at its top, its top closed.
 void frustum(MeshBuilder &b, const Vector3 &base, float r0, float r1, float h, int seg, const Color &col, const Vector2 &t2) {
 	const Vector3 top = base + Vector3(0, h, 0), up(0, 1, 0);
@@ -58,27 +53,29 @@ void beam(MeshBuilder &b, const Vector3 &from, const Vector3 &to, float w, float
 	b.quad(to + c[0], to + c[1], to + c[2], to + c[3], col, along, nullptr, t2);
 }
 
-// One part in `col`, its UV2 `t2` (its PropTag; a lens's Lens or a pole's PolePart in y).
-void shape(MeshBuilder &b, const Dictionary &p, const Color &col, const Vector2 &t2, PackedStringArray &errors) {
-	String shape = p.get("shape", "");
-	if (shape == "box") b.box(vec3(p["min"]), vec3(p["max"]), col, t2, true);
-	else if (shape == "cylinder") b.cylinder(vec3(p["base"]), float(p["radius"]), float(p["height"]), int(p["segments"]), col, true, t2);
-	else if (shape == "blob") b.blob(vec3(p["center"]), vec3(p["radius"]), col, t2);
-	else if (shape == "frustum") frustum(b, vec3(p["base"]), float(p["radius"]), float(p["top_radius"]), float(p["height"]), int(p["segments"]), col, t2);
-	else if (shape == "beam") beam(b, vec3(p["from"]), vec3(p["to"]), float(p["width"]), float(p["thick"]), col, t2);
-	else errors.push_back(String("streets.json props: forma desconhecida '") + shape + "'");
+// One part in `col`, its UV2 `t2` (its PropTag; a lens's Lens or a pole's PolePart in y); `most_sides` caps a round part's sides
+// (0: its own).
+void shape(MeshBuilder &b, const DataValue &p, const Color &col, const Vector2 &t2, int most_sides = 0) {
+	const String shape = p["shape"].text();
+	const auto sides = [&]() { const int s = p["segments"].whole(); return most_sides > 0 ? std::min(s, most_sides) : s; };
+	if (shape == "box") b.box(p["min"].v3(), p["max"].v3(), col, t2, true);
+	else if (shape == "cylinder") b.cylinder(p["base"].v3(), p["radius"].f(), p["height"].f(), sides(), col, true, t2);
+	else if (shape == "blob") b.blob(p["center"].v3(), p["radius"].v3(), col, t2);
+	else if (shape == "frustum") frustum(b, p["base"].v3(), p["radius"].f(), p["top_radius"].f(), p["height"].f(), sides(), col, t2);
+	else if (shape == "beam") beam(b, p["from"].v3(), p["to"].v3(), p["width"].f(), p["thick"].f(), col, t2);
+	else p["shape"].fail(String("unknown shape '") + shape + String("'"));
 }
 
-Color part_color(const Dictionary &p) {
-	return rgba8_to_color(parse_hex_color(String(p.get("color", "")).utf8().get_data()));
+Color part_color(const DataValue &p) { return rgba8_to_color(p["color"].colour()); }
+
+PropTag part_tag(const DataValue &p) {
+	if (p.has("glow") && p["glow"].text() == "night") return PropTag::NIGHT_GLOW;
+	if (!(p.has("wood") && p["wood"].flag())) return PropTag::FIXED;
+	return p["shape"].text() == "box" ? PropTag::PLANK : PropTag::WOOD; // sawn, or a trunk
 }
 
-PropTag part_tag(const Dictionary &p) {
-	const String look = p.get("glow", "");
-	if (look == "night") return PropTag::NIGHT_GLOW;
-	if (!bool(p.get("wood", false))) return PropTag::FIXED;
-	return String(p.get("shape", "")) == "box" ? PropTag::PLANK : PropTag::WOOD; // sawn, or a trunk
-}
+// The pole part a part is (props.gdshader shows or hides each per pole), 0 when it says none.
+float part_of(const DataValue &p) { return p.has("part") ? p["part"].f() : 0.f; }
 
 // Where on itself a part's vertices lie, for the surface the shader gives it: a plank's length and across it, anything else its height off the ground (props.gdshader).
 void mark_surface(MeshBuilder &b, int64_t from, PropTag tag) {
@@ -89,46 +86,41 @@ void mark_surface(MeshBuilder &b, int64_t from, PropTag tag) {
 }
 
 // A prop's parts, its lenses (parts with "lens") left to PropKit::lenses.
-MeshBuilder parts(const Dictionary &props, const char *name, PackedStringArray &errors) {
+MeshBuilder parts(const DataValue &props, const char *name) {
 	MeshBuilder b;
-	if (!props.has(name)) {
-		errors.push_back(String("streets.json props: falta ") + name);
-		return b;
-	}
-	Array list = props[name];
+	const DataValue list = props[name];
 	for (int i = 0; i < list.size(); i++) {
-		const Dictionary p = list[i];
+		const DataValue p = list[i];
 		if (p.has("lens")) continue;
 		const int64_t from = b.v.size();
-		shape(b, p, part_color(p), Vector2(float(int(part_tag(p))), float(p.get("part", 0))), errors);
+		shape(b, p, part_color(p), Vector2(float(int(part_tag(p))), part_of(p)));
 		mark_surface(b, from, part_tag(p));
 	}
 	return b;
 }
 
 // The longest side of a part: what decides whether its shadow reads.
-float part_size(const Dictionary &p) {
-	const String kind = p.get("shape", "");
+float part_size(const DataValue &p) {
+	const String kind = p["shape"].text();
 	if (kind == "box") {
-		const Vector3 d = vec3(p["max"]) - vec3(p["min"]);
+		const Vector3 d = p["max"].v3() - p["min"].v3();
 		return std::max({ std::fabs(d.x), std::fabs(d.y), std::fabs(d.z) });
 	}
-	if (kind == "cylinder" || kind == "frustum") return std::max(float(p["height"]), 2.f * float(p["radius"]));
+	if (kind == "cylinder" || kind == "frustum") return std::max(p["height"].f(), 2.f * p["radius"].f());
 	return BIG;
 }
 
 // What a far prop casts: its parts long enough to show in a shadow, round ones with fewer sides. The parts keep their marks, so
 // the shader that shows or hides them per instance goes on working.
-MeshBuilder cast_parts(const Dictionary &props, const char *name, const Dictionary &cast, PackedStringArray &errors) {
+MeshBuilder cast_parts(const DataValue &props, const char *name, const DataValue &cast) {
 	MeshBuilder b;
-	const Array list = props[name];
-	const float least = cast["least_m"];
-	const int sides = cast["segments"];
+	const DataValue list = props[name];
+	const float least = cast["least_m"].f();
+	const int sides = cast["segments"].whole();
 	for (int i = 0; i < list.size(); i++) {
-		Dictionary p = Dictionary(list[i]).duplicate();
+		const DataValue p = list[i];
 		if (p.has("lens") || part_size(p) < least) continue;
-		if (p.has("segments")) p["segments"] = std::min(int(p["segments"]), sides);
-		shape(b, p, part_color(p), Vector2(float(int(part_tag(p))), float(p.get("part", 0))), errors);
+		shape(b, p, part_color(p), Vector2(float(int(part_tag(p))), part_of(p)), sides);
 	}
 	return b;
 }
@@ -151,12 +143,12 @@ void wire_tube(MeshBuilder &b, const Vector2 &place, float rural_seat, const Col
 
 // Every wire of a span (streets.json wires): the primary ones at y_m[0], the i-th on seat i along the arm (z_m on an urban pole,
 // rural_z_m on a rural one), then the secondary ones at the rest of y_m, on the urban rack (secondary_z_m).
-void wire_mesh(MeshBuilder &b, const Dictionary &wires, int chords, int sides) {
-	const Array ys = wires["y_m"], urban = wires["z_m"], rural = wires["rural_z_m"];
-	const Color colour = rgba8_to_color(parse_hex_color(String(wires["color"]).utf8().get_data()));
-	const float radius = wires["radius_m"];
-	for (int k = 0; k < urban.size(); k++) wire_tube(b, Vector2(float(ys[0]), float(urban[k])), float(rural[k]), colour, radius, chords, sides);
-	for (int i = 1; i < ys.size(); i++) wire_tube(b, Vector2(float(ys[i]), float(wires["secondary_z_m"])), WIRE_SECONDARY_MARK, colour, radius, chords, sides);
+void wire_mesh(MeshBuilder &b, const DataValue &wires, int chords, int sides) {
+	const DataValue ys = wires["y_m"], urban = wires["z_m"], rural = wires["rural_z_m"];
+	const Color colour = rgba8_to_color(wires["color"].colour());
+	const float radius = wires["radius_m"].f();
+	for (int k = 0; k < urban.size(); k++) wire_tube(b, Vector2(ys[0].f(), urban[k].f()), rural[k].f(), colour, radius, chords, sides);
+	for (int i = 1; i < ys.size(); i++) wire_tube(b, Vector2(ys[i].f(), wires["secondary_z_m"].f()), WIRE_SECONDARY_MARK, colour, radius, chords, sides);
 }
 
 void light_mesh(MeshBuilder &b) {
@@ -181,69 +173,68 @@ void light_mesh(MeshBuilder &b) {
 			b.tri(c, d, e, out);
 		}
 }
-} // namespace
-
 // A steel sheet bent along x, from -0.5 to 0.5: `section` its points across, [y, z] in the unit box; both faces seen.
-void sheet_mesh(MeshBuilder &b, const Array &section) {
+void sheet_mesh(MeshBuilder &b, const DataValue &section) {
 	const Vector2 t2(float(int(PropTag::FINISHED)), 0);
 	const float half = 0.5f;
 	for (int i = 0; i + 1 < section.size(); i++) {
-		const Array p = section[i], q = section[i + 1];
-		const Vector3 a(-half, float(p[0]), float(p[1])), c(-half, float(q[0]), float(q[1]));
+		const Vector2 p = section[i].v2(), q = section[i + 1].v2();
+		const Vector3 a(-half, p.x, p.y), c(-half, q.x, q.y);
 		const Vector3 d(half, c.y, c.z), e(half, a.y, a.z);
 		const Vector3 out = (c - a).cross(Vector3(1, 0, 0)).normalized();
 		b.quad(a, c, d, e, WHITE, out, nullptr, t2);
 		b.quad(a, c, d, e, WHITE, -out, nullptr, t2);
 	}
 }
+} // namespace
 
-bool PropKit::build(const Dictionary &props, const Dictionary &wires, const Array &beam_section, PackedStringArray &errors) {
-	meshes_[int(PropKind::SIGNAL)] = parts(props, "signal", errors);
-	meshes_[int(PropKind::HYDRANT)] = parts(props, "hydrant", errors);
-	meshes_[int(PropKind::BIN)] = parts(props, "bin", errors);
-	meshes_[int(PropKind::BENCH)] = parts(props, "bench", errors);
-	meshes_[int(PropKind::POSTBOX)] = parts(props, "postbox", errors);
-	meshes_[int(PropKind::PHONE)] = parts(props, "phone", errors);
-	meshes_[int(PropKind::DRAIN)] = parts(props, "drain", errors);
-	meshes_[int(PropKind::TREE_PIT)] = parts(props, "tree_pit", errors);
-	meshes_[int(PropKind::MEADOW)] = parts(props, "meadow", errors);
-	pole_ = parts(props, "pole", errors);
-	if (!props.has("pole_cast")) errors.push_back("streets.json props: falta pole_cast");
-	if (!errors.is_empty()) return false;
-	const Dictionary cast = props["pole_cast"];
-	pole_cast_ = cast_parts(props, "pole", cast, errors);
-	cast_from_ = cast["from_m"];
-	for (const char *key : { "y_m", "z_m", "rural_z_m", "secondary_z_m" })
-		if (!wires.has(key)) errors.push_back(String("streets.json wires: falta ") + key);
-	if (!errors.is_empty()) return false;
-	if (Array(wires["z_m"]).size() != Array(wires["rural_z_m"]).size() || Array(wires["y_m"]).is_empty()) {
-		errors.push_back("streets.json wires: z_m e rural_z_m com tamanhos diferentes, ou y_m vazio");
+bool PropKit::build(const DataValue &props, const DataValue &wires, const DataValue &beam_section, PackedStringArray &errors) {
+	const int64_t before = errors.size();
+	meshes_[int(PropKind::SIGNAL)] = parts(props, "signal");
+	meshes_[int(PropKind::HYDRANT)] = parts(props, "hydrant");
+	meshes_[int(PropKind::BIN)] = parts(props, "bin");
+	meshes_[int(PropKind::BENCH)] = parts(props, "bench");
+	meshes_[int(PropKind::POSTBOX)] = parts(props, "postbox");
+	meshes_[int(PropKind::PHONE)] = parts(props, "phone");
+	meshes_[int(PropKind::DRAIN)] = parts(props, "drain");
+	meshes_[int(PropKind::TREE_PIT)] = parts(props, "tree_pit");
+	meshes_[int(PropKind::MEADOW)] = parts(props, "meadow");
+	pole_ = parts(props, "pole");
+	const DataValue cast = props["pole_cast"];
+	if (errors.size() != before) return false;
+	pole_cast_ = cast_parts(props, "pole", cast);
+	cast_from_ = cast["from_m"].f();
+	const DataValue ys = wires["y_m"], urban = wires["z_m"], rural = wires["rural_z_m"];
+	wires["secondary_z_m"].f();
+	if (errors.size() != before) return false;
+	if (urban.size() != rural.size() || ys.size() == 0) {
+		wires.fail("z_m and rural_z_m of different lengths, or y_m empty");
 		return false;
 	}
-	wire_mesh(wire_near_, wires, int(wires["near_chords"]), int(wires["near_sides"]));
-	wire_mesh(wire_far_, wires, int(wires["far_chords"]), int(wires["far_sides"]));
+	wire_mesh(wire_near_, wires, wires["near_chords"].whole(), wires["near_sides"].whole());
+	wire_mesh(wire_far_, wires, wires["far_chords"].whole(), wires["far_sides"].whole());
 	box_.box(Vector3(-0.5f, -0.5f, -0.5f), Vector3(0.5f, 0.5f, 0.5f), WHITE, Vector2(float(int(PropTag::FINISHED)), 0), true);
 	sheet_mesh(beam_, beam_section);
 	light_mesh(light_);
-	if (!props.has("signal")) return false;
-	const Array dark = props["lens_dark"]; // each lens unlit: its colour and its own faint glow
+	const DataValue dark = props["lens_dark"]; // each lens unlit: its colour and its own faint glow
 	bool seen[int(Lens::COUNT)] = {};
-	Array list = props["signal"];
+	const DataValue list = props["signal"];
 	for (int i = 0; i < list.size(); i++) {
-		const Dictionary p = list[i];
+		const DataValue p = list[i];
 		if (!p.has("lens")) continue;
-		const int k = int(p["lens"]);
+		const int k = p["lens"].whole();
 		if (k < 0 || k >= int(Lens::COUNT)) {
-			errors.push_back("streets.json props.signal: lente fora de 0..4");
+			p["lens"].fail("a lens outside 0..4");
 			continue;
 		}
-		const Array row = dark[k];
-		shape(lenses_, p, Color::html(String(row[0])), Vector2(float(int(PropTag::LENS)), float(k)), errors);
+		const DataValue unlit = dark[k][0];
+		unlit.colour(); // '#rrggbb', or an error
+		shape(lenses_, p, Color::html(unlit.text()), Vector2(float(int(PropTag::LENS)), float(k)));
 		seen[k] = true;
 	}
 	for (bool s : seen)
-		if (!s) errors.push_back("streets.json props.signal: falta uma das lentes 0..4");
-	return errors.is_empty();
+		if (!s) list.fail("one of the lenses 0..4 is missing");
+	return errors.size() == before;
 }
 
 void PropKit::append(MeshBuilder &dst, const MeshBuilder &src, const Basis &b, const Vector3 &o) {

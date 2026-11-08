@@ -3,6 +3,7 @@
 // z out of it.
 #pragma once
 
+#include "render/data_reader.h"
 #include "render/mesh_builder.h"
 
 #include <godot_cpp/variant/dictionary.hpp>
@@ -37,7 +38,7 @@ struct BayPropLook {
 	uint32_t ac_old = 0, dish = 0, airer = 0;
 	BayPropShares share;
 
-	bool load(const godot::Dictionary &t, godot::PackedStringArray &errors);
+	bool load(const DataValue &t, godot::PackedStringArray &errors); // bay_props.json, through the strict reader's values
 };
 
 } // namespace city::b40

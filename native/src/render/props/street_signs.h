@@ -3,6 +3,7 @@
 // showing its cell of the sheet (render/props/sign_atlas.h), its back bare metal.
 #pragma once
 
+#include "render/data_reader.h"
 #include "render/mesh_builder.h"
 #include "render/props/sign_atlas.h"
 #include "render/props/street_props.h"
@@ -21,7 +22,7 @@ struct SignLook {
 	float post_radius = 0, face_out = 0, blade_half = 0;
 	int post_sides = 0;
 	godot::Color post, back;
-	bool load(const godot::Dictionary &t, godot::PackedStringArray &errors);
+	bool load(const DataValue &t, godot::PackedStringArray &errors);
 };
 
 void place_signs(const CityState &s, const StreetLook &L, const SignLook &K, SignAtlas &atlas, int64_t key, MeshBuilder &mb);

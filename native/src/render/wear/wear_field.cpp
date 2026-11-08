@@ -1,5 +1,6 @@
 // The wear field: what agents leave on the ground and which tiles go to the GPU (wear_field.h).
 #include "render/wear/wear_field.h"
+#include "render/data_reader.h"
 
 #include <godot_cpp/classes/image.hpp>
 #include <godot_cpp/classes/rendering_server.hpp>
@@ -30,14 +31,17 @@ Ref<Image> tile_image(const PackedByteArray &bytes, int size) {
 } // namespace
 
 bool WearField::init(const RenderContext &ctx, PackedStringArray &errors) {
-	const Dictionary t = Dictionary(ctx.table("streets", errors).get("wear", Dictionary()));
-	cell_ = float(t["field_cell_m"]);
-	upload_every_ = float(t["upload_every_s"]);
-	wheels_ = float(t["wheels_per_s"]);
-	feet_ = float(t["feet_per_s"]);
-	track_ = float(t["track_m"]);
-	most_step_ = float(t["most_step_s"]);
-	per_frame_ = int(t["tiles_per_frame"]);
+	const Dictionary streets = ctx.table("streets", errors);
+	if (!errors.is_empty()) return false;
+	const DataValue t = DataReader{ errors, "streets.json" }.at(streets)["wear"]; // render/data_reader.h
+	cell_ = t["field_cell_m"].f();
+	upload_every_ = t["upload_every_s"].f();
+	wheels_ = t["wheels_per_s"].f();
+	feet_ = t["feet_per_s"].f();
+	track_ = t["track_m"].f();
+	most_step_ = t["most_step_s"].f();
+	per_frame_ = t["tiles_per_frame"].whole();
+	if (!errors.is_empty()) return false;
 	hold_ = RES / HOLD_SHARE;
 	material_ = ctx.material("road", errors);
 	if (!material_.is_valid()) return false;

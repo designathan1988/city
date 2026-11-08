@@ -5,6 +5,7 @@
 // (lenses()), every lens drawn once, lit or not, by render/props/signal_lamps.h.
 #pragma once
 
+#include "render/data_reader.h"
 #include "render/mesh_builder.h"
 
 #include <godot_cpp/variant/basis.hpp>
@@ -34,7 +35,8 @@ struct PropPlace {
 
 class PropKit {
 public:
-	bool build(const godot::Dictionary &props, const godot::Dictionary &wires, const godot::Array &beam_section, godot::PackedStringArray &errors);
+	// streets.json props, wires and barriers.beam_section, through the strict reader's values (render/data_reader.h).
+	bool build(const DataValue &props, const DataValue &wires, const DataValue &beam_section, godot::PackedStringArray &errors);
 	const MeshBuilder &mesh(PropKind k) const { return meshes_[int(k)]; }
 	// Every lens of the signal, in its space: COLOR the lens unlit (props.lens_dark), UV2 (PropTag::LENS, which
 	// Lens) for render/shaders/props.gdshader.

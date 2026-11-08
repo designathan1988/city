@@ -31,13 +31,10 @@ bool PropRenderer::init(const RenderContext &ctx, const StreetLook &look, Packed
 	material_ = ctx.material("prop", errors);
 	glow_material_ = ctx.material("lamp_glow", errors);
 	look_ = &look;
-	Dictionary t = ctx.table("streets", errors);
+	const Dictionary table = ctx.table("streets", errors);
 	if (!errors.is_empty()) return false;
-	if (!t.has("props")) {
-		errors.push_back("streets.json: falta props");
-		return false;
-	}
-	if (!furniture_.load(t, errors) || !barriers_.load(t, errors) || !signs_.load(t, errors) || !kit_.build(t["props"], t["wires"], Dictionary(t["barriers"])["beam_section"], errors)) return false;
+	const DataValue t = DataReader{ errors, "streets.json" }.at(table); // render/data_reader.h
+	if (!furniture_.load(t, errors) || !barriers_.load(t, errors) || !signs_.load(t, errors) || !kit_.build(t["props"], t["wires"], t["barriers"]["beam_section"], errors)) return false;
 	atlas_.configure(signs_.sheet_w, signs_.sheet_h, signs_.cell, signs_.blade_w, signs_.blade_h);
 	pole_mesh_ = kit_.pole_levels().bake();
 	pole_cast_mesh_ = kit_.pole_cast_levels().bake();

@@ -6,7 +6,6 @@
 #include "core/math.h"
 #include "core/seeded.h"
 
-#include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/string.hpp>
 
 #include <cmath>
@@ -21,17 +20,15 @@ constexpr float FRONT_MARK = 0.f, MIN_LENGTH = 1e-5f, LEAF_ARC = 0.75f, LEAF_BAS
 constexpr float LEAF_RIM = 0.004f, BLADE_LONG = 1.4f, BLADE_NARROW = 0.55f, HALF = 0.5f;
 constexpr const char *MODEL_NAMES[BAY_PROPS] = { "ac", "pot", "foliage", "bush", "chair", "table", "airer", "dish", "lounger", "bike" };
 
-Vector3 vec3(const Variant &v) {
-	const Array a = v;
-	return a.size() == 3 ? Vector3(float(a[0]), float(a[1]), float(a[2])) : Vector3();
+// [low, high]
+float low(const DataValue &v) { return v.list(2).size() == 2 ? v[0].f() : 0.f; }
+float high(const DataValue &v) { return v.list(2).size() == 2 ? v[1].f() : 0.f; }
+Color tone_of(const DataValue &p) {
+	const Vector3 t = p["tone"].v3();
+	return Color(t.x, t.y, t.z, p.has("front") && p["front"].flag() ? FRONT_MARK : 1.f);
 }
-float low(const Variant &v) { return float(Array(v)[0]); }
-float high(const Variant &v) { return float(Array(v)[1]); }
-Color tone_of(const Dictionary &p) {
-	const Vector3 t = vec3(p["tone"]);
-	return Color(t.x, t.y, t.z, bool(p.get("front", false)) ? FRONT_MARK : 1.f);
-}
-float between(Mulberry32 &r, const Variant &range) { return low(range) + float(r.next()) * (high(range) - low(range)); }
+float between(Mulberry32 &r, const DataValue &range) { return low(range) + float(r.next()) * (high(range) - low(range)); }
+uint32_t seed_of(const DataValue &p) { return uint32_t(int64_t(p["seed"].num())); }
 
 // A beam from `a` to `b`: `width` across (level where it can be), `thick` the other way.
 void bar(MeshBuilder &m, const Vector3 &a, const Vector3 &b, float width, float thick, const Color &col) {
@@ -77,9 +74,9 @@ void ring(MeshBuilder &m, const Vector3 &c, const Vector3 &e0, const Vector3 &e1
 }
 
 // Leaves arching out of the soil, each a blade twisted about its spine in `steps` lengths.
-void rosette(MeshBuilder &m, const Dictionary &p) {
-	Mulberry32 r{ uint32_t(int64_t(p["seed"])) };
-	const int leaves = int(p["leaves"]), steps = int(p["joints"]);
+void rosette(MeshBuilder &m, const DataValue &p) {
+	Mulberry32 r{ seed_of(p) };
+	const int leaves = p["leaves"].whole(), steps = p["joints"].whole();
 	const Color tint = tone_of(p);
 	for (int k = 0; k < leaves; k++) {
 		const float yaw = TAU_F * float(k) / float(leaves) + float(r.next()) * high(p["twist"]) * HALF;
@@ -101,11 +98,12 @@ void rosette(MeshBuilder &m, const Dictionary &p) {
 }
 
 // Small leaves on a mound, pointing out of it.
-void mound(MeshBuilder &m, const Dictionary &p) {
-	Mulberry32 r{ uint32_t(int64_t(p["seed"])) };
+void mound(MeshBuilder &m, const DataValue &p) {
+	Mulberry32 r{ seed_of(p) };
 	const Color tint = tone_of(p);
-	const float y0 = float(p["centre"]), out = low(p["reach"]), up = high(p["reach"]);
-	for (int k = 0; k < int(p["leaves"]); k++) {
+	const float y0 = p["centre"].f(), out = low(p["reach"]), up = high(p["reach"]);
+	const int leaves = p["leaves"].whole();
+	for (int k = 0; k < leaves; k++) {
 		const float yaw = float(r.next()) * TAU_F, pitch = between(r, p["lean"]), size = between(r, p["size"]), dark = between(r, p["shades"]);
 		const Vector3 n(std::cos(yaw) * std::cos(pitch), std::sin(pitch), std::sin(yaw) * std::cos(pitch));
 		const Vector3 c(n.x * out, y0 + n.y * up, n.z * out);
@@ -115,11 +113,11 @@ void mound(MeshBuilder &m, const Dictionary &p) {
 }
 
 // A spherical cap of `cap` radians, its pole tilted `tilt` about x from straight up.
-void bowl(MeshBuilder &m, const Dictionary &p) {
+void bowl(MeshBuilder &m, const DataValue &p) {
 	const Color col = tone_of(p);
-	const float rad = float(p["radius"]), cap = float(p["cap"]), tilt = float(p["tilt"]);
-	const int seg = int(p["segments"]), rings = int(p["rings"]);
-	const Vector3 centre = vec3(p["centre"]);
+	const float rad = p["radius"].f(), cap = p["cap"].f(), tilt = p["tilt"].f();
+	const int seg = p["segments"].whole(), rings = p["rings"].whole();
+	const Vector3 centre = p["centre"].v3();
 	auto dir = [&](int ring_at, int i) {
 		const float phi = cap * float(ring_at) / float(rings), th = TAU_F * float(i) / float(seg);
 		const Vector3 d(std::sin(phi) * std::cos(th), std::cos(phi), std::sin(phi) * std::sin(th));
@@ -132,54 +130,51 @@ void bowl(MeshBuilder &m, const Dictionary &p) {
 		}
 }
 
-void part(MeshBuilder &m, const Dictionary &p, PackedStringArray &errors) {
-	const String shape = p.get("shape", "");
+void part(MeshBuilder &m, const DataValue &p) {
+	const String shape = p["shape"].text();
 	const Color col = tone_of(p);
 	const Vector3 up(0, 0, 1), right(1, 0, 0), front(0, 1, 0);
-	if (shape == "box") m.box(vec3(p["min"]), vec3(p["max"]), col, Vector2(), true);
-	else if (shape == "bar") bar(m, vec3(p["from"]), vec3(p["to"]), float(p["width"]), float(p.get("thick", p["width"])), col);
-	else if (shape == "frustum") frustum(m, vec3(p["base"]), float(p["r0"]), float(p["r1"]), float(p["height"]), int(p["segments"]), col);
-	else if (shape == "disc") ring(m, vec3(p["centre"]), up, right, 0, float(p["radius"]), int(p["segments"]), col);
-	else if (shape == "ring") ring(m, vec3(p["centre"]), right, front, float(p["r0"]), float(p["r1"]), int(p["segments"]), col);
-	else if (shape == "blob") m.blob(vec3(p["center"]), vec3(p["radius"]), col);
+	if (shape == "box") m.box(p["min"].v3(), p["max"].v3(), col, Vector2(), true);
+	else if (shape == "bar") bar(m, p["from"].v3(), p["to"].v3(), p["width"].f(), p.has("thick") ? p["thick"].f() : p["width"].f(), col);
+	else if (shape == "frustum") frustum(m, p["base"].v3(), p["r0"].f(), p["r1"].f(), p["height"].f(), p["segments"].whole(), col);
+	else if (shape == "disc") ring(m, p["centre"].v3(), up, right, 0, p["radius"].f(), p["segments"].whole(), col);
+	else if (shape == "ring") ring(m, p["centre"].v3(), right, front, p["r0"].f(), p["r1"].f(), p["segments"].whole(), col);
+	else if (shape == "blob") m.blob(p["center"].v3(), p["radius"].v3(), col);
 	else if (shape == "rosette") rosette(m, p);
 	else if (shape == "mound") mound(m, p);
 	else if (shape == "bowl") bowl(m, p);
-	else errors.push_back(String("bay_props.json: forma desconhecida '") + shape + "'");
+	else p["shape"].fail(String("unknown shape '") + shape + String("'"));
 }
 
-std::vector<uint32_t> colours(const Array &list) {
+std::vector<uint32_t> colours(const DataValue &list) {
 	std::vector<uint32_t> out;
-	for (int i = 0; i < list.size(); i++) out.push_back(parse_hex_color(String(list[i]).utf8().get_data()));
+	for (int i = 0; i < list.size(); i++) out.push_back(list[i].colour());
 	return out;
 }
-uint32_t colour(const Variant &v) { return parse_hex_color(String(v).utf8().get_data()); }
 } // namespace
 
-bool BayPropLook::load(const Dictionary &t, PackedStringArray &errors) {
-	const Dictionary list = t.get("models", Dictionary()), c = t.get("colours", Dictionary()), s = t.get("shares", Dictionary());
+bool BayPropLook::load(const DataValue &t, PackedStringArray &errors) {
+	const int64_t before = errors.size();
+	const DataValue list = t["models"], c = t["colours"], s = t["shares"];
 	for (int k = 0; k < BAY_PROPS; k++) {
-		if (!list.has(MODEL_NAMES[k])) {
-			errors.push_back(String("bay_props.json: falta o modelo ") + MODEL_NAMES[k]);
-			continue;
-		}
-		const Array parts = list[MODEL_NAMES[k]];
-		for (int i = 0; i < parts.size(); i++) part(models[size_t(k)], parts[i], errors);
+		const DataValue parts = list[MODEL_NAMES[k]];
+		models[size_t(k)] = MeshBuilder(); // a second read is the table again
+		for (int i = 0; i < parts.size(); i++) part(models[size_t(k)], parts[i]);
 	}
-	ac_cases = colours(c.get("ac_cases", Array()));
-	pots = colours(c.get("pots", Array()));
-	greens = colours(c.get("greens", Array()));
-	plastic = colours(c.get("plastic", Array()));
-	fine = colours(c.get("fine", Array()));
-	loungers = colours(c.get("loungers", Array()));
-	bikes = colours(c.get("bikes", Array()));
-	ac_old = colour(c.get("ac_old", ""));
-	dish = colour(c.get("dish", ""));
-	airer = colour(c.get("airer", ""));
-#define X(name) share.name = float(s.get(#name, 0));
+	ac_cases = colours(c["ac_cases"]);
+	pots = colours(c["pots"]);
+	greens = colours(c["greens"]);
+	plastic = colours(c["plastic"]);
+	fine = colours(c["fine"]);
+	loungers = colours(c["loungers"]);
+	bikes = colours(c["bikes"]);
+	ac_old = c["ac_old"].colour();
+	dish = c["dish"].colour();
+	airer = c["airer"].colour();
+#define X(name) share.name = s[#name].f();
 	BAY_PROP_SHARES(X)
 #undef X
-	return errors.is_empty();
+	return errors.size() == before;
 }
 
 } // namespace city::b40

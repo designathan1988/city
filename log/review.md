@@ -2222,10 +2222,25 @@ takes render tables as it takes the catalogue.
 **Identity kept on purpose, recorded for B3 (C19):** the plan's doubles (`CityPlanDef`) are still read through float, as the old
 `Reader::num` returned float; reading them as doubles moves every generated city.
 
-**C10 still to do in B2:** the other render readers of tables (`road_look`, `tree_kit`, `heavy_meshes`, `bay_props`,
-`agent_renderer`, `prop_kit`, `tree_look`, `bus_body`, `cover_kit`, `agent_parts`, `people_renderer`, `car_shape`, `car_parts`
-and about twenty smaller ones, 600-odd `get(key, default)` and `["key"]` reads) and positional data turned into named fields
-(`opening`, `piers`, `pool`, the openings rows, `era_affinity`, `lit_share`, the vehicle class rows).
+**The render's readers, after the loaders** (`e66a7912`, `1af7f445` and the commit after them): the street look, the tree kit,
+placement, atlas and pictures, the vehicles and the people, the street furniture, barriers and signs, the bay props and the
+interior's furniture, the ground cover, shore stones and elements, the wear field, the film grade, the effects' bodies and
+transit's own numbers. The builders that read as they build (vehicles, props, cover) take `DataValue`, the reader's value with
+its path (`d["box_m"][2].f()`): with it the compiler refuses a Variant turned into a float in silence, so every read site had to
+say its type. Lists built at each read (the building look's bands and tones, the trees' planted species, the barriers' rail
+levels, the bay props' models, the loads' bands, the interior's palette) are the table again at a second read. Rules that
+refused without a word now say which (the tree placement's grid and bands, the cabin's seat). `people_renderer.cpp` went past
+its limit and split by what it does: `people_boot.cpp` reads once, the renderer fills the frame.
+
+**A process error caught before any commit:** the conversion was done by a script (`.f()`, `.whole()`, `.flag()` from the
+compiler's own complaint about each line); where a line held reads of two types, it gave every read the first one's, and
+`street_props.cpp` read three floats as booleans (0 or 1) in a build that compiled. An audit of every line with more than one
+`.whole()` or `.flag()` found that one and no other; the vehicles' commit had been verified without it (the props were not in
+its tree).
+
+**Left of C10, with its reason:** the lot documents (`body_doc.cpp`) keep their format's defaults until their schema (C18, B3);
+positional rows turned into named fields (`opening`, `piers`, `pool`, the openings rows, `era_affinity`, `lit_share`, the
+vehicle class rows) go with B4, which rewrites those same blocks for the new style: one change of format, written once.
 
 **Found while verifying, fixed here (C2):** `camera_input_test` turned 1.061 rad for a drag worth 0.756 rad in one run of four.
 The gestures timed the hand on the wall clock (`Time.get_ticks_usec`) while the springs, the coast and the test's still wait run

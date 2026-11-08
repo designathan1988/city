@@ -277,17 +277,14 @@ void place_street_trees(const CityState &s, const StreetLook &L, int64_t key, st
 	});
 }
 
-bool FurnitureLook::load(const Dictionary &t, PackedStringArray &errors) {
-	if (!t.has("wires") || !t.has("lamp_light")) {
-		errors.push_back("streets.json: falta wires ou lamp_light");
-		return false;
-	}
-	Dictionary w = t["wires"], l = t["lamp_light"];
-	wire.sag = w["sag"]; wire.max_sag = w["max_sag_m"]; wire.min_span = w["min_span_m"]; wire.max_span = w["max_span_m"];
-	wire.near_end = w["tube_end_m"]; wire.far_end = w["far_end_m"];
-	beams = l["beams"]; beam_radius = l["beam_radius_m"]; lamp_height = l["lamp_height_m"]; lamp_reach = l["lamp_reach_m"];
-	column_height = l["column_height_m"]; column_reach = l["column_reach_m"];
-	return true;
+bool FurnitureLook::load(const DataValue &t, PackedStringArray &errors) {
+	const int64_t before = errors.size();
+	const DataValue w = t["wires"], l = t["lamp_light"];
+	wire.sag = w["sag"].f(); wire.max_sag = w["max_sag_m"].f(); wire.min_span = w["min_span_m"].f(); wire.max_span = w["max_span_m"].f();
+	wire.near_end = w["tube_end_m"].f(); wire.far_end = w["far_end_m"].f();
+	beams = l["beams"].flag(); beam_radius = l["beam_radius_m"].f(); lamp_height = l["lamp_height_m"].f(); lamp_reach = l["lamp_reach_m"].f();
+	column_height = l["column_height_m"].f(); column_reach = l["column_reach_m"].f();
+	return errors.size() == before;
 }
 
 } // namespace city

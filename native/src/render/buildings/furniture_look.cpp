@@ -1,9 +1,9 @@
-// data/render/furniture.json -> InteriorLook (the models of the furniture and the paints of the cut-open view).
+// data/render/furniture.json -> InteriorLook (the models of the furniture and the paints of the cut-open view), through the
+// strict reader's values (render/data_reader.h).
 #include "render/buildings/furniture_look.h"
 
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/string.hpp>
-#include <godot_cpp/variant/variant.hpp>
 
 using namespace godot;
 
@@ -19,13 +19,14 @@ constexpr int HEX_SKIP = 1; // the '#'
 constexpr int SHORT_PART = 4, WITH_OPTIONS = 5; // a part has a shape, a size, a place and a colour, and may carry options
 constexpr int VEC = 3;
 
-Variant at(const Dictionary &d, const Variant &k) { return d.get(k, Variant()); }
-
-bool vec3(const Variant &v, float out[VEC]) {
-	if (v.get_type() != Variant::ARRAY) return false;
-	Array a = v;
-	if (a.size() < 1) return false;
-	for (int i = 0; i < VEC; i++) out[i] = i < a.size() ? float(a[i]) : 0.f;
+// [x, y, z], short ones taken as zeros at the end (a ball's [r], a disc's [r, h]): the format writes what is not zero.
+bool vec3(const DataValue &v, float out[VEC]) {
+	const Array a = v.list();
+	if (a.size() < 1 || a.size() > VEC) {
+		v.fail("expected 1 to 3 numbers");
+		return false;
+	}
+	for (int i = 0; i < VEC; i++) out[i] = i < a.size() ? v[i].f() : 0.f;
 	return true;
 }
 
@@ -35,28 +36,43 @@ int finish_of(const String &name) {
 	return -1;
 }
 
-bool part_of(const Array &a, const InteriorLook &look, FurniturePart &p, String &why) {
-	if (a.size() < SHORT_PART) return why = "parte curta", false;
-	const String shape = a[0];
+int colour_index(const InteriorLook &look, const DataValue &name) {
+	const auto found = look.index.find(name.utf8());
+	if (found != look.index.end()) return found->second;
+	name.fail(String("unknown colour '") + name.text() + String("'"));
+	return -1;
+}
+
+// [shape, size, at, colour, {n, spin, step, grow, colours}?]
+bool part_of(const DataValue &a, const InteriorLook &look, FurniturePart &p) {
+	const int n = a.size();
+	if (n < SHORT_PART || n > WITH_OPTIONS) {
+		a.fail("expected [shape, size, at, colour] and its options");
+		return false;
+	}
+	const String shape = a[0].text();
 	p.shape = shape == "box" ? PART_BOX : shape == "cyl" ? PART_CYL : PART_BALL;
-	if (shape != "box" && shape != "cyl" && shape != "ball") return why = "forma " + shape, false;
-	if (!vec3(a[1], p.size) || !vec3(a[2], p.at)) return why = "medidas", false;
-	auto colour = look.index.find(std::string(String(a[3]).utf8().get_data()));
-	if (colour == look.index.end()) return why = "cor " + String(a[3]), false;
-	p.colours.push_back(uint16_t(colour->second));
-	if (a.size() < WITH_OPTIONS) return true;
-	Dictionary o = a[4];
-	p.copies = int(o.get("n", 1));
-	p.spin = int(o.get("spin", 1));
-	if (o.has("step")) vec3(o["step"], p.step);
-	if (o.has("grow")) vec3(o["grow"], p.grow);
+	if (shape != "box" && shape != "cyl" && shape != "ball") {
+		a[0].fail(String("unknown shape '") + shape + String("'"));
+		return false;
+	}
+	if (!vec3(a[1], p.size) || !vec3(a[2], p.at)) return false;
+	const int colour = colour_index(look, a[3]);
+	if (colour < 0) return false;
+	p.colours.push_back(uint16_t(colour));
+	if (n < WITH_OPTIONS) return true;
+	const DataValue o = a[4];
+	p.copies = o.has("n") ? o["n"].whole() : 1;
+	p.spin = o.has("spin") ? o["spin"].whole() : 1;
+	if (o.has("step") && !vec3(o["step"], p.step)) return false;
+	if (o.has("grow") && !vec3(o["grow"], p.grow)) return false;
 	if (!o.has("colours")) return true;
 	p.colours.clear();
-	Array names = o["colours"];
+	const DataValue names = o["colours"];
 	for (int i = 0; i < names.size(); i++) {
-		auto named = look.index.find(std::string(String(names[i]).utf8().get_data()));
-		if (named == look.index.end()) return why = "cor " + String(names[i]), false;
-		p.colours.push_back(uint16_t(named->second));
+		const int named = colour_index(look, names[i]);
+		if (named < 0) return false;
+		p.colours.push_back(uint16_t(named));
 	}
 	return true;
 }
@@ -68,35 +84,35 @@ const Paint &InteriorLook::paint(const char *name) const {
 	return it == index.end() ? MISSING : palette[size_t(it->second)];
 }
 
-bool InteriorLook::load(const Dictionary &table, PackedStringArray &errors) {
-	Dictionary colours = at(table, "palette"), models_t = at(table, "models");
-	Array names = colours.keys();
+bool InteriorLook::load(const DataValue &table, PackedStringArray &errors) {
+	const int64_t before = errors.size();
+	palette.clear(); // a second read is the table again
+	index.clear();
+	for (auto &list : models) list.clear();
+	const DataValue colours = table["palette"], models_t = table["models"];
+	const Array names = colours.keys();
 	for (int i = 0; i < names.size(); i++) {
-		Array def = colours[names[i]];
-		const int fin = def.size() == 2 ? finish_of(def[0]) : -1;
+		const String name = names[i];
+		const DataValue def = colours[name.utf8().get_data()];
+		const int fin = def.list(2).size() == 2 ? finish_of(def[0].text()) : -1;
 		if (fin < 0) {
-			errors.push_back("furniture.json: paleta " + String(names[i]));
+			def.fail("expected [finish, '#rrggbb']");
 			continue;
 		}
-		index[std::string(String(names[i]).utf8().get_data())] = int(palette.size());
-		palette.push_back(Paint{ int8_t(fin), uint32_t(String(def[1]).substr(HEX_SKIP).hex_to_int()) });
+		def[1].colour(); // '#rrggbb', or an error
+		index[std::string(name.utf8().get_data())] = int(palette.size());
+		palette.push_back(Paint{ int8_t(fin), uint32_t(def[1].text().substr(HEX_SKIP).hex_to_int()) });
 	}
 	for (const char *need : NEEDED)
-		if (!index.count(need)) errors.push_back(String("furniture.json: falta a cor ") + need);
+		if (!index.count(need)) colours.fail(String("no colour ") + need);
 	for (int k = 0; k < FK_COUNT; k++) {
-		if (!models_t.has(FURNITURE_NAMES[k])) {
-			errors.push_back(String("furniture.json: falta o modelo ") + FURNITURE_NAMES[k]);
-			continue;
-		}
-		Array parts = models_t[FURNITURE_NAMES[k]];
+		const DataValue parts = models_t[FURNITURE_NAMES[k]];
 		for (int i = 0; i < parts.size(); i++) {
 			FurniturePart p;
-			String why;
-			if (!part_of(parts[i], *this, p, why)) errors.push_back(String("furniture.json: ") + FURNITURE_NAMES[k] + ": " + why);
-			else models[k].push_back(std::move(p));
+			if (part_of(parts[i], *this, p)) models[k].push_back(std::move(p));
 		}
 	}
-	return errors.is_empty();
+	return errors.size() == before;
 }
 
 } // namespace city::b40

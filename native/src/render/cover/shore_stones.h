@@ -2,6 +2,7 @@
 // the level of the water beside it, thickest on the line and thinning up the bank and into the deep. Read by the cover's jobs.
 #pragma once
 
+#include "render/data_reader.h"
 #include "sim/terrain/heightfield.h"
 
 #include <godot_cpp/variant/dictionary.hpp>
@@ -18,7 +19,7 @@ struct ShoreBand {
 struct ShoreLook {
 	float spacing_m = 1, search_m = 0, size0 = 0, size1 = 0, size_power = 1, reach_m = 0;
 	std::vector<ShoreBand> bands;
-	bool load(const godot::Dictionary &table, godot::PackedStringArray &errors);
+	bool load(const DataValue &table, godot::PackedStringArray &errors); // cover.json shore, through the strict reader's values
 	float odds(float above_m) const;
 };
 

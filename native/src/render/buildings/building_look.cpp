@@ -1,4 +1,5 @@
-// data/render/buildings.json -> BuildingLook (the render's part of the buildings table), through the strict reader
+// data/render/buildings.json -> BuildingLook (the render's part of the buildings table, with the bay props of bay_props.json and
+// the interior's furniture of furniture.json), through the strict reader
 // (render/data_reader.h). The lists are built whole and assigned, so a second boot reads the table again instead of adding to it.
 #include "render/buildings/building_look.h"
 
@@ -18,7 +19,7 @@ enum { TONE_R, TONE_G, TONE_B, TONE_SIZE }; // finish_far.tones rows: a linear c
 float num(DataReader &r, const Dictionary &d, const char *key) { return float(r.num(d, key)); }
 } // namespace
 
-bool BuildingLook::load(const Dictionary &t, PackedStringArray &errors) {
+bool BuildingLook::load(const Dictionary &t, const Dictionary &bay_props, const Dictionary &furniture, PackedStringArray &errors) {
 	const int64_t before = errors.size();
 	DataReader r{ errors, "buildings.json" };
 	const Dictionary lod = r.table(t, "lod");
@@ -63,7 +64,8 @@ bool BuildingLook::load(const Dictionary &t, PackedStringArray &errors) {
 		read_tones.push_back(Lin{ float(rc.num_at(c, TONE_R)), float(rc.num_at(c, TONE_G)), float(rc.num_at(c, TONE_B)) });
 	}
 	finish_far = std::move(read_tones);
-	return errors.size() == before;
+	if (errors.size() != before) return false;
+	return bay.load(DataReader{ errors, "bay_props.json" }.at(bay_props), errors) && interior.load(DataReader{ errors, "furniture.json" }.at(furniture), errors);
 }
 
 } // namespace city::b40

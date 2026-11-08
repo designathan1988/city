@@ -3,6 +3,7 @@
 // as long as the simulation keeps them down (the walker is not drawn meanwhile) and the body goes when they get up. Also what a bullet draws: the tracer,
 // the wound's spray and a car's bodywork hit.
 #include "render/effects/effect_world.h"
+#include "render/data_reader.h"
 
 #include "core/math.h"
 
@@ -38,7 +39,10 @@ constexpr float SHARD_SIZE_M = 0.06f, SHARD_THICK_M = 0.01f, SHARD_SPEED_MS = 3.
 constexpr int PART_KINDS = 5;
 constexpr uint32_t SALT_LOOK = 7;
 
-Color parse_color(const Variant &v) { return Color::html(String(v)); }
+Color parse_color(const DataValue &v) {
+	v.colour(); // '#rrggbb', or an error
+	return Color::html(v.text());
+}
 
 // The ragdoll's parts a loss takes (ragdoll.ts LOST_PARTS: the arm from the forearm, the leg from the calf).
 uint32_t parts_gone(uint32_t limbs) {
@@ -49,16 +53,20 @@ uint32_t parts_gone(uint32_t limbs) {
 } // namespace
 
 bool EffectWorld::load_looks(const RenderContext &ctx, PackedStringArray &errors) {
-	const Dictionary agents = ctx.table("agents", errors);
-	const Array skin = Dictionary(agents.get("occupants", Dictionary())).get("skin", Array());
-	const Array clothes = Dictionary(agents.get("people", Dictionary())).get("clothes", Array());
-	if (skin.is_empty() || clothes.is_empty()) {
-		errors.push_back("agents.json: occupants.skin e people.clothes são necessários para os corpos");
+	const Dictionary table = ctx.table("agents", errors);
+	if (!errors.is_empty()) return false;
+	const int64_t before = errors.size();
+	const DataValue agents = DataReader{ errors, "agents.json" }.at(table); // render/data_reader.h
+	const DataValue skin = agents["occupants"]["skin"], clothes = agents["people"]["clothes"];
+	if (skin.size() == 0 || clothes.size() == 0) {
+		agents.fail("occupants.skin and people.clothes are what the bodies wear");
 		return false;
 	}
-	for (int k = 0; k < int(skin.size()); k++) skins_.push_back(parse_color(skin[k]));
-	for (int k = 0; k < int(clothes.size()); k++) clothes_.push_back(parse_color(clothes[k]));
-	return true;
+	skins_.clear(); // a second read is the table again
+	clothes_.clear();
+	for (int k = 0; k < skin.size(); k++) skins_.push_back(parse_color(skin[k]));
+	for (int k = 0; k < clothes.size(); k++) clothes_.push_back(parse_color(clothes[k]));
+	return errors.size() == before;
 }
 
 void EffectWorld::body(const DamageEvent &e, const CityState &s) {

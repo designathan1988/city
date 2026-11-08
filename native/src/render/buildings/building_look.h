@@ -39,7 +39,8 @@ struct BuildingLook {
 	float far_rebuild_delay_s = 0, far_rebuild_interval_s = 0; // deferred far rebuilds
 	BayPropLook bay; // bay_props.json
 
-	bool load(const godot::Dictionary &t, godot::PackedStringArray &errors);
+	// buildings.json, bay_props.json and furniture.json (the look's own numbers, its bay props, the interior's furniture).
+	bool load(const godot::Dictionary &t, const godot::Dictionary &bay_props, const godot::Dictionary &furniture, godot::PackedStringArray &errors);
 };
 
 } // namespace city::b40

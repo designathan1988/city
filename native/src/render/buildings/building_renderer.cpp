@@ -65,9 +65,8 @@ bool BuildingRenderer::init(const RenderContext &ctx, PackedStringArray &errors)
 	material_lawn_ = ctx.material("verge", errors);
 	material_wash_ = ctx.material("building_wash", errors);
 	material_parts_ = ctx.material("building_parts", errors);
-	Dictionary t = ctx.table("buildings", errors);
-	if (!errors.is_empty()) return false;
-	if (!look_.load(t, errors) || !look_.bay.load(ctx.tables.get("bay_props", Dictionary()), errors) || !look_.interior.load(ctx.table("furniture", errors), errors)) return false;
+	const Dictionary t = ctx.table("buildings", errors), bay = ctx.table("bay_props", errors), furniture = ctx.table("furniture", errors);
+	if (!errors.is_empty() || !look_.load(t, bay, furniture, errors)) return false;
 	for (int k = 0; k < b40::BAY_PROPS; k++) prop_mesh_[size_t(k)] = look_.bay.models[size_t(k)].commit();
 	MeshBuilder unit;
 	unit.box(Vector3(-HALF, -HALF, -HALF), Vector3(HALF, HALF, HALF), Color(1, 1, 1, 1), Vector2(), true);

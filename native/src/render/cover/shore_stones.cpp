@@ -27,24 +27,23 @@ void each_sample(const Heightfield &t, float x0, float z0, float x1, float z1, F
 }
 } // namespace
 
-bool ShoreLook::load(const Dictionary &d, PackedStringArray &errors) {
-	static const char *const KEYS[] = { "spacing_m", "search_m", "size_m", "size_power", "reach_m", "bands" };
-	for (const char *k : KEYS)
-		if (!d.has(k)) errors.push_back(String("cover.json shore: falta ") + k);
-	if (!errors.is_empty()) return false;
-	spacing_m = d["spacing_m"];
-	search_m = d["search_m"];
-	size_power = d["size_power"];
-	reach_m = d["reach_m"];
-	Array size = d["size_m"], rows = d["bands"];
-	size0 = size[0];
-	size1 = size[1];
+bool ShoreLook::load(const DataValue &d, PackedStringArray &errors) {
+	const int64_t before = errors.size();
+	spacing_m = d["spacing_m"].f();
+	search_m = d["search_m"].f();
+	size_power = d["size_power"].f();
+	reach_m = d["reach_m"].f();
+	const DataValue size = d["size_m"], rows = d["bands"];
+	size.list(2);
+	size0 = size[0].f();
+	size1 = size[1].f();
 	bands.clear();
 	for (int i = 0; i < rows.size(); i++) {
-		Array row = rows[i];
-		bands.push_back({ float(row[0]), float(row[1]) });
+		const DataValue row = rows[i];
+		row.list(2); // [under_m, odds]
+		bands.push_back({ row[0].f(), row[1].f() });
 	}
-	return true;
+	return errors.size() == before;
 }
 
 float ShoreLook::odds(float above_m) const {

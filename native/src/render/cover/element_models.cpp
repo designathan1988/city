@@ -73,22 +73,23 @@ Ref<Mesh> ground_quad(const String &path, PackedStringArray &errors) {
 }
 } // namespace
 
-bool ElementModels::load(const Dictionary &elements, PackedStringArray &errors) {
-	Array kinds = elements.get("props", Array());
+bool ElementModels::load(const DataValue &elements, PackedStringArray &errors) {
+	const int64_t before = errors.size();
+	const DataValue kinds = elements["props"];
 	models_.clear();
 	first_.clear();
 	count_.clear();
 	for (int k = 0; k < kinds.size(); k++) {
-		Array files = kinds[k];
+		const DataValue files = kinds[k];
 		first_.push_back(int(models_.size()));
-		count_.push_back(int(files.size()));
+		count_.push_back(files.size());
 		for (int i = 0; i < files.size(); i++) {
-			String path = files[i];
+			const String path = files[i].text();
 			Ref<Mesh> mesh = path.ends_with(".png") ? ground_quad(path, errors) : scene_mesh(path, errors);
 			if (mesh.is_valid()) models_.push_back(fitted(mesh));
 		}
 	}
-	return errors.is_empty();
+	return errors.size() == before;
 }
 
 } // namespace city

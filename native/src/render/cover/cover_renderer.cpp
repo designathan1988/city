@@ -55,8 +55,10 @@ bool CoverRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	plant_material_ = ctx.material("cover_plant", errors);
 	rock_material_ = ctx.material("cover_rock", errors);
 	shore_material_ = ctx.material("cover_shore", errors);
-	Dictionary t = ctx.table("cover", errors);
-	if (!errors.is_empty() || !kit_.build(t, errors) || !models_.load(t.get("elements", Dictionary()), errors) || !shore_.load(t.get("shore", Dictionary()), errors)) return false;
+	const Dictionary table = ctx.table("cover", errors);
+	if (!errors.is_empty()) return false;
+	const DataValue t = DataReader{ errors, "cover.json" }.at(table); // render/data_reader.h
+	if (!kit_.build(t, errors) || !models_.load(t["elements"], errors) || !shore_.load(t["shore"], errors)) return false;
 	draws_ = 0;
 	for (int i = 0; i < COVER_PIECES; i++) {
 		first_[size_t(i)] = draws_;
