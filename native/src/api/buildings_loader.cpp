@@ -3,6 +3,7 @@
 #include "api/buildings_loader.h"
 
 #include "render/region_table.h"
+#include "render/shape_reader.h"
 
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/string.hpp>
@@ -164,25 +165,7 @@ void lot_rules(DataReader r, const Dictionary &d, LotRules &l) {
 
 // Every block of "shapes": each field of its list read under its own name, of its own type.
 void shapes(DataReader r, const Dictionary &t, Shapes &out) {
-#define B40_READ_FLOAT(n) o.n = float(rb.num(d, #n));
-#define B40_READ_COUNT(n) o.n = rb.integer(d, #n);
-#define B40_READ_DOUBLE(n) o.n = rb.num(d, #n);
-#define B40_READ_FLOATS(n) o.n = rb.floats(d, #n);
-#define B40_READ_COUNTS(n) o.n = rb.counts(d, #n);
-#define B40_READ_BLOCK(key, Type, LIST) \
-	{ \
-		DataReader rb = r.in(#key); \
-		const Dictionary d = r.table(t, #key); \
-		Type &o = out.key; \
-		LIST(B40_READ_FLOAT, B40_READ_COUNT, B40_READ_DOUBLE, B40_READ_FLOATS, B40_READ_COUNTS) \
-	}
-	B40_SHAPES(B40_READ_BLOCK)
-#undef B40_READ_BLOCK
-#undef B40_READ_FLOAT
-#undef B40_READ_COUNT
-#undef B40_READ_DOUBLE
-#undef B40_READ_FLOATS
-#undef B40_READ_COUNTS
+	B40_SHAPES(SHAPE_READ_BLOCK)
 }
 
 void kind_weights(DataReader r, const Dictionary &kw, Data &d) { // per kind, [style, weight] pairs

@@ -20,128 +20,109 @@ const Color CHAR = Color(0.112f, 0.101f, 0.1f);
 const Color FLESH = Color(0.43f, 0.05f, 0.063f);
 const Color PAINT_GREY = Color(0.45f, 0.45f, 0.47f);
 // The pieces' sizes in metres: a pole, a post, a hydrant, a bench, a bin, a trunk and a leaf.
-constexpr float MAST_R = 0.15f, MAST_H = 7.f, POST_RAD = 0.1f, POST_H = 6.2f, HYDRANT_R = 0.2f, HYDRANT_H = 0.7f;
-constexpr float BENCH_L = 1.6f, BENCH_W = 0.5f, BENCH_H = 0.5f, BIN_L = 0.5f, BIN_H = 0.9f;
-constexpr float BENCH_SLAT_SHARE = 0.3f; // a bench thrown flat: its thickness over its height
-constexpr float TRUNK_R = 0.2f, TRUNK_H = 3.f, LEAF_SIZE = 0.5f, LEAF_THICK = 0.1f;
-constexpr float TRUNK_TOP_SHARE = 0.9f, TRUNK_STUMP_SHARE = 0.25f, TRUNK_HALF = 0.5f, CROWN_HEIGHT_K = 1.7f;
-constexpr float SPLINTER_R = 0.05f, SPLINTER_LEN_MIN = 0.3f, SPLINTER_LEN_SPAN = 0.5f;
-constexpr int CROWN_LEAVES = 24, SPLINTERS = 6;
-constexpr float THROW_SPEED = 5.f, THROW_LIFT = 3.f, THROW_SCATTER = 4.f, THROWN_SLOW = 0.4f, THROWN_TREE = 0.6f;
-constexpr float SPLINTER_PUSH_MIN = 0.8f, SPLINTER_STEP_MIN = 1.f, SPLINTER_STEP_SPAN = 2.5f, SPLINTER_BASE_M = 0.5f;
-constexpr float SPARK_PUFFS = 18.f, SPARK_SPREAD = 0.3f, SPARK_SIZE = 0.12f, SPARK_LIFE = 0.8f;
-constexpr float WRECK_L = 4.4f, WRECK_H = 1.4f, WRECK_W = 1.8f, CAR_BURN_S = 40.f, CAR_THROW_SPEED = 9.f, WRECK_LIFT = 3.f;
-constexpr float MOPED_BURN_S = 10.f; // a moped or a bike burns less
-constexpr float TRUNK_BURN_S = 10.f; // a thrown trunk smoulders as long
-constexpr float ROLL_R = 0.32f, ROLL_W = 0.22f;
-constexpr float FIRE_PUFFS_CAR = 40.f, FIRE_PUFFS_BIKE = 15.f, FIRE_SPREAD_CAR = 1.2f, FIRE_SPREAD_BIKE = 0.6f, FIRE_SIZE = 1.4f, FIRE_LIFE = 1.f;
-constexpr float BLOOD_PUFFS = 40.f, BLOOD_SPREAD_M = 0.2f, BLOOD_SIZE_M = 0.04f, BLOOD_LIFE_S = 0.8f;
-constexpr float ORGAN_MIN_M = 0.04f, ORGAN_SPAN_M = 0.07f, ORGAN_SPEED = 3.f, ORGAN_FLAT_MIN = 0.6f, ORGAN_THIN = 0.7f, ORGAN_THIN_SPAN = 0.6f;
-constexpr float ORGAN_ROUND = 0.7f; // the share of organs drawn as short cylinders
-constexpr int ORGANS_MIN = 4, ORGANS_SPAN = 4;
-constexpr float CHEST_RISE_M = 0.5f; // blood sprays from the chest of someone falling
-constexpr float SCATTER_BLOOD_M = 1.2f, POOL_MIN = 0.6f, POOL_SPAN = 0.8f, POOL_TORN = 1.4f;
-constexpr int TORN_POOLS = 3;
-constexpr float DRIP_SCATTER_M = 0.3f, DRIP_MIN_M = 0.12f, DRIP_SPAN_M = 0.16f; // playEffects.ts: 6 to 14 cm of radius
 constexpr uint32_t VEHICLE_TYPE_MASK = 255; // VEHICLE_BLOWN u: the vehicle's type in the low byte
 
 Vector3 scatter(Rng &r, float k) { return Vector3((r.f() - 0.5f) * k, r.f() * k, (r.f() - 0.5f) * k); }
 } // namespace
 
 void EffectWorld::furniture(const DamageEvent &e, const CityState &) {
-	const Vector3 push(e.dx * THROW_SPEED, THROW_LIFT, e.dz * THROW_SPEED);
+	const ThingsShape &K = params_.shapes.effect_things;
+	const Vector3 push(e.dx * K.throw_speed, K.throw_lift, e.dz * K.throw_speed);
 	const Vector3 at(e.x, e.y, e.z);
 	switch (GoneKind(e.u)) {
 		case GoneKind::POLE:
 		case GoneKind::POST: {
 			const bool pole = GoneKind(e.u) == GoneKind::POLE;
-			const float h = pole ? MAST_H : POST_H, r = pole ? MAST_R : POST_RAD;
+			const float h = pole ? K.mast_h : K.post_h, r = pole ? K.mast_r : K.post_rad;
 			if (e.a > 0.f) { // to splinters: pieces of it flung out
-				for (float y = 0; y < h; y += SPLINTER_STEP_MIN + rng_.f() * SPLINTER_STEP_SPAN)
-					piece(at + Vector3(0, y + SPLINTER_BASE_M, 0), Vector3(r, SPLINTER_STEP_MIN + rng_.f(), r), push * (SPLINTER_PUSH_MIN + rng_.f()) + scatter(rng_, THROW_SCATTER), pole ? WOOD : METAL_TINT, true);
+				for (float y = 0; y < h; y += K.splinter_step_min + rng_.f() * K.splinter_step_span)
+					piece(at + Vector3(0, y + K.splinter_base_m, 0), Vector3(r, K.splinter_step_min + rng_.f(), r), push * (K.splinter_push_min + rng_.f()) + scatter(rng_, K.throw_scatter), pole ? WOOD : METAL_TINT, true);
 			} else { // whole: it falls the way it is thrown
-				piece(at + Vector3(0, h * TRUNK_HALF, 0), Vector3(r, h, r), push * THROWN_SLOW, pole ? WOOD : METAL_TINT, true);
+				piece(at + Vector3(0, h * K.trunk_half, 0), Vector3(r, h, r), push * K.thrown_slow, pole ? WOOD : METAL_TINT, true);
 			}
-			if (pole) puffs_.burst(e.x, e.y + h, e.z, int(SPARK_PUFFS), PUFF_SPARK, SPARK_SPREAD, SPARK_SIZE, SPARK_LIFE); // a flash and sparks off the line
+			if (pole) puffs_.burst(e.x, e.y + h, e.z, int(K.spark_puffs), PUFF_SPARK, K.spark_spread, K.spark_size, K.spark_life); // a flash and sparks off the line
 			break;
 		}
-		case GoneKind::HYDRANT: piece(at + Vector3(0, HYDRANT_H * TRUNK_HALF, 0), Vector3(HYDRANT_R, HYDRANT_H, HYDRANT_R), push, METAL_TINT, true); break;
-		case GoneKind::BENCH: piece(at + Vector3(0, BENCH_H, 0), Vector3(BENCH_L, BENCH_H * BENCH_SLAT_SHARE, BENCH_W), push, WOOD); break;
-		case GoneKind::BIN: piece(at + Vector3(0, BIN_H * TRUNK_HALF, 0), Vector3(BIN_L, BIN_H, BIN_L), push, METAL_TINT); break;
+		case GoneKind::HYDRANT: piece(at + Vector3(0, K.hydrant_h * K.trunk_half, 0), Vector3(K.hydrant_r, K.hydrant_h, K.hydrant_r), push, METAL_TINT, true); break;
+		case GoneKind::BENCH: piece(at + Vector3(0, K.bench_h, 0), Vector3(K.bench_l, K.bench_h * K.bench_slat_share, K.bench_w), push, WOOD); break;
+		case GoneKind::BIN: piece(at + Vector3(0, K.bin_h * K.trunk_half, 0), Vector3(K.bin_l, K.bin_h, K.bin_l), push, METAL_TINT); break;
 		default: { // a tree: a charred stump, the trunk thrown, splinters and the crown in clumps of leaves
-			piece(at + Vector3(0, TRUNK_H * TRUNK_STUMP_SHARE, 0), Vector3(TRUNK_R, TRUNK_H * TRUNK_HALF, TRUNK_R), Vector3(), CHAR, true);
-			piece(at + Vector3(0, TRUNK_H, 0), Vector3(TRUNK_R * TRUNK_TOP_SHARE, TRUNK_H * TRUNK_HALF, TRUNK_R * TRUNK_TOP_SHARE), push * THROWN_TREE, WOOD, true, TRUNK_BURN_S);
-			for (int k = 0; k < SPLINTERS; k++)
-				piece(at + Vector3(0, TRUNK_H * TRUNK_HALF, 0), Vector3(SPLINTER_R, SPLINTER_LEN_MIN + rng_.f() * SPLINTER_LEN_SPAN, SPLINTER_R), push + scatter(rng_, THROW_SCATTER), WOOD);
-			for (int k = 0; k < CROWN_LEAVES; k++)
-				piece(at + Vector3(0, TRUNK_H * CROWN_HEIGHT_K, 0), Vector3(LEAF_SIZE * (SPLINTER_PUSH_MIN + rng_.f()), LEAF_THICK, LEAF_SIZE * (SPLINTER_PUSH_MIN + rng_.f())), push + scatter(rng_, THROW_SCATTER * 2.f), LEAF);
+			piece(at + Vector3(0, K.trunk_h * K.trunk_stump_share, 0), Vector3(K.trunk_r, K.trunk_h * K.trunk_half, K.trunk_r), Vector3(), CHAR, true);
+			piece(at + Vector3(0, K.trunk_h, 0), Vector3(K.trunk_r * K.trunk_top_share, K.trunk_h * K.trunk_half, K.trunk_r * K.trunk_top_share), push * K.thrown_tree, WOOD, true, K.trunk_burn_s);
+			for (int k = 0; k < K.splinters; k++)
+				piece(at + Vector3(0, K.trunk_h * K.trunk_half, 0), Vector3(K.splinter_r, K.splinter_len_min + rng_.f() * K.splinter_len_span, K.splinter_r), push + scatter(rng_, K.throw_scatter), WOOD);
+			for (int k = 0; k < K.crown_leaves; k++)
+				piece(at + Vector3(0, K.trunk_h * K.crown_height_k, 0), Vector3(K.leaf_size * (K.splinter_push_min + rng_.f()), K.leaf_thick, K.leaf_size * (K.splinter_push_min + rng_.f())), push + scatter(rng_, K.throw_scatter * 2.f), LEAF);
 			break;
 		}
 	}
 }
 
 void EffectWorld::vehicle(const DamageEvent &e, const CityState &) {
+	const ThingsShape &K = params_.shapes.effect_things;
 	const bool rider = two_wheeler(VehicleType(e.u & VEHICLE_TYPE_MASK));
 	PieceSpec shell;
 	const size_t type = e.u & VEHICLE_TYPE_MASK;
 	shell.wreck = type < wreck_sizes_.size() ? int(type) : -1;
-	shell.size = shell.wreck >= 0 ? wreck_sizes_[type] : Vector3(WRECK_W, WRECK_H, WRECK_L);
-	shell.at = Vector3(e.x, e.y + shell.size.y * TRUNK_HALF, e.z);
+	shell.size = shell.wreck >= 0 ? wreck_sizes_[type] : Vector3(K.wreck_w, K.wreck_h, K.wreck_l);
+	shell.at = Vector3(e.x, e.y + shell.size.y * K.trunk_half, e.z);
 	shell.turn = Quaternion(Vector3(0, 1, 0), -e.a);
-	shell.velocity = Vector3((rng_.f() - 0.5f) * CAR_THROW_SPEED, WRECK_LIFT, (rng_.f() - 0.5f) * CAR_THROW_SPEED);
+	shell.velocity = Vector3((rng_.f() - 0.5f) * K.car_throw_speed, K.wreck_lift, (rng_.f() - 0.5f) * K.car_throw_speed);
 	shell.tint = PAINT_GREY;
 	const bool drop = e.kind == DamageEvent::VEHICLE_DROP; // a rider shot off: the machine falls over, it does not burn
-	shell.burn_s = drop ? 0.f : rider ? MOPED_BURN_S : CAR_BURN_S;
+	shell.burn_s = drop ? 0.f : rider ? K.moped_burn_s : K.car_burn_s;
 	debris_.add(shell);
 	for (int k = 0; k < 2; k++) { // two wheels thrown clear
 		PieceSpec w;
-		w.at = Vector3(e.x, e.y + ROLL_R, e.z);
-		w.size = Vector3(ROLL_R, ROLL_W, ROLL_R);
+		w.at = Vector3(e.x, e.y + K.roll_r, e.z);
+		w.size = Vector3(K.roll_r, K.roll_w, K.roll_r);
 		w.cylinder = true;
 		w.tint = CHAR;
-		w.velocity = Vector3((rng_.f() - 0.5f) * CAR_THROW_SPEED, WRECK_LIFT + rng_.f() * THROW_SCATTER, (rng_.f() - 0.5f) * CAR_THROW_SPEED);
+		w.velocity = Vector3((rng_.f() - 0.5f) * K.car_throw_speed, K.wreck_lift + rng_.f() * K.throw_scatter, (rng_.f() - 0.5f) * K.car_throw_speed);
 		debris_.add(w);
 	}
-	if (!drop) puffs_.burst(e.x, e.y + 1.f, e.z, int(rider ? FIRE_PUFFS_BIKE : FIRE_PUFFS_CAR), PUFF_FLAME, rider ? FIRE_SPREAD_BIKE : FIRE_SPREAD_CAR, FIRE_SIZE, FIRE_LIFE);
+	if (!drop) puffs_.burst(e.x, e.y + 1.f, e.z, int(rider ? K.fire_puffs_bike : K.fire_puffs_car), PUFF_FLAME, rider ? K.fire_spread_bike : K.fire_spread_car, K.fire_size, K.fire_life);
 }
 
 // A few drops where somebody bleeding walks.
 void EffectWorld::drip(const DamageEvent &e) {
+	const ThingsShape &K = params_.shapes.effect_things;
 	Mark m;
 	m.kind = MARK_SPLAT;
-	m.x = e.x + (rng_.f() - 0.5f) * DRIP_SCATTER_M;
-	m.z = e.z + (rng_.f() - 0.5f) * DRIP_SCATTER_M;
+	m.x = e.x + (rng_.f() - 0.5f) * K.drip_scatter_m;
+	m.z = e.z + (rng_.f() - 0.5f) * K.drip_scatter_m;
 	m.y = e.y + Marks::SURFACE_LIFT_M;
-	m.size = DRIP_MIN_M + rng_.f() * DRIP_SPAN_M;
+	m.size = K.drip_min_m + rng_.f() * K.drip_span_m;
 	m.seed = rng_.f();
 	m.born = now_;
 	marks_.add_blood(m);
 }
 
 void EffectWorld::casualty(const DamageEvent &e, const CityState &s) {
+	const ThingsShape &K = params_.shapes.effect_things;
 	const uint32_t kind = e.v & CAS_KIND_MASK;
 	if ((e.v & CAS_BLED) == 0) body(e, s); // the walker is drawn no more: the body takes its place (one that bled out is already lying there)
 	if (kind == CAS_KNOCKED) return; // a knock bleeds no more than the wound that came with it
-	puffs_.burst(e.x, e.y + CHEST_RISE_M, e.z, int(BLOOD_PUFFS), PUFF_BLOOD, BLOOD_SPREAD_M, BLOOD_SIZE_M, BLOOD_LIFE_S);
+	puffs_.burst(e.x, e.y + K.chest_rise_m, e.z, int(K.blood_puffs), PUFF_BLOOD, K.blood_spread_m, K.blood_size_m, K.blood_life_s);
 	const bool torn = kind == CAS_TORN;
-	for (int k = 0; k < (torn ? TORN_POOLS : 1); k++) { // the pool the body leaves, spreading
+	for (int k = 0; k < (torn ? K.torn_pools : 1); k++) { // the pool the body leaves, spreading
 		Mark m;
 		m.kind = MARK_POOL;
-		const float a = rng_.f() * TAU_F, r = k == 0 ? 0.f : rng_.f() * SCATTER_BLOOD_M;
+		const float a = rng_.f() * TAU_F, r = k == 0 ? 0.f : rng_.f() * K.scatter_blood_m;
 		m.x = e.x + std::cos(a) * r;
 		m.z = e.z + std::sin(a) * r;
 		m.y = s.terrain.height_at(m.x, m.z) + Marks::SURFACE_LIFT_M;
-		m.size = params_.pool_size * (POOL_MIN + rng_.f() * POOL_SPAN) * (torn ? POOL_TORN : 1.f);
+		m.size = params_.pool_size * (K.pool_min + rng_.f() * K.pool_span) * (torn ? K.pool_torn : 1.f);
 		m.seed = rng_.f();
 		m.born = now_;
 		marks_.add_blood(m);
 	}
 	if (!torn) return;
-	const int organs = ORGANS_MIN + int(rng_.f() * float(ORGANS_SPAN));
+	const int organs = K.organs_min + int(rng_.f() * float(K.organs_span));
 	for (int k = 0; k < organs; k++) { // a body torn apart: what was inside, thrown over the street
-		const float s0 = ORGAN_MIN_M + rng_.f() * ORGAN_SPAN_M, a = rng_.f() * TAU_F;
-		piece(Vector3(e.x, e.y + CHEST_RISE_M, e.z), Vector3(s0, s0 * (ORGAN_FLAT_MIN + rng_.f()), s0 * (ORGAN_THIN + rng_.f() * ORGAN_THIN_SPAN)),
-				Vector3(std::cos(a) * ORGAN_SPEED, THROW_LIFT, std::sin(a) * ORGAN_SPEED), FLESH, rng_.f() < ORGAN_ROUND);
+		const float s0 = K.organ_min_m + rng_.f() * K.organ_span_m, a = rng_.f() * TAU_F;
+		piece(Vector3(e.x, e.y + K.chest_rise_m, e.z), Vector3(s0, s0 * (K.organ_flat_min + rng_.f()), s0 * (K.organ_thin + rng_.f() * K.organ_thin_span)),
+				Vector3(std::cos(a) * K.organ_speed, K.throw_lift, std::sin(a) * K.organ_speed), FLESH, rng_.f() < K.organ_round);
 	}
 }
 

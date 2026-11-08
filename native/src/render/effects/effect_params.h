@@ -6,6 +6,8 @@
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 
+#include "render/effects/effect_shapes.h"
+
 #include <vector>
 
 namespace city {
@@ -50,6 +52,8 @@ struct EffectParams {
 	int down_dust_count = 0;
 	float down_dust_size = 0, down_dust_life = 0, down_dust_spread = 0;
 	float body_life = 0, push_ms = 0, lift_ms = 0, limb_push_ms = 0, tracer_life = 0, tracer_m = 0, flash_m = 0, body_lead = 0; // bodies, tracers and the muzzle
+
+	EffectShapes shapes; // every effects file's sizes, counts and speeds (effects.json "shapes")
 
 	bool load(const godot::Dictionary &t, godot::PackedStringArray &errors);
 

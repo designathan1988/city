@@ -3196,6 +3196,27 @@ arrays and the foliage leaf's shape: recorded in `log/pendencias.md` (their tabl
 
 **What changes.** Nothing: every photo is a state seen before (`quick`: 45 of 46), hashes and numbers the same.
 
+### 6.42 B2, C14 (the effects): a blow's events, the ruins and the puffs from effects.json shapes (2026-11-08)
+
+**Cause and fix.** The effects files held their sizes, counts and speeds as constants (§3i: the blast's sparks and dust, the
+bodies' parts measured on NASA-STD-3000, the things thrown, the heap and the fall of a building, the mounds, the puffs): ten
+blocks of `effects.json` `shapes` (220 values), declared by what they play (`render/effects/effect_shapes*.h`) and read into
+`EffectParams::shapes`. The modules already kept a copy of the parameters (`params_`, `law_`); `Puffs` now keeps one too, the
+mounds' hill takes its block (and `Mounds::hill_at`, read by the fall), the pile reads under the ground from the height it is
+given, and `EffectWorld::heap_of` stopped being static to read its block. What stays in code says what it is: the blast's soil
+codes and the buffer's rows (they were moved by the tool and put back, an event's code and a layout are not values one tunes),
+the parts' count of a body (its array's size), the hashes, the random streams' seeds, the pieces' tints (sRGB, the source game's;
+with the building render's colours in `log/pendencias.md`).
+
+Reading a table's shapes was about to be written a third time: `render/shape_reader.h` is the one reader the buildings'
+loader, the look and the effects use.
+
+The `SEGUNDO_DONO` the gate named in `ruin_pieces.cpp` (`DUST_*` against `down.dust_*`) was two effects with one word: a falling
+piece's dust and a person going down's. They are the `ruin_pieces` block and `down`, each documented.
+
+**What changes.** Nothing: `strike_test`, `shoot_test` and `people_test` pass, every photo is a state seen before (`quick`:
+45 of 46).
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

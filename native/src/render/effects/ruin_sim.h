@@ -50,6 +50,7 @@ private:
 		float cell = 1;
 		int side = 0;
 		std::vector<float> top;
+		float below = 0; // the height read off the map: under the ground (ruin_sim's far_down_m)
 		float at(float x, float z) const;
 		void lay(const godot::Vector3 &lo, const godot::Vector3 &hi, float height);
 	};

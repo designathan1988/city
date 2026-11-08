@@ -13,14 +13,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float RANDOM_SPIN_RANGE = 8.f; // rad/s of the random spin a piece is thrown with, either way
-constexpr float TINT_MIN = 0.85f, TINT_SPAN = 0.3f; // each piece's shade varies a little
-constexpr float CYL_SIDES = 9.f;
-constexpr float FLAME_OVER_M = 0.3f; // flames rise from a burning piece
-constexpr float SMOKE_OVER_M = 1.0f;
-constexpr float SMOKE_SPREAD_M = 0.4f;
-constexpr float FLAME_FOLLOW_SHARE = 0.4f; // the flame's size follows the piece's, to this share
-constexpr int WRECKS_KEPT = 40; // of a model (blast.ts): past it the oldest goes
+constexpr float CYL_SIDES = 9.f; // a thrown pole's or trunk's sides
 } // namespace
 
 void Debris::init(const RID &scenario, const RID &material, const EffectParams &params) {
@@ -42,9 +35,10 @@ void Debris::init(const RID &scenario, const RID &material, const EffectParams &
 }
 
 void Debris::set_wrecks(const RID &scenario, const RID &material, const std::vector<Ref<Mesh>> &bodies) {
+	const DebrisShape &K = params_.shapes.debris;
 	wrecks_.resize(bodies.size());
 	for (size_t i = 0; i < bodies.size(); i++) {
-		wrecks_[i].init_shaped(scenario, bodies[i], material, WRECKS_KEPT, true, bodies[i]->get_aabb(), 0.f);
+		wrecks_[i].init_shaped(scenario, bodies[i], material, K.wrecks_kept, true, bodies[i]->get_aabb(), 0.f);
 		wrecks_[i].count(0);
 	}
 }
@@ -62,14 +56,15 @@ void Debris::release() {
 }
 
 void Debris::add(const PieceSpec &s) {
+	const DebrisShape &K = params_.shapes.debris;
 	Piece b;
 	b.p = s.at;
 	b.v = s.velocity;
-	b.w = s.random_spin ? Vector3((rng_.f() - 0.5f) * RANDOM_SPIN_RANGE, (rng_.f() - 0.5f) * RANDOM_SPIN_RANGE, (rng_.f() - 0.5f) * RANDOM_SPIN_RANGE) : s.spin;
+	b.w = s.random_spin ? Vector3((rng_.f() - 0.5f) * K.random_spin_range, (rng_.f() - 0.5f) * K.random_spin_range, (rng_.f() - 0.5f) * K.random_spin_range) : s.spin;
 	if (!s.random_spin && s.spin == Vector3()) b.w = Vector3();
 	b.size = s.size;
 	b.q = s.turn;
-	const float shade = TINT_MIN + TINT_SPAN * rng_.f();
+	const float shade = K.tint_min + K.tint_span * rng_.f();
 	b.tint = Color(std::min(1.f, s.tint.r * shade), std::min(1.f, s.tint.g * shade), std::min(1.f, s.tint.b * shade));
 	b.cylinder = s.cylinder;
 	b.still = s.still;
@@ -97,15 +92,16 @@ bool Debris::moving() const {
 }
 
 void Debris::burn(Piece &p, double, float dt, Puffs &puffs) {
+	const DebrisShape &K = params_.shapes.debris;
 	if (p.burn_until <= 0) return;
 	p.burn_until -= dt;
 	p.carry += params_.burn_fire_rate * dt;
 	const float big = std::max(p.size.x, p.size.z) * 0.5f;
 	while (p.carry >= 1.f) {
 		p.carry -= 1.f;
-		puffs.burst(p.p.x, p.p.y + FLAME_OVER_M, p.p.z, 1, params_.flame_kind, big, params_.flame_size + big * FLAME_FOLLOW_SHARE, params_.flame_life);
+		puffs.burst(p.p.x, p.p.y + K.flame_over_m, p.p.z, 1, params_.flame_kind, big, params_.flame_size + big * K.flame_follow_share, params_.flame_life);
 		if (rng_.f() < params_.column_chance)
-			puffs.burst(p.p.x, p.p.y + SMOKE_OVER_M, p.p.z, 1, params_.smoke_kind, SMOKE_SPREAD_M, params_.smoke_size, params_.smoke_life);
+			puffs.burst(p.p.x, p.p.y + K.smoke_over_m, p.p.z, 1, params_.smoke_kind, K.smoke_spread_m, params_.smoke_size, params_.smoke_life);
 	}
 	if (p.burn_until <= 0) p.burn_until = 0;
 }
@@ -120,6 +116,7 @@ void Debris::reap(float dt) {
 }
 
 void Debris::flush() {
+	const DebrisShape &K = params_.shapes.debris;
 	const bool burning = std::any_of(pieces_.begin(), pieces_.end(), [](const Piece &p) { return p.burn_until > 0; });
 	if (!dirty_ && !moving() && !burning && drawn_ == int(pieces_.size())) return;
 	int nb = 0, nc = 0;
@@ -132,7 +129,7 @@ void Debris::flush() {
 		const float mark = p.charred ? DEBRIS_CHARRED : p.dusty ? DEBRIS_DUSTY : DEBRIS_PLAIN; // debris.gdshader
 		if (p.wreck >= 0 && size_t(p.wreck) < wrecks_.size()) {
 			int &k = nw[size_t(p.wreck)];
-			if (k < WRECKS_KEPT) wrecks_[size_t(p.wreck)].put(k++, rot.get_column(0), rot.get_column(1), rot.get_column(2), p.p, p.tint.r, p.tint.g, p.tint.b, mark);
+			if (k < K.wrecks_kept) wrecks_[size_t(p.wreck)].put(k++, rot.get_column(0), rot.get_column(1), rot.get_column(2), p.p, p.tint.r, p.tint.g, p.tint.b, mark);
 			continue;
 		}
 		MmLayer &layer = p.cylinder ? cylinders_ : boxes_;

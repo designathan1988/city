@@ -12,23 +12,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr int SOIL_BUILDING = 2; // BLAST event: the burst was on a building
-constexpr float RUIN_MATCH_M = 1.f; // a BUILDING_DOWN's ruin is centred within this of the event's place
-constexpr int SOIL_SOIL_TINT = 0;
-constexpr float SPARK_COUNT_PER_KPA = 0.4f; // sparks from a building hit grow with the load it felt
-constexpr int HIT_DUST_MIN = 12;
-constexpr float HIT_DUST_PER_KPA = 0.5f;
-constexpr float HIT_SPREAD_M = 2.f;
-constexpr float HIT_SIZE_M = 2.5f;
-constexpr float HIT_LIFE_S = 4.f;
-constexpr float SHELL_LIFT_M = 0.3f; // shrapnel starts this high at the ground
-constexpr float SHELL_OUT_SHARE = 0.2f; // and this share of the fireball radius out
-constexpr float SHELL_FLAT_MIN = 0.4f, SHELL_FLAT_SPAN = 0.5f; // pieces are flattened boxes
-constexpr float HIT_SPARK_MAX = 30.f;
-constexpr float DOWN_PAPER_HEIGHT_M = 3.f; // the papers of the offices start this high
-constexpr float DOWN_SMOKE_SIZE_SCALE = 1.f;
-constexpr float COLLAPSE_DUST_HIGH_M = 6.f;
-constexpr float SOOT_SIZE_JITTER = 1.f;
+constexpr int SOIL_SOIL_TINT = 0, SOIL_BUILDING = 2; // what a BLAST event's soil code says it burst on: the ground, a building
 
 // The shrapnel of the ground it tears up: the soil's own tints (sRGB).
 const Color ROAD_TINT = Color(0.169f, 0.169f, 0.176f);
@@ -36,7 +20,6 @@ const Color CONCRETE = Color(0.604f, 0.588f, 0.557f);
 const Color SOIL_TINT = Color(0.359f, 0.276f, 0.196f);
 const Color BRICK = Color(0.541f, 0.29f, 0.208f);
 const Color GLASS_TINT = Color(0.624f, 0.722f, 0.769f);
-constexpr float HIT_SPARK_SIZE = 0.3f, HIT_SPARK_LIFE = 1.f, HIT_LIFT_M = 1.f;
 } // namespace
 
 void EffectWorld::piece(const Vector3 &at, const Vector3 &size, const Vector3 &v, const Color &tint, bool cylinder, float burn) {
@@ -51,6 +34,7 @@ void EffectWorld::piece(const Vector3 &at, const Vector3 &size, const Vector3 &v
 }
 
 void EffectWorld::blast(const DamageEvent &e, const CityState &s) {
+	const BlastShape &K = params_.shapes.effect_blast;
 	const float radius = params_.fireball_base + params_.fireball_per_force * e.dx; // the fireball: from the force of the blow
 	const int soil = int(e.c);
 	for (const BurstDef &b : params_.bursts) {
@@ -86,8 +70,8 @@ void EffectWorld::blast(const DamageEvent &e, const CityState &s) {
 	for (int i = 0; i < n; i++) {
 		const float a = rng_.f() * TAU_F, out = params_.shrap_speed_min + rng_.f() * params_.shrap_speed_span;
 		const float sz = params_.shrap_size_min + rng_.f() * rng_.f() * params_.shrap_size_span;
-		piece(Vector3(e.x + std::cos(a) * radius * SHELL_OUT_SHARE, e.y + SHELL_LIFT_M, e.z + std::sin(a) * radius * SHELL_OUT_SHARE),
-				Vector3(sz * (1.f + rng_.f()), sz * (SHELL_FLAT_MIN + rng_.f() * SHELL_FLAT_SPAN), sz * (1.f + rng_.f())),
+		piece(Vector3(e.x + std::cos(a) * radius * K.shell_out_share, e.y + K.shell_lift_m, e.z + std::sin(a) * radius * K.shell_out_share),
+				Vector3(sz * (1.f + rng_.f()), sz * (K.shell_flat_min + rng_.f() * K.shell_flat_span), sz * (1.f + rng_.f())),
 				Vector3(std::cos(a) * out, params_.shrap_lift_min + rng_.f() * params_.shrap_lift_span, std::sin(a) * out), palette[i % 4]);
 	}
 	// Soot and ash kept on the ground round it.
@@ -97,7 +81,7 @@ void EffectWorld::blast(const DamageEvent &e, const CityState &s) {
 		Mark m;
 		m.kind = MARK_SOOT;
 		m.x = e.x + std::cos(a) * r; m.z = e.z + std::sin(a) * r;
-		m.y = s.terrain.height_at(m.x, m.z) + Marks::SURFACE_LIFT_M * SOOT_SIZE_JITTER;
+		m.y = s.terrain.height_at(m.x, m.z) + Marks::SURFACE_LIFT_M * K.soot_size_jitter;
 		m.size = params_.soot_size_min + rng_.f() * params_.soot_size_span + radius * params_.soot_size_r;
 		m.seed = rng_.f();
 		marks_.add_soot(m);
@@ -105,19 +89,21 @@ void EffectWorld::blast(const DamageEvent &e, const CityState &s) {
 }
 
 void EffectWorld::building_hit(const DamageEvent &e) {
-	const int dust = HIT_DUST_MIN + int(e.a * HIT_DUST_PER_KPA);
-	puffs_.burst(e.x, e.y + HIT_LIFT_M, e.z, dust, PUFF_CONCRETE, HIT_SPREAD_M, HIT_SIZE_M, HIT_LIFE_S);
-	puffs_.burst(e.x, e.y + HIT_LIFT_M, e.z, std::min(int(e.a * SPARK_COUNT_PER_KPA), int(HIT_SPARK_MAX)), PUFF_SPARK, HIT_SPREAD_M, HIT_SPARK_SIZE, HIT_SPARK_LIFE);
+	const BlastShape &K = params_.shapes.effect_blast;
+	const int dust = K.hit_dust_min + int(e.a * K.hit_dust_per_kpa);
+	puffs_.burst(e.x, e.y + K.hit_lift_m, e.z, dust, PUFF_CONCRETE, K.hit_spread_m, K.hit_size_m, K.hit_life_s);
+	puffs_.burst(e.x, e.y + K.hit_lift_m, e.z, std::min(int(e.a * K.spark_count_per_kpa), int(K.hit_spark_max)), PUFF_SPARK, K.hit_spread_m, K.hit_spark_size, K.hit_spark_life);
 }
 
 void EffectWorld::building_down(const DamageEvent &e, const CityState &s) {
+	const BlastShape &K = params_.shapes.effect_blast;
 	// The collapse: a cloud of concrete dust that billows out, and the papers of the offices and homes over the street.
-	puffs_.burst(e.x, e.y, e.z, params_.down_dust_count, PUFF_DUST, params_.down_dust_spread, params_.down_dust_size * DOWN_SMOKE_SIZE_SCALE, params_.down_dust_life);
-	puffs_.burst(e.x, e.y + COLLAPSE_DUST_HIGH_M, e.z, params_.down_dust_count, PUFF_CONCRETE, params_.down_dust_spread, params_.down_dust_size, params_.down_dust_life);
+	puffs_.burst(e.x, e.y, e.z, params_.down_dust_count, PUFF_DUST, params_.down_dust_spread, params_.down_dust_size * K.down_smoke_size_scale, params_.down_dust_life);
+	puffs_.burst(e.x, e.y + K.collapse_dust_high_m, e.z, params_.down_dust_count, PUFF_CONCRETE, params_.down_dust_spread, params_.down_dust_size, params_.down_dust_life);
 	// The heap it left, which the building falls into: the ruin the event names (its index when it fell); the list searched by place
 	// only when that one stands elsewhere now (a ruin before it cleared since, in the same frame).
 	const Revised<Ruin> &ruins = s.damage.ruins;
-	const auto here = [&](const Ruin &r) { return std::fabs(r.x - e.x) < RUIN_MATCH_M && std::fabs(r.z - e.z) < RUIN_MATCH_M; };
+	const auto here = [&](const Ruin &r) { return std::fabs(r.x - e.x) < K.ruin_match_m && std::fabs(r.z - e.z) < K.ruin_match_m; };
 	const auto fall = [&](const Ruin &r) {
 		ground_here_ = s.terrain.height_at(r.x, r.z);
 		pile(r, true, true, !ruins_.add(s, r, heap_of(r), true));
@@ -126,7 +112,7 @@ void EffectWorld::building_down(const DamageEvent &e, const CityState &s) {
 	else
 		for (const Ruin &r : ruins)
 			if (here(r)) fall(r);
-	puffs_.burst(e.x, e.y + DOWN_PAPER_HEIGHT_M, e.z, params_.paper_count, PUFF_PAPER, params_.paper_spread, params_.paper_size, params_.paper_life);
+	puffs_.burst(e.x, e.y + K.down_paper_height_m, e.z, params_.paper_count, PUFF_PAPER, params_.paper_spread, params_.paper_size, params_.paper_life);
 }
 
 // What the blast leaves burning: each source puffs flames at its rate (smaller as it dies down), now and then a chimney of dark

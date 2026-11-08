@@ -3,6 +3,7 @@
 #include "render/effects/effect_params.h"
 
 #include "render/data_reader.h"
+#include "render/shape_reader.h"
 
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/variant.hpp>
@@ -20,6 +21,8 @@ struct Group {
 	float num(const char *key) { return float(r.num(d, key)); }
 	int integer(const char *key) { return r.integer(d, key); }
 };
+// Every block of "shapes" (render/shape_reader.h).
+void shapes_of(DataReader r, const Dictionary &t, EffectShapes &out) { EFFECT_SHAPE_BLOCKS(SHAPE_READ_BLOCK) }
 } // namespace
 
 bool EffectParams::load(const Dictionary &t, PackedStringArray &errors) {
@@ -73,6 +76,7 @@ bool EffectParams::load(const Dictionary &t, PackedStringArray &errors) {
 	light_life = emit.num("light_life_s");
 	load_look(t, errors);
 	load_things(t, errors);
+	shapes_of(r.in("shapes"), r.table(t, "shapes"), shapes);
 	if (bursts.empty()) r.in("bursts").fail("no burst");
 	return errors.size() == before;
 }

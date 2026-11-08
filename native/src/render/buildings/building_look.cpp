@@ -4,6 +4,7 @@
 #include "render/buildings/building_look.h"
 
 #include "render/data_reader.h"
+#include "render/shape_reader.h"
 #include "render/region_table.h"
 
 #include <godot_cpp/variant/array.hpp>
@@ -21,19 +22,7 @@ float num(DataReader &r, const Dictionary &d, const char *key) { return float(r.
 
 // Every block of "shapes": each field of its list read under its own name, of its own type.
 void shapes_of(DataReader r, const Dictionary &t, LookShapes &out) {
-#define LOOK_READ_FLOAT(n) o.n = float(rb.num(d, #n));
-#define LOOK_READ_COUNT(n) o.n = rb.integer(d, #n);
-#define LOOK_READ_DOUBLE(n) o.n = rb.num(d, #n);
-#define LOOK_READ_FLOATS(n) o.n = rb.floats(d, #n);
-#define LOOK_READ_COUNTS(n) o.n = rb.counts(d, #n);
-#define LOOK_READ_BLOCK(key, Type, LIST) 	{ 		DataReader rb = r.in(#key); 		const Dictionary d = r.table(t, #key); 		Type &o = out.key; 		LIST(LOOK_READ_FLOAT, LOOK_READ_COUNT, LOOK_READ_DOUBLE, LOOK_READ_FLOATS, LOOK_READ_COUNTS) 	}
-	LOOK_SHAPE_BLOCKS(LOOK_READ_BLOCK)
-#undef LOOK_READ_BLOCK
-#undef LOOK_READ_FLOAT
-#undef LOOK_READ_COUNT
-#undef LOOK_READ_DOUBLE
-#undef LOOK_READ_FLOATS
-#undef LOOK_READ_COUNTS
+	LOOK_SHAPE_BLOCKS(SHAPE_READ_BLOCK)
 }
 } // namespace
 
