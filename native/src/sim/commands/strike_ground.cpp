@@ -12,10 +12,7 @@
 namespace city {
 
 namespace {
-constexpr float FURNITURE_REACH_M = 200.f; // furniture is looked for this far (the segments the blow could touch)
-constexpr float SPLINTER_SHARE = 0.4f; // within this share of the knock-out range a pole goes to splinters, sometimes
-constexpr float SPLINTER_CHANCE = 0.6f;
-constexpr float MIN_NORMAL_M = 1.f;
+constexpr float MIN_NORMAL_M = 1.f; // a direction is taken over at least a metre (no division by a near zero)
 constexpr float ARC_DRAW_SCALE = 8.f; // the arc a piece stands at, as the draw's identity
 constexpr uint32_t SALT_CRATER = 0x63726174U; // a stream's salt: the word it names, in ASCII
 constexpr uint32_t SALT_THROW = 0x7468726fU; // a stream's salt: the word it names, in ASCII
@@ -33,8 +30,9 @@ GoneKind kind_of(FurnitureKind k) {
 
 // Poles, posts, trees and the rest within the overpressure that topples them.
 void knock_out_furniture(Blow &b) {
+	const Tuning &tn = b.s.catalog.tune;
 	const BlastParams &p = b.p;
-	const float reach = std::min(blast::range_at_pressure(p, b.kg, p.pole_kpa), FURNITURE_REACH_M);
+	const float reach = std::min(blast::range_at_pressure(p, b.kg, p.pole_kpa), tn.strike_furniture_reach_m);
 	std::vector<FurnitureSpot> spots;
 	b.s.roads.for_segments_near(b.x - reach, b.z - reach, b.x + reach, b.z + reach, [&](int sid) {
 		spots.clear();
@@ -51,7 +49,7 @@ void knock_out_furniture(Blow &b) {
 			e.dx = (x - b.x) / std::max(d, MIN_NORMAL_M);
 			e.dz = (z - b.z) / std::max(d, MIN_NORMAL_M);
 			e.u = uint32_t(kind_of(f.kind));
-			e.a = d < reach * SPLINTER_SHARE && b.roll(SALT_THROW, uint32_t(f.v * ARC_DRAW_SCALE)) < SPLINTER_CHANCE ? 1.f : 0.f;
+			e.a = d < reach * tn.strike_splinter_share && b.roll(SALT_THROW, uint32_t(f.v * ARC_DRAW_SCALE)) < tn.strike_splinter_chance ? 1.f : 0.f;
 			b.emit(e);
 			if (f.kind != FurnitureKind::HYDRANT) continue;
 			DamageEvent g; // a hydrant broken off: a jet of water

@@ -16,7 +16,6 @@ namespace city {
 static constexpr double FAR_OFF_M = 1e18; // a box before its first point
 
 namespace {
-constexpr double CORNER_TAKE_M = 0.8, SIDE_REACH_M = 1.2;
 
 void bounds(const std::vector<XZ> &q, double &x0, double &z0, double &x1, double &z1) {
 	for (const XZ &p : q) {
@@ -131,14 +130,15 @@ void cut_lots_by_roads(CityState &s, double minx, double minz, double maxx, doub
 }
 
 EditResult move_lot_corner(CityState &s, const XZ &from, const XZ &to) {
+	const Tuning &tn = s.catalog.tune;
 	std::vector<PlayerLot> moved;
 	std::vector<std::vector<XZ>> touched;
-	for (int i : s.lot_book.near(from.x - CORNER_TAKE_M, from.z - CORNER_TAKE_M, from.x + CORNER_TAKE_M, from.z + CORNER_TAKE_M)) {
+	for (int i : s.lot_book.near(from.x - tn.lot_corner_take_m, from.z - tn.lot_corner_take_m, from.x + tn.lot_corner_take_m, from.z + tn.lot_corner_take_m)) {
 		const PlayerLot &l = s.lot_book.all()[size_t(i)];
 		PlayerLot after = l;
 		bool any = false;
 		for (XZ &q : after.corners)
-			if (lot_point_near(q, from, CORNER_TAKE_M)) {
+			if (lot_point_near(q, from, tn.lot_corner_take_m)) {
 				q = to;
 				any = true;
 			}
@@ -153,16 +153,17 @@ EditResult move_lot_corner(CityState &s, const XZ &from, const XZ &to) {
 }
 
 EditResult curve_lot_side(CityState &s, const XZ &a, const XZ &b, const XZ &through) {
+	const Tuning &tn = s.catalog.tune;
 	std::vector<PlayerLot> bent;
 	std::vector<std::vector<XZ>> touched;
 	// the side's two ends are a and b, either way round: a lot it is on has a corner by a
-	for (int i : s.lot_book.near(a.x - SIDE_REACH_M, a.z - SIDE_REACH_M, a.x + SIDE_REACH_M, a.z + SIDE_REACH_M)) {
+	for (int i : s.lot_book.near(a.x - tn.lot_side_reach_m, a.z - tn.lot_side_reach_m, a.x + tn.lot_side_reach_m, a.z + tn.lot_side_reach_m)) {
 		const PlayerLot &l = s.lot_book.all()[size_t(i)];
 		const std::vector<XZ> &q = l.corners;
 		for (size_t k = 0; k < q.size(); k++) {
 			const XZ p = q[k], r = q[(k + 1) % q.size()];
-			const bool same = lot_point_near(p, a, SIDE_REACH_M) && lot_point_near(r, b, SIDE_REACH_M);
-			if (!same && !(lot_point_near(p, b, SIDE_REACH_M) && lot_point_near(r, a, SIDE_REACH_M))) continue;
+			const bool same = lot_point_near(p, a, tn.lot_side_reach_m) && lot_point_near(r, b, tn.lot_side_reach_m);
+			if (!same && !(lot_point_near(p, b, tn.lot_side_reach_m) && lot_point_near(r, a, tn.lot_side_reach_m))) continue;
 			std::vector<XZ> bend = curved_side(a, b, through);
 			if (!same) std::reverse(bend.begin(), bend.end());
 			PlayerLot after = l;

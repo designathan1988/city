@@ -12,7 +12,7 @@ namespace city {
 using namespace b40;
 
 namespace {
-constexpr float CENTIMETRES = 100.f, AREA_EPS = 1e-3f, WING_SHARE = .6f, SHAPED_INSET_SHARE = .1f;
+constexpr float CENTIMETRES = 100.f, AREA_EPS = 1e-3f; // centimetres a metre; an area this small is none
 constexpr const char *NO_VOLUME = "tool.failed";
 
 bool has(const Body &b, int vol) { return vol >= 0 && vol < int(b.volumes.size()); }
@@ -102,7 +102,7 @@ std::string wing_off_wall(Body &b, const Tuning &t, const Volume &v, int side, f
 	const float run = std::hypot(c.x - a.x, c.y - a.y), lo = float(t.build_min_side_m);
 	if (run < lo) return "building.problem.size";
 	const float tx = (c.x - a.x) / run, ty = (c.y - a.y) / run, nx = ty, ny = -tx;
-	const float len = std::min(run, std::max(lo, snapped(t, length > 0 ? length : run * WING_SHARE)));
+	const float len = std::min(run, std::max(lo, snapped(t, length > 0 ? length : run * t.build_wing_share)));
 	const float out = std::max(lo, snapped(t, depth > 0 ? depth : float(t.build_wing_modules * t.build_module_m)));
 	const float from = (run - len) / 2;
 	const V2 p{ a.x + tx * from, a.y + ty * from }, q{ p.x + tx * len, p.y + ty * len };
@@ -221,7 +221,7 @@ std::string op_add_setback(Body &b, const Tuning &t, int vol, float inset, int s
 	if (int(b.volumes.size()) >= t.build_max_volumes) return "building.problem.size";
 	Volume &v = b.volumes[size_t(vol)];
 	float step = std::max(0.f, snapped(t, inset >= 0 ? inset : float(t.build_module_m))), lo = float(t.build_min_side_m);
-	if (!v.outline.empty() && inset < 0) step = std::min(step, std::max(float(t.build_grid_m), snapped(t, std::min(v.w, v.d) * SHAPED_INSET_SHARE)));
+	if (!v.outline.empty() && inset < 0) step = std::min(step, std::max(float(t.build_grid_m), snapped(t, std::min(v.w, v.d) * t.build_shaped_inset_share)));
 	float ix = v.w - 2 * step >= lo ? step : 0, iy = v.d - 2 * step >= lo ? step : 0;
 	int count = std::clamp(storeys, 1, std::max(1, t.edit_max_floors - v.top()));
 	Volume up = block_like(v, count);

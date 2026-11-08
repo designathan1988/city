@@ -46,7 +46,16 @@
 	XI(build, max_bays) XI(build, max_pier_every) X(build, min_pitch_deg) X(build, max_pitch_deg) X(build, pick_step_m) \
 	XI(build, max_parts) X(build, dial_share) X(build, step_run_m) X(build, ramp_run_per_rise) XI(build, max_gear) X(build, gear_turn_deg) X(build, road_probe_m) X(build, world_margin_m) X(build, max_plinth_m) \
 	X(strike, force_start) X(strike, force_fine) X(strike, force_coarse) XI(strike, frame_floors) X(strike, frame_collapse_kpa) X(strike, standing_least) X(strike, storey_m) X(strike, scar_radius_m) X(strike, scar_radius_per_force) X(strike, scar_near_share) X(strike, scar_force_gain) X(strike, scar_force_least) X(strike, scar_lift_m) XI(strike, scars_most) \
-	X(build, road_clearance_m) X(build, snap_road_reach_m) X(build, snap_building_reach_m) X(build, snap_edge)
+	X(build, road_clearance_m) X(build, snap_road_reach_m) X(build, snap_building_reach_m) X(build, snap_edge) \
+	X(build, free_relief_step_m) X(build, wing_share) \
+	X(build, shaped_inset_share) X(build, click_in_m) X(build, shortest_leg_m) X(build, lowest_flight_m) \
+	X(build, lowest_step_m) X(build, flight_width_m) X(build, band_width_m) X(build, thinnest_m) XD(build, along_side_cos) \
+	XD(build, flush_pad_m) \
+	XD(lot, corner_take_m) XD(lot, side_reach_m) \
+	XI(roundabout, refuse_samples) XI(roundabout, water_samples) XI(roundabout, cross_samples) XI(roundabout, bisect_steps) \
+	XI(roundabout, empty_ring_nodes) XI(roundabout, vacant_arms) XD(roundabout, water_clear_m) \
+	X(shoot, rider_back_m) X(shoot, rider_push) X(shoot, rider_hit_m) \
+	X(strike, furniture_reach_m) X(strike, splinter_share) X(strike, splinter_chance)
 
 #define CITY_TUNING_DECLARE(group, name) float group##_##name = 0;
 #define CITY_TUNING_DECLARE_COUNT(group, name) int group##_##name = 0;

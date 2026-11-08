@@ -20,6 +20,7 @@ namespace city::b40 {
 	S(tall, TallShape, B40_TALL) \
 	S(works, WorksShape, B40_WORKS) \
 	S(paint, PaintShape, B40_PAINT) \
+	S(survey, SurveyShape, B40_SURVEY) \
 	S(parts, LotPartShape, B40_PARTS) \
 	S(back, LotBackShape, B40_BACK) \
 	S(boundary, LotBoundaryShape, B40_BOUNDARY) \

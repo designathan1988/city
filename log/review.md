@@ -3217,6 +3217,28 @@ piece's dust and a person going down's. They are the `ruin_pieces` block and `do
 **What changes.** Nothing: `strike_test`, `shoot_test` and `people_test` pass, every photo is a state seen before (`quick`:
 45 of 46).
 
+### 6.43 B2, C14 (the commands): their values in tuning and in buildings.json, their definitions sourced (2026-11-08)
+
+**Cause and fix.** The commands held their tunables beside their definitions with nothing to tell them apart (§3d: the survey's
+60 numbers, the body editor's sizes, the roundabout's samples, the shot's rider, the blow's splinters). The values one tunes
+went where their owner reads: the body editor's (`body_*.cpp`) to tuning's `build` group, the lot editor's to a new `lot`
+group, the roundabout's to `roundabout`, the shot's to a new `shoot`, the blow's to `strike`; the survey of a 3D model
+(`body_survey.cpp`, `survey_picture.cpp`) to a `survey` block of `buildings.json` `shapes` (it reads the generator's tables), and
+the furniture reach of the floor editor to the `interior` block (it is handed the generator's tables, not the tuning). The
+definitions stay and say what they are: the streams' salts are the words they name in ASCII, the tolerances and sentinels,
+the bay key's and the colours' layouts, the luma of ITU-R BT.601; three hand-written quarter turns and the degree are the
+core's (`PI_F / 2`, `DEG_TO_RAD`, the same floats); the survey's flag white and red are the default flag's.
+
+The mover moved a few definitions with the tunables (a polygon's least corners, the frame's two end bays, a tolerance, a
+search's sentinel, a direction's guard, a hash scale): each was put back with its reason, and the mover now refuses sentinels
+and tolerances unless told. `survey_body` passed its function limit by the binding: the plinth's reading is a function of its
+own (`plinth_of`).
+
+**Not here, and why.** `body_survey.cpp`, `journal_ops.cpp`, `edit_history.cpp` and `commands.h` are over the file limit as the
+baseline found them: their split by responsibility goes with the large files (C12).
+
+**What changes.** Nothing: the hashes, the numbers and every photo the same (`quick`: 44 of 46).
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

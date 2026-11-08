@@ -189,13 +189,20 @@
   "max_mb": 512
  },
  "roundabout": {
-  "_doc": "The roundabout tool: radius limits, approach and entry lengths, the widest arc and the pad of the central disc.",
+  "_doc": "The roundabout tool: radius limits, approach and entry lengths, the widest arc and the pad of the central disc. Building one (sim/commands/roundabout.cpp): refused by refuse_samples samples round its ring, water_samples for water (kept water_clear_m over it), cross_samples for the roads it cuts, its radius found in bisect_steps steps; an empty ring of empty_ring_nodes nodes, vacant_arms approaches on vacant ground.",
   "radius_min_m": 14,
   "radius_max_m": 60,
   "approach_m": 40,
   "entry_merge_m": 6,
   "max_arc_deg": 50,
-  "disc_pad_m": 6
+  "disc_pad_m": 6,
+  "refuse_samples": 16,
+  "water_samples": 48,
+  "cross_samples": 32,
+  "bisect_steps": 24,
+  "empty_ring_nodes": 6,
+  "vacant_arms": 4,
+  "water_clear_m": 0.3
  },
  "edit": {
   "_doc": "Road edits: the shortest piece a split leaves, what counts as a straight street, and the spacing of duplicated roads.",
@@ -211,7 +218,7 @@
   "min_leg_deg": 25
  },
  "build": {
-  "_doc": "The Build tools: the grid and module, the primitives' sizes, the limits of a body's sides, storeys, openings, projections, roofs and parts, and the snapping to roads and buildings.",
+  "_doc": "The Build tools: the grid and module, the primitives' sizes, the limits of a body's sides, storeys, openings, projections, roofs and parts, and the snapping to roads and buildings. The body editor (sim/commands/body_*.cpp): a free relief steps by free_relief_step_m; a wing is wing_share of the block, a shaped block's inset shaped_inset_share; a block clicked in lands within click_in_m of another; stairs and bands: the shortest leg shortest_leg_m, the lowest flight lowest_flight_m and step lowest_step_m, a flight flight_width_m wide, a band band_width_m wide, nothing thinner than thinnest_m; a model placed against a road runs along its side when within along_side_cos of its depth, flush within flush_pad_m.",
   "grid_m": 0.5,
   "module_m": 3,
   "wing_modules": 3,
@@ -252,7 +259,19 @@
   "road_clearance_m": 0.01,
   "snap_road_reach_m": 9.6,
   "snap_building_reach_m": 12,
-  "snap_edge": 0.32
+  "snap_edge": 0.32,
+  "free_relief_step_m": 0.01,
+  "wing_share": 0.6,
+  "shaped_inset_share": 0.1,
+  "click_in_m": 1.2,
+  "shortest_leg_m": 0.4,
+  "lowest_flight_m": 0.5,
+  "lowest_step_m": 0.2,
+  "flight_width_m": 1.2,
+  "band_width_m": 1.6,
+  "thinnest_m": 0.12,
+  "along_side_cos": 0.9,
+  "flush_pad_m": 8.0
  },
  "structure": {
   "_doc": "Bridges, viaducts, walls and tunnels: span and cable spacing, towers, piers and their caps, parapets, abutments and tunnel portals.",
@@ -302,7 +321,7 @@
   "sample_m": 8
  },
  "strike": {
-  "_doc": "The bomb: the force steps of its strip, the pressure that brings a frame down, the storey a fall counts, and the size and reach of the scars a blast leaves.",
+  "_doc": "The bomb: the force steps of its strip, the pressure that brings a frame down, the storey a fall counts, and the size and reach of the scars a blast leaves. Street furniture is looked for within furniture_reach_m of the blow; within splinter_share of the knock-out range a pole goes to splinters with chance splinter_chance.",
   "force_start": 5,
   "force_fine": 10,
   "force_coarse": 5,
@@ -316,6 +335,20 @@
   "scar_force_gain": 1.2,
   "scar_force_least": 4,
   "scar_lift_m": 1.5,
-  "scars_most": 8
+  "scars_most": 8,
+  "furniture_reach_m": 200,
+  "splinter_share": 0.4,
+  "splinter_chance": 0.6
+ },
+ "lot": {
+  "_doc": "The lot editor (sim/commands/lot_commands.cpp): a pointer within corner_take_m of a corner takes it, within side_reach_m of a side reaches it.",
+  "corner_take_m": 0.8,
+  "side_reach_m": 1.2
+ },
+ "shoot": {
+  "_doc": "A round (sim/commands/shoot_*.cpp): a two-wheeler's rider is thrown from rider_back_m behind it with rider_push of the round's push, the wound drawn rider_hit_m over its ground.",
+  "rider_back_m": 4,
+  "rider_push": 0.15,
+  "rider_hit_m": 1.2
  }
 }

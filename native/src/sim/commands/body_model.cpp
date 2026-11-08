@@ -20,7 +20,9 @@ using namespace b40;
 
 namespace {
 constexpr const char *NO_BLOCK = "tool.failed", *NOT_THAT_PLAN = "building.problem.outline";
-constexpr float RADIANS_PER_DEG = DEG_TO_RAD, TOUCH_AREA_M2 = 1e-3f, CLICK_IN_M = 1.2f, NO_SHIFT = 1e-6f, SIZE_SLACK_M = 1e-3f;
+// Radians a degree; tolerances: two blocks sharing less than TOUCH_AREA_M2 do not touch, a shift this small is none, a size
+// this near another is the same.
+constexpr float RADIANS_PER_DEG = DEG_TO_RAD, TOUCH_AREA_M2 = 1e-3f, NO_SHIFT = 1e-6f, SIZE_SLACK_M = 1e-3f;
 constexpr int LEAST_CORNERS = 3, FRAME_BAYS = 2;
 constexpr uint32_t KEY_FIELD = (1u << KEY_SIDE_SHIFT) - 1;
 
@@ -56,9 +58,9 @@ const Volume *reference_of(const Body &b, const Volume &v) {
 }
 
 // Where a slid block clicks into place: sides on sides and middles on middles of the other blocks.
-V2 click_in(const Body &b, const std::set<int> &moving, const Volume &v) {
+V2 click_in(const Tuning &t, const Body &b, const std::set<int> &moving, const Volume &v) {
 	V2 shift;
-	float best_x = CLICK_IN_M, best_y = CLICK_IN_M;
+	float best_x = t.build_click_in_m, best_y = t.build_click_in_m;
 	const float mine_x[] = { v.x, v.x + v.w / 2, v.x + v.w }, mine_y[] = { v.y, v.y + v.d / 2, v.y + v.d };
 	for (int k = 0; k < int(b.volumes.size()); k++) {
 		if (moving.count(k) != 0) continue;
@@ -304,7 +306,7 @@ std::string op_slide_block(Body &b, const Tuning &t, int vol, float dx, float dy
 		Volume at = b.volumes[size_t(vol)];
 		at.x += mx;
 		at.y += my;
-		const V2 fit = click_in(b, moving, at);
+		const V2 fit = click_in(t, b, moving, at);
 		mx += fit.x;
 		my += fit.y;
 	}

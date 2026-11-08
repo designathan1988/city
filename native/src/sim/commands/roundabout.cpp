@@ -17,9 +17,7 @@
 namespace city {
 
 namespace {
-constexpr int REFUSE_SAMPLES = 16, WATER_SAMPLES = 48, CROSS_SAMPLES = 32, BISECT_STEPS = 24, EMPTY_RING_NODES = 6;
-constexpr int VACANT_ARMS = 4;
-constexpr double WATER_CLEAR_M = 0.3, HALF = 0.5;
+constexpr double HALF = 0.5;
 
 struct Hit {
 	int seg = -1;
@@ -85,8 +83,9 @@ void Builder::cut(const Hit &h) {
 
 // Vacant ground: four two-way local streets of approach_m out from the ring, their far ends plain dead ends.
 void Builder::vacant() {
+	const Tuning &tn = s.catalog.tune;
 	double len = s.catalog.tune.roundabout_approach_m;
-	for (int k = 0; k < VACANT_ARMS; k++) {
+	for (int k = 0; k < tn.roundabout_vacant_arms; k++) {
 		double ang = k * PI_D / 2, ux = std::cos(ang), uz = -std::sin(ang);
 		int e = j_add_node(s, cx + ux * radius, cz + uz * radius, y);
 		entries.push_back({ ang, e });
@@ -99,12 +98,13 @@ void Builder::vacant() {
 // The ring: entry nodes plus extra nodes so no arc spans more than max_arc_deg; each arc a quadratic whose control
 // point lies on the bisector at radius / cos(span / 2).
 std::vector<int> Builder::ring_segments() {
+	const Tuning &tn = s.catalog.tune;
 	std::sort(entries.begin(), entries.end(), [](const Entry &a, const Entry &b) { return a.angle < b.angle; });
 	double max_arc = s.catalog.tune.roundabout_max_arc_deg * DEG_TO_RAD;
 	std::vector<Entry> filled;
 	auto add = [&](double a) { filled.push_back({ a, j_add_node(s, cx + std::cos(a) * radius, cz - std::sin(a) * radius, y) }); };
 	if (entries.empty())
-		for (int i = 0; i < EMPTY_RING_NODES; i++) add(-PI_D + 2 * PI_D * i / EMPTY_RING_NODES);
+		for (int i = 0; i < tn.roundabout_empty_ring_nodes; i++) add(-PI_D + 2 * PI_D * i / tn.roundabout_empty_ring_nodes);
 	for (size_t i = 0; i < entries.size(); i++) {
 		const Entry &a = entries[i], &b = entries[(i + 1) % entries.size()];
 		filled.push_back(a);
@@ -136,9 +136,9 @@ std::string roundabout_refusal(const CityState &s, double cx, double cz, double 
 	bool ring_there = false, road = false;
 	s.roads.for_segments_near(cx - reach, cz - reach, cx + reach, cz + reach, [&](int sg) {
 		bool is_ring = s.roads.profile_of(sg).ring;
-		for (int k = 0; k <= REFUSE_SAMPLES; k++) {
+		for (int k = 0; k <= tn.roundabout_refuse_samples; k++) {
 			double x, z;
-			s.roads.segs[sg].q.at(double(k) / REFUSE_SAMPLES, x, z);
+			s.roads.segs[sg].q.at(double(k) / tn.roundabout_refuse_samples, x, z);
 			double d = std::hypot(x - cx, z - cz);
 			if (is_ring && d < radius) ring_there = true;
 			if (!is_ring && d < reach) road = true;
@@ -147,16 +147,17 @@ std::string roundabout_refusal(const CityState &s, double cx, double cz, double 
 	if (ring_there) return "road.ring.exists";
 	if (road && !cut) return "road.ring.cuts";
 	for (double r : { radius - half, radius, radius + half })
-		for (int k = 0; k < WATER_SAMPLES; k++) {
-			double a = 2 * PI_D * k / WATER_SAMPLES;
+		for (int k = 0; k < tn.roundabout_water_samples; k++) {
+			double a = 2 * PI_D * k / tn.roundabout_water_samples;
 			float x = float(cx + std::cos(a) * r), z = float(cz + std::sin(a) * r);
 			float ground = s.terrain.base_height_at(x, z);
-			if (ground < TerrainGen::OCEAN_Y + WATER_CLEAR_M || s.terrain.water_at(x, z) > ground) return "road.ring.water";
+			if (ground < TerrainGen::OCEAN_Y + tn.roundabout_water_clear_m || s.terrain.water_at(x, z) > ground) return "road.ring.water";
 		}
 	return "";
 }
 
 EditResult build_roundabout(CityState &s, double cx, double cz, double radius, bool cut) {
+	const Tuning &tn = s.catalog.tune;
 	EditResult r;
 	r.error = roundabout_refusal(s, cx, cz, radius, cut);
 	if (!r.error.empty()) return r;
@@ -170,11 +171,11 @@ EditResult build_roundabout(CityState &s, double cx, double cz, double radius, b
 	std::vector<Hit> hits;
 	s.roads.for_segments_near(cx - radius, cz - radius, cx + radius, cz + radius, [&](int sg) {
 		Hit h{ sg, s.roads.segs[sg].q, {} };
-		for (int k = 0; k < CROSS_SAMPLES; k++) {
-			double a = double(k) / CROSS_SAMPLES, bb = double(k + 1) / CROSS_SAMPLES;
+		for (int k = 0; k < tn.roundabout_cross_samples; k++) {
+			double a = double(k) / tn.roundabout_cross_samples, bb = double(k + 1) / tn.roundabout_cross_samples;
 			if (b.inside(h.q, a) == b.inside(h.q, bb)) continue;
 			double lo = a, hi = bb;
-			for (int it = 0; it < BISECT_STEPS; it++) {
+			for (int it = 0; it < tn.roundabout_bisect_steps; it++) {
 				double m = (lo + hi) / 2;
 				(b.inside(h.q, m) == b.inside(h.q, a) ? lo : hi) = m;
 			}
@@ -186,7 +187,6 @@ EditResult build_roundabout(CityState &s, double cx, double cz, double radius, b
 	if (b.entries.empty()) b.vacant();
 	std::vector<int> ring_segs = b.ring_segments();
 	if (!settle_road_edit(s, r)) return r; // the caller rolls the journal back
-	const Tuning &tn = s.catalog.tune;
 	float disc = float(radius + s.catalog.profile(ring).right);
 	j_add_modifier(s, { float(cx), float(b.y), float(cz) }, disc, float(tn.roundabout_disc_pad_m));
 	for (int sg : ring_segs) r.buildings_removed += clear_under(s, sg);

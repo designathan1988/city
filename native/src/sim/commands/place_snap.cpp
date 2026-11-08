@@ -14,9 +14,7 @@ namespace city {
 using namespace b40;
 
 namespace {
-constexpr double ALONG_SIDE_COS = 0.9; // a road this close to the footprint's depth runs along its side
 constexpr double SAME_BEARING_RAD = 0.02; // two bearings this near (a degree) are one
-constexpr double FLUSH_PAD_M = 8;
 constexpr double BEYOND = 1e30, TINY = 1e-9; // farther than anything; a length this small is none
 
 // The lot's axes at a turn: along the front, and from the street into the lot (b40::lot_frame).
@@ -49,6 +47,7 @@ RoadAt road_at(const Quad &q, double t) {
 bool counts(const Building &b) { return b.floors > 0 || b.body != 0; }
 
 XZ corner_flush(const CityState &s, XZ anchor, double rot, const Size &size, int snapped, XZ cursor) {
+	const Tuning &tn = s.catalog.tune;
 	const XZ u = along_of(rot), v = into_of(rot);
 	const XZ mid = anchor + v * (size.d / 2);
 	const double reach = size.w / 2 + size.w + size.module, clearance = s.catalog.tune.build_road_clearance_m;
@@ -62,7 +61,7 @@ XZ corner_flush(const CityState &s, XZ anchor, double rot, const Size &size, int
 			closest_t(s.roads.segs[sg].q, p.x, p.z, t, dist);
 			if (dist > back + size.w + size.module) continue;
 			const RoadAt road = road_at(s.roads.segs[sg].q, t);
-			if (std::fabs(road.t.dot(v)) < ALONG_SIDE_COS) continue;
+			if (std::fabs(road.t.dot(v)) < tn.build_along_side_cos) continue;
 			const double beyond = (road.p - p).dot(u) * side;
 			if (beyond <= 0) continue;
 			const double need = beyond - back;
@@ -129,8 +128,9 @@ const Building *nearest_building(const CityState &s, XZ at) {
 
 // The footprint's edges made flush with lots of the same bearing: along the front always, in depth when `both`.
 void flush(const CityState &s, PlaceSnap &snap, const Size &size, bool both) {
+	const Tuning &tn = s.catalog.tune;
 	const XZ u = along_of(snap.rot), v = into_of(snap.rot), anchor{ snap.x, snap.z };
-	const double near_m = s.catalog.tune.build_snap_edge * size.module, half = size.w / 2, reach = std::max(size.w, size.d) * 2 + FLUSH_PAD_M;
+	const double near_m = s.catalog.tune.build_snap_edge * size.module, half = size.w / 2, reach = std::max(size.w, size.d) * 2 + tn.build_flush_pad_m;
 	double best_u = near_m, best_v = near_m, shift_u = 0, shift_v = 0;
 	s.buildings.query(float(snap.x - reach), float(snap.z - reach), float(snap.x + reach), float(snap.z + reach), [&](int id) {
 		const Building &b = s.buildings.items[size_t(id)];

@@ -1,4 +1,4 @@
-// The building generator's shapes of the bodies: civic and service buildings, the facade grammar, the massing of houses, flats, shops, offices and works, the colours' nudge: each block's fields (buildings.json "shapes", read by
+// The building generator's shapes of the bodies: civic and service buildings, the facade grammar, the massing of houses, flats, shops, offices and works, the colours' nudge, a body read off a model: each block's fields (buildings.json "shapes", read by
 // api/buildings_loader.cpp) and its struct.
 #pragma once
 
@@ -91,6 +91,17 @@ struct WorksShape {
 	XD(hue_step) XD(sat_step) XD(light_step) XD(light_min) XD(light_max) XD(tint_lo) XD(tint_span)
 struct PaintShape {
 	B40_PAINT(B40_SHAPE_FLOAT, B40_SHAPE_COUNT, B40_SHAPE_DOUBLE, B40_SHAPE_FLOATS, B40_SHAPE_COUNTS)
+};
+
+#define B40_SURVEY(X, XI, XD, XV, XVI) \
+	X(touch_m) X(flat_normal) X(least_top_z) X(least_top_side) X(least_block) X(least_block_h) X(first_storey_m) \
+	X(storey_m) X(on_first_storey_m) X(face_out_m) X(light_wall) X(base_differs) X(low_share_end) X(pier_w_m) \
+	X(pier_d_m) X(crown_least_m) X(crown_share) X(above_roof_m) X(wall_share) X(door_share) X(wide_share) \
+	X(hull_gap_m) X(sample_from) X(wall_up_from) X(wall_up_step) X(bay_up_from) X(bay_up_span) XI(wall_along) \
+	XI(wall_up) XI(bay_along) XI(bay_up) XI(least_samples) XI(least_light) XI(tall_storeys) XI(top_storeys) \
+	XI(least_based_top) X(least_cell_m) X(hidden_m)
+struct SurveyShape {
+	B40_SURVEY(B40_SHAPE_FLOAT, B40_SHAPE_COUNT, B40_SHAPE_DOUBLE, B40_SHAPE_FLOATS, B40_SHAPE_COUNTS)
 };
 
 } // namespace city::b40

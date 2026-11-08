@@ -10,7 +10,7 @@ namespace city::b40 {
 	X(flight_least_m) X(flight_over_m) X(flight_line_m) X(flight_rise_m) X(flight_room_m) X(flight_tread_m) \
 	X(flight_tread_min_m) X(flight_width_m) X(flight_side_m) X(flight_clear_m) X(room_reach) X(unit_modules) \
 	XI(office_room_bays) XI(class_room_bays) XI(hotel_room_bays) XI(ward_room_bays) XI(light_share) \
-	XI(wood_share) X(ward_from_ground)
+	XI(wood_share) X(ward_from_ground) X(reach_past_m) X(reach_unsized_m)
 struct InteriorShape {
 	B40_INTERIOR(B40_SHAPE_FLOAT, B40_SHAPE_COUNT, B40_SHAPE_DOUBLE, B40_SHAPE_FLOATS, B40_SHAPE_COUNTS)
 };

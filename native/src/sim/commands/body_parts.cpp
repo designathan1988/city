@@ -13,7 +13,7 @@ namespace city {
 using namespace b40;
 
 namespace {
-constexpr float SHORTEST_LEG_M = .4f, LOWEST_FLIGHT_M = .5f, LOWEST_STEP_M = .2f, FLIGHT_WIDTH_M = 1.2f, BAND_WIDTH_M = 1.6f, THINNEST_M = .12f, QUARTER_TURN = PI_F / 2;
+constexpr float QUARTER_TURN = PI_F / 2;
 constexpr const char *NO_TARGET = "tool.failed";
 constexpr float AREA_EPS = 1e-3f, TOUCH_EPS = 1e-3f; // an area this small is none; two faces this near touch
 constexpr int MAX_REPEAT = 64; // the most copies a repeat lays (build_max_parts caps the body's parts)
@@ -147,13 +147,13 @@ std::string op_add_part_at(Body &b, const Tuning &t, float x, float y, int facin
 std::string op_add_run(Body &b, const Tuning &t, const std::vector<V2> &path, int level, const PartSpec &s) {
 	float total = 0;
 	for (size_t i = 1; i < path.size(); i++) total += std::hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y);
-	if (total < SHORTEST_LEG_M) return "building.problem.size";
-	const float rise = std::max(LOWEST_FLIGHT_M, b.level_z(level + 1) - b.level_z(level));
+	if (total < t.build_shortest_leg_m) return "building.problem.size";
+	const float rise = std::max(t.build_lowest_flight_m, b.level_z(level + 1) - b.level_z(level));
 	float climbed = b.level_z(level);
 	for (size_t i = 1; i < path.size(); i++) {
 		const V2 p = path[i - 1], q = path[i];
 		const float leg = std::hypot(q.x - p.x, q.y - p.y);
-		if (leg < SHORTEST_LEG_M) continue;
+		if (leg < t.build_shortest_leg_m) continue;
 		if (int(b.elements.size()) >= t.build_max_parts) return "building.problem.size";
 		LotElement e;
 		e.kind = Element(s.kind);
@@ -162,16 +162,16 @@ std::string op_add_run(Body &b, const Tuning &t, const std::vector<V2> &path, in
 		e.angle = std::atan2(q.y - p.y, q.x - p.x);
 		if (e.kind == EL_STAIR) { // a flight runs along its own y
 			const float step = rise * leg / total;
-			e.w = std::max(s.w, FLIGHT_WIDTH_M);
+			e.w = std::max(s.w, t.build_flight_width_m);
 			e.d = leg;
-			e.h = std::max(LOWEST_STEP_M, step);
+			e.h = std::max(t.build_lowest_step_m, step);
 			e.base = climbed;
 			e.angle -= QUARTER_TURN;
 			climbed += step;
 		} else {
 			e.w = leg;
-			e.d = std::max(s.d, e.kind == EL_PAVEMENT ? BAND_WIDTH_M : THINNEST_M);
-			e.h = std::max(s.h, THINNEST_M);
+			e.d = std::max(s.d, e.kind == EL_PAVEMENT ? t.build_band_width_m : t.build_thinnest_m);
+			e.h = std::max(s.h, t.build_thinnest_m);
 		}
 		b.elements.push_back(e);
 	}
