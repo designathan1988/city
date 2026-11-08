@@ -359,6 +359,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `project/game/store/saved_entries.gd` · `project/game/store/road_spec_edit.gd` · `project/game/store/road_section_state.gd` · `project/game/store/lane_links_edit.gd` — uma pasta de coisas do jogador, um arquivo cada (dono único do `ModelLibrary` e do `RoadModels`); o que os painéis editam fora da UI: a seção da via, o desenho dela e as ligações de faixa
 - `project/game/store/save_slots.gd` — onde as cidades são salvas: um arquivo por cidade, cópia do mapa, índice da última, quarentena e pasta dos testes
 - `project/game/store/session.gd` — o que a cidade traz além do mapa: câmera, velocidade e níveis da simulação
+- `project/game/tools/lot_outlines.gd` — the player's lots as the Lots tab draws them, and what of them is under the pointer: a lot by id, the nearest corner, a lot's nearest side
 - `project/game/tools/lot_proposals.gd` — o que a aba Lotes lê do chão: o lote proposto sob o ponteiro e as medidas de um anel
 - `project/game/tools/lots_tool.gd` · `project/ui/lot_strip.gd` — Zonas › Lotes: os gestos (retângulo, polígono, cantos, curva, frente, dividir, juntar, apagar) e os cartões da aba
 - `project/game/tools/brush_defaults.gd` · `project/game/tools/brush_tool.gd` — valores de um pincel da Paisagem (land_panels.json); traço com dabs espaçados

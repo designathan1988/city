@@ -2446,6 +2446,35 @@ were one class with another material, shadow, job lane and emitter, so they are 
 C7. Once, `01-bairro` (equal in every run until then) showed four single pixels of 1 level; three fresh runs of the same DLL gave
 it equal to the golden: the run-to-run residual (§6.9) reaches it too. `gates_changed` only what the files had.
 
+### 6.17 B2, C7 (the script side): what the tools and panels ask, asked once (2026-11-08)
+
+**Causes and fixes**, each an owner for something the script derived or asked again:
+- **The road list.** `road_profiles` was asked of the core at every move of the road tool (`road_draft.gd`), by the upgrade tool for
+  one width, and the road catalogue read the strips from the JSON files again (`DataTables.road_profiles`), against the rule that the
+  interface reads the core. The core gives the strips (`STRIP_KIND_NAMES`, now the one owner of the kinds' names, read by the loader
+  too) and the snapshot a `profiles_revision` (`Catalog::profiles_stamp`, a stamp that moves with each profile added and each drop and
+  never comes back), so `CityStore.cached(&"road_profiles")` asks again only when the list changed; every reader takes it from there.
+  `DataTables.road_profiles` is gone. The catalogue's pictures read the core's widths, the floats the roads are built with.
+- **One render table read whole.** `DataTables.render()` (every render table) was asked for one: `render_table(key)` everywhere.
+- **The render cost twice a frame** (the lab's meter and the Effects panel): `CityStore.frame_render_cost()` reads it once a frame.
+- **The pole run planned twice on release** to learn its last pole: `build_pole_run` hands the last pole back (`last`).
+- **Per pointer move.** The model in hand asked `place_fit`, `height_at`, `stage_move` and `place_check` (three locks and a check
+  against the city each move): `place_hover` gives the fit, the ground and the problem under one lock, and checks again only when the
+  model, the place or the city's revision moved. The demolish rectangle asked the ground five times (`heights_at`, once); the cloud
+  tool asked the whole landscape to find one cloud (`cloud(id)`). The lots tool reads the street's angle once a gesture and the lot
+  under the pointer once a hover. The interior hand read the `interior` view (which works the lamps out) and the floor's height at
+  every move: it reads the level from the interior layer, which the hand now asks to refresh when it opens a building, and keeps the
+  floor's height and the pieces' sizes until the building, the floor or the city moved.
+
+**Left of C7 for B3 and B4** (each changes what the game does): growth's look memory (§6.11), lot growth drawing four whole bodies
+(choose by the look's inputs first), lots per block outside the lock (§6.14), items keeping their footway place (§6.13).
+
+The lots tool, one line too long with this, gave its picks of the drawn lots to `LotOutlines` (`game/tools/lot_outlines.gd`).
+
+**Verified** (`city-verify`, `quick --all`): 43 of 45, the digest equal, every photo byte-equal to runs before C7; after the lots tool's
+split, `import`, `scripts`, `e2e` and `building_tool_test` pass; `gates_changed` only what the files had (`inspector_panel.gd`'s size
+and two untranslated strings, `profile_types.h`'s two constants, `city_core_query.cpp`'s two lines).
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

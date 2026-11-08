@@ -11,7 +11,7 @@ var _puff: Texture2D
 
 
 func _ready() -> void:
-	_d = DataTables.render().cover.elements
+	_d = DataTables.render_table("cover").elements
 	var soft := Gradient.new()
 	soft.set_color(0, Color.WHITE)
 	soft.set_color(1, Color(1, 1, 1, 0))

@@ -164,7 +164,7 @@ func passes() -> Array[Dictionary]:
 ## thread are outside it. Performance.TIME_PROCESS will not do: it is the worst frame of the second (main/main.cpp process_max), so
 ## a single slow frame reads as the cost of all of them.
 static func render_cpu_ms(viewport: RID) -> float:
-	return float(CityStore.query(&"render_cost").get("process", 0.0)) + RenderingServer.viewport_get_measured_render_time_cpu(viewport) \
+	return float(CityStore.frame_render_cost().get("process", 0.0)) + RenderingServer.viewport_get_measured_render_time_cpu(viewport) \
 			+ RenderingServer.get_frame_setup_time_cpu()
 
 

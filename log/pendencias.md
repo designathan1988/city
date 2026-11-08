@@ -5,6 +5,11 @@ O que falta fazer, por área.
 - Growth's look memory (B3, log/review.md §6.11): `record_for` stores the chosen candidate's look under the key of the record with
   the storeys that candidate reached, though the cap may make that record's body another; after a load the look is the standing
   body's. Derive looks from the kept body (`b40/body_cache.h`), delete `BuildingStore::looks`; the generated city moves.
+- Lot growth draws four whole bodies per lot (B3, log/review.md §3c, `likeness.h:28`): choose the candidate by the look's inputs
+  (style, palette, roof kind, storeys) before making one body; the generated city moves.
+- Lots derived per block in jobs outside the exclusive lock (B3, log/review.md §6.14, R4): lots appear later than the edit that
+  made them, and growth with them; the three constants of one reach (`lot_cache.cpp:15`, `lot_gen.h:20`, `road_network.cpp:16`) go.
+- Street items keep their footway place when put down (B3, log/review.md §6.13, R3): what an item does when its road moves changes.
 
 - Sombra nas ruas: 7 a 37% abaixo do 4.0 no lado escuro (linear, pixels escuros cinzas em quatro vistas do par), com o lado claro igual; a causa não foi achada, e a do reflexo do céu não fecha (`envMapIntensity` 0,55 da via).
 - Schemas (user decision): `streets.json lamp_light.pool_along`, `pool_sides` and `pool_lift_m` are read by nothing and stay only because the schema asks for them (`materials.json lamp_glow.params.pool_gain` IS read: `road_body.gdshaderinc`, `light_color_test.gd`).

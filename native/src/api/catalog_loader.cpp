@@ -26,9 +26,8 @@ void load_tuning(DataReader r, const Dictionary &t, Tuning &tn) {
 }
 
 StripKind strip_kind(const String &k, DataReader &r) {
-	static const char *NAMES[] = { "sidewalk", "curb", "parking", "bike", "lane", "median", "shoulder", "barrier" };
 	for (int i = 0; i < int(StripKind::COUNT); i++)
-		if (k == NAMES[i]) return StripKind(i);
+		if (k == STRIP_KIND_NAMES[i]) return StripKind(i);
 	r.fail(String("unknown strip kind '") + k + String("'"));
 	return StripKind::LANE;
 }

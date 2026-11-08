@@ -18,8 +18,9 @@ const MARK_M := 0.9
 var mode := "add"
 var cut_kind := CUT_ACROSS
 var parts := 2
-var _lots: Array = []
+var _lots := LotOutlines.new()
 var _from := Vector3.INF # where the gesture began
+var _angle := 0.0 # the street's angle at `_from` (lot_angle_at), read once when an "add" gesture began
 var _side: Array = [] # the side picked: [a, b]
 var _points := PackedVector3Array() # the polygon so far
 var _first_lot := 0 # join: the lot picked first
@@ -53,10 +54,10 @@ func cancel() -> void:
 
 ## The lots again (after an edit): their outlines are built once here, a band DRAWN_PX pixels to each side at any zoom.
 func _read() -> void:
-	_lots = CityStore.query(&"lots")
+	_lots.read()
 	_land.forget()
 	var rings := []
-	for l: Dictionary in _lots:
+	for l: Dictionary in _lots.all:
 		rings.push_back(l.points)
 	ctl.preview.show_outlines(rings, DRAWN_PX)
 
@@ -98,36 +99,7 @@ func _mark(p: Vector3) -> Dictionary:
 
 ## The corner under `p`, or INF.
 func _corner(p: Vector3) -> Vector3:
-	var reach := ctl.px_at(p) * TAKE_PX
-	var best := Vector3.INF
-	for l: Dictionary in _lots:
-		for q: Vector3 in l.points:
-			var d := Vector2(q.x - p.x, q.z - p.z).length()
-			if d < reach:
-				reach = d
-				best = q
-	return best
-
-
-## The side of lot `lot` under `p`, by its index; -1 when none.
-func _side_at(lot: Dictionary, p: Vector3, reach: float) -> int:
-	var best := -1
-	var pts: PackedVector3Array = lot.points
-	for i in pts.size():
-		var a := Vector2(pts[i].x, pts[i].z)
-		var b := Vector2(pts[(i + 1) % pts.size()].x, pts[(i + 1) % pts.size()].z)
-		var d := Geometry2D.get_closest_point_to_segment(Vector2(p.x, p.z), a, b).distance_to(Vector2(p.x, p.z))
-		if d < reach:
-			reach = d
-			best = i
-	return best
-
-
-func _lot_of(id: int) -> Dictionary:
-	for l: Dictionary in _lots:
-		if l.id == id:
-			return l
-	return {}
+	return _lots.corner_near(p, ctl.px_at(p) * TAKE_PX)
 
 
 func click(p: Vector3) -> void:
@@ -135,6 +107,7 @@ func click(p: Vector3) -> void:
 	match mode:
 		"add":
 			_from = _snap(p)
+			_angle = CityStore.query(&"lot_angle_at", [_from])
 		"polygon":
 			if _points.size() >= 3 and Vector2(p.x - _points[0].x, p.z - _points[0].z).length() < ctl.px_at(p) * TAKE_PX:
 				_done(CityStore.dispatch(&"lot_add_polygon", [_points]))
@@ -144,15 +117,15 @@ func click(p: Vector3) -> void:
 		"edit":
 			_from = _corner(p)
 		"curve":
-			for l: Dictionary in _lots:
-				var k := _side_at(l, p, ctl.px_at(p) * TAKE_PX)
+			for l: Dictionary in _lots.all:
+				var k := LotOutlines.side_near(l, p, ctl.px_at(p) * TAKE_PX)
 				if k >= 0:
 					_side = [l.points[k], l.points[(k + 1) % l.points.size()]]
 					_from = p
 		"front":
-			var lot := _lot_of(id)
+			var lot := _lots.of(id)
 			if not lot.is_empty():
-				var k := _side_at(lot, p, INF)
+				var k := LotOutlines.side_near(lot, p, INF)
 				_done(CityStore.dispatch(&"lot_set_front", [id, k]))
 		"split":
 			if cut_kind == CUT_DRAWN:
@@ -175,7 +148,7 @@ func _erase_under(p: Vector3) -> void:
 	if id != 0:
 		_erasing[id] = true
 	var marked := []
-	for l: Dictionary in _lots:
+	for l: Dictionary in _lots.all:
 		if _erasing.has(l.id):
 			marked.push_back({"points": _closed(l.points), "half_width": _width(p) * 3.0})
 	_show(marked)
@@ -190,7 +163,7 @@ func drag(p: Vector3) -> void:
 	if mode == "curve" and not _side.is_empty():
 		_show([{"points": PackedVector3Array([_side[0], p, _side[1]]), "half_width": _width(p) * 2.0}])
 	elif mode == "add":
-		var ring: PackedVector3Array = CityStore.query(&"lot_land", [_from, _snap(p), CityStore.query(&"lot_angle_at", [_from])])
+		var ring: PackedVector3Array = CityStore.query(&"lot_land", [_from, _snap(p), _angle])
 		_show([{"points": _closed(ring), "half_width": _width(p) * 2.0}] if ring.size() >= 3 else [])
 		ctl.tagged.emit(LotProposals.size_of(ring) if ring.size() >= 3 else "", p, true)
 	elif mode == "edit":
@@ -216,7 +189,7 @@ func release(p: Vector3) -> void:
 			if Vector2(p.x - _from.x, p.z - _from.z).length() < ctl.px_at(p) * TAKE_PX and not ring.is_empty():
 				_done(CityStore.dispatch(&"lot_add_polygon", [ring])) # a click takes what the streets propose
 			else:
-				_done(CityStore.dispatch(&"lot_add_rect", [_from, _snap(p), CityStore.query(&"lot_angle_at", [_from])]))
+				_done(CityStore.dispatch(&"lot_add_rect", [_from, _snap(p), _angle]))
 		"edit":
 			_done(CityStore.dispatch(&"lot_move_corner", [_from, _snap(p, _from)]))
 		"curve":
@@ -231,8 +204,8 @@ func release(p: Vector3) -> void:
 
 func hover(p: Vector3) -> void:
 	var extra := []
+	var id: int = CityStore.query(&"lot_at", [p]) # the lot under the pointer, asked once
 	if mode == "split" and cut_kind != CUT_DRAWN:
-		var id: int = CityStore.query(&"lot_at", [p])
 		var lines: PackedVector3Array = CityStore.query(&"lot_cut_lines", [id, cut_kind, parts, p, p]) if id != 0 else PackedVector3Array()
 		for i in range(0, lines.size() - 1, 2):
 			extra.push_back({"points": PackedVector3Array([lines[i], lines[i + 1]]), "half_width": _width(p) * 2.0})
@@ -244,6 +217,6 @@ func hover(p: Vector3) -> void:
 			extra.push_back({"points": _closed(ring), "half_width": _width(p) * 2.0})
 		if _points.size() >= 1:
 			extra.push_back({"points": PackedVector3Array([_points[-1], at]), "half_width": _width(p) * 2.0})
-	var over: PackedVector3Array = _lot_of(CityStore.query(&"lot_at", [p])).get("points", _land.at(p) if mode == "add" else PackedVector3Array())
+	var over: PackedVector3Array = _lots.of(id).get("points", _land.at(p) if mode == "add" else PackedVector3Array())
 	ctl.tagged.emit(LotProposals.size_of(over) if over.size() >= 3 else "", LotProposals.middle(over) if over.size() >= 3 else p, true)
 	_show(extra)

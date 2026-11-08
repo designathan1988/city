@@ -85,7 +85,7 @@ func _road(col: Control, info: Dictionary) -> void:
 	for e in info.get("ends", []):
 		RoadPanel.end_row(col, e, _redraw)
 	var picks := []
-	for p: Dictionary in CityStore.query(&"road_profiles"):
+	for p: Dictionary in CityStore.cached(&"road_profiles"):
 		picks.append([p.index, tr(p.name_key)])
 	HudWidgets.dropdown(col, tr("inspector.roadClass"), picks, info.profile_id, _set_class)
 	RoadPanel.road(col, info, _at, _redraw, _bent)

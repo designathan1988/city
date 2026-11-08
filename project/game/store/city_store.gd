@@ -12,7 +12,7 @@ signal command_failed(error_key: String)
 const SNAPSHOT_INTERVAL_S := 0.25
 ## Reads of the core that change only when a revision of the snapshot moves (the network with edit_revision, the transport
 ## plan with transit_revision): `cached` asks the core once per revision, so a view drawing every frame never asks for nothing.
-const CACHED_BY := {&"junctions": "edit_revision", &"transit_plan": "transit_revision"}
+const CACHED_BY := {&"junctions": "edit_revision", &"transit_plan": "transit_revision", &"road_profiles": "profiles_revision"}
 
 signal saved(slot: String, result: Dictionary)
 signal loaded(slot: String, result: Dictionary)
@@ -29,6 +29,8 @@ var _core: Node3D
 var _routes: Dictionary = {} # a StoreApi name -> the Callable on the core, or on the area of it, that runs it
 var _since_refresh := 0.0
 var _cache := {} # CACHED_BY query -> [the revision it was read at, its answer]
+var _cost_frame := -1 # the frame frame_render_cost last read
+var _cost := {} # its reading
 var _snapshot: Dictionary = {} # the core's snapshot as last read
 var _stale := false # something may have moved it since: the next read asks the core
 var _change_due := false # `changed` is on its way, at the end of this frame
@@ -84,7 +86,7 @@ func ready_to_read() -> bool:
 ## The road the tool opens with (data/ui/drawers.json first_road).
 func first_road() -> int:
 	var id: String = DataTables.ui("drawers").first_road
-	for p in query(&"road_profiles"):
+	for p in cached(&"road_profiles"):
 		if p.id == id:
 			return p.index
 	return 0
@@ -105,8 +107,18 @@ func query(name: StringName, args: Array = []) -> Variant:
 	return _routes[name].callv(args)
 
 
+## The core's render cost of this frame (query render_cost), read once a frame however many ask (the lab's meter, the Effects
+## panel's CPU tab). Shared by every reader: read it, never change it.
+func frame_render_cost() -> Dictionary:
+	var frame := Engine.get_process_frames()
+	if frame != _cost_frame:
+		_cost_frame = frame
+		_cost = query(&"render_cost")
+	return _cost
+
+
 ## A CACHED_BY query's answer, asked of the core again only when its revision in the snapshot moved (every command
-## marks the snapshot, so an edit is seen at once).
+## marks the snapshot, so an edit is seen at once). Shared by every reader: read it, never change it.
 func cached(name: StringName) -> Variant:
 	var rev: int = snapshot.get(CACHED_BY[name], -1)
 	if rev < 0:

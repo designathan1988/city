@@ -210,11 +210,13 @@ PoleRunPlan plan_pole_run(const CityState &s, double ax, double az, double bx, d
 	return plan;
 }
 
-EditResult build_pole_run(CityState &s, double ax, double az, double bx, double bz, double reach, LampMode lamps, PoleKind kind) {
+EditResult build_pole_run(CityState &s, double ax, double az, double bx, double bz, double reach, LampMode lamps, PoleKind kind,
+		PlannedPole *last) {
 	EditResult r;
 	const PoleRunPlan plan = plan_pole_run(s, ax, az, bx, bz, reach, lamps, kind);
 	r.error = plan.refused;
 	if (!plan.refused.empty() || plan.poles.size() < 2) return r;
+	if (last) *last = plan.poles.back();
 	std::vector<int> ids;
 	for (const PlannedPole &p : plan.poles) {
 		if (p.existing >= 0) {

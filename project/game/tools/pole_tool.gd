@@ -74,12 +74,11 @@ func release(p: Vector3) -> void:
 	if _from == Vector3.INF:
 		return
 	var end := p if p != Vector3.INF else _to
-	var plan: Dictionary = CityStore.query(&"preview_pole_run", _run(_from, end))
 	var r: Dictionary = CityStore.dispatch(&"build_pole_run", _run(_from, end))
 	_from = Vector3.INF
 	_clear()
-	if r.get("ok", false) and not plan.get("poles", []).is_empty():
-		_chain = plan.poles.back().position
+	if r.get("ok", false) and r.has("last"):
+		_chain = r.last
 	else:
 		_chain = Vector3.INF
 		ctl.hint.emit(refusal(r), false)

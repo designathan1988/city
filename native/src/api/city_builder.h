@@ -28,6 +28,9 @@ public:
 	godot::Vector3 body_size(const godot::PackedByteArray &bytes) const; // width, depth, height
 	godot::Dictionary place_fit(const godot::Vector3 &at, const godot::Vector2 &size, double rot) const;
 	godot::String place_check(const godot::PackedByteArray &bytes, double x, double z, double rot) const;
+	// The model in hand at a pointer, under one lock: where it lands (place_fit: x, z, rot, kind), the ground there (y) and why it could
+	// not stand (problem: place_check), the check made again only when the model, the place or the city moved.
+	godot::Dictionary place_hover(const godot::PackedByteArray &bytes, const godot::Vector3 &at, const godot::Vector2 &size, double rot) const;
 	godot::Dictionary place_model(const godot::PackedByteArray &bytes, double x, double z, double rot, int fn, int zone);
 	int stage_show(const godot::PackedByteArray &bytes, const godot::RID &scenario, bool ghost);
 	void stage_move(int handle, const godot::Transform3D &at);
@@ -103,6 +106,15 @@ protected:
 private:
 	CityState *state_ = nullptr; // the core's: it outlives this area (CityCore frees its areas first)
 	RenderWorld *render_ = nullptr;
+	// place_hover's last check: what it read (the model's bytes, the place, the city's revision) and what it found. Main thread.
+	struct HoverCheck {
+		godot::PackedByteArray bytes;
+		double x = 0, z = 0, rot = 0;
+		uint64_t revision = 0;
+		bool made = false;
+		godot::String problem;
+	};
+	mutable HoverCheck hover_;
 };
 
 } // namespace city

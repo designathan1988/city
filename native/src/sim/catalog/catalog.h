@@ -10,6 +10,7 @@
 #include "sim/catalog/tuning_fields.h"
 #include "sim/catalog/traffic_params.h"
 
+#include <atomic>
 #include <cstdint>
 #include <string>
 #include <utility>
@@ -108,6 +109,7 @@ struct Catalog {
 		const int id = int(profiles.size());
 		derive_from(p, id);
 		profiles.push_back(std::move(p));
+		profiles_stamp_ = next_profiles_stamp();
 		return id;
 	}
 	// The variants dropped (a new city): what is derived is worked out again over the catalogue's own.
@@ -117,7 +119,11 @@ struct Catalog {
 		widest_half_ = widest_sidewalk_half_ = 0;
 		ring_profile_ = -1;
 		for (size_t i = 0; i < profiles.size(); i++) derive_from(profiles[i], int(i));
+		profiles_stamp_ = next_profiles_stamp();
 	}
+	// Which list of profiles this is: it moves with each profile added and each drop, and never comes back, in this catalogue or
+	// another (a city opened brings its own), so what a reader kept of the list holds while it stays (the script's road list).
+	uint64_t profiles_stamp() const { return profiles_stamp_; }
 	// The widest reach either side of a centre line among the profiles.
 	float widest_half() const { return widest_half_; }
 	// The widest half of a kerbside sidewalk (the first or last strip) among the profiles.
@@ -136,9 +142,14 @@ private:
 				}
 		if (ring_profile_ < 0 && p.ring) ring_profile_ = id;
 	}
+	static uint64_t next_profiles_stamp() {
+		static std::atomic<uint64_t> next{ 1 };
+		return next.fetch_add(1, std::memory_order_relaxed);
+	}
 	static constexpr float HALF_OF = 0.5f;
 	float widest_half_ = 0, widest_sidewalk_half_ = 0;
 	int ring_profile_ = -1;
+	uint64_t profiles_stamp_ = 0;
 };
 
 } // namespace city

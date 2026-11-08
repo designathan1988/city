@@ -102,7 +102,17 @@ Dictionary CityStreet::preview_pole_run(const Vector3 &a, const Vector3 &b, floa
 }
 
 Dictionary CityStreet::build_pole_run(const Vector3 &a, const Vector3 &b, float reach, int lamps, int kind) {
-	return run_edit(*state_, "cmd.place.poleRun", [&](CityState &s) { return city::build_pole_run(s, a.x, a.z, b.x, b.z, reach, LampMode(lamps), PoleKind(kind)); });
+	PlannedPole last;
+	bool strung = false;
+	Vector3 at;
+	Dictionary d = run_edit(*state_, "cmd.place.poleRun", [&](CityState &s) {
+		EditResult r = city::build_pole_run(s, a.x, a.z, b.x, b.z, reach, LampMode(lamps), PoleKind(kind), &last);
+		strung = r.ok;
+		if (strung) at = on_ground(s, last.x, last.z); // under the edit's lock, as the preview reads the ground
+		return r;
+	});
+	if (strung) d["last"] = at; // the last pole: where the tool goes on from, without planning the run again
+	return d;
 }
 
 void CityStreet::show_pole_preview(const Array &poles) {

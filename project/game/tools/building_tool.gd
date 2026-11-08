@@ -75,10 +75,9 @@ func hover(p: Vector3) -> void:
 	if hand.is_empty():
 		return
 	_last = p
-	_fit = CityStore.query(&"place_fit", [p, Vector2(_extent.x, _extent.y), turn])
-	var y: float = CityStore.query(&"height_at", [_fit.x, _fit.z])
-	CityStore.query(&"stage_move", [_ghost, Transform3D(Basis(Vector3.UP, _fit.rot), Vector3(_fit.x, y, _fit.z))])
-	var problem: String = CityStore.query(&"place_check", [hand.bytes, _fit.x, _fit.z, _fit.rot])
+	_fit = CityStore.query(&"place_hover", [hand.bytes, p, Vector2(_extent.x, _extent.y), turn]) # one lock; the check only when it moved
+	CityStore.query(&"stage_move", [_ghost, Transform3D(Basis(Vector3.UP, _fit.rot), Vector3(_fit.x, _fit.y, _fit.z))])
+	var problem: String = _fit.problem
 	ctl.hint.emit(tr(problem) if problem != "" else tr("hint.builder.place"), problem == "")
 
 

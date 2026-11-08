@@ -29,7 +29,7 @@ static func traveled(d: Dictionary) -> float:
 
 ## The paint the preview draws: none on a road without lines.
 static func paint(profile: int) -> String:
-	var p: Dictionary = CityStore.query(&"road_profiles")[profile]
+	var p: Dictionary = CityStore.cached(&"road_profiles")[profile]
 	if not p.painted:
 		return ""
 	return "yellow" if p.yellow else "white"

@@ -67,6 +67,8 @@ struct PoleRunPlan {
 	double from_x = 0, from_z = 0, to_x = 0, to_z = 0;
 };
 PoleRunPlan plan_pole_run(const CityState &s, double ax, double az, double bx, double bz, double reach, LampMode lamps, PoleKind kind);
-EditResult build_pole_run(CityState &s, double ax, double az, double bx, double bz, double reach, LampMode lamps, PoleKind kind);
+// The run planned and strung; `last`, when given, takes the place of its last pole (where the next run goes on from).
+EditResult build_pole_run(CityState &s, double ax, double az, double bx, double bz, double reach, LampMode lamps, PoleKind kind,
+		PlannedPole *last = nullptr);
 
 } // namespace city

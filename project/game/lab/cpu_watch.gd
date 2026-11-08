@@ -23,11 +23,10 @@ func _init(zones: Array[String], window: int) -> void:
 
 ## One frame's reading.
 func sample(viewport: RID) -> void:
-	var cost: Dictionary = CityStore.query(&"render_cost")
-	cost[DRAW] = RenderingServer.viewport_get_measured_render_time_cpu(viewport)
-	cost[SETUP] = RenderingServer.get_frame_setup_time_cpu()
+	var cost: Dictionary = CityStore.frame_render_cost() # shared: read only
+	var own := {DRAW: RenderingServer.viewport_get_measured_render_time_cpu(viewport), SETUP: RenderingServer.get_frame_setup_time_cpu()}
 	for z in _zones.size():
-		_times[z * _window + _at] = float(cost.get(_zones[z], 0.0))
+		_times[z * _window + _at] = float(own.get(_zones[z], cost.get(_zones[z], 0.0)))
 	_at += 1
 	if _at == _window:
 		_at = 0

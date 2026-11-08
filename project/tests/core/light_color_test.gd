@@ -163,7 +163,7 @@ func _square(tag: Vector2, col: Color) -> ArrayMesh:
 func _lens_colours() -> Array[Color]:
 	var out: Array[Color] = []
 	out.resize(LENSES)
-	for part: Dictionary in DataTables.render().streets.props.signal:
+	for part: Dictionary in DataTables.render_table("streets").props.signal:
 		if part.has("lens"):
 			out[int(part.lens)] = Color.html(part.color)
 	return out

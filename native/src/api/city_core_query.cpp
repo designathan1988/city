@@ -133,6 +133,7 @@ Dictionary CityCore::snapshot() {
 	d["segments"] = s.roads.alive_segments();
 	d["marking_style"] = s.marking_style.load();
 	d["edit_revision"] = int64_t(s.edit_revision);
+	d["profiles_revision"] = int64_t(s.catalog.profiles_stamp()); // the road list (CityStore.cached)
 	d["player_zones"] = s.roads.player_sides;
 	d["style"] = String(s.style.c_str());
 	d["nodes"] = s.roads.alive_nodes();
@@ -165,6 +166,14 @@ Dictionary CityCore::snapshot() {
 float CityCore::height_at(float x, float z) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	return state_->ready ? state_->terrain.height_at(x, z) : 0.f;
+}
+
+PackedFloat32Array CityCore::heights_at(const PackedVector2Array &points) {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	PackedFloat32Array out;
+	out.resize(points.size());
+	for (int64_t i = 0; i < points.size(); i++) out.set(i, state_->ready ? state_->terrain.height_at(points[i].x, points[i].y) : 0.f);
+	return out;
 }
 
 Dictionary CityCore::raycast(const Vector3 &origin, const Vector3 &dir) {

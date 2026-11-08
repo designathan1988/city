@@ -51,7 +51,7 @@ func _read_cell() -> void:
 	if not Settings.layer_on("grid"):
 		return
 	_cell = DataTables.ui("drawers").road_options.cell_m
-	var width: float = CityStore.query(&"road_profiles")[drawn].width
+	var width: float = CityStore.cached(&"road_profiles")[drawn].width
 	_cell_offset = _cell * 0.5 if maxi(1, roundi(width / _cell)) % 2 == 1 else 0.0
 
 
