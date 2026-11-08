@@ -2236,6 +2236,20 @@ base for the whole camera.
 Carried in the same commit at the scenic city session's request: its scenic key renames (`scenic.json`, its schema,
 `scenic_city_test`), applied to the rewritten loader, and one value (barra_funda `blocks_m` 130 -> 128).
 
+### 6.9 The frozen photos' residual, diagnosed again (2026-11-07)
+
+B0 (§6.6) put the run-to-run pixels at the utility wires' joints, from one photo. Measured over ten runs of two trees with one
+DLL, they are single pixels anywhere in the picture (`02-rua`: (106,130), (80,131), (25,213), (368,245), (1110,273) in one pair of
+runs, (1157-1167, 264-265) on a sign's edge in another), all of 1 level but one of 11, `00-cidade` and `02-rua` in three or four
+states, `01-bairro` and `03-rua_noite` always equal. Not a geometry tie then (a tie sits on an edge between two meshes), and not
+time (the frozen look sets `Engine.time_scale = 0`, which stops shader TIME too). What is left is how Godot draws a surface whose
+specialized pipeline is still compiling: with the ubershader, the same material compiled another way
+(`render_forward_clustered.cpp`, `ubershader_iterations` and `wait_for_compilation`), and two codes may round apart. The engine
+counts compilations when they are submitted (`get_pipeline_compilations`), and waits for them only for the ubershaders of a mesh
+being loaded (`mesh_generate_pipelines`): no script can know when the background ones are done, so the photo cannot wait on it.
+`photos_check` fails on these pixels in every run of an unchanged tree; until the engine gives a completion signal, a change is
+judged by its photos being byte-equal to one of the states the unchanged tree gives (log/pendencias.md).
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

@@ -81,6 +81,10 @@ O que falta fazer, por área.
     the upgrade from 4.7.
   - `ui.stats.tip` shows `{speed}` as "—": the top bar never fills it; the key's text loses the field when the translation tables
     are next edited (held while another session edits them).
+  - The frozen photos keep run-to-run pixels (`00-cidade`, `02-rua`: 1 to 7 single pixels, 1 level, one of 11; log/review.md §6.9):
+    Godot draws with the ubershader until a specialized pipeline is compiled in the background and gives no signal when it is, so
+    `photos_check` fails on an unchanged tree. Until a completion signal exists (an engine change), a change's photos are judged
+    against the states the unchanged tree gives over several runs.
 - Android (the first APK, 2026-11-07, `tools/build/android.sh`): built and signed, never run on a device (none was connected), so
   whether it opens, and at what frame rate, is unknown.
   - Touch: the camera has only mouse gestures (`camera_gestures.gd`). A finger is the left button through Godot's mouse emulation,
