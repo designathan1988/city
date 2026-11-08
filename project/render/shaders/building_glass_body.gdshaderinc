@@ -8,10 +8,7 @@ render_mode cull_back;
 global uniform float night;
 global uniform float room_daylight; // how bright a room seen through its glass is by day, as light it sends out
 global uniform float building_glass; // the Effects panel: 0 leaves the panes out
-uniform float window_glow = 1.5;
-uniform float glass_reflect = 0.08;
-uniform vec3 glass_sky : source_color = vec3(0.45, 0.55, 0.66);
-uniform float glass_sky_floor = 0.15;
+#include "res://render/shaders/building_glass_set.gdshaderinc"
 uniform float furniture_tone[120]; // linear tone of each furniture kind, three floats a kind (materials.json)
 
 const int KIND_MASK = (1 << SURFACE_KIND_BITS) - 1;

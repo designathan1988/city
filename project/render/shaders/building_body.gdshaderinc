@@ -22,10 +22,7 @@ uniform float finish_metal[FIN_COUNT];
 uniform float wall_gain = 1.0;
 uniform float lamp_glow = 3.4;
 uniform vec3 lamp_light : source_color = vec3(1.0, 0.83, 0.6); // what a lit lamp gives, whatever its body is by day
-uniform float window_glow = 1.5;
-uniform float glass_reflect = 0.08;
-uniform vec3 glass_sky : source_color = vec3(0.45, 0.55, 0.66);
-uniform float glass_sky_floor = 0.15;
+#include "res://render/shaders/building_glass_set.gdshaderinc"
 
 varying vec3 v_world;
 varying vec3 v_wn;

@@ -250,6 +250,9 @@
     "outside_all_night": {
       "type": "number"
     },
+    "rooms_in_use": {
+      "type": "number"
+    },
     "ssil": {
       "type": "object",
       "properties": {

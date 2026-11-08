@@ -6,6 +6,7 @@
 shader_type spatial;
 render_mode cull_back;
 #include "res://render/shaders/contracts/buildings.gdshaderinc"
+#include "res://render/shaders/fresnel.gdshaderinc"
 
 global uniform float night;
 global uniform float room_daylight;
@@ -69,7 +70,7 @@ void fragment() {
 		// the glass of the levels before it (building_far_window.gdshaderinc): next to nothing scattered, the room through it and the sky on it
 		vec3 V = normalize(v_world - CAMERA_POSITION_WORLD);
 		float cosv = clamp(dot(-V, n), 0.0, 1.0);
-		float fresnel = 0.04 + 0.96 * pow(1.0 - cosv, 5.0);
+		float fresnel = schlick(cosv);
 		albedo = mix(albedo, PANE_ALBEDO, m) * mix(FOOT_SHADE, 1.0, smoothstep(0.0, FOOT_STOREYS, UV.y));
 		rough = mix(rough, 0.35, m);
 		emit = ((lamp * lit * night * window_glow + pane_mean(room_tone(V, n, FLOOR_HOME)) * room_daylight) * (1.0 - fresnel) + glass_reflection(V, n, fresnel, GLASS_ENV)) * m;

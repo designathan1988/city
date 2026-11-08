@@ -3479,6 +3479,39 @@ already in the picture before the blast.
 
 **What changes.** Nothing: the marks look the same.
 
+### 6.56 B2, C14 and C16 (the near glass): the rooms behind the panes in materials.json, one Fresnel, one lit share (2026-11-08)
+
+**Cause and fix.** `building_pane.gdshaderinc` held the whole look of the rooms behind the near level's glass as bare numbers
+(189 findings): the floors' tiles, stone and boards, the ceiling and its office panels, the walls, the picture and the television,
+the daylight's fall into the room, the furniture's shades, the curtains, blinds and sheers, the lamp's lift, the roughness. They
+are uniforms whose values are `materials.json` `building_glass.params` (only that row's shaders reach the include), grouped by
+what they shape and said at the uniform; the guards, the byte top, the floor cell's seed, the lots' decorrelating multipliers and
+the room and bay hashes are named consts with their source. Moving them showed three values held twice:
+
+- Schlick's Fresnel for a dielectric, `0.04 + 0.96 * pow(1 - cos, 5)`, typed seven times in four shaders (`building_pane`,
+  `building_far_window`, `building_far`, `agents`): `fresnel.gdshaderinc` owns it (`schlick`, F0 from index 1.5).
+- The share of the awake whose room has the lamp on, 0.64 in `pane_lamp` and again as `signature_look`'s `ROOMS_IN_USE`. The
+  signature materials are made by the core (`signature_bodies.cpp`) and take no material params, so the share is a shader global
+  beside `rooms_awake`: `rooms_in_use`, from `daylight.json` (set by `Daylight`, declared in `building_lamps`).
+- What a dark pane lets through, 0.64 in the near pane and in the mid level's window (`building_far_window`, another material):
+  `dark_glass` joins `materials.json`'s `glass` set, which both rows use. That set's uniforms were declared in both bodies with
+  defaults no row ever used (data always sets them); `building_glass_set.gdshaderinc` declares the `glass` and `sky_in_glass` sets
+  once for both.
+
+`FRAME_SHARE` stays as it is: it reads a value in metres as a share (§3s), a change of what is drawn, so B3. The `HUNG_*` means of
+`building_room_tone` stay hand-derived from the picks now in data (§6.25: a re-derivation moves pixels, B3).
+
+**Proof.** Each touched shader with its consts, its uniform defaults and the moved params put back as literals is HEAD's code line
+for line, `schlick(x)` written out as the term it returns (`1.0 - 0.04` is the float `0.96` is) and the two shares as 0.64; the
+colours went from literals in code to plain vec3 uniforms, which Godot passes as set. `quick`: every test passes; of the four
+photos two are byte-equal to known states and two differ from their nearest known state by one pixel each, one level of 255, the
+same pixel in two runs: a near pane's Venetian slat (02-rua, 532,379) and a lit room at night (03-rua_noite, 919,248).
+
+**What changes.** The arithmetic is HEAD's, but not its compiled form: an operation on literals (a `smoothstep` between literal
+edges, a division by a literal) is folded when the shader is compiled into a multiply by a reciprocal worked out once, and on a
+uniform it runs on the GPU. The last bit of a value differs, and on two pixels of the near glass it crosses a level. Nothing to see;
+city-verify's photos re-blessed for it (`photos_bless`, an understood change). Every shader that follows can do the same.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

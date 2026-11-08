@@ -9,6 +9,7 @@ shader_type spatial;
 #include "res://render/shaders/contracts/agents.gdshaderinc"
 
 #include "res://render/shaders/color_space.gdshaderinc"
+#include "res://render/shaders/fresnel.gdshaderinc"
 
 global uniform float night;
 uniform vec3 head_glow : source_color;
@@ -62,7 +63,7 @@ void vertex() {
 // running along the doors and the sky growing on the roof at a glancing view is what reads as car paint.
 vec3 sheen(vec3 n, vec3 v) {
 	vec3 r = reflect(-v, n);
-	float f = 0.04 + 0.96 * pow(1.0 - clamp(dot(n, v), 0.0, 1.0), 5.0);
+	float f = schlick(clamp(dot(n, v), 0.0, 1.0));
 	vec3 world = mix(source_linear(sheen_ground), source_linear(sheen_sky) * (0.7 + 0.5 * clamp(r.y, 0.0, 1.0)), smoothstep(-0.04, 0.06, r.y));
 	return world * f * sheen_power * (1.0 - night);
 }

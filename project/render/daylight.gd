@@ -44,6 +44,7 @@ func _init(day: Dictionary, sun: DirectionalLight3D, fill: DirectionalLight3D, t
 	_env = env
 	_sky = sky
 	cascades = SunCascades.new(day, sun)
+	RenderingServer.global_shader_parameter_set(&"rooms_in_use", day.rooms_in_use)
 
 
 func _c(key: String) -> Color:

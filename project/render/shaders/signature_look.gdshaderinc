@@ -17,14 +17,13 @@ global uniform float night;
 
 const float GLASS_CELL_M = 3.2; // cook_signatures.py ROOM_M
 const float ROOM_GLOW = 0.62; // window_glow of the plain buildings (materials.json)
-const float ROOMS_IN_USE = 0.64; // of those awake, the rooms with the lamp on: building_pane.gdshaderinc pane_lamp
 
 // What the room behind a cell gives at night, by the rule of the plain buildings (pane_lamp), with an office's lamps.
 vec3 room_light(vec2 uv, float glass) {
 	ivec2 cell = ivec2(floor(painted_windows ? uv : uv / GLASS_CELL_M));
 	uint slot = spatial_hash(uint(cell.x), uint(cell.y));
 	float lot = h01(slot);
-	float lit = step(h01(slot + 977u), rooms_awake * ROOMS_IN_USE) * room_level(lot) * building_night_windows;
+	float lit = step(h01(slot + 977u), rooms_awake * rooms_in_use) * room_level(lot) * building_night_windows;
 	return room_lamp(lot, 1.0) * (lit * night * ROOM_GLOW * glass);
 }
 

@@ -92,6 +92,10 @@ rooms_awake={
 "type": "float",
 "value": 0.63
 }
+rooms_in_use={
+"type": "float",
+"value": 0.64
+}
 room_daylight={
 "type": "float",
 "value": 0.2

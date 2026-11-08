@@ -15,6 +15,7 @@ const vec3 LAMP_HOME_MEAN = vec3(1.6241, 0.8671, 0.4790);
 const vec3 LAMP_OFFICE_MEAN = vec3(1.3902, 0.9254, 0.5895);
 
 global uniform float rooms_awake; // the share of people awake at this hour (daylight.gd)
+global uniform float rooms_in_use; // of those awake, the share whose room has the lamp on (daylight.json, daylight.gd)
 global uniform float building_night_windows; // the Effects panel: 0 puts the lit rooms out
 
 const vec3 PANE_ALBEDO = vec3(0.0075, 0.0096, 0.0115); // glass scatters next to nothing
