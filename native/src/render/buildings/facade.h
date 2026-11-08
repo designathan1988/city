@@ -54,12 +54,12 @@ struct Side {
 	Basis f;
 	float length = 0;
 	int side = 0;
-	Point2 p0, p1, n;
+	V2 p0, p1, n;
 };
 
 std::vector<Side> sides_of(const Placed &pl, const Volume &v, float z);
 // True when the plan point (lot frame) lies inside another closed volume standing at `level`.
-bool covered(const Body &b, const Volume &self, int level, Point2 p);
+bool covered(const Body &b, const Volume &self, int level, V2 p);
 Lin wall_lin(const Placed &pl, const Volume &v, int storey, int side);
 Lin trim_lin(const Placed &pl);
 Lin paint_lin(const Paint &p);

@@ -2,6 +2,7 @@
 // raster, each closed piece a block; its least-area rectangle cut into one or two rows (two when >= 44 m deep, back to
 // back) and each row into equal columns of about LOT_FRONTAGE. Every lot reaches the footway.
 #include "sim/citygen/lot_gen.h"
+#include "core/math.h"
 #include "core/plane_geometry.h"
 
 #include <algorithm>
@@ -16,11 +17,9 @@ constexpr double LATTICE_START = 0.1, LATTICE_STEP = 0.2, LAND_SHARE = 0.5, STRE
 constexpr int MIN_DEGREE_PLATE = 3;
 constexpr double EPS_LEN = 1e-9, EPS_AREA = 1e-6;
 
-using P2 = std::pair<double, double>;
-
-std::vector<P2> convex_hull(std::vector<P2> s) {
-	std::sort(s.begin(), s.end());
-	auto cross = [](const P2 &o, const P2 &a, const P2 &b) { return (a.first - o.first) * (b.second - o.second) - (a.second - o.second) * (b.first - o.first); };
+std::vector<XZ> convex_hull(std::vector<XZ> s) {
+	std::sort(s.begin(), s.end(), [](const XZ &a, const XZ &b) { return a.x < b.x || (!(b.x < a.x) && a.z < b.z); }); // as a pair sorts
+	auto cross = [](const XZ &o, const XZ &a, const XZ &b) { return (a.x - o.x) * (b.z - o.z) - (a.z - o.z) * (b.x - o.x); };
 	return monotone_hull(s, cross, 0.0);
 }
 
@@ -28,18 +27,18 @@ struct Box {
 	double cx, cz, ux, uz, vx, vz, L, D;
 };
 
-bool min_area_box(const std::vector<P2> &h, Box &best) {
+bool min_area_box(const std::vector<XZ> &h, Box &best) {
 	if (h.size() < 3) return false;
 	double best_a = NO_ROOM;
 	bool found = false;
 	for (size_t e = 0; e < h.size(); e++) {
-		const P2 &a = h[e], &b = h[(e + 1) % h.size()];
-		double l = std::hypot(b.first - a.first, b.second - a.second);
+		const XZ &a = h[e], &b = h[(e + 1) % h.size()];
+		double l = std::hypot(b.x - a.x, b.z - a.z);
 		if (l < EPS_LEN) continue;
-		double ux = (b.first - a.first) / l, uz = (b.second - a.second) / l, vx = -uz, vz = ux;
+		double ux = (b.x - a.x) / l, uz = (b.z - a.z) / l, vx = -uz, vz = ux;
 		double s0 = NO_ROOM, s1 = -NO_ROOM, t0 = NO_ROOM, t1 = -NO_ROOM;
-		for (const P2 &q : h) {
-			double s = q.first * ux + q.second * uz, t = q.first * vx + q.second * vz;
+		for (const XZ &q : h) {
+			double s = q.x * ux + q.z * uz, t = q.x * vx + q.z * vz;
 			s0 = std::min(s0, s); s1 = std::max(s1, s); t0 = std::min(t0, t); t1 = std::max(t1, t);
 		}
 		double area = (s1 - s0) * (t1 - t0);
@@ -172,7 +171,7 @@ private:
 
 	// spans: each row of the block with its first and last column, in row order.
 	void cut_block(const std::vector<std::array<int, 3>> &spans, int id) {
-		std::vector<P2> pts;
+		std::vector<XZ> pts;
 		for (const std::array<int, 3> &r : spans) {
 			pts.push_back({ ax_ + (r[1] + 0.5) * RES, az_ + (r[0] + 0.5) * RES });
 			if (r[2] != r[1]) pts.push_back({ ax_ + (r[2] + 0.5) * RES, az_ + (r[0] + 0.5) * RES });

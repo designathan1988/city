@@ -35,7 +35,7 @@ enum FloorFinish : uint8_t { FLOOR_WOOD, FLOOR_STONE, FLOOR_PORCELAIN };
 float lift_at(const Body &b, int level, float x, float y);
 // A flight between two blocks that meet at floors of their own (a split level), rising along the line they share.
 struct LevelFlight {
-	Point2 foot, top;
+	V2 foot, top;
 	float z0 = 0, z1 = 0, width = 0;
 	int risers = 0;
 };

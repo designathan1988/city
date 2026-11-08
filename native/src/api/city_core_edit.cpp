@@ -243,7 +243,7 @@ Dictionary CityCore::segment_at(const Vector3 &p) {
 }
 
 Dictionary CityCore::paint_zone_path(const PackedVector3Array &points, float radius, int zone) {
-	std::vector<StrokePoint> dabs;
+	std::vector<XZ> dabs;
 	for (int i = 0; i < points.size(); i++) dabs.push_back({ points[i].x, points[i].z });
 	return run_edit(*state_, "cmd.place.zone", [&](CityState &s) { return city::paint_zone_path(s, dabs, radius, zone); });
 }

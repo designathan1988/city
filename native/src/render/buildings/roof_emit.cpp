@@ -19,7 +19,7 @@ constexpr float MACHINE_IN = 0.3f;
 constexpr float MACHINE_MIN = 1.f;
 
 // A volume standing at or over this volume's top storey covers its parapet there.
-bool roof_covered(const Body &b, const Volume &v, Point2 p) {
+bool roof_covered(const Body &b, const Volume &v, V2 p) {
 	for (const Volume &o : b.volumes) {
 		if (&o == &v || o.base > v.top() || o.top() < v.top()) continue; // the storey under the roof, or a block standing on it
 		if (p.x > o.x && p.x < o.x + o.w && p.y > o.y && p.y < o.y + o.d) return true;
@@ -31,7 +31,7 @@ void top_face(Shell &s, const Placed &pl, const Volume &v, float z, const Lin &l
 	std::vector<Vector3> p;
 	if (v.outline.empty()) p = { pl.lot.at(v.x, v.y, z), pl.lot.at(v.x + v.w, v.y, z), pl.lot.at(v.x + v.w, v.y + v.d, z), pl.lot.at(v.x, v.y + v.d, z) };
 	else
-		for (const Point2 &q : v.outline) p.push_back(pl.lot.at(v.x + q.x * v.w, v.y + q.y * v.d, z));
+		for (const V2 &q : v.outline) p.push_back(pl.lot.at(v.x + q.x * v.w, v.y + q.y * v.d, z));
 	Vector3 c = pl.lot.at(v.x + v.w / 2, v.y + v.d / 2, z);
 	for (size_t i = 0; i < p.size(); i++) s.tri(c, p[i], p[(i + 1) % p.size()], pl.lot.e2, lin, fin);
 }
@@ -54,10 +54,10 @@ void RoofEmit::edge(const Side &sd, bool terrace, Crown crown) {
 	Paint cp = moulding_of(pl);
 	Lin coping = paint_lin(cp), roof = paint_lin(b.roof_of(v)) * INNER_SHADE, wall = wall_lin(pl, v, v.storeys - 1, sd.side);
 	int8_t wf = b.wall_of(v).finish;
-	Point2 dir{ (sd.p1.x - sd.p0.x) / sd.length, (sd.p1.y - sd.p0.y) / sd.length };
+	V2 dir{ (sd.p1.x - sd.p0.x) / sd.length, (sd.p1.y - sd.p0.y) / sd.length };
 	for (int i = 0; i < n; i++) {
 		float a0 = W * float(i), am = a0 + W / 2;
-		Point2 p{ sd.p0.x + dir.x * am - sd.n.x * ROOF_TEST_OUT, sd.p0.y + dir.y * am - sd.n.y * ROOF_TEST_OUT };
+		V2 p{ sd.p0.x + dir.x * am - sd.n.x * ROOF_TEST_OUT, sd.p0.y + dir.y * am - sd.n.y * ROOF_TEST_OUT };
 		if (roof_covered(b, v, p)) continue;
 		if (terrace) {
 			Basis rf{ sd.f.at(a0, eaves, -RAIL_IN), sd.f.e0, sd.f.e1, sd.f.e2 };
@@ -75,7 +75,7 @@ void RoofEmit::edge(const Side &sd, bool terrace, Crown crown) {
 }
 
 void RoofEmit::crown_bands(const Side &sd, Crown crown) {
-	Point2 mid{ (sd.p0.x + sd.p1.x) / 2 - sd.n.x * ROOF_TEST_OUT, (sd.p0.y + sd.p1.y) / 2 - sd.n.y * ROOF_TEST_OUT };
+	V2 mid{ (sd.p0.x + sd.p1.x) / 2 - sd.n.x * ROOF_TEST_OUT, (sd.p0.y + sd.p1.y) / 2 - sd.n.y * ROOF_TEST_OUT };
 	if (roof_covered(*pl.b, v, mid)) return;
 	Paint mp = moulding_of(pl);
 	Lin m = paint_lin(mp);

@@ -17,10 +17,10 @@ bool turned(float angle) { return std::abs(std::sin(angle)) > TURNED_SIN; }
 int cell_of(float v) { return int(std::floor(v / ITEM_CELL)); }
 int64_t cell_key(int gx, int gy) { return int64_t(gx) * CELL_STRIDE + gy; }
 
-bool in_ring(const std::vector<Point2> &ring, float x, float y) {
+bool in_ring(const std::vector<V2> &ring, float x, float y) {
 	bool in = false;
 	for (size_t i = 0, j = ring.size() - 1; i < ring.size(); j = i++) {
-		const Point2 &a = ring[i], &b = ring[j];
+		const V2 &a = ring[i], &b = ring[j];
 		if ((a.y > y) != (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) in = !in;
 	}
 	return in;
@@ -66,7 +66,7 @@ Plan::Plan(const Data &tables, const Body &body, const Volume &block, int at, fl
 	x0 = v.x + INSET; y0 = v.y + INSET; x1 = v.x + v.w - INSET; y1 = v.y + v.d - INSET;
 	if (v.outline.empty()) ring_ = { { v.x, v.y }, { v.x + v.w, v.y }, { v.x + v.w, v.y + v.d }, { v.x, v.y + v.d } };
 	else
-		for (const Point2 &q : v.outline) ring_.push_back({ v.x + q.x * v.w, v.y + q.y * v.d });
+		for (const V2 &q : v.outline) ring_.push_back({ v.x + q.x * v.w, v.y + q.y * v.d });
 	for (const Core &c : b.cores)
 		if (c.to >= level) cores_.push_back({ c.x - CORE_X, c.y - CORE_Y, c.x + core_width(c, module) + CORE_X, c.y + module + CORE_X });
 }

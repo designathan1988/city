@@ -37,9 +37,9 @@ Building record_at(const Body &body, double ax, double az, double rot) {
 Ring lot_ring(const Building &b) {
 	LotFrame f = lot_frame(b);
 	Ring ring;
-	for (Point2 c : { Point2{ -b.w / 2, 0 }, Point2{ b.w / 2, 0 }, Point2{ b.w / 2, b.d }, Point2{ -b.w / 2, b.d } }) {
+	for (V2 c : { V2{ -b.w / 2, 0 }, V2{ b.w / 2, 0 }, V2{ b.w / 2, b.d }, V2{ -b.w / 2, b.d } }) {
 		V2 p = f.at(c.x, c.y);
-		ring.push_back(Point2{ p.x, p.y });
+		ring.push_back(V2{ p.x, p.y });
 	}
 	if (ring_area(ring) < 0) std::reverse(ring.begin(), ring.end());
 	return ring;

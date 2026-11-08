@@ -4,6 +4,7 @@
 // lane graph to the traffic, which drains the ChangeLog's net lists. Callers hold map_mutex exclusively.
 #pragma once
 
+#include "core/math.h"
 #include "sim/lots/lot_book.h"
 #include "sim/roads/road_network.h"
 #include "sim/catalog/furniture_types.h"
@@ -77,17 +78,13 @@ struct SnappedEnd {
 // How a road follows the gesture (Roadcraft roadTool.ts alignment).
 enum class RoadAlignment : uint8_t { STRAIGHT, CURVE, FREE };
 
-struct StrokePoint {
-	double x = 0, z = 0;
-};
-
 // A gesture as the tool hands it in: its ends, the bend chosen by a click (has_control), the pointer's samples, and the
 // bend under which a dragged curve stays straight (metres: a few screen pixels).
 struct RoadStroke {
 	RoadAlignment alignment = RoadAlignment::STRAIGHT;
-	StrokePoint start, end, control;
+	XZ start, end, control;
 	bool has_control = false;
-	std::vector<StrokePoint> samples;
+	std::vector<XZ> samples;
 	int profile = 0;
 	double flat_m = 0;
 };
@@ -123,13 +120,13 @@ EditResult set_movement_banned(CityState &s, int node, int from, int to, bool ba
 EditResult remove_node(CityState &s, int node);
 
 // Zones > Lots (lot_commands.cpp): the lots the player draws. Refusals name the hint.
-EditResult add_lot_rect(CityState &s, const LotPoint &a, const LotPoint &b, double angle);
-EditResult add_lot_polygon(CityState &s, const std::vector<LotPoint> &points);
+EditResult add_lot_rect(CityState &s, const XZ &a, const XZ &b, double angle);
+EditResult add_lot_polygon(CityState &s, const std::vector<XZ> &points);
 // A road edit cuts the lots it crosses, in its own step of undo (cutLotsByRoads): each is replaced by the pieces left on land, of its
 // zone where they are big enough, and what stood on it goes.
 void cut_lots_by_roads(CityState &s, double minx, double minz, double maxx, double maxz);
-EditResult move_lot_corner(CityState &s, const LotPoint &from, const LotPoint &to);
-EditResult curve_lot_side(CityState &s, const LotPoint &a, const LotPoint &b, const LotPoint &through);
+EditResult move_lot_corner(CityState &s, const XZ &from, const XZ &to);
+EditResult curve_lot_side(CityState &s, const XZ &a, const XZ &b, const XZ &through);
 EditResult set_lot_front(CityState &s, int id, int side);
 EditResult split_lot(CityState &s, int id, const LotCut &cut);
 EditResult join_lots(CityState &s, int a, int b);
@@ -148,15 +145,15 @@ EditResult paint_zone(CityState &s, double x, double z, double radius, int zone)
 // The zone brush's dabs of one pointer move, in order, as one command: a dab on a lot the player drew zones that lot whole
 // (zone_lot), any other paints the road sides (paint_zone). `error`: the last refusal of a road dab that found something
 // other than its zone already there (a lot dab, or a side already of the zone, says nothing).
-EditResult paint_zone_path(CityState &s, const std::vector<StrokePoint> &dabs, double radius, int zone);
+EditResult paint_zone_path(CityState &s, const std::vector<XZ> &dabs, double radius, int zone);
 
 // The dabs a held brush lays along one pointer move, as one command: each laid in order by `dab` (refused dabs change
 // nothing); ok when any was laid, the counts summed, `error` the last refusal. What they derive settles once, when the
 // command ends (EditHistory::end).
 template <typename F>
-EditResult lay_dabs(const std::vector<StrokePoint> &dabs, F &&dab) {
+EditResult lay_dabs(const std::vector<XZ> &dabs, F &&dab) {
 	EditResult all;
-	for (const StrokePoint &p : dabs) {
+	for (const XZ &p : dabs) {
 		const EditResult r = dab(p);
 		if (r.ok) {
 			all.ok = true;

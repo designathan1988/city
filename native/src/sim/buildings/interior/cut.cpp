@@ -16,7 +16,7 @@ int top_level(const Body &b) {
 	return top;
 }
 
-Point2 cut_direction(int dir) {
+V2 cut_direction(int dir) {
 	const float a = float(dir & (CUT_DIRECTIONS - 1)) * TAU_F / float(CUT_DIRECTIONS);
 	return { std::cos(a), std::sin(a) };
 }
@@ -26,7 +26,7 @@ int cut_step(float x, float z) {
 	return int(std::lround(turns)) & (CUT_DIRECTIONS - 1);
 }
 
-Body cut_open(const Body &b, int level, Point2 view) {
+Body cut_open(const Body &b, int level, V2 view) {
 	Body out = b;
 	const int at = std::clamp(level, 0, top_level(b));
 	out.volumes.clear();

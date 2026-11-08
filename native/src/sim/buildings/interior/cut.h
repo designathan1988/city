@@ -20,12 +20,12 @@ struct CutView {
 // The highest floor of the body: its last storey.
 int top_level(const Body &b);
 // The unit direction of a step (world x, z).
-Point2 cut_direction(int dir);
+V2 cut_direction(int dir);
 // A step of the world direction (x, z): the nearest of CUT_DIRECTIONS.
 int cut_step(float x, float z);
 
 // The body cut open at `level` (limited to the body's floors) for a camera looking along `view` in the body's own frame
 // (lot x, y): the volumes that start above are gone, the others lose their storeys above; cut_level and cut_view say so.
-Body cut_open(const Body &b, int level, Point2 view);
+Body cut_open(const Body &b, int level, V2 view);
 
 } // namespace city::b40

@@ -69,7 +69,7 @@ struct OpenCell {
 	float W;
 	bool operator()(int k, int i) const {
 		const float along = W * (float(i) + HALF) / sd.length;
-		return !covered(b, v, v.base + k, Point2{ sd.p0.x + (sd.p1.x - sd.p0.x) * along + sd.n.x * ROOF_TEST_OUT, sd.p0.y + (sd.p1.y - sd.p0.y) * along + sd.n.y * ROOF_TEST_OUT });
+		return !covered(b, v, v.base + k, V2{ sd.p0.x + (sd.p1.x - sd.p0.x) * along + sd.n.x * ROOF_TEST_OUT, sd.p0.y + (sd.p1.y - sd.p0.y) * along + sd.n.y * ROOF_TEST_OUT });
 	}
 };
 
@@ -160,7 +160,7 @@ void walls(Shell &s, const Placed &pl, const Volume &v, bool roofs) {
 	float ph = v.crown == CROWN_ATTIC ? ATTIC_H : ROOF_EDGE_H;
 	Paint mp = moulding_of(pl);
 	for (const Side &sd : sides_of(pl, v, 0)) {
-		Point2 mid{ (sd.p0.x + sd.p1.x) / 2 + sd.n.x * ROOF_TEST_OUT, (sd.p0.y + sd.p1.y) / 2 + sd.n.y * ROOF_TEST_OUT };
+		V2 mid{ (sd.p0.x + sd.p1.x) / 2 + sd.n.x * ROOF_TEST_OUT, (sd.p0.y + sd.p1.y) / 2 + sd.n.y * ROOF_TEST_OUT };
 		int n = bays_of(v, sd.side);
 		float W = sd.length / float(n);
 		int8_t fin = b.wall_of(v).finish;
@@ -187,7 +187,7 @@ void roof(Shell &s, const Placed &pl, const Volume &v, int vol) {
 	std::vector<Vector3> p;
 	if (v.outline.empty()) p = { pl.lot.at(v.x, v.y, eaves), pl.lot.at(v.x + v.w, v.y, eaves), pl.lot.at(v.x + v.w, v.y + v.d, eaves), pl.lot.at(v.x, v.y + v.d, eaves) };
 	else
-		for (const Point2 &q : v.outline) p.push_back(pl.lot.at(v.x + q.x * v.w, v.y + q.y * v.d, eaves + SLAB_LIFT));
+		for (const V2 &q : v.outline) p.push_back(pl.lot.at(v.x + q.x * v.w, v.y + q.y * v.d, eaves + SLAB_LIFT));
 	Vector3 c = pl.lot.at(v.x + v.w / 2, v.y + v.d / 2, eaves + SLAB_LIFT);
 	s.grime_floor = -FAR_AWAY;
 	for (size_t i = 0; i < p.size(); i++) s.tri(c, p[i], p[(i + 1) % p.size()], pl.lot.e2, lin, rp.finish);

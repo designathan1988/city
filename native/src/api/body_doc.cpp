@@ -190,7 +190,7 @@ void Reader::block(const Dictionary &d) {
 	for (int k = 0; k < v.storeys; k++) storey(v, k, storeys[k]);
 	for (const Variant &p : Array(d.get("outline", Array()))) {
 		const Dictionary point = p;
-		v.outline.push_back(Point2{ float(point.get("x", 0)), float(point.get("y", 0)) });
+		v.outline.push_back(V2{ float(point.get("x", 0)), float(point.get("y", 0)) });
 	}
 	const Dictionary dress = d.get("dress", Dictionary());
 	v.lines = Lines(named(DOC_LINES, dress.get("lines", "none"), "linha"));

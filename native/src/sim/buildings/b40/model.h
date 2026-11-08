@@ -23,7 +23,7 @@ struct ModelBlock {
 	int base = 0, storeys = 1, door_bay = NO_BAY, pattern = NO_PATTERN;
 	Roof roof = ROOF_FLAT;
 	uint8_t fill = BAY_WINDOW, ground = BAY_NONE, door_kind = BAY_DOOR;
-	std::vector<Point2> outline;
+	std::vector<V2> outline;
 	std::vector<ModelDress> dress;
 };
 

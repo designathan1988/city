@@ -19,7 +19,7 @@ bool write_lots_block(ByteWriter &w, const LotBook &book) {
 		w.put<int32_t>(l.id);
 		w.put<int32_t>(l.zone);
 		w.put<uint32_t>(uint32_t(l.corners.size()));
-		for (const LotPoint &p : l.corners) {
+		for (const XZ &p : l.corners) {
 			w.put<double>(p.x);
 			w.put<double>(p.z);
 		}
@@ -39,7 +39,7 @@ bool read_lots_block(ByteReader &r, LotBook &book) {
 		const uint32_t corners = r.get_count(CORNER_BYTES);
 		if (!r.ok) return false;
 		l.corners.resize(corners);
-		for (LotPoint &p : l.corners) {
+		for (XZ &p : l.corners) {
 			p.x = r.get<double>();
 			p.z = r.get<double>();
 		}

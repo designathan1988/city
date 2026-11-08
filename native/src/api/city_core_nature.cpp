@@ -77,8 +77,8 @@ int CityLandscape::cloud_at(const Vector3 &origin, const Vector3 &direction, flo
 
 namespace {
 // The points of a brush path as the commands take them.
-std::vector<StrokePoint> stroke_points(const PackedVector3Array &points) {
-	std::vector<StrokePoint> dabs;
+std::vector<XZ> stroke_points(const PackedVector3Array &points) {
+	std::vector<XZ> dabs;
 	dabs.reserve(size_t(points.size()));
 	for (int i = 0; i < points.size(); i++) dabs.push_back({ points[i].x, points[i].z });
 	return dabs;
@@ -123,9 +123,9 @@ Dictionary CityLandscape::fog_brush(const Vector3 &p, float radius, float streng
 }
 
 Dictionary CityLandscape::fog_path(const PackedVector3Array &points, float radius, float strength, float height, float speed, bool erase) {
-	const std::vector<StrokePoint> dabs = stroke_points(points);
+	const std::vector<XZ> dabs = stroke_points(points);
 	return run_edit(*state_, "cmd.fog", [&](CityState &s) {
-		return lay_dabs(dabs, [&](const StrokePoint &p) {
+		return lay_dabs(dabs, [&](const XZ &p) {
 			return fog_dab(s, fog_at(float(p.x), float(p.z), radius, strength, height, speed, erase));
 		});
 	});
@@ -140,9 +140,9 @@ Dictionary CityLandscape::paint_brush(const Vector3 &p, float radius, float stre
 }
 
 Dictionary CityLandscape::paint_path(const PackedVector3Array &points, float radius, float strength, float hardness, int kind) {
-	const std::vector<StrokePoint> dabs = stroke_points(points);
+	const std::vector<XZ> dabs = stroke_points(points);
 	return run_edit(*state_, "cmd.place.paintGround", [&](CityState &s) {
-		return lay_dabs(dabs, [&](const StrokePoint &p) {
+		return lay_dabs(dabs, [&](const XZ &p) {
 			return paint_dab(s, paint_at(float(p.x), float(p.z), radius, strength, hardness, kind));
 		});
 	});
@@ -158,10 +158,10 @@ Dictionary CityLandscape::tree_brush(const Vector3 &p, float radius, int mode, i
 }
 
 Dictionary CityLandscape::tree_path(const PackedVector3Array &points, float radius, int mode, int kind, const Dictionary &brush) {
-	const std::vector<StrokePoint> dabs = stroke_points(points);
+	const std::vector<XZ> dabs = stroke_points(points);
 	const TreeBrush b = tree_brush_of(brush);
 	return run_edit(*state_, "cmd.place.tree", [&](CityState &s) {
-		return lay_dabs(dabs, [&](const StrokePoint &p) { return tree_dab(s, float(p.x), float(p.z), radius, mode, kind, b); });
+		return lay_dabs(dabs, [&](const XZ &p) { return tree_dab(s, float(p.x), float(p.z), radius, mode, kind, b); });
 	});
 }
 
@@ -171,10 +171,10 @@ Dictionary CityLandscape::element_brush(const Vector3 &p, float radius, int kind
 }
 
 Dictionary CityLandscape::element_path(const PackedVector3Array &points, float radius, int kind, const Dictionary &brush, bool erase) {
-	const std::vector<StrokePoint> dabs = stroke_points(points);
+	const std::vector<XZ> dabs = stroke_points(points);
 	const ElementBrush b = element_brush_of(brush);
 	return run_edit(*state_, "cmd.place.element", [&](CityState &s) {
-		return lay_dabs(dabs, [&](const StrokePoint &p) { return element_dab(s, float(p.x), float(p.z), radius, kind, b, erase); });
+		return lay_dabs(dabs, [&](const XZ &p) { return element_dab(s, float(p.x), float(p.z), radius, kind, b, erase); });
 	});
 }
 

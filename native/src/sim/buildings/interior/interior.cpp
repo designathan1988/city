@@ -201,8 +201,8 @@ std::vector<LevelFlight> level_flights(const Body &b, int level) {
 			if (tread < FLIGHT_TREAD_MIN_M) continue;
 			const float run = tread * float(risers), mid = (a + c) / 2;
 			LevelFlight f;
-			f.top = along_x ? Point2{ mid, at } : Point2{ at, mid };
-			f.foot = along_x ? Point2{ mid, at + inward * run } : Point2{ at + inward * run, mid };
+			f.top = along_x ? V2{ mid, at } : V2{ at, mid };
+			f.foot = along_x ? V2{ mid, at + inward * run } : V2{ at + inward * run, mid };
 			f.z0 = std::min(zp, zq);
 			f.z1 = std::max(zp, zq);
 			f.width = std::min(FLIGHT_WIDTH_M, c - a - FLIGHT_SIDE_M);

@@ -239,10 +239,10 @@ bool wall_shade(const std::vector<SurveyView> &views, const Block &b, float z0, 
 	return true;
 }
 
-std::vector<Point2> shape_of(const Block &b, float w, float d) {
-	std::vector<Point2> out;
+std::vector<V2> shape_of(const Block &b, float w, float d) {
+	std::vector<V2> out;
 	for (const auto &q : b.hull) {
-		const Point2 p{ std::clamp((q[0] - b.x0) / w, 0.f, 1.f), std::clamp((q[1] - b.y0) / d, 0.f, 1.f) };
+		const V2 p{ std::clamp((q[0] - b.x0) / w, 0.f, 1.f), std::clamp((q[1] - b.y0) / d, 0.f, 1.f) };
 		if (out.empty() || std::hypot((p.x - out.back().x) * w, (p.y - out.back().y) * d) > HULL_GAP_M) out.push_back(p);
 	}
 	while (out.size() > 1 && std::hypot((out.front().x - out.back().x) * w, (out.front().y - out.back().y) * d) <= HULL_GAP_M) out.pop_back();
@@ -254,7 +254,7 @@ std::vector<Point2> shape_of(const Block &b, float w, float d) {
 void read_bays(const std::vector<SurveyView> &views, Volume &v, float dx, float dy) {
 	const Ring ring = ring_of(v);
 	for (int side = 0; side < v.sides(); side++) {
-		const Point2 a = ring[size_t(side)], c = ring[(size_t(side) + 1) % ring.size()];
+		const V2 a = ring[size_t(side)], c = ring[(size_t(side) + 1) % ring.size()];
 		const float length = std::hypot(c.x - a.x, c.y - a.y), tx = (c.x - a.x) / length, ty = (c.y - a.y) / length, nx = ty, ny = -tx;
 		const int count = bays_of(v, side);
 		const float bw = length / float(count);

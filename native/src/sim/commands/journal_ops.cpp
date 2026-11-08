@@ -26,7 +26,7 @@ size_t heap_of(const SignalSettings &v) { return v.greens.capacity() * sizeof(fl
 size_t heap_of(const RoadNode &n) { return n.segs.capacity() * sizeof(int) + n.links.capacity() * sizeof(LaneLink) + heap_of(n.signal); }
 size_t heap_of(const RoadSegment &g) { return g.table.capacity() * sizeof(double); }
 size_t heap_of(const Building &b) { return b.body ? sizeof(b40::BodyVersion) + b40::heap_bytes(*b.body) : 0; } // the version it holds
-size_t heap_of(const PlayerLot &l) { return l.corners.capacity() * sizeof(LotPoint); }
+size_t heap_of(const PlayerLot &l) { return l.corners.capacity() * sizeof(XZ); }
 size_t heap_of(const TransitStop &) { return 0; }
 size_t heap_of(const RailTrack &k) { return k.points.capacity() * sizeof(V2); }
 size_t heap_of(const TransitLine &l) { return l.stops.capacity() * sizeof(int) + l.name.capacity(); }

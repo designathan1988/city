@@ -44,6 +44,16 @@ struct V2 {
 };
 
 inline V2 v2_from_angle(float a) { return V2(std::cos(a), std::sin(a)); }
+
+// A point or step of the ground plane in doubles, as the generators, the lots and the road gestures place them (world x and z).
+// An aggregate: XZ{ x, z } builds one.
+struct XZ {
+	double x = 0, z = 0;
+	XZ operator+(XZ o) const { return { x + o.x, z + o.z }; }
+	XZ operator-(XZ o) const { return { x - o.x, z - o.z }; }
+	XZ operator*(double k) const { return { x * k, z * k }; }
+	double dot(XZ o) const { return x * o.x + z * o.z; }
+};
 inline float clampf(float v, float lo, float hi) { return v < lo ? lo : (v > hi ? hi : v); }
 inline int clampi(int v, int lo, int hi) { return v < lo ? lo : (v > hi ? hi : v); }
 inline float lerpf(float a, float b, float t) { return a + (b - a) * t; }

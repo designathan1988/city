@@ -90,9 +90,9 @@ EditResult paint_zone(CityState &s, double x, double z, double radius, int zone)
 	return r;
 }
 
-EditResult paint_zone_path(CityState &s, const std::vector<StrokePoint> &dabs, double radius, int zone) {
+EditResult paint_zone_path(CityState &s, const std::vector<XZ> &dabs, double radius, int zone) {
 	EditResult all;
-	for (const StrokePoint &p : dabs) {
+	for (const XZ &p : dabs) {
 		const int lot = s.lot_book.at(p.x, p.z);
 		const EditResult r = lot != 0 ? zone_lot(s, lot, zone) : paint_zone(s, p.x, p.z, radius, zone);
 		if (r.ok) {

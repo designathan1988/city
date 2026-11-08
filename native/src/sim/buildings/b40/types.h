@@ -4,6 +4,7 @@
 // Lengths in metres in the lot frame: x along the street front from the lot's middle, y away from the street, z up.
 #pragma once
 
+#include "core/math.h"
 #include "core/shader_contracts/buildings.h"
 
 #include <cstdint>
@@ -80,10 +81,6 @@ struct Relief {
 	float depth = 0; // > 0 projects out of the wall, < 0 recesses
 };
 
-struct Point2 {
-	float x = 0, y = 0;
-};
-
 // What the player sets on a roof, at a point of the plan; `turn` in radians, `h` what stands up from the roof.
 enum RoofGear : uint8_t { GEAR_SOLAR, GEAR_SKYLIGHT, GEAR_VENT, GEAR_CHIMNEY, GEAR_TANK, GEAR_SPIRE, GEAR_LANTERN, GEAR_COUNT };
 // A flag flown from a mast (a spire, a lantern): one of the Roadcraft's designs (flags.ts FLAG_PATTERNS, drawn by
@@ -114,7 +111,7 @@ struct Volume {
 	Roof roof = ROOF_FLAT;
 	float pitch = -1; // degrees; < 0 = not set yet
 	int ridge = -1, fall = -1;
-	std::vector<Point2> outline; // normalised to the rectangle, CCW; empty = rectangle
+	std::vector<V2> outline; // normalised to the rectangle, CCW; empty = rectangle
 	int wall = -1, roof_paint = -1; // paint indices into Body::paints (-1 = the building's)
 	std::vector<uint8_t> fill; // per storey
 	std::unordered_map<uint32_t, uint8_t> bays; // (storey, side, bay) -> Bay override
@@ -221,7 +218,7 @@ struct Body {
 	float signature_x = 0, signature_y = 0;
 	// Drawing only, never stored (interior/cut.h): this body cut open at this floor, for a camera looking along cut_view (lot frame).
 	int cut_level = -1;
-	Point2 cut_view;
+	V2 cut_view;
 	int add_paint(const Paint &p) {
 		paints.push_back(p);
 		return int(paints.size()) - 1;

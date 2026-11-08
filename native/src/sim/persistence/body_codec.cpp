@@ -111,7 +111,7 @@ void put_volume(ByteWriter &w, const Volume &v) {
 	w.put<uint8_t>(uint8_t(v.crown));
 	w.put<uint8_t>(v.keep ? 1 : 0);
 	w.put<uint32_t>(uint32_t(v.outline.size()));
-	for (const Point2 &p : v.outline) {
+	for (const V2 &p : v.outline) {
 		w.put<float>(p.x);
 		w.put<float>(p.y);
 	}
@@ -146,7 +146,7 @@ bool get_volume(ByteReader &r, Volume &v, uint32_t version) {
 	uint32_t n = r.get_count(POINT_BYTES);
 	if (!r.ok) return false;
 	v.outline.resize(n);
-	for (Point2 &p : v.outline) {
+	for (V2 &p : v.outline) {
 		p.x = r.get<float>();
 		p.y = r.get<float>();
 	}

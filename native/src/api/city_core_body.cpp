@@ -94,7 +94,7 @@ PackedVector3Array CityBuilder::body_outline(int id, int vol) const {
 	b40::LotFrame f = b40::lot_frame(rec);
 	float floor = b40::lot_floor(body, rec, f, [&](float x, float z) { return s.terrain.height_at(x, z); });
 	for (int level : { v.base, v.top() })
-		for (const b40::Point2 &p : b40::ring_of(v)) {
+		for (const V2 &p : b40::ring_of(v)) {
 			V2 at = f.at(p.x, p.y);
 			out.push_back(Vector3(at.x, floor + body.block_z(v, level), at.y));
 		}
@@ -278,7 +278,7 @@ Dictionary CityBuilder::body_add_part_at(int id, const Vector3 &at, const Dictio
 Dictionary CityBuilder::body_add_run(int id, int vol, int storey, const PackedVector3Array &points, const Dictionary &spec) {
 	const PartSpec s = part_spec(spec);
 	return edit_of_body_in_lot(*state_, id, [&](b40::Body &b, const Tuning &t, const b40::LotFrame &f) {
-		std::vector<b40::Point2> path;
+		std::vector<V2> path;
 		for (const Vector3 &p : points) {
 			const V2 at = lot_local(f, p);
 			path.push_back({ at.x, at.y });

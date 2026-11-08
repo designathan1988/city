@@ -20,10 +20,10 @@ constexpr double PAVING_MARGIN_M = 2; // past the box, so the cut inside it is t
 // The paving round a box, whole: its outline and, wound the other way, the blocks it closes.
 Clipper2Lib::Paths64 paving_near(const RoadNetwork &net, double x0, double z0, double x1, double z1);
 // The paving round a ring's box, the margin past it.
-Clipper2Lib::Paths64 paving_round(const RoadNetwork &net, const std::vector<LotPoint> &ring);
+Clipper2Lib::Paths64 paving_round(const RoadNetwork &net, const std::vector<XZ> &ring);
 // What of a ring stands off the paving: the outlines, holes left out as a lot has none.
-Clipper2Lib::Paths64 land_of(const std::vector<LotPoint> &ring, const Clipper2Lib::Paths64 &paving);
+Clipper2Lib::Paths64 land_of(const std::vector<XZ> &ring, const Clipper2Lib::Paths64 &paving);
 // A paving path as a ring in metres.
-std::vector<LotPoint> paving_ring(const Clipper2Lib::Path64 &path);
+std::vector<XZ> paving_ring(const Clipper2Lib::Path64 &path);
 
 } // namespace city

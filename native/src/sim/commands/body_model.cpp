@@ -55,8 +55,8 @@ const Volume *reference_of(const Body &b, const Volume &v) {
 }
 
 // Where a slid block clicks into place: sides on sides and middles on middles of the other blocks.
-Point2 click_in(const Body &b, const std::set<int> &moving, const Volume &v) {
-	Point2 shift;
+V2 click_in(const Body &b, const std::set<int> &moving, const Volume &v) {
+	V2 shift;
 	float best_x = CLICK_IN_M, best_y = CLICK_IN_M;
 	const float mine_x[] = { v.x, v.x + v.w / 2, v.x + v.w }, mine_y[] = { v.y, v.y + v.d / 2, v.y + v.d };
 	for (int k = 0; k < int(b.volumes.size()); k++) {
@@ -107,7 +107,7 @@ M remap_sides(const M &old, int index, bool remove) {
 
 BlockWall block_wall(const Volume &v, int side) {
 	const Ring ring = ring_of(v);
-	const Point2 a = ring[size_t(side) % ring.size()], c = ring[(size_t(side) + 1) % ring.size()];
+	const V2 a = ring[size_t(side) % ring.size()], c = ring[(size_t(side) + 1) % ring.size()];
 	const float length = std::hypot(c.x - a.x, c.y - a.y), tx = (c.x - a.x) / length, ty = (c.y - a.y) / length;
 	return { a, tx, ty, ty, -tx, length };
 }
@@ -149,7 +149,7 @@ std::string op_extrude_block(Body &b, const Tuning &t, int vol, int side, float 
 	if (int(b.volumes.size()) >= int(t.build_max_volumes)) return "building.problem.size";
 	const Volume &v = b.volumes[size_t(vol)];
 	const BlockWall e = block_wall(v, side);
-	const Point2 far{ e.a.x + e.tx * e.length, e.a.y + e.ty * e.length };
+	const V2 far{ e.a.x + e.tx * e.length, e.a.y + e.ty * e.length };
 	Volume brick = block_like(v, v.storeys);
 	for (FaceGeometry &f : brick.faces) f.bays = -1;
 	set_block_ring(brick, { e.a, far, { far.x + e.nx * depth, far.y + e.ny * depth }, { e.a.x + e.nx * depth, e.a.y + e.ny * depth } });
@@ -193,7 +193,7 @@ std::string op_bevel(Body &b, int vol, float distance, int only) {
 	const size_t n = ring.size();
 	Ring out;
 	for (size_t i = 0; i < n; i++) {
-		const Point2 p = ring[i], prev = ring[(i + n - 1) % n], next = ring[(i + 1) % n];
+		const V2 p = ring[i], prev = ring[(i + n - 1) % n], next = ring[(i + 1) % n];
 		const float to_prev = std::hypot(prev.x - p.x, prev.y - p.y), to_next = std::hypot(next.x - p.x, next.y - p.y);
 		const float a = std::min(distance, to_prev / 2 - SIZE_SLACK_M), c = std::min(distance, to_next / 2 - SIZE_SLACK_M);
 		if ((only >= 0 && only != int(i)) || a <= 0 || c <= 0) {
@@ -215,7 +215,7 @@ std::string op_move_point(Body &b, const Tuning &t, int vol, int index, float x,
 	Ring ring = ring_of(v);
 	if (index < 0 || index >= int(ring.size())) return NO_BLOCK;
 	const float step = snap ? float(t.build_grid_m) : 0;
-	ring[size_t(index)] = step > 0 ? Point2{ std::round(x / step) * step, std::round(y / step) * step } : Point2{ x, y };
+	ring[size_t(index)] = step > 0 ? V2{ std::round(x / step) * step, std::round(y / step) * step } : V2{ x, y };
 	return replan(v, ring);
 }
 
@@ -228,8 +228,8 @@ std::string op_change_point(Body &b, int vol, int index, bool remove) {
 	if (index < 0 || index >= old || (remove && old <= LEAST_CORNERS) || (!remove && old >= MAX_FACES)) return NOT_THAT_PLAN;
 	if (remove) ring.erase(ring.begin() + index);
 	else {
-		const Point2 p = ring[size_t(index)], q = ring[(size_t(index) + 1) % ring.size()];
-		ring.insert(ring.begin() + index + 1, Point2{ (p.x + q.x) / 2, (p.y + q.y) / 2 });
+		const V2 p = ring[size_t(index)], q = ring[(size_t(index) + 1) % ring.size()];
+		ring.insert(ring.begin() + index + 1, V2{ (p.x + q.x) / 2, (p.y + q.y) / 2 });
 	}
 	const Volume was = v;
 	const std::string problem = replan(v, ring);
@@ -280,11 +280,11 @@ std::string op_turn_block(Body &b, int vol, float degrees) {
 	if (!has(b, vol)) return NO_BLOCK;
 	Volume &v = b.volumes[size_t(vol)];
 	const float cx = v.x + v.w / 2, cy = v.y + v.d / 2, a = degrees * RADIANS_PER_DEG, c = std::cos(a), s = std::sin(a);
-	auto turned = [&](float x, float y) { return Point2{ cx + (x - cx) * c - (y - cy) * s, cy + (x - cx) * s + (y - cy) * c }; };
+	auto turned = [&](float x, float y) { return V2{ cx + (x - cx) * c - (y - cy) * s, cy + (x - cx) * s + (y - cy) * c }; };
 	Ring ring;
-	for (const Point2 &p : ring_of(v)) ring.push_back(turned(p.x, p.y));
+	for (const V2 &p : ring_of(v)) ring.push_back(turned(p.x, p.y));
 	for (RoofPart &p : v.gear) {
-		const Point2 at = turned(p.x, p.y);
+		const V2 at = turned(p.x, p.y);
 		p.x = at.x;
 		p.y = at.y;
 		p.turn += a;
@@ -303,7 +303,7 @@ std::string op_slide_block(Body &b, const Tuning &t, int vol, float dx, float dy
 		Volume at = b.volumes[size_t(vol)];
 		at.x += mx;
 		at.y += my;
-		const Point2 fit = click_in(b, moving, at);
+		const V2 fit = click_in(b, moving, at);
 		mx += fit.x;
 		my += fit.y;
 	}

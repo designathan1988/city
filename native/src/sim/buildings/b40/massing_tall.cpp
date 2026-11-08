@@ -41,14 +41,14 @@ constexpr float SETBACK_SHARES[] = { 0.4f, 0.6f };
 constexpr int TWIN_STEPS[] = { -5, -3, 3, 5 }, OFFICE_TWIN_STEPS[] = { -6, -3, 4 };
 constexpr int WORKPLACE_MIN_F = 8, OFFICE_MAX_F = 24, OFFICE_TWIN_MIN = 4;
 
-std::vector<Point2> tower_shape(Xoshiro128 &r) {
+std::vector<V2> tower_shape(Xoshiro128 &r) {
 	float t = float(r.f());
 	if (t < SHAPE_RECT) return {};
 	if (t < SHAPE_OCT) {
 		float c = mixr(r, CUT_LO, CUT_HI);
 		return { { c, 0 }, { 1 - c, 0 }, { 1, c }, { 1, 1 - c }, { 1 - c, 1 }, { c, 1 }, { 0, 1 - c }, { 0, c } };
 	}
-	std::vector<Point2> out;
+	std::vector<V2> out;
 	for (int k = 0; k < ROUND_SIDES; k++) {
 		float a = -PI_F / 2 + float(k) / ROUND_SIDES * PI_F * 2;
 		out.push_back({ HALF + HALF * std::cos(a), HALF + HALF * std::sin(a) });
@@ -56,7 +56,7 @@ std::vector<Point2> tower_shape(Xoshiro128 &r) {
 	return out;
 }
 
-void setbacks(Body &b, Xoshiro128 &r, float x, float y, float w, float d, int base, int floors, Roof roof, const std::vector<Point2> *shape) {
+void setbacks(Body &b, Xoshiro128 &r, float x, float y, float w, float d, int base, int floors, Roof roof, const std::vector<V2> *shape) {
 	int left = floors, at = base;
 	float scale = mixr(r, SETBACK_LO, SETBACK_HI);
 	for (int step = 0; left > 0; step++) {
@@ -79,8 +79,8 @@ void tower(Body &b, Xoshiro128 &r, float w, float d, int floors) {
 	if (tw >= ELL_TOWER_W) forms.push_back(3);
 	if (tw >= TWIN_TOWER_W) { forms.push_back(4); forms.push_back(4); }
 	int kind = choose(r, forms);
-	std::vector<Point2> shape = kind == 3 ? std::vector<Point2>{} : tower_shape(r);
-	const std::vector<Point2> *sp = shape.empty() ? nullptr : &shape;
+	std::vector<V2> shape = kind == 3 ? std::vector<V2>{} : tower_shape(r);
+	const std::vector<V2> *sp = shape.empty() ? nullptr : &shape;
 	auto block = [&](float x, float y, float bw, float bd, int base, int n, Roof rf, bool shaped) {
 		BlockSpec s{ x, y, bw, bd, base, n, rf };
 		if (shaped) s.shape = sp;

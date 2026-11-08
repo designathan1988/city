@@ -50,8 +50,8 @@ std::shared_ptr<const b40::Body> BuildingBodies::cut_body(const Key &k, const b4
 	uint32_t turn;
 	std::memcpy(&turn, &rec.rot, sizeof turn);
 	return cuts_.get(CutKey{ k, cut.level, cut.dir, turn }, [&]() {
-		const b40::Point2 world = b40::cut_direction(cut.dir);
-		const b40::Point2 local{ world.x * f.e0.x + world.y * f.e0.y, world.x * f.e1.x + world.y * f.e1.y }; // the camera's way in the lot's frame
+		const V2 world = b40::cut_direction(cut.dir);
+		const V2 local{ world.x * f.e0.x + world.y * f.e0.y, world.x * f.e1.x + world.y * f.e1.y }; // the camera's way in the lot's frame
 		return std::shared_ptr<const b40::Body>(std::make_shared<b40::Body>(b40::cut_open(whole, cut.level, local)));
 	}, one<b40::Body>);
 }

@@ -19,13 +19,13 @@ constexpr int MAX_REPEAT = 64;
 
 // The frame of a side of a block: where its bays start, the way they run, and out of the wall.
 struct WallFrame {
-	Point2 start, along, out;
+	V2 start, along, out;
 	float length = 0;
 };
 
 WallFrame wall_of(const Volume &v, int side) {
 	const Ring ring = ring_of(v);
-	Point2 p = ring[size_t(side) % ring.size()], q = ring[size_t(side + 1) % ring.size()];
+	V2 p = ring[size_t(side) % ring.size()], q = ring[size_t(side + 1) % ring.size()];
 	WallFrame f;
 	f.length = std::hypot(q.x - p.x, q.y - p.y);
 	f.start = p;
@@ -41,7 +41,7 @@ void set_size(LotElement &e, float across, float deep) {
 	e.d = front ? deep : across;
 }
 
-int facing_of(Point2 out) {
+int facing_of(V2 out) {
 	if (std::fabs(out.x) > std::fabs(out.y)) return out.x > 0 ? FACE_RIGHT : FACE_LEFT;
 	return out.y > 0 ? FACE_BACK : FACE_STREET;
 }
@@ -143,14 +143,14 @@ std::string op_add_part_at(Body &b, const Tuning &t, float x, float y, int facin
 	return "";
 }
 
-std::string op_add_run(Body &b, const Tuning &t, const std::vector<Point2> &path, int level, const PartSpec &s) {
+std::string op_add_run(Body &b, const Tuning &t, const std::vector<V2> &path, int level, const PartSpec &s) {
 	float total = 0;
 	for (size_t i = 1; i < path.size(); i++) total += std::hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y);
 	if (total < SHORTEST_LEG_M) return "building.problem.size";
 	const float rise = std::max(LOWEST_FLIGHT_M, b.level_z(level + 1) - b.level_z(level));
 	float climbed = b.level_z(level);
 	for (size_t i = 1; i < path.size(); i++) {
-		const Point2 p = path[i - 1], q = path[i];
+		const V2 p = path[i - 1], q = path[i];
 		const float leg = std::hypot(q.x - p.x, q.y - p.y);
 		if (leg < SHORTEST_LEG_M) continue;
 		if (int(b.elements.size()) >= int(t.build_max_parts)) return "building.problem.size";
@@ -200,7 +200,7 @@ std::string op_repeat_part(Body &b, const Tuning &t, int part, float spacing) {
 	float step = spacing > 0 ? spacing : std::max(across * 2, float(t.build_module_m));
 	float lo = FAR_AWAY, hi = -FAR_AWAY;
 	for (const Volume &v : b.volumes)
-		for (const Point2 &p : ring_of(v)) {
+		for (const V2 &p : ring_of(v)) {
 			lo = std::min(lo, along_x ? p.x : p.y);
 			hi = std::max(hi, along_x ? p.x : p.y);
 		}

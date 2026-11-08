@@ -201,7 +201,7 @@ ModelBlock block_of(DataReader r, const Dictionary &s) {
 	for (int i = 0; i < outline.size(); i++) {
 		const Array p = r.in("outline").list_at(outline, i, POINT);
 		DataReader rp = r.in("outline").in(i);
-		b.outline.push_back(Point2{ float(rp.num_at(p, 0)), float(rp.num_at(p, 1)) });
+		b.outline.push_back(V2{ float(rp.num_at(p, 0)), float(rp.num_at(p, 1)) });
 	}
 	const Array sides = r.list_or(s, "sides"), bays = r.list_or(s, "bays");
 	for (int i = 0; i < sides.size(); i++) dress_of(r.in("sides").in(i), r.in("sides").table_at(sides, i), b, 0, 0);

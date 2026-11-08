@@ -88,7 +88,7 @@ inline size_t heap_bytes(const Body &b) {
 	size_t n = b.paints.capacity() * sizeof(Paint) + b.volumes.capacity() * sizeof(Volume) + b.elements.capacity() * sizeof(LotElement) +
 			b.cores.capacity() * sizeof(Core);
 	for (const Volume &v : b.volumes) {
-		n += v.outline.capacity() * sizeof(Point2) + v.fill.capacity() + v.reliefs.capacity() * sizeof(Relief) + v.gear.capacity() * sizeof(RoofPart);
+		n += v.outline.capacity() * sizeof(V2) + v.fill.capacity() + v.reliefs.capacity() * sizeof(Relief) + v.gear.capacity() * sizeof(RoofPart);
 		n += (v.bays.size() + v.side_fill.size()) * (sizeof(std::pair<uint32_t, uint8_t>) + MAP_NODE_BYTES);
 		n += v.storey_paint.size() * (sizeof(std::pair<uint32_t, int>) + MAP_NODE_BYTES);
 	}

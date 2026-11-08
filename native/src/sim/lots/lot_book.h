@@ -13,7 +13,7 @@ namespace city {
 
 struct PlayerLot {
 	int id = 0;
-	std::vector<LotPoint> corners; // front start, front end, then round: the back on the left of the front
+	std::vector<XZ> corners; // front start, front end, then round: the back on the left of the front
 	int zone = 0; // 0: not zoned
 };
 

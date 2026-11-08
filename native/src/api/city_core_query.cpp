@@ -39,7 +39,7 @@ Dictionary body_probe(const b40::Body &body) {
 		if (!v.outline.empty()) {
 			float twice = 0;
 			for (size_t i = 0; i < v.outline.size(); i++) {
-				const b40::Point2 &a = v.outline[i], &b = v.outline[(i + 1) % v.outline.size()];
+				const V2 &a = v.outline[i], &b = v.outline[(i + 1) % v.outline.size()];
 				twice += a.x * b.y - b.x * a.y;
 			}
 			share = std::fabs(twice) * HALF;

@@ -2850,6 +2850,25 @@ material parameters, checked key by key by the script that moved them), every te
 **Verified** (`city-verify`, `quick --all`, both DLLs): every test passes, the digest equal, the four photos byte-equal to known
 states; `gates_changed` reports nothing the files did not have at HEAD.
 
+### 6.28 B2, C4 (the core, second part): two point types where seven stood (2026-11-08)
+
+**Cause.** R10's seven 2D vector types: `core/math.h` `V2` (float x, y, with its operations), b40's `Point2` (float x, y, bare),
+`LotPoint` (`lot_rings.h`), `RoutePoint` (`pole_routes.h`) and `StrokePoint` (`commands.h`), each double x, z and bare, the
+snap's private `Vec` (double x, z with its own operators, `place_snap.cpp`) and the block cutter's `std::pair<double, double>`
+(`block_lots.cpp`). A point of the plan and a point of the ground were spelled anew by each area, and code moving one into another
+copied it field by field.
+
+**Fix.** Two types in `core/math.h`: `V2` for the float plans (every `Point2`) and `XZ`, an aggregate of doubles with the
+operations `Vec` had, for the ground (`LotPoint`, `RoutePoint`, `StrokePoint`, `Vec`, the pair, which sorts as a pair did).
+
+**Why it does not come back.** A new area finds the two types in `core`; the plain duplicates are gone, so nothing invites a third.
+
+**What changes.** Nothing: the same fields of the same types in the same order, the same arithmetic; every overload a call could now
+reach through `city` was checked (each pair of same-named functions is a declaration and its definition, or lives in one file).
+
+**Verified** (`city-verify`, `quick --all`, both DLLs): every test passes, the digest equal, the four photos byte-equal to known
+states; `gates_changed` reports only `commands.h`'s length, shorter than it was.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

@@ -72,7 +72,7 @@ void flights(Shell &shell, const Placed &pl, const InteriorLook &look, int cut) 
 		const float run = std::hypot(f.top.x - f.foot.x, f.top.y - f.foot.y), ux = (f.top.x - f.foot.x) / run, uy = (f.top.y - f.foot.y) / run;
 		const float tread = run / float(f.risers), rise = (f.z1 - f.z0) / float(f.risers), half = f.width / 2;
 		for (int k = 0; k < f.risers; k++) {
-			const Point2 a{ f.foot.x + ux * tread * float(k), f.foot.y + uy * tread * float(k) }, c{ f.foot.x + ux * tread * float(k + 1), f.foot.y + uy * tread * float(k + 1) };
+			const V2 a{ f.foot.x + ux * tread * float(k), f.foot.y + uy * tread * float(k) }, c{ f.foot.x + ux * tread * float(k + 1), f.foot.y + uy * tread * float(k + 1) };
 			shell.box(pl.lot, std::min(a.x, c.x) - std::fabs(uy) * half, std::max(a.x, c.x) + std::fabs(uy) * half, std::min(a.y, c.y) - std::fabs(ux) * half,
 					std::max(a.y, c.y) + std::fabs(ux) * half, f.z0, f.z0 + rise * float(k + 1), lin, step.finish, SKIP_E2_NEG);
 		}

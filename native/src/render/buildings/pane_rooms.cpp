@@ -48,18 +48,18 @@ uint64_t mix(uint64_t h, float v) {
 }
 
 void closed_walls(const Volume &v, std::vector<Partition> &walls) {
-	std::vector<Point2> ring;
+	std::vector<V2> ring;
 	if (v.outline.empty()) ring = { { v.x, v.y }, { v.x + v.w, v.y }, { v.x + v.w, v.y + v.d }, { v.x, v.y + v.d } };
 	else
-		for (const Point2 &q : v.outline) ring.push_back({ v.x + q.x * v.w, v.y + q.y * v.d });
+		for (const V2 &q : v.outline) ring.push_back({ v.x + q.x * v.w, v.y + q.y * v.d });
 	for (size_t i = 0; i < ring.size(); i++) {
-		const Point2 &a = ring[i], &b = ring[(i + 1) % ring.size()];
+		const V2 &a = ring[i], &b = ring[(i + 1) % ring.size()];
 		walls.push_back({ a.x, a.y, b.x, b.y });
 	}
 }
 
 // The largest piece seen through a pane at (px, py), its walls `back`, `ahead` and `depth` away.
-void piece_seen(const Data &data, const FloorInterior &floor, float px, float py, const Point2 &t, const Point2 &n, PaneRoom &r) {
+void piece_seen(const Data &data, const FloorInterior &floor, float px, float py, const V2 &t, const V2 &n, PaneRoom &r) {
 	float score = 0;
 	for (const Furniture &f : floor.furniture) {
 		if (!data.interior.seen[f.kind]) continue;
@@ -81,7 +81,7 @@ void piece_seen(const Data &data, const FloorInterior &floor, float px, float py
 }
 
 PaneRoom room_at(const Placed &pl, const BayCtx &c, const FloorInterior &floor, float px, float py, float h) {
-	const Point2 &t = c.plan_along, &n = c.plan_out;
+	const V2 &t = c.plan_along, &n = c.plan_out;
 	std::vector<Partition> walls = floor.partitions;
 	closed_walls(pl.b->volumes[size_t(c.vol)], walls);
 	PaneRoom r;

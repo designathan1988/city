@@ -25,11 +25,11 @@ Color zone_color(const CityState &s, int code, float alpha) {
 }
 
 // A convex polygon cut by a line of constant x (or z): what lies on the side `keep` looks to.
-std::vector<LotPoint> clipped(const std::vector<LotPoint> &q, bool on_x, double line, double keep) {
-	std::vector<LotPoint> out;
-	const auto off = [&](const LotPoint &p) { return ((on_x ? p.x : p.z) - line) * keep; };
+std::vector<XZ> clipped(const std::vector<XZ> &q, bool on_x, double line, double keep) {
+	std::vector<XZ> out;
+	const auto off = [&](const XZ &p) { return ((on_x ? p.x : p.z) - line) * keep; };
 	for (size_t i = 0; i < q.size(); i++) {
-		const LotPoint &p = q[i], &r = q[(i + 1) % q.size()];
+		const XZ &p = q[i], &r = q[(i + 1) % q.size()];
 		const double a = off(p), b = off(r);
 		if (a >= 0) out.push_back(p);
 		if ((a >= 0) != (b >= 0)) {
@@ -48,7 +48,7 @@ void OverlayRenderer::lot_cover(Ribbon &out, const CityState &s, const PlayerLot
 	// A lot all of whose corners lie on or past one side of the chunk lays no cell in it (each triangle's cells clamp to none):
 	// it is left before it is cut into triangles.
 	double lx0 = cx + CHUNK, lz0 = cz + CHUNK, lx1 = cx, lz1 = cz;
-	for (const LotPoint &p : lot.corners) {
+	for (const XZ &p : lot.corners) {
 		lx0 = std::min(lx0, p.x);
 		lz0 = std::min(lz0, p.z);
 		lx1 = std::max(lx1, p.x);
@@ -58,9 +58,9 @@ void OverlayRenderer::lot_cover(Ribbon &out, const CityState &s, const PlayerLot
 	const Color col = zone_color(s, lot.zone, zone_alpha_);
 	const std::vector<int> tris = lot_triangles(lot.corners);
 	for (size_t t = 0; t + 2 < tris.size(); t += 3) {
-		const std::vector<LotPoint> tri = { lot.corners[size_t(tris[t])], lot.corners[size_t(tris[t + 1])], lot.corners[size_t(tris[t + 2])] };
+		const std::vector<XZ> tri = { lot.corners[size_t(tris[t])], lot.corners[size_t(tris[t + 1])], lot.corners[size_t(tris[t + 2])] };
 		double x0 = cx + CHUNK, z0 = cz + CHUNK, x1 = cx, z1 = cz;
-		for (const LotPoint &p : tri) {
+		for (const XZ &p : tri) {
 			x0 = std::min(x0, p.x);
 			z0 = std::min(z0, p.z);
 			x1 = std::max(x1, p.x);
@@ -71,10 +71,10 @@ void OverlayRenderer::lot_cover(Ribbon &out, const CityState &s, const PlayerLot
 		for (int j = j0; j < j1; j++)
 			for (int i = i0; i < i1; i++) {
 				const double ax = cx + double(i) * sample_, az = cz + double(j) * sample_;
-				const std::vector<LotPoint> cell = clipped(clipped(clipped(clipped(tri, true, ax, 1), true, ax + sample_, -1), false, az, 1), false, az + sample_, -1);
-				const auto at = [&](const LotPoint &p) { return Vector3(float(p.x), s.terrain.height_at(float(p.x), float(p.z)) + lift_, float(p.z)); };
+				const std::vector<XZ> cell = clipped(clipped(clipped(clipped(tri, true, ax, 1), true, ax + sample_, -1), false, az, 1), false, az + sample_, -1);
+				const auto at = [&](const XZ &p) { return Vector3(float(p.x), s.terrain.height_at(float(p.x), float(p.z)) + lift_, float(p.z)); };
 				for (size_t k = 1; k + 1 < cell.size(); k++)
-					for (const LotPoint &p : { cell[0], cell[k], cell[k + 1] }) {
+					for (const XZ &p : { cell[0], cell[k], cell[k + 1] }) {
 						out.v.push_back(at(p));
 						out.c.push_back(col);
 					}

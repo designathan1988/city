@@ -58,7 +58,7 @@ public:
 
 private:
 	bool inside(float x, float y) const;
-	std::vector<Point2> ring_;
+	std::vector<V2> ring_;
 	std::vector<std::array<float, 4>> cores_;
 	std::unordered_map<int64_t, std::vector<int>> filed_; // items by the cells their padded boxes cover
 };

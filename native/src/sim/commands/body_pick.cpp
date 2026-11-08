@@ -42,7 +42,7 @@ void hit_sides(const Body &b, const Volume &v, int vol, const LocalRay &r, BodyH
 	const Ring ring = ring_of(v);
 	float z0 = b.block_z(v, v.base), z1 = b.block_z(v, v.top());
 	for (size_t i = 0; i < ring.size(); i++) {
-		Point2 p = ring[i], q = ring[(i + 1) % ring.size()];
+		V2 p = ring[i], q = ring[(i + 1) % ring.size()];
 		float ex = q.x - p.x, ey = q.y - p.y, len = std::hypot(ex, ey);
 		if (len < EPS) continue;
 		ex /= len;
@@ -86,7 +86,7 @@ void hit_top(const Body &b, const Volume &v, int vol, const LocalRay &r, BodyHit
 
 // A hit that lands where a void block has taken the wall away is a click on the void: it is the only way to reach one.
 void in_a_void(const Body &b, const LocalRay &r, BodyHit &best) {
-	const Point2 at{ r.ox + r.dx * best.t, r.oy + r.dy * best.t };
+	const V2 at{ r.ox + r.dx * best.t, r.oy + r.dy * best.t };
 	const float z = r.oz + r.dz * best.t;
 	for (int i = 0; i < int(b.volumes.size()); i++) {
 		const Volume &v = b.volumes[size_t(i)];

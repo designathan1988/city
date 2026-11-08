@@ -3,15 +3,12 @@
 // a span costing poles.crossing_cost_m over its width so that the line keeps to one side unless crossing saves it.
 #pragma once
 
+#include "core/math.h"
 #include "sim/roads/road_network.h"
 
 #include <vector>
 
 namespace city {
-
-struct RoutePoint {
-	double x = 0, z = 0;
-};
 
 class RouteGraph {
 public:
@@ -19,7 +16,7 @@ public:
 	void build(const RoadNetwork &net, double x0, double z0, double x1, double z1);
 	// The station nearest (x, z) within `reach`, or -1; `at` is the nearest point of the guide line there.
 	int nearest(double x, double z, double reach) const;
-	RoutePoint point(int station) const { return { x_[size_t(station)], z_[size_t(station)] }; }
+	XZ point(int station) const { return { x_[size_t(station)], z_[size_t(station)] }; }
 	bool empty() const { return x_.empty(); }
 	// The stations from `from` to `to` by the cheapest way, or empty when no line joins them.
 	std::vector<int> route(int from, int to, double &cost) const;

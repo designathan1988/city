@@ -29,7 +29,7 @@ struct BayCtx {
 	Use use = USE_RESIDENTIAL;
 	bool plain = false; // partly covered by another block: a blank wall
 	int vol = 0;
-	Point2 plan_at, plan_along, plan_out; // the bay's left end on the plan (lot frame), along the facade, out of it
+	V2 plan_at, plan_along, plan_out; // the bay's left end on the plan (lot frame), along the facade, out of it
 };
 
 struct Opening {

@@ -27,26 +27,26 @@ constexpr double LOT_SNAP_SHARE = 0.7; // of the reach, for the corners of other
 constexpr double BACK_SPAN = 1.5; // of the reach, for the backs that make a corner
 constexpr double APART_M = 0.8;
 
-double side_length(const LotPoint &p, const LotPoint &q) { return std::hypot(q.x - p.x, q.z - p.z); }
+double side_length(const XZ &p, const XZ &q) { return std::hypot(q.x - p.x, q.z - p.z); }
 
 // A lot cut back to the footways, the corners between its long sides made square: the curve of a street's corner goes.
-std::vector<LotPoint> square_corners(const std::vector<LotPoint> &ring) {
+std::vector<XZ> square_corners(const std::vector<XZ> &ring) {
 	const size_t n = ring.size();
 	std::vector<size_t> long_sides;
 	for (size_t i = 0; i < n; i++)
 		if (side_length(ring[i], ring[(i + 1) % n]) >= STRAIGHT_BACK_M) long_sides.push_back(i);
 	if (long_sides.size() < 2) return ring;
-	std::vector<LotPoint> out;
+	std::vector<XZ> out;
 	for (size_t k = 0; k < long_sides.size(); k++) {
 		const size_t i = long_sides[k], j = long_sides[(k + 1) % long_sides.size()];
-		const LotPoint &a = ring[i], &b = ring[(i + 1) % n], &c = ring[j], &d = ring[(j + 1) % n];
+		const XZ &a = ring[i], &b = ring[(i + 1) % n], &c = ring[j], &d = ring[(j + 1) % n];
 		if ((i + 1) % n == j) {
 			out.push_back(b);
 			continue;
 		}
 		const double ux = b.x - a.x, uz = b.z - a.z, vx = d.x - c.x, vz = d.z - c.z, den = ux * vz - uz * vx;
 		bool met = std::fabs(den) > SQUARE_SHARE * std::hypot(ux, uz) * std::hypot(vx, vz);
-		LotPoint x;
+		XZ x;
 		if (met) {
 			const double t = ((c.x - a.x) * vz - (c.z - a.z) * vx) / den;
 			x = { a.x + ux * t, a.z + uz * t };
@@ -71,13 +71,13 @@ double street_distance(const RoadNetwork &net, double x, double z) {
 	return best;
 }
 
-bool lot_corner_near(const LotBook &book, const LotPoint &p, double reach, int skip, const LotPoint *apart, LotPoint &out) {
+bool lot_corner_near(const LotBook &book, const XZ &p, double reach, int skip, const XZ *apart, XZ &out) {
 	double best = reach;
 	bool found = false;
 	for (int i : book.near(p.x - reach, p.z - reach, p.x + reach, p.z + reach)) {
 		const PlayerLot &l = book.all()[size_t(i)];
 		if (l.id == skip) continue;
-		for (const LotPoint &q : l.corners) {
+		for (const XZ &q : l.corners) {
 			if (apart && side_length(q, *apart) <= APART_M) continue;
 			const double d = side_length(q, p);
 			if (d < best) {
@@ -95,7 +95,7 @@ struct Back {
 };
 } // namespace
 
-std::vector<LotPoint> lot_on_land(const RoadNetwork &net, const std::vector<LotPoint> &ring) {
+std::vector<XZ> lot_on_land(const RoadNetwork &net, const std::vector<XZ> &ring) {
 	if (ring.size() < 3) return {};
 	const Paths64 paving = paving_round(net, ring);
 	if (paving.empty()) return ring;
@@ -108,18 +108,18 @@ std::vector<LotPoint> lot_on_land(const RoadNetwork &net, const std::vector<LotP
 			best = &p;
 		}
 	if (!best) return {};
-	const std::vector<LotPoint> land = paving_ring(*best);
-	return big_enough(land) ? square_corners(land) : std::vector<LotPoint>();
+	const std::vector<XZ> land = paving_ring(*best);
+	return big_enough(land) ? square_corners(land) : std::vector<XZ>();
 }
 
-std::vector<std::vector<LotPoint>> lot_pieces(const RoadNetwork &net, const std::vector<LotPoint> &ring, bool &crossed) {
+std::vector<std::vector<XZ>> lot_pieces(const RoadNetwork &net, const std::vector<XZ> &ring, bool &crossed) {
 	crossed = false;
-	std::vector<std::vector<LotPoint>> pieces;
+	std::vector<std::vector<XZ>> pieces;
 	const Paths64 paving = paving_round(net, ring);
 	if (paving.empty()) return pieces;
 	double left = 0;
 	for (const Path64 &p : land_of(ring, paving)) {
-		std::vector<LotPoint> piece = paving_ring(p);
+		std::vector<XZ> piece = paving_ring(p);
 		left += std::abs(lot_area(piece));
 		if (big_enough(piece)) pieces.push_back(std::move(piece));
 	}
@@ -127,12 +127,12 @@ std::vector<std::vector<LotPoint>> lot_pieces(const RoadNetwork &net, const std:
 	return pieces;
 }
 
-int lot_front_side(const RoadNetwork &net, const std::vector<LotPoint> &ring) {
+int lot_front_side(const RoadNetwork &net, const std::vector<XZ> &ring) {
 	const size_t n = ring.size();
 	std::vector<double> away(n);
 	double nearest = std::numeric_limits<double>::infinity();
 	for (size_t i = 0; i < n; i++) {
-		const LotPoint &p = ring[i], &q = ring[(i + 1) % n];
+		const XZ &p = ring[i], &q = ring[(i + 1) % n];
 		away[i] = street_distance(net, (p.x + q.x) / 2, (p.z + q.z) / 2);
 		nearest = std::min(nearest, away[i]);
 	}
@@ -148,10 +148,10 @@ int lot_front_side(const RoadNetwork &net, const std::vector<LotPoint> &ring) {
 	return front;
 }
 
-LotSnap lot_snap(const LotBook &book, const RoadNetwork &net, const LotPoint &p, double reach, int skip, const LotPoint *apart) {
+LotSnap lot_snap(const LotBook &book, const RoadNetwork &net, const XZ &p, double reach, int skip, const XZ *apart) {
 	LotSnap out;
 	out.p = p;
-	LotPoint corner;
+	XZ corner;
 	if (lot_corner_near(book, p, reach * LOT_SNAP_SHARE, skip, apart, corner)) {
 		out.p = corner;
 		out.kind = LotSnapKind::LOT;
@@ -162,7 +162,7 @@ LotSnap lot_snap(const LotBook &book, const RoadNetwork &net, const LotPoint &p,
 	std::vector<Back> backs;
 	double best = reach;
 	bool street = false;
-	LotPoint on_street;
+	XZ on_street;
 	for (const Path64 &ring : paving)
 		for (size_t k = 0; k < ring.size(); k++) {
 			const Point64 &a = ring[k], &b = ring[(k + 1) % ring.size()];
@@ -183,7 +183,7 @@ LotSnap lot_snap(const LotBook &book, const RoadNetwork &net, const LotPoint &p,
 			const double den = first.dx * other.dz - first.dz * other.dx;
 			if (std::fabs(den) < SQUARE_SHARE * std::hypot(first.dx, first.dz) * std::hypot(other.dx, other.dz)) continue; // one back cut in two
 			const double k = ((other.x0 - first.x0) * other.dz - (other.z0 - first.z0) * other.dx) / den;
-			const LotPoint x = { first.x0 + first.dx * k, first.z0 + first.dz * k };
+			const XZ x = { first.x0 + first.dx * k, first.z0 + first.dz * k };
 			if (side_length(x, p) < span) {
 				out.p = x;
 				out.kind = LotSnapKind::CORNER;

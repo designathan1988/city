@@ -98,8 +98,8 @@ void SideEmit::each_bay(const Side &sd, int k, float z, F &&at) {
 	shell.grime_floor = pl.lot.o.y + b.level_z(v.base);
 	for (int i = 0; i < n; i++) {
 		float a0 = W * float(i), am = a0 + W / 2;
-		Point2 dir{ (sd.p1.x - sd.p0.x) / sd.length, (sd.p1.y - sd.p0.y) / sd.length };
-		auto plan_at = [&](float a) { return Point2{ sd.p0.x + dir.x * a + sd.n.x * OUT_TEST, sd.p0.y + dir.y * a + sd.n.y * OUT_TEST }; };
+		V2 dir{ (sd.p1.x - sd.p0.x) / sd.length, (sd.p1.y - sd.p0.y) / sd.length };
+		auto plan_at = [&](float a) { return V2{ sd.p0.x + dir.x * a + sd.n.x * OUT_TEST, sd.p0.y + dir.y * a + sd.n.y * OUT_TEST }; };
 		bool cl = covered(b, v, level, plan_at(a0 + FACE_CLEAR_IN)), cm = covered(b, v, level, plan_at(am)), cr = covered(b, v, level, plan_at(a0 + W - FACE_CLEAR_IN));
 		if (cl && cm && cr) continue;
 		float push = relief_push(v, sd.side, i, k);
@@ -110,7 +110,7 @@ void SideEmit::each_bay(const Side &sd, int k, float z, F &&at) {
 		c.plain = cl || cm || cr;
 		c.hash = bay_hash(vol, level, sd.side, i, plan_at(am).x, plan_at(am).y);
 		c.vol = vol;
-		c.plan_at = Point2{ sd.p0.x + dir.x * a0, sd.p0.y + dir.y * a0 };
+		c.plan_at = V2{ sd.p0.x + dir.x * a0, sd.p0.y + dir.y * a0 };
 		c.plan_along = dir;
 		c.plan_out = sd.n;
 		c.open_left = i > 0 && bay_at(v, k, sd.side, i - 1) == BAY_GOURMET;
@@ -161,7 +161,7 @@ void SideEmit::lines(Shell &s, const Side &sd) {
 	const Body &b = *pl.b;
 	Paint mp = moulding_of(pl);
 	Lin m = paint_lin(mp);
-	Point2 mid{ (sd.p0.x + sd.p1.x) / 2 + sd.n.x * OUT_TEST, (sd.p0.y + sd.p1.y) / 2 + sd.n.y * OUT_TEST };
+	V2 mid{ (sd.p0.x + sd.p1.x) / 2 + sd.n.x * OUT_TEST, (sd.p0.y + sd.p1.y) / 2 + sd.n.y * OUT_TEST };
 	for (int k = 1; k < v.storeys; k++) {
 		int level = v.base + k;
 		if (v.lines == LINES_BASE && level != 1) continue;
@@ -174,7 +174,7 @@ void SideEmit::lines(Shell &s, const Side &sd) {
 }
 
 void SideEmit::plinth(const Side &sd) {
-	Point2 mid{ (sd.p0.x + sd.p1.x) / 2 + sd.n.x * OUT_TEST, (sd.p0.y + sd.p1.y) / 2 + sd.n.y * OUT_TEST };
+	V2 mid{ (sd.p0.x + sd.p1.x) / 2 + sd.n.x * OUT_TEST, (sd.p0.y + sd.p1.y) / 2 + sd.n.y * OUT_TEST };
 	if (covered(*pl.b, v, 0, mid)) return;
 	Lin stone = paint_lin(pl.data->color("plinth"));
 	shell.box(sd.f, -PLINTH_OUT, sd.length + PLINTH_OUT, pl.ground_lo - PLINTH_BURY, GROUND_LIFT, 0, PLINTH_OUT, stone, FIN_STONE, SKIP_E2_NEG);

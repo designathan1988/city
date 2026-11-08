@@ -199,7 +199,7 @@ int j_add_lot(CityState &s, PlayerLot lot); // its id, the book's next
 void j_remove_lot(CityState &s, int id);
 void j_edit_lot(CityState &s, int id, const PlayerLot &after);
 // The lot cells under a ring's box queued for the lot cache (lot_commands.cpp): what a command and its undo read again.
-void mark_lot_cells(CityState &s, const std::vector<LotPoint> &ring);
+void mark_lot_cells(CityState &s, const std::vector<XZ> &ring);
 void j_links(CityState &s, int node, std::vector<LaneLink> next); // the connections made by hand at a node replaced
 // Damage (journal_damage.cpp): a crater dug, a ruin left or cleared, a piece of street furniture knocked out.
 void j_add_crater(CityState &s, const Crater &c);

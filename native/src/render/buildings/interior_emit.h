@@ -21,6 +21,6 @@ void emit_interior(Shell &shell, Shell &parts, const Placed &pl);
 void emit_furniture(Shell &shell, Shell &parts, const Placed &pl, const Furniture &f, float z);
 // A bay of the floor seen: true when the wall comes down to CUT_WALL_LOW_M (nothing more of the bay is drawn); otherwise
 // the wall gets its inner face and the bay is drawn as usual. `out`: the wall's outward normal (lot frame).
-bool cut_bay(Shell &shell, const Placed &pl, const BayCtx &c, Point2 out);
+bool cut_bay(Shell &shell, const Placed &pl, const BayCtx &c, V2 out);
 
 } // namespace city::b40

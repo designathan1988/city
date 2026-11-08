@@ -85,7 +85,7 @@ void LotBook::file() {
 		if (l.zone != 0) zoned_[chunk_of(float(stands_.back().x), float(stands_.back().z))].push_back(int(i));
 		if (l.corners.empty()) continue;
 		double x0 = std::numeric_limits<double>::max(), z0 = x0, x1 = std::numeric_limits<double>::lowest(), z1 = x1;
-		for (const LotPoint &p : l.corners) {
+		for (const XZ &p : l.corners) {
 			x0 = std::min(x0, p.x); z0 = std::min(z0, p.z);
 			x1 = std::max(x1, p.x); z1 = std::max(z1, p.z);
 		}

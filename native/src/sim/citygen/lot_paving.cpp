@@ -26,17 +26,17 @@ constexpr double OUTLINE_SLACK_UNITS = 20; // the chords of a straight back are 
 
 Point64 unit_point(double x, double z) { return Point64(std::llround(x * PAVING_UNITS_PER_M), std::llround(z * PAVING_UNITS_PER_M)); }
 
-Path64 path_of(const std::vector<LotPoint> &ring) {
+Path64 path_of(const std::vector<XZ> &ring) {
 	Path64 out;
 	out.reserve(ring.size());
-	for (const LotPoint &p : ring) out.push_back(unit_point(p.x, p.z));
+	for (const XZ &p : ring) out.push_back(unit_point(p.x, p.z));
 	return out;
 }
 
 } // namespace
 
-std::vector<LotPoint> paving_ring(const Path64 &path) {
-	std::vector<LotPoint> out;
+std::vector<XZ> paving_ring(const Path64 &path) {
+	std::vector<XZ> out;
 	out.reserve(path.size());
 	for (const Point64 &p : path) out.push_back({ double(p.x) / PAVING_UNITS_PER_M, double(p.y) / PAVING_UNITS_PER_M });
 	return out;
@@ -70,7 +70,7 @@ void add_ribbon(const RoadNetwork &net, int seg, Paths64 &out) {
 }
 
 struct NodeEnd {
-	LotPoint left, right; // the outer edges of the footways at the mouth, seen going out along the arm
+	XZ left, right; // the outer edges of the footways at the mouth, seen going out along the arm
 	double dx = 0, dz = 0;
 	Arm arm;
 };
@@ -123,10 +123,10 @@ void add_junction(const RoadNetwork &net, int node, Paths64 &out) {
 	add_positive(out, std::move(ring));
 }
 
-void box_of(const std::vector<LotPoint> &ring, double &x0, double &z0, double &x1, double &z1) {
+void box_of(const std::vector<XZ> &ring, double &x0, double &z0, double &x1, double &z1) {
 	x0 = z0 = std::numeric_limits<double>::max();
 	x1 = z1 = std::numeric_limits<double>::lowest();
-	for (const LotPoint &p : ring) {
+	for (const XZ &p : ring) {
 		x0 = std::min(x0, p.x);
 		z0 = std::min(z0, p.z);
 		x1 = std::max(x1, p.x);
@@ -148,14 +148,14 @@ Paths64 paving_near(const RoadNetwork &net, double x0, double z0, double x1, dou
 	return pieces.empty() ? pieces : Clipper2Lib::Union(pieces, FillRule::NonZero);
 }
 
-Paths64 paving_round(const RoadNetwork &net, const std::vector<LotPoint> &ring) {
+Paths64 paving_round(const RoadNetwork &net, const std::vector<XZ> &ring) {
 	double x0, z0, x1, z1;
 	box_of(ring, x0, z0, x1, z1);
 	return paving_near(net, x0 - PAVING_MARGIN_M, z0 - PAVING_MARGIN_M, x1 + PAVING_MARGIN_M, z1 + PAVING_MARGIN_M);
 }
 
 // What of a ring stands off the paving: the outlines, holes left out as a lot has none.
-Paths64 land_of(const std::vector<LotPoint> &ring, const Paths64 &paving) {
+Paths64 land_of(const std::vector<XZ> &ring, const Paths64 &paving) {
 	Paths64 subject;
 	add_positive(subject, path_of(ring));
 	Paths64 left = Clipper2Lib::Difference(subject, paving, FillRule::NonZero), out;

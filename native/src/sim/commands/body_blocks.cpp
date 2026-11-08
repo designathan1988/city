@@ -40,8 +40,8 @@ std::shared_ptr<const Body> standing(const CityState &s, int id, EditResult &r) 
 // The biggest piece of `box` standing on the block: a mass on a roof is kept to the roof.
 Ring on_roof(const Ring &box, const Volume &v) {
 	PlanRing a, c;
-	for (const Point2 &p : box) a.push_back(V2(p.x, p.y));
-	for (const Point2 &p : ring_of(v)) c.push_back(V2(p.x, p.y));
+	for (const V2 &p : box) a.push_back(V2(p.x, p.y));
+	for (const V2 &p : ring_of(v)) c.push_back(V2(p.x, p.y));
 	Ring best;
 	float most = 0;
 	for (const PlanRing &piece : plan_intersection({ a }, { c })) {
@@ -57,7 +57,7 @@ Ring on_roof(const Ring &box, const Volume &v) {
 }
 } // namespace
 
-std::string op_add_mass(Body &b, const Tuning &t, int vol, Point2 from, Point2 to, int action) {
+std::string op_add_mass(Body &b, const Tuning &t, int vol, V2 from, V2 to, int action) {
 	if (vol < 0 || vol >= int(b.volumes.size()) || action < MASS_GROUND || action > MASS_CUT) return NO_BLOCK;
 	if (int(b.volumes.size()) >= int(t.build_max_volumes)) return "building.problem.size";
 	Volume &source = b.volumes[size_t(vol)];
@@ -92,7 +92,7 @@ std::string op_scale_plan(Body &b, const Tuning &t, float factor, bool snap) {
 	if (b.volumes.empty() || factor <= 0) return NO_BLOCK;
 	float x0 = std::numeric_limits<float>::max(), y0 = x0, x1 = -x0, y1 = -x0;
 	for (const Volume &v : b.volumes)
-		for (const Point2 &p : ring_of(v)) {
+		for (const V2 &p : ring_of(v)) {
 			x0 = std::min(x0, p.x);
 			y0 = std::min(y0, p.y);
 			x1 = std::max(x1, p.x);
@@ -212,7 +212,7 @@ std::string op_primitive_on(Body &b, const Tuning &t, int vol, int side, int sto
 	}
 	const float c = std::cos(angle), s = std::sin(angle);
 	Ring ring;
-	for (const Point2 &q : plan_ring(p.shape)) {
+	for (const V2 &q : plan_ring(p.shape)) {
 		const float lx = (q.x - 0.5f) * size, ly = (q.y - 0.5f) * across;
 		ring.push_back({ cx + lx * c - ly * s, cy + lx * s + ly * c });
 	}

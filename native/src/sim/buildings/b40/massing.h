@@ -12,7 +12,7 @@ struct BlockSpec {
 	int base = 0, storeys = 1;
 	Roof roof = ROOF_FLAT;
 	uint8_t fill = BAY_WINDOW, ground = BAY_NONE;
-	const std::vector<Point2> *shape = nullptr;
+	const std::vector<V2> *shape = nullptr;
 };
 
 int add_block(Body &b, const BlockSpec &s);

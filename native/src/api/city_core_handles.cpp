@@ -109,7 +109,7 @@ Array CityBuilder::body_handles(int id, int vol, bool points, const Vector3 &eye
 		for (int i = 0; i < int(ring.size()); i++) out.push_back(handle(HandleKind::VERTEX, world(ring[size_t(i)].x, ring[size_t(i)].y, foot), Vector3(), -1, i));
 	float x0 = BIG, y0 = BIG, x1 = -BIG, y1 = -BIG, eaves = 0;
 	for (const b40::Volume &o : body.volumes) {
-		for (const b40::Point2 &p : b40::ring_of(o)) {
+		for (const V2 &p : b40::ring_of(o)) {
 			x0 = std::min(x0, p.x);
 			y0 = std::min(y0, p.y);
 			x1 = std::max(x1, p.x);
@@ -117,13 +117,13 @@ Array CityBuilder::body_handles(int id, int vol, bool points, const Vector3 &eye
 		}
 		eaves = std::max(eaves, body.block_z(o, o.top()));
 	}
-	const std::array<b40::Point2, BOX_CORNERS> box{ b40::Point2{ x0, y0 }, b40::Point2{ x1, y0 }, b40::Point2{ x1, y1 }, b40::Point2{ x0, y1 } };
+	const std::array<V2, BOX_CORNERS> box{ V2{ x0, y0 }, V2{ x1, y0 }, V2{ x1, y1 }, V2{ x0, y1 } };
 	std::array<int, BOX_CORNERS> order{ 0, 1, 2, 3 };
 	auto eye_to = [&](int i) { return world(box[size_t(i)].x, box[size_t(i)].y, floor).distance_squared_to(eye); };
 	std::sort(order.begin(), order.end(), [&](int a, int c) { return eye_to(a) < eye_to(c); });
 	const float mid_x = (x0 + x1) / 2, mid_y = (y0 + y1) / 2;
 	auto off_corner = [&](int i, float by, float z) {
-		const b40::Point2 c = box[size_t(i)];
+		const V2 c = box[size_t(i)];
 		const float dx = c.x - mid_x, dy = c.y - mid_y, length = std::max(std::hypot(dx, dy), SHORTEST_M);
 		return world(c.x + dx / length * by, c.y + dy / length * by, z);
 	};
@@ -131,7 +131,7 @@ Array CityBuilder::body_handles(int id, int vol, bool points, const Vector3 &eye
 	out.push_back(handle(HandleKind::ROTATE, off_corner(order[1], CORNER_OUT_M, floor), Vector3(), -1, -1));
 	if (v.base == 0) { // the block's own floor, raised or lowered: at its nearest corner
 		float lx = v.x, ly = v.y, nearest = BIG;
-		for (const b40::Point2 &p : ring) {
+		for (const V2 &p : ring) {
 			const float d = world(p.x, p.y, floor).distance_squared_to(eye);
 			if (d < nearest) {
 				nearest = d;
@@ -153,7 +153,7 @@ Array CityBuilder::body_handles(int id, int vol, bool points, const Vector3 &eye
 		h["storey"] = storey;
 		out.push_back(h);
 	}
-	const b40::Point2 near = box[size_t(order[0])];
+	const V2 near = box[size_t(order[0])];
 	out.push_back(handle(HandleKind::SCALE, off_corner(order[0], SCALE_OUT_M, floor + eaves), along(near.x - mid_x, near.y - mid_y).normalized(), -1, -1));
 	return out;
 }
