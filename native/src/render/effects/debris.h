@@ -16,6 +16,8 @@
 
 namespace city {
 
+constexpr uint64_t DEBRIS_SEED = 0xd3b415ULL; // the thrown pieces' own random stream: any fixed seed
+
 struct PieceSpec {
 	godot::Vector3 at, size, velocity, spin;
 	godot::Quaternion turn;
@@ -70,7 +72,7 @@ private:
 	std::vector<MmLayer> wrecks_;
 	std::deque<Piece> pieces_;
 	EffectParams params_;
-	Rng rng_{ 0xd3b415ULL };
+	Rng rng_{ DEBRIS_SEED };
 	float clock_ = 0;
 	bool dirty_ = false;
 	int drawn_ = -1;

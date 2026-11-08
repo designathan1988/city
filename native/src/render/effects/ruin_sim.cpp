@@ -12,6 +12,7 @@ using namespace godot;
 namespace city {
 
 namespace {
+constexpr float FARTHEST_M = 1e30f; // farther than any piece: a search's start
 } // namespace
 
 float RuinSim::Pile::at(float x, float z) const {
@@ -72,7 +73,7 @@ void RuinSim::schedule() {
 	const float reach = scar_reach_m(ruin_.blow_force), power = K.throw_base_ms + ruin_.blow_force * K.throw_per_force_ms;
 	stack_.clear();
 	int nearest = 0;
-	float closest = K.farthest_m;
+	float closest = FARTHEST_M;
 	for (size_t i = 0; i < pieces_.size(); i++) {
 		Piece &p = pieces_[i];
 		p.scheduled = p.loose; // what a scar already took passes the break on from where it was
@@ -114,7 +115,7 @@ void RuinSim::scar(const Scar &c) {
 	const RuinSimShape &K = law_.shapes.ruin_sim;
 	const Vector3 aimed(c.x, c.y, c.z);
 	const Piece *first = nullptr;
-	float closest = K.farthest_m;
+	float closest = FARTHEST_M;
 	for (const Piece &p : pieces_) {
 		const float d = p.home.distance_to(aimed);
 		if (p.loose || p.grounded || d >= closest) continue;

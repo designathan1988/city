@@ -76,12 +76,12 @@ public:
 	size_t craters() const { return craters_.size(); }
 	// Writes what changed (and the rings' ends) at the effects clock `now`.
 	void update(double now);
-	static constexpr float SURFACE_LIFT_M = 0.06f;
+	static constexpr float SURFACE_LIFT_M = 0.06f; // a decal lies this far over the ground, so the two never fight
 	static constexpr int RELIEF_GRID = 4; // the ground is sampled on a grid of (2 * this + 1)^2 points across a decal
 	static constexpr float CRATER_SCALE = 2.4f; // the quad is wider than the hole: the scorch and the broken lip round it (blast_probe says how far)
 
 private:
-	static constexpr uint32_t SEED_MASK = 0xffffu;
+	static constexpr uint32_t SEED_MASK = 0xffffu; // a decal's seed: sixteen bits of its hash
 	MmLayer layer_;
 	godot::RID material_;
 	std::vector<Mark> craters_;

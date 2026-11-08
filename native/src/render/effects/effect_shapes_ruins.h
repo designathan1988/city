@@ -23,7 +23,7 @@ struct PiecesShape {
 #define EFFECT_SHAPE_RUIN_SIM(X, XI, XD, XV, XVI) \
 	X(resting_m) X(throw_base_ms) X(throw_per_force_ms) X(throw_share_least) X(break_power_ms) X(throw_least) \
 	X(throw_span) X(throw_up) X(turn_range) X(spin_base) X(spin_per_power) X(hop_s) X(hop_least) X(hop_span) \
-	X(support_every_s) X(mound_fill) X(longest_fall_s) X(land_speed_ms) X(farthest_m) X(pile_cell_m) X(pile_over) \
+	X(support_every_s) X(mound_fill) X(longest_fall_s) X(land_speed_ms) X(pile_cell_m) X(pile_over) \
 	XI(pile_most_side) X(far_down_m) XI(settle_most_steps)
 struct RuinSimShape {
 	EFFECT_SHAPE_RUIN_SIM(EFFECT_SHAPE_FLOAT, EFFECT_SHAPE_COUNT, EFFECT_SHAPE_DOUBLE, EFFECT_SHAPE_FLOATS, EFFECT_SHAPE_COUNTS)
