@@ -6,7 +6,6 @@ extends ToolBase
 
 ## One dab per DAB_S held keeps each step above the 1 cm height quantum.
 const DAB_S := 0.1
-const PERCENT := 100.0
 
 var mode := 0
 var radius := 0.0
@@ -20,8 +19,8 @@ func enter() -> void:
 	var spec: Dictionary = _spec()
 	mode = params.get("mode", 0)
 	radius = params.get("radius", spec.radius.default)
-	strength = params.get("strength", spec.strength.default) / PERCENT
-	hardness = params.get("hardness", spec.hardness.default) / PERCENT
+	strength = params.get("strength", spec.strength.default) / Units.PERCENT
+	hardness = params.get("hardness", spec.hardness.default) / Units.PERCENT
 	ctl.hint.emit("", true)
 
 

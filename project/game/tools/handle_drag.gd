@@ -6,7 +6,6 @@ extends RefCounted
 const TURN_STEP := PI / 12.0
 const ROOF_REACH := 1.0
 
-const CM := 0.01
 const NO_POINT := -1
 
 var marks: HandleMarks
@@ -68,7 +67,7 @@ func act(spec: Dictionary, value: int, picked: Dictionary) -> Dictionary:
 	vertex = NO_POINT
 	if spec.do == "point_remove":
 		return CityStore.dispatch(&"body_change_point", [picked.id, picked.volume, at, true])
-	return CityStore.dispatch(&"body_bevel", [picked.id, picked.volume, value * CM, at])
+	return CityStore.dispatch(&"body_bevel", [picked.id, picked.volume, value * Units.M_PER_CM, at])
 
 
 ## A press on a handle takes hold of it.

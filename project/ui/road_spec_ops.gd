@@ -108,6 +108,6 @@ static func strips(spec: Dictionary) -> Array:
 	var out := []
 	for i in range(spec.elements.size() - 1, -1, -1):
 		var e: Dictionary = spec.elements[i]
-		var kind: String = {"footway": "sidewalk", "cycle": "bike"}.get(e.kind, e.kind)
+		var kind: String = CityStore.constants.spec_strips[e.kind] # the core's (road_spec.h strip_of)
 		out.push_back({"kind": kind, "width": e.width, "dir": e.get("dir", 0), "bus": e.get("bus", false)})
 	return out

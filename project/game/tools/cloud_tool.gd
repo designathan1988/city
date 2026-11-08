@@ -5,7 +5,6 @@ extends ToolBase
 
 enum Mode { ADD, MOVE, EDIT, REMOVE }
 
-const PERCENT := 100.0
 ## The way a new cloud's puffs lie follows where it is put.
 const YAW_PER_M_X := 0.013
 const YAW_PER_M_Z := 0.007
@@ -26,7 +25,7 @@ func enter() -> void:
 	mode = s.mode
 	size = s.size
 	height = s.height
-	density = s.density / PERCENT
+	density = s.density / Units.PERCENT
 	ctl.hint.emit(tr("hint.tool.cloud"), true)
 
 

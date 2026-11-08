@@ -35,6 +35,12 @@
    ],
    "strict": true
   },
+  "road_roles": {
+   "type": "object",
+   "properties": {"local": {"type": "string"},"avenue": {"type": "string"},"avenue_bike": {"type": "string"},"expressway": {"type": "string"},"collector": {"type": "string"},"wide": {"type": "string"},"urban": {"type": "string"},"cobble": {"type": "string"},"green": {"type": "string"},"concrete": {"type": "string"},"bike": {"type": "string"},"bus_side": {"type": "string"},"boulevard": {"type": "string"},"av4": {"type": "string"}},
+   "required": ["local", "avenue", "avenue_bike", "expressway", "collector", "wide", "urban", "cobble", "green", "concrete", "bike", "bus_side", "boulevard", "av4"],
+   "strict": true
+  },
   "organic_reach_m": {
    "type": "integer"
   },
@@ -51,6 +57,7 @@
  "required": [
   "_doc",
   "civic",
+  "road_roles",
   "organic_reach_m",
   "organic_extra_floors",
   "decay_span_min",

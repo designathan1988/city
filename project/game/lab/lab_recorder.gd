@@ -5,7 +5,6 @@ extends Node
 
 signal changed
 
-const MS_PER_S := 1000.0
 const FOLDER := "user://lab"
 const FILE := "%s/recording_%d.json"
 
@@ -62,7 +61,7 @@ func _on_change() -> void:
 func _open() -> void:
 	_cut += 1
 	var mine := _cut
-	await get_tree().create_timer(DataTables.game("lab").recorder.settle_ms / MS_PER_S).timeout
+	await get_tree().create_timer(DataTables.game("lab").recorder.settle_ms / Units.MS_PER_S).timeout
 	if mine != _cut or not recording:
 		return
 	_started_ms = Time.get_ticks_msec()
@@ -75,7 +74,7 @@ func _close() -> void:
 		return
 	_measuring = false
 	var s := _meter.record_end()
-	s.seconds = float(Time.get_ticks_msec() - _started_ms) / MS_PER_S
+	s.seconds = float(Time.get_ticks_msec() - _started_ms) / Units.MS_PER_S
 	s.pipelines = FrameMeter.pipelines()
 	stretches.append(s)
 

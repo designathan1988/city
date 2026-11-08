@@ -138,9 +138,12 @@ std::string op_set_lift(Body &b, const Tuning &t, int vol, float lift, bool snap
 }
 
 std::string op_handle(Body &b, const Tuning &t, const HandleEdit &e) {
-	if (e.kind.empty()) return "";
-	if (e.kind == "lift") return op_set_lift(b, t, e.vol, e.along, e.snap);
-	if (e.kind == "relief") {
+	switch (e.kind) {
+	case HandleKind::NONE:
+		return "";
+	case HandleKind::LIFT:
+		return op_set_lift(b, t, e.vol, e.along, e.snap);
+	case HandleKind::RELIEF: {
 		Relief r;
 		r.side = e.side;
 		r.bay0 = r.bay1 = e.index;
@@ -148,12 +151,23 @@ std::string op_handle(Body &b, const Tuning &t, const HandleEdit &e) {
 		r.depth = e.along;
 		return op_set_relief(b, t, e.vol, r, e.snap);
 	}
-	if (e.kind == "part") return op_add_part(b, t, e.vol, e.count, e.side, e.index, e.part);
-	if (e.kind == "primitive") return op_primitive_on(b, t, e.vol, e.side, e.count, e.x, e.y, e.shape);
-	if (e.kind == "storeys") return op_set_storeys(b, t, e.vol, e.count);
-	if (e.kind == "vertex") return op_move_point(b, t, e.vol, e.index, e.x, e.y, e.snap);
-	if (e.kind == "scale") return op_scale_plan(b, t, e.factor, e.snap);
-	if (e.kind != "side") return NO_BLOCK;
+	case HandleKind::PART:
+		return op_add_part(b, t, e.vol, e.count, e.side, e.index, e.part);
+	case HandleKind::PRIMITIVE:
+		return op_primitive_on(b, t, e.vol, e.side, e.count, e.x, e.y, e.shape);
+	case HandleKind::STOREYS:
+		return op_set_storeys(b, t, e.vol, e.count);
+	case HandleKind::VERTEX:
+		return op_move_point(b, t, e.vol, e.index, e.x, e.y, e.snap);
+	case HandleKind::SCALE:
+		return op_scale_plan(b, t, e.factor, e.snap);
+	case HandleKind::SIDE:
+		break;
+	case HandleKind::MOVE:
+	case HandleKind::ROTATE:
+	case HandleKind::UNKNOWN:
+		return NO_BLOCK;
+	}
 	if (e.wing) return e.along >= float(t.build_min_side_m) ? op_add_wing(b, t, e.vol, e.side, e.along, 0) : "";
 	const float grid = float(t.build_grid_m), along = e.snap ? std::round(e.along / grid) * grid : e.along;
 	return along != 0 ? op_extrude_face(b, t, e.vol, e.side, along) : "";

@@ -9,7 +9,6 @@ const FILTER_LEVELS := [Viewport.ANISOTROPY_DISABLED, Viewport.ANISOTROPY_2X, Vi
 	Viewport.ANISOTROPY_16X]
 ## Screen pixels per inch of a 1:1 display (Windows' 96 DPI): what a device pixel ratio is measured against.
 const BASE_DPI := 96.0
-const MS_PER_S := 1000.0
 ## Four cascades tile an atlas of twice their side (PSSM 4 splits).
 const ATLAS_PER_CASCADE := 2
 const COMPATIBILITY := "gl_compatibility"
@@ -42,7 +41,7 @@ static func level_of(preset: String, hardware: String) -> String:
 static func budget_ms(fps_limit: int) -> float:
 	var hz := DisplayServer.screen_get_refresh_rate()
 	var fps := float(fps_limit) if fps_limit > 0 else (hz if hz > 0.0 else float(DataTables.game("settings").frame_cap.max_fps))
-	return MS_PER_S / fps
+	return Units.MS_PER_S / fps
 
 
 ## The tier's fields with the kept choices over them; `shadows` kept 0 is no shadows, ao and smaa force their pass, `temporal`

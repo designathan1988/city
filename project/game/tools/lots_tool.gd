@@ -30,7 +30,7 @@ func enter() -> void:
 	parts = params.get("parts", 2)
 	_read()
 	_show()
-	ctl.hint.emit("zone.lots.help", true)
+	ctl.hint.emit(tr("zone.lots.help"), true)
 
 
 func exit() -> void:

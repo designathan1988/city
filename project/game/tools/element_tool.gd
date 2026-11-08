@@ -20,9 +20,9 @@ func enter() -> void:
 	brush = {}
 	for key: String in own:
 		brush[key] = params.get(key, own[key])
-	brush.strength = float(brush.strength) / PERCENT
-	brush.variation = float(brush.variation) / PERCENT
-	brush.intensity = float(brush.intensity) / PERCENT
+	brush.strength = float(brush.strength) / Units.PERCENT
+	brush.variation = float(brush.variation) / Units.PERCENT
+	brush.intensity = float(brush.intensity) / Units.PERCENT
 	ctl.hint.emit(tr("hint.terrain.elements"), true)
 
 

@@ -85,7 +85,7 @@ func _ready() -> void:
 func relabel() -> void:
 	for t: Array in _tipped:
 		HudWidgets.tip_for(t[0], tr(t[1]))
-	_money.tooltip_text = tr("ui.money.tip").format({"refund": int(round(DataTables.tuning("economy_refund_share") * Formatters.PERCENT))})
+	_money.tooltip_text = tr("ui.money.tip").format({"refund": int(round(DataTables.tuning("economy_refund_share") * Units.PERCENT))})
 	_on_changed(CityStore.snapshot)
 
 

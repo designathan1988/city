@@ -2602,6 +2602,50 @@ photo byte-equal to a run before C7, `shader_contracts` passing; `gates_changed`
 `light_color_test`: it read `CityStore.constants` in member initialisers, before the store's `_ready` fills them; it reads them when
 it starts.
 
+### 6.21 B2, C3 (the scripts' and the interface's side): contracts the scripts kept by hand (2026-11-08)
+
+**Cause.** What §3q, §3r and two §3c/§3d findings left after C3a: the popovers built by `call("_build_" + which)` and
+`call("_seg_" + r.seg)`, a name in `drawers.json` with no method failing only when pressed; times stored as design tokens and read
+through the size reader (`tip_wait_ms`, `cn_reread_s`, `toast_s`); two conventions for the hint signal (`ToolController.hint` says the
+text comes translated, `lots_tool` and `road_blocks` sent raw keys, which showed translated only because the label translates again);
+four places cutting a translated name at " (" and the sliders recognising metres by the display string " m"; `MS_PER_S`, `PERCENT`,
+`MIB` declared again in 30 scripts (`HudWidgets`, `Formatters`, `QualityTier`, `CityCamera` and an inner class of the profiler each
+holding one); the editor's strip names mapped to the catalogue's three times (`road_spec.cpp` once each way, `road_spec_ops.gd` again);
+a padding read from the `card_radius` token and a bare pixel added to `pad_s`; the element kinds split into things and effects by the
+length of a render table's row list (`element_effects.gd` passing `cover.json` `props.size()` to `effects_near`); a transit line's
+colour sent as a packed number and unpacked in two scripts, and one text placed by `replace("{n}")`; the setback's and the bevel's
+sentinels typed bare (`-1.0, 2`, `-1`); fourteen generator road roles named by profile id in `city_gen.cpp`, two of them the same
+profile, an unknown name giving -1 unchecked; the Build tool's handle edit comparing its kind as a string, nine times a drag tick.
+
+**Fix.** The popovers and the menu's segments are tables of callables, every popover and segment of the data checked against them at
+start (the segments moved to `ui/pop_menu_rows.gd`, the popover script past its size). The timings live in `hud.json` `timings`, in
+seconds, with a schema. The emitters translate (`lots_tool`, `road_blocks`) and the hint and toast labels no longer translate again:
+a key that slipped through shows as one. The asides nothing showed are gone from the translations (24 keys, both languages), the
+three street cards whose tooltip shows the whole name have a short key and a `.tip` key named by their data (`tip_key`), and no code
+cuts text; a slider's unit is an id (`length` formatted as the style writes lengths, the others by an i18n pattern `unit.<id>`).
+`game/units.gd` (`Units`) holds the units once. The core maps a composed element to its catalogue strip in one function
+(`road_spec.h` `strip_of`), which the reverse reading and the scripts' table (`constants.spec_strips`) use; `SPEC_KIND_NAMES` sits
+beside `STRIP_KIND_NAMES`. The theme has its own `choice_pad` and `icons_pad`. `nature.json` names the first effect kind
+(`first_effect`, resolved and checked by the loader); `effects_near` reads it, and the element models refuse a props table whose row
+count is not the catalogue's laid kinds. The line colour comes as a `Color` (`rgb8_to_color`, the scripts' own float maths), the
+stops through `format`. The sentinels are the core's (`SETBACK_BY_MODULE`, `EVERY_CORNER`, exported by `constants()`), the setback's
+storeys the card's value in `builder.json`. The road roles are `growth.json` `road_roles` (a schema, the loader refusing a profile it
+lacks; `CITY_ROAD_ROLES` the one list, which `GenProfiles` takes). The handle kind is `HandleKind`, read once from its name where the
+API parses the request; one name table serves the handles the core sends and the edits it reads.
+
+**Not changed, and why.** The cloud tool's yaw from where a cloud is put and the core's random yaw of the clouds it scatters are two
+rules for two origins, not one value copied: moving the tool's rule into the core would change a placed cloud (B3 at most). The UI
+data's mode codes written as numbers (`land_panels.json`, the element and cloud tools) were put to B4's named rows in §6.18. The zone
+codes typed again (`parking_sources.cpp` and others) go with C4's "six owners", the same cause and the same fix.
+
+**What changes.** Nothing a player sees: every shown text is the one shown before (the cut gave the same words; the tooltips are the
+same), and the numbers are the same. The loaders refuse data that would have gone wrong silently: a road role naming no profile, a
+`first_effect` that is not a kind, a props table that does not match the kinds.
+
+**Verified** (`city-verify`, `quick --all` then `quick`, both DLLs): every test passes, the digest equal, every photo byte-equal to a
+run before C7, `scripts` compiling every script; `gates_changed` only lines the files had. The first run failed `scripts`: four tools
+read `PERCENT` inherited from `BrushTool`, whose own copy had gone; every unqualified use now names `Units`.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

@@ -108,6 +108,7 @@ struct EcologyDef {
 // many kinds there are (nature.json "elements").
 struct ElementDef {
 	int max_items = 0, max_per_dab = 0, kinds = 0;
+	int first_effect = 0; // the kinds before it are things laid on the ground (cover.json elements.props), from it effects (render/element_effects.gd)
 	float area_m2 = 1, least_size_m = 0;
 };
 

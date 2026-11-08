@@ -4,8 +4,6 @@
 class_name EffectsPanel
 extends PanelContainer
 
-const MIB := 1048576.0
-const MS_PER_S := 1000.0
 const LIVE_TABS := ["consumers", "cpu", "inspector", "gpu", "checks"]
 
 var _body: VBoxContainer
@@ -146,7 +144,7 @@ func _switches() -> void:
 	var t: Dictionary = DataTables.game("render_switches")
 	var res := []
 	for r: float in t.resolutions:
-		res.append([r, "%d%%" % int(r * Formatters.PERCENT)])
+		res.append([r, "%d%%" % int(r * Units.PERCENT)])
 	HudWidgets.label(_body, &"MutedLabel", tr("fx.resolution"))
 	HudWidgets.choices(_body, res, Settings.switches.resolution, func(r: float) -> void:
 		Settings.switches.resolution = r
@@ -202,9 +200,9 @@ func _read_stats() -> void:
 		["fx.stat.fps", "%d" % Performance.get_monitor(Performance.TIME_FPS)],
 		["fx.stat.calls", Formatters.format_int(int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)))],
 		["fx.stat.triangles", Formatters.format_int(int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)))],
-		["fx.stat.textures", "%d MiB" % (Performance.get_monitor(Performance.RENDER_TEXTURE_MEM_USED) / MIB)],
-		["fx.stat.geometries", "%d MiB" % (Performance.get_monitor(Performance.RENDER_BUFFER_MEM_USED) / MIB)],
-		["fx.stat.static", "%d MiB" % (Performance.get_monitor(Performance.MEMORY_STATIC) / MIB)],
+		["fx.stat.textures", "%d MiB" % (Performance.get_monitor(Performance.RENDER_TEXTURE_MEM_USED) / Units.BYTES_PER_MIB)],
+		["fx.stat.geometries", "%d MiB" % (Performance.get_monitor(Performance.RENDER_BUFFER_MEM_USED) / Units.BYTES_PER_MIB)],
+		["fx.stat.static", "%d MiB" % (Performance.get_monitor(Performance.MEMORY_STATIC) / Units.BYTES_PER_MIB)],
 		["fx.stat.pixels", "%d × %d" % [size.x, size.y]]]
 	for r: Array in rows:
 		var name := HudWidgets.label(_stats, &"MutedLabel", tr(r[0]))
@@ -220,7 +218,7 @@ func _process(delta: float) -> void:
 	_since += delta
 	if _since >= DataTables.game("render_switches").stats_every_s:
 		_since = 0.0
-		_watch.sample(float(Time.get_ticks_msec()) / MS_PER_S)
+		_watch.sample(float(Time.get_ticks_msec()) / Units.MS_PER_S)
 		if _tab in LIVE_TABS:
 			_read_live()
 		_read_stats()

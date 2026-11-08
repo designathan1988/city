@@ -24,7 +24,7 @@ func _process(delta: float) -> void:
 		hide()
 		return
 	_rested += delta
-	if visible or _over == null or _over.tooltip_text == "" or _rested < HudWidgets.px("tip_wait_ms") / HudWidgets.MS_PER_S:
+	if visible or _over == null or _over.tooltip_text == "" or _rested < float(DataTables.ui("hud").timings.tip_wait_s):
 		return
 	_label.text = _over.tooltip_text
 	show()

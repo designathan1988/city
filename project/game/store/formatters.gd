@@ -3,7 +3,6 @@ class_name Formatters
 extends RefCounted
 
 const GROUP := 3
-const PERCENT := 100.0
 ## Below this a measure is whole: the float32 of the catalogue carries a few millionths.
 const WHOLE_EPS := 0.0001
 
@@ -85,7 +84,7 @@ static func format_points(v: float) -> String:
 
 
 static func format_percent(v: float) -> String:
-	return "%d%%" % int(round(v * PERCENT))
+	return "%d%%" % int(round(v * Units.PERCENT))
 
 
 static func format_value(v: Variant, kind: String) -> String:

@@ -1,6 +1,6 @@
-## Top-bar popovers: Layers, Simulation (ui/pop_bodies.gd), Camera (the buttons, the zoom and the centre), Help and Menu. Content comes
-## from data/ui/drawers.json "popovers"; rows without an action the core supports are drawn "being built". One open at a time,
-## under its button; a press outside or Escape closes it.
+## Top-bar popovers: Layers, Simulation (ui/pop_bodies.gd), Camera (the buttons, the zoom and the centre), Help and Menu (its segment
+## rows: ui/pop_menu_rows.gd). Content comes from data/ui/drawers.json "popovers"; rows without an action the core supports are drawn
+## "being built". One open at a time, under its button; a press outside or Escape closes it.
 class_name HudPopover
 extends PanelContainer
 
@@ -10,8 +10,6 @@ signal menu_action(action: String)
 signal open_slot(slot: String)
 signal closed
 
-const METRES_PER_KM := 1000.0
-const PERCENT := 100.0
 
 @onready var rig: CityCamera = get_tree().get_first_node_in_group(&"camera_rig")
 @onready var tools: ToolController = get_tree().get_first_node_in_group(&"tools")
@@ -19,12 +17,22 @@ const PERCENT := 100.0
 var _metrics: Dictionary = {}
 var _since := 0.0
 var _under := Rect2()
+## What builds each popover of drawers.json, and each segment ("seg") a row of its menu names.
+var _builders := {"layers": _build_layers, "files": _build_files, "menu": _build_menu, "camera": _build_camera, "sim": _build_sim,
+		"help": _build_help}
+var _segments := {"quality": Callable(PopMenuRows, &"quality"), "paint": Callable(PopMenuRows, &"paint"),
+		"language": Callable(PopMenuRows, &"language")} # ui/pop_menu_rows.gd
 
 
 func _ready() -> void:
 	theme_type_variation = &"Popover"
 	hide()
 	CityStore.changed.connect(_on_changed)
+	var popovers: Dictionary = DataTables.ui("drawers").popovers
+	for which: String in popovers:
+		assert(_builders.has(which), "drawers.json popover '%s': no builder in hud_popover.gd" % which)
+		for r: Dictionary in popovers[which].get("rows", []):
+			assert(not r.has("seg") or _segments.has(r.seg), "drawers.json popover '%s': no segment '%s'" % [which, r.get("seg", "")])
 
 
 ## Opens `which` under the button rect (screen coordinates); the same one again closes it.
@@ -42,7 +50,7 @@ func toggle(which: String, under: Rect2) -> bool:
 	var col := HudWidgets.vbox(self, &"Pad")
 	if spec.has("title_key"):
 		HudWidgets.label(_inset(col) if icons else col, &"TitleLabel", tr(spec.title_key).to_upper())
-	call("_build_" + which, col, spec)
+	_builders[which].call(col, spec)
 	show()
 	reset_size()
 	var vw := get_viewport_rect().size.x
@@ -137,10 +145,10 @@ func _build_files(col: Control, spec: Dictionary) -> void:
 
 
 func _build_menu(col: Control, spec: Dictionary) -> void:
-	var km: int = int(DataTables.maps()[0].tiles * DataTables.tuning("world_tile_m") / METRES_PER_KM)
+	var km: int = int(DataTables.maps()[0].tiles * DataTables.tuning("world_tile_m") / Units.METRES_PER_KM)
 	for r in spec.rows:
 		if r.has("seg"):
-			call("_seg_" + r.seg, col, r)
+			_segments[r.seg].call(col, r)
 		elif r.has("rule"):
 			col.add_child(HSeparator.new())
 		else:
@@ -150,32 +158,6 @@ func _build_menu(col: Control, spec: Dictionary) -> void:
 				b.pressed.connect(func() -> void:
 					close()
 					menu_action.emit(r.action))
-
-
-func _seg_quality(col: Control, r: Dictionary) -> void:
-	var items := []
-	for p: String in DataTables.game("settings").presets:
-		items.append([p, tr("quality." + p)])
-	var row := HudWidgets.option_row(col, tr(r.label_key))
-	var box := HFlowContainer.new()
-	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(box)
-	HudWidgets.choices(box, items, Settings.preset, Settings.set_preset)
-
-
-func _seg_paint(col: Control, r: Dictionary) -> void:
-	var row := HudWidgets.option_row(col, tr(r.label_key))
-	var items := []
-	var styles: Array = DataTables.render_table("streets").markings.styles
-	for i in styles.size():
-		items.append([i, tr("paint." + styles[i].id)])
-	HudWidgets.choices(row, items, int(CityStore.snapshot.get("marking_style", 0)), func(v: int) -> void:
-		CityStore.dispatch(&"set_marking_style", [v, true]))
-
-
-func _seg_language(col: Control, r: Dictionary) -> void:
-	var row := HudWidgets.option_row(col, tr(r.label_key))
-	HudWidgets.choices(row, StartScreen.LANGUAGES, TranslationServer.get_locale(), Settings.set_language)
 
 
 func _inset(col: Control) -> Control:
@@ -236,7 +218,7 @@ func _process(delta: float) -> void:
 
 func _read_camera() -> void:
 	var start: float = DataTables.game("camera").start_view_half
-	_metrics["camera.zoom"].text = "%d %%" % int(round(start / rig.half * PERCENT))
+	_metrics["camera.zoom"].text = "%d %%" % int(round(start / rig.half * Units.PERCENT))
 	_metrics["camera.centre"].text = "X %d · Y %d" % [int(rig.focus.x), int(rig.focus.z)]
 
 

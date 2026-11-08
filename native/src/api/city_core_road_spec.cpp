@@ -13,8 +13,6 @@ using namespace godot;
 namespace city {
 
 namespace {
-const char *const KIND_NAMES[] = { "footway", "parking", "cycle", "lane", "median" };
-constexpr int KINDS = int(sizeof(KIND_NAMES) / sizeof(KIND_NAMES[0]));
 
 RoadSpec read_spec(const Dictionary &d) {
 	RoadSpec s;
@@ -26,8 +24,8 @@ RoadSpec read_spec(const Dictionary &d) {
 		const Dictionary x = list[i];
 		SpecElement e;
 		const String kind = x.get("kind", "lane");
-		for (int k = 0; k < KINDS; k++)
-			if (kind == KIND_NAMES[k]) e.kind = SpecKind(k);
+		for (int k = 0; k < int(SpecKind::COUNT); k++)
+			if (kind == SPEC_KIND_NAMES[k]) e.kind = SpecKind(k);
 		e.width = float(x.get("width", 0));
 		e.dir = int(x.get("dir", 1));
 		e.bus = bool(x.get("bus", false));
@@ -47,7 +45,7 @@ Dictionary write_spec(const RoadSpec &s) {
 	Array list;
 	for (const SpecElement &e : s.elements) {
 		Dictionary x;
-		x["kind"] = KIND_NAMES[int(e.kind)];
+		x["kind"] = SPEC_KIND_NAMES[int(e.kind)];
 		x["width"] = e.width;
 		x["dir"] = e.dir;
 		x["bus"] = e.bus;

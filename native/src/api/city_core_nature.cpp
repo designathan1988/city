@@ -183,9 +183,10 @@ Dictionary CityLandscape::clear_elements() {
 }
 
 // The effects standing within `reach`, for render/element_effects.gd: kind, place, spread and how much each gives off.
-Array CityLandscape::effects_near(const Vector3 &p, float reach, int first_effect) const {
+Array CityLandscape::effects_near(const Vector3 &p, float reach) const {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	Array out;
+	const int first_effect = state_->catalog.nature.elements.first_effect; // the kinds from it are effects, numbered from 0 here
 	state_->nature.elements.for_near(p.x, p.z, reach, [&](const ElementItem &e) {
 		if (e.kind < first_effect) return;
 		Dictionary d;
@@ -267,7 +268,7 @@ void CityLandscape::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("tree_path", "points", "radius", "mode", "kind", "brush"), &CityLandscape::tree_path);
 	ClassDB::bind_method(D_METHOD("element_path", "points", "radius", "kind", "brush", "erase"), &CityLandscape::element_path);
 	ClassDB::bind_method(D_METHOD("clear_elements"), &CityLandscape::clear_elements);
-	ClassDB::bind_method(D_METHOD("effects_near", "position", "reach", "first_effect"), &CityLandscape::effects_near);
+	ClassDB::bind_method(D_METHOD("effects_near", "position", "reach"), &CityLandscape::effects_near);
 	ClassDB::bind_method(D_METHOD("set_biome", "region"), &CityLandscape::set_biome);
 	ClassDB::bind_method(D_METHOD("clear_relief"), &CityLandscape::clear_relief);
 	ClassDB::bind_method(D_METHOD("landscape"), &CityLandscape::landscape);

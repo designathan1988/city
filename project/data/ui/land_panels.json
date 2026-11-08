@@ -365,7 +365,7 @@
     "max": 600,
     "step": 10,
     "default": 120,
-    "unit": "/ha"
+    "unit": "per_hectare"
    },
    {
     "key": "height",
@@ -374,7 +374,7 @@
     "max": 30,
     "step": 1,
     "default": 12,
-    "unit": " m"
+    "unit": "length"
    },
    {
     "key": "variation",
@@ -383,7 +383,7 @@
     "max": 80,
     "step": 5,
     "default": 35,
-    "unit": " %"
+    "unit": "percent"
    },
    {
     "key": "spacing",
@@ -392,7 +392,7 @@
     "max": 30,
     "step": 1,
     "default": 6,
-    "unit": " m"
+    "unit": "length"
    }
   ],
   "actions": [
@@ -457,7 +457,7 @@
     "max": 600,
     "step": 10,
     "default": 150,
-    "unit": " m"
+    "unit": "length"
    },
    {
     "key": "height",
@@ -466,7 +466,7 @@
     "max": 900,
     "step": 10,
     "default": 180,
-    "unit": " m"
+    "unit": "length"
    },
    {
     "key": "density",
@@ -475,7 +475,7 @@
     "max": 100,
     "step": 5,
     "default": 80,
-    "unit": " %"
+    "unit": "percent"
    },
    {
     "key": "count", "head": "cloud.spread",
@@ -492,7 +492,7 @@
     "max": 80,
     "step": 5,
     "default": 40,
-    "unit": " %"
+    "unit": "percent"
    }
   ],
   "actions_row": "v2.row.sky", "map_head": false, "actions": [
@@ -552,7 +552,7 @@
     "max": 400,
     "step": 5,
     "default": 60,
-    "unit": " m"
+    "unit": "length"
    },
    {
     "key": "strength",
@@ -561,7 +561,7 @@
     "max": 100,
     "step": 5,
     "default": 40,
-    "unit": " %"
+    "unit": "percent"
    },
    {
     "key": "height",
@@ -570,7 +570,7 @@
     "max": 150,
     "step": 2,
     "default": 24,
-    "unit": " m"
+    "unit": "length"
    },
    {
     "key": "speed",
@@ -579,7 +579,7 @@
     "max": 24,
     "step": 0.5,
     "default": 6,
-    "unit": " m/s"
+    "unit": "speed"
    },
    {
     "weather": "fog_density",
@@ -588,7 +588,7 @@
     "max": 200,
     "step": 10,
     "scale": 100,
-    "unit": " %"
+    "unit": "percent"
    },
    {
     "weather": "mist",
@@ -597,7 +597,7 @@
     "max": 100,
     "step": 5,
     "scale": 100,
-    "unit": " %"
+    "unit": "percent"
    },
    {
     "weather": "mist_height_m",
@@ -605,7 +605,7 @@
     "min": 5,
     "max": 200,
     "step": 5,
-    "unit": " m"
+    "unit": "length"
    }
   ],
   "actions": [
@@ -642,7 +642,7 @@
     "max": 100,
     "step": 5,
     "scale": 100,
-    "unit": " %"
+    "unit": "percent"
    },
    {
     "weather": "wind",
@@ -650,7 +650,7 @@
     "min": 0,
     "max": 30,
     "step": 1,
-    "unit": " m/s"
+    "unit": "speed"
    },
    {
     "weather": "wind_direction",
@@ -658,7 +658,7 @@
     "min": 0,
     "max": 355,
     "step": 5,
-    "unit": "°"
+    "unit": "degree"
    },
    {
     "weather": "lightning",
@@ -666,7 +666,7 @@
     "min": 0,
     "max": 30,
     "step": 1,
-    "unit": "/min"
+    "unit": "per_minute"
    },
    {
     "weather": "thunder",
@@ -675,7 +675,7 @@
     "max": 100,
     "step": 5,
     "scale": 100,
-    "unit": " %"
+    "unit": "percent"
    }
   ]
  }

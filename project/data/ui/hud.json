@@ -8,8 +8,9 @@
   {"glyph": "\u2013", "token": "control_none", "label_key": "control.none"},
   {"glyph": "\u25cb", "token": "control_mini", "label_key": "control.mini"}
  ],
- "_doc": "Top-bar statistics: key in CityStore.snapshot and the formatter (game/store/formatters.gd) that shows it. signal_step_s: what one press changes of a signal's green or offset.",
+ "_doc": "Top-bar statistics: key in CityStore.snapshot and the formatter (game/store/formatters.gd) that shows it. signal_step_s: what one press changes of a signal's green or offset. timings, seconds: how long the pointer rests before a tooltip shows (ui/hud_tip.gd), how long after a lane link's edit the connector panel reads the junction again (ui/connector_panel.gd), how long a toast stays (ui/hud_messages.gd).",
  "signal_step_s": 2,
+ "timings": {"tip_wait_s": 0.35, "lane_reread_s": 0.25, "toast_s": 3},
  "stats": [
   {
    "key": "money",

@@ -15,7 +15,7 @@ static func lay(tool: RefCounted, at: Vector3) -> void:
 	var r: Dictionary = CityStore.dispatch(&"build_blocks", [at, int(b.cols), int(b.rows), float(b.size), deg_to_rad(b.turn), tool.drawn])
 	b.armed = false
 	tool._clear_preview()
-	tool.ctl.hint.emit("tools.toast.blocksBuilt" if r.get("ok", false) else "hint.road.invalid", true)
+	tool.ctl.hint.emit(TranslationServer.translate("tools.toast.blocksBuilt" if r.get("ok", false) else "hint.road.invalid"), true)
 	tool.ctl.options_changed.emit()
 
 

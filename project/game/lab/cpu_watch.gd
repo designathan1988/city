@@ -3,7 +3,6 @@
 class_name CpuWatch
 extends RefCounted
 
-const PERCENT := 100.0
 const DRAW := "draw"
 const SETUP := "setup"
 
@@ -54,6 +53,6 @@ func rows(tail: float) -> Array[Dictionary]:
 		total += sum / count
 		out.append({"key": key, "mean": sum / count, "tail": times[mini(count - 1, int(count * tail))], "worst": times[count - 1]})
 	for r: Dictionary in out:
-		r.share = r.mean / total * PERCENT if total > 0.0 else 0.0
+		r.share = r.mean / total * Units.PERCENT if total > 0.0 else 0.0
 	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.mean > b.mean)
 	return out

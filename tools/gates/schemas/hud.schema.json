@@ -7,6 +7,12 @@
   "signal_step_s": {
    "type": "number"
   },
+  "timings": {
+   "type": "object",
+   "properties": {"tip_wait_s": {"type": "number"}, "lane_reread_s": {"type": "number"}, "toast_s": {"type": "number"}},
+   "required": ["tip_wait_s", "lane_reread_s", "toast_s"],
+   "strict": true
+  },
   "stats": {
    "type": "array",
    "items": {

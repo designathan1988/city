@@ -58,8 +58,13 @@ bool CoverRenderer::init(const RenderContext &ctx, GroundKept &ground, PackedStr
 	shore_material_ = ctx.material("cover_shore", errors);
 	const Dictionary table = ctx.table("cover", errors);
 	if (!errors.is_empty()) return false;
+	if (!ctx.catalog) {
+		errors.push_back("cover: the render has no catalogue");
+		return false;
+	}
 	const DataValue t = DataReader{ errors, "cover.json" }.at(table); // render/data_reader.h
-	if (!kit_.build(t, errors) || !models_.load(t["elements"], errors) || !shore_.load(t["shore"], errors)) return false;
+	const int laid = ctx.catalog->nature.elements.first_effect;
+	if (!kit_.build(t, errors) || !models_.load(t["elements"], laid, errors) || !shore_.load(t["shore"], errors)) return false;
 	draws_ = 0;
 	for (int i = 0; i < COVER_PIECES; i++) {
 		first_[size_t(i)] = draws_;

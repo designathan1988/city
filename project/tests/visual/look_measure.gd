@@ -14,9 +14,9 @@ const USAGE_SECONDS := 4.0
 func usage(host: Node, seconds: float = USAGE_SECONDS) -> Dictionary:
 	var samples: Array[Dictionary] = []
 	var t0 := Time.get_ticks_msec()
-	while Time.get_ticks_msec() - t0 < seconds * MS_PER_S:
+	while Time.get_ticks_msec() - t0 < seconds * Units.MS_PER_S:
 		samples.append(info())
-		await host.get_tree().create_timer(USAGE_EVERY_MS / MS_PER_S).timeout
+		await host.get_tree().create_timer(USAGE_EVERY_MS / Units.MS_PER_S).timeout
 	var out := {"samples": samples.size()}
 	for key: String in samples[0].keys():
 		var values := PackedFloat64Array()

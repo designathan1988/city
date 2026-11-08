@@ -8,7 +8,6 @@ signal right_clicked
 
 ## Below this the ray runs along the plane and meets it nowhere.
 const PARALLEL := 1e-6
-const CM := 0.01
 const EARLIEST := -100
 
 var cfg: Dictionary

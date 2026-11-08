@@ -112,7 +112,7 @@ v2.do.tools,Escolher a ferramenta,Pick a tool
 v2.help.global,Atalhos,Shortcuts
 v2.key.digits,1 – 6,1 – 6
 fx.tab.doctor,Diagnóstico,Diagnosis
-lab.ab,"GPU %s → %s ms (ruído %s) · CPU de render %s → %s ms (ruído %s)","GPU %s → %s ms (noise %s) · render CPU %s → %s ms (noise %s)"
+lab.ab,GPU %s → %s ms (ruído %s) · CPU de render %s → %s ms (ruído %s),GPU %s → %s ms (noise %s) · render CPU %s → %s ms (noise %s)
 lab.ab.noise,dentro do ruído,within the noise
 lab.hitches,%d engasgos na medida,%d hitches in the measure
 lab.hitches.many,"%d engasgos na medida: muitos, o jogador vê","%d hitches in the measure: many, the player sees them"
@@ -230,7 +230,7 @@ lab.core.draw,Desenho do motor,The engine's drawing
 lab.core.setup,Preparo do quadro,Frame setup
 lab.capture.title,Quadro por camada,The frame by layer
 lab.capture.take,Capturar quadro,Capture frame
-lab.capture.busy,"Tirando cada camada do quadro…","Taking each layer out of the frame…"
+lab.capture.busy,Tirando cada camada do quadro…,Taking each layer out of the frame…
 lab.capture.saved,Salvo em %s,Saved to %s
 lab.capture.row,"%.2f ms de GPU, %s chamadas, %s primitivas, %s delas sombra","%.2f ms of GPU, %s draws, %s primitives, %s of them shadow"
 lab.layer.terrain,Terreno,Terrain
@@ -248,3 +248,8 @@ lab.layer.signals,Semáforos,Signals
 lab.layer.vehicles,Veículos,Vehicles
 lab.layer.people,Pessoas,People
 lab.layer.overlays,Camadas,Overlays
+unit.percent,{n} %,{n} %
+unit.speed,{n} m/s,{n} m/s
+unit.per_hectare,{n}/ha,{n}/ha
+unit.per_minute,{n}/min,{n}/min
+unit.degree,{n}°,{n}°

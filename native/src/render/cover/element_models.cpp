@@ -73,9 +73,10 @@ Ref<Mesh> ground_quad(const String &path, PackedStringArray &errors) {
 }
 } // namespace
 
-bool ElementModels::load(const DataValue &elements, PackedStringArray &errors) {
+bool ElementModels::load(const DataValue &elements, int laid, PackedStringArray &errors) {
 	const int64_t before = errors.size();
 	const DataValue kinds = elements["props"];
+	if (kinds.size() != laid) kinds.fail(String("a row a kind laid on the ground: ") + String::num_int64(laid) + String(" (nature.json elements before first_effect)"));
 	models_.clear();
 	first_.clear();
 	count_.clear();

@@ -131,7 +131,7 @@ func _run_end(a: Vector3) -> Vector3:
 ## The HUD's button that reads `key` in the player's language: a card of the drawer's strip or a choice of the options panel
 ## (a sibling of the drawer).
 func _card(key: String, under: Node = null) -> Button:
-	var text := tr(key).get_slice(" (", 0)
+	var text := tr(key)
 	for c in (under if under else hud).get_children():
 		if c is Button and c.text == text:
 			return c

@@ -23,10 +23,11 @@ arch.modernHouse,Casa moderna,Modern house
 arch.modernist,Modernista,Modernist
 arch.townhouse,Sobrado,Townhouse
 arch.tropical,Tropical,Tropical
-atmo.fog,Névoa (%),Mist (%)
+atmo.fog,Névoa,Mist
 atmo.title,Céu e clima,Sky and weather
 barrier.kind.fence,Cerca,Fence
-barrier.kind.guardrail,Defensa (guard-rail),Guardrail
+barrier.kind.guardrail,Defensa,Guardrail
+barrier.kind.guardrail.tip,Defensa (guard-rail),Guardrail
 barrier.kind.hedge,Sebe,Hedge
 barrier.kind.railing,Gradil urbano,Railing
 barrier.kind.wall,Muro,Wall
@@ -100,15 +101,15 @@ catalog.twoWay,mão dupla,two-way
 cloud.add,Criar nuvem,Add a cloud
 cloud.clear,Apagar todas as nuvens,Remove all clouds
 cloud.count,Quantidade,How many
-cloud.density,Densidade (%),Density (%)
-cloud.edit,Ajustar nuvem (aplica os valores abaixo),Adjust a cloud (applies the values below)
-cloud.height,Altura da base (m),Base height (m)
+cloud.density,Densidade,Density
+cloud.edit,Ajustar nuvem,Adjust a cloud
+cloud.height,Altura da base,Base height
 cloud.move,Mover nuvem,Move a cloud
 cloud.remove,Apagar nuvem,Remove a cloud
 cloud.scatter,Espalhar pelo céu,Spread over the sky
-cloud.size,Tamanho (m),Size (m)
+cloud.size,Tamanho,Size
 cloud.spread,Espalhar nuvens,Spread clouds
-cloud.variation,Variação (%),Variation (%)
+cloud.variation,Variação,Variation
 cmd.build.building,construir prédio,build building
 cmd.build.changeProfile,trocar perfil,change profile
 cmd.build.changeStreetProfile,trocar perfil da rua,change the street's profile
@@ -127,10 +128,10 @@ cmd.demolish.lots,apagar lotes,delete lots
 cmd.demolish.road,demolir via,demolish road
 cmd.strike,bomba,bomb
 cmd.demolish.box,demolir na caixa,demolish in a box
-hint.strike.done,"Bomba de força {force} lançada.","Bomb of force {force} dropped."
-hint.shoot.miss,"Ninguém aí: clique numa pessoa.","Nobody there: click a person."
-hint.shoot.hit,"Acertou.","Hit."
-hint.shoot.killed,"Acertou: morreu.","Hit: dead."
+hint.strike.done,Bomba de força {force} lançada.,Bomb of force {force} dropped.
+hint.shoot.miss,Ninguém aí: clique numa pessoa.,Nobody there: click a person.
+hint.shoot.hit,Acertou.,Hit.
+hint.shoot.killed,Acertou: morreu.,Hit: dead.
 cmd.demolish.signRule,tirar placa com regra,remove sign with a rule
 cmd.demolish.stop,tirar parada,remove stop
 cmd.place.autoLaneLinks,conexões automáticas,automatic lane connections
@@ -322,7 +323,7 @@ el.plants,Plantas,Plants
 el.size,Tamanho (m),Size (m)
 fmt.thousands,{n} mil,{n}k
 fog.erase,Apagar,Erase
-fog.height,Altura (m),Height (m)
+fog.height,Altura,Height
 fog.lay,Pôr neblina,Lay fog
 game.confirm.flattenMap,Aplainar todo o terreno? Dá para desfazer com Ctrl+Z.,Flatten the whole terrain? Ctrl+Z undoes it.
 game.flow.generate,A geração da cidade,Generating the city
@@ -381,7 +382,7 @@ game.toast.bombHit,Atingido: continue batendo para derrubar.,Hit: keep striking 
 game.toast.buildWhere,Clique num prédio ou num lote vazio (zoneie as vias primeiro).,Click a building or an empty lot (zone the roads first).
 game.toast.deleted,Apagado.,Deleted.
 game.toast.demolished.one,Demolido: 1 coisa,Demolished: 1 thing
-game.toast.demolished.box,"Tudo na caixa foi demolido.","Everything in the box was demolished."
+game.toast.demolished.box,Tudo na caixa foi demolido.,Everything in the box was demolished.
 game.toast.demolished.other,Demolido: {count} coisas,Demolished: {count} things
 game.toast.flattened,Mapa aplainado.,Map flattened.
 game.toast.flowFailed,{what} não terminou: {message}. A cidade na tela está incompleta e não será salva; o salvamento anterior não foi tocado.,{what} did not finish: {message}. The city on screen is incomplete and will not be saved; the previous save was not touched.
@@ -410,7 +411,7 @@ game.toast.peopleWalk,{n} pessoas saíram andando pela calçada.,{n} people walk
 game.toast.personCreated,Pessoa criada.,Person created.
 game.toast.personWalks,A pessoa saiu andando pela calçada.,The person walked off along the sidewalk.
 game.toast.profileCopied,Via copiada: {name},Road copied: {name}
-game.toast.refunded," · devolvido {money}"," · refunded {money}"
+game.toast.refunded, · devolvido {money}, · refunded {money}
 game.toast.renovatePick,Escolha um prédio para reformar.,Choose a building to renovate.
 game.toast.renovated,Prédio reformado: novo de novo.,Building renovated: new again.
 game.toast.resumed,Continuando.,Resuming.

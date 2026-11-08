@@ -65,9 +65,21 @@ struct CityPlanDef {
 	int centres = 0;
 };
 
-// Which lots become civic buildings and how a building's height answers its neighbours' (data/catalog/growth.json).
+// The generated city's road roles, each a profile of road_profiles.json (growth.json road_roles): the loader resolves every one
+// and refuses a name the catalogue lacks.
+#define CITY_ROAD_ROLES(X) X(local) X(avenue) X(avenue_bike) X(expressway) X(collector) X(wide) X(urban) X(cobble) X(green) X(concrete) \
+	X(bike) X(bus_side) X(boulevard) X(av4)
+struct RoadRoles {
+#define X(role) int role = -1;
+	CITY_ROAD_ROLES(X)
+#undef X
+};
+
+// Which lots become civic buildings, how a building's height answers its neighbours', and the generator's road roles
+// (data/catalog/growth.json).
 struct GrowthDef {
 	CityPlanDef plan;
+	RoadRoles roads;
 	float civic_min_area = 0, civic_chance = 0;
 	std::vector<std::pair<int, int>> civic_by_zone[BASE_ZONE_SLOTS]; // (fn, weight) per base zone
 	float organic_reach_m = 0;

@@ -38,7 +38,7 @@ static func bring(rig: CityCamera, screen: Vector2, point: Vector3, h: float, mo
 		if found == null:
 			return
 		var d: Vector3 = point - found
-		if absf(d.x) + absf(d.z) < rig.cfg.keep_tolerance_cm * CityCamera.CM:
+		if absf(d.x) + absf(d.z) < rig.cfg.keep_tolerance_cm * Units.M_PER_CM:
 			return
 		var step := Vector2(d.x, d.z).limit_length(most)
 		most -= step.length()

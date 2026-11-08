@@ -1,5 +1,5 @@
 {
- "_doc": "The plan of a generated city and world/arch.ts civicFor. A building's storeys are its body's (sim/buildings/b40). decay_span_min: the span a generated building's age is drawn from (growth.cpp generated_age) and the minutes of age a blow's wear takes off at its full share (strike_buildings.cpp).",
+ "_doc": "The plan of a generated city and world/arch.ts civicFor. A building's storeys are its body's (sim/buildings/b40). decay_span_min: the span a generated building's age is drawn from (growth.cpp generated_age) and the minutes of age a blow's wear takes off at its full share (strike_buildings.cpp). road_roles: the profile each road the generator lays takes (sim/citygen road_gen: the local street, the avenue, the one with a cycle track, the expressway, the collector, the wide-sidewalk street, the urban street, the cobbled one, the one with a median, the concrete road, the one with a bike lane, the one with a kerbside bus lane, the boulevard, the four-lane avenue), by its id in road_profiles.json.",
  "plan": {
   "_doc": "The city's shape, authored as the 4.0's world/cityGen/plan.ts has it: no survey behind these numbers. heat = 1 - distance share + density term + noise; the thresholds make it low, medium or high, and commerce on main roads.",
   "centres": 2,
@@ -44,6 +44,7 @@
    [[1, 15], [2, 12], [5, 20], [8, 14], [7, 12], [4, 10], [3, 6], [12, 5]]
   ]
  },
+ "road_roles": {"local": "cityLocal", "avenue": "cityAvenue", "avenue_bike": "avenueWithCycleTrack", "expressway": "expressway", "collector": "cityUrban", "wide": "wideSidewalks", "urban": "cityUrban", "cobble": "cobblestoneStreet", "green": "streetWithMedian", "concrete": "concreteRoad", "bike": "streetWithBikeLane", "bus_side": "curbsideBusLane", "boulevard": "boulevard", "av4": "cityAvenue"},
  "organic_reach_m": 30,
  "organic_extra_floors": 3,
  "decay_span_min": 43200

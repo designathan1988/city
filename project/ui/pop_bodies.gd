@@ -4,7 +4,6 @@
 class_name PopBodies
 extends RefCounted
 
-const PERCENT := 100.0
 const KEY_SHARE := 0.42 # of the Help popover: the key caps' column
 
 
@@ -28,12 +27,12 @@ static func sim(col: Control, spec: Dictionary, metrics: Dictionary) -> void:
 	var s := CityStore.snapshot
 	var send := func(traffic: float, people: float, demand: float) -> void:
 		CityStore.set_levels(traffic, people, demand)
-	HudWidgets.range_row(col, _short("sim.traffic"), 0, spec.level_max_pct, spec.level_step_pct,
-		s.get("traffic_level", 1.0) * PERCENT, Formatters.format_points, func(v: float) -> void:
-			send.call(v / PERCENT, CityStore.snapshot.people_level, CityStore.snapshot.demand))
-	HudWidgets.range_row(col, _short("sim.people"), 0, spec.level_max_pct, spec.level_step_pct,
-		s.get("people_level", 1.0) * PERCENT, Formatters.format_points, func(v: float) -> void:
-			send.call(CityStore.snapshot.traffic_level, v / PERCENT, CityStore.snapshot.demand))
+	HudWidgets.range_row(col, TranslationServer.translate("sim.traffic"), 0, spec.level_max_pct, spec.level_step_pct,
+		s.get("traffic_level", 1.0) * Units.PERCENT, Formatters.format_points, func(v: float) -> void:
+			send.call(v / Units.PERCENT, CityStore.snapshot.people_level, CityStore.snapshot.demand))
+	HudWidgets.range_row(col, TranslationServer.translate("sim.people"), 0, spec.level_max_pct, spec.level_step_pct,
+		s.get("people_level", 1.0) * Units.PERCENT, Formatters.format_points, func(v: float) -> void:
+			send.call(CityStore.snapshot.traffic_level, v / Units.PERCENT, CityStore.snapshot.demand))
 	var row := HudWidgets.option_row(col, TranslationServer.translate("sim.demand"))
 	var items := []
 	for d: Array in spec.demand:
@@ -46,11 +45,6 @@ static func sim(col: Control, spec: Dictionary, metrics: Dictionary) -> void:
 		metrics[m[1]] = metric(g, TranslationServer.translate(m[0]))
 	col.add_child(HSeparator.new())
 	metrics["network"] = metric(grid(col), TranslationServer.translate("sim.metric.network"))
-
-
-## One word at the left: the name without its unit in brackets.
-static func _short(key: String) -> String:
-	return TranslationServer.translate(key).get_slice(" (", 0)
 
 
 static func sync_sim(metrics: Dictionary, s: Dictionary) -> void:

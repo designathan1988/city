@@ -2,7 +2,6 @@
 class_name BodyEdits
 extends RefCounted
 
-const CM := 0.01
 
 
 static func run(spec: Dictionary, value: int, picked: Dictionary, paint_scope: int) -> Dictionary:
@@ -15,21 +14,21 @@ static func run(spec: Dictionary, value: int, picked: Dictionary, paint_scope: i
 		"split":
 			return CityStore.dispatch(&"body_split", [id, vol, picked.level])
 		"setback":
-			return CityStore.dispatch(&"body_add_setback", [id, vol, -1.0, 2])
+			return CityStore.dispatch(&"body_add_setback", [id, vol, CityStore.constants.setback_by_module, value]) # value: its storeys
 		"plan":
 			return CityStore.dispatch(&"body_set_plan", [id, vol, value])
 		"block_mode":
 			return CityStore.dispatch(&"body_set_block_mode", [id, vol, value])
 		"extrude":
-			return _on_face(&"body_extrude_face", picked, value * CM)
+			return _on_face(&"body_extrude_face", picked, value * Units.M_PER_CM)
 		"extrude_block":
-			return _on_face(&"body_extrude_block", picked, value * CM)
+			return _on_face(&"body_extrude_block", picked, value * Units.M_PER_CM)
 		"inset_face":
-			return _on_face(&"body_inset_face", picked, value * CM)
+			return _on_face(&"body_inset_face", picked, value * Units.M_PER_CM)
 		"offset":
-			return CityStore.dispatch(&"body_offset", [id, vol, value * CM])
+			return CityStore.dispatch(&"body_offset", [id, vol, value * Units.M_PER_CM])
 		"bevel":
-			return CityStore.dispatch(&"body_bevel", [id, vol, value * CM, -1])
+			return CityStore.dispatch(&"body_bevel", [id, vol, value * Units.M_PER_CM, CityStore.constants.every_corner])
 		"copy_block":
 			return CityStore.dispatch(&"body_copy_block", [id, vol])
 		"detach":
@@ -41,7 +40,7 @@ static func run(spec: Dictionary, value: int, picked: Dictionary, paint_scope: i
 		"relief":
 			if picked.side < 0 or picked.bay < 0:
 				return {"ok": false, "error": "building.relief.pickFace"}
-			var region := {"side": picked.side, "bay0": picked.bay, "bay1": picked.bay, "storey0": picked.storey, "storey1": picked.storey, "depth": value * CM}
+			var region := {"side": picked.side, "bay0": picked.bay, "bay1": picked.bay, "storey0": picked.storey, "storey1": picked.storey, "depth": value * Units.M_PER_CM}
 			return CityStore.dispatch(&"body_set_relief", [id, vol, region, true])
 		"remove":
 			return CityStore.dispatch(&"body_remove_volume", [id, vol])

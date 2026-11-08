@@ -8,7 +8,6 @@ signal changed
 const FOLDER := "user://lab"
 const SETTLE_FRAMES := 4 # what the engine counts lags the frame it drew
 const TIMED_FRAMES := 16 # the GPU's time, the median of these
-const BYTES_PER_MIB := 1048576.0
 const KINDS := ["objects", "draws", "primitives", "shadow_primitives"]
 const SUN_LAYER := "base" # the sun's own: out of the camera it takes every shadow with it, and it holds the previews and nothing else
 
@@ -85,7 +84,7 @@ func _keep(picture: Image) -> void:
 	DirAccess.make_dir_recursive_absolute(FOLDER)
 	var stamp := Time.get_datetime_string_from_system().replace(":", "-")
 	file = "%s/frame_%s.json" % [FOLDER, stamp]
-	var report := {"whole": whole, "layers": rows, "video_mib": RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_VIDEO_MEM_USED) / BYTES_PER_MIB}
+	var report := {"whole": whole, "layers": rows, "video_mib": RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_VIDEO_MEM_USED) / Units.BYTES_PER_MIB}
 	var out := FileAccess.open(file, FileAccess.WRITE)
 	if out == null:
 		file = ""

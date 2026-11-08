@@ -149,8 +149,22 @@ void load_plan(DataReader r, const Dictionary &p, CityPlanDef &d) {
 	for (int i = 0; i < roads.size(); i++) d.square_main_roads.push_back(rq.in("green_main_roads").utf8_at(roads, i));
 }
 
-void load_growth(DataReader r, const Dictionary &t, GrowthDef &g) {
+// A road role names a profile the catalogue has (load_profiles before).
+int road_role(DataReader r, const Dictionary &roles, const char *role, const Catalog &c) {
+	const std::string id = r.utf8(roles, role);
+	const int p = c.profile_id(id);
+	if (p < 0) r.in(role).fail(String("no road profile '") + String(id.c_str()) + String("'"));
+	return p;
+}
+
+void load_growth(DataReader r, const Dictionary &t, Catalog &c) {
+	GrowthDef &g = c.growth;
 	load_plan(r.in("plan"), r.table(t, "plan"), g.plan);
+	const Dictionary roles = r.table(t, "road_roles");
+	DataReader rr = r.in("road_roles");
+#define X(role) g.roads.role = road_role(rr, roles, #role, c);
+	CITY_ROAD_ROLES(X)
+#undef X
 	const Dictionary cv = r.table(t, "civic");
 	DataReader rc = r.in("civic");
 	g.civic_min_area = num(rc, cv, "min_area");
@@ -198,7 +212,7 @@ bool CatalogLoader::load(const Dictionary &tables, Catalog &out, PackedStringArr
 	load_maps(DataReader{ errors, "maps.json" }, r.table(tables, "maps"), c, scenic_names);
 	load_profiles(DataReader{ errors, "road_profiles.json" }, r.table(tables, "road_profiles"), c);
 	load_zones(DataReader{ errors, "zones.json" }, r.table(tables, "zones"), c);
-	load_growth(DataReader{ errors, "growth.json" }, r.table(tables, "growth"), c.growth);
+	load_growth(DataReader{ errors, "growth.json" }, r.table(tables, "growth"), c);
 	load_traffic_params(r.table(tables, "traffic"), c.traffic, errors);
 	load_street_furniture(r.table(tables, "street_furniture"), c.furniture, errors);
 	load_blast_params(r.table(tables, "blast"), c.blast, errors);

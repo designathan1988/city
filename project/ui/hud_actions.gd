@@ -4,7 +4,6 @@
 class_name HudActions
 extends Node
 
-const MS_PER_S := 1000.0
 ## What asks first (Roadcraft window.confirm): the map on screen is saved, then the new one takes its place.
 const CONFIRM := {"new_empty": "confirm.newMap", "new_city": "confirm.newWorld", "new_large": "confirm.newLargeWorld"}
 
@@ -131,7 +130,7 @@ func _on_saved(_slot: String, r: Dictionary) -> void:
 	if r.get("ok", false):
 		_hud().flash(tr("save.auto" if r.get("auto", false) else "save.done"), true)
 		return
-	var now := Time.get_ticks_msec() / MS_PER_S
+	var now := Time.get_ticks_msec() / Units.MS_PER_S
 	if r.get("auto", false) and now - _failed_at < DataTables.game("saves").failed_hint_s:
 		return
 	_failed_at = now

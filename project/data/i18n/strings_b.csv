@@ -142,7 +142,7 @@ paint.kind.concrete,Concreto,Concrete
 paint.kind.flowers,Flores,Flowers
 paint.kind.forest,Floresta,Forest
 paint.kind.granite,Rocha: granito,Rock: granite
-paint.kind.grass,Grama (apaga),Grass (erases)
+paint.kind.grass,Grama,Grass
 paint.kind.gravel,Cascalho,Gravel
 paint.kind.meadow,Mato,Meadow
 paint.kind.mud,Lama,Mud
@@ -408,8 +408,8 @@ road.turn.right,→ Só direita,→ Right only
 road.turn.through,↑ Só em frente,↑ Straight only
 road.turn.throughRight,↑ → Em frente ou direita,↑ → Straight or right
 road.urban,Via urbana,Urban road
-road.way.one," / mão única"," / one-way"
-road.way.two," / mão dupla"," / two-way"
+road.way.one, / mão única, / one-way
+road.way.two, / mão dupla, / two-way
 roadFurniture.basic,Básico,Basic
 roadFurniture.complete,Completo,Complete
 roadFurniture.none,Nenhum,None

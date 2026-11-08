@@ -17,9 +17,8 @@ enum Zone : int { ZONE_NONE = 0, ZONE_RES = 1, ZONE_COM = 2, ZONE_IND = 3, ZONE_
 	ZONE_COM_LOW = ZONE_RES_HIGH + 1, ZONE_COM_HIGH = ZONE_RES_HIGH + 2, ZONE_COUNT = ZONE_COM_HIGH + 1 };
 
 // The profile ids the generator uses, looked up by name in the catalogue (data/catalog/road_profiles.json).
-struct GenProfiles {
-	int local = 0, avenue = 0, avenue_bike = 0, expressway = 0, collector = 0;
-	int wide = 0, urban = 0, cobble = 0, green = 0, concrete = 0, bike = 0, bus_side = 0, boulevard = 0, av4 = 0;
+// The road roles (growth.json road_roles, by profile id) and each profile's asphalt to the right of its centre.
+struct GenProfiles : RoadRoles {
 	std::vector<double> asph_right; // per profile id
 };
 

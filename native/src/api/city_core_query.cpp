@@ -10,6 +10,8 @@
 #include "core/units.h"
 #include "render/film_grade.h"
 #include "sim/buildings/lot_access.h"
+#include "sim/commands/body_ops.h"
+#include "sim/roads/road_spec.h"
 #include "sim/commands/interior_commands.h"
 #include "sim/terrain/terrain_gen.h"
 #include "sim/traffic/traffic_system.h"
@@ -105,6 +107,11 @@ Dictionary CityCore::constants() const {
 	d["render_layers"] = layers;
 	d["enums"] = script_enums(); // every enum a script names (script_enums.h)
 	d["chunk_m"] = CHUNK; // the core's cell: lots, props and the far levels are read a cell at a time
+	d["setback_by_module"] = SETBACK_BY_MODULE; // the body edits' own choices (body_ops.h)
+	d["every_corner"] = EVERY_CORNER;
+	Dictionary spec_strips; // the catalogue's strip each element of a composed road draws as (road_spec.h strip_of)
+	for (int k = 0; k < int(SpecKind::COUNT); k++) spec_strips[SPEC_KIND_NAMES[k]] = STRIP_KIND_NAMES[int(strip_of(SpecKind(k)))];
+	d["spec_strips"] = spec_strips;
 	Array sections;
 	for (const char *name : FRAME_SECTIONS) sections.push_back(name);
 	d["frame_sections"] = sections;

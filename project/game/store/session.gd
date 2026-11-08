@@ -6,7 +6,6 @@ extends RefCounted
 
 const SECTION := "session"
 const EXT := ".cfg"
-const PERCENT := 100.0
 
 
 static func path(slot: String) -> String:
@@ -31,7 +30,7 @@ static func write(slot: String, rig: CityCamera) -> void:
 ## to the nearest offered, the levels into their range; what is no number takes the default.
 static func normalized(traffic: Variant, people: Variant, demand: Variant, speed: Variant) -> Dictionary:
 	var sim: Dictionary = DataTables.ui("drawers").popovers.sim
-	var top: float = float(sim.level_max_pct) / PERCENT
+	var top: float = float(sim.level_max_pct) / Units.PERCENT
 	var demands: Array = sim.demand.map(func(d: Array) -> float: return d[0])
 	return {"traffic": clampf(_number(traffic, 1.0), 0.0, top), "people": clampf(_number(people, 1.0), 0.0, top),
 		"demand": _nearest(_number(demand, 1.0), demands),

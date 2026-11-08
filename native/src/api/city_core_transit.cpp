@@ -6,6 +6,7 @@
 #include "sim/commands/transit_commands.h"
 #include "sim/transit/transit_ground.h"
 #include "sim/state/city_state.h"
+#include "render/mesh_builder.h"
 #include "render/render_world.h"
 
 #include <godot_cpp/variant/packed_int32_array.hpp>
@@ -41,7 +42,7 @@ Dictionary line_dict(const TransitLine &l) {
 	d["id"] = l.id;
 	d["mode"] = int(l.mode);
 	d["stops"] = stops;
-	d["colour"] = int64_t(l.colour);
+	d["colour"] = rgb8_to_color(l.colour); // render/mesh_builder.h: the scripts take it as it is
 	d["vehicles"] = l.vehicles;
 	d["name"] = String(l.name.c_str());
 	return d;

@@ -38,6 +38,9 @@ std::string op_set_storeys(b40::Body &b, const Tuning &t, int vol, int count);
 std::string op_insert_storey(b40::Body &b, const Tuning &t, int vol, int at, bool above);
 std::string op_resize(b40::Body &b, const Tuning &t, int vol, int side, float delta, bool snap);
 std::string op_add_wing(b40::Body &b, const Tuning &t, int vol, int side, float depth, float length);
+// A setback `storeys` high over block `vol`, in by `inset` metres; an inset under 0 (SETBACK_BY_MODULE) takes the Build module, on a
+// shaped block a share of its narrower side.
+constexpr float SETBACK_BY_MODULE = -1.f;
 std::string op_add_setback(b40::Body &b, const Tuning &t, int vol, float inset, int storeys);
 std::string op_split_at_floor(b40::Body &b, const Tuning &t, int vol, int level);
 // A block's plan in a shape (body_plan.cpp), on its box; what was set on its walls stays on the wall facing the same way. `whole`: the body as that one block, its height kept.
@@ -62,9 +65,12 @@ struct PrimitiveSpec {
 	int shape = 0, roof = 0;
 	float pitch = 0;
 };
+// What a handle is: the API reads its name once (city_core_handles.cpp HANDLE_NAMES); MOVE and ROTATE move the whole building and
+// are not op_handle's; UNKNOWN a name no handle has.
+enum class HandleKind : uint8_t { NONE, STOREYS, SIDE, VERTEX, SCALE, LIFT, RELIEF, MOVE, ROTATE, PART, PRIMITIVE, UNKNOWN };
 // What a drag on a handle asks (city_core_handles.cpp): `kind` the handle's, the rest what it reads.
 struct HandleEdit {
-	std::string kind;
+	HandleKind kind = HandleKind::NONE;
 	int vol = 0, side = 0, index = 0, count = 0;
 	float along = 0, factor = 1, x = 0, y = 0;
 	bool wing = false, snap = true;
@@ -79,6 +85,8 @@ std::string op_extrude_face(b40::Body &b, const Tuning &t, int vol, int side, fl
 std::string op_extrude_block(b40::Body &b, const Tuning &t, int vol, int side, float depth);
 std::string op_inset_face(b40::Body &b, const Tuning &t, int vol, int side, float depth);
 std::string op_offset_block(b40::Body &b, int vol, float distance);
+// The corners of block `vol` cut by `distance`: only corner `only`, or EVERY_CORNER.
+constexpr int EVERY_CORNER = -1;
 std::string op_bevel(b40::Body &b, int vol, float distance, int only);
 std::string op_move_point(b40::Body &b, const Tuning &t, int vol, int index, float x, float y, bool snap);
 std::string op_change_point(b40::Body &b, int vol, int index, bool remove);

@@ -91,6 +91,18 @@ std::vector<SpecIssue> spec_issues(const RoadSpec &s, RoadClass road_class) {
 	return out;
 }
 
+StripKind strip_of(SpecKind kind) {
+	switch (kind) {
+		case SpecKind::FOOTWAY: return StripKind::SIDEWALK;
+		case SpecKind::PARKING: return StripKind::PARKING;
+		case SpecKind::CYCLE: return StripKind::BIKE;
+		case SpecKind::MEDIAN: return StripKind::MEDIAN;
+		case SpecKind::LANE:
+		case SpecKind::COUNT: break;
+	}
+	return StripKind::LANE;
+}
+
 RoadSpec spec_of(const Profile &p) {
 	RoadSpec s;
 	s.speed = p.speed;
@@ -106,14 +118,10 @@ RoadSpec spec_of(const Profile &p) {
 		e.solid = x.solid;
 		e.flush = x.flush;
 		e.pave = x.pave;
-		switch (x.kind) {
-			case StripKind::SIDEWALK: e.kind = SpecKind::FOOTWAY; break;
-			case StripKind::PARKING: e.kind = SpecKind::PARKING; break;
-			case StripKind::BIKE: e.kind = SpecKind::CYCLE; break;
-			case StripKind::LANE: e.kind = SpecKind::LANE; break;
-			case StripKind::MEDIAN: e.kind = SpecKind::MEDIAN; break;
-			default: continue; // a kerb counts below; a shoulder or a barrier belongs to the class, not to what is composed
-		}
+		int k = 0; // the element that draws as this strip; a kerb counts below, a shoulder or a barrier belongs to the class
+		while (k < int(SpecKind::COUNT) && strip_of(SpecKind(k)) != x.kind) k++;
+		if (k == int(SpecKind::COUNT)) continue;
+		e.kind = SpecKind(k);
 		if (e.kind == SpecKind::FOOTWAY || e.kind == SpecKind::MEDIAN) {
 			if (i > 0 && p.strips[i - 1].kind == StripKind::CURB) e.width += p.strips[i - 1].width;
 			if (i + 1 < n && p.strips[i + 1].kind == StripKind::CURB) e.width += p.strips[i + 1].width;
@@ -138,8 +146,7 @@ std::vector<Strip> spec_strips(const RoadSpec &s, float kerb) {
 		x.solid = e.solid;
 		x.flush = e.flush;
 		x.pave = e.pave;
-		x.kind = e.kind == SpecKind::FOOTWAY ? StripKind::SIDEWALK : e.kind == SpecKind::PARKING ? StripKind::PARKING
-				: e.kind == SpecKind::CYCLE ? StripKind::BIKE : e.kind == SpecKind::MEDIAN ? StripKind::MEDIAN : StripKind::LANE;
+		x.kind = strip_of(e.kind);
 		const bool right_edge = i + 1 == s.elements.size();
 		if (e.kind == SpecKind::FOOTWAY && !e.flush) {
 			x.width -= kerb;

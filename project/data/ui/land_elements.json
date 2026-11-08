@@ -32,7 +32,7 @@
     ] }
   ],
   "sliders": [
-   { "key": "radius", "label_key": "terrain.radius", "min": 2, "max": 120, "step": 1, "default": 12, "unit": " m" },
+   { "key": "radius", "label_key": "terrain.radius", "min": 2, "max": 120, "step": 1, "default": 12, "unit": "length" },
    { "key": "strength", "label_key": "el.strength", "min": 1, "max": 100, "step": 1, "default": 60 },
    { "key": "variation", "label_key": "el.variation", "min": 0, "max": 100, "step": 1, "default": 40 },
    { "key": "intensity", "label_key": "el.intensity", "min": 0, "max": 100, "step": 1, "default": 50 }

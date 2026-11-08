@@ -358,6 +358,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `project/game/store/store_api.gd` — os nomes de comando e de consulta que o script pode mandar ao CityCore, cada um com a área dele (tabelas lidas pelo store)
 - `project/game/store/city_saves.gd` — a cidade no disco: salvar, abrir, autosave, ao perder o foco e ao fechar, arquivo de fora
 - `project/game/store/formatters.gd` — formatação de números/dinheiro (dono de `format_money`)
+- `project/game/units.gd` — the units the scripts convert between (`Units`: a second's milliseconds, a percent, a mebibyte's bytes...), written once
 - `project/game/store/model_library.gd` · `project/game/store/lot_projects.gd` — the player's models: one file each, valid for every city; the 38 lab lots (`project/assets/lots`), made into bodies once for the shelf
 - `project/game/store/saved_entries.gd` · `project/game/store/road_spec_edit.gd` · `project/game/store/road_section_state.gd` · `project/game/store/lane_links_edit.gd` — uma pasta de coisas do jogador, um arquivo cada (dono único do `ModelLibrary` e do `RoadModels`); o que os painéis editam fora da UI: a seção da via, o desenho dela e as ligações de faixa
 - `project/game/store/save_slots.gd` — onde as cidades são salvas: um arquivo por cidade, cópia do mapa, índice da última, quarentena e pasta dos testes
@@ -470,7 +471,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `project/ui/drawer_strips.gd` — cartões e controles das gavetas
 - `project/ui/hud_actions.gd` — menu, desfazer/refazer e atalhos
 - `project/ui/hud_drawer.gd` · `project/ui/zone_strip.gd` — gavetas das categorias; a aba Zonas (cartões de uso e a densidade)
-- `project/ui/hud_popover.gd` · `project/ui/pop_bodies.gd` · `project/ui/hud_switch.gd` — camadas, câmera e menu; corpos da simulação e da ajuda; o interruptor das camadas
+- `project/ui/hud_popover.gd` · `project/ui/pop_bodies.gd` · `project/ui/pop_menu_rows.gd` · `project/ui/hud_switch.gd` — the top bar's popovers (layers, camera, menu); the bodies of the Simulation and Help popovers; the menu's segment rows (quality, road paint, language); the layers' switch
 - `project/ui/hud_top_bar.gd` · `project/ui/compass.gd` · `project/ui/start_screen.gd` · `project/ui/hud_dialog.gd` · `project/ui/graphics_panel.gd` — barra de cima; bússola (clique e arrasto); tela inicial e cortina; diálogo modal e Sobre; opções gráficas
 - `project/ui/effects_panel.gd` · `project/ui/health_panel.gd` · `project/ui/profiler_hud.gd` — painel de efeitos F7 (chaves, otimizações e Diagnóstico); monitor F9; perfil Shift+F9
 - `project/ui/hud_tip.gd` · `project/ui/hud_widgets.gd` — a dica própria (centrada sob o controle, só se o nome não está na tela); fábricas de botões/rótulos do tema

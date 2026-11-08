@@ -12,7 +12,7 @@ func enter() -> void:
 	kind = s.kind
 	mode = s.mode
 	radius = s.radius
-	brush = {"density": s.density, "height": s.height, "variation": s.variation / PERCENT, "spacing": s.spacing}
+	brush = {"density": s.density, "height": s.height, "variation": s.variation / Units.PERCENT, "spacing": s.spacing}
 	ctl.hint.emit(tr("hint.tool.trees"), true)
 
 

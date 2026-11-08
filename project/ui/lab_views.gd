@@ -3,7 +3,6 @@
 class_name LabViews
 extends RefCounted
 
-const MIB := 1048576.0
 const BAR_FULL_MS := 0.01 # the bars' full length, when nothing took longer
 const SECTIONS := ["near_walls", "near_panes", "near_guards", "near_cards", "near_pieces", "mid_walls", "mid_panes", "mid_cards", "far"]
 
@@ -16,7 +15,7 @@ static func _row(body: Control, name_text: String, value: String, share: float) 
 	if share >= 0.0:
 		var bar := ProgressBar.new()
 		bar.show_percentage = false
-		bar.value = share * Formatters.PERCENT
+		bar.value = share * Units.PERCENT
 		bar.custom_minimum_size = Vector2(HudWidgets.px("lab_bar_w"), HudWidgets.px("lab_bar_h"))
 		row.add_child(bar)
 
@@ -33,7 +32,7 @@ static func consumers(body: Control) -> void:
 			most = maxf(most, float(cost[key].bytes))
 	rows.sort_custom(func(a: Array, b: Array) -> bool: return a[1] > b[1])
 	for r: Array in rows:
-		_row(body, body.tr("lab.surface." + String(r[0])), "%.1f MiB · %s" % [r[1] / MIB, Formatters.format_int(r[2])], r[1] / most)
+		_row(body, body.tr("lab.surface." + String(r[0])), "%.1f MiB · %s" % [r[1] / Units.BYTES_PER_MIB, Formatters.format_int(r[2])], r[1] / most)
 	HudWidgets.label(body, &"TitleLabel", body.tr("lab.consumers.frame"))
 	var frame: Dictionary = CityStore.query(&"render_cost")
 	var longest := BAR_FULL_MS

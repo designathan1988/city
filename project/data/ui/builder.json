@@ -97,7 +97,7 @@
       {"id": "storey", "do": "storeys", "value": 1},
       {"id": "storeyDown", "do": "storeys", "value": -1},
       {"id": "split", "do": "split"},
-      {"id": "setback", "do": "setback"}
+      {"id": "setback", "do": "setback", "value": 2}
      ]
     },
     {

@@ -1,9 +1,9 @@
 keys,pt_BR,en
 sim.metric.trips,Viagens concluídas,Trips completed
 sim.pause,Pausar,Pause
-sim.people,Pessoas (%),People (%)
+sim.people,Pessoas,People
 sim.speed,Velocidade da simulação,Simulation speed
-sim.traffic,Tráfego (%),Traffic (%)
+sim.traffic,Tráfego,Traffic
 sky.cycle,◐ Dia e noite,◐ Day & night
 sky.day,☀ Dia,☀ Day
 sky.night,☾ Noite,☾ Night
@@ -26,7 +26,8 @@ streetscape.drain,Boca de lobo,Kerb drain
 streetscape.fountain,Chafariz,Fountain
 streetscape.hydrant,Hidrante,Hydrant
 streetscape.lamp,Iluminação,Street light
-streetscape.phone,Orelhão (telefone público),Public phone
+streetscape.phone,Orelhão,Public phone
+streetscape.phone.tip,Orelhão (telefone público),Public phone
 streetscape.planter,Floreira,Planter
 streetscape.postbox,Caixa de correio,Post box
 streetscape.shrub,Arbusto,Shrub
@@ -36,7 +37,7 @@ strike.force,Força,Force
 strike.force.less,Força −,Force −
 strike.force.more,Força +,Force +
 terrain.brush,Pincel,Brush
-terrain.canyon,Cânion (arenito),Canyon (sandstone)
+terrain.canyon,Cânion,Canyon
 terrain.clear,Aplainar mapa inteiro,Flatten the whole map
 terrain.cloud,Nuvens,Clouds
 terrain.elements,Elementos,Elements
@@ -44,13 +45,13 @@ terrain.escarpment,Escarpa de basalto,Basalt escarpment
 terrain.flatten,Nivelar,Level
 terrain.fog,Neblina,Fog
 terrain.gully,Ravinas,Gullies
-terrain.hardness,Dureza (paredões),Hardness (cliffs)
+terrain.hardness,Dureza,Hardness
 terrain.label,Editor de terreno,Terrain editor
 terrain.level,Nivelar em,Level to
 terrain.lower,Rebaixar,Lower
 terrain.mapBiome,Bioma do mapa,Map biome
 terrain.mapBiome.none,Sem ecossistema,No ecosystem
-terrain.mesa,Chapada (arenito),Mesa (sandstone)
+terrain.mesa,Chapada,Mesa
 terrain.operation,Operação do terreno,Terrain operation
 terrain.paint,Pintar,Paint
 terrain.radius,Raio,Radius
@@ -58,7 +59,7 @@ terrain.raise,Elevar,Raise
 terrain.river,Rio,River
 terrain.smooth,Alisar,Smooth
 terrain.strength,Força,Strength
-terrain.sugarloaf,Pão de açúcar (granito),Sugarloaf (granite)
+terrain.sugarloaf,Pão de açúcar,Sugarloaf
 terrain.title,GEOGRAFIA,GEOGRAPHY
 terrain.trees,Árvores,Trees
 terrain.weather,Clima,Weather
@@ -419,16 +420,16 @@ v2.terrain.landforms,Relevos,Landforms
 v2.zone.density,Densidade,Density
 v2.zone.paint,Zonear,Zone
 v2.zone.use,Uso do solo,Land use
-water.current,Correnteza (m/s),Current (m/s)
-water.foam,Espuma (%),Foam (%)
+water.current,Correnteza,Current
+water.foam,Espuma,Foam
 water.title,Água dos rios e lagos,Water of rivers and lakes
-water.waves,Ondas (%),Waves (%)
+water.waves,Ondas,Waves
 weather.lightning,Raios por minuto,Lightning a minute
-weather.rain,Chuva (%),Rain (%)
+weather.rain,Chuva,Rain
 weather.storm,Tempestade,Storm
-weather.thunder,Volume do trovão (%),Thunder volume (%)
-weather.wind,Vento (m/s),Wind (m/s)
-weather.windDirection,Direção do vento (°),Wind direction (°)
+weather.thunder,Volume do trovão,Thunder volume
+weather.wind,Vento,Wind
+weather.windDirection,Direção do vento,Wind direction
 zone.brush,Pintar zona,Paint zone
 zone.colours,Cores das zonas,Zone colours
 zone.commercial,Comercial,Commercial
@@ -471,14 +472,14 @@ zone.split.vertical,Lado a lado,Side by side
 zone.title,ZONEAMENTO,ZONING
 zone.tool,Ferramenta de zoneamento,Zoning tool
 zone.use,Uso do solo,Land use
-hint.upgrade,"Escolha um perfil e clique numa via para trocá-lo (Shift: a rua inteira; Alt: copiar o perfil da via).","Pick a profile and click a road to change it (Shift: the whole street; Alt: copy the road's profile)."
-hint.terrain,"Segure o botão esquerdo para esculpir o relevo; o traço inteiro se desfaz com Ctrl+Z.","Hold the left button to sculpt the relief; Ctrl+Z undoes the whole stroke."
+hint.upgrade,Escolha um perfil e clique numa via para trocá-lo (Shift: a rua inteira; Alt: copiar o perfil da via).,Pick a profile and click a road to change it (Shift: the whole street; Alt: copy the road's profile).
+hint.terrain,Segure o botão esquerdo para esculpir o relevo; o traço inteiro se desfaz com Ctrl+Z.,Hold the left button to sculpt the relief; Ctrl+Z undoes the whole stroke.
 hint.lot,"Arraste um retângulo junto a uma via: o prédio escolhido nasce ali, de frente para a via.","Drag a rectangle beside a road: the chosen building goes up there, facing the road."
 ui.insp.upgraded.one,Perfil trocado em {count} trecho,Profile changed on {count} segment
 ui.insp.upgraded.other,Perfil trocado em {count} trechos,Profile changed on {count} segments
 ui.build.placed,Prédio construído.,Building built.
-save.writeFailed,"Não foi possível gravar o arquivo do salvamento.","The save file could not be written."
-save.busy,"Um salvamento ainda está sendo gravado; tente de novo em instantes.","A save is still being written; try again in a moment."
+save.writeFailed,Não foi possível gravar o arquivo do salvamento.,The save file could not be written.
+save.busy,Um salvamento ainda está sendo gravado; tente de novo em instantes.,A save is still being written; try again in a moment.
 refuse.lot.small,o lote é pequeno demais,the lot is too small
 refuse.lot.road,o lote cobre uma via,the lot covers a road
 tools.hint.upgradePick,Clique numa via para trocar o perfil.,Click a road to change its profile.
@@ -517,7 +518,8 @@ hint.streetscape.offFootway,Só nas calçadas,On footways only
 hint.streetscape.narrow,A calçada é estreita demais para isso,The footway is too narrow for this
 hint.streetscape.occupied,Já há algo aqui,Something stands here already
 hint.streetscape.crossing,Não na saída de uma faixa de pedestres,Not at the end of a crossing
-streetscape.meadow,Mato (no gramado),Long grass (on the lawn)
+streetscape.meadow,Mato,Long grass
+streetscape.meadow.tip,Mato (no gramado),Long grass (on the lawn)
 streetscape.streetname,Nome da rua,Street name
 tool.barrier,Muros,Walls
 cmd.place.streetItem,Colocar peça,Place item
@@ -553,20 +555,20 @@ fog.speed,Velocidade,Speed
 fog.mapDensity,Toda a neblina,All fog
 fog.clear,Apagar neblina,Clear fog
 atmo.fogHeight,Altura da névoa,Mist height
-confirm.clearTerrain,"Aplainar todo o terreno? Esta ação pode ser desfeita.","Flatten the whole terrain? This can be undone."
-confirm.clearElements,"Apagar todos os elementos do mapa?","Remove every element on the map?"
-confirm.clearTrees,"Apagar todas as árvores que você plantou e deixar a mata voltar onde você cortou?","Remove every tree you planted and let the woods grow back where you cut them?"
-confirm.clearGullies,"Apagar todos os traços de ravina do mapa? As ravinas automáticas continuam.","Clear every gully stroke on the map? The land keeps its own gullies."
-confirm.clearClouds,"Apagar todas as nuvens do céu?","Remove every cloud in the sky?"
-confirm.clearFog,"Apagar toda a neblina do mapa?","Clear all the fog on the map?"
-el.strength,"Força do pincel (%)","Brush strength (%)"
-el.variation,"Variação de tamanho (%)","Size variation (%)"
-el.intensity,"Intensidade do efeito (%)","Effect intensity (%)"
-el.clear,"Apagar todos os elementos","Remove every element"
-hint.terrain.elements,"Arraste para colocar (ou apagar) · Shift+roda: tamanho do pincel","Drag to lay (or erase) · Shift+wheel: brush size"
-hint.element.full,"O mapa já tem elementos demais","The map holds too many elements"
-cmd.place.element,"colocar elementos","lay elements"
-cmd.elements.clear,"Apagar elementos","Clear elements"
+confirm.clearTerrain,Aplainar todo o terreno? Esta ação pode ser desfeita.,Flatten the whole terrain? This can be undone.
+confirm.clearElements,Apagar todos os elementos do mapa?,Remove every element on the map?
+confirm.clearTrees,Apagar todas as árvores que você plantou e deixar a mata voltar onde você cortou?,Remove every tree you planted and let the woods grow back where you cut them?
+confirm.clearGullies,Apagar todos os traços de ravina do mapa? As ravinas automáticas continuam.,Clear every gully stroke on the map? The land keeps its own gullies.
+confirm.clearClouds,Apagar todas as nuvens do céu?,Remove every cloud in the sky?
+confirm.clearFog,Apagar toda a neblina do mapa?,Clear all the fog on the map?
+el.strength,Força do pincel,Brush strength
+el.variation,Variação de tamanho,Size variation
+el.intensity,Intensidade do efeito,Effect intensity
+el.clear,Apagar todos os elementos,Remove every element
+hint.terrain.elements,Arraste para colocar (ou apagar) · Shift+roda: tamanho do pincel,Drag to lay (or erase) · Shift+wheel: brush size
+hint.element.full,O mapa já tem elementos demais,The map holds too many elements
+cmd.place.element,colocar elementos,lay elements
+cmd.elements.clear,Apagar elementos,Clear elements
 building.problem.size,Dimensões fora dos limites,Size out of bounds
 building.problem.support,Um volume ficaria sem apoio,A block would have nothing under it
 building.problem.footprint,Nada ficaria apoiado no chão,Nothing would stand on the ground

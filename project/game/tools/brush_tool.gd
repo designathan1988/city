@@ -9,7 +9,6 @@ const STEP_SHARE := 0.2
 const MIN_STEP_M := 1.6
 ## A pointer coming back from far away lays at most this many dabs at once.
 const MAX_STEPS := 12
-const PERCENT := 100.0
 
 var radius := 0.0
 var _last := Vector3.INF
