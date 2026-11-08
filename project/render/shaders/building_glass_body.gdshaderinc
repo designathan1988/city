@@ -6,10 +6,8 @@ render_mode cull_back;
 #include "res://render/shaders/contracts/buildings.gdshaderinc"
 
 global uniform float night;
-global uniform float rooms_awake; // the share of people awake at this hour (daylight.gd)
 global uniform float room_daylight; // how bright a room seen through its glass is by day, as light it sends out
 global uniform float building_glass; // the Effects panel: 0 leaves the panes out
-global uniform float building_night_windows; // the Effects panel: 0 puts the lit rooms out
 uniform float window_glow = 1.5;
 uniform float glass_reflect = 0.08;
 uniform vec3 glass_sky : source_color = vec3(0.45, 0.55, 0.66);
@@ -44,7 +42,7 @@ void vertex() {
 }
 
 #include "res://render/shaders/building_colour.gdshaderinc"
-#include "res://render/shaders/building_hash.gdshaderinc"
+#include "res://render/shaders/hash.gdshaderinc"
 #include "res://render/shaders/building_lamps.gdshaderinc"
 #include "res://render/shaders/building_room_tone.gdshaderinc"
 #include "res://render/shaders/building_sky_glass.gdshaderinc"

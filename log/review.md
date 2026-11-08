@@ -2731,6 +2731,53 @@ mixed 4, commercial 7/2/8 and residential 5/1/6 by density; house, flats, tower,
 **Verified** (`city-verify`, `quick --all`, both DLLs): every test passes, the digest equal, every photo byte-equal to a run before C7;
 `gates_changed` only lines the files had.
 
+### 6.25 B2, C4 (the shaders): what the shaders wrote twice, merged where not a pixel moves (2026-11-08)
+
+**Cause.** §3s's copies between shaders, and two lists kept beside their owner: the pane's albedo typed four times
+(`building_far.gdshader`, `building_far_window.gdshaderinc`, twice in `building_pane.gdshaderinc`) and the dark pane's once; the far
+room's cell hash, lit rule and lamp mix written in both far levels; the lamp's own lot (`fract(lot * 17.31)`) at every caller of
+`room_lamp` and the lamp level of `pane_lamp` copied into `signature_look`; the integer hash `pcg` in two includes that could not
+share a shader (`building_hash`, `lattice_noise`) and the lattice cell's primes in two; the finish laid on a face twice
+(`building_body`, `building_parts_body`); the lantern's pool pasted into `building_wash` beside `lamp_pool`'s; a local tau in
+`people_far`; the detail layer's second read in `road_detail` and again in `terrain_layers`; the mip expression twice in
+`vegetation_cards` (its leaf branch not indented); the wind's direction normalized three times a pixel in `water`; the sky's horizon
+read back from the sky material by `sky_view` though `Daylight` computes it; and the shader lists of `city_world.gd`
+(`NATIVE_SHADERS`) and `effect_materials.gd` (`SHADERS`), copies of `materials.json` and of the core's names kept only so the orphan
+gate would see them.
+
+**Fix.** `building_lamps.gdshaderinc` owns the glass's albedo (`PANE_ALBEDO`, `PANE_ALBEDO_DARK`), the lamp by the room's lot
+(`room_lamp` takes its own lot), `room_level`, the far room (`room_cell`, `far_room_lit`, `far_room_lamp`) and the two globals the
+lit rooms read (`rooms_awake`, `building_night_windows`, no longer declared by each includer). `hash.gdshaderinc` (the renamed
+`building_hash`, guarded) is the one integer hash, with `spatial_hash` (Teschner's primes), and `lattice_noise` includes it.
+`building_common`'s `finish_surface` lays a finish; `building_wash` includes `lamp_pool`; `people_far` uses the language's `TAU`;
+`detail_pair.gdshaderinc` reads a close-up map twice for the streets and the grass (`detail_tone`, `detail_bend`);
+`vegetation_cards`' `texel_mip`; `water` takes the wind and the drift once. `Daylight.horizon_linear` is the horizon the air takes.
+The orphan gate reads what else names a resource by path, the data tables and the core's strings (`gate_code.py`
+`OTHER_REFERRERS`, `facts.py` reads a data file's whole text), and the two lists are gone; its fixtures show a shader named only by
+a table and only by the core passing, and a name in a C++ comment or a tool's JSON naming nothing.
+
+**Why it does not come back.** Each value and rule has one file; a shader that needs it includes that file, and the hash and detail
+includes are guarded so two paths to them are one.
+
+**Not merged here, and why** (each would move pixels: B3 with a predicted diff). The two hand copies of the engine's GGX
+(`building_glass_body` light(), `people_look` `ggx_specular`) differ (a roughness floor, the visibility's epsilon, the view's clamp);
+`water`'s view depth is the full inverse where `screen_depth`'s `view_at` takes six terms, and `canyon_light`'s normal picks its side
+by another rule; `sky_view`'s cloud hash has seeded.h's constants but 64-bit arithmetic, so it is not seeded.h's hash; the sin
+hashes (`agents`, `people_look`), `person_hash`, `marks`' and `atmosphere`'s noises; `FAR_ROOM_LEVEL` 0.68 is not the mean of
+`room_level` (0.3 + 0.85 / 4 = 0.5125 for two independent uniform lots), and `materials.json`'s far `window_glow` 0.42 and
+`signature_look`'s `ROOM_GLOW` 0.62 are worked out from it and from the near glow by hand; `building_room_tone`'s `HUNG_*` means and
+`buildings.json`'s far finish tones typed by hand; the near and mid levels' reveal and sill shades; `building_pane`'s frame share
+read from a value in metres; the far foot shade; `building_card`'s railing beside the near level's models; the bay picks in C++ and
+in the mid level's shader.
+
+**What changes.** Nothing: the same arithmetic in the same order (a uint sum regrouped, which is exact; the constants the same
+floats; `TAU_RAD` 6.28318530718 rounds to `TAU`'s float).
+
+**Verified** (`city-verify`, `quick --all`): every test passes with no shader error, the digest equal, the four photos byte-equal to
+known states (00-cidade off its golden in the known residual box, equal to an earlier run); the gate self-test passes and fails with
+the old gate on the new case; `gates_changed` reports only what the touched files had (`daylight.gd`'s and `sky_view.gd`'s length,
+`sky_view.gd`'s hash literals, `daylight.gd`'s cascade side).
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

@@ -8,7 +8,6 @@ uniform sampler2DArray atlas : source_color, filter_linear_mipmap_anisotropic, r
 uniform vec4 strip; // x, y, a frame's width and height, in uv
 uniform float frames;
 
-const float TAU_RAD = 6.28318530718;
 const float CARD_ASPECT = 0.5; // a frame is twice as tall as wide
 const float CUT = 0.5; // the texels of the picture that are drawn
 const float FAR_ROUGH = 0.85;
@@ -26,7 +25,7 @@ void vertex() {
 	vec2 corner = VERTEX.xy;
 	VERTEX = right * corner.x * height * CARD_ASPECT + vec3(0.0, (corner.y + 0.5) * height, 0.0);
 	NORMAL = level;
-	float frame = mod(floor(atan(level.x, level.z) / TAU_RAD * frames + 0.5), frames);
+	float frame = mod(floor(atan(level.x, level.z) / TAU * frames + 0.5), frames);
 	v_uv = vec2(strip.x + (frame + corner.x + 0.5) * strip.z, strip.y + (corner.y + 0.5) * strip.w);
 	v_layer = INSTANCE_CUSTOM.r;
 }

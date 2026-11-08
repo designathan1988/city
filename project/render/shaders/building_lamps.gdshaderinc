@@ -1,4 +1,5 @@
-// What a lit window is, for every level of the buildings: the lamp of a room and the filtered window grid.
+// What a lit window is, for every level of the buildings: the glass, the lamp of a room, who is awake behind it and the filtered
+// window grid.
 //
 // A black body's colour at a temperature, linear and of luminance 1: M. Charity's sRGB table of the Planckian locus,
 // checked against Kang et al. 2002 (within 4 of 255 on every channel). Homes mix warm 2700-3500 K lamps with cool white
@@ -13,11 +14,27 @@ const vec3 LAMP_9000 = vec3(0.8745, 1.0013, 1.3569);
 const vec3 LAMP_HOME_MEAN = vec3(1.6241, 0.8671, 0.4790);
 const vec3 LAMP_OFFICE_MEAN = vec3(1.3902, 0.9254, 0.5895);
 
-vec3 room_lamp(float lot, float office) {
+global uniform float rooms_awake; // the share of people awake at this hour (daylight.gd)
+global uniform float building_night_windows; // the Effects panel: 0 puts the lit rooms out
+
+const vec3 PANE_ALBEDO = vec3(0.0075, 0.0096, 0.0115); // glass scatters next to nothing
+const vec3 PANE_ALBEDO_DARK = vec3(0.0047, 0.0061, 0.0074); // a dark pane's
+
+// The lamp of a room by its lot `room`: the colour takes a lot of its own from it.
+vec3 room_lamp(float room, float office) {
+	float lot = fract(room * 17.31);
 	if (office > 0.5) return lot < 0.5 ? LAMP_4000 : lot < 0.85 ? LAMP_5000 : LAMP_3500;
 	return lot < 0.36 ? LAMP_2700 : lot < 0.6 ? LAMP_3000 : lot < 0.7 ? LAMP_3500 : LAMP_6500;
 }
 vec3 room_lamp_mean(float office) { return office > 0.5 ? LAMP_OFFICE_MEAN : LAMP_HOME_MEAN; }
+// How bright a room's lamp is, 0.3 to 1.15, by two lots of its own.
+float room_level(float lot) { return 0.3 + 0.85 * fract(lot * 7.13) * fract(lot * 2.17 + 0.4); }
+
+// A room of the far levels (building_far.gdshader, building_far_window.gdshaderinc), its cell `cell` of the bay grid: its own lot,
+// lamp and whether it is lit while the cell covers a pixel or more, the share of rooms awake and the mean lamp as `sub` goes to 1.
+uint room_cell(vec2 cell) { return uint(cell.x + 512.0) * 131u + uint(cell.y + 512.0) * 7177u; }
+float far_room_lit(float lot, float sub) { return mix(step(1.0 - rooms_awake, lot), rooms_awake, sub) * building_night_windows; }
+vec3 far_room_lamp(float lot, float office, float sub) { return mix(room_lamp(lot, office), room_lamp_mean(office), sub); }
 
 // A television alone in the room: the cuts of a picture, about one every 1.7 s, and the small flicker over them.
 vec3 tv_light(float clock, float lot) {

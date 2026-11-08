@@ -192,9 +192,8 @@ vec3 room_hung(vec3 room, vec3 o, vec3 d, vec2 size, float lot) {
 // 4.0's vRoomLot is of what stands within 2.7 m: a wide floor is lit in patches, never all or nothing.
 vec3 pane_lamp(uint slot, float lot, float office, vec3 seen) {
 	float awake = step(1.0 - rooms_awake, h01(slot * 2654435761u + 977u));
-	float level = 0.3 + 0.85 * fract(lot * 7.13) * fract(lot * 2.17 + 0.4);
-	float lit = step(fract(lot * 5.31), 0.64) * awake * level * building_night_windows;
-	vec3 tint = room_lamp(fract(lot * 17.31), office);
+	float lit = step(fract(lot * 5.31), 0.64) * awake * room_level(lot) * building_night_windows;
+	vec3 tint = room_lamp(lot, office);
 	tint = mix(tint, tv_light(TIME, lot), (1.0 - office) * step(1.0 - TV_SHARE, fract(lot * 3.71)));
 	return tint * lit * (vec3(0.35) + 1.3 * clamp(seen / 0.55, vec3(0.0), vec3(1.6)));
 }
@@ -242,7 +241,7 @@ void pane(vec2 uv, vec2 size, uint slot, uint bay, bool dark, float deep, vec3 n
 	// The glass scatters next to nothing: what a pane shows is the room through it and the sky's reflection, as light leaving it.
 	vec3 refl = glass_reflection(V, n, F, dark ? GLASS_ENV_DARK : GLASS_ENV);
 	vec3 trim = to_linear(v_trim.rgb);
-	albedo = mix(mix(vec3(0.0075, 0.0096, 0.0115) * glass_k, trim, frame), trim * REVEAL_ALBEDO * side_shade, solid);
+	albedo = mix(mix(PANE_ALBEDO * glass_k, trim, frame), trim * REVEAL_ALBEDO * side_shade, solid);
 	emit = (seen * room_daylight * glass_k + pane_lamp(slot, lot, office, seen) * night * window_glow * glass_k + refl * open) * (1.0 - max(frame, solid));
 	nn = normalize(mix(n, normalize(t * face.x + vec3(0.0, face.y, 0.0) + n * face.z), step(0.5, frame)));
 	nn = normalize(mix(nn, normalize(t * side.x + vec3(0.0, side.y, 0.0) - n * side.z), step(0.5, solid)));
@@ -254,7 +253,7 @@ void pane(vec2 uv, vec2 size, uint slot, uint bay, bool dark, float deep, vec3 n
 void pane_clear(vec3 n, vec3 V, out vec3 albedo, out vec3 emit, out vec3 nn, out float rough, out float metal) {
 	float cosv = clamp(dot(-V, n), 0.0, 1.0);
 	float F = max(0.04 + 0.96 * pow(1.0 - cosv, 5.0), glass_reflect);
-	albedo = vec3(0.0075, 0.0096, 0.0115);
+	albedo = PANE_ALBEDO;
 	emit = glass_reflection(V, n, F, GLASS_ENV);
 	nn = n;
 	rough = 0.12;

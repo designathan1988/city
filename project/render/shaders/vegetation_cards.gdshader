@@ -19,12 +19,17 @@ uniform sampler2D tree_normal : hint_normal, filter_linear_mipmap, repeat_disabl
 
 #include "res://render/shaders/color_space.gdshaderinc"
 
+// The mip level the sampler takes for `texel`, the texture coordinate in texels: the log of the longer screen step.
+float texel_mip(vec2 texel) {
+	return max(0.0, 0.5 * log2(max(dot(dFdx(texel), dFdx(texel)), dot(dFdy(texel), dFdy(texel)))));
+}
+
 void fragment() {
 	if (v_part > PART_FAR - 0.5) {
 		vec2 at = (v_cell + vec2(UV.x, 1.0 - UV.y)) / vec2(float(picture_frames), float(picture_rows));
 		vec4 p = texture(tree_albedo, at);
 		vec2 texel = at * vec2(textureSize(tree_albedo, 0));
-		float mip = max(0.0, 0.5 * log2(max(dot(dFdx(texel), dFdx(texel)), dot(dFdy(texel), dFdy(texel)))));
+		float mip = texel_mip(texel);
 		ALPHA = p.a * (1.0 + mip * cover_per_mip);
 		ALPHA_SCISSOR_THRESHOLD = CUT;
 		ALPHA_ANTIALIASING_EDGE = leaf_edge;
@@ -34,22 +39,22 @@ void fragment() {
 		ROUGHNESS = roughness;
 		SPECULAR = leaf_sheen(NORMAL, VIEW);
 	} else {
-	bool frond = v_part > PART_FROND - 0.5 && v_part < PART_FROND + 0.5;
-	vec2 uv = vec2((frond ? FROND_REGION_U : LEAF_REGION_U) + clamp(UV.x, 0.0, 1.0) * ATLAS_REGION_W, UV.y);
-	vec2 dx = dFdx(uv), dy = dFdy(uv);
-	vec4 leaf = textureGrad(leaf_atlas, uv, dx, dy);
-	float close = frond ? 0.0 : 1.0 - smoothstep(leaf_near_m, leaf_far_m, length(VERTEX));
-	if (close > 0.0) {
-		leaf = mix(leaf, textureGrad(leaf_atlas, uv + vec2(ATLAS_REGION_W, 0.0), dx, dy), close);
-	}
-	vec2 texel = uv * vec2(textureSize(leaf_atlas, 0));
-	float mip = max(0.0, 0.5 * log2(max(dot(dFdx(texel), dFdx(texel)), dot(dFdy(texel), dFdy(texel)))));
-	ALPHA = leaf.a * (1.0 + mip * cover_per_mip);
-	ALPHA_SCISSOR_THRESHOLD = CUT;
-	ALPHA_ANTIALIASING_EDGE = leaf_edge;
-	ALPHA_TEXTURE_COORDINATE = texel;
-	ALBEDO = vertex_albedo(COLOR.rgb, OUTPUT_IS_SRGB) * v_tint * leaf.r;
-	ROUGHNESS = roughness;
-	SPECULAR = leaf_sheen(NORMAL, VIEW);
+		bool frond = v_part > PART_FROND - 0.5 && v_part < PART_FROND + 0.5;
+		vec2 uv = vec2((frond ? FROND_REGION_U : LEAF_REGION_U) + clamp(UV.x, 0.0, 1.0) * ATLAS_REGION_W, UV.y);
+		vec2 dx = dFdx(uv), dy = dFdy(uv);
+		vec4 leaf = textureGrad(leaf_atlas, uv, dx, dy);
+		float close = frond ? 0.0 : 1.0 - smoothstep(leaf_near_m, leaf_far_m, length(VERTEX));
+		if (close > 0.0) {
+			leaf = mix(leaf, textureGrad(leaf_atlas, uv + vec2(ATLAS_REGION_W, 0.0), dx, dy), close);
+		}
+		vec2 texel = uv * vec2(textureSize(leaf_atlas, 0));
+		float mip = texel_mip(texel);
+		ALPHA = leaf.a * (1.0 + mip * cover_per_mip);
+		ALPHA_SCISSOR_THRESHOLD = CUT;
+		ALPHA_ANTIALIASING_EDGE = leaf_edge;
+		ALPHA_TEXTURE_COORDINATE = texel;
+		ALBEDO = vertex_albedo(COLOR.rgb, OUTPUT_IS_SRGB) * v_tint * leaf.r;
+		ROUGHNESS = roughness;
+		SPECULAR = leaf_sheen(NORMAL, VIEW);
 	}
 }

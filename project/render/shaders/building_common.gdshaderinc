@@ -2,7 +2,7 @@
 // Included after the uniforms and varyings they use.
 #include "res://render/shaders/contracts/buildings.gdshaderinc"
 
-#include "res://render/shaders/building_hash.gdshaderinc"
+#include "res://render/shaders/hash.gdshaderinc"
 
 // The lattice's values, one a texel (tools/assets/make_lattice_noise.py): value noise is the sampler's bilinear filter at a point
 // moved by the smooth step, one fetch where four hashes ran on every pixel of every wall.
@@ -45,4 +45,15 @@ float weather(vec3 n) {
 	float streak = abs(n.y) < 0.5 ? smoothstep(0.55, 0.85, vnoise(vec2(pm.x * 0.55, pm.y * 0.02))) : 0.0;
 	float stain = 0.3 * (0.18 + 0.12 * vnoise(pm * 0.0275) + (abs(n.y) < 0.5 ? 0.28 * streak : 0.1));
 	return (0.9 + 0.2 * macro) * (1.0 - stain);
+}
+
+// A face's finish `fin` (-1: none) laid on its colour: the finish's tone, normal, roughness and metalness, and the weathering of
+// every finish but glass and metal. What the face had stays where it has no finish.
+void finish_surface(int fin, vec3 n, inout vec3 albedo, inout vec3 nn, inout float rough, inout float metal) {
+	if (fin >= 0 && fin < FIN_COUNT) {
+		vec3 tone;
+		finish_layer(fin, n, tone, nn, rough, metal);
+		albedo *= tone;
+		if (fin != FIN_GLASS && fin != FIN_METAL) albedo *= weather(n);
+	}
 }

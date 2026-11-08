@@ -138,7 +138,7 @@ void fragment() {
 		vec3 t = source_linear(texture(asphalt_map, uv / asphalt_m, near * detail_asphalt.z).rgb);
 		vec2 duv = uv / asphalt_detail_m, ddx = dFdx(duv), ddy = dFdy(duv);
 		if (near > 0.0) {
-			t *= mix(vec3(1.0), detail_albedo(asphalt_detail, duv, ddx, ddy), near * detail_asphalt.x);
+			t *= mix(vec3(1.0), detail_tone(asphalt_detail, duv, ddx, ddy), near * detail_asphalt.x);
 			fine = detail_bend(asphalt_detail_normal, duv, ddx, ddy) * near * detail_asphalt.y;
 		}
 		vec3 asphalt_avg = max(source_linear(mean_asphalt), vec3(MEAN_FLOOR));
@@ -162,7 +162,7 @@ void fragment() {
 		vec3 t = source_linear(texture(footway_map, uv / footway_m, near * detail_footway.z).rgb);
 		vec2 duv = uv / concrete_detail_m, ddx = dFdx(duv), ddy = dFdy(duv);
 		if (near > 0.0) {
-			t *= mix(vec3(1.0), detail_albedo(concrete_detail, duv, ddx, ddy), near * detail_footway.x);
+			t *= mix(vec3(1.0), detail_tone(concrete_detail, duv, ddx, ddy), near * detail_footway.x);
 			fine = detail_bend(concrete_detail_normal, duv, ddx, ddy) * near * detail_footway.y;
 		}
 		bend_scale = normal_footway;
@@ -186,7 +186,7 @@ void fragment() {
 		vec3 t = source_linear(texture(kerb_map, kq / kerb_m, near * detail_kerb.z).rgb);
 		vec2 duv = kq / concrete_detail_m, ddx = dFdx(duv), ddy = dFdy(duv);
 		if (near > 0.0) {
-			t *= mix(vec3(1.0), detail_albedo(concrete_detail, duv, ddx, ddy), near * detail_kerb.x);
+			t *= mix(vec3(1.0), detail_tone(concrete_detail, duv, ddx, ddy), near * detail_kerb.x);
 			fine = detail_bend(concrete_detail_normal, duv, ddx, ddy) * near * detail_kerb.y;
 		}
 		albedo = t * base / max(source_linear(mean_kerb), vec3(MEAN_FLOOR));
@@ -199,7 +199,7 @@ void fragment() {
 		vec3 t = source_linear(texture(verge_map, gq, near * detail_verge.z).rgb);
 		vec2 duv = v_world.xz / grass_detail_m, ddx = dFdx(duv), ddy = dFdy(duv);
 		if (near > 0.0) {
-			t *= mix(vec3(1.0), detail_albedo(grass_detail, duv, ddx, ddy), near * detail_verge.x);
+			t *= mix(vec3(1.0), detail_tone(grass_detail, duv, ddx, ddy), near * detail_verge.x);
 			fine = detail_bend(grass_detail_normal, duv, ddx, ddy) * near * detail_verge.y;
 		}
 		albedo = t * base; // the map is the grass: the strip's colour only tints it

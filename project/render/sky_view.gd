@@ -167,8 +167,7 @@ func _light(way: Vector2) -> void:
 	var c := _world.sun.light_color
 	_mat.set_shader_parameter("sun_light", Vector3(c.r, c.g, c.b) * _world.sun.light_energy * _d.sun_gain)
 	# The air takes the sky's colour at the horizon, overcast with it; the pass works in linear light.
-	var horizon: Color = (_world.environment.sky.sky_material as ShaderMaterial).get_shader_parameter("horizon")
-	horizon = horizon.srgb_to_linear()
+	var horizon := _world.daylight.horizon_linear
 	_mat.set_shader_parameter("sky_light", Vector3(horizon.r, horizon.g, horizon.b))
 	_mat.set_shader_parameter("mist_color", Vector3(horizon.r, horizon.g, horizon.b))
 	_mat.set_shader_parameter("dark", _world.daylight.night)

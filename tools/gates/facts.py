@@ -51,10 +51,13 @@ def file_facts(source, rules):
 
 
 def _references(source, strings):
-    """res:// and uid:// paths named in strings; a relative shader #include is resolved against the file's folder."""
+    """res:// and uid:// paths named in strings (a data file's whole text, its one token); a relative shader #include is
+    resolved against the file's folder."""
     refs = set()
     for s in strings:
         refs.update(m.group(0) for m in _RES.finditer(s))
+    if source.lang == "data":
+        refs.update(m.group(0) for m in _RES.finditer(source.text))
     if source.lang == "glsl" and source.path.startswith("project/"):
         for inc, _angle, _line in cpp_syntax.includes(source):
             if "://" not in inc:

@@ -5,21 +5,6 @@ extends Node3D
 
 const TERRAIN_SHADER := "res://render/shaders/terrain.gdshader"
 const SKY_SHADER := "res://render/shaders/sky.gdshader"
-## Kept as text so the orphan gate sees every shader the native renderers load by name from materials.json.
-const NATIVE_SHADERS := [
-	"res://render/shaders/road.gdshader", "res://render/shaders/building.gdshader", "res://render/shaders/building_far.gdshader",
-	"res://render/shaders/building_parts.gdshader", "res://render/shaders/props.gdshader", "res://render/shaders/agents.gdshader",
-	"res://render/shaders/people.gdshader", "res://render/shaders/people_blob.gdshader", "res://render/shaders/overlay.gdshader", "res://render/shaders/agent_glass.gdshader",
-	"res://render/shaders/vegetation.gdshader", "res://render/shaders/lamp_glow.gdshader", "res://render/shaders/vegetation_cards.gdshader", "res://render/shaders/building_ghost.gdshader",
-	"res://render/shaders/building_glass.gdshader", "res://render/shaders/building_sheer.gdshader", "res://render/shaders/building_card.gdshader",
-	"res://render/shaders/building_wash.gdshader",
-	"res://render/shaders/verge.gdshader", "res://render/shaders/people_far.gdshader", "res://render/shaders/people_held.gdshader",
-	"res://render/shaders/people_helmet.gdshader", "res://render/shaders/rubble.gdshader", "res://render/shaders/signature.gdshader",
-	"res://render/shaders/signature_glass.gdshader",
-	"res://render/shaders/transit.gdshader", "res://render/shaders/transit_glass.gdshader", "res://render/shaders/transit_xray.gdshader",
-	"res://render/shaders/building_props.gdshader", "res://render/shaders/shadow_caster.gdshader",
-	"res://render/shaders/road_far.gdshader", "res://render/shaders/building_fade.gdshader", "res://render/shaders/building_ruin.gdshader", "res://render/shaders/people_body.gdshader", "res://render/shaders/building_glass_fade.gdshader", "res://render/shaders/building_parts_fade.gdshader",
-]
 const WIND_FULL_WAVES_MS := 40.0 # a wind this fast alone makes the roughest water
 
 var terrain: Node3D

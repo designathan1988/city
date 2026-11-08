@@ -8,9 +8,7 @@ render_mode cull_back;
 #include "res://render/shaders/contracts/buildings.gdshaderinc"
 
 global uniform float night;
-global uniform float rooms_awake;
 global uniform float room_daylight;
-global uniform float building_night_windows; // the Effects panel: 0 puts the lit rooms out
 
 uniform vec3 glass_sky : source_color = vec3(0.45, 0.55, 0.66);
 uniform float glass_floor = 0.18;
@@ -30,10 +28,9 @@ varying flat vec4 v_opening; // width, sill and head as shares of the bay and th
 const float FOOT_SHADE = 0.62; // the foot of a wall in the street's shade
 const float FOOT_STOREYS = 0.47; // its height, storeys (1.4 m of a 3 m storey)
 #include "res://render/shaders/building_room_tone.gdshaderinc"
-const vec3 PANE_ALBEDO = vec3(0.0075, 0.0096, 0.0115); // glass scatters next to nothing (building_pane.gdshaderinc)
 
 #include "res://render/shaders/building_colour.gdshaderinc"
-#include "res://render/shaders/building_hash.gdshaderinc"
+#include "res://render/shaders/hash.gdshaderinc"
 #include "res://render/shaders/building_lamps.gdshaderinc"
 #define glass_sky_floor 0.0
 #include "res://render/shaders/building_sky_glass.gdshaderinc"
@@ -64,11 +61,11 @@ void fragment() {
 		float open = (int(v_opening.a * 255.0 + 0.5) & WINDOW_FLAG_BLANK) != 0 ? 0.0 : 1.0;
 		float m = open * clamp(pulse(UV.x, foot.x, 0.5 - 0.5 * v_opening.r, 0.5 + 0.5 * v_opening.r) * pulse(UV.y, foot.y, v_opening.g, v_opening.b), 0.0, 1.0);
 		vec2 room = floor(UV);
-		float lot = h01(uint(room.x + 512.0) * 131u + uint(room.y + 512.0) * 7177u);
+		float lot = h01(room_cell(room));
 		float sub = smoothstep(0.5, 1.5, max(foot.x, foot.y));
 		float office = (int(COLOR.a * 255.0 + 0.5) & FAR_OFFICE_BIT) != 0 ? 1.0 : 0.0;
-		vec3 lamp = mix(room_lamp(fract(lot * 17.31), office), room_lamp_mean(office), sub);
-		float lit = mix(step(1.0 - rooms_awake, lot), rooms_awake, sub) * building_night_windows;
+		vec3 lamp = far_room_lamp(lot, office, sub);
+		float lit = far_room_lit(lot, sub);
 		// the glass of the levels before it (building_far_window.gdshaderinc): next to nothing scattered, the room through it and the sky on it
 		vec3 V = normalize(v_world - CAMERA_POSITION_WORLD);
 		float cosv = clamp(dot(-V, n), 0.0, 1.0);

@@ -118,13 +118,7 @@ void fragment() {
 	} else {
 		vec3 albedo = to_linear(v_custom.rgb), nn = n;
 		float rough = BUILDING_WALL_ROUGHNESS, metal = 0.0;
-		int fin = int(floor(v_custom.a + 0.5)); // -1: no finish (int() would truncate -0.5 to layer 0)
-		if (fin >= 0 && fin < FIN_COUNT) {
-			vec3 tone;
-			finish_layer(fin, n, tone, nn, rough, metal);
-			albedo *= tone;
-			if (fin != FIN_GLASS && fin != FIN_METAL) albedo *= weather(n);
-		}
+		finish_surface(int(floor(v_custom.a + 0.5)), n, albedo, nn, rough, metal); // -1: no finish (int() would truncate -0.5 to layer 0)
 		ALBEDO = surface_out(albedo * wall_gain);
 		ROUGHNESS = rough;
 		METALLIC = metal;

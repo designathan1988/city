@@ -24,6 +24,7 @@ var shadows_on := true: # what the graphics tier asks of the sun; the moon's sha
 var shadow_side_px := 2048.0 # a cascade's side: game/settings/settings.gd
 var shadow_filter_radius := 1.0 # the engine's radius for the filter in use
 var direct_share := 0.0 # the sun's or moon's share of the light on level ground
+var horizon_linear := Color.BLACK # the sky's colour at the horizon, linear: what the air takes (sky_view.gd)
 var mode := "day"
 var shadow_least_m := 0.0 # the quality's own reach (game/settings/settings.gd)
 var _first_m := 0.0 # where the first cascade ends
@@ -255,6 +256,7 @@ func _set_sky(elev: float) -> void:
 	horizon = horizon.lerp(grey, _overcast * _d.overcast_sky)
 	_sky.set_shader_parameter("zenith", zenith)
 	_sky.set_shader_parameter("horizon", horizon)
+	horizon_linear = horizon.srgb_to_linear()
 	_sky.set_shader_parameter("ground", _c("sky_ground").lerp(_c("horizon_night"), 1.0 - light))
 	_sky.set_shader_parameter("low_zenith", _c("low_zenith"))
 	_sky.set_shader_parameter("low_horizon", _c("low_horizon"))

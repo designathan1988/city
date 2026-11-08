@@ -11,8 +11,6 @@ render_mode cull_back;
 global uniform float night;
 global uniform float building_recess; // 0 turns the worked-out recess off: an A/B of what it costs
 global uniform vec3 sun_direction; // towards the sun, world space (daylight.gd)
-global uniform float building_night_windows; // the Effects panel: 0 puts the lit rooms out
-global uniform float rooms_awake; // the share of people awake at this hour (daylight.gd)
 global uniform float room_daylight; // how bright a room seen through its glass is by day, as light it sends out
 global uniform float outside_on; // the share of outside lights lit at this hour
 uniform sampler2DArray finish_map : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
@@ -101,13 +99,7 @@ void fragment() {
 		albedo *= 0.8 + 0.25 * vnoise(v_world.xz * 0.7) + 0.15 * vnoise(v_world.xz * 3.1);
 		rough = 0.95;
 	} else {
-		int fin = int(floor(UV2.x + 0.001)) - 1;
-		if (fin >= 0 && fin < FIN_COUNT) {
-			vec3 tone;
-			finish_layer(fin, n, tone, nn, rough, metal);
-			albedo *= tone;
-			if (fin != FIN_GLASS && fin != FIN_METAL) albedo *= weather(n);
-		}
+		finish_surface(int(floor(UV2.x + 0.001)) - 1, n, albedo, nn, rough, metal);
 		albedo *= wall_gain;
 		if (kind == SK_FAR_WALL) {
 			float glass;

@@ -53,9 +53,8 @@ uniform sampler2D depth_texture : hint_depth_texture, repeat_disable, filter_nea
 const float FD_STEP = 0.1; // finite difference, in cells: a tenth of the span the value noise is smooth over
 
 // Slope of the two layers (finite differences of the value noise).
-vec2 ripple(vec2 p, float t, float fine) {
+vec2 ripple(vec2 p, float t, float fine, vec2 dir) {
 	if (fine <= 0.0) return vec2(0.0); // far water: the noise is below a pixel, skip the four reads
-	vec2 dir = normalize(vec2(wind_x, wind_z));
 	vec2 a = p * wave_scale - dir * peak_hz * t;
 	vec2 b = p * wave_scale * detail_ratio - dir * peak_hz * sqrt(detail_ratio) * t;
 	float ha = vnoise(a), hb = vnoise(b);
@@ -68,7 +67,9 @@ void fragment() {
 	float pixel = max(fwidth(world.x), fwidth(world.z));
 	float fine = 1.0 - smoothstep(0.5 / (wave_scale * detail_ratio), 0.5 / wave_scale, pixel);
 	float rough = 0.5 + 2.0 * waves;
-	vec2 s = ripple(world.xz - normalize(vec2(wind_x, wind_z)) * current * TIME, TIME, fine) * ripple_strength * fine * rough;
+	vec2 wind = normalize(vec2(wind_x, wind_z));
+	vec2 drift = world.xz - wind * current * TIME; // the surface where the current has carried it
+	vec2 s = ripple(drift, TIME, fine, wind) * ripple_strength * fine * rough;
 	vec3 n = normalize(vec3(-s.x, 1.0, -s.y));
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
 	// Foam: where the water is shallow over the ground, broken by the ripples' own noise.
@@ -95,7 +96,7 @@ void fragment() {
 	float cover = sheet + (1.0 - sheet) * bed_a;
 	ALBEDO = linear_out((c * sheet + bed * bed_a * (1.0 - sheet)) / max(cover, 0.001));
 	ALPHA = cover * smoothstep(0.0, rim_m, below);
-	float paws = vnoise((world.xz - normalize(vec2(wind_x, wind_z)) * current * TIME) / paws_m) * vnoise(world.xz / (paws_m * 3.1) + 7.0);
+	float paws = vnoise(drift / paws_m) * vnoise(world.xz / (paws_m * 3.1) + 7.0);
 	ROUGHNESS = sqrt(slope_sigma * sqrt(1.0 - fine * fine)) + paws * paws_rough * rough;
 	SPECULAR = specular_f0;
 }
