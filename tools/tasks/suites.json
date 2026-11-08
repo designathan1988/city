@@ -361,7 +361,8 @@
    "doc": "the look plans the capture suite photographs",
    "template": "look",
    "items": [{"name": "frozen", "plan": "res://tests/visual/frozen_plan.json", "resolution": "1280x720", "timeout_s": 90},
-    {"name": "sao_paulo", "plan": "res://tests/visual/sao_paulo_plan.json", "resolution": "1600x900", "timeout_s": 900}]
+    {"name": "sao_paulo", "plan": "res://tests/visual/sao_paulo_plan.json", "resolution": "1600x900", "timeout_s": 900},
+    {"name": "worn", "plan": "res://tests/visual/worn_plan.json", "resolution": "1280x720", "timeout_s": 300}]
   },
   "capture_scenes": {
    "doc": "the reference views (capture.tscn: street from above, neighbourhood, whole town)",

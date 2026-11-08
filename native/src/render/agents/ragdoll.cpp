@@ -9,7 +9,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-enum Joint { PEL, CHE, NEC, HEA, LS, LE, LW, RS, RE, RW, LH, LK, LA, LT, RH, RK, RA, RT, TOP, BEL };
+using namespace ragdoll_joint;
 enum Ref { REF_SIDE, REF_LARM, REF_RARM, REF_LLEG, REF_RLEG };
 struct PartFrame {
 	int origin, to, ref;

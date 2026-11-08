@@ -1,5 +1,6 @@
 ## Who is on foot, through the census of the core: out of the doors and in at them, of each age, in pairs that stay together,
-## no child alone, fewer in the small hours than in the afternoon, and nobody inside a street piece or another walker.
+## no child alone, fewer in the small hours than in the afternoon, and nobody inside a street piece or another walker; what they wear:
+## backpacks in any weather, umbrellas only while it rains.
 ## Run: godot --path project res://tests/core/people_test.tscn -- --no-flow
 extends TestCase
 
@@ -23,12 +24,16 @@ const CROSS_TICKS := 30
 const NEAR_M := 150.0 # the census of the Roadcraft 4.0: 86 people within this of the camera at 16:00
 const MORE_TICKS := 9000
 const MIN_INDOORS := 0.5 # of those who arrive; the others, on a street without a door, end at the node
+const WORN_EYE := Vector3(0.0, 30.0, 30.0) # the camera off the walkers: inside agents.json people.blob.from_m, each body on its meshes
+const WORN_FRAMES := 3 # drawn again with what the frame before asked
+const RAIN := 0.8 # past the umbrella's rain_from (agents.json worn)
+const ABOVE_TOWN := Vector3(0, 300, 300) # where the test's camera looks from the rest of the time
 
 
 func _ready() -> void:
 	var cam := Camera3D.new()
 	add_child(cam)
-	cam.look_at_from_position(Vector3(0, 300, 300), Vector3.ZERO)
+	cam.look_at_from_position(ABOVE_TOWN, Vector3.ZERO)
 	cam.current = true
 	if not boot():
 		finish()
@@ -57,6 +62,7 @@ func _ready() -> void:
 	check(int(probe.people_in_furniture) == 0, "inside furniture: %d" % probe.people_in_furniture)
 	check(float(c.party_touching) <= MAX_TOUCHING * float(c.parties), "pairs touching: %d" % c.party_touching)
 	_clips()
+	await _worn(cam, c)
 	ticks(MORE_TICKS)
 	var later: Dictionary = CityStore.query(&"people_census", [Vector3.ZERO, 0.0])
 	print("later: ", later)
@@ -92,6 +98,31 @@ func _clips() -> void:
 	check(CityStore.query(&"show_people_clip", ["chairSit"]), "plays a clip by name")
 	check(not CityStore.query(&"show_people_clip", ["no name"]), "refuses a clip that does not exist")
 	CityStore.query(&"show_people_clip", ["idle"])
+
+
+## What the walkers wear (render/agents/worn_things.h), seen from close over a spot of the census: some backpacks whatever the weather,
+## no umbrella while it is dry, umbrellas once it rains, the same backpacks, and the umbrellas closed again when the rain is undone.
+func _worn(cam: Camera3D, census: Dictionary) -> void:
+	var spots: Dictionary = census.spots
+	check(not spots.is_empty(), "a walker to look at")
+	if spots.is_empty():
+		return
+	var at: Vector3 = spots.values()[0][0]
+	cam.look_at_from_position(at + WORN_EYE, at)
+	await _frames(WORN_FRAMES)
+	var dry: Dictionary = CityStore.query(&"agent_cost").people_worn
+	check(int(dry.umbrella) == 0, "an umbrella in the dry: %d" % dry.umbrella)
+	check(int(dry.backpack) > 0, "backpacks in the dry: %d" % dry.backpack)
+	check(CityStore.dispatch(&"set_weather", [{"rain": RAIN}]).get("ok", false), "rain set")
+	await _frames(WORN_FRAMES)
+	var wet: Dictionary = CityStore.query(&"agent_cost").people_worn
+	print("worn dry ", dry, " in the rain ", wet)
+	check(int(wet.umbrella) > 0, "umbrellas in the rain: %d" % wet.umbrella)
+	check(int(wet.backpack) == int(dry.backpack), "the rain changed the backpacks: %d, %d" % [dry.backpack, wet.backpack])
+	CityStore.dispatch(&"undo")
+	await _frames(WORN_FRAMES)
+	check(int(CityStore.query(&"agent_cost").people_worn.umbrella) == 0, "umbrellas left open once the rain is undone")
+	cam.look_at_from_position(ABOVE_TOWN, Vector3.ZERO)
 
 
 ## People go over a crossing between junctions, a zebra and one with a signal of its own: put where walkers are, and counted while they use it.

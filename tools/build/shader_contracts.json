@@ -27,6 +27,8 @@
     {"name": "FACE_ACT_PHONE", "type": "int", "value": 3, "doc": "as FACE_ACT_TALK"},
     {"name": "FACE_ACT_CROUCH", "type": "int", "value": 4, "doc": "as FACE_ACT_TALK"},
     {"name": "HELMET_COLOURS", "type": "int", "value": 8, "doc": "the helmets' colours (helmets.cpp, people_helmet.gdshader)"},
+    {"name": "WORN_THINGS", "type": "int", "value": 4, "doc": "the things people wear (worn_things.cpp, people_worn.gdshader worn_bone, worn_at by body, worn_colours)"},
+    {"name": "WORN_COLOURS", "type": "int", "value": 8, "doc": "the colours of one worn thing (worn_things.cpp, people_worn.gdshader worn_colours)"},
     {"name": "PeopleTables", "type": "ints", "values": {"PEOPLE_FACE_CHANNELS": 13, "PEOPLE_FACE_SPAN": 8, "PEOPLE_BONE_TEXELS": 3, "PEOPLE_PALETTE_TEXELS": 2, "PEOPLE_BONES": 53}, "doc": "the cooked people (people_asset.cpp reads and checks them): a face row's channels and the rows side by side in face_table (people_face.gdshaderinc), a bone's texels in the palette and a value's (high bytes, then low; people_pose.gdshaderinc), the skeleton's bones (people_skin.gdshaderinc)"},
     {"name": "PeopleSpans", "type": "floats", "values": {"PEOPLE_FACE_ROW_STEP": "4.0", "PEOPLE_PALETTE_SPAN": "3.0"}, "doc": "a face vertex's UV2.x is its region plus this many a row of face_table; a palette value is fixed point over [-span, span] (people_asset.cpp; people_face.gdshaderinc, people_pose.gdshaderinc)"}
    ]

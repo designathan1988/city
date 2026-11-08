@@ -69,6 +69,25 @@
    "bag": {"upright": true, "parts": [{"size": [0.012, 0.1, 0.012], "at": [0, -0.05, 0], "colour": "#6b5134"}, {"size": [0.3, 0.34, 0.12], "at": [0, -0.27, 0], "colour": "#b08a5a"}]}
   }
  },
+ "worn": {
+  "_doc": "What people wear and not as an act (render/agents/worn_things.cpp): each thing posed by one bone of the cooked skeleton, `bone` (hand, head, or pelvis, chest, neck: the bone the ragdoll joint of that name sits on), so an open umbrella rides on the upper body above the head and not in the swinging hand of the walk; its parts laid from the rest place of the joint `at` (pelvis, chest, neck or head) in the body's axes (metres, +X to its left, +Y up, +Z ahead), drawn for a body body_height_m tall and scaled by each body's own height over it. Parts: box (size [x, y, z] round at), cylinder and cone (radius_m, height_m up from at, sides); colour a hex, or paint: the wearer's, one of the thing's colours by the look's seed. share: of each age who wears it, by the look hash; rain_from: the rain (0..1, nature.json weather) from which it is worn, 0 in any weather. Modelling choices: an umbrella's canopy about 1 m across, a day pack's 0.30 by 0.40 m.",
+  "body_height_m": 1.7,
+  "roughness": 0.6,
+  "things": {
+   "backpack": {"bone": "chest", "at": "neck", "rain_from": 0, "share": {"adult": 0.15, "child": 0.6, "elder": 0.03},
+    "colours": ["#1d2433", "#2b2b2e", "#3b5a8a", "#7d2a2a", "#2f5a3b", "#6d7177", "#cf7a2c", "#5a3d6e"],
+    "parts": [{"shape": "box", "size": [0.3, 0.4, 0.14], "at": [0, -0.25, -0.21], "colour": "paint"},
+     {"shape": "box", "size": [0.31, 0.06, 0.15], "at": [0, -0.07, -0.21], "colour": "#24262a"},
+     {"shape": "box", "size": [0.22, 0.16, 0.05], "at": [0, -0.33, -0.3], "colour": "#24262a"},
+     {"shape": "box", "size": [0.05, 0.02, 0.26], "at": [0.1, 0, -0.04], "colour": "#24262a"},
+     {"shape": "box", "size": [0.05, 0.02, 0.26], "at": [-0.1, 0, -0.04], "colour": "#24262a"}]},
+   "umbrella": {"bone": "chest", "at": "head", "rain_from": 0.15, "share": {"adult": 0.55, "child": 0.4, "elder": 0.7},
+    "colours": ["#1c1e22", "#2c5f9e", "#c0392b", "#3b6e4a", "#e0a33a", "#6d7177", "#5a3d6e", "#d8dbe0"],
+    "parts": [{"shape": "cone", "radius_m": 0.52, "height_m": 0.24, "sides": 12, "at": [-0.14, 0.42, 0.2], "colour": "paint"},
+     {"shape": "cylinder", "radius_m": 0.009, "height_m": 1.28, "sides": 6, "at": [-0.14, -0.55, 0.2], "colour": "#2b2b2e"},
+     {"shape": "cylinder", "radius_m": 0.016, "height_m": 0.12, "sides": 6, "at": [-0.14, -0.6, 0.2], "colour": "#4a3424"}]}
+  }
+ },
  "people": {
   "view_reach_m": 24,
   "asset": "res://assets/people/people.bin", "atlas": "res://assets/people/atlas.bin",

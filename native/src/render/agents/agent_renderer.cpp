@@ -63,7 +63,7 @@ bool AgentRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	jump_m_ = t["wheel_jump_m"].f();
 	if (!errors.is_empty()) return false;
 	people_.set_level_hold(level_hold_);
-	return people_.init(ctx, t["people"], t["held"], shapes_, errors);
+	return people_.init(ctx, t["people"], t["held"], t["worn"], shapes_, errors);
 }
 
 void AgentRenderer::commit_mesh(int model, int draw, const MeshBuilder &mb) {
@@ -107,6 +107,7 @@ Dictionary AgentRenderer::cost() const {
 	Dictionary out;
 	out["cabins"] = cabins_drawn();
 	out["people_near"] = people_.shown(0);
+	out["people_worn"] = people_.worn_shown();
 	out["rows_lost"] = rows_lost_;
 	int draws = 0, tris = 0;
 	for (int i = 0; i < AGENT_MODELS; i++)

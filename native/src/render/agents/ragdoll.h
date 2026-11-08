@@ -17,6 +17,11 @@ namespace city {
 
 constexpr int RAGDOLL_JOINTS = 18; // the particles on a bone, in cook_people.py RAGDOLL_JOINTS order
 constexpr int RAGDOLL_PARTS = 13; // in cook_people.py RAGDOLL_PARTS order
+// The particles by name: the joints in cook_people.py RAGDOLL_JOINTS order (PeopleAsset::joint_bone, PersonVariation::joints), then the top of
+// the head and the belly, which only the ragdoll has.
+namespace ragdoll_joint {
+enum Joint : int { PEL, CHE, NEC, HEA, LS, LE, LW, RS, RE, RW, LH, LK, LA, LT, RH, RK, RA, RT, TOP, BEL };
+} // namespace ragdoll_joint
 
 // A wall of a building a body can strike: a box of the lot's frame, up to `top`.
 struct BodyWall {

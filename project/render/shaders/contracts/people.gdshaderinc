@@ -22,6 +22,10 @@ const int FACE_ACT_PHONE = 3;
 const int FACE_ACT_CROUCH = 4;
 // the helmets' colours (helmets.cpp, people_helmet.gdshader)
 const int HELMET_COLOURS = 8;
+// the things people wear (worn_things.cpp, people_worn.gdshader worn_bone, worn_at by body, worn_colours)
+const int WORN_THINGS = 4;
+// the colours of one worn thing (worn_things.cpp, people_worn.gdshader worn_colours)
+const int WORN_COLOURS = 8;
 // the cooked people (people_asset.cpp reads and checks them): a face row's channels and the rows side by side in face_table (people_face.gdshaderinc), a bone's texels in the palette and a value's (high bytes, then low; people_pose.gdshaderinc), the skeleton's bones (people_skin.gdshaderinc)
 const int PEOPLE_FACE_CHANNELS = 13;
 const int PEOPLE_FACE_SPAN = 8;

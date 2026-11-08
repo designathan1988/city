@@ -1,5 +1,5 @@
 // What the people renderer reads once (people_renderer.h): the cooked people file and its clip, walk and face tables for the
-// shaders, the held things and helmets, the blob under each walker, and agents.json's people block through the strict reader's
+// shaders, the held and worn things and helmets, the blob under each walker, and agents.json's people block through the strict reader's
 // values (render/data_reader.h). The frame's work is people_renderer.cpp.
 #include "render/agents/people_renderer.h"
 #include "core/shader_contracts/people.h"
@@ -93,7 +93,30 @@ void PeopleRenderer::set_tables(const RID &material) const {
 	rs->material_set_param(material, "body_female", female);
 }
 
-bool PeopleRenderer::init(const RenderContext &ctx, const DataValue &people, const DataValue &held, const AgentShapes &shapes, PackedStringArray &errors) {
+bool PeopleRenderer::find_clips(PackedStringArray &errors) {
+	if (asset_.clips.size() > size_t(PEOPLE_CLIPS)) {
+		errors.push_back("pessoas: clipes demais para a tabela do shader");
+		return false;
+	}
+	for (int i = 0; i < int(PedAct::COUNT); i++) {
+		act_clips_[i] = ACT_CLIPS[i] ? asset_.clip(ACT_CLIPS[i]) : 0;
+		if (act_clips_[i] < 0) errors.push_back(String("pessoas: falta o clipe ") + ACT_CLIPS[i]);
+	}
+	crouch_down_ = asset_.clip("crouchDown");
+	crouch_up_ = asset_.clip("crouchUp");
+	if (crouch_down_ < 0 || crouch_up_ < 0) errors.push_back("pessoas: falta o clipe de agachar");
+	for (const FaceAct &f : FACE_ACTS) // set_faces writes each act at its clip's row
+		if (asset_.clip(f.clip) < 0) errors.push_back(String("people: no clip ") + f.clip + String(" for the face table"));
+	for (int i = 0; i < int(SeatPose::COUNT); i++) {
+		seat_clips_[i] = asset_.clip(SEAT_CLIPS[i]);
+		stop_clips_[i] = STOP_CLIPS[i] ? asset_.clip(STOP_CLIPS[i]) : -1;
+		if (seat_clips_[i] < 0) errors.push_back(String("pessoas: falta o clipe ") + SEAT_CLIPS[i]);
+	}
+	return errors.is_empty();
+}
+
+bool PeopleRenderer::init(const RenderContext &ctx, const DataValue &people, const DataValue &held, const DataValue &worn, const AgentShapes &shapes,
+		PackedStringArray &errors) {
 	reset();
 	scenario_ = ctx.scenario;
 	material_ = ctx.material("people", errors);
@@ -131,30 +154,14 @@ bool PeopleRenderer::init(const RenderContext &ctx, const DataValue &people, con
 			errors.push_back("pessoas: falta corpo de alguma idade");
 			return false;
 		}
-	if (asset_.clips.size() > size_t(PEOPLE_CLIPS)) {
-		errors.push_back("pessoas: clipes demais para a tabela do shader");
+	if (!find_clips(errors) || !held_.init(ctx, held, ACT_CLIPS, errors) || !helmets_.init(ctx, held["helmet"], errors) || !worn_.init(ctx, worn, asset_, errors))
 		return false;
-	}
-	for (int i = 0; i < int(PedAct::COUNT); i++) {
-		act_clips_[i] = ACT_CLIPS[i] ? asset_.clip(ACT_CLIPS[i]) : 0;
-		if (act_clips_[i] < 0) errors.push_back(String("pessoas: falta o clipe ") + ACT_CLIPS[i]);
-	}
-	crouch_down_ = asset_.clip("crouchDown");
-	crouch_up_ = asset_.clip("crouchUp");
-	if (crouch_down_ < 0 || crouch_up_ < 0) errors.push_back("pessoas: falta o clipe de agachar");
-	for (const FaceAct &f : FACE_ACTS) // set_faces writes each act at its clip's row
-		if (asset_.clip(f.clip) < 0) errors.push_back(String("people: no clip ") + f.clip + String(" for the face table"));
-	for (int i = 0; i < int(SeatPose::COUNT); i++) {
-		seat_clips_[i] = asset_.clip(SEAT_CLIPS[i]);
-		stop_clips_[i] = STOP_CLIPS[i] ? asset_.clip(STOP_CLIPS[i]) : -1;
-		if (seat_clips_[i] < 0) errors.push_back(String("pessoas: falta o clipe ") + SEAT_CLIPS[i]);
-	}
-	if (!errors.is_empty() || !held_.init(ctx, held, ACT_CLIPS, errors) || !helmets_.init(ctx, held["helmet"], errors)) return false;
 	RenderingServer *rs = RenderingServer::get_singleton();
 	set_tables(material_);
 	set_faces(material_);
 	set_tables(held_.material());
 	set_tables(helmets_.material());
+	set_tables(worn_.material());
 	rs->material_set_param(helmets_.material(), "head_bone", asset_.head_bone);
 	rs->material_set_param(helmets_.material(), "helmet_rows", shells);
 	rs->material_set_param(held_.material(), "hand_bone", asset_.hand_bone);

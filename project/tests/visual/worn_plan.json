@@ -1,0 +1,37 @@
+{
+ "_doc": "What walkers wear (render/agents/worn_things.cpp), close: the walker nearest the middle and the street round them in the dry, then in the rain with umbrellas open over some heads and backpacks on other backs, from the front, the side, behind and above.",
+ "city": {
+  "map": 0,
+  "seed": 1,
+  "generate": true
+ },
+ "steps": [
+  {"hour": 12},
+  {"dispatch": "set_speed", "args": [4]},
+  {"frames": 600},
+  {"walker": [160, 30, 20]},
+  {"frames": 4},
+  {"shot": "dry_pair"},
+  {"walker": [60, 30, 60]},
+  {"frames": 4},
+  {"shot": "dry_street"},
+  {"dispatch": "set_weather", "args": [{"rain": 0.8}]},
+  {"frames": 4},
+  {"shot": "rain_street"},
+  {"walker": [160, 30, 20]},
+  {"frames": 4},
+  {"shot": "rain_pair"},
+  {"walker": [200, 30, 10]},
+  {"frames": 4},
+  {"shot": "rain_front"},
+  {"walker": [200, 120, 10]},
+  {"frames": 4},
+  {"shot": "rain_side"},
+  {"walker": [200, 210, 18]},
+  {"frames": 4},
+  {"shot": "rain_behind"},
+  {"walker": [160, 300, 55]},
+  {"frames": 4},
+  {"shot": "rain_above"}
+ ]
+}

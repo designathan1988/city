@@ -25,6 +25,7 @@ void PeopleRenderer::reset() {
 	bodies_.release();
 	held_.reset();
 	helmets_.reset();
+	worn_.reset();
 	for (MultiMeshDraw &d : draws_) d.free();
 	blob_.free();
 }
@@ -56,6 +57,7 @@ bool PeopleRenderer::show_clip(const String &name) {
 	rs->material_set_param(material_, "idle_clip", c);
 	rs->material_set_param(held_.material(), "idle_clip", c);
 	rs->material_set_param(helmets_.material(), "idle_clip", c);
+	rs->material_set_param(worn_.material(), "idle_clip", c);
 	return true;
 }
 
@@ -65,6 +67,7 @@ void PeopleRenderer::begin() {
 	keeper_.begin();
 	held_.begin();
 	helmets_.begin();
+	worn_.begin();
 }
 
 int PeopleRenderer::level_at(float dist) const {
@@ -117,6 +120,7 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 	const float clock = float(std::fmod(double(f.stamp_ns[POSE_TRAIL - 1]) / NS_PER_S, CLOCK_WRAP_S));
 	RenderingServer::get_singleton()->material_set_param(material_, "idle_clock", clock);
 	RenderingServer::get_singleton()->material_set_param(held_.material(), "idle_clock", clock);
+	RenderingServer::get_singleton()->material_set_param(worn_.material(), "idle_clock", clock);
 	int drawn = 0;
 	for (const AgentRecord &rec : f.people) {
 		Pose p = record_pose(rec, at);
@@ -147,6 +151,9 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 		if (level == 0 && doing > 0) {
 			if (float *row = held_.row(rec.id, act)) agent_row(row, p, 1.f, float(v), doing, float(rec.look & SEED_MASK), walk, 1.f - rec.rest);
 		}
+		if (!blob) // on the meshes of a body, not its far card
+			for (int k = 0; k < worn_.count(); k++)
+				if (worn_.wears(k, rec.look, rec.age)) agent_row(worn_.row(rec.id, k), p, 1.f, float(v), doing, float(rec.look & SEED_MASK), walk, 1.f - rec.rest);
 		drawn++;
 	}
 	keeper_.sweep([&](int k) -> InstanceRows & { return bufs_[size_t(k)]; });
@@ -159,6 +166,7 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 		}
 	blob_.set(scenario_, blob_mesh_.rid, blob_material_, blob_buf_, box, false, LAYER_PEOPLE);
 	held_.draw(scenario_, box, LAYER_PEOPLE);
+	worn_.draw(scenario_, box, LAYER_PEOPLE);
 	helmets_.draw(scenario_, box, LAYER_PEOPLE);
 	return drawn;
 }

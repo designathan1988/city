@@ -203,6 +203,10 @@
   "shader": "res://render/shaders/people_helmet.gdshader",
   "params": {}
  },
+ "people_worn": {
+  "shader": "res://render/shaders/people_worn.gdshader",
+  "params": {}
+ },
  "people_far": {
   "shader": "res://render/shaders/people_far.gdshader",
   "params": {}

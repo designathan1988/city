@@ -239,6 +239,7 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 		std::shared_lock<std::shared_mutex> lk(s.map_mutex);
 		cost_.lock = laps.lap();
 		drain_log(s);
+		agents_.people().set_rain(s.nature.weather.rain); // the walkers' umbrellas follow the weather (worn_things.h)
 		effects_.touch_terrain(s, terrain_rects_);
 		effects_.sync(s, f);
 		const std::vector<int64_t> repaint = effects_.take_repaint();

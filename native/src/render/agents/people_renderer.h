@@ -1,7 +1,7 @@
 // Pedestrians near the camera drawn with the cooked MakeHuman people (people_asset.h): one MultiMesh per variation and
 // level, refilled every frame. A body of the pedestrian's age, tints and phase come from its look hash (Roadcraft looks.ts);
 // the walk phase follows the metres walked over the variation's stride, and one standing plays the idle or what the simulation says
-// they are doing (PedAct), with what that holds in the hand (held_things.h). Past blob_from_m
+// they are doing (PedAct), with what that holds in the hand (held_things.h), and what they wear (worn_things.h). Past blob_from_m
 // a person casts no real shadow: a soft disc lies under it (material "people_blob"). Material "people"
 // (data/render/materials.json), settings in data/render/agents.json "people".
 #pragma once
@@ -10,6 +10,7 @@
 #include "render/agents/agent_meshes.h"
 #include "render/agents/held_things.h"
 #include "render/agents/helmets.h"
+#include "render/agents/worn_things.h"
 #include "render/agents/body_renderer.h"
 #include "render/agents/people_asset.h"
 #include "render/row_keeper.h"
@@ -52,9 +53,11 @@ inline void agent_row(float *row, const Pose &p, float scale, float c0, float c1
 
 class PeopleRenderer {
 public:
-	bool init(const RenderContext &ctx, const DataValue &people, const DataValue &held, const AgentShapes &shapes, godot::PackedStringArray &errors);
+	bool init(const RenderContext &ctx, const DataValue &people, const DataValue &held, const DataValue &worn, const AgentShapes &shapes,
+			godot::PackedStringArray &errors);
 	void reset();
 	void set_level_hold(float share) { level_hold_ = share; }
+	void set_rain(float rain) { worn_.set_rain(rain); } // the weather the worn things answer (worn_things.h)
 	// Who rides is keyed from here on, past the walkers' ids.
 	static constexpr uint64_t PEOPLE_DENSE_KEYS = 1u << 20;
 	// The frame's rows open: riders first (seat), then the walkers and the draws (update).
@@ -68,6 +71,7 @@ public:
 	BodyRenderer &bodies() { return bodies_; }
 	int variation_of(uint32_t look, int age) const; // which body a walker is drawn with
 	int shown(int level) const; // people drawn at this level on the last frame
+	godot::Dictionary worn_shown() const { return worn_.shown(); } // each worn thing drawn on the last frame
 	// For the tests and the captures: the file's clips, the first body's fit in each; and everybody at rest in clip `name`.
 	godot::Array clips() const;
 	bool show_clip(const godot::String &name);
@@ -94,6 +98,7 @@ private:
 	void set_faces(const godot::RID &material) const;
 	int act_clips_[int(PedAct::COUNT)] = {}; // what each act plays
 	int crouch_down_ = 0, crouch_up_ = 0; // either side of the crouch's own clip
+	bool find_clips(godot::PackedStringArray &errors); // what each act, the crouch, the faces and each seat play, in the file's clips
 	struct Played {
 		int clip = 0;
 		float phase = 0;
@@ -101,6 +106,7 @@ private:
 	Played crouch_at(int female, float since, float left) const; // `since` it began and `left` of it
 	HeldThings held_;
 	Helmets helmets_;
+	WornThings worn_;
 	void set_tables(const godot::RID &material) const; // what any material that poses a person reads
 	// A body's level by the distance; `blob`: past blob_from_m_, where the far mesh casts no shadow.
 	int level_at(float dist) const;
