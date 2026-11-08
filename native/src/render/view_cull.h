@@ -9,7 +9,7 @@
 namespace city {
 
 struct ViewCull {
-	static constexpr int MAX_PLANES = 6;
+	static constexpr int MAX_PLANES = 6; // a frustum's
 	godot::Plane planes[MAX_PLANES]; // normals pointing out of the view (Projection::get_projection_planes)
 	int count = 0; // none (no camera): everything passes
 

@@ -18,8 +18,7 @@ namespace city {
 
 namespace {
 using End = RoadEnd;
-constexpr double PLATE_MIN_RETREAT = 0.05, CTRL_MAX = 0.5, CTRL_MIN = -60;
-constexpr double PARALLEL = 1e-3, SAME = 1e-3;
+constexpr double PARALLEL = 1e-3, SAME = 1e-3; // two edges this near parallel do not cross; a step this short is no step
 constexpr int MIN_ARC = 2;
 
 std::vector<End> ends_of(const RoadEmit &e, int n) {
@@ -42,6 +41,7 @@ std::vector<End> ends_of(const RoadEmit &e, int n) {
 
 // The kerb line from a's left side (u = ua) to b's right side (u = -ub).
 std::vector<Vector3> corner(const Tuning &tn, const StreetLook &L, const Vector3 &node, const End &a, double ua, const End &b, double ub) {
+	const NodeOutlineShape &K = L.shapes.road_shapes;
 	std::vector<Vector3> out;
 	Corner fc = corner_fillet(tn, a.arm, b.arm);
 	Vector3 pa = side(a, ua), pb = side(b, -ub);
@@ -66,7 +66,7 @@ std::vector<Vector3> corner(const Tuning &tn, const StreetLook &L, const Vector3
 	if (std::fabs(den) > PARALLEL) {
 		double wx = pb.x - pa.x, wz = pb.z - pa.z;
 		double sa = (wx * b.d.z - wz * b.d.x) / den, sb = (wx * a.d.z - wz * a.d.x) / den;
-		if (sa < CTRL_MAX && sb < CTRL_MAX && sa > CTRL_MIN && sb > CTRL_MIN) { kx = pa.x + a.d.x * sa; kz = pa.z + a.d.z * sa; }
+		if (sa < K.ctrl_max && sb < K.ctrl_max && sa > K.ctrl_min && sb > K.ctrl_min) { kx = pa.x + a.d.x * sa; kz = pa.z + a.d.z * sa; }
 	}
 	for (int i = 0; i <= L.bevel_steps; i++) {
 		double t = double(i) / L.bevel_steps, s = 1 - t;
@@ -121,10 +121,10 @@ size_t sharpen(const Tuning &tn, std::vector<Vector3> &out, const End &a, const 
 } // namespace
 
 // Whether a node of several arms is drawn as a plate: one of its mouths stands back from it.
-bool is_plate(const std::vector<End> &ends) {
+bool is_plate(const NodeOutlineShape &K, const std::vector<End> &ends) {
 	if (ends.size() < 2) return false;
 	bool any = false;
-	for (const End &en : ends) any = any || en.at > PLATE_MIN_RETREAT;
+	for (const End &en : ends) any = any || en.at > K.plate_min_retreat;
 	return any;
 }
 
@@ -134,7 +134,7 @@ std::shared_ptr<const NodeShape> node_shape(const RoadEmit &e, int n) {
 		auto shape = std::make_shared<NodeShape>();
 		shape->ends = ends_of(e, n);
 		const std::vector<End> &ends = shape->ends;
-		if (is_plate(ends)) {
+		if (is_plate(e.L.shapes.road_shapes, ends)) {
 			const RoadNode &nd = e.s.roads.nodes[n];
 			const Vector3 node(float(nd.x), float(nd.y), float(nd.z));
 			for (size_t i = 0; i < ends.size(); i++) {

@@ -23,9 +23,9 @@ namespace city {
 namespace {
 constexpr int RGBA = 4;
 constexpr int FROND_MIP = 4, FROND_TEXEL = 4; // the atlas level a frond is read at, and a texel's bytes
-constexpr float DISPLAY_GAMMA = 2.2f;
+constexpr float DISPLAY_GAMMA = 2.2f; // a display's gamma, the sRGB curve's approximation
 constexpr float FROND_COVER = 0.2f; // the leaflets' cover that still reads as frond
-constexpr float BYTE = 255.f, CENTRE_Y = 0.5f, NORMAL_HALF = 0.5f, ALPHA_CUT = 0.5f;
+constexpr float BYTE = 255.f, CENTRE_Y = 0.5f, NORMAL_HALF = 0.5f, ALPHA_CUT = 0.5f; // a byte's top; halves: the picture's middle, a normal's packing, coverage
 constexpr int CARD_CORNERS = 4, TRI = 3;
 constexpr float CARD_BULGE = 0.6f; // a card leans outwards from its centre, so a tuft reads as a lump and not a disc
 

@@ -17,7 +17,8 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float BYTE_MAX = 255.f, U32_SCALE = 4294967296.f;
+constexpr float BYTE_MAX = 255.f, U32_SCALE = 4294967296.f; // a byte's top; 2^32, a hash's range
+// a byte's top; the window follows the eye once it has moved an eighth of its width from the middle
 constexpr int BYTE_TOP = 255, HOLD_SHARE = 8;
 const char *const ORIGIN_PARAM = "wear_origin"; // road.gdshader
 const char *const FIELD_PARAM = "wear_field";

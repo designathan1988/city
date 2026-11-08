@@ -170,7 +170,7 @@ void each_shape(const RoadEmit &e, int n, Junction &&plate, Cut &&cut, Bulb &&tu
 		else cut(e, n, ends[0]);
 		return;
 	}
-	if (is_plate(ends)) plate(e, n, *shape);
+	if (is_plate(e.L.shapes.road_shapes, ends)) plate(e, n, *shape);
 }
 
 // The verge along a line of the paving, each point taken `rise` up and sent out towards `from` the other way.

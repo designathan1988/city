@@ -24,7 +24,8 @@ void ring_dirs(int i, int seg, Vector3 &d0, Vector3 &d1) {
 	d0 = Vector3(std::cos(a0), 0, std::sin(a0));
 	d1 = Vector3(std::cos(a1), 0, std::sin(a1));
 }
-constexpr float DEGENERATE = 1e-12f;
+constexpr float DEGENERATE = 1e-12f; // a triangle of less area has no normal
+// RGBA8 packed red first (core/color.h): a channel's byte and its shift; the one place a packed colour is unpacked
 constexpr float BYTE = 255.f;
 constexpr int R_SHIFT = 24, G_SHIFT = 16, B_SHIFT = 8;
 constexpr uint32_t BYTE_MASK = 0xFF;

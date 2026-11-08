@@ -11,7 +11,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float DEGENERATE = 1e-12f;
+constexpr float DEGENERATE = 1e-12f; // a triangle of less area has no normal
 constexpr double ONE_GRADE_M = 0.02; // off the straight line between its mouths a road is on one grade under this
 } // namespace
 

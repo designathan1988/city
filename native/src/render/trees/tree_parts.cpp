@@ -18,9 +18,9 @@ namespace city {
 
 namespace {
 constexpr float HALF_F = 0.5f;
-constexpr float GOLDEN = 1.61803398875f;
+constexpr float GOLDEN = 1.61803398875f; // the golden ratio: an icosahedron's vertices lie on its rectangles
 constexpr float GOLDEN_ANGLE = 2.39996322973f; // radians between successive spiral points (pi * (3 - sqrt 5))
-constexpr int ICO_VERTS = 12, ICO_FACES = 20;
+constexpr int ICO_VERTS = 12, ICO_FACES = 20; // an icosahedron's
 enum IcoVertex : int { V0, V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11 };
 constexpr int ICO[ICO_FACES][3] = { { V0, V11, V5 }, { V0, V5, V1 }, { V0, V1, V7 }, { V0, V7, V10 }, { V0, V10, V11 }, { V1, V5, V9 }, { V5, V11, V4 },
 	{ V11, V10, V2 }, { V10, V7, V6 }, { V7, V1, V8 }, { V3, V9, V4 }, { V3, V4, V2 }, { V3, V2, V6 }, { V3, V6, V8 }, { V3, V8, V9 }, { V4, V9, V5 },

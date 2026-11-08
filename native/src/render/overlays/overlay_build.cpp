@@ -1,5 +1,6 @@
 // CPU meshes of the overlay layers, one per 256 m chunk: the zone ribbons along the zoned road sides and the congestion
 // ribbons along each carriageway (see overlay_renderer.h).
+#include "render/mesh_builder.h"
 #include "render/overlays/overlay_renderer.h"
 
 #include "render/owned_segments.h"
@@ -13,15 +14,15 @@ namespace city {
 
 namespace {
 constexpr int SIDES = 2;
-constexpr int RGBA_R_SHIFT = 24, RGBA_G_SHIFT = 16, RGBA_B_SHIFT = 8;
-constexpr float BYTE_MAX = 255.f; // packed zone colours are RGBA8
 constexpr double MIN_DERIV = 1e-6; // a degenerate curve keeps a finite normal
 constexpr float COLOUR_RANGE_MIN = 1e-3f; // free_share == jam_share still divides
 constexpr float HALF_JAM = 0.5f;
 
 Color zone_color(const CityState &s, int code, float alpha) {
 	const uint32_t c = s.catalog.zone(code).color;
-	return Color(float((c >> RGBA_R_SHIFT) & 0xff) / BYTE_MAX, float((c >> RGBA_G_SHIFT) & 0xff) / BYTE_MAX, float((c >> RGBA_B_SHIFT) & 0xff) / BYTE_MAX, alpha);
+	Color out = rgba8_to_color(c); // packed zone colours are RGBA8
+	out.a = alpha;
+	return out;
 }
 
 // A convex polygon cut by a line of constant x (or z): what lies on the side `keep` looks to.

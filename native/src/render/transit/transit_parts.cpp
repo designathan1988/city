@@ -17,7 +17,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float HALF = 0.5f, MIN_RUN_M = 1e-3f;
+constexpr float HALF = 0.5f, MIN_RUN_M = 1e-3f; // a run this short has no direction
 
 Vector3 v3(DataReader r, const Array &a) {
 	r.expect(a, 3);

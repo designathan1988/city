@@ -13,7 +13,7 @@ namespace city {
 
 namespace {
 constexpr uint32_t CABLE_RGB = 0xd8dcdeU;
-constexpr float STRAND_M = 0.14f, FAN_LOW = 0.45f, FAN_HIGH = 0.55f, HALF = 0.5f, FOOT_SINK_M = 1.f, STRUT_H_M = 1.6f, LEG_OUT_M = 1.2f, ANCHOR_IN_M = 0.3f, STRUT_OVER_M = 7.f;
+constexpr float HALF = 0.5f;
 const Vector3 UP(0, 1, 0);
 
 struct Span {
@@ -42,19 +42,20 @@ void box(MeshBuilder &mb, const Vector3 &foot, const Vector3 &fwd, const Vector3
 }
 
 void tower(const RoadEmit &e, const SegFrame &f, float casing, const Color &concrete) {
+	const StayShape &K = e.L.shapes.road_stays;
 	const Tuning &tn = e.s.catalog.tune;
-	const float top = f.c.y + float(tn.structure_tower_over_m), leg = float(tn.structure_tower_leg_m), out = casing + LEG_OUT_M;
+	const float top = f.c.y + float(tn.structure_tower_over_m), leg = float(tn.structure_tower_leg_m), out = casing + K.leg_out_m;
 	for (const float side : { -1.f, 1.f }) {
 		Vector3 foot = f.c + f.left * (out * side);
-		foot.y = e.s.terrain.height_at(foot.x, foot.z) - FOOT_SINK_M;
+		foot.y = e.s.terrain.height_at(foot.x, foot.z) - K.foot_sink_m;
 		box(e.mb, foot, f.fwd, f.left, leg, leg, top - foot.y, concrete);
 	}
-	for (const float y : { f.c.y + STRUT_OVER_M, top - STRUT_H_M }) box(e.mb, Vector3(f.c.x, y, f.c.z), f.fwd, f.left, leg, out * 2, STRUT_H_M, concrete);
+	for (const float y : { f.c.y + K.strut_over_m, top - K.strut_h_m }) box(e.mb, Vector3(f.c.x, y, f.c.z), f.fwd, f.left, leg, out * 2, K.strut_h_m, concrete);
 }
 
 // A cable as two thin strips across each other: it reads from any side and takes no volume.
-void cable(MeshBuilder &mb, const Vector3 &a, const Vector3 &b, const Vector3 &left, const Color &col) {
-	const Vector3 up = UP * (STRAND_M * HALF), side = left * (STRAND_M * HALF);
+void cable(const StayShape &K, MeshBuilder &mb, const Vector3 &a, const Vector3 &b, const Vector3 &left, const Color &col) {
+	const Vector3 up = UP * (K.strand_m * HALF), side = left * (K.strand_m * HALF);
 	const Vector3 along = (b - a).normalized(), out = along.cross(left).normalized();
 	structure_face(mb, a - side, b - side, b + side, a + side, col, out);
 	structure_face(mb, a + side, b + side, b - side, a - side, col, -out);
@@ -69,6 +70,7 @@ bool stayed(const RoadEmit &e, int sid) {
 }
 
 void emit_stays(const RoadEmit &e, int sid, double v0, double v1, float casing) {
+	const StayShape &K = e.L.shapes.road_stays;
 	Span span;
 	if (!span_of(e, sid, span)) return;
 	const Tuning &tn = e.s.catalog.tune;
@@ -82,10 +84,10 @@ void emit_stays(const RoadEmit &e, int sid, double v0, double v1, float casing) 
 		const double along = span.start + s, nearest = (std::floor(along / span.every) + HALF) * span.every, off = nearest - along;
 		if (std::fabs(off) < tn.structure_cable_first_m) continue;
 		const SegFrame f = seg_frame(e.s, sid, s);
-		const float rise = float(tn.structure_tower_over_m) * (FAN_LOW + FAN_HIGH * float(std::fabs(off) / reach));
+		const float rise = float(tn.structure_tower_over_m) * (K.fan_low + K.fan_high * float(std::fabs(off) / reach));
 		for (const float side : { -1.f, 1.f }) {
-			const Vector3 edge = f.left * ((casing - ANCHOR_IN_M) * side), mast = f.left * ((casing + LEG_OUT_M) * side);
-			cable(e.mb, f.c + edge, f.c + f.fwd * float(off) + mast + UP * rise, f.left, steel);
+			const Vector3 edge = f.left * ((casing - K.anchor_in_m) * side), mast = f.left * ((casing + K.leg_out_m) * side);
+			cable(K, e.mb, f.c + edge, f.c + f.fwd * float(off) + mast + UP * rise, f.left, steel);
 		}
 	}
 }

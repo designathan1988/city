@@ -17,7 +17,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr int CORNERS = 4, CARD_INDICES = 6, CUSTOM_HALFS = 4;
+constexpr int CORNERS = 4, CARD_INDICES = 6, CUSTOM_HALFS = 4; // a card's corners, its two triangles' indices, CUSTOM0's four halfs
 constexpr float FRAME_SIDES = 2.f; // a frame reaches its half side either way
 constexpr int CARD_TRIS[CARD_INDICES] = { 0, 1, 2, 0, 2, 3 };
 } // namespace

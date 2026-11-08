@@ -315,6 +315,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/render/region_table.h` — o estilo regional de uma tabela (`styles.<id>`), lido num lugar só
 - `native/src/render/render_context.h` — cenário, tabelas de render e materiais recebidos pelos renderizadores
 - `native/src/render/render_world.cpp` · `native/src/render/render_world.h` — consome o ChangeLog e aplica os orçamentos por quadro
+- `native/src/render/roads/street_shapes.h` · `native/src/render/roads/street_shapes_parts.h` — every size a street emitter draws with beyond the road's section, one block per file (structures, stays, a junction's outline, the section, the street trees), as streets.json "shapes" gives them; the StreetShapes the StreetLook holds
 - `native/src/render/roads/road_emit.cpp` — referenciais de segmento, nós e quad texturizado
 - `native/src/render/roads/road_junction.cpp` · `native/src/render/roads/road_kerb.cpp` — placas de nó, beco sem saída e balão; a borda com meio-fio de uma esquina ou balão
 - `native/src/render/roads/road_shapes.cpp` · `native/src/render/roads/road_shapes.h` — the shapes the road jobs share, made once for the city's revision: a node's ends and its corners' kerb and outer lines (road and verge jobs), a segment's runs of retaining wall (structure and verge jobs)

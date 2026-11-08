@@ -3382,6 +3382,24 @@ tolerance, the limbs' and parts' joint tables, the bodies' seed.
 
 **What changes.** Nothing: the hashes, the numbers and every photo the same.
 
+### 6.51 B2, C14 and C16 (the rest of the render): the street emitters' sizes in streets.json shapes, one colour unpack (2026-11-08)
+
+**Cause and fix.** The street emitters held the 4.0's and by-eye sizes beside their definitions: a viaduct's build-up, piers,
+bents and parapets, a tunnel portal's jambs, crown, lintel, headwall and wings, a cable-stayed span's strands and struts, where a
+junction's kerb control point may stand, the reserve a ramp leaves of a footway, the street trees' scales. They went to
+streets.json `shapes`, read by `StreetLook::load` through the one reader of shapes and reached by every emitter through the street
+look it is handed (`e.L.shapes`, `L.shapes`). The street trees' choice of species (`hash % 2`, the first two of `trees.species`) is
+data too, a list of their indices, the same pick.
+
+Two overlays unpacked a packed colour by hand (`overlay_build.cpp` zone colours, `overlay_renderer.cpp` congestion ramp: shifts,
+masks and 255 a second and third time beside `rgba8_to_color`, `render/mesh_builder.cpp`): both call it, the same floats. The frame's
+cost read the committed queues' times by number (`hand_ms_[5]`): the queues are named in the order they are committed. The
+definitions stay and say what they are: byte tops, bit layouts, the FNV-1a offset basis and prime, the golden ratio and the
+icosahedron, a display's gamma, the hectare, a frustum's planes, the culling boxes' height, the hysteresis of a dropped chunk,
+the tolerances. The structures' and the stays' tones join the pending render palette (`log/pendencias.md`).
+
+**What changes.** Nothing: the hashes, the numbers and every photo the same.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

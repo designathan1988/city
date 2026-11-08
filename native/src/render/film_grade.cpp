@@ -16,7 +16,7 @@ namespace city {
 
 namespace {
 constexpr int CHANNELS = 3, TEXEL_FLOATS = 4;
-constexpr float BYTE_TOP = 255.f;
+constexpr float BYTE_TOP = 255.f; // a byte's largest value
 constexpr float ROUND_UP = 0.5f;
 constexpr float REC709_R = 0.2126f, REC709_G = 0.7152f, REC709_B = 0.0722f; // luma weights, ITU-R BT.709
 

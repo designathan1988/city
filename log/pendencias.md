@@ -23,7 +23,8 @@ O que falta fazer, por área.
   outside post); once lld orders it alike at every link, the link may sort again and `pgo.sh` drop its order build.
 - The building render's last look values in code (C14, log/review.md §6.41): the shell's baked tone and grime (`shell.cpp`
   `MACRO_M`, `TONE_*`, `GRIME_*`, read by `Shell::shaded` with no look in reach: a tone block the builders hand each shell), the
-  material colours a few emitters name (brass, gas cylinders, shutters, clocks, lamps) and the roof plant's catalogue arrays
+  material colours a few emitters name (brass, gas cylinders, shutters, clocks, lamps; the road structures' concrete and deck and the
+  stays' cable, `road_structures.cpp`, `road_stays.cpp`) and the roof plant's catalogue arrays
   (`roof_plant.cpp` `PLANT`, `USE_CHANCE`), the foliage leaf's shape (`bay_props.cpp`). They carry their sources now; their table is a
   render palette and the plant's rows in `building_look.json`.
 

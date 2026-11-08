@@ -16,7 +16,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float HORIZONTAL_EPS = 1e-6f;
+constexpr float HORIZONTAL_EPS = 1e-6f; // a direction this flat has no up
 constexpr int LIGHT_SIDES = 18, BEAM_SEGMENTS = 4; // Volumetric Light Beam: 18 sides, at least 3 segments for a smooth fall
 constexpr float BEAM_LENS = 0.075f; // the cut apex over the radius at the ground: the lens, some 0.28 m of 3.7
 constexpr float LIGHT_BEAM_PART = 2.f;

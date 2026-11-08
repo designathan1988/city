@@ -17,9 +17,9 @@ namespace city {
 namespace {
 constexpr float PLACE_GRAIN = 16.f; // of a metre: the grid a lamp's key is read on
 constexpr float PUBLISHED_M = 0.25f; // a smaller change of the lit radius is not published
-constexpr float CHUNK_HALF_DIAGONAL = 0.7072f;
+constexpr float CHUNK_HALF_DIAGONAL = 0.7072f; // a square's half diagonal per side (the square root of a half, rounded up)
 constexpr double STRAIGHT_DOWN = -PI_D / 2; // a spot shines along its -Z
-constexpr int HALF_KEY_BITS = 32;
+constexpr int HALF_KEY_BITS = 32; // a key: the row over the column's 32 bits
 constexpr uint32_t CASTERS = LAYER_FURNITURE | LAYER_VEHICLES | LAYER_PEOPLE; // a wall in every lamp's map is most of the cost
 
 uint64_t lamp_key(const Vector3 &at) {

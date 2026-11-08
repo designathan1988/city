@@ -30,7 +30,7 @@ private:
 		bool operator==(const Key &o) const { return place == o.place && revision == o.revision; }
 	};
 	struct KeyHash {
-		static constexpr int SHIFT = 31;
+		static constexpr int SHIFT = 31; // the product's high half folded onto its low (a 64-bit mix)
 		size_t operator()(const Key &k) const {
 			const uint64_t h = (uint64_t(k.place) ^ k.revision) * GOLDEN_GAMMA_64;
 			return size_t(h ^ (h >> SHIFT));

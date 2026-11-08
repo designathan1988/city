@@ -15,6 +15,8 @@ using namespace godot;
 namespace city {
 
 namespace {
+// a chunk's box from under the deepest ground to over the highest (it is culled by it, never drawn); a chunk is dropped two chunks
+// past its reach, so it is not dropped and loaded again at one border; the cover's stream of a cell's hash
 constexpr float COVER_MIN_Y = -100.f, COVER_SPAN_Y = 700.f, HALF = 0.5f, DROP_CHUNKS = 2.f;
 constexpr uint32_t COVER_SALT = 0xc07e12u;
 // Hash streams of one lattice cell.

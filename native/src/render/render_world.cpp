@@ -284,11 +284,12 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 	cost_.buildings = laps.lap();
 	cost_.building = buildings_.commit_times();
 	// Every other chunk queue in the frame's one order: the bakes the ledger admits, then the hand-overs while the deadline lasts.
+	enum Hand { ROADS, FAR_ROADS, VERGES, STRUCTURES, PROPS, TREES_NEAR, TREES_FAR, COVER, WATER }; // the queues below, in their order
 	f.commit({ &roads_, &far_roads_, &verges_, &structures_, &props_, trees_.near_queue(), trees_.far_queue(), cover_.queue(), &water_ }, &hand_ms_);
 	far_roads_.fold(roads_);
-	cost_.roads = hand_ms_[0] + hand_ms_[1] + hand_ms_[2] + hand_ms_[3];
-	cost_.props = hand_ms_[4];
-	cost_.trees = hand_ms_[5] + hand_ms_[6] + hand_ms_[7];
+	cost_.roads = hand_ms_[ROADS] + hand_ms_[FAR_ROADS] + hand_ms_[VERGES] + hand_ms_[STRUCTURES];
+	cost_.props = hand_ms_[PROPS];
+	cost_.trees = hand_ms_[TREES_NEAR] + hand_ms_[TREES_FAR] + hand_ms_[COVER];
 	laps.lap();
 	cost_.uploads = double(f.upload.used) / BYTES_PER_MIB;
 }

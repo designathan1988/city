@@ -1,4 +1,5 @@
 // Zone-colour chunk jobs and the congestion layer's refresh cycle (see overlay_renderer.h).
+#include "render/mesh_builder.h"
 #include "render/overlays/overlay_renderer.h"
 
 #include "render/data_reader.h"
@@ -15,9 +16,7 @@ namespace city {
 
 namespace {
 constexpr float HALF = 0.5f, DROP_K = 1.5f;
-constexpr float RGBA_MAX = 255.f;
-constexpr int R_SHIFT = 24, G_SHIFT = 16, B_SHIFT = 8, JAM_STOPS = 3;
-constexpr uint32_t BYTE = 0xff;
+constexpr int JAM_STOPS = 3; // the congestion ramp's colours: free, middling, jammed (overlays.json congestion)
 } // namespace
 
 OverlayRenderer::OverlayRenderer() {
@@ -44,8 +43,7 @@ bool OverlayRenderer::init(const RenderContext &ctx, PackedStringArray &errors) 
 	if (errors.size() != before) return false;
 	for (int i = 0; i < JAM_STOPS; i++) {
 		const uint32_t c = r.in("congestion").colour_at(cols, i);
-		jam_colors_[i] = Color(float((c >> R_SHIFT) & BYTE) / RGBA_MAX, float((c >> G_SHIFT) & BYTE) / RGBA_MAX,
-				float((c >> B_SHIFT) & BYTE) / RGBA_MAX, float(c & BYTE) / RGBA_MAX);
+		jam_colors_[i] = rgba8_to_color(c);
 	}
 	return true;
 }
