@@ -9,7 +9,7 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
-constexpr float MOULD_K = 1.1f, BAND_LOW = 0.45f, BAND_MID = 0.1f, LOW_TIER = 0.94f;
+// A building's draw from its id: Knuth's multiplicative hash, the id shifted ID_OFF bits in.
 constexpr uint32_t GOLDEN = 2654435761u;
 constexpr int ID_OFF = 7;
 } // namespace
@@ -67,12 +67,13 @@ Lin wall_lin(const Placed &pl, const Volume &v, int storey, int side) {
 Lin trim_lin(const Placed &pl) { return lin_of(pl.b->paints[size_t(pl.b->trim)].rgb); }
 
 Paint moulding_of(const Placed &pl) {
+	const PlacedLook &K = pl.look->shapes.placed;
 	const Body &b = *pl.b;
 	const Paint &trim = b.paints[size_t(b.trim)];
 	if (trim.finish != FIN_METAL) return trim;
 	const Paint &wall = b.paints[size_t(b.wall)];
 	if (wall.finish == FIN_GLASS) return pl.data->color("coping_metal");
-	return Paint{ FIN_PLASTER, scale_rgb(wall.rgb, MOULD_K) };
+	return Paint{ FIN_PLASTER, scale_rgb(wall.rgb, K.mould_k) };
 }
 
 // The block's or the building's own roof, unless it is a pitched roof's or the generic slab: then one of the flat roofs, by the building.
@@ -87,14 +88,15 @@ Paint flat_roof_of(const Placed &pl, const Volume &v) {
 	return pl.data->flat_roofs[((uint32_t(pl.id) + ID_OFF) * GOLDEN) % pl.data->flat_roofs.size()];
 }
 
-void band(Shell &s, const Side &sd, float z, float out, float h, const Lin &lin, int8_t fin, bool flush) {
+void band(const Placed &pl, Shell &s, const Side &sd, float z, float out, float h, const Lin &lin, int8_t fin, bool flush) {
+	const PlacedLook &K = pl.look->shapes.placed;
 	if (flush) {
 		s.box(sd.f, -out, sd.length + out, z - h / 2, z + h / 2, 0, out, lin, fin, SKIP_E2_NEG);
 		return;
 	}
-	float lo = out * BAND_LOW;
-	s.box(sd.f, -lo, sd.length + lo, z - h / 2, z - BAND_MID * h, 0, lo, lin * LOW_TIER, fin, SKIP_E2_NEG);
-	s.box(sd.f, -out, sd.length + out, z - BAND_MID * h, z + h / 2, 0, out, lin, fin, SKIP_E2_NEG);
+	float lo = out * K.band_low;
+	s.box(sd.f, -lo, sd.length + lo, z - h / 2, z - K.band_mid * h, 0, lo, lin * K.low_tier, fin, SKIP_E2_NEG);
+	s.box(sd.f, -out, sd.length + out, z - K.band_mid * h, z + h / 2, 0, out, lin, fin, SKIP_E2_NEG);
 }
 
 } // namespace city::b40

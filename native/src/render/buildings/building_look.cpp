@@ -17,6 +17,24 @@ namespace {
 enum { TONE_R, TONE_G, TONE_B, TONE_SIZE }; // finish_far.tones rows: a linear colour
 
 float num(DataReader &r, const Dictionary &d, const char *key) { return float(r.num(d, key)); }
+
+
+// Every block of "shapes": each field of its list read under its own name, of its own type.
+void shapes_of(DataReader r, const Dictionary &t, LookShapes &out) {
+#define LOOK_READ_FLOAT(n) o.n = float(rb.num(d, #n));
+#define LOOK_READ_COUNT(n) o.n = rb.integer(d, #n);
+#define LOOK_READ_DOUBLE(n) o.n = rb.num(d, #n);
+#define LOOK_READ_FLOATS(n) o.n = rb.floats(d, #n);
+#define LOOK_READ_COUNTS(n) o.n = rb.counts(d, #n);
+#define LOOK_READ_BLOCK(key, Type, LIST) 	{ 		DataReader rb = r.in(#key); 		const Dictionary d = r.table(t, #key); 		Type &o = out.key; 		LIST(LOOK_READ_FLOAT, LOOK_READ_COUNT, LOOK_READ_DOUBLE, LOOK_READ_FLOATS, LOOK_READ_COUNTS) 	}
+	LOOK_SHAPE_BLOCKS(LOOK_READ_BLOCK)
+#undef LOOK_READ_BLOCK
+#undef LOOK_READ_FLOAT
+#undef LOOK_READ_COUNT
+#undef LOOK_READ_DOUBLE
+#undef LOOK_READ_FLOATS
+#undef LOOK_READ_COUNTS
+}
 } // namespace
 
 bool BuildingLook::load(const Dictionary &t, const Dictionary &bay_props, const Dictionary &furniture, const Dictionary &camera,
@@ -48,6 +66,7 @@ bool BuildingLook::load(const Dictionary &t, const Dictionary &bay_props, const 
 	DataReader rlot = rr.in("lot"), rroof = rr.in("roof");
 	fence_bar_m = num(rlot, rr.table(region, "lot"), "fence_bar_m");
 	air_handler_per_area = num(rroof, rr.table(region, "roof"), "air_handler_per_area");
+	shapes_of(rr.in("shapes"), rr.table(region, "shapes"), shapes);
 	const Array bands = rl.list(lod, "part_bands");
 	std::vector<PartBand> read_bands;
 	for (int i = 0; i < bands.size(); i++) {

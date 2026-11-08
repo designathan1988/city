@@ -9,8 +9,7 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
-constexpr uint32_t CLOCK_FACE = 0xf2efe6, CLOCK_HANDS = 0x23262a, BAY_LINE = 0xe9e6dc;
-constexpr float ROCK_SHADE = 0.86f, DIAL_OUT = 0.02f, DIAL_MARGIN = 0.12f, HAND_W = 0.05f, LINE_W = 0.1f, LINE_UP = 0.01f, CAR_BAY_M = 2.5f, LONG_HAND = 0.8f, SHORT_HAND = 0.6f;
+constexpr uint32_t CLOCK_FACE = 0xf2efe6, CLOCK_HANDS = 0x23262a, BAY_LINE = 0xe9e6dc; // a clock's face and hands, a bay's painted line (the source game's)
 // A rock is a few boxes of a share of the part's size: offset across, offset along, width, height.
 constexpr float ROCKS[3][4] = { { -0.2f, -0.1f, 0.6f, 1.f }, { 0.25f, 0.15f, 0.45f, 0.7f }, { -0.05f, 0.3f, 0.35f, 0.45f } };
 
@@ -62,33 +61,36 @@ void ramp(Shell &shell, const Placed &pl, const LotElement &e, float g, const Li
 }
 
 void rocks(Shell &shell, const Placed &pl, const LotElement &e, float g, const Lin &lin) {
+	const LotPartsLook &K = pl.look->shapes.lot_parts;
 	for (const auto &k : ROCKS) {
 		float x = e.x + k[0] * e.w, y = e.y + k[1] * e.d, hw = k[2] * e.w / 2, hd = k[2] * e.d / 2;
-		shell.box(pl.lot, x - hw, x + hw, y - hd, y + hd, g, g + k[3] * e.h, lin * ROCK_SHADE, FIN_STONE, SKIP_E2_NEG);
+		shell.box(pl.lot, x - hw, x + hw, y - hd, y + hd, g, g + k[3] * e.h, lin * K.rock_shade, FIN_STONE, SKIP_E2_NEG);
 	}
 }
 
 void parking(Shell &shell, const Placed &pl, const LotElement &e, float g, const Lin &lin) {
+	const LotPartsLook &K = pl.look->shapes.lot_parts;
 	float x0 = e.x - e.w / 2, x1 = e.x + e.w / 2, y0 = e.y - e.d / 2, y1 = e.y + e.d / 2;
 	shell.rect(pl.lot, x0, x1, y0, y1, g + e.h, lin, FIN_CONCRETE);
 	Lin line = lin_of(BAY_LINE);
 	bool across_x = e.facing == FACE_STREET || e.facing == FACE_BACK;
 	float length = across_x ? e.w : e.d;
-	int bays = std::max(1, int(length / CAR_BAY_M));
+	int bays = std::max(1, int(length / pl.data->lots.stall_w)); // a bay is the lot rules' stall width
 	for (int i = 0; i <= bays; i++) {
 		float a = length * float(i) / float(bays) - length / 2;
-		if (across_x) shell.rect(pl.lot, e.x + a - LINE_W / 2, e.x + a + LINE_W / 2, y0, y1, g + e.h + LINE_UP, line, FIN_NONE);
-		else shell.rect(pl.lot, x0, x1, e.y + a - LINE_W / 2, e.y + a + LINE_W / 2, g + e.h + LINE_UP, line, FIN_NONE);
+		if (across_x) shell.rect(pl.lot, e.x + a - K.line_w / 2, e.x + a + K.line_w / 2, y0, y1, g + e.h + K.line_up, line, FIN_NONE);
+		else shell.rect(pl.lot, x0, x1, e.y + a - K.line_w / 2, e.y + a + K.line_w / 2, g + e.h + K.line_up, line, FIN_NONE);
 	}
 }
 
 // A square dial on the wall, its hands at three o'clock (the long one up, the short one across).
 void clock(Shell &shell, const Placed &pl, const LotElement &e, const Lin &lin, int8_t fin) {
+	const LotPartsLook &K = pl.look->shapes.lot_parts;
 	float x0 = e.x - e.w / 2, x1 = e.x + e.w / 2, y0 = e.y - e.d / 2, y1 = e.y + e.d / 2;
 	shell.box(pl.lot, x0, x1, y0, y1, e.z, e.z + e.h, lin, fin);
 	bool front = e.facing == FACE_STREET || e.facing == FACE_BACK;
-	float sign = e.facing == FACE_STREET || e.facing == FACE_LEFT ? -1.f : 1.f, m = e.h * DIAL_MARGIN, cz = e.z + e.h / 2;
-	float at = (front ? e.y + sign * e.d / 2 : e.x + sign * e.w / 2) + sign * DIAL_OUT, half = (front ? e.w : e.d) / 2 - m;
+	float sign = e.facing == FACE_STREET || e.facing == FACE_LEFT ? -1.f : 1.f, m = e.h * K.dial_margin, cz = e.z + e.h / 2;
+	float at = (front ? e.y + sign * e.d / 2 : e.x + sign * e.w / 2) + sign * K.dial_out, half = (front ? e.w : e.d) / 2 - m;
 	float cx = front ? e.x : e.y;
 	auto pane = [&](float a0, float a1, float z0, float z1, float out, const Lin &colour) {
 		float p = at + sign * out;
@@ -99,8 +101,8 @@ void clock(Shell &shell, const Placed &pl, const LotElement &e, const Lin &lin, 
 	};
 	pane(cx - half, cx + half, e.z + m, e.z + e.h - m, 0, lin_of(CLOCK_FACE));
 	Lin hands = lin_of(CLOCK_HANDS);
-	pane(cx - HAND_W, cx + HAND_W, cz, cz + half * LONG_HAND, DIAL_OUT, hands);
-	pane(cx, cx + half * SHORT_HAND, cz - HAND_W, cz + HAND_W, DIAL_OUT, hands);
+	pane(cx - K.hand_w, cx + K.hand_w, cz, cz + half * K.long_hand, K.dial_out, hands);
+	pane(cx, cx + half * K.short_hand, cz - K.hand_w, cz + K.hand_w, K.dial_out, hands);
 }
 } // namespace
 

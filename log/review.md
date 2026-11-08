@@ -3157,6 +3157,26 @@ One owner each: a doorway's half width was `HALF_WAY` in two files and `HALF_DOO
 **What changes.** Nothing: the digest, the hashes, `interior_test` and the numbers the same (`quick`: 44 of 46; the photos are
 states seen before).
 
+### 6.40 B2, C14 (the building render, first part): facades, lots and roofs drawn from building_look.json shapes (2026-11-08)
+
+**Cause and fix.** The render files that draw a building's pieces held their sizes, shares and shades as constants (§3l: about
+90 in `facade_parts.cpp`, the lot props, the roof plant's 70, the terrace, the gear). Thirteen files now read blocks of
+`building_look.json` `styles.roadcraft.shapes` (408 values: `facade_parts`, `facade_emit`, `part_models`, `placed`, `lot_emit`,
+`lot_props`, `lot_parts`, `roof_emit`, `roof_plant`, `roof_terrace`, `roof_gear`, `interior_emit`, `far_mass`), typed by the
+X-macro lists of `render/buildings/look_shapes*.h` (by what they draw: facades, lots, roofs, levels) and read by
+`building_look.cpp` into `BuildingLook::shapes`. Each emitter reaches its block through the placed building it draws
+(`pl.look`): the emitter structs carry it as their last member (`Ctx`, `SideEmit`, `LotEmit`, `PropEmit`, `RoofEmit`,
+`PlantEmit`), the helpers that had no `Placed` take their block (`band`, `pilaster`, `relief_caps`, `chance`, the part models).
+Reading a list of numbers was written in two loaders: it is `DataReader::floats` and `counts`.
+
+The bay lines of a parking element were spaced by a `CAR_BAY_M` of 2.5 m: the lot rules' stall width (`lots.stall_w`, the same
+value), which they now read. Kept in code with their sources: the hash multipliers and stream keys, the lantern's glass share
+(measured on the source model), the entrance flight's most steps. The material colours a few files name (brass, gas cylinders,
+shutters, clocks) and the roof plant's catalogue array are commented as the source game's; their move to a render palette is
+the next part, with the files that remain (`facade_bay`, `facade_props`, `shell`, `ruin_fracture`, `roof_pitched`, the renderer).
+
+**What changes.** Nothing: every photo is a state captured before (`quick`: 45 of 46), the hashes and numbers the same.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

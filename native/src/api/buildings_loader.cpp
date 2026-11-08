@@ -163,24 +163,12 @@ void lot_rules(DataReader r, const Dictionary &d, LotRules &l) {
 }
 
 // Every block of "shapes": each field of its list read under its own name, of its own type.
-std::vector<float> floats_of(DataReader r, const Dictionary &d, const char *key) {
-	const Array a = r.list(d, key);
-	std::vector<float> out;
-	for (int i = 0; i < a.size(); i++) out.push_back(float(r.in(key).num_at(a, i)));
-	return out;
-}
-std::vector<int> counts_of(DataReader r, const Dictionary &d, const char *key) {
-	const Array a = r.list(d, key);
-	std::vector<int> out;
-	for (int i = 0; i < a.size(); i++) out.push_back(r.in(key).integer_at(a, i));
-	return out;
-}
 void shapes(DataReader r, const Dictionary &t, Shapes &out) {
 #define B40_READ_FLOAT(n) o.n = float(rb.num(d, #n));
 #define B40_READ_COUNT(n) o.n = rb.integer(d, #n);
 #define B40_READ_DOUBLE(n) o.n = rb.num(d, #n);
-#define B40_READ_FLOATS(n) o.n = floats_of(rb, d, #n);
-#define B40_READ_COUNTS(n) o.n = counts_of(rb, d, #n);
+#define B40_READ_FLOATS(n) o.n = rb.floats(d, #n);
+#define B40_READ_COUNTS(n) o.n = rb.counts(d, #n);
 #define B40_READ_BLOCK(key, Type, LIST) \
 	{ \
 		DataReader rb = r.in(#key); \

@@ -78,10 +78,10 @@ struct Part {
 };
 void part_box(Shell &s, const Part &p, const Lin &lin, int8_t fin);
 void part_railing(Shell &s, const Part &p, const Lin &lin, int8_t fin);
-void part_door(Shell &s, const Part &p, const Lin &lin, int8_t fin);
-void part_louvre(Shell &s, const Part &p, const Lin &lin, int8_t fin);
+void part_door(const PartModelsLook &K, Shell &s, const Part &p, const Lin &lin, int8_t fin);
+void part_louvre(const PartModelsLook &K, Shell &s, const Part &p, const Lin &lin, int8_t fin);
 void part_brise(Shell &s, const Part &p, const Lin &lin, int8_t fin);
-void part_awning(Shell &s, const Part &p, const Lin &lin, int8_t fin);
+void part_awning(const PartModelsLook &K, Shell &s, const Part &p, const Lin &lin, int8_t fin);
 void part_lamp(Shell &s, const Part &p);
 
 } // namespace city::b40

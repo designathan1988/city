@@ -5,6 +5,7 @@
 
 #include "render/buildings/bay_props.h"
 #include "render/buildings/furniture_look.h"
+#include "render/buildings/look_shapes.h"
 #include "sim/buildings/b40/paint.h"
 
 #include <godot_cpp/variant/dictionary.hpp>
@@ -38,6 +39,7 @@ struct BuildingLook {
 	float far_hysteresis = 0; // superchunk far switch band around building_mid_end_m (a share of it)
 	float far_rebuild_delay_s = 0, far_rebuild_interval_s = 0; // deferred far rebuilds
 	BayPropLook bay; // bay_props.json
+	LookShapes shapes; // every render file's sizes, shares and shades (building_look.json "shapes")
 
 	// buildings.json, bay_props.json and furniture.json (the look's own numbers, its bay props, the interior's furniture).
 	bool load(const godot::Dictionary &t, const godot::Dictionary &bay_props, const godot::Dictionary &furniture, const godot::Dictionary &camera,

@@ -68,7 +68,7 @@ Paint moulding_of(const Placed &pl);
 Paint flat_roof_of(const Placed &pl, const Volume &v); // a flat roof's slab
 // A two-tier band: lower tier 0.45 out from -h/2 to -0.1h, upper tier from -0.1h to +h/2;
 // `flush`: one strip.
-void band(Shell &s, const Side &sd, float z, float out, float h, const Lin &lin, int8_t fin, bool flush);
+void band(const Placed &pl, Shell &s, const Side &sd, float z, float out, float h, const Lin &lin, int8_t fin, bool flush);
 uint32_t bay_hash(int vol, int level, int side, int index, float bx, float by);
 
 // Emitters. `parts` takes the small repeated pieces (frames, railings, louvres, AC units...) drawn only near.

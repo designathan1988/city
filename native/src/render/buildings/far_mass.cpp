@@ -16,8 +16,7 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
-constexpr float PLINTH_BURY = 0.8f; // ROOF_EDGE_H, ATTIC_H, MACHINE_H...: roof_sizes.h
-constexpr float MASS_IN_M = 0.7f, HALF = 0.5f; // the plain side stands this far behind the bays: past the deepest opening
+constexpr float HALF = 0.5f; // the plain side stands this far behind the bays: past the deepest opening
 constexpr uint32_t CELL_OFFSETS = 64; // bays the far level's grid starts from, by building: two buildings light other rooms
 
 FarWindows windows_of(const Placed &pl, const Volume &v, int k, int side, float W, float H, uint8_t comp) {
@@ -106,6 +105,7 @@ void flat_bays(Shell &s, const Placed &pl, const Volume &v, const Side &sd, int 
 // The mid level's wall of a side, bay by bay as the near level has it: each opening an instance (bay_kit.h), the blank bays in
 // rectangles of one push, and behind them all the plain side, which no eye reaches and which throws the building's shadow.
 void bay_walls(Shell &s, const Placed &pl, const Volume &v, const Side &sd, int n, float W, int8_t fin) {
+	const FarMassLook &K = pl.look->shapes.far_mass;
 	const Body &b = *pl.b;
 	const OpenCell open{ b, v, sd, W };
 	std::vector<char> done(size_t(n) * size_t(v.storeys), 0);
@@ -135,7 +135,7 @@ void bay_walls(Shell &s, const Placed &pl, const Volume &v, const Side &sd, int 
 		s.rect(Basis{ sd.f.at(W * float(i), b.level_z(v.base + k), relief_push(v, sd.side, i, k)), sd.f.e0, sd.f.e1, sd.f.e2 }, 0, W * float(i1 - i), 0,
 				b.level_z(v.base + k1) - b.level_z(v.base + k), 0, wall_lin(pl, v, k, sd.side), fin);
 	});
-	s.rect(sd.f, 0, sd.length, b.level_z(v.base), b.level_z(v.top()), -MASS_IN_M, wall_lin(pl, v, 0, sd.side), fin);
+	s.rect(sd.f, 0, sd.length, b.level_z(v.base), b.level_z(v.top()), -K.mass_in_m, wall_lin(pl, v, 0, sd.side), fin);
 }
 
 // The far level's wall of a side: what of it stands in the open, in rectangles of bays and storeys that read alike. A neighbour covers a side only
@@ -154,6 +154,7 @@ void lean_walls(Shell &s, const Placed &pl, const Volume &v, const Side &sd, int
 }
 
 void walls(Shell &s, const Placed &pl, const Volume &v, bool roofs) {
+	const FarMassLook &K = pl.look->shapes.far_mass;
 	const Body &b = *pl.b;
 	float z0 = b.level_z(v.base);
 	bool parapet = roofs && roof_flat(v.roof) && v.roof != ROOF_TERRACE && !covered_by_above(b, v);
@@ -174,7 +175,7 @@ void walls(Shell &s, const Placed &pl, const Volume &v, bool roofs) {
 			s.rect(cap, 0, sd.length, 0, COPING_IN, 0, paint_lin(mp), mp.finish);
 		}
 		if (v.base == 0 && !covered(b, v, 0, mid))
-			s.rect(sd.f, 0, sd.length, pl.ground_lo - PLINTH_BURY, 0, 0, paint_lin(pl.data->color("plinth")), FIN_STONE);
+			s.rect(sd.f, 0, sd.length, pl.ground_lo - K.plinth_bury, 0, 0, paint_lin(pl.data->color("plinth")), FIN_STONE);
 	}
 }
 
