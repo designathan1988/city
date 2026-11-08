@@ -12,6 +12,7 @@ void assign_errand(const CityState &s, Vehicle &v, int id); // at its birth: wha
 void step_kerb_stops(CityState &s, float dt);
 float kerb_stop_gap(const TrafficState &t, const Vehicle &v); // metres to where its front stops
 uint32_t kerb_door_level(const CityState &s, const Vehicle &v); // how far its kerb door stands open, in LOOK_DOOR_MASK steps
+uint32_t bus_riders_level(const CityState &s, const Vehicle &v); // who rides in a bus plus one, LOOK_RIDERS_AS_DRAWN for any other vehicle
 void kerb_forget(CityState &s, int id); // it left the scene
 
 // What a stop does with a person, shared with the bus's calls (bus_calls.cpp).
@@ -27,8 +28,9 @@ void kerb_let_go(CityState &s, int ped, bool on_foot);
 int kerb_walker_out(CityState &s, int ds, const V2 &foot); // somebody out on the footway beside `foot`, -1 with no room
 inline bool kerb_holds(const TrafficState &t, int ped) { return t.peds[size_t(ped)].alive && t.peds[size_t(ped)].mode == PedMode::KERB; }
 
-// bus_calls.cpp: who gets off and on at a stop. True when that is over; `over` lets go of whoever is left when the bus goes.
-bool bus_call(CityState &s, int id, BusCall &c, float dt);
+// bus_calls.cpp: who gets off and on at a stop, `riders` the bus's count of who is aboard. True when that is over; `over` lets go
+// of whoever is left when the bus goes.
+bool bus_call(CityState &s, int id, BusCall &c, int &riders, float dt);
 void bus_call_over(CityState &s, BusCall &c);
 
 // pedestrians.cpp: a walker on the footway at `arc` of the sidewalk, with a trip, held by the kerb stop (PedMode::KERB), -1 with

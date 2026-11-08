@@ -155,6 +155,19 @@ float AgentRenderer::roll(int id, const Pose &p, float wheel_r) {
 	return o.angle;
 }
 
+float AgentRenderer::passengers_of(const AgentRecord &rec, int type, float &order) const {
+	float passengers;
+	riders(type, rec.id, passengers, order);
+	const uint32_t aboard = (rec.look >> LOOK_ABOARD_SHIFT) & LOOK_ABOARD_MASK;
+	if (aboard == ABOARD_TO_SET_DOWN) passengers = std::max(passengers, 1.f);
+	else if (aboard == ABOARD_SET_DOWN) passengers = std::max(passengers, 1.f) - 1;
+	else if (aboard == ABOARD_PICKED_UP) passengers += 1;
+	const uint32_t counted = (rec.look >> LOOK_RIDERS_SHIFT) & LOOK_RIDERS_MASK; // a bus: who the simulation says rides in it
+	if (counted != LOOK_RIDERS_AS_DRAWN) passengers = float(std::min(int(counted) - 1, load_[type].seats));
+	if ((rec.look & (1u << LOOK_EMPTY_SHIFT)) != 0) passengers = NOBODY_ABOARD;
+	return passengers;
+}
+
 void AgentRenderer::seat_people(uint32_t id, int type, int model, const Pose &p, float dist, float passengers, float order, float spin) {
 	const int seats = load_[type].seats;
 	const int stride = seats > 0 ? int(order) / seats : 0, first = seats > 0 ? int(order) - stride * seats : 0;
@@ -170,7 +183,7 @@ void AgentRenderer::seat_people(uint32_t id, int type, int model, const Pose &p,
 
 void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCull &view, const PoseSample &at) {
 	if (!material_.is_valid() || !meshes_[0][CABIN_LEVEL].valid()) return;
-	people_.begin();
+	people_.begin(f);
 	keeper_.begin();
 	auto &bufs = seen_rows_; // what the camera sees
 	auto &casts = cast_rows_; // what the sun sees, out of the view too: a car behind the camera shades what is before it
@@ -213,13 +226,8 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 		float spin = roll(int(rec.id), p, wheel_r_[type]);
 		const float dx = p.x - cam.x, dy = p.y - cam.y, dz = p.z - cam.z, flat2 = dx * dx + dz * dz;
 		if (flat2 > r2) continue;
-		float passengers, order;
-		riders(type, rec.id, passengers, order);
-		const uint32_t aboard = (rec.look >> LOOK_ABOARD_SHIFT) & LOOK_ABOARD_MASK;
-		if (aboard == ABOARD_TO_SET_DOWN) passengers = std::max(passengers, 1.f);
-		else if (aboard == ABOARD_SET_DOWN) passengers = std::max(passengers, 1.f) - 1;
-		else if (aboard == ABOARD_PICKED_UP) passengers += 1;
-		if ((rec.look & (1u << LOOK_EMPTY_SHIFT)) != 0) passengers = NOBODY_ABOARD;
+		float order;
+		const float passengers = passengers_of(rec, type, order);
 		const float d2 = flat2 + dy * dy;
 		const int model = model_of(type, paint);
 		heads_.add(rec.id, p, reach_m_[model], cam, view);

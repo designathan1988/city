@@ -18,6 +18,9 @@ namespace {
 constexpr uint32_t VARIATION_SHIFT = 24, SEED_MASK = 1023; // a look's top byte picks the body; its low ten bits the shader's seed
 constexpr float FRIGHT_MARK = 0.25f; // people_face.gdshaderinc: a seed below zero is a frightened person's, this short of its number
 constexpr double NS_PER_S = 1e9, CLOCK_WRAP_S = 86400.0; // the idles' clock wraps once a day: a float keeps its milliseconds
+constexpr float SEAT_SPREAD = 0.61803f; // each rider at another place of their seat's idle (the golden ratio spreads whole numbers evenly)
+// Whose clip goes round with the wheel (the pedals, the rider's lean); every other seat's clip is an idle played by the clock.
+constexpr bool BY_WHEEL[int(SeatPose::COUNT)] = { false, false, false, false, false, false, true, true };
 
 } // namespace
 
@@ -59,7 +62,8 @@ bool PeopleRenderer::show_clip(const String &name) {
 	return true;
 }
 
-void PeopleRenderer::begin() {
+void PeopleRenderer::begin(const PoseFrame &f) {
+	clock_ = float(std::fmod(double(f.stamp_ns[POSE_TRAIL - 1]) / NS_PER_S, CLOCK_WRAP_S));
 	for (InstanceRows &b : bufs_) b.reopen();
 	blob_buf_.restart();
 	keeper_.begin();
@@ -98,6 +102,10 @@ void PeopleRenderer::seat(uint64_t key, const Pose &vehicle, const SeatSpot &spo
 	if (clip < 0) return;
 	const std::vector<int> &bodies = by_age_[int(PedAge::ADULT)];
 	const int v = bodies[size_t((look >> VARIATION_SHIFT) % uint32_t(bodies.size()))];
+	if (!BY_WHEEL[pose]) { // the seat's own idle: breathing, the head and the torso shifting, each rider at their own place of it
+		const float played = clock_ / asset_.clips[size_t(clip)].seconds[asset_.variations[size_t(v)].female ? 1 : 0] + float(look & SEED_MASK) * SEAT_SPREAD;
+		phase = played - std::floor(played);
+	}
 	// the pelvis on the hip point, in the vehicle's frame: its left, its up on a grade, its heading
 	const Vector3 off = spot.hip - asset_.variations[size_t(v)].fits[size_t(clip)].pelvis;
 	const float flat = 1.f / std::sqrt(1.f + vehicle.rise * vehicle.rise), up = flat * vehicle.rise;
@@ -114,9 +122,8 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 	if (draws_.empty()) return 0;
 	const float r2 = radius * radius;
 	const int nv = int(asset_.variations.size()), lods = asset_.lods, levels = lods + 1;
-	const float clock = float(std::fmod(double(f.stamp_ns[POSE_TRAIL - 1]) / NS_PER_S, CLOCK_WRAP_S));
-	RenderingServer::get_singleton()->material_set_param(material_, "idle_clock", clock);
-	RenderingServer::get_singleton()->material_set_param(held_.material(), "idle_clock", clock);
+	RenderingServer::get_singleton()->material_set_param(material_, "idle_clock", clock_);
+	RenderingServer::get_singleton()->material_set_param(held_.material(), "idle_clock", clock_);
 	int drawn = 0;
 	for (const AgentRecord &rec : f.people) {
 		Pose p = record_pose(rec, at);

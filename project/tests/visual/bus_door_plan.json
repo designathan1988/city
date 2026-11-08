@@ -1,0 +1,40 @@
+{
+ "_doc": "A bus at its stop with people at its doors (look.gd busDoor, look_aim.gd): a line laid through the busiest crossing, the simulation stepped until somebody steps down from a bus's middle door; the bus from its kerb side, along it from ahead of its front door and from behind its middle door, and from high over it.",
+ "city": {
+  "map": 0,
+  "seed": 1,
+  "generate": true
+ },
+ "steps": [
+  {
+   "hour": 16
+  },
+  {
+   "busDoor": [120, 0, 10]
+  },
+  {
+   "shot": "bus_door_side"
+  },
+  {
+   "busDoor": [85, 70, 15]
+  },
+  {
+   "shot": "bus_door_front"
+  },
+  {
+   "busDoor": [85, -70, 15]
+  },
+  {
+   "shot": "bus_door_back"
+  },
+  {
+   "busDoor": [50, 10, 62]
+  },
+  {
+   "shot": "bus_door_high"
+  },
+  {
+   "query": "transit_run"
+  }
+ ]
+}

@@ -78,6 +78,9 @@ private:
 	bool read_loads(const DataValue &loads, godot::PackedStringArray &errors);
 	// A vehicle's passengers and the order its seats fill in (stride * seats + first), from its id.
 	void riders(int type, uint32_t id, float &passengers, float &order) const;
+	// Who rides in a vehicle of the frame: the model's load, the kerb stop's set down or picked up, a bus's own count, or nobody in a
+	// parked car (NOBODY_ABOARD); `order` as riders' above.
+	float passengers_of(const AgentRecord &rec, int type, float &order) const;
 	void limit_cabins(); // the next frame's limit of who has a cabin
 	// The bays' cars by cell of vehicle_r_ (their indices in the published list, ascending), made again only when the simulation
 	// publishes a new list; and this frame's, those of the cells round the camera, ascending: the list's own order.

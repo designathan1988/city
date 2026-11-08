@@ -7,6 +7,7 @@ const TOWN_MAP := 0
 const SEED := 1
 const STEP_M := 60.0
 const RUN_TICKS := 6000
+const SAMPLE_TICKS := 20 # how often the bus run is read while it goes: somebody between a door and the footway lasts longer than this
 const SLOT := "transit_test"
 const TRACK_OUT_M := 80.0
 const TRACK_LONG_M := 400.0
@@ -47,9 +48,28 @@ func _buses() -> void:
 	for s: Dictionary in plan.stops:
 		ids.append(s.id)
 	check(CityStore.dispatch(&"transit_line", [ids]).get("ok", false), "bus line")
-	ticks(RUN_TICKS)
+	ticks(1) # the step reads the plan: the line's buses are made, with who rides in them
+	var start: Dictionary = CityStore.query(&"transit_run")
+	check(int(start.buses) > 0 and int(start.riders) > 0, "the buses start with people aboard: %d in %d" % [start.riders, start.buses])
+	var stepping_off := 0
+	var walking_up := 0
+	var least := int(start.riders)
+	var most := least
+	for _tick in range(0, RUN_TICKS, SAMPLE_TICKS):
+		ticks(SAMPLE_TICKS)
+		var now: Dictionary = CityStore.query(&"transit_run")
+		stepping_off = maxi(stepping_off, int(now.stepping_off))
+		walking_up = maxi(walking_up, int(now.walking_up))
+		least = mini(least, int(now.riders))
+		most = maxi(most, int(now.riders))
 	var run: Dictionary = CityStore.query(&"transit_run")
 	print("buses: ", run)
+	check(stepping_off > 0, "somebody seen stepping down from a bus's door to the footway")
+	check(walking_up > 0, "somebody seen walking up to a bus's door")
+	check(int(run.set_down) > 0, "those off walk out on to the footway and on: %s of %s" % [run.set_down, run.alighted])
+	check(int(run.riders) - int(start.riders) == int(run.boarded) - int(run.alighted),
+			"who rides is counted: %d aboard at first, %d now, %d on, %d off" % [start.riders, run.riders, run.boarded, run.alighted])
+	check(least != most, "the count aboard changed: %d .. %d" % [least, most])
 	check(int(run.buses) > 0, "buses on the line")
 	check(int(run.stops_called) > 0, "a bus served a stop")
 	check(int(run.alighted) > 0, "people get off the bus: %s" % run.alighted)

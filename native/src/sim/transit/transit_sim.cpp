@@ -106,7 +106,7 @@ void step_bus(CityState &s, Bus &b, float dt) {
 	const bool here = v.conn < 0 && v.ds == it->second.ds && v.v < p.bus_stopped_ms && v.s >= v.bus_stop_at - p.bus_at_stop_m;
 	if (!here) return;
 	b.dwell += dt;
-	const bool served = traffic::bus_call(s, b.vehicle, b.call, dt);
+	const bool served = traffic::bus_call(s, b.vehicle, b.call, b.riders, dt);
 	if (!served || b.dwell < (is_end(s, *l, b) ? p.bus_terminal_s : p.bus_dwell_s)) return;
 	b.dwell = 0;
 	traffic::bus_call_over(s, b.call);

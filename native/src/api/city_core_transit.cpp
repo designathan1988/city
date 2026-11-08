@@ -110,6 +110,24 @@ Dictionary CityTransit::transit_run() {
 	d["stops_called"] = run.stops_called;
 	d["boarded"] = state_->traffic.bus_boarded;
 	d["alighted"] = state_->traffic.bus_alighted;
+	d["set_down"] = state_->traffic.bus_set_down; // of those off, who walked out of the door on to the footway and on
+	int riders = 0, stepping_off = 0, walking_up = 0;
+	for (const Bus &b : run.buses) {
+		riders += b.riders;
+		int off = 0, on = 0;
+		for (const traffic::BusCall::Mover &m : b.call.alighters) off += m.ped >= 0 ? 1 : 0;
+		for (const traffic::BusCall::Mover &m : b.call.boarders) on += m.ped >= 0 ? 1 : 0;
+		stepping_off += off;
+		walking_up += on;
+		if (off + on > 0 && b.vehicle >= 0 && !d.has("door_bus_at")) { // the first bus with somebody at its doors, for a look's camera
+			const Vehicle &v = state_->traffic.vehicles[size_t(b.vehicle)];
+			d["door_bus_at"] = Vector3(v.cur.x, v.cur.y, v.cur.z);
+			d["door_bus_heading"] = Vector3(v.cur.fx, 0, v.cur.fz);
+		}
+	}
+	d["riders"] = riders; // who rides in the buses, counted
+	d["stepping_off"] = stepping_off; // between a middle door and the footway now
+	d["walking_up"] = walking_up; // between the footway and a front door now
 	d["trains"] = trains;
 	d["trains_at_stations"] = run.trains_at_stations;
 	int crossings = 0, held = 0;

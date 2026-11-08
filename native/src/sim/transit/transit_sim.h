@@ -21,6 +21,7 @@ struct Bus {
 	int line_index = -1; // its line's place in TransitData::lines, found when the plan was read (TransitRun::plan_seen)
 	int next = 0, dir = 1; // the index of the stop it is going to, and the way along the line
 	float dwell = 0, wait = 0; // seconds at the stop; seconds before it is put on the road
+	int riders = 0; // who rides in it: drawn from the line's first roll (transit_plan.cpp), then off and on at each stop (bus_calls.cpp)
 	traffic::BusCall call; // who gets off and on at this stop
 };
 
@@ -83,7 +84,7 @@ struct TransitRun {
 	std::unordered_map<int, int> stop_index;
 	std::unordered_map<int, std::vector<int>> stops_on_seg, lines_at_stop;
 	std::vector<TrainZone> zones; // made again each tick, for the trains near the walkers
-	int stops_called = 0, trains_at_stations = 0; // counted for the probe; passengers are the traffic's (bus_boarded, bus_alighted)
+	int stops_called = 0, trains_at_stations = 0; // counted for the probe; passengers are the traffic's (bus_boarded, bus_alighted) and each bus's riders
 };
 
 namespace transit {

@@ -57,10 +57,10 @@ public:
 	void set_level_hold(float share) { level_hold_ = share; }
 	// Who rides is keyed from here on, past the walkers' ids.
 	static constexpr uint64_t PEOPLE_DENSE_KEYS = 1u << 20;
-	// The frame's rows open: riders first (seat), then the walkers and the draws (update).
-	void begin();
-	// Somebody in `spot` of a vehicle at `vehicle`, `dist` from the camera: their looks from `look`, the bicycle's cranks at `phase` (0..1),
-	// a two-wheeler's rider with a foot down when `stopped`.
+	// The frame's rows open, its clock read: riders first (seat), then the walkers and the draws (update).
+	void begin(const PoseFrame &f);
+	// Somebody in `spot` of a vehicle at `vehicle`, `dist` from the camera: their looks from `look`, a two-wheeler's clip at its
+	// wheel's `phase` (0..1) and its rider with a foot down when `stopped`; anybody else seated plays their seat's idle by the clock.
 	void seat(uint64_t key, const Pose &vehicle, const SeatSpot &spot, uint32_t look, float dist, float phase, bool stopped);
 	// Returns how many walkers were drawn.
 	int update(const PoseFrame &f, const godot::Vector3 &cam, const ViewCull &view, const PoseSample &at, float radius);
@@ -91,6 +91,7 @@ private:
 	float blob_from_m_ = 0, blob_radius_m_ = 0, blob_lift_m_ = 0;
 	float view_reach_m_ = 0; // agents.json people.view_reach_m
 	int seat_clips_[int(SeatPose::COUNT)] = {}, stop_clips_[int(SeatPose::COUNT)] = {}; // each pose's clip, in PeopleAsset::clips' order
+	float clock_ = 0; // the frame's seconds, wrapped (begin): the idles of whoever stands and whoever sits
 	void set_faces(const godot::RID &material) const;
 	int act_clips_[int(PedAct::COUNT)] = {}; // what each act plays
 	int crouch_down_ = 0, crouch_up_ = 0; // either side of the crouch's own clip
