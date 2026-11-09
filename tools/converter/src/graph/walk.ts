@@ -1,0 +1,377 @@
+// Walks one unit's code and resolves every identifier through the type checker: in-scope declarations become units
+// and typed edges, out-of-scope ones become external uses. Interface and abstract members reach every
+// implementation, function-typed fields reach every place that stores a callback in them, and workers or dynamic
+// imports pull their whole module.
+import path from 'node:path';
+import fs from 'node:fs';
+import type * as TS from 'typescript';
+import { normalizePath } from '../common/paths.ts';
+import type { ModuleLoad } from './ir.ts';
+import { containerName, declarationName, externalKey, isNondeterministic, moduleOf } from './origin.ts';
+import { isModuleLevelVariable, outer, referenceKinds } from './references.ts';
+import type { Registry } from './registry.ts';
+import type { SourceProgram, TypeScriptApi } from './typescript.ts';
+import { startsUnit, statementUnits, unitKey, unitOf, type UnitRef } from './units.ts';
+
+interface Targets {
+  readonly implementations: UnitRef[];
+  readonly assigners: UnitRef[];
+}
+
+export class Walker {
+  readonly moduleLoads: ModuleLoad[] = [];
+  readonly unresolvedModules: { from: string; specifier: string }[] = [];
+  readonly #sp: SourceProgram;
+  readonly #registry: Registry;
+  readonly #inScope: (file: string) => boolean;
+  readonly #targets = new Map<TS.Declaration, Targets>();
+  /** Whole-scope mode registers every unit met; entry mode only what is used. */
+  readonly #wholeScope: boolean;
+
+  constructor(sp: SourceProgram, registry: Registry, inScope: (file: string) => boolean, wholeScope: boolean) {
+    this.#sp = sp;
+    this.#registry = registry;
+    this.#inScope = inScope;
+    this.#wholeScope = wholeScope;
+  }
+
+  walk(key: string): void {
+    const { ts } = this.#sp;
+    const unit = this.#registry.units.get(key)!;
+    const root = unit.ref.node;
+    const visit = (n: TS.Node): void => {
+      // A nested unit or class member inside this unit is a unit of its own: its code is not this unit's.
+      if (n !== root && startsUnit(ts, n)) {
+        if (this.#wholeScope) this.#registry.add({ node: n, head: false }, null, null);
+        return;
+      }
+      if (ts.isIdentifier(n) || ts.isPrivateIdentifier(n)) this.#identifier(key, n);
+      if (ts.isCallExpression(n) && this.#isScheduler(n)) this.#inlineSchedule(key, n);
+      if (this.#isWorkerConstruction(n) || (ts.isCallExpression(n) && n.expression.kind === ts.SyntaxKind.ImportKeyword)) {
+        const specifier = this.#firstString(n);
+        if (specifier !== null) this.#loadModule(key, root.getSourceFile().fileName, specifier, ts.isCallExpression(n) ? 'dynamicImport' : 'worker');
+      }
+      ts.forEachChild(n, visit);
+    };
+    if (unit.ref.head && ts.isClassLike(root)) {
+      if (root.name) visit(root.name);
+      for (const clause of root.heritageClauses ?? []) visit(clause);
+      // Constructing the class runs its field initializers, static blocks and constructor.
+      for (const member of root.members) {
+        if (ts.isPropertyDeclaration(member) || ts.isConstructorDeclaration(member) || ts.isClassStaticBlockDeclaration(member) ||
+          ts.isIndexSignatureDeclaration(member)) {
+          this.#registry.add({ node: member, head: false }, null, null);
+        }
+      }
+      return;
+    }
+    visit(root);
+  }
+
+  #identifier(key: string, n: TS.Identifier | TS.PrivateIdentifier): void {
+    const { ts, checker } = this.#sp;
+    let symbol = checker.getSymbolAtLocation(n);
+    if (n.parent && ts.isShorthandPropertyAssignment(n.parent) && n.parent.name === n) {
+      symbol = checker.getShorthandAssignmentValueSymbol(n.parent) ?? symbol;
+    }
+    if (!symbol) return;
+    let declarations = symbol.declarations ?? [];
+    if (symbol.flags & ts.SymbolFlags.Alias) {
+      const aliased = checker.getAliasedSymbol(symbol);
+      if (aliased.declarations && aliased.declarations.length > 0) {
+        declarations = aliased.declarations;
+      } else {
+        this.#unresolvedImport(key, declarations);
+        return;
+      }
+    }
+    let externalDone = false;
+    const platformGlobal = declarations.some((dd) => { const v = this.#valueDeclaration(dd); return !this.#inScope(v.getSourceFile().fileName) && isPlatformGlobal(ts, v); });
+    for (const declaration of declarations) {
+      const d = this.#valueDeclaration(declaration);
+      if (!this.#inScope(d.getSourceFile().fileName)) {
+        if (!externalDone) this.#external(key, n, d, symbol.name, platformGlobal);
+        externalDone = true;
+        continue;
+      }
+      this.#slotCall(key, n, d);
+      const target = unitOf(ts, d);
+      if (target && this.#registry.isCallable(target)) this.#functionValue(key, n, target);
+      if (!target || unitKey(target) === key) continue; // code local to this unit
+      // A variable or parameter of an enclosing unit, used here: closure state the enclosing unit owns.
+      const captured = (ts.isVariableDeclaration(d) || ts.isParameter(d)) && !isModuleLevelVariable(ts, d) &&
+        target.node !== d.parent?.parent;
+      for (const kind of referenceKinds(ts, n, d, captured)) this.#registry.add(target, key, kind);
+      this.#followDynamicDispatch(key, d);
+    }
+  }
+
+  /** `n` is the callee of a call through a parameter or a field: the call reaches whatever was passed into it. */
+  #slotCall(key: string, n: TS.Identifier | TS.PrivateIdentifier, d: TS.Declaration): void {
+    const { ts } = this.#sp;
+    if (!ts.isParameter(d) && !ts.isPropertyDeclaration(d) && !ts.isPropertySignature(d)) return;
+    const parent = n.parent;
+    const expr = parent && ts.isPropertyAccessExpression(parent) && parent.name === n ? parent : n;
+    const call = outer(ts, expr).parent;
+    if (call && ts.isCallExpression(call) && call.expression === outer(ts, expr)) this.#registry.slotCall(d, key);
+  }
+
+  /**
+   * A function used as a value (`n` names `target`): passed as an argument it flows into the callee's parameter,
+   * assigned to a field it flows into the field, handed to a scheduler it runs later.
+   */
+  #functionValue(key: string, n: TS.Identifier | TS.PrivateIdentifier, target: UnitRef): void {
+    const { ts, checker } = this.#sp;
+    const parent = n.parent;
+    const expr = outer(ts, parent && ts.isPropertyAccessExpression(parent) && parent.name === n ? parent : n);
+    const user = expr.parent;
+    if (!user) return;
+    if ((ts.isCallExpression(user) || ts.isNewExpression(user)) && user.expression !== expr) {
+      const args: readonly TS.Expression[] = user.arguments ?? [];
+      const index = args.indexOf(expr as TS.Expression);
+      if (index < 0) return;
+      if (ts.isCallExpression(user) && this.#isScheduler(user)) {
+        this.#registry.add(target, key, 'schedule');
+        return;
+      }
+      const declaration = checker.getResolvedSignature(user)?.declaration;
+      if (!declaration || ts.isJSDocSignature(declaration) || !this.#inScope(declaration.getSourceFile().fileName)) return;
+      const parameter = declaration.parameters[index];
+      if (parameter && !parameter.dotDotDotToken) this.#registry.slotTarget(parameter, target);
+      return;
+    }
+    if (ts.isBinaryExpression(user) && user.right === expr && user.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+      ts.isPropertyAccessExpression(user.left)) {
+      const field = checker.getSymbolAtLocation(user.left.name)?.declarations?.[0];
+      if (field && this.#inScope(field.getSourceFile().fileName)) this.#registry.slotTarget(field, target);
+    }
+  }
+
+  /** requestAnimationFrame, setTimeout or setInterval of the platform (not a project function of that name). */
+  #isScheduler(call: TS.CallExpression): boolean {
+    const { ts, checker } = this.#sp;
+    const callee = ts.isPropertyAccessExpression(call.expression) ? call.expression.name : call.expression;
+    if (!ts.isIdentifier(callee) || !/^(requestAnimationFrame|setTimeout|setInterval)$/.test(callee.text)) return false;
+    const declarations = checker.getSymbolAtLocation(callee)?.declarations ?? [];
+    return declarations.length > 0 && declarations.every((d) => !this.#inScope(d.getSourceFile().fileName));
+  }
+
+  /** `requestAnimationFrame(() => tick())`: the units the inline callback calls are what runs later. */
+  #inlineSchedule(key: string, call: TS.CallExpression): void {
+    const { ts, checker } = this.#sp;
+    for (const argument of call.arguments) {
+      if (!ts.isArrowFunction(argument) && !ts.isFunctionExpression(argument)) continue;
+      const visit = (m: TS.Node): void => {
+        if (ts.isCallExpression(m)) {
+          const callee = ts.isPropertyAccessExpression(m.expression) ? m.expression.name : m.expression;
+          let symbol = checker.getSymbolAtLocation(callee);
+          if (symbol && symbol.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
+          const d = symbol?.declarations?.[0];
+          const target = d && this.#inScope(d.getSourceFile().fileName) ? unitOf(ts, this.#valueDeclaration(d)) : null;
+          if (target && this.#registry.isCallable(target)) this.#registry.add(target, key, 'schedule');
+        }
+        ts.forEachChild(m, visit);
+      };
+      visit(argument.body);
+    }
+  }
+
+  /** `{ add }` and `{ add: add }` stand for the function `add` itself, not for the object literal's member. */
+  #valueDeclaration(d: TS.Declaration): TS.Declaration {
+    const { ts, checker } = this.#sp;
+    let symbol: TS.Symbol | undefined;
+    if (ts.isShorthandPropertyAssignment(d)) symbol = checker.getShorthandAssignmentValueSymbol(d);
+    else if (ts.isPropertyAssignment(d) && ts.isIdentifier(d.initializer)) symbol = checker.getSymbolAtLocation(d.initializer);
+    if (symbol && symbol.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
+    return symbol?.declarations?.[0] ?? d;
+  }
+
+  #followDynamicDispatch(key: string, d: TS.Declaration): void {
+    const { ts, checker } = this.#sp;
+    const isAbstract = ts.canHaveModifiers(d) && (ts.getModifiers(d) ?? []).some((m) => m.kind === ts.SyntaxKind.AbstractKeyword);
+    const isFunctionField = (ts.isPropertySignature(d) || ts.isPropertyDeclaration(d)) &&
+      checker.getTypeAtLocation(d).getNonNullableType().getCallSignatures().length > 0;
+    // A property of an interface (or an abstract one) is read through the accessors that implement it: a getter runs.
+    const isProperty = !isFunctionField && (ts.isPropertySignature(d) || (isAbstract && ts.isPropertyDeclaration(d)));
+    if (!ts.isMethodSignature(d) && !isAbstract && !isFunctionField && !isProperty) return;
+    if (isProperty) {
+      // only accessors run code; the classes having the interface's members (declared `implements` or not) hold them
+      for (const member of this.#structural(d)) {
+        if (!ts.isGetAccessorDeclaration(member) && !ts.isSetAccessorDeclaration(member)) continue;
+        const ref = unitOf(ts, member);
+        if (ref) this.#registry.add(ref, key, 'implementation');
+      }
+      return;
+    }
+    const targets = this.#dispatchTargets(d, isFunctionField);
+    for (const ref of targets.implementations) this.#registry.add(ref, key, 'implementation');
+    for (const ref of targets.assigners) this.#registry.add(ref, key, 'callbackAssign');
+  }
+
+  #dispatchTargets(d: TS.Declaration, isFunctionField: boolean): Targets {
+    const cached = this.#targets.get(d);
+    if (cached) return cached;
+    const { ts, service } = this.#sp;
+    const targets: Targets = { implementations: [], assigners: [] };
+    this.#targets.set(d, targets);
+    const name = ts.getNameOfDeclaration(d);
+    if (!name) return targets;
+    const dsf = d.getSourceFile();
+    for (const location of service.getImplementationAtPosition(dsf.fileName, name.getStart(dsf)) ?? []) {
+      const ref = this.#unitAt(location.fileName, location.textSpan.start);
+      if (ref) targets.implementations.push(ref);
+    }
+    // TypeScript's types are structural: a class with every member the interface requires implements it without
+    // saying so (`Meso` is the world's `MesoTraffic`), and the language service finds only the declared ones.
+    const known = new Set(targets.implementations.map((r) => r.node));
+    for (const member of this.#structural(d)) if (!known.has(member)) { const ref = unitOf(ts, member); if (ref) targets.implementations.push(ref); }
+    if (isFunctionField) {
+      for (const reference of service.getReferencesAtPosition(dsf.fileName, name.getStart(dsf)) ?? []) {
+        if (!reference.isWriteAccess) continue;
+        const ref = this.#unitAt(reference.fileName, reference.textSpan.start);
+        if (ref) targets.assigners.push(ref);
+      }
+    }
+    return targets;
+  }
+
+  /** Members named as `d` of the program's classes that have every member `d`'s interface requires. */
+  #structural(d: TS.Declaration): TS.Declaration[] {
+    const cached = this.#structuralCache.get(d);
+    if (cached) return cached;
+    const result = this.#structuralOf(d);
+    this.#structuralCache.set(d, result);
+    return result;
+  }
+  readonly #structuralCache = new Map<TS.Declaration, TS.Declaration[]>();
+  #structuralOf(d: TS.Declaration): TS.Declaration[] {
+    const { ts, checker } = this.#sp;
+    const owner = d.parent;
+    if (!owner || !(ts.isInterfaceDeclaration(owner) || ts.isTypeLiteralNode(owner))) return [];
+    const name = ts.getNameOfDeclaration(d);
+    if (!name || !(ts.isIdentifier(name) || ts.isStringLiteral(name))) return [];
+    const ownerType = ts.isInterfaceDeclaration(owner) ? checker.getDeclaredTypeOfSymbol(checker.getSymbolAtLocation(owner.name)!) : checker.getTypeAtLocation(owner);
+    const required = checker.getPropertiesOfType(ownerType).filter((p) => !(p.flags & ts.SymbolFlags.Optional)).map((p) => p.name);
+    if (!this.#classMembers) {
+      const byName = new Map<string, { member: TS.ClassElement; names: Set<string> }[]>();
+      this.#classMembers = byName;
+      for (const sf of this.#sp.program.getSourceFiles()) {
+        if (!this.#inScope(sf.fileName)) continue;
+        const visit = (n: TS.Node): void => {
+          if (ts.isClassLike(n)) {
+            const names = new Set<string>();
+            const symbol = n.name ? checker.getSymbolAtLocation(n.name) : undefined;
+            if (symbol) for (const p of checker.getPropertiesOfType(checker.getDeclaredTypeOfSymbol(symbol))) names.add(p.name);
+            for (const m of n.members) {
+              const mn = m.name && (ts.isIdentifier(m.name) || ts.isStringLiteral(m.name)) ? m.name.text : null;
+              if (mn) (byName.get(mn) ?? byName.set(mn, []).get(mn)!).push({ member: m, names });
+            }
+          }
+          ts.forEachChild(n, visit);
+        };
+        visit(sf);
+      }
+    }
+    return (this.#classMembers.get(name.text) ?? []).filter((c) => required.every((r) => c.names.has(r))).map((c) => c.member);
+  }
+  #classMembers: Map<string, { member: TS.ClassElement; names: Set<string> }[]> | null = null;
+
+  #unitAt(fileName: string, position: number): UnitRef | null {
+    if (!this.#inScope(fileName)) return null;
+    const sf = this.#sp.sourceFile(fileName);
+    if (!sf) return null;
+    const { ts } = this.#sp;
+    // Assigned inside the closure: the cast keeps the compiler from narrowing it to `null`.
+    let found = null as TS.Node | null;
+    const visit = (n: TS.Node): void => {
+      if (position >= n.getStart(sf) && position < n.end) {
+        found = n;
+        ts.forEachChild(n, visit);
+      }
+    };
+    ts.forEachChild(sf, visit);
+    return found ? unitOf(ts, found) : null;
+  }
+
+  #external(key: string, n: TS.Identifier | TS.PrivateIdentifier, d: TS.Declaration, fallback: string, platformGlobal: boolean): void {
+    const { ts } = this.#sp;
+    const module = moduleOf(d.getSourceFile().fileName, this.#sp.root);
+    const externalId = externalKey(module, containerName(ts, d), declarationName(ts, d, fallback));
+    const kinds = referenceKinds(ts, n, d);
+    for (const kind of kinds) this.#registry.externalUse(key, externalId, kind);
+    if (isNondeterministic(externalId)) this.#registry.markNondeterministic(key, externalId);
+    // Assigning a global of the platform (a `declare var` or `declare function` at the top of a library's
+    // declarations, as `window.Worker = …` or `globalThis.fetch = …`) replaces it for every later use.
+    if (platformGlobal && isAssigned(ts, n)) this.#registry.patch(externalId, key);
+  }
+
+  #unresolvedImport(key: string, bindings: readonly TS.Declaration[]): void {
+    const { ts } = this.#sp;
+    for (const binding of bindings) {
+      let node: TS.Node | undefined = binding;
+      while (node && !ts.isImportDeclaration(node)) node = node.parent;
+      if (!node || !ts.isImportDeclaration(node) || !ts.isStringLiteral(node.moduleSpecifier)) continue;
+      const specifier = node.moduleSpecifier.text;
+      if (/\?(shared)?worker\b/.test(specifier)) {
+        this.#loadModule(key, node.getSourceFile().fileName, specifier, 'workerImport');
+      } else if (!this.unresolvedModules.some((u) => u.from === key && u.specifier === specifier)) {
+        this.unresolvedModules.push({ from: key, specifier });
+      }
+    }
+  }
+
+  #isWorkerConstruction(n: TS.Node): boolean {
+    const { ts } = this.#sp;
+    return ts.isNewExpression(n) && /(^|\.)(Shared)?Worker$/.test(n.expression.getText());
+  }
+
+  #firstString(n: TS.Node): string | null {
+    const { ts } = this.#sp;
+    let found = null as string | null;
+    const visit = (m: TS.Node): void => {
+      if (found !== null) return;
+      if (ts.isStringLiteralLike(m)) found = m.text;
+      else ts.forEachChild(m, visit);
+    };
+    ts.forEachChild(n, visit);
+    return found;
+  }
+
+  #loadModule(key: string, fromFile: string, specifier: string, how: ModuleLoad['how']): void {
+    const { ts, program } = this.#sp;
+    const clean = specifier.replace(/\?.*$/, '');
+    let file = ts.resolveModuleName(clean, fromFile, program.getCompilerOptions(), ts.sys).resolvedModule?.resolvedFileName;
+    if (!file) {
+      const base = path.resolve(path.dirname(fromFile), clean);
+      file = ['', '.ts', '.tsx', '.js', '.mjs'].map((ext) => base + ext).find((f) => fs.existsSync(f) && fs.statSync(f).isFile());
+    }
+    const from = this.#registry.units.get(key)!.id;
+    const normal = file ? normalizePath(file) : null;
+    if (!this.moduleLoads.some((m) => m.from === from && m.specifier === specifier)) {
+      this.moduleLoads.push({ from, specifier, file: normal, how });
+    }
+    const sf = normal ? this.#sp.sourceFile(normal) : undefined;
+    if (!sf || !this.#inScope(sf.fileName)) return;
+    for (const statement of sf.statements) {
+      for (const ref of statementUnits(ts, statement)) this.#registry.add(ref, key, 'moduleLoad');
+    }
+  }
+}
+
+/** A global the platform declares: a variable or function at the top of a library's declarations (or in its `declare global`). */
+function isPlatformGlobal(ts: TypeScriptApi, d: TS.Declaration): boolean {
+  let decl: TS.Node = d;
+  if (ts.isVariableDeclaration(decl)) decl = decl.parent.parent; // the VariableStatement
+  if (!ts.isVariableStatement(decl) && !ts.isFunctionDeclaration(decl)) return false;
+  const p = decl.parent;
+  return ts.isSourceFile(p) || (ts.isModuleBlock(p) && ts.isModuleDeclaration(p.parent) && p.parent.name.getText() === 'global');
+}
+
+/** `n` (a name, or a member's name as in `window.Worker`) is what an `=` assigns. */
+function isAssigned(ts: TypeScriptApi, n: TS.Identifier | TS.PrivateIdentifier): boolean {
+  const p = n.parent;
+  const expr: TS.Node = p && ts.isPropertyAccessExpression(p) && p.name === n ? p : n;
+  const target = outer(ts, expr);
+  const user = target.parent;
+  return !!user && ts.isBinaryExpression(user) && user.left === target && user.operatorToken.kind === ts.SyntaxKind.EqualsToken;
+}

@@ -1,6 +1,7 @@
-# The records of a run: its folder under dist/tasks (one log per task, the event stream events.jsonl, latest.txt naming the
-# newest run), the times recorded per task name (dist/tasks/times.json, used only to order the queue), and the check of a
-# task set's shape before it runs (names, dependencies, cycles).
+# The records of a run: its folder under dist/tasks (one log per task, the event stream events.jsonl, the times its tasks
+# took, times.json; the newest run is the folder of the latest name, newest_run), the times known per task name (every kept
+# run's, the newest winning, used only to order the queue), and the check of a task set's shape before it runs (names,
+# dependencies, cycles). No file is shared by runs that write at once: each writes in its own folder.
 from __future__ import annotations
 
 import json
@@ -12,10 +13,12 @@ from pathlib import Path
 
 from . import proc
 from .cache import remove, safe, write_atomic
+from .locks import FileLock
 
 RUNS = "dist/tasks"
-TIMES = "dist/tasks/times.json"
+RUN_TIMES = "times.json"  # in a run's folder: the seconds each of its tasks took, by task name
 KEPT_RUNS = 30  # run folders (logs, events) kept; results live on in the cache
+PRUNE_LOCK = ".prune.lock"  # held by the one run that prunes the old run folders (RunRecord._prune)
 
 
 class RunRecord:
@@ -24,12 +27,16 @@ class RunRecord:
         stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
         self.dir = root / RUNS / f"{stamp}-{os.getpid()}-{safe(label)}"
         self.dir.mkdir(parents=True, exist_ok=True)
-        write_atomic(root / RUNS / "latest.txt", self.dir.name)
         self._prune()
         self._events = open(self.dir / "events.jsonl", "a", encoding="utf-8")
         self._lock = threading.Lock()
-        path = root / TIMES
-        self.times: dict[str, float] = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+        self._own: dict[str, float] = {}  # this run's times, written to its folder
+        self.times: dict[str, float] = {}  # every kept run's, oldest first so the newest wins (pool.py orders by them)
+        for run in sorted(p for p in (root / RUNS).iterdir() if p.is_dir() and p.name[:1].isdigit() and p != self.dir):
+            try:
+                self.times.update(json.loads((run / RUN_TIMES).read_text(encoding="utf-8")))
+            except FileNotFoundError:  # a run that recorded no time yet, or one another run pruned while this one read
+                continue
 
     def log(self, ident: str) -> Path:
         return self.dir / f"{safe(ident)}.log"
@@ -41,21 +48,39 @@ class RunRecord:
             self._events.flush()
 
     def took(self, name: str, seconds: float) -> None:
+        """A task's time, written with this run's others to this run's own folder (no other run writes there)."""
         with self._lock:
             self.times[name] = seconds
-            write_atomic(self.root / TIMES, json.dumps(self.times, indent=1, sort_keys=True))
+            self._own[name] = seconds
+            write_atomic(self.dir / RUN_TIMES, json.dumps(self._own, indent=1, sort_keys=True))
 
     def close(self) -> None:
         self._events.close()
 
     def _prune(self) -> None:
-        """The oldest run folders past KEPT_RUNS go, except those of a run whose process still lives."""
-        runs = sorted(p for p in (self.root / RUNS).iterdir() if p.is_dir() and p.name[:1].isdigit())
-        for old in runs[:-KEPT_RUNS]:
-            parts = old.name.split("-")
-            if len(parts) > 2 and parts[2].isdigit() and proc.alive(int(parts[2])):
-                continue
-            remove(old)
+        """The oldest run folders past KEPT_RUNS go, except those of a run whose process still lives.
+
+        Runs start together (a test runner's files in parallel, each with its serve process), and two removing the same
+        folder trip over each other (one deletes what the other is deleting; Windows refuses a rename of a folder another
+        handle is in). One run prunes at a time: the one holding the lock (an OS file lock, locks.FileLock, released when
+        its process ends however it ends); a run that finds it held leaves the pruning to that one and to the next run.
+        """
+        with FileLock(self.root / RUNS / PRUNE_LOCK) as lock:
+            if not lock.try_acquire(shared=False):
+                return
+            runs = sorted(p for p in (self.root / RUNS).iterdir() if p.is_dir() and p.name[:1].isdigit())
+            for old in runs[:-KEPT_RUNS]:
+                parts = old.name.split("-")
+                if len(parts) > 2 and parts[2].isdigit() and proc.alive(int(parts[2])):
+                    continue
+                remove(old)
+
+
+def newest_run(root: Path) -> Path | None:
+    """The folder of the newest run: run names start with their start time (RunRecord), so the greatest name is the newest."""
+    base = root / RUNS
+    names = sorted(p.name for p in base.iterdir() if p.is_dir() and p.name[:1].isdigit()) if base.is_dir() else []
+    return base / names[-1] if names else None
 
 
 def check_graph(tasks) -> None:

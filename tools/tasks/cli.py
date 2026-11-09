@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tasks import verdicts  # noqa: E402
 from tasks.cache import remove, write_atomic  # noqa: E402
 from tasks.pool import Pool, run  # noqa: E402
-from tasks.runs import RUNS  # noqa: E402
+from tasks.runs import RUNS, newest_run  # noqa: E402
 from tasks.suites import Suites, UsageError  # noqa: E402
 from tasks.task import PASSED, ROOT, Task  # noqa: E402
 
@@ -169,11 +169,10 @@ def cmd_status(argv: list[str]) -> int:
     ap.add_argument("--root", help=argparse.SUPPRESS)
     a = ap.parse_args(argv)
     root = Path(a.root).resolve() if a.root else ROOT
-    latest = root / RUNS / "latest.txt"
-    if not latest.is_file():
+    run_dir = newest_run(root)  # the folder of the latest name (runs.py): no file every run must win
+    if run_dir is None:
         print("no run yet")
         return USAGE
-    run_dir = root / RUNS / latest.read_text(encoding="utf-8").strip()
     events = run_dir / "events.jsonl"
     state: dict[str, dict] = {}
     if events.is_file():

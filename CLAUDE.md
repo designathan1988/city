@@ -119,7 +119,6 @@ e apagados.
 | Causes by the code's shape | `python tools/tasks/cli.py run causes` (`tools/analysis/causes.py` under a deadline) |
 | Causes by the architecture | `python tools/tasks/cli.py run arch_scan`, then `python tools/analysis/arch.py status`, `next`, `explain <id>`, `predict <id>`, `done <id>`, `selfcheck` (`--only x` redoes only what failed; the queue in `dist/arch/queue.json`) |
 | Perfil da DLL de release | `tools/build/pgo.sh` (refazer depois de mudar laços quentes) |
-
 **O que um clone precisa:** `native/godot-cpp` (API 4.7) e as DLLs em `project/bin` já vêm no repositório: o jogo abre sem
 compilar. Meshoptimizer e Clipper2 vêm pelo CMake na primeira compilação. À parte: Godot 4.7.2, llvm-mingw
 `20261020-ucrt-x86_64` (`C:/Projects/toolchains`), CMake 4.4, Node 23.6+, Python 3.12. A DLL pede x86-64-v3 (AVX2, FMA, BMI).
@@ -168,12 +167,12 @@ the same sources give the same bytes, so a rebuild of unchanged sources leaves t
 - `build/`: `build.sh`, `android.sh` (the Android library and APK), `quick.sh` (a thin call of `tools/tasks`), `pgo.sh`, `photodiff.py`, `free_dll.sh`,
   `check_scripts.gd` (scripts that do not compile), `shader_contracts.py` (what shaders, core and scripts share, from its JSON).
 - `analysis/`: `sampler.py` with `sampler_report.py`, `unwind.py` and `win_process.py`, `causes.py` with `detectors.py` and `code_parse.py`,
-  `arch.py` e `arch/` (o analisador de arquitetura), `arch_eval/` (gabaritos
-  que só o selfcheck dele lê).
+  `arch.py` and `arch/` (the architecture analyser), `arch_eval/` (answer keys only its selfcheck reads).
 - `assets/`: what makes this game's assets: noise tiles, furniture parts, flag icons, texture fixes.
-- The source game, the porting tools and their records (`oracle-4.0`, `converter`, `converter-slice`, `ports`, `process`) left
+- `converter/`: the port tool, pointed at the lab (`Documents/Projects/lab/roadcraft`); record and use in `log/conversor.md`.
+  The 4.0 source copies and the old porting records (`oracle-4.0`, `converter-slice`, `ports`, `process`) left
   the repository (B1 of log/review.md §6) and are kept outside it, in `C:\Users\Jonathan\Desktop\city-archive`. Nothing they
-  translated is left in the repository (B4 replaced the junction control and the `js_*.h` runtime).
+  translated from the 4.0 is left in the repository (B4 replaced the junction control and the `js_*.h` runtime).
 
 **Outros:** `dist/` (builds, capturas e logs, fora do git) e `log/` (registros).
 
