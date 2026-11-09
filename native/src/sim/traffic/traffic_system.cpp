@@ -5,6 +5,7 @@
 
 #include "sim/traffic/lane_closures.h"
 #include "sim/traffic/lane_shift.h"
+#include "sim/traffic/sight.h"
 
 #include "core/laps.h"
 #include "core/units.h"
@@ -47,6 +48,7 @@ void despawn_vehicle(CityState &s, int id, bool arrived) {
 	TrafficState &t = s.traffic;
 	Vehicle &v = t.vehicles[size_t(id)];
 	if (!v.alive) return;
+	if (v.micro && !v.off && vehicle_may_show(s, v.cur.x, v.cur.z)) t.gone_in_sight++;
 	transit::bus_gone(s, id);
 	lot_car_forget(s, id);
 	lorry_gone(s, id);
@@ -161,7 +163,6 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 	t.stamp_ns[POSE_TRAIL - 1] = stamp_ns;
 	Laps lap;
 	const float cx = s.camera_x.load(), cz = s.camera_z.load();
-	const float r2 = p.publish_radius_m * p.publish_radius_m;
 	PoseFrame &f = s.poses.back();
 	f.vehicles.clear();
 	f.people.clear();
@@ -203,8 +204,7 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 				count[seg]++;
 			}
 		}
-		const float dx = v.cur.x - cx, dz = v.cur.z - cz;
-		if (dx * dx + dz * dz > r2) continue;
+		if (!vehicle_may_show(s, v.cur.x, v.cur.z)) continue;
 		AgentRecord rec;
 		for (int i = 0; i < POSE_TRAIL; i++) rec.at[i] = v.trail.at[i];
 		rec.id = uint32_t(&v - s.traffic.vehicles.data());
@@ -216,8 +216,7 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 		if (!w.alive) continue;
 		w.trail.push(w.cur, stamp_ns, before);
 		if (s.traffic.time < w.down_until) continue; // on the ground: the effects draw the body, not the walker
-		const float dx = w.cur.x - cx, dz = w.cur.z - cz;
-		if (dx * dx + dz * dz > r2) continue;
+		if (!person_may_show(s, w.cur.x, w.cur.z)) continue;
 		f.people.push_back(walker_record(t, w));
 	}
 	speed_shares(t, f, segs);

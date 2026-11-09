@@ -23,7 +23,7 @@ func report() -> void:
 	print("  vehicles: ", JSON.stringify(CityStore.query(&"agent_cost")))
 	var tp: Dictionary = CityStore.query(&"traffic_probe", [FLEET_SAMPLE])
 	var since := {}
-	for key: String in ["trips_arrived", "trips_lost", "lost_stuck", "released", "reroutes", "red_entries", "people_arrived"]:
+	for key: String in ["trips_arrived", "trips_lost", "released", "reroutes", "red_entries", "people_arrived"]:
 		since[key] = int(tp[key]) - int(lost_before.get(key, 0))
 		lost_before[key] = int(tp[key])
 	var at: Array = tp.sample
@@ -46,7 +46,7 @@ func report() -> void:
 								at[i], at[j], at[i].distance_to(at[j]), tp.sample_mid_m[i], tp.sample_mid_m[j], tp.sample_speed[i], tp.sample_speed[j], tp.sample_type[i], tp.sample_type[j]])
 	print("  fleet: %s vehicles (%s near sampled, %s moving, %s waiting, %s on connectors), %s people (%s waiting, %s inside another, %s in furniture)" % [
 		tp.vehicles, at.size(), tp.moving, tp.waiting, tp.on_connectors, tp.people, tp.people_waiting, tp.people_overlaps, tp.people_in_furniture])
-	print("  since the last movement: ", JSON.stringify(since))
+	print("  since the last movement: ", JSON.stringify(since), " | longest a near vehicle has stood: %.0f s" % float(tp.stuck_longest_s))
 	print("  held by: %s | queued behind: %s | box stops: %s | vehicle pairs inside one another: %d" % [tp.held_by, tp.queued_behind, tp.box_stops, inside])
 	var mem: Dictionary = CityStore.query(&"memory_census")
 	mem.erase("mimalloc")

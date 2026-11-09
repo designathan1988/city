@@ -4,6 +4,7 @@
 // among the others and the street furniture on every way as ped_crowd.cpp moves them (a stripe across each way, the pace the
 // bodies ahead leave), at a kerb in a place of its own (ped_kerb.cpp).
 #include "sim/traffic/kerb_stops.h"
+#include "sim/traffic/sight.h"
 #include "sim/traffic/traffic_system.h"
 
 #include <algorithm>
@@ -40,7 +41,9 @@ void onto_sidewalk(CityState &s, Pedestrian &w) {
 	w.u = clampf((w.cur.x - mid.x) * mid.fz - (w.cur.z - mid.z) * mid.fx, -half, half);
 }
 
-void despawn(TrafficState &t, int id, bool arrived) {
+void despawn(CityState &s, int id, bool arrived, bool inside) {
+	TrafficState &t = s.traffic;
+	if (!inside && person_may_show(s, t.peds[size_t(id)].cur.x, t.peds[size_t(id)].cur.z)) t.ped_gone_in_sight++;
 	off_crosswalk(t, id);
 	free_kerb_place(t, id);
 	const int mate = t.peds[id].mate, with = t.peds[id].with;
@@ -49,7 +52,7 @@ void despawn(TrafficState &t, int id, bool arrived) {
 	if (with >= 0) t.peds[size_t(with)].mate = -1;
 	if (mate >= 0) {
 		t.peds[size_t(mate)].with = -1;
-		despawn(t, mate, arrived);
+		despawn(s, mate, arrived, inside);
 	}
 	t.free_peds.push_back(id);
 	t.ped_count--;
@@ -110,11 +113,36 @@ void begin_line(CityState &s, int id) {
 // At the end of a sidewalk: arrived, or plan the way round the node onto the next street's sidewalk.
 constexpr uint32_t CROSS_MASK = 0xFFFF;
 
+// Its walk ended at node `n` (arrived, or no way on from there; `arrived` tells which for the count). Out of sight it leaves the street;
+// in sight it walks on to somewhere else from `n` (the lab's walkOn, sim/ambient/ambient.ts: never ending where it is seen), or, with
+// nowhere to go, stands until it is out of sight. Returns whether it walks on, on a new route from `n`.
+bool walk_on(CityState &s, int id, int n, bool arrived) {
+	TrafficState &t = s.traffic;
+	Pedestrian &w = t.peds[size_t(id)];
+	if (!person_may_show(s, w.cur.x, w.cur.z)) {
+		despawn(s, id, arrived);
+		return false;
+	}
+	std::vector<int> route;
+	int side = -1;
+	if (plan_trip(s, n, route, side)) {
+		route_set(t.ped_pool, w.route, t.ped_waste, route.data(), int(route.size()));
+		w.ri = 0;
+		w.goal_side = side;
+		w.door = PedDoor();
+		return true;
+	}
+	w.done = true;
+	w.mode = PedMode::SIDEWALK;
+	w.pace = 0;
+	return false;
+}
+
 void at_node(CityState &s, int id) {
 	TrafficState &t = s.traffic;
 	Pedestrian &w = t.peds[id];
 	const int n = toward(s, w);
-	if (w.ri + 1 >= w.route.len) { despawn(t, id, true); return; }
+	if (w.ri + 1 >= w.route.len && !walk_on(s, id, n, true)) return;
 	if (t.time < w.panic_until) flee_on(s, w, n);
 	int next = seg_between(s, n, route_at(t.ped_pool, w.route, w.ri + 1)), side_out = 0;
 	const bool last = w.ri + 2 >= w.route.len;
@@ -124,7 +152,21 @@ void at_node(CityState &s, int id) {
 		if (plan_corner(s, n, w.seg, w.side, next, -1, w.ways, stays) >= 0) want = 1 - stays;
 	}
 	int k = next < 0 ? -1 : plan_corner(s, n, w.seg, w.side, next, want, w.ways, side_out);
-	if (k < 0) { despawn(t, id, false); return; }
+	if (k < 0) {
+		// no way round the node onto its next street: a walk from here instead, its first corner planned the same way
+		if (!walk_on(s, id, n, false)) return;
+		next = seg_between(s, n, route_at(t.ped_pool, w.route, w.ri + 1));
+		want = w.ri + 2 >= w.route.len ? w.goal_side : -1;
+		k = next < 0 ? -1 : plan_corner(s, n, w.seg, w.side, next, want, w.ways, side_out);
+		if (k < 0) { // none either: out of sight it leaves, in sight it stands until it is out of sight
+			if (!person_may_show(s, w.cur.x, w.cur.z)) despawn(s, id, false);
+			else {
+				w.done = true;
+				w.pace = 0;
+			}
+			return;
+		}
+	}
 	const RoadSegment &ng = s.roads.segs[next];
 	w.ri++;
 	w.seg = next;
@@ -146,7 +188,11 @@ void walk(CityState &s, int id, float dt) {
 	TrafficState &t = s.traffic;
 	Pedestrian &w = t.peds[id];
 	if (w.mode == PedMode::KERB) return; // a kerb stop moves it
-	if (!walkable(s, w.seg)) { despawn(t, id, false); return; }
+	if (!walkable(s, w.seg)) { // its footway is gone: out of sight it leaves, in sight it stands until it is out of sight
+		if (!person_may_show(s, w.cur.x, w.cur.z)) despawn(s, id, false);
+		else w.done = true;
+		return;
+	}
 	if (t.time < w.down_until || t.time < w.flinch_until) return; // knocked down by a blow (the render shows the body) or bent over a wound
 	if (held_by_fright(t, w)) return;
 	turn_from_bang(s, w);
@@ -211,10 +257,10 @@ void pose(const CityState &s, Pedestrian &w) {
 
 } // namespace
 
-void ped_gone(CityState &s, int id) { despawn(s.traffic, id, false); }
+void ped_gone(CityState &s, int id) { despawn(s, id, false, true); } // into a bus or a car
 
 void remove_pedestrian(CityState &s, int id) {
-	if (id >= 0 && id < int(s.traffic.peds.size()) && s.traffic.peds[size_t(id)].alive) despawn(s.traffic, id, false);
+	if (id >= 0 && id < int(s.traffic.peds.size()) && s.traffic.peds[size_t(id)].alive) despawn(s, id, false);
 }
 
 void down_pedestrian(CityState &s, int id, float seconds) {
@@ -250,7 +296,7 @@ void drop_pedestrians_on_seg(CityState &s, int seg) {
 	for (int id = 0; id < int(t.peds.size()); id++) {
 		const Pedestrian &w = t.peds[size_t(id)];
 		if (!w.alive || (w.seg != seg && w.cross_seg != seg)) continue;
-		despawn(t, id, false);
+		despawn(s, id, false);
 	}
 }
 
@@ -273,11 +319,16 @@ void step_pedestrians(CityState &s, float dt) {
 		Pedestrian &w = t.peds[size_t(id)];
 		if (!w.alive) continue;
 		const float dx = w.cur.x - cx, dz = w.cur.z - cz;
-		if (dx * dx + dz * dz > out2 && w.mode != PedMode::KERB) { // out of the walking window: gone, not lost
-			despawn(t, id, false);
+		if (dx * dx + dz * dz > out2 && w.mode != PedMode::KERB && !person_may_show(s, w.cur.x, w.cur.z)) { // out of the walking window: gone, not lost
+			despawn(s, id, false);
 			continue;
 		}
 		if (w.with >= 0) continue; // its leader's step moves it
+		if (w.done) { // its walk ended in sight: it stands there until it is out of sight (sight.h)
+			if (!person_may_show(s, w.cur.x, w.cur.z)) despawn(s, id, true);
+			else w.rest = clampf(w.rest + dt / p.ped_rest_fade_s, 0.f, 1.f);
+			continue;
+		}
 		walk(s, id, dt);
 		if (!t.peds[size_t(id)].alive) continue;
 		Pedestrian &after = t.peds[size_t(id)];

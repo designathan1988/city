@@ -155,6 +155,15 @@ String jam_detail(const CityState &s, int id, const Vehicle &v, int r) {
 
 namespace {
 // The parked side of the traffic: bays and sources read, scenery cars, the lots' cars.
+// What the sight rule (sim/traffic/sight.h) holds: the longest a near vehicle has stood (nothing takes a standing vehicle away, so a
+// gridlock shows here), and the vehicles and walkers taken away where they may be seen.
+void sight_probe(const TrafficState &t, Dictionary &d) {
+	float stuck_longest = 0;
+	for (int id : t.micro_list) stuck_longest = std::max(stuck_longest, t.vehicles[size_t(id)].stuck);
+	d["stuck_longest_s"] = stuck_longest;
+	d["gone_in_sight"] = Array::make(t.gone_in_sight, t.ped_gone_in_sight);
+}
+
 void park_probe(const TrafficState &t, Dictionary &d) {
 	const ParkingState &p = t.park;
 	Array ms;
@@ -194,7 +203,7 @@ Dictionary CityCore::traffic_probe(int sample) {
 	d["people"] = t.ped_count;
 	d["trips_arrived"] = t.arrived;
 	d["trips_lost"] = t.lost;
-	d["lost_stuck"] = t.stuck_lost; // of which: removed after standing stuck_despawn_s
+	sight_probe(t, d);
 	d["kerb"] = Array::make(t.kerb_planned, t.kerb_drops, t.kerb_picks, t.kerb_deliveries, t.kerb_abandoned); // at the kerb: stops planned; set down, picked up, delivered; given up
 	d["people_arrived"] = t.ped_arrived;
 	d["people_waiting"] = t.ped_waiting; // at a kerb for the walk phase or a gap

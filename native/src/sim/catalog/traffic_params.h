@@ -21,7 +21,7 @@ namespace city {
 	X(signal_starve_cycles) X(signal_walk_wait_s) X(signal_queue_weight) X(signal_walk_call_s) X(signal_walk_hold_s) \
 	X(ped_gap_impatience_rate) X(ped_gap_impatience_max_s) X(ped_gap_floor_s) X(ped_wait_call_s) X(ped_wait_reach_m) X(ring_max_storage_m) X(ring_meter_share) \
 	X(through_pair_dot) X(yield_look_s) X(yield_near_m) X(stop_sign_ms) X(claim_after_s) X(exit_room_pad_m) X(stop_margin_m) \
-	X(look_ahead_m) X(turn_speed_kmh) X(jerk_up) X(speed_drift) X(stuck_despawn_s) \
+	X(look_ahead_m) X(turn_speed_kmh) X(jerk_up) X(speed_drift) \
 	X(lc_safe_brake) X(lc_threshold) X(lc_bias_right) X(lc_mandatory_bias) X(lc_free_m) X(lc_jam_gap_m) \
 	X(lc_follow_share) X(mouth_clear_m) X(lc_finish_margin_m) X(lc_cooldown_s) X(lc_every_ticks) \
 	X(brake_light_accel) X(brake_light_speed) X(body_lift_m) \
@@ -50,7 +50,7 @@ namespace city {
 	X(ped_lateral_cost) X(ped_keep_right_cost) X(ped_stripe_gain_m) X(ped_stripe_hold_s) X(ped_accel) \
 	X(kerb_wait_half_m) X(kerb_wait_gap_m) X(kerb_wait_rows) \
 	X(ped_jam_s) X(ped_jam_crossing_s) X(ped_jam_narrow_s) X(ped_jam_share) X(ped_reserve_share) X(ped_reserve_max_m) X(ped_moving_ms) \
-	X(claim_hold_s) X(claim_brake) X(publish_radius_m) \
+	X(claim_hold_s) X(claim_brake) X(publish_radius_m) X(publish_people_m) \
 	X(kerb_bay_pitch_m) X(kerb_corner_clear_m) X(kerb_crossing_clear_m) X(kerb_dead_end_m) X(kerb_gate_margin_m) X(kerb_gate_reach_m) \
 	X(kerb_parked_share) X(park_window_m) X(park_window_out_m) X(park_window_step_m) X(park_reads_per_step) X(park_kerb_reads) X(parker_look_s) \
 	X(parker_coming_min) X(parker_coming_s) X(parker_trip_s) X(parker_depart_per_look) X(parker_stay_min_s) X(parker_stay_max_s) X(parker_call_reach_m) \

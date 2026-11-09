@@ -1,7 +1,8 @@
 // Who comes out on foot: a walker of an age and pace, on the streets the land use has people on at this hour, with a
 // destination 150-900 m away and a walking route to it. The crowd of a street just opened stands on its sidewalks; after
-// that they come out of the doors (ped_doors.cpp), on a street without one out of nowhere as before. Some come with company
+// that they come out of the doors (ped_doors.cpp), or onto a footway out of the player's sight (sight.h). Some come with company
 // (ped_party.cpp).
+#include "sim/traffic/sight.h"
 #include "sim/traffic/traffic_system.h"
 
 #include <algorithm>
@@ -37,28 +38,6 @@ bool route_to(CityState &s, int from, int goal, std::vector<int> &route) {
 	return d >= p.ped_trip_min_m && d <= p.ped_trip_max_m && find_walk_route(s, from, goal, route) && route.size() >= 2;
 }
 
-// A trip from `from`: to a street with doors, along it to its far end, on the sidewalk they open onto (`side`); with none in
-// reach, to a node of any street.
-bool plan_trip(CityState &s, int from, std::vector<int> &route, int &side) {
-	const TrafficParams &p = s.catalog.traffic;
-	TrafficState &t = s.traffic;
-	const int n = int(s.roads.segs.size());
-	for (int k = 0; k < p.ped_spawn_dest_tries; k++) {
-		const int key = door_sidewalk(s), seg = key / 2;
-		if (key < 0 || !walkable(s, seg)) continue;
-		const RoadSegment &g = s.roads.segs[size_t(seg)];
-		if (!route_to(s, from, g.a, route)) continue;
-		if (route.size() < 2 || route[route.size() - 2] != g.b) route.push_back(g.b); // else it comes down the street already
-		side = key % 2;
-		return true;
-	}
-	for (int k = 0; k < p.ped_spawn_dest_tries && n > 0; k++) {
-		const int seg = int(t.rng.next() % uint32_t(n));
-		if (walkable(s, seg) && route_to(s, from, s.roads.segs[size_t(seg)].a, route)) return true;
-	}
-	return false;
-}
-
 // Whether a walker standing at `at` would be closer to another than the room walkers keep (two bodies and the gap):
 // against every walker, those born this step too (a few are born a step).
 bool crowded(const TrafficState &t, const TrafficParams &p, const Pose &at) {
@@ -89,6 +68,26 @@ void at_door(const CityState &s, Pedestrian &w, const PedDoor &d) {
 }
 
 } // namespace
+
+bool plan_trip(CityState &s, int from, std::vector<int> &route, int &side) {
+	const TrafficParams &p = s.catalog.traffic;
+	TrafficState &t = s.traffic;
+	const int n = int(s.roads.segs.size());
+	for (int k = 0; k < p.ped_spawn_dest_tries; k++) {
+		const int key = door_sidewalk(s), seg = key / 2;
+		if (key < 0 || !walkable(s, seg)) continue;
+		const RoadSegment &g = s.roads.segs[size_t(seg)];
+		if (!route_to(s, from, g.a, route)) continue;
+		if (route.size() < 2 || route[route.size() - 2] != g.b) route.push_back(g.b); // else it comes down the street already
+		side = key % 2;
+		return true;
+	}
+	for (int k = 0; k < p.ped_spawn_dest_tries && n > 0; k++) {
+		const int seg = int(t.rng.next() % uint32_t(n));
+		if (walkable(s, seg) && route_to(s, from, s.roads.segs[size_t(seg)].a, route)) return true;
+	}
+	return false;
+}
 
 PedAge roll_age(TrafficState &t, const TrafficParams &p) {
 	const float r = t.rng.f();
@@ -147,6 +146,7 @@ bool spawn_walker(CityState &s, const PeopleNow &now, bool from_door) {
 		w.s = clear_arc(s, seg, w.side, w.s, w.u); // born clear of the street furniture and of the others
 		if (w.s > arc_hi(g)) return false;
 		sidewalk_pose(s, seg, w.side, w.s, w.u, w.cur);
+		if (!unseen_birth(s, w.cur.x, w.cur.z)) return false; // nobody appears on a footway the player may see (sight.h)
 	}
 	if (crowded(t, p, w.cur)) return false;
 	std::vector<int> route; // planned last: a walker that is not born takes no room in the route pool

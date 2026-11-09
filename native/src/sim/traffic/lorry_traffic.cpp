@@ -1,6 +1,7 @@
 // Lorries to the docks of the works near the camera. A truck on the lanes is called to a stop before a gate; there it leaves the
 // lanes and, the street it sweeps clear and closed, backs onto the dock along the way a worker planned (yard.h), unloads, drives out
 // and is a truck of the traffic again past the gate.
+#include "sim/traffic/sight.h"
 #include "sim/traffic/traffic_system.h"
 
 #include "sim/traffic/lane_closures.h"
@@ -90,7 +91,7 @@ void join(CityState &s, int index) {
 	v.v = s.catalog.traffic.lorry_join_ms;
 	micro_add(t, id);
 	lane_add(s, ds * MAX_LANES + lane, id);
-	if (!new_trip(s, id, ds)) despawn_vehicle(s, id, true);
+	if (!new_trip(s, id, ds)) trip_ends_here(s, id); // nowhere to go from the yard (sight.h)
 }
 
 void give_up(CityState &s, int index) {

@@ -19,7 +19,7 @@ const DURATION_HOLD_TOL := 1e-3
 const SMALL_FORCE := 5
 const FALL_FORCE := 30
 const PIECES_LEAST := 12
-const FALL_FRAMES := 3000
+const FALL_LIMIT_S := 50.0 # real time a fall may take: the 3000 frames of the old 60 Hz loop
 const SETTLE_FRAMES := 60
 const HITS_TO_FALL := 12
 const WARM_TICKS := 600
@@ -181,11 +181,10 @@ func _a_ruin() -> int:
 	return CityStore.query(&"ruin_seeds")[-1]
 
 
+## A building's fracture is made by a job on its own thread, in real time whatever the frames' pace (the tests run in simulated time):
+## the wait is on the state, its guard real time (StateWait).
 func _until(met: Callable) -> void:
-	for f in FALL_FRAMES:
-		if met.call():
-			return
-		await get_tree().process_frame
+	await StateWait.until(get_tree(), met, FALL_LIMIT_S)
 
 
 ## The force goes by ones up to the fine limit and by the coarse step past it, inside the limits of the data.

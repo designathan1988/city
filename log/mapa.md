@@ -251,7 +251,9 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/sim/traffic/traffic_state.h` · `native/src/sim/traffic/lane_graph_types.h` · `native/src/sim/traffic/ped_state.h` — veículos, meso e pools; o vocabulário do grafo de faixas (faixas dirigidas, conectores, controle do cruzamento); os pedestres (caminho, multidão, mobiliário como corpos) e a fatia de rota
 - `native/src/sim/traffic/street_signs.cpp` — placas que as regras levantam: Pare, Dê a preferência e velocidade
 - `native/src/sim/traffic/traffic_system.cpp` · `native/src/sim/traffic/traffic_system.h` — passo do tráfego, publicação de poses e rebuild
-- `native/src/sim/traffic/vehicle_motion.cpp` — IDM e conectores
+- `native/src/sim/traffic/vehicle_motion.cpp` — the vehicles on the lanes (IDM, the lane head at its junction, a trip's end)
+- `native/src/sim/traffic/connector_motion.cpp` — the vehicles across a junction, on its connectors, and what holds one in the box
+- `native/src/sim/traffic/motion_law.h` — the driving law of every vehicle: its leader, body, acceleration and step
 - `native/src/sim/traffic/window.cpp` — janela micro em volta da câmera e materialização do meso
 
 **Render (só lê) — native/src/render**
@@ -505,6 +507,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `project/tests/core/edit_fuzz_test.gd` · `project/tests/core/edit_fuzz_test.tscn` · `project/tests/core/fuzz_body_edits.gd` — edições sorteadas contra o hash do estado: desfazer e refazer passam pelos mesmos hashes, salvar e abrir é a mesma cidade, a mesma semente faz a mesma cidade (`--seed=N`, `--steps=N` repetem uma falha)
 - `project/tests/core/fuzz_brush_edits.gd` — the fuzz's held brushes: zones along a road, ground paint, trees, fog, elements
 - `project/tests/core/traffic_hash_test.gd` · `project/tests/core/traffic_hash_test.tscn` — o tráfego é determinístico: o mesmo mapa, passo a passo duas vezes, dá o mesmo hash da frota em todo tick, e o primeiro que diverge é nomeado
+- `project/tests/core/sight_test.gd` · `project/tests/core/sight_test.tscn` — nobody taken away where the player may see them (sim/traffic/sight.h), and no near vehicle standing for good, on the town with its clock running
 - `project/tests/core/signal_demand_test.gd` · `project/tests/core/signal_demand_test.tscn` — the actuated signals run on demand: with nobody on the streets a signal rests in its green, and the city's calls change its stages
 - `project/tests/visual/capture_traffic_cases.gd` · `project/tests/visual/capture_traffic_cases.tscn` — the car traffic photographed where the city has it: zebras on busy streets while a car stands for somebody, the busiest junction with no signal
 - `project/tests/core/job_pool_test.gd` · `project/tests/core/job_pool_test.tscn` — a regra da fila de jobs: chaves de usuários diferentes convivem, a mais nova substitui a mesma

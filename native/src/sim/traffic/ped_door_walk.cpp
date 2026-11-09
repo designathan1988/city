@@ -47,7 +47,7 @@ static void through_door(CityState &s, int id) {
 		w.mate = -1;
 	}
 	t.doors_in++;
-	despawn(t, id, true);
+	despawn(s, id, true, true);
 }
 
 // On the way between a door and the sidewalk: no crowd here, its own pace and nothing in the way (lot_doors.h).

@@ -36,8 +36,8 @@ static func report(minutes: int) -> void:
 		var share: float = 100.0 * p.waiting / maxf(1.0, p.vehicles)
 		print("soak min %d: %d vehicles, %d moving, %d held (%.1f %%), stopped by %s, arrivals %d, lost %d, people %d" % [
 			m + 1, p.vehicles, p.moving, p.waiting, share, p.held_by, p.trips_arrived, p.trips_lost, p.people])
-		print("  detours %d, freed %d, governor %.2f, lost to gridlock %d, people arrived %d, waiting at the kerb %d" % [
-			p.get("reroutes", 0), p.get("released", 0), p.get("governor", 1.0), p.get("lost_stuck", 0), p.get("people_arrived", 0),
+		print("  detours %d, freed %d, governor %.2f, longest stood %.0f s, people arrived %d, waiting at the kerb %d" % [
+			p.get("reroutes", 0), p.get("released", 0), p.get("governor", 1.0), p.get("stuck_longest_s", 0.0), p.get("people_arrived", 0),
 			p.get("people_waiting", 0)])
 		print("  held on average in the minute: %.1f" % (float(held_seconds) / SECONDS_PER_MINUTE))
 		print("  lots: %d cars (%d on the way, %d manoeuvring), called %d, parked %d, left %d; scenery parked %d, bays %d" % [

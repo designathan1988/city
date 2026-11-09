@@ -194,3 +194,11 @@ O que falta fazer, por área.
 - Left by the area agents (2026-11-09 integration): riders stepping off the bus seen only in the test, not in a photo; the
   crater's decal anchoring on a slope; the weapons' photos were not redone after the merge; writhing and gore not confirmed in a
   photo.
+
+## Traffic sight (2026-11-09, after sim/traffic/sight.h)
+- Far traffic past `publish_radius_m`: the lab draws cars from its flow model there (`densityCars`); the game draws none.
+- The near window (`window.cpp`) is looked at again every second or 64 m: after a camera jump, far vehicles are made near ones inside
+  the published radius for that one step (a car appears). The window's materialisation must ask the sight rule too.
+- The lab's view cone (`ambient.ts seen`): within the radius but behind the camera a car may be made; the game's rule is the disc only.
+- Walkers' companions: a party's follower leaves with its leader (PEDS-6), not checked against the sight rule.
+

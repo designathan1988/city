@@ -1064,3 +1064,34 @@ deterministic, its own cause to fix); gates of the changed files OK; surface_dat
   before the median, so a piece always precedes the island).
 - camera_pan: `--speed=N`, and its core report in `tests/perf/core_report.gd` (fleet, losses, waits, vehicles inside one another, memory
   by owner).
+
+## 2026-11-09 18:40: nobody made or taken away where the player may see them (REC-1, REC-2, PEDS-1, PEDS-2)
+- Problem: cars and walkers vanished and appeared in view; a car standing 120 s was deleted (`stuck_despawn_s`, a patch the records
+  admitted).
+- Cause: two centres for one question. The render draws a vehicle within `agents.json vehicle_radius_m` (900 m) and a walker within
+  `people_radius_m` (280 m) of the camera's EYE (flat distance, `agent_renderer.cpp`), while the simulation published, made and removed
+  them by a 900 m disc round the GROUND LOOKED AT (`camera_x/z` = `ground_seen`, up to 2.7 x the eye's height ahead of it). Between the
+  two discs a car was removed or made on screen. On top: a trip ending on a lane removed every vehicle but the city's own cars in sight
+  (`leave_lane`), an errand car, a lot car leaving its bay or a lorry leaving the yard with no next trip was removed where it stood, a
+  walker's walk that ended at a node or found no way on was removed there (`at_node`), and walkers were born on any footway of the window,
+  in view too (`spawn_walker`).
+- Fix (one owner, `sim/traffic/sight.h`): `camera_x/z` is the eye; `vehicle_may_show` / `person_may_show` use the render's own radii,
+  now owned by the traffic catalogue (`publish_radius_m`, new `publish_people_m`; the render reads them, `agents.json` lost both keys).
+  Publication, trip starts (now asked at the trip's real place, not the segment's middle), walker births on a footway, the walking
+  window's removals and every end of a trip or a walk go through it. A trip that ends in sight drives on (an errand still to do goes
+  with it) or stands short of its lane's end until out of sight (`Vehicle::ended`, `trip_ends_here`, also for lot cars and lorries with
+  nowhere to go); a walk that ends in sight goes on from its node (the lab's walkOn) or stands until out of sight (`Pedestrian::done`).
+  The 120 s removal is deleted with its tunable; the probe reports the longest a near vehicle has stood (`stuck_longest_s`) and the
+  removals in sight (`gone_in_sight`, counted at the one exit point of each: `despawn_vehicle`, walker `despawn` with `inside` for a
+  door, a bus or a car).
+- Why it cannot come back by another path: the render draws only what is published inside those radii, and every removal and birth by
+  the street's own step asks the same owner; anything else is counted by the probe the test holds at zero.
+- Test: `sight_test` (new). On the fixes' parent commit with the probe alone: 4 vehicles removed in sight in 5 minutes (FAIL); now 0,
+  and no near vehicle stands more than 25 s. The walker path was not reached in that run (walks ending at a node without a door are
+  rare in the town): proven by reading.
+- Also: `strike_test` waited a frame count for a fracture made on a job thread, which the simulated-time tests (388df70b) broke on HEAD
+  already; it waits on the state with a real-time guard (StateWait). `vehicle_motion.cpp` split: `connector_motion.cpp` (the junction
+  crossing) and `motion_law.h` (the driving law both use).
+- Left open (pendencias): far traffic past the published radius (the lab's flow-drawn cars); the near window's materialisation after a
+  camera jump (a car can be made inside the radius for one window step); the lab's view cone, which also lets cars be made near the
+  camera behind it.

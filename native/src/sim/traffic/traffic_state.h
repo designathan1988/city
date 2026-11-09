@@ -88,6 +88,7 @@ struct Vehicle {
 	uint8_t shots = 0; // rounds taken on the bodywork (the pistol): enough of them and it burns
 	bool stood = false; // stood at the stop line of the lane it is on (traffic_probe: a red entry from a standstill)
 	float goal_s = 0;
+	bool ended = false; // its trip ended where it may be seen (sight.h): it stands short of its lane's end until it is out of sight
 	RouteRef route; // directed segments, in TrafficState::route_pool
 	int ri = 0;
 	Pose cur; // at the last publication
@@ -192,7 +193,9 @@ struct TrafficState {
 	int reroutes = 0, released = 0, jams = 0;
 	float red_last[TIMED_STAGES] = {}; // the last red entry: type, speed, ds, time (traffic_probe)
 	int red_entries = 0, red_from_stop = 0; // over the stop line on red (probe): all, and after standing at it (a violation)
-	int vehicle_count = 0, ped_count = 0, arrived = 0, lost = 0, ped_arrived = 0, ped_waiting = 0, stuck_lost = 0;
+	int vehicle_count = 0, ped_count = 0, arrived = 0, lost = 0, ped_arrived = 0, ped_waiting = 0;
+	// near vehicles and walkers taken away where the player may see them (sight.h: none, but by the player's own hand)
+	int gone_in_sight = 0, ped_gone_in_sight = 0;
 	double time = 0; // simulated seconds
 	uint64_t tick = 0;
 	float spawn_credit = 0;

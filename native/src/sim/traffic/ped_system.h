@@ -14,7 +14,9 @@ inline float arc_lo(const RoadSegment &g) { return float(g.retreat_a); } // the 
 inline float arc_hi(const RoadSegment &g) { return float(g.len - g.retreat_b); }
 void aim_line(Pedestrian &w); // a straight line toward ways[wi] from where the walker stands
 void onto_sidewalk(CityState &s, Pedestrian &w); // onto the sidewalk at the same place across as where it stands
-void despawn(TrafficState &t, int id, bool arrived);
+// Takes walker `id` (and whoever walks with it) off the street: `arrived` at its walk's end; `inside` a door or a vehicle, which the player
+// may watch. Any other leaving where the player may see it is counted (TrafficState::ped_gone_in_sight: sight.h says it never happens).
+void despawn(CityState &s, int id, bool arrived, bool inside = false);
 
 // ped_door_walk.cpp: the first and last steps at a lot's door
 void aim_at_door(CityState &s, Pedestrian &w); // on the last street of its route: a door ahead to go in at
@@ -67,6 +69,9 @@ PedAge roll_age_alone(TrafficState &t, const TrafficParams &p);
 void dress_walker(TrafficState &t, const TrafficParams &p, Pedestrian &w, PedAge age, float hp); // a body of that age and its own pace
 int alloc_walker(TrafficState &t);
 bool spawn_walker(CityState &s, const PeopleNow &now, bool from_door);
+// A walk from node `from`: to a street with doors, along it, on the sidewalk they open onto (`side`); with none in reach, to a node of
+// any street; false with no destination in reach.
+bool plan_trip(CityState &s, int from, std::vector<int> &route, int &side);
 
 // walker_cells.cpp: who stands near a point (TrafficState::walker_cells, spawn_cells)
 bool walker_within(CityState &s, float x, float z, float r); // somebody on foot within `r` of the point, as filed this tick

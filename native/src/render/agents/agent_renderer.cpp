@@ -51,9 +51,10 @@ bool AgentRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	if (!read_shapes(table, errors)) return false;
 	if (!build_meshes(t, errors)) return false;
 	if (!push_palettes(t, ctx.catalog->traffic.line_colours, errors) || !read_loads(t["occupants"]["load"], errors)) return false;
-	vehicle_r_ = t["vehicle_radius_m"].f();
+	// what is published is what may be drawn (sim/traffic/sight.h): the traffic catalogue owns both radii
+	vehicle_r_ = ctx.catalog->traffic.publish_radius_m;
 	if (vehicle_r_ <= 0) { // the cells of the bays' cars are this wide (index_parked)
-		errors.push_back("agents.json: vehicle_radius_m must be positive");
+		errors.push_back("traffic.json: publish_radius_m must be positive");
 		return false;
 	}
 	cabin_r_ = t["cabin_radius_m"].f();
@@ -61,7 +62,7 @@ bool AgentRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	level_hold_ = t["lod"]["hold"].f();
 	view_slack_ = t["view_slack"].f();
 	cabin_close_m_ = t["lod"]["cabin_close_m"].f();
-	people_r_ = t["people_radius_m"].f();
+	people_r_ = ctx.catalog->traffic.publish_people_m;
 	jump_m_ = t["wheel_jump_m"].f();
 	if (!errors.is_empty()) return false;
 	people_.set_level_hold(level_hold_);

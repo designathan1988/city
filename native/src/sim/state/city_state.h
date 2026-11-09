@@ -109,7 +109,9 @@ struct CityState : CityData {
 	TransitRun transit_run; // what runs on it (sim/transit/transit_sim.h)
 	PoseBuffer poses; // published by the simulation, read by the render without a lock
 	std::shared_ptr<JobPool> jobs{ std::make_shared<JobPool>() }; // shared worker pool (lot cells, later mesh jobs)
-	std::atomic<float> camera_x{ 0 }, camera_z{ 0 }; // the ground the player is looking at, set by the api each frame: the traffic's and walkers' windows
+	// the camera's eye over the ground, set by the api each frame: where the render measures what it draws from, so the traffic's and walkers'
+	// windows and what may be seen (sim/traffic/sight.h) are measured from it too
+	std::atomic<float> camera_x{ 0 }, camera_z{ 0 };
 
 	// The data's links to the channels and the catalogue (change log, job pool, tables), set again after the data moved in.
 	void bind();

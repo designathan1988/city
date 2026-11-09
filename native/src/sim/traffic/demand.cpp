@@ -90,7 +90,12 @@ bool spawn_one(CityState &s) {
 	const bool bike = type == VehicleType::BICYCLE;
 	float hour = float(s.clock.hour());
 	int from = pick_ds(s, truck ? p.zone_truck : weights_now(p, hour, true));
-	if (from < 0 || (bike && !t.g.ds[size_t(from)].bikes) || !unseen_start(s, from)) return false;
+	if (from < 0 || (bike && !t.g.ds[size_t(from)].bikes)) return false;
+	// where on it: the place the trip begins at is the one the sight rule asks about, before any search is paid for
+	const DirSeg &d = t.g.ds[from];
+	int lane = bike ? 0 : int(t.rng.next() % uint32_t(d.lanes)); // a bicycle keeps to the edge of the carriageway
+	float at = t.rng.range(p.demand_place_lo, p.demand_place_hi) * d.len;
+	if (!unseen_start(s, from, lane, at)) return false;
 	V2 a = mid_of(s, from);
 	int to = -1;
 	for (int k = 0; k < p.demand_dest_tries && to < 0; k++) {
@@ -102,9 +107,6 @@ bool spawn_one(CityState &s) {
 	if (to < 0 || to == from) return false;
 	// Room first: a spawn that cannot fit must not pay for a route search.
 	const VehicleClass &vc = p.classes[int(type)];
-	const DirSeg &d = t.g.ds[from];
-	int lane = bike ? 0 : int(t.rng.next() % uint32_t(d.lanes)); // a bicycle keeps to the edge of the carriageway
-	float at = t.rng.range(p.demand_place_lo, p.demand_place_hi) * d.len;
 	const int key = from * MAX_LANES + lane;
 	const float stop = d.len - d.stop_back - p.stop_margin_m; // it starts short of its stop line, able to stop there
 	if (at < vc.length + p.mouth_clear_m || at > stop || !lane_free(s, key, at, vc.length)) return false; // keep the lane mouth clear
