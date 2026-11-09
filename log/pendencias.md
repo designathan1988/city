@@ -201,4 +201,8 @@ O que falta fazer, por área.
   the published radius for that one step (a car appears). The window's materialisation must ask the sight rule too.
 - The lab's view cone (`ambient.ts seen`): within the radius but behind the camera a car may be made; the game's rule is the disc only.
 - Walkers' companions: a party's follower leaves with its leader (PEDS-6), not checked against the sight rule.
+- REC-3 (open): road, seam, water, prop, tree, cover and overlay mesh jobs hold `map_mutex` shared for the whole build. An exclusive
+  request (a growth insertion, a player's edit) waits for the longest, and libc++'s writer preference holds the frame's `sync` and the
+  traffic step behind it: the pose gaps of 400-550 ms measured on 2026-11-09 (camera_pan metro 4x). Each job needs a snapshot of what it
+  reads taken under a short lock, as `BuildingRenderer::gather` does.
 

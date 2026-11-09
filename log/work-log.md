@@ -1095,3 +1095,20 @@ deterministic, its own cause to fix); gates of the changed files OK; surface_dat
 - Left open (pendencias): far traffic past the published radius (the lab's flow-drawn cars); the near window's materialisation after a
   camera jump (a car can be made inside the radius for one window step); the lab's view cone, which also lets cars be made near the
   camera behind it.
+
+## 2026-11-09 19:00: growth decides beside the frame, and only adds under the exclusive lock (BLDG-5, part of REC-3)
+- Problem: the frame and the simulation's clock stalled while the city grew.
+- Cause: `grow_step` ran under `map_mutex` exclusively on every step with a queued cell, and that step scanned every lot of every queued
+  cell (`pick_free`, two spatial queries a lot) and made four candidate bodies through the job pool (`best_candidate`). libc++'s
+  `shared_mutex` prefers a waiting writer, so the main thread's `RenderWorld::sync` and every new mesh job waited for all of it.
+- Fix: `plan_growth` (map shared, after the traffic step) decides the step's buildings, the cells left with no free lot and the debt;
+  `apply_growth` (exclusive, only when the plan changes something) adds them, and does nothing when the map was edited since the plan
+  (`CityState::revision`), the owed buildings planned again next step. `record_for` and what it calls read a `const CityState`. Several
+  buildings in one step: a later one sees the earlier ones' lots as taken (not their looks, which are read from the map).
+- Verification: growth, building, edit, save and hash tests pass (growth_pick, road_commands, building_edit, building_variety,
+  city_mass, edit_fuzz, save_undo, traffic_hash, sight, yard, strike, model). A count of exclusive holds does not tell the two apart (25
+  buildings a second at 20 steps a second adds one every step either way): what moved is the work inside the hold, to be read in the
+  closing measurement's `lock` lap.
+- Left (pendencias, REC-3): road, seam, water, prop, tree, cover and overlay jobs hold the map shared for their whole build; any
+  exclusive request (a growth insertion, a player's edit) waits for the longest of them and, by writer preference, holds the frame's
+  sync behind it. Each job needs a snapshot of what it reads, taken under a short lock, as the building jobs do (`gather`).
