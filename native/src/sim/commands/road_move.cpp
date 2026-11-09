@@ -51,7 +51,7 @@ EditResult move_node(CityState &s, int node, double x, double z) {
 		roads.push_back(g);
 		box.add(g);
 	}
-	const std::map<int, double> before = squeezes_in(s, box);
+	Squeezes before = squeezes_in(s, box); // its roads laid again keep their ends, so one already squeezed is judged against itself
 	std::vector<std::vector<CarriedPiece>> kits; // what the player put on each road, carried along (Roadcraft nodeMover.ts carryStreetKit)
 	for (int sid : was.segs) kits.push_back(street_kit_of(s, sid));
 	for (int sid : was.segs) j_remove_segment(s, sid);
@@ -85,6 +85,7 @@ EditResult move_node(CityState &s, int node, double x, double z) {
 		r.buildings_removed += laid.buildings_removed;
 	}
 	if (end.node != node) {
+		squeezes_moved(before, node, end.node); // its roads end on the node it was dropped on
 		if (!was.plain) j_set_plain(s, end.node, false);
 		j_remove_node_if_orphan(s, node);
 	}

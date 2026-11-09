@@ -96,7 +96,7 @@ EditResult place_road(CityState &s, const Anchor &a, bool has_control, double cx
 	RoadBox box;
 	box.add(a.x, a.z);
 	box.add(b.x, b.z);
-	const std::map<int, double> before = squeezes_in(s, box);
+	const Squeezes before = squeezes_in(s, box);
 	RoadKeeps fresh;
 	fresh.flags = s.new_road_flags; // the street furniture set chosen for new roads
 	std::vector<int> laid;

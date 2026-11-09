@@ -130,6 +130,10 @@ RoadPlan plan_path(const CityState &s, const std::vector<Quad> &pieces, const An
 		Anchor from = i == 0 ? a : free_anchor(q.x0, q.z0), to = i + 1 == pieces.size() ? b : free_anchor(q.x1, q.z1);
 		if (i > 0) from.lift = total.lifts.back();
 		RoadPlan p = plan_road(s, from, true, q.cx, q.cz, to, profile);
+		if (p.ok && plan_squeezed(s, p, from, to, profile)) { // the build refuses it once laid (place_road): the preview says so first
+			p.ok = false;
+			p.reason = "road.reason.squeezed";
+		}
 		if (i == 0) total.lifts.push_back(p.lift_a);
 		total.lifts.push_back(p.lift_b);
 		total.len += p.len;

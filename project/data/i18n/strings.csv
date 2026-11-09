@@ -850,6 +850,7 @@ road.preview.cost,Custa {price}. Clique para terminar o trecho (continua a parti
 road.ramp,Alça de acesso,Access ramp
 road.reason.fullNode,um nó ali ficaria com mais de {max} vias,a node there would have more than {max} roads
 road.reason.overlap,passaria por cima de outra via,it would run over another road
+road.reason.squeezed,trecho curto demais para a junção abrir,too short a stretch for the junction to open
 road.ring.cuts,o anel cortaria uma via (Shift corta as vias e as liga à rotatória),the ring would cut a road (Shift cuts the roads and joins them to the roundabout)
 road.ring.exists,Já existe uma rotatória aqui.,There is a roundabout here already.
 road.ring.water,A rotatória não cabe aqui: o anel passaria sobre a água.,The roundabout does not fit here: the ring would sit over water.

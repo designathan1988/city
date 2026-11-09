@@ -326,6 +326,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/render/roads/street_shapes.h` · `native/src/render/roads/street_shapes_parts.h` — every size a street emitter draws with beyond the road's section, one block per file (structures, stays, a junction's outline, the section, the street trees), as streets.json "shapes" gives them; the StreetShapes the StreetLook holds
 - `native/src/render/roads/road_emit.cpp` — referenciais de segmento, nós e quad texturizado
 - `native/src/render/roads/road_junction.cpp` · `native/src/render/roads/road_kerb.cpp` — placas de nó, beco sem saída e balão; a borda com meio-fio de uma esquina ou balão
+- `native/src/render/roads/plate_triangles.cpp` · `native/src/render/roads/plate_triangles.h` — a junction's plate cut into triangles on its own outline's points: ear clipping, then Lawson's flips to constrained Delaunay (the lab's earcut and `refine`), no fan from the node
 - `native/src/render/roads/road_shapes.cpp` · `native/src/render/roads/road_shapes.h` — the shapes the road jobs share, made once for the city's revision: a node's ends and its corners' kerb and outer lines (road and verge jobs), a segment's runs of retaining wall (structure and verge jobs)
 - `native/src/render/roads/road_look.cpp` · `native/src/render/roads/road_look.h` — streets.json → StreetLook (aparência das vias)
 - `native/src/render/roads/road_markings.cpp` — pintura viária como geometria fina elevada
@@ -456,6 +457,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `project/tests/core/road_commands_test.gd` · `project/tests/core/road_commands_test.tscn` · `project/tests/core/road_money_cases.gd` · `project/tests/core/road_height_cases.gd` — comandos de via/zona/demolir pelo store; o dinheiro das vias (preço pago, devolução, vias geradas, desfazer, recusa sem saldo, modos de construir); a altura em que a via é desenhada (rampa, greide máximo, passar por cima, recusa por pouca diferença, o que o ponteiro pega, muros)
 - `project/tests/core/people_test.gd` · `project/tests/core/people_test.tscn` — quem anda a pé: portas, idades, pares, criança acompanhada e gente por hora
 - `project/tests/core/road_edit_test.gd` · `project/tests/core/road_edit_test.tscn` · `project/tests/core/road_shape_cases.gd` — opções da via de classe, Mover, Controle e regras de edição; altura, curva e união pelo Inspecionar
+- `project/tests/core/road_squeeze_test.gd` · `project/tests/core/road_squeeze_test.tscn` — the road preview warns of the tight stretch the build refuses (a road ending on another, one crossing two), and lets an open one pass
 - `project/tests/core/road_grade_seam_cases.gd` — túneis e placas de junção do `road_grade_test`
 - `project/tests/core/road_grade_test.gd` · `project/tests/core/road_grade_test.tscn` — the road grade against fixed scenes and limits (flat crossing and on a hill, elevated roads, ramps, bridge, tunnels, the plate matrix)
 - `project/render/shaders/water_plain.gdshader` — a água numa cor só, para a aba Otimizações ver o que o sombreamento dela custa

@@ -166,7 +166,7 @@ EditResult build_roundabout(CityState &s, double cx, double cz, double radius, b
 	RoadBox box;
 	box.add(cx - reach, cz - reach);
 	box.add(cx + reach, cz + reach);
-	const std::map<int, double> before = squeezes_in(s, box);
+	const Squeezes before = squeezes_in(s, box);
 	Builder b{ s, cx, cz, radius, double(s.terrain.base_height_at(float(cx), float(cz))), ring, {}, {} };
 	std::vector<Hit> hits;
 	s.roads.for_segments_near(cx - radius, cz - radius, cx + radius, cz + radius, [&](int sg) {
