@@ -80,6 +80,7 @@ void j_transit(CityState &s, TransitData next) {
 		record_list(s, t.lines, next.lines, OpKind::ADD_LINE, OpKind::REM_LINE, OpKind::EDIT_LINE);
 		if (t.next_id != next.next_id) j_record(s, OpKind::TRANSIT_NEXT, -1, Change{ 0, t.next_id, next.next_id });
 	}
+	transit_index(next); // `next` was edited from a copy: its cells are the old plan's
 	s.transit = std::move(next);
 	s.transit_revision++;
 	s.touch();

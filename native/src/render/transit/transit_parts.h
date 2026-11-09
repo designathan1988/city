@@ -48,6 +48,8 @@ struct TransitLook {
 	TransitBoxes station, stop, terminal, entrance, below;
 	godot::Vector3 car;
 	float car_up = 0;
+	std::vector<std::pair<int, float>> preview; // the run being laid: a surface part and its opacity
+	float preview_step = 0; // how far a point of that run moves before its part is made again
 
 	// Every key, type and length checked (render/data_reader.h); a box or a named part that names no part is an error.
 	bool read(const godot::Dictionary &t, godot::PackedStringArray &errors);
@@ -63,6 +65,8 @@ void transit_box(TransitMeshes &m, const TransitLook &look, int part, const godo
 
 // A track in stretches of look.run metres (a stretch a mesh of its own, so the view can leave the rest out).
 void transit_track_parts(const CityState &s, const TransitLook &look, const RailTrack &track, std::vector<TransitMeshes> &out);
+// A track whole into one mesh (the run being laid). Its pieces are the same as in stretches: each length of the track lays its own.
+void transit_track_whole(const CityState &s, const TransitLook &look, const RailTrack &track, TransitMeshes &out);
 void transit_stop_parts(const CityState &s, const TransitLook &look, const TransitStop &stop, TransitMeshes &out);
 
 } // namespace city

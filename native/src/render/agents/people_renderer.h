@@ -57,10 +57,10 @@ public:
 	void set_level_hold(float share) { level_hold_ = share; }
 	// Who rides is keyed from here on, past the walkers' ids.
 	static constexpr uint64_t PEOPLE_DENSE_KEYS = 1u << 20;
-	// The frame's rows open: riders first (seat), then the walkers and the draws (update).
-	void begin();
+	// The frame's rows open, on the clock of its newest publication: riders first (seat), then the walkers and the draws (update).
+	void begin(const PoseFrame &f);
 	// Somebody in `spot` of a vehicle at `vehicle`, `dist` from the camera: their looks from `look`, the bicycle's cranks at `phase` (0..1),
-	// a two-wheeler's rider with a foot down when `stopped`.
+	// a two-wheeler's rider with a foot down when `stopped`; anybody else sits breathing on the clock, each at their own place of it.
 	void seat(uint64_t key, const Pose &vehicle, const SeatSpot &spot, uint32_t look, float dist, float phase, bool stopped);
 	// Returns how many walkers were drawn.
 	int update(const PoseFrame &f, const godot::Vector3 &cam, const ViewCull &view, const PoseSample &at, float radius);
@@ -108,6 +108,7 @@ private:
 	void place(uint64_t key, int variation, int slot_level, const Pose &p, uint32_t look, float doing, float phase, float pose_code, bool frightened = false);
 	RowKeeper keeper_{ PEOPLE_DENSE_KEYS };
 	int floor_ = 0;
+	float clock_ = 0; // the idles' seconds this frame (begin)
 };
 
 } // namespace city
