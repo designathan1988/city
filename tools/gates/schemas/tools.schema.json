@@ -89,13 +89,45 @@
     },
     "mark_m": {
      "type": "number"
+    },
+    "front_least_m": {
+     "type": "number"
+    },
+    "arrow_most_m": {
+     "type": "number"
+    },
+    "arrow_front_share": {
+     "type": "number"
+    },
+    "arrow_least_m": {
+     "type": "number"
+    },
+    "arrow_depth_share": {
+     "type": "number"
+    },
+    "arrow_tip_share": {
+     "type": "number"
+    },
+    "arrow_head_share": {
+     "type": "number"
+    },
+    "arrow_barb_share": {
+     "type": "number"
     }
    },
    "required": [
     "take_px",
     "catch_px",
     "snap_least_m",
-    "mark_m"
+    "mark_m",
+    "front_least_m",
+    "arrow_most_m",
+    "arrow_front_share",
+    "arrow_least_m",
+    "arrow_depth_share",
+    "arrow_tip_share",
+    "arrow_head_share",
+    "arrow_barb_share"
    ],
    "strict": true
   },

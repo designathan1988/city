@@ -1,6 +1,6 @@
 {
  "sim": {
-  "_doc": "The simulation clock: ticks a second, game minutes a real second, the steps a tick at the fast speeds, the hour a map opens at, and how fast buildings grow on queued lots. body_cache_mb: the memory the buildings' bodies made from their seeds may keep (sim/buildings/b40/body_cache.h), shared by every reader; past it the least recently asked are made again when asked.",
+  "_doc": "The simulation clock: ticks a second, game minutes a real second, the steps a tick at the fast speeds, the hour a map opens at, and how fast buildings grow on queued lots. grow_on_reach_m: the next building grows on the free lot nearest the last one grown when one lies this near, else on one drawn at random (Roadcraft world/growth/zoning.ts GROW_ON_REACH, 70 m). body_cache_mb: the memory the buildings' bodies made from their seeds may keep (sim/buildings/b40/body_cache.h), shared by every reader; past it the least recently asked are made again when asked.",
   "tick_hz": 20,
   "minutes_per_second": 1,
   "speed_fast": 2,
@@ -8,6 +8,7 @@
   "day_start_min": 390,
   "growth_per_s": 25,
   "growth_tries": 8,
+  "grow_on_reach_m": 70,
   "body_cache_mb": 128
  },
  "economy": {

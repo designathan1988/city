@@ -1,6 +1,8 @@
 ## Zones > Lots (Roadcraft editor/lotTool.ts): the lots the player draws. `mode` says what a gesture does: add (a rectangle dragged square to the
 ## street), polygon (point by point, closed on its first), edit (a corner dragged), curve (a side bent through the pointer), front (the side
 ## clicked becomes the front), split (across, along or by a drawn line), join (one lot, then its neighbour), delete. The zone brush paints them.
+## Each lot's front, the side its building faces, is marked with an arrow out through it towards the street, and the edit mode marks
+## every corner (lotTool.ts drawLot).
 extends ToolBase
 
 ## What of a corner or a side the pointer takes, how far a lot's point reaches, the marks (data/game/tools.json lots).
@@ -74,10 +76,16 @@ func _closed(points: PackedVector3Array) -> PackedVector3Array:
 	return ring
 
 
-## What the gesture shows over the lots' outlines (_read): `extra` and the polygon so far.
+## What the gesture shows over the lots' outlines (_read): the fronts, the corners in the edit mode, `extra` and the polygon so far.
 func _show(extra: Array = []) -> void:
 	var roads := extra.duplicate()
 	var at: Vector3 = _from if _from != Vector3.INF else Vector3.ZERO
+	for line in _lots.fronts:
+		roads.push_back({"points": line, "half_width": _width(line[0])})
+	if mode == "edit":
+		for l: Dictionary in _lots.all:
+			for q: Vector3 in l.points:
+				roads.push_back(_mark(q))
 	if _points.size() >= 2:
 		roads.push_back({"points": _points, "half_width": _width(at) * 2.0})
 	ctl.preview.show_ribbons(roads)
