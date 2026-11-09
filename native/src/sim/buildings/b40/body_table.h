@@ -62,9 +62,9 @@ struct BodyKey {
 	uint32_t seed = 0;
 	uint32_t w = 0, d = 0; // frontage and depth: the floats' bits
 	uint16_t floors = 0;
-	uint8_t zone = 0, fn = 0;
+	uint8_t zone = 0, fn = 0, corner = 0;
 	bool operator==(const BodyKey &o) const {
-		return stamp == o.stamp && seed == o.seed && w == o.w && d == o.d && floors == o.floors && zone == o.zone && fn == o.fn;
+		return stamp == o.stamp && seed == o.seed && w == o.w && d == o.d && floors == o.floors && zone == o.zone && fn == o.fn && corner == o.corner;
 	}
 	bool operator!=(const BodyKey &o) const { return !(*this == o); }
 };
@@ -78,7 +78,7 @@ struct BodyKeyHash {
 	size_t operator()(const BodyKey &k) const {
 		uint64_t h = mix(k.stamp, uint64_t(k.seed) | (uint64_t(uint32_t(k.w)) << HALF_BITS));
 		h = mix(h, uint64_t(uint32_t(k.d)) | (uint64_t(k.floors) << HALF_BITS));
-		return size_t(mix(h, uint64_t(k.zone) | (uint64_t(k.fn) << BYTE_BITS)));
+		return size_t(mix(h, uint64_t(k.zone) | (uint64_t(k.fn) << BYTE_BITS) | (uint64_t(k.corner) << (BYTE_BITS * 2))));
 	}
 };
 

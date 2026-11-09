@@ -3,6 +3,7 @@
 
 #include "sim/buildings/b40/blocks.h"
 #include "sim/buildings/b40/record.h"
+#include "sim/buildings/building_store.h"
 
 namespace city::b40 {
 
@@ -25,6 +26,11 @@ std::shared_ptr<const Body> BodyCache::mass(const Data &data, const Building &re
 		resolve_blocks(*b);
 		return std::shared_ptr<const Body>(std::move(b));
 	}, cost_of);
+}
+
+std::shared_ptr<const BodyLook> BodyCache::look(const Data &data, const Building &rec, const Tuning &tn) {
+	return looks_.get(body_key(rec), [&]() { return std::make_shared<const BodyLook>(body_look(tn, *body(data, rec), rec.fn)); },
+			[](const BodyLook &) { return sizeof(BodyLook); });
 }
 
 } // namespace city::b40

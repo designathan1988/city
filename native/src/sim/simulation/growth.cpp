@@ -5,6 +5,7 @@
 #include "core/seeded.h"
 #include "sim/buildings/b40/record.h"
 #include "sim/citygen/lot_gen.h"
+#include "sim/roads/geometry.h"
 #include "sim/state/city_state.h"
 
 #include <algorithm>
@@ -88,14 +89,7 @@ bool lot_occupied(const CityState &s, const Lot &l) {
 	return hit;
 }
 
-BodyLook look_of(CityState &s, const Building &rec) {
-	const b40::BodyKey key = b40::body_key(rec);
-	auto it = s.buildings.looks.find(key);
-	if (it != s.buildings.looks.end()) return it->second;
-	const std::shared_ptr<const b40::Body> body_held = b40::record_body(s.buildings.designs, rec);
-	const b40::Body &body = *body_held;
-	return s.buildings.looks[key] = body_look(s.catalog.tune, body, rec.fn);
-}
+BodyLook look_of(const CityState &s, const Building &rec) { return *s.buildings.designs.made->look(s.buildings.designs, rec, s.catalog.tune); }
 
 namespace {
 // What stands within LOOK_REACH_M of the point, and how far.
@@ -151,6 +145,39 @@ Candidate best_candidate(CityState &s, const Building &lot) {
 }
 } // namespace
 
+namespace {
+// Whether a point lies on a street: within corner_margin_m of the paving of a road on the ground.
+bool on_street(const CityState &s, double x, double z) {
+	const double margin = s.catalog.tune.lot_corner_margin_m;
+	bool hit = false;
+	s.roads.for_segments_near(x - margin, z - margin, x + margin, z + margin, [&](int sg) {
+		const RoadSegment &g = s.roads.segs[size_t(sg)];
+		if (hit || structure_of(g.flags) != Structure::GROUND) return;
+		double t = 0, dist = 0;
+		closest_t(g.q, x, z, t, dist);
+		hit = dist < s.roads.profile_of(sg).half() + margin;
+	});
+	return hit;
+}
+} // namespace
+
+uint8_t corner_of(const CityState &s, const Lot &l) {
+	const Tuning &tn = s.catalog.tune;
+	Building rec;
+	rec.x = float(l.x); rec.z = float(l.z); rec.w = float(l.w); rec.d = float(l.d); rec.rot = float(l.rot);
+	const b40::LotFrame f = b40::lot_frame(rec);
+	for (const b40::LotCorner side : { b40::CORNER_LEFT, b40::CORNER_RIGHT }) {
+		const double along = (side == b40::CORNER_LEFT ? -1 : 1) * (l.w / 2 + tn.lot_corner_beyond_m);
+		bool both = true;
+		for (const double k : { tn.lot_corner_near, tn.lot_corner_far }) {
+			const V2 p = f.at(float(along), float(l.d * k));
+			both = both && on_street(s, p.x, p.y);
+		}
+		if (both) return side;
+	}
+	return b40::CORNER_NONE;
+}
+
 Building record_for(CityState &s, const std::vector<Lot> &cell_lots, int i) {
 	const Lot &l = cell_lots[i];
 	const GrowthDef &g = s.catalog.growth;
@@ -170,12 +197,12 @@ Building record_for(CityState &s, const std::vector<Lot> &cell_lots, int i) {
 	b.seed = l.seed;
 	b.style = uint16_t(l.seed & BUILDING_AUTO_STYLE_MASK);
 	b.profile = uint16_t(l.profile);
+	b.corner = corner_of(s, l); // before the candidates: a corner's plan is its own
 	b.floors = uint16_t(fn == FN_NONE && tallest >= 0 ? std::max(1, tallest) + g.organic_extra_floors : 0);
 	const Candidate kept = fn == FN_NONE ? best_candidate(s, b) : draw_candidate(s, b, b.seed);
 	b.seed = kept.seed;
 	b.style = uint16_t(kept.seed & BUILDING_AUTO_STYLE_MASK);
 	b.floors = uint16_t(kept.storeys); // the body is the height: a record never says another
-	s.buildings.looks[b40::body_key(b)] = kept.look;
 	return b;
 }
 

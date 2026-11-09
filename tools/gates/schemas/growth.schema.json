@@ -462,6 +462,12 @@
       "front_pad": {
        "type": "number"
       },
+      "paving_gap": {
+       "type": "number"
+      },
+      "reach_m": {
+       "type": "number"
+      },
       "width_trim": {
        "type": "number"
       },
@@ -493,6 +499,8 @@
      "required": [
       "_doc",
       "front_pad",
+      "paving_gap",
+      "reach_m",
       "width_trim",
       "depth_m",
       "frontage_m",

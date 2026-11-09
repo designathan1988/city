@@ -3,6 +3,7 @@
 // again from the seed clears them). The only owner of that frame; each block's payload is its owner's.
 #pragma once
 
+#include <cstdint>
 #include <functional>
 
 namespace city {
@@ -15,6 +16,6 @@ struct CityState;
 // `written` is told each block's name as it ends (the state hash's parts).
 void write_extra_blocks(ByteWriter &w, const CityState &s, const std::function<void(const char *)> &written);
 // Reads them up to and including SAVE_END; false when the bytes are damaged.
-bool read_extra_blocks(ByteReader &r, CityState &s);
+bool read_extra_blocks(ByteReader &r, CityState &s, uint32_t version);
 
 } // namespace city

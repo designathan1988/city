@@ -353,9 +353,15 @@
   "splinter_chance": 0.6
  },
  "lot": {
-  "_doc": "The lot editor (sim/commands/lot_commands.cpp): a pointer within corner_take_m of a corner takes it, within side_reach_m of a side reaches it. angle_look_m: how far round a point a drawn lot looks for the street it squares to.",
+  "_doc": "The lot editor (sim/commands/lot_commands.cpp): a pointer within corner_take_m of a corner takes it, within side_reach_m of a side reaches it. angle_look_m: how far round a point a drawn lot looks for the street it squares to. The delete stroke (lot_erase) is read every erase_step_m along its way, shorter than any lot's front (lotTool.ts STROKE_STEP), and takes the buildings standing within erase_reach_m of a point whose ground blocks cover it (lotTool.ts eraseUnder, 80 m). A lot grown is a corner lot when a street's paving lies, within corner_margin_m, corner_beyond_m past one of its sides at corner_near and corner_far of its depth (zoning.ts cornerOf, STREET_MARGIN).",
   "corner_take_m": 0.8,
   "side_reach_m": 1.2,
+  "erase_step_m": 2,
+  "erase_reach_m": 80,
+  "corner_margin_m": 0.6,
+  "corner_beyond_m": 2,
+  "corner_near": 0.35,
+  "corner_far": 0.65,
   "angle_look_m": 80
  },
  "shoot": {

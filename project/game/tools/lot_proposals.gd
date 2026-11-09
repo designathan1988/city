@@ -15,8 +15,22 @@ func forget() -> void:
 	_cell = UNREAD
 
 
+## Every proposal of the core's cell round `p` (the pointer's, or the gesture's start).
+func near(p: Vector3) -> Array:
+	_read_cell(p)
+	return _rings
+
+
 ## The proposal under `p`, or an empty ring.
 func at(p: Vector3) -> PackedVector3Array:
+	_read_cell(p)
+	for i in _rings.size():
+		if Geometry2D.is_point_in_polygon(Vector2(p.x, p.z), _flat[i]):
+			return _rings[i]
+	return PackedVector3Array()
+
+
+func _read_cell(p: Vector3) -> void:
 	var cell_m: float = CityStore.constants.chunk_m # proposals are read a cell of the core's at a time
 	var cell := Vector2i(floori(p.x / cell_m), floori(p.z / cell_m))
 	if cell != _cell:
@@ -28,10 +42,6 @@ func at(p: Vector3) -> PackedVector3Array:
 			for q in ring:
 				flat.push_back(Vector2(q.x, q.z))
 			_flat.append(flat)
-	for i in _rings.size():
-		if Geometry2D.is_point_in_polygon(Vector2(p.x, p.z), _flat[i]):
-			return _rings[i]
-	return PackedVector3Array()
 
 
 ## "{w} x {d} m": the front's length, and how far the ring reaches back from it.

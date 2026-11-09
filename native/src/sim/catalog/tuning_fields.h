@@ -51,7 +51,8 @@
 	X(build, shaped_inset_share) X(build, click_in_m) X(build, shortest_leg_m) X(build, lowest_flight_m) \
 	X(build, lowest_step_m) X(build, flight_width_m) X(build, band_width_m) X(build, thinnest_m) XD(build, along_side_cos) \
 	XD(build, flush_pad_m) \
-	XD(lot, corner_take_m) XD(lot, side_reach_m) \
+	XD(lot, corner_take_m) XD(lot, side_reach_m) XD(lot, erase_step_m) XD(lot, erase_reach_m) \
+	XD(lot, corner_margin_m) XD(lot, corner_beyond_m) XD(lot, corner_near) XD(lot, corner_far) \
 	XI(roundabout, refuse_samples) XI(roundabout, water_samples) XI(roundabout, cross_samples) XI(roundabout, bisect_steps) \
 	XI(roundabout, empty_ring_nodes) XI(roundabout, vacant_arms) XD(roundabout, water_clear_m) \
 	X(shoot, rider_back_m) X(shoot, rider_push) X(shoot, rider_hit_m) \
