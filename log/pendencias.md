@@ -98,6 +98,10 @@ O que falta fazer, por área.
     `native/src/core/` from its `exempt`, add `".h": 90` to `max_function_lines`; `named_constant_line` and the nine
     forbidden-id `pattern` entries are no longer read by the gates; the SEGUNDO_DONO name-similarity rule now sees
     declarations the old regex missed and reports 307 hits, many coincidental (rule wording to tighten).
+  - The full gates fail on two things outside any change (seen 2026-11-08 22:55): ESPELHO, `rules.json` `mirrors` is empty
+    (unchanged since `60988e21`; an empty table fails by design: a mirror to register, or the rule to decide), and RAIZ_LIMPA,
+    `docs/` at the repository's root (the owner's study folder, kept out of version control in `.git/info/exclude`: listed in
+    `root_allowed` or moved out of the root, the owner's call).
   - Gates report 554 problems in code (first full run of the lexer-based gates, 2026-11-07): ESTADO_NA_UI 75 (`@onready`
     values, `static var`, exported values written by the script), TEXTO_VIA_TR 26, JOB_SEM_CHAVE 21 (hand-made `JobKey{}`
     everywhere: a key factory per lane in `core/job_pool.h` must come first), NUMERO_MAGICO 29 (hex and suffixed literals),
@@ -126,7 +130,11 @@ O que falta fazer, por área.
     same view 600 frames later is identical, so a pipeline does not land during a run's photos; the wires' sway is not it (no wind
     there); the visibility ranges' hysteresis margins are not it (with no margin two runs still differed; that change was undone).
     A first reading, the binary's memory layout, was wrong (a5f6f33e's template form of `for_drawn_chunks` matched by chance).
-    Next evidence: each chunk's wire instance buffer (`street_props.cpp` push_span) dumped in two runs.
+    Decided by `prop_buffer_probe` (each furniture chunk's pole and wire buffers read back from the GPU, by MD5): in two runs whose
+    photos differ on those pixels, all 35 chunks' buffers are byte-equal. What the game sends is the same; the difference is the
+    GPU's side (the pipeline state each run draws with, as above), not this code. Not Godot's disk pipeline cache either: with
+    `rendering/rendering_device/pipeline_cache/enable` off, three runs still gave two pictures (00-cidade's wire strip).
+    Godot 4.7 has no setting that turns the ubershaders off (docs: pipeline_compilations, ProjectSettings).
   - The frozen photos (`photos`, quick) once stopped after "city opened" and were killed at their 90 s deadline (2026-11-08 11:34,
     with the suite in parallel; the terrain's look change); alone they passed in 10 s, byte-equal to known states. The scene waits
     in `CaptureWait.until_drawn` on the render's pending work: to read there and in the render's pending counters which one

@@ -1,10 +1,13 @@
 // Probes for the tests: the agents' and the wear's cost (agent_cost, wear_probe), where the last _process went (render_cost), the road
-// meshes' size (road_mesh_counts), how far they stand off the roads (road_surface_probe), the ground seams (road_seam_probe), and how the agents' poses arrive (pose_stats: publications, their gaps, frames shown past the newest
-// pose). The traffic's own probe is city_core_probe.cpp.
+// meshes' size (road_mesh_counts), how far they stand off the roads (road_surface_probe), the ground seams (road_seam_probe), the
+// furniture's poles and wires on the GPU (prop_buffer_probe), and how the agents' poses arrive (pose_stats: publications, their gaps,
+// frames shown past the newest pose). The traffic's own probe is city_core_probe.cpp.
 #include "api/city_core.h"
 
 #include "core/units.h"
 #include "render/roads/road_mesh.h"
+
+#include <godot_cpp/classes/hashing_context.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -117,6 +120,26 @@ Dictionary CityCore::road_seam_probe() {
 	d["unheighted"] = all.unheighted;
 	d["lost"] = all.lost;
 	d["worst_cover_m2"] = all.worst_cover_m2;
+	return d;
+}
+
+// Each furniture chunk's pole and wire instances as the GPU holds them (PropRenderer::instance_buffers), as "chunk key" -> "poles
+// count:md5 wires count:md5": two runs of one plan compare by it, a chunk whose instances or their order differ shows by its key.
+Dictionary CityCore::prop_buffer_probe() const {
+	const Dictionary buffers = render_.prop_buffers();
+	auto digest = [](const PackedFloat32Array &a) {
+		Ref<HashingContext> h;
+		h.instantiate();
+		h->start(HashingContext::HASH_MD5);
+		h->update(a.to_byte_array());
+		return String::num_int64(a.size()) + ":" + h->finish().hex_encode();
+	};
+	Dictionary d;
+	const Array keys = buffers.keys();
+	for (int64_t i = 0; i < keys.size(); i++) {
+		const Array pair = buffers[keys[i]];
+		d[keys[i]] = digest(pair[0]) + " " + digest(pair[1]);
+	}
 	return d;
 }
 

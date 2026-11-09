@@ -193,6 +193,7 @@ public:
 	godot::Dictionary road_mesh_counts() const; // what the road and ground seam chunks hold and the wear field's bytes
 	godot::Dictionary road_surface_probe() const; // the roads' stations over the map and how far their mesh stands off the true road (tests)
 	godot::Dictionary road_seam_probe(); // the ground seams of every road chunk, built anew: cells, cuts, refusals, cover (tests)
+	godot::Dictionary prop_buffer_probe() const; // each furniture chunk's poles and wires as the GPU holds them, by digest (two runs compared)
 	void draw_seams(bool on) { render_.draw_seams(on); } // tests/perf/camera_pan: a frame without them
 	void wear_paint(float x0, float z0, float x1, float z1, float value) { render_.wear_paint(x0, z0, x1, z1, value); } // tests/visual: a set use
 	godot::Dictionary building_cost() const { return render_.building_cost(); } // the building levels by surface: triangles, bytes

@@ -161,6 +161,7 @@ void CityCore::bind_queries() {
 	ClassDB::bind_method(D_METHOD("road_surface_probe"), &CityCore::road_surface_probe);
 	ClassDB::bind_method(D_METHOD("road_seam_probe"), &CityCore::road_seam_probe);
 	ClassDB::bind_method(D_METHOD("draw_seams", "on"), &CityCore::draw_seams);
+	ClassDB::bind_method(D_METHOD("prop_buffer_probe"), &CityCore::prop_buffer_probe);
 	ClassDB::bind_method(D_METHOD("wear_paint", "x0", "z0", "x1", "z1", "value"), &CityCore::wear_paint);
 	ClassDB::bind_method(D_METHOD("agent_cost"), &CityCore::agent_cost);
 	ClassDB::bind_method(D_METHOD("building_cost"), &CityCore::building_cost);

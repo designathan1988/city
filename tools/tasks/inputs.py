@@ -18,10 +18,16 @@ GITLINK = "160000"  # a submodule entry: a commit id, not a file
 
 
 def git(root: Path | str, *args: str, stdin: str | None = None) -> str:
-    """git's answer, text: the one wrapper of the tools (a deadline, no console window, no optional locks)."""
-    r = subprocess.run(["git", "--no-optional-locks", "-C", str(root), *args], input=stdin, capture_output=True,
+    """git's answer, text: the one wrapper of the tools (a deadline, no console window, no optional locks).
+
+    git's input is its own: the text given, or nothing (the null device), never the caller's. Under `cli.py serve` the
+    caller's input is the protocol pipe, with serve's own read of it pending; a git that inherited it blocked in its start
+    (Git for Windows, compat/winansi.c detect_msys_tty: with stdout and stderr not a console it asks the name of a piped
+    stdin through NtQueryObject, which waits for the pending read) until the next request came or its deadline passed."""
+    feed = {"input": stdin} if stdin is not None else {"stdin": subprocess.DEVNULL}
+    r = subprocess.run(["git", "--no-optional-locks", "-C", str(root), *args], capture_output=True,
                        text=True, encoding="utf-8", errors="surrogateescape", timeout=GIT_TIMEOUT_S,
-                       creationflags=NO_WINDOW)
+                       creationflags=NO_WINDOW, **feed)
     if r.returncode != 0:
         raise RuntimeError(f"git {' '.join(args)} failed ({r.returncode}): {r.stderr.strip()}")
     return r.stdout

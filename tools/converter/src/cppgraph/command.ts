@@ -22,6 +22,8 @@ export const CPPGRAPH_FLAGS: readonly FlagSpec[] = [
   { name: 'entry', repeatable: true, help: 'file:Name or file:Class::method, relative to the root; none = whole scope' },
   { name: 'clangd-arg', repeatable: true, help: 'extra clangd flag, e.g. --clangd-arg=--query-driver=<compiler glob>' },
   { name: 'index-timeout', help: `seconds to wait for clangd's background index (default ${DEFAULT_INDEX_TIMEOUT_S})` },
+  { name: 'scope', help: '"graph" (default: units and edges, over a background index) or "declarations" (units alone, no index: what a translation reads)' },
+  { name: 'symbol-cache', help: 'folder that keeps each file\'s symbols by an exact key across graphs (outside the project): only changed files are parsed' },
 ];
 
 export async function runCppGraph(argv: readonly string[]): Promise<void> {
@@ -31,10 +33,12 @@ export async function runCppGraph(argv: readonly string[]): Promise<void> {
   if (!Number.isFinite(timeout) || timeout <= 0) throw new ArgsError('--index-timeout must be a positive number');
   const cache = flags.one('cache') ??
     path.join(os.tmpdir(), `converter-clangd-${crypto.createHash('sha256').update(root).digest('hex').slice(0, 16)}`);
+  const scope = flags.one('scope') ?? 'graph';
+  if (scope !== 'graph' && scope !== 'declarations') throw new ArgsError('--scope must be "graph" or "declarations"');
   const ir = await buildCppGraph({
     root, compileCommands: flags.require('compile-commands'), clangd: flags.require('clangd'), cacheDir: cache,
     include: flags.all('include'), exclude: flags.all('exclude'), entries: flags.all('entry'), clangdArgs: flags.all('clangd-arg'),
-    indexTimeoutSeconds: timeout,
+    indexTimeoutSeconds: timeout, declarationsOnly: scope === 'declarations', symbolCacheDir: flags.one('symbol-cache'),
   });
   const out = path.resolve(flags.require('out'));
   fs.mkdirSync(path.dirname(out), { recursive: true });

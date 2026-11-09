@@ -405,6 +405,58 @@ Gate completo, agora que termina: 14.327 problemas. 14.310 estão em `tools/proc
 - The first whole translation of the lab: about 4,963 units written and 1,657 left out a round, then the header compile died
   with the first race (the server crashed); run again after the fix.
 
+## 2026-11-08 22:40: the lab's ledger, causes by size
+- The ledger of the whole lab (`convert --mode whole`, 20,305 declarations): 11,681 to translate, 5,718 refused as "method" (the
+  source does something the ledger judges wrong), 2,906 to write by hand (three.js geometry 1,589, DOM interface 272, code that
+  mixes state and commands 533).
+- The largest cause is a rule of the converter itself, not a limit of translation: "wrong methodology: hot-allocation" refuses
+  1,123 units directly, and thousands more by reach (`Building`, `Vehicle`, `RoadNode`, `TableItems`, `IdSlots`, `CellFiling`,
+  `ChangeJournal`, all flagged for hot allocation or scattered writes). Allocation in a hot loop is a cost of JavaScript's
+  collector; translated to C++ it is a different question (an allocation the C++ owner pools or reuses), so refusing the unit
+  keeps the lab's logic out of the game for a reason that belongs to the source language. To decide next: the ledger translates
+  such a unit and the quarantine judges the C++ it gives (a heap allocation in a hot path of the output), instead of refusing it.
+- The header compile of the whole translation failed twice on `git ls-files` passing its 120 s deadline (tools/tasks keying).
+  The reading of this entry, "other heavy work ran beside it", was wrong: the cause is a deadlock, found in the next entry.
+
+## 2026-11-08 22:38: the header compile's git deadlock; the game's C++ declarations in seconds
+- Problem: every whole translation died at its header compile, `converter-syntax-check` BROKEN after 0 s with "(no log)", 12
+  times this session; the same `git ls-files -s -z` of the repository takes 0.08 s from a shell.
+- Why: (1) the converter's client (`src/common/tasks.ts` `parseResult`) dropped the server's `message`, so a task broken at its
+  keying showed no reason; the run's `events.jsonl` had it: `git ... ls-files -s -z timed out after 120 seconds` in
+  `inputs.py` `_index_of`, the first thing a fresh `serve` did. (2) The converter talks to `cli.py serve` through a pipe it keeps
+  open, sending the next request only after the answer: serve's main thread sits in a read of that pipe. (3) `inputs.git` set no
+  stdin, so git inherited that pipe. (4) Git for Windows, at its start, asks the name of a piped stdin when stdout and stderr are
+  not a console (`compat/winansi.c` `winansi_init` → `detect_msys_tty(0)` → `NtQueryObject(ObjectNameInformation)`), and that
+  query waits while a synchronous read of the pipe is pending (documented by the Cygwin developers for the same call). Git waited
+  for serve's read, serve's read for the converter's next request, the converter for git: until git's deadline. `runTasksSync`
+  never hung because it closes the pipe (no read pending); the task processes never hung because `win32.JobTree` gives them
+  the null device and a handle list.
+- Sources: git-for-windows `compat/winansi.c` (raw.githubusercontent.com/git-for-windows/git/main/compat/winansi.c); the Cygwin
+  patches on NtQueryObject blocking on a pipe with a pending ReadFile (inbox.sourceware.org/cygwin-patches); Python's
+  `subprocess` (stdin=None inherits the parent's handle).
+- Fix, one owner: `inputs.git` gives git its own input, the text given or the null device, never the caller's
+  (`tools/tasks/inputs.py` `git`). It is the one wrapper of every git call in tools/tasks, so no other git of the tools inherits
+  the pipe; the task processes already had the null device. The converter's client keeps the server's `message`/`error` and
+  `mustRun` shows it (`src/common/tasks.ts`). Test first: `test_cli.py` `test_serve_answers_while_its_input_stays_open` (serve
+  with its input left open, one request) failed with no answer in 60 s before the fix and answers in 0.36 s after it.
+- Also in this change: the game's C++ graph for a translation is its declarations only (`cppgraph --scope declarations`,
+  `common/derived.ts` `targetGraph` scope "declarations" by default): a translation reads the target's types, fields and names,
+  never its edges, and resolving every edge asked clangd a definition of every name over a fresh background index (half an hour
+  whenever native/src changed). The files are parsed in parallel batches and each file's symbols are kept by an exact key (the file,
+  its closure of quoted includes, clangd and the compilation database: `cppgraph/symbol-cache.ts`), so only what changed is parsed:
+  158 s cold, 3.2 s warm, the same graph byte for byte.
+- Checked: tools/tasks 41 of 41, the converter 136 of 136, `fast road_commands_test` 4 of 4.
+- The whole translation of the lab, run again (22 rounds, about 4 s of translation and 3 to 5 s of header compile each): 20,305
+  units, 5,004 translated into 1,660 files, 15,301 open, 2,010 of them left out by the rounds. It stopped at round 22 on two
+  header errors no unit was placed on (`program_types.h` `LeanJunction` without `tongues`/`rings`, `reeds_shepp_types.h`), so
+  the `.cpp` files were not compiled yet: the 5,004 count units in headers that compile, not code proved.
+- The causes of the header errors, by count (round 4, 506 errors): 124 "called object type 'FacadePropKind' is not a function"
+  (an enum member written as a call, `FacadePropKind::POT()`: the member's name meets a constant with an accessor of that
+  name); 117 "no viable conversion from string to SHELLPARTPARS" (a `const` string made by a template literal has TypeScript's
+  literal type, the text itself, and `types.ts` makes every lone string-literal type an enum); 57 + 11 a `js::` built-in
+  missing (`object_freeze`, `object_from_entries`); 36 `to_string` with no match; 26 a member missing on a struct. Next, in
+  that order, in the translator.
+
 ## The converter's design and use (moved here from tools/converter/DESIGN.md and README.md, 2026-11-08)
 The project keeps its documents in CLAUDE.md and log/ (gate DOC_UNICO): the converter's own two documents live here now. Its
 goal log (GOAL-LOG.md, the three.js -> Godot replay cycles, in Portuguese) is summarised in the history above and kept in

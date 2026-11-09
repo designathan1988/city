@@ -46,6 +46,8 @@ export interface TaskResult {
   /** The task's combined standard output and error. */
   readonly log: string;
   readonly key: string;
+  /** Why the server judged it so: a broken task (keying failed, a malformed request) has no log, only this. */
+  readonly message: string;
 }
 
 export class TaskError extends Error {}
@@ -69,7 +71,8 @@ export function mustRun(name: string, r: TaskResult): TaskResult {
   } catch {
     tail = '(no log)';
   }
-  throw new TaskError(`${name}: ${r.status}${r.exit !== null ? ` (exit ${r.exit})` : ''} after ${r.seconds} s:\n${tail}`);
+  const why = r.message ? `\n${r.message.slice(-4000)}` : '';
+  throw new TaskError(`${name}: ${r.status}${r.exit !== null ? ` (exit ${r.exit})` : ''} after ${r.seconds} s:\n${tail}${why}`);
 }
 
 const REPO = (): string => path.resolve(machine().get('repo'));
@@ -99,8 +102,9 @@ function serveCommand(): { exe: string; args: string[] } {
 }
 
 function parseResult(line: string): TaskResult {
-  const r = JSON.parse(line) as { id: string; status: TaskStatus; exit: number | null; seconds: number; log: string; key: string };
-  return { id: String(r.id), status: r.status, exit: r.exit ?? null, seconds: r.seconds, log: r.log, key: r.key };
+  // `message` on a judged task, `error` on a request the server could not read (tools/tasks/cli.py cmd_serve)
+  const r = JSON.parse(line) as { id: string; status: TaskStatus; exit: number | null; seconds: number; log: string; key: string; message?: string; error?: string };
+  return { id: String(r.id), status: r.status, exit: r.exit ?? null, seconds: r.seconds, log: r.log, key: r.key, message: r.message ?? r.error ?? '' };
 }
 
 /** One serve process for the converter process: tasks submitted while others run share its pool. */

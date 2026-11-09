@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import sys
+import threading
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
@@ -17,6 +18,9 @@ from support import PY, TOOLS, RepoCase, proc  # noqa: E402
 from tasks import cli  # noqa: E402
 
 SERVE_TIMEOUT_S = 120
+# One trivial task's answer, keying included (a git listing of a one-file repo): well under inputs.GIT_TIMEOUT_S (120 s),
+# the deadline a blocked git is held to, so a git that blocks fails here and a git that answers passes with room.
+OPEN_INPUT_ANSWER_S = 60
 
 
 class CliTest(RepoCase):
@@ -93,6 +97,29 @@ class CliTest(RepoCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         got = {d["id"]: d["status"] for d in map(json.loads, r.stdout.splitlines())}
         self.assertEqual(got, {"a": "PASS", "b": "FAIL", "c": "BROKEN"})
+
+    def test_serve_answers_while_its_input_stays_open(self):
+        """The converter keeps serve's input open and waits for each answer before it asks again. serve's own read of that
+        input is then pending, and a git that inherited the pipe blocked in Git for Windows' start (winansi.c detect_msys_tty
+        queries the name of a piped stdin, a query that waits for the pending read) until git's deadline: keying failed."""
+        p = subprocess.Popen([PY, str(TOOLS / "tasks" / "cli.py"), "serve", "--root", str(self.root)], stdin=subprocess.PIPE,
+                             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, creationflags=proc.NO_WINDOW)
+        try:
+            p.stdin.write(json.dumps({"id": "a", "name": "ok", "argv": [PY, "-c", "pass"], "timeout_s": 60}) + "\n")
+            p.stdin.flush()
+            answer: list[str] = []
+            reader = threading.Thread(target=lambda: answer.append(p.stdout.readline()), daemon=True)
+            reader.start()
+            reader.join(OPEN_INPUT_ANSWER_S)
+            self.assertTrue(answer, f"no answer in {OPEN_INPUT_ANSWER_S} s while serve's input stays open")
+            self.assertEqual(json.loads(answer[0])["status"], "PASS", answer[0])
+        finally:
+            p.stdin.close()
+            try:
+                p.wait(SERVE_TIMEOUT_S)
+            except subprocess.TimeoutExpired:
+                p.kill()
+                p.wait(SERVE_TIMEOUT_S)
 
 
 if __name__ == "__main__":

@@ -49,9 +49,17 @@ export interface TargetGraphInput {
   /** The target's compilation database (default: the machine's "compileCommands", made by the game's debug configure). */
   readonly compileCommands?: string;
   readonly include?: readonly string[];
+  /** What of the target is read: "declarations" (its units: what a translation reads, the default) or "graph" (units and edges). */
+  readonly scope?: 'declarations' | 'graph';
 }
 
-/** The target's C++ graph (its native code through clangd): the file that holds it. */
+/**
+ * The target's C++ declarations (its native code's units through clangd, `cppgraph --scope declarations`): the file that holds them.
+ * Every stage that asks for it is a translation, and a translation reads the target's types, their fields and names
+ * (translate/run.ts matchTargetTypes and targetTypes), never its edges; resolving the edges of the whole game asked clangd for a
+ * definition of every name in every file over a fresh background index, made again whenever native/src changed (half an hour on
+ * 2026-11-08, against seconds for the declarations).
+ */
 export function targetGraph(input: TargetGraphInput): string {
   const m = machine();
   const targetRoot = path.resolve(input.targetRoot);
@@ -63,14 +71,17 @@ export function targetGraph(input: TargetGraphInput): string {
   const include = input.include && input.include.length > 0 ? [...input.include] : ['native/src'];
   const clangd = m.get('clangd');
   const cxx = m.get('cxx');
-  const key = keyOf('target-graph', treeKey(targetRoot, include), filesKey([compileCommands]), toolKey(clangd), toolKey(cxx), codeKey(['cppgraph', 'graph', 'common']), process.version, ...include);
-  // The graph's file in the converter's cache; clangd's index outside the target it indexes (the converter lives in the game's tree).
+  const scope = input.scope ?? 'declarations';
+  const key = keyOf('target-graph', scope, treeKey(targetRoot, include), filesKey([compileCommands]), toolKey(clangd), toolKey(cxx), codeKey(['cppgraph', 'graph', 'common']), process.version, ...include);
+  // The declarations' file in the converter's cache; clangd's working folder outside the target it reads (the converter lives in the game's tree).
   const dir = keyedDir('cppgraph', key);
   const out = path.join(dir, 'cppgraph.json');
   fs.mkdirSync(dir, { recursive: true });
   const [run] = runTasksSync([{ name: 'converter-target-graph', cwd: CONVERTER_ROOT, extra: [key], outputs: [out], timeoutS: CPPGRAPH_TIMEOUT_S,
     argv: [process.execPath, `--max-old-space-size=${GRAPH_HEAP_MB}`, CLI, 'cppgraph', '--root', targetRoot, '--compile-commands', compileCommands, '--clangd', clangd,
-      `--clangd-arg=--query-driver=${cxx}`, ...include.flatMap((i) => ['--include', i]), '--cache', path.join(m.get('clangdCache'), key), '--out', out] }]);
+      `--clangd-arg=--query-driver=${cxx}`, ...include.flatMap((i) => ['--include', i]), '--scope', scope, '--cache', path.join(m.get('clangdCache'), key),
+      // each file's symbols kept across graphs by their own exact key (cppgraph/symbol-cache.ts): only what changed is parsed
+      '--symbol-cache', path.join(m.get('clangdCache'), 'symbols'), '--out', out] }]);
   if (!passed(mustRun('converter cppgraph', run!)) || !fs.existsSync(out)) throw new Error(`the target's graph was not made:\n${logOf(run!).slice(-4000)}`);
   return out;
 }

@@ -147,6 +147,14 @@ void PropRenderer::drop_chunk(int64_t key) {
 	chunks_.erase(it);
 }
 
+Dictionary PropRenderer::instance_buffers() const {
+	RenderingServer *rs = RenderingServer::get_singleton();
+	auto buffer_of = [rs](const MultiMeshDraw &d) { return d.mm.is_valid() && d.count > 0 ? rs->multimesh_get_buffer(d.mm) : PackedFloat32Array(); };
+	Dictionary out;
+	for (const auto &[key, d] : draws_) out[key] = Array::make(buffer_of(d.poles), buffer_of(d.wires_near));
+	return out;
+}
+
 void PropRenderer::set_pole_preview(const CityState &s, const std::vector<PreviewPole> &poles) {
 	StreetInstances inst;
 	place_pole_preview(s, *look_, furniture_, poles, inst);

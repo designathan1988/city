@@ -164,6 +164,7 @@ public:
 	void draw_seams(bool on) { seams_.draw(on); }
 	// What the ground seam of chunk `key` is (ground_seam.h), built anew from the state (the probe's own reading).
 	SeamProbe probe_seam(const CityState &s, int64_t key) { return probe_ground_seam(s, roads_.look(), roads_.shapes(), key); }
+	godot::Dictionary prop_buffers() const { return props_.instance_buffers(); } // each chunk's poles and wires on the GPU (prop_buffer_probe)
 	int64_t wear_bytes() const { return wear_.bytes(); }
 	void wear_paint(float x0, float z0, float x1, float z1, float value) { wear_.paint(x0, z0, x1, z1, value); }
 	int pending() const {

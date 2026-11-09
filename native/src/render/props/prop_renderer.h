@@ -43,6 +43,9 @@ public:
 	godot::Array laid_sign_cells() const { return atlas_.laid(); }
 	int64_t sign_generation() const { return atlas_.generation(); } // moves when the sheets start empty again (a new city)
 	int instances() const { return instances_; } // poles, wires, boxes and lights drawn (render_cost probe)
+	// Each chunk's pole and wire instances as the GPU holds them (read back from the RenderingServer): chunk key -> [poles, wires],
+	// for the probe that compares what two runs drew (CityCore::prop_buffer_probe). A readback per buffer: never per frame.
+	godot::Dictionary instance_buffers() const;
 	int sign_cells() const { return atlas_.cells_used(); }
 	int sign_cells_waiting() const { return atlas_.waiting(); }
 
