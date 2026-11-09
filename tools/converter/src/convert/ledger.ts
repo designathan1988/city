@@ -60,7 +60,8 @@ export interface LedgerInput {
 }
 
 const FOLLOWED: ReadonlySet<string> = new Set(['call', 'construct', 'read', 'reference']);
-const TRANSLATABLE: ReadonlySet<string> = new Set(['function', 'variable', 'interface', 'type']);
+/** What the translator writes (an enum becomes a C++ value or enum class: translator.ts and types.ts, the fixture's Grade). */
+const TRANSLATABLE: ReadonlySet<string> = new Set(['function', 'variable', 'interface', 'type', 'enum']);
 const NO_OWNER = 'no owner yet: decide by what it does';
 const RENDER_METHOD = 'three.js geometry goes through MeshBuilder, instances through MultiMesh grouped by area, materials through the game\'s shaders and tables, streaming through the render owners';
 const UI_METHOD = 'interface code is GDScript in project/ui: reads CityStore.snapshot, sends CityStore.dispatch, texts by tr(), styles by theme_builder.gd';
