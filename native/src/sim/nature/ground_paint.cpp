@@ -1,5 +1,6 @@
 // The painted ground (see ground_paint.h). A dab takes a cell towards its layer by a smooth falloff from its centre to
-// its rim, squeezed into the rim by the hardness; another surface over one laid before fades it out first.
+// its rim, squeezed into the rim by the hardness; another surface over one laid before fades it out first, and once it is gone
+// the same dab lays its own (Roadcraft render/terrain.ts rasterPaint, rasterGeology: every layer moves towards the dab's at once).
 #include "sim/nature/ground_paint.h"
 
 #include "core/math.h"
@@ -103,7 +104,10 @@ void GroundPaint::paint_cell(PaintCell &c, const PaintDab &d, float w) const {
 		case PaintClass::BIOME:
 			if (c.biome != k.slot + 1) {
 				c.biome_amount = faded(c.biome_amount, w);
-				if (c.biome_amount < SWITCH_BELOW) c.biome = uint8_t(k.slot + 1);
+				if (c.biome_amount < SWITCH_BELOW) { // the old one gone, the dab lays its own (as the lab's weights move both at once)
+					c.biome = uint8_t(k.slot + 1);
+					c.biome_amount = towards(c.biome_amount, BYTE_MAX, w);
+				}
 			} else {
 				c.biome_amount = towards(c.biome_amount, BYTE_MAX, w);
 			}
@@ -111,7 +115,10 @@ void GroundPaint::paint_cell(PaintCell &c, const PaintDab &d, float w) const {
 		case PaintClass::GROUND:
 			if (c.surface != k.slot + 1) {
 				c.amount = faded(c.amount, w);
-				if (c.amount < SWITCH_BELOW) c.surface = uint8_t(k.slot + 1);
+				if (c.amount < SWITCH_BELOW) { // the old one gone, the dab lays its own: one dab of a landform's rock lays it
+					c.surface = uint8_t(k.slot + 1);
+					c.amount = towards(c.amount, BYTE_MAX, w);
+				}
 			} else {
 				c.amount = towards(c.amount, BYTE_MAX, w);
 			}

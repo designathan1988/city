@@ -33,6 +33,7 @@ void landform_rock(CityState &s, double x, double z, double radius, BrushMode mo
 	if (mode < BrushMode::MESA || mode > BrushMode::SUGARLOAF || i >= def.landform_rock.size()) return;
 	PaintDab rock;
 	rock.x = float(x); rock.z = float(z); rock.radius = float(radius) * def.rock_reach; rock.strength = 1.f; rock.kind = def.landform_rock[i];
+	rock.hardness = 1.f - def.rock_rim; // GroundPaint::dab's rim is 1 - hardness: the rock whole to its cliff's foot
 	paint_dab(s, rock);
 }
 

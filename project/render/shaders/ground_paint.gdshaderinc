@@ -22,12 +22,14 @@ const uint ID_MASK = (1u << uint(PAINT_ID_BITS)) - 1u, BLEND_MASK = (1u << uint(
 const uint GULLY_MASK = (1u << uint(PAINT_GULLY_BITS)) - 1u, BIT_WIPE = 1u << uint(PAINT_GULLY_BITS); // the wipe: the reserved bit over the gully's
 const float BLEND_FULL = float(BLEND_MASK), BIOME_FULL = float(BIOME_MASK), GULLY_FULL = float(GULLY_MASK);
 const float ROCK_GRANITE = 2.0, ROCK_SANDSTONE = 4.0, ROCK_BASALT = 6.0; // the rock faces among the layers of the land map
+const vec3 ONLY_GRANITE = vec3(1.0, 0.0, 0.0), ONLY_SANDSTONE = vec3(0.0, 1.0, 0.0), ONLY_BASALT = vec3(0.0, 0.0, 1.0); // a geology of one rock
 // The painted surfaces: data/catalog/nature.json paint.kinds, their ground slots + 1 (render/terrain_bridge.cpp packs them).
 const int PAINT_SAND = 1, PAINT_SOIL = 2, PAINT_MEADOW = 3, PAINT_SNOW = 4, PAINT_GRAVEL = 5, PAINT_ASPHALT = 6, PAINT_CONCRETE = 7;
-const int PAINT_GRANITE = 8, PAINT_SANDSTONE = 9;
+const int PAINT_GRANITE = 8, PAINT_SANDSTONE = 9, PAINT_BASALT = 10;
 const int PAINT_TONES = PAINT_CONCRETE + 1; // the surfaces with a tone of their own
 uniform vec3 paint_tone[PAINT_TONES]; // by surface: its colour, or the tint over the soil's or the grass's (linear)
 uniform vec4 paint_mix[PAINT_TONES]; // by surface: its shade by the grain, from and to; by the speck, from and to (0 where unread)
+#include "res://render/shaders/rock_strata.gdshaderinc" // the painted rocks wear their strata, as the rock breaking out does
 const float LEAST_FALL = 1e-4; // keeps normalize off a flat ground's fall line
 const float RIDGE_STEP = 0.1, RIDGE_GAIN = 10.0; // the ridged noise's slope across: a second read this far on, 1 / RIDGE_STEP
 
@@ -63,9 +65,9 @@ vec3 surface_colour(int surface, vec3 grass_c, vec3 dirt_c, vec3 world, vec3 dx,
 		case PAINT_GRAVEL: return paint_tone[PAINT_GRAVEL] * mix(paint_mix[PAINT_GRAVEL].z, paint_mix[PAINT_GRAVEL].w, speck) * mix(paint_mix[PAINT_GRAVEL].x, paint_mix[PAINT_GRAVEL].y, grain);
 		case PAINT_ASPHALT: return paint_tone[PAINT_ASPHALT] * mix(paint_mix[PAINT_ASPHALT].z, paint_mix[PAINT_ASPHALT].w, speck);
 		case PAINT_CONCRETE: return paint_tone[PAINT_CONCRETE] * mix(paint_mix[PAINT_CONCRETE].x, paint_mix[PAINT_CONCRETE].y, grain) * mix(paint_mix[PAINT_CONCRETE].z, paint_mix[PAINT_CONCRETE].w, speck);
-		case PAINT_GRANITE: return land_triplanar(ROCK_GRANITE, world / rock_m, dx / rock_m, dy / rock_m, n);
-		case PAINT_SANDSTONE: return land_triplanar(ROCK_SANDSTONE, world / rock_m, dx / rock_m, dy / rock_m, n);
-		default: return land_triplanar(ROCK_BASALT, world / rock_m, dx / rock_m, dy / rock_m, n); // basalt
+		case PAINT_GRANITE: return rock_strata(world, dx, dy, n, ONLY_GRANITE);
+		case PAINT_SANDSTONE: return rock_strata(world, dx, dy, n, ONLY_SANDSTONE);
+		default: return rock_strata(world, dx, dy, n, ONLY_BASALT); // basalt
 	}
 }
 

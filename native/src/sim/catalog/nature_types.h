@@ -56,6 +56,7 @@ struct PaintKindDef {
 struct PaintDef {
 	int max_tiles = 0; // tiles of the map a save may hold
 	float strength_scale = 0, min_strength = 0, land_rim = 0, rock_reach = 0;
+	float rock_rim = 0; // the share of a landform rock's dab its falloff takes: flat to the cliff's foot
 	std::vector<int> landform_rock; // kind index of mesa, canyon, escarpment, sugarloaf
 	std::vector<PaintKindDef> kinds;
 };

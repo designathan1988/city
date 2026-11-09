@@ -61,6 +61,7 @@ void load_paint(DataReader r, const Dictionary &t, PaintDef &p) {
 	p.min_strength = float(r.num(t, "min_strength"));
 	p.land_rim = float(r.num(t, "land_rim"));
 	p.rock_reach = float(r.num(t, "rock_reach"));
+	p.rock_rim = float(r.num(t, "rock_rim"));
 	const Array kinds = r.list(t, "kinds");
 	for (int i = 0; i < kinds.size(); i++) {
 		DataReader rk = r.in("kinds").in(i);
