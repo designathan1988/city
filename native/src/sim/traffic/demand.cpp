@@ -148,7 +148,11 @@ int new_vehicle(CityState &s, VehicleType type, uint8_t paint) {
 	v.type = type;
 	v.paint = paint;
 	v.vf = s.catalog.traffic.classes[int(type)].speed_share * (p.demand_vf_base + p.demand_vf_span * t.rng.f());
-	draw_driver(p, v, t.rng);
+	v.drift = t.rng.range(0.f, TAU_F);
+	// the driver's temper from a stream of its own (the vehicle and the tick): drawing it leaves the shared stream, which places
+	// trips and walkers, as it was
+	Rng own(uint64_t(hash_combine(uint32_t(id), uint32_t(t.tick))) | (TRAFFIC_SEED << DRIVER_SEED_SHIFT));
+	draw_driver(p, v, own);
 	t.vehicle_count++;
 	return id;
 }

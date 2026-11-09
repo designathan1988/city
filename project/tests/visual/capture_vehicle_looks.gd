@@ -1,5 +1,5 @@
 ## Visual capture of the vehicles themselves: every kind close up from three sides by day and by night (the lamps), the
-## indicators of the cars nearest the busiest crossing over a flash (a burst of shots: each lens lit on its own side), and the
+## indicators of the cars turning or about to, nearest the busiest crossing, over a flash (a burst of shots: each lens lit on its own side), and the
 ## traffic flowing over that crossing, day and night. The city and its warm-up are capture.gd's.
 extends "res://tests/visual/capture.gd"
 
@@ -7,8 +7,10 @@ extends "res://tests/visual/capture.gd"
 const ANGLES := [["frente", Vector3(3.0, 1.8, 7.0)], ["tras", Vector3(-3.0, 1.8, -7.0)], ["lado", Vector3(-6.5, 1.4, 0.5)]]
 const LOOK_UP_M := 0.8
 const HEAVY_SCALE := 1.8 # a bus or truck is seen from this much farther
-## The indicator burst: the cars nearest the crossing, a shot every few frames over more than one flash of 1.5 Hz.
-const SIGNAL_CARS := 3
+## The indicator burst: the cars on a connector or within the distance a turn is signalled from (traffic.json turn_signal_min_m)
+## nearest the crossing, a shot every few frames over more than one flash of 1.5 Hz.
+const SIGNAL_CARS := 4
+const SIGNAL_NEAR_M := 25.0
 const SIGNAL_SHOTS := 5
 const SIGNAL_FRAMES := 9
 const SIGNAL_FROM := Vector3(-2.5, 2.2, -6.5)
@@ -47,7 +49,7 @@ func _signals(probe: Dictionary, when: String) -> void:
 	for k: int in order:
 		if taken >= SIGNAL_CARS:
 			break
-		if int(probe.sample_type[k]) >= CityStore.code(&"VehicleType", &"MOTO"):
+		if int(probe.sample_type[k]) >= CityStore.code(&"VehicleType", &"MOTO") or float(probe.sample_mid_m[k]) > SIGNAL_NEAR_M:
 			continue
 		var car: Vector3 = probe.sample[k]
 		for i in SIGNAL_SHOTS:

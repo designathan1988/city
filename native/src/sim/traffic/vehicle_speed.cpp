@@ -16,7 +16,6 @@ void draw_driver(const TrafficParams &p, Vehicle &v, Rng &rng) {
 	v.aggression = clampf((rng.f() + rng.f() - 1) * p.driver_aggression_stretch, -1.f, 1.f);
 	v.drift_amp = p.drift_amp_min + rng.f() * p.drift_amp_span; // nobody holds an exact speed, whatever their temper
 	v.drift_rate = p.drift_rate_min + rng.f() * p.drift_rate_span;
-	v.drift = rng.range(0.f, TAU_F);
 }
 
 VehicleClass driver_of(const CityState &s, const Vehicle &v) {

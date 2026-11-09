@@ -184,7 +184,8 @@ bool new_trip(CityState &s, int id, int from_ds); // a route from `from_ds` to a
 // vehicle_speed.cpp: the driver behind the wheel, drawn when the vehicle is made; the class's pedals, headway and gap as that driver
 // works them; the most it takes the bends of connector `c` at with its front `front` metres along it (negative: before it), braked
 // for in advance (NO_LEADER: none in reach).
-void draw_driver(const TrafficParams &p, Vehicle &v, Rng &rng);
+constexpr int DRIVER_SEED_SHIFT = 32; // a driver's stream: the traffic seed in the high word, the vehicle and tick's hash below
+void draw_driver(const TrafficParams &p, Vehicle &v, Rng &rng); // its temper and speed drift (the drift's phase is new_vehicle's)
 VehicleClass driver_of(const CityState &s, const Vehicle &v);
 float curve_cap(const CityState &s, const Vehicle &v, const Conn &c, float front);
 float conn_top(const CityState &s, const Vehicle &v, const Conn &c); // its wish on connector `c` before the bends: its exit's limit
