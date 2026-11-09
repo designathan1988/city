@@ -1,4 +1,4 @@
-// The building render's shapes of the levels and the whole: the building cut open, the far mass, the rooms behind the panes, the body's tone (building_look.json shapes, read by building_look.cpp).
+// The building render's shapes of the levels and the whole: the building cut open, the far mass, the rooms behind the panes, the body's tone, its wear (building_look.json shapes, read by building_look.cpp).
 #pragma once
 
 #include "core/shape_fields.h"
@@ -28,6 +28,12 @@ struct PaneRoomsLook {
 	X(shade_base) X(shade_span)
 struct BuildingBodiesLook {
 	SHAPE_DECLARE(LOOK_SHAPE_BUILDING_BODIES)
+};
+
+#define LOOK_SHAPE_WEAR(X, XI, XD, XV, XVI) \
+	XD(grace_min) XI(steps) X(far_k) X(streak_k)
+struct WearLook {
+	SHAPE_DECLARE(LOOK_SHAPE_WEAR)
 };
 
 } // namespace city::b40

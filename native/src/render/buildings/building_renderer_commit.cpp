@@ -154,6 +154,7 @@ void BuildingRenderer::commit_one(Built &b) {
 	Chunk &ch = found->second;
 	const bool current = b.version == ch.version; // else the chunk changed after the job read it: stays stale
 	ch.key = b.key;
+	if (current) ch.wear_due = b.wear_due;
 	signatures_.set_chunk(b.key, b.signatures);
 	signatures_.visible(b.key, ch.shown);
 	if (b.has_near) {
@@ -244,6 +245,7 @@ void BuildingRenderer::commit_super(SuperBuilt &b) {
 	Super &sp = supers_[b.key];
 	sp.has_content = b.far.mesh.valid();
 	sp.held = b.held;
+	sp.wear_due = b.wear_due;
 	put(sp.far, b.far, scenario_, material_far_, true, true, LAYER_BUILDING_MASSES); // casts: past the mid level it is the only thing that can
 	sp.built = true;
 	sp.mask_sent = -1; // the mask update_view computed this frame goes to the (maybe new) instance at once

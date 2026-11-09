@@ -94,10 +94,11 @@ Color Shell::shaded(const Vector3 &p, const Lin &lin, bool wall, SurfaceKind kin
 	return Color(gamma(lin.r * k), gamma(lin.g * k), gamma(lin.b * k), float(kind) / BYTE);
 }
 
+// The far level draws no map and no stain: each finish's colour from afar, and the wear as a tone.
 Lin Shell::far_tint(const Lin &lin, int8_t fin) const {
-	if (!far_tones || fin < 0) return lin;
-	const Lin &k = (*far_tones)[size_t(fin)];
-	return { lin.r * k.r, lin.g * k.g, lin.b * k.b };
+	if (!far_tones) return lin;
+	const Lin k = fin < 0 ? Lin{ 1, 1, 1 } : (*far_tones)[size_t(fin)];
+	return Lin{ lin.r * k.r, lin.g * k.g, lin.b * k.b } * wear_tone;
 }
 
 void Shell::face(const Vector3 *p, int count, const Vector3 &out, const Lin &lin, int8_t fin, SurfaceKind kind) {
@@ -107,7 +108,7 @@ void Shell::face(const Vector3 *p, int count, const Vector3 &out, const Lin &lin
 	n = n.normalized();
 	if (n.dot(out) < 0) n = -n;
 	bool wall = std::abs(n.y) < SHELL_WALL_TOP;
-	Vector2 t2(float(fin + 1), 0);
+	Vector2 t2(float(fin + 1), wear);
 	int base = int(pos.size());
 	const Lin tint = far_tint(lin, fin);
 	for (int i = 0; i < count; i++) vert(p[i], n, shaded(p[i], tint, wall, kind), Vector2(), t2);
@@ -140,6 +141,8 @@ void Shell::box(const Basis &f, float a0, float a1, float b0, float b1, float c0
 	if (box_sink && !tube(skip)) {
 		box_sink->shade = shade;
 		box_sink->tone = tone;
+		box_sink->wear = wear;
+		box_sink->wear_tone = wear_tone;
 		box_sink->box(f, a0, a1, b0, b1, c0, c1, lin, fin, skip);
 		return;
 	}
@@ -148,7 +151,7 @@ void Shell::box(const Basis &f, float a0, float a1, float b0, float b1, float c0
 		float lo = std::min({ m0, m1, m2 }), hi = std::max({ m0, m1, m2 });
 		Vector3 centre = f.at((a0 + a1) * 0.5f, (b0 + b1) * 0.5f, (c0 + c1) * 0.5f);
 		Vector3 e0 = f.e0 * m0, e1 = f.e1 * m1, e2 = f.e2 * m2;
-		Color c = shaded(centre, lin, false, SK_SHELL);
+		Color c = shaded(centre, lin * wear_tone, false, SK_SHELL); // an instance draws no wear
 		auto byte = [](float v) { return uint32_t(std::clamp(v, 0.f, 1.f) * BYTE + 0.5f); };
 		constexpr int RGBA_R_SHIFT = 24, RGBA_G_SHIFT = 16, RGBA_B_SHIFT = 8; // a packed 0xRRGGBBAA's channels
 		BoxInstance inst;
@@ -229,7 +232,7 @@ void Shell::bay(const Basis &f, float W, float H, const Lin &wall, int8_t fin, u
 	constexpr int DEPTH_MOST = 15; // a recess's depth in the alpha byte's bits above the kind (PANE_RECESS_MAX)
 	auto byte = [](float v) { return uint32_t(std::clamp(v, 0.f, 1.f) * BYTE + HALF_STEP); };
 	auto three = [&](float r, float g, float b) { return float(byte(r) << (2 * BYTE_BITS) | byte(g) << BYTE_BITS | byte(b)); };
-	const Color tone = shaded(f.at(W / 2, H / 2, 0), far_tint(wall, fin), true, SK_SHELL);
+	const Color tone = shaded(f.at(W / 2, H / 2, 0), far_tint(wall, fin) * wear_tone, true, SK_SHELL); // an instance draws no wear
 	BayInstance b;
 	const Vector3 cols[3] = { f.e0 * W, f.e1 * H, f.e2 };
 	for (int i = 0; i < 3; i++)
@@ -248,6 +251,8 @@ void Shell::far_wall(const Vector3 p[4], const Vector3 &out, const Vector2 cell[
 		glass->grime_floor = grime_floor;
 		glass->shade = shade;
 		glass->tone = tone;
+		glass->wear = wear;
+		glass->wear_tone = wear_tone;
 		glass->far_wall(p, out, cell, lin, fin, seed, w);
 		return;
 	}
@@ -256,7 +261,7 @@ void Shell::far_wall(const Vector3 p[4], const Vector3 &out, const Vector2 cell[
 	if (n.dot(out) < 0) n = -n;
 	int base = int(pos.size());
 	const Lin tint = far_tint(lin, fin);
-	for (int i = 0; i < 4; i++) vert(p[i], n, shaded(p[i], tint, false, SK_FAR_WALL), cell[i], Vector2(fin_seed, 0));
+	for (int i = 0; i < 4; i++) vert(p[i], n, shaded(p[i], tint, false, SK_FAR_WALL), cell[i], Vector2(fin_seed, wear));
 	bool flip = (p[1] - p[0]).cross(p[2] - p[0]).dot(n) > 0;
 	const int i1 = base + 1, i2 = base + 2, i3 = base + 3;
 	const int t[QUAD_INDICES] = { base, flip ? i2 : i1, flip ? i1 : i2, base, flip ? i3 : i2, flip ? i2 : i3 };

@@ -47,15 +47,19 @@ float frame_of(const FacadePartsLook &F, uint8_t comp) { // a frame's width: the
 	return comp == BAY_WIDE || comp == BAY_SHOPFRONT || comp == BAY_BRISE || comp == BAY_GOURMET ? F.frame_thin : F.frame_d;
 }
 
-void streak(const FacadeBayLook &K, Shell &s, const BayCtx &c, const Opening &o) {
+// The rain streak under a sill, darker at its top: darker still by the building's wear (Roadcraft buildingMesh.ts emitStreak), its
+// lower half keeping its share of the darkening.
+void streak(const FacadeBayLook &K, const WearLook &W, float wear, Shell &s, const BayCtx &c, const Opening &o) {
 	bool kind = c.comp == BAY_WINDOW || c.comp == BAY_SASH || c.comp == BAY_SHUTTERED ||
 			((c.comp == BAY_FRENCH || c.comp == BAY_BAY_WINDOW || c.comp == BAY_RIBBON) && o.h0 > K.french_streak_sill);
 	if (!kind || !streaks(c.wall_fin) || o.h0 < K.streak_min_sill || c.hash % K.streak_skip == 0) return;
 	float reach = std::min(o.h0 - K.streak_lo, K.streak_base + float(c.hash % K.streak_reach) * K.streak_step);
 	float hw = o.w * (K.streak_half + float(c.hash % K.streak_width) * K.streak_half_step), am = c.W / 2;
 	float mid = o.h0 - reach / 2;
-	s.rect(c.f, am - hw, am + hw, o.h0 - reach, mid, K.streak_out, c.wall * K.streak_mid, c.wall_fin);
-	s.rect(c.f, am - hw, am + hw, mid, o.h0 - K.streak_top, K.streak_out, c.wall * K.streak_dark, c.wall_fin);
+	const float dark = K.streak_dark - W.streak_k * wear;
+	const float lower = 1 - (1 - dark) * (1 - K.streak_mid) / (1 - K.streak_dark);
+	s.rect(c.f, am - hw, am + hw, o.h0 - reach, mid, K.streak_out, c.wall * lower, c.wall_fin);
+	s.rect(c.f, am - hw, am + hw, mid, o.h0 - K.streak_top, K.streak_out, c.wall * dark, c.wall_fin);
 }
 
 void reveals(const FacadeBayLook &K, Shell &shell, const BayCtx &c, const Opening &o) {
@@ -166,7 +170,7 @@ void emit_bay(Shell &shell, Shell &parts, const Placed &pl, const BayCtx &c, Wal
 		reveals(K, shell, c, o);
 		closing(shell, pl, c, o);
 	}
-	streak(K, shell, c, o);
+	streak(K, pl.look->shapes.wear, pl.wear, shell, c, o);
 	emit_bay_parts(shell, parts, pl, c, o);
 	if (c.level >= 1) emit_bay_props(parts, pl, c, o);
 }

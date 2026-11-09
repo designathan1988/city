@@ -1,5 +1,5 @@
 // The building mesh writer: one vertex stream for every face of a chunk level, with the
-// vertex code the shader reads (COLOR.a = surface kind; UV2 = finish layer + 1 or pane size; UV = pane/window cell;
+// vertex code the shader reads (COLOR.a = surface kind; UV2 = finish layer + 1 and the building's wear, or pane size; UV = pane/window cell;
 // CUSTOM0..3, bytes, on the near and mid shells: the room behind a pane, a far wall's window row, the frame),
 // the tone (macro noise x foot grime) baked into the sRGB vertex colour, and box/rectangle helpers in any
 // orthonormal basis (a facade's along/up/out, the lot's x/y/up).
@@ -117,6 +117,8 @@ struct Shell {
 	std::vector<uint32_t> custom[CUSTOM_ARRAYS]; // RGBA8 per vertex, in the near and mid shells (`rooms`)
 	float grime_floor = -FAR_AWAY; // world height of the current block's floor (walls darken over its first 1.2 m)
 	float shade = 1.f; // extra multiplier (rain streak tops)
+	float wear = 0; // the building's wear share (wear.h), in UV2.y of a face with a finish: building_common.gdshaderinc stains by it
+	float wear_tone = 1.f; // the wear's tone where no stain is drawn a pixel: an instance's colour, the far level's (wear.h wear_tone)
 	bool tone = true;
 	bool coarse = false; // mid/far levels: fewer sides on round pieces
 	bool instanced = false; // boxes become unit-cube instances; quads/tris still become geometry

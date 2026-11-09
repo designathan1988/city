@@ -32,6 +32,7 @@ struct Placed {
 	Basis lot; // o: middle of the lot front at floor height; e0 lot x, e1 lot y (away from the street), e2 up
 	uint32_t id = 0; // the record seed (bay hashes, roof plant, flat roof pick)
 	float shade = 1; // a building's own shade on its walls
+	float wear = 0; // how run down it looks (wear.h): its streaks and its balconies' things
 	float ground_lo = 0; // lowest ground under the ground volumes, relative to the floor (<= 0)
 	std::function<float(const godot::Vector3 &)> ground; // terrain height under a world point
 	bool coarse = false; // mid level: emit_far draws walls, slabs and parapets; roofs/lot add only the big pieces

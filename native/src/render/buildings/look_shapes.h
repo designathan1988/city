@@ -27,7 +27,8 @@ namespace city::b40 {
 	S(interior_emit, InteriorEmitLook, LOOK_SHAPE_INTERIOR_EMIT) \
 	S(far_mass, FarMassLook, LOOK_SHAPE_FAR_MASS) \
 	S(pane_rooms, PaneRoomsLook, LOOK_SHAPE_PANE_ROOMS) \
-	S(building_bodies, BuildingBodiesLook, LOOK_SHAPE_BUILDING_BODIES)
+	S(building_bodies, BuildingBodiesLook, LOOK_SHAPE_BUILDING_BODIES) \
+	S(wear, WearLook, LOOK_SHAPE_WEAR)
 
 struct LookShapes {
 #define LOOK_SHAPE_MEMBER(key, Type, LIST) Type key;

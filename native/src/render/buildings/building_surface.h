@@ -40,6 +40,7 @@ struct FarDraw {
 	// A built far mesh is rebuilt on its own clock: not before `due` (a delay after the first change it waits for) nor within an interval of the
 	// previous request (`asked`).
 	double due = 0, asked = -std::numeric_limits<double>::infinity();
+	double wear_due = std::numeric_limits<double>::infinity(); // the city minute one of its buildings looks more worn (wear.h): made again then
 };
 
 // What the inside of a building costs cut open (BuildingRenderer::interior_cost).

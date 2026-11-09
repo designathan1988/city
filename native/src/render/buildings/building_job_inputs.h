@@ -21,6 +21,8 @@ struct BuildingJobInputs {
 	std::vector<int> ids; // the id of each record
 	InteriorView view; // the Interior layer as the job started
 	HeightPatch ground;
+	double now_min = 0; // the city clock as the job started (CityState clock.minutes): the buildings' wear (wear.h)
+	double wear_span_min = 0; // the minutes from the first stains to run down (data/catalog/growth.json decay_span_min)
 };
 
 } // namespace city

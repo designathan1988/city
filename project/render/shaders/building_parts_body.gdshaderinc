@@ -127,7 +127,7 @@ void fragment() {
 	} else {
 		vec3 albedo = srgb_to_linear(v_custom.rgb), nn = n;
 		float rough = BUILDING_WALL_ROUGHNESS, metal = 0.0;
-		finish_surface(int(floor(v_custom.a + 0.5)), n, albedo, nn, rough, metal); // -1: no finish (int() would truncate -0.5 to layer 0)
+		finish_surface(int(floor(v_custom.a + 0.5)), n, 0.0, albedo, nn, rough, metal); // an instance's colour carries its wear (shell.cpp) // -1: no finish (int() would truncate -0.5 to layer 0)
 		ALBEDO = surface_out(albedo * wall_gain);
 		ROUGHNESS = rough;
 		METALLIC = metal;

@@ -19,6 +19,7 @@
 #include "render/buildings/ruin_fracture.h"
 #include "render/buildings/shell.h"
 #include "render/buildings/signature_bodies.h"
+#include "render/buildings/wear.h"
 #include "render/chunk_jobs.h"
 #include "render/chunk_queue.h"
 #include "render/render_context.h"
@@ -109,6 +110,7 @@ private:
 		int64_t instances = 0, props = 0; // the instanced parts of its bands and flags, and the bay props among them
 		bool built[LEVELS] = {};
 		bool stale[LEVELS] = {}; // built, but the chunk changed since: remeshed when in reach
+		double wear_due = std::numeric_limits<double>::infinity(); // the city minute one of its buildings looks more worn (wear.h): remeshed then
 		uint32_t version = 0; // bumped by every change; a mesh built from an older one leaves the level stale
 		bool detail = false; // within the detail switch (hysteresis)
 		bool shown = false; // its instances are visible (drawn in detail); the far mesh hides it then
@@ -138,7 +140,7 @@ private:
 		std::array<Surface, SUB_COUNT> near, parts, mid, flat;
 		std::array<OwnedMesh, SUB_COUNT> mid_hull;
 		std::vector<SignaturePlace> signatures; // the buildings of the chunk with a design of their own
-		float hull_error_m = 0;
+		float hull_error_m = 0; double wear_due = std::numeric_limits<double>::infinity(); // the first minute a building of it looks more worn
 		std::array<std::array<godot::PackedFloat32Array, BAND_DRAWS>, SUB_COUNT> bands; // the instanced parts, MultiMesh layout (rs_util.h)
 		std::array<std::array<OwnedMesh, BAND_DRAWS>, SUB_COUNT> band_mm; // their MultiMeshes, baked
 		std::array<std::array<int, BAND_DRAWS>, SUB_COUNT> band_count{};
@@ -169,7 +171,7 @@ private:
 		b40::Shell far_shell;
 		Surface far;
 		Held held;
-		bool baked = false;
+		bool baked = false; double wear_due = std::numeric_limits<double>::infinity(); // the first minute a building of it looks more worn
 		int64_t bytes() const { return far_shell.bytes(false); }
 		void bake();
 	};
@@ -208,6 +210,8 @@ private:
 	// The generator's tables are the simulation's (read-only after boot); the drawing sizes and level shares are ours.
 	const b40::Data &designs() const { return state_->buildings.designs; }
 	b40::BuildingLook look_;
+	b40::WearRule wear_; // how run down each building is drawn (wear.h)
+	void wear_on(double minutes); // the chunks and far meshes whose buildings look more worn by now drawn again (building_renderer_wear.cpp)
 	mutable BuildingBodies bodies_; // every job's: thread-safe, emptied by reset()
 	godot::RID material_cast_; // shadow_caster: no vertex() of its own
 	void fade_levels(Chunk &ch, const godot::Vector3 &cam); // the sub-chunks in the band of a hand-over (building_renderer_reach.cpp)
