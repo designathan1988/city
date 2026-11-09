@@ -1,11 +1,20 @@
-## The Build tool's keys on what is picked (the Roadcraft's Builder): R turns the free part or the roof thing picked, Delete takes it
-## away (or, with none, the block), Page Up and Page Down add and take a storey, Ctrl+D copies the building beside itself. Each edit goes
-## to the core; the answer says what was done and what is picked after it.
+## The Build tool's keys on what is picked (the Roadcraft's Builder): R turns the free part or the roof thing picked, or else the whole
+## building (Shift: a small step), Delete takes it away (or, with none, the block), Page Up and Page Down add and take a storey, Ctrl+D
+## copies the building beside itself, Ctrl+C keeps it and Ctrl+V puts it in hand to set down again. Each edit goes to the core; the
+## answer says what was done and what is picked after it.
 class_name PickKeys
 extends RefCounted
 
-## {result, picked} for a key that edited something, {} for a key that is not one of these.
+## {result, picked} for a key that edited something, {take} for Ctrl+V with a building kept, {} for a key that is not one of these.
 static func run(code: Key, picked: Dictionary, paint_scope: int) -> Dictionary:
+	var ctrl := Input.is_key_pressed(KEY_CTRL)
+	if ctrl and code == KEY_V:
+		return {} if ModelHand.clipboard.is_empty() else {"take": ModelHand.clipboard}
+	if picked.is_empty():
+		return {}
+	if ctrl and code == KEY_C:
+		ModelHand.copy(picked)
+		return {"result": {"ok": true}, "picked": picked}
 	var part: int = picked.get("part", -1)
 	var gear: int = picked.get("gear", -1)
 	var r := {}
@@ -16,6 +25,9 @@ static func run(code: Key, picked: Dictionary, paint_scope: int) -> Dictionary:
 				r = CityStore.dispatch(&"body_turn_part", [picked.id, part])
 			elif gear >= 0:
 				r = CityStore.dispatch(&"body_turn_gear", [picked.id, picked.volume, gear])
+			else:
+				var step := deg_to_rad(DataTables.tuning("build_gear_turn_deg")) if Input.is_key_pressed(KEY_SHIFT) else ModelHand.plain_turn
+				r = CityStore.dispatch(&"building_turn", [picked.id, step])
 		KEY_DELETE:
 			if part >= 0:
 				r = CityStore.dispatch(&"body_remove_part", [picked.id, part])
@@ -28,7 +40,7 @@ static func run(code: Key, picked: Dictionary, paint_scope: int) -> Dictionary:
 		KEY_PAGEUP, KEY_PAGEDOWN:
 			r = BodyEdits.run({"do": "storeys"}, 1 if code == KEY_PAGEUP else -1, picked, paint_scope)
 		KEY_D:
-			if Input.is_key_pressed(KEY_CTRL):
+			if ctrl:
 				r = BodyEdits.run({"do": "duplicate"}, 0, picked, paint_scope)
 				if r.get("ok", false):
 					after = new_pick(r.placed)

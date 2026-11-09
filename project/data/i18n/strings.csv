@@ -2516,3 +2516,12 @@ hint.reference.none,Carregue um modelo primeiro,Load a model first
 hint.reference.empty,O modelo não tem bloco grande o bastante para ser um prédio,The model has no block big enough to be a building
 hint.reference.built,Prédio feito a partir do modelo,Building made from the model
 language.self,Português,English
+building.selectFirst,Selecione um edifício primeiro,Select a building first
+builder.tool.unionBlock,Unir blocos,Join blocks
+builder.field.levelHeight,Altura deste andar,This floor's height
+building.problem.noUnion,Nenhum bloco do mesmo tamanho encostado em um lado inteiro,No block of the same height flush along a whole side
+hint.builder.zoneStart,Clique num vão e depois noutro da mesma face: a peça ocupa a zona entre eles,"Click a bay, then another of the same wall: the piece fills the zone between them"
+building.fn.nightclub,Casa noturna,Nightclub
+building.fn.shop,Loja,Shop
+building.fn.factory,Fábrica,Factory
+building.fn.warehouse,Armazém,Warehouse

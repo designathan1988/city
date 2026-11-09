@@ -29,8 +29,8 @@ constexpr size_t PIECE_BYTES = sizeof(uint8_t) + 3 * sizeof(float);
 constexpr uint32_t BODY_MAGIC = 0x31594442U; // 'BDY1'
 constexpr int FACES_BEFORE = 16; // a block's faces in the bytes of version 2 and earlier
 constexpr uint32_t FACES_VERSION = 3;
-constexpr uint32_t MODE_VERSION = 4, INSIDE_VERSION = 5, ANGLE_VERSION = 6, LIFT_VERSION = 7;
-constexpr uint32_t BODY_VERSION = 7, FLAG_VERSION = 1, SIGNATURE_VERSION = 2, UNVERSIONED = 0;
+constexpr uint32_t MODE_VERSION = 4, INSIDE_VERSION = 5, ANGLE_VERSION = 6, LIFT_VERSION = 7, LEVELS_VERSION = 8;
+constexpr uint32_t BODY_VERSION = 8, FLAG_VERSION = 1, SIGNATURE_VERSION = 2, UNVERSIONED = 0;
 
 void put_side(ByteWriter &w, const SidePlan &p) {
 	w.put<uint8_t>(uint8_t(p.use));
@@ -239,6 +239,8 @@ void write_body(ByteWriter &w, const Body &b) {
 			for (float x : { p.x, p.y, p.angle }) w.put<float>(x);
 		}
 	}
+	w.put<uint32_t>(uint32_t(b.level_hs.size()));
+	for (float h : b.level_hs) w.put<float>(h);
 }
 
 bool read_body(ByteReader &r, Body &b) {
@@ -293,6 +295,11 @@ bool read_body(ByteReader &r, Body &b) {
 			for (float *x : { &p.x, &p.y, &p.angle }) *x = r.get<float>();
 		}
 	}
+	if (version < LEVELS_VERSION) return r.ok;
+	n = r.get_count(sizeof(float));
+	if (!r.ok) return false;
+	b.level_hs.resize(n);
+	for (float &h : b.level_hs) h = r.get<float>();
 	return r.ok;
 }
 

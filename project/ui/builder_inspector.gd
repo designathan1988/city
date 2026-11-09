@@ -1,6 +1,6 @@
-## The Build drawer's Selection panel (the Roadcraft's Builder inspector): the precise numbers of what the Build tool picked (the
-## building's heights, the block's size, place and levels, the roof's pitch, ridge and fall, the face's proportions, a free part's size,
-## a roof thing's height), each typed or stepped as one edit. Holds no number of the game: it asks the core (body_fields) and sends the
+## The Build drawer's Selection panel (the Roadcraft's Builder inspector): the precise numbers of what the Build tool picked (what the
+## building is for, its heights and the picked level's own, the block's size, place and levels, the roof's pitch, ridge and fall, the
+## face's proportions, a free part's size, a roof thing's height), each typed, stepped or chosen as one edit. Holds no number of the game: it asks the core (body_fields) and sends the
 ## edit (CityStore.dispatch); what it shows comes back from the core after each change. Fields and ranges are data/ui/builder.json's.
 class_name BuilderInspector
 extends VBoxContainer
@@ -56,11 +56,13 @@ func _build() -> void:
 	add_child(_grid)
 	for spec: Dictionary in DataTables.ui("builder").fields:
 		var shown: Variant = _value(spec)
-		if shown != null:
+		if shown != null and spec.unit == "choice":
+			_function_field(spec, int(shown))
+		elif shown != null:
 			_row(spec, float(shown))
 	var block: Dictionary = _fields.get("block", {})
 	if not block.is_empty() and _pitched(block) and _picked.get("part", -1) < 0 and _picked.get("gear", -1) < 0:
-		_roof_rows(block)
+		_roof_rows(block, HudWidgets.hbox(self, &"Gap"))
 
 
 ## What the panel is looking at, in one line.
@@ -79,9 +81,9 @@ func _value(spec: Dictionary) -> Variant:
 	var thing := _fields.has("part") or _fields.has("gear")
 	var block: Dictionary = _fields.get("block", {})
 	match spec.of:
-		"building":
+		"building", "record":
 			return null if thing else _fields.get(spec.key)
-		"block":
+		"block", "level":
 			return null if thing else block.get(spec.key)
 		"offset":
 			return null if thing or not block.has("offset") else (block.offset as Vector2)[0 if spec.key == "x" else 1]
@@ -130,6 +132,18 @@ func _row(spec: Dictionary, value: float) -> void:
 	box.value_changed.connect(func(v: float) -> void: _send(spec, v / k))
 
 
+## What the building is for (data/ui/builder.json functions): any building may become any of them, its body kept.
+func _function_field(spec: Dictionary, fn: int) -> void:
+	var list := OptionButton.new()
+	for f: Dictionary in DataTables.ui("builder").functions:
+		var code := CityStore.code(&"BuildingFn", StringName(f.fn))
+		list.add_item(tr(f.label_key), code)
+		if code == fn:
+			list.select(list.item_count - 1)
+	_cell(tr(spec.label_key)).add_child(list)
+	list.item_selected.connect(func(i: int) -> void: _send(spec, float(list.get_item_id(i))))
+
+
 ## A typed number as its edit (the commands of the Build tab, CityStore StoreApi).
 func _send(spec: Dictionary, v: float) -> void:
 	var id: int = _picked.id
@@ -137,6 +151,10 @@ func _send(spec: Dictionary, v: float) -> void:
 	var enums: Dictionary = CityStore.constants.enums
 	var r: Dictionary = {}
 	match spec.id:
+		"function":
+			r = CityStore.dispatch(&"building_function", [id, roundi(v)])
+		"levelHeight":
+			r = CityStore.dispatch(&"body_level_height", [id, _fields.block.level, v])
 		"storeys":
 			r = CityStore.dispatch(&"body_storeys", [id, vol, roundi(v)])
 		"storeyHeight":
@@ -168,23 +186,31 @@ func _send(spec: Dictionary, v: float) -> void:
 	_stale = true
 
 
-## The roof's slope: the pitch a step at a time, the ridge's way and the side a single slope falls to (the Roadcraft's roof shelf).
-func _roof_rows(block: Dictionary) -> void:
+## The roof's slope, in a row of its own under the grid (its choices are wider than a number's cell): the pitch a step at a time, the
+## ridge's way and the side a single slope falls to (the Roadcraft's roof shelf).
+func _roof_rows(block: Dictionary, row: HBoxContainer) -> void:
 	var choices: Dictionary = DataTables.ui("builder").roof_choices
 	var step: float = choices.pitch_step_deg
-	var pitch := HudWidgets.hbox(_cell(tr("builder.section.roofShape")))
+	var pitch := HudWidgets.hbox(_group(row, tr("builder.section.roofShape")))
 	for sign: float in [-1.0, 1.0]:
 		var b := HudWidgets.button(&"Card", "b_storeyDown" if sign < 0 else "b_storey", "", "builder.field.pitch", "icon_btn", "tab_h")
 		b.pressed.connect(func() -> void: _shape(float(block.pitch) + sign * step, block.ridge, block.fall))
 		pitch.add_child(b)
-	_choice_row(tr("builder.roof.ridge.label"), choices.ridge, 0 if bool(block.ridge_x) else 1,
+	_choice_row(_group(row, tr("builder.roof.ridge.label")), choices.ridge, 0 if bool(block.ridge_x) else 1,
 		func(v: int) -> void: _shape(block.pitch, v, block.fall))
-	_choice_row(tr("builder.roof.side.label"), choices.fall, int(block.fall),
+	_choice_row(_group(row, tr("builder.roof.side.label")), choices.fall, int(block.fall),
 		func(v: int) -> void: _shape(block.pitch, block.ridge, v))
 
 
-func _choice_row(title: String, options: Array, current: int, pick: Callable) -> void:
-	var row := HudWidgets.choices(_cell(title), current, pick)
+## A group of the roof's row: its name over its controls.
+func _group(row: HBoxContainer, title: String) -> VBoxContainer:
+	var group := HudWidgets.vbox(row)
+	HudWidgets.label(group, &"MutedLabel", title)
+	return group
+
+
+func _choice_row(group: VBoxContainer, options: Array, current: int, pick: Callable) -> void:
+	var row := HudWidgets.choices(group, current, pick)
 	for o: Dictionary in options:
 		HudWidgets.choice(row, int(o.value), tr(o.label_key))
 

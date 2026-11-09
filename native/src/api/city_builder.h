@@ -46,7 +46,7 @@ public:
 	godot::Dictionary body_add_wing(int id, int vol, int side, double depth, double length);
 	godot::Dictionary body_add_setback(int id, int vol, double inset, int storeys);
 	godot::Dictionary body_set_plan(int id, int vol, int shape);
-	godot::Dictionary body_add_mass(int id, int vol, const godot::Vector3 &from, const godot::Vector3 &to, int action);
+	godot::Dictionary body_add_mass(int id, int vol, const godot::Vector3 &from, const godot::Vector3 &to, int action, int shape);
 	godot::Dictionary body_set_block_mode(int id, int vol, int mode);
 	godot::Dictionary build_reference(const godot::PackedVector3Array &triangles, const godot::Array &views, double x, double z, double rot, int replaced);
 	godot::Array body_handles(int id, int vol, bool points, const godot::Vector3 &eye, const godot::Dictionary &pick) const;
@@ -107,9 +107,14 @@ public:
 	godot::Dictionary body_size_part(int id, int part, int axis, double metres);
 	godot::Dictionary body_size_gear(int id, int vol, int gear, double metres);
 	godot::Dictionary building_duplicate(int id);
+	godot::Dictionary body_mirror(int id), body_union(int id, int vol), body_level_height(int id, int level, double metres);
+	godot::Dictionary body_add_mass_ring(int id, int vol, const godot::PackedVector3Array &points, int action);
+	godot::Dictionary building_turn(int id, double radians), building_function(int id, int fn);
+	godot::Dictionary place_sketch(const godot::PackedVector3Array &points);
 
 protected:
 	static void _bind_methods();
+	static void bind_selection(); // city_core_fields.cpp: the Selection panel's and the whole-building edits' names
 
 private:
 	CityState *state_ = nullptr; // the core's: it outlives this area (CityCore frees its areas first)

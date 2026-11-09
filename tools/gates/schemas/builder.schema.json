@@ -84,6 +84,9 @@
           "models",
           "selection"
          ]
+        },
+        "advanced": {
+         "type": "boolean"
         }
        },
        "required": [
@@ -133,7 +136,9 @@
        "bay",
        "face",
        "part",
-       "gear"
+       "gear",
+       "record",
+       "level"
       ]
      },
      "key": {
@@ -163,7 +168,8 @@
        "m",
        "count",
        "deg",
-       "share"
+       "share",
+       "choice"
       ]
      }
     },
@@ -237,6 +243,26 @@
   "selection_columns": {
    "type": "integer",
    "minimum": 1
+  },
+  "functions": {
+   "type": "array",
+   "minItems": 1,
+   "items": {
+    "type": "object",
+    "properties": {
+     "fn": {
+      "type": "string"
+     },
+     "label_key": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "fn",
+     "label_key"
+    ],
+    "additionalProperties": false
+   }
   }
  },
  "required": [
@@ -244,7 +270,8 @@
   "choices",
   "fields",
   "roof_choices",
-  "selection_columns"
+  "selection_columns",
+  "functions"
  ],
  "additionalProperties": false
 }

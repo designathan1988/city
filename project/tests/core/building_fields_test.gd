@@ -1,9 +1,15 @@
 ## Core test of the Build drawer's Selection panel through the store: each typed number (a block's width, depth, offset and level,
 ## a free part's size, a roof thing's height) lands in the body as asked and reads back from body_fields; each is one step of undo
 ## that gives the very body back and redo the same bytes, the city's hash with it; a pick finds the part and the roof thing a ray
-## meets; a building copied beside itself stands apart, as a building of its own with the same body, and undo takes it away.
+## meets; a building copied beside itself stands apart, as a building of its own with the same body, and undo takes it away; the
+## whole-building and drawing edits (building_whole_cases.gd); a level's own height is saved with the city.
 ## Run: godot --headless --path project res://tests/core/building_fields_test.tscn -- --no-flow
 extends TestCase
+
+const WholeCases := preload("res://tests/core/building_whole_cases.gd")
+const OTHER_SEED := 7
+const SLOT := "building_fields_test"
+const LEVEL_H_M := 4.6
 
 const TOWN_MAP := 0
 const SEED := 1
@@ -41,8 +47,26 @@ func _ready() -> void:
 	_upper_block(id, made, axes)
 	_part(id, made)
 	_gear(id, made)
-	_duplicate()
+	WholeCases.run(self, id, made)
+	var free := _duplicate()
+	if free != Vector3.INF:
+		WholeCases.sketch(self, free)
+	await _level_saved(id)
 	finish()
+
+
+## A level's own height is the body's: the city saved with it opens with the same body.
+func _level_saved(id: int) -> void:
+	check(CityStore.dispatch(&"body_level_height", [id, 0, LEVEL_H_M]).get("ok", false), "a level of its own height, to save")
+	var edited: int = BuildingProbe.info(id).digest
+	var outcome: Dictionary = await save(SLOT)
+	check(outcome.get("ok", false), "saved %s" % outcome)
+	new_map(TOWN_MAP, OTHER_SEED, false)
+	var r: Dictionary = await CityStore.saves.load_game(SLOT, true)
+	check(r.get("ok", false), "opened %s" % r)
+	var f: Dictionary = CityStore.query(&"body_fields", [id, 0, -1, -1, 0, -1, -1])
+	check(BuildingProbe.info(id).digest == edited and absf(f.block.level_h - LEVEL_H_M) < SLACK_M, "the level's own height came back")
+	DirAccess.remove_absolute(CityStore.saves.save_path(SLOT))
 
 
 func _a_tall_building() -> int:
@@ -122,7 +146,7 @@ func _gear(id: int, made: int) -> void:
 
 ## A copy beside a building with room beside it (a building hemmed in is refused and the city stays as it was): a new record with
 ## the same body, its lot apart from the source's; undo takes it away.
-func _duplicate() -> void:
+func _duplicate() -> Vector3:
 	var count: int = CityStore.query(&"list_buildings").size()
 	var r := {}
 	var id := -1
@@ -145,12 +169,14 @@ func _duplicate() -> void:
 		if refused == 1:
 			check(_hash() == before and r.get("error", "") != "", "a building with no room beside it is refused, the city as it was: %s" % r)
 	if not check(id >= 0 and r.get("placed", -1) >= 0, "a building copied beside itself: %s" % r):
-		return
+		return Vector3.INF
 	var copy: int = r.placed
 	check(copy != id and CityStore.query(&"list_buildings").size() == count + 1, "the copy is a building of its own")
 	check(BuildingProbe.info(copy).digest == BuildingProbe.info(id).digest, "the copy has the same body")
 	check(BuildingProbe.block_middle(copy).distance_to(BuildingProbe.block_middle(id)) > SLACK_M, "the copy stands apart")
+	var where := BuildingProbe.block_middle(copy)
 	check(CityStore.dispatch(&"undo") and CityStore.query(&"list_buildings").size() == count, "undo takes the copy away")
+	return where
 
 
 ## A card of the Build strip (data/ui/builder.json) by its tab and id.
