@@ -135,6 +135,16 @@ bool CityStreet::road_walls() {
 	return (state_->new_road_flags & SEG_CUT_WALLS) != 0;
 }
 
+void CityStreet::set_road_power(bool on) {
+	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
+	state_->new_road_flags = uint16_t(on ? state_->new_road_flags & ~SEG_LIT_BY_COLUMNS : state_->new_road_flags | SEG_LIT_BY_COLUMNS);
+}
+
+bool CityStreet::road_power() {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	return (state_->new_road_flags & SEG_LIT_BY_COLUMNS) == 0;
+}
+
 void CityStreet::set_road_height(float metres) {
 	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
 	state_->new_road_lift = metres;
@@ -214,7 +224,7 @@ Dictionary CityStreet::street_counts() {
 	return d;
 }
 
-// Where each piece of segment `seg`'s furniture stands (tests and the look's queries): its kind, row, side, station, place in the
+// Where each piece of segment `seg`'s furniture stands (tests and the look's queries): its kind, row, side, station, whether a lamp is a lighting column, place in the
 // segment frame (v along, u across) and in the world (sim/street/footway.h footway_point, without the kerb's rise).
 Array CityStreet::furniture_spots(int seg) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
@@ -231,6 +241,7 @@ Array CityStreet::furniture_spots(int seg) {
 		d["row"] = p.row;
 		d["side"] = p.side;
 		d["station"] = p.station;
+		d["column"] = p.column;
 		d["v"] = p.v;
 		d["u"] = p.u;
 		d["position"] = Vector3(float(x), float(y), float(z));
@@ -255,6 +266,8 @@ void CityStreet::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("road_height"), &CityStreet::road_height);
 	ClassDB::bind_method(D_METHOD("set_road_walls", "on"), &CityStreet::set_road_walls);
 	ClassDB::bind_method(D_METHOD("road_walls"), &CityStreet::road_walls);
+	ClassDB::bind_method(D_METHOD("set_road_power", "on"), &CityStreet::set_road_power);
+	ClassDB::bind_method(D_METHOD("road_power"), &CityStreet::road_power);
 	ClassDB::bind_method(D_METHOD("sign_cells"), &CityStreet::sign_cells);
 	ClassDB::bind_method(D_METHOD("sign_cells_laid"), &CityStreet::sign_cells_laid);
 	ClassDB::bind_method(D_METHOD("street_counts"), &CityStreet::street_counts);

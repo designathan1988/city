@@ -257,7 +257,8 @@
       "required": [
         "trace",
         "snap",
-        "furniture"
+        "furniture",
+        "power"
       ],
       "properties": {
         "cell_m": {
@@ -478,6 +479,47 @@
                   },
                   "count": {
                     "type": "integer"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "power": {
+          "type": "object",
+          "required": [
+            "label_key",
+            "tip_key",
+            "choices"
+          ],
+          "properties": {
+            "_doc": {
+              "type": "string"
+            },
+            "label_key": {
+              "type": "string"
+            },
+            "tip_key": {
+              "type": "string"
+            },
+            "choices": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": {
+                "type": "object",
+                "required": [
+                  "label_key",
+                  "power"
+                ],
+                "properties": {
+                  "label_key": {
+                    "type": "string"
+                  },
+                  "power": {
+                    "type": "boolean"
                   }
                 },
                 "additionalProperties": false

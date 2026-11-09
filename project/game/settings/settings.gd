@@ -109,6 +109,11 @@ func set_road_walls(on: bool) -> void:
 	_save()
 
 
+func set_road_power(on: bool) -> void:
+	road.power = on
+	_save()
+
+
 ## What a settings file or a caller names, as a preset of the table: another version's name, or no name, is the default.
 func known_preset(name: Variant) -> String:
 	var t: Dictionary = DataTables.game("settings")

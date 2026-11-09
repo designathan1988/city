@@ -18,9 +18,10 @@ struct FurnitureSpot {
 	int seg = -1; // the segment it stands on
 	int node = -1, approach = -1; // a signal post: the junction, and the arm whose arriving traffic it shows
 	int side = -1; // the sidewalk it stands on: 0 the right one (edges.front()), 1 the left one, -1 none
-	int row = 0; // a lamp: 0 the main row (its poles are wired), 1 the row on the other side
+	int row = 0; // a lamp: 0 the main row, 1 the row on the other side
 	int station = -1; // a lamp: its place along the row (a cut pole breaks the wires there)
 	bool lit = true; // a lamp: this pole carries a light (lamps.pole_lit_every)
+	bool column = false; // a lamp: a lighting column (no arm, no wires); else a utility pole of the power line, wired along its row
 	int item = -1; // what the player placed: its record (sim/street/street_works.h)
 	double v = 0;
 	float u = 0;
@@ -29,14 +30,18 @@ struct FurnitureSpot {
 };
 
 // A segment's lamps: the poles' u on the main sidewalk (and on the other, when the street is lit from both sides), the
-// heads `reach` toward the carriageway, and the stations: `stations` poles from `origin`, `spacing` apart.
+// heads `reach` toward the carriageway, and the stations: `stations` poles from `origin`, `spacing` apart. `line`: the main
+// row is the power line, utility poles wired pole to pole that carry the lamps, alone on the street (the road tool's default;
+// Roadcraft powerLine.ts, furnitureSets.ts powerLeft); else (SEG_LIT_BY_COLUMNS) lighting columns, on both faces (`twin`)
+// when both have a sidewalk.
 struct LampRow {
-	bool any = false, twin = false;
+	bool any = false, twin = false, line = false;
 	int side = 0;
 	float pole_u = 0, head_u = 0, pole_u2 = 0, head_u2 = 0;
 	float centre = 0, across = 1; // the night pools' middle line and how far they reach from it, from the profile's width
 	double origin = 0, spacing = 1, span = 1; // span: lamps.span_m, the period the night pools repeat with
 	int stations = 0;
+	bool skip[2] = { false, false }; // no pole at the station at a (0) or b (1): a joint, where the lower-numbered segment's stands
 	// A point's place in the night pools: du across, in shares of `across` and signed so a quad interpolates it, dv the arc
 	// from the first station on a period of `span` (the stations' own spacing stretched to it).
 	void pool(float u, double at, float &du, float &dv) const {
@@ -45,6 +50,11 @@ struct LampRow {
 	}
 };
 LampRow lamp_row(const RoadNetwork &net, int sid);
+constexpr int STREET_JOINT_ARMS = 2; // a node where a street goes on: only its two segments meet there
+// The face (0 right, 1 left of a -> b) the main row of segment `sid` takes when both faces have a sidewalk: its street's,
+// kept through every node of two arms whichever way each segment was drawn (so the power line goes on pole to pole there,
+// Roadcraft powerLine.ts join), the east or south face of the street's lowest-numbered segment (NPIP-1 5.2).
+int row_face(const RoadNetwork &net, int sid);
 // The share of a road (0 at a, 1 at b) that is not buried, by its ends' authored heights (Roadcraft 4.0 powerLine.ts openStretch): false when none is.
 bool open_stretch(const RoadNetwork &net, const RoadSegment &g, float &from, float &to);
 
