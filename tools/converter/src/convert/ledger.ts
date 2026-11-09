@@ -9,11 +9,19 @@ import { classifyRoles, type Role, type UnitRole } from '../classify/roles.ts';
 import type { EdgeRecord, GraphIR, UnitRecord } from '../graph/ir.ts';
 import { ModulePlacement } from '../translate/modules.ts';
 import type { Delivered } from './inventory.ts';
+import { JUDGED_ON_OUTPUT } from './quarantine.ts';
 
 export type Disposition = 'exists' | 'translate' | 'method' | 'write';
 
-/** Wrong forms the translator itself writes correctly (new Array(n) is a vector sized once): anything else keeps a unit from the machine. */
+/** Wrong forms the translator itself writes correctly (new Array(n) is a vector sized once). */
 export const REWRITTEN: ReadonlySet<string> = new Set(['holey-array']);
+
+/**
+ * Whether a finding keeps a unit from the machine: not when the translator rewrites it, nor when its wrong form is a form of
+ * the C++ and the quarantine finds it there (JUDGED_ON_OUTPUT: an allocation in a loop is a heap allocation only once it is
+ * C++, and a JavaScript object literal becomes a value struct that allocates nothing).
+ */
+const stopsTheMachine = (m: Method): boolean => !REWRITTEN.has(m.rule) && !JUDGED_ON_OUTPUT.has(m.rule);
 
 export interface Method {
   readonly rule: string;
@@ -64,7 +72,6 @@ function ownerOf(unit: UnitRecord, role: Role, placement: ModulePlacement): stri
   if (role === 'ui') return area === 'editor' ? 'project/game/tools' : 'project/ui';
   if (role === 'mixed') return 'split by responsibility';
   if (role === 'render') return 'native/src/render';
-  if (area === 'editor') return 'native/src/sim/commands';
   if (area === 'ui') return 'project/ui';
   const placed = placement.of(unit.file);
   return 'error' in placed ? NO_OWNER : placed.owner;
@@ -133,7 +140,7 @@ export class Ledger {
     if (unit.kind === 'field') return null;
     if (!TRANSLATABLE.has(unit.kind) && parent?.kind !== 'class' && unit.kind !== 'class') return `a ${unit.kind}`;
     if (unit.facts.mutableModuleState) return 'mutable module state';
-    const wrong = this.#methods(unit.id).filter((m) => !REWRITTEN.has(m.rule));
+    const wrong = this.#methods(unit.id).filter(stopsTheMachine);
     return wrong.length > 0 ? `wrong methodology: ${[...new Set(wrong.map((m) => m.rule))].join(', ')}` : null;
   }
 
@@ -176,20 +183,30 @@ export class Ledger {
     // a claim the game does not show is set aside: the unit is decided as if no port had it, the claim noted
     const doubt = delivered && this.#input.unproven ? this.#input.unproven(this.#input.coverage.has(unit.id) ? unit.id : unit.file, delivered) : null;
     if (delivered && !doubt) return { ...base, disposition: 'exists', owner: delivered.target || owner, why: `port ${delivered.port}: ${delivered.state}` };
-    const decided = this.#undelivered(unit, base, sliced, role, methods);
+    const decided = this.#undelivered(unit, base, sliced, role, methods, placement);
     return doubt ? { ...decided, why: `${decided.why} (port ${delivered!.port} says ${delivered!.state}, not shown: ${doubt})` } : decided;
   }
 
-  #undelivered(unit: UnitRecord, base: Omit<LedgerUnit, 'disposition' | 'why'>, sliced: boolean, role: Role, methods: LedgerUnit['methods']): LedgerUnit {
+  #undelivered(unit: UnitRecord, base: Omit<LedgerUnit, 'disposition' | 'why'>, sliced: boolean, role: Role, methods: LedgerUnit['methods'], placement: ModulePlacement): LedgerUnit {
     if (sliced) return { ...base, disposition: 'write', why: 'a part of shared code: it joins the code of the owner that holds the rest' };
     if (role === 'render') return { ...base, disposition: 'write', why: RENDER_METHOD };
     if (role === 'ui') return { ...base, disposition: 'write', why: UI_METHOD };
     if (role === 'mixed') return { ...base, disposition: 'write', why: MIXED_METHOD };
     const stop = this.#stops(unit);
-    if (stop) return { ...base, disposition: methods.some((m) => !REWRITTEN.has(m.rule)) ? 'method' : 'write', why: stop };
+    if (stop) return { ...base, disposition: methods.some(stopsTheMachine) ? 'method' : 'write', why: stop };
     const reached = this.#reachesStop(unit);
     if (reached) return { ...base, disposition: 'method', why: `reaches ${reached}` };
-    return { ...base, disposition: 'translate', why: methods.length > 0 ? `the translator rewrites ${methods.map((m) => m.rule).join(', ')}` : 'computes or edits; nothing wrong in it or in what it reaches' };
+    // a module with no place in the target is not translated (the translation writes each module into its owner): said
+    // here, never dropped later in silence
+    const placed = placement.of(unit.file);
+    if ('error' in placed) return { ...base, disposition: 'write', why: `no place in the target: ${placed.error}` };
+    const onOutput = methods.filter((m) => JUDGED_ON_OUTPUT.has(m.rule)).map((m) => m.rule);
+    const rewritten = methods.filter((m) => REWRITTEN.has(m.rule)).map((m) => m.rule);
+    const why = [
+      ...(rewritten.length > 0 ? [`the translator rewrites ${[...new Set(rewritten)].join(', ')}`] : []),
+      ...(onOutput.length > 0 ? [`${[...new Set(onOutput)].join(', ')} judged on the C++ it becomes (the quarantine)`] : []),
+    ];
+    return { ...base, disposition: 'translate', why: why.length > 0 ? why.join('; ') : 'computes or edits; nothing wrong in it or in what it reaches' };
   }
 
   /** Why the translator may not have emitted this source unit (a function it traced); null when it may. */

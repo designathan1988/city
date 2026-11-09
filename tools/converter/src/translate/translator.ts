@@ -60,11 +60,22 @@ export class Translator extends Emitter {
     }
   }
 
-  /** A unit the translator itself cannot write refuses that unit, never its module. */
+  /**
+   * A unit the translator itself cannot write refuses that unit, never its module, and leaves nothing of its own behind:
+   * the scopes it opened, the statements it queued (prelude), the function, index or state it was writing.
+   */
   #guarded(node: TS.Node, write: () => void): void {
+    const depth = this.scopes.length;
+    const indent = this.indent;
     try {
       write();
     } catch (error) {
+      this.scopes.length = depth;
+      this.indent = indent;
+      this.prelude = [];
+      this.fn = null;
+      this.memo = null;
+      this.state = null;
       const at = (error as Error).stack?.split('\n')[1]?.trim().replace(/^.*[\\/]/, '') ?? '';
       this.fail(node, `the translator stopped at ${at}: ${(error as Error).message.split('\n')[0]}`);
     }
@@ -704,9 +715,10 @@ export class Translator extends Emitter {
         fallen++;
       }
     }
+    // an index builder the translator cannot write refuses its own unit, as a function does, never the whole translation
     for (const memo of this.c.memos.values()) {
       const from = this.builders.length;
-      const uses = this.#recording(() => this.#emitMemo(memo));
+      const uses = this.#recording(() => this.#guarded(memo.fn, () => this.#emitMemo(memo)));
       for (const b of this.builders.slice(from)) for (const u of uses) b.uses.add(u);
     }
     return fallen;
@@ -932,13 +944,18 @@ export class Translator extends Emitter {
     this.unit = plan.source;
     this.memo = plan;
     this.module = this.c.relative(this.c.file);
+    const depth = this.scopes.length;
     this.scopes.push(new Map());
-    const param = plan.fn.parameters[0];
-    if (param) this.bind(this.symbolOf(param.name)!, { cpp: snake(param.name.getText()), type: { k: 'struct', name: this.c.spec.state.target } });
-    const lines = this.functionBody(plan.fn, { k: 'void' });
-    this.scopes.pop();
-    this.memo = null;
-    this.builders.push({ plan, lines, uses: new Set() });
+    try {
+      const param = plan.fn.parameters[0];
+      if (param) this.bind(this.symbolOf(param.name)!, { cpp: snake(param.name.getText()), type: { k: 'struct', name: this.c.spec.state.target } });
+      const lines = this.functionBody(plan.fn, { k: 'void' });
+      this.builders.push({ plan, lines, uses: new Set() });
+    } finally {
+      // a builder the translator stopped in leaves nothing of its own behind for the next unit
+      this.scopes.length = depth;
+      this.memo = null;
+    }
   }
 }
 

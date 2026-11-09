@@ -545,7 +545,11 @@ export class Emitter extends ExpressionEmitter {
   #loop(s: TS.ForOfStatement, decl: TS.VariableDeclaration, source: { code: string; type: CppType }, guard: string | null): string[] {
     const ts = this.c.ts;
     const at = this.indent;
-    const element = elementOf(source.type)!;
+    // what the loop walks has a C++ form with no elements the translator knows (a value of no container type): the loop
+    // is refused with its reason, as any construct the translator cannot write is, and its unit leaves
+    const known = elementOf(source.type);
+    if (!known) return [this.fail(s.expression, `a loop over ${render(source.type)}, whose elements the translator does not know`).code];
+    const element = known;
     this.scopes.push(new Map());
     let head: string;
     let destructure: string[] = [];

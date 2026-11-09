@@ -33,12 +33,16 @@ describe('audit', () => {
 
   it('finds state without an owner', () => {
     assert.ok(found('module-state').some((f) => f.endsWith('src/lib/math.ts#counter')));
-    assert.ok(found('scattered-writes').some((f) => f.endsWith('src/world.ts#World.total')));
+    // the finding is the write from outside the owner: it is on the code that writes, never on the state written (which
+    // has no behaviour, and whose readers did nothing wrong)
+    assert.ok(found('scattered-writes').some((f) => f.endsWith('src/ui/panel.ts#overrideTotal')));
+    assert.ok(!found('scattered-writes').some((f) => f.endsWith('src/world.ts#World.total')));
+    assert.ok(result.findings.some((f) => f.rule === 'scattered-writes' && f.message.includes('World.total')), 'it names the state written');
     // A folder the architecture designates as a writer (or a designated channel) is not outside the owner.
     const designated = runAudit(ir, { ...base, writerDirs: ['src/ui'] });
-    assert.ok(!designated.findings.some((f) => f.rule === 'scattered-writes' && f.unit === 'src/world.ts#World.total'));
+    assert.ok(!designated.findings.some((f) => f.rule === 'scattered-writes' && f.unit === 'src/ui/panel.ts#overrideTotal'));
     const channel = runAudit(ir, { ...base, channels: ['src/world.ts#World'] });
-    assert.ok(!channel.findings.some((f) => f.rule === 'scattered-writes' && f.unit === 'src/world.ts#World.total'));
+    assert.ok(!channel.findings.some((f) => f.rule === 'scattered-writes' && f.unit === 'src/ui/panel.ts#overrideTotal'));
     assert.deepEqual(found('ui-writes-state'), ['high src/ui/panel.ts#overrideTotal']);
     assert.deepEqual(found('nondeterminism-in-simulation'), ['high src/world.ts#World.tick']);
   });

@@ -29,7 +29,7 @@ describe('translate', () => {
   it('translates the whole feature', () => {
     assert.deepEqual(result.errors, []);
     assert.deepEqual([...result.files.keys()].sort(), [
-      ...['geo.h', 'geo_query.cpp', 'geo_types.h', 'js_array.h', 'js_map.h', 'js_number.h', 'js_random.h', 'js_runtime.h', 'js_string.h', 'js_value.h'].map((f) => `native/src/core/${f}`),
+      ...['geo.h', 'geo_query.cpp', 'geo_types.h', 'js_array.h', 'js_map.h', 'js_number.h', 'js_object.h', 'js_random.h', 'js_runtime.h', 'js_string.h', 'js_value.h'].map((f) => `native/src/core/${f}`),
       ...['yard.h', 'yard_edit.cpp', 'yard_enums.h', 'yard_index.cpp', 'yard_query.cpp', 'yard_types.h'].map((f) => `native/src/sim/yard/${f}`),
     ]);
   });

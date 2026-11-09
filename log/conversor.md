@@ -492,6 +492,48 @@ Gate completo, agora que termina: 14.327 problemas. 14.310 estão em `tools/proc
   29 a number list or tuple where a number is asked, 26 a member missing on a struct (`LeanJunction.tongues`), 15 `to_string` and
   `array_from` with no match, 13 a template argument that is no type, 12 a lambda that does not capture. Next: the runtime's
   missing built-ins, each checked against Node in `test/js-runtime.test.ts`.
+- Closed in `33abd9f8`.
+
+## 2026-11-08 23:40: where the lab's open units really are; the ledger's two owners; the areas with no place
+- The owner's objection, 23:30: more than ten hours for about a hundred units more. Right: the header errors fixed so far are
+  the smallest mass. Measured on `ledger.json` (20,305 units): 11,681 to translate but 5,112 done, 5,718 `method`, 2,906 `write`.
+  Of the 6,569 to translate and not done: 2,087 fields, 1,103 interfaces, 572 types (fields of written structs not counted:
+  the whole mode's "module" is the whole program, never a file, `command.ts` `isDone`), 1,110 roots never emitted with no
+  reason (129 modules: `src/editor/*` with `poles.ts`, `lotTool.ts`, `persistence.ts`, `saveBinary.ts`, `commit.ts`; `src/ui/*`,
+  `src/view/*`, `src/main.ts`: `ModulePlacement` `AREAS` has no place for `editor`, `ui`, `view` or the root files, and
+  `autospec.ts` `moduleSpecs` skipped them in silence), 837 left out by the rounds. By area: editor 1,416 units, the root 765,
+  ui 645, view 124, all with nothing done.
+- Cause 1, the ledger and the quarantine both owned the performance rules: `ledger.ts` `#stops` refused a unit for any audit
+  finding but `holey-array`, among them `hot-allocation` (1,303 direct, thousands by reach), `god-function`, `queue-shift`,
+  `nondeterminism`, all of which `quarantine.ts` judges again on the C++ written (WRONG_FORMS, scanFiles). The catalog itself
+  says hot-allocation's cost is "in C++ each is a heap allocation per tick", a property of the output, and the audit rates
+  every such finding "reachable, not measured"; a JavaScript object literal becomes a value struct that allocates nothing.
+  Fix: the quarantine exports the rules it judges on the output (`JUDGED_ON_OUTPUT`), its one owner; the ledger leaves them
+  to it (`stopsTheMachine`) and says so in the unit's why. The check is not loosened: the quarantine still refuses the C++
+  that holds the wrong form.
+- Cause 2, `scattered-writes` was put on the state written (a field, a type) instead of the code that writes it from outside
+  its owner (`audit/state.ts`): every unit that only read or referenced `Building`, `Vehicle`, `RoadNode` was stopped by reach.
+  Fix: the finding is on each foreign writer, naming the state (`uiWritesState` already did this); the writers stay stopped
+  (in the game they become commands), the state and its readers translate.
+- Cause 3, the player's tools had no place: `editor` → `native/src/sim/commands/<tool>` in `ModulePlacement` (CLAUDE.md: only
+  sim/commands changes CityState for the player), which `ledger.ts` `ownerOf` already said and now reads from there (one owner).
+  A unit of a module with no place is `write` with the placement's reason, never `translate` dropped later in silence.
+- Cause 4, a crash in one index builder ended the whole run (`#emitMemo` had no guard): the builder is guarded as functions
+  are, `#guarded` restores what a stopped unit left (scopes, prelude, function, index, state), and a loop over a value with no
+  known elements is a refusal of its unit (`statements.ts` `#loop`), not a crash.
+- Also: a field counts as done when its struct is declared (`command.ts` `isDone`); the runtime gained `Object.fromEntries`,
+  `Object.freeze` (a `Frozen<T>` that gives its value only as const) and the object key order of ECMA-262 10.1.11.1 (array
+  indices ascending, then the others in creation order) for `Object.keys/values/entries`, checked against Node.
+- Tests first: `convert.test.ts` (a quadratic-proximity unit stops; a hot-allocation unit and its caller translate; a foreign
+  writer stops while the state and what refers to it translate), `audit.test.ts` and `cppgraph.test.ts` (the finding on the
+  writer, never on the state), `js-runtime.test.ts`. Converter 139 of 139.
+- `cpp/js/js_map.h` passed the 250-line limit with the Object built-ins: they are their own file, `cpp/js/js_object.h` (the
+  Object built-ins over a dictionary), included by `js_runtime.h`; `js_map.h` holds Map and Set again.
+- The whole lab after these four causes (23 rounds): 7,354 units translated (from 5,112; 5,004 at the session's start), 12,951
+  open, 2,418 left out by the rounds, 1,839 files. Left by size: the render's 1,589 three.js units (`write`: the converter's
+  three.js-to-Godot catalog, `configs/three-godot-catalog.json`, 75 classes, is read only by `scripts/catalog-check.mjs`; the
+  translator has no path through it), the areas still with no place (`ui` 645, `view` 124, the root files 765), and the stops
+  that remain on the source (quadratic-proximity, object-delete, worker-copy, duplicated-code, scattered writers).
 
 ## The converter's design and use (moved here from tools/converter/DESIGN.md and README.md, 2026-11-08)
 The project keeps its documents in CLAUDE.md and log/ (gate DOC_UNICO): the converter's own two documents live here now. Its

@@ -97,6 +97,19 @@ const CASES: Case[] = [
     js: '(() => { const s = new Set(); for (const k of [$0, $1, $2, $0, $3]) s.add(k); s.delete($2); s.add($2); return [...s].join(); })()',
     cpp: '[&] { js::Set<int> s; for (int k : {$0, $1, $2, $0, $3}) s.insert(k); s.erase($2); s.insert($2); std::vector<double> v; for (int k : s) v.push_back(k); return js::join(v); }()',
     inputs: Array.from({ length: 30 }, () => [0, 1, 2, 3].map(() => String(Math.floor(rand() * 5)))) },
+  // A dictionary's keys in the order an object lists them (ECMA-262 10.1.11.1 OrdinaryOwnPropertyKeys): the array indices
+  // (canonical numeric strings 0 to 2^32 - 2) ascending first, then every other key in the order it was made
+  { name: 'Object.keys, values and entries order', kind: 'string',
+    js: '(() => { const o = {}; for (const k of [$0, $1, $2, $3]) o[k] = k.length; return Object.keys(o).join() + "/" + Object.values(o).join() + "/" + Object.entries(o).map((e) => e.join(":")).join(); })()',
+    cpp: '[&] { js::Map<std::string, double> o; for (std::string k : {$0, $1, $2, $3}) o.insert_or_assign(k, double(k.size())); std::string e; for (const auto &p : js::object_entries(o)) e += (e.empty() ? "" : ",") + p.first + ":" + js::number_to_string(p.second); return js::join(js::object_keys(o)) + "/" + js::join(js::object_values(o)) + "/" + e; }()',
+    inputs: [['"b"', '"2"', '"10"', '"a"'], ['"01"', '"1"', '"-0"', '"0"'], ['"4294967295"', '"4294967294"', '"x"', '"7"'], ['"1.5"', '"3"', '"1e3"', '" 4"'], ['"z"', '"y"', '"x"', '"w"']] },
+  { name: 'Object.fromEntries', kind: 'string',
+    js: '(() => { const o = Object.fromEntries([[$0, 1], [$1, 2], [$0, 3], [$2, 4]]); return Object.keys(o).join() + "/" + Object.values(o).join(); })()',
+    cpp: '[&] { auto o = js::object_from_entries(std::vector<std::pair<std::string, double>>{{$0, 1}, {$1, 2}, {$0, 3}, {$2, 4}}); return js::join(js::object_keys(o)) + "/" + js::join(js::object_values(o)); }()',
+    inputs: [['"b"', '"a"', '"c"'], ['"9"', '"b"', '"3"'], ['"x"', '"10"', '"2"']] },
+  // as a translated constant holds it: `static const T value = js::object_freeze(...)` (the frozen value read as const)
+  { name: 'Object.freeze', kind: 'string', js: 'Object.freeze([$0, $1]).join()', cpp: '[&] { const std::vector<double> frozen = js::object_freeze(std::vector<double>{$0, $1}); return js::join(frozen); }()',
+    inputs: EDGE.slice(0, 12).map((x, i) => [lit(x), lit(EDGE[i + 1]!)]) },
 ];
 
 const fill = (template: string, args: readonly string[], js: boolean): string =>
