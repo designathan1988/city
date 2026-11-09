@@ -114,6 +114,13 @@ float clear_arc(CityState &s, int seg, int side, float at, float u);
 void forget_furniture(CityState &s, int seg); // an edit touched the segment or one of its nodes
 void prune_furniture(CityState &s, float cx, float cz, float radius); // segments the walkers are far from
 int walkers_in_furniture(const CityState &s); // walkers whose body stands in a footprint (traffic_probe)
+// A junction's walking area (SUMO): the footprints of node `n`'s arms built (sidewalk_furniture fills its cache: on one
+// thread, before a step's workers read them), then those on its arms' sidewalks as far from it as its walkers may be and
+// look (crossing.zebra_to_m + ped_look_m + ped_body_m along each arm from its mouth), every arm's or all but arm `skip`'s,
+// in `out` (cleared first); read only, so a step's workers may read them at once.
+constexpr int ALL_ARMS = -1; // junction_pieces' `skip`: no arm left out
+void build_junction_furniture(CityState &s, int n);
+void junction_pieces(const CityState &s, int n, int skip, std::vector<const StreetObstacle *> &out);
 
 // ped_routes.cpp
 bool walkable(const CityState &s, int seg);

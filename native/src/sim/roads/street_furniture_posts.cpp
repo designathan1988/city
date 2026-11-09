@@ -94,8 +94,19 @@ bool line_joint(const RoadNetwork &net, int sid, int n, int face, int &other, in
 // The arc on `sid` of the pole a joint at node `n` shares (line_joint): where its pole line (at offset `u`) and `other`'s (at
 // `other_u`) cross, each run on along its tangent at its mouth, so a bend's pole stands at the corner both lines turn at and its
 // wires keep to the footways (Roadcraft poles.ts: a corner of the route gets a pole); the mouth when the two run straight on
-// (poles.same_arm_sin, two lines through each other); never past the segment's ends.
+// (poles.same_arm_sin, two lines through each other). Its footprint stays on its own footway, between the mouths, as every
+// piece's does (street_furniture.cpp Placer::slot): the walkers know a piece by its own segment's sidewalk, along its arc
+// (sim/traffic/ped_furniture.cpp), and a pole over a mouth would stand half on the next segment's sidewalk, where they walk on
+// as if it were not there. And clear of the walkers stepping on and off the footway at the mouth: one coming over the node
+// steps on wherever it walked across (traffic at_node: its line ends at the same u), and the company of one stepping off
+// keeps a step behind it there, on the line between them (traffic ped_party.cpp place_by), so a pole at the mouth takes them in.
 double joint_v(const RoadNetwork &net, int sid, int n, float u, int other, float other_u) {
+	const RoadSegment &g = net.segs[size_t(sid)];
+	const TrafficParams &tp = net.cat->traffic;
+	// a pole's half_v (furniture::spot, facing the road), a walker's body (ped_body_m, as leaves_way keeps it) and the step its
+	// company keeps behind it (ped_party.cpp company_gap: two bodies and ped_gap_m)
+	const double clear = defs(net).footprint[int(FurnitureKind::LAMP)].x_m * 0.5 + tp.ped_body_m + 2 * tp.ped_body_m + tp.ped_gap_m;
+	const double lo = g.retreat_a + clear, hi = std::max(lo, g.len - g.retreat_b - clear);
 	// A segment's pole line at its mouth on node `n`: the point at offset u (+u on the left of a -> b) and the way into the node.
 	const auto mouth_line = [&](int seg, float off, double &v, double &px, double &pz, double &dx, double &dz) {
 		const RoadSegment &q = net.segs[size_t(seg)];
@@ -118,9 +129,8 @@ double joint_v(const RoadNetwork &net, int sid, int n, float u, int other, float
 	mouth_line(sid, u, v, ax, az, adx, adz);
 	mouth_line(other, other_u, ov, bx, bz, bdx, bdz);
 	double along = 0, theirs = 0;
-	if (std::fabs(adx * bdz - adz * bdx) < defs(net).poles.same_arm_sin || !line_line(ax, az, adx, adz, bx, bz, bdx, bdz, along, theirs)) return v;
-	const RoadSegment &g = net.segs[size_t(sid)];
-	return std::clamp(g.b == n ? v + along : v - along, 0.0, g.len);
+	if (std::fabs(adx * bdz - adz * bdx) < defs(net).poles.same_arm_sin || !line_line(ax, az, adx, adz, bx, bz, bdx, bdz, along, theirs)) return std::clamp(v, lo, hi);
+	return std::clamp(g.b == n ? v + along : v - along, lo, hi);
 }
 } // namespace
 

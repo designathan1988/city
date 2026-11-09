@@ -2,7 +2,8 @@
 // control signals them; what the player put up and cut; what a blow left standing) or read kept for the city's revision
 // (sim/street/furniture_kept.h), and as the walkers meet it: bodies standing on their sidewalks, footprints along the arc and
 // across from the sidewalk's middle, and in the world. A segment's bodies are built when a walker first meets it, dropped when
-// an edit touches the segment or one of its nodes (lane_graph_edit.cpp, reset_traffic) and when the walkers are far.
+// an edit touches the segment or one of its nodes (lane_graph_edit.cpp, reset_traffic) and when the walkers are far. A junction's
+// walking area: its arms' pieces near it, which whoever is near it sees (ped_crowd.cpp).
 #include "sim/street/street_spots.h"
 #include "sim/traffic/traffic_system.h"
 
@@ -141,6 +142,27 @@ float clear_arc(CityState &s, int seg, int side, float at, float u) {
 		}
 	}
 	return at;
+}
+
+void build_junction_furniture(CityState &s, int n) {
+	for (int seg : s.roads.nodes[size_t(n)].segs)
+		if (walkable(s, seg)) sidewalk_furniture(s, seg);
+}
+
+void junction_pieces(const CityState &s, int n, int skip, std::vector<const StreetObstacle *> &out) {
+	out.clear();
+	const float reach = s.catalog.furniture.crossing.zebra_to_m + s.catalog.traffic.ped_look_m + s.catalog.traffic.ped_body_m;
+	for (int seg : s.roads.nodes[size_t(n)].segs) {
+		if (seg == skip || !walkable(s, seg)) continue;
+		const RoadSegment &g = s.roads.segs[size_t(seg)];
+		const SidewalkFurniture &sf = s.traffic.furniture.find(seg)->second; // built: build_junction_furniture
+		const float lo = g.a == n ? -BIG : float(g.len - g.retreat_b) - reach - sf.longest;
+		const float hi = g.a == n ? float(g.retreat_a) + reach : BIG;
+		for (const auto &side : sf.side)
+			for (auto it = std::lower_bound(side.begin(), side.end(), lo, [](const StreetObstacle &o, float v) { return o.s0 < v; });
+					it != side.end() && it->s0 <= hi; ++it)
+				out.push_back(&*it);
+	}
 }
 
 void forget_furniture(CityState &s, int seg) { s.traffic.furniture.erase(seg); }
