@@ -229,6 +229,7 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 void step(CityState &s, float dt) {
 	TrafficState &t = s.traffic;
 	apply_network_changes(s);
+	refresh_rings(s);
 	route_compact(t);
 	t.time += dt;
 	t.tick++;

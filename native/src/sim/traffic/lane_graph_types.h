@@ -64,6 +64,11 @@ struct Junction {
 	float offset = 0;
 	double settle = 0; // a new plan takes over only then: the stage running ends its intergreen first
 	int degree = 0; // arms with lanes
+	// The actuated plan's demand (signal_timing.cpp): when each stage's green last ended; per stage, the walkers waiting to cross an
+	// arm whose traffic that stage lets go (when one last asked, and since when the oldest of them waits, -1 for none); whether the
+	// running green rests (no other stage asked when it could have ended).
+	std::vector<double> served, walk_call, walk_from;
+	bool resting = false;
 };
 
 struct LaneGraph {

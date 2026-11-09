@@ -86,6 +86,7 @@ bool find_route(CityState &s, int from_ds, int goal_ds, std::vector<int> &out, i
 	const TrafficParams &tp = s.catalog.traffic;
 	out.clear();
 	if (from_ds < 0 || goal_ds < 0 || !g.ds[from_ds].ok || !g.ds[goal_ds].ok) return false;
+	if (!route_reaches(s, from_ds, goal_ds, by_bike)) return false; // the components say no before a search walks the map
 	note_search(s);
 	V2 goal;
 	end_point(s, goal_ds, goal);

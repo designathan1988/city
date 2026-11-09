@@ -19,6 +19,24 @@ constexpr int SPLICE_DEGREE = 2;
 float body(const CityState &s, int id) { return s.catalog.traffic.classes[int(s.traffic.vehicles[id].type)].length; }
 size_t key(int ds, int lane) { return size_t(ds) * MAX_LANES + lane; }
 
+// Where the rear of the last vehicle of lane `cars` (back first) of `ds` comes to rest, BIG when its queue rolls on (Roadcraft lab
+// src/sim/intersections/spillback.ts restingRear): from the head back, each one standing stays where it is and each one rolling goes
+// up to what stands ahead of it, the stop line under a light other than green for the head, the rest of the one ahead for the others.
+float resting_rear(const CityState &s, int ds, const std::vector<int> &cars) {
+	const TrafficParams &tp = s.catalog.traffic;
+	const DirSeg &d = s.traffic.g.ds[size_t(ds)];
+	float limit = light_for(s, ds) == Light::GREEN ? NO_LEADER : d.len - d.stop_back, rear = NO_LEADER;
+	for (auto it = cars.rbegin(); it != cars.rend(); ++it) {
+		const Vehicle &v = s.traffic.vehicles[size_t(*it)];
+		const VehicleClass &c = tp.classes[int(v.type)];
+		const float nose = v.v <= tp.tail_moving_ms ? v.s : std::max(v.s, limit);
+		if (nose >= NO_LEADER) continue; // it rolls on, and so may whoever follows it
+		rear = nose - c.length;
+		limit = rear - c.min_gap;
+	}
+	return rear;
+}
+
 } // namespace
 
 bool is_splice(const CityState &s, int node) {
@@ -35,8 +53,10 @@ bool has_exit(const CityState &s, const Conn &c, int vid) {
 	const float L = t.g.ds[c.to_ds].len;
 	const auto &lane = t.lane_vehicles[to];
 	const Vehicle *tail = lane.empty() ? nullptr : &t.vehicles[lane.front()];
-	// the last one on the lane, moving, frees room in the time it takes to cross
+	// the last one on the lane, moving, frees room in the time it takes to cross; toward a signal it is rolling up to whatever holds
+	// it, very often the red, so the room is what its queue leaves behind where it comes to rest (Roadcraft lab spillback.ts)
 	float room = tail ? tail->s - body(s, lane.front()) + std::min(tail->v, tp.tail_credit_cap_ms) * tp.tail_credit_s : L;
+	if (tail && t.g.junctions[size_t(t.g.ds[size_t(c.to_ds)].to)].ctl == Control::SIGNAL) room = std::min(L, resting_rear(s, c.to_ds, lane));
 	int inbound = 0;
 	for (int x = t.g.node_conn[c.node]; x >= 0; x = t.g.conns[size_t(x)].next_at_node) {
 		const Conn &o = t.g.conns[size_t(x)];
@@ -46,6 +66,8 @@ bool has_exit(const CityState &s, const Conn &c, int vid) {
 			inbound++;
 		}
 	}
+	// onto a small loop from outside it: not past the share of it a ring can hold and still turn (Roadcraft lab cycles.ts)
+	if (ring_full(s, c, body(s, vid) + tp.exit_room_pad_m)) return false;
 	if (lane.empty() && inbound == 0) return true;
 	// short lane between close junctions: nearly part of the junction; one more fits behind a moving tail
 	if (L < tp.short_exit_m && tail && tail->v > tp.tail_moving_ms && inbound == 0) return true;

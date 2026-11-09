@@ -29,8 +29,9 @@ bool courtesy_owed(const CityState &s, const Vehicle &v) {
 	return light_for(s, v.ds) == Light::GREEN;
 }
 
-// A head arriving on `ds` (into the node) would drive over the crosswalk of its own arm before a walker is across.
-bool approaching(const CityState &s, int ds) {
+// A head arriving on `ds` (into the node) would drive over the crosswalk of its own arm before a walker is across: it is too near to
+// stop, or comes within the gap `gap` the walker asks (a head standing at its line is not arriving).
+bool approaching(const CityState &s, int ds, float gap) {
 	const TrafficState &t = s.traffic;
 	const DirSeg &d = t.g.ds[ds];
 	for (int l = 0; l < d.lanes; l++) {
@@ -40,9 +41,37 @@ bool approaching(const CityState &s, int ds) {
 		float line = to_line(s, ds, h), b = std::max(MIN_BRAKE, s.catalog.traffic.classes[int(h.type)].b);
 		if (h.pass >= 0 || line < 0 || (line < NEAR_LINE_M && h.v > MOVING_MS)) return true;
 		if (h.v > MOVING_MS && line < h.v * h.v / (2 * b) + 1) return true; // too near to stop comfortably
+		if (h.v > MOVING_MS && line / h.v < gap) return true;
 		if (line < COURTESY_NEAR_M && courtesy_owed(s, h)) return true;
 	}
 	return false;
+}
+
+// The gap a walker held at the kerb of cache key `key` asks of the traffic now (Roadcraft lab crossings/permission.ts pedGapAccepted):
+// ped_critical_gap_s, less its impatience, never under ped_gap_floor_s.
+float asked_gap(const CityState &s, int key) {
+	const TrafficParams &tp = s.catalog.traffic;
+	const TrafficState &t = s.traffic;
+	const double from = key >= 0 && size_t(key) < t.cross_held_from.size() ? t.cross_held_from[size_t(key)] : -1.0;
+	const float waited = from < 0 ? 0.f : float(t.time - from);
+	return std::max(tp.ped_gap_floor_s, tp.ped_critical_gap_s - std::min(tp.ped_gap_impatience_max_s, tp.ped_gap_impatience_rate * waited));
+}
+
+// The traffic holds (`held`) or lets go the walkers at the kerb of cache key `key`: when they were last held, and since when.
+void note_held(CityState &s, int key, bool held) {
+	TrafficState &t = s.traffic;
+	if (key < 0) return;
+	if (t.cross_held.size() <= size_t(key)) {
+		t.cross_held.resize(t.cross_stamp.size(), -double(BIG));
+		t.cross_held_from.resize(t.cross_stamp.size(), -1.0);
+	}
+	if (size_t(key) >= t.cross_held.size()) return;
+	if (!held) {
+		t.cross_held_from[size_t(key)] = -1;
+		return;
+	}
+	t.cross_held[size_t(key)] = t.time;
+	if (t.cross_held_from[size_t(key)] < 0) t.cross_held_from[size_t(key)] = t.time;
 }
 
 } // namespace
@@ -96,9 +125,10 @@ bool cars_on_crossing(CityState &s, int node, int arm_seg) {
 	bool cached_cars = false;
 	if (cached(s, cache, 1, cached_cars)) return cached_cars;
 	const TrafficState &t = s.traffic;
-	const TrafficParams &tp = s.catalog.traffic;
+	const float gap = asked_gap(s, cache);
 	auto done = [&](bool v) {
 		store(s, cache, 1, v);
+		note_held(s, cache, v);
 		return v;
 	};
 	for (int dir = 0; dir < 2; dir++) {
@@ -106,7 +136,7 @@ bool cars_on_crossing(CityState &s, int node, int arm_seg) {
 		const DirSeg &d = t.g.ds[size_t(ds)];
 		if (!d.ok) continue;
 		if (d.to == node) {
-			if (approaching(s, ds)) return done(true);
+			if (approaching(s, ds, gap)) return done(true);
 			continue;
 		}
 		for (int l = 0; l < d.lanes; l++) { // leaving the node: the last one's body still over the crosswalk
@@ -129,9 +159,29 @@ bool cars_on_crossing(CityState &s, int node, int arm_seg) {
 		const Vehicle &h = t.vehicles[size_t(lane.back())];
 		if (pick_connector(s, h) != x) continue;
 		float line = to_line(s, c.from_ds, h);
-		if ((line < COURTESY_NEAR_M && courtesy_owed(s, h)) || (h.v > MOVING_MS && line / h.v < tp.ped_critical_gap_s)) return done(true);
+		if ((line < COURTESY_NEAR_M && courtesy_owed(s, h)) || (h.v > MOVING_MS && line / h.v < gap)) return done(true);
 	}
 	return done(false);
+}
+
+bool walkers_waiting(const CityState &s, int ci) {
+	const TrafficState &t = s.traffic;
+	const TrafficParams &tp = s.catalog.traffic;
+	const Conn &c = t.g.conns[size_t(ci)];
+	if (!s.roads.has_crosswalks(c.node) || size_t(c.node) >= t.node_walkers.size()) return false;
+	const int arms[2] = { t.g.ds[size_t(c.from_ds)].seg, t.g.ds[size_t(c.to_ds)].seg };
+	const V2 lane[2] = { V2(c.x0, c.z0), V2(c.x1, c.z1) }; // where the connector meets each arm's crosswalk
+	for (int k = 0; k < 2; k++) {
+		const int key = cache_key(s, c.node, arms[k], 1);
+		if (key < 0 || size_t(key) >= t.cross_held.size() || t.time - t.cross_held[size_t(key)] > double(tp.ped_wait_call_s)) continue;
+		// only those who would soon be in its path after stepping off: its lane's stretch of the zebra starts within their reach
+		for (const CrowdEntry &e : t.node_walkers[size_t(c.node)]) {
+			const Pedestrian &w = t.peds[size_t(e.id)];
+			if (!w.alive || w.mode != PedMode::WAIT || w.wi >= w.wn || w.ways[w.wi].cross != arms[k]) continue;
+			if ((lane[k] - V2(e.x, e.z)).len() - tp.ped_span_reach_m <= tp.ped_wait_reach_m) return true;
+		}
+	}
+	return false;
 }
 
 bool peds_in_way(const CityState &s, int ci, float front_in, float front_out) {

@@ -90,7 +90,7 @@ bool spawn_one(CityState &s) {
 		int c = pick_ds(s, truck ? p.zone_truck : weights_now(p, hour, false));
 		if (c < 0) continue;
 		float d = (mid_of(s, c) - a).len();
-		if (d > p.trip_min_m && d < p.trip_max_m && t.rng.f() < std::exp(-d / p.trip_decay_m)) to = c;
+		if (d > p.trip_min_m && d < p.trip_max_m && t.rng.f() < std::exp(-d / p.trip_decay_m) && route_reaches(s, from, c, bike)) to = c;
 	}
 	if (to < 0 || to == from) return false;
 	// Room first: a spawn that cannot fit must not pay for a route search.
@@ -171,6 +171,7 @@ bool new_trip(CityState &s, int id, int from_ds) {
 		if (c < 0 || c == from_ds) continue;
 		const float d = (mid_of(s, c) - a).len();
 		if (d <= p.trip_min_m || d >= p.trip_max_m || t.rng.f() >= std::exp(-d / p.trip_decay_m)) continue;
+		if (!route_reaches(s, from_ds, c, v.type == VehicleType::BICYCLE)) continue; // a goal it can reach, as the lab draws exits
 		std::vector<int> route;
 		if (!find_route(s, from_ds, c, route, -1, -1, v.type == VehicleType::BICYCLE) || route.size() < 2) return false;
 		route_set(t.route_pool, v.route, t.route_waste, route.data(), int(route.size()));

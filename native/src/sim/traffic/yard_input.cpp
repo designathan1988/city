@@ -137,7 +137,7 @@ bool yard_input(const CityState &s, int building, YardInput &out) {
 	s.buildings.query(float(out.x0), float(out.z0), float(out.x0 + out.nx * out.cell), float(out.z0 + out.nz * out.cell), [&](int id) {
 		if (id == building) return;
 		const Building &o = s.buildings.items[size_t(id)];
-		out.shut.push_back(rect_ring(b40::lot_frame(o), -o.w * HALF, 0, o.w * HALF, o.d));
+		out.fenced.push_back(rect_ring(b40::lot_frame(o), -o.w * HALF, 0, o.w * HALF, o.d));
 	});
 	lot_solids(s.buildings.designs, body, f, p.lorry_clear_h_m, out.shut);
 	std::sort(out.reads.segs.begin(), out.reads.segs.end());

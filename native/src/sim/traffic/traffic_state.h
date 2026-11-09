@@ -11,6 +11,8 @@
 #include "sim/traffic/lane_graph_types.h"
 #include "sim/traffic/parking_state.h"
 #include "sim/traffic/ped_state.h"
+#include "sim/traffic/ring_meter.h"
+#include "sim/traffic/route_reach.h"
 #include "sim/traffic/traffic_view.h"
 
 #include <cstdint>
@@ -159,6 +161,9 @@ struct TrafficState {
 	// Crosswalk answers per (node, arm) for the current step (ped_crossing.cpp).
 	std::vector<uint32_t> cross_stamp;
 	std::vector<uint8_t> cross_walk, cross_cars;
+	// Per (node, arm) of the cache: when the traffic last held a walker at that crosswalk's kerb, and since when it has (-1: nobody
+	// held now); the walkers' impatience and the vehicles that give way to those waiting read them (ped_crossing.cpp).
+	std::vector<double> cross_held, cross_held_from;
 	// Anti-gridlock bookkeeping (Roadcraft traffic/junctions.ts, micro.ts): who committed to each connector and when,
 	// who holds the next free spot of a full lane (and when it last asked), when each node last let someone in and
 	// when it may release the next vehicle of a jam.
@@ -175,6 +180,8 @@ struct TrafficState {
 	// again when CityState::lane_graph_serial moves (stamped serial + 1): the router relaxes each segment it can reach once (routing.cpp).
 	std::vector<std::vector<int>> route_next;
 	std::vector<uint64_t> route_next_stamp;
+	RouteReach reach; // which segments lead to which, cars and bicycles (route_reach.cpp)
+	RingIndex rings; // the small closed loops of road and what they hold (ring_meter.cpp)
 	float gov = 1, gov_clock = 0; // fleet governor (traffic/regions.ts)
 	int reroutes = 0, released = 0, jams = 0;
 	float red_last[TIMED_STAGES] = {}; // the last red entry: type, speed, ds, time (traffic_probe)
