@@ -140,7 +140,7 @@ public:
 	godot::Dictionary reverse_road(int seg), duplicate_road(int seg); // the inspector: the one-way runs the other way; a copy alongside (Ctrl+D)
 	godot::Dictionary set_marking_style(int style, bool undoable); // Menu > Paint; false: a city coming back from its session
 	godot::Dictionary upgrade_road(const godot::Vector3 &p, int profile, bool whole_street);
-	godot::Dictionary roundabout(const godot::Vector3 &p, float radius, bool cut), preview_roundabout(const godot::Vector3 &p, float radius, bool cut);
+	godot::Dictionary roundabout(const godot::Vector3 &p, float radius), preview_roundabout(const godot::Vector3 &p, float radius);
 	godot::Dictionary segment_at(const godot::Vector3 &p); // the segment a click there edits (preview)
 	godot::Dictionary terrain_brush(const godot::Vector3 &p, float radius, float strength, float dt, int mode, float hardness);
 	godot::Dictionary draw_building(const godot::Vector3 &a, const godot::Vector3 &b, int fn, int zone, int shape);

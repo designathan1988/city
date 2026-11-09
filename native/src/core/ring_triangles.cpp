@@ -1,6 +1,6 @@
-// A plate's outline in triangles on its own points (plate_triangles.h): ear clipping, then Lawson's flips over a half-edge
-// adjacency, each flip checking again only the four edges round it.
-#include "render/roads/plate_triangles.h"
+// A ring in triangles on its own points (ring_triangles.h): ear clipping, then Lawson's flips over a half-edge adjacency, each flip
+// checking again only the four edges round it.
+#include "core/ring_triangles.h"
 
 #include <algorithm>
 #include <cmath>
@@ -160,10 +160,10 @@ void flip_to_delaunay(const std::vector<Pt> &p, std::vector<int> &v) {
 }
 } // namespace
 
-std::vector<int> plate_triangles(const std::vector<V2> &ring) {
+std::vector<int> ring_triangles(const std::vector<double> &xy) {
 	std::vector<Pt> p;
-	p.reserve(ring.size());
-	for (const V2 &q : ring) p.push_back({ double(q.x), double(q.y) });
+	p.reserve(xy.size() / 2);
+	for (size_t i = 0; i + 1 < xy.size(); i += 2) p.push_back({ xy[i], xy[i + 1] });
 	const std::vector<int> idx = kept_points(p);
 	if (idx.empty()) return {};
 	std::vector<int> tris = clip_ears(p, idx);

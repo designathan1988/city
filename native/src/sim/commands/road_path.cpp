@@ -132,7 +132,7 @@ RoadPlan plan_path(const CityState &s, const std::vector<Quad> &pieces, const An
 		RoadPlan p = plan_road(s, from, true, q.cx, q.cz, to, profile);
 		if (p.ok && plan_squeezed(s, p, from, to, profile)) { // the build refuses it once laid (place_road): the preview says so first
 			p.ok = false;
-			p.reason = "road.reason.squeezed";
+			p.reason = "hint.rule.squeezed";
 		}
 		if (i == 0) total.lifts.push_back(p.lift_a);
 		total.lifts.push_back(p.lift_b);

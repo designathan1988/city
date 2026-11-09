@@ -16,7 +16,7 @@ constexpr int WEAR_LAYERS_AXIS = 8;
 // the lane tones by road class (road_look.h; road_body.gdshaderinc lane_tone and road_wear.gdshaderinc; surface_means.gd fills them by RoadClass)
 constexpr int ROAD_TONE_SLOTS = 8;
 // a road vertex's material, in its colour's alpha times ROAD_MAT_SCALE (road_look.h; road_body.gdshaderinc)
-enum class RoadMat : int { ASPHALT, PLATE, FOOTWAY, KERB, GRASS, CONCRETE, LANE, PAINT, PAVERS, STONE, COBBLE, BALLAST, SKIRT, JOIN };
+enum class RoadMat : int { ASPHALT, PLATE, FOOTWAY, KERB, GRASS, CONCRETE, LANE, PAINT, PAVERS, STONE, COBBLE, BALLAST, SKIRT };
 // a road vertex's codes (road_look.h): the material's scale in the alpha; UV2.x of a vertex no lamp pool lights and of a junction plate, lit evenly (road_body.gdshaderinc reads past half of each); the distances to a surface's edges and a lane's width over these (road_wear.gdshaderinc)
 constexpr float ROAD_MAT_SCALE = float(16.0);
 constexpr float ROAD_POOL_NONE = float(1000.0);
@@ -49,7 +49,6 @@ constexpr ShaderContract SHADER_CONTRACTS_STREETS[] = {
 	{ "ROAD_MAT_COBBLE", 1, { double(RoadMat::COBBLE) } },
 	{ "ROAD_MAT_BALLAST", 1, { double(RoadMat::BALLAST) } },
 	{ "ROAD_MAT_SKIRT", 1, { double(RoadMat::SKIRT) } },
-	{ "ROAD_MAT_JOIN", 1, { double(RoadMat::JOIN) } },
 	{ "ROAD_MAT_SCALE", 1, { double(16.0) } },
 	{ "ROAD_POOL_NONE", 1, { double(1000.0) } },
 	{ "ROAD_POOL_PLATE", 1, { double(-1000.0) } },

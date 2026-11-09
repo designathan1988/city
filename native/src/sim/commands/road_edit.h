@@ -96,6 +96,10 @@ void mark_street(CityState &s, double x, double z);
 // mouths and heights of the pieces before it): the shapes of the nodes the changes reach (RoadNetwork::settle_shapes) and
 // the heights of what they moved (sync_grade). A change that leaves the network alone settles nothing.
 void settle_network(CityState &s);
+// The poles and street items standing on the carriageway of a turning bulb at any node this edit changed, taken away (the lab's
+// world/junction/bulb.ts bulbClearing): a dead end that grew a bulb clears what stood where its circle now is. Run by the edits
+// after their network is settled, journaled with them.
+void clear_bulbs(CityState &s);
 // Ends a command, once per transaction (EditHistory::end, apply_entry): settles the network, places again the furniture of
 // the hydrant squares of the nodes it changed (street_furniture.h hydrant_square), recomputes the dirty lot cells (queued
 // for growth) and, when the command recorded a change or left derived work, bumps the edit revision and the map's.

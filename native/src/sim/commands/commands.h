@@ -187,9 +187,9 @@ EditResult set_node_control(CityState &s, int node, int ctl);
 EditResult move_node(CityState &s, int node, double x, double z);
 // The curve of a road with its end `at_a` taken to (x, z), its shape kept (Roadcraft world/doc.ts fitCurve).
 Quad moved_quad(const Quad &q, bool at_a, double x, double z);
-// Why a roundabout cannot go there ("" = it can); `cut` allows cutting the roads inside the circle.
-std::string roundabout_refusal(const CityState &s, double cx, double cz, double radius, bool cut);
-EditResult build_roundabout(CityState &s, double cx, double cz, double radius, bool cut);
+// Why a roundabout cannot go there ("" = it can): on vacant ground only (the lab's editor/roundabout.ts).
+std::string roundabout_refusal(const CityState &s, double cx, double cz, double radius);
+EditResult build_roundabout(CityState &s, double cx, double cz, double radius);
 
 // --- Landscape and Build drawers (land_commands.cpp)
 // One dab of the Relief brush (mode = BrushMode) held for dt seconds; level and landforms use the stroke's first height.

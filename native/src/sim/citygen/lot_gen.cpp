@@ -81,7 +81,7 @@ void LotStrips::mark_roads() {
 		arms[size_t(g_.sb[s])].push_back(s);
 	}
 	for (int n = 0; n < g_.nodes(); n++)
-		if (arms[size_t(n)].size() == 1 && g_.bulb[n]) mark(g_.nx[n], g_.nz[n], BULB_R + BULB_WALK, ROADWAY);
+		if (arms[size_t(n)].size() == 1 && g_.bulb[n] > 0) mark(g_.nx[n], g_.nz[n], g_.bulb[n], ROADWAY);
 	for (int s = 0; s < g_.segs(); s++) {
 		const double from = stops_short(s, g_.sa[s], arms[size_t(g_.sa[s])]), to = len(s) - stops_short(s, g_.sb[s], arms[size_t(g_.sb[s])]);
 		int n = std::max(2, int(std::ceil(len(s) / K.res)) + 1);

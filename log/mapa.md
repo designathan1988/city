@@ -46,6 +46,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/core/bytes.h` — leitor/escritor binário do formato de save
 - `native/src/core/color.h` — "#RRGGBB"/"#RRGGBBAA" → RGBA8 empacotado (único parser de cor)
 - `native/src/core/shape_fields.h` — the fields of a block of shapes (a float, a count, a double, lists of them) and the macro that makes them a block's members: one owner for every family of shapes
+- `native/src/core/ring_triangles.cpp` · `native/src/core/ring_triangles.h` — the one triangulator of plans: a ring cut on its own points by ear clipping, then Lawson's flips to constrained Delaunay (the lab's earcut and `refine`); a junction's plate and a lot's ring
 - `native/src/core/grid.h` — chunks, chaves de célula, hash espacial e orçamento de build
 - `native/src/core/job_pool.cpp` · `native/src/core/job_pool.h` — pool de jobs por prioridade e `parallel_for`; a chave do job é tipada (`JobKey`: uma `JobLane` por usuário e um id), então dois usuários não se substituem na fila
 - `native/src/core/lru_cache.h` — a bounded cache of shared values made from their keys, safe from any thread: made once outside the lock, the least recently asked pushed out by cost (the bodies, the render's rooms and cut bodies)
@@ -170,7 +171,8 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/sim/persistence/save_links.cpp` · `native/src/sim/persistence/save_links.h` · `native/src/api/city_core_lanes.cpp` · `project/ui/connector_panel.gd` — as conexões de faixa feitas à mão num cruzamento: o bloco do save, a API e o painel do Inspecionar
 - `native/src/sim/persistence/save_blocks.cpp` · `native/src/sim/persistence/save_blocks.h` · `native/src/sim/persistence/save_street.cpp` · `native/src/sim/persistence/save_street.h` · `native/src/sim/persistence/save_demolition.cpp` · `native/src/sim/persistence/save_demolition.h` — os blocos com etiqueta do fim do save (único dono do quadro: etiqueta, tamanho, conteúdo; o leitor pula o que não conhece, a falta é estado vazio); o conteúdo do bloco da rua; o conteúdo do bloco do save com o que golpes deixaram (crateras, ruínas, mobiliário derrubado, prédios com dano, a espera do crescimento); o registro de prédio compartilhado
 - `native/src/sim/roads/geometry.cpp` · `native/src/sim/roads/geometry.h` — geometria pura das vias (Bézier, tabelas de comprimento e o parâmetro de um comprimento e vice-versa, interseções)
-- `native/src/sim/roads/junction.cpp` · `native/src/sim/roads/junction.h` — braços, recuos, esquinas e balões
+- `native/src/sim/roads/junction.cpp` · `native/src/sim/roads/junction.h` — a node's arms, setbacks (corners, slab check, transitions, seams, bulbs) and a road's two mouths reconciled against its length
+- `native/src/sim/roads/junction_outline.cpp` — the outlines of a node: a transition's cubic axis, a turning bulb's line, a squared footway corner, the ring the ground, the lots and the drawing take
 - `native/src/sim/roads/profiles.cpp` · `native/src/sim/roads/profiles.h` — derivação do perfil (faixas, linhas, calçadas, preço)
 - `native/src/sim/roads/road_network.cpp` · `native/src/sim/roads/road_network.h` · `native/src/sim/roads/road_network_deck.cpp` · `native/src/sim/roads/road_network_node.cpp` — armazenamento e consultas do grafo viário; onde um raio pousa num tabuleiro (`ray_deck`); o que um nó é para quem passa nele (faixa, retorno, movimento proibido)
 - `native/src/sim/roads/road_network_shape.cpp` — a node's shape and the streets through it: arm setbacks, dead-end bulbs, straight joints and the runs along them
@@ -326,7 +328,6 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/render/roads/street_shapes.h` · `native/src/render/roads/street_shapes_parts.h` — every size a street emitter draws with beyond the road's section, one block per file (structures, stays, a junction's outline, the section, the street trees), as streets.json "shapes" gives them; the StreetShapes the StreetLook holds
 - `native/src/render/roads/road_emit.cpp` — referenciais de segmento, nós e quad texturizado
 - `native/src/render/roads/road_junction.cpp` · `native/src/render/roads/road_kerb.cpp` — placas de nó, beco sem saída e balão; a borda com meio-fio de uma esquina ou balão
-- `native/src/render/roads/plate_triangles.cpp` · `native/src/render/roads/plate_triangles.h` — a junction's plate cut into triangles on its own outline's points: ear clipping, then Lawson's flips to constrained Delaunay (the lab's earcut and `refine`), no fan from the node
 - `native/src/render/roads/road_shapes.cpp` · `native/src/render/roads/road_shapes.h` — the shapes the road jobs share, made once for the city's revision: a node's ends and its corners' kerb and outer lines (road and verge jobs), a segment's runs of retaining wall (structure and verge jobs)
 - `native/src/render/roads/road_look.cpp` · `native/src/render/roads/road_look.h` — streets.json → StreetLook (aparência das vias)
 - `native/src/render/roads/road_markings.cpp` — pintura viária como geometria fina elevada

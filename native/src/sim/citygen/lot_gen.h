@@ -25,7 +25,8 @@ constexpr double CELL_MARGIN = 120; // the streets a cell looks at reach this fa
 // The streets around a cell (indices local to this view).
 struct LotGraph {
 	std::vector<double> nx, nz;
-	std::vector<uint8_t> bulb, joint; // dead end with a turning bulb; straight two-arm joint
+	std::vector<double> bulb; // a dead end's turning bulb: the radius of its round out to the casing (0 none)
+	std::vector<uint8_t> joint; // straight two-arm joint
 	std::vector<Quad> quad;
 	std::vector<int> sa, sb, profile, zl, zr;
 	int nodes() const { return int(nx.size()); }

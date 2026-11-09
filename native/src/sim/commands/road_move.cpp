@@ -90,6 +90,7 @@ EditResult move_node(CityState &s, int node, double x, double z) {
 		j_remove_node_if_orphan(s, node);
 	}
 	settle_network(s); // the mouths squeezed_worse reads
+	clear_bulbs(s);
 	if (squeezed_worse(s, before, box)) {
 		r.error = "hint.rule.squeezed";
 		return r;

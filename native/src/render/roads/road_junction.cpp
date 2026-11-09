@@ -1,7 +1,8 @@
-// Node shapes: an asphalt plate from the node to every arm's mouth, cut on its own outline's points (plate_triangles.h), the
-// corners between neighbouring arms as kerb returns (sim/roads/junction.h corner_fillet) or smooth curves, each corner carrying
-// its kerb face, kerb stone and footway; dead ends get a footway pad behind a kerb or a turning bulb.
-#include "render/roads/plate_triangles.h"
+// Node shapes: a junction's plate as one outline (the mouths of its arms joined by the corners between neighbouring arms: kerb
+// returns, sim/roads/junction.h corner_fillet, or smooth curves) cut on its own points (core/ring_triangles.h), each point in the
+// tone of the arm its stretch of outline belongs to, eased across a corner from one arm's to the next; each corner carrying its kerb
+// face, kerb stone and footway; dead ends get a footway pad behind a kerb or a turning bulb.
+#include "core/ring_triangles.h"
 #include "render/roads/road_mesh.h"
 #include "render/roads/road_shapes.h"
 #include "sim/roads/junction.h"
@@ -16,6 +17,7 @@ namespace city {
 
 namespace {
 const Vector3 UP(0, 1, 0);
+constexpr int BULB_RETURN_LEAST_STEPS = 2; // a kerb return in no fewer pieces than this
 
 using End = RoadEnd;
 
@@ -37,68 +39,46 @@ Color walk_color(const StreetLook &L, const End &e, int hand) {
 	return s.kind == StripKind::SIDEWALK ? L.paving[int(s.pave) & 3] : L.paving[0];
 }
 
-// The outline `pts` in triangles on its own points (plate_triangles.h), each point added once by `add`, which gives its vertex.
-template <typename Add>
-void cut_plate(const RoadEmit &e, const std::vector<Vector3> &pts, Add &&add) {
-	std::vector<V2> plan;
+// A plate inside the outline `pts` (each point's sRGB tone in `tones`), cut on its own points (core/ring_triangles.h): the lab's
+// junction plate is one asphalt surface (render/roads/junctionPiece.ts), meshed whole by earcut and its refine (pieceMesh.ts).
+void cut_plate(const RoadEmit &e, const std::vector<Vector3> &pts, const std::vector<Color> &tones) {
+	const Vector2 pl(ROAD_POOL_PLATE, 0);
+	std::vector<double> plan;
 	std::vector<int> ids;
-	plan.reserve(pts.size());
+	plan.reserve(pts.size() * 2);
 	ids.reserve(pts.size());
-	for (const Vector3 &p : pts) {
-		plan.push_back(V2(p.x, p.z));
-		ids.push_back(add(p));
+	for (size_t i = 0; i < pts.size(); i++) {
+		plan.insert(plan.end(), { double(pts[i].x), double(pts[i].z) });
+		ids.push_back(e.mb.add(pts[i], UP, road_color(tones[i], RoadMat::PLATE), Vector2(pts[i].x, pts[i].z), pl));
 	}
-	const std::vector<int> tris = plate_triangles(plan);
+	const std::vector<int> tris = ring_triangles(plan);
 	for (size_t t = 0; t + 2 < tris.size(); t += 3) e.mb.tri(ids[size_t(tris[t])], ids[size_t(tris[t + 1])], ids[size_t(tris[t + 2])], UP);
 }
 
-// The plate inside `ring`, each point in the tone of the road nearest it: the paving that is not asphalt and the turning bulb,
-// which have no tones to share.
-void paved(const RoadEmit &e, const std::vector<End> &ends, const std::vector<Vector3> &ring) {
-	const Vector2 pl(ROAD_POOL_PLATE, 0);
-	cut_plate(e, ring, [&](const Vector3 &p) {
-		const End *nearest = &ends[0];
-		for (const End &en : ends) nearest = (p - en.p).length() < (p - nearest->p).length() ? &en : nearest;
-		return e.mb.add(p, UP, road_color(e.L.carriage(*nearest->prof), RoadMat::PLATE), Vector2(p.x, p.z), pl);
-	});
-}
+// The tone eased from a to b along a corner, u from 0 at a's mouth to 1 at b's: a cubic smoothstep, so the passage leaves each
+// mouth with no crease (the tone of each mouth is its road's, where the road's own surface meets it).
+Color eased_tone(const Color &a, const Color &b, float u) { return a.lerp(b, u * u * (3 - 2 * u)); }
 
-// The asphalt between two arms, from a's centre line round the kerb to b's. Across a wedge the difference of the distances to the
-// two lines is linear, so the mesh carries it and the shader lays the passage between the tones over a width of its own, the same
-// from the kerb to the node (road.gdshader M_JOIN), whatever the triangles.
-void wedge(const RoadEmit &e, const Vector3 &node, const End &a, const End &b, const std::vector<Vector3> &line) {
-	const Vector3 left_a(a.d.z, 0, -a.d.x), left_b(b.d.z, 0, -b.d.x);
-	Color tones = wear_color(0, 0, 0, RoadMat::JOIN, int(a.prof->road_class));
-	tones.r = (float(int(b.prof->road_class)) + MAT_HALF) / TONE_SLOTS;
-	auto add = [&](const Vector3 &p) {
-		const Vector3 v = p - node;
-		return e.mb.add(p, UP, tones, Vector2(p.x, p.z), Vector2(ROAD_POOL_PLATE, v.dot(left_a) + v.dot(left_b)));
-	};
-	std::vector<Vector3> outline{ node, a.p };
-	outline.insert(outline.end(), line.begin(), line.end());
-	outline.push_back(b.p);
-	cut_plate(e, outline, add);
-}
-
-void junction(const RoadEmit &e, int n, const NodeShape &shape) {
-	const RoadNode &nd = e.s.roads.nodes[n];
-	Vector3 node(float(nd.x), float(nd.y), float(nd.z));
+void junction(const RoadEmit &e, int, const NodeShape &shape) {
 	const std::vector<End> &ends = shape.ends;
 	std::vector<Vector3> ring;
-	bool asphalt = true;
-	for (const End &en : ends) asphalt = asphalt && en.prof->surface == Surface::ASPHALT;
+	std::vector<Color> tones;
 	size_t k = ends.size();
 	for (size_t i = 0; i < k; i++) {
 		const End &a = ends[i], &b = ends[(i + 1) % k];
+		const Color &ta = e.L.carriage(*a.prof), &tb = e.L.carriage(*b.prof);
 		ring.push_back(side(a, -a.arm.asph_right));
+		tones.push_back(ta);
 		const std::vector<Vector3> &in = shape.corners[i].in;
-		ring.insert(ring.end(), in.begin(), in.end());
-		if (asphalt) wedge(e, node, a, b, in);
+		for (size_t j = 0; j < in.size(); j++) {
+			ring.push_back(in[j]);
+			tones.push_back(eased_tone(ta, tb, in.size() > 1 ? float(j) / float(in.size() - 1) : 0.f));
+		}
 		float ka = kerb_w(a, 1), kb = kerb_w(b, -1);
 		std::vector<Vector3> bk = outside(in, a, b, ka, kb);
 		kerbed_line(e, in, bk, shape.corners[i].out, float(a.arm.asph_left), ka > 0 || kb > 0, walk_color(e.L, a, 1));
 	}
-	if (!asphalt) paved(e, ends, ring);
+	cut_plate(e, ring, tones);
 }
 
 struct EndFrame {
@@ -134,27 +114,37 @@ void road_cut(const RoadEmit &e, int n, const End &en) {
 	face(al, f.l, walk);
 }
 
-// A circle of radius r round a turning bulb, open where the road comes in.
-std::vector<Vector3> bulb_ring(const StreetLook &L, const EndFrame &f, const End &en, double setback, double r) {
-	std::vector<Vector3> pts;
-	double a_in = std::acos(std::min(1.0, setback / r));
-	for (int i = 0; i <= L.bulb_steps; i++) {
-		double phi = a_in + double(i) / L.bulb_steps * (TAU_D - 2 * a_in), along = r * std::cos(phi), u = r * std::sin(phi);
-		float y = along <= 0 ? f.node.y : float(f.node.y + (en.p.y - f.node.y) * std::min(1.0, along / setback));
-		pts.push_back(f.node + f.d * float(along) + f.left * float(u) + Vector3(0, y - f.node.y, 0));
-	}
-	return pts;
-}
-
+// A turning bulb (the lab's world/junction/bulb.ts): its circle round the node joined to the road's edges by kerb returns, at the
+// carriageway, the kerb stone's back and the footway's outer edge, each line in the same pieces so the kerbed edge pairs them.
+// Its mouth stands where the road's strip ends (its setback, reconciled against the road's length), the height eased from the
+// node's to the mouth's.
 void bulb(const RoadEmit &e, int n, const End &en) {
 	const StreetLook &L = e.L;
-	EndFrame f = end_frame(e, n, en);
-	double setback = std::max(en.at, FILLET_SLACK);
-	float kw = f.kw;
-	auto ring = [&](double r) { return bulb_ring(L, f, en, setback, r); };
-	std::vector<Vector3> in = ring(BULB_R);
-	paved(e, { en }, in);
-	kerbed_line(e, in, ring(BULB_R + kw), ring(BULB_R + BULB_WALK), float(en.arm.asph_left), kw > 0, walk_color(L, en, 1));
+	const Tuning &tn = e.s.catalog.tune;
+	const EndFrame f = end_frame(e, n, en);
+	const double setback = std::max(en.at, FILLET_SLACK);
+	const float kw = f.kw;
+	const double walk = std::max(en.arm.left - en.arm.asph_left, en.arm.right - en.arm.asph_right);
+	const int returns = std::max(BULB_RETURN_LEAST_STEPS, int(std::ceil(PI_D / 2 / L.arc_step)));
+	const auto line = [&](double grow, double hl, double hr) {
+		BulbLine b;
+		std::vector<Vector3> pts;
+		if (!bulb_line(tn, hl, hr, grow, L.bulb_steps, returns, b)) return pts;
+		b.pts.front().x = b.pts.back().x = setback;
+		for (const XZ &q : b.pts) {
+			const float y = q.x <= 0 ? f.node.y : float(f.node.y + (en.p.y - f.node.y) * std::min(1.0, q.x / setback));
+			Vector3 p = f.node + f.d * float(q.x) + f.left * float(q.z);
+			p.y = y;
+			pts.push_back(p);
+		}
+		return pts;
+	};
+	const std::vector<Vector3> in = line(0, en.arm.asph_left, en.arm.asph_right);
+	const std::vector<Vector3> bk = line(kw, en.arm.asph_left + kw, en.arm.asph_right + kw);
+	const std::vector<Vector3> out = line(walk, en.arm.left, en.arm.right);
+	if (in.empty() || bk.size() != in.size() || out.size() != in.size()) return;
+	cut_plate(e, in, std::vector<Color>(in.size(), e.L.carriage(*en.prof)));
+	kerbed_line(e, in, bk, out, float(en.arm.asph_left), kw > 0, walk_color(L, en, 1));
 }
 // What a node is, and the function that draws that shape.
 template <typename Junction, typename Cut, typename Bulb>

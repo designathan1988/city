@@ -562,9 +562,6 @@
       "along_pace_m": {
        "type": "number"
       },
-      "round_steps": {
-       "type": "integer"
-      },
       "plate_reach_m": {
        "type": "number"
       },
@@ -575,7 +572,6 @@
      "required": [
       "_doc",
       "along_pace_m",
-      "round_steps",
       "plate_reach_m",
       "outline_slack_units"
      ],

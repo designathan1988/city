@@ -193,24 +193,19 @@ Dictionary CityCore::upgrade_road(const Vector3 &p, int profile, bool whole_stre
 	return run_edit(*state_, label, [&](CityState &s) { return change_profile_at(s, p.x, p.z, profile, whole_street); });
 }
 
-Dictionary CityCore::roundabout(const Vector3 &p, float radius, bool cut) {
-	return run_edit(*state_, "cmd.build.roundabout", [&](CityState &s) {
-		double r = s.catalog.tune.road_snap_m;
-		Anchor a = snap_point(s, p.x, p.z, r);
-		return build_roundabout(s, a.x, a.z, radius, cut || a.node >= 0);
-	});
+Dictionary CityCore::roundabout(const Vector3 &p, float radius) {
+	return run_edit(*state_, "cmd.build.roundabout", [&](CityState &s) { return build_roundabout(s, p.x, p.z, radius); });
 }
 
-Dictionary CityCore::preview_roundabout(const Vector3 &p, float radius, bool cut) {
+Dictionary CityCore::preview_roundabout(const Vector3 &p, float radius) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex); // it reads: a pointer move must not wait for every mesh job
 	const CityState &s = *state_;
 	Dictionary d;
 	if (!s.ready) return d;
-	Anchor a = snap_point(s, p.x, p.z, s.catalog.tune.road_snap_m);
-	std::string why = roundabout_refusal(s, a.x, a.z, radius, cut || a.node >= 0);
+	std::string why = roundabout_refusal(s, p.x, p.z, radius);
 	d["ok"] = why.empty();
 	d["error"] = String(why.c_str());
-	d["centre"] = Vector3(float(a.x), s.terrain.height_at(float(a.x), float(a.z)), float(a.z));
+	d["centre"] = Vector3(p.x, s.terrain.height_at(p.x, p.z), p.z);
 	return d;
 }
 

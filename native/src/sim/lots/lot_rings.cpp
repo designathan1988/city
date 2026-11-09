@@ -1,6 +1,7 @@
 // The geometry of a lot on the (x, z) plane (lot_rings.h), as world/lots.ts has it on its (x, y): the same turns, the same left.
 #include "sim/lots/lot_rings.h"
 #include "core/plane_geometry.h"
+#include "core/ring_triangles.h"
 #include "sim/state/city_state.h"
 
 #include <algorithm>
@@ -85,28 +86,10 @@ double lot_area(const std::vector<XZ> &q) {
 }
 
 std::vector<int> lot_triangles(const std::vector<XZ> &ring) {
-	std::vector<int> left(ring.size()), out;
-	for (size_t i = 0; i < ring.size(); i++) left[i] = int(i);
-	if (lot_area(ring) < 0) std::reverse(left.begin(), left.end());
-	const auto turn = [&](int a, int b, int c) { return (ring[size_t(b)].x - ring[size_t(a)].x) * (ring[size_t(c)].z - ring[size_t(a)].z) - (ring[size_t(b)].z - ring[size_t(a)].z) * (ring[size_t(c)].x - ring[size_t(a)].x); };
-	const auto holds = [&](int a, int b, int c, int p) { return turn(a, b, p) >= 0 && turn(b, c, p) >= 0 && turn(c, a, p) >= 0; };
-	while (left.size() > 2) {
-		const size_t n = left.size();
-		bool cut = false;
-		for (size_t i = 0; i < n && !cut; i++) {
-			const int a = left[(i + n - 1) % n], b = left[i], c = left[(i + 1) % n];
-			if (turn(a, b, c) <= 0) continue;
-			bool ear = true;
-			for (int p : left)
-				if (p != a && p != b && p != c && holds(a, b, c, p)) ear = false;
-			if (!ear) continue;
-			out.insert(out.end(), { a, b, c });
-			left.erase(left.begin() + std::ptrdiff_t(i));
-			cut = true;
-		}
-		if (!cut) break; // what is left has no area: points in a line
-	}
-	return out;
+	std::vector<double> xz;
+	xz.reserve(ring.size() * 2);
+	for (const XZ &p : ring) xz.insert(xz.end(), { p.x, p.z });
+	return ring_triangles(xz);
 }
 
 bool big_enough(const GenShapes &S, const std::vector<XZ> &ring) { return ring.size() >= 3 && std::abs(lot_area(ring)) >= S.lots.least_m * S.lots.least_m / 2; }
