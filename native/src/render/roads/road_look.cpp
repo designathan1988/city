@@ -161,11 +161,13 @@ void load_floor(StreetLook::FloorPaint &F, DataReader r, const Dictionary &d) {
 	F.glyphs.clear();
 	for (int i = 0; i < letters.size(); i++) {
 		const String letter = letters[i];
-		if (letter.length() != 1) {
-			rg.fail("a glyph's key is one letter, not " + letter);
+		// read by the key itself: a key past ASCII (a letter with a circumflex) does not survive the reader's char * keys
+		const Variant strokes = glyphs[letter];
+		if (letter.length() != 1 || strokes.get_type() != Variant::ARRAY) {
+			rg.fail("a glyph is one letter and a list of strokes, not " + letter);
 			continue;
 		}
-		F.glyphs[char32_t(letter[0])] = strokes_of(rg.in(letter), rg.list(glyphs, letter.utf8().get_data()));
+		F.glyphs[char32_t(letter[0])] = strokes_of(rg.in(letter), strokes);
 	}
 }
 
