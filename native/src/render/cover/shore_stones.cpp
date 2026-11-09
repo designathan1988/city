@@ -14,6 +14,15 @@ using namespace godot;
 namespace city {
 
 namespace {
+// The water a sample holds: its lake's or river's level, or the sea's where the ground lies under the sea (the sea is no water
+// sample but Heightfield::water_level, while Roadcraft keeps it among the levels its render/terrain.ts shoreLevelAt reads), so a
+// coast has its stones as a river's margin does.
+float sample_level(const Heightfield &t, int i, int j) {
+	const float own = t.water[size_t(j) * t.water_n + i];
+	const float half = t.half_size(), step = t.water_spacing_m;
+	return t.height_at(float(i) * step - half, float(j) * step - half) < t.water_level ? std::max(own, t.water_level) : own;
+}
+
 // The water samples of a square of the map, walked until `stop` says so.
 template <typename F>
 void each_sample(const Heightfield &t, float x0, float z0, float x1, float z1, F stop) {
@@ -23,7 +32,7 @@ void each_sample(const Heightfield &t, float x0, float z0, float x1, float z1, F
 	int j0 = std::max(0, int(std::floor((z0 + half) / step))), j1 = std::min(t.water_n - 1, int(std::ceil((z1 + half) / step)));
 	for (int j = j0; j <= j1; j++)
 		for (int i = i0; i <= i1; i++)
-			if (stop(t.water[size_t(j) * t.water_n + i])) return;
+			if (stop(sample_level(t, i, j))) return;
 }
 } // namespace
 

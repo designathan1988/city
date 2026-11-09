@@ -1,4 +1,4 @@
-// The stones of a river or lake (data/render/cover.json shore): a lattice round the water, each stone kept by its height over
+// The stones of a river, a lake or the sea's coast (data/render/cover.json shore): a lattice round the water, each stone kept by its height over
 // the level of the water beside it, thickest on the line and thinning up the bank and into the deep. Read by the cover's jobs.
 #pragma once
 
@@ -23,7 +23,7 @@ struct ShoreLook {
 	float odds(float above_m) const;
 };
 
-// The level of the water within `search_m` of a point, or TerrainGen::NO_WATER.
+// The level of the water within `search_m` of a point (a lake, a river or the sea), or TerrainGen::NO_WATER.
 float shore_level(const Heightfield &t, float x, float z, float search_m);
 // Whether any water stands on a square of the map, `pad_m` round it.
 bool shore_near(const Heightfield &t, float x0, float z0, float side_m, float pad_m);
