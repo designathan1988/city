@@ -110,7 +110,7 @@ void LotStrips::keep(const Frame &laid, int zone, int profile) {
 
 void LotStrips::place_blocks() {
 	auto facing_fn = [this](double fx, double fz, double ox, double oz, int &zone, int &profile) { facing(fx, fz, ox, oz, zone, profile); };
-	for (const lot_gen::BlockLot &b : lot_gen::block_lots(S, g_, prof_, tables_, cx0_, cz0_, facing_fn)) {
+	for (const lot_gen::BlockLot &b : lot_gen::block_lots(S, g_, prof_, tables_, cx0_, cz0_, facing_fn, zones_, grown_)) {
 		double lx = -std::sin(b.rot), lz = -std::cos(b.rot);
 		Frame f{ b.x, b.z, lz, -lx, lx, lz, b.w, b.d };
 		if (unfit(f)) continue;
@@ -151,8 +151,8 @@ LotStrips::Along LotStrips::along(int s, double at, double sign) const {
 void LotStrips::place_side(int s, int side, int zone) {
 	const Profile &info = prof_[g_.profile[s]];
 	const double sign = side == 0 ? 1 : -1, face = (side == 0 ? info.left : info.right) + P.front_pad, length = len(s);
-	const bool works = zone == zones_.industrial;
-	const double depth = works ? P.works_depth : P.depth_m, frontage = works ? P.works_frontage : P.frontage_m;
+	const lot_gen::LotSize size = lot_gen::lot_size(P, zones_, grown_, zone);
+	const double depth = size.depth, frontage = size.frontage;
 	const auto clear = [&](double at) {
 		const Along a = along(s, at, sign);
 		const double near = face + P.behind_footway, far = face + depth - P.back_in;
@@ -165,17 +165,19 @@ void LotStrips::place_side(int s, int side, int zone) {
 		const bool ok = clear(here);
 		if (ok && from < 0) from = here;
 		if ((!ok || last) && from >= 0) {
-			cut_run({ s, sign, face, depth, frontage, zone }, from, ok ? here : here - P.along_step);
+			cut_run({ s, sign, face, depth, frontage, zone, size.whole }, from, ok ? here : here - P.along_step);
 			from = -1;
 		}
 		if (last) break;
 	}
 }
 
-// A run cut in equal lots, each kept where its ground will take it.
+// A run cut in equal lots, each kept where its ground will take it: as many as its length rounds to, or for whole lots as many as fit
+// whole (each at least its frontage wide, the room its building needs; a shorter run is one lot, its building one that fits it).
 void LotStrips::cut_run(const Strip &strip, double from, double to) {
 	if (to - from < P.least_m) return;
-	const int parts = std::max(1, int(js_round((to - from) / strip.frontage)));
+	const double count = (to - from) / strip.frontage;
+	const int parts = std::max(1, strip.whole ? int(std::floor(count)) : int(js_round(count)));
 	const double w = (to - from) / parts;
 	for (int k = 0; k < parts; k++) {
 		const Along a = along(strip.s, from + (k + 0.5) * w, strip.sign);

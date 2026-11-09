@@ -40,11 +40,7 @@ int ScenicRules::district_at(V2 p) const {
 	return best;
 }
 
-bool ScenicRules::in_park(V2 p) const {
-	for (const Polyline &ring : city_.parks)
-		if (ring_holds(ring, p)) return true;
-	return false;
-}
+bool ScenicRules::in_park(V2 p) const { return city_.in_park(p); }
 
 bool ScenicRules::near_highway(V2 p, float reach) const {
 	for (size_t i : highways_)

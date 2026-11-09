@@ -14,6 +14,7 @@
 #include "sim/buildings/building_store.h"
 #include "sim/terrain/height_patch.h"
 
+#include <cmath>
 #include <cstdint>
 #include <memory>
 
@@ -28,8 +29,11 @@ public:
 	void place(const b40::Data &data, const b40::BuildingLook &look, const HeightPatch &ground, const Building &rec, b40::Placed &pl,
 			const b40::CutView *cut = nullptr);
 	void clear();
+	// How far round a record's middle the ground place() samples reaches: its lot whatever its turn, and GROUND_PAD_M past the corners.
+	static float ground_reach(const Building &rec) { return HALF * std::hypot(rec.w, rec.d) + GROUND_PAD_M; }
 
 private:
+	static constexpr float HALF = 0.5f, GROUND_PAD_M = 4.f; // plinths, kerbs and fences reach this far past a lot's corners
 	// The body's key (the record's function and seed, which the rooms read, are in it) and the tables' generation.
 	struct Key {
 		b40::BodyKey body;

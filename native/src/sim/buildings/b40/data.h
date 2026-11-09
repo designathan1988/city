@@ -11,6 +11,7 @@
 #include "sim/buildings/b40/shapes.h"
 #include "sim/buildings/interior/tables.h"
 
+#include <algorithm>
 #include <atomic>
 #include <cstdint>
 #include <string>
@@ -60,7 +61,7 @@ struct LotRules {
 };
 
 // A design of its own that grows on a lot of `kind` (buildings.json "grown_designs"): its body read off its lot document and brought
-// to metres (gen.h scale_body), drawn `weight` times as often as a design of weight 1 among those that fit the lot.
+// to metres (gen.h scale_body), drawn among those that fit the lot in proportion to `weight` and to the share of the lot it fills.
 struct GrownDesign {
 	Kind kind = KIND_OFFICE;
 	float weight = 1;
@@ -103,7 +104,19 @@ struct Data {
 	// a design stands smaller on a smaller lot only while its storeys keep this floor-to-floor: the body rules' least storey (tuning
 	// build.min_storey_m, set with the zones: buildings_loader.h set_zone_kinds), so a design grown smaller is never a body they refuse
 	float grown_least_storey_m = 0;
-
+	// The least share of its size a design may stand at: where its storeys come down to the least floor-to-floor (b40 massing_core.cpp
+	// design_fit; over 1, a design that never stands smaller).
+	float grown_least_share(const Body &b) const { return b.storey_h > 0 ? grown_least_storey_m / b.storey_h : 1.f; }
+	// The room a lot of kind `k` is laid to hold its designs (sim/citygen lot_gen.h lot_size): x the least frontage every one of them
+	// fits, each at its least share (a frontage of the largest plan whole cut 104 m of street into one lot for one tower), y the deepest
+	// of their plans, so each stands whole in depth; (0, 0) for a kind that grows none.
+	V2 grown_plan(Kind k) const {
+		V2 most(0, 0);
+		if (grown_share[k] <= 0) return most;
+		for (const GrownDesign &g : grown_designs)
+			if (g.kind == k) most = V2(std::max(most.x, g.body->plan.W * std::min(1.f, grown_least_share(*g.body))), std::max(most.y, g.body->plan.D));
+		return most;
+	}
 
 	// A named colour of "colors" (magenta when missing: the loader rejects a table without the names asked for).
 	const Paint &color(const char *name) const {

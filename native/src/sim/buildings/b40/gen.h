@@ -22,10 +22,13 @@ struct Envelope {
 // The street side and the quarter a lot belongs to, for its building's style (Roadcraft zoning.ts quarterOf): `character` the same
 // for the lots of one side of a street within shapes.facade street_m (one frontage reads as one), `era` the same over a quarter of
 // quarter_m, its period: old towards the middle of the map more often, new towards the edges. `front` is the middle of the lot's
-// street front and `inward` the way into the lot, on the ground (x, z).
+// street front and `inward` the way into the lot, on the ground (x, z). `lot` is the lot's own draw in [0, 1), from where its front
+// stands: what a share of the lots is drawn on (data.h grown_share), the same for every candidate body the growth draws for the lot, so
+// the share is the lots' and the candidates only choose among what the lot grows.
 struct Quarter {
 	uint32_t character = 0;
 	int era = 0;
+	double lot = 0;
 };
 Quarter quarter_of(const Data &data, V2 front, V2 inward);
 

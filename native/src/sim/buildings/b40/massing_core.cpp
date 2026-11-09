@@ -21,21 +21,27 @@ float design_fit(const Data &data, const GrownDesign &g, Kind kind, float W, flo
 	const Body &b = *g.body;
 	if (g.kind != kind || b.plan.W <= 0 || b.plan.D <= 0 || b.storey_h <= 0) return 0;
 	const float s = std::min({ 1.f, W / b.plan.W, D / b.plan.D });
-	return s >= data.grown_least_storey_m / b.storey_h ? s : 0;
+	return s >= data.grown_least_share(b) ? s : 0;
 }
 
-// The design of its own the lot grows and the share of its size it stands at, or none: drawn first on the record's stream (only for
-// a kind that grows designs), among the designs of the lot's kind that fit it, by their weights.
-const Body *grown_design(const Data &data, Kind kind, float W, float D, Xoshiro128 &r, float &scale) {
-	if (data.grown_share[kind] <= 0 || r.f() >= data.grown_share[kind]) return nullptr;
-	float total = 0;
-	for (const GrownDesign &g : data.grown_designs)
-		if (design_fit(data, g, kind, W, D) > 0) total += g.weight;
+// The design of its own the lot grows and the share of its size it stands at, or none: whether it grows one is the lot's own draw
+// (Quarter::lot, the same for each candidate the growth draws; drawn on each candidate's stream, the contest of looks threw most of the
+// designs away and the kind's share was never the lots'), which one is drawn on the record's stream among the designs of the lot's kind
+// that fit it, by their weights times the share of the lot each fills (a design stands no larger than drawn, and on a lot laid for the
+// kind's largest a small one drawn as often left most of it bare lawn).
+const Body *grown_design(const Data &data, Kind kind, float W, float D, double lot_draw, Xoshiro128 &r, float &scale) {
+	if (data.grown_share[kind] <= 0 || lot_draw >= data.grown_share[kind]) return nullptr;
+	const auto chance = [&](const GrownDesign &g, float &s) {
+		s = design_fit(data, g, kind, W, D);
+		return s > 0 ? g.weight * std::min(1.f, s * g.body->plan.W * s * g.body->plan.D / (W * D)) : 0.f;
+	};
+	float total = 0, s = 0;
+	for (const GrownDesign &g : data.grown_designs) total += chance(g, s);
 	if (total <= 0) return nullptr;
 	float at = float(r.f()) * total;
 	for (const GrownDesign &g : data.grown_designs) {
-		scale = design_fit(data, g, kind, W, D);
-		if (scale > 0 && (at -= g.weight) < 0) return g.body.get();
+		const float c = chance(g, scale);
+		if (c > 0 && (at -= c) < 0) return g.body.get();
 	}
 	return nullptr;
 }
@@ -183,7 +189,7 @@ void make_body(const Data &data, Body &b, int zone, int floors, float W, float D
 	b.use = b.kind == KIND_WORKS ? USE_INDUSTRIAL : b.kind == KIND_SHOP || b.kind == KIND_OFFICE ? USE_COMMERCIAL : USE_RESIDENTIAL;
 	Xoshiro128 r(seed);
 	float scale = 1;
-	if (const Body *design = grown_design(data, b.kind, W, D, r, scale)) { // stood as drawn, its own lot laid with it, the lot's kind and use kept
+	if (const Body *design = grown_design(data, b.kind, W, D, quarter.lot, r, scale)) { // stood as drawn, its own lot laid with it, the lot's kind and use kept
 		const Kind kind = b.kind;
 		const Use use = b.use;
 		b = *design;

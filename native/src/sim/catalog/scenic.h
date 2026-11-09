@@ -98,6 +98,12 @@ struct ScenicCity {
 	std::vector<ScenicHeat> heat;
 	ScenicZoning zoning;
 	ScenicTrees trees;
+	// Whether p lies in one of its parks: the one owner of that test, for the zoning (no zone, no street) and the lots (none stands there).
+	bool in_park(V2 p) const {
+		for (const Polyline &ring : parks)
+			if (ring_holds(ring, p)) return true;
+		return false;
+	}
 };
 
 } // namespace city

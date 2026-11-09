@@ -11,8 +11,8 @@ namespace city {
 
 class LotStrips {
 public:
-	LotStrips(const GenShapes &s, const LotGraph &g, const std::vector<Profile> &profiles, const GenZones &zones, const LotGround &ground, double x0,
-		double z0);
+	LotStrips(const GenShapes &s, const LotGraph &g, const std::vector<Profile> &profiles, const GenZones &zones, const GrownPlans &grown,
+		const LotGround &ground, double x0, double z0);
 	std::vector<Lot> run();
 
 	// A lot's frame: centre, along-front unit (t), away-from-street unit (l), width and depth.
@@ -27,6 +27,7 @@ private:
 	const LotGraph &g_;
 	const std::vector<Profile> &prof_;
 	const GenZones &zones_; // the catalogue's: works stand on its industrial zone
+	const GrownPlans &grown_; // by zone code, the room the designs its lots grow need (lot_gen::lot_size)
 	const LotGround &ground_;
 	double cx0_, cz0_, ax_, az_;
 	int W_;
@@ -60,6 +61,7 @@ private:
 		int s;
 		double sign, face, depth, frontage;
 		int zone;
+		bool whole = false; // its lots never cut narrower than frontage (lot_gen::LotSize::whole)
 	};
 	void cut_run(const Strip &strip, double from, double to);
 };

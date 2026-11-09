@@ -959,3 +959,40 @@ frozen street from four sides, above, eye height, the neighbourhood and night (c
 junction mouth, the junction plate's wear, night windows by the near rule; street edges unchanged, no grass strip); walkers
 photographed close (capture_pedtraffic) and from 50/80/120 m with 1068 walking; frozen photos and digest blessed for those
 causes; gates: the two left are the owner's uncommitted CLAUDE.md line and the local docs folder.
+
+## 2026-11-09 06:40: variety in, on lots that hold its designs (branch variety-lots, merged into main)
+
+The variety area (street characters, quarter eras, glass curtain walls, four kinds of works, more houses, designs of their own on
+towers and offices) came in with the dense lots its designs need; the owner chose larger lots over smaller designs.
+
+**Problems, each to its cause:**
+- No tower design grew (building_variety_test: 2 kinds). Lots of a zone whose buildings grow designs were the street's 22 x 32 m;
+  the designs are 46-52 x 40-42 m and stand smaller only down to the least storey (2.6 m), 39-42.5 m wide. Now the designs own
+  the size: `b40 Data::grown_plan` is the least frontage every design of the kind fits (each at its least share) and the deepest
+  plan; `lot_gen::lot_size` lays such zones' lots to it (`whole`: never cut narrower, two rows only when each holds its depth).
+- A frontage of the largest plan whole cut 104 m of street into one lot for one tower: the frontage is the least room, so the same
+  street is two lots.
+- A block's rows were cut by the zone read at one side's middle; the zone changes from one street to the next, so towers at a
+  row's end stood on lots cut to the shops' 20 m. `block_lots.cpp` reads each side every least_m and cuts each run of one size in
+  its own columns (`cut_run`); a uniform block is cut as before.
+- The share of lots that grow a design (0.25 towers, 0.35 offices) was drawn on each candidate's stream, and the growth keeps the
+  candidate least like its neighbours (likeness.h): most designs lost that contest (towers 4 of 49 lots). The draw is now the
+  lot's own (`Quarter::lot`, from where its front stands, the same for every candidate); the candidates choose among designs.
+- A small design (modernOffice 30 x 19 m) drawn as often on a 53 x 59 m lot left most of it lawn: the pick weighs each design by
+  the share of the lot it fills (`massing_core.cpp grown_design`).
+- scenic_city_test: a civic building on a 42 m deep tower lot stood in Ibirapuera. The lot cutter knew streets, water and relief,
+  never the parks; the zone is read 20 m off the street (`side_probe_m`) and a lot as deep as its building reached past it (the
+  back of the 32 m lots did too, unseen). `ScenicCity::in_park` is the one owner of the park test (zoning and lots);
+  `LotGround::closed` refuses a lot on park land as water is refused.
+
+**Files changed:** sim/buildings/b40 data.h, gen.h, facade_compose.cpp, massing_core.cpp; sim/citygen lot_gen.h/.cpp,
+lot_strips.h, lot_place.cpp, block_lots.cpp, scenic_rules.cpp; sim/catalog/scenic.h; sim/lots/lot_cache.cpp; both DLLs. No
+file created or deleted.
+
+**Verification:** both DLLs; `cli.py run tests` 49/50, then the park fixed (scenic_city_test, building_variety_test with 5 tower
+and 9 office kinds, growth_pick_test, city_mass_test pass); `quick.sh --ready`: digest (the lots hash only) and the four frozen
+photos moved, both by this cause, blessed; `gates_changed` only the owner's CLAUDE.md line and docs folder. Photos before (main
+4c23551a) and after of the town's dense centre (seed 7), wide from two sides, above, a street at eye height, two lot fronts and
+night: the centre is rebuilt (wider towers, glass designs of their own among them, the plazas, lawns and parking the kit lays on
+50 m lots where the old 22 m lots packed slim towers: the centre is less dense); street edges keep their footway, no grass strip;
+the frozen street view now stands inside a new building's curtain wall (its mullions in front of the camera).

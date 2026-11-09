@@ -19,20 +19,27 @@ constexpr double LOT_END_IN_CELLS = 1.5; // a cell and a half: past any rounding
 constexpr int MIN_THROUGH_ARMS = 3; // a junction: three arms or more
 } // namespace
 
+lot_gen::LotSize lot_gen::lot_size(const LotsShape &P, const GenZones &zones, const GrownPlans &grown, int zone) {
+	if (zone == zones.industrial) return { P.works_frontage, P.works_depth, true };
+	if (zone >= 0 && size_t(zone) < grown.size() && grown[size_t(zone)].w > 0) return { grown[size_t(zone)].w + P.width_trim, grown[size_t(zone)].d, true };
+	return { P.frontage_m, P.depth_m, false };
+}
+
 double lot_gen::curve_distance(const Quad &q, double x, double z) {
 	double t = 0, dist = 0;
 	closest_t(q, x, z, t, dist);
 	return dist;
 }
 
-std::vector<Lot> build_lots(const GenShapes &S, const LotGraph &g, const std::vector<Profile> &profiles, const GenZones &zones, const LotGround &ground,
-	double cell_x0, double cell_z0) {
-	return LotStrips(S, g, profiles, zones, ground, cell_x0, cell_z0).run();
+std::vector<Lot> build_lots(const GenShapes &S, const LotGraph &g, const std::vector<Profile> &profiles, const GenZones &zones, const GrownPlans &grown,
+	const LotGround &ground, double cell_x0, double cell_z0) {
+	return LotStrips(S, g, profiles, zones, grown, ground, cell_x0, cell_z0).run();
 }
 
-LotStrips::LotStrips(const GenShapes &s, const LotGraph &g, const std::vector<Profile> &profiles, const GenZones &zones, const LotGround &ground, double x0,
-	double z0) :
-		S(s), K(s.strips), P(s.lots), g_(g), prof_(profiles), zones_(zones), ground_(ground), cx0_(x0), cz0_(z0), ax_(x0 - CELL_MARGIN), az_(z0 - CELL_MARGIN),
+LotStrips::LotStrips(const GenShapes &s, const LotGraph &g, const std::vector<Profile> &profiles, const GenZones &zones, const GrownPlans &grown,
+	const LotGround &ground, double x0, double z0) :
+		S(s), K(s.strips), P(s.lots), g_(g), prof_(profiles), zones_(zones), grown_(grown), ground_(ground), cx0_(x0), cz0_(z0), ax_(x0 - CELL_MARGIN),
+		az_(z0 - CELL_MARGIN),
 		W_(int(std::ceil((LOT_CELL + CELL_MARGIN * 2) / K.res))) {
 	grid_.assign(size_t(W_) * W_, 0);
 	for (int s = 0; s < g.segs(); s++) {
@@ -123,7 +130,7 @@ void LotStrips::facing(double fx, double fz, double ox, double oz, int &zone, in
 	profile = g_.profile[best];
 }
 
-// Dry, not on water anywhere on a 4 m lattice, relief under MAX_RELIEF.
+// Dry, not on water or closed land (LotGround::closed) anywhere on a 4 m lattice, relief under MAX_RELIEF.
 bool LotStrips::unfit(const Frame &f) const {
 	double hc = ground_.height(f.cx, f.cz);
 	if (hc < TerrainGen::OCEAN_Y + K.dry_min) return true;
@@ -133,7 +140,7 @@ bool LotStrips::unfit(const Frame &f) const {
 			double px = f.cx + f.tx * a + f.lx * b, pz = f.cz + f.tz * a + f.lz * b, y = ground_.height(px, pz);
 			lo = std::min(lo, y);
 			hi = std::max(hi, y);
-			if (ground_.water(px, pz) > y - K.wet_clear) return true;
+			if (ground_.water(px, pz) > y - K.wet_clear || (ground_.closed && ground_.closed(px, pz))) return true;
 		}
 	return hi - lo > K.max_relief;
 }

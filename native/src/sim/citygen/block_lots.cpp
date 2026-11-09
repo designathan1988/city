@@ -3,6 +3,7 @@
 // into equal columns of about the lots' frontage (growth.json shapes.blocks and shapes.lots). Every lot reaches the footway.
 #include "sim/citygen/lot_gen.h"
 #include "core/math.h"
+#include "sim/catalog/catalog.h"
 #include "core/plane_geometry.h"
 
 #include <algorithm>
@@ -23,6 +24,8 @@ std::vector<XZ> convex_hull(std::vector<XZ> s) {
 
 struct Box {
 	double cx, cz, ux, uz, vx, vz, L, D;
+	// the point s along its length from its middle and t across it
+	void at(double s, double t, double &x, double &z) const { x = cx + ux * s + vx * t; z = cz + uz * s + vz * t; }
 };
 
 bool min_area_box(const std::vector<XZ> &h, Box &best) {
@@ -52,8 +55,9 @@ bool min_area_box(const std::vector<XZ> &h, Box &best) {
 
 class Blocks {
 public:
-	Blocks(const GenShapes &s, double x0, double z0, const lot_gen::Facing &f) :
-			S(s), K(s.block_lots), ax_(x0 - CELL_MARGIN), az_(z0 - CELL_MARGIN), W_(int(std::ceil((LOT_CELL + CELL_MARGIN * 2) / K.res))), facing_(f) {
+	Blocks(const GenShapes &s, double x0, double z0, const lot_gen::Facing &f, const GenZones &zones, const GrownPlans &grown) :
+			S(s), K(s.block_lots), ax_(x0 - CELL_MARGIN), az_(z0 - CELL_MARGIN), W_(int(std::ceil((LOT_CELL + CELL_MARGIN * 2) / K.res))), facing_(f),
+			zones_(zones), grown_(grown) {
 		paved_.assign(size_t(W_) * W_, 0);
 		label_.assign(size_t(W_) * W_, -1);
 	}
@@ -107,6 +111,8 @@ private:
 	double ax_, az_;
 	int W_;
 	const lot_gen::Facing &facing_;
+	const GenZones &zones_; // what each zone's lots measure (lot_gen::lot_size), with the designs its lots grow
+	const GrownPlans &grown_;
 	std::vector<uint8_t> paved_;
 	std::vector<int> label_;
 	std::vector<lot_gen::BlockLot> out_;
@@ -179,39 +185,74 @@ private:
 		Box box;
 		if (!min_area_box(convex_hull(pts), box)) return;
 		double L = box.L + K.res, D = box.D + K.res;
-		auto at = [&](double s, double t, double &x, double &z) { x = box.cx + box.ux * s + box.vx * t; z = box.cz + box.uz * s + box.vz * t; };
-		int rows = D >= K.two_rows ? 2 : 1;
-		double depth = D / rows;
-		int columns = std::max(1, int(std::lround(L / std::max(S.lots.least_m, std::min(depth, S.lots.frontage_m)))));
-		double width = L / columns;
-		for (int r = 0; r < rows; r++)
-			for (int c = 0; c < columns; c++) {
-				double s0 = -L / 2 + c * width, s1 = s0 + width, t0 = -D / 2 + r * depth, t1 = t0 + depth;
-				int inside = 0, total = 0;
-				for (double a = K.lattice_start; a < 1; a += K.lattice_step)
-					for (double b = K.lattice_start; b < 1; b += K.lattice_step) {
-						double x, z;
-						at(s0 + (s1 - s0) * a, t0 + (t1 - t0) * b, x, z);
-						total++;
-						if (land_at(x, z, id)) inside++;
-					}
-				if (double(inside) / total < K.land_share) continue;
-				bool minus = rows == 2 ? r == 0 : nearer_minus(box, D, (s0 + s1) / 2, id);
-				double ox = minus ? -box.vx : box.vx, oz = minus ? -box.vz : box.vz;
-				double fx, fz, cx, cz;
-				at((s0 + s1) / 2, minus ? t0 : t1, fx, fz);
+		// The size of the lots along each long side by the zone of the street it faces, read every least_m along the side (no lot is
+		// narrower, so a change of zone between two reads falls inside one lot; each lot finds its own zone below): the two rows of a block
+		// back to back face two streets, and a side's zone changes from one street to the next, so a row cut whole by one zone laid towers
+		// on lots cut to the shops' frontage, too narrow for any of their designs. A block of whole lots (lot_size: works, towers and
+		// offices) lays two rows only when each row holds its lots' whole depth.
+		const int reads = std::max(1, int(std::ceil(L / S.lots.least_m)));
+		const double step = L / reads;
+		std::vector<lot_gen::LotSize> along[2]; // the minus side's reads, the plus side's
+		bool deep = D >= K.two_rows;
+		for (int side = 0; side < 2; side++)
+			for (int k = 0; k < reads; k++) {
+				const double out = side == 0 ? -1 : 1;
+				double fx, fz;
+				box.at(-L / 2 + (k + 0.5) * step, out * D / 2, fx, fz);
 				int zone = 0, profile = 0;
-				facing_(fx, fz, ox, oz, zone, profile);
-				if (!zone) continue;
-				at((s0 + s1) / 2, (t0 + t1) / 2, cx, cz);
-				out_.push_back({ cx, cz, width, depth, std::atan2(ox, oz), zone, profile });
+				facing_(fx, fz, out * box.vx, out * box.vz, zone, profile);
+				along[side].push_back(lot_gen::lot_size(S.lots, zones_, grown_, zone));
+				deep = deep && (!along[side].back().whole || D >= 2 * along[side].back().depth);
 			}
+		const int rows = deep ? 2 : 1;
+		const bool front_minus = nearer_minus(box, D, 0, id);
+		const double depth = D / rows;
+		for (int r = 0; r < rows; r++) {
+			const std::vector<lot_gen::LotSize> &sizes = along[(rows == 2 ? r == 0 : front_minus) ? 0 : 1];
+			for (int k0 = 0; k0 < reads;) { // a run of reads of one size, cut in its own columns
+				int k1 = k0 + 1;
+				while (k1 < reads && sizes[size_t(k1)].same(sizes[size_t(k0)])) k1++;
+				cut_run(sizes[size_t(k0)], -L / 2 + k0 * step, -L / 2 + k1 * step, r, rows, depth, box, D, id);
+				k0 = k1;
+			}
+		}
+	}
+
+	// Lots of one size across a row's run from s_from to s_to: as many columns as their frontage rounds to (never wider than deep: the
+	// lab's blockLots), or for whole lots as many as fit whole, each at least its frontage wide (a run narrower than one is one lot, its
+	// building one that fits it); each kept where land_share of it is the block's land, facing the street it fronts.
+	void cut_run(const lot_gen::LotSize &size, double s_from, double s_to, int r, int rows, double depth, const Box &box, double D, int id) {
+		const double L = s_to - s_from;
+		const int columns = std::max(1, size.whole ? int(std::floor(L / size.frontage)) : int(std::lround(L / std::max(S.lots.least_m, std::min(depth, size.frontage)))));
+		const double width = L / columns;
+		for (int c = 0; c < columns; c++) {
+			double s0 = s_from + c * width, s1 = s0 + width, t0 = -D / 2 + r * depth, t1 = t0 + depth;
+			int inside = 0, total = 0;
+			for (double a = K.lattice_start; a < 1; a += K.lattice_step)
+				for (double b = K.lattice_start; b < 1; b += K.lattice_step) {
+					double x, z;
+					box.at(s0 + (s1 - s0) * a, t0 + (t1 - t0) * b, x, z);
+					total++;
+					if (land_at(x, z, id)) inside++;
+				}
+			if (double(inside) / total < K.land_share) continue;
+			bool minus = rows == 2 ? r == 0 : nearer_minus(box, D, (s0 + s1) / 2, id);
+			double ox = minus ? -box.vx : box.vx, oz = minus ? -box.vz : box.vz;
+			double fx, fz, cx, cz;
+			box.at((s0 + s1) / 2, minus ? t0 : t1, fx, fz);
+			int zone = 0, profile = 0;
+			facing_(fx, fz, ox, oz, zone, profile);
+			if (!zone) continue;
+			box.at((s0 + s1) / 2, (t0 + t1) / 2, cx, cz);
+			out_.push_back({ cx, cz, width, depth, std::atan2(ox, oz), zone, profile });
+		}
 	}
 
 	bool nearer_minus(const Box &box, double D, double s, int id) const {
 		for (double d = 0; d < K.street_probe; d += 1) {
-			double mx = box.cx + box.ux * s + box.vx * (-D / 2 - d), mz = box.cz + box.uz * s + box.vz * (-D / 2 - d);
-			double px = box.cx + box.ux * s + box.vx * (D / 2 + d), pz = box.cz + box.uz * s + box.vz * (D / 2 + d);
+			double mx, mz, px, pz;
+			box.at(s, -D / 2 - d, mx, mz);
+			box.at(s, D / 2 + d, px, pz);
 			bool minus = !land_at(mx, mz, id) && paved_at(mx, mz), plus = !land_at(px, pz, id) && paved_at(px, pz);
 			if (minus != plus) return minus;
 		}
@@ -221,9 +262,9 @@ private:
 } // namespace
 
 std::vector<lot_gen::BlockLot> lot_gen::block_lots(const GenShapes &S, const LotGraph &g, const std::vector<Profile> &profiles,
-		const std::vector<std::vector<double>> &tables, double x0, double z0, const Facing &facing) {
+		const std::vector<std::vector<double>> &tables, double x0, double z0, const Facing &facing, const GenZones &zones, const GrownPlans &grown) {
 	const BlocksShape &K = S.block_lots;
-	Blocks b(S, x0, z0, facing);
+	Blocks b(S, x0, z0, facing, zones, grown);
 	std::vector<double> node_half(g.nodes(), 0.0);
 	std::vector<int> deg(g.nodes(), 0);
 	for (int s = 0; s < g.segs(); s++) {

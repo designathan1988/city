@@ -38,6 +38,17 @@ std::vector<Lot> with_player_lots(std::vector<Lot> lots, int64_t key, const LotB
 }
 } // namespace
 
+// By zone code, the room the designs of their own a lot of the zone grows need (b40 Data::grown_plan): what such a lot is laid to hold.
+static GrownPlans grown_plans(const CityState &s) {
+	const b40::Data &designs = s.buildings.designs;
+	GrownPlans out(ZONE_CODES);
+	for (int code = 0; code < ZONE_CODES; code++) {
+		const V2 most = designs.grown_plan(designs.kind_of_zone(code));
+		out[size_t(code)] = { double(most.x), double(most.y) };
+	}
+	return out;
+}
+
 // The lots of a cell from the streets; `every_side`: as if each side of each road were zoned, the proposal the Lots tab offers on land nobody cut yet.
 static std::vector<Lot> lots_of_cell(const CityState &s, int64_t key, int every_side) {
 	double x0 = key_x(key) * double(CHUNK), z0 = key_y(key) * double(CHUNK);
@@ -69,7 +80,8 @@ static std::vector<Lot> lots_of_cell(const CityState &s, int64_t key, int every_
 	LotGround ground;
 	ground.height = [&s](double x, double z) { return double(s.terrain.base_height_at(float(x), float(z))); };
 	ground.water = [&s](double x, double z) { return double(s.terrain.water_at(float(x), float(z))); };
-	return build_lots(s.catalog.growth.shapes, g, s.catalog.profiles, s.catalog.gen_zones, ground, x0, z0);
+	if (const ScenicCity *city = s.catalog.scenic_of(s.map_index)) ground.closed = [city](double x, double z) { return city->in_park(V2(float(x), float(z))); };
+	return build_lots(s.catalog.growth.shapes, g, s.catalog.profiles, s.catalog.gen_zones, grown_plans(s), ground, x0, z0);
 }
 
 std::vector<Lot> LotCache::compute(const CityState &s, int64_t key) { return with_player_lots(lots_of_cell(s, key, 0), key, s.lot_book); }

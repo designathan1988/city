@@ -164,3 +164,12 @@ O que falta fazer, por área.
   - The Minhocao (an elevated road over Avenida Sao Joao) waits for the same uncut crossings as the flyovers.
   - A district's look (the Centro's older facades, the Jardins' houses) comes from its zone and density alone: the building
     styles are not chosen by district.
+- Dense lots (2026-11-09, log/work-log.md 06:40): tower and office lots are laid for their designs (43-58 m wide, 42 m deep plus
+  the reach to the paving); the kit's tower or office on such a lot stands at about 0.4 of it with a plaza, lawn and parking, so
+  the town's centre is less dense than on the old 22 m lots. Whether the kit's dense bodies should fill a large lot (more blocks,
+  a podium) is to read in `plan_flats` / `office` against the lab's lot lab.
+- The frozen street view (`02-rua`, `03-rua_noite`) now stands inside a tower's glass curtain wall on the town's new lots: the
+  view's camera point to move to the street (`frozen_plan.json`), then the photos blessed again.
+- Left by the area agents (2026-11-09 integration): riders stepping off the bus seen only in the test, not in a photo; the
+  crater's decal anchoring on a slope; the weapons' photos were not redone after the merge; writhing and gore not confirmed in a
+  photo.

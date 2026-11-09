@@ -1,8 +1,10 @@
-// What the tests read of the building levels: what the view still asks and how a chunk stands.
+// What the tests read of the building levels: what the view still asks, how a chunk stands, and what a building's inside costs.
 #include "render/buildings/building_renderer.h"
 
 #include "core/grid.h"
+#include "render/buildings/facade.h"
 #include "render/buildings/facade_bay.h"
+#include "render/buildings/interior_emit.h"
 #include "sim/buildings/b40/civic.h"
 
 #include <algorithm>
@@ -150,6 +152,29 @@ Dictionary BuildingRenderer::building_cost() const {
 	d["instances"] = instances;
 	d["props"] = props;
 	return d;
+}
+
+BuildingInteriorCost BuildingRenderer::interior_cost(const CityState &s, int id, int level, int dir) const {
+	BuildingInteriorCost out;
+	if (id < 0 || id >= int(s.buildings.items.size()) || !s.buildings.items[size_t(id)].alive) return out;
+	const Building &rec = s.buildings.items[size_t(id)];
+	const float reach = BuildingBodies::ground_reach(rec);
+	const HeightPatch ground = s.terrain.patch(rec.x - reach, rec.z - reach, rec.x + reach, rec.z + reach);
+	b40::Placed pl;
+	const b40::CutView cut{ level, dir };
+	bodies_.place(s.buildings.designs, look_, ground, rec, pl, &cut); // not designs(): state_ is set once the renderer has run a frame
+	b40::Shell shell, parts;
+	parts.instanced = true;
+	b40::emit_facades(shell, parts, pl);
+	b40::emit_roofs(shell, parts, pl);
+	out.shell_triangles = int(shell.triangles());
+	out.shell_boxes = int(parts.boxes.size());
+	const int64_t before = shell.bytes(true) + parts.bytes(true) + int64_t(parts.boxes.size() * sizeof(b40::BoxInstance));
+	b40::emit_interior(shell, parts, pl);
+	out.inside_triangles = int(shell.triangles()) - out.shell_triangles;
+	out.inside_boxes = int(parts.boxes.size()) - out.shell_boxes;
+	out.inside_bytes = shell.bytes(true) + parts.bytes(true) + int64_t(parts.boxes.size() * sizeof(b40::BoxInstance)) - before;
+	return out;
 }
 
 } // namespace city

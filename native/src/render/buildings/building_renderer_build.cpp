@@ -19,7 +19,6 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float LOT_GROUND_PAD_M = 4.f; // ground copied past a lot's corners (plinths, kerbs and fences reach out)
 // The far mesh's COLOR.a: surface kind in the low bits (SurfaceKind < 8), the chunk in the superchunk above them;
 // the layout building_far.gdshader decodes (KIND_BITS, KIND_MASK).
 constexpr int FAR_KIND_MASK = (1 << SURFACE_KIND_BITS) - 1;
@@ -86,7 +85,7 @@ BuildingRenderer::Inputs BuildingRenderer::gather(const CityState &s, const int6
 			if (b.floors == 0 && b.body == 0 && !b40::is_open_lot(b.fn)) return;
 			in.records.push_back(b);
 			in.ids.push_back(id);
-			const float r = 0.5f * std::hypot(b.w, b.d) + LOT_GROUND_PAD_M; // the lot, whatever its turn
+			const float r = BuildingBodies::ground_reach(b);
 			minx = std::min(minx, b.x - r);
 			minz = std::min(minz, b.z - r);
 			maxx = std::max(maxx, b.x + r);
@@ -233,29 +232,6 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 		out.mid_mesh[MID_BAYS] = unit_bay_->get_rid();
 		out.mid_mesh[MID_BOXES] = out.mid_mesh[MID_SOLIDS] = unit_box_->get_rid();
 	}
-	return out;
-}
-
-BuildingInteriorCost BuildingRenderer::interior_cost(const CityState &s, int id, int level, int dir) const {
-	BuildingInteriorCost out;
-	if (id < 0 || id >= int(s.buildings.items.size()) || !s.buildings.items[size_t(id)].alive) return out;
-	const Building &rec = s.buildings.items[size_t(id)];
-	const float reach = 0.5f * std::hypot(rec.w, rec.d) + LOT_GROUND_PAD_M;
-	const HeightPatch ground = s.terrain.patch(rec.x - reach, rec.z - reach, rec.x + reach, rec.z + reach);
-	b40::Placed pl;
-	const b40::CutView cut{ level, dir };
-	bodies_.place(s.buildings.designs, look_, ground, rec, pl, &cut); // not designs(): state_ is set once the renderer has run a frame
-	b40::Shell shell, parts;
-	parts.instanced = true;
-	b40::emit_facades(shell, parts, pl);
-	b40::emit_roofs(shell, parts, pl);
-	out.shell_triangles = int(shell.triangles());
-	out.shell_boxes = int(parts.boxes.size());
-	const int64_t before = shell.bytes(true) + parts.bytes(true) + int64_t(parts.boxes.size() * sizeof(b40::BoxInstance));
-	b40::emit_interior(shell, parts, pl);
-	out.inside_triangles = int(shell.triangles()) - out.shell_triangles;
-	out.inside_boxes = int(parts.boxes.size()) - out.shell_boxes;
-	out.inside_bytes = shell.bytes(true) + parts.bytes(true) + int64_t(parts.boxes.size() * sizeof(b40::BoxInstance)) - before;
 	return out;
 }
 

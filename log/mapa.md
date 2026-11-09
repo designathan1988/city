@@ -67,6 +67,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/sim/buildings/lot_access.cpp` · `native/src/sim/buildings/lot_access.h` · `native/src/sim/buildings/b40/record.cpp` · `native/src/sim/buildings/b40/record.h` — portões, vagas e docas do lote com o caminho até o portão (grade, Dijkstra) para o tráfego; corpo de um registro, referencial do lote e árvores do lote (dono único)
 - `native/src/sim/buildings/lot_doors.cpp` · `native/src/sim/buildings/lot_doors.h` — a porta da frente do lote e o pé do caminho a pé na calçada
 - `native/src/sim/buildings/b40/data.h` · `native/src/sim/buildings/b40/types.h` — tabelas do gerador (estilos, paletas, aberturas) e vocabulário do corpo (bays, telhados, acabamentos, lote)
+- `native/src/sim/buildings/b40/roof_gear.h` — what the player sets on a roof (the gear's kinds, a piece of it) and the flag a mast flies
 - `native/src/sim/buildings/b40/gen.h` · `native/src/sim/buildings/b40/massing.h` · `native/src/sim/buildings/b40/paint.cpp` · `native/src/sim/buildings/b40/paint.h` — gerador do corpo de um registro num Xoshiro128, passos comuns do massing; ajuste HSL de telhado e segunda pele
 - `native/src/sim/buildings/b40/model.h` — um modelo como models.json o monta, bloco por bloco
 - `native/src/sim/buildings/b40/shapes.h` · `native/src/sim/buildings/b40/shapes_bodies.h` · `native/src/sim/buildings/b40/shapes_lots.h` · `native/src/sim/buildings/b40/shapes_interior.h` — every value a generator file tunes, one block per file (the bodies, the lots, the interiors), as buildings.json "shapes" gives them; the list of blocks the Data holds
@@ -283,7 +284,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/render/buildings/building_job_inputs.h` — what a building mesh job copies from the map under a short shared lock
 - `native/src/render/buildings/building_renderer_build.cpp` — montagem CPU dos níveis por subchunk e bandas de peças
 - `native/src/render/buildings/building_renderer_commit.cpp` — upload ao RenderingServer dos níveis, peças e bandas
-- `native/src/render/buildings/building_renderer_probe.cpp` — o que os testes leem dos níveis: o que a vista ainda pede, como está um chunk e o que cada superfície guarda (`building_cost`)
+- `native/src/render/buildings/building_renderer_probe.cpp` — what the tests read of the levels: what the view still asks, how a chunk stands, what each surface holds (`building_cost`) and what a building's inside costs (`interior_cost`)
 - `native/src/render/buildings/facade.h` — corpo colocado no mundo e emissores que o desenham
 - `native/src/render/buildings/facade_bay.cpp` · `native/src/render/buildings/facade_bay.h` — abertura de uma bay, parede e peças
 - `native/src/render/buildings/facade_emit.cpp` — paredes de cada volume, lado, andar e bay
