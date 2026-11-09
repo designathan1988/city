@@ -1,6 +1,6 @@
 {
  "_doc": "What the Build tabs offer (ui/builder_strip.gd, game/tools/building_tool.gd). A tool: id (its icon b_<id> and text builder.tool.<id>, unless icon or label_key say otherwise; its hint in hand hint.builder.<id> unless hint_key says otherwise), do (what it does) and value: a bay, scope, pattern, roof or finish code of native/src/sim/buildings/b40/types.h, or the storeys to add. Colours are each finish's own.",
- "choices": ["arm", "part", "gear", "flag", "flag_colour", "flag_slot", "scope", "paint_scope", "shape", "mass", "core", "piece", "run", "brush", "copy_style", "primitive", "points", "point_add", "point_remove", "bevel_corner", "ref_load", "ref_build", "ref_align", "ref_turn", "ref_flip", "ref_fade", "ref_toggle", "ref_remove"],
+ "choices": ["draw_target", "arm", "part", "gear", "flag", "flag_colour", "flag_slot", "scope", "paint_scope", "shape", "mass", "core", "piece", "run", "brush", "copy_style", "primitive", "points", "point_add", "point_remove", "bevel_corner", "ref_load", "ref_build", "ref_align", "ref_turn", "ref_flip", "ref_fade", "ref_toggle", "ref_remove"],
  "model_groups": ["all", "homes", "public", "commerce", "work", "leisure", "generic", "lots", "mine"],
  "tabs": {
   "interior": {
@@ -49,6 +49,7 @@
    "sections": [
     {
      "title_key": "builder.section.primitives",
+     "advanced": true,
      "tools": [
       {"id": "primBox", "do": "primitive", "value": 0, "top_kind": 0, "top_deg": 0, "hint_key": "hint.builder.prim"},
       {"id": "primCylinder", "do": "primitive", "value": 3, "top_kind": 0, "top_deg": 0, "hint_key": "hint.builder.prim"},
@@ -61,8 +62,18 @@
      ]
     },
     {
+     "title_key": "builder.section.drawWhere",
+     "tools": [
+      {"id": "drawNew", "do": "draw_target", "value": -1, "icon": "rect", "label_key": "builder.drawAction.new", "hint_key": "hint.builder.draw.new"},
+      {"id": "drawGround", "do": "draw_target", "value": 0, "icon": "wing", "label_key": "builder.drawAction.ground", "hint_key": "hint.builder.draw.ground"},
+      {"id": "drawTop", "do": "draw_target", "value": 1, "icon": "stack", "label_key": "builder.drawAction.top", "hint_key": "hint.builder.draw.top"},
+      {"id": "drawCut", "do": "draw_target", "value": 2, "icon": "cut", "label_key": "builder.drawAction.cut", "hint_key": "hint.builder.draw.cut"}
+     ]
+    },
+    {
      "title_key": "builder.section.drawShape",
      "tools": [
+      {"id": "sketch", "do": "sketch"},
       {"id": "rect", "do": "shape", "value": 0},
       {"id": "shapeL", "do": "shape", "value": 1},
       {"id": "shapeU", "do": "shape", "value": 2},
@@ -78,8 +89,10 @@
   },
   "mass": {
    "sections": [
+    {"title_key": "builder.sel.title", "shelf": "selection"},
     {
      "title_key": "builder.section.reference",
+     "advanced": true,
      "tools": [
       {"id": "refLoad", "do": "ref_load"},
       {"id": "refBuild", "do": "ref_build"},
@@ -113,6 +126,7 @@
     },
     {
      "title_key": "builder.section.modelling",
+     "advanced": true,
      "tools": [
       {"id": "extrudeOut", "do": "extrude", "value": 100},
       {"id": "extrudeIn", "do": "extrude", "value": -100},
@@ -129,6 +143,7 @@
     },
     {
      "title_key": "builder.section.boolean",
+     "advanced": true,
      "tools": [
       {"id": "blockSolid", "do": "block_mode", "value": 0},
       {"id": "blockVoid", "do": "block_mode", "value": 1},
@@ -138,7 +153,11 @@
     },
     {
      "title_key": "builder.section.block",
+     "advanced": true,
      "tools": [
+      {"id": "duplicate", "do": "duplicate", "icon": "copyBlock", "label_key": "builder.quick.duplicate"},
+      {"id": "mirror", "do": "mirror", "icon": "refFlip", "label_key": "builder.quick.mirror"},
+      {"id": "unionBlock", "do": "union", "icon": "blockSolid"},
       {"id": "copyBlock", "do": "copy_block"},
       {"id": "detachBlock", "do": "detach"},
       {"id": "centerBlock", "do": "center_block"},
@@ -148,6 +167,7 @@
     },
     {
      "title_key": "builder.section.blockShape",
+     "advanced": true,
      "tools": [
       {"id": "tierRect", "do": "plan", "value": 0},
       {"id": "tierChamfered", "do": "plan", "value": 6},
@@ -164,6 +184,7 @@
   },
   "facade": {
    "sections": [
+    {"title_key": "builder.sel.title", "shelf": "selection"},
     {
      "title_key": "builder.section.scope",
      "tools": [
@@ -172,7 +193,8 @@
       {"id": "column", "do": "scope", "value": 2, "icon": "window", "label_key": "creator.dock.scope.column"},
       {"id": "storey", "do": "scope", "value": 3, "icon": "window", "label_key": "creator.dock.scope.storey"},
       {"id": "side", "do": "scope", "value": 4, "icon": "window", "label_key": "creator.dock.scope.side"},
-      {"id": "volume", "do": "scope", "value": 5, "icon": "window", "label_key": "creator.dock.scope.volume"}
+      {"id": "volume", "do": "scope", "value": 5, "icon": "window", "label_key": "creator.dock.scope.volume"},
+      {"id": "zone", "do": "scope", "value": -1, "icon": "window", "label_key": "creator.dock.scope.zone", "hint_key": "hint.builder.zoneStart"}
      ]
     },
     {
@@ -220,6 +242,7 @@
     },
     {
      "title_key": "builder.section.relief",
+     "advanced": true,
      "tools": [
       {"id": "inset", "do": "relief", "value": -50},
       {"id": "outset", "do": "relief", "value": 50},
@@ -230,6 +253,7 @@
   },
   "roof": {
    "sections": [
+    {"title_key": "builder.sel.title", "shelf": "selection"},
     {
      "title_key": "builder.category.roof",
      "tools": [
@@ -344,6 +368,7 @@
   },
   "parts": {
    "sections": [
+    {"title_key": "builder.sel.title", "shelf": "selection"},
     {
      "title_key": "builder.section.structure",
      "tools": [
@@ -388,5 +413,78 @@
     }
    ]
   }
- }
+ },
+ "fields_doc": "The Selection panel's numbers (ui/builder_inspector.gd), selection_columns of them to a row: of what (the building, the block, its offset from the block under it, a pitched roof, the bay picked, its face, a free part, a thing on a roof), the key body_fields answers it by, its range (a number, or a tuning name, '-' before it for its negative) and its step; unit: m, count, deg or share (of a bay).",
+ "selection_columns": 6,
+ "fields": [
+  {"id": "function", "of": "record", "key": "function", "label_key": "builder.field.function", "lo": 0, "hi": 0, "step": 1, "unit": "choice"},
+  {"id": "levelHeight", "of": "level", "key": "level_h", "label_key": "builder.field.levelHeight", "lo": "build_min_storey_m", "hi": "build_max_ground_m", "step": 0.05, "unit": "m"},
+  {"id": "storeys", "of": "block", "key": "storeys", "label_key": "builder.field.storeys", "lo": 1, "hi": "edit_max_floors", "step": 1, "unit": "count"},
+  {"id": "storeyHeight", "of": "building", "key": "storey_h", "label_key": "builder.field.storeyHeight", "lo": "build_min_storey_m", "hi": "build_max_storey_m", "step": 0.05, "unit": "m"},
+  {"id": "groundHeight", "of": "building", "key": "ground_h", "label_key": "builder.field.groundHeight", "lo": "build_min_storey_m", "hi": "build_max_ground_m", "step": 0.1, "unit": "m"},
+  {"id": "width", "of": "block", "key": "w", "label_key": "builder.field.width", "lo": "build_min_side_m", "hi": "build_max_side_m", "step": 0.5, "unit": "m"},
+  {"id": "depth", "of": "block", "key": "d", "label_key": "builder.field.depth.plan", "lo": "build_min_side_m", "hi": "build_max_side_m", "step": 0.5, "unit": "m"},
+  {"id": "offsetX", "of": "offset", "key": "x", "label_key": "builder.field.offsetX", "lo": "-build_max_side_m", "hi": "build_max_side_m", "step": 0.5, "unit": "m"},
+  {"id": "offsetY", "of": "offset", "key": "y", "label_key": "builder.field.offsetY", "lo": "-build_max_side_m", "hi": "build_max_side_m", "step": 0.5, "unit": "m"},
+  {"id": "baseLevel", "of": "block", "key": "base", "label_key": "builder.field.baseLevel", "lo": 0, "hi": "edit_max_floors", "step": 1, "unit": "count"},
+  {"id": "lift", "of": "block", "key": "lift", "label_key": "builder.field.lift", "lo": "-build_max_lift_m", "hi": "build_max_lift_m", "step": 0.05, "unit": "m"},
+  {"id": "pitch", "of": "pitched", "key": "pitch", "label_key": "builder.field.pitch", "lo": "build_min_pitch_deg", "hi": "build_max_pitch_deg", "step": 1, "unit": "deg"},
+  {"id": "relief", "of": "bay", "key": "depth", "label_key": "builder.field.depth", "lo": "-build_max_recess_m", "hi": "build_max_projection_m", "step": 0.05, "unit": "m"},
+  {"id": "bays", "of": "face", "key": "bays", "label_key": "builder.field.bays", "lo": 1, "hi": "build_max_bays", "step": 1, "unit": "count"},
+  {"id": "windowWidth", "of": "face", "key": "window_w", "label_key": "builder.field.windowWidth", "lo": "build_least_opening", "hi": "build_most_opening", "step": 0.01, "unit": "share"},
+  {"id": "windowHeight", "of": "face", "key": "window_h", "label_key": "builder.field.windowHeight", "lo": "build_least_opening", "hi": "build_most_opening", "step": 0.01, "unit": "share"},
+  {"id": "sill", "of": "face", "key": "sill", "label_key": "builder.field.sill", "lo": 0, "hi": "build_max_projection_m", "step": 0.05, "unit": "m"},
+  {"id": "pierWidth", "of": "face", "key": "pier_w", "label_key": "builder.field.pierWidth", "lo": 0, "hi": "build_max_projection_m", "step": 0.05, "unit": "m"},
+  {"id": "pierDepth", "of": "face", "key": "pier_d", "label_key": "builder.field.pierDepth", "lo": 0, "hi": "build_max_projection_m", "step": 0.05, "unit": "m"},
+  {"id": "pierEvery", "of": "face", "key": "pier_every", "label_key": "builder.field.pierEvery", "lo": 1, "hi": "build_max_pier_every", "step": 1, "unit": "count"},
+  {"id": "partWidth", "of": "part", "key": "across", "label_key": "builder.field.width", "lo": "build_thinnest_m", "hi": "build_max_side_m", "step": 0.05, "unit": "m"},
+  {"id": "partLength", "of": "part", "key": "along", "label_key": "builder.field.length", "lo": "build_thinnest_m", "hi": "build_max_side_m", "step": 0.05, "unit": "m"},
+  {"id": "partHeight", "of": "part", "key": "h", "label_key": "builder.field.height", "lo": "build_thinnest_m", "hi": "build_max_side_m", "step": 0.05, "unit": "m"},
+  {"id": "gearHeight", "of": "gear", "key": "h", "label_key": "builder.field.height", "lo": "build_thinnest_m", "hi": "build_max_side_m", "step": 0.1, "unit": "m"}
+ ],
+ "functions": [
+  {"fn": "FN_NONE", "label_key": "building.fn.none"},
+  {"fn": "FN_SCHOOL", "label_key": "building.fn.school"},
+  {"fn": "FN_CHURCH", "label_key": "building.fn.church"},
+  {"fn": "FN_HOSPITAL", "label_key": "building.fn.hospital"},
+  {"fn": "FN_CLINIC", "label_key": "building.fn.clinic"},
+  {"fn": "FN_SQUARE", "label_key": "building.fn.square"},
+  {"fn": "FN_PARK", "label_key": "building.fn.park"},
+  {"fn": "FN_GAS_STATION", "label_key": "building.fn.gasStation"},
+  {"fn": "FN_SUPERMARKET", "label_key": "building.fn.supermarket"},
+  {"fn": "FN_CITY_HALL", "label_key": "building.fn.cityHall"},
+  {"fn": "FN_POLICE", "label_key": "building.fn.policeStation"},
+  {"fn": "FN_FIRE_STATION", "label_key": "building.fn.fireStation"},
+  {"fn": "FN_MALL", "label_key": "building.fn.mall"},
+  {"fn": "FN_SPORTS_COURT", "label_key": "building.fn.sportsCourt"},
+  {"fn": "FN_COUNCIL", "label_key": "building.fn.cityCouncil"},
+  {"fn": "FN_COURTHOUSE", "label_key": "building.fn.courthouse"},
+  {"fn": "FN_POST_OFFICE", "label_key": "building.fn.postOffice"},
+  {"fn": "FN_UNIVERSITY", "label_key": "building.fn.university"},
+  {"fn": "FN_LIBRARY", "label_key": "building.fn.library"},
+  {"fn": "FN_MUSEUM", "label_key": "building.fn.museum"},
+  {"fn": "FN_PRISON", "label_key": "building.fn.prison"},
+  {"fn": "FN_CEMETERY", "label_key": "building.fn.cemetery"},
+  {"fn": "FN_BUS_STATION", "label_key": "building.fn.busStation"},
+  {"fn": "FN_SHOP", "label_key": "building.fn.shop"},
+  {"fn": "FN_BANK", "label_key": "building.fn.bank"},
+  {"fn": "FN_PHARMACY", "label_key": "building.fn.pharmacy"},
+  {"fn": "FN_BAKERY", "label_key": "building.fn.bakery"},
+  {"fn": "FN_RESTAURANT", "label_key": "building.fn.restaurant"},
+  {"fn": "FN_SNACK_BAR", "label_key": "building.fn.snackBar"},
+  {"fn": "FN_BAR", "label_key": "building.fn.bar"},
+  {"fn": "FN_NIGHTCLUB", "label_key": "building.fn.nightclub"},
+  {"fn": "FN_CINEMA", "label_key": "building.fn.cinema"},
+  {"fn": "FN_HOTEL", "label_key": "building.fn.hotel"},
+  {"fn": "FN_GYM", "label_key": "building.fn.gym"},
+  {"fn": "FN_CLUB", "label_key": "building.fn.club"},
+  {"fn": "FN_OFFICE", "label_key": "building.fn.offices"},
+  {"fn": "FN_FACTORY", "label_key": "building.fn.factory"},
+  {"fn": "FN_WAREHOUSE", "label_key": "building.fn.warehouse"},
+  {"fn": "FN_PLAYGROUND", "label_key": "building.fn.playground"}
+ ],
+ "roof_choices": {"pitch_step_deg": 5,
+  "ridge": [{"value": 0, "label_key": "builder.roof.ridge.x"}, {"value": 1, "label_key": "builder.roof.ridge.y"}],
+  "fall": [{"value": 0, "label_key": "builder.roof.side.front"}, {"value": 1, "label_key": "builder.roof.side.right"},
+   {"value": 2, "label_key": "builder.roof.side.back"}, {"value": 3, "label_key": "builder.roof.side.left"}]}
 }

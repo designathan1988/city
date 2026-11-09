@@ -37,25 +37,6 @@ std::string replan(Volume &v, const Ring &ring) {
 	return "";
 }
 
-// The block a block is measured from: the first on the ground, or the one under most of it.
-const Volume *reference_of(const Body &b, const Volume &v) {
-	if (v.base == 0) {
-		for (const Volume &o : b.volumes)
-			if (o.base == 0) return &o == &v ? nullptr : &o;
-		return nullptr;
-	}
-	const Volume *best = nullptr;
-	float most = 0;
-	for (const Volume &o : b.volumes) {
-		if (&o == &v || o.base >= v.base || o.top() < v.base) continue;
-		const float area = overlap_area(ring_of(o), ring_of(v));
-		if (area > most) {
-			most = area;
-			best = &o;
-		}
-	}
-	return best;
-}
 
 // Where a slid block clicks into place: sides on sides and middles on middles of the other blocks.
 V2 click_in(const Tuning &t, const Body &b, const std::set<int> &moving, const Volume &v) {
@@ -83,14 +64,6 @@ V2 click_in(const Tuning &t, const Body &b, const std::set<int> &moving, const V
 	return shift;
 }
 
-void shift_block(Volume &v, float dx, float dy) {
-	v.x += dx;
-	v.y += dy;
-	for (RoofPart &p : v.gear) {
-		p.x += dx;
-		p.y += dy;
-	}
-}
 
 // A side's key through a corner added or taken: the side split goes to both halves, the side gone to none.
 std::vector<int> sides_after(int side, int index, bool remove) {
@@ -107,6 +80,34 @@ M remap_sides(const M &old, int index, bool remove) {
 	return next;
 }
 } // namespace
+
+void shift_block(Volume &v, float dx, float dy) {
+	v.x += dx;
+	v.y += dy;
+	for (RoofPart &p : v.gear) {
+		p.x += dx;
+		p.y += dy;
+	}
+}
+
+const Volume *reference_of(const Body &b, const Volume &v) {
+	if (v.base == 0) {
+		for (const Volume &o : b.volumes)
+			if (o.base == 0) return &o == &v ? nullptr : &o;
+		return nullptr;
+	}
+	const Volume *best = nullptr;
+	float most = 0;
+	for (const Volume &o : b.volumes) {
+		if (&o == &v || o.base >= v.base || o.top() < v.base) continue;
+		const float area = overlap_area(ring_of(o), ring_of(v));
+		if (area > most) {
+			most = area;
+			best = &o;
+		}
+	}
+	return best;
+}
 
 BlockWall block_wall(const Volume &v, int side) {
 	const Ring ring = ring_of(v);

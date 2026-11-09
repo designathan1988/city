@@ -43,6 +43,8 @@ std::string body_problem(const Tuning &t, const Body &b) {
 	if (int(b.volumes.size()) > t.build_max_volumes) return "building.problem.size";
 	if (!within(b.ground_h, t.build_min_storey_m, t.build_max_ground_m)) return "building.problem.size";
 	if (!within(b.storey_h, t.build_min_storey_m, t.build_max_storey_m)) return "building.problem.size";
+	for (size_t k = 0; k < b.level_hs.size(); k++) // a level of its own height: within what a ground floor or a storey may be
+		if (b.level_hs[k] > 0 && !within(b.level_hs[k], t.build_min_storey_m, k == 0 ? t.build_max_ground_m : t.build_max_storey_m)) return "building.problem.size";
 	bool on_ground = false;
 	for (const Volume &v : b.volumes) {
 		on_ground = on_ground || v.base == 0;

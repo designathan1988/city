@@ -212,6 +212,7 @@ struct Body {
 	uint8_t style = 0;
 	int palette = 0;
 	float ground_h = 3, storey_h = 3;
+	std::vector<float> level_hs; // a level's own height, by level (the Roadcraft's Building.levels); 0 or none: the building's
 	std::vector<Paint> paints;
 	int wall = -1, roof = -1, trim = -1; // building defaults (paint indices)
 	std::vector<Volume> volumes;
@@ -230,8 +231,17 @@ struct Body {
 		paints.push_back(p);
 		return int(paints.size()) - 1;
 	}
-	float level_h(int level) const { return level == 0 ? ground_h : storey_h; }
-	float level_z(int level) const { return level <= 0 ? 0.f : ground_h + storey_h * float(level - 1); }
+	float level_h(int level) const {
+		const float own = level >= 0 && level < int(level_hs.size()) ? level_hs[size_t(level)] : 0.f;
+		return own > 0 ? own : level == 0 ? ground_h : storey_h;
+	}
+	float level_z(int level) const {
+		if (level <= 0) return 0.f;
+		if (level_hs.empty()) return ground_h + storey_h * float(level - 1); // no level of its own height: the closed form
+		float z = 0;
+		for (int k = 0; k < level; k++) z += level_h(k);
+		return z;
+	}
 	float block_z(const Volume &v, int level) const { return v.lift + level_z(level); } // a level of a block, over the building's floor
 	const Paint &wall_of(const Volume &v) const { return paints[v.wall >= 0 ? v.wall : wall]; }
 	const Paint &roof_of(const Volume &v) const { return paints[v.roof_paint >= 0 ? v.roof_paint : roof]; }

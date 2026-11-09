@@ -333,6 +333,7 @@
      "renderer": "gl_compatibility",
      "timeout_s": 600
     },
+    {"name": "building_fields_test", "scene": "tests/core/building_fields_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "interior_test", "scene": "tests/core/interior_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "model_test", "scene": "tests/core/model_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "city_mass_test", "scene": "tests/core/city_mass_test", "renderer": "gl_compatibility", "timeout_s": 600},
@@ -389,7 +390,8 @@
   "capture_scenes": {
    "doc": "the reference views (capture.tscn: street from above, neighbourhood, whole town)",
    "template": "capture_scene",
-   "items": [{"name": "city", "scene": "tests/visual/capture", "resolution": "1600x900", "timeout_s": 1800}]
+   "items": [{"name": "city", "scene": "tests/visual/capture", "resolution": "1600x900", "timeout_s": 1800},
+    {"name": "construction", "scene": "tests/visual/capture_construction", "resolution": "1600x900", "timeout_s": 900}]
   }
  },
  "suites": {

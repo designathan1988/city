@@ -1,5 +1,5 @@
-// The blocks a rectangle dragged against a block makes (the 4.0's addPlanMass and planAction): a wing on the ground, a block on the roof, a void cut out; and how a block
-// counts in the body (setBlockMode).
+// The blocks a shape dragged or an outline drawn against a block makes (the Roadcraft's addPlanMass and planAction): a wing on the
+// ground, a block on the roof, a void cut out; how a block counts in the body (setBlockMode); the building moved or turned whole.
 #include "sim/buildings/b40/body_table.h"
 #include "sim/buildings/b40/plan_area.h"
 #include "sim/buildings/b40/record.h"
@@ -22,9 +22,8 @@ namespace city {
 using namespace b40;
 
 namespace {
-constexpr const char *NO_BLOCK = "tool.failed", *PRIMITIVE_ID = "primitive";
+constexpr const char *NO_BLOCK = "tool.failed";
 constexpr float TOUCH_AREA_M2 = 1e-3f; // two blocks sharing less than this do not touch
-constexpr int PRIMITIVE_ZONE = 1;
 
 float on_grid(const Tuning &t, float x) { return std::round(x / float(t.build_grid_m)) * float(t.build_grid_m); }
 
@@ -57,13 +56,23 @@ Ring on_roof(const Ring &box, const Volume &v) {
 }
 } // namespace
 
-std::string op_add_mass(Body &b, const Tuning &t, int vol, V2 from, V2 to, int action) {
+// A shape dragged as a box: the plan's ring (plan_ring) laid over the box, on the grid.
+std::string op_add_mass(Body &b, const Tuning &t, int vol, V2 from, V2 to, int action, int shape) {
+	if (shape < PLAN_RECTANGLE || shape >= PLAN_COUNT) return NO_BLOCK;
+	const float x0 = on_grid(t, std::min(from.x, to.x)), x1 = on_grid(t, std::max(from.x, to.x)), y0 = on_grid(t, std::min(from.y, to.y)), y1 = on_grid(t, std::max(from.y, to.y));
+	if (x1 <= x0 || y1 <= y0) return "building.problem.size";
+	Ring ring;
+	for (const V2 &p : plan_ring(shape)) ring.push_back({ x0 + p.x * (x1 - x0), y0 + p.y * (y1 - y0) });
+	return op_add_mass_ring(b, t, vol, std::move(ring), action);
+}
+
+// A drawn outline against a block (the Roadcraft's addPlanMass): on the ground in the block's look, on its roof kept to the roof, or a void.
+std::string op_add_mass_ring(Body &b, const Tuning &t, int vol, std::vector<V2> outline, int action) {
 	if (vol < 0 || vol >= int(b.volumes.size()) || action < MASS_GROUND || action > MASS_CUT) return NO_BLOCK;
 	if (int(b.volumes.size()) >= t.build_max_volumes) return "building.problem.size";
 	Volume &source = b.volumes[size_t(vol)];
-	const float x0 = on_grid(t, std::min(from.x, to.x)), x1 = on_grid(t, std::max(from.x, to.x)), y0 = on_grid(t, std::min(from.y, to.y)), y1 = on_grid(t, std::max(from.y, to.y));
-	Ring ring{ { x0, y0 }, { x1, y0 }, { x1, y1 }, { x0, y1 } };
-	if (x1 <= x0 || y1 <= y0) return "building.problem.size";
+	Ring ring(outline.begin(), outline.end());
+	if (ring.size() < 3 || int(ring.size()) > MAX_FACES || !simple_ring(ring)) return "building.problem.outline";
 	if (action == MASS_ROOF) ring = on_roof(ring, source);
 	if (ring.size() < 3) return "building.problem.outline";
 	if (action == MASS_CUT && overlap_area(ring, ring_of(source)) <= TOUCH_AREA_M2) return "building.problem.cut";
@@ -186,6 +195,14 @@ EditResult move_building(CityState &s, int id, double x, double z, double rot) {
 	return place_body(s, body, x, z, rot, rec.fn, rec.zone, &rec);
 }
 
+EditResult turn_building(CityState &s, int id, double radians) {
+	EditResult r;
+	if (!standing(s, id, r)) return r;
+	const Building &rec = s.buildings.items[size_t(id)];
+	const double rot = rec.rot + radians; // about the lot's middle: the middle of its front goes round it
+	return move_building(s, id, rec.x + rec.d / 2 * std::sin(rot), rec.z + rec.d / 2 * std::cos(rot), rot);
+}
+
 std::string op_set_block_mode(Body &b, int vol, int mode) {
 	if (vol < 0 || vol >= int(b.volumes.size()) || mode < BLOCK_SOLID || mode > BLOCK_XOR) return NO_BLOCK;
 	b.volumes[size_t(vol)].mode = BlockMode(mode);
@@ -278,34 +295,6 @@ EditResult detach_block(CityState &s, int id, int vol) {
 	r.placed = j_add_building(s, other);
 	r.ok = true;
 	return r;
-}
-
-// A primitive alone on the ground is a body of one block, not a lot: a block of the size of the card stands where a lot could not.
-EditResult place_primitive(CityState &s, double x, double z, const PrimitiveSpec &p) {
-	const Tuning &t = s.catalog.tune;
-	const Data &data = s.buildings.designs;
-	ModelSpec m;
-	m.id = PRIMITIVE_ID;
-	m.kind = KIND_FLATS;
-	m.ground_h = float(t.build_primitive_ground_m);
-	m.storey_h = float(t.build_primitive_storey_m);
-	m.wall = data.hard.front();
-	m.roof = data.flat_roofs.front();
-	m.trim = data.color("wall_coping");
-	ModelBlock block;
-	block.w = block.d = float(t.build_primitive_m);
-	block.storeys = t.build_primitive_storeys;
-	block.roof = Roof(p.roof);
-	block.pitch = p.roof == ROOF_FLAT ? -1 : p.pitch;
-	block.door_bay = MIDDLE_BAY;
-	m.blocks.push_back(block);
-	Body body;
-	model_body(data, m, body);
-	EditResult r;
-	r.error = op_set_plan(body, t, 0, p.shape);
-	if (!r.error.empty()) return r;
-	const PlaceSnap at = snap_place(s, body.plan.W, body.plan.D, x, z, 0);
-	return place_body(s, body, at.x, at.z, at.rot, 0, PRIMITIVE_ZONE);
 }
 
 } // namespace city

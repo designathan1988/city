@@ -50,7 +50,7 @@ std::string op_whole_plan(b40::Body &b, const Tuning &t, int shape);
 std::vector<V2> plan_ring(int shape); // the shape in the unit square, counter-clockwise
 // A rectangle dragged against a block (body_blocks.cpp): a block beside it on the ground, on its roof, or a void cut out of it; `from` and `to` in the lot frame.
 enum MassAction : int { MASS_GROUND, MASS_ROOF, MASS_CUT };
-std::string op_add_mass(b40::Body &b, const Tuning &t, int vol, V2 from, V2 to, int action);
+std::string op_add_mass(b40::Body &b, const Tuning &t, int vol, V2 from, V2 to, int action, int shape = PLAN_RECTANGLE);
 std::string op_set_block_mode(b40::Body &b, int vol, int mode);
 
 // Modelling a block (body_model.cpp). A primitive is a plan (PlanShape) and a roof thrown at the building: on a roof (`side` < 0), against a wall, or alone on the ground.
@@ -94,6 +94,16 @@ std::string op_copy_block(b40::Body &b, const Tuning &t, int vol);
 std::string op_center_block(b40::Body &b, int vol);
 std::string op_turn_block(b40::Body &b, int vol, float degrees);
 std::string op_slide_block(b40::Body &b, const Tuning &t, int vol, float dx, float dy, bool snap);
+// The Selection panel's typed numbers of a block (body_typed.cpp): `axis` AXIS_X along the lot's front, AXIS_Y away from the street.
+// Its width or depth about its middle; its middle from the middle of the block it stands on; the level it starts on.
+enum PlanAxis : int { AXIS_X, AXIS_Y };
+std::string op_block_size(b40::Body &b, const Tuning &t, int vol, int axis, float metres);
+std::string op_block_offset(b40::Body &b, int vol, int axis, float metres);
+std::string op_block_base(b40::Body &b, const Tuning &t, int vol, int level);
+// The block a block is measured from: the first on the ground, or the one under most of it; none for the first.
+const b40::Volume *reference_of(const b40::Body &b, const b40::Volume &v);
+// A block moved on its plan with what is set on its roof (body_model.cpp).
+void shift_block(b40::Volume &v, float dx, float dy);
 std::string op_primitive_on(b40::Body &b, const Tuning &t, int vol, int side, int storey, float x, float y, const PrimitiveSpec &p);
 EditResult detach_block(CityState &s, int id, int vol);
 EditResult place_primitive(CityState &s, double x, double z, const PrimitiveSpec &p);
@@ -118,6 +128,18 @@ uint8_t next_fill(const b40::Volume &v);
 void clear_roof_under(b40::Volume &v, const std::vector<V2> &plan);
 std::string op_remove_volume(b40::Body &b, const Tuning &t, int vol);
 std::string op_set_heights(b40::Body &b, const Tuning &t, float ground_h, float storey_h);
+std::string op_set_level_height(b40::Body &b, const Tuning &t, int level, float metres);
+// The building mirrored left to right within its lot (body_mirror.cpp): every block, wall, bay, part, core and piece.
+std::string op_mirror(b40::Body &b);
+// Two blocks of the same levels side by side, flush along a whole side, made one (body_mirror.cpp, the Roadcraft's opUnionVolumes).
+std::string op_union_blocks(b40::Body &b, const Tuning &t, int vol);
+// A block of a drawn outline (`ring`, lot frame) against block `vol`: beside it on the ground, on its roof or cut out of it (body_blocks.cpp).
+std::string op_add_mass_ring(b40::Body &b, const Tuning &t, int vol, std::vector<V2> ring, int action);
+// The whole building turned about its lot's middle by `radians` (body_blocks.cpp): it lands as a moved building lands.
+EditResult turn_building(CityState &s, int id, double radians);
+// A new building of a drawn outline (world x, z), the Roadcraft's free plan (model_place.cpp); what a building's for, its body kept.
+EditResult place_sketch(CityState &s, const std::vector<V2> &outline);
+EditResult set_function(CityState &s, int id, int fn);
 
 // The facade. `what` a b40::Bay, `scope` a b40::FacadeScope. A pattern goes on the whole building (`vol` < 0), a volume, one
 // storey or one side of it (`storey`, `side` < 0 for all). Fields of `patch` left at their "not set" value stay as they are.
@@ -149,5 +171,12 @@ std::string op_add_run(b40::Body &b, const Tuning &t, const std::vector<V2> &pat
 std::string op_remove_part(b40::Body &b, int part);
 std::string op_turn_part(b40::Body &b, int part);
 std::string op_repeat_part(b40::Body &b, const Tuning &t, int part, float spacing);
+// A free part's size typed (body_parts.cpp): PART_ACROSS its facing, PART_ALONG it, PART_HEIGHT; a flight's run follows its height, its head kept.
+enum PartAxis : int { PART_ACROSS, PART_ALONG, PART_HEIGHT };
+std::string op_size_part(b40::Body &b, const Tuning &t, int part, int axis, float metres);
+// How tall a thing on a roof stands (a mast, a tank), metres (body_finish.cpp).
+std::string op_size_gear(b40::Body &b, const Tuning &t, int vol, int gear, float metres);
+// A copy of the building beside it, on the first side where it may stand on free ground (model_place.cpp).
+EditResult duplicate_building(CityState &s, int id);
 
 } // namespace city

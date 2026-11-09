@@ -1,4 +1,4 @@
-// The Parts tab's edits: free elements set against a bay or on the ground, changed, repeated and taken away (body_ops.h). How a part
+// The Parts tab's edits: free elements set against a bay or on the ground, sized, turned, repeated and taken away (body_ops.h). How a part
 // fits a wall is data (`PartSpec`, from data/ui/builder.json): a part stands in the lot frame, w across its facing, d along it.
 #include "core/math.h"
 #include "sim/buildings/b40/gen.h"
@@ -62,6 +62,21 @@ const Volume *clash(const Body &b, const LotElement &e, bool on_wall) {
 bool has(const Body &b, int part) { return part >= 0 && part < int(b.elements.size()); }
 bool hung(const PartSpec &s) { return s.fit == FIT_OVER || s.fit == FIT_UNIT || s.fit == FIT_DIAL; }
 
+// The run of a flight that climbs `rise`: steps of a riser each, or a ramp's slope.
+float flight_run(const Tuning &t, int kind, float rise) {
+	return kind == EL_RAMP ? rise * float(t.build_ramp_run_per_rise) : std::ceil(rise / RISER_M) * float(t.build_step_run_m);
+}
+
+// Out of the wall a part faces: the way its open end looks (types.h Facing).
+V2 facing_out(int facing) {
+	switch (facing) {
+		case FACE_RIGHT: return { 1, 0 };
+		case FACE_BACK: return { 0, 1 };
+		case FACE_LEFT: return { -1, 0 };
+		default: return { 0, -1 };
+	}
+}
+
 void place(LotElement &e, const WallFrame &f, float along, float out) {
 	e.x = f.start.x + f.along.x * along + f.out.x * out;
 	e.y = f.start.y + f.along.y * along + f.out.y * out;
@@ -113,9 +128,8 @@ std::string op_add_part(Body &b, const Tuning &t, int vol, int storey, int side,
 			break;
 		case FIT_FLIGHT: {
 			float rise = std::max(floor, RISER_M);
-			bool ramp = s.kind == EL_RAMP;
-			float steps = std::ceil(rise / RISER_M);
-			deep = ramp ? rise * float(t.build_ramp_run_per_rise) : steps * float(t.build_step_run_m);
+			const bool ramp = s.kind == EL_RAMP;
+			deep = flight_run(t, ramp ? EL_RAMP : EL_STAIR, rise);
 			out = deep / 2;
 			e.h = rise;
 			break;
@@ -216,6 +230,30 @@ std::string op_repeat_part(Body &b, const Tuning &t, int part, float spacing) {
 			b.elements.push_back(copy);
 		}
 	return "";
+}
+
+// A typed size, on the build's relief step. A flight set against a wall (unturned) keeps its head at the wall: a new height
+// gives it the run it needs, and its foot moves out or in.
+std::string op_size_part(Body &b, const Tuning &t, int part, int axis, float metres) {
+	if (!has(b, part) || axis < PART_ACROSS || axis > PART_HEIGHT) return NO_TARGET;
+	LotElement &e = b.elements[size_t(part)];
+	const float step = float(t.build_relief_step_m);
+	const float size = std::clamp(std::round(metres / step) * step, float(t.build_thinnest_m), float(t.build_max_side_m));
+	const bool front = e.facing == FACE_STREET || e.facing == FACE_BACK;
+	float &across = front ? e.w : e.d, &along = front ? e.d : e.w;
+	if (axis == PART_ACROSS) across = size;
+	else if (axis == PART_ALONG) along = size;
+	else {
+		e.h = size;
+		if ((e.kind == EL_STAIR || e.kind == EL_RAMP) && e.angle == 0) {
+			const float run = flight_run(t, e.kind, e.h);
+			const V2 out = facing_out(e.facing);
+			e.x += out.x * (run - along) / 2;
+			e.y += out.y * (run - along) / 2;
+			along = run;
+		}
+	}
+	return clash(b, e, false) ? "building.problem.overlap" : "";
 }
 
 } // namespace city

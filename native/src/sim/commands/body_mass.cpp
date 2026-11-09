@@ -308,4 +308,14 @@ std::string op_set_heights(Body &b, const Tuning &t, float ground_h, float store
 	return "";
 }
 
+// One level's own height (the Roadcraft's opSetLevelHeight); 0 or less gives it back the building's. The heights past the last own one go.
+std::string op_set_level_height(Body &b, const Tuning &t, int level, float metres) {
+	if (level < 0 || level >= t.edit_max_floors) return NO_VOLUME;
+	if (int(b.level_hs.size()) <= level) b.level_hs.resize(size_t(level) + 1, 0.f);
+	const float most = float(level == 0 ? t.build_max_ground_m : t.build_max_storey_m);
+	b.level_hs[size_t(level)] = metres <= 0 ? 0.f : std::clamp(metres, float(t.build_min_storey_m), most);
+	while (!b.level_hs.empty() && b.level_hs.back() <= 0) b.level_hs.pop_back();
+	return "";
+}
+
 } // namespace city

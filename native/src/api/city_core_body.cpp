@@ -78,6 +78,8 @@ Dictionary CityBuilder::body_pick(const Vector3 &origin, const Vector3 &dir) con
 	d["level"] = hit.level;
 	d["bay"] = hit.bay;
 	d["point"] = origin + n * hit.t;
+	d["part"] = hit.part;
+	d["gear"] = hit.gear;
 	return d;
 }
 
@@ -130,10 +132,10 @@ Dictionary CityBuilder::body_add_wing(int id, int vol, int side, double depth, d
 	return edit_of_body(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_add_wing(b, t, vol, side, float(depth), float(length)); });
 }
 
-Dictionary CityBuilder::body_add_mass(int id, int vol, const Vector3 &from, const Vector3 &to, int action) {
+Dictionary CityBuilder::body_add_mass(int id, int vol, const Vector3 &from, const Vector3 &to, int action, int shape) {
 	return edit_of_body_in_lot(*state_, id, [&](b40::Body &b, const Tuning &t, const b40::LotFrame &f) {
 		const V2 a = lot_local(f, from), c = lot_local(f, to);
-		return op_add_mass(b, t, vol, { a.x, a.y }, { c.x, c.y }, action);
+		return op_add_mass(b, t, vol, { a.x, a.y }, { c.x, c.y }, action, shape);
 	});
 }
 

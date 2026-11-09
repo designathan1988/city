@@ -5,6 +5,7 @@
 #include "api/edit_result.h"
 #include "sim/buildings/b40/record.h"
 #include "sim/buildings/b40/roof_shape.h"
+#include "sim/commands/body_ops.h"
 #include "sim/commands/model_ops.h"
 #include "sim/persistence/body_codec.h"
 #include "sim/state/city_state.h"
@@ -186,7 +187,7 @@ void CityBuilder::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("body_resize", "id", "vol", "side", "delta", "snap"), &CityBuilder::body_resize);
 	ClassDB::bind_method(D_METHOD("body_add_wing", "id", "vol", "side", "depth", "length"), &CityBuilder::body_add_wing);
 	ClassDB::bind_method(D_METHOD("body_set_plan", "id", "vol", "shape"), &CityBuilder::body_set_plan);
-	ClassDB::bind_method(D_METHOD("body_add_mass", "id", "vol", "from", "to", "action"), &CityBuilder::body_add_mass);
+	ClassDB::bind_method(D_METHOD("body_add_mass", "id", "vol", "from", "to", "action", "shape"), &CityBuilder::body_add_mass, DEFVAL(PLAN_RECTANGLE));
 	ClassDB::bind_method(D_METHOD("body_set_block_mode", "id", "vol", "mode"), &CityBuilder::body_set_block_mode);
 	ClassDB::bind_method(D_METHOD("body_mass_rect", "id", "from", "to"), &CityBuilder::body_mass_rect);
 	ClassDB::bind_method(D_METHOD("body_extrude_face", "id", "vol", "side", "distance"), &CityBuilder::body_extrude_face);
@@ -242,6 +243,7 @@ void CityBuilder::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("body_remove_part", "id", "part"), &CityBuilder::body_remove_part);
 	ClassDB::bind_method(D_METHOD("body_turn_part", "id", "part"), &CityBuilder::body_turn_part);
 	ClassDB::bind_method(D_METHOD("body_repeat_part", "id", "part", "spacing"), &CityBuilder::body_repeat_part);
+	bind_selection();
 }
 
 } // namespace city
