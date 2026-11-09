@@ -4,6 +4,8 @@
 #include "render/agents/people_renderer.h"
 #include "core/shader_contracts/people.h"
 
+#include "core/random.h"
+
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/variant/array.hpp>
 
@@ -59,7 +61,8 @@ bool PeopleRenderer::show_clip(const String &name) {
 	return true;
 }
 
-void PeopleRenderer::begin() {
+void PeopleRenderer::begin(const PoseFrame &f) {
+	clock_ = float(std::fmod(double(f.stamp_ns[POSE_TRAIL - 1]) / NS_PER_S, CLOCK_WRAP_S));
 	for (InstanceRows &b : bufs_) b.reopen();
 	blob_buf_.restart();
 	keeper_.begin();
@@ -106,17 +109,20 @@ void PeopleRenderer::seat(uint64_t key, const Pose &vehicle, const SeatSpot &spo
 	at.y += flat * off.y + up * off.z;
 	at.z += -vehicle.fx * off.x - vehicle.fz * up * off.y + vehicle.fz * flat * off.z;
 	const int level = dist > blob_from_m_ ? asset_.lods : level_at(dist);
-	place(PEOPLE_DENSE_KEYS + key, v, level, at, look, 0.f, phase, PEOPLE_CLIP_CODE_BASE + float(clip));
-	if (spot.pose == SeatPose::MOTO && level < asset_.lods) agent_row(helmets_.row(key), at, 1.f, float(v), 0.f, float(look & SEED_MASK), phase, PEOPLE_CLIP_CODE_BASE + float(clip));
+	// The bicycle's cranks turn with its wheel; a seated pose lives on the clock, standing still or not, each person at their own place
+	// of it (the lab's riderPoses.ts seated, occupants.ts occupantPlays: neighbours never breathe together).
+	const float turns = clock_ / asset_.clips[size_t(clip)].seconds[asset_.variations[size_t(v)].female ? 1 : 0] + hash_float(look);
+	const float played = spot.pose == SeatPose::BICYCLE ? phase : turns - std::floor(turns);
+	place(PEOPLE_DENSE_KEYS + key, v, level, at, look, 0.f, played, PEOPLE_CLIP_CODE_BASE + float(clip));
+	if (spot.pose == SeatPose::MOTO && level < asset_.lods) agent_row(helmets_.row(key), at, 1.f, float(v), 0.f, float(look & SEED_MASK), played, PEOPLE_CLIP_CODE_BASE + float(clip));
 }
 
 int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCull &view, const PoseSample &at, float radius) {
 	if (draws_.empty()) return 0;
 	const float r2 = radius * radius;
 	const int nv = int(asset_.variations.size()), lods = asset_.lods, levels = lods + 1;
-	const float clock = float(std::fmod(double(f.stamp_ns[POSE_TRAIL - 1]) / NS_PER_S, CLOCK_WRAP_S));
-	RenderingServer::get_singleton()->material_set_param(material_, "idle_clock", clock);
-	RenderingServer::get_singleton()->material_set_param(held_.material(), "idle_clock", clock);
+	RenderingServer::get_singleton()->material_set_param(material_, "idle_clock", clock_);
+	RenderingServer::get_singleton()->material_set_param(held_.material(), "idle_clock", clock_);
 	int drawn = 0;
 	for (const AgentRecord &rec : f.people) {
 		Pose p = record_pose(rec, at);

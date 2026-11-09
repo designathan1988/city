@@ -81,6 +81,11 @@ bool TransitRenderer::init(const RenderContext &ctx, PackedStringArray &errors) 
 	radius_ = table["radius_m"].f();
 	per_frame_ = table["items_per_frame"].whole();
 	if (errors.size() != before) return false;
+	preview_look_ = look_;
+	for (const auto &[part, opacity] : look_.preview) {
+		preview_look_.parts[size_t(part)].colour.a = opacity;
+		preview_look_.parts[size_t(part)].glass = opacity < 1;
+	}
 	TransitMeshes car;
 	transit_box(car, look_, look_.car_part, Vector3(0, look_.car_up, 0), V2(0, 1), look_.car);
 	RenderingServer *rs = RenderingServer::get_singleton();
@@ -105,7 +110,10 @@ void TransitRenderer::reset() {
 		for (Piece &p : e.second.pieces) drop(p);
 	items_.clear();
 	queue_.clear();
-	drop(preview_);
+	drop(laid_.piece);
+	drop(leg_.piece);
+	laid_.key.clear();
+	leg_.key.clear();
 	cars_.free();
 	plan_seen_ = ~uint64_t(0);
 	drawn_cars_ = 0;
@@ -239,19 +247,54 @@ void TransitRenderer::set_xray(bool on) {
 			if (p.cut_instance.is_valid()) rs->instance_set_visible(p.cut_instance, on);
 }
 
+// Into the piece's own meshes and instances: made the first time, cleared and filled again after; an empty one hidden.
+void TransitRenderer::refill(const TransitMeshes &m, Piece &out) {
+	RenderingServer *rs = RenderingServer::get_singleton();
+	const auto mesh_of = [&](OwnedMesh &mesh, RID &instance) {
+		if (!mesh.valid()) {
+			mesh.rid = rs->mesh_create();
+			instance = rs->instance_create2(mesh.rid, scenario_);
+		} else {
+			rs->mesh_clear(mesh.rid);
+		}
+	};
+	mesh_of(out.mesh, out.instance);
+	int surface = 0;
+	add_surface(rs, out.mesh.rid, m.solid, material_, surface);
+	add_surface(rs, out.mesh.rid, m.glass, glass_, surface);
+	rs->instance_set_visible(out.instance, surface > 0);
+	mesh_of(out.cut, out.cut_instance);
+	rs->instance_geometry_set_cast_shadows_setting(out.cut_instance, RenderingServer::SHADOW_CASTING_SETTING_OFF);
+	surface = 0;
+	for (int i = 0; i < TRANSIT_XRAY_LAYERS; i++) add_surface(rs, out.cut.rid, m.xray[i], xray_[i], surface);
+	rs->instance_set_visible(out.cut_instance, surface > 0); // the run being laid shows its cut: the tool that lays it is on
+}
+
+void TransitRenderer::sketch(const CityState &s, const std::vector<V2> &points, TransitMode mode, Sketch &out) {
+	std::vector<int64_t> key{ int64_t(mode) };
+	for (const V2 &p : points) {
+		key.push_back(int64_t(std::llround(p.x / preview_look_.preview_step)));
+		key.push_back(int64_t(std::llround(p.y / preview_look_.preview_step)));
+	}
+	if (key == out.key) return;
+	out.key = std::move(key);
+	TransitMeshes m;
+	if (points.size() >= 2) {
+		RailTrack run;
+		run.mode = mode;
+		run.points = points;
+		transit_track_whole(s, preview_look_, run, m);
+	}
+	if (points.size() >= 2 || out.piece.mesh.valid()) refill(m, out.piece);
+}
+
+// A track's pieces are each a length's own (transit_track_whole): what is laid and the length to the pointer drawn apart are the run
+// drawn whole, and a move of the pointer writes only the last.
 void TransitRenderer::set_preview(const CityState &s, const std::vector<V2> &points, TransitMode mode) {
-	drop(preview_);
-	if (points.size() < 2 || !material_.is_valid()) return;
-	RailTrack run;
-	run.mode = mode;
-	run.points = points;
-	std::vector<TransitMeshes> parts;
-	TransitLook one = look_; // the run being laid is one mesh
-	one.run = std::numeric_limits<float>::max();
-	transit_track_parts(s, one, run, parts);
-	if (parts.empty()) return;
-	draw(parts[0], preview_);
-	if (preview_.cut_instance.is_valid()) RenderingServer::get_singleton()->instance_set_visible(preview_.cut_instance, true);
+	if (!material_.is_valid()) return;
+	const size_t n = points.size();
+	sketch(s, n >= 2 ? std::vector<V2>(points.begin(), points.end() - 1) : std::vector<V2>(), mode, laid_);
+	sketch(s, n >= 2 ? std::vector<V2>(points.end() - 2, points.end()) : std::vector<V2>(), mode, leg_);
 }
 
 void TransitRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSample &at) {

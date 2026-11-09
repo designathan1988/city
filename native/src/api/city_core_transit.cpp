@@ -10,6 +10,8 @@
 #include "render/render_world.h"
 
 #include <godot_cpp/variant/packed_int32_array.hpp>
+
+#include <unordered_set>
 #include <godot_cpp/variant/packed_vector3_array.hpp>
 #include <godot_cpp/core/class_db.hpp>
 
@@ -121,6 +123,24 @@ Dictionary CityTransit::transit_run() {
 	}
 	d["crossings"] = crossings; // lanes crossed at grade
 	d["held_at_crossing"] = held; // vehicles with a closed crossing ahead of them
+	PackedInt32Array riders; // who rides each bus on the road, counted by who got on and off
+	std::unordered_set<int> held_by; // the walkers a kerb stop or a bus's call has in hand
+	for (const Bus &b : run.buses) {
+		if (b.vehicle >= 0) riders.push_back(state_->traffic.vehicles[size_t(b.vehicle)].riders);
+		for (const traffic::BusCall::Walker *list : { b.call.boarders, b.call.leavers })
+			for (int k = 0; k < traffic::BUS_CALL_WALKERS; k++)
+				if (list[k].ped >= 0) held_by.insert(list[k].ped);
+	}
+	for (const KerbStop &k : state_->traffic.kerb_stops)
+		if (k.vehicle >= 0 && k.ped >= 0) held_by.insert(k.ped);
+	int stranded = 0;
+	for (size_t i = 0; i < state_->traffic.peds.size(); i++) {
+		const Pedestrian &w = state_->traffic.peds[i];
+		stranded += w.alive && w.mode == PedMode::KERB && !held_by.count(int(i)) ? 1 : 0;
+	}
+	d["riders"] = riders;
+	d["riders_most"] = int(state_->catalog.traffic.bus_riders_most);
+	d["stranded_walkers"] = stranded; // held at the kerb by nobody: they would stand there for ever
 	for (const Bus &b : run.buses) {
 		if (b.vehicle < 0) continue;
 		const Vehicle &v = state_->traffic.vehicles[size_t(b.vehicle)];

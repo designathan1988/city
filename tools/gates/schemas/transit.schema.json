@@ -25,6 +25,15 @@
   "car_up_m": {
    "type": "number"
   },
+  "preview": {
+   "type": "object",
+   "additionalProperties": {
+    "type": "number"
+   }
+  },
+  "preview_step_m": {
+   "type": "number"
+  },
   "parts": {
    "type": "object",
    "additionalProperties": {

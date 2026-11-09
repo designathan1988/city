@@ -200,7 +200,7 @@ bool AgentRenderer::in_view(const ViewCull &view, int model, const Pose &p, floa
 
 void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCull &view, const PoseSample &at) {
 	if (!material_.is_valid() || !meshes_[0][CABIN_LEVEL].valid()) return;
-	people_.begin();
+	people_.begin(f);
 	keeper_.begin();
 	auto &bufs = seen_rows_; // what the camera sees
 	auto &casts = cast_rows_; // what the sun sees, out of the view too: a car behind the camera shades what is before it
@@ -243,6 +243,8 @@ void AgentRenderer::place_vehicles(const PoseFrame &f, const Vector3 &cam, const
 		if (aboard == ABOARD_TO_SET_DOWN) passengers = std::max(passengers, 1.f);
 		else if (aboard == ABOARD_SET_DOWN) passengers = std::max(passengers, 1.f) - 1;
 		else if (aboard == ABOARD_PICKED_UP) passengers += 1;
+		const uint32_t counted = (rec.look >> LOOK_RIDERS_SHIFT) & LOOK_RIDERS_MASK; // a bus: who got on less who got off, in the seats it has
+		if (counted > 0) passengers = std::min(float(load_[type].seats), float(counted - 1));
 		if ((rec.look & (1u << LOOK_EMPTY_SHIFT)) != 0) passengers = NOBODY_ABOARD;
 		const float d2 = flat2 + dy * dy;
 		const int model = model_of(type, paint);

@@ -224,6 +224,20 @@ bool TransitLook::read(const Dictionary &t, PackedStringArray &errors) {
 	below = boxes(names, r.in("below"), r.list(t, "below"));
 	car = v3(r, t, "car_m");
 	car_up = float(r.num(t, "car_up_m"));
+	preview.clear();
+	const Dictionary seen = r.table(t, "preview");
+	const Array seen_keys = seen.keys();
+	DataReader rv = r.in("preview");
+	for (int i = 0; i < seen_keys.size(); i++) {
+		const String key = seen_keys[i];
+		const float opacity = float(rv.num(seen, key.utf8().get_data()));
+		const int part = part_named(names, key.utf8().get_data(), rv);
+		if (opacity <= 0 || opacity > 1) rv.fail(key + String(": an opacity is over 0 and at most 1"));
+		if (parts[size_t(part)].xray >= 0) rv.fail(key + String(": a part drawn through the ground keeps its own"));
+		preview.push_back({ part, opacity });
+	}
+	preview_step = float(r.num(t, "preview_step_m"));
+	if (preview_step <= 0) r.fail("preview_step_m: must be positive");
 	return errors.size() == before;
 }
 
@@ -243,7 +257,10 @@ void transit_box(TransitMeshes &m, const TransitLook &look, int part, const Vect
 	mb.quad(on(q[0], y1), on(q[1], y1), on(q[2], y1), on(q[3], y1), c, Vector3(0, 1, 0), uvs);
 }
 
-void transit_track_parts(const CityState &s, const TransitLook &look, const RailTrack &track, std::vector<TransitMeshes> &out) {
+namespace {
+// Every piece of a track in its mode, each into the meshes `into(walked)` names for the metres walked to it.
+template <typename Into>
+void lay_track(const CityState &s, const TransitLook &look, const RailTrack &track, Into into) {
 	const bool metro = track.mode == TransitMode::METRO;
 	float walked = 0;
 	for (size_t i = 1; i < track.points.size(); i++) {
@@ -254,12 +271,24 @@ void transit_track_parts(const CityState &s, const TransitLook &look, const Rail
 		const int pieces = std::max(1, int(std::ceil(len / look.piece)));
 		const float piece = len / float(pieces);
 		for (int k = 0; k < pieces; k++, walked += piece) {
-			const size_t stretch = size_t(walked / look.run);
-			if (out.size() <= stretch) out.resize(stretch + 1);
-			if (metro) track_piece(s, look, true, a, d, float(k) * piece, piece, out[stretch]);
-			else track_cut(s, look, a, d, float(k) * piece, piece, out[stretch]);
+			TransitMeshes &m = into(walked);
+			if (metro) track_piece(s, look, true, a, d, float(k) * piece, piece, m);
+			else track_cut(s, look, a, d, float(k) * piece, piece, m);
 		}
 	}
+}
+} // namespace
+
+void transit_track_parts(const CityState &s, const TransitLook &look, const RailTrack &track, std::vector<TransitMeshes> &out) {
+	lay_track(s, look, track, [&](float walked) -> TransitMeshes & {
+		const size_t stretch = size_t(walked / look.run);
+		if (out.size() <= stretch) out.resize(stretch + 1);
+		return out[stretch];
+	});
+}
+
+void transit_track_whole(const CityState &s, const TransitLook &look, const RailTrack &track, TransitMeshes &out) {
+	lay_track(s, look, track, [&](float) -> TransitMeshes & { return out; });
 }
 
 void transit_stop_parts(const CityState &s, const TransitLook &look, const TransitStop &q, TransitMeshes &out) {
