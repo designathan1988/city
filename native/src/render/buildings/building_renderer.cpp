@@ -66,7 +66,7 @@ bool BuildingRenderer::init(const RenderContext &ctx, PackedStringArray &errors)
 	material_wash_ = ctx.material("building_wash", errors);
 	material_parts_ = ctx.material("building_parts", errors);
 	const Dictionary t = ctx.table("building_look", errors), bay = ctx.table("bay_props", errors), furniture = ctx.table("furniture", errors);
-	if (!errors.is_empty() || !look_.load(t, bay, furniture, ctx.table("camera", errors), errors)) return false;
+	if (!errors.is_empty() || !look_.load(t, bay, furniture, ctx.table("camera", errors), errors) || !wear_.load(look_.shapes.wear, ctx.table("materials", errors), errors)) return false;
 	for (int k = 0; k < b40::BAY_PROPS; k++) prop_mesh_[size_t(k)] = look_.bay.models[size_t(k)].commit();
 	RenderingServer::get_singleton()->material_set_param(material_props_, "ac_case", Vector2(look_.bay.ac_case.x, look_.bay.ac_case.y)); // its front's width and height
 	MeshBuilder unit;
@@ -330,6 +330,7 @@ void BuildingRenderer::update_view(const Vector3 &cam, BuildBudget &budget) {
 			}
 		}
 	}
+	wear_on(state_->clock.minutes.load());
 	need_.want = int(want.size() + want_super.size()) + waiting;
 	need_.unmet = need_.want;
 	std::sort(want.begin(), want.end(), [](const Want &a, const Want &b) { return a.d < b.d; });

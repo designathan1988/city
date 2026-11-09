@@ -95,8 +95,11 @@ BuildingRenderer::Inputs BuildingRenderer::gather(const CityState &s, const int6
 	}
 	if (!in.records.empty()) in.ground = s.terrain.patch(minx, minz, maxx, maxz);
 	in.view = s.interior;
+	in.now_min = s.clock.minutes.load();
+	in.wear_span_min = double(s.catalog.growth.decay_span_min);
 	return in;
 }
+
 
 // The near level's parts into their bands, sub-chunk by sub-chunk.
 void BuildingRenderer::file_parts(Built &out, std::array<b40::Shell, SUB_COUNT> &parts_shells) const {
@@ -162,6 +165,12 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 		b40::Placed pl;
 		bodies.place(designs(), look_, in.ground, rec, pl, cut ? &in.view.cut : nullptr);
 		int sub = sub_index(rec, key);
+		pl.wear = wear_.share(rec.built, in.now_min, in.wear_span_min, out.wear_due);
+		const float wear_tone = wear_.tone(pl.wear);
+		for (b40::Shell *s : { &near_shells[size_t(sub)], &parts_shells[size_t(sub)], &mid_shells[size_t(sub)], &mid_parts[size_t(sub)], &out.flat_shell[size_t(sub)] }) {
+			s->wear = pl.wear;
+			s->wear_tone = wear_tone;
+		}
 		const bool own_design = pl.b->signature != 0 && !cut; // cut open it is the shell that shows its floors
 		const bool broken = in.broken->count(rec.seed) > 0; // what stands of it is in pieces: its lot is still drawn here
 		if (own_design) {
@@ -263,6 +272,8 @@ BuildingRenderer::SuperBuilt BuildingRenderer::build_super_cpu(const Inputs &in,
 		b40::Placed pl;
 		bodies.place(designs(), look_, in.ground, rec, pl);
 		pl.lean = true;
+		far.wear = pl.wear = wear_.share(rec.built, in.now_min, in.wear_span_min, out.wear_due);
+		far.wear_tone = wear_.tone(pl.wear);
 		const size_t first = far.col.size();
 		b40::emit_far(far, pl, true);
 		// the building's chunk in the superchunk above the kind bits of COLOR.a (building_far.gdshader chunk_mask)

@@ -1,5 +1,5 @@
 // Buildings: one material for every building surface. COLOR.a is the
-// surface kind written by native/src/render/buildings/shell.h: 0 shell face (UV2.x = cooked finish layer + 1, 0 = no
+// surface kind written by native/src/render/buildings/shell.h: 0 shell face (UV2.y = the building's wear, UV2.x = cooked finish layer + 1, 0 = no
 // finish), 3 far wall with painted windows (UV in bays/storeys, CUSTOM0 = window shares and flags), 4 lamp, 5 lawn. The panes,
 // 1 and 2, are building_glass.gdshader's. Finishes: world-planar UVs in metres, map, normal map, roughness and metal mask. Far
 // windows: building_far_window.gdshaderinc (CUSTOM0 and 3 written by shell.cpp). The mid level's bays are instances of one mesh
@@ -101,7 +101,7 @@ void fragment() {
 		albedo *= lawn_tone.x + lawn_tone.y * vnoise(v_world.xz * lawn_noise.x) + lawn_tone.z * vnoise(v_world.xz * lawn_noise.y);
 		rough = lawn_tone.w;
 	} else {
-		finish_surface(int(floor(UV2.x + FINISH_ROUND)) - 1, n, albedo, nn, rough, metal);
+		finish_surface(int(floor(UV2.x + FINISH_ROUND)) - 1, n, UV2.y, albedo, nn, rough, metal); // UV2.y: the wear (shell.h; 0 on a bay)
 		albedo *= wall_gain;
 		if (kind == SK_FAR_WALL) {
 			float glass;

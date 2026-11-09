@@ -189,7 +189,7 @@ void Furnish::window(const Opening &o) {
 } // namespace
 
 void emit_bay_props(Shell &parts, const Placed &pl, const BayCtx &c, const Opening &o) {
-	Furnish f(parts, c, pl.look->bay, pl.look->shapes.facade_props, 0);
+	Furnish f(parts, c, pl.look->bay, pl.look->shapes.facade_props, pl.wear); // a worn building's balconies hold the old popular things
 	switch (c.comp) {
 		case BAY_WINDOW: case BAY_SASH: case BAY_SHUTTERED: case BAY_RIBBON: f.window(o); break;
 		case BAY_BALCONY: case BAY_GOURMET: f.balcony(); break;

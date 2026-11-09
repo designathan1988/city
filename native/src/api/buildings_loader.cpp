@@ -251,10 +251,6 @@ bool load_buildings(const Dictionary &table, Data &d, PackedStringArray &errors)
 	openings(r.in("openings"), r.table(t, "openings"), d);
 	lot_rules(r.in("lots"), r.table(t, "lots"), d.lots);
 	shapes(r.in("shapes"), r.table(t, "shapes"), d.shapes);
-	DataReader rl = r.in("props");
-	const Array lit = rl.list(r.table(t, "props"), "lit_share", PAIR);
-	d.lit_share[0] = float(rl.in("lit_share").num_at(lit, 0));
-	d.lit_share[1] = float(rl.in("lit_share").num_at(lit, 1));
 	return errors.size() == before;
 }
 
