@@ -310,6 +310,12 @@
     {"name": "road_edit_test", "scene": "tests/core/road_edit_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "save_undo_test", "scene": "tests/core/save_undo_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {
+     "name": "autosave_prune_test",
+     "scene": "tests/core/autosave_prune_test",
+     "renderer": "gl_compatibility",
+     "timeout_s": 600
+    },
+    {
      "name": "street_works_test",
      "scene": "tests/core/street_works_test",
      "renderer": "gl_compatibility",

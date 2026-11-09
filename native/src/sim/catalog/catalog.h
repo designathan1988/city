@@ -73,10 +73,9 @@ struct CityPlanDef {
 	int centres = 0;
 };
 
-// The generated city's road roles, each a profile of road_profiles.json (growth.json road_roles): the loader resolves every one
-// and refuses a name the catalogue lacks.
-#define CITY_ROAD_ROLES(X) X(local) X(avenue) X(avenue_bike) X(expressway) X(collector) X(wide) X(urban) X(cobble) X(green) X(concrete) \
-	X(bike) X(bus_side) X(boulevard) X(av4)
+// The generated city's road roles, one per level of its grid (the lab's world/cityGen/plan.ts LEVEL_ROAD), each a profile of
+// road_profiles.json (growth.json road_roles): the loader resolves every one and refuses a name the catalogue lacks.
+#define CITY_ROAD_ROLES(X) X(local) X(collector) X(avenue)
 struct RoadRoles {
 #define X(role) int role = -1;
 	CITY_ROAD_ROLES(X)

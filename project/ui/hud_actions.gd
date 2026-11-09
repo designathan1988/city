@@ -125,9 +125,12 @@ func _refused(r: Dictionary) -> void:
 		_hud().flash(tr(r.get("error", "")), false)
 
 
-## A save that ended (CityStore.saved): written, written by the autosave, or why not.
+## A save that ended (CityStore.saved): written, written by the autosave, or why not. The autosave of a city that is not the
+## player's (a new map nobody touched, written so the next start opens it) says nothing, as the lab's says nothing.
 func _on_saved(_slot: String, r: Dictionary) -> void:
 	if r.get("ok", false):
+		if r.get("auto", false) and not r.get("players", false):
+			return
 		_hud().flash(tr("save.auto" if r.get("auto", false) else "save.done"), true)
 		return
 	var now := Time.get_ticks_msec() / Units.MS_PER_S

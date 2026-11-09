@@ -41,61 +41,17 @@
     "local": {
      "type": "string"
     },
-    "avenue": {
-     "type": "string"
-    },
-    "avenue_bike": {
-     "type": "string"
-    },
-    "expressway": {
-     "type": "string"
-    },
     "collector": {
      "type": "string"
     },
-    "wide": {
-     "type": "string"
-    },
-    "urban": {
-     "type": "string"
-    },
-    "cobble": {
-     "type": "string"
-    },
-    "green": {
-     "type": "string"
-    },
-    "concrete": {
-     "type": "string"
-    },
-    "bike": {
-     "type": "string"
-    },
-    "bus_side": {
-     "type": "string"
-    },
-    "boulevard": {
-     "type": "string"
-    },
-    "av4": {
+    "avenue": {
      "type": "string"
     }
    },
    "required": [
     "local",
-    "avenue",
-    "avenue_bike",
-    "expressway",
     "collector",
-    "wide",
-    "urban",
-    "cobble",
-    "green",
-    "concrete",
-    "bike",
-    "bus_side",
-    "boulevard",
-    "av4"
+    "avenue"
    ],
    "strict": true
   },
@@ -161,42 +117,6 @@
       },
       "max_art_grade": {
        "type": "number"
-      },
-      "district_scale_n": {
-       "type": "number"
-      },
-      "noise_m_scale": {
-       "type": "number"
-      },
-      "avenue_share_n": {
-       "type": "number"
-      },
-      "urban_n": {
-       "type": "number"
-      },
-      "bike_n": {
-       "type": "number"
-      },
-      "cobble_d": {
-       "type": "number"
-      },
-      "cobble_m": {
-       "type": "number"
-      },
-      "urban_local_n": {
-       "type": "number"
-      },
-      "bus_offset": {
-       "type": "number"
-      },
-      "bus_m": {
-       "type": "number"
-      },
-      "boulevard_m": {
-       "type": "number"
-      },
-      "av4_n": {
-       "type": "number"
       }
      },
      "required": [
@@ -213,19 +133,7 @@
       "land_clear",
       "max_wet",
       "max_local_grade",
-      "max_art_grade",
-      "district_scale_n",
-      "noise_m_scale",
-      "avenue_share_n",
-      "urban_n",
-      "bike_n",
-      "cobble_d",
-      "cobble_m",
-      "urban_local_n",
-      "bus_offset",
-      "bus_m",
-      "boulevard_m",
-      "av4_n"
+      "max_art_grade"
      ],
      "strict": true
     },

@@ -8,8 +8,7 @@ namespace city {
 #define GEN_SHAPE_ROADS(X, XI, XD, XV, XVI) \
 	XD(block_along) XD(block_across) XD(grid_span) XD(centre_share) XI(avenue_every) XI(points_along) \
 	XI(points_across) XD(edge_pad) XD(inside_margin) XD(land_clear) XD(max_wet) XD(max_local_grade) \
-	XD(max_art_grade) XD(district_scale_n) XD(noise_m_scale) XD(avenue_share_n) XD(urban_n) XD(bike_n) \
-	XD(cobble_d) XD(cobble_m) XD(urban_local_n) XD(bus_offset) XD(bus_m) XD(boulevard_m) XD(av4_n)
+	XD(max_art_grade)
 struct RoadsShape {
 	SHAPE_DECLARE(GEN_SHAPE_ROADS)
 };

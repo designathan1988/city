@@ -230,7 +230,8 @@ func _settle_save() -> void:
 
 
 ## A save that ended: the city's own slot becomes the last city (its session says whether it is the player's), a map copy asked for
-## is made; listeners get the result (`auto` for the autosave).
+## is made; listeners get the result (`auto` for the autosave; `players` when the city is the player's: the only autosave the
+## HUD tells).
 func _finish_save(slot: String, result: Dictionary) -> void:
 	if result.get("ok", false) and slot == _city_slot:
 		SaveSlots.remember_last(slot)
@@ -239,6 +240,7 @@ func _finish_save(slot: String, result: Dictionary) -> void:
 		if DirAccess.copy_absolute(save_path(slot), _export_to) != OK:
 			result = {"ok": false, "error": "save.writeFailed"}
 	result["auto"] = _save_auto
+	result["players"] = _claim.kept
 	_export_to = ""
 	_save_auto = false
 	_store.saved.emit(slot, result)
