@@ -72,6 +72,21 @@ constexpr float SILL_SHADE = float(0.92);
 constexpr float HEAD_SHADE = float(0.8);
 // the fins of a brise-soleil card (part_models.cpp; building_card.gdshader's pitch is one over this)
 constexpr int BRISE_FINS = 6;
+// a railing in shares of its box, as boxes near and as a card's bars past them (part_models.cpp; building_card.gdshader): the lab's balcony railing (render/buildings/kit.ts railingGeometry): the top rail's middle, height and depth, the low rail's, a baluster's side and height; a roof railing's mid rail, its posts' pitch and width
+constexpr float RAIL_TOP_AT = float(0.97);
+constexpr float RAIL_TOP_H = float(0.06);
+constexpr float RAIL_TOP_D = float(0.05);
+constexpr float RAIL_LOW_AT = float(0.12);
+constexpr float RAIL_LOW_H = float(0.04);
+constexpr float RAIL_LOW_D = float(0.03);
+constexpr float RAIL_BAR = float(0.015);
+constexpr float RAIL_BAR_H = float(0.94);
+constexpr float ROOF_RAIL_MID_AT = float(0.45);
+constexpr float ROOF_RAIL_POSTS = float(0.25);
+constexpr float ROOF_RAIL_POST_W = float(0.02);
+// the gaps between a balcony railing's balusters, in front and on a side (kit.ts railingGeometry: eleven in front, three a side between the corner and the wall)
+constexpr int RAIL_FRONT_BARS = 10;
+constexpr int RAIL_SIDE_BARS = 4;
 // the vertex colour alpha of the condenser case's front, which building_props.gdshader draws (bay_props.cpp; every other part 1)
 constexpr float BAY_PROP_FRONT_MARK = float(0.0);
 // pieces a row of a ruin's matrix texture (ruin_pieces.cpp, building_body.gdshaderinc)
@@ -140,6 +155,19 @@ constexpr ShaderContract SHADER_CONTRACTS_BUILDINGS[] = {
 	{ "SILL_SHADE", 1, { double(0.92) } },
 	{ "HEAD_SHADE", 1, { double(0.8) } },
 	{ "BRISE_FINS", 1, { double(BRISE_FINS) } },
+	{ "RAIL_TOP_AT", 1, { double(0.97) } },
+	{ "RAIL_TOP_H", 1, { double(0.06) } },
+	{ "RAIL_TOP_D", 1, { double(0.05) } },
+	{ "RAIL_LOW_AT", 1, { double(0.12) } },
+	{ "RAIL_LOW_H", 1, { double(0.04) } },
+	{ "RAIL_LOW_D", 1, { double(0.03) } },
+	{ "RAIL_BAR", 1, { double(0.015) } },
+	{ "RAIL_BAR_H", 1, { double(0.94) } },
+	{ "ROOF_RAIL_MID_AT", 1, { double(0.45) } },
+	{ "ROOF_RAIL_POSTS", 1, { double(0.25) } },
+	{ "ROOF_RAIL_POST_W", 1, { double(0.02) } },
+	{ "RAIL_FRONT_BARS", 1, { double(RAIL_FRONT_BARS) } },
+	{ "RAIL_SIDE_BARS", 1, { double(RAIL_SIDE_BARS) } },
 	{ "BAY_PROP_FRONT_MARK", 1, { double(0.0) } },
 	{ "RUIN_PIECES_A_ROW", 1, { double(RUIN_PIECES_A_ROW) } },
 	{ "FIN_NONE", 1, { double(b40::FIN_NONE) } },

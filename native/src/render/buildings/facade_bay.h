@@ -78,6 +78,7 @@ struct Part {
 };
 void part_box(Shell &s, const Part &p, const Lin &lin, int8_t fin);
 void part_railing(Shell &s, const Part &p, const Lin &lin, int8_t fin);
+void part_roof_railing(Shell &s, const Basis &f, float w, float h, const Lin &lin, int8_t fin);
 void part_door(const PartModelsLook &K, Shell &s, const Part &p, const Lin &lin, int8_t fin);
 void part_louvre(const PartModelsLook &K, Shell &s, const Part &p, const Lin &lin, int8_t fin);
 void part_brise(Shell &s, const Part &p, const Lin &lin, int8_t fin);

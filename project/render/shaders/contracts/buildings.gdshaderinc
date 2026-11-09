@@ -83,6 +83,21 @@ const float SILL_SHADE = 0.92;
 const float HEAD_SHADE = 0.8;
 // the fins of a brise-soleil card (part_models.cpp; building_card.gdshader's pitch is one over this)
 const int BRISE_FINS = 6;
+// a railing in shares of its box, as boxes near and as a card's bars past them (part_models.cpp; building_card.gdshader): the lab's balcony railing (render/buildings/kit.ts railingGeometry): the top rail's middle, height and depth, the low rail's, a baluster's side and height; a roof railing's mid rail, its posts' pitch and width
+const float RAIL_TOP_AT = 0.97;
+const float RAIL_TOP_H = 0.06;
+const float RAIL_TOP_D = 0.05;
+const float RAIL_LOW_AT = 0.12;
+const float RAIL_LOW_H = 0.04;
+const float RAIL_LOW_D = 0.03;
+const float RAIL_BAR = 0.015;
+const float RAIL_BAR_H = 0.94;
+const float ROOF_RAIL_MID_AT = 0.45;
+const float ROOF_RAIL_POSTS = 0.25;
+const float ROOF_RAIL_POST_W = 0.02;
+// the gaps between a balcony railing's balusters, in front and on a side (kit.ts railingGeometry: eleven in front, three a side between the corner and the wall)
+const int RAIL_FRONT_BARS = 10;
+const int RAIL_SIDE_BARS = 4;
 // the vertex colour alpha of the condenser case's front, which building_props.gdshader draws (bay_props.cpp; every other part 1)
 const float BAY_PROP_FRONT_MARK = 0.0;
 // pieces a row of a ruin's matrix texture (ruin_pieces.cpp, building_body.gdshaderinc)

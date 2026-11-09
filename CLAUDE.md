@@ -107,6 +107,7 @@ e apagados.
 | Check a change | `tools/build/quick.sh [task,task]` (= `python tools/tasks/cli.py run quick`: only the tasks whose inputs changed; `--ready` at a theme's close, `--all` nothing from the cache, `--bless` only for an understood visual change) |
 | Run one test | `python tools/tasks/cli.py run fast <scene>` |
 | Suite in parallel | `python tools/tasks/cli.py run tests` (logs in `dist/tasks/<run>`, `cli.py status`; every task has its own deadline and is killed by PID) |
+| The city's defects by rule | `python tools/tasks/cli.py run audit` (`project/tests/audit/city_audit.gd`: lots, traffic and roads read from the state, each line a rule with its count and worst places; seconds) |
 | Gates | `python tools/gates/run_gates.py` (`--file X`, `--files-from F`, `--summary`, `--selftest`); changed files only: `python tools/tasks/cli.py run gates_changed` |
 | Scripts that do not compile | `python tools/tasks/cli.py run scripts` (`tools/build/check_scripts.gd`) |
 | Orchestrator | `python tools/tasks/cli.py run <suite or task> [--list]`, `serve` (JSON lines, for Node tools), `status`, `var <name>` (a machine's tool, for scripts); its tests: `python -m unittest discover tools/tasks/tests` |

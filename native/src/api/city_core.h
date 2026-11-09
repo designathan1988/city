@@ -109,6 +109,7 @@ public:
 	godot::Dictionary split_road(const godot::Vector3 &p);
 	godot::Dictionary body_census(int kind);
 	godot::Dictionary road_census();
+	godot::Dictionary lot_audit(); // the lots' defects read from the state (city_core_audit.cpp)
 	godot::Dictionary set_node_height(int node, float metres);
 	godot::Dictionary bend_road(int seg, float height, float at);
 	godot::Dictionary join_roads(int node);

@@ -92,6 +92,14 @@ vec3 cloth_vertex(vec3 p, vec2 uv, vec3 origin, float width, float height, vec3 
 
 #include "res://render/shaders/building_level.gdshaderinc"
 
+// Where the boxes of this band end, metres from the eye, each by its own place (building_renderer_reach.cpp: a band whose boxes are
+// under a pixel before the near level ends); 0: they stand as long as their sub-chunk is drawn.
+#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
+const float part_end = 0.0;
+#else
+instance uniform float part_end : instance_index(2) = 0.0;
+#endif
+
 void vertex() {
 	v_custom = INSTANCE_CUSTOM;
 	v_cloth = UV2.x;
@@ -110,6 +118,8 @@ void vertex() {
 		VERTEX = (MODELVIEW_MATRIX * vec4(VERTEX, 1.0)).xyz;
 		NORMAL = normalize((MODELVIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
 		if (level_back > 0.0 && !IN_SHADOW_PASS) VERTEX += normalize(VERTEX) * level_back;
+		// past its band's end a box is under a pixel: every corner on one point, nothing drawn (its shadow as long as its sub-chunk casts)
+		if (part_end > 0.0 && !IN_SHADOW_PASS && length(MODEL_MATRIX[3].xyz - CAMERA_POSITION_WORLD) > part_end) VERTEX = vec3(0.0);
 	}
 }
 

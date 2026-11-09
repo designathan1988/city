@@ -38,7 +38,7 @@ struct StreetLook {
 	// The most a road's mesh may stand off its true surface (plan and height, the section's edges too), in metres: the near
 	// level's and the far level's (segment_stations, road_emit.cpp); how far towards the eye the far level is drawn.
 	float surface_error = 0, far_surface_error = 0, far_pull = 0;
-	float h_curb = 0, h_curb_median = 0, h_sidewalk = 0, h_median = 0, h_barrier = 0, skirt = 0, median_nose = 0;
+	float h_curb = 0, h_curb_median = 0, h_sidewalk = 0, h_median = 0, h_barrier = 0, median_nose = 0;
 	// coplanar faces closer than this are one. No band of ground beside the road is the look's: the terrain itself meets the
 	// paving's edge (ground_seam.h), so streets.json holds no verge and nothing reads one (road_verge.cpp, its only reader, is gone).
 	float face_eps = 0;

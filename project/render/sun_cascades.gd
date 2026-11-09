@@ -1,7 +1,7 @@
-## The sun's shadow cascades fitted to the view (Engel, ShaderX5, as the 4.0's sunCascades.ts): the first ends just past the point
-## looked at, the others in ratio to the far end, the bias kept the same in texels; the graphics tier sets the cascades' side, the
-## filter and the least reach (game/settings/quality.gd). Daylight owns it and hands it the view each frame. Numbers from
-## data/game/daylight.json.
+## The sun's shadow cascades fitted to the view (Engel, ShaderX5, as the lab's sunCascades.ts): the first ends just past the point
+## looked at, the others in ratio to the far end, the far end where the view stops showing a shadow (_reach), the bias kept the same
+## in texels; the graphics tier sets the cascades' side and the filter (game/settings/quality.gd). Daylight owns it and hands it the
+## view each frame. Numbers from data/game/daylight.json.
 class_name SunCascades
 extends RefCounted
 
@@ -13,11 +13,10 @@ const ENGINE_CASCADE_PX := 2048.0
 
 var shadow_side_px := ENGINE_CASCADE_PX
 var shadow_filter_radius := 1.0 # the engine's radius for the filter in use
-var shadow_least_m := 0.0 # the quality's own reach (game/settings/settings.gd)
 var _d: Dictionary
 var _sun: DirectionalLight3D
 var _first_m := 0.0 # where the first cascade ends
-## What the cascades were last fitted to: the eye, its tilt, the ground under it, the lens, the screen and the shadow settings. The fit
+## What the cascades were last fitted to: the eye, its tilt, the ground under it, the lens, the screen, the sun and the shadow settings. The fit
 ## is a function of these and of its own last result, which it reproduces when they repeat: a view at rest is not fitted again.
 var _fitted_for := []
 ## The splits last given to the engine (it keeps them in single precision, so its own copy does not compare).
@@ -38,7 +37,7 @@ func near_texel_m() -> float:
 func follow(camera: Camera3D) -> void:
 	var ground := CameraQueries.ground_below(camera)
 	var view := [camera.global_position, camera.global_basis.z.y, ground, camera.near, camera.far, camera.fov,
-			camera.get_viewport().get_visible_rect().size, shadow_side_px, shadow_filter_radius, _sun.shadow_blur, shadow_least_m]
+			camera.get_viewport().get_visible_rect().size, shadow_side_px, shadow_filter_radius, _sun.shadow_blur, _sun.global_basis.z.y]
 	if view != _fitted_for:
 		_fitted_for = view
 		_fit(camera, ground)
@@ -57,7 +56,7 @@ func _fit(camera: Camera3D, ground: float) -> void:
 	var eye := camera.global_position
 	var above: float = maxf(eye.y - ground, 0.0)
 	var look: float = above / maxf(_d.shadow_view_least_dip, camera.global_basis.z.y)
-	var depth: float = clampf(maxf(look + _d.shadow_reach_m, look * _d.shadow_past_look), shadow_least_m, _d.shadow_depth_max_m)
+	var depth: float = _reach(camera, above, look)
 	if absf(depth - _sun.directional_shadow_max_distance) > depth * _d.shadow_reach_step:
 		_sun.directional_shadow_max_distance = depth
 	var end: float = _sun.directional_shadow_max_distance
@@ -74,6 +73,27 @@ func _fit(camera: Camera3D, ground: float) -> void:
 	var bias: float = _d.shadow_bias_m * BIAS_PERCENT / (_first_depth(camera, end) * _sun.shadow_blur * shadow_filter_radius)
 	if absf(bias - _sun.shadow_bias) > bias * _d.shadow_reach_step:
 		_sun.shadow_bias = bias
+
+
+## How far from the eye the sun's shadows are drawn: as far as the view shows one, whatever the eye's height, lens and screen.
+## - At least the lab's reach past the point looked at (sunCascades.ts SHADOW_REACH), what a view along a street reads on its walls.
+## - From higher up a shadow on the ground is seen farther: the reference caster's (sun_caster_m tall, its shadow that over the
+##   tangent of the sun's height long) lies foreshortened by above / d at d metres and a pixel spans d x its angle there, so the
+##   shadow is shadow_seen_px pixels long at d = sqrt(shadow x above / (pixels x angle)).
+## - Never past the ground the frame's top edge shows: a point at depth t on that edge stands t x (dip - tan(fov / 2) x cos(tilt))
+##   under the eye, so the edge meets the ground (shadow_relief_m lower than under the eye, the relief it allows for) at one depth,
+##   and nothing past it is above ground in the frame. A view at the horizon has no such end.
+func _reach(camera: Camera3D, above: float, look: float) -> float:
+	var half_lens: float = tan(deg_to_rad(camera.fov) * HALF)
+	var pixel: float = 2.0 * half_lens / camera.get_viewport().get_visible_rect().size.y # a pixel's angle
+	var sun_height: float = maxf(_sun.global_basis.z.y, float(_d.sun_caster_m) / float(_d.shadow_depth_max_m)) # no shadow longer than the farthest reach
+	var shadow: float = float(_d.sun_caster_m) * sqrt(maxf(1.0 - sun_height * sun_height, 0.0)) / sun_height
+	var seen: float = sqrt(shadow * above / (float(_d.shadow_seen_px) * pixel))
+	var depth: float = maxf(maxf(look + _d.shadow_reach_m, look * _d.shadow_past_look), seen)
+	var edge_drop: float = camera.global_basis.z.y - half_lens * camera.global_basis.y.y # what the top edge falls a metre of depth
+	if edge_drop > 0.0:
+		depth = minf(depth, (above + float(_d.shadow_relief_m)) / edge_drop)
+	return minf(depth, _d.shadow_depth_max_m)
 
 
 ## A split of the sun's cascades, given to the light only when it moved.

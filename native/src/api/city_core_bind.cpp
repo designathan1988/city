@@ -63,6 +63,7 @@ void CityCore::bind_edits() {
 	ClassDB::bind_method(D_METHOD("split_road", "position"), &CityCore::split_road);
 	ClassDB::bind_method(D_METHOD("body_census", "kind"), &CityCore::body_census);
 	ClassDB::bind_method(D_METHOD("road_census"), &CityCore::road_census);
+	ClassDB::bind_method(D_METHOD("lot_audit"), &CityCore::lot_audit);
 	ClassDB::bind_method(D_METHOD("set_node_height", "node", "metres"), &CityCore::set_node_height);
 	ClassDB::bind_method(D_METHOD("bend_road", "segment", "height", "at"), &CityCore::bend_road);
 	ClassDB::bind_method(D_METHOD("join_roads", "node"), &CityCore::join_roads);

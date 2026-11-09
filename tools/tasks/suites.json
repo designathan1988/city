@@ -148,6 +148,17 @@
    "inputs": ["**"],
    "resources": {"cores": 2}
   },
+  "city_audit": {
+   "doc": "the city's audit (project/tests/audit/city_audit.gd): every defect a rule can state, read from the state and the geometry of a generated city stepped some simulated minutes, each line a rule with its count and its worst places; never from pixels, so two runs say the same",
+   "argv": ["{godot}", "--verbose", "--path", "project", "--rendering-method", "gl_compatibility", "--fixed-fps", "{test_fps}", "--disable-vsync", "--max-fps", "0", "res://tests/audit/city_audit.tscn", "--", "--no-flow"],
+   "timeout_s": 600,
+   "hidden": true,
+   "inputs": ["{loads}", "!@release_libraries"],
+   "extra": ["{godot_version}"],
+   "after": ["build_debug", "import", "scripts"],
+   "verdict": "godot",
+   "resources": {"cores": 3, "locks": {"dll": "shared"}}
+  },
   "digest": {
    "doc": "a fixed city hashed (open_probe --digest) and held to its golden: an optimisation leaves it equal",
    "argv": ["{godot}", "--verbose", "--headless", "--path", "project", "res://tests/perf/open_probe.tscn", "--", "--no-flow", "--digest"],
@@ -431,6 +442,7 @@
    "doc": "the capture views, each a hidden --no-flow task with its own deadline",
    "tasks": ["@looks", "@capture_scenes"]
   },
+  "audit": {"doc": "the city's audit: its defects by rule, with where they stand", "tasks": ["city_audit"]},
   "gates": {"doc": "every gate", "tasks": ["gates_all"]}
  }
 }

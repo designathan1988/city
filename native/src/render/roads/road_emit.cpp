@@ -1,4 +1,5 @@
-// Small helpers every road mesher piece shares: frames along a segment, crossing nodes and the textured quad.
+// What every road mesher piece shares: the stations a segment is cut at (by its surface error), frames along it, a chunk's
+// segments and nodes, and the textured quad.
 #include "render/roads/road_mesh.h"
 
 #include "render/owned_segments.h"
@@ -49,9 +50,16 @@ void each_grade_station(const CityState &s, int sid, double a, double b, Fn &&fn
 	for (double at = (std::floor(a / step) + 1) * step; at < b; at += step) fn(at);
 }
 
-// The most a quadratic Bezier bends between parameters ta and tb: |B' x B''| / |B'|^3. B' = B'(0) + t B'' with B'' constant,
-// so the numerator is constant and the curvature peaks where the derivative is shortest: the curve's vertex, or the nearer end.
-double most_curvature(const Quad &q, double ta, double tb) {
+// How a quadratic Bezier bends between parameters ta and tb: the most curvature, |B' x B''| / |B'|^3, and the most the curvature
+// changes a metre of arc. B' = B'(0) + t B'' with B'' constant, so the cross product is constant and the curvature peaks where the
+// derivative is shortest: the curve's vertex, or the nearer end. Its change a metre is d/ds (C / |B'|^3) = -3 C (B' . B'') / |B'|^6,
+// and B' . B'' is linear in t: largest at an end of the stretch.
+struct Bend {
+	double k = 0, dk = 0;
+};
+
+Bend bend_of(const Quad &q, double ta, double tb) {
+	constexpr double CUBE_RULE = 3; // d(x^-3) = -3 x^-4 dx
 	const double ddx = 2 * (q.x0 - 2 * q.cx + q.x1), ddz = 2 * (q.z0 - 2 * q.cz + q.z1);
 	double dx0, dz0;
 	q.deriv(0, dx0, dz0);
@@ -60,20 +68,27 @@ double most_curvature(const Quad &q, double ta, double tb) {
 	double dx, dz;
 	q.deriv(std::clamp(vertex, ta, tb), dx, dz);
 	const double speed = std::hypot(dx, dz);
-	return speed > 0 ? std::fabs(dx0 * ddz - dz0 * ddx) / (speed * speed * speed) : std::numeric_limits<double>::infinity();
+	if (!(speed > 0)) return { std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity() };
+	const double cross = std::fabs(dx0 * ddz - dz0 * ddx);
+	double ax, az, bx, bz;
+	q.deriv(ta, ax, az);
+	q.deriv(tb, bx, bz);
+	const double along = std::max(std::fabs(ax * ddx + az * ddz), std::fabs(bx * ddx + bz * ddz));
+	const double speed3 = speed * speed * speed;
+	return { cross / speed3, CUBE_RULE * cross * along / (speed3 * speed3) };
 }
 
 // The most the plan of the stretch [a, b] (arcs) can stand off its chord, over the centre line and both edges `half` across. A
-// curve of length L bending at most k stays within k L^2 / SAGITTA_SHARE of its chord. Its length is at most its control polygon's (a
-// Bezier lies in its control hull); the outer edge bends k / (1 + k h) over at most (1 + k h) L, the inner one k / (1 - k h)
-// over at most L. Infinite where the inner edge folds (k h >= 1): the stretch is split until it is the least one.
+// curve p(s) over a run L stays within L^2 / SAGITTA_SHARE x the most of |p''| of its chord (the error of a straight line through
+// two points of a twice differentiable curve). An edge u across the centre line c(s) is p = c + u n, with n' = -k T: p'' =
+// -u k' T + (1 - u k) k N, so |p''| <= h |k'| + (1 + k h) k on either side, folded or not (k h >= 1 on the inner one). The run is
+// at most the control polygon's length (a Bezier lies in its control hull).
 double plan_bound(const RoadSegment &g, double half, double a, double b) {
 	const double ta = t_at_length(g.table, a), tb = t_at_length(g.table, b);
 	const Quad piece = sub_quad(g.q, ta, tb);
 	const double hull = std::hypot(piece.cx - piece.x0, piece.cz - piece.z0) + std::hypot(piece.x1 - piece.cx, piece.z1 - piece.cz);
-	const double k = most_curvature(g.q, ta, tb), kh = k * half;
-	if (kh >= 1) return std::numeric_limits<double>::infinity();
-	return k * hull * hull / SAGITTA_SHARE * std::max(1 + kh, 1 / (1 - kh));
+	const Bend bend = bend_of(g.q, ta, tb);
+	return hull * hull / SAGITTA_SHARE * (bend.k * (1 + bend.k * half) + bend.dk * half);
 }
 
 // How far the height of the stretch [a, b] stands off its chord at worst: the height is linear between the grade's stations, so
@@ -85,16 +100,21 @@ double height_off(const CityState &s, int sid, double a, double b) {
 	return worst;
 }
 
-// Splits [a, b] until the surface between its stations is within `error` of the true one, appending each right end: the plan's
-// bound and the height's exact deviation together (a point is off its chord by at most the sum of the two).
+// Cuts [a, b] until the surface between its stations is within `error` of the true one, appending each right end: the plan's
+// bound and the height's exact deviation together (a point is off its chord by at most the sum of the two). The plan's bound
+// falls with the square of the run, so a stretch that is off by `off` is cut in ceil(sqrt(off / error)) equal parts at once: the
+// fewest that can hold it, where halving again and again would land anywhere between that count and twice it.
 void split(const CityState &s, int sid, double half, double error, double a, double b, std::vector<double> &out) {
 	const RoadSegment &g = s.roads.segs[size_t(sid)];
-	if (b - a <= LEAST_STRETCH_M || plan_bound(g, half, a, b) + height_off(s, sid, a, b) <= error) {
+	const double off = b - a <= LEAST_STRETCH_M ? 0 : plan_bound(g, half, a, b) + height_off(s, sid, a, b);
+	if (off <= error) {
 		out.push_back(b);
 		return;
 	}
-	split(s, sid, half, error, a, (a + b) / 2, out);
-	split(s, sid, half, error, (a + b) / 2, b, out);
+	const double most = std::max(2.0, std::floor((b - a) / LEAST_STRETCH_M)); // no part shorter than the least stretch
+	const double want = std::isfinite(off) ? std::ceil(std::sqrt(off / error)) : 2;
+	const int parts = int(std::clamp(want, 2.0, most));
+	for (int i = 0; i < parts; i++) split(s, sid, half, error, a + (b - a) * i / parts, i + 1 == parts ? b : a + (b - a) * (i + 1) / parts, out);
 }
 } // namespace
 

@@ -1,6 +1,6 @@
 // The facade part models, built straight into a mesh in the bay frame: unit models
-// scaled by (sx, sy, sz) along / up / out and centred at (a, h, -depth). Railings with balusters, panelled
-// doors, louvred shutters, brise fins, awnings, split AC condensers and porch lamps.
+// scaled by (sx, sy, sz) along / up / out and centred at (a, h, -depth). Railings with balusters (a balcony's and a roof
+// terrace's), panelled doors, louvred shutters, brise fins, awnings, split AC condensers and porch lamps.
 #include "render/buildings/facade_bay.h"
 #include "core/shader_contracts/buildings.h"
 
@@ -27,15 +27,45 @@ void unit_box(Shell &s, const Part &p, float x0, float x1, float y0, float y1, f
 
 void part_box(Shell &s, const Part &p, const Lin &lin, int8_t fin) { unit_box(s, p, -HALF, HALF, -HALF, HALF, -HALF, HALF, lin, fin); }
 
-// Railing: y from 0 to 1 (bottom at the part's h), z from the wall (0) out to 1; the bottom rail and the balusters
-// are single front faces (a thin box seen from the street shows only its front).
-void part_railing(Shell &s, const Part &p, const Lin &lin, int8_t) {
+// Railing: y from 0 to 1 (bottom at the part's h), z from the wall (0) out to 1. Near, its rails and balusters are boxes (the
+// lab's kit.ts railingGeometry: a top rail round three sides, a low rail in front, eleven balusters in front and three a side),
+// each leaving where it is under a pixel (the part bands); from there on, and on the mid level, one card a side whose fragment
+// draws the bars by the share of the pixel they cover (building_card.gdshader). A near card says how far its bars stand from any
+// of its points at most (the railing's diagonal), so the card comes in before the last of them leaves.
+void part_railing(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
 	Basis m{ p.f->at(p.a, p.h, -p.depth), p.f->e0, p.f->e1, p.f->e2 };
 	const float hx = p.sx / 2, z1 = p.sz;
-	s.card(m, -hx, hx, 0, p.sy, z1, lin, CARD_RAILING_FRONT);
+	const float bars_within = s.veiled ? 0.f : Vector3(p.sx, p.sy, p.sz).length();
+	s.card(m, -hx, hx, 0, p.sy, z1, lin, CARD_RAILING_FRONT, bars_within);
 	Basis left{ m.at(-hx, 0, 0), m.e2, m.e1, -m.e0 }, right{ m.at(hx, 0, 0), m.e2, m.e1, m.e0 };
-	s.card(left, 0, z1, 0, p.sy, 0, lin, CARD_RAILING_SIDE);
-	s.card(right, 0, z1, 0, p.sy, 0, lin, CARD_RAILING_SIDE);
+	s.card(left, 0, z1, 0, p.sy, 0, lin, CARD_RAILING_SIDE, bars_within);
+	s.card(right, 0, z1, 0, p.sy, 0, lin, CARD_RAILING_SIDE, bars_within);
+	if (s.veiled) return;
+	// a box of the unit railing: w, h, d round (x, y, z), x from -0.5 to 0.5, y and z from 0 to 1
+	const auto bar = [&](float w, float h, float d, float x, float y, float z) {
+		s.box(m, (x - w / 2) * p.sx, (x + w / 2) * p.sx, (y - h / 2) * p.sy, (y + h / 2) * p.sy, (z - d / 2) * p.sz, (z + d / 2) * p.sz, lin, fin);
+	};
+	bar(1, RAIL_TOP_H, RAIL_TOP_D, 0, RAIL_TOP_AT, 1);
+	for (const float side : { -HALF, HALF }) bar(RAIL_TOP_D, RAIL_TOP_H, 1, side, RAIL_TOP_AT, HALF);
+	bar(1, RAIL_LOW_H, RAIL_LOW_D, 0, RAIL_LOW_AT, 1);
+	for (int i = 0; i <= RAIL_FRONT_BARS; i++) bar(RAIL_BAR, RAIL_BAR_H, RAIL_BAR, -HALF + float(i) / float(RAIL_FRONT_BARS), HALF, 1);
+	for (int i = 1; i < RAIL_SIDE_BARS; i++)
+		for (const float side : { -HALF, HALF }) bar(RAIL_BAR, RAIL_BAR_H, RAIL_BAR, side, HALF, float(i) / float(RAIL_SIDE_BARS));
+}
+
+// A roof terrace's railing along an edge `w` long, `h` high, standing on the plane of `f`: a top rail, a mid rail and posts, as
+// boxes near and one card from where they leave (the same rule as a balcony's).
+void part_roof_railing(Shell &s, const Basis &f, float w, float h, const Lin &lin, int8_t fin) {
+	const float bars_within = s.veiled ? 0.f : Vector2(w, h).length();
+	s.card(f, 0, w, 0, h, 0, lin, CARD_ROOF_RAILING, bars_within);
+	if (s.veiled) return;
+	const float deep = RAIL_TOP_D * HALF; // half a rail's depth each side of the card's plane: a balcony's top rail on a part a metre deep
+	s.box(f, 0, w, (RAIL_TOP_AT - RAIL_TOP_H / 2) * h, (RAIL_TOP_AT + RAIL_TOP_H / 2) * h, -deep, deep, lin, fin);
+	s.box(f, 0, w, (ROOF_RAIL_MID_AT - RAIL_LOW_H / 2) * h, (ROOF_RAIL_MID_AT + RAIL_LOW_H / 2) * h, -deep, deep, lin, fin);
+	for (int i = 0; i * ROOF_RAIL_POSTS < 1; i++) {
+		const float x = (float(i) * ROOF_RAIL_POSTS + ROOF_RAIL_POST_W / 2) * w;
+		s.box(f, x - ROOF_RAIL_POST_W / 2 * w, x + ROOF_RAIL_POST_W / 2 * w, 0, RAIL_TOP_AT * h, -deep, deep, lin, fin);
+	}
 }
 
 void part_door(const PartModelsLook &K, Shell &s, const Part &p, const Lin &lin, int8_t fin) {

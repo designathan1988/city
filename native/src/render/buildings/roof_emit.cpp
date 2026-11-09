@@ -56,7 +56,7 @@ void RoofEmit::edge(const Side &sd, bool terrace, Crown crown) {
 		if (roof_covered(b, v, p)) continue;
 		if (terrace) {
 			Basis rf{ sd.f.at(a0, eaves, -K.rail_in), sd.f.e0, sd.f.e1, sd.f.e2 };
-			shell.card(rf, 0, W, 0, pl.look->guard_h_m, 0, paint_lin(pl.data->color("roof_railing")), CARD_ROOF_RAILING);
+			part_roof_railing(shell, rf, W, pl.look->guard_h_m, paint_lin(pl.data->color("roof_railing")), FIN_METAL);
 			continue;
 		}
 		shell.grime_floor = -FAR_AWAY;

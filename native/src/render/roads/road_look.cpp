@@ -47,7 +47,6 @@ void load_shape(StreetLook &L, DataReader &r, const Dictionary &t) {
 	L.h_curb_median = num(rh, h, "curb_by_median");
 	L.h_median = num(rh, h, "median");
 	L.h_barrier = num(rh, h, "barrier");
-	L.skirt = num(rh, h, "skirt");
 	L.median_nose = num(r, t, "median_nose_m");
 	// (no "verge" table: StreetLook has no band of ground beside the road, the terrain meets the paving itself, ground_seam.h)
 	L.surface_error = num(r, t, "surface_error_m");

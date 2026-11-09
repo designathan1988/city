@@ -14,8 +14,7 @@
   "curb": 0.15,
   "curb_by_median": 0.15,
   "median": 0.17,
-  "barrier": 0.81,
-  "skirt": 0.7
+  "barrier": 0.81
  },
  "median_nose_m": 0.5,
  "surface_error_m": 0.01,

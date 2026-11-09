@@ -1,5 +1,6 @@
 // Segment surface: the profile's strips split into pieces (the ramp band of a footway at a dropped kerb), extruded between the two mouths; vertical faces where
-// neighbouring pieces step in height (kerb faces), skirts down the outer edges and end faces of raised strips.
+// neighbouring pieces step in height (kerb faces) and end faces of raised strips. Nothing hangs under the outer edges: on the ground
+// the terrain meets the paving's top there (ground_seam.cpp), and a deck's sides are the structure's (road_structures.cpp).
 #include "render/roads/road_mesh.h"
 #include "render/roads/road_section.h"
 
@@ -125,19 +126,6 @@ void steps(const Ctx &c, const Piece &a, const Piece &b) {
 	}
 }
 
-void skirts(const Ctx &c, const std::vector<Piece> &ps) {
-	const StreetLook &L = c.e.L;
-	for (size_t k = 0; k + 1 < c.sm.size(); k++) {
-		float h0, h1, g0, g1;
-		heights(L, ps.front(), c.sm[k].d, h0, h1);
-		heights(L, ps.front(), c.sm[k + 1].d, g0, g1);
-		wall(c, k, ps.front().u0, -L.skirt, h0, -L.skirt, g0, -1.f, ps.front().face);
-		heights(L, ps.back(), c.sm[k].d, h0, h1);
-		heights(L, ps.back(), c.sm[k + 1].d, g0, g1);
-		wall(c, k, ps.back().u1, -L.skirt, h1, -L.skirt, g1, 1.f, ps.back().face);
-	}
-}
-
 // The raised strips' end faces at sample `end`, looking `along` the road (-1 back, +1 ahead). `island_only` for a nose.
 void end_faces(const Ctx &c, const std::vector<Piece> &ps, size_t end, float along, bool island_only) {
 	const StreetLook &L = c.e.L;
@@ -158,7 +146,6 @@ void span(const Ctx &c, const std::vector<Piece> &ps) {
 		tops(c, ps[i]);
 		if (i + 1 < ps.size()) steps(c, ps[i], ps[i + 1]);
 	}
-	skirts(c, ps);
 }
 
 // From sample `from` to sample `to`, both included.

@@ -209,12 +209,11 @@
   }
  },
  "building_card": {
-  "_doc": "The near level's railings and brise cards (render/shaders/building_card.gdshader): their roughness and metal, and where a brise's blades as boxes give way to the card, worked out by hand from building_look.json lod.part_bands' first band (log/review.md, B3).",
+  "_doc": "The railings' and brises' cards (render/shaders/building_card.gdshader): their roughness and metal. Where the boxes they stand for end is the building renderer's (bars_end_m: the first part band's end).",
   "shader": "res://render/shaders/building_card.gdshader",
   "params": {
    "roughness": 0.45,
-   "metalness": 0.55,
-   "veil_from_m": 100.0
+   "metalness": 0.55
   }
  },
  "building_props": {

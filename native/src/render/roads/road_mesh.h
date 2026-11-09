@@ -41,7 +41,7 @@ void emit_chunk(const RoadEmit &e, int64_t chunk);
 
 // A kerbed edge along three lines, inner, back of the kerb and the lot's. `across` is where the line stands on the road's section.
 void kerbed_line(const RoadEmit &e, const std::vector<godot::Vector3> &in, const std::vector<godot::Vector3> &bk, const std::vector<godot::Vector3> &out,
-		float across, bool kerbed, const godot::Color &walk);
+		float across, bool kerbed);
 
 // What of a segment is not its surface: the deck, bents and parapets where it is raised, the portals where it goes under (road_structures.cpp).
 void emit_structures(const RoadEmit &e, int sid);

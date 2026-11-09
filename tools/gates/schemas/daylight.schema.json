@@ -113,6 +113,14 @@
     "shadow_past_look": {
       "type": "number"
     },
+    "shadow_seen_px": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "shadow_relief_m": {
+      "type": "number",
+      "minimum": 0
+    },
     "shadow_first_past_look": {
       "type": "number"
     },

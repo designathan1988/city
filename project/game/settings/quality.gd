@@ -99,7 +99,6 @@ static func cabin_reach(q: Dictionary, height_px: float) -> float:
 ## Everything a tier sets, live.
 static func apply(q: Dictionary, world: CityWorld, viewport: Viewport, dynamic_scale: float) -> void:
 	world.daylight.shadows_on = q.shadows
-	world.daylight.cascades.shadow_least_m = q.shadow_least_m
 	RenderingServer.directional_shadow_atlas_set_size(int(q.shadow_px) * ATLAS_PER_CASCADE, true)
 	RenderingServer.directional_soft_shadow_filter_set_quality(int(q.shadow_filter) as RenderingServer.ShadowQuality)
 	world.daylight.cascades.shadow_side_px = float(q.shadow_px)

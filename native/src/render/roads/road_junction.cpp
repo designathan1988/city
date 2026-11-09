@@ -1,7 +1,7 @@
 // Node shapes: a junction's plate as one outline (the mouths of its arms joined by the corners between neighbouring arms: kerb
 // returns, sim/roads/junction.h corner_fillet, or smooth curves) cut on its own points (core/ring_triangles.h), each point in the
 // tone of the arm its stretch of outline belongs to, eased across a corner from one arm's to the next; each corner carrying its kerb
-// face, kerb stone and footway; dead ends get a footway pad behind a kerb or a turning bulb.
+// face, kerb stone and footway; a dead end is a plain cut or a turning bulb.
 #include "core/ring_triangles.h"
 #include "render/roads/road_mesh.h"
 #include "render/roads/road_shapes.h"
@@ -30,13 +30,6 @@ float kerb_w(const End &e, int hand) {
 	const StripEdge &edge = plus_u ? p.edges[n - 1] : p.edges[0], &next = plus_u ? p.edges[n - 2] : p.edges[1];
 	bool kerbed = edge.strip.kind == StripKind::SIDEWALK && !edge.strip.flush && next.strip.kind == StripKind::CURB;
 	return kerbed ? next.u1 - next.u0 : 0.f;
-}
-
-Color walk_color(const StreetLook &L, const End &e, int hand) {
-	const Profile &p = *e.prof;
-	bool plus_u = (hand > 0) == e.at_a;
-	const Strip &s = (plus_u ? p.edges.back() : p.edges.front()).strip;
-	return s.kind == StripKind::SIDEWALK ? L.paving[int(s.pave) & 3] : L.paving[0];
 }
 
 // A plate inside the outline `pts` (each point's sRGB tone in `tones`), cut on its own points (core/ring_triangles.h): the lab's
@@ -76,7 +69,7 @@ void junction(const RoadEmit &e, int, const NodeShape &shape) {
 		}
 		float ka = kerb_w(a, 1), kb = kerb_w(b, -1);
 		std::vector<Vector3> bk = outside(in, a, b, ka, kb);
-		kerbed_line(e, in, bk, shape.corners[i].out, float(a.arm.asph_left), ka > 0 || kb > 0, walk_color(e.L, a, 1));
+		kerbed_line(e, in, bk, shape.corners[i].out, float(a.arm.asph_left), ka > 0 || kb > 0);
 	}
 	cut_plate(e, ring, tones);
 }
@@ -92,26 +85,6 @@ EndFrame end_frame(const RoadEmit &e, int n, const End &en) {
 	Vector3 node(float(nd.x), float(nd.y), float(nd.z)), d(float(en.arm.dx), 0, float(en.arm.dz));
 	Vector3 left(d.z, 0, -d.x);
 	return { node, d, left, float(en.arm.left), float(en.arm.right), std::max(kerb_w(en, 1), kerb_w(en, -1)) };
-}
-
-// A plain road end: the carriageway runs to the cut and the footways stop level with it, closed by one face down to the
-// ground on each piece of the section (Roadcraft 4.0 has no kerb across the end).
-void road_cut(const RoadEmit &e, int n, const End &en) {
-	const StreetLook &L = e.L;
-	const EndFrame f = end_frame(e, n, en);
-	const float ar = float(en.arm.asph_right), al = float(en.arm.asph_left), walk = f.kw > 0 ? L.h_sidewalk : 0.f;
-	const Color col = road_color(L.curb, RoadMat::KERB);
-	auto face = [&](float u0, float u1, float h) {
-		if (u1 <= u0) return;
-		const Vector3 a = f.node + f.left * u0, b = f.node + f.left * u1, up(0, h, 0), down(0, -L.skirt, 0);
-		const Vector3 p[4] = { a + up, b + up, b + down, a + down };
-		const Vector2 uv[4] = { Vector2(u0, h), Vector2(u1, h), Vector2(u1, -L.skirt), Vector2(u0, -L.skirt) };
-		const Vector2 pool(ROAD_POOL_NONE, 0), pools[4] = { pool, pool, pool, pool };
-		emit_quad(e.mb, p, uv, pools, col, -f.d);
-	};
-	face(-f.r, -ar, walk);
-	face(-ar, al, 0);
-	face(al, f.l, walk);
 }
 
 // A turning bulb (the lab's world/junction/bulb.ts): its circle round the node joined to the road's edges by kerb returns, at the
@@ -144,11 +117,12 @@ void bulb(const RoadEmit &e, int n, const End &en) {
 	const std::vector<Vector3> out = line(walk, en.arm.left, en.arm.right);
 	if (in.empty() || bk.size() != in.size() || out.size() != in.size()) return;
 	cut_plate(e, in, std::vector<Color>(in.size(), e.L.carriage(*en.prof)));
-	kerbed_line(e, in, bk, out, float(en.arm.asph_left), kw > 0, walk_color(L, en, 1));
+	kerbed_line(e, in, bk, out, float(en.arm.asph_left), kw > 0);
 }
-// What a node is, and the function that draws that shape.
-template <typename Junction, typename Cut, typename Bulb>
-void each_shape(const RoadEmit &e, int n, Junction &&plate, Cut &&cut, Bulb &&turn) {
+// What a node is, and the function that draws that shape. A plain road end draws nothing of its own: the road's surface runs to
+// the cut and closes its raised strips there (road_segment.cpp end_faces), and the ground past it stands at the deck.
+template <typename Junction, typename Bulb>
+void each_shape(const RoadEmit &e, int n, Junction &&plate, Bulb &&turn) {
 	const RoadNode &nd = e.s.roads.nodes[n];
 	if (nd.segs.empty()) return;
 	const std::shared_ptr<const NodeShape> shape = node_shape(e, n);
@@ -156,7 +130,6 @@ void each_shape(const RoadEmit &e, int n, Junction &&plate, Cut &&cut, Bulb &&tu
 	if (ends.size() == 1) {
 		if (ends[0].prof->rail) return;
 		if (nd.bulb) turn(e, n, ends[0]);
-		else cut(e, n, ends[0]);
 		return;
 	}
 	if (is_plate(e.L.shapes.road_shapes, ends)) plate(e, n, *shape);
@@ -164,6 +137,6 @@ void each_shape(const RoadEmit &e, int n, Junction &&plate, Cut &&cut, Bulb &&tu
 
 } // namespace
 
-void emit_node(const RoadEmit &e, int n) { each_shape(e, n, junction, road_cut, bulb); }
+void emit_node(const RoadEmit &e, int n) { each_shape(e, n, junction, bulb); }
 
 } // namespace city
