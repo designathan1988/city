@@ -1048,3 +1048,19 @@ deterministic, its own cause to fix); gates of the changed files OK; surface_dat
 - The golden photo comparison (photos_check, photos_bless, photodiff.py) was removed: Godot 4.7 draws with the ubershader until a
   specialised pipeline is ready on its worker threads, so two runs of one tree give two pictures; photos are taken to be read.
 - Gate RAIZ_LIMPA read the disk (`os.listdir`) against the gates' scope (`scope.py`: git's view); it now reads the listed files.
+
+## 2026-11-09 18:10: round 1 of the whole-game review, first fixes (one session, no agents)
+- The round's material is in `dist/analysis/round1` (outside git): the finished area reports BLDG, PEDS, REC, ROAD, the measured runs
+  (town 1x/4x, metro 4x, `camera_pan --speed`) and the photo sheets. The `salvage/*_notes.md` files are not findings: they are the
+  stopped analysts' transcripts and are not used.
+- Bicycles (REC-9): `lane_graph.cpp` read `walk_left/right > 0` (the footways' places across the road, positive for most profiles)
+  as a permission. Now the lab's rule (`world/lanelets.ts laneUsable`): a bicycle rides any lane but a bus lane.
+- A bus line whose first stop is a terminal started its buses at the next terminal (REC-11): `start == 0` meant both "none" and "the
+  first stop" (`transit_plan.cpp`). Test: `transit_test` (terminals at stops 0 and 3: failed with next = 3, passes with 0).
+- The smooth brush read cells the same dab had just written (REC-12): `Heightfield::brush` now works the whole dab from the ground
+  before it, then writes. Test: `LandBrushCases.smooth_even` (a smoothed mesa differed by 2 cm on mirrored sides, now 0).
+- Not changed, with reasons: REC-13 (duplicate road shifts the copy by the chord's normal) is the lab's own `duplicateSegment`
+  (`editor/commit.ts:836`), the reference of what the game does; ROAD-21 cannot be reached (`island_at` needs a lane two strips
+  before the median, so a piece always precedes the island).
+- camera_pan: `--speed=N`, and its core report in `tests/perf/core_report.gd` (fleet, losses, waits, vehicles inside one another, memory
+  by owner).

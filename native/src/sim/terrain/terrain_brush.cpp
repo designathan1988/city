@@ -9,6 +9,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <utility>
+#include <vector>
 
 namespace city {
 
@@ -87,7 +89,9 @@ float Heightfield::dab_value(const BrushDab &d, size_t i, float dist, int x, int
 bool Heightfield::brush(const BrushDab &d) {
 	SampleRect r = brush_rect(d.x, d.z, d.radius);
 	if (r.empty() || d.radius <= 0) return false;
-	bool changed = false;
+	// every cell of the dab is worked out from the ground as it was before the dab, then written: a rule that reads its neighbours (smooth)
+	// never reads one this dab already moved, so the result does not lean with the scan's direction
+	std::vector<std::pair<size_t, uint16_t>> moved;
 	for (int z = r.z0; z <= r.z1; z++)
 		for (int x = r.x0; x <= r.x1; x++) {
 			float wx = x_of(x) - d.x, wz = x_of(z) - d.z;
@@ -96,12 +100,13 @@ bool Heightfield::brush(const BrushDab &d) {
 			size_t i = size_t(z) * N + x;
 			float nh = clampf(dab_value(d, i, dist, x, z), tune->terrain_min_height_m, tune->terrain_max_height_m);
 			uint16_t q = uint16_t(clampf(std::round((nh + HEIGHT_Q_OFFSET) * HEIGHT_Q_SCALE), 0.f, QUANT_LIMIT));
-			if (q == base_q[i]) continue;
-			base_q[i] = q;
-			mark_tile(i);
-			changed = true;
+			if (q != base_q[i]) moved.emplace_back(i, q);
 		}
-	if (!changed) return false;
+	if (moved.empty()) return false;
+	for (const auto &[i, q] : moved) {
+		base_q[i] = q;
+		mark_tile(i);
+	}
 	ground_moved.insert(ground_moved.end(), { x_of(r.x0), x_of(r.z0), x_of(r.x1), x_of(r.z1) }); // the roads there are read again
 	recompose(r.x0 - 1, r.z0 - 1, r.x1 + 1, r.z1 + 1);
 	return true;

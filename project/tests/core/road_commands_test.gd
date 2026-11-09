@@ -80,6 +80,7 @@ func _ready() -> void:
 	RoadMoneyCases.new(self).run(b)
 	LotCases.new(self).run(Vector3(b.max.x + LOT_OUT_M, 0.0, b.max.z + LOT_OUT_M))
 	RoadHeightCases.new(self).run(b)
+	LandBrushCases.new(self).smooth_even(b)
 	finish()
 
 
@@ -221,3 +222,4 @@ func _styles() -> void:
 		check(kerb.plate_kerb_curve_m >= kerb.plate_kerb_m, "style %s: a sign on a curve no nearer the carriageway" % id)
 		var c: Dictionary = DataTables.style_of(DataTables.CATALOG.street_furniture, id).crossing
 		check(c.zebra_from_m < c.zebra_to_m and c.zebra_to_m < c.stop_from_m and c.stop_from_m < c.stop_to_m, "style %s: the crossing before the stop line" % id)
+

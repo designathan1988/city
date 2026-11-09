@@ -18,6 +18,7 @@ const CROSSING_OFF_M := 6.0
 const CROSSING_STATION := 0.7
 const CROSSING_SAMPLES := 200
 const CROSSING_SAMPLE_TICKS := 20
+const LATER_TERMINAL := 3
 
 
 func _ready() -> void:
@@ -46,7 +47,14 @@ func _buses() -> void:
 	var ids := PackedInt32Array()
 	for s: Dictionary in plan.stops:
 		ids.append(s.id)
+	# terminals at the first stop and a later one: the line's buses start at the first (index 0 is a terminal found, not none)
+	check(ids.size() > LATER_TERMINAL, "stops for two terminals: %d" % ids.size())
+	for k in [0, LATER_TERMINAL]:
+		check(CityStore.dispatch(&"transit_terminal", [plan.stops[k].at]).get("ok", false), "terminal at stop %d" % k)
 	check(CityStore.dispatch(&"transit_line", [ids]).get("ok", false), "bus line")
+	ticks(1)
+	var first: Array = CityStore.query(&"transit_run").get("first_bus", [])
+	check(not first.is_empty() and int(first[0]) == 0, "a line whose first stop is a terminal starts its buses there: %s" % [first])
 	ticks(RUN_TICKS)
 	var run: Dictionary = CityStore.query(&"transit_run")
 	print("buses: ", run)

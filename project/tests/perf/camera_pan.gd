@@ -53,6 +53,8 @@ var cycle_sum := {}
 var cycle_at := 0
 var cycle_frame := 0
 var moves := PackedStringArray()
+var run_speed := 1 # SimSpeed the city runs at (--speed=N: 1 normal, 2 fast, 3 fastest)
+var core := CoreReport.new()
 var frames: Array[float] = []
 var gpu_ms: Array[float] = []
 var cpu_ms: Array[float] = []
@@ -109,6 +111,8 @@ func _ready() -> void:
 			shot_dir = arg.trim_prefix("--shot-dir=")
 		elif arg.begins_with("--moves="):
 			moves = arg.trim_prefix("--moves=").split(",")
+		elif arg.begins_with("--speed="):
+			run_speed = int(arg.trim_prefix("--speed="))
 	var world := CityWorld.new()
 	add_child(world)
 	RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
@@ -124,7 +128,7 @@ func _ready() -> void:
 	_knobs(world)
 	rig.look_at_ground(Vector3.ZERO)
 	add_child(RoadcraftHud.new())
-	CityStore.dispatch(&"set_speed", [1])
+	CityStore.dispatch(&"set_speed", [run_speed])
 	var bounds: Dictionary = CityStore.query(&"city_bounds")
 	var lo: Vector3 = bounds.min
 	var hi: Vector3 = bounds.max
@@ -228,12 +232,7 @@ func _report(name: String) -> void:
 	var ps: Dictionary = CityStore.query(&"pose_stats")
 	print("  poses: %d published (interval %.1f-%.1f ms; %d together, %d late); of %d frames, %d past the last and %d before the oldest" % [
 		ps.publications, ps.gap_min_ms, ps.gap_max_ms, ps.early, ps.late, ps.frames, ps.held, ps.behind])
-	print("  memory: static %.0f MiB, video %.0f MiB, buffers %.0f MiB | chunks to draw: %d" % [
-		Performance.get_monitor(Performance.MEMORY_STATIC) / Units.BYTES_PER_MIB, Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / Units.BYTES_PER_MIB,
-		Performance.get_monitor(Performance.RENDER_BUFFER_MEM_USED) / Units.BYTES_PER_MIB, CityStore.query(&"render_pending")])
-	print("  largest superchunk HLOD built: %.1f MiB" % float(CityStore.query(&"render_cost").get("super_mb_max", 0.0)))
-	print("  buildings: ", JSON.stringify(CityStore.query(&"building_cost")))
-	print("  vehicles: ", JSON.stringify(CityStore.query(&"agent_cost")))
+	core.report()
 
 
 ## Mean, 95th percentile and maximum of per-frame milliseconds.
