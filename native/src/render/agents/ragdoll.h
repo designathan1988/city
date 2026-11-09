@@ -18,6 +18,11 @@ namespace city {
 constexpr int RAGDOLL_JOINTS = 18; // the particles on a bone, in cook_people.py RAGDOLL_JOINTS order
 constexpr int RAGDOLL_PARTS = 13; // in cook_people.py RAGDOLL_PARTS order
 
+// The particles: the joints in cook_people.py RAGDOLL_JOINTS order, then the top of the head and the belly.
+namespace rag {
+enum Joint : int { PEL, CHE, NEC, HEA, LS, LE, LW, RS, RE, RW, LH, LK, LA, LT, RH, RK, RA, RT, TOP, BEL };
+}
+
 // A wall of a building a body can strike: a box of the lot's frame, up to `top`.
 struct BodyWall {
 	godot::Vector2 at, along, deep; // the lot's corner and its axes
@@ -36,6 +41,10 @@ public:
 	// Each part's frame now: its origin on its joint, its axes along it. The frames only: what a bone does with them is the caller's.
 	void frames(godot::Transform3D out[RAGDOLL_PARTS]);
 	godot::Vector3 pelvis() const;
+	godot::Vector3 point(int particle) const { return now_[particle]; } // a particle now (rag::Joint)
+	// Somebody down for good and hurt, `t` seconds into it: the knees drawn up in turn towards the belly, in pain where they lie
+	// (the reference game's ragdoll.ts writhe; agents.json shapes.ragdoll writhe_*). Keeps the body awake.
+	void writhe(float t, float dt);
 
 private:
 	static constexpr int PARTICLES = RAGDOLL_JOINTS + 2; // and the top of the head and the belly, which brace what the joints leave free

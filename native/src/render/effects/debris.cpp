@@ -2,6 +2,9 @@
 #include "render/effects/debris.h"
 #include "core/shader_contracts/effects.h"
 
+#include "core/math.h"
+
+#include <godot_cpp/classes/array_mesh.hpp>
 #include <godot_cpp/classes/box_mesh.hpp>
 #include <godot_cpp/classes/cylinder_mesh.hpp>
 
@@ -14,6 +17,51 @@ namespace city {
 
 namespace {
 constexpr float CYL_SIDES = 9.f; // a thrown pole's or trunk's sides
+
+// A broken plate of the ground (effects.json shapes.crater_slabs): a jagged outline in the xz plane, its sides a unit thick
+// along y and pushed out by the bevel's width, its faces bevelled back to the outline: flat-shaded triangles.
+Ref<ArrayMesh> slab_mesh(const CraterSlabsShape &K) {
+	const int n = std::max(3, K.outline_corners);
+	std::vector<Vector3> rim(static_cast<size_t>(n)); // the outline, at unit radius scale
+	for (int k = 0; k < n; k++) {
+		const float a = float(k) / float(n) * TAU_F;
+		const float r = K.outline_r + K.outline_wave * std::sin(float(k) * K.outline_wave_k + K.outline_wave_phase) +
+				(K.outline_notch_every > 0 && k % K.outline_notch_every == 0 ? -K.outline_notch : K.outline_bulge);
+		rim[size_t(k)] = Vector3(std::cos(a) * r, 0.f, std::sin(a) * r);
+	}
+	const float side = 0.5f, face = side + K.bevel_thick; // the sides' half height and the faces' (the bevel stands past the sides)
+	PackedVector3Array verts, normals;
+	const auto tri = [&](const Vector3 &a, const Vector3 &b, const Vector3 &c) {
+		Vector3 nrm = (b - a).cross(c - a).normalized();
+		if (nrm.dot((a + b + c) / 3.f) < 0.f) nrm = -nrm; // outward: the plate is star-shaped about its centre
+		for (const Vector3 &v : { a, b, c }) {
+			verts.push_back(v);
+			normals.push_back(nrm);
+		}
+	};
+	const auto quad = [&](const Vector3 &a, const Vector3 &b, const Vector3 &c, const Vector3 &d) {
+		tri(a, b, c);
+		tri(a, c, d);
+	};
+	for (int k = 0; k < n; k++) {
+		const Vector3 p0 = rim[size_t(k)], p1 = rim[size_t((k + 1) % n)];
+		const Vector3 q0 = p0 * (1.f + K.bevel_size / std::max(p0.length(), K.bevel_size)), q1 = p1 * (1.f + K.bevel_size / std::max(p1.length(), K.bevel_size));
+		const Vector3 up(0, face, 0), down(0, -face, 0), hi(0, side, 0), lo(0, -side, 0);
+		tri(up, p0 + up, p1 + up); // the top face
+		quad(p0 + up, q0 + hi, q1 + hi, p1 + up); // its bevel
+		quad(q0 + hi, q0 + lo, q1 + lo, q1 + hi); // the broken side
+		quad(q0 + lo, p0 + down, p1 + down, q1 + lo); // the lower bevel
+		tri(down, p1 + down, p0 + down); // the bottom face
+	}
+	Array arrays;
+	arrays.resize(Mesh::ARRAY_MAX);
+	arrays[Mesh::ARRAY_VERTEX] = verts;
+	arrays[Mesh::ARRAY_NORMAL] = normals;
+	Ref<ArrayMesh> mesh;
+	mesh.instantiate();
+	mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arrays);
+	return mesh;
+}
 } // namespace
 
 void Debris::init(const RID &scenario, const RID &material, const EffectParams &params) {
@@ -30,8 +78,11 @@ void Debris::init(const RID &scenario, const RID &material, const EffectParams &
 	// debris.gdshader moves no vertex: a piece's box is its shape's, where it lies
 	boxes_.init_shaped(scenario, box, material, params.debris_max, true, box->get_aabb(), 0.f);
 	cylinders_.init_shaped(scenario, cyl, material, params.debris_max, true, cyl->get_aabb(), 0.f);
+	const Ref<ArrayMesh> slab = slab_mesh(params.shapes.crater_slabs);
+	slabs_.init_shaped(scenario, slab, material, params.debris_max, true, slab->get_aabb(), 0.f);
 	boxes_.count(0);
 	cylinders_.count(0);
+	slabs_.count(0);
 }
 
 void Debris::set_wrecks(const RID &scenario, const RID &material, const std::vector<Ref<Mesh>> &bodies) {
@@ -52,6 +103,7 @@ void Debris::reset() {
 void Debris::release() {
 	boxes_.release();
 	cylinders_.release();
+	slabs_.release();
 	for (MmLayer &l : wrecks_) l.release();
 }
 
@@ -67,6 +119,7 @@ void Debris::add(const PieceSpec &s) {
 	const float shade = K.tint_min + K.tint_span * rng_.f();
 	b.tint = Color(std::min(1.f, s.tint.r * shade), std::min(1.f, s.tint.g * shade), std::min(1.f, s.tint.b * shade));
 	b.cylinder = s.cylinder;
+	b.slab = s.slab && !s.cylinder;
 	b.still = s.still;
 	b.asleep = s.still;
 	b.burn_until = s.burn_s;
@@ -89,6 +142,13 @@ bool Debris::moving() const {
 	for (const Piece &p : pieces_)
 		if (!p.asleep) return true;
 	return false;
+}
+
+int Debris::still_near(float x, float z, float reach) const {
+	int n = 0;
+	for (const Piece &p : pieces_)
+		if (p.still && std::hypot(p.p.x - x, p.p.z - z) < reach) n++;
+	return n;
 }
 
 void Debris::burn(Piece &p, double, float dt, Puffs &puffs) {
@@ -119,10 +179,11 @@ void Debris::flush() {
 	const DebrisShape &K = params_.shapes.debris;
 	const bool burning = std::any_of(pieces_.begin(), pieces_.end(), [](const Piece &p) { return p.burn_until > 0; });
 	if (!dirty_ && !moving() && !burning && drawn_ == int(pieces_.size())) return;
-	int nb = 0, nc = 0;
+	int nb = 0, nc = 0, ns = 0;
 	std::vector<int> nw(wrecks_.size(), 0);
 	boxes_.clear_bounds(); // every piece is written again, where the steps left it: the boxes are theirs
 	cylinders_.clear_bounds();
+	slabs_.clear_bounds();
 	for (MmLayer &l : wrecks_) l.clear_bounds();
 	for (const Piece &p : pieces_) {
 		const Basis rot(p.q);
@@ -132,8 +193,8 @@ void Debris::flush() {
 			if (k < K.wrecks_kept) wrecks_[size_t(p.wreck)].put(k++, rot.get_column(0), rot.get_column(1), rot.get_column(2), p.p, p.tint.r, p.tint.g, p.tint.b, mark);
 			continue;
 		}
-		MmLayer &layer = p.cylinder ? cylinders_ : boxes_;
-		int &n = p.cylinder ? nc : nb;
+		MmLayer &layer = p.cylinder ? cylinders_ : p.slab ? slabs_ : boxes_;
+		int &n = p.cylinder ? nc : p.slab ? ns : nb;
 		if (n >= params_.debris_max) continue;
 		layer.put(n++, rot.get_column(0) * p.size.x, rot.get_column(1) * p.size.y, rot.get_column(2) * p.size.z, p.p, p.tint.r, p.tint.g, p.tint.b, mark);
 	}
@@ -144,10 +205,13 @@ void Debris::flush() {
 	}
 	boxes_.count(nb);
 	cylinders_.count(nc);
+	slabs_.count(ns);
 	boxes_.shown(nb > 0);
 	cylinders_.shown(nc > 0);
+	slabs_.shown(ns > 0);
 	if (nb > 0) boxes_.upload();
 	if (nc > 0) cylinders_.upload();
+	if (ns > 0) slabs_.upload();
 	drawn_ = int(pieces_.size());
 	dirty_ = false;
 }

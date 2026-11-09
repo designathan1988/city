@@ -30,5 +30,7 @@ EditResult clear_elements(CityState &s);
 EditResult set_biome(CityState &s, int region);
 // Takes the planted trees in a circle away and leaves a clearing there (the woods' trees go too); false when full.
 bool cut_trees_at(CityState &s, float x, float z, float radius);
+// The same, for a blow: the clearing it left (-1 when full, nothing cut) and, when `felled` is given, the planted trees it took.
+int fell_trees_at(CityState &s, float x, float z, float radius, std::vector<PlantedTree> *felled);
 
 } // namespace city

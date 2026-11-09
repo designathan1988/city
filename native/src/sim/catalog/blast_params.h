@@ -37,7 +37,9 @@ struct BlastParams {
 	int open_hits = 0, vehicle_shots_to_burst = 0, burst_force = 0;
 	float glass_above = 0, flinch_s = 0, startle_m = 0, pace_light = 0, pace_leg = 0, pace_grave = 0, max_range_m = 0, drips_per_s = 0;
 	float vehicle_box_m[VEHICLE_TYPES] = {}; // the height of the box a bullet meets, by VehicleType
-	float crater_k_earth = 0, crater_k_hard = 0, crater_ratio = 0, pass_width_m = 0, crater_min_m = 0;
+	// The crater (the reference game's law): radius crater_share of the fireball radius, depth crater_depth_m plus
+	// crater_depth_per_force_m a unit of force; a strip narrower than pass_width_m cuts the road.
+	float crater_share = 0, crater_depth_m = 0, crater_depth_per_force_m = 0, pass_width_m = 0, crater_min_m = 0;
 };
 
 } // namespace city

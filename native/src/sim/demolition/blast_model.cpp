@@ -109,11 +109,11 @@ float startle_range(const BlastParams &p, float kg) {
 	return std::min(r, p.startle_cap_m);
 }
 
-float crater_radius(const BlastParams &p, float kg, Surface s) {
-	const float k = s == Surface::EARTH ? p.crater_k_earth : p.crater_k_hard;
-	return std::max(p.crater_min_m, k * std::cbrt(kg));
-}
+float crater_radius(const BlastParams &p, float fireball_m) { return std::max(p.crater_min_m, p.crater_share * fireball_m); }
 
-float crater_depth(const BlastParams &p, float kg, Surface s) { return 2.f * crater_radius(p, kg, s) / p.crater_ratio; }
+float crater_depth(const BlastParams &p, float strength) {
+	const float s = std::min(std::max(strength, float(p.strength_min)), float(p.strength_max));
+	return p.crater_depth_m + p.crater_depth_per_force_m * s;
+}
 
 } // namespace city::blast

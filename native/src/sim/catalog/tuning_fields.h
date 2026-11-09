@@ -54,7 +54,8 @@
 	XD(lot, corner_margin_m) XD(lot, corner_beyond_m) XD(lot, corner_near) XD(lot, corner_far) \
 	XI(roundabout, water_samples) XD(roundabout, water_clear_m) \
 	X(shoot, rider_back_m) X(shoot, rider_push) X(shoot, rider_hit_m) \
-	X(strike, furniture_reach_m) X(strike, splinter_share) X(strike, splinter_chance) \
+	X(strike, furniture_reach_m) X(strike, splinter_share) X(strike, splinter_chance) X(strike, pull_share) X(strike, pull_chance) \
+	X(strike, snap_chance) \
 	XD(junction, max_retreat) XD(junction, taper_min) XD(junction, taper_slope) \
 	XD(junction, kerb_radius_min) XD(junction, corner_miter) XD(junction, bulb_half_max) \
 	XD(junction, bulb_len_min) XD(junction, bevel_pad) XD(junction, taper_min_step) \

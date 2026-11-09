@@ -83,6 +83,17 @@ struct MmLayer {
 		for (int k = 0; k < MM_STRIDE; k++) w[k] = v[k];
 		if (bounds_kind == LayerBounds::SHAPED) grow(moved_box(shape_box, x, y, z, o).grow(reach));
 	}
+	// Instance `i` laid from `a` to `b` (a unit shape along its y, `thick` across it on x and z): a gut, a bone, a wire's link.
+	void put_link(int i, const godot::Vector3 &a, const godot::Vector3 &b, float thick, float c0, float c1, float c2, float c3) {
+		constexpr float NOTHING_M = 1e-6f; // a length this short has no direction
+		constexpr float NEAR_UPRIGHT = 0.9f; // a link this close to vertical (cosine) takes x, not up, to find its side: any axis well off it
+		godot::Vector3 along = b - a;
+		const float len = std::max(along.length(), NOTHING_M);
+		along /= len;
+		const godot::Vector3 helper = std::fabs(along.y) < NEAR_UPRIGHT ? godot::Vector3(0, 1, 0) : godot::Vector3(1, 0, 0);
+		const godot::Vector3 side = helper.cross(along).normalized(), front = along.cross(side);
+		put(i, side * thick, along * len, front * thick, (a + b) * 0.5f, c0, c1, c2, c3);
+	}
 	void clear_bounds() { boxed = false; }
 	void grow(const godot::AABB &b) {
 		box = boxed ? box.merge(b) : b;

@@ -84,11 +84,13 @@ void PlantedTrees::keep_slots(int tree_slots, int clearing_slots) {
 	if (clearing_slots > int(clearings.size())) clearings.resize(size_t(clearing_slots));
 }
 
-bool PlantedTrees::cleared(float x, float z) const {
+bool PlantedTrees::cleared(float x, float z) const { return cleared(x, z, -1); }
+
+bool PlantedTrees::cleared(float x, float z, int skip) const {
 	bool hit = false;
 	clear_hash_.query(x, z, x, z, [&](int id) {
 		const TreeClearing &c = clearings[size_t(id)];
-		hit = hit || (c.alive && (c.x - x) * (c.x - x) + (c.z - z) * (c.z - z) < c.radius * c.radius);
+		hit = hit || (id != skip && c.alive && (c.x - x) * (c.x - x) + (c.z - z) * (c.z - z) < c.radius * c.radius);
 	});
 	return hit;
 }

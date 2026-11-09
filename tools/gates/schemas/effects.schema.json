@@ -233,13 +233,17 @@
    "strict": true,
    "required": [
     "life_s",
-    "height_m"
+    "height_m",
+    "reach_r"
    ],
    "properties": {
     "life_s": {
      "type": "number"
     },
     "height_m": {
+     "type": "number"
+    },
+    "reach_r": {
      "type": "number"
     }
    }
@@ -638,6 +642,532 @@
      ],
      "strict": true
     },
+    "crater_slabs": {
+     "type": "object",
+     "required": [
+      "_doc",
+      "outline_corners",
+      "outline_r",
+      "outline_wave",
+      "outline_wave_k",
+      "outline_wave_phase",
+      "outline_notch_every",
+      "outline_notch",
+      "outline_bulge",
+      "bevel_thick",
+      "bevel_size",
+      "rim_base",
+      "rim_per_m",
+      "rim_jitter_rad",
+      "rim_r_min",
+      "rim_r_span",
+      "rim_size_min_m",
+      "rim_size_span_m",
+      "rim_earth_scale",
+      "rim_thick_hard_m",
+      "rim_thick_earth_m",
+      "rim_depth_min",
+      "rim_depth_span",
+      "rim_tilt_min",
+      "rim_tilt_span",
+      "rim_out_ms",
+      "rim_up_ms",
+      "rim_lift_m",
+      "rim_concrete_every",
+      "plates_base",
+      "plates_per_m",
+      "plates_most",
+      "plates_crowd",
+      "plates_crowd_r",
+      "plate_r_min",
+      "plate_r_span",
+      "plate_w_min_m",
+      "plate_w_span_m",
+      "plate_scale_min",
+      "plate_scale_per_m",
+      "plate_scale_most",
+      "plate_d_min",
+      "plate_d_span",
+      "plate_thick_hard_m",
+      "plate_thick_earth_m",
+      "plate_tilt_min",
+      "plate_tilt_span",
+      "plate_lift_share",
+      "plate_concrete_chance",
+      "dirt_tint",
+      "dirt_min",
+      "dirt_span",
+      "shade_min",
+      "shade_span",
+      "clod_every",
+      "clod_min_m",
+      "clod_span_m",
+      "clod_h_m",
+      "clod_lift_m"
+     ],
+     "strict": true,
+     "properties": {
+      "_doc": {
+       "type": "string"
+      },
+      "outline_corners": {
+       "type": "integer"
+      },
+      "outline_r": {
+       "type": "number"
+      },
+      "outline_wave": {
+       "type": "number"
+      },
+      "outline_wave_k": {
+       "type": "number"
+      },
+      "outline_wave_phase": {
+       "type": "number"
+      },
+      "outline_notch_every": {
+       "type": "integer"
+      },
+      "outline_notch": {
+       "type": "number"
+      },
+      "outline_bulge": {
+       "type": "number"
+      },
+      "bevel_thick": {
+       "type": "number"
+      },
+      "bevel_size": {
+       "type": "number"
+      },
+      "rim_base": {
+       "type": "number"
+      },
+      "rim_per_m": {
+       "type": "number"
+      },
+      "rim_jitter_rad": {
+       "type": "number"
+      },
+      "rim_r_min": {
+       "type": "number"
+      },
+      "rim_r_span": {
+       "type": "number"
+      },
+      "rim_size_min_m": {
+       "type": "number"
+      },
+      "rim_size_span_m": {
+       "type": "number"
+      },
+      "rim_earth_scale": {
+       "type": "number"
+      },
+      "rim_thick_hard_m": {
+       "type": "number"
+      },
+      "rim_thick_earth_m": {
+       "type": "number"
+      },
+      "rim_depth_min": {
+       "type": "number"
+      },
+      "rim_depth_span": {
+       "type": "number"
+      },
+      "rim_tilt_min": {
+       "type": "number"
+      },
+      "rim_tilt_span": {
+       "type": "number"
+      },
+      "rim_out_ms": {
+       "type": "number"
+      },
+      "rim_up_ms": {
+       "type": "number"
+      },
+      "rim_lift_m": {
+       "type": "number"
+      },
+      "rim_concrete_every": {
+       "type": "integer"
+      },
+      "plates_base": {
+       "type": "number"
+      },
+      "plates_per_m": {
+       "type": "number"
+      },
+      "plates_most": {
+       "type": "integer"
+      },
+      "plates_crowd": {
+       "type": "integer"
+      },
+      "plates_crowd_r": {
+       "type": "number"
+      },
+      "plate_r_min": {
+       "type": "number"
+      },
+      "plate_r_span": {
+       "type": "number"
+      },
+      "plate_w_min_m": {
+       "type": "number"
+      },
+      "plate_w_span_m": {
+       "type": "number"
+      },
+      "plate_scale_min": {
+       "type": "number"
+      },
+      "plate_scale_per_m": {
+       "type": "number"
+      },
+      "plate_scale_most": {
+       "type": "number"
+      },
+      "plate_d_min": {
+       "type": "number"
+      },
+      "plate_d_span": {
+       "type": "number"
+      },
+      "plate_thick_hard_m": {
+       "type": "number"
+      },
+      "plate_thick_earth_m": {
+       "type": "number"
+      },
+      "plate_tilt_min": {
+       "type": "number"
+      },
+      "plate_tilt_span": {
+       "type": "number"
+      },
+      "plate_lift_share": {
+       "type": "number"
+      },
+      "plate_concrete_chance": {
+       "type": "number"
+      },
+      "dirt_tint": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       }
+      },
+      "dirt_min": {
+       "type": "number"
+      },
+      "dirt_span": {
+       "type": "number"
+      },
+      "shade_min": {
+       "type": "number"
+      },
+      "shade_span": {
+       "type": "number"
+      },
+      "clod_every": {
+       "type": "integer"
+      },
+      "clod_min_m": {
+       "type": "number"
+      },
+      "clod_span_m": {
+       "type": "number"
+      },
+      "clod_h_m": {
+       "type": "number"
+      },
+      "clod_lift_m": {
+       "type": "number"
+      }
+     }
+    },
+    "gore": {
+     "type": "object",
+     "required": [
+      "_doc",
+      "links",
+      "seg_min_m",
+      "seg_span_m",
+      "radius_min_m",
+      "radius_span_m",
+      "hold_chance",
+      "hold_min_s",
+      "hold_span_s",
+      "coil_m",
+      "coil_turn",
+      "coil_drop",
+      "damp",
+      "iterations",
+      "ground_keep",
+      "still_m",
+      "still_s",
+      "step_s",
+      "step_most_s",
+      "most_segments",
+      "most_bones",
+      "bone_r_m",
+      "cuff_r_m",
+      "cuff_len_m",
+      "bone_len_m",
+      "bone_head_len_m",
+      "bone_chance",
+      "pelvis_chance",
+      "pelvis_kick",
+      "shot_kick_ms",
+      "torn_kick_ms",
+      "torn_open_chance",
+      "dead_open_chance",
+      "gut_tints",
+      "bone_tint",
+      "cuff_tint"
+     ],
+     "strict": true,
+     "properties": {
+      "_doc": {
+       "type": "string"
+      },
+      "links": {
+       "type": "integer"
+      },
+      "seg_min_m": {
+       "type": "number"
+      },
+      "seg_span_m": {
+       "type": "number"
+      },
+      "radius_min_m": {
+       "type": "number"
+      },
+      "radius_span_m": {
+       "type": "number"
+      },
+      "hold_chance": {
+       "type": "number"
+      },
+      "hold_min_s": {
+       "type": "number"
+      },
+      "hold_span_s": {
+       "type": "number"
+      },
+      "coil_m": {
+       "type": "number"
+      },
+      "coil_turn": {
+       "type": "number"
+      },
+      "coil_drop": {
+       "type": "number"
+      },
+      "damp": {
+       "type": "number"
+      },
+      "iterations": {
+       "type": "integer"
+      },
+      "ground_keep": {
+       "type": "number"
+      },
+      "still_m": {
+       "type": "number"
+      },
+      "still_s": {
+       "type": "number"
+      },
+      "step_s": {
+       "type": "number"
+      },
+      "step_most_s": {
+       "type": "number"
+      },
+      "most_segments": {
+       "type": "integer"
+      },
+      "most_bones": {
+       "type": "integer"
+      },
+      "bone_r_m": {
+       "type": "number"
+      },
+      "cuff_r_m": {
+       "type": "number"
+      },
+      "cuff_len_m": {
+       "type": "number"
+      },
+      "bone_len_m": {
+       "type": "number"
+      },
+      "bone_head_len_m": {
+       "type": "number"
+      },
+      "bone_chance": {
+       "type": "number"
+      },
+      "pelvis_chance": {
+       "type": "number"
+      },
+      "pelvis_kick": {
+       "type": "number"
+      },
+      "shot_kick_ms": {
+       "type": "number"
+      },
+      "torn_kick_ms": {
+       "type": "number"
+      },
+      "torn_open_chance": {
+       "type": "number"
+      },
+      "dead_open_chance": {
+       "type": "number"
+      },
+      "gut_tints": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       }
+      },
+      "bone_tint": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       }
+      },
+      "cuff_tint": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       }
+      }
+     }
+    },
+    "wires": {
+     "type": "object",
+     "required": [
+      "_doc",
+      "points",
+      "most",
+      "damp",
+      "iterations",
+      "slack",
+      "ground_lift_m",
+      "ground_keep",
+      "sparks_min_s",
+      "sparks_span_s",
+      "spark_hz",
+      "spark_near_m",
+      "spark_count",
+      "spark_spread_m",
+      "spark_size_m",
+      "spark_life_s",
+      "life_s",
+      "thick_m",
+      "step_s",
+      "tint",
+      "arm_drop_m",
+      "primary_m",
+      "fall_share",
+      "kick_ms",
+      "far_share",
+      "least"
+     ],
+     "strict": true,
+     "properties": {
+      "_doc": {
+       "type": "string"
+      },
+      "points": {
+       "type": "integer"
+      },
+      "most": {
+       "type": "integer"
+      },
+      "damp": {
+       "type": "number"
+      },
+      "iterations": {
+       "type": "integer"
+      },
+      "slack": {
+       "type": "number"
+      },
+      "ground_lift_m": {
+       "type": "number"
+      },
+      "ground_keep": {
+       "type": "number"
+      },
+      "sparks_min_s": {
+       "type": "number"
+      },
+      "sparks_span_s": {
+       "type": "number"
+      },
+      "spark_hz": {
+       "type": "number"
+      },
+      "spark_near_m": {
+       "type": "number"
+      },
+      "spark_count": {
+       "type": "integer"
+      },
+      "spark_spread_m": {
+       "type": "number"
+      },
+      "spark_size_m": {
+       "type": "number"
+      },
+      "spark_life_s": {
+       "type": "number"
+      },
+      "life_s": {
+       "type": "number"
+      },
+      "thick_m": {
+       "type": "number"
+      },
+      "step_s": {
+       "type": "number"
+      },
+      "tint": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       }
+      },
+      "arm_drop_m": {
+       "type": "number"
+      },
+      "primary_m": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       }
+      },
+      "fall_share": {
+       "type": "number"
+      },
+      "kick_ms": {
+       "type": "number"
+      },
+      "far_share": {
+       "type": "number"
+      },
+      "least": {
+       "type": "number"
+      }
+     }
+    },
     "effect_bodies": {
      "type": "object",
      "properties": {
@@ -1019,6 +1549,72 @@
       },
       "drip_span_m": {
        "type": "number"
+      },
+      "snap_min": {
+       "type": "number"
+      },
+      "snap_span": {
+       "type": "number"
+      },
+      "arm_l_m": {
+       "type": "number"
+      },
+      "arm_t_m": {
+       "type": "number"
+      },
+      "lamp_l_m": {
+       "type": "number"
+      },
+      "lamp_h_m": {
+       "type": "number"
+      },
+      "lamp_w_m": {
+       "type": "number"
+      },
+      "lamp_reach_m": {
+       "type": "number"
+      },
+      "fall_far_share": {
+       "type": "number"
+      },
+      "fall_least": {
+       "type": "number"
+      },
+      "cut_min": {
+       "type": "number"
+      },
+      "cut_span": {
+       "type": "number"
+      },
+      "crown_share": {
+       "type": "number"
+      },
+      "shrub_h": {
+       "type": "number"
+      },
+      "bit_l_min": {
+       "type": "number"
+      },
+      "bit_l_span": {
+       "type": "number"
+      },
+      "bit_h_min": {
+       "type": "number"
+      },
+      "bit_h_span": {
+       "type": "number"
+      },
+      "bit_w_min": {
+       "type": "number"
+      },
+      "bit_w_span": {
+       "type": "number"
+      },
+      "bit_lift_m": {
+       "type": "number"
+      },
+      "bits": {
+       "type": "integer"
       }
      },
      "required": [
@@ -1098,7 +1694,29 @@
       "torn_pools",
       "drip_scatter_m",
       "drip_min_m",
-      "drip_span_m"
+      "drip_span_m",
+      "snap_min",
+      "snap_span",
+      "arm_l_m",
+      "arm_t_m",
+      "lamp_l_m",
+      "lamp_h_m",
+      "lamp_w_m",
+      "lamp_reach_m",
+      "fall_far_share",
+      "fall_least",
+      "cut_min",
+      "cut_span",
+      "crown_share",
+      "shrub_h",
+      "bit_l_min",
+      "bit_l_span",
+      "bit_h_min",
+      "bit_h_span",
+      "bit_w_min",
+      "bit_w_span",
+      "bit_lift_m",
+      "bits"
      ],
      "strict": true
     },
@@ -1542,6 +2160,9 @@
    "required": [
     "_doc",
     "effect_blast",
+    "crater_slabs",
+    "wires",
+    "gore",
     "effect_bodies",
     "effect_things",
     "effect_ruins",

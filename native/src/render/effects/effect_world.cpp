@@ -19,18 +19,23 @@ bool EffectWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	const WorldShape &K = params_.shapes.effect_world;
 	scenario_ = ctx.scenario;
 	if (!params_.load(ctx.table("effects", errors), errors) || !load_looks(ctx, errors)) return false;
+	if (params_.shapes.crater_slabs.dirt_tint.size() != 3) { // an sRGB triple
+		errors.push_back("effects.json shapes.crater_slabs.dirt_tint: three channels");
+		return false;
+	}
 	if (!ctx.catalog) {
 		errors.push_back("effects without a catalogue");
 		return false;
 	}
-	params_.fireball_base = ctx.catalog->tune.strike_scar_radius_m; // the fireball is as wide as the scar it leaves: one law
-	params_.fireball_per_force = ctx.catalog->tune.strike_scar_radius_per_force;
+	// the fireball's radius is blast::fireball_radius over the state's catalogue (sim/demolition/blast_model.h), read per blast
 	const RID puffs = ctx.material("puffs", errors), debris = ctx.material("debris", errors), marks = ctx.material("marks", errors), rubble = ctx.material("rubble", errors);
 	if (!errors.is_empty()) return false;
 	puffs_.init(scenario_, puffs, params_);
 	puffs_.set_wind(params_.wind_x, params_.wind_z);
 	marks_.init(scenario_, marks, int(K.mark_slots), params_.soot_kept, params_.blood_max);
 	debris_.init(scenario_, debris, params_);
+	wires_.init(scenario_, debris, params_);
+	gore_.init(scenario_, debris, params_);
 	debris_material_ = debris;
 	mounds_.init(scenario_, rubble, K.mound_slots, params_.shapes.mounds);
 	const Ref<ShaderMaterial> ruin = ctx.material_objects.get("building_ruin", Variant());
@@ -57,6 +62,8 @@ void EffectWorld::reset() {
 	puffs_.reset();
 	marks_.reset();
 	debris_.reset();
+	wires_.reset();
+	gore_.reset();
 	mounds_.reset();
 	geysers_.clear();
 	sources_.clear();
@@ -91,6 +98,8 @@ void EffectWorld::release() {
 	marks_.release();
 	mounds_.release();
 	debris_.release();
+	wires_.release();
+	gore_.release();
 }
 
 void EffectWorld::flash(float radius) {
@@ -178,7 +187,10 @@ void EffectWorld::sync(CityState &s, FrameAdmission &admission) {
 	burn_fires(s, dt);
 	step_geysers(dt);
 	step_sources(dt);
-	debris_.update(now_, dt, [&](float x, float z) { return s.terrain.height_at(x, z); }, puffs_);
+	const auto ground = [&](float x, float z) { return s.terrain.height_at(x, z); };
+	debris_.update(now_, dt, ground, puffs_);
+	wires_.update(dt, ground, puffs_);
+	gore_.update(dt, ground, [&](uint32_t body, int joint, Vector3 &at) { return people_ && people_->bodies().joint(body, joint, at); });
 	ruins_.update(dt, puffs_, admission);
 	if (people_) people_->bodies().update(dt, [&](float x, float z) { return s.terrain.height_at(x, z); });
 	for (const RuinPieces::Uncut &u : ruins_.take_uncut()) {

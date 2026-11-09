@@ -1,8 +1,10 @@
 // The events of a blow, played once (effect_world.h): the bomb itself (the fireball, the smoke, the dust, the shrapnel, the
-// ring, the flash and the shake, the soot on the ground), the building struck and the building brought down.
+// ring, the flash and the shake, the soot on the ground, the broken ground round its crater), the building struck and the
+// building brought down.
 #include "render/effects/effect_world.h"
 
 #include "core/math.h"
+#include "sim/demolition/blast_model.h"
 
 #include <algorithm>
 #include <cmath>
@@ -35,7 +37,10 @@ void EffectWorld::piece(const Vector3 &at, const Vector3 &size, const Vector3 &v
 
 void EffectWorld::blast(const DamageEvent &e, const CityState &s) {
 	const BlastShape &K = params_.shapes.effect_blast;
-	const float radius = params_.fireball_base + params_.fireball_per_force * e.dx; // the fireball: from the force of the blow
+	const float radius = blast::fireball_radius(s.catalog.tune, e.dx); // the fireball: from the force of the blow
+	blast_x_ = e.x; // what its furniture, wires and trees are pushed from (damage_event.h: they follow it)
+	blast_z_ = e.z;
+	blast_r_ = radius;
 	const int soil = int(e.c);
 	for (const BurstDef &b : params_.bursts) {
 		const int kind = b.kind >= 0 ? b.kind : (soil == SOIL_SOIL_TINT ? PUFF_DUST : PUFF_CONCRETE);
@@ -57,7 +62,7 @@ void EffectWorld::blast(const DamageEvent &e, const CityState &s) {
 	Mark ring;
 	ring.kind = MARK_RING;
 	ring.x = e.x; ring.z = e.z;
-	ring.size = e.a * 2.f; // across: the damage reach
+	ring.size = 2.f * params_.ring_reach_r * radius; // across: racing out to reach_r fireball radii (the reference game's ringReach)
 	ring.y = Marks::top_ground(e.x, e.z, ring.size * 0.5f, [&](float x, float z) { return s.terrain.height_at(x, z); }) + params_.ring_height;
 	ring.born = now_;
 	ring.life = params_.ring_life;
@@ -85,6 +90,64 @@ void EffectWorld::blast(const DamageEvent &e, const CityState &s) {
 		m.size = params_.soot_size_min + rng_.f() * params_.soot_size_span + radius * params_.soot_size_r;
 		m.seed = rng_.f();
 		marks_.add_soot(m);
+	}
+	if (soil != SOIL_BUILDING) crater_slabs(e, s); // a burst on a roof digs no crater (strike_ground.cpp)
+}
+
+// The crater's decal radius is the one the marks draw (marks.h CRATER_SCALE times the hole the blast model digs, the law's one
+// owner), and every place, size and count here is a share of it (effects.json shapes.crater_slabs; the reference game's crater).
+void EffectWorld::crater_slabs(const DamageEvent &e, const CityState &s) {
+	const CraterSlabsShape &K = params_.shapes.crater_slabs;
+	const bool hard = int(e.c) == int(blast::Surface::HARD);
+	const float reach = blast::crater_radius(s.catalog.blast, blast::fireball_radius(s.catalog.tune, e.dx)) * Marks::CRATER_SCALE;
+	const auto ground = [&](float x, float z) { return s.terrain.height_at(x, z); };
+	const auto tipped = [](float a, float tilt) { return Quaternion(Vector3(std::sin(a), 0.f, -std::cos(a)), tilt); }; // the outer side down
+	// The rim: slabs of the surface heaved up and tilted round the hole, nudged out, settling where they fall.
+	const int rim = int(std::lround(K.rim_base + reach * K.rim_per_m));
+	for (int i = 0; i < rim; i++) {
+		const float a = float(i) / float(rim) * TAU_F + rng_.f() * K.rim_jitter_rad;
+		const float r = reach * (K.rim_r_min + rng_.f() * K.rim_r_span);
+		const float w = (K.rim_size_min_m + rng_.f() * K.rim_size_span_m) * (hard ? 1.f : K.rim_earth_scale);
+		PieceSpec p;
+		p.at = Vector3(e.x + std::cos(a) * r, 0.f, e.z + std::sin(a) * r);
+		p.at.y = ground(p.at.x, p.at.z) + K.rim_lift_m;
+		p.size = Vector3(w, hard ? K.rim_thick_hard_m : K.rim_thick_earth_m, w * (K.rim_depth_min + rng_.f() * K.rim_depth_span));
+		p.turn = tipped(a, K.rim_tilt_min + rng_.f() * K.rim_tilt_span);
+		p.velocity = Vector3(std::cos(a) * K.rim_out_ms, K.rim_up_ms, std::sin(a) * K.rim_out_ms);
+		p.random_spin = false;
+		p.tint = !hard ? SOIL_TINT : K.rim_concrete_every > 0 && i % K.rim_concrete_every == 0 ? CONCRETE : ROAD_TINT;
+		debris_.add(p);
+	}
+	// The plates of the ground tipped up round it, the inner edge sunk, and clods thrown up among them: laid for good, never moved;
+	// none where enough already lie (a second blow on the same spot).
+	if (debris_.still_near(e.x, e.z, reach * K.plates_crowd_r) > K.plates_crowd) return;
+	const int plates = std::min(K.plates_most, int(std::lround(K.plates_base + reach * K.plates_per_m)));
+	const float scale = std::min(K.plate_scale_most, K.plate_scale_min + reach * K.plate_scale_per_m);
+	const Color dirt(K.dirt_tint[0], K.dirt_tint[1], K.dirt_tint[2]);
+	for (int i = 0; i < plates; i++) {
+		const float a = rng_.f() * TAU_F, r = reach * (K.plate_r_min + std::sqrt(rng_.f()) * K.plate_r_span);
+		const float w = (K.plate_w_min_m + rng_.f() * K.plate_w_span_m) * scale;
+		const Color base = !hard ? SOIL_TINT : rng_.f() < K.plate_concrete_chance ? CONCRETE : ROAD_TINT;
+		const float shade = K.shade_min + rng_.f() * K.shade_span;
+		const Color dirty = base.lerp(dirt, K.dirt_min + rng_.f() * K.dirt_span);
+		PieceSpec p;
+		p.slab = true;
+		p.still = true;
+		p.random_spin = false;
+		p.at = Vector3(e.x + std::cos(a) * r, 0.f, e.z + std::sin(a) * r);
+		p.at.y = ground(p.at.x, p.at.z) + w * K.plate_lift_share;
+		p.size = Vector3(w, hard ? K.plate_thick_hard_m : K.plate_thick_earth_m, w * (K.plate_d_min + rng_.f() * K.plate_d_span));
+		p.turn = tipped(a, K.plate_tilt_min + rng_.f() * K.plate_tilt_span) * Quaternion(Vector3(0, 1, 0), rng_.f() * PI_F);
+		p.tint = Color(dirty.r * shade, dirty.g * shade, dirty.b * shade);
+		debris_.add(p);
+		if (K.clod_every <= 0 || i % K.clod_every != 0) continue;
+		PieceSpec c;
+		c.still = true;
+		c.random_spin = false;
+		c.at = Vector3(p.at.x, ground(p.at.x, p.at.z) + K.clod_lift_m, p.at.z);
+		c.size = Vector3(K.clod_min_m + rng_.f() * K.clod_span_m, K.clod_h_m, K.clod_min_m + rng_.f() * K.clod_span_m);
+		c.tint = SOIL_TINT;
+		debris_.add(c);
 	}
 }
 

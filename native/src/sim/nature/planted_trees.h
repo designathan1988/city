@@ -56,6 +56,7 @@ public:
 	}
 	// True when a clearing covers the point.
 	bool cleared(float x, float z) const;
+	bool cleared(float x, float z, int skip) const; // the same, clearing `skip` left out (the trees that stood before a blow cut it)
 	// The clearings near the box, for a whole chunk's candidates to test (`cleared` looks them up one by one).
 	void clearings_near(float minx, float minz, float maxx, float maxz, std::vector<int> &out) const;
 

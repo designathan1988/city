@@ -3,7 +3,8 @@
 // where its owner lies, comes off and costs a good share of the blood; the third round in the trunk opens the belly. Dead:
 // the body falls. Hurt: a light wound in a leg (or the trunk, half the time) knocks them down for a moment, any other light
 // wound only bends them over it; a grave one (half the health gone, or a limb lost) puts them on the ground for good,
-// bleeding until they die. Everyone near a gunshot runs.
+// bleeding until they die. Killed or hurt, their companions go down beside them and the place shocks those who come near.
+// Everyone near a gunshot runs.
 #include "sim/commands/shoot_internal.h"
 
 #include "sim/traffic/traffic_system.h"
@@ -100,6 +101,10 @@ void shoot_walker(Round &r, int id, BodyPart part, float hx, float hy, float hz,
 		w.bleed = std::max(w.bleed, leg_gone ? p.bleed_leg : severed != 0 ? p.bleed_limb : p.bleed_hurt);
 		r.emit(casualty_of(r, id, w, CAS_KNOCKED | CAS_CRAWL | shared, severed != 0 ? PUSH_SEVER : PUSH_GRAVE, LIE_FOR_GOOD_S, hx, hz));
 	}
+	// Hurt and not killed, as killed: those walking with them go down beside them, and the place is a shock those coming near
+	// run from (the reference game's walk.ts `shot`: mourn and shock on every wound, light or grave).
+	traffic::mourn_pedestrian(r.s, id);
+	traffic::add_shock(r.s, w.cur.x, w.cur.z, r.s.catalog.traffic.ped_body_shock_m);
 }
 
 } // namespace city

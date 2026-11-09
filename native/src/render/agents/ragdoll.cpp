@@ -9,7 +9,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-enum Joint { PEL, CHE, NEC, HEA, LS, LE, LW, RS, RE, RW, LH, LK, LA, LT, RH, RK, RA, RT, TOP, BEL };
+using namespace rag; // the particles (ragdoll.h)
 enum Ref { REF_SIDE, REF_LARM, REF_RARM, REF_LLEG, REF_RLEG };
 struct PartFrame {
 	int origin, to, ref;
@@ -150,5 +150,21 @@ void Ragdoll::frames(Transform3D out[RAGDOLL_PARTS]) {
 }
 
 Vector3 Ragdoll::pelvis() const { return now_[PEL]; }
+
+void Ragdoll::writhe(float t, float dt) {
+	const RagdollShape &K = *law_;
+	static constexpr int LEGS[2][2] = { { LK, LH }, { RK, RH } }; // each knee and its hip, the right a phase behind
+	const float strength = std::min(1.f, t / K.writhe_rise_s) * std::max(K.writhe_floor, 1.f - t / K.writhe_fade_s);
+	const Vector3 spine = (now_[CHE] - now_[PEL]) * K.writhe_spine_share;
+	for (int leg = 0; leg < 2; leg++) {
+		const float s = std::sin(t * K.writhe_rate + float(leg) * K.writhe_phase);
+		if (s <= 0.f) continue;
+		const int knee = LEGS[leg][0], hip = LEGS[leg][1];
+		const Vector3 to = now_[hip].lerp(now_[BEL], K.writhe_hip_share) + spine;
+		now_[knee] = now_[knee].lerp(to, std::min(1.f, K.writhe_pull * dt * s * strength));
+	}
+	still_ = 0; // it is moving: stepped every frame, never asleep while it writhes
+	asleep_ = false;
+}
 
 } // namespace city

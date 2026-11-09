@@ -1,6 +1,7 @@
 // The pieces a blast throws, as rigid boxes and cylinders: gravity, then each corner under the ground struck with an
-// impulse (a body bounces, slides, tumbles and settles; at rest it sleeps and is never written again). Two MultiMeshes
-// (boxes, cylinders) each tinted by the instance; a burning piece (a wreck) sends flame and smoke puffs while it burns.
+// impulse (a body bounces, slides, tumbles and settles; at rest it sleeps and is never written again). Three MultiMeshes
+// (boxes, cylinders, and the broken slabs of the ground a crater heaves up: a jagged plate, effects.json shapes.crater_slabs)
+// each tinted by the instance; a burning piece (a wreck) sends flame and smoke puffs while it burns.
 #pragma once
 
 #include "core/random.h"
@@ -23,6 +24,7 @@ struct PieceSpec {
 	godot::Quaternion turn;
 	godot::Color tint; // sRGB
 	bool cylinder = false; // size = (radius, length, radius)
+	bool slab = false; // a broken plate of the ground (size = across, thickness, depth), drawn jagged
 	bool dusty = false; // of a building: concrete dust over it
 	int wreck = -1; // drawn as this vehicle's burnt body, whose box `size` is
 	float burn_s = 0; // seconds it burns (a wreck), 0 none
@@ -54,6 +56,7 @@ public:
 	}
 	bool moving() const;
 	int count() const { return int(pieces_.size()); }
+	int still_near(float x, float z, float reach) const; // the pieces laid for good within `reach` metres of (x, z) on the ground
 	static constexpr float STEP_S = RIGID_STEP_S;
 
 private:
@@ -62,13 +65,13 @@ private:
 		godot::Color tint;
 		float burn_until = 0, carry = 0;
 		float life = 0;
-		bool cylinder = false, still = false, charred = false, dusty = false;
+		bool cylinder = false, slab = false, still = false, charred = false, dusty = false;
 		int wreck = -1;
 	};
 	void burn(Piece &p, double now, float dt, Puffs &puffs);
 	void reap(float dt); // the pieces whose time is up leave
 	void flush();
-	MmLayer boxes_, cylinders_;
+	MmLayer boxes_, cylinders_, slabs_;
 	std::vector<MmLayer> wrecks_;
 	std::deque<Piece> pieces_;
 	EffectParams params_;

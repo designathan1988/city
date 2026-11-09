@@ -78,7 +78,10 @@ public:
 	void update(double now);
 	static constexpr float SURFACE_LIFT_M = 0.06f; // a decal lies this far over the ground, so the two never fight
 	static constexpr int RELIEF_GRID = 4; // the ground is sampled on a grid of (2 * this + 1)^2 points across a decal
-	static constexpr float CRATER_SCALE = 2.4f; // the quad is wider than the hole: the scorch and the broken lip round it (blast_probe says how far)
+	// The quad is wider than the dug hole: the scorch and the broken lip round it. The reference game's blast.ts draws the crater's
+	// disc 0.75 fireball radii across each way (playEffects.ts: crater radius * 0.75) over a dig of 0.5 (actionsWiring.ts terrain
+	// stamp, blast.json crater.fireball_share): 0.75 / 0.5. The shader's hole stands at half the disc, as in its texture.
+	static constexpr float CRATER_SCALE = 1.5f;
 
 private:
 	static constexpr uint32_t SEED_MASK = 0xffffu; // a decal's seed: sixteen bits of its hash

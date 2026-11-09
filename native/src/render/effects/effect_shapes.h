@@ -10,6 +10,9 @@ namespace city {
 // Every block: its key in the table, its type and its list.
 #define EFFECT_SHAPE_BLOCKS(S) \
 	S(effect_blast, BlastShape, EFFECT_SHAPE_EFFECT_BLAST) \
+	S(crater_slabs, CraterSlabsShape, EFFECT_SHAPE_CRATER_SLABS) \
+	S(gore, GoreShape, EFFECT_SHAPE_GORE) \
+	S(wires, WiresShape, EFFECT_SHAPE_WIRES) \
 	S(effect_bodies, BodiesShape, EFFECT_SHAPE_EFFECT_BODIES) \
 	S(effect_things, ThingsShape, EFFECT_SHAPE_EFFECT_THINGS) \
 	S(effect_ruins, RuinsShape, EFFECT_SHAPE_EFFECT_RUINS) \

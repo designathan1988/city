@@ -76,14 +76,20 @@ void record_trees(CityState &s, const std::vector<int> &ids, const std::vector<P
 }
 } // namespace
 
-bool cut_trees_at(CityState &s, float x, float z, float radius) {
+bool cut_trees_at(CityState &s, float x, float z, float radius) { return fell_trees_at(s, x, z, radius, nullptr) >= 0; }
+
+int fell_trees_at(CityState &s, float x, float z, float radius, std::vector<PlantedTree> *felled) {
 	PlantedTrees &p = s.nature.planted;
 	const TreeBrushDef &d = s.catalog.nature.trees;
-	if (p.live_clearings() >= d.max_clearings) return false;
+	if (p.live_clearings() >= d.max_clearings) return -1;
 	std::vector<int> gone;
 	p.for_trees(x - radius, z - radius, x + radius, z + radius, [&](int id) {
 		if (tree_distance(p.trees[size_t(id)], x, z) < radius) gone.push_back(id);
 	});
+	// In id order: the index hands them out in its buckets' order, which its history decides; the slots freed (and so the ids of the
+	// trees planted after) must follow the edits alone.
+	std::sort(gone.begin(), gone.end());
+	gone.erase(std::unique(gone.begin(), gone.end()), gone.end());
 	std::vector<PlantedTree> kept;
 	for (int id : gone) {
 		kept.push_back(p.trees[size_t(id)]);
@@ -102,7 +108,8 @@ bool cut_trees_at(CityState &s, float x, float z, float radius) {
 		mark_trees(st, x, z, radius);
 	});
 	mark_trees(s, x, z, radius);
-	return true;
+	if (felled) *felled = kept;
+	return cid;
 }
 
 EditResult set_weather(CityState &s, const Weather &next) {

@@ -96,6 +96,7 @@ void EffectParams::load_look(const Dictionary &t, PackedStringArray &errors) {
 	Group ring(r, t, "ring");
 	ring_life = ring.num("life_s");
 	ring_height = ring.num("height_m");
+	ring_reach_r = ring.num("reach_r");
 	Group flash(r, t, "flash");
 	flash_color = Color::hex(flash.r.colour(flash.d, "color"));
 	flash_energy = flash.num("energy");

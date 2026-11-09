@@ -109,9 +109,9 @@ bool load_blast_params(const Dictionary &t, BlastParams &p, PackedStringArray &e
 	p.vehicle_shots_to_burst = r.in("shot").integer(shot, "vehicle_shots_to_burst");
 	p.burst_force = r.in("shot").integer(shot, "burst_force");
 	const Dictionary crater = r.table(t, "crater");
-	p.crater_k_earth = float(r.in("crater").num(crater, "k_earth"));
-	p.crater_k_hard = float(r.in("crater").num(crater, "k_hard"));
-	p.crater_ratio = float(r.in("crater").num(crater, "diameter_to_depth"));
+	p.crater_share = float(r.in("crater").num(crater, "fireball_share"));
+	p.crater_depth_m = float(r.in("crater").num(crater, "depth_m"));
+	p.crater_depth_per_force_m = float(r.in("crater").num(crater, "depth_per_force_m"));
 	p.pass_width_m = float(r.in("crater").num(crater, "pass_width_m"));
 	p.crater_min_m = float(r.in("crater").num(crater, "min_radius_m"));
 	return errors.size() == before;
