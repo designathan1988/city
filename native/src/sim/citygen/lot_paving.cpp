@@ -18,7 +18,6 @@ using Clipper2Lib::Paths64;
 using Clipper2Lib::Point64;
 
 namespace {
-constexpr double PARALLEL = 1e-6; // two edges this near parallel do not meet
 
 Point64 unit_point(double x, double z) { return Point64(std::llround(x * PAVING_UNITS_PER_M), std::llround(z * PAVING_UNITS_PER_M)); }
 
@@ -66,58 +65,16 @@ void add_ribbon(const GenShapes &S, const RoadNetwork &net, int seg, Paths64 &ou
 	add_positive(out, std::move(left));
 }
 
-struct NodeEnd {
-	XZ left, right; // the outer edges of the footways at the mouth, seen going out along the arm
-	double dx = 0, dz = 0;
-	Arm arm;
-};
-
-NodeEnd end_at(const RoadNetwork &net, int node, int seg) {
-	const RoadSegment &g = net.segs[size_t(seg)];
-	const Profile &p = net.profile_of(seg);
-	const bool at_a = g.a == node;
-	const double v = at_a ? g.retreat_a : g.len - g.retreat_b;
-	NodeEnd e;
-	e.arm = arm_of(g.q, p, at_a ? 0 : 1);
-	double y, fx, fz, lx, lz;
-	footway_point(net, seg, v, at_a ? p.edges.back().u1 : p.edges.front().u0, e.left.x, e.left.z, y);
-	footway_point(net, seg, v, at_a ? p.edges.front().u0 : p.edges.back().u1, e.right.x, e.right.z, y);
-	segment_frame(net, seg, v, fx, fz, lx, lz);
-	e.dx = at_a ? fx : -fx;
-	e.dz = at_a ? fz : -fz;
-	return e;
-}
-
-void add_junction(const GenShapes &S, const RoadNetwork &net, int node, Paths64 &out) {
-	const PavingShape &K = S.paving;
-	const RoadNode &nd = net.nodes[size_t(node)];
-	std::vector<NodeEnd> ends;
-	for (int seg : nd.segs)
-		if (!net.profile_of(seg).rail && !net.profile_of(seg).edges.empty()) ends.push_back(end_at(net, node, seg));
-	if (ends.empty()) return;
-	if (ends.size() == 1) {
-		if (!nd.bulb) return;
-		Path64 circle;
-		const double r = BULB_R + BULB_WALK;
-		for (int i = 0; i < K.round_steps; i++) {
-			const double a = 2 * PI_D * i / K.round_steps;
-			circle.push_back(unit_point(nd.x + r * std::cos(a), nd.z + r * std::sin(a)));
-		}
-		add_positive(out, std::move(circle));
-		return;
-	}
-	std::sort(ends.begin(), ends.end(), [](const NodeEnd &a, const NodeEnd &b) { return arm_angle(a.arm.dx, a.arm.dz) < arm_angle(b.arm.dx, b.arm.dz); });
+// A turning bulb, or a junction's plate out to its corners' points (the footways run on until they meet: the lot on that corner ends
+// in a point, however round the kerb), its transitions and its cap: the outline the ground is shaped to (junction.h node_outline).
+void add_junction(const RoadNetwork &net, int node, Paths64 &out) {
+	bool paved = false;
+	for (int seg : net.nodes[size_t(node)].segs) paved = paved || (!net.profile_of(seg).rail && !net.profile_of(seg).edges.empty());
+	if (!paved) return;
+	const std::vector<double> outline = node_outline(net, node);
 	Path64 ring;
-	for (size_t i = 0; i < ends.size(); i++) {
-		const NodeEnd &a = ends[i], &b = ends[(i + 1) % ends.size()];
-		ring.push_back(unit_point(a.right.x, a.right.z));
-		ring.push_back(unit_point(a.left.x, a.left.z));
-		// The two footways run on until they meet: the lot on that corner ends in a point, however round the kerb.
-		const double den = a.dx * b.dz - a.dz * b.dx;
-		if (corner_fillet(net.cat->tune, a.arm, b.arm).mode != CornerMode::FILLET || std::fabs(den) < PARALLEL) continue;
-		const double wx = b.right.x - a.left.x, wz = b.right.z - a.left.z, along = (wx * b.dz - wz * b.dx) / den;
-		ring.push_back(unit_point(a.left.x + a.dx * along, a.left.z + a.dz * along));
-	}
+	for (size_t i = 0; i + 1 < outline.size(); i += 2) ring.push_back(unit_point(outline[i], outline[i + 1]));
+	if (ring.size() < 3) return;
 	add_positive(out, std::move(ring));
 }
 
@@ -143,7 +100,7 @@ Paths64 paving_near(const GenShapes &S, const RoadNetwork &net, double x0, doubl
 		nodes.insert(net.segs[size_t(seg)].a);
 		nodes.insert(net.segs[size_t(seg)].b);
 	});
-	for (int n : nodes) add_junction(S, net, n, pieces);
+	for (int n : nodes) add_junction(net, n, pieces);
 	return pieces.empty() ? pieces : Clipper2Lib::Union(pieces, FillRule::NonZero);
 }
 

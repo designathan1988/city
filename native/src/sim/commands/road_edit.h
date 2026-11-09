@@ -63,26 +63,43 @@ struct RoadBox {
 bool merge_joint(CityState &s, int joint, int past, RoadBox &box, std::vector<int> &made);
 // How far from node `n` the junction wants the mouth of `seg`, before the road's length caps it (road_rules.cpp).
 double wanted_retreat(const RoadNetwork &net, int n, int seg);
-// The roads of the box whose two mouths overlap, and by how many metres (road_rules.cpp).
-std::map<int, double> squeezes_in(const CityState &s, const RoadBox &box);
+// The roads of the box whose two mouths overlap, and by how many metres, each road by the nodes at its two ends (lower id first),
+// as the lab keys its squeezes by node (world/networkBuild.ts `squeezed`, editor/editRules.ts): an edit that lays a road again
+// gives it a new id but leaves its ends, so a road already squeezed before it stays the same road after (road_rules.cpp).
+using Squeezes = std::map<std::pair<int, int>, double>;
+Squeezes squeezes_in(const CityState &s, const RoadBox &box);
+// The roads that ended at node `from` now ending at `to` (a moved node dropped on another, road_move.cpp).
+void squeezes_moved(Squeezes &sq, int from, int to);
 // Whether a road of the box overlaps more than `before` said.
-bool squeezed_worse(const CityState &s, const std::map<int, double> &before, const RoadBox &box);
+bool squeezed_worse(const CityState &s, const Squeezes &before, const RoadBox &box);
 // The junction a new road's end would make, before it exists: how far back that road stops there and how far back each road
 // it meets does (road_rules.cpp). A free end makes none.
 struct EndMouth {
 	int node = -1, seg = -1;
 	double t = 0, own = 0;
+	std::vector<double> owns; // each planned arm's, in the order asked (planned_mouth); `own` is the first
 	std::vector<std::pair<int, double>> met;
 	// Whether the point at `at_t` of road `other` lies under this junction, or within `pad` metres of it.
 	bool covers(const RoadNetwork &net, int other, double at_t, double pad) const;
 };
 EndMouth end_mouth(const CityState &s, const Anchor &at, const Quad &q, int end, int profile);
+// The same for several planned arms meeting at `at` (each a quad and its end there: a road crossing another has two).
+EndMouth planned_mouth(const CityState &s, const Anchor &at, const std::vector<std::pair<Quad, int>> &own, int profile);
+// Whether the planned road would leave a stretch too short for the junctions at its two ends to open out (squeezed_worse, judged
+// before anything is laid): the new road's own stretches between its stops, and every road it meets from the junction it makes
+// there to that road's other end. The lab's preview judges the draft by a dry run of the whole edit (editor/roadTool.ts verdict);
+// the game's preview reads the shared map and cannot run one, so it works the junctions out from the plan.
+bool plan_squeezed(const CityState &s, const RoadPlan &p, const Anchor &a, const Anchor &b, int profile);
 // What the player built at (x, z) changed: the chunk of its props and the walkers' bodies on the segments round it.
 void mark_street(CityState &s, double x, double z);
 // What a change to the network derives, settled where a command reads it before it ends (a road laid in pieces reads the
 // mouths and heights of the pieces before it): the shapes of the nodes the changes reach (RoadNetwork::settle_shapes) and
 // the heights of what they moved (sync_grade). A change that leaves the network alone settles nothing.
 void settle_network(CityState &s);
+// The poles and street items standing on the carriageway of a turning bulb at any node this edit changed, taken away (the lab's
+// world/junction/bulb.ts bulbClearing): a dead end that grew a bulb clears what stood where its circle now is. Run by the edits
+// after their network is settled, journaled with them.
+void clear_bulbs(CityState &s);
 // Ends a command, once per transaction (EditHistory::end, apply_entry): settles the network, places again the furniture of
 // the hydrant squares of the nodes it changed (street_furniture.h hydrant_square), recomputes the dirty lot cells (queued
 // for growth) and, when the command recorded a change or left derived work, bumps the edit revision and the map's.

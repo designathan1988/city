@@ -73,7 +73,7 @@ struct RoadSegment {
 	uint16_t flags = 0;
 	std::vector<double> table; // arc length at t = i / ARC_STEPS
 	double len = 0;
-	double retreat_a = 0, retreat_b = 0; // the mouths: metres before each node
+	double retreat_a = 0, retreat_b = 0, want_a = 0, want_b = 0; // the mouths, metres before each node (clamp_segment_trims); what each asks
 	float minx = 0, minz = 0, maxx = 0, maxz = 0;
 };
 
@@ -156,7 +156,7 @@ public:
 	template <typename F>
 	void for_drawn_chunks(int s, F &&fn) const {
 		const RoadSegment &g = segs[size_t(s)];
-		const double cell = cat->tune.world_height_spacing_m, disc = BULB_R + BULB_WALK + cell;
+		const double cell = cat->tune.world_height_spacing_m, disc = bulb_reach(cat->tune) + cell;
 		std::vector<int64_t> keys;
 		for_chunks(g.minx - cell, g.minz - cell, g.maxx + cell, g.maxz + cell, [&](int64_t k) { keys.push_back(k); });
 		for (const int n : { g.a, g.b }) {

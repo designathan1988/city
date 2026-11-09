@@ -22,7 +22,6 @@ const int ROAD_MAT_STONE = 9;
 const int ROAD_MAT_COBBLE = 10;
 const int ROAD_MAT_BALLAST = 11;
 const int ROAD_MAT_SKIRT = 12;
-const int ROAD_MAT_JOIN = 13;
 // a road vertex's codes (road_look.h): the material's scale in the alpha; UV2.x of a vertex no lamp pool lights and of a junction plate, lit evenly (road_body.gdshaderinc reads past half of each); the distances to a surface's edges and a lane's width over these (road_wear.gdshaderinc)
 const float ROAD_MAT_SCALE = 16.0;
 const float ROAD_POOL_NONE = 1000.0;

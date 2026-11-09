@@ -51,7 +51,8 @@ static std::vector<Lot> lots_of_cell(const CityState &s, int64_t key, int every_
 		map[n] = id;
 		g.nx.push_back(nd.x);
 		g.nz.push_back(nd.z);
-		g.bulb.push_back(nd.bulb ? 1 : 0);
+		const RoadSegment &end = s.roads.segs[size_t(nd.segs.front())];
+		g.bulb.push_back(nd.bulb ? bulb_round(s.catalog.tune, arm_of(end.q, s.roads.profile_of(nd.segs.front()), end.a == n ? 0 : 1)) : 0.0);
 		g.joint.push_back(nd.joint ? 1 : 0);
 		return id;
 	};

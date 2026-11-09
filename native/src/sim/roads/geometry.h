@@ -51,7 +51,5 @@ struct Arm {
 };
 // Sorting key: anticlockwise seen from above.
 double arm_angle(double dx, double dz);
-// Each arm's setback so neighbouring edges do not overlap; arms sorted by arm_angle.
-void arm_retreats(const Tuning &tn, const std::vector<Arm> &arms, double corner_radius, std::vector<double> &out);
 
 } // namespace city

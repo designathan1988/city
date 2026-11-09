@@ -109,37 +109,6 @@ bool line_line(double px, double pz, double dx, double dz, double qx, double qz,
 
 double arm_angle(double dx, double dz) { return std::atan2(-dz, dx); }
 
-void arm_retreats(const Tuning &tn, const std::vector<Arm> &arms, double corner_radius, std::vector<double> &out) {
-	size_t n = arms.size();
-	out.assign(n, 0.0);
-	if (n < 2) return;
-	if (n == 2) {
-		const Arm &a = arms[0], &b = arms[1];
-		double dot = std::max(-1.0, std::min(1.0, a.dx * b.dx + a.dz * b.dz));
-		double turn = PI_D - std::acos(dot);
-		double w = std::max({ a.left, a.right, b.left, b.right });
-		double width_change = std::fabs(a.left - b.right) + std::fabs(a.right - b.left);
-		double step = std::max({ std::fabs(a.left - b.right), std::fabs(a.right - b.left), std::fabs(a.asph_left - b.asph_right),
-				std::fabs(a.asph_right - b.asph_left) });
-		double taper = turn < tn.junction_taper_turn_deg * PI_D / DEG_PER_HALF_TURN && step >= tn.junction_taper_step ? std::max(tn.junction_taper_min, step * tn.junction_taper_slope) / 2
-				: width_change > tn.junction_width_jump ? tn.junction_width_jump_run : 0;
-		double r = std::min(tn.junction_max_retreat, w * std::tan(std::min(turn, tn.junction_max_bend) / 2) + taper);
-		out[0] = out[1] = r;
-		return;
-	}
-	for (size_t i = 0; i < n; i++) {
-		const Arm &a = arms[i], &b = arms[(i + 1) % n];
-		if (a.dx * b.dx + a.dz * b.dz < tn.junction_opposite_dot) continue;
-		double s, t, ta = 0, tb = 0;
-		bool hit = line_line(a.dz * a.left, -a.dx * a.left, a.dx, a.dz, -b.dz * b.right, b.dx * b.right, b.dx, b.dz, s, t);
-		if (hit && s > tn.junction_far_hit && t > tn.junction_far_hit) { ta = s; tb = t; }
-		else if (!hit) ta = tb = std::max(a.left, b.right);
-		out[i] = std::max(out[i], ta + corner_radius);
-		out[(i + 1) % n] = std::max(out[(i + 1) % n], tb + corner_radius);
-	}
-	for (double &v : out) v = std::max(0.0, std::min(v, tn.junction_max_retreat));
-}
-
 double quad_min_radius(const Quad &q) {
 	// B'(t) = 2 (A + t D) with A = c - a and D = (b - c) - A, so B' x B'' is constant and the curvature peaks where
 	// |A + t D| is least: radius = 2 |A + t D|^3 / |A x D|.

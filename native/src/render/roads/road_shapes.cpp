@@ -1,6 +1,7 @@
 // The shapes the road jobs share (road_shapes.h): a node's ends round it by angle, each corner's kerb line (a kerb return on a
-// fillet, sim/roads/junction.h corner_fillet, or a smooth curve) and the outer line of its footway, sharpened to the point where two
-// footways meet.
+// fillet, sim/roads/junction.h corner_fillet, or a smooth curve; a transition's eased kerb lines along its cubic axis; the cap round
+// the back of a node whose arms all leave on one side) and the outer line of its footway, squared to the point where two footways
+// meet (junction.h corner_tip).
 #include "render/roads/road_shapes.h"
 
 #include "core/math.h"
@@ -76,6 +77,43 @@ std::vector<Vector3> corner(const Tuning &tn, const StreetLook &L, const Vector3
 	return out;
 }
 
+// A transition's line from a's left side (ua off its centre) to b's right (ub): the axis's right at the width eased from one to
+// the other, the height from a's mouth to b's.
+std::vector<Vector3> eased(const Tuning &tn, const End &a, double ua, const End &b, double ub) {
+	const TransitionAxis axis = transition_axis(XZ{ a.p.x, a.p.z }, XZ{ a.d.x, a.d.z }, XZ{ b.p.x, b.p.z }, XZ{ b.d.x, b.d.z });
+	const int count = axis.samples(tn);
+	std::vector<Vector3> out;
+	for (int j = 0; j <= count; j++) {
+		const double u = double(j) / count, half = ua + (ub - ua) * taper_ease(u);
+		const XZ p = axis.point(u) - axis.normal(u) * half;
+		out.push_back(Vector3(float(p.x), a.p.y + (b.p.y - a.p.y) * float(u), float(p.z)));
+	}
+	return out;
+}
+
+// The kerb line round the open back of a node whose arms all leave on one side (polygon.ts nodeCap): from a's left mouth back along
+// its edge to the cap, a circle of the widest carriageway round the node, round behind it, and out along b's right edge to its mouth.
+std::vector<Vector3> capped(const Tuning &tn, const Vector3 &node, const End &a, const End &b, double radius) {
+	const double ua = std::min(double(a.arm.asph_left), radius), ub = std::min(double(b.arm.asph_right), radius);
+	const Vector3 la(float(a.arm.dz), 0, float(-a.arm.dx)), lb(float(b.arm.dz), 0, float(-b.arm.dx));
+	const Vector3 da(float(a.arm.dx), 0, float(a.arm.dz)), db(float(b.arm.dx), 0, float(b.arm.dz));
+	const Vector3 ea = node + da * float(std::sqrt(radius * radius - ua * ua)) + la * float(ua);
+	const Vector3 eb = node + db * float(std::sqrt(radius * radius - ub * ub)) - lb * float(ub);
+	const double a0 = std::atan2(ea.z - node.z, ea.x - node.x), a1 = std::atan2(eb.z - node.z, eb.x - node.x);
+	double sweep = a1 - a0; // the arms' order runs against atan2's sense of z over x: round the back is a turn the other way
+	while (sweep >= 0) sweep -= TAU_D;
+	std::vector<Vector3> out{ side(a, ua), ea };
+	const int steps = tn.junction_cap_steps;
+	for (int i = 1; i < steps; i++) {
+		const double ang = a0 + sweep * double(i) / steps;
+		out.push_back(Vector3(float(node.x + std::cos(ang) * radius), node.y, float(node.z + std::sin(ang) * radius)));
+	}
+	out.push_back(eb);
+	out.push_back(side(b, -ub));
+	for (size_t i = 0; i < out.size(); i++) out[i].y = a.p.y + (b.p.y - a.p.y) * float(i) / float(out.size() - 1);
+	return out;
+}
+
 } // namespace
 
 // The line wa..wb metres outside the kerb line: square to the arms at the mouths, square to the line in between.
@@ -104,16 +142,17 @@ std::vector<Vector3> outside(const std::vector<Vector3> &line, const End &a, con
 }
 
 namespace {
-// The lot's line round a kerb return: the two arms' edges run on until they meet, so the footway fills the corner and the lot ends
-// in a point, however round the kerb. Gives the index of the point, 0 where the corner has none.
+// The lot's line round a corner whose footway's back is squared (junction.h corner_tip, the ground's outline the same): the two arms'
+// edges run on until they meet, so the footway fills the corner and the lot ends in a point, however round the kerb. Gives the index
+// of the point, 0 where the corner has none.
 size_t sharpen(const Tuning &tn, std::vector<Vector3> &out, const End &a, const End &b) {
 	const size_t n = out.size(), tip = n / 2;
-	const double den = a.d.x * b.d.z - a.d.z * b.d.x;
-	if (corner_fillet(tn, a.arm, b.arm).mode != CornerMode::FILLET || std::fabs(den) < PARALLEL || tip == 0) return 0;
-	const Vector3 from = out.front(), to = out.back(), w = to - from;
+	if (tip == 0) return 0;
+	const Vector3 from = out.front(), to = out.back();
+	XZ meet;
+	if (!corner_tip(tn, XZ{ from.x, from.z }, XZ{ a.d.x, a.d.z }, XZ{ to.x, to.z }, XZ{ b.d.x, b.d.z }, meet)) return 0;
 	// A mouth may stand past the point, its arm's footway overrunning it: the line goes back along that edge, over paving already there.
-	Vector3 point = from + a.d * float((w.x * b.d.z - w.z * b.d.x) / den);
-	point.y = (from.y + to.y) / 2;
+	Vector3 point(float(meet.x), (from.y + to.y) / 2, float(meet.z));
 	for (size_t k = 0; k < n; k++) out[k] = k <= tip ? from.lerp(point, float(k) / float(tip)) : point.lerp(to, float(k - tip) / float(n - 1 - tip));
 	return tip;
 }
@@ -135,14 +174,23 @@ std::shared_ptr<const NodeShape> node_shape(const RoadEmit &e, int n) {
 		shape->ends = ends_of(e, n);
 		const std::vector<End> &ends = shape->ends;
 		if (is_plate(e.L.shapes.road_shapes, ends)) {
+			const Tuning &tn = e.s.catalog.tune;
 			const RoadNode &nd = e.s.roads.nodes[n];
 			const Vector3 node(float(nd.x), float(nd.y), float(nd.z));
+			const bool transition = ends.size() == 2 && transition_pair(tn, ends[0].arm, ends[1].arm);
+			double widest = 0;
+			for (const End &en : ends) widest = std::max({ widest, en.arm.asph_left, en.arm.asph_right });
 			for (size_t i = 0; i < ends.size(); i++) {
 				const End &a = ends[i], &b = ends[(i + 1) % ends.size()];
 				NodeShape::Corner c;
-				c.in = corner(e.s.catalog.tune, e.L, node, a, a.arm.asph_left, b, b.arm.asph_right);
-				c.out = outside(c.in, a, b, float(a.arm.left - a.arm.asph_left), float(b.arm.right - b.arm.asph_right));
-				c.tip = sharpen(e.s.catalog.tune, c.out, a, b);
+				if (transition) { // the kerb lines of one road carrying on: offsets of its cubic axis, the width eased (transition.ts)
+					c.in = eased(tn, a, a.arm.asph_left, b, b.arm.asph_right);
+					c.out = eased(tn, a, a.arm.left, b, b.arm.right);
+				} else {
+					c.in = capped_corner(a.arm, b.arm) ? capped(tn, node, a, b, widest) : corner(tn, e.L, node, a, a.arm.asph_left, b, b.arm.asph_right);
+					c.out = outside(c.in, a, b, float(a.arm.left - a.arm.asph_left), float(b.arm.right - b.arm.asph_right));
+					c.tip = sharpen(tn, c.out, a, b);
+				}
 				shape->corners.push_back(std::move(c));
 			}
 		}

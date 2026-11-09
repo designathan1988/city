@@ -1,6 +1,6 @@
-## Roundabout (tab Rotatória): a click on vacant ground lays a ring with four
-## approaches; on a junction (or with Shift) the roads inside the circle are cut and join the ring. [ and ] scale the
-## radius; the disc previews it green or red with the core's refusal.
+## Roundabout (its own tab): a click on vacant ground lays a ring of eight nodes with four approaches (the lab's
+## editor/roundabout.ts); near a road it is refused. [ and ] scale the radius; the disc previews it green or red with the
+## core's refusal.
 extends ToolBase
 
 ## [ and ] scale by this (data/game/tools.json roundabout).
@@ -26,7 +26,7 @@ func exit() -> void:
 
 
 func hover(p: Vector3) -> void:
-	var pv: Dictionary = CityStore.query(&"preview_roundabout", [p, radius, Input.is_key_pressed(KEY_SHIFT)])
+	var pv: Dictionary = CityStore.query(&"preview_roundabout", [p, radius])
 	if pv.is_empty():
 		return
 	ctl.preview.show_disc(pv.centre, radius, pv.ok)
@@ -34,7 +34,7 @@ func hover(p: Vector3) -> void:
 
 
 func click(p: Vector3) -> void:
-	var r: Dictionary = CityStore.dispatch(&"roundabout", [p, radius, Input.is_key_pressed(KEY_SHIFT)])
+	var r: Dictionary = CityStore.dispatch(&"roundabout", [p, radius])
 	if not r.get("ok", false):
 		ctl.hint.emit(refusal(r), false)
 		return

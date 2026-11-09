@@ -94,7 +94,7 @@ EditResult set_road_bend(CityState &s, int seg, double height, double at, double
 	const double cx = line.x0 + dx * at - dz / len * height * BEZIER_MID, cz = line.z0 + dz * at + dx / len * height * BEZIER_MID;
 	box.add(cx, cz);
 	Quad{ line.x0, line.z0, height == 0 ? (line.x0 + line.x1) / 2 : cx, height == 0 ? (line.z0 + line.z1) / 2 : cz, line.x1, line.z1 }.at(0.5, mid_x, mid_z);
-	const std::map<int, double> before = squeezes_in(s, box);
+	const Squeezes before = squeezes_in(s, box);
 	const RoadSegment &first = old.front(), &last = old.back();
 	const bool forward = old.size() == 1 || first.b == last.a || first.b == last.b || first.a != last.a;
 	Anchor a, b;

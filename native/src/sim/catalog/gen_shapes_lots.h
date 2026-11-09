@@ -34,7 +34,7 @@ struct LotLandShape {
 };
 
 #define GEN_SHAPE_PAVING(X, XI, XD, XV, XVI) \
-	XD(along_pace_m) XI(round_steps) XD(plate_reach_m) XD(outline_slack_units)
+	XD(along_pace_m) XD(plate_reach_m) XD(outline_slack_units)
 struct PavingShape {
 	SHAPE_DECLARE(GEN_SHAPE_PAVING)
 };

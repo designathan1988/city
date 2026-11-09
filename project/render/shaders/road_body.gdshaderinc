@@ -30,7 +30,6 @@ uniform float kerb_m;
 uniform float verge_m;
 uniform vec3 lane_tone[ROAD_TONE_SLOTS]; // linear, by road class (road_look.h wear_color)
 uniform vec3 footway_tone;
-uniform float plate_blend; // metres of that difference over which two arms share a plate
 uniform float normal_asphalt; // how hard each normal map bends the surface
 uniform float normal_footway;
 uniform float normal_kerb;
@@ -70,8 +69,8 @@ const float LEAST_PIX_M = 0.001; // a pixel's footprint never under this
 const float TOP_NORMAL = 0.7; // a face whose normal's height is over this is a top (within about 45 degrees of up)
 const vec3 CHANNEL_THIRD = vec3(0.333); // a texel's three channels averaged
 
-// The materials are RoadMat; ROAD_MAT_JOIN is a plate between two arms: tones in the alpha and in red, how far from the one to the
-// other in UV2.y.
+// The materials are RoadMat; a junction's plate (ROAD_MAT_PLATE) carries its tone in each vertex, eased from arm to arm along its
+// outline (render/roads/road_junction.cpp), as every strip does.
 
 varying flat int v_mat;
 varying float v_id;
@@ -128,8 +127,6 @@ void fragment() {
 	vec3 base = srgb_to_linear(COLOR.rgb); // the strip colour, sRGB in the mesh; everything below in linear
 	if (v_mat == ROAD_MAT_LANE) {
 		base = lane_tone[int(fract(v_id) * TONE_SLOTS)];
-	} else if (v_mat == ROAD_MAT_JOIN) {
-		base = mix(lane_tone[int(fract(v_id) * TONE_SLOTS)], lane_tone[int(COLOR.r * TONE_SLOTS)], clamp(0.5 + v_pool.y / (2.0 * plate_blend), 0.0, 1.0));
 	} else if (v_mat == ROAD_MAT_FOOTWAY) {
 		base = footway_tone;
 	}
@@ -146,7 +143,7 @@ void fragment() {
 	vec3 nw = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
 	bool up = nw.y > TOP_NORMAL;
 	if (v_mat == ROAD_MAT_PAINT && road_paint < 0.5) discard;
-	if (v_mat == ROAD_MAT_ASPHALT || v_mat == ROAD_MAT_PLATE || v_mat == ROAD_MAT_JOIN || v_mat == ROAD_MAT_PAINT || v_mat == ROAD_MAT_LANE) {
+	if (v_mat == ROAD_MAT_ASPHALT || v_mat == ROAD_MAT_PLATE || v_mat == ROAD_MAT_PAINT || v_mat == ROAD_MAT_LANE) {
 		vec3 t = source_linear(texture(asphalt_map, uv / asphalt_m, near * detail_asphalt.z).rgb);
 		vec2 duv = uv / asphalt_detail_m, ddx = dFdx(duv), ddy = dFdy(duv);
 		if (near > 0.0) {

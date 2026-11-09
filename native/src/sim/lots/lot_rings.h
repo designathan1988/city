@@ -39,7 +39,7 @@ std::vector<XZ> joined_lots(const GenShapes &S, const std::vector<XZ> &a, const 
 // Whether a ring lies deep in another (a corner or the middle of one well inside the other).
 bool lots_overlap(const GenShapes &S, const std::vector<XZ> &a, const std::vector<XZ> &b);
 bool big_enough(const GenShapes &S, const std::vector<XZ> &ring);
-// The ring in triangles by ear clipping, three indices each: a lot may be concave.
+// The ring in triangles on its own points (core/ring_triangles.h), three indices each: a lot may be concave.
 std::vector<int> lot_triangles(const std::vector<XZ> &ring);
 // A piece of a cut lot with its front: the side along the old front fa -> fb, or the side nearest it.
 std::vector<XZ> piece_with_front(const GenShapes &S, const std::vector<XZ> &piece, const XZ &fa, const XZ &fb);

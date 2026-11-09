@@ -6,6 +6,8 @@
 // Applied by Heightfield::recompose (road_shape.cpp) with the journaled modifiers, the greater weight winning.
 #pragma once
 
+#include "core/math.h"
+
 #include <cstdint>
 #include <vector>
 
@@ -19,11 +21,12 @@ struct RoadShape {
 	float half = 0; // half the casing
 	float edge = 0; // half the paving: where the ground beside it starts
 	float rise[2] = { 0, 0 }; // the paving's outer top over the deck, right (0, -u) and left (1, +u)
-	// Past each end (the first station's and the last's) the paving goes round it, as where other roads meet; or stops straight
-	// across (`cut`: the ground past it beside the road, level with the deck it stops at); `disc`: a disc of paving round the end
-	// of that radius (0 none), as a turning bulb's.
+	// Past each end (the first station's and the last's) the paving goes round it, as where a road carries on; or stops straight
+	// across (`cut`: the ground past it beside the road, level with the deck it stops at); or covers the end's node out to its
+	// outline (`outline`, x and z of each point, empty for none: a junction's plate with its corners, transitions and cap, or a
+	// turning bulb, sim/roads/junction.h node_outline), the ground under it pulled below the deck and beside it level with the top.
 	bool cut[2] = { false, false };
-	float disc[2] = { 0, 0 };
+	std::vector<V2> outline[2];
 	uint8_t kind = 0; // RoadShapeKind bits
 	float minx = 0, minz = 0, maxx = 0, maxz = 0; // where it can shape (its stations grown by the widest reach)
 };

@@ -87,7 +87,7 @@ EditResult change_profile_at(CityState &s, double x, double z, int profile, bool
 	if (!mirror_symmetric(np)) along = along_street(s, segs, seg);
 	RoadBox box;
 	for (int sg : segs) box.add(s.roads.segs[sg]);
-	const std::map<int, double> before = squeezes_in(s, box);
+	const Squeezes before = squeezes_in(s, box);
 	std::vector<int> changed;
 	for (int sg : segs) {
 		if (!s.roads.segs[sg].alive) continue;

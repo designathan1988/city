@@ -4,6 +4,7 @@
 #include "sim/terrain/heightfield.h"
 
 #include "core/math.h"
+#include "core/plane_geometry.h"
 
 #include <algorithm>
 #include <cmath>
@@ -63,16 +64,21 @@ void Heightfield::apply_road_shape(const RoadShape &r, int x0, int z0, int x1, i
 			const bool sunken = (r.kind & SHAPE_SUNKEN) != 0 || (manual && natural - surface > 0);
 			// Under the paving the ground is pulled well below the deck, where nothing shows through it; beside it, level with the
 			// paving's outer top on that side, so the terrain meets the paving's edge at its own height and goes on from it. The paving
-			// is the road's strip to its nodes; past an end it is what the node draws there: round it where other roads meet, nothing
-			// past a straight cut (the ground there level with the deck the cut stops at), a bulb's disc round the node.
+			// is the road's strip to its nodes; past an end it is what the node draws there: round it where the road carries on, nothing
+			// past a straight cut (the ground there level with the deck the cut stops at), the node's outline where it has one (a
+			// junction's plate out to its corners' points, a bulb), whatever the road's own strip would say there.
 			// The paving's outline itself is beside it: a corner of the grid on it is one of the seam's, at the paving's top.
 			bool under = n.d < r.edge;
 			float rise = r.rise[n.side];
 			const V2 p(x_of(x), x_of(z));
 			for (int k = 0; k < 2; k++) {
 				const V2 off = p - node[k];
-				if (off.len() < r.disc[k]) under = true;
 				const bool past = off.dot(out[k]) >= 0.f; // beyond the end's own piece, whose nearest point is the node
+				const std::vector<V2> &ring = r.outline[k];
+				if (ring.size() >= 3) {
+					if (inside_ring(ring, p.x, p.y, [](const V2 &v) { return std::make_pair(v.x, v.y); })) under = true;
+					else if (past) under = false;
+				}
 				if (r.cut[k] && past) {
 					under = false;
 					rise = 0.f;

@@ -11,9 +11,7 @@ namespace city {
 
 namespace {
 constexpr double STRAIGHT_ANGLE_COS = -0.9986; // two arms this close to opposite are one street going on
-constexpr double BULB_REACH_PAD = 3, BULB_SEARCH_PAD = 30; // past a bulb's walk, the room it keeps; past that, how far it looks
-constexpr double BULB_REACH_M = BULB_R + BULB_WALK + BULB_REACH_PAD; // a road closer than this to a dead end leaves no room for a bulb
-constexpr double BULB_LOOK_M = BULB_REACH_M + BULB_SEARCH_PAD; // the roads a dead end looks at for its bulb lie within this
+constexpr double BULB_REACH_PAD = 3, BULB_SEARCH_PAD = 30; // past a bulb's round, the room it keeps; past that, how far it looks
 // A float bound that never lies inside the double box it stands for (the hash finds its cells from floats).
 float below(double v) { return std::nextafter(float(v), -INFINITY); }
 float above(double v) { return std::nextafter(float(v), INFINITY); }
@@ -25,7 +23,9 @@ bool RoadNetwork::bulb_clear(int n) const {
 	const RoadSegment &g = segs[s];
 	if (cat->profile(g.profile).rail) return false;
 	if (bulb_retreat(cat->tune, arm_of(g.q, cat->profile(g.profile), g.a == n ? 0 : 1), g.len) <= 0) return false;
-	const double reach = BULB_REACH_M, pad = BULB_LOOK_M;
+	// a road closer than its round and the room it keeps leaves no room for a bulb; the roads it looks at lie within its reach and more
+	const double reach = bulb_round(cat->tune, arm_of(g.q, cat->profile(g.profile), g.a == n ? 0 : 1)) + BULB_REACH_PAD;
+	const double pad = bulb_reach(cat->tune) + BULB_REACH_PAD + BULB_SEARCH_PAD;
 	bool clear = true;
 	for_segments_near(nd.x - pad, nd.z - pad, nd.x + pad, nd.z + pad, [&](int o) {
 		if (!clear || o == s) return;
@@ -56,17 +56,27 @@ bool RoadNetwork::refresh_node(int n, bool arms_changed) {
 	// outline and connectors read every arm)
 	const bool whole = arms_changed || nd.joint != was_joint || nd.bulb != was_bulb;
 	if (arms_changed || nd.joint != was_joint) run_dirty_.insert(run_dirty_.end(), nd.segs.begin(), nd.segs.end()); // the street goes on here, or no more
-	junction_retreats(cat->tune, arms, lens, out, order, nd.bulb);
+	// one road that only changes structure here keeps its outline through a seam (build.ts structureSeam)
+	const bool seam = k == 2 && segs[size_t(nd.segs[0])].profile == segs[size_t(nd.segs[1])].profile &&
+			structure_of(segs[size_t(nd.segs[0])].flags) != structure_of(segs[size_t(nd.segs[1])].flags);
+	junction_retreats(cat->tune, arms, lens, out, order, nd.bulb, seam);
 	if (arms_changed || nd.bulb != was_bulb) // a dead end now, or no more, or its bulb come or gone: the ground under its roads is shaped again
 		for (int s : nd.segs) grade.seg_changed(s);
 	bool changed = whole;
 	for (size_t i = 0; i < k; i++) {
 		RoadSegment &g = segs[nd.segs[i]];
-		double &mouth = g.a == n ? g.retreat_a : g.retreat_b;
-		const bool moved = mouth != out[i];
-		if (moved) grade.seg_changed(nd.segs[i]); // its plate there moved
-		mouth = out[i];
-		if (!moved && !whole) continue;
+		// what this junction wants of the road, then both its mouths against its length (trim.ts clampSegmentTrims): the other
+		// end's mouth may move with this one, and its node is drawn and driven again
+		(g.a == n ? g.want_a : g.want_b) = out[i];
+		const EndTrims t = clamp_segment_trims(cat->tune, g.want_a, g.want_b, g.len);
+		double &mouth = g.a == n ? g.retreat_a : g.retreat_b, &far_mouth = g.a == n ? g.retreat_b : g.retreat_a;
+		const double here = g.a == n ? t.a : t.b, there = g.a == n ? t.b : t.a;
+		const bool moved = mouth != here, far_moved = far_mouth != there;
+		if (moved || far_moved) grade.seg_changed(nd.segs[i]); // its plate there moved
+		mouth = here;
+		far_mouth = there;
+		if (far_moved && log) log->net_node(g.a == n ? g.b : g.a);
+		if (!moved && !far_moved && !whole) continue;
 		changed = true;
 		edited_segs_.push_back(nd.segs[i]);
 		mark_segment(nd.segs[i]);
@@ -82,7 +92,7 @@ bool RoadNetwork::refresh_node(int n, bool arms_changed) {
 void RoadNetwork::settle_shapes() {
 	std::vector<int> own, near;
 	own.swap(shape_nodes_);
-	const double pad = BULB_LOOK_M;
+	const double pad = bulb_reach(cat->tune) + BULB_REACH_PAD + BULB_SEARCH_PAD;
 	for (const ChangedBox &b : shape_boxes_)
 		node_hash.query(below(b.minx - pad), below(b.minz - pad), above(b.maxx + pad), above(b.maxz + pad), [&](int n) { near.push_back(n); });
 	shape_boxes_.clear();

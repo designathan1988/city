@@ -8,7 +8,7 @@
 #define CITY_TUNING_FIELDS(X, XI, XD) \
 	X(sim, tick_hz) X(sim, minutes_per_second) XI(sim, speed_fast) XI(sim, speed_fastest) X(sim, day_start_min) \
 	X(sim, growth_per_s) XI(sim, growth_tries) X(sim, grow_on_reach_m) XI(sim, body_cache_mb) \
-	X(road, min_len_m) X(road, uturn_opening_m) X(road, uturn_radius_m) X(road, snap_m) X(road, snap_end_m) X(road, max_seg_m) X(road, fixed_gap_m) X(road, merge_m) \
+	X(road, min_len_m) X(road, uturn_opening_m) X(road, uturn_radius_m) X(road, snap_end_m) X(road, max_seg_m) X(road, fixed_gap_m) X(road, merge_m) \
 	X(road, sharp_cos) X(road, level_dy_m) XI(road, max_degree) X(road, pick_m) X(road, overlap_share) \
 	X(road, overlap_run_m) X(road, parallel_cos) \
 	X(road, snap_node_px) X(road, snap_pick_px) X(road, snap_land_px) X(road, snap_step_deg) X(road, grid_m) X(road, inner_radius_m) X(road, bend_limit) X(road, bend_gain) \
@@ -36,8 +36,7 @@
 	XD(land, plain_m) XD(land, river_radius_m) XD(land, river_strength_m) XD(land, canal_from_edge_m) XD(land, river_carve) XD(land, river_bed_depth) XD(land, water_fill) XD(land, water_margin_m) XD(land, river_min_depth_m) XD(land, flood_slack_m) XD(land, river_min_fall) XD(land, valley_floor_m) XD(land, valley_width_m) XD(land, open_share) XD(land, lake_grid_m) XD(land, lake_chance) XD(land, lake_edge_max) XD(land, lake_river_gap_m) XD(land, basin_radius_m) XD(land, basin_depth_m) XD(land, basin_reach) XD(land, basin_wobble) XD(land, basin_noise_m) XD(land, basin_noise_step) XD(land, hills_base_m) XD(land, hills_amp_m) XD(land, hills_scale_m) XI(land, hills_octaves) XD(land, bumps_amp_m) XD(land, bumps_scale_m) XI(land, bumps_octaves) XD(land, edge_start) XD(land, edge_ramp) XD(land, range_base_m) XD(land, range_amp_m) XD(land, range_scale_m) XI(land, range_octaves) XI(land, bank_probes) XI(land, smooth_passes) XI(land, descend_steps) \
 		XI(render, occluder_min_storeys) X(render, road_end_m) X(render, props_end_m) X(render, lamp_energy) X(render, lamp_range_m) X(render, lamp_cone_deg) X(render, lamp_cone_fall) X(render, lamp_decay) X(render, lamp_specular) X(render, lamp_reach_m) X(render, lamp_gives_way_from) X(render, lamp_cast_reach_m) X(render, head_energy) X(render, head_range_m) X(render, head_cone_deg) X(render, head_cone_fall) X(render, head_decay) X(render, head_specular) X(render, head_reach_m) X(render, head_gives_way_from) X(render, head_height_m) X(render, head_dip_deg) X(render, building_detail_end_m) X(render, building_bay_end_m) X(render, building_mid_end_m) X(render, building_far_end_m) X(render, detail_error_px) 	XI(render, max_chunk_rebuilds_per_frame) X(render, commit_budget_ms) XI(render, upload_budget_mb) XI(render, ground_cache_mb) XI(render, pose_delay_ticks) \
 	XI(history, max_entries) XI(history, max_mb) \
-	X(roundabout, radius_min_m) X(roundabout, radius_max_m) X(roundabout, approach_m) X(roundabout, entry_merge_m) \
-	X(roundabout, max_arc_deg) X(roundabout, disc_pad_m) \
+	X(roundabout, radius_min_m) X(roundabout, radius_max_m) X(roundabout, approach_m) XI(roundabout, ring_nodes) \
 	X(edit, split_min_m) X(edit, street_cos) XI(edit, max_floors) X(edit, duplicate_min_m) X(edit, duplicate_gap_m) \
 	X(inspect, lane_vehicle_m) X(inspect, min_leg_deg) \
 	X(build, grid_m) X(build, module_m) X(build, wing_modules) X(build, primitive_m) X(build, primitive_depth_m) X(build, max_lift_m) X(build, hung_reach_m) XI(build, primitive_storeys) X(build, primitive_ground_m) X(build, primitive_storey_m) XI(build, roof_mass_storeys) X(build, min_side_m) X(build, max_side_m) X(build, min_storey_m) \
@@ -53,15 +52,19 @@
 	XD(build, flush_pad_m) \
 	XD(lot, corner_take_m) XD(lot, side_reach_m) XD(lot, erase_step_m) XD(lot, erase_reach_m) \
 	XD(lot, corner_margin_m) XD(lot, corner_beyond_m) XD(lot, corner_near) XD(lot, corner_far) \
-	XI(roundabout, refuse_samples) XI(roundabout, water_samples) XI(roundabout, cross_samples) XI(roundabout, bisect_steps) \
-	XI(roundabout, empty_ring_nodes) XI(roundabout, vacant_arms) XD(roundabout, water_clear_m) \
+	XI(roundabout, water_samples) XD(roundabout, water_clear_m) \
 	X(shoot, rider_back_m) X(shoot, rider_push) X(shoot, rider_hit_m) \
 	X(strike, furniture_reach_m) X(strike, splinter_share) X(strike, splinter_chance) \
-	XD(junction, max_retreat) XD(junction, far_hit) XD(junction, opposite_dot) XD(junction, taper_step) \
-	XD(junction, taper_min) XD(junction, taper_slope) XD(junction, width_jump) XD(junction, width_jump_run) \
-	XD(junction, max_bend) XD(junction, kerb_radius_min) XD(junction, corner_miter) XD(junction, bulb_half_max) \
-	XD(junction, bulb_len_min) XD(junction, bent_radius) XD(junction, bevel_pad) XD(junction, taper_min_step) \
-	XD(junction, fillet_share) XD(junction, taper_turn_deg) XD(junction, taper_angle_deg) XD(junction, acute_deg) \
+	XD(junction, max_retreat) XD(junction, taper_min) XD(junction, taper_slope) \
+	XD(junction, kerb_radius_min) XD(junction, corner_miter) XD(junction, bulb_half_max) \
+	XD(junction, bulb_len_min) XD(junction, bevel_pad) XD(junction, taper_min_step) \
+	XD(junction, fillet_share) XD(junction, taper_angle_deg) XD(junction, acute_deg) \
+	XD(junction, drivable_reserve_m) XD(junction, reserve_cap) XD(junction, least_ribbon_m) XD(junction, slab_bump_scale) \
+	XD(junction, slab_bump_add_m) XD(junction, slab_bump_cap) XI(junction, slab_attempts) XD(junction, slab_margin_m) \
+	XD(junction, transition_bend_deg) XD(junction, transition_radius_cap) XD(junction, transition_turn_max_deg) \
+	XD(junction, transition_step_m) XI(junction, transition_samples_min) XD(junction, seam_run_m) XI(junction, cap_steps) \
+	XD(junction, bulb_radius_m) XD(junction, bulb_return_m) XD(junction, bulb_return_min_m) XD(junction, bulb_clear_m) \
+	XD(junction, bulb_tail_m) XD(junction, square_min_deg) XD(junction, square_reach_m) \
 	X(likeness, form_apart) X(likeness, roof_apart) X(likeness, storeys_apart) X(likeness, storeys_span) \
 	X(likeness, colour_span) X(likeness, distance_weight) X(likeness, front_row_m) X(likeness, whole_share) \
 	X(likeness, columns) \
