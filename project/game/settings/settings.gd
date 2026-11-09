@@ -66,7 +66,7 @@ func _ready() -> void:
 	level = QualityTier.level_of(preset, hardware)
 	_quality_governor = FrameGovernor.Quality.new(t.governor, t.levels, level, hardware)
 	_resolution = FrameGovernor.Resolution.new(t.dynamic_resolution)
-	Engine.max_fps = fps_limit
+	Engine.max_fps = _frame_cap()
 
 
 ## Tests and captures keep the full cap: what they measure is the frame, and their window seldom has the focus.
@@ -76,7 +76,12 @@ func _notification(what: int) -> void:
 		Engine.max_fps = int(DataTables.game("settings").frame_cap.background_fps)
 	elif what == NOTIFICATION_APPLICATION_FOCUS_IN:
 		_focus = true
-		Engine.max_fps = fps_limit
+		Engine.max_fps = _frame_cap()
+
+
+## The player's cap; none in a test run in simulated time (GameFlow.simulated_time): a cap would only make it wait on the wall clock.
+func _frame_cap() -> int:
+	return 0 if GameFlow.simulated_time else fps_limit
 
 
 func _save() -> void:
@@ -185,7 +190,7 @@ func set_dynamic_resolution(on: bool) -> void:
 func set_fps_limit(fps: int) -> void:
 	fps_limit = fps
 	if _focus:
-		Engine.max_fps = fps
+		Engine.max_fps = _frame_cap()
 	changed.emit()
 	_save()
 

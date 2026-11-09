@@ -1037,3 +1037,14 @@ town view lost its far shadows); keeping stuck cars in sight (yard_test lost its
 **Also:** `memory_census` probe (heaps, mimalloc, the core's largest owners), the live driver's frame_times/memory/census steps.
 **Verification:** both DLLs; quick 56/58 (photos_check differs by 4-269 pixels between two runs of the same build: the capture is not
 deterministic, its own cause to fix); gates of the changed files OK; surface_data_test, people_test, yard_test pass.
+
+## 2026-11-09: tests in simulated time, the photo comparison removed
+- Problem: every Godot test paced its frames to the wall clock (60 Hz cap and vsync), so a test lasted its frame count times 16.7 ms
+  whatever its work cost (camera_input_test 28 s). Cause: the `godot_test` template ran the engine in real time.
+- Fix: `tools/tasks/suites.json` `test_fps` (60): `--fixed-fps`, `--disable-vsync`, `--max-fps 0`; `GameFlow.simulated_time` says a run is
+  one, and `Settings._frame_cap` keeps no cap under it. Waits on threads of their own (save, mesh jobs, dissolves) moved from frame counts
+  to the state with a real-time guard (`project/tests/state_wait.gd`). camera_feel_test and lab_test measure real frames: `test_fps -1`.
+  camera_input_test 28 s -> 10-20 s.
+- The golden photo comparison (photos_check, photos_bless, photodiff.py) was removed: Godot 4.7 draws with the ubershader until a
+  specialised pipeline is ready on its worker threads, so two runs of one tree give two pictures; photos are taken to be read.
+- Gate RAIZ_LIMPA read the disk (`os.listdir`) against the gates' scope (`scope.py`: git's view); it now reads the listed files.

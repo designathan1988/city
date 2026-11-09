@@ -8,7 +8,7 @@ const SEED := 1
 const STREET_PITCH := 18.0
 const STREET_DISTANCE := 60.0
 const SETTLE_FRAMES := 60
-const SETTLE_LIMIT := 600
+const SETTLE_LIMIT_S := 10.0 # real time the mesh jobs may take (600 frames of the old 60 Hz loop): StateWait
 const WITH_LIGHTS := "high"
 const WITHOUT_LIGHTS := "low"
 ## The traffic put on the streets before the headlamps are counted: 30 s of the city, stepped by the test.
@@ -73,9 +73,6 @@ func _handed_over() -> Vector2:
 func _settled() -> void:
 	for i in SETTLE_FRAMES:
 		await get_tree().process_frame
-	var left := SETTLE_LIMIT
-	while left > 0 and CityStore.query(&"render_pending") > 0:
-		left -= 1
-		await get_tree().process_frame
+	await StateWait.drawn(get_tree(), SETTLE_LIMIT_S)
 	for i in SETTLE_FRAMES:
 		await get_tree().process_frame

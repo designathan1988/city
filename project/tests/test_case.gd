@@ -8,7 +8,7 @@ extends Node
 ## The tests' own files (a model written, a damaged save, a report): a folder of their own, never the player's user://.
 const SCRATCH := "user://tests"
 ## The most frames a save on the core's thread may take before the test calls it stuck.
-const SAVE_FRAMES := 3000
+const SAVE_LIMIT_S := 50.0 # a save on the core's thread may take this much real time (3000 frames of the old 60 Hz loop) before it is stuck
 
 var failures := 0
 var checks := 0
@@ -45,7 +45,7 @@ func ticks(count: int) -> void:
 
 
 ## The city written to `slot` (the tests' saves folder, SaveSlots), or with "" to its own slot as the Menu's Save does, and the
-## outcome. A save on the core's thread is waited for until its `saved` comes; a refused one returns at once. Past SAVE_FRAMES
+## outcome. A save on the core's thread is waited for until its `saved` comes; a refused one returns at once. Past SAVE_LIMIT_S
 ## the wait is a failure, not a hang.
 func save(slot := "") -> Dictionary:
 	var outcome := {}
@@ -54,13 +54,10 @@ func save(slot := "") -> Dictionary:
 			outcome.merge(result)
 	CityStore.saved.connect(keep)
 	var started: Dictionary = CityStore.saves.save_city() if slot.is_empty() else CityStore.saves.save_game(slot)
-	var waited := 0
-	while outcome.is_empty() and started.get("pending", false) and waited < SAVE_FRAMES:
-		await get_tree().process_frame
-		waited += 1
+	await StateWait.until(get_tree(), func() -> bool: return not outcome.is_empty() or not started.get("pending", false), SAVE_LIMIT_S)
 	CityStore.saved.disconnect(keep)
 	if outcome.is_empty() and started.get("pending", false):
-		check(false, "the save of %s never ended (%d frames)" % [slot, waited])
+		check(false, "the save of %s never ended (%.0f s)" % [slot, SAVE_LIMIT_S])
 	return outcome if not outcome.is_empty() else started
 
 

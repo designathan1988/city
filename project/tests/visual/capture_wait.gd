@@ -3,8 +3,8 @@
 class_name CaptureWait
 extends RefCounted
 
-## Most frames waited for the drawing to finish; a photo that leaves at this limit is incomplete.
-const BUILD_FRAMES := 400
+## Most real time waited for the drawing to finish (400 frames of the old 60 Hz loop): a photo that leaves at this limit is incomplete.
+const BUILD_LIMIT_S := 6.7
 ## The frozen photo: frames between two looks at the picture, and how many looks it may take to hold still (a pipeline compiled
 ## in the background replaces the ubershader's drawing on a frame the machine decides: Godot docs, pipeline compilations).
 const STEADY_FRAMES := 16
@@ -15,22 +15,21 @@ static var incomplete := 0
 
 
 ## Waits `settle` frames (the world notices the camera and queues what it wants), then until nothing is left to draw.
-## Returns the frames of the second wait. Every wait is logged, and a photo that leaves with work pending is counted: a
+## Returns the real time of the second wait, ms. Every wait is logged, and a photo that leaves with work pending is counted: a
 ## building not yet drawn is a photo that lies.
 static func until_drawn(host: Node, settle: int, label: String) -> int:
 	var tree := host.get_tree()
 	for i in settle:
 		await tree.process_frame
-	var waited := 0
-	while CityStore.query(&"render_pending") > 0 and waited < BUILD_FRAMES:
-		await tree.process_frame
-		waited += 1
+	var started := Time.get_ticks_msec()
+	await StateWait.drawn(tree, BUILD_LIMIT_S)
+	var waited := Time.get_ticks_msec() - started
 	var pending: int = CityStore.query(&"render_pending")
 	var cost: Dictionary = CityStore.query(&"render_cost")
-	print("wait: %s frames=%d pending=%d want=%d unmet=%d asked=%d done=%d budget=%d backlog=%s replaced=%d" % [label, waited, pending,
+	print("wait: %s ms=%d pending=%d want=%d unmet=%d asked=%d done=%d budget=%d backlog=%s replaced=%d" % [label, waited, pending,
 			cost.b_want, cost.b_unmet, cost.b_requested, cost.b_done, cost.budget_left, cost.backlog, cost.jobs_replaced])
 	if pending > 0:
-		mark_incomplete("%s came out with %d drawing jobs pending after %d frames" % [label, pending, waited])
+		mark_incomplete("%s came out with %d drawing jobs pending after %d ms" % [label, pending, waited])
 	return waited
 
 

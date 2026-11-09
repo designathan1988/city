@@ -6,7 +6,7 @@ extends TestCase
 const TOWN_MAP := 0
 const SEED := 1
 const SETTLE_FRAMES := 2
-const BUILD_FRAMES := 400
+const BUILD_LIMIT_S := 6.7 # real time the mesh jobs may take (400 frames of the old 60 Hz loop): StateWait
 const WARMUP_TICKS := 2400
 const MIN_DRAWN_VEHICLES := 1
 const MIN_DRAWN_PEOPLE := 1
@@ -72,12 +72,9 @@ func _check_amber_rule() -> void:
 
 
 func _wait_render() -> void:
-	var waited := 0
 	await _frames(SETTLE_FRAMES)
-	while CityStore.query(&"render_pending") > 0 and waited < BUILD_FRAMES:
-		await _frames(1)
-		waited += 1
-	print("build frames: ", waited, " pending at the end: ", CityStore.query(&"render_pending"))
+	await StateWait.drawn(get_tree(), BUILD_LIMIT_S)
+	print("pending at the end of the build wait: ", CityStore.query(&"render_pending"))
 
 
 func _frames(n: int) -> void:

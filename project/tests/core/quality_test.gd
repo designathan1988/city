@@ -17,7 +17,7 @@ const WILD_PAST_M := 500.0
 const STREET_PITCH := 8.0
 const PERSON_DISTANCE := 18.0
 const PERSON_FRAMES := 8
-const SETTLE_LIMIT := 1500
+const SETTLE_LIMIT_S := 25.0 # real time the mesh jobs may take (1500 frames of the old 60 Hz loop): StateWait
 const FAR_DISTANCE := 5000.0
 const OTHER_GPUS := ["NVIDIA GeForce RTX 4090", "NVIDIA GeForce RTX 3060", "AMD Radeon RX 6600", "Intel(R) UHD Graphics 630", "Unknown"]
 
@@ -65,10 +65,7 @@ func _people_close(rig: CityCamera) -> int:
 ## Until everything asked of the renderer is drawn.
 func _settled() -> void:
 	await _frames(SETTLE_MIN)
-	var left := SETTLE_LIMIT
-	while left > 0 and CityStore.query(&"render_pending") > 0:
-		left -= 1
-		await get_tree().process_frame
+	await StateWait.drawn(get_tree(), SETTLE_LIMIT_S)
 	await _frames(SETTLE_MIN)
 
 

@@ -145,20 +145,6 @@ O que falta fazer, por área.
     the upgrade from 4.7.
   - `ui.stats.tip` shows `{speed}` as "—": the top bar never fills it; the key's text loses the field when the translation tables
     are next edited (held while another session edits them).
-  - The frozen photos keep run-to-run pixels (`00-cidade`, `02-rua`: 1 to 7 single pixels, 1 level, one of 11; log/review.md §6.9):
-    Godot draws with the ubershader until a specialized pipeline is compiled in the background and gives no signal when it is, so
-    `photos_check` fails on an unchanged tree. Until a completion signal exists (an engine change), a change's photos are judged
-    against the states the unchanged tree gives over several runs.
-    Seen again 2026-11-08 (21:40 to 22:10): 8 pixels by 1 to 3 levels on the wires over a facade in 02-rua and 03-rua_noite (box
-    837..1168, 260..285) and a strip of wires in 00-cidade (1191..1268, 253..259); two runs of one binary differ. Within one run the
-    same view 600 frames later is identical, so a pipeline does not land during a run's photos; the wires' sway is not it (no wind
-    there); the visibility ranges' hysteresis margins are not it (with no margin two runs still differed; that change was undone).
-    A first reading, the binary's memory layout, was wrong (a5f6f33e's template form of `for_drawn_chunks` matched by chance).
-    Decided by `prop_buffer_probe` (each furniture chunk's pole and wire buffers read back from the GPU, by MD5): in two runs whose
-    photos differ on those pixels, all 35 chunks' buffers are byte-equal. What the game sends is the same; the difference is the
-    GPU's side (the pipeline state each run draws with, as above), not this code. Not Godot's disk pipeline cache either: with
-    `rendering/rendering_device/pipeline_cache/enable` off, three runs still gave two pictures (00-cidade's wire strip).
-    Godot 4.7 has no setting that turns the ubershaders off (docs: pipeline_compilations, ProjectSettings).
   - The frozen photos (`photos`, quick) once stopped after "city opened" and were killed at their 90 s deadline (2026-11-08 11:34,
     with the suite in parallel; the terrain's look change); alone they passed in 10 s, byte-equal to known states. The scene waits
     in `CaptureWait.until_drawn` on the render's pending work: to read there and in the render's pending counters which one

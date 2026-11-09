@@ -16,8 +16,8 @@ Antes de começar, leia o registro da sua linha. Ao fechar o tema, atualize-o co
 3. **Compreenda:** ligue problema, causa e solução pelo código e, quando houve, pela pesquisa.
 4. **Planeje** a correção da causa, com dono único. O esforço não entra na decisão, nem para menos nem para mais.
 5. **Codifique** sem tentativa e erro: se não deu certo, volte à leitura até entender.
-6. **Verifique o que a mudança alcança**, uma vez (tabela em "Execução e verificação"). Fotos: `photodiff.py` diz onde olhar,
-   cada mudança é explicada pela causa, sem perda visual.
+6. **Verify what the change reaches**, once (the verification table below). Photos: every change is explained
+   by its cause, with no visual loss.
 7. **Pare e confira:** passou ou deu erro? Se deu erro, volte ao passo 1 com o que o erro mostrou.
 
 Ao fechar o tema, o registro da linha recebe os problemas, as fontes, o raciocínio, o plano e os arquivos criados, alterados
@@ -50,7 +50,7 @@ e apagados.
 |---|---|
 | Tool under `tools/` | its own tests and `run_gates.py --file` on the changed files |
 | GDScript, cena ou dados | `quick.sh <cenas ligadas>` e os gates dos arquivos mudados |
-| C++ | as duas DLLs e `quick.sh <cenas ligadas>` |
+| C++ | while working: the debug DLL only (`build.sh dll-debug`, seconds: no LTO, incremental) and the tests of the area (`cli.py run fast <scene>`); both DLLs (the release one links the whole program with ThinLTO and the profile: minutes) only at the theme's close |
 | Fechamento do tema, antes do push | `quick.sh --ready`, `run_gates.py` completo e o executável |
 
 - Prova visual, só em mudança visual: do elemento, de perto e de vários ângulos.
@@ -114,7 +114,6 @@ e apagados.
 | Android library and APK | `tools/build/android.sh core`, then `tools/build/android.sh export` (`dist/android/Roadcraft.apk`; tools from `C:/Projects/toolchains`, release keystore from `KEYSTORE_ENV`) |
 | Captures | `tools/build/build.sh capture [folder]` (= `cli.py run capture`, hidden, one task per plan) |
 | Olhar o jogo por um plano | `godot --path project --resolution 1920x1080 res://tests/visual/look.tscn -- --no-flow --plan=<json> --capture-dir=<pasta>` |
-| Photo difference | `python tools/build/photodiff.py <before> <after> <out>` (a missing side, an empty set or any changed pixel fails); its tests: `python -m unittest discover tools/build/tests` |
 | Onde cada thread gasta | `python tools/analysis/sampler.py --hidden --cmd "<godot> --path project <cena>" --seconds 30 --symbolizer <llvm-symbolizer>` |
 | Causes by the code's shape | `python tools/tasks/cli.py run causes` (`tools/analysis/causes.py` under a deadline) |
 | Causes by the architecture | `python tools/tasks/cli.py run arch_scan`, then `python tools/analysis/arch.py status`, `next`, `explain <id>`, `predict <id>`, `done <id>`, `selfcheck` (`--only x` redoes only what failed; the queue in `dist/arch/queue.json`) |
@@ -165,7 +164,7 @@ the same sources give the same bytes, so a rebuild of unchanged sources leaves t
 - `gates/`: regras verificadas, `rules.json`, `owners.json`, `schemas/`.
 - `tasks/`: the one orchestration owner of every support tool (tasks as data: inputs keyed by content, a deadline each, a verdict;
   parallel pool, cache in `dist/cache/tasks`, Job Object kill, hidden desktop; `suites.json`; a Godot task keyed by what it can load, `{loads}`).
-- `build/`: `build.sh`, `android.sh` (the Android library and APK), `quick.sh` (a thin call of `tools/tasks`), `pgo.sh`, `photodiff.py`, `free_dll.sh`,
+- `build/`: `build.sh`, `android.sh` (the Android library and APK), `quick.sh` (a thin call of `tools/tasks`), `pgo.sh`, `free_dll.sh`,
   `check_scripts.gd` (scripts that do not compile), `shader_contracts.py` (what shaders, core and scripts share, from its JSON).
 - `analysis/`: `sampler.py` with `sampler_report.py`, `unwind.py` and `win_process.py`, `causes.py` with `detectors.py` and `code_parse.py`,
   `arch.py` and `arch/` (the architecture analyser), `arch_eval/` (answer keys only its selfcheck reads).

@@ -1,6 +1,11 @@
 {
  "_doc": "The support tools' work as data, run by tools/tasks/cli.py (schema: tools/gates/schemas/suites.schema.json). A task is a process with its own deadline (timeout_s), the inputs and extra strings that key its result, the outputs restored on a cache hit, the tasks it runs after, its resources and its verdict. {name} is a var (vars, versions, or the built-in root, python); an inputs element @name is a set; a suite element @name is a group or another suite; an argv element {changed_list:--files-from} expands to --files-from and a file listing the changed files (the task is dropped when none changed) and {changed} in inputs to the changed files; {loads} in inputs is every file the Godot run of the task's argv may load (tools/tasks/godot_deps.py: the scene, the plan, the project settings, the extensions, and every script, scene, shader, table and asset they reach), and such a run is --verbose so its verdict fails on a resource it loaded outside them. Every Godot task loads the debug DLL: it runs after build_debug, whose output that DLL is, and the DLL is among what it loads (bin/citycore.gdextension), so a scene reruns exactly when what it loads changed.",
  "vars": {
+  "test_fps": {
+   "doc": "the tests' simulated time: each frame moves the game 1/test_fps s (Godot --fixed-fps, real-time synchronisation off) and frames run uncapped (--disable-vsync, --max-fps 0, Settings keeps no cap under it): a test takes the time its work takes, never 16.7 ms a frame; a test that measures real frame times sets -1 (wall time) on its item",
+   "windows": "60",
+   "posix": "60"
+  },
   "godot": {
    "doc": "Godot 4.7 console binary",
    "env": "GODOT",
@@ -192,30 +197,11 @@
    "fresh": true,
    "verdict": "godot",
    "resources": {"cores": 3, "locks": {"dll": "shared"}}
-  },
-  "photos_check": {
-   "doc": "the frozen photos against their golden, bit for bit",
-   "argv": ["{python}", "tools/build/photodiff.py", "dist/quick/golden_photos", "dist/quick/photos", "dist/quick/photos_diff"],
-   "timeout_s": 120,
-   "inputs": ["dist/quick/golden_photos", "dist/quick/photos", "tools/build/photodiff.py"],
-   "after": ["photos"],
-   "outputs": ["dist/quick/photos_diff"],
-   "fresh": true,
-   "hint": "a change meant to move the photos: run with --bless"
-  },
-  "photos_bless": {
-   "doc": "--bless: the photos of this run become the golden",
-   "call": "tasks.steps:copy",
-   "spec": {"from": "dist/quick/photos", "to": "dist/quick/golden_photos"},
-   "timeout_s": 120,
-   "inputs": ["dist/quick/photos"],
-   "after": ["photos"],
-   "outputs": ["dist/quick/golden_photos"]
   }
  },
  "templates": {
   "godot_test": {
-   "argv": ["{godot}", "--verbose", "--path", "project", "--rendering-method", "{renderer}", "res://{scene}.tscn", "--", "--no-flow"],
+   "argv": ["{godot}", "--verbose", "--path", "project", "--rendering-method", "{renderer}", "--fixed-fps", "{test_fps}", "--disable-vsync", "--max-fps", "0", "res://{scene}.tscn", "--", "--no-flow"],
    "hidden": true,
    "inputs": ["{loads}", "!@release_libraries"],
    "extra": ["{godot_version}"],
@@ -290,6 +276,7 @@
     },
     {
      "name": "camera_feel_test",
+     "test_fps": "-1",
      "scene": "tests/core/camera_feel_test",
      "renderer": "gl_compatibility",
      "timeout_s": 600
@@ -300,8 +287,8 @@
      "renderer": "gl_compatibility",
      "timeout_s": 600
     },
-    {"name": "lab_test", "scene": "tests/core/lab_test", "renderer": "gl_compatibility", "timeout_s": 600},
-    {"name": "lab_test@forward_plus", "scene": "tests/core/lab_test", "renderer": "forward_plus", "timeout_s": 600},
+    {"name": "lab_test", "test_fps": "-1", "scene": "tests/core/lab_test", "renderer": "gl_compatibility", "timeout_s": 600},
+    {"name": "lab_test@forward_plus", "test_fps": "-1", "scene": "tests/core/lab_test", "renderer": "forward_plus", "timeout_s": 600},
     {
      "name": "boot_refusal_test",
      "scene": "tests/core/boot_refusal_test",
@@ -421,8 +408,8 @@
  },
  "suites": {
   "quick": {
-   "doc": "what a change asks for: scripts, the shader contracts, the generated furniture table, debug DLL, gates of the changed files, every scene whose inputs moved, the digest and the frozen photos against their goldens",
-   "tasks": ["import", "scripts", "shader_contracts", "furniture_table", "build_debug", "gates_changed", "@test_scenes", "digest", "photos", "photos_check"],
+   "doc": "what a change asks for: scripts, the shader contracts, the generated furniture table, debug DLL, gates of the changed files, every scene whose inputs moved, the digest, and the frozen photos made for the eye, never held to old ones (a golden proves nothing of what is right; and Godot draws with its ubershader until the specialised pipeline compiled in the background is ready, so two runs differ by a few pixels: render_forward_clustered.cpp, pipeline_hash_map_rd.h)",
+   "tasks": ["import", "scripts", "shader_contracts", "furniture_table", "build_debug", "gates_changed", "@test_scenes", "digest", "photos"],
    "variants": {
     "ready": {
      "doc": "the check before a commit: also the release DLL; when all of it holds it leaves dist/quick/passed",
@@ -431,8 +418,8 @@
     },
     "all": {"doc": "the full run: also the release DLL, and nothing taken from the cache", "add": ["build_release"]},
     "bless": {
-     "doc": "the digest and the frozen photos of this run become the goldens (only with a visual change that is understood)",
-     "swap": {"digest": "digest_bless", "photos_check": "photos_bless"}
+     "doc": "the digest of this run becomes the golden (only with a change of the state that is understood)",
+     "swap": {"digest": "digest_bless"}
     }
    }
   },
