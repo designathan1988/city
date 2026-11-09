@@ -137,7 +137,8 @@ bool AgentRenderer::build_meshes(const DataValue &t, PackedStringArray &errors) 
 			else if (i == int(VehicleType::BUS)) seats = build_bus(mb, d, sides, l, trim);
 			else seats = build_truck(mb, d, sides, l, trim);
 			wheel_r_[i] = agent_tyre(d["tyre"]).x; // the motorbike's: its rear wheel
-			wheelbase_[i] = d["wheelbase_m"].f();
+			// a bus's and a truck's are a list, axle to axle from the front: its steering axle's is the first
+			wheelbase_[i] = i == int(VehicleType::BUS) || i == int(VehicleType::TRUCK) ? d["wheelbase_m"][0].f() : d["wheelbase_m"].f();
 			if (level == CABIN_LEVEL && (i == int(VehicleType::MOTO) || i == int(VehicleType::BICYCLE))) {
 				astride_[i] = true;
 				seats_[i].push_back({ agent_v3(d["rider"]["hip"]), i == int(VehicleType::MOTO) ? SeatPose::MOTO : SeatPose::BICYCLE, DRIVER_SEAT });

@@ -93,11 +93,14 @@ KerbDoors door_places(const CityState &s, const Vehicle &v) {
 	return kerb_door_at(s, v, s.catalog.traffic.classes[int(v.type)].length * s.catalog.traffic.kerb_door_along);
 }
 
-// Nobody in the door's swing or on the footway spot, and no vehicle along its side.
+// Nobody in the door's swing or on the footway spot, no street piece on that spot (whoever steps out walks onto it), and no
+// vehicle along its side.
 bool room_to_open(CityState &s, const Vehicle &v, const KerbStop &k) {
 	const TrafficParams &p = s.catalog.traffic;
 	const KerbDoors at = door_places(s, v);
 	if (k.errand != Errand::PICK && (walker_within(s, at.door.x, at.door.y, p.kerb_door_clear_m) || walker_within(s, at.foot.x, at.foot.y, p.kerb_foot_clear_m))) return false;
+	const DirSeg &d = s.traffic.g.ds[size_t(v.ds)];
+	if (on_furniture(s, d.seg, kerb_side(d), at.foot.x, at.foot.y, p.ped_body_m)) return false;
 	for (int id : s.traffic.lane_vehicles[size_t(v.ds) * MAX_LANES + v.lane]) {
 		const Vehicle &o = s.traffic.vehicles[size_t(id)];
 		if (&o != &v && std::fabs(o.s - v.s) < p.kerb_door_clear_m + p.classes[int(o.type)].length) return false;
@@ -147,7 +150,7 @@ void plan(CityState &s, int id) {
 	if (v.conn >= 0 || v.off || v.ds < 0 || v.lane != 0 || v.lc_off != 0 || v.stop_at >= 0) return;
 	const DirSeg &d = t.g.ds[size_t(v.ds)];
 	if (!has_footway(s, d) || v.ri + 1 >= v.route.len) return;
-	const float brake = v.v * v.v / (2 * p.classes[int(v.type)].b);
+	const float brake = v.v * v.v / (2 * driver_of(s, v).b);
 	const float earliest = std::max(v.s + brake + p.kerb_plan_margin_m, p.kerb_end_clear_m), latest = d.len - p.kerb_end_clear_m;
 	if (latest - earliest < p.kerb_stretch_m) return;
 	float at = earliest + (latest - earliest) * p.kerb_stop_share;
