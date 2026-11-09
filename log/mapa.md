@@ -489,6 +489,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `project/tests/visual/capture_roads.gd` · `project/tests/visual/capture_roads.tscn` — roads up close on open ground (crossings, T, end, curve) and the tool in use, at fixed angles
 - `project/tests/visual/capture_transit.gd` · `project/tests/visual/capture_transit_site.gd` — stop, station and track in the captures; the street with the other side free, where the recorded poses hold
 - `project/tests/visual/capture_people.gd` — people in the captures: the couple, the family, the child, the elderly, someone leaving a door, someone entering and someone waiting at the kerb, and a crowd under the real shadows
+- `project/tests/visual/capture_pedtraffic.gd` · `project/tests/visual/capture_pedtraffic.tscn` — the walkers' traffic seen working: people over a zebra between junctions when the traffic leaves a gap, at and over a lit junction on the walk (and at night), the busiest sidewalk, people fleeing a shot; several angles each, with the counts checked
 - `project/tests/visual/capture_pair.gd` · `project/tests/visual/capture_pair.tscn` — photos from a list of fixed views; with `--buildings=` chosen buildings in a recorded pose, and a view with `inside` cuts one of them open
 - `project/tests/visual/capture_money.gd` · `project/tests/visual/capture_money.tscn` — money through real input, in fixed steps and camera
 - `project/tests/visual/capture_lots.gd` — the lab lots placed on open ground, one photo each (`--only=lotes`)

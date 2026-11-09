@@ -39,8 +39,9 @@ bool held_by_fright(const TrafficState &t, Pedestrian &w); // stopped by what it
 void turn_from_bang(CityState &s, Pedestrian &w); // done with what it heard: if it was heading for the bang, back the other way
 void flee_on(CityState &s, Pedestrian &w, int n); // frightened, at node n: by the street that leads furthest off
 void ease_facing(const TrafficState &t, const TrafficParams &p, Pedestrian &w, float dt); // round to the bang, and back to its way, no faster than a body turns
-// ped_wounds.cpp: the share of its own pace a hurt walker keeps (1 unhurt).
-float wounded_pace(const BlastParams &b, const Pedestrian &w);
+// ped_wounds.cpp: how fast it goes against its own pace, running from a bang (`fleeing`) or not, hurrying over a zebra
+// (`crossing`) or not, as its wound lets it.
+float pace_gain(const Catalog &c, const Pedestrian &w, bool fleeing, bool crossing);
 
 // ped_demand.cpp: how many people the land use puts on its street now, by kind of place
 struct PeopleNow {

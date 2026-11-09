@@ -43,6 +43,7 @@ namespace city {
 	X(gov_floor) X(gov_rate) \
 	X(ped_route_max_expanded) X(kerb_stand_m) X(ped_courtesy_s) \
 	X(ped_critical_gap_s) X(ped_span_reach_m) X(walk_cost_extra_s) X(ped_routes_per_step) \
+	X(ped_crossing_pace) X(ped_rush_light) X(ped_rush_leg) X(ped_rush_grave) \
 	X(ped_stripe_m) X(ped_body_m) X(ped_margin_m) X(ped_look_m) X(ped_gap_m) X(ped_headway_s) X(ped_lateral_share) \
 	X(ped_lateral_cost) X(ped_keep_right_cost) X(ped_stripe_gain_m) X(ped_stripe_hold_s) X(ped_accel) \
 	X(kerb_wait_half_m) X(kerb_wait_gap_m) X(kerb_wait_rows) \
