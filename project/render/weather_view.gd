@@ -145,7 +145,7 @@ func strike(at: Vector3) -> void:
 	node.mesh = _bolt_mesh(top, at)
 	node.material_override = _bolt_mat
 	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	node.extra_cull_margin = _d.bolt_height_m
+	node.extra_cull_margin = up # a bolt reaches as far as it is tall
 	add_child(node)
 	_bolts.append({"age": 0.0, "node": node})
 	var cam := get_viewport().get_camera_3d()
