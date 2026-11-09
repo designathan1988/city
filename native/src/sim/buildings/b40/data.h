@@ -100,7 +100,9 @@ struct Data {
 	// downtown of many glass towers).
 	std::vector<GrownDesign> grown_designs;
 	float grown_share[KIND_COUNT] = {};
-	float grown_least_storey_m = 0; // a design stands smaller on a smaller lot only while its storeys keep this floor-to-floor
+	// a design stands smaller on a smaller lot only while its storeys keep this floor-to-floor: the body rules' least storey (tuning
+	// build.min_storey_m, set with the zones: buildings_loader.h set_zone_kinds), so a design grown smaller is never a body they refuse
+	float grown_least_storey_m = 0;
 
 
 	// A named colour of "colors" (magenta when missing: the loader rejects a table without the names asked for).

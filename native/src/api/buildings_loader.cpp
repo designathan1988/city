@@ -225,12 +225,12 @@ void openings(DataReader r, const Dictionary &op, Data &d) { // bay -> [w_in, w_
 }
 // The designs of their own a lot grows: each [design, kind, weight], its lot document (folder/<design>.json, the shelf's) read into a
 // body and brought from the documents' unit to metres; the share of each kind's lots that stand one, [kind, share]. A design that
-// cannot be read is an error at startup.
+// cannot be read is an error at startup. How much smaller a design may stand on a smaller lot is not this table's: it is the body
+// rules' least storey, set with the catalogue below (set_zone_kinds: d.grown_least_storey_m = catalog.tune.build_min_storey_m).
 void grown_designs(DataReader r, const Dictionary &g, Data &d) {
 	enum { NAME, KIND, WEIGHT, ROW_SIZE };
 	const String folder = r.text(g, "folder");
 	const float unit = float(r.num(g, "unit"));
-	d.grown_least_storey_m = float(r.num(g, "least_storey_m"));
 	const Array shares = r.list(g, "shares");
 	for (int i = 0; i < shares.size(); i++) {
 		const Array pair = r.in("shares").list_at(shares, i, PAIR);
@@ -296,6 +296,7 @@ bool load_buildings(const Dictionary &table, Data &d, PackedStringArray &errors)
 
 bool set_zone_kinds(const Catalog &catalog, Data &d, PackedStringArray &errors) {
 	const int64_t before = errors.size();
+	d.grown_least_storey_m = catalog.tune.build_min_storey_m; // the body rules' own least storey (data.h)
 	d.zone_kind.assign(ZONE_CODES, KIND_HOUSE);
 	d.zone_low_shop.assign(ZONE_CODES, false);
 	for (int code = 0; code < ZONE_CODES; code++) {

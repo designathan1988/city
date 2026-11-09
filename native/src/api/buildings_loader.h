@@ -14,7 +14,8 @@
 namespace city {
 
 bool load_buildings(const godot::Dictionary &t, b40::Data &d, godot::PackedStringArray &errors);
-// Each zone's building kind (zones.json "building") and whether it is a low shop street (commercial at low density), into the tables.
+// Each zone's building kind (zones.json "building") and whether it is a low shop street (commercial at low density), into the tables;
+// and what of the tables the catalogue owns (the least storey a grown design may stand at: tuning build.min_storey_m).
 bool set_zone_kinds(const Catalog &catalog, b40::Data &d, godot::PackedStringArray &errors);
 // The names of the table, for the tables that build on it: an unknown name is an error on the caller's reader (its path).
 uint8_t bay_named(const std::string &s, DataReader &r);
