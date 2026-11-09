@@ -5,6 +5,7 @@
 #include "core/grid.h"
 #include "core/slot_ids.h"
 #include "sim/buildings/b40/data.h"
+#include "sim/buildings/b40/lot_site.h"
 #include "sim/state/change_log.h"
 
 #include <cstdint>
@@ -33,6 +34,7 @@ struct Building {
 	uint8_t corner = 0; // b40::LotCorner: the side of the lot on a second street (Roadcraft zoning.ts cornerOf), read when it grew
 	bool alive = false;
 	b40::BodyRef body; // the version the player edited, held by the record (b40::BodyTable); none = made from the seed
+	b40::SiteRef site; // the street floor, ground and outline it grew on (b40/lot_site.h); none = a level rectangle on its highest ground
 	double built = 0; // city minute it was built (decay and renovation)
 };
 

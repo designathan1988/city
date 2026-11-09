@@ -32,6 +32,8 @@ namespace city::b40 {
 	S(space, LotSpaceShape, B40_SPACE) \
 	S(yard, LotYardShape, B40_YARD) \
 	S(open, OpenLotShape, B40_OPEN) \
+	S(slope, LotSlopeShape, B40_SLOPE) \
+	S(fit, LotFitShape, B40_FIT) \
 	S(interior, InteriorShape, B40_INTERIOR) \
 	S(homes, InteriorHomeShape, B40_HOMES) \
 	S(rooms, InteriorRoomShape, B40_ROOMS) \

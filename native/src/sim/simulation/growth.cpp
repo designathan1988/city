@@ -161,6 +161,27 @@ bool on_street(const CityState &s, double x, double z) {
 }
 } // namespace
 
+// The outline of the player's lot a lot of the growth stands for (lot_cache.cpp with_player_lots gives it the lot's stand): its
+// corners in the world, or none for a lot the streets proposed.
+std::vector<V2> player_ring(const CityState &s, const Lot &l) {
+	std::vector<V2> ring;
+	for (int i : s.lot_book.near(l.x, l.z, l.x, l.z)) {
+		const LotStand &st = s.lot_book.stand(i);
+		const PlayerLot &p = s.lot_book.all()[size_t(i)];
+		if (p.zone == 0 || st.x != l.x || st.z != l.z || st.rot != l.rot) continue;
+		for (const XZ &c : p.corners) ring.push_back(V2(float(c.x), float(c.z)));
+		break;
+	}
+	return ring;
+}
+
+b40::SiteRef site_of(const CityState &s, const Building &b, const Lot &l) {
+	const b40::LotFrame f = b40::lot_frame(b);
+	const b40::LotSlopeShape &K = s.buildings.designs.shapes.slope;
+	return b40::read_site(f.o, f.e0, f.e1, b.w, b.d, [&](float x, float z) { return s.terrain.height_at(x, z); }, K.street_threshold,
+			player_ring(s, l), K.front_points);
+}
+
 uint8_t corner_of(const CityState &s, const Lot &l) {
 	const Tuning &tn = s.catalog.tune;
 	Building rec;
@@ -198,6 +219,7 @@ Building record_for(CityState &s, const std::vector<Lot> &cell_lots, int i) {
 	b.style = uint16_t(l.seed & BUILDING_AUTO_STYLE_MASK);
 	b.profile = uint16_t(l.profile);
 	b.corner = corner_of(s, l); // before the candidates: a corner's plan is its own
+	b.site = site_of(s, b, l); // and the ground and outline each candidate is made on (b40/lot_site.h)
 	b.floors = uint16_t(fn == FN_NONE && tallest >= 0 ? std::max(1, tallest) + g.organic_extra_floors : 0);
 	const Candidate kept = fn == FN_NONE ? best_candidate(s, b) : draw_candidate(s, b, b.seed);
 	b.seed = kept.seed;
