@@ -37,7 +37,10 @@ void EffectWorld::piece(const Vector3 &at, const Vector3 &size, const Vector3 &v
 
 void EffectWorld::blast(const DamageEvent &e, const CityState &s) {
 	const BlastShape &K = params_.shapes.effect_blast;
-	const float radius = params_.fireball_base + params_.fireball_per_force * e.dx; // the fireball: from the force of the blow
+	const float radius = blast::fireball_radius(s.catalog.tune, e.dx); // the fireball: from the force of the blow
+	blast_x_ = e.x; // what its furniture, wires and trees are pushed from (damage_event.h: they follow it)
+	blast_z_ = e.z;
+	blast_r_ = radius;
 	const int soil = int(e.c);
 	for (const BurstDef &b : params_.bursts) {
 		const int kind = b.kind >= 0 ? b.kind : (soil == SOIL_SOIL_TINT ? PUFF_DUST : PUFF_CONCRETE);
@@ -96,7 +99,7 @@ void EffectWorld::blast(const DamageEvent &e, const CityState &s) {
 void EffectWorld::crater_slabs(const DamageEvent &e, const CityState &s) {
 	const CraterSlabsShape &K = params_.shapes.crater_slabs;
 	const bool hard = int(e.c) == int(blast::Surface::HARD);
-	const float reach = blast::crater_radius(s.catalog.blast, e.b, hard ? blast::Surface::HARD : blast::Surface::EARTH) * Marks::CRATER_SCALE;
+	const float reach = blast::crater_radius(s.catalog.blast, blast::fireball_radius(s.catalog.tune, e.dx)) * Marks::CRATER_SCALE;
 	const auto ground = [&](float x, float z) { return s.terrain.height_at(x, z); };
 	const auto tipped = [](float a, float tilt) { return Quaternion(Vector3(std::sin(a), 0.f, -std::cos(a)), tilt); }; // the outer side down
 	// The rim: slabs of the surface heaved up and tilted round the hole, nudged out, settling where they fall.

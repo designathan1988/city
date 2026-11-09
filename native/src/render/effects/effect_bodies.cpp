@@ -24,6 +24,7 @@ const Color BODY_CHAR = Color(0.05f, 0.045f, 0.04f);
 const Color TRACER_HOT = Color(1.f, 0.82f, 0.35f);
 const Color GLASS_SHARD = Color(0.55f, 0.7f, 0.78f);
 constexpr uint32_t SALT_LOOK = 7;
+constexpr uint32_t STRUCK_MASK = 7; // damage_event.h: the part a round struck, three bits from CAS_STRUCK_SHIFT (0 none: a blast)
 
 Color parse_color(const DataValue &v) {
 	v.colour(); // '#rrggbb', or an error
@@ -111,14 +112,40 @@ void EffectWorld::body(const DamageEvent &e, const CityState &s) {
 		b.charred = charred;
 		b.lost = parts_gone(lost | severed);
 		b.rises = kind == CAS_KNOCKED;
+		b.writhes = (e.v & CAS_CRAWL) != 0; // down for good and hurt: it writhes where it comes to rest
 		b.walls = walls_near(s, e.x, e.z, K.walls_reach_m);
 		b.variation = people_->variation_of(e.u, cas_age_of(e.v)); // the age the walker had (damage_event.h)
-		people_->bodies().add(b);
+		const uint32_t serial = people_->bodies().add(b);
+		if (serial != 0) gore(e, serial, Vector3(px, 0, pz), severed);
 		for (int k = 1; k < PART_KINDS; k++)
 			if ((severed & parts[k].bit) != 0) lay(parts[k].box, parts[k].at, parts[k].tint, params_.limb_push_ms, life, true);
 		if ((severed & CAS_LIMB_HEAD) != 0) lay(HEAD_BOX, parts[0].at, skin, params_.limb_push_ms, life, true);
 	}
 	if (severed != 0) puffs_.burst(e.x, ground + K.trunk_centre_m, e.z, int(K.wound_spray * 2.f), PUFF_BLOOD, K.wound_spread_m * 2.f, K.wound_size_m, K.wound_life_s);
+}
+
+// What an opened body shows (ragdoll.ts openBelly and sever's boneOut): shot open by its trunk wounds, or torn open by a blast (one
+// torn apart most often, one killed now and then; a bullet never opens a body at once), the guts out of the belly and, now and
+// then, the pelvis; a bone's end out of each stump left at this blow.
+void EffectWorld::gore(const DamageEvent &e, uint32_t serial, const Vector3 &way, uint32_t severed) {
+	const GoreShape &K = params_.shapes.gore;
+	const uint32_t kind = e.v & CAS_KIND_MASK;
+	const bool struck = ((e.v >> CAS_STRUCK_SHIFT) & STRUCK_MASK) != 0;
+	const bool torn_open = !struck && ((kind == CAS_TORN && rng_.f() < K.torn_open_chance) || (kind == CAS_DEAD && rng_.f() < K.dead_open_chance));
+	if ((e.v & CAS_OPENED) != 0 || torn_open) open_body(serial, way * ((e.v & CAS_OPENED) != 0 ? K.shot_kick_ms : K.torn_kick_ms), rng_.f() < K.pelvis_chance);
+	struct Stump { uint32_t limb; int from, at; bool head; };
+	static constexpr Stump STUMPS[] = { { CAS_LIMB_ARM_L, rag::LS, rag::LE, false }, { CAS_LIMB_ARM_R, rag::RS, rag::RE, false },
+		{ CAS_LIMB_LEG_L, rag::LH, rag::LK, false }, { CAS_LIMB_LEG_R, rag::RH, rag::RK, false }, { CAS_LIMB_HEAD, rag::CHE, rag::NEC, true } };
+	for (const Stump &s : STUMPS)
+		if ((severed & s.limb) != 0 && rng_.f() < K.bone_chance) gore_.bone(serial, s.from, s.at, s.head ? K.bone_head_len_m : K.bone_len_m);
+}
+
+void EffectWorld::open_body(uint32_t body, const Vector3 &kick, bool pelvis_too) {
+	const GoreShape &K = params_.shapes.gore;
+	Vector3 at;
+	if (!people_ || !people_->bodies().joint(body, rag::BEL, at)) return;
+	gore_.spill(body, rag::BEL, at, kick, rng_);
+	if (pelvis_too && people_->bodies().joint(body, rag::PEL, at)) gore_.spill(body, rag::PEL, at, kick * K.pelvis_kick, rng_);
 }
 
 void EffectWorld::tracer(const DamageEvent &e) {

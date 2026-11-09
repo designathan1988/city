@@ -1,5 +1,6 @@
-// The events about things a blow reached (effect_world.h): street furniture thrown, vehicles blown, people killed (blood
-// spray, pools and what a body torn apart leaves). Sizes of the pieces are the pieces' own (a pole, a bench, a car).
+// The events about things a blow reached (effect_world.h): street furniture and the player's poles thrown, the wires torn off
+// them, the woods' trees felled, vehicles blown, people killed (blood spray, pools and what a body torn apart leaves). Sizes of the
+// pieces are the pieces' own (a pole, a bench, a car, a tree's height).
 #include "render/effects/effect_world.h"
 
 #include "core/math.h"
@@ -25,37 +26,114 @@ constexpr uint32_t VEHICLE_TYPE_MASK = 255; // VEHICLE_BLOWN u: the vehicle's ty
 Vector3 scatter(Rng &r, float k) { return Vector3((r.f() - 0.5f) * k, r.f() * k, (r.f() - 0.5f) * k); }
 } // namespace
 
+// The push of the last blast at (x, z), `speed` at its heart (the reference game's playEffects.ts `away`): out from it, less
+// with the distance, to fall_least of it at fall_far_share fireball radii; lifted throw_lift as much.
+Vector3 EffectWorld::away(float x, float z, float speed) const {
+	const ThingsShape &K = params_.shapes.effect_things;
+	const float dx = x - blast_x_, dz = z - blast_z_, d = std::hypot(dx, dz);
+	const float share = blast_r_ > 0.f ? std::max(K.fall_least, 1.f - d / (K.fall_far_share * blast_r_)) : 1.f;
+	const float ux = d > 0.f ? dx / d : 0.f, uz = d > 0.f ? dz / d : 0.f;
+	return Vector3(ux * speed * share, K.throw_lift * share, uz * speed * share);
+}
+
 void EffectWorld::furniture(const DamageEvent &e, const CityState &) {
 	const ThingsShape &K = params_.shapes.effect_things;
-	const Vector3 push(e.dx * K.throw_speed, K.throw_lift, e.dz * K.throw_speed);
+	const Vector3 push = away(e.x, e.z, K.throw_speed);
 	const Vector3 at(e.x, e.y, e.z);
 	switch (GoneKind(e.u)) {
 		case GoneKind::POLE:
 		case GoneKind::POST: {
 			const bool pole = GoneKind(e.u) == GoneKind::POLE;
-			const float h = pole ? K.mast_h : K.post_h, r = pole ? K.mast_r : K.post_rad;
-			if (e.a > 0.f) { // to splinters: pieces of it flung out
+			const float h = e.b > 0.f ? e.b : pole ? K.mast_h : K.post_h, r = pole ? K.mast_r : K.post_rad;
+			const Color tint = pole ? WOOD : METAL_TINT;
+			const int broke = int(std::lround(e.a));
+			if (broke == FURNITURE_SPLINTERS) { // to splinters: pieces of it flung out
 				for (float y = 0; y < h; y += K.splinter_step_min + rng_.f() * K.splinter_step_span)
-					piece(at + Vector3(0, y + K.splinter_base_m, 0), Vector3(r, K.splinter_step_min + rng_.f(), r), push * (K.splinter_push_min + rng_.f()) + scatter(rng_, K.throw_scatter), pole ? WOOD : METAL_TINT, true);
+					piece(at + Vector3(0, y + K.splinter_base_m, 0), Vector3(r, K.splinter_step_min + rng_.f(), r), push * (K.splinter_push_min + rng_.f()) + scatter(rng_, K.throw_scatter), tint, true);
+			} else if (broke == FURNITURE_SNAPPED) { // snapped: the stump left standing, the top thrown over
+				const float cut = h * (K.snap_min + rng_.f() * K.snap_span);
+				PieceSpec stump;
+				stump.at = at + Vector3(0, cut * K.trunk_half, 0);
+				stump.size = Vector3(r, cut, r);
+				stump.cylinder = true;
+				stump.tint = tint;
+				stump.still = true;
+				stump.random_spin = false;
+				debris_.add(stump);
+				piece(at + Vector3(0, cut + (h - cut) * K.trunk_half, 0), Vector3(r, h - cut, r), push * K.thrown_tree, tint, true);
 			} else { // whole: it falls the way it is thrown
-				piece(at + Vector3(0, h * K.trunk_half, 0), Vector3(r, h, r), push * K.thrown_slow, pole ? WOOD : METAL_TINT, true);
+				piece(at + Vector3(0, h * K.trunk_half, 0), Vector3(r, h, r), push * K.thrown_slow, tint, true);
 			}
-			if (pole) puffs_.burst(e.x, e.y + h, e.z, int(K.spark_puffs), PUFF_SPARK, K.spark_spread, K.spark_size, K.spark_life); // a flash and sparks off the line
+			if (pole) {
+				const Vector3 top = at + Vector3(0, h, 0);
+				piece(top, Vector3(K.arm_l_m, K.arm_t_m, K.arm_t_m), push + Vector3(0, K.throw_lift, 0), WOOD); // the cross-arm knocked off
+				if (e.c > 0.f) piece(top + Vector3(K.lamp_reach_m * K.trunk_half, 0, 0), Vector3(K.lamp_l_m, K.lamp_h_m, K.lamp_w_m), push, METAL_TINT); // its lamp
+				puffs_.burst(e.x, e.y + h, e.z, int(K.spark_puffs), PUFF_SPARK, K.spark_spread, K.spark_size, K.spark_life); // a flash and sparks off the line
+			}
 			break;
 		}
 		case GoneKind::HYDRANT: piece(at + Vector3(0, K.hydrant_h * K.trunk_half, 0), Vector3(K.hydrant_r, K.hydrant_h, K.hydrant_r), push, METAL_TINT, true); break;
 		case GoneKind::BENCH: piece(at + Vector3(0, K.bench_h, 0), Vector3(K.bench_l, K.bench_h * K.bench_slat_share, K.bench_w), push, WOOD); break;
 		case GoneKind::BIN: piece(at + Vector3(0, K.bin_h * K.trunk_half, 0), Vector3(K.bin_l, K.bin_h, K.bin_l), push, METAL_TINT); break;
-		default: { // a tree: a charred stump, the trunk thrown, splinters and the crown in clumps of leaves
-			piece(at + Vector3(0, K.trunk_h * K.trunk_stump_share, 0), Vector3(K.trunk_r, K.trunk_h * K.trunk_half, K.trunk_r), Vector3(), CHAR, true);
-			piece(at + Vector3(0, K.trunk_h, 0), Vector3(K.trunk_r * K.trunk_top_share, K.trunk_h * K.trunk_half, K.trunk_r * K.trunk_top_share), push * K.thrown_tree, WOOD, true, K.trunk_burn_s);
-			for (int k = 0; k < K.splinters; k++)
-				piece(at + Vector3(0, K.trunk_h * K.trunk_half, 0), Vector3(K.splinter_r, K.splinter_len_min + rng_.f() * K.splinter_len_span, K.splinter_r), push + scatter(rng_, K.throw_scatter), WOOD);
-			for (int k = 0; k < K.crown_leaves; k++)
-				piece(at + Vector3(0, K.trunk_h * K.crown_height_k, 0), Vector3(K.leaf_size * (K.splinter_push_min + rng_.f()), K.leaf_thick, K.leaf_size * (K.splinter_push_min + rng_.f())), push + scatter(rng_, K.throw_scatter * 2.f), LEAF);
+		default: { // a tree, a shrub, or another piece of furniture the gone record files with them: each its own look
+			const int was = int(e.v) - 1; // FurnitureKind, -1 not street furniture (a planted tree)
+			if (was < 0 || was == int(FurnitureKind::TREE)) fell_tree(at, push, e.b > 0.f ? e.b : K.trunk_h);
+			else if (was == int(FurnitureKind::SHRUB)) fell_tree(at, push, K.shrub_h);
+			else if (was == int(FurnitureKind::POLE)) piece(at + Vector3(0, K.mast_h * K.trunk_half, 0), Vector3(K.mast_r, K.mast_h, K.mast_r), push * K.thrown_slow, WOOD, true);
+			else
+				for (int k = 0; k < K.bits; k++) // burst into bits (a drain, a postbox, a sign...)
+					piece(at + Vector3(0, K.bit_lift_m, 0), Vector3(K.bit_l_min + rng_.f() * K.bit_l_span, K.bit_h_min + rng_.f() * K.bit_h_span, K.bit_w_min + rng_.f() * K.bit_w_span),
+							push + scatter(rng_, K.throw_scatter), METAL_TINT);
 			break;
 		}
 	}
+}
+
+// A tree felled (playEffects.ts explode, a tree): a charred stump of cut_min plus cut_span of its height left standing, the trunk
+// above thrown burning, splinters at the break and the crown in clumps of leaves.
+void EffectWorld::fell_tree(const Vector3 &at, const Vector3 &push, float height) {
+	const ThingsShape &K = params_.shapes.effect_things;
+	const float cut = height * (K.cut_min + rng_.f() * K.cut_span);
+	PieceSpec stump;
+	stump.at = at + Vector3(0, cut * K.trunk_half, 0);
+	stump.size = Vector3(K.trunk_r, cut, K.trunk_r);
+	stump.cylinder = true;
+	stump.tint = CHAR;
+	stump.still = true;
+	stump.random_spin = false;
+	debris_.add(stump);
+	piece(at + Vector3(0, cut + (height - cut) * K.trunk_half, 0), Vector3(K.trunk_r * K.trunk_top_share, height - cut, K.trunk_r * K.trunk_top_share), push * K.thrown_tree, WOOD, true,
+			K.trunk_burn_s);
+	for (int k = 0; k < K.splinters; k++)
+		piece(at + Vector3(0, cut, 0), Vector3(K.splinter_r, K.splinter_len_min + rng_.f() * K.splinter_len_span, K.splinter_r), push + scatter(rng_, K.throw_scatter), WOOD);
+	for (int k = 0; k < K.crown_leaves; k++)
+		piece(at + Vector3(0, height * K.crown_share, 0), Vector3(K.leaf_size * (K.splinter_push_min + rng_.f()), K.leaf_thick, K.leaf_size * (K.splinter_push_min + rng_.f())),
+				push + scatter(rng_, K.throw_scatter * 2.f), LEAF);
+}
+
+// The woods' trees the blow's clearing took, found where they stood (the tree renderer's own placement, the clearing left out),
+// each felled away from the blast.
+void EffectWorld::trees(const DamageEvent &e, const CityState &s) {
+	if (!tree_finder_) return;
+	const ThingsShape &K = params_.shapes.effect_things;
+	felled_.clear();
+	tree_finder_(s, e.x, e.z, e.a, int(e.u), felled_);
+	for (const TreeInstance &t : felled_) fell_tree(t.p, away(t.p.x, t.p.z, K.throw_speed), t.height);
+}
+
+// A wire torn off a felled pole: one rope a primary wire of the span, pinned at the standing pole's arm, loose where the felled
+// pole's arm fell to, thrown away from the blast (blast.ts wire; playEffects.ts explode over hit.wires).
+void EffectWorld::wire(const DamageEvent &e) {
+	const WiresShape &K = params_.shapes.wires;
+	const Vector3 pin(e.x, e.y, e.z), loose(e.b, e.c, e.d);
+	Vector3 span = loose - pin;
+	span.y = 0;
+	const float l = span.length();
+	if (l <= 0.f) return;
+	const Vector3 across = Vector3(-span.z, 0, span.x) / l; // the arm reaches across the span
+	const Vector3 kick = away(loose.x, loose.z, K.kick_ms);
+	for (float along : K.primary_m)
+		wires_.add(pin + Vector3(0, e.a - K.arm_drop_m, 0) + across * along, loose + Vector3(0, e.a * K.fall_share, 0) + across * along, kick);
 }
 
 void EffectWorld::vehicle(const DamageEvent &e, const CityState &) {
@@ -141,6 +219,8 @@ void EffectWorld::apply(const DamageEvent &e, const CityState &s) {
 		case DamageEvent::VEHICLE_HIT: vehicle_hit(e); break;
 		case DamageEvent::VEHICLE_DROP: vehicle(e, s); break;
 		case DamageEvent::GEYSER: geysers_.push_back({ e.x, e.y, e.z, now_ + double(params_.geyser_s), 0.f }); break;
+		case DamageEvent::WIRE: wire(e); break;
+		case DamageEvent::TREES: trees(e, s); break;
 		default: break;
 	}
 }

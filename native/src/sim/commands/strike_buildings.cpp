@@ -34,7 +34,7 @@ struct Aim {
 
 Aim aim_at(const Blow &b, const Building &bd, float near) {
 	const Tuning &t = b.s.catalog.tune;
-	const float radius = t.strike_scar_radius_m + b.strength * t.strike_scar_radius_per_force;
+	const float radius = blast::fireball_radius(t, b.strength);
 	const bool landed = b.on_building && near <= 0.f;
 	const float c = std::cos(bd.rot), sn = std::sin(bd.rot), dx = b.x - bd.x, dz = b.z - bd.z;
 	const float u = std::clamp(dx * c - dz * sn, -bd.w * 0.5f, bd.w * 0.5f), v = std::clamp(dx * sn + dz * c, -bd.d * 0.5f, bd.d * 0.5f);

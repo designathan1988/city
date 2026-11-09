@@ -114,7 +114,7 @@ Dictionary CityCore::blast_probe(float strength, float distance) const {
 	d["eardrum"] = blast::eardrum(p, a.pressure_kpa);
 	d["collapse_range_m"] = blast::range_at_pressure(p, kg, p.collapse_kpa);
 	d["light_range_m"] = blast::range_at_pressure(p, kg, p.light_kpa);
-	d["crater_radius_m"] = blast::crater_radius(p, kg, blast::Surface::EARTH);
+	d["crater_radius_m"] = blast::crater_radius(p, blast::fireball_radius(state_->catalog.tune, strength));
 	d["decal_half_m"] = float(d["crater_radius_m"]) * Marks::CRATER_SCALE; // how far its mark on the ground reaches (render/effects/marks.h)
 	return d;
 }

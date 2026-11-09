@@ -76,8 +76,8 @@ void BodyRenderer::release() {
 	texture_ = RID();
 }
 
-void BodyRenderer::add(const BodySpec &spec) {
-	if (!asset_ || spec.variation >= int(asset_->variations.size())) return;
+uint32_t BodyRenderer::add(const BodySpec &spec) {
+	if (!asset_ || spec.variation >= int(asset_->variations.size())) return 0;
 	make_ready();
 	if (free_slots_.empty()) {
 		free_slots_.push_back(bodies_.front().slot);
@@ -91,6 +91,7 @@ void BodyRenderer::add(const BodySpec &spec) {
 	b.floor = spec.at.y;
 	b.lost = spec.lost;
 	b.charred = spec.charred;
+	b.writhes = spec.writhes;
 	const Vector3 front(std::cos(spec.heading), 0, std::sin(spec.heading));
 	Basis stands_b;
 	stands_b.set_columns(AXIS_Y.cross(front), AXIS_Y, front);
@@ -111,6 +112,17 @@ void BodyRenderer::add(const BodySpec &spec) {
 	for (Transform3D &t : b.stood) t = t.affine_inverse();
 	pose(b);
 	layers_dirty_ = true;
+	b.serial = ++next_serial_;
+	return b.serial;
+}
+
+bool BodyRenderer::joint(uint32_t serial, int particle, Vector3 &at) const {
+	for (const Body &b : bodies_)
+		if (b.serial == serial) {
+			at = b.doll.point(particle);
+			return true;
+		}
+	return false;
 }
 
 // The rows of its bones, and its box: a vertex is its bones' bind -> world rows applied to it, weighted to one (people_look.gdshaderinc
@@ -204,6 +216,13 @@ void BodyRenderer::update(float dt, const Ragdoll::Ground &ground) {
 		if (b.left <= b.rise_s && b.rise_s > 0.f) {
 			rise(b);
 			continue;
+		}
+		if (b.writhes) { // down for good and hurt: once it has come to rest, it writhes where it lies (Ragdoll::writhe)
+			if (b.writhe_t < 0.f && b.doll.asleep()) b.writhe_t = 0.f;
+			if (b.writhe_t >= 0.f) {
+				b.writhe_t += dt;
+				b.doll.writhe(b.writhe_t, dt);
+			}
 		}
 		if (b.doll.asleep() || steps == 0) continue;
 		const float floor = b.floor;

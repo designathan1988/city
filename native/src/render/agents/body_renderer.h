@@ -22,6 +22,7 @@ struct BodySpec {
 	int variation = 0;
 	uint32_t lost = 0; // parts gone, a bit each (ragdoll.h order)
 	bool charred = false;
+	bool writhes = false; // down for good and hurt (damage_event.h CAS_CRAWL): it writhes once it lies still (Ragdoll::writhe)
 };
 
 class BodyRenderer {
@@ -29,7 +30,8 @@ public:
 	bool init(const RenderContext &ctx, const PeopleAsset &asset, const RagdollShape &law, godot::PackedStringArray &errors);
 	void reset();
 	void release();
-	void add(const BodySpec &spec);
+	uint32_t add(const BodySpec &spec); // its serial, 0 when it could not be laid
+	bool joint(uint32_t serial, int particle, godot::Vector3 &at) const; // a particle of that body now (rag::Joint); false once it is gone
 	void update(float dt, const Ragdoll::Ground &ground);
 	int count() const { return int(bodies_.size()); }
 	int moving() const;
@@ -44,8 +46,10 @@ private:
 		godot::Transform3D stands; // where it gets up to
 		std::vector<godot::Transform3D> lying; // each bone when it began to
 		int variation = 0, slot = 0;
+		uint32_t serial = 0; // its name while it lasts (Gore holds bodies by it)
 		uint32_t lost = 0;
-		bool charred = false;
+		bool charred = false, writhes = false;
+		float writhe_t = -1.f; // seconds it has writhed, below 0 until it came to rest
 		godot::AABB box; // where its skin lies now: each bone's place, out by the variation's reach along the bone's axes
 	};
 	void make_ready();
@@ -67,6 +71,7 @@ private:
 	Rng rng_{ BODIES_SEED };
 	const RagdollShape *law_ = nullptr; // the ragdolls' (agents.json shapes.ragdoll), from init on
 	float clock_ = 0;
+	uint32_t next_serial_ = 0;
 	int bones_ = 0, idle_clip_ = 0, crouch_clip_ = 0, up_clip_ = 0;
 	bool rows_dirty_ = false, layers_dirty_ = false;
 };

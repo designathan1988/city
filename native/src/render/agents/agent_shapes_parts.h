@@ -55,7 +55,8 @@ struct HeavyMeshesShape {
 
 #define AGENT_SHAPE_RAGDOLL(X, XI, XD, XV, XVI) \
 	X(air_keep) X(limb_half_m) X(slide_keep) XI(iterations) X(top_over_head) X(belly_out_m) X(knee_least) \
-	X(elbow_least) X(fold_least) X(resting_ms) X(resting_s) X(step_s) XI(steps_most)
+	X(elbow_least) X(fold_least) X(resting_ms) X(resting_s) X(step_s) XI(steps_most) X(writhe_rate) X(writhe_phase) \
+	X(writhe_rise_s) X(writhe_fade_s) X(writhe_floor) X(writhe_hip_share) X(writhe_spine_share) X(writhe_pull)
 struct RagdollShape {
 	SHAPE_DECLARE(AGENT_SHAPE_RAGDOLL)
 };

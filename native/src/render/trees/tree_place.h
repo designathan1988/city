@@ -110,5 +110,9 @@ void place_trees(const CityState &s, const StreetLook &L, const TreeLook &T, con
 // The far cards of chunk `key` on its ground `l`: the same trees, one card each.
 void place_far(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, const ChunkGround &l, int64_t key,
 		std::vector<FarCard> &out);
+// The trees of the woods within `radius` of (x, z) that clearing `clearing` took (a blow's: they stood before it, they are gone
+// now): what the effects fell there (render/effects EffectWorld TREES).
+void felled_wild(const CityState &s, const TreeLook &T, const TreeKit &kit, float x, float z, float radius, int clearing,
+		std::vector<TreeInstance> &out);
 
 } // namespace city

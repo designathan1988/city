@@ -332,7 +332,7 @@
   "sample_m": 8
  },
  "strike": {
-  "_doc": "The bomb: the force steps of its strip, the pressure that brings a frame down, the storey a fall counts, and the size and reach of the scars a blast leaves. Street furniture is looked for within furniture_reach_m of the blow; within splinter_share of the knock-out range a pole goes to splinters with chance splinter_chance.",
+  "_doc": "The bomb: the force steps of its strip, the pressure that brings a frame down, the storey a fall counts, and the size and reach of the scars a blast leaves. Street furniture is looked for within furniture_reach_m of the blow; within splinter_share of the knock-out range a pole goes to splinters with chance splinter_chance. The player's utility poles (the reference game's explodeAt): those within the fireball radius fall, close in (splinter_share of it) to splinters with chance splinter_chance, else snapped with chance snap_chance, else whole; a felled pole pulls over a neighbour its span reaches within pull_share fireball radii with chance pull_chance, and a span left with one pole standing hangs from it as a torn wire.",
   "force_start": 5,
   "force_fine": 10,
   "force_coarse": 5,
@@ -349,7 +349,10 @@
   "scars_most": 8,
   "furniture_reach_m": 200,
   "splinter_share": 0.4,
-  "splinter_chance": 0.6
+  "splinter_chance": 0.6,
+  "pull_share": 2.2,
+  "pull_chance": 0.5,
+  "snap_chance": 0.5
  },
  "lot": {
   "_doc": "The lot editor (sim/commands/lot_commands.cpp): a pointer within corner_take_m of a corner takes it, within side_reach_m of a side reaches it. angle_look_m: how far round a point a drawn lot looks for the street it squares to.",

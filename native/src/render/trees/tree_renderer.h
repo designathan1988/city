@@ -40,6 +40,10 @@ public:
 	int64_t baking() const { return tier_[1].baking(); }
 	int64_t waiting() const { return tier_[1].waiting(); }
 	int pending() const;
+	// The woods' trees a blow's clearing took within `radius` of (x, z) (tree_place.h felled_wild), for the effects to fell.
+	void felled(const CityState &s, float x, float z, float radius, int clearing, std::vector<TreeInstance> &out) const {
+		felled_wild(s, trees_, kit_, x, z, radius, clearing, out);
+	}
 
 private:
 	struct Near {

@@ -8,11 +8,14 @@
 #include "render/agents/people_renderer.h"
 #include "render/effects/debris.h"
 #include "render/effects/effect_params.h"
+#include "render/effects/gore.h"
 #include "render/effects/marks.h"
 #include "render/effects/mounds.h"
 #include "render/effects/puffs.h"
 #include "render/effects/ruin_pieces.h"
+#include "render/effects/wires.h"
 #include "render/render_context.h"
+#include "render/trees/tree_place.h"
 #include "sim/state/city_state.h"
 
 #include <chrono>
@@ -28,6 +31,9 @@ public:
 	bool init(const RenderContext &ctx, godot::PackedStringArray &errors);
 	void set_people(PeopleRenderer *people) { people_ = people; }
 	void set_ruin_maker(RuinPieces::Maker maker) { ruins_.set_maker(std::move(maker)); }
+	// The woods' trees a blow's clearing took (TreeRenderer::felled): (state, x, z, radius, clearing, out).
+	using TreeFinder = std::function<void(const CityState &, float, float, float, int, std::vector<TreeInstance> &)>;
+	void set_tree_finder(TreeFinder finder) { tree_finder_ = std::move(finder); }
 	void set_wrecks(const std::vector<godot::Ref<godot::Mesh>> &bodies, const std::vector<godot::Vector3> &sizes); // the burnt bodies, by vehicle type
 	void reset(); // a new city or a load: every effect gone
 	void release();
@@ -39,7 +45,10 @@ public:
 	void sync(CityState &s, FrameAdmission &admission);
 	float shake() const { return shake_; } // metres the camera moves now
 	float since_blast() const { return blast_at_ < 0 ? -1.f : float(now_ - blast_at_); } // effect seconds since the last blast (-1 none)
-	bool busy() const { return puffs_.active(now_) || !sources_.empty() || debris_.moving() || ruins_.moving() || flash_left_ > 0; }
+	bool busy() const {
+		return puffs_.active(now_) || !sources_.empty() || debris_.moving() || ruins_.moving() || wires_.moving() || gore_.moving() || flash_left_ > 0;
+	}
+	int wires() const { return wires_.count(); }
 	int pieces() const { return debris_.count(); }
 	int ruin_pieces() const { return ruins_.pieces(); }
 	const std::unordered_set<uint32_t> &broken() const { return ruins_.broken(); }
@@ -69,6 +78,13 @@ private:
 	void rebuild_ruins(const CityState &s); // every ruin of the state as a heap lying (open, undo, redo)
 	float heap_of(const Ruin &r) const; // how high its mound stands
 	void furniture(const DamageEvent &e, const CityState &s);
+	void wire(const DamageEvent &e); // a wire torn off a felled pole, swinging (wires.h)
+	void trees(const DamageEvent &e, const CityState &s); // the woods' trees a blow felled (effect_things.cpp)
+	// A tree thrown down at its foot `at`, `height` tall: a charred stump, its trunk thrown burning, splinters and its crown in clumps.
+	void fell_tree(const godot::Vector3 &at, const godot::Vector3 &push, float height);
+	godot::Vector3 away(float x, float z, float speed) const; // the push of the last blast at (x, z): out from it, less far off
+	void open_body(uint32_t body, const godot::Vector3 &kick, bool pelvis_too); // the guts out of a body's belly (gore.h)
+	void gore(const DamageEvent &e, uint32_t body, const godot::Vector3 &way, uint32_t severed); // what a casualty's body shows opened (effect_bodies.cpp)
 	bool load_looks(const RenderContext &ctx, godot::PackedStringArray &errors); // skin and clothes tints of the bodies (effect_bodies.cpp)
 	void body(const DamageEvent &e, const CityState &s); // the pieces of someone struck
 	void tracer(const DamageEvent &e); // a bullet's line and where it ends
@@ -91,6 +107,11 @@ private:
 	Marks marks_;
 	Mounds mounds_;
 	Debris debris_;
+	Wires wires_;
+	Gore gore_;
+	TreeFinder tree_finder_;
+	std::vector<TreeInstance> felled_; // the trees a TREES event fells, found again each time
+	float blast_x_ = 0, blast_z_ = 0, blast_r_ = 0; // the last blast played: what its furniture, wires and trees are pushed from
 	RuinPieces ruins_;
 	PeopleRenderer *people_ = nullptr; // whose bodies fall (render_world.cpp)
 	Rng rng_{ EFFECT_SEED };
