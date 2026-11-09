@@ -16,6 +16,8 @@ const float FULL_SPAN = 0.99; // a bar this much of the pane's width across lies
 const float LEAST_M = 1e-5, LEAST_RAY = 1e-4, LEAST_CROSS = 1e-9, OFF_SURFACE_M = 1e-3, LEAST_PANE_M = 0.1;
 // A floor cell's seed: its column plus its row times CELL_ROW (more than a room's tiles a row), offset to stay positive.
 const float CELL_ROW = 17.0, CELL_OFFSET = 4096.0;
+const float BOARD_STAGGER_M = 3.0; // how far a board's end joints are shifted along it, at most, by its own pick
+const float UNIFORM_MEAN = 0.5; // the mean of a uniform pick: what many tiles' shades come to
 // A room's independent picks from its lot: fract(lot * k), each k far from a simple ratio of the others.
 const float LOT_PICTURE = 29.17, LOT_ART = 41.3, LOT_LIT = 5.31, LOT_TV = 3.71; // (LOT_HUNG, LOT_CLOTH, LOT_SIDE: building_room_tone)
 // A room's and a bay's seeds: Knuth's multiplicative hash (hash.gdshaderinc), a salt, and two primes.
@@ -151,37 +153,45 @@ float opening_share(vec3 q, vec3 n, vec2 hs) {
 	return clamp(abs(dot(e, n)) / TAU, 0.0, 1.0);
 }
 
-vec3 room_floor(vec3 p, float kind) {
-	if (kind > 1.5) { // porcelain tiles, thin joints
-		vec2 tile = fract(p.xz / floor_sizes.x);
-		float joint = step(tile_look.x, tile.x) * step(tile_look.x, tile.y);
-		return tile_albedo * mix(tile_look.y, 1.0, joint) * (tile_look.z + tile_look.w * h01(uint(floor(p.x / floor_sizes.x) + CELL_ROW * floor(p.z / floor_sizes.x) + CELL_OFFSET)));
-	}
-	if (kind > 0.5) { // stone tiles, wider joints
-		vec2 tile = fract(p.xz / floor_sizes.x);
-		float joint = step(stone_look.x, tile.x) * step(stone_look.x, tile.y);
-		return stone_albedo * mix(stone_look.y, 1.0, joint) * (stone_look.z + stone_look.w * h01(uint(floor(p.x / floor_sizes.x) + CELL_ROW * floor(p.z / floor_sizes.x) + CELL_OFFSET)));
-	}
-	float board = floor(p.x / floor_sizes.y); // floorboards running into the room, each its own shade
-	float seam = step(board_look.x, fract(p.x / floor_sizes.y)) * step(board_end, fract((p.z + h01(uint(board + CELL_OFFSET)) * 3.0) / floor_sizes.z));
-	return board_albedo * mix(board_look.y, 1.0, seam) * (board_look.z + board_look.w * h01(uint(board + CELL_OFFSET)));
+// A floor of tiles `side` metres a side, each `look` (the joint of the tile, the joint's shade, each tile's shade from and over): the joints
+// by the share of the pixel's footprint `foot` (metres across and along the floor) they cover, each tile's own shade while a tile spans
+// pixels enough and their mean below (building_lamps.gdshaderinc pulse, far_pick_sub), so a floor seen through a small pane neither
+// sparkles nor flattens.
+vec3 tiled_floor(vec3 p, vec2 foot, float side, vec4 look, vec3 albedo) {
+	vec2 cells = p.xz / side, w = foot / side;
+	float joint = pulse(cells.x, w.x, look.x, 1.0) * pulse(cells.y, w.y, look.x, 1.0);
+	float pick = mix(h01(uint(floor(cells.x) + CELL_ROW * floor(cells.y) + CELL_OFFSET)), UNIFORM_MEAN, far_pick_sub(w));
+	return albedo * mix(look.y, 1.0, joint) * (look.z + look.w * pick);
 }
 
-// The room seen along `d` from `o` on the glass (pane axes), before what hangs in the window.
-vec3 room_trace(vec3 o, vec3 d, float lot, vec3 lo, vec3 hi, float floor_kind) {
+vec3 room_floor(vec3 p, float kind, vec2 foot) {
+	if (kind > 1.5) return tiled_floor(p, foot, floor_sizes.x, tile_look, tile_albedo); // porcelain tiles, thin joints
+	if (kind > 0.5) return tiled_floor(p, foot, floor_sizes.x, stone_look, stone_albedo); // stone tiles, wider joints
+	float board = floor(p.x / floor_sizes.y); // floorboards running into the room, each its own shade
+	vec2 w = foot / floor_sizes.yz;
+	float stagger = h01(uint(board + CELL_OFFSET)) * BOARD_STAGGER_M;
+	float seam = pulse(p.x / floor_sizes.y, w.x, board_look.x, 1.0) * pulse((p.z + stagger) / floor_sizes.z, w.y, board_end, 1.0);
+	float pick = mix(h01(uint(board + CELL_OFFSET)), UNIFORM_MEAN, far_pick_sub(w));
+	return board_albedo * mix(board_look.y, 1.0, seam) * (board_look.z + board_look.w * pick);
+}
+
+// The room seen along `d` (of length 1) from `o` on the glass (pane axes), before what hangs in the window. `across` the pixel's
+// footprint across the ray, metres: on a floor or a ceiling it stretches along the room by how flat the ray meets it.
+vec3 room_trace(vec3 o, vec3 d, float lot, vec3 lo, vec3 hi, float floor_kind, float across) {
 	vec3 t_far = max((lo - o) / d, (hi - o) / d);
 	float t = min(min(t_far.x, t_far.y), t_far.z);
 	vec3 p = o + d * t, c;
 	float shade;
+	vec2 level_foot = vec2(across, across / max(abs(d.y), LEAST_RAY));
 	if (t == t_far.y && d.y < 0.0) {
-		c = room_floor(p, floor_kind);
+		c = room_floor(p, floor_kind, level_foot);
 		shade = room_shades.x;
 	} else if (t == t_far.y) {
 		c = ceiling_albedo;
 		shade = room_shades.y;
-		if (floor_kind > 0.5 && floor_kind < 1.5) { // an office or a shop: its ceiling's light panels
-			vec2 grid = fract(p.xz / floor_sizes.w);
-			float panel = step(panel_box.x, grid.x) * step(grid.x, panel_box.y) * step(panel_box.z, grid.y) * step(grid.y, panel_box.w);
+		if (floor_kind > 0.5 && floor_kind < 1.5) { // an office or a shop: its ceiling's light panels, by the share of the pixel they cover
+			vec2 grid = p.xz / floor_sizes.w, w = level_foot / floor_sizes.w;
+			float panel = pulse(grid.x, w.x, panel_box.x, panel_box.y) * pulse(grid.y, w.y, panel_box.z, panel_box.w);
 			c = mix(c, panel_light, panel);
 		}
 	} else {
@@ -222,9 +232,16 @@ vec3 room_trace(vec3 o, vec3 d, float lot, vec3 lo, vec3 hi, float floor_kind) {
 	return c * shade * room_dim;
 }
 
+// What is left of a ripple sin(k x) seen through a pixel `w` metres wide: its box filter, sin(k w / 2) / (k w / 2), down to its first zero,
+// and nothing past it (the side lobes would only flip the ripple), so slats and folds finer than the pixel turn to their mean.
+float ripple_keep(float k, float w) {
+	float a = 0.5 * k * w;
+	return a < PI ? sin(a) / max(a, LEAST_RAY) : 0.0;
+}
+
 // What hangs `hung_back_m` behind the glass, each room its own: curtains drawn to the sides, a roller blind, a Venetian blind,
-// a sheer. Mixes into `room`.
-vec3 room_hung(vec3 room, vec3 o, vec3 d, vec2 size, float lot) {
+// a sheer. Mixes into `room`. `px` the pixel's footprint on the glass, metres: the plane they hang in is the glass's.
+vec3 room_hung(vec3 room, vec3 o, vec3 d, vec2 size, float lot, float px) {
 	float h1 = fract(lot * LOT_HUNG), h2 = fract(lot * LOT_CLOTH), h3 = fract(lot * LOT_SIDE);
 	vec3 cq = o + d * ((hung_back_m - o.z) / d.z);
 	vec2 pu = cq.xy / max(size, vec2(LEAST_PANE_M)) + 0.5;
@@ -234,18 +251,18 @@ vec3 room_hung(vec3 room, vec3 o, vec3 d, vec2 size, float lot) {
 	if (h1 < hung_kinds.x) {
 		float side = curtain_side.x + curtain_side.y * h3, sway = curtain_sway.x * sin(pu.y * curtain_sway.y + h2 * curtain_sway.z);
 		cover = clamp(step(pu.x, side + sway) + step(1.0 - side - sway, pu.x), 0.0, 1.0);
-		float fold = sin(pu.x * size.x * curtain_folds + h3 * 3.0);
+		float fold = sin(pu.x * size.x * curtain_folds + h3 * 3.0) * ripple_keep(curtain_folds, px);
 		hung = cloth * (curtain_shade.x + curtain_shade.y * (0.5 + 0.5 * fold) * (curtain_shade.z + curtain_shade.w * fold)) * mix(curtain_hem.x, 1.0, step(curtain_hem.y, pu.y)) * daylight;
 	} else if (h1 < hung_kinds.y) {
 		float down = roller_down.x + roller_down.y * h3;
 		cover = step(1.0 - down, pu.y);
 		hung = mix(cloth * daylight * roller_look.x, vec3(roller_look.y), step(abs(pu.y - (1.0 - down)), roller_look.z));
 	} else if (h1 < hung_kinds.z) {
-		float slat = 0.5 + 0.5 * sin(pu.y * size.y * venetian_look.x);
+		float slat = 0.5 + 0.5 * sin(pu.y * size.y * venetian_look.x) * ripple_keep(venetian_look.x, px);
 		cover = smoothstep(venetian_look.y, venetian_look.z, slat) * venetian_look.w;
 		hung = venetian_albedo * (venetian_shade.x + venetian_shade.y * slat) * daylight;
 	} else if (h1 < hung_kinds.w) {
-		cover = sheer_look.x + sheer_look.y * (0.5 + 0.5 * sin(pu.x * size.x * sheer_look.z + h3 * sheer_look.w));
+		cover = sheer_look.x + sheer_look.y * (0.5 + 0.5 * sin(pu.x * size.x * sheer_look.z + h3 * sheer_look.w) * ripple_keep(sheer_look.z, px));
 		hung = sheer_albedo * daylight;
 	}
 	return mix(room, hung * hung_dim, cover);
@@ -271,6 +288,7 @@ void pane(vec2 uv, vec2 size, uint slot, uint bay, bool dark, float deep, vec3 n
 	vec3 d = vec3(abs(ray.x) < LEAST_RAY ? LEAST_RAY : ray.x, abs(ray.y) < LEAST_RAY ? LEAST_RAY : ray.y, ray.z);
 	vec3 o = vec3((uv - 0.5) * size, 0.0);
 	float tiny = smoothstep(tiny_edges.x, tiny_edges.y, max(fwidth(uv.x), fwidth(uv.y)));
+	float glass_px = max(fwidth(uv.x) * size.x, fwidth(uv.y) * size.y), across = glass_px * ray.z; // the pixel on the glass, and across the ray
 	float thick = v_trim.a * FRAME_SPAN_M;
 	float solid = 0.0, side_shade = 1.0;
 	vec3 side = vec3(0.0, 0.0, -1.0);
@@ -292,7 +310,7 @@ void pane(vec2 uv, vec2 size, uint slot, uint bay, bool dark, float deep, vec3 n
 	vec3 seen = pane_tone(lot, room_tone(V, n, kind > 1.5 ? FLOOR_TILE : kind > 0.5 ? FLOOR_STONE : FLOOR_BOARD));
 	if (tiny < 1.0 && frame < 1.0 && solid < 1.0) {
 		vec3 lo = vec3(-v_room0.r, -v_room1.r, 0.0) * ROOM_SPAN_M, hi = vec3(v_room0.g, v_room1.g, v_room0.b) * ROOM_SPAN_M;
-		vec3 room = room_hung(room_trace(o, d, lot, lo, hi, kind), o, d, size, lot);
+		vec3 room = room_hung(room_trace(o, d, lot, lo, hi, kind, across), o, d, size, lot, glass_px);
 		seen = mix(room, seen, tiny);
 	}
 	// Less of the room as the glass turns to a mirror (Schlick, F0 4 %): at every size, or a pane seen edge-on burns as a bright sliver.

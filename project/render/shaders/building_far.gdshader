@@ -67,10 +67,10 @@ void fragment() {
 		float m = open * clamp(pulse(UV.x, foot.x, 0.5 - 0.5 * v_opening.r, 0.5 + 0.5 * v_opening.r) * pulse(UV.y, foot.y, v_opening.g, v_opening.b), 0.0, 1.0);
 		vec2 room = floor(UV);
 		float lot = h01(room_cell(room));
-		float sub = smoothstep(0.5, 1.5, max(foot.x, foot.y));
+		float sub = far_pick_sub(foot);
 		float office = (int(COLOR.a * BYTE_TOP + 0.5) & FAR_OFFICE_BIT) != 0 ? 1.0 : 0.0;
 		vec3 lamp = far_room_lamp(lot, office, sub);
-		float lit = far_room_lit(lot, sub);
+		float lit = far_room_lit(lot, room, 0u, office, sub); // the grid's x runs on per building: no salt of its own
 		// the glass of the levels before it (building_far_window.gdshaderinc): next to nothing scattered, the room through it and the sky on it
 		vec3 V = normalize(v_world - CAMERA_POSITION_WORLD);
 		float cosv = clamp(dot(-V, n), 0.0, 1.0);

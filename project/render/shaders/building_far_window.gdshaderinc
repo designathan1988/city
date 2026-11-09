@@ -16,7 +16,6 @@ const float LEAST_DET = 1e-9, FACE_NUDGE = 1e-3, LEAST_PANE_H = 1e-3; // guards:
 const uint PICK_SALT = 977u, PICK_OF = 20u, PICK_DARK = 5u, FIFTH_OF = 5u, SHUTTER_FROM = 9u, SHUTTER_TO = 13u, LOT_MASK = 1023u;
 const float FIFTH = 0.2, LOT_SPAN = 1024.0, LOT_FLOOR = 11.3;
 #include "res://render/shaders/fresnel.gdshaderinc"
-const float FAR_ROOM_LEVEL = 0.68; // a far window's lamp: the mean of room_level (0.3 + 0.85 x two uniform lots)
 const float FAR_FRAME_SHARE = 0.027; // the frame read round a pane: 8 cm of a 3 m bay or storey
 const float FAR_REVEAL_SHADE = 0.42, REVEAL_SUN = 0.75; // a far reveal in the wall's shade, and what the sun adds on the faces that see it
 const float SILL_SHARE = 0.018, SILL_DRIP = 0.05, SILL_LIGHT = 1.28, DRIP_DARK = 0.2; // the sill's line, and the shade it throws under it
@@ -77,11 +76,11 @@ void far_window(vec2 uv, vec4 code, uint seed, vec3 n, vec3 V, float depth, inou
 	frame = max(frame - reveal, 0.0);
 	albedo = albedo * (1.0 - frame - glass - solid - reveal) + wall_seen * reveal + trim * frame + mix(PANE_ALBEDO, PANE_ALBEDO_DARK, dark) * glass + shutter * solid;
 	float lot = float((h >> BYTE_SHIFT) & LOT_MASK) / LOT_SPAN, office = (flags & WINDOW_FLAG_OFFICE) != 0 ? 1.0 : 0.0;
-	float far_sub = smoothstep(0.5, 1.5, max(foot.x, foot.y));
-	float lit = far_room_lit(lot, far_sub);
+	float far_sub = far_pick_sub(foot);
+	float lit = far_room_lit(lot, cell, seed * PICK_SALT, office, far_sub); // its lamp's level in it
 	vec3 lamp = far_room_lamp(lot, office, far_sub);
 	float through = 1.0 - schlick(cosv); // what the glass lets out at this angle
 	vec3 room = room_tone(V, n, office > 0.5 ? FLOOR_STONE : fract(lot * LOT_FLOOR) < 0.5 ? FLOOR_BOARD : FLOOR_TILE);
 	vec3 seen = mix(pane_tone(lot, room), pane_mean(room_tone(V, n, office > 0.5 ? FLOOR_STONE : FLOOR_HOME)), far_sub);
-	emit = ((lamp * lit * night * window_glow * FAR_ROOM_LEVEL + seen * room_daylight) * through * mix(1.0, dark_glass, dark) + glass_reflection(V, n, F, mix(GLASS_ENV, GLASS_ENV_DARK, dark))) * glass;
+	emit = ((lamp * lit * night * window_glow + seen * room_daylight) * through * mix(1.0, dark_glass, dark) + glass_reflection(V, n, F, mix(GLASS_ENV, GLASS_ENV_DARK, dark))) * glass;
 }
