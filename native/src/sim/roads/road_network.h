@@ -8,9 +8,11 @@
 #include "core/slot_ids.h"
 #include "sim/catalog/catalog.h"
 #include "sim/roads/geometry.h"
+#include "sim/roads/junction.h"
 #include "sim/roads/road_grade.h"
 #include "sim/state/change_log.h"
 
+#include <algorithm>
 #include <functional>
 #include <vector>
 
@@ -182,10 +184,22 @@ public:
 	// Every node refreshed (a load, a new city): nothing is left to settle.
 	void refresh_all();
 	void mark_segment(int s); // its road chunks and lot cells
-	// The chunks segment s's drawing reaches: its box (curve and casing), a cell of the terrain's grid round it (the ground seam
-	// cuts each cell the paving's outline crosses, drawn by the chunk of the cell's middle: render/roads/ground_seam.h) and a turning
-	// bulb's disc round either node, whether it has one now or had one (the chunk drawn again as it comes or goes).
-	void for_drawn_chunks(int s, const std::function<void(int64_t)> &fn) const;
+	// The chunks segment s's drawing reaches: its box, a terrain cell round it (a cut cell is drawn by the chunk of its middle:
+	// render/roads/ground_seam.h) and a turning bulb's disc round either node, whether it has one now or had one.
+	template <typename F>
+	void for_drawn_chunks(int s, F &&fn) const {
+		const RoadSegment &g = segs[size_t(s)];
+		const double cell = cat->tune.world_height_spacing_m, disc = BULB_R + BULB_WALK + cell;
+		std::vector<int64_t> keys;
+		for_chunks(g.minx - cell, g.minz - cell, g.maxx + cell, g.maxz + cell, [&](int64_t k) { keys.push_back(k); });
+		for (const int n : { g.a, g.b }) {
+			const RoadNode &nd = nodes[size_t(n)];
+			for_chunks(nd.x - disc, nd.z - disc, nd.x + disc, nd.z + disc, [&](int64_t k) { keys.push_back(k); });
+		}
+		std::sort(keys.begin(), keys.end());
+		keys.erase(std::unique(keys.begin(), keys.end()), keys.end());
+		for (const int64_t k : keys) fn(k);
+	}
 	// What changed on the roads since the last take_edits, for what is derived from them later in the settle (the streets'
 	// name plates): the segments whose curve, casing, mouths or heights changed, and the boxes of the roads that came, went
 	// or changed casing.

@@ -371,3 +371,18 @@ Gate completo, agora que termina: 14.327 problemas. 14.310 estão em `tools/proc
   `C:/Projects/Roadcraft-windows` resolved from the machine config in `tools/process` and `tools/ports`;
   `tools/build/rename_english.py` maps restored, Python modules renamed through `ast`, `--check` verifies imports.
 - Verification: `node --test "test/**/*.test.ts"` 136/136 pass with no env var.
+
+## 2026-11-08 21:00: the converter back, pointed at the lab (the owner's orders of 19:45 to 21:10)
+- The owner's order: every port redone from the correct source, the lab (`Documents/Projects/lab/roadcraft`), by a tool that ports
+  and translates automatically, verified, never case by case.
+- Found: the converter's machine file named as `source` another copy of the game (one of the forbidden paths of
+  `.claude/gatekeeper.json`), not the lab. Correction at 21:15: the lab's program graph has exactly the counts recorded for that
+  copy on 2026-11-05 (863 files, 20,318 units), so the copy was probably the lab's code of that day; that it was older is not proved
+  (the copy cannot be read). The game's roads, verge included, came from the 4.0 port (`oracle-4.0`), made before the converter.
+- Decision (routine, recorded): the converter is restored from this repository's own history (`9a056673~1:tools/converter`, the
+  commit before B1), not from the archive folder (forbidden). It must live under the repository: its tasks run through
+  `tools/tasks`, which resolves declared outputs from the repository's root (a copy in a scratch folder failed with "declared output
+  missing"). The machine file now names the lab as `source`.
+- Checked: `node --test "test/**/*.test.ts"` 136 of 136 on its fixtures. That proves its rules, not the port: the proof is the lab
+  translated whole and each module run against its TypeScript (the mass check), counted next.
+

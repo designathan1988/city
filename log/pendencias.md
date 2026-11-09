@@ -2,6 +2,12 @@
 
 O que falta fazer, por área.
 
+- The frozen photos depend on the binary's memory layout (found 2026-11-08 21:40): `RoadNetwork::for_drawn_chunks` written as a
+  template gives the golden photos; the same logic through `std::function` (one allocation more) moves 8 pixels by 1 to 3 levels on
+  the wires over a facade in 02-rua and 03-rua_noite (box 837..1168, 260..285), the same in every run of either build, the same
+  pixels theme 2 saw. A pipeline arriving late is ruled out (the same view 600 frames later is identical). Something drawn depends
+  on heap contents or addresses (an uninitialised value, or an order taken from addresses) on the wires' path
+  (`render/props/street_props.cpp` and what it reads); the debug DLL's memory checks can find it.
 - Junction plate corners and the ground (theme 3, log/work-log.md 2026-11-08 20:40): the ground's shape (`road_shape.cpp`) knows a
   road's strip and how it ends (joint, cut, bulb), not a plate's corners; where a plate's footway tip reaches past every arm's casing
   the ground stands at the footway's top under it (coplanar), and a fillet's asphalt wider than its arms' footways would stand under

@@ -310,18 +310,5 @@ void RoadNetwork::mark_segment(int s) {
 	mark(log->lot_cells, g.minx - LOT_LOOK_M, g.minz - LOT_LOOK_M, g.maxx + LOT_LOOK_M, g.maxz + LOT_LOOK_M);
 }
 
-void RoadNetwork::for_drawn_chunks(int s, const std::function<void(int64_t)> &fn) const {
-	const RoadSegment &g = segs[size_t(s)];
-	const double cell = cat->tune.world_height_spacing_m, disc = BULB_R + BULB_WALK + cell;
-	std::vector<int64_t> keys;
-	for_chunks(g.minx - cell, g.minz - cell, g.maxx + cell, g.maxz + cell, [&](int64_t k) { keys.push_back(k); });
-	for (const int n : { g.a, g.b }) {
-		const RoadNode &nd = nodes[size_t(n)];
-		for_chunks(nd.x - disc, nd.z - disc, nd.x + disc, nd.z + disc, [&](int64_t k) { keys.push_back(k); });
-	}
-	std::sort(keys.begin(), keys.end());
-	keys.erase(std::unique(keys.begin(), keys.end()), keys.end());
-	for (const int64_t k : keys) fn(k);
-}
 
 } // namespace city
