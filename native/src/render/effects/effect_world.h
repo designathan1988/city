@@ -59,6 +59,9 @@ private:
 	};
 	void apply(const DamageEvent &e, const CityState &s);
 	void blast(const DamageEvent &e, const CityState &s);
+	// The broken ground round the crater a blast on the ground dug (effect_blast.cpp): the rim of slabs heaved round the hole,
+	// the plates of the surface tipped up round it and the clods, laid for good (effects.json shapes.crater_slabs).
+	void crater_slabs(const DamageEvent &e, const CityState &s);
 	void building_hit(const DamageEvent &e);
 	void building_scar(const DamageEvent &e, const CityState &s); // effect_ruins.cpp
 	void building_down(const DamageEvent &e, const CityState &s);

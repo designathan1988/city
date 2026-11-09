@@ -19,6 +19,10 @@ bool EffectWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	const WorldShape &K = params_.shapes.effect_world;
 	scenario_ = ctx.scenario;
 	if (!params_.load(ctx.table("effects", errors), errors) || !load_looks(ctx, errors)) return false;
+	if (params_.shapes.crater_slabs.dirt_tint.size() != 3) { // an sRGB triple
+		errors.push_back("effects.json shapes.crater_slabs.dirt_tint: three channels");
+		return false;
+	}
 	if (!ctx.catalog) {
 		errors.push_back("effects without a catalogue");
 		return false;

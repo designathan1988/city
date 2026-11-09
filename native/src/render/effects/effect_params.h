@@ -34,7 +34,7 @@ struct EffectParams {
 	float flame_base = 0, flame_k = 0, dying_s = 0, dying_floor = 0, puff_height = 0, chimney_height = 0, chimney_spread = 0, light_chance = 0, light_height = 0, light_spread_k = 0, light_size = 0, light_life = 0;
 	float burn_fire_rate = 0, burn_building_rate = 0, flame_size = 0, flame_life = 0, smoke_size = 0, smoke_life = 0, column_chance = 0;
 	int flame_kind = 0, smoke_kind = 0;
-	float ring_life = 0, ring_height = 0;
+	float ring_life = 0, ring_height = 0, ring_reach_r = 0; // the shock ring's life, its lift, how far it races out (times the fireball radius)
 	godot::Color flash_color;
 	float flash_energy = 0, flash_range_r = 0, flash_range_min = 0, flash_life = 0, flash_decay = 0, flash_height = 0;
 	float shake_base = 0, shake_per_r = 0, shake_decay = 0;

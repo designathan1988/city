@@ -40,7 +40,14 @@ EditResult strike_at(CityState &s, double x, double z, double strength, double h
 	const float ground = s.terrain.height_at(float(x), float(z));
 	double t, d;
 	const int street = s.roads.find_segment_near(x, z, s.catalog.tune.road_pick_m, t, d);
-	const bool on_building = height > ground + ROOF_MIN_M;
+	// On a building when it bursts over the surface there (the reference game's explodeAt measures the height over what is drawn
+	// at the point, `heightAt`): the road deck a vertical ray from over the burst meets first, else the ground. A road stands on
+	// its embankment over the terrain, and a burst on it is a burst on the paving, which digs its crater and cuts it.
+	float surface = ground;
+	double t_deck;
+	const double from = std::max(height, double(ground)) + ROOF_MIN_M;
+	if (s.roads.ray_deck(x, from, z, 0.0, -1.0, 0.0, from - double(ground), t_deck)) surface = std::max(ground, float(from - t_deck));
+	const bool on_building = height > surface + ROOF_MIN_M;
 	Blow b{ s, p, float(x), float(z), ground, float(std::max(height, double(ground))), st, blast::charge_kg(p, st),
 		street >= 0 && !on_building ? blast::Surface::HARD : blast::Surface::EARTH, on_building, STRIKE_SALT ^ s.damage.strikes, r };
 	const uint32_t struck = s.damage.strikes++; // undone with the blow: the next one draws what this one drew

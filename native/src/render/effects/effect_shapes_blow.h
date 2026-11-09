@@ -40,4 +40,21 @@ struct ThingsShape {
 	SHAPE_DECLARE(EFFECT_SHAPE_EFFECT_THINGS)
 };
 
+// The broken ground of a crater (effect_blast.cpp crater_slabs, render/blast.ts crater of the reference game): the slab's jagged
+// outline (debris.cpp), the rim of slabs heaved and tilted round the hole and the plates of the surface tipped up round it, laid
+// for good, each by a share of the crater's decal radius (marks.h CRATER_SCALE times the hole's).
+#define EFFECT_SHAPE_CRATER_SLABS(X, XI, XD, XV, XVI) \
+	XI(outline_corners) X(outline_r) X(outline_wave) X(outline_wave_k) X(outline_wave_phase) XI(outline_notch_every) \
+	X(outline_notch) X(outline_bulge) X(bevel_thick) X(bevel_size) X(rim_base) X(rim_per_m) X(rim_jitter_rad) X(rim_r_min) \
+	X(rim_r_span) X(rim_size_min_m) X(rim_size_span_m) X(rim_earth_scale) X(rim_thick_hard_m) X(rim_thick_earth_m) \
+	X(rim_depth_min) X(rim_depth_span) X(rim_tilt_min) X(rim_tilt_span) X(rim_out_ms) X(rim_up_ms) X(rim_lift_m) \
+	XI(rim_concrete_every) X(plates_base) X(plates_per_m) XI(plates_most) XI(plates_crowd) X(plates_crowd_r) X(plate_r_min) \
+	X(plate_r_span) X(plate_w_min_m) X(plate_w_span_m) X(plate_scale_min) X(plate_scale_per_m) X(plate_scale_most) \
+	X(plate_d_min) X(plate_d_span) X(plate_thick_hard_m) X(plate_thick_earth_m) X(plate_tilt_min) X(plate_tilt_span) \
+	X(plate_lift_share) X(plate_concrete_chance) XV(dirt_tint) X(dirt_min) X(dirt_span) X(shade_min) X(shade_span) \
+	XI(clod_every) X(clod_min_m) X(clod_span_m) X(clod_h_m) X(clod_lift_m)
+struct CraterSlabsShape {
+	SHAPE_DECLARE(EFFECT_SHAPE_CRATER_SLABS)
+};
+
 } // namespace city
