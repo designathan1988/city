@@ -90,6 +90,8 @@ Dictionary who_touches(const TrafficState &t, float touch) {
 
 Array CityProbes::people_clips() const { return render_->people_clips(); }
 
+godot::Dictionary CityProbes::people_card() const { return render_->people_card(); }
+
 bool CityProbes::show_people_clip(const String &name) { return render_->show_people_clip(name); }
 
 // The doors the walkers know, and the sidewalks they stand on.

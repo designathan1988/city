@@ -77,6 +77,8 @@ public:
 	godot::Dictionary plays_census() const;
 	// For the tests and the captures: the file's clips, the first body's fit in each; and everybody in clip `name` (an empty name: back to the gait).
 	godot::Array clips() const;
+	// tests: the far card's strip as people.bin gives it and as its material holds it (a vec4 uniform takes no Color: people_asset.h)
+	godot::Dictionary card() const;
 	bool show_clip(const godot::String &name);
 
 private:

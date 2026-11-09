@@ -15,6 +15,7 @@
 #include <godot_cpp/classes/texture2d_array.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/string.hpp>
+#include <godot_cpp/variant/vector4.hpp>
 
 #include <string>
 #include <vector>
@@ -64,7 +65,9 @@ struct PeopleAsset {
 	godot::Ref<godot::Texture2DArray> atlas; // a layer a body
 	godot::Ref<godot::ArrayMesh> card; // the quad of the far off
 	int card_frames = 1;
-	godot::Color card_strip; // the strip in the atlas: x, y, a frame's width and height, in uv
+	// The strip in the atlas: x, y, a frame's width and height, in uv. A Vector4, not a Color: a Color set on a vec4 uniform is taken as sRGB and
+	// turned linear by the engine (renderer_rd material_storage.cpp convert_to_vector), which shrank the strip to a black texel.
+	godot::Vector4 card_strip;
 	int lods = 0;
 	std::vector<PersonClip> clips;
 	int block_rows = 0, hand_bone = 0, head_bone = 0; // each variation's rows of the palette; the bone of the hand that holds things; the head's

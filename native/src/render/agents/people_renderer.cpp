@@ -59,6 +59,13 @@ Array PeopleRenderer::clips() const {
 	return out;
 }
 
+Dictionary PeopleRenderer::card() const {
+	Dictionary d;
+	d["file"] = asset_.card_strip;
+	d["material"] = far_material_.is_valid() ? RenderingServer::get_singleton()->material_get_param(far_material_, "strip") : Variant();
+	return d;
+}
+
 bool PeopleRenderer::show_clip(const String &name) {
 	if (name.is_empty()) { // everybody back to what the gait and the seats play
 		forced_clip_ = -1;

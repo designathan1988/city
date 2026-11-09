@@ -52,6 +52,7 @@ void CityProbes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("people_census", "at", "radius"), &CityProbes::people_census);
 	ClassDB::bind_method(D_METHOD("set_city_hour", "hour"), &CityProbes::set_city_hour);
 	ClassDB::bind_method(D_METHOD("people_clips"), &CityProbes::people_clips);
+	ClassDB::bind_method(D_METHOD("people_card"), &CityProbes::people_card);
 	ClassDB::bind_method(D_METHOD("show_people_clip", "name"), &CityProbes::show_people_clip);
 	ClassDB::bind_method(D_METHOD("amber_stops", "v", "stop_m", "top", "left", "type"), &CityProbes::amber_stops);
 	ClassDB::bind_method(D_METHOD("amber_wanted", "kmh"), &CityProbes::amber_wanted);

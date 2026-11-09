@@ -996,3 +996,21 @@ photos moved, both by this cause, blessed; `gates_changed` only the owner's CLAU
 night: the centre is rebuilt (wider towers, glass designs of their own among them, the plazas, lawns and parking the kit lays on
 50 m lots where the old 22 m lots packed slim towers: the centre is less dense); street edges keep their footway, no grass strip;
 the frozen street view now stands inside a new building's curtain wall (its mullions in front of the camera).
+
+## 2026-11-09 10:30: walkers far off drawn as black boxes (the owner's review, problem 1)
+
+**Cause:** the far card's strip of the atlas (`PeopleAsset::card_strip`) was a `godot::Color` set on the `vec4 strip` uniform of
+people_far.gdshader (people_boot.cpp:191). Godot turns a Color set on a uniform from sRGB to linear unless the uniform says
+`color_conversion_disabled` (renderer_rd material_storage.cpp convert_to_vector): (0, 0.9375, 0.03125, 0.0625) reached the
+shader as about (0, 0.863, 0.0024, 0.005), and every card read one texel inside an opaque black region of the atlas. The lab
+passes a Vector4 (personImpostor.ts uFrame). Found by comparing the two and one measurement (the card drawing its uv: constant).
+**Why it does not come back:** the strip is a Vector4 in the asset; people_test `_card` fails when the material's strip is not a
+Vector4 equal to the file's. No other non-colour uniform in native/src is sent a Color.
+**Also followed from the lab:** the card's mip clamped to log2(frame texels) - 2 (MAP_MAIN), the card's width from the strip's
+aspect (the constant 0.5 was a second owner of the frame's shape).
+**Files changed:** render/agents/people_asset.h/.cpp, people_renderer.h/.cpp, agent_renderer.h, render/render_world.h,
+api/city_probes.h, city_core_people.cpp, city_core_jobs.cpp (probe `people_card`), game/store/store_api.gd,
+render/shaders/people_far.gdshader, tests/core/people_test.gd, both DLLs; log/owner-review.md created (the review's record).
+**Verification:** live game (town, seed 7, 1x): before, standing black boxes at 60-150 m and, with the card forced, at 10 m;
+after, the same views (street -75.5, 175.6, yaw 90, pitch 12 and 40, distance 30, 120, 250) show small coloured figures, no
+box; people_test passes. Details in log/owner-review.md §1.

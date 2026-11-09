@@ -2,6 +2,27 @@
 
 O que falta fazer, por área.
 
+- The owner's review of the game (2026-11-09 07:30; findings, causes and fixes in log/owner-review.md), seen with the simulation running (every photo before it was taken paused: no
+  walker, no vehicle; `look` plans now set the speed): each to fix by its cause, compared with the lab's code it was traced from.
+  1. Walkers drawn as black boxes from about 50 m (the near meshes are right at 20-40 m; the mid level and the far card are not).
+  2. Vehicles standing in the lanes, and a vehicle on the footway (the town centre, seed 7).
+  3. Grass between the footway and the lot fronts: the buildings stand back where they should stand on the front.
+  4. Car parks that do not cover their lot (grass round the asphalt).
+  5. Buildings drawn as boxes with no detail at mid distance, and balconies without their parapet even close.
+  6. The glass designs of their own look wrong; large lawns round the grown designs.
+  7. Streets that are not the game's (to name, from the owner's photos).
+  8. Memory, GPU and CPU high on the small city. Measured (town, seed 7, running, 1600x900, high tier, RTX 3060): video 1170 MB
+     (textures 894 MB, buffers 182 MB), static RAM 717 MB, GPU 8.3 ms over the town and 9.2 ms in a street, 3.3 M primitives,
+     6.15 M shadow primitives in the street view, CPU 1.8 ms. Causes read so far:
+     - the town map is 20 tiles (20 x 20 km, maps.json) for a city of 640 m radius: the land, its ground paint tiles, ecology,
+       woods and Terrain3D's maps are those of 400 km² (the 20 km change of 2026-11-06 measured +250 MiB RAM, +260 MiB video);
+     - imported textures are 170 MB: some 720 MB of the 894 are made at run time (render targets, shadow atlases, Terrain3D's
+       maps, the arrays built in C++: leaf atlas and tree pictures, wear, ground paint, signs) - each to be counted by owner;
+     - the sun's shadow reaches shadow_least_m 2500 m at high and ultra (settings.json): the whole small city is drawn into the
+       cascades, 2.3 times the primitives the view draws.
+  9. The picture shakes, and vehicles jerk and leap forward abruptly (the owner, 2026-11-09, watching the live game; pose_stats
+     there read late 6 and a 5.2 s gap between pose publications): to find by its cause.
+
 - Junction plate corners and the ground (theme 3, log/work-log.md 2026-11-08 20:40): the ground's shape (`road_shape.cpp`) knows a
   road's strip and how it ends (joint, cut, bulb), not a plate's corners; where a plate's footway tip reaches past every arm's casing
   the ground stands at the footway's top under it (coplanar), and a fillet's asphalt wider than its arms' footways would stand under

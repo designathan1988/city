@@ -204,10 +204,10 @@ void PeopleAsset::read_curves(ByteReader &r) {
 
 void PeopleAsset::read_card(ByteReader &r) {
 	card_frames = int(r.get<uint32_t>());
-	card_strip.r = r.get<float>();
-	card_strip.g = r.get<float>();
-	card_strip.b = r.get<float>();
-	card_strip.a = r.get<float>();
+	card_strip.x = r.get<float>();
+	card_strip.y = r.get<float>();
+	card_strip.z = r.get<float>();
+	card_strip.w = r.get<float>();
 }
 
 void PeopleAsset::read_ragdoll(ByteReader &r, uint32_t bones) {

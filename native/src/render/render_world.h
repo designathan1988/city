@@ -125,6 +125,7 @@ public:
 	int drawn_vehicles() const { return agents_.drawn_vehicles(); }
 	int drawn_people() const { return agents_.drawn_people(); }
 	godot::Array people_clips() const { return agents_.people_clips(); }
+	godot::Dictionary people_card() const { return agents_.people_card(); }
 	bool show_people_clip(const godot::String &name) { return agents_.show_people_clip(name); }
 	godot::Dictionary agent_cost() const {
 		godot::Dictionary d = agents_.cost();

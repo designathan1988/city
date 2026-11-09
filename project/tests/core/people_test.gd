@@ -57,6 +57,7 @@ func _ready() -> void:
 	check(int(probe.people_in_furniture) == 0, "inside furniture: %d" % probe.people_in_furniture)
 	check(float(c.party_touching) <= MAX_TOUCHING * float(c.parties), "pairs touching: %d" % c.party_touching)
 	_clips()
+	_card()
 	ticks(MORE_TICKS)
 	var later: Dictionary = CityStore.query(&"people_census", [Vector3.ZERO, 0.0])
 	print("later: ", later)
@@ -92,6 +93,15 @@ func _clips() -> void:
 	check(CityStore.query(&"show_people_clip", ["chairSit"]), "plays a clip by name")
 	check(not CityStore.query(&"show_people_clip", ["no name"]), "refuses a clip that does not exist")
 	CityStore.query(&"show_people_clip", ["idle"])
+
+
+## The far card reads its strip of the atlas as the file gives it: a Color on a vec4 uniform would be turned linear by the engine and
+## the card would show one black texel (the owner's review, 2026-11-09).
+func _card() -> void:
+	var card: Dictionary = CityStore.query(&"people_card")
+	var strip: Variant = card.get("material")
+	check(typeof(strip) == TYPE_VECTOR4, "the card's strip is a Vector4, not a Color: %s" % type_string(typeof(strip)))
+	check(typeof(strip) == TYPE_VECTOR4 and strip == card.file and (strip as Vector4).z > 0.0 and (strip as Vector4).w > 0.0, "the card's strip is the file's: %s" % [card])
 
 
 ## People go over a crossing between junctions, a zebra and one with a signal of its own: put where walkers are, and counted while they use it.
