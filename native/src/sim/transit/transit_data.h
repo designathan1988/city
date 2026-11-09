@@ -1,6 +1,7 @@
 // Public transport as the player lays it out: bus stops and terminals on the streets, rail tracks (a train's at grade, the metro's
 // under the ground) with their stations, and the lines through them. Each edit makes a new TransitData, kept whole by the undo
-// history (the plan is small); the stops and stretches are filed by cell for the tools' picks. Pure C++, written only by sim/commands.
+// history (the plan is small); the stops and stretches are filed by cell for the tools' picks (TransitCells, made again by whoever
+// changes the lists: the edits' journal, its replay, a load). Pure C++, written only by sim/commands.
 #pragma once
 
 #include "core/math.h"
@@ -41,13 +42,24 @@ struct TransitLine {
 	std::string name;
 };
 
+// The stops and the tracks' stretches by cell, and the stops by id (the lab's world/transit.ts stopIndex and trackCells): what the
+// picks, the snap and the lookups by id read instead of walking every stop and every point. Places, not ids: a stop's place in
+// TransitData::stops; a stretch as its track's place in TransitData::tracks and the place of its end point. Derived from the
+// lists by transit_index, never saved nor journaled.
+struct TransitCells {
+	std::unordered_map<int, int> stop_at;
+	std::unordered_map<int64_t, std::vector<int>> stops;
+	std::unordered_map<int64_t, std::vector<std::pair<int, int>>> stretches;
+};
+
 struct TransitData {
 	std::vector<TransitStop> stops;
 	std::vector<RailTrack> tracks;
 	std::vector<TransitLine> lines;
 	int next_id = 1;
+	TransitCells cells; // transit_index
 	bool empty() const { return stops.empty() && tracks.empty() && lines.empty(); }
-	const TransitStop *stop(int id) const;
+	const TransitStop *stop(int id) const; // by the cells; a copy being edited, whose cells are not made again yet, by its list
 	const TransitLine *line(int id) const;
 };
 
@@ -89,15 +101,21 @@ int transit_add_line(TransitData &t, TransitMode mode, const std::vector<int> &s
 void transit_remove_line(TransitData &t, int id);
 void transit_set_vehicles(TransitData &t, int id, int vehicles, int most);
 
-// A plan read from a file: anything malformed dropped; a line keeps only stops that exist and are of its mode.
+// A plan read from a file: anything malformed dropped; a line keeps only stops that exist and are of its mode. Its cells made.
 void transit_normalize(TransitData &t);
+// The cells made again from the lists: called by whoever changes them (the edits' journal and its replay, a load).
+void transit_index(TransitData &t);
 RailGraph rail_graph(const TransitData &t, TransitMode mode, float join);
 // The points to pass along the tracks from one point on them to another; empty when no way joins them.
 std::vector<V2> rail_path(const RailGraph &g, const V2 &from, const V2 &to, RailSearch &search);
-// The nearest point of a track within `reach`, of a mode unless BUS is given (a bus has no track); track -1 when none.
+// The nearest point of a track within `reach`, of a mode unless BUS is given (a bus has no track); track -1 when none. Ties go to
+// the first in the order of the tracks and their points, as a walk of them all finds.
 TrackHit nearest_track(const TransitData &t, const V2 &p, float reach, TransitMode mode);
-// The nearest stop within `reach`; `any` leaves the mode out. Null when none.
+// The nearest stop within `reach`; `any` leaves the mode out. Null when none. Ties go to the first in the list.
 const TransitStop *stop_near(const TransitData &t, const V2 &p, float reach, TransitMode mode, bool any);
+// The first end or corner of a track of `mode` within `reach`, in the order of the tracks and their points (the track tool's snap);
+// false when none is.
+bool track_point_near(const TransitData &t, const V2 &p, float reach, TransitMode mode, V2 &out);
 // How long a run of track lies on a road without leaving it, sampled every `step` metres: a level crossing is a few metres.
 template <typename OnRoad>
 float longest_on_road(const std::vector<V2> &points, float step, OnRoad on_road) {

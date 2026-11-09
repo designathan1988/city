@@ -59,6 +59,7 @@ void exec_transit(CityState &s, const EditOp &op, bool fwd) {
 		case OpKind::TRANSIT_NEXT: t.next_id = fwd ? op.get<Change>().to : op.get<Change>().from; break;
 		default: return;
 	}
+	transit_index(t);
 	s.transit_revision++;
 }
 

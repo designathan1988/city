@@ -1,7 +1,8 @@
 // Somebody getting out of a car at the kerb or getting in, and a truck's mate away with a delivery. A vehicle with an errand
 // plans a stop on the kerb lane of a street, clear of its ends and of any queue; it pulls up, the door opens when the swing is
 // clear, the person moves between the door and the footway (a walker under the stop's hand, PedMode::KERB) and the door shuts.
-// Set down, they walk on as any walker; picked up, the walker is gone and the car carries one more (Vehicle::aboard).
+// Set down, they walk on as any walker; picked up, the walker is gone and the car carries one more (Vehicle::aboard). A bus's riders
+// are bus_calls.cpp's.
 #include "sim/traffic/kerb_stops.h"
 
 #include "core/random.h"
@@ -85,7 +86,7 @@ KerbDoors kerb_door_at(const CityState &s, const Vehicle &v, float back_m) {
 	lane_pose(s, v.ds, v.lane, at, lane);
 	sidewalk_pose(s, d.seg, d.sign > 0 ? RIGHT_SIDE : 1, kerb_arc_of(d, at), 0, foot);
 	const V2 right(-lane.fz, lane.fx); // the world's z runs down the map: the side the kerb is on, -X of the vehicle
-	return { V2(lane.x, lane.z) + right * (c.half_width + p.kerb_door_out_m), V2(foot.x, foot.z) };
+	return { V2(lane.x, lane.z) + right * (c.half_width + p.kerb_door_out_m), V2(foot.x, foot.z), V2(lane.x, lane.z) + right * (c.half_width - p.kerb_door_in_m), lane.y };
 }
 
 namespace {
@@ -320,6 +321,7 @@ void assign_errand(const CityState &s, Vehicle &v, int id) {
 	if (is_car(v)) v.errand = roll < p.kerb_drop_share ? Errand::DROP : (roll > 1 - p.kerb_pick_share ? Errand::PICK : Errand::NONE);
 	else if (v.type == VehicleType::TRUCK && roll < p.kerb_delivery_share) v.errand = Errand::DELIVER;
 	if (v.errand == Errand::DROP) v.aboard = ABOARD_TO_SET_DOWN;
+	if (v.type == VehicleType::BUS) bus_riders_born(s, v, id);
 }
 
 float kerb_stop_gap(const TrafficState &t, const Vehicle &v) {

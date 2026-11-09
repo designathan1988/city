@@ -72,6 +72,7 @@ struct Vehicle {
 	int bus = -1; // its place in TransitRun::buses
 	float bus_doors = 0; // how far the bus's doors stand open, left here by the transit step
 	float bus_stop_at = -1; // a bus: on its last lane it stops with its front here
+	uint8_t riders = 0; // a bus: who sits behind the driver, drawn at its birth and counted by who gets off and on (bus_calls.cpp)
 	bool off = false; // off the lanes (in or out of a lot): on no lane list, not in the fleet count; `cur` is its pose
 	int car = -1; // its index in ParkingState::cars
 	int lorry = -1; // its index in ParkingState::lorries
