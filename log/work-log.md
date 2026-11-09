@@ -888,3 +888,36 @@ Ressalvas abertas:
 - Files: changed `native/src/sim/traffic/{ped_wounds.cpp,ped_system.h,pedestrians.cpp,ped_crossing.cpp}`,
   `native/src/sim/catalog/traffic_params.h`, `project/data/catalog/{traffic.json,blast.json}`, both DLLs; created
   `project/tests/visual/capture_pedtraffic.{gd,tscn}`; `log/mapa.md`, this record.
+
+## 2026-11-09 02:30: weather and street poles from the lab (areas 2 and 3, the agents' ports, reviewed by the coordinator)
+- Weather (lab `src/sim/ambient`, `render/lightning.ts`, `render/fogLayer.ts`, `ui/thunder.ts`, `renderer.ts` strikeAt, `postprocess.ts`):
+  a bolt's flash lights the sky by its colour and the scene by an added ambient (it multiplied the whole sky gain before), the
+  overcast sky greys only by day, clouds' shadows take the sun's direct share (less in rain, at dusk, gone at night) instead of a
+  fixed 0.62, bolts fall evenly over a disc round the view from 260-400 m up, leaning by a share of their height, thunder has
+  the lab's envelope (rise, rolls, fade) on a lane per clap so claps overlap, the lamps' lit air (`lamp_light.beams`) is on and
+  shows at night in rain or storm, and the Effects panel has "clouds" and "weather" switches. GDScript, shaders and data only.
+  Reviewed: the whole diff; captures of rain-lit cones under the lamps at night, bolts day and night street and high; the light
+  tests (`lamp_light_test`, `light_color_test`, `building_light_test`) 6/6 on main.
+- Street poles (lab `editor/poles.ts`, `poleRoutes.ts`, `powerLine.ts`, `furnitureSets.ts`, `utilities.ts`): by default a road is
+  lit by its power line alone, every utility pole carrying its lamp, no lighting column beside it (`SEG_LIT_BY_COLUMNS` clear;
+  the road tool's "Lighting" row chooses columns, remembered in Settings.road.power); the owner's 12 m poles (the lab's are
+  8.5 m) with the crown, wire seats and lamp moved up with them; one pole where a line goes on through a node of two arms,
+  standing where the two pole lines cross, and a second cross-arm at a bend of 60 degrees or more.
+- The wires' cause (`street_furniture_posts.cpp`, before): `r.side = right && left ? (r.twin || dx - dz >= 0 ? 0 : 1)` with
+  `twin` = both sidewalks, so the east/south rule never ran and the line took each segment's right face; segments of one street
+  drawn opposite ways put it on alternate faces and `join_rows` found no row end on the same face to string to. Fix:
+  `row_face` keeps one face for the whole street through every two-arm node, from the east or south face of its
+  lowest-numbered segment; the face is now a property of the street, not of how each segment was drawn.
+- Reviewed: the whole diff; main merged into the branch and both DLLs rebuilt from the merged sources by the coordinator;
+  `street_power_test` (new), `street_works_test`, `road_commands_test`, `street_crossing_test`, `lamp_light_test`,
+  `edit_fuzz_test` 9/9; photodiff of six matching views before/after: the red of the difference image lies only on poles,
+  wires, their shadows and the removed lighting columns; the rest of the 60-82% changed pixels are the grass and trees' wind
+  sway (mean 1.2 to 2.3 levels). Close captures day and night: wires pole to pole on a straight street, one corner pole at a
+  bend with wires both ways, each line ending on its last pole at a T, columns on both faces with the option off.
+- Files: weather `project/render/{daylight.gd,sky_view.gd,thunder.gd,weather_view.gd}`, `shaders/{atmosphere,lamp_glow}.gdshader`,
+  `project/data/game/{daylight,render_switches,sky}.json`, `project/data/render/streets.json`, `strings.csv`, the daylight schema,
+  a bolt capture; poles `native/src/sim/roads/{segment_flags.h,road_network.h,street_furniture*.{h,cpp}}`,
+  `native/src/render/props/street_props.cpp`, `native/src/api/{city_core_street.cpp,city_street.h}`, `project/game/settings/
+  {road_prefs,settings}.gd`, `project/game/store/store_api.gd`, `project/game/tools/road_tool.gd`, `project/ui/road_options.gd`,
+  `project/data/{catalog/street_furniture.json,render/streets.json,ui/drawers.json}`, the drawers schema, `strings.csv`,
+  `project/tests/core/street_power_test.{gd,tscn}`, `tools/tasks/suites.json`, both DLLs, `log/mapa.md`, this record.
