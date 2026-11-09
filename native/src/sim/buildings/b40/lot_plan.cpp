@@ -2,6 +2,8 @@
 #include "sim/buildings/b40/gen.h"
 #include "sim/buildings/b40/paint.h"
 
+#include <utility>
+
 namespace city::b40 {
 
 namespace {
@@ -110,8 +112,11 @@ void settle(const LotPlanShape &K, LotPlan &p) {
 }
 
 // A corner lot's side on the second street is a garden strip, not a party wall (lotPlan.ts planLot), where the building keeps its width.
+// Its drive is on the side away from the corner: a gate beside the cross street opens where the street has no room left for a car or a
+// lorry to stop before turning in (the junction), and that side is a front of its own.
 void open_corner(const LotPlanShape &K, LotPlan &p) {
 	if (p.corner == CORNER_NONE) return;
+	if (drives(p.corner == CORNER_LEFT ? p.left : p.right)) std::swap(p.left, p.right);
 	SidePlan &side = p.corner == CORNER_LEFT ? p.left : p.right;
 	const SidePlan &other = p.corner == CORNER_LEFT ? p.right : p.left;
 	if (side.use == SIDE_ATTACHED && p.W - other.width - K.corner_garden >= K.narrow_lot) side = SidePlan{ SIDE_GARDEN, K.corner_garden };
