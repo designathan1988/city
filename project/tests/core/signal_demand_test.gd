@@ -60,8 +60,4 @@ func _watch(node: int, count: int) -> int:
 		if now != stage:
 			changes += 1
 			stage = now
-			var probe: Dictionary = CityStore.query(&"traffic_probe", [0])
-			print("stage %d at tick %d: vehicles %d, people %d, waiting %d, lot cars %d; %s" % [now, k * LOOK_EVERY,
-				probe.get("vehicles", 0), probe.get("people", 0), probe.get("people_waiting", 0), probe.get("lot_cars", 0),
-				CityStore.query(&"node_traffic", [node])])
 	return changes

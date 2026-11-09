@@ -66,6 +66,8 @@ bool has_exit(const CityState &s, const Conn &c, int vid) {
 			inbound++;
 		}
 	}
+	// onto a small loop from outside it: not past the share of it a ring can hold and still turn (Roadcraft lab cycles.ts)
+	if (ring_full(s, c, body(s, vid) + tp.exit_room_pad_m)) return false;
 	if (lane.empty() && inbound == 0) return true;
 	// short lane between close junctions: nearly part of the junction; one more fits behind a moving tail
 	if (L < tp.short_exit_m && tail && tail->v > tp.tail_moving_ms && inbound == 0) return true;

@@ -125,7 +125,6 @@ bool cars_on_crossing(CityState &s, int node, int arm_seg) {
 	bool cached_cars = false;
 	if (cached(s, cache, 1, cached_cars)) return cached_cars;
 	const TrafficState &t = s.traffic;
-	const TrafficParams &tp = s.catalog.traffic;
 	const float gap = asked_gap(s, cache);
 	auto done = [&](bool v) {
 		store(s, cache, 1, v);
@@ -167,12 +166,20 @@ bool cars_on_crossing(CityState &s, int node, int arm_seg) {
 
 bool walkers_waiting(const CityState &s, int ci) {
 	const TrafficState &t = s.traffic;
+	const TrafficParams &tp = s.catalog.traffic;
 	const Conn &c = t.g.conns[size_t(ci)];
-	if (!s.roads.has_crosswalks(c.node)) return false;
-	for (const int arm : { t.g.ds[size_t(c.from_ds)].seg, t.g.ds[size_t(c.to_ds)].seg }) {
-		const int key = cache_key(s, c.node, arm, 1);
-		if (key >= 0 && size_t(key) < t.cross_held.size() && t.time - t.cross_held[size_t(key)] <= double(s.catalog.traffic.ped_wait_call_s))
-			return true;
+	if (!s.roads.has_crosswalks(c.node) || size_t(c.node) >= t.node_walkers.size()) return false;
+	const int arms[2] = { t.g.ds[size_t(c.from_ds)].seg, t.g.ds[size_t(c.to_ds)].seg };
+	const V2 lane[2] = { V2(c.x0, c.z0), V2(c.x1, c.z1) }; // where the connector meets each arm's crosswalk
+	for (int k = 0; k < 2; k++) {
+		const int key = cache_key(s, c.node, arms[k], 1);
+		if (key < 0 || size_t(key) >= t.cross_held.size() || t.time - t.cross_held[size_t(key)] > double(tp.ped_wait_call_s)) continue;
+		// only those who would soon be in its path after stepping off: its lane's stretch of the zebra starts within their reach
+		for (const CrowdEntry &e : t.node_walkers[size_t(c.node)]) {
+			const Pedestrian &w = t.peds[size_t(e.id)];
+			if (!w.alive || w.mode != PedMode::WAIT || w.wi >= w.wn || w.ways[w.wi].cross != arms[k]) continue;
+			if ((lane[k] - V2(e.x, e.z)).len() - tp.ped_span_reach_m <= tp.ped_wait_reach_m) return true;
+		}
 	}
 	return false;
 }

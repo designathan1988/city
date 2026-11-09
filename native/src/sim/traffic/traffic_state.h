@@ -11,6 +11,7 @@
 #include "sim/traffic/lane_graph_types.h"
 #include "sim/traffic/parking_state.h"
 #include "sim/traffic/ped_state.h"
+#include "sim/traffic/ring_meter.h"
 #include "sim/traffic/route_reach.h"
 #include "sim/traffic/traffic_view.h"
 
@@ -180,6 +181,7 @@ struct TrafficState {
 	std::vector<std::vector<int>> route_next;
 	std::vector<uint64_t> route_next_stamp;
 	RouteReach reach; // which segments lead to which, cars and bicycles (route_reach.cpp)
+	RingIndex rings; // the small closed loops of road and what they hold (ring_meter.cpp)
 	float gov = 1, gov_clock = 0; // fleet governor (traffic/regions.ts)
 	int reroutes = 0, released = 0, jams = 0;
 	float red_last[TIMED_STAGES] = {}; // the last red entry: type, speed, ds, time (traffic_probe)

@@ -294,6 +294,7 @@
      "timeout_s": 600
     },
     {"name": "edit_fuzz_test", "scene": "tests/core/edit_fuzz_test", "renderer": "gl_compatibility", "timeout_s": 600},
+    {"name": "signal_demand_test", "scene": "tests/core/signal_demand_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {
      "name": "traffic_hash_test",
      "scene": "tests/core/traffic_hash_test",

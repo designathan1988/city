@@ -153,6 +153,10 @@ LightStop lights_ahead(const CityState &s, const Vehicle &v, int ri, int lane, f
 // junction_admission.cpp (anti-gridlock)
 bool is_splice(const CityState &s, int node); // a road joint: no junction to block
 bool has_exit(const CityState &s, const Conn &c, int vehicle); // room on the exit lane (exitRoom)
+// ring_meter.cpp: the small loops made again after the lane graph changed (once a step, before the vehicles); whether entering by `c`
+// takes a loop it is not on past ring_meter_share of its storage, `need` metres of it its own.
+void refresh_rings(CityState &s);
+bool ring_full(const CityState &s, const Conn &c, float need);
 int pass_holder(const CityState &s, int conn); // vehicle committed to `conn` and not yet on it, or -1
 bool box_clear(const CityState &s, int conn); // nobody inside (or committed earlier) on a crossing connector
 void commit(CityState &s, int vehicle, int conn);
@@ -228,7 +232,8 @@ bool cars_on_crossing(CityState &s, int node, int arm_seg); // a vehicle on it o
 // not clear of its lane when its front gets there (`front_in`/`front_out` seconds from now).
 bool peds_in_way(const CityState &s, int conn, float front_in = 0, float front_out = 0);
 constexpr float FRONT_PAST = BIG;
-// Somebody stands held at the kerb of a crosswalk connector `conn` drives over (its arm in or out) within ped_wait_call_s.
+// Somebody stands held at the kerb of a crosswalk connector `conn` drives over (its arm in or out) within ped_wait_call_s, near enough
+// to its lane to be in its path soon after stepping off (ped_wait_reach_m).
 bool walkers_waiting(const CityState &s, int conn); // peds_in_way front time of a crosswalk the vehicle has already passed
 
 // Seconds for the front of `v` to cover `metres` accelerating at its class's rate from its speed up to `top`: a vehicle

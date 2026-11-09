@@ -48,7 +48,8 @@ struct YardInput {
 	float street_window = 0; // the street counts only this near a gate: the search does not wander the whole frontage
 	float dock_gap = 0, pre_dock = 0, pre_step = 0, reach = 0, turn = 0, settle_step = 0, fit_margin = 0;
 	std::vector<V2> lot;
-	std::vector<std::vector<V2>> open, shut; // carriageways and gate mouths; other lots and this lot's solid things
+	std::vector<std::vector<V2>> open, shut; // carriageways and gate mouths; this lot's solid things
+	std::vector<std::vector<V2>> fenced; // the other lots' parcels: shut before the carriageways are opened
 	std::vector<YardGate> gates;
 	std::vector<YardDock> docks;
 	YardReads reads;

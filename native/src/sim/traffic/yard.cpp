@@ -129,11 +129,15 @@ void YardPlanner::lay_step(int &work) {
 	if (field_whole && lot_whole) stage_ = Stage::OPEN;
 }
 
-// The ring of the open stage `k`: the lot in the yard's grid, the lot in the lot's, then the carriageways and gates' mouths.
+// The ring of the open stage `k`: the lot in the yard's grid, the lot in the lot's, the other lots shut again, then the carriageways
+// and gates' mouths: a neighbouring parcel drawn over a street never closes the road (nothing of it stands on the asphalt), while it
+// still closes the lot where the two overlap.
 std::unique_ptr<RingFill> YardPlanner::open_ring(size_t k) {
 	if (k == 0) return std::make_unique<RingFill>(field_, &in_.lot, 0);
 	if (k == 1) return std::make_unique<RingFill>(lot_, &in_.lot, 1);
-	if (k - 2 < in_.open.size()) return std::make_unique<RingFill>(field_, &in_.open[k - 2], 0);
+	const size_t fenced = in_.fenced.size();
+	if (k - 2 < fenced) return std::make_unique<RingFill>(field_, &in_.fenced[k - 2], 1);
+	if (k - 2 - fenced < in_.open.size()) return std::make_unique<RingFill>(field_, &in_.open[k - 2 - fenced], 0);
 	return nullptr;
 }
 
