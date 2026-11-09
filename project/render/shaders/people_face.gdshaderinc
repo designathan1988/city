@@ -6,6 +6,7 @@
 uniform sampler2D face_table : filter_nearest, repeat_disable;
 uniform int act_face[PEOPLE_CLIPS]; // by clip: what the face does at it (FACE_ACT_*)
 uniform float body_mood[PEOPLE_BODIES]; // by variation: -1 low .. 1 bright (cast.json)
+uniform float idle_clock; // the simulation's seconds: the face's own rhythms
 
 // The face table's channels, in the order of its cooked columns (people_asset.cpp checks PEOPLE_FACE_CHANNELS of them).
 const int BLINK = 0, JOY = 1, SADNESS = 2, ANGER = 3, SURPRISE = 4, BROW_RAISE = 5, OPEN = 6, ROUND = 7, PUCKERED = 8, SPREAD = 9, SHUT = 10, LOOK_LEFT = 11, LOOK_RIGHT = 12;
@@ -39,8 +40,8 @@ int face_row(float uv2_x) {
 	return int(uv2_x / PEOPLE_FACE_ROW_STEP);
 }
 
-// What the vertex of `row` moves by, at rest. `code`: the instance colour's alpha (people_pose.gdshaderinc).
-vec3 face_move(int row, vec4 custom, float code) {
+// What the vertex of `row` moves by, at rest: what the face does is what the clip weighing most in the pose does (people_pose.gdshaderinc).
+vec3 face_move(int row, vec4 custom) {
 	float w[PEOPLE_FACE_CHANNELS];
 	for (int c = 0; c < PEOPLE_FACE_CHANNELS; c++) {
 		w[c] = 0.0;
@@ -48,7 +49,7 @@ vec3 face_move(int row, vec4 custom, float code) {
 	float time = idle_clock;
 	uint hash = person_hash(uint(floor(abs(custom.b) + 0.5)) ^ FACE_SALT);
 	float low = float(hash & BYTE_MASK_U);
-	int doing = code >= PEOPLE_CLIP_CODE_BASE - 0.5 ? 0 : act_face[int(abs(custom.g))];
+	int doing = act_face[figure_clip(custom)];
 	bool frightened = custom.b < 0.0;
 
 	float blink = fract(time * (face_blink.y + float((hash >> BLINK_SHIFT) & NIBBLE) * face_blink.z) + low / BYTE_TOP);
