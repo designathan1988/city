@@ -921,3 +921,41 @@ Ressalvas abertas:
   {road_prefs,settings}.gd`, `project/game/store/store_api.gd`, `project/game/tools/road_tool.gd`, `project/ui/road_options.gd`,
   `project/data/{catalog/street_furniture.json,render/streets.json,ui/drawers.json}`, the drawers schema, `strings.csv`,
   `project/tests/core/street_power_test.{gd,tscn}`, `tools/tasks/suites.json`, both DLLs, `log/mapa.md`, this record.
+
+## 2026-11-09 04:40 integration of nine areas (commits 7efff29d..d2445be0)
+
+**What came in, each from its agent's branch:** pedestrian looks (casting, gait clips, per-figure plays, talking moods, seated
+glances, the lab people cook), the poles fix (a joint's pole on its own footway; walkers see a junction's other arms' furniture),
+car traffic (ring meter, spillback resting rear, kerb impatience, the lab's signal stage picking, Tarjan reach), realism (the
+near/mid hand-over as a dissolve in time, pixel-footprint filtering of floors, blinds and curtains, far lit windows by the near
+rule, the air taking the horizon's colour), landscape (ecology raster and field, shore stones, rock strata, brush preferences),
+slopes (split levels and garages under, bodies fitted to the player's lots, LotSite in the save, version 10), transit (riders
+born with the bus, stepping off by the middle door and in up the front step, the open-ground rail preview), road geometry
+(junction outlines as the one owner of the plate the lots are cut against, the lab's vacant-ground roundabout), weapons (crater
+slabs, felled poles and torn wires and felled trees through the journalled commands, writhing, gore, the lab's linear crater).
+
+**Process error, recorded:** the ten branches were first merged into main with only their conflicts resolved, no diff read, no
+test, no photo (the owner's order forbids it). Caught by the owner; main was moved back to 68efe113 and the merges kept on
+`integration`; every area was then read, built, tested and photographed before main moved again.
+
+**Found and fixed in the verification:**
+- edit_fuzz_test (seed 2): `nature_commands.cpp tree_dab` returned done() with an empty record when no tree fit, an undo step
+  that changes nothing; every undo after it was one step off. A dab with no room is now refused (`hint.tree.noRoom`).
+- save_undo_test, road_edit_test, road_commands_test called the old roundabout (cut mode, radius 22): the lab's ring is laid on
+  vacant ground only, radius 32..128 (editor/roundabout.ts); the tests follow it, ring_stub now checks that rule.
+- building_edit_test picked the first tall building; the cases assume one block on the ground without reliefs (a relief keeps a
+  block's plan, op_set_plan). The picker says so; body_info reports each block's reliefs.
+- Gates: gore.step_s and wires.step_s in effects.json were second owners of RIGID_STEP_S (removed); building_renderer.h/.cpp
+  and agent_renderer.cpp over their limits: the hand-over moved to level_fade.h/.cpp, the bays' cars' index to
+  agent_renderer_parked.cpp.
+
+**Held out: variety** (branch `worktree-agent-a64aabf217684c8d0`, on `integration` with a fix). Its grown designs (towers of the
+lab's lot lab) need lots of 25-34 m; the lots are the lab's 22 x 32 m (lots.ts LOT_FRONTAGE, LOT_DEPTH), so no tower design
+grows and its own test fails (it failed on the agent's branch too). The lab does not grow these designs at all; they enter only
+when a design fits a real lot.
+
+**Verification:** both DLLs rebuilt from the merged sources; `cli.py run tests` 49/49; photos before (68efe113) and after at the
+frozen street from four sides, above, eye height, the neighbourhood and night (changes: window dressing filtered, poles off the
+junction mouth, the junction plate's wear, night windows by the near rule; street edges unchanged, no grass strip); walkers
+photographed close (capture_pedtraffic) and from 50/80/120 m with 1068 walking; frozen photos and digest blessed for those
+causes; gates: the two left are the owner's uncommitted CLAUDE.md line and the local docs folder.
