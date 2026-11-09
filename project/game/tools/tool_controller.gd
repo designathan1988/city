@@ -92,9 +92,9 @@ func set_tool(next: Tool, p: Dictionary = {}) -> void:
 	tool = next
 	params = p
 	remembered[next] = p
-	Settings.set_land_brush(Tool.find_key(next), p)
 	preview.clear()
 	active = SCRIPTS[next].new(self, p) if SCRIPTS.has(next) else null
+	Settings.set_land_brush(Tool.find_key(next), p) # after the tool took them up: the element brush files its kind's (element_tool.gd)
 	tool_changed.emit(tool, params)
 
 
