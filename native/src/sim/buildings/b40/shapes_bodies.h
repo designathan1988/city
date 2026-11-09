@@ -34,7 +34,8 @@ struct ServiceShape {
 	X(canopy_max_z) X(canopy_out) X(canopy_deep) X(canopy_thick) X(recess) X(recess_min_w) X(recess_share) \
 	X(small_canopy_max) X(small_drop) X(small_max_z) X(small_out) X(small_deep) X(small_thick) \
 	XI(relief_min_storeys) XI(relief_min_bays) XI(relief_wide_bays) XI(pier_min_storeys) X(stone_base_k) \
-	X(relief_skip) X(relief_out) X(pier_out) X(street_m) X(quarter_m) X(centre_m) X(central_old) X(central_middle) X(rim_old) 	X(rim_middle)
+	X(relief_skip) X(relief_out) X(pier_out) X(street_m) X(quarter_m) X(centre_m) X(central_old) X(central_middle) X(rim_old) \
+	X(rim_middle)
 struct FacadeShape {
 	SHAPE_DECLARE(B40_FACADE)
 };
@@ -82,7 +83,8 @@ struct TallShape {
 
 #define B40_WORKS(X, XI, XD, XV, XVI) \
 	X(hall_lo) X(hall_hi) X(office_storey) X(annex_d) X(annex_w) X(annex_room) X(annex_w_lo) X(annex_w_hi) \
-	X(annex_d_lo) X(annex_d_hi) XI(loading_every)
+	X(annex_d_lo) X(annex_d_hi) XI(loading_every) X(shed_weight) X(brick_weight) X(store_weight) X(silo_weight) X(silo_d_lo) \
+	X(silo_d_hi) X(feature_gap) X(stack_d) XI(silo_lo) XI(silo_hi) XI(silo_storeys_lo) XI(silo_storeys_hi) XI(stack_storeys)
 struct WorksShape {
 	SHAPE_DECLARE(B40_WORKS)
 };

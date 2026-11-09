@@ -33,13 +33,17 @@ LotPlan plan_lot(const Data &data, Kind kind, float W, float D, Xoshiro128 &r);
 // The building for the envelope of `b.plan` (volumes in the envelope frame, x from its left edge).
 void made_to_measure(const Data &data, Body &b, const Envelope &env, Xoshiro128 &r);
 // Facade grammar (facade_compose.cpp).
-int style_for(const Data &data, Kind kind, Xoshiro128 &r, uint32_t character, int era);
+// `street`: half the time the street's style (its character's point on the weights), as the lab draws every building; a tower or an
+// office chooses freely (the owner's order: a downtown of many kinds), the low-rise keeps its street.
+int style_for(const Data &data, Kind kind, Xoshiro128 &r, uint32_t character, int era, bool street);
 void paints_of(const Data &data, int style, Xoshiro128 &r, Paint &wall, Paint &trim);
 int columns_for(float length, float module);
 int bays_of(const Volume &v, int side);
 float side_length(const Volume &v, int side);
 void compose_facades(const Data &data, Body &b, Xoshiro128 &r);
 void dress_building(const Data &data, Body &b, Xoshiro128 &r, float entrance, int front);
+// Every length of a body times `k` (a design read off a document in another unit, brought to metres); shares and counts stay.
+void scale_body(Body &b, float k);
 // The lot round the building (lot_layout.h): grounds, drives and garages, yards, bays and docks, boundary, gates; lot frame.
 void lay_out_lot(const Data &data, Body &b, Xoshiro128 &r);
 // The whole body of a record: kind from the zone, its style from its street and quarter, all steps, shifted to the lot frame (x from

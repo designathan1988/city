@@ -59,6 +59,14 @@ struct LotRules {
 	float row_depth(int rows) const { return rows <= 0 ? 0 : float(rows) * stall_d + aisle; }
 };
 
+// A design of its own that grows on a lot of `kind` (buildings.json "grown_designs"): its body read off its lot document and brought
+// to metres (gen.h scale_body), drawn `weight` times as often as a design of weight 1 among those that fit the lot.
+struct GrownDesign {
+	Kind kind = KIND_OFFICE;
+	float weight = 1;
+	std::shared_ptr<const Body> body;
+};
+
 // A number no filling of the tables had before (Data::generation).
 inline uint64_t new_generation() {
 	static std::atomic<uint64_t> next{ 1 };
@@ -89,6 +97,12 @@ struct Data {
 	std::unordered_map<std::string, Paint> colors;
 	OpeningDef openings[BAY_COUNT];
 	float lit_share[2] = {};
+	// The designs of their own a lot may grow, and the share of each kind's lots that stand one when one fits (the owner's order: a
+	// downtown of many glass towers).
+	std::vector<GrownDesign> grown_designs;
+	float grown_share[KIND_COUNT] = {};
+	float grown_least_storey_m = 0; // a design stands smaller on a smaller lot only while its storeys keep this floor-to-floor
+
 
 	// A named colour of "colors" (magenta when missing: the loader rejects a table without the names asked for).
 	const Paint &color(const char *name) const {

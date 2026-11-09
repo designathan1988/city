@@ -1,7 +1,8 @@
 ## The variety of the generated city's buildings, as the lab's generator gives it (Roadcraft procedural.ts, architecture.ts,
 ## zoning.ts quarterOf): over three seeds of the town map every kind of building shows every style its kind is drawn from
 ## (buildings.json kind_weights), shops show shopfronts and the shop's long awning, a street side shares a style more than the
-## town does (its character), and a seed gives the same city twice. Prints what it counted, and one building of each kind and
+## town does (its character), towers and offices grow designs of their own of many kinds (buildings.json grown_designs), works
+## stand silos or a stack, and a seed gives the same city twice. Prints what it counted, and one building of each kind and
 ## style (where it stands) for the captures.
 ## Run: godot --path project res://tests/core/building_variety_test.tscn -- --no-flow
 extends TestCase
@@ -9,7 +10,12 @@ extends TestCase
 const TOWN_MAP := 0
 const SEEDS: Array[int] = [7, 11, 23]
 const KINDS: Array[String] = ["house", "flats", "tower", "shop", "office", "works"]
+const TOWER := 2
 const SHOP := 3
+const OFFICE := 4
+const WORKS := 5
+const ROUND_SIDES := 16 # a silo's or a stack's round plan (buildings.json shapes.tall round_sides)
+const DESIGN_KINDS_LEAST := 4 # the designs of their own of a kind that stand over the seeds (buildings.json grown_designs lists 10 and 13)
 const BAY_SHOPFRONT := 11 # b40::Bay's order (sim/buildings/b40/types.h)
 const NEIGHBOUR_M := 40.0 # within one street side's character (buildings.json shapes.facade street_m: 60 m cells)
 const SAME_FACING := 0.3 # radians: two lots facing one way
@@ -25,18 +31,25 @@ func _ready() -> void:
 	var seen := {} # kind -> style -> true, over the seeds
 	var shopfronts := 0
 	var awnings := {}
+	var designs := {} # kind -> design number -> true, over the seeds (0: the facade kit)
+	var round_works := 0
 	for seed in SEEDS:
 		var made: Dictionary = new_map(TOWN_MAP, seed, true)
 		print("seed %d: %d buildings" % [seed, made.buildings])
 		var census := _census()
 		for kind in KINDS.size():
 			var c: Dictionary = census[kind]
-			print("  %s: n %d styles %s grounds %s palettes %d walls %d bays %s awnings %s" % [KINDS[kind], c.n, _named(c.styles, names),
+			print("  %s: n %d lot %.0f x %.0f styles %s grounds %s palettes %d walls %d bays %s awnings %s" % [KINDS[kind], c.n, c.lot_w, c.lot_d, _named(c.styles, names),
 					c.grounds, c.palettes.size(), c.walls.size(), c.bays.keys(), c.awnings])
 			for s: int in c.styles:
 				seen.get_or_add(kind, {})[s] = true
+			for sig: int in c.signatures:
+				if sig != 0:
+					designs.get_or_add(kind, {})[sig] = true
+			print("    designs of their own %s" % c.signatures)
 		shopfronts += int(census[SHOP].bays.get(BAY_SHOPFRONT, 0))
 		awnings.merge(census[SHOP].awnings)
+		round_works += _works_with_round_blocks()
 		if seed == SEEDS[0]:
 			_examples(names)
 			_street_character()
@@ -44,6 +57,10 @@ func _ready() -> void:
 		var want: Array = table.kind_weights[KINDS[kind]].map(func(w: Array) -> int: return names.find(w[0]))
 		var missing := want.filter(func(s: int) -> bool: return not seen.get(kind, {}).has(s))
 		check(missing.is_empty(), "%s: every style it is drawn from stands (missing %s)" % [KINDS[kind], missing.map(func(s: int) -> String: return names[s])])
+	for kind: int in [TOWER, OFFICE]:
+		var kinds: int = designs.get(kind, {}).size()
+		check(kinds >= DESIGN_KINDS_LEAST, "%s lots grow designs of their own of many kinds: %d" % [KINDS[kind], kinds])
+	check(round_works > 0, "works stand silos or a stack beside their hall (%d works)" % round_works)
 	check(shopfronts > 0, "shops have shopfronts on the street (%d bays)" % shopfronts)
 	check(awnings.size() > 1, "the shops' long awnings come in several colours (%d)" % awnings.size())
 	var again: Dictionary = new_map(TOWN_MAP, SEEDS[0], true)
@@ -66,6 +83,20 @@ func _named(counts: Dictionary, names: Array) -> Dictionary:
 	for s: int in counts:
 		out[names[s]] = counts[s]
 	return out
+
+
+## The works whose body has a round block (a silo, a stack): a block of the round tower's sides.
+func _works_with_round_blocks() -> int:
+	var n := 0
+	for id: int in CityStore.query(&"list_buildings"):
+		var b: Dictionary = CityStore.query(&"probe_building", [id])
+		if b.fn != 0 or b.lot.kind != WORKS:
+			continue
+		for v: Dictionary in BuildingProbe.info(id).volumes:
+			if v.bays.size() == ROUND_SIDES:
+				n += 1
+				break
+	return n
 
 
 ## One building of each kind and style: where it stands, its storeys, its facing.

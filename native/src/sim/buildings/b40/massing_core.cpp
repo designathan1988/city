@@ -1,5 +1,6 @@
 // The common massing steps (a block, a roof's shape and paint, a second skin, the finish) and the body of a record:
-// kind from use and floors, plan, massing, the lot laid round it, shift to the lot frame.
+// kind from use and floors, a design of its own when the lot grows one, else plan, massing, the lot laid round it, shift to the
+// lot frame; a body's lengths scaled to metres.
 #include "sim/buildings/b40/massing.h"
 
 #include "core/units.h"
@@ -14,7 +15,54 @@ constexpr float TINY = 1e-6f, HALF = 0.5f; // a pitch this small is none
 
 bool closed_roof(Roof r) { return r == ROOF_FLAT || r == ROOF_TERRACE; }
 
+// The share of its size a design stands at on a lot of W x D: the whole, or less on a smaller lot, down to where its storeys keep the
+// least floor-to-floor (buildings.json grown_designs least_storey_m); 0 when it does not fit even so, or is not of the lot's kind.
+float design_fit(const Data &data, const GrownDesign &g, Kind kind, float W, float D) {
+	const Body &b = *g.body;
+	if (g.kind != kind || b.plan.W <= 0 || b.plan.D <= 0 || b.storey_h <= 0) return 0;
+	const float s = std::min({ 1.f, W / b.plan.W, D / b.plan.D });
+	return s >= data.grown_least_storey_m / b.storey_h ? s : 0;
+}
+
+// The design of its own the lot grows and the share of its size it stands at, or none: drawn first on the record's stream (only for
+// a kind that grows designs), among the designs of the lot's kind that fit it, by their weights.
+const Body *grown_design(const Data &data, Kind kind, float W, float D, Xoshiro128 &r, float &scale) {
+	if (data.grown_share[kind] <= 0 || r.f() >= data.grown_share[kind]) return nullptr;
+	float total = 0;
+	for (const GrownDesign &g : data.grown_designs)
+		if (design_fit(data, g, kind, W, D) > 0) total += g.weight;
+	if (total <= 0) return nullptr;
+	float at = float(r.f()) * total;
+	for (const GrownDesign &g : data.grown_designs) {
+		scale = design_fit(data, g, kind, W, D);
+		if (scale > 0 && (at -= g.weight) < 0) return g.body.get();
+	}
+	return nullptr;
+}
+
 } // namespace
+
+void scale_body(Body &b, float k) {
+	for (Volume &v : b.volumes) {
+		v.x *= k; v.y *= k; v.w *= k; v.d *= k; v.lift *= k;
+		for (FaceGeometry &f : v.faces) { f.sill *= k; f.pier_w *= k; f.pier_d *= k; }
+		for (Relief &r : v.reliefs) r.depth *= k;
+		for (RoofPart &p : v.gear) { p.x *= k; p.y *= k; p.w *= k; p.d *= k; p.h *= k; }
+	}
+	for (LotElement &e : b.elements) { e.x *= k; e.y *= k; e.w *= k; e.d *= k; e.z *= k; e.h *= k; e.base *= k; }
+	for (Core &c : b.cores) { c.x *= k; c.y *= k; }
+	for (auto &floor : b.furnishing)
+		for (PlacedPiece &p : floor.second) { p.x *= k; p.y *= k; }
+	LotPlan &p = b.plan;
+	for (float *f : { &p.W, &p.D, &p.front_depth, &p.back_depth, &p.x0, &p.y0, &p.x1, &p.y1, &p.left.width, &p.left.walk, &p.right.width, &p.right.walk })
+		*f *= k;
+	b.ground_h *= k;
+	b.storey_h *= k;
+	b.entrance_x *= k;
+	b.signature_x *= k;
+	b.signature_y *= k;
+	b.signature_scale *= k;
+}
 
 void membranes(const Data &data, Body &b, Xoshiro128 &r) {
 	const MassingShape &K = data.shapes.massing;
@@ -134,6 +182,16 @@ void make_body(const Data &data, Body &b, int zone, int floors, float W, float D
 	b.kind = data.kind_of_zone(zone);
 	b.use = b.kind == KIND_WORKS ? USE_INDUSTRIAL : b.kind == KIND_SHOP || b.kind == KIND_OFFICE ? USE_COMMERCIAL : USE_RESIDENTIAL;
 	Xoshiro128 r(seed);
+	float scale = 1;
+	if (const Body *design = grown_design(data, b.kind, W, D, r, scale)) { // stood as drawn, its own lot laid with it, the lot's kind and use kept
+		const Kind kind = b.kind;
+		const Use use = b.use;
+		b = *design;
+		if (scale < 1) scale_body(b, scale);
+		b.kind = b.plan.kind = kind;
+		b.use = use;
+		return;
+	}
 	b.plan = plan_lot(data, b.kind, W, D, r);
 	Envelope env;
 	env.W = b.plan.x1 - b.plan.x0;

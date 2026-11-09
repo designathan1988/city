@@ -75,7 +75,7 @@ Quarter quarter_of(const Data &data, V2 front, V2 inward) {
 	return q;
 }
 
-int style_for(const Data &data, Kind kind, Xoshiro128 &r, uint32_t character, int era) {
+int style_for(const Data &data, Kind kind, Xoshiro128 &r, uint32_t character, int era, bool street) {
 	const auto &list = data.weights[kind];
 	float total = 0;
 	for (auto &p : list) total += p.second * data.era[p.first][era];
@@ -84,7 +84,9 @@ int style_for(const Data &data, Kind kind, Xoshiro128 &r, uint32_t character, in
 			if ((at -= p.second * data.era[p.first][era]) < 0) return p.first;
 		return list.front().first;
 	};
-	if (r.f() < HALF) return walk(double(uint32_t(double(character) * GOLDEN)) / U32 * total);
+	// The street's point on the weights' line: the product taken modulo 2^32 as the source's `>>> 0` does (a cast of a double past
+	// 2^32 to an integer is undefined).
+	if (street && r.f() < HALF) return walk(std::fmod(double(character) * GOLDEN, U32) / U32 * total);
 	return walk(r.f() * total);
 }
 

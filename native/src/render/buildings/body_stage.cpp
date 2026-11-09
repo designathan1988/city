@@ -81,7 +81,8 @@ int BodyStage::show(const b40::Data &data, const b40::BuildingLook &look, const 
 	draw.visible(true);
 	drawn_[handle] = int(shell.triangles() + glass.triangles() + sheer.triangles() + cards.triangles());
 	if (design.is_valid()) { // the lot's frame here is the world's: its y runs along -z, as the design's own
-		const Design own{ rs->instance_create2(design->get_rid(), scenario), Transform3D(Basis(), pl.lot.at(-body.signature_x, -body.signature_y, 0)) };
+		const float s = body.signature_scale; // the drawing's unit in metres (types.h)
+		const Design own{ rs->instance_create2(design->get_rid(), scenario), Transform3D(Basis::from_scale(Vector3(s, s, s)), pl.lot.at(-body.signature_x, -body.signature_y, 0)) };
 		rs->instance_set_layer_mask(own.inst, LAYER_BASE);
 		rs->instance_set_transform(own.inst, own.local);
 		if (ghost) rs->instance_geometry_set_material_override(own.inst, ghost_);
