@@ -19,6 +19,16 @@ struct Envelope {
 	bool low = false; // a low-density commercial lot
 };
 
+// The street side and the quarter a lot belongs to, for its building's style (Roadcraft zoning.ts quarterOf): `character` the same
+// for the lots of one side of a street within shapes.facade street_m (one frontage reads as one), `era` the same over a quarter of
+// quarter_m, its period: old towards the middle of the map more often, new towards the edges. `front` is the middle of the lot's
+// street front and `inward` the way into the lot, on the ground (x, z).
+struct Quarter {
+	uint32_t character = 0;
+	int era = 0;
+};
+Quarter quarter_of(const Data &data, V2 front, V2 inward);
+
 LotPlan plan_lot(const Data &data, Kind kind, float W, float D, Xoshiro128 &r);
 // The building for the envelope of `b.plan` (volumes in the envelope frame, x from its left edge).
 void made_to_measure(const Data &data, Body &b, const Envelope &env, Xoshiro128 &r);
@@ -32,8 +42,8 @@ void compose_facades(const Data &data, Body &b, Xoshiro128 &r);
 void dress_building(const Data &data, Body &b, Xoshiro128 &r, float entrance, int front);
 // The lot round the building (lot_layout.h): grounds, drives and garages, yards, bays and docks, boundary, gates; lot frame.
 void lay_out_lot(const Data &data, Body &b, Xoshiro128 &r);
-// The whole body of a record: kind from the zone, all steps, shifted to the lot frame (x from the lot's middle). It chooses its own
-// storeys; `floors` only caps a middling block, so the storeys it answers with give the same body back.
-void make_body(const Data &data, Body &b, int zone, int floors, float W, float D, uint32_t seed);
+// The whole body of a record: kind from the zone, its style from its street and quarter, all steps, shifted to the lot frame (x from
+// the lot's middle). It chooses its own storeys; `floors` only caps a middling block, so the storeys it answers with give the same body back.
+void make_body(const Data &data, Body &b, int zone, int floors, float W, float D, uint32_t seed, const Quarter &quarter);
 
 } // namespace city::b40

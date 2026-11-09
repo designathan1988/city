@@ -34,7 +34,7 @@ struct ServiceShape {
 	X(canopy_max_z) X(canopy_out) X(canopy_deep) X(canopy_thick) X(recess) X(recess_min_w) X(recess_share) \
 	X(small_canopy_max) X(small_drop) X(small_max_z) X(small_out) X(small_deep) X(small_thick) \
 	XI(relief_min_storeys) XI(relief_min_bays) XI(relief_wide_bays) XI(pier_min_storeys) X(stone_base_k) \
-	X(relief_skip) X(relief_out) X(pier_out)
+	X(relief_skip) X(relief_out) X(pier_out) X(street_m) X(quarter_m) X(centre_m) X(central_old) X(central_middle) X(rim_old) 	X(rim_middle)
 struct FacadeShape {
 	SHAPE_DECLARE(B40_FACADE)
 };

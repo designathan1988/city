@@ -1,4 +1,4 @@
-// The facade grammar: style by kind/era/street character, wall
+// The facade grammar: the street's character and the quarter's era, style by kind/era/street character, wall
 // and trim paints, bay counts on the style module, storey fills with the symmetric rhythm, and the dress (stone base,
 // entrance canopy or recess, projecting reliefs, corner piers).
 #include "sim/buildings/b40/gen.h"
@@ -14,6 +14,18 @@ constexpr float HALF = 0.5f, STEPS_ROUND = 1e6f; // a share of a step is rounded
 // The facade grammar's counts, which every body's saved bays and the commands' answers depend on: a face given no count is
 // divided into bays of DEFAULT_BAY metres, and an even count is swapped for the nearer odd one within BEST_WITHIN of a bay.
 constexpr float DEFAULT_BAY = 3.f, BEST_WITHIN = 0.75f;
+
+// The quarter's hash (Roadcraft zoning.ts quarterOf): three cell numbers mixed by the multipliers of xxHash's PRIME32 set and
+// Bob Jenkins' 0x27d4eb2d, folded by MurmurHash3's fmix32 (its 0x85ebca6b and its shifts of 15 and 13); a facing's salt and the
+// era's, and the facings of a quarter turn.
+constexpr uint32_t QH_A = 0x27d4eb2dU, QH_B = 0x165667b1U, QH_C = 0x3c6ef372U, QH_FOLD = 0x85ebca6bU;
+constexpr uint32_t QH_SHIFT_15 = 15, QH_SHIFT_13 = 13, FACING_SALT = 11, ERA_SALT = 5;
+constexpr double QUARTER_TURN = 1.5707963267948966; // pi / 2
+uint32_t quarter_hash(int a, int b, int c) {
+	uint32_t h = uint32_t(a) * QH_A ^ uint32_t(b) * QH_B ^ uint32_t(c) * QH_C;
+	h = (h ^ (h >> QH_SHIFT_15)) * QH_FOLD;
+	return h ^ (h >> QH_SHIFT_13);
+}
 
 float steps_in(float units, float step) { return std::round(units / step * STEPS_ROUND) / STEPS_ROUND; }
 bool overlaps(const Volume &a, const Volume &b) {
@@ -50,6 +62,18 @@ void compose_storeys(const FacadeShape &K, const StyleDef &s, const std::vector<
 	}
 }
 } // namespace
+
+Quarter quarter_of(const Data &data, V2 front, V2 inward) {
+	const FacadeShape &K = data.shapes.facade;
+	const int facing = int(std::round(std::atan2(double(inward.y), double(inward.x)) / QUARTER_TURN));
+	Quarter q;
+	q.character = quarter_hash(int(std::floor(front.x / K.street_m)), int(std::floor(front.y / K.street_m)), facing + int(FACING_SALT));
+	const double at = double(quarter_hash(int(std::floor(front.x / K.quarter_m)), int(std::floor(front.y / K.quarter_m)), int(ERA_SALT))) / U32;
+	const bool central = std::hypot(front.x, front.y) < K.centre_m;
+	const double old_share = central ? K.central_old : K.rim_old, middle_share = central ? K.central_middle : K.rim_middle;
+	q.era = at < old_share ? 0 : at < middle_share ? 1 : 2;
+	return q;
+}
 
 int style_for(const Data &data, Kind kind, Xoshiro128 &r, uint32_t character, int era) {
 	const auto &list = data.weights[kind];

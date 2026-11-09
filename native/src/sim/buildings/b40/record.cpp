@@ -23,7 +23,10 @@ std::shared_ptr<const Body> record_mass(const Data &data, const Building &rec) {
 void make_seed_body(const Data &data, const Building &rec, Body &b) {
 	if (is_open_lot(rec.fn)) open_lot_body(data, b, rec.fn, rec.w, rec.d);
 	else if (is_civic(rec.fn)) civic_body(data, b, rec.fn, rec.floors, rec.w, rec.d, rec.seed);
-	else make_body(data, b, rec.zone, rec.floors, rec.w, rec.d, rec.seed);
+	else {
+		const LotFrame f = lot_frame(rec);
+		make_body(data, b, rec.zone, rec.floors, rec.w, rec.d, rec.seed, quarter_of(data, f.o, f.e1));
+	}
 }
 
 BodyKey body_key(const Building &r) {
@@ -38,6 +41,9 @@ BodyKey body_key(const Building &r) {
 	k.floors = r.floors;
 	std::memcpy(&k.w, &r.w, sizeof k.w);
 	std::memcpy(&k.d, &r.d, sizeof k.d);
+	std::memcpy(&k.x, &r.x, sizeof k.x);
+	std::memcpy(&k.z, &r.z, sizeof k.z);
+	std::memcpy(&k.rot, &r.rot, sizeof k.rot);
 	return k;
 }
 
