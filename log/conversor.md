@@ -456,6 +456,42 @@ Gate completo, agora que termina: 14.327 problemas. 14.310 estão em `tools/proc
   literal type, the text itself, and `types.ts` makes every lone string-literal type an enum); 57 + 11 a `js::` built-in
   missing (`object_freeze`, `object_from_entries`); 36 `to_string` with no match; 26 a member missing on a struct. Next, in
   that order, in the translator.
+- Closed in `787788f5` (pushed; new exe; `quick --ready` 45 of 47: `gates_changed` on the owner's `docs/` folder, kept out of
+  version control since, and `photos_check` on the frozen photos' known run-to-run pixels, each photo byte-equal to a state the
+  unchanged tree gave before; the full gates' two findings are outside any change, log/pendencias.md).
+
+## 2026-11-08 22:55: three translator causes of the lab's header errors (277 of 506)
+- Problem 1 (124 errors): `FacadePropKind::POT()`. Why: `translator.ts` `#constantValues` decided a constant read as a call
+  after its value was written, by a regular expression over the C++ text (`\bPOT\b(?!\()` → `POT()`), so any word of that name
+  became a call: an enum member, a field, a string's text; the dependence between constants (which must be made on first use)
+  was found the same way (`named`). Fix: a constant read inside another constant's value is written as a mark around its name
+  (`expressions.ts` `constantRead`, U+0001, which no literal can carry: they go through JSON.stringify), each value records the
+  constants it reads by symbol (`constantReads`), the first-use set is the fixed point over those symbols, and the marks are
+  resolved once (`resolveConstantReads`). No text is searched for a name any more.
+- Problem 2 (117) and 3 (36 `to_string`): a `const` with no annotation has TypeScript's literal type of its own initializer
+  (`const GROUND_ATTRIBUTE = 'ground'` is of type "ground"; a template literal of such texts may be its text), and `types.ts`
+  makes every lone string-literal type an enum: the shader's text became `enum class SHELLPARTPARS`, and `${GROUND_ATTRIBUTE}`
+  in a template became `js::to_string(<enum>)`, which has no overload. Fix: the flow's one owner of what a name holds
+  (`flow.ts` `symbolSlot` → `#heldType`) gives such a variable its widened type (`getBaseTypeOfLiteralType`: text); a literal
+  type the source writes (an annotation, a field `kind: 'road'`, a union) stays an enumeration. Where an enumeration is asked and
+  TypeScript knows the text of the value there (`const K = 'pot'` passed as a `PropKind`), the conversion writes the member
+  (`expressions.ts` `#knownText`, which generalizes the old rule that knew only a literal written in place).
+- Test first: the fixture `yard.ts` `propPlace` (an enum `PropKind` with a member `pot` beside a constant `POT` made by a call,
+  and a text made by a template literal of a text) failed with the lab's own three errors ("called object type 'PropKind' is
+  not a function", "must use 'enum' tag to refer to type 'PARS'", "no matching function for call to 'to_string'"); after the
+  fix it compiles with `-Werror` and agrees with its TypeScript in the differential. Converter 137 of 137.
+- The whole lab after these three: round 4's header errors 506 → 350 (in 117 files, from 141), 5,094 units translated (from
+  5,004), 1,922 left out (from 2,010), 20 rounds.
+- Problem 4 (102 of the 350): "no viable conversion from 'const char[6]' to 'std::optional<StyleHatchSedanSuv>'": a literal in
+  an optional field of an enumeration (`archetypes.ts` `style?: BodyStyle`, `style: 'hatch'`); the member rule asked for an
+  enumeration only, never one that may be absent. Fix: one owner of "the enumeration a place asks for" (`expressions.ts`
+  `enumAsked`: the enumeration, or the one inside an optional; C++ makes the optional from the member), read by the literal and
+  by the conversion. The fixture's `PROPS` (a literal kind and a left-out one) holds it; converter 137 of 137.
+- The whole lab after the four: round 4's header errors 350 → 277 (in 110 files), 5,112 units translated, 1,905 left out, 20
+  rounds. Left, by count (round 4): 57 + 10 built-ins the runtime lacks (`Object.freeze`, `Object.fromEntries`, `map`, `next`),
+  29 a number list or tuple where a number is asked, 26 a member missing on a struct (`LeanJunction.tongues`), 15 `to_string` and
+  `array_from` with no match, 13 a template argument that is no type, 12 a lambda that does not capture. Next: the runtime's
+  missing built-ins, each checked against Node in `test/js-runtime.test.ts`.
 
 ## The converter's design and use (moved here from tools/converter/DESIGN.md and README.md, 2026-11-08)
 The project keeps its documents in CLAUDE.md and log/ (gate DOC_UNICO): the converter's own two documents live here now. Its

@@ -221,10 +221,23 @@ export class FlowGraph {
     const ts = this.#ts;
     const role: SlotRole = decl && ts.isParameter(decl) ? 'param'
       : decl && (ts.isPropertySignature(decl) || ts.isPropertyAssignment(decl) || ts.isShorthandPropertyAssignment(decl) || ts.isPropertyDeclaration(decl)) ? 'field' : 'local';
-    const s = this.#new(role, symbol.name, this.#checker.getTypeOfSymbol(symbol));
+    const s = this.#new(role, symbol.name, this.#heldType(decl, this.#checker.getTypeOfSymbol(symbol)));
     this.#bySymbol.set(identity, s);
     if (decl && (symbol.flags & ts.SymbolFlags.Optional)) s.nullable = true;
     return s;
+  }
+
+  /**
+   * What a declared name holds. A variable with no annotation has TypeScript's literal type of its own initializer (`const A =
+   * 'x'` is of type "x", and a template literal of literals may be its text): that type is the one value written there, not a
+   * set of values the program declares, so the name holds text. A literal type the source writes (an annotation, a field
+   * `kind: 'road'`, a union) stays what it says, an enumeration; a use where an enumeration is asked still gets its member
+   * (expressions.ts #knownText).
+   */
+  #heldType(decl: TS.Declaration | undefined, type: TS.Type): TS.Type {
+    const ts = this.#ts;
+    if (!decl || !ts.isVariableDeclaration(decl) || decl.type) return type;
+    return type.flags & (ts.TypeFlags.StringLiteral | ts.TypeFlags.TemplateLiteral) ? this.#checker.getBaseTypeOfLiteralType(type) : type;
   }
 
   /** The slot of a node that holds values of its own: a function's return, a literal, a call's result. */
