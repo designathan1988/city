@@ -112,6 +112,12 @@ int approach_rule(const CityState &s, int n, int seg);
 // The plates the rules put up at node `n` (street_signs.cpp).
 void junction_signs(const CityState &s, int n, std::vector<SignStand> &out);
 void update_lights(CityState &s); // the walkers' calls, then TrafficState::light_now, once per step
+// signal_demand.cpp: the walkers waiting at the signalled junctions' kerbs call their stages (once per step, before the lights); another
+// stage than the one running at `j` is asked for; the stage that runs after `k` (the asked-for one waiting longest, the overdue and the
+// walkers long at a kerb first, the next in order when nobody asks).
+void call_walkers(CityState &s);
+bool signal_competing(const CityState &s, const Junction &j);
+size_t next_signal_stage(const CityState &s, const Junction &j, size_t k);
 Light light_for(const CityState &s, int ds); // the light the approach `ds` shows now
 float amber_left(const CityState &s, int ds); // seconds of amber left on approach `ds`, which shows amber
 double next_green(const CityState &s, int ds, double now); // when that approach next shows green (meso waits)
