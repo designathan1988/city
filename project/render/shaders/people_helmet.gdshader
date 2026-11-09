@@ -20,7 +20,7 @@ void vertex() {
 	vec4 here = vec4(VERTEX, 1.0);
 	mat3 shape = mat3(vec3(x.x, y.x, z.x), vec3(x.y, y.y, z.y), vec3(x.z, y.z, z.z));
 	vec3 pos, nor;
-	person_pose(INSTANCE_CUSTOM, COLOR.a, ivec4(head_bone), vec4(1.0, 0.0, 0.0, 0.0), vec3(dot(x, here), dot(y, here), dot(z, here)),
+	person_pose(INSTANCE_CUSTOM, ivec4(head_bone), vec4(1.0, 0.0, 0.0, 0.0), vec3(dot(x, here), dot(y, here), dot(z, here)),
 			normalize(transpose(inverse(shape)) * NORMAL), pos, nor);
 	VERTEX = pos;
 	NORMAL = normalize(nor);

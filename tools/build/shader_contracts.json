@@ -17,17 +17,15 @@
   "people": {
    "doc": "the people: their clip and body tables, face acts, helmets and the cooked asset's layout (render/agents people_*; the people shaders)",
    "entries": [
-    {"name": "PEOPLE_CLIPS", "type": "int", "value": 24, "doc": "the clips a person's tables hold (people_boot.cpp CLIP_TABLE; people_pose.gdshaderinc clip_row, clip_frames, clip_seconds by sex; people_face.gdshaderinc act_face)"},
-    {"name": "PEOPLE_BODIES", "type": "int", "value": 32, "doc": "the body variations (people_boot.cpp BODY_TABLE; people_pose.gdshaderinc walk_frames, body_female; people_face body_mood; three rows each in palm_rows and helmet_rows)"},
+    {"name": "PEOPLE_CLIPS", "type": "int", "value": 64, "doc": "the clips a person's tables hold (people_boot.cpp CLIP_TABLE; people_pose.gdshaderinc clip_row, clip_frames, clip_seconds by sex; people_face.gdshaderinc act_face)"},
+    {"name": "PEOPLE_BODIES", "type": "int", "value": 32, "doc": "the body variations (people_boot.cpp BODY_TABLE; people_face body_mood; three rows each in palm_rows and helmet_rows)"},
     {"name": "PEOPLE_HAND_ROWS", "type": "int", "value": 3, "doc": "rows a variation takes in palm_rows and helmet_rows (people_boot.cpp PALM_ROWS)"},
-    {"name": "PEOPLE_CLIP_CODE_BASE", "type": "float", "value": "2.0", "doc": "an instance colour's alpha from here on is a clip, held (people_renderer.cpp, people_pose.gdshaderinc)"},
-    {"name": "PEOPLE_ACT_SPAN", "type": "float", "value": "0.96", "doc": "the whole of an act, short of the next clip's number (people_renderer.cpp, people_pose.gdshaderinc)"},
     {"name": "FACE_ACT_TALK", "type": "int", "value": 1, "doc": "what a face does at a clip (people_boot.cpp FACE_ACTS, people_face.gdshaderinc)"},
     {"name": "FACE_ACT_LISTEN", "type": "int", "value": 2, "doc": "as FACE_ACT_TALK"},
     {"name": "FACE_ACT_PHONE", "type": "int", "value": 3, "doc": "as FACE_ACT_TALK"},
     {"name": "FACE_ACT_CROUCH", "type": "int", "value": 4, "doc": "as FACE_ACT_TALK"},
     {"name": "HELMET_COLOURS", "type": "int", "value": 8, "doc": "the helmets' colours (helmets.cpp, people_helmet.gdshader)"},
-    {"name": "PeopleTables", "type": "ints", "values": {"PEOPLE_FACE_CHANNELS": 13, "PEOPLE_FACE_SPAN": 8, "PEOPLE_BONE_TEXELS": 3, "PEOPLE_PALETTE_TEXELS": 2, "PEOPLE_BONES": 53}, "doc": "the cooked people (people_asset.cpp reads and checks them): a face row's channels and the rows side by side in face_table (people_face.gdshaderinc), a bone's texels in the palette and a value's (high bytes, then low; people_pose.gdshaderinc), the skeleton's bones (people_skin.gdshaderinc)"},
+    {"name": "PeopleTables", "type": "ints", "values": {"PEOPLE_FACE_CHANNELS": 13, "PEOPLE_FACE_SPAN": 8, "PEOPLE_BONE_TEXELS": 3, "PEOPLE_PALETTE_TEXELS": 2, "PEOPLE_BONES": 53, "PEOPLE_PLAYS": 8}, "doc": "the cooked people (people_asset.cpp reads and checks them): a face row's channels and the rows side by side in face_table (people_face.gdshaderinc), a bone's texels in the palette and a value's (high bytes, then low; people_pose.gdshaderinc), the skeleton's bones (people_skin.gdshaderinc), the clips a figure's pose blends: a row of the plays texture each (people_gait.cpp writes them, people_pose.gdshaderinc reads them: clip, phase, weight; the lab's citizenRow and GPU_PLAYS)"},
     {"name": "PeopleSpans", "type": "floats", "values": {"PEOPLE_FACE_ROW_STEP": "4.0", "PEOPLE_PALETTE_SPAN": "3.0"}, "doc": "a face vertex's UV2.x is its region plus this many a row of face_table; a palette value is fixed point over [-span, span] (people_asset.cpp; people_face.gdshaderinc, people_pose.gdshaderinc)"}
    ]
   },

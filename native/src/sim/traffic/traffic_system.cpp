@@ -125,6 +125,27 @@ void speed_shares(TrafficState &t, PoseFrame &f, size_t segs) {
 		mine->segs.assign(t.pub_segs.begin(), t.pub_segs.end());
 	}
 }
+// What the render reads of a walker: its trail, its looks and size, what it does, whom it walks with.
+AgentRecord walker_record(const TrafficState &t, const Pedestrian &w) {
+	AgentRecord rec;
+	for (int i = 0; i < POSE_TRAIL; i++) rec.at[i] = w.trail.at[i];
+	rec.id = uint32_t(&w - t.peds.data());
+	rec.look = w.look;
+	rec.walked = w.walked;
+	rec.rest = w.rest;
+	rec.act = uint8_t(w.act);
+	rec.act_share = w.act_share;
+	rec.act_since = float(t.time - w.act_from);
+	rec.act_left = w.held_until - float(t.time);
+	rec.frightened = t.time < w.panic_until;
+	rec.age = uint8_t(w.age);
+	rec.scale = w.scale;
+	const PedParty party = party_of(t, w);
+	rec.party = party.leader->look;
+	rec.company = uint8_t(party.size < 2 ? PedCompany::SOLO : party.child ? PedCompany::FAMILY : PedCompany::COUPLE);
+	return rec;
+}
+
 } // namespace
 
 void publish_poses(CityState &s, int64_t stamp_ns) {
@@ -192,19 +213,7 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 		if (s.traffic.time < w.down_until) continue; // on the ground: the effects draw the body, not the walker
 		const float dx = w.cur.x - cx, dz = w.cur.z - cz;
 		if (dx * dx + dz * dz > r2) continue;
-		AgentRecord rec;
-		for (int i = 0; i < POSE_TRAIL; i++) rec.at[i] = w.trail.at[i];
-		rec.id = uint32_t(&w - s.traffic.peds.data());
-		rec.look = w.look;
-		rec.walked = w.walked;
-		rec.rest = w.rest;
-		rec.act = uint8_t(w.act);
-		rec.act_share = w.act_share;
-		rec.act_since = float(s.traffic.time - w.act_from);
-		rec.act_left = w.held_until - float(s.traffic.time);
-		rec.frightened = s.traffic.time < w.panic_until;
-		rec.age = uint8_t(w.age);
-		f.people.push_back(rec);
+		f.people.push_back(walker_record(t, w));
 	}
 	speed_shares(t, f, segs);
 	publish_signals(s, cx, cz, p.publish_radius_m, f.signals);

@@ -1,9 +1,10 @@
 // Pedestrians near the camera drawn with the cooked MakeHuman people (people_asset.h): one MultiMesh per variation and
-// level, refilled every frame. A body of the pedestrian's age, tints and phase come from its look hash (Roadcraft looks.ts);
-// the walk phase follows the metres walked over the variation's stride, and one standing plays the idle or what the simulation says
-// they are doing (PedAct), with what that holds in the hand (held_things.h). Past blob_from_m
-// a person casts no real shadow: a soft disc lies under it (material "people_blob"). Material "people"
-// (data/render/materials.json), settings in data/render/agents.json "people".
+// level, refilled every frame. A walker's body is cast once (people_casting.h) and drawn at its own size (AgentRecord::scale); what it
+// plays is its gait's (people_gait.h: its own walk blended by pace, the run, the start and stop, the turns and side steps, standing the idle
+// or the simulation's act), written into its row of the plays texture (people_plays.h), with what the act holds in the hand (held_things.h).
+// A seated person plays its seat's pose and now and then glances aside (the lab's occupants.ts). Past blob_from_m a person casts no real
+// shadow: a soft disc lies under it (material "people_blob"). Material "people" (data/render/materials.json), settings in
+// data/render/agents.json "people".
 #pragma once
 
 #include "render/agents/agent_shapes.h"
@@ -12,6 +13,9 @@
 #include "render/agents/helmets.h"
 #include "render/agents/body_renderer.h"
 #include "render/agents/people_asset.h"
+#include "render/agents/people_casting.h"
+#include "render/agents/people_gait.h"
+#include "render/agents/people_plays.h"
 #include "render/row_keeper.h"
 #include "render/render_context.h"
 #include "render/rs_util.h"
@@ -57,8 +61,8 @@ public:
 	void set_level_hold(float share) { level_hold_ = share; }
 	// Who rides is keyed from here on, past the walkers' ids.
 	static constexpr uint64_t PEOPLE_DENSE_KEYS = 1u << 20;
-	// The frame's rows open: riders first (seat), then the walkers and the draws (update).
-	void begin();
+	// The frame's rows open: riders first (seat), then the walkers and the draws (update). `f`: the simulation's clock and step.
+	void begin(const PoseFrame &f);
 	// Somebody in `spot` of a vehicle at `vehicle`, `dist` from the camera: their looks from `look`, the bicycle's cranks at `phase` (0..1),
 	// a two-wheeler's rider with a foot down when `stopped`.
 	void seat(uint64_t key, const Pose &vehicle, const SeatSpot &spot, uint32_t look, float dist, float phase, bool stopped);
@@ -66,9 +70,12 @@ public:
 	int update(const PoseFrame &f, const godot::Vector3 &cam, const ViewCull &view, const PoseSample &at, float radius);
 	void set_floor(int level) { floor_ = level; } // the nearest level the graphics tier allows
 	BodyRenderer &bodies() { return bodies_; }
-	int variation_of(uint32_t look, int age) const; // which body a walker is drawn with
+	int variation_of(uint32_t look, int age) const { return casting_.worn(look, age); } // the body a walker wears, or wore last
 	int shown(int level) const; // people drawn at this level on the last frame
-	// For the tests and the captures: the file's clips, the first body's fit in each; and everybody at rest in clip `name`.
+	godot::Dictionary cast_census() const { return casting_.census(); } // who walks as whom (people_casting.h census)
+	// For the tests: how many walkers near the eye play each clip as the heaviest of their pose, last frame.
+	godot::Dictionary plays_census() const;
+	// For the tests and the captures: the file's clips, the first body's fit in each; and everybody in clip `name` (an empty name: back to the gait).
 	godot::Array clips() const;
 	bool show_clip(const godot::String &name);
 
@@ -83,7 +90,13 @@ private:
 	// The slot of a variation's level in draws_ and bufs_: its lods, then the far mesh casting no shadow.
 	size_t slot(size_t variation, int level) const { return variation * size_t(asset_.lods + 1) + size_t(level); }
 	std::vector<float> lod_m_; // camera distance where each level ends
-	std::vector<int> by_age_[PED_AGES]; // the variations of each age
+	std::vector<int> by_age_[PED_AGES]; // the variations of each age (who rides in a vehicle)
+	PeopleCasting casting_; // who walks as whom
+	PeopleGait gait_; // what each walker plays
+	FigurePlays plays_; // the frame's figures' plays, a row each
+	double clock_ = 0; // the simulation's seconds this frame
+	int forced_clip_ = -1; // show_clip: everybody in this clip
+	std::vector<int> leading_; // by clip: the near walkers whose pose it leads, last frame
 	OwnedMesh blob_mesh_;
 	MultiMeshDraw blob_;
 	InstanceRows blob_buf_;
@@ -91,21 +104,26 @@ private:
 	float blob_from_m_ = 0, blob_radius_m_ = 0, blob_lift_m_ = 0;
 	float view_reach_m_ = 0; // agents.json people.view_reach_m
 	int seat_clips_[int(SeatPose::COUNT)] = {}, stop_clips_[int(SeatPose::COUNT)] = {}; // each pose's clip, in PeopleAsset::clips' order
-	void set_faces(const godot::RID &material) const;
-	int act_clips_[int(PedAct::COUNT)] = {}; // what each act plays
-	int crouch_down_ = 0, crouch_up_ = 0; // either side of the crouch's own clip
-	struct Played {
-		int clip = 0;
-		float phase = 0;
+	// A seated person's glances (occupants.ts occupantPlays): each seat pose's two glances (-1 none), the side windows, the rhythm.
+	struct Glance {
+		int clips[int(SeatPose::COUNT)][2] = {};
+		int window_left = 0, window_right = 0;
+		float period_s = 0, period_span = 1, from = 0, to = 0, edge = 1, shown_over = 0;
+		int quiet_one_in = 1;
 	};
-	Played crouch_at(int female, float since, float left) const; // `since` it began and `left` of it
+	Glance glance_;
+	bool read_glance(const DataValue &glance);
+	bool read_clips(const DataValue &people, godot::PackedStringArray &errors);
+	int seated_clip(SeatPose pose, uint32_t look, bool right_side) const; // the clip a seated person plays now
+	void set_faces(const godot::RID &material) const;
+	StandingClips standing_; // what each act plays
 	HeldThings held_;
 	Helmets helmets_;
 	void set_tables(const godot::RID &material) const; // what any material that poses a person reads
 	// A body's level by the distance; `blob`: past blob_from_m_, where the far mesh casts no shadow.
 	int level_at(float dist) const;
-	// The instance of a body at `p`.
-	void place(uint64_t key, int variation, int slot_level, const Pose &p, uint32_t look, float doing, float phase, float pose_code, bool frightened = false);
+	// The instance of a body at `p`, drawn at `scale`: its plays' row `row` (the far card: its height).
+	void place(uint64_t key, int variation, int slot_level, const Pose &p, float scale, uint32_t look, int row, bool frightened = false);
 	RowKeeper keeper_{ PEOPLE_DENSE_KEYS };
 	int floor_ = 0;
 };

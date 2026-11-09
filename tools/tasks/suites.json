@@ -19,6 +19,12 @@
    "windows": "C:/Projects/toolchains/llvm-mingw-20261020-ucrt-x86_64",
    "posix": ""
   },
+  "lab": {
+   "doc": "the lab game's root: what tools/assets/cook_people_lab.py cooks the people's clips from (its motion library and cast)",
+   "env": "ROADCRAFT_LAB",
+   "windows": "C:/Users/Jonathan/Documents/Projects/lab/roadcraft",
+   "posix": ""
+  },
   "captures": {
    "doc": "where the capture suite writes, one folder per task (tools/build/build.sh capture DIR sets it)",
    "env": "CAPTURE_DIR",
@@ -78,6 +84,15 @@
    "timeout_s": 60,
    "inputs": ["tools/assets/make_furniture.py", "project/data/catalog/interiors.json", "project/data/game/start.json", "project/data/render/furniture.json"],
    "resources": {"cores": 1}
+  },
+  "people_cook": {
+   "doc": "the people's clips cooked from the lab's own motion onto the cast (tools/assets/cook_people_lab.py): project/assets/people/people.bin rewritten, its bodies kept, a run on its own output the same bytes",
+   "argv": ["{python}", "tools/assets/cook_people_lab.py", "--lab", "{lab}", "--base", "project/assets/people/people.bin", "--out", "project/assets/people/people.bin", "--jobs", "4"],
+   "timeout_s": 3600,
+   "inputs": ["tools/assets/cook_people_lab.py", "tools/assets/people_bin.py", "tools/assets/lab_math.py", "tools/assets/lab_rig.py", "tools/assets/lab_shaping.py", "tools/assets/lab_ik.py", "tools/assets/lab_riders.py"],
+   "extra": ["{lab}"],
+   "outputs": ["project/assets/people/people.bin"],
+   "resources": {"cores": 4}
   },
   "causes": {
    "doc": "the causes the code's shape shows (tools/analysis/causes.py): its report, under a deadline like every tool",
@@ -322,6 +337,7 @@
      "timeout_s": 600
     },
     {"name": "people_test", "scene": "tests/core/people_test", "renderer": "gl_compatibility", "timeout_s": 600},
+    {"name": "people_cast_test", "scene": "tests/core/people_cast_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "strike_test", "scene": "tests/core/strike_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "shoot_test", "scene": "tests/core/shoot_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "transit_test", "scene": "tests/core/transit_test", "renderer": "gl_compatibility", "timeout_s": 600},

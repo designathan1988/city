@@ -1,4 +1,4 @@
-// Reads project/assets/people/people.bin (layout in tools/assets/cook_people.py) into ArrayMeshes and the palette texture, and atlas.bin
+// Reads project/assets/people/people.bin (layout in tools/assets/cook_people_lab.py) into ArrayMeshes and the palette texture, and atlas.bin
 // into the array of atlases. The file is checked end to end: a short or inconsistent file is refused with a message.
 #include "render/agents/people_asset.h"
 #include "core/shader_contracts/people.h"
@@ -28,13 +28,14 @@ constexpr uint32_t MAGIC = 0x50504352u; // "RCPP"
 constexpr uint32_t FACE_TEXELS = PEOPLE_FACE_SPAN * PEOPLE_FACE_CHANNELS, FACE_TEXEL_BYTES = 8, MAX_FACE_LINES = 16384; // half floats
 // the cooked cast's layout (people.bin, people_asset.h): its version, a material byte's region over its six roughness bits,
 // a body's flags, the most of each list it may hold, a clip name's bytes, a mesh's vertices under a 16-bit index, four channels a byte each
-constexpr uint32_t VERSION = 8, REGION_SHIFT = 6, ROUGHNESS_MASK = 63, FLAG_FEMALE = 1, FLAG_SENIOR = 2, FLAG_CHILD = 4;
+constexpr uint32_t VERSION = 9, REGION_SHIFT = 6, ROUGHNESS_MASK = 63, FLAG_FEMALE = 1, FLAG_SENIOR = 2, FLAG_CHILD = 4;
 constexpr uint32_t MAX_VARIATIONS = 256, MAX_LODS = 4, MAX_CLIPS = 64, CLIP_NAME_BYTES = 16, MAX_VERTICES = 65535, RGBA = 4;
+constexpr uint32_t MAX_TEXTURE_SIDE = 16384; // the palette's width and height in texels: what every Vulkan and GL 3.3 device holds
 constexpr int BYTE_MAX = 255, BYTE_BITS = 8, CHANNELS = 4;
 // What one vertex takes in the file (read_mesh): position, normal, colour, bone bytes, weight bytes, uv, face row.
 constexpr size_t VERTEX_BYTES = 6 * sizeof(float) + sizeof(uint32_t) + 2 * CHANNELS + 2 * sizeof(float) + sizeof(uint32_t);
 constexpr float SRGB_GAMMA = 2.2f;
-constexpr float BYTE_STEPS = 256.f, FIXED_MOST = 65535.f; // cook_people.py fixed_point
+constexpr float BYTE_STEPS = 256.f, FIXED_MOST = 65535.f; // cook_people_lab.py palette_bytes
 constexpr float CARD_HALF = 0.5f;
 
 // The vertex and index counts of one level of a person's mesh, as people.bin gives them.
@@ -157,6 +158,7 @@ void read_fit(ByteReader &r, PersonFit &f) {
 	f.below = r.get<float>();
 	f.ahead = r.get<float>();
 	f.side = r.get<float>();
+	f.stride = r.get<float>();
 }
 } // namespace
 
@@ -164,6 +166,40 @@ int PeopleAsset::clip(const char *name) const {
 	for (size_t i = 0; i < clips.size(); i++)
 		if (clips[i].name == name) return int(i);
 	return -1;
+}
+
+bool PeopleAsset::read_clips(ByteReader &r, uint32_t count) {
+	bool sound = true;
+	clips.assign(count, PersonClip());
+	for (PersonClip &c : clips) {
+		char name[CLIP_NAME_BYTES + 1] = {};
+		r.get_bytes(reinterpret_cast<uint8_t *>(name), CLIP_NAME_BYTES);
+		c.name = name;
+		c.row = int(r.get<uint32_t>());
+		c.frames = int(r.get<uint32_t>());
+		for (float &s : c.seconds) s = r.get<float>();
+		const uint32_t kind = r.get<uint32_t>();
+		c.loop = r.get<uint32_t>() != 0;
+		c.kind = ClipKind(kind < uint32_t(ClipKind::COUNT) ? kind : 0);
+		sound = sound && c.frames > 0 && c.row + c.frames <= block_rows && kind < uint32_t(ClipKind::COUNT);
+	}
+	return sound;
+}
+
+void PeopleAsset::read_curves(ByteReader &r) {
+	size_t values = 0;
+	for (const PersonClip &c : clips) values += size_t(c.frames) + 1;
+	for (PersonVariation &pv : variations) {
+		if (!r.claim(values, sizeof(float))) return;
+		pv.curves.resize(values);
+		pv.curve_at.resize(clips.size());
+		size_t at = 0;
+		for (size_t c = 0; c < clips.size(); c++) {
+			pv.curve_at[c] = int(at);
+			at += size_t(clips[c].frames) + 1;
+		}
+		for (float &f : pv.curves) f = r.get<float>();
+	}
 }
 
 void PeopleAsset::read_card(ByteReader &r) {
@@ -185,10 +221,16 @@ void PeopleAsset::read_ragdoll(ByteReader &r, uint32_t bones) {
 		for (float &f : pv.joints) f = r.get<float>();
 }
 
+float PeopleAsset::curve(int variation, int clip_index, int frame) const {
+	const PersonVariation &pv = variations[size_t(variation)];
+	const PersonClip &c = clips[size_t(clip_index)];
+	return pv.curves[size_t(pv.curve_at[size_t(clip_index)] + std::clamp(frame, 0, c.frames))];
+}
+
 void PeopleAsset::clip_rows(int variation, int clip_index, int frame, float *rows) const {
-	const size_t row = size_t(variation) * size_t(block_rows) + size_t(clips[size_t(clip_index)].row + frame);
+	const size_t row = size_t(variation / columns) * size_t(block_rows) + size_t(clips[size_t(clip_index)].row + frame);
 	const size_t values = bone_part.size() * PEOPLE_BONE_TEXELS, line = values * PEOPLE_PALETTE_TEXELS * RGBA;
-	const uint8_t *from = palette_bytes.ptr() + row * line;
+	const uint8_t *from = palette_bytes.ptr() + row * line * size_t(columns) + size_t(variation % columns) * line;
 	for (size_t t = 0; t < values; t++)
 		for (size_t c = 0; c < RGBA; c++) { // cook_people.py fixed_point: high bytes in a texel, low bytes in the next
 			const float fixed = float(from[t * PEOPLE_PALETTE_TEXELS * RGBA + c]) * BYTE_STEPS + float(from[(t * PEOPLE_PALETTE_TEXELS + 1) * RGBA + c]);
@@ -205,19 +247,13 @@ bool PeopleAsset::load(const String &path, const String &atlas_path, PackedStrin
 	const uint32_t clip_count = r.get<uint32_t>();
 	hand_bone = int(r.get<uint32_t>());
 	head_bone = int(r.get<uint32_t>());
-	const uint32_t pal_h = uint32_t(block_rows) * count;
+	columns = int(r.get<uint32_t>());
+	const uint32_t body_rows = columns > 0 ? (count + uint32_t(columns) - 1) / uint32_t(columns) : 0;
+	const uint32_t pal_h = uint32_t(block_rows) * body_rows, pal_texels = pal_w * PEOPLE_PALETTE_TEXELS * uint32_t(columns);
 	bool sound = r.ok && magic == MAGIC && version == VERSION && count > 0 && count <= MAX_VARIATIONS && lod_count > 0 && lod_count <= MAX_LODS &&
-			bones == uint32_t(PEOPLE_BONES) && pal_w == bones * PEOPLE_BONE_TEXELS && clip_count > 0 && clip_count <= MAX_CLIPS;
-	clips.assign(sound ? clip_count : 0, PersonClip());
-	for (PersonClip &c : clips) {
-		char name[CLIP_NAME_BYTES + 1] = {};
-		r.get_bytes(reinterpret_cast<uint8_t *>(name), CLIP_NAME_BYTES);
-		c.name = name;
-		c.row = int(r.get<uint32_t>());
-		c.frames = int(r.get<uint32_t>());
-		for (float &s : c.seconds) s = r.get<float>();
-		sound = sound && c.frames > 0 && c.row + c.frames <= block_rows;
-	}
+			bones == uint32_t(PEOPLE_BONES) && pal_w == bones * PEOPLE_BONE_TEXELS && clip_count > 0 && clip_count <= MAX_CLIPS && columns > 0 &&
+			pal_h <= MAX_TEXTURE_SIDE && pal_texels <= MAX_TEXTURE_SIDE;
+	sound = read_clips(r, sound ? clip_count : 0) && sound;
 	if (!r.ok || !sound || clip("idle") < 0 || hand_bone < 0 || uint32_t(hand_bone) >= bones) {
 		errors.push_back("pessoas: arquivo ausente ou inválido: " + path);
 		return false;
@@ -228,8 +264,6 @@ bool PeopleAsset::load(const String &path, const String &atlas_path, PackedStrin
 	std::vector<LodSize> sizes(size_t(count) * lod_count);
 	for (uint32_t v = 0; v < count; v++) {
 		PersonVariation &pv = variations[v];
-		pv.walk_frames = int(r.get<uint32_t>());
-		pv.walk_advance = r.get<float>();
 		pv.height = r.get<float>();
 		uint32_t flags = r.get<uint32_t>();
 		pv.female = flags & FLAG_FEMALE;
@@ -244,6 +278,7 @@ bool PeopleAsset::load(const String &path, const String &atlas_path, PackedStrin
 		pv.fits.resize(clips.size());
 		for (PersonFit &f : pv.fits) read_fit(r, f);
 	}
+	read_curves(r);
 	for (uint32_t i = 0; i < count * lod_count && r.ok; i++) {
 		if (sizes[i].vertices > MAX_VERTICES) r.ok = false;
 		else {
@@ -254,8 +289,8 @@ bool PeopleAsset::load(const String &path, const String &atlas_path, PackedStrin
 		}
 	}
 	PackedByteArray texels;
-	r.claim(uint64_t(pal_w) * pal_h * RGBA * PEOPLE_PALETTE_TEXELS, 1);
-	if (r.ok) texels.resize(int64_t(pal_w) * pal_h * RGBA * PEOPLE_PALETTE_TEXELS);
+	r.claim(uint64_t(pal_texels) * pal_h * RGBA, 1);
+	if (r.ok) texels.resize(int64_t(pal_texels) * pal_h * RGBA);
 	if (r.ok) r.get_bytes(texels.ptrw(), size_t(texels.size()));
 	const uint32_t face_lines = r.get<uint32_t>();
 	if (face_lines == 0 || face_lines > MAX_FACE_LINES) r.ok = false;
@@ -270,7 +305,7 @@ bool PeopleAsset::load(const String &path, const String &atlas_path, PackedStrin
 		return false;
 	}
 	palette_bytes = texels;
-	palette = ImageTexture::create_from_image(Image::create_from_data(int(pal_w) * PEOPLE_PALETTE_TEXELS, int(pal_h), false, Image::FORMAT_RGBA8, texels));
+	palette = ImageTexture::create_from_image(Image::create_from_data(int(pal_texels), int(pal_h), false, Image::FORMAT_RGBA8, texels));
 	faces = ImageTexture::create_from_image(Image::create_from_data(int(FACE_TEXELS), int(face_lines), false, Image::FORMAT_RGBAH, face_bytes));
 	card = card_mesh();
 	atlas = read_atlas(atlas_path, count);

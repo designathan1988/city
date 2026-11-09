@@ -108,6 +108,8 @@ Dictionary AgentRenderer::cost() const {
 	Dictionary out;
 	out["cabins"] = cabins_drawn();
 	out["people_near"] = people_.shown(0);
+	out["people_cast"] = people_.cast_census();
+	out["people_plays"] = people_.plays_census();
 	out["rows_lost"] = rows_lost_;
 	int draws = 0, tris = 0;
 	for (int i = 0; i < AGENT_MODELS; i++)
@@ -200,7 +202,7 @@ bool AgentRenderer::in_view(const ViewCull &view, int model, const Pose &p, floa
 
 void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCull &view, const PoseSample &at) {
 	if (!material_.is_valid() || !meshes_[0][CABIN_LEVEL].valid()) return;
-	people_.begin();
+	people_.begin(f);
 	keeper_.begin();
 	auto &bufs = seen_rows_; // what the camera sees
 	auto &casts = cast_rows_; // what the sun sees, out of the view too: a car behind the camera shades what is before it

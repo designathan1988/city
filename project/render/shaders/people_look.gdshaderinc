@@ -76,8 +76,8 @@ void vertex() {
 	}
 	v_charred = INSTANCE_CUSTOM.a;
 #else
-	vec3 rest = row > 0 ? VERTEX + face_move(row, INSTANCE_CUSTOM, COLOR.a) : VERTEX;
-	person_pose(INSTANCE_CUSTOM, COLOR.a, skin_bones(BONE_INDICES), BONE_WEIGHTS, rest, NORMAL, pos, nor);
+	vec3 rest = row > 0 ? VERTEX + face_move(row, INSTANCE_CUSTOM) : VERTEX;
+	person_pose(INSTANCE_CUSTOM, skin_bones(BONE_INDICES), BONE_WEIGHTS, rest, NORMAL, pos, nor);
 #endif
 	VERTEX = pos;
 	NORMAL = nor / max(length(nor), STRAND_ROOM); // a part gone closes on its joint: nothing left to face
