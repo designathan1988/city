@@ -56,49 +56,44 @@ void EcologyRaster::work(const CityState &s, uint64_t generation, std::vector<in
 	}
 	r.step = d.grid_m;
 	r.side = int(std::lround(2.f * r.half / r.step)) + 1;
-	{
-		if (k->side != r.side || k->half != r.half || k->step != r.step) { // another map's raster: all of this one's corners again
-			k->texels.assign(size_t(r.side) * size_t(r.side) * CHANNELS, 0);
-			k->side = r.side;
-			k->half = r.half;
-			k->step = r.step;
-			whole = true;
+	if (k->side != r.side || k->half != r.half || k->step != r.step) { // another map's raster: all of this one's corners again
+		k->texels.assign(size_t(r.side) * size_t(r.side) * CHANNELS, 0);
+		k->side = r.side;
+		k->half = r.half;
+		k->step = r.step;
+		whole = true;
+	}
+	if (whole) {
+		chunks.clear();
+		const int c0 = int(std::floor(-r.half / CHUNK)), c1 = int(std::ceil(r.half / CHUNK)) - 1;
+		for (int cz = c0; cz <= c1; cz++)
+			for (int cx = c0; cx <= c1; cx++) chunks.push_back(cell_key(cx, cz));
+	}
+	const int n = int(std::ceil(CHUNK / r.step)) + 1; // a chunk's corners a side, both edges (compute_ecology's inner side)
+	for (int64_t key : chunks) {
+		if (!slot_.current(generation)) return; // a reset came: nothing of this raster is kept
+		const float x0 = float(key_x(key)) * CHUNK, z0 = float(key_y(key)) * CHUNK;
+		const int i0 = int(std::lround((x0 + r.half) / r.step)), j0 = int(std::lround((z0 + r.half) / r.step));
+		if (i0 >= r.side || j0 >= r.side || i0 + n <= 0 || j0 + n <= 0) continue; // a neighbour past the map's edge
+		// The map is read shared a chunk at a time, so an edit waits for one chunk and not the whole map: what it changes marks
+		// its chunks again (touch), and the next job redoes them.
+		EcologyField f;
+		bool grows = false;
+		{
+			std::shared_lock<std::shared_mutex> map(s.map_mutex);
+			grows = s.nature.nature.region >= 0 || s.nature.ground.any_cover();
+			if (grows) f = compute_ecology(s.terrain, s.nature.ground, s.nature.nature, d, x0, z0, CHUNK);
 		}
-		if (whole) {
-			chunks.clear();
-			const int c0 = int(std::floor(-r.half / CHUNK)), c1 = int(std::ceil(r.half / CHUNK)) - 1;
-			for (int cz = c0; cz <= c1; cz++)
-				for (int cx = c0; cx <= c1; cx++) chunks.push_back(cell_key(cx, cz));
-		}
-		for (int64_t key : chunks) {
-			if (!slot_.current(generation)) return; // a reset came: nothing of this raster is kept
-			const float x0 = float(key_x(key)) * CHUNK, z0 = float(key_y(key)) * CHUNK;
-			const int i0 = int(std::lround((x0 + r.half) / r.step)), j0 = int(std::lround((z0 + r.half) / r.step));
-			// The map is read shared a chunk at a time, so an edit waits for one chunk and not the whole map: what it changes
-			// marks its chunks again (touch), and the next job redoes them.
-			EcologyField f;
-			bool grows = false;
-			{
-				std::shared_lock<std::shared_mutex> map(s.map_mutex);
-				grows = s.nature.nature.region >= 0 || s.nature.ground.any_cover();
-				if (grows) f = compute_ecology(s.terrain, s.nature.ground, s.nature.nature, d, x0, z0, CHUNK);
-			}
-			if (grows) {
-				for (int j = 0; j < f.side; j++) {
-					const int z = j0 + j;
-					if (z < 0 || z >= r.side) continue;
-					for (int i = 0; i < f.side; i++) {
-						const int x = i0 + i;
-						if (x < 0 || x >= r.side) continue;
-						pack(&k->texels[(size_t(z) * size_t(r.side) + size_t(x)) * CHANNELS], f.at[size_t(j) * size_t(f.side) + size_t(i)]);
-					}
-				}
-			} else { // no ecosystem on the map: nothing of it on the ground
-				const int n = int(std::ceil(CHUNK / r.step)) + 1;
-				for (int z = std::max(0, j0); z < std::min(r.side, j0 + n); z++) {
-					const int xa = std::max(0, i0), xb = std::min(r.side, i0 + n);
-					if (xb > xa) std::memset(&k->texels[(size_t(z) * size_t(r.side) + size_t(xa)) * CHANNELS], 0, size_t(xb - xa) * CHANNELS);
-				}
+		const int side = grows ? f.side : n;
+		for (int j = 0; j < side; j++) {
+			const int z = j0 + j;
+			if (z < 0 || z >= r.side) continue;
+			for (int i = 0; i < side; i++) {
+				const int x = i0 + i;
+				if (x < 0 || x >= r.side) continue;
+				uint8_t *o = &k->texels[(size_t(z) * size_t(r.side) + size_t(x)) * CHANNELS];
+				if (grows) pack(o, f.at[size_t(j) * size_t(f.side) + size_t(i)]);
+				else std::memset(o, 0, CHANNELS); // no ecosystem on the map: nothing of it on the ground
 			}
 		}
 	}

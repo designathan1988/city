@@ -713,6 +713,30 @@
        "type": "number"
       }
      }
+    },
+    "talus_share": {
+     "type": "number"
+    },
+    "talus_pebble_per_m": {
+     "type": "number"
+    },
+    "talus_edge": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     }
+    },
+    "scree_mix": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     }
+    },
+    "scree_pebble": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     }
     }
    },
    "required": [
@@ -790,7 +814,12 @@
     "basalt_top_edge",
     "rock_blend",
     "rock_least",
-    "soil_by_rock"
+    "soil_by_rock",
+    "talus_edge",
+    "talus_share",
+    "scree_mix",
+    "scree_pebble",
+    "talus_pebble_per_m"
    ],
    "strict": true
   }

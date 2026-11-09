@@ -13,6 +13,11 @@ uniform sampler2DArray land_map : source_color, filter_linear_mipmap_anisotropic
 uniform float dirt_layer; // the land map's layers of soil and of rock, and the metres a repeat of each covers
 uniform float rock_layer; // granite's face, the land's rock where no other was painted (rock_strata.gdshaderinc)
 uniform float rock_flat_share; // the rock's flat tone over its texture
+uniform vec4 talus_edge; // the talus comes in and goes again over the rock's weight: from, to; from, to
+uniform float talus_share; // how much of the talus band turns to scree
+uniform vec3 scree_mix; // the scree: the rock's shade, the soil's shade, the soil's share
+uniform vec2 scree_pebble; // the scree's shade by its pebbles, from and to
+uniform float talus_pebble_per_m; // the pebbles' read of the soil layer, a metre
 uniform float dirt_m;
 uniform float rock_m;
 uniform float dirt_from; // 1 - normal.y where soil starts to show; data/render/palette.json terrain (angle of repose)

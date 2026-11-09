@@ -38,7 +38,8 @@
 	vec3 c = grass_ground(v_vertex.xz, detail, tint, eco.x, per_pixel, g, n);
 	vec3 wdx = dFdx(v_vertex), wdy = dFdy(v_vertex);
 	vec3 soil_k = soil_tint(geology);
-	c = ecology_over(c, g, eco, land(dirt_layer, fract(v_vertex.xz / dirt_m), wdx.xz / dirt_m, wdy.xz / dirt_m) * soil_k);
+	vec3 soil_c = land(dirt_layer, fract(v_vertex.xz / dirt_m), wdx.xz / dirt_m, wdy.xz / dirt_m) * soil_k;
+	c = ecology_over(c, g, eco, soil_c);
 	float wander = (n - 0.5) * slope_wander;
 	float dirt_w = smoothstep(dirt_from, dirt_to, slope + wander) * (1.0 - smoothstep(rock_slope, rock_slope + rock_edge, slope));
 	float rock_w = smoothstep(rock_slope, rock_slope + rock_edge, slope + wander);
@@ -48,8 +49,14 @@
 		c = mix(c, land_triplanar(dirt_layer, v_vertex / dirt_m, wdx / dirt_m, wdy / dirt_m, w_normal) * soil_k, dirt_w);
 	}
 	c = shore_over(c, v_vertex, slope, wdx, wdy);
+	float pebbles = land(dirt_layer, fract(v_vertex.xz * talus_pebble_per_m), wdx.xz * talus_pebble_per_m, wdy.xz * talus_pebble_per_m).r;
 	if (rock_w > 0.0) {
-		c = mix(c, mix(rock_strata(v_vertex, wdx, wdy, w_normal, geology), rock, rock_flat_share), rock_w);
+		vec3 rock_c = mix(rock_strata(v_vertex, wdx, wdy, w_normal, geology), rock, rock_flat_share);
+		c = mix(c, rock_c, rock_w);
+		// The talus where the rock gives out: its own rubble and grit, darker, mixed with the soil (Roadcraft render/terrain.ts).
+		float talus = smoothstep(talus_edge.x, talus_edge.y, rock_w) * (1.0 - smoothstep(talus_edge.z, talus_edge.w, rock_w));
+		vec3 scree = mix(rock_c * scree_mix.x, soil_c * scree_mix.y, scree_mix.z) * mix(scree_pebble.x, scree_pebble.y, pebbles);
+		c = mix(c, scree, talus * talus_share);
 	}
 	c = paint_over(c, g, p00, p10, p01, p11, cw, v_vertex, wdx, wdy, w_normal);
 	c *= gully_shade;
