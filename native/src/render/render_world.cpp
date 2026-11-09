@@ -87,6 +87,7 @@ void RenderWorld::full_rebuild(CityState &s, Object *terrain3d) {
 	fog_.reset();
 	canyon_.reset();
 	shore_.reset();
+	ecology_.reset();
 	water_.mark_wet(s.terrain);
 	for (size_t sid = 0; sid < s.roads.segs.size(); sid++)
 		if (s.roads.segs[sid].alive) // every chunk a road's drawing reaches: its own, and those its ground seams' cells fall in
@@ -132,6 +133,7 @@ void RenderWorld::drain_log(CityState &s) {
 // The landscape's changes: the trees and ground cover of the touched chunks are marked, the water's chunks and surface follow.
 void RenderWorld::sync_nature() {
 	ChangeLog::dedup(nature_keys_);
+	ecology_.touch(nature_keys_);
 	for (int64_t k : nature_keys_) {
 		trees_.mark_dirty(k);
 		cover_.mark_dirty(k);
@@ -276,6 +278,7 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 	fog_.sync(s, cam.x, cam.z, f);
 	canyon_.sync(s, cam.x, cam.z, f);
 	shore_.sync(s, f);
+	ecology_.sync(s, f);
 	laps.lap();
 	cost_.flush = f.flush_uploads();
 	laps.lap();

@@ -58,7 +58,8 @@ var preview: PreviewLine
 var flash: RoadFlash
 var tool: Tool = Tool.NONE
 var params: Dictionary = {}
-## The params each tool was last used with: a category reopens with the tool and choice last used.
+## The params each tool was last used with: a category reopens with the tool and choice last used (the Landscape brushes' kept
+## keys from the last session too).
 var remembered: Dictionary = {}
 var active: ToolBase
 var pointer := Vector2.ZERO # where the mouse event being handled happened: the OS's cursor may already be elsewhere
@@ -67,6 +68,8 @@ var _dragging := false
 
 func _init(camera_rig: CityCamera) -> void:
 	rig = camera_rig
+	for tool_name: String in Settings.land.kept: # the Landscape brushes as the last session left them (game/tools/brush_prefs.gd)
+		remembered[Tool[tool_name]] = Settings.land.kept[tool_name].duplicate()
 	add_to_group(&"tools")
 	rig.right_clicked.connect(_right_clicked)
 
@@ -91,6 +94,7 @@ func set_tool(next: Tool, p: Dictionary = {}) -> void:
 	remembered[next] = p
 	preview.clear()
 	active = SCRIPTS[next].new(self, p) if SCRIPTS.has(next) else null
+	Settings.set_land_brush(Tool.find_key(next), p) # after the tool took them up: the element brush files its kind's (element_tool.gd)
 	tool_changed.emit(tool, params)
 
 

@@ -249,6 +249,8 @@ Dictionary CityLandscape::canyon_field() const { return render_->canyon().view()
 int64_t CityLandscape::canyon_revision() const { return int64_t(render_->canyon().view_revision()); }
 Dictionary CityLandscape::shore_field() const { return render_->shore().view(); }
 int64_t CityLandscape::shore_revision() const { return int64_t(render_->shore().view_revision()); }
+Dictionary CityLandscape::ecology_field() const { return render_->ecology().view(); }
+int64_t CityLandscape::ecology_revision() const { return int64_t(render_->ecology().view_revision()); }
 
 void CityLandscape::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_weather", "change"), &CityLandscape::set_weather);
@@ -282,6 +284,8 @@ void CityLandscape::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("canyon_field"), &CityLandscape::canyon_field);
 	ClassDB::bind_method(D_METHOD("shore_field"), &CityLandscape::shore_field);
 	ClassDB::bind_method(D_METHOD("shore_revision"), &CityLandscape::shore_revision);
+	ClassDB::bind_method(D_METHOD("ecology_field"), &CityLandscape::ecology_field);
+	ClassDB::bind_method(D_METHOD("ecology_revision"), &CityLandscape::ecology_revision);
 }
 
 } // namespace city

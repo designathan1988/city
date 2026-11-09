@@ -139,15 +139,17 @@ vec2 grass_tilt(vec2 xz, float per_pixel, float share) {
 	return tufts * share;
 }
 
-uniform float biome_dry[1 << PAINT_ID_BITS]; // by the overlay id, as biome_tint: none, then the biomes
 uniform float straw_share;
+uniform vec2 straw_season; // how much of the dry herbs turn gold at the rains and at the height of the dry season
+uniform float season_dry; // how far into the dry season the land is, 0 the rains .. 1
 
 // The dry season over the grass: the map's own texture with its hue turned to straw, patch by patch, each patch green or
-// gold with its edge broken by the tufts (a share of each everywhere is only an olive wash).
-vec3 straw_over(vec3 c, vec3 map_colour, vec2 xz, int biome) {
+// gold with its edge broken by the tufts (a share of each everywhere is only an olive wash). `dry`: the ecosystem's dry herbs
+// at the point (ecology.gdshaderinc), so the cerrado's campo turns gold and the gallery forest's floor stays green.
+vec3 straw_over(vec3 c, vec3 map_colour, vec2 xz, float dry) {
 	float luma = dot(map_colour, LUMA);
 	float patchy = vnoise(xz / straw_patch.x + STRAW_SHIFT_WIDE) * straw_patch.z + vnoise(xz / straw_patch.y + STRAW_SHIFT_FINE) * straw_patch.w;
-	float golden = clamp(biome_dry[biome] * (straw_gold.x + straw_gold.y * patchy), 0.0, 1.0);
+	float golden = clamp(dry * mix(straw_season.x, straw_season.y, season_dry) * (straw_gold.x + straw_gold.y * patchy), 0.0, 1.0);
 	float mask = smoothstep(straw_mask.x, straw_mask.y, golden + (clamp((luma - straw_mask.z) / straw_mask.w, 0.0, 1.0) - 0.5) * straw_luma_share) * straw_share;
 	return mix(c, dot(c, LUMA) * straw_tone * straw_gain, mask);
 }
@@ -163,11 +165,11 @@ vec3 macro_tone(vec2 xz) {
 	return mix(tone, tone * macro_straw, dry * macro_dry_share);
 }
 
-vec3 grass_ground(vec2 xz, float detail, vec3 tint, int biome, float per_pixel, out vec3 g, out float n) {
+vec3 grass_ground(vec2 xz, float detail, vec3 tint, float dry, float per_pixel, out vec3 g, out float n) {
 	n = mix(0.5, vnoise(xz * patch_scale) * patch_mix.x + vnoise(xz * patch_scale * patch_mix.y) * patch_mix.z, detail);
 	vec2 gp = xz / grass_m;
 	g = grass(gp, detail);
 	float macro = clamp(dot(grass(gp * grass_wide_scale + WIDE_SHIFT, detail), LUMA) / max(dot(g, LUMA), LEAST_LUMA), macro_clamp.x, macro_clamp.y);
-	vec3 c = straw_over(g * mix(1.0, macro, macro_share) * tint * mix(patch_shade.x, patch_shade.y, n), g, xz, biome);
+	vec3 c = straw_over(g * mix(1.0, macro, macro_share) * tint * mix(patch_shade.x, patch_shade.y, n), g, xz, dry);
 	return c * macro_tone(xz) * grass_grain(xz, per_pixel) * grass_speckle(xz, per_pixel);
 }

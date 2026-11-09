@@ -31,6 +31,7 @@
 #include "render/cover/cover_renderer.h"
 #include "render/trees/tree_renderer.h"
 #include "render/water/shore_field.h"
+#include "render/cover/ecology_raster.h"
 #include "render/water/water_renderer.h"
 
 #include "core/laps.h"
@@ -155,6 +156,7 @@ public:
 	const FogField &fog() const { return fog_; }
 	const CanyonField &canyon() const { return canyon_; }
 	const ShoreField &shore() const { return shore_; }
+	const EcologyRaster &ecology() const { return ecology_; }
 	BuildingViewNeed building_need() const { return buildings_.view_need(); }
 	godot::Dictionary building_chunk(float x, float z) const { return buildings_.chunk_view(x, z); }
 	RoadChunks::Count road_count() const { return roads_.count(); }
@@ -186,6 +188,7 @@ private:
 	FogField fog_;
 	CanyonField canyon_;
 	ShoreField shore_;
+	EcologyRaster ecology_;
 	BuildingRenderer buildings_;
 	BodyStage stage_;
 	AgentRenderer agents_;

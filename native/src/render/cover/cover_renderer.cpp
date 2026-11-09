@@ -128,7 +128,7 @@ void CoverRenderer::place_elements(const CityState &s, int64_t key, Built &out) 
 	}
 }
 
-// A river's stones, on the same lattice rule as the cover and with its rocks' models, drawn apart: they reach further.
+// The stones of a river, a lake or the coast, on the same lattice rule as the cover and with its rocks' models, drawn apart: they reach further.
 void CoverRenderer::place_shore(const CityState &s, int64_t key, const ChunkGround &l, Built &out) const {
 	const CoverLook &k = kit_.look(CoverPiece::ROCKS);
 	const int n = int(CHUNK / shore_.spacing_m), cx = key_x(key), cz = key_y(key), first = draws_ + int(models_.all().size());

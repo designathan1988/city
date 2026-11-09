@@ -25,21 +25,38 @@
 	float biome_cover = dot(cw, vec4(p00.biome_amount, p10.biome_amount, p01.biome_amount, p11.biome_amount));
 	if (biome_cover > 0.0) tint = mix(tint, biome_tint[(cw.x + cw.y > cw.z + cw.w ? (cw.x > cw.y ? p00.biome : p10.biome) : (cw.z > cw.w ? p01.biome : p11.biome))], biome_cover);
 	float per_pixel = max(fwidth(v_vertex.x), fwidth(v_vertex.z));
+	vec3 eco = ecology_at(v_vertex.xz);
+	// The rock the land is made of: the painted geology (sandstone, basalt), granite where none was.
+	vec4 sand_at = vec4(float(p00.surface == PAINT_SANDSTONE) * p00.amount, float(p10.surface == PAINT_SANDSTONE) * p10.amount,
+			float(p01.surface == PAINT_SANDSTONE) * p01.amount, float(p11.surface == PAINT_SANDSTONE) * p11.amount);
+	vec4 basalt_at = vec4(float(p00.surface == PAINT_BASALT) * p00.amount, float(p10.surface == PAINT_BASALT) * p10.amount,
+			float(p01.surface == PAINT_BASALT) * p01.amount, float(p11.surface == PAINT_BASALT) * p11.amount);
+	vec2 rocks = vec2(dot(cw, sand_at), dot(cw, basalt_at));
+	vec3 geology = vec3(max(0.0, 1.0 - rocks.x - rocks.y), rocks);
 	vec3 g;
 	float n;
-	vec3 c = grass_ground(v_vertex.xz, detail, tint, map_biome, per_pixel, g, n);
+	vec3 c = grass_ground(v_vertex.xz, detail, tint, eco.x, per_pixel, g, n);
+	vec3 wdx = dFdx(v_vertex), wdy = dFdy(v_vertex);
+	vec3 soil_k = soil_tint(geology);
+	vec3 soil_c = land(dirt_layer, fract(v_vertex.xz / dirt_m), wdx.xz / dirt_m, wdy.xz / dirt_m) * soil_k;
+	c = ecology_over(c, g, eco, soil_c);
 	float wander = (n - 0.5) * slope_wander;
 	float dirt_w = smoothstep(dirt_from, dirt_to, slope + wander) * (1.0 - smoothstep(rock_slope, rock_slope + rock_edge, slope));
 	float rock_w = smoothstep(rock_slope, rock_slope + rock_edge, slope + wander);
-	vec3 wdx = dFdx(v_vertex), wdy = dFdy(v_vertex);
 	vec2 tilt = grass_tilt(v_vertex.xz, per_pixel, 1.0 - max(dirt_w, rock_w));
 	NORMAL = mat3(VIEW_MATRIX) * normalize(w_normal + vec3(tilt.x, 0.0, tilt.y));
 	if (dirt_w > 0.0) {
-		c = mix(c, land_triplanar(dirt_layer, v_vertex / dirt_m, wdx / dirt_m, wdy / dirt_m, w_normal), dirt_w);
+		c = mix(c, land_triplanar(dirt_layer, v_vertex / dirt_m, wdx / dirt_m, wdy / dirt_m, w_normal) * soil_k, dirt_w);
 	}
 	c = shore_over(c, v_vertex, slope, wdx, wdy);
+	float pebbles = land(dirt_layer, fract(v_vertex.xz * talus_pebble_per_m), wdx.xz * talus_pebble_per_m, wdy.xz * talus_pebble_per_m).r;
 	if (rock_w > 0.0) {
-		c = mix(c, mix(land_triplanar(rock_layer, v_vertex / rock_m, wdx / rock_m, wdy / rock_m, w_normal), rock, 0.25), rock_w);
+		vec3 rock_c = mix(rock_strata(v_vertex, wdx, wdy, w_normal, geology), rock, rock_flat_share);
+		c = mix(c, rock_c, rock_w);
+		// The talus where the rock gives out: its own rubble and grit, darker, mixed with the soil (Roadcraft render/terrain.ts).
+		float talus = smoothstep(talus_edge.x, talus_edge.y, rock_w) * (1.0 - smoothstep(talus_edge.z, talus_edge.w, rock_w));
+		vec3 scree = mix(rock_c * scree_mix.x, soil_c * scree_mix.y, scree_mix.z) * mix(scree_pebble.x, scree_pebble.y, pebbles);
+		c = mix(c, scree, talus * talus_share);
 	}
 	c = paint_over(c, g, p00, p10, p01, p11, cw, v_vertex, wdx, wdy, w_normal);
 	c *= gully_shade;

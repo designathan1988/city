@@ -97,7 +97,7 @@ Community biome_community(Biome b, const Site &s, const EcologyDef &d) {
 			m.add(riparian * open * x.capao_riparian, Formation::CAPAO);
 			m.add(capao * (1.f - riparian) * open, Formation::CAPAO);
 			m.add((1.f - capao) * (1.f - riparian) * open, Formation::CAMPOS);
-			m.add(cliff + s.ridge * x.pampa_ridge + s.basalt * x.pampa_ridge, Formation::OUTCROP);
+			m.add(cliff + s.ridge * x.pampa_ridge + s.basalt * x.pampa_basalt, Formation::OUTCROP);
 			break;
 		}
 		case Biome::PANTANAL: {
@@ -211,6 +211,9 @@ EcologyField compute_ecology(const Heightfield &hf, const GroundPaint &paint, co
 			s.fray = float(woods_noise(wx / d.fray_m + sz, -wz / d.fray_m - sx, 1.0, 0));
 			int ix = hf.ix_of(wx), iz = hf.ix_of(wz);
 			const PaintCell &pc = paint.cell(ix, iz);
+			const float rock = pc.amount / BYTE_MAX; // the rock the land is made of: the painted geology, granite where none was
+			s.sandstone = pc.surface == d.sandstone_surface ? rock : 0.f;
+			s.basalt = pc.surface == d.basalt_surface ? rock : 0.f;
 			float painted = pc.biome ? pc.biome_amount / BYTE_MAX : 0.f, own = 1.f - painted;
 			Community total;
 			float sum = 0;

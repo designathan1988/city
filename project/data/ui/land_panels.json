@@ -7,7 +7,7 @@
   "clear_elements": { "key": "confirm.clearElements", "counts": ["elements"] },
   "clear_clouds": { "key": "confirm.clearClouds", "counts": ["clouds"] }
  },
- "_doc": "The panels of the Landscape drawer (ui/land_strips.gd, game/tools/*), by tool: groups of cards that pick a parameter (key, default, cards), sliders of the brush (key) or of the map weather (weather, scale), whole-map actions (a CityStore command), when: only under that mode. A group: rows of cards in the strip (two unless said), or options: in the options panel, an icon each. A slider: head, the heading it opens. actions_row and map_head: the name of the actions row and whether the whole map heading comes first. Ranges are the tool's reach, compared with the Landscape drawer of the Roadcraft 4.0 as the player sees it.",
+ "_doc": "The panels of the Landscape drawer (ui/land_strips.gd, game/tools/*), by tool: groups of cards that pick a parameter (key, default, cards), sliders of the brush (key) or of the map weather (weather, scale), whole-map actions (a CityStore command), when: only under that mode. A group: rows of cards in the strip (two unless said), or options: in the options panel, an icon each. A slider: head, the heading it opens. actions_row and map_head: the name of the actions row and whether the whole map heading comes first. Ranges are the tool's reach, compared with the Landscape drawer of the Roadcraft 4.0 as the player sees it. kept: the keys of a panel the game keeps between sessions (game/tools/brush_prefs.gd, in settings.cfg), as Roadcraft ui/toolChoices.ts keeps them: the ground the paint lays, the tree brush, the element brush, the cloud's size, height and density and the fog's strength, height and speed; the element brush keeps a brush per kind (brushes, by kind index, game/tools/element_tool.gd) as the lab's elementBrushes; a mode (lay or erase, plant or cut) and the radius are not kept.",
  "TERRAIN": {
   "groups": [
    {
@@ -148,6 +148,7 @@
   ]
  },
  "PAINT": {
+  "kept": ["kind"],
   "groups": [
    {
     "key": "kind",
@@ -296,6 +297,7 @@
   "biomes": true
  },
  "TREES": {
+  "kept": ["density", "height", "variation", "spacing"],
   "switch": [
    { "label_key": "terrain.trees", "tool": "TREES", "icon": "ls_tree" },
    { "label_key": "terrain.elements", "tool": "ELEMENTS", "icon": "el_stones" }
@@ -404,6 +406,7 @@
   ]
  },
  "CLOUD": {
+  "kept": ["size", "height", "density"],
   "switch": [
    {
     "label_key": "terrain.cloud",
@@ -509,6 +512,7 @@
   ]
  },
  "FOG": {
+  "kept": ["strength", "height", "speed"],
   "switch": [
    {
     "label_key": "terrain.cloud",
@@ -680,6 +684,7 @@
   ]
  },
  "ELEMENTS": {
+  "kept": ["brushes"],
   "switch": [
    { "label_key": "terrain.trees", "tool": "TREES", "icon": "ls_tree" },
    { "label_key": "terrain.elements", "tool": "ELEMENTS", "icon": "el_stones" }
