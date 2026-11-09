@@ -1,4 +1,5 @@
-// Fills one instance buffer per (body, level) every frame. Look hash bits: body 24..31; the low ones spread the idles. INSTANCE_CUSTOM =
+// Fills one instance buffer per (body, level) every frame. Look hash bits: a seated body 24..31 (a walker's is cast, people_casting.h);
+// the low ones spread the idles. INSTANCE_CUSTOM =
 // (body, walk frames, a seed, walk phase); on the far card (body, its height, the seed, 0). The instance colour's alpha: the share of the
 // walk in the pose, or from PEOPLE_CLIP_CODE_BASE a clip held (somebody in a vehicle). What it reads once is people_boot.cpp.
 #include "render/agents/people_renderer.h"
@@ -15,7 +16,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr uint32_t VARIATION_SHIFT = 24, SEED_MASK = 1023; // a look's top byte picks the body; its low ten bits the shader's seed
+constexpr uint32_t VARIATION_SHIFT = 24, SEED_MASK = 1023; // a look's top byte picks a seated body; its low ten bits the shader's seed
 constexpr float FRIGHT_MARK = 0.25f; // people_face.gdshaderinc: a seed below zero is a frightened person's, this short of its number
 constexpr double NS_PER_S = 1e9, CLOCK_WRAP_S = 86400.0; // the idles' clock wraps once a day: a float keeps its milliseconds
 
@@ -81,11 +82,6 @@ int PeopleRenderer::held_level(uint64_t key, float dist) {
 	return now > was ? (at(dist / (1 + level_hold_)) > was ? now : was) : (at(dist * (1 + level_hold_)) < was ? now : was);
 }
 
-int PeopleRenderer::variation_of(uint32_t look, int age) const {
-	const std::vector<int> &bodies = by_age_[age >= 0 && age < PED_AGES ? age : int(PedAge::ADULT)];
-	return bodies.empty() ? 0 : bodies[size_t((look >> VARIATION_SHIFT) % uint32_t(bodies.size()))];
-}
-
 void PeopleRenderer::place(uint64_t key, int v, int level, const Pose &p, uint32_t h, float doing, float phase, float pose_code, bool frightened) {
 	const PersonVariation &pv = asset_.variations[size_t(v)];
 	const size_t k = slot(size_t(v), level);
@@ -117,6 +113,7 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 	const float clock = float(std::fmod(double(f.stamp_ns[POSE_TRAIL - 1]) / NS_PER_S, CLOCK_WRAP_S));
 	RenderingServer::get_singleton()->material_set_param(material_, "idle_clock", clock);
 	RenderingServer::get_singleton()->material_set_param(held_.material(), "idle_clock", clock);
+	casting_.cast(f.people);
 	int drawn = 0;
 	for (const AgentRecord &rec : f.people) {
 		Pose p = record_pose(rec, at);
@@ -124,8 +121,7 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 		if (d2 > r2) continue;
 		float dist = std::sqrt(d2 + dy * dy);
 		if (!view.sees(Vector3(p.x, p.y, p.z), view_reach_m_)) continue; // their shadow included: this far out of the view it reaches nothing seen
-		const std::vector<int> &bodies = by_age_[rec.age < PED_AGES ? rec.age : int(PedAge::ADULT)];
-		int v = bodies[size_t((rec.look >> VARIATION_SHIFT) % uint32_t(bodies.size()))];
+		const int v = casting_.body(rec.id);
 		const PersonVariation &pv = asset_.variations[size_t(v)];
 		float phase = rec.walked / pv.walk_advance;
 		const int level = held_level(rec.id, dist);

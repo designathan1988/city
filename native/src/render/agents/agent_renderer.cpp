@@ -108,6 +108,7 @@ Dictionary AgentRenderer::cost() const {
 	Dictionary out;
 	out["cabins"] = cabins_drawn();
 	out["people_near"] = people_.shown(0);
+	out["people_cast"] = people_.cast_census();
 	out["rows_lost"] = rows_lost_;
 	int draws = 0, tris = 0;
 	for (int i = 0; i < AGENT_MODELS; i++)

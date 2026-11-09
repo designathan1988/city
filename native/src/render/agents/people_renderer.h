@@ -1,5 +1,5 @@
 // Pedestrians near the camera drawn with the cooked MakeHuman people (people_asset.h): one MultiMesh per variation and
-// level, refilled every frame. A body of the pedestrian's age, tints and phase come from its look hash (Roadcraft looks.ts);
+// level, refilled every frame. A walker's body is cast once (people_casting.h), its phase comes from its look hash;
 // the walk phase follows the metres walked over the variation's stride, and one standing plays the idle or what the simulation says
 // they are doing (PedAct), with what that holds in the hand (held_things.h). Past blob_from_m
 // a person casts no real shadow: a soft disc lies under it (material "people_blob"). Material "people"
@@ -12,6 +12,7 @@
 #include "render/agents/helmets.h"
 #include "render/agents/body_renderer.h"
 #include "render/agents/people_asset.h"
+#include "render/agents/people_casting.h"
 #include "render/row_keeper.h"
 #include "render/render_context.h"
 #include "render/rs_util.h"
@@ -66,8 +67,9 @@ public:
 	int update(const PoseFrame &f, const godot::Vector3 &cam, const ViewCull &view, const PoseSample &at, float radius);
 	void set_floor(int level) { floor_ = level; } // the nearest level the graphics tier allows
 	BodyRenderer &bodies() { return bodies_; }
-	int variation_of(uint32_t look, int age) const; // which body a walker is drawn with
+	int variation_of(uint32_t look, int age) const { return casting_.worn(look, age); } // the body a walker wears, or wore last
 	int shown(int level) const; // people drawn at this level on the last frame
+	godot::Dictionary cast_census() const { return casting_.census(); } // who walks as whom (people_casting.h census)
 	// For the tests and the captures: the file's clips, the first body's fit in each; and everybody at rest in clip `name`.
 	godot::Array clips() const;
 	bool show_clip(const godot::String &name);
@@ -83,7 +85,8 @@ private:
 	// The slot of a variation's level in draws_ and bufs_: its lods, then the far mesh casting no shadow.
 	size_t slot(size_t variation, int level) const { return variation * size_t(asset_.lods + 1) + size_t(level); }
 	std::vector<float> lod_m_; // camera distance where each level ends
-	std::vector<int> by_age_[PED_AGES]; // the variations of each age
+	std::vector<int> by_age_[PED_AGES]; // the variations of each age (who rides in a vehicle)
+	PeopleCasting casting_; // who walks as whom
 	OwnedMesh blob_mesh_;
 	MultiMeshDraw blob_;
 	InstanceRows blob_buf_;

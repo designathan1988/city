@@ -149,7 +149,7 @@ bool PeopleRenderer::init(const RenderContext &ctx, const DataValue &people, con
 		stop_clips_[i] = STOP_CLIPS[i] ? asset_.clip(STOP_CLIPS[i]) : -1;
 		if (seat_clips_[i] < 0) errors.push_back(String("pessoas: falta o clipe ") + SEAT_CLIPS[i]);
 	}
-	if (!errors.is_empty() || !held_.init(ctx, held, ACT_CLIPS, errors) || !helmets_.init(ctx, held["helmet"], errors)) return false;
+	if (!errors.is_empty() || !held_.init(ctx, held, ACT_CLIPS, errors) || !helmets_.init(ctx, held["helmet"], errors) || !casting_.init(people["cast"], asset_.variations)) return false;
 	RenderingServer *rs = RenderingServer::get_singleton();
 	set_tables(material_);
 	set_faces(material_);
