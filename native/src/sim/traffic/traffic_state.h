@@ -61,6 +61,8 @@ struct Vehicle {
 	int ds = -1, lane = 0, conn = -1;
 	float s = 0, v = 0, acc = 0, cs = 0; // lane position, speed, acceleration, metres along the connector
 	float vf = 1, drift = 0; // share of the speed limit, phase of the speed drift
+	float drift_amp = 0, drift_rate = 0; // its driver's speed drift: how far (a share) and how fast (rad/s)
+	float aggression = 0; // its driver's temper, -1 timid .. 1 pushy (vehicle_speed.cpp driver_of)
 	float lc_off = 0, lc_cool = 0; // lateral offset left after a lane change (decays), cooldown
 	float wait = 0, stuck = 0;
 	float held = 0; // stopped since it last reconsidered the route (Roadcraft micro.ts c.held)

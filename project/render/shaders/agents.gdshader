@@ -1,9 +1,9 @@
 // Vehicles (native/src/render/agents). UV2.x tags each part (AgentTag in agent_meshes.h): 0 fixed colour, 1 paint,
 // 2 headlamp, 3 tail lamp (brake), 4 glass (opaque: the far level; the near one's is agent_glass.gdshader),
 // 5 a lit sign (the bus's destination, day and night), 6 a roof (the paint, or black on a share of the cars), 7 the gloss black round
-// the glass. The lenses of a vehicle standing with nobody aboard are off, their vertex colours; on anything else they burn, day and
+// the glass, 8 and 9 the left and right indicator lenses, flashing on the side INSTANCE_CUSTOM.a names (AgentSignal). The lenses of a vehicle standing with nobody aboard are off, their vertex colours; on anything else they burn, day and
 // night. UV2.y = 1 marks wheel vertices: they turn about X round their hub (UV = hub y, z). INSTANCE_CUSTOM = (paint index, wheel roll
-// angle + 8 when braking, passengers, 0); COLOR.a is the vehicle's seed. The Compatibility renderer stores instance custom data as half
+// angle + 8 when braking, passengers, indicator side); COLOR.a is the vehicle's seed. The Compatibility renderer stores instance custom data as half
 // floats: whole numbers below 2048 exactly. Who rides is drawn by PeopleRenderer.
 shader_type spatial;
 #include "res://render/shaders/contracts/agents.gdshaderinc"
@@ -25,6 +25,12 @@ uniform vec3 black_roof : source_color;
 uniform float black_roof_share;
 uniform vec3 sign_glow : source_color;
 uniform float sign_power;
+uniform vec3 indicator_glow : source_color; // an indicator flashing at night, and by day the radiance it shows its colour by
+uniform vec3 indicator_lit;
+uniform float indicator_power;
+uniform float blink_hz; // the indicator's flashes a second, and the share of each it is lit (the lab's vehicleSignals.ts)
+uniform float blink_duty;
+uniform float blink_spread; // each vehicle's flash starts off its seed by this share of a flash, so no two flash together
 // roughness by surface (materials.json agent: sources there); every surface is a dielectric
 uniform float paint_roughness;
 uniform vec3 sheen_sky : source_color; // what a clear coat mirrors above the horizon and below it
@@ -100,6 +106,12 @@ void fragment() {
 		bool braking = mod(v_custom.g, AGENT_DOOR_STEP) >= AGENT_BRAKE_FLAG; // by day each shows as its colour: more red than that, and ACES turns it cream
 		emit = on ? (braking ? brake_lit : tail_lit) + source_linear(tail_glow) * tail_power * night * (braking ? brake_ratio : 1.0) : vec3(0.0);
 		c = on ? vec3(0.0) : c;
+		rough = lens_roughness;
+	} else if (tag == TAG_INDICATOR_LEFT || tag == TAG_INDICATOR_RIGHT) {
+		float side = tag == TAG_INDICATOR_LEFT ? SIGNAL_LEFT : SIGNAL_RIGHT;
+		bool lit = abs(v_custom.a - side) < 0.5 && fract(v_seed * blink_spread + TIME * blink_hz) < blink_duty;
+		emit = lit ? indicator_lit + source_linear(indicator_glow) * night * indicator_power : vec3(0.0);
+		c = lit ? vec3(0.0) : c;
 		rough = lens_roughness;
 	} else if (tag == TAG_GLASS) {
 		rough = lens_roughness;

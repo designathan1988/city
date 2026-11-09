@@ -148,7 +148,7 @@ int new_vehicle(CityState &s, VehicleType type, uint8_t paint) {
 	v.type = type;
 	v.paint = paint;
 	v.vf = s.catalog.traffic.classes[int(type)].speed_share * (p.demand_vf_base + p.demand_vf_span * t.rng.f());
-	v.drift = t.rng.range(0.f, TAU_F);
+	draw_driver(p, v, t.rng);
 	t.vehicle_count++;
 	return id;
 }

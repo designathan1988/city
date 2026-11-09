@@ -12,7 +12,7 @@ const float AGENT_BRAKE_FLAG = 8.0;
 const int AGENT_PAINTS = 16;
 // the transport lines' colours after them (agent_looks.cpp)
 const int AGENT_LINE_PAINTS = 8;
-// what a vehicle vertex is, in its UV2.x (agent_meshes.h agent_tag; agents.gdshader)
+// what a vehicle vertex is, in its UV2.x (agent_meshes.h agent_tag; agents.gdshader); an indicator lens by the side it stands on
 const int TAG_FIXED = 0;
 const int TAG_PAINT = 1;
 const int TAG_HEAD = 2;
@@ -21,6 +21,12 @@ const int TAG_GLASS = 4;
 const int TAG_SIGN = 5;
 const int TAG_ROOF = 6;
 const int TAG_GLOSS = 7;
+const int TAG_INDICATOR_LEFT = 8;
+const int TAG_INDICATOR_RIGHT = 9;
+// the side a vehicle's indicators flash on: its look's bits (pose_buffer.h LOOK_SIGNAL_SHIFT, sim/traffic/vehicle_signals.cpp) and its instance's custom alpha (agent_renderer.cpp writes, agents.gdshader reads)
+const float SIGNAL_NONE = 0.0;
+const float SIGNAL_LEFT = 1.0;
+const float SIGNAL_RIGHT = 2.0;
 // what the vertex stage moves, in UV2.y: UV its axle or its hinge; a door hung at its front edge, at its back edge (agent_meshes.h; agents.gdshader, agent_door.gdshaderinc read each as over the one below it by a half)
 const float LIMB_NONE = 0.0;
 const float LIMB_WHEEL = 1.0;

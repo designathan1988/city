@@ -11,6 +11,7 @@
 namespace city {
 
 constexpr float NO_LEADER = BIG; // gap meaning a free road
+constexpr float IDM_LEAST_GAP_M = 0.02f; // the IDM divides by the gap: never taken under this (the lab's idm.ts and operational.ts)
 
 namespace traffic {
 
@@ -180,8 +181,15 @@ double fleet_target(const CityState &s); // how many vehicles the demand asks fo
 void free_vehicle(TrafficState &t, int id); // the slot of a vehicle off the lanes, out of the fleet count
 bool new_trip(CityState &s, int id, int from_ds); // a route from `from_ds` to a destination the demand draws
 
-// vehicle_motion.cpp
+// vehicle_speed.cpp: the driver behind the wheel, drawn when the vehicle is made; the class's pedals, headway and gap as that driver
+// works them; the most it takes the bends of connector `c` at with its front `front` metres along it (negative: before it), braked
+// for in advance (NO_LEADER: none in reach).
+void draw_driver(const TrafficParams &p, Vehicle &v, Rng &rng);
+VehicleClass driver_of(const CityState &s, const Vehicle &v);
+float curve_cap(const CityState &s, const Vehicle &v, const Conn &c, float front);
 float idm_accel(const VehicleClass &c, float v, float v0, float gap, float vl);
+
+// vehicle_motion.cpp
 // What a vehicle standing on a connector stands for (traffic_probe), from the very obstacles it drives against: the one
 // ahead, walkers on its exit crosswalk, a light down the street, or none of them holds it back (it is moving off).
 enum class BoxHold : uint8_t { LEADER = 0, WALKERS, LIGHT, STARTING, COUNT };
@@ -196,6 +204,9 @@ float top_speed(const CityState &s, const Vehicle &v, float limit); // the most 
 
 // lane_change.cpp
 void change_lanes(CityState &s);
+
+// vehicle_signals.cpp: the side a vehicle's indicators flash on now (a lane change, the lane its turn needs, the turn ahead).
+AgentSignal indicator_side(const CityState &s, const Vehicle &v);
 
 // signal_timing.cpp
 float amber_wanted(const TrafficParams &tp, float v); // the amber a regulated speed `v` asks (m/s), before amber_max_s

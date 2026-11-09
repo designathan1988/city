@@ -19,8 +19,10 @@ constexpr float AGENT_BRAKE_FLAG = float(8.0);
 constexpr int AGENT_PAINTS = 16;
 // the transport lines' colours after them (agent_looks.cpp)
 constexpr int AGENT_LINE_PAINTS = 8;
-// what a vehicle vertex is, in its UV2.x (agent_meshes.h agent_tag; agents.gdshader)
-enum class AgentTag : int { FIXED, PAINT, HEAD, TAIL, GLASS, SIGN, ROOF, GLOSS };
+// what a vehicle vertex is, in its UV2.x (agent_meshes.h agent_tag; agents.gdshader); an indicator lens by the side it stands on
+enum class AgentTag : int { FIXED, PAINT, HEAD, TAIL, GLASS, SIGN, ROOF, GLOSS, INDICATOR_LEFT, INDICATOR_RIGHT };
+// the side a vehicle's indicators flash on: its look's bits (pose_buffer.h LOOK_SIGNAL_SHIFT, sim/traffic/vehicle_signals.cpp) and its instance's custom alpha (agent_renderer.cpp writes, agents.gdshader reads)
+enum class AgentSignal : int { NONE, LEFT, RIGHT };
 // what the vertex stage moves, in UV2.y: UV its axle or its hinge; a door hung at its front edge, at its back edge (agent_meshes.h; agents.gdshader, agent_door.gdshaderinc read each as over the one below it by a half)
 enum class Limb : int { NONE, WHEEL, DOOR, DOOR_BACK };
 // a door pane's vertex colour red: its sill's height over this (car_body.cpp, agent_door.gdshaderinc)
@@ -41,6 +43,11 @@ constexpr ShaderContract SHADER_CONTRACTS_AGENTS[] = {
 	{ "TAG_SIGN", 1, { double(AgentTag::SIGN) } },
 	{ "TAG_ROOF", 1, { double(AgentTag::ROOF) } },
 	{ "TAG_GLOSS", 1, { double(AgentTag::GLOSS) } },
+	{ "TAG_INDICATOR_LEFT", 1, { double(AgentTag::INDICATOR_LEFT) } },
+	{ "TAG_INDICATOR_RIGHT", 1, { double(AgentTag::INDICATOR_RIGHT) } },
+	{ "SIGNAL_NONE", 1, { double(AgentSignal::NONE) } },
+	{ "SIGNAL_LEFT", 1, { double(AgentSignal::LEFT) } },
+	{ "SIGNAL_RIGHT", 1, { double(AgentSignal::RIGHT) } },
 	{ "LIMB_NONE", 1, { double(Limb::NONE) } },
 	{ "LIMB_WHEEL", 1, { double(Limb::WHEEL) } },
 	{ "LIMB_DOOR", 1, { double(Limb::DOOR) } },

@@ -119,13 +119,18 @@ void car_cap(MeshBuilder &mb, const CarStyle &s, float xf, float dir, const Agen
 }
 
 // A lens `w` wide and `h` high with its middle at (x, y) on the end `dir`, both sides.
-static void lens_pair(MeshBuilder &mb, const CarStyle &s, float half, float y, float w, float h, float dir, float sink, const Color &c, AgentTag tag) {
+// A lens on each side (+X the driver's left), tagged `right` and `left` by the side it stands on (an indicator flashes on its own).
+static void lens_pair(MeshBuilder &mb, const CarStyle &s, float half, float y, float w, float h, float dir, float sink, const Color &c, AgentTag right, AgentTag left) {
 	const CarPartsShape &K = s.shapes->car_parts;
 	const float z = end_surface(s, half, dir) - dir * sink;
 	for (int side : { -1, 1 }) {
 		const float x = side * half;
-		agent_box(mb, Vector3(x - w * 0.5f, y - h * 0.5f, z - K.lamp_depth_m * 0.5f), Vector3(x + w * 0.5f, y + h * 0.5f, z + K.lamp_depth_m * 0.5f), c, tag);
+		agent_box(mb, Vector3(x - w * 0.5f, y - h * 0.5f, z - K.lamp_depth_m * 0.5f), Vector3(x + w * 0.5f, y + h * 0.5f, z + K.lamp_depth_m * 0.5f), c, side < 0 ? right : left);
 	}
+}
+
+static void lens_pair(MeshBuilder &mb, const CarStyle &s, float half, float y, float w, float h, float dir, float sink, const Color &c, AgentTag tag) {
+	lens_pair(mb, s, half, y, w, h, dir, sink, c, tag, tag);
 }
 
 void car_details(MeshBuilder &mb, const CarStyle &s, const DataValue &body, bool fine, const AgentTrim &trim) {
@@ -137,8 +142,8 @@ void car_details(MeshBuilder &mb, const CarStyle &s, const DataValue &body, bool
 	const Vector2 tail = agent_v2(body["rear_lens_m"]);
 	lens_pair(mb, s, s.W * 0.5f - head.x, lamp_y, head.z, head.y, 1.f, K.lamp_sink_m, trim.headlamp, AgentTag::HEAD);
 	lens_pair(mb, s, s.W * 0.5f - tail.x, tail_y, tail.y, s.tail_lamp_h, -1.f, K.lamp_sink_m, trim.tail, AgentTag::TAIL);
-	lens_pair(mb, s, s.W * 0.5f - ind.x, lamp_y - K.indicator_drop_m, ind.z, ind.y, 1.f, K.indicator_sink_m, trim.indicator, AgentTag::FIXED);
-	lens_pair(mb, s, s.W * 0.5f - ind.x, tail_y + K.indicator_rise_m, ind.z, ind.y, -1.f, K.indicator_sink_m, trim.indicator, AgentTag::FIXED);
+	lens_pair(mb, s, s.W * 0.5f - ind.x, lamp_y - K.indicator_drop_m, ind.z, ind.y, 1.f, K.indicator_sink_m, trim.indicator, AgentTag::INDICATOR_RIGHT, AgentTag::INDICATOR_LEFT);
+	lens_pair(mb, s, s.W * 0.5f - ind.x, tail_y + K.indicator_rise_m, ind.z, ind.y, -1.f, K.indicator_sink_m, trim.indicator, AgentTag::INDICATOR_RIGHT, AgentTag::INDICATOR_LEFT);
 	const Vector3 g = agent_v3(body["grille_m"]); // the share of the nose's half width across, high, deep
 	const float gy = low_f + (nose_y - low_f) * K.grille_low + K.grille_rise_m, gw = car_half_w(s, 0.5f - K.nose_back_m / s.L) * g.x * 0.5f;
 	agent_box(mb, Vector3(-gw, gy - g.y * 0.5f, zf - K.grille_sink_m - g.z * 0.5f), Vector3(gw, gy + g.y * 0.5f, zf - K.grille_sink_m + g.z * 0.5f), trim.grille, AgentTag::FIXED);

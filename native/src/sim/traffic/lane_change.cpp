@@ -54,7 +54,7 @@ struct View {
 	// IDM acceleration of `me` behind `lead` (-1 = free road).
 	float accel(int me, int lead) const {
 		const Vehicle &v = s.traffic.vehicles[me];
-		const VehicleClass &c = s.catalog.traffic.classes[int(v.type)];
+		const VehicleClass c = driver_of(s, v);
 		float v0 = desired_speed(s, v, ds);
 		if (lead < 0) return idm_accel(c, v.v, v0, NO_LEADER, 0.f);
 		const Vehicle &l = s.traffic.vehicles[lead];

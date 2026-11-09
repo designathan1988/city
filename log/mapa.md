@@ -238,6 +238,8 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/sim/traffic/street_signs.cpp` — placas que as regras levantam: Pare, Dê a preferência e velocidade
 - `native/src/sim/traffic/traffic_system.cpp` · `native/src/sim/traffic/traffic_system.h` — passo do tráfego, publicação de poses e rebuild
 - `native/src/sim/traffic/vehicle_motion.cpp` — IDM e conectores
+- `native/src/sim/traffic/vehicle_drive.h` · `native/src/sim/traffic/vehicle_drive.cpp` — how hard a driver presses the pedals: every obstacle by the adaptive cruise control model, the driver's jerk, the safe speed
+- `native/src/sim/traffic/vehicle_signals.cpp` — the side a vehicle's indicators flash on (a lane change, the lane its turn needs, the turn ahead and on the connector)
 - `native/src/sim/traffic/window.cpp` — janela micro em volta da câmera e materialização do meso
 
 **Render (só lê) — native/src/render**
@@ -485,6 +487,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `project/tests/visual/capture_demolition.gd` · `project/tests/visual/capture_demolition.tscn` · `project/tests/visual/capture_falls.gd` — capturas da bomba (casa, rua, terra, bomba grande) em instantes depois do golpe; a torre que cai e quem é derrubado e levanta
 - `project/tests/core/shoot_test.gd` · `project/tests/core/shoot_test.tscn` · `project/tests/core/shoot_fright_cases.gd` — a pistola pela store (cabeça mata, tronco fere, o ferido sangra, tiro no céu erra, rajada faz o carro explodir), o que um golpe deixa num save (ida e volta de crateras, ruínas e mobiliário) e quem ouve um tiro ou um estouro
 - `project/tests/visual/capture_vehicles.gd` — capturas de perto do ônibus, do caminhão, da moto, da van e de um sedã (vidro, cabine, pessoas e pontas)
+- `project/tests/visual/capture_vehicle_looks.gd` · `project/tests/visual/capture_vehicle_looks.tscn` — every vehicle kind close up from three sides by day and night, the indicators of the cars nearest the busy crossing over a flash, and the traffic over that crossing
 - `project/tests/visual/capture_road_tools.gd` — a ferramenta de via em uso, nas capturas de vias
 - `project/tests/visual/capture_roads.gd` · `project/tests/visual/capture_roads.tscn` — roads up close on open ground (crossings, T, end, curve) and the tool in use, at fixed angles
 - `project/tests/visual/capture_transit.gd` · `project/tests/visual/capture_transit_site.gd` — stop, station and track in the captures; the street with the other side free, where the recorded poses hold

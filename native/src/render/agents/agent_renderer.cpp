@@ -234,6 +234,7 @@ void AgentRenderer::place_vehicles(const PoseFrame &f, const Vector3 &cam, const
 		const bool brake = (rec.look & (1u << LOOK_BRAKE_SHIFT)) != 0;
 		if (type < 0 || type >= VEHICLE_TYPES) continue;
 		const float door = float((rec.look >> LOOK_DOOR_SHIFT) & LOOK_DOOR_MASK) * AGENT_DOOR_STEP;
+		const float signal = float((rec.look >> LOOK_SIGNAL_SHIFT) & LOOK_SIGNAL_MASK); // AgentSignal, in the instance's custom alpha
 		float spin = roll(int(rec.id), p, wheel_r_[type]);
 		const float dx = p.x - cam.x, dy = p.y - cam.y, dz = p.z - cam.z, flat2 = dx * dx + dz * dz;
 		if (flat2 > rule.r2) continue;
@@ -254,7 +255,7 @@ void AgentRenderer::place_vehicles(const PoseFrame &f, const Vector3 &cam, const
 		if (level == FAR_LEVEL) fleet_shadow_.add(model, p);
 		if (!shown && level == FAR_LEVEL) continue;
 		placed += shown ? 1 : 0;
-		agent_row(shown ? keeper_.place(key, model * DRAWS + level, bufs[model][level]) : casts[model][level].add(), p, 1.f, float(paint >= LINE_PAINT ? paints_ + paint - LINE_PAINT : paint % paints_), spin + (brake ? AGENT_BRAKE_FLAG : 0.f) + door, passengers, 0.f, hash_float(rec.id * SEED_SALT));
+		agent_row(shown ? keeper_.place(key, model * DRAWS + level, bufs[model][level]) : casts[model][level].add(), p, 1.f, float(paint >= LINE_PAINT ? paints_ + paint - LINE_PAINT : paint % paints_), spin + (brake ? AGENT_BRAKE_FLAG : 0.f) + door, passengers, signal, hash_float(rec.id * SEED_SALT));
 		if (shown && d2 <= rule.people_r2 && (astride_[model] || level == CABIN_LEVEL || level == MID_DRAW)) seat_people(rec.id, type, model, p, std::sqrt(d2), passengers, order, spin);
 		drawn_vehicles_++;
 	}
