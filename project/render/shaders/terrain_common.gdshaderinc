@@ -84,5 +84,7 @@ vec3 ground_normal_at(vec2 at, float cells) {
 #include "res://render/shaders/terrain_layers.gdshaderinc"
 #include "res://render/shaders/ground_paint.gdshaderinc"
 #include "res://render/shaders/shore.gdshaderinc"
+#include "res://render/shaders/rock_strata.gdshaderinc"
+#include "res://render/shaders/ecology.gdshaderinc"
 
 global uniform float rain_wet;

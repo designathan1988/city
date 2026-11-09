@@ -48,6 +48,8 @@ public:
 	int64_t canyon_revision() const;
 	godot::Dictionary shore_field() const;
 	int64_t shore_revision() const;
+	godot::Dictionary ecology_field() const;
+	int64_t ecology_revision() const;
 
 protected:
 	static void _bind_methods();

@@ -1,6 +1,6 @@
 ## Player settings, persisted in user://settings.cfg: the graphics preset (auto or a tier) and what was chosen over it, dynamic
 ## resolution, the frame limit, vsync, full screen, the language, the render switches and the road tool's snapping (Roadcraft
-## editor/snap.ts RoadSnap). Everything is applied live.
+## editor/snap.ts RoadSnap) and the Landscape brushes (ui/toolChoices.ts). Everything is applied live.
 ## auto starts at the tier the GPU gives and the governor moves it. The frame cap (Engine.max_fps) follows the player's
 ## limit and drops while another application has the focus (vsync alone does not hold a covered window back).
 extends Node
@@ -13,6 +13,7 @@ const SECTION := "graphics"
 
 var preset := ""
 var road := RoadPrefs.new()
+var land := BrushPrefs.new() # the Landscape brushes kept between sessions (game/tools/brush_prefs.gd)
 var kept: Dictionary = {}: # shadows, ssao, smaa, temporal chosen over the tier
 	set(value):
 		kept = value
@@ -60,6 +61,7 @@ func _ready() -> void:
 	map = MapLayers.new(cfg.get_value(SECTION, "layers", t.layers.duplicate()), switches)
 	map.changed.connect(_save)
 	road.read(cfg)
+	land.read(cfg)
 	hardware = QualityTier.tier_for_gpu(t, RenderingServer.get_video_adapter_name())
 	level = QualityTier.level_of(preset, hardware)
 	_quality_governor = FrameGovernor.Quality.new(t.governor, t.levels, level, hardware)
@@ -90,8 +92,15 @@ func _save() -> void:
 	cfg.set_value(SECTION, "optimizations", optimizations)
 	cfg.set_value(SECTION, "layers", map.layers)
 	road.write(cfg)
+	land.write(cfg)
 	if not GameFlow.tests_drive:
 		cfg.save(PATH)
+
+
+## A Landscape tool taken up with `params`: what its panel keeps between sessions, written when it changed.
+func set_land_brush(tool_name: String, params: Dictionary) -> void:
+	if land.keep(tool_name, params):
+		_save()
 
 
 func set_road_snap(key: String, value: bool) -> void:

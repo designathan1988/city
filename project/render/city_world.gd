@@ -101,6 +101,15 @@ func set_map_biome(region: int) -> void:
 		_materials.verge.set_shader_parameter("map_biome", region + 1)
 
 
+## What the ecosystem leaves on the ground (CityStore query "ecology_field", render/ecology_view.gd): the terrain's and the lots' lawn.
+func set_ecology(field: Dictionary) -> void:
+	_terrain_material.set_shader_param("ecology_map", field.texture)
+	_terrain_material.set_shader_param("ecology_grid", field.grid)
+	if _materials.has("verge"):
+		_materials.verge.set_shader_parameter("ecology_map", field.texture)
+		_materials.verge.set_shader_parameter("ecology_grid", field.grid)
+
+
 ## How rough the water is, how much foam and how fast it runs; the wind's own ripples add to the waves.
 func set_water_look(weather: Dictionary) -> void:
 	water.own.set_shader_parameter("waves", minf(1.0, weather.waves + weather.wind / WIND_FULL_WAVES_MS))
@@ -155,6 +164,7 @@ func _build_environment(_palette: Dictionary) -> void:
 	daylight = Daylight.new(day, sun, fill, sky_top, under, environment, sky_mat)
 	add_child(ElementEffects.new())
 	add_child(ShoreView.new(self))
+	add_child(EcologyView.new(self))
 	daylight.set_hour(day.day_hour)
 
 
