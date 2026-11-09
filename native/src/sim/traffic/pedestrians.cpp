@@ -93,12 +93,8 @@ void begin_line(CityState &s, int id) {
 	Pedestrian &w = t.peds[id];
 	take_kerb_place(s, id); // toward the kerb of a crosswalk: to its own place there
 	const Waypoint &to = w.ways[w.wi];
-	// No signal nor gap holds somebody running: only a vehicle on the crossing or too close to stop does (a gap accepted
-	// cannot empty an occupied road, crossings/permission.ts). Others wait for the walk and for a gap, sooner taken the
-	// longer they have waited at the kerb (w.wait).
-	const bool frightened = t.time < w.panic_until;
-	if (to.cross >= 0 && (cars_on_crossing(s, w.way_node, to.cross) ||
-			(!frightened && (!walk_ok(s, w.way_node, to.cross) || crossing_arrival(s, w.way_node, to.cross) < accepted_gap(s.catalog.traffic, w.wait))))) {
+	const bool frightened = t.time < w.panic_until; // no signal holds somebody running: only the cars on the crossing do
+	if (to.cross >= 0 && ((!frightened && !walk_ok(s, w.way_node, to.cross)) || cars_on_crossing(s, w.way_node, to.cross))) {
 		w.mode = PedMode::WAIT;
 		return;
 	}

@@ -14,13 +14,15 @@ const ZEBRA := 1 # add_crossing's kind: a zebra with no light
 const ZEBRAS := 4
 const WATCH_M := 9.0 # walkers this near a zebra's middle are at it
 const WATCH_TICKS := 10
-const WATCH_TRIES := 400
+const WATCH_TRIES := 600
+const ONTO_TICKS := 30 # a step off the kerb takes the walker this long out onto the zebra
 const SIGNAL_TICKS := 160 # a part of a signal cycle between two photos of the lit junction
 const SIGNAL_SHOTS := 3
 const CROWD_READ := 4096
 const CROWD_M := 12.0 # the neighbours that make a sidewalk busy
 const SHOT_FROM := Vector3(2, 40, 2) # straight down, beside the crowd: the round lands on the ground by them
 const FLEE_M := 25.0 # walkers this near the shot before and after it
+const FLEE_CROWD := 12 # the crowd shot by: at most this many within CROWD_M
 const FLEE_TICKS := [6, 20, 40, 80]
 const SETTLE_FRAMES := 4
 const JUMP_FRAMES := 30
@@ -31,6 +33,8 @@ const HIGH := Vector3(-9, 16, 12)
 const LOW := Vector3(10, 5, -8)
 const EYE := Vector3(14, 1.8, 3)
 const LOOK_UP_M := 0.9
+const ALONG_HIGH := Vector2(14, 7) # back along the street, up
+const ALONG_EYE := Vector2(9, 1.7)
 
 var out_dir := "user://captures"
 var world: CityWorld
@@ -88,26 +92,44 @@ func _views(name: String, at: Vector3) -> void:
 	await _shot(name + "_eye", at + EYE, target)
 
 
-## Zebras put in the middle of busy streets; the first one somebody walks over is photographed while they are on it.
+## Over the street itself, where nothing stands between the camera and the zebra: from up the street high and at eye
+## height, and from down it.
+func _along(name: String, at: Vector3, axis: Vector3) -> void:
+	var target := at + Vector3.UP * LOOK_UP_M
+	await _shot(name + "_high", at - axis * ALONG_HIGH.x + Vector3.UP * ALONG_HIGH.y, target)
+	await _shot(name + "_eye", at - axis * ALONG_EYE.x + Vector3.UP * ALONG_EYE.y, target)
+	await _shot(name + "_back", at + axis * ALONG_HIGH.x + Vector3.UP * ALONG_HIGH.y, target)
+
+
+## Zebras put in the middle of busy streets among the walkers (the nearest the busiest sidewalk: people walk only round the
+## camera's window); the first one somebody walks over is photographed while they are on it.
 func _zebra() -> void:
 	var made: Array[Vector3] = []
-	for p: Vector3 in CityStore.query(&"traffic_probe", [SAMPLE]).sample:
+	var axes: Array[Vector3] = [] # along each zebra's street
+	var crowd := _densest()
+	var streets: Array = CityStore.query(&"traffic_probe", [SAMPLE]).sample
+	streets.sort_custom(func(a: Vector3, b: Vector3) -> bool: return a.distance_to(crowd) < b.distance_to(crowd))
+	for p: Vector3 in streets:
 		var seg: Dictionary = CityStore.query(&"segment_at", [p])
 		if seg.get("seg", -1) < 0:
 			continue
-		var mid: Vector3 = seg.points[seg.points.size() / 2]
-		if CityStore.dispatch(&"add_crossing", [mid, ZEBRA]).get("ok", false):
+		var k: int = seg.points.size() / 2
+		var mid: Vector3 = seg.points[k]
+		if k > 0 and CityStore.dispatch(&"add_crossing", [mid, ZEBRA]).get("ok", false):
 			made.append(mid)
+			axes.append(((seg.points[k] as Vector3) - seg.points[k - 1]).normalized())
 		if made.size() == ZEBRAS:
 			break
 	_check(not made.is_empty(), "zebras put on busy streets: %d" % made.size())
 	for i in WATCH_TRIES:
 		CityStore.step_ticks(WATCH_TICKS)
-		for at in made:
+		for z in made.size():
+			var at: Vector3 = made[z]
 			var census: Dictionary = CityStore.query(&"people_census", [at, WATCH_M])
 			if census.mid_crossing > 0:
 				print("zebra at ", at, ": ", census.mid_crossing, " crossing, ", census.mid_waiting, " at the kerb")
-				await _views("zebra", at)
+				CityStore.step_ticks(ONTO_TICKS) # from the kerb out onto the carriageway
+				await _along("zebra", at, axes[z])
 				return
 	_check(false, "somebody crossed a zebra")
 
@@ -127,19 +149,19 @@ func _signal() -> void:
 	UiDriver.at_hour(world, HOUR)
 
 
-## The walker with the most others round it: the busiest stretch of sidewalk.
-func _densest() -> Vector3:
+## The walker with the most others round it, up to `most` (a crowd, not a queue packed at a kerb): the busiest stretch.
+func _densest(most := CROWD_READ) -> Vector3:
 	var walkers: Array = CityStore.query(&"shot_targets", [CROWD_READ]).walkers
 	var best := Vector3.INF
-	var most := -1
+	var found := -1
 	for a: Dictionary in walkers:
 		var n := 0
 		for b: Dictionary in walkers:
 			n += 1 if (a.position as Vector3).distance_to(b.position) < CROWD_M else 0
-		if n > most:
-			most = n
+		if n > found and n <= most:
+			found = n
 			best = a.position
-	print("densest: ", most, " within ", CROWD_M, " m of ", best)
+	print("densest: ", found, " within ", CROWD_M, " m of ", best)
 	return best
 
 
@@ -154,9 +176,9 @@ func _near(at: Vector3) -> int:
 	return int(CityStore.query(&"people_census", [at, FLEE_M]).total)
 
 
-## A round into the ground by the busiest crowd: who hears it looks, some crouch, and they run away from it.
+## A round into the ground by a crowd walking: who hears it looks, some crouch, and they run away from it.
 func _flee() -> void:
-	var at := _densest()
+	var at := _densest(FLEE_CROWD)
 	if at == Vector3.INF:
 		_check(false, "a crowd to shoot by")
 		return
@@ -164,11 +186,16 @@ func _flee() -> void:
 	await _shot("flee_0_before", at + HIGH, at)
 	print("shot: ", CityStore.dispatch(&"shoot", [at + SHOT_FROM, Vector3.DOWN]))
 	var done := 0
+	var reacted := 0
 	for k in FLEE_TICKS.size():
 		CityStore.step_ticks(int(FLEE_TICKS[k]) - done)
 		done = int(FLEE_TICKS[k])
+		var acts: Dictionary = CityStore.query(&"people_census", [at, FLEE_M]).acts
+		print("what they do %d ticks after it: %s" % [done, acts])
+		reacted += int(acts.look) + int(acts.crouch) + int(acts.photo)
 		await _shot("flee_%d_high" % (k + 1), at + HIGH, at)
 		await _shot("flee_%d_low" % (k + 1), at + LOW, at + Vector3.UP * LOOK_UP_M)
 	var after := _near(at)
 	print("walkers within ", FLEE_M, " m: ", before, " before the shot, ", after, " after")
+	_check(reacted > 0, "who heard the shot reacts (looks, crouches or films it)")
 	_check(before > 0 and after < before, "they fled the shot (%d -> %d)" % [before, after])

@@ -39,11 +39,6 @@ bool held_by_fright(const TrafficState &t, Pedestrian &w); // stopped by what it
 void turn_from_bang(CityState &s, Pedestrian &w); // done with what it heard: if it was heading for the bang, back the other way
 void flee_on(CityState &s, Pedestrian &w, int n); // frightened, at node n: by the street that leads furthest off
 void ease_facing(const TrafficState &t, const TrafficParams &p, Pedestrian &w, float dt); // round to the bang, and back to its way, no faster than a body turns
-// ped_crossing.cpp: the gap in the traffic a walker at the kerb steps off into (crossings/permission.ts pedGapAccepted).
-float crossing_arrival(const CityState &s, int node, int arm_seg); // seconds until the first vehicle still able to stop reaches it (BIG: none)
-// The gap accepted after waiting `waited` seconds at the kerb: the critical gap less a share of the wait (impatience) up to
-// ped_impatience_most_s, never under ped_gap_least_s.
-float accepted_gap(const TrafficParams &p, float waited);
 // ped_wounds.cpp: how fast it goes against its own pace, running from a bang (`fleeing`) or not, as its wound lets it.
 float pace_gain(const Catalog &c, const Pedestrian &w, bool fleeing);
 

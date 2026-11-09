@@ -1,10 +1,8 @@
 // Walkers and vehicles at the crosswalks (Roadcraft traffic/junctions.ts carsOnCrossing/pedsInWay, signals.ts walkOk,
-// state.ts PED_COURTESY/PED_CRITICAL_GAP/SPAN_REACH, crossings/permission.ts mayEnterCrossing/pedGapAccepted). At a light a
-// walker crosses an arm only during the green of a stage that stops that arm; anywhere a walker steps off only when no
-// vehicle is on the crosswalk or too close to stop for it (a vehicle that has stood at its open line for the courtesy time
-// goes first), and only into a gap: the first vehicle still able to stop must be further off in time than the gap the walker
-// accepts, a gap that shrinks the longer it has waited (impatience). Vehicles give way to walkers on, or about to be on, the
-// stretch of a crosswalk their lane drives over.
+// state.ts PED_COURTESY/PED_CRITICAL_GAP/SPAN_REACH). At a light a walker crosses an arm only during the green of a
+// stage that stops that arm; anywhere a walker steps off only when no vehicle is on the crosswalk or too close to
+// stop for it (a vehicle that has stood at its open line for the courtesy time goes first). Vehicles give way to
+// walkers on, or about to be on, the stretch of a crosswalk their lane drives over.
 #include "sim/traffic/traffic_system.h"
 
 #include <algorithm>
@@ -31,10 +29,8 @@ bool courtesy_owed(const CityState &s, const Vehicle &v) {
 	return light_for(s, v.ds) == Light::GREEN;
 }
 
-// A head arriving on `ds` (into the node) would drive over the crosswalk of its own arm before a walker is across. A moving
-// head that could still stop is not in the way but arriving: with `gaps` (an unsignalled junction: at a light the red holds
-// it) the seconds it needs to reach the crosswalk lower `arrive`.
-bool approaching(const CityState &s, int ds, bool gaps, float &arrive) {
+// A head arriving on `ds` (into the node) would drive over the crosswalk of its own arm before a walker is across.
+bool approaching(const CityState &s, int ds) {
 	const TrafficState &t = s.traffic;
 	const DirSeg &d = t.g.ds[ds];
 	for (int l = 0; l < d.lanes; l++) {
@@ -45,7 +41,6 @@ bool approaching(const CityState &s, int ds, bool gaps, float &arrive) {
 		if (h.pass >= 0 || line < 0 || (line < NEAR_LINE_M && h.v > MOVING_MS)) return true;
 		if (h.v > MOVING_MS && line < h.v * h.v / (2 * b) + 1) return true; // too near to stop comfortably
 		if (line < COURTESY_NEAR_M && courtesy_owed(s, h)) return true;
-		if (gaps && h.v > MOVING_MS) arrive = std::min(arrive, line / h.v); // a vehicle standing at its line is not arriving
 	}
 	return false;
 }
@@ -82,50 +77,6 @@ void store(CityState &s, int key, int kind, bool value) {
 	(kind == 0 ? s.traffic.cross_walk[size_t(key)] : s.traffic.cross_cars[size_t(key)]) = value ? 1 : 0;
 }
 
-namespace {
-constexpr int CARS_KIND = 1; // the cache kind of cars_on_crossing
-
-// What the vehicles leave a walker at the crosswalk over `arm_seg`: true when one is on it or too close to stop, and the
-// seconds until the first one that could still stop gets there (`arrive`, BIG: none; read only when it returns false).
-bool crossing_traffic(const CityState &s, int node, int arm_seg, float &arrive) {
-	const TrafficState &t = s.traffic;
-	const bool gaps = t.g.junctions[size_t(node)].ctl != Control::SIGNAL;
-	arrive = BIG;
-	for (int dir = 0; dir < 2; dir++) {
-		int ds = arm_seg * 2 + dir;
-		const DirSeg &d = t.g.ds[size_t(ds)];
-		if (!d.ok) continue;
-		if (d.to == node) {
-			if (approaching(s, ds, gaps, arrive)) return true;
-			continue;
-		}
-		for (int l = 0; l < d.lanes; l++) { // leaving the node: the last one's body still over the crosswalk
-			const auto &lane = t.lane_vehicles[size_t(ds) * MAX_LANES + l];
-			if (!lane.empty() && t.vehicles[size_t(lane.front())].s - body(s, t.vehicles[size_t(lane.front())]) < s.catalog.furniture.crossing.cleared())
-				return true;
-		}
-	}
-	for (int x = t.g.node_conn[size_t(node)]; x >= 0; x = t.g.conns[size_t(x)].next_at_node) {
-		const Conn &c = t.g.conns[size_t(x)];
-		if (!c.alive) continue;
-		const auto &on = t.conn_vehicles[size_t(x)];
-		if (t.g.ds[size_t(c.from_ds)].seg == arm_seg && !on.empty() &&
-				t.vehicles[size_t(on.back())].cs < body(s, t.vehicles[size_t(on.back())])) return true;
-		if (t.g.ds[size_t(c.to_ds)].seg != arm_seg) continue;
-		if (!on.empty()) return true;
-		// a head turning into this arm that has waited its share, or arriving: at a light too, its green crosses the walk
-		const auto &lane = t.lane_vehicles[size_t(c.from_ds) * MAX_LANES + c.from_lane];
-		if (lane.empty()) continue;
-		const Vehicle &h = t.vehicles[size_t(lane.back())];
-		if (pick_connector(s, h) != x) continue;
-		float line = to_line(s, c.from_ds, h);
-		if (line < COURTESY_NEAR_M && courtesy_owed(s, h)) return true;
-		if (h.v > MOVING_MS) arrive = std::min(arrive, line / h.v);
-	}
-	return false;
-}
-} // namespace
-
 bool walk_ok(CityState &s, int node, int arm_seg) {
 	const int key = cache_key(s, node, arm_seg, 0);
 	bool cached_ok = false;
@@ -141,23 +92,46 @@ bool walk_ok(CityState &s, int node, int arm_seg) {
 }
 
 bool cars_on_crossing(CityState &s, int node, int arm_seg) {
-	const int cache = cache_key(s, node, arm_seg, CARS_KIND);
-	bool hard = false;
-	if (cached(s, cache, CARS_KIND, hard)) return hard;
-	float arrive = BIG;
-	hard = crossing_traffic(s, node, arm_seg, arrive);
-	store(s, cache, CARS_KIND, hard);
-	return hard;
-}
-
-// Asked only by a walker the hard answer let through (cars_on_crossing first), a few times a second while it waits.
-float crossing_arrival(const CityState &s, int node, int arm_seg) {
-	float arrive = BIG;
-	return crossing_traffic(s, node, arm_seg, arrive) ? 0.f : arrive;
-}
-
-float accepted_gap(const TrafficParams &p, float waited) {
-	return std::max(p.ped_gap_least_s, p.ped_critical_gap_s - std::min(p.ped_impatience_most_s, p.ped_impatience_rate * waited));
+	const int cache = cache_key(s, node, arm_seg, 1);
+	bool cached_cars = false;
+	if (cached(s, cache, 1, cached_cars)) return cached_cars;
+	const TrafficState &t = s.traffic;
+	const TrafficParams &tp = s.catalog.traffic;
+	auto done = [&](bool v) {
+		store(s, cache, 1, v);
+		return v;
+	};
+	for (int dir = 0; dir < 2; dir++) {
+		int ds = arm_seg * 2 + dir;
+		const DirSeg &d = t.g.ds[size_t(ds)];
+		if (!d.ok) continue;
+		if (d.to == node) {
+			if (approaching(s, ds)) return done(true);
+			continue;
+		}
+		for (int l = 0; l < d.lanes; l++) { // leaving the node: the last one's body still over the crosswalk
+			const auto &lane = t.lane_vehicles[size_t(ds) * MAX_LANES + l];
+			if (!lane.empty() && t.vehicles[size_t(lane.front())].s - body(s, t.vehicles[size_t(lane.front())]) < s.catalog.furniture.crossing.cleared())
+				return done(true);
+		}
+	}
+	for (int x = t.g.node_conn[size_t(node)]; x >= 0; x = t.g.conns[size_t(x)].next_at_node) {
+		const Conn &c = t.g.conns[size_t(x)];
+		if (!c.alive) continue;
+		const auto &on = t.conn_vehicles[size_t(x)];
+		if (t.g.ds[size_t(c.from_ds)].seg == arm_seg && !on.empty() &&
+				t.vehicles[size_t(on.back())].cs < body(s, t.vehicles[size_t(on.back())])) return done(true);
+		if (t.g.ds[size_t(c.to_ds)].seg != arm_seg) continue;
+		if (!on.empty()) return done(true);
+		// a head turning into this arm that has waited its share, or coming too soon to stop for someone stepping off
+		const auto &lane = t.lane_vehicles[size_t(c.from_ds) * MAX_LANES + c.from_lane];
+		if (lane.empty()) continue;
+		const Vehicle &h = t.vehicles[size_t(lane.back())];
+		if (pick_connector(s, h) != x) continue;
+		float line = to_line(s, c.from_ds, h);
+		if ((line < COURTESY_NEAR_M && courtesy_owed(s, h)) || (h.v > MOVING_MS && line / h.v < tp.ped_critical_gap_s)) return done(true);
+	}
+	return done(false);
 }
 
 bool peds_in_way(const CityState &s, int ci, float front_in, float front_out) {
@@ -173,7 +147,7 @@ bool peds_in_way(const CityState &s, int ci, float front_in, float front_out) {
 		const Waypoint &to = w.ways[w.wi];
 		V2 dir = V2(to.x - w.lx, to.z - w.lz).norm();
 		V2 q = entry ? V2(c.x0, c.z0) : V2(c.x1, c.z1);
-		float at = (q - V2(w.lx, w.lz)).dot(dir), pace = std::max(MIN_BRAKE, w.speed * tp.ped_crossing_pace); // its pace over a zebra
+		float at = (q - V2(w.lx, w.lz)).dot(dir), pace = std::max(MIN_BRAKE, w.speed * tp.ped_crossing_pace); // its pace over a zebra (pedestrians.cpp walk)
 		float clears = (at + tp.ped_span_reach_m - w.ls) / pace, reaches = (at - tp.ped_span_reach_m - w.ls) / pace;
 		float front = entry ? front_in : front_out;
 		if (clears > front && reaches < front + tp.ped_critical_gap_s) return true;
