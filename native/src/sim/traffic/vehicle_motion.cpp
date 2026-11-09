@@ -31,7 +31,7 @@ void integrate(const CityState &s, Vehicle &v, float acc, float dt, float &pos) 
 	v.stuck = nv < p.vehicle_stuck_speed ? v.stuck + dt : 0.f;
 	v.wait = nv < p.vehicle_wait_speed ? v.wait + dt : 0.f;
 	v.held = nv < p.vehicle_wait_speed ? v.held + dt : 0.f;
-	v.lc_off *= std::max(0.f, 1.f - dt * p.vehicle_lc_decay / std::max(p.lc_duration_s, dt));
+	drive_lane_change(v, (v.v + nv) * 0.5f * dt);
 	v.lc_cool = std::max(0.f, v.lc_cool - dt);
 }
 
@@ -154,6 +154,8 @@ void step_lane(CityState &s, int ds, int lane, float dt, std::vector<int> &leavi
 				if (ci < 0) continue;
 			}
 			v0 = std::min(v0, std::max(turn_limit(s, v, t.g.conns[ci], dist), v.v - driver_of(s, v).b_emergency * dt)); // eased into, never braked past an emergency stop for
+			// still to cross to the lane its turn leaves from: it eases off, comfortably, to the speed at which the changes fit
+			if (t.g.conns[ci].from_lane != v.lane) v0 = std::min(v0, std::max(positioning_cap(s, v, t.g.conns[ci].from_lane, dist), v.v - driver_of(s, v).b * dt));
 			const LightStop lights = lights_ahead(s, v, v.ri, v.lane, -v.s);
 			v.amber_hold = lights.amber_hold;
 			l.take(lights.gap, 0.f);
@@ -245,14 +247,14 @@ void step_connector(CityState &s, int ci, float dt) {
 	for (size_t k = 0; k < list.size(); k++) {
 		Vehicle &v = t.vehicles[list[k]];
 		Lead l, walkers;
-		const float top = conn_top(s, v, c);
+		const float free_top = conn_top(s, v, c), bend = curve_cap(s, v, c, v.cs), top = std::min(free_top, bend);
 		connector_leads(s, ci, k, top, l, walkers);
 		for (int i = 0; i < walkers.count; i++) l.take(walkers.seen[i].gap, walkers.seen[i].v);
 		const LightStop lights = lights_ahead(s, v, v.ri + 1, c.to_lane, c.len - v.cs);
 		v.amber_hold = lights.amber_hold;
 		l.take(lights.gap, 0.f);
 		// the bends ahead eased into, never braked past an emergency stop for (the lab's integrate.ts curveCap)
-		const float wish = std::min(top, std::max(curve_cap(s, v, c, v.cs), v.v - driver_of(s, v).b_emergency * dt));
+		const float wish = std::min(free_top, std::max(bend, v.v - driver_of(s, v).b_emergency * dt));
 		const float acc = drive_accel(s, v, wish, l, dt);
 		integrate(s, v, acc, dt, v.cs);
 	}

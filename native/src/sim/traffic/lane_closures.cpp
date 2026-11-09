@@ -53,7 +53,7 @@ bool lane_clear(const CityState &s, const LaneClosure &c) {
 	const TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
 	const int ds = c.key / MAX_LANES, lane = c.key % MAX_LANES;
-	const auto stopping = [&](const Vehicle &v) { return v.v * v.v / (2 * p.classes[int(v.type)].b) + p.lorry_clear_margin_m; };
+	const auto stopping = [&](const Vehicle &v) { return v.v * v.v / (2 * driver_of(s, v).b) + p.lorry_clear_margin_m; };
 	if (size_t(c.key) < t.lane_vehicles.size())
 		for (int id : t.lane_vehicles[size_t(c.key)]) {
 			const Vehicle &v = t.vehicles[size_t(id)];

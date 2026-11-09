@@ -25,6 +25,14 @@ enum class AgentTag : int { FIXED, PAINT, HEAD, TAIL, GLASS, SIGN, ROOF, GLOSS, 
 enum class AgentSignal : int { NONE, LEFT, RIGHT };
 // what the vertex stage moves, in UV2.y: UV its axle or its hinge; a door hung at its front edge, at its back edge (agent_meshes.h; agents.gdshader, agent_door.gdshaderinc read each as over the one below it by a half)
 enum class Limb : int { NONE, WHEEL, DOOR, DOOR_BACK };
+// a wheel vertex's UV2.y over LIMB_WHEEL: AGENT_HUB_MID plus its hub's x over this, the point a front wheel steers about (agent_meshes.h agent_wheel_tag; agents.gdshader)
+constexpr float AGENT_HUB_SPAN_M = float(8.0);
+// the middle of a wheel vertex's share of UV2.y over LIMB_WHEEL: hubs either side stay clear of the limbs above and below it
+constexpr float AGENT_HUB_MID = float(0.25);
+// each indicator side (AgentSignal) a step over the front wheels' steering angle in the instance's custom alpha (agent_renderer.cpp writes, agents.gdshader reads)
+constexpr float AGENT_STEER_STEP = float(4.0);
+// the steering angle's zero in its step: the angle, radians, at most half a step either side
+constexpr float AGENT_STEER_MID = float(2.0);
 // a door pane's vertex colour red: its sill's height over this (car_body.cpp, agent_door.gdshaderinc)
 constexpr float AGENT_SILL_SPAN_M = float(4.0);
 
@@ -52,6 +60,10 @@ constexpr ShaderContract SHADER_CONTRACTS_AGENTS[] = {
 	{ "LIMB_WHEEL", 1, { double(Limb::WHEEL) } },
 	{ "LIMB_DOOR", 1, { double(Limb::DOOR) } },
 	{ "LIMB_DOOR_BACK", 1, { double(Limb::DOOR_BACK) } },
+	{ "AGENT_HUB_SPAN_M", 1, { double(8.0) } },
+	{ "AGENT_HUB_MID", 1, { double(0.25) } },
+	{ "AGENT_STEER_STEP", 1, { double(4.0) } },
+	{ "AGENT_STEER_MID", 1, { double(2.0) } },
 	{ "AGENT_SILL_SPAN_M", 1, { double(4.0) } },
 };
 

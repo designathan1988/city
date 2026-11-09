@@ -11,6 +11,7 @@
 #include "render/agents/fleet_shadow.h"
 #include "render/view_cull.h"
 #include "render/agents/people_renderer.h"
+#include "render/effects/exhaust.h"
 #include "render/render_context.h"
 #include "render/rs_util.h"
 #include "sim/state/city_state.h"
@@ -51,6 +52,9 @@ public:
 	void set_night(float night) { heads_.set_night(night); }
 	void shine_heads(float frame_s) { heads_.shine(frame_s); }
 	int lit_heads() const { return heads_.lit(); }
+	int drawn_far() const { return drawn_far_; } // the far traffic's cars drawn on the last frame
+	// The engines drawn this frame, for the tail smoke (render/effects/exhaust.h): not far, not parked, not a bicycle.
+	const std::vector<ExhaustSource> &exhaust() const { return exhaust_; }
 
 private:
 	HeadLights heads_;
@@ -62,6 +66,10 @@ private:
 	static constexpr int MID_DRAW = LEVELS, DRAWS = LEVELS + 1;
 	static constexpr uint64_t VEHICLE_DENSE_KEYS = 1u << 20;
 	static constexpr uint64_t ROW_KINDS = 2, PARKED_ROW = 1; // a key says whose id it is: the fleet's and the bays' both count from 0
+	static constexpr int WAGON_EVERY = 3; // one sedan in three is an estate, by its paint: a car keeps its shape from the road to its bay
+	static int model_of(int type, int paint) { return type == int(VehicleType::SEDAN) && paint % WAGON_EVERY == 1 ? WAGON_MODEL : type; }
+	static constexpr float NOBODY_ABOARD = -1.f; // passengers of a car standing in a bay: not even a driver (agents.gdshader)
+	static constexpr uint32_t SEED_SALT = 0x5ea7u; // a vehicle's seed, a stream of its id (any distinct word)
 	// Who rides in one type: its passenger seats, the cumulative shares of its vehicles in each band of how full they
 	// run, and the strides its seats may fill in (1 alone: in their own order, front first).
 	struct Load {
@@ -91,6 +99,8 @@ private:
 	// The frame's rows of the fleet and of the bays' cars: the camera's by key (keeper_), the sun's in order; `placed` counts the seen.
 	void place_vehicles(const PoseFrame &f, const godot::Vector3 &cam, const ViewCull &view, const PoseSample &at, const LevelRule &rule, int &placed);
 	void place_parked(const PoseFrame &f, const godot::Vector3 &cam, const ViewCull &view, const LevelRule &rule, int &placed);
+	// The far traffic's cars (PoseFrame::far) past the near ones' reach, each at the far level in the view, casting nothing.
+	void place_far(const PoseFrame &f, const godot::Vector3 &cam, const ViewCull &view);
 	void limit_cabins(); // the next frame's limit of who has a cabin
 	// The bays' cars by cell of vehicle_r_ (their indices in the published list, ascending), made again only when the simulation
 	// publishes a new list; and this frame's, those of the cells round the camera, ascending: the list's own order.
@@ -117,6 +127,14 @@ private:
 	Load load_[AGENT_MODELS];
 	int paints_ = 0;
 	float wheel_r_[AGENT_MODELS] = {};
+	float wheelbase_[AGENT_MODELS] = {}; // each model's, the front wheels' steering angle from the path's bend: atan(wheelbase x bend)
+	float max_steer_ = 0; // the most a front wheel turns, radians
+	float class_len_[VEHICLE_TYPES] = {}; // each type's body length (the traffic classes): where its tail is
+	std::vector<ExhaustSource> exhaust_;
+	InstanceRows far_rows_[AGENT_MODELS]; // the far traffic's cars this frame, by model
+	MultiMeshDraw far_draws_[AGENT_MODELS];
+	float far_traffic_r_ = 0; // how far they are published (traffic far_publish_m): their draws' box
+	int drawn_far_ = 0;
 	struct Odometer {
 		float x = 0, z = 0, angle = 0;
 		bool seen = false;

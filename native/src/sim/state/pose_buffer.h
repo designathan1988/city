@@ -42,6 +42,7 @@ struct PoseTrail {
 constexpr uint32_t LOOK_TYPE_MASK = 0xFFu, LOOK_PAINT_SHIFT = 8, LOOK_BRAKE_SHIFT = 16, LOOK_EMPTY_SHIFT = 17, LOOK_ABOARD_SHIFT = 18, LOOK_ABOARD_MASK = 3u, LOOK_DOOR_SHIFT = 20, LOOK_DOOR_MASK = uint32_t(AGENT_DOOR_LEVELS); // how far its kerb door stands open
 // and, past the door's five bits, the side its indicators flash on (sim/traffic/vehicle_signals.cpp): an AgentSignal.
 constexpr uint32_t LOOK_SIGNAL_SHIFT = 25, LOOK_SIGNAL_MASK = 3u;
+constexpr uint32_t LOOK_OFF_SHIFT = 27; // off the road (a lot, a drive): its wheels raise dust (render/effects/exhaust.cpp)
 // How old a walker is: its pace and its body.
 enum class PedAge : uint8_t { ADULT = 0, CHILD, ELDER, COUNT };
 constexpr int PED_AGES = int(PedAge::COUNT);
@@ -54,6 +55,7 @@ struct AgentRecord {
 	uint32_t id = 0; // vehicle or pedestrian id (wheel odometer, look)
 	uint32_t look = 0; // pedestrians: look hash; vehicles: type | paint << 8 | brake << 16
 	float walked = 0; // pedestrians: metres walked (walk phase); vehicles: 0
+	float curvature = 0; // vehicles: the bend of the path under its front, 1/m, positive to its left (its front wheels steer by it)
 	float rest = 0; // pedestrians: 0 walking .. 1 standing (the idle's share of the pose)
 	float act_share = 0; // pedestrians: how far into `act` they are (0 standing idle .. 1)
 	float act_since = 0, act_left = 0; // pedestrians: seconds since `act` began, and until a fright lets go of it
@@ -94,6 +96,7 @@ struct PoseFrame {
 	std::vector<AgentRecord> vehicles, people;
 	std::vector<AgentRecord> trains; // each car near the camera: look its RGB, id 1 when it is the metro's
 	std::shared_ptr<const std::vector<ParkedRecord>> parked; // the cars standing in bays near the camera, made again only when one changes
+	std::vector<ParkedRecord> far; // the far (meso) traffic's cars near enough to be seen, each tick where it stands (sim/traffic/far_traffic.cpp)
 	std::vector<float> seg_speed_share; // per segment: mean speed / limit (congestion layer), 1 when empty
 	std::vector<SignalRecord> signals; // the signalled approaches near the camera, by ds
 	const SignalRecord *signal(uint32_t ds) const { return find_signal(signals, ds); }

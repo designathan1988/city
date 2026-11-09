@@ -143,7 +143,7 @@ void move_vehicle_lane(CityState &s, int id, int target) {
 	if (v.ds < 0 || target < 0 || target >= t.g.ds[size_t(v.ds)].lanes || target == v.lane) return;
 	const DirSeg &d = t.g.ds[size_t(v.ds)];
 	lane_del(s, v.ds * MAX_LANES + v.lane, id);
-	v.lc_off += d.u[v.lane] - d.u[target];
+	start_lane_change(s, v, v.lc_off + d.u[v.lane] - d.u[target]);
 	v.lane = target;
 	lane_add(s, v.ds * MAX_LANES + target, id);
 }

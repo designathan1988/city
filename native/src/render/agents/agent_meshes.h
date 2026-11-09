@@ -101,6 +101,8 @@ struct Tub {
 };
 
 inline godot::Vector2 agent_tag(AgentTag t, Limb l = Limb::NONE) { return godot::Vector2(float(int(t)), float(int(l))); }
+// A wheel's vertex: UV2.y its limb plus AGENT_HUB_MID and its hub's x over AGENT_HUB_SPAN_M, the point a front wheel steers about.
+inline godot::Vector2 agent_wheel_tag(float hub_x) { return godot::Vector2(float(int(AgentTag::FIXED)), float(int(Limb::WHEEL)) + AGENT_HUB_MID + hub_x / AGENT_HUB_SPAN_M); }
 inline const godot::Color AGENT_WHITE(1, 1, 1, 1);
 
 // agents.json is read through the strict reader's values (render/data_reader.h): a missing key, a wrong type or a list of the

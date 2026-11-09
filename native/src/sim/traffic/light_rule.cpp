@@ -10,7 +10,7 @@ namespace city {
 namespace traffic {
 
 bool stop_is_comfortable(const CityState &s, const Vehicle &v, float stop_m) {
-	return stop_m >= 0 && v.v * v.v <= 2 * s.catalog.traffic.classes[int(v.type)].b * stop_m;
+	return stop_m >= 0 && v.v * v.v <= 2 * driver_of(s, v).b * stop_m;
 }
 
 // How far a vehicle needs to stop the way the intergreen is timed (CONTRAN MBST vol. V 5.7.1): reacting in
@@ -42,7 +42,7 @@ bool amber_stops(const TrafficParams &p, const AmberApproach &a) {
 }
 
 bool stops_at_amber(const CityState &s, const Vehicle &v, int ds, float stop_m, int ci) {
-	const VehicleClass &vc = s.catalog.traffic.classes[int(v.type)];
+	const VehicleClass vc = driver_of(s, v);
 	AmberApproach a;
 	a.v = v.v;
 	a.stop_m = stop_m;
@@ -64,7 +64,7 @@ bool light_stops(const CityState &s, const Vehicle &v, int ds, float stop_m, int
 LightStop lights_ahead(const CityState &s, const Vehicle &v, int ri, int lane, float start) {
 	const TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
-	const VehicleClass &vc = p.classes[int(v.type)];
+	const VehicleClass vc = driver_of(s, v);
 	// a standing obstacle starts to matter at the IDM's desired gap to it; never nearer than a head looks at its junction,
 	// nor than an amber's stopping distance (each light is seen while it can still stop for it)
 	const float horizon = std::max({ p.look_ahead_m, vc.min_gap + v.v * vc.headway + v.v * v.v / (2 * std::sqrt(vc.a * vc.b)),

@@ -239,11 +239,15 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/sim/traffic/traffic_system.cpp` · `native/src/sim/traffic/traffic_system.h` — passo do tráfego, publicação de poses e rebuild
 - `native/src/sim/traffic/vehicle_motion.cpp` — IDM e conectores
 - `native/src/sim/traffic/vehicle_drive.h` · `native/src/sim/traffic/vehicle_drive.cpp` — how hard a driver presses the pedals: every obstacle by the adaptive cruise control model, the driver's jerk, the safe speed
+- `native/src/sim/traffic/vehicle_driving.h` — the declarations of how a near vehicle is driven (driver, bends, lane-change path, indicators, wheels), included by traffic_system.h
+- `native/src/sim/traffic/lane_change_path.cpp` — a lane change as a path: the quintic sideways offset over the road driven, its length by the heading at speed, and the speed a driver eases to so the changes its turn needs fit
+- `native/src/sim/traffic/far_traffic.cpp` — the far traffic published for the render: the near model's cars past the near publication and the far model's queued cars placed along their lanes
 - `native/src/sim/traffic/vehicle_signals.cpp` — the side a vehicle's indicators flash on (a lane change, the lane its turn needs, the turn ahead and on the connector)
 - `native/src/sim/traffic/window.cpp` — janela micro em volta da câmera e materialização do meso
 
 **Render (só lê) — native/src/render**
 - `native/src/render/agents/agent_cabin.cpp` · `native/src/render/agents/agent_parts.cpp` — cabine de qualquer veículo (forro com vãos de porta, painel, fileiras de bancos nos estilos carro/cabine/poltrona, volante, pessoas com a ordem de ocupação) e vidro à parte; peças comuns: cores, caixas e barras marcadas, painéis de vidro, rodas e casco oco com arcos
+- `native/src/render/agents/agent_standing.cpp` — the cars outside the near traffic: those in bays near the camera and the far traffic's, each at the far level past the near reach
 - `native/src/render/agents/agent_meshes.h` · `native/src/render/agents/agent_renderer.cpp` · `native/src/render/agents/agent_renderer.h` — malhas dos agentes (agents.json) em três níveis (perto: cabine e vidro transparente; corpo: sem cabine, vidro opaco; longe, depois de `far_radius_m`: só o contorno), cada nível lançando sombra pela malha do seguinte, paletas, lotação e ordem dos assentos por veículo e MultiMesh por quadro
 - `native/src/render/agents/car_body.cpp` · `native/src/render/agents/car_parts.cpp` · `native/src/render/agents/car_shape.cpp` · `native/src/render/agents/car_shape.h` — carroceria loftada do carro (faixas por região, normais suaves); pontas, peças e cabine; forma (linha do teto monótona, anel)
 - `native/src/render/agents/bus_body.cpp` · `native/src/render/agents/heavy_meshes.cpp` — ônibus de entrada baixa (deque atrás, lugar da cadeira de rodas) pela NBR 15570; caminhão (cabine, baú, chassi) pela ficha; moto; peças dos pesados (pneu pela designação, rodas duplas)
@@ -306,6 +310,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/render/effects/effect_params.cpp` · `native/src/render/effects/effect_params.h` — data/render/effects.json estrito (aparência dos efeitos)
 - `native/src/render/effects/effect_shapes.h` · `native/src/render/effects/effect_shapes_blow.h` · `native/src/render/effects/effect_shapes_ruins.h` · `native/src/render/effects/effect_shapes_world.h` — every size, count and speed an effects file plays with, one block per file (a blow's events, a building brought down, the owner and the puffs), as effects.json "shapes" gives them; the list the EffectParams hold
 - `native/src/render/effects/mounds.cpp` · `native/src/render/effects/mounds.h` · `project/render/shaders/rubble.gdshader` — o monte de escombros de um prédio caído: uma colina com relevo por ruína, em um MultiMesh, que sobe com a queda
+- `native/src/render/effects/exhaust.h` · `native/src/render/effects/exhaust.cpp` — the vehicles' tail smoke and the dust of a car off the road, from the engines the vehicle renderer drew
 - `native/src/render/effects/mm_layer.h` · `native/src/render/effects/puffs.cpp` · `native/src/render/effects/puffs.h` — um MultiMesh de capacidade fixa; a reserva circular de fumaça, poeira, chama, faísca, sangue, água e papel (o shader move cada uma pela idade)
 - `native/src/render/effects/marks.cpp` · `native/src/render/effects/marks.h` — marcas no chão em um MultiMesh: crateras do estado, fuligem e sangue guardados, anel de onda
 - `native/src/render/effects/debris.cpp` · `native/src/render/effects/debris.h` · `native/src/render/effects/rigid_step.h` — peças rígidas jogadas (caixas e cilindros) e carcaças que queimam; o passo de um corpo rígido sobre o chão: gravidade, impulso por canto, repouso

@@ -141,7 +141,7 @@ void agent_pane(MeshBuilder &mb, const Vector3 &a, const Vector3 &b, const Vecto
 void agent_wheel(MeshBuilder &mb, const Vector3 &c, float r, float w, int sides, int side, const AgentTrim &trim) {
 	const PartsShape &K = trim.shapes->agent_parts;
 	const float xo = c.x + side * w * 0.5f, xi = c.x - side * w * 0.5f, xh = xo + side * K.hub_proud_m;
-	const Vector2 t2 = agent_tag(AgentTag::FIXED, Limb::WHEEL), hub(c.y, c.z);
+	const Vector2 t2 = agent_wheel_tag(c.x), hub(c.y, c.z);
 	const Vector2 uvs[4] = { hub, hub, hub, hub };
 	const Vector3 face(float(side), 0, 0);
 	const Color spoke = trim.hub * K.spoke_shade;
@@ -212,7 +212,7 @@ void spoke(Lathe &l, float angle, float reach, float root, float tip_w, float ax
 
 void agent_wheel_near(MeshBuilder &mb, const Vector3 &c, float r, float w, int sides, int side, const AgentTrim &trim) {
 	const PartsShape &K = trim.shapes->agent_parts;
-	Lathe l{ mb, c, side, sides, Vector2(c.y, c.z), agent_tag(AgentTag::FIXED, Limb::WHEEL) };
+	Lathe l{ mb, c, side, sides, Vector2(c.y, c.z), agent_wheel_tag(c.x) };
 	const float h = r * K.tyre_section, outer = r - h, lip = outer - h * K.tyre_lip, half = w * 0.5f;
 	std::vector<int> ring = lathe_ring(l, lip, -half, 0, -1, trim.tyre);
 	for (int i = 0; i <= K.shoulder_steps; i++) {
@@ -232,7 +232,7 @@ void agent_wheel_near(MeshBuilder &mb, const Vector3 &c, float r, float w, int s
 	std::vector<int> lip_out = lathe_ring(l, lip, face + K.hub_proud_m, 0, 1, trim.hub), lip_in = lathe_ring(l, lip * K.lip_in, face + K.hub_proud_m, 0, 1, trim.hub);
 	lathe_band(l, lip_out, lip_in);
 	for (int i = 0; i < K.spokes; i++) spoke(l, TAU_F * i / K.spokes, lip * (K.lip_in + K.rotor_deep), r * K.spoke_root, r * K.spoke_tip, w * K.spoke_face, trim.hub);
-	Lathe boss{ mb, c, side, K.boss_sides, Vector2(c.y, c.z), agent_tag(AgentTag::FIXED, Limb::WHEEL) };
+	Lathe boss{ mb, c, side, K.boss_sides, Vector2(c.y, c.z), agent_wheel_tag(c.x) };
 	lathe_disc(boss, r * K.boss_r, w * K.boss_face, trim.hub);
 }
 
@@ -240,7 +240,7 @@ void agent_spoked_wheel(MeshBuilder &mb, const Vector3 &c, float r, float w, int
 	const PartsShape &K = trim.shapes->agent_parts;
 	const float half = w * 0.5f, inner = r - w;
 	for (int side : { -1, 1 }) {
-		Lathe l{ mb, c, side, sides, Vector2(c.y, c.z), agent_tag(AgentTag::FIXED, Limb::WHEEL) };
+		Lathe l{ mb, c, side, sides, Vector2(c.y, c.z), agent_wheel_tag(c.x) };
 		std::vector<int> ring = lathe_ring(l, r - half, 0, 1, 0, trim.tyre);
 		for (int i = 1; i <= K.shoulder_steps; i++) {
 			const float a = PI_F * float(i) / K.shoulder_steps, cs = std::cos(a), sn = std::sin(a);
@@ -249,7 +249,7 @@ void agent_spoked_wheel(MeshBuilder &mb, const Vector3 &c, float r, float w, int
 			ring = std::move(next);
 		}
 		for (int i = 0; i < spokes / 2; i++) spoke(l, TAU_F * (float(i) + (side > 0 ? 0.f : 0.5f)) / float(spokes / 2), inner, K.wire_m, K.wire_m, half * K.rim_face, trim.hub);
-		Lathe boss{ mb, c, side, K.boss_sides, Vector2(c.y, c.z), agent_tag(AgentTag::FIXED, Limb::WHEEL) };
+		Lathe boss{ mb, c, side, K.boss_sides, Vector2(c.y, c.z), agent_wheel_tag(c.x) };
 		lathe_disc(boss, r * K.boss_r * K.boss_r, half, trim.hub);
 	}
 }

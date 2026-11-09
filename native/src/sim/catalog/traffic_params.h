@@ -24,8 +24,10 @@ namespace city {
 	X(driver_gap_spread) X(drift_amp_min) X(drift_amp_span) X(drift_rate_min) X(drift_rate_span) X(lateral_accel_max) X(lateral_accel_fall) \
 	X(lateral_accel_min) X(lateral_heavy_share) X(lateral_aggression_spread) X(curve_sample_m) X(curve_chord_m) X(curve_look_s) X(curve_look_m) \
 	X(lc_safe_brake) X(lc_threshold) X(lc_bias_right) X(lc_mandatory_bias) X(lc_free_m) X(lc_gap_front_m) \
-	X(lc_gap_back_m) X(mouth_clear_m) X(lc_duration_s) X(lc_cooldown_s) X(lc_every_ticks) \
-	X(brake_light_accel) X(brake_light_speed) X(body_lift_m) X(turn_signal_s) X(turn_signal_min_m) X(turn_signal_until) X(lane_change_done_m) \
+	X(lc_gap_back_m) X(mouth_clear_m) X(lc_cooldown_s) X(lc_every_ticks) \
+	X(brake_light_accel) X(brake_light_speed) X(body_lift_m) X(turn_signal_s) X(turn_signal_min_m) X(turn_signal_until) X(lane_change_done_m) X(steer_chord_m) X(far_publish_m) \
+	X(lc_heading_slow) X(lc_heading_fast) X(lc_fast_kmh) X(lc_min_time_s) X(lc_min_bodies) X(lc_room_min_m) X(lc_room_s) X(lc_finish_m) \
+	X(lc_signal_s) X(lc_signal_crawl_s) X(lc_crawl_ms) \
 	X(walk_speed_min) X(walk_speed_max) X(walk_track_min) X(walk_track_max) X(ped_trip_min_m) X(ped_trip_max_m) \
 	X(ped_child_share) X(ped_elder_share) X(ped_child_pace) X(ped_elder_pace) X(ped_rest_fade_s) \
 	X(bus_passenger_s) X(bus_step_aboard_s) X(bus_fetch_m) X(bus_fetch_share) X(bus_front_door_m) X(ped_shot_fright_s) X(ped_shock_life_s) X(ped_body_shock_m) X(ped_blast_shock_m) X(ped_shock_look_s) X(ped_shocks_most) X(ped_react_near_m) X(ped_react_crouch_roll) X(ped_react_film_roll) X(ped_react_trip_roll) X(ped_react_crouch_s) X(ped_react_film_s) \
@@ -71,7 +73,7 @@ namespace city {
 	X(meso_wait_mid_s) X(meso_speed_floor_ms) X(meso_min_wait_s) X(meso_queue_retry_s) X(meso_window_retry_s) X(meso_fit_m) \
 	X(meso_min_handover_ms) X(meso_free_handover_ms) X(meso_handover_share) X(meso_handover_pad_m) X(meso_handover_retry_s) \
 	X(ped_spawn_pick_tries) X(ped_spawn_dest_tries) X(ped_spawn_scale_min) X(ped_spawn_scale_max) \
-	X(vehicle_safe_pad_m) X(vehicle_wait_speed) X(vehicle_stuck_speed) X(vehicle_lc_decay) X(vehicle_moving_off_share) \
+	X(vehicle_safe_pad_m) X(vehicle_wait_speed) X(vehicle_stuck_speed) X(vehicle_moving_off_share) \
 	X(window_view_step_m) X(window_every_s) X(window_mat_tail_pad_m) X(window_mat_end_pad_m) X(window_mat_speed_share) \
 	X(window_furniture_keep_windows)
 

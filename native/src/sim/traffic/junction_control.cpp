@@ -273,7 +273,7 @@ bool may_enter(const CityState &s, int vid, int ci, float dist) {
 	if (light_stops(s, me, c.from_ds, line - tp.stop_margin_m, ci)) return false;
 	if (t.g.ds[c.from_ds].must_stop && me.stood_at != c.from_ds) return false; // a Stop is more than a lower rank: it is taken from a stand
 	if (!has_exit(s, c, vid)) return false;
-	const float top = top_speed(s, me, conn_speed(s, c));
+	const float top = std::min(conn_top(s, me, c), curve_cap(s, me, c, 0.f)); // the speed it takes the connector at: its exit's limit under the bends
 	if (peds_in_way(s, ci, front_time(s, me, line, top), front_time(s, me, dist + c.len, top))) return false;
 	bool claim = me.wait > tp.claim_after_s;
 	// whoever has waited its share claims the turn: those who can still stop comfortably let it through

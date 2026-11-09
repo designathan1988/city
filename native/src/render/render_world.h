@@ -68,6 +68,7 @@ public:
 	// Vehicles and people near the camera, at the moment `at` of the published poses.
 	void update_agents(const PoseFrame &f, const godot::Vector3 &cam, const ViewCull &view, const PoseSample &at) {
 		agents_.update(f, cam, view, at);
+		effects_.set_exhaust(agents_.exhaust());
 		transit_.update(f, cam, at);
 	}
 	int drawn_cars() const { return transit_.drawn_cars(); }
@@ -122,6 +123,7 @@ public:
 	int64_t wear_publications() const { return wear_.publications(); }
 	int64_t super_bytes_max() const { return buildings_.super_bytes_max(); }
 	int drawn_vehicles() const { return agents_.drawn_vehicles(); }
+	int drawn_far_vehicles() const { return agents_.drawn_far(); } // the far traffic's cars drawn on the last frame
 	int drawn_people() const { return agents_.drawn_people(); }
 	godot::Array people_clips() const { return agents_.people_clips(); }
 	bool show_people_clip(const godot::String &name) { return agents_.show_people_clip(name); }

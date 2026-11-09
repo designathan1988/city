@@ -19,6 +19,8 @@ bool EffectWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	const WorldShape &K = params_.shapes.effect_world;
 	scenario_ = ctx.scenario;
 	if (!params_.load(ctx.table("effects", errors), errors) || !load_looks(ctx, errors)) return false;
+	const godot::Dictionary agents = ctx.table("agents", errors);
+	if (!errors.is_empty() || !exhaust_.load(DataReader{ errors, "agents.json" }.at(agents)["exhaust"]) || !errors.is_empty()) return false;
 	if (!ctx.catalog) {
 		errors.push_back("effects without a catalogue");
 		return false;
@@ -55,6 +57,8 @@ void EffectWorld::reset() {
 	ruins_.reset();
 	if (people_) people_->bodies().reset();
 	puffs_.reset();
+	exhaust_.reset();
+	exhaust_sources_.clear();
 	marks_.reset();
 	debris_.reset();
 	mounds_.reset();
@@ -156,6 +160,7 @@ void EffectWorld::sync(CityState &s, FrameAdmission &admission) {
 		events_.swap(s.log.damage_events);
 	}
 	puffs_.stamp(now_); // the clock the puffs about to be born are stamped with
+	exhaust_.emit(exhaust_sources_, dt, puffs_, rng_);
 	for (const DamageEvent &e : events_) apply(e, s);
 	played_ += events_.size();
 	events_played_.swap(events_);

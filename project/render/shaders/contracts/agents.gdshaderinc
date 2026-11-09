@@ -32,6 +32,14 @@ const float LIMB_NONE = 0.0;
 const float LIMB_WHEEL = 1.0;
 const float LIMB_DOOR = 2.0;
 const float LIMB_DOOR_BACK = 3.0;
+// a wheel vertex's UV2.y over LIMB_WHEEL: AGENT_HUB_MID plus its hub's x over this, the point a front wheel steers about (agent_meshes.h agent_wheel_tag; agents.gdshader)
+const float AGENT_HUB_SPAN_M = 8.0;
+// the middle of a wheel vertex's share of UV2.y over LIMB_WHEEL: hubs either side stay clear of the limbs above and below it
+const float AGENT_HUB_MID = 0.25;
+// each indicator side (AgentSignal) a step over the front wheels' steering angle in the instance's custom alpha (agent_renderer.cpp writes, agents.gdshader reads)
+const float AGENT_STEER_STEP = 4.0;
+// the steering angle's zero in its step: the angle, radians, at most half a step either side
+const float AGENT_STEER_MID = 2.0;
 // a door pane's vertex colour red: its sill's height over this (car_body.cpp, agent_door.gdshaderinc)
 const float AGENT_SILL_SPAN_M = 4.0;
 

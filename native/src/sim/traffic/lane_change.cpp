@@ -1,7 +1,8 @@
 // Lane changes (Roadcraft sim/traffic/laneChanges.ts, MOBIL-like): safety = gaps ahead/behind and the new follower's
 // braking; incentive = own IDM gain + bias over a fixed threshold. Mandatory changes move toward the lane that has a
 // connector to the next road (after waiting long enough at the line any physical gap will do); discretionary
-// changes keep right.
+// changes keep right. A driver signals first and moves across once the signal has run lc_signal_s with the gap still there
+// (the lab's laneChange.ts), never while its body is still between two lanes; the path is lane_change_path.cpp's.
 #include "sim/traffic/traffic_system.h"
 
 #include <algorithm>
@@ -87,7 +88,14 @@ void move_to(CityState &s, int id, int target) {
 	s.traffic.vehicles[size_t(id)].lc_cool = s.catalog.traffic.lc_cooldown_s;
 }
 
-int choose(const CityState &s, int id) {
+// The lane `id` wants now (-1: none), whether the route asks for it (a mandatory change: signalled for even while the gap is not
+// there), and whether it may move across now.
+struct Choice {
+	int lane = -1;
+	bool mandatory = false, safe = false;
+};
+
+Choice choose(const CityState &s, int id) {
 	const TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
 	const Vehicle &v = t.vehicles[id];
@@ -98,21 +106,21 @@ int choose(const CityState &s, int id) {
 	if (ci >= 0 && t.g.conns[ci].from_lane != v.lane) {
 		int cand = v.lane + (t.g.conns[ci].from_lane > v.lane ? 1 : -1);
 		bool force = v.wait > p.lc_force_after_s;
-		return evaluate(w, id, list(v.lane), list(cand), p.lc_mandatory_bias, force) > p.lc_threshold ? cand : -1;
+		return { cand, true, evaluate(w, id, list(v.lane), list(cand), p.lc_mandatory_bias, force) > p.lc_threshold };
 	}
 	if (v.stop_at >= 0 && v.ri + 1 >= v.route.len && v.lane != v.stop_lane) {
 		const int cand = v.lane + (v.stop_lane > v.lane ? 1 : -1);
-		return evaluate(w, id, list(v.lane), list(cand), p.lc_mandatory_bias, v.wait > p.lc_force_after_s) > p.lc_threshold ? cand : -1;
+		return { cand, true, evaluate(w, id, list(v.lane), list(cand), p.lc_mandatory_bias, v.wait > p.lc_force_after_s) > p.lc_threshold };
 	}
-	if (d.len - v.s < p.lc_free_m || v.type == VehicleType::BICYCLE) return -1;
+	if (d.len - v.s < p.lc_free_m || v.type == VehicleType::BICYCLE) return {};
 	const float bias[2] = { p.lc_bias_right, -p.lc_bias_right };
 	const int cands[2] = { v.lane - 1, v.lane + 1 };
 	for (int k = 0; k < 2; k++) {
 		int c = cands[k];
 		if (c < 0 || c >= d.lanes || !reaches_next(s, v, c)) continue;
-		if (evaluate(w, id, list(v.lane), list(c), bias[k], false) > p.lc_threshold) return c;
+		if (evaluate(w, id, list(v.lane), list(c), bias[k], false) > p.lc_threshold) return { c, false, true };
 	}
-	return -1;
+	return {};
 }
 
 } // namespace
@@ -120,12 +128,30 @@ int choose(const CityState &s, int id) {
 void change_lanes(CityState &s) {
 	TrafficState &t = s.traffic;
 	const uint64_t every = uint64_t(std::max(1.f, s.catalog.traffic.lc_every_ticks));
+	const TrafficParams &p = s.catalog.traffic;
 	for (int id : t.micro_list) { // only near vehicles change lanes; the far model picks its lane on entry
-		const Vehicle &v = t.vehicles[size_t(id)];
-		if (!v.alive || v.ds < 0 || v.lc_cool > 0 || v.s < s.catalog.traffic.mouth_clear_m || (t.tick + uint64_t(id)) % every != 0) continue;
-		if (t.g.ds[size_t(v.ds)].lanes < 2) continue;
-		int target = choose(s, id);
-		if (target >= 0) move_to(s, id, target);
+		Vehicle &v = t.vehicles[size_t(id)];
+		if (!v.alive || v.ds < 0) continue;
+		// the body still between two lanes, or pulling in to the kerb: no new change, and nothing signalled
+		if (v.lc_off != 0 || v.kerb >= 0 || t.g.ds[size_t(v.ds)].lanes < 2 || v.s < p.mouth_clear_m) {
+			v.lane_intent = -1;
+			continue;
+		}
+		if (v.lc_cool > 0 || (t.tick + uint64_t(id)) % every != 0) continue;
+		const Choice c = choose(s, id);
+		if (c.lane < 0) {
+			v.lane_intent = -1;
+			continue;
+		}
+		if (c.lane != v.lane_intent) {
+			v.lane_intent = c.lane;
+			v.intent_since = t.time;
+		}
+		// signal first; move once the lead has run, the gap still there (choose weighed it this step)
+		const float lead = c.mandatory && v.v < p.lc_crawl_ms ? p.lc_signal_crawl_s : p.lc_signal_s;
+		if (t.time - v.intent_since < lead || !c.safe) continue;
+		v.lane_intent = -1;
+		move_to(s, id, c.lane);
 	}
 }
 

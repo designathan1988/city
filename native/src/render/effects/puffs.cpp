@@ -49,6 +49,13 @@ void Puffs::burst(float x, float y, float z, int count, int kind, float spread, 
 	dirty_ = dirty_ || count > 0;
 }
 
+void Puffs::puff(float x, float y, float z, int kind, float size, float life) {
+	layer_.put(next_, Vector3(size, 0, 0), Vector3(0, size, 0), Vector3(0, 0, size), Vector3(x, y, z), float(now_), float(kind), rng_.f(), life);
+	next_ = (next_ + 1) % pool_;
+	last_death_ = std::max(last_death_, now_ + double(life));
+	dirty_ = true;
+}
+
 void Puffs::stamp(double now) {
 	now_ = now;
 	RenderingServer *rs = RenderingServer::get_singleton();

@@ -31,10 +31,25 @@ void ends(const CityState &s, const Vehicle &v, float front, float len, Pose &f,
 	lane_pose(s, v.ds, v.lane, front, f);
 	lane_pose(s, v.ds, v.lane, front - len, r);
 	const DirSeg &d = s.traffic.g.ds[v.ds];
-	const float off = v.lc_off + cycle_shift(s, v, v.ds, front);
-	float lx = d.sign * f.fz * off, lz = -d.sign * f.fx * off; // left of a -> b, as lane offsets
-	f.x += lx; f.z += lz;
-	r.x += lx; r.z += lz;
+	// a lane change is a path driven over: the rear is where the front was `len` back along it, so the body points across while it changes
+	const float cycle = cycle_shift(s, v, v.ds, front), off_f = v.lc_off + cycle, off_r = lane_change_offset(v, len) + cycle;
+	f.x += d.sign * f.fz * off_f; f.z += -d.sign * f.fx * off_f; // left of a -> b, as lane offsets
+	r.x += d.sign * r.fz * off_r; r.z += -d.sign * r.fx * off_r;
+}
+
+// What the render reads of a near vehicle: its poses, its look (type, paint, brake, aboard, kerb door, indicator, off the road) and the
+// bend its front wheels steer by.
+AgentRecord vehicle_record(const CityState &s, const Vehicle &v) {
+	const TrafficState &t = s.traffic;
+	AgentRecord rec;
+	for (int i = 0; i < POSE_TRAIL; i++) rec.at[i] = v.trail.at[i];
+	rec.id = uint32_t(&v - t.vehicles.data());
+	const bool empty = v.off && lot_car_at_rest(s, int(rec.id)); // nobody in a car standing in its bay
+	rec.look = uint32_t(v.type) | (uint32_t(v.paint) << LOOK_PAINT_SHIFT) | (v.brake ? 1u << LOOK_BRAKE_SHIFT : 0u) | (empty ? 1u << LOOK_EMPTY_SHIFT : 0u) |
+			(uint32_t(v.aboard) << LOOK_ABOARD_SHIFT) | (kerb_door_level(s, v) << LOOK_DOOR_SHIFT) | (uint32_t(indicator_side(s, v)) << LOOK_SIGNAL_SHIFT) |
+			(v.off ? 1u << LOOK_OFF_SHIFT : 0u);
+	rec.curvature = v.off ? 0.f : path_curvature(s, v);
+	return rec;
 }
 
 } // namespace
@@ -179,12 +194,7 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 		}
 		const float dx = v.cur.x - cx, dz = v.cur.z - cz;
 		if (dx * dx + dz * dz > r2) continue;
-		AgentRecord rec;
-		for (int i = 0; i < POSE_TRAIL; i++) rec.at[i] = v.trail.at[i];
-		rec.id = uint32_t(&v - s.traffic.vehicles.data());
-		const bool empty = v.off && lot_car_at_rest(s, int(&v - t.vehicles.data())); // nobody in a car standing in its bay
-		rec.look = uint32_t(v.type) | (uint32_t(v.paint) << LOOK_PAINT_SHIFT) | (v.brake ? 1u << LOOK_BRAKE_SHIFT : 0u) | (empty ? 1u << LOOK_EMPTY_SHIFT : 0u) | (uint32_t(v.aboard) << LOOK_ABOARD_SHIFT) | (kerb_door_level(s, v) << LOOK_DOOR_SHIFT) | (uint32_t(indicator_side(s, v)) << LOOK_SIGNAL_SHIFT);
-		f.vehicles.push_back(rec);
+		f.vehicles.push_back(vehicle_record(s, v));
 	}
 	for (Pedestrian &w : s.traffic.peds) {
 		if (!w.alive) continue;
@@ -210,6 +220,7 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 	publish_signals(s, cx, cz, p.publish_radius_m, f.signals);
 	transit::publish(s, f, stamp_ns, before, cx, cz, p.publish_radius_m);
 	publish_parked(s, f);
+	publish_far(s, f, cx, cz);
 	for (int i = 0; i < POSE_TRAIL; i++) f.stamp_ns[i] = t.stamp_ns[i];
 	f.period_ns = int64_t(NS_PER_S / double(s.catalog.tune.sim_tick_hz));
 	s.poses.publish();

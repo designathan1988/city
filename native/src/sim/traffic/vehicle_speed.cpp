@@ -36,10 +36,6 @@ float top_speed(const CityState &s, const Vehicle &v, float limit) {
 	return v.type == VehicleType::BICYCLE ? std::min(own, s.catalog.traffic.bike_speed_kmh / KMH_PER_MS * v.vf) : own;
 }
 
-float conn_speed(const CityState &s, const Conn &c) {
-	return c.turn == Turn::STRAIGHT ? s.traffic.g.ds[c.to_ds].speed : s.catalog.traffic.turn_speed_kmh / KMH_PER_MS;
-}
-
 float conn_top(const CityState &s, const Vehicle &v, const Conn &c) { return top_speed(s, v, s.traffic.g.ds[c.to_ds].speed); }
 
 namespace {

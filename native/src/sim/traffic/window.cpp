@@ -91,7 +91,7 @@ void materialize(CityState &s, int key) {
 		v.stood = false;
 		v.held = 0;
 		v.wait = 0;
-		const float b = std::max(s.catalog.traffic.classes[int(v.type)].b, 0.f);
+		const float b = std::max(driver_of(s, v).b, 0.f);
 		v.v = at < est - 1 ? 0.f : std::min(free_speed * v.vf, free_speed * p.window_mat_speed_share);
 		v.v = std::min(v.v, std::sqrt(2 * b * std::max(0.f, stop - at)));
 		v.acc = 0;

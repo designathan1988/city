@@ -6,6 +6,7 @@
 #include "sim/roads/street_furniture.h"
 #include "sim/state/city_state.h"
 #include "sim/traffic/ped_system.h"
+#include "sim/traffic/vehicle_driving.h"
 #include "sim/street/street_spots.h"
 
 namespace city {
@@ -46,6 +47,7 @@ bool read_bay_way(CityState &s, int b); // the bay's way out through its gate an
 void read_lots_with_docks(CityState &s);
 void add_row(ParkingState &p, int b); // a car stands in bay `b` now
 void publish_parked(CityState &s, PoseFrame &f); // the standing cars, made again only when a row changed
+void publish_far(const CityState &s, PoseFrame &f, float cx, float cz); // the far traffic's cars within far_publish_m (far_traffic.cpp)
 
 // parking_lanes.cpp
 void seg_point(const CityState &s, int seg, float arc, float u, Pose &out); // the point (arc, u) of a segment, its a -> b heading
@@ -181,16 +183,6 @@ double fleet_target(const CityState &s); // how many vehicles the demand asks fo
 void free_vehicle(TrafficState &t, int id); // the slot of a vehicle off the lanes, out of the fleet count
 bool new_trip(CityState &s, int id, int from_ds); // a route from `from_ds` to a destination the demand draws
 
-// vehicle_speed.cpp: the driver behind the wheel, drawn when the vehicle is made; the class's pedals, headway and gap as that driver
-// works them; the most it takes the bends of connector `c` at with its front `front` metres along it (negative: before it), braked
-// for in advance (NO_LEADER: none in reach).
-constexpr int DRIVER_SEED_SHIFT = 32; // a driver's stream: the traffic seed in the high word, the vehicle and tick's hash below
-void draw_driver(const TrafficParams &p, Vehicle &v, Rng &rng); // its temper and speed drift (the drift's phase is new_vehicle's)
-VehicleClass driver_of(const CityState &s, const Vehicle &v);
-float curve_cap(const CityState &s, const Vehicle &v, const Conn &c, float front);
-float conn_top(const CityState &s, const Vehicle &v, const Conn &c); // its wish on connector `c` before the bends: its exit's limit
-float idm_accel(const VehicleClass &c, float v, float v0, float gap, float vl);
-
 // vehicle_motion.cpp
 // What a vehicle standing on a connector stands for (traffic_probe), from the very obstacles it drives against: the one
 // ahead, walkers on its exit crosswalk, a light down the street, or none of them holds it back (it is moving off).
@@ -204,12 +196,8 @@ float cycle_shift(const CityState &s, const Vehicle &v, int ds, float front); //
 bool out_of_the_way(const CityState &s, const Vehicle &follower, const Vehicle &lead, int ds); // `lead` rides the band beside `follower`
 float top_speed(const CityState &s, const Vehicle &v, float limit); // the most `v` goes where the limit is `limit`
 
-// lane_change.cpp
+// lane_change.cpp: the lane each near vehicle wants, signalled for lc_signal_s before it moves across with the gap still there.
 void change_lanes(CityState &s);
-
-// vehicle_signals.cpp: the side a vehicle's indicators flash on now (a lane change, the lane its turn needs, the turn ahead).
-AgentSignal indicator_side(const CityState &s, const Vehicle &v);
-
 // signal_timing.cpp
 float amber_wanted(const TrafficParams &tp, float v); // the amber a regulated speed `v` asks (m/s), before amber_max_s
 // The intergreen after the green of approach `ds` into node `n` (amber, all-red), `walkers` when it has crosswalks.
@@ -239,9 +227,6 @@ constexpr float FRONT_PAST = BIG; // peds_in_way front time of a crosswalk the v
 // vehicles in that then stood in the box for walkers (4x the box stops, 6x the hard brakes for walkers, the same for
 // walkers). What it leaves out (the jerk ramp from rest, slowing to the turn speed) only makes it early, the safe side.
 float front_time(const CityState &s, const Vehicle &v, float metres, float top);
-float conn_speed(const CityState &s, const Conn &c); // driven over a connector: the exit's limit straight on, else the turn speed
-// The fastest `v` goes `dist` before its lane's end on the way onto `c`: braking down to the turn speed (no limit straight on).
-float turn_limit(const CityState &s, const Vehicle &v, const Conn &c, float dist);
 
 } // namespace traffic
 } // namespace city

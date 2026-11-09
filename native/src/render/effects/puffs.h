@@ -20,6 +20,8 @@ public:
 	void release();
 	// `count` puffs of `kind` over `spread` round (x, y, z), a size and a life each varied (as the reference does).
 	void burst(float x, float y, float z, int count, int kind, float spread, float size, float life);
+	// One puff of `kind` at (x, y, z), its size and life as given (a tail pipe's: render/effects/exhaust.cpp).
+	void puff(float x, float y, float z, int kind, float size, float life);
 	void set_wind(float x, float z) { wind_ = godot::Vector2(x, z); }
 	// The frame's clock, `now` seconds: what is born from here on is stamped with it, and the shader ages every puff by it.
 	void stamp(double now);

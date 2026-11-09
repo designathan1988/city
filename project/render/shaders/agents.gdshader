@@ -1,9 +1,10 @@
 // Vehicles (native/src/render/agents). UV2.x tags each part (AgentTag in agent_meshes.h): 0 fixed colour, 1 paint,
 // 2 headlamp, 3 tail lamp (brake), 4 glass (opaque: the far level; the near one's is agent_glass.gdshader),
 // 5 a lit sign (the bus's destination, day and night), 6 a roof (the paint, or black on a share of the cars), 7 the gloss black round
-// the glass, 8 and 9 the left and right indicator lenses, flashing on the side INSTANCE_CUSTOM.a names (AgentSignal). The lenses of a vehicle standing with nobody aboard are off, their vertex colours; on anything else they burn, day and
+// the glass, 8 and 9 the left and right indicator lenses, drawn only while they flash, on the side INSTANCE_CUSTOM.a names (AgentSignal). The lenses of a vehicle standing with nobody aboard are off, their vertex colours; on anything else they burn, day and
 // night. UV2.y = 1 marks wheel vertices: they turn about X round their hub (UV = hub y, z). INSTANCE_CUSTOM = (paint index, wheel roll
-// angle + 8 when braking, passengers, indicator side); COLOR.a is the vehicle's seed. The Compatibility renderer stores instance custom data as half
+// angle + 8 when braking, passengers, indicator side times AGENT_STEER_STEP over the front wheels' steering angle); a front wheel steers about
+// its hub's x (UV2.y over LIMB_WHEEL) and z; COLOR.a is the vehicle's seed. The Compatibility renderer stores instance custom data as half
 // floats: whole numbers below 2048 exactly. Who rides is drawn by PeopleRenderer.
 shader_type spatial;
 #include "res://render/shaders/contracts/agents.gdshaderinc"
@@ -54,8 +55,21 @@ float pick(float seed, float seat, float what) {
 	return fract(sin(dot(vec3(seed * SEED_SPREAD, seat, what), SIN_HASH)) * SIN_HASH_SCALE);
 }
 
+// INSTANCE_CUSTOM.a: the indicator side (AgentSignal) a step over the front wheels' steering angle.
+float signalled(float a) { return floor(a / AGENT_STEER_STEP); }
+float steering(float a) { return a - signalled(a) * AGENT_STEER_STEP - AGENT_STEER_MID; }
+
+// Whether an indicator lens of tag `tag` flashes lit now: its vehicle signals its side and the flash is on.
+bool indicator_on(int tag, float custom_a, float seed) {
+	float side = tag == TAG_INDICATOR_LEFT ? SIGNAL_LEFT : SIGNAL_RIGHT;
+	return abs(signalled(custom_a) - side) < 0.5 && fract(seed * blink_spread + TIME * blink_hz) < blink_duty;
+}
+
 void vertex() {
 	v_tag = UV2.x;
+	int part = int(UV2.x + 0.5);
+	// an indicator is drawn only while it flashes (the lab's render/agents.ts): off, its lens folds to a point and the lamp it stands in shows
+	if ((part == TAG_INDICATOR_LEFT || part == TAG_INDICATOR_RIGHT) && !indicator_on(part, INSTANCE_CUSTOM.a, COLOR.a)) VERTEX = vec3(0.0);
 	v_custom = INSTANCE_CUSTOM;
 	v_seed = COLOR.a;
 	if (UV2.y > DOOR_MARK) {
@@ -67,6 +81,13 @@ void vertex() {
 		float c = cos(a), s = sin(a);
 		VERTEX.yz = UV + vec2(d.x * c - d.y * s, d.x * s + d.y * c);
 		NORMAL.yz = vec2(nd.x * c - nd.y * s, nd.x * s + nd.y * c);
+		if (UV.y > 0.0) { // a front wheel (its hub ahead of the middle) steers about the upright through its hub
+			vec2 pivot = vec2((UV2.y - LIMB_WHEEL - AGENT_HUB_MID) * AGENT_HUB_SPAN_M, UV.y); // its hub's x, z
+			float st = steering(INSTANCE_CUSTOM.a), cs = cos(st), sn = sin(st);
+			vec2 e = VERTEX.xz - pivot;
+			VERTEX.xz = pivot + vec2(e.x * cs + e.y * sn, -e.x * sn + e.y * cs); // positive to the left: +Z ahead turns towards +X
+			NORMAL.xz = vec2(NORMAL.x * cs + NORMAL.z * sn, -NORMAL.x * sn + NORMAL.z * cs);
+		}
 	}
 }
 
@@ -108,10 +129,8 @@ void fragment() {
 		c = on ? vec3(0.0) : c;
 		rough = lens_roughness;
 	} else if (tag == TAG_INDICATOR_LEFT || tag == TAG_INDICATOR_RIGHT) {
-		float side = tag == TAG_INDICATOR_LEFT ? SIGNAL_LEFT : SIGNAL_RIGHT;
-		bool lit = abs(v_custom.a - side) < 0.5 && fract(v_seed * blink_spread + TIME * blink_hz) < blink_duty;
-		emit = lit ? indicator_lit + source_linear(indicator_glow) * night * indicator_power : vec3(0.0);
-		c = lit ? vec3(0.0) : c;
+		emit = indicator_lit + source_linear(indicator_glow) * night * indicator_power; // drawn only lit (vertex)
+		c = vec3(0.0);
 		rough = lens_roughness;
 	} else if (tag == TAG_GLASS) {
 		rough = lens_roughness;

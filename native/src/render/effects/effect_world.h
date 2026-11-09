@@ -8,6 +8,7 @@
 #include "render/agents/people_renderer.h"
 #include "render/effects/debris.h"
 #include "render/effects/effect_params.h"
+#include "render/effects/exhaust.h"
 #include "render/effects/marks.h"
 #include "render/effects/mounds.h"
 #include "render/effects/puffs.h"
@@ -30,6 +31,8 @@ public:
 	void set_ruin_maker(RuinPieces::Maker maker) { ruins_.set_maker(std::move(maker)); }
 	void set_wrecks(const std::vector<godot::Ref<godot::Mesh>> &bodies, const std::vector<godot::Vector3> &sizes); // the burnt bodies, by vehicle type
 	void reset(); // a new city or a load: every effect gone
+	// The engines the vehicles drew this frame (AgentRenderer::exhaust): their tail smoke is emitted at the next sync.
+	void set_exhaust(const std::vector<ExhaustSource> &sources) { exhaust_sources_ = sources; }
 	void release();
 	// The height-sample rectangles (x0, z0, x1, z1) the terrain composed again since the last frame (ChangeLog::terrain_rects): the
 	// craters whose decal stands on them are laid again at the next change of the crater list. Before sync, each frame.
@@ -85,6 +88,8 @@ private:
 	std::vector<godot::Vector3> wreck_sizes_; // by vehicle type: the box of its burnt body
 	EffectParams params_;
 	Puffs puffs_;
+	Exhaust exhaust_;
+	std::vector<ExhaustSource> exhaust_sources_;
 	Marks marks_;
 	Mounds mounds_;
 	Debris debris_;

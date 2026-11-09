@@ -63,7 +63,10 @@ struct Vehicle {
 	float vf = 1, drift = 0; // share of the speed limit, phase of the speed drift
 	float drift_amp = 0, drift_rate = 0; // its driver's speed drift: how far (a share) and how fast (rad/s)
 	float aggression = 0; // its driver's temper, -1 timid .. 1 pushy (vehicle_speed.cpp driver_of)
-	float lc_off = 0, lc_cool = 0; // lateral offset left after a lane change (decays), cooldown
+	float lc_off = 0, lc_cool = 0; // lateral offset still to cover of a lane change (lane_change_path.cpp), cooldown
+	float lc_start = 0, lc_driven = 0, lc_len = 1; // that change's offset at its start, the road driven since and its whole length
+	int lane_intent = -1; // the lane it signals towards before moving across, and since when (TrafficState::time)
+	double intent_since = 0;
 	float wait = 0, stuck = 0;
 	float held = 0; // stopped since it last reconsidered the route (Roadcraft micro.ts c.held)
 	int pass = -1; // connector it committed to at its line with the way open (Roadcraft c.pass + exitC)

@@ -11,6 +11,7 @@
 #include "render/agents/agent_meshes.h"
 
 #include "core/grid.h"
+#include "core/units.h"
 #include "core/random.h"
 
 #include <godot_cpp/classes/rendering_server.hpp>
@@ -26,11 +27,8 @@ namespace city {
 
 namespace {
 
-constexpr int WAGON_EVERY = 3; // one sedan in three is an estate, by its paint: a car keeps its shape from the road to its bay
-int model_of(int type, int paint) { return type == int(VehicleType::SEDAN) && paint % WAGON_EVERY == 1 ? WAGON_MODEL : type; }
-constexpr float NOBODY_ABOARD = -1.f; // passengers of a car standing in a bay: not even a driver (agents.gdshader)
 // streams of a vehicle's id (any distinct words; the seats' is 2^32 over the golden ratio), and the byte a load's order is read past
-constexpr uint32_t SEED_SALT = 0x5ea7u, LOAD_SALT = 0x10adu, ORDER_SHIFT = 8, SEAT_SALT = 0x9e3779b1u;
+constexpr uint32_t LOAD_SALT = 0x10adu, ORDER_SHIFT = 8, SEAT_SALT = 0x9e3779b1u;
 constexpr float ROLL_LEAST_M = 0.002f; // a frame's movement under this is standing
 constexpr int STILL_FRAMES = 12; // so many in a row and a rider puts a foot down
 constexpr uint64_t SEAT_KEYS = 128; // more than any vehicle's seats: a rider's key is the vehicle's and the seat's
@@ -62,6 +60,9 @@ bool AgentRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	cabin_close_m_ = t["lod"]["cabin_close_m"].f();
 	people_r_ = t["people_radius_m"].f();
 	jump_m_ = t["wheel_jump_m"].f();
+	max_steer_ = t["max_steer_rad"].f();
+	for (int i = 0; i < VEHICLE_TYPES; i++) class_len_[i] = ctx.catalog->traffic.classes[i].length;
+	far_traffic_r_ = ctx.catalog->traffic.far_publish_m;
 	if (!errors.is_empty()) return false;
 	people_.set_level_hold(level_hold_);
 	return people_.init(ctx, t["people"], t["held"], shapes_, errors);
@@ -132,6 +133,9 @@ void AgentRenderer::reset() {
 		for (MultiMeshDraw &m : levels) m.free();
 	for (auto &levels : draws_)
 		for (MultiMeshDraw &m : levels) m.free();
+	for (MultiMeshDraw &m : far_draws_) m.free();
+	for (InstanceRows &rows : far_rows_) rows.restart();
+	drawn_far_ = 0;
 	people_.reset();
 	keeper_.clear();
 	keeper_.draws(size_t(AGENT_MODELS) * DRAWS);
@@ -216,6 +220,7 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 	int placed = 0; // what the camera sees has a row each
 	place_vehicles(f, cam, view, at, rule, placed);
 	place_parked(f, cam, view, rule, placed);
+	place_far(f, cam, view);
 	keeper_.sweep([&](int d) -> InstanceRows & { return bufs[d / DRAWS][d % DRAWS]; });
 	rows_lost_ = placed;
 	for (int i = 0; i < AGENT_MODELS; i++)
@@ -228,13 +233,14 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 void AgentRenderer::place_vehicles(const PoseFrame &f, const Vector3 &cam, const ViewCull &view, const PoseSample &at, const LevelRule &rule, int &placed) {
 	auto &bufs = seen_rows_;
 	auto &casts = cast_rows_;
+	exhaust_.clear();
+	const float period_s = float(f.period_ns) / float(NS_PER_S);
 	for (const AgentRecord &rec : f.vehicles) {
 		Pose p = record_pose(rec, at);
 		const int type = int(rec.look & LOOK_TYPE_MASK), paint = int((rec.look >> LOOK_PAINT_SHIFT) & LOOK_TYPE_MASK);
 		const bool brake = (rec.look & (1u << LOOK_BRAKE_SHIFT)) != 0;
 		if (type < 0 || type >= VEHICLE_TYPES) continue;
 		const float door = float((rec.look >> LOOK_DOOR_SHIFT) & LOOK_DOOR_MASK) * AGENT_DOOR_STEP;
-		const float signal = float((rec.look >> LOOK_SIGNAL_SHIFT) & LOOK_SIGNAL_MASK); // AgentSignal, in the instance's custom alpha
 		float spin = roll(int(rec.id), p, wheel_r_[type]);
 		const float dx = p.x - cam.x, dy = p.y - cam.y, dz = p.z - cam.z, flat2 = dx * dx + dz * dz;
 		if (flat2 > rule.r2) continue;
@@ -247,70 +253,27 @@ void AgentRenderer::place_vehicles(const PoseFrame &f, const Vector3 &cam, const
 		if ((rec.look & (1u << LOOK_EMPTY_SHIFT)) != 0) passengers = NOBODY_ABOARD;
 		const float d2 = flat2 + dy * dy;
 		const int model = model_of(type, paint);
+		// the custom alpha: the indicator side (AgentSignal) a step over the front wheels' steering angle (the lab's vehicleSignals.ts steerFrom)
+		const float steer = clampf(std::atan(wheelbase_[model] * rec.curvature), -max_steer_, max_steer_);
+		const float signal = float((rec.look >> LOOK_SIGNAL_SHIFT) & LOOK_SIGNAL_MASK) * AGENT_STEER_STEP + AGENT_STEER_MID + steer;
 		heads_.add(rec.id, p, reach_m_[model], cam, view);
 		const bool shown = in_view(view, model, p, d2);
 		const uint64_t key = rec.id * ROW_KINDS;
 		const int level = level_of(rule, key, d2);
 		if (shown) count_for_cap(rule, level, d2);
 		if (level == FAR_LEVEL) fleet_shadow_.add(model, p);
+		// a running engine near enough to be drawn whole puffs at its tail; a bicycle has none, a car standing empty in its bay is off
+		if (level != FAR_LEVEL && type != int(VehicleType::BICYCLE) && passengers != NOBODY_ABOARD) {
+			const Pose &a = rec.at[POSE_TRAIL - 2], &b = rec.at[POSE_TRAIL - 1];
+			const float speed = period_s > 0 ? std::sqrt((b.x - a.x) * (b.x - a.x) + (b.z - a.z) * (b.z - a.z)) / period_s : 0.f;
+			exhaust_.push_back({ rec.id, p.x, p.y, p.z, p.fx, p.fz, class_len_[type], speed, (rec.look & (1u << LOOK_OFF_SHIFT)) != 0 });
+		}
 		if (!shown && level == FAR_LEVEL) continue;
 		placed += shown ? 1 : 0;
 		agent_row(shown ? keeper_.place(key, model * DRAWS + level, bufs[model][level]) : casts[model][level].add(), p, 1.f, float(paint >= LINE_PAINT ? paints_ + paint - LINE_PAINT : paint % paints_), spin + (brake ? AGENT_BRAKE_FLAG : 0.f) + door, passengers, signal, hash_float(rec.id * SEED_SALT));
 		if (shown && d2 <= rule.people_r2 && (astride_[model] || level == CABIN_LEVEL || level == MID_DRAW)) seat_people(rec.id, type, model, p, std::sqrt(d2), passengers, order, spin);
 		drawn_vehicles_++;
 	}
-}
-
-void AgentRenderer::place_parked(const PoseFrame &f, const Vector3 &cam, const ViewCull &view, const LevelRule &rule, int &placed) {
-	auto &bufs = seen_rows_;
-	auto &casts = cast_rows_;
-	if (f.parked != parked_indexed_) index_parked(f.parked);
-	if (f.parked) for (uint32_t index : parked_near(cam)) {
-		const ParkedRecord &rec = (*f.parked)[index];
-		const int type = int(rec.look & LOOK_TYPE_MASK), paint = int((rec.look >> LOOK_PAINT_SHIFT) & LOOK_TYPE_MASK);
-		const float dx = rec.at.x - cam.x, dy = rec.at.y - cam.y, dz = rec.at.z - cam.z, flat2 = dx * dx + dz * dz;
-		if (flat2 > rule.r2 || type < 0 || type >= VEHICLE_TYPES) continue;
-		const float d2 = flat2 + dy * dy;
-		const int model = model_of(type, paint);
-		const bool shown = in_view(view, model, rec.at, d2);
-		const uint64_t key = uint64_t(rec.id) * ROW_KINDS + PARKED_ROW;
-		const int level = level_of(rule, key, d2);
-		if (shown) count_for_cap(rule, level, d2);
-		if (level == FAR_LEVEL) fleet_shadow_.add(model, rec.at);
-		if (!shown && level == FAR_LEVEL) continue;
-		placed += shown ? 1 : 0;
-		agent_row(shown ? keeper_.place(key, model * DRAWS + level, bufs[model][level]) : casts[model][level].add(), rec.at, 1.f, float(paint % paints_), 0.f, NOBODY_ABOARD, 0.f, hash_float(rec.id * SEED_SALT));
-		drawn_vehicles_++;
-	}
-}
-
-namespace {
-int parked_cell(float v, float cell) { return int(std::floor(v / cell)); }
-} // namespace
-
-void AgentRenderer::index_parked(const std::shared_ptr<const std::vector<ParkedRecord>> &parked) {
-	parked_indexed_ = parked;
-	parked_cells_.clear();
-	if (!parked) return;
-	for (size_t i = 0; i < parked->size(); i++) {
-		const Pose &at = (*parked)[i].at;
-		parked_cells_[cell_key(parked_cell(at.x, vehicle_r_), parked_cell(at.z, vehicle_r_))].push_back(uint32_t(i));
-	}
-}
-
-// Every car within vehicle_r_ of the camera on the ground lies in a cell the square round it touches; a cell more on each side
-// takes in what rounding may put across its edge. The rest are farther: the loop over them would only skip them.
-const std::vector<uint32_t> &AgentRenderer::parked_near(const Vector3 &cam) {
-	parked_near_.clear();
-	const int x0 = parked_cell(cam.x - vehicle_r_, vehicle_r_) - 1, x1 = parked_cell(cam.x + vehicle_r_, vehicle_r_) + 1;
-	const int z0 = parked_cell(cam.z - vehicle_r_, vehicle_r_) - 1, z1 = parked_cell(cam.z + vehicle_r_, vehicle_r_) + 1;
-	for (int j = z0; j <= z1; j++)
-		for (int i = x0; i <= x1; i++) {
-			const auto it = parked_cells_.find(cell_key(i, j));
-			if (it != parked_cells_.end()) parked_near_.insert(parked_near_.end(), it->second.begin(), it->second.end());
-		}
-	std::sort(parked_near_.begin(), parked_near_.end()); // the list's order: the rows are placed as before
-	return parked_near_;
 }
 
 void AgentRenderer::limit_cabins() {

@@ -176,13 +176,26 @@ void park_probe(const TrafficState &t, Dictionary &d) {
 }
 } // namespace
 
-static void push_sample(const TrafficState &t, const Vehicle &v, Array &poses, Array &dirs, Array &types, Array &mids, Array &speeds) {
-	poses.push_back(Vector3(v.cur.x, v.cur.y, v.cur.z));
-	dirs.push_back(Vector3(v.cur.fx, 0, v.cur.fz));
-	types.push_back(int(v.type));
-	mids.push_back(v.off || v.conn >= 0 ? 0.f : std::min(v.s, t.g.ds[size_t(v.ds)].len - v.s));
-	speeds.push_back(v.v);
-}
+// The vehicles traffic_probe samples, for the close looks of the captures.
+struct Samples {
+	Array poses, dirs, types, mids, speeds, signs;
+	void push(const CityState &s, const Vehicle &v) {
+		poses.push_back(Vector3(v.cur.x, v.cur.y, v.cur.z));
+		dirs.push_back(Vector3(v.cur.fx, 0, v.cur.fz));
+		types.push_back(int(v.type));
+		mids.push_back(v.off || v.conn >= 0 ? 0.f : std::min(v.s, s.traffic.g.ds[size_t(v.ds)].len - v.s));
+		speeds.push_back(v.v);
+		signs.push_back(int(traffic::indicator_side(s, v)));
+	}
+	void put(Dictionary &d) const {
+		d["sample"] = poses;
+		d["sample_dir"] = dirs;
+		d["sample_type"] = types; // VehicleType, for the close looks at a bus, a truck, a motorbike
+		d["sample_mid_m"] = mids; // how far along its lane from either end; 0 on a connector or off the lanes
+		d["sample_speed"] = speeds;
+		d["sample_signal"] = signs; // the side its indicators flash on (AgentSignal: 0 none, 1 left, 2 right)
+	}
+};
 
 Dictionary CityCore::traffic_probe(int sample) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
@@ -206,6 +219,7 @@ Dictionary CityCore::traffic_probe(int sample) {
 	d["released"] = t.released; // jammed-junction releases
 	d["governor"] = t.gov;
 	d["drawn_vehicles"] = render_.drawn_vehicles();
+	d["drawn_far_vehicles"] = render_.drawn_far_vehicles(); // the far traffic's, past the near reach
 	d["drawn_people"] = render_.drawn_people();
 	d["drawn_signal_lenses"] = render_.lit_lenses(); // lit on the signal posts, from the published lights
 	d["lane_km"] = t.g.lane_metres / METRES_PER_KM;
@@ -213,7 +227,9 @@ Dictionary CityCore::traffic_probe(int sample) {
 	d["connectors"] = int(std::count_if(t.g.conns.begin(), t.g.conns.end(), [](const Conn &c) { return c.alive; }));
 	int signals = 0, moving = 0, waiting = 0, on_connectors = 0;
 	for (const Junction &j : t.g.junctions) signals += j.ctl == Control::SIGNAL ? 1 : 0;
-	Array poses, dirs, types, mids, speeds, held, jams, jam_info, behind, box;
+	Samples samples;
+	Array held, jams, jam_info, behind, box;
+	int signalling[int(AgentSignal::RIGHT) + 1] = {}; // vehicles whose indicators flash now, by AgentSignal
 	box.resize(int(traffic::BoxHold::COUNT));
 	box.fill(0);
 	held.resize(int(Hold::COUNT));
@@ -242,7 +258,8 @@ Dictionary CityCore::traffic_probe(int sample) {
 			const int k = int(traffic::box_hold(*state_, id));
 			box[k] = int(box[k]) + 1;
 		}
-		if (poses.size() < sample) push_sample(t, v, poses, dirs, types, mids, speeds);
+		signalling[int(traffic::indicator_side(*state_, v))]++;
+		if (samples.poses.size() < sample) samples.push(*state_, v);
 	}
 	d["signals"] = signals;
 	const int busy = busy_node(*state_);
@@ -256,11 +273,8 @@ Dictionary CityCore::traffic_probe(int sample) {
 	d["red_entries"] = t.red_entries; // vehicles that went onto a connector with their light red
 	d["red_from_stop"] = t.red_from_stop; // ... of which from a standstill (not an amber they could not stop for)
 	d["held_by"] = held; // waiting vehicles by Hold: queued, wrong lane, red, exit room, conflict busy, yield, connector, free, crosswalk
-	d["sample"] = poses;
-	d["sample_dir"] = dirs;
-	d["sample_type"] = types; // VehicleType, for the close looks at a bus, a truck, a motorbike
-	d["sample_mid_m"] = mids; // how far along its lane from either end; 0 on a connector or off the lanes
-	d["sample_speed"] = speeds;
+	samples.put(d);
+	d["signalling"] = Array::make(signalling[int(AgentSignal::LEFT)], signalling[int(AgentSignal::RIGHT)]); // near vehicles flashing left, right
 	Array walkers, walker_dirs; // pedestrians, for close looks in the visual captures
 	for (const Pedestrian &w : t.peds)
 		if (w.alive && walkers.size() < sample) {
