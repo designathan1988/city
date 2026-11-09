@@ -169,7 +169,7 @@ void walk(CityState &s, int id, float dt) {
 	}
 	if (transit::walker_held(s, V2(w.cur.x, w.cur.z), V2(w.cur.fx, w.cur.fz))) return; // a train on the ground ahead
 	// frightened by a bang it runs, as fast as a wound lets it; over a zebra it hurries (walk.ts)
-	const float run = traffic::pace_gain(s.catalog, w, t.time < w.panic_until) * (w.cross_seg >= 0 ? s.catalog.traffic.ped_crossing_pace : 1.f);
+	const float run = traffic::pace_gain(s.catalog, w, t.time < w.panic_until, w.cross_seg >= 0);
 	const float step = w.pace * run * dt; // the crowd sets the pace on every way (ped_crowd.cpp)
 	w.walked += step;
 	if (w.mode == PedMode::WAY) {

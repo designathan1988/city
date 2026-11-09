@@ -20,10 +20,11 @@ Wound wound_of(const BlastParams &b, const Pedestrian &w) {
 }
 } // namespace
 
-float pace_gain(const Catalog &c, const Pedestrian &w, bool fleeing) {
+float pace_gain(const Catalog &c, const Pedestrian &w, bool fleeing, bool crossing) {
 	const BlastParams &b = c.blast;
 	const TrafficParams &p = c.traffic;
-	const float run = fleeing ? b.panic_gain : 1.f;
+	// the hurry over a zebra is part of what the wound caps (walk.ts: the crossing gain inside `want`, then the wound's min)
+	const float run = (fleeing ? b.panic_gain : 1.f) * (crossing ? p.ped_crossing_pace : 1.f);
 	switch (wound_of(b, w)) {
 	case Wound::NONE: return run;
 	case Wound::LIGHT: return std::min(run, fleeing ? p.ped_rush_light : b.pace_light);
