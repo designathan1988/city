@@ -206,10 +206,13 @@ func _other(kind: int, road: Vector3) -> void:
 					CityStore.dispatch(&"toggle_lane_link", [node, one[0], one[1], one[2], one[3]])
 		Edit.LOT:
 			var lots: Array = CityStore.query(&"lots")
-			if lots.is_empty() or rng.randf() < 0.5:
+			var pick := rng.randf()
+			if lots.is_empty() or pick < 0.4:
 				CityStore.dispatch(&"lot_add_rect", [a, a + Vector3(LOT_M, 0, LOT_M), 0.0])
-			else:
+			elif pick < 0.8:
 				CityStore.dispatch(&"lot_zone", [lots[rng.randi_range(0, lots.size() - 1)].id, ZoneTable.code("residential")])
+			else: # the Lots tool's erase stroke: every lot under it with what stands on it
+				CityStore.dispatch(&"lot_erase", [PackedVector3Array([a, b])])
 		_: # Edit.BLAST
 			if rng.randf() < 0.5:
 				CityStore.dispatch(&"strike", [road, rng.randi_range(1, STRIKE_MAX)])
