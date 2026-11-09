@@ -129,6 +129,11 @@
    "label_key": "roadFurniture.row", "tip_key": "roadFurniture.tip",
    "choices": [{"label_key": "roadFurniture.complete", "level": 0}, {"label_key": "roadFurniture.basic", "level": 1}, {"label_key": "roadFurniture.none", "level": 2}]
   },
+  "power": {
+   "_doc": "How new roads are lit (Roadcraft roadTool.ts layPart, powerLine.ts): power true, the power line's poles carry the lamps, alone on the street; false, lighting columns. Settings.road.power keeps the choice.",
+   "label_key": "roadPower.row", "tip_key": "roadPower.tip",
+   "choices": [{"label_key": "roadPower.line", "power": true}, {"label_key": "roadPower.columns", "power": false}]
+  },
   "_doc": "The road tool's option rows (Roadcraft ui/v2/shell.ts renderRoads). trace: the alignment, in ToolController order; snap: key = Settings.road_snap.",
   "trace": {"label_key": "palette.trace", "choices": [{"icon": "straight", "label_key": "palette.alignment.straight"},
     {"icon": "curve", "label_key": "palette.alignment.curve"}, {"icon": "free", "label_key": "palette.alignment.free"}]},

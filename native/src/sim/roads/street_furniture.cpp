@@ -96,11 +96,13 @@ FurnitureSpot column(const Placer &c, const LampRow &row, double v, int station)
 	FurnitureSpot s = spot(c.net, FurnitureKind::LAMP, c.sid, c.p, v, row.pole_u2, toward_road(1 - row.side), 0.f);
 	s.row = 1;
 	s.station = station;
+	s.column = true;
 	return s;
 }
 
-// Lamps: spread evenly at most span_m apart between a pole just past each crosswalk (and the signal post's place). The
-// lighting columns of the other face keep to the stations, staggered, or to a beat of their own (column_every_m).
+// Lamps: spread evenly at most span_m apart between a pole just past each crosswalk (and the signal post's place): the
+// power line's poles, their lamps on them (lamps.pole_lit_every), or lighting columns. The columns of the other face keep
+// to the stations, staggered, or to a beat of their own (column_every_m).
 void lamps(Placer &c) {
 	const LampRow row = lamp_row(c.net, c.sid);
 	const LampDef &d = defs(c.net).lamps;
@@ -108,7 +110,8 @@ void lamps(Placer &c) {
 		const double v = row.origin + row.spacing * k;
 		FurnitureSpot main_pole = spot(c.net, FurnitureKind::LAMP, c.sid, c.p, v, row.pole_u, toward_road(row.side), 0.f);
 		main_pole.station = k;
-		main_pole.lit = !row.twin || k % int(d.pole_lit_every) == 0;
+		main_pole.column = !row.line;
+		main_pole.lit = !row.line || k % int(d.pole_lit_every) == 0;
 		c.all.push_back(main_pole);
 		const bool one = row.stations == 1; // a short block's only station has the other face's lamp beside it
 		if (!row.twin || d.column_every_m > 0.f || (!one && k + 1 == row.stations)) continue;

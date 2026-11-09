@@ -62,6 +62,7 @@ func refresh() -> void:
 		_class_rows(spec, base)
 	_height_rows()
 	_furniture_row(spec.furniture)
+	_power_row(spec.power)
 	_keys_row()
 	if class_card:
 		_parking_row(spec)
@@ -158,6 +159,18 @@ func _furniture_row(spec: Dictionary) -> void:
 		CityStore.dispatch(&"set_road_furniture", [level]))
 	for c: Dictionary in spec.choices:
 		HudWidgets.choice(levels, c.level, tr(c.label_key))
+
+
+## How new roads are lit (Roadcraft roadTool.ts layPart, powerLine.ts): the power line's poles with their lamps on them, alone on the
+## street, or lighting columns; the player's setting (Settings.road.power), kept between sessions as the cut's walls are.
+func _power_row(spec: Dictionary) -> void:
+	var row := _row(spec.label_key)
+	row.tooltip_text = tr(spec.tip_key)
+	var lit := HudWidgets.choices(row, Settings.road.power, func(on: bool) -> void:
+		Settings.set_road_power(on)
+		CityStore.dispatch(&"set_road_power", [on]))
+	for c: Dictionary in spec.choices:
+		HudWidgets.choice(lit, c.power, tr(c.label_key))
 
 
 func _parking_row(spec: Dictionary) -> void:

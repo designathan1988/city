@@ -41,6 +41,7 @@ func enter() -> void:
 	alignment = params.get("alignment", Alignment.STRAIGHT)
 	height = CityStore.query(&"road_height")
 	CityStore.dispatch(&"set_road_walls", [Settings.road.walls])
+	CityStore.dispatch(&"set_road_power", [Settings.road.power])
 	ctl.hint.emit("", true)
 
 

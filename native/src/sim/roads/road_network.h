@@ -10,6 +10,7 @@
 #include "sim/roads/geometry.h"
 #include "sim/roads/junction.h"
 #include "sim/roads/road_grade.h"
+#include "sim/roads/segment_flags.h"
 #include "sim/state/change_log.h"
 
 #include <algorithm>
@@ -18,46 +19,12 @@
 
 namespace city {
 
-// Segment flags (Roadcraft roads/flags.ts and network.ts).
-enum SegFlag : uint16_t {
-	SEG_FURNITURE_MASK = 0x06, // bits 1-2: 0 full street furniture, 1 basic, 2 none
-	SEG_GENERATED = 0x80, // laid by the city generator: its footways carry the generated city's kit (the 4.0 plants no street
-	// trees there). Money does not read it: a generated road is worth its price, as in the 4.0 (saves before the economy
-	// carry this bit as SEG_FREE, with the same meaning)
-	SEG_ZONED_LEFT = 0x100, // the player zoned this side (what the Zones layer shows)
-	SEG_ZONED_RIGHT = 0x200,
-	SEG_CUT_WALLS = 0x40, // its cutting is held by retaining walls (Roadcraft 4.0 RoadSegment.cutWalls)
-	SEG_RUNS_ON_A = 0x08, SEG_RUNS_ON_B = 0x10, // the road goes on past this end: a cut of the laying, no node the player made
-	SEG_RULE_A_MASK = 0x0C00, // bits 10-11, 12-13: the plate the player put on its a and b approach (SegRule)
-	SEG_RULE_B_MASK = 0x3000,
-	SEG_STRUCTURE_MASK = 0xC000, // bits 14-15: how it is built (Structure: ground, elevated, bridge, tunnel)
-};
-constexpr int SEG_FURNITURE_SHIFT = 1, SEG_STRUCTURE_SHIFT = 14; // where their masks' bits start
-// The street furniture a segment carries (its SEG_FURNITURE_MASK bits).
-enum FurnitureLevel : uint8_t { FURN_FULL, FURN_BASIC, FURN_NONE };
 // ray_deck: a ray is marched over a deck in steps of this, horizontal metres, then the crossing bisected this many times.
 constexpr double DECK_RAY_STEP_M = 0.5;
 constexpr int DECK_RAY_REFINE = 16;
 constexpr double RAY_PARALLEL_EPS = 1e-12; // a ray this near parallel to a slab never crosses it
 constexpr double RAY_RUN_EPS = 1e-9; // a ray whose ground run is shorter is vertical
-constexpr Structure structure_of(uint16_t flags) { return Structure((flags & SEG_STRUCTURE_MASK) >> SEG_STRUCTURE_SHIFT); }
-constexpr uint16_t with_structure(uint16_t flags, Structure s) {
-	return uint16_t((flags & ~SEG_STRUCTURE_MASK) | (uint16_t(s) << SEG_STRUCTURE_SHIFT));
-}
-constexpr int SEG_RULE_A_SHIFT = 10, SEG_RULE_B_SHIFT = 12; // where their masks' bits start
-enum SegRule : uint16_t { RULE_NONE = 0, RULE_STOP = 1, RULE_YIELD = 2 };
 constexpr int8_t AUTO_SIGNAL = 1, AUTO_ALL_STOP = 2;
-constexpr uint16_t seg_rule_mask(int end) { return end == 0 ? SEG_RULE_A_MASK : SEG_RULE_B_MASK; }
-constexpr int seg_rule_shift(int end) { return end == 0 ? SEG_RULE_A_SHIFT : SEG_RULE_B_SHIFT; }
-// The flags of a segment laid the other way round: what was on its left is on its right, its a end is its b end.
-constexpr uint16_t flags_reversed(uint16_t f) {
-	const uint16_t keep = uint16_t(f & ~(SEG_ZONED_LEFT | SEG_ZONED_RIGHT | SEG_RULE_A_MASK | SEG_RULE_B_MASK | SEG_RUNS_ON_A | SEG_RUNS_ON_B));
-	const uint16_t sides = uint16_t(((f & SEG_ZONED_LEFT) ? SEG_ZONED_RIGHT : 0) | ((f & SEG_ZONED_RIGHT) ? SEG_ZONED_LEFT : 0));
-	const uint16_t rules = uint16_t((((f & SEG_RULE_A_MASK) >> SEG_RULE_A_SHIFT) << SEG_RULE_B_SHIFT) | (((f & SEG_RULE_B_MASK) >> SEG_RULE_B_SHIFT) << SEG_RULE_A_SHIFT));
-	const uint16_t runs = uint16_t(((f & SEG_RUNS_ON_A) ? SEG_RUNS_ON_B : 0) | ((f & SEG_RUNS_ON_B) ? SEG_RUNS_ON_A : 0));
-	return uint16_t(keep | sides | rules | runs);
-}
-
 // A crossing on a road between junctions (Roadcraft editor/streetObjects.ts commitPedestrianCrossing): a node of two arms with a crosswalk over one of them.
 enum NodeCrossing : uint8_t { CROSSING_NONE, CROSSING_ZEBRA, CROSSING_SIGNAL };
 // A U-turn through the median (Roadcraft commitUturn), for the traffic arriving by the node's arm of lower id or of higher.
