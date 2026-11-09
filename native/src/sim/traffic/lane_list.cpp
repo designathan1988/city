@@ -137,6 +137,23 @@ int lane_toward(const CityState &s, int ds, int to_ds, int near_lane) {
 	return best;
 }
 
+// A lane's list of connectors holds only its own (from_lane == lane): the one to `next` is conn_toward's.
+int connector_to(const CityState &s, int ds, int lane, int next) {
+	return ds < 0 ? -1 : conn_toward(s, ds, lane, next);
+}
+
+int pick_connector(const CityState &s, const Vehicle &v) {
+	if (v.ds < 0 || v.ri + 1 >= v.route.len) return -1;
+	return connector_to(s, v.ds, v.lane, route_at(s.traffic.route_pool, v.route, v.ri + 1));
+}
+
+int lane_head(const CityState &s, int vid) {
+	const Vehicle &v = s.traffic.vehicles[vid];
+	if (v.ds < 0) return -1;
+	const auto &lane = s.traffic.lane_vehicles[size_t(v.ds) * MAX_LANES + v.lane];
+	return lane.empty() ? -1 : lane.back();
+}
+
 void move_vehicle_lane(CityState &s, int id, int target) {
 	TrafficState &t = s.traffic;
 	Vehicle &v = t.vehicles[size_t(id)];

@@ -233,6 +233,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/sim/traffic/route_admission.cpp` — the one admission of a tick's route searches: each counts on the tick's budget; one that can wait starts only while some budget is left
 - `native/src/sim/traffic/walker_cells.cpp` — who stands where on foot (`WalkerCells`): the walkers filed by cell in one array, made from where the walkers are now
 - `native/src/sim/traffic/routing.cpp` — rotas de carro por segmento dirigido, desvio e reconsideração
+- `native/src/sim/traffic/route_reach.h` · `native/src/sim/traffic/route_reach.cpp` — which directed segments can lead to which (strongly connected components for cars and bicycles, Roadcraft lab laneReach.ts): a goal out of reach is refused before a search and never drawn as a trip
 - `native/src/sim/traffic/traffic_view.cpp` · `native/src/sim/traffic/traffic_view.h` — o que o tráfego publica para a thread principal (buffer triplo sem trava): números da frota, contagens por via e por nó, cruzamentos, verdes mínimos; e os níveis dos painéis como atômicos
 - `native/src/sim/traffic/traffic_state.h` · `native/src/sim/traffic/lane_graph_types.h` · `native/src/sim/traffic/ped_state.h` — veículos, meso e pools; o vocabulário do grafo de faixas (faixas dirigidas, conectores, controle do cruzamento); os pedestres (caminho, multidão, mobiliário como corpos) e a fatia de rota
 - `native/src/sim/traffic/street_signs.cpp` — placas que as regras levantam: Pare, Dê a preferência e velocidade
@@ -465,6 +466,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `project/tests/core/edit_fuzz_test.gd` · `project/tests/core/edit_fuzz_test.tscn` · `project/tests/core/fuzz_body_edits.gd` — edições sorteadas contra o hash do estado: desfazer e refazer passam pelos mesmos hashes, salvar e abrir é a mesma cidade, a mesma semente faz a mesma cidade (`--seed=N`, `--steps=N` repetem uma falha)
 - `project/tests/core/fuzz_brush_edits.gd` — the fuzz's held brushes: zones along a road, ground paint, trees, fog, elements
 - `project/tests/core/traffic_hash_test.gd` · `project/tests/core/traffic_hash_test.tscn` — o tráfego é determinístico: o mesmo mapa, passo a passo duas vezes, dá o mesmo hash da frota em todo tick, e o primeiro que diverge é nomeado
+- `project/tests/core/signal_demand_test.gd` · `project/tests/core/signal_demand_test.tscn` — the actuated signals run on demand: with nobody on the streets a signal rests in its green, and the city's calls change its stages
 - `project/tests/core/job_pool_test.gd` · `project/tests/core/job_pool_test.tscn` — a regra da fila de jobs: chaves de usuários diferentes convivem, a mais nova substitui a mesma
 - `project/tests/core/flow_control_test.gd` · `project/tests/core/flow_control_test.tscn` — control by flow: the measure at known rates, the MUTCD's warrant points and the step down, real vehicles counted and a crossing that becomes a signal
 - `project/tests/core/lab_test.gd` · `project/tests/core/lab_test.tscn` — the Diagnostics: expected verdicts, the A/B arithmetic and a city measurement from the panel button
