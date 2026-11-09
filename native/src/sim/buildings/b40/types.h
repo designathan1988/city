@@ -224,6 +224,9 @@ struct Body {
 	// A design of its own (signature_kinds.h): its number, and where the lot's front lay in the design's frame. 0 is the facade kit. An edit gives it back to the kit.
 	uint8_t signature = 0;
 	float signature_x = 0, signature_y = 0;
+	// Metres a unit of the design's drawing stands for: 1 for a body read straight off its document (the shelf), the document's own unit
+	// for a design the growth stands on a lot at its true size (data.h GrownDesign). signature_x and _y are in metres, the body's.
+	float signature_scale = 1;
 	// Drawing only, never stored (interior/cut.h): this body cut open at this floor, for a camera looking along cut_view (lot frame).
 	int cut_level = -1;
 	V2 cut_view;

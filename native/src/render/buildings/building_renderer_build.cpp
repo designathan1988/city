@@ -175,7 +175,8 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 		const bool broken = in.broken->count(rec.seed) > 0; // what stands of it is in pieces: its lot is still drawn here
 		if (own_design) {
 			const b40::Basis &l = pl.lot;
-			out.signatures.push_back({ int(pl.b->signature), Transform3D(Basis(l.e0, l.e2, -l.e1), l.at(-pl.b->signature_x, -pl.b->signature_y, 0)) });
+			const float s = pl.b->signature_scale; // the drawing's unit in metres: a grown design stands at its true size
+			out.signatures.push_back({ int(pl.b->signature), Transform3D(Basis(l.e0 * s, l.e2 * s, -l.e1 * s), l.at(-pl.b->signature_x, -pl.b->signature_y, 0)) });
 		}
 		if (near) {
 			if (!own_design && !broken) {

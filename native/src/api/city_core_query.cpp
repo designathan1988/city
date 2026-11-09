@@ -219,12 +219,29 @@ Dictionary CityCore::body_census(int kind) {
 	double foot = 0, lot_w = 0, lot_d = 0, main = 0;
 	std::vector<int> elements(sizeof(ELEMENTS) / sizeof(ELEMENTS[0]));
 	Dictionary covers; // the ground the lot lays, by colour: its area
+	// What tells the bodies apart (the variety the generator gives): how many by style, ground floor, palette and design of
+	// their own, the facade components shown, and the distinct wall and awning paints.
+	Dictionary styles, grounds, palettes, signatures, bays, walls, awnings;
+	auto count = [](Dictionary &d, const Variant &k) { d[k] = int(d.get(k, 0)) + 1; };
+	auto hex = [](uint32_t rgb) { return String::num_int64(int64_t(rgb), HEX_BASE); };
 	for (const Building &rec : s.buildings.items) {
 		if (!rec.alive) continue;
 		const std::shared_ptr<const b40::Body> body_held = b40::record_body(s.buildings.designs, rec);
 		const b40::Body &body = *body_held;
 		if (int(body.kind) != kind) continue;
 		n++;
+		count(styles, int(body.style));
+		count(grounds, int(body.ground));
+		count(palettes, body.palette);
+		count(signatures, int(body.signature));
+		if (body.wall >= 0) count(walls, hex(body.paints[size_t(body.wall)].rgb));
+		for (const b40::Volume &v : body.volumes) {
+			for (int k = 0; k < v.storeys; k++)
+				for (int side = 0; side < v.sides(); side++) count(bays, int(b40::fill_at(v, k, side)));
+			for (const auto &e : v.bays) count(bays, int(e.second));
+		}
+		for (const b40::LotElement &e : body.elements)
+			if (e.kind == b40::EL_AWNING && e.paint >= 0 && size_t(e.paint) < body.paints.size()) count(awnings, hex(body.paints[size_t(e.paint)].rgb));
 		lot_w += body.plan.W;
 		lot_d += body.plan.D;
 		double largest = 0;
@@ -255,6 +272,13 @@ Dictionary CityCore::body_census(int kind) {
 	for (size_t i = 0; i < elements.size(); i++)
 		if (elements[i] > 0) per[ELEMENTS[i]] = elements[i] * each;
 	d["elements"] = per;
+	d["styles"] = styles;
+	d["grounds"] = grounds;
+	d["palettes"] = palettes;
+	d["signatures"] = signatures;
+	d["bays"] = bays;
+	d["walls"] = walls;
+	d["awnings"] = awnings;
 	return d;
 }
 

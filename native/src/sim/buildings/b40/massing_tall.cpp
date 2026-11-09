@@ -112,7 +112,7 @@ bool medium_flats(const Data &data, Body &b, Xoshiro128 &r, float w, float d, in
 
 void flats(const Data &data, Body &b, const Envelope &env, Xoshiro128 &r, bool high) {
 	const TallShape &K = data.shapes.tall;
-	b.style = uint8_t(style_for(data, high ? KIND_TOWER : KIND_FLATS, r, env.character, env.era));
+	b.style = uint8_t(style_for(data, high ? KIND_TOWER : KIND_FLATS, r, env.character, env.era, !high));
 	Paint wall, trim;
 	paints_of(data, b.style, r, wall, trim);
 	b.palette = r.irange(0, data.last_palette());
@@ -138,7 +138,7 @@ void flats(const Data &data, Body &b, const Envelope &env, Xoshiro128 &r, bool h
 void shop(const Data &data, Body &b, const Envelope &env, Xoshiro128 &r) {
 	const TallShape &K = data.shapes.tall;
 	r.irange(0, SHOP_FUNCTIONS - 1); // the function name (shop, bakery, ...): drawn for the stream, not drawn differently
-	b.style = uint8_t(style_for(data, KIND_SHOP, r, env.character, env.era));
+	b.style = uint8_t(style_for(data, KIND_SHOP, r, env.character, env.era, true));
 	Paint wall, trim;
 	paints_of(data, b.style, r, wall, trim);
 	b.palette = r.irange(0, data.last_palette());
@@ -184,7 +184,7 @@ void shop(const Data &data, Body &b, const Envelope &env, Xoshiro128 &r) {
 
 void office(const Data &data, Body &b, const Envelope &env, Xoshiro128 &r) {
 	const TallShape &K = data.shapes.tall;
-	b.style = uint8_t(style_for(data, KIND_OFFICE, r, env.character, env.era));
+	b.style = uint8_t(style_for(data, KIND_OFFICE, r, env.character, env.era, false));
 	Paint wall, trim;
 	paints_of(data, b.style, r, wall, trim);
 	b.palette = r.irange(0, data.last_palette());
