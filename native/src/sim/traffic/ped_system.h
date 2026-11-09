@@ -76,6 +76,14 @@ void walker_born(TrafficState &t, int id);
 bool walker_near(const TrafficState &t, const Pose &at, float r);
 
 // ped_party.cpp
+// A walker's party: its leader, the leader's id, the walker's place behind it (0 the leader), how many walk together and whether a child
+// is among them (the lab's sim/agents/walk.ts startWalk: a pair is a couple, with a child a family).
+struct PedParty {
+	const Pedestrian *leader = nullptr;
+	int id = 0, rank = 0, size = 1;
+	bool child = false;
+};
+PedParty party_of(const TrafficState &t, const Pedestrian &w);
 void add_company(CityState &s, int leader); // somebody at the leader's side
 void follow_leaders(CityState &s, float dt); // after the leaders moved
 void step_act(const TrafficState &t, const TrafficParams &p, Pedestrian &w, float dt); // what it does while it stands

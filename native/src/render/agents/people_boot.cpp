@@ -1,6 +1,6 @@
-// What the people renderer reads once (people_renderer.h): the cooked people file and its clip, walk and face tables for the
-// shaders, the held things and helmets, the blob under each walker, and agents.json's people block through the strict reader's
-// values (render/data_reader.h). The frame's work is people_renderer.cpp.
+// What the people renderer reads once (people_renderer.h): the cooked people file and its clip and face tables for the shaders, the
+// clips the gait, the acts and the seats play, the held things and helmets, the blob under each walker, and agents.json's people block
+// through the strict reader's values (render/data_reader.h). The frame's work is people_renderer.cpp.
 #include "render/agents/people_renderer.h"
 #include "core/shader_contracts/people.h"
 
@@ -23,10 +23,12 @@ struct FaceAct {
 	const char *clip;
 	int act;
 };
+// A party's moods as the lab's face shows them while they talk (faceExpression.ts: the talk gesture's face): who argues or laughs speaks,
+// the angry one listens.
 constexpr FaceAct FACE_ACTS[] = { { "talk", FACE_ACT_TALK }, { "listen", FACE_ACT_LISTEN }, { "phone", FACE_ACT_PHONE }, { "crouchDown", FACE_ACT_CROUCH },
-	{ "crouchIdle", FACE_ACT_CROUCH }, { "crouchUp", FACE_ACT_CROUCH } };
+	{ "crouchIdle", FACE_ACT_CROUCH }, { "crouchUp", FACE_ACT_CROUCH }, { "argue", FACE_ACT_TALK }, { "laugh", FACE_ACT_TALK }, { "angry", FACE_ACT_LISTEN } };
 constexpr int PALM_ROW_FLOATS = 4;
-constexpr const char *ACT_CLIPS[int(PedAct::COUNT)] = { nullptr, "talk", "listen", "look", "phone", "headphones", "bag", "crouchIdle", "photo" };
+constexpr const char *ACT_CLIPS[int(PedAct::COUNT)] = { nullptr, "talk", "listen", "look", "phone", "headphones", "bag", "crouchIdle", "photo", "laugh", "angry", "argue" };
 // The clip of each SeatPose and, for who puts a foot down, the one stopped.
 constexpr const char *SEAT_CLIPS[int(SeatPose::COUNT)] = { "carDrive", "carRide", "carRearRide", "cabDrive", "cabRide", "chairSit", "motoRide", "bikePedal" };
 constexpr const char *STOP_CLIPS[int(SeatPose::COUNT)] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, "motoStop", "bikeStop" };
@@ -66,31 +68,67 @@ void PeopleRenderer::set_faces(const RID &material) const {
 }
 
 void PeopleRenderer::set_tables(const RID &material) const {
-	PackedInt32Array clip_rows, clip_frames, walk_frames, female;
-	PackedFloat32Array seconds;
+	PackedInt32Array clip_rows, clip_frames, clip_loop;
 	clip_rows.resize(PEOPLE_CLIPS);
 	clip_frames.resize(PEOPLE_CLIPS);
-	seconds.resize(PEOPLE_CLIPS * 2);
+	clip_loop.resize(PEOPLE_CLIPS);
 	for (size_t i = 0; i < asset_.clips.size(); i++) {
 		clip_rows.set(int64_t(i), asset_.clips[i].row);
 		clip_frames.set(int64_t(i), asset_.clips[i].frames);
-		for (int sex = 0; sex < 2; sex++) seconds.set(int64_t(i) * 2 + sex, asset_.clips[i].seconds[sex]);
-	}
-	walk_frames.resize(PEOPLE_BODIES);
-	female.resize(PEOPLE_BODIES);
-	for (size_t v = 0; v < asset_.variations.size(); v++) {
-		walk_frames.set(int64_t(v), asset_.variations[v].walk_frames);
-		female.set(int64_t(v), asset_.variations[v].female ? 1 : 0);
+		clip_loop.set(int64_t(i), asset_.clips[i].loop ? 1 : 0);
 	}
 	RenderingServer *rs = RenderingServer::get_singleton();
 	rs->material_set_param(material, "palette", asset_.palette->get_rid());
 	rs->material_set_param(material, "block_rows", asset_.block_rows);
-	rs->material_set_param(material, "idle_clip", asset_.clip("idle"));
+	rs->material_set_param(material, "palette_columns", asset_.columns);
 	rs->material_set_param(material, "clip_row", clip_rows);
 	rs->material_set_param(material, "clip_frames", clip_frames);
-	rs->material_set_param(material, "clip_seconds", seconds);
-	rs->material_set_param(material, "walk_frames", walk_frames);
-	rs->material_set_param(material, "body_female", female);
+	rs->material_set_param(material, "clip_loop", clip_loop);
+}
+
+bool PeopleRenderer::read_glance(const DataValue &glance) {
+	const DataValue seats = glance["seats"];
+	for (int i = 0; i < int(SeatPose::COUNT); i++) {
+		glance_.clips[i][0] = glance_.clips[i][1] = -1;
+		if (!seats.has(SEAT_CLIPS[i])) continue; // a two-wheeler's rider looks ahead
+		const DataValue pair = seats[SEAT_CLIPS[i]];
+		for (int k = 0; k < 2; k++) {
+			glance_.clips[i][k] = asset_.clip(pair[k].utf8().c_str());
+			if (glance_.clips[i][k] < 0) pair[k].fail("no such clip in people.bin");
+		}
+	}
+	glance_.window_left = asset_.clip(glance["window_left"].utf8().c_str());
+	glance_.window_right = asset_.clip(glance["window_right"].utf8().c_str());
+	if (glance_.window_left < 0 || glance_.window_right < 0) glance.fail("the side windows' glances are clips of people.bin");
+	glance_.period_s = glance["period_s"].f();
+	glance_.period_span = float(std::max(1, glance["period_span"].whole()));
+	glance_.from = glance["glance_from"].f();
+	glance_.to = glance["glance_to"].f();
+	glance_.edge = glance["glance_edge"].f();
+	if (!(glance_.edge > 0)) glance["glance_edge"].fail("an edge above zero");
+	glance_.shown_over = glance["shown_over"].f();
+	glance_.quiet_one_in = std::max(1, glance["quiet_one_in"].whole());
+	return glance.reader.errors.is_empty();
+}
+
+// The clips the acts, the gait and the seats play: each one present in people.bin, else an error naming it.
+bool PeopleRenderer::read_clips(const DataValue &people, PackedStringArray &errors) {
+	const auto need = [&](const char *name) {
+		const int c = asset_.clip(name);
+		if (c < 0) errors.push_back(String("people: no clip ") + name);
+		return std::max(c, 0);
+	};
+	for (int i = 0; i < int(PedAct::COUNT); i++) standing_.act[i] = ACT_CLIPS[i] ? need(ACT_CLIPS[i]) : 0;
+	standing_.idle = need("idle");
+	standing_.crouch_down = need("crouchDown");
+	standing_.crouch_idle = need("crouchIdle");
+	standing_.crouch_up = need("crouchUp");
+	for (const FaceAct &f : FACE_ACTS) need(f.clip); // set_faces writes each act at its clip's row
+	for (int i = 0; i < int(SeatPose::COUNT); i++) {
+		seat_clips_[i] = need(SEAT_CLIPS[i]);
+		stop_clips_[i] = STOP_CLIPS[i] ? need(STOP_CLIPS[i]) : -1;
+	}
+	return errors.is_empty() && read_glance(people["glance"]) && gait_.init(people["gait"], asset_, standing_);
 }
 
 bool PeopleRenderer::init(const RenderContext &ctx, const DataValue &people, const DataValue &held, const AgentShapes &shapes, PackedStringArray &errors) {
@@ -135,21 +173,7 @@ bool PeopleRenderer::init(const RenderContext &ctx, const DataValue &people, con
 		errors.push_back("pessoas: clipes demais para a tabela do shader");
 		return false;
 	}
-	for (int i = 0; i < int(PedAct::COUNT); i++) {
-		act_clips_[i] = ACT_CLIPS[i] ? asset_.clip(ACT_CLIPS[i]) : 0;
-		if (act_clips_[i] < 0) errors.push_back(String("pessoas: falta o clipe ") + ACT_CLIPS[i]);
-	}
-	crouch_down_ = asset_.clip("crouchDown");
-	crouch_up_ = asset_.clip("crouchUp");
-	if (crouch_down_ < 0 || crouch_up_ < 0) errors.push_back("pessoas: falta o clipe de agachar");
-	for (const FaceAct &f : FACE_ACTS) // set_faces writes each act at its clip's row
-		if (asset_.clip(f.clip) < 0) errors.push_back(String("people: no clip ") + f.clip + String(" for the face table"));
-	for (int i = 0; i < int(SeatPose::COUNT); i++) {
-		seat_clips_[i] = asset_.clip(SEAT_CLIPS[i]);
-		stop_clips_[i] = STOP_CLIPS[i] ? asset_.clip(STOP_CLIPS[i]) : -1;
-		if (seat_clips_[i] < 0) errors.push_back(String("pessoas: falta o clipe ") + SEAT_CLIPS[i]);
-	}
-	if (!errors.is_empty() || !held_.init(ctx, held, ACT_CLIPS, errors) || !helmets_.init(ctx, held["helmet"], errors) || !casting_.init(people["cast"], asset_.variations)) return false;
+	if (!read_clips(people, errors) || !held_.init(ctx, held, ACT_CLIPS, errors) || !helmets_.init(ctx, held["helmet"], errors) || !casting_.init(people["cast"], asset_.variations)) return false;
 	RenderingServer *rs = RenderingServer::get_singleton();
 	set_tables(material_);
 	set_faces(material_);

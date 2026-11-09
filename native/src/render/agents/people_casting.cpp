@@ -17,9 +17,11 @@ namespace {
 // The wardrobes and age bands of the lab's cast (citizenCasting.ts Wardrobe, AgeBand), as the data names them.
 constexpr const char *WARDROBE_NAMES[] = { "casual", "smart-casual", "business", "sport-casual", "traditional" };
 constexpr const char *BAND_NAMES[] = { "young", "adult", "senior", "child" };
+constexpr const char *COMPANY_NAMES[int(PedCompany::COUNT)] = { nullptr, "couple", "family" }; // a lone walker's codes are solo_*
 // A walker's sex is the look hash's bit 24: the byte from there was the body's before the casting (people_renderer.cpp), and no
 // other reader of the hash takes it (the acts its low bits, people_renderer.cpp its low ten, effect_bodies.cpp bits 0 to 21).
 constexpr uint32_t LOOK_SEX_SHIFT = 24;
+constexpr uint32_t GROUP_SALT = 0x51ce; // citizenCasting.ts: a party's hash is its id's with these bits turned, apart from its leader's own
 constexpr int CELL_BITS = 32; // a grid cell's key: its x cell in the high word, its z cell in the low
 constexpr uint64_t LOW_WORD = 0xFFFFFFFFull;
 
@@ -72,6 +74,19 @@ bool PeopleCasting::init(const DataValue &cast, const std::vector<PersonVariatio
 	const DataValue then = cast["solo_then"];
 	solo_then_.clear();
 	for (int i = 0; i < then.size(); i++) solo_then_.push_back(code_named(then, then[i].utf8()));
+	for (int c = 0; c < int(PedCompany::COUNT); c++) {
+		companies_[c] = Company();
+		if (!COMPANY_NAMES[c]) continue;
+		const DataValue company = cast[COMPANY_NAMES[c]];
+		const DataValue list = company["codes"];
+		for (int i = 0; i < list.size(); i++) companies_[c].codes.push_back(code_named(list, list[i].utf8()));
+		companies_[c].tradition = company["tradition"].flag();
+		if (companies_[c].codes.empty()) list.fail("a code at least");
+	}
+	traditional_ = code_named(cast["traditional"], cast["traditional"].utf8());
+	traditional_one_in_ = cast["traditional_one_in"].whole();
+	traditional_shift_ = cast["traditional_shift"].whole();
+	if (traditional_one_in_ <= 0) cast["traditional_one_in"].fail("one in a count above zero");
 	const DataValue list = cast["bodies"];
 	if (list.size() != int(bodies.size())) {
 		list.fail("one body for each body of people.bin");
@@ -106,17 +121,24 @@ bool PeopleCasting::init(const DataValue &cast, const std::vector<PersonVariatio
 	return true;
 }
 
-void PeopleCasting::solo_codes(uint32_t hash, bool child, std::vector<int> &out) const {
+void PeopleCasting::company_codes(int company, uint32_t hash, bool child, std::vector<int> &out) const {
 	out.clear();
-	int k = int(hash % uint32_t(solo_total_));
-	for (const SoloCode &c : solo_first_) {
-		if (k < c.weight) {
-			out.push_back(child ? c.child : c.code);
-			break;
+	if (company == int(PedCompany::SOLO) || company < 0 || company >= int(PedCompany::COUNT)) {
+		int k = int(hash % uint32_t(solo_total_));
+		for (const SoloCode &c : solo_first_) {
+			if (k < c.weight) {
+				out.push_back(child ? c.child : c.code);
+				break;
+			}
+			k -= c.weight;
 		}
-		k -= c.weight;
+		out.insert(out.end(), solo_then_.begin(), solo_then_.end());
+		return;
 	}
-	out.insert(out.end(), solo_then_.begin(), solo_then_.end());
+	const Company &c = companies_[company];
+	if (c.tradition && !child && (hash >> uint32_t(traditional_shift_)) % uint32_t(traditional_one_in_) == 0) out.push_back(traditional_);
+	const size_t n = c.codes.size(), turn = hash % n;
+	for (size_t i = 0; i < n; i++) out.push_back(c.codes[(turn + i) % n]);
 }
 
 void PeopleCasting::pool(bool female, int age, int code, Pool &out) const {
@@ -136,42 +158,81 @@ void PeopleCasting::pool(bool female, int age, int code, Pool &out) const {
 	}
 }
 
-bool PeopleCasting::dress(uint32_t look, int age, Pool &out, std::vector<int> &options) const {
-	solo_codes(hash_u32(look), age == int(PedAge::CHILD), options);
+int PeopleCasting::dress(uint32_t look, int age, Pool &out, std::vector<int> &options) const {
+	company_codes(int(PedCompany::SOLO), hash_u32(look), age == int(PedAge::CHILD), options);
 	for (int code : options) {
 		pool(female_of(look), age, code, out);
-		if (!out.bodies.empty()) return true;
+		if (!out.bodies.empty()) return code;
 	}
-	return false;
+	return -1;
 }
 
 int64_t PeopleCasting::cell_of(float x, float z) const {
 	return cell_key(int64_t(std::floor(x / near_m_)), int64_t(std::floor(z / near_m_)));
 }
 
-int PeopleCasting::pick(uint32_t look, int age, float x, float z) {
-	Pool &p = pool_;
-	if (!dress(look, age, p, options_)) return 0; // init made sure somebody's codes always dress them
-	// Who wears what within near_m: the 3 x 3 cells round it.
-	std::fill(nearest_.begin(), nearest_.end(), std::numeric_limits<float>::infinity());
+template <typename Fn>
+void PeopleCasting::each_near(const std::vector<std::pair<int64_t, uint32_t>> &cells, float x, float z, Fn &&fn) const {
 	const int64_t cx = int64_t(std::floor(x / near_m_)), cz = int64_t(std::floor(z / near_m_));
 	for (int64_t i = cx - 1; i <= cx + 1; i++)
 		for (int64_t j = cz - 1; j <= cz + 1; j++) {
 			const int64_t key = cell_key(i, j);
-			auto it = std::lower_bound(grid_.begin(), grid_.end(), std::make_pair(key, uint32_t(0)));
-			for (; it != grid_.end() && it->first == key; ++it) {
-				const Entry &e = entries_[it->second];
-				float &n = nearest_[size_t(e.body)];
-				n = std::min(n, std::hypot(e.x - x, e.z - z));
-			}
+			for (auto it = std::lower_bound(cells.begin(), cells.end(), std::make_pair(key, uint32_t(0))); it != cells.end() && it->first == key; ++it) fn(it->second);
 		}
-	const uint32_t hash = hash_u32(look);
+}
+
+PeopleCasting::Group &PeopleCasting::group(uint32_t party) {
+	auto it = group_of_.find(party);
+	if (it != group_of_.end()) return groups_[it->second];
+	if (groups_used_ == groups_.size()) groups_.emplace_back();
+	Group &g = groups_[groups_used_];
+	g.code = -1;
+	g.bodies = g.wardrobes = 0;
+	g.members.clear();
+	group_of_[party] = groups_used_++;
+	return g;
+}
+
+int PeopleCasting::pick(Entry &e) {
+	Pool &p = pool_;
+	const bool shared = e.company != int(PedCompany::SOLO);
+	const uint32_t hash = hash_u32(e.look);
+	Group *g = shared ? &group(e.party) : nullptr;
+	company_codes(e.company, shared ? hash_u32(e.party ^ GROUP_SALT) : hash, e.company == int(PedCompany::FAMILY) || e.age == int(PedAge::CHILD), options_);
+	const int settled = g ? g->code : -1;
+	if (settled >= 0) { // the party's code first, then the rest of its codes
+		options_.erase(std::remove(options_.begin(), options_.end(), settled), options_.end());
+		options_.insert(options_.begin(), settled);
+	}
+	int code = -1;
+	for (int c : options_) {
+		pool(female_of(e.look), e.age, c, p);
+		if (p.bodies.empty()) continue;
+		if (settled >= 0 && c != settled && (g->wardrobes & ~codes_[size_t(c)]) != 0) continue; // a new code must still dress those cast
+		code = c;
+		break;
+	}
+	if (code < 0) code = dress(e.look, e.age, p, options_); // nobody of this sex and age in the party's codes: dressed as a lone walker
+	if (code < 0) return 0; // init made sure a lone walker's codes always dress them
+	e.code = code;
+	if (g && code != settled) {
+		g->code = code;
+		for (uint32_t id : g->members) entries_[id].code = code;
+	}
+	// Who wears what within near_m: the 3 x 3 cells round it.
+	std::fill(nearest_.begin(), nearest_.end(), std::numeric_limits<float>::infinity());
+	each_near(grid_, e.x, e.z, [&](uint32_t id) {
+		const Entry &o = entries_[id];
+		float &n = nearest_[size_t(o.body)];
+		n = std::min(n, std::hypot(o.x - e.x, o.z - e.z));
+	});
 	const size_t own = p.bodies.size(), deck = own + p.spare.size();
 	int fallback = p.bodies[hash % own];
 	float farthest = -1;
 	for (size_t k = 0; k < deck; k++) {
 		const bool spare = k >= own;
 		const int body = spare ? p.spare[(hash + k) % p.spare.size()] : p.bodies[(hash + k) % own];
+		if (g && (g->bodies >> uint32_t(body)) & 1u) continue; // one of the party wears it
 		const float near = nearest_[size_t(body)];
 		if (near >= near_m_) return body;
 		if (!spare && near > farthest) {
@@ -196,10 +257,24 @@ void PeopleCasting::cast(const std::vector<AgentRecord> &people) {
 		const Pose &at = rec.at[POSE_TRAIL - 1];
 		e.x = at.x;
 		e.z = at.z;
+		e.party = rec.party; // a walker who joins or leaves a party keeps its body
+		e.company = rec.company;
 		grid_.emplace_back(cell_of(e.x, e.z), rec.id);
 	}
 	if (newcomers_.empty()) return;
 	std::sort(grid_.begin(), grid_.end());
+	// The parties as the walkers already cast wear them: each one's code, bodies and wardrobes.
+	group_of_.clear();
+	groups_used_ = 0;
+	for (const auto &place : grid_) {
+		const Entry &e = entries_[place.second];
+		if (e.company == int(PedCompany::SOLO)) continue;
+		Group &g = group(e.party);
+		if (g.code < 0) g.code = e.code;
+		g.bodies |= 1u << uint32_t(e.body);
+		g.wardrobes |= wardrobe_bit_[size_t(e.body)];
+		g.members.push_back(place.second);
+	}
 	for (size_t i : newcomers_) {
 		const AgentRecord &rec = people[i];
 		Entry &e = entries_[rec.id];
@@ -209,11 +284,19 @@ void PeopleCasting::cast(const std::vector<AgentRecord> &people) {
 		}
 		const Pose &at = rec.at[POSE_TRAIL - 1];
 		e.look = rec.look;
+		e.party = rec.party;
+		e.company = rec.company < uint8_t(PedCompany::COUNT) ? rec.company : int(PedCompany::SOLO);
 		e.x = at.x;
 		e.z = at.z;
 		e.age = rec.age < PED_AGES ? rec.age : int(PedAge::ADULT);
-		e.body = pick(rec.look, e.age, e.x, e.z);
+		e.body = pick(e);
 		by_look_[rec.look] = rec.id;
+		if (e.company != int(PedCompany::SOLO)) {
+			Group &g = group(e.party);
+			g.bodies |= 1u << uint32_t(e.body);
+			g.wardrobes |= wardrobe_bit_[size_t(e.body)];
+			g.members.push_back(rec.id);
+		}
 		const std::pair<int64_t, uint32_t> place(cell_of(e.x, e.z), rec.id);
 		grid_.insert(std::upper_bound(grid_.begin(), grid_.end(), place), place);
 	}
@@ -223,7 +306,7 @@ Dictionary PeopleCasting::census() const {
 	std::vector<std::pair<int64_t, uint32_t>> cells = grid_; // every walker of the frame (cast())
 	std::sort(cells.begin(), cells.end());
 	uint32_t worn_mask = 0;
-	int twins = 0, wrong_age = 0;
+	int twins = 0, wrong_age = 0, in_party = 0, off_code = 0;
 	for (const auto &place : cells) {
 		const uint32_t id = place.second;
 		const Entry &e = entries_[id];
@@ -231,15 +314,14 @@ Dictionary PeopleCasting::census() const {
 		const int band = band_[size_t(e.body)];
 		const bool fits = e.age == int(PedAge::CHILD) ? band == CHILD : e.age == int(PedAge::ELDER) ? band == SENIOR || band == ADULT : band == YOUNG || band == ADULT;
 		wrong_age += fits ? 0 : 1;
-		const int64_t cx = int64_t(std::floor(e.x / near_m_)), cz = int64_t(std::floor(e.z / near_m_));
-		for (int64_t i = cx - 1; i <= cx + 1; i++)
-			for (int64_t j = cz - 1; j <= cz + 1; j++) {
-				const int64_t key = cell_key(i, j);
-				for (auto it = std::lower_bound(cells.begin(), cells.end(), std::make_pair(key, uint32_t(0))); it != cells.end() && it->first == key; ++it) {
-					const Entry &o = entries_[it->second];
-					if (it->second > id && o.body == e.body && std::hypot(o.x - e.x, o.z - e.z) < near_m_) twins++;
-				}
-			}
+		if (e.company != int(PedCompany::SOLO)) {
+			in_party++;
+			off_code += (wardrobe_bit_[size_t(e.body)] & codes_[size_t(e.code)]) != 0 ? 0 : 1;
+		}
+		each_near(cells, e.x, e.z, [&](uint32_t other) {
+			const Entry &o = entries_[other];
+			if (other > id && o.body == e.body && std::hypot(o.x - e.x, o.z - e.z) < near_m_) twins++;
+		});
 	}
 	int bodies = 0;
 	for (uint32_t m = worn_mask; m != 0; m &= m - 1) bodies++;
@@ -248,6 +330,8 @@ Dictionary PeopleCasting::census() const {
 	out["bodies"] = bodies;
 	out["twins"] = twins;
 	out["wrong_age"] = wrong_age;
+	out["in_party"] = in_party;
+	out["party_off_code"] = off_code;
 	return out;
 }
 
@@ -257,7 +341,7 @@ int PeopleCasting::worn(uint32_t look, int age) const {
 		return entries_[it->second].body;
 	Pool p;
 	std::vector<int> options;
-	return dress(look, age, p, options) ? p.bodies[hash_u32(look) % p.bodies.size()] : 0;
+	return dress(look, age, p, options) >= 0 ? p.bodies[hash_u32(look) % p.bodies.size()] : 0;
 }
 
 } // namespace city
