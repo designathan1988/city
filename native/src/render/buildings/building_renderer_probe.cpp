@@ -113,9 +113,11 @@ Dictionary BuildingRenderer::building_cost() const {
 	static const char *const NAMES[HELD_KINDS] = { "near_walls", "near_panes", "near_guards", "near_cards", "near_pieces", "mid_walls", "mid_panes", "mid_cards" };
 	std::array<Held, HELD_KINDS> sum;
 	Held far;
-	int64_t near_chunks = 0, mid_chunks = 0, instances = 0, props = 0, fading = 0;
+	int64_t near_chunks = 0, mid_chunks = 0, instances = 0, props = 0, fading = 0, dissolving = 0;
+	const auto between = [](float keep) { return keep > 0.f && keep < 1.f; };
 	for (const auto &[key, ch] : chunks_) {
 		fading += std::count(ch.fading.begin(), ch.fading.end(), true);
+		dissolving += std::count_if(ch.near_keep.begin(), ch.near_keep.end(), between) + std::count_if(ch.parts_keep.begin(), ch.parts_keep.end(), between);
 		near_chunks += ch.built[LEVEL_NEAR] ? 1 : 0;
 		mid_chunks += ch.built[LEVEL_MID] ? 1 : 0;
 		instances += ch.built[LEVEL_NEAR] ? ch.instances : 0;
@@ -140,7 +142,8 @@ Dictionary BuildingRenderer::building_cost() const {
 	for (int k = 0; k < HELD_KINDS; k++) put_held(NAMES[k], sum[size_t(k)]);
 	put_held("far", far);
 	d["near_chunks"] = near_chunks;
-	d["fading"] = fading; // sub-chunks in the band of the hand-over
+	d["fading"] = fading; // sub-chunks wearing the near level's discarding twin: dissolving, or handed over and still in range
+	d["dissolving"] = dissolving; // levels of sub-chunks part drawn: only while a hand-over runs (fade_levels), none under a still eye
 	d["mid_chunks"] = mid_chunks;
 	d["instances"] = instances;
 	d["props"] = props;

@@ -116,7 +116,10 @@ private:
 		bool shown = false; // its instances are visible (drawn in detail); the far mesh hides it then
 		int64_t key = 0;
 		std::array<int8_t, SUB_COUNT> wall_at{}, glass_at{}; // the near level's surfaces that carry a discarding twin; -1 none
-		std::array<bool, SUB_COUNT> fading{}, parts_fading{}; // wearing the twin: in the band of the hand-over
+		std::array<bool, SUB_COUNT> fading{}, parts_fading{}; // wearing the twin: dissolving, or dissolved and still in range
+		// the hand-over (fade_levels): each sub-chunk's side of the switch (near level, parts) and the share still drawn, moving there over lod.level_fade_s
+		std::array<int8_t, SUB_COUNT> near_side{}, parts_side{};
+		std::array<float, SUB_COUNT> near_keep{}, parts_keep{};
 		bool cut = false; // its near level has a building cut open: drawn whatever the distance, the mid level and the far mesh stand aside
 		godot::Vector3 centre;
 		ChunkOccluder occluder; // the near level's walls (occluders.h)
@@ -215,6 +218,7 @@ private:
 	mutable BuildingBodies bodies_; // every job's: thread-safe, emptied by reset()
 	godot::RID material_cast_; // shadow_caster: no vertex() of its own
 	void fade_levels(Chunk &ch, const godot::Vector3 &cam); // the sub-chunks in the band of a hand-over (building_renderer_reach.cpp)
+	float fade_step_ = 1; double fade_clock_s_ = -1; // the share of a dissolve the time since the last view (taken then) covers, at most one: a stall ends it
 	void fade_near(Chunk &ch, size_t sub, bool on, float keep);
 	void fade_parts(Chunk &ch, size_t sub, bool on, float keep);
 	void warm_fades(const Chunk &ch);

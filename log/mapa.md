@@ -477,6 +477,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `project/render/shaders/water_plain.gdshader` — a água numa cor só, para a aba Otimizações ver o que o sombreamento dela custa
 - `project/tests/core/shell_test.gd` · `project/tests/core/shell_test.tscn` — níveis gráficos, governador, chaves de render, painéis e Esc
 - `project/tests/core/quality_test.gd` · `project/tests/core/quality_test.tscn` · `project/tests/core/inspector_test.gd` · `project/tests/core/inspector_test.tscn` — níveis gráficos lidos no que é desenhado; inspetor, edições de via, nó impossível, arquivo ruim, quarentena e sessão
+- `project/tests/core/level_hand_over_test.gd` · `project/tests/core/level_hand_over_test.tscn` — the buildings' near-to-mid hand-over under a still eye: no level of a sub-chunk left part drawn
 - `project/tests/core/boot_refusal_test.gd` · `project/tests/core/boot_refusal_test.tscn` — catálogo sem uma chave: recusado pelo nome, e o jogo de pé atrás da recusa
 - `project/tests/core/edit_fuzz_test.gd` · `project/tests/core/edit_fuzz_test.tscn` · `project/tests/core/fuzz_body_edits.gd` — edições sorteadas contra o hash do estado: desfazer e refazer passam pelos mesmos hashes, salvar e abrir é a mesma cidade, a mesma semente faz a mesma cidade (`--seed=N`, `--steps=N` repetem uma falha)
 - `project/tests/core/fuzz_brush_edits.gd` — the fuzz's held brushes: zones along a road, ground paint, trees, fog, elements

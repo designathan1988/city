@@ -370,6 +370,7 @@
     },
     {"name": "shell_test", "scene": "tests/core/shell_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "quality_test", "scene": "tests/core/quality_test", "renderer": "gl_compatibility", "timeout_s": 600},
+    {"name": "level_hand_over_test", "scene": "tests/core/level_hand_over_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "inspector_test", "scene": "tests/core/inspector_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "e2e", "scene": "tests/e2e/e2e", "renderer": "gl_compatibility", "timeout_s": 600},
     {

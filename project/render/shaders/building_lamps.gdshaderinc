@@ -28,6 +28,15 @@ const float HOME_UNTIL_2700 = 0.36, HOME_UNTIL_3000 = 0.6, HOME_UNTIL_3500 = 0.7
 // A room's independent picks from its lot: fract(lot * k), each k far from a simple ratio of the others.
 const float LOT_LAMP = 17.31, LOT_LEVEL_A = 7.13, LOT_LEVEL_B = 2.17, LOT_LEVEL_B_SHIFT = 0.4, LOT_CUT = 37.0, LOT_FLICKER = 40.0;
 const float LEVEL_LEAST = 0.3, LEVEL_SPAN = 0.85; // a lamp's level runs 0.3 to 1.15 over its two lots' product
+const float LOT_PRODUCT_MEAN = 0.25; // the mean of the product of two independent uniform lots: 1/2 x 1/2
+const float LEVEL_MEAN = LEVEL_LEAST + LEVEL_SPAN * LOT_PRODUCT_MEAN; // room_level over many rooms
+// A room's pick of the far levels holds while its cell spans 2 pixels or more (a pick a cell has detail at the cell's own frequency,
+// which the pixels carry down to 2 a cell: Nyquist) and is the mean of the picks at 1 pixel a cell, where pulse's grid turns to its mean.
+const float PICK_WHOLE = 0.5, PICK_MEAN = 1.0;
+// Offices are lit a stretch of floor at a time (a floor in use, its cleaners, an open plan), homes a room at a time: an office's room is
+// lit when its stretch and the room itself are picked, each with the square root of the share, so the share of lit rooms stays the
+// homes'. A stretch is this many bays (about 24 m of a floor at 3 m a bay; a modelling choice by eye on photos of office towers at night).
+const float OFFICE_RUN_BAYS = 8.0;
 // The far rooms' cell hash: each cell index offset to stay positive (more than a building's bays), times a prime.
 const float CELL_SHIFT = 512.0;
 const uint CELL_PRIME_X = 131u, CELL_PRIME_Y = 7177u;
@@ -55,10 +64,19 @@ vec3 room_lamp_mean(float office) { return office > 0.5 ? LAMP_OFFICE_MEAN : LAM
 // How bright a room's lamp is, 0.3 to 1.15, by two lots of its own.
 float room_level(float lot) { return LEVEL_LEAST + LEVEL_SPAN * fract(lot * LOT_LEVEL_A) * fract(lot * LOT_LEVEL_B + LOT_LEVEL_B_SHIFT); }
 
-// A room of the far levels (building_far.gdshader, building_far_window.gdshaderinc), its cell `cell` of the bay grid: its own lot,
-// lamp and whether it is lit while the cell covers a pixel or more, the share of rooms awake and the mean lamp as `sub` goes to 1.
+// A room of the far levels (building_far.gdshader, building_far_window.gdshaderinc), its cell `cell` of the bay grid (`salt` the
+// building's, 0 where the grid's x already runs on per building): its own lot `lot`, its lamp, whether it is lit and how brightly while
+// the cell spans pixels enough, and the share of lit rooms at the mean level with the mean lamp as `sub` (far_pick_sub) goes to 1. Lit as
+// the near level's rooms are (building_pane.gdshaderinc pane_lamp): of those awake, the share in use, each lamp at its own level.
 uint room_cell(vec2 cell) { return uint(cell.x + CELL_SHIFT) * CELL_PRIME_X + uint(cell.y + CELL_SHIFT) * CELL_PRIME_Y; }
-float far_room_lit(float lot, float sub) { return mix(step(1.0 - rooms_awake, lot), rooms_awake, sub) * building_night_windows; }
+float far_pick_sub(vec2 foot) { return smoothstep(PICK_WHOLE, PICK_MEAN, max(foot.x, foot.y)); }
+float far_room_lit(float lot, vec2 cell, uint salt, float office, float sub) {
+	float share = rooms_awake * rooms_in_use;
+	float each = office > 0.5 ? sqrt(share) : share;
+	float stretch = h01(pcg(salt + room_cell(vec2(floor(cell.x / OFFICE_RUN_BAYS), cell.y))));
+	float picked = step(1.0 - each, lot) * (office > 0.5 ? step(1.0 - each, stretch) : 1.0);
+	return mix(picked * room_level(lot), share * LEVEL_MEAN, sub) * building_night_windows;
+}
 vec3 far_room_lamp(float lot, float office, float sub) { return mix(room_lamp(lot, office), room_lamp_mean(office), sub); }
 
 // A television alone in the room: the cuts of a picture, about one every 1.7 s, and the small flicker over them.

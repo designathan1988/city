@@ -20,6 +20,7 @@ var shadows_on := true: # what the graphics tier asks of the sun; the moon's sha
 		_cast()
 var direct_share := 0.0 # the sun's or moon's share of the light on level ground
 var horizon_linear := Color.BLACK # the sky's colour at the horizon, linear: what the air takes (sky_view.gd)
+var _horizon := Color.BLACK # the same as the sky is given it, sRGB: the air's colour (follow_view)
 var mode := "day"
 var _clock_shown := -1.0
 var _hour := 0.0
@@ -149,12 +150,16 @@ func _awake_share(hour: float) -> float:
 	return lerpf(table[i], table[(i + 1) % table.size()], h - float(i))
 
 
-## The air the eye sees through at its height, and the sun's cascades fitted to the view.
+## The air the eye sees through at its height, and the sun's cascades fitted to the view. The air takes the colour the sky shows at
+## its horizon from that height (sky.gdshader: the horizon, or its low band while the eye is low), the light it scatters towards the
+## eye: so a far wall gives way to the horizon behind it, aerial perspective, and the haze over the town from up high is the sky's,
+## not a darker blue of its own.
 func follow_view(camera: Camera3D) -> void:
 	if camera == null:
 		return
-	var low := 1.0 - smoothstep(_d.low_from_m, _d.low_to_m, camera.global_position.y)
-	var air: Color = _c("air_high").lerp(_c("low_horizon"), low) * (1.0 - _d.air_night_cut * _dark)
+	var low: float = _d.low_sky * (1.0 - smoothstep(_d.low_from_m, _d.low_to_m, camera.global_position.y))
+	var low_band: Color = _c("low_horizon") * (1.0 - float(_d.sky_shader.low_dark[0]) * _dark)
+	var air: Color = _horizon.lerp(low_band, low)
 	if _env.fog_light_color != air:
 		_env.fog_light_color = air
 	var y: float = maxf(camera.global_position.y, 1.0)
@@ -200,6 +205,7 @@ func _set_sky(elev: float) -> void:
 	horizon = horizon.lerp(flash, _flash * _d.flash_horizon)
 	_sky.set_shader_parameter("zenith", zenith)
 	_sky.set_shader_parameter("horizon", horizon)
+	_horizon = horizon
 	horizon_linear = horizon.srgb_to_linear()
 	_sky.set_shader_parameter("ground", _c("sky_ground").lerp(_c("horizon_night"), 1.0 - light))
 	_sky.set_shader_parameter("low_zenith", _c("low_zenith"))

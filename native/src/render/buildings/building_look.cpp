@@ -42,6 +42,7 @@ bool BuildingLook::load(const Dictionary &t, const Dictionary &bay_props, const 
 	hull_error_m = num(rl, lod, "hull_error_m");
 	level_fade_m = num(rl, lod, "level_fade_m");
 	level_back_m = num(rl, lod, "level_back_m");
+	level_fade_s = num(rl, lod, "level_fade_s");
 	far_rebuild_delay_s = num(rl, lod, "far_rebuild_delay_s");
 	far_rebuild_interval_s = num(rl, lod, "far_rebuild_interval_s");
 	const Dictionary region = region_table(t);

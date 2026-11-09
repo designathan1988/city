@@ -140,16 +140,40 @@ void BuildingRenderer::fade_parts(Chunk &ch, size_t sub, bool on, float keep) {
 	put_param(inst, KEEP_PARAM, keep);
 }
 
-// Each sub-chunk by the distance its visibility range measures, to the middle of its box: inside a band it wears the twin that dissolves, and only
-// then (a shader that discards loses the depth prepass). Nothing is sent for a sub-chunk that stays out of the bands.
+namespace {
+// The side of its switch a level of a sub-chunk stands on: not yet seen, drawn, handed over to what follows.
+constexpr int8_t SIDE_UNSEEN = 0, SIDE_IN = 1, SIDE_OUT = -1;
+// Where in the band the switch flips, as shares of the band back from the level's end: out past the first, in again within the second,
+// so an eye standing still in the band stands on one side, and the dissolve has the band's last quarter to end before the range does.
+constexpr float SWITCH_OUT_SHARE = 0.25f, SWITCH_IN_SHARE = 0.75f, SWITCH_FIRST_SHARE = 0.5f;
+
+// One level of one sub-chunk at `d` from the eye, its range ending at `end`: its side of the switch, and the share of it drawn moved
+// `step` towards that side. Seen for the first time it stands at its side at once (it comes up with the chunk).
+float hand_over(int8_t &side, float &keep, float d, float end, float band, float step) {
+	const float flip = side == SIDE_IN ? SWITCH_OUT_SHARE : side == SIDE_OUT ? SWITCH_IN_SHARE : SWITCH_FIRST_SHARE;
+	const int8_t want = d < end - band * flip ? SIDE_IN : SIDE_OUT;
+	if (side == SIDE_UNSEEN) keep = want == SIDE_IN ? 1.f : 0.f;
+	side = want;
+	keep = std::clamp(keep + (want == SIDE_IN ? step : -step), 0.f, 1.f);
+	return keep;
+}
+} // namespace
+
+// Each sub-chunk by the distance its visibility range measures, to the middle of its box. The switch between the near level and the mid one
+// is a side and a dissolve over time (lod.level_fade_s), as engines cross-fade their levels of detail: a fade that went by the distance alone
+// held every sub-chunk that stood in its band half dissolved for as long as the eye stood still, a screen-door of two surfaces level_back_m
+// apart that the temporal filter never resolved and that every pass reading the depth (the occlusion, the contact shade, the indirect light)
+// took for corners. A sub-chunk wears the twin that discards only while it is not wholly drawn (a shader that discards loses the depth
+// prepass), and an instance is sent its share only when the share moved.
 void BuildingRenderer::fade_levels(Chunk &ch, const Vector3 &cam) {
 	const float band = std::max(look_.level_fade_m, MIN_SCREEN_PX);
 	for (size_t i = 0; i < SUB_COUNT; i++) {
 		const float d = cam.distance_to(ch.reach_box[i].get_center());
-		const float keep = std::clamp((near_end_ * detail_scale_ - d) / band, 0.f, 1.f), parts = std::clamp((parts_end_ * detail_scale_ - d) / band, 0.f, 1.f);
-		const bool in_band = keep > 0 && keep < 1, parts_in = parts > 0 && parts < 1;
-		if (in_band || ch.fading[i]) fade_near(ch, i, in_band, in_band ? keep : 1.f);
-		if (parts_in || ch.parts_fading[i]) fade_parts(ch, i, parts_in, parts_in ? parts : 1.f);
+		const float near_was = ch.near_keep[i], parts_was = ch.parts_keep[i];
+		const float keep = hand_over(ch.near_side[i], ch.near_keep[i], d, near_end_ * detail_scale_, band, fade_step_);
+		const float parts = hand_over(ch.parts_side[i], ch.parts_keep[i], d, parts_end_ * detail_scale_, band, fade_step_);
+		if (keep != near_was || (keep < 1) != ch.fading[i]) fade_near(ch, i, keep < 1, keep);
+		if (parts != parts_was || (parts < 1) != ch.parts_fading[i]) fade_parts(ch, i, parts < 1, parts);
 	}
 }
 
