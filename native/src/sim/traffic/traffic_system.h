@@ -179,8 +179,8 @@ float junction_cost(const CityState &s, const Conn &c);
 // route_reach.cpp: whether directed segment `goal_ds` can be reached from `from_ds` at all (by a bicycle when `by_bike`), from the
 // segment graph's components: no search is needed to say no.
 bool route_reaches(CityState &s, int from_ds, int goal_ds, bool by_bike); // turn + signal time the router adds for a connector
-// The route's next turn is not reachable from this lane: another lane of the segment, else a new route, else false.
-bool retry_route(CityState &s, int id);
+// The route planned again from the roads the vehicle's lane leads to (the lab's repairRoute): false when none reaches its goal.
+bool route_from_lane(CityState &s, int id);
 // Another connector of the vehicle's lane (not `blocked`; with room at its exit when `need_room`), the route
 // re-planned from it, rejoining the old route a few segments on. False when there is none.
 bool detour(CityState &s, int vehicle, int blocked, bool need_room);

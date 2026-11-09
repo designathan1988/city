@@ -4,6 +4,7 @@
 #include "sim/traffic/kerb_stops.h"
 
 #include "sim/traffic/lane_closures.h"
+#include "sim/traffic/lane_shift.h"
 
 #include "core/laps.h"
 #include "core/units.h"
@@ -31,10 +32,13 @@ void ends(const CityState &s, const Vehicle &v, float front, float len, Pose &f,
 	lane_pose(s, v.ds, v.lane, front, f);
 	lane_pose(s, v.ds, v.lane, front - len, r);
 	const DirSeg &d = s.traffic.g.ds[v.ds];
-	const float off = v.lc_off + cycle_shift(s, v, v.ds, front);
-	float lx = d.sign * f.fz * off, lz = -d.sign * f.fx * off; // left of a -> b, as lane offsets
-	f.x += lx; f.z += lz;
-	r.x += lx; r.z += lz;
+	// a lane change's offset where the front is and where the rear was (lane_shift.h): the body turns along its path
+	const float shift = cycle_shift(s, v, v.ds, front);
+	const float off_f = v.lat + shift, off_r = (v.lat != 0 ? shift_offset(v.lat_start, v.lat_done - len, v.lat_len) : 0.f) + shift;
+	f.x += d.sign * f.fz * off_f; // left of a -> b, as lane offsets
+	f.z += -d.sign * f.fx * off_f;
+	r.x += d.sign * r.fz * off_r;
+	r.z += -d.sign * r.fx * off_r;
 }
 
 } // namespace
@@ -66,6 +70,7 @@ void reset_traffic(CityState &s) {
 	build_lane_graph(s);
 	reset_pedestrians(s);
 	t.lane_vehicles.assign(t.g.ds.size() * MAX_LANES, {});
+	t.lane_shadows.assign(t.g.ds.size() * MAX_LANES, {});
 	t.lane_sorted.assign(t.g.ds.size() * MAX_LANES, 1);
 	t.lane_active.assign(t.g.ds.size() * MAX_LANES, 0);
 	t.conn_vehicles.assign(t.g.conns.size(), {});

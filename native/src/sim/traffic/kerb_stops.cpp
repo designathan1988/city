@@ -145,7 +145,7 @@ void plan(CityState &s, int id) {
 	TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
 	Vehicle &v = t.vehicles[size_t(id)];
-	if (v.conn >= 0 || v.off || v.ds < 0 || v.lane != 0 || v.lc_off != 0 || v.stop_at >= 0) return;
+	if (v.conn >= 0 || v.off || v.ds < 0 || v.lane != 0 || v.lat != 0 || v.stop_at >= 0) return;
 	const DirSeg &d = t.g.ds[size_t(v.ds)];
 	if (!has_footway(s, d) || v.ri + 1 >= v.route.len) return;
 	const float brake = v.v * v.v / (2 * p.classes[int(v.type)].b);

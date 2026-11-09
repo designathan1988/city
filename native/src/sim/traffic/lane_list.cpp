@@ -2,6 +2,7 @@
 // queries the rest of the traffic uses. Only lists with a near vehicle are in active_lanes/active_conns, so a step
 // walks the traffic near the camera, never every lane of the map (Roadcraft traffic.ts micro[]).
 #include "sim/traffic/traffic_system.h"
+#include "sim/traffic/lane_shift.h"
 
 #include <algorithm>
 
@@ -90,6 +91,8 @@ void micro_add(TrafficState &t, int id) {
 void micro_remove(TrafficState &t, int id) {
 	Vehicle &v = t.vehicles[size_t(id)];
 	if (!v.micro) return;
+	shift_end(t, id); // out of the near model (the far one, a lot, the map): no lane change goes on
+
 	v.micro = false;
 	const size_t i = size_t(v.micro_idx);
 	if (i < t.micro_list.size() && t.micro_list[i] == id) {
@@ -159,10 +162,12 @@ void move_vehicle_lane(CityState &s, int id, int target) {
 	Vehicle &v = t.vehicles[size_t(id)];
 	if (v.ds < 0 || target < 0 || target >= t.g.ds[size_t(v.ds)].lanes || target == v.lane) return;
 	const DirSeg &d = t.g.ds[size_t(v.ds)];
-	lane_del(s, v.ds * MAX_LANES + v.lane, id);
-	v.lc_off += d.u[v.lane] - d.u[target];
+	const int from = v.ds * MAX_LANES + v.lane;
+	lane_del(s, from, id);
+	const float across = d.u[v.lane] - d.u[target]; // where it is, seen from the new lane's middle (left of its way, as lane offsets)
 	v.lane = target;
 	lane_add(s, v.ds * MAX_LANES + target, id);
+	shift_start(s, id, from, across); // the change is a path, its body still in the lane it left meanwhile (lane_shift.h)
 }
 
 } // namespace traffic

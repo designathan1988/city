@@ -2,6 +2,7 @@
 // profile; trips start and end on directed segments weighted by the zones painted beside them (home -> work in the
 // morning, work -> home in the evening), 200-7000 m apart with an exponential preference for short trips.
 #include "sim/traffic/kerb_stops.h"
+#include "sim/traffic/sight.h"
 
 #include "core/units.h"
 
@@ -63,16 +64,22 @@ VehicleType draw_type(CityState &s) {
 	return VehicleType::SEDAN;
 }
 
-// True when a vehicle of length `len` fits on the lane at `at` without touching anyone.
+// True when a vehicle of length `len` fits on the lane at `at` without touching anyone: those on it, and those changing out of it that
+// still stand in it (lane_shift.h).
 bool lane_free(const CityState &s, int key, float at, float len) {
 	const TrafficState &t = s.traffic;
-	for (int id : t.lane_vehicles[key]) {
+	const auto touches = [&](int id) {
 		const Vehicle &o = t.vehicles[id];
 		const VehicleClass &oc = s.catalog.traffic.classes[int(o.type)];
-		if (at > o.s - oc.length - oc.min_gap && at - len - oc.min_gap < o.s) return false;
-	}
+		return at > o.s - oc.length - oc.min_gap && at - len - oc.min_gap < o.s;
+	};
+	for (int id : t.lane_vehicles[key])
+		if (touches(id)) return false;
+	for (int id : t.lane_shadows[key])
+		if (touches(id)) return false;
 	return true;
 }
+
 
 // One trip attempt; returns false on failure (no destination, no route or no room).
 bool spawn_one(CityState &s) {
@@ -83,7 +90,7 @@ bool spawn_one(CityState &s) {
 	const bool bike = type == VehicleType::BICYCLE;
 	float hour = float(s.clock.hour());
 	int from = pick_ds(s, truck ? p.zone_truck : weights_now(p, hour, true));
-	if (from < 0 || (bike && !t.g.ds[size_t(from)].bikes)) return false;
+	if (from < 0 || (bike && !t.g.ds[size_t(from)].bikes) || !unseen_start(s, from)) return false;
 	V2 a = mid_of(s, from);
 	int to = -1;
 	for (int k = 0; k < p.demand_dest_tries && to < 0; k++) {

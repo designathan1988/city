@@ -22,8 +22,8 @@ namespace city {
 	X(ped_gap_impatience_rate) X(ped_gap_impatience_max_s) X(ped_gap_floor_s) X(ped_wait_call_s) X(ped_wait_reach_m) X(ring_max_storage_m) X(ring_meter_share) \
 	X(through_pair_dot) X(yield_look_s) X(yield_near_m) X(stop_sign_ms) X(claim_after_s) X(exit_room_pad_m) X(stop_margin_m) \
 	X(look_ahead_m) X(turn_speed_kmh) X(jerk_up) X(speed_drift) X(stuck_despawn_s) \
-	X(lc_safe_brake) X(lc_threshold) X(lc_bias_right) X(lc_mandatory_bias) X(lc_free_m) X(lc_gap_front_m) \
-	X(lc_gap_back_m) X(mouth_clear_m) X(lc_duration_s) X(lc_cooldown_s) X(lc_every_ticks) \
+	X(lc_safe_brake) X(lc_threshold) X(lc_bias_right) X(lc_mandatory_bias) X(lc_free_m) X(lc_jam_gap_m) \
+	X(lc_follow_share) X(mouth_clear_m) X(lc_finish_margin_m) X(lc_cooldown_s) X(lc_every_ticks) \
 	X(brake_light_accel) X(brake_light_speed) X(body_lift_m) \
 	X(walk_speed_min) X(walk_speed_max) X(walk_track_min) X(walk_track_max) X(ped_trip_min_m) X(ped_trip_max_m) \
 	X(ped_child_share) X(ped_elder_share) X(ped_child_pace) X(ped_elder_pace) X(ped_rest_fade_s) \
@@ -66,12 +66,13 @@ namespace city {
 	X(meso_window_m) X(meso_window_out_m) X(micro_spawn_m) X(ped_window_m) X(ped_despawn_window_share) \
 	X(demand_pick_tries) X(demand_dest_tries) X(demand_max_failures) X(demand_fleet_max) X(demand_side_reach_m) \
 	X(demand_vf_base) X(demand_vf_span) X(demand_place_lo) X(demand_place_hi) X(demand_goal_lo) X(demand_goal_hi) \
-	X(demand_start_speed_share) X(junction_signal_arms) X(junction_signal_main_arms) X(lc_force_after_s) X(lc_force_gap_m) \
+	X(demand_start_speed_share) X(junction_signal_arms) X(junction_signal_main_arms) X(lc_signal_s) X(lc_signal_crawl_s) \
 	X(meso_headway_light_s) X(meso_headway_long_s) X(meso_headway_mid_s) X(meso_headway_base_s) X(meso_wait_long_s) \
 	X(meso_wait_mid_s) X(meso_speed_floor_ms) X(meso_min_wait_s) X(meso_queue_retry_s) X(meso_window_retry_s) X(meso_fit_m) \
 	X(meso_min_handover_ms) X(meso_free_handover_ms) X(meso_handover_share) X(meso_handover_pad_m) X(meso_handover_retry_s) \
 	X(ped_spawn_pick_tries) X(ped_spawn_dest_tries) X(ped_spawn_scale_min) X(ped_spawn_scale_max) X(speed_drift_rate) \
-	X(vehicle_safe_pad_m) X(vehicle_wait_speed) X(vehicle_stuck_speed) X(vehicle_lc_decay) X(vehicle_moving_off_share) \
+	X(vehicle_safe_pad_m) X(vehicle_wait_speed) X(vehicle_stuck_speed) X(lc_crawl_ms) X(vehicle_moving_off_share) \
+	X(lc_heading_slow) X(lc_heading_fast) X(lc_fast_ms) X(lc_min_time_s) X(lc_min_bodies) X(lc_profile_peak) X(lc_settled_m) X(lc_hold_m) X(lc_least_room_m) X(lc_change_time_s) X(spawn_fresh_s) \
 	X(window_view_step_m) X(window_every_s) X(window_mat_tail_pad_m) X(window_mat_end_pad_m) X(window_mat_speed_share) \
 	X(window_furniture_keep_windows)
 

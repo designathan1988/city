@@ -183,7 +183,7 @@ Array CityProbes::vehicles_near(const Vector3 &at, float radius) {
 			d["asphalt_right"] = p.asph_right;
 			d["asphalt_left"] = p.asph_left;
 			d["lanes"] = t.g.ds[size_t(v.ds)].lanes;
-			d["lc_off"] = v.lc_off;
+			d["lane_change_left_m"] = v.lat; // sideways still to cover of a lane change (lane_shift.h)
 			d["lateral_m"] = (v.cur.x - c.x) * -c.fz + (v.cur.z - c.z) * c.fx; // of the body's middle from the lane's, to its left
 			d["heading_off_rad"] = std::atan2(v.cur.fx * c.fz - v.cur.fz * c.fx, v.cur.fx * c.fx + v.cur.fz * c.fz);
 			float ahead = FAR_GAP_M;

@@ -93,6 +93,25 @@ cause, still open; until it is fixed a car stuck 120 s still vanishes.
 the kerb on the footway, two people beside it, near a zebra), stand still in the lanes, and vanish all at once. Not yet
 investigated.
 
+**Causes read in the code (2026-11-09 18:00), each against the lab's sim/vehicles/laneChange.ts, integrate.ts, params.ts and ambient.ts:**
+- *Over one another, 1 (the jump):* `routing.cpp retry_route` moved a car whose lane does not lead to its route's next road straight into
+  the lane that does (`move_vehicle_lane`, up to several lanes at once), whoever stood there, on the first tick it found its lane wrong;
+  `lane_change.cpp`'s mandatory branch never ran (it looked for a connector of another lane in `pick_connector`, which returns only the
+  lane's own). The lab works across by changes with room, easing off to fit them (positioningSpeedCap), and plans the route again from
+  where the lane leads when no room is left (repairRoute). Ported: `mandatory_lane` drives the changes, `position_fits`/`position_speed`
+  (lane_shift.cpp) ease off and hold short of the lane's end, `route_from_lane` (routing.cpp) replaces the jump.
+- *Over one another, 2 (the change):* a change moved the car to the new lane's list at once, its drawing left aside by `lc_off`, which
+  decayed; the lane it left lost sight of it while its body still stood there, and its followers drove through it. Gaps were 2-3 m, and
+  0.5 m forced after 5 s. The lab's change is a path (a quintic over laneChangeLength) during which the body also stands in the lane it
+  left (its shadow, which that lane follows), signalled 1.4 s before, made only with room from every body of the target lane (the larger of
+  the jam gap and the standstill gap plus half the headway at speed) and the change's road free. Ported: `lane_shift.h/.cpp` (path, shadow,
+  pose turned along the path), `lane_change.cpp` (signal, room_beside against bodies and shadows, no forced gap), followers take shadows as
+  leaders (`vehicle_motion.cpp`), spawning checks them (`demand.cpp lane_free`). Data: traffic.json lc_* (the old gaps and decay gone).
+- *Appearing from nowhere:* `spawn_one` began trips as drawn cars in view; the lab makes cars only past the edge of the view but for a city
+  just opened. Ported: `unseen_start` (past the published radius, anywhere for the first spawn_fresh_s).
+- *Vanishing:* fixed earlier (cars in sight that arrive drive on). A car stuck 120 s still vanishes: stuck cars are the effect of the
+  causes above (lanes blocked by jumps and half-changed bodies); what is left after these fixes is read at the end in traffic_probe.
+
 ## 8. Memory, GPU and CPU
 
 **Seen:** the owner (2026-11-09): RAM near 5 GB on the small city, where it took no more than 800 MB before. tasklist of the

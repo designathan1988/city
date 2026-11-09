@@ -2,6 +2,8 @@
 // next lane, and stops at the line while the junction does not let it in; every vehicle stops for the lights it sees
 // down its route (Roadcraft 4.0 signals). Vehicles cross nodes on connectors.
 #include "sim/traffic/kerb_stops.h"
+#include "sim/traffic/sight.h"
+#include "sim/traffic/lane_shift.h"
 
 #include "sim/traffic/lane_closures.h"
 
@@ -14,13 +16,6 @@ namespace city {
 namespace traffic {
 
 namespace {
-
-// The city's own traffic (no bus, bay, yard, errand or kerb stop: those end their trips themselves) drawn within the published radius:
-// it drives on there, never taken away in sight (the lab's ambient.ts traffic, spawn.ts stepDespawn).
-bool drives_on(const CityState &s, const Vehicle &v) {
-	const float dx = v.cur.x - s.camera_x.load(), dz = v.cur.z - s.camera_z.load(), r = s.catalog.traffic.publish_radius_m;
-	return v.micro && v.bus < 0 && v.car < 0 && v.lorry < 0 && v.errand == Errand::NONE && v.kerb < 0 && v.stop_at < 0 && dx * dx + dz * dz <= r * r;
-}
 
 struct Lead {
 	float gap = NO_LEADER, v = 0;
@@ -60,7 +55,6 @@ void integrate(const CityState &s, Vehicle &v, float acc, float dt, float &pos) 
 	v.stuck = nv < p.vehicle_stuck_speed ? v.stuck + dt : 0.f;
 	v.wait = nv < p.vehicle_wait_speed ? v.wait + dt : 0.f;
 	v.held = nv < p.vehicle_wait_speed ? v.held + dt : 0.f;
-	v.lc_off *= std::max(0.f, 1.f - dt * p.vehicle_lc_decay / std::max(p.lc_duration_s, dt));
 	v.lc_cool = std::max(0.f, v.lc_cool - dt);
 }
 
@@ -151,6 +145,11 @@ void step_lane(CityState &s, int ds, int lane, float dt, std::vector<int> &leavi
 			const Vehicle &o = t.vehicles[list[size_t(ahead)]];
 			l.take(o.s - body(s, o) - v.s, o.v);
 		}
+		// whoever is changing out of this lane still stands in it till its body has left (lane_shift.h): followed as a leader is
+		for (int o : t.lane_shadows[size_t(ds) * MAX_LANES + lane]) {
+			const Vehicle &sh = t.vehicles[size_t(o)];
+			if (o != id && sh.s > v.s) l.take(sh.s - body(s, sh) - v.s, sh.v);
+		}
 		if (!t.closures.empty()) {
 			const float shut = closure_ahead(t, ds * MAX_LANES + v.lane, v.s);
 			if (shut >= 0) l.take(shut, 0.f);
@@ -163,13 +162,12 @@ void step_lane(CityState &s, int ds, int lane, float dt, std::vector<int> &leavi
 			if (v.s >= v.goal_s) { leaving.push_back(-1 - id); continue; }
 			if (v.stop_at >= 0) l.take(std::max(0.f, v.stop_at - v.s + p.classes[int(v.type)].min_gap), 0.f); // the IDM stops s0 short
 		} else {
+			float hold = -1; // its lane does not lead on: worked across to one that does (lane_shift.h), held short of its end
+			if (!way_on(s, id, line_was, v0, hold)) { leaving.push_back(-1 - id); continue; }
+			if (hold >= 0) l.take(hold, 0.f);
+		}
+		if (through && pick_connector(s, v) >= 0) {
 			int ci = pick_connector(s, v);
-			if (ci < 0) {
-				// the route's turn is not reachable from this lane (a connector went, the lanes were rearranged):
-				// another lane of the segment, else a new route; without a way on it leaves the scene
-				if (!retry_route(s, id)) { leaving.push_back(-1 - id); continue; }
-				return; // retry may have changed the lane: the rest of this one waits for the next tick
-			}
 			float dist = L - v.s;
 			// stopped long in the queue of a full lane: reconsider the route, avoiding what is full
 			if (!head && v.held >= p.reconsider_after_s) {
@@ -205,6 +203,7 @@ void step_lane(CityState &s, int ds, int lane, float dt, std::vector<int> &leavi
 		const float was = v.s;
 		integrate(s, v, acc, dt, v.s);
 		v.s = std::min(v.s, L);
+		shift_step(s, id, v.s - was); // a lane change's path goes on with the road driven
 		signal_call(s, ds, was, v.s);
 		// over the stop line on red (probe): from a standstill there, the gate let it run the red
 		if (through && line_was > 0 && L - v.s - t.g.ds[ds].stop_back <= 0 && light_for(s, ds) == Light::RED) {
@@ -236,6 +235,7 @@ void leave_lane(CityState &s, int ds, int lane, std::vector<int> &leaving) {
 			continue;
 		}
 		lane_del(s, key, id);
+		shift_end(t, id); // onto the junction: no lane left behind it to stand in
 		v.cs = v.s - t.g.ds[size_t(ds)].len;
 		v.conn = ci;
 		v.stood_at = -1;

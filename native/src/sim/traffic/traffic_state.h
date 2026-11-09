@@ -63,7 +63,11 @@ struct Vehicle {
 	int ds = -1, lane = 0, conn = -1;
 	float s = 0, v = 0, acc = 0, cs = 0; // lane position, speed, acceleration, metres along the connector
 	float vf = 1, drift = 0; // share of the speed limit, phase of the speed drift
-	float lc_off = 0, lc_cool = 0; // lateral offset left after a lane change (decays), cooldown
+	// A lane change under way (lane_shift.h): the sideways offset still to cover, as it started, the road driven since and the change's length;
+	// the lane it still stands in (its shadow, -1 none) and the offset under which it has left it; the lane it signals for and since when.
+	float lat = 0, lat_start = 0, lat_done = 0, lat_len = 0, lc_cool = 0;
+	int shadow_key = -1, lc_intent = -1;
+	float shadow_clear = 0, lc_intent_t = 0;
 	float wait = 0, stuck = 0;
 	float held = 0; // stopped since it last reconsidered the route (Roadcraft micro.ts c.held)
 	int pass = -1; // connector it committed to at its line with the way open (Roadcraft c.pass + exitC)
@@ -114,6 +118,7 @@ struct TrafficState {
 	uint64_t volume_base = 0;
 	std::vector<double> green_wanted; // per approach: until when the vehicles over its detector want green
 	std::vector<std::vector<int>> lane_vehicles; // ds * MAX_LANES + lane, sorted by s (back first)
+	std::vector<std::vector<int>> lane_shadows; // the vehicles changing out of each lane that still stand in it (lane_shift.h)
 	// Per lane key: its list was in order of s when the step last moved it (vehicle_motion.cpp). Only that step changes the s of a
 	// vehicle on a list; an insertion keeps a list in order and a removal keeps it so.
 	std::vector<uint8_t> lane_sorted;
