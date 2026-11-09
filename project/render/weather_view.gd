@@ -87,8 +87,10 @@ func step(dt: float, weather: Dictionary, way: Vector2) -> void:
 			_rain_mat.set_shader_parameter("opacity", _d.rain_opacity + _d.rain_opacity_full * rain)
 		if rate > 0.0 and _rng.randf() < dt * rate / Units.S_PER_MIN:
 			var a := _rng.randf() * TAU
-			var r: float = _rng.randf() * span * _d.strike_reach
-			strike(ground + Vector3(cos(a) * r, 0.0, sin(a) * r))
+			var r: float = sqrt(_rng.randf()) * span * _d.strike_reach # evenly over the disc round the view's middle
+			var x := ground.x + cos(a) * r
+			var z := ground.z + sin(a) * r
+			strike(Vector3(x, CityStore.query(&"height_at", [x, z]), z))
 	_age(dt)
 	_bolt_mat.set_shader_parameter("brightness", flash)
 	_bolt_mat.set_shader_parameter("screen", get_viewport().get_visible_rect().size)
@@ -132,11 +134,13 @@ func _advance(ground: Vector3, span: float, wind: Vector2, dt: float) -> void:
 	_rain_mat.set_shader_parameter("near_m", side * _d.rain_near_share)
 
 
-## A bolt from the cloud base to `at`.
+## A bolt from some way up in the sky to `at`, leaning by a share of that height.
 func strike(at: Vector3) -> void:
 	if _bolts.size() >= int(_d.max_strikes):
 		_end(0)
-	var top: Vector3 = at + Vector3(_rng.randf_range(-1.0, 1.0) * _d.bolt_lean_m, _d.bolt_height_m, _rng.randf_range(-1.0, 1.0) * _d.bolt_lean_m)
+	var up: float = _d.bolt_height_least_m + _rng.randf() * _d.bolt_height_more_m
+	var lean: float = up * _d.bolt_lean_share
+	var top: Vector3 = at + Vector3((_rng.randf() - 0.5) * lean, up, (_rng.randf() - 0.5) * lean)
 	var node := MeshInstance3D.new()
 	node.mesh = _bolt_mesh(top, at)
 	node.material_override = _bolt_mat
@@ -145,8 +149,9 @@ func strike(at: Vector3) -> void:
 	add_child(node)
 	_bolts.append({"age": 0.0, "node": node})
 	var cam := get_viewport().get_camera_3d()
-	if cam:
-		_thunder.play(cam.global_position.distance_to(at), _thunder_volume)
+	if cam: # heard from the ground under the view's middle
+		var heard := _ground_under(cam)
+		_thunder.play(Vector2(at.x - heard.x, at.z - heard.z).length(), _thunder_volume)
 
 
 func _split(a: Vector3, b: Vector3, kick: float, generations: int) -> PackedVector3Array:

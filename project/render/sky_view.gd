@@ -1,6 +1,8 @@
 ## The sky as drawn: follows the core's weather and placed clouds (CityStore query "landscape"), lays the clouds' puffs for
-## atmosphere.gdshader (render/cloud_puffs.gd), carries them on the wind, holds the wind in the shader globals (plants and water read it) and
-## tells the daylight how overcast it is. Rain, bolts and thunder are render/weather_view.gd's.
+## atmosphere.gdshader (render/cloud_puffs.gd), carries them on the wind, holds the wind in the shader globals (plants and water read
+## it), lights the air under the street lamps in rain and storm (`haze` of the lamp_glow material), tells the daylight how overcast it
+## is and the clouds' shadows what the sun's direct light is now, and draws the air and the weather as the Effects panel's "clouds" and
+## "weather" switches say. Rain, bolts and thunder are render/weather_view.gd's.
 class_name SkyView
 extends Node3D
 
@@ -28,6 +30,8 @@ var _fog_field: Dictionary = {}
 var _canyon_field: Dictionary = {}
 var _fog_seen := -1 # the fog_revision / canyon_revision last applied
 var _lamp_night := -1.0 # what the core was last told
+var _shade := -1.0 # the clouds' shadow strength last set
+var _air_on: bool # the Effects panel's "clouds" (render_switches.json, read by _take_switches): the whole pass of the air
 var _canyon_seen := -1
 ## What the clouds were last laid from: nothing is re-sent while the view, the drift, the count and the revision stay.
 var _laid_about := Vector2.INF
@@ -50,7 +54,7 @@ func _ready() -> void:
 	_mat.set_shader_parameter("start_noise", load(_d.start_noise))
 	_mat.set_shader_parameter("air_gain", DataTables.game("daylight").sky_gain)
 	_mat.set_shader_parameter("fog_extinction", _d.fog_extinction_km / METRES_A_KM)
-	for key in ["mist_beta", "mist_reach", "shadow_strength"]:
+	for key in ["mist_beta", "mist_reach"]:
 		_mat.set_shader_parameter(key, _d[key])
 	var kinds := WorldMaterials.uniform_kinds(_mat.shader)
 	for key: String in _d.atmosphere: # the pass's look, each a uniform of its name
@@ -68,6 +72,15 @@ func _ready() -> void:
 	add_child(_quad)
 	_weather_view = WeatherView.new(_d)
 	add_child(_weather_view)
+	Settings.changed.connect(_take_switches)
+	_take_switches()
+
+
+## The Effects panel's switches of the sky: "clouds" the pass of the air (clouds, their shadows, mist and fog), "weather" the rain
+## and the bolts drawn (the weather goes on: the light, the thunder).
+func _take_switches() -> void:
+	_air_on = Settings.switches.is_on("clouds")
+	_weather_view.visible = Settings.switches.is_on("weather")
 
 
 func _noise() -> NoiseTexture3D:
@@ -106,6 +119,7 @@ func step(dt: float) -> bool:
 	_light(way)
 	_weather_view.step(dt, weather, way)
 	_world.daylight.set_weather(_overcast(), _weather_view.flash)
+	_shadow_strength() # the lamps' haze moves only with the weather: set when it is read (_read)
 	if _world.daylight.night != _lamp_night:
 		_lamp_night = _world.daylight.night
 		CityStore.dispatch(&"set_lamp_night", [_lamp_night])
@@ -134,10 +148,26 @@ func _read() -> void:
 	_mat.set_shader_parameter("mist", _air)
 	_mat.set_shader_parameter("mist_height", maxf(weather.mist_height_m, _d.rain_mist_height_m) if rain > 0.0 else weather.mist_height_m)
 	_mat.set_shader_parameter("fog_density", weather.fog_density)
+	# The lit air under the street lamps: the rain or the storm, whichever is more (render/shaders/lamp_glow.gdshader).
+	var glow: ShaderMaterial = _world.materials().lamp_glow
+	glow.set_shader_parameter("haze", maxf(rain, _storm()))
+
+
+## How stormy it is, 0..1: the strikes a minute over a full storm's.
+func _storm() -> float:
+	return minf(1.0, float(weather.get("lightning", 0.0)) / _d.storm_full)
 
 
 func _overcast() -> float:
-	return maxf(float(weather.get("rain", 0.0)) * _d.overcast_rain, minf(1.0, float(weather.get("lightning", 0.0)) / _d.storm_full) * _d.overcast_storm)
+	return maxf(float(weather.get("rain", 0.0)) * _d.overcast_rain, _storm() * _d.overcast_storm)
+
+
+## Of the light on lit ground a cloud takes the sun's direct part alone: its share now (less in rain, at dusk), gone into the night.
+func _shadow_strength() -> void:
+	var share := _world.daylight.direct_share * maxf(0.0, 1.0 - _world.daylight.night * _d.shadow_night_cut)
+	if share != _shade:
+		_shade = share
+		_mat.set_shader_parameter("shadow_strength", share)
 
 
 func _light(way: Vector2) -> void:
@@ -166,7 +196,7 @@ func _lay() -> void:
 		var t := -cam.global_position.y / ahead.y if ahead.y < -LEVEL_VIEW else 0.0
 		about = Vector2(cam.global_position.x + ahead.x * t, cam.global_position.z + ahead.z * t)
 	var n := mini(clouds.size(), CloudPuffs.SLOTS) if clouds_drawn else 0
-	_quad.visible = n > 0 or _air > 0.0 or bool(_fog_field.get("any", false)) or bool(_canyon_field.get("any", false))
+	_quad.visible = _air_on and (n > 0 or _air > 0.0 or bool(_fog_field.get("any", false)) or bool(_canyon_field.get("any", false)))
 	if about == _laid_about and drift == _laid_drift and n == _laid_count and _seen == _laid_revision:
 		return
 	_laid_about = about

@@ -183,7 +183,17 @@
     "flash_ambient": {
       "type": "number"
     },
-    "flash_sky": {
+    "overcast_horizon": {
+      "type": "number"
+    },
+    "flash_colour": {
+      "type": "string",
+      "pattern_prefix": "#"
+    },
+    "flash_zenith": {
+      "type": "number"
+    },
+    "flash_horizon": {
       "type": "number"
     },
     "sun_day": {

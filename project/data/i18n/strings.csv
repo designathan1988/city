@@ -1549,6 +1549,7 @@ fx.bShadows,Prédios projetam sombra,Buildings cast shadows
 fx.bloom,Bloom (luzes à noite),Bloom (night lights)
 fx.buildings,Prédios,Buildings
 fx.canyonLight,Luz da rua (cânion),Street light (canyon)
+fx.clouds,"Nuvens, suas sombras, névoa e neblina","Clouds, their shadows, mist and fog"
 fx.environmentMap,Reflexo do céu (mapa de ambiente),Sky reflection (environment map)
 fx.furniture,Mobiliário urbano e capim alto,Street furniture and long grass
 fx.group.buildings,Prédios (GPU),Buildings (GPU)
@@ -1583,6 +1584,7 @@ fx.title,Painel de efeitos,Effects panel
 fx.traffic,Tráfego,Traffic
 fx.vegetation,"Árvores, florestas e jardins","Trees, forests and gardens"
 fx.water,Água (rios e lagos),Water (rivers and lakes)
+fx.weather,Chuva e raios,Rain and lightning
 gfx.aa,Suavização de bordas (SMAA),Anti-aliasing (SMAA)
 gfx.dynamicResolution,Resolução dinâmica,Dynamic resolution
 gfx.dynamicResolution.note,"Baixa a resolução quando a placa de vídeo não dá conta, para manter os quadros por segundo.","Lowers the resolution when the graphics card cannot keep up, to hold the frame rate."
