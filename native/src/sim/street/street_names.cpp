@@ -8,7 +8,9 @@
 #include "sim/street/street_spots.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
+#include <unordered_map>
 #include <unordered_set>
 
 namespace city {
@@ -120,6 +122,61 @@ void settle_name_plates(StreetWorks &works, RoadNetwork &net, ChangeLog &log) {
 		for (int s : held) np.by_seg[s].push_back(id);
 		np.by_item.emplace(id, std::move(e));
 	}
+}
+
+std::string street_name_of(const StreetWorks &works, int seg) {
+	const auto held = works.names.by_seg.find(seg);
+	if (held == works.names.by_seg.end()) return "";
+	int first = -1;
+	for (int id : held->second) {
+		const StreetItem &it = works.items.items[size_t(id)];
+		if (it.alive && !it.text.empty() && (first < 0 || id < first)) first = id;
+	}
+	return first < 0 ? "" : works.items.items[size_t(first)].text;
+}
+
+bool street_numbers(const RoadNetwork &net, int seg, StreetNumbers &out) {
+	if (seg < 0 || seg >= int(net.segs.size()) || !net.segs[size_t(seg)].alive) return false;
+	const std::vector<int> chain = street_chain(net, seg);
+	// the street's nodes and the segments meeting each, made once: the walk reads them, no search over the chain at each step
+	std::unordered_map<int, std::vector<int>> at;
+	for (int s : chain)
+		for (int n : { net.segs[size_t(s)].a, net.segs[size_t(s)].b }) at[n].push_back(s);
+	int start = -1;
+	double best = 0;
+	for (const auto &kv : at) {
+		if (kv.second.size() != 1) continue; // an end of the street: one of its segments meets it
+		const RoadNode &nd = net.nodes[size_t(kv.first)];
+		const double d = std::hypot(nd.x, nd.z); // from the map's origin, where every street's numbering is measured from
+		if (start < 0 || d < best || (d == best && kv.first < start)) {
+			start = kv.first;
+			best = d;
+		}
+	}
+	if (start < 0) start = net.segs[size_t(chain.front())].a; // a loop: from its first segment
+	std::unordered_set<int> walked;
+	int node = start;
+	double along = 0;
+	for (size_t step = 0; step < chain.size(); step++) {
+		int next = -1;
+		for (int s : at[node])
+			if (!walked.count(s)) {
+				next = s;
+				break;
+			}
+		if (next < 0) return false;
+		const RoadSegment &g = net.segs[size_t(next)];
+		if (next == seg) {
+			out.from = int(std::lround(along));
+			out.to = int(std::lround(along + g.len));
+			out.even_on_right = g.a == node;
+			return true;
+		}
+		walked.insert(next);
+		along += g.len;
+		node = g.a == node ? g.b : g.a;
+	}
+	return false;
 }
 
 } // namespace city

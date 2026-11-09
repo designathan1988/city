@@ -1,11 +1,12 @@
-// What the Inspect tool, the top bar's warning and the camera ask of the city: the thing under a click, a road's and a
-// junction's live numbers (Roadcraft simAnswers.ts count), the nodes the editor would refuse and the roof over a point.
+// What the Inspect tool, the top bar's warning and the camera ask of the city: the thing under a click (a road with its street's
+// name and house numbers), a road's and a junction's live numbers (Roadcraft simAnswers.ts count), the nodes the editor would refuse and the roof over a point.
 #include "api/city_core.h"
 
 #include "core/units.h"
 #include "sim/buildings/b40/record.h"
 #include "sim/commands/commands.h"
 #include "sim/roads/junction.h"
+#include "sim/street/street_names.h"
 #include "sim/traffic/traffic_system.h"
 
 #include <godot_cpp/variant/array.hpp>
@@ -47,6 +48,20 @@ void put_road(const CityState &s, Dictionary &d, int seg) {
 	double length = 0;
 	for (int piece : s.roads.pieces_of(seg)) length += s.roads.segs[size_t(piece)].len;
 	d["length_m"] = length;
+	// its street's name and the numbers along it, over all its pieces (the lab's inspector: "Rua das Flores · …", "No. 120 to 204")
+	d["street"] = String::utf8(street_name_of(s.street, seg).c_str());
+	StreetNumbers numbers, piece_numbers;
+	bool numbered = false;
+	for (int piece : s.roads.pieces_of(seg)) {
+		if (!street_numbers(s.roads, piece, piece_numbers)) continue;
+		numbers.from = numbered ? std::min(numbers.from, piece_numbers.from) : piece_numbers.from;
+		numbers.to = numbered ? std::max(numbers.to, piece_numbers.to) : piece_numbers.to;
+		numbered = true;
+	}
+	if (numbered) {
+		d["number_from"] = numbers.from;
+		d["number_to"] = numbers.to;
+	}
 	Array ends; // its dead ends, start first: the node and whether it turns in a bulb
 	for (int n : { s.roads.segs[seg].a, s.roads.segs[seg].b }) {
 		if (s.roads.nodes[size_t(n)].segs.size() != 1) continue;

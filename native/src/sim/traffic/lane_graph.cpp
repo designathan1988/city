@@ -281,5 +281,43 @@ void build_lane_graph(CityState &s) {
 	build_junctions(s);
 }
 
+LaneTurns lane_turns(const CityState &s, int n, int seg, int lane) {
+	LaneTurns out;
+	const RoadNetwork &net = s.roads;
+	if (n < 0 || n >= int(net.nodes.size()) || !net.nodes[size_t(n)].alive) return out;
+	const RoadNode &nd = net.nodes[size_t(n)];
+	// a node's arms and the lanes each brings in and takes away, as build_dir lays them, from the map alone
+	auto lanes = [&](int sg, bool arriving) -> int {
+		const RoadSegment &g = net.segs[size_t(sg)];
+		if (!g.alive || g.a == g.b || net.profile_of(sg).rail) return 0;
+		const Profile &p = net.profile_of(sg);
+		return std::min(int((arriving == (g.b == n) ? p.fwd : p.back).size()), MAX_LANES);
+	};
+	// the way the traffic runs at the mouth: towards the node on the arm it arrives by, away on the arm it leaves by (lane_pose's)
+	auto heading = [&](int sg, bool arriving) {
+		const RoadSegment &g = net.segs[size_t(sg)];
+		const bool at_b = g.b == n;
+		double dx, dz;
+		g.q.deriv(t_at_length(g.table, at_b ? g.len - g.retreat_b : g.retreat_a), dx, dz);
+		const double l = std::hypot(dx, dz), sign = (arriving == at_b) ? 1 : -1;
+		return l > 0 ? V2(float(dx / l * sign), float(dz / l * sign)) : V2(1, 0);
+	};
+	int degree = 0;
+	for (int sg : nd.segs) degree += lanes(sg, true) + lanes(sg, false) > 0 ? 1 : 0;
+	if (std::find(nd.segs.begin(), nd.segs.end(), seg) == nd.segs.end() || lane < 0 || lane >= lanes(seg, true)) return out;
+	for (const LaneLink &l : nd.links) {
+		if (l.from != seg || l.from_lane != lane || std::find(nd.segs.begin(), nd.segs.end(), l.to) == nd.segs.end()) continue;
+		if (l.to_lane < 0 || l.to_lane >= lanes(l.to, false)) continue; // as link_stands: a link whose lane is gone stands for nothing
+		out.by_hand = true;
+		switch (classify(heading(seg, true), heading(l.to, false), l.from == l.to, degree, s.catalog.traffic.straight_dot)) {
+			case Turn::LEFT: out.left = true; break;
+			case Turn::RIGHT: out.right = true; break;
+			case Turn::STRAIGHT: out.straight = true; break;
+			case Turn::UTURN: break; // no arrow is painted for a U-turn (the lab's laneTurnAllowed)
+		}
+	}
+	return out;
+}
+
 } // namespace traffic
 } // namespace city

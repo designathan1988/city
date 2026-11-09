@@ -1,5 +1,6 @@
 // The names streets are given (Roadcraft world/roads/streetNames.ts nameFor): a street without a name plate takes one from
-// the style's list, the prefix by its kind of road, none repeated. The plates stand at its corners (street_spots.h).
+// the style's list, the prefix by its kind of road, none repeated. The plates stand at its corners (street_spots.h). What the
+// inspector reads of a street: its name and a segment's house numbers (streetNameOf, streetNumbers).
 #pragma once
 
 #include "sim/street/street_works.h"
@@ -28,5 +29,16 @@ std::vector<StreetName> names_for(const RoadNetwork &net, const StreetWorks &wor
 // (the segment a name names may be another); the prop chunks of their plates before and after are marked in `log`.
 // Runs after the roads' shapes and heights are settled (the plates stand on them).
 void settle_name_plates(StreetWorks &works, RoadNetwork &net, ChangeLog &log);
+// The name of the street segment `seg` runs in (the lab's streetNameOf): the first name item, by id, whose street holds it, as
+// works.names settled them; "" when none does.
+std::string street_name_of(const StreetWorks &works, int seg);
+// A segment's place in its street's numbering (the lab's streetNumbers): the metres from the street's start where it begins and
+// ends, and whether the even numbers are on its own right going a to b. The street starts at its end nearest the map's origin
+// (the lower node id on a tie); a loop starts at its first segment's node a. False: the segment is not a live one.
+struct StreetNumbers {
+	int from = 0, to = 0;
+	bool even_on_right = false;
+};
+bool street_numbers(const RoadNetwork &net, int seg, StreetNumbers &out);
 
 } // namespace city

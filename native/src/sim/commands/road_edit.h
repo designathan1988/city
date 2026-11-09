@@ -67,9 +67,6 @@ double wanted_retreat(const RoadNetwork &net, int n, int seg);
 std::map<int, double> squeezes_in(const CityState &s, const RoadBox &box);
 // Whether a road of the box overlaps more than `before` said.
 bool squeezed_worse(const CityState &s, const std::map<int, double> &before, const RoadBox &box);
-// Whether the planned road from a to b would leave a stretch squeezed between junctions (its own, or one of a road it meets made
-// worse), worked out before anything is laid as squeezed_worse judges it after: what the road tool's preview warns of (road_rules.cpp).
-bool plan_squeezed(const CityState &s, const RoadPlan &plan, const Anchor &a, const Anchor &b, int profile);
 // The junction a new road's end would make, before it exists: how far back that road stops there and how far back each road
 // it meets does (road_rules.cpp). A free end makes none.
 struct EndMouth {

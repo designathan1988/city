@@ -29,6 +29,13 @@ void reset_traffic(CityState &s); // full graph build and an empty fleet: a new 
 
 // lane_graph.cpp / lane_geometry.cpp
 void build_lane_graph(CityState &s); // into s.traffic.g
+// Where lane `lane` of arm `seg` arriving at node `n` may go by the player's lane links, each link's movement classified as
+// the lane graph classifies it; by_hand false: no link names the lane and the junction decides. Reads the map alone (the
+// render's arrows hold only the map lock).
+struct LaneTurns {
+	bool by_hand = false, left = false, straight = false, right = false;
+};
+LaneTurns lane_turns(const CityState &s, int n, int seg, int lane);
 void lane_pose(const CityState &s, int ds, int lane, float at, Pose &out);
 void conn_pose(const Conn &c, float at, Pose &out);
 void sidewalk_pose(const CityState &s, int seg, int side, float arc, float track_u, Pose &out);

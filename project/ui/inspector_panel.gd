@@ -1,4 +1,5 @@
-## The inspector side panel: what the inspect tool picked, under a name. A building: floors, residents and jobs. A road: its live numbers
+## The inspector side panel: what the inspect tool picked, under a name. A building: floors, residents and jobs. A road: under its
+## street's name with the house numbers along it, its live numbers
 ## (InspectorRows) and what can be done to it: its class, reversed when one-way, split at the middle, duplicated, demolished. A junction:
 ## control, movements, traffic and each signal stage's lamp. The numbers follow the traffic while it is open.
 class_name InspectorPanel
@@ -26,14 +27,15 @@ func _ready() -> void:
 	hide()
 
 
-## The panel's name with the close button at its end.
-func _head(col: Control, text: String) -> void:
+## The panel's name with the close button at its end; the name's label, for a name that is not the game's own text.
+func _head(col: Control, text: String) -> Label:
 	var row := HudWidgets.hbox(col)
 	var name := HudWidgets.label(row, &"SideTitle", text)
 	name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var x := HudWidgets.button(&"IconButton", "close", "", "v2.close", "side_close", "side_close")
 	x.pressed.connect(close)
 	row.add_child(x)
+	return name
 
 
 func _actions(col: Control) -> GridContainer:
@@ -56,8 +58,14 @@ func _building(col: Control, info: Dictionary) -> void:
 	_demolish_button(_actions(col))
 
 
+## A road: under its street's name, else "Road", with its class (the lab's inspector), then the house numbers along it. The
+## street's name is the city's own (a name plate's words), shown as given.
 func _road(col: Control, info: Dictionary) -> void:
-	_head(col, "%s · %s" % [tr("inspector.road"), tr(info.profile)])
+	var title := _head(col, "%s · %s" % [tr("inspector.road"), tr(info.profile)])
+	if not str(info.get("street", "")).is_empty():
+		HudWidgets.verbatim(title, "%s · %s" % [info.street, tr(info.profile)])
+	if info.has("number_from"):
+		HudWidgets.label(col, &"BodyLabel", tr("inspector.numbers").format({"from": info.number_from, "to": info.number_to}))
 	_stats = HudWidgets.vbox(col)
 	_live.fill_road(_stats, info)
 	for e in info.get("ends", []):

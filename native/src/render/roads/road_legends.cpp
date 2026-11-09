@@ -99,14 +99,30 @@ void bus_legends(const RoadPainter &pt, const Profile &p, double l0, double l1) 
 		}
 }
 
+// Where a lane may go as its rule says: the player's lane links at the node it drives to (traffic::lane_turns, the lane graph's
+// own classification), else the turns its profile gives it; by_hand false: the junction decides and nothing is painted.
+traffic::LaneTurns rule_of(const RoadPainter &pt, const LaneInfo &lane, int index, bool forward) {
+	const RoadSegment &g = pt.e.s.roads.segs[size_t(pt.sid)];
+	traffic::LaneTurns t = traffic::lane_turns(pt.e.s, forward ? g.b : g.a, pt.sid, index);
+	if (t.by_hand || lane.turns == 0) return t;
+	t.by_hand = true;
+	t.left = lane.turns & TURN_LEFT;
+	t.straight = lane.turns & TURN_STRAIGHT;
+	t.right = lane.turns & TURN_RIGHT;
+	return t;
+}
+
 // A lane's arrows, arrow_station_m before the mouth it drives to: a stem, then a head for each way it may go.
 void lane_arrows(const RoadPainter &pt, const Profile &p, double v0, double v1) {
 	const StreetLook::FloorPaint &F = pt.e.L.floor;
 	if (v1 - v0 < F.arrow_min) return;
 	std::vector<Vector2> points;
-	for (int forward = 0; forward < 2; forward++)
-		for (const LaneInfo &lane : lanes_towards(p, forward == 1)) {
-			if (lane.turns == 0) continue; // automatic: the junction decides, nothing painted
+	for (int forward = 0; forward < 2; forward++) {
+		const std::vector<LaneInfo> &lanes = lanes_towards(p, forward == 1);
+		for (size_t k = 0; k < lanes.size(); k++) {
+			const LaneInfo &lane = lanes[k];
+			const traffic::LaneTurns rule = rule_of(pt, lane, int(k), forward == 1);
+			if (!rule.by_hand || !(rule.left || rule.straight || rule.right)) continue;
 			const LaneFrame f{ lane.u, forward == 1 ? v1 - F.arrow_station : v0 + F.arrow_station, forward == 1 };
 			const float lateral = std::min(F.arrow_lateral, lane.w * F.arrow_lateral_share);
 			auto draw = [&](const StreetLook::Strokes &strokes, float side) {
@@ -117,10 +133,11 @@ void lane_arrows(const RoadPainter &pt, const Profile &p, double v0, double v1) 
 				}
 			};
 			draw(F.arrow_stem, 1);
-			if (lane.turns & TURN_STRAIGHT) draw(F.arrow_through, 1);
-			if (lane.turns & TURN_LEFT) draw(F.arrow_left, 1);
-			if (lane.turns & TURN_RIGHT) draw(F.arrow_left, -1);
+			if (rule.straight) draw(F.arrow_through, 1);
+			if (rule.left) draw(F.arrow_left, 1);
+			if (rule.right) draw(F.arrow_left, -1);
 		}
+	}
 }
 
 } // namespace
