@@ -29,7 +29,6 @@ const FAR_TOO_MANY := 100000
 const FACE := 0
 const RELIEF_M := 0.5
 const FACE_BAYS := 7
-const FEW_BLOCKS := 2
 const BAY_WIDTH_M := 3.0
 const ROOF_PITCH := 30.0
 const PAINT_RGB := "#a04030"
@@ -80,8 +79,11 @@ func _every_body_stands() -> void:
 func _a_tall_building() -> int:
 	for id: int in CityStore.query(&"list_buildings"):
 		var volumes: Array = BuildingProbe.info(id).volumes
-		# with room for a block more, and whose face is not already what the test asks of it: an edit here must change the body
-		if not volumes.is_empty() and volumes[0].base == 0 and volumes[0].storeys >= MIN_FLOORS and volumes.size() <= FEW_BLOCKS and volumes[0].bays[FACE] != FACE_BAYS:
+		# one block on the ground, which every case edits as the building's (its roof the one a ray down meets, its walls the ones a wing
+		# or a copy bears on), whose face is not already what the test asks of it (an edit here must change the body), with no relief on
+		# it (a block with one keeps its plan, a case of its own: building_plan_cases.gd)
+		if volumes.size() == 1 and volumes[0].base == 0 and volumes[0].storeys >= MIN_FLOORS and volumes[0].bays[FACE] != FACE_BAYS \
+				and volumes[0].reliefs == 0:
 			return id
 	check(false, "found a tall building")
 	return -1

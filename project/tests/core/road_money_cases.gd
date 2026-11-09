@@ -12,7 +12,7 @@ const FIELD_ROAD_M := 500.0
 const WALK_M := 8.0
 const WALK_STEPS := 200
 const LOW_FUNDS := 1000.0
-const RING_RADIUS := 22.0
+const RING_RADIUS := 40.0 # the tool's default (data/ui/drawers.json ring; the lab's commitRoundabout), inside tuning roundabout radius_min_m..radius_max_m
 const RING_OUT_M := 300.0
 const LEN_M := 100.0
 const GROUND := 0
@@ -158,13 +158,13 @@ func _refusals(b: Dictionary) -> void:
 	var edits := {
 		"road": CityStore.dispatch(&"build_road", [a, e, false, Vector3.ZERO, PROFILE, PX]),
 		"upgrade": CityStore.dispatch(&"upgrade_road", [p, CityStore.profile_index("avenueWithCycleTrack"), false]),
-		"roundabout": CityStore.dispatch(&"roundabout", [ring, RING_RADIUS, false]),
+		"roundabout": CityStore.dispatch(&"roundabout", [ring, RING_RADIUS]),
 	}
 	for what in edits:
 		t.check(not edits[what].ok and edits[what].error == "hint.rule.funds", "%s recusada: %s" % [what, edits[what].error])
 	t.check(_money() == LOW_FUNDS and CityStore.snapshot.segments == s0, "nothing changed: %s %d" % [_money(), CityStore.snapshot.segments])
 	_set_money(float(DataTables.tuning("economy_start_money")))
-	var built: Dictionary = CityStore.dispatch(&"roundabout", [ring, RING_RADIUS, false])
+	var built: Dictionary = CityStore.dispatch(&"roundabout", [ring, RING_RADIUS])
 	t.check(built.ok and built.money > 0 and _money() == float(DataTables.tuning("economy_start_money")) - built.money, "the roundabout charged %s" % built.money)
 	CityStore.dispatch(&"undo")
 

@@ -1489,6 +1489,7 @@ hint.tool.fog,Segure e arraste para deitar neblina.,Hold and drag to lay fog.
 hint.tool.cloud,Clique no céu para pôr ou pegar uma nuvem.,Click the sky to place or pick a cloud.
 hint.tileFull,Esta parte do mapa já tem o máximo que cabe,This part of the map holds as many as it can
 hint.cloud.full,O céu já tem o máximo de nuvens ({n}),The sky already holds the most clouds ({n})
+hint.tree.noRoom,Não cabe mais nenhuma árvore aqui,No room for another tree here
 gully.cut,Cavar,Cut
 gully.erase,Apagar,Erase
 gully.strength,Força,Strength

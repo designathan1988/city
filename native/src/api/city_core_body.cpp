@@ -53,6 +53,7 @@ Dictionary CityBuilder::body_info(int id) const {
 		for (int side = 0; side < v.sides(); side++) bays.push_back(b40::bays_of(v, side));
 		e["bays"] = bays;
 		e["gear"] = int(v.gear.size());
+		e["reliefs"] = int(v.reliefs.size()); // the places on its walls stood out or set in (a block with any keeps its plan: op_set_plan)
 		e["mode"] = int(v.mode);
 		e["lift"] = v.lift;
 		int flags = 0;

@@ -16,7 +16,7 @@ const BRUSH_RADIUS := 60.0
 const BRUSH_STRENGTH := 0.4
 const BRUSH_DT := 0.5
 const BRUSH_DABS := 12
-const RING_RADIUS := 22.0
+const RING_RADIUS := 40.0 # the tool's default (data/ui/drawers.json ring; the lab's commitRoundabout), inside tuning roundabout radius_min_m..radius_max_m
 const RING_OUT_M := 700.0
 const LOT_M := 30.0
 const GROW_TICKS := 600
@@ -63,7 +63,7 @@ func _undo_cases(a: Vector3, e: Vector3) -> void:
 	_round("split", func() -> Dictionary: return CityStore.dispatch(&"split_road", [mid]))
 	_round("demolish", func() -> Dictionary: return CityStore.dispatch(&"demolish", [mid]))
 	var ring := e + Vector3(RING_OUT_M, 0, 0)
-	_round("roundabout", func() -> Dictionary: return CityStore.dispatch(&"roundabout", [ring, RING_RADIUS, false]))
+	_round("roundabout", func() -> Dictionary: return CityStore.dispatch(&"roundabout", [ring, RING_RADIUS]))
 	var lot := mid + Vector3(0, 0, LOT_M)
 	_round("drawn building", func() -> Dictionary:
 		return CityStore.dispatch(&"draw_building", [lot, lot + Vector3(LOT_M, 0, LOT_M), CityStore.code(&"BuildingFn", &"FN_PARK"), ZoneTable.code("residential"), 0]))

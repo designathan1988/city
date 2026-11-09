@@ -16,8 +16,8 @@ const UTURN_OFF_M := 80.0
 const RING_OFF_M := 1500.0
 const RING_ROAD_M := 300.0
 const RING_RADIUS_M := 40.0
-const RING_STUB_M := 4.0 # from the ring to the junction: nothing of a road
-const RING_CLEAR_M := 80.0
+const RING_STUB_M := 4.0 # from the ring to the junction: its approaches over the road
+const RING_CLEAR_M := 80.0 # past the ring's radius on both axes: its approaches (tuning roundabout approach_m) and casings clear of both roads
 const QUARTER := 0.3 # clear of the cut in the middle of a road this long
 
 const STUB_OFF_M := 900.0
@@ -191,19 +191,22 @@ func stubs(e: Vector3) -> void:
 	t.check(CityStore.snapshot.segments == laid + 1, "the stub is a road again: %d against %d" % [CityStore.snapshot.segments, laid + 1])
 
 
-## A ring laid over a road cuts it: what is left up to the next junction must still be a road, or the ring is refused like any tight stretch.
+## A ring is laid on vacant ground only (the lab's editor/roundabout.ts roundaboutRefusal): one whose ring or approaches would
+## meet a road is refused and leaves the roads as they were; one clear of them is built, and undone to the same city.
 func ring_stub(e: Vector3) -> void:
 	var a := e + Vector3(0, 0, RING_OFF_M)
 	var cross := a + Vector3(RING_ROAD_M, 0, 0)
 	var laid: bool = CityStore.dispatch(&"build_road", [a, a + Vector3(RING_ROAD_M * 2, 0, 0), false, Vector3.ZERO, CityStore.code(&"PoleKind", &"URBAN"), PX]).get("ok", false)
 	laid = laid and CityStore.dispatch(&"build_road", [cross - Vector3(0, 0, ROAD_M), cross + Vector3(0, 0, ROAD_M), false, Vector3.ZERO, CityStore.code(&"PoleKind", &"URBAN"), PX]).get("ok", false)
-	t.check(laid, "the roads a ring will cut")
+	t.check(laid, "the roads round the rings")
 	CityStore.refresh()
 	var before: int = CityStore.snapshot.segments
-	var r: Dictionary = CityStore.dispatch(&"roundabout", [cross - Vector3(RING_RADIUS_M + RING_STUB_M, 0, 0), RING_RADIUS_M, true])
-	t.check(r.get("error", "") == "hint.rule.squeezed", "a ring leaving a stub at a junction is refused: %s" % r)
+	var hash_before: Dictionary = CityStore.query(&"state_hash")
+	var r: Dictionary = CityStore.dispatch(&"roundabout", [cross - Vector3(RING_RADIUS_M + RING_STUB_M, 0, 0), RING_RADIUS_M])
+	t.check(r.get("error", "") == "road.ring.occupied", "a ring over the roads is refused: %s" % r)
 	CityStore.refresh()
 	t.check(CityStore.snapshot.segments == before, "the refused ring leaves the roads as they were")
-	r = CityStore.dispatch(&"roundabout", [cross - Vector3(RING_RADIUS_M + RING_CLEAR_M, 0, 0), RING_RADIUS_M, true])
-	t.check(r.get("ok", false), "a ring with room to its next junction is built: %s" % r)
+	r = CityStore.dispatch(&"roundabout", [cross + Vector3(RING_RADIUS_M + RING_CLEAR_M, 0, RING_RADIUS_M + RING_CLEAR_M), RING_RADIUS_M])
+	t.check(r.get("ok", false), "a ring on vacant ground is built: %s" % r)
 	CityStore.dispatch(&"undo")
+	t.check(CityStore.query(&"state_hash").whole == hash_before.whole, "undoing the ring returns to the same city")
