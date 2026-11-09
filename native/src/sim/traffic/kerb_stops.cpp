@@ -86,7 +86,7 @@ KerbDoors kerb_door_at(const CityState &s, const Vehicle &v, float back_m) {
 	lane_pose(s, v.ds, v.lane, at, lane);
 	sidewalk_pose(s, d.seg, d.sign > 0 ? RIGHT_SIDE : 1, kerb_arc_of(d, at), 0, foot);
 	const V2 right(-lane.fz, lane.fx); // the world's z runs down the map: the side the kerb is on, -X of the vehicle
-	return { V2(lane.x, lane.z) + right * (c.half_width + p.kerb_door_out_m), V2(foot.x, foot.z), V2(lane.x, lane.z) + right * (c.half_width - p.kerb_door_in_m) };
+	return { V2(lane.x, lane.z) + right * (c.half_width + p.kerb_door_out_m), V2(foot.x, foot.z), V2(lane.x, lane.z) + right * (c.half_width - p.kerb_door_in_m), lane.y };
 }
 
 namespace {

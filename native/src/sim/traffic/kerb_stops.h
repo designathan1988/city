@@ -18,6 +18,7 @@ void kerb_forget(CityState &s, int id); // it left the scene
 // What a stop does with a person, shared with the bus's calls (bus_calls.cpp).
 struct KerbDoors {
 	V2 door, foot, in; // at the vehicle's side, on the footway across from it, and just inside the doorway
+	float floor = 0; // the road's height under the door
 };
 KerbDoors kerb_door_at(const CityState &s, const Vehicle &v, float back_m); // this far behind its front
 float kerb_arc_of(const DirSeg &d, float at); // the arc along its street of metre `at` of a directed segment

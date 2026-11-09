@@ -27,6 +27,7 @@ const RUN_LONG_M := 120.0
 const RUN_BEND_M := 40.0
 const RUN_VIEW := [40.0, 35.0, 30.0] # back along the run, out to its side, up
 const RUN_CLOSE := [12.0, 9.0, 4.0]
+const OPEN_OUT_M := 90.0 # out of the town's box, on each side: the highest of the four is land, not the sea
 
 var world: CityWorld
 var camera: Camera3D
@@ -130,5 +131,25 @@ func _track_preview() -> void:
 		CityStore.query(&"transit_preview", [run, CityStore.code(&"TransitMode", mode)])
 		await _shot("preview_%s" % label, b + Vector3(-RUN_VIEW[0], RUN_VIEW[2], RUN_VIEW[1]), b)
 		await _shot("preview_%s_close" % label, b + Vector3(-RUN_CLOSE[0], RUN_CLOSE[2], RUN_CLOSE[1]), b)
+	await _open_ground_preview(train)
 	CityStore.query(&"transit_preview", [PackedVector3Array(), train])
 	CityStore.query(&"transit_xray", [false])
+
+
+## The train's run laid out over open ground beside the town (the highest of its four sides): ballast and sleepers see-through.
+func _open_ground_preview(train: int) -> void:
+	var box: Dictionary = CityStore.query(&"city_bounds")
+	var mid: Vector3 = (box.min + box.max) * 0.5
+	var sides := [Vector3(box.min.x - OPEN_OUT_M, 0, mid.z), Vector3(box.max.x + OPEN_OUT_M, 0, mid.z),
+		Vector3(mid.x, 0, box.min.z - OPEN_OUT_M), Vector3(mid.x, 0, box.max.z + OPEN_OUT_M)]
+	var best: Vector3 = sides[0]
+	for p: Vector3 in sides:
+		if float(CityStore.query(&"height_at", [p.x, p.z])) > float(CityStore.query(&"height_at", [best.x, best.z])):
+			best = p
+	var a: Vector3 = CityStore.query(&"transit_snap", [best - Vector3(RUN_LONG_M * 0.5, 0, 0), train])
+	var b: Vector3 = CityStore.query(&"transit_snap", [best + Vector3(RUN_LONG_M * 0.5, 0, 0), train])
+	var c: Vector3 = CityStore.query(&"transit_snap", [b + Vector3(RUN_BEND_M, 0, RUN_BEND_M), train])
+	print("open ground at ", best, " height ", a.y)
+	CityStore.query(&"transit_preview", [PackedVector3Array([a, b, c]), train])
+	await _shot("preview_train_open", b + Vector3(-RUN_VIEW[0], RUN_VIEW[2], RUN_VIEW[1]), b)
+	await _shot("preview_train_open_close", b + Vector3(-RUN_CLOSE[0], RUN_CLOSE[2], RUN_CLOSE[1]), b)

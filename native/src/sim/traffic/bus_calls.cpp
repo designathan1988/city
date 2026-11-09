@@ -38,6 +38,8 @@ void begin(CityState &s, int id, BusCall &c) {
 		b.from = V2(w.cur.x, w.cur.z);
 		b.to = front.door;
 		b.in = front.in;
+		b.y = w.cur.y;
+		b.step_y = front.floor + p.kerb_step_up_m;
 		b.takes = (b.from - b.to).len() / p.kerb_pace_ms;
 		b.walked = 0;
 	}
@@ -118,6 +120,7 @@ bool bus_call(CityState &s, int id, BusCall &c, float dt) {
 		}
 		const float share = std::min(1.f, step / std::max(p.bus_step_aboard_s, dt));
 		kerb_place(s, b.ped, b.to + (b.in - b.to) * share, b.in - b.to);
+		t.peds[size_t(b.ped)].cur.y = b.y + (b.step_y - b.y) * share; // up the step (the lab's placeKerbPerson)
 		if (share < 1) {
 			walking = true;
 			continue;

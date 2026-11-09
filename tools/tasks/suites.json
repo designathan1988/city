@@ -319,6 +319,7 @@
     {"name": "strike_test", "scene": "tests/core/strike_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "shoot_test", "scene": "tests/core/shoot_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "transit_test", "scene": "tests/core/transit_test", "renderer": "gl_compatibility", "timeout_s": 600},
+    {"name": "bus_riders_test", "scene": "tests/core/bus_riders_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "yard_test", "scene": "tests/core/yard_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {
      "name": "building_edit_test",
@@ -380,9 +381,10 @@
     {"name": "sao_paulo", "plan": "res://tests/visual/sao_paulo_plan.json", "resolution": "1600x900", "timeout_s": 900}]
   },
   "capture_scenes": {
-   "doc": "the reference views (capture.tscn: street from above, neighbourhood, whole town)",
+   "doc": "the reference views (capture.tscn: street from above, neighbourhood, whole town) and a bus through its dwell with the rail preview (bus_stop_look.tscn)",
    "template": "capture_scene",
-   "items": [{"name": "city", "scene": "tests/visual/capture", "resolution": "1600x900", "timeout_s": 1800}]
+   "items": [{"name": "city", "scene": "tests/visual/capture", "resolution": "1600x900", "timeout_s": 1800},
+    {"name": "bus_stop", "scene": "tests/visual/bus_stop_look", "resolution": "1600x900", "timeout_s": 1800}]
   }
  },
  "suites": {
