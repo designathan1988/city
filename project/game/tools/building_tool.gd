@@ -89,7 +89,7 @@ func key(code: Key) -> void:
 	if not done.is_empty(): # a key of the Builder on the pick (PickKeys): what it did is told, the pick follows it
 		picked = done.picked
 		_report(done.result)
-		_show()
+		show_pick()
 	if hand.is_empty() or code != KEY_R:
 		return
 	turn += deg_to_rad(DataTables.tuning("build_gear_turn_deg")) if Input.is_key_pressed(KEY_SHIFT) else plain_turn
@@ -109,7 +109,7 @@ func _set_down(p: Vector3) -> void:
 		return
 	_put_down()
 	picked = PickKeys.new_pick(r.placed)
-	_show()
+	show_pick()
 	ctl.hint.emit(tr("building.placed"), true)
 
 
@@ -127,7 +127,7 @@ func click(p: Vector3) -> void:
 	if not part.is_empty() and part.do == "part" and picked.is_empty() and not had.is_empty():
 		picked = had
 		_report(CityStore.dispatch(&"body_add_part_at", [had.id, p, part]))
-		_show()
+		show_pick()
 
 
 func drag(p: Vector3) -> void:
@@ -138,12 +138,12 @@ func drag(p: Vector3) -> void:
 func release(p: Vector3) -> void:
 	if hands.mass.dragging():
 		_report(hands.mass.finish(p))
-		_show()
+		show_pick()
 	elif handles.dragging():
 		_report(handles.finish())
 		if handles.building() != picked.id:
 			picked = PickKeys.new_pick(handles.building())
-		_show()
+		show_pick()
 
 
 ## What the ray hits becomes the pick; with a component in hand and a wall hit, the component goes there.
@@ -160,7 +160,7 @@ func pick(origin: Vector3, dir: Vector3) -> void:
 		_report(CityStore.dispatch(&"body_set_bay", [hit.id, hit.volume, hit.storey, hit.side, hit.bay, armed, scope]))
 	elif not part.is_empty() and part.do == "part":
 		_report(CityStore.dispatch(&"body_add_part", [hit.id, hit.volume, hit.storey, hit.side, hit.bay, part]))
-	_show()
+	show_pick()
 
 
 ## The roof clicked, with a card in hand: the thing lands at the point, or the mast there gets the flag or the colour.
@@ -190,7 +190,7 @@ func cancel() -> void:
 		part = {}
 	else:
 		picked = {}
-	_show()
+	show_pick()
 
 
 ## A tool of the strip (data/ui/builder.json): `spec.do` names what it does, `spec.value` its choice.
@@ -233,7 +233,7 @@ func act(spec: Dictionary) -> void:
 			if r.get("ok", false) and (spec.do == "remove" or spec.do == "duplicate"): # the block gone, or the copy picked
 				picked = {} if spec.do == "remove" else PickKeys.new_pick(r.placed)
 			_report(r)
-	_show()
+	show_pick()
 
 
 func _report(r: Dictionary) -> void:
@@ -241,7 +241,7 @@ func _report(r: Dictionary) -> void:
 		ctl.hint.emit(refusal(r), false)
 
 
-func _show() -> void:
+func show_pick() -> void: # the box and handles again: after an edit of the tool's or of the Selection panel's (BuilderInspector)
 	handles.refresh(picked)
 	if picked.is_empty():
 		_box.clear()

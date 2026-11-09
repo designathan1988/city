@@ -20,6 +20,7 @@ const GEAR_HEIGHT_M := 9.5
 const FREE_OUT_M := 30.0
 const SLACK_M := 0.01 # a length read back within a centimetre of the one typed
 const ABOVE_M := 60.0 # the eye of a pick straight down, over any roof of the test town
+const PART_EYE_M := 3.0 # the eye of a pick straight down onto a part on the ground, over the part and under any neighbour's roof
 
 
 func _ready() -> void:
@@ -40,7 +41,7 @@ func _ready() -> void:
 	_upper_block(id, made, axes)
 	_part(id, made)
 	_gear(id, made)
-	_duplicate(id)
+	_duplicate()
 	finish()
 
 
@@ -58,14 +59,19 @@ func _fields(id: int, vol := 0, part := -1, gear := -1) -> Dictionary:
 
 ## One typed edit: it lands as asked, undo gives the body and the city's hash back, redo the same body and hash.
 func _typed(id: int, made: int, what: String, command: StringName, args: Array, did: Callable, vol := 0, part := -1, gear := -1) -> void:
-	var hash_before: int = CityStore.query(&"state_hash")
+	var hash_before := _hash()
 	var r: Dictionary = CityStore.dispatch(command, args)
 	var after := BuildingProbe.info(id)
-	var hash_after: int = CityStore.query(&"state_hash")
+	var hash_after := _hash()
 	check(r.get("ok", false) and did.call(_fields(id, vol, part, gear)) and after.digest != made, "%s typed: %s" % [what, r])
-	check(CityStore.dispatch(&"undo") and CityStore.query(&"state_hash") == hash_before, "%s undone to the same city" % what)
-	check(CityStore.dispatch(&"redo") and BuildingProbe.info(id).digest == after.digest and CityStore.query(&"state_hash") == hash_after, "%s redone to the same body" % what)
+	check(CityStore.dispatch(&"undo") and _hash() == hash_before, "%s undone to the same city" % what)
+	check(CityStore.dispatch(&"redo") and BuildingProbe.info(id).digest == after.digest and _hash() == hash_after, "%s redone to the same body" % what)
 	CityStore.dispatch(&"undo")
+
+
+## The city as the save writes it (probes/state_hash): two equal are the same city.
+func _hash() -> String:
+	return CityStore.query(&"state_hash").whole
 
 
 ## A setback on the roof: its middle typed from the block under it, and the level it starts on carried down with it.
@@ -91,7 +97,7 @@ func _part(id: int, made: int) -> void:
 		return
 	var part := int(BuildingProbe.info(id).parts) - 1
 	var placed: int = BuildingProbe.info(id).digest
-	var hit: Dictionary = CityStore.query(&"body_pick", [at + Vector3.UP * ABOVE_M, Vector3.DOWN])
+	var hit: Dictionary = CityStore.query(&"body_pick", [at + Vector3.UP * PART_EYE_M, Vector3.DOWN]) # under any roof it may stand under
 	check(hit.get("id", -1) == id and hit.get("part", -1) == part, "a ray straight down picks the part: %s" % hit)
 	var parts: Dictionary = CityStore.constants.enums.PartAxis
 	_typed(id, placed, "part height", &"body_size_part", [id, part, parts.PART_HEIGHT, PART_HEIGHT_M], func(f: Dictionary) -> bool:
@@ -114,11 +120,31 @@ func _gear(id: int, made: int) -> void:
 	BuildingProbe.back_to(made, id, check, "the spire")
 
 
-## A copy beside the building: a new record with the same body, its lot apart from the source's; undo takes it away.
-func _duplicate(id: int) -> void:
+## A copy beside a building with room beside it (a building hemmed in is refused and the city stays as it was): a new record with
+## the same body, its lot apart from the source's; undo takes it away.
+func _duplicate() -> void:
 	var count: int = CityStore.query(&"list_buildings").size()
-	var r: Dictionary = CityStore.dispatch(&"building_duplicate", [id])
-	if not check(r.get("ok", false) and r.get("placed", -1) >= 0, "the building copied beside itself: %s" % r):
+	var r := {}
+	var id := -1
+	var refused := 0
+	var lot_tried := false
+	for each: int in CityStore.query(&"list_buildings"):
+		if BuildingProbe.info(each).volumes.is_empty(): # an empty lot is no building to copy: the first one is tried
+			if not lot_tried:
+				lot_tried = true
+				var lot := _hash()
+				var none: Dictionary = CityStore.dispatch(&"building_duplicate", [each])
+				check(none.get("error", "") == "building.problem.noMass" and _hash() == lot, "an empty lot is not copied: %s" % none)
+			continue
+		var before := _hash()
+		r = CityStore.dispatch(&"building_duplicate", [each])
+		if r.get("ok", false):
+			id = each
+			break
+		refused += 1
+		if refused == 1:
+			check(_hash() == before and r.get("error", "") != "", "a building with no room beside it is refused, the city as it was: %s" % r)
+	if not check(id >= 0 and r.get("placed", -1) >= 0, "a building copied beside itself: %s" % r):
 		return
 	var copy: int = r.placed
 	check(copy != id and CityStore.query(&"list_buildings").size() == count + 1, "the copy is a building of its own")

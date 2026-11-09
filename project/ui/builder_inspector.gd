@@ -14,6 +14,7 @@ const PITCHED_FROM := &"ROOF_GABLE" # Roof codes from this one on slope
 var _picked := {}
 var _fields := {}
 var _stale := true
+var _grid: GridContainer # the fields of the pick, a cell each (a name over its control), as many to a row as builder.json says
 
 
 static func fill(col: Container, controller: ToolController) -> void:
@@ -36,9 +37,12 @@ func _process(_delta: float) -> void:
 	var fields: Dictionary = {} if picked.is_empty() else CityStore.query(&"body_fields", [picked.id, picked.volume, picked.side, picked.get("bay", -1), picked.storey, picked.get("part", -1), picked.get("gear", -1)])
 	if picked == _picked and fields == _fields:
 		return
+	var body_changed := picked == _picked and tool != null
 	_picked = picked.duplicate()
 	_fields = fields
 	_build()
+	if body_changed: # the same pick, other numbers: the body changed under it (an edit, an undo), so the tool draws its box again
+		tool.show_pick()
 
 
 func _build() -> void:
@@ -47,6 +51,9 @@ func _build() -> void:
 		HudWidgets.label(self, &"MutedLabel", tr("hint.builder.select"))
 		return
 	HudWidgets.label(self, &"FieldLabel", _name())
+	_grid = GridContainer.new()
+	_grid.columns = int(DataTables.ui("builder").selection_columns)
+	add_child(_grid)
 	for spec: Dictionary in DataTables.ui("builder").fields:
 		var shown: Variant = _value(spec)
 		if shown != null:
@@ -100,8 +107,15 @@ func _bound(v: Variant) -> float:
 	return float(v)
 
 
+## A cell of the grid: the field's name over its control, which is added to what this returns.
+func _cell(title: String) -> VBoxContainer:
+	var cell := HudWidgets.vbox(_grid)
+	HudWidgets.label(cell, &"MutedLabel", title)
+	return cell
+
+
 func _row(spec: Dictionary, value: float) -> void:
-	var row := HudWidgets.option_row(self, tr(spec.label_key))
+	var row := _cell(tr(spec.label_key))
 	var share: bool = spec.unit == "share"
 	var k := Units.PERCENT if share else 1.0
 	var box := SpinBox.new()
@@ -158,7 +172,7 @@ func _send(spec: Dictionary, v: float) -> void:
 func _roof_rows(block: Dictionary) -> void:
 	var choices: Dictionary = DataTables.ui("builder").roof_choices
 	var step: float = choices.pitch_step_deg
-	var pitch := HudWidgets.option_row(self, tr("builder.section.roofShape"))
+	var pitch := HudWidgets.hbox(_cell(tr("builder.section.roofShape")))
 	for sign: float in [-1.0, 1.0]:
 		var b := HudWidgets.button(&"Card", "b_storeyDown" if sign < 0 else "b_storey", "", "builder.field.pitch", "icon_btn", "tab_h")
 		b.pressed.connect(func() -> void: _shape(float(block.pitch) + sign * step, block.ridge, block.fall))
@@ -170,7 +184,7 @@ func _roof_rows(block: Dictionary) -> void:
 
 
 func _choice_row(title: String, options: Array, current: int, pick: Callable) -> void:
-	var row := HudWidgets.choices(HudWidgets.option_row(self, title), current, pick)
+	var row := HudWidgets.choices(_cell(title), current, pick)
 	for o: Dictionary in options:
 		HudWidgets.choice(row, int(o.value), tr(o.label_key))
 

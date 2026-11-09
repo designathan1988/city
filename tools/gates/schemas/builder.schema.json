@@ -233,13 +233,18 @@
     "fall"
    ],
    "additionalProperties": false
+  },
+  "selection_columns": {
+   "type": "integer",
+   "minimum": 1
   }
  },
  "required": [
   "tabs",
   "choices",
   "fields",
-  "roof_choices"
+  "roof_choices",
+  "selection_columns"
  ],
  "additionalProperties": false
 }

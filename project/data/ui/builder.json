@@ -78,6 +78,7 @@
   },
   "mass": {
    "sections": [
+    {"title_key": "builder.sel.title", "shelf": "selection"},
     {
      "title_key": "builder.section.reference",
      "tools": [
@@ -160,12 +161,12 @@
       {"id": "tierCross", "do": "plan", "value": 7},
       {"id": "tierStepped", "do": "plan", "value": 8}
      ]
-    },
-    {"title_key": "builder.sel.title", "shelf": "selection"}
+    }
    ]
   },
   "facade": {
    "sections": [
+    {"title_key": "builder.sel.title", "shelf": "selection"},
     {
      "title_key": "builder.section.scope",
      "tools": [
@@ -227,12 +228,12 @@
       {"id": "outset", "do": "relief", "value": 50},
       {"id": "flush", "do": "relief", "value": 0}
      ]
-    },
-    {"title_key": "builder.sel.title", "shelf": "selection"}
+    }
    ]
   },
   "roof": {
    "sections": [
+    {"title_key": "builder.sel.title", "shelf": "selection"},
     {
      "title_key": "builder.category.roof",
      "tools": [
@@ -304,8 +305,7 @@
       {"id": "flagColour14", "do": "flag_colour", "value": 14, "icon": "paint", "label_key": "builder.flagColour.14", "rgb": "#9aa0a6"},
       {"id": "flagColour15", "do": "flag_colour", "value": 15, "icon": "paint", "label_key": "builder.flagColour.15", "rgb": "#f28ab2"}
      ]
-    },
-    {"title_key": "builder.sel.title", "shelf": "selection"}
+    }
    ]
   },
   "paint": {
@@ -348,6 +348,7 @@
   },
   "parts": {
    "sections": [
+    {"title_key": "builder.sel.title", "shelf": "selection"},
     {
      "title_key": "builder.section.structure",
      "tools": [
@@ -389,12 +390,12 @@
       {"id": "awning", "do": "part", "value": 4, "fit_kind": 2, "size": [3, 1.2, 0.12], "rise_m": 2.4, "drop_m": 0.5},
       {"id": "clock", "do": "part", "value": 36, "fit_kind": 5, "size": [3, 0.25, 3]}
      ]
-    },
-    {"title_key": "builder.sel.title", "shelf": "selection"}
+    }
    ]
   }
  },
- "fields_doc": "The Selection panel's numbers (ui/builder_inspector.gd): of what (the building, the block, its offset from the block under it, a pitched roof, the bay picked, its face, a free part, a thing on a roof), the key body_fields answers it by, its range (a number, or a tuning name, '-' before it for its negative) and its step; unit: m, count, deg or share (of a bay).",
+ "fields_doc": "The Selection panel's numbers (ui/builder_inspector.gd), selection_columns of them to a row: of what (the building, the block, its offset from the block under it, a pitched roof, the bay picked, its face, a free part, a thing on a roof), the key body_fields answers it by, its range (a number, or a tuning name, '-' before it for its negative) and its step; unit: m, count, deg or share (of a bay).",
+ "selection_columns": 6,
  "fields": [
   {"id": "storeys", "of": "block", "key": "storeys", "label_key": "builder.field.storeys", "lo": 1, "hi": "edit_max_floors", "step": 1, "unit": "count"},
   {"id": "storeyHeight", "of": "building", "key": "storey_h", "label_key": "builder.field.storeyHeight", "lo": "build_min_storey_m", "hi": "build_max_storey_m", "step": 0.05, "unit": "m"},

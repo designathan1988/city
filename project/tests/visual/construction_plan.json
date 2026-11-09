@@ -1,0 +1,460 @@
+{
+ "_doc": "The construction feature's photographs (tools/tasks look 'construction'): building 27 of map 0 seed 1 through each Build tab, the Selection panel's typed edits, day and night.",
+ "city": {
+  "map": 0,
+  "seed": 1,
+  "generate": true
+ },
+ "steps": [
+  {
+   "hour": 16
+  },
+  {
+   "setView": [
+    -596.3,
+    -7.3,
+    20,
+    30,
+    40
+   ]
+  },
+  {
+   "frames": 20
+  },
+  {
+   "shot": "00-before"
+  },
+  {
+   "control": "Construir"
+  },
+  {
+   "frames": 10
+  },
+  {
+   "control": "Massa"
+  },
+  {
+   "frames": 10
+  },
+  {
+   "click": [
+    -596.3,
+    7.3
+   ]
+  },
+  {
+   "frames": 15
+  },
+  {
+   "shot": "01-mass-picked-selection-panel"
+  },
+  {
+   "dispatch": "body_storeys",
+   "args": [
+    27,
+    0,
+    4
+   ]
+  },
+  {
+   "dispatch": "body_block_size",
+   "args": [
+    27,
+    0,
+    0,
+    12.0
+   ]
+  },
+  {
+   "dispatch": "body_block_size",
+   "args": [
+    27,
+    0,
+    1,
+    9.0
+   ]
+  },
+  {
+   "frames": 20
+  },
+  {
+   "shot": "02-mass-typed-storeys-width-depth"
+  },
+  {
+   "dispatch": "body_add_setback",
+   "args": [
+    27,
+    0,
+    -1.0,
+    2
+   ]
+  },
+  {
+   "dispatch": "body_block_offset",
+   "args": [
+    27,
+    1,
+    0,
+    1.5
+   ]
+  },
+  {
+   "setView": [
+    -596.3,
+    -7.3,
+    20,
+    30,
+    55
+   ]
+  },
+  {
+   "frames": 10
+  },
+  {
+   "click": [
+    -596.3,
+    7.3
+   ]
+  },
+  {
+   "frames": 20
+  },
+  {
+   "shot": "03-mass-setback-offset-picked"
+  },
+  {
+   "setView": [
+    -596.3,
+    -7.3,
+    20,
+    120,
+    45
+   ]
+  },
+  {
+   "frames": 10
+  },
+  {
+   "shot": "04-mass-setback-other-angle"
+  },
+  {
+   "control": "Telhado"
+  },
+  {
+   "frames": 10
+  },
+  {
+   "dispatch": "body_set_roof",
+   "args": [
+    27,
+    1,
+    2
+   ]
+  },
+  {
+   "dispatch": "body_roof_shape",
+   "args": [
+    27,
+    1,
+    40.0,
+    1,
+    0
+   ]
+  },
+  {
+   "setView": [
+    -596.3,
+    -7.3,
+    20,
+    30,
+    55
+   ]
+  },
+  {
+   "frames": 10
+  },
+  {
+   "click": [
+    -596.3,
+    7.3
+   ]
+  },
+  {
+   "frames": 20
+  },
+  {
+   "shot": "05-roof-gable-40deg-ridge-y-panel"
+  },
+  {
+   "dispatch": "body_set_roof",
+   "args": [
+    27,
+    0,
+    4
+   ]
+  },
+  {
+   "dispatch": "body_roof_shape",
+   "args": [
+    27,
+    0,
+    25.0,
+    -1,
+    2
+   ]
+  },
+  {
+   "setView": [
+    -596.3,
+    -7.3,
+    20,
+    210,
+    45
+   ]
+  },
+  {
+   "frames": 20
+  },
+  {
+   "shot": "06-roof-shed-falls-back"
+  },
+  {
+   "dispatch": "body_set_roof",
+   "args": [
+    27,
+    0,
+    1
+   ]
+  },
+  {
+   "dispatch": "body_add_gear",
+   "args": [
+    27,
+    0,
+    {
+     "at": [
+      -598.8,
+      3.3
+     ]
+    },
+    {
+     "id": "spire",
+     "do": "gear",
+     "value": 5,
+     "size": [
+      1.5,
+      1.5,
+      11.7
+     ]
+    }
+   ]
+  },
+  {
+   "dispatch": "body_size_gear",
+   "args": [
+    27,
+    0,
+    0,
+    16.0
+   ]
+  },
+  {
+   "setView": [
+    -596.3,
+    -7.3,
+    14,
+    300,
+    35
+   ]
+  },
+  {
+   "frames": 20
+  },
+  {
+   "shot": "07-roof-spire-16m"
+  },
+  {
+   "control": "Pe\u00e7as"
+  },
+  {
+   "frames": 10
+  },
+  {
+   "dispatch": "body_add_part_at",
+   "args": [
+    27,
+    {
+     "at": [
+      -589.8,
+      7.3
+     ]
+    },
+    {
+     "id": "bench",
+     "do": "part",
+     "value": 12,
+     "fit_kind": 0,
+     "size": [
+      1.6,
+      0.5,
+      0.45
+     ],
+     "standoff_m": 1.4
+    }
+   ]
+  },
+  {
+   "dispatch": "body_size_part",
+   "args": [
+    27,
+    89,
+    0,
+    3.2
+   ]
+  },
+  {
+   "dispatch": "body_size_part",
+   "args": [
+    27,
+    89,
+    2,
+    0.9
+   ]
+  },
+  {
+   "setView": [
+    -591.3,
+    -7.3,
+    30,
+    60,
+    35
+   ]
+  },
+  {
+   "frames": 20
+  },
+  {
+   "shot": "08-parts-bench-typed-3.2m-wide"
+  },
+  {
+   "control": "Fachada"
+  },
+  {
+   "frames": 10
+  },
+  {
+   "setView": [
+    -596.3,
+    -7.3,
+    25,
+    0,
+    15
+   ]
+  },
+  {
+   "frames": 10
+  },
+  {
+   "click": [
+    -601.8,
+    7.3
+   ]
+  },
+  {
+   "frames": 20
+  },
+  {
+   "shot": "09-facade-face-picked-panel"
+  },
+  {
+   "control": "Massa"
+  },
+  {
+   "frames": 10
+  },
+  {
+   "dispatch": "building_duplicate",
+   "args": [
+    27
+   ]
+  },
+  {
+   "setView": [
+    -596.3,
+    -7.3,
+    14,
+    30,
+    35
+   ]
+  },
+  {
+   "frames": 30
+  },
+  {
+   "shot": "10-duplicate-wide"
+  },
+  {
+   "control": "Interior"
+  },
+  {
+   "frames": 10
+  },
+  {
+   "setView": [
+    -596.3,
+    -7.3,
+    30,
+    30,
+    40
+   ]
+  },
+  {
+   "frames": 10
+  },
+  {
+   "shot": "11-interior-tab"
+  },
+  {
+   "control": "Cores"
+  },
+  {
+   "frames": 10
+  },
+  {
+   "shot": "12-paint-tab"
+  },
+  {
+   "hour": 22
+  },
+  {
+   "setView": [
+    -596.3,
+    -7.3,
+    20,
+    30,
+    40
+   ]
+  },
+  {
+   "frames": 30
+  },
+  {
+   "shot": "13-night-front"
+  },
+  {
+   "setView": [
+    -596.3,
+    -7.3,
+    20,
+    200,
+    35
+   ]
+  },
+  {
+   "frames": 20
+  },
+  {
+   "shot": "14-night-back"
+  }
+ ]
+}

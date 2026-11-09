@@ -155,6 +155,10 @@ EditResult duplicate_building(CityState &s, int id) {
 	}
 	const Building rec = s.buildings.items[size_t(id)];
 	const std::shared_ptr<const Body> held = record_body(s.buildings.designs, rec);
+	if (held->volumes.empty()) { // an empty lot: no building to copy
+		r.error = "building.problem.noMass";
+		return r;
+	}
 	const LotFrame f = lot_frame(rec);
 	const float sn = std::sin(rec.rot), cs = std::cos(rec.rot);
 	const V2 front{ rec.x + rec.d / 2 * sn, rec.z + rec.d / 2 * cs };
