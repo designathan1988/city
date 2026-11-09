@@ -8,6 +8,7 @@
 
 #include "core/color.h"
 #include "core/random.h"
+#include "core/units.h"
 #include "render/roads/road_mesh.h"
 #include "sim/street/pole_arms.h"
 #include "sim/traffic/traffic_system.h"
@@ -126,7 +127,9 @@ bool row_end(const CityState &s, const StreetLook &L, int seg, int n, int side, 
 	if (!row.any || !row.line || row.stations == 0 || row.side != side) return false;
 	std::vector<FurnitureSpot> spots;
 	traffic::street_furniture_of(s, seg, furniture_bit(FurnitureKind::LAMP), spots);
-	const int station = s.roads.segs[size_t(seg)].a == n ? 0 : row.stations - 1;
+	const int end = s.roads.segs[size_t(seg)].a == n ? 0 : 1;
+	const int station = end == 0 ? (row.skip[0] ? 1 : 0) : row.stations - (row.skip[1] ? 2 : 1); // a joint's pole is the other's
+	if (station < 0 || station >= row.stations) return false;
 	for (const FurnitureSpot &p : spots) {
 		if (p.row != 0 || p.column || p.station != station) continue;
 		out.origin = world_of(s, L, p, &out.basis);
@@ -136,7 +139,9 @@ bool row_end(const CityState &s, const StreetLook &L, int seg, int n, int side, 
 }
 
 // A street going on through its node keeps its line: the last pole of `sid` strung to the first of the next (Roadcraft
-// powerLine.ts join), by the lower segment of the two. Both poles' arms reach over the same street, as the wires' seats want.
+// powerLine.ts join), by the lower segment of the two. At a bend (poles.corner_deflection_deg or more) the pole the two lines
+// share there (sim/roads lamp_row) takes a second cross-arm, square to the next line and over its street, and that line's wires
+// hang from it (Roadcraft utilities.ts poleArmsAt: at a corner each line its own arm); else both arms reach over the same street.
 void join_rows(const CityState &s, const StreetLook &L, const FurnitureLook &F, int sid, int row_side, StreetInstances &inst) {
 	const RoadSegment &g = s.roads.segs[size_t(sid)];
 	for (int n : { g.a, g.b }) {
@@ -147,7 +152,14 @@ void join_rows(const CityState &s, const StreetLook &L, const FurnitureLook &F, 
 		const bool same_way = (g.b == n) == (s.roads.segs[size_t(other)].a == n); // the sides keep their names through the node
 		PropPlace a, b;
 		if (!row_end(s, L, sid, n, row_side, a) || !row_end(s, L, other, n, same_way ? row_side : 1 - row_side, b)) continue;
-		push_span(inst, F.wire, a.origin, a.basis.get_column(2), b.origin, b.basis.get_column(2), float(sid) * PHASE_STEP, PoleKind::URBAN, PoleKind::URBAN);
+		const Vector3 arm_b = b.basis.get_column(2);
+		Vector3 arm_a = a.basis.get_column(2);
+		const float turn = std::acos(std::clamp(arm_a.dot(arm_b), -1.f, 1.f)); // the arms lie square to their streets
+		if (turn >= s.catalog.furniture.poles.corner_deflection_deg * DEG_TO_RAD) {
+			arm_a = arm_b;
+			push_part(inst.poles, PropKit::facing(arm_a), a.origin, int(PolePart::ARM));
+		}
+		push_span(inst, F.wire, a.origin, arm_a, b.origin, arm_b, float(sid) * PHASE_STEP, PoleKind::URBAN, PoleKind::URBAN);
 	}
 }
 

@@ -41,6 +41,7 @@ struct LampRow {
 	float centre = 0, across = 1; // the night pools' middle line and how far they reach from it, from the profile's width
 	double origin = 0, spacing = 1, span = 1; // span: lamps.span_m, the period the night pools repeat with
 	int stations = 0;
+	bool skip[2] = { false, false }; // no pole at the station at a (0) or b (1): a joint, where the lower-numbered segment's stands
 	// A point's place in the night pools: du across, in shares of `across` and signed so a quad interpolates it, dv the arc
 	// from the first station on a period of `span` (the stations' own spacing stretched to it).
 	void pool(float u, double at, float &du, float &dv) const {

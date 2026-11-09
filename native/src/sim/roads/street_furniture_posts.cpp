@@ -68,6 +68,62 @@ int row_face(const RoadNetwork &net, int sid) {
 	return flipped ? 1 - face : face;
 }
 
+namespace {
+// The face segment `seg`'s power line stands on, or -1 when it has none (lit by columns, no sidewalk, rails, a ring).
+int line_face(const RoadNetwork &net, int seg) {
+	const RoadSegment &g = net.segs[size_t(seg)];
+	const Profile &p = net.profile_of(seg);
+	if (p.edges.empty() || p.rail || p.ring || !g.alive || (g.flags & SEG_LIT_BY_COLUMNS)) return -1;
+	const bool right = walk_on(p, 0), left = walk_on(p, 1);
+	if (!right && !left) return -1;
+	return right && left ? row_face(net, seg) : (right ? 0 : 1);
+}
+
+// Whether the end of segment `sid` at node `n` is a joint its power line goes on through, straight on or round a bend, on the
+// same face of the street and with no crosswalk over it: one pole stands there for both segments (Roadcraft powerLine.ts: the
+// line coming in carries on from its last pole, not two poles a few metres apart), `other` the segment it goes on into and
+// `other_face` the face its line takes.
+bool line_joint(const RoadNetwork &net, int sid, int n, int face, int &other, int &other_face) {
+	other = going_on(net, n, sid);
+	if (other < 0 || net.nodes[size_t(n)].crossing != CROSSING_NONE) return false;
+	const bool same_way = (net.segs[size_t(sid)].b == n) == (net.segs[size_t(other)].a == n); // the faces keep their names
+	other_face = line_face(net, other);
+	return other_face == (same_way ? face : 1 - face);
+}
+
+// The arc on `sid` of the pole a joint at node `n` shares (line_joint): where its pole line (at offset `u`) and `other`'s (at
+// `other_u`) cross, each run on along its tangent at its mouth, so a bend's pole stands at the corner both lines turn at and its
+// wires keep to the footways (Roadcraft poles.ts: a corner of the route gets a pole); the mouth when the two run straight on
+// (poles.same_arm_sin, two lines through each other); never past the segment's ends.
+double joint_v(const RoadNetwork &net, int sid, int n, float u, int other, float other_u) {
+	// A segment's pole line at its mouth on node `n`: the point at offset u (+u on the left of a -> b) and the way into the node.
+	const auto mouth_line = [&](int seg, float off, double &v, double &px, double &pz, double &dx, double &dz) {
+		const RoadSegment &q = net.segs[size_t(seg)];
+		const bool at_b = q.b == n;
+		v = at_b ? q.len - q.retreat_b : q.retreat_a;
+		const double t = t_at_length(q.table, v);
+		q.q.at(t, px, pz);
+		q.q.deriv(t, dx, dz);
+		const double l = std::hypot(dx, dz) > 0 ? std::hypot(dx, dz) : 1;
+		dx /= l;
+		dz /= l;
+		px += dz * off; // the left of (dx, dz) is (dz, -dx), as in sim/roads/geometry.h
+		pz -= dx * off;
+		if (!at_b) {
+			dx = -dx;
+			dz = -dz;
+		}
+	};
+	double v, ov, ax, az, adx, adz, bx, bz, bdx, bdz;
+	mouth_line(sid, u, v, ax, az, adx, adz);
+	mouth_line(other, other_u, ov, bx, bz, bdx, bdz);
+	double along = 0, theirs = 0;
+	if (std::fabs(adx * bdz - adz * bdx) < defs(net).poles.same_arm_sin || !line_line(ax, az, adx, adz, bx, bz, bdx, bdz, along, theirs)) return v;
+	const RoadSegment &g = net.segs[size_t(sid)];
+	return std::clamp(g.b == n ? v + along : v - along, 0.0, g.len);
+}
+} // namespace
+
 LampRow lamp_row(const RoadNetwork &net, int sid) {
 	LampRow r;
 	const RoadSegment &g = net.segs[size_t(sid)];
@@ -94,10 +150,20 @@ LampRow lamp_row(const RoadNetwork &net, int sid) {
 		r.head_u2 = r.pole_u2 + toward_road(1 - r.side) * d.lamps.reach_m;
 		r.centre = (r.head_u + r.head_u2) * 0.5f;
 	}
-	// a pole just past each crosswalk, after the place a signal post may take, and evenly at most span_m apart between
+	// a pole just past each crosswalk, after the place a signal post may take, and evenly at most span_m apart between; at a
+	// joint the line goes on through, one pole where the two lines meet, the lower-numbered segment's
 	const double past = d.crossing.zebra_to_m + d.footprint[int(FurnitureKind::SIGNAL)].z_m + d.footprint[int(FurnitureKind::LAMP)].x_m * 0.5;
-	const double v0 = g.retreat_a, v1 = g.len - g.retreat_b, from = v0 + past, to = v1 - past;
+	const double v0 = g.retreat_a, v1 = g.len - g.retreat_b;
 	if (v1 <= v0) return r;
+	int other[2] = { -1, -1 }, other_face[2] = { -1, -1 };
+	bool joint[2] = { false, false };
+	double ends[2] = { v0 + past, v1 - past };
+	for (int end = 0; end < 2 && r.line; end++) {
+		const int n = end == 0 ? g.a : g.b;
+		joint[end] = line_joint(net, sid, n, r.side, other[end], other_face[end]);
+		if (joint[end]) ends[end] = joint_v(net, sid, n, r.pole_u, other[end], kerb_in(net.profile_of(other[end]), other_face[end], pole));
+	}
+	const double from = ends[0], to = ends[1];
 	r.spacing = r.span = d.lamps.span_m;
 	if (to <= from) { // a short block: one pole in its middle
 		r.origin = (v0 + v1) / 2;
@@ -108,6 +174,7 @@ LampRow lamp_row(const RoadNetwork &net, int sid) {
 	r.origin = from;
 	r.spacing = (to - from) / spans;
 	r.stations = spans + 1;
+	for (int end = 0; end < 2; end++) r.skip[end] = joint[end] && other[end] < sid;
 	return r;
 }
 

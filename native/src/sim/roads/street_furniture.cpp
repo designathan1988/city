@@ -107,6 +107,7 @@ void lamps(Placer &c) {
 	const LampRow row = lamp_row(c.net, c.sid);
 	const LampDef &d = defs(c.net).lamps;
 	for (int k = 0; k < row.stations; k++) {
+		if ((k == 0 && row.skip[0]) || (k + 1 == row.stations && row.skip[1])) continue; // one pole at a joint: the other segment's
 		const double v = row.origin + row.spacing * k;
 		FurnitureSpot main_pole = spot(c.net, FurnitureKind::LAMP, c.sid, c.p, v, row.pole_u, toward_road(row.side), 0.f);
 		main_pole.station = k;
