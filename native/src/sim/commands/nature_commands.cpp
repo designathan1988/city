@@ -17,6 +17,7 @@ namespace city {
 
 namespace {
 constexpr const char *FULL = "hint.tileFull";
+constexpr const char *TREE_NO_ROOM = "hint.tree.noRoom"; // a dab that finds no room for a tree plants nothing, and records nothing
 constexpr uint32_t DAB_SALT = 0x74726565u; // a stream's salt: the word it names, in ASCII
 
 EditResult done() {
@@ -250,6 +251,9 @@ EditResult tree_dab(CityState &s, double x, double z, double radius, int mode, i
 	} else {
 		stand = plant_stand(TreeKind(kind), b, fx, fz, r, seed, nearby, d);
 	}
+	// No room for any tree: refused, not done. Done, it recorded a step of undo that put back nothing, and a held brush whose every
+	// dab found the ground full left a step that changes nothing (a stroke keeps a step only for what its dabs recorded).
+	if (stand.empty()) return refused(TREE_NO_ROOM);
 	if (p.live_trees() + int(stand.size()) > d.max_planted) return refused(FULL);
 	std::vector<int> ids;
 	add_trees(s, stand, ids);
