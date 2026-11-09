@@ -26,6 +26,7 @@ const SMOKE_FRAMES := 120
 ## The front wheels: a car on a connector (traffic_probe sample_mid_m 0), from ahead at the side, low at the wheel.
 const STEER_FROM := Vector3(2.6, 0.7, 2.6)
 const STEER_CARS := 2
+const STEER_MOVING_MS := 1.0 # driving through its turn (on a connector, signalling it), not standing in the box
 ## The far traffic: the city from high over its middle, looking out past the near reach.
 const FAR_FROM := Vector3(0, 380, 900)
 const FAR_AT := Vector3(0, 0, -900)
@@ -87,8 +88,13 @@ func _signalling(probe: Dictionary, cross: Vector3) -> Array:
 	return found.slice(0, SIGNAL_CARS)
 
 
+## A car pulling away puffs more than one standing (render/effects/exhaust.cpp): the fastest car on a lane near `ground`.
 func _smoke(probe: Dictionary, ground: Vector3, when: String) -> void:
-	var k := CaptureVehicles._nearest_of(probe, CityStore.code(&"VehicleType", &"SEDAN"), ground)
+	var k := -1
+	for i in probe.sample.size():
+		var near: bool = (probe.sample[i] as Vector3).distance_to(ground) < FAR_FROM.z and float(probe.sample_mid_m[i]) > 0.0
+		if near and int(probe.sample_type[i]) < CityStore.code(&"VehicleType", &"MOTO") and (k < 0 or float(probe.sample_speed[i]) > float(probe.sample_speed[k])):
+			k = i
 	if k < 0:
 		return
 	var car: Vector3 = probe.sample[k]
@@ -102,7 +108,8 @@ func _steer(probe: Dictionary, ground: Vector3, when: String) -> void:
 	for k in probe.sample.size():
 		if taken >= STEER_CARS:
 			break
-		if float(probe.sample_mid_m[k]) != 0.0 or int(probe.sample_type[k]) >= CityStore.code(&"VehicleType", &"MOTO"):
+		var turning: bool = float(probe.sample_mid_m[k]) == 0.0 and float(probe.sample_speed[k]) > STEER_MOVING_MS and int(probe.sample_signal[k]) != 0
+		if not turning or int(probe.sample_type[k]) >= CityStore.code(&"VehicleType", &"MOTO"):
 			continue
 		var car: Vector3 = probe.sample[k]
 		if car.distance_to(ground) > FAR_FROM.z:
