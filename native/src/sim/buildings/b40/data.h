@@ -88,7 +88,6 @@ struct Data {
 	std::vector<uint32_t> awnings, shop_awnings, tanks, warehouse_walls;
 	std::unordered_map<std::string, Paint> colors;
 	OpeningDef openings[BAY_COUNT];
-	float lit_share[2] = {};
 
 	// A named colour of "colors" (magenta when missing: the loader rejects a table without the names asked for).
 	const Paint &color(const char *name) const {
