@@ -147,7 +147,7 @@ bool peds_in_way(const CityState &s, int ci, float front_in, float front_out) {
 		const Waypoint &to = w.ways[w.wi];
 		V2 dir = V2(to.x - w.lx, to.z - w.lz).norm();
 		V2 q = entry ? V2(c.x0, c.z0) : V2(c.x1, c.z1);
-		float at = (q - V2(w.lx, w.lz)).dot(dir), pace = std::max(MIN_BRAKE, w.speed);
+		float at = (q - V2(w.lx, w.lz)).dot(dir), pace = std::max(MIN_BRAKE, w.speed * tp.ped_crossing_pace); // its pace over a zebra (pedestrians.cpp walk)
 		float clears = (at + tp.ped_span_reach_m - w.ls) / pace, reaches = (at - tp.ped_span_reach_m - w.ls) / pace;
 		float front = entry ? front_in : front_out;
 		if (clears > front && reaches < front + tp.ped_critical_gap_s) return true;

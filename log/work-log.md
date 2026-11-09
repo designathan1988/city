@@ -859,3 +859,32 @@ Ressalvas abertas:
 - Next: the port from the lab by script (the owner's orders of 19:45 to 22:15): a translator with a differential proof against the
   lab before any of it enters, the roads first.
 
+
+## 2026-11-09 01:30: pedestrian traffic from the lab (the agents' port, area 1, reviewed by the coordinator)
+- The owner's order (2026-11-09 00:40): agents port the lab area by area in their own worktrees, from the converter's trace
+  (`tools/converter/out/lab/program.json`, `convert/ledger.json`) and its C++ candidate, adapted to this architecture; the
+  coordinator reads every diff, rebuilds both DLLs, runs the area's tests and photographs before and after, then merges.
+- Problems (lab `src/sim/agents/walk.ts`, `src/sim/crossings/permission.ts`): no hurry over a zebra (the lab's walker goes at
+  1.15 of its pace on a crossing); the panic run at 2.0 (the 4.0's value; the lab's `PANIC_RUN` is 3.4); a wounded walker fleeing
+  ran at the panic gain times its walking share (a leg-wounded walker in a panic near 1.5x) where the lab caps the run by the
+  wound (`WOUNDED_RUSH` light 2.2, leg 0.6, grave 0.6).
+- Fix: one owner of a walker's pace gain, `sim/traffic/ped_wounds.cpp` `pace_gain` (fright, the zebra's hurry, the wound's cap
+  over both, as `walk.ts:1817-1820` caps the whole want); `ped_crossing.cpp` predicts a walker's clearing at its zebra pace;
+  data `traffic.json` `ped_crossing_pace`, `ped_rush_*`, `blast.json` `people.panic_gain` 3.4. The coordinator's review found
+  the zebra's hurry multiplied after the wound's cap (a hurt walker on a zebra 15% over its cap) and moved it inside.
+- Accounted (306 ledger units of the area): the rest already in the game in its own form (stripes, kerb places, walk timing,
+  furniture as obstacles, fright, routes); the lab's crossing-gap rule with impatience waits for vehicles yielding to people
+  waiting at an uncontrolled zebra (sent to the car-traffic area with the signal plans' pedestrian demand); a hurt walker's
+  companions mourning (sent to the weapons area).
+- Verified: both DLLs rebuilt by the coordinator; `quick.sh street_crossing_test,people_test,shoot_test,strike_test,
+  traffic_hash_test,edit_fuzz_test` 43 of 45 (the two failures are `digest` and `photos_check` with no golden in a fresh
+  worktree); the new hidden capture `capture_pedtraffic.tscn` FAILURES 0 (a walker over a mid-block zebra, three moments of the
+  busiest lit junction and at night, the busiest sidewalk, a crowd fleeing a shot 17 -> 13 within 25 m). Photodiff against main:
+  the signal views keep the same scene (buildings, roads, poles, wires and signals equal; people and cars moved, 27-37% of pixels
+  by a mean of 1 to 2 levels); the sidewalk and flee views look elsewhere because the densest spot moved; on main nobody crossed
+  a mid-block zebra in the watch window, on the branch one did.
+- Seen in the photos, outside this change, sent to the lots area: a strip of grass about 1 m wide between the footway and every
+  lot front (`citygen/lot_place.cpp:80` `front_pad` and the lot plan's front boundary inside the lot).
+- Files: changed `native/src/sim/traffic/{ped_wounds.cpp,ped_system.h,pedestrians.cpp,ped_crossing.cpp}`,
+  `native/src/sim/catalog/traffic_params.h`, `project/data/catalog/{traffic.json,blast.json}`, both DLLs; created
+  `project/tests/visual/capture_pedtraffic.{gd,tscn}`; `log/mapa.md`, this record.

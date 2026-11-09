@@ -42,16 +42,18 @@ const looping = `${A}#looping`;
 const loopCaller = `${A}#loopCaller`;
 const typeUser = `${A}#typeUser`;
 const foreignWriter = 'src/sim/b.ts#foreignWriter';
+const level = `${A}#Level`;
+const levelReader = `${A}#levelReader`;
 
 const units = [unit(clean, 'function'), unit(sick, 'function'), unit(caller, 'function'), unit(holey, 'function'), unit(drawn, 'function', { external: ['three:Mesh'] }),
   unit(owner, 'class'), unit(method, 'method', { parent: owner }), unit(shape, 'interface'), unit(field, 'field', { parent: shape }), unit(reader, 'function'),
   unit(heapUser, 'function'), unit(heap, 'class'), unit(delivered, 'function'), unit(usesDelivered, 'function'), unit(looping, 'function'),
-  unit(loopCaller, 'function'), unit(typeUser, 'function'), unit(foreignWriter, 'function')];
+  unit(loopCaller, 'function'), unit(typeUser, 'function'), unit(foreignWriter, 'function'), unit(level, 'enum'), unit(levelReader, 'function')];
 
 function decide(findings: readonly Finding[], coverage: ReadonlyMap<string, Delivered> = new Map()): Map<string, LedgerUnit> {
   const graph = { files: [{ path: A, lines: 9 }, { path: 'src/render/a.ts', lines: 9 }, { path: 'src/core/heap.ts', lines: 9 }], units,
     edges: [edge(caller, sick), edge(reader, field, 'read'), edge(heapUser, heap, 'construct'), edge(usesDelivered, delivered), edge(loopCaller, looping),
-      edge(typeUser, shape, 'reference'), edge(foreignWriter, field, 'write')] } as unknown as GraphIR;
+      edge(typeUser, shape, 'reference'), edge(foreignWriter, field, 'write'), edge(levelReader, level, 'read')] } as unknown as GraphIR;
   const ledger = new Ledger({ graph, audit: { findings: [...findings] }, own: units.map((u) => u.id), sliced: [], coverage, ownedFiles: ['src/core/heap.ts'], ownedNames: [] });
   return new Map(ledger.units.map((u) => [u.id, u]));
 }
@@ -81,6 +83,11 @@ describe('convert: the ledger', () => {
     assert.equal(disposition(foreignWriter), 'method');
     assert.equal(disposition(shape), 'translate');
     assert.equal(disposition(typeUser), 'translate');
+  });
+
+  it('gives the machine an enum, which it translates, and what reads one', () => {
+    assert.equal(disposition(level), 'translate');
+    assert.equal(disposition(levelReader), 'translate');
   });
 
   it('stops what reaches a stopped unit: the disease does not travel through a call', () => {
