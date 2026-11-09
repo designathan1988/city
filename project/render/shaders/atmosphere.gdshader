@@ -20,7 +20,7 @@ uniform vec3 sun_light;
 uniform vec3 sky_light;
 uniform vec3 mist_color;
 uniform float dark = 0.0;
-uniform float shadow_strength; // sky.json, set when the pass is made
+uniform float shadow_strength = 0.0; // what a cloud's heart takes of the light under it: the sun's direct share now (render/sky_view.gd)
 uniform float mist = 0.0;
 uniform float mist_height; // the weather's, set when it is read
 uniform float mist_beta;
@@ -83,7 +83,7 @@ float cloud_shade(vec3 hit) {
 			through += shadow_density(c, hit + sun_dir * (a + (float(i) + 0.5) * len)) * len / cloud[c].w;
 		}
 	}
-	return 1.0 - shadow_strength * (1.0 - dark) * (1.0 - exp(-through * shadow_depth));
+	return 1.0 - shadow_strength * (1.0 - exp(-through * shadow_depth));
 }
 
 // The mist: exponential in height, along the ray to what the pixel sees.
@@ -163,7 +163,7 @@ void fragment() {
 	float keep = 1.0;
 	vec3 add = vec3(0.0);
 	float jitter = texture(start_noise, FRAGCOORD.xy / vec2(textureSize(start_noise, 0))).r;
-	if (!sky && cloud_count > 0) keep *= cloud_shade(hit);
+	if (!sky && cloud_count > 0 && shadow_strength > 0.0) keep *= cloud_shade(hit);
 	if (!sky && canyon_sky > 0.0) keep *= canyon_keep(hit, ro, SCREEN_UV, 1.0 / VIEWPORT_SIZE, INV_PROJECTION_MATRIX, INV_VIEW_MATRIX);
 	if (mist > 0.0) {
 		float a = mist_amount(ro, rd, t_scene, sky ? mist_height : hit.y);

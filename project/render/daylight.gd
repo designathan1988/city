@@ -109,10 +109,11 @@ func set_hour(hour: float) -> void:
 		_fill.visible = false
 	var hemi: float = _d.hemi_day_k * light + _d.hemi_night_k * night
 	_env.ambient_light_color = _c("hemi_night").lerp(_c("hemi_day"), light)
-	var sky: float = _d.ambient_scale * (1.0 + _flash * _d.flash_ambient) * (1.0 - _overcast * _d.overcast_ambient)
-	_env.ambient_light_energy = hemi * sky if ambient_on else 0.0
+	var sky: float = _d.ambient_scale * (1.0 - _overcast * _d.overcast_ambient)
+	var lit: float = _flash * _d.flash_ambient * _d.ambient_scale # a bolt's flash lights the whole scene from the sky, day or night: added
+	_env.ambient_light_energy = hemi * sky + lit * _d.hemi_day_k if ambient_on else 0.0
 	_top.light_color = _c("sky_top")
-	_top.light_energy = _d.sky_top_energy * light * sky if ambient_on else 0.0
+	_top.light_energy = _d.sky_top_energy * (light * sky + lit) if ambient_on else 0.0
 	_top.visible = _top.light_energy > 0.0
 	_under.light_color = _c("ground_under")
 	_under.light_energy = _d.ground_under_k * _env.ambient_light_energy
@@ -191,9 +192,12 @@ func _set_sky(elev: float) -> void:
 	var horizon := _c("horizon_day").lerp(_c("horizon_dusk"), warm * light * _d.dusk_share)
 	horizon = horizon.lerp(_c("horizon_night"), 1.0 - light)
 	var sun_col := _c("sun_day").lerp(_c("sun_low"), minf(1.0, warm)) * light
-	var grey: Color = _c("overcast_grey") * light
-	zenith = zenith.lerp(grey, _overcast * _d.overcast_sky)
-	horizon = horizon.lerp(grey, _overcast * _d.overcast_sky)
+	var grey := _c("overcast_grey") # the sun behind the clouds: the day's sky goes grey, the night's stays
+	zenith = zenith.lerp(grey, _overcast * _d.overcast_sky * light)
+	horizon = horizon.lerp(grey, _overcast * _d.overcast_horizon * light)
+	var flash := _c("flash_colour") # a bolt's flash: the sky lit cold white at once
+	zenith = zenith.lerp(flash, _flash * _d.flash_zenith)
+	horizon = horizon.lerp(flash, _flash * _d.flash_horizon)
 	_sky.set_shader_parameter("zenith", zenith)
 	_sky.set_shader_parameter("horizon", horizon)
 	horizon_linear = horizon.srgb_to_linear()
@@ -205,4 +209,4 @@ func _set_sky(elev: float) -> void:
 	_sky.set_shader_parameter("low_from_m", _d.low_from_m)
 	_sky.set_shader_parameter("low_to_m", _d.low_to_m)
 	_sky.set_shader_parameter("sun_color", sun_col)
-	_sky.set_shader_parameter("gain", _d.sky_gain * (1.0 + _flash * _d.flash_sky))
+	_sky.set_shader_parameter("gain", _d.sky_gain) # a flash lights the sky by its colours (flash_colour above), as the lab's setWeather does
