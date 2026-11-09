@@ -1,6 +1,6 @@
 // Pedestrians (Roadcraft src/sim/peds.ts): walkers come out (ped_spawn.cpp) with a walking route, walk their own track on
 // the sidewalk, go round each corner and over the crosswalks on the way (ped_routes.cpp), wait at the kerb for the walk
-// phase or a gap in the traffic (ped_crossing.cpp) and at the end of the route go in at a door of the street (ped_doors.cpp);
+// phase or a gap in the traffic (ped_crossing.cpp), hurrying over it, and at the end of the route go in at a door of the street (ped_doors.cpp);
 // among the others and the street furniture on every way as ped_crowd.cpp moves them (a stripe across each way, the pace the
 // bodies ahead leave), at a kerb in a place of its own (ped_kerb.cpp).
 #include "sim/traffic/kerb_stops.h"
@@ -93,8 +93,12 @@ void begin_line(CityState &s, int id) {
 	Pedestrian &w = t.peds[id];
 	take_kerb_place(s, id); // toward the kerb of a crosswalk: to its own place there
 	const Waypoint &to = w.ways[w.wi];
-	const bool frightened = t.time < w.panic_until; // no signal holds somebody running: only the cars on the crossing do
-	if (to.cross >= 0 && ((!frightened && !walk_ok(s, w.way_node, to.cross)) || cars_on_crossing(s, w.way_node, to.cross))) {
+	// No signal nor gap holds somebody running: only a vehicle on the crossing or too close to stop does (a gap accepted
+	// cannot empty an occupied road, crossings/permission.ts). Others wait for the walk and for a gap, sooner taken the
+	// longer they have waited at the kerb (w.wait).
+	const bool frightened = t.time < w.panic_until;
+	if (to.cross >= 0 && (cars_on_crossing(s, w.way_node, to.cross) ||
+			(!frightened && (!walk_ok(s, w.way_node, to.cross) || crossing_arrival(s, w.way_node, to.cross) < accepted_gap(s.catalog.traffic, w.wait))))) {
 		w.mode = PedMode::WAIT;
 		return;
 	}
@@ -168,7 +172,8 @@ void walk(CityState &s, int id, float dt) {
 		if (w.mode == PedMode::WAIT) return;
 	}
 	if (transit::walker_held(s, V2(w.cur.x, w.cur.z), V2(w.cur.fx, w.cur.fz))) return; // a train on the ground ahead
-	const float run = (t.time < w.panic_until ? s.catalog.blast.panic_gain : 1.f) * traffic::wounded_pace(s.catalog.blast, w); // frightened by a bang: runs
+	// frightened by a bang it runs, as fast as a wound lets it; over a zebra it hurries (walk.ts)
+	const float run = traffic::pace_gain(s.catalog, w, t.time < w.panic_until) * (w.cross_seg >= 0 ? s.catalog.traffic.ped_crossing_pace : 1.f);
 	const float step = w.pace * run * dt; // the crowd sets the pace on every way (ped_crowd.cpp)
 	w.walked += step;
 	if (w.mode == PedMode::WAY) {
