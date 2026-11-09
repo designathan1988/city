@@ -7,6 +7,7 @@
 #include "sim/street/street_names.h"
 #include "sim/traffic/traffic_system.h"
 
+#include <algorithm>
 #include <cmath>
 
 using namespace godot;
@@ -88,6 +89,9 @@ void place_signs(const CityState &s, const StreetLook &L, const SignLook &K, Sig
 		const RoadNode &nd = s.roads.nodes[size_t(n)];
 		if (nd.alive && chunk_of(float(nd.x), float(nd.z)) == key) traffic::junction_signs(s, n, stands);
 	});
+	// a regional paint standard puts up the speed plates, the classic drawing none (the lab's derivedSigns.ts signsAtNode)
+	if (!L.style(s.marking_style.load()).speed_plates)
+		stands.erase(std::remove_if(stands.begin(), stands.end(), [](const SignStand &st) { return st.type == SignType::SPEED; }), stands.end());
 	s.street.items_in(x0, z0, x0 + CHUNK, z0 + CHUNK, [&](int id) {
 		const StreetItem &it = s.street.items.items[size_t(id)];
 		if (it.kind == ItemKind::SIGN && chunk_of(it.x, it.z) == key) placed_sign(s.roads, it, stands);

@@ -327,9 +327,11 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/render/roads/road_emit.cpp` — referenciais de segmento, nós e quad texturizado
 - `native/src/render/roads/road_junction.cpp` · `native/src/render/roads/road_kerb.cpp` — placas de nó, beco sem saída e balão; a borda com meio-fio de uma esquina ou balão
 - `native/src/render/roads/road_shapes.cpp` · `native/src/render/roads/road_shapes.h` — the shapes the road jobs share, made once for the city's revision: a node's ends and its corners' kerb and outer lines (road and verge jobs), a segment's runs of retaining wall (structure and verge jobs)
+- `native/src/render/roads/road_legends.cpp` — the floor's words, give-way symbol, turn arrows and mini-roundabout island (the lab's world/markings.ts)
 - `native/src/render/roads/road_look.cpp` · `native/src/render/roads/road_look.h` — streets.json → StreetLook (aparência das vias)
 - `native/src/render/roads/road_markings.cpp` — pintura viária como geometria fina elevada
 - `native/src/render/roads/road_mesh.h` — peças do malhador de vias
+- `native/src/render/roads/road_paint.h` — the road paint's brush in the segment's (u, v): rectangle and stroke
 - `native/src/render/roads/road_chunks.h` · `native/src/render/roads/road_renderer.cpp` · `native/src/render/roads/road_renderer.h` — chunks de via por segmento e nó
 - `native/src/render/roads/far_road_renderer.cpp` · `native/src/render/roads/far_road_renderer.h` — toda via do mapa no nível distante: uma malha por superchunk, só as faces de cima, dobrada onde o chunk detalhado está de pé
 - `native/src/render/roads/ground_seam.cpp` · `native/src/render/roads/ground_seam.h` — the terrain met by the roads at grade: each cell the paving's outline crosses cut along it (Clipper2 difference and constrained Delaunay), its corners the terrain's, its outline points the paving's; the backfill behind retaining walls; its probe
@@ -456,6 +458,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `project/tests/core/road_commands_test.gd` · `project/tests/core/road_commands_test.tscn` · `project/tests/core/road_money_cases.gd` · `project/tests/core/road_height_cases.gd` — comandos de via/zona/demolir pelo store; o dinheiro das vias (preço pago, devolução, vias geradas, desfazer, recusa sem saldo, modos de construir); a altura em que a via é desenhada (rampa, greide máximo, passar por cima, recusa por pouca diferença, o que o ponteiro pega, muros)
 - `project/tests/core/people_test.gd` · `project/tests/core/people_test.tscn` — quem anda a pé: portas, idades, pares, criança acompanhada e gente por hora
 - `project/tests/core/road_edit_test.gd` · `project/tests/core/road_edit_test.tscn` · `project/tests/core/road_shape_cases.gd` — opções da via de classe, Mover, Controle e regras de edição; altura, curva e união pelo Inspecionar
+- `project/tests/core/road_preview_test.gd` · `project/tests/core/road_preview_test.tscn` — the road tool's preview says a squeezed stretch before laying it, with the build's own refusal
 - `project/tests/core/road_grade_seam_cases.gd` — túneis e placas de junção do `road_grade_test`
 - `project/tests/core/road_grade_test.gd` · `project/tests/core/road_grade_test.tscn` — the road grade against fixed scenes and limits (flat crossing and on a hill, elevated roads, ramps, bridge, tunnels, the plate matrix)
 - `project/render/shaders/water_plain.gdshader` — a água numa cor só, para a aba Otimizações ver o que o sombreamento dela custa

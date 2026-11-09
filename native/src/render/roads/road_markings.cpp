@@ -1,8 +1,8 @@
 // Painted markings as thin lifted geometry: centre and lane lines with their dashes, zebra crossings and stop lines at
-// crossing mouths: sized as data/render/streets.json markings says (CONTRAN's horizontal signage manual), where the
+// crossing mouths, the street's parking, then the floor's words and arrows (road_legends.cpp): sized as data/render/streets.json markings says (CONTRAN's horizontal signage manual), where the
 // simulation's crosswalk lies (catalog street_furniture.json "crossing"). Material PAINT, lit by the same lamp pools as
 // the road.
-#include "render/roads/road_mesh.h"
+#include "render/roads/road_paint.h"
 #include "render/roads/road_section.h"
 
 #include "sim/buildings/lot_access.h"
@@ -14,38 +14,50 @@ using namespace godot;
 
 namespace city {
 
+Vector2 RoadPainter::pool(float u, float at) const {
+	if (!lamp.any) return Vector2(ROAD_POOL_NONE, 0);
+	float du, dv;
+	lamp.pool(u, at, du, dv);
+	return Vector2(du, dv);
+}
+
+void RoadPainter::rect(float u0, float u1, double va, double vb, const Color &c) const {
+	const std::vector<double> at = segment_stations(e, sid, va, vb);
+	Color col = road_color(c, RoadMat::PAINT);
+	const Vector3 lift(0, e.L.paint_lift, 0);
+	for (size_t k = 0; k + 1 < at.size(); k++) {
+		const double a = at[k], b = at[k + 1];
+		SegFrame fa = seg_frame(e.s, sid, a), fb = seg_frame(e.s, sid, b);
+		const Vector3 p[4] = { fa.c + fa.left * u0 + lift, fa.c + fa.left * u1 + lift, fb.c + fb.left * u1 + lift, fb.c + fb.left * u0 + lift };
+		const Vector2 uv[4] = { Vector2(u0, float(a)), Vector2(u1, float(a)), Vector2(u1, float(b)), Vector2(u0, float(b)) };
+		const Vector2 uv2[4] = { pool(u0, float(a)), pool(u1, float(a)), pool(u1, float(b)), pool(u0, float(b)) };
+		emit_quad(e.mb, p, uv, uv2, col, Vector3(0, 1, 0));
+	}
+}
+
+void RoadPainter::stroke(const std::vector<Vector2> &points, float width, const Color &c) const {
+	const Color col = road_color(c, RoadMat::PAINT);
+	const Vector3 lift(0, e.L.paint_lift, 0);
+	auto world = [&](const Vector2 &q) {
+		const SegFrame f = seg_frame(e.s, sid, q.y);
+		return f.c + f.left * q.x + lift;
+	};
+	for (size_t k = 0; k + 1 < points.size(); k++) {
+		const Vector2 a = points[k], b = points[k + 1], d = b - a;
+		if (d.length_squared() <= 0) continue; // a quad with no length has no area
+		const Vector2 n = Vector2(-d.y, d.x).normalized() * (width / 2);
+		const Vector2 q[4] = { a - n, a + n, b + n, b - n };
+		const Vector3 p[4] = { world(q[0]), world(q[1]), world(q[2]), world(q[3]) };
+		const Vector2 uv2[4] = { pool(q[0].x, q[0].y), pool(q[1].x, q[1].y), pool(q[2].x, q[2].y), pool(q[3].x, q[3].y) };
+		emit_quad(e.mb, p, q, uv2, col, Vector3(0, 1, 0));
+	}
+}
+
 namespace {
 
-struct Painter {
-	const RoadEmit &e;
-	int sid;
-	LampRow lamp;
-
-	Vector2 pool(float u, float at) const {
-		if (!lamp.any) return Vector2(ROAD_POOL_NONE, 0);
-		float du, dv;
-		lamp.pool(u, at, du, dv);
-		return Vector2(du, dv);
-	}
-	// A rectangle u0..u1 across, va..vb metres along from node a, on the stations that keep it on the road's surface.
-	void rect(float u0, float u1, double va, double vb, const Color &c) const {
-		const std::vector<double> at = segment_stations(e, sid, va, vb);
-		Color col = road_color(c, RoadMat::PAINT);
-		for (size_t k = 0; k + 1 < at.size(); k++) {
-			const double a = at[k], b = at[k + 1];
-			SegFrame fa = seg_frame(e.s, sid, a), fb = seg_frame(e.s, sid, b);
-			Vector3 lift(0, e.L.paint_lift, 0);
-			const Vector3 p[4] = { fa.c + fa.left * u0 + lift, fa.c + fa.left * u1 + lift, fb.c + fb.left * u1 + lift, fb.c + fb.left * u0 + lift };
-			const Vector2 uv[4] = { Vector2(u0, float(a)), Vector2(u1, float(a)), Vector2(u1, float(b)), Vector2(u0, float(b)) };
-			const Vector2 uv2[4] = { pool(u0, float(a)), pool(u1, float(a)), pool(u1, float(b)), pool(u0, float(b)) };
-			emit_quad(e.mb, p, uv, uv2, col, Vector3(0, 1, 0));
-		}
-	}
-};
-
-void lines(const Painter &pt, const Profile &p, double l0, double l1) {
+void lines(const RoadPainter &pt, const Profile &p, double l0, double l1) {
 	const StreetLook &L = pt.e.L;
-	const StreetLook::PaintStyle &st = L.styles[size_t(pt.e.s.marking_style.load())];
+	const StreetLook::PaintStyle &st = L.style(pt.e.s.marking_style.load());
 	const bool fast = p.speed >= st.fast_kmh;
 	const bool many = std::max(p.lanes_fwd(), p.lanes_back()) > 1;
 	size_t band = 0; // the dash pattern of the road's speed
@@ -72,9 +84,9 @@ void lines(const Painter &pt, const Profile &p, double l0, double l1) {
 	}
 }
 
-void crossings(const Painter &pt, const Profile &p, double v0, double v1, bool ca, bool cb, bool za, bool zb_end) {
+void crossings(const RoadPainter &pt, const Profile &p, double v0, double v1, bool ca, bool cb, bool za, bool zb_end) {
 	const StreetLook &L = pt.e.L;
-	const StreetLook::PaintStyle &st = L.styles[size_t(pt.e.s.marking_style.load())];
+	const StreetLook::PaintStyle &st = L.style(pt.e.s.marking_style.load());
 	const CrossingDef &x = pt.e.s.catalog.furniture.crossing;
 	float ar = -p.asph_right, al = p.asph_left, isle0 = 0, isle1 = 0;
 	const bool island = island_span(p, isle0, isle1); // without one both are the centre line
@@ -110,14 +122,14 @@ void crossings(const Painter &pt, const Profile &p, double v0, double v1, bool c
 	}
 }
 // A line across the parking band at arc `v`.
-void bay_line(const Painter &pt, const KerbStretch &k, double v) {
+void bay_line(const RoadPainter &pt, const KerbStretch &k, double v) {
 	const double hw = pt.e.L.parking_line_w / 2;
 	pt.rect(std::min(k.u_kerb, k.u_inner), std::max(k.u_kerb, k.u_inner), v - hw, v + hw, pt.e.L.white);
 }
 
 // The street's parking (CONTRAN MBST vol. IV): each bay's division and the run closed at both ends, the band's edge dashed
 // along the run (MER, white), the yellow no-parking line by the kerb along the rest of that kerb (LPP).
-void parking_paint(const Painter &pt) {
+void parking_paint(const RoadPainter &pt) {
 	const StreetLook &L = pt.e.L;
 	if (!parks_along(pt.e.s.roads, pt.sid)) return;
 	std::vector<ArcSpan> gates[2];
@@ -144,12 +156,14 @@ void emit_markings(const RoadEmit &e, int sid) {
 	if (p.rail) return;
 	double v0 = g.retreat_a, v1 = g.len - g.retreat_b;
 	bool ca = !p.ring && e.s.roads.has_crosswalks(g.a), cb = !p.ring && e.s.roads.has_crosswalks(g.b);
-	Painter pt{ e, sid, lamp_row(e.s.roads, sid) };
+	RoadPainter pt{ e, sid, lamp_row(e.s.roads, sid) };
 	const double clear = e.s.catalog.furniture.crossing.stop_to_m; // the lines end at the stop line
 	crossings(pt, p, v0, v1, ca, cb, e.s.roads.crosswalk_on(g.a, sid), e.s.roads.crosswalk_on(g.b, sid));
-	if (e.far) return; // the lane lines are filtered by the road's shader there
-	lines(pt, p, v0 + (ca ? clear : 0), v1 - (cb ? clear : 0));
+	if (e.far) return; // the lane lines are filtered by the road's shader there; words and arrows are under a pixel
+	const double l0 = v0 + (ca ? clear : 0), l1 = v1 - (cb ? clear : 0);
+	lines(pt, p, l0, l1);
 	parking_paint(pt);
+	floor_paint(pt, p, v0, v1, ca, cb, l0, l1);
 }
 
 } // namespace city

@@ -1,5 +1,5 @@
 // Reads data/render/streets.json into StreetLook through the strict reader (render/data_reader.h): every key, type and list
-// length is checked; a marking style takes the base's widths for the keys it leaves out.
+// length is checked; a marking style takes the base's widths, words and legend lengths for the keys it leaves out.
 #include "render/roads/road_look.h"
 
 #include "core/color.h"
@@ -91,12 +91,82 @@ StreetLook::PaintStyle style_of(DataReader r, const Dictionary &d, DataReader rb
 	st.zebra_edge = width("zebra_edge_m");
 	st.multi_lane_double = d.has("multi_lane_double") ? r.flag(d, "multi_lane_double") : rb.flag(base, "multi_lane_double");
 	st.all_white = r.flag(d, "all_white");
+	st.legend_m = width("legend_m");
+	st.fast_legend_m = width("fast_legend_m");
+	st.fast_legend_kmh = width("fast_legend_kmh");
+	st.speed_plates = d.has("speed_plates") ? r.flag(d, "speed_plates") : rb.flag(base, "speed_plates");
+	// a style's own words, else the base's
+	auto words = [&](const char *key) {
+		const String s = d.has(key) ? r.text(d, key) : rb.text(base, key);
+		return std::u32string(s.ptr(), size_t(s.length()));
+	};
+	st.stop_text = words("stop_text");
+	st.bus_text = words("bus_text");
 	st.dash_kmh = floats(r.in("dash_kmh"), r.list(d, "dash_kmh"));
 	st.dash = floats(r.in("dash_m"), r.list(d, "dash_m"));
 	st.gap = floats(r.in("gap_m"), r.list(d, "gap_m"));
 	if (st.dash.empty() || st.dash.size() != st.gap.size() || st.dash.size() != st.dash_kmh.size() + 1)
 		r.fail("dash_m and gap_m need one band more than dash_kmh");
 	return st;
+}
+
+// Strokes as streets.json writes them: a list of polylines, each a list of [x, y] points.
+StreetLook::Strokes strokes_of(DataReader r, const Array &list) {
+	StreetLook::Strokes out;
+	for (int i = 0; i < list.size(); i++) {
+		DataReader rl = r.in(i);
+		const Array line = r.list_at(list, i);
+		std::vector<Vector2> points;
+		for (int k = 0; k < line.size(); k++) {
+			DataReader rp = rl.in(k);
+			const Array p = rl.list_at(line, k, 2);
+			points.push_back(Vector2(float(rp.num_at(p, 0)), float(rp.num_at(p, 1))));
+		}
+		out.push_back(std::move(points));
+	}
+	return out;
+}
+
+void load_floor(StreetLook::FloorPaint &F, DataReader r, const Dictionary &d) {
+	F.legend_gap = num(r, d, "legend_gap_m");
+	F.min_foot = num(r, d, "min_foot_m");
+	F.letter_share = num(r, d, "letter_share");
+	F.letter_aspect = num(r, d, "letter_aspect");
+	F.letter_gap = num(r, d, "letter_gap");
+	F.stroke = num(r, d, "stroke_m");
+	F.yield_length = num(r, d, "yield_length_m");
+	F.yield_share = num(r, d, "yield_share");
+	F.yield_max = num(r, d, "yield_max_m");
+	F.yield_stroke = num(r, d, "yield_stroke_m");
+	F.bus_first = num(r, d, "bus_first_m");
+	F.bus_every = num(r, d, "bus_every_m");
+	F.arrow_station = num(r, d, "arrow_station_m");
+	F.arrow_min = num(r, d, "arrow_min_m");
+	F.arrow_stroke = num(r, d, "arrow_stroke_m");
+	F.arrow_lateral = num(r, d, "arrow_lateral_m");
+	F.arrow_lateral_share = num(r, d, "arrow_lateral_share");
+	F.island_share = num(r, d, "island_share");
+	F.island_min = num(r, d, "island_min_m");
+	F.island_max = num(r, d, "island_max_m");
+	F.island_line = num(r, d, "island_line_m");
+	F.island_sides = r.integer(d, "island_sides");
+	if (!(F.bus_every > 0) || F.island_sides < 3) r.fail("bus_every_m must be above 0 and island_sides at least 3");
+	F.arrow_stem = strokes_of(r.in("arrow_stem"), r.list(d, "arrow_stem"));
+	F.arrow_through = strokes_of(r.in("arrow_through"), r.list(d, "arrow_through"));
+	F.arrow_left = strokes_of(r.in("arrow_left"), r.list(d, "arrow_left"));
+	F.yield_symbol = strokes_of(r.in("yield_symbol"), r.list(d, "yield_symbol"));
+	const Dictionary glyphs = r.table(d, "glyphs");
+	const Array letters = glyphs.keys();
+	DataReader rg = r.in("glyphs");
+	F.glyphs.clear();
+	for (int i = 0; i < letters.size(); i++) {
+		const String letter = letters[i];
+		if (letter.length() != 1) {
+			rg.fail("a glyph's key is one letter, not " + letter);
+			continue;
+		}
+		F.glyphs[char32_t(letter[0])] = strokes_of(rg.in(letter), rg.list(glyphs, letter.utf8().get_data()));
+	}
 }
 
 void load_marks(StreetLook &L, DataReader &r, const Dictionary &t) {
@@ -115,6 +185,7 @@ void load_marks(StreetLook &L, DataReader &r, const Dictionary &t) {
 	L.parking_gap = num(rm, m, "mer_gap_m");
 	L.no_parking_w = num(rm, m, "lpp_line_m");
 	L.no_parking_min = num(rm, m, "lpp_run_min_m");
+	load_floor(L.floor, rm.in("floor"), rm.table(m, "floor"));
 }
 } // namespace
 

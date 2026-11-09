@@ -1,5 +1,6 @@
 // Small helpers every road mesher piece shares: frames along a segment, crossing nodes and the textured quad.
 #include "render/roads/road_mesh.h"
+#include "render/roads/road_paint.h"
 
 #include "render/owned_segments.h"
 
@@ -141,7 +142,9 @@ void emit_chunk(const RoadEmit &e, int64_t chunk) {
 	});
 	e.s.roads.node_hash.query(x0, z0, x0 + CHUNK, z0 + CHUNK, [&](int n) {
 		const RoadNode &nd = e.s.roads.nodes[n];
-		if (nd.alive && chunk_of(float(nd.x), float(nd.z)) == chunk) emit_node(e, n);
+		if (!nd.alive || chunk_of(float(nd.x), float(nd.z)) != chunk) return;
+		emit_node(e, n);
+		emit_node_paint(e, n);
 	});
 }
 
