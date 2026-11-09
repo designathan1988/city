@@ -1,4 +1,4 @@
-// The building generator's shapes of the lots: the parts several zones lay alike and each zone's own layout (back, boundary, cars, front, ground, plan, space, yard, open lots): each block's fields (buildings.json "shapes", read by
+// The building generator's shapes of the lots: the parts several zones lay alike and each zone's own layout (back, boundary, cars, front, ground, plan, space, yard, open lots, the slope a site steps the lot down, the fit to a lot's outline): each block's fields (buildings.json "shapes", read by
 // api/buildings_loader.cpp) and its struct.
 #pragma once
 
@@ -94,6 +94,22 @@ struct LotSpaceShape {
 	X(free_flowers) X(flowers_h)
 struct LotYardShape {
 	SHAPE_DECLARE(B40_YARD)
+};
+
+#define B40_SLOPE(X, XI, XD, XV, XVI) \
+	X(min_part) X(fill_weight) X(gain) X(on_edge) X(max_lift) X(grid) XI(samples) X(garage_bay) X(garage_apron) X(apron_spare) \
+	X(garage_grade) X(garage_back_min) X(garage_door_out) X(ramp_landing) X(ramp_min) X(house_ramp_start) X(yard_grade) \
+	X(works_grade) X(retain_t) X(retain_over) X(retain_in) X(guard_h) X(wall_piece) X(walk_clear) X(flight_w_min) X(flight_trim) \
+	X(step_run) X(street_threshold) XI(front_points) X(terrace_min) X(terrace_share) XI(terrace_risers_min) XI(terrace_risers_max) \
+	X(terrace_lot_min) X(terrace_from) X(stair_w) X(stair_clear) X(drain_in)
+struct LotSlopeShape {
+	SHAPE_DECLARE(B40_SLOPE)
+};
+
+#define B40_FIT(X, XI, XD, XV, XVI) \
+	X(rect_share) X(slice) X(least) X(front_band) X(edge_h) X(lawn_under) X(shortest) X(piece)
+struct LotFitShape {
+	SHAPE_DECLARE(B40_FIT)
 };
 
 #define B40_OPEN(X, XI, XD, XV, XVI) \

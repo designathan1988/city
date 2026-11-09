@@ -201,6 +201,19 @@ bool get_building(ByteReader &r, Building &b, uint32_t version) {
 	b.landmark = r.get<int16_t>();
 	b.built = r.get<double>();
 	if (version >= CORNER_SAVE_VERSION) b.corner = r.get<uint8_t>();
+	b.site = nullptr;
+	if (version >= SITE_SAVE_VERSION && r.get<uint8_t>() != 0) {
+		auto site = std::make_shared<b40::LotSite>();
+		site->floor = r.get<float>();
+		for (int16_t &g : site->ground) g = r.get<int16_t>();
+		const uint32_t n = r.get_count(sizeof(V2));
+		for (uint32_t i = 0; i < n && r.ok; i++) {
+			const float x = r.get<float>();
+			site->ring.push_back(V2(x, r.get<float>()));
+		}
+		site->seal();
+		b.site = std::move(site);
+	}
 	return r.ok;
 }
 

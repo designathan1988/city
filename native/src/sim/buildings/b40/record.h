@@ -32,7 +32,9 @@ void make_seed_body(const Data &data, const Building &rec, Body &b);
 BodyKey body_key(const Building &rec);
 
 // The ground under a body's ground blocks, from `height(x, z)` in the world: its highest and lowest points (corners and a 1.5 m
-// grid), and the floor those give, the highest + the plinth. The render draws on it and a click on a wall is measured from it.
+// grid), and the floor those give, `hi` + the plinth. A record that grew on a site (lot_site.h) stands on the street floor it read
+// (Roadcraft zoning.ts streetFloor): `hi` is then that floor less the plinth, the ground under it may stand higher (the back of a
+// split level is stepped to it). The render draws on it and a click on a wall is measured from it.
 constexpr float LOT_PLINTH_M = 0.15f, LOT_GRID_STEP_M = 1.5f;
 constexpr int LOT_GRID_MAX = 24;
 template <typename H>
@@ -54,6 +56,7 @@ void lot_ground(const Body &b, const Building &rec, const LotFrame &f, H &&heigh
 			for (int j = 0; j <= ny; j++) sample(v.x + v.w * float(i) / float(nx), v.y + v.d * float(j) / float(ny));
 	}
 	if (hi < lo) sample(0, rec.d / 2);
+	if (rec.site) hi = rec.site->floor - LOT_PLINTH_M;
 }
 template <typename H>
 float lot_floor(const Body &b, const Building &rec, const LotFrame &f, H &&height) {

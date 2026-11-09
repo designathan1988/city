@@ -23,7 +23,13 @@ std::shared_ptr<const Body> record_mass(const Data &data, const Building &rec) {
 void make_seed_body(const Data &data, const Building &rec, Body &b) {
 	if (is_open_lot(rec.fn)) open_lot_body(data, b, rec.fn, rec.w, rec.d);
 	else if (is_civic(rec.fn)) civic_body(data, b, rec.fn, rec.floors, rec.w, rec.d, rec.seed);
-	else make_body(data, b, rec.zone, rec.floors, rec.w, rec.d, rec.seed, LotCorner(rec.corner));
+	else {
+		make_body(data, b, rec.zone, rec.floors, rec.w, rec.d, rec.seed, LotCorner(rec.corner));
+		if (rec.site) { // the ground and the outline it grew on (lot_site.h): stepped to the one, fitted to the other
+			follow_slope(data, b, *rec.site, rec.w, rec.d);
+			fit_to_lot(data, b, *rec.site);
+		}
+	}
 }
 
 BodyKey body_key(const Building &r) {
@@ -37,6 +43,7 @@ BodyKey body_key(const Building &r) {
 	k.zone = r.zone;
 	k.floors = r.floors;
 	k.corner = r.corner;
+	k.site = r.site ? r.site->hash : 0;
 	std::memcpy(&k.w, &r.w, sizeof k.w);
 	std::memcpy(&k.d, &r.d, sizeof k.d);
 	return k;
