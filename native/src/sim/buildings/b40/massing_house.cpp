@@ -86,7 +86,7 @@ void wing(const Data &data, Body &b, Xoshiro128 &r, float w, float d, int storey
 
 void house(const Data &data, Body &b, const Envelope &env, Xoshiro128 &r) {
 	const HouseShape &K = data.shapes.house;
-	b.style = uint8_t(style_for(data, KIND_HOUSE, r, env.character, env.era));
+	b.style = uint8_t(style_for(data, KIND_HOUSE, r, env.character, env.era, true));
 	Paint wall, trim;
 	paints_of(data, b.style, r, wall, trim);
 	Paint roof_paint = roof_of(data, r, b.style == STYLE_MODERN_HOUSE ? data.roof_tiles : clay_of(data));

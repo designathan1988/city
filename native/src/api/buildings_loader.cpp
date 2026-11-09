@@ -2,9 +2,13 @@
 // (api/data_reader.h): every key, type, list length and name is checked, and a problem is an error at startup, never a default.
 #include "api/buildings_loader.h"
 
+#include "api/body_doc.h"
 #include "render/region_table.h"
 #include "render/shape_reader.h"
+#include "sim/buildings/b40/gen.h"
 
+#include <godot_cpp/classes/file_access.hpp>
+#include <godot_cpp/classes/json.hpp>
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/string.hpp>
 #include <godot_cpp/variant/variant.hpp>
@@ -219,6 +223,41 @@ void openings(DataReader r, const Dictionary &op, Data &d) { // bay -> [w_in, w_
 			float(ro.num_at(row, HEAD_IN)), float(ro.num_at(row, HEAD_MAX)), float(ro.num_at(row, DEPTH)) };
 	}
 }
+// The designs of their own a lot grows: each [design, kind, weight], its lot document (folder/<design>.json, the shelf's) read into a
+// body and brought from the documents' unit to metres; the share of each kind's lots that stand one, [kind, share]. A design that
+// cannot be read is an error at startup. How much smaller a design may stand on a smaller lot is not this table's: it is the body
+// rules' least storey, set with the catalogue below (set_zone_kinds: d.grown_least_storey_m = catalog.tune.build_min_storey_m).
+void grown_designs(DataReader r, const Dictionary &g, Data &d) {
+	enum { NAME, KIND, WEIGHT, ROW_SIZE };
+	const String folder = r.text(g, "folder");
+	const float unit = float(r.num(g, "unit"));
+	const Array shares = r.list(g, "shares");
+	for (int i = 0; i < shares.size(); i++) {
+		const Array pair = r.in("shares").list_at(shares, i, PAIR);
+		DataReader rs = r.in("shares").in(i);
+		d.grown_share[rs.index_of(KIND_NAMES, rs.utf8_at(pair, 0), "kind")] = float(rs.num_at(pair, 1));
+	}
+	const Array rows = r.list(g, "designs");
+	for (int i = 0; i < rows.size(); i++) {
+		const Array row = r.in("designs").list_at(rows, i, ROW_SIZE);
+		DataReader ri = r.in("designs").in(i);
+		const String path = folder + ri.text_at(row, NAME) + ".json";
+		const Variant doc = JSON::parse_string(FileAccess::get_file_as_string(path));
+		if (doc.get_type() != Variant::DICTIONARY || !Dictionary(doc).has("body")) {
+			ri.fail(String("design unreadable: ") + path);
+			continue;
+		}
+		auto body = std::make_shared<Body>();
+		float front_x = 0, front_y = 0;
+		int function = 0;
+		if (!body_from_doc(Dictionary(doc)["body"], d, *body, front_x, front_y, function, r.errors)) {
+			ri.fail(String("design refused: ") + path);
+			continue;
+		}
+		scale_body(*body, unit);
+		d.grown_designs.push_back({ Kind(ri.index_of(KIND_NAMES, ri.utf8_at(row, KIND), "kind")), float(ri.num_at(row, WEIGHT)), std::move(body) });
+	}
+}
 } // namespace
 
 uint8_t bay_named(const std::string &s, DataReader &r) { return uint8_t(r.index_of(BAY_NAMES, s, "bay")); }
@@ -251,11 +290,13 @@ bool load_buildings(const Dictionary &table, Data &d, PackedStringArray &errors)
 	openings(r.in("openings"), r.table(t, "openings"), d);
 	lot_rules(r.in("lots"), r.table(t, "lots"), d.lots);
 	shapes(r.in("shapes"), r.table(t, "shapes"), d.shapes);
+	if (errors.size() == before) grown_designs(r.in("grown_designs"), r.table(t, "grown_designs"), d); // the documents read with the colours
 	return errors.size() == before;
 }
 
 bool set_zone_kinds(const Catalog &catalog, Data &d, PackedStringArray &errors) {
 	const int64_t before = errors.size();
+	d.grown_least_storey_m = catalog.tune.build_min_storey_m; // the body rules' own least storey (data.h)
 	d.zone_kind.assign(ZONE_CODES, KIND_HOUSE);
 	d.zone_low_shop.assign(ZONE_CODES, false);
 	for (int code = 0; code < ZONE_CODES; code++) {

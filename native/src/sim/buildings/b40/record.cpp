@@ -24,7 +24,8 @@ void make_seed_body(const Data &data, const Building &rec, Body &b) {
 	if (is_open_lot(rec.fn)) open_lot_body(data, b, rec.fn, rec.w, rec.d);
 	else if (is_civic(rec.fn)) civic_body(data, b, rec.fn, rec.floors, rec.w, rec.d, rec.seed);
 	else {
-		make_body(data, b, rec.zone, rec.floors, rec.w, rec.d, rec.seed, LotCorner(rec.corner));
+		const LotFrame f = lot_frame(rec);
+		make_body(data, b, rec.zone, rec.floors, rec.w, rec.d, rec.seed, quarter_of(data, f.o, f.e1), LotCorner(rec.corner));
 		if (rec.site) { // the ground and the outline it grew on (lot_site.h): stepped to the one, fitted to the other
 			follow_slope(data, b, *rec.site, rec.w, rec.d);
 			fit_to_lot(data, b, *rec.site);
@@ -46,6 +47,9 @@ BodyKey body_key(const Building &r) {
 	k.site = r.site ? r.site->hash : 0;
 	std::memcpy(&k.w, &r.w, sizeof k.w);
 	std::memcpy(&k.d, &r.d, sizeof k.d);
+	std::memcpy(&k.x, &r.x, sizeof k.x);
+	std::memcpy(&k.z, &r.z, sizeof k.z);
+	std::memcpy(&k.rot, &r.rot, sizeof k.rot);
 	return k;
 }
 
