@@ -200,10 +200,9 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 	for (int v = 0; v < nv; v++)
 		for (int l = 0; l < levels; l++) {
 			size_t k = slot(size_t(v), l);
-			draws_[k].set(scenario_, l < lods ? asset_.variations[size_t(v)].lods[size_t(l)]->get_rid() : asset_.card->get_rid(), l < lods ? material_ : far_material_,
-					bufs_[k], box, l < lods, LAYER_PEOPLE);
+			draws_[k].set(scenario_, meshes_[k].rid, bufs_[k], box, l < lods, LAYER_PEOPLE);
 		}
-	blob_.set(scenario_, blob_mesh_.rid, blob_material_, blob_buf_, box, false, LAYER_PEOPLE);
+	blob_.set(scenario_, blob_mesh_.rid, blob_buf_, box, false, LAYER_PEOPLE);
 	held_.draw(scenario_, box, LAYER_PEOPLE);
 	helmets_.draw(scenario_, box, LAYER_PEOPLE);
 	return drawn;

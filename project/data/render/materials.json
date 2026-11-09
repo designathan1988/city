@@ -121,7 +121,7 @@
  "building": {
   "uses": ["finishes", "glass", "sky_in_glass", "rooms"],
   "_doc": "The buildings' surfaces (render/shaders/building_body.gdshaderinc, building_far_window.gdshaderinc): the walls' gain, the outside lamps, a lawn's tone and noise, the far wall's painted glass, and the mid level's shutters (their drop by pick, what the far shutters cover, their tone), by eye as the 4.0's buildings; each vector's parts are said at its uniform.",
-  "shader": "res://render/shaders/building.gdshader", "fade_shader": "res://render/shaders/building_fade.gdshader", "ruin_shader": "res://render/shaders/building_ruin.gdshader",
+  "shader": "res://render/shaders/building.gdshader", "ruin_shader": "res://render/shaders/building_ruin.gdshader",
   "params": {
    "wall_gain": 1.0,
    "lamp_glow": 3.4,
@@ -137,7 +137,7 @@
  "building_glass": {
   "uses": ["glass", "sky_in_glass", "rooms"],
   "_doc": "The near level's glass (render/shaders/building_pane.gdshaderinc): the room behind each pane by interior mapping and what hangs in its window, by eye as the 4.0's rooms; each vector's parts are said at its uniform. Colours are linear albedo (panel_light a radiance), lengths metres, a pick of a room's lot h is from + over * h. furniture_tone: three floats a furniture kind.",
-  "shader": "res://render/shaders/building_glass.gdshader", "fade_shader": "res://render/shaders/building_glass_fade.gdshader",
+  "shader": "res://render/shaders/building_glass.gdshader",
   "params": {
    "furniture_tone": [0.2051, 0.2918, 0.4179, 0.8879, 0.8632, 0.807, 0.159, 0.2122, 0.2747, 0.2307, 0.2874, 0.3467, 0.3231, 0.1441, 0.0561, 0.3231, 0.1441, 0.0561, 0.3231, 0.1441, 0.0561, 0.013, 0.0152, 0.0185, 0.3231, 0.1441, 0.0561, 0.1119, 0.0467, 0.0194, 0.3231, 0.1441, 0.0561, 0.9216, 0.9216, 0.8963, 0.4508, 0.4851, 0.5089, 0.855, 0.8714, 0.8632, 0.855, 0.8714, 0.8632, 0.855, 0.8714, 0.8632, 0.1119, 0.0467, 0.0194, 0.013, 0.0152, 0.0185, 0.0723, 0.2542, 0.0423, 0.3231, 0.1441, 0.0561, 0.159, 0.2122, 0.2747, 0.8879, 0.8632, 0.807, 0.4508, 0.4851, 0.5089, 0.9216, 0.9216, 0.8963, 0.3231, 0.1441, 0.0561, 0.4508, 0.4851, 0.5089, 0.4508, 0.4851, 0.5089, 0.4508, 0.4851, 0.5089, 0.4508, 0.4851, 0.5089, 0.1119, 0.0467, 0.0194, 0.1119, 0.0467, 0.0194, 0.0252, 0.0685, 0.0423, 0.4508, 0.4851, 0.5089, 0.013, 0.0152, 0.0185, 0.3231, 0.1441, 0.0561, 1.0, 0.8714, 0.6308, 1.0, 0.8714, 0.6308, 1.0, 0.8714, 0.6308, 0.3231, 0.1441, 0.0561, 0.3231, 0.1441, 0.0561],
    "frame_out_m": 0.03,
@@ -247,7 +247,7 @@
  },
  "building_parts": {
   "uses": ["finishes"],
-  "shader": "res://render/shaders/building_parts.gdshader", "fade_shader": "res://render/shaders/building_parts_fade.gdshader",
+  "shader": "res://render/shaders/building_parts.gdshader",
   "params": {
    "wall_gain": 1.0,
    "cloth_roughness": 0.85

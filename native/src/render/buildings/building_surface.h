@@ -27,6 +27,12 @@ struct LevelSurface {
 	int glass_at = -1, sheer_at = -1, card_at = -1, lawn_at = -1, wash_at = -1; // the mesh surfaces of the panes, the glass guards, the railings, the lawns and the lanterns' light, -1: none
 };
 
+// The materials a job's level surfaces are made with (surface_data.h: a mesh carries its materials, so the engine has its pipelines as the
+// job makes it): the walls, the near level's panes (the levels past it opaque), the guards, railings, lawns, washes, the far mesh, the caster.
+struct LevelMaterials {
+	godot::RID walls, near_glass, sheer, card, lawn, wash, far, cast;
+};
+
 // A superchunk's far mesh, and when it is made again.
 struct FarDraw {
 	MeshDraw far;

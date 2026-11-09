@@ -1,5 +1,6 @@
 // See transit_renderer.h. An item is a track or a stop; its signature is what it is drawn from, so a plan's edit makes again only what it moved.
 #include "render/transit/transit_renderer.h"
+#include "render/surface_data.h"
 #include "render/data_reader.h"
 
 #include "core/grid.h"
@@ -59,11 +60,22 @@ uint64_t signature_of(const CityState &s, const TransitStop &q) {
 	return h;
 }
 
-// Each surface's material, in the order they were added.
-void add_surface(RenderingServer *rs, const RID &mesh, const MeshBuilder &mb, const RID &material, int &surface) {
-	if (mb.empty()) return;
-	mb.commit_to(mesh);
-	rs->mesh_surface_set_material(mesh, surface++, material);
+// A surface of `mb` with its material added to `surfaces` (none for an empty builder): a mesh is made whole with its materials
+// (surface_data.h), so the engine has its pipelines as it is made.
+void add_surface(TypedArray<Dictionary> &surfaces, const MeshBuilder &mb, const RID &material) {
+	if (!mb.empty()) surfaces.push_back(mb.surface(material));
+}
+
+// `mesh` made again of `surfaces` and shown by `instance` (made the first time); none when there is no surface.
+void remake(OwnedMesh &mesh, RID &instance, const TypedArray<Dictionary> &surfaces, const RID &scenario) {
+	RenderingServer *rs = RenderingServer::get_singleton();
+	OwnedMesh next = OwnedMesh::of(surfaces.is_empty() ? RID() : create_mesh(surfaces));
+	if (next.valid()) {
+		if (instance.is_valid()) rs->instance_set_base(instance, next.rid);
+		else instance = rs->instance_create2(next.rid, scenario);
+	}
+	if (instance.is_valid()) rs->instance_set_visible(instance, next.valid());
+	if (next.valid()) mesh = std::move(next); // the old one goes after the instance left it
 }
 } // namespace
 
@@ -88,11 +100,10 @@ bool TransitRenderer::init(const RenderContext &ctx, PackedStringArray &errors) 
 	}
 	TransitMeshes car;
 	transit_box(car, look_, look_.car_part, Vector3(0, look_.car_up, 0), V2(0, 1), look_.car);
-	RenderingServer *rs = RenderingServer::get_singleton();
+	TypedArray<Dictionary> surfaces;
+	add_surface(surfaces, car.solid, material_);
 	car_.reset();
-	car_.rid = rs->mesh_create();
-	int surface = 0;
-	add_surface(rs, car_.rid, car.solid, material_, surface);
+	if (!surfaces.is_empty()) car_.rid = create_mesh(surfaces);
 	return true;
 }
 
@@ -173,20 +184,17 @@ int64_t TransitRenderer::draw(const TransitMeshes &m, Piece &out) {
 	drop(out);
 	int64_t bytes = m.solid.bytes() + m.glass.bytes();
 	for (const MeshBuilder &x : m.xray) bytes += x.bytes();
-	if (!m.solid.empty() || !m.glass.empty()) {
-		out.mesh.rid = rs->mesh_create();
-		int surface = 0;
-		add_surface(rs, out.mesh.rid, m.solid, material_, surface);
-		add_surface(rs, out.mesh.rid, m.glass, glass_, surface);
+	TypedArray<Dictionary> solid;
+	add_surface(solid, m.solid, material_);
+	add_surface(solid, m.glass, glass_);
+	if (!solid.is_empty()) {
+		out.mesh.rid = create_mesh(solid);
 		out.instance = rs->instance_create2(out.mesh.rid, scenario_);
 	}
-	int surface = 0;
-	for (int i = 0; i < TRANSIT_XRAY_LAYERS; i++) {
-		if (m.xray[i].empty()) continue;
-		if (!out.cut.valid()) out.cut.rid = rs->mesh_create();
-		add_surface(rs, out.cut.rid, m.xray[i], xray_[i], surface);
-	}
-	if (!out.cut.valid()) return bytes;
+	TypedArray<Dictionary> cut;
+	for (int i = 0; i < TRANSIT_XRAY_LAYERS; i++) add_surface(cut, m.xray[i], xray_[i]);
+	if (cut.is_empty()) return bytes;
+	out.cut.rid = create_mesh(cut);
 	out.cut_instance = rs->instance_create2(out.cut.rid, scenario_);
 	rs->instance_geometry_set_cast_shadows_setting(out.cut_instance, RenderingServer::SHADOW_CASTING_SETTING_OFF);
 	rs->instance_set_visible(out.cut_instance, xray_on_);
@@ -249,25 +257,13 @@ void TransitRenderer::set_xray(bool on) {
 
 // Into the piece's own meshes and instances: made the first time, cleared and filled again after; an empty one hidden.
 void TransitRenderer::refill(const TransitMeshes &m, Piece &out) {
-	RenderingServer *rs = RenderingServer::get_singleton();
-	const auto mesh_of = [&](OwnedMesh &mesh, RID &instance) {
-		if (!mesh.valid()) {
-			mesh.rid = rs->mesh_create();
-			instance = rs->instance_create2(mesh.rid, scenario_);
-		} else {
-			rs->mesh_clear(mesh.rid);
-		}
-	};
-	mesh_of(out.mesh, out.instance);
-	int surface = 0;
-	add_surface(rs, out.mesh.rid, m.solid, material_, surface);
-	add_surface(rs, out.mesh.rid, m.glass, glass_, surface);
-	rs->instance_set_visible(out.instance, surface > 0);
-	mesh_of(out.cut, out.cut_instance);
-	rs->instance_geometry_set_cast_shadows_setting(out.cut_instance, RenderingServer::SHADOW_CASTING_SETTING_OFF);
-	surface = 0;
-	for (int i = 0; i < TRANSIT_XRAY_LAYERS; i++) add_surface(rs, out.cut.rid, m.xray[i], xray_[i], surface);
-	rs->instance_set_visible(out.cut_instance, surface > 0); // the run being laid shows its cut: the tool that lays it is on
+	TypedArray<Dictionary> solid, cut;
+	add_surface(solid, m.solid, material_);
+	add_surface(solid, m.glass, glass_);
+	remake(out.mesh, out.instance, solid, scenario_);
+	for (int i = 0; i < TRANSIT_XRAY_LAYERS; i++) add_surface(cut, m.xray[i], xray_[i]);
+	remake(out.cut, out.cut_instance, cut, scenario_); // the run being laid shows its cut: the tool that lays it is on
+	if (out.cut_instance.is_valid()) RenderingServer::get_singleton()->instance_geometry_set_cast_shadows_setting(out.cut_instance, RenderingServer::SHADOW_CASTING_SETTING_OFF);
 }
 
 void TransitRenderer::sketch(const CityState &s, const std::vector<V2> &points, TransitMode mode, Sketch &out) {
@@ -312,7 +308,7 @@ void TransitRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseS
 		drawn_cars_++;
 	}
 	const AABB box(Vector3(cam.x - radius_, cam.y - AABB_HALF_H, cam.z - radius_), Vector3(radius_ * 2, AABB_HALF_H * 2, radius_ * 2));
-	cars_.set(scenario_, car_.rid, RID(), buf, box, true, LAYER_VEHICLES);
+	cars_.set(scenario_, car_.rid, buf, box, true, LAYER_VEHICLES);
 }
 
 } // namespace city

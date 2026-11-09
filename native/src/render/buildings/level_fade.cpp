@@ -23,17 +23,4 @@ void FadeClock::tick(double now_s, float fade_s) {
 	last_s = now_s;
 }
 
-void FadeTwins::load(const RenderContext &ctx, PackedStringArray &errors) {
-	walls = ctx.material("building_fade", errors);
-	glass = ctx.material("building_glass_fade", errors);
-	parts = ctx.material("building_parts_fade", errors);
-}
-
-void FadeTwins::free_warmers() {
-	for (RID &w : warmers) {
-		if (w.is_valid()) RenderingServer::get_singleton()->free_rid(w);
-		w = RID();
-	}
-}
-
 } // namespace city

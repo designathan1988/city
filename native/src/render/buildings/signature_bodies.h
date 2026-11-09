@@ -7,8 +7,8 @@
 #include "core/job_pool.h"
 #include "render/chunk_jobs.h"
 #include "render/frame_admission.h"
+#include "render/rs_util.h"
 
-#include <godot_cpp/classes/array_mesh.hpp>
 #include <godot_cpp/classes/image.hpp>
 #include <godot_cpp/classes/shader.hpp>
 #include <godot_cpp/classes/shader_material.hpp>
@@ -43,9 +43,11 @@ public:
 	int drawn() const; // instances standing (tests)
 	// The kinds a job made ready, uploaded as the frame's ledger admits; the instances that waited for them placed.
 	void sync(FrameAdmission &f);
-	// The kind's mesh now (a body drawn apart: body_stage.h), made on the calling thread if no job made it yet; nullptr when its
+	// The kind's mesh now (a body drawn apart: body_stage.h), made on the calling thread if no job made it yet; none when its
 	// file is missing or bad.
-	godot::Ref<godot::ArrayMesh> mesh(int kind);
+	godot::RID mesh(int kind);
+	// The kind's mesh with `material` on every surface (the Build tool's ghost), made once a kind and material.
+	godot::RID mesh_with(int kind, const godot::RID &material);
 
 private:
 	struct Look {
@@ -84,7 +86,12 @@ private:
 	godot::PackedByteArray table_; // materials.sig, unpacked
 	std::vector<Look> looks_;
 	godot::Ref<godot::Shader> solid_, blended_;
-	std::vector<godot::Ref<godot::ArrayMesh>> meshes_;
+	// Each kind's mesh, made whole with its looks (surface_data.h: the engine has its pipelines as it is made), its prepared surfaces
+	// kept for another material (mesh_with), and that mesh.
+	std::vector<OwnedMesh> meshes_;
+	std::vector<std::shared_ptr<Prepared>> made_;
+	std::vector<OwnedMesh> with_;
+	std::vector<godot::RID> with_material_;
 	std::vector<State> state_; // by kind
 	std::vector<std::shared_ptr<Prepared>> ready_; // made, waiting for the ledger
 	Inbox<std::shared_ptr<Prepared>> inbox_;

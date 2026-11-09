@@ -4,6 +4,8 @@
 
 #include "core/math.h"
 
+#include "render/surface_data.h"
+
 #include <godot_cpp/classes/array_mesh.hpp>
 #include <godot_cpp/classes/box_mesh.hpp>
 #include <godot_cpp/classes/cylinder_mesh.hpp>
@@ -20,7 +22,7 @@ constexpr float CYL_SIDES = 9.f; // a thrown pole's or trunk's sides
 
 // A broken plate of the ground (effects.json shapes.crater_slabs): a jagged outline in the xz plane, its sides a unit thick
 // along y and pushed out by the bevel's width, its faces bevelled back to the outline: flat-shaded triangles.
-Ref<ArrayMesh> slab_mesh(const CraterSlabsShape &K) {
+Array slab_mesh(const CraterSlabsShape &K) {
 	const int n = std::max(3, K.outline_corners);
 	std::vector<Vector3> rim(static_cast<size_t>(n)); // the outline, at unit radius scale
 	for (int k = 0; k < n; k++) {
@@ -57,10 +59,7 @@ Ref<ArrayMesh> slab_mesh(const CraterSlabsShape &K) {
 	arrays.resize(Mesh::ARRAY_MAX);
 	arrays[Mesh::ARRAY_VERTEX] = verts;
 	arrays[Mesh::ARRAY_NORMAL] = normals;
-	Ref<ArrayMesh> mesh;
-	mesh.instantiate();
-	mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arrays);
-	return mesh;
+	return arrays;
 }
 } // namespace
 
@@ -76,20 +75,21 @@ void Debris::init(const RID &scenario, const RID &material, const EffectParams &
 	cyl->set_bottom_radius(1.f);
 	cyl->set_radial_segments(int(CYL_SIDES));
 	// debris.gdshader moves no vertex: a piece's box is its shape's, where it lies
-	boxes_.init_shaped(scenario, box, material, params.debris_max, true, box->get_aabb(), 0.f);
-	cylinders_.init_shaped(scenario, cyl, material, params.debris_max, true, cyl->get_aabb(), 0.f);
-	const Ref<ArrayMesh> slab = slab_mesh(params.shapes.crater_slabs);
-	slabs_.init_shaped(scenario, slab, material, params.debris_max, true, slab->get_aabb(), 0.f);
+	// each shape made a mesh with the material (surface_data.h): the engine has its pipelines before a blast throws the first piece
+	boxes_.init_shaped(scenario, OwnedMesh::of(mesh_of_arrays(box->get_mesh_arrays(), material)), params.debris_max, true, box->get_aabb(), 0.f);
+	cylinders_.init_shaped(scenario, OwnedMesh::of(mesh_of_arrays(cyl->get_mesh_arrays(), material)), params.debris_max, true, cyl->get_aabb(), 0.f);
+	const Array slab = slab_mesh(params.shapes.crater_slabs);
+	slabs_.init_shaped(scenario, OwnedMesh::of(mesh_of_arrays(slab, material)), params.debris_max, true, arrays_box(slab), 0.f);
 	boxes_.count(0);
 	cylinders_.count(0);
 	slabs_.count(0);
 }
 
-void Debris::set_wrecks(const RID &scenario, const RID &material, const std::vector<Ref<Mesh>> &bodies) {
+void Debris::set_wrecks(const RID &scenario, const RID &material, const std::vector<const MeshBuilder *> &bodies) {
 	const DebrisShape &K = params_.shapes.debris;
 	wrecks_.resize(bodies.size());
 	for (size_t i = 0; i < bodies.size(); i++) {
-		wrecks_[i].init_shaped(scenario, bodies[i], material, K.wrecks_kept, true, bodies[i]->get_aabb(), 0.f);
+		wrecks_[i].init_shaped(scenario, bodies[i]->bake(material), K.wrecks_kept, true, bodies[i]->bounds(), 0.f);
 		wrecks_[i].count(0);
 	}
 }

@@ -1,5 +1,6 @@
 // The fallen, drawn (body_renderer.h).
 #include "render/agents/body_renderer.h"
+#include "render/surface_data.h"
 
 #include <godot_cpp/classes/image.hpp>
 #include <godot_cpp/classes/rendering_server.hpp>
@@ -57,7 +58,9 @@ void BodyRenderer::make_ready() {
 	rs->material_set_param(material_->get_rid(), "alpha_test", asset.variations.front().alpha_test);
 	layers_.resize(asset.variations.size());
 	for (size_t v = 0; v < layers_.size(); v++) {
-		layers_[v].init_owned(scenario_, asset.variations[v].lods.front(), material_->get_rid(), MOST_BODIES, true); // the bones place the skin
+		OwnedMesh skin; // the near level made again with this material: a mesh carries its materials (surface_data.h)
+		skin.rid = mesh_of_arrays(asset.variations[v].lods.front(), material_->get_rid());
+		layers_[v].init_owned(scenario_, std::move(skin), MOST_BODIES, true); // the bones place the skin
 		layers_[v].count(0);
 	}
 }

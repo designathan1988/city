@@ -4,10 +4,10 @@
 #pragma once
 
 
-#include <godot_cpp/classes/array_mesh.hpp>
+#include "render/mesh_builder.h"
 
 namespace city::b40 {
 
-godot::Ref<godot::ArrayMesh> bay_mesh();
+MeshBuilder bay_mesh(); // made a mesh with its material by its owner (surface_data.h)
 
 } // namespace city::b40

@@ -81,10 +81,31 @@ func set_mode(sky: String) -> void:
 
 
 ## The city's clock moved: the light follows in "cycle", a step at a time, so nothing is redone in a frame it did not move.
+## The sun moves with the clock by the lab's tolerance (sunCascades.ts sunTolerance): once the true sun has turned as far as moves the
+## shadow of a caster sun_caster_m tall by one texel of the nearest cascade, so a shadow never jumps more than a texel (a step of a
+## game minute moved every shadow half a metre once a second: log/owner-review.md §9). Godot draws the sun's shadow every frame either way.
 func follow_clock(hour: float) -> void:
-	if mode == "cycle" and absf(hour - _clock_shown) >= _d.clock_step_h:
+	if mode != "cycle":
+		return
+	if _clock_shown < 0.0 or _sun_toward(_clock_shown).angle_to(_sun_toward(hour)) >= _sun_tolerance(hour):
 		_clock_shown = hour
 		set_hour(hour)
+
+
+## Where the sun stands at a clock time, as set_hour aims it (toward the sun, unit).
+func _sun_toward(hour: float) -> Vector3:
+	var k: float = (hour - _d.sunrise_h) / _d.day_span_h
+	var e := deg_to_rad(maxf(sin(PI * k), _d.low_height) * _d.max_elev_deg)
+	var a := deg_to_rad(_d.az_start_deg + _d.az_span_deg * clampf(k, 0.0, 1.0))
+	return Vector3(cos(e) * sin(a), sin(e), cos(e) * cos(a))
+
+
+## The angle the sun may turn before a shadow moves a texel of the nearest cascade: a caster's shadow moves h / sin^2(e) per radian of
+## elevation and h / tan(e) per radian of azimuth (the lab's reach, the larger of the two).
+func _sun_tolerance(hour: float) -> float:
+	var e := maxf(asin(_sun_toward(hour).y), deg_to_rad(_d.low_height * _d.max_elev_deg))
+	var reach: float = _d.sun_caster_m * maxf(1.0 / (sin(e) * sin(e)), 1.0 / tan(e))
+	return cascades.near_texel_m() / reach if cascades else 0.0
 
 
 func set_hour(hour: float) -> void:

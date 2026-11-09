@@ -1,5 +1,6 @@
 // The cut of a building into pieces (ruin_fracture.h), on a job's thread.
 #include "render/buildings/ruin_fracture.h"
+#include "render/surface_data.h"
 
 #include "render/buildings/ruin_cells.h"
 #include "render/buildings/shell.h"
@@ -196,7 +197,7 @@ RuinPiece write_piece(Writer &w, const std::vector<Tri> &tris, std::unordered_ma
 }
 
 OwnedMesh bake(const PackedVector3Array &pv, const PackedVector3Array &pn, const PackedColorArray &pc, const PackedVector2Array &pu,
-		const PackedVector2Array &pu2, const PackedByteArray &ids) {
+		const PackedVector2Array &pu2, const PackedByteArray &ids, const RID &material) {
 	Array arr;
 	arr.resize(RenderingServer::ARRAY_MAX);
 	arr[RenderingServer::ARRAY_VERTEX] = pv;
@@ -206,11 +207,8 @@ OwnedMesh bake(const PackedVector3Array &pv, const PackedVector3Array &pn, const
 	arr[RenderingServer::ARRAY_TEX_UV2] = pu2;
 	arr[RenderingServer::ARRAY_CUSTOM0] = ids;
 	const uint64_t format = RenderingServer::ARRAY_FLAG_COMPRESS_ATTRIBUTES | uint64_t(RenderingServer::ARRAY_CUSTOM_RGBA8_UNORM) << RenderingServer::ARRAY_FORMAT_CUSTOM0_SHIFT;
-	RenderingServer *rs = RenderingServer::get_singleton();
-	OwnedMesh m;
-	m.rid = rs->mesh_create();
-	rs->mesh_add_surface_from_arrays(m.rid, RenderingServer::PRIMITIVE_TRIANGLES, arr, Array(), Dictionary(), RenderingServer::ArrayFormat(format));
-	return m;
+	// with the ruins' material: the engine makes the pipelines here, on the job's thread; each ruin's copy of it shares them (surface_data.h)
+	return OwnedMesh::of(mesh_of_arrays(arr, material, format));
 }
 
 // The bonds: pieces in cells that touch.
@@ -241,7 +239,7 @@ float winding(const Tri &t) {
 // Streamed: the faces' box first (a face divided stays in the box of its corners), then each face divided, each piece of it cut
 // along the cells and filed by cell in the order made; the cells written in ascending order straight into the mesh's arrays,
 // each freed once written. The same pieces in the same order as dividing every face, cutting every piece and sorting by cell.
-std::shared_ptr<RuinMesh> fracture_shell(const b40::Shell &walls, const b40::Shell &glass, const std::vector<RuinSlab> &slabs, uint32_t seed) {
+std::shared_ptr<RuinMesh> fracture_shell(const b40::Shell &walls, const b40::Shell &glass, const std::vector<RuinSlab> &slabs, uint32_t seed, const RID &material) {
 	auto out = std::make_shared<RuinMesh>();
 	bool any = false;
 	Vector3 lo, hi;
@@ -310,7 +308,7 @@ std::shared_ptr<RuinMesh> fracture_shell(const b40::Shell &walls, const b40::She
 	}
 	bond(*out, cells, piece_of);
 	out->vertices = int64_t(corners);
-	out->mesh = bake(pv, pn, pc, pu, pu2, ids);
+	out->mesh = bake(pv, pn, pc, pu, pu2, ids, material);
 	return out;
 }
 

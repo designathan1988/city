@@ -5,6 +5,7 @@
 #pragma once
 
 #include "render/agents/body_walls.h"
+#include "render/mesh_builder.h"
 #include "render/agents/people_renderer.h"
 #include "render/effects/debris.h"
 #include "render/effects/effect_params.h"
@@ -34,7 +35,7 @@ public:
 	// The woods' trees a blow's clearing took (TreeRenderer::felled): (state, x, z, radius, clearing, out).
 	using TreeFinder = std::function<void(const CityState &, float, float, float, int, std::vector<TreeInstance> &)>;
 	void set_tree_finder(TreeFinder finder) { tree_finder_ = std::move(finder); }
-	void set_wrecks(const std::vector<godot::Ref<godot::Mesh>> &bodies, const std::vector<godot::Vector3> &sizes); // the burnt bodies, by vehicle type
+	void set_wrecks(const std::vector<const MeshBuilder *> &bodies, const std::vector<godot::Vector3> &sizes); // the burnt bodies, by vehicle type
 	void reset(); // a new city or a load: every effect gone
 	void release();
 	// The height-sample rectangles (x0, z0, x1, z1) the terrain composed again since the last frame (ChangeLog::terrain_rects): the

@@ -10,6 +10,7 @@
 #include "sim/buildings/b40/types.h"
 
 #include <godot_cpp/variant/color.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/rid.hpp>
 #include <godot_cpp/variant/vector2.hpp>
 #include <godot_cpp/variant/vector3.hpp>
@@ -154,8 +155,8 @@ struct Shell {
 	void wash(const Basis &f, float a0, float a1, float b0, float b1, float c);
 	// A far wall rectangle carrying painted windows: uv = (bays, storeys) at its corners.
 	void far_wall(const godot::Vector3 p[4], const godot::Vector3 &out, const godot::Vector2 cell[4], const Lin &lin, int8_t fin, uint32_t seed, const FarWindows &w);
-	void commit_to(const godot::RID &mesh, bool with_uv2 = true, bool blends = false) const; // a surface that blends keeps its order
-	int64_t bytes(bool with_uv2) const; // of the arrays commit_to hands over (chunk_jobs.h UploadBudget)
+	godot::Dictionary surface(const godot::RID &material, bool with_uv2 = true, bool blends = false) const; // with `material` (surface_data.h); a surface that blends keeps its order
+	int64_t bytes(bool with_uv2) const; // of the arrays surface() hands over (chunk_jobs.h UploadBudget)
 	void bounds(godot::Vector3 &mn, godot::Vector3 &mx) const;
 
 private:

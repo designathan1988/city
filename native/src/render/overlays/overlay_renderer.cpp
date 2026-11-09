@@ -1,5 +1,6 @@
 // Zone-colour chunk jobs and the congestion layer's refresh cycle (see overlay_renderer.h).
 #include "render/mesh_builder.h"
+#include "render/surface_data.h"
 #include "render/overlays/overlay_renderer.h"
 
 #include "render/data_reader.h"
@@ -101,16 +102,18 @@ void OverlayRenderer::submit_zone(const CityState &s, int64_t key, float priorit
 	});
 }
 
+// A ribbon made a mesh whole with the overlay's material (surface_data.h) and shown in place of the one before.
 void OverlayRenderer::upload(MeshDraw &d, Ribbon &r, bool on) {
-	d.reset(scenario_, material_, false, LAYER_OVERLAYS);
+	RID next;
 	if (!r.v.is_empty()) {
 		Array arrays;
 		arrays.resize(RenderingServer::ARRAY_MAX);
 		arrays[RenderingServer::ARRAY_VERTEX] = r.v;
 		arrays[RenderingServer::ARRAY_COLOR] = r.c;
-		RenderingServer::get_singleton()->mesh_add_surface_from_arrays(d.mesh, RenderingServer::PRIMITIVE_TRIANGLES, arrays);
+		next = mesh_of_arrays(arrays, material_);
 	}
-	d.visible(on && !r.v.is_empty());
+	d.adopt(scenario_, false, next, LAYER_OVERLAYS);
+	d.visible(on && next.is_valid());
 }
 
 // The chunks in reach coloured by this publication's speeds: their ribbons laid once (lay_congestion), coloured here; each

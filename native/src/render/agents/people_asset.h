@@ -51,7 +51,7 @@ struct PersonVariation {
 	float helmet[PALM_FLOATS] = {}; // three rows, a shell of width 1 fitted to this head, at rest
 	float palm[PALM_FLOATS] = {}; // three rows, the palm at rest: X along the fingers, Y to the thumb, Z out of the back of the hand
 	float joints[JOINT_FLOATS] = {}; // where the ragdoll's joints stand at rest
-	std::vector<godot::Ref<godot::ArrayMesh>> lods; // 0 = near
+	std::vector<godot::Array> lods; // each level's surface arrays, 0 = near (made a mesh with its material by the renderer: surface_data.h)
 	float reach = 0; // the near level's farthest vertex from the bind origin, metres: how far a bone carries skin (body_renderer.cpp)
 	std::vector<PersonFit> fits; // one a clip, in PeopleAsset::clips' order
 	std::vector<float> curves; // each clip's frames + 1 values, in clips' order (PeopleAsset::curve)
@@ -63,7 +63,7 @@ struct PeopleAsset {
 	godot::Ref<godot::ImageTexture> palette;
 	godot::Ref<godot::ImageTexture> faces; // where each face vertex moves, by channel (people_face.gdshaderinc)
 	godot::Ref<godot::Texture2DArray> atlas; // a layer a body
-	godot::Ref<godot::ArrayMesh> card; // the quad of the far off
+	godot::Array card; // the quad of the far off, as surface arrays
 	int card_frames = 1;
 	// The strip in the atlas: x, y, a frame's width and height, in uv. A Vector4, not a Color: a Color set on a vec4 uniform is taken as sRGB and
 	// turned linear by the engine (renderer_rd material_storage.cpp convert_to_vector), which shrank the strip to a black texel.

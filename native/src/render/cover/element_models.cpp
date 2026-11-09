@@ -1,5 +1,6 @@
 // Loads the models of the element brush (see element_models.h).
 #include "render/cover/element_models.h"
+#include "render/surface_data.h"
 
 #include <godot_cpp/classes/base_material3d.hpp>
 #include <godot_cpp/classes/mesh_instance3d.hpp>
@@ -31,10 +32,8 @@ Ref<Mesh> first_mesh(Node *n) {
 	return Ref<Mesh>();
 }
 
-ElementModel fitted(const Ref<Mesh> &mesh) {
+ElementModel fitted(const AABB &box) {
 	ElementModel m;
-	m.mesh = mesh;
-	AABB box = mesh->get_aabb();
 	float across = std::max(box.size.x, box.size.z);
 	m.fit = across > 0 ? 1.f / across : 1.f;
 	m.foot = box.position.y;
@@ -54,12 +53,12 @@ Ref<Mesh> scene_mesh(const String &path, PackedStringArray &errors) {
 	return mesh;
 }
 
-// A quad lying on the ground, wearing the texture with its cover kept at any distance.
-Ref<Mesh> ground_quad(const String &path, PackedStringArray &errors) {
+// A quad lying on the ground, wearing the texture with its cover kept at any distance, made whole with its material.
+ElementModel ground_quad(const String &path, PackedStringArray &errors) {
 	Ref<Texture2D> tex = ResourceLoader::get_singleton()->load(path);
 	if (tex.is_null()) {
-		errors.push_back("cover.json elements: não abriu " + path);
-		return Ref<Mesh>();
+		errors.push_back("cover.json elements: could not open " + path);
+		return ElementModel();
 	}
 	Ref<StandardMaterial3D> mat;
 	mat.instantiate();
@@ -68,8 +67,11 @@ Ref<Mesh> ground_quad(const String &path, PackedStringArray &errors) {
 	mat->set_cull_mode(BaseMaterial3D::CULL_DISABLED);
 	Ref<PlaneMesh> plane;
 	plane.instantiate();
-	plane->set_material(mat);
-	return plane;
+	ElementModel m = fitted(plane->get_aabb());
+	m.made = OwnedMesh::of(mesh_of_arrays(plane->get_mesh_arrays(), mat->get_rid()));
+	m.mesh = m.made.rid;
+	m.keep = mat;
+	return m;
 }
 } // namespace
 
@@ -86,8 +88,17 @@ bool ElementModels::load(const DataValue &elements, int laid, PackedStringArray 
 		count_.push_back(files.size());
 		for (int i = 0; i < files.size(); i++) {
 			const String path = files[i].text();
-			Ref<Mesh> mesh = path.ends_with(".png") ? ground_quad(path, errors) : scene_mesh(path, errors);
-			if (mesh.is_valid()) models_.push_back(fitted(mesh));
+			if (path.ends_with(".png")) {
+				ElementModel quad = ground_quad(path, errors);
+				if (quad.mesh.is_valid()) models_.push_back(std::move(quad));
+				continue;
+			}
+			const Ref<Mesh> mesh = scene_mesh(path, errors);
+			if (mesh.is_null()) continue;
+			ElementModel m = fitted(mesh->get_aabb());
+			m.mesh = mesh->get_rid();
+			m.keep = mesh;
+			models_.push_back(std::move(m));
 		}
 	}
 	return errors.size() == before;

@@ -98,7 +98,7 @@
     "fill_turn_deg": {
       "type": "number"
     },
-    "clock_step_h": {
+    "sun_caster_m": {
       "type": "number"
     },
     "shadow_reach_m": {

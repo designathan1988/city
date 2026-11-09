@@ -5,13 +5,16 @@ O que falta fazer, por área.
 - The owner's review of the game (2026-11-09 07:30; findings, causes and fixes in log/owner-review.md), seen with the simulation running (every photo before it was taken paused: no
   walker, no vehicle; `look` plans now set the speed): each to fix by its cause, compared with the lab's code it was traced from.
   1. Walkers drawn as black boxes from about 50 m (the near meshes are right at 20-40 m; the mid level and the far card are not).
-  2. Vehicles standing in the lanes, and a vehicle on the footway (the town centre, seed 7).
+  2. Vehicles standing in the lanes, driving over one another and onto the footways (the town centre, seed 7; the owner's photo
+     of 2026-11-09: a sedan across the kerb onto the footway, people beside it); cars that vanish all at once.
   3. Grass between the footway and the lot fronts: the buildings stand back where they should stand on the front.
   4. Car parks that do not cover their lot (grass round the asphalt).
   5. Buildings drawn as boxes with no detail at mid distance, and balconies without their parapet even close.
   6. The glass designs of their own look wrong; large lawns round the grown designs.
   7. Streets that are not the game's (to name, from the owner's photos).
-  8. Memory, GPU and CPU high on the small city. Measured (town, seed 7, running, 1600x900, high tier, RTX 3060): video 1170 MB
+  8. Memory, GPU and CPU high on the small city. The owner (2026-11-09): RAM near 5 GB where the same small city took no more
+     than 800 MB before (tasklist of the live game: 4.58 GB working set); to fix by its cause without raising CPU or GPU, which are
+     high too. Measured (town, seed 7, running, 1600x900, high tier, RTX 3060): video 1170 MB
      (textures 894 MB, buffers 182 MB), static RAM 717 MB, GPU 8.3 ms over the town and 9.2 ms in a street, 3.3 M primitives,
      6.15 M shadow primitives in the street view, CPU 1.8 ms. Causes read so far:
      - the town map is 20 tiles (20 x 20 km, maps.json) for a city of 640 m radius: the land, its ground paint tiles, ecology,

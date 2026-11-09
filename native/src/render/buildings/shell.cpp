@@ -2,6 +2,7 @@
 // grime), clockwise winding toward `out` (Godot front faces), the vertex code of each surface kind, and the commit of
 // one surface to a RenderingServer mesh.
 #include "render/buildings/shell.h"
+#include "render/surface_data.h"
 #include "core/shader_contracts/buildings.h"
 
 #include "render/mesh_order.h"
@@ -288,8 +289,8 @@ int64_t Shell::bytes(bool with_uv2) const {
 			(rooms ? pos.size() * CUSTOM_ARRAYS * sizeof(uint32_t) : 0));
 }
 
-void Shell::commit_to(const RID &mesh, bool with_uv2, bool blends) const {
-	if (idx.empty()) return;
+Dictionary Shell::surface(const RID &material, bool with_uv2, bool blends) const {
+	if (idx.empty()) return Dictionary();
 	auto copy = [](auto &dst, const auto &src) {
 		dst.resize(int64_t(src.size()));
 		std::memcpy(dst.ptrw(), src.data(), src.size() * sizeof(src[0]));
@@ -324,8 +325,7 @@ void Shell::commit_to(const RID &mesh, bool with_uv2, bool blends) const {
 			format |= uint64_t(RenderingServer::ARRAY_CUSTOM_RGBA8_UNORM) << SHIFTS[i];
 		}
 	}
-	RenderingServer::get_singleton()->mesh_add_surface_from_arrays(mesh, RenderingServer::PRIMITIVE_TRIANGLES, arr, Array(), Dictionary(),
-			RenderingServer::ArrayFormat(format));
+	return surface_data(arr, Dictionary(), format, material);
 }
 
 } // namespace city::b40

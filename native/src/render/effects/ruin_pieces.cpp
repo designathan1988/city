@@ -127,10 +127,11 @@ void RuinPieces::start(const CityState &s, Fall &f, float heap) {
 	const float reach = 0.5f * std::hypot(r.w, r.d) + K.lot_pad_m, ground = s.terrain.height_at(r.x, r.z);
 	auto patch = std::make_shared<HeightPatch>(s.terrain.patch(r.x - reach, r.z - reach, r.x + reach, r.z + reach));
 	const b40::Data *data = &s.buildings.designs;
-	s.jobs->submit(JobKey{ JobLane::RUINS, int64_t(r.seed) }, 0.f, [inbox = inbox_, maker = maker_, law = law_, data, patch, r, scars, standing, ground, heap, falling]() {
+	s.jobs->submit(JobKey{ JobLane::RUINS, int64_t(r.seed) }, 0.f, [inbox = inbox_, maker = maker_, law = law_, data, patch, r, scars, standing, ground, heap, falling,
+								 material = material_->get_rid()]() {
 		Done done;
 		done.seed = r.seed;
-		done.cut = maker(*data, r.record, *patch);
+		done.cut = maker(*data, r.record, *patch, material); // made with the ruins' material: the engine has its pipelines as the job makes it
 		if (done.cut && !done.cut->pieces.empty()) {
 			done.sim = std::make_shared<RuinSim>();
 			done.sim->begin(done.cut, r, ground, heap, law, standing);

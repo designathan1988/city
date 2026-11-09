@@ -25,7 +25,7 @@ void wall(MeshBuilder &mb, float x0, float x1, float y0, float y1) {
 }
 } // namespace
 
-Ref<ArrayMesh> bay_mesh() {
+MeshBuilder bay_mesh() {
 	MeshBuilder mb;
 	wall(mb, BAY_X_LEFT, BAY_X_JAMB_LEFT, BAY_Y_FOOT, BAY_Y_TOP);
 	wall(mb, BAY_X_JAMB_RIGHT, BAY_X_RIGHT, BAY_Y_FOOT, BAY_Y_TOP);
@@ -41,7 +41,7 @@ Ref<ArrayMesh> bay_mesh() {
 	const Vector3 sl(BAY_X_SILL_LEFT, BAY_Y_SILL, BAY_Z_WALL), sr(BAY_X_SILL_RIGHT, BAY_Y_SILL, BAY_Z_WALL), lip(0, 0, BAY_Z_SILL), drop(0, BAY_Y_UNDER_SILL - BAY_Y_SILL, 0);
 	piece(mb, sl, sr, sr + lip, sl + lip, UP, BAY_PIECE_SILL);
 	piece(mb, sl + lip + drop, sr + lip + drop, sr + lip, sl + lip, OUT, BAY_PIECE_SILL);
-	return mb.commit();
+	return mb;
 }
 
 } // namespace city::b40

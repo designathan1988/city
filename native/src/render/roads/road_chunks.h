@@ -71,7 +71,7 @@ protected:
 	void commit_one(Built &b) override {
 		Chunk &c = chunks_[b.key];
 		const bool any = b.mesh.valid();
-		c.surface.adopt(scenario_, material_, casts_, b.mesh.release(), LAYER_ROADS);
+		c.surface.adopt(scenario_, casts_, b.mesh.release(), LAYER_ROADS); // made with material_ (MeshQueueOf::surface_material_)
 		if (any) godot::RenderingServer::get_singleton()->instance_set_custom_aabb(c.surface.inst, chunk_bounds(b.key, CHUNK, b.bounds));
 		c.surface.visible(any && drawn_);
 		c.made = b.count;

@@ -5,9 +5,8 @@
 
 namespace city {
 
-// A mesh made by a job, off the main thread: mesh_add_surface_from_arrays converts the arrays on the calling thread and
-// the RenderingServer queues the surface's upload for the main thread's next call into it (Godot rendering_server.cpp /
-// server_wrap_mt_common.h), so the conversion never lands on the frame and the uploads are paced by the bakes the frame
+// A mesh made by a job, off the main thread, whole with its materials (surface_data.h: mesh_create_from_surfaces, whose pipelines the
+// engine makes then, in the background): the conversion never lands on the frame and the uploads are paced by the bakes the frame
 // admits (chunk_jobs.h). Freed unless handed over (a result dropped as stale frees its mesh); bake_multimesh fills a
 // MultiMesh the same way.
 struct OwnedMesh {
@@ -35,6 +34,11 @@ struct OwnedMesh {
 		rid = godot::RID();
 		return r;
 	}
+	static OwnedMesh of(const godot::RID &made) { // takes `made` over (surface_data.h mesh_of_arrays, create_mesh)
+		OwnedMesh m;
+		m.rid = made;
+		return m;
+	}
 };
 
 // A MultiMesh of `buf` (MultiMesh layout, MM_PLAIN_STRIDE floats per instance) filled on the calling thread, as a mesh bake
@@ -56,20 +60,8 @@ inline OwnedMesh bake_multimesh(const godot::RID &mesh, const godot::PackedFloat
 struct MeshDraw {
 	godot::RID mesh, inst;
 	// Shows `next` (a mesh a job made, now owned here): swap_base.
-	void adopt(const godot::RID &scenario, const godot::RID &material, bool shadows, const godot::RID &next, RenderLayer layer) {
-		swap_base(inst, mesh, next, scenario, material, shadows, layer);
-	}
-	void reset(const godot::RID &scenario, const godot::RID &material, bool shadows, RenderLayer layer) {
-		godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
-		if (!mesh.is_valid()) {
-			mesh = rs->mesh_create();
-			inst = rs->instance_create2(mesh, scenario);
-			rs->instance_set_layer_mask(inst, layer);
-			rs->instance_geometry_set_cast_shadows_setting(inst,
-					shadows ? godot::RenderingServer::SHADOW_CASTING_SETTING_ON : godot::RenderingServer::SHADOW_CASTING_SETTING_OFF);
-		}
-		rs->mesh_clear(mesh);
-		if (material.is_valid()) rs->instance_geometry_set_material_override(inst, material);
+	void adopt(const godot::RID &scenario, bool shadows, const godot::RID &next, RenderLayer layer) {
+		swap_base(inst, mesh, next, scenario, shadows, layer);
 	}
 	void visible(bool on) const {
 		if (inst.is_valid()) godot::RenderingServer::get_singleton()->instance_set_visible(inst, on);

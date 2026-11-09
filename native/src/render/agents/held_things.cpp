@@ -35,7 +35,7 @@ bool HeldThings::init(const RenderContext &ctx, const DataValue &held, const cha
 			const Vector3 at = d["at"].v3(), half = d["size"].v3() * .5f;
 			b.box(at - half, at + half, rgba8_to_color(d["colour"].colour()), upright, true);
 		}
-		things_[size_t(n)].mesh = b.bake();
+		things_[size_t(n)].mesh = b.bake(material_);
 		thing_of_[act] = n++;
 	}
 	if (n != count) {
@@ -63,7 +63,7 @@ float *HeldThings::row(uint64_t key, int act) {
 
 void HeldThings::draw(const RID &scenario, const AABB &box, RenderLayer layer) {
 	keeper_.sweep([&](int k) -> InstanceRows & { return things_[size_t(k)].rows; });
-	for (Thing &t : things_) t.draw.set(scenario, t.mesh.rid, material_, t.rows, box, true, layer);
+	for (Thing &t : things_) t.draw.set(scenario, t.mesh.rid, t.rows, box, true, layer);
 }
 
 } // namespace city

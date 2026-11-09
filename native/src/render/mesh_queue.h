@@ -24,6 +24,7 @@ struct BuiltMeshOf {
 	JobKey job;
 	float priority = 0;
 	uint64_t ticket = 0; // the chunk's revision asked (ChunkRevisions)
+	godot::RID material; // what the mesh is made with (surface_data.h), the queue's
 	MeshBuilder mb;
 	OwnedMesh mesh;
 	MeshCount count;
@@ -33,7 +34,7 @@ struct BuiltMeshOf {
 	bool bakes() const { return true; }
 	int64_t bytes() const { return mb.bytes(); }
 	void bake() {
-		mesh = mb.bake();
+		mesh = mb.bake(material);
 		count = { mb.idx.size() / 3, mb.v.size(), mb.bytes() };
 		bounds = mb.bounds();
 		mb = MeshBuilder();
@@ -54,6 +55,7 @@ public:
 	MeshQueueOf &operator=(const MeshQueueOf &) = delete;
 
 protected:
+	godot::RID surface_material_; // every chunk's mesh is made with it (set by the renderer at init)
 	virtual ~MeshQueueOf() = default;
 	virtual void commit_one(Built &b) = 0;
 	// `build(mb)` (or `build(mb, extra)`) fills the chunk's builder; it runs on a worker, the map held shared while it reads.
@@ -67,6 +69,7 @@ protected:
 			b->job = job;
 			b->ticket = ticket;
 			b->priority = priority;
+			b->material = surface_material_;
 			{
 				std::shared_lock<std::shared_mutex> map(s.map_mutex);
 				if constexpr (std::is_same_v<Extra, NoExtra>) build(b->mb);

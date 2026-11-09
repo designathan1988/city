@@ -32,11 +32,11 @@ void grid(MeshBuilder &m, const Vector3 &normal) {
 }
 } // namespace
 
-Ref<ArrayMesh> cloth_mesh() {
+MeshBuilder cloth_mesh() {
 	MeshBuilder m;
 	grid(m, Vector3(0, 0, 1));
 	grid(m, Vector3(0, 0, -1));
-	return m.commit();
+	return m;
 }
 
 PackedFloat32Array bake_flags(const std::vector<FlagInstance> &flags) {

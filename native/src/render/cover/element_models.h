@@ -4,6 +4,9 @@
 #pragma once
 
 #include "render/data_reader.h"
+#include "render/rs_util.h"
+
+#include <godot_cpp/classes/resource.hpp>
 #include <godot_cpp/classes/mesh.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
@@ -12,8 +15,12 @@
 
 namespace city {
 
+// A model laid on the ground: an imported scene's mesh (a loaded resource, its materials on its surfaces: the engine makes its pipelines as it
+// loads it), or a ground quad made here whole with its material (surface_data.h).
 struct ElementModel {
-	godot::Ref<godot::Mesh> mesh;
+	godot::RID mesh; // what is drawn
+	godot::Ref<godot::Resource> keep; // what holds it: the imported mesh, or the quad's material
+	OwnedMesh made; // the quad's mesh
 	float fit = 1; // scale that makes the model one unit across
 	float foot = 0; // the height of its lowest point, in its own units
 };

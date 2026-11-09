@@ -50,8 +50,7 @@ AgentWreck agent_wreck(const AgentShapes &shapes, const MeshBuilder &mb, uint32_
 	}
 	AgentWreck w;
 	w.size = box.size;
-	w.mesh.instantiate();
-	out.commit_to(w.mesh->get_rid());
+	w.body = std::move(out);
 	return w;
 }
 

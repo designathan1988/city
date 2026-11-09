@@ -5,6 +5,7 @@
 #pragma once
 
 #include "render/data_reader.h"
+#include "render/mesh_builder.h"
 
 #include <godot_cpp/classes/array_mesh.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
@@ -21,7 +22,7 @@ constexpr int COVER_PIECES = int(CoverPiece::COUNT);
 struct CoverLook {
 	float spacing_m = 1, least = 0, size0 = 0, size1 = 0, tall = 1, sink = 0, tint_vary = 0, road_margin_m = 0;
 	bool casts = false, sways = false;
-	std::vector<godot::Ref<godot::ArrayMesh>> variants;
+	std::vector<MeshBuilder> variants; // each one's shape: the renderer makes it a mesh with the material it is drawn with (surface_data.h)
 };
 
 class CoverKit {

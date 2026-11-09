@@ -31,6 +31,7 @@ public:
 	std::shared_ptr<const Body> mass(const Data &data, const Building &rec);
 	// How the record's body looks (body_look of the body above, under the record's function).
 	std::shared_ptr<const BodyLook> look(const Data &data, const Building &rec, const Tuning &tn);
+	size_t used() const { return kept_.used() + looks_.used(); } // bytes kept (the memory census)
 	void set_budget(size_t bytes) {
 		kept_.set_budget(bytes);
 		looks_.set_budget(bytes);

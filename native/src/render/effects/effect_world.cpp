@@ -51,7 +51,7 @@ bool EffectWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	return true;
 }
 
-void EffectWorld::set_wrecks(const std::vector<Ref<Mesh>> &bodies, const std::vector<Vector3> &sizes) {
+void EffectWorld::set_wrecks(const std::vector<const MeshBuilder *> &bodies, const std::vector<Vector3> &sizes) {
 	debris_.set_wrecks(scenario_, debris_material_, bodies);
 	wreck_sizes_ = sizes;
 }

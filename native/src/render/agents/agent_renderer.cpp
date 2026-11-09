@@ -9,6 +9,7 @@
 #include "render/agents/agent_lod.h"
 
 #include "render/agents/agent_meshes.h"
+#include "render/surface_data.h"
 
 #include "core/grid.h"
 #include "core/random.h"
@@ -68,7 +69,6 @@ bool AgentRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 }
 
 void AgentRenderer::commit_mesh(int model, int draw, const MeshBuilder &mb) {
-	RenderingServer *rs = RenderingServer::get_singleton();
 	// with the cabin, the glass is see-through over it; past it, it stays in the body, opaque
 	const bool cabin = draw == CABIN_LEVEL || draw == MID_DRAW;
 	MeshBuilder shell, glass;
@@ -78,13 +78,12 @@ void AgentRenderer::commit_mesh(int model, int draw, const MeshBuilder &mb) {
 	glass_tris_[model][draw] = int(glass.idx.size() / 3);
 	OwnedMesh &m = meshes_[model][draw];
 	m.reset();
-	m.rid = rs->mesh_create();
-	body.commit_to(m.rid);
-	rs->mesh_surface_set_material(m.rid, 0, material_);
-	if (!glass.empty()) {
-		glass.commit_to(m.rid);
-		rs->mesh_surface_set_material(m.rid, 1, glass_);
-	}
+	TypedArray<Dictionary> surfaces;
+	surfaces.push_back(body.surface(material_));
+	if (!glass.empty()) surfaces.push_back(glass.surface(glass_));
+	m.rid = create_mesh(surfaces);
+	// the levels the shadows are cast from (draw_rows), again with the caster's material: a draw is given its materials by its mesh (surface_data.h)
+	if (draw == BODY_LEVEL || draw == FAR_LEVEL) cast_meshes_[model][draw] = body.bake(shadow_);
 }
 
 void AgentRenderer::riders(int type, uint32_t id, float &passengers, float &order) const {
@@ -300,16 +299,16 @@ void AgentRenderer::draw_rows(const Vector3 &cam) {
 	auto &bufs = seen_rows_;
 	auto &casts = cast_rows_;
 	AABB box(Vector3(cam.x - vehicle_r_, cam.y - AABB_HALF_H, cam.z - vehicle_r_), Vector3(vehicle_r_ * 2, AABB_HALF_H * 2, vehicle_r_ * 2));
-	// no override: each surface carries its material (the body and the near level's glass); the room is MultiMeshDraw's
+	// each surface carries its material (the body and the near level's glass); the room is MultiMeshDraw's
 	for (int i = 0; i < AGENT_MODELS; i++)
 		for (int level = 0; level < DRAWS; level++) {
 			MultiMeshDraw &d = draws_[i][level];
-			d.set(scenario_, meshes_[i][level].rid, RID(), bufs[i][level], box, false, LAYER_VEHICLES);
+			d.set(scenario_, meshes_[i][level].rid, bufs[i][level], box, false, LAYER_VEHICLES);
 			shown_[i][level] = d.count;
 			if (level == FAR_LEVEL) continue;
 			casts[i][level].append(bufs[i][level]);
 			shadow_draws_[i][level].shadow_only = true;
-			shadow_draws_[i][level].set(scenario_, meshes_[i][level == BODY_LEVEL ? FAR_LEVEL : BODY_LEVEL].rid, shadow_, casts[i][level], box, true, LAYER_VEHICLES);
+			shadow_draws_[i][level].set(scenario_, cast_meshes_[i][level == BODY_LEVEL ? FAR_LEVEL : BODY_LEVEL].rid, casts[i][level], box, true, LAYER_VEHICLES);
 		}
 	fleet_shadow_.draw();
 }

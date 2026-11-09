@@ -86,6 +86,7 @@ private:
 	BodyRenderer bodies_;
 	godot::RID scenario_, material_, far_material_;
 	std::vector<MultiMeshDraw> draws_; // body * (lods + 1) + level; the last, the far card casting no shadow
+	std::vector<OwnedMesh> meshes_; // what each of draws_ draws, made with its material (people_boot.cpp)
 	std::vector<InstanceRows> bufs_;
 	int held_level(uint64_t key, float dist);
 	float level_hold_ = 0;

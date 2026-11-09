@@ -121,7 +121,7 @@ void agent_strut(MeshBuilder &mb, const godot::Vector3 &a, const godot::Vector3 
 		Limb limb = Limb::NONE);
 // A vehicle burnt out (agent_wreck.cpp), centred on its box; `size` its box.
 struct AgentWreck {
-	godot::Ref<godot::ArrayMesh> mesh;
+	MeshBuilder body; // the burnt body: the effects make it a mesh with their material (surface_data.h)
 	godot::Vector3 size;
 };
 AgentWreck agent_wreck(const AgentShapes &shapes, const MeshBuilder &mb, uint32_t seed);

@@ -54,24 +54,23 @@ bool BuildingRenderer::init(const RenderContext &ctx, PackedStringArray &errors)
 	signatures_.init(ctx.scenario, LAYER_BUILDING_SHELLS);
 	material_ = ctx.material("building", errors);
 	material_glass_ = ctx.material("building_glass", errors);
-	fade_twins_.load(ctx, errors);
 	material_sheer_ = ctx.material("building_sheer", errors);
 	material_card_ = ctx.material("building_card", errors);
 	material_props_ = ctx.material("building_props", errors);
-	material_cast_ = ctx.material("shadow_caster", errors);
 	material_far_ = ctx.material("building_far", errors);
 	material_lawn_ = ctx.material("verge", errors);
 	material_wash_ = ctx.material("building_wash", errors);
 	material_parts_ = ctx.material("building_parts", errors);
 	const Dictionary t = ctx.table("building_look", errors), bay = ctx.table("bay_props", errors), furniture = ctx.table("furniture", errors);
 	if (!errors.is_empty() || !look_.load(t, bay, furniture, ctx.table("camera", errors), errors) || !wear_.load(look_.shapes.wear, ctx.table("materials", errors), errors)) return false;
-	for (int k = 0; k < b40::BAY_PROPS; k++) prop_mesh_[size_t(k)] = look_.bay.models[size_t(k)].commit();
+	bake_mats_ = LevelMaterials{ material_, material_glass_, material_sheer_, material_card_, material_lawn_, material_wash_, material_far_, ctx.material("shadow_caster", errors) }; // the caster: no vertex() of its own
+	for (int k = 0; k < b40::BAY_PROPS; k++) prop_mesh_[size_t(k)] = look_.bay.models[size_t(k)].bake(material_props_, false);
 	RenderingServer::get_singleton()->material_set_param(material_props_, "ac_case", Vector2(look_.bay.ac_case.x, look_.bay.ac_case.y)); // its front's width and height
 	MeshBuilder unit;
 	unit.box(Vector3(-HALF, -HALF, -HALF), Vector3(HALF, HALF, HALF), Color(1, 1, 1, 1), Vector2(), true);
-	unit_box_ = unit.commit();
-	unit_bay_ = b40::bay_mesh();
-	unit_flag_ = b40::cloth_mesh();
+	unit_box_ = unit.bake(material_parts_, false);
+	unit_bay_ = b40::bay_mesh().bake(material_, false);
+	unit_flag_ = b40::cloth_mesh().bake(material_parts_, false);
 	return true;
 }
 
@@ -88,7 +87,6 @@ void BuildingRenderer::reset() {
 	baking_.clear();
 	super_baking_.clear();
 	waiting_ = super_waiting_ = 0;
-	fade_twins_.free_warmers();
 	for (auto &kv : chunks_) {
 		drop(kv.second, LEVEL_NEAR);
 		drop(kv.second, LEVEL_MID);

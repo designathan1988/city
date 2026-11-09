@@ -1,6 +1,7 @@
 // See mounds.h. The hill is a grid with a flattened bell for its shape, broken by three octaves of a lattice noise: a heap of rubble slumps at
 // its angle of repose with lumps in it, and its edge dies into the ground.
 #include "render/effects/mounds.h"
+#include "render/surface_data.h"
 
 #include "core/random.h"
 
@@ -41,7 +42,7 @@ float hill(const MoundsShape &K, float x, float z) {
 	return bell * (1 - K.lump_share + K.lump_share * 2 * lumps);
 }
 
-Ref<ArrayMesh> hill_mesh(const MoundsShape &K) {
+Array hill_mesh(const MoundsShape &K) {
 	PackedVector3Array v, n;
 	PackedInt32Array idx;
 	const float step = 1.f / float(K.relief_cells);
@@ -61,10 +62,7 @@ Ref<ArrayMesh> hill_mesh(const MoundsShape &K) {
 	arrays[Mesh::ARRAY_VERTEX] = v;
 	arrays[Mesh::ARRAY_NORMAL] = n;
 	arrays[Mesh::ARRAY_INDEX] = idx;
-	Ref<ArrayMesh> mesh;
-	mesh.instantiate();
-	mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arrays);
-	return mesh;
+	return arrays;
 }
 } // namespace
 
@@ -73,12 +71,12 @@ float Mounds::hill_at(const MoundsShape &K, float x, float z) { return hill(K, x
 void Mounds::init(const RID &scenario, const RID &material, int capacity, const MoundsShape &K) {
 	material_ = material;
 	capacity_ = capacity;
-	const Ref<ArrayMesh> hill = hill_mesh(K);
-	AABB local = hill->get_aabb(); // as the shader may stretch it: a height times 0 .. the most
+	const Array hill = hill_mesh(K);
+	AABB local = arrays_box(hill); // as the shader may stretch it: a height times 0 .. the most
 	const float most = RUBBLE_SLUMP_MOST * RUBBLE_CHUNK_MOST, low = std::min(0.f, local.position.y * most), high = std::max(0.f, local.get_end().y * most);
 	local.position.y = low;
 	local.size.y = high - low;
-	layer_.init_shaped(scenario, hill, material, capacity, true, local, 0.f);
+	layer_.init_shaped(scenario, OwnedMesh::of(mesh_of_arrays(hill, material)), capacity, true, local, 0.f);
 	layer_.count(0);
 }
 

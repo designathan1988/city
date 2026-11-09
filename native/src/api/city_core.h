@@ -199,6 +199,8 @@ public:
 	void wear_paint(float x0, float z0, float x1, float z1, float value) { render_.wear_paint(x0, z0, x1, z1, value); } // tests/visual: a set use
 	godot::Dictionary building_cost() const { return render_.building_cost(); } // the building levels by surface: triangles, bytes
 	godot::Dictionary agent_cost() const; // vehicles by type and level: triangles, instances, draws (counts)
+	godot::Dictionary surface_probe(const godot::Array &arrays, const godot::Dictionary &lods, int64_t format) const; // tests: render/surface_data.h's surface of these arrays
+	godot::Dictionary memory_census() const; // where the process's memory is: its heaps and the core's largest owners, MiB (log/owner-review.md §8)
 	godot::Dictionary pose_stats(); // since the last call: pose publications, their gaps, frames shown past the newest pose
 
 protected:

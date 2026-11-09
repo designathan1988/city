@@ -5,6 +5,7 @@
 #pragma once
 
 #include "core/random.h"
+#include "render/mesh_builder.h"
 #include "render/effects/effect_params.h"
 #include "render/effects/mm_layer.h"
 #include "render/effects/puffs.h"
@@ -39,7 +40,7 @@ public:
 	void reset();
 	void release();
 	// The bodies a wreck may be: drawn with the pieces' material, a layer each.
-	void set_wrecks(const godot::RID &scenario, const godot::RID &material, const std::vector<godot::Ref<godot::Mesh>> &bodies);
+	void set_wrecks(const godot::RID &scenario, const godot::RID &material, const std::vector<const MeshBuilder *> &bodies);
 	void add(const PieceSpec &spec);
 	// One frame: `ground_of(x, z)` the ground's height, puffs for what burns. Writes only when something moved or came.
 	template <typename F>

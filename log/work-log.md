@@ -1014,3 +1014,26 @@ render/shaders/people_far.gdshader, tests/core/people_test.gd, both DLLs; log/ow
 **Verification:** live game (town, seed 7, 1x): before, standing black boxes at 60-150 m and, with the card forced, at 10 m;
 after, the same views (street -75.5, 175.6, yaw 90, pitch 12 and 40, distance 30, 120, 250) show small coloured figures, no
 box; people_test passes. Details in log/owner-review.md §1.
+
+## 2026-11-09 17:00: the frame stalls of play (pipelines made on the frame), and the shaking sun (the owner's review, problem 9)
+
+**Causes (log/owner-review.md §9):** Godot 4.7 makes a mesh's pipelines only when the mesh is created by
+`RenderingServer::mesh_create_from_surfaces` with its materials on its surfaces (rendering_server_default.h calls
+`mesh_generate_pipelines`, in the background off the server's thread); the render made every mesh by `mesh_create` +
+`mesh_add_surface_from_arrays` and gave most of them their material as an instance override, so each new body, level or chunk compiled
+its pipelines on the frame it was first drawn (measured: a 972-1009 ms frame, 6 "surface" compilations, the core's _process 0.4 ms; the
+1-s pose gaps were that frame). The buildings' hand-over swapped materials in play and was kept from stalling by "warmers".
+The sun stepped by a game minute (one real second at 1x): every shadow jumped about half a metre each second.
+**Fix:** `render/surface_data.h/.cpp` and `surface_streams.h/.cpp` write a surface's streams byte for byte as Godot 4.7 does
+(surface_data_test proves it against `mesh_get_surface`, packed and plain, normals, tangents, colours, UVs, custom, bones, levels);
+every mesh of the render is made whole with its materials (MeshBuilder::bake/surface, Shell::surface, the people's levels and card,
+primitives by their arrays, the designs, transit, ruins, trees, cover, overlays, the chunk queues); no instance carries an override
+(MultiMeshDraw, MeshDraw, swap_base, ShadowTwin, MmLayer lost the parameter; a mesh drawn with two materials is two meshes: the
+vehicles' casters, the ragdoll skins, the shore rocks, the build ghost); the buildings dissolve by level_keep in their own materials
+(the three fade shaders, the swap and the warmers deleted). The sun steps by the lab's tolerance (one near-cascade texel of shadow).
+Vehicles in sight that reach their goal drive on (the lab's ambient.ts); lorries, buses, bay cars and errands end their own trips.
+**Reverted, with reasons:** warming instances at boot (the owner's rule: no warming); removing the tier's shadow floor (the wide
+town view lost its far shadows); keeping stuck cars in sight (yard_test lost its docks' ways: why cars stick is §2's cause).
+**Also:** `memory_census` probe (heaps, mimalloc, the core's largest owners), the live driver's frame_times/memory/census steps.
+**Verification:** both DLLs; quick 56/58 (photos_check differs by 4-269 pixels between two runs of the same build: the capture is not
+deterministic, its own cause to fix); gates of the changed files OK; surface_data_test, people_test, yard_test pass.

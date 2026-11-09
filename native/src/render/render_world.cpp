@@ -39,13 +39,15 @@ bool RenderWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	ok = overlays_.init(ctx, errors) && ok;
 	ok = effects_.init(ctx, errors) && ok;
 	effects_.set_people(&agents_.people());
-	effects_.set_ruin_maker([this](const b40::Data &data, const Building &rec, const HeightPatch &ground) { return buildings_.ruin_of(data, rec, ground); });
+	effects_.set_ruin_maker([this](const b40::Data &data, const Building &rec, const HeightPatch &ground, const RID &material) {
+		return buildings_.ruin_of(data, rec, ground, material);
+	});
 	effects_.set_tree_finder([this](const CityState &s, float x, float z, float r, int clearing, std::vector<TreeInstance> &out) { trees_.felled(s, x, z, r, clearing, out); });
 	if (ok) {
-		std::vector<Ref<Mesh>> bodies;
+		std::vector<const MeshBuilder *> bodies;
 		std::vector<Vector3> sizes;
 		for (const AgentWreck &w : agents_.wrecks()) {
-			bodies.push_back(w.mesh);
+			bodies.push_back(&w.body);
 			sizes.push_back(w.size);
 		}
 		effects_.set_wrecks(bodies, sizes);

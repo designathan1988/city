@@ -24,7 +24,7 @@ constexpr uint64_t PIECES_SEED = 0x2a1f3ULL; // the falling pieces' own random s
 class RuinPieces {
 public:
 	// What cuts a building: run on a job's thread.
-	using Maker = std::function<std::shared_ptr<RuinMesh>(const b40::Data &, const Building &, const HeightPatch &)>;
+	using Maker = std::function<std::shared_ptr<RuinMesh>(const b40::Data &, const Building &, const HeightPatch &, const godot::RID &material)>;
 	struct Uncut { // what had no walls to cut (a design of its own): a plain heap after all
 		Ruin ruin;
 		bool falling = false;

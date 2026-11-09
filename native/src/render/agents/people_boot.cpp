@@ -6,6 +6,7 @@
 
 #include "core/color.h"
 #include "render/mesh_builder.h"
+#include "render/surface_data.h"
 
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/variant/packed_int32_array.hpp>
@@ -199,8 +200,15 @@ bool PeopleRenderer::init(const RenderContext &ctx, const DataValue &people, con
 	if (!errors.is_empty()) return false;
 	MeshBuilder disc;
 	disc_mesh(disc, blob_sides);
-	blob_mesh_ = disc.bake();
+	blob_mesh_ = disc.bake(blob_material_);
 	size_t n = asset_.variations.size() * size_t(asset_.lods + 1);
+	// each body's levels and the far card made meshes with the material each is drawn with (surface_data.h): the engine has their
+	// pipelines as they are made, at boot, never on a frame of play
+	meshes_.clear();
+	meshes_.resize(n);
+	for (size_t v = 0; v < asset_.variations.size(); v++)
+		for (int l = 0; l <= asset_.lods; l++)
+			meshes_[slot(v, l)].rid = l < asset_.lods ? mesh_of_arrays(asset_.variations[v].lods[size_t(l)], material_) : mesh_of_arrays(asset_.card, far_material_);
 	draws_.assign(n, MultiMeshDraw());
 	bufs_.assign(n, InstanceRows());
 	keeper_.clear();

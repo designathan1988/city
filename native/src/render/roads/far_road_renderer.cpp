@@ -28,6 +28,7 @@ bool FarRoadRenderer::init(const RenderContext &ctx, const StreetLook &look, Roa
 	scenario_ = ctx.scenario;
 	shapes_ = &shapes;
 	material_ = ctx.material("road_fade", errors); // road_far.gdshader, by the road material's fade_shader
+	surface_material_ = material_; // every chunk's mesh is made with it (surface_data.h)
 	look_ = &look;
 	return errors.is_empty();
 }
@@ -69,7 +70,7 @@ void FarRoadRenderer::offer(const CityState &s, JobPool &pool, const Vector3 &ca
 void FarRoadRenderer::commit_one(BuiltMesh &b) {
 	Super &sp = supers_[b.key];
 	const bool any = b.mesh.valid();
-	sp.surface.adopt(scenario_, material_, false, b.mesh.release(), LAYER_ROADS);
+	sp.surface.adopt(scenario_, false, b.mesh.release(), LAYER_ROADS);
 	sp.surface.visible(any);
 	sp.sent = -1;
 	fresh_ = true;

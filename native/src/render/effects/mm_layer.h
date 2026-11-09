@@ -10,10 +10,10 @@
 
 #include "render/rs_util.h"
 
-#include <godot_cpp/classes/mesh.hpp>
 
 #include <algorithm>
 #include <cmath>
+#include <utility>
 
 namespace city {
 
@@ -36,7 +36,7 @@ enum class LayerBounds { FIXED, SHAPED, OWNED };
 
 struct MmLayer {
 	godot::RID mm, inst;
-	godot::Ref<godot::Mesh> mesh; // held: the MultiMesh draws its RID
+	OwnedMesh mesh; // held: the MultiMesh draws it; made with its material (surface_data.h)
 	int capacity = 0;
 	godot::PackedFloat32Array buf;
 	LayerBounds bounds_kind = LayerBounds::FIXED;
@@ -46,22 +46,20 @@ struct MmLayer {
 	bool boxed = false;
 
 	// A FIXED layer: `bounds` is the box of the MultiMesh (so uploads never walk the instances, rs_util.h MultiMeshDraw) and of the instance.
-	void init(const godot::RID &scenario, const godot::Ref<godot::Mesh> &shape, const godot::RID &material, int count, bool shadows,
-			const godot::AABB &bounds) {
-		create(scenario, shape, material, count, shadows, bounds);
+	void init(const godot::RID &scenario, OwnedMesh &&shape, int count, bool shadows, const godot::AABB &bounds) {
+		create(scenario, std::move(shape), count, shadows, bounds);
 		bounds_kind = LayerBounds::FIXED;
 	}
 	// A SHAPED layer: its box follows what put() writes (`local`: the shape's box as the shader may stretch it; `margin`: what it may move past it).
-	void init_shaped(const godot::RID &scenario, const godot::Ref<godot::Mesh> &shape, const godot::RID &material, int count, bool shadows,
-			const godot::AABB &local, float margin) {
-		create(scenario, shape, material, count, shadows, world_box());
+	void init_shaped(const godot::RID &scenario, OwnedMesh &&shape, int count, bool shadows, const godot::AABB &local, float margin) {
+		create(scenario, std::move(shape), count, shadows, world_box());
 		bounds_kind = LayerBounds::SHAPED;
 		shape_box = local;
 		reach = margin;
 	}
 	// An OWNED layer: its box is what the owner sets.
-	void init_owned(const godot::RID &scenario, const godot::Ref<godot::Mesh> &shape, const godot::RID &material, int count, bool shadows) {
-		create(scenario, shape, material, count, shadows, world_box());
+	void init_owned(const godot::RID &scenario, OwnedMesh &&shape, int count, bool shadows) {
+		create(scenario, std::move(shape), count, shadows, world_box());
 		bounds_kind = LayerBounds::OWNED;
 	}
 	// Room for `count` instances: a layer holds what its owner draws, so it grows (doubling) when that passes it. The owner writes
@@ -121,22 +119,21 @@ struct MmLayer {
 		if (mm.is_valid()) rs->free_rid(mm);
 		inst = godot::RID();
 		mm = godot::RID();
-		mesh.unref();
+		mesh.reset();
 	}
 
 private:
-	void create(const godot::RID &scenario, const godot::Ref<godot::Mesh> &shape, const godot::RID &material, int count, bool shadows, const godot::AABB &bounds) {
+	void create(const godot::RID &scenario, OwnedMesh &&shape, int count, bool shadows, const godot::AABB &bounds) {
 		godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
-		mesh = shape;
+		mesh = std::move(shape);
 		capacity = count;
 		mm = rs->multimesh_create();
 		rs->multimesh_allocate_data(mm, count, godot::RenderingServer::MULTIMESH_TRANSFORM_3D, true, true);
-		rs->multimesh_set_mesh(mm, mesh->get_rid());
+		rs->multimesh_set_mesh(mm, mesh.rid);
 		rs->multimesh_set_custom_aabb(mm, bounds);
 		inst = rs->instance_create2(mm, scenario);
 		rs->instance_geometry_set_cast_shadows_setting(
 				inst, shadows ? godot::RenderingServer::SHADOW_CASTING_SETTING_ON : godot::RenderingServer::SHADOW_CASTING_SETTING_OFF);
-		rs->instance_geometry_set_material_override(inst, material);
 		rs->instance_set_custom_aabb(inst, bounds);
 		sent = bounds;
 		boxed = false;

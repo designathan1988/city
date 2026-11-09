@@ -8,6 +8,6 @@
 namespace city {
 
 // The walls and panes of a sub-chunk as one mesh; no mesh when they hold nothing. `error_m`: how far a surface may move, in metres.
-OwnedMesh cast_hull(const b40::Shell &walls, const b40::Shell &panes, float error_m);
+OwnedMesh cast_hull(const b40::Shell &walls, const b40::Shell &panes, float error_m, const godot::RID &material);
 
 } // namespace city

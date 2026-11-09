@@ -50,7 +50,7 @@ public:
 	void reset();
 	void set_broken(const std::unordered_set<uint32_t> &seeds); // the buildings drawn in pieces, by the effects
 	// The walls of a record a blow brings down, broken (ruin_fracture.h), from the bodies the levels draw.
-	std::shared_ptr<RuinMesh> ruin_of(const b40::Data &data, const Building &rec, const HeightPatch &ground) const;
+	std::shared_ptr<RuinMesh> ruin_of(const b40::Data &data, const Building &rec, const HeightPatch &ground, const godot::RID &material) const;
 	void rebuild_chunk(const CityState &s, int64_t key); // a chunk to (re)mesh: its levels turn stale, its superchunk dirty
 	// A chunk whose near level is drawn again with the same buildings (the Interior layer cut some open or closed them): the
 	// far mesh draws them whole either way, so its superchunk stays.
@@ -130,6 +130,7 @@ private:
 		float priority = 0;
 		uint64_t seq = 0;
 		uint32_t version = 0; // the chunk's version when the job was submitted
+		LevelMaterials mats; // what its surfaces are made with
 		std::array<b40::Shell, SUB_COUNT> near_shell, parts_shell, mid_shell; // one per sub-chunk, until baked
 		std::array<b40::Shell, SUB_COUNT> near_glass, mid_glass; // their panes and far walls: a surface of the same mesh
 		std::array<b40::Shell, SUB_COUNT> near_sheer; // their glass guards: another
@@ -168,6 +169,7 @@ private:
 		JobKey job;
 		float priority = 0;
 		uint64_t seq = 0;
+		LevelMaterials mats;
 		b40::Shell far_shell;
 		Surface far;
 		Held held;
@@ -188,10 +190,10 @@ private:
 	static void link_shells(Built &out, std::array<b40::Shell, SUB_COUNT> &mid_parts);
 	Built build_cpu(const Inputs &in, int64_t key, bool near, bool mid) const;
 	SuperBuilt build_super_cpu(const Inputs &in, int64_t super_key) const;
-	static Surface bake(const b40::Shell &shell, bool with_uv2, const b40::Shell *glass = nullptr, const b40::Shell *sheer = nullptr, const b40::Shell *cards = nullptr, const b40::Shell *lawns = nullptr, const b40::Shell *washes = nullptr);
-	static void put(MeshDraw &d, Surface &sf, const godot::RID &scenario, const godot::RID &material, bool shadows, bool shown,
-			RenderLayer layer);
-	void put_level(MeshDraw &d, Surface &sf, const godot::RID &glass, bool shown, RenderLayer layer, bool shadows = true) const;
+	static Surface bake(const LevelMaterials &m, const godot::RID &walls, const godot::RID &glass, const b40::Shell &shell, bool with_uv2,
+			const b40::Shell *panes = nullptr, const b40::Shell *sheer = nullptr, const b40::Shell *cards = nullptr, const b40::Shell *lawns = nullptr,
+			const b40::Shell *washes = nullptr);
+	static void put(MeshDraw &d, Surface &sf, const godot::RID &scenario, bool shadows, bool shown, RenderLayer layer);
 	static godot::PackedFloat32Array bake_band(const std::vector<b40::BoxInstance> &boxes);
 	static godot::PackedFloat32Array bake_props(const std::vector<b40::PropInstance> &props);
 	static godot::PackedFloat32Array bake_bays(const std::vector<b40::BayInstance> &bays);
@@ -213,17 +215,15 @@ private:
 	b40::WearRule wear_; // how run down each building is drawn (wear.h)
 	void wear_on(double minutes); // the chunks and far meshes whose buildings look more worn by now drawn again (building_renderer_wear.cpp)
 	mutable BuildingBodies bodies_; // every job's: thread-safe, emptied by reset()
-	godot::RID material_cast_; // shadow_caster: no vertex() of its own
 	void fade_levels(Chunk &ch, const godot::Vector3 &cam); // the sub-chunks in the band of a hand-over (building_renderer_reach.cpp)
 	FadeClock fade_clock_; // how far a dissolve moves between two views (level_fade.h)
-	void fade_near(Chunk &ch, size_t sub, bool on, float keep);
-	void fade_parts(Chunk &ch, size_t sub, bool on, float keep);
-	void warm_fades(const Chunk &ch);
-	FadeTwins fade_twins_; // the discarding twins' materials and the instances that warm their pipelines (level_fade.h)
+	void fade_near(Chunk &ch, size_t sub, bool on, float keep), fade_parts(Chunk &ch, size_t sub, bool on, float keep);
 	godot::RID scenario_, material_, material_glass_, material_sheer_, material_card_, material_props_, material_far_, material_lawn_, material_wash_, material_parts_;
 	BuildingViewNeed need_;
-	std::array<godot::Ref<godot::ArrayMesh>, b40::BAY_PROPS> prop_mesh_; // made once, as the box
-	godot::Ref<godot::ArrayMesh> unit_box_, unit_flag_, unit_bay_; // the instanced parts' box and the flags' cloth (resources: freed with the renderer)
+	// The instanced parts' meshes, each made once with its material (surface_data.h): the bay props, the parts' box, flags' cloth and bay.
+	std::array<OwnedMesh, b40::BAY_PROPS> prop_mesh_;
+	OwnedMesh unit_box_, unit_flag_, unit_bay_;
+	LevelMaterials bake_mats_;
 	const CityState *state_ = nullptr;
 	float parts_end_ = 0, near_end_ = 0, mid_end_ = 0, far_end_ = 0;
 	float bay_end_ = 0; // how far a bay of the mid level is geometry: past it, it is under ~12 pixels and its triangles cost more than they show

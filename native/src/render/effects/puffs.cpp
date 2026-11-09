@@ -1,5 +1,6 @@
 // The puff pool (puffs.h).
 #include "render/effects/puffs.h"
+#include "render/surface_data.h"
 
 #include "core/math.h"
 
@@ -23,7 +24,7 @@ void Puffs::init(const RID &scenario, const RID &material, const EffectParams &p
 	Ref<QuadMesh> quad;
 	quad.instantiate();
 	quad->set_size(Vector2(1, 1));
-	layer_.init(scenario, quad, material, pool_, false, AABB(Vector3(-WORLD_HALF_M, -WORLD_UP_M, -WORLD_HALF_M), Vector3(2 * WORLD_HALF_M, 2 * WORLD_UP_M, 2 * WORLD_HALF_M)));
+	layer_.init(scenario, OwnedMesh::of(mesh_of_arrays(quad->get_mesh_arrays(), material)), pool_, false, AABB(Vector3(-WORLD_HALF_M, -WORLD_UP_M, -WORLD_HALF_M), Vector3(2 * WORLD_HALF_M, 2 * WORLD_UP_M, 2 * WORLD_HALF_M)));
 	reset();
 }
 

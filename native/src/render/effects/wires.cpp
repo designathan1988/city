@@ -1,5 +1,6 @@
 // The torn wires of felled poles (wires.h).
 #include "render/effects/wires.h"
+#include "render/surface_data.h"
 
 #include "core/shader_contracts/effects.h"
 #include "render/effects/rigid_step.h"
@@ -25,7 +26,7 @@ void Wires::init(const RID &scenario, const RID &material, const EffectParams &p
 	Ref<BoxMesh> box;
 	box.instantiate();
 	box->set_size(Vector3(1, 1, 1));
-	links_.init_shaped(scenario, box, material, K.most * std::max(1, K.points - 1), true, box->get_aabb(), 0.f);
+	links_.init_shaped(scenario, OwnedMesh::of(mesh_of_arrays(box->get_mesh_arrays(), material)), K.most * std::max(1, K.points - 1), true, box->get_aabb(), 0.f);
 	links_.count(0);
 	links_.shown(false);
 }

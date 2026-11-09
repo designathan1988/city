@@ -51,9 +51,7 @@ void vertex() {
 #include "res://render/shaders/building_pane.gdshaderinc"
 
 void fragment() {
-#ifdef LEVEL_FADE
-	if (!IN_SHADOW_PASS && level_noise(FRAGCOORD.xy) >= level_keep) discard;
-#endif
+	if (level_keep < 1.0 && !IN_SHADOW_PASS && level_noise(FRAGCOORD.xy) >= level_keep) discard; // the hand-over (building_level.gdshaderinc)
 	int coded = int(COLOR.a * BYTE_TOP + 0.5);
 	uint code = uint(COLOR.r * BYTE_TOP + 0.5) | (uint(COLOR.g * BYTE_TOP + 0.5) << BYTE_SHIFT);
 	float deep = float(coded >> SURFACE_KIND_BITS) * PANE_RECESS_STEP_M;

@@ -45,8 +45,9 @@ struct LodSize {
 
 float linear(uint32_t c, int shift) { return std::pow(float((c >> shift) & BYTE_MAX) / float(BYTE_MAX), SRGB_GAMMA); }
 
-// The level's mesh; `reach`: its farthest vertex from the bind origin.
-Ref<ArrayMesh> read_mesh(ByteReader &r, const LodSize &sz, float &reach) {
+// The level's arrays (the renderer makes them a mesh with each material it is drawn with: surface_data.h); `reach`: its farthest vertex
+// from the bind origin.
+Array read_mesh(ByteReader &r, const LodSize &sz, float &reach) {
 	PackedVector3Array pos, nor;
 	PackedColorArray col;
 	PackedVector2Array uv, uv2;
@@ -54,7 +55,7 @@ Ref<ArrayMesh> read_mesh(ByteReader &r, const LodSize &sz, float &reach) {
 	PackedFloat32Array weights;
 	PackedInt32Array idx;
 	// every count is claimed against what is left of the file before anything is sized by it (core/bytes.h)
-	if (!r.claim(sz.vertices, VERTEX_BYTES)) return Ref<ArrayMesh>();
+	if (!r.claim(sz.vertices, VERTEX_BYTES)) return Array();
 	pos.resize(sz.vertices);
 	nor.resize(sz.vertices);
 	col.resize(sz.vertices);
@@ -88,10 +89,10 @@ Ref<ArrayMesh> read_mesh(ByteReader &r, const LodSize &sz, float &reach) {
 		uv.set(i, Vector2(t[0], t[1]));
 		uv2.set(i, Vector2(float(look >> REGION_SHIFT) + PEOPLE_FACE_ROW_STEP * float(face), float(look & ROUGHNESS_MASK) / float(ROUGHNESS_MASK)));
 	}
-	if (!r.claim(sz.indices, sizeof(uint16_t))) return Ref<ArrayMesh>();
+	if (!r.claim(sz.indices, sizeof(uint16_t))) return Array();
 	idx.resize(sz.indices);
 	for (uint32_t i = 0; i < sz.indices; i++) idx.set(i, int32_t(r.get<uint16_t>()));
-	if (!r.ok) return Ref<ArrayMesh>();
+	if (!r.ok) return Array();
 	Array arr;
 	arr.resize(Mesh::ARRAY_MAX);
 	arr[Mesh::ARRAY_VERTEX] = pos;
@@ -105,10 +106,7 @@ Ref<ArrayMesh> read_mesh(ByteReader &r, const LodSize &sz, float &reach) {
 	// no skeleton is bound (the MultiMesh is skinned by people.gdshader from the palette), so the bone attributes stay as
 	// data. Not CUSTOM0/1: Godot 4.7.2's Compatibility renderer gives an RGBA8 custom attribute one component
 	// (drivers/gles3/storage/mesh_storage.cpp: size = fmtsize / sizeof(float)), so g, b, a read 0, 0, 1
-	Ref<ArrayMesh> m;
-	m.instantiate();
-	m->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arr);
-	return m;
+	return arr;
 }
 // The atlases of atlas.bin (tools/assets/compress_atlas.gd), compressed and with their mipmaps as they are to be drawn: nothing to decode.
 Ref<Texture2DArray> read_atlas(const String &path, uint32_t count) {
@@ -129,7 +127,7 @@ Ref<Texture2DArray> read_atlas(const String &path, uint32_t count) {
 }
 
 // One quad, x and y in -0.5..0.5: people_far.gdshader turns it to the eye.
-Ref<ArrayMesh> card_mesh() {
+Array card_mesh() {
 	PackedVector3Array pos, nor;
 	PackedVector2Array uv;
 	PackedInt32Array idx;
@@ -145,10 +143,7 @@ Ref<ArrayMesh> card_mesh() {
 	arr[Mesh::ARRAY_NORMAL] = nor;
 	arr[Mesh::ARRAY_TEX_UV] = uv;
 	arr[Mesh::ARRAY_INDEX] = idx;
-	Ref<ArrayMesh> m;
-	m.instantiate();
-	m->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arr);
-	return m;
+	return arr;
 }
 void read_fit(ByteReader &r, PersonFit &f) {
 	f.pelvis.x = r.get<float>();

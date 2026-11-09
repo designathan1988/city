@@ -77,7 +77,7 @@ void flower(MeshBuilder &mb, const DataValue &k, const Color &bloom, uint32_t se
 	static_cast<void>(tree_crown(mb, none, c, sh, r)); // its mean tone is for a tree's far card; ground pieces have none
 }
 
-Ref<ArrayMesh> variant(CoverPiece p, const DataValue &k, int i, Rng &r) {
+MeshBuilder variant(CoverPiece p, const DataValue &k, int i, Rng &r) {
 	MeshBuilder mb;
 	uint32_t seed = uint32_t(k["seed"].whole() + i);
 	switch (p) {
@@ -87,7 +87,7 @@ Ref<ArrayMesh> variant(CoverPiece p, const DataValue &k, int i, Rng &r) {
 		case CoverPiece::TUFTS: tuft(mb, k, r); break;
 		default: flower(mb, k, hexc(k["blooms"][i]), seed, r); break;
 	}
-	return mb.commit();
+	return mb;
 }
 } // namespace
 

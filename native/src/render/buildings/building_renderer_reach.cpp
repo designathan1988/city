@@ -88,47 +88,12 @@ void BuildingRenderer::ranges(Chunk &ch) const {
 	ch.flags.range(0, ch.cut ? 0 : near_end_ * detail_scale_); // the masts' cloths, with the near level they fly from
 }
 
-// The renderer compiles the pipelines of a surface when an instance takes it on, whether or not it is ever seen: the three twins are worn once here, on
-// instances out of every range, so the first sub-chunk to enter a band finds them ready.
-void BuildingRenderer::warm_fades(const Chunk &ch) {
-	std::array<RID, FadeTwins::WARMERS> &warmers = fade_twins_.warmers;
-	if (warmers[0].is_valid()) return;
-	RenderingServer *rs = RenderingServer::get_singleton();
-	for (size_t i = 0; i < SUB_COUNT; i++) {
-		const SubFade &f = ch.fade[i];
-		if (!ch.near[i].mesh.is_valid() || f.wall_at < 0 || f.glass_at < 0) continue;
-		const RID walls = rs->instance_create2(ch.near[i].mesh, scenario_);
-		rs->instance_set_surface_override_material(walls, f.wall_at, fade_twins_.walls);
-		rs->instance_set_surface_override_material(walls, f.glass_at, fade_twins_.glass);
-		warmers[0] = walls;
-		for (const MultiMeshDraw &d : ch.bands[i])
-			if (d.mm.is_valid() && !warmers[1].is_valid()) {
-				warmers[1] = rs->instance_create2(d.mm, scenario_);
-				rs->instance_geometry_set_material_override(warmers[1], fade_twins_.parts);
-			}
-		if (ch.parts[i].mesh.is_valid()) {
-			warmers[2] = rs->instance_create2(ch.parts[i].mesh, scenario_);
-			rs->instance_geometry_set_material_override(warmers[2], fade_twins_.walls);
-		}
-		for (const RID &w : warmers)
-			if (w.is_valid()) rs->instance_geometry_set_visibility_range(w, NEVER_M, 0, 0, 0, RenderingServer::VISIBILITY_RANGE_FADE_DISABLED);
-		return;
-	}
-}
-
 void BuildingRenderer::fade_near(Chunk &ch, size_t sub, bool on, float keep) {
 	RenderingServer *rs = RenderingServer::get_singleton();
 	const RID inst = ch.near[sub].inst;
 	const float end = near_end_ * detail_scale_;
 	SubFade &f = ch.fade[sub];
-	if (on != f.near.twin) {
-		f.near.twin = on;
-		if (inst.is_valid() && f.wall_at >= 0) rs->instance_set_surface_override_material(inst, f.wall_at, on ? fade_twins_.walls : RID());
-		if (inst.is_valid() && f.glass_at >= 0) rs->instance_set_surface_override_material(inst, f.glass_at, on ? fade_twins_.glass : RID());
-		for (size_t b = 0; b < BAND_COUNT; b++)
-			if (ch.bands[sub][b].inst.is_valid() && band_end_[b] * detail_scale_ >= end)
-				rs->instance_geometry_set_material_override(ch.bands[sub][b].inst, on ? fade_twins_.parts : material_parts_);
-	}
+	f.near.twin = on; // its own material dissolves it by level_keep (building_level.gdshaderinc): nothing is swapped
 	put_param(inst, KEEP_PARAM, keep);
 	for (size_t b = 0; b < BAND_COUNT; b++)
 		if (band_end_[b] * detail_scale_ >= end) put_param(ch.bands[sub][b].inst, KEEP_PARAM, keep);
@@ -137,10 +102,7 @@ void BuildingRenderer::fade_near(Chunk &ch, size_t sub, bool on, float keep) {
 void BuildingRenderer::fade_parts(Chunk &ch, size_t sub, bool on, float keep) {
 	const RID inst = ch.parts[sub].inst;
 	LevelFade &f = ch.fade[sub].parts;
-	if (on != f.twin) {
-		f.twin = on;
-		if (inst.is_valid()) RenderingServer::get_singleton()->instance_geometry_set_material_override(inst, on ? fade_twins_.walls : material_);
-	}
+	f.twin = on;
 	put_param(inst, KEEP_PARAM, keep);
 }
 
@@ -148,8 +110,8 @@ void BuildingRenderer::fade_parts(Chunk &ch, size_t sub, bool on, float keep) {
 // is a side and a dissolve over time (lod.level_fade_s), as engines cross-fade their levels of detail: a fade that went by the distance alone
 // held every sub-chunk that stood in its band half dissolved for as long as the eye stood still, a screen-door of two surfaces level_back_m
 // apart that the temporal filter never resolved and that every pass reading the depth (the occlusion, the contact shade, the indirect light)
-// took for corners. A sub-chunk wears the twin that discards only while it is not wholly drawn (a shader that discards loses the depth
-// prepass), and an instance is sent its share only when the share moved.
+// took for corners. The levels' own materials dissolve by the instance's share (building_level.gdshaderinc: no material swapped in play, so
+// no pipeline made then), and an instance is sent its share only when the share moved.
 void BuildingRenderer::fade_levels(Chunk &ch, const Vector3 &cam) {
 	const float band = std::max(look_.level_fade_m, MIN_SCREEN_PX);
 	for (size_t i = 0; i < SUB_COUNT; i++) {

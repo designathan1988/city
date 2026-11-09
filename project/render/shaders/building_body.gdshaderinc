@@ -87,9 +87,7 @@ void vertex() {
 #include "res://render/shaders/building_far_window.gdshaderinc"
 
 void fragment() {
-#ifdef LEVEL_FADE
-	if (!IN_SHADOW_PASS && level_noise(FRAGCOORD.xy) >= level_keep) discard;
-#endif
+	if (level_keep < 1.0 && !IN_SHADOW_PASS && level_noise(FRAGCOORD.xy) >= level_keep) discard; // the hand-over (building_level.gdshaderinc)
 	int kind = int(COLOR.a * BYTE_TOP + 0.5);
 	vec3 n = normalize(v_wn);
 	vec3 V = normalize(v_world - CAMERA_POSITION_WORLD);

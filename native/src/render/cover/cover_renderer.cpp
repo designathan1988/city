@@ -71,6 +71,15 @@ bool CoverRenderer::init(const RenderContext &ctx, GroundKept &ground, PackedStr
 		first_[size_t(i)] = draws_;
 		draws_ += int(kit_.look(CoverPiece(i)).variants.size());
 	}
+	// each variant made a mesh with the material it is drawn with, the rocks again with the shore's (surface_data.h: the engine has
+	// their pipelines before the first chunk is drawn)
+	for (int i = 0; i < COVER_PIECES; i++) {
+		const CoverLook &k = kit_.look(CoverPiece(i));
+		piece_meshes_[size_t(i)].clear();
+		for (const MeshBuilder &v : k.variants) piece_meshes_[size_t(i)].push_back(v.bake(k.sways ? plant_material_ : rock_material_, false));
+	}
+	shore_meshes_.clear();
+	for (const MeshBuilder &v : kit_.look(CoverPiece::ROCKS).variants) shore_meshes_.push_back(v.bake(shore_material_, false));
 	RenderingServer *rs = RenderingServer::get_singleton();
 	for (const RID &m : { plant_material_, rock_material_ }) {
 		rs->material_set_param(m, "near_m", kit_.reach_m);
@@ -175,17 +184,17 @@ void CoverRenderer::commit_one(Built &b) {
 		const CoverLook &k = kit_.look(CoverPiece(p));
 		for (size_t v = 0; v < k.variants.size(); v++) {
 			size_t at = size_t(first_[size_t(p)]) + v;
-			ch[at].set(scenario_, k.variants[v]->get_rid(), k.sways ? plant_material_ : rock_material_, b.bufs[at], box, k.casts, LAYER_VEGETATION);
+			ch[at].set(scenario_, piece_meshes_[size_t(p)][v].rid, b.bufs[at], box, k.casts, LAYER_VEGETATION);
 			ch[at].range(0, end);
 		}
 	}
 	for (size_t i = 0; i < models_.all().size(); i++) {
 		size_t at = size_t(draws_) + i;
-		ch[at].set(scenario_, models_.all()[i].mesh->get_rid(), RID(), b.bufs[at], box, false, LAYER_VEGETATION);
+		ch[at].set(scenario_, models_.all()[i].mesh, b.bufs[at], box, false, LAYER_VEGETATION);
 		ch[at].range(0, end);
 	}
 	for (size_t v = 0; v < rocks.variants.size(); v++) {
-		ch[stones + v].set(scenario_, rocks.variants[v]->get_rid(), shore_material_, b.bufs[stones + v], box, rocks.casts, LAYER_VEGETATION);
+		ch[stones + v].set(scenario_, shore_meshes_[v].rid, b.bufs[stones + v], box, rocks.casts, LAYER_VEGETATION);
 		ch[stones + v].range(0, shore_.reach_m + kit_.fade_m + CHUNK * SQRT2_F * HALF);
 	}
 }

@@ -71,6 +71,8 @@ private:
 	ShoreLook shore_;
 	int draws_ = 0;
 	std::array<int, COVER_PIECES> first_{}; // each kind's first draw
+	std::array<std::vector<OwnedMesh>, COVER_PIECES> piece_meshes_; // each kind's variants with their material
+	std::vector<OwnedMesh> shore_meshes_; // the rocks with the shore's
 	std::unordered_map<int64_t, std::vector<MultiMeshDraw>> chunks_;
 	std::unordered_map<int64_t, bool> wet_; // which chunks have water by them: they stream as far as the shore
 	ChunkResults<Built> queue_;

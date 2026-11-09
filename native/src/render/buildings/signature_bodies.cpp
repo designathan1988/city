@@ -2,6 +2,7 @@
 #include "render/buildings/signature_bodies.h"
 
 #include "render/mesh_levels.h"
+#include "render/surface_data.h"
 
 #include "core/bytes.h"
 #include "sim/buildings/b40/signature_kinds.h"
@@ -48,7 +49,12 @@ PackedByteArray unpacked(const String &path, uint32_t magic) {
 void SignatureBodies::init(const RID &scenario, uint32_t layer) {
 	scenario_ = scenario;
 	layer_ = layer;
-	meshes_.assign(size_t(b40::SIGNATURE_COUNT) + 1, Ref<ArrayMesh>());
+	meshes_.clear();
+	meshes_.resize(size_t(b40::SIGNATURE_COUNT) + 1);
+	made_.assign(size_t(b40::SIGNATURE_COUNT) + 1, nullptr);
+	with_.clear();
+	with_.resize(size_t(b40::SIGNATURE_COUNT) + 1);
+	with_material_.assign(size_t(b40::SIGNATURE_COUNT) + 1, RID());
 	state_.assign(size_t(b40::SIGNATURE_COUNT) + 1, State::NONE);
 }
 
@@ -186,28 +192,38 @@ bool SignatureBodies::finish(Prepared &p) {
 		UtilityFunctions::push_error(String("signature design unreadable: ") + String(p.file.c_str()));
 		return false;
 	}
-	Ref<ArrayMesh> m;
-	m.instantiate();
-	for (size_t s = 0; s < p.surfaces.size(); s++) {
-		m->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, p.surfaces[s].arrays, Array(), p.surfaces[s].lods);
-		m->surface_set_material(int(s), look(p.surfaces[s].look, p.pictures[p.surfaces[s].look]));
-	}
-	meshes_[size_t(p.kind)] = m;
+	TypedArray<Dictionary> surfaces;
+	for (const Surface &s : p.surfaces) surfaces.push_back(surface_data(s.arrays, s.lods, 0, look(s.look, p.pictures[s.look])->get_rid()));
+	meshes_[size_t(p.kind)] = OwnedMesh::of(create_mesh(surfaces));
 	state_[size_t(p.kind)] = State::READY;
 	return true;
 }
 
-Ref<ArrayMesh> SignatureBodies::mesh(int kind) {
-	if (kind <= 0 || kind > b40::SIGNATURE_COUNT) return Ref<ArrayMesh>();
-	if (state_[size_t(kind)] == State::FAILED) return Ref<ArrayMesh>();
-	if (meshes_[size_t(kind)].is_valid()) return meshes_[size_t(kind)];
+RID SignatureBodies::mesh(int kind) {
+	if (kind <= 0 || kind > b40::SIGNATURE_COUNT) return RID();
+	if (state_[size_t(kind)] == State::FAILED) return RID();
+	if (meshes_[size_t(kind)].valid()) return meshes_[size_t(kind)].rid;
 	std::shared_ptr<Prepared> p = prepare(kind); // asked now (a job's may land later: it is then let go)
-	return finish(*p) ? meshes_[size_t(kind)] : Ref<ArrayMesh>();
+	if (!finish(*p)) return RID();
+	made_[size_t(kind)] = p;
+	return meshes_[size_t(kind)].rid;
+}
+
+RID SignatureBodies::mesh_with(int kind, const RID &material) {
+	if (!mesh(kind).is_valid()) return RID();
+	if (with_[size_t(kind)].valid() && with_material_[size_t(kind)] == material) return with_[size_t(kind)].rid;
+	const std::shared_ptr<Prepared> &p = made_[size_t(kind)];
+	if (!p) return RID();
+	TypedArray<Dictionary> surfaces;
+	for (const Surface &s : p->surfaces) surfaces.push_back(surface_data(s.arrays, s.lods, 0, material));
+	with_[size_t(kind)] = OwnedMesh::of(create_mesh(surfaces));
+	with_material_[size_t(kind)] = material;
+	return with_[size_t(kind)].rid;
 }
 
 void SignatureBodies::place(int64_t key, const SignaturePlace &p, bool on) {
 	RenderingServer *rs = RenderingServer::get_singleton();
-	const RID inst = rs->instance_create2(meshes_[size_t(p.kind)]->get_rid(), scenario_);
+	const RID inst = rs->instance_create2(meshes_[size_t(p.kind)].rid, scenario_);
 	rs->instance_set_layer_mask(inst, layer_);
 	rs->instance_set_transform(inst, p.at);
 	if (!on) rs->instance_set_visible(inst, false);
@@ -272,7 +288,7 @@ void SignatureBodies::sync(FrameAdmission &f) {
 			ready_[kept++] = std::move(ready_[i]);
 			continue;
 		}
-		finish(p);
+		if (finish(p)) made_[size_t(p.kind)] = ready_[i];
 		release(p.kind);
 	}
 	ready_.resize(kept);

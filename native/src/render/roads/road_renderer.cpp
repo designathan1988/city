@@ -16,6 +16,7 @@ namespace city {
 bool RoadRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	scenario_ = ctx.scenario;
 	material_ = ctx.material("road", errors);
+	surface_material_ = material_; // every chunk's mesh is made with it (surface_data.h)
 	Dictionary t = ctx.table("streets", errors);
 	if (!errors.is_empty()) return false;
 	if (!ctx.catalog) {

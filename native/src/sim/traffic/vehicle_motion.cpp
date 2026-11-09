@@ -15,6 +15,13 @@ namespace traffic {
 
 namespace {
 
+// The city's own traffic (no bus, bay, yard, errand or kerb stop: those end their trips themselves) drawn within the published radius:
+// it drives on there, never taken away in sight (the lab's ambient.ts traffic, spawn.ts stepDespawn).
+bool drives_on(const CityState &s, const Vehicle &v) {
+	const float dx = v.cur.x - s.camera_x.load(), dz = v.cur.z - s.camera_z.load(), r = s.catalog.traffic.publish_radius_m;
+	return v.micro && v.bus < 0 && v.car < 0 && v.lorry < 0 && v.errand == Errand::NONE && v.kerb < 0 && v.stop_at < 0 && dx * dx + dz * dz <= r * r;
+}
+
 struct Lead {
 	float gap = NO_LEADER, v = 0;
 	void take(float g, float lv) {
@@ -220,6 +227,7 @@ void leave_lane(CityState &s, int ds, int lane, std::vector<int> &leaving) {
 		int id = m < 0 ? -1 - m : m;
 		Vehicle &v = t.vehicles[size_t(id)];
 		int ci = m < 0 ? -1 : pick_connector(s, v);
+		if (ci < 0 && drives_on(s, v) && new_trip(s, id, ds)) continue; // somewhere else to go: it stays on its lane till its end
 		if (ci < 0) {
 			const bool home = m < 0 && v.ri + 1 >= v.route.len;
 			lane_del(s, key, id);

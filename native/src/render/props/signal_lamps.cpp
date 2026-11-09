@@ -27,11 +27,10 @@ Lens car_lens(uint8_t light) {
 
 void SignalLamps::init(const RID &scenario, const RID &material, const PropKit &kit) {
 	scenario_ = scenario;
-	material_ = material;
 	const MeshBuilder &m = kit.lenses();
 	reach_ = 0;
 	for (int64_t i = 0; i < m.v.size(); i++) reach_ = std::max(reach_, m.v[i].length());
-	lenses_ = m.bake();
+	lenses_ = m.bake(material); // with its material (surface_data.h)
 }
 
 void SignalLamps::reset() {
@@ -61,7 +60,7 @@ void SignalLamps::write(Chunk &c) const {
 				on ? float(code >> WALKER_SHIFT) : NONE_LIT, 0, 0);
 		if (on) c.lit += LIT_PER_POST;
 	}
-	c.draw.set(scenario_, lenses_.rid, material_, buf, c.box, false, LAYER_SIGNALS);
+	c.draw.set(scenario_, lenses_.rid, buf, c.box, false, LAYER_SIGNALS);
 }
 
 void SignalLamps::set_chunk(int64_t key, std::vector<SignalHead> &&heads) {

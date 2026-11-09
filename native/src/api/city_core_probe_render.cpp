@@ -6,19 +6,85 @@
 
 #include "core/units.h"
 #include "render/roads/road_mesh.h"
+#include "render/surface_data.h"
 
 #include <godot_cpp/classes/hashing_context.hpp>
 
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <string>
 #include <mutex>
 #include <shared_mutex>
 #include <vector>
 
+#include <mimalloc.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#include <psapi.h>
+#endif
+
 using namespace godot;
 
 namespace city {
+
+namespace {
+#ifdef _WIN32
+constexpr DWORD MOST_HEAPS = 256; // a process has a handful (7 measured): room for far more than it holds
+#endif
+template <typename V>
+double vec_mib(const V &v) {
+	return double(v.capacity() * sizeof(typename V::value_type)) / BYTES_PER_MIB;
+}
+} // namespace
+
+// The surface render/surface_data.h makes of `arrays`: a test lays it beside the engine's own (mesh_get_surface) byte for byte.
+Dictionary CityCore::surface_probe(const Array &arrays, const Dictionary &lods, int64_t format) const {
+	return surface_data(arrays, lods, uint64_t(format), RID());
+}
+
+// The process's memory against its owners, MiB: the working set and private bytes, every heap's allocated bytes (the engine's allocator and
+// the core's containers share the C runtime's heap), and the core's largest owners by their containers' capacities. For a measurement, once.
+Dictionary CityCore::memory_census() const {
+	Dictionary d;
+#ifdef _WIN32
+	PROCESS_MEMORY_COUNTERS_EX pm{};
+	if (GetProcessMemoryInfo(GetCurrentProcess(), reinterpret_cast<PROCESS_MEMORY_COUNTERS *>(&pm), sizeof(pm))) {
+		d["working_set"] = double(pm.WorkingSetSize) / BYTES_PER_MIB;
+		d["private"] = double(pm.PrivateUsage) / BYTES_PER_MIB;
+	}
+	HANDLE heaps[MOST_HEAPS];
+	const DWORD n = GetProcessHeaps(DWORD(std::size(heaps)), heaps);
+	double allocated = 0, committed = 0;
+	for (DWORD i = 0; i < n && i < DWORD(std::size(heaps)); i++) {
+		HEAP_SUMMARY hs{};
+		hs.cb = sizeof(hs);
+		if (HeapSummary(heaps[i], 0, &hs)) {
+			allocated += double(hs.cbAllocated);
+			committed += double(hs.cbCommitted);
+		}
+	}
+	d["heaps"] = int(n);
+	d["heap_allocated"] = allocated / BYTES_PER_MIB;
+	d["heap_committed"] = committed / BYTES_PER_MIB;
+#endif
+	// the core's own allocator (core/memory.cpp): what it holds, as its statistics print them
+	std::string stats;
+	mi_stats_merge();
+	mi_stats_print_out([](const char *msg, void *arg) { static_cast<std::string *>(arg)->append(msg); }, &stats);
+	d["mimalloc"] = String(stats.c_str());
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	const CityState &s = *state_;
+	const Heightfield &h = s.terrain;
+	d["terrain"] = vec_mib(h.base_q) + vec_mib(h.final_h) + vec_mib(h.ground_moved) + vec_mib(h.water) + vec_mib(h.tile_dirty);
+	d["terrain_samples"] = int64_t(h.N) * h.N;
+	d["body_cache"] = double(s.buildings.designs.made->used()) / BYTES_PER_MIB;
+	d["buildings"] = vec_mib(s.buildings.items);
+	d["vehicles"] = vec_mib(s.traffic.vehicles) + vec_mib(s.traffic.route_pool);
+	d["walkers"] = vec_mib(s.traffic.peds);
+	return d;
+}
 
 Dictionary CityCore::agent_cost() const { return render_.agent_cost(); }
 

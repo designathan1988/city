@@ -35,6 +35,7 @@ float cell_level(const Heightfield &hf, int gx, int gz) { return corner_level(hf
 bool WaterRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	scenario_ = ctx.scenario;
 	material_ = ctx.material("water", errors);
+	surface_material_ = material_; // every chunk's mesh is made with it (surface_data.h)
 	return errors.is_empty();
 }
 
@@ -92,7 +93,7 @@ void WaterRenderer::build(const Heightfield &hf, int64_t key, MeshBuilder &mb) {
 
 void WaterRenderer::commit_one(BuiltMesh &b) {
 	Draw &d = chunks_[b.key];
-	swap_base(d.inst, d.mesh, b.mesh.release(), scenario_, material_, false, LAYER_WATER);
+	swap_base(d.inst, d.mesh, b.mesh.release(), scenario_, false, LAYER_WATER);
 }
 
 void WaterRenderer::offer(const CityState &s, const Vector3 &cam, std::vector<FrameAdmission::Unit> &out) {

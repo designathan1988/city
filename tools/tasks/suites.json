@@ -384,6 +384,7 @@
      "renderer": "gl_compatibility",
      "timeout_s": 600
     },
+    {"name": "surface_data_test", "scene": "tests/core/surface_data_test", "renderer": "forward_plus", "timeout_s": 600},
     {
      "name": "light_color_test@forward_plus",
      "scene": "tests/core/light_color_test",

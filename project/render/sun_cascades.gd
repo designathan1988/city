@@ -29,6 +29,11 @@ func _init(day: Dictionary, sun: DirectionalLight3D) -> void:
 	_sun = sun
 
 
+## The side of a texel of the nearest cascade, metres: its slice's depth over its side in texels (the sun's step reads it: daylight.gd).
+func near_texel_m() -> float:
+	return _first_m / shadow_side_px
+
+
 ## Fitted again only when what the fit reads changed.
 func follow(camera: Camera3D) -> void:
 	var ground := CameraQueries.ground_below(camera)

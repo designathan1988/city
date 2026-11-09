@@ -1,7 +1,8 @@
 // A building's near level handing over to its mid level (building_renderer_reach.cpp fade_levels). The near level dissolves by screen noise over the
-// band, only on the sub-chunks in it: `discard` costs the depth prepass of whatever carries it (Godot's shading language docs), so the shaders that
-// discard are variants, put on by instance (LEVEL_FADE); the mid level stands whole behind it, `level_back` metres further along the eye's ray, the same on
-// screen, so the two never fight over a depth.
+// band, by its instance's level_keep, in its own material: a material swapped in play is a pipeline the engine makes on the frame it is first drawn
+// (Godot docs, pipeline compilations: overrides are not compiled with the mesh), the stall of log/owner-review.md §9. The discard runs first in the
+// fragment, so the depth prepass computes only the noise and the share (what nothing else of the fragment feeds); the mid level stands whole behind
+// it, `level_back` metres further along the eye's ray, the same on screen, so the two never fight over a depth.
 global uniform float dither_clock; // a new pattern a frame for the temporal filter, and one that stands still in a frozen picture (TIME stops wherever it was)
 #if CURRENT_RENDERER == RENDERER_COMPATIBILITY
 // Instance uniforms live in one buffer of 4096 items there (a UBO's size, whatever the project asks), a city's near level is more: the levels change at once.

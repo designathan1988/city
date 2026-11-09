@@ -179,7 +179,7 @@ void limbs(MeshBuilder &mb, const LimbSpec &l, const Vector3 &from, const Tones 
 	}
 }
 
-TreeSpecies make_species(const SpeciesSpec &s, int row, float caster_error_m, TreePictures &pictures) {
+TreeSpecies make_species(const SpeciesSpec &s, int row, float caster_error_m, TreePictures &pictures, const RID &body_material, const RID &card_material) {
 	TreeSpecies sp;
 	sp.name = s.name;
 	Rng r{ s.seed };
@@ -199,16 +199,16 @@ TreeSpecies make_species(const SpeciesSpec &s, int row, float caster_error_m, Tr
 	if (s.has_cone) sp.far_tone = tree_cone(body, cards, s.cone, s.shade, r);
 	sp.far_tone.a = 1;
 	pictures.draw(row, body, cards, sp.far_tone);
-	sp.body = body.commit();
-	sp.caster = simplify_whole(body, caster_error_m).commit();
-	if (!cards.empty()) sp.cards = cards.commit();
+	sp.body = body.bake(body_material, false);
+	sp.caster = simplify_whole(body, caster_error_m).bake(body_material, false);
+	if (!cards.empty()) sp.cards = cards.bake(card_material, false);
 	sp.crown_reach = s.crown_reach;
 	sp.cards_cast = s.cards_cast;
 	return sp;
 }
 } // namespace
 
-bool TreeKit::build(const Dictionary &trees, PackedStringArray &errors) {
+bool TreeKit::build(const Dictionary &trees, const RID &body_material, const RID &card_material, PackedStringArray &errors) {
 	species_.clear();
 	const int64_t before = errors.size();
 	DataReader r{ errors, "streets.json.trees" };
@@ -223,7 +223,7 @@ bool TreeKit::build(const Dictionary &trees, PackedStringArray &errors) {
 	for (int i = 0; i < list.size(); i++) specs.push_back(species_of(r.in("species").in(i), r.in("species").table_at(list, i)));
 	if (errors.size() != before) return false; // nothing is built from a table that did not read
 	if (!pictures_.begin(r.table(trees, "pictures"), int(list.size()), atlas_.take_image(), errors)) return false;
-	for (int i = 0; i < int(specs.size()); i++) species_.push_back(make_species(specs[size_t(i)], i, caster_error_m, pictures_));
+	for (int i = 0; i < int(specs.size()); i++) species_.push_back(make_species(specs[size_t(i)], i, caster_error_m, pictures_, body_material, card_material));
 	pictures_.finish();
 	return errors.size() == before;
 }

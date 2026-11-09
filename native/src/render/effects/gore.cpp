@@ -1,5 +1,6 @@
 // The guts and bones of an opened body (gore.h).
 #include "render/effects/gore.h"
+#include "render/surface_data.h"
 
 #include "core/shader_contracts/effects.h"
 #include "render/effects/rigid_step.h"
@@ -34,9 +35,11 @@ void Gore::init(const RID &scenario, const RID &material, const EffectParams &pa
 	cyl->set_top_radius(1.f);
 	cyl->set_bottom_radius(1.f);
 	cyl->set_radial_segments(CYL_SIDES);
-	guts_.init_shaped(scenario, cyl, material, K.most_segments, true, cyl->get_aabb(), 0.f);
-	bones_.init_shaped(scenario, cyl, material, K.most_bones, true, cyl->get_aabb(), 0.f);
-	cuffs_.init_shaped(scenario, cyl, material, K.most_bones, true, cyl->get_aabb(), 0.f);
+	// each layer its own mesh of the shape with the material (surface_data.h): the engine has its pipelines before the first wound
+	const Array shape = cyl->get_mesh_arrays();
+	guts_.init_shaped(scenario, OwnedMesh::of(mesh_of_arrays(shape, material)), K.most_segments, true, cyl->get_aabb(), 0.f);
+	bones_.init_shaped(scenario, OwnedMesh::of(mesh_of_arrays(shape, material)), K.most_bones, true, cyl->get_aabb(), 0.f);
+	cuffs_.init_shaped(scenario, OwnedMesh::of(mesh_of_arrays(shape, material)), K.most_bones, true, cyl->get_aabb(), 0.f);
 	for (MmLayer *l : { &guts_, &bones_, &cuffs_ }) {
 		l->count(0);
 		l->shown(false);

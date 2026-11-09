@@ -114,9 +114,7 @@ void vertex() {
 }
 
 void fragment() {
-#ifdef LEVEL_FADE
-	if (!IN_SHADOW_PASS && level_noise(FRAGCOORD.xy) >= level_keep) discard;
-#endif
+	if (level_keep < 1.0 && !IN_SHADOW_PASS && level_noise(FRAGCOORD.xy) >= level_keep) discard; // the hand-over (building_level.gdshaderinc)
 	vec3 n = normalize(v_wn);
 	if (v_cloth > 0.5) {
 		vec3 c = flag_colour(v_uv, int(v_custom.a + PACKED_ROUND), unpack_rgb(v_custom.r), unpack_rgb(v_custom.g), unpack_rgb(v_custom.b));

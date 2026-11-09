@@ -16,6 +16,7 @@ RoadLayer::RoadLayer(const char *material, bool casts, JobLane lane, Emit emit) 
 bool RoadLayer::init(const RenderContext &ctx, const StreetLook &look, RoadShapes &shapes, PackedStringArray &errors) {
 	scenario_ = ctx.scenario;
 	material_ = ctx.material(material_name_, errors);
+	surface_material_ = material_; // every chunk's mesh is made with it (surface_data.h)
 	look_ = &look;
 	shapes_ = &shapes;
 	return errors.is_empty();

@@ -1,5 +1,6 @@
 // The ground marks (marks.h).
 #include "render/effects/marks.h"
+#include "render/surface_data.h"
 
 #include <godot_cpp/classes/plane_mesh.hpp>
 
@@ -16,7 +17,7 @@ void Marks::init(const RID &scenario, const RID &material, int room, int soot_ke
 	Ref<PlaneMesh> plane;
 	plane.instantiate();
 	plane->set_size(Vector2(1, 1));
-	layer_.init(scenario, plane, material, room, false, world_box()); // see-through: the map's box keeps its place in the sort (mm_layer.h)
+	layer_.init(scenario, OwnedMesh::of(mesh_of_arrays(plane->get_mesh_arrays(), material)), room, false, world_box()); // see-through: the map's box keeps its place in the sort (mm_layer.h)
 	layer_.count(0);
 }
 

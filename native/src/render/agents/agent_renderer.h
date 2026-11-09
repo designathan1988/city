@@ -103,6 +103,7 @@ private:
 	void seat_people(uint32_t id, int type, int model, const Pose &p, float dist, float passengers, float order, float spin);
 	godot::RID scenario_, material_, glass_, shadow_;
 	OwnedMesh meshes_[AGENT_MODELS][DRAWS]; // the body surface, and the cabin's glass surface
+	OwnedMesh cast_meshes_[AGENT_MODELS][DRAWS]; // the body and far levels with the shadow caster's material, what shadow_draws_ cast
 	MultiMeshDraw draws_[AGENT_MODELS][DRAWS];
 	std::vector<SeatSpot> seats_[AGENT_MODELS]; // where people sit in each model
 	bool astride_[AGENT_MODELS] = {}; // its rider shows at any distance: nothing hides them

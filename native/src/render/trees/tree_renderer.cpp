@@ -43,7 +43,7 @@ bool TreeRenderer::init(const RenderContext &ctx, const StreetLook &look, Ground
 		errors.push_back("streets.json: falta trees");
 		return false;
 	}
-	if (!kit_.build(t["trees"], errors) || !trees_.load(t["trees"], kit_, errors)) return false;
+	if (!kit_.build(t["trees"], body_material_, card_material_, errors) || !trees_.load(t["trees"], kit_, errors)) return false;
 	set_params(body_material_);
 	set_params(card_material_);
 	return true;
@@ -112,7 +112,7 @@ std::shared_ptr<TreeRenderer::Built> TreeRenderer::build_near(const CityState &s
 	}
 	for (int i = 0; i < kit_.count(); i++) { // commit_near sends a species' buffer to its body, its caster and its cards
 		const bool casts = std::find(trees_.bed_species.begin(), trees_.bed_species.end(), i) == trees_.bed_species.end();
-		const int64_t draws = 1 + (casts ? 1 : 0) + (kit_.species(i).cards.is_null() ? 0 : 1);
+		const int64_t draws = 1 + (casts ? 1 : 0) + (kit_.species(i).cards.valid() ? 1 : 0);
 		out->upload += out->bufs[size_t(i)].size() * int64_t(sizeof(float)) * draws;
 	}
 	return out;
@@ -128,12 +128,13 @@ std::shared_ptr<TreeRenderer::Built> TreeRenderer::build_far(const CityState &s,
 		}
 	out->centre = FAR_CARD_CENTRE;
 	out->half_tall = kit_.pictures().frame_share() * HALF;
+	out->card_material = card_material_;
 	out->upload = far_cards_bytes(out->cards.size());
 	return out;
 }
 
 void TreeRenderer::Built::bake() {
-	far_mesh = bake_far_cards(cards, centre, half_tall);
+	far_mesh = bake_far_cards(cards, centre, half_tall, card_material);
 	cards = std::vector<FarCard>();
 	baked = true;
 }
@@ -155,15 +156,15 @@ void TreeRenderer::commit_near(Built &b) {
 		const TreeSpecies &sp = kit_.species(i);
 		// A flower bed casts nothing: its shadow would not read, and the town's beds cost as much as its buildings'.
 		const bool casts = std::find(trees_.bed_species.begin(), trees_.bed_species.end(), i) == trees_.bed_species.end();
-		ch.body[size_t(i)].set(scenario_, sp.body->get_rid(), body_material_, b.bufs[size_t(i)], box, false, LAYER_VEGETATION);
+		ch.body[size_t(i)].set(scenario_, sp.body.rid, b.bufs[size_t(i)], box, false, LAYER_VEGETATION);
 		ch.body[size_t(i)].range(0, end);
 		if (casts) {
 			ch.cast[size_t(i)].shadow_only = true;
-			ch.cast[size_t(i)].set(scenario_, sp.caster->get_rid(), body_material_, b.bufs[size_t(i)], box, true, LAYER_VEGETATION);
+			ch.cast[size_t(i)].set(scenario_, sp.caster.rid, b.bufs[size_t(i)], box, true, LAYER_VEGETATION);
 			ch.cast[size_t(i)].range(0, end);
 		}
-		if (sp.cards.is_null()) continue;
-		ch.cards[size_t(i)].set(scenario_, sp.cards->get_rid(), card_material_, b.bufs[size_t(i)], box, sp.cards_cast, LAYER_VEGETATION);
+		if (!sp.cards.valid()) continue;
+		ch.cards[size_t(i)].set(scenario_, sp.cards.rid, b.bufs[size_t(i)], box, sp.cards_cast, LAYER_VEGETATION);
 		ch.cards[size_t(i)].range(0, end);
 	}
 }
@@ -177,7 +178,7 @@ void TreeRenderer::FarDraw::free() {
 
 void TreeRenderer::commit_far(Built &b) {
 	FarDraw &d = far_[b.key];
-	swap_base(d.inst, d.mesh, b.far_mesh.release(), scenario_, card_material_, trees_.far_shadows != 0, LAYER_VEGETATION);
+	swap_base(d.inst, d.mesh, b.far_mesh.release(), scenario_, trees_.far_shadows != 0, LAYER_VEGETATION);
 	if (!d.inst.is_valid()) return;
 	RenderingServer *rs = RenderingServer::get_singleton();
 	rs->instance_set_custom_aabb(d.inst, box_of(b.key, SUPERCHUNK));
