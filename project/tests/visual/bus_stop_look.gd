@@ -22,10 +22,11 @@ const KERB_VIEW := [-9.0, 7.5, 2.2, 1.2]
 const KERB_LOW := [3.0, 5.0, 1.6, 1.3]
 const STREET_VIEW := [-6.0, -7.0, 3.2, 1.4]
 const ABOVE_VIEW := [-1.0, 1.5, 9.0, 1.0]
-const TRACK_OUT_M := 60.0
+const RUN_FROM := Vector3(-60.0, 0, 70.0) # off the bus street, among the blocks
 const RUN_LONG_M := 120.0
 const RUN_BEND_M := 40.0
-const RUN_VIEW := [30.0, 25.0, 18.0]
+const RUN_VIEW := [40.0, 35.0, 30.0] # back along the run, out to its side, up
+const RUN_CLOSE := [12.0, 9.0, 4.0]
 
 var world: CityWorld
 var camera: Camera3D
@@ -117,14 +118,17 @@ func _bus_stop() -> void:
 
 
 func _track_preview() -> void:
-	var b: Dictionary = CityStore.query(&"city_bounds")
-	var a := Vector3(b.max.x + TRACK_OUT_M, 0, (b.min.z + b.max.z) * 0.5)
-	var run := PackedVector3Array([a, a + Vector3(0, 0, RUN_LONG_M), a + Vector3(RUN_BEND_M, 0, RUN_LONG_M + RUN_BEND_M)])
+	var ground: Vector3 = CityStore.query(&"traffic_probe", [0]).busy_crossing
+	var train := CityStore.code(&"TransitMode", &"TRAIN")
+	var a: Vector3 = CityStore.query(&"transit_snap", [ground + RUN_FROM, train]) # on the ground there: no track yet to snap to
+	var b: Vector3 = CityStore.query(&"transit_snap", [a + Vector3(RUN_LONG_M, 0, 0), train])
+	var c: Vector3 = CityStore.query(&"transit_snap", [b + Vector3(RUN_BEND_M, 0, RUN_BEND_M), train])
+	var run := PackedVector3Array([a, b, c])
 	CityStore.query(&"transit_xray", [true])
-	var mid := a + Vector3(0, 0, RUN_LONG_M)
 	for mode: StringName in [&"TRAIN", &"METRO"]:
+		var label := String(mode).to_lower()
 		CityStore.query(&"transit_preview", [run, CityStore.code(&"TransitMode", mode)])
-		await _shot("preview_%s" % String(mode).to_lower(), mid + Vector3(RUN_VIEW[0], RUN_VIEW[2], RUN_VIEW[1]), mid)
-		await _shot("preview_%s_close" % String(mode).to_lower(), a + Vector3(6, 3, 10), a + Vector3(0, 0, 20))
-	CityStore.query(&"transit_preview", [PackedVector3Array(), CityStore.code(&"TransitMode", &"TRAIN")])
+		await _shot("preview_%s" % label, b + Vector3(-RUN_VIEW[0], RUN_VIEW[2], RUN_VIEW[1]), b)
+		await _shot("preview_%s_close" % label, b + Vector3(-RUN_CLOSE[0], RUN_CLOSE[2], RUN_CLOSE[1]), b)
+	CityStore.query(&"transit_preview", [PackedVector3Array(), train])
 	CityStore.query(&"transit_xray", [false])
