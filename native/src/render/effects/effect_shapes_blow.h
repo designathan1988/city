@@ -62,7 +62,7 @@ struct CraterSlabsShape {
 // The guts and bones of an opened body (gore.cpp; the reference game's render/gore.ts and ragdoll.ts openBelly, boneOut).
 #define EFFECT_SHAPE_GORE(X, XI, XD, XV, XVI) \
 	XI(links) X(seg_min_m) X(seg_span_m) X(radius_min_m) X(radius_span_m) X(hold_chance) X(hold_min_s) X(hold_span_s) \
-	X(coil_m) X(coil_turn) X(coil_drop) X(damp) XI(iterations) X(ground_keep) X(still_m) X(still_s) X(step_s) X(step_most_s) \
+	X(coil_m) X(coil_turn) X(coil_drop) X(damp) XI(iterations) X(ground_keep) X(still_m) X(still_s) X(step_most_s) \
 	XI(most_segments) XI(most_bones) X(bone_r_m) X(cuff_r_m) X(cuff_len_m) X(bone_len_m) X(bone_head_len_m) X(bone_chance) \
 	X(pelvis_chance) X(pelvis_kick) X(shot_kick_ms) X(torn_kick_ms) X(torn_open_chance) X(dead_open_chance) XV(gut_tints) \
 	XV(bone_tint) XV(cuff_tint)
@@ -75,7 +75,7 @@ struct GoreShape {
 #define EFFECT_SHAPE_WIRES(X, XI, XD, XV, XVI) \
 	XI(points) XI(most) X(damp) XI(iterations) X(slack) X(ground_lift_m) X(ground_keep) X(sparks_min_s) X(sparks_span_s) \
 	X(spark_hz) X(spark_near_m) XI(spark_count) X(spark_spread_m) X(spark_size_m) X(spark_life_s) X(life_s) X(thick_m) \
-	X(step_s) XV(tint) X(arm_drop_m) XV(primary_m) X(fall_share) X(kick_ms) X(far_share) X(least)
+	XV(tint) X(arm_drop_m) XV(primary_m) X(fall_share) X(kick_ms) X(far_share) X(least)
 struct WiresShape {
 	SHAPE_DECLARE(EFFECT_SHAPE_WIRES)
 };

@@ -2,6 +2,7 @@
 #include "render/effects/gore.h"
 
 #include "core/shader_contracts/effects.h"
+#include "render/effects/rigid_step.h"
 
 #include <godot_cpp/classes/cylinder_mesh.hpp>
 
@@ -70,7 +71,7 @@ void Gore::spill(uint32_t body, int joint, const Vector3 &at, const Vector3 &kic
 		const float a = float(i) * K.coil_turn;
 		const Vector3 v = at + Vector3(std::cos(a) * K.coil_m, -float(i) * c.seg * K.coil_drop, std::sin(a) * K.coil_m);
 		c.p.push_back(v);
-		c.o.push_back(v - kick * (K.step_s * float(i) / float(links)));
+		c.o.push_back(v - kick * (RIGID_STEP_S * float(i) / float(links))); // kicked over one of the pieces' fixed steps (rigid_step.h)
 	}
 	chains_.push_back(std::move(c));
 	dirty_ = true;

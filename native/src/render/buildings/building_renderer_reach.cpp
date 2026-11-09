@@ -91,24 +91,26 @@ void BuildingRenderer::ranges(Chunk &ch) const {
 // The renderer compiles the pipelines of a surface when an instance takes it on, whether or not it is ever seen: the three twins are worn once here, on
 // instances out of every range, so the first sub-chunk to enter a band finds them ready.
 void BuildingRenderer::warm_fades(const Chunk &ch) {
-	if (fade_warmers_[0].is_valid()) return;
+	std::array<RID, FadeTwins::WARMERS> &warmers = fade_twins_.warmers;
+	if (warmers[0].is_valid()) return;
 	RenderingServer *rs = RenderingServer::get_singleton();
 	for (size_t i = 0; i < SUB_COUNT; i++) {
-		if (!ch.near[i].mesh.is_valid() || ch.wall_at[i] < 0 || ch.glass_at[i] < 0) continue;
+		const SubFade &f = ch.fade[i];
+		if (!ch.near[i].mesh.is_valid() || f.wall_at < 0 || f.glass_at < 0) continue;
 		const RID walls = rs->instance_create2(ch.near[i].mesh, scenario_);
-		rs->instance_set_surface_override_material(walls, ch.wall_at[i], material_fade_);
-		rs->instance_set_surface_override_material(walls, ch.glass_at[i], material_glass_fade_);
-		fade_warmers_[0] = walls;
+		rs->instance_set_surface_override_material(walls, f.wall_at, fade_twins_.walls);
+		rs->instance_set_surface_override_material(walls, f.glass_at, fade_twins_.glass);
+		warmers[0] = walls;
 		for (const MultiMeshDraw &d : ch.bands[i])
-			if (d.mm.is_valid() && !fade_warmers_[1].is_valid()) {
-				fade_warmers_[1] = rs->instance_create2(d.mm, scenario_);
-				rs->instance_geometry_set_material_override(fade_warmers_[1], material_parts_fade_);
+			if (d.mm.is_valid() && !warmers[1].is_valid()) {
+				warmers[1] = rs->instance_create2(d.mm, scenario_);
+				rs->instance_geometry_set_material_override(warmers[1], fade_twins_.parts);
 			}
 		if (ch.parts[i].mesh.is_valid()) {
-			fade_warmers_[2] = rs->instance_create2(ch.parts[i].mesh, scenario_);
-			rs->instance_geometry_set_material_override(fade_warmers_[2], material_fade_);
+			warmers[2] = rs->instance_create2(ch.parts[i].mesh, scenario_);
+			rs->instance_geometry_set_material_override(warmers[2], fade_twins_.walls);
 		}
-		for (const RID &w : fade_warmers_)
+		for (const RID &w : warmers)
 			if (w.is_valid()) rs->instance_geometry_set_visibility_range(w, NEVER_M, 0, 0, 0, RenderingServer::VISIBILITY_RANGE_FADE_DISABLED);
 		return;
 	}
@@ -118,13 +120,14 @@ void BuildingRenderer::fade_near(Chunk &ch, size_t sub, bool on, float keep) {
 	RenderingServer *rs = RenderingServer::get_singleton();
 	const RID inst = ch.near[sub].inst;
 	const float end = near_end_ * detail_scale_;
-	if (on != ch.fading[sub]) {
-		ch.fading[sub] = on;
-		if (inst.is_valid() && ch.wall_at[sub] >= 0) rs->instance_set_surface_override_material(inst, ch.wall_at[sub], on ? material_fade_ : RID());
-		if (inst.is_valid() && ch.glass_at[sub] >= 0) rs->instance_set_surface_override_material(inst, ch.glass_at[sub], on ? material_glass_fade_ : RID());
+	SubFade &f = ch.fade[sub];
+	if (on != f.near.twin) {
+		f.near.twin = on;
+		if (inst.is_valid() && f.wall_at >= 0) rs->instance_set_surface_override_material(inst, f.wall_at, on ? fade_twins_.walls : RID());
+		if (inst.is_valid() && f.glass_at >= 0) rs->instance_set_surface_override_material(inst, f.glass_at, on ? fade_twins_.glass : RID());
 		for (size_t b = 0; b < BAND_COUNT; b++)
 			if (ch.bands[sub][b].inst.is_valid() && band_end_[b] * detail_scale_ >= end)
-				rs->instance_geometry_set_material_override(ch.bands[sub][b].inst, on ? material_parts_fade_ : material_parts_);
+				rs->instance_geometry_set_material_override(ch.bands[sub][b].inst, on ? fade_twins_.parts : material_parts_);
 	}
 	put_param(inst, KEEP_PARAM, keep);
 	for (size_t b = 0; b < BAND_COUNT; b++)
@@ -133,31 +136,13 @@ void BuildingRenderer::fade_near(Chunk &ch, size_t sub, bool on, float keep) {
 
 void BuildingRenderer::fade_parts(Chunk &ch, size_t sub, bool on, float keep) {
 	const RID inst = ch.parts[sub].inst;
-	if (on != ch.parts_fading[sub]) {
-		ch.parts_fading[sub] = on;
-		if (inst.is_valid()) RenderingServer::get_singleton()->instance_geometry_set_material_override(inst, on ? material_fade_ : material_);
+	LevelFade &f = ch.fade[sub].parts;
+	if (on != f.twin) {
+		f.twin = on;
+		if (inst.is_valid()) RenderingServer::get_singleton()->instance_geometry_set_material_override(inst, on ? fade_twins_.walls : material_);
 	}
 	put_param(inst, KEEP_PARAM, keep);
 }
-
-namespace {
-// The side of its switch a level of a sub-chunk stands on: not yet seen, drawn, handed over to what follows.
-constexpr int8_t SIDE_UNSEEN = 0, SIDE_IN = 1, SIDE_OUT = -1;
-// Where in the band the switch flips, as shares of the band back from the level's end: out past the first, in again within the second,
-// so an eye standing still in the band stands on one side, and the dissolve has the band's last quarter to end before the range does.
-constexpr float SWITCH_OUT_SHARE = 0.25f, SWITCH_IN_SHARE = 0.75f, SWITCH_FIRST_SHARE = 0.5f;
-
-// One level of one sub-chunk at `d` from the eye, its range ending at `end`: its side of the switch, and the share of it drawn moved
-// `step` towards that side. Seen for the first time it stands at its side at once (it comes up with the chunk).
-float hand_over(int8_t &side, float &keep, float d, float end, float band, float step) {
-	const float flip = side == SIDE_IN ? SWITCH_OUT_SHARE : side == SIDE_OUT ? SWITCH_IN_SHARE : SWITCH_FIRST_SHARE;
-	const int8_t want = d < end - band * flip ? SIDE_IN : SIDE_OUT;
-	if (side == SIDE_UNSEEN) keep = want == SIDE_IN ? 1.f : 0.f;
-	side = want;
-	keep = std::clamp(keep + (want == SIDE_IN ? step : -step), 0.f, 1.f);
-	return keep;
-}
-} // namespace
 
 // Each sub-chunk by the distance its visibility range measures, to the middle of its box. The switch between the near level and the mid one
 // is a side and a dissolve over time (lod.level_fade_s), as engines cross-fade their levels of detail: a fade that went by the distance alone
@@ -169,11 +154,12 @@ void BuildingRenderer::fade_levels(Chunk &ch, const Vector3 &cam) {
 	const float band = std::max(look_.level_fade_m, MIN_SCREEN_PX);
 	for (size_t i = 0; i < SUB_COUNT; i++) {
 		const float d = cam.distance_to(ch.reach_box[i].get_center());
-		const float near_was = ch.near_keep[i], parts_was = ch.parts_keep[i];
-		const float keep = hand_over(ch.near_side[i], ch.near_keep[i], d, near_end_ * detail_scale_, band, fade_step_);
-		const float parts = hand_over(ch.parts_side[i], ch.parts_keep[i], d, parts_end_ * detail_scale_, band, fade_step_);
-		if (keep != near_was || (keep < 1) != ch.fading[i]) fade_near(ch, i, keep < 1, keep);
-		if (parts != parts_was || (parts < 1) != ch.parts_fading[i]) fade_parts(ch, i, parts < 1, parts);
+		SubFade &f = ch.fade[i];
+		const float near_was = f.near.keep, parts_was = f.parts.keep;
+		const float keep = f.near.hand_over(d, near_end_ * detail_scale_, band, fade_clock_.step);
+		const float parts = f.parts.hand_over(d, parts_end_ * detail_scale_, band, fade_clock_.step);
+		if (keep != near_was || (keep < 1) != f.near.twin) fade_near(ch, i, keep < 1, keep);
+		if (parts != parts_was || (parts < 1) != f.parts.twin) fade_parts(ch, i, parts < 1, parts);
 	}
 }
 

@@ -53,10 +53,8 @@ bool BuildingRenderer::init(const RenderContext &ctx, PackedStringArray &errors)
 	scenario_ = ctx.scenario;
 	signatures_.init(ctx.scenario, LAYER_BUILDING_SHELLS);
 	material_ = ctx.material("building", errors);
-	material_fade_ = ctx.material("building_fade", errors);
 	material_glass_ = ctx.material("building_glass", errors);
-	material_glass_fade_ = ctx.material("building_glass_fade", errors);
-	material_parts_fade_ = ctx.material("building_parts_fade", errors);
+	fade_twins_.load(ctx, errors);
 	material_sheer_ = ctx.material("building_sheer", errors);
 	material_card_ = ctx.material("building_card", errors);
 	material_props_ = ctx.material("building_props", errors);
@@ -90,10 +88,7 @@ void BuildingRenderer::reset() {
 	baking_.clear();
 	super_baking_.clear();
 	waiting_ = super_waiting_ = 0;
-	for (RID &w : fade_warmers_) {
-		if (w.is_valid()) RenderingServer::get_singleton()->free_rid(w);
-		w = RID();
-	}
+	fade_twins_.free_warmers();
 	for (auto &kv : chunks_) {
 		drop(kv.second, LEVEL_NEAR);
 		drop(kv.second, LEVEL_MID);
@@ -312,7 +307,7 @@ void BuildingRenderer::update_view(const Vector3 &cam, BuildBudget &budget) {
 	const float eye = std::max(0.f, cam.y - state_->terrain.height_at(cam.x, cam.z));
 	const float far_reach = far_end_ + eye * look_.far_per_eye; // from up there the ground in view runs on past the data's end
 	const double now = now_s();
-	fade_step_ = fade_clock_s_ < 0 || look_.level_fade_s <= 0 ? 1.f : std::min(1.f, float((now - fade_clock_s_) / look_.level_fade_s)), fade_clock_s_ = now;
+	fade_clock_.tick(now, look_.level_fade_s);
 	std::vector<Want> want, want_super;
 	int waiting = 0; // far meshes to redo, each on its clock
 	for (auto &[key, sp] : supers_) {

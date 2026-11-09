@@ -909,7 +909,6 @@
       "ground_keep",
       "still_m",
       "still_s",
-      "step_s",
       "step_most_s",
       "most_segments",
       "most_bones",
@@ -980,9 +979,6 @@
        "type": "number"
       },
       "still_s": {
-       "type": "number"
-      },
-      "step_s": {
        "type": "number"
       },
       "step_most_s": {
@@ -1071,7 +1067,6 @@
       "spark_life_s",
       "life_s",
       "thick_m",
-      "step_s",
       "tint",
       "arm_drop_m",
       "primary_m",
@@ -1134,9 +1129,6 @@
        "type": "number"
       },
       "thick_m": {
-       "type": "number"
-      },
-      "step_s": {
        "type": "number"
       },
       "tint": {

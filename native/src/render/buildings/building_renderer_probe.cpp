@@ -116,8 +116,10 @@ Dictionary BuildingRenderer::building_cost() const {
 	int64_t near_chunks = 0, mid_chunks = 0, instances = 0, props = 0, fading = 0, dissolving = 0;
 	const auto between = [](float keep) { return keep > 0.f && keep < 1.f; };
 	for (const auto &[key, ch] : chunks_) {
-		fading += std::count(ch.fading.begin(), ch.fading.end(), true);
-		dissolving += std::count_if(ch.near_keep.begin(), ch.near_keep.end(), between) + std::count_if(ch.parts_keep.begin(), ch.parts_keep.end(), between);
+		for (const SubFade &f : ch.fade) {
+			fading += f.near.twin ? 1 : 0;
+			dissolving += (between(f.near.keep) ? 1 : 0) + (between(f.parts.keep) ? 1 : 0);
+		}
 		near_chunks += ch.built[LEVEL_NEAR] ? 1 : 0;
 		mid_chunks += ch.built[LEVEL_MID] ? 1 : 0;
 		instances += ch.built[LEVEL_NEAR] ? ch.instances : 0;

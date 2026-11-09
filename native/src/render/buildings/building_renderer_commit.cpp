@@ -164,9 +164,10 @@ void BuildingRenderer::commit_one(Built &b) {
 			put_level(ch.near[size_t(i)], b.near[size_t(i)], material_glass_, ch.shown, LAYER_BUILDING_SHELLS);
 			put(ch.parts[size_t(i)], b.parts[size_t(i)], scenario_, material_, false, ch.shown, LAYER_BUILDING_PARTS);
 			const Surface &sf = b.near[size_t(i)];
-			ch.glass_at[size_t(i)] = int8_t(sf.glass_at);
+			SubFade &fade = ch.fade[size_t(i)];
+			fade.glass_at = int8_t(sf.glass_at);
 			const bool drawn = ch.near[size_t(i)].mesh.is_valid(); // a chunk of nothing but a building of its own design has no walls here
-			ch.wall_at[size_t(i)] = drawn && sf.glass_at != 0 && sf.sheer_at != 0 && sf.card_at != 0 && sf.lawn_at != 0 && sf.wash_at != 0 ? 0 : -1;
+			fade.wall_at = drawn && sf.glass_at != 0 && sf.sheer_at != 0 && sf.card_at != 0 && sf.lawn_at != 0 && sf.wash_at != 0 ? 0 : -1;
 		}
 		for (size_t i = 0; i < SUB_COUNT; i++)
 			for (size_t band = 0; band < BAND_DRAWS; band++) {

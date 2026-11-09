@@ -2,6 +2,7 @@
 #include "render/effects/wires.h"
 
 #include "core/shader_contracts/effects.h"
+#include "render/effects/rigid_step.h"
 
 #include <godot_cpp/classes/box_mesh.hpp>
 
@@ -45,7 +46,7 @@ void Wires::add(const Vector3 &pin, const Vector3 &loose, const Vector3 &kick) {
 		const float t = float(k) / float(n - 1);
 		const Vector3 v = pin.lerp(loose, t);
 		r.p.push_back(v);
-		r.o.push_back(v - kick * (t * K.step_s));
+		r.o.push_back(v - kick * (t * RIGID_STEP_S)); // thrown over one of the pieces' fixed steps (rigid_step.h)
 	}
 	r.seg = pin.distance_to(loose) / float(n - 1) * K.slack;
 	r.sparks = K.sparks_min_s + rng_.f() * K.sparks_span_s;
@@ -96,11 +97,11 @@ void Wires::update(float dt, const std::function<float(float, float)> &ground_of
 	}
 	clock_ += dt;
 	bool moved = false;
-	while (clock_ >= K.step_s) {
-		clock_ -= K.step_s;
+	while (clock_ >= RIGID_STEP_S) { // the ropes step with the pieces, at their fixed step
+		clock_ -= RIGID_STEP_S;
 		for (Rope &r : ropes_)
 			if (r.age < K.life_s) {
-				step(r, K.step_s, ground_of);
+				step(r, RIGID_STEP_S, ground_of);
 				moved = true;
 			}
 	}
