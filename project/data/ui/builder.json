@@ -139,6 +139,7 @@
     {
      "title_key": "builder.section.block",
      "tools": [
+      {"id": "duplicate", "do": "duplicate", "icon": "copyBlock", "label_key": "builder.quick.duplicate"},
       {"id": "copyBlock", "do": "copy_block"},
       {"id": "detachBlock", "do": "detach"},
       {"id": "centerBlock", "do": "center_block"},
@@ -159,7 +160,8 @@
       {"id": "tierCross", "do": "plan", "value": 7},
       {"id": "tierStepped", "do": "plan", "value": 8}
      ]
-    }
+    },
+    {"title_key": "builder.sel.title", "shelf": "selection"}
    ]
   },
   "facade": {
@@ -225,7 +227,8 @@
       {"id": "outset", "do": "relief", "value": 50},
       {"id": "flush", "do": "relief", "value": 0}
      ]
-    }
+    },
+    {"title_key": "builder.sel.title", "shelf": "selection"}
    ]
   },
   "roof": {
@@ -301,7 +304,8 @@
       {"id": "flagColour14", "do": "flag_colour", "value": 14, "icon": "paint", "label_key": "builder.flagColour.14", "rgb": "#9aa0a6"},
       {"id": "flagColour15", "do": "flag_colour", "value": 15, "icon": "paint", "label_key": "builder.flagColour.15", "rgb": "#f28ab2"}
      ]
-    }
+    },
+    {"title_key": "builder.sel.title", "shelf": "selection"}
    ]
   },
   "paint": {
@@ -385,8 +389,38 @@
       {"id": "awning", "do": "part", "value": 4, "fit_kind": 2, "size": [3, 1.2, 0.12], "rise_m": 2.4, "drop_m": 0.5},
       {"id": "clock", "do": "part", "value": 36, "fit_kind": 5, "size": [3, 0.25, 3]}
      ]
-    }
+    },
+    {"title_key": "builder.sel.title", "shelf": "selection"}
    ]
   }
- }
+ },
+ "fields_doc": "The Selection panel's numbers (ui/builder_inspector.gd): of what (the building, the block, its offset from the block under it, a pitched roof, the bay picked, its face, a free part, a thing on a roof), the key body_fields answers it by, its range (a number, or a tuning name, '-' before it for its negative) and its step; unit: m, count, deg or share (of a bay).",
+ "fields": [
+  {"id": "storeys", "of": "block", "key": "storeys", "label_key": "builder.field.storeys", "lo": 1, "hi": "edit_max_floors", "step": 1, "unit": "count"},
+  {"id": "storeyHeight", "of": "building", "key": "storey_h", "label_key": "builder.field.storeyHeight", "lo": "build_min_storey_m", "hi": "build_max_storey_m", "step": 0.05, "unit": "m"},
+  {"id": "groundHeight", "of": "building", "key": "ground_h", "label_key": "builder.field.groundHeight", "lo": "build_min_storey_m", "hi": "build_max_ground_m", "step": 0.1, "unit": "m"},
+  {"id": "width", "of": "block", "key": "w", "label_key": "builder.field.width", "lo": "build_min_side_m", "hi": "build_max_side_m", "step": 0.5, "unit": "m"},
+  {"id": "depth", "of": "block", "key": "d", "label_key": "builder.field.depth.plan", "lo": "build_min_side_m", "hi": "build_max_side_m", "step": 0.5, "unit": "m"},
+  {"id": "offsetX", "of": "offset", "key": "x", "label_key": "builder.field.offsetX", "lo": "-build_max_side_m", "hi": "build_max_side_m", "step": 0.5, "unit": "m"},
+  {"id": "offsetY", "of": "offset", "key": "y", "label_key": "builder.field.offsetY", "lo": "-build_max_side_m", "hi": "build_max_side_m", "step": 0.5, "unit": "m"},
+  {"id": "baseLevel", "of": "block", "key": "base", "label_key": "builder.field.baseLevel", "lo": 0, "hi": "edit_max_floors", "step": 1, "unit": "count"},
+  {"id": "lift", "of": "block", "key": "lift", "label_key": "builder.field.lift", "lo": "-build_max_lift_m", "hi": "build_max_lift_m", "step": 0.05, "unit": "m"},
+  {"id": "pitch", "of": "pitched", "key": "pitch", "label_key": "builder.field.pitch", "lo": "build_min_pitch_deg", "hi": "build_max_pitch_deg", "step": 1, "unit": "deg"},
+  {"id": "relief", "of": "bay", "key": "depth", "label_key": "builder.field.depth", "lo": "-build_max_recess_m", "hi": "build_max_projection_m", "step": 0.05, "unit": "m"},
+  {"id": "bays", "of": "face", "key": "bays", "label_key": "builder.field.bays", "lo": 1, "hi": "build_max_bays", "step": 1, "unit": "count"},
+  {"id": "windowWidth", "of": "face", "key": "window_w", "label_key": "builder.field.windowWidth", "lo": "build_least_opening", "hi": "build_most_opening", "step": 0.01, "unit": "share"},
+  {"id": "windowHeight", "of": "face", "key": "window_h", "label_key": "builder.field.windowHeight", "lo": "build_least_opening", "hi": "build_most_opening", "step": 0.01, "unit": "share"},
+  {"id": "sill", "of": "face", "key": "sill", "label_key": "builder.field.sill", "lo": 0, "hi": "build_max_projection_m", "step": 0.05, "unit": "m"},
+  {"id": "pierWidth", "of": "face", "key": "pier_w", "label_key": "builder.field.pierWidth", "lo": 0, "hi": "build_max_projection_m", "step": 0.05, "unit": "m"},
+  {"id": "pierDepth", "of": "face", "key": "pier_d", "label_key": "builder.field.pierDepth", "lo": 0, "hi": "build_max_projection_m", "step": 0.05, "unit": "m"},
+  {"id": "pierEvery", "of": "face", "key": "pier_every", "label_key": "builder.field.pierEvery", "lo": 1, "hi": "build_max_pier_every", "step": 1, "unit": "count"},
+  {"id": "partWidth", "of": "part", "key": "across", "label_key": "builder.field.width", "lo": "build_thinnest_m", "hi": "build_max_side_m", "step": 0.05, "unit": "m"},
+  {"id": "partLength", "of": "part", "key": "along", "label_key": "builder.field.length", "lo": "build_thinnest_m", "hi": "build_max_side_m", "step": 0.05, "unit": "m"},
+  {"id": "partHeight", "of": "part", "key": "h", "label_key": "builder.field.height", "lo": "build_thinnest_m", "hi": "build_max_side_m", "step": 0.05, "unit": "m"},
+  {"id": "gearHeight", "of": "gear", "key": "h", "label_key": "builder.field.height", "lo": "build_thinnest_m", "hi": "build_max_side_m", "step": 0.1, "unit": "m"}
+ ],
+ "roof_choices": {"pitch_step_deg": 5,
+  "ridge": [{"value": 0, "label_key": "builder.roof.ridge.x"}, {"value": 1, "label_key": "builder.roof.ridge.y"}],
+  "fall": [{"value": 0, "label_key": "builder.roof.side.front"}, {"value": 1, "label_key": "builder.roof.side.right"},
+   {"value": 2, "label_key": "builder.roof.side.back"}, {"value": 3, "label_key": "builder.roof.side.left"}]}
 }

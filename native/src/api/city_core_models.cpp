@@ -242,6 +242,13 @@ void CityBuilder::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("body_remove_part", "id", "part"), &CityBuilder::body_remove_part);
 	ClassDB::bind_method(D_METHOD("body_turn_part", "id", "part"), &CityBuilder::body_turn_part);
 	ClassDB::bind_method(D_METHOD("body_repeat_part", "id", "part", "spacing"), &CityBuilder::body_repeat_part);
+	ClassDB::bind_method(D_METHOD("body_fields", "id", "vol", "side", "bay", "storey", "part", "gear"), &CityBuilder::body_fields);
+	ClassDB::bind_method(D_METHOD("body_block_size", "id", "vol", "axis", "metres"), &CityBuilder::body_block_size);
+	ClassDB::bind_method(D_METHOD("body_block_offset", "id", "vol", "axis", "metres"), &CityBuilder::body_block_offset);
+	ClassDB::bind_method(D_METHOD("body_block_base", "id", "vol", "level"), &CityBuilder::body_block_base);
+	ClassDB::bind_method(D_METHOD("body_size_part", "id", "part", "axis", "metres"), &CityBuilder::body_size_part);
+	ClassDB::bind_method(D_METHOD("body_size_gear", "id", "vol", "gear", "metres"), &CityBuilder::body_size_gear);
+	ClassDB::bind_method(D_METHOD("building_duplicate", "id"), &CityBuilder::building_duplicate);
 }
 
 } // namespace city

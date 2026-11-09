@@ -94,6 +94,16 @@ std::string op_copy_block(b40::Body &b, const Tuning &t, int vol);
 std::string op_center_block(b40::Body &b, int vol);
 std::string op_turn_block(b40::Body &b, int vol, float degrees);
 std::string op_slide_block(b40::Body &b, const Tuning &t, int vol, float dx, float dy, bool snap);
+// The Selection panel's typed numbers of a block (body_typed.cpp): `axis` AXIS_X along the lot's front, AXIS_Y away from the street.
+// Its width or depth about its middle; its middle from the middle of the block it stands on; the level it starts on.
+enum PlanAxis : int { AXIS_X, AXIS_Y };
+std::string op_block_size(b40::Body &b, const Tuning &t, int vol, int axis, float metres);
+std::string op_block_offset(b40::Body &b, int vol, int axis, float metres);
+std::string op_block_base(b40::Body &b, const Tuning &t, int vol, int level);
+// The block a block is measured from: the first on the ground, or the one under most of it; none for the first.
+const b40::Volume *reference_of(const b40::Body &b, const b40::Volume &v);
+// A block moved on its plan with what is set on its roof (body_model.cpp).
+void shift_block(b40::Volume &v, float dx, float dy);
 std::string op_primitive_on(b40::Body &b, const Tuning &t, int vol, int side, int storey, float x, float y, const PrimitiveSpec &p);
 EditResult detach_block(CityState &s, int id, int vol);
 EditResult place_primitive(CityState &s, double x, double z, const PrimitiveSpec &p);
@@ -149,5 +159,12 @@ std::string op_add_run(b40::Body &b, const Tuning &t, const std::vector<V2> &pat
 std::string op_remove_part(b40::Body &b, int part);
 std::string op_turn_part(b40::Body &b, int part);
 std::string op_repeat_part(b40::Body &b, const Tuning &t, int part, float spacing);
+// A free part's size typed (body_parts.cpp): PART_ACROSS its facing, PART_ALONG it, PART_HEIGHT; a flight's run follows its height, its head kept.
+enum PartAxis : int { PART_ACROSS, PART_ALONG, PART_HEIGHT };
+std::string op_size_part(b40::Body &b, const Tuning &t, int part, int axis, float metres);
+// How tall a thing on a roof stands (a mast, a tank), metres (body_finish.cpp).
+std::string op_size_gear(b40::Body &b, const Tuning &t, int vol, int gear, float metres);
+// A copy of the building beside it, on the first side where it may stand on free ground (model_place.cpp).
+EditResult duplicate_building(CityState &s, int id);
 
 } // namespace city

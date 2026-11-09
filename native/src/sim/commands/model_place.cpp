@@ -1,4 +1,4 @@
-// Setting a body down in the city (model_ops.h): checked where it stands, and made one with what it lands on.
+// Setting a body down in the city (model_ops.h): checked where it stands, and made one with what it lands on; a building copied beside itself.
 #include "core/random.h"
 #include "sim/buildings/b40/civic.h"
 #include "sim/buildings/b40/plan_area.h"
@@ -142,6 +142,29 @@ EditResult place_body(CityState &s, const Body &src, double ax, double az, doubl
 	r.placed = j_add_building(s, b);
 	r.ok = true;
 	r.buildings_removed = int(landed.size());
+	return r;
+}
+
+// Beside the building, a lot's width to its right, its left, behind, in front, then two widths out (the 4.0's duplicateBuilding): the
+// first place where the copy stands alone. A copy never welds into a neighbour: a place where its lot meets another is passed by.
+EditResult duplicate_building(CityState &s, int id) {
+	EditResult r;
+	if (id < 0 || id >= int(s.buildings.items.size()) || !s.buildings.items[size_t(id)].alive) {
+		r.error = "tool.failed";
+		return r;
+	}
+	const Building rec = s.buildings.items[size_t(id)];
+	const std::shared_ptr<const Body> held = record_body(s.buildings.designs, rec);
+	const LotFrame f = lot_frame(rec);
+	const float sn = std::sin(rec.rot), cs = std::cos(rec.rot);
+	const V2 front{ rec.x + rec.d / 2 * sn, rec.z + rec.d / 2 * cs };
+	const V2 shifts[] = { { rec.w, 0 }, { -rec.w, 0 }, { 0, rec.d }, { 0, -rec.d }, { 2 * rec.w, 0 }, { -2 * rec.w, 0 } };
+	r.error = "building.problem.building";
+	for (const V2 &lot : shifts) {
+		const V2 at = front + f.dir(lot.x, lot.y);
+		if (!landed_on(s, record_at(*held, at.x, at.y, rec.rot)).empty() || !place_problem(s, *held, at.x, at.y, rec.rot).empty()) continue;
+		return place_body(s, *held, at.x, at.y, rec.rot, rec.fn, rec.zone);
+	}
 	return r;
 }
 

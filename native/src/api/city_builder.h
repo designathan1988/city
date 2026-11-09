@@ -99,6 +99,14 @@ public:
 	godot::Dictionary body_add_part_at(int id, const godot::Vector3 &at, const godot::Dictionary &spec);
 	godot::Dictionary body_remove_part(int id, int part), body_turn_part(int id, int part);
 	godot::Dictionary body_repeat_part(int id, int part, double spacing);
+	// The Selection panel (city_core_fields.cpp): the numbers of a pick, and a typed number's edit.
+	godot::Dictionary body_fields(int id, int vol, int side, int bay, int storey, int part, int gear) const;
+	godot::Dictionary body_block_size(int id, int vol, int axis, double metres);
+	godot::Dictionary body_block_offset(int id, int vol, int axis, double metres);
+	godot::Dictionary body_block_base(int id, int vol, int level);
+	godot::Dictionary body_size_part(int id, int part, int axis, double metres);
+	godot::Dictionary body_size_gear(int id, int vol, int gear, double metres);
+	godot::Dictionary building_duplicate(int id);
 
 protected:
 	static void _bind_methods();

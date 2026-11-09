@@ -81,7 +81,8 @@
         "shelf": {
          "type": "string",
          "enum": [
-          "models"
+          "models",
+          "selection"
          ]
         }
        },
@@ -109,11 +110,136 @@
    "items": {
     "type": "string"
    }
+  },
+  "fields_doc": {
+   "type": "string"
+  },
+  "fields": {
+   "type": "array",
+   "minItems": 1,
+   "items": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "string"
+     },
+     "of": {
+      "type": "string",
+      "enum": [
+       "building",
+       "block",
+       "offset",
+       "pitched",
+       "bay",
+       "face",
+       "part",
+       "gear"
+      ]
+     },
+     "key": {
+      "type": "string"
+     },
+     "label_key": {
+      "type": "string"
+     },
+     "lo": {
+      "type": [
+       "number",
+       "string"
+      ]
+     },
+     "hi": {
+      "type": [
+       "number",
+       "string"
+      ]
+     },
+     "step": {
+      "type": "number"
+     },
+     "unit": {
+      "type": "string",
+      "enum": [
+       "m",
+       "count",
+       "deg",
+       "share"
+      ]
+     }
+    },
+    "required": [
+     "id",
+     "of",
+     "key",
+     "label_key",
+     "lo",
+     "hi",
+     "step",
+     "unit"
+    ],
+    "additionalProperties": false
+   }
+  },
+  "roof_choices": {
+   "type": "object",
+   "properties": {
+    "pitch_step_deg": {
+     "type": "number"
+    },
+    "ridge": {
+     "type": "array",
+     "minItems": 1,
+     "items": {
+      "type": "object",
+      "properties": {
+       "value": {
+        "type": "integer"
+       },
+       "label_key": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "value",
+       "label_key"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "fall": {
+     "type": "array",
+     "minItems": 1,
+     "items": {
+      "type": "object",
+      "properties": {
+       "value": {
+        "type": "integer"
+       },
+       "label_key": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "value",
+       "label_key"
+      ],
+      "additionalProperties": false
+     }
+    }
+   },
+   "required": [
+    "pitch_step_deg",
+    "ridge",
+    "fall"
+   ],
+   "additionalProperties": false
   }
  },
  "required": [
   "tabs",
-  "choices"
+  "choices",
+  "fields",
+  "roof_choices"
  ],
  "additionalProperties": false
 }

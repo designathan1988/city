@@ -129,6 +129,13 @@ std::string op_turn_gear(Body &b, const Tuning &t, int vol, int gear) {
 	return "";
 }
 
+std::string op_size_gear(Body &b, const Tuning &t, int vol, int gear, float metres) {
+	Volume *v = volume_at(b, vol);
+	if (!v || gear < 0 || gear >= int(v->gear.size())) return NO_TARGET;
+	v->gear[size_t(gear)].h = std::clamp(metres, float(t.build_thinnest_m), float(t.build_max_side_m));
+	return "";
+}
+
 std::string op_paint(Body &b, int scope, int vol, int side, int storey, int finish, uint32_t rgb) {
 	if (finish < FIN_PLASTER || finish >= FIN_COUNT) return NO_TARGET;
 	int paint = paint_of(b, finish, rgb);

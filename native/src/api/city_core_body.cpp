@@ -78,6 +78,8 @@ Dictionary CityBuilder::body_pick(const Vector3 &origin, const Vector3 &dir) con
 	d["level"] = hit.level;
 	d["bay"] = hit.bay;
 	d["point"] = origin + n * hit.t;
+	d["part"] = hit.part;
+	d["gear"] = hit.gear;
 	return d;
 }
 

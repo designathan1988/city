@@ -10,9 +10,10 @@
 
 namespace city::b40 {
 
+// The pitch a block's roof stands at, degrees: its own, else its kind's.
+inline float roof_pitch_deg(const RoofShape &K, const Volume &v) { return v.pitch > 0 ? v.pitch : v.roof == ROOF_SHED ? K.shed_deg : K.gable_deg; }
 inline float roof_slope(const RoofShape &K, const Volume &v) {
-	float pitch = v.pitch > 0 ? v.pitch : v.roof == ROOF_SHED ? K.shed_deg : K.gable_deg;
-	return std::tan(pitch * float(DEG_TO_RAD));
+	return std::tan(roof_pitch_deg(K, v) * float(DEG_TO_RAD));
 }
 
 inline bool ridge_along_x(const Volume &v) { return v.ridge >= 0 ? v.ridge == 0 : v.w >= v.d; }

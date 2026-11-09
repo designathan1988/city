@@ -44,6 +44,8 @@ static func run(spec: Dictionary, value: int, picked: Dictionary, paint_scope: i
 			return CityStore.dispatch(&"body_set_relief", [id, vol, region, true])
 		"remove":
 			return CityStore.dispatch(&"body_remove_volume", [id, vol])
+		"duplicate":
+			return CityStore.dispatch(&"building_duplicate", [id])
 		"pattern":
 			return CityStore.dispatch(&"body_set_pattern", [id, vol, -1, -1, value])
 		"roof":

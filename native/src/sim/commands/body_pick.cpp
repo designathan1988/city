@@ -1,5 +1,5 @@
 // The nearest building face under a ray (body_pick.h): records near the ray by the store's hash, then each block's sides and
-// top in its lot's frame. A body is made only for a record the ray passes over.
+// top, its roof's things and the lot's free parts as boxes, in its lot's frame. A body is made only for a record the ray passes over.
 #include "sim/commands/body_pick.h"
 
 #include "core/math.h"
@@ -84,6 +84,57 @@ void hit_top(const RoofShape &K, const Body &b, const Volume &v, int vol, const 
 	best.t = t;
 }
 
+// Where the ray enters a box standing on the plan at (cx, cy), `hw` by `hd` about its middle, turned by `turn`, from z0 up to z1;
+// -1 for a miss (the slab test, in the box's own frame).
+float box_hit(const LocalRay &r, float cx, float cy, float hw, float hd, float turn, float z0, float z1) {
+	const float c = std::cos(turn), s = std::sin(turn), px = r.ox - cx, py = r.oy - cy;
+	const float o[3] = { px * c + py * s, -px * s + py * c, r.oz - (z0 + z1) / 2 }, d[3] = { r.dx * c + r.dy * s, -r.dx * s + r.dy * c, r.dz };
+	const float half[3] = { hw, hd, (z1 - z0) / 2 };
+	float enter = 0, leave = FAR_AWAY;
+	for (int k = 0; k < 3; k++) {
+		if (std::fabs(d[k]) < GRAZING) {
+			if (std::fabs(o[k]) > half[k]) return -1;
+			continue;
+		}
+		float a = (-half[k] - o[k]) / d[k], b = (half[k] - o[k]) / d[k];
+		if (a > b) std::swap(a, b);
+		enter = std::max(enter, a);
+		leave = std::min(leave, b);
+		if (enter > leave) return -1;
+	}
+	return enter > 0 ? enter : -1;
+}
+
+// The lot's free parts and each roof's things, nearer than what was hit: they stand in front of the walls they are set against.
+void hit_things(const RoofShape &K, const Body &b, const LocalRay &r, BodyHit &best) {
+	for (int i = 0; i < int(b.elements.size()); i++) {
+		const LotElement &e = b.elements[size_t(i)];
+		const float t = box_hit(r, e.x, e.y, e.w / 2, e.d / 2, e.angle, e.z, e.z + e.base + e.h); // `base`: a fence's wall under it, a flight's start
+		if (t <= 0 || t >= best.t) continue;
+		best.part = i;
+		best.gear = -1;
+		best.side = -1;
+		best.volume = std::max(best.volume, 0);
+		best.t = t;
+	}
+	for (int vol = 0; vol < int(b.volumes.size()); vol++) {
+		const Volume &v = b.volumes[size_t(vol)];
+		const float eaves = b.block_z(v, v.top());
+		for (int g = 0; g < int(v.gear.size()); g++) {
+			const RoofPart &p = v.gear[size_t(g)];
+			const float z0 = eaves + roof_height_at(K, v, p.x, p.y), t = box_hit(r, p.x, p.y, p.w / 2, p.d / 2, p.turn, z0, z0 + p.h);
+			if (t <= 0 || t >= best.t) continue;
+			best.gear = g;
+			best.part = -1;
+			best.volume = vol;
+			best.side = -1;
+			best.storey = v.storeys - 1;
+			best.level = v.top() - 1;
+			best.t = t;
+		}
+	}
+}
+
 // A hit that lands where a void block has taken the wall away is a click on the void: it is the only way to reach one.
 void in_a_void(const Body &b, const LocalRay &r, BodyHit &best) {
 	const V2 at{ r.ox + r.dx * best.t, r.oy + r.dy * best.t };
@@ -125,14 +176,18 @@ BodyHit pick_body(const CityState &s, const Ray3 &ray, float reach) {
 		LocalRay r = in_lot(ray, frame, floor);
 		int before = best.volume;
 		float was = best.t;
+		const RoofShape &K = s.buildings.designs.shapes.roof;
 		for (size_t i = 0; i < body.volumes.size(); i++) {
 			if (body.volumes[i].mode == BLOCK_VOID || body.volumes[i].mode == BLOCK_INTERSECT) continue; // space, not a wall to hit
 			hit_sides(body, body.volumes[i], int(i), r, best);
-			hit_top(s.buildings.designs.shapes.roof, body, body.volumes[i], int(i), r, best);
+			hit_top(K, body, body.volumes[i], int(i), r, best);
 		}
+		const float wall = best.t;
+		if (best.t < was) best.part = best.gear = -1; // a wall of this building, nearer than the last one's thing
+		hit_things(K, body, r, best);
 		if (best.t < was || best.volume != before) {
 			best.id = id;
-			in_a_void(body, r, best);
+			if (best.t == wall) in_a_void(body, r, best);
 		}
 	};
 	for (float at = 0; at <= reach; at += step) {

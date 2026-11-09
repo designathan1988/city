@@ -1,7 +1,7 @@
 ## Build (Massa, Fachada, Telhado, Cores): a click picks a block, its face and its bay; the strip's tools then act on the pick. With a
 ## component in hand a click puts it in the wall, at the scope chosen. Holds what is picked, never a number of the game: each edit
 ## goes to the core, which answers, and undo is the game's own. A model in hand (Models shelf) follows the pointer as a ghost: R turns it,
-## a click sets it down and picks it.
+## a click sets it down and picks it. A click on a free part or a thing on a roof picks it; the Builder's keys act on the pick (PickKeys).
 class_name BuildingTool
 extends ToolBase
 
@@ -85,11 +85,20 @@ func hover(p: Vector3) -> void:
 
 func key(code: Key) -> void:
 	hands.key(code, picked, _report)
+	var done := PickKeys.run(code, picked, paint_scope) if hand.is_empty() and not hands.armed() and not picked.is_empty() else {}
+	if not done.is_empty(): # a key of the Builder on the pick (PickKeys): what it did is told, the pick follows it
+		picked = done.picked
+		_report(done.result)
+		_show()
 	if hand.is_empty() or code != KEY_R:
 		return
 	turn += deg_to_rad(DataTables.tuning("build_gear_turn_deg")) if Input.is_key_pressed(KEY_SHIFT) else plain_turn
 	if _last != Vector3.INF:
 		hover(_last)
+
+
+func keeps_key(code: Key) -> bool: # Page Up and Page Down: a storey of the block picked (PickKeys), not the camera's, while nothing is in hand
+	return (code == KEY_PAGEUP or code == KEY_PAGEDOWN) and hand.is_empty() and not hands.armed() and not picked.is_empty()
 
 
 func _set_down(p: Vector3) -> void:
@@ -99,7 +108,7 @@ func _set_down(p: Vector3) -> void:
 		_report(r)
 		return
 	_put_down()
-	picked = {"id": r.placed, "volume": 0, "side": -1, "storey": 0, "level": 0, "bay": NO_BAY}
+	picked = PickKeys.new_pick(r.placed)
 	_show()
 	ctl.hint.emit(tr("building.placed"), true)
 
@@ -133,7 +142,7 @@ func release(p: Vector3) -> void:
 	elif handles.dragging():
 		_report(handles.finish())
 		if handles.building() != picked.id:
-			picked = {"id": handles.building(), "volume": 0, "side": -1, "storey": 0, "level": 0, "bay": NO_BAY}
+			picked = PickKeys.new_pick(handles.building())
 		_show()
 
 
@@ -143,7 +152,7 @@ func pick(origin: Vector3, dir: Vector3) -> void:
 	picked = hit
 	if not hit.is_empty() and hands.brush.on():
 		_report(hands.brush.paint(hit, paint_scope))
-	elif not hit.is_empty() and hit.side < 0 and not part.is_empty() and ROOF_TOOLS.has(part.do):
+	elif not hit.is_empty() and hit.side < 0 and hit.part < 0 and not part.is_empty() and ROOF_TOOLS.has(part.do):
 		_report(_roof(hit))
 	elif hit.is_empty() or hit.side < 0:
 		pass
@@ -221,8 +230,8 @@ func act(spec: Dictionary) -> void:
 				ctl.hint.emit(tr("hint.builder.select"), false)
 				return
 			var r := BodyEdits.run(spec, value, picked, paint_scope)
-			if spec.do == "remove" and r.get("ok", false):
-				picked = {}
+			if r.get("ok", false) and (spec.do == "remove" or spec.do == "duplicate"): # the block gone, or the copy picked
+				picked = {} if spec.do == "remove" else PickKeys.new_pick(r.placed)
 			_report(r)
 	_show()
 

@@ -1,5 +1,5 @@
-## The Build drawer's strip: the sections of a tab (data/ui/builder.json), each a title over its tool cards. A card hands its spec
-## to the tool in hand; "choice" tools (a component, a scope) stay lit while chosen.
+## The Build drawer's strip: the sections of a tab (data/ui/builder.json), each a title over its tool cards, the Models shelf or the
+## Selection panel. A card hands its spec to the tool in hand; "choice" tools (a component, a scope) stay lit while chosen.
 class_name BuilderStrip
 extends RefCounted
 
@@ -10,8 +10,11 @@ static func fill(strip: Container, tab_id: String, tools: ToolController) -> voi
 	for section: Dictionary in tab.get("sections", []):
 		var col := HudWidgets.vbox(strip)
 		HudWidgets.label(col, &"MutedLabel", TranslationServer.translate(section.title_key))
-		if section.has("shelf"):
+		if section.get("shelf", "") == "models":
 			ModelShelf.fill(col, tools)
+			continue
+		if section.get("shelf", "") == "selection":
+			BuilderInspector.fill(col, tools)
 			continue
 		var row := HudWidgets.hbox(col)
 		for spec: Dictionary in section.tools:
