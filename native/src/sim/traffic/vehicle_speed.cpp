@@ -41,6 +41,8 @@ float conn_speed(const CityState &s, const Conn &c) {
 	return c.turn == Turn::STRAIGHT ? s.traffic.g.ds[c.to_ds].speed : s.catalog.traffic.turn_speed_kmh / KMH_PER_MS;
 }
 
+float conn_top(const CityState &s, const Vehicle &v, const Conn &c) { return top_speed(s, v, s.traffic.g.ds[c.to_ds].speed); }
+
 namespace {
 
 // Below these a chord, a braking rate and an easing ramp are none (they divide), and a curvature is a straight road (the lab's

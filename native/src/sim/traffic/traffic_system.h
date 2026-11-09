@@ -187,6 +187,7 @@ bool new_trip(CityState &s, int id, int from_ds); // a route from `from_ds` to a
 void draw_driver(const TrafficParams &p, Vehicle &v, Rng &rng);
 VehicleClass driver_of(const CityState &s, const Vehicle &v);
 float curve_cap(const CityState &s, const Vehicle &v, const Conn &c, float front);
+float conn_top(const CityState &s, const Vehicle &v, const Conn &c); // its wish on connector `c` before the bends: its exit's limit
 float idm_accel(const VehicleClass &c, float v, float v0, float gap, float vl);
 
 // vehicle_motion.cpp

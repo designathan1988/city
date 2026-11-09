@@ -240,20 +240,20 @@ void connector_leads(const CityState &s, int ci, size_t k, float top, Lead &car,
 
 void step_connector(CityState &s, int ci, float dt) {
 	TrafficState &t = s.traffic;
-	const TrafficParams &p = s.catalog.traffic;
 	auto &list = t.conn_vehicles[ci];
 	const Conn &c = t.g.conns[ci];
-	const float vt = conn_speed(s, c);
 	for (size_t k = 0; k < list.size(); k++) {
 		Vehicle &v = t.vehicles[list[k]];
 		Lead l, walkers;
-		const float top = top_speed(s, v, vt);
+		const float top = conn_top(s, v, c);
 		connector_leads(s, ci, k, top, l, walkers);
 		for (int i = 0; i < walkers.count; i++) l.take(walkers.seen[i].gap, walkers.seen[i].v);
 		const LightStop lights = lights_ahead(s, v, v.ri + 1, c.to_lane, c.len - v.cs);
 		v.amber_hold = lights.amber_hold;
 		l.take(lights.gap, 0.f);
-		const float acc = drive_accel(s, v, std::min(top, std::max(curve_cap(s, v, c, v.cs), v.v - driver_of(s, v).b_emergency * dt)), l, dt);
+		// the bends ahead eased into, never braked past an emergency stop for (the lab's integrate.ts curveCap)
+		const float wish = std::min(top, std::max(curve_cap(s, v, c, v.cs), v.v - driver_of(s, v).b_emergency * dt));
+		const float acc = drive_accel(s, v, wish, l, dt);
 		integrate(s, v, acc, dt, v.cs);
 	}
 	while (!list.empty() && t.vehicles[size_t(list.front())].cs >= c.len) {
@@ -280,7 +280,7 @@ BoxHold box_hold(const CityState &s, int id) {
 	if (k >= on.size()) return BoxHold::STARTING;
 	const VehicleClass vc = driver_of(s, v);
 	const Conn &c = t.g.conns[size_t(v.conn)];
-	const float top = top_speed(s, v, conn_speed(s, c));
+	const float top = std::min(conn_top(s, v, c), curve_cap(s, v, c, v.cs));
 	Lead car, walkers;
 	connector_leads(s, v.conn, k, top, car, walkers);
 	const float light = lights_ahead(s, v, v.ri + 1, c.to_lane, c.len - v.cs).gap;
