@@ -1,20 +1,25 @@
-## What a city comes back with beside its map: the camera, the speed and the Simulation panel's levels, in <slot>.cfg next to the
-## save (the save's own format stays the core's). Written with every save, read when the city opens; a missing or unreadable
-## file is a city opened with the defaults.
+## What a city comes back with beside its map: the camera, the speed and the Simulation panel's levels, and whether the city is the
+## player's (`kept`: edited or saved by them; CitySaves lets go of one that is not when another city takes its place), in <slot>.cfg
+## next to the save (the save's own format stays the core's). Written with every save, read when the city opens; a missing or
+## unreadable file is a city opened with the defaults, and the player's.
 class_name Session
 extends RefCounted
 
 const SECTION := "session"
 const EXT := ".cfg"
+const KEPT := "kept"
+const KEPT_UNMARKED := true # a city with no `kept` mark (saved before it) is the player's: never let go unasked
 
 
 static func path(slot: String) -> String:
 	return SaveSlots.path(slot).get_basename() + EXT
 
 
-static func write(slot: String, rig: CityCamera) -> void:
+## `kept`: the city is the player's (CitySaves).
+static func write(slot: String, rig: CityCamera, kept: bool) -> void:
 	var s := CityStore.snapshot
 	var cfg := ConfigFile.new()
+	cfg.set_value(SECTION, KEPT, kept)
 	cfg.set_value(SECTION, "speed", s.get("speed", 1))
 	cfg.set_value(SECTION, "traffic", s.get("traffic_level", 1.0))
 	cfg.set_value(SECTION, "people", s.get("people_level", 1.0))
@@ -47,6 +52,15 @@ static func _nearest(v: float, among: Array) -> float:
 		if absf(c - v) < absf(best - v):
 			best = c
 	return best
+
+
+## Whether the saved city is the player's. A city written before the mark existed, or whose session file is gone, carries no mark:
+## it counts as the player's (KEPT_UNMARKED), since letting go of a city is only for one known never to have been theirs.
+static func kept(slot: String) -> bool:
+	var cfg := ConfigFile.new()
+	if cfg.load(path(slot)) != OK: # no session beside the save: an unmarked city
+		return KEPT_UNMARKED
+	return bool(cfg.get_value(SECTION, KEPT, KEPT_UNMARKED))
 
 
 static func read(slot: String, rig: CityCamera, paused := false) -> void:

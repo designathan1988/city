@@ -1,7 +1,7 @@
-// The generated city's streets (Roadcraft src/jobs/cityGen.ts + cityField.ts): one straight grid of blocks round the map's
-// middle (growth.json shapes.roads), avenues every few lines, collectors between, local streets the rest; water and steep slopes
-// cut it, a planar graph is built (crossings, merged nodes), zones are painted by the city's plan (city_plan.h) and the
-// street profiles vary by district noise. Deterministic: the same seed gives the TypeScript game's graph.
+// The generated city's streets (the lab's world/cityGen/plan.ts blockGrid, editor/cityGenerator.ts layCity): one straight grid of
+// blocks round the map's middle (growth.json shapes.roads), avenues every few lines, collectors between, local streets the rest,
+// each laid as its level's profile (growth.json road_roles); water and steep slopes cut it, a planar graph is built (crossings,
+// merged nodes) and zones are painted by the city's plan (city_plan.h). Deterministic: the same seed gives the same graph.
 #pragma once
 
 #include "sim/catalog/gen_shapes.h"

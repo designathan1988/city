@@ -1,7 +1,8 @@
 ## Where cities are saved (one save per city, so saving a city never overwrites
 ## another): the city on screen is written to a slot of its own, cidade-<seed> (cidade-<seed>-2... when another city
 ## holds that name); "Save map" copies it to mapa-<seed>, a copy that opens as a new city; the index names the
-## player's last city (what "Load the last game" opens). Runs driven by tests (GameFlow.tests_drive) keep their files
+## player's last city (what "Load the last game" opens); a city that never was the player's is forgotten when another takes its place
+## (CitySaves). Runs driven by tests (GameFlow.tests_drive) keep their files
 ## in a folder of their own process, so they never touch the player's saves nor each other's.
 class_name SaveSlots
 extends RefCounted
@@ -98,6 +99,17 @@ static func quarantine(slot: String) -> Error:
 		name = "%s/%s-%s-%d" % [to, slot, stamp, again]
 		again += 1
 	return DirAccess.rename_absolute(path(slot), "%s.%s" % [name, EXT])
+
+
+## Removes a city that never was the player's (CitySaves lets it go when another takes its place): its file and its session beside
+## it. Only the autosave wrote it, and its seed makes it again. Returns the error of the city's own file (OK when it was never written).
+static func forget(slot: String) -> Error:
+	if not exists(slot):
+		return OK
+	var err := DirAccess.remove_absolute(path(slot))
+	if err == OK and FileAccess.file_exists(Session.path(slot)):
+		err = DirAccess.remove_absolute(Session.path(slot))
+	return err
 
 
 static func _index_path() -> String:

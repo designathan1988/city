@@ -1,7 +1,9 @@
 ## The city on disk: SaveSlots owns where the files live (one per city). The city on screen is written to its own slot (`_city_slot`,
-## given at its first save or by the slot it was opened from): Save, Ctrl+S and the autosave every autosave_s of real time while it has
-## unsaved work and is the player's (it has a slot or they edited it); and when the window closes or loses the focus. The core writes on
-## its own thread; CityStore's `saved` carries the outcome, so the frame never waits for a save.
+## given at its first save or by the slot it was opened from): Save, Ctrl+S, the autosave every autosave_s of real time while it has
+## unsaved work, the autosave once a new city opens (the lab's main.ts snapshotApplied: the map on screen is written, touched or not, so
+## the next start opens it again), and when the window closes or loses the focus. Whose city it is, and letting go of one that never
+## was the player's, is CityClaim's. The core writes on its own thread; CityStore's `saved` carries the outcome, so the frame never
+## waits for a save.
 class_name CitySaves
 extends RefCounted
 
@@ -13,6 +15,7 @@ var _since_autosave := 0.0
 var _save_pending := false
 var _save_slot := ""
 var _city_slot := ""
+var _claim := CityClaim.new() # whether the city on screen is the player's
 var _export_to := "" # a map copy to make once the save in flight is written
 var _save_auto := false # the save in flight is the autosave
 ## The save after an edit (Roadcraft persistence.ts saveSoon). Tests that edit and look at what is unsaved keep it off.
@@ -27,10 +30,12 @@ func _init(store: Node, core: Node3D) -> void:
 	_core = core
 
 
-## A new map on screen: its first save gives it a slot of its own.
+## A new map on screen: its first save gives it a slot of its own; the city it replaced gives way (CityClaim).
 func new_city() -> void:
 	_settle_save()
+	_claim.give_way(_city_slot)
 	_city_slot = ""
+	_claim.opened(_city_slot)
 	_waited = -1.0
 
 
@@ -44,11 +49,24 @@ func save_busy() -> bool:
 	return _save_pending
 
 
-## Save (Menu, Ctrl+S): the city on screen to its own slot. The result is `saved`'s; this returns only a refusal.
+## Save (Menu, Ctrl+S): the city on screen to its own slot, and made the player's. The result is `saved`'s; this returns only a refusal.
 func save_city() -> Dictionary:
+	_claim.kept = true
+	return _write_city()
+
+
+## The city on screen to its own slot (its first write gives it one), whoever asked: the player's Save or the autosave, which writes
+## the city without making it the player's.
+func _write_city() -> Dictionary:
 	if _city_slot.is_empty():
 		_city_slot = SaveSlots.free_city_slot(int(_store.snapshot.get("seed", 0)))
 	return save_game(_city_slot)
+
+
+## The autosave's write: told apart in `saved` (`auto`).
+func _autosave() -> void:
+	_save_auto = true
+	_write_city()
 
 
 ## Save map: the city is saved, and its file is copied to mapa-<seed> once it is written.
@@ -86,13 +104,18 @@ func _opened(started: Dictionary) -> Dictionary:
 
 
 ## Replaces the city with the saved one (the core reads it aside, stops the simulation, takes it in and redraws everything). The
-## city keeps that slot, unless it is a map copy (then its first save gives it one of its own).
+## city keeps that slot, unless it is a map copy (then its first save gives it one of its own); the city it replaced gives way.
 func load_game(slot: String, paused := false) -> Dictionary:
+	_claim.note(_store.snapshot)
 	var r: Dictionary = await _opened(_core.load_city(save_path(slot), paused)) # waits for a save in flight first
 	_settle_save()
 	_since_autosave = 0.0
 	if r.get("ok", false):
-		_city_slot = slot if SaveSlots.is_city_slot(slot) else ""
+		var opened := slot if SaveSlots.is_city_slot(slot) else ""
+		if opened != _city_slot: # the same city opened again replaces nothing
+			_claim.give_way(_city_slot)
+		_city_slot = opened
+		_claim.opened(_city_slot)
 		if not _city_slot.is_empty():
 			SaveSlots.remember_last(_city_slot)
 		Session.read(slot, _store.get_tree().get_first_node_in_group(&"camera_rig"), paused)
@@ -118,7 +141,7 @@ func save_path(slot: String) -> String:
 func save_on_close() -> void:
 	if not _autosave_due():
 		return
-	save_city()
+	_write_city()
 	while _save_pending and _core.save_status().get("busy", true):
 		OS.delay_msec(SAVE_WAIT_MS)
 	_settle_save()
@@ -128,18 +151,21 @@ func save_on_close() -> void:
 ## the page is hidden, with no promise it finishes; here the thread does).
 func save_on_hide() -> void:
 	if _autosave_due():
-		_save_auto = true
-		save_city()
+		_autosave()
 
 
-## A city file from anywhere on the disk: opened as a new city, its first save takes a slot of its own. The core keeps the city on
-## screen when the file is no good, so nothing is lost.
+## A city file from anywhere on the disk: opened as a new city, its first save takes a slot of its own (not the player's until they
+## edit or save it: the file it came from stays where it was). The core keeps the city on screen when the file is no good, so nothing
+## is lost; the city it replaced gives way.
 func open_file(file: String) -> Dictionary:
+	_claim.note(_store.snapshot)
 	var r: Dictionary = await _opened(_core.load_city(file))
 	_settle_save()
 	_since_autosave = 0.0
 	if r.get("ok", false):
+		_claim.give_way(_city_slot)
 		_city_slot = ""
+		_claim.opened(_city_slot)
 	_store.refresh()
 	return r
 
@@ -164,8 +190,7 @@ func tick(delta: float) -> void:
 	if _since_autosave >= DataTables.game("saves").autosave_s:
 		_since_autosave = 0.0 # checked every autosave_s, saved only when due
 		if _autosave_due():
-			_save_auto = true
-			save_city()
+			_autosave()
 
 
 ## An edit is written once the player pauses (autosave_quiet_s), or autosave_most_s after it in a run of edits: the file costs a thread
@@ -184,15 +209,15 @@ func _tick_edits(delta: float) -> void:
 	if _quiet >= cfg.autosave_quiet_s or _waited >= cfg.autosave_most_s:
 		_waited = -1.0
 		if _autosave_due():
-			_save_auto = true
-			save_city()
+			_autosave()
 
 
-## Unsaved work of the player's: a city never saved nor edited is not written.
+## What is not on disk yet: unsaved work, or a city never written (a new one, a file opened from elsewhere), as the lab writes the map
+## on screen after it opens (main.ts snapshotApplied), touched or not.
 func _autosave_due() -> bool:
 	var s: Dictionary = _store.snapshot
-	var players: bool = not _city_slot.is_empty() or s.get("edited", false)
-	return s.get("ready", false) and s.get("unsaved", false) and not _save_pending and players
+	_claim.note(s)
+	return s.get("ready", false) and not _save_pending and (s.get("unsaved", false) or _city_slot.is_empty())
 
 
 ## The save thread finished (or the core waited for it before a new map or a load): its outcome goes out.
@@ -204,12 +229,12 @@ func _settle_save() -> void:
 	_finish_save(_save_slot, {"ok": st.get("ok", false), "error": st.get("error", ""), "bytes": st.get("bytes", 0)})
 
 
-## A save that ended: the city's own slot becomes the last city, a map copy asked for is made; listeners get the
-## result (`auto` for the autosave).
+## A save that ended: the city's own slot becomes the last city (its session says whether it is the player's), a map copy asked for
+## is made; listeners get the result (`auto` for the autosave).
 func _finish_save(slot: String, result: Dictionary) -> void:
 	if result.get("ok", false) and slot == _city_slot:
 		SaveSlots.remember_last(slot)
-		Session.write(slot, _store.get_tree().get_first_node_in_group(&"camera_rig"))
+		Session.write(slot, _store.get_tree().get_first_node_in_group(&"camera_rig"), _claim.kept)
 	if result.get("ok", false) and not _export_to.is_empty():
 		if DirAccess.copy_absolute(save_path(slot), _export_to) != OK:
 			result = {"ok": false, "error": "save.writeFailed"}

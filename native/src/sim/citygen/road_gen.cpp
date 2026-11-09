@@ -1,9 +1,7 @@
-// Grid lines and their march over the land (cityGen.ts generateCity, cityField.ts blockLines), the generated city's
-// rules for its graph (ranks, zones by the plan, sections by district noise); the cut ends taken back (dryCrossings,
-// withoutSpurs).
+// Grid lines and their march over the land (the lab's world/cityGen/plan.ts blockGrid), the generated city's rules for its
+// graph (ranks, zones by the plan; every street keeps its level's profile, the lab's editor/cityGenerator.ts layCity); the cut
+// ends taken back (dryCrossings, withoutSpurs).
 #include "sim/citygen/road_gen.h"
-
-#include "core/seeded.h"
 
 #include <algorithm>
 #include <cmath>
@@ -12,37 +10,20 @@ namespace city {
 
 namespace {
 enum Level { AVENUE = 0, COLLECTOR = 1, LOCAL = 2 };
-constexpr int RANK_EXPRESSWAY = 3, RANK_AVENUE_BIKE = 2;
-constexpr uint32_t NOISE_N = 313, NOISE_M = 919; // the two noises' streams off the seed (any distinct words)
 
-// The generated city's graph: the expressway outranks the avenue with a cycle track, which outranks the avenue; only the
-// local street gives way; zones are the plan's; a street's section varies by district noise and its distance share.
+// The generated city's graph: the avenue outranks the rest, only the local street gives way, zones are the plan's (an avenue or a
+// collector is a main road, the lab's zoneCity), and a street is laid as its level's profile (the lab's LEVEL_ROAD: avenue, urban,
+// local; the city profiles carry widenCityFootways' 3 m footways and the avenue's 2 m planted median). DO NOT vary the section by
+// district noise: an older Roadcraft's generator did (bus lanes, boulevards, cobbles); the lab lays the three classes alone.
 class PlanRules : public road_gen::GraphRules {
 public:
-	PlanRules(const RoadsShape &k, uint32_t seed, const GenProfiles &prof, const CityPlan &plan) : K(k), seed_(seed), prof_(prof), plan_(plan) {}
-	int rank(int p) const override { return p == prof_.expressway ? RANK_EXPRESSWAY : p == prof_.avenue_bike ? RANK_AVENUE_BIKE : p == prof_.avenue ? 1 : 0; }
+	PlanRules(const GenProfiles &prof, const CityPlan &plan) : prof_(prof), plan_(plan) {}
+	int rank(int p) const override { return p == prof_.avenue ? 1 : 0; }
 	bool yields(int p) const override { return p == prof_.local; }
-	int zone_beside(int p, double x, double z) const override { return p == prof_.expressway ? plan_.zones.none : zone_at(plan_, x, z, p != prof_.local); }
-	int section(int p, int zone, double d, double x, double z) const override {
-		double n = fbm2(x / K.district_scale_n, z / K.district_scale_n, seed_ + NOISE_N, 2), m = fbm2(x / K.noise_m_scale, z / K.noise_m_scale, seed_ + NOISE_M, 2);
-		if (p == prof_.local) {
-			if (zone == plan_.zones.commercial[1]) return n > K.avenue_share_n ? prof_.wide : n > K.urban_n ? prof_.urban : prof_.local;
-			if (zone == plan_.zones.industrial) return prof_.concrete;
-			if (zone == plan_.zones.mixed) return n > K.bike_n ? prof_.bike : n < -K.bike_n ? prof_.green : prof_.local;
-			if (d > K.cobble_d && m > K.cobble_m) return prof_.cobble;
-			return n > K.urban_local_n ? prof_.urban : p;
-		}
-		if (p == prof_.avenue) {
-			if (d < K.bus_offset && m > K.bus_m) return prof_.bus_side;
-			if (m < K.boulevard_m) return prof_.boulevard;
-			if (n > K.av4_n) return prof_.av4;
-		}
-		return p;
-	}
+	int zone_beside(int p, double x, double z) const override { return zone_at(plan_, x, z, p != prof_.local); }
+	int section(int p, int, double, double, double) const override { return p; }
 
 private:
-	const RoadsShape &K; // growth.json shapes.roads
-	uint32_t seed_;
 	const GenProfiles &prof_;
 	const CityPlan &plan_;
 };
@@ -130,7 +111,7 @@ GeneratedRoads generate_roads(uint32_t seed, double map_half, double radius, Ter
 		march(S, l, profile, map_half, terrain, pieces);
 	}
 	const CityPlan city = plan_city(seed & ~TerrainGen::FLAT_BIT, R, plan, zones);
-	GeneratedRoads g = road_gen::build_graph(S, pieces, R * K.centre_share, terrain, prof.asph_right, PlanRules(K, seed, prof, city));
+	GeneratedRoads g = road_gen::build_graph(S, pieces, R * K.centre_share, terrain, prof.asph_right, PlanRules(prof, city));
 	return road_gen::without_spurs(road_gen::dry_crossings(S, g, terrain));
 }
 

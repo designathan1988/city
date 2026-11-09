@@ -185,9 +185,9 @@
   "lift_on_m": 0.6
  },
  "history": {
-  "_doc": "Undo and redo: the most steps and megabytes the history keeps.",
-  "max_entries": 500,
-  "max_mb": 512
+  "_doc": "Undo and redo: the most steps and megabytes the history keeps (the lab's editor/history.ts History: 60 steps, 96 MB of patches across both stacks).",
+  "max_entries": 60,
+  "max_mb": 96
  },
  "roundabout": {
   "_doc": "The roundabout tool: radius limits, approach and entry lengths, the widest arc and the pad of the central disc. Building one (sim/commands/roundabout.cpp): refused by refuse_samples samples round its ring, water_samples for water (kept water_clear_m over it), cross_samples for the roads it cuts, its radius found in bisect_steps steps; an empty ring of empty_ring_nodes nodes, vacant_arms approaches on vacant ground.",

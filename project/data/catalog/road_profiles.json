@@ -1632,13 +1632,13 @@
    "strips": [
     {"kind": "sidewalk", "width": 2.85},
     {"kind": "curb", "width": 0.15},
-    {"kind": "lane", "width": 4, "dir": 1},
-    {"kind": "lane", "width": 4, "dir": 1},
+    {"kind": "lane", "width": 3.5, "dir": 1},
+    {"kind": "lane", "width": 3.5, "dir": 1},
     {"kind": "curb", "width": 0.15},
     {"kind": "median", "width": 1.7, "pave": 3},
     {"kind": "curb", "width": 0.15},
-    {"kind": "lane", "width": 4, "dir": -1},
-    {"kind": "lane", "width": 4, "dir": -1},
+    {"kind": "lane", "width": 3.5, "dir": -1},
+    {"kind": "lane", "width": 3.5, "dir": -1},
     {"kind": "curb", "width": 0.15},
     {"kind": "sidewalk", "width": 2.85}
    ]
