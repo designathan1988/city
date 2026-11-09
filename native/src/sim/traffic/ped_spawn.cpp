@@ -138,11 +138,16 @@ bool spawn_walker(CityState &s, const PeopleNow &now, bool from_door) {
 	w.side = has_side(pf, 0) && (!has_side(pf, 1) || (t.rng.next() & 1)) ? 0 : 1;
 	w.s = t.rng.range(arc_lo(g), arc_hi(g));
 	on_sidewalk(w);
+	Pose foot;
+	sidewalk_pose(s, seg, w.side, w.s, w.u, foot);
+	// where the player may see the footway, somebody comes out of a door of that stretch or nobody comes (the lab's edgePeople, sight.h)
+	const bool seen = !unseen_birth(s, foot.x, foot.z);
 	PedDoor door;
-	const bool out = from_door && pick_door(s, now, seg, w.side, true, arc_lo(g), arc_hi(g), door);
+	const bool out = (from_door || seen) && pick_door(s, now, seg, w.side, true, arc_lo(g), arc_hi(g), door);
 	if (out) {
 		at_door(s, w, door);
 	} else {
+		if (seen) return false;
 		w.s = clear_arc(s, seg, w.side, w.s, w.u); // born clear of the street furniture and of the others
 		if (w.s > arc_hi(g)) return false;
 		sidewalk_pose(s, seg, w.side, w.s, w.u, w.cur);

@@ -201,7 +201,6 @@ enum class BoxHold : uint8_t { LEADER = 0, WALKERS, LIGHT, STARTING, COUNT };
 BoxHold box_hold(const CityState &s, int id);
 float desired_speed(const CityState &s, const Vehicle &v, int ds);
 void step_vehicles(CityState &s, float dt);
-void step_connectors(CityState &s, float dt); // connector_motion.cpp: the vehicles across the junctions
 
 // cycling.cpp
 float cycle_shift(const CityState &s, const Vehicle &v, int ds, float front); // how far across a bicycle's body rides at `front`

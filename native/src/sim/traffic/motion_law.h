@@ -54,5 +54,8 @@ inline void integrate(const CityState &s, Vehicle &v, float acc, float dt, float
 	v.lc_cool = std::max(0.f, v.lc_cool - dt);
 }
 
+
+void step_connectors(CityState &s, float dt); // connector_motion.cpp: the vehicles across the junctions, one step
+
 } // namespace traffic
 } // namespace city
