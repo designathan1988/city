@@ -54,3 +54,16 @@ func report() -> void:
 	print("  video by kind (MiB): texture %.0f, buffer %.0f" % [
 		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TEXTURE_MEM_USED) / Units.BYTES_PER_MIB,
 		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_BUFFER_MEM_USED) / Units.BYTES_PER_MIB])
+
+
+## This report and the picture after it hold the simulation's locks and the main thread, so the tick they held back is published late:
+## that gap is the report's, not the next movement's. Frames on `tree` until the publications are back in step (a wait on the state),
+## the pose count starting from there.
+func settle(tree: SceneTree) -> void:
+	CityStore.query(&"pose_stats")
+	while true:
+		await tree.process_frame
+		var back: Dictionary = CityStore.query(&"pose_stats")
+		if int(back.publications) > 0 and int(back.late) == 0:
+			return
+

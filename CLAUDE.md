@@ -20,7 +20,7 @@ Antes de começar, leia o registro da sua linha. Ao fechar o tema, atualize-o co
    by its cause, with no visual loss.
 7. **Pare e confira:** passou ou deu erro? Se deu erro, volte ao passo 1 com o que o erro mostrou.
 
-Ao fechar o tema, o registro da linha recebe os problemas, as fontes, o raciocínio, o plano e os arquivos criados, alterados
+Ao fechar o tema, o registro da linha recebe os problemas, as fontes, o plano e os arquivos criados, alterados
 e apagados.
 
 ## Correção de causa

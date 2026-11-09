@@ -173,11 +173,10 @@ func _run(name: String, seconds: float, step: Callable) -> void:
 	cpu_ms.clear()
 	process_ms.clear()
 	costs.clear()
-	CityStore.query(&"pose_stats") # counts from here
+	await core.settle(get_tree()) # the pose count starts once the publications are back in step
 	var vp := get_viewport().get_viewport_rid()
 	var t := 0.0
 	var last := Time.get_ticks_usec()
-	var shot := shot_dir.is_empty()
 	while t < seconds:
 		await get_tree().process_frame
 		var now := Time.get_ticks_usec()
@@ -192,11 +191,9 @@ func _run(name: String, seconds: float, step: Callable) -> void:
 		process_ms.append(cost.process)
 		t += dt
 		step.call(dt, t)
-		if not shot and t >= seconds * 0.5: # taken after this frame's time was recorded
-			shot = true
-			get_viewport().get_texture().get_image().save_png("%s/%s.png" % [shot_dir, name])
-			last = Time.get_ticks_usec()
 	_report(name)
+	if not shot_dir.is_empty(): # after the movement was measured and reported: saving a picture holds the main thread
+		get_viewport().get_texture().get_image().save_png("%s/%s.png" % [shot_dir, name])
 
 
 func _report(name: String) -> void:
