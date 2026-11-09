@@ -2,12 +2,6 @@
 
 O que falta fazer, por área.
 
-- The frozen photos depend on the binary's memory layout (found 2026-11-08 21:40): `RoadNetwork::for_drawn_chunks` written as a
-  template gives the golden photos; the same logic through `std::function` (one allocation more) moves 8 pixels by 1 to 3 levels on
-  the wires over a facade in 02-rua and 03-rua_noite (box 837..1168, 260..285), the same in every run of either build, the same
-  pixels theme 2 saw. A pipeline arriving late is ruled out (the same view 600 frames later is identical). Something drawn depends
-  on heap contents or addresses (an uninitialised value, or an order taken from addresses) on the wires' path
-  (`render/props/street_props.cpp` and what it reads); the debug DLL's memory checks can find it.
 - Junction plate corners and the ground (theme 3, log/work-log.md 2026-11-08 20:40): the ground's shape (`road_shape.cpp`) knows a
   road's strip and how it ends (joint, cut, bulb), not a plate's corners; where a plate's footway tip reaches past every arm's casing
   the ground stands at the footway's top under it (coplanar), and a fillet's asphalt wider than its arms' footways would stand under
@@ -127,6 +121,12 @@ O que falta fazer, por área.
     Godot draws with the ubershader until a specialized pipeline is compiled in the background and gives no signal when it is, so
     `photos_check` fails on an unchanged tree. Until a completion signal exists (an engine change), a change's photos are judged
     against the states the unchanged tree gives over several runs.
+    Seen again 2026-11-08 (21:40 to 22:10): 8 pixels by 1 to 3 levels on the wires over a facade in 02-rua and 03-rua_noite (box
+    837..1168, 260..285) and a strip of wires in 00-cidade (1191..1268, 253..259); two runs of one binary differ. Within one run the
+    same view 600 frames later is identical, so a pipeline does not land during a run's photos; the wires' sway is not it (no wind
+    there); the visibility ranges' hysteresis margins are not it (with no margin two runs still differed; that change was undone).
+    A first reading, the binary's memory layout, was wrong (a5f6f33e's template form of `for_drawn_chunks` matched by chance).
+    Next evidence: each chunk's wire instance buffer (`street_props.cpp` push_span) dumped in two runs.
   - The frozen photos (`photos`, quick) once stopped after "city opened" and were killed at their 90 s deadline (2026-11-08 11:34,
     with the suite in parallel; the terrain's look change); alone they passed in 10 s, byte-equal to known states. The scene waits
     in `CaptureWait.until_drawn` on the render's pending work: to read there and in the render's pending counters which one
