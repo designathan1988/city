@@ -312,6 +312,7 @@ void BuildingRenderer::update_view(const Vector3 &cam, BuildBudget &budget) {
 	const float eye = std::max(0.f, cam.y - state_->terrain.height_at(cam.x, cam.z));
 	const float far_reach = far_end_ + eye * look_.far_per_eye; // from up there the ground in view runs on past the data's end
 	const double now = now_s();
+	fade_step_ = fade_clock_s_ < 0 || look_.level_fade_s <= 0 ? 1.f : std::min(1.f, float((now - fade_clock_s_) / look_.level_fade_s)), fade_clock_s_ = now;
 	std::vector<Want> want, want_super;
 	int waiting = 0; // far meshes to redo, each on its clock
 	for (auto &[key, sp] : supers_) {

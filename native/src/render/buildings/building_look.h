@@ -35,6 +35,7 @@ struct BuildingLook {
 	float cast_props_m = 0; // how far the balcony pieces throw a shadow
 	float hull_error_m = 0; // how far the mid level's shadow hull may stray from its walls
 	float level_fade_m = 0, level_back_m = 0; // the near level's hand-over (building_level.gdshaderinc)
+	float level_fade_s = 0; // how long the hand-over's dissolve lasts once a sub-chunk crosses its switch
 	float far_per_eye = 0; // metres of far reach each metre of eye height adds: the view from up there runs that much further
 	float far_hysteresis = 0; // superchunk far switch band around building_mid_end_m (a share of it)
 	float far_rebuild_delay_s = 0, far_rebuild_interval_s = 0; // deferred far rebuilds
