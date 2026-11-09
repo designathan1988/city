@@ -105,8 +105,13 @@
   "canopy_wood": 0.9,
   "trees_wood": 0.5,
   "emergent_wood": 0.3,
+  "geology": {
+   "_doc": "The painted ground kinds (paint.kinds) the site reads as its rock (sim/nature/ecology.cpp): campo rupestre on sandstone, outcrops on basalt; the rest is granite (Roadcraft world/ecology.ts EcologyInput sandstone, basalt).",
+   "sandstone": "sandstone",
+   "basalt": "basalt"
+  },
   "mixes": {
-   "_doc": "Each key is a share or a distance in the mix of a biome's communities (sim/nature/ecology.cpp). Where each community stands comes from the field descriptions; the number that turns a description into a smooth edge has no published value and is a modelling choice, stated here by group. vereda_*: veredas lie on flat, wet valley floors by the water (Ribeiro & Walter 2008): deep, patch and the 24-128 m from water are modelling choices for 'valley floor by a stream'. dense_*: cerradao on the lower ground and in patches of better soil: modelling choices. rupestre_*: campo rupestre on ridges and sandstone (Ribeiro & Walter 2008): modelling choices. cerrado_floor: the share of cerrado always kept, so a mix never sums to nothing: modelling choice. ridge_altitude_m, patch_altitude_m: how far a ridge and a patch move the forest line, scaled to this map's relief: modelling choices. varzea_*: forest on ground the rivers flood, the 16-88 m strip scaled to the map's rivers: modelling choices. caatinga_ridge, pampa_ridge: rock showing on crests: modelling choices. capao_*: forest islands in hollows of the pampa, along water at capao_riparian: modelling choices. low_*: the flooded lowland of the pantanal: modelling choices. cordilheira_*, pantanal_*: cordilheiras are forest on old levees 1-2.5 m high, the islands between flooded fields (Nhecolandia studies, see ports/landscape/research.md), so they take the patches and yield on low ground; the shares are modelling choices. ragged_*, shrub_*: how much the fine patch frays the canopy and the shrubs, against the bare mix: modelling choices.",
+   "_doc": "Each key is a share or a distance in the mix of a biome's communities (sim/nature/ecology.cpp). Where each community stands comes from the field descriptions; the number that turns a description into a smooth edge has no published value and is a modelling choice, stated here by group. vereda_*: veredas lie on flat, wet valley floors by the water (Ribeiro & Walter 2008): deep, patch and the 24-128 m from water are modelling choices for 'valley floor by a stream'. dense_*: cerradao on the lower ground and in patches of better soil: modelling choices. rupestre_*: campo rupestre on ridges and sandstone (Ribeiro & Walter 2008): modelling choices. cerrado_floor: the share of cerrado always kept, so a mix never sums to nothing: modelling choice. ridge_altitude_m, patch_altitude_m: how far a ridge and a patch move the forest line, scaled to this map's relief: modelling choices. varzea_*: forest on ground the rivers flood, the 16-88 m strip scaled to the map's rivers: modelling choices. caatinga_ridge, pampa_ridge: rock showing on crests: modelling choices. pampa_basalt: rock showing where the land is basalt (the Serra Geral flows under the pampa), less than on a crest: modelling choice, Roadcraft world/ecology.ts. capao_*: forest islands in hollows of the pampa, along water at capao_riparian: modelling choices. low_*: the flooded lowland of the pantanal: modelling choices. cordilheira_*, pantanal_*: cordilheiras are forest on old levees 1-2.5 m high, the islands between flooded fields (Nhecolandia studies, see ports/landscape/research.md), so they take the patches and yield on low ground; the shares are modelling choices. ragged_*, shrub_*: how much the fine patch frays the canopy and the shrubs, against the bare mix: modelling choices.",
    "vereda_deep_from": 0.15,
    "vereda_deep_to": 0.55,
    "vereda_patch_from": 0.3,
@@ -134,6 +139,7 @@
    "capao_deep_to": 0.4,
    "capao_riparian": 0.9,
    "pampa_ridge": 0.2,
+   "pampa_basalt": 0.15,
    "low_valley_base": 0.35,
    "low_valley": 1.2,
    "low_ridge_from": 0.25,

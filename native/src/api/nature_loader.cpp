@@ -148,6 +148,17 @@ void load_ecology(DataReader r, const Dictionary &t, DataReader rs, const Dictio
 	for (const PaintKindDef &k : paint.kinds)
 		if (k.cls == PaintClass::BIOME && k.id == biome) c.default_biome = k.slot;
 	if (c.default_biome < 0) rs.fail(String("default_biome: no biome '") + biome.c_str() + String("' among paint.kinds"));
+	const Dictionary geology = r.table(t, "geology");
+	DataReader rg = r.in("geology");
+	auto surface = [&](const char *rock) {
+		const std::string id = rg.utf8(geology, rock);
+		for (const PaintKindDef &k : paint.kinds)
+			if (k.cls == PaintClass::GROUND && k.id == id) return k.slot + 1; // PaintCell::surface: the ground kind's slot + 1
+		rg.in(rock).fail(String("no ground kind '") + id.c_str() + String("' among paint.kinds"));
+		return 0;
+	};
+	c.sandstone_surface = surface("sandstone");
+	c.basalt_surface = surface("basalt");
 }
 } // namespace
 

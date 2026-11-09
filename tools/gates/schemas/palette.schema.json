@@ -329,9 +329,6 @@
     "grass_blades_normal": {
      "type": "string"
     },
-    "biome_dry": {
-     "type": "array"
-    },
     "straw_share": {
      "type": "number"
     },
@@ -569,6 +566,153 @@
      },
      "minItems": 2,
      "maxItems": 2
+    },
+    "season_dry": {
+     "type": "number"
+    },
+    "bare_share": {
+     "type": "number"
+    },
+    "sodden_share": {
+     "type": "number"
+    },
+    "rock_flat_share": {
+     "type": "number"
+    },
+    "rock_least": {
+     "type": "number"
+    },
+    "straw_season": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     }
+    },
+    "bare_lift": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     }
+    },
+    "sodden_tone": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     }
+    },
+    "strata_warp_m": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     }
+    },
+    "granite_sheet": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     }
+    },
+    "granite_edge": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     }
+    },
+    "sandstone_bed": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     }
+    },
+    "sandstone_odds": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     }
+    },
+    "sandstone_edge": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     }
+    },
+    "sandstone_fine": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     }
+    },
+    "sandstone_hard": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     }
+    },
+    "sandstone_hard_edge": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     }
+    },
+    "basalt_flow": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     }
+    },
+    "basalt_top": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     }
+    },
+    "basalt_top_edge": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     }
+    },
+    "rock_blend": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     }
+    },
+    "granite_tones": {
+     "type": "array",
+     "items": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      }
+     }
+    },
+    "sandstone_tints": {
+     "type": "array",
+     "items": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      }
+     }
+    },
+    "basalt_tones": {
+     "type": "array",
+     "items": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      }
+     }
+    },
+    "soil_by_rock": {
+     "type": "array",
+     "items": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      }
+     }
     }
    },
    "required": [
@@ -621,7 +765,32 @@
     "patch_mix",
     "macro_clamp",
     "macro_share",
-    "patch_shade"
+    "patch_shade",
+    "straw_season",
+    "season_dry",
+    "bare_share",
+    "bare_lift",
+    "sodden_share",
+    "sodden_tone",
+    "rock_flat_share",
+    "strata_warp_m",
+    "granite_sheet",
+    "granite_tones",
+    "granite_edge",
+    "sandstone_bed",
+    "sandstone_tints",
+    "sandstone_odds",
+    "sandstone_edge",
+    "sandstone_fine",
+    "sandstone_hard",
+    "sandstone_hard_edge",
+    "basalt_flow",
+    "basalt_tones",
+    "basalt_top",
+    "basalt_top_edge",
+    "rock_blend",
+    "rock_least",
+    "soil_by_rock"
    ],
    "strict": true
   }

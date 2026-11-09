@@ -11,7 +11,8 @@ uniform float rock_slope; // 1 - normal.y; data/render/palette.json terrain (ang
 uniform float patch_scale;
 uniform sampler2DArray land_map : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform float dirt_layer; // the land map's layers of soil and of rock, and the metres a repeat of each covers
-uniform float rock_layer;
+uniform float rock_layer; // granite's face, the land's rock where no other was painted (rock_strata.gdshaderinc)
+uniform float rock_flat_share; // the rock's flat tone over its texture
 uniform float dirt_m;
 uniform float rock_m;
 uniform float dirt_from; // 1 - normal.y where soil starts to show; data/render/palette.json terrain (angle of repose)
