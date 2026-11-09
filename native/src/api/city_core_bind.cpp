@@ -128,6 +128,7 @@ void CityCore::bind_queries() {
 	ClassDB::bind_method(D_METHOD("lot_split", "id", "kind", "parts", "a", "b"), &CityCore::lot_split);
 	ClassDB::bind_method(D_METHOD("lot_join", "a", "b"), &CityCore::lot_join);
 	ClassDB::bind_method(D_METHOD("lot_delete", "id"), &CityCore::lot_delete);
+	ClassDB::bind_method(D_METHOD("lot_erase", "stroke"), &CityCore::lot_erase);
 	ClassDB::bind_method(D_METHOD("lot_zone", "id", "zone"), &CityCore::lot_zone);
 	ClassDB::bind_method(D_METHOD("lot_at", "point"), &CityCore::lot_at);
 	ClassDB::bind_method(D_METHOD("lot_angle_at", "point"), &CityCore::lot_angle_at);

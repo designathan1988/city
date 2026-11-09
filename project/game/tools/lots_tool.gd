@@ -1,6 +1,8 @@
 ## Zones > Lots (Roadcraft editor/lotTool.ts): the lots the player draws. `mode` says what a gesture does: add (a rectangle dragged square to the
 ## street), polygon (point by point, closed on its first), edit (a corner dragged), curve (a side bent through the pointer), front (the side
 ## clicked becomes the front), split (across, along or by a drawn line), join (one lot, then its neighbour), delete. The zone brush paints them.
+## Each lot's front, the side its building faces, is marked with an arrow out through it towards the street, and the edit mode marks
+## every corner (lotTool.ts drawLot).
 extends ToolBase
 
 ## What of a corner or a side the pointer takes, how far a lot's point reaches, the marks (data/game/tools.json lots).
@@ -9,6 +11,11 @@ static var drawn_px: float = DataTables.game("tools").drawn_px
 static var catch_px: float = DataTables.game("tools").lots.catch_px
 static var snap_least_m: float = DataTables.game("tools").lots.snap_least_m
 static var mark_m: float = DataTables.game("tools").lots.mark_m
+## The colours of the lots' fronts and of the proposed lots (data/ui/tokens.json; lotTool.ts: the front cyan, a proposal white and faint).
+const FRONT_TOKEN := "preview_front"
+const PROPOSAL_TOKEN := "preview_proposal"
+## A proposal's line half as wide as a lot's (lotTool.ts: 0.25 against a lot's 0.35 and a front's 0.8).
+const PROPOSAL_WIDTH_SHARE := 0.5
 
 var mode := "add"
 var cut_kind := CityStore.code(&"LotCutKind", &"ACROSS")
@@ -20,7 +27,9 @@ var _side: Array = [] # the side picked: [a, b]
 var _points := PackedVector3Array() # the polygon so far
 var _first_lot := 0 # join: the lot picked first
 var _land := LotProposals.new()
-var _erasing: Dictionary = {} # the delete stroke: the lots it passed over, by id
+var _erasing: Dictionary = {} # the delete stroke: the lots it passed over, by id (drawn thicker)
+var _pointer := Vector3.ZERO # where the pointer was last: the proposals drawn are its cell's
+var _stroke := PackedVector3Array() # the delete stroke's way: the core takes its lots and the buildings under it (lot_erase)
 
 
 func enter() -> void:
@@ -43,6 +52,7 @@ func cancel() -> void:
 	_points = PackedVector3Array()
 	_first_lot = 0
 	_erasing = {}
+	_stroke = PackedVector3Array()
 	ctl.tagged.emit("", Vector3.ZERO, true)
 	_show()
 
@@ -74,10 +84,18 @@ func _closed(points: PackedVector3Array) -> PackedVector3Array:
 	return ring
 
 
-## What the gesture shows over the lots' outlines (_read): `extra` and the polygon so far.
+## What the gesture shows over the lots' outlines (_read): the fronts, the corners in the edit mode, `extra` and the polygon so far.
 func _show(extra: Array = []) -> void:
 	var roads := extra.duplicate()
 	var at: Vector3 = _from if _from != Vector3.INF else Vector3.ZERO
+	for ring: PackedVector3Array in _land.near(_pointer): # the lots the streets propose, faint (lotTool.ts refreshProposal)
+		roads.push_back({"points": _closed(ring), "half_width": _width(ring[0]) * PROPOSAL_WIDTH_SHARE, "token": PROPOSAL_TOKEN})
+	for line in _lots.fronts:
+		roads.push_back({"points": line, "half_width": _width(line[0]), "token": FRONT_TOKEN})
+	if mode == "edit":
+		for l: Dictionary in _lots.all:
+			for q: Vector3 in l.points:
+				roads.push_back(_mark(q))
 	if _points.size() >= 2:
 		roads.push_back({"points": _points, "half_width": _width(at) * 2.0})
 	ctl.preview.show_ribbons(roads)
@@ -137,8 +155,9 @@ func click(p: Vector3) -> void:
 			_erase_under(p)
 
 
-## The lots under the delete stroke, drawn thicker until it is let go.
+## The lots under the delete stroke, drawn thicker until it is let go; its way kept for the core.
 func _erase_under(p: Vector3) -> void:
+	_stroke.push_back(p)
 	var id: int = CityStore.query(&"lot_at", [p])
 	if id != 0:
 		_erasing[id] = true
@@ -168,13 +187,8 @@ func drag(p: Vector3) -> void:
 
 
 func release(p: Vector3) -> void:
-	if mode == "delete" and not _erasing.is_empty():
-		CityStore.dispatch(&"begin_stroke", ["cmd.lot.delete"])
-		for id: int in _erasing:
-			CityStore.dispatch(&"lot_delete", [id])
-		CityStore.dispatch(&"end_stroke")
-		_read()
-		cancel()
+	if mode == "delete" and not _stroke.is_empty():
+		_done(CityStore.dispatch(&"lot_erase", [_stroke])) # lots, what stands on them and the buildings under it: one undo step
 	if _from == Vector3.INF or p == Vector3.INF:
 		_from = Vector3.INF
 		return
@@ -198,6 +212,7 @@ func release(p: Vector3) -> void:
 
 
 func hover(p: Vector3) -> void:
+	_pointer = p
 	var extra := []
 	var id: int = CityStore.query(&"lot_at", [p]) # the lot under the pointer, asked once
 	if mode == "split" and cut_kind != CityStore.code(&"LotCutKind", &"LINE"):

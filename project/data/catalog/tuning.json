@@ -1,6 +1,6 @@
 {
  "sim": {
-  "_doc": "The simulation clock: ticks a second, game minutes a real second, the steps a tick at the fast speeds, the hour a map opens at, and how fast buildings grow on queued lots. body_cache_mb: the memory the buildings' bodies made from their seeds may keep (sim/buildings/b40/body_cache.h), shared by every reader; past it the least recently asked are made again when asked.",
+  "_doc": "The simulation clock: ticks a second, game minutes a real second, the steps a tick at the fast speeds, the hour a map opens at, and how fast buildings grow on queued lots. grow_on_reach_m: the next building grows on the free lot nearest the last one grown when one lies this near, else on one drawn at random (Roadcraft world/growth/zoning.ts GROW_ON_REACH, 70 m). body_cache_mb: the memory the buildings' bodies made from their seeds may keep (sim/buildings/b40/body_cache.h), shared by every reader; past it the least recently asked are made again when asked.",
   "tick_hz": 20,
   "minutes_per_second": 1,
   "speed_fast": 2,
@@ -8,6 +8,7 @@
   "day_start_min": 390,
   "growth_per_s": 25,
   "growth_tries": 8,
+  "grow_on_reach_m": 70,
   "body_cache_mb": 128
  },
  "economy": {
@@ -352,9 +353,15 @@
   "splinter_chance": 0.6
  },
  "lot": {
-  "_doc": "The lot editor (sim/commands/lot_commands.cpp): a pointer within corner_take_m of a corner takes it, within side_reach_m of a side reaches it. angle_look_m: how far round a point a drawn lot looks for the street it squares to.",
+  "_doc": "The lot editor (sim/commands/lot_commands.cpp): a pointer within corner_take_m of a corner takes it, within side_reach_m of a side reaches it. angle_look_m: how far round a point a drawn lot looks for the street it squares to. The delete stroke (lot_erase) is read every erase_step_m along its way, shorter than any lot's front (lotTool.ts STROKE_STEP), and takes the buildings standing within erase_reach_m of a point whose ground blocks cover it (lotTool.ts eraseUnder, 80 m). A lot grown is a corner lot when a street's paving lies, within corner_margin_m, corner_beyond_m past one of its sides at corner_near and corner_far of its depth (zoning.ts cornerOf, STREET_MARGIN).",
   "corner_take_m": 0.8,
   "side_reach_m": 1.2,
+  "erase_step_m": 2,
+  "erase_reach_m": 80,
+  "corner_margin_m": 0.6,
+  "corner_beyond_m": 2,
+  "corner_near": 0.35,
+  "corner_far": 0.65,
   "angle_look_m": 80
  },
  "shoot": {

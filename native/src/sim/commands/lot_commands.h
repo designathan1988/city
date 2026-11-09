@@ -17,6 +17,9 @@ EditResult set_lot_front(CityState &s, int id, int side);
 EditResult split_lot(CityState &s, int id, const LotCut &cut);
 EditResult join_lots(CityState &s, int a, int b);
 EditResult delete_lot(CityState &s, int id);
+// The delete stroke (lotTool.ts eraseUnder and up): every lot the way passes over goes with what stands on it, and every building
+// whose ground blocks it passes over, on a lot or not; one undo step. Refused when it passed over nothing.
+EditResult erase_lots(CityState &s, const std::vector<XZ> &stroke);
 EditResult zone_lot(CityState &s, int id, int zone);
 
 } // namespace city

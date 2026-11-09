@@ -128,6 +128,7 @@ public:
 	godot::Dictionary lot_move_corner(const godot::Vector3 &from, const godot::Vector3 &to), lot_curve_side(const godot::Vector3 &a, const godot::Vector3 &b, const godot::Vector3 &through);
 	godot::Dictionary lot_set_front(int id, int side), lot_split(int id, int kind, int parts, const godot::Vector3 &a, const godot::Vector3 &b);
 	godot::Dictionary lot_join(int a, int b), lot_delete(int id), lot_zone(int id, int zone);
+	godot::Dictionary lot_erase(const godot::PackedVector3Array &stroke); // the delete stroke: its lots and the buildings under it
 	godot::PackedVector3Array lot_land(const godot::Vector3 &a, const godot::Vector3 &b, double angle);
 	godot::Vector3 lot_snap_point(const godot::Vector3 &p, double reach, const godot::Vector3 &apart);
 	godot::Array lot_proposals(const godot::Vector3 &p);

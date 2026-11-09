@@ -58,12 +58,15 @@ struct SidePlan {
 	float width = 0;
 	float walk = 0; // SIDE_DRIVE_PATH: the footpath along the drive, on the building's side
 };
+// A corner lot: the side of it on a second street (Roadcraft lotPlan.ts LotPlan.corner), a front too.
+enum LotCorner : uint8_t { CORNER_NONE, CORNER_LEFT, CORNER_RIGHT };
 struct LotPlan {
 	Kind kind = KIND_HOUSE;
 	float W = 0, D = 0;
 	FrontUse front = FRONT_STREET;
 	float front_depth = 0;
 	SidePlan left, right;
+	LotCorner corner = CORNER_NONE;
 	BackUse back = BACK_NONE;
 	float back_depth = 0;
 	int rows = 0;

@@ -44,7 +44,7 @@ void write_extra_blocks(ByteWriter &w, const CityState &s, const std::function<v
 	written("crossings");
 }
 
-bool read_extra_blocks(ByteReader &r, CityState &s) {
+bool read_extra_blocks(ByteReader &r, CityState &s, uint32_t version) {
 	for (;;) {
 		const uint32_t tag = r.get<uint32_t>();
 		if (!r.ok) return false;
@@ -52,7 +52,7 @@ bool read_extra_blocks(ByteReader &r, CityState &s) {
 		const uint32_t size = r.get<uint32_t>();
 		if (!r.ok || r.o + size > r.n) return false;
 		ByteReader block{ r.p + r.o, size };
-		if (tag == SAVE_TAG_DEMOLITION && !read_damage_block(block, s.damage)) return false;
+		if (tag == SAVE_TAG_DEMOLITION && !read_damage_block(block, s.damage, version)) return false;
 		if (tag == SAVE_TAG_STREET && !read_street_block(block, s.street)) return false;
 		if (tag == SAVE_TAG_LOTS && !read_lots_block(block, s.lot_book)) return false;
 		if (tag == SAVE_TAG_LINKS && !read_links_block(block, s.roads)) return false;

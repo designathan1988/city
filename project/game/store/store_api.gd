@@ -8,7 +8,7 @@ extends RefCounted
 const COMMANDS := {
 	&"set_speed": "set_speed", &"set_day_hour": "set_day_hour", &"build_road": "build_road", &"build_blocks": "build_blocks",
 	&"lot_add_rect": "lot_add_rect", &"lot_add_polygon": "lot_add_polygon", &"lot_move_corner": "lot_move_corner", &"lot_curve_side": "lot_curve_side",
-	&"lot_set_front": "lot_set_front", &"lot_split": "lot_split", &"lot_join": "lot_join", &"lot_delete": "lot_delete", &"lot_zone": "lot_zone", &"demolish": "demolish", &"paint_zone": "paint_zone", &"paint_zone_path": "paint_zone_path",
+	&"lot_set_front": "lot_set_front", &"lot_split": "lot_split", &"lot_join": "lot_join", &"lot_delete": "lot_delete", &"lot_erase": "lot_erase", &"lot_zone": "lot_zone", &"demolish": "demolish", &"paint_zone": "paint_zone", &"paint_zone_path": "paint_zone_path",
 	&"preview_road": "preview_road", &"preview_road_path": "preview_road_path",
 	&"build_road_path": "build_road_path", &"undo": "undo", &"redo": "redo", &"begin_stroke": "begin_stroke",
 	&"end_stroke": "end_stroke", &"split_road": "split_road", &"set_road_end": "set_road_end",

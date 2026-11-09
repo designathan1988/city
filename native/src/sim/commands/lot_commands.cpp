@@ -7,6 +7,8 @@
 #include "core/grid.h"
 #include "sim/lots/lot_book.h"
 #include "sim/citygen/lot_land.h"
+#include "sim/buildings/b40/record.h"
+#include "core/plane_geometry.h"
 #include "sim/state/city_state.h"
 
 #include <algorithm>
@@ -234,6 +236,68 @@ EditResult delete_lot(CityState &s, int id) {
 	raze(s, ring, razed);
 	j_remove_lot(s, id);
 	EditResult r = commit(s, { ring });
+	r.buildings_removed = razed.buildings_removed;
+	return r;
+}
+
+namespace {
+// Whether the point stands on one of the building's ground blocks (Roadcraft solidFootprints): read in its lot's frame, where a
+// block is its rectangle, or its outline in that rectangle.
+bool stands_on(const CityState &s, const Building &b, double x, double z) {
+	const b40::LotFrame f = b40::lot_frame(b);
+	const V2 p(float(x) - f.o.x, float(z) - f.o.y);
+	const float lx = p.x * f.e0.x + p.y * f.e0.y, ly = p.x * f.e1.x + p.y * f.e1.y;
+	const std::shared_ptr<const b40::Body> mass = b40::record_mass(s.buildings.designs, b);
+	for (const b40::Volume &v : mass->volumes) {
+		if (v.base != 0 || v.mode != b40::BLOCK_SOLID || lx < v.x || lx > v.x + v.w || ly < v.y || ly > v.y + v.d) continue;
+		if (v.outline.empty()) return true;
+		const float u = (lx - v.x) / v.w, w = (ly - v.y) / v.d;
+		if (inside_ring(v.outline, u, w, [](const V2 &q) { return std::pair<float, float>(q.x, q.y); })) return true;
+	}
+	return false;
+}
+
+template <typename T>
+void add_once(std::vector<T> &list, T v) {
+	if (std::find(list.begin(), list.end(), v) == list.end()) list.push_back(v);
+}
+} // namespace
+
+EditResult erase_lots(CityState &s, const std::vector<XZ> &stroke) {
+	const double step = s.catalog.tune.lot_erase_step_m, reach = s.catalog.tune.lot_erase_reach_m;
+	std::vector<int> lots, buildings;
+	const auto under = [&](double x, double z) {
+		if (const int id = s.lot_book.at(x, z)) add_once(lots, id);
+		s.buildings.query(float(x - reach), float(z - reach), float(x + reach), float(z + reach), [&](int id) {
+			const Building &b = s.buildings.items[size_t(id)];
+			if (std::hypot(b.x - x, b.z - z) <= reach && stands_on(s, b, x, z)) add_once(buildings, id);
+		});
+	};
+	// The whole way, a step shorter than any lot's front between two reports of the pointer.
+	for (size_t i = 0; i < stroke.size(); i++) {
+		if (i == 0) {
+			under(stroke[0].x, stroke[0].z);
+			continue;
+		}
+		const XZ &a = stroke[i - 1], &b = stroke[i];
+		const int n = std::max(1, int(std::ceil(std::hypot(b.x - a.x, b.z - a.z) / step)));
+		for (int k = 1; k <= n; k++) under(a.x + (b.x - a.x) * k / n, a.z + (b.z - a.z) * k / n);
+	}
+	if (lots.empty() && buildings.empty()) return refused("hint.lot.pick");
+	std::vector<std::vector<XZ>> rings;
+	EditResult razed;
+	for (int id : lots) {
+		const std::vector<XZ> ring = s.lot_book.find(id)->corners;
+		raze(s, ring, razed);
+		j_remove_lot(s, id);
+		rings.push_back(ring);
+	}
+	for (int id : buildings) {
+		if (!s.buildings.items[size_t(id)].alive) continue; // it stood on a lot that went
+		j_remove_building(s, id);
+		razed.buildings_removed++;
+	}
+	EditResult r = commit(s, rings);
 	r.buildings_removed = razed.buildings_removed;
 	return r;
 }

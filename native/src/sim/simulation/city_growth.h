@@ -1,5 +1,6 @@
-// Buildings grow over time on free lots (Roadcraft src/world/growth.ts Growth.step): the next one is the free lot
-// nearest the last that grew, so a street fills in sequence; `sim_growth_per_s` buildings a simulated second, at most
+// Buildings grow over time on free lots (Roadcraft src/world/growth.ts Growth.step, growth/zoning.ts pickLot): the next one is
+// the free lot nearest the last that grew when one is within sim.grow_on_reach_m, so a street fills in sequence, else a free
+// lot drawn by the city's seed; `sim_growth_per_s` buildings a simulated second, at most
 // `sim_growth_tries` tries a step. Only cells whose lots changed after the city was founded are queued (the generated
 // city is filled at once), so the work never grows with the map.
 #pragma once

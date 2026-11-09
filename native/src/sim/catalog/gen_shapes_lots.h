@@ -21,7 +21,7 @@ struct StripsShape {
 
 #define GEN_SHAPE_LOTS(X, XI, XD, XV, XVI) \
 	XD(front_pad) XD(width_trim) XD(depth_m) XD(frontage_m) XD(least_m) XD(works_depth) XD(works_frontage) \
-	XD(along_step) XD(behind_footway) XD(back_in)
+	XD(along_step) XD(behind_footway) XD(back_in) XD(paving_gap) XD(reach_m)
 struct LotsShape {
 	SHAPE_DECLARE(GEN_SHAPE_LOTS)
 };

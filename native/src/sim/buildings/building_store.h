@@ -5,11 +5,9 @@
 #include "core/grid.h"
 #include "core/slot_ids.h"
 #include "sim/buildings/b40/data.h"
-#include "sim/buildings/likeness.h"
 #include "sim/state/change_log.h"
 
 #include <cstdint>
-#include <unordered_map>
 #include <vector>
 
 namespace city {
@@ -32,6 +30,7 @@ struct Building {
 	uint16_t style = 0; // 0..127 automatic, 128 + arch = chosen
 	uint16_t profile = 0; // profile of the street it faces
 	int16_t landmark = -1; // catalogue project (data/catalog/landmarks) or -1
+	uint8_t corner = 0; // b40::LotCorner: the side of the lot on a second street (Roadcraft zoning.ts cornerOf), read when it grew
 	bool alive = false;
 	b40::BodyRef body; // the version the player edited, held by the record (b40::BodyTable); none = made from the seed
 	double built = 0; // city minute it was built (decay and renovation)
@@ -48,8 +47,6 @@ public:
 	// counted again over every record, and right after growth, edits and loads alike (the snapshot reads them).
 	int residents = 0, jobs = 0;
 	b40::Data designs; // the generator's tables (set once at boot, read-only after): every body is made from them
-	// How each body looks (likeness.h), by b40::body_key: derived, never saved. Only growth writes it, under the map's exclusive lock.
-	std::unordered_map<b40::BodyKey, BodyLook, b40::BodyKeyHash> looks;
 
 	void init(ChangeLog *l, const Catalog *catalog);
 	// The same links set again, nothing cleared: the store moved in with a city read aside (CityState::bind).

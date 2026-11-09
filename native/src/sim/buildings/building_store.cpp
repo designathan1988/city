@@ -16,7 +16,6 @@ void BuildingStore::init(ChangeLog *l, const Catalog *catalog) {
 }
 
 void BuildingStore::clear() {
-	looks.clear();
 	items.clear();
 	free_ids.clear();
 	hash.clear();
