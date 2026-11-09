@@ -170,6 +170,16 @@ O que falta fazer, por área.
   a podium) is to read in `plan_flats` / `office` against the lab's lot lab.
 - The frozen street view (`02-rua`, `03-rua_noite`) now stands inside a tower's glass curtain wall on the town's new lots: the
   view's camera point to move to the street (`frozen_plan.json`), then the photos blessed again.
+- The port from the lab, what is left (2026-11-09 07:00): the 2,950 units the converter's ledger leaves with no place (editor 1,416,
+  the root files 765, ui 645, view 124; log/conversor.md 2026-11-08 23:40) were read file by file against the game's owners
+  (log/mapa.md). The player's features are in the game in its own form (the road, lot, Build, pole, barrier, streetscape, terrain,
+  transit, cloud and demolish tools, history, saves and outside files, the model library, growth; Build's split at a floor is
+  `body_split` and reshaping a tier is Mass > Block shape; road parking's six presets are `drawers.json` parking; the ui panels
+  and the camera files have their game counterparts); the rest is the browser's plumbing the game's threads, JobPool and save own
+  (workers, IndexedDB stores, tile codecs and region frames, tiled and pre-cooked cities, the off-page network, the legacy-save
+  repair, the page's render caches, the root's wiring and desktop bridges). Not ported: Steam achievements (`steamAchievements.ts`:
+  milestones by the roads on the map, unlocked through the desktop shell), which needs Steamworks (an extension such as
+  GodotSteam) and the game's app id, neither in the repository.
 - Left by the area agents (2026-11-09 integration): riders stepping off the bus seen only in the test, not in a photo; the
   crater's decal anchoring on a slope; the weapons' photos were not redone after the merge; writhing and gore not confirmed in a
   photo.
