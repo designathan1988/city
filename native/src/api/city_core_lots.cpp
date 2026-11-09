@@ -68,6 +68,12 @@ Dictionary CityCore::lot_delete(int id) {
 	return run_edit(*state_, "cmd.lot.delete", [&](CityState &s) { return delete_lot(s, id); });
 }
 
+Dictionary CityCore::lot_erase(const PackedVector3Array &stroke) {
+	std::vector<XZ> way;
+	for (const Vector3 &p : stroke) way.push_back(point(p));
+	return run_edit(*state_, "cmd.lot.delete", [&](CityState &s) { return erase_lots(s, way); });
+}
+
 Dictionary CityCore::lot_zone(int id, int zone) {
 	return run_edit(*state_, "cmd.place.zone", [&](CityState &s) { return zone_lot(s, id, zone); });
 }

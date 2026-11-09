@@ -45,6 +45,10 @@ private:
 	void mark_lot(const Frame &f);
 	bool lot_free(double x, double z) const; // no paving and no lot there
 	void keep(const Frame &f, int zone, int profile);
+	double edge_gap(int s, double x, double z) const; // from a point to street s's paving edge on the point's side (< 0: on it)
+	int street_off(double x, double z, double dx, double dz, int skip) const; // the street whose paving lies within reach that way
+	double gap_along(int s, const Frame &f, double side, double along) const;
+	Frame to_paving(const Frame &f) const;
 	void place_blocks();
 	void place_strips();
 	struct Along {
