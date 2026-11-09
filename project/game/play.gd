@@ -1,4 +1,4 @@
-## Play scene: the world, the camera rig and the game's shell (ui/roadcraft_hud.gd). A new city is
+## Play scene: the world, the camera rig, the game's shell (ui/roadcraft_hud.gd) and the city's Steam milestones. A new city is
 ## generated from a random seed on entry.
 extends Node3D
 
@@ -26,6 +26,7 @@ func _ready() -> void:
 	var hud := RoadcraftHud.new()
 	add_child(hud)
 	add_child(InteriorController.new())
+	add_child(SteamAchievements.new())
 	_title(hud, saved)
 	_maybe_live()
 	_maybe_screenshot()

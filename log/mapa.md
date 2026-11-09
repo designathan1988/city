@@ -394,6 +394,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `project/game/flow/game_keys.gd` · `project/game/flow/build_stamp.gd` — as teclas do jogo (regras nos dados); o carimbo da versão
 - `project/game/health/health_log.gd` — registro de saúde: erros do motor (Logger), quadros longos, sessão anterior
 - `project/game/play.gd` · `project/game/play.tscn` — cena de jogo: mundo, câmera, HUD e captura por linha de comando
+- `project/game/steam_achievements.gd` · `project/tests/core/steam_achievements_test.gd` · `project/tests/core/steam_achievements_test.tscn` — the city's milestones told to Steam (the lab's steamAchievements.ts: roads on the map unlock ROADS_1, ROADS_100, ROADS_1000 through GodotSteam's singleton when it runs the game, nothing without it); its test on a stand-in bridge
 - `project/game/settings/road_prefs.gd` — o que a ferramenta de via guarda entre sessões: encaixes, teclas e muros do corte
 - `project/game/settings/settings.gd` — opções gráficas persistidas em user://settings.cfg (predefinição, escolhas, limite de quadros, vsync, tela cheia, idioma, chaves), aplicadas ao vivo
 - `project/game/settings/map_layers.gd` — what shows over the map (the Layers popover): the grid and the core's overlays, the zones with their tool

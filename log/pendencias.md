@@ -177,9 +177,10 @@ O que falta fazer, por área.
   `body_split` and reshaping a tier is Mass > Block shape; road parking's six presets are `drawers.json` parking; the ui panels
   and the camera files have their game counterparts); the rest is the browser's plumbing the game's threads, JobPool and save own
   (workers, IndexedDB stores, tile codecs and region frames, tiled and pre-cooked cities, the off-page network, the legacy-save
-  repair, the page's render caches, the root's wiring and desktop bridges). Not ported: Steam achievements (`steamAchievements.ts`:
-  milestones by the roads on the map, unlocked through the desktop shell), which needs Steamworks (an extension such as
-  GodotSteam) and the game's app id, neither in the repository.
+  repair, the page's render caches, the root's wiring and desktop bridges). Steam achievements (`steamAchievements.ts`) are
+  ported as `project/game/steam_achievements.gd`: the milestones are the game's and ask Steam through GodotSteam's singleton when
+  it runs the game, nothing without it, as the lab does without its desktop shell. For them to reach Steam: GodotSteam installed
+  as an extension and the game's app id with ROADS_1, ROADS_100 and ROADS_1000 set in Steamworks, neither in the repository.
 - Left by the area agents (2026-11-09 integration): riders stepping off the bus seen only in the test, not in a photo; the
   crater's decal anchoring on a slope; the weapons' photos were not redone after the merge; writhing and gore not confirmed in a
   photo.
