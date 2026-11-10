@@ -9,7 +9,7 @@ from __future__ import annotations
 from .cpp_names import strip_templates, template_call_type, type_of
 from .ir import LITERAL, name, union
 from .rules import CPP_RULES
-from .source import field_of, named_children
+from .source import field_of, named_children, string_value
 
 
 def build(src, node, lam) -> tuple:
@@ -85,6 +85,7 @@ BUILDERS = {
     "template_function": lambda s, n, l: name(strip_templates(s.text(n))),
     "template_method": lambda s, n, l: name(strip_templates(s.text(n))),
     "this": lambda s, n, l: ("self",),
+    "string_literal": lambda s, n, l: ("strname", string_value(s, n) or ""),   # a text value (G7)
     "call_expression": _call,
     "argument_list": lambda s, n, l: ("collection", _args(s, n, l)),
     "field_expression": _field,
@@ -111,7 +112,7 @@ BUILDERS = {
     **{kind: (lambda s, n, l: ("literal", "std::size_t")) for kind in
        ("sizeof_expression", "alignof_expression", "offsetof_expression")},
     **{kind: (lambda s, n, l: LITERAL) for kind in
-       ("number_literal", "char_literal", "character", "string_literal", "raw_string_literal", "concatenated_string",
+       ("number_literal", "char_literal", "character", "raw_string_literal", "concatenated_string",
         "string_content", "raw_string_content", "raw_string_delimiter", "escape_sequence", "user_defined_literal",
         "literal_suffix", "true", "false", "null", "field_designator", "subscript_designator",
         "subscript_range_designator", "generic_expression", "extension_expression", "fold_expression",

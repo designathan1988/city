@@ -55,7 +55,7 @@ class Unit:
     kind: str                      # func, method, lambda, var, field, const, signal, class, enum, enumerator
     lang: str                      # gd or cpp
     name: str
-    qual: str                      # qualified name: gd "res://path.gd.Inner.f", cpp "city::A::f"
+    qual: str                      # qualified name: gd "res://path.gd.Inner.f", cpp "ns::A::f"
     owner: str                     # gd: class key; cpp: qualified class or namespace ("" when global)
     file: str
     line: int

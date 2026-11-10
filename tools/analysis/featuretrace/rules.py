@@ -85,6 +85,9 @@ HANDLERS = {
     "TYPE": ("typer:Typer.type_class",),
 }
 
+# Callables built from an object and a method name (G7): constructor -> (object argument, name argument).
+CALLABLE_CONSTRUCTORS = {"Callable": (0, 1)}
+
 # The engine's constructors by name (G6): (global receiver, method) -> index of the argument naming the class.
 NAME_CONSTRUCTORS = {("ClassDB", "instantiate"): 0}
 

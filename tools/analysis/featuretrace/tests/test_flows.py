@@ -55,6 +55,14 @@ class Flows(unittest.TestCase):
     def test_cpp_argument_dependent_lookup(self):
         self.assertEqual(self.calls("fx::callers").get("fx2::adl_target"), "exact")
 
+    def test_a_name_held_in_a_string_names_the_method(self):
+        # G7: Callable(obj, m) and call(m) take the name as a value; the string flows like any value
+        self.assertIn("Controller.go_by_name", self.calls("Controller.by_names"))
+        self.assertIn("Controller.go_by_name", self.calls("Controller.by_names", "name"))
+
+    def test_a_callable_built_from_a_parameter_and_kept_in_a_container(self):
+        self.assertIn("Controller.go_routed", self.calls("Controller.by_names"))
+
     def test_nothing_is_a_candidate(self):
         self.assertFalse([e for e in self.rs.edges if "candidate" in e.how])
 

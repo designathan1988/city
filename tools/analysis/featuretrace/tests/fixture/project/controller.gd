@@ -61,3 +61,24 @@ func never_called(o) -> void:
 
 func made():
 	return RoadTool.new()
+
+
+func by_names() -> void:
+	var m = "go_by_name"
+	Callable(self, m).call()
+	call(m)
+	var routes = {}
+	routes["k"] = route("go_routed")
+	routes["k"].callv([])
+
+
+func route(spec: String) -> Callable:
+	return Callable(self, spec)
+
+
+func go_by_name() -> void:
+	pass
+
+
+func go_routed() -> void:
+	pass

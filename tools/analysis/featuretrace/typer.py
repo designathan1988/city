@@ -17,9 +17,9 @@ import re
 from .cpp_names import template_args
 from .library import DEREF, ENGINE, ITEM, ITER, clean, library_step
 from .model import FUNCTION_KINDS
-from .rules import NAME_CONSTRUCTORS
+from .rules import CALLABLE_CONSTRUCTORS, NAME_CONSTRUCTORS
 
-CLASS, FN, ELEM = "#", "<fn>", "<elem>"
+CLASS, FN, ELEM, TEXT = "#", "<fn>", "<elem>", "<text>"   # TEXT + s: a string value carrying s (G7)
 CALLABLE_CALLS = ("call", "callv", "call_deferred")
 OPERATORS = {ITEM: "operator[]", DEREF: "operator->", ITER: "begin"}
 COMPARISONS = ("==", "!=", "<", ">", "<=", ">=", "<=>", "&&", "||", "!", "and", "or", "not", "in", "is")
@@ -33,19 +33,25 @@ class Typer:
         self.rs = resolver
         self._busy = set()
         self._memo = {}
+        self._cuts = 0               # cycles cut so far: a result computed across a cut is not kept
 
     def class_of(self, unit) -> str | None:
         return unit.owner if unit.owner in self.ix.classes else None
 
     # ---- trees -------------------------------------------------------------------------------------------------
     def evaluate(self, tree, unit, depth: int = 0) -> list[tuple]:
-        if not tree or unit is None or depth > DEPTH:
+        """Every type a tree can hold. A value that depends on itself (a cycle of flows) is cut where it comes back;
+        a result computed under such a cut is partial, so only results computed without one are kept for reuse (the
+        link passes add what a cut left out, `link.build`)."""
+        if not tree or unit is None:
             return []
         key = (tree, unit.gid)
         if key in self._memo:
             return self._memo[key]
-        if key in self._busy:
+        if key in self._busy or depth > DEPTH:
+            self._cuts += 1
             return []
+        cuts = self._cuts
         self._busy.add(key)
         try:
             found = self._evaluate(tree, unit, depth + 1)
@@ -56,7 +62,8 @@ class Typer:
             if text and (text, ctx.gid) not in seen:
                 seen.add((text, ctx.gid))
                 out.append((text, ctx))
-        self._memo[key] = out
+        if self._cuts == cuts:
+            self._memo[key] = out
         return out
 
     def _evaluate(self, tree, unit, depth: int) -> list[tuple]:
@@ -97,10 +104,12 @@ class Typer:
             key = self.class_of(unit)
             bases = self.ix.base_keys(self.ix.classes[key]) if key else []
             return [(CLASS + bases[0], unit)] if bases else [(ENGINE, unit)]
-        return [(ENGINE, unit)]      # literal, strname, node: the engine's or the language's values
+        if kind == "strname":
+            return [(TEXT + tree[1], unit)]
+        return [(ENGINE, unit)]      # literal, node: the engine's or the language's values
 
     def call(self, callee, args, unit, depth: int) -> list[tuple]:
-        made = self.made_by_name(callee, args, unit)
+        made = self.made_by_name(callee, args, unit) or self.callable_of(callee, args, unit, depth)
         if made is not None:
             return made
         if callee[0] == "member":
@@ -124,6 +133,21 @@ class Typer:
                 out.append((ENGINE, ctx))       # calling what the engine gives: the engine's value
         return out
 
+    def callable_of(self, callee, args, unit, depth: int) -> list[tuple] | None:
+        """`Callable(obj, name)` (G7): a callable of the method of obj's class named by each text name holds."""
+        spec = CALLABLE_CONSTRUCTORS.get(callee[1]) if callee[0] == "name" else None
+        if spec is None or max(spec) >= len(args) or self.rs.function_targets(unit, callee[1]):
+            return None
+        out = []
+        for name in self.texts(args[spec[1]], unit, depth):
+            for text, ctx in self.evaluate(args[spec[0]], unit, depth):
+                out += [v for v in self.member(text, ctx, name, False, depth) if v[0].startswith(FN)]
+        return out or [(ENGINE, unit)]
+
+    def texts(self, tree, unit, depth: int = 0) -> list[str]:
+        """The text values a tree can hold (names carried as strings, G7)."""
+        return list(dict.fromkeys(t[len(TEXT):] for t, _ in self.evaluate(tree, unit, depth) if t.startswith(TEXT)))
+
     def made_by_name(self, callee, args, unit) -> list[tuple] | None:
         """The engine's constructors by name (NAME, G6): `ClassDB.instantiate(&"C")` is an object of class C."""
         if callee[0] != "member" or callee[1][0] != "name":
@@ -131,10 +155,9 @@ class Typer:
         index = NAME_CONSTRUCTORS.get((callee[1][1], callee[2]))
         if index is None or self.named(callee[1][1], unit, 0) != [(ENGINE, unit)] or index >= len(args):
             return None
-        if args[index][0] != "strname":
-            return [(ENGINE, unit)]
-        key = self.ix.engine_class(args[index][1]) if unit.lang == "gd" else None
-        return [(CLASS + key, unit)] if key else [(args[index][1], unit)]
+        names = self.texts(args[index], unit)
+        keys = [(self.ix.engine_class(n) if unit.lang == "gd" else None, n) for n in names]
+        return [(CLASS + k, unit) if k else (n, unit) for k, n in keys] or [(ENGINE, unit)]
 
     # ---- names -------------------------------------------------------------------------------------------------
     def named(self, name: str, unit, depth: int) -> list[tuple]:
@@ -160,7 +183,7 @@ class Typer:
         argument written at every site that calls the function)."""
         trees = unit.types.get(name, [])
         found = [v for t in trees for v in self.evaluate(t, unit, depth)]
-        if name in unit.params and not any(t[0] == "cast" for t in trees):
+        if name in unit.params:      # a declared type names the class; the values passed carry the rest
             found += self.rs.argument_values(unit, unit.params.index(name), depth)
         return found
 
@@ -168,22 +191,20 @@ class Typer:
         """What a variable or field holds: its declared type, else every value that flows into it."""
         if unit.kind in FUNCTION_KINDS:
             return [(FN + str(unit.gid), unit)]
-        if unit.type_text and unit.type_text not in NO_VALUE:
-            return [(unit.type_text, unit)]
+        declared = [(unit.type_text, unit)] if unit.type_text and unit.type_text not in NO_VALUE else []
         found = [v for t in unit.values for v in self.evaluate(t, unit, depth)]
-        return found + self.rs.assigned_values(unit, depth)
+        return declared + found + self.rs.assigned_values(unit, depth)
 
     def returns(self, unit, depth: int) -> list[tuple]:
         """What a call of the function yields: its declared return type, else what its `return`s carry."""
         if unit.type_text == "void":
             return []
-        if unit.type_text and unit.type_text not in NO_VALUE:
-            return [(unit.type_text, unit)]
-        return [v for _, _, tree in unit.returns for v in self.evaluate(tree, unit, depth)]
+        declared = [(unit.type_text, unit)] if unit.type_text and unit.type_text not in NO_VALUE else []
+        return declared + [v for _, _, tree in unit.returns for v in self.evaluate(tree, unit, depth)]
 
     # ---- types -------------------------------------------------------------------------------------------------
     def type_class(self, text: str, ctx) -> str | None:
-        if not text or text == ENGINE or text.startswith((FN, ELEM)):
+        if not text or text == ENGINE or text.startswith((FN, ELEM, TEXT)):
             return None
         if text.startswith(CLASS):
             return text[1:]

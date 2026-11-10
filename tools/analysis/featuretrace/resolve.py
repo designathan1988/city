@@ -220,7 +220,10 @@ class Resolver:
         return self.bare(unit, ref.name, want)
 
     def link(self, src, dst, kind, ref, how, file="") -> None:
-        edge = Edge(src, dst, kind, ref.line, ref.cond, how, file or self.ix.units[src].file, getattr(ref, "args", ()))
+        self.keep_edge(Edge(src, dst, kind, ref.line, ref.cond, how, file or self.ix.units[src].file,
+                            getattr(ref, "args", ())))
+
+    def keep_edge(self, edge: Edge) -> None:
         self.edges.append(edge)
-        self.out[src].append(edge)
-        self.inn[dst].append(edge)
+        self.out[edge.src].append(edge)
+        self.inn[edge.dst].append(edge)

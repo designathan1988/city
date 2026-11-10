@@ -6,21 +6,24 @@ can hold; a signal no code declares is the engine's and an entry point. Scene co
 code defines are kept per unit as its external uses; members on a receiver no value reaches, as unreached.
 
 Values flow along the links (an argument into a parameter, an assignment into a field) and the links depend on the
-values: the program is linked again with the previous pass's values until a pass changes no link.
+values: the program is linked again with the links known so far, and every link found stays (values only grow), until
+a pass adds none. The links are a finite set, so the passes end.
 """
 from __future__ import annotations
 
+from itertools import count
+
 from .model import FUNCTION_KINDS
+from .rules import NAME_CALLS
 from .resolve import EXACT, EXTERNAL, LOCAL, UNREACHED, Resolver
 from .typer import CLASS
 
 WANT = {"call": "func", "value": "func", "thread": "func", "read": "read", "write": "state", "emit": "signal"}
-MAX_PASSES = 8
 
 
 def build(index, progress=None) -> Resolver:
     previous = None
-    for number in range(1, MAX_PASSES + 1):
+    for number in count(1):
         rs = Resolver(index, previous)
         for unit in list(index.units):
             for ref in unit.refs:
@@ -31,16 +34,19 @@ def build(index, progress=None) -> Resolver:
             for s in signals:
                 for h in handlers:
                     rs.link(s, h, "signal", _Site(line), EXACT, file)
+        known = {key(e) for e in rs.edges}
+        for edge in previous.edges if previous is not None else []:
+            if key(edge) not in known:
+                rs.keep_edge(edge)                 # a link found once stays: the values that made it still flow
         if progress:
             progress(f"link pass {number}: {len(rs.edges)} links")
-        if previous is not None and edge_set(rs) == edge_set(previous):
+        if previous is not None and len(rs.edges) == len(previous.edges):
             return rs
         previous = rs
-    return rs
 
 
-def edge_set(rs) -> set:
-    return {(e.src, e.dst, e.kind, e.line) for e in rs.edges}
+def key(edge) -> tuple:
+    return (edge.src, edge.dst, edge.kind, edge.line, edge.file)
 
 
 class _Site:
@@ -85,6 +91,8 @@ def link_ref(rs, unit, ref) -> None:
         if how == EXTERNAL and kind == "call" and unit.lang == "cpp" and ref.base is None and not ref.qualified:
             targets = rs.adl(unit, ref.name, ref.args)
             how = EXACT if targets else EXTERNAL
+    if kind == "call" and ref.name in NAME_CALLS and ref.args:
+        by_value(rs, unit, ref)
     if how in (EXTERNAL, LOCAL, UNREACHED):
         if how == EXTERNAL and kind in ("call", "new", "name", "emit"):
             rs.external[unit.gid].add(ref.name)
@@ -99,6 +107,21 @@ def link_ref(rs, unit, ref) -> None:
     if kind in ("call", "name") and ref.base != ("super",) and not ref.qualified:
         for gid in with_overrides(rs, targets):
             rs.link(unit.gid, gid, "override", ref, "override")
+
+
+def by_value(rs, unit, ref) -> None:
+    """`obj.call(name, ...)` with the name held in a value (G7): each text it can hold names a method."""
+    for text in rs.typer.texts(ref.args[0], unit):
+        targets, how = rs.by_string(unit, ref.base if ref.base is not None else ("self",), text)
+        for gid in targets:
+            rs.link(unit.gid, gid, "name", _Shifted(ref), how)
+
+
+class _Shifted:
+    """A by-name call site: its arguments after the name."""
+
+    def __init__(self, ref):
+        self.line, self.cond, self.args = ref.line, ref.cond, ref.args[1:]
 
 
 def fits(unit, argc: int) -> bool:

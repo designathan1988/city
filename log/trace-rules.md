@@ -20,6 +20,9 @@ Sources (read through context7):
   gdextension_cpp_example).
 - G6 ClassDB.instantiate(class: StringName): "Instantiates a new object of the given class"; engine and GDExtension
   classes are in ClassDB, script `class_name` classes are not (class_classdb).
+- G7 Callable(object, method: StringName) and Object.call(method: StringName, ...) take the method's name as a value; a
+  String passed where a StringName is expected is converted (class_callable, class_object, class_stringname): a name
+  held in a string value follows FLOW like any value.
 - C1 C++ keywords, identifiers with special meaning, preprocessor tokens (cppreference keyword, preprocessor).
 - C2 Expressions: primary expressions, operator precedence, value categories (expressions, operator_precedence,
   value_category, operator_member_access, operator_incdec).
@@ -67,7 +70,7 @@ Sources (read through context7):
 | `await x` | the value the signal carries or the coroutine returns |
 | literal (number, string, bool, null, array, dictionary, initializer list) | the engine's / the language's value; an array/dictionary literal holds its elements' values (FLOW) |
 | `$Path`, `%Name`, node path | an engine Node (the scene gives its script when the path names a node of the scene that owns the script) |
-| `&"name"` (StringName) | a name: NAME |
+| `&"name"` (StringName), `"name"` (String) | a value carrying that text; where a method or signal name is expected it names it (NAME, G7) |
 | `this` / `self` / `super` | the enclosing class / its base (super: no override dispatch) |
 | sizeof, alignof, offsetof, typeid, requires-expression, fold over a pack | the language's value; operands walked for their links |
 

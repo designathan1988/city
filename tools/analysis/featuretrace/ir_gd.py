@@ -11,7 +11,7 @@ from .rules import GD_RULES
 from .source import field_of, named_children, string_value
 
 TESTS = ("is", "in", "not", "and", "or", "&&", "||", "==", "!=", "<", ">", "<=", ">=")
-LITERAL_TYPES = {"integer": "int", "float": "float", "string": "String", "true": "bool", "false": "bool",
+LITERAL_TYPES = {"integer": "int", "float": "float", "true": "bool", "false": "bool",
                  "null": "null", "escape_sequence": "String", "node_path": "NodePath"}
 
 
@@ -137,6 +137,7 @@ BUILDERS = {
     "await_expression": lambda s, n, l: ("await", build(s, (named_children(n) or [None])[-1], l)),
     "lambda": lambda s, n, l: ("callable", l(n)),
     "string_name": lambda s, n, l: ("strname", string_value(s, n) or ""),
+    "string": lambda s, n, l: ("strname", string_value(s, n) or ""),     # a text value (G7)
     "get_node": lambda s, n, l: ("node",),
     "base_call": _base_call,
     **{kind: (lambda t: (lambda s, n, l: ("literal", t)))(t) for kind, t in LITERAL_TYPES.items()},
