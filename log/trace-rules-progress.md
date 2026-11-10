@@ -7,3 +7,5 @@ Task 1: Ruling: the test that every rule has a handler moves to Task 5 — handl
 Task 1: complete (commits b72d1e5..bb6f1b6, tests: python -m unittest discover -s tools/analysis/featuretrace/tests -t tools/analysis → OK)
 Task 2: Ruling: flows.py is deleted in Task 3, with the readers that still import it — deleting it in Task 2 breaks the suite between tasks — cost if wrong: none, Task 3's no-marker check covers it.
 Task 2: complete (commits bb6f1b6..4ab4b3c, tests: python -m unittest discover -s tools/analysis/featuretrace/tests -t tools/analysis → OK)
+Task 3: Ruling: the pre-research flow code (text markers, uncommitted) is set aside in git stash 'pre-research value-flow work...' — TDD: code not written test-first is not a base; the stash keeps it recoverable (nothing deleted) — cost if wrong: work redone that the stash could have given.
+Task 3: WIP commit 7a6cf932 at the owner's request (preserve the script) — GDScript readers on IR done, C++ bodies/expressions pending; suite red at this commit.
