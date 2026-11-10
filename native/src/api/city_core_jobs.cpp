@@ -11,7 +11,9 @@
 
 #include <godot_cpp/core/class_db.hpp>
 
+#include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <cstring>
 #include <memory>
 #include <mutex>
@@ -21,6 +23,16 @@
 using namespace godot;
 
 namespace city {
+
+namespace {
+constexpr int SERIAL_WORKERS = 4, SERIAL_JOBS = 8; // the probe's pool and the jobs it runs one after the other
+constexpr int SERIAL_JOB_MIB = 32; // what each builds: a segment of the allocator
+constexpr std::chrono::milliseconds SERIAL_LINGER{ 50 }; // the probe's workers look at their heaps soon after their work, so the test is short
+constexpr int LATE_LINGERS = 2; // rests the last job's memory outlives before its caller frees it: the worker has looked once by then
+constexpr double SEGMENT_BYTES = 32 * BYTES_PER_MIB; // the allocator's unit of the system's memory (mimalloc MI_SEGMENT_SIZE)
+constexpr auto GIVE_BACK_LIMIT = std::chrono::seconds(3); // how long the probe waits for the pool's memory to come back
+constexpr auto GIVE_BACK_LOOK = std::chrono::milliseconds(5); // between two looks at it
+} // namespace
 
 // The pool's rule on a pool of one worker, held busy while the jobs queue: a key's newest job replaces a queued one, and only that.
 Dictionary CityProbes::bay_census() { return render_->bay_census(); }
@@ -44,6 +56,45 @@ Dictionary CityProbes::job_pool_probe() const {
 	d["replaced"] = int64_t(pool.replaced());
 	d["keys_left"] = int64_t(pool.tracked()); // forgotten once run: the bookkeeping does not grow with the map
 	d["game_keys"] = int64_t(state_->jobs->tracked()); // the game's pool now: keys with a job queued
+	// Jobs that come one after the other, each building memory its caller frees once the job ended (as a mesh is freed after its
+	// upload): they stay on one worker, and once the pool rests the allocator holds what it held before them.
+	const AllocatorHold before = allocator_hold();
+	std::mutex seen_lock;
+	std::vector<std::thread::id> seen;
+	using Built = std::vector<std::unique_ptr<char[]>>;
+	auto build = [&seen, &seen_lock](Built &built) {
+		for (int b = 0; b < SERIAL_JOB_MIB; b++) {
+			built.emplace_back(new char[size_t(BYTES_PER_MIB)]);
+			std::memset(built.back().get(), 1, size_t(BYTES_PER_MIB)); // written: the system has to back it
+		}
+		std::lock_guard<std::mutex> hold(seen_lock);
+		if (std::find(seen.begin(), seen.end(), std::this_thread::get_id()) == seen.end()) seen.push_back(std::this_thread::get_id());
+	};
+	// Waits for a state, with a limit: MiB the allocator still holds past what it held before, once `rested` says so or the limit came.
+	auto left = [&before](const std::function<bool()> &rested) {
+		const auto limit = std::chrono::steady_clock::now() + GIVE_BACK_LIMIT;
+		while (!rested() && std::chrono::steady_clock::now() < limit) std::this_thread::sleep_for(GIVE_BACK_LOOK);
+		return (allocator_hold().committed - before.committed) / BYTES_PER_MIB;
+	};
+	auto back = [&before]() { return allocator_hold().committed - before.committed <= SEGMENT_BYTES; };
+	JobPool serial(SERIAL_WORKERS, SERIAL_LINGER);
+	for (int i = 0; i < SERIAL_JOBS; i++) {
+		auto built = std::make_shared<Built>();
+		serial.submit(JobKey{ JobLane::WATER, i }, 0.f, [built, &build]() { build(*built); });
+		serial.wait_idle();
+		built->clear(); // freed here, on the caller's thread, after the worker went back to rest
+	}
+	d["serial_threads"] = int64_t(seen.size());
+	d["serial_left_mib"] = left(back);
+	// The same for memory freed only after its worker rested and looked at its heap once, as the frame frees a mesh long after
+	// the job that built it.
+	auto late = std::make_shared<Built>();
+	serial.submit(JobKey{ JobLane::WATER, SERIAL_JOBS }, 0.f, [late, &build]() { build(*late); });
+	serial.wait_idle();
+	std::this_thread::sleep_for(SERIAL_LINGER * LATE_LINGERS);
+	late->clear();
+	serial.freed(); // as the frame tells the pool once it freed what jobs built
+	d["late_left_mib"] = left(back);
 	return d;
 }
 

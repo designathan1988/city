@@ -18,4 +18,8 @@ AllocatorHold allocator_hold();
 // frees again).
 void release_freed_memory();
 
+// The bytes the calling thread's heap holds in pages (with blocks alive in them or freed and not yet collected): a walk of its
+// pages, for a thread at rest that asks whether it still has anything to give back.
+double heap_held();
+
 } // namespace city

@@ -38,3 +38,33 @@ The city opens in 20 to 25 s. The ranges are two runs with the views taken in a 
   until they work again, and what lives), the video buffers (4.1 GiB at the centre) and Godot's static memory (1.3 GiB).
 - Gates on the changed files: the findings left stand at the base commit and are not of this change (`JOB_SEM_CHAVE` on the
   pool probe's four submits, two `.uid` files without their script).
+
+## P5 (2026-11-10): the memory the pool's workers hold follows the work, and what the frame frees goes back
+
+- Problem: a keyed job went to any of the 23 workers (one condition, `notify_one`), so a thin stream of mesh jobs spread
+  over every worker's heap; and what a job built is freed later by the frame's thread, after the upload, into the worker's
+  heap, where the allocator gives it back only when that worker's own thread looks. A worker asleep never looked.
+- Test first: `job_pool_probe` on a pool of its own (`tests/core/job_pool_test`): jobs one after the other, each building
+  32 MiB its caller frees once the job ended. Before: 4 workers used, 382 MiB still held. After: 1 worker, 0 MiB, also for
+  memory freed long after its job with the worker at rest.
+- Fix (`core/job_pool.h`, `.cpp`): the idle workers wait in a stack, each on a condition of its own, and new work calls the
+  one that worked last; a worker's thread starts the first time its place is called. A worker at rest whose heap still holds
+  pages looks at it (`release_freed_memory`, `heap_held` of `core/memory.h`) a linger after its own work and again when the
+  pool is told of a free (`JobPool::freed()`, called by `RenderWorld::sync` in a frame that handed built results to the
+  engine), never more than once a linger (2 s); once its heap holds nothing it waits for work alone. No timer runs while
+  nothing is freed.
+- Two designs were tried on the way and dropped, each by what the test or the measurement showed: workers that end when idle
+  (their abandoned segments are freed by nobody: 94 MiB left, with or without the allocator's reclaim-on-free option), and a
+  blind timer whose wait grew (the old view's memory was looked at late: 2,735 MiB right after a view change).
+- Measured, one plan, each view read 5 s after it was drawn, the pool's change set aside for the run before:
+
+| Core allocator committed | Before | After |
+|---|---|---|
+| Centre | 2,057 MiB | 1,790 MiB |
+| 9 km out | 1,996 MiB | 1,683 MiB |
+| Centre again | 2,045 MiB | 1,744 MiB |
+
+- The city opened in 16.4 to 16.6 s in three runs after, 19.7 to 19.9 s in three before. Draws, primitives, video and static
+  memory are the same; the digest is the base's. `job_pool_test`, `memory_test`, `traffic_hash_test` and `e2e` pass.
+- Gates on the changed files: what is left stands at the base (as above, and `NUMERO_MAGICO` on the indices of
+  `render_world.cpp:291`).

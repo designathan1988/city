@@ -291,6 +291,9 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 	cost_.trees = hand_ms_[5] + hand_ms_[6] + hand_ms_[7];
 	laps.lap();
 	cost_.uploads = double(f.upload.used) / BYTES_PER_MIB;
+	// What this frame handed to the engine was built by the pool's jobs and is freed here, on this thread: the workers at rest
+	// are told, so each gives back what was freed in its heap (core/job_pool.h freed()).
+	if (f.upload.used > 0) s.jobs->freed();
 }
 
 } // namespace city

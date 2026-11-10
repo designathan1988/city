@@ -16,4 +16,16 @@ AllocatorHold allocator_hold() {
 
 void release_freed_memory() { mi_collect(true); }
 
+double heap_held() {
+	double held = 0;
+	mi_heap_visit_blocks(
+			mi_heap_get_default(), false,
+			[](const mi_heap_t *, const mi_heap_area_t *area, void *, size_t, void *sum) {
+				*static_cast<double *>(sum) += double(area->committed);
+				return true;
+			},
+			&held);
+	return held;
+}
+
 } // namespace city
