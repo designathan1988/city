@@ -1200,3 +1200,22 @@ deterministic, its own cause to fix); gates of the changed files OK; surface_dat
   asks, and as smooth as they are. No time or limit changed.
 - Verification: camera_feel_test passes (worst jolt 0.65 %), camera_input_test, e2e.
 - Files: `project/game/camera/camera_pull.gd`, `project/game/camera/city_camera.gd`, `log/pendencias.md`.
+
+## 2026-11-09 22:30: the effects on the frame's own clock; a body leaves a wall by a side that leads out (shoot_test "the body lands")
+- Problem: shoot_test failed "the body lands" from one run to the next of the same tree. Process error first: commit a19160cb was
+  chained to the quick run without its result being read, and went out with this test and a file-size gate red (the camera's
+  comment, now in `camera_pull.gd left_with`, its owner).
+- Evidence (a probe made for it, `effects_bodies_falling`: where, how fast, how long left): the body still fell at 4.7 m/s after 1200
+  frames, and of its 90 s only 0.97 s had passed.
+- Cause: `EffectWorld::sync` kept a wall clock of its own (steady_clock) while the frame, the simulation and the tests run on the
+  engine's time: in simulated time (the tests since 388df70b, a recording) a second of the effects took as many frames as the machine
+  drew in one, so a wait in frames passed or failed by the machine's speed, and in a recording the debris, smoke and bodies moved in
+  slow motion beside a street at full speed. Fix: the effects take the frame's own time (`CityCore::_process` delta, through
+  `RenderWorld::sync`); their clock is deleted.
+- Read on the way, not seen to happen: `Ragdoll::off_walls` put a particle out of a wall by that wall's nearest side alone, into the
+  neighbour standing against it, which put it back (buildings now stand side by side): out by the nearest side that leads out of
+  every wall. `BodyRenderer::moving` counted a hurt body writhing where it lies as not landed: it counts the falling ones.
+- Verification: quick 57 of 58 (gates_changed on the owner's TASKS.md alone).
+- Files: `native/src/render/effects/effect_world.{h,cpp}`, `native/src/render/render_world.{h,cpp}`, `native/src/api/{city_core.h,
+  city_core.cpp,city_core_bind.cpp}`, `native/src/render/agents/{ragdoll.h,ragdoll.cpp,body_renderer.h,body_renderer.cpp}`,
+  `project/game/camera/{camera_pull.gd,city_camera.gd}`, `project/game/store/store_api.gd`, `project/tests/core/shoot_test.gd`.

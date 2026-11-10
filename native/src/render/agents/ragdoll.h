@@ -38,6 +38,7 @@ public:
 	void step(float dt, const Ground &ground);
 	void set_walls(std::vector<BodyWall> walls) { walls_ = std::move(walls); }
 	bool asleep() const { return asleep_; }
+	float fastest_ms() const { return fastest_; } // its fastest particle at the last step, what keeps it awake
 	// Each part's frame now: its origin on its joint, its axes along it. The frames only: what a bone does with them is the caller's.
 	void frames(godot::Transform3D out[RAGDOLL_PARTS]);
 	godot::Vector3 pelvis() const;
@@ -64,7 +65,7 @@ private:
 	static constexpr int MOST_STICKS = 48; // room for every stick begin links (the limbs, the braces and the folds)
 	Stick sticks_[MOST_STICKS];
 	int sticks_used_ = 0;
-	float still_ = 0;
+	float still_ = 0, fastest_ = 0;
 	bool asleep_ = false;
 };
 

@@ -187,6 +187,7 @@ void CityCore::bind_damage() {
 	ClassDB::bind_method(D_METHOD("effects_ruin_digest", "seed"), &CityCore::effects_ruin_digest);
 	ClassDB::bind_method(D_METHOD("effects_bodies"), &CityCore::effects_bodies);
 	ClassDB::bind_method(D_METHOD("effects_bodies_moving"), &CityCore::effects_bodies_moving);
+	ClassDB::bind_method(D_METHOD("effects_bodies_falling"), &CityCore::effects_bodies_falling);
 	ClassDB::bind_method(D_METHOD("blast_probe", "strength", "distance"), &CityCore::blast_probe);
 }
 

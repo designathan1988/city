@@ -35,6 +35,7 @@ public:
 	void update(float dt, const Ragdoll::Ground &ground);
 	int count() const { return int(bodies_.size()); }
 	int moving() const;
+	godot::Array falling() const; // each body still falling: [where its pelvis is, its fastest particle m/s, the seconds it has left]
 
 private:
 	struct Body {

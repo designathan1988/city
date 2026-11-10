@@ -61,7 +61,7 @@ public:
 		effects_.release();
 	}
 	void full_rebuild(CityState &s, godot::Object *terrain3d); // after a new map / load (caller holds the map shared)
-	void sync(CityState &s, godot::Object *terrain3d, const godot::Vector3 &cam);
+	void sync(CityState &s, godot::Object *terrain3d, const godot::Vector3 &cam, double frame_s); // frame_s: the frame's own time, what the effects move by
 	// The frame's level-of-detail view (render/detail.h), set by CityCore before the frame's updates: every family reads its
 	// levels from it.
 	void set_view(const DetailView &v) { view_ = v; }
@@ -105,6 +105,7 @@ public:
 	uint32_t ruin_digest(uint32_t seed) const { return effects_.ruin_digest(seed); }
 	int bodies() const { return effects_.bodies(); }
 	int bodies_moving() const { return effects_.bodies_moving(); }
+	godot::Array bodies_falling() const { return effects_.bodies_falling(); }
 	int effect_pieces() const { return effects_.pieces(); }
 	int broken_buildings() const { return int(effects_.broken().size()); }
 	int blood_marks() const { return effects_.blood_marks(); }

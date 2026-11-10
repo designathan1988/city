@@ -128,7 +128,7 @@ func _fallen() -> void:
 		if CityStore.query(&"effects_bodies_moving") == 0:
 			break
 		await get_tree().process_frame
-	check(CityStore.query(&"effects_bodies_moving") == 0, "the body lands")
+	check(CityStore.query(&"effects_bodies_moving") == 0, "the body lands (still falling: %s)" % [CityStore.query(&"effects_bodies_falling")])
 	await _rises()
 
 

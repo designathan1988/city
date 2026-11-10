@@ -95,6 +95,7 @@ public:
 	int64_t effects_ruin_digest(int64_t seed) const { return int64_t(render_.ruin_digest(uint32_t(seed))); } // where a ruin's pieces lie
 	int effects_bodies() const { return render_.bodies(); } // of people off their feet, and of those still falling
 	int effects_bodies_moving() const { return render_.bodies_moving(); }
+	godot::Array effects_bodies_falling() const { return render_.bodies_falling(); } // where, how fast, how long left: what a test says of a body that never lands
 	// The pistol along a line of sight: {ok, hit 0 none / 1 walker / 2 vehicle, killed, burst}; a car that took enough rounds bursts as a blow.
 	godot::Dictionary shoot(const godot::Vector3 &origin, const godot::Vector3 &direction);
 	godot::Dictionary damage_probe() const; // what blows left on the map (counts)

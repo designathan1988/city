@@ -249,8 +249,17 @@ void BodyRenderer::update(float dt, const Ragdoll::Ground &ground) {
 	rows_dirty_ = false;
 }
 
+// The bodies still falling: not yet come to rest. One that writhes where it lies (hurt and down for good) has landed: it is awake
+// for as long as it writhes, and counted here it kept "no body moving" from ever being true while anybody lay hurt.
 int BodyRenderer::moving() const {
-	return int(std::count_if(bodies_.begin(), bodies_.end(), [](const Body &b) { return !b.doll.asleep(); }));
+	return int(std::count_if(bodies_.begin(), bodies_.end(), [](const Body &b) { return !b.doll.asleep() && b.writhe_t < 0.f; }));
+}
+
+Array BodyRenderer::falling() const {
+	Array out;
+	for (const Body &b : bodies_)
+		if (!b.doll.asleep() && b.writhe_t < 0.f) out.push_back(Array::make(b.doll.pelvis(), b.doll.fastest_ms(), b.left));
+	return out;
 }
 
 } // namespace city

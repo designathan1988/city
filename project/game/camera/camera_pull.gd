@@ -33,6 +33,13 @@ func ask(focus: Vector3, eye_at: Vector3, half: float) -> void:
 	wanted = float(_queries.ask(&"sight_pull", [focus, eye_at, int(cfg.pull_samples), cfg.pull_soft_m])) * weight if weight > 0.0 else 0.0
 
 
+## What is left of the line of sight when another share of it is taken off too (the way out of a building, CameraAhead.out, on
+## springs of its own): one after the other, the second a share of what the first left. The eye is at least as near as either asks
+## and the sum moves as smoothly as they do: the larger of the two turned a corner, a jolt, wherever one overtook the other.
+func left_with(other_share: float) -> float:
+	return (1.0 - _share.x) * (1.0 - other_share)
+
+
 func snap() -> void:
 	_share.snap(wanted)
 	_blocked = 0.0

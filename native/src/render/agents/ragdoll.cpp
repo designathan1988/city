@@ -85,19 +85,40 @@ void Ragdoll::relax() {
 	hinge(RS, RE, RW, -1.f);
 }
 
-// Out of a wall by the nearest side: the static collision of Position Based Dynamics, the point projected to the closest of the surface, and the speed along it damped.
+namespace {
+constexpr int SIDES = 4; // of a wall's box on the ground plan
+// Whether a point on the ground plan stands inside a wall's box, under its top.
+bool in_wall(const BodyWall &w, const Vector3 &p) {
+	if (p.y >= w.top) return false;
+	const Vector2 rel = Vector2(p.x, p.z) - w.at;
+	const float lx = rel.dot(w.along), ly = rel.dot(w.deep);
+	return lx > w.x0 && lx < w.x1 && ly > w.y0 && ly < w.y1;
+}
+} // namespace
+
+// Out of a wall: the static collision of Position Based Dynamics, the point projected to the surface and the speed along it damped.
+// By the nearest side that leads out of every wall: buildings stand against one another, and the nearest side of one alone put the
+// point inside its neighbour, which put it back, for ever (a body that never came to rest). With no side leading out it stays.
 void Ragdoll::off_walls(int i) {
 	const RagdollShape &K = *law_;
 	Vector3 &p = now_[i];
 	for (const BodyWall &w : walls_) {
-		if (p.y >= w.top) continue;
+		if (!in_wall(w, p)) continue;
 		const Vector2 rel = Vector2(p.x, p.z) - w.at;
 		const float lx = rel.dot(w.along), ly = rel.dot(w.deep);
-		if (lx <= w.x0 || lx >= w.x1 || ly <= w.y0 || ly >= w.y1) continue;
-		const float west = lx - w.x0, east = w.x1 - lx, south = ly - w.y0, north = w.y1 - ly;
-		const float least = std::min({ west, east, south, north });
-		const Vector2 out = least == west ? -w.along : least == east ? w.along : least == south ? -w.deep : w.deep;
-		const Vector2 move = out * (least + K.limb_half_m);
+		const float depth[SIDES] = { lx - w.x0, w.x1 - lx, ly - w.y0, w.y1 - ly };
+		const Vector2 way[SIDES] = { -w.along, w.along, -w.deep, w.deep };
+		int best = -1;
+		for (int side = 0; side < SIDES; side++) {
+			if (best >= 0 && depth[side] >= depth[best]) continue;
+			const Vector2 move = way[side] * (depth[side] + K.limb_half_m);
+			const Vector3 there(p.x + move.x, p.y, p.z + move.y);
+			bool free = true;
+			for (const BodyWall &other : walls_) free = free && (&other == &w || !in_wall(other, there));
+			if (free) best = side;
+		}
+		if (best < 0) continue;
+		const Vector2 move = way[best] * (depth[best] + K.limb_half_m);
 		p.x += move.x;
 		p.z += move.y;
 		was_[i].x = p.x + (was_[i].x - p.x) * K.slide_keep;
@@ -126,6 +147,7 @@ void Ragdoll::step(float dt, const Ground &ground) {
 			was_[i].z = now_[i].z + (was_[i].z - now_[i].z) * K.slide_keep;
 		}
 	}
+	fastest_ = fastest;
 	still_ = fastest < K.resting_ms ? still_ + dt : 0.f;
 	asleep_ = still_ > K.resting_s;
 }
