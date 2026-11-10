@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))  # tools:
 
 from support import RepoCase, py  # noqa: E402
 
-from tasks import Task, key_of, memo, run  # noqa: E402
+from tasks import Task, key_of, memo, proc, run  # noqa: E402
 from tasks.inputs import invalidate  # noqa: E402
 from tasks.task import CACHED_PASS, FAIL, PASS, SKIPPED, TIMEOUT  # noqa: E402
 
@@ -26,13 +26,33 @@ class PoolTest(RepoCase):
     def test_hung_task_does_not_block_a_sibling(self):
         hang = Task("hang", py(f"import time; time.sleep({HANG_S})"), timeout_s=3)
         quick = Task("quick", py("print('done')"), timeout_s=60)
-        t0 = time.monotonic()
         results, finished = self.run_tasks([hang, quick], jobs=2)
         self.assertEqual(results["hang"].status, TIMEOUT)
         self.assertEqual(results["quick"].status, PASS)
         order = [n for n, _ in finished]
-        self.assertEqual(order, ["quick", "hang"])
-        self.assertLess(dict(finished)["quick"] - t0, 3, "the sibling waited for the hung task")
+        self.assertEqual(order, ["quick", "hang"], "the sibling waited for the hung task: it would end after its deadline")
+
+    def test_a_task_runs_on_the_cores_it_was_granted(self):
+        if len(proc.usable_cores()) < 4:
+            self.skipTest("needs four processors to tell a share from the whole")
+        count = ("import os, ctypes as C\n"
+                 "if os.name == 'nt':\n"
+                 "    k = C.WinDLL('kernel32'); k.GetCurrentProcess.restype = C.c_void_p\n"
+                 "    k.GetProcessAffinityMask.argtypes = [C.c_void_p, C.POINTER(C.c_size_t), C.POINTER(C.c_size_t)]\n"
+                 "    a, b = C.c_size_t(), C.c_size_t(); k.GetProcessAffinityMask(k.GetCurrentProcess(), C.byref(a), C.byref(b))\n"
+                 "    n = bin(a.value).count('1')\n"
+                 "else:\n"
+                 "    n = len(os.sched_getaffinity(0))\n"
+                 "open(os.environ['OUT'], 'w').write(str(n))\n")
+        def task(name, after=()):
+            return Task(name, py(count), timeout_s=60, env={"OUT": str(self.root / f"{name}.n")},
+                        resources={"cores": 2}, after=list(after))
+        # `first` starts while `second` still waits for it: it gets its two and leaves two for it; `second` starts with
+        # nobody waiting and gets every core of the run.
+        results, _ = self.run_tasks([task("first"), task("second", after=["first"])], jobs=4)
+        self.assertEqual({n: r.status for n, r in results.items()}, {"first": PASS, "second": PASS})
+        self.assertEqual((self.root / "first.n").read_text(), "2", "a task ran on more cores than the run gave it")
+        self.assertEqual((self.root / "second.n").read_text(), "4", "cores nobody waits for did not go to the task")
 
     def test_failure_skips_dependents_only(self):
         tasks = [Task("bad", py("import sys; sys.exit(1)"), timeout_s=60),

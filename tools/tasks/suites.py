@@ -12,7 +12,7 @@ import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import inputs, proc, schema
+from . import godot_deps, inputs, proc, schema
 from .task import HERE, ROOT, Task
 
 SUITES = HERE / "suites.json"
@@ -20,6 +20,9 @@ SCHEMA = HERE.parent / "gates" / "schemas" / "suites.schema.json"
 VAR = re.compile(r"\{([a-z_]+)\}")
 EXPANDS = re.compile(r"^\{changed_list:(.+)\}$")  # a whole argv element: that flag and a file listing the changed files
 VERSION_TIMEOUT_S = 60
+# The suites.json syntax word an inputs list writes, as it writes {changed}, to declare "every file the Godot run of this
+# task's argv may load"; _loads expands it to that closure (tools/tasks/godot_deps.py).
+LOADS = "{loads}"
 NOT_COMPUTED = "<computed when the task runs>"
 
 
@@ -58,6 +61,7 @@ class Suites:
             raise ValueError(f"names used twice in {self.path}: {', '.join(sorted(clash))}")
         self._vars: dict[str, str] = {}
         self._changed: list[str] | None = None
+        self._projects: dict[str, godot_deps.Project] = {}  # a Godot project's links, read once per selection
 
     # vars -----------------------------------------------------------------------------------------------------------
     def var(self, name: str) -> str:
@@ -67,8 +71,8 @@ class Suites:
             value = self.root.as_posix()
         elif name == "python":
             value = Path(sys.executable).as_posix()
-        elif name == "godot_version":
-            value = NOT_COMPUTED if self.listing else self._godot_version()
+        elif name in self.doc.get("versions", {}):
+            value = NOT_COMPUTED if self.listing else self._version(name)
         elif name in self.doc["vars"]:
             spec = self.doc["vars"][name]
             value = os.environ.get(spec.get("env", ""), "") or spec["windows" if os.name == "nt" else "posix"]
@@ -78,14 +82,22 @@ class Suites:
         self._vars[name] = value
         return value
 
-    def _godot_version(self) -> str:
+    def _version(self, name: str) -> str:
+        """A machine tool's version (suites.json versions: the whole output of its command, line endings normalised): a tool
+        a task's result follows from keys it, so another tool, or none, is never taken for the result of the same sources.
+        A tool that is missing or fails stops the selection with the reason (ValueError, the CLI's usage exit): nothing runs
+        and nothing is cached on a machine without it."""
+        argv = [self.expand(a) for a in self.doc["versions"][name]["argv"]]
         with tempfile.TemporaryDirectory() as tmp:
             log = Path(tmp) / "version.txt"
-            code, timed_out = proc.run([self.var("godot"), "--headless", "--version"], VERSION_TIMEOUT_S, log=log)
+            try:
+                code, timed_out = proc.run(argv, VERSION_TIMEOUT_S, log=log)
+            except OSError as e:
+                raise ValueError(f"{name}: {' '.join(argv)} could not start: {e}") from e
             text = log.read_text(encoding="utf-8", errors="replace").strip()
         if timed_out or code != 0 or not text:
-            raise RuntimeError(f"{self.var('godot')} --version gave exit {code}{' (timed out)' if timed_out else ''}: {text}")
-        return text.splitlines()[-1].strip()
+            raise ValueError(f"{name}: {' '.join(argv)} gave exit {code}{' (timed out)' if timed_out else ''}: {text}")
+        return "\n".join(line.rstrip() for line in text.splitlines())
 
     def expand(self, text: str, item: dict | None = None) -> str:
         def one(m: re.Match) -> str:
@@ -127,12 +139,12 @@ class Suites:
                 argv += [m.group(1), self._changed_list()]
             else:
                 argv.append(ex(a))
-        kw = dict(inputs=self._inputs(f.get("inputs", []), ex), extra=[ex(x) for x in f.get("extra", [])],
+        params = {k: ex(v) for k, v in f.get("params", {}).items()}
+        kw = dict(inputs=self._inputs(f.get("inputs", []), ex, argv, params, name), extra=[ex(x) for x in f.get("extra", [])],
                   outputs=[ex(x) for x in f.get("outputs", [])], after=list(f.get("after", [])),
                   cwd=ex(f["cwd"]) if "cwd" in f else None, env={k: ex(v) for k, v in f.get("env", {}).items()} or None,
                   hidden=f.get("hidden", False), verdict=f.get("verdict"), resources=f.get("resources", {}),
-                  params={k: ex(v) for k, v in f.get("params", {}).items()}, fresh=f.get("fresh", False),
-                  hint=f.get("hint", ""))
+                  params=params, fresh=f.get("fresh", False), hint=f.get("hint", ""))
         if "call" in f:
             spec = self._deep(f.get("spec", {}), ex)
             spec.setdefault("root", self.root.as_posix())
@@ -151,18 +163,51 @@ class Suites:
         path.write_text(text, encoding="utf-8", newline="\n")
         return rel
 
-    def _inputs(self, entries: list[str], ex) -> list[str]:
+    def _inputs(self, entries: list[str], ex, argv: list[str], params: dict, name: str) -> list[str]:
         out = []
         for x in entries:
-            if x.startswith("@"):
-                if x[1:] not in self.doc["sets"]:
-                    raise ValueError(f"unknown set {x}")
-                out += [ex(p) for p in self.doc["sets"][x[1:]]]
+            if x == LOADS:
+                out += self._loads(argv, params, name)
+            elif x.startswith("@") or x.startswith("!@"):
+                out += self._set(x, ex)
             elif x == "{changed}":
                 out += self.changed()
             else:
                 out.append(ex(x))
         return out
+
+    def _set(self, ref: str, ex, seen: tuple = ()) -> list[str]:
+        """A set's patterns (@name), or every one of them as an exclusion (!@name); a set may name another set."""
+        negate = ref.startswith("!")
+        key = ref.lstrip("!")[1:]
+        if key not in self.doc["sets"]:
+            raise ValueError(f"unknown set @{key}")
+        if key in seen:
+            raise ValueError(f"set cycle: {' -> '.join(seen + (key,))}")
+        out = []
+        for p in self.doc["sets"][key]:
+            inner = self._set(p, ex, seen + (key,)) if p.lstrip("!").startswith("@") else [ex(p)]
+            out += [("!" + q.lstrip("!")) if negate else q for q in inner]
+        return out
+
+    def _loads(self, argv: list[str], params: dict, name: str) -> list[str]:
+        """{loads}: what a Godot run may load (godot_deps), from the project its argv names (--path) and the res:// paths in
+        its argv (the scene, a plan). The run must be --verbose: its verdict then holds every resource it loaded to these
+        inputs (params `loads`, the project folder), so a link the closure missed fails the task instead of passing unseen."""
+        if "--path" not in argv or argv.index("--path") + 1 >= len(argv):
+            raise ValueError(f"{name}: {LOADS} needs the Godot project's --path in argv")
+        if "--verbose" not in argv:
+            raise ValueError(f"{name}: {LOADS} needs --verbose in argv (its verdict checks what the run loaded)")
+        project = argv[argv.index("--path") + 1]
+        if project not in self._projects:
+            native = tuple(self.doc.get("loads", {}).get("native", []))
+            self._projects[project] = godot_deps.Project(self.root, project, native)
+        roots = [lit for a in argv for lit in godot_deps.RES.findall(a)]
+        files = self._projects[project].closure(roots)
+        if not files:
+            raise ValueError(f"{name}: {LOADS} found nothing the run loads (an empty input set proves nothing)")
+        params["loads"] = project
+        return files
 
     def _deep(self, v, ex):
         if isinstance(v, str):

@@ -1,8 +1,10 @@
-# The command line of tools/tasks: run suites or tasks (suites.json), serve tasks to other tools (JSON lines), status.
+# The command line of tools/tasks: run suites or tasks (suites.json), serve tasks to other tools (JSON lines), status, and a
+# machine var (suites.json vars: where Godot, bash and llvm-mingw are) for the shell scripts.
 # Exit codes of `run`: 0 only when the selection is non-empty and every task passed; 1 for any FAIL, TIMEOUT, BROKEN or
 # SKIPPED; 2 for a usage error, an unknown name or an empty selection.
 # Use: python tools/tasks/cli.py run <suite|task ...> [--all] [--<variant>] [--list] [--json OUT] [--jobs N]
 #      python tools/tasks/cli.py serve [--jobs N]      python tools/tasks/cli.py status      python tools/tasks/cli.py --list
+#      python tools/tasks/cli.py var <name>
 from __future__ import annotations
 
 import argparse
@@ -17,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tasks import verdicts  # noqa: E402
 from tasks.cache import remove, write_atomic  # noqa: E402
 from tasks.pool import Pool, run  # noqa: E402
-from tasks.runs import RUNS  # noqa: E402
+from tasks.runs import RUNS, newest_run  # noqa: E402
 from tasks.suites import Suites, UsageError  # noqa: E402
 from tasks.task import PASSED, ROOT, Task  # noqa: E402
 
@@ -167,11 +169,10 @@ def cmd_status(argv: list[str]) -> int:
     ap.add_argument("--root", help=argparse.SUPPRESS)
     a = ap.parse_args(argv)
     root = Path(a.root).resolve() if a.root else ROOT
-    latest = root / RUNS / "latest.txt"
-    if not latest.is_file():
+    run_dir = newest_run(root)  # the folder of the latest name (runs.py): no file every run must win
+    if run_dir is None:
         print("no run yet")
         return USAGE
-    run_dir = root / RUNS / latest.read_text(encoding="utf-8").strip()
     events = run_dir / "events.jsonl"
     state: dict[str, dict] = {}
     if events.is_file():
@@ -189,12 +190,22 @@ def cmd_status(argv: list[str]) -> int:
     return OK
 
 
+def cmd_var(argv: list[str]) -> int:
+    """A machine var as the tasks resolve it, its environment variable first and then this platform's default."""
+    ap = argparse.ArgumentParser(prog="cli.py var")
+    ap.add_argument("name")
+    ap.add_argument("--suites", help=argparse.SUPPRESS)
+    a = ap.parse_args(argv)
+    print(Suites(a.suites, root=ROOT).var(a.name), end="")  # no newline: a shell's $(...) keeps no \r of Windows' own
+    return OK
+
+
 def main(argv: list[str]) -> int:
     if argv[:1] == ["--list"]:
         return cmd_run(["--list"] + argv[1:])
-    commands = {"run": cmd_run, "serve": cmd_serve, "status": cmd_status}
+    commands = {"run": cmd_run, "serve": cmd_serve, "status": cmd_status, "var": cmd_var}
     if not argv or argv[0] not in commands:
-        print(__doc__ if __doc__ else "", "usage: cli.py run|serve|status ... (or --list)", file=sys.stderr)
+        print(__doc__ if __doc__ else "", "usage: cli.py run|serve|status|var ... (or --list)", file=sys.stderr)
         return USAGE
     try:
         return commands[argv[0]](argv[1:])
