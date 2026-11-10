@@ -18,7 +18,6 @@ class GdReader:
         self.facts = FileFacts(src.display, "gd")
         self.narrowed = {}           # names an enclosing `is` test proves the type of
         self._lambdas = {}           # lambda node start byte -> local id (each lambda one unit)
-        self._scope = []             # (unit, class) the expression being built belongs to
 
     # ---- definitions -------------------------------------------------------------------------------------------
     def run(self) -> FileFacts:

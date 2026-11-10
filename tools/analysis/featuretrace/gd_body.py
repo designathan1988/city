@@ -88,8 +88,8 @@ def match(r, st, unit, cls, cond) -> None:
             if part.type == "pattern_binding":
                 for name in named_children(part):
                     unit.types[src.text(name)] = [matched]
-            elif part.type == "pattern_guard":
-                expr(r, part, unit, cls, cond + (label,))
+            elif part is not block:
+                expr(r, part, unit, cls, cond + (label,))     # a pattern reads the names it compares with
         if block is not None:
             r.block(block, unit, cls, cond + (label,))
 

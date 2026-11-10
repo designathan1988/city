@@ -10,7 +10,7 @@
 - a name carried as a string: on the receiver's classes, or (handed to a call) every script method or signal and every
   bound method with that name — what the engine resolves by it.
 A parameter holds the arguments written at every call site, a field what every assignment puts in it: the values come
-from the links of the previous pass (`link.build` repeats until no link changes).
+from the links found so far; a reader of them is computed again when one more arrives (`typer`, `link.build`).
 """
 from __future__ import annotations
 
@@ -38,16 +38,21 @@ class Edge:
 
 
 class Resolver:
-    def __init__(self, index, previous=None):
+    def __init__(self, index):
         self.ix = index
         self.typer = Typer(index, self)
         self.edges: list[Edge] = []
+        self.known = set()                  # the links found, by (src, dst, kind, line, file)
         self.out = defaultdict(list)
         self.inn = defaultdict(list)
-        self.flows = previous.inn if previous is not None else defaultdict(list)
-        self.typer.previous = previous.typer.values() if previous is not None else {}
+        self.status = {}                    # reference node -> ("external" | "unreached", name), its last outcome
         self.external = defaultdict(set)    # unit gid -> names it uses that no code defines (engine, library)
         self.unreached = defaultdict(set)   # unit gid -> members used on a receiver no value of the code reaches
+
+    def incoming(self, gid: int) -> list:
+        """The links into a unit; the node being computed is computed again when one more arrives."""
+        self.typer.read(("#in", gid))
+        return list(self.inn.get(gid, ()))
 
     def keep(self, gids, want: str, file: str) -> list[int]:
         units, visible = self.ix.units, self.ix.visible(file) if file else set()
@@ -180,7 +185,7 @@ class Resolver:
         """A parameter's values: the argument at that position at every site that calls the function; the engine's
         values when the engine calls it (a callback, a handler of an engine signal, a lambda the library runs)."""
         ix, out = self.ix, []
-        incoming = self.flows.get(unit.gid, [])
+        incoming = self.incoming(unit.gid)
         if unit.name in ENGINE_CALLBACKS or unit.bound_as:
             out.append((ENGINE, unit))
         for edge in incoming:
@@ -190,7 +195,7 @@ class Resolver:
                 signal = ix.units[edge.src]
                 if signal.kind == "engine_signal":
                     out.append((ENGINE, unit))
-                for emit in self.flows.get(signal.gid, []):
+                for emit in self.incoming(signal.gid):
                     if emit.kind == "emit" and index < len(emit.args):
                         out += self.typer.evaluate(emit.args[index], ix.units[emit.src], depth + 1)
         if unit.kind == "lambda" and not any(e.kind in CALLING for e in incoming):
@@ -199,7 +204,7 @@ class Resolver:
 
     def assigned_values(self, unit, depth: int) -> list[tuple]:
         """A variable's or field's values: what every assignment anywhere in the code puts into it."""
-        return [v for e in self.flows.get(unit.gid, []) if e.kind == "write" and e.args
+        return [v for e in self.incoming(unit.gid) if e.kind == "write" and e.args
                 for v in self.typer.evaluate(e.args[0], self.ix.units[e.src], depth + 1)]
 
     def function_targets(self, unit, text: str) -> list[int]:
@@ -226,6 +231,20 @@ class Resolver:
                             getattr(ref, "args", ())))
 
     def keep_edge(self, edge: Edge) -> None:
+        key = (edge.src, edge.dst, edge.kind, edge.line, edge.file)
+        if key in self.known:
+            return
+        self.known.add(key)
         self.edges.append(edge)
         self.out[edge.src].append(edge)
         self.inn[edge.dst].append(edge)
+        self.typer.grew(("#in", edge.dst))      # what flows into dst grew: its readers are computed again
+
+    def note(self, outcome: str, name: str) -> None:
+        """The outcome of the reference being linked when it reaches nothing of the program (replaced on a re-link)."""
+        self.status[self.typer.stack[-1]] = (outcome, name)
+
+    def settle(self) -> None:
+        """The external and unreached uses, from the last outcome of each reference."""
+        for (_, gid, _), (outcome, name) in self.status.items():
+            (self.external if outcome == EXTERNAL else self.unreached)[gid].add(name)

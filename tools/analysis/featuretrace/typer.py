@@ -13,6 +13,7 @@ Type texts: a type as written, CLASS + key (a class of the program), FN + gid (a
 from __future__ import annotations
 
 import re
+from collections import defaultdict, deque
 
 from .cpp_names import template_args
 from . import names
@@ -30,39 +31,57 @@ class Typer:
     def __init__(self, index, resolver):
         self.ix = index
         self.rs = resolver
-        self._busy = set()           # trees being evaluated (a tree met again while busy is a cycle of flows)
-        self._memo = {}              # each tree's value in this pass
-        self.previous = {}           # each tree's value in the previous pass (where a cycle comes back)
+        self.value = {}                    # node -> its value so far (values are unions: they only grow)
+        self.readers = defaultdict(set)    # node -> the nodes whose computation read it
+        self.stack = []                    # the nodes being computed, innermost last
+        self.busy = set()
+        self.dirty = set()                 # nodes that read something that grew since they were computed
+        self.work = deque()                # dirty nodes waiting to be computed again
 
     def class_of(self, unit) -> str | None:
         return unit.owner if unit.owner in self.ix.classes else None
 
-    # ---- trees -------------------------------------------------------------------------------------------------
+    # ---- the solver (log/trace-rules.md, S1-S3) -------------------------------------------------------------------
+    def read(self, node) -> None:
+        """The node being computed depends on `node`: it is computed again when `node` grows."""
+        if self.stack:
+            self.readers[node].add(self.stack[-1])
+
+    def grew(self, node) -> None:
+        """`node` grew: every node that read it is computed again."""
+        for reader in self.readers.get(node, ()):
+            if reader not in self.dirty:
+                self.dirty.add(reader)
+                self.work.append(reader)
+
     def evaluate(self, tree, unit, depth: int = 0) -> list[tuple]:
-        """Every type a tree can hold, computed once per link pass. Values are unions, so they only grow: where a
-        value comes back to itself (a cycle of flows) it stands for its value in the previous pass, and the passes
-        repeat until no value grows (round-robin iteration to the fixpoint; `link.build`)."""
+        """Every type a tree can hold. Each (tree, unit) is a node of a worklist solver: its value is computed on
+        demand, who read it is recorded, and when it grows its readers are computed again, until nothing grows. A
+        node met again while it is being computed (a cycle of flows) gives its value so far; the nodes of the cycle
+        are its readers, so they are computed again with each growth: the least fixpoint, with no cut and no pass."""
         if not tree or unit is None:
             return []
-        key = (tree, unit.gid)
-        if key in self._memo:
-            return self._memo[key]
-        if key in self._busy:
-            return self.previous.get(key, [])
-        self._busy.add(key)
+        node = (tree, unit.gid)
+        self.read(node)
+        if node in self.busy or (node in self.value and node not in self.dirty):
+            return self.value.get(node, [])
+        return self.compute(node)
+
+    def compute(self, node) -> list[tuple]:
+        tree, gid = node
+        self.dirty.discard(node)
+        self.busy.add(node)
+        self.stack.append(node)
         try:
-            out = self._distinct(self._evaluate(tree, unit, depth + 1))
+            out = self._distinct(self._evaluate(tree, self.ix.units[gid], 0))
         finally:
-            self._busy.discard(key)
-        self._memo[key] = out
+            self.stack.pop()
+            self.busy.discard(node)
+        old = self.value.get(node, [])
+        self.value[node] = out
+        if {(t, c.gid) for t, c in out} != {(t, c.gid) for t, c in old}:
+            self.grew(node)
         return out
-
-    def values(self) -> dict:
-        """This pass's values, for the next pass to start its cycles from."""
-        return self._memo
-
-    def signature(self) -> dict:
-        return {k: frozenset((t, c.gid) for t, c in v) for k, v in self._memo.items()}
 
     @staticmethod
     def _distinct(found: list[tuple]) -> list[tuple]:

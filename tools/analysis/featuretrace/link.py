@@ -6,12 +6,9 @@ can hold; a signal no code declares is the engine's and an entry point. Scene co
 code defines are kept per unit as its external uses; members on a receiver no value reaches, as unreached.
 
 Values flow along the links (an argument into a parameter, an assignment into a field) and the links depend on the
-values: the program is linked again with the links known so far, and every link found stays (values only grow), until
-a pass adds none. The links are a finite set, so the passes end.
+values: both are nodes of one worklist solver (`typer`), computed again only when something they read grew.
 """
 from __future__ import annotations
-
-from itertools import count
 
 from . import names
 from .cpp_implicit import IMPLICIT
@@ -20,38 +17,59 @@ from .rules import NAME_CALLS
 from .resolve import EXACT, EXTERNAL, LOCAL, UNREACHED, Resolver
 from .typer import CLASS
 
+REF = "#ref"
+PROGRESS_EVERY = 20000
 WANT = {"call": "func", "value": "func", "thread": "func", "read": "read", "write": "state", "emit": "signal",
         "operator": "func"}
 
 
 def build(index, progress=None) -> Resolver:
-    previous = None
-    for number in count(1):
-        rs = Resolver(index, previous)
-        for unit in list(index.units):
-            for ref in unit.refs:
-                link_ref(rs, unit, ref)
-        implicit_construction(rs)
-        for signal, src_key, dst_key, method, file, line in index.connections:
-            handlers = rs.keep(index.lookup(dst_key, method), "func", "")
-            signals = rs.keep(index.lookup(src_key, signal), "signal", "") or [index.engine_signal(signal)]
-            for s in signals:
-                for h in handlers:
-                    rs.link(s, h, "signal", _Site(line), EXACT, file)
-        known = {key(e) for e in rs.edges}
-        for edge in previous.edges if previous is not None else []:
-            if key(edge) not in known:
-                rs.keep_edge(edge)                 # a link found once stays: the values that made it still flow
-        if progress:
-            progress(f"link pass {number}: {len(rs.edges)} links")
-        same_links = previous is not None and len(rs.edges) == len(previous.edges)
-        if same_links and rs.typer.signature() == previous.typer.signature():
-            return rs                               # no link and no value grew: the fixpoint
-        previous = rs
+    """Links every reference once, then computes again only what read something that grew (a value, or the links
+    into a unit), until nothing grows: the least fixpoint of links and values together (S1-S3)."""
+    rs = Resolver(index)
+    typer = rs.typer
+    for unit in list(index.units):
+        for number in range(len(unit.refs)):
+            link_node(rs, (REF, unit.gid, number))
+    implicit_construction(rs)
+    for signal, src_key, dst_key, method, file, line in index.connections:
+        handlers = rs.keep(index.lookup(dst_key, method), "func", "")
+        signals = rs.keep(index.lookup(src_key, signal), "signal", "") or [index.engine_signal(signal)]
+        for s in signals:
+            for h in handlers:
+                rs.link(s, h, "signal", _Site(line), EXACT, file)
+    if progress:
+        progress(f"linked every reference once: {len(rs.edges)} links; {len(typer.work)} to compute again")
+    done = 0
+    while typer.work:
+        node = typer.work.popleft()
+        if node not in typer.dirty:
+            continue
+        if node[0] == REF:
+            link_node(rs, node)
+        else:
+            typer.compute(node)
+        done += 1
+        if progress and done % PROGRESS_EVERY == 0:
+            progress(f"computed again {done}; {len(typer.work)} waiting; {len(rs.edges)} links")
+    rs.settle()
+    if progress:
+        progress(f"fixpoint: {len(rs.edges)} links, {done} computed again")
+    return rs
 
 
-def key(edge) -> tuple:
-    return (edge.src, edge.dst, edge.kind, edge.line, edge.file)
+def link_node(rs, node) -> None:
+    """Links one reference as a node of the solver: what it reads is recorded, so it is linked again if that grows."""
+    _, gid, number = node
+    unit = rs.ix.units[gid]
+    typer = rs.typer
+    typer.dirty.discard(node)
+    rs.status.pop(node, None)
+    typer.stack.append(node)
+    try:
+        link_ref(rs, unit, unit.refs[number])
+    finally:
+        typer.stack.pop()
 
 
 class _Site:
@@ -90,6 +108,10 @@ def link_ref(rs, unit, ref) -> None:
     if kind == "destroy":
         destructors(rs, unit, ref)
         return
+    if kind == "invoke":
+        for gid in invoked(rs, unit, ref.base):
+            rs.link(unit.gid, gid, "call", ref, EXACT)
+        return
     if kind == "name":
         targets, how = rs.by_string(unit, ref.base, ref.text or ref.name)
     elif kind == "operator":
@@ -108,11 +130,16 @@ def link_ref(rs, unit, ref) -> None:
             how = EXACT if targets else EXTERNAL
     if kind == "call" and ref.name in NAME_CALLS and ref.args:
         by_value(rs, unit, ref)
+    if kind == "call" and ref.base is None and not ref.qualified and how in (EXTERNAL, LOCAL):
+        targets = invoked(rs, unit, ("name", ref.name))      # the name holds a value that is called
+        how = EXACT if targets else how
+    if how == EXTERNAL and kind in ("call", "new", "name"):
+        handed(rs, unit, ref)
     if how in (EXTERNAL, LOCAL, UNREACHED):
         if how == EXTERNAL and kind in ("call", "new", "name", "emit") and ref.text != IMPLICIT:
-            rs.external[unit.gid].add(ref.name)
+            rs.note(EXTERNAL, ref.name)
         elif how == UNREACHED and kind in ("call", "name", "emit", "read", "write"):
-            rs.unreached[unit.gid].add(ref.name)
+            rs.note(UNREACHED, ref.name)
         return
     if kind == "call" and ref.argc >= 0 and len(targets) > 1:
         targets = [g for g in targets if fits(ix.units[g], ref.argc)] or targets
@@ -125,6 +152,23 @@ def link_ref(rs, unit, ref) -> None:
     if kind in ("call", "name") and ref.base != ("super",) and not ref.qualified:
         for gid in with_overrides(rs, targets):
             rs.link(unit.gid, gid, "override", ref, "override")
+
+
+def invoked(rs, unit, tree) -> list[int]:
+    """Calling a value: the functions it can hold, and `operator()` of the classes it can be."""
+    keys, _, callables = rs.typer.receiver(tree, unit)
+    found = list(callables)
+    for key in keys:
+        found += rs.keep(rs.ix.lookup(key, "operator()"), "func", unit.file)
+    return list(dict.fromkeys(found))
+
+
+def handed(rs, unit, ref) -> None:
+    """A callable given to a function of the engine or the library is run by it (a comparator, a deferred call, a
+    thread's body); given to a function of the program it runs only where the program calls it."""
+    for arg in ref.args:
+        for gid in rs.typer.receiver(arg, unit)[2]:
+            rs.link(unit.gid, gid, "handed", ref, EXACT)
 
 
 def by_value(rs, unit, ref) -> None:
@@ -217,7 +261,7 @@ def connect(rs, unit, ref) -> None:
     if how == EXTERNAL or (how == LOCAL and not signals):
         signals = [ix.engine_signal(ref.name)]     # the receiver is an engine object: the engine emits it
     elif how == UNREACHED:
-        rs.unreached[unit.gid].add(ref.name)
+        rs.note(UNREACHED, ref.name)
         return
     handlers = rs.typer.receiver(ref.handler, unit)[2] if ref.handler is not None else []
     for handler in handlers:

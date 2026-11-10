@@ -115,3 +115,26 @@ func cyc_a(x) -> void:
 func cyc_b(y) -> void:
 	cyc_a(y)
 	y.click(7.0)
+
+
+func hands() -> void:
+	var cb = func(): go_by_name()
+	keeps(cb)
+	get_tree().create_timer(1.0).timeout.connect(cb)
+	call_deferred_thing(cb)
+	var arr = []
+	arr.sort_custom(func(a, b): return a < b)
+	match arr:
+		WANTED:
+			pass
+
+
+const WANTED = []
+
+
+func keeps(f) -> void:
+	pass
+
+
+func call_deferred_thing(f) -> void:
+	f.call()

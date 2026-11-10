@@ -6,8 +6,7 @@ Sources: GDScript reference, Operators (precedence; `is`, `as`, `in`, ternary), 
 from __future__ import annotations
 
 from .ir import LITERAL, name, union
-from .rules import BIND_CALLS
-from .rules import GD_RULES
+from .rules import BIND_CALLS, GD_RULES
 from .source import field_of, named_children, string_value
 
 TESTS = ("is", "in", "not", "and", "or", "&&", "||", "==", "!=", "<", ">", "<=", ">=")

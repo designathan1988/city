@@ -70,7 +70,16 @@ def expression(r, node, unit, cond) -> None:
         target(r, field_of(node, "left"), unit, cond, value if op is None or r.src.text(op) == "=" else None)
         expression(r, field_of(node, "right"), unit, cond)
     elif kind == "update_expression":
+        cpp_implicit.operator(r, unit, node, cond, add)
         target(r, field_of(node, "argument"), unit, cond, None)
+    elif kind == "compound_literal_expression":
+        # `T{args}` constructs a T (C7)
+        scope, name = scoped(r.src.text(field_of(node, "type")))
+        values = field_of(node, "value") or next((c for c in named_children(node)
+                                                   if c.type == "initializer_list"), None)
+        add(r, unit, "new", name, node, cond, qualified=bool(scope), scope=scope, text=cpp_implicit.IMPLICIT,
+            args=tuple(r.ir(v, unit) for v in named_children(values)) if values is not None else ())
+        expression(r, values, unit, cond)
     elif kind == "pointer_expression" and r.src.text(node).lstrip().startswith("&"):
         inner = field_of(node, "argument")
         if inner is not None and inner.type in ("identifier", "qualified_identifier"):
@@ -156,9 +165,12 @@ def call(r, node, unit, cond) -> None:
             for t in named_children(targs) if targs is not None else []:
                 tscope, tname = scoped(src.text(t))
                 if is_identifier(tname):
-                    add(r, unit, "new", tname, t, cond, qualified=bool(tscope), scope=tscope)
+                    add(r, unit, "new", tname, t, cond, qualified=bool(tscope), scope=tscope,
+                        text=cpp_implicit.IMPLICIT)
     else:
+        # calling the value of an expression (`handlers[i](x)`, `make()(x)`): what that value holds is called
         expression(r, fn, unit, cond)
+        add(r, unit, "invoke", "", node, cond, base=r.ir(fn, unit), args=tuple(r.ir(a, unit) for a in argv))
         for a in argv:
             expression(r, a, unit, cond)
         return

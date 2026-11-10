@@ -1,8 +1,8 @@
 """The walk: from the starting point down every link to the effects and back (forward), and up every link to the
 entry points the engine or the player fire (back). Each definition is opened once; a second visit points to the first.
 
-Forward follows what runs: calls, values handed over, names carried as strings, emits and the handlers connected to
-them, lambdas, constructors, overrides, threads. Writes to state are shown where they happen; who reads that state is
+Forward follows what runs: calls, names carried as strings, emits and the handlers connected to them, constructors,
+overrides, threads, and callables handed to the engine or the library. Writes to state are shown where they happen; who reads that state is
 listed after the walk. The walk returns (the `return` values) are shown where each definition ends.
 """
 from __future__ import annotations
@@ -11,7 +11,9 @@ from dataclasses import dataclass, field
 
 from .model import FUNCTION_KINDS
 
-RUNS = frozenset({"call", "value", "name", "emit", "signal", "lambda", "new", "override", "thread"})
+# What runs: a function or a lambda used as a value does not run where it is written; it runs where it is called
+# ("call"), where a signal fires it ("signal"), or in the engine or library function it was handed to ("handed").
+RUNS = frozenset({"call", "name", "emit", "signal", "new", "override", "thread", "handed"})
 
 
 @dataclass

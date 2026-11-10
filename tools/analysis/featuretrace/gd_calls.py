@@ -54,6 +54,7 @@ def call(r, node, unit, cls, cond) -> None:
         r.add(unit, "call", name, node, cond, argc=len(argv), args=trees(r, argv, unit, cls))
     else:
         gd_body.expr(r, callee, unit, cls, cond)
+        r.add(unit, "invoke", "", node, cond, base=r.ir(callee, unit, cls), args=trees(r, argv, unit, cls))
     arguments(r, argv, unit, cls, cond)
 
 

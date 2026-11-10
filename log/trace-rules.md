@@ -226,3 +226,18 @@ The standard solver, from the literature:
   topological order).
 Sources: whileydave.com/publications/PKH03_SCAM_preprint.pdf; cs.utexas.edu/~lin/cs380c/handout14.pdf;
 cse.iitm.ac.in/~rupesh/teaching/pa/jan17/scribes/6.pdf; arxiv.org/pdf/2602.01720 (Phoenix); PUS, ICSE 2022.
+
+## The solver chosen (research, 2026-11-10)
+- S5 Local top-down solving with dynamic dependencies (TD and RLD, Seidl et al.): only the unknowns a query needs are
+  evaluated; dependencies are found by observing what each evaluation reads; when an unknown's value changes, the
+  unknowns that read it are evaluated again (RLD: put on a worklist). Side-effecting systems: an evaluation may also
+  contribute to other unknowns (here: a reference's evaluation adds links into a unit; the links into a unit are an
+  unknown its readers depend on). Correctness and termination are proved for monotone right-hand sides over finite
+  domains (Isabelle AFP "Top_Down_Solver"; "Three improvements to the top-down solver", MSCS 2021; arXiv 2209.10445).
+- S6 Call-graph precision ladder: CHA (every override below the static class) over-approximates RTA, which
+  over-approximates VTA and points-to; the tracer resolves a receiver by the values that flow into it (points-to
+  style) and adds overrides below each class found (CHA from that class), so it is at least as precise as CHA and
+  never misses an override of a class a value has (arXiv 1907.06522; Dean et al. 1995; Bacon and Sweeney 1996;
+  Sundaresan et al. 2000).
+Implementation: `typer.Typer` (unknowns = (expression tree, unit); `read`, `grew`, worklist), `resolve.Resolver.incoming`
+and `keep_edge` (the side-effected unknown "links into a unit"), `link.build` (references as unknowns, one worklist).

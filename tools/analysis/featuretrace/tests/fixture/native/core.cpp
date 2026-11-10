@@ -78,3 +78,24 @@ int implicit_calls() {
 	return TWICE(1);
 }
 } // namespace fx
+
+namespace fx {
+struct Functor {
+	int operator()(int v);
+	Functor &operator=(const Functor &o);
+	Functor &operator++();
+};
+int Functor::operator()(int v) { return v; }
+Functor &Functor::operator=(const Functor &o) { return *this; }
+Functor &Functor::operator++() { return *this; }
+int takes(Functor f) { return f(1); }
+int more_implicit(std::vector<Functor> list) {
+	Functor a;
+	Functor b;
+	a = b;
+	++a;
+	Vec made = Vec{};
+	std::sort(list.begin(), list.end(), [](const Functor &x, const Functor &y) { return helper() > 0; });
+	return list[0](2);
+}
+} // namespace fx

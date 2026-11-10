@@ -13,8 +13,8 @@ from .cpp_names import strip_templates
 from .source import field_of, named_children
 
 IMPLICIT = "implicit"     # a call the language makes: reaching no class of the program is no external use
-OBJECT_DECLARATORS = ("identifier", "function_declarator", "init_declarator")
-ASSIGN_OPERATORS = ("+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>=")
+OBJECT_DECLARATORS = ("identifier", "function_declarator", "init_declarator", "array_declarator")
+ASSIGN_OPERATORS = ("=", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>=")   # each overloadable
 
 
 def declared_object(r, unit, declarator, type_text: str, node, cond, add) -> None:
@@ -45,7 +45,7 @@ def operator(r, unit, node, cond, add) -> None:
         op, left, right = field_of(node, "operator"), field_of(node, "left"), field_of(node, "right")
         if op is None or r.src.text(op) not in ASSIGN_OPERATORS:
             return
-    elif kind == "unary_expression":
+    elif kind in ("unary_expression", "update_expression"):
         op, left, right = field_of(node, "operator"), field_of(node, "argument"), None
     elif kind == "subscript_expression":
         index = field_of(node, "indices") or (named_children(node)[1:] or [None])[0]
