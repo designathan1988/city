@@ -5,6 +5,7 @@
 #pragma once
 
 #include "core/grid.h"
+#include "core/id_table.h"
 #include "core/slot_ids.h"
 #include "sim/catalog/catalog.h"
 #include "sim/roads/geometry.h"
@@ -120,8 +121,8 @@ constexpr float ROAD_HASH_CELL = 64.f;
 
 class RoadNetwork {
 public:
-	std::vector<RoadNode> nodes;
-	std::vector<RoadSegment> segs;
+	IdTable<RoadNode> nodes;
+	IdTable<RoadSegment> segs;
 	SlotIds free_nodes, free_segs;
 	SpatialHash seg_hash, node_hash;
 	int version = 0; // bumps on every topology change
@@ -194,6 +195,11 @@ public:
 	}
 	// The street of segment s (StreetRun), as the last settle left it.
 	const StreetRun &street_run(int s) const { return runs_[size_t(s)]; }
+	// What a reader of the box needs of the network, copied under its own ids (sim/state/city_cut.h): every segment and node the
+	// hashes file in the cells the box touches (the copy's hashes answer for the box alone), then twice the arms of the nodes of
+	// what was taken and their far nodes (a node's shape, its crossings and a joint's shared pole read every arm; an arm stands
+	// between its nodes), each segment with its street and the heights of its solved profile.
+	RoadNetwork cut(float minx, float minz, float maxx, float maxz) const;
 	int alive_segments() const { return live_segs_; }
 	int alive_nodes() const { return live_nodes_; }
 	int zoned_sides() const { return zoned_sides_; } // sides of live roads with a zone
@@ -215,7 +221,7 @@ private:
 	std::vector<ChangedBox> shape_boxes_;
 	std::vector<int> edited_segs_;
 	std::vector<ChangedBox> edited_boxes_;
-	std::vector<StreetRun> runs_; // by segment
+	IdTable<StreetRun> runs_; // by segment
 	std::vector<int> run_dirty_; // segments whose run may have changed: an arm of a node whose arms or joint changed
 	void settle_runs();
 	int live_segs_ = 0, live_nodes_ = 0, zoned_sides_ = 0;
@@ -223,7 +229,7 @@ private:
 	void update_bounds(int s);
 	void shape_changed(int s); // segment s's box and its two nodes
 	template <typename T>
-	static void take_id(std::vector<T> &items, SlotIds &free_list, int id);
+	static void take_id(IdTable<T> &items, SlotIds &free_list, int id);
 	bool bulb_clear(int n) const;
 };
 

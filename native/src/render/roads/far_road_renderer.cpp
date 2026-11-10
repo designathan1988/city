@@ -2,6 +2,7 @@
 #include "render/roads/far_road_renderer.h"
 
 #include "render/render_layers.h"
+#include "render/roads/road_cut.h"
 #include "render/roads/road_mesh.h"
 
 #include <godot_cpp/classes/rendering_server.hpp>
@@ -43,7 +44,7 @@ void FarRoadRenderer::reset() {
 
 void FarRoadRenderer::mark(int64_t chunk) { dirty_.insert(super_of(chunk)); }
 
-void FarRoadRenderer::build_cpu(const CityState &s, int64_t key, MeshBuilder &mb) const {
+void FarRoadRenderer::build_cpu(const CityView &s, int64_t key, MeshBuilder &mb) const {
 	const RoadEmit e{ s, *look_, mb, true };
 	for (int j = 0; j < CHUNKS_PER_SUPER; j++)
 		for (int i = 0; i < CHUNKS_PER_SUPER; i++) {
@@ -77,7 +78,9 @@ void FarRoadRenderer::offer(const CityState &s, JobPool &pool, const Vector3 &ca
 		waiting_++;
 		out.push_back(FrameAdmission::Unit{ supers_.count(key) ? 1 : 0, d, 1, [this, &s, &pool, key, d]() {
 					   dirty_.erase(key);
-					   submit_job(s, pool, JobKey{ JobLane::ROADS_FAR, key }, key, d, [this, &s, key](MeshBuilder &mb) { build_cpu(s, key, mb); });
+					   // the job copies its superchunk's roads and their ground, then builds from the copy with the map let go
+					   submit_cut(pool, JobKey{ JobLane::ROADS_FAR, key }, key, d, [this, &s, key]() { return cut_for_roads(s, *look_, key, SUPERCHUNK, CUT_ROADS); },
+							   [this, key](const CityCut &cut, MeshBuilder &mb) { build_cpu(cut, key, mb); });
 				   } });
 	}
 }

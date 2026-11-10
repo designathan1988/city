@@ -63,6 +63,15 @@ struct SpatialHash {
 		});
 		return w;
 	}
+	// Every id filed, each once, ascending: an order that is the ids' own, never the hash's.
+	std::vector<int> filed() const {
+		std::vector<int> ids;
+		for (const auto &c : cells)
+			for (const Entry &e : c.second) ids.push_back(e.id);
+		std::sort(ids.begin(), ids.end());
+		ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
+		return ids;
+	}
 	void insert_aabb(int id, float minx, float miny, float maxx, float maxy) {
 		const Entry e{ id, cell_of(minx), cell_of(miny) };
 		for_cells(minx, miny, maxx, maxy, [&](int64_t k) { cells[k].push_back(e); });

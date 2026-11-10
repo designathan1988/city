@@ -51,6 +51,7 @@ struct SampleRect {
 };
 
 class TerrainGen;
+struct GroundPatch;
 
 class Heightfield {
 public:
@@ -106,6 +107,9 @@ public:
 	void final_row(int ix, int iz, int count, float *out) const { finals.row(iz, ix, count, out, base_q); }
 	// A copy of the final heights covering the box (plus the nodes its edges sample), for work done off the map lock.
 	HeightPatch patch(float minx, float minz, float maxx, float maxz) const;
+	// The same window with what `parts` asks besides (sim/terrain/ground_patch.h GroundParts: the natural ground, the water samples
+	// the box's points and cells read): what a job that reads more than the final heights copies.
+	GroundPatch ground_patch(float minx, float minz, float maxx, float maxz, unsigned parts) const;
 	float base_height_at(float x, float z) const; // natural ground, before modifiers
 	// Water stands here: a water sample over the ground, or the ground under the sea.
 	bool is_water(float x, float z, float clearance) const {

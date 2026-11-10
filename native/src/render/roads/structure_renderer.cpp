@@ -2,6 +2,7 @@
 #include "render/roads/structure_renderer.h"
 
 #include "render/owned_segments.h"
+#include "render/roads/road_cut.h"
 #include "render/roads/road_mesh.h"
 
 using namespace godot;
@@ -16,13 +17,15 @@ bool StructureRenderer::init(const RenderContext &ctx, const StreetLook &look, P
 	return errors.is_empty();
 }
 
-void StructureRenderer::build_cpu(const CityState &s, int64_t key, MeshBuilder &mb) const {
+void StructureRenderer::build_cpu(const CityView &s, int64_t key, MeshBuilder &mb) const {
 	RoadEmit e{ s, *look_, mb };
 	each_owned_segment(s, key, [&](int sid) { emit_structures(e, sid); });
 }
 
 void StructureRenderer::submit(const CityState &s, int64_t key, JobPool &pool, float priority) {
-	submit_job(s, pool, JobKey{ JobLane::STRUCTURES, key }, key, priority, [this, &s, key](MeshBuilder &mb) { build_cpu(s, key, mb); });
+	// the job copies its chunk's roads and their ground, then builds from the copy with the map let go
+	submit_cut(pool, JobKey{ JobLane::STRUCTURES, key }, key, priority, [this, &s, key]() { return cut_for_roads(s, *look_, key, CHUNK, CUT_ROADS); },
+			[this, key](const CityCut &cut, MeshBuilder &mb) { build_cpu(cut, key, mb); });
 }
 
 } // namespace city

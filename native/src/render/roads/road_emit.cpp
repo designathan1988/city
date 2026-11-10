@@ -15,7 +15,7 @@ constexpr float DEGENERATE = 1e-12f;
 constexpr double ONE_GRADE_M = 0.02; // off the straight line between its mouths a road is on one grade under this
 } // namespace
 
-SegFrame seg_frame(const CityState &s, int sid, double at) {
+SegFrame seg_frame(const CityView &s, int sid, double at) {
 	const RoadSegment &g = s.roads.segs[sid];
 	double t = t_at_length(g.table, at), x, z, dx, dz;
 	g.q.at(t, x, z);
@@ -42,8 +42,8 @@ int surface_steps(const RoadEmit &e, int sid, double v0, double v1) {
 	return 1;
 }
 
-bool crossing_node(const CityState &s, int node) { return s.roads.has_crosswalks(node); }
-bool crosswalk_at(const CityState &s, int node, int seg) { return s.roads.crosswalk_on(node, seg); }
+bool crossing_node(const CityView &s, int node) { return s.roads.has_crosswalks(node); }
+bool crosswalk_at(const CityView &s, int node, int seg) { return s.roads.crosswalk_on(node, seg); }
 
 void emit_chunk(const RoadEmit &e, int64_t chunk) {
 	const float x0 = key_x(chunk) * CHUNK, z0 = key_y(chunk) * CHUNK;

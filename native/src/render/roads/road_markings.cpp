@@ -122,7 +122,7 @@ void parking_paint(const Painter &pt) {
 	const StreetLook &L = pt.e.L;
 	if (!parks_along(pt.e.s.roads, pt.sid)) return;
 	std::vector<ArcSpan> gates[2];
-	street_gates(pt.e.s.roads, pt.e.s.buildings, pt.sid, gates);
+	street_gates(pt.e.s.roads, pt.e.s.buildings, pt.e.s.designs, pt.sid, gates);
 	KerbLayout k;
 	kerb_layout(pt.e.s.roads, pt.sid, gates, k);
 	for (const KerbStretch &b : k.bays) bay_line(pt, b, b.v0);

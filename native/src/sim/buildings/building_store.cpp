@@ -48,7 +48,7 @@ void BuildingStore::remove(int id) {
 	count--;
 }
 
-bool BuildingStore::covers(const Building &b, float x, float z, float pad) {
+bool BuildingRecords::covers(const Building &b, float x, float z, float pad) {
 	float c = std::cos(b.rot), sn = std::sin(b.rot), dx = x - b.x, dz = z - b.z;
 	return std::fabs(dx * c - dz * sn) < b.w / 2 + pad && std::fabs(dx * sn + dz * c) < b.d / 2 + pad;
 }

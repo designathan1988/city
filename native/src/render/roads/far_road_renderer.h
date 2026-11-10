@@ -10,7 +10,7 @@
 #include "render/roads/road_chunks.h"
 #include "render/roads/road_look.h"
 #include "render/rs_util.h"
-#include "sim/state/city_state.h"
+#include "sim/state/city_view.h"
 
 #include <unordered_map>
 #include <unordered_set>
@@ -37,7 +37,7 @@ private:
 		MeshDraw surface;
 		int mask = 0, sent = -1;
 	};
-	void build_cpu(const CityState &s, int64_t key, MeshBuilder &mb) const;
+	void build_cpu(const CityView &s, int64_t key, MeshBuilder &mb) const;
 	void send(Super &sp) const;
 
 	const StreetLook *look_ = nullptr;

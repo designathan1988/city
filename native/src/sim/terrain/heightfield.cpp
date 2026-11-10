@@ -2,6 +2,7 @@
 #include "sim/terrain/heightfield.h"
 
 #include "core/job_pool.h"
+#include "sim/terrain/ground_patch.h"
 #include "sim/terrain/terrain_gen.h"
 
 #include <algorithm>
@@ -91,6 +92,45 @@ HeightPatch Heightfield::patch(float minx, float minz, float maxx, float maxz) c
 	p.h = z1 - p.z0 + 1;
 	p.final_h.resize(size_t(p.w) * size_t(p.h));
 	for (int z = 0; z < p.h; z++) final_row(p.x0, p.z0 + z, p.w, p.final_h.data() + size_t(z) * size_t(p.w));
+	return p;
+}
+
+GroundPatch Heightfield::ground_patch(float minx, float minz, float maxx, float maxz, unsigned parts) const {
+	GroundPatch p;
+	p.N = N;
+	p.spacing = spacing;
+	p.water_level = water_level;
+	p.water_n = water_n;
+	p.water_spacing = water_spacing_m;
+	if (N < 2 || finals.empty()) return p;
+	HeightPatch window = patch(minx, minz, maxx, maxz); // the one owner of the window a box's points sample
+	p.x0 = window.x0;
+	p.z0 = window.z0;
+	p.w = window.w;
+	p.h = window.h;
+	p.final_h = std::move(window.final_h);
+	if (parts & PATCH_NATURAL) {
+		p.base_q.resize(size_t(p.w) * size_t(p.h));
+		for (int z = 0; z < p.h; z++) {
+			const uint16_t *row = base_q.data() + size_t(p.z0 + z) * size_t(N) + size_t(p.x0);
+			std::copy(row, row + p.w, p.base_q.begin() + std::ptrdiff_t(size_t(z) * size_t(p.w)));
+		}
+	}
+	if ((parts & PATCH_WATER) && water_n > 0) {
+		// water_at reads the nearest sample, a water cell's corner the sample before it: one sample of margin each side
+		const float half = half_size();
+		const auto low = [&](float v) { return clampi(int(std::floor((v + half) / water_spacing_m)) - 1, 0, water_n - 1); };
+		const auto high = [&](float v) { return clampi(int(std::ceil((v + half) / water_spacing_m)) + 1, 0, water_n - 1); };
+		p.wx0 = low(minx);
+		p.wz0 = low(minz);
+		p.ww = high(maxx) - p.wx0 + 1;
+		p.wh = high(maxz) - p.wz0 + 1;
+		p.water.resize(size_t(p.ww) * size_t(p.wh));
+		for (int z = 0; z < p.wh; z++) {
+			const float *row = water.data() + size_t(p.wz0 + z) * size_t(water_n) + size_t(p.wx0);
+			std::copy(row, row + p.ww, p.water.begin() + std::ptrdiff_t(size_t(z) * size_t(p.ww)));
+		}
+	}
 	return p;
 }
 

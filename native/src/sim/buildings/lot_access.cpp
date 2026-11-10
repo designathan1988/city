@@ -214,7 +214,7 @@ int LotAccess::reached() const {
 	return n;
 }
 
-void street_gates(const RoadNetwork &net, const BuildingStore &lots, int sid, std::vector<ArcSpan> gates[2]) {
+void street_gates(const RoadNetwork &net, const BuildingRecords &lots, const Data &designs, int sid, std::vector<ArcSpan> gates[2]) {
 	const RoadSegment &g = net.segs[size_t(sid)];
 	const TrafficParams &tp = net.cat->traffic;
 	const Profile &p = net.profile_of(sid);
@@ -222,7 +222,7 @@ void street_gates(const RoadNetwork &net, const BuildingStore &lots, int sid, st
 	Body body;
 	lots.query(g.minx - reach, g.minz - reach, g.maxx + reach, g.maxz + reach, [&](int id) {
 		const Building &rec = lots.items[size_t(id)];
-		record_mass(lots.designs, rec, body);
+		record_mass(designs, rec, body);
 		const LotFrame f = lot_frame(rec);
 		for (const LotElement &e : body.elements) {
 			if (e.kind != EL_CAR_GATE) continue;

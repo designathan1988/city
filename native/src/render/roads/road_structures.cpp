@@ -81,7 +81,7 @@ void column(MeshBuilder &mb, const Vector3 &foot, float top, float width, const 
 float casing_of(const Profile &p) { return p.half() + CASING_BAND_M; }
 
 // Stands on a road that runs on the ground there: a column's foot keeps off it, not off a deck over it.
-bool on_ground_road(const CityState &s, int self, float x, float z, float clearance, float raised) {
+bool on_ground_road(const CityView &s, int self, float x, float z, float clearance, float raised) {
 	bool hit = false;
 	s.roads.for_segments_near(x - clearance, z - clearance, x + clearance, z + clearance, [&](int o) {
 		if (hit || o == self) return;
@@ -266,6 +266,12 @@ void portals(const RoadEmit &e, int sid, const Tuning &tn) {
 	}
 }
 } // namespace
+
+float structure_reach(const Tuning &tn) {
+	const float wings = JAMB_M + tn.structure_portal_wing_m + tn.structure_portal_thickness_m + PORTAL_REACH_M; // portal
+	const float piers = std::max(tn.structure_pier_radius_bridge_m, tn.structure_pier_radius_elevated_m) * tn.structure_pier_max_width * PIER_FLARE; // on_ground_road
+	return std::max(wings, piers);
+}
 
 Color structure_concrete() { return rgb8_to_color(CONCRETE_RGB); }
 

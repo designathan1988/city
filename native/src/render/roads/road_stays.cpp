@@ -63,6 +63,8 @@ void cable(MeshBuilder &mb, const Vector3 &a, const Vector3 &b, const Vector3 &l
 }
 } // namespace
 
+float stays_reach() { return LEG_OUT_M; } // tower
+
 bool stayed(const RoadEmit &e, int sid) {
 	Span span;
 	return span_of(e, sid, span);

@@ -139,7 +139,7 @@ void RoadNetwork::remove_node_if_orphan(int n) {
 }
 
 template <typename T>
-void RoadNetwork::take_id(std::vector<T> &items, SlotIds &free_list, int id) {
+void RoadNetwork::take_id(IdTable<T> &items, SlotIds &free_list, int id) {
 	items.resize(size_t(free_list.claim(id, int(items.size()))));
 }
 

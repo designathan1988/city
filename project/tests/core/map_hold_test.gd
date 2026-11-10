@@ -12,7 +12,7 @@ const SETTLE_FRAMES := 60
 const SETTLE_LIMIT := 3000 # frames a view may take to be built
 ## The producers that build off the lock: each lane (core/job_pool.h job_lane_name) must have built nothing under the map. The
 ## others are named as they are converted (log/performance.md C9); what they still build under it is printed.
-const OFF_LOCK := ["building", "building_super"]
+const OFF_LOCK := ["building", "building_super", "roads", "roads_far", "verges", "structures", "water"]
 
 
 func _ready() -> void:

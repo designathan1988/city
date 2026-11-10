@@ -8,6 +8,7 @@
 #include "sim/terrain/terrain_gen.h"
 
 #include <algorithm>
+#include <iterator>
 
 namespace city {
 
@@ -79,6 +80,8 @@ bool read_nature(ByteReader &r, CityState &s) {
 	n.next_cloud = r.get<int32_t>();
 	r.get_vec(n.clouds, size_t(s.catalog.nature.clouds.max_clouds));
 	r.get_vec(n.fog, size_t(s.catalog.nature.fog.max_dabs));
+	// A file written before these records named their unused bytes holds whatever lay there: they are zero in the state.
+	for (FogDab &d : n.fog) std::fill(std::begin(d.unused), std::end(d.unused), uint8_t(0));
 	n.nature.region = r.get<int32_t>();
 	n.nature.seed = r.get<uint32_t>();
 	const uint32_t tiles = r.get_count(sizeof(int32_t) + sizeof(PaintTile));
@@ -90,9 +93,16 @@ bool read_nature(ByteReader &r, CityState &s) {
 		if (r.ok) n.ground.put_tile(key, tile.get());
 	}
 	uint32_t tree_slots = 0, clearing_slots = 0;
-	if (!get_slots<PlantedTree>(r, [&](int id, const PlantedTree &t) { n.planted.put(id, t); }, tree_slots)) return false;
-	if (!get_slots<TreeClearing>(r, [&](int id, const TreeClearing &c) { n.planted.put_clearing(id, c); }, clearing_slots))
-		return false;
+	const auto put_tree = [&](int id, PlantedTree t) {
+		std::fill(std::begin(t.unused), std::end(t.unused), uint8_t(0));
+		n.planted.put(id, t);
+	};
+	const auto put_clearing = [&](int id, TreeClearing c) {
+		std::fill(std::begin(c.unused), std::end(c.unused), uint8_t(0));
+		n.planted.put_clearing(id, c);
+	};
+	if (!get_slots<PlantedTree>(r, put_tree, tree_slots)) return false;
+	if (!get_slots<TreeClearing>(r, put_clearing, clearing_slots)) return false;
 	n.planted.keep_slots(int(tree_slots), int(clearing_slots));
 	std::vector<uint32_t> index;
 	std::vector<float> level;

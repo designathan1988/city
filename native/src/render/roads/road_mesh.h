@@ -6,14 +6,14 @@
 #include "render/mesh_builder.h"
 #include "render/roads/road_look.h"
 #include "sim/roads/street_furniture.h"
-#include "sim/state/city_state.h"
+#include "sim/state/city_view.h"
 
 namespace city {
 
 constexpr float STRAIGHT_TOL = 0.5f; // metres off its chord under which a segment is drawn as a straight one
 
 struct RoadEmit {
-	const CityState &s;
+	const CityView s; // the city the pieces read: a job's cut of it, or the live one of a reader that holds the map
 	const StreetLook &L;
 	MeshBuilder &mb;
 	bool far = false; // the far level: the pieces' top faces alone, on a longer step
@@ -23,11 +23,11 @@ struct RoadEmit {
 struct SegFrame {
 	godot::Vector3 c, fwd, left;
 };
-SegFrame seg_frame(const CityState &s, int sid, double at);
+SegFrame seg_frame(const CityView &s, int sid, double at);
 
 // A node whose mouths get crossings, stop lines and dropped kerbs (three or more arms, not a roundabout or rails).
-bool crossing_node(const CityState &s, int node);
-bool crosswalk_at(const CityState &s, int node, int seg); // a crosswalk over this arm there; a crossing between junctions has a stop line on both
+bool crossing_node(const CityView &s, int node);
+bool crosswalk_at(const CityView &s, int node, int seg); // a crosswalk over this arm there; a crossing between junctions has a stop line on both
 
 // Four corners with their own uv (texture metres) and uv2 (lamp pool), flat normal facing `out`.
 void emit_quad(MeshBuilder &mb, const godot::Vector3 p[4], const godot::Vector2 uv[4], const godot::Vector2 uv2[4], const godot::Color &col,
@@ -52,6 +52,10 @@ void emit_verge_segment(const RoadEmit &e, int sid);
 void emit_verge_node(const RoadEmit &e, int node);
 // What of a segment is not its surface: the deck, bents and parapets where it is raised, the portals where it goes under (road_structures.cpp).
 void emit_structures(const RoadEmit &e, int sid);
+// How far past a segment's casing its structures read the ground and the roads (a portal's wings and the ground before and
+// behind them, a column's flared foot), and a stayed bridge's legs: what a job's cut holds round the segment (road_cut.h).
+float structure_reach(const Tuning &tn);
+float stays_reach();
 godot::Color structure_concrete();
 void structure_face(MeshBuilder &mb, const godot::Vector3 &a, const godot::Vector3 &b, const godot::Vector3 &c, const godot::Vector3 &d, const godot::Color &col, const godot::Vector3 &out);
 // The retaining walls of a cutting and the backfill behind them (road_walls.cpp); `walled_at` says where one stands, on side +1 or -1.
