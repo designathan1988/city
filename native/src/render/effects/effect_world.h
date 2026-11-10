@@ -101,6 +101,7 @@ private:
 	std::unordered_map<int, float> fire_carry_;
 	double now_ = 0, blast_at_ = -1;
 	float shake_ = 0, flash_left_ = 0, flash_energy_ = 0, flash_range_ = 0;
+	bool flash_lit_ = true; // the flash's light as the engine has it: it is made visible, and hidden by the first update
 	godot::Vector3 flash_at_;
 	static constexpr uint64_t UNSEEN = ~uint64_t(0);
 	uint64_t craters_seen_ = UNSEEN, crater_layout_seen_ = UNSEEN, ruins_seen_ = UNSEEN, scars_seen_ = UNSEEN; // DamageState's revisions drawn

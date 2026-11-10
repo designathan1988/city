@@ -53,9 +53,6 @@ void Puffs::burst(float x, float y, float z, int count, int kind, float spread, 
 
 void Puffs::stamp(double now) {
 	now_ = now;
-	RenderingServer *rs = RenderingServer::get_singleton();
-	rs->material_set_param(material_, "now", float(now));
-	rs->material_set_param(material_, "wind_dir", wind_);
 }
 
 void Puffs::flush() {
@@ -64,6 +61,11 @@ void Puffs::flush() {
 		dirty_ = false;
 	}
 	const bool live = active(now_);
+	if (live) { // the shader ages the puffs by `now`: told while one lives (the layer is hidden when none does), after this frame's bursts
+		RenderingServer *rs = RenderingServer::get_singleton();
+		rs->material_set_param(material_, "now", float(now_));
+		rs->material_set_param(material_, "wind_dir", wind_);
+	}
 	if (live == shown_) return;
 	layer_.shown(live);
 	shown_ = live;

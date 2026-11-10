@@ -104,6 +104,7 @@ void EffectWorld::flash(float radius) {
 }
 
 void EffectWorld::light_update(float dt) {
+	if (flash_left_ <= 0 && !flash_lit_) return; // dark, and the light hidden already: nothing to tell
 	RenderingServer *rs = RenderingServer::get_singleton();
 	flash_left_ = std::max(0.f, flash_left_ - dt);
 	const float k = flash_left_ / std::max(params_.flash_life, SHAKE_FLOOR);
@@ -111,6 +112,7 @@ void EffectWorld::light_update(float dt) {
 	rs->light_set_param(light_, RenderingServer::LIGHT_PARAM_RANGE, flash_range_);
 	rs->instance_set_transform(light_inst_, Transform3D(Basis(), flash_at_));
 	rs->instance_set_visible(light_inst_, flash_left_ > 0);
+	flash_lit_ = flash_left_ > 0;
 }
 
 // The fires the damage state holds: flames from a few points of each burning building and a chimney of smoke.

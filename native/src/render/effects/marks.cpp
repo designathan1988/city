@@ -54,7 +54,8 @@ void Marks::write(const Mark &m, int slot) {
 
 void Marks::update(double now) {
 	RenderingServer *rs = RenderingServer::get_singleton();
-	rs->material_set_param(material_, "now", float(now));
+	// the shader ages the marks by `now`: told while a mark stands (with none, nothing is drawn that reads it)
+	if (!craters_.empty() || !soot_.empty() || !blood_.empty() || !rings_.empty()) rs->material_set_param(material_, "now", float(now));
 	const size_t before = rings_.size();
 	rings_.erase(std::remove_if(rings_.begin(), rings_.end(), [&](const Mark &r) { return now > r.born + r.life; }), rings_.end());
 	if (!dirty_ && rings_.size() == before) return;
