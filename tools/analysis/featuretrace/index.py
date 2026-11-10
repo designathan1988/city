@@ -35,6 +35,7 @@ class Index:
         self.virtual_quals = set()
         self.includes = {}                        # file -> files its `#include "..."` names (resolved)
         self._visible = {}
+        self._lookups = {}
         autoloads, bindings = {}, []
         for facts in all_facts:
             self.offset[facts.path] = len(self.units)
@@ -198,7 +199,10 @@ class Index:
 
     def lookup(self, key: str, name: str, seen=None) -> list[int]:
         """A member by name in a class, then up its bases (the language's inheritance rule)."""
-        seen = seen if seen is not None else set()
+        if seen is None:                      # the answer for a class and a name never changes: kept
+            if (key, name) not in self._lookups:
+                self._lookups[(key, name)] = self.lookup(key, name, set())
+            return self._lookups[(key, name)]
         if not key or key in seen:
             return []
         seen.add(key)

@@ -13,46 +13,28 @@ Type texts: a type as written, CLASS + key (a class of the program), FN + gid (a
 from __future__ import annotations
 
 import re
-from collections import defaultdict, deque
 
 from .cpp_names import template_args
 from . import names
-from .library import DEREF, ENGINE, ITEM, ITER, clean, library_step
+from .library import DEREF, ITEM, ITER, clean, library_step
 from .model import FUNCTION_KINDS
+from .solver import CLASS, ELEM, ENGINE, FN, TEXT, Solver, identity
 
-CLASS, FN, ELEM, TEXT = "#", "<fn>", "<elem>", "<text>"   # TEXT + s: a string value carrying s (G7)
 CALLABLE_CALLS = ("call", "callv", "call_deferred")
 OPERATORS = {ITEM: "operator[]", DEREF: "operator->", ITER: "begin"}
 COMPARISONS = ("==", "!=", "<", ">", "<=", ">=", "<=>", "&&", "||", "!", "and", "or", "not", "in", "is")
 NO_VALUE = ("void", "Variant", "auto", "decltype(auto)", "")
 
 
-class Typer:
+class Typer(Solver):
     def __init__(self, index, resolver):
         self.ix = index
         self.rs = resolver
-        self.value = {}                    # node -> its value so far (values are unions: they only grow)
-        self.readers = defaultdict(set)    # node -> the nodes whose computation read it
-        self.stack = []                    # the nodes being computed, innermost last
-        self.busy = set()
-        self.dirty = set()                 # nodes that read something that grew since they were computed
-        self.work = deque()                # dirty nodes waiting to be computed again
+        super().__init__()
+        self._classes = {}                 # (type text, scope) -> the class it names
 
     def class_of(self, unit) -> str | None:
         return unit.owner if unit.owner in self.ix.classes else None
-
-    # ---- the solver (log/trace-rules.md, S1-S3) -------------------------------------------------------------------
-    def read(self, node) -> None:
-        """The node being computed depends on `node`: it is computed again when `node` grows."""
-        if self.stack:
-            self.readers[node].add(self.stack[-1])
-
-    def grew(self, node) -> None:
-        """`node` grew: every node that read it is computed again."""
-        for reader in self.readers.get(node, ()):
-            if reader not in self.dirty:
-                self.dirty.add(reader)
-                self.work.append(reader)
 
     def evaluate(self, tree, unit, depth: int = 0) -> list[tuple]:
         """Every type a tree can hold. Each (tree, unit) is a node of a worklist solver: its value is computed on
@@ -79,16 +61,30 @@ class Typer:
             self.busy.discard(node)
         old = self.value.get(node, [])
         self.value[node] = out
-        if {(t, c.gid) for t, c in out} != {(t, c.gid) for t, c in old}:
+        if len(out) != len(old) or {identity(t, c) for t, c in out} != {identity(t, c) for t, c in old}:
             self.grew(node)
         return out
 
-    @staticmethod
-    def _distinct(found: list[tuple]) -> list[tuple]:
+    def canon(self, text: str, ctx) -> tuple:
+        """A value in its one form: a type that names a class of the program (and carries no template argument) is
+        that class, whatever unit it was read in."""
+        if text.startswith(ELEM):
+            inner, where = self.canon(text[len(ELEM):], ctx)
+            return ELEM + inner, where
+        if text == ENGINE or text.startswith((CLASS, FN, TEXT)) or "<" in text or "[" in text:
+            return text, ctx
+        key = self.type_class(text, ctx)
+        return (CLASS + key, ctx) if key else (text, ctx)
+
+    def _distinct(self, found: list[tuple]) -> list[tuple]:
         out, seen = [], set()
         for text, ctx in found:
-            if text and (text, ctx.gid) not in seen:
-                seen.add((text, ctx.gid))
+            if not text:
+                continue
+            text, ctx = self.canon(text, ctx)
+            key = identity(text, ctx)
+            if key not in seen:
+                seen.add(key)
                 out.append((text, ctx))
         return out
 
@@ -208,9 +204,11 @@ class Typer:
             return None
         if text.startswith(CLASS):
             return text[1:]
-        if ctx.lang == "gd":
-            return self.ix.gd_class(text, ctx.owner)
-        return self.ix.cpp_class(clean(text), ctx.owner, ctx.file)
+        key = (text, ctx.lang, ctx.owner, ctx.file)       # a type names the same class from the same scope
+        if key not in self._classes:
+            self._classes[key] = self.ix.gd_class(text, ctx.owner) if ctx.lang == "gd" else \
+                self.ix.cpp_class(clean(text), ctx.owner, ctx.file)
+        return self._classes[key]
 
     def member(self, text: str, ctx, name: str, called: bool, depth: int) -> list[tuple]:
         """A member of a value: its field's value, its method's callable, or (called) the method's result."""

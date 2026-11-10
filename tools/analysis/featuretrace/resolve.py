@@ -10,7 +10,8 @@
 - a name carried as a string: on the receiver's classes, or (handed to a call) every script method or signal and every
   bound method with that name — what the engine resolves by it.
 A parameter holds the arguments written at every call site, a field what every assignment puts in it: the values come
-from the links found so far; a reader of them is computed again when one more arrives (`typer`, `link.build`).
+from the links found so far: each argument of each link is carried to its parameter once, and again only when it
+grows (difference propagation, S2).
 """
 from __future__ import annotations
 
@@ -18,10 +19,11 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 
 from .model import ENGINE_CALLBACKS, FUNCTION_KINDS, STATE_KINDS
-from .typer import CALLABLE_CALLS, ENGINE, Typer
+from .typer import CALLABLE_CALLS, ENGINE, Typer, identity
 
 SIGNAL_KINDS = ("signal", "engine_signal")
-CALLING = ("call", "override", "name", "thread")
+CARRYING = ("call", "override", "name", "thread", "emit", "new")   # links whose arguments reach parameters
+FLOW, ARG, HELD, ENGINE_CALLED = "#flow", "#arg", "#held", "#engine"
 EXACT, LOCAL, EXTERNAL, UNREACHED = "exact", "local", "external", "unreached"
 
 
@@ -46,13 +48,10 @@ class Resolver:
         self.out = defaultdict(list)
         self.inn = defaultdict(list)
         self.status = {}                    # reference node -> ("external" | "unreached", name), its last outcome
+        self.carried = {}                   # place (parameter, variable) -> the values the links carried into it
+        self.engine_called = set()          # units the engine or the library calls (handed to it, engine signals)
         self.external = defaultdict(set)    # unit gid -> names it uses that no code defines (engine, library)
         self.unreached = defaultdict(set)   # unit gid -> members used on a receiver no value of the code reaches
-
-    def incoming(self, gid: int) -> list:
-        """The links into a unit; the node being computed is computed again when one more arrives."""
-        self.typer.read(("#in", gid))
-        return list(self.inn.get(gid, ()))
 
     def keep(self, gids, want: str, file: str) -> list[int]:
         units, visible = self.ix.units, self.ix.visible(file) if file else set()
@@ -180,32 +179,74 @@ class Resolver:
         pool = list(dict.fromkeys(pool))
         return (pool, "by name") if pool else ([], EXTERNAL)
 
-    # ---- values for the typer ----------------------------------------------------------------------------------
+    # ---- values for the typer: difference propagation along the links (S2) ---------------------------------------
     def argument_values(self, unit, index: int, depth: int) -> list[tuple]:
-        """A parameter's values: the argument at that position at every site that calls the function; the engine's
-        values when the engine calls it (a callback, a handler of an engine signal, a lambda the library runs)."""
-        ix, out = self.ix, []
-        incoming = self.incoming(unit.gid)
-        if unit.name in ENGINE_CALLBACKS or unit.bound_as:
+        """A parameter's values: what the links into the function have carried to that position so far; the engine's
+        values when the engine calls it (a callback, a bound method, a handler of an engine signal, a callable handed
+        to the engine or the library)."""
+        self.typer.read((ARG, unit.gid, index))
+        self.typer.read((ENGINE_CALLED, unit.gid))
+        out = list(self.carried.get((ARG, unit.gid, index), {}).values())
+        if unit.name in ENGINE_CALLBACKS or unit.bound_as or unit.gid in self.engine_called:
             out.append((ENGINE, unit))
-        for edge in incoming:
-            if edge.kind in CALLING and index < len(edge.args):
-                out += self.typer.evaluate(edge.args[index], ix.units[edge.src], depth + 1)
-            elif edge.kind == "signal":
-                signal = ix.units[edge.src]
-                if signal.kind == "engine_signal":
-                    out.append((ENGINE, unit))
-                for emit in self.incoming(signal.gid):
-                    if emit.kind == "emit" and index < len(emit.args):
-                        out += self.typer.evaluate(emit.args[index], ix.units[emit.src], depth + 1)
-        if unit.kind == "lambda" and not any(e.kind in CALLING for e in incoming):
-            out.append((ENGINE, unit))     # handed to the library or the engine, which calls it
         return out
 
     def assigned_values(self, unit, depth: int) -> list[tuple]:
-        """A variable's or field's values: what every assignment anywhere in the code puts into it."""
-        return [v for e in self.incoming(unit.gid) if e.kind == "write" and e.args
-                for v in self.typer.evaluate(e.args[0], self.ix.units[e.src], depth + 1)]
+        """A variable's or field's values: what every assignment anywhere in the code has put into it so far."""
+        self.typer.read((HELD, unit.gid))
+        return list(self.carried.get((HELD, unit.gid), {}).values())
+
+    def carry(self, place: tuple, values: list[tuple]) -> None:
+        """Adds values to a place (a parameter, a variable); its readers are computed again only if it grew."""
+        held = self.carried.setdefault(place, {})
+        before = len(held)
+        for text, ctx in values:
+            held.setdefault(identity(text, ctx), (text, ctx))
+        if len(held) != before:
+            self.typer.grew(place)
+
+    def flow(self, node: tuple) -> None:
+        """One value carried by one link, as a node of the solver: an argument into its parameter, an assigned value
+        into its variable, what a signal carries into its handler. It is computed again when its source grows, and
+        adds only what is new."""
+        _, number, position = node
+        edge = self.edges[number]
+        typer = self.typer
+        typer.dirty.discard(node)
+        typer.stack.append(node)
+        try:
+            if edge.kind == "signal":
+                typer.read((ARG, edge.src, position))
+                values = list(self.carried.get((ARG, edge.src, position), {}).values())
+            else:
+                values = typer.evaluate(edge.args[position], self.ix.units[edge.src])
+        finally:
+            typer.stack.pop()
+        self.carry((HELD, edge.dst) if edge.kind == "write" else (ARG, edge.dst, position), values)
+
+    def flows_of(self, number: int, edge: Edge) -> None:
+        """The flow nodes a new link brings."""
+        if edge.kind in CARRYING:
+            count = len(edge.args)
+        elif edge.kind == "write":
+            count = min(1, len(edge.args))
+        elif edge.kind == "signal":
+            count = len(self.ix.units[edge.dst].params)
+            if self.ix.units[edge.src].kind == "engine_signal":
+                self.engine_calls(edge.dst)
+        else:
+            count = 0
+            if edge.kind == "handed":
+                self.engine_calls(edge.dst)
+        for position in range(count):
+            node = (FLOW, number, position)
+            self.typer.dirty.add(node)
+            self.typer.work.append(node)
+
+    def engine_calls(self, gid: int) -> None:
+        if gid not in self.engine_called:
+            self.engine_called.add(gid)
+            self.typer.grew((ENGINE_CALLED, gid))
 
     def function_targets(self, unit, text: str) -> list[int]:
         if "::" in text:
@@ -238,7 +279,7 @@ class Resolver:
         self.edges.append(edge)
         self.out[edge.src].append(edge)
         self.inn[edge.dst].append(edge)
-        self.typer.grew(("#in", edge.dst))      # what flows into dst grew: its readers are computed again
+        self.flows_of(len(self.edges) - 1, edge)
 
     def note(self, outcome: str, name: str) -> None:
         """The outcome of the reference being linked when it reaches nothing of the program (replaced on a re-link)."""

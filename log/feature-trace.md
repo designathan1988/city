@@ -180,3 +180,13 @@ uses on an unreached receiver, 4 entry points, 1553 definitions ahead; every lin
 above is present, consumers `RenderWorld::drain_log`, `traffic::apply_network_changes`, `CityCore::snapshot`).
 Open: speed at city scale (the last large cycles are recomputed whole; S2 difference propagation and S4 cycle collapse
 are researched, not implemented); validation against recorded executions of the game (not done).
+
+## Final state (2026-11-10 18:05)
+The slow end had one cause, read in the code: a value's identity included the unit it was read in, so the same class
+was a different value in each unit and every set grew with the program. A type that names a class of the program is
+now that class everywhere; arguments are carried along links by difference (one node per argument of each link);
+answers that never change are kept (the class a type names in a scope, the member a name reaches in a class). The
+tool prints a line of progress every 5 s. Verified in order: 70 tests on the fixture; Terrain3D (third-party, 36
+files) 0.2 s; the city (1132 files, 25770 definitions, 99492 links) fixpoint in 16.1 s, exit 0, 0 uses on an
+unreached receiver, 4 entry points, 1556 definitions ahead, every link of the road chain present. Gates OK (50 files).
+Not done: comparing the trace with calls recorded from a running game (the validation the literature recommends).

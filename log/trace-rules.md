@@ -241,3 +241,9 @@ cse.iitm.ac.in/~rupesh/teaching/pa/jan17/scribes/6.pdf; arxiv.org/pdf/2602.01720
   Sundaresan et al. 2000).
 Implementation: `typer.Typer` (unknowns = (expression tree, unit); `read`, `grew`, worklist), `resolve.Resolver.incoming`
 and `keep_edge` (the side-effected unknown "links into a unit"), `link.build` (references as unknowns, one worklist).
+- S7 What was implemented of S1-S5 (2026-11-10): the worklist solver with recorded dependencies (S5), difference
+  propagation along the links (S2: each argument of each link is one node carried once to its parameter), and one
+  identity per value (a type naming a class of the program is that class in whatever unit it is read: without it
+  the same class counted once per reading unit and the sets grew with the program). On 1132 files / 25770
+  definitions the fixpoint takes 16 s (191 s before the identity; 118 s with whole-program passes). S4 (collapsing
+  cycles) is not needed at this cost and is not implemented.

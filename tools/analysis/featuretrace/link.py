@@ -10,15 +10,17 @@ values: both are nodes of one worklist solver (`typer`), computed again only whe
 """
 from __future__ import annotations
 
+import time
+
 from . import names
 from .cpp_implicit import IMPLICIT
 from .model import FUNCTION_KINDS
 from .rules import NAME_CALLS
-from .resolve import EXACT, EXTERNAL, LOCAL, UNREACHED, Resolver
+from .resolve import EXACT, EXTERNAL, FLOW, LOCAL, UNREACHED, Resolver
 from .typer import CLASS
 
 REF = "#ref"
-PROGRESS_EVERY = 20000
+PROGRESS_SECONDS = 5.0      # a line of progress this often, however long the work
 WANT = {"call": "func", "value": "func", "thread": "func", "read": "read", "write": "state", "emit": "signal",
         "operator": "func"}
 
@@ -40,17 +42,20 @@ def build(index, progress=None) -> Resolver:
                 rs.link(s, h, "signal", _Site(line), EXACT, file)
     if progress:
         progress(f"linked every reference once: {len(rs.edges)} links; {len(typer.work)} to compute again")
-    done = 0
+    done, told = 0, time.monotonic()
     while typer.work:
         node = typer.work.popleft()
         if node not in typer.dirty:
             continue
         if node[0] == REF:
             link_node(rs, node)
+        elif node[0] == FLOW:
+            rs.flow(node)
         else:
             typer.compute(node)
         done += 1
-        if progress and done % PROGRESS_EVERY == 0:
+        if progress and time.monotonic() - told >= PROGRESS_SECONDS:
+            told = time.monotonic()
             progress(f"computed again {done}; {len(typer.work)} waiting; {len(rs.edges)} links")
     rs.settle()
     if progress:
