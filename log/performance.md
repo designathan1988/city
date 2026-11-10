@@ -422,3 +422,13 @@ sky POSITION 022b734d; atmosphere 1c604b47; occlusion c978aeeb; lot_access e7346
 - Check: `scripts`, `photos`, `digest` pass; gates OK; the frozen review plan (dist/review-c12): 9 of 20 pictures equal pixel by
   pixel; the others differ on tree-crown outlines, and in `05-edge_low` on a striped paving seen through leaves at the
   picture's corner (1,646 pixels: the same leaf and thin-line noise of two runs, there larger).
+
+### P40 (C12): the effects tell the engine nothing while nothing of theirs lives
+- Cause: `Puffs::stamp`, `Marks::update` and `Mounds::update` set their material's `now` every frame, and
+  `EffectWorld::light_update` four values of the flash's light, with no effect alive: eight server calls a frame of the game.
+- Change: the puffs' `now` and wind are told in `flush` while a puff lives (the layer is hidden when none does), the marks'
+  and the mounds' while one stands, and the flash's light while it burns and once to hide it (`flash_lit_`).
+- Check: `strike_test` passes; gates OK. Photos (dist/review-c12b/open and /night, a strike on open ground): by day the flames,
+  the shock ring, the thrown rocks and their shadows at 0.1 s, the fire and dust at 1.2 s, the crater's mark and rocks at rest at
+  16 s; by night the flames and the ring. Seen and not from this change (the same on the tree before it): the flash lights
+  nothing round it at night, and the crater's mark stays bright in the dark; both recorded in the ledger.

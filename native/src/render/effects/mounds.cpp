@@ -97,7 +97,7 @@ void Mounds::add(const Vector3 &at, float rot, float w, float d, float h, const 
 }
 
 void Mounds::update(double now) {
-	RenderingServer::get_singleton()->material_set_param(material_, "now", float(now));
+	if (shown_ > 0) RenderingServer::get_singleton()->material_set_param(material_, "now", float(now)); // a mound settles by `now`: told while one stands
 	if (!dirty_) return;
 	layer_.count(shown_);
 	layer_.shown(shown_ > 0);
