@@ -7,7 +7,7 @@ expression tree built by `ir_gd` (log/trace-rules.md: VALUE, FLOW).
 from __future__ import annotations
 
 from . import gd_body, ir_gd
-from .model import ClassFact, FileFacts, Ref, Unit
+from .model import ClassFact, FileFacts, Ref, Unit, declare, enclose
 from .source import Source, field_of, named_children, string_value
 
 
@@ -134,9 +134,9 @@ class GdReader:
             unit.params.append(name)
             typ, default = field_of(p, "type"), field_of(p, "value")
             if typ is not None and typ.type == "type":
-                unit.types[name] = [("cast", self.src.text(typ))]
+                declare(unit, name, [("cast", self.src.text(typ))])
             else:
-                unit.types[name] = [self.ir(default, unit, cls)] if default is not None else []
+                declare(unit, name, [self.ir(default, unit, cls)] if default is not None else [])
 
     def function(self, node, cls: ClassFact) -> None:
         name = field_of(node, "name")
@@ -158,8 +158,7 @@ class GdReader:
                    self.src.display, line, self.src.end_line(node), local_id=len(self.facts.units))
         self.facts.units.append(lam)
         self._lambdas[node.start_byte] = lam.local_id
-        lam.types = {k: list(v) for k, v in owner.types.items()}
-        lam.lambdas = dict(owner.lambdas)
+        enclose(lam, owner)
         self.params(node, lam, cls)
         if field_of(node, "body") is not None:
             self.block(field_of(node, "body"), lam, cls, ())

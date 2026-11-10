@@ -10,7 +10,7 @@ from __future__ import annotations
 from . import cpp_expr, cpp_implicit
 from .cpp_names import type_of, unwrap
 from .gd_body import squash
-from .model import Ref, Unit
+from .model import Ref, Unit, declare, enclose
 from .source import field_of, named_children
 
 
@@ -28,7 +28,7 @@ def bind_parts(r, node, unit, source: tuple | None) -> None:
     names = [r.src.text(c) for c in named_children(node) if c.type == "identifier"]
     for i, name in enumerate(names):
         part = ("first", "second")[i] if len(names) == 2 else ""
-        unit.types[name] = [("member", source, part, False)] if source is not None and part else []
+        declare(unit, name, [("member", source, part, False)] if source is not None and part else [])
 
 
 def local(r, node, unit, cond) -> None:
@@ -54,12 +54,12 @@ def local(r, node, unit, cond) -> None:
         text = r.src.text(name)
         if value is not None and value.type == "lambda_expression":
             unit.lambdas[text] = r.lambda_id(value, unit)
-            unit.types[text] = [("callable", unit.lambdas[text])]
+            declare(unit, text, [("callable", unit.lambdas[text])])
             continue
         if deduced(type_text):
-            unit.types[text] = [r.ir(value, unit)] if value is not None else []
+            declare(unit, text, [r.ir(value, unit)] if value is not None else [])
         else:
-            unit.types[text] = [("cast", type_text)]
+            declare(unit, text, [("cast", type_text)])
             cpp_implicit.declared_object(r, unit, child, type_text, node, cond, add)
         expr(r, value, unit, cond)
 
@@ -122,7 +122,7 @@ def loop(r, st, unit, cond) -> None:
         if name is not None and name.type == "structured_binding_declarator":
             bind_parts(r, name, unit, walked)
         elif name is not None:
-            unit.types[src.text(name)] = [walked] if deduced(declared) else [("cast", declared)]
+            declare(unit, src.text(name), [walked] if deduced(declared) else [("cast", declared)])
         expr(r, right, unit, cond)
         cpp_implicit.range_calls(r, unit, right, st, cond, add)
         label = f"for ({squash(src.text(field_of(st, 'declarator')))} : {squash(src.text(right))})"
@@ -143,19 +143,59 @@ def loop(r, st, unit, cond) -> None:
         statement(r, body, unit, cond + (label,))
 
 
+def tail_calls(r, body, unit: Unit) -> None:
+    """The calls after which the function only returns: the value of a `return`, and the last statement on each path
+    to the end of the body (`return;` after it included). A compiler may make such a call a jump (a sibling call), and
+    the function's frame is then gone from the stack while the callee runs."""
+    def called(node) -> None:
+        while node is not None and node.type == "parenthesized_expression":
+            node = (named_children(node) or [None])[0]
+        if node is not None and node.type == "call_expression":
+            unit.tails.add(r.src.line(node))
+
+    def last(st) -> None:
+        if st is None:
+            return
+        if st.type == "compound_statement":
+            items = [c for c in named_children(st) if c.type != "comment"]
+            while items and items[-1].type == "return_statement" and not named_children(items[-1]):
+                items.pop()
+            if items:
+                last(items[-1])
+        elif st.type == "if_statement":
+            last(field_of(st, "consequence"))
+            alt = field_of(st, "alternative")
+            for sub in named_children(alt) if alt is not None else []:
+                last(sub)
+        elif st.type == "expression_statement":
+            for child in named_children(st):
+                called(child)
+
+    def returns(node) -> None:
+        for child in named_children(node):
+            if child.type == "lambda_expression":
+                continue                                    # its returns are its own
+            if child.type == "return_statement" and named_children(child):
+                called(named_children(child)[0])
+            returns(child)
+
+    last(body)
+    returns(body)
+
+
 def lambda_unit(r, node, owner: Unit) -> Unit:
     line = r.src.line(node)
     lam = Unit("lambda", "cpp", f"{owner.name}.<lambda:{line}>", f"{owner.qual}.<lambda:{line}>", owner.owner,
                r.src.display, line, r.src.end_line(node), local_id=len(r.facts.units))
     r.facts.units.append(lam)
-    lam.types = {k: list(v) for k, v in owner.types.items()}
-    lam.lambdas = dict(owner.lambdas)
+    enclose(lam, owner)
     decl = field_of(node, "declarator")
     if decl is not None:
         r.params(decl, lam)
     body = field_of(node, "body")
     if body is not None:
         block(r, body, lam, ())
+        tail_calls(r, body, lam)
     return lam
 
 

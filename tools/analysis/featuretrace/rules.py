@@ -98,6 +98,9 @@ NAME_CONSTRUCTORS = {("ClassDB", "instantiate"): 0}
 # C++ casts and the library's makers: the type a templated call yields.
 CASTS = ("static_cast", "dynamic_cast", "const_cast", "reinterpret_cast", "bit_cast", "any_cast", "get", "get_if")
 MAKERS = {"make_shared": "std::shared_ptr", "make_unique": "std::unique_ptr", "make_optional": "std::optional"}
+# [utility], [refwrap], [utility.as.const]: each returns its argument itself (a cast of its value category, a wrapper
+# that calls through to it), so a call of one holds what its argument holds
+PASS_THROUGH = frozenset({"move", "forward", "move_if_noexcept", "as_const", "ref", "cref"})
 
 
 def keywords(lang: str) -> dict:

@@ -7,6 +7,7 @@ from __future__ import annotations
 import re
 
 from .cpp_names import strip_templates, template_args
+from .rules import PASS_THROUGH
 
 ENGINE = "<engine>"
 ITEM, ITER, DEREF = "[]", "<iter>", "->"
@@ -14,6 +15,27 @@ ITERATOR = "std::__iterator"
 QUALIFIERS = re.compile(r"\b(const|volatile|static|constexpr|inline|mutable|typename|struct|class|unsigned)\b|[&*]")
 ITERATOR_CALLS = ("find", "begin", "end", "cbegin", "cend", "rbegin", "rend", "lower_bound", "upper_bound")
 HELD_CALLS = ("get", "value", "front", "back", "top", "lock")
+# `.first` / `.second` read of a value of the program that has no such member: the code compiles only if the receiver
+# is the (key, value) pair of an associative container holding the value, so `.second` is the value put and `.first`
+# the key (not tracked: the language's)
+PAIR_PARTS = ("first", "second")
+
+
+def passes_through(callee: str) -> bool:
+    """`std::move(x)`, `std::forward<T>(x)`: a call of the standard library that returns its argument itself."""
+    scope, _, name = callee.rpartition("::")
+    return scope in ("std", "") and name in PASS_THROUGH
+
+
+def substitute(params: list, outer: str, member: str) -> tuple[str, bool]:
+    """A member's type with the class template's parameters replaced by the arguments `outer` writes."""
+    args = template_args(clean(outer)) if params else []
+    if not args:
+        return member, False
+    out = member
+    for param, arg in zip(params, args):
+        out = re.sub(rf"\b{re.escape(param)}\b", arg, out)
+    return out, out != member
 
 
 def clean(text: str) -> str:

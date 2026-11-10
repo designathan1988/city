@@ -7,7 +7,7 @@ from __future__ import annotations
 from . import cpp_body, cpp_implicit
 from .cpp_names import strip_templates
 from .ir import put
-from .model import STD_MUTATORS
+from .model import STD_MUTATORS, assign
 from .rules import GDEXT_BIND as BIND_CALLS, GDEXT_PROPERTY, GDEXT_SIGNAL, NAME_CALLS
 from .source import field_of, is_identifier, named_children, string_value
 
@@ -128,8 +128,8 @@ def target(r, node, unit, cond, value: tuple | None) -> None:
     args = (value,) if value is not None else ()
     if node.type == "identifier":
         name = r.src.text(node)
-        if name in unit.types and value is not None:
-            unit.types[name].append(value)
+        if value is not None:
+            assign(r.facts.units, unit, name, value, shared=True)
         add(r, unit, "write", name, node, cond, args=args)
     elif node.type == "qualified_identifier":
         scope, name = scoped(r.src.text(node))
@@ -188,8 +188,8 @@ def call(r, node, unit, cond) -> None:
         owner, member = owner_of(base)
         if name in STD_MUTATORS and member:
             value = put(trees[-1]) if trees else None
-            if owner is None and member in unit.types and value is not None:
-                unit.types[member].append(value)
+            if owner is None and value is not None:
+                assign(r.facts.units, unit, member, value, shared=True)
             add(r, unit, "write", member, node, cond, base=owner, args=(value,) if value is not None else ())
     thread = name in THREAD_NAMES
     for a in argv:

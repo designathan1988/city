@@ -12,17 +12,13 @@ Type texts: a type as written, CLASS + key (a class of the program), FN + gid (a
 """
 from __future__ import annotations
 
-import re
-
-from .cpp_names import template_args
-from . import names
-from .library import DEREF, ITEM, ITER, clean, library_step
+from . import names, operators
+from .library import DEREF, HELD_CALLS, ITEM, ITER, ITERATOR_CALLS, PAIR_PARTS, clean, library_step, \
+    passes_through, substitute
 from .model import FUNCTION_KINDS
 from .solver import CLASS, ELEM, ENGINE, FN, TEXT, Solver, identity
 
 CALLABLE_CALLS = ("call", "callv", "call_deferred")
-OPERATORS = {ITEM: "operator[]", DEREF: "operator->", ITER: "begin"}
-COMPARISONS = ("==", "!=", "<", ">", "<=", ">=", "<=>", "&&", "||", "!", "and", "or", "not", "in", "is")
 NO_VALUE = ("void", "Variant", "auto", "decltype(auto)", "")
 
 
@@ -95,17 +91,17 @@ class Typer(Solver):
         if kind == "member":
             base = self.evaluate(tree[1], unit, depth)
             if tree[3]:
-                base = [v for t, c in base for v in self.step(DEREF, t, c, depth)]
+                base = [v for t, c in base for v in operators.step(self, DEREF, t, c, depth)]
             return [v for t, c in base for v in self.member(t, c, tree[2], False, depth)]
         if kind == "call":
             return self.call(tree[1], tree[2], unit, depth)
         if kind in ("index", "elements", "deref"):
             step = {"index": ITEM, "elements": ITER, "deref": DEREF}[kind]
-            return [v for t, c in self.evaluate(tree[1], unit, depth) for v in self.step(step, t, c, depth)]
+            return [v for t, c in self.evaluate(tree[1], unit, depth) for v in operators.step(self, step, t, c, depth)]
         if kind == "op":
-            return [v for t, c in self.evaluate(tree[2], unit, depth) for v in self.operator(tree[1], t, c, depth)]
+            return [v for t, c in self.evaluate(tree[2], unit, depth) for v in operators.operator(self, tree[1], t, c, depth)]
         if kind == "unary":
-            return [v for t, c in self.evaluate(tree[2], unit, depth) for v in self.operator(tree[1], t, c, depth)]
+            return [v for t, c in self.evaluate(tree[2], unit, depth) for v in operators.operator(self, tree[1], t, c, depth)]
         if kind in ("cast", "new"):
             return [(tree[1], unit)] if tree[1] else [(ENGINE, unit)]
         if kind == "callable":
@@ -134,10 +130,13 @@ class Typer(Solver):
         made = names.made_by_name(self, callee, args, unit) or names.callable_of(self, callee, args, unit, depth)
         if made is not None:
             return made
+        if callee[0] == "name" and args and unit.lang == "cpp" and passes_through(callee[1]) \
+                and not self.rs.function_targets(unit, callee[1]):
+            return self.evaluate(args[0], unit, depth)          # std::move(x), std::forward<T>(x): x itself
         if callee[0] == "member":
             base = self.evaluate(callee[1], unit, depth)
             if callee[3]:
-                base = [v for t, c in base for v in self.step(DEREF, t, c, depth)]
+                base = [v for t, c in base for v in operators.step(self, DEREF, t, c, depth)]
             return [v for t, c in base for v in self.member(t, c, callee[2], True, depth)]
         if callee[0] == "name":
             name = callee[1]
@@ -181,6 +180,8 @@ class Typer(Solver):
         found = [v for t in trees for v in self.evaluate(t, unit, depth)]
         if name in unit.params:      # a declared type names the class; the values passed carry the rest
             found += self.rs.argument_values(unit, unit.params.index(name), depth)
+        if name in unit.captured and unit.outer >= 0:   # a lambda's capture: the enclosing function's local
+            found += self.local(name, self.ix.units[self.ix.offset[unit.file] + unit.outer], depth)
         return found
 
     def held(self, unit, depth: int) -> list[tuple]:
@@ -214,10 +215,15 @@ class Typer(Solver):
         """A member of a value: its field's value, its method's callable, or (called) the method's result."""
         if text.startswith(FN):
             target = self.ix.units[int(text[len(FN):])]
+            if not called and name in PAIR_PARTS:
+                return [(text if name == "second" else ENGINE, ctx)]     # (library.PAIR_PARTS)
             return self.returns(target, depth) if called and name in CALLABLE_CALLS else [(text, ctx)] \
                 if name in ("bind", "unbind", "bindv") else [(ENGINE, ctx)]
         if text.startswith(ELEM):
-            return []
+            # what a container holds: its access calls give an element, its search calls an iterator over them
+            if called and name in HELD_CALLS + ("at",):
+                return [(text[len(ELEM):], ctx)]
+            return [(text, ctx)] if called and name in ITERATOR_CALLS else []
         key = self.type_class(text, ctx)
         if called and name == "new":
             return [(CLASS + key, ctx)] if key else [(text, ctx)]     # `T.new()` constructs a T (EXPR: new)
@@ -227,6 +233,8 @@ class Typer(Solver):
         if ctx.lang == "gd" and self.ix.classes[key].lang == "cpp":
             found = self.rs.engine_members(key, name, "func" if called else "read")
         if not found:
+            if not called and name in PAIR_PARTS and self.ix.classes[key].lang == "cpp":
+                return [(text if name == "second" else ENGINE, ctx)]
             inner = self.ix.inner[key].get(name)
             return [(CLASS + inner, ctx)] if inner else [(ENGINE, ctx)]   # an engine or library base's member
         out = []
@@ -238,48 +246,10 @@ class Typer(Solver):
                 out.append((value, ctx if replaced else where))
         return out
 
-    def step(self, step: str, text: str, ctx, depth: int) -> list[tuple]:
-        """`[]`, a range-for, `->`: an element of a container, what a pointer points at."""
-        if text.startswith(ELEM):
-            return [(text[len(ELEM):], ctx)] if step in (ITEM, ITER) else []
-        if text == ENGINE or text.startswith(FN):
-            return [(ENGINE, ctx)]
-        key = self.type_class(text, ctx)
-        if key is None:
-            return [(library_step(step, text, False), ctx)]
-        found = self.ix.lookup(key, OPERATORS[step])
-        if not found:
-            return [(text, ctx)]           # a raw pointer's `->`, `*` on a pointer: the object itself
-        out = []
-        for gid in self.ix.definitions(found):
-            for value, where in self.returns(self.ix.units[gid], depth):
-                value, replaced = self.substitute(key, text, value)
-                if step == ITER:
-                    value = library_step(DEREF, value, False) if template_args(clean(value)) else value
-                out.append((value, ctx if replaced else where))
-        return out
-
-    def operator(self, op: str, text: str, ctx, depth: int) -> list[tuple]:
-        if op in COMPARISONS:
-            return [(ENGINE, ctx)]
-        if op == "*":
-            return self.step(DEREF, text, ctx, depth)
-        key = self.type_class(text, ctx)
-        if key and ctx.lang == "cpp":
-            found = self.ix.lookup(key, "operator" + op)
-            if found:
-                return self.returns(self.ix.units[self.ix.definitions(found)[0]], depth)
-        return [(text, ctx)]
-
     def substitute(self, key: str, outer: str, member: str) -> tuple[str, bool]:
-        params = self.ix.classes[key].params
-        args = template_args(clean(outer)) if params and not outer.startswith(CLASS) else []
-        if not params or not args or member.startswith((CLASS, FN, ELEM, ENGINE)):
+        if outer.startswith(CLASS) or member.startswith((CLASS, FN, ELEM, ENGINE)):
             return member, False
-        out = member
-        for param, arg in zip(params, args):
-            out = re.sub(rf"\b{re.escape(param)}\b", arg, out)
-        return out, out != member
+        return substitute(self.ix.classes[key].params, outer, member)
 
     def receiver(self, tree, unit) -> tuple[list[str], bool, list[int]]:
         """(classes of the program the receiver can be, whether it can be an engine value, callables it can be)."""

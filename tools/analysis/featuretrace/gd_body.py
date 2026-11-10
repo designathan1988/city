@@ -10,6 +10,7 @@ from __future__ import annotations
 from . import gd_calls, ir_gd
 from .ir import put
 from .rules import SIGNAL_OPS
+from .model import assign, declare
 from .source import field_of, is_identifier, named_children
 
 COND_WIDTH = 90
@@ -30,12 +31,12 @@ def statement(r, st, unit, cls, cond) -> None:
         value, typ = field_of(st, "value"), field_of(st, "type")
         if value is not None and value.type == "lambda":
             unit.lambdas[name] = r.lambda_id(value, unit, cls)
-            unit.types[name] = [("callable", unit.lambdas[name])]
+            declare(unit, name, [("callable", unit.lambdas[name])])
             return
         if typ is not None and typ.type == "type":
-            unit.types[name] = [("cast", src.text(typ))]
+            declare(unit, name, [("cast", src.text(typ))])
         else:
-            unit.types[name] = [r.ir(value, unit, cls)] if value is not None else []
+            declare(unit, name, [r.ir(value, unit, cls)] if value is not None else [])
         expr(r, value, unit, cls, cond)
     elif kind == "if_statement":
         test = field_of(st, "condition")
@@ -54,7 +55,7 @@ def statement(r, st, unit, cls, cond) -> None:
                 r.block(field_of(child, "body"), unit, cls, cond + ("else of if " + squash(src.text(test)),))
     elif kind == "for_statement":
         left, right = field_of(st, "left"), field_of(st, "right")
-        unit.types[src.text(left)] = [("elements", r.ir(right, unit, cls))]
+        declare(unit, src.text(left), [("elements", r.ir(right, unit, cls))])
         expr(r, right, unit, cls, cond)
         r.block(field_of(st, "body"), unit, cls, cond + (f"for {src.text(left)} in {squash(src.text(right))}",))
     elif kind == "while_statement":
@@ -87,7 +88,7 @@ def match(r, st, unit, cls, cond) -> None:
         for part in named_children(section):
             if part.type == "pattern_binding":
                 for name in named_children(part):
-                    unit.types[src.text(name)] = [matched]
+                    declare(unit, src.text(name), [matched])
             elif part is not block:
                 expr(r, part, unit, cls, cond + (label,))     # a pattern reads the names it compares with
         if block is not None:
@@ -143,8 +144,7 @@ def target(r, node, unit, cls, cond, value: tuple) -> None:
         return
     if node.type == "identifier":
         name = r.src.text(node)
-        if name in unit.types:
-            unit.types[name].append(value)
+        assign(r.facts.units, unit, name, value, shared=False)
         r.add(unit, "write", name, node, cond, args=(value,))
     elif node.type == "attribute":
         attribute(r, node, unit, cls, cond, value=value)

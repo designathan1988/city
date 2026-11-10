@@ -201,3 +201,26 @@ llvm-symbolizer returns the nearest export, `citycore_library_init`, with no fil
 the core have no function names. The comparison needs a core DLL built with debug information (`-g`), which means
 building the DLLs from a tree that holds another session's uncommitted C++ changes: not done without the owner's word.
 The GDScript side has no call recorder in the engine build used here.
+
+## Validation against a real run, done (2026-11-10 19:10)
+`tools/analysis/trace_validate.py` (`record`, `check`). The debug DLL is stripped (`-s`); its objects were linked again
+with `-Wl,-Map` and the same flags: every section came out byte for byte the same as `project/bin`'s, so the map names
+the running code (`dist/trace/symbols/`). Run: `road_commands_test` hidden, 5853 samples; `check --root project --root
+native/src --map ...`: 203 distinct calls between functions of the program, 198 answered by the tracer's links.
+**Causes found by the run and fixed in the tracer:** (1) a lambda's captured name (C++ [expr.prim.lambda.capture],
+GDScript: captured by value) read none of the enclosing function's values: `Unit.outer`/`captured`, `model.declare`,
+`enclose`, `assign` (writes reach the enclosing function in C++ only); 43 lambdas handed to a template are now called.
+(2) `std::move`/`std::forward`/`as_const`/`ref` return their argument (`rules.PASS_THROUGH`). (3) a container's held
+values answer `front`/`back`/`top`/`at`/`get`, iterators and `*`/`->`; `.second` of a program value with no such member
+is the mapped value of an associative container. (4) tail positions recorded (`Unit.tails`) for the check's rule.
+**Validator rules:** a call seen passes through functions that leave no frame: inlined (body in the translation unit
+of one of the frames between, from the map's object file) or left by a tail call; no fixed depth.
+**Still open (5 calls):** `JobPool::loop` -> `LotCache::compute`, `BuildingRenderer::build_cpu`, `ShoreField::work`
+(the job taken from `slots_`/`helpers_` by `std::move` into a `std::function` local and called); `block_lots` ->
+`LotStrips::facing` (through `std::function`); `~CityCore` -> `~JobPool` (a `unique_ptr` member's delete). Not traced
+to their cause yet. Implicit constructors/destructors seen running are listed apart (the language writes them).
+Own mistakes on the way: a check without roots read 558k files (killed at its deadline); the map reader dropped names
+holding `(anonymous namespace)` and cut object paths at the column width; a made-up chain limit of 4, replaced.
+Files: created `trace_validate.py`, `featuretrace/runtime.py`, `native_frames.py`, `validate.py`, `operators.py`
+(step/operator moved out of `typer.py`); changed `model.py`, `typer.py`, `library.py`, `rules.py`, `cpp_body.py`,
+`cpp_read.py`, `cpp_expr.py`, `gd_body.py`, `gd_read.py`, `gd_calls.py`; 70 tests OK, gates OK.

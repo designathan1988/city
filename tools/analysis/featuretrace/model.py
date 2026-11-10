@@ -78,6 +78,34 @@ class Unit:
     bound_as: list = field(default_factory=list)   # names the engine can call it by (D_METHOD)
     accessors: dict = field(default_factory=dict)  # gd property: "get"/"set" -> local unit id or function name
     accessor_of: str = ""          # gd: the property whose set/get this function is (its own name is direct)
+    outer: int = -1                # lambda: local id of the function it is written in (same file)
+    captured: set = field(default_factory=set)     # lambda: names that are still the enclosing function's locals
+    tails: set = field(default_factory=set)        # cpp: lines of the calls in tail position (a compiler may jump)
+
+
+def declare(unit: Unit, name: str, trees: list) -> None:
+    """A local or parameter declared in `unit`: a name of the enclosing function it shadows is no longer captured."""
+    unit.types[name] = trees
+    unit.captured.discard(name)
+
+
+def enclose(lam: Unit, owner: Unit) -> None:
+    """A lambda written in `owner` sees owner's locals (C++ [expr.prim.lambda.capture]; GDScript: captured by value
+    when the lambda is made): their values are owner's, read through `outer`; its own list holds what it writes."""
+    lam.outer = owner.local_id
+    lam.types = {k: [] for k in owner.types}
+    lam.captured = set(owner.types)
+    lam.lambdas = dict(owner.lambdas)
+
+
+def assign(units: list, unit: Unit, name: str, value, shared: bool) -> None:
+    """A value written to a local: into the unit's own, and when the language shares a captured local with the
+    enclosing function (C++ capture by reference), into the enclosing function's as well."""
+    while name in unit.types:
+        unit.types[name].append(value)
+        if not shared or name not in unit.captured or unit.outer < 0:
+            return
+        unit = units[unit.outer]
 
 
 @dataclass

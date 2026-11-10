@@ -7,6 +7,7 @@ from __future__ import annotations
 from . import gd_body
 from .ir import put
 from .rules import NAME_CALLS
+from .model import assign
 from .source import field_of, is_identifier, named_children, string_value
 
 PUTS = ("append", "push_back", "push_front", "insert", "append_array", "fill")   # Array: values into its elements
@@ -95,7 +96,7 @@ def member_call(r, seg, name, base, unit, cls, cond) -> None:
         r.add(unit, "call", name, seg, cond, base=base, argc=len(argv), args=trees(r, argv, unit, cls))
         if name in PUTS and argv and member:
             value = put(r.ir(argv[-1], unit, cls))
-            if owner is None and member in unit.types:
-                unit.types[member].append(value)
+            if owner is None:
+                assign(r.facts.units, unit, member, value, shared=False)
             r.add(unit, "write", member, seg, cond, base=owner, args=(value,))
     arguments(r, argv, unit, cls, cond)

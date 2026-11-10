@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from . import cpp_body, ir_cpp
 from .cpp_names import WRAPPERS, join, strip_templates, type_of, unwrap
-from .model import ClassFact, FileFacts, Unit
+from .model import ClassFact, FileFacts, Unit, declare
 from .source import Source, field_of, named_children
 
 CLASS_NODES = ("class_specifier", "struct_specifier", "union_specifier")
@@ -157,6 +157,7 @@ class CppReader:
         body = field_of(node, "body")
         if body is not None:
             cpp_body.block(self, body, unit, ())
+            cpp_body.tail_calls(self, body, unit)
 
     def is_virtual(self, node, decl) -> bool:
         words = {self.src.text(c) for c in node.children if c.type in ("virtual", "storage_class_specifier")}
@@ -181,7 +182,7 @@ class CppReader:
             declared = type_of(self.src.text(typ)) if typ is not None else ""
             pointer = self.src.text(field_of(p, "declarator")).lstrip().startswith("*")
             declared = f"{declared} *" if pointer and declared else declared
-            unit.types[text] = [] if deduced(declared) else [("cast", declared)]
+            declare(unit, text, [] if deduced(declared) else [("cast", declared)])
 
     def declaration(self, node, prefix: str, cls: ClassFact | None, anon: bool) -> None:
         typ = field_of(node, "type")
