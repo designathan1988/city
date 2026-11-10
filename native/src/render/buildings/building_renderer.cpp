@@ -211,6 +211,14 @@ void BuildingRenderer::submit(const CityState &s, int64_t key, bool far, bool ne
 	});
 }
 
+BuildingRenderer::SuperChunks BuildingRenderer::chunks_of(int64_t super_key) {
+	SuperChunks chunks;
+	const int sx = key_x(super_key) * CHUNKS_PER_SUPER, sz = key_y(super_key) * CHUNKS_PER_SUPER;
+	for (int j = 0; j < CHUNKS_PER_SUPER; j++)
+		for (int i = 0; i < CHUNKS_PER_SUPER; i++) chunks[size_t(j * CHUNKS_PER_SUPER + i)] = cell_key(sx + i, sz + j);
+	return chunks;
+}
+
 void BuildingRenderer::submit_super(const CityState &s, int64_t key, float priority) {
 	if (!s.jobs) return;
 	uint64_t seq;
@@ -225,10 +233,7 @@ void BuildingRenderer::submit_super(const CityState &s, int64_t key, float prior
 		super_requested_[key] = seq;
 	}
 	s.jobs->submit(JobKey{ JobLane::BUILDING_SUPER, key }, priority, [this, &s, key, seq, priority]() {
-		std::array<int64_t, CHUNKS_PER_SUPER * CHUNKS_PER_SUPER> chunks;
-		const int sx = key_x(key) * CHUNKS_PER_SUPER, sz = key_y(key) * CHUNKS_PER_SUPER;
-		for (int j = 0; j < CHUNKS_PER_SUPER; j++)
-			for (int i = 0; i < CHUNKS_PER_SUPER; i++) chunks[size_t(j * CHUNKS_PER_SUPER + i)] = cell_key(sx + i, sz + j);
+		const SuperChunks chunks = chunks_of(key);
 		Inputs in;
 		{
 			std::shared_lock<std::shared_mutex> map(s.map_mutex); // only while copying: the build reads the copy

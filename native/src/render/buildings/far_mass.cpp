@@ -1,7 +1,8 @@
-// The mid and far levels of a placed body: each closed volume's walls, the mid level's bay by bay (`bay_walls`), the far level's
-// one quad per side, whose windows the shader paints from the opening shares of the style (packed into UV2.y), the parapet as a raised wall with its coping, roof slabs, pitched roofs, machine rooms and the
-// plinth. A few dozen triangles per building; `lean` (the far level) keeps one band per side and drops the coping and
-// machine rooms.
+// The mid and far levels of a placed body: each closed volume's walls, the mid level's bay by bay (`bay_walls`), the far level's in
+// rectangles of storeys that read alike, whose windows the shader paints from the opening's shares (CUSTOM0), the parapet as a raised
+// wall, roof slabs, pitched roofs, machine rooms and the plinth. `lean` (the far level) holds what its nearest distance shows: no
+// coping, a pitched roof's planes alone, and what stands on a roof (machine rooms, plant) as a box each, which its shell hands to the
+// far level's rows (building_renderer_build.cpp build_super_cpu).
 #include "render/buildings/facade_bay.h"
 #include "sim/buildings/b40/gen.h"
 #include "render/buildings/roof_util.h"
@@ -182,8 +183,10 @@ void walls(Shell &s, const Placed &pl, const Volume &v, bool roofs) {
 		float top = b.level_z(v.top());
 		if (parapet) {
 			s.rect(Basis{ sd.f.o + sd.f.e1 * top, sd.f.e0, sd.f.e1, sd.f.e2 }, 0, sd.length, 0, ph, 0, wall_lin(pl, v, v.storeys - 1, sd.side), fin);
-			Basis cap{ sd.f.at(0, top + ph, 0), sd.f.e0, -sd.f.e2, sd.f.e1 };
-			s.rect(cap, 0, sd.length, 0, COPING, 0, paint_lin(mp), mp.finish);
+			if (!pl.lean) { // a strip the far level's distance cannot show
+				Basis cap{ sd.f.at(0, top + ph, 0), sd.f.e0, -sd.f.e2, sd.f.e1 };
+				s.rect(cap, 0, sd.length, 0, COPING, 0, paint_lin(mp), mp.finish);
+			}
 		}
 		if (v.base == 0 && !covered(b, v, 0, mid))
 			s.rect(sd.f, 0, sd.length, pl.ground_lo - PLINTH_BURY, 0, 0, paint_lin(pl.data->color("plinth")), FIN_STONE);
@@ -210,7 +213,7 @@ void roof(Shell &s, const Placed &pl, const Volume &v, int vol) {
 		const Paint &wp = b.wall_of(v);
 		s.box(pl.lot, cr.x, cr.x + MODULE, cr.y, cr.y + MODULE, eaves, eaves + MACHINE_H, paint_lin(wp) * pl.shade, wp.finish, SKIP_E2_NEG);
 	}
-	if (pl.lean && v.roof != ROOF_TERRACE && v.outline.empty() && !covered_by_above(b, v)) { // its plant a metre or more across, the same as near; what is finer goes
+	if (pl.lean && v.roof != ROOF_TERRACE && v.outline.empty() && !covered_by_above(b, v)) { // the plant where the near level has it, a box a piece
 		Shell finer;
 		emit_roof_plant(s, finer, pl, v, vol, eaves);
 	}

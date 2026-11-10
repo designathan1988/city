@@ -25,7 +25,7 @@ constexpr PlantDef PLANT[PLANT_KINDS] = { { 2.6f, 2.6f, 2.5f, 1, 0 }, { 3.2f, 2.
 constexpr float USE_CHANCE[PLANT_KINDS][3] = { {}, { 0.7f, 0.5f, 0.2f }, { 0.75f, 0.55f, 0.35f }, {}, { 0.1f, 0.8f, 0.5f }, { 0.5f, 0.8f, 0.35f }, { 0.3f, 0.2f, 0.45f }, { 0.45f, 0.25f, 0.1f }, { 0.6f, 0.3f, 0.05f }, { 0.15f, 0.25f, 0.7f }, { 0.1f, 0.6f, 0.75f }, { 0, 0, 0.3f } };
 constexpr float FAN_AT[] = { 0.25f, 0.75f }, PANEL_GAP = 0.1f;
 constexpr float TALL_TANK[3] = { 0.25f, 0.2f, 0.2f };
-constexpr float COARSE_MIN_H = 1.2f, CELL = 0.5f, MARGIN = 0.8f, MIN_SIDE = 4.f, HATCH_P = 0.9f, BIG_ROOF = 150.f, AGE_K = 0.6f, MAST_TALL = 0.7f;
+constexpr float CELL = 0.5f, MARGIN = 0.8f, MIN_SIDE = 4.f, HATCH_P = 0.9f, BIG_ROOF = 150.f, AGE_K = 0.6f, MAST_TALL = 0.7f;
 constexpr float SOLAR_AGE = 1.3f, MAST_AGE = 0.4f, DECAY = 0.6f, ROUND_JITTER = 0.8f, TURN = 0.5f, SOLAR_VAR = 0.25f, SOLAR_BASE = 0.7f;
 constexpr int LIFT_STOREYS = 4, TANK_STOREYS = 6, MAST_STOREYS = 10, TRIES = 24, RING = 2, PER_AREA_CAP = 6, VARIANTS = 4;
 constexpr uint32_t GOLDEN = 2654435761u, VOL_K = 40503u, VOL_OFF = 7, MAGIC = 0x5f3759df, AGE_MUL = 2246822519u, AGE_MOD = 1000;
@@ -36,7 +36,7 @@ constexpr float PANEL_Z0 = 0.25f, PANEL_Z1 = 0.32f, POLE = 0.08f, BAR = 1.2f, BA
 constexpr float DISH_POST = 0.7f, DISH_PLATE_Z = 0.5f, DISH_PLATE_T = 0.1f, VENT_R = 0.4f, VENT_CAP_R = 0.5f, VENT_CAP = 0.15f;
 constexpr float CHIM_R = 0.45f, CHIM_TOP = 0.3f, DOOR_W = 0.9f, DOOR_H = 2.05f, DOOR_T = 0.04f, LID = 0.8f, LID_T = 0.12f;
 constexpr float LADDER = 0.1f, LADDER_UP = 0.9f;
-constexpr int CYL_SIDES = 12, CYL_SIDES_COARSE = 6;
+constexpr int CYL_SIDES = 12;
 
 struct Packer {
 	int nx = 0, ny = 0;
@@ -60,7 +60,28 @@ struct PlantEmit {
 	Basis f; // roof frame: o at the volume corner on the roof
 	Lin c(const char *n) const { return paint_lin(pl.data->color(n)); }
 	void piece(PlantKind k, float x, float y, float w, float d, float h, int variant);
+	void mass(PlantKind k, float x, float y, float w, float d, float h, int variant);
 };
+
+// The far level's piece: the body of it as one box in the colour most of it shows (a round one the box round it; a mast has no body).
+// Whether its distance shows a box that size is the far level's to say (BuildingRenderer::far_shows), not this file's.
+void PlantEmit::mass(PlantKind k, float x, float y, float w, float d, float h, int variant) {
+	const float cx = x + w / 2, cy = y + d / 2, r = std::min(w, d) / 2;
+	auto round = [&](float radius, const Lin &lin, int8_t fin) { shell.box(f, cx - radius, cx + radius, cy - radius, cy + radius, 0, h, lin, fin, SKIP_E2_NEG); };
+	switch (k) {
+		case LIFT_ROOM: case TANK_BOX: shell.box(f, x, x + w, y, y + d, 0, h, paint_lin(pl.b->paints[size_t(pl.b->trim)]), FIN_CONCRETE, SKIP_E2_NEG); break;
+		case TANK: round(r * TANK_R, lin_of(pl.data->tanks[size_t(variant) % pl.data->tanks.size()]), FIN_METAL); break;
+		case HATCH: shell.box(f, x, x + w, y, y + d, 0, h, c("machine_top"), FIN_CONCRETE, SKIP_E2_NEG); break;
+		case AIR_HANDLER: shell.box(f, x, x + w, y, y + d, CASING_UP, h, c("plant_metal"), FIN_METAL, SKIP_E2_NEG); break;
+		case CONDENSER: shell.box(f, x, x + w, y, y + d, COND_UP, h, c("plant_metal"), FIN_METAL, SKIP_E2_NEG); break;
+		case SOLAR: shell.box(f, x, x + w, y, y + d, PANEL_Z0, PANEL_Z0 + PANEL_Z1, c("solar"), FIN_GLASS, SKIP_E2_NEG); break;
+		case MAST: break;
+		case DISH: shell.box(f, x, x + w, cy - DISH_PLATE_T / 2, cy + DISH_PLATE_T / 2, DISH_PLATE_Z, h, c(variant % 2 ? "plant_dark" : "plant_metal"), FIN_METAL); break;
+		case SKYLIGHT: shell.box(f, x, x + w, y, y + d, 0, h, c("skylight"), FIN_GLASS, SKIP_E2_NEG); break;
+		case VENT: round(VENT_R * 2 * r, c("plant_metal"), FIN_METAL); break;
+		default: round(CHIM_R * 2 * r, c("chimney"), FIN_BRICK); break;
+	}
+}
 
 void PlantEmit::piece(PlantKind k, float x, float y, float w, float d, float h, int variant) {
 	Lin metal = c("plant_metal"), dark = c("plant_dark"), top = c("machine_top"), trim = paint_lin(pl.b->paints[size_t(pl.b->trim)]);
@@ -145,9 +166,8 @@ float chance(PlantKind k, int use, int storeys, float area, float age, bool core
 } // namespace
 
 void cylinder(Shell &s, const Basis &b, float cx, float cy, float r, float z0, float z1, const Lin &side, const Lin &top, int8_t fin, bool capped) {
-	int sides = s.coarse ? CYL_SIDES_COARSE : CYL_SIDES;
-	for (int i = 0; i < sides; i++) {
-		float a0 = TAU_F * float(i) / float(sides), a1 = TAU_F * float(i + 1) / float(sides);
+	for (int i = 0; i < CYL_SIDES; i++) {
+		float a0 = TAU_F * float(i) / float(CYL_SIDES), a1 = TAU_F * float(i + 1) / float(CYL_SIDES);
 		Vector3 p0 = b.at(cx + r * std::cos(a0), cy + r * std::sin(a0), z0), p1 = b.at(cx + r * std::cos(a1), cy + r * std::sin(a1), z0);
 		Vector3 out = (b.e0 * std::cos((a0 + a1) / 2) + b.e1 * std::sin((a0 + a1) / 2));
 		s.quad(p0, p1, p1 + b.e2 * (z1 - z0), p0 + b.e2 * (z1 - z0), out, side, fin);
@@ -159,9 +179,11 @@ void emit_roof_plant(Shell &shell, Shell &parts, const Placed &pl, const Volume 
 	if (v.w < MIN_SIDE || v.d < MIN_SIDE) return;
 	const Body &b = *pl.b;
 	PlantEmit pe{ shell, parts, pl, Basis{ pl.lot.at(v.x, v.y, roof_z), pl.lot.e0, pl.lot.e1, pl.lot.e2 } };
-	Lin dark = pe.c("plant_dark");
-	parts.box(pe.f, DRAIN_AT - DRAIN / 2, DRAIN_AT + DRAIN / 2, DRAIN_AT - DRAIN / 2, DRAIN_AT + DRAIN / 2, 0, DRAIN_T, dark, FIN_METAL);
-	parts.box(pe.f, v.w - DRAIN_AT - DRAIN / 2, v.w - DRAIN_AT + DRAIN / 2, v.d - DRAIN_AT - DRAIN / 2, v.d - DRAIN_AT + DRAIN / 2, 0, DRAIN_T, dark, FIN_METAL);
+	if (!pl.lean) {
+		Lin dark = pe.c("plant_dark");
+		parts.box(pe.f, DRAIN_AT - DRAIN / 2, DRAIN_AT + DRAIN / 2, DRAIN_AT - DRAIN / 2, DRAIN_AT + DRAIN / 2, 0, DRAIN_T, dark, FIN_METAL);
+		parts.box(pe.f, v.w - DRAIN_AT - DRAIN / 2, v.w - DRAIN_AT + DRAIN / 2, v.d - DRAIN_AT - DRAIN / 2, v.d - DRAIN_AT + DRAIN / 2, 0, DRAIN_T, dark, FIN_METAL);
+	}
 	Packer pk;
 	pk.nx = int((v.w - 2 * MARGIN) / CELL);
 	pk.ny = int((v.d - 2 * MARGIN) / CELL);
@@ -180,7 +202,6 @@ void emit_roof_plant(Shell &shell, Shell &parts, const Placed &pl, const Volume 
 		for (int n = 0; per_area > 0 ? n < count : (n < d.max && r.next() < p); n++) {
 			if (per_area <= 0) p *= DECAY;
 			int variant = int(VARIANTS * r.next());
-			bool small = pe.shell.coarse && d.h < COARSE_MIN_H;
 			bool turn = k != SOLAR && r.next() < TURN;
 			float w = (turn ? d.d : d.w) * (k == SOLAR ? SOLAR_BASE + SOLAR_VAR * float(variant) : 1.f), dd = turn ? d.w : d.d;
 			int cw = int(std::ceil(w / CELL)), ch = int(std::ceil(dd / CELL));
@@ -189,7 +210,8 @@ void emit_roof_plant(Shell &shell, Shell &parts, const Placed &pl, const Volume 
 				int cx = int(r.next() * pk.nx), cy = int(r.next() * pk.ny);
 				if (!pk.free(cx, cy, cw, ch)) continue;
 				pk.mark(cx, cy, cw, ch);
-				if (!small) pe.piece(PlantKind(k), MARGIN + float(cx) * CELL, MARGIN + float(cy) * CELL, w, dd, d.h, variant);
+				if (pl.lean) pe.mass(PlantKind(k), MARGIN + float(cx) * CELL, MARGIN + float(cy) * CELL, w, dd, d.h, variant);
+				else pe.piece(PlantKind(k), MARGIN + float(cx) * CELL, MARGIN + float(cy) * CELL, w, dd, d.h, variant);
 				placed = true;
 			}
 			if (!placed) break;

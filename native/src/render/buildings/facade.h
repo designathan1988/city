@@ -35,7 +35,7 @@ struct Placed {
 	float ground_lo = 0; // lowest ground under the ground volumes, relative to the floor (<= 0)
 	std::function<float(const godot::Vector3 &)> ground; // terrain height under a world point
 	bool coarse = false; // mid level: emit_far draws walls, slabs and parapets; roofs/lot add only the big pieces
-	bool lean = false; // far level: one wall band per side, no coping or machine rooms (a third of the far memory)
+	bool lean = false; // far level: what its nearest distance shows (far_mass.cpp): no coping, roof planes alone, a box a roof piece
 	PlacedHold hold; // set by BuildingBodies::place: `b`, `whole` and `rooms` point into it
 };
 

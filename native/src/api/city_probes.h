@@ -55,6 +55,7 @@ public:
 	godot::PackedStringArray traffic_hashes(int ticks); // tests: a hash of the fleet after each of `ticks` steps, the clock held by hand
 	godot::Dictionary state_hash(); // tests: the city as a number, whole and by part (city_core_state_probe.cpp)
 	godot::Dictionary bay_census(); // how many bays the city has and how many different ones (building_renderer_probe.cpp)
+	godot::Dictionary far_form() const; // tests: the buildings' far level built on the spot, and what of it its nearest distance cannot show
 
 protected:
 	static void _bind_methods();

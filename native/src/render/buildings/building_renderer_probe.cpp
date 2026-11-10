@@ -107,6 +107,58 @@ Dictionary BuildingRenderer::bay_census() {
 	return d;
 }
 
+// Every superchunk with a building, built as its far job builds it. A face is four corners (two triangles from one first corner) or
+// three, as Shell::face writes it, with one normal.
+Dictionary BuildingRenderer::far_form() const {
+	constexpr float LOOKS_DOWN = -0.5f; // a normal this far under the level: the face is seen only from below
+	constexpr size_t FACE3 = 3, FACE4 = 2 * FACE3, LAST_CORNER = 3; // the indices of a three-cornered and of a four-cornered face
+	if (!state_) return Dictionary(); // no map was drawn yet
+	const CityState &s = *state_;
+	std::unordered_set<int64_t> supers;
+	{
+		std::shared_lock<std::shared_mutex> lk(s.map_mutex);
+		for (const Building &b : s.buildings.items)
+			if (b.alive) supers.insert(chunk_of(b.x, b.z, SUPERCHUNK));
+	}
+	const float error = far_error_m();
+	int64_t buildings = 0, triangles = 0, bytes = 0, sent = 0, thin_quads = 0, down_faces = 0, roof_boxes = 0, boxes_left = 0;
+	for (const int64_t key : supers) {
+		const SuperChunks chunks = chunks_of(key);
+		Inputs in;
+		{
+			std::shared_lock<std::shared_mutex> lk(s.map_mutex);
+			in = gather(s, chunks.data(), int(chunks.size()));
+		}
+		const SuperBuilt built = build_super_cpu(in, key);
+		const b40::Shell &m = built.far_shell;
+		buildings += int64_t(in.records.size());
+		triangles += int64_t(m.triangles());
+		bytes += built.bytes();
+		sent += int64_t(m.pos.size() * (2 * sizeof(Vector3) + sizeof(Color) + sizeof(Vector2) + size_t(m.custom_used) * sizeof(uint32_t)) + m.idx.size() * sizeof(int32_t));
+		for (size_t i = 0; i + FACE3 <= m.idx.size();) {
+			const size_t first = size_t(m.idx[i]);
+			const bool quad = i + FACE4 <= m.idx.size() && size_t(m.idx[i + FACE3]) == first;
+			if (m.nrm[first].y < LOOKS_DOWN) down_faces++;
+			if (quad && std::min(m.pos[first].distance_to(m.pos[first + 1]), m.pos[first].distance_to(m.pos[first + LAST_CORNER])) < error) thin_quads++;
+			i += quad ? FACE4 : FACE3;
+		}
+		roof_boxes += m.boxes_kept;
+		boxes_left += m.boxes_left;
+	}
+	Dictionary d;
+	d["buildings"] = buildings;
+	d["triangles"] = triangles;
+	d["bytes"] = bytes; // what the frame's upload budget is charged
+	d["sent_bytes"] = sent; // what the arrays handed to the engine hold
+	d["error_m"] = error;
+	d["thin_quads"] = thin_quads;
+	d["down_faces"] = down_faces;
+	d["part_least_m"] = far_part_least();
+	d["roof_boxes"] = roof_boxes; // what stands on the roofs, a box each, that the far level's distance shows
+	d["boxes_left"] = boxes_left; // and what it does not show, left out
+	return d;
+}
+
 Dictionary BuildingRenderer::building_cost() const {
 	static const char *const NAMES[HELD_KINDS] = { "near_walls", "near_panes", "near_guards", "near_cards", "near_pieces", "mid_walls", "mid_panes", "mid_cards" };
 	std::array<Held, HELD_KINDS> sum;

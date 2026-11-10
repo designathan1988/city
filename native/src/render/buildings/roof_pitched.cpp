@@ -24,6 +24,7 @@ struct Pitch {
 	Lin roof, fascia, soffit, wall;
 	int8_t roof_fin, trim_fin, wall_fin;
 	const RoofHide *hide = nullptr; // what a taller volume of a body cut open encloses is left out
+	bool lean = false; // the far level: the planes and the walls under them alone (no underside, edge board or cap: none shows from there)
 	Vector3 p(float u, float sv, float z) const { return R.at(u, sv, z); }
 	void tri(const Vector3 &a, const Vector3 &b, const Vector3 &c, const Vector3 &out, const Lin &lin, int8_t fin) {
 		if (hide) hide->tri(s, a, b, c, out, lin, fin);
@@ -35,6 +36,7 @@ struct Pitch {
 	}
 	// A box along the ridge frame's u axis (ridge cap, glazing mullion), minus the stretches that are enclosed.
 	void along(float u0, float u1, float s0, float s1, float z0, float z1, const Lin &lin, int8_t fin) {
+		if (lean) return;
 		Basis f{ R.o, R.e0, R.e1, R.e2 };
 		if (!hide) {
 			s.box(f, u0, u1, s0, s1, z0, z1, lin, fin, SKIP_E2_NEG);
@@ -47,14 +49,15 @@ struct Pitch {
 		Vector3 down = -R.e2 * THICK;
 		if (n == 4) {
 			quad(q[0], q[1], q[2], q[3], out, roof, roof_fin);
-			quad(q[0] + down, q[1] + down, q[2] + down, q[3] + down, -out, soffit, trim_fin);
+			if (!lean) quad(q[0] + down, q[1] + down, q[2] + down, q[3] + down, -out, soffit, trim_fin);
 		} else {
 			tri(q[0], q[1], q[2], out, roof, roof_fin);
-			tri(q[0] + down, q[1] + down, q[2] + down, -out, soffit, trim_fin);
+			if (!lean) tri(q[0] + down, q[1] + down, q[2] + down, -out, soffit, trim_fin);
 		}
 	}
 	// The vertical face of the roof body under the edge a-b (eaves fascia, barge board).
 	void edge(const Vector3 &a, const Vector3 &b, const Vector3 &out) {
+		if (lean) return;
 		Vector3 down = -R.e2 * THICK;
 		quad(a, b, b + down, a + down, out, fascia, trim_fin);
 	}
@@ -125,6 +128,7 @@ void emit_pitched(Shell &shell, const Placed &pl, const Volume &v, float eaves) 
 	Lin trim = paint_lin(tp);
 	Pitch P{ shell, Basis{}, 0, 0, roof_slope(v), paint_lin(rp), trim * FASCIA, trim * SOFFIT, wall_lin(pl, v, v.storeys - 1, 0),
 		rp.finish, tp.finish, wp.finish };
+	P.lean = pl.lean;
 	shell.grime_floor = -FAR_AWAY;
 	RoofHide hidden(pl, v);
 	if (hidden.any()) P.hide = &hidden;

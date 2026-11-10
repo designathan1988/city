@@ -103,12 +103,6 @@ BuildingRenderer::Inputs BuildingRenderer::gather(const CityState &s, const int6
 
 // The near level's parts into their bands, sub-chunk by sub-chunk.
 void BuildingRenderer::file_parts(Built &out, std::array<b40::Shell, SUB_COUNT> &parts_shells) const {
-	auto band_of = [this](float thick) {
-		int band = 0;
-		while (band + 1 < BAND_COUNT && thick > look_.part_bands[size_t(std::min(band, int(look_.part_bands.size()) - 1))].thick_max)
-			band++;
-		return std::min(band, BAND_COUNT - 1);
-	};
 	for (size_t i = 0; i < SUB_COUNT; i++) {
 		b40::Shell &p = parts_shells[i];
 		std::array<std::vector<b40::BoxInstance>, BAND_COUNT> boxes;
@@ -259,8 +253,9 @@ BuildingRenderer::SuperBuilt BuildingRenderer::build_super_cpu(const Inputs &in,
 	b40::Shell &far = out.far_shell;
 	far.far_tones = &look_.finish_far;
 	far.rooms = true; // each side's windows, as the other levels code them
-	far.coarse = true;
 	far.custom_used = 1;
+	far.box_least = far_part_least(); // what stands on a roof is a box each (far_mass.cpp), held when its distance shows it
+	far.quad_least = far_error_m();
 	const int sx = key_x(super_key) * CHUNKS_PER_SUPER_AXIS, sz = key_y(super_key) * CHUNKS_PER_SUPER_AXIS;
 	for (const Building &rec : in.records) {
 		b40::Placed pl;

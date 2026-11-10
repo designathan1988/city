@@ -76,7 +76,7 @@ int Shell::vert(const Vector3 &p, const Vector3 &n, const Color &c, const Vector
 	uv.push_back(t);
 	uv2.push_back(t2);
 	if (rooms)
-		for (std::vector<uint32_t> &c : custom) c.push_back(0);
+		for (int i = 0; i < custom_used; i++) custom[i].push_back(0);
 	return int(pos.size()) - 1;
 }
 
@@ -96,6 +96,7 @@ Lin Shell::far_tint(const Lin &lin, int8_t fin) const {
 }
 
 void Shell::face(const Vector3 *p, int count, const Vector3 &out, const Lin &lin, int8_t fin, SurfaceKind kind) {
+	if (quad_least > 0 && count == 4 && std::min(p[0].distance_to(p[1]), p[0].distance_to(p[3])) < quad_least) return;
 	Vector3 n = (p[1] - p[0]).cross(p[2] - p[0]);
 	if (n.length_squared() < DEGENERATE && count == 4) n = (p[2] - p[1]).cross(p[3] - p[1]);
 	if (n.length_squared() < DEGENERATE) return;
@@ -132,6 +133,12 @@ void Shell::rect(const Basis &f, float a0, float a1, float b0, float b1, float c
 
 void Shell::box(const Basis &f, float a0, float a1, float b0, float b1, float c0, float c1, const Lin &lin, int8_t fin, uint8_t skip) {
 	if (a1 <= a0 || b1 <= b0 || c1 <= c0) return;
+	if (box_least > 0) {
+		const float m0 = a1 - a0, m1 = b1 - b0, m2 = c1 - c0;
+		const bool shown = m0 + m1 + m2 - std::min({ m0, m1, m2 }) - std::max({ m0, m1, m2 }) >= box_least;
+		(shown ? boxes_kept : boxes_left)++;
+		if (!shown) return;
+	}
 	if (box_sink && !tube(skip)) {
 		box_sink->shade = shade;
 		box_sink->tone = tone;
@@ -143,7 +150,7 @@ void Shell::box(const Basis &f, float a0, float a1, float b0, float b1, float c0
 		float lo = std::min({ m0, m1, m2 }), hi = std::max({ m0, m1, m2 });
 		Vector3 centre = f.at((a0 + a1) * 0.5f, (b0 + b1) * 0.5f, (c0 + c1) * 0.5f);
 		Vector3 e0 = f.e0 * m0, e1 = f.e1 * m1, e2 = f.e2 * m2;
-		Color c = shaded(centre, lin, false, SK_SHELL);
+		Color c = shaded(centre, far_tint(lin, fin), false, SK_SHELL);
 		auto byte = [](float v) { return uint32_t(std::clamp(v, 0.f, 1.f) * BYTE + 0.5f); };
 		constexpr int RGBA_R_SHIFT = 24, RGBA_G_SHIFT = 16, RGBA_B_SHIFT = 8;
 		BoxInstance inst;
@@ -260,7 +267,7 @@ void Shell::far_wall(const Vector3 p[4], const Vector3 &out, const Vector2 cell[
 	if (!rooms) return;
 	for (int i = base; i <= i3; i++) {
 		custom[0][size_t(i)] = pack(w.width, w.sill, w.head, float(w.flags) / BYTE);
-		custom[3][size_t(i)] = trim_code(w.trim, 0);
+		if (custom_used == CUSTOM_ARRAYS) custom[CUSTOM_ARRAYS - 1][size_t(i)] = trim_code(w.trim, 0); // the frame's colour: of the levels that draw one
 	}
 }
 
@@ -276,7 +283,7 @@ void Shell::bounds(Vector3 &mn, Vector3 &mx) const {
 int64_t Shell::bytes(bool with_uv2) const {
 	return int64_t((pos.size() + nrm.size()) * sizeof(Vector3) + col.size() * sizeof(Color) +
 			(uv.size() + (with_uv2 ? uv2.size() : 0)) * sizeof(Vector2) + idx.size() * sizeof(int32_t) +
-			(rooms ? pos.size() * CUSTOM_ARRAYS * sizeof(uint32_t) : 0));
+			(rooms ? pos.size() * size_t(custom_used) * sizeof(uint32_t) : 0));
 }
 
 void Shell::commit_to(const RID &mesh, bool with_uv2, bool blends) const {

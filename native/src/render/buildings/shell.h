@@ -119,12 +119,14 @@ struct Shell {
 	float grime_floor = -FAR_AWAY; // world height of the current block's floor (walls darken over its first 1.2 m)
 	float shade = 1.f; // extra multiplier (rain streak tops)
 	bool tone = true;
-	bool coarse = false; // mid/far levels: fewer sides on round pieces
 	bool instanced = false; // boxes become unit-cube instances; quads/tris still become geometry
 	Shell *box_sink = nullptr; // where this shell's boxes go, as instances: a row of a band in place of a dozen triangles in the mesh
 	bool rooms = false; // carries CUSTOM0..3 (the material reads them on panes and far walls alone)
-	int custom_used = CUSTOM_ARRAYS; // how many of them go to the GPU: the far level takes its windows' code alone
+	int custom_used = CUSTOM_ARRAYS; // how many of them it fills and sends, set before its first face: the far level takes its windows' code alone
 	const std::vector<Lin> *far_tones = nullptr; // the far level: each finish's colour from afar over the tint, by layer
+	float box_least = 0; // the far level: a box whose bar width (second largest side) is under this is not written (its distance shows none)
+	int boxes_kept = 0, boxes_left = 0; // of the boxes offered while `box_least` is set: written, and left out
+	float quad_least = 0; // the far level: a four-cornered face narrower than this is not written (under the error its distance allows)
 	Shell *sheer = nullptr; // where this shell's glass guards go: a surface drawn half seen through
 	Shell *washes = nullptr; // where this shell's lantern light goes: a surface added to what is behind it
 	Shell *lawns = nullptr; // where this shell's lawns go: a surface in the terrain's own grass

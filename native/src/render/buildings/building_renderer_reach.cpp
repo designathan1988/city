@@ -41,14 +41,42 @@ void BuildingRenderer::set_ranges(const CityState &s) {
 	mid_end_ = s.catalog.tune.render_building_mid_end_m;
 	bay_end_ = s.catalog.tune.render_building_bay_end_m;
 	far_end_ = s.catalog.tune.render_building_far_end_m;
-	float fov = look_.far_fov_deg > 0 ? look_.far_fov_deg : VIEW_ANGLE_FALLBACK;
-	float half_tan = std::tan(fov * PI_F / float(DEG_PER_TURN));
 	for (int i = 0; i < BAND_COUNT; i++) {
 		const b40::PartBand &pb = look_.part_bands[size_t(std::min(i, int(look_.part_bands.size()) - 1))];
-		float px = std::max(pb.px_min, MIN_SCREEN_PX);
-		band_end_[size_t(i)] = std::min(pb.thick_max * PROJECTION_HEIGHT / (2 * half_tan * px), far_end_);
+		band_end_[size_t(i)] = std::min(pb.thick_max * px_per_m() / std::max(pb.px_min, MIN_SCREEN_PX), far_end_);
 	}
 	for (int i = BAND_COUNT; i < BAND_DRAWS; i++) band_end_[size_t(i)] = band_end_[BAND_COUNT - 1];
+}
+
+float BuildingRenderer::px_per_m() const {
+	const float fov = look_.far_fov_deg > 0 ? look_.far_fov_deg : VIEW_ANGLE_FALLBACK;
+	return PROJECTION_HEIGHT / (2 * std::tan(fov * PI_F / float(DEG_PER_TURN)));
+}
+
+int BuildingRenderer::band_of(float thick) const {
+	int band = 0;
+	while (band + 1 < BAND_COUNT && thick > look_.part_bands[size_t(std::min(band, int(look_.part_bands.size()) - 1))].thick_max) band++;
+	return band;
+}
+
+float BuildingRenderer::part_reach(float thick) const {
+	const b40::PartBand &pb = look_.part_bands[size_t(std::min(band_of(thick), int(look_.part_bands.size()) - 1))];
+	return thick * px_per_m() / std::max(pb.px_min, MIN_SCREEN_PX);
+}
+
+// Read by the far level's jobs: from the tuning and the look, which stand as they are once the game is up. The width that reaches the
+// mid level's end by its own band's px_min; the thinnest such, as the bands go.
+float BuildingRenderer::far_part_least() const {
+	const float mid_end = state_->catalog.tune.render_building_mid_end_m;
+	for (const b40::PartBand &pb : look_.part_bands) {
+		const float least = mid_end * std::max(pb.px_min, MIN_SCREEN_PX) / px_per_m();
+		if (least <= pb.thick_max) return least;
+	}
+	return NEVER_M; // no band reaches that far: the far level holds no part
+}
+
+float BuildingRenderer::far_error_m() const {
+	return state_->catalog.tune.render_detail_error_px * state_->catalog.tune.render_building_mid_end_m / px_per_m();
 }
 
 // Chunk instances: near and mid hand over at the near end, once the near level stands: until then the mid level draws from

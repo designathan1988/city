@@ -62,6 +62,9 @@ public:
 	BuildingInteriorCost interior_cost(const CityState &s, int id, int level, int dir) const;
 	godot::Dictionary building_cost() const; // triangles and bytes of every level's surfaces, whole city as it stands (tests)
 	godot::Dictionary bay_census(); // how many bays the city has and how many different ones, at two grains of size
+	// The far level of every superchunk with a building, built on the spot and not drawn: what it holds, and what of it its nearest
+	// distance cannot show (tests).
+	godot::Dictionary far_form() const;
 	int pending() const; // what the view asks and has not got: unasked for want of budget, asked, or done and not yet drawn
 	BuildingViewNeed view_need() const;
 	// The chunk at a point as the frame left it (the tests read it): bit 0 near built, 1 mid built, 2 shown, 3 detail, 4 known, 5 far mesh.
@@ -186,6 +189,15 @@ private:
 		int64_t key;
 		uint8_t mask;
 	};
+	using SuperChunks = std::array<int64_t, size_t(SUPERCHUNK / CHUNK) * size_t(SUPERCHUNK / CHUNK)>;
+	static SuperChunks chunks_of(int64_t super_key); // the chunks of a superchunk, row by row
+	// The one rule of how far a part is drawn (lod.part_bands): until its bar width spans its band's px_min on the screen the levels are
+	// tuned for. The near level's bands end by it, and the far level holds a part only if it is still drawn where that level begins.
+	float px_per_m() const; // what a metre spans a metre away on that screen (lod.fov_deg, 1080 px high)
+	int band_of(float thick) const;
+	float part_reach(float thick) const;
+	float far_part_least() const; // the least bar width still drawn where the far level begins
+	float far_error_m() const; // what render.detail_error_px spans where the far level begins: a face narrower than this shows nothing there
 	Inputs gather(const CityState &s, const int64_t *chunk_keys, int count) const;
 	mutable std::mutex broken_mutex_; // the jobs gather on their own threads: they take the set published last, never a copy of it
 	std::shared_ptr<const std::unordered_set<uint32_t>> broken_ = std::make_shared<const std::unordered_set<uint32_t>>();
@@ -197,8 +209,7 @@ private:
 	static void put(MeshDraw &d, Surface &sf, const godot::RID &scenario, const godot::RID &material, bool shadows, bool shown,
 			RenderLayer layer);
 	void put_level(MeshDraw &d, Surface &sf, const godot::RID &glass, bool shown, RenderLayer layer, bool shadows = true) const;
-	static godot::PackedFloat32Array bake_band(const std::vector<b40::BoxInstance> &boxes);
-	static godot::PackedFloat32Array bake_props(const std::vector<b40::PropInstance> &props);
+	static godot::PackedFloat32Array bake_band(const std::vector<b40::BoxInstance> &boxes);	static godot::PackedFloat32Array bake_props(const std::vector<b40::PropInstance> &props);
 	static godot::PackedFloat32Array bake_bays(const std::vector<b40::BayInstance> &bays);
 	void commit_one(Built &b);
 	void fit_reach(Chunk &ch, const Built &b);
