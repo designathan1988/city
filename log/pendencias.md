@@ -97,6 +97,9 @@ O que falta fazer, por área.
     distance and the blinds' slats beat with the pixels (trace P34; the slats also show it on a still frame of the medium
     tier): a coping under a pixel folded into the parapet at the levels that draw it so small, the slats filtered by the
     pixel's footprint, and the owner's word on whether the low tier keeps no edge filter.
-  - At night the near level and the mid level do not agree on which rooms are lit (a near pane's lamp by its room's seed,
-    a mid bay's by a hash of the bay), so a window can change where the levels hand over (trace P36): one owner of the
-    lit rooms both levels read.
+  - The mid level's bay rows carry integers of 24 bits and, since P36, words of 30 bits as the bits of a float
+    (`shell.cpp` `Shell::bay`): exact on the RD renderers, where a MultiMesh row is 32-bit floats; the Compatibility
+    renderer packs colour and custom data in half floats, so there the bays' openings, colours and seeds were never exact
+    (so before P36 too). A row for that renderer, if the game is to be drawn by it, is still to be designed.
+  - Godot's static memory at km24 rose 3 to 4 MiB from one run to the next with no change between them (613, 614,
+    617 MiB at the centre, `log/performance.md` P36): not read for a cause.

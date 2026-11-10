@@ -11,11 +11,55 @@
 #include <shared_mutex>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 using namespace godot;
 
 namespace city {
+
+namespace {
+constexpr int PANE_CORNERS = 4, KIND_MASK = 7, BYTE_BITS = 8, FLOOR_BYTE_SHIFT = 24; // a pane's vertex code (shell.cpp Shell::pane)
+constexpr int SEED_BAY_BIT = 16, SEED_DARK_BIT = 24, SEED_FLOOR_BIT = 25; // where each lies in a seed_key
+constexpr float BYTE_MAX = 255.f;
+
+// A pane's seed as one number: its room, its bay byte, the darker glass and the room's floor.
+uint32_t seed_key(uint32_t slot, uint32_t bay, bool dark, uint32_t floor) {
+	return slot | bay << SEED_BAY_BIT | uint32_t(dark) << SEED_DARK_BIT | floor << SEED_FLOOR_BIT;
+}
+
+// The near level's panes of a body against the mid level's bays of the same body, each level laid as its job lays it.
+struct PaneAgreement {
+	int64_t panes = 0, bays = 0, unmatched = 0, shutters = 0, rooms = 0;
+	void add(const b40::Placed &pl) {
+		b40::Shell shell, parts, glass, mid;
+		glass.rooms = true;
+		shell.glass = &glass;
+		parts.instanced = true;
+		b40::emit_facades(shell, parts, pl);
+		b40::Placed coarse = pl;
+		coarse.coarse = true;
+		b40::emit_mid_bays(mid, coarse);
+		std::unordered_set<uint32_t> known, slots;
+		for (const b40::BayInstance &b : mid.bays) {
+			known.insert(seed_key(b.own.slot, b.own.bay, (b.own.state & b40::PANE_DARK_BIT) != 0, (b.own.state >> b40::PANE_FLOOR_SHIFT) & b40::PANE_FLOOR_MASK));
+			slots.insert(b.own.slot);
+			shutters += ((b.own.state >> b40::PANE_ROLL_SHIFT) & b40::PANE_ROLL_MASK) != 0 ? 1 : 0;
+		}
+		bays += int64_t(mid.bays.size());
+		rooms += int64_t(slots.size());
+		auto byte = [](float f) { return uint32_t(std::lround(f * BYTE_MAX)); };
+		for (size_t v = 0; v + PANE_CORNERS <= glass.col.size(); v += PANE_CORNERS) {
+			const Color &c = glass.col[v];
+			const uint32_t kind = byte(c.a) & KIND_MASK;
+			if (kind == b40::SK_PANE_CLEAR) continue; // no room behind it
+			panes++;
+			const uint32_t key = seed_key(byte(c.r) | byte(c.g) << BYTE_BITS, byte(c.b), kind == b40::SK_PANE_DARK, glass.custom[0][v] >> FLOOR_BYTE_SHIFT);
+			unmatched += known.count(key) == 0 ? 1 : 0;
+		}
+	}
+};
+} // namespace
 
 int BuildingRenderer::pending() const {
 	std::lock_guard<std::mutex> lk(queue_mutex_);
@@ -50,6 +94,7 @@ Dictionary BuildingRenderer::bay_census() {
 	std::unordered_map<std::string, int64_t> fine, coarse;
 	std::array<int64_t, b40::BAY_COUNT> by_comp{};
 	int64_t bays = 0, buildings = 0;
+	PaneAgreement panes;
 	std::vector<Building> records;
 	{
 		MapRead lk(s); // for the copy of the records alone
@@ -74,6 +119,7 @@ Dictionary BuildingRenderer::bay_census() {
 			fine[key(FINE, c, o)]++;
 			coarse[key(COARSE, c, o)]++;
 		});
+		panes.add(pl);
 	}
 	const auto cover = [](const std::unordered_map<std::string, int64_t> &m, int64_t total) {
 		std::vector<int64_t> counts;
@@ -104,6 +150,11 @@ Dictionary BuildingRenderer::bay_census() {
 	Array comps;
 	for (int64_t n : by_comp) comps.push_back(n);
 	d["by_component"] = comps;
+	d["near_panes"] = panes.panes; // the near level's panes with a room behind them
+	d["mid_bays"] = panes.bays; // the mid level's openings, an instance each
+	d["panes_unmatched"] = panes.unmatched; // near panes whose room, bay byte, glass and floor no mid bay of the building carries
+	d["mid_shutters"] = panes.shutters; // mid bays with a roller shutter part way down
+	d["mid_rooms"] = panes.rooms; // the rooms the mid level's bays light by, a building at a time
 	return d;
 }
 

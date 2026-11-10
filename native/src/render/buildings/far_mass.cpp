@@ -7,8 +7,7 @@
 #include "sim/buildings/b40/gen.h"
 #include "render/buildings/roof_util.h"
 
-#include "core/random.h"
-
+#include <unordered_map>
 #include <vector>
 
 using namespace godot;
@@ -84,60 +83,99 @@ void wall_rect(Shell &s, const Placed &pl, const Volume &v, const Side &sd, floa
 	s.far_wall(p, sd.f.e2, cell, wall_lin(pl, v, k, sd.side), fin, pl.id, windows_of(pl, v, k, sd.side, W, b.level_h(v.base + k), comp));
 }
 
+// A side of a block as the mid level walks it, bay by bay, and the bay `i` of its storey `k` as the near level has it
+// (facade_bay.h bay_on_plan): false for a bay another block covers whole.
+struct MidSide {
+	const Placed &pl;
+	const Volume &v;
+	int vol;
+	const Side &sd;
+	int n;
+	float W;
+	int8_t fin;
+	bool bay(BayCtx &c, int k, int i) const {
+		c.W = W; c.H = pl.b->level_h(v.base + k); c.level = v.base + k; c.geo = &v.faces[sd.side];
+		c.comp = bay_at(v, k, sd.side, i);
+		return bay_on_plan(c, *pl.b, v, vol, sd, i);
+	}
+};
+
+// The rooms of a body's levels, each divided once however many sides ask (interior.h spaces_at), and what the building is for: what
+// the mid level's bays light by, the very ones the near level's panes have (building_bodies.cpp makes its rooms of the same).
+struct LevelRooms {
+	const Placed &pl;
+	Purpose purpose;
+	std::unordered_map<int, std::vector<Space>> known;
+	explicit LevelRooms(const Placed &placed) : pl(placed), purpose(purpose_of(*placed.whole, placed.fn, placed.id)) {}
+	const std::vector<Space> &at(int level) {
+		auto it = known.find(level);
+		if (it == known.end()) it = known.emplace(level, spaces_at(*pl.data, *pl.whole, purpose, level)).first;
+		return it->second;
+	}
+};
+
 // The bays with an opening past the geometry's reach: rectangles of one component and one push, the side's real composition at one
 // quad for many bays, because a shader run over a bay of a few pixels costs its quads several times over.
-template <typename Open>
-void flat_bays(Shell &s, const Placed &pl, const Volume &v, const Side &sd, int n, float W, int8_t fin, const Open &open) {
+void flat_bays(Shell &s, const MidSide &m) {
+	const Placed &pl = m.pl;
+	const Volume &v = m.v;
+	const Side &sd = m.sd;
 	const Body &b = *pl.b;
-	auto opening = [&](int k, int i) {
-		BayCtx c;
-		c.W = W; c.H = b.level_h(v.base + k); c.level = v.base + k; c.geo = &v.faces[sd.side];
-		c.comp = bay_at(v, k, sd.side, i);
-		return opening_of(*pl.data, c).has;
-	};
+	std::vector<char> opens(size_t(m.n) * size_t(v.storeys), 0); // the bays with an opening, as side_bays lays them
+	for (int k = 0; k < v.storeys; k++)
+		for (int i = 0; i < m.n; i++) {
+			BayCtx c;
+			opens[size_t(k) * size_t(m.n) + size_t(i)] = m.bay(c, k, i) && opening_of(*pl.data, c).has;
+		}
+	auto open = [&](int k, int i) { return opens[size_t(k) * size_t(m.n) + size_t(i)] != 0; };
 	s.grime_floor = pl.lot.o.y + b.level_z(v.base);
-	rectangles(v.storeys, n, [&](int k, int i) { return open(k, i) && opening(k, i); },
+	rectangles(v.storeys, m.n, open,
 			[&](int k, int i, int k0, int i0) {
 				return open(k, i) && bay_at(v, k, sd.side, i) == bay_at(v, k0, sd.side, i0) &&
 						relief_push(v, sd.side, i, k) == relief_push(v, sd.side, i0, k0) && b.level_h(v.base + k) == b.level_h(v.base + k0);
 			},
-			[&](int k, int i, int k1, int i1) { wall_rect(s, pl, v, sd, W, fin, k, i, k1, i1, relief_push(v, sd.side, i, k), Vector2(0, 0), bay_at(v, k, sd.side, i)); });
+			[&](int k, int i, int k1, int i1) { wall_rect(s, pl, v, sd, m.W, m.fin, k, i, k1, i1, relief_push(v, sd.side, i, k), Vector2(0, 0), bay_at(v, k, sd.side, i)); });
 }
 
-// The mid level's wall of a side, bay by bay as the near level has it: each opening an instance (bay_kit.h), the blank bays in
-// rectangles of one push, and behind them all the plain side, which no eye reaches and which throws the building's shadow.
-// The openings of a side, each an instance (bay_kit.h); `done` (storeys x bays), when given, gets the cells that are not blank wall:
-// the covered ones and those with an opening.
-void side_bays(Shell &s, const Placed &pl, const Volume &v, const Side &sd, int n, float W, int8_t fin, std::vector<char> *done) {
+// The openings of a side, each an instance (bay_kit.h) with the seed of the near level's pane of the same bay; `done` (storeys x
+// bays), when given, gets the cells that are not blank wall: the ones covered whole and those with an opening.
+void side_bays(Shell &s, const MidSide &m, LevelRooms &rooms, std::vector<char> *done) {
+	const Placed &pl = m.pl;
 	const Body &b = *pl.b;
-	const OpenCell open{ b, v, sd, W };
-	for (int k = 0; k < v.storeys; k++) {
-		const float H = b.level_h(v.base + k), z = b.level_z(v.base + k);
-		for (int i = 0; i < n; i++) {
-			const size_t cell = size_t(k) * size_t(n) + size_t(i);
-			if (!open(k, i)) {
+	for (int k = 0; k < m.v.storeys; k++) {
+		const int level = m.v.base + k;
+		const float z = b.level_z(level);
+		for (int i = 0; i < m.n; i++) {
+			const size_t cell = size_t(k) * size_t(m.n) + size_t(i);
+			BayCtx c;
+			if (!m.bay(c, k, i)) {
 				if (done) (*done)[cell] = 1;
 				continue;
 			}
-			BayCtx c;
-			c.W = W; c.H = H; c.level = v.base + k; c.geo = &v.faces[sd.side];
-			c.comp = bay_at(v, k, sd.side, i);
 			const Opening o = opening_of(*pl.data, c);
 			if (!o.has) continue;
 			if (done) (*done)[cell] = 1;
-			const Basis f{ sd.f.at(W * float(i), z, relief_push(v, sd.side, i, k)), sd.f.e0, sd.f.e1, sd.f.e2 };
-			s.bay(f, W, H, wall_lin(pl, v, k, sd.side), fin, hash_combine(pl.id, uint32_t(k * n + i)), windows_of(pl, v, k, sd.side, W, H, c.comp), o.depth);
+			const Basis f{ m.sd.f.at(m.W * float(i), z, relief_push(m.v, m.sd.side, i, k)), m.sd.f.e0, m.sd.f.e1, m.sd.f.e2 };
+			s.bay(f, m.W, c.H, wall_lin(pl, m.v, k, m.sd.side), m.fin, windows_of(pl, m.v, k, m.sd.side, m.W, c.H, c.comp), o.depth,
+					pane_seed(pl, c, o.a0, o.a1, rooms.purpose, rooms.at(level)));
 		}
 	}
 }
 
-void bay_walls(Shell &s, const Placed &pl, const Volume &v, const Side &sd, int n, float W, int8_t fin) {
+// The mid level's wall of a side, bay by bay as the near level has it: each opening an instance, the blank bays in rectangles of
+// one push, and behind them all the plain side, which no eye reaches and which throws the building's shadow.
+void bay_walls(Shell &s, const MidSide &m, LevelRooms &rooms) {
+	const Placed &pl = m.pl;
+	const Volume &v = m.v;
+	const Side &sd = m.sd;
+	const int n = m.n;
+	const float W = m.W;
+	const int8_t fin = m.fin;
 	const Body &b = *pl.b;
-	const OpenCell open{ b, v, sd, W };
 	std::vector<char> done(size_t(n) * size_t(v.storeys), 0);
 	auto cell_of = [&](int k, int i) -> char & { return done[size_t(k) * size_t(n) + size_t(i)]; };
-	side_bays(s, pl, v, sd, n, W, fin, &done);
-	if (s.flat) flat_bays(*s.flat, pl, v, sd, n, W, fin, open);
+	side_bays(s, m, rooms, &done);
+	if (s.flat) flat_bays(*s.flat, m);
 	auto blank = [&](int k, int i, int k0, int i0) {
 		return !cell_of(k, i) && relief_push(v, sd.side, i, k) == relief_push(v, sd.side, i0, k0) && b.level_h(v.base + k) == b.level_h(v.base + k0);
 	};
@@ -181,7 +219,7 @@ float parapet_h(const Body &b, const Volume &v) {
 	return v.crown == CROWN_ATTIC ? ATTIC_H : ROOF_EDGE_H;
 }
 
-void walls(Shell &s, const Placed &pl, const Volume &v, bool roofs) {
+void walls(Shell &s, const Placed &pl, const Volume &v, int vol, bool roofs, LevelRooms &rooms) {
 	const Body &b = *pl.b;
 	float z0 = b.level_z(v.base);
 	const float ph = parapet_h(b, v);
@@ -194,7 +232,7 @@ void walls(Shell &s, const Placed &pl, const Volume &v, bool roofs) {
 		int8_t fin = b.wall_of(v).finish;
 		s.grime_floor = pl.lot.o.y + z0;
 		if (pl.lean) lean_walls(s, pl, v, sd, n, W, fin);
-		else bay_walls(s, pl, v, sd, n, W, fin);
+		else bay_walls(s, MidSide{ pl, v, vol, sd, n, W, fin }, rooms);
 		float top = b.level_z(v.top());
 		if (parapet) {
 			s.rect(Basis{ sd.f.o + sd.f.e1 * top, sd.f.e0, sd.f.e1, sd.f.e2 }, 0, sd.length, 0, ph, 0, wall_lin(pl, v, v.storeys - 1, sd.side), fin);
@@ -230,12 +268,14 @@ void roof(Shell &s, const Placed &pl, const Volume &v, int vol) {
 } // namespace
 
 void emit_mid_bays(Shell &shell, const Placed &whole) {
-	for (const Volume &v : whole.b->volumes) {
+	LevelRooms rooms(whole);
+	for (size_t i = 0; i < whole.b->volumes.size(); i++) {
+		const Volume &v = whole.b->volumes[i];
 		Placed raised;
 		const Placed &pl = block_frame(whole, v, raised);
 		for (const Side &sd : sides_of(pl, v, 0)) {
 			const int n = bays_of(v, sd.side);
-			side_bays(shell, pl, v, sd, n, sd.length / float(n), whole.b->wall_of(v).finish, nullptr);
+			side_bays(shell, MidSide{ pl, v, int(i), sd, n, sd.length / float(n), whole.b->wall_of(v).finish }, rooms, nullptr);
 		}
 	}
 }
@@ -254,11 +294,12 @@ void emit_cast(Shell &shell, const Placed &whole) {
 }
 
 void emit_far(Shell &shell, const Placed &whole, bool roofs) {
+	LevelRooms rooms(whole);
 	for (size_t i = 0; i < whole.b->volumes.size(); i++) {
 		const Volume &v = whole.b->volumes[i];
 		Placed raised;
 		const Placed &pl = block_frame(whole, v, raised);
-		walls(shell, pl, v, roofs);
+		walls(shell, pl, v, int(i), roofs, rooms);
 		if (roofs) roof(shell, pl, v, int(i));
 	}
 }

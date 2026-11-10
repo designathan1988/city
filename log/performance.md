@@ -338,3 +338,39 @@ Measured once, at `4c1d932d`, the same plan (`info` and 5 s of `usage` at each v
   frame; every number stays under the base (centre: 5,454 MiB, 1,351 MiB, 16.2 ms). Photos 00 to 09 of this run, read
   in `analysis.md`: the far towers shaded on one side and the streets and parks between them in their shade across
   the whole picture, from 1.2 km and from 2.6 km; no patch without shadows, none doubled where chunks stand in detail.
+
+## P36, P39, P40 (2026-11-10, evening): a window is the same window at every level
+
+A defect, not a cost; recorded here because the line's measures are.
+
+- Problem (P36): the near level lit a pane by its room (awake or asleep as one, by the room's seed of
+  `pane_rooms.cpp`), 64 % of an awake room's panes, each at its own level and lamp; the mid level lit every awake bay by a
+  hash of its own, at one level; the far level the same with no level at all. A window changed its light, its lamp, its
+  dark glass and its roller shutter where the levels hand over, and the mid and far levels showed 1.56 times the lit
+  windows of the near level, brighter. The signature buildings wrote the rule a third time (P40).
+- Problem (P39), found on the way: the mid level tested a bay's cover at its middle alone, the near level at three points
+  (a bay partly behind another block is a blank wall): a window appeared on such a wall from afar.
+- Fix, one owner each:
+  - What a bay's pane is (`shell.h` `PaneSeed`: its room's seed, the bay's byte, its darker glass, its shutter's step,
+    its room's floor) comes from `pane_rooms.cpp` `pane_seed` for both levels; the mid level asks it with the level's
+    rooms alone (`interior.h` `spaces_at`: the homes or offices of a level, no furnished interior), the purpose and body
+    the near level's rooms are made of. A bay on the plan (hash, frame, cover) is `facade_bay.h` `bay_on_plan` for both.
+  - The mid bay's row carries the seed with no float more: each of its four custom floats is a word of thirty bits
+    (24 of its own, six of the seed) carried as the float's own bits, its exponent kept that of a normal number
+    (`shell.cpp` `Shell::bay`, `building_bay.gdshaderinc` `bay_word`, `floatBitsToUint`).
+  - Who is lit is `building_lamps.gdshaderinc` (`pane_light`, `cell_light`, `pane_light_mean`, `lamp_on_room`): the near
+    pane and the mid bay take the same function of the same seeds; a far wall's cell and the far level, with no room
+    known, take the rule's share and mean level; the signature buildings its share and level. By day no lamp is worked out.
+- Test: `tests/core/pane_seed_test` (probe `bay_census`, every building of the town laid as each level's job lays it):
+  145,539 near panes, 148,560 mid bays, no near pane without a mid bay of its room, bay byte, glass and floor; 7,353
+  bays carry a shutter; 17,137 rooms in 1,368 buildings. `pipeline_test` (Forward+) still makes no pipeline on the frame.
+- Measured, the same plan, three runs after against the one before (`2ca388ac`): nothing moved past the spread of the
+  runs themselves. Centre: GPU 11.98, 12.11 and 12.03 ms (11.72 before; a single reading inside one run goes from 11.6 to
+  12.4), video 3,232, 3,234 and 3,248 MiB (3,227), static 613, 614 and 617 MiB (608), the same 3.79 M primitives and
+  2.03 M shadow primitives. 9 km out: 10.89, 11.04 and 11.25 ms (10.84), 1,827, 1,823 and 1,837 MiB (1,824), 407, 408 and
+  411 MiB (402). The static memory rose a few MiB from run to run with no change between the last two: not read for a
+  cause. Every number is under the base.
+- Photos (`dist/trace/port-from-nov7/photos`, read in `analysis.md`): the test town at night from the street to 1.8 km
+  and by day, the 24 km city at night from the street and from 2.6 km: lit windows stand in patches by room at every
+  distance, white and warm lamps, shutters and dark panes on the mid bays, nothing garbled in the bays' walls, trims or
+  openings. Still open (P11): from 2.6 km the far city reads as one tan field.

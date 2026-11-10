@@ -23,6 +23,7 @@ constexpr Purpose TALL_SHOPS[] = { PU_SHOP, PU_RESTAURANT, PU_BANK, PU_HOTEL, PU
 constexpr int SHOP_PICKS = 8;
 
 float module_of(const Data &data, const Body &b) { return data.styles[size_t(b.style) % data.styles.size()].module; }
+bool lived_in(Purpose p) { return p == PU_HOUSE || p == PU_FLATS; } // its floors are divided in homes
 
 float at_ref(const Plan &p, const Ref &r) {
 	const float base[EDGE_COUNT] = { p.x0, p.x1, p.y0, p.y1, p.cx(), p.cy(), p.y_start() };
@@ -212,6 +213,16 @@ std::vector<LevelFlight> level_flights(const Body &b, int level) {
 	return out;
 }
 
+std::vector<Space> spaces_at(const Data &data, const Body &b, Purpose purpose, int level) {
+	std::vector<Space> out;
+	const float module = module_of(data, b);
+	for (size_t i = 0; i < b.volumes.size(); i++) {
+		const Volume &v = b.volumes[i];
+		if (level >= v.base && level < v.top()) spaces_of(b, v, int(i), level, module, lived_in(purpose), out);
+	}
+	return out;
+}
+
 std::string Interior::type_of(int level) const {
 	if (body_.furnishing.count(level) != 0) return "p" + std::to_string(level); // a floor the player arranged is like no other
 	std::string key = level == 0 ? "g" : "u";
@@ -235,7 +246,7 @@ const FloorInterior &Interior::at(int level) {
 	if (!floor) {
 		floor = std::make_unique<FloorInterior>();
 		const float module = module_of(data_, body_);
-		const bool residential = purpose_ == PU_HOUSE || purpose_ == PU_FLATS;
+		const bool residential = lived_in(purpose_);
 		auto stored = body_.furnishing.find(level); // a floor the player furnished keeps the made partitions and spaces, its own pieces
 		for (size_t i = 0; i < body_.volumes.size(); i++) {
 			const Volume &v = body_.volumes[i];

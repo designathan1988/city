@@ -96,19 +96,31 @@ PaneRoom room_at(const Placed &pl, const BayCtx &c, const FloorInterior &floor, 
 	return r;
 }
 
-uint16_t slot_of(const Placed &pl, const BayCtx &c, const FloorInterior &floor, float qx, float qy) {
+uint16_t slot_of(const Placed &pl, const BayCtx &c, const std::vector<Space> &spaces, float qx, float qy) {
 	uint32_t h = fnv(fnv(fnv(FNV_BASIS, int32_t(pl.id)), c.level), c.vol);
-	for (const Space &s : floor.spaces)
+	for (const Space &s : spaces)
 		if (s.volume == c.vol && qx >= s.x && qx <= s.x + s.w && qy >= s.y && qy <= s.y + s.d)
 			return uint16_t(fnv(fnv(h, int32_t(std::lround(s.x * CORNER_Q))), int32_t(std::lround(s.y * CORNER_Q))) & SLOT_MASK);
 	return uint16_t(fnv(h, int32_t(c.hash)) & SLOT_MASK);
 }
+
+uint8_t bay_byte(const BayCtx &c) { return uint8_t((c.hash >> BAY_BYTE_SHIFT) & BAY_BYTE); } // a pane's own: its lamp, what hangs in it
 } // namespace
+
+PaneSeed pane_seed(const Placed &pl, const BayCtx &c, float a0, float a1, Purpose purpose, const std::vector<Space> &spaces) {
+	const float am = (a0 + a1) / 2;
+	const float px = c.plan_at.x + c.plan_along.x * am, py = c.plan_at.y + c.plan_along.y * am;
+	PaneSeed own;
+	own.slot = slot_of(pl, c, spaces, px - c.plan_out.x * INSIDE, py - c.plan_out.y * INSIDE);
+	own.bay = bay_byte(c);
+	own.state = uint8_t(pane_state(c) | int(floor_finish(purpose, c.level, pl.id)) << PANE_FLOOR_SHIFT);
+	return own;
+}
 
 PaneLook pane_look(const Placed &pl, const BayCtx &c, float a0, float a1, float h0, float h1, bool dark, float frame) {
 	PaneLook look;
 	look.dark = dark;
-	look.bay = uint8_t((c.hash >> BAY_BYTE_SHIFT) & BAY_BYTE);
+	look.bay = bay_byte(c);
 	look.trim = c.trim;
 	look.frame = frame;
 	look.plain = !pl.rooms;
@@ -116,7 +128,7 @@ PaneLook pane_look(const Placed &pl, const BayCtx &c, float a0, float a1, float 
 	const float am = (a0 + a1) / 2, hm = (h0 + h1) / 2;
 	const float px = c.plan_at.x + c.plan_along.x * am, py = c.plan_at.y + c.plan_along.y * am;
 	const FloorInterior &floor = pl.rooms->floor(c.level);
-	look.slot = slot_of(pl, c, floor, px - c.plan_out.x * INSIDE, py - c.plan_out.y * INSIDE);
+	look.slot = pane_seed(pl, c, a0, a1, pl.rooms->purpose(), floor.spaces).slot;
 	uint64_t key = uint64_t(reinterpret_cast<uintptr_t>(&floor));
 	for (float v : { px, py, c.plan_out.x, c.plan_out.y, hm, c.H }) key = mix(key, v);
 	look.room = pl.rooms->room(key, [&]() { return room_at(pl, c, floor, px, py, hm); });

@@ -69,15 +69,17 @@ void fragment() {
 		float lot = h01(uint(room.x + 512.0) * 131u + uint(room.y + 512.0) * 7177u);
 		float sub = smoothstep(0.5, 1.5, max(foot.x, foot.y));
 		float office = (int(COLOR.a * 255.0 + 0.5) & OFFICE_BIT) != 0 ? 1.0 : 0.0;
-		vec3 lamp = mix(room_lamp(fract(lot * 17.31), office), room_lamp_mean(office), sub);
-		float lit = mix(step(1.0 - rooms_awake, lot), rooms_awake, sub) * building_night_windows;
-		// the glass of the levels before it (building_far_window.gdshaderinc): next to nothing scattered, the room through it and the sky on it
+		// the glass of the levels before it (building_far_window.gdshaderinc): next to nothing scattered, the room through it and the sky on
+		// it; its lamp by the rule of every level (building_lamps.gdshaderinc), a cell by its own lot, the mean under a pixel
 		vec3 V = normalize(v_world - CAMERA_POSITION_WORLD);
 		float cosv = clamp(dot(-V, n), 0.0, 1.0);
 		float fresnel = 0.04 + 0.96 * pow(1.0 - cosv, 5.0);
+		vec3 seen = pane_mean(room_tone(V, n, office > 0.5 ? FLOOR_STONE : FLOOR_HOME)) * (1.0 - fresnel);
+		vec3 lamp = vec3(0.0);
+		if (night > 0.0) lamp = lamp_on_room(mix(cell_light(lot, office), pane_light_mean(office), sub), seen) * building_night_windows;
 		albedo = mix(albedo, PANE_ALBEDO, m) * mix(FOOT_SHADE, 1.0, smoothstep(0.0, FOOT_STOREYS, UV.y));
 		rough = mix(rough, 0.35, m);
-		emit = ((lamp * lit * night * window_glow + pane_mean(room_tone(V, n, FLOOR_HOME)) * room_daylight) * (1.0 - fresnel) + glass_reflection(V, n, fresnel, GLASS_ENV)) * m;
+		emit = (lamp * night * window_glow + seen * room_daylight + glass_reflection(V, n, fresnel, GLASS_ENV)) * m;
 	}
 	albedo *= wall_gain;
 	if (kind == 4) emit += albedo * night;

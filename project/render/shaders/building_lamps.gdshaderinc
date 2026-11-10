@@ -1,4 +1,4 @@
-// What a lit window is, for every level of the buildings: the lamp of a room and the filtered window grid.
+// What a lit window is, for every level of the buildings: the lamp of a room, who is lit, and the filtered window grid.
 //
 // A black body's colour at a temperature, linear and of luminance 1: M. Charity's sRGB table of the Planckian locus,
 // checked against Kang et al. 2002 (within 4 of 255 on every channel). Homes mix warm 2700-3500 K lamps with cool white
@@ -25,6 +25,28 @@ vec3 tv_light(float clock, float lot) {
 	float shimmer = 0.92 + 0.08 * sin(clock * 11.0 + lot * 40.0);
 	return LAMP_9000 * (0.45 + 0.45 * cut) * shimmer;
 }
+
+// Who is lit, the one rule of every level. A room is awake or asleep as one (`slot`, its seed: pane_rooms.cpp pane_seed); of an awake
+// room's panes LIT_SHARE are lit, each at its own level and lamp, a television alone in TV_SHARE of the homes' (`lot`, the pane's own,
+// of its room and its bay byte): a wide floor is lit in patches, never all or nothing. A level that draws a pane of its own takes
+// pane_light; one that draws many under a pixel, or cells with no room known, the mean of it.
+const float LIT_SHARE = 0.64;
+const float LIT_LEVEL_MEAN = 0.5125; // the mean of pane_level: 0.3 + 0.85 x the mean of two lots' product, a quarter
+const float TV_SHARE = 0.12;
+float pane_lot(uint slot, uint bay) { return h01(bay * 7919u + slot * 31u + 1u); }
+float pane_level(float lot) { return 0.3 + 0.85 * fract(lot * 7.13) * fract(lot * 2.17 + 0.4); }
+vec3 pane_light(uint slot, float lot, float office) {
+	float awake = step(1.0 - rooms_awake, h01(slot * 2654435761u + 977u));
+	float lit = step(fract(lot * 5.31), LIT_SHARE) * awake * pane_level(lot);
+	vec3 tint = room_lamp(fract(lot * 17.31), office);
+	tint = mix(tint, tv_light(TIME, lot), (1.0 - office) * step(1.0 - TV_SHARE, fract(lot * 3.71)));
+	return tint * lit;
+}
+// A cell with no room known (a far wall's): lit by its own lot, at the rule's share and mean level.
+vec3 cell_light(float lot, float office) { return room_lamp(fract(lot * 17.31), office) * step(1.0 - rooms_awake * LIT_SHARE, lot) * LIT_LEVEL_MEAN; }
+vec3 pane_light_mean(float office) { return room_lamp_mean(office) * rooms_awake * LIT_SHARE * LIT_LEVEL_MEAN; }
+// A lamp's light as it leaves its window: over what the room shows through the glass (`seen`).
+vec3 lamp_on_room(vec3 light, vec3 seen) { return light * (vec3(0.35) + 1.3 * clamp(seen / 0.55, vec3(0.0), vec3(1.6))); }
 
 // A pulse [a0, a1) repeated every 1, seen through a pixel w periods wide (Heckbert's summed-area idea applied to an analytic
 // pattern, as in Quilez's "filterable procedurals"): the box over the first integral while a period holds many pixels, a tent

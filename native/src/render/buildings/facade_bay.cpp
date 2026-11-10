@@ -90,6 +90,11 @@ void closing(Shell &s, const Placed &pl, const BayCtx &c, const Opening &o) {
 }
 } // namespace
 
+uint8_t pane_state(const BayCtx &c) {
+	const int roll = rolled(c) ? int(c.hash % PICKS) - ROLL_FROM + 1 : 0;
+	return uint8_t((dark_pane(c) ? PANE_DARK_BIT : 0) | roll << PANE_ROLL_SHIFT);
+}
+
 PaneDark pane_dark(uint8_t comp) {
 	switch (comp) {
 		case BAY_WINDOW: return PANE_DARK_PICK;

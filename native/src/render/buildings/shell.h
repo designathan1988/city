@@ -48,6 +48,16 @@ struct PaneLook {
 	float recess = 0; // metres of opening the pane draws behind the wall's face, the glass at its back (0: none)
 };
 
+// What the pane of a bay is, the same at every level that draws the bay (pane_rooms.cpp pane_seed): its room's seed (the room is awake
+// or asleep as one), the bay's own byte (its lamp, what hangs in it) and its state: bit 0 the darker glass, bits 1-3 how far its
+// roller shutter is down (0 none, else the step + 1: facade_bay.cpp pane_state), bits 4-5 the room's floor (interior.h FloorFinish:
+// stone takes the office lamps).
+constexpr int PANE_DARK_BIT = 1, PANE_ROLL_SHIFT = 1, PANE_ROLL_MASK = 7, PANE_FLOOR_SHIFT = 4, PANE_FLOOR_MASK = 3;
+struct PaneSeed {
+	uint16_t slot = 0;
+	uint8_t bay = 0, state = 0;
+};
+
 // What a card draws (building_card.gdshader cardOn).
 enum CardKind : uint8_t { CARD_ROOF_RAILING = 2, CARD_RAILING_FRONT, CARD_RAILING_SIDE, CARD_BRISE };
 
@@ -81,12 +91,15 @@ struct BoxInstance {
 };
 
 // One bay of the mid level, an instance of the shared mesh (bay_kit.h): its axes along the bay, up it and out of the wall, the first
-// two as long as the bay and the third a metre, then four exact integers as floats (building_bay.gdshaderinc): the opening's shares,
-// the wall's and the trim's sRGB, and the seed, finish, window flags and depth.
+// two as long as the bay and the third a metre, then four words of thirty bits, each carried as a float's own bits
+// (building_bay.gdshaderinc bay_word): 24 bits of its own (the opening's shares; the wall's sRGB; the trim's; the pane's state,
+// finish, window flags and depth) and six of the pane's seed (its room's 16 bits, then its bay byte), as the near level's pane of
+// the same bay has it. `own`: that seed whole, for who reads the shell.
 struct BayInstance {
 	float basis[BOX_BASIS_FLOATS] = {};
 	float origin[3] = {};
 	float shares = 0, wall = 0, trim = 0, code = 0;
+	PaneSeed own;
 };
 
 // A piece of bay_props.h: which model, its axes with their scale and where it stands.
@@ -150,7 +163,7 @@ struct Shell {
 	// A railing's face at e2 = c: one quad, its bars drawn by building_card.gdshader, so they hold at any distance.
 	void card(const Basis &f, float a0, float a1, float b0, float b1, float c, const Lin &lin, CardKind kind, float share = 0);
 	// A bay with an opening, `f` at its left end on the storey floor: an instance, no triangles (bay_kit.h).
-	void bay(const Basis &f, float W, float H, const Lin &wall, int8_t fin, uint32_t seed, const FarWindows &w, float depth);
+	void bay(const Basis &f, float W, float H, const Lin &wall, int8_t fin, const FarWindows &w, float depth, const PaneSeed &own);
 	// A glass pane of w x h metres at e2 = c.
 	void pane(const Basis &f, float a0, float a1, float b0, float b1, float c, const PaneLook &look);
 	// A far wall rectangle carrying painted windows: uv = (bays, storeys) at its corners.

@@ -8,7 +8,6 @@ const float ROOM_SPAN_M = 12.75; // a byte's 1.0, metres (shell.h ROOM_SPAN_M)
 const float FRAME_SPAN_M = 0.255; // a byte's 1.0 of the frame's thickness (shell.h FRAME_SPAN_M)
 const float FRAME_SHARE = 0.045; // the border of the frame, of the pane's side (buildings.json parts.frame_bar_m)
 const float FRAME_OUT_M = 0.03; // the frame's middle in front of the glass
-const float TV_SHARE = 0.12; // the share of a home's lit rooms lit by a television alone
 const float TILE_M = 0.6, BOARD_M = 0.14, PLANK_M = 2.4, PANEL_GRID_M = 2.4;
 const float REVEAL_ALBEDO = 0.9; // the mean of the trim finishes' maps (render, stone, concrete)
 const float REVEAL_SHADE = 0.68, SILL_SHADE = 0.92, HEAD_SHADE = 0.544; // facade_bay.cpp: the sides, the sill, the head
@@ -190,23 +189,13 @@ vec3 room_hung(vec3 room, vec3 o, vec3 d, vec2 size, float lot) {
 	return mix(room, hung * 0.8, cover);
 }
 
-// The lamp of a room at night, multiplied by what the room shows. Who is awake is the room's; whether this stretch of it is lit and how much is `lot`, a bay's, as the
-// 4.0's vRoomLot is of what stands within 2.7 m: a wide floor is lit in patches, never all or nothing.
-vec3 pane_lamp(uint slot, float lot, float office, vec3 seen) {
-	float awake = step(1.0 - rooms_awake, h01(slot * 2654435761u + 977u));
-	float level = 0.3 + 0.85 * fract(lot * 7.13) * fract(lot * 2.17 + 0.4);
-	float lit = step(fract(lot * 5.31), 0.64) * awake * level * building_night_windows;
-	vec3 tint = room_lamp(fract(lot * 17.31), office);
-	tint = mix(tint, tv_light(TIME, lot), (1.0 - office) * step(1.0 - TV_SHARE, fract(lot * 3.71)));
-	return tint * lit * (vec3(0.35) + 1.3 * clamp(seen / 0.55, vec3(0.0), vec3(1.6)));
-}
-
-// A pane: uv 0..1 over the glass, `size` metres, `slot` its room's seed, `bay` its own. Out: what the surface is.
+// A pane: uv 0..1 over the glass, `size` metres, `slot` its room's seed, `bay` its own (its lamp at night: building_lamps.gdshaderinc
+// pane_light, the rule the mid level's bay of the same pane takes). Out: what the surface is.
 // `deep`: the opening behind the wall's face, 0 for a pane at its glass. Out too: `at` the point lit on pane axes, `open` the
 // share of the sky it sees.
 void pane(vec2 uv, vec2 size, uint slot, uint bay, bool dark, float deep, vec3 n, vec3 V, out vec3 albedo, out vec3 emit, out vec3 nn, out float rough, out float metal, out vec3 at, out float open) {
 	vec3 t = normalize(vec3(n.z, 0.0, -n.x));
-	float lot = h01(bay * 7919u + slot * 31u + 1u);
+	float lot = pane_lot(slot, bay);
 	vec3 ray = vec3(dot(V, t), V.y, max(dot(V, -n), 1e-4));
 	vec3 d = vec3(abs(ray.x) < 1e-4 ? 1e-4 : ray.x, abs(ray.y) < 1e-4 ? 1e-4 : ray.y, ray.z);
 	vec3 o = vec3((uv - 0.5) * size, 0.0);
@@ -245,7 +234,9 @@ void pane(vec2 uv, vec2 size, uint slot, uint bay, bool dark, float deep, vec3 n
 	vec3 refl = glass_reflection(V, n, F, dark ? GLASS_ENV_DARK : GLASS_ENV);
 	vec3 trim = to_linear(v_trim.rgb);
 	albedo = mix(mix(vec3(0.0075, 0.0096, 0.0115) * glass_k, trim, frame), trim * REVEAL_ALBEDO * side_shade, solid);
-	emit = (seen * room_daylight * glass_k + pane_lamp(slot, lot, office, seen) * night * window_glow * glass_k + refl * open) * (1.0 - max(frame, solid));
+	vec3 lamp = vec3(0.0);
+	if (night > 0.0) lamp = lamp_on_room(pane_light(slot, lot, office), seen) * building_night_windows; // by day no lamp is worked out
+	emit = (seen * room_daylight * glass_k + lamp * night * window_glow * glass_k + refl * open) * (1.0 - max(frame, solid));
 	nn = normalize(mix(n, normalize(t * face.x + vec3(0.0, face.y, 0.0) + n * face.z), step(0.5, frame)));
 	nn = normalize(mix(nn, normalize(t * side.x + vec3(0.0, side.y, 0.0) - n * side.z), step(0.5, solid)));
 	rough = mix(mix(mix(0.12, 0.55, tiny), 0.55, frame), 0.9, solid);

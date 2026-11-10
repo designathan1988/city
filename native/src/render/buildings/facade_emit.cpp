@@ -100,22 +100,13 @@ void SideEmit::each_bay(const Side &sd, int k, float z, F &&at) {
 	c.wall = wall_lin(pl, v, k, sd.side); c.wall_fin = wp.finish;
 	shell.grime_floor = pl.lot.o.y + b.level_z(v.base);
 	for (int i = 0; i < n; i++) {
-		float a0 = W * float(i), am = a0 + W / 2;
-		Point2 dir{ (sd.p1.x - sd.p0.x) / sd.length, (sd.p1.y - sd.p0.y) / sd.length };
-		auto plan_at = [&](float a) { return Point2{ sd.p0.x + dir.x * a + sd.n.x * OUT_TEST, sd.p0.y + dir.y * a + sd.n.y * OUT_TEST }; };
-		bool cl = covered(b, v, level, plan_at(a0 + FACE_CLEAR_IN)), cm = covered(b, v, level, plan_at(am)), cr = covered(b, v, level, plan_at(a0 + W - FACE_CLEAR_IN));
-		if (cl && cm && cr) continue;
+		if (!bay_on_plan(c, b, v, vol, sd, i)) continue;
+		float a0 = W * float(i);
 		float push = relief_push(v, sd.side, i, k);
 		c.f = Basis{ sd.f.at(a0, z, push), sd.f.e0, sd.f.e1, sd.f.e2 };
 		c.wall_before = a0;
 		c.wall_after = sd.length - a0 - W;
 		c.comp = component(v, k, sd.side, i);
-		c.plain = cl || cm || cr;
-		c.hash = bay_hash(vol, level, sd.side, i, plan_at(am).x, plan_at(am).y);
-		c.vol = vol;
-		c.plan_at = Point2{ sd.p0.x + dir.x * a0, sd.p0.y + dir.y * a0 };
-		c.plan_along = dir;
-		c.plan_out = sd.n;
 		c.open_left = i > 0 && component(v, k, sd.side, i - 1) == BAY_GOURMET;
 		c.open_right = i + 1 < n && component(v, k, sd.side, i + 1) == BAY_GOURMET;
 		at(c, i, n, push);
@@ -191,6 +182,20 @@ uint32_t bay_hash(int vol, int level, int side, int index, float bx, float by) {
 	h ^= (uint32_t(int32_t(std::round(bx * BAY_Q))) * HX) ^ (uint32_t(int32_t(std::round(by * BAY_Q))) * HY);
 	h = (h ^ (h >> HASH_SH1)) * HI;
 	return h ^ (h >> HASH_SH2);
+}
+
+bool bay_on_plan(BayCtx &c, const Body &b, const Volume &v, int vol, const Side &sd, int i) {
+	const float a0 = c.W * float(i), am = a0 + c.W / 2;
+	const Point2 dir{ (sd.p1.x - sd.p0.x) / sd.length, (sd.p1.y - sd.p0.y) / sd.length };
+	auto plan_at = [&](float a) { return Point2{ sd.p0.x + dir.x * a + sd.n.x * OUT_TEST, sd.p0.y + dir.y * a + sd.n.y * OUT_TEST }; };
+	const bool cl = covered(b, v, c.level, plan_at(a0 + FACE_CLEAR_IN)), cm = covered(b, v, c.level, plan_at(am)), cr = covered(b, v, c.level, plan_at(a0 + c.W - FACE_CLEAR_IN));
+	c.plain = cl || cm || cr;
+	c.hash = bay_hash(vol, c.level, sd.side, i, plan_at(am).x, plan_at(am).y);
+	c.vol = vol;
+	c.plan_at = Point2{ sd.p0.x + dir.x * a0, sd.p0.y + dir.y * a0 };
+	c.plan_along = dir;
+	c.plan_out = sd.n;
+	return !(cl && cm && cr);
 }
 
 // Each side of each block, in the block's frame, with the storeys walked from its foot.

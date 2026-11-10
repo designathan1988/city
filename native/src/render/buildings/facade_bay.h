@@ -5,6 +5,7 @@
 #pragma once
 
 #include "render/buildings/facade.h"
+#include "sim/buildings/interior/interior.h"
 
 #include <functional>
 
@@ -36,6 +37,9 @@ struct Opening {
 	float w = 0, h0 = 0, h1 = 0, depth = 0, a0 = 0, a1 = 0;
 };
 
+// Bay `i` of a side on the plan, for whatever level draws it (`c` has its width and level): the hash it picks by, its block, where
+// it stands, and `plain` when another block covers a part of it. False when another block covers it whole: nothing of it is drawn.
+bool bay_on_plan(BayCtx &c, const Body &b, const Volume &v, int vol, const Side &sd, int i);
 Opening opening_of(const Data &data, const BayCtx &c);
 // The four faces of an opening's reveal between wall depths `from` and `to` (<= 0, from < to): the jambs, the sill at `sill_h` and the head.
 // The one owner of that shape: the bay's own (depth to the wall face) and the inside of a wall cut open (plaster to the pane's recess).
@@ -43,6 +47,10 @@ void emit_reveal(Shell &shell, const BayCtx &c, const Opening &o, float from, fl
 		float sill_h);
 // What the pane of an opening draws (pane_rooms.cpp): `frame` the thickness of its frame, 0 none.
 PaneLook pane_look(const Placed &pl, const BayCtx &c, float a0, float a1, float h0, float h1, bool dark, float frame);
+// What the pane over a0..a1 of a bay is, at any level (shell.h PaneSeed): its room among the level's `spaces` (interior.h spaces_at),
+// the bay's byte, and its state by the building's `purpose`. The one rule of it: the near pane and the mid level's bay both ask here.
+PaneSeed pane_seed(const Placed &pl, const BayCtx &c, float a0, float a1, Purpose purpose, const std::vector<Space> &spaces);
+uint8_t pane_state(const BayCtx &c); // the glass and the shutter of it (facade_bay.cpp): PaneSeed's state without the floor
 // How many of a component's panes take the darker glass: the far level's grid fades to the same share (far_window).
 enum PaneDark { PANE_DARK_PICK, PANE_DARK_NONE, PANE_DARK_QUARTER, PANE_DARK_FIFTH };
 PaneDark pane_dark(uint8_t comp);

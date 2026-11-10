@@ -228,12 +228,25 @@ void Shell::pane(const Basis &f, float a0, float a1, float b0, float b1, float c
 	}
 }
 
-void Shell::bay(const Basis &f, float W, float H, const Lin &wall, int8_t fin, uint32_t seed, const FarWindows &w, float depth) {
+void Shell::bay(const Basis &f, float W, float H, const Lin &wall, int8_t fin, const FarWindows &w, float depth, const PaneSeed &own) {
 	constexpr float DEPTH_STEP_M = 0.04f; // building_bay.gdshaderinc DEPTH_STEP_M
 	constexpr int DEPTH_MOST = 15, FIN_SHIFT = 8, FLAGS_SHIFT = 12, DEPTH_SHIFT = 20;
+	// A word of thirty bits as a float (building_bay.gdshaderinc bay_word): its low 29 bits and its sign are the word's, its
+	// exponent's top two bits 01, so it is a normal number whatever the word: never a NaN, an infinity or a denormal a copy may change.
+	constexpr int OWN_BITS = 24, SEED_BITS = 6, LOW_BITS = 29, SIGN_BIT = 31, SLOT_BITS = 16;
+	constexpr uint32_t LOW_MASK = (1u << LOW_BITS) - 1, NORMAL_BIT = 1u << LOW_BITS, SEED_MASK = (1u << SEED_BITS) - 1;
 	if (!keep_bays) return;
+	const uint32_t seed = uint32_t(own.slot) | uint32_t(own.bay) << SLOT_BITS;
+	int word_at = 0;
+	auto word = [&](uint32_t own24) { // the next six bits of the seed over 24 of the word's own
+		const uint32_t bits = own24 | ((seed >> (SEED_BITS * word_at++)) & SEED_MASK) << OWN_BITS;
+		const uint32_t coded = (bits & LOW_MASK) | NORMAL_BIT | (bits >> LOW_BITS) << SIGN_BIT;
+		float out;
+		std::memcpy(&out, &coded, sizeof out);
+		return out;
+	};
 	auto byte = [](float v) { return uint32_t(std::clamp(v, 0.f, 1.f) * BYTE + HALF_STEP); };
-	auto three = [&](float r, float g, float b) { return float(byte(r) << (2 * BYTE_BITS) | byte(g) << BYTE_BITS | byte(b)); };
+	auto three = [&](float r, float g, float b) { return word(byte(r) << (2 * BYTE_BITS) | byte(g) << BYTE_BITS | byte(b)); };
 	const Color tone = shaded(f.at(W / 2, H / 2, 0), far_tint(wall, fin), true, SK_SHELL);
 	BayInstance b;
 	const Vector3 cols[3] = { f.e0 * W, f.e1 * H, f.e2 };
@@ -244,7 +257,8 @@ void Shell::bay(const Basis &f, float W, float H, const Lin &wall, int8_t fin, u
 	b.wall = three(tone.r, tone.g, tone.b);
 	b.trim = three(gamma(w.trim.r), gamma(w.trim.g), gamma(w.trim.b));
 	const uint32_t steps = uint32_t(std::min(DEPTH_MOST, int(std::lround(depth / DEPTH_STEP_M))));
-	b.code = float((seed & SEED_BYTE) | uint32_t(fin + 1) << FIN_SHIFT | uint32_t(w.flags & SEED_BYTE) << FLAGS_SHIFT | steps << DEPTH_SHIFT);
+	b.code = word(uint32_t(own.state) | uint32_t(fin + 1) << FIN_SHIFT | uint32_t(w.flags & SEED_BYTE) << FLAGS_SHIFT | steps << DEPTH_SHIFT);
+	b.own = own;
 	bays.push_back(b);
 }
 

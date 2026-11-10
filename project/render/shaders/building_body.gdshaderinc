@@ -3,7 +3,7 @@
 // finish), 3 far wall with painted windows (UV in bays/storeys, CUSTOM0 = window shares and flags), 4 lamp, 5 lawn. The panes,
 // 1 and 2, are building_glass.gdshader's. Finishes: world-planar UVs in metres, map, normal map, roughness and metal mask. Far
 // windows: building_far_window.gdshaderinc (CUSTOM0 and 3 written by shell.cpp). The mid level's bays are instances of one mesh
-// that the vertex stage places and turns into these same faces (building_bay.gdshaderinc).
+// that the vertex stage places and turns into these same faces (building_bay.gdshaderinc), each with the seed of its pane.
 render_mode cull_back;
 
 global uniform float night;
@@ -32,6 +32,7 @@ varying vec3 v_wn;
 varying flat vec4 v_room0;
 varying flat vec4 v_trim;
 varying flat float v_recess; // how deep a far wall's panes stand, worked out in the fragment: 0 on a bay, whose recess is geometry
+varying flat vec4 v_own; // a bay's pane as the near level has it (bay_place): its room's seed, its bay byte, its state, 1; all 0 on any other face
 #ifdef RUIN
 const int RUIN_PIECES_A_ROW = 256; // render/effects/ruin_pieces.cpp PIECES_A_ROW
 uniform sampler2D pieces : filter_nearest, repeat_disable; // three rows of a matrix a piece
@@ -46,14 +47,16 @@ void vertex() {
 	v_room0 = CUSTOM0;
 	v_trim = CUSTOM3;
 	v_recess = RECESS_M * building_recess;
+	v_own = vec4(0.0);
 	if (UV2.y > BAY_MESH) {
 		v_recess = 0.0;
 		vec3 p = VERTEX;
 		vec2 uv = UV, uv2 = UV2;
-		vec4 col = COLOR, room, trim;
-		bay_place(p, uv, uv2, col, room, trim, INSTANCE_CUSTOM, length(MODEL_MATRIX[0].xyz), length(MODEL_MATRIX[1].xyz));
+		vec4 col = COLOR, room, trim, own;
+		bay_place(p, uv, uv2, col, room, trim, own, INSTANCE_CUSTOM, length(MODEL_MATRIX[0].xyz), length(MODEL_MATRIX[1].xyz));
 		v_room0 = room;
 		v_trim = trim;
+		v_own = own;
 		VERTEX = p;
 		UV = uv;
 		UV2 = uv2;
@@ -104,7 +107,7 @@ void fragment() {
 		albedo *= wall_gain;
 		if (kind == 3) {
 			float glass;
-			far_window(UV, v_room0, uint(fract(UV2.x) * 256.0 + 0.5), n, V, v_recess, albedo, emit, glass);
+			far_window(UV, v_room0, uint(fract(UV2.x) * 256.0 + 0.5), v_own, n, V, v_recess, albedo, emit, glass);
 			rough = mix(rough, 0.15, glass);
 			nn = normalize(mix(nn, n, glass));
 		}

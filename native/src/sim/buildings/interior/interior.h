@@ -45,6 +45,9 @@ std::vector<LevelFlight> level_flights(const Body &b, int level);
 Purpose purpose_of(const Body &b, int fn, uint32_t seed);
 // A storey's floor: stone where people pass, wood or porcelain at home, one kind for the whole building.
 FloorFinish floor_finish(Purpose p, int level, uint32_t seed);
+// The homes, shops or offices a level is divided in, every block's, with no wall nor piece made: what Interior::at lays its floor
+// on, for who needs only which room a point of the plan is in.
+std::vector<Space> spaces_at(const Data &data, const Body &b, Purpose purpose, int level);
 
 class Interior {
 public:
