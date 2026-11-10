@@ -13,6 +13,11 @@ import time
 # One reading step. Source: the skill's rule "read in chunks": small enough to be read with attention and to
 # leave room for the notes of the chunk before the next one enters the context.
 CHUNK_LINES = 400
+# The characters one Read call may return. Source: the Read tool refuses a call above 25,000 tokens (its own message), and a
+# token of text is never fewer than about two characters: 40,000 characters stay under that limit whatever the text.
+READ_CHARS = 40000
+# The width the trace's own files (notes.md, report.md) are wrapped to, so a chunk of them is bounded like any source file.
+WRAP = 150
 # One batch of `next`: chunks read in parallel in one message. Source: the Read tool's own window (2000 lines) as
 # the lines a message takes in, and 25 as the calls of one message that still leave room to write the notes.
 BATCH_LINES = 2000
@@ -207,16 +212,30 @@ def find_file(state, path):
     return None
 
 
+def pieces(path, first, last):
+    """Lines first..last of a file cut into Read calls: each at most CHUNK_LINES lines and READ_CHARS characters, so no call
+    is refused for its size whatever the length of the lines."""
+    lengths = [len(line) + 1 for line in file_bytes(path).split(b"\n")]
+    out, start, size = [], first, 0
+    for n in range(first, last + 1):
+        length = lengths[n - 1] if n <= len(lengths) else 1
+        if n > start and (n - start >= CHUNK_LINES or size + length > READ_CHARS):
+            out.append((start, n - 1))
+            start, size = n, 0
+        size += length
+    if start <= last:
+        out.append((start, last))
+    return out
+
+
 def next_chunks(state):
     """The next batch to read, in the order of the flow: (entry, first line, last line) each."""
     out, lines = [], 0
     for entry in state["files"]:
         for a, b in gaps(entry):
-            while a <= b:
-                end = min(b, a + CHUNK_LINES - 1)
-                out.append((entry, a, end))
-                lines += end - a + 1
-                a = end + 1
+            for start, end in pieces(entry["path"], a, b) if os.path.isfile(os.path.join(ROOT, entry["path"])) else [(a, b)]:
+                out.append((entry, start, end))
+                lines += end - start + 1
                 if lines >= BATCH_LINES or len(out) >= BATCH_CHUNKS:
                     return out
     return out

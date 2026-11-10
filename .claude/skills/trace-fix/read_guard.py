@@ -168,13 +168,11 @@ def guard(event, proof, store):
         return 0
     calls = []
     for file, gaps, why in missing:
-        whole = gaps == [[1, gaps[-1][1]]] and gaps[-1][1] <= store.CHUNK_LINES
-        for a, b in gaps:
-            while a <= b:
-                end = min(b, a + store.CHUNK_LINES - 1)
-                where = os.path.join(store.ROOT, file).replace("\\", "/")
-                calls.append(f"  {where}" + ("" if whole else f" offset={a} limit={end - a + 1}") + f"   ({why})")
-                a = end + 1
+        where = os.path.join(store.ROOT, file).replace("\\", "/")
+        cut = [piece for gap in gaps for piece in store.pieces(file, gap[0], gap[1])]
+        for a, b in cut:  # a file that fits one call whole is asked for by its path alone
+            alone = len(cut) == 1 and a == 1 and b == store.line_count(file)
+            calls.append(f"  {where}" + ("" if alone else f" offset={a} limit={b - a + 1}") + f"   ({why})")
     shown = calls[:store.BATCH_CHUNKS]
     print("trace-fix: this edit is refused. A file is read whole, with the Read tool, before it is changed, and every file "
           "opened is read to its end (what was read before a compaction no longer counts).\n"
