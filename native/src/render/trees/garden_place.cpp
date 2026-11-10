@@ -105,10 +105,10 @@ bool is_plant(b40::Element kind) { return kind == b40::EL_TREE || kind == b40::E
 } // namespace
 
 void place_garden(const CityState &s, const TreeLook &T, const Building &rec, GardenView view, std::vector<TreeInstance> &out) {
-	const std::shared_ptr<const b40::Body> body = b40::record_body(s.buildings.designs, rec);
+	const std::shared_ptr<const std::vector<b40::LotElement>> elements = b40::record_elements(s.buildings.designs, rec);
 	const Stand at{ s, b40::lot_frame(rec), out };
 	uint32_t k = 0; // the plant's index among the body's plants: its draws
-	for (const b40::LotElement &p : body->elements) {
+	for (const b40::LotElement &p : *elements) {
 		if (!is_plant(p.kind)) continue;
 		Draws r{ hash_combine(rec.seed, k++ + GARDEN_SALT) };
 		switch (p.kind) {

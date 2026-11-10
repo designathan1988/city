@@ -373,3 +373,18 @@ sky POSITION 022b734d; atmosphere 1c604b47; occlusion c978aeeb; lot_access e7346
   read a facet instead of the body.
 - Check: `model_test`, `digest`, `photos` pass; the frozen review plan again (dist/review-c5): 7 of 20 pictures equal pixel by
   pixel, the others differ in 1 to 934 pixels on leaf and wire edges (the same counts two runs of one build give).
+
+### C5, the lot elements (P28, part of P45 and P50): a lot's plants, gates and bays are a list of their own
+- Cause: what stands on a lot round its building (`Body::elements`) had no form but the whole generated body: every tree job
+  (near and far) asked `record_body` of every lot of its chunks for the garden's plants, `street_gates` asked `record_mass` of
+  every lot along a street for its car gates, and the parking read bays and docks the same way; each asking made or fetched a
+  whole body through the one cache the drawn buildings share, and pushed them out.
+- Change: `BodyCache::elements` (`record_elements`): the elements kept by the body's key in a cache of their own; on a miss
+  they are copied from the kept body (`LruCache::find`, nothing made) or from a body made for them alone and let go, so the
+  body cache never takes a lot nobody draws. `place_garden`, `street_gates`, `read_lot`, `read_lots_with_docks` read the list;
+  `lot_bays` takes the elements.
+- Cannot return: these readers cannot name a body; a lot's elements are made once a key and cost their own bytes.
+- Left under C5: `read_bay_way` and `yard_input` still take the body (the lot's solids for the way's grid), growth's
+  candidates (P43) and the sight solids.
+- Check: `digest` (the state's hash), `traffic_hash_test`, `yard_test` pass; the frozen review plan (dist/review-c5b): the
+  gardens' trees stand where they stood (6 of 20 pictures equal, the others the leaf-edge noise of two runs); gates OK.

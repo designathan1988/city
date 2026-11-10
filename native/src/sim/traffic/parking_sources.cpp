@@ -63,10 +63,8 @@ void read_lot(CityState &s, int id) {
 	ParkSource &src = p.lots[id];
 	const Building &rec = s.buildings.items[size_t(id)];
 	if (!rec.alive) return;
-	const std::shared_ptr<const b40::Body> body_held = b40::record_body(s.buildings.designs, rec);
-	const b40::Body &body = *body_held;
 	LotAccess acc;
-	lot_bays(body, b40::lot_frame(rec), acc);
+	lot_bays(*b40::record_elements(s.buildings.designs, rec), b40::lot_frame(rec), acc);
 	const PlaceKind kind = place_of(s, rec);
 	for (const LotBay &lb : acc.bays) {
 		const int b = take_bay(p);
@@ -183,8 +181,8 @@ void read_lots_with_docks(CityState &s) {
 	for (int id = 0; id < int(s.buildings.items.size()); id++) {
 		const Building &rec = s.buildings.items[size_t(id)];
 		if (!rec.alive || p.lots.count(id)) continue;
-		const std::shared_ptr<const b40::Body> body = b40::record_body(s.buildings.designs, rec);
-		for (const b40::LotElement &e : body->elements)
+		const std::shared_ptr<const std::vector<b40::LotElement>> elements = b40::record_elements(s.buildings.designs, rec);
+		for (const b40::LotElement &e : *elements)
 			if (e.kind == b40::EL_DOCK) {
 				read_lot(s, id);
 				break;

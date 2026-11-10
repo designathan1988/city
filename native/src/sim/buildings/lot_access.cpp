@@ -220,9 +220,9 @@ void street_gates(const RoadNetwork &net, const BuildingStore &lots, int sid, st
 	const float reach = std::max(p.left, p.right) + tp.kerb_gate_reach_m;
 	lots.query(g.minx - reach, g.minz - reach, g.maxx + reach, g.maxz + reach, [&](int id) {
 		const Building &rec = lots.items[size_t(id)];
-		const std::shared_ptr<const Body> body = record_mass(lots.designs, rec);
+		const std::shared_ptr<const std::vector<LotElement>> elements = record_elements(lots.designs, rec);
 		const LotFrame f = lot_frame(rec);
-		for (const LotElement &e : body->elements) {
+		for (const LotElement &e : *elements) {
 			if (e.kind != EL_CAR_GATE) continue;
 			const V2 w = f.at(e.x, e.y);
 			double t, dist, x, z, dx, dz;
@@ -237,9 +237,9 @@ void street_gates(const RoadNetwork &net, const BuildingStore &lots, int sid, st
 	});
 }
 
-void lot_bays(const Body &b, const LotFrame &f, LotAccess &out) {
+void lot_bays(const std::vector<LotElement> &elements, const LotFrame &f, LotAccess &out) {
 	out = LotAccess{};
-	for (const LotElement &e : b.elements) {
+	for (const LotElement &e : elements) {
 		if (e.kind == EL_GATE || e.kind == EL_CAR_GATE) out.gates.push_back({ f.at(e.x, e.y), f.dir(0, 1), e.w, e.kind == EL_CAR_GATE });
 		if (e.kind != EL_STALL && e.kind != EL_DOCK) continue;
 		LotBay bay;
@@ -273,7 +273,7 @@ void lot_solids(const Data &data, const Body &b, const LotFrame &f, float headro
 }
 
 void lot_access(const Data &data, const Body &b, const LotFrame &f, float car_half, float lorry_half, LotAccess &out) {
-	lot_bays(b, f, out);
+	lot_bays(b.elements, f, out);
 	if (out.bays.empty()) return;
 	std::vector<int> of;
 	bool docks = false;

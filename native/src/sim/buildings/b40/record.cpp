@@ -27,6 +27,8 @@ std::shared_ptr<const Body> record_body(const Data &data, const Building &rec) {
 
 std::shared_ptr<const Body> record_mass(const Data &data, const Building &rec) { return data.made->mass(data, rec); }
 
+std::shared_ptr<const std::vector<LotElement>> record_elements(const Data &data, const Building &rec) { return data.made->elements(data, rec); }
+
 void make_seed_body(const Data &data, const Building &rec, Body &b) {
 	if (is_open_lot(rec.fn)) open_lot_body(data, b, rec.fn, rec.w, rec.d);
 	else if (is_civic(rec.fn)) civic_body(data, b, rec.fn, rec.floors, rec.w, rec.d, rec.seed);

@@ -108,7 +108,7 @@ bool yard_input(const CityState &s, int building, YardInput &out) {
 	const b40::Body &body = *body_held;
 	const b40::LotFrame f = b40::lot_frame(rec);
 	LotAccess acc;
-	lot_bays(body, f, acc);
+	lot_bays(body.elements, f, acc);
 	out.body = { p.classes[int(VehicleType::TRUCK)].length, p.classes[int(VehicleType::TRUCK)].half_width * 2, p.lorry_rear_m, p.lorry_radius_m, p.lorry_margin_m };
 	out.lot = rect_ring(f, -rec.w * HALF, 0, rec.w * HALF, rec.d);
 	float lo_x = UNBOUNDED, lo_z = UNBOUNDED, hi_x = -UNBOUNDED, hi_z = -UNBOUNDED;

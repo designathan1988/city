@@ -33,4 +33,19 @@ std::shared_ptr<const BodyLook> BodyCache::look(const Data &data, const Building
 			[](const BodyLook &) { return sizeof(BodyLook); });
 }
 
+std::shared_ptr<const std::vector<LotElement>> BodyCache::elements(const Data &data, const Building &rec) {
+	if (rec.body) { // the version itself holds them
+		const std::shared_ptr<const Body> own = rec.body.shared();
+		return std::shared_ptr<const std::vector<LotElement>>(own, &own->elements);
+	}
+	const BodyKey key = body_key(rec);
+	return elements_.get(key, [&]() {
+		if (const std::shared_ptr<const Body> kept = kept_.find(Key{ key, Made::BODY })) return std::make_shared<const std::vector<LotElement>>(kept->elements);
+		Body b; // made for its elements alone and let go
+		make_seed_body(data, rec, b);
+		b.elements.shrink_to_fit();
+		return std::make_shared<const std::vector<LotElement>>(std::move(b.elements));
+	}, [](const std::vector<LotElement> &e) { return sizeof(e) + e.capacity() * sizeof(LotElement); });
+}
+
 } // namespace city::b40

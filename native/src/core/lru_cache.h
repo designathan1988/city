@@ -42,6 +42,12 @@ public:
 		return made;
 	}
 
+	// The kept value of `key` (asked now: it moves to the front), or none: nothing is made.
+	Ptr find(const K &key) {
+		std::lock_guard<std::mutex> lk(mutex_);
+		return touch(key);
+	}
+
 	void clear() {
 		std::lock_guard<std::mutex> lk(mutex_);
 		index_.clear();
