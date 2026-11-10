@@ -191,10 +191,7 @@ void CityCore::_process(double delta) {
 	}
 	render_.sync(*state_, terrain3d(), cam_, delta); // takes the map shared (never exclusive: render_world.h)
 	laps.lap();
-	{
-		std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
-		render_.update_overlays(*state_, poses, delta);
-	}
+	render_.update_overlays(*state_, poses, delta); // no map lock: the layers' jobs copy what they lay (overlay_renderer.h)
 	overlays_ms_ = laps.lap();
 	process_ms_ = total.lap();
 }

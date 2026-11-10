@@ -370,11 +370,11 @@
    "card_rough": 0.85
   }
  },
- "overlay": {
-  "shader": "res://render/shaders/overlay.gdshader",
-  "params": {
-   "opacity": 0.6
-  }
+ "overlay": { "shader": "res://render/shaders/overlay.gdshader", "params": {} },
+ "overlay_flow": {
+  "_doc": "The congestion map (render/shaders/overlay_flow.gdshader): its ramp, opacity and level texture are set by the core from overlays.json and the traffic (native/src/render/overlays).",
+  "shader": "res://render/shaders/overlay_flow.gdshader",
+  "params": {}
  },
  "vegetation": {
   "uses": ["gust", "sway"],

@@ -148,8 +148,9 @@ public:
 	void set_overlay(Overlay o, bool on) { overlays_.set(o, on); }
 	void show_every_zone(bool on) { overlays_.show_every_zone(on); }
 	bool overlay_on(Overlay o) const { return overlays_.is_on(o); }
+	godot::Dictionary overlay_probe() const { return overlays_.probe(); }
 	BuildingInteriorCost interior_cost(const CityState &s, int id, int level, int dir) const { return buildings_.interior_cost(s, id, level, dir); }
-	// After sync, in the same frame's admission (its deadline, credits and ledger).
+	// After sync, in the same frame's admission (its deadline, credits and ledger). Reads nothing of the map: no lock is held for it.
 	void update_overlays(const CityState &s, const PoseFrame &f, double dt) {
 		if (frame_) overlays_.update(s, f, dt, *frame_);
 	}
@@ -173,7 +174,7 @@ public:
 	void wear_paint(float x0, float z0, float x1, float z1, float value) { wear_.paint(x0, z0, x1, z1, value); }
 	int pending() const {
 		return road_stream_.pending + raised_stream_.pending + props_stream_.pending + building_stream_.pending + roads_.pending() + far_roads_.pending() + far_roads_.waiting_supers() + seams_.pending() +
-				structures_.pending() + props_.pending() + buildings_.pending() + trees_.pending() + cover_.pending() + water_.pending();
+				structures_.pending() + props_.pending() + buildings_.pending() + trees_.pending() + cover_.pending() + water_.pending() + overlays_.pending();
 	}
 
 private:

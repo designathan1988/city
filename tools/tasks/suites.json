@@ -359,6 +359,7 @@
     {"name": "scenic_city_test", "scene": "tests/core/scenic_city_test", "renderer": "gl_compatibility", "timeout_s": 900},
     {"name": "job_pool_test", "scene": "tests/core/job_pool_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "map_hold_test", "scene": "tests/core/map_hold_test", "renderer": "gl_compatibility", "timeout_s": 600},
+    {"name": "overlay_test", "scene": "tests/core/overlay_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {
      "name": "building_tool_test",
      "scene": "tests/core/building_tool_test",

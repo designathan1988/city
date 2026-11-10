@@ -528,3 +528,27 @@ sky POSITION 022b734d; atmosphere 1c604b47; occlusion c978aeeb; lot_access e7346
 - P78 (new, C11's kind, open): the shore field copies and spreads the whole map's water grid again at any change of the land.
 - Left in C9: the overlays (P35), transit (P34), the canyon, fog and ecology fields, the ruins' probe, P10's outline owner, and
   the gate that forbids `map_mutex` in `native/src/render`.
+
+### C9, fifth piece (2026-11-10 05:40): the map layers (P35, P79, P80)
+- Cause: the congestion map baked its colours into vertex colours, so every `refresh_s` each road chunk in reach had its
+  ribbons copied, coloured and made a new mesh on the main thread, the old one freed (`update_congestion`); the ribbons were
+  laid there too, under a raw shared lock of the map taken by `CityCore::_process` for the layers alone; and the zone job held
+  the map for its whole build.
+- The check first: `tests/core/overlay_test` (new) with the probe `overlay_probe`. On the code before: 64 meshes made in two
+  refreshes of 32 chunks. After: 0.
+- Change: a chunk's carriageways are laid once per change of its roads by a job from a cut (lane `congestion`), each vertex
+  with its segment's id in UV.x; `render/overlays/flow_levels.h` (new) owns a texture of levels, a texel a segment (the
+  `PoseFrame`'s speed share on the ramp, 8 bits), sent into the texture it has when a level moved and made anew only when the
+  segments outgrow it; `render/shaders/overlay_flow.gdshader` (new, material `overlay_flow`) mixes the ramp's three colours
+  from the level, as the vertex colours did. The zone job gathers a cut of its roads and ground with the player's zoned lots
+  near its chunk copied in the same hold. Both layers' meshes are baked on the worker (`ChunkResults`), handed in the frame's
+  admission, streamed nearest first; `OverlayRenderer::update` reads nothing of the map and `_process` takes no lock for it;
+  `RenderWorld::pending` counts their chunks. `materials.json`'s `overlay.opacity`, which no shader read, is gone (P80).
+- Cannot return: a refresh has no mesh to make (the colour is not in the mesh); the layers' jobs hold no `CityState` while
+  they lay; the main thread has no reader of the map left in the layers.
+- Check: `overlay_test` (refreshes make no mesh; the level texture on the GPU holds the levels sent; the ramp's ends and
+  middle; zones drawn; lanes zones and congestion 0 under the map), `map_hold_test`, the test scenes and `digest` pass; gates
+  OK. Photos (dist/trace/performance-root-causes/photos, town of seed 1 running): the congestion map from near, mid and far by
+  day and at night, each carriageway one colour of the ramp (free green, middling yellow, jammed red) lying on its road,
+  changing at the junctions; the zones beside the zoned sides and over the lots in their zone's colour.
+- Left in C9: transit (P34), the canyon, fog and ecology fields, the ruins' probe, P10's outline owner, the gate.
