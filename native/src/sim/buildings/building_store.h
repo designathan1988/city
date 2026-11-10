@@ -3,6 +3,7 @@
 #pragma once
 
 #include "core/grid.h"
+#include "core/id_table.h"
 #include "core/slot_ids.h"
 #include "sim/buildings/b40/data.h"
 #include "sim/buildings/b40/lot_site.h"
@@ -38,11 +39,34 @@ struct Building {
 	double built = 0; // city minute it was built (decay and renovation)
 };
 
-class BuildingStore {
-public:
-	std::vector<Building> items;
-	SlotIds free_ids;
+// The records and their filing by place: what a reader takes of the buildings, the live city's store or a cut of it (a job's
+// copy: sim/state/city_cut.h). The generator's tables are not here: they are the session's, read beside the records.
+struct BuildingRecords {
+	IdTable<Building> items;
 	SpatialHash hash; // by lot centre
+
+	// Does the point stand on the building's lot (its rectangle grown by pad)?
+	static bool covers(const Building &b, float x, float z, float pad);
+	template <typename F>
+	void query(float minx, float minz, float maxx, float maxz, F &&fn) const {
+		hash.query(minx, minz, maxx, maxz, [&](int id) {
+			const Building &b = items[id];
+			if (b.alive && b.x >= minx && b.x <= maxx && b.z >= minz && b.z <= maxz) fn(id);
+		});
+	}
+	// The records filed in the cells the box touches, under their own ids, the copy's hash answering for the box alone.
+	BuildingRecords cut(float minx, float minz, float maxx, float maxz) const {
+		BuildingRecords c;
+		c.items = IdTable<Building>::cut(items.size());
+		c.hash = hash.window(minx, minz, maxx, maxz);
+		for (int id : c.hash.filed()) c.items.put(size_t(id), items[size_t(id)]);
+		return c;
+	}
+};
+
+class BuildingStore : public BuildingRecords {
+public:
+	SlotIds free_ids;
 	ChangeLog *log = nullptr;
 	int count = 0;
 	// Residents and jobs of the alive records (occupancy), kept by place/remove, the one way a record comes or goes: never
@@ -62,17 +86,8 @@ public:
 	// Undo / redo / load: the record goes back under the same id. A building that
 	// grew there meanwhile (outside the history) moves to a new id; `evict` also knocks down what grew on the lot.
 	void put(int id, const Building &b, bool evict);
-	// Does the point stand on the building's lot (its rectangle grown by pad)?
-	static bool covers(const Building &b, float x, float z, float pad);
 	void mark(int id) const;
 	void mark_look(int id) const; // its chunks drawn again though it did not change: another look (Interior layer)
-	template <typename F>
-	void query(float minx, float minz, float maxx, float maxz, F &&fn) const {
-		hash.query(minx, minz, maxx, maxz, [&](int id) {
-			const Building &b = items[id];
-			if (b.alive && b.x >= minx && b.x <= maxx && b.z >= minz && b.z <= maxz) fn(id);
-		});
-	}
 	// Residents and jobs from the floor area.
 	// `base`: the zone's base kind (the catalogue's, BaseZone), which says who lives or works there.
 	static void occupancy(const Building &b, int base, float floor_share, const float per_m2[4], int &residents, int &jobs);

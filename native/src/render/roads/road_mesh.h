@@ -7,12 +7,12 @@
 #include "render/roads/road_look.h"
 #include "render/roads/road_shapes.h"
 #include "sim/roads/street_furniture.h"
-#include "sim/state/city_state.h"
+#include "sim/state/city_view.h"
 
 namespace city {
 
 struct RoadEmit {
-	const CityState &s;
+	const CityView s; // the city the pieces read: a job's cut of it, or the live one of a reader that holds the map
 	const StreetLook &L;
 	MeshBuilder &mb;
 	RoadShapes &shapes; // the nodes' and walls' shapes the road jobs share (road_shapes.h)
@@ -23,7 +23,7 @@ struct RoadEmit {
 struct SegFrame {
 	godot::Vector3 c, fwd, left;
 };
-SegFrame seg_frame(const CityState &s, int sid, double at);
+SegFrame seg_frame(const CityView &s, int sid, double at);
 
 // A node whose mouths get crossings, stop lines and dropped kerbs (three or more arms, not a roundabout or rails).
 
@@ -56,9 +56,9 @@ void emit_wall_backfill(const RoadEmit &e, int sid);
 // error of the true road (StreetLook::surface_error, far_surface_error), in plan, height and across the section; two for a road
 // straight and on one grade. The surface and its paint stand on these.
 std::vector<double> segment_stations(const RoadEmit &e, int sid, double v0, double v1);
-std::vector<double> segment_stations(const CityState &s, const StreetLook &L, bool far, int sid, double v0, double v1);
+std::vector<double> segment_stations(const CityView &s, const StreetLook &L, bool far, int sid, double v0, double v1);
 // The most a mesh on stations `at` stands off the true surface, read densely between them (the stations' own proof).
-double stations_error(const CityState &s, int sid, const std::vector<double> &at);
+double stations_error(const CityView &s, int sid, const std::vector<double> &at);
 // The towers and cables of a long bridge (road_stays.cpp), on the stretch [v0, v1] of a segment; `stayed`: a street held by them stands on no bents.
 bool stayed(const RoadEmit &e, int sid);
 void emit_stays(const RoadEmit &e, int sid, double v0, double v1, float casing);

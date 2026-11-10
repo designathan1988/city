@@ -9,7 +9,7 @@
 #include "render/roads/road_chunks.h"
 #include "render/roads/road_look.h"
 #include "render/roads/road_shapes.h"
-#include "sim/state/city_state.h"
+#include "sim/state/city_view.h"
 
 #include <chrono>
 #include <mutex>
@@ -26,7 +26,7 @@ public:
 	RoadShapes &shapes() const { return shapes_; } // the nodes' and walls' shapes every road job shares (road_shapes.h)
 
 private:
-	void build_cpu(const CityState &s, int64_t key, MeshBuilder &mb) const;
+	void build_cpu(const CityView &s, int64_t key, MeshBuilder &mb) const;
 	StreetLook look_;
 	mutable RoadShapes shapes_;
 };

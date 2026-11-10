@@ -14,14 +14,20 @@ namespace city {
 
 enum class TreeKind : int { MIXED = 0, OAK, CYPRESS, PALM, COUNT };
 
+// The save writes these two as their object's bytes (save_nature.cpp): the bytes between `alive` and the floats are a field
+// of their own, zero, so every byte written is the record's (core/bytes.h ByteWriter::whole).
+constexpr int TREE_RECORD_UNUSED = 3; // the bytes from a bool to the next float
+
 struct PlantedTree {
 	bool alive = false;
+	uint8_t unused[TREE_RECORD_UNUSED] = {};
 	float x = 0, z = 0, height = 0, yaw = 0;
 	float seed = 0; // 0..1: which model, its tint and lean
 };
 
 struct TreeClearing {
 	bool alive = false;
+	uint8_t unused[TREE_RECORD_UNUSED] = {};
 	float x = 0, z = 0, radius = 0;
 };
 

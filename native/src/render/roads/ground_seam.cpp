@@ -107,7 +107,7 @@ double paving_at(const Paving &p, const Grid &g, double x, double z) {
 // The road triangles at grade the segments and nodes near the box draw, up-facing: a deck in the air and a road in a bore are not on
 // the terrain, which goes on under and over them.
 void read_paving(const RoadEmit &e, const Grid &g, double x0, double z0, double x1, double z1, Paving &p) {
-	const CityState &s = e.s;
+	const CityView &s = e.s;
 	float widest = 0;
 	for (const Profile &pr : s.catalog.profiles) widest = std::max(widest, pr.half());
 	const double reach = double(widest) + g.spacing; // a segment's paving reaches its curve's box by its half at most
@@ -173,7 +173,7 @@ struct SeamTri {
 	Vector3 p[3];
 	bool corner[3];
 };
-bool cell_seam(const CityState &s, const Grid &g, const Paving &pv, int i, int j, std::vector<SeamTri> &out, int &unheighted, Vector3 &lost) {
+bool cell_seam(const CityView &s, const Grid &g, const Paving &pv, int i, int j, std::vector<SeamTri> &out, int &unheighted, Vector3 &lost) {
 	const int64_t x0 = g.mm_of(i), z0 = g.mm_of(j), x1 = g.mm_of(i + 1), z1 = g.mm_of(j + 1);
 	const Paths64 square{ Path64{ Point64(x0, z0), Point64(x1, z0), Point64(x1, z1), Point64(x0, z1) } };
 	const Paths64 near = Clipper2Lib::RectClip(Rect64(x0 - 1, z0 - 1, x1 + 1, z1 + 1), pv.shape);
@@ -242,11 +242,11 @@ struct ChunkSeam {
 };
 
 void build_chunk(const RoadEmit &e, int64_t key, ChunkSeam &cs, Grid &g) {
-	const Heightfield &hf = e.s.terrain;
-	g.N = hf.N;
-	g.spacing = double(hf.spacing);
+	const GroundRead &ground = e.s.terrain;
+	g.N = ground.n();
+	g.spacing = double(ground.spacing());
 	g.step_mm = int64_t(std::llround(g.spacing * MM));
-	if (g.N < 2 || hf.final_h.empty()) return;
+	if (!ground.made()) return;
 	const double x0 = double(key_x(key)) * CHUNK, z0 = double(key_y(key)) * CHUNK, x1 = x0 + CHUNK, z1 = z0 + CHUNK;
 	const double margin = g.spacing; // a cut cell the chunk owns can reach past its edge by a cell
 	read_paving(e, g, x0 - margin, z0 - margin, x1 + margin, z1 + margin, cs.paving);

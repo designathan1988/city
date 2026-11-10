@@ -22,7 +22,7 @@ constexpr int ERROR_PROBES = 32; // the points a stretch is measured at by stati
 constexpr double SAGITTA_SHARE = 8;
 
 // A point of the road's surface: `u` across from the centre line at arc `at`, at the deck's height.
-Vector3 surface_at(const CityState &s, int sid, double at, double u) {
+Vector3 surface_at(const CityView &s,int sid, double at, double u) {
 	const SegFrame f = seg_frame(s, sid, at);
 	return f.c + f.left * float(u);
 }
@@ -30,7 +30,7 @@ Vector3 surface_at(const CityState &s, int sid, double at, double u) {
 // How far the true surface at arc m stands off the mesh's straight stretch between arcs a and b, over the centre line and both
 // edges of the section: the distance from the true point to the stretch's segment (the mesh's geometry, whatever share of the
 // way along it the point falls).
-double off_chord(const CityState &s, int sid, double half, double a, double b, double m) {
+double off_chord(const CityView &s,int sid, double half, double a, double b, double m) {
 	double worst = 0;
 	for (const double u : { -half, 0.0, half }) {
 		const Vector3 pa = surface_at(s, sid, a, u), pb = surface_at(s, sid, b, u), p = surface_at(s, sid, m, u);
@@ -44,7 +44,7 @@ double off_chord(const CityState &s, int sid, double half, double a, double b, d
 
 // The stations of the deck's height profile strictly between a and b (it is linear between them: RoadGrade::at).
 template <typename Fn>
-void each_grade_station(const CityState &s, int sid, double a, double b, Fn &&fn) {
+void each_grade_station(const CityView &s,int sid, double a, double b, Fn &&fn) {
 	if (!s.roads.grade.has(sid)) return; // linear between its nodes: no station inside
 	const double step = double(s.roads.grade.prof[size_t(sid)].step);
 	for (double at = (std::floor(a / step) + 1) * step; at < b; at += step) fn(at);
@@ -93,7 +93,7 @@ double plan_bound(const RoadSegment &g, double half, double a, double b) {
 
 // How far the height of the stretch [a, b] stands off its chord at worst: the height is linear between the grade's stations, so
 // the worst is at one of them, read exactly.
-double height_off(const CityState &s, int sid, double a, double b) {
+double height_off(const CityView &s,int sid, double a, double b) {
 	const double ya = s.roads.seg_y(sid, a), yb = s.roads.seg_y(sid, b);
 	double worst = 0;
 	each_grade_station(s, sid, a, b, [&](double at) { worst = std::max(worst, std::fabs(s.roads.seg_y(sid, at) - (ya + (yb - ya) * (at - a) / (b - a)))); });
@@ -104,7 +104,7 @@ double height_off(const CityState &s, int sid, double a, double b) {
 // bound and the height's exact deviation together (a point is off its chord by at most the sum of the two). The plan's bound
 // falls with the square of the run, so a stretch that is off by `off` is cut in ceil(sqrt(off / error)) equal parts at once: the
 // fewest that can hold it, where halving again and again would land anywhere between that count and twice it.
-void split(const CityState &s, int sid, double half, double error, double a, double b, std::vector<double> &out) {
+void split(const CityView &s,int sid, double half, double error, double a, double b, std::vector<double> &out) {
 	const RoadSegment &g = s.roads.segs[size_t(sid)];
 	const double off = b - a <= LEAST_STRETCH_M ? 0 : plan_bound(g, half, a, b) + height_off(s, sid, a, b);
 	if (off <= error) {
@@ -118,7 +118,7 @@ void split(const CityState &s, int sid, double half, double error, double a, dou
 }
 } // namespace
 
-std::vector<double> segment_stations(const CityState &s, const StreetLook &L, bool far, int sid, double v0, double v1) {
+std::vector<double> segment_stations(const CityView &s,const StreetLook &L, bool far, int sid, double v0, double v1) {
 	std::vector<double> out{ v0 };
 	if (v1 <= v0) return out;
 	const double half = double(s.catalog.profile(s.roads.segs[size_t(sid)].profile).half());
@@ -130,7 +130,7 @@ std::vector<double> segment_stations(const RoadEmit &e, int sid, double v0, doub
 	return segment_stations(e.s, e.L, e.far, sid, v0, v1);
 }
 
-double stations_error(const CityState &s, int sid, const std::vector<double> &at) {
+double stations_error(const CityView &s,int sid, const std::vector<double> &at) {
 	const double half = double(s.catalog.profile(s.roads.segs[size_t(sid)].profile).half());
 	double worst = 0;
 	for (size_t k = 0; k + 1 < at.size(); k++)
@@ -139,7 +139,7 @@ double stations_error(const CityState &s, int sid, const std::vector<double> &at
 	return worst;
 }
 
-SegFrame seg_frame(const CityState &s, int sid, double at) {
+SegFrame seg_frame(const CityView &s,int sid, double at) {
 	const RoadSegment &g = s.roads.segs[sid];
 	double t = t_at_length(g.table, at), x, z, dx, dz;
 	g.q.at(t, x, z);

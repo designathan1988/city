@@ -3,6 +3,7 @@
 // pools repeat every lamp step of the simulation's street furniture (its only owner).
 #include "render/roads/road_renderer.h"
 
+#include "render/roads/road_cut.h"
 #include "render/roads/road_mesh.h"
 
 #include <godot_cpp/classes/rendering_server.hpp>
@@ -32,7 +33,7 @@ bool RoadRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	return true;
 }
 
-void RoadRenderer::build_cpu(const CityState &s, int64_t key, MeshBuilder &mb) const {
+void RoadRenderer::build_cpu(const CityView &s, int64_t key, MeshBuilder &mb) const {
 	emit_chunk(RoadEmit{ s, look_, mb, shapes_ }, key);
 }
 
@@ -43,8 +44,12 @@ AABB chunk_bounds(int64_t key, float size, const AABB &emitted) {
 	return column.merge(emitted);
 }
 
+// The job copies its chunk's roads, their ground and the lots that face them (the parking paint keeps off their car gates), then
+// builds from the copy with the map let go.
 void RoadRenderer::submit(const CityState &s, int64_t key, JobPool &pool, float priority) {
-	submit_job(s, pool, JobKey{ JobLane::ROADS, key }, key, priority, [this, &s, key](MeshBuilder &mb) { build_cpu(s, key, mb); });
+	submit_cut(pool, JobKey{ JobLane::ROADS, key }, key, priority,
+			[this, &s, key]() { return cut_for_roads(s, look_, key, CHUNK, CUT_ROADS | CUT_BUILDINGS); },
+			[this, key](const CityCut &cut, MeshBuilder &mb) { build_cpu(cut, key, mb); });
 }
 
 } // namespace city

@@ -16,9 +16,13 @@ namespace city {
 
 // One dab of painted fog: how far it takes the fog towards full at its centre, how high the bank stands and how fast
 // the wind carries it through.
+// The save writes it as its object's bytes (save_nature.cpp): the bytes after `erase` are a field of their own, zero, so every
+// byte written is the dab's (core/bytes.h ByteWriter::whole).
+constexpr int FOG_DAB_UNUSED = 3; // the bytes from `erase` to the record's end, a float's multiple
 struct FogDab {
 	float x = 0, z = 0, radius = 0, strength = 0, height = 0, speed = 0;
 	uint8_t erase = 0;
+	uint8_t unused[FOG_DAB_UNUSED] = {};
 };
 
 struct FogSample {

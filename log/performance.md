@@ -465,3 +465,27 @@ sky POSITION 022b734d; atmosphere 1c604b47; occlusion c978aeeb; lot_access e7346
 - Check: `digest` equal to the golden, `traffic_hash_test`, `road_commands_test`, `road_edit_test`, `road_grade_test`,
   `street_power_test`, `street_works_test`, `map_hold_test` pass; gates OK on the changed files. No picture can change yet (the
   jobs still read the live city); photos at the close of C9.
+
+### C9, second piece (2026-11-10 05:10): the roads, the structures, the far roads and the water build off the map lock
+- Change: `sim/state/city_view.h` `CityView` (references to the stores a job-path function reads; a `CityState` converts to
+  it, so a reader that holds the map calls the same functions) and `sim/state/city_cut.h` `CityCut` with `cut_city` (the one
+  place a job takes the map, shared, for the copy alone): the ground of the box as a `GroundPatch`, the roads by
+  `RoadNetwork::cut`, the lots' records by `BuildingRecords::cut`; the catalogue and the generator's tables by reference.
+  `BuildingStore` is now `BuildingRecords` (what a cut copies: items, hash, query) plus the tables and the writers.
+  `MeshQueueOf::submit_cut(gather, build)`; `render/roads/road_cut.h` `cut_for_roads` (the chunk or superchunk, the boxes of the
+  segments it owns, grown by `road_reach`: casing band, wall ground, stay legs, portal wings, pier feet, the lots' car gates).
+  `RoadEmit` holds a `CityView`; `RoadRenderer`, `RoadLayer` (structures), `FarRoadRenderer` and `WaterRenderer` submit by it.
+  `each_owned_segment` asks the chunk's own box (a segment's middle lies inside its box): a ninth of the candidates it read.
+- Cannot return for these four: their job has no `CityState` to read while it builds, only its cut; a read past the cut
+  (an id, a hash query, a ground or water sample) stops the tests' DLL.
+- Measured by the check: `map_hold_test`, the town streamed in: roads 230,708 -> 0 and far roads 69,196 -> 0 vertices built
+  under the map (structures and water 0: the town has none; the scenic Sao Paulo capture, with its bridges, tunnels and rivers,
+  ran on the tests' DLL with no stop). Left under the map: seams 473,416, props 706,682, and the producers the count does
+  not see yet (cover, trees, overlays, transit, the fields).
+- P77 (new, found by `edit_fuzz_test` failing after 4e5d2bea): `ByteWriter::put<T>` and `put_vec` write a record as its
+  object's bytes; `PlantedTree`, `TreeClearing` (a bool before floats) and `FogDab` (a byte after floats) have three bytes of
+  padding, which hold whatever lay in memory: the save and the state's hash were not functions of the state, and the test had
+  passed by the accident of what the memory held. The three records name those bytes as a field (zero; `read_nature` zeroes
+  them for an older file) and, in the tests' DLL, `ByteWriter::whole` asks the compiler whether a type written has padding and
+  stops on one that has. Cannot return: a padded record written raw stops the first test that saves.
+- Check: the 55 test scenes and `digest` (equal to the golden) pass; gates OK on the changed files. Photos at the close of C9.

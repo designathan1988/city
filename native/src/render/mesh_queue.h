@@ -78,6 +78,26 @@ protected:
 			this->push(std::move(b));
 		});
 	}
+	// A job in two steps: `gather()` copies what the build reads of the map (it takes the map itself, shared, for the copy alone:
+	// sim/state/city_cut.h cut_city) and `build(cut, mb)` (or `build(cut, mb, extra)`) fills the chunk's builder from the copy,
+	// on the same worker, with no lock held.
+	template <typename Gather, typename Build>
+	void submit_cut(JobPool &pool, JobKey job, int64_t key, float priority, Gather &&gather, Build &&build) {
+		this->set_pool(&pool);
+		const uint64_t ticket = this->revs.ask(key);
+		pool.submit(job, priority, [this, key, job, ticket, priority, gather, build]() {
+			auto b = std::make_shared<Built>();
+			b->key = key;
+			b->job = job;
+			b->ticket = ticket;
+			b->priority = priority;
+			b->material = surface_material_;
+			const auto cut = gather();
+			if constexpr (std::is_same_v<Extra, NoExtra>) build(cut, b->mb);
+			else build(cut, b->mb, b->extra);
+			this->push(std::move(b));
+		});
+	}
 	void forget(int64_t key) { this->drop(key); } // the chunk left: a result still on its way is dropped when it lands
 	void clear_queue() { this->clear(); }
 };

@@ -17,11 +17,13 @@ namespace city {
 template <typename T>
 class IdTable {
 public:
+	using value_type = T;
 	using iterator = typename std::vector<T>::iterator;
 	using const_iterator = typename std::vector<T>::const_iterator;
 
 	// The ids the table spans: a cut spans its city's.
 	size_t size() const { return sparse_ ? ids_ : items_.size(); }
+	size_t capacity() const { return items_.capacity(); } // the records it has room for (the memory census)
 	bool empty() const { return size() == 0; }
 	T &operator[](size_t id) { return items_[slot(id)]; }
 	const T &operator[](size_t id) const { return items_[slot(id)]; }

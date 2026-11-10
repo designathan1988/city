@@ -31,16 +31,6 @@ GradeProfile heights_of(const GradeProfile &p) {
 	out.yhi = p.yhi;
 	return out;
 }
-
-// The ids a hash window files, each once, ascending: the order the copy is made in never depends on the hash's own.
-std::vector<int> filed_in(const SpatialHash &window) {
-	std::vector<int> ids;
-	for (const auto &cell : window.cells)
-		for (const SpatialHash::Entry &e : cell.second) ids.push_back(e.id);
-	std::sort(ids.begin(), ids.end());
-	ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
-	return ids;
-}
 } // namespace
 
 RoadNetwork RoadNetwork::cut(float minx, float minz, float maxx, float maxz) const {
@@ -64,8 +54,8 @@ RoadNetwork RoadNetwork::cut(float minx, float minz, float maxx, float maxz) con
 		if (grade.has(s)) c.grade.prof.put(size_t(s), heights_of(grade.prof[size_t(s)]));
 		fresh_segs.push_back(s);
 	};
-	for (int s : filed_in(c.seg_hash)) take_seg(s);
-	for (int n : filed_in(c.node_hash)) take_node(n);
+	for (int s : c.seg_hash.filed()) take_seg(s); // ascending: the copy's order is the ids', never the hash's
+	for (int n : c.node_hash.filed()) take_node(n);
 	for (int ring = 0; ring < CUT_RINGS; ring++) {
 		std::vector<int> from_segs, from_nodes;
 		from_segs.swap(fresh_segs);

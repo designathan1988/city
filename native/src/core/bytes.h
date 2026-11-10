@@ -1,6 +1,8 @@
 // Little binary writer/reader used by the save format (sim/persistence).
 #pragma once
 
+#include "core/checks.h"
+
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
@@ -19,8 +21,29 @@ struct ByteWriter {
 		if (!canonical) put<uint8_t>(alive ? 1 : 0);
 		return alive;
 	}
+	// A value goes to the file as its object's bytes, so every byte of it must be a field's: padding holds whatever was in
+	// memory where the value was made, and the file and the state's hash would stop being functions of the state. The tests'
+	// DLL asks the compiler, once a type, whether a type written has padding (an image of ones with its padding cleared)
+	// and stops on one that has: such a record names its unused bytes as a field of its own.
+	template <typename T>
+	static void whole() {
+#if defined(CITY_CHECKS) && defined(__has_builtin)
+#if __has_builtin(__builtin_clear_padding)
+		static const bool padded = []() {
+			constexpr unsigned char ONES = 0xff; // every bit set: a byte the clearing zeroed is padding
+			T image;
+			std::memset(static_cast<void *>(&image), ONES, sizeof(T));
+			__builtin_clear_padding(&image);
+			const unsigned char *bytes = reinterpret_cast<const unsigned char *>(&image);
+			return std::any_of(bytes, bytes + sizeof(T), [](unsigned char b) { return b != ONES; });
+		}();
+		if (padded) city_stop("a record with padding written as its object's bytes");
+#endif
+#endif
+	}
 	template <typename T>
 	void put(const T &v) {
+		whole<T>();
 		size_t o = buf.size();
 		buf.resize(o + sizeof(T));
 		std::memcpy(buf.data() + o, &v, sizeof(T));
@@ -32,6 +55,7 @@ struct ByteWriter {
 	}
 	template <typename T>
 	void put_vec(const std::vector<T> &v) {
+		whole<T>();
 		put<uint32_t>(uint32_t(v.size()));
 		put_bytes(v.data(), v.size() * sizeof(T));
 	}

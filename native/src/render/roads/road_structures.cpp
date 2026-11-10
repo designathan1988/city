@@ -66,7 +66,7 @@ void column(const StructureShape &K, MeshBuilder &mb, const Vector3 &foot, float
 
 
 // Stands on a road that runs on the ground there: a column's foot keeps off it, not off a deck over it.
-bool on_ground_road(const CityState &s, int self, float x, float z, float clearance, float raised) {
+bool on_ground_road(const CityView &s, int self, float x, float z, float clearance, float raised) {
 	bool hit = false;
 	s.roads.for_segments_near(x - clearance, z - clearance, x + clearance, z + clearance, [&](int o) {
 		if (hit || o == self) return;

@@ -4,6 +4,7 @@
 #include "render/roads/road_layer.h"
 
 #include "render/owned_segments.h"
+#include "render/roads/road_cut.h"
 
 using namespace godot;
 
@@ -22,8 +23,10 @@ bool RoadLayer::init(const RenderContext &ctx, const StreetLook &look, RoadShape
 	return errors.is_empty();
 }
 
+// The job copies its chunk's roads and their ground, then builds from the copy with the map let go.
 void RoadLayer::submit(const CityState &s, int64_t key, JobPool &pool, float priority) {
-	submit_job(s, pool, JobKey{ lane_, key }, key, priority, [this, &s, key](MeshBuilder &mb) { emit_(RoadEmit{ s, *look_, mb, *shapes_ }, key); });
+	submit_cut(pool, JobKey{ lane_, key }, key, priority, [this, &s, key]() { return cut_for_roads(s, *look_, key, CHUNK, CUT_ROADS); },
+			[this, key](const CityCut &cut, MeshBuilder &mb) { emit_(RoadEmit{ cut, *look_, mb, *shapes_ }, key); });
 }
 
 void emit_structure_chunk(const RoadEmit &e, int64_t key) {
