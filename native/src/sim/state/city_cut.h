@@ -32,7 +32,7 @@ struct CutBox {
 };
 
 // What a cut copies besides the final ground of its box.
-enum CutParts : unsigned { CUT_ROADS = 1, CUT_BUILDINGS = 2, CUT_GROUND_BASE = 4, CUT_WATER = 8, CUT_STREET = 16 };
+enum CutParts : unsigned { CUT_ROADS = 1, CUT_BUILDINGS = 2, CUT_GROUND_BASE = 4, CUT_WATER = 8, CUT_STREET = 16, CUT_NATURE = 32 };
 
 struct CutFacts {
 	std::unordered_map<int, std::vector<FurnitureSpot>> furniture; // by segment: its pieces of every kind
@@ -47,14 +47,16 @@ struct CityCut {
 	RoadNetwork roads;
 	StreetWorks street;
 	BuildingRecords buildings;
+	NatureState nature;
 	CarriedAtomic<int> marking_style;
 	uint64_t revision = 0;
+	uint32_t seed = 0;
 	CutFacts facts;
 };
 
 inline CityView::CityView(const CityCut &cut) :
 		catalog(*cut.catalog), terrain(cut.ground), roads(cut.roads), street(cut.street), buildings(cut.buildings), designs(*cut.designs),
-		marking_style(cut.marking_style), revision(cut.revision), live(nullptr), facts(&cut.facts) {}
+		nature(cut.nature), marking_style(cut.marking_style), revision(cut.revision), seed(cut.seed), live(nullptr), facts(&cut.facts) {}
 
 // The cut of `box` with `parts`, made by a thread that holds the map.
 CityCut cut_held(const CityState &s, const CutBox &box, unsigned parts);

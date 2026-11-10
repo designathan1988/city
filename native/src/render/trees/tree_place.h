@@ -37,9 +37,12 @@ struct ChunkGround {
 		bool any(double x, double z, double reach, F &&test) const; // test(index) on each filed index the square x, z +- reach meets
 	} seg_grid, lot_grid;
 };
-ChunkGround chunk_ground(const CityState &s, int64_t key, bool ecology = true);
-bool near_road(const CityState &s, const ChunkGround &l, float x, float z, float r);
-bool in_lot(const CityState &s, const ChunkGround &l, float margin, float x, float z);
+ChunkGround chunk_ground(const CityView &s, int64_t key, bool ecology = true);
+bool near_road(const CityView &s, const ChunkGround &l, float x, float z, float r);
+bool in_lot(const CityView &s, const ChunkGround &l, float margin, float x, float z);
+// How far past its chunk a chunk's ground reads the roads and the lots (ChunkGround's margin), and the land (the ecosystem's
+// margin of corners round the square).
+float ground_reach(const Catalog &catalog);
 
 struct SpeciesMix {
 	std::vector<int> species;
@@ -107,10 +110,12 @@ struct FarCard {
 class GardenBook; // the plants of the lots' bodies (garden_place.h)
 
 // The trees of 256 m chunk `key`, near models.
-void place_trees(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, GardenBook &book, int64_t key,
+void place_trees(const CityView &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, GardenBook &book, int64_t key,
 		std::vector<TreeInstance> &out);
 // The far cards of chunk `key`: the same trees, one card each.
-void place_far(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, GardenBook &book, int64_t key,
+void place_far(const CityView &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, GardenBook &book, int64_t key,
 		std::vector<FarCard> &out);
+// How far past its chunk the trees of a chunk read the land: the woods' neighbours and jitter, the grade's probes.
+float tree_reach(const TreeLook &T);
 
 } // namespace city

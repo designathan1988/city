@@ -3,6 +3,10 @@
 // wind response by.
 #include "render/trees/tree_renderer.h"
 
+#include "core/math.h"
+#include "render/owned_segments.h"
+#include "render/roads/road_cut.h"
+
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/variant/packed_float32_array.hpp>
 
@@ -101,7 +105,43 @@ void TreeRenderer::mark_dirty(int64_t key) {
 	tier_[TIER_FAR].revs.mark(cell_key(int(std::floor(float(key_x(key)) / CHUNKS_PER_SUPER)), int(std::floor(float(key_y(key)) / CHUNKS_PER_SUPER))));
 }
 
-std::shared_ptr<TreeRenderer::Built> TreeRenderer::build_near(const CityState &s, int64_t key) const {
+// What a chunk's trees, or a superchunk's cards, read of the city, copied under the map's shared lock: the roads, the lots, the
+// land with its natural ground and its water, the paint, the planted trees and the clearings of the square, of the segments its
+// chunks own (a street's trees stand along the whole segment) and of the lots that stand in it (a garden is planted over the
+// whole lot), as far past them as the ground, the woods and the road pieces read; and the furniture of each owned segment, the
+// one fact a box of records cannot give.
+CityCut TreeRenderer::gather(const CityState &s, int64_t key, bool far) const {
+	const int side = far ? CHUNKS_PER_SUPER : 1;
+	const auto each_chunk = [&](auto &&fn) {
+		for (int j = 0; j < side; j++)
+			for (int i = 0; i < side; i++) fn(cell_key(key_x(key) * side + i, key_y(key) * side + j));
+	};
+	return cut_city(
+			s, CUT_ROADS | CUT_BUILDINGS | CUT_NATURE | CUT_GROUND_BASE | CUT_WATER,
+			[&](const CityState &live) {
+				const float size = float(side) * CHUNK, x0 = float(key_x(key)) * size, z0 = float(key_y(key)) * size;
+				CutBox box{ x0, z0, x0 + size, z0 + size };
+				each_chunk([&](int64_t chunk) {
+					each_owned_segment(live, chunk, [&](int sid) {
+						const RoadSegment &g = live.roads.segs[size_t(sid)];
+						box.take(g.minx, g.minz, g.maxx, g.maxz);
+					});
+					const float cx = float(key_x(chunk)) * CHUNK, cz = float(key_y(chunk)) * CHUNK;
+					live.buildings.query(cx, cz, cx + CHUNK, cz + CHUNK, [&](int id) {
+						const Building &b = live.buildings.items[size_t(id)];
+						if (chunk_of(b.x, b.z) != chunk) return;
+						const float r = std::hypot(b.w, b.d) * HALF; // a lot's corners stand within its half diagonal of its centre
+						box.take(b.x - r, b.z - r, b.x + r, b.z + r);
+					});
+				});
+				return box.grown(std::max({ ground_reach(live.catalog), tree_reach(trees_), road_reach(live.catalog, *look_) }));
+			},
+			[&](CityCut &cut, const CityState &live) {
+				each_chunk([&](int64_t chunk) { each_owned_segment(live, chunk, [&](int sid) { keep_furniture(cut, live, sid); }); });
+			});
+}
+
+std::shared_ptr<TreeRenderer::Built> TreeRenderer::build_near(const CityView &s, int64_t key) const {
 	auto out = std::make_shared<Built>();
 	std::vector<TreeInstance> trees;
 	place_trees(s, *look_, trees_, kit_, gardens_, key, trees);
@@ -119,7 +159,7 @@ std::shared_ptr<TreeRenderer::Built> TreeRenderer::build_near(const CityState &s
 	return out;
 }
 
-std::shared_ptr<TreeRenderer::Built> TreeRenderer::build_far(const CityState &s, int64_t key) const {
+std::shared_ptr<TreeRenderer::Built> TreeRenderer::build_far(const CityView &s, int64_t key) const {
 	auto out = std::make_shared<Built>();
 	out->far = true;
 	for (int j = 0; j < CHUNKS_PER_SUPER; j++)
@@ -190,11 +230,9 @@ void TreeRenderer::submit(const CityState &s, int64_t key, float priority, bool 
 	const uint64_t ticket = t.revs.ask(key);
 	const JobKey job{ far ? JobLane::TREES_FAR : JobLane::TREES_NEAR, key };
 	s.jobs->submit(job, priority, [this, &s, &t, key, job, ticket, priority, far]() {
-		std::shared_ptr<Built> b;
-		{
-			MapRead map(s);
-			b = far ? build_far(s, key) : build_near(s, key);
-		}
+		// The job copies what its trees read and places them from the copy, the map let go.
+		const CityCut cut = gather(s, key, far);
+		std::shared_ptr<Built> b = far ? build_far(cut, key) : build_near(cut, key);
 		b->key = key;
 		b->job = job;
 		b->ticket = ticket;

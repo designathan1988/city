@@ -19,14 +19,16 @@ struct CityView {
 	const StreetWorks &street;
 	const BuildingRecords &buildings;
 	const b40::Data &designs; // the generator's tables: the session's, read beside the records
+	const NatureState &nature; // what the plants read of it: painted ground, planted trees and clearings, elements, ecosystem
 	const CarriedAtomic<int> &marking_style;
 	uint64_t revision;
+	uint32_t seed;
 	const CityState *live; // the city read in place (its reader holds the map); null for a cut
 	const CutFacts *facts; // what a cut carries of the live city's kept facts (city_cut.h); null for the live city
 
 	CityView(const CityState &s) :
 			catalog(s.catalog), terrain(s.terrain), roads(s.roads), street(s.street), buildings(s.buildings), designs(s.buildings.designs),
-			marking_style(s.marking_style), revision(s.revision), live(&s), facts(nullptr) {}
+			nature(s.nature), marking_style(s.marking_style), revision(s.revision), seed(s.seed), live(&s), facts(nullptr) {}
 	CityView(const CityCut &cut); // city_cut.h
 };
 

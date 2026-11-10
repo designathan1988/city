@@ -14,6 +14,7 @@
 #include "render/trees/far_cards.h"
 #include "render/trees/garden_place.h"
 #include "render/trees/tree_place.h"
+#include "sim/state/city_cut.h"
 
 #include <memory>
 #include <unordered_map>
@@ -67,8 +68,9 @@ private:
 		void free();
 	};
 	using Tier = ChunkResults<Built>;
-	std::shared_ptr<Built> build_near(const CityState &s, int64_t key) const;
-	std::shared_ptr<Built> build_far(const CityState &s, int64_t key) const;
+	CityCut gather(const CityState &s, int64_t key, bool far) const;
+	std::shared_ptr<Built> build_near(const CityView &s, int64_t key) const;
+	std::shared_ptr<Built> build_far(const CityView &s, int64_t key) const;
 	void commit_near(Built &b);
 	void commit_far(Built &b);
 	void submit(const CityState &s, int64_t key, float priority, bool far);

@@ -173,7 +173,7 @@ float wood_share(const Community &c, const EcologyDef &d) {
 	return std::min(1.f, c.canopy * d.canopy_wood + c.trees * d.trees_wood + c.emergent * d.emergent_wood);
 }
 
-EcologyField compute_ecology(const Heightfield &hf, const GroundPaint &paint, const NatureSettings &nature, const EcologyDef &d, float x0, float z0, float span) {
+EcologyField compute_ecology(const GroundRead &hf, const GroundPaint &paint, const NatureSettings &nature, const EcologyDef &d, float x0, float z0, float span) {
 	EcologyField f;
 	f.cell = d.grid_m;
 	int inner = int(std::ceil(span / d.grid_m)) + 1, m = d.mean_cells + 1, side = inner + 2 * m;
@@ -183,7 +183,7 @@ EcologyField compute_ecology(const Heightfield &hf, const GroundPaint &paint, co
 	for (int y = 0; y < side; y++)
 		for (int x = 0; x < side; x++) {
 			float wx = gx + float(x) * d.grid_m, wz = gz + float(y) * d.grid_m;
-			h[size_t(y) * side + x] = hf.in_bounds(wx, wz) ? hf.base_height_at(wx, wz) : hf.water_level;
+			h[size_t(y) * side + x] = hf.in_bounds(wx, wz) ? hf.base_height_at(wx, wz) : hf.water_level();
 			wet[size_t(y) * side + x] = hf.in_bounds(wx, wz) && hf.is_water(wx, wz, 0.f) ? 1 : 0;
 		}
 	water_distance(wet, side, d.grid_m, dist);
@@ -206,7 +206,7 @@ EcologyField compute_ecology(const Heightfield &hf, const GroundPaint &paint, co
 			s.ridge = smooth(d.low_m, d.high_m, relative);
 			s.flat = 1.f - smooth(d.flat_from_deg, d.flat_to_deg, slope);
 			s.steep = smooth(d.steep_from_deg, d.steep_to_deg, slope);
-			s.altitude = h[k] - hf.water_level;
+			s.altitude = h[k] - hf.water_level();
 			s.patch = float(woods_noise(wx / d.patch_m + sx, sz - wz / d.patch_m, 1.0, 0)); // the map's north is -z
 			s.fray = float(woods_noise(wx / d.fray_m + sz, -wz / d.fray_m - sx, 1.0, 0));
 			int ix = hf.ix_of(wx), iz = hf.ix_of(wz);

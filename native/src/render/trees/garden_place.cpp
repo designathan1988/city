@@ -45,7 +45,7 @@ int flowering(const TreeLook &T, Draws &r) { return T.flowering_species[size_t(r
 
 // Where a plant of the garden stands, on the ground under it.
 struct Stand {
-	const CityState &s;
+	const CityView &s;
 	const b40::LotFrame f;
 	std::vector<TreeInstance> &out;
 	Vector3 ground(float x, float y) const {
@@ -126,8 +126,8 @@ void GardenBook::clear() {
 	book_.clear();
 }
 
-void place_garden(const CityState &s, const TreeLook &T, GardenBook &book, const Building &rec, GardenView view, std::vector<TreeInstance> &out) {
-	const GardenBook::Plants plants = book.plants(s.buildings.designs, rec);
+void place_garden(const CityView &s, const TreeLook &T, GardenBook &book, const Building &rec, GardenView view, std::vector<TreeInstance> &out) {
+	const GardenBook::Plants plants = book.plants(s.designs, rec);
 	if (plants->empty()) return;
 	const Stand at{ s, b40::lot_frame(rec), out };
 	uint32_t k = 0;

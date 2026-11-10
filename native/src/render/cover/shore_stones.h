@@ -2,7 +2,7 @@
 // the level of the water beside it, thickest on the line and thinning up the bank and into the deep. Read by the cover's jobs.
 #pragma once
 
-#include "sim/terrain/heightfield.h"
+#include "sim/terrain/ground_patch.h"
 
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
@@ -23,8 +23,8 @@ struct ShoreLook {
 };
 
 // The level of the water within `search_m` of a point, or TerrainGen::NO_WATER.
-float shore_level(const Heightfield &t, float x, float z, float search_m);
+float shore_level(const GroundRead &t, float x, float z, float search_m);
 // Whether any water stands on a square of the map, `pad_m` round it.
-bool shore_near(const Heightfield &t, float x0, float z0, float side_m, float pad_m);
+bool shore_near(const GroundRead &t, float x0, float z0, float side_m, float pad_m);
 
 } // namespace city

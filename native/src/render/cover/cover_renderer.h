@@ -15,7 +15,7 @@
 #include "render/render_context.h"
 #include "render/rs_util.h"
 #include "render/trees/tree_place.h"
-#include "sim/state/city_state.h"
+#include "sim/state/city_cut.h"
 
 #include <array>
 #include <memory>
@@ -56,10 +56,10 @@ private:
 		}
 		void bake() {}
 	};
-	std::shared_ptr<Built> build(const CityState &s, int64_t key) const;
-	void place(const CityState &s, int64_t key, const ChunkGround &l, Built &out) const;
-	void place_elements(const CityState &s, int64_t key, Built &out) const;
-	void place_shore(const CityState &s, int64_t key, const ChunkGround &l, Built &out) const;
+	std::shared_ptr<Built> build(const CityView &s, int64_t key) const;
+	void place(const CityView &s, int64_t key, const ChunkGround &l, Built &out) const;
+	void place_elements(const CityView &s, int64_t key, Built &out) const;
+	void place_shore(const CityView &s, int64_t key, const ChunkGround &l, Built &out) const;
 	float reach_of(const CityState &s, int64_t key);
 	void commit_one(Built &b);
 	void submit(const CityState &s, int64_t key, float priority);

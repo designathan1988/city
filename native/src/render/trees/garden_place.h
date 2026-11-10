@@ -36,6 +36,6 @@ private:
 enum class GardenView : uint8_t { NEAR, FAR };
 
 // The plants of the record's garden, in the world, on the ground under each.
-void place_garden(const CityState &s, const TreeLook &T, GardenBook &book, const Building &rec, GardenView view, std::vector<TreeInstance> &out);
+void place_garden(const CityView &s, const TreeLook &T, GardenBook &book, const Building &rec, GardenView view, std::vector<TreeInstance> &out);
 
 } // namespace city

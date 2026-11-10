@@ -44,6 +44,16 @@ struct NatureState {
 	uint64_t sky_revision = 0; // weather, clouds or fog changed: the render reads them again
 	uint64_t fog_revision = 0;
 	void reset(const Weather &w, int region, uint32_t seed); // a new map's
+	// What the plants of a box read (sim/state/city_cut.h): its painted ground, planted trees and clearings, elements, and the
+	// map's ecosystem; the sky and the fog are not the plants'.
+	NatureState cut(float minx, float minz, float maxx, float maxz) const {
+		NatureState c;
+		c.ground = ground.cut(minx, minz, maxx, maxz);
+		c.planted = planted.cut(minx, minz, maxx, maxz);
+		c.elements = elements.cut(minx, minz, maxx, maxz);
+		c.nature = nature;
+		return c;
+	}
 };
 
 } // namespace city

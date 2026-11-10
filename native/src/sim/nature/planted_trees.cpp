@@ -14,10 +14,23 @@ constexpr float HASH_CELL_M = 32.f; // about the widest dab the spacing test loo
 constexpr int STREAMS = 8;
 
 template <typename T>
-int take_slot(std::vector<T> &list, SlotIds &free) {
+int take_slot(IdTable<T> &list, SlotIds &free) {
 	return free.next(int(list.size()));
 }
 } // namespace
+
+PlantedTrees PlantedTrees::cut(float minx, float minz, float maxx, float maxz) const {
+	PlantedTrees c;
+	c.trees = IdTable<PlantedTree>::cut(trees.size());
+	c.clearings = IdTable<TreeClearing>::cut(clearings.size());
+	c.hash_ = hash_.window(minx, minz, maxx, maxz);
+	c.clear_hash_ = clear_hash_.window(minx, minz, maxx, maxz);
+	for (int id : c.hash_.filed()) c.trees.put(size_t(id), trees[size_t(id)]);
+	for (int id : c.clear_hash_.filed()) c.clearings.put(size_t(id), clearings[size_t(id)]);
+	c.live_trees_ = live_trees_;
+	c.live_clearings_ = live_clearings_;
+	return c;
+}
 
 void PlantedTrees::clear() {
 	trees.clear();

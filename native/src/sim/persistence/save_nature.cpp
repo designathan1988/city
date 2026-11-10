@@ -16,7 +16,7 @@ namespace {
 constexpr uint32_t MAX_LIST = 1u << 24; // the most slots a list of planted trees or clearings may claim
 
 template <typename T>
-void put_slots(ByteWriter &w, const std::vector<T> &list) {
+void put_slots(ByteWriter &w, const IdTable<T> &list) {
 	uint32_t n = 0;
 	for (const T &v : list) n += v.alive ? 1 : 0;
 	w.put_slots(list.size());
