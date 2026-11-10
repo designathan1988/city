@@ -33,7 +33,8 @@ def main():
     root = os.path.normpath(root or os.getcwd())
     with tempfile.TemporaryDirectory() as work:
         traces = os.path.join(work, "trace")
-        env = dict(os.environ, TRACE_FIX_DIR=traces)
+        runs = os.path.join(work, 'tasks')
+        env = dict(os.environ, TRACE_FIX_DIR=traces, TRACE_FIX_TASKS=runs)
         # the files under test live inside the repository (the ledger records repository paths), in a folder of their own
         files = tempfile.mkdtemp(prefix="trace_fix_selftest_", dir=os.path.join(root, "dist"))
         small, big, late = (os.path.join(files, n) for n in ("small.txt", "big.txt", "late.txt"))
@@ -74,7 +75,8 @@ def main():
             check("flow", ledger("flow", small, big, "--why", "selftest"), 0)
             check("read without a Read call", ledger("read", small, "1", "15", "--saw", "x"), 1)
             tool_read(small)
-            check("read after the Read call", ledger("read", small, "1", "15", "--saw", "fifteen lines"), 0)
+            check("a Read alone counts the lines as read", state("t")["files"][0]["ranges"] if ledger("status") == 0 else None, [[1, 15]])
+            check("a note may still be attached to what was read", ledger("read", small, "1", "15", "--saw", "fifteen lines"), 0)
             tool_read(big, 1, 400)
             check("read past what the Read returned", ledger("read", big, "401", "800", "--saw", "x"), 1)
             check("a chunk above the limit", ledger("read", big, "1", "900", "--saw", "x"), 1)
@@ -86,9 +88,9 @@ def main():
             bad = batch({"reads": [{"path": big, "from": 1, "to": 400, "saw": "first"},
                                    {"path": big, "from": 801, "to": 900, "saw": "not read"}],
                          "problems": [{"where": small + ":3", "what": "w", "cause": "c"}]})
-            before = state("t")
+            before = (len(state("t")["problems"]), sum(len(e["saw"]) for e in state("t")["files"]))
             check("a batch with one unproven chunk is refused", ledger("record", bad), 1)
-            check("and records nothing", state("t") == before, True)
+            check("and records nothing of it", (len(state("t")["problems"]), sum(len(e["saw"]) for e in state("t")["files"])) == before, True)
             tool_read(big, 801, 100)
             good = batch({"flow": [{"paths": [late], "why": "called by small", "after": small}],
                           "reads": [{"path": big, "from": 1, "to": 400, "saw": "first"},
@@ -121,13 +123,19 @@ def main():
             check("fix by problem is refused", ledger("fix", "P1", "--how", "h"), 1)
             check("gate plan with problems without a cause", ledger("gate", "plan"), 1)
             check("cause add", ledger("cause", "add", "--what", "one decision", "--owner", "small.txt", "--plan",
-                                      "change it", "--problems", "P1"), 0)
+                                      "change it", "--problems", "P1", "--api", "none", "--risks", "nothing reads it"), 0)
             check("gate plan with one problem still loose", ledger("gate", "plan"), 1)
             check("cause link", ledger("cause", "link", "C1", "P2"), 0)
-            check("fix before the plan gate", ledger("fix", "C1", "--how", "h"), 1)
+            check("fix before the cause's card", ledger("fix", "C1", "--how", "h"), 1)
             check("gate plan", ledger("gate", "plan"), 0)
             check("gate close with open problems", ledger("gate", "close"), 1)
-            check("fix by cause", ledger("fix", "C1", "--how", "changed the decision", "--commit", "abc"), 0)
+            check("the card of the cause", ledger("card", "C1", "--include", "tools/analysis/ftrace/tests/fixtures/notes_app"), 0)
+            check("fix with no test passed after the last edit", ledger("fix", "C1", "--how", "h"), 1)
+            os.makedirs(os.path.join(runs, "run1"))
+            with open(os.path.join(runs, "run1", "events.jsonl"), "w", encoding="utf-8") as f:
+                f.write(json.dumps({"event": "finish", "task": "small_test", "status": "PASS", "t": 4102444800.0}) + chr(10))
+            check("fix naming a test that did not pass", ledger("fix", "C1", "--how", "h", "--tests", "other_test"), 1)
+            check("fix by cause", ledger("fix", "C1", "--how", "changed the decision"), 0)
             check("the fix closed both problems", [p["status"] for p in state("t")["problems"]], ["fixed", "fixed"])
             check("export", ledger("export"), 0)
             check("export wrote the report and the notes",

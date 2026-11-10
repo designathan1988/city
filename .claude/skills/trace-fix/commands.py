@@ -1,11 +1,12 @@
 """What each command of the trace-fix ledger does: it loads the active trace, applies the operation (operations.py),
-saves, and answers through the bounded views (views.py). The gates live here: `gate read`, `gate plan`, `gate close`.
+saves, and answers through the bounded views (views.py). The gates are gates.py.
 """
 import copy
 import json
 import os
 import sys
 
+import evidence
 import proof
 import store
 import views
@@ -153,6 +154,7 @@ def cmd_cause_add(args):
     state = store.load()
     cid = f"C{len(state['causes']) + 1}"
     state["causes"].append({"id": cid, "what": args.what.strip(), "owner": args.owner.strip(), "plan": args.plan.strip(),
+                            "api": (args.api or "").strip(), "risks": (args.risks or "").strip(),
                             "status": OPEN, "how": "", "commit": "", "made": store.now()})
     run(do_link, state, cid, args.problems or [])
     store.save(state)
@@ -169,7 +171,7 @@ def cmd_cause_link(args):
 def cmd_cause_set(args):
     state = store.load()
     cause = run(store.cause_of, state, args.id)
-    for key in ("what", "owner", "plan"):
+    for key in ("what", "owner", "plan", "api", "risks"):
         if getattr(args, key):
             cause[key] = getattr(args, key).strip()
     store.save(state)
@@ -181,11 +183,19 @@ def cmd_fix(args):
     if args.id[:1].lower() == "p":
         fail("a fix goes by cause, not by problem: `cause add --what --owner --plan --problems P..` (or `cause link`), "
              "`gate plan`, then `fix C<n> --how \"...\" --commit <sha>` closes every problem of that cause")
-    if not state.get("read_gate"):
-        fail("the flow is not read in whole yet: `next`, and `gate read` before any fix")
-    if not state.get("plan_gate"):
-        fail("the plan is not whole yet: every open problem under a cause with an owner and a plan, then `gate plan`")
     cause = run(store.cause_of, state, args.id)
+    if not (cause["owner"] and cause["plan"]):
+        fail(f"{cause['id']} has no owner or no plan: `cause set {cause['id']} --owner ... --plan ...`")
+    if "needs" not in cause:
+        fail(f"{cause['id']} has no fix card yet: `card {cause['id']}` says where to edit and puts on the flow who calls and reads it")
+    held = {p["path"] for p in state["problems"] if p["cause_id"] == cause["id"]} | set(cause["needs"])
+    unread = [f"{e['path']} lines {a}-{b}" for e in state["files"] if e["path"] in held for a, b in store.gaps(e)]
+    if unread:
+        fail(f"{cause['id']} cannot be fixed before its own flow is read in whole (the files of its problems, their callers and "
+             "readers): " + "; ".join(unread[:12]) + (f" and {len(unread) - 12} more" if len(unread) > 12 else ""))
+    lacking = evidence.missing(state, cause, args)
+    if lacking:
+        fail(f"{cause['id']} is not accepted as fixed yet: " + " | ".join(lacking))
     cause.update(status=FIXED, how=args.how.strip(), commit=args.commit or "", closed=store.now())
     closed = 0
     for p in state["problems"]:
@@ -241,48 +251,6 @@ def cmd_notes(args):
 def cmd_problems(args):
     views.problems(store.load(), args.all, args.start)
 
-
-def cmd_gate(args):
-    state = store.load()
-    errors = []
-    open_problems = [p for p in state["problems"] if p["status"] == OPEN]
-    if args.which == "read":
-        if not state["files"]:
-            errors.append("no file on the flow: an empty flow fails")
-        errors += [f"unread: {e['path']} lines {a}-{b}" for e in state["files"] for a, b in store.gaps(e)]
-        if not errors:
-            state["read_gate"] = state.get("read_gate") or store.now()
-    elif args.which == "plan":
-        if not state.get("read_gate"):
-            errors.append("the read gate did not pass")
-        if not state["problems"]:
-            errors.append("no problem recorded: the symptom of the request has a cause in the code")
-        known = {c["id"] for c in state["causes"]}
-        errors += [f"without a cause: {p['id']} {p['path']}:{p['line']} {views.clip(p['what'], 90)}"
-                   for p in open_problems if p["cause_id"] not in known]
-        for c in state["causes"]:
-            if any(p["cause_id"] == c["id"] for p in open_problems) and not (c["owner"] and c["plan"]):
-                errors.append(f"{c['id']} has no owner or no plan")
-        if not errors:
-            state["plan_gate"] = store.now()
-    else:
-        if not state.get("read_gate"):
-            errors.append("the read gate did not pass")
-        if not state.get("plan_gate"):
-            errors.append("the plan gate did not pass")
-        if not any(c["status"] == FIXED for c in state["causes"]):
-            errors.append("no fixed cause: the symptom of the request has a cause in the code, plan and fix it")
-        errors += [f"open: {p['id']} {p['path']}:{p['line']} {views.clip(p['what'], 90)}" for p in open_problems]
-        if not errors:
-            state["closed"] = store.now()
-    store.save(state)
-    out = views.Out()
-    for i, error in enumerate(errors):
-        if not out.add("FAIL " + error):
-            break
-    out.add(f"gate {args.which}: {'FAILED, ' + str(len(errors)) + ' item(s)' if errors else 'passed'}")
-    out.flush(f"gate {args.which}: FAILED, {len(errors)} item(s); the first ones are above.")
-    sys.exit(1 if errors else 0)
 
 
 def cmd_export(_args):

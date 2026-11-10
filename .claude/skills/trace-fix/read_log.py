@@ -61,7 +61,7 @@ def main():
     if end < start:
         return
     row = {"t": time.strftime("%Y-%m-%d %H:%M:%S"), "session": event.get("session_id", ""), "path": relative,
-           "from": start, "to": end, "sha": hashlib.sha1(data).hexdigest()}
+           "from": start, "to": end, "sha": hashlib.sha1(data).hexdigest(), "ns": time.time_ns()}
     proof.write_read(row)
 
 

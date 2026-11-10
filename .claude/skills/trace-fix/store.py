@@ -93,7 +93,7 @@ def set_active(slug):
 
 
 def new_state(slug, request, reuse):
-    return {"slug": slug, "request": request, "opened": now(), "note": "", "reuse": bool(reuse), "read_gate": None,
+    return {"slug": slug, "request": request, "opened": now(), "since": time.strftime("%Y-%m-%d %H:%M:%S"), "since_ns": time.time_ns(), "note": "", "reuse": bool(reuse), "read_gate": None,
             "plan_gate": None, "closed": None, "files": [], "problems": [], "causes": []}
 
 
@@ -103,6 +103,8 @@ def load(slug=None):
         fail("no active trace: open one with `open <slug> --request \"...\"`")
     with open(ledger_path(slug), encoding="utf-8") as f:
         state = json.load(f)
+    state.setdefault("since_ns", 0)  # a ledger older than the exact moment: its opening minute decides
+    state.setdefault("since", state.get("opened", ""))  # a ledger older than the moment: its opening minute
     # a ledger written before causes, the plan gate and reuse existed
     for key, value in new_state(slug, "", False).items():
         state.setdefault(key, value)

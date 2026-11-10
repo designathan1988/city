@@ -5,7 +5,7 @@ runs, the line ranges read with what each chunk does, the problems found, the ca
 the fixes. It survives compaction and new sessions (`resume`, always a short answer) and it can fail: `read`
 refuses a chunk the Read tool did not return, `gate read` a flow not read in whole, `gate plan` a problem without
 a cause or a cause without a plan, `fix` anything before those gates, `gate close` an open problem.
-What each command does: commands.py. The flow found by script: route.py. A cause's fix card: card.py. The changes a trace accepts: operations.py. State and paths: store.py.
+What each command does: commands.py. The flow found by script: route.py. A cause's fix card: card.py. What a fix must show: evidence.py. The changes a trace accepts: operations.py. State and paths: store.py.
 Proof of reading and notes kept by content: proof.py. Output: views.py.
 Usage: python ledger.py <command> -h
 """
@@ -15,7 +15,12 @@ sys.dont_write_bytecode = True  # the skill's files are swapped in place: no sta
 
 import argparse  # noqa: E402
 
+import os  # noqa: E402
+
 import commands  # noqa: E402
+import gates  # noqa: E402
+import proof  # noqa: E402
+import store  # noqa: E402
 import card  # noqa: E402
 import route  # noqa: E402
 
@@ -80,6 +85,8 @@ def main():
     q.add_argument("--owner", required=True, help="the one file or module that owns the correction")
     q.add_argument("--plan", required=True, help="the correction, and why the symptoms cannot return another way")
     q.add_argument("--problems", nargs="*", help="P<n> ... that come from it")
+    q.add_argument("--api", help="the outside APIs the fix touches (Godot, godot-cpp, Terrain3D, a library), comma separated, or none")
+    q.add_argument("--risks", help="what the fix can break, and the test or photo that guards each")
     q.set_defaults(fn=commands.cmd_cause_add)
     q = cause.add_parser("link", help="put problems under a cause")
     q.add_argument("id")
@@ -90,11 +97,16 @@ def main():
     q.add_argument("--what")
     q.add_argument("--owner")
     q.add_argument("--plan")
+    q.add_argument("--api")
+    q.add_argument("--risks")
     q.set_defaults(fn=commands.cmd_cause_set)
     p = sub.add_parser("fix", help="mark a cause fixed: closes its problems (only after `gate read` and `gate plan`)")
     p.add_argument("id", help="C<n>")
     p.add_argument("--how", required=True, help="what changed and why the symptoms cannot return another way")
     p.add_argument("--commit")
+    p.add_argument("--tests", nargs="*", help="the orchestrator's tasks that failed before and pass now (a PASS after the last edit is checked)")
+    p.add_argument("--photos", help="folder of the photos taken after the fix, when it can reach the screen")
+    p.add_argument("--seen", help="what each photo shows and every problem seen")
     p.set_defaults(fn=commands.cmd_fix)
     p = sub.add_parser("drop", help="a recorded item that the code proved not to be a problem")
     p.add_argument("id")
@@ -119,12 +131,17 @@ def main():
     p = sub.add_parser("gate", help="read: the flow is read in whole; plan: every problem has a planned cause; "
                                     "close: every problem is fixed")
     p.add_argument("which", choices=["read", "plan", "close"])
-    p.set_defaults(fn=commands.cmd_gate)
+    p.set_defaults(fn=gates.cmd_gate)
     for name in ("export", "report"):
         sub.add_parser(name, help="write report.md (causes and problems) and notes.md (every chunk) in the trace's "
                                   "folder, to read with the Read tool").set_defaults(fn=commands.cmd_export)
 
     args = ap.parse_args()
+    slug = store.active_slug()
+    if slug and os.path.exists(store.ledger_path(slug)) and args.cmd not in ("open", "list", "switch"):
+        state = store.load(slug)
+        if not state.get("closed") and proof.absorb(state):  # what was read since the last command counts before anything is asked
+            store.save(state)
     args.fn(args)
 
 

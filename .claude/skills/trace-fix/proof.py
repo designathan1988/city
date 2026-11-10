@@ -35,8 +35,8 @@ def write_read(row):
     write_whole(os.path.join(reads_folder(row["path"]), f"{time.time_ns()}-{os.getpid()}.json"), row)
 
 
-def proven(path):
-    """Line ranges of a file, as it is now, that the Read tool returned in calls of at most CHUNK_LINES."""
+def proven(path, since="", since_ns=0):
+    """Line ranges of a file, as it is now, that the Read tool returned in calls of at most CHUNK_LINES, from a moment on."""
     folder = reads_folder(path)
     if not os.path.isdir(folder):
         return []
@@ -47,7 +47,8 @@ def proven(path):
             continue  # a record still being written: it counts once it is renamed into place
         with open(os.path.join(folder, name), encoding="utf-8") as f:
             row = json.load(f)
-        if row.get("path") == path and row.get("sha") == sha and row["to"] - row["from"] + 1 <= store.CHUNK_LINES:
+        if row.get("path") == path and row.get("sha") == sha and row["to"] - row["from"] + 1 <= store.CHUNK_LINES and (
+                row["ns"] > since_ns if since_ns and "ns" in row else row.get("t", "") > since):
             out.append([row["from"], row["to"]])
     return store.merged(out)
 
@@ -66,6 +67,20 @@ def unproven(path, start, end):
     if at <= end:
         out.append([at, end])
     return out
+
+
+def absorb(state):
+    """Counts as read every line of the flow the Read tool returned since this trace opened (for the file as it is now, in calls of a
+    chunk at most): the reading is recorded by reading, with no command of its own; a reading made for another trace is not this one's. What is absorbed stays read when the file is edited later."""
+    changed = 0
+    for entry in state["files"]:
+        if not store.gaps(entry) or not os.path.isdir(reads_folder(entry["path"])) or not os.path.isfile(os.path.join(store.ROOT, entry["path"])):
+            continue
+        entry["lines"] = store.line_count(entry["path"])
+        before = store.lines_read(entry)
+        entry["ranges"] = store.merged(entry["ranges"] + [[a, min(b, entry["lines"])] for a, b in proven(entry["path"], state.get("since") or state["opened"], state.get("since_ns", 0)) if a <= entry["lines"]])
+        changed += store.lines_read(entry) != before
+    return changed
 
 
 def note_path(sha):

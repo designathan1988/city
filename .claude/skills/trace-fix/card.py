@@ -59,6 +59,9 @@ def graph_of(include=None):
     return Graph(build_index(store.ROOT, cache_dir=os.path.join(store.ROOT, "dist", "cache", "ftrace"), include=list(include or INCLUDE)))
 
 
+CARD_FILES = set()  # the files of the callers and readers the card names: the cause's own flow, read before its fix
+
+
 def reaching_tests(graph, unit):
     """Test files with a unit that makes this one run, through calls, upwards."""
     seen, todo, found = {unit}, [unit], set()
@@ -109,6 +112,7 @@ def lines_of(state, graph, cause):
             out.append(f"- {len(built)} text(s) are a piece its name may be built from at run time (check what is joined to each):")
             out += [f"    {p}:{n}: {views.clip(t, 140)}" for p, n, t in built]
         tests |= reaching_tests(graph, unit)
+        CARD_FILES.update(graph.nodes[i].path for i in [unit, *callers, *readers])
     scenes = sorted(t[len("project/"):-3] + ".tscn" for t in tests if t.endswith("_test.gd") and os.path.isfile(os.path.join(store.ROOT, t[:-3] + ".tscn")))
     out += ["", f"## How to prove it: {len(scenes)} test scene(s) reach these functions"]
     out += [f"- python tools/tasks/cli.py run fast {s}" for s in scenes] or ["- no test scene reaches them by calls: the fix needs its own failing test first"]
@@ -124,6 +128,14 @@ def cmd_card(args):
         text = lines_of(state, graph_of(args.include), cause)
     except Refused as refusal:
         fail(str(refusal))
+    from operations import do_flow
+    needs = sorted(CARD_FILES)
+    for file in needs:
+        if os.path.isfile(os.path.join(store.ROOT, file)) and not store.find_file(state, file):
+            do_flow(state, [file], f"calls or reads what {cause['id']} changes")
+    cause["needs"] = [f for f in needs if store.find_file(state, f)]
+    store.save(state)
+    CARD_FILES.clear()
     path = os.path.join(store.trace_folder(state["slug"]), f"card-{cause['id']}.md")
     with open(path + ".tmp", "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(text) + "\n")
