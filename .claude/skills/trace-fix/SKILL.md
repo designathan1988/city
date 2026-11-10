@@ -155,20 +155,20 @@ change, no special case, no swallowed error, no `--bless` to pass, no moved cost
 For each cause: the test that fails before and passes after, the change, the check of what the change reaches
 (CLAUDE.md verification table, the fastest test that proves it), then
 
-**A fix that can reach the screen is proven by photos, every time.** When the change touches render, terrain, shaders,
-meshes, light, the camera or the data that feeds them (`project/data/render`, `project/data/game`), whatever its purpose
-(a performance fix on the land's heights can still move the land): photos of the element before the change and after it,
-from near and from several angles, by day and by night where light is involved, into `dist/review-c<n>/before` and
-`/after`. Look at each picture yourself.
-- **The before photo is not the reference.** It may show the very defect being fixed, or another one. It only shows what
-  changed. Never make the after match the before, and never count "equal to before" as correct.
-- **The after photo is judged on its own:** is what the player sees right? The reference of right is the Roadcraft lab in
-  the same view and the project's own rules (CLAUDE.md, the user's memory on street edges), not the old picture.
-- **Every difference is explained by its cause** (`tools/build/photodiff.py` says where to look): the ones the fix was
-  meant to make, and any other. A fix meant to change nothing on the screen that changed something is explained too: it
-  is either a defect the fix brought (back to the reading) or a defect the before had (say which, with the code).
-- A defect seen in either picture that this cause does not own is recorded as a problem, not ignored.
-No photos, no `fix`.
+**After a fix that can reach the screen, photograph the game as it is now and analyse the photos.** When the change
+touches render, terrain, shaders, meshes, light, the camera or the data that feeds them (`project/data/render`,
+`project/data/game`), whatever its purpose (a performance fix on the land's heights can still move the land): photos
+of the element in the game, from near, from mid distance and from far, from several angles, by day and by night, into
+`dist/review-c<n>/`. No comparison with an older picture decides anything: the older one may be broken.
+Then look at every photo yourself, with attention, as someone who plays this game and knows what a city looks like:
+- what is in the picture, element by element (land, roads, kerbs and footways, junctions, buildings, lots, trees, water,
+  vehicles, people, light, shadows, sky), and whether each one is right for this game;
+- anything wrong, whatever it is and whoever caused it: floating or sunk things, gaps and seams, grass where a footway
+  should be, things overlapping or inside each other, missing or stretched textures, wrong colours, flicker, hard level
+  changes, shadows detached or missing, lights with no source, empty places that should hold something.
+Write what each photo shows and every problem seen. A problem this cause brought goes back to the reading; any other
+is recorded with `$L problem` (found in the photo, with the file that draws it). Saying "looks fine" without naming
+what was looked at is not an analysis. No photos analysed, no `fix`.
 
 `$L fix C<n> --how "what changed, why it cannot return" --commit <sha>` and commit and push by theme. A fix goes by
 cause: it closes every problem under that cause, so before it check each of them in the changed code. A problem the
