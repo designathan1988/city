@@ -117,6 +117,7 @@ static func apply(q: Dictionary, world: CityWorld, viewport: Viewport, dynamic_s
 	# FSR2 and TAA sharpen every texture by a negative mipmap bias, counting on the frames to resolve it; a tiled wall under a pixel turns to moire
 	viewport.texture_mipmap_bias = float(q.temporal_mip_bias) if temporal != TEMPORAL_NONE else 0.0
 	viewport.scaling_3d_scale = cap_scale(q.pixel_ratio) * dynamic_scale
+	EffectMaterials.cover_by_frames(world.materials(), temporal != TEMPORAL_NONE)
 	world.occlusion.turn(q.ssao)
 	world.sky.clouds_drawn = q.sky_clouds or q.cloud_shadows
 	world.environment.ssil_enabled = bool(q.ssil) # the light the walls and the street throw back on each other: shade stops being one flat blue

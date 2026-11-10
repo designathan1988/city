@@ -234,7 +234,12 @@ func _occlusion(rig: CityCamera) -> void:
 
 ## Sky fields: what the sky's owner reads on `changed`.
 func _entry() -> void:
+	var card: Dictionary = DataTables.render_table("materials").building_card
 	Settings.set_preset("low")
 	check(not _sky.clouds_drawn, "low draws no clouds")
+	check(world.materials().building_card.shader.resource_path == card.blend_shader, "low has no filter over the frames: the railings' bars are blended")
 	Settings.set_preset("ultra")
 	check(_sky.clouds_drawn, "ultra draws the clouds")
+	# ultra asks for a temporal filter, which only Forward+ has: there the bars are a grain it resolves
+	var by_frames: String = card.shader if QualityTier.has_temporal() else card.blend_shader
+	check(world.materials().building_card.shader.resource_path == by_frames, "ultra: the railings' bars by the filter the renderer has")

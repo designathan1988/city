@@ -129,6 +129,7 @@
  },
  "building_card": {
   "shader": "res://render/shaders/building_card.gdshader",
+  "blend_shader": "res://render/shaders/building_card_blend.gdshader",
   "params": {
    "roughness": 0.45,
    "metalness": 0.55

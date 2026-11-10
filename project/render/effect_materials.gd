@@ -6,7 +6,8 @@ extends RefCounted
 
 ## Kept as text so the orphan gate sees the shaders the native effects load by name from materials.json.
 const TONE_INVERTED := ["puffs", "building_wash"] ## what tone_inverse.gdshaderinc reads
-const SHADERS := ["res://render/shaders/puffs.gdshader", "res://render/shaders/debris.gdshader", "res://render/shaders/marks.gdshader"]
+const SHADERS := ["res://render/shaders/puffs.gdshader", "res://render/shaders/debris.gdshader", "res://render/shaders/marks.gdshader",
+	"res://render/shaders/building_card_blend.gdshader"]
 
 
 ## `row`: the material's row of data/render/materials.json; render_priority orders the transparent layers (the higher is drawn over).
@@ -23,3 +24,12 @@ static func make(key: String, row: Dictionary, environment: Environment) -> Shad
 			rad.append(ToneMap.radiance(Color.html(html), environment.tonemap_exposure, environment.tonemap_white))
 		m.set_shader_parameter("crater_rad", rad)
 	return m
+
+
+## How the railings' bars under a pixel reach the screen (building_card_body.gdshaderinc): as a grain where a filter over the frames
+## (TAA, FSR2) resolves it (`by_frames`), blended where none runs. `materials`: CityWorld.materials().
+static func cover_by_frames(materials: Dictionary, by_frames: bool) -> void:
+	var row: Dictionary = DataTables.render_table("materials").building_card
+	var shader: Shader = load(row.shader if by_frames else row.blend_shader)
+	if materials.building_card.shader != shader:
+		materials.building_card.shader = shader
