@@ -112,7 +112,7 @@ func _step(step: Dictionary) -> void:
 	elif step.has("click"):
 		await ui.click(_point(step.click))
 	elif step.has("global"):
-		RenderingServer.global_shader_parameter_set(StringName(step.global[0]), step.global[1])
+		SentParams.send_global(StringName(step.global[0]), step.global[1]) # through the one sender: it keeps what the engine was told
 	elif step.has("reference"):
 		_reference(step.reference)
 	elif step.has("until"):

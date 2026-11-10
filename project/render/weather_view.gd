@@ -19,6 +19,7 @@ var _centre := Vector3.ZERO
 var _lattice := Vector3.ZERO
 var _started := false
 var _bolt_mat: ShaderMaterial
+var _bolt_sent: SentParams # the bolts' material as last told (step)
 var _bolts: Array = [] # { age, node }
 var _thunder: Thunder
 var _rng := RandomNumberGenerator.new()
@@ -43,6 +44,7 @@ func _ready() -> void:
 	add_child(_rain)
 	_bolt_mat = ShaderMaterial.new()
 	_bolt_mat.shader = load("res://render/shaders/lightning.gdshader")
+	_bolt_sent = SentParams.new(_bolt_mat)
 	_thunder = Thunder.new(_d)
 	add_child(_thunder)
 
@@ -85,8 +87,8 @@ func step(dt: float, weather: Dictionary, way: Vector2) -> void:
 			var r: float = _rng.randf() * span * _d.strike_reach
 			strike(ground + Vector3(cos(a) * r, 0.0, sin(a) * r))
 	_age(dt)
-	_bolt_mat.set_shader_parameter("brightness", flash)
-	_bolt_mat.set_shader_parameter("screen", get_viewport().get_visible_rect().size)
+	_bolt_sent.send(&"brightness", flash) # sent when they moved: no bolt in the sky sets nothing
+	_bolt_sent.send(&"screen", get_viewport().get_visible_rect().size)
 	_thunder_volume = weather.thunder
 
 

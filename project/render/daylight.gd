@@ -15,7 +15,6 @@ var _fill: DirectionalLight3D
 var _top: DirectionalLight3D
 var _under: DirectionalLight3D
 var _env: Environment
-var _sky: ShaderMaterial
 var night := 0.0
 var shadows_on := true: # what the graphics tier asks of the sun; the moon's shadow goes with the night (_cast)
 	set(on):
@@ -38,7 +37,8 @@ var _fitted_for := []
 ## The values last given to the engine (it keeps them in single precision, so its own copy does not compare): each is set only
 ## when it moves.
 var _air_density := NAN
-var _sky_low := NAN # the sky's low band share last sent (follow_view)
+var _sky_sent: SentParams # the sky's values go through it: a value set remakes the sky's radiance map, so only the ones that moved are
+var horizon_linear := Color.BLACK # the sky's colour at the horizon now, in linear light: what the air takes (sky_view.gd)
 var _splits := PackedFloat64Array([NAN, NAN, NAN])
 ## The Effects panel's switches: bloom and the ambient light drawn or not.
 var glow_on := true
@@ -52,7 +52,7 @@ func _init(day: Dictionary, sun: DirectionalLight3D, fill: DirectionalLight3D, t
 	_top = top
 	_under = under
 	_env = env
-	_sky = sky
+	_sky_sent = SentParams.new(sky)
 
 
 func _c(key: String) -> Color:
@@ -128,12 +128,12 @@ func set_hour(hour: float) -> void:
 	_cast()
 	_env.glow_enabled = glow_on and night > _d.glow_from_night
 	_env.glow_intensity = _d.glow_intensity * night
-	RenderingServer.global_shader_parameter_set(&"night", night)
-	RenderingServer.global_shader_parameter_set(&"sun_direction", _sun.global_basis.z)
+	SentParams.send_global(&"night", night)
+	SentParams.send_global(&"sun_direction", _sun.global_basis.z)
 	var awake := _awake_share(hour)
-	RenderingServer.global_shader_parameter_set(&"rooms_awake", awake)
-	RenderingServer.global_shader_parameter_set(&"outside_on", _d.outside_all_night + (1.0 - _d.outside_all_night) * awake)
-	RenderingServer.global_shader_parameter_set(&"room_daylight", (1.0 - night) * _d.room_daylight)
+	SentParams.send_global(&"rooms_awake", awake)
+	SentParams.send_global(&"outside_on", _d.outside_all_night + (1.0 - _d.outside_all_night) * awake)
+	SentParams.send_global(&"room_daylight", (1.0 - night) * _d.room_daylight)
 
 
 ## Under the street lamps no one can see the moon's shadow, and it is the whole city drawn again for its maps: it fades with the dusk and the pass goes.
@@ -157,10 +157,7 @@ func follow_view(camera: Camera3D) -> void:
 	if camera == null:
 		return
 	var low := 1.0 - smoothstep(_d.low_from_m, _d.low_to_m, camera.global_position.y)
-	var band: float = _d.low_sky * low # the sky's deep band at this height: sent only when it moves (the sky's radiance is remade then)
-	if band != _sky_low:
-		_sky_low = band
-		_sky.set_shader_parameter("low", band)
+	_sky_sent.send(&"low", _d.low_sky * low) # the sky's deep band at this height
 	var air: Color = _c("air_high").lerp(_c("low_horizon"), low) * (1.0 - _d.air_night_cut * _dark)
 	if _env.fog_light_color != air:
 		_env.fog_light_color = air
@@ -258,11 +255,12 @@ func _set_sky(elev: float) -> void:
 	var grey: Color = _c("overcast_grey") * light
 	zenith = zenith.lerp(grey, _overcast * _d.overcast_sky)
 	horizon = horizon.lerp(grey, _overcast * _d.overcast_sky)
-	_sky.set_shader_parameter("zenith", zenith)
-	_sky.set_shader_parameter("horizon", horizon)
-	_sky.set_shader_parameter("ground", _c("sky_ground").lerp(_c("horizon_night"), 1.0 - light))
-	_sky.set_shader_parameter("low_zenith", _c("low_zenith"))
-	_sky.set_shader_parameter("low_horizon", _c("low_horizon"))
-	_sky.set_shader_parameter("dark", 1.0 - light)
-	_sky.set_shader_parameter("sun_color", sun_col)
-	_sky.set_shader_parameter("gain", _d.sky_gain * (1.0 + _flash * _d.flash_sky))
+	_sky_sent.send(&"zenith", zenith)
+	_sky_sent.send(&"horizon", horizon)
+	horizon_linear = horizon.srgb_to_linear()
+	_sky_sent.send(&"ground", _c("sky_ground").lerp(_c("horizon_night"), 1.0 - light))
+	_sky_sent.send(&"low_zenith", _c("low_zenith"))
+	_sky_sent.send(&"low_horizon", _c("low_horizon"))
+	_sky_sent.send(&"dark", 1.0 - light)
+	_sky_sent.send(&"sun_color", sun_col)
+	_sky_sent.send(&"gain", _d.sky_gain * (1.0 + _flash * _d.flash_sky))

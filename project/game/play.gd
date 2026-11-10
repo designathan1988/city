@@ -8,7 +8,7 @@ const LIVE_DRIVER := "res://tests/visual/live_driver.gd"
 
 
 func _ready() -> void:
-	RenderingServer.global_shader_parameter_set(&"night", 0.0)
+	SentParams.send_global(&"night", 0.0)
 	var world := CityWorld.new()
 	add_child(world)
 	var cam := CityCamera.new()

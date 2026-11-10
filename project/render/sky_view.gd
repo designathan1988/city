@@ -30,6 +30,7 @@ var clouds_drawn := true # what the graphics tier pays for: the pass of the clou
 var _d: Dictionary
 var _world: CityWorld
 var _mat: ShaderMaterial
+var _sent: SentParams # the values of _mat worked out every frame go through it (_light)
 var _quad: MeshInstance3D
 var _seen := -1
 var _bounds := PackedVector4Array()
@@ -65,6 +66,7 @@ func _ready() -> void:
 	_looks.resize(SLOTS)
 	_mat = ShaderMaterial.new()
 	_mat.shader = load("res://render/shaders/atmosphere.gdshader")
+	_sent = SentParams.new(_mat)
 	_mat.render_priority = RenderingServer.MATERIAL_RENDER_PRIORITY_MAX
 	_mat.set_shader_parameter("noise_volume", _noise())
 	_mat.set_shader_parameter("start_noise", load(_d.start_noise))
@@ -158,20 +160,20 @@ func _overcast() -> float:
 
 
 func _light(way: Vector2) -> void:
-	RenderingServer.global_shader_parameter_set(&"wind_x", way.x)
-	RenderingServer.global_shader_parameter_set(&"wind_z", way.y)
-	RenderingServer.global_shader_parameter_set(&"wind_ms", float(weather.get("wind", 0.0)))
-	RenderingServer.global_shader_parameter_set(&"rain_wet", float(weather.get("rain", 0.0)))
-	_mat.set_shader_parameter("wind_dir", way)
-	_mat.set_shader_parameter("sun_dir", _world.sun.global_basis.z.normalized())
+	# Worked out every frame, sent when they moved (SentParams): a still wind and a still sun set nothing.
+	SentParams.send_global(&"wind_x", way.x)
+	SentParams.send_global(&"wind_z", way.y)
+	SentParams.send_global(&"wind_ms", float(weather.get("wind", 0.0)))
+	SentParams.send_global(&"rain_wet", float(weather.get("rain", 0.0)))
+	_sent.send(&"wind_dir", way)
+	_sent.send(&"sun_dir", _world.sun.global_basis.z.normalized())
 	var c := _world.sun.light_color
-	_mat.set_shader_parameter("sun_light", Vector3(c.r, c.g, c.b) * _world.sun.light_energy * _d.sun_gain)
+	_sent.send(&"sun_light", Vector3(c.r, c.g, c.b) * _world.sun.light_energy * _d.sun_gain)
 	# The air takes the sky's colour at the horizon, overcast with it; the pass works in linear light.
-	var horizon: Color = (_world.environment.sky.sky_material as ShaderMaterial).get_shader_parameter("horizon")
-	horizon = horizon.srgb_to_linear()
-	_mat.set_shader_parameter("sky_light", Vector3(horizon.r, horizon.g, horizon.b))
-	_mat.set_shader_parameter("mist_color", Vector3(horizon.r, horizon.g, horizon.b))
-	_mat.set_shader_parameter("dark", _world.daylight.night)
+	var horizon := _world.daylight.horizon_linear
+	_sent.send(&"sky_light", Vector3(horizon.r, horizon.g, horizon.b))
+	_sent.send(&"mist_color", Vector3(horizon.r, horizon.g, horizon.b))
+	_sent.send(&"dark", _world.daylight.night)
 
 
 ## 0..1 hash of an integer and a salt.
