@@ -1,7 +1,7 @@
 """Self-test of the trace-fix tools, in a throwaway trace folder: refusals, proof, batches, causes, reuse, limits.
 
 Runs ledger.py and read_guard.py as the skill does (the hook fed the events Claude Code produces) against small files made
-for the test: the proof of a reading, and the edit that is refused until the lines it replaces are read, and a made-up ledger of 1000 files and 200 problems for the output limit. Exits non-zero on any
+for the test: the proof of a reading, and the edit that is refused until its file is read whole, and a made-up ledger of 1000 files and 200 problems for the output limit. Exits non-zero on any
 miss, and a run that checked nothing fails. Usage: python selftest.py
 """
 import sys
@@ -63,14 +63,11 @@ def main():
             with open(os.path.join(traces, slug, "ledger.json"), encoding="utf-8") as f:
                 return json.load(f)
 
-        def hook(event, tool, path, session="selftest", offset=None, limit=None, old=None, **top):
-            """One call of the hook, as Claude Code makes it; the exit code (2 refuses the tool), stderr kept in hook.err.
-            `old`: the text an Edit replaces."""
+        def hook(event, tool, path, session="selftest", offset=None, limit=None, **top):
+            """One call of the hook, as Claude Code makes it; the exit code (2 refuses the tool), stderr kept in hook.err."""
             tool_input = {"file_path": path}
             if offset:
                 tool_input.update(offset=offset, limit=limit)
-            if old:
-                tool_input.update(old_string=old, new_string="changed\n")
             doc = {"hook_event_name": event, "tool_name": tool, "session_id": session, "cwd": root, "tool_input": tool_input, **top}
             done = subprocess.run([sys.executable, os.path.join(HERE, "read_guard.py")], input=json.dumps(doc), env=env,
                                   cwd=root, capture_output=True, text=True, encoding="utf-8")
@@ -183,8 +180,6 @@ def main():
                 f.write("## 01-street_near: B1 no body in another: the three cars of crop r2c2 stand apart")
             check("analysed on paper, never opened: still refused", (ledger("close"), "never opened" in ledger.out + ledger.err), (1, True))
             hook("PostToolUse", "Read", os.path.join(shots, "01-street_near.png"))
-            os.makedirs(os.path.join(shots, "crops"))
-            open(os.path.join(shots, "crops", "01-street_near-r1c1.png"), "wb").close()  # a crop nobody opened holds nothing back
             check("close with every photo opened and analysed", ledger("close"), 0)
             check("resume --hook after the close is silent", (ledger("resume", "--hook"), ledger.out), (0, ""))
 

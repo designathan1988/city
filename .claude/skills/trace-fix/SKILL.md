@@ -22,25 +22,20 @@ planned and the fix made). After a compaction Read those two files (`export` giv
 read twice. The trace you open, switch to or run a command on is yours: the ledger's commands go to it with no prefix;
 `TRACE_FIX_SLUG=<slug> $L resume` once takes up a trace another session left.
 
-**The flow is read with the Read tool, once, and everything read is recorded by you.** The functions of the flow, their
-callers and the records of the area that speak of the problem (CLAUDE.md is already in your context: its rules bind
-every step). What you read is kept by your notes, so nothing is read twice: after a compaction only the lines you are
-about to change are read again. A document is read where it speaks of the problem, not from its first line to its last.
-The edit hook refuses an Edit or Write and lists, all at once, what is missing:
+**Everything is read whole, with the Read tool, and everything read is recorded by you.** The records of the area in
+`log/`, every file of the flow, every file you change, from the first line to the last (CLAUDE.md is already in your
+context: its rules bind every step). The edit hook refuses any Edit or Write and lists, all at once, what is missing:
 
-- READ: the lines the edit replaces, read as the file is now since your last compaction (a file written over whole:
-  the whole of it). A file opened in part stops nothing. A reference tree (`references.json`: the reference game) is
-  read for what the game must do, never copied.
+- READ: the file to change, read whole as it is now since your last compaction; every file you opened (of the
+  repository or of a reference tree, `references.json`: the reference game, read for what the game must do, never
+  copied) read to its end.
 - RECORD: every line of the flow you read has a note **you** wrote (saw, called_by, state). A note an earlier session
   wrote does not count for your reading: what you understood is lost at your next compaction unless you write it.
 - FLOW: every code file you read is on the flow of your trace (`flow`, then recorded) or taken off it with why (`off`).
 - PLAN: an open problem in the file you change has its fix planned (`plan P<n> --fix`).
 - DOCS: a file that calls the engine (a script, shader or scene; C++ that includes godot-cpp or Terrain3D) is changed
-  only after you looked its calls up in this session: context7 (`resolve-library-id`, then `query-docs`; the hook keeps
-  each lookup, and a compaction does not take it away: what it said is in the record's `docs`), or the vendored source
-  in `native/godot-cpp` and `project/addons/terrain_3d`. A call not yet looked up is looked up before it is judged.
-
-You are held to the trace you work on now alone: one you left asks nothing more of you.
+  only after you looked up its calls since your last compaction: context7 (`resolve-library-id`, then `query-docs`;
+  the hook keeps each lookup), or the vendored source in `native/godot-cpp` and `project/addons/terrain_3d`.
 
 `status` shows the same list (OWED). The trace folder (records, analysis) is always writable. `cat`, `sed`, `grep` and an agent's reading are not a reading. Files are changed with Edit and Write, never by a shell
 command.
@@ -135,7 +130,7 @@ the flow is read before the change.
    (`python tools/tasks/cli.py run audit`), a probe of the core. If none fails, write it first and see it fail.
 2. Change the decision that produces the symptom, in its one owner. If the right fix is a rewrite, rewrite. Never: a
    threshold, timeout, tolerance or thread count moved until the symptom hides; a special case; an error swallowed; a
-   test's expected value rewritten to pass (a photo is no such value: step 5); the cost moved elsewhere.
+   reference re-blessed to pass; the cost moved elsewhere.
 3. Go through every caller and reader the record names, against the change.
 4. Build the debug DLL (`tools/build/build.sh dll-debug`) and run that check: `python tools/tasks/cli.py run fast <scene>`.
    When it does not pass, do not try another change: read again until you know why, record what the reading showed.
@@ -162,23 +157,16 @@ When every problem of this trace is fixed:
 
    `$L photos <plan.json>` runs it hidden, under a deadline, and prints every photo and its six enlarged crops
    (`$L crops <folder>` for photos taken another way). What you judge must be in the picture: movers need the clock
-   running before the shot, and the HUD's own counters say whether there is any.
-
-   **A photo is judged on its own, never against another photo.** Do not compare it pixel for pixel with an earlier
-   run, an older commit or a kept reference (a golden), do not list the pixels that moved, and do not photograph an
-   older commit as a "before": the game was broken there, and wind, noise and the machine move pixels between two runs
-   of the same code. Equal bytes prove nothing about what is drawn, and a difference between two photos is not a
-   finding. The only finding is what is wrong in this run's photo: something broken, out of shape, in another body,
-   floating, missing or behaving wrongly. A check that asks for equal photos and fails is answered the same way: open
-   this run's photos, judge them as in step 3, and when they are sound write its reference again and go on.
-3. **Analyse every photo, for real.** Read every photo, in parallel, and the crops of the places the change reaches: a
-   vehicle, a person, a kerb is a few pixels of the whole frame and is judged in its crop. Write `dist/trace/<slug>/photos/analysis.md`: for each
+   running before the shot, and the HUD's own counters say whether there is any. No older photo decides anything: it
+   may be broken.
+3. **Analyse every photo, for real.** Read every photo and every crop, in parallel: a vehicle, a person, a kerb is a
+   few pixels of the whole frame and is judged in the crop. Write `dist/trace/<slug>/photos/analysis.md`: for each
    photo, the rules of `$L rules` one by one, and for each rule what you looked at and what is there (bodies in one
    another, things floating or sunk, gaps and seams, grass where a footway should be, missing or stretched textures,
    wrong colours, hard level changes, shadows detached, lights with no source, things missing), with the crop where a
    defect shows. "Looks fine" is not an analysis.
 4. **Every defect seen is a problem**, whoever caused it: `$L problem` it, trace it (step 2) and fix it. Then
-   `$L close`: it closes only with photos taken, every photo opened with the Read tool, and every photo
+   `$L close`: it closes only with photos taken, every photo and crop opened with the Read tool, and every photo
    named in `analysis.md` (a change that cannot reach
    the screen, a tool or a document: `close --no-photos "why"`). Then the project's close (CLAUDE.md: both DLLs, `quick.sh --ready`, the gates, the executable, the record of
    the line), commit and push.
@@ -188,9 +176,7 @@ When every problem of this trace is fixed:
 | Mistake | Instead |
 |---|---|
 | Reading whole folders "to understand first" | The flow of this one problem, in run order |
-| A fix made from the lines a search gave | The function whole and who calls it, recorded: a hit is not the cause |
-| A whole file or record read again to change a line of it | The lines to change: the notes hold the rest |
-| The measure, the close and the executable after every fix | Once, at the end of the batch of fixes |
+| A file opened at the lines a search gave | The file whole; the hooks refuse the edit otherwise |
 | Reading several batches, recording later | One `record` per batch: a compaction keeps only what is on disk |
 | A `saw` that names the function and nothing else | Callers, thread, lock, state read and written, guards |
 | A problem recorded without `fix` | What changes, where, who to check, which test |
@@ -200,8 +186,7 @@ When every problem of this trace is fixed:
 | A second attempt when a fix fails | Read again; record what was missed |
 | Reading the code again after a compaction | `resume`, then `notes.md` and `report.md` |
 | Re-reading files another session noted, writing nothing | Your own note: the hook counts only yours |
-| Photos looked at whole and called fine | The crops of what the change reaches, rule by rule, written in `analysis.md` |
-| Hunting the pixels that differ from an older photo or a golden | This run's photo on its own: is anything broken, out of shape, overlapping or missing? Only that is a finding |
+| Photos looked at whole and called fine | Every crop, rule by rule, written in `analysis.md` |
 
 ## Commands
 

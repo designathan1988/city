@@ -45,11 +45,12 @@
    - `PostToolUse` on `Read`: every Read of a file of the repository becomes a record, the proof of a reading.
      Without it `ledger.py read` and `record` refuse every chunk.
    - `PreToolUse` on `Edit|Write`: the edit is refused (exit code 2, the reason and the missing Read calls go to
-     Claude) until the session has read the lines the edit replaces, as the file is now, since its last compaction (a
-     file written over: the whole of it). A file opened in part stops nothing.
+     Claude) until the session has read the file whole, as it is now, since its last compaction, and while a file of
+     the repository it opened is left read in part (outputs and vendored code, `store.SKIP_DIRS`, are looked up, not
+     studied: they never stop an edit of another file).
    - `PostToolUse` on `Edit|Write`: the file the session has just changed itself stays known to it.
    - `PostToolUse` on context7's tools: each documentation lookup is kept; a file that calls the engine is changed only
-     after one made by the session (owed.py, with what else a session owes the trace it works on now).
+     after one since the session's last compaction (owed.py, with what else a session working on a trace owes).
    - `SessionStart`: after a compaction, what was read before no longer counts for an edit; and every session start
      and compaction prints the open trace (a short answer, silent when nothing is open or in another project), so the
      reading is never restarted or lost.

@@ -6,7 +6,7 @@ the fixes. It survives compaction and new sessions (`resume`, always a short ans
 only once its note is recorded, and a trace closes with the game photographed and every photo analysed.
 What each command does: commands.py. The flow found by script: route.py. A cause's fix card: card.py. Every writer of a state: writers.py. The changes a trace accepts: operations.py. State and paths: store.py.
 Proof of reading and notes kept by content: proof.py. Output: views.py. Photos and their crops: photos.py. The hooks that
-record every Read and refuse an edit of lines that were not read: read_guard.py.
+record every Read and refuse an edit of what was not read whole: read_guard.py.
 Usage: python ledger.py <command> -h
 """
 import sys
