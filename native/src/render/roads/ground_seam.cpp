@@ -4,6 +4,7 @@
 #include "render/roads/ground_seam.h"
 
 #include "render/owned_segments.h"
+#include "render/roads/road_cut.h"
 
 #include <iterator> // before Clipper2: its header needs it and does not say so
 
@@ -108,9 +109,7 @@ double paving_at(const Paving &p, const Grid &g, double x, double z) {
 // the terrain, which goes on under and over them.
 void read_paving(const RoadEmit &e, const Grid &g, double x0, double z0, double x1, double z1, Paving &p) {
 	const CityView &s = e.s;
-	float widest = 0;
-	for (const Profile &pr : s.catalog.profiles) widest = std::max(widest, pr.half());
-	const double reach = double(widest) + g.spacing; // a segment's paving reaches its curve's box by its half at most
+	const double reach = double(widest_half(s.catalog)) + g.spacing; // a segment's paving reaches its curve's box by its half at most
 	MeshBuilder scratch;
 	const RoadEmit scratch_emit{ s, e.L, scratch, e.shapes, false };
 	std::unordered_set<int> nodes;

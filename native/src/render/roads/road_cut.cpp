@@ -9,11 +9,16 @@
 
 namespace city {
 
+float widest_half(const Catalog &catalog) {
+	float widest = 0;
+	for (const Profile &p : catalog.profiles) widest = std::max(widest, p.half());
+	return widest;
+}
+
 float road_reach(const Catalog &catalog, const StreetLook &look) {
 	const Tuning &tn = catalog.tune;
 	const StructureShape &K = look.shapes.road_structures;
-	float widest = 0;
-	for (const Profile &p : catalog.profiles) widest = std::max(widest, p.half());
+	const float widest = widest_half(catalog);
 	const float walls = cut_wall_reach(); // road_walls.cpp held_ground
 	const float legs = look.shapes.road_stays.leg_out_m; // road_stays.cpp tower
 	const float wings = K.jamb_m + tn.structure_portal_wing_m + tn.structure_portal_thickness_m + K.portal_reach_m; // road_structures.cpp portal
@@ -31,6 +36,21 @@ CityCut cut_for_roads(const CityState &s, const StreetLook &look, int64_t key, f
 			double mx, mz;
 			g.q.at(0.5, mx, mz);
 			if (chunk_of(float(mx), float(mz), size) == key) box.take(g.minx, g.minz, g.maxx, g.maxz); // owned: drawn whole from here
+		});
+		return box.grown(road_reach(live.catalog, look));
+	});
+}
+
+CityCut cut_for_seams(const CityState &s, const StreetLook &look, int64_t key) {
+	return cut_city(s, CUT_ROADS, [&](const CityState &live) {
+		// ground_seam.cpp build_chunk asks the paving a cell past the chunk, and read_paving the segments a widest section and a
+		// cell past that; each is drawn whole, its faces read against the ground under them
+		const float cell = live.catalog.tune.world_height_spacing_m, near = widest_half(live.catalog) + 2 * cell;
+		const float x0 = float(key_x(key)) * CHUNK, z0 = float(key_y(key)) * CHUNK;
+		CutBox box{ x0 - near, z0 - near, x0 + CHUNK + near, z0 + CHUNK + near };
+		live.roads.for_segments_near(box.minx, box.minz, box.maxx, box.maxz, [&](int sid) {
+			const RoadSegment &g = live.roads.segs[size_t(sid)];
+			box.take(g.minx, g.minz, g.maxx, g.maxz);
 		});
 		return box.grown(road_reach(live.catalog, look));
 	});

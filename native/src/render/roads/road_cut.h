@@ -15,8 +15,15 @@ namespace city {
 // foot and the car gates of the lots that face it; and a cell of the terrain round it all.
 float road_reach(const Catalog &catalog, const StreetLook &look);
 
+// Half the widest section of the catalogue: how far a segment's paving reaches from its curve at most.
+float widest_half(const Catalog &catalog);
+
 // The cut of the square `key` of side `size` (a chunk or a superchunk) and of the segments whose middle it holds, with `parts`.
 // Takes the map shared for the copy alone: called by the job, on its worker.
 CityCut cut_for_roads(const CityState &s, const StreetLook &look, int64_t key, float size, unsigned parts);
+
+// The cut of chunk `key`'s ground seam (ground_seam.h): the chunk, and whole, with the ground under them, the segments whose
+// paving can come within a terrain cell of it (the seam draws each of them to find the paving's outline).
+CityCut cut_for_seams(const CityState &s, const StreetLook &look, int64_t key);
 
 } // namespace city
