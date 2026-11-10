@@ -5,6 +5,7 @@
 #include "sim/buildings/b40/body_table.h"
 #include "sim/buildings/b40/data.h"
 
+#include <algorithm>
 #include <cstring>
 #include <utility>
 #include <vector>
@@ -29,8 +30,8 @@ constexpr size_t PIECE_BYTES = sizeof(uint8_t) + 3 * sizeof(float);
 constexpr uint32_t BODY_MAGIC = 0x31594442U; // 'BDY1'
 constexpr int FACES_BEFORE = 16; // a block's faces in the bytes of version 2 and earlier
 constexpr uint32_t FACES_VERSION = 3;
-constexpr uint32_t MODE_VERSION = 4, INSIDE_VERSION = 5, ANGLE_VERSION = 6, LIFT_VERSION = 7, LEVELS_VERSION = 8;
-constexpr uint32_t BODY_VERSION = 8, FLAG_VERSION = 1, SIGNATURE_VERSION = 2, UNVERSIONED = 0;
+constexpr uint32_t MODE_VERSION = 4, INSIDE_VERSION = 5, ANGLE_VERSION = 6, LIFT_VERSION = 7;
+constexpr uint32_t BODY_VERSION = 7, FLAG_VERSION = 1, SIGNATURE_VERSION = 2, UNVERSIONED = 0;
 
 void put_side(ByteWriter &w, const SidePlan &p) {
 	w.put<uint8_t>(uint8_t(p.use));
@@ -82,13 +83,16 @@ FaceGeometry get_face(ByteReader &r) {
 	return f;
 }
 
-// A map by key order (ByteWriter::put_by_key): the same entries give the same bytes, whatever the order they went in.
+// A map by key order: the same entries give the same bytes, whatever the order they went in.
 template <typename V>
 void put_map(ByteWriter &w, const std::unordered_map<uint32_t, V> &m) {
-	w.put_by_key(m, [&](const auto &kv) {
-		w.put<uint32_t>(kv.first);
-		w.put<V>(kv.second);
-	});
+	std::vector<std::pair<uint32_t, V>> sorted(m.begin(), m.end());
+	std::sort(sorted.begin(), sorted.end(), [](const auto &a, const auto &b) { return a.first < b.first; });
+	w.put<uint32_t>(uint32_t(sorted.size()));
+	for (const auto &e : sorted) {
+		w.put<uint32_t>(e.first);
+		w.put<V>(e.second);
+	}
 }
 
 template <typename V>
@@ -111,7 +115,7 @@ void put_volume(ByteWriter &w, const Volume &v) {
 	w.put<uint8_t>(uint8_t(v.crown));
 	w.put<uint8_t>(v.keep ? 1 : 0);
 	w.put<uint32_t>(uint32_t(v.outline.size()));
-	for (const V2 &p : v.outline) {
+	for (const Point2 &p : v.outline) {
 		w.put<float>(p.x);
 		w.put<float>(p.y);
 	}
@@ -146,7 +150,7 @@ bool get_volume(ByteReader &r, Volume &v, uint32_t version) {
 	uint32_t n = r.get_count(POINT_BYTES);
 	if (!r.ok) return false;
 	v.outline.resize(n);
-	for (V2 &p : v.outline) {
+	for (Point2 &p : v.outline) {
 		p.x = r.get<float>();
 		p.y = r.get<float>();
 	}
@@ -239,8 +243,6 @@ void write_body(ByteWriter &w, const Body &b) {
 			for (float x : { p.x, p.y, p.angle }) w.put<float>(x);
 		}
 	}
-	w.put<uint32_t>(uint32_t(b.level_hs.size()));
-	for (float h : b.level_hs) w.put<float>(h);
 }
 
 bool read_body(ByteReader &r, Body &b) {
@@ -295,11 +297,6 @@ bool read_body(ByteReader &r, Body &b) {
 			for (float *x : { &p.x, &p.y, &p.angle }) *x = r.get<float>();
 		}
 	}
-	if (version < LEVELS_VERSION) return r.ok;
-	n = r.get_count(sizeof(float));
-	if (!r.ok) return false;
-	b.level_hs.resize(n);
-	for (float &h : b.level_hs) h = r.get<float>();
 	return r.ok;
 }
 

@@ -4,7 +4,6 @@
 #pragma once
 
 #include "core/grid.h"
-#include "core/id_table.h"
 #include "core/slot_ids.h"
 #include "sim/catalog/nature_types.h"
 
@@ -15,20 +14,14 @@ namespace city {
 
 enum class TreeKind : int { MIXED = 0, OAK, CYPRESS, PALM, COUNT };
 
-// The save writes these two as their object's bytes (save_nature.cpp): the bytes between `alive` and the floats are a field
-// of their own, zero, so every byte written is the record's (core/bytes.h ByteWriter::whole).
-constexpr int TREE_RECORD_UNUSED = 3; // the bytes from a bool to the next float
-
 struct PlantedTree {
 	bool alive = false;
-	uint8_t unused[TREE_RECORD_UNUSED] = {};
 	float x = 0, z = 0, height = 0, yaw = 0;
 	float seed = 0; // 0..1: which model, its tint and lean
 };
 
 struct TreeClearing {
 	bool alive = false;
-	uint8_t unused[TREE_RECORD_UNUSED] = {};
 	float x = 0, z = 0, radius = 0;
 };
 
@@ -40,12 +33,9 @@ struct TreeBrush {
 
 class PlantedTrees {
 public:
-	IdTable<PlantedTree> trees;
-	IdTable<TreeClearing> clearings;
+	std::vector<PlantedTree> trees;
+	std::vector<TreeClearing> clearings;
 	void clear();
-	// What a reader of the box needs (sim/state/city_cut.h): the trees and the clearings filed in the cells the box touches,
-	// under their own slots, the copy's hashes answering for the box alone.
-	PlantedTrees cut(float minx, float minz, float maxx, float maxz) const;
 	int live_trees() const { return live_trees_; }
 	int live_clearings() const { return live_clearings_; }
 	int add(const PlantedTree &t); // the slot it took
@@ -66,7 +56,6 @@ public:
 	}
 	// True when a clearing covers the point.
 	bool cleared(float x, float z) const;
-	bool cleared(float x, float z, int skip) const; // the same, clearing `skip` left out (the trees that stood before a blow cut it)
 	// The clearings near the box, for a whole chunk's candidates to test (`cleared` looks them up one by one).
 	void clearings_near(float minx, float minz, float maxx, float maxz, std::vector<int> &out) const;
 

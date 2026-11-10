@@ -9,8 +9,13 @@
 ## Colours are sRGB as the meshes carry them (shell.cpp); their linear value is the sRGB decoding (IEC 61966-2-1).
 ## The tolerance is one 8-bit step, as in light_color_test.gd.
 ## Run: godot --path project [--rendering-method gl_compatibility] res://tests/core/building_light_test.tscn -- --no-flow
-extends TestCase
+extends Node3D
 
+const LAMP_KIND := 4 # shell.h SK_LAMP (COLOR.a), the near level; the far level reads kind 4 the same (building_far)
+const SHELL_KIND := 0 # shell.h SK_SHELL, no finish layer (UV2.x = 0)
+const WALL_ROUGHNESS := 0.86 # building.gdshader and building_parts.gdshader, a face with no finish
+const FAR_ROUGHNESS := 0.9 # building_far.gdshader
+const NO_FINISH := -1.0 # BoxInstance::fin of a part with no finish layer (INSTANCE_CUSTOM.a)
 const SIDE_M := 1.0
 const PITCH_M := 1.5
 const VIEW_M := 6.0
@@ -21,6 +26,8 @@ const BYTE := 255.0
 const TOLERANCE := 1
 const LAMP_GLOW := 0.5
 
+var failures := 0
+var world: CityWorld
 var cam: Camera3D
 
 
@@ -35,21 +42,20 @@ func _ready() -> void:
 	cam.make_current()
 	await _wall_by_day()
 	await _lamps_by_night()
-	print("renderer: ", RenderingServer.get_current_rendering_method())
-	finish()
+	print("renderizador: ", RenderingServer.get_current_rendering_method(), " FAILURES: ", failures)
+	get_tree().quit(1 if failures > 0 else 0)
 
 
 func _wall_by_day() -> void:
 	world.environment.fog_enabled = false # the surface under the same light: the air over it is another thing
-	var shared: Dictionary = CityStore.constants.shader # a face with no finish, near and far (tools/build/shader_contracts.json)
-	var cases := [["near wall", "building", shared.BUILDING_WALL_ROUGHNESS, false], ["far wall", "building_far", shared.BUILDING_FAR_ROUGHNESS, false],
-			["a piece with no finish", "building_parts", shared.BUILDING_WALL_ROUGHNESS, true]]
+	var cases := [["parede perto", "building", WALL_ROUGHNESS, false], ["parede longe", "building_far", FAR_ROUGHNESS, false],
+			["a piece with no finish", "building_parts", WALL_ROUGHNESS, true]]
 	var made: Array[Node3D] = []
 	var spots := []
 	for k in cases.size():
 		var m: ShaderMaterial = world.materials()[cases[k][1]]
 		var x := (k - (cases.size() - 1) * 0.5) * PITCH_M
-		var ours: Node3D = _part(m, Vector3(x, PITCH_M * 0.5, 0)) if cases[k][3] else _quad(Color(GREY, GREY, GREY, CityStore.code(&"SurfaceKind", &"SK_SHELL") / BYTE), m, Vector3(x, PITCH_M * 0.5, 0))
+		var ours: Node3D = _part(m, Vector3(x, PITCH_M * 0.5, 0)) if cases[k][3] else _quad(Color(GREY, GREY, GREY, SHELL_KIND / BYTE), m, Vector3(x, PITCH_M * 0.5, 0))
 		var ref := StandardMaterial3D.new()
 		ref.vertex_color_use_as_albedo = true
 		ref.vertex_color_is_srgb = true
@@ -76,7 +82,7 @@ func _part(m: ShaderMaterial, at: Vector3) -> MultiMeshInstance3D:
 	mm.mesh = _square(Color.WHITE)
 	mm.instance_count = 1
 	mm.set_instance_transform(0, Transform3D())
-	mm.set_instance_custom_data(0, Color(GREY, GREY, GREY, float(CityStore.code(&"Finish", &"FIN_NONE"))))
+	mm.set_instance_custom_data(0, Color(GREY, GREY, GREY, NO_FINISH))
 	var node := MultiMeshInstance3D.new()
 	node.multimesh = mm
 	node.material_override = m
@@ -94,8 +100,8 @@ func _lamps_by_night() -> void:
 	world.sun.light_energy = 0.0
 	var near: ShaderMaterial = world.materials()["building"]
 	var far: ShaderMaterial = world.materials()["building_far"]
-	var a := _quad(Color(GREY, GREY, GREY, CityStore.code(&"SurfaceKind", &"SK_LAMP") / BYTE), near, Vector3(-PITCH_M * 0.5, 0, 0))
-	var b := _quad(Color(GREY, GREY, GREY, CityStore.code(&"SurfaceKind", &"SK_LAMP") / BYTE), far, Vector3(PITCH_M * 0.5, 0, 0))
+	var a := _quad(Color(GREY, GREY, GREY, LAMP_KIND / BYTE), near, Vector3(-PITCH_M * 0.5, 0, 0))
+	var b := _quad(Color(GREY, GREY, GREY, LAMP_KIND / BYTE), far, Vector3(PITCH_M * 0.5, 0, 0))
 	await _frames(FRAMES)
 	var night: float = world.daylight.night
 	var img := get_viewport().get_texture().get_image()
@@ -160,7 +166,7 @@ func _compare(img: Image, at: Vector3, wanted: Color, what: String, on_screen :=
 	var want: Color = wanted if on_screen else CityStore.query(&"film_graded", [DataTables.game("daylight").grade, wanted])
 	var got := _pixel(img, at)
 	var off := maxi(maxi(_step(got.r, want.r), _step(got.g, want.g)), _step(got.b, want.b))
-	check(off <= TOLERANCE, "%s: screen %s, wanted %s (%d steps of 8 bits)" % [what, got.to_html(false), want.to_html(false), off])
+	_check(off <= TOLERANCE, "%s: screen %s, wanted %s (%d steps of 8 bits)" % [what, got.to_html(false), want.to_html(false), off])
 
 
 func _step(a: float, b: float) -> int:
@@ -170,3 +176,9 @@ func _step(a: float, b: float) -> int:
 func _frames(n: int) -> void:
 	for i in n:
 		await get_tree().process_frame
+
+
+func _check(ok: bool, what: String) -> void:
+	print(("ok   " if ok else "FAIL ") + what)
+	if not ok:
+		failures += 1

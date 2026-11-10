@@ -3,18 +3,18 @@
 #pragma once
 
 #include "core/grid.h"
-#include "core/id_table.h"
 #include "core/slot_ids.h"
 #include "sim/buildings/b40/data.h"
-#include "sim/buildings/b40/lot_site.h"
+#include "sim/buildings/likeness.h"
 #include "sim/state/change_log.h"
 
 #include <cstdint>
+#include <unordered_map>
 #include <vector>
 
 namespace city {
 
-struct Catalog;
+struct OccupancyDef;
 
 // What a building is for (the ids saved with a record, new ones at the end). FN_NONE: its kind and seed say.
 enum BuildingFn : uint8_t { FN_NONE = 0, FN_SCHOOL, FN_CHURCH, FN_HOSPITAL, FN_CLINIC, FN_SQUARE, FN_PARK, FN_GAS_STATION,
@@ -32,53 +32,30 @@ struct Building {
 	uint16_t style = 0; // 0..127 automatic, 128 + arch = chosen
 	uint16_t profile = 0; // profile of the street it faces
 	int16_t landmark = -1; // catalogue project (data/catalog/landmarks) or -1
-	uint8_t corner = 0; // b40::LotCorner: the side of the lot on a second street (Roadcraft zoning.ts cornerOf), read when it grew
 	bool alive = false;
 	b40::BodyRef body; // the version the player edited, held by the record (b40::BodyTable); none = made from the seed
-	b40::SiteRef site; // the street floor, ground and outline it grew on (b40/lot_site.h); none = a level rectangle on its highest ground
 	double built = 0; // city minute it was built (decay and renovation)
 };
 
-// The records and their filing by place: what a reader takes of the buildings, the live city's store or a cut of it (a job's
-// copy: sim/state/city_cut.h). The generator's tables are not here: they are the session's, read beside the records.
-struct BuildingRecords {
-	IdTable<Building> items;
-	SpatialHash hash; // by lot centre
-
-	// Does the point stand on the building's lot (its rectangle grown by pad)?
-	static bool covers(const Building &b, float x, float z, float pad);
-	template <typename F>
-	void query(float minx, float minz, float maxx, float maxz, F &&fn) const {
-		hash.query(minx, minz, maxx, maxz, [&](int id) {
-			const Building &b = items[id];
-			if (b.alive && b.x >= minx && b.x <= maxx && b.z >= minz && b.z <= maxz) fn(id);
-		});
-	}
-	// The records filed in the cells the box touches, under their own ids, the copy's hash answering for the box alone.
-	BuildingRecords cut(float minx, float minz, float maxx, float maxz) const {
-		BuildingRecords c;
-		c.items = IdTable<Building>::cut(items.size());
-		c.hash = hash.window(minx, minz, maxx, maxz);
-		for (int id : c.hash.filed()) c.items.put(size_t(id), items[size_t(id)]);
-		return c;
-	}
-};
-
-class BuildingStore : public BuildingRecords {
+class BuildingStore {
 public:
+	std::vector<Building> items;
 	SlotIds free_ids;
+	SpatialHash hash; // by lot centre
 	ChangeLog *log = nullptr;
 	int count = 0;
 	// Residents and jobs of the alive records (occupancy), kept by place/remove, the one way a record comes or goes: never
 	// counted again over every record, and right after growth, edits and loads alike (the snapshot reads them).
 	int residents = 0, jobs = 0;
 	b40::Data designs; // the generator's tables (set once at boot, read-only after): every body is made from them
+	// How each body looks (likeness.h), by b40::body_key: derived, never saved. Only growth writes it, under the map's exclusive lock.
+	std::unordered_map<b40::BodyKey, BodyLook, b40::BodyKeyHash> looks;
 
-	void init(ChangeLog *l, const Catalog *catalog);
+	void init(ChangeLog *l, const OccupancyDef *occupancy);
 	// The same links set again, nothing cleared: the store moved in with a city read aside (CityState::bind).
-	void attach(ChangeLog *l, const Catalog *catalog) {
+	void attach(ChangeLog *l, const OccupancyDef *occupancy) {
 		log = l;
-		catalog_ = catalog;
+		occupancy_ = occupancy;
 	}
 	void clear();
 	int add(const Building &b);
@@ -86,20 +63,28 @@ public:
 	// Undo / redo / load: the record goes back under the same id. A building that
 	// grew there meanwhile (outside the history) moves to a new id; `evict` also knocks down what grew on the lot.
 	void put(int id, const Building &b, bool evict);
+	// Does the point stand on the building's lot (its rectangle grown by pad)?
+	static bool covers(const Building &b, float x, float z, float pad);
 	void mark(int id) const;
 	void mark_look(int id) const; // its chunks drawn again though it did not change: another look (Interior layer)
+	template <typename F>
+	void query(float minx, float minz, float maxx, float maxz, F &&fn) const {
+		hash.query(minx, minz, maxx, maxz, [&](int id) {
+			const Building &b = items[id];
+			if (b.alive && b.x >= minx && b.x <= maxx && b.z >= minz && b.z <= maxz) fn(id);
+		});
+	}
 	// Residents and jobs from the floor area.
-	// `base`: the zone's base kind (the catalogue's, BaseZone), which says who lives or works there.
-	static void occupancy(const Building &b, int base, float floor_share, const float per_m2[4], int &residents, int &jobs);
+	static void occupancy(const Building &b, float floor_share, const float per_m2[4], int &residents, int &jobs);
 
 private:
-	const Catalog *catalog_ = nullptr; // its occupancy and zones, set by init
+	const OccupancyDef *occupancy_ = nullptr; // the catalogue's, set by init
 	void place(int id, const Building &b);
 	void tally(const Building &b, int sign); // the record's residents and jobs into (+1) or out of (-1) the totals
 	void mark_into(int id, std::vector<int64_t> &out) const;
 };
 
-constexpr float BUILDING_HASH_CELL = 64.f; // the cells buildings are filed in, for the queries near a point
+constexpr float BUILDING_HASH_CELL = 64.f;
 constexpr uint16_t BUILDING_AUTO_STYLE_MASK = 127; // style values below 128 are drawn from the seed
 
 } // namespace city

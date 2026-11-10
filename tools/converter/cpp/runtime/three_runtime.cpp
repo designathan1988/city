@@ -1,5 +1,3 @@
-// The three.js runtime of the frame-replay port: each captured three.js draw rebuilt alone in a SubViewport (its translated
-// shader, its mesh and instances, its textures as three's GPU held them) and read back for scripts/replay-compare.mjs.
 #include "three_runtime.h"
 
 #include <godot_cpp/classes/array_mesh.hpp>
@@ -119,8 +117,7 @@ void release() {
 	texture_rids.clear();
 }
 
-// The draw's material: its translated shader, its uniforms and its textures (an element of an array uniform in its slot).
-static Ref<ShaderMaterial> material_of(const Draw &d) {
+Node *build(const Draw &d) {
 	Ref<Shader> shader;
 	shader.instantiate();
 	shader->set_code(FileAccess::get_file_as_string(String(d.shader.c_str())));
@@ -140,11 +137,7 @@ static Ref<ShaderMaterial> material_of(const Draw &d) {
 		}
 	}
 	for (auto &g : groups) mat->set_shader_parameter(StringName(g.first.c_str()), g.second);
-	return mat;
-}
 
-// The draw's mesh arrays as the translation placed each attribute, and the format flags of its custom slots.
-static Array arrays_of(const Draw &d, int64_t &flags) {
 	Array arrays;
 	arrays.resize(Mesh::ARRAY_MAX);
 	const int n = d.vertex_count;
@@ -184,7 +177,7 @@ static Array arrays_of(const Draw &d, int64_t &flags) {
 		for (int i = 0; i < n; i++) col.set(i, Color(c[i * 4], c[i * 4 + 1], c[i * 4 + 2], c[i * 4 + 3]));
 		arrays[Mesh::ARRAY_COLOR] = col;
 	}
-	flags = 0;
+	int64_t flags = 0;
 	const int64_t shifts[4] = { Mesh::ARRAY_FORMAT_CUSTOM0_SHIFT, Mesh::ARRAY_FORMAT_CUSTOM1_SHIFT, Mesh::ARRAY_FORMAT_CUSTOM2_SHIFT, Mesh::ARRAY_FORMAT_CUSTOM3_SHIFT };
 	for (int k = 0; k < 4; k++) {
 		if (d.customs[k].empty()) continue;
@@ -199,11 +192,12 @@ static Array arrays_of(const Draw &d, int64_t &flags) {
 	}
 	// the indices as the generator wrote them (triangles reversed already: Godot's front faces are clockwise)
 	arrays[Mesh::ARRAY_INDEX] = ints_of(d.indices);
-	return arrays;
-}
-
-// The node that draws the mesh: one MultiMesh instance per three.js instance (from the draw or its file), else the mesh.
-static Node *node_of(const Draw &d, const Ref<ArrayMesh> &mesh) {
+	Ref<ArrayMesh> mesh;
+	mesh.instantiate();
+	mesh->add_surface_from_arrays(d.primitive, arrays, TypedArray<Array>(), Dictionary(), BitField<Mesh::ArrayFormat>(flags));
+	mesh->surface_set_material(0, mat);
+	// the positions are three's (uniforms), not Godot's camera: never culled
+	mesh->set_custom_aabb(EVERYWHERE);
 	std::vector<Draw::Instance> from_file;
 	if (!d.instances_file.empty()) {
 		PackedFloat32Array v = floats_of(d.instances_file);
@@ -234,18 +228,6 @@ static Node *node_of(const Draw &d, const Ref<ArrayMesh> &mesh) {
 	MeshInstance3D *mi = memnew(MeshInstance3D);
 	mi->set_mesh(mesh);
 	return mi;
-}
-
-Node *build(const Draw &d) {
-	int64_t flags = 0;
-	const Array arrays = arrays_of(d, flags);
-	Ref<ArrayMesh> mesh;
-	mesh.instantiate();
-	mesh->add_surface_from_arrays(d.primitive, arrays, TypedArray<Array>(), Dictionary(), BitField<Mesh::ArrayFormat>(flags));
-	mesh->surface_set_material(0, material_of(d));
-	// the positions are three's (uniforms), not Godot's camera: never culled
-	mesh->set_custom_aabb(EVERYWHERE);
-	return node_of(d, mesh);
 }
 
 } // namespace three

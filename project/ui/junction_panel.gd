@@ -15,7 +15,7 @@ static func fill(col: Control, info: Dictionary, redraw: Callable) -> void:
 		var greens: PackedFloat32Array = info.greens
 		for i in greens.size():
 			var label := col.tr("junction.stage").format({"n": i + 1})
-			_stepper(col, "%s: %s" % [label, col.tr("unit.second").format({"n": roundi(greens[i])})], _with(greens, i, -step), _with(greens, i, step), info, redraw)
+			_stepper(col, "%s: %d s" % [label, roundi(greens[i])], _with(greens, i, -step), _with(greens, i, step), info, redraw)
 		_offset(col, info, step, redraw)
 	var wave := HudWidgets.button(&"SegButton", "", col.tr("junction.greenWave"), "junction.greenWave", "", "")
 	wave.pressed.connect(func() -> void:
@@ -26,7 +26,7 @@ static func fill(col: Control, info: Dictionary, redraw: Callable) -> void:
 
 static func _offset(col: Control, info: Dictionary, step: float, redraw: Callable) -> void:
 	var row := HudWidgets.hbox(col)
-	HudWidgets.label(row, &"BodyLabel", "%s: %s" % [col.tr("junction.offset"), col.tr("unit.second").format({"n": roundi(info.offset)})])
+	HudWidgets.label(row, &"BodyLabel", "%s: %d s" % [col.tr("junction.offset"), roundi(info.offset)])
 	for d: float in [-step, step]:
 		var b := HudWidgets.button(&"SegButton", "", "+" if d > 0 else "-", "junction.offset", "", "")
 		b.pressed.connect(_send.bind(info, true, info.greens, maxf(0.0, info.offset + d), redraw))

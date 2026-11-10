@@ -3,17 +3,22 @@
 // servers/rendering/renderer_rd/shaders/effects/tonemap.glsl tonemap_aces, mirrored by render/tone_map.gd (ToneMap.radiance is the
 // same inverse, with a search for the nearest colour where a channel would need negative radiance).
 // Needs color_space.gdshaderinc (srgb_to_linear); the material sets tone_exposure and tone_white to the Environment's.
-const vec3 REC709_LUMA = vec3(0.2126, 0.7152, 0.0722); // ITU-R BT.709's luma weights
 #ifndef TONE_INVERSE_INC
 #define TONE_INVERSE_INC
-#include "res://render/shaders/contracts/tone.gdshaderinc"
 
 uniform float tone_exposure = 1.0;
 uniform float tone_white = 1.0;
 
-// The curve's constants and its matrices' columns are the table's (AcesCurve, ACES_RRT_*, ACES_ODT_*), which render/tone_map.gd reads too.
-const mat3 ACES_RRT = mat3(ACES_RRT_0, ACES_RRT_1, ACES_RRT_2);
-const mat3 ACES_ODT = mat3(ACES_ODT_0, ACES_ODT_1, ACES_ODT_2);
+const float ACES_BIAS = 1.8; // tonemap_aces exposure_bias
+const float ACES_A = 0.0245786;
+const float ACES_B = 0.000090537;
+const float ACES_C = 0.983729;
+const float ACES_D = 0.432951;
+const float ACES_E = 0.238081;
+const float ACES_TOP = 0.999; // of the curve's asymptote 1 / C: the highest output asked for
+// rgb_to_rrt and odt_to_rgb, column by column (GLSL's mat3 constructor takes columns).
+const mat3 ACES_RRT = mat3(vec3(0.59719, 0.07600, 0.02840), vec3(0.35458, 0.90834, 0.13383), vec3(0.04823, 0.01566, 0.83777));
+const mat3 ACES_ODT = mat3(vec3(1.60475, -0.10208, -0.00327), vec3(-0.53108, 1.10813, -0.07276), vec3(-0.07367, -0.00605, 1.07602));
 
 float aces_curve(float x) {
 	return (x * (x + ACES_A) - ACES_B) / (x * (ACES_C * x + ACES_D) + ACES_E);
@@ -34,7 +39,7 @@ vec3 display_to_radiance(vec3 shown) {
 	float scale = aces_curve(max(tone_white, 1.0) * ACES_BIAS);
 	mat3 odt_inverse = inverse(ACES_ODT);
 	vec3 y_goal = odt_inverse * (goal * scale);
-	vec3 y_grey = odt_inverse * (vec3(dot(goal, REC709_LUMA)) * scale);
+	vec3 y_grey = odt_inverse * (vec3(dot(goal, vec3(0.2126, 0.7152, 0.0722))) * scale);
 	vec3 step_y = y_goal - y_grey;
 	float top = ACES_TOP / ACES_C;
 	float keep = 1.0;

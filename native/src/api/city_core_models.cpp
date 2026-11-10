@@ -5,7 +5,6 @@
 #include "api/edit_result.h"
 #include "sim/buildings/b40/record.h"
 #include "sim/buildings/b40/roof_shape.h"
-#include "sim/commands/body_ops.h"
 #include "sim/commands/model_ops.h"
 #include "sim/persistence/body_codec.h"
 #include "sim/state/city_state.h"
@@ -89,7 +88,8 @@ Dictionary CityBuilder::building_bytes(int id) const {
 	const CityState &s = *state_;
 	if (id < 0 || id >= int(s.buildings.items.size()) || !s.buildings.items[size_t(id)].alive) return d;
 	const Building &rec = s.buildings.items[size_t(id)];
-	b40::Body b = *b40::record_body(s.buildings.designs, rec); // a copy: fit_plan moves it onto its plan
+	b40::Body b;
+	b40::record_body(s.buildings.designs, rec, b);
 	fit_plan(b);
 	d["bytes"] = bytes_of(b);
 	d["function"] = rec.fn;
@@ -101,7 +101,7 @@ Vector3 CityBuilder::body_size(const PackedByteArray &bytes) const {
 	b40::Body b;
 	if (!body_of(bytes, b)) return Vector3();
 	float top = 0;
-	for (const b40::Volume &v : b.volumes) top = std::max(top, b.level_z(v.top()) + b40::roof_rise(state_->buildings.designs.shapes.roof, v));
+	for (const b40::Volume &v : b.volumes) top = std::max(top, b.level_z(v.top()) + b40::roof_rise(v));
 	return Vector3(b.plan.W, b.plan.D, top);
 }
 
@@ -121,31 +121,6 @@ String CityBuilder::place_check(const PackedByteArray &bytes, double x, double z
 	if (!body_of(bytes, b)) return "tool.failed";
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	return String(place_problem(*state_, b, x, z, rot).c_str());
-}
-
-Dictionary CityBuilder::place_hover(const PackedByteArray &bytes, const Vector3 &at, const Vector2 &size, double rot) const {
-	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
-	const CityState &s = *state_;
-	const PlaceSnap p = snap_place(s, size.x, size.y, at.x, at.z, rot);
-	Dictionary d;
-	d["x"] = p.x;
-	d["z"] = p.z;
-	d["rot"] = p.rot;
-	d["kind"] = p.kind;
-	d["y"] = s.ready ? s.terrain.height_at(float(p.x), float(p.z)) : 0.f;
-	HoverCheck &h = hover_;
-	if (!h.made || h.x != p.x || h.z != p.z || h.rot != p.rot || h.revision != s.revision || h.bytes != bytes) {
-		b40::Body b;
-		h.problem = body_of(bytes, b) ? String(place_problem(s, b, p.x, p.z, p.rot).c_str()) : String("tool.failed");
-		h.bytes = bytes;
-		h.x = p.x;
-		h.z = p.z;
-		h.rot = p.rot;
-		h.revision = s.revision;
-		h.made = true;
-	}
-	d["problem"] = h.problem;
-	return d;
 }
 
 Dictionary CityBuilder::place_model(const PackedByteArray &bytes, double x, double z, double rot, int fn, int zone) {
@@ -172,7 +147,6 @@ void CityBuilder::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("place_fit", "at", "size", "rot"), &CityBuilder::place_fit);
 	ClassDB::bind_method(D_METHOD("doc_body", "doc"), &CityBuilder::doc_body);
 	ClassDB::bind_method(D_METHOD("place_check", "bytes", "x", "z", "rot"), &CityBuilder::place_check);
-	ClassDB::bind_method(D_METHOD("place_hover", "bytes", "at", "size", "rot"), &CityBuilder::place_hover);
 	ClassDB::bind_method(D_METHOD("place_model", "bytes", "x", "z", "rot", "function", "zone"), &CityBuilder::place_model);
 	ClassDB::bind_method(D_METHOD("stage_show", "bytes", "scenario", "ghost"), &CityBuilder::stage_show);
 	ClassDB::bind_method(D_METHOD("stage_move", "handle", "at"), &CityBuilder::stage_move);
@@ -181,13 +155,12 @@ void CityBuilder::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("body_info", "id"), &CityBuilder::body_info);
 	ClassDB::bind_method(D_METHOD("body_pick", "origin", "dir"), &CityBuilder::body_pick);
 	ClassDB::bind_method(D_METHOD("body_outline", "id", "vol"), &CityBuilder::body_outline);
-	ClassDB::bind_method(D_METHOD("body_at", "id", "x", "y"), &CityBuilder::body_at);
 	ClassDB::bind_method(D_METHOD("body_storeys", "id", "vol", "count"), &CityBuilder::body_storeys);
 	ClassDB::bind_method(D_METHOD("body_insert_storey", "id", "vol", "at", "above"), &CityBuilder::body_insert_storey);
 	ClassDB::bind_method(D_METHOD("body_resize", "id", "vol", "side", "delta", "snap"), &CityBuilder::body_resize);
 	ClassDB::bind_method(D_METHOD("body_add_wing", "id", "vol", "side", "depth", "length"), &CityBuilder::body_add_wing);
 	ClassDB::bind_method(D_METHOD("body_set_plan", "id", "vol", "shape"), &CityBuilder::body_set_plan);
-	ClassDB::bind_method(D_METHOD("body_add_mass", "id", "vol", "from", "to", "action", "shape"), &CityBuilder::body_add_mass, DEFVAL(PLAN_RECTANGLE));
+	ClassDB::bind_method(D_METHOD("body_add_mass", "id", "vol", "from", "to", "action"), &CityBuilder::body_add_mass);
 	ClassDB::bind_method(D_METHOD("body_set_block_mode", "id", "vol", "mode"), &CityBuilder::body_set_block_mode);
 	ClassDB::bind_method(D_METHOD("body_mass_rect", "id", "from", "to"), &CityBuilder::body_mass_rect);
 	ClassDB::bind_method(D_METHOD("body_extrude_face", "id", "vol", "side", "distance"), &CityBuilder::body_extrude_face);
@@ -243,7 +216,6 @@ void CityBuilder::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("body_remove_part", "id", "part"), &CityBuilder::body_remove_part);
 	ClassDB::bind_method(D_METHOD("body_turn_part", "id", "part"), &CityBuilder::body_turn_part);
 	ClassDB::bind_method(D_METHOD("body_repeat_part", "id", "part", "spacing"), &CityBuilder::body_repeat_part);
-	bind_selection();
 }
 
 } // namespace city

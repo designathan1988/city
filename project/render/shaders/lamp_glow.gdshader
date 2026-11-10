@@ -1,19 +1,18 @@
 // The lit air under a street lamp (Roadcraft scenery.ts beam): a cone down from the lens, added to what is behind, an instance
-// of render/props/prop_kit.h light(). It is the lit air of rain or storm: `haze`, the rain or the storm, whichever is more
-// (render/sky_view.gd sets it as the weather moves; 0 in clear weather, where its vertices collapse and it costs no fragment),
-// drawn as Volumetric Light Beam draws one. The light on the ground is render/props/lamp_lights.h.
+// of render/props/prop_kit.h light(). It is the lit air of rain or storm: `haze` (0 in clear weather, where its vertices collapse
+// and it costs no fragment), drawn as Volumetric Light Beam draws one. The light on the ground is render/props/lamp_lights.h.
 shader_type spatial;
 render_mode blend_add, unshaded, cull_disabled, depth_draw_never, shadows_disabled;
 
 global uniform float night;
 uniform vec3 glow_color : source_color;
-uniform float beam_gain; // materials.json lamp_glow, as the rest
-uniform float beam_softness; // how hard the cone's edges are seen from the side: higher, softer
-uniform float beam_fade_near_m;
-uniform float beam_fade_far_m;
+uniform float beam_gain = 0.4;
+uniform float beam_softness = 1.6; // how hard the cone's edges are seen from the side: higher, softer
+uniform float beam_fade_near_m = 60.0;
+uniform float beam_fade_far_m = 140.0;
 uniform float haze = 0.0;
 
-const float HAZE_SHOWN = 0.02; // lit air under this (the night times the haze) shows no beam: the cone is not drawn
+const float HAZE_SHOWN = 0.02;
 
 varying float v_along; // the beam: 0 lens, 1 ground
 varying float v_fade;
@@ -29,7 +28,7 @@ void vertex() {
 	v_normal_w = mat3(MODEL_MATRIX) * (NORMAL / (s * s)); // a scaled cone's normal: through the inverse transpose
 	v_to_eye = CAMERA_POSITION_WORLD - world;
 	v_fade = 1.0 - smoothstep(beam_fade_near_m, beam_fade_far_m, length(v_to_eye));
-	if (night * haze <= HAZE_SHOWN) {
+	if (night <= 0.0 || haze <= HAZE_SHOWN) {
 		VERTEX = vec3(0.0);
 	}
 }

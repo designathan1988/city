@@ -3,6 +3,7 @@
 class_name LandHands
 extends RefCounted
 
+const PERCENT := 100.0
 
 
 ## A card of a panel: the tool's parameter, and the panel again (what it shows goes by the mode).
@@ -69,8 +70,8 @@ static func _run(name: String, drawer: HudDrawer) -> void:
 	var tools := drawer.tools
 	if name == "scatter_clouds":
 		var s := BrushDefaults.of("CLOUD", tools.remembered.get(ToolController.Tool.CLOUD, {}) if tools else {})
-		var like := {"height": s.height, "size": s.size, "density": s.density / Units.PERCENT}
-		var r: Dictionary = CityStore.dispatch(&"scatter_clouds", [int(s.count), like, s.variation / Units.PERCENT])
+		var like := {"height": s.height, "size": s.size, "density": s.density / PERCENT}
+		var r: Dictionary = CityStore.dispatch(&"scatter_clouds", [int(s.count), like, s.variation / PERCENT])
 		if r.get("error", "") != "" and tools:
 			tools.hint.emit(TranslationServer.translate(r.error), false)
 	else:

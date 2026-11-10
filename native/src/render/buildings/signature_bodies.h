@@ -7,8 +7,8 @@
 #include "core/job_pool.h"
 #include "render/chunk_jobs.h"
 #include "render/frame_admission.h"
-#include "render/rs_util.h"
 
+#include <godot_cpp/classes/array_mesh.hpp>
 #include <godot_cpp/classes/image.hpp>
 #include <godot_cpp/classes/shader.hpp>
 #include <godot_cpp/classes/shader_material.hpp>
@@ -43,20 +43,14 @@ public:
 	int drawn() const; // instances standing (tests)
 	// The kinds a job made ready, uploaded as the frame's ledger admits; the instances that waited for them placed.
 	void sync(FrameAdmission &f);
-	// The kind's mesh now (a body drawn apart: body_stage.h), made on the calling thread if no job made it yet; none when its
+	// The kind's mesh now (a body drawn apart: body_stage.h), made on the calling thread if no job made it yet; nullptr when its
 	// file is missing or bad.
-	godot::RID mesh(int kind);
-	// The kind's mesh with `material` on every surface (the Build tool's ghost), made once a kind and material.
-	godot::RID mesh_with(int kind, const godot::RID &material);
+	godot::Ref<godot::ArrayMesh> mesh(int kind);
 
 private:
-	static constexpr int RECORD_FLOATS = 10; // a look's floats in the file (signature_bodies.cpp names them)
 	struct Look {
 		godot::Ref<godot::ShaderMaterial> made;
-		float v[RECORD_FLOATS] = {};
-		uint32_t flags = 0, width = 0, height = 0; // its picture's size, 0 when it has none
-		size_t at = 0; // its picture's stream in looks_file_
-		uint32_t packed = 0; // that stream's bytes
+		size_t at = 0; // its record in the table
 	};
 	// A kind made ready off the main thread: each surface's arrays, levels and look, and the pictures of the looks it uses.
 	struct Surface {
@@ -75,7 +69,7 @@ private:
 	};
 	enum class State : uint8_t { NONE, ASKED, READY, FAILED };
 	bool read_table(); // any thread, once
-	std::shared_ptr<Prepared> prepare(int kind, bool pictures); // any thread; `pictures`: its looks' pictures too
+	std::shared_ptr<Prepared> prepare(int kind); // any thread
 	bool finish(Prepared &p); // main thread: the uploads
 	godot::Ref<godot::Image> picture(uint32_t index) const; // a look's picture with its mipmaps, any thread (after read_table)
 	godot::Ref<godot::ShaderMaterial> look(uint32_t index, const godot::Ref<godot::Image> &picture);
@@ -87,14 +81,10 @@ private:
 	JobPool *pool_ = nullptr;
 	std::mutex table_mutex_; // the table is read once, by whichever thread first needs it
 	bool table_read_ = false, table_ok_ = false;
-	godot::PackedByteArray looks_file_; // materials.sig as it is on disk: the pictures packed, each in its own stream
+	godot::PackedByteArray table_; // materials.sig, unpacked
 	std::vector<Look> looks_;
 	godot::Ref<godot::Shader> solid_, blended_;
-	// Each kind's mesh, made whole with its looks (surface_data.h: the engine has its pipelines as it is made), and its mesh in
-	// another material (mesh_with), made from the file again.
-	std::vector<OwnedMesh> meshes_;
-	std::vector<OwnedMesh> with_;
-	std::vector<godot::RID> with_material_;
+	std::vector<godot::Ref<godot::ArrayMesh>> meshes_;
 	std::vector<State> state_; // by kind
 	std::vector<std::shared_ptr<Prepared>> ready_; // made, waiting for the ledger
 	Inbox<std::shared_ptr<Prepared>> inbox_;

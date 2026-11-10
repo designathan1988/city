@@ -42,7 +42,7 @@ public:
 	void mark_saved();
 	void set_speed(int speed);
 	void set_levels(float traffic, float people, float demand); // the Simulation panel: shares of the city's own density
-	void set_sim_switch(const godot::String &name, bool on); // the Effects panel: "traffic", "pedestrians", "growth", "crowd"
+	void set_sim_switch(const godot::String &name, bool on); // the Effects panel: "traffic", "pedestrians", "growth"
 	void set_detail_scale(float scale); // the graphics tier's reach of the buildings' near level
 	void set_lamp_lights(int count, int casting, int heads); // the graphics tier's street lamps with a light of their own, those with a shadow, and the vehicles' headlamps
 	void set_lamp_night(float night); // how much of the night it is, as daylight.gd reckons it
@@ -57,7 +57,7 @@ public:
 	void set_terrain_path(const godot::NodePath &p) { terrain_path_ = p; }
 	godot::NodePath get_terrain_path() const { return terrain_path_; }
 	void _process(double delta) override;
-	bool step_ticks(int ticks); // tests: deterministic steps, refused (false) unless the clock is paused or stopped (Simulation::hold_still)
+	void step_ticks(int ticks); // tests: deterministic steps with the clock paused
 
 	// --- the areas of the API (city_core_areas.cpp): the Build drawer, the Landscape drawer, public transport and the test probes, each
 	// an object of its own that game/store/city_store.gd calls by the names of game/store/store_api.gd ("builder", "landscape", ...).
@@ -76,7 +76,7 @@ public:
 	godot::Dictionary demolish_box(const godot::Vector3 &a, const godot::Vector3 &b); // everything in the box, one undo step
 	godot::Dictionary paint_zone(const godot::Vector3 &p, float radius, int zone);
 	godot::Dictionary paint_zone_path(const godot::PackedVector3Array &points, float radius, int zone);
-	godot::Array road_profiles() const; // the catalogue as the drawer shows it (derived width and price per metre)
+	godot::Array road_profiles() const;
 	int road_variant(int base, int lanes, float width, int parking);
 	godot::Array node_legs(int node);
 	godot::Dictionary set_approach_rule(int node, int seg, int rule);
@@ -95,12 +95,11 @@ public:
 	int64_t effects_ruin_digest(int64_t seed) const { return int64_t(render_.ruin_digest(uint32_t(seed))); } // where a ruin's pieces lie
 	int effects_bodies() const { return render_.bodies(); } // of people off their feet, and of those still falling
 	int effects_bodies_moving() const { return render_.bodies_moving(); }
-	godot::Array effects_bodies_falling() const { return render_.bodies_falling(); } // where, how fast, how long left: what a test says of a body that never lands
 	// The pistol along a line of sight: {ok, hit 0 none / 1 walker / 2 vehicle, killed, burst}; a car that took enough rounds bursts as a blow.
 	godot::Dictionary shoot(const godot::Vector3 &origin, const godot::Vector3 &direction);
-	godot::Dictionary damage_probe() const; // what blows left on the map (counts)
+	godot::Dictionary damage_probe() const;
 	// The first `limit` walkers and vehicles as the pistol sees them (tests, probes): id, position, health, fallen, ...
-	godot::Dictionary shot_targets(int limit) const;
+	godot::Dictionary shot_targets(int limit) const; // what blows left on the map (counts)
 	godot::Dictionary blast_probe(float strength, float distance) const; // the blast model's numbers at a distance
 
 	// --- undo / redo and the drawer edits (city_core_edit.cpp)
@@ -110,7 +109,6 @@ public:
 	godot::Dictionary split_road(const godot::Vector3 &p);
 	godot::Dictionary body_census(int kind);
 	godot::Dictionary road_census();
-	godot::Dictionary lot_audit(); // the lots' defects read from the state (city_core_audit.cpp)
 	godot::Dictionary set_node_height(int node, float metres);
 	godot::Dictionary bend_road(int seg, float height, float at);
 	godot::Dictionary join_roads(int node);
@@ -130,7 +128,6 @@ public:
 	godot::Dictionary lot_move_corner(const godot::Vector3 &from, const godot::Vector3 &to), lot_curve_side(const godot::Vector3 &a, const godot::Vector3 &b, const godot::Vector3 &through);
 	godot::Dictionary lot_set_front(int id, int side), lot_split(int id, int kind, int parts, const godot::Vector3 &a, const godot::Vector3 &b);
 	godot::Dictionary lot_join(int a, int b), lot_delete(int id), lot_zone(int id, int zone);
-	godot::Dictionary lot_erase(const godot::PackedVector3Array &stroke); // the delete stroke: its lots and the buildings under it
 	godot::PackedVector3Array lot_land(const godot::Vector3 &a, const godot::Vector3 &b, double angle);
 	godot::Vector3 lot_snap_point(const godot::Vector3 &p, double reach, const godot::Vector3 &apart);
 	godot::Array lot_proposals(const godot::Vector3 &p);
@@ -143,7 +140,7 @@ public:
 	godot::Dictionary reverse_road(int seg), duplicate_road(int seg); // the inspector: the one-way runs the other way; a copy alongside (Ctrl+D)
 	godot::Dictionary set_marking_style(int style, bool undoable); // Menu > Paint; false: a city coming back from its session
 	godot::Dictionary upgrade_road(const godot::Vector3 &p, int profile, bool whole_street);
-	godot::Dictionary roundabout(const godot::Vector3 &p, float radius), preview_roundabout(const godot::Vector3 &p, float radius);
+	godot::Dictionary roundabout(const godot::Vector3 &p, float radius, bool cut), preview_roundabout(const godot::Vector3 &p, float radius, bool cut);
 	godot::Dictionary segment_at(const godot::Vector3 &p); // the segment a click there edits (preview)
 	godot::Dictionary terrain_brush(const godot::Vector3 &p, float radius, float strength, float dt, int mode, float hardness);
 	godot::Dictionary draw_building(const godot::Vector3 &a, const godot::Vector3 &b, int fn, int zone, int shape);
@@ -153,10 +150,7 @@ public:
 	// --- save / open (city_core_persist.cpp)
 	godot::Dictionary save_city(const godot::String &path);
 	godot::Dictionary save_status(); // { busy, ok, error, bytes } of the background save
-	// Opening runs aside: load_city starts it ({ pending } or a refusal), load_poll answers { pending } until the city is read, then
-	// takes it in and answers as the opening did ({ ok, error, ms }).
-	godot::Dictionary load_city(const godot::String &path, bool paused = false);
-	godot::Dictionary load_poll();
+	godot::Dictionary load_city(const godot::String &path, bool paused = false); // the catalogue as the drawer shows it (derived width and price per metre)
 
 	// --- queries (city_core_query.cpp)
 	godot::Dictionary snapshot();
@@ -164,7 +158,6 @@ public:
 	godot::Dictionary constants() const;
 	godot::Dictionary raycast(const godot::Vector3 &origin, const godot::Vector3 &dir);
 	float height_at(float x, float z); // terrain height without a ray march (camera, ground queries)
-	godot::PackedFloat32Array heights_at(const godot::PackedVector2Array &points); // the same at each point (x, z), under one lock
 	godot::Dictionary inspect(const godot::Vector3 &p);
 	godot::PackedVector3Array segment_path(int seg); // the road's line in the world, for what the Information tool draws
 	godot::Dictionary segment_traffic(int seg), node_traffic(int node); // the Inspect tool's live numbers (city_core_inspect.cpp)
@@ -190,19 +183,14 @@ public:
 	godot::Dictionary set_style(const godot::String &id); // the regional style of this city
 	godot::Dictionary overlays() const;
 	int render_pending() const { return render_.pending(); } // chunks still waiting to be drawn
-	godot::Dictionary building_chunk(float x, float z) const { return render_.building_chunk(x, z); } // the tests: BuildingRenderer::chunk_view
+	int building_chunk(float x, float z) const { return render_.building_chunk(x, z); } // the tests: BuildingRenderer::chunk_flags
 	godot::Dictionary render_cost() const; // where the last frame's _process went, in ms (tests tell a hitch's cause); constant time
 	godot::Dictionary wear_probe() const; // the wear field's worn cells, scanned whole (captures; never per frame)
-	godot::Dictionary road_mesh_counts() const; // what the road and ground seam chunks hold and the wear field's bytes
-	godot::Dictionary road_surface_probe() const; // the roads' stations over the map and how far their mesh stands off the true road (tests)
-	godot::Dictionary road_seam_probe(); // the ground seams of every road chunk, built anew: cells, cuts, refusals, cover (tests)
-	godot::Dictionary prop_buffer_probe() const; // each furniture chunk's poles and wires as the GPU holds them, by digest (two runs compared)
-	void draw_seams(bool on) { render_.draw_seams(on); } // tests/perf/camera_pan: a frame without them
+	godot::Dictionary road_mesh_counts() const; // what the road and verge chunks hold and the wear field's bytes
+	void draw_verges(bool on) { render_.draw_verges(on); } // tests/perf/camera_pan: a frame without them
 	void wear_paint(float x0, float z0, float x1, float z1, float value) { render_.wear_paint(x0, z0, x1, z1, value); } // tests/visual: a set use
 	godot::Dictionary building_cost() const { return render_.building_cost(); } // the building levels by surface: triangles, bytes
 	godot::Dictionary agent_cost() const; // vehicles by type and level: triangles, instances, draws (counts)
-	godot::Dictionary surface_probe(const godot::Array &arrays, const godot::Dictionary &lods, int64_t format) const; // tests: render/surface_data.h's surface of these arrays
-	godot::Dictionary memory_census() const; // where the process's memory is: its heaps and the core's largest owners, MiB (log/owner-review.md §8)
 	godot::Dictionary pose_stats(); // since the last call: pose publications, their gaps, frames shown past the newest pose
 
 protected:
@@ -215,8 +203,6 @@ private:
 	SaveJob save_;
 	godot::Object *terrain3d() const;
 	void join_save(); // waits for a save in flight before the state changes or is destroyed
-	LoadJob load_;
-	void join_load(); // waits for an opening in flight; what it read is dropped (another city or the end comes first)
 	std::unique_ptr<CityState> state_;
 	Simulation sim_;
 	// The materials the render draws with (render/city_world.gd makes them): held while its meshes reference them, so

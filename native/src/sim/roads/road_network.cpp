@@ -1,4 +1,4 @@
-// Road graph storage, spatial queries and the bookkeeping of every edit (Roadcraft roads/network.ts).
+// Road graph storage, spatial queries and node shape (Roadcraft roads/network.ts, roads/junction.ts bulbAt).
 #include "sim/roads/road_network.h"
 
 #include "sim/roads/junction.h"
@@ -9,9 +9,16 @@
 namespace city {
 
 namespace {
+constexpr double STRAIGHT_ANGLE_COS = -0.9986; // two arms this close to opposite are one street going on
+constexpr double BULB_REACH_PAD = 3, BULB_SEARCH_PAD = 30;
+constexpr double BULB_REACH_M = BULB_R + BULB_WALK + BULB_REACH_PAD; // a road closer than this to a dead end leaves no room for a bulb
+constexpr double BULB_LOOK_M = BULB_REACH_M + BULB_SEARCH_PAD; // the roads a dead end looks at for its bulb lie within this
 constexpr float LOT_LOOK_M = 160.f; // lots look this far for their streets (sim/citygen/lot_gen.h LOT_MARGIN + setbacks)
 
 int zoned_of(const RoadSegment &g) { return int(g.zl != 0) + int(g.zr != 0); }
+// A float bound that never lies inside the double box it stands for (the hash finds its cells from floats).
+float below(double v) { return std::nextafter(float(v), -INFINITY); }
+float above(double v) { return std::nextafter(float(v), INFINITY); }
 } // namespace
 
 void RoadNetwork::init(const Catalog *c, ChangeLog *l) {
@@ -132,7 +139,7 @@ void RoadNetwork::remove_node_if_orphan(int n) {
 }
 
 template <typename T>
-void RoadNetwork::take_id(IdTable<T> &items, SlotIds &free_list, int id) {
+void RoadNetwork::take_id(std::vector<T> &items, SlotIds &free_list, int id) {
 	items.resize(size_t(free_list.claim(id, int(items.size()))));
 }
 
@@ -268,11 +275,29 @@ void RoadNetwork::mark_heights(int s) {
 	edited_segs_.push_back(s);
 	if (!log) return;
 	const RoadSegment &g = segs[size_t(s)];
-	for_drawn_chunks(s, [&](int64_t key) { log->road_chunks.push_back(key); });
+	for (int j = int(std::floor(g.minz / CHUNK)); j <= int(std::floor(g.maxz / CHUNK)); j++)
+		for (int i = int(std::floor(g.minx / CHUNK)); i <= int(std::floor(g.maxx / CHUNK)); i++) log->road_chunks.push_back(cell_key(i, j));
 	log->net_seg(s);
 	log->net_node(g.a);
 	log->net_node(g.b);
 	log->furniture_segs.push_back(s);
+}
+
+bool RoadNetwork::bulb_clear(int n) const {
+	const RoadNode &nd = nodes[n];
+	int s = nd.segs[0];
+	const RoadSegment &g = segs[s];
+	if (cat->profile(g.profile).rail) return false;
+	if (bulb_retreat(arm_of(g.q, cat->profile(g.profile), g.a == n ? 0 : 1), g.len) <= 0) return false;
+	const double reach = BULB_REACH_M, pad = BULB_LOOK_M;
+	bool clear = true;
+	for_segments_near(nd.x - pad, nd.z - pad, nd.x + pad, nd.z + pad, [&](int o) {
+		if (!clear || o == s) return;
+		double t, d;
+		closest_t(segs[o].q, nd.x, nd.z, t, d);
+		if (d - cat->profile(segs[o].profile).right < reach) clear = false;
+	});
+	return clear;
 }
 
 std::vector<int> RoadNetwork::pieces_of(int seg) const {
@@ -300,15 +325,133 @@ std::vector<int> RoadNetwork::pieces_of(int seg) const {
 	return out;
 }
 
+bool RoadNetwork::refresh_node(int n, bool arms_changed) {
+	RoadNode &nd = nodes[n];
+	if (!nd.alive) return false;
+	size_t k = nd.segs.size();
+	const bool was_joint = nd.joint, was_bulb = nd.bulb;
+	nd.bulb = k == 1 && !nd.plain && bulb_clear(n);
+	nd.joint = false;
+	std::vector<Arm> arms;
+	std::vector<double> lens, out;
+	std::vector<int> order;
+	for (int s : nd.segs) {
+		arms.push_back(arm_of(segs[s].q, profile_of(s), segs[s].a == n ? 0 : 1));
+		lens.push_back(segs[s].len);
+	}
+	if (k == 2) nd.joint = arms[0].dx * arms[1].dx + arms[0].dz * arms[1].dz < STRAIGHT_ANGLE_COS;
+	if (nd.joint != was_joint) grade.node_changed(n); // a plate there, or none
+	// the node itself is drawn and driven otherwise: a bulb or a plate, or arms come or gone (crosswalks, the junction's
+	// outline and connectors read every arm)
+	const bool whole = arms_changed || nd.joint != was_joint || nd.bulb != was_bulb;
+	if (arms_changed || nd.joint != was_joint) run_dirty_.insert(run_dirty_.end(), nd.segs.begin(), nd.segs.end()); // the street goes on here, or no more
+	junction_retreats(arms, lens, out, order, nd.bulb);
+	bool changed = whole;
+	for (size_t i = 0; i < k; i++) {
+		RoadSegment &g = segs[nd.segs[i]];
+		double &mouth = g.a == n ? g.retreat_a : g.retreat_b;
+		const bool moved = mouth != out[i];
+		if (moved) grade.seg_changed(nd.segs[i]); // its plate there moved
+		mouth = out[i];
+		if (!moved && !whole) continue;
+		changed = true;
+		edited_segs_.push_back(nd.segs[i]);
+		mark_segment(nd.segs[i]);
+		// the mouths moved: the lane graph rebuilds this arm and its node on the next traffic step
+		if (log) {
+			log->net_seg(nd.segs[i]);
+			log->net_node(n);
+		}
+	}
+	return changed;
+}
+
+void RoadNetwork::settle_shapes() {
+	std::vector<int> own, near;
+	own.swap(shape_nodes_);
+	const double pad = BULB_LOOK_M;
+	for (const ChangedBox &b : shape_boxes_)
+		node_hash.query(below(b.minx - pad), below(b.minz - pad), above(b.maxx + pad), above(b.maxz + pad), [&](int n) { near.push_back(n); });
+	shape_boxes_.clear();
+	ChangeLog::dedup(own);
+	ChangeLog::dedup(near);
+	for (int n : own)
+		if (n >= 0 && n < int(nodes.size())) refresh_node(n, true);
+	// the nodes near a changed road whose own arms stand as they were: only a dead end's bulb (and its mouth) can change
+	for (int n : near)
+		if (!std::binary_search(own.begin(), own.end(), n)) refresh_node(n, false);
+	settle_runs();
+}
+
+void RoadNetwork::refresh_all() {
+	shape_nodes_.clear();
+	shape_boxes_.clear();
+	for (int n = 0; n < int(nodes.size()); n++) refresh_node(n, true);
+	settle_runs();
+}
+
+void RoadNetwork::settle_runs() {
+	runs_.resize(segs.size());
+	std::vector<int> dirty;
+	dirty.swap(run_dirty_);
+	ChangeLog::dedup(dirty);
+	// The segment before `at` on its street, -1 where the street begins (street_start of the render, the one definition).
+	const auto before = [&](int at) {
+		const RoadNode &n = nodes[size_t(segs[size_t(at)].a)];
+		if (!n.joint || n.segs.size() != 2) return -1;
+		const int back = n.segs[0] == at ? n.segs[1] : n.segs[0];
+		return segs[size_t(back)].b == segs[size_t(at)].a ? back : -1; // a piece laid the other way starts its own
+	};
+	const auto after = [&](int at) {
+		const RoadNode &n = nodes[size_t(segs[size_t(at)].b)];
+		if (!n.joint || n.segs.size() != 2) return -1;
+		const int next = n.segs[0] == at ? n.segs[1] : n.segs[0];
+		return segs[size_t(next)].a == segs[size_t(at)].b ? next : -1;
+	};
+	std::vector<char> done(segs.size(), 0);
+	std::vector<int> run;
+	for (int s : dirty) {
+		if (s < 0 || s >= int(segs.size()) || done[size_t(s)]) continue;
+		if (!segs[size_t(s)].alive) {
+			runs_[size_t(s)] = StreetRun();
+			continue;
+		}
+		int head = s;
+		bool ring = false;
+		for (int back = before(head); back >= 0; back = before(head)) {
+			if (back == s) {
+				ring = true;
+				break;
+			}
+			head = back;
+		}
+		run.clear();
+		for (int at = head; at >= 0; at = after(at)) {
+			run.push_back(at);
+			done[size_t(at)] = 1;
+			const int next = after(at);
+			if (next == head) break;
+		}
+		double total = 0;
+		for (int at : run) total += segs[size_t(at)].len;
+		const int id = ring ? *std::min_element(run.begin(), run.end()) : head;
+		double start = 0;
+		for (int at : run) {
+			runs_[size_t(at)] = { id, ring ? total - segs[size_t(at)].len : start, total };
+			start += segs[size_t(at)].len;
+		}
+	}
+}
+
 void RoadNetwork::mark_segment(int s) {
 	if (!log) return;
 	const RoadSegment &g = segs[s];
 	auto mark = [](std::vector<int64_t> &v, float x0, float z0, float x1, float z1) {
-		for_chunks(x0, z0, x1, z1, [&](int64_t key) { v.push_back(key); });
+		for (int j = int(std::floor(z0 / CHUNK)); j <= int(std::floor(z1 / CHUNK)); j++)
+			for (int i = int(std::floor(x0 / CHUNK)); i <= int(std::floor(x1 / CHUNK)); i++) v.push_back(cell_key(i, j));
 	};
-	for_drawn_chunks(s, [&](int64_t key) { log->road_chunks.push_back(key); });
+	mark(log->road_chunks, g.minx, g.minz, g.maxx, g.maxz);
 	mark(log->lot_cells, g.minx - LOT_LOOK_M, g.minz - LOT_LOOK_M, g.maxx + LOT_LOOK_M, g.maxz + LOT_LOOK_M);
 }
-
 
 } // namespace city

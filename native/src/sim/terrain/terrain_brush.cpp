@@ -9,8 +9,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <utility>
-#include <vector>
 
 namespace city {
 
@@ -25,7 +23,6 @@ constexpr float SUGARLOAF_TALL = 1.6f, SUGARLOAF_POWER = 0.7f;
 constexpr float NEIGHBOURS = 4.f;
 
 constexpr float RAISE_LOBE = 0.45f, RIVER_LOBE = 0.6f; // the outline's noise cell, as a share of the radius
-// where in the noise the raise's and the river's outlines are read (any offsets apart), and its seed: "land" in ASCII
 constexpr float RAISE_SALT_X = 41.3f, RAISE_SALT_Z = -17.9f, RIVER_SALT_X = 23.9f, RIVER_SALT_Z = 31.4f;
 constexpr uint32_t OUTLINE_SEED = 0x6c616e64u;
 
@@ -33,7 +30,7 @@ float smoothstep01(float t) { return smooth01(t); }
 } // namespace
 
 float Heightfield::natural_reach(const BrushDab &d, float x, float z, float lobe_share, float salt_x, float salt_z) const {
-	float lobe = d.radius * lobe_share, least = float(tune->terrain_rough_reach_min);
+	float lobe = d.radius * lobe_share, least = tune->terrain_rough_reach_min;
 	return least + (1.f - least) * (HALF + HALF * vnoise(x / lobe + salt_x, z / lobe + salt_z, OUTLINE_SEED));
 }
 
@@ -67,7 +64,7 @@ float Heightfield::dab_value(const BrushDab &d, size_t i, float dist, int x, int
 			float reach = natural_reach(d, x_of(x), x_of(z), RIVER_LOBE, RIVER_SALT_X, RIVER_SALT_Z);
 			if (dist >= reach) return v;
 			float bed = river_level(d.h0) - tune->terrain_river_depth_m;
-			return std::min(v, v + (bed - v) * smoothstep01((1.f - dist / reach) / float(tune->terrain_river_floor_share)));
+			return std::min(v, v + (bed - v) * smoothstep01((1.f - dist / reach) / tune->terrain_river_floor_share));
 		}
 		case BrushMode::FLATTEN: return v + (d.h0 - v) * k * f;
 		case BrushMode::SMOOTH: {
@@ -89,9 +86,7 @@ float Heightfield::dab_value(const BrushDab &d, size_t i, float dist, int x, int
 bool Heightfield::brush(const BrushDab &d) {
 	SampleRect r = brush_rect(d.x, d.z, d.radius);
 	if (r.empty() || d.radius <= 0) return false;
-	// every cell of the dab is worked out from the ground as it was before the dab, then written: a rule that reads its neighbours (smooth)
-	// never reads one this dab already moved, so the result does not lean with the scan's direction
-	std::vector<std::pair<size_t, uint16_t>> moved;
+	bool changed = false;
 	for (int z = r.z0; z <= r.z1; z++)
 		for (int x = r.x0; x <= r.x1; x++) {
 			float wx = x_of(x) - d.x, wz = x_of(z) - d.z;
@@ -100,13 +95,12 @@ bool Heightfield::brush(const BrushDab &d) {
 			size_t i = size_t(z) * N + x;
 			float nh = clampf(dab_value(d, i, dist, x, z), tune->terrain_min_height_m, tune->terrain_max_height_m);
 			uint16_t q = uint16_t(clampf(std::round((nh + HEIGHT_Q_OFFSET) * HEIGHT_Q_SCALE), 0.f, QUANT_LIMIT));
-			if (q != base_q[i]) moved.emplace_back(i, q);
+			if (q == base_q[i]) continue;
+			base_q[i] = q;
+			mark_tile(i);
+			changed = true;
 		}
-	if (moved.empty()) return false;
-	for (const auto &[i, q] : moved) {
-		base_q[i] = q;
-		mark_tile(i);
-	}
+	if (!changed) return false;
 	ground_moved.insert(ground_moved.end(), { x_of(r.x0), x_of(r.z0), x_of(r.x1), x_of(r.z1) }); // the roads there are read again
 	recompose(r.x0 - 1, r.z0 - 1, r.x1 + 1, r.z1 + 1);
 	return true;

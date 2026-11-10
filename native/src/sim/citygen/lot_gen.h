@@ -1,11 +1,10 @@
-// Lots are a pure function of the streets around a cell of LOT_CELL (Roadcraft src/jobs/lots.ts + blockLots.ts): closed
-// blocks are cut as Roadcraft 4.0 cuts them (rows back to back, equal columns of about the lots' frontage), then the open land
+// Lots are a pure function of the streets around a 256 m cell (Roadcraft src/jobs/lots.ts + blockLots.ts): closed
+// blocks are cut as Roadcraft 4.0 cuts them (rows back to back, equal columns of about 22 m), then the open land
 // left along zoned street sides is one strip of a lot's depth, cut in equal lots. A lot belongs to the cell
 // holding its centre; every cell that sees the same streets cuts them the same way.
 #pragma once
 
 #include "core/math.h"
-#include "sim/catalog/gen_shapes.h"
 #include "sim/roads/geometry.h"
 #include "sim/roads/profiles.h"
 
@@ -17,16 +16,13 @@
 
 namespace city {
 
-struct GenZones;
-
 constexpr double LOT_CELL = 256; // lots are computed per cell of this size
 constexpr double CELL_MARGIN = 120; // the streets a cell looks at reach this far past it
 
 // The streets around a cell (indices local to this view).
 struct LotGraph {
 	std::vector<double> nx, nz;
-	std::vector<double> bulb; // a dead end's turning bulb: the radius of its round out to the casing (0 none)
-	std::vector<uint8_t> joint; // straight two-arm joint
+	std::vector<uint8_t> bulb, joint; // dead end with a turning bulb; straight two-arm joint
 	std::vector<Quad> quad;
 	std::vector<int> sa, sb, profile, zl, zr;
 	int nodes() const { return int(nx.size()); }
@@ -62,30 +58,9 @@ inline void fill_disc(uint8_t *grid, int w, double ax, double az, double res, do
 struct LotGround {
 	std::function<double(double, double)> height; // ground height
 	std::function<double(double, double)> water; // water level (very low where dry)
-	// land no lot stands on (a scenic city's parks: the zone read off a street stops at them, a lot as deep as its building needs
-	// reached past that read into the park); empty: none
-	std::function<bool(double, double)> closed;
 };
 
-// The lot a design of its own asks for: its plan's width and depth.
-struct GrownPlan {
-	double w = 0, d = 0;
-};
-// The designs of their own the lots grow (b40 Data, the one owner of what they are and how big): by zone code the plans of the
-// designs a lot of that zone may grow, and `pick`, the one of them the lot `l` grows by where its front stands (the draw its building
-// is made by: b40 quarter_of, grown_pick), its place in by_zone[l.zone], or -1 for a lot that grows none. A lot is cut to the plan of
-// the design it grows, every other to the street's size (lot_place.cpp, block_lots.cpp cut_run): a design stands on a lot it fills.
-struct GrownPlans {
-	std::vector<std::vector<GrownPlan>> by_zone;
-	std::function<int(const Lot &l)> pick;
-	const std::vector<GrownPlan> &of(int zone) const {
-		static const std::vector<GrownPlan> none;
-		return pick && zone >= 0 && size_t(zone) < by_zone.size() ? by_zone[size_t(zone)] : none;
-	}
-};
-
-std::vector<Lot> build_lots(const GenShapes &S, const LotGraph &g, const std::vector<Profile> &profiles, const GenZones &zones, const GrownPlans &grown,
-	const LotGround &ground, double cell_x0, double cell_z0);
+std::vector<Lot> build_lots(const LotGraph &g, const std::vector<Profile> &profiles, const LotGround &ground, double cell_x0, double cell_z0);
 
 // Internals shared by the two files.
 namespace lot_gen {
@@ -94,21 +69,8 @@ struct BlockLot {
 	int zone, profile;
 };
 using Facing = std::function<void(double fx, double fz, double ox, double oz, int &zone, int &profile)>;
-// A lot's size by the zone it faces: a works lot's room for a lorry to turn in its yard (growth.json shapes.lots works_*), any other
-// the street's (shapes.lots; a lot that grows a design of its own is cut to that design's plan instead: GrownPlans). `whole` when that
-// size is room its building needs: its lots are never cut narrower than the frontage, and a block lays one row of them rather than two
-// too shallow.
-struct LotSize {
-	double frontage = 0, depth = 0;
-	bool whole = false;
-	bool same(const LotSize &o) const { return frontage == o.frontage && depth == o.depth && whole == o.whole; }
-};
-LotSize lot_size(const LotsShape &P, const GenZones &zones, int zone);
-// Which design of its own the block lot laid as `l` grows (its place in GrownPlans::of(l.zone)), or -1: asked by the blocks' cutter of
-// the strips' (lot_place.cpp), which knows where the lot's front stands once it is brought to the paving.
-using DesignAt = std::function<int(const BlockLot &l)>;
-std::vector<BlockLot> block_lots(const GenShapes &S, const LotGraph &g, const std::vector<Profile> &profiles, const std::vector<std::vector<double>> &tables,
-		double x0, double z0, const Facing &facing, const GenZones &zones, const GrownPlans &grown, const DesignAt &design_at);
+std::vector<BlockLot> block_lots(const LotGraph &g, const std::vector<Profile> &profiles, const std::vector<std::vector<double>> &tables,
+		double x0, double z0, const Facing &facing);
 // Distance from a point to a curve (12 samples, then halving the step).
 double curve_distance(const Quad &q, double x, double z);
 } // namespace lot_gen

@@ -8,19 +8,19 @@ signal applied(index: int, street: bool) # the road the Inspector has picked
 signal saved
 signal closed
 
-static var WIDEN_BY_M: float = DataTables.game("tools").profile_editor.widen_by_m # data/game/tools.json profile_editor
-static var PACE_BY: float = DataTables.game("tools").profile_editor.pace_by_kmh
-static var SPEED_LEAST: float = DataTables.game("tools").profile_editor.speed_least_kmh
-static var SPEED_MOST: float = DataTables.game("tools").profile_editor.speed_most_kmh
+const WIDEN_BY_M := 0.5
+const PACE_BY := 10.0
+const SPEED_LEAST := 10.0
+const SPEED_MOST := 130.0
 
 @export var edit := RoadSpecEdit.new()
-var _view: RoadSectionView
-var _total: Label
-var _problem: Label
-var _props: HBoxContainer
-var _name: LineEdit
-var _use: Button
-var _street: Button
+@onready var _view: RoadSectionView
+@onready var _total: Label
+@onready var _problem: Label
+@onready var _props: HBoxContainer
+@onready var _name: LineEdit
+@onready var _use: Button
+@onready var _street: Button
 
 
 func _init() -> void:
@@ -96,14 +96,13 @@ func _set_width(index: int, metres: float) -> void:
 func _refresh() -> void:
 	var issues: Array = CityStore.query(&"road_spec_issues", [edit.base, edit.spec])
 	var flagged := []
-	var problems := ""
+	var texts := PackedStringArray()
 	for i: Dictionary in issues:
 		flagged.append_array(i.elements)
-		var problem := tr("profile.problem." + String(i.problem))
-		problems = problem if problems.is_empty() else "%s · %s" % [problems, problem]
+		texts.push_back(tr("profile.problem." + String(i.problem)))
 	_view.show_spec(edit.spec, edit.selected, flagged)
 	_total.text = tr("profileEditor.totalWidth").format({"width": Formatters.format_measure(RoadSpecOps.total(edit.spec))})
-	_problem.text = problems if not issues.is_empty() else tr("profileEditor.ok")
+	_problem.text = " · ".join(texts) if not issues.is_empty() else tr("profileEditor.ok")
 	_use.disabled = not issues.is_empty()
 	_fill_props()
 

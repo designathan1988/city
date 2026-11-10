@@ -463,26 +463,3 @@ Prova de que a comparação da `contamination` não afrouxou:
 - `injection_graph` cobra `god`, `implicit_role`, `missing_owner`, `repeated_decision` e `not:repeated_rule`: o caso recebe o peso do que está na cauda real (`_in_the_tail`). Ficam fora os mesmos 4 de antes.
 
 ## Provas
-
-## 2026-11-10 00:20: the working tree, the slices published and `trace` (English; the record above describes the version before the rework of 2026-11-07 19:25, `bd7ce441`)
-**Problems, read in the code:** (1) `pipeline.publish` wrote only the violations: each entry's slice (its functions in program order,
-`slices.py` `order` and `first`) was computed and thrown away, so nothing could say what an entry runs. (2) `repo.py` reads the commit
-only and `Repo.overlay` was empty: with uncommitted work in the tree (always, here) the analysis was of other code. (3) Since
-`native/build-android` exists, `cpp_build._driver` asked the NDK compiler for its target and search list without the command's own
-`--target` and `--sysroot`: it answered for the host (`x86_64-w64-windows-gnu`), `--sysroot` was not kept, and 123 units failed with
-`'cstddef' file not found` (6,192 functions and 32 entries instead of 6,465 and 493).
-**Fixes:** `pipeline.slices_of` publishes `slices.json` (a function table and, per entry, the order, the caller and line that first reach
-each function, jobs, members written); `arch/worktree.py` lays the working tree over the commit (`scan --worktree`, output in
-`dist/arch/worktree`); `arch/route.py` is `trace <Class::method | name | file:line | file>`; `_driver` is asked with the command's
-platform flags and `--sysroot` is kept. `slices.json` joined the files the determinism check compares.
-**Proof:** `scan --worktree`: 6,465 functions, 493 entries, 0 compiler errors, 2 min 17 s cold. `trace RenderWorld::sync --worktree`: run by
-`CityCore::_process` [frame]; route of 756 functions in 136 files in program order. Precision of `redone_work` (1,251) and
-`composed_quadratic` (408) is still unmeasured (log/pendencias.md).
-**2026-11-10 01:40, closing this change.** With the Android units read, the selfcheck failed `taint_alloc` (gold and mutation). Read in
-the compiler's tree (a probe on `core/bytes.h:77` in both configurations): in the Android unit `std::memcpy` inside the template
-`ByteReader::get<T>` is an `OVERLOADED_DECL_REF` below a `DECL_REF_EXPR`, its two declarations `using` declarations of libc++, which
-`_candidates` dropped (not callables), so the call was `dep:memcpy`, `get` was no byte reader, and the Android summary stands for the
-function (the first configuration by name). Fix in `cpp_calls.py`: a name a template leaves open whose every listed declaration
-(`_overloads`, any kind) is the language's own is a call of the language. `route.py` also gives what the named function runs itself
-(`below`) and the chain from the entry, in `--json`. Selfcheck: 12 of 12. The trace-fix skill's `trace` takes the C++ part of a route
-from here (`build_road_path`: 568 functions in 82 files, against 57 units by name).

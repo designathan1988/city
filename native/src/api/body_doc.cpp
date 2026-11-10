@@ -13,7 +13,6 @@
 #include <godot_cpp/variant/string.hpp>
 #include <godot_cpp/variant/variant.hpp>
 
-#include <cstdlib>
 #include <cstring>
 #include <string>
 
@@ -49,11 +48,11 @@ constexpr Named DOC_ELEMENTS[] = { { "pavement", EL_PAVEMENT }, { "slab", EL_SLA
 constexpr Named DOC_PATTERNS[] = { { "residential", PATTERN_RESIDENTIAL }, { "storefront", PATTERN_STOREFRONT }, { "office", PATTERN_OFFICE },
 	{ "industrial", PATTERN_INDUSTRIAL }, { "arcade", PATTERN_ARCADE }, { "gallery", PATTERN_GALLERY }, { "artDeco", PATTERN_ART_DECO },
 	{ "artDecoCrown", PATTERN_ART_DECO_CROWN }, { "observation", PATTERN_OBSERVATION } };
-// What each open surface shows, by the colour table's name; plain grass is the lot's own ground and lays nothing (no colour).
+// What each open surface shows, by the colour table's name.
 constexpr struct {
 	const char *open, *colour;
 } DOC_SURFACES[] = { { "paving", "paving" }, { "gravel", "concrete" }, { "sand", "sand" }, { "asphalt", "asphalt" }, { "concrete", "concrete" },
-	{ "pavers", "paving" }, { "tiles", "paving" }, { "water", "fountain_water" }, { "grass", nullptr } };
+	{ "pavers", "paving" }, { "tiles", "paving" }, { "water", "fountain_water" } };
 
 std::string text(const Variant &v) { return std::string(String(v).utf8().get_data()); }
 
@@ -75,8 +74,6 @@ public:
 	void building(const Dictionary &doc);
 
 private:
-	int whole_key(const Variant &key);
-	bool bay_key_of(const std::string &key, int &side, int &bay);
 	void storey(Volume &v, int k, const Dictionary &row);
 	void faces(Volume &v, const Dictionary &geometry);
 	void reliefs(Volume &v, const Array &rows);
@@ -90,23 +87,12 @@ private:
 	PackedStringArray &errors_;
 };
 
-// A side or bay number written as a key ("2"): digits only, or an error (std::stoi would abort the game: no exceptions here).
-int Reader::whole_key(const Variant &key) {
-	const std::string s = text(key);
-	if (!s.empty() && s.find_first_not_of("0123456789") == std::string::npos) return std::atoi(s.c_str());
-	errors_.push_back(String("document: expected a number as the key, found '") + s.c_str() + String("'"));
-	return 0;
-}
-
 // "side:index" of a bay override.
-bool Reader::bay_key_of(const std::string &key, int &side, int &bay) {
+bool bay_key_of(const std::string &key, int &side, int &bay) {
 	const size_t colon = key.find(':');
-	if (colon == std::string::npos) {
-		errors_.push_back(String("document: expected 'side:bay' as a bay key, found '") + key.c_str() + String("'"));
-		return false;
-	}
-	side = whole_key(String(key.substr(0, colon).c_str()));
-	bay = whole_key(String(key.substr(colon + 1).c_str()));
+	if (colon == std::string::npos) return false;
+	side = std::stoi(key.substr(0, colon));
+	bay = std::stoi(key.substr(colon + 1));
 	return true;
 }
 
@@ -114,23 +100,20 @@ void Reader::storey(Volume &v, int k, const Dictionary &row) {
 	const Dictionary facade = row.get("facade", Dictionary());
 	v.fill.push_back(uint8_t(named(DOC_BAYS, facade.get("fill", "wall"), "componente")));
 	const Dictionary sides = facade.get("sides", Dictionary());
-	for (const Variant &key : sides.keys()) v.side_fill[side_key(k, whole_key(key))] = uint8_t(named(DOC_BAYS, sides[key], "componente"));
+	for (const Variant &key : sides.keys()) v.side_fill[side_key(k, int(String(key).to_int()))] = uint8_t(named(DOC_BAYS, sides[key], "componente"));
 	const Dictionary bays = facade.get("bays", Dictionary());
 	for (const Variant &key : bays.keys()) {
 		int side = 0, bay = 0;
 		if (bay_key_of(text(key), side, bay)) v.bays[bay_key(k, side, bay)] = uint8_t(named(DOC_BAYS, bays[key], "componente"));
 	}
 	const Dictionary paints = row.get("materials", Dictionary());
-	for (const Variant &key : paints.keys()) v.storey_paint[side_key(k, whole_key(key))] = b_.add_paint(paint(paints[key]));
+	for (const Variant &key : paints.keys()) v.storey_paint[side_key(k, int(String(key).to_int()))] = b_.add_paint(paint(paints[key]));
 }
 
 void Reader::faces(Volume &v, const Dictionary &geometry) {
 	for (const Variant &key : geometry.keys()) {
-		const int side = whole_key(key);
-		if (side >= MAX_FACES) {
-			errors_.push_back(String("document: facadeGeometry side ") + String::num_int64(side) + String(" past the last face"));
-			continue;
-		}
+		const int side = int(String(key).to_int());
+		if (side < 0 || side >= MAX_FACES) continue;
 		const Dictionary g = geometry[key];
 		FaceGeometry &f = v.faces[side];
 		f.bays = int(g.get("bays", -1));
@@ -151,11 +134,8 @@ void Reader::reliefs(Volume &v, const Array &rows) {
 }
 
 void Reader::open_block(const Dictionary &d, const std::string &open) {
-	bool known = false;
 	for (const auto &s : DOC_SURFACES) {
 		if (open != s.open) continue;
-		known = true;
-		if (!s.colour) continue;
 		LotElement e;
 		e.kind = EL_SURFACE;
 		const float w = float(d.get("w", 0)), depth = float(d.get("d", 0));
@@ -167,7 +147,6 @@ void Reader::open_block(const Dictionary &d, const std::string &open) {
 		e.paint = b_.add_paint(data_.color(s.colour));
 		b_.elements.push_back(e);
 	}
-	if (!known) errors_.push_back(String("document: unknown open surface '") + open.c_str() + String("'"));
 }
 
 void Reader::block(const Dictionary &d) {
@@ -190,7 +169,7 @@ void Reader::block(const Dictionary &d) {
 	for (int k = 0; k < v.storeys; k++) storey(v, k, storeys[k]);
 	for (const Variant &p : Array(d.get("outline", Array()))) {
 		const Dictionary point = p;
-		v.outline.push_back(V2{ float(point.get("x", 0)), float(point.get("y", 0)) });
+		v.outline.push_back(Point2{ float(point.get("x", 0)), float(point.get("y", 0)) });
 	}
 	const Dictionary dress = d.get("dress", Dictionary());
 	v.lines = Lines(named(DOC_LINES, dress.get("lines", "none"), "linha"));

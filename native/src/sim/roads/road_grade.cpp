@@ -1,7 +1,6 @@
 // A road's profile made ready for the solve (Roadcraft 4.0 world/elevation.ts, the stations step and readStations): its
 // stations along the curve, the ground read under them across its casing, and its junction plates; and the reads of a
-// solved profile. The solve itself is road_grade_solve.cpp with its rounds in road_grade_rounds.cpp, one profile's
-// solvers road_grade_profile.cpp, the figures it is tuned by road_grade_tune.cpp.
+// solved profile. The solve itself is road_grade_solve.cpp, one profile's solvers road_grade_profile.cpp.
 #include "sim/roads/road_grade_internal.h"
 
 #include "core/math.h"
@@ -32,6 +31,12 @@ float read_line(const std::vector<float> &v, float at) {
 	return v[lo] + (v[hi] - v[lo]) * (f - float(lo));
 }
 
+// Half the casing (roadTypes.ts casingHalf): the road's widest side, footway included, and the casing band past it.
+float casing_half(const Profile &p) { return p.half() + CASING_BAND_M; }
+
+// junction/build.ts MAX_CONTINUOUS_BEND: two legs bent less than this carry one road on through a transition, not a corner.
+constexpr double MAX_CONTINUOUS_BEND = 55.0 * PI_D / DEG_PER_HALF_TURN;
+
 // How far two legs at a node turn from going straight on (junction/build.ts bendAngle): 0 for a straight joint.
 double bend_at(const RoadNetwork &net, const RoadNode &nd, int n) {
 	double d[2][2];
@@ -58,8 +63,7 @@ bool carries_on(const RoadNetwork &net, int n) {
 // width, the structure or only the direction changes: a taper, a ramp landing, a bend) holds the margin alone.
 float plate_reach(const RoadNetwork &net, int n, double retreat) {
 	const RoadNode &nd = net.nodes[size_t(n)];
-	if (nd.segs.size() == 2 && (nd.joint || bend_at(net, nd, n) < net.cat->tune.junction_transition_bend_deg * PI_D / DEG_PER_HALF_TURN))
-		return carries_on(net, n) ? 0.f : PLATE_MARGIN_M;
+	if (nd.segs.size() == 2 && (nd.joint || bend_at(net, nd, n) < MAX_CONTINUOUS_BEND)) return carries_on(net, n) ? 0.f : PLATE_MARGIN_M;
 	// A plain dead end is no junction (junction/build.ts surfaceMode: one leg is one only as a turning bulb): no footway
 	// casing to hold flat, the margin alone past its cut.
 	if (nd.segs.size() == 1 && !nd.bulb) return float(retreat) + PLATE_MARGIN_M;
@@ -101,8 +105,6 @@ void read_stations(const RoadSegment &g, GradeProfile &p, int count, const Groun
 }
 } // namespace
 
-float casing_half(const Profile &p) { return p.half() + CASING_BAND_M; }
-
 // The inputs of segment s as they stand: stations, ground (read again only when its curve, casing or ground changed),
 // plates, structure; its heights left as they were (the solve starts them from the grade line when it takes them).
 void grade_inputs(RoadGrade &grade, const RoadNetwork &net, int s, const GroundAt &ground, bool reground, const GradeTune &t) {
@@ -126,15 +128,10 @@ void grade_inputs(RoadGrade &grade, const RoadNetwork &net, int s, const GroundA
 	slope_limit(p.base, p.step, t.ground);
 	p.a = g.a;
 	p.b = g.b;
-	// each plate held flat no further than the other's mouth (the mouths already keep the road's drivable reserve between them)
-	p.plate_a = std::min(len - float(g.retreat_b), plate_reach(net, g.a, g.retreat_a));
-	p.plate_b = std::min(len - float(g.retreat_a), plate_reach(net, g.b, g.retreat_b));
+	p.plate_a = std::min(len * float(MOUTH_SHARE), plate_reach(net, g.a, g.retreat_a));
+	p.plate_b = std::min(len * float(MOUTH_SHARE), plate_reach(net, g.b, g.retreat_b));
 	p.structure = structure_of(g.flags);
 	p.walls = (g.flags & SEG_CUT_WALLS) != 0;
-	for (int k = 0; k < 2; k++) { // a node of this road alone is a dead end: a bulb, or cut straight across
-		const RoadNode &nd = net.nodes[size_t(k == 0 ? g.a : g.b)];
-		p.ends[k] = nd.segs.size() != 1 ? RoadEndKind::JOINT : nd.bulb ? RoadEndKind::BULB : RoadEndKind::CUT;
-	}
 	p.manual = std::fabs(net.nodes[size_t(g.a)].lift) > AUTHORED_EPS || std::fabs(net.nodes[size_t(g.b)].lift) > AUTHORED_EPS;
 	if (p.h.size() != size_t(count)) p.h = p.base;
 	p.valid = true;

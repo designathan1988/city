@@ -1,6 +1,5 @@
 // The cut of a body (cut.h).
 #include "sim/buildings/interior/cut.h"
-#include "core/math.h"
 
 #include <algorithm>
 #include <cmath>
@@ -8,6 +7,7 @@
 namespace city::b40 {
 
 namespace {
+constexpr float TURN = 6.2831853f;
 } // namespace
 
 int top_level(const Body &b) {
@@ -16,17 +16,17 @@ int top_level(const Body &b) {
 	return top;
 }
 
-V2 cut_direction(int dir) {
-	const float a = float(dir & (CUT_DIRECTIONS - 1)) * TAU_F / float(CUT_DIRECTIONS);
+Point2 cut_direction(int dir) {
+	const float a = float(dir & (CUT_DIRECTIONS - 1)) * TURN / float(CUT_DIRECTIONS);
 	return { std::cos(a), std::sin(a) };
 }
 
 int cut_step(float x, float z) {
-	const float turns = std::atan2(z, x) / TAU_F * float(CUT_DIRECTIONS);
+	const float turns = std::atan2(z, x) / TURN * float(CUT_DIRECTIONS);
 	return int(std::lround(turns)) & (CUT_DIRECTIONS - 1);
 }
 
-Body cut_open(const Body &b, int level, V2 view) {
+Body cut_open(const Body &b, int level, Point2 view) {
 	Body out = b;
 	const int at = std::clamp(level, 0, top_level(b));
 	out.volumes.clear();

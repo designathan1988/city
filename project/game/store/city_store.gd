@@ -12,7 +12,7 @@ signal command_failed(error_key: String)
 const SNAPSHOT_INTERVAL_S := 0.25
 ## Reads of the core that change only when a revision of the snapshot moves (the network with edit_revision, the transport
 ## plan with transit_revision): `cached` asks the core once per revision, so a view drawing every frame never asks for nothing.
-const CACHED_BY := {&"junctions": "edit_revision", &"transit_plan": "transit_revision", &"road_profiles": "profiles_revision"}
+const CACHED_BY := {&"junctions": "edit_revision", &"transit_plan": "transit_revision"}
 
 signal saved(slot: String, result: Dictionary)
 signal loaded(slot: String, result: Dictionary)
@@ -29,8 +29,6 @@ var _core: Node3D
 var _routes: Dictionary = {} # a StoreApi name -> the Callable on the core, or on the area of it, that runs it
 var _since_refresh := 0.0
 var _cache := {} # CACHED_BY query -> [the revision it was read at, its answer]
-var _cost_frame := -1 # the frame frame_render_cost last read
-var _cost := {} # its reading
 var _snapshot: Dictionary = {} # the core's snapshot as last read
 var _stale := false # something may have moved it since: the next read asks the core
 var _change_due := false # `changed` is on its way, at the end of this frame
@@ -57,16 +55,13 @@ func _route(spec: String) -> Callable:
 	return Callable(area, spec.substr(cut + 1))
 
 
-## Loads the data tables into the core and prepares rendering. Returns the list of problems (empty = ok). `catalog` and
-## `render`: the tables to load instead of DataTables' (a test hands a damaged one to see it refused).
-func boot(terrain: Node, materials: Dictionary, catalog: Dictionary = {}, render: Dictionary = {}) -> PackedStringArray:
-	var errors: PackedStringArray = _core.load_catalog(DataTables.catalog() if catalog.is_empty() else catalog)
+## Loads the data tables into the core and prepares rendering. Returns the list of problems (empty = ok).
+func boot(terrain: Node, materials: Dictionary) -> PackedStringArray:
+	var errors: PackedStringArray = _core.load_catalog(DataTables.catalog())
 	if not errors.is_empty():
 		return errors
 	_core.terrain_path = _core.get_path_to(terrain)
-	var tables: Dictionary = (DataTables.render() if render.is_empty() else render).duplicate()
-	tables["camera"] = DataTables.game("camera") # the camera's far lens, which the building levels' bands are measured for
-	var problems: PackedStringArray = _core.setup_render(tables, materials)
+	var problems: PackedStringArray = _core.setup_render(DataTables.render(), materials)
 	DataTables.release_boot_tables()
 	return problems
 
@@ -88,7 +83,7 @@ func ready_to_read() -> bool:
 ## The road the tool opens with (data/ui/drawers.json first_road).
 func first_road() -> int:
 	var id: String = DataTables.ui("drawers").first_road
-	for p in cached(&"road_profiles"):
+	for p in query(&"road_profiles"):
 		if p.id == id:
 			return p.index
 	return 0
@@ -109,18 +104,8 @@ func query(name: StringName, args: Array = []) -> Variant:
 	return _routes[name].callv(args)
 
 
-## The core's render cost of this frame (query render_cost), read once a frame however many ask (the lab's meter, the Effects
-## panel's CPU tab). Shared by every reader: read it, never change it.
-func frame_render_cost() -> Dictionary:
-	var frame := Engine.get_process_frames()
-	if frame != _cost_frame:
-		_cost_frame = frame
-		_cost = query(&"render_cost")
-	return _cost
-
-
 ## A CACHED_BY query's answer, asked of the core again only when its revision in the snapshot moved (every command
-## marks the snapshot, so an edit is seen at once). Shared by every reader: read it, never change it.
+## marks the snapshot, so an edit is seen at once).
 func cached(name: StringName) -> Variant:
 	var rev: int = snapshot.get(CACHED_BY[name], -1)
 	if rev < 0:
@@ -143,11 +128,10 @@ func set_sim_switch(name: String, on: bool) -> void:
 	_core.set_sim_switch(name, on)
 
 
-## Tests only: advance the simulation deterministically. Refused (false) while the clock runs: open the map paused.
-func step_ticks(ticks: int) -> bool:
-	var stepped: bool = _core.step_ticks(ticks)
+## Tests only: advance the simulation deterministically.
+func step_ticks(ticks: int) -> void:
+	_core.step_ticks(ticks)
 	_mark()
-	return stepped
 
 
 ## The snapshot read from the core now (after a load, or by a caller that wants this instant's numbers); `changed` at the frame's end.
@@ -155,31 +139,6 @@ func refresh() -> void:
 	_stale = false
 	_snapshot = _core.snapshot()
 	_change_coming()
-
-
-## The index of road profile `id` (road_profiles.json), -1 when the catalogue has none.
-func profile_index(id: String) -> int:
-	for p in cached(&"road_profiles"):
-		if p.id == id:
-			return p.index
-	return -1
-
-
-## The value the core gives enumerator `value` of its enum `of` (constants "enums": native/src/api/script_enums.cpp): what a
-## script names instead of typing the core's number. A name the core does not have is an error.
-func code(of: StringName, value: StringName) -> int:
-	var values: Dictionary = constants.enums.get(String(of), {})
-	assert(values.has(String(value)), "the core has no %s.%s" % [of, value])
-	return int(values.get(String(value), -1))
-
-
-## The name of value `value` of the core's enum `of`; empty when it has none.
-func code_name(of: StringName, value: int) -> StringName:
-	var values: Dictionary = constants.enums.get(String(of), {})
-	for name: String in values:
-		if int(values[name]) == value:
-			return StringName(name)
-	return &""
 
 
 ## The core may have moved: the snapshot is read again when next read, and `changed` follows at the frame's end.

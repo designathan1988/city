@@ -1,7 +1,6 @@
 # The code the analysers read: the files come from tools/tasks/inputs (git's tracked and untracked files: no copies,
 # fixtures nor ignored outputs), and each C++ file is parsed into its functions once per content (tools/tasks memo), so
-# every detector reads the same parse. Braces and heads are read on the code the gates' lexer leaves (tools/gates/lex_c.py:
-# no comment, string or character), so a brace in a string or a comment shifts no function.
+# every detector reads the same parse.
 import os
 import re
 import sys
@@ -9,12 +8,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "gates"))
-import lex_c  # noqa: E402  the tools' one C++ lexer
 from tasks import inputs, memo  # noqa: E402
 
 PARSER = "tools/analysis/code_parse.py"  # its own source keys every parse: a change of the parser parses again
-LEXER = "tools/gates/lex_c.py"  # and the lexer's
 CPP_EXT = (".cpp", ".cc", ".cxx", ".h", ".hpp")
 FUNC_HEAD = re.compile(r"^\s*[A-Za-z_][\w:<>,\s\*&~]*?\b([A-Za-z_]\w*(?:::~?\w+)*)\s*\(([^;{}]*)\)\s*(const)?[^;{}=]*\{\s*$")
 CLASS_HEAD = re.compile(r"\b(?:class|struct)\s+(?:\w+\s+)*?([A-Za-z_]\w*)\s*(?:final\s*)?(?::[^;{]*)?\{")
@@ -46,22 +42,10 @@ class Source:
     funcs: list
 
 
-def code_only(text):
-    """The text with every comment, string and character literal blanked, newlines kept: what braces and heads are read on."""
-    chars = list(text)
-    for t in lex_c.lex(text, lex_c.LANG_CPP):
-        if t.kind in ("comment", "string", "char"):
-            for k in range(t.start, t.end):
-                if chars[k] != "\n":
-                    chars[k] = " "
-    return "".join(chars)
-
-
 def functions(text):
     """(name, first line, body, const) of each function defined with its brace on the signature's last line; a function
-    defined inside a class body gets that class's name in front. The body is the source as written."""
-    source = text.splitlines()
-    lines = code_only(text).splitlines()
+    defined inside a class body gets that class's name in front."""
+    lines = text.splitlines()
     spans = class_spans(lines)
     i = 0
     while i < len(lines):
@@ -83,7 +67,7 @@ def functions(text):
         inside = [c for a, b, c in spans if a < i <= b]
         if inside and "::" not in name:
             name = f"{inside[-1]}::{name}"
-        yield name, i + 1, "\n".join(source[i:j + 1]), bool(m.group(3))
+        yield name, i + 1, "\n".join(lines[i:j + 1]), bool(m.group(3))
         i = j + 1
 
 
@@ -92,7 +76,7 @@ def class_spans(lines):
     spans, stack, depth = [], [], 0
     for n, line in enumerate(lines):
         m = CLASS_HEAD.search(line)
-        if m:
+        if m and not line.lstrip().startswith(("//", "*")):
             stack.append((n, depth, m.group(1)))
         depth += line.count("{") - line.count("}")
         while stack and depth <= stack[-1][1] and n > stack[-1][0]:
@@ -110,10 +94,10 @@ def load(root, patterns):
     """{repo-relative path: Source} of the files the patterns name, each C++ file parsed once per content."""
     out = {}
     found = inputs.files(patterns, root=root)
-    inputs.content_ids(found + [PARSER, LEXER], root=root)  # one pass for every changed file, before the keys ask one by one
+    inputs.content_ids(found + [PARSER], root=root)  # one pass for every changed file, before the keys ask one by one
     for rel in found:
         text = read(os.path.join(root, rel))
-        key = inputs.key_of([rel, PARSER, LEXER], root=root)
+        key = inputs.key_of([rel, PARSER], root=root)
         parsed = memo("causes-parse", key, lambda t=text: list(functions(t)), root=root) if rel.endswith(CPP_EXT) else []
         out[rel] = Source(rel, text, [Func(n, ln, body, const) for n, ln, body, const in parsed])
     return out

@@ -4,17 +4,19 @@
 class_name RoadPanel
 extends RefCounted
 
-static var RAISE_BY_M: float = DataTables.game("tools").inspector.raise_by_m # data/game/tools.json inspector
-static var CURVE_LEAST_M: float = DataTables.game("tools").inspector.curve_least_m
-static var CURVE_MOST_M: float = DataTables.game("tools").inspector.curve_most_m
-static var CURVE_SHARE: float = DataTables.game("tools").inspector.curve_share
-static var CURVE_STRAIGHT_M: float = DataTables.game("tools").inspector.curve_straight_m
-static var CURVE_STEP_M: float = DataTables.game("tools").inspector.curve_step_m
-static var CURVE_FROM: float = DataTables.game("tools").inspector.curve_from
-static var CURVE_TO: float = DataTables.game("tools").inspector.curve_to
-static var AT_STEP: float = DataTables.game("tools").inspector.at_step
-const AT_MIDDLE := 0.5 # a road's middle
-const JOINT_ARMS := 2 # a point joins two roads in line
+const RAISE_BY_M := 0.5
+const CURVE_LEAST_M := 20.0
+const CURVE_MOST_M := 280.0
+const CURVE_SHARE := 0.65 # of the road's length
+const CURVE_STRAIGHT_M := 0.5
+const CURVE_STEP_M := 1.0
+const CURVE_FROM := 0.15
+const CURVE_TO := 0.85
+const AT_STEP := 0.01
+const AT_MIDDLE := 0.5
+const JOINT_ARMS := 2
+const CROSS_ZEBRA := 1 # road_network.h NodeCrossing
+const CROSS_SIGNAL := 2
 
 
 ## `changed`: the panel is read again.
@@ -61,22 +63,19 @@ static func _direction(col: Control, info: Dictionary, at: Vector3, changed: Cal
 	var now := 0
 	if info.one_way:
 		now = 1 if spec.elements.any(func(e: Dictionary) -> bool: return e.kind == "lane" and e.dir > 0) else -1
-	var ways := HudWidgets.dropdown(col, tr_key("inspector.direction"), now, func(dir: int) -> void:
+	var items := [[0, tr_key("direction.both")], [1, tr_key("direction.aToB")], [-1, tr_key("direction.bToA")]]
+	HudWidgets.dropdown(col, tr_key("inspector.direction"), items, now, func(dir: int) -> void:
 		var index: int = CityStore.query(&"road_spec_make", [info.profile_id, RoadSpecOps.directed(spec, dir)])
 		if index >= 0:
 			CityStore.dispatch(&"upgrade_road", [at, index, false])
 		changed.call())
-	HudWidgets.dropdown_item(ways, 0, tr_key("direction.both"))
-	HudWidgets.dropdown_item(ways, 1, tr_key("direction.aToB"))
-	HudWidgets.dropdown_item(ways, -1, tr_key("direction.bToA"))
 
 
 static func _stepper(col: Control, key: String, node: int, metres: float, changed: Callable) -> void:
 	var row := HudWidgets.option_row(col, tr_key(key))
-	var label := TranslationServer.translate("unit.metre").format({"n": "%.1f" % metres})
+	var label := "%.1f m" % metres
 	for step: float in [-RAISE_BY_M, RAISE_BY_M]:
-		var tip := TranslationServer.translate("junction.lower" if step < 0.0 else "junction.raise").format({"m": Formatters.format_tenths(RAISE_BY_M)})
-		var b := HudWidgets.button(&"Ghost", "", "\u2212" if step < 0.0 else "+", tip, "icon_btn", "icon_btn")
+		var b := HudWidgets.button(&"Ghost", "", "\u2212" if step < 0.0 else "+", "junction.lower" if step < 0.0 else "junction.raise", "icon_btn", "icon_btn")
 		b.pressed.connect(func() -> void:
 			CityStore.dispatch(&"set_node_height", [node, metres + step])
 			changed.call())
@@ -90,11 +89,11 @@ static func tr_key(key: String) -> String:
 
 
 static func _metres(v: float) -> String:
-	return TranslationServer.translate("unit.metre").format({"n": roundi(v)})
+	return "%d m" % roundi(v)
 
 
 static func _percent(v: float) -> String:
-	return "%d%%" % roundi(v * Units.PERCENT)
+	return "%d%%" % roundi(v * Formatters.PERCENT)
 
 
 static func _noop(_v: float) -> void:
@@ -113,8 +112,8 @@ static func _work(row: Control, text: String, command: StringName, args: Array, 
 ## What can be put on a road: a height point, a crossing, a way back through its median.
 static func works(row: Control, info: Dictionary, at: Vector3, redraw: Callable) -> void:
 	_work(row, row.tr("inspector.addHeightPoint"), &"split_road", [at], redraw)
-	_work(row, row.tr("inspector.addZebra"), &"add_crossing", [at, CityStore.code(&"NodeCrossing", &"CROSSING_ZEBRA")], redraw)
-	_work(row, row.tr("inspector.addSignalCrossing"), &"add_crossing", [at, CityStore.code(&"NodeCrossing", &"CROSSING_SIGNAL")], redraw)
+	_work(row, row.tr("inspector.addZebra"), &"add_crossing", [at, CROSS_ZEBRA], redraw)
+	_work(row, row.tr("inspector.addSignalCrossing"), &"add_crossing", [at, CROSS_SIGNAL], redraw)
 	if info.median:
 		_work(row, row.tr("inspector.addUturnToEnd"), &"add_uturn", [at, true], redraw)
 		_work(row, row.tr("inspector.addUturnToStart"), &"add_uturn", [at, false], redraw)

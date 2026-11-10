@@ -98,7 +98,7 @@
     "fill_turn_deg": {
       "type": "number"
     },
-    "sun_caster_m": {
+    "clock_step_h": {
       "type": "number"
     },
     "shadow_reach_m": {
@@ -112,14 +112,6 @@
     },
     "shadow_past_look": {
       "type": "number"
-    },
-    "shadow_seen_px": {
-      "type": "number",
-      "exclusiveMinimum": 0
-    },
-    "shadow_relief_m": {
-      "type": "number",
-      "minimum": 0
     },
     "shadow_first_past_look": {
       "type": "number"
@@ -191,17 +183,7 @@
     "flash_ambient": {
       "type": "number"
     },
-    "overcast_horizon": {
-      "type": "number"
-    },
-    "flash_colour": {
-      "type": "string",
-      "pattern_prefix": "#"
-    },
-    "flash_zenith": {
-      "type": "number"
-    },
-    "flash_horizon": {
+    "flash_sky": {
       "type": "number"
     },
     "sun_day": {
@@ -268,9 +250,6 @@
     "outside_all_night": {
       "type": "number"
     },
-    "rooms_in_use": {
-      "type": "number"
-    },
     "ssil": {
       "type": "object",
       "properties": {
@@ -281,67 +260,6 @@
           "type": "number"
         }
       }
-    },
-    "sky_shader": {
-      "type": "object",
-      "properties": {
-        "_doc": {
-          "type": "string"
-        },
-        "zenith_power": {
-          "type": "number"
-        },
-        "sun_warm": {
-          "type": "array",
-          "items": {
-            "type": "number"
-          },
-          "minItems": 3,
-          "maxItems": 3
-        },
-        "low_dark": {
-          "type": "array",
-          "items": {
-            "type": "number"
-          },
-          "minItems": 2,
-          "maxItems": 2
-        },
-        "ground_edge": {
-          "type": "array",
-          "items": {
-            "type": "number"
-          },
-          "minItems": 2,
-          "maxItems": 2
-        },
-        "sun_glow": {
-          "type": "array",
-          "items": {
-            "type": "number"
-          },
-          "minItems": 4,
-          "maxItems": 4
-        },
-        "glow_edge": {
-          "type": "array",
-          "items": {
-            "type": "number"
-          },
-          "minItems": 2,
-          "maxItems": 2
-        }
-      },
-      "required": [
-        "_doc",
-        "zenith_power",
-        "sun_warm",
-        "low_dark",
-        "ground_edge",
-        "sun_glow",
-        "glow_edge"
-      ],
-      "strict": true
     }
   },
   "additional": {

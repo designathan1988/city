@@ -2,7 +2,6 @@
 // ground, planted trees and clearings, the map's biome, and taking the relief back to the land the map started with.
 // Each records how to undo itself (j_nature, j_paint_touch); a held brush is one undo step.
 #include "sim/commands/commands.h"
-#include "sim/commands/nature_commands.h"
 #include "sim/commands/edit_journal.h"
 #include "sim/commands/road_edit.h"
 
@@ -17,8 +16,7 @@ namespace city {
 
 namespace {
 constexpr const char *FULL = "hint.tileFull";
-constexpr const char *TREE_NO_ROOM = "hint.tree.noRoom"; // a dab that finds no room for a tree plants nothing, and records nothing
-constexpr uint32_t DAB_SALT = 0x74726565u; // a stream's salt: the word it names, in ASCII
+constexpr uint32_t DAB_SALT = 0x74726565u;
 
 EditResult done() {
 	EditResult r;
@@ -57,7 +55,7 @@ EditResult edit_clouds(CityState &s, F change) {
 	return done();
 }
 
-float tree_distance(const PlantedTree &t, float x, float z) { return std::hypot(t.x - x, t.z - z); }
+float dab_chunk(const PlantedTree &t, float x, float z) { return std::hypot(t.x - x, t.z - z); }
 
 void add_trees(CityState &s, const std::vector<PlantedTree> &list, std::vector<int> &ids) {
 	for (const PlantedTree &t : list) ids.push_back(s.nature.planted.add(t));
@@ -77,20 +75,14 @@ void record_trees(CityState &s, const std::vector<int> &ids, const std::vector<P
 }
 } // namespace
 
-bool cut_trees_at(CityState &s, float x, float z, float radius) { return fell_trees_at(s, x, z, radius, nullptr) >= 0; }
-
-int fell_trees_at(CityState &s, float x, float z, float radius, std::vector<PlantedTree> *felled) {
+bool cut_trees_at(CityState &s, float x, float z, float radius) {
 	PlantedTrees &p = s.nature.planted;
 	const TreeBrushDef &d = s.catalog.nature.trees;
-	if (p.live_clearings() >= d.max_clearings) return -1;
+	if (p.live_clearings() >= d.max_clearings) return false;
 	std::vector<int> gone;
 	p.for_trees(x - radius, z - radius, x + radius, z + radius, [&](int id) {
-		if (tree_distance(p.trees[size_t(id)], x, z) < radius) gone.push_back(id);
+		if (dab_chunk(p.trees[size_t(id)], x, z) < radius) gone.push_back(id);
 	});
-	// In id order: the index hands them out in its buckets' order, which its history decides; the slots freed (and so the ids of the
-	// trees planted after) must follow the edits alone.
-	std::sort(gone.begin(), gone.end());
-	gone.erase(std::unique(gone.begin(), gone.end()), gone.end());
 	std::vector<PlantedTree> kept;
 	for (int id : gone) {
 		kept.push_back(p.trees[size_t(id)]);
@@ -109,8 +101,7 @@ int fell_trees_at(CityState &s, float x, float z, float radius, std::vector<Plan
 		mark_trees(st, x, z, radius);
 	});
 	mark_trees(s, x, z, radius);
-	if (felled) *felled = kept;
-	return cid;
+	return true;
 }
 
 EditResult set_weather(CityState &s, const Weather &next) {
@@ -246,14 +237,11 @@ EditResult tree_dab(CityState &s, double x, double z, double radius, int mode, i
 	uint32_t seed = hash_combine(hash_combine(s.seed ^ DAB_SALT, uint32_t(p.trees.size())), uint32_t(int32_t(std::floor(x))) ^ uint32_t(int32_t(std::floor(z))));
 	std::vector<PlantedTree> stand;
 	if (mode == TREE_ONE) {
-		bool room = std::all_of(nearby.begin(), nearby.end(), [&](const PlantedTree &t) { return tree_distance(t, fx, fz) >= b.spacing; });
+		bool room = std::all_of(nearby.begin(), nearby.end(), [&](const PlantedTree &t) { return dab_chunk(t, fx, fz) >= b.spacing; });
 		if (room) stand.push_back(one_tree(TreeKind(kind), b, fx, fz, seed, d));
 	} else {
 		stand = plant_stand(TreeKind(kind), b, fx, fz, r, seed, nearby, d);
 	}
-	// No room for any tree: refused, not done. Done, it recorded a step of undo that put back nothing, and a held brush whose every
-	// dab found the ground full left a step that changes nothing (a stroke keeps a step only for what its dabs recorded).
-	if (stand.empty()) return refused(TREE_NO_ROOM);
 	if (p.live_trees() + int(stand.size()) > d.max_planted) return refused(FULL);
 	std::vector<int> ids;
 	add_trees(s, stand, ids);
@@ -303,8 +291,7 @@ EditResult set_biome(CityState &s, int region) {
 EditResult clear_relief(CityState &s) {
 	Heightfield &t = s.terrain;
 	const Tuning &tn = s.catalog.tune;
-	const ScenicCity *scenic = s.catalog.scenic_of(s.map_index); // a scenic map's relief is its own laid-out land
-	TerrainGen gen(s.seed, s.map_half, tn, scenic ? &scenic->land : nullptr);
+	TerrainGen gen(s.seed, s.map_half, tn.world_water_spacing_m);
 	for (int r = 0; r < int(t.tile_dirty.size()); r++) {
 		if (!t.tile_dirty[size_t(r)]) continue;
 		int x0 = (r % t.regions) * t.region_size, z0 = (r / t.regions) * t.region_size;

@@ -108,14 +108,13 @@ Dictionary CityCore::set_approach_rule(int node, int seg, int rule) {
 }
 
 Dictionary CityCore::toggle_lane_link(int node, int from, int from_lane, int to, int to_lane) {
-	return run_edit(*state_, "cmd.lane.link", [&](CityState &s) {
-		std::vector<LaneLink> built;
-		{
-			std::lock_guard<std::mutex> tr(s.traffic_mutex); // the links the traffic built, read inside the edit's lock (map, then traffic)
-			built = built_links(s, node);
-		}
-		return city::toggle_lane_link(s, node, { from, from_lane, to, to_lane }, built);
-	});
+	std::vector<LaneLink> built;
+	{
+		std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+		std::lock_guard<std::mutex> tr(state_->traffic_mutex);
+		built = built_links(*state_, node);
+	}
+	return run_edit(*state_, "cmd.lane.link", [&](CityState &s) { return city::toggle_lane_link(s, node, { from, from_lane, to, to_lane }, built); });
 }
 
 } // namespace city

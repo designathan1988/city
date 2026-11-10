@@ -1,0 +1,259 @@
+{
+ "_doc": "Terceira sessão: só nós criados aqui (id acima do maior da cidade), ponta em chão aberto, traço ondulado espalhado por quadros.",
+ "viewport": [
+  1600,
+  900
+ ],
+ "city": {
+  "size": "small",
+  "seed": 7
+ },
+ "steps": [
+  {
+   "wait": 1500
+  },
+  {
+   "press": "Começar a construir"
+  },
+  {
+   "until": "(() => !document.querySelector('.v2-start'))()",
+   "name": "title closed",
+   "timeout": 60000,
+   "polling": 250
+  },
+  {
+   "eval": "window.__roadcraft.sim.setClock(720); window.__roadcraft.scene && window.__roadcraft.scene().setSkyMode('day'); const r = window.__roadcraft; const all = [...r.doc.nodes.values()]; const ty = (n) => (n.incident ?? []).map((s) => r.doc.segment(s).type); window.__far = Math.max(...all.map((n) => n.x)) + 260; window.__v = (n, zoom, az, el) => { r.setView({ x: n.x, y: n.y, zoom, azimuth: az * Math.PI / 180, elevation: el * Math.PI / 180 }); return [n.id, n.x, n.y, (n.incident ?? []).length, ty(n)]; }; window.__n0 = Math.max(...all.map((n) => n.id)); window.__mine = () => [...r.doc.nodes.values()].filter((n) => n.id > window.__n0); window.__ty = ty; const loc = all.sort((a, b) => Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y)).find((n) => n.incident.length === 4 && Math.max(...ty(n)) <= 1); window.__loc = loc; loc.id"
+  },
+  {
+   "eval": "document.querySelector('[data-cat=roads]').click(); 1"
+  },
+  {
+   "wait": 900
+  },
+  {
+   "eval": "window.__v({ x: window.__far, y: 0 }, 2.2, 0, 70)"
+  },
+  {
+   "wait": 3500
+  },
+  {
+   "click": [
+    420,
+    220
+   ]
+  },
+  {
+   "wait": 300
+  },
+  {
+   "move": [
+    980,
+    220
+   ]
+  },
+  {
+   "wait": 500
+  },
+  {
+   "click": [
+    980,
+    220
+   ]
+  },
+  {
+   "wait": 1800
+  },
+  {
+   "click": [
+    700,
+    110
+   ]
+  },
+  {
+   "wait": 300
+  },
+  {
+   "move": [
+    700,
+    330
+   ]
+  },
+  {
+   "wait": 500
+  },
+  {
+   "click": [
+    700,
+    330
+   ]
+  },
+  {
+   "wait": 1800
+  },
+  {
+   "press": "Avenidas"
+  },
+  {
+   "wait": 500
+  },
+  {
+   "eval": "document.querySelectorAll('.rc-card-main')[0].click(); 1"
+  },
+  {
+   "wait": 500
+  },
+  {
+   "click": [
+    300,
+    450
+   ]
+  },
+  {
+   "wait": 300
+  },
+  {
+   "move": [
+    1040,
+    450
+   ]
+  },
+  {
+   "wait": 500
+  },
+  {
+   "click": [
+    1040,
+    450
+   ]
+  },
+  {
+   "wait": 1800
+  },
+  {
+   "click": [
+    560,
+    370
+   ]
+  },
+  {
+   "wait": 300
+  },
+  {
+   "move": [
+    560,
+    540
+   ]
+  },
+  {
+   "wait": 500
+  },
+  {
+   "click": [
+    560,
+    540
+   ]
+  },
+  {
+   "wait": 1800
+  },
+  {
+   "press": "Ruas"
+  },
+  {
+   "wait": 500
+  },
+  {
+   "eval": "document.querySelectorAll('.rc-card-main')[1].click(); 1"
+  },
+  {
+   "wait": 500
+  },
+  {
+   "click": [
+    860,
+    350
+   ]
+  },
+  {
+   "wait": 300
+  },
+  {
+   "move": [
+    860,
+    450
+   ]
+  },
+  {
+   "wait": 500
+  },
+  {
+   "click": [
+    860,
+    450
+   ]
+  },
+  {
+   "wait": 1800
+  },
+  {
+   "press": "Livre"
+  },
+  {
+   "wait": 500
+  },
+  {
+   "eval": "const c = document.querySelector('canvas'); c.setPointerCapture = () => {}; c.releasePointerCapture = () => {}; c.hasPointerCapture = () => true; const ev = (t, x, y, b) => c.dispatchEvent(new PointerEvent(t, { bubbles: true, cancelable: true, pointerId: 1, pointerType: 'mouse', isPrimary: true, button: 0, buttons: b, clientX: x, clientY: y })); const X = (i) => 1190 + 90 * Math.sin(i * 0.2); new Promise((done) => { ev('pointermove', X(0), 120, 0); let i = -2; const f = () => { i++; if (i === -1) ev('pointerdown', X(0), 120, 1); else if (i <= 60) ev('pointermove', X(i), 120 + i * 7, 1); else { ev('pointerup', X(60), 540, 0); done(window.__roadcraft.doc.economy.balance); return; } requestAnimationFrame(f); }; requestAnimationFrame(f); })"
+  },
+  {
+   "wait": 5000
+  },
+  {
+   "shot": "tool-free-wavy"
+  },
+  {
+   "eval": "document.querySelector('[data-cat=roads]').click(); 1"
+  },
+  {
+   "wait": 800
+  },
+  {
+   "eval": "const a = window.__mine().find((n) => n.incident.length === 4 && Math.min(...window.__ty(n)) >= 2); window.__b = a; a ? window.__v(a, 10, 20, 62) : 0"
+  },
+  {
+   "wait": 4500
+  },
+  {
+   "shot": "free-junction-avenue-top"
+  },
+  {
+   "eval": "window.__b ? window.__v(window.__b, 18, 30, 24) : 0"
+  },
+  {
+   "wait": 3500
+  },
+  {
+   "shot": "free-junction-avenue-low"
+  },
+  {
+   "eval": "const a = window.__mine().find((n) => n.incident.length === 3); window.__c = a; a ? window.__v(a, 12, 20, 62) : 0"
+  },
+  {
+   "wait": 4500
+  },
+  {
+   "shot": "free-junction-t-top"
+  },
+  {
+   "eval": "const a = window.__mine().filter((n) => n.incident.length === 1 && window.__ty(n)[0] === 1).sort((p, q) => q.y - p.y)[0]; window.__d = a; a ? window.__v(a, 16, 200, 55) : 0"
+  },
+  {
+   "wait": 4500
+  },
+  {
+   "shot": "free-road-end"
+  },
+  {
+   "eval": "JSON.stringify({ n0: window.__n0, avenue: window.__b?.id, t: window.__c?.id, end: window.__d?.id, mine: window.__mine().map((n) => [n.id, n.incident.length, window.__ty(n)]), segs: window.__roadcraft.doc.segments.size })"
+  }
+ ]
+}

@@ -6,7 +6,6 @@
 #include "core/grid.h"
 #include "sim/catalog/catalog.h"
 #include "sim/state/change_log.h"
-#include "sim/terrain/final_heights.h"
 #include "sim/terrain/height_patch.h"
 #include "sim/terrain/road_shape.h"
 
@@ -19,6 +18,8 @@ class JobPool;
 
 constexpr int TERRAIN_REGION_SIZE = 256; // samples per Terrain3D region side
 constexpr int TERRAIN_MAX_REGIONS = 32; // Terrain3D limit per side
+constexpr float HEIGHT_Q_OFFSET = 100.f, HEIGHT_Q_SCALE = 100.f; // 1 cm steps from -100 m
+constexpr float QUANT_LIMIT = 65535.f;
 
 struct TerrainModifier {
 	bool alive = false;
@@ -39,11 +40,9 @@ struct BrushDab {
 	BrushMode mode = BrushMode::RAISE;
 };
 
-// What a sample learns from a polyline: its distance to the nearest piece, the height there, and the side it lies on (1 left of
-// the polyline's way, +u of a road's frame; 0 right).
+// What a sample learns from a polyline: its distance to the nearest piece and the height there.
 struct NearSample {
 	float d = BIG, surface = 0;
-	int side = 0;
 };
 
 // A rectangle of height samples (inclusive).
@@ -53,7 +52,6 @@ struct SampleRect {
 };
 
 class TerrainGen;
-struct GroundPatch;
 
 class Heightfield {
 public:
@@ -65,9 +63,7 @@ public:
 	uint32_t seed = 0;
 	const Tuning *tune = nullptr;
 	std::vector<uint16_t> base_q; // quantized 1 cm, -100..555 m
-	FinalHeights final_h; // base + modifiers (rendered): the base's but where something changed it (final_at, final_row)
-	float final_at(int x, int z) const { return final_h.at(x, z, base_q); } // the final height of column x, row z
-	void final_row(int z, int x0, int count, float *out) const { final_h.row(z, x0, count, out, base_q); } // `count` of row z from x0
+	std::vector<float> final_h; // base + modifiers (rendered)
 	std::vector<TerrainModifier> mods;
 	std::vector<int> free_mods;
 	SpatialHash mod_hash;
@@ -96,8 +92,8 @@ public:
 	void fill(TerrainGen &gen, float water_spacing);
 	float water_at(float x, float z) const; // nearest water sample's level
 	float half_size() const { return N * spacing * 0.5f; }
-	static uint16_t quant(float h) { return height_quant(h); }
-	static float dequant(uint16_t q) { return height_dequant(q); }
+	static uint16_t quant(float h) { return uint16_t(clampf((h + HEIGHT_Q_OFFSET) * HEIGHT_Q_SCALE, 0.f, QUANT_LIMIT)); }
+	static float dequant(uint16_t q) { return q / HEIGHT_Q_SCALE - HEIGHT_Q_OFFSET; }
 	int ix_of(float x) const { return int(std::floor(x / spacing + N * 0.5f)); }
 	float x_of(int ix) const { return (ix - N * 0.5f) * spacing; }
 	bool in_bounds(float x, float z, float margin = 0.f) const {
@@ -107,9 +103,6 @@ public:
 	float height_at(float x, float z) const; // final heights (with road corridors and pads)
 	// A copy of the final heights covering the box (plus the nodes its edges sample), for work done off the map lock.
 	HeightPatch patch(float minx, float minz, float maxx, float maxz) const;
-	// The same window with what `parts` asks besides (sim/terrain/ground_patch.h GroundParts: the natural ground, the water samples
-	// the box's points and cells read): what a job that reads more than the final heights copies.
-	GroundPatch ground_patch(float minx, float minz, float maxx, float maxz, unsigned parts) const;
 	float base_height_at(float x, float z) const; // natural ground, before modifiers
 	// Water stands here: a water sample over the ground, or the ground under the sea.
 	bool is_water(float x, float z, float clearance) const {

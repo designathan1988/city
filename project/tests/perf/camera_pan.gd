@@ -7,7 +7,7 @@
 ## frames are broken down (when in the movement; the core's _process by section, query render_cost; GPU; render
 ## CPU) to tell where a hitch comes from.
 ## Analysis knobs: --shadows=0 (no sun shadows), --casters=MASK (only these render layers cast them), --casters-cycle=all,0,2,-64
-## (A/B in one run, turn by turn: all, no shadows, 2 splits, every layer but 64: a busy machine weighs on each alike; --uncapped), --msaa=0 (no MSAA), --seams=0 (no ground seams beside the roads), --wear=0 (no wear
+## (A/B in one run, turn by turn: all, no shadows, 2 splits, every layer but 64: a busy machine weighs on each alike; --uncapped), --msaa=0 (no MSAA), --verges=0 (no ground round the roads), --wear=0 (no wear
 ## read), to see what a feature costs; --moves=a,b runs
 ## only those movements (the rig still goes where each one starts); --uncapped (no vsync, no frame cap: under the cap the GPU
 ## slows its clock until a frame takes about the same, so only this compares the GPU cost of two versions; not the game's pace).
@@ -32,6 +32,7 @@ const CLOSE_M := 120.0
 const CLOSE_PITCH_DEG := 15.0
 const STILL_S := 10.0
 const SLOW_MS := [33.0, 50.0]
+const MIB := 1024.0 * 1024.0
 const WORST := 10
 const CYCLE_FRAMES := 12
 const CYCLE_SKIP := 4
@@ -39,9 +40,9 @@ const ALL_LAYERS := 0xFFFFFFFF
 const US_PER_MS := 1000.0
 const PERCENTILES := [0.5, 0.95, 0.99]
 const BROKEN_DOWN := 3
-## What of render_cost the pan reports past the frame's sections (CityStore.constants.frame_sections): the largest jobs and the
-## building stream's steps.
-const DETAIL_PARTS := [&"chunk_max", &"super_max", &"b_scan", &"b_freed", &"b_sort", &"b_admit", &"b_hand", &"b_tail", &"super_mb_max"]
+## render_cost sections, in the order of the core's frame.
+const COST_PARTS := [&"agents", &"lock", &"stream", &"levels", &"flush", &"roads", &"props", &"buildings", &"chunk_max",
+	&"super_max", &"b_scan", &"b_freed", &"b_sort", &"b_admit", &"b_hand", &"b_tail", &"super_mb_max", &"trees", &"overlays"]
 
 var rig: CityCamera
 var map := 0
@@ -53,8 +54,6 @@ var cycle_sum := {}
 var cycle_at := 0
 var cycle_frame := 0
 var moves := PackedStringArray()
-var run_speed := 1 # SimSpeed the city runs at (--speed=N: 1 normal, 2 fast, 3 fastest)
-var core := CoreReport.new()
 var frames: Array[float] = []
 var gpu_ms: Array[float] = []
 var cpu_ms: Array[float] = []
@@ -111,8 +110,6 @@ func _ready() -> void:
 			shot_dir = arg.trim_prefix("--shot-dir=")
 		elif arg.begins_with("--moves="):
 			moves = arg.trim_prefix("--moves=").split(",")
-		elif arg.begins_with("--speed="):
-			run_speed = int(arg.trim_prefix("--speed="))
 	var world := CityWorld.new()
 	add_child(world)
 	RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
@@ -128,7 +125,7 @@ func _ready() -> void:
 	_knobs(world)
 	rig.look_at_ground(Vector3.ZERO)
 	add_child(RoadcraftHud.new())
-	CityStore.dispatch(&"set_speed", [run_speed])
+	CityStore.dispatch(&"set_speed", [1])
 	var bounds: Dictionary = CityStore.query(&"city_bounds")
 	var lo: Vector3 = bounds.min
 	var hi: Vector3 = bounds.max
@@ -142,8 +139,8 @@ func _ready() -> void:
 		waited += 1
 	print("city %s .. %s, drawn in %d frames" % [lo, hi, waited])
 	print("malhas: ", CityStore.query(&"road_mesh_counts"))
-	if "--seams=0" in OS.get_cmdline_user_args():
-		CityStore.query(&"draw_seams", [false])
+	if "--verges=0" in OS.get_cmdline_user_args():
+		CityStore.query(&"draw_verges", [false])
 	await _run("parada", STILL_S, func(_dt: float, _t: float) -> void: pass)
 	var a := Vector3(lerpf(lo.x, hi.x, CROSS_INSET), 0.0, centre.z)
 	var b := Vector3(lerpf(lo.x, hi.x, 1.0 - CROSS_INSET), 0.0, centre.z)
@@ -173,11 +170,11 @@ func _run(name: String, seconds: float, step: Callable) -> void:
 	cpu_ms.clear()
 	process_ms.clear()
 	costs.clear()
-	if not await core.settle(get_tree()): # the pose count starts once the publications are back in step
-		print("%s: the publications did not come back in step within %.0f s: the pose count below starts out of step" % [name, CoreReport.SETTLE_LIMIT_S])
+	CityStore.query(&"pose_stats") # counts from here
 	var vp := get_viewport().get_viewport_rid()
 	var t := 0.0
 	var last := Time.get_ticks_usec()
+	var shot := shot_dir.is_empty()
 	while t < seconds:
 		await get_tree().process_frame
 		var now := Time.get_ticks_usec()
@@ -192,9 +189,11 @@ func _run(name: String, seconds: float, step: Callable) -> void:
 		process_ms.append(cost.process)
 		t += dt
 		step.call(dt, t)
+		if not shot and t >= seconds * 0.5: # taken after this frame's time was recorded
+			shot = true
+			get_viewport().get_texture().get_image().save_png("%s/%s.png" % [shot_dir, name])
+			last = Time.get_ticks_usec()
 	_report(name)
-	if not shot_dir.is_empty(): # after the movement was measured and reported: saving a picture holds the main thread
-		get_viewport().get_texture().get_image().save_png("%s/%s.png" % [shot_dir, name])
 
 
 func _report(name: String) -> void:
@@ -212,8 +211,7 @@ func _report(name: String) -> void:
 	var order := range(frames.size())
 	order.sort_custom(func(a: int, b: int) -> bool: return frames[a] > frames[b])
 	for i in order.slice(0, BROKEN_DOWN):
-		var keys: Array = CityStore.constants.frame_sections + DETAIL_PARTS
-		var parts := keys.map(func(k: Variant) -> String: return "%s %.1f" % [k, costs[i][StringName(k)]])
+		var parts := COST_PARTS.map(func(k: StringName) -> String: return "%s %.1f" % [k, costs[i][k]])
 		print("    frame %d of %d: %.0f ms | core %.1f ms (%s; uploads %.1f MiB) | gpu %.1f ms, render cpu %.1f ms" % [i,
 			frames.size(), frames[i], process_ms[i], ", ".join(parts), costs[i].uploads, gpu_ms[i], cpu_ms[i]])
 	print("  gpu %s | render cpu %s | core %s" % [_stats(gpu_ms), _stats(cpu_ms), _stats(process_ms)])
@@ -230,7 +228,12 @@ func _report(name: String) -> void:
 	var ps: Dictionary = CityStore.query(&"pose_stats")
 	print("  poses: %d published (interval %.1f-%.1f ms; %d together, %d late); of %d frames, %d past the last and %d before the oldest" % [
 		ps.publications, ps.gap_min_ms, ps.gap_max_ms, ps.early, ps.late, ps.frames, ps.held, ps.behind])
-	core.report()
+	print("  memory: static %.0f MiB, video %.0f MiB, buffers %.0f MiB | chunks to draw: %d" % [
+		Performance.get_monitor(Performance.MEMORY_STATIC) / MIB, Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / MIB,
+		Performance.get_monitor(Performance.RENDER_BUFFER_MEM_USED) / MIB, CityStore.query(&"render_pending")])
+	print("  largest superchunk HLOD built: %.1f MiB" % float(CityStore.query(&"render_cost").get("super_mb_max", 0.0)))
+	print("  buildings: ", JSON.stringify(CityStore.query(&"building_cost")))
+	print("  vehicles: ", JSON.stringify(CityStore.query(&"agent_cost")))
 
 
 ## Mean, 95th percentile and maximum of per-frame milliseconds.

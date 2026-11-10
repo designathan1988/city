@@ -3,7 +3,6 @@
 // read from them that carry the bones. Pure: positions in, frames out.
 #pragma once
 
-#include "render/agents/agent_shapes.h"
 #include "core/random.h"
 
 #include <godot_cpp/variant/transform3d.hpp>
@@ -18,11 +17,6 @@ namespace city {
 constexpr int RAGDOLL_JOINTS = 18; // the particles on a bone, in cook_people.py RAGDOLL_JOINTS order
 constexpr int RAGDOLL_PARTS = 13; // in cook_people.py RAGDOLL_PARTS order
 
-// The particles: the joints in cook_people.py RAGDOLL_JOINTS order, then the top of the head and the belly.
-namespace rag {
-enum Joint : int { PEL, CHE, NEC, HEA, LS, LE, LW, RS, RE, RW, LH, LK, LA, LT, RH, RK, RA, RT, TOP, BEL };
-}
-
 // A wall of a building a body can strike: a box of the lot's frame, up to `top`.
 struct BodyWall {
 	godot::Vector2 at, along, deep; // the lot's corner and its axes
@@ -34,18 +28,13 @@ public:
 	using Ground = std::function<float(float, float)>;
 	// `joints`: where they are; thrown at `velocity`, each a little differently by `scatter` m/s, and tipped: `tip` is what the head moves at over the feet,
 	// so a body topples rather than dropping on its own feet.
-	void begin(const RagdollShape &law, const godot::Vector3 joints[RAGDOLL_JOINTS], const godot::Vector3 &velocity, const godot::Vector3 &tip, float scatter, Rng &rng);
+	void begin(const godot::Vector3 joints[RAGDOLL_JOINTS], const godot::Vector3 &velocity, const godot::Vector3 &tip, float scatter, Rng &rng);
 	void step(float dt, const Ground &ground);
 	void set_walls(std::vector<BodyWall> walls) { walls_ = std::move(walls); }
 	bool asleep() const { return asleep_; }
-	float fastest_ms() const { return fastest_; } // its fastest particle at the last step, what keeps it awake
 	// Each part's frame now: its origin on its joint, its axes along it. The frames only: what a bone does with them is the caller's.
 	void frames(godot::Transform3D out[RAGDOLL_PARTS]);
 	godot::Vector3 pelvis() const;
-	godot::Vector3 point(int particle) const { return now_[particle]; } // a particle now (rag::Joint)
-	// Somebody down for good and hurt, `t` seconds into it: the knees drawn up in turn towards the belly, in pain where they lie
-	// (the reference game's ragdoll.ts writhe; agents.json shapes.ragdoll writhe_*). Keeps the body awake.
-	void writhe(float t, float dt);
 
 private:
 	static constexpr int PARTICLES = RAGDOLL_JOINTS + 2; // and the top of the head and the belly, which brace what the joints leave free
@@ -58,14 +47,13 @@ private:
 	void relax();
 	void hinge(int top, int middle, int end, float way);
 	void off_walls(int particle);
-	const RagdollShape *law_ = nullptr; // its friction, folds and rest (agents.json shapes.ragdoll), from begin on
 	std::vector<BodyWall> walls_;
 	godot::Vector3 now_[PARTICLES], was_[PARTICLES];
 	godot::Vector3 last_side_[RAGDOLL_PARTS];
-	static constexpr int MOST_STICKS = 48; // room for every stick begin links (the limbs, the braces and the folds)
+	static constexpr int MOST_STICKS = 48;
 	Stick sticks_[MOST_STICKS];
 	int sticks_used_ = 0;
-	float still_ = 0, fastest_ = 0;
+	float still_ = 0;
 	bool asleep_ = false;
 };
 

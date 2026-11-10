@@ -1,6 +1,6 @@
 ## Player settings, persisted in user://settings.cfg: the graphics preset (auto or a tier) and what was chosen over it, dynamic
 ## resolution, the frame limit, vsync, full screen, the language, the render switches and the road tool's snapping (Roadcraft
-## editor/snap.ts RoadSnap) and the Landscape brushes (ui/toolChoices.ts). Everything is applied live.
+## editor/snap.ts RoadSnap). Everything is applied live.
 ## auto starts at the tier the GPU gives and the governor moves it. The frame cap (Engine.max_fps) follows the player's
 ## limit and drops while another application has the focus (vsync alone does not hold a covered window back).
 extends Node
@@ -13,8 +13,7 @@ const SECTION := "graphics"
 
 var preset := ""
 var road := RoadPrefs.new()
-var land := BrushPrefs.new() # the Landscape brushes kept between sessions (game/tools/brush_prefs.gd)
-var kept: Dictionary = {}: # shadows, ssao, smaa, temporal chosen over the tier
+var kept: Dictionary = {}: # shadows, ssao, smaa chosen over the tier
 	set(value):
 		kept = value
 		_resolved = {}
@@ -33,7 +32,9 @@ var optimizations: Dictionary = {}: # the Effects panel: option id -> value over
 	set(value):
 		optimizations = value
 		_resolved = {}
-var map: MapLayers # what shows over the map (map_layers.gd)
+var layers: Dictionary = {} # what shows over the map: layer -> on
+var zone_tool := false # the zone brush is in hand
+var _zoned := false # the player has zoned sides on this city, as last shown
 var _world: CityWorld
 var _viewport: Viewport
 var _quality_governor: FrameGovernor.Quality
@@ -58,15 +59,13 @@ func _ready() -> void:
 	language = cfg.get_value(SECTION, "language", "")
 	switches = RenderSwitches.new(cfg.get_value(SECTION, "switches", {}))
 	optimizations = cfg.get_value(SECTION, "optimizations", {})
-	map = MapLayers.new(cfg.get_value(SECTION, "layers", t.layers.duplicate()), switches)
-	map.changed.connect(_save)
+	layers = cfg.get_value(SECTION, "layers", t.layers.duplicate())
 	road.read(cfg)
-	land.read(cfg)
 	hardware = QualityTier.tier_for_gpu(t, RenderingServer.get_video_adapter_name())
 	level = QualityTier.level_of(preset, hardware)
 	_quality_governor = FrameGovernor.Quality.new(t.governor, t.levels, level, hardware)
 	_resolution = FrameGovernor.Resolution.new(t.dynamic_resolution)
-	Engine.max_fps = _frame_cap()
+	Engine.max_fps = fps_limit
 
 
 ## Tests and captures keep the full cap: what they measure is the frame, and their window seldom has the focus.
@@ -76,12 +75,7 @@ func _notification(what: int) -> void:
 		Engine.max_fps = int(DataTables.game("settings").frame_cap.background_fps)
 	elif what == NOTIFICATION_APPLICATION_FOCUS_IN:
 		_focus = true
-		Engine.max_fps = _frame_cap()
-
-
-## The player's cap; none in a test run in simulated time (GameFlow.simulated_time): a cap would only make it wait on the wall clock.
-func _frame_cap() -> int:
-	return 0 if GameFlow.simulated_time else fps_limit
+		Engine.max_fps = fps_limit
 
 
 func _save() -> void:
@@ -95,17 +89,10 @@ func _save() -> void:
 	cfg.set_value(SECTION, "language", language)
 	cfg.set_value(SECTION, "switches", switches.saved())
 	cfg.set_value(SECTION, "optimizations", optimizations)
-	cfg.set_value(SECTION, "layers", map.layers)
+	cfg.set_value(SECTION, "layers", layers)
 	road.write(cfg)
-	land.write(cfg)
 	if not GameFlow.tests_drive:
 		cfg.save(PATH)
-
-
-## A Landscape tool taken up with `params`: what its panel keeps between sessions, written when it changed.
-func set_land_brush(tool_name: String, params: Dictionary) -> void:
-	if land.keep(tool_name, params):
-		_save()
 
 
 func set_road_snap(key: String, value: bool) -> void:
@@ -123,11 +110,6 @@ func set_road_walls(on: bool) -> void:
 	_save()
 
 
-func set_road_power(on: bool) -> void:
-	road.power = on
-	_save()
-
-
 ## What a settings file or a caller names, as a preset of the table: another version's name, or no name, is the default.
 func known_preset(name: Variant) -> String:
 	var t: Dictionary = DataTables.game("settings")
@@ -141,6 +123,33 @@ func current() -> Dictionary:
 	return _resolved
 
 
+func layer_on(name: String) -> bool:
+	return layers.get(name, false)
+
+
+## A row of the Layers popover: the grid is the ground's, the others the core's overlays.
+func set_layer(name: String, on: bool) -> void:
+	layers[name] = on
+	_show_layer(name)
+	_save()
+
+
+func _show_layer(name: String) -> void:
+	if name == "grid":
+		switches.set_global(&"map_grid", 1.0 if layer_on(name) else 0.0)
+	elif name == "zones":
+		CityStore.dispatch(&"show_every_zone", [zone_tool])
+		CityStore.dispatch(&"set_overlay", [name, zone_tool or (layer_on(name) and _zoned)])
+	else:
+		CityStore.dispatch(&"set_overlay", [name, layer_on(name)])
+
+
+## The zones show with their tool in hand, and, with the layer on, where the player zoned once it is put down (main.ts showLots).
+func set_zone_tool(on: bool) -> void:
+	zone_tool = on
+	_show_layer("zones")
+
+
 ## The play scene's world and viewport: from now on every choice reaches them.
 func attach(world: CityWorld, viewport: Viewport) -> void:
 	_world = world
@@ -148,7 +157,8 @@ func attach(world: CityWorld, viewport: Viewport) -> void:
 	RenderingServer.viewport_set_measure_render_time(viewport.get_viewport_rid(), true)
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if vsync else DisplayServer.VSYNC_DISABLED)
 	set_fullscreen(fullscreen)
-	map.show_all()
+	for name: String in layers:
+		_show_layer(name)
 	apply_now()
 
 
@@ -190,7 +200,7 @@ func set_dynamic_resolution(on: bool) -> void:
 func set_fps_limit(fps: int) -> void:
 	fps_limit = fps
 	if _focus:
-		Engine.max_fps = _frame_cap()
+		Engine.max_fps = fps
 	changed.emit()
 	_save()
 
@@ -220,8 +230,15 @@ func switches_changed() -> void:
 	_save()
 
 
+func _follow_zones() -> void:
+	var zoned: bool = CityStore.snapshot.get("player_zones", 0) > 0
+	if zoned != _zoned:
+		_zoned = zoned
+		_show_layer("zones")
+
+
 func _process(delta: float) -> void:
-	map.follow_zones()
+	_follow_zones()
 	if _world == null:
 		return
 	switches.follow_zoom(_world, _viewport, current())

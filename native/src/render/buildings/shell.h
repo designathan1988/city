@@ -1,16 +1,14 @@
 // The building mesh writer: one vertex stream for every face of a chunk level, with the
-// vertex code the shader reads (COLOR.a = surface kind; UV2 = finish layer + 1 and the building's wear, or pane size; UV = pane/window cell;
+// vertex code the shader reads (COLOR.a = surface kind; UV2 = finish layer + 1 or pane size; UV = pane/window cell;
 // CUSTOM0..3, bytes, on the near and mid shells: the room behind a pane, a far wall's window row, the frame),
 // the tone (macro noise x foot grime) baked into the sRGB vertex colour, and box/rectangle helpers in any
 // orthonormal basis (a facade's along/up/out, the lot's x/y/up).
 #pragma once
 
 #include "sim/buildings/b40/paint.h"
-#include "core/shader_contracts/buildings.h"
 #include "sim/buildings/b40/types.h"
 
 #include <godot_cpp/variant/color.hpp>
-#include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/rid.hpp>
 #include <godot_cpp/variant/vector2.hpp>
 #include <godot_cpp/variant/vector3.hpp>
@@ -19,10 +17,12 @@
 
 namespace city::b40 {
 
-constexpr uint32_t WHITE_RGBA = 0xffffffff; // an instance's colour when none is given: opaque white
+// Surface kinds (COLOR.a byte), read by project/render/shaders/building.gdshader.
+enum SurfaceKind : uint8_t { SK_SHELL, SK_PANE, SK_PANE_DARK, SK_FAR_WALL, SK_LAMP, SK_LAWN, SK_PANE_CLEAR, SK_GROUND, SK_COUNT }; // SK_GROUND: a shell face lying on the lot, which stays on it when a level steps back
 
-// Surface kinds (COLOR.a byte: SurfaceKind) and a byte's 1.0 in CUSTOM0..3 (ROOM_SPAN_M, FRAME_SPAN_M: 5 cm and 1 mm steps, more than a
-// pane shows) are core/shader_contracts/buildings.h's, which the building shaders read too.
+// A byte's 1.0 in CUSTOM0..3 (building_pane.gdshaderinc ROOM_SPAN_M, FRAME_SPAN_M): 5 cm and 1 mm steps, more than a
+// pane shows.
+constexpr float ROOM_SPAN_M = 12.75f, FRAME_SPAN_M = 0.255f;
 
 // The room behind a pane, seen from the pane's middle: how far its walls stand along the facade, its depth, the floor
 // and ceiling from the pane's middle, the finish of its floor, and the largest piece of furniture seen through it
@@ -47,11 +47,11 @@ struct PaneLook {
 	float recess = 0; // metres of opening the pane draws behind the wall's face, the glass at its back (0: none)
 };
 
-// What a card draws (CardKind) and a far wall's window flags (WindowFlags: a side blank, an office's, a PaneDark from WINDOW_DARK_SHIFT)
-// are core/shader_contracts/buildings.h's.
-static_assert(SK_COUNT <= 1 << SURFACE_KIND_BITS, "a surface kind fits the alpha byte's low bits");
+// What a card draws (building_card.gdshader cardOn).
+enum CardKind : uint8_t { CARD_ROOF_RAILING = 2, CARD_RAILING_FRONT, CARD_RAILING_SIDE, CARD_BRISE };
 
-// A far wall's window row: shares of the bay and the storey, flags (building_far_window.gdshaderinc).
+// A far wall's window row: shares of the bay and the storey, flags (building_pane.gdshaderinc far_window).
+constexpr int WINDOW_FLAG_BLANK = 4, WINDOW_FLAG_OFFICE = 8, WINDOW_DARK_SHIFT = 4; // the shift: PaneDark
 struct FarWindows {
 	float width = 0, sill = 0, head = 0;
 	int flags = 0;
@@ -74,7 +74,7 @@ constexpr int BOX_BASIS_FLOATS = 9; // three basis columns of three floats
 struct BoxInstance {
 	float basis[BOX_BASIS_FLOATS] = {};
 	float origin[3] = {};
-	uint32_t color = WHITE_RGBA;
+	uint32_t color = 0xffffffff;
 	int8_t fin = -1;
 	float thick = 0;
 };
@@ -92,7 +92,7 @@ struct BayInstance {
 struct PropInstance {
 	float basis[BOX_BASIS_FLOATS] = {};
 	float origin[3] = {};
-	uint32_t color = WHITE_RGBA;
+	uint32_t color = 0xffffffff;
 	uint8_t kind = 0;
 };
 
@@ -118,8 +118,6 @@ struct Shell {
 	std::vector<uint32_t> custom[CUSTOM_ARRAYS]; // RGBA8 per vertex, in the near and mid shells (`rooms`)
 	float grime_floor = -FAR_AWAY; // world height of the current block's floor (walls darken over its first 1.2 m)
 	float shade = 1.f; // extra multiplier (rain streak tops)
-	float wear = 0; // the building's wear share (wear.h), in UV2.y of a face with a finish: building_common.gdshaderinc stains by it
-	float wear_tone = 1.f; // the wear's tone where no stain is drawn a pixel: an instance's colour, the far level's (wear.h wear_tone)
 	bool tone = true;
 	bool coarse = false; // mid/far levels: fewer sides on round pieces
 	bool instanced = false; // boxes become unit-cube instances; quads/tris still become geometry
@@ -151,12 +149,12 @@ struct Shell {
 	void bay(const Basis &f, float W, float H, const Lin &wall, int8_t fin, uint32_t seed, const FarWindows &w, float depth);
 	// A glass pane of w x h metres at e2 = c.
 	void pane(const Basis &f, float a0, float a1, float b0, float b1, float c, const PaneLook &look);
+	// A far wall rectangle carrying painted windows: uv = (bays, storeys) at its corners.
 	// The light of a lantern on its wall: a quad over a..b, at c off it. UV over the quad, UV2 the lantern's place (x, z).
 	void wash(const Basis &f, float a0, float a1, float b0, float b1, float c);
-	// A far wall rectangle carrying painted windows: uv = (bays, storeys) at its corners.
 	void far_wall(const godot::Vector3 p[4], const godot::Vector3 &out, const godot::Vector2 cell[4], const Lin &lin, int8_t fin, uint32_t seed, const FarWindows &w);
-	godot::Dictionary surface(const godot::RID &material, bool with_uv2 = true, bool blends = false) const; // with `material` (surface_data.h); a surface that blends keeps its order
-	int64_t bytes(bool with_uv2) const; // of the arrays surface() hands over (chunk_jobs.h UploadBudget)
+	void commit_to(const godot::RID &mesh, bool with_uv2 = true, bool blends = false) const; // a surface that blends keeps its order
+	int64_t bytes(bool with_uv2) const; // of the arrays commit_to hands over (chunk_jobs.h UploadBudget)
 	void bounds(godot::Vector3 &mn, godot::Vector3 &mx) const;
 
 private:

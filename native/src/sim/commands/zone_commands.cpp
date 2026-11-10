@@ -1,8 +1,6 @@
 // Zone brush (Roadcraft src/features/zones/zoneTool.ts dab + clearSide): paints the zone on the road sides whose
 // frontage the brush touches; a building of another base zone facing a repainted side is knocked down.
 #include "sim/commands/commands.h"
-#include "sim/commands/lot_commands.h"
-#include "sim/commands/edit_journal.h"
 #include "sim/commands/road_edit.h"
 
 #include "sim/buildings/growth.h"
@@ -47,7 +45,7 @@ int clear_side(CityState &s, int seg, int side, int keep_zone) {
 	float r = float(FRONT_REACH_M);
 	s.buildings.query(g.minx - r, g.minz - r, g.maxx + r, g.maxz + r, [&](int id) {
 		const Building &b = s.buildings.items[id];
-		if (b.zone == 0 || (keep_zone != 0 && s.catalog.zone(b.zone).base == s.catalog.zone(keep_zone).base)) return;
+		if (b.zone == 0 || (keep_zone != 0 && base_zone(b.zone) == base_zone(keep_zone))) return;
 		double t, d, nt, nd;
 		closest_t(g.q, b.x, b.z, t, d);
 		if (d > FRONT_REACH_M || s.roads.find_segment_near(b.x, b.z, d, nt, nd) != seg) return;
@@ -92,9 +90,9 @@ EditResult paint_zone(CityState &s, double x, double z, double radius, int zone)
 	return r;
 }
 
-EditResult paint_zone_path(CityState &s, const std::vector<XZ> &dabs, double radius, int zone) {
+EditResult paint_zone_path(CityState &s, const std::vector<StrokePoint> &dabs, double radius, int zone) {
 	EditResult all;
-	for (const XZ &p : dabs) {
+	for (const StrokePoint &p : dabs) {
 		const int lot = s.lot_book.at(p.x, p.z);
 		const EditResult r = lot != 0 ? zone_lot(s, lot, zone) : paint_zone(s, p.x, p.z, radius, zone);
 		if (r.ok) {

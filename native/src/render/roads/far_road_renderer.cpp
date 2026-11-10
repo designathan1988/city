@@ -2,7 +2,6 @@
 #include "render/roads/far_road_renderer.h"
 
 #include "render/render_layers.h"
-#include "render/roads/road_cut.h"
 #include "render/roads/road_mesh.h"
 
 #include <godot_cpp/classes/rendering_server.hpp>
@@ -16,8 +15,8 @@ using namespace godot;
 namespace city {
 
 namespace {
+constexpr int CHUNKS_PER_SUPER = int(SUPERCHUNK / CHUNK); // per axis
 constexpr float MID = 0.5f;
-constexpr float HALF_DIAGONAL = 0.7071f; // of a superchunk, from its middle to a corner
 
 int64_t super_of(int64_t chunk) { return chunk_of((float(key_x(chunk)) + MID) * CHUNK, (float(key_y(chunk)) + MID) * CHUNK, SUPERCHUNK); }
 
@@ -26,11 +25,9 @@ int bit_of(int64_t chunk, int64_t super) {
 }
 } // namespace
 
-bool FarRoadRenderer::init(const RenderContext &ctx, const StreetLook &look, RoadShapes &shapes, PackedStringArray &errors) {
+bool FarRoadRenderer::init(const RenderContext &ctx, const StreetLook &look, PackedStringArray &errors) {
 	scenario_ = ctx.scenario;
-	shapes_ = &shapes;
 	material_ = ctx.material("road_fade", errors); // road_far.gdshader, by the road material's fade_shader
-	surface_material_ = material_; // every chunk's mesh is made with it (surface_data.h)
 	look_ = &look;
 	return errors.is_empty();
 }
@@ -39,21 +36,15 @@ void FarRoadRenderer::reset() {
 	clear_queue();
 	for (auto &kv : supers_) kv.second.surface.free();
 	supers_.clear();
-	known_.clear();
 	dirty_.clear();
-	waiting_ = 0;
 	folded_ = 0;
 	fresh_ = false;
 }
 
-void FarRoadRenderer::mark(int64_t chunk) {
-	const int64_t key = super_of(chunk);
-	known_.insert(key);
-	dirty_.insert(key);
-}
+void FarRoadRenderer::mark(int64_t chunk) { dirty_.insert(super_of(chunk)); }
 
-void FarRoadRenderer::build_cpu(const CityView &s, int64_t key, MeshBuilder &mb) const {
-	const RoadEmit e{ s, *look_, mb, *shapes_, true };
+void FarRoadRenderer::build_cpu(const CityState &s, int64_t key, MeshBuilder &mb) const {
+	const RoadEmit e{ s, *look_, mb, true };
 	for (int j = 0; j < CHUNKS_PER_SUPER; j++)
 		for (int i = 0; i < CHUNKS_PER_SUPER; i++) {
 			const float x0 = float(key_x(key) * CHUNKS_PER_SUPER + i) * CHUNK, z0 = float(key_y(key) * CHUNKS_PER_SUPER + j) * CHUNK;
@@ -63,30 +54,14 @@ void FarRoadRenderer::build_cpu(const CityView &s, int64_t key, MeshBuilder &mb)
 		}
 }
 
-void FarRoadRenderer::offer(const CityState &s, JobPool &pool, const Vector3 &cam, float reach, float drop_k, std::vector<FrameAdmission::Unit> &out) {
-	waiting_ = 0;
-	const float corner = SUPERCHUNK * HALF_DIAGONAL; // a superchunk is in reach when any of it is
-	for (int64_t key : known_) {
+void FarRoadRenderer::offer(const CityState &s, JobPool &pool, const Vector3 &cam, std::vector<FrameAdmission::Unit> &out) {
+	for (int64_t key : dirty_) {
+		if (busy(key)) continue; // its result lands first; the superchunk stays dirty and is asked again then
 		const float dx = (float(key_x(key)) + MID) * SUPERCHUNK - cam.x, dz = (float(key_y(key)) + MID) * SUPERCHUNK - cam.z;
 		const float d = std::sqrt(dx * dx + dz * dz);
-		const auto stands = supers_.find(key);
-		if (d > reach + corner) { // past the view: what it holds is let go (a result still on its way is dropped when it lands)
-			if (stands != supers_.end() && d > reach * drop_k + corner) {
-				stands->second.surface.free();
-				supers_.erase(stands);
-				forget(key);
-			}
-			continue;
-		}
-		if (busy(key)) continue; // its result lands first; a dirty superchunk stays dirty and is asked again then
-		if (stands != supers_.end() && !dirty_.count(key)) continue;
-		waiting_++;
-		out.push_back(FrameAdmission::Unit{ stands != supers_.end() ? 1 : 0, d, 1, [this, &s, &pool, key, d]() {
-					   waiting_--;
+		out.push_back(FrameAdmission::Unit{ supers_.count(key) ? 1 : 0, d, 1, [this, &s, &pool, key, d]() {
 					   dirty_.erase(key);
-					   // the job copies its superchunk's roads and their ground, then builds from the copy with the map let go
-					   submit_cut(pool, JobKey{ JobLane::ROADS_FAR, key }, key, d, [this, &s, key]() { return cut_for_roads(s, *look_, key, SUPERCHUNK, CUT_ROADS); },
-							   [this, key](const CityCut &cut, MeshBuilder &mb) { build_cpu(cut, key, mb); });
+					   submit_job(s, pool, JobKey{ JobLane::ROADS_FAR, key }, key, d, [this, &s, key](MeshBuilder &mb) { build_cpu(s, key, mb); });
 				   } });
 	}
 }
@@ -94,7 +69,7 @@ void FarRoadRenderer::offer(const CityState &s, JobPool &pool, const Vector3 &ca
 void FarRoadRenderer::commit_one(BuiltMesh &b) {
 	Super &sp = supers_[b.key];
 	const bool any = b.mesh.valid();
-	sp.surface.adopt(scenario_, false, b.mesh.release(), LAYER_ROADS);
+	sp.surface.adopt(scenario_, material_, false, b.mesh.release(), LAYER_ROADS);
 	sp.surface.visible(any);
 	sp.sent = -1;
 	fresh_ = true;

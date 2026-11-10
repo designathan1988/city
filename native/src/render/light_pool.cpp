@@ -11,7 +11,7 @@ namespace city {
 namespace {
 constexpr float REACH_LAG_S = 0.4f; // the lit radius follows the count of lights this slowly, or one at its rim pops
 constexpr float SENT_SHARE = 0.01f; // of a light's energy or shadow: smaller changes are not sent
-constexpr float LEAST_SPAN = 1e-3f; // a span this short has no inside: the least a share divides by
+constexpr float LEAST_SPAN = 1e-3f;
 
 float ease(float from, float to, float x) {
 	const float t = std::clamp((x - from) / std::max(to - from, LEAST_SPAN), 0.f, 1.f);

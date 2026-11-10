@@ -504,30 +504,3 @@ export function gauged(scale: number): number {
   for (const g of all) sum += gaugeSum(g, scale);
   return sum;
 }
-
-/** The kinds of prop a post holds: a string-literal union, an enum in C++. */
-export type PropKind = 'pot' | 'bush';
-
-/** A pot's height, m: made by a call (a function called on first use), of the name a kind of prop also has. */
-export const POT = spanOf(3);
-
-/** Every kind in order: the member named as the constant above stays the member. */
-const PROP_KINDS: readonly PropKind[] = ['pot', 'bush'];
-
-const GROUND_ATTRIBUTE = 'ground';
-
-/** A text made from another: TypeScript types it as the text itself, a value, never an enumeration. */
-const PARS = `attribute float ${GROUND_ATTRIBUTE};`;
-
-/** A prop that may say its kind: an optional field of an enumeration (the lab's vehicle archetypes, `style?: BodyStyle`). */
-interface Prop {
-  readonly kind?: PropKind;
-}
-
-/** One prop that says its kind with a literal (the lab writes `style: 'hatch'`), one that leaves it out. */
-const PROPS: readonly Prop[] = [{ kind: 'bush' }, {}];
-
-/** A kind's place among the kinds, with the pot's height, the made text's length and how many props say that kind. */
-export function propPlace(kind: PropKind): number {
-  return PROP_KINDS.indexOf(kind) + POT + PARS.length + PROPS.filter((p) => p.kind === kind).length;
-}

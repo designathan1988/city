@@ -9,6 +9,7 @@ extends Node3D
 
 const TOWN_MAP := 0
 const SEED := 7
+const DAY_HOUR := 16.0
 const RIGHT_ANGLE := 90.0
 const PAIR_LINES := 900.0 # the 4.0's zoom is pixels a metre, on the lines of its photos
 const ZONE_OF := {"residential": 1, "commercial": 2, "industrial": 3}
@@ -42,11 +43,12 @@ func _ready() -> void:
 	Settings.apply(world, get_viewport()) # what the player's preset shows: its antialiasing and shadows
 	lights = InteriorLights.new(DataTables.game("interior").lights) # the room lights, as the Interior controller gives them
 	add_child(lights)
-	CityStore.new_map(TOWN_MAP, SEED, buildings_file.is_empty(), true)
+	CityStore.new_map(TOWN_MAP, SEED, buildings_file.is_empty())
 	var views: Array = JSON.parse_string(FileAccess.get_file_as_string(views_file))
 	if not buildings_file.is_empty():
 		_lay_buildings(_named_in(views))
-	CityStore.dispatch(&"set_day_hour", [float(DataTables.game("daylight").day_hour)])
+	CityStore.dispatch(&"set_speed", [0])
+	CityStore.dispatch(&"set_day_hour", [DAY_HOUR])
 	ui = UiDriver.new(rig, get_tree(), out_dir)
 	for v: Dictionary in views:
 		if v.has("pos"):
@@ -129,7 +131,7 @@ func _report_chunk(inside: Dictionary) -> void:
 	if id < 0:
 		return
 	var at: Vector3 = CityStore.query(&"probe_building", [id]).position
-	var chunk: Dictionary = CityStore.query(&"building_chunk", [at.x, at.z])
+	var flags: int = CityStore.query(&"building_chunk", [at.x, at.z])
 	var cost: Dictionary = CityStore.query(&"render_cost")
-	print("  chunk of building %d: %s; pending %d, asked %d, ready %d, no_turn %d" % [id, chunk,
+	print("  chunk of building %d: flags %d (1 near, 2 mid, 4 shown, 8 detail, 16 known, 32 far); pending %d, asked %d, ready %d, no_turn %d" % [id, flags,
 			CityStore.query(&"render_pending"), cost.b_requested, cost.b_done, cost.b_unmet])

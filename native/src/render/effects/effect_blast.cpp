@@ -1,10 +1,8 @@
 // The events of a blow, played once (effect_world.h): the bomb itself (the fireball, the smoke, the dust, the shrapnel, the
-// ring, the flash and the shake, the soot on the ground, the broken ground round its crater), the building struck and the
-// building brought down.
+// ring, the flash and the shake, the soot on the ground), the building struck and the building brought down.
 #include "render/effects/effect_world.h"
 
 #include "core/math.h"
-#include "sim/demolition/blast_model.h"
 
 #include <algorithm>
 #include <cmath>
@@ -14,7 +12,23 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr int SOIL_SOIL_TINT = 0, SOIL_BUILDING = 2; // what a BLAST event's soil code says it burst on: the ground, a building
+constexpr int SOIL_BUILDING = 2; // BLAST event: the burst was on a building
+constexpr float RUIN_MATCH_M = 1.f; // a BUILDING_DOWN's ruin is centred within this of the event's place
+constexpr int SOIL_SOIL_TINT = 0;
+constexpr float SPARK_COUNT_PER_KPA = 0.4f; // sparks from a building hit grow with the load it felt
+constexpr int HIT_DUST_MIN = 12;
+constexpr float HIT_DUST_PER_KPA = 0.5f;
+constexpr float HIT_SPREAD_M = 2.f;
+constexpr float HIT_SIZE_M = 2.5f;
+constexpr float HIT_LIFE_S = 4.f;
+constexpr float SHELL_LIFT_M = 0.3f; // shrapnel starts this high at the ground
+constexpr float SHELL_OUT_SHARE = 0.2f; // and this share of the fireball radius out
+constexpr float SHELL_FLAT_MIN = 0.4f, SHELL_FLAT_SPAN = 0.5f; // pieces are flattened boxes
+constexpr float HIT_SPARK_MAX = 30.f;
+constexpr float DOWN_PAPER_HEIGHT_M = 3.f; // the papers of the offices start this high
+constexpr float DOWN_SMOKE_SIZE_SCALE = 1.f;
+constexpr float COLLAPSE_DUST_HIGH_M = 6.f;
+constexpr float SOOT_SIZE_JITTER = 1.f;
 
 // The shrapnel of the ground it tears up: the soil's own tints (sRGB).
 const Color ROAD_TINT = Color(0.169f, 0.169f, 0.176f);
@@ -22,6 +36,7 @@ const Color CONCRETE = Color(0.604f, 0.588f, 0.557f);
 const Color SOIL_TINT = Color(0.359f, 0.276f, 0.196f);
 const Color BRICK = Color(0.541f, 0.29f, 0.208f);
 const Color GLASS_TINT = Color(0.624f, 0.722f, 0.769f);
+constexpr float HIT_SPARK_SIZE = 0.3f, HIT_SPARK_LIFE = 1.f, HIT_LIFT_M = 1.f;
 } // namespace
 
 void EffectWorld::piece(const Vector3 &at, const Vector3 &size, const Vector3 &v, const Color &tint, bool cylinder, float burn) {
@@ -36,11 +51,7 @@ void EffectWorld::piece(const Vector3 &at, const Vector3 &size, const Vector3 &v
 }
 
 void EffectWorld::blast(const DamageEvent &e, const CityState &s) {
-	const BlastShape &K = params_.shapes.effect_blast;
-	const float radius = blast::fireball_radius(s.catalog.tune, e.dx); // the fireball: from the force of the blow
-	blast_x_ = e.x; // what its furniture, wires and trees are pushed from (damage_event.h: they follow it)
-	blast_z_ = e.z;
-	blast_r_ = radius;
+	const float radius = params_.fireball_base + params_.fireball_per_force * e.dx; // the fireball: from the force of the blow
 	const int soil = int(e.c);
 	for (const BurstDef &b : params_.bursts) {
 		const int kind = b.kind >= 0 ? b.kind : (soil == SOIL_SOIL_TINT ? PUFF_DUST : PUFF_CONCRETE);
@@ -62,7 +73,7 @@ void EffectWorld::blast(const DamageEvent &e, const CityState &s) {
 	Mark ring;
 	ring.kind = MARK_RING;
 	ring.x = e.x; ring.z = e.z;
-	ring.size = 2.f * params_.ring_reach_r * radius; // across: racing out to reach_r fireball radii (the reference game's ringReach)
+	ring.size = e.a * 2.f; // across: the damage reach
 	ring.y = Marks::top_ground(e.x, e.z, ring.size * 0.5f, [&](float x, float z) { return s.terrain.height_at(x, z); }) + params_.ring_height;
 	ring.born = now_;
 	ring.life = params_.ring_life;
@@ -75,8 +86,8 @@ void EffectWorld::blast(const DamageEvent &e, const CityState &s) {
 	for (int i = 0; i < n; i++) {
 		const float a = rng_.f() * TAU_F, out = params_.shrap_speed_min + rng_.f() * params_.shrap_speed_span;
 		const float sz = params_.shrap_size_min + rng_.f() * rng_.f() * params_.shrap_size_span;
-		piece(Vector3(e.x + std::cos(a) * radius * K.shell_out_share, e.y + K.shell_lift_m, e.z + std::sin(a) * radius * K.shell_out_share),
-				Vector3(sz * (1.f + rng_.f()), sz * (K.shell_flat_min + rng_.f() * K.shell_flat_span), sz * (1.f + rng_.f())),
+		piece(Vector3(e.x + std::cos(a) * radius * SHELL_OUT_SHARE, e.y + SHELL_LIFT_M, e.z + std::sin(a) * radius * SHELL_OUT_SHARE),
+				Vector3(sz * (1.f + rng_.f()), sz * (SHELL_FLAT_MIN + rng_.f() * SHELL_FLAT_SPAN), sz * (1.f + rng_.f())),
 				Vector3(std::cos(a) * out, params_.shrap_lift_min + rng_.f() * params_.shrap_lift_span, std::sin(a) * out), palette[i % 4]);
 	}
 	// Soot and ash kept on the ground round it.
@@ -86,87 +97,27 @@ void EffectWorld::blast(const DamageEvent &e, const CityState &s) {
 		Mark m;
 		m.kind = MARK_SOOT;
 		m.x = e.x + std::cos(a) * r; m.z = e.z + std::sin(a) * r;
-		m.y = s.terrain.height_at(m.x, m.z) + Marks::SURFACE_LIFT_M * K.soot_size_jitter;
+		m.y = s.terrain.height_at(m.x, m.z) + Marks::SURFACE_LIFT_M * SOOT_SIZE_JITTER;
 		m.size = params_.soot_size_min + rng_.f() * params_.soot_size_span + radius * params_.soot_size_r;
 		m.seed = rng_.f();
 		marks_.add_soot(m);
 	}
-	if (soil != SOIL_BUILDING) crater_slabs(e, s); // a burst on a roof digs no crater (strike_ground.cpp)
-}
-
-// The crater's decal radius is the one the marks draw (marks.h CRATER_SCALE times the hole the blast model digs, the law's one
-// owner), and every place, size and count here is a share of it (effects.json shapes.crater_slabs; the reference game's crater).
-void EffectWorld::crater_slabs(const DamageEvent &e, const CityState &s) {
-	const CraterSlabsShape &K = params_.shapes.crater_slabs;
-	const bool hard = int(e.c) == int(blast::Surface::HARD);
-	const float reach = blast::crater_radius(s.catalog.blast, blast::fireball_radius(s.catalog.tune, e.dx)) * Marks::CRATER_SCALE;
-	const auto ground = [&](float x, float z) { return s.terrain.height_at(x, z); };
-	const auto tipped = [](float a, float tilt) { return Quaternion(Vector3(std::sin(a), 0.f, -std::cos(a)), tilt); }; // the outer side down
-	// The rim: slabs of the surface heaved up and tilted round the hole, nudged out, settling where they fall.
-	const int rim = int(std::lround(K.rim_base + reach * K.rim_per_m));
-	for (int i = 0; i < rim; i++) {
-		const float a = float(i) / float(rim) * TAU_F + rng_.f() * K.rim_jitter_rad;
-		const float r = reach * (K.rim_r_min + rng_.f() * K.rim_r_span);
-		const float w = (K.rim_size_min_m + rng_.f() * K.rim_size_span_m) * (hard ? 1.f : K.rim_earth_scale);
-		PieceSpec p;
-		p.at = Vector3(e.x + std::cos(a) * r, 0.f, e.z + std::sin(a) * r);
-		p.at.y = ground(p.at.x, p.at.z) + K.rim_lift_m;
-		p.size = Vector3(w, hard ? K.rim_thick_hard_m : K.rim_thick_earth_m, w * (K.rim_depth_min + rng_.f() * K.rim_depth_span));
-		p.turn = tipped(a, K.rim_tilt_min + rng_.f() * K.rim_tilt_span);
-		p.velocity = Vector3(std::cos(a) * K.rim_out_ms, K.rim_up_ms, std::sin(a) * K.rim_out_ms);
-		p.random_spin = false;
-		p.tint = !hard ? SOIL_TINT : K.rim_concrete_every > 0 && i % K.rim_concrete_every == 0 ? CONCRETE : ROAD_TINT;
-		debris_.add(p);
-	}
-	// The plates of the ground tipped up round it, the inner edge sunk, and clods thrown up among them: laid for good, never moved;
-	// none where enough already lie (a second blow on the same spot).
-	if (debris_.still_near(e.x, e.z, reach * K.plates_crowd_r) > K.plates_crowd) return;
-	const int plates = std::min(K.plates_most, int(std::lround(K.plates_base + reach * K.plates_per_m)));
-	const float scale = std::min(K.plate_scale_most, K.plate_scale_min + reach * K.plate_scale_per_m);
-	const Color dirt(K.dirt_tint[0], K.dirt_tint[1], K.dirt_tint[2]);
-	for (int i = 0; i < plates; i++) {
-		const float a = rng_.f() * TAU_F, r = reach * (K.plate_r_min + std::sqrt(rng_.f()) * K.plate_r_span);
-		const float w = (K.plate_w_min_m + rng_.f() * K.plate_w_span_m) * scale;
-		const Color base = !hard ? SOIL_TINT : rng_.f() < K.plate_concrete_chance ? CONCRETE : ROAD_TINT;
-		const float shade = K.shade_min + rng_.f() * K.shade_span;
-		const Color dirty = base.lerp(dirt, K.dirt_min + rng_.f() * K.dirt_span);
-		PieceSpec p;
-		p.slab = true;
-		p.still = true;
-		p.random_spin = false;
-		p.at = Vector3(e.x + std::cos(a) * r, 0.f, e.z + std::sin(a) * r);
-		p.at.y = ground(p.at.x, p.at.z) + w * K.plate_lift_share;
-		p.size = Vector3(w, hard ? K.plate_thick_hard_m : K.plate_thick_earth_m, w * (K.plate_d_min + rng_.f() * K.plate_d_span));
-		p.turn = tipped(a, K.plate_tilt_min + rng_.f() * K.plate_tilt_span) * Quaternion(Vector3(0, 1, 0), rng_.f() * PI_F);
-		p.tint = Color(dirty.r * shade, dirty.g * shade, dirty.b * shade);
-		debris_.add(p);
-		if (K.clod_every <= 0 || i % K.clod_every != 0) continue;
-		PieceSpec c;
-		c.still = true;
-		c.random_spin = false;
-		c.at = Vector3(p.at.x, ground(p.at.x, p.at.z) + K.clod_lift_m, p.at.z);
-		c.size = Vector3(K.clod_min_m + rng_.f() * K.clod_span_m, K.clod_h_m, K.clod_min_m + rng_.f() * K.clod_span_m);
-		c.tint = SOIL_TINT;
-		debris_.add(c);
-	}
 }
 
 void EffectWorld::building_hit(const DamageEvent &e) {
-	const BlastShape &K = params_.shapes.effect_blast;
-	const int dust = K.hit_dust_min + int(e.a * K.hit_dust_per_kpa);
-	puffs_.burst(e.x, e.y + K.hit_lift_m, e.z, dust, PUFF_CONCRETE, K.hit_spread_m, K.hit_size_m, K.hit_life_s);
-	puffs_.burst(e.x, e.y + K.hit_lift_m, e.z, std::min(int(e.a * K.spark_count_per_kpa), int(K.hit_spark_max)), PUFF_SPARK, K.hit_spread_m, K.hit_spark_size, K.hit_spark_life);
+	const int dust = HIT_DUST_MIN + int(e.a * HIT_DUST_PER_KPA);
+	puffs_.burst(e.x, e.y + HIT_LIFT_M, e.z, dust, PUFF_CONCRETE, HIT_SPREAD_M, HIT_SIZE_M, HIT_LIFE_S);
+	puffs_.burst(e.x, e.y + HIT_LIFT_M, e.z, std::min(int(e.a * SPARK_COUNT_PER_KPA), int(HIT_SPARK_MAX)), PUFF_SPARK, HIT_SPREAD_M, HIT_SPARK_SIZE, HIT_SPARK_LIFE);
 }
 
 void EffectWorld::building_down(const DamageEvent &e, const CityState &s) {
-	const BlastShape &K = params_.shapes.effect_blast;
 	// The collapse: a cloud of concrete dust that billows out, and the papers of the offices and homes over the street.
-	puffs_.burst(e.x, e.y, e.z, params_.down_dust_count, PUFF_DUST, params_.down_dust_spread, params_.down_dust_size * K.down_smoke_size_scale, params_.down_dust_life);
-	puffs_.burst(e.x, e.y + K.collapse_dust_high_m, e.z, params_.down_dust_count, PUFF_CONCRETE, params_.down_dust_spread, params_.down_dust_size, params_.down_dust_life);
+	puffs_.burst(e.x, e.y, e.z, params_.down_dust_count, PUFF_DUST, params_.down_dust_spread, params_.down_dust_size * DOWN_SMOKE_SIZE_SCALE, params_.down_dust_life);
+	puffs_.burst(e.x, e.y + COLLAPSE_DUST_HIGH_M, e.z, params_.down_dust_count, PUFF_CONCRETE, params_.down_dust_spread, params_.down_dust_size, params_.down_dust_life);
 	// The heap it left, which the building falls into: the ruin the event names (its index when it fell); the list searched by place
 	// only when that one stands elsewhere now (a ruin before it cleared since, in the same frame).
 	const Revised<Ruin> &ruins = s.damage.ruins;
-	const auto here = [&](const Ruin &r) { return std::fabs(r.x - e.x) < K.ruin_match_m && std::fabs(r.z - e.z) < K.ruin_match_m; };
+	const auto here = [&](const Ruin &r) { return std::fabs(r.x - e.x) < RUIN_MATCH_M && std::fabs(r.z - e.z) < RUIN_MATCH_M; };
 	const auto fall = [&](const Ruin &r) {
 		ground_here_ = s.terrain.height_at(r.x, r.z);
 		pile(r, true, true, !ruins_.add(s, r, heap_of(r), true));
@@ -175,7 +126,7 @@ void EffectWorld::building_down(const DamageEvent &e, const CityState &s) {
 	else
 		for (const Ruin &r : ruins)
 			if (here(r)) fall(r);
-	puffs_.burst(e.x, e.y + K.down_paper_height_m, e.z, params_.paper_count, PUFF_PAPER, params_.paper_spread, params_.paper_size, params_.paper_life);
+	puffs_.burst(e.x, e.y + DOWN_PAPER_HEIGHT_M, e.z, params_.paper_count, PUFF_PAPER, params_.paper_spread, params_.paper_size, params_.paper_life);
 }
 
 // What the blast leaves burning: each source puffs flames at its rate (smaller as it dies down), now and then a chimney of dark

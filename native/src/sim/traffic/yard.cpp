@@ -1,7 +1,6 @@
 // The ways of a yard (yard.h). The grid is the world's, so nothing is turned back and forth: open are the lot, the carriageways and
 // the gates' mouths across the footway; shut, every other lot and this lot's solid parts.
 #include "sim/traffic/yard.h"
-#include "core/plane_geometry.h"
 
 #include "core/laps.h"
 #include "core/math.h"
@@ -17,7 +16,7 @@ namespace {
 // (settled: 4.3 µs), a dock's start (its straight reverse tested: 6.7 µs), a dock's two ways joined (44 µs), and a gate's stop
 // tested before its search (8.0 µs, 257 of them).
 constexpr int SETTLE_WORK = 90, DOCK_WORK = 140, JOIN_WORK = 917, GATE_WORK = 167; // the means over the unit, 0.048 µs
-constexpr double HALF = 0.5, TINY = 1e-9, SETTLE_TANGENT = 0.6, H_DERIV = 6; // the derivative of the Hermite basis: 6 u^2 - 6 u
+constexpr double HALF = 0.5, TINY = 1e-9, PI = 3.14159265358979323846, SETTLE_TANGENT = 0.6, H_DERIV = 6; // the derivative of the Hermite basis: 6 u^2 - 6 u
 
 std::vector<AxlePose> straight(const AxlePose &from, const AxlePose &to, bool reverse, double step) {
 	const int n = std::max(1, int(std::ceil(std::hypot(to.x - from.x, to.z - from.z) / step)));
@@ -37,8 +36,8 @@ std::vector<AxlePose> settle(const AxlePose &from, const AxlePose &to, bool reve
 		const double h00 = 2 * u3 - 3 * u2 + 1, h10 = u3 - 2 * u2 + u, h01 = -2 * u3 + 3 * u2, h11 = u3 - u2;
 		const double d00 = H_DERIV * (u2 - u), d10 = 3 * u2 - 4 * u + 1, d01 = -d00, d11 = 3 * u2 - 2 * u;
 		const double dx = d00 * from.x + d10 * k * t0x + d01 * to.x + d11 * k * t1x, dz = d00 * from.z + d10 * k * t0z + d01 * to.z + d11 * k * t1z;
-		const double moving = std::hypot(dx, dz) > TINY ? std::atan2(dz, dx) : from.angle + (reverse ? PI_D : 0);
-		const double angle = i == 0 ? from.angle : i == n ? to.angle : moving + (reverse ? PI_D : 0);
+		const double moving = std::hypot(dx, dz) > TINY ? std::atan2(dz, dx) : from.angle + (reverse ? PI : 0);
+		const double angle = i == 0 ? from.angle : i == n ? to.angle : moving + (reverse ? PI : 0);
 		out.push_back({ h00 * from.x + h10 * k * t0x + h01 * to.x + h11 * k * t1x, h00 * from.z + h10 * k * t0z + h01 * to.z + h11 * k * t1z, angle, reverse });
 	}
 	return out;
@@ -51,7 +50,12 @@ bool all_fit(const Field &f, const Steered &b, const std::vector<AxlePose> &way,
 }
 
 bool point_in(const std::vector<V2> &ring, double x, double z) {
-	return inside_ring(ring, x, z, [](const V2 &p) { return std::make_pair(p.x, p.y); });
+	bool in = false;
+	for (size_t a = 0, b = ring.size() - 1; a < ring.size(); b = a++) {
+		const V2 &p = ring[a], &q = ring[b];
+		if ((p.y > z) != (q.y > z) && x < p.x + (z - p.y) * (q.x - p.x) / (q.y - p.y)) in = !in;
+	}
+	return in;
 }
 
 bool body_in_lot(const YardInput &in, const AxlePose &p) {
@@ -129,15 +133,11 @@ void YardPlanner::lay_step(int &work) {
 	if (field_whole && lot_whole) stage_ = Stage::OPEN;
 }
 
-// The ring of the open stage `k`: the lot in the yard's grid, the lot in the lot's, the other lots shut again, then the carriageways
-// and gates' mouths: a neighbouring parcel drawn over a street never closes the road (nothing of it stands on the asphalt), while it
-// still closes the lot where the two overlap.
+// The ring of the open stage `k`: the lot in the yard's grid, the lot in the lot's, then the carriageways and gates' mouths.
 std::unique_ptr<RingFill> YardPlanner::open_ring(size_t k) {
 	if (k == 0) return std::make_unique<RingFill>(field_, &in_.lot, 0);
 	if (k == 1) return std::make_unique<RingFill>(lot_, &in_.lot, 1);
-	const size_t fenced = in_.fenced.size();
-	if (k - 2 < fenced) return std::make_unique<RingFill>(field_, &in_.fenced[k - 2], 1);
-	if (k - 2 - fenced < in_.open.size()) return std::make_unique<RingFill>(field_, &in_.open[k - 2 - fenced], 0);
+	if (k - 2 < in_.open.size()) return std::make_unique<RingFill>(field_, &in_.open[k - 2], 0);
 	return nullptr;
 }
 

@@ -23,10 +23,6 @@ const AREAS: Readonly<Record<string, { readonly layer: string; readonly concept:
   people: { layer: 'native/src/sim', concept: true },
   jobs: { layer: 'native/src/sim', concept: true },
   render: { layer: 'native/src/render', concept: true },
-  // the player's tools: what they compute and change goes where the target changes state at the player's request
-  // (CLAUDE.md: only sim/commands changes CityState for the player), one folder per tool; what they draw is render's and
-  // what they show is project/ui's, by the ledger's roles (ledger.ts ownerOf reads its owner here)
-  editor: { layer: 'native/src/sim/commands', concept: true },
   // the 4.0 lab (meters, doctor, code analysis, resources, gpu): its pure logic, exposed to the game's script by a
   // CityCore area like builder, landscape and probes; one folder of the game's existing api layer
   lab: { layer: 'native/src/api/lab', concept: false },

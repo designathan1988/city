@@ -5,6 +5,8 @@ extends RefCounted
 
 const ROW_M := 65.0
 const ROW_BACK_M := 34.0
+const LEVEL_BASIC := 1
+const LEVEL_FULL := 0
 const BARRIER_LEG_M := 8.0
 const BARRIER_GAP_M := 10.0
 const BARRIER_FROM_M := 8.0
@@ -49,10 +51,10 @@ static func _furniture_set(cap: Node) -> void:
 	cap.hud.open_category("roads")
 	await cap.ui.frames(4)
 	await cap._pick("roadFurniture.basic")
-	cap._check(CityStore.query(&"road_furniture") == CityStore.code(&"FurnitureLevel", &"FURN_BASIC"), "the basic set by the Furniture row")
+	cap._check(CityStore.query(&"road_furniture") == LEVEL_BASIC, "the basic set by the Furniture row")
 	await cap.ui.shot("rua_08_conjunto_via")
 	await cap._pick("roadFurniture.complete")
-	cap._check(CityStore.query(&"road_furniture") == CityStore.code(&"FurnitureLevel", &"FURN_FULL"), "the full set back")
+	cap._check(CityStore.query(&"road_furniture") == LEVEL_FULL, "the full set back")
 	cap.hud.open_category("roads")
 	await cap.ui.frames(2)
 

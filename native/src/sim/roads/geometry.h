@@ -23,7 +23,7 @@ struct Quad {
 	bool is_straight(double tol) const;
 };
 
-constexpr int ARC_STEPS_DEFAULT = 24; // chords a curve's length is summed over, unless the caller asks for more
+constexpr int ARC_STEPS_DEFAULT = 24;
 double quad_length(const Quad &q, int steps = ARC_STEPS_DEFAULT);
 // Cumulative chord lengths at t = i / steps (size steps + 1).
 std::vector<double> arc_table(const Quad &q, int steps);
@@ -44,12 +44,12 @@ bool seg_seg(double ax, double az, double bx, double bz, double cx, double cz, d
 bool line_line(double px, double pz, double dx, double dz, double qx, double qz, double ex, double ez, double &s, double &t);
 
 // A node's arm: outward unit direction and the half widths to its left and right (total and asphalt).
-struct Tuning;
-
 struct Arm {
 	double dx = 1, dz = 0, left = 0, right = 0, asph_left = 0, asph_right = 0;
 };
 // Sorting key: anticlockwise seen from above.
 double arm_angle(double dx, double dz);
+// Each arm's setback so neighbouring edges do not overlap; arms sorted by arm_angle.
+void arm_retreats(const std::vector<Arm> &arms, double corner_radius, std::vector<double> &out);
 
 } // namespace city

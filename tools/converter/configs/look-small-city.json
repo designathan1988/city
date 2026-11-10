@@ -3,8 +3,8 @@
   "city": { "size": "small", "seed": 7 },
   "steps": [
     { "wait": 1500 },
-    { "press": "Come\u00e7ar a construir" },
-    { "until": "(() => { const b = [...document.querySelectorAll('button')].find((e) => e.textContent.trim() === 'Come\u00e7ar a construir'); return !b || b.getBoundingClientRect().width === 0 || getComputedStyle(b).visibility === 'hidden'; })()", "name": "menu closed", "timeout": 30000, "polling": 250 },
+    { "press": "Começar a construir" },
+    { "until": "(() => { const b = [...document.querySelectorAll('button')].find((e) => e.textContent.trim() === 'Começar a construir'); return !b || b.getBoundingClientRect().width === 0 || getComputedStyle(b).visibility === 'hidden'; })()", "name": "menu closed", "timeout": 30000, "polling": 250 },
     { "eval": "window.__roadcraft.sim.setClock(720); window.__roadcraft.scene().setSkyMode('day'); 1" },
     { "lookAt": [0, 0, 0.35] }, { "wait": 3500 },
     { "shot": "city" },

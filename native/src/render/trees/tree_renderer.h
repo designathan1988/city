@@ -7,15 +7,13 @@
 #pragma once
 
 #include "core/job_pool.h"
+#include "render/chunk_jobs.h"
 #include "render/chunk_queue.h"
-#include "render/chunk_results.h"
 #include "render/render_context.h"
 #include "render/rs_util.h"
 #include "render/trees/far_cards.h"
 #include "render/trees/garden_place.h"
-#include "render/trees/ground_kept.h"
 #include "render/trees/tree_place.h"
-#include "sim/state/city_cut.h"
 
 #include <memory>
 #include <unordered_map>
@@ -27,7 +25,7 @@ namespace city {
 class TreeRenderer {
 public:
 	TreeRenderer();
-	bool init(const RenderContext &ctx, const StreetLook &look, GroundKept &ground, godot::PackedStringArray &errors); // `ground`: shared with the cover
+	bool init(const RenderContext &ctx, const StreetLook &look, godot::PackedStringArray &errors);
 	void reset();
 	void mark_dirty(int64_t key);
 	void set_share(float share); // the graphics tier: every drawn chunk is placed again
@@ -41,13 +39,6 @@ public:
 	int64_t baking() const { return tier_[1].baking(); }
 	int64_t waiting() const { return tier_[1].waiting(); }
 	int pending() const;
-	// Tests: the near trees of every chunk the box touches placed twice, from the live city and from the job's cut of it, and
-	// compared tree by tree: a cut must read what the live city reads. { chunks, trees, differ, first: what the first ones are }.
-	godot::Dictionary probe_cut(const CityState &s, float minx, float minz, float maxx, float maxz) const;
-	// The woods' trees a blow's clearing took within `radius` of (x, z) (tree_place.h felled_wild), for the effects to fell.
-	void felled(const CityState &s, float x, float z, float radius, int clearing, std::vector<TreeInstance> &out) const {
-		felled_wild(s, trees_, kit_, x, z, radius, clearing, out);
-	}
 
 private:
 	struct Near {
@@ -66,7 +57,6 @@ private:
 		int64_t upload = 0; // bytes the near buffers send, every draw of each
 		std::vector<FarCard> cards; // far, until baked
 		float centre = 0, half_tall = 0;
-		godot::RID card_material; // far: what the cards are made with
 		OwnedMesh far_mesh; // far: the superchunk's cards
 		bool bakes() const { return far; }
 		int64_t bytes() const { return upload; }
@@ -77,9 +67,8 @@ private:
 		void free();
 	};
 	using Tier = ChunkResults<Built>;
-	CityCut gather(const CityState &s, int64_t key, bool far) const;
-	std::shared_ptr<Built> build_near(const CityView &s, int64_t key) const;
-	std::shared_ptr<Built> build_far(const CityView &s, int64_t key) const;
+	std::shared_ptr<Built> build_near(const CityState &s, int64_t key) const;
+	std::shared_ptr<Built> build_far(const CityState &s, int64_t key) const;
 	void commit_near(Built &b);
 	void commit_far(Built &b);
 	void submit(const CityState &s, int64_t key, float priority, bool far);
@@ -88,9 +77,9 @@ private:
 	bool built(int64_t key, bool far) const { return far ? far_.count(key) > 0 : near_.count(key) > 0; }
 	godot::RID scenario_, body_material_, card_material_;
 	const StreetLook *look_ = nullptr;
-	GroundKept *grounds_ = nullptr; // each chunk's ground, gathered once for the near trees, the far cards and the cover
 	TreeLook trees_;
 	TreeKit kit_;
+	mutable GardenBook gardens_; // the workers' build_near and build_far fill it
 	std::unordered_map<int64_t, Near> near_;
 	std::unordered_map<int64_t, FarDraw> far_;
 	Tier tier_[2]; // near, far

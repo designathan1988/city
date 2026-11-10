@@ -24,7 +24,7 @@ export interface Delivered {
 }
 
 /** States of a coverage row that mean the game has it. */
-const IN_GAME = /^(portado|j\u00e1 existia|ja existia)\b/i;
+const IN_GAME = /^(portado|já existia|ja existia)\b/i;
 
 /**
  * Source file or declaration → what a port says the game has. A coverage row is a table line whose first cell is a

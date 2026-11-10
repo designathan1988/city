@@ -10,7 +10,6 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import jsonfile  # noqa: E402
 import registry  # noqa: E402
 import scope  # noqa: E402
 from context import REPO, Cache, Context, digest  # noqa: E402
@@ -20,8 +19,10 @@ SUMMARY_SHOWN = 15
 
 
 def load_config(root):
-    rules = jsonfile.load(os.path.join(root, "tools", "gates", "rules.json"))
-    owners = jsonfile.load(os.path.join(root, "tools", "gates", "owners.json"))
+    with open(os.path.join(root, "tools", "gates", "rules.json"), encoding="utf-8") as fh:
+        rules = json.load(fh)
+    with open(os.path.join(root, "tools", "gates", "owners.json"), encoding="utf-8") as fh:
+        owners = json.load(fh)
     return rules, owners
 
 

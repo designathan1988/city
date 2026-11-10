@@ -15,10 +15,9 @@ using namespace godot;
 namespace city {
 
 namespace {
-// a chunk's box from under the deepest ground to over the highest (it is culled by it, never drawn); a chunk is dropped two chunks
-// past its reach, so it is not dropped and loaded again at one border; the cover's stream of a cell's hash
 constexpr float COVER_MIN_Y = -100.f, COVER_SPAN_Y = 700.f, HALF = 0.5f, DROP_CHUNKS = 2.f;
 constexpr uint32_t COVER_SALT = 0xc07e12u;
+const float DIAGONAL = std::sqrt(2.f);
 // Hash streams of one lattice cell.
 enum Stream : uint32_t { KEEP = 0, POS_X, POS_Z, SIZE, YAW, TINT, VARIANT };
 
@@ -31,7 +30,7 @@ float distance_to(int64_t key, const Vector3 &cam) {
 
 // How much of a kind grows at a point: what the player painted; the grass stands up among the painted scrub and flowers;
 // cactus is the biome's own.
-float density(const CityView &s, const CoverKit &kit, CoverPiece p, const EcologyField &eco, float x, float z) {
+float density(const CityState &s, const CoverKit &kit, CoverPiece p, const EcologyField &eco, float x, float z) {
 	const GroundPaint &g = s.nature.ground;
 	switch (p) {
 		case CoverPiece::ROCKS: return g.cover_at(CoverKind::ROCKS, x, z);
@@ -51,35 +50,18 @@ CoverRenderer::CoverRenderer() {
 	queue_.hand_one = [this](Built &b) { commit_one(b); };
 }
 
-bool CoverRenderer::init(const RenderContext &ctx, GroundKept &ground, PackedStringArray &errors) {
+bool CoverRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	scenario_ = ctx.scenario;
-	grounds_ = &ground;
 	plant_material_ = ctx.material("cover_plant", errors);
 	rock_material_ = ctx.material("cover_rock", errors);
 	shore_material_ = ctx.material("cover_shore", errors);
-	const Dictionary table = ctx.table("cover", errors);
-	if (!errors.is_empty()) return false;
-	if (!ctx.catalog) {
-		errors.push_back("cover: the render has no catalogue");
-		return false;
-	}
-	const DataValue t = DataReader{ errors, "cover.json" }.at(table); // render/data_reader.h
-	const int laid = ctx.catalog->nature.elements.first_effect;
-	if (!kit_.build(t, errors) || !models_.load(t["elements"], laid, errors) || !shore_.load(t["shore"], errors)) return false;
+	Dictionary t = ctx.table("cover", errors);
+	if (!errors.is_empty() || !kit_.build(t, errors) || !models_.load(t.get("elements", Dictionary()), errors) || !shore_.load(t.get("shore", Dictionary()), errors)) return false;
 	draws_ = 0;
 	for (int i = 0; i < COVER_PIECES; i++) {
 		first_[size_t(i)] = draws_;
 		draws_ += int(kit_.look(CoverPiece(i)).variants.size());
 	}
-	// each variant made a mesh with the material it is drawn with, the rocks again with the shore's (surface_data.h: the engine has
-	// their pipelines before the first chunk is drawn)
-	for (int i = 0; i < COVER_PIECES; i++) {
-		const CoverLook &k = kit_.look(CoverPiece(i));
-		piece_meshes_[size_t(i)].clear();
-		for (const MeshBuilder &v : k.variants) piece_meshes_[size_t(i)].push_back(v.bake(k.sways ? plant_material_ : rock_material_, false));
-	}
-	shore_meshes_.clear();
-	for (const MeshBuilder &v : kit_.look(CoverPiece::ROCKS).variants) shore_meshes_.push_back(v.bake(shore_material_, false));
 	RenderingServer *rs = RenderingServer::get_singleton();
 	for (const RID &m : { plant_material_, rock_material_ }) {
 		rs->material_set_param(m, "near_m", kit_.reach_m);
@@ -99,7 +81,7 @@ void CoverRenderer::reset() {
 	pending_ = 0;
 }
 
-void CoverRenderer::place(const CityView &s, int64_t key, const ChunkGround &l, Built &out) const {
+void CoverRenderer::place(const CityState &s, int64_t key, const ChunkGround &l, Built &out) const {
 	if (l.eco.side == 0) return;
 	const bool painted = s.nature.ground.any_cover(), cactus = any_cactus(l.eco);
 	for (int p = 0; p < COVER_PIECES; p++) {
@@ -124,7 +106,7 @@ void CoverRenderer::place(const CityView &s, int64_t key, const ChunkGround &l, 
 	}
 }
 
-void CoverRenderer::place_elements(const CityView &s, int64_t key, Built &out) const {
+void CoverRenderer::place_elements(const CityState &s, int64_t key, Built &out) const {
 	const std::vector<ElementItem> *items = s.nature.elements.in_chunk(key);
 	if (!items) return;
 	for (const ElementItem &e : *items) {
@@ -137,8 +119,8 @@ void CoverRenderer::place_elements(const CityView &s, int64_t key, Built &out) c
 	}
 }
 
-// The stones of a river, a lake or the coast, on the same lattice rule as the cover and with its rocks' models, drawn apart: they reach further.
-void CoverRenderer::place_shore(const CityView &s, int64_t key, const ChunkGround &l, Built &out) const {
+// A river's stones, on the same lattice rule as the cover and with its rocks' models, drawn apart: they reach further.
+void CoverRenderer::place_shore(const CityState &s, int64_t key, const ChunkGround &l, Built &out) const {
 	const CoverLook &k = kit_.look(CoverPiece::ROCKS);
 	const int n = int(CHUNK / shore_.spacing_m), cx = key_x(key), cz = key_y(key), first = draws_ + int(models_.all().size());
 	const float step = CHUNK / float(n);
@@ -161,15 +143,16 @@ void CoverRenderer::place_shore(const CityView &s, int64_t key, const ChunkGroun
 }
 
 // The chunk's roads, lots and ecosystem gathered once for both lattices (the shore's stones read no ecosystem).
-std::shared_ptr<CoverRenderer::Built> CoverRenderer::build(const CityView &s, int64_t key) const {
+std::shared_ptr<CoverRenderer::Built> CoverRenderer::build(const CityState &s, int64_t key) const {
 	auto out = std::make_shared<Built>();
 	out->bufs.resize(size_t(draws_) + models_.all().size() + kit_.look(CoverPiece::ROCKS).variants.size());
 	const bool plants = s.nature.nature.region >= 0 || s.nature.ground.any_cover();
 	const bool shore = shore_near(s.terrain, key_x(key) * CHUNK, key_y(key) * CHUNK, CHUNK, shore_.search_m);
-	const std::shared_ptr<const ChunkGround> l = plants || shore ? grounds_->of(s, key) : nullptr;
-	if (plants) place(s, key, *l, *out);
+	ChunkGround l;
+	if (plants || shore) l = chunk_ground(s, key, plants);
+	if (plants) place(s, key, l, *out);
 	place_elements(s, key, *out);
-	if (shore) place_shore(s, key, *l, *out);
+	if (shore) place_shore(s, key, l, *out);
 	return out;
 }
 
@@ -179,23 +162,23 @@ void CoverRenderer::commit_one(Built &b) {
 	const size_t stones = size_t(draws_) + models_.all().size();
 	ch.resize(stones + rocks.variants.size());
 	AABB box(Vector3(key_x(b.key) * CHUNK, COVER_MIN_Y, key_y(b.key) * CHUNK), Vector3(CHUNK, COVER_SPAN_Y, CHUNK));
-	float end = kit_.reach_m + kit_.fade_m + CHUNK * SQRT2_F * HALF;
+	float end = kit_.reach_m + kit_.fade_m + CHUNK * DIAGONAL * HALF;
 	for (int p = 0; p < COVER_PIECES; p++) {
 		const CoverLook &k = kit_.look(CoverPiece(p));
 		for (size_t v = 0; v < k.variants.size(); v++) {
 			size_t at = size_t(first_[size_t(p)]) + v;
-			ch[at].set(scenario_, piece_meshes_[size_t(p)][v].rid, b.bufs[at], box, k.casts, LAYER_VEGETATION);
+			ch[at].set(scenario_, k.variants[v]->get_rid(), k.sways ? plant_material_ : rock_material_, b.bufs[at], box, k.casts, LAYER_VEGETATION);
 			ch[at].range(0, end);
 		}
 	}
 	for (size_t i = 0; i < models_.all().size(); i++) {
 		size_t at = size_t(draws_) + i;
-		ch[at].set(scenario_, models_.all()[i].mesh, b.bufs[at], box, false, LAYER_VEGETATION);
+		ch[at].set(scenario_, models_.all()[i].mesh->get_rid(), RID(), b.bufs[at], box, false, LAYER_VEGETATION);
 		ch[at].range(0, end);
 	}
 	for (size_t v = 0; v < rocks.variants.size(); v++) {
-		ch[stones + v].set(scenario_, shore_meshes_[v].rid, b.bufs[stones + v], box, rocks.casts, LAYER_VEGETATION);
-		ch[stones + v].range(0, shore_.reach_m + kit_.fade_m + CHUNK * SQRT2_F * HALF);
+		ch[stones + v].set(scenario_, rocks.variants[v]->get_rid(), shore_material_, b.bufs[stones + v], box, rocks.casts, LAYER_VEGETATION);
+		ch[stones + v].range(0, shore_.reach_m + kit_.fade_m + CHUNK * DIAGONAL * HALF);
 	}
 }
 
@@ -205,14 +188,11 @@ void CoverRenderer::submit(const CityState &s, int64_t key, float priority) {
 	const uint64_t ticket = queue_.revs.ask(key);
 	const JobKey job{ JobLane::COVER, key };
 	s.jobs->submit(job, priority, [this, &s, key, job, ticket, priority]() {
-		// The job copies what its chunk's cover reads (the roads and lots it keeps off, the land with its natural ground and its
-		// water as far as the ecosystem and the shore's search look, the paint, the elements) and places from the copy, the map let go.
-		const CityCut cut = cut_city(s, CUT_ROADS | CUT_BUILDINGS | CUT_NATURE | CUT_GROUND_BASE | CUT_WATER, [&](const CityState &live) {
-			const float x0 = float(key_x(key)) * CHUNK, z0 = float(key_y(key)) * CHUNK;
-			const float reach = std::max(ground_reach(live.catalog), shore_.search_m) + live.terrain.water_spacing_m;
-			return CutBox{ x0, z0, x0 + CHUNK, z0 + CHUNK }.grown(reach);
-		});
-		std::shared_ptr<Built> b = build(cut, key);
+		std::shared_ptr<Built> b;
+		{
+			std::shared_lock<std::shared_mutex> map(s.map_mutex);
+			b = build(s, key);
+		}
 		b->key = key;
 		b->job = job;
 		b->ticket = ticket;
@@ -262,7 +242,7 @@ void CoverRenderer::offer(const CityState &s, const Vector3 &cam, std::vector<Fr
 			int64_t k = cell_key(i, j);
 			float d = distance_to(k, cam);
 			if (d > reach || chunks_.count(k) != 0) continue;
-			if (d > reach_of(s, k) + CHUNK * SQRT2_F * HALF || !s.terrain.in_bounds((i + HALF) * CHUNK, (j + HALF) * CHUNK, -CHUNK * HALF)) continue;
+			if (d > reach_of(s, k) + CHUNK * DIAGONAL * HALF || !s.terrain.in_bounds((i + HALF) * CHUNK, (j + HALF) * CHUNK, -CHUNK * HALF)) continue;
 			if (!queue_.revs.busy(k)) unit(k, d, 0);
 		}
 }

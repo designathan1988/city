@@ -2,7 +2,6 @@
 // changeProfiles / streetChain / mirrorSymmetric / alongStreet): split a segment where clicked, upgrade a segment or a
 // whole street to the profile in hand (Shift), charging the difference in value or refunding a share of it.
 #include "sim/commands/commands.h"
-#include "sim/commands/edit_journal.h"
 #include "sim/commands/street_commands.h"
 #include "sim/commands/road_edit.h"
 #include "sim/economy/road_economy.h"
@@ -20,7 +19,7 @@ namespace city {
 
 namespace {
 constexpr size_t JUNCTION_ARMS = 3; // fewer arms need no control
-constexpr float SAME_WIDTH_M = 0.01f; // two widths a centimetre apart are one
+constexpr float SAME_WIDTH_M = 0.01f;
 
 // The profile reads the same from both ends (strips mirrored, lane directions turned).
 bool mirror_symmetric(const Profile &p) {
@@ -51,6 +50,10 @@ std::map<int, bool> along_street(const CityState &s, const std::vector<int> &seg
 	}
 	return out;
 }
+
+// After a profile change, like a new road: what the wider road covers goes (the ground under it follows its new casing
+// when the edit settles: sim/commands/road_grade_sync.cpp).
+int settle_under(CityState &s, int seg) { return clear_under(s, seg); }
 } // namespace
 
 EditResult split_road_at(CityState &s, double x, double z) {
@@ -87,7 +90,7 @@ EditResult change_profile_at(CityState &s, double x, double z, int profile, bool
 	if (!mirror_symmetric(np)) along = along_street(s, segs, seg);
 	RoadBox box;
 	for (int sg : segs) box.add(s.roads.segs[sg]);
-	const Squeezes before = squeezes_in(s, box);
+	const std::map<int, double> before = squeezes_in(s, box);
 	std::vector<int> changed;
 	for (int sg : segs) {
 		if (!s.roads.segs[sg].alive) continue;
@@ -103,8 +106,8 @@ EditResult change_profile_at(CityState &s, double x, double z, int profile, bool
 		changed.push_back(sg);
 	}
 	if (!settle_road_edit(s, r)) return r; // before the ground moves: the caller rolls the journal back
-	for (int sg : changed) { // like a new road: what the wider road covers goes (the ground follows its casing as the edit settles)
-		r.buildings_removed += clear_under(s, sg);
+	for (int sg : changed) {
+		r.buildings_removed += settle_under(s, sg);
 		box.add(s.roads.segs[sg]);
 		r.segments++;
 	}

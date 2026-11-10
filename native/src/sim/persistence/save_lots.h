@@ -7,7 +7,7 @@ namespace city {
 
 struct ByteReader;
 struct ByteWriter;
-class LotBook;
+struct LotBook;
 
 constexpr uint32_t SAVE_TAG_LOTS = 0x31544F4CU; // 'LOT1'
 

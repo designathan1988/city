@@ -10,11 +10,16 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
+constexpr float PANEL_LIFT = 0.18f, PANEL_TOP = 0.24f, PANEL_RIM = 0.15f, VENT_H = 1.f, TANK_H = 1.6f, CHIMNEY_H = 2.1f, CAP_H = 0.15f, CAP_OUT = 0.1f;
+constexpr float GEAR_SINK_M = 0.2f, SPIRE_FOOT_H = 0.75f, SPIRE_FOOT_SINK = 0.15f, SPIRE_SHARE = 0.47f;
 constexpr float SPIRE_RINGS[4][2] = { { 0.f, 0.78f }, { 0.28f, 0.48f }, { 0.84f, 0.12f }, { 1.f, 0.025f } }; // height share, radius share
-constexpr float GLASS_SHARE = 3.69f / 4.02f; // the lantern's glass across its body (the source model: 3.69 of 4.02 m)
-constexpr int OCTAGON = 8; // a lantern's and a spire's sides
+constexpr float LANTERN_H = 19.4f, BASE_H = 1.03f, GLASS_H = 7.47f, GLASS_SHARE = 3.69f / 4.02f, BAND_T = 0.07f, BAND_OUT = 0.04f, MULLION = 0.035f;
+constexpr float LID_OUT = 0.12f, LID_H = 0.25f, DOME_H = 1.1f, DOME_TOP = 0.16f, MAST_FOOT = 0.15f, MAST_TOP = 0.1f, BEACON = 0.2f, BEACON_LOW = 0.45f, BEACON_HIGH = 0.1f;
+constexpr int OCTAGON = 8, ROUND = 24, BANDS = 5, DOME_STEPS = 6;
 // The flags (Roadcraft buildingMesh.ts): a spire's 2.2 x 1.25 m at its tip; a lantern's under the mast's tip, 6.6 x 4.3 m on the
 // model's 19.4 m lighthouse.
+constexpr float SPIRE_FLAG_AT = 0.98f, SPIRE_FLAG_W = 2.2f, SPIRE_FLAG_H = 1.25f;
+constexpr float LANTERN_FLAG_DROP = 0.5f, LANTERN_FLAG_W = 0.34f, LANTERN_FLAG_ASPECT = 0.65f;
 
 struct Gear {
 	Shell &shell;
@@ -46,74 +51,70 @@ struct Gear {
 
 // A flat panel that lies on the roof: its corners each stand on the slope under them.
 void panel(Gear &g, const Volume &v, const RoofPart &p, float eaves, const char *top) {
-	const RoofGearLook &K = g.pl.look->shapes.roof_gear;
 	float c = std::cos(p.turn), s = std::sin(p.turn);
 	auto corner = [&](float dx, float dy, float lift) {
 		float px = p.x + dx * c - dy * s, py = p.y + dx * s + dy * c;
-		return g.pl.lot.at(px, py, eaves + roof_height_at(g.pl.data->shapes.roof, v, px, py) + lift);
+		return g.pl.lot.at(px, py, eaves + roof_height_at(v, px, py) + lift);
 	};
-	float hw = p.w / 2, hd = p.d / 2, r = K.panel_rim;
-	g.shell.quad(corner(-hw - r, -hd - r, K.panel_lift), corner(hw + r, -hd - r, K.panel_lift), corner(hw + r, hd + r, K.panel_lift), corner(-hw - r, hd + r, K.panel_lift), g.pl.lot.e2,
+	float hw = p.w / 2, hd = p.d / 2, r = PANEL_RIM;
+	g.shell.quad(corner(-hw - r, -hd - r, PANEL_LIFT), corner(hw + r, -hd - r, PANEL_LIFT), corner(hw + r, hd + r, PANEL_LIFT), corner(-hw - r, hd + r, PANEL_LIFT), g.pl.lot.e2,
 			g.paint("gear_metal"), g.finish("gear_metal"));
-	g.shell.quad(corner(-hw, -hd, K.panel_top), corner(hw, -hd, K.panel_top), corner(hw, hd, K.panel_top), corner(-hw, hd, K.panel_top), g.pl.lot.e2, g.paint(top), g.finish(top));
+	g.shell.quad(corner(-hw, -hd, PANEL_TOP), corner(hw, -hd, PANEL_TOP), corner(hw, hd, PANEL_TOP), corner(-hw, hd, PANEL_TOP), g.pl.lot.e2, g.paint(top), g.finish(top));
 }
 
 void spire(Gear &g, const RoofPart &p, float z) {
-	const RoofGearLook &K = g.pl.look->shapes.roof_gear;
-	float radius = std::min(p.w, p.d) * K.spire_share;
-	g.box(radius, radius, z - K.spire_foot_sink, z + K.spire_foot_h, "gear_base");
+	float radius = std::min(p.w, p.d) * SPIRE_SHARE;
+	g.box(radius, radius, z - SPIRE_FOOT_SINK, z + SPIRE_FOOT_H, "gear_base");
 	for (int band = 0; band < 3; band++) {
 		const float *lo = SPIRE_RINGS[band], *hi = SPIRE_RINGS[band + 1];
-		float z0 = band == 0 ? z + K.spire_foot_h : z + p.h * lo[0];
+		float z0 = band == 0 ? z + SPIRE_FOOT_H : z + p.h * lo[0];
 		g.ring(OCTAGON, z0, z + p.h * hi[0], radius * lo[1], radius * hi[1], band == 0 ? "gear_base" : "gear_metal");
 	}
-	g.fly(p, z + p.h * K.spire_flag_at, K.spire_flag_w, K.spire_flag_h);
+	g.fly(p, z + p.h * SPIRE_FLAG_AT, SPIRE_FLAG_W, SPIRE_FLAG_H);
 }
 
 void lantern(Gear &g, const RoofPart &p, float z) {
-	const RoofGearLook &K = g.pl.look->shapes.roof_gear;
-	float k = p.h / K.lantern_h, base_r = std::min(p.w, p.d) / 2, turn = TAU_F / float(OCTAGON * 2), z1 = z + K.base_h * k;
+	float k = p.h / LANTERN_H, base_r = std::min(p.w, p.d) / 2, turn = TAU_F / float(OCTAGON * 2), z1 = z + BASE_H * k;
 	g.ring(OCTAGON, z, z1, base_r, base_r, "lantern_stone", turn);
 	g.disc(OCTAGON, z1, base_r, "lantern_stone", turn);
-	float glass_r = base_r * GLASS_SHARE, z2 = z1 + K.glass_h * k;
-	g.ring(K.round, z1, z2, glass_r, glass_r, "lantern_glass");
-	for (int f = 0; f <= K.bands; f++) {
-		float at = z1 + (z2 - z1) * float(f) / float(K.bands);
-		g.ring(K.round, std::max(z1, at - K.band_t), std::min(z2, at + K.band_t), glass_r + K.band_out, glass_r + K.band_out, "lantern_frame");
+	float glass_r = base_r * GLASS_SHARE, z2 = z1 + GLASS_H * k;
+	g.ring(ROUND, z1, z2, glass_r, glass_r, "lantern_glass");
+	for (int f = 0; f <= BANDS; f++) {
+		float at = z1 + (z2 - z1) * float(f) / float(BANDS);
+		g.ring(ROUND, std::max(z1, at - BAND_T), std::min(z2, at + BAND_T), glass_r + BAND_OUT, glass_r + BAND_OUT, "lantern_frame");
 	}
-	for (int i = 0; i < K.round; i++) {
-		float a = TAU_F * float(i) / float(K.round), cx = g.x + std::cos(a) * glass_r, cy = g.y + std::sin(a) * glass_r;
-		g.shell.box(g.pl.lot, cx - K.mullion, cx + K.mullion, cy - K.mullion, cy + K.mullion, z1, z2, g.paint("lantern_frame"), g.finish("lantern_frame"));
+	for (int i = 0; i < ROUND; i++) {
+		float a = TAU_F * float(i) / float(ROUND), cx = g.x + std::cos(a) * glass_r, cy = g.y + std::sin(a) * glass_r;
+		g.shell.box(g.pl.lot, cx - MULLION, cx + MULLION, cy - MULLION, cy + MULLION, z1, z2, g.paint("lantern_frame"), g.finish("lantern_frame"));
 	}
-	g.ring(K.round, z2, z2 + K.lid_h, glass_r + K.lid_out, glass_r + K.lid_out, "lantern_render");
-	g.disc(K.round, z2 + K.lid_h, glass_r + K.lid_out, "lantern_render");
-	float dome = z2 + K.lid_h, dome_h = K.dome_h * k;
-	for (int s = 0; s < K.dome_steps; s++) {
-		float a0 = float(s) / float(K.dome_steps) * TAU_F / 4, a1 = float(s + 1) / float(K.dome_steps) * TAU_F / 4;
-		g.ring(K.round, dome + std::sin(a0) * dome_h, dome + std::sin(a1) * dome_h, glass_r * std::cos(a0), std::max(K.dome_top, glass_r * std::cos(a1)), "lantern_dome");
+	g.ring(ROUND, z2, z2 + LID_H, glass_r + LID_OUT, glass_r + LID_OUT, "lantern_render");
+	g.disc(ROUND, z2 + LID_H, glass_r + LID_OUT, "lantern_render");
+	float dome = z2 + LID_H, dome_h = DOME_H * k;
+	for (int s = 0; s < DOME_STEPS; s++) {
+		float a0 = float(s) / float(DOME_STEPS) * TAU_F / 4, a1 = float(s + 1) / float(DOME_STEPS) * TAU_F / 4;
+		g.ring(ROUND, dome + std::sin(a0) * dome_h, dome + std::sin(a1) * dome_h, glass_r * std::cos(a0), std::max(DOME_TOP, glass_r * std::cos(a1)), "lantern_dome");
 	}
 	float top = z + p.h;
-	g.ring(OCTAGON, dome + dome_h, top, K.mast_foot, K.mast_top, "lantern_mast");
-	g.box(K.beacon, K.beacon, top - K.beacon_low, top - K.beacon_high, "lantern_beacon");
-	g.fly(p, top - K.lantern_flag_drop, p.h * K.lantern_flag_w, p.h * K.lantern_flag_w * K.lantern_flag_aspect);
+	g.ring(OCTAGON, dome + dome_h, top, MAST_FOOT, MAST_TOP, "lantern_mast");
+	g.box(BEACON, BEACON, top - BEACON_LOW, top - BEACON_HIGH, "lantern_beacon");
+	g.fly(p, top - LANTERN_FLAG_DROP, p.h * LANTERN_FLAG_W, p.h * LANTERN_FLAG_W * LANTERN_FLAG_ASPECT);
 }
 } // namespace
 
 void emit_roof_gear(Shell &shell, const Placed &pl, const Volume &v, float eaves) {
-	const RoofGearLook &K = pl.look->shapes.roof_gear;
 	if (pl.coarse) return;
 	for (const RoofPart &p : v.gear) {
 		Gear g{ shell, pl, p.x, p.y };
-		float z = eaves + roof_height_at(pl.data->shapes.roof, v, p.x, p.y), hw = p.w / 2, hd = p.d / 2;
+		float z = eaves + roof_height_at(v, p.x, p.y), hw = p.w / 2, hd = p.d / 2;
 		switch (p.kind) {
 			case GEAR_SOLAR: panel(g, v, p, eaves, "gear_panel"); break;
 			case GEAR_SKYLIGHT: panel(g, v, p, eaves, "gear_glazing"); break;
-			case GEAR_VENT: g.box(hw, hd, z - K.gear_sink_m, z + K.vent_h, "gear_metal"); break;
+			case GEAR_VENT: g.box(hw, hd, z - GEAR_SINK_M, z + VENT_H, "gear_metal"); break;
 			case GEAR_CHIMNEY:
-				g.box(hw, hd, z - K.gear_sink_m, z + K.chimney_h, "gear_masonry");
-				g.box(hw + K.cap_out, hd + K.cap_out, z + K.chimney_h, z + K.chimney_h + K.cap_h, "gear_cap");
+				g.box(hw, hd, z - GEAR_SINK_M, z + CHIMNEY_H, "gear_masonry");
+				g.box(hw + CAP_OUT, hd + CAP_OUT, z + CHIMNEY_H, z + CHIMNEY_H + CAP_H, "gear_cap");
 				break;
-			case GEAR_TANK: g.box(hw, hd, z - K.gear_sink_m / 2, z + K.tank_h, "gear_metal"); break;
+			case GEAR_TANK: g.box(hw, hd, z - GEAR_SINK_M / 2, z + TANK_H, "gear_metal"); break;
 			case GEAR_SPIRE: spire(g, p, z); break;
 			default: lantern(g, p, z); break;
 		}

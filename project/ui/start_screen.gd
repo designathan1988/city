@@ -7,14 +7,16 @@ extends Control
 signal chosen(action: String)
 signal city_chosen(map: int, seed: int) # the form names another city than the one standing
 
+const LANGUAGES := [["en", "English"], ["pt_BR", "Português"]]
 
 @export var saved := false
-var _curtain: PanelContainer
-var _card_box: VBoxContainer
-var _worked := 0.0
-var _map := 0 # what the form holds, until a choice sends it
-var seed_box: SpinBox
-var _seed := 0
+@onready var _curtain: PanelContainer
+@onready var _card_box: VBoxContainer
+@onready var _worked := 0.0
+@onready var _map := 0 # what the form holds, until a choice sends it
+@onready var seed_box: SpinBox
+@onready var _seed := 0
+@onready var _first_seed := 0
 
 
 func _ready() -> void:
@@ -35,7 +37,7 @@ func _ready() -> void:
 
 func _fill() -> void:
 	HudWidgets.clear(_card_box)
-	var title := HudWidgets.label(_card_box, &"TitleBig", tr("ui.title"))
+	var title := HudWidgets.label(_card_box, &"TitleBig", "Roadcraft")
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var tag := HudWidgets.label(_card_box, &"TagLabel", tr("start.tagline"))
 	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -46,26 +48,27 @@ func _fill() -> void:
 	_action(&"StartBtn", "menu.graphicsOptions", "graphics", "start_btn2_h")
 	var t: Dictionary = DataTables.game("start")
 	_city_form(t)
-	var now: String = CityStore.snapshot.get("style", "")
-	var styles := HudWidgets.dropdown(_card_box, tr("style.label"), now if t.styles.has(now) else t.default_style,
-		func(id: String) -> void: CityStore.dispatch(&"set_style", [id]))
+	var styles := []
 	for id: String in t.styles:
-		HudWidgets.dropdown_item(styles, id, tr(t.styles[id].name_key))
+		styles.append([id, tr(t.styles[id].name_key)])
+	var now: String = CityStore.snapshot.get("style", "")
+	HudWidgets.dropdown(_card_box, tr("style.label"), styles, now if t.styles.has(now) else t.default_style,
+		func(id: String) -> void: CityStore.dispatch(&"set_style", [id]))
 	var langs := HudWidgets.hbox(_card_box, &"Pad")
 	langs.alignment = BoxContainer.ALIGNMENT_CENTER
-	for locale: String in locales():
-		var b := HudWidgets.button(&"Chip", "", language_name(locale), "", "", "opt_row_h")
+	for l: Array in LANGUAGES:
+		var b := HudWidgets.button(&"Chip", "", l[1], "", "", "opt_row_h")
 		b.toggle_mode = true
-		b.set_pressed_no_signal(TranslationServer.get_locale() == locale)
+		b.set_pressed_no_signal(TranslationServer.get_locale() == l[0])
 		b.pressed.connect(func() -> void:
-			Settings.set_language(locale)
+			Settings.set_language(l[0])
 			_fill.call_deferred())
 		langs.add_child(b)
 	var about := LinkButton.new()
 	about.text = tr("action.about")
 	about.focus_mode = Control.FOCUS_NONE
 	about.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	about.pressed.connect(pick.bind("about"))
+	about.pressed.connect(_pick.bind("about"))
 	_card_box.add_child(about)
 	for name: Control in _card_box.find_children("*", "Label", true, false):
 		if name.theme_type_variation == &"FieldLabel":
@@ -74,14 +77,16 @@ func _fill() -> void:
 
 ## Size and seed of a new city. The map and seed on screen are the form's start: left alone, it opens nothing new.
 func _city_form(t: Dictionary) -> void:
+	var sizes := []
 	var maps: Array = DataTables.maps()
-	var sizes := HudWidgets.dropdown(_card_box, tr("start.size"), _map, func(at: int) -> void: _map = at)
 	for id: String in t.sizes:
 		var at := HudActions.map_index(id)
 		if at >= 0:
-			HudWidgets.dropdown_item(sizes, at, tr(maps[at].name_key))
-	if _seed == 0:
-		_seed = _standing_seed()
+			sizes.append([at, tr(maps[at].name_key)])
+	HudWidgets.dropdown(_card_box, tr("start.size"), sizes, _map, func(at: int) -> void: _map = at)
+	if _first_seed == 0:
+		_first_seed = mini(int(CityStore.snapshot.get("seed", 1)), int(t.seed_max))
+		_seed = _first_seed
 	var row := HudWidgets.option_row(_card_box, tr("start.seed"))
 	seed_box = SpinBox.new()
 	seed_box.min_value = 1
@@ -92,20 +97,14 @@ func _city_form(t: Dictionary) -> void:
 	row.add_child(seed_box)
 
 
-
-## The seed of the city standing, as the form can hold it: the form starts there, and only another seed asks for a new city.
-func _standing_seed() -> int:
-	return mini(int(CityStore.snapshot.get("seed", 1)), int(DataTables.game("start").seed_max))
-
 func _action(variation: StringName, key: String, action: String, h: String) -> void:
 	var b := HudWidgets.button(variation, "", tr(key), "", "", h)
-	b.pressed.connect(pick.bind(action))
+	b.pressed.connect(_pick.bind(action))
 	_card_box.add_child(b)
 
 
-## A card's action, as its button and Enter choose it: another city when the form names one, then `chosen`.
-func pick(action: String) -> void:
-	var another := _map != 0 or _seed != _standing_seed()
+func _pick(action: String) -> void:
+	var another := _map != 0 or _seed != _first_seed
 	if another and (action == "play" or action == "new"):
 		city_chosen.emit(_map, _seed)
 		action = "play"
@@ -125,16 +124,4 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	var k := event as InputEventKey
 	if k != null and k.pressed and (k.keycode == KEY_ENTER or k.keycode == KEY_ESCAPE):
 		get_viewport().set_input_as_handled()
-		pick("play")
-
-
-## The languages offered, in their order (data/game/start.json): [locale, its name in itself (strings.csv language.self, its own
-## column)].
-## The languages offered (data/game/start.json), by locale.
-static func locales() -> Array:
-	return DataTables.game("start").languages
-
-
-## A language's name in itself: its own translation's `language.self`.
-static func language_name(locale: String) -> String:
-	return TranslationServer.get_translation_object(locale).get_message(&"language.self")
+		_pick("play")

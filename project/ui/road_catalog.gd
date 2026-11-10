@@ -1,6 +1,6 @@
 ## The road catalogue in the Roads drawer: category tabs with counts and a
-## row of cards (picture, name, "{width} m · {price}/m"); a click picks the profile to draw with. Width, price per metre and
-## the strips the picture draws are the core's (query road_profiles, kept by CityStore.cached).
+## row of cards (picture, name, "{width} m · {price}/m"); a click picks the profile to draw with. Width and price per
+## metre are the core's derived numbers (query road_profiles); the strips for the picture come from the catalogue.
 class_name RoadCatalog
 extends VBoxContainer
 
@@ -10,19 +10,23 @@ signal customise(profile: Dictionary, spec: Dictionary) ## Personalizar… on th
 const MINE := "mine"
 
 @onready var tools: ToolController = get_tree().get_first_node_in_group(&"tools")
-var _profiles: Array = []
-var _tabs_row: HBoxContainer
-var _cards_row: HBoxContainer
-var _scroll: ScrollContainer
-var _tab_buttons: Dictionary = {}
-var _counts: Dictionary = {}
-var _open := ""
-var _fades: Array[TextureRect] = []
+@onready var _profiles: Array = []
+@onready var _strips: Dictionary = {}
+@onready var _tabs_row: HBoxContainer
+@onready var _cards_row: HBoxContainer
+@onready var _scroll: ScrollContainer
+@onready var _tab_buttons: Dictionary = {}
+@onready var _counts: Dictionary = {}
+@onready var _open := ""
+@onready var _fades: Array[TextureRect] = []
 
 
 func _ready() -> void:
-	for p in CityStore.cached(&"road_profiles"):
+	for p in DataTables.road_profiles():
+		_strips[p.id] = p.strips
+	for p in CityStore.query(&"road_profiles"):
 		if not p.ring:
+			p["strips"] = _strips.get(p.id, [])
 			_profiles.append(p)
 	_profiles.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.rank < b.rank)
 	var strip := HudWidgets.panel(self, &"TabStrip")

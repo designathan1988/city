@@ -1,7 +1,5 @@
 // A building's pieces, drawn (ruin_pieces.h).
 #include "render/effects/ruin_pieces.h"
-#include "core/shader_contracts/buildings.h"
-#include "core/shader_contracts/effects.h"
 
 #include "core/job_pool.h"
 #include "render/render_layers.h"
@@ -18,8 +16,16 @@ using namespace godot;
 namespace city {
 
 namespace {
+constexpr int MOST_FALLS = 24; // ruins drawn as pieces at once: the rest of a razed block falls as plain heaps
 constexpr int64_t MOST_VERTICES = 6000000; // of them all, about 170 MB: past it the oldest at rest leaves its mound alone
+constexpr int PIECES_A_ROW = 256; // of the matrix texture: building_body.gdshaderinc RUIN_PIECES_A_ROW
 constexpr int TEXELS_A_PIECE = 3;
+constexpr float BOX_SPREAD = 2.f; // of the building's height, how far a piece may end from it
+constexpr int STEPS_MOST = 4;
+constexpr int DUST_A_FRAME = 12, DUST_COUNT = 3;
+constexpr float DUST_CHANCE = 0.5f, DUST_SIZE_M = 2.5f, DUST_LIFE_S = 3.5f, DUST_SPREAD = 0.6f;
+constexpr float LAND_RADIUS_M = 1.2f, LAND_CHANCE = 0.3f, LAND_LIFE_S = 4.f, LAND_SPREAD_M = 1.5f;
+constexpr float LOT_PAD_M = 1.f;
 } // namespace
 
 void RuinPieces::init(const RID &scenario, const Ref<ShaderMaterial> &material, const EffectParams &params) {
@@ -106,8 +112,7 @@ std::vector<int64_t> RuinPieces::take_repaint() {
 }
 
 bool RuinPieces::room() {
-	const PiecesShape &K = law_.shapes.ruin_pieces;
-	if (int(falls_.size()) < K.most_falls) return true;
+	if (int(falls_.size()) < MOST_FALLS) return true;
 	// The oldest at rest makes way, a heap before a building still standing: that one would come back whole. With all of them still
 	// coming down this one is a plain heap.
 	auto at_rest = [](const auto &e) { return e.second.ready && e.second.sim->resting(); };
@@ -120,18 +125,16 @@ bool RuinPieces::room() {
 }
 
 void RuinPieces::start(const CityState &s, Fall &f, float heap) {
-	const PiecesShape &K = law_.shapes.ruin_pieces;
 	const Ruin &r = f.ruin;
 	const bool falling = f.falling, standing = f.standing;
 	const std::vector<Scar> scars = f.scars;
-	const float reach = 0.5f * std::hypot(r.w, r.d) + K.lot_pad_m, ground = s.terrain.height_at(r.x, r.z);
+	const float reach = 0.5f * std::hypot(r.w, r.d) + LOT_PAD_M, ground = s.terrain.height_at(r.x, r.z);
 	auto patch = std::make_shared<HeightPatch>(s.terrain.patch(r.x - reach, r.z - reach, r.x + reach, r.z + reach));
 	const b40::Data *data = &s.buildings.designs;
-	s.jobs->submit(JobKey{ JobLane::RUINS, int64_t(r.seed) }, 0.f, [inbox = inbox_, maker = maker_, law = law_, data, patch, r, scars, standing, ground, heap, falling,
-								 material = material_->get_rid()]() {
+	s.jobs->submit(JobKey{ JobLane::RUINS, int64_t(r.seed) }, 0.f, [inbox = inbox_, maker = maker_, law = law_, data, patch, r, scars, standing, ground, heap, falling]() {
 		Done done;
 		done.seed = r.seed;
-		done.cut = maker(*data, r.record, *patch, material); // made with the ruins' material: the engine has its pipelines as the job makes it
+		done.cut = maker(*data, r.record, *patch);
 		if (done.cut && !done.cut->pieces.empty()) {
 			done.sim = std::make_shared<RuinSim>();
 			done.sim->begin(done.cut, r, ground, heap, law, standing);
@@ -163,13 +166,12 @@ void RuinPieces::make_room(int64_t vertices) {
 }
 
 namespace {
-int rows_of(int pieces) { return (pieces + RUIN_PIECES_A_ROW - 1) / RUIN_PIECES_A_ROW; }
-int64_t rows_bytes(int rows) { return int64_t(RUIN_PIECES_A_ROW) * rows * RuinSim::FLOATS_A_PIECE * int64_t(sizeof(float)); }
+int rows_of(int pieces) { return (pieces + PIECES_A_ROW - 1) / PIECES_A_ROW; }
+int64_t rows_bytes(int rows) { return int64_t(PIECES_A_ROW) * rows * RuinSim::FLOATS_A_PIECE * int64_t(sizeof(float)); }
 } // namespace
 
 // The mesh on its instance, the pieces as the sim has them.
 void RuinPieces::adopt(Fall &f, const Done &done) {
-	const PiecesShape &K = law_.shapes.ruin_pieces;
 	make_room(done.cut->vertices);
 	f.cut = done.cut;
 	f.sim = done.sim;
@@ -179,14 +181,14 @@ void RuinPieces::adopt(Fall &f, const Done &done) {
 	float *out = reinterpret_cast<float *>(f.rows.ptrw());
 	for (int i = 0; i < n; i++) f.sim->write(size_t(i), out + i * RuinSim::FLOATS_A_PIECE);
 	RenderingServer *rs = RenderingServer::get_singleton();
-	f.texture = rs->texture_2d_create(Image::create_from_data(RUIN_PIECES_A_ROW * TEXELS_A_PIECE, f.rows_of_pieces, false, Image::FORMAT_RGBAF, f.rows));
+	f.texture = rs->texture_2d_create(Image::create_from_data(PIECES_A_ROW * TEXELS_A_PIECE, f.rows_of_pieces, false, Image::FORMAT_RGBAF, f.rows));
 	f.material = material_->duplicate();
 	rs->material_set_param(f.material->get_rid(), "pieces", f.texture);
 	const RID mesh = f.cut->mesh.rid;
 	rs->mesh_surface_set_material(mesh, 0, f.material->get_rid());
 	f.inst = rs->instance_create2(mesh, scenario_);
 	rs->instance_set_layer_mask(f.inst, LAYER_BASE);
-	const Vector3 out_box = Vector3(1, 0, 1) * ((f.cut->hi.y - f.cut->lo.y) * K.box_spread);
+	const Vector3 out_box = Vector3(1, 0, 1) * ((f.cut->hi.y - f.cut->lo.y) * BOX_SPREAD);
 	rs->instance_set_custom_aabb(f.inst, AABB(f.cut->lo - out_box, f.cut->hi - f.cut->lo + out_box * 2.f));
 	f.ready = true;
 	f.scars_done = done.scars_done;
@@ -196,13 +198,12 @@ void RuinPieces::adopt(Fall &f, const Done &done) {
 }
 
 void RuinPieces::dust(const std::vector<RuinSim::Note> &notes, Puffs &puffs) {
-	const PiecesShape &K = law_.shapes.ruin_pieces;
 	for (const RuinSim::Note &n : notes) {
 		if (dust_left_ <= 0) return;
-		if (n.landing && (n.radius <= K.land_radius_m || rng_.f() >= K.land_chance)) continue;
-		if (!n.landing && rng_.f() >= K.dust_chance) continue;
+		if (n.landing && (n.radius <= LAND_RADIUS_M || rng_.f() >= LAND_CHANCE)) continue;
+		if (!n.landing && rng_.f() >= DUST_CHANCE) continue;
 		dust_left_--;
-		puffs.burst(n.at.x, n.at.y, n.at.z, K.dust_count, PUFF_CONCRETE, n.landing ? K.land_spread_m : n.radius * K.dust_spread, K.dust_size_m, n.landing ? K.land_life_s : K.dust_life_s);
+		puffs.burst(n.at.x, n.at.y, n.at.z, DUST_COUNT, PUFF_CONCRETE, n.landing ? LAND_SPREAD_M : n.radius * DUST_SPREAD, DUST_SIZE_M, n.landing ? LAND_LIFE_S : DUST_LIFE_S);
 	}
 }
 
@@ -211,7 +212,7 @@ void RuinPieces::upload(Fall &f) {
 	for (int i = 0; i < f.sim->pieces(); i++)
 		if (f.sim->moved(size_t(i))) f.sim->write(size_t(i), out + i * RuinSim::FLOATS_A_PIECE);
 	f.sim->clear_moved();
-	const Ref<Image> image = Image::create_from_data(RUIN_PIECES_A_ROW * TEXELS_A_PIECE, f.rows_of_pieces, false, Image::FORMAT_RGBAF, f.rows);
+	const Ref<Image> image = Image::create_from_data(PIECES_A_ROW * TEXELS_A_PIECE, f.rows_of_pieces, false, Image::FORMAT_RGBAF, f.rows);
 	RenderingServer::get_singleton()->texture_2d_update(f.texture, image, 0);
 	f.dirty = false;
 }
@@ -245,10 +246,9 @@ void RuinPieces::take_done(FrameAdmission &admission) {
 }
 
 void RuinPieces::update(float dt, Puffs &puffs, FrameAdmission &admission) {
-	const PiecesShape &K = law_.shapes.ruin_pieces;
 	take_done(admission);
-	dust_left_ = K.dust_a_frame;
-	clock_ = std::min(clock_ + dt, RIGID_STEP_S * float(K.steps_most));
+	dust_left_ = DUST_A_FRAME;
+	clock_ = std::min(clock_ + dt, RIGID_STEP_S * float(STEPS_MOST));
 	while (clock_ >= RIGID_STEP_S) {
 		clock_ -= RIGID_STEP_S;
 		notes_.clear();

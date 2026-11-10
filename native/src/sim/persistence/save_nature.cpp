@@ -8,7 +8,6 @@
 #include "sim/terrain/terrain_gen.h"
 
 #include <algorithm>
-#include <iterator>
 
 namespace city {
 
@@ -16,7 +15,7 @@ namespace {
 constexpr uint32_t MAX_LIST = 1u << 24; // the most slots a list of planted trees or clearings may claim
 
 template <typename T>
-void put_slots(ByteWriter &w, const IdTable<T> &list) {
+void put_slots(ByteWriter &w, const std::vector<T> &list) {
 	uint32_t n = 0;
 	for (const T &v : list) n += v.alive ? 1 : 0;
 	w.put_slots(list.size());
@@ -52,10 +51,11 @@ void write_nature(ByteWriter &w, const CityState &s) {
 	w.put_vec(n.fog);
 	w.put<int32_t>(n.nature.region);
 	w.put<uint32_t>(n.nature.seed);
-	w.put_by_key(n.ground.all(), [&](const auto &kv) {
+	w.put<uint32_t>(uint32_t(n.ground.all().size()));
+	for (const auto &kv : n.ground.all()) {
 		w.put<int32_t>(kv.first);
 		w.put_bytes(kv.second->data(), sizeof(PaintTile));
-	});
+	}
 	put_slots(w, n.planted.trees);
 	put_slots(w, n.planted.clearings);
 	const Heightfield &t = s.terrain;
@@ -67,7 +67,7 @@ void write_nature(ByteWriter &w, const CityState &s) {
 	for (uint32_t i : index) level.push_back(t.water[i]);
 	w.put_vec(index);
 	w.put_vec(level);
-	w.put_set(n.elements.all(), ElementItem::before);
+	w.put_vec(n.elements.all());
 }
 
 bool read_nature(ByteReader &r, CityState &s) {
@@ -79,8 +79,6 @@ bool read_nature(ByteReader &r, CityState &s) {
 	n.next_cloud = r.get<int32_t>();
 	r.get_vec(n.clouds, size_t(s.catalog.nature.clouds.max_clouds));
 	r.get_vec(n.fog, size_t(s.catalog.nature.fog.max_dabs));
-	// A file written before these records named their unused bytes holds whatever lay there: they are zero in the state.
-	for (FogDab &d : n.fog) std::fill(std::begin(d.unused), std::end(d.unused), uint8_t(0));
 	n.nature.region = r.get<int32_t>();
 	n.nature.seed = r.get<uint32_t>();
 	const uint32_t tiles = r.get_count(sizeof(int32_t) + sizeof(PaintTile));
@@ -92,16 +90,9 @@ bool read_nature(ByteReader &r, CityState &s) {
 		if (r.ok) n.ground.put_tile(key, tile.get());
 	}
 	uint32_t tree_slots = 0, clearing_slots = 0;
-	const auto put_tree = [&](int id, PlantedTree t) {
-		std::fill(std::begin(t.unused), std::end(t.unused), uint8_t(0));
-		n.planted.put(id, t);
-	};
-	const auto put_clearing = [&](int id, TreeClearing c) {
-		std::fill(std::begin(c.unused), std::end(c.unused), uint8_t(0));
-		n.planted.put_clearing(id, c);
-	};
-	if (!get_slots<PlantedTree>(r, put_tree, tree_slots)) return false;
-	if (!get_slots<TreeClearing>(r, put_clearing, clearing_slots)) return false;
+	if (!get_slots<PlantedTree>(r, [&](int id, const PlantedTree &t) { n.planted.put(id, t); }, tree_slots)) return false;
+	if (!get_slots<TreeClearing>(r, [&](int id, const TreeClearing &c) { n.planted.put_clearing(id, c); }, clearing_slots))
+		return false;
 	n.planted.keep_slots(int(tree_slots), int(clearing_slots));
 	std::vector<uint32_t> index;
 	std::vector<float> level;

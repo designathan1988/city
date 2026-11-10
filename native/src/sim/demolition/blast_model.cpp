@@ -10,11 +10,11 @@ namespace {
 constexpr float CDF_SCALE = 0.70710678f; // 1 / sqrt(2): erfc argument of the normal cdf
 constexpr int RANGE_BISECTIONS = 40; // 2^-40 of the search window: far below a millimetre
 constexpr float RANGE_LIMIT_M = 20000.f; // no scaled range is searched beyond this
-constexpr float NEAREST_RANGE_M = 0.05f; // the least range a blast is read at: the curves start there
+constexpr float NEAREST_RANGE_M = 0.05f;
 constexpr float MIN_KG = 1e-6f; // a charge of nothing still has a scaled distance
-constexpr float PA_PER_KPA = 1000.f; // the kilopascal
+constexpr float PA_PER_KPA = 1000.f;
 constexpr float QUANTILE_LIMIT = 8.f; // the standard normal's quantile is searched within +-8
-constexpr int QUANTILE_BISECTIONS = 48; // halvings of that window: far below the curves' own precision
+constexpr int QUANTILE_BISECTIONS = 48;
 
 // F = exp(A + B ln Z + C ln2 Z + ...) of the row holding Z. Nearer than the first row: its value at its start (DDESB
 // TP 20 2.4.3.2). Farther than the last row: a row that is a plain power law in the data (A + B ln Z, the pressure's and
@@ -109,11 +109,11 @@ float startle_range(const BlastParams &p, float kg) {
 	return std::min(r, p.startle_cap_m);
 }
 
-float crater_radius(const BlastParams &p, float fireball_m) { return std::max(p.crater_min_m, p.crater_share * fireball_m); }
-
-float crater_depth(const BlastParams &p, float strength) {
-	const float s = std::min(std::max(strength, float(p.strength_min)), float(p.strength_max));
-	return p.crater_depth_m + p.crater_depth_per_force_m * s;
+float crater_radius(const BlastParams &p, float kg, Surface s) {
+	const float k = s == Surface::EARTH ? p.crater_k_earth : p.crater_k_hard;
+	return std::max(p.crater_min_m, k * std::cbrt(kg));
 }
+
+float crater_depth(const BlastParams &p, float kg, Surface s) { return 2.f * crater_radius(p, kg, s) / p.crater_ratio; }
 
 } // namespace city::blast

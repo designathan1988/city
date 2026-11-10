@@ -4,9 +4,8 @@
 #include "core/color.h"
 #include "core/units.h"
 #include "render/props/prop_kit.h"
-#include "sim/state/city_cut.h"
 #include "sim/street/street_names.h"
-#include "sim/street/street_spots.h"
+#include "sim/traffic/traffic_system.h"
 
 #include <cmath>
 
@@ -68,26 +67,33 @@ void stand(MeshBuilder &mb, const SignLook &K, SignAtlas &atlas, const StreetLoo
 }
 } // namespace
 
-bool SignLook::load(const DataValue &t, PackedStringArray &errors) {
-	const int64_t before = errors.size();
-	const DataValue d = t["signs"], plates = d["plates"];
-	sheet_w = d["sheet_w_px"].whole(); sheet_h = d["sheet_h_px"].whole(); cell = d["plate_cell_px"].whole(); blade_w = d["blade_cell_w_px"].whole(); blade_h = d["blade_cell_h_px"].whole();
-	post_radius = d["post_radius_m"].f(); post_sides = d["post_sides"].whole(); face_out = d["face_out_m"].f(); blade_half = d["blade_half_m"].f();
-	post = rgba8_to_color(d["post_color"].colour());
-	back = rgba8_to_color(d["back_color"].colour());
-	for (int k = 0; k < SIGN_TYPES; k++) {
-		const DataValue p = plates[PLATE_KEYS[k]];
-		plate[k] = { p["w_m"].f(), p["h_m"].f(), p["z_m"].f(), p["rotation"].f(), p["outline_points"].whole() };
+bool SignLook::load(const Dictionary &t, PackedStringArray &errors) {
+	if (!t.has("signs")) {
+		errors.push_back("streets.json: falta signs");
+		return false;
 	}
-	return errors.size() == before;
+	const Dictionary d = t["signs"], plates = d["plates"];
+	sheet_w = d["sheet_w_px"]; sheet_h = d["sheet_h_px"]; cell = d["plate_cell_px"]; blade_w = d["blade_cell_w_px"]; blade_h = d["blade_cell_h_px"];
+	post_radius = d["post_radius_m"]; post_sides = d["post_sides"]; face_out = d["face_out_m"]; blade_half = d["blade_half_m"];
+	post = rgba8_to_color(parse_hex_color(String(d["post_color"]).utf8().get_data()));
+	back = rgba8_to_color(parse_hex_color(String(d["back_color"]).utf8().get_data()));
+	for (int k = 0; k < SIGN_TYPES; k++) {
+		if (!plates.has(PLATE_KEYS[k])) {
+			errors.push_back(String("streets.json signs.plates: falta ") + PLATE_KEYS[k]);
+			continue;
+		}
+		const Dictionary p = plates[PLATE_KEYS[k]];
+		plate[k] = { float(p["w_m"]), float(p["h_m"]), float(p["z_m"]), float(p["rotation"]), int(p["outline_points"]) };
+	}
+	return errors.is_empty();
 }
 
-void place_signs(const CityView &s, const StreetLook &L, const SignLook &K, SignAtlas &atlas, int64_t key, MeshBuilder &mb) {
+void place_signs(const CityState &s, const StreetLook &L, const SignLook &K, SignAtlas &atlas, int64_t key, MeshBuilder &mb) {
 	std::vector<SignStand> stands;
 	const float x0 = key_x(key) * CHUNK, z0 = key_y(key) * CHUNK;
 	s.roads.node_hash.query(x0, z0, x0 + CHUNK, z0 + CHUNK, [&](int n) {
 		const RoadNode &nd = s.roads.nodes[size_t(n)];
-		if (nd.alive && chunk_of(float(nd.x), float(nd.z)) == key) node_signs(s, n, stands);
+		if (nd.alive && chunk_of(float(nd.x), float(nd.z)) == key) traffic::junction_signs(s, n, stands);
 	});
 	s.street.items_in(x0, z0, x0 + CHUNK, z0 + CHUNK, [&](int id) {
 		const StreetItem &it = s.street.items.items[size_t(id)];

@@ -1,0 +1,2267 @@
+{
+ "entries": [
+  "src/render/blast.ts",
+  "src/render/destruction.ts",
+  "src/render/casualties.ts"
+ ],
+ "roots": [
+  "src/main.ts",
+  "src/peopleLab/main.ts"
+ ],
+ "own": [
+  "src/render/blast.ts#Blast",
+  "src/render/blast.ts#BlastWorld",
+  "src/render/blast.ts#COLORS",
+  "src/render/blast.ts#Crater",
+  "src/render/blast.ts#DebrisKind",
+  "src/render/blast.ts#DebrisSpec",
+  "src/render/blast.ts#GEYSER_SECONDS,GEYSER_FADE",
+  "src/render/blast.ts#GRAVITY",
+  "src/render/blast.ts#MAX_CRATERS",
+  "src/render/blast.ts#MAX_PIECES",
+  "src/render/blast.ts#MAX_SOOT",
+  "src/render/blast.ts#MAX_WIRES",
+  "src/render/blast.ts#Piece",
+  "src/render/blast.ts#Rope",
+  "src/render/blast.ts#WIRE_POINTS",
+  "src/render/blast.ts#craterTexture",
+  "src/render/blast.ts#craterTexture.rnd",
+  "src/render/blast.ts#createBlast",
+  "src/render/blast.ts#createBlast.active",
+  "src/render/blast.ts#createBlast.arc",
+  "src/render/blast.ts#createBlast.burn",
+  "src/render/blast.ts#createBlast.carcassMaterial",
+  "src/render/blast.ts#createBlast.casting",
+  "src/render/blast.ts#createBlast.clear",
+  "src/render/blast.ts#createBlast.crater",
+  "src/render/blast.ts#createBlast.dispose",
+  "src/render/blast.ts#createBlast.dropObject",
+  "src/render/blast.ts#createBlast.explode",
+  "src/render/blast.ts#createBlast.flashAt",
+  "src/render/blast.ts#createBlast.geyser",
+  "src/render/blast.ts#createBlast.leak",
+  "src/render/blast.ts#createBlast.piece",
+  "src/render/blast.ts#createBlast.shake",
+  "src/render/blast.ts#createBlast.soot",
+  "src/render/blast.ts#createBlast.stepPiece",
+  "src/render/blast.ts#createBlast.stepRope",
+  "src/render/blast.ts#createBlast.update",
+  "src/render/blast.ts#createBlast.wire",
+  "src/render/blast.ts#spinQ",
+  "src/render/blast.ts#tmp1,tmp2,tmp3,tmp4,tmp5",
+  "src/render/blast.ts#uploadWritten",
+  "src/render/buildings/buildingMesh.ts#interiorFurniture",
+  "src/render/buildings/buildingMesh.ts#shellPartFaces",
+  "src/render/buildings/buildingMesh.ts#withShellParts",
+  "src/render/buildings/fracture.ts#fragmentGeometry",
+  "src/render/buildings/fracture.ts#modelArrays",
+  "src/render/buildings/fracture.ts#prepareFracture",
+  "src/render/buildings/fracture.ts#prepareFracture.materialIndex",
+  "src/render/buildings/fracture.ts#prepareFracture.model",
+  "src/render/buildings/partPose.ts#poseMatrices",
+  "src/render/casualties.ts#BloodDecal",
+  "src/render/casualties.ts#CasualtyLayer",
+  "src/render/casualties.ts#MAX",
+  "src/render/casualties.ts#VARIANTS",
+  "src/render/casualties.ts#Variant",
+  "src/render/casualties.ts#bloodTexture",
+  "src/render/casualties.ts#bloodTexture.blob",
+  "src/render/casualties.ts#bloodTexture.deep",
+  "src/render/casualties.ts#bloodTexture.drop",
+  "src/render/casualties.ts#bloodTexture.rnd",
+  "src/render/casualties.ts#bloodTexture.thin",
+  "src/render/casualties.ts#createCasualties",
+  "src/render/casualties.ts#createCasualties.dispose",
+  "src/render/casualties.ts#createCasualties.sync",
+  "src/render/destruction.ts#COLLAPSE_BELOW",
+  "src/render/destruction.ts#Destruction",
+  "src/render/destruction.ts#GRAVITY",
+  "src/render/destruction.ts#NO_GEOMETRY",
+  "src/render/destruction.ts#Piece",
+  "src/render/destruction.ts#RELEASE_MIN",
+  "src/render/destruction.ts#RELEASE_SLICE_MS",
+  "src/render/destruction.ts#Ruin",
+  "src/render/destruction.ts#createDestruction",
+  "src/render/destruction.ts#createDestruction.blank",
+  "src/render/destruction.ts#createDestruction.dispose",
+  "src/render/destruction.ts#createDestruction.fail",
+  "src/render/destruction.ts#createDestruction.hit",
+  "src/render/destruction.ts#createDestruction.land",
+  "src/render/destruction.ts#createDestruction.loosen",
+  "src/render/destruction.ts#createDestruction.make",
+  "src/render/destruction.ts#createDestruction.place",
+  "src/render/destruction.ts#createDestruction.release",
+  "src/render/destruction.ts#createDestruction.strike",
+  "src/render/destruction.ts#createDestruction.unsupported",
+  "src/render/destruction.ts#createDestruction.update",
+  "src/render/destruction.ts#createDestruction.workerOf"
+ ],
+ "uses": [
+  {
+   "unit": "src/core/units.ts#m",
+   "kind": "call",
+   "by": [
+    "src/render/blast.ts#createBlast.burn",
+    "src/render/blast.ts#createBlast.carcassMaterial",
+    "src/render/blast.ts#createBlast.crater",
+    "src/render/blast.ts#createBlast.explode",
+    "src/render/blast.ts#createBlast.stepPiece",
+    "src/render/blast.ts#createBlast.stepRope",
+    "src/render/blast.ts#createBlast.update",
+    "src/render/blast.ts#GRAVITY",
+    "src/render/destruction.ts#createDestruction.hit",
+    "src/render/destruction.ts#createDestruction.loosen",
+    "src/render/destruction.ts#createDestruction.strike",
+    "src/render/destruction.ts#createDestruction.unsupported",
+    "src/render/destruction.ts#createDestruction.update",
+    "src/render/destruction.ts#GRAVITY",
+    "src/render/casualties.ts#createCasualties.sync",
+    "src/render/buildings/buildingMesh.ts#interiorFurniture"
+   ]
+  },
+  {
+   "unit": "src/core/units.ts#TUNED_UNIT",
+   "kind": "read",
+   "by": [
+    "src/render/blast.ts#createBlast.update"
+   ]
+  },
+  {
+   "unit": "src/core/vec2.ts#Vec2",
+   "kind": "read",
+   "by": [
+    "src/render/destruction.ts#createDestruction.make"
+   ]
+  },
+  {
+   "unit": "src/jobs/jobPool.ts#jobPort",
+   "kind": "call",
+   "by": [
+    "src/render/destruction.ts#createDestruction.workerOf"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/buildingMesh.ts#Emitter",
+   "kind": "construct",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#interiorFurniture"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/buildingMesh.ts#FurnitureSink",
+   "kind": "typeRef",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#interiorFurniture"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/buildingMesh.ts#Paint",
+   "kind": "typeRef",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#shellPartFaces"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/buildingMesh.ts#PartRows.batch",
+   "kind": "call",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#interiorFurniture"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/buildingMesh.ts#PartRows.count",
+   "kind": "read",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#interiorFurniture"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/buildingMesh.ts#PartSink",
+   "kind": "typeRef",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#interiorFurniture"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/buildingMesh.ts#placeFurniture",
+   "kind": "call",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#interiorFurniture"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/buildingMesh.ts#Shell",
+   "kind": "construct",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#interiorFurniture",
+    "src/render/buildings/buildingMesh.ts#shellPartFaces"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/buildingMesh.ts#SHELL_PART_MATRIX",
+   "kind": "read",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#shellPartFaces"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/buildingMesh.ts#Shell.decay",
+   "kind": "write",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#shellPartFaces"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/buildingMesh.ts#Shell.face",
+   "kind": "call",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#shellPartFaces"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/buildingMesh.ts#Shell.ground",
+   "kind": "write",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#shellPartFaces"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/buildingMesh.ts#shellChunks",
+   "kind": "call",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#shellPartFaces"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/buildingMesh.ts#V3",
+   "kind": "typeRef",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#shellPartFaces"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/cellArrays.ts#FINISH_ATTRIBUTE",
+   "kind": "read",
+   "by": [
+    "src/render/destruction.ts#createDestruction.place",
+    "src/render/buildings/fracture.ts#fragmentGeometry"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/cellArrays.ts#finishId",
+   "kind": "call",
+   "by": [
+    "src/render/buildings/fracture.ts#prepareFracture"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/chunk.ts#BuildingChunk",
+   "kind": "read",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#withShellParts",
+    "src/render/buildings/fracture.ts#prepareFracture"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/chunk.ts#BuildingChunk",
+   "kind": "typeRef",
+   "by": [
+    "src/render/destruction.ts#createDestruction",
+    "src/render/buildings/buildingMesh.ts#withShellParts",
+    "src/render/buildings/fracture.ts#prepareFracture"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/chunk.ts#PartBatch",
+   "kind": "read",
+   "by": [
+    "src/render/buildings/fracture.ts#prepareFracture",
+    "src/render/buildings/buildingMesh.ts#shellPartFaces"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/chunk.ts#PartBatch",
+   "kind": "typeRef",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#interiorFurniture",
+    "src/render/buildings/buildingMesh.ts#withShellParts",
+    "src/render/buildings/buildingMesh.ts#shellPartFaces"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/chunk.ts#PartKind",
+   "kind": "typeRef",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#withShellParts",
+    "src/render/buildings/fracture.ts#prepareFracture",
+    "src/render/buildings/buildingMesh.ts#shellPartFaces"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/chunk.ts#ShellChunk",
+   "kind": "read",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#withShellParts",
+    "src/render/buildings/fracture.ts#prepareFracture"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/chunk.ts#ShellChunk",
+   "kind": "typeRef",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#withShellParts",
+    "src/render/buildings/buildingMesh.ts#shellPartFaces"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/fracture.ts#FractureInput",
+   "kind": "typeRef",
+   "by": [
+    "src/render/buildings/fracture.ts#prepareFracture"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/fracture.ts#Fragment",
+   "kind": "read",
+   "by": [
+    "src/render/destruction.ts#createDestruction.land",
+    "src/render/destruction.ts#createDestruction.loosen",
+    "src/render/destruction.ts#createDestruction.place",
+    "src/render/destruction.ts#createDestruction.strike",
+    "src/render/destruction.ts#createDestruction.unsupported",
+    "src/render/destruction.ts#createDestruction.update",
+    "src/render/buildings/fracture.ts#fragmentGeometry"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/fracture.ts#Fragment",
+   "kind": "typeRef",
+   "by": [
+    "src/render/destruction.ts#Piece"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/fracture.ts#MODEL_ARRAYS",
+   "kind": "read",
+   "by": [
+    "src/render/buildings/fracture.ts#modelArrays"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/fracture.ts#MODEL_ARRAYS",
+   "kind": "write",
+   "by": [
+    "src/render/buildings/fracture.ts#modelArrays"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/fracture.ts#StillData",
+   "kind": "read",
+   "by": [
+    "src/render/destruction.ts#createDestruction.place",
+    "src/render/buildings/fracture.ts#fragmentGeometry"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/fracture.ts#StillData",
+   "kind": "typeRef",
+   "by": [
+    "src/render/destruction.ts#createDestruction.place",
+    "src/render/destruction.ts#createDestruction.workerOf",
+    "src/render/destruction.ts#Ruin",
+    "src/render/buildings/fracture.ts#fragmentGeometry"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/kit.ts#BuildingKit",
+   "kind": "call",
+   "by": [
+    "src/render/buildings/fracture.ts#prepareFracture"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/kit.ts#BuildingKit",
+   "kind": "read",
+   "by": [
+    "src/render/buildings/fracture.ts#prepareFracture"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/kit.ts#BuildingKit",
+   "kind": "typeRef",
+   "by": [
+    "src/render/destruction.ts#createDestruction",
+    "src/render/buildings/fracture.ts#prepareFracture"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/kit.ts#createBuildingKit.furniture",
+   "kind": "implementation",
+   "by": [
+    "src/render/buildings/fracture.ts#prepareFracture"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/partPose.ts#POSE_FLOATS",
+   "kind": "read",
+   "by": [
+    "src/render/buildings/partPose.ts#poseMatrices",
+    "src/render/buildings/buildingMesh.ts#shellPartFaces"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/partPose.ts#poseMatrixInto",
+   "kind": "call",
+   "by": [
+    "src/render/buildings/partPose.ts#poseMatrices",
+    "src/render/buildings/buildingMesh.ts#shellPartFaces"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/shellParts.ts#COVER_INSET",
+   "kind": "read",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#shellPartFaces"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/shellParts.ts#LOOK_FLOATS",
+   "kind": "read",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#shellPartFaces"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/shellParts.ts#NO_GROUND",
+   "kind": "read",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#shellPartFaces"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/shellParts.ts#SHELL_PART_FACES",
+   "kind": "read",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#shellPartFaces"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/shellParts.ts#SHELL_PART_KINDS",
+   "kind": "read",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#withShellParts",
+    "src/render/buildings/buildingMesh.ts#shellPartFaces"
+   ]
+  },
+  {
+   "unit": "src/render/buildings/shellParts.ts#ShellPartFace",
+   "kind": "read",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#shellPartFaces"
+   ]
+  },
+  {
+   "unit": "src/render/depthConvention.ts#pullTowardEye",
+   "kind": "call",
+   "by": [
+    "src/render/blast.ts#createBlast",
+    "src/render/casualties.ts#createCasualties"
+   ]
+  },
+  {
+   "unit": "src/render/exhaust.ts#createExhaust.burst",
+   "kind": "implementation",
+   "by": [
+    "src/render/blast.ts#createBlast.explode",
+    "src/render/blast.ts#createBlast.stepRope",
+    "src/render/blast.ts#createBlast.update",
+    "src/render/destruction.ts#createDestruction.hit",
+    "src/render/destruction.ts#createDestruction.loosen",
+    "src/render/destruction.ts#createDestruction.strike",
+    "src/render/destruction.ts#createDestruction.update"
+   ]
+  },
+  {
+   "unit": "src/render/exhaust.ts#Exhaust",
+   "kind": "call",
+   "by": [
+    "src/render/blast.ts#createBlast.explode",
+    "src/render/blast.ts#createBlast.stepRope",
+    "src/render/blast.ts#createBlast.update",
+    "src/render/destruction.ts#createDestruction.hit",
+    "src/render/destruction.ts#createDestruction.loosen",
+    "src/render/destruction.ts#createDestruction.strike",
+    "src/render/destruction.ts#createDestruction.update"
+   ]
+  },
+  {
+   "unit": "src/render/exhaust.ts#Exhaust",
+   "kind": "typeRef",
+   "by": [
+    "src/render/blast.ts#createBlast",
+    "src/render/destruction.ts#createDestruction"
+   ]
+  },
+  {
+   "unit": "src/world/buildings/blocks.ts#resolveBlocks",
+   "kind": "call",
+   "by": [
+    "src/render/destruction.ts#createDestruction.make"
+   ]
+  },
+  {
+   "unit": "src/world/buildings/geometry.ts#levelElevation",
+   "kind": "call",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#interiorFurniture"
+   ]
+  },
+  {
+   "unit": "src/world/buildings/geometry.ts#levelHeight",
+   "kind": "call",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#interiorFurniture"
+   ]
+  },
+  {
+   "unit": "src/world/buildings/geometry.ts#liftAt",
+   "kind": "call",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#interiorFurniture"
+   ]
+  },
+  {
+   "unit": "src/world/buildings/geometry.ts#localToWorld",
+   "kind": "call",
+   "by": [
+    "src/render/destruction.ts#createDestruction.make"
+   ]
+  },
+  {
+   "unit": "src/world/buildings/geometry.ts#volumeElevation",
+   "kind": "call",
+   "by": [
+    "src/render/destruction.ts#createDestruction.make"
+   ]
+  },
+  {
+   "unit": "src/world/buildings/interior.ts#FloorInterior",
+   "kind": "read",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#interiorFurniture"
+   ]
+  },
+  {
+   "unit": "src/world/buildings/interior.ts#Furniture",
+   "kind": "read",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#interiorFurniture"
+   ]
+  },
+  {
+   "unit": "src/world/buildings/interior.ts#FURNITURE_KINDS",
+   "kind": "read",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#interiorFurniture"
+   ]
+  },
+  {
+   "unit": "src/world/buildings/interior.ts#FurnitureKind",
+   "kind": "typeRef",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#interiorFurniture"
+   ]
+  },
+  {
+   "unit": "src/world/buildings/interior.ts#interiorAt",
+   "kind": "call",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#interiorFurniture"
+   ]
+  },
+  {
+   "unit": "src/world/buildings/materials.ts#Finish",
+   "kind": "typeRef",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#withShellParts",
+    "src/render/buildings/fracture.ts#prepareFracture",
+    "src/render/buildings/buildingMesh.ts#shellPartFaces"
+   ]
+  },
+  {
+   "unit": "src/world/buildings/materials.ts#FINISHES",
+   "kind": "read",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#shellPartFaces"
+   ]
+  },
+  {
+   "unit": "src/world/buildings/types.ts#Building",
+   "kind": "read",
+   "by": [
+    "src/render/destruction.ts#createDestruction.fail",
+    "src/render/destruction.ts#createDestruction.hit",
+    "src/render/destruction.ts#createDestruction.make",
+    "src/render/destruction.ts#createDestruction.workerOf",
+    "src/render/buildings/buildingMesh.ts#interiorFurniture"
+   ]
+  },
+  {
+   "unit": "src/world/buildings/types.ts#Building",
+   "kind": "typeRef",
+   "by": [
+    "src/render/destruction.ts#createDestruction",
+    "src/render/destruction.ts#createDestruction.make",
+    "src/render/destruction.ts#Destruction",
+    "src/render/buildings/buildingMesh.ts#interiorFurniture"
+   ]
+  },
+  {
+   "unit": "src/world/buildings/types.ts#Volume",
+   "kind": "read",
+   "by": [
+    "src/render/destruction.ts#createDestruction.make",
+    "src/render/buildings/buildingMesh.ts#interiorFurniture"
+   ]
+  },
+  {
+   "unit": "src/world/buildings/types.ts#volumeTop",
+   "kind": "call",
+   "by": [
+    "src/render/buildings/buildingMesh.ts#interiorFurniture"
+   ]
+  }
+ ],
+ "hooks": [
+  {
+   "unit": "src/render/blast.ts#Blast",
+   "kind": "call",
+   "by": [
+    "src/render/playEffects.ts#createPlayEffects",
+    "src/render/playEffects.ts#createPlayEffects.burn",
+    "src/render/playEffects.ts#createPlayEffects.busy",
+    "src/render/playEffects.ts#createPlayEffects.castersMoving",
+    "src/render/playEffects.ts#createPlayEffects.clearCasualties",
+    "src/render/playEffects.ts#createPlayEffects.dispose",
+    "src/render/playEffects.ts#createPlayEffects.dropVehicle",
+    "src/render/playEffects.ts#createPlayEffects.explode",
+    "src/render/playEffects.ts#createPlayEffects.geyser",
+    "src/render/playEffects.ts#createPlayEffects.leak",
+    "src/render/playEffects.ts#createPlayEffects.shake",
+    "src/render/playEffects.ts#createPlayEffects.soot",
+    "src/render/playEffects.ts#createPlayEffects.sparkAt",
+    "src/render/playEffects.ts#createPlayEffects.update",
+    "src/render/playEffects.ts#createPlayEffects.vehicleHit"
+   ]
+  },
+  {
+   "unit": "src/render/blast.ts#Blast",
+   "kind": "read",
+   "by": [
+    "src/render/playEffects.ts#createPlayEffects",
+    "src/render/playEffects.ts#createPlayEffects.dispose"
+   ]
+  },
+  {
+   "unit": "src/render/blast.ts#createBlast",
+   "kind": "call",
+   "by": [
+    "src/render/playEffects.ts#createPlayEffects"
+   ]
+  },
+  {
+   "unit": "src/render/blast.ts#createBlast",
+   "kind": "implementation",
+   "by": [
+    "src/render/playEffects.ts#createPlayEffects",
+    "src/render/playEffects.ts#createPlayEffects.dropVehicle",
+    "src/render/playEffects.ts#createPlayEffects.explode",
+    "src/render/playEffects.ts#createPlayEffects.vehicleHit"
+   ]
+  },
+  {
+   "unit": "src/render/blast.ts#createBlast.active",
+   "kind": "implementation",
+   "by": [
+    "src/render/playEffects.ts#createPlayEffects.busy"
+   ]
+  },
+  {
+   "unit": "src/render/blast.ts#createBlast.arc",
+   "kind": "implementation",
+   "by": [
+    "src/render/playEffects.ts#createPlayEffects.explode",
+    "src/render/playEffects.ts#createPlayEffects.sparkAt"
+   ]
+  },
+  {
+   "unit": "src/render/blast.ts#createBlast.burn",
+   "kind": "implementation",
+   "by": [
+    "src/render/playEffects.ts#createPlayEffects.burn"
+   ]
+  },
+  {
+   "unit": "src/render/blast.ts#createBlast.casting",
+   "kind": "implementation",
+   "by": [
+    "src/render/playEffects.ts#createPlayEffects.castersMoving"
+   ]
+  },
+  {
+   "unit": "src/render/blast.ts#createBlast.clear",
+   "kind": "implementation",
+   "by": [
+    "src/render/playEffects.ts#createPlayEffects.clearCasualties",
+    "src/render/playEffects.ts#createPlayEffects.dispose"
+   ]
+  },
+  {
+   "unit": "src/render/blast.ts#createBlast.crater",
+   "kind": "implementation",
+   "by": [
+    "src/render/playEffects.ts#createPlayEffects.explode"
+   ]
+  },
+  {
+   "unit": "src/render/blast.ts#createBlast.dispose",
+   "kind": "implementation",
+   "by": [
+    "src/render/playEffects.ts#createPlayEffects.dispose"
+   ]
+  },
+  {
+   "unit": "src/render/blast.ts#createBlast.explode",
+   "kind": "implementation",
+   "by": [
+    "src/render/playEffects.ts#createPlayEffects.explode"
+   ]
+  },
+  {
+   "unit": "src/render/blast.ts#createBlast.geyser",
+   "kind": "implementation",
+   "by": [
+    "src/render/playEffects.ts#createPlayEffects.geyser"
+   ]
+  },
+  {
+   "unit": "src/render/blast.ts#createBlast.leak",
+   "kind": "implementation",
+   "by": [
+    "src/render/playEffects.ts#createPlayEffects.leak"
+   ]
+  },
+  {
+   "unit": "src/render/blast.ts#createBlast.shake",
+   "kind": "implementation",
+   "by": [
+    "src/render/playEffects.ts#createPlayEffects.shake"
+   ]
+  },
+  {
+   "unit": "src/render/blast.ts#createBlast.soot",
+   "kind": "implementation",
+   "by": [
+    "src/render/playEffects.ts#createPlayEffects.soot"
+   ]
+  },
+  {
+   "unit": "src/render/blast.ts#createBlast.update",
+   "kind": "implementation",
+   "by": [
+    "src/render/playEffects.ts#createPlayEffects.update"
+   ]
+  },
+  {
+   "unit": "src/render/blast.ts#createBlast.wire",
+   "kind": "implementation",
+   "by": [
+    "src/render/playEffects.ts#createPlayEffects.explode"
+   ]
+  },
+  {
+   "unit": "src/render/casualties.ts#BloodDecal",
+   "kind": "read",
+   "by": [
+    "src/render/ragdoll.ts#createRagdolls.update"
+   ]
+  },
+  {
+   "unit": "src/render/casualties.ts#BloodDecal",
+   "kind": "typeRef",
+   "by": [
+    "src/render/ragdoll.ts#createRagdolls",
+    "src/render/ragdoll.ts#Ragdolls"
+   ]
+  },
+  {
+   "unit": "src/render/casualties.ts#BloodDecal",
+   "kind": "write",
+   "by": [
+    "src/render/ragdoll.ts#createRagdolls.update"
+   ]
+  },
+  {
+   "unit": "src/render/casualties.ts#CasualtyLayer",
+   "kind": "call",
+   "by": [
+    "src/render/playEffects.ts#createPlayEffects.dispose",
+    "src/render/playEffects.ts#createPlayEffects.update"
+   ]
+  },
+  {
+   "unit": "src/render/casualties.ts#CasualtyLayer",
+   "kind": "read",
+   "by": [
+    "src/render/playEffects.ts#createPlayEffects",
+    "src/render/playEffects.ts#createPlayEffects.dispose"
+   ]
+  },
+  {
+   "unit": "src/render/casualties.ts#createCasualties",
+   "kind": "call",
+   "by": [
+    "src/render/playEffects.ts#createPlayEffects"
+   ]
+  },
+  {
+   "unit": "src/render/casualties.ts#createCasualties.dispose",
+   "kind": "implementation",
+   "by": [
+    "src/render/playEffects.ts#createPlayEffects.dispose"
+   ]
+  },
+  {
+   "unit": "src/render/casualties.ts#createCasualties.sync",
+   "kind": "implementation",
+   "by": [
+    "src/render/playEffects.ts#createPlayEffects.update"
+   ]
+  },
+  {
+   "unit": "src/render/destruction.ts#createDestruction",
+   "kind": "call",
+   "by": [
+    "src/render/playEffects.ts#createPlayEffects"
+   ]
+  },
+  {
+   "unit": "src/render/destruction.ts#createDestruction",
+   "kind": "callbackAssign",
+   "by": [
+    "src/render/playEffects.ts#createPlayEffects",
+    "src/render/playEffects.ts#createPlayEffects.onBuildingDown"
+   ]
+  },
+  {
+   "unit": "src/render/destruction.ts#createDestruction",
+   "kind": "implementation",
+   "by": [
+    "src/render/playEffects.ts#createPlayEffects",
+    "src/render/playEffects.ts#createPlayEffects.onBuildingDown"
+   ]
+  },
+  {
+   "unit": "src/render/destruction.ts#createDestruction",
+   "kind": "typeRef",
+   "by": [
+    "src/render/playEffects.ts#PlayEffectsContext"
+   ]
+  },
+  {
+   "unit": "src/render/destruction.ts#createDestruction.dispose",
+   "kind": "implementation",
+   "by": [
+    "src/render/playEffects.ts#createPlayEffects.dispose"
+   ]
+  },
+  {
+   "unit": "src/render/destruction.ts#createDestruction.hit",
+   "kind": "implementation",
+   "by": [
+    "src/render/playEffects.ts#createPlayEffects.strikeBuilding"
+   ]
+  },
+  {
+   "unit": "src/render/destruction.ts#createDestruction.update",
+   "kind": "implementation",
+   "by": [
+    "src/render/playEffects.ts#createPlayEffects.update"
+   ]
+  },
+  {
+   "unit": "src/render/destruction.ts#Destruction",
+   "kind": "call",
+   "by": [
+    "src/render/playEffects.ts#createPlayEffects.dispose",
+    "src/render/playEffects.ts#createPlayEffects.strikeBuilding",
+    "src/render/playEffects.ts#createPlayEffects.update"
+   ]
+  },
+  {
+   "unit": "src/render/destruction.ts#Destruction",
+   "kind": "read",
+   "by": [
+    "src/render/playEffects.ts#createPlayEffects",
+    "src/render/playEffects.ts#createPlayEffects.dispose",
+    "src/render/playEffects.ts#createPlayEffects.forgetRuin",
+    "src/render/playEffects.ts#createPlayEffects.groundChanged",
+    "src/render/playEffects.ts#createPlayEffects.strikeBuilding"
+   ]
+  },
+  {
+   "unit": "src/render/destruction.ts#Destruction",
+   "kind": "write",
+   "by": [
+    "src/render/playEffects.ts#createPlayEffects",
+    "src/render/playEffects.ts#createPlayEffects.onBuildingDown"
+   ]
+  }
+ ],
+ "external": [
+  {
+   "key": "es:Math",
+   "count": 157
+  },
+  {
+   "key": "three:Vector3",
+   "count": 70
+  },
+  {
+   "key": "three:Vector3.y",
+   "count": 48
+  },
+  {
+   "key": "es:Math.random",
+   "count": 47
+  },
+  {
+   "key": "es:Array.length",
+   "count": 46
+  },
+  {
+   "key": "three:Vector3.x",
+   "count": 45
+  },
+  {
+   "key": "three:Vector3.z",
+   "count": 43
+  },
+  {
+   "key": "es:Float32Array",
+   "count": 27
+  },
+  {
+   "key": "three:Object3D.position",
+   "count": 27
+  },
+  {
+   "key": "es:Array.push",
+   "count": 25
+  },
+  {
+   "key": "es:Math.PI",
+   "count": 25
+  },
+  {
+   "key": "es:Math.sin",
+   "count": 22
+  },
+  {
+   "key": "es:Math.cos",
+   "count": 21
+  },
+  {
+   "key": "three:Vector3.clone",
+   "count": 19
+  },
+  {
+   "key": "three:Vector3.set",
+   "count": 18
+  },
+  {
+   "key": "es:Math.max",
+   "count": 17
+  },
+  {
+   "key": "three:BufferAttribute",
+   "count": 17
+  },
+  {
+   "key": "three:InstancedMesh.count",
+   "count": 15
+  },
+  {
+   "key": "es:Math.min",
+   "count": 14
+  },
+  {
+   "key": "three:BufferGeometry.dispose",
+   "count": 13
+  },
+  {
+   "key": "three:BufferGeometry.setAttribute",
+   "count": 13
+  },
+  {
+   "key": "three:Vector3.copy",
+   "count": 13
+  },
+  {
+   "key": "three:Mesh.geometry",
+   "count": 12
+  },
+  {
+   "key": "three:Object3D.visible",
+   "count": 11
+  },
+  {
+   "key": "dom:CanvasGradient.addColorStop",
+   "count": 10
+  },
+  {
+   "key": "es:Record",
+   "count": 9
+  },
+  {
+   "key": "three:BufferGeometry",
+   "count": 9
+  },
+  {
+   "key": "three:Mesh",
+   "count": 9
+  },
+  {
+   "key": "three:Object3D.add",
+   "count": 9
+  },
+  {
+   "key": "three:Object3D.matrix",
+   "count": 9
+  },
+  {
+   "key": "three:Object3D.scale",
+   "count": 9
+  },
+  {
+   "key": "three:Vector3.addScaledVector",
+   "count": 9
+  },
+  {
+   "key": "three:InstancedMesh",
+   "count": 8
+  },
+  {
+   "key": "three:MeshStandardMaterial",
+   "count": 8
+  },
+  {
+   "key": "dom:MessageEvent.data",
+   "count": 7
+  },
+  {
+   "key": "es:Float32Array.set",
+   "count": 7
+  },
+  {
+   "key": "es:Map.get",
+   "count": 7
+  },
+  {
+   "key": "three:BufferGeometry.getAttribute",
+   "count": 7
+  },
+  {
+   "key": "three:InstancedMesh.setMatrixAt",
+   "count": 7
+  },
+  {
+   "key": "three:Quaternion",
+   "count": 7
+  },
+  {
+   "key": "dom:CanvasFillStrokeStyles.fillStyle",
+   "count": 6
+  },
+  {
+   "key": "es:Array.forEach",
+   "count": 6
+  },
+  {
+   "key": "es:Array.map",
+   "count": 6
+  },
+  {
+   "key": "es:Array.splice",
+   "count": 6
+  },
+  {
+   "key": "three:BufferAttribute.addUpdateRange",
+   "count": 6
+  },
+  {
+   "key": "three:BufferAttribute.array",
+   "count": 6
+  },
+  {
+   "key": "three:BufferAttribute.needsUpdate",
+   "count": 6
+  },
+  {
+   "key": "three:Color",
+   "count": 6
+  },
+  {
+   "key": "three:DoubleSide",
+   "count": 6
+  },
+  {
+   "key": "three:Group",
+   "count": 6
+  },
+  {
+   "key": "three:InstancedMesh.instanceMatrix",
+   "count": 6
+  },
+  {
+   "key": "three:Material",
+   "count": 6
+  },
+  {
+   "key": "three:Material.dispose",
+   "count": 6
+  },
+  {
+   "key": "three:Object3D.receiveShadow",
+   "count": 6
+  },
+  {
+   "key": "three:Quaternion.setFromAxisAngle",
+   "count": 6
+  },
+  {
+   "key": "three:Vector3.length",
+   "count": 6
+  },
+  {
+   "key": "dom:CanvasDrawPath.beginPath",
+   "count": 5
+  },
+  {
+   "key": "dom:document",
+   "count": 5
+  },
+  {
+   "key": "es:Array.filter",
+   "count": 5
+  },
+  {
+   "key": "es:Float32Array.subarray",
+   "count": 5
+  },
+  {
+   "key": "es:Infinity",
+   "count": 5
+  },
+  {
+   "key": "es:Object",
+   "count": 5
+  },
+  {
+   "key": "es:Partial",
+   "count": 5
+  },
+  {
+   "key": "es:ReadonlyArray.map",
+   "count": 5
+  },
+  {
+   "key": "three:CanvasTexture",
+   "count": 5
+  },
+  {
+   "key": "three:InstancedMesh.setColorAt",
+   "count": 5
+  },
+  {
+   "key": "three:Object3D.castShadow",
+   "count": 5
+  },
+  {
+   "key": "three:Object3D.frustumCulled",
+   "count": 5
+  },
+  {
+   "key": "three:Object3D.rotation",
+   "count": 5
+  },
+  {
+   "key": "three:Object3D.updateMatrix",
+   "count": 5
+  },
+  {
+   "key": "three:Vector3.multiplyScalar",
+   "count": 5
+  },
+  {
+   "key": "dom:CanvasDrawPath.fill",
+   "count": 4
+  },
+  {
+   "key": "dom:CanvasFillStrokeStyles.createRadialGradient",
+   "count": 4
+  },
+  {
+   "key": "dom:CanvasPath.moveTo",
+   "count": 4
+  },
+  {
+   "key": "es:Array.shift",
+   "count": 4
+  },
+  {
+   "key": "es:Array.some",
+   "count": 4
+  },
+  {
+   "key": "es:Float32Array.length",
+   "count": 4
+  },
+  {
+   "key": "es:Int32Array.length",
+   "count": 4
+  },
+  {
+   "key": "es:Map",
+   "count": 4
+  },
+  {
+   "key": "es:Map.delete",
+   "count": 4
+  },
+  {
+   "key": "es:Map.set",
+   "count": 4
+  },
+  {
+   "key": "es:Number.toFixed",
+   "count": 4
+  },
+  {
+   "key": "es:ObjectConstructor.entries",
+   "count": 4
+  },
+  {
+   "key": "es:ReadonlyArray.length",
+   "count": 4
+  },
+  {
+   "key": "es:Uint32Array.length",
+   "count": 4
+  },
+  {
+   "key": "three:BufferGeometry.rotateX",
+   "count": 4
+  },
+  {
+   "key": "three:Object3D.quaternion",
+   "count": 4
+  },
+  {
+   "key": "three:Object3D.renderOrder",
+   "count": 4
+  },
+  {
+   "key": "dom:CanvasPath.arc",
+   "count": 3
+  },
+  {
+   "key": "dom:CanvasPath.lineTo",
+   "count": 3
+  },
+  {
+   "key": "dom:CanvasPathDrawingStyles.lineWidth",
+   "count": 3
+  },
+  {
+   "key": "dom:Document.createElement",
+   "count": 3
+  },
+  {
+   "key": "dom:HTMLCanvasElement.getContext",
+   "count": 3
+  },
+  {
+   "key": "dom:HTMLCanvasElement.height",
+   "count": 3
+  },
+  {
+   "key": "dom:HTMLCanvasElement.width",
+   "count": 3
+  },
+  {
+   "key": "dom:Worker",
+   "count": 3
+  },
+  {
+   "key": "es:Array.flatMap",
+   "count": 3
+  },
+  {
+   "key": "es:Map.clear",
+   "count": 3
+  },
+  {
+   "key": "es:Math.round",
+   "count": 3
+  },
+  {
+   "key": "three:BufferAttribute.clearUpdateRanges",
+   "count": 3
+  },
+  {
+   "key": "three:BufferGeometry.boundingSphere",
+   "count": 3
+  },
+  {
+   "key": "three:Object3D.name",
+   "count": 3
+  },
+  {
+   "key": "three:Sphere",
+   "count": 3
+  },
+  {
+   "key": "three:SRGBColorSpace",
+   "count": 3
+  },
+  {
+   "key": "three:Texture.colorSpace",
+   "count": 3
+  },
+  {
+   "key": "three:Vector3.add",
+   "count": 3
+  },
+  {
+   "key": "three:Vector3.distanceTo",
+   "count": 3
+  },
+  {
+   "key": "three:Vector3.normalize",
+   "count": 3
+  },
+  {
+   "key": "three:Vector3.setY",
+   "count": 3
+  },
+  {
+   "key": "dom:CanvasDrawPath.stroke",
+   "count": 2
+  },
+  {
+   "key": "dom:CanvasFillStrokeStyles.strokeStyle",
+   "count": 2
+  },
+  {
+   "key": "dom:CanvasRect.fillRect",
+   "count": 2
+  },
+  {
+   "key": "dom:performance",
+   "count": 2
+  },
+  {
+   "key": "dom:Performance.now",
+   "count": 2
+  },
+  {
+   "key": "es:Array.reduce",
+   "count": 2
+  },
+  {
+   "key": "es:Int16Array",
+   "count": 2
+  },
+  {
+   "key": "es:Int32Array",
+   "count": 2
+  },
+  {
+   "key": "es:Math.hypot",
+   "count": 2
+  },
+  {
+   "key": "es:Math.sign",
+   "count": 2
+  },
+  {
+   "key": "es:Math.sqrt",
+   "count": 2
+  },
+  {
+   "key": "es:Number",
+   "count": 2
+  },
+  {
+   "key": "es:Readonly",
+   "count": 2
+  },
+  {
+   "key": "es:String.replace",
+   "count": 2
+  },
+  {
+   "key": "es:Uint16Array",
+   "count": 2
+  },
+  {
+   "key": "es:WeakMap.get",
+   "count": 2
+  },
+  {
+   "key": "es:WeakMap.set",
+   "count": 2
+  },
+  {
+   "key": "three:AdditiveBlending",
+   "count": 2
+  },
+  {
+   "key": "three:BufferAttribute.setUsage",
+   "count": 2
+  },
+  {
+   "key": "three:BufferGeometry.addGroup",
+   "count": 2
+  },
+  {
+   "key": "three:BufferGeometry.translate",
+   "count": 2
+  },
+  {
+   "key": "three:CircleGeometry",
+   "count": 2
+  },
+  {
+   "key": "three:Color.getHex",
+   "count": 2
+  },
+  {
+   "key": "three:Color.multiplyScalar",
+   "count": 2
+  },
+  {
+   "key": "three:CurvePath.closePath",
+   "count": 2
+  },
+  {
+   "key": "three:DynamicDrawUsage",
+   "count": 2
+  },
+  {
+   "key": "three:Euler.x",
+   "count": 2
+  },
+  {
+   "key": "three:Euler.y",
+   "count": 2
+  },
+  {
+   "key": "three:Euler.z",
+   "count": 2
+  },
+  {
+   "key": "three:ExtrudeGeometry",
+   "count": 2
+  },
+  {
+   "key": "three:Light.color",
+   "count": 2
+  },
+  {
+   "key": "three:LineBasicMaterial",
+   "count": 2
+  },
+  {
+   "key": "three:MeshStandardMaterialProperties.map",
+   "count": 2
+  },
+  {
+   "key": "three:Object3D",
+   "count": 2
+  },
+  {
+   "key": "three:Object3D.remove",
+   "count": 2
+  },
+  {
+   "key": "three:Path.lineTo",
+   "count": 2
+  },
+  {
+   "key": "three:Path.moveTo",
+   "count": 2
+  },
+  {
+   "key": "three:Quaternion.copy",
+   "count": 2
+  },
+  {
+   "key": "three:Shape",
+   "count": 2
+  },
+  {
+   "key": "three:Sphere.set",
+   "count": 2
+  },
+  {
+   "key": "three:Sphere.union",
+   "count": 2
+  },
+  {
+   "key": "three:Texture.dispose",
+   "count": 2
+  },
+  {
+   "key": "three:Vector3.sub",
+   "count": 2
+  },
+  {
+   "key": "three:WebGLProgramParameters.fragmentShader",
+   "count": 2
+  },
+  {
+   "key": "three:WebGLProgramParameters.vertexShader",
+   "count": 2
+  },
+  {
+   "key": "three:WebGLProgramParametersWithUniforms.uniforms",
+   "count": 2
+  },
+  {
+   "key": "dom:AbstractWorker.onerror",
+   "count": 1
+  },
+  {
+   "key": "dom:CanvasPath.closePath",
+   "count": 1
+  },
+  {
+   "key": "dom:CanvasState.restore",
+   "count": 1
+  },
+  {
+   "key": "dom:CanvasState.save",
+   "count": 1
+  },
+  {
+   "key": "dom:CanvasTransform.rotate",
+   "count": 1
+  },
+  {
+   "key": "dom:CanvasTransform.scale",
+   "count": 1
+  },
+  {
+   "key": "dom:CanvasTransform.translate",
+   "count": 1
+  },
+  {
+   "key": "dom:console",
+   "count": 1
+  },
+  {
+   "key": "dom:Console.error",
+   "count": 1
+  },
+  {
+   "key": "dom:ErrorEvent.message",
+   "count": 1
+  },
+  {
+   "key": "dom:Event.preventDefault",
+   "count": 1
+  },
+  {
+   "key": "dom:MessageEvent",
+   "count": 1
+  },
+  {
+   "key": "dom:MessageEventTarget.onmessage",
+   "count": 1
+  },
+  {
+   "key": "dom:MessageEventTarget.onmessageerror",
+   "count": 1
+  },
+  {
+   "key": "dom:navigator",
+   "count": 1
+  },
+  {
+   "key": "dom:NavigatorConcurrentHardware.hardwareConcurrency",
+   "count": 1
+  },
+  {
+   "key": "dom:Worker.postMessage",
+   "count": 1
+  },
+  {
+   "key": "dom:Worker.terminate",
+   "count": 1
+  },
+  {
+   "key": "es:Array.fill",
+   "count": 1
+  },
+  {
+   "key": "es:Array.findIndex",
+   "count": 1
+  },
+  {
+   "key": "es:Array.indexOf",
+   "count": 1
+  },
+  {
+   "key": "es:Array.pop",
+   "count": 1
+  },
+  {
+   "key": "es:ArrayLike",
+   "count": 1
+  },
+  {
+   "key": "es:Float32ArrayConstructor.from",
+   "count": 1
+  },
+  {
+   "key": "es:Map.values",
+   "count": 1
+  },
+  {
+   "key": "es:Math.abs",
+   "count": 1
+  },
+  {
+   "key": "es:Math.exp",
+   "count": 1
+  },
+  {
+   "key": "es:NonNullable",
+   "count": 1
+  },
+  {
+   "key": "es:NumberConstructor.isFinite",
+   "count": 1
+  },
+  {
+   "key": "es:NumberConstructor.NaN",
+   "count": 1
+  },
+  {
+   "key": "es:ObjectConstructor.values",
+   "count": 1
+  },
+  {
+   "key": "es:ReadonlySet",
+   "count": 1
+  },
+  {
+   "key": "es:Set",
+   "count": 1
+  },
+  {
+   "key": "es:Set.add",
+   "count": 1
+  },
+  {
+   "key": "es:Set.clear",
+   "count": 1
+  },
+  {
+   "key": "es:Uint32Array",
+   "count": 1
+  },
+  {
+   "key": "es:Uint32Array.set",
+   "count": 1
+  },
+  {
+   "key": "es:Uint8Array",
+   "count": 1
+  },
+  {
+   "key": "es:WeakMap",
+   "count": 1
+  },
+  {
+   "key": "three:BoxGeometry",
+   "count": 1
+  },
+  {
+   "key": "three:BufferAttribute.itemSize",
+   "count": 1
+  },
+  {
+   "key": "three:BufferGeometry.index",
+   "count": 1
+  },
+  {
+   "key": "three:BufferGeometry.setDrawRange",
+   "count": 1
+  },
+  {
+   "key": "three:BufferGeometry.toNonIndexed",
+   "count": 1
+  },
+  {
+   "key": "three:Color.lerp",
+   "count": 1
+  },
+  {
+   "key": "three:Color.setHex",
+   "count": 1
+  },
+  {
+   "key": "three:CylinderGeometry",
+   "count": 1
+  },
+  {
+   "key": "three:Euler.set",
+   "count": 1
+  },
+  {
+   "key": "three:InstancedMesh.dispose",
+   "count": 1
+  },
+  {
+   "key": "three:InstancedMesh.instanceColor",
+   "count": 1
+  },
+  {
+   "key": "three:Light.intensity",
+   "count": 1
+  },
+  {
+   "key": "three:Line.material",
+   "count": 1
+  },
+  {
+   "key": "three:LineSegments",
+   "count": 1
+  },
+  {
+   "key": "three:Material.customProgramCacheKey",
+   "count": 1
+  },
+  {
+   "key": "three:Material.onBeforeCompile",
+   "count": 1
+  },
+  {
+   "key": "three:MaterialProperties.opacity",
+   "count": 1
+  },
+  {
+   "key": "three:Matrix3",
+   "count": 1
+  },
+  {
+   "key": "three:Matrix3.getNormalMatrix",
+   "count": 1
+  },
+  {
+   "key": "three:Mesh.material",
+   "count": 1
+  },
+  {
+   "key": "three:MeshBasicMaterial",
+   "count": 1
+  },
+  {
+   "key": "three:Object3D.clear",
+   "count": 1
+  },
+  {
+   "key": "three:Object3D.matrixAutoUpdate",
+   "count": 1
+  },
+  {
+   "key": "three:PointLight",
+   "count": 1
+  },
+  {
+   "key": "three:PointLight.decay",
+   "count": 1
+  },
+  {
+   "key": "three:Quaternion.clone",
+   "count": 1
+  },
+  {
+   "key": "three:Quaternion.multiply",
+   "count": 1
+  },
+  {
+   "key": "three:Quaternion.normalize",
+   "count": 1
+  },
+  {
+   "key": "three:Quaternion.premultiply",
+   "count": 1
+  },
+  {
+   "key": "three:RingGeometry",
+   "count": 1
+  },
+  {
+   "key": "three:Sphere.copy",
+   "count": 1
+  },
+  {
+   "key": "three:Sphere.isEmpty",
+   "count": 1
+  },
+  {
+   "key": "three:Texture.anisotropy",
+   "count": 1
+  },
+  {
+   "key": "three:Vector3.applyMatrix3",
+   "count": 1
+  },
+  {
+   "key": "three:Vector3.applyMatrix4",
+   "count": 1
+  },
+  {
+   "key": "three:Vector3.applyQuaternion",
+   "count": 1
+  },
+  {
+   "key": "three:Vector3.cross",
+   "count": 1
+  },
+  {
+   "key": "three:Vector3.divideScalar",
+   "count": 1
+  },
+  {
+   "key": "three:Vector3.dot",
+   "count": 1
+  },
+  {
+   "key": "three:Vector3.lengthSq",
+   "count": 1
+  },
+  {
+   "key": "three:Vector3.lerp",
+   "count": 1
+  },
+  {
+   "key": "three:Vector3.subVectors",
+   "count": 1
+  }
+ ],
+ "holders": [],
+ "sliced": [
+  "src/render/playEffects.ts#PlayEffectsContext",
+  "src/render/playEffects.ts#createPlayEffects",
+  "src/render/playEffects.ts#createPlayEffects.burn",
+  "src/render/playEffects.ts#createPlayEffects.busy",
+  "src/render/playEffects.ts#createPlayEffects.castersMoving",
+  "src/render/playEffects.ts#createPlayEffects.clearCasualties",
+  "src/render/playEffects.ts#createPlayEffects.dispose",
+  "src/render/playEffects.ts#createPlayEffects.dropVehicle",
+  "src/render/playEffects.ts#createPlayEffects.explode",
+  "src/render/playEffects.ts#createPlayEffects.forgetRuin",
+  "src/render/playEffects.ts#createPlayEffects.geyser",
+  "src/render/playEffects.ts#createPlayEffects.groundChanged",
+  "src/render/playEffects.ts#createPlayEffects.leak",
+  "src/render/playEffects.ts#createPlayEffects.onBuildingDown",
+  "src/render/playEffects.ts#createPlayEffects.shake",
+  "src/render/playEffects.ts#createPlayEffects.soot",
+  "src/render/playEffects.ts#createPlayEffects.sparkAt",
+  "src/render/playEffects.ts#createPlayEffects.strikeBuilding",
+  "src/render/playEffects.ts#createPlayEffects.update",
+  "src/render/playEffects.ts#createPlayEffects.vehicleHit",
+  "src/render/ragdoll.ts#Ragdolls",
+  "src/render/ragdoll.ts#createRagdolls",
+  "src/render/ragdoll.ts#createRagdolls.update"
+ ],
+ "slices": [
+  {
+   "unit": "src/render/playEffects.ts#PlayEffectsContext",
+   "file": "src/render/playEffects.ts",
+   "start": 40,
+   "end": 56,
+   "lines": [
+    40,
+    44,
+    45,
+    46,
+    47,
+    48,
+    56
+   ]
+  },
+  {
+   "unit": "src/render/playEffects.ts#createPlayEffects",
+   "file": "src/render/playEffects.ts",
+   "start": 160,
+   "end": 576,
+   "lines": [
+    160,
+    163,
+    164,
+    165,
+    167,
+    168,
+    170,
+    171,
+    172,
+    221,
+    224,
+    232,
+    233,
+    244,
+    279,
+    280,
+    282,
+    285,
+    287,
+    288,
+    289,
+    290,
+    291,
+    576
+   ]
+  },
+  {
+   "unit": "src/render/playEffects.ts#createPlayEffects.burn",
+   "file": "src/render/playEffects.ts",
+   "start": 556,
+   "end": 556,
+   "lines": [
+    556
+   ]
+  },
+  {
+   "unit": "src/render/playEffects.ts#createPlayEffects.busy",
+   "file": "src/render/playEffects.ts",
+   "start": 351,
+   "end": 351,
+   "lines": [
+    351
+   ]
+  },
+  {
+   "unit": "src/render/playEffects.ts#createPlayEffects.castersMoving",
+   "file": "src/render/playEffects.ts",
+   "start": 352,
+   "end": 352,
+   "lines": [
+    352
+   ]
+  },
+  {
+   "unit": "src/render/playEffects.ts#createPlayEffects.clearCasualties",
+   "file": "src/render/playEffects.ts",
+   "start": 359,
+   "end": 359,
+   "lines": [
+    359
+   ]
+  },
+  {
+   "unit": "src/render/playEffects.ts#createPlayEffects.dispose",
+   "file": "src/render/playEffects.ts",
+   "start": 567,
+   "end": 574,
+   "lines": [
+    567,
+    568,
+    570,
+    572,
+    574
+   ]
+  },
+  {
+   "unit": "src/render/playEffects.ts#createPlayEffects.dropVehicle",
+   "file": "src/render/playEffects.ts",
+   "start": 373,
+   "end": 386,
+   "lines": [
+    373,
+    382,
+    383,
+    384,
+    386
+   ]
+  },
+  {
+   "unit": "src/render/playEffects.ts#createPlayEffects.explode",
+   "file": "src/render/playEffects.ts",
+   "start": 413,
+   "end": 555,
+   "lines": [
+    413,
+    415,
+    416,
+    423,
+    430,
+    431,
+    432,
+    433,
+    436,
+    437,
+    438,
+    439,
+    440,
+    443,
+    445,
+    446,
+    447,
+    449,
+    450,
+    452,
+    453,
+    454,
+    456,
+    457,
+    458,
+    462,
+    466,
+    467,
+    468,
+    469,
+    473,
+    474,
+    476,
+    477,
+    478,
+    479,
+    480,
+    481,
+    488,
+    492,
+    493,
+    494,
+    497,
+    499,
+    500,
+    501,
+    502,
+    503,
+    504,
+    505,
+    506,
+    508,
+    509,
+    512,
+    516,
+    517,
+    518,
+    519,
+    521,
+    522,
+    523,
+    524,
+    526,
+    527,
+    528,
+    529,
+    531,
+    533,
+    534,
+    535,
+    536,
+    537,
+    538,
+    539,
+    542,
+    543,
+    544,
+    545,
+    547,
+    548,
+    549,
+    550,
+    551,
+    552,
+    553,
+    554,
+    555
+   ]
+  },
+  {
+   "unit": "src/render/playEffects.ts#createPlayEffects.forgetRuin",
+   "file": "src/render/playEffects.ts",
+   "start": 563,
+   "end": 566,
+   "lines": [
+    563,
+    565,
+    566
+   ]
+  },
+  {
+   "unit": "src/render/playEffects.ts#createPlayEffects.geyser",
+   "file": "src/render/playEffects.ts",
+   "start": 558,
+   "end": 558,
+   "lines": [
+    558
+   ]
+  },
+  {
+   "unit": "src/render/playEffects.ts#createPlayEffects.groundChanged",
+   "file": "src/render/playEffects.ts",
+   "start": 207,
+   "end": 216,
+   "lines": [
+    207,
+    211,
+    212,
+    213,
+    216
+   ]
+  },
+  {
+   "unit": "src/render/playEffects.ts#createPlayEffects.leak",
+   "file": "src/render/playEffects.ts",
+   "start": 560,
+   "end": 560,
+   "lines": [
+    560
+   ]
+  },
+  {
+   "unit": "src/render/playEffects.ts#createPlayEffects.onBuildingDown",
+   "file": "src/render/playEffects.ts",
+   "start": 561,
+   "end": 561,
+   "lines": [
+    561
+   ]
+  },
+  {
+   "unit": "src/render/playEffects.ts#createPlayEffects.shake",
+   "file": "src/render/playEffects.ts",
+   "start": 350,
+   "end": 350,
+   "lines": [
+    350
+   ]
+  },
+  {
+   "unit": "src/render/playEffects.ts#createPlayEffects.soot",
+   "file": "src/render/playEffects.ts",
+   "start": 557,
+   "end": 557,
+   "lines": [
+    557
+   ]
+  },
+  {
+   "unit": "src/render/playEffects.ts#createPlayEffects.sparkAt",
+   "file": "src/render/playEffects.ts",
+   "start": 559,
+   "end": 559,
+   "lines": [
+    559
+   ]
+  },
+  {
+   "unit": "src/render/playEffects.ts#createPlayEffects.strikeBuilding",
+   "file": "src/render/playEffects.ts",
+   "start": 406,
+   "end": 412,
+   "lines": [
+    406,
+    409,
+    410,
+    411,
+    412
+   ]
+  },
+  {
+   "unit": "src/render/playEffects.ts#createPlayEffects.update",
+   "file": "src/render/playEffects.ts",
+   "start": 342,
+   "end": 349,
+   "lines": [
+    342,
+    343,
+    344,
+    345,
+    349
+   ]
+  },
+  {
+   "unit": "src/render/playEffects.ts#createPlayEffects.vehicleHit",
+   "file": "src/render/playEffects.ts",
+   "start": 360,
+   "end": 372,
+   "lines": [
+    360,
+    361,
+    362,
+    363,
+    364,
+    365,
+    366,
+    368,
+    370,
+    372
+   ]
+  },
+  {
+   "unit": "src/render/ragdoll.ts#Ragdolls",
+   "file": "src/render/ragdoll.ts",
+   "start": 368,
+   "end": 399,
+   "lines": [
+    368,
+    388,
+    399
+   ]
+  },
+  {
+   "unit": "src/render/ragdoll.ts#createRagdolls",
+   "file": "src/render/ragdoll.ts",
+   "start": 401,
+   "end": 1956,
+   "lines": [
+    401,
+    407,
+    853,
+    854,
+    1104,
+    1956
+   ]
+  },
+  {
+   "unit": "src/render/ragdoll.ts#createRagdolls.update",
+   "file": "src/render/ragdoll.ts",
+   "start": 1028,
+   "end": 1078,
+   "lines": [
+    1028,
+    1033,
+    1078
+   ]
+  }
+ ],
+ "resources": [
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/app.css",
+   "line": 57,
+   "key": "glass",
+   "text": ".glass {\r\n  background: linear-gradient(145deg, var(--ui-hi), transparent 42%), var(--ui-bg);\r\n  border: 1px solid var(--ui-border);\r\n  border-radius: 14px;\r\n  box-shadow: var(--shadow);\r\n}"
+  }
+ ]
+}

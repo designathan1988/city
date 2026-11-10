@@ -111,15 +111,6 @@ marker, while the supervisor, having no deadline, took the waiting loop's CPU ti
 
 Commands: see CLAUDE.md "Comandos". Tests of the orchestrator: `python -m unittest discover tools/tasks/tests` (26 pass).
 
-## 2026-11-08: a Godot task keyed by what it loads; tools' versions in the key (English)
-- `{loads}` (`tools/tasks/godot_deps.py`): a scene reruns only when a file it can load changed (a test's own script reruns that
-  test alone; a capture script none). Every such run is `--verbose` and its verdict fails on a `Loading resource` outside its
-  inputs: the closure is checked on real runs, every run. Reasoning and proof: log/review.md §6.76.
-- `versions` in `suites.json` (Godot, CMake, Ninja, clang): a result follows from the tools too. A FAIL cached while a tool was
-  missing came back without running; use `--all` once if the machine changed before this rule existed.
-- Taught: a cache is only as right as its key; anything a result follows from that the key leaves out (a tool, a file loaded by
-  a path built at run time) makes a stale verdict look current.
-
 
 # Texto completo das seções resumidas no CLAUDE.md (até 2026-11-06)
 

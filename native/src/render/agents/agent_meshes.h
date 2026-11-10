@@ -9,10 +9,7 @@
 // instances: the engine's own shadow mesh is ignored for a material with a vertex(), as the agents' (uses_shared_shadow_material).
 #pragma once
 
-#include "render/agents/agent_shapes.h"
 #include <godot_cpp/classes/array_mesh.hpp>
-#include "render/data_reader.h"
-#include "core/shader_contracts/agents.h"
 #include "render/mesh_builder.h"
 
 #include <godot_cpp/variant/dictionary.hpp>
@@ -26,12 +23,12 @@ namespace city {
 constexpr int AGENT_CABIN_LEVEL = 0, AGENT_BODY_LEVEL = 1, AGENT_FAR_LEVEL = 2, AGENT_LEVELS = 3;
 constexpr int AGENT_HULL_LEVEL = AGENT_LEVELS; // the car with no wheels, what the far fleet casts (fleet_shadow.h): one more entry
 
-// What a vertex is (AgentTag, UV2.x) and what the shader moves (Limb, UV2.y: a WHEEL turns about X round its hub, UV = hub y, z, by the
-// roll angle; a door about its hinge) are core/shader_contracts/agents.h's, which agents.gdshader reads too.
+enum class AgentTag : int { FIXED, PAINT, HEAD, TAIL, GLASS, SIGN, ROOF, GLOSS };
+// Parts that move in the shader: WHEEL turns about X round its hub (UV = hub y, z) by the roll angle.
+enum class Limb : int { NONE = 0, WHEEL = 1, DOOR = 2, DOOR_BACK = 3 }; // what the vertex stage moves: UV its axle or its hinge; a door hung at its front edge, at its back edge
 
 // Fixed colours of the parts that are not painted (agents.json "trim").
 struct AgentTrim {
-	const AgentShapes *shapes = nullptr; // the parts' sizes (agents.json "shapes"), handed with the trim to every part builder
 	godot::Color tyre, hub, under, blackout, grille, plate, glass, headlamp, tail, truck_box, chrome, roof, indicator, mirror;
 };
 
@@ -67,12 +64,11 @@ struct CabinPaint {
 	godot::Color lining, floor, seat, dash;
 };
 struct CabinLook {
-	const AgentShapes *shapes = nullptr; // the parts' sizes (agents.json "shapes")
 	float lining_inset_m = 0, liner_drop_m = 0, rim_m = 0;
 	Person person;
 	SeatStyle car, cab, chair;
 	mutable std::vector<SeatSpot> *spots = nullptr; // where agent_cabin writes the seats of the vehicle being built
-	bool load(const DataValue &d);
+	bool load(const godot::Dictionary &d);
 };
 // One seat: hip point (x, z) over the floor it stands on.
 struct Seat {
@@ -103,28 +99,28 @@ struct Tub {
 inline godot::Vector2 agent_tag(AgentTag t, Limb l = Limb::NONE) { return godot::Vector2(float(int(t)), float(int(l))); }
 inline const godot::Color AGENT_WHITE(1, 1, 1, 1);
 
-// agents.json is read through the strict reader's values (render/data_reader.h): a missing key, a wrong type or a list of the
-// wrong length is an error with its path, never a zero drawn into a vehicle.
-godot::Color agent_hex(const DataValue &v);
-godot::Vector3 agent_v3(const DataValue &v); // [x, y, z]
-godot::Vector2 agent_v2(const DataValue &v); // [x, y]
-AgentTrim read_trim(const DataValue &t);
-CabinPaint read_cabin_paint(const DataValue &d);
+godot::Color agent_hex(const godot::Variant &v);
+// [x, y, z] / [x, y] from agents.json (zero when the list is not that long).
+godot::Vector3 agent_v3(const godot::Variant &v);
+godot::Vector2 agent_v2(const godot::Variant &v);
+AgentTrim read_trim(const godot::Dictionary &t);
+CabinPaint read_cabin_paint(const godot::Dictionary &d);
 // A box with a tag; colour white for tinted tags.
 void agent_box(MeshBuilder &mb, const godot::Vector3 &mn, const godot::Vector3 &mx, const godot::Color &c, AgentTag tag, Limb limb = Limb::NONE);
 // A housing as a mirror's is: a rounded shell `depth` long towards +Z, closing to a blunt nose, flat at its back (`centre`, `half` wide and high).
-void agent_pod(MeshBuilder &mb, const AgentShapes &shapes, const godot::Vector3 &centre, const godot::Vector2 &half, float depth, const godot::Color &c, AgentTag tag);
+void agent_pod(MeshBuilder &mb, const godot::Vector3 &centre, const godot::Vector2 &half, float depth, const godot::Color &c, AgentTag tag);
 // The flat of that shape, facing -Z: its back, or the glass set in it.
-void agent_pod_face(MeshBuilder &mb, const AgentShapes &shapes, const godot::Vector3 &centre, const godot::Vector2 &half, const godot::Color &c, AgentTag tag);
+void agent_pod_face(MeshBuilder &mb, const godot::Vector3 &centre, const godot::Vector2 &half, const godot::Color &c, AgentTag tag);
 // A bar from a to b, `w` across (along X where it can be) and `d` the other way: limbs, torsos, steering wheels.
 void agent_strut(MeshBuilder &mb, const godot::Vector3 &a, const godot::Vector3 &b, float w, float d, const godot::Color &c, AgentTag tag,
 		Limb limb = Limb::NONE);
+// A pane of glass a-b-c-d facing `out`.
 // A vehicle burnt out (agent_wreck.cpp), centred on its box; `size` its box.
 struct AgentWreck {
-	MeshBuilder body; // the burnt body: the effects make it a mesh with their material (surface_data.h)
+	godot::Ref<godot::ArrayMesh> mesh;
 	godot::Vector3 size;
 };
-AgentWreck agent_wreck(const AgentShapes &shapes, const MeshBuilder &mb, uint32_t seed);
+AgentWreck agent_wreck(const MeshBuilder &mb, uint32_t seed);
 void agent_pane(MeshBuilder &mb, const godot::Vector3 &a, const godot::Vector3 &b, const godot::Vector3 &c, const godot::Vector3 &d, const godot::Vector3 &out,
 		const AgentTrim &trim);
 // A wheel turning about X: tyre tread, sidewall and hubcap on the outer face (`side` = +1 left, -1 right).
@@ -160,17 +156,17 @@ void split_tag(const MeshBuilder &src, AgentTag tag, MeshBuilder &rest, MeshBuil
 // Each builder draws the cabin when given one (the near level) and returns its passenger seats (-1: the data's cabin is
 // inside out).
 // car_body.cpp: one passenger car style (agents.json "cars"[i]) with the shared "car_body" and "cars_cabin" settings.
-int build_car(MeshBuilder &mb, const DataValue &car, const DataValue &body, const DataValue &inside, const CabinLook *cabin, const AgentTrim &trim,
-		int level);
+int build_car(MeshBuilder &mb, const godot::Dictionary &car, const godot::Dictionary &body, const godot::Dictionary &inside, const CabinLook *cabin,
+		const AgentTrim &trim, int level);
 // bus_body.cpp
-int build_bus(MeshBuilder &mb, const DataValue &d, int sides, const CabinLook *cabin, const AgentTrim &trim);
+int build_bus(MeshBuilder &mb, const godot::Dictionary &d, int sides, const CabinLook *cabin, const AgentTrim &trim);
 // heavy_meshes.cpp
-int build_truck(MeshBuilder &mb, const DataValue &d, int sides, const CabinLook *cabin, const AgentTrim &trim);
-int build_moto(MeshBuilder &mb, const DataValue &d, int sides, const AgentTrim &trim);
-int build_bicycle(MeshBuilder &mb, const DataValue &d, int sides, const AgentTrim &trim);
+int build_truck(MeshBuilder &mb, const godot::Dictionary &d, int sides, const CabinLook *cabin, const AgentTrim &trim);
+int build_moto(MeshBuilder &mb, const godot::Dictionary &d, int sides, const AgentTrim &trim);
+int build_bicycle(MeshBuilder &mb, const godot::Dictionary &d, int sides, const AgentTrim &trim);
 // A tyre from its designation [section width mm, aspect ratio %, rim diameter inches] (ISO 4000-1, ETRTO): its radius
 // (half the rim's diameter plus the sidewall, width times aspect) and width, metres.
-godot::Vector2 agent_tyre(const DataValue &designation);
+godot::Vector2 agent_tyre(const godot::Variant &designation);
 // Parts the heavy vehicles share (heavy_meshes.cpp).
 // Where the wheels go: the axles (z) from the front overhang and the wheelbases, the tracks (centre to centre of the
 // tyres, front axle and the others) and, behind the front axle, twin tyres dual_m apart (agents.json bus / truck).
@@ -178,12 +174,13 @@ struct Running {
 	std::vector<float> axles;
 	float r = 0, w = 0, front_track = 0, rear_track = 0, dual = 0;
 };
-Running heavy_running(const DataValue &d, float length);
+Running heavy_running(const godot::Dictionary &d, float length);
 void heavy_wheels(MeshBuilder &mb, const Running &g, int sides, const AgentTrim &trim);
 // Headlamps and tail lamps on the ends (agents.json lamps_m: their centres' height over the road, their outer edges in
 // from the sides, their faces [w, h]).
-void heavy_lamps(MeshBuilder &mb, const DataValue &lamps, float width, float length, const AgentTrim &trim);
+void heavy_lamps(MeshBuilder &mb, const godot::Dictionary &lamps, float width, float length, const AgentTrim &trim);
 // A mirror each side on an arm out from the body at z: the glass's bottom at y, its outer edge `out` beyond the side.
 void heavy_mirrors(MeshBuilder &mb, float half_w, float z, float y, float out, const AgentTrim &trim);
+constexpr float HEAVY_PROUD_M = 0.01f, HEAVY_GLASS_INSET_M = 0.02f, HEAVY_ARCH_PAD_M = 0.07f, HEAVY_PILLAR_M = 0.12f;
 
 } // namespace city

@@ -21,15 +21,6 @@ const WRONG_FORMS: readonly { readonly rule: string; readonly form: RegExp; read
   { rule: 'nondeterminism-in-simulation', form: /\b(std::rand|rand\(\)|std::random_device|std::chrono|time\(nullptr\))/, detail: 'wall clock or unseeded randomness' },
   { rule: 'hot-allocation', form: /(^|[^\w.])new\s+[A-Za-z_]|\bmalloc\(/, detail: 'a heap allocation by hand' },
 ];
-const GOD_FILE = 'god-file';
-const GOD_FUNCTION = 'god-function';
-
-/**
- * The audit's rules this check judges on the C++ a translation wrote: their wrong form is a form of the output (a heap
- * allocation, a removal from a vector's front, a render instance per item, the wall clock, a file or function past the
- * target's limits). This check is their one owner; the ledger leaves them to it instead of judging the source a second time.
- */
-export const JUDGED_ON_OUTPUT: ReadonlySet<string> = new Set([...WRONG_FORMS.map((w) => w.rule), GOD_FILE, GOD_FUNCTION]);
 
 export interface TargetLimits {
   readonly maxLines: Readonly<Record<string, number>>;
@@ -66,10 +57,10 @@ export function scanFiles(files: ReadonlyMap<string, string>, limits: TargetLimi
     const extension = path.extname(file);
     const lines = text.split('\n').length;
     const maxLines = limits.maxLines[extension];
-    if (maxLines !== undefined && lines > maxLines) out.push({ file, rule: GOD_FILE, detail: `${lines} lines (limit ${maxLines})` });
+    if (maxLines !== undefined && lines > maxLines) out.push({ file, rule: 'god-file', detail: `${lines} lines (limit ${maxLines})` });
     const maxFn = limits.maxFunctionLines[extension];
     const longest = longestFunction(text);
-    if (maxFn !== undefined && longest > maxFn) out.push({ file, rule: GOD_FUNCTION, detail: `a function of ${longest} lines (limit ${maxFn})` });
+    if (maxFn !== undefined && longest > maxFn) out.push({ file, rule: 'god-function', detail: `a function of ${longest} lines (limit ${maxFn})` });
   }
   return out;
 }

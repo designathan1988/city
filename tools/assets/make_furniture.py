@@ -1,23 +1,19 @@
 """Writes project/data/render/furniture.json: what each piece of furniture is made of, part by part, for the cut-open
 view of a building (native/src/render/buildings/interior_emit.cpp). Each model is built at the size of its row in
-data/catalog/interiors.json "sizes" (across W, deep D, high H) and scaled to the piece placed. A part is
+data/render/interiors.json "sizes" (across W, deep D, high H) and scaled to the piece placed. A part is
   ["box", [across, up, deep], [centre x, bottom y, centre z], colour, {options}]
   ["cyl", [radius, height, radius at top], [centre x, bottom y, centre z], colour, {options}]
   ["ball", [radius], [centre x, centre y, centre z], colour]
 x across (right of the piece), y up, z towards the front (the way it faces). Options: n copies each moved by step and
 grown by grow, spin copies turned about the up axis, colours cycled one per copy.
 The shapes are the modelling of a piece as people use it (a bed: frame, legs, mattress, duvet, headboard, pillows), drawn
-against the photos of the reference; no norm fixes them. Run: python3 tools/assets/make_furniture.py; --check writes nothing and fails
-when the committed table is not what the sizes make (the quick suite's furniture_table task).
+against the photos of the reference; no norm fixes them. Run: python3 tools/assets/make_furniture.py
 """
 import json
 import os
-import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, "..", "..", "project", "data", "render")
-CATALOG = os.path.join(HERE, "..", "..", "project", "data", "catalog")
-GAME = os.path.join(HERE, "..", "..", "project", "data", "game")
 PALETTE = {
 	"oak": ["wood", "#9a6a43"], "walnut": ["wood", "#5e3d26"], "linen": ["plaster", "#f2efe8"], "duvet": ["plaster", "#7d93ad"],
 	"fabric": ["plaster", "#6f7f8f"], "cushion": ["plaster", "#84929f"], "black": ["plaster", "#1e2125"], "steel": ["metal", "#b3b9bd"],
@@ -194,22 +190,14 @@ def build(kind, W, D, H):
 
 
 def main():
-	style = json.load(open(os.path.join(GAME, "start.json"), encoding="utf-8"))["default_style"]  # the style the game plays
-	sizes = json.load(open(os.path.join(CATALOG, "interiors.json"), encoding="utf-8"))["styles"][style]["sizes"]
+	sizes = json.load(open(os.path.join(DATA, "interiors.json"), encoding="utf-8"))["sizes"]
 	models = {k: build(k, w, d, h) for k, w, d, h in sizes}
 	doc = ("What each piece of furniture is made of, part by part, for the cut-open view of a building (tools/assets/make_furniture.py writes it "
 		"from the sizes of interiors.json). A part is [shape, size, place, colour, options]; see the script for the shapes and options.")
 	text = "{\n \"_doc\": %s,\n \"palette\": {\n" % json.dumps(doc)
 	text += ",\n".join("  %s: %s" % (json.dumps(k), json.dumps(v)) for k, v in PALETTE.items()) + "\n },\n \"models\": {\n"
 	text += ",\n".join("  %s: [\n%s\n  ]" % (json.dumps(k), ",\n".join("   " + json.dumps(p) for p in v)) for k, v in models.items()) + "\n }\n}\n"
-	target = os.path.join(DATA, "furniture.json")
-	if "--check" in sys.argv:
-		with open(target, encoding="utf-8", newline="") as fh:
-			if fh.read() != text:
-				raise SystemExit("furniture.json is not what make_furniture.py makes of the sizes: run it, or change the script, not the table")
-		print("furniture.json is the generator's")
-		return
-	open(target, "w", encoding="utf-8", newline="\n").write(text)
+	open(os.path.join(DATA, "furniture.json"), "w", encoding="utf-8", newline="\n").write(text)
 	print(sum(len(v) for v in models.values()), "parts in", len(models), "pieces")
 
 

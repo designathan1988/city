@@ -79,7 +79,7 @@ std::string op_roof_shape(Body &b, const Tuning &t, int vol, float pitch, int ri
 std::string op_add_gear(Body &b, const Tuning &t, int vol, int kind, float x, float y, float w, float d, float h) {
 	Volume *v = volume_at(b, vol);
 	if (!v || kind < 0 || kind >= GEAR_COUNT) return NO_TARGET;
-	if (int(v->gear.size()) >= t.build_max_gear) return "building.problem.size";
+	if (int(v->gear.size()) >= int(t.build_max_gear)) return "building.problem.size";
 	RoofPart p;
 	p.kind = uint8_t(kind);
 	p.x = x;
@@ -126,13 +126,6 @@ std::string op_turn_gear(Body &b, const Tuning &t, int vol, int gear) {
 	p.turn += float(t.build_gear_turn_deg) * float(DEG_TO_RAD);
 	if (!fits(*v, p)) return NO_FIT;
 	v->gear[size_t(gear)] = p;
-	return "";
-}
-
-std::string op_size_gear(Body &b, const Tuning &t, int vol, int gear, float metres) {
-	Volume *v = volume_at(b, vol);
-	if (!v || gear < 0 || gear >= int(v->gear.size())) return NO_TARGET;
-	v->gear[size_t(gear)].h = std::clamp(metres, float(t.build_thinnest_m), float(t.build_max_side_m));
 	return "";
 }
 

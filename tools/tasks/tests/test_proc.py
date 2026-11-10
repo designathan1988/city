@@ -1,5 +1,4 @@
 # proc: a deadline kills the whole tree (a grandchild included), and a tree whose process exits leaves nothing running.
-import shutil
 import sys
 import tempfile
 import time
@@ -36,7 +35,6 @@ def wait_for(path: Path) -> list[int]:
 class ProcTest(unittest.TestCase):
     def setUp(self):
         self.dir = Path(tempfile.mkdtemp(prefix="tasks-proc-"))
-        self.addCleanup(shutil.rmtree, self.dir, True)
 
     def test_timeout_kills_the_whole_tree(self):
         pids = self.dir / "pids.txt"

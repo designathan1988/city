@@ -73,8 +73,6 @@ function stateOwners(members: Members, root: UnitRecord): Map<string, string> {
  * holding it (see stateOwners); without one, any field, owned by the folder declaring it. Not outside the owner: the
  * class's own methods (encapsulation: Rng::next writing Rng::s), the architecture's designated writers (`writerDirs`),
  * and the channels (`channels`) with everything they hold (a triple buffer's frames, filled by its producer).
- * The finding is each write from outside the owner, on the unit that writes (the methodology: one owner mutates, the
- * others send it a command); the state written has no behaviour, and what only reads it did nothing wrong.
  */
 export function scatteredWrites(ctx: AuditContext): RuleOutcome {
   const findings: Finding[] = [];
@@ -97,13 +95,12 @@ export function scatteredWrites(ctx: AuditContext): RuleOutcome {
     }
     const writers = (ctx.incoming.get(unit.id) ?? []).filter((e) => e.kind === 'write').map((e) => ctx.byId.get(e.from)!)
       .filter((w) => unit.parent === null || w.parent !== unit.parent);
-    // The owner is the exact folder: a subfolder is another subsystem (src/ui is not src).
-    const outside = writers.filter((w) => folderOf(w.file) !== owner && !ctx.inDirs(folderOf(w.file), ctx.options.writerDirs));
-    const foreign = [...new Set(outside.map((w) => folderOf(w.file)))].sort();
-    for (const writer of new Map(outside.map((w) => [w.id, w])).values()) {
-      findings.push({ rule: 'scattered-writes', severity: foreign.length >= 2 ? 'high' : 'medium', unit: writer.id, file: writer.file, line: writer.start.line,
-        message: `${writer.name} writes ${unit.name} (owned by ${owner}) from ${folderOf(writer.file)}; ${foreign.length} owner(s) outside write it: ${foreign.slice(0, 6).join(', ')}` });
-    }
+    const foreign = [...new Set(writers.map((w) => folderOf(w.file)))]
+      // The owner is the exact folder: a subfolder is another subsystem (src/ui is not src).
+      .filter((dir) => dir !== owner && !ctx.inDirs(dir, ctx.options.writerDirs)).sort();
+    if (foreign.length === 0) continue;
+    findings.push({ rule: 'scattered-writes', severity: foreign.length >= 2 ? 'high' : 'medium', unit: unit.id, file: unit.file,
+      line: unit.start.line, message: `${unit.name} (owned by ${owner}) is written from ${foreign.length} other owner(s): ${foreign.slice(0, 6).join(', ')}` });
   }
   return findings;
 }

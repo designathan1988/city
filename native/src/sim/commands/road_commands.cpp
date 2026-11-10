@@ -1,7 +1,6 @@
 // Building and bulldozing roads (Roadcraft construction/execute.ts buildLive, streetEdits.ts demolishSeg, the bulldoze
 // tool) and the money they move (roads/economy.ts chargeFor, journal.ts settle).
 #include "sim/commands/commands.h"
-#include "sim/commands/edit_journal.h"
 #include "sim/commands/street_commands.h"
 #include "sim/commands/road_edit.h"
 #include "sim/commands/road_grade_sync.h"
@@ -31,7 +30,7 @@ double dir_turn(const Quad &first, const Quad &second) {
 	return l > 0 ? -(ax * bx + az * bz) / l : 0;
 }
 
-constexpr int ARC_STEPS = 64; // a curve's preview drawn in this many pieces
+constexpr int ARC_STEPS = 64;
 
 struct Stop {
 	double t = 0;
@@ -96,7 +95,7 @@ EditResult place_road(CityState &s, const Anchor &a, bool has_control, double cx
 	RoadBox box;
 	box.add(a.x, a.z);
 	box.add(b.x, b.z);
-	const Squeezes before = squeezes_in(s, box);
+	const std::map<int, double> before = squeezes_in(s, box);
 	RoadKeeps fresh;
 	fresh.flags = s.new_road_flags; // the street furniture set chosen for new roads
 	std::vector<int> laid;
@@ -138,9 +137,8 @@ void merge_stubs(CityState &s, int node, RoadBox &box, std::vector<int> &made) {
 	if (arms.size() < MIN_JUNCTION_ARMS) return;
 	for (int seg : arms) {
 		const RoadSegment g = net.segs[size_t(seg)];
+		if (wanted_retreat(net, node, seg) <= g.len * MOUTH_SHARE) continue;
 		const int far = g.a == node ? g.b : g.a;
-		const double want = wanted_retreat(net, node, seg);
-		if (clamp_segment_trims(s.catalog.tune, want, wanted_retreat(net, far, seg), g.len).a >= want) continue;
 		if (net.nodes[size_t(far)].segs.size() == JOINT_ARMS) merge_joint(s, far, seg, box, made);
 	}
 }
@@ -204,7 +202,6 @@ EditResult lay_road(CityState &s, const Anchor &a, bool has_control, double cx, 
 	box.add(maxx, maxz);
 	for (const Stop &stop : stops) merge_stubs(s, stop.node, box, made);
 	settle_network(s); // a road laid in pieces, or a stretch squeezed between junctions, reads the mouths and heights of what is laid
-	clear_bulbs(s);
 	if (laid) *laid = made;
 	r.ok = true;
 	r.segments = int(made.size());
@@ -246,8 +243,6 @@ EditResult demolish_at(CityState &s, double x, double z) {
 	}
 	const std::vector<int> street = net.pieces_of(seg);
 	for (int piece : street) demolish_segment(s, piece);
-	settle_network(s); // the dead ends it leaves, and their bulbs
-	clear_bulbs(s);
 	settle_road_edit(s, r); // what comes back is always affordable
 	r.ok = true;
 	r.segments = int(street.size());

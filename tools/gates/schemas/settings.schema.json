@@ -56,6 +56,9 @@
             "minimum": 0,
             "maximum": 5
           },
+          "shadow_least_m": {
+            "type": "number"
+          },
           "msaa": {
             "type": "integer",
             "minimum": 0,
@@ -85,6 +88,7 @@
           "shadows",
           "shadow_px",
           "shadow_filter",
+          "shadow_least_m",
           "msaa",
           "smaa",
           "ssao",
@@ -93,6 +97,41 @@
           "temporal_mip_bias",
           "ssil"
         ]
+      }
+    },
+    "road_blocks": {
+      "type": "object",
+      "properties": {
+        "cols": {
+          "type": "number"
+        },
+        "rows": {
+          "type": "number"
+        },
+        "size_m": {
+          "type": "number"
+        },
+        "most": {
+          "type": "number"
+        },
+        "least_m": {
+          "type": "number"
+        },
+        "widest_m": {
+          "type": "number"
+        },
+        "step_m": {
+          "type": "number"
+        },
+        "turn_step_deg": {
+          "type": "number"
+        },
+        "preview_step_m": {
+          "type": "number"
+        },
+        "preview_half_px": {
+          "type": "number"
+        }
       }
     }
   }

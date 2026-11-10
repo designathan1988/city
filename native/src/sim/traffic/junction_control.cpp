@@ -5,7 +5,6 @@
 
 #include "sim/roads/junction.h"
 
-#include <algorithm>
 #include <cmath>
 
 namespace city {
@@ -16,6 +15,7 @@ namespace {
 constexpr int RANK_MAIN = 3, RANK_YIELD = 1; // free arms keep DirSeg::rank's default
 constexpr int MAIN_PRIORITY = 2; // arms of this road priority or more push a junction toward signals
 constexpr int RING_PRIORITY = 100; // over every class of road: whoever circulates has the way, whatever comes in
+constexpr int SIGNAL_ARMS = 5, SIGNAL_MAIN_ARMS = 3;
 constexpr size_t MAIN_LEGS = 2; // the road that goes through a junction
 constexpr uint32_t OFFSET_HASH = 2654435761u, OFFSET_STEPS = 1000; // where in its first green each junction starts
 constexpr float STOPPED_MS = 0.5f, FIRST_COME_S = 0.3f; // stopped vehicles go first come, first served
@@ -85,7 +85,7 @@ Control decide(const RoadNode &node, const std::vector<Arm> &arms, const Traffic
 		hi = std::max(hi, arms[i].priority);
 	}
 	if (node.auto_signal == 0) return hi > lo ? Control::PRIORITY : Control::NONE;
-	if (int(arms.size()) >= tp.junction_signal_arms || int(high.size()) >= tp.junction_signal_main_arms) return Control::SIGNAL;
+	if (int(arms.size()) >= SIGNAL_ARMS || int(high.size()) >= SIGNAL_MAIN_ARMS) return Control::SIGNAL;
 	if (high.size() == 2 && arms[high[0]].out.dot(arms[high[1]].out) > tp.through_pair_dot) return Control::SIGNAL;
 	return hi > lo ? Control::PRIORITY : Control::NONE;
 }
@@ -147,9 +147,6 @@ void make_stages(CityState &s, int n, const std::vector<Arm> &arms, Junction &j)
 		if (size_t(k) < set.greens.size()) { j.cycle += std::max(0.f, set.greens[size_t(k)] - j.green[size_t(k)]); j.green[size_t(k)] = std::max(j.green[size_t(k)], set.greens[size_t(k)]); }
 		j.green_max[size_t(k)] = j.green[size_t(k)];
 	}
-	j.served.assign(size_t(count), s.traffic.time);
-	j.walk_call.assign(size_t(count), -double(BIG));
-	j.walk_from.assign(size_t(count), -1.0);
 	j.run = 0;
 	j.run_green = -1;
 	j.run_start = s.traffic.time - double((uint32_t(n) * OFFSET_HASH) % OFFSET_STEPS) / OFFSET_STEPS * j.green[0];
@@ -245,17 +242,11 @@ void replan_signal(CityState &s, int n) {
 	build_junction(s, n);
 	Junction &j = g.junctions[size_t(n)];
 	if (j.ctl != Control::SIGNAL || was.ctl != Control::SIGNAL || was.green.empty() || j.green.size() != was.green.size()) return;
-	// no jump from one green to another: the stage running goes on, its green as it was under the actuated plan; a fixed plan takes
-	// over once it has had at least its minimum green and its intergreen
+	// no jump from one green to another: the stage running keeps at least its minimum green (walkers started on it) and its intergreen
 	const size_t k = size_t(was.run);
 	j.run = was.run;
 	j.run_start = was.run_start;
-	j.served = was.served; // the stages keep their waits and the walkers their calls
-	j.walk_call = was.walk_call;
-	j.walk_from = was.walk_from;
-	j.run_green = was.run_green >= 0 || !j.fixed ? was.run_green
-	                                             : float(std::max(s.traffic.time - was.run_start, double(was.green[k])));
-	if (j.run_green < 0) return;
+	j.run_green = was.run_green >= 0 ? was.run_green : float(std::max(s.traffic.time - was.run_start, double(was.green[k])));
 	j.settle = j.run_start + double(j.run_green) + j.amber[k] + j.all_red[k];
 }
 
@@ -282,11 +273,6 @@ bool may_enter(const CityState &s, int vid, int ci, float dist) {
 	const float line = dist - t.g.ds[c.from_ds].stop_back;
 	if (light_stops(s, me, c.from_ds, line - tp.stop_margin_m, ci)) return false;
 	if (t.g.ds[c.from_ds].must_stop && me.stood_at != c.from_ds) return false; // a Stop is more than a lower rank: it is taken from a stand
-	// a zebra with no signal: whoever waits at its kerb crosses first, while the vehicle can still stop for them and has not stood its
-	// share (Roadcraft lab admission.ts pedestrianHasPriority)
-	if (t.g.junctions[size_t(c.node)].ctl != Control::SIGNAL && me.wait <= tp.ped_courtesy_s && walkers_waiting(s, ci) &&
-			stop_is_comfortable(s, me, line))
-		return false;
 	if (!has_exit(s, c, vid)) return false;
 	const float top = top_speed(s, me, conn_speed(s, c));
 	if (peds_in_way(s, ci, front_time(s, me, line, top), front_time(s, me, dist + c.len, top))) return false;
@@ -330,6 +316,32 @@ Hold hold_reason(const CityState &s, int vid) {
 	for (size_t k = 0; k < c.conflicts.size(); k++)
 		if (conflict_busy(s, c, k)) return Hold::CONFLICT_BUSY;
 	return may_enter(s, vid, ci, t.g.ds[v.ds].len - v.s) ? Hold::FREE : Hold::YIELD;
+}
+
+int lane_head(const CityState &s, int vid) {
+	const Vehicle &v = s.traffic.vehicles[vid];
+	if (v.ds < 0) return -1;
+	const auto &lane = s.traffic.lane_vehicles[size_t(v.ds) * MAX_LANES + v.lane];
+	return lane.empty() ? -1 : lane.back();
+}
+
+int connector_to(const CityState &s, int ds, int lane, int next) {
+	const LaneGraph &g = s.traffic.g;
+	const size_t key = size_t(ds) * MAX_LANES + lane;
+	if (ds < 0 || key >= g.lane_conn.size()) return -1;
+	int best = -1, bd = MAX_LANES * 2;
+	for (int ci = g.lane_conn[key]; ci >= 0; ci = g.conns[size_t(ci)].next_from) {
+		const Conn &c = g.conns[size_t(ci)];
+		if (!c.alive || c.to_ds != next) continue;
+		int d = std::abs(c.from_lane - lane);
+		if (d < bd) { bd = d; best = ci; }
+	}
+	return best;
+}
+
+int pick_connector(const CityState &s, const Vehicle &v) {
+	if (v.ds < 0 || v.ri + 1 >= v.route.len) return -1;
+	return connector_to(s, v.ds, v.lane, route_at(s.traffic.route_pool, v.route, v.ri + 1));
 }
 
 } // namespace traffic

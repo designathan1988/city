@@ -102,14 +102,15 @@ static func _words_row(body: Control, table: Dictionary, key: String, hint: Stri
 		use.call("STREETSCAPE", held, false))
 
 
-## A grid of cards, each by its short name (label_key) with its whole name as the tooltip (tip_key, when it has one).
+## A grid of cards, each named without the aside in brackets, which its tooltip keeps (Roadcraft shell.ts card).
 static func _cards(parent: Control, list: Array, columns: int, held: Variant, pick: Callable) -> void:
 	var grid := GridContainer.new()
 	grid.columns = columns
 	parent.add_child(grid)
 	for c: Dictionary in list:
 		var b := DrawerStrips.card(c, "kind", held, func(_v: Variant) -> void: pick.call(c))
-		b.tooltip_text = TranslationServer.translate(c.get("tip_key", c.label_key))
+		b.tooltip_text = b.text
+		b.text = b.text.get_slice(" (", 0)
 		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		grid.add_child(b)
 

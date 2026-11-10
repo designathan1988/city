@@ -27,8 +27,8 @@ constexpr float FAR_CARD_CENTRE = 0.5f;
 
 struct TreeSpecies {
 	godot::String name;
-	OwnedMesh body, cards; // cards none when the species has none; each made with its material (surface_data.h)
-	OwnedMesh caster; // the body simplified: what it throws on the ground, swaying as it does
+	godot::Ref<godot::ArrayMesh> body, cards; // cards empty when the species has none
+	godot::Ref<godot::ArrayMesh> caster; // the body simplified: what it throws on the ground, swaying as it does
 	float crown_reach = 0; // crown radius as a share of the height (keeps trees off the roads)
 	bool cards_cast = false; // a palm's fronds are its crown and throw its shadow; other cards do not
 	godot::Color far_tone; // the crown's mean tone (sRGB), for its far card
@@ -36,7 +36,7 @@ struct TreeSpecies {
 
 class TreeKit {
 public:
-	bool build(const godot::Dictionary &trees, const godot::RID &body_material, const godot::RID &card_material, godot::PackedStringArray &errors);
+	bool build(const godot::Dictionary &trees, godot::PackedStringArray &errors);
 	int count() const { return int(species_.size()); }
 	const TreeSpecies &species(int i) const { return species_[size_t(i)]; }
 	int find(const godot::String &name) const; // -1 when absent

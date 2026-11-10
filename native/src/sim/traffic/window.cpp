@@ -16,6 +16,11 @@ namespace {
 
 constexpr double STREET_SIDE = 0.5;
 
+constexpr float MESO_VIEW_STEP = 64.f; // the camera moving this far is enough to look at the window again
+constexpr double WINDOW_EVERY_S = 1.0;
+constexpr float MAT_TAIL_PAD_M = 2.f, MAT_END_PAD_M = 0.5f;
+constexpr float MAT_SPEED_SHARE = 0.7f;
+constexpr float FURNITURE_KEEP_WINDOWS = 2.f; // walkers live within 1.2 windows: their furniture is kept within 2
 
 float mid_dist2(const CityState &s, int seg, float cx, float cz) {
 	const RoadSegment &g = s.roads.segs[size_t(seg)];
@@ -42,7 +47,7 @@ void grow_ped_window(CityState &s, float cx, float cz) {
 		t.ped_segs.push_back(seg);
 	});
 	list_doors(s, cx, cz, w);
-	prune_furniture(s, cx, cz, w * s.catalog.traffic.window_furniture_keep_windows); // the walkers' street furniture far behind the camera
+	prune_furniture(s, cx, cz, w * FURNITURE_KEEP_WINDOWS); // the walkers' street furniture far behind the camera
 }
 
 } // namespace
@@ -59,7 +64,6 @@ bool in_window(const CityState &s, int ds) {
 }
 
 void materialize(CityState &s, int key) {
-	const TrafficParams &p = s.catalog.traffic;
 	TrafficState &t = s.traffic;
 	const int ds = key / MAX_LANES;
 	if (key < 0 || ds < 0 || ds >= int(t.g.ds.size()) || !t.g.ds[size_t(ds)].ok || key >= int(t.meso_head.size())) return;
@@ -71,7 +75,7 @@ void materialize(CityState &s, int key) {
 	const float stop = held ? L - d.stop_back - margin : L - margin;
 	const int tail = t.lane_vehicles[size_t(key)].empty() ? -1 : t.lane_vehicles[size_t(key)].front(); // the rearmost drawn one
 	const float tail_len = tail >= 0 ? s.catalog.traffic.classes[int(t.vehicles[size_t(tail)].type)].length : 0.f;
-	float limit = tail >= 0 ? t.vehicles[size_t(tail)].s - tail_len - p.window_mat_tail_pad_m : held ? stop : L - p.window_mat_end_pad_m;
+	float limit = tail >= 0 ? t.vehicles[size_t(tail)].s - tail_len - MAT_TAIL_PAD_M : held ? stop : L - MAT_END_PAD_M;
 	int id = t.meso_head[size_t(key)];
 	while (id >= 0) {
 		Vehicle &v = t.vehicles[size_t(id)];
@@ -92,22 +96,21 @@ void materialize(CityState &s, int key) {
 		v.held = 0;
 		v.wait = 0;
 		const float b = std::max(s.catalog.traffic.classes[int(v.type)].b, 0.f);
-		v.v = at < est - 1 ? 0.f : std::min(free_speed * v.vf, free_speed * p.window_mat_speed_share);
+		v.v = at < est - 1 ? 0.f : std::min(free_speed * v.vf, free_speed * MAT_SPEED_SHARE);
 		v.v = std::min(v.v, std::sqrt(2 * b * std::max(0.f, stop - at)));
 		v.acc = 0;
 		micro_add(t, id);
 		lane_add(s, key, id);
-		limit = at - len - p.window_mat_tail_pad_m;
+		limit = at - len - MAT_TAIL_PAD_M;
 		id = next;
 	}
 }
 
 void check_window(CityState &s) {
-	const TrafficParams &tp = s.catalog.traffic;
 	TrafficState &t = s.traffic;
 	const float cx = s.camera_x.load(), cz = s.camera_z.load();
 	const float dx = cx - t.win_x, dz = cz - t.win_z;
-	if (t.win_t > -double(BIG) && dx * dx + dz * dz < tp.window_view_step_m * tp.window_view_step_m && t.time - t.win_t < tp.window_every_s) return;
+	if (t.win_t > -double(BIG) && dx * dx + dz * dz < MESO_VIEW_STEP * MESO_VIEW_STEP && t.time - t.win_t < WINDOW_EVERY_S) return;
 	t.win_x = cx;
 	t.win_z = cz;
 	t.win_t = t.time;

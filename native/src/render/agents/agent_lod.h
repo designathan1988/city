@@ -1,5 +1,6 @@
-// A vehicle's mesh with no more triangles than its distance can show: the simplifier takes the mesh itself and removes what
-// moves the surface by less than `error_m`, so a car 70 pixels long does not carry several triangles to a pixel.
+// A vehicle's mesh with no more triangles than its distance can show. Each level was a separate hand-set build (stations, rows), so
+// a car 100 m off, 70 pixels long, carried the 10 thousand triangles written for the close view: several to a pixel. The simplifier
+// takes the mesh itself and removes what moves the surface by less than `error_m`.
 #pragma once
 
 #include "render/mesh_builder.h"

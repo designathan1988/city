@@ -30,7 +30,6 @@ public:
 	bool operator!=(std::nullptr_t) const { return v_ != nullptr; }
 	const Body &operator*() const { return v_->body; }
 	const Body *operator->() const { return &v_->body; }
-	std::shared_ptr<const Body> shared() const { return std::shared_ptr<const Body>(v_, &v_->body); } // held as long as the version
 	uint64_t stamp() const { return v_ ? v_->stamp : 0; } // 0: none
 
 private:
@@ -54,37 +53,30 @@ private:
 };
 
 // What names a record's body exactly (record.h body_key): an edited one by its version's stamp, one made from the seed by all it
-// is made from (seed, zone, floors, the site's ground and outline, frontage and depth, where the lot stands and faces, which give
-// its street's character and its quarter's era (gen.h quarter_of), and its corner; the floats to the bit, as the generator reads
-// them). The function and the seed are in both: what is derived from a body with them (its look, its rooms, its purpose) differs
-// by them. Two records with the same key have the same body and the same derived things.
+// is made from (seed, zone, floors, frontage and depth to a decimetre). The function is in both: what is derived from a body with
+// it (its look, its rooms) differs by it. Two records with the same key have the same body, wherever they stand.
 struct BodyKey {
 	uint64_t stamp = 0; // the edited version (BodyRef::stamp), 0 for a body made from the seed
-	uint64_t site = 0; // the ground and outline it was made on (LotSite::hash), 0 for none
 	uint32_t seed = 0;
-	uint32_t w = 0, d = 0; // frontage and depth: the floats' bits
-	uint32_t x = 0, z = 0, rot = 0; // where the lot stands and faces: the floats' bits
+	int32_t w = 0, d = 0; // decimetres
 	uint16_t floors = 0;
-	uint8_t zone = 0, fn = 0, corner = 0;
+	uint8_t zone = 0, fn = 0;
 	bool operator==(const BodyKey &o) const {
-		return stamp == o.stamp && site == o.site && seed == o.seed && w == o.w && d == o.d && x == o.x && z == o.z && rot == o.rot &&
-				floors == o.floors && zone == o.zone && fn == o.fn && corner == o.corner;
+		return stamp == o.stamp && seed == o.seed && w == o.w && d == o.d && floors == o.floors && zone == o.zone && fn == o.fn;
 	}
 	bool operator!=(const BodyKey &o) const { return !(*this == o); }
 };
 struct BodyKeyHash {
-	static constexpr uint64_t MIX = 0x9e3779b97f4a7c15ull; // 2^64 over the golden ratio
-	static constexpr int SHIFT = 31, HALF_BITS = 32, BYTE_BITS = 8; // the product's high half folded down; a word's halves; a byte
+	static constexpr uint64_t MIX = 0x9e3779b97f4a7c15ull;
+	static constexpr int SHIFT = 31, HALF_BITS = 32, BYTE_BITS = 8;
 	static uint64_t mix(uint64_t h, uint64_t v) {
 		h = (h ^ v) * MIX;
 		return h ^ (h >> SHIFT);
 	}
 	size_t operator()(const BodyKey &k) const {
-		uint64_t h = mix(mix(k.stamp, k.site), uint64_t(k.seed) | (uint64_t(uint32_t(k.w)) << HALF_BITS));
+		uint64_t h = mix(k.stamp, uint64_t(k.seed) | (uint64_t(uint32_t(k.w)) << HALF_BITS));
 		h = mix(h, uint64_t(uint32_t(k.d)) | (uint64_t(k.floors) << HALF_BITS));
-		h = mix(h, uint64_t(k.x) | (uint64_t(k.z) << HALF_BITS));
-		h = mix(h, uint64_t(k.rot));
-		return size_t(mix(h, uint64_t(k.zone) | (uint64_t(k.fn) << BYTE_BITS) | (uint64_t(k.corner) << (BYTE_BITS * 2))));
+		return size_t(mix(h, uint64_t(k.zone) | (uint64_t(k.fn) << BYTE_BITS)));
 	}
 };
 
@@ -94,7 +86,7 @@ inline size_t heap_bytes(const Body &b) {
 	size_t n = b.paints.capacity() * sizeof(Paint) + b.volumes.capacity() * sizeof(Volume) + b.elements.capacity() * sizeof(LotElement) +
 			b.cores.capacity() * sizeof(Core);
 	for (const Volume &v : b.volumes) {
-		n += v.outline.capacity() * sizeof(V2) + v.fill.capacity() + v.reliefs.capacity() * sizeof(Relief) + v.gear.capacity() * sizeof(RoofPart);
+		n += v.outline.capacity() * sizeof(Point2) + v.fill.capacity() + v.reliefs.capacity() * sizeof(Relief) + v.gear.capacity() * sizeof(RoofPart);
 		n += (v.bays.size() + v.side_fill.size()) * (sizeof(std::pair<uint32_t, uint8_t>) + MAP_NODE_BYTES);
 		n += v.storey_paint.size() * (sizeof(std::pair<uint32_t, int>) + MAP_NODE_BYTES);
 	}

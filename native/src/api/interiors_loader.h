@@ -1,4 +1,4 @@
-// data/catalog/interiors.json -> the interior tables kept by the simulation (BuildingStore::designs).
+// data/render/interiors.json -> the interior tables kept by the simulation (BuildingStore::designs).
 #pragma once
 
 #include "sim/buildings/interior/tables.h"

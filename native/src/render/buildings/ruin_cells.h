@@ -17,9 +17,8 @@ constexpr float VORONOI_EDGE_M = 2.8f; // the edge of a Voronoi cell: the size o
 constexpr float SEED_INSET = 0.15f, SEED_SPAN = 0.7f; // where a seed may lie in its grid cell
 constexpr float INSIDE_CORNER = 0.02f; // of the way to a triangle's middle, where a corner's cell is read
 constexpr int GRID_MARGIN = 3;
-constexpr float FAR_SQUARED = 1e30f; // farther than any cell
-// Teschner et al. 2003's spatial primes (core/random.h holds two of them), the third for depth.
-constexpr uint32_t PRIME_X = SPATIAL_PRIME_X, PRIME_Y = SPATIAL_PRIME_Y, PRIME_Z = 83492791u;
+constexpr float FAR_SQUARED = 1e30f;
+constexpr uint32_t PRIME_X = 73856093u, PRIME_Y = 19349663u, PRIME_Z = 83492791u;
 
 using godot::Color;
 using godot::Vector2;

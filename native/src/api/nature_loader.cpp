@@ -1,7 +1,5 @@
-// data/catalog/nature.json -> NatureDef (sim/catalog/nature_types.h) through the strict reader (api/data_reader.h): a
-// missing or mistyped key, a list of the wrong length and an unknown name fail the load.
+// data/catalog/nature.json -> NatureDef (sim/catalog/nature_types.h), strict: a missing or mistyped key fails the load.
 #include "api/catalog_loader.h"
-#include "render/data_reader.h"
 
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/string.hpp>
@@ -12,179 +10,160 @@ using namespace godot;
 namespace city {
 
 namespace {
+struct Read {
+	PackedStringArray &errors;
+	String where;
+	bool has(const Dictionary &d, const char *k) {
+		if (d.has(k)) return true;
+		errors.push_back("nature." + where + ": falta '" + String(k) + "'");
+		return false;
+	}
+	float num(const Dictionary &d, const char *k) { return has(d, k) ? float(double(d[k])) : 0.f; }
+	int integer(const Dictionary &d, const char *k) { return int(num(d, k)); }
+	Dictionary dict(const Dictionary &d, const char *k) { return has(d, k) ? Dictionary(d[k]) : Dictionary(); }
+	Array arr(const Dictionary &d, const char *k) { return has(d, k) ? Array(d[k]) : Array(); }
+	LimitDef limit(const Dictionary &d, const char *k) {
+		Dictionary l = dict(d, k);
+		return { num(l, "min"), num(l, "max"), num(l, "default") };
+	}
+};
 
-LimitDef limit(DataReader r, const Dictionary &l) { return { float(r.num(l, "min")), float(r.num(l, "max")), float(r.num(l, "default")) }; }
-LimitDef limit(DataReader &r, const Dictionary &d, const char *key) { return limit(r.in(key), r.table(d, key)); }
+std::string text(const Variant &v) { return std::string(String(v).utf8().get_data()); }
 
-void load_weather(DataReader r, const Dictionary &t, WeatherDef &w) {
-#define CITY_WEATHER_READ(name) w.name = limit(r, t, #name);
+void load_weather(const Dictionary &t, WeatherDef &w, PackedStringArray &e) {
+	Read r{ e, "weather" };
+#define CITY_WEATHER_READ(name) w.name = r.limit(t, #name);
 	CITY_WEATHER_FIELDS(CITY_WEATHER_READ)
 #undef CITY_WEATHER_READ
 }
 
-void load_clouds(DataReader r, const Dictionary &t, CloudDef &c) {
+void load_clouds(const Dictionary &t, CloudDef &c, PackedStringArray &e) {
+	Read r{ e, "clouds" };
 	c.max_clouds = r.integer(t, "max_clouds");
 	c.scatter_tries = r.integer(t, "scatter_tries");
-	c.span_m = float(r.num(t, "span_m"));
-	c.crowd_share = float(r.num(t, "crowd_share"));
-	c.scatter_reach = float(r.num(t, "scatter_reach"));
-	c.show_from = float(r.num(t, "show_from"));
-	c.show_span = float(r.num(t, "show_span"));
-	c.pick_centre = float(r.num(t, "pick_centre"));
-	c.pick_radius = float(r.num(t, "pick_radius"));
-	c.grip_height = float(r.num(t, "grip_height"));
-	c.height_m = limit(r, t, "height_m");
-	c.size_m = limit(r, t, "size_m");
-	c.density = limit(r, t, "density");
+	c.span_m = r.num(t, "span_m");
+	c.crowd_share = r.num(t, "crowd_share");
+	c.scatter_reach = r.num(t, "scatter_reach");
+	c.show_from = r.num(t, "show_from");
+	c.show_span = r.num(t, "show_span");
+	c.pick_centre = r.num(t, "pick_centre");
+	c.pick_radius = r.num(t, "pick_radius");
+	c.grip_height = r.num(t, "grip_height");
+	c.height_m = r.limit(t, "height_m");
+	c.size_m = r.limit(t, "size_m");
+	c.density = r.limit(t, "density");
 }
 
-void load_fog(DataReader r, const Dictionary &t, FogDef &f) {
+void load_fog(const Dictionary &t, FogDef &f, PackedStringArray &e) {
+	Read r{ e, "fog" };
 	f.max_dabs = r.integer(t, "max_dabs");
-	f.texel_m = float(r.num(t, "fog_texel_m"));
-	f.min_density = float(r.num(t, "min_density"));
-	f.height_m = limit(r, t, "height_m");
-	f.speed_ms = limit(r, t, "speed_ms");
+	f.texel_m = r.num(t, "fog_texel_m");
+	f.min_density = r.num(t, "min_density");
+	f.height_m = r.limit(t, "height_m");
+	f.speed_ms = r.limit(t, "speed_ms");
 }
 
-PaintClass paint_class(const String &s, DataReader &r) {
+PaintClass paint_class(const String &s, Read &r) {
 	if (s == "ground") return PaintClass::GROUND;
 	if (s == "cover") return PaintClass::COVER;
 	if (s == "biome") return PaintClass::BIOME;
 	if (s == "eraser") return PaintClass::ERASER;
-	r.fail(String("unknown class '") + s + String("'"));
+	r.errors.push_back("nature.paint: classe desconhecida '" + s + "'");
 	return PaintClass::GROUND;
 }
 
-void load_paint(DataReader r, const Dictionary &t, PaintDef &p) {
+void load_paint(const Dictionary &t, PaintDef &p, PackedStringArray &e) {
+	Read r{ e, "paint" };
 	p.max_tiles = r.integer(t, "max_tiles");
-	p.strength_scale = float(r.num(t, "strength_scale"));
-	p.min_strength = float(r.num(t, "min_strength"));
-	p.land_rim = float(r.num(t, "land_rim"));
-	p.rock_reach = float(r.num(t, "rock_reach"));
-	p.rock_rim = float(r.num(t, "rock_rim"));
-	const Array kinds = r.list(t, "kinds");
+	p.strength_scale = r.num(t, "strength_scale");
+	p.min_strength = r.num(t, "min_strength");
+	p.land_rim = r.num(t, "land_rim");
+	p.rock_reach = r.num(t, "rock_reach");
+	Array kinds = r.arr(t, "kinds");
 	for (int i = 0; i < kinds.size(); i++) {
-		DataReader rk = r.in("kinds").in(i);
-		const Dictionary d = r.in("kinds").table_at(kinds, i);
+		Dictionary d = kinds[i];
 		PaintKindDef k;
-		k.id = rk.utf8(d, "id");
-		k.cls = paint_class(rk.text(d, "class"), rk);
-		k.slot = rk.integer(d, "slot");
+		k.id = text(d.get("id", ""));
+		k.cls = paint_class(String(d.get("class", "")), r);
+		k.slot = r.integer(d, "slot");
 		p.kinds.push_back(k);
 	}
-	const Array rocks = r.list(t, "landform_rock");
+	Array rocks = r.arr(t, "landform_rock");
 	for (int i = 0; i < rocks.size(); i++) {
-		DataReader rr = r.in("landform_rock");
-		const std::string id = rr.utf8_at(rocks, i);
 		int found = -1;
 		for (int k = 0; k < int(p.kinds.size()); k++)
-			if (p.kinds[size_t(k)].id == id) found = k;
-		if (found < 0) rr.fail(String("unknown kind '") + id.c_str() + String("'"));
+			if (p.kinds[size_t(k)].id == text(rocks[i])) found = k;
+		if (found < 0) e.push_back("nature.paint.landform_rock: tipo desconhecido");
 		p.landform_rock.push_back(found);
 	}
 }
 
-void load_trees(DataReader r, const Dictionary &t, TreeBrushDef &b) {
+void load_trees(const Dictionary &t, TreeBrushDef &b, PackedStringArray &e) {
+	Read r{ e, "trees" };
 	b.max_planted = r.integer(t, "max_planted");
 	b.max_clearings = r.integer(t, "max_clearings");
 	b.max_per_dab = r.integer(t, "max_per_dab");
 	b.tries_per_tree = r.integer(t, "tries_per_tree");
 	b.model_slots = r.integer(t, "model_slots");
-	b.min_height_share = float(r.num(t, "min_height_share"));
-	b.m2_per_hectare = float(r.num(t, "m2_per_hectare"));
-	b.seed_top = float(r.num(t, "seed_top"));
-	const Array first = r.list(t, "kind_first"), count = r.list(t, "kind_count");
-	for (int i = 0; i < first.size(); i++) b.kind_first.push_back(r.in("kind_first").integer_at(first, i));
-	for (int i = 0; i < count.size(); i++) b.kind_count.push_back(r.in("kind_count").integer_at(count, i));
+	b.min_height_share = r.num(t, "min_height_share");
+	b.m2_per_hectare = r.num(t, "m2_per_hectare");
+	b.seed_top = r.num(t, "seed_top");
+	for (const Variant &v : r.arr(t, "kind_first")) b.kind_first.push_back(int(v));
+	for (const Variant &v : r.arr(t, "kind_count")) b.kind_count.push_back(int(v));
 }
 
-Community community(DataReader r, const Dictionary &d) {
+Community community(const Dictionary &d, Read &r) {
 	Community c;
-	c.canopy = float(r.num(d, "closed_canopy"));
-	c.trees = float(r.num(d, "trees"));
-	c.emergent = float(r.num(d, "emergent"));
-	c.shrub = float(r.num(d, "shrub"));
-	c.palm = float(r.num(d, "palm"));
-	c.cactus = float(r.num(d, "cactus"));
-	c.grass = float(r.num(d, "grass"));
-	c.dry = float(r.num(d, "dry"));
-	c.wet = float(r.num(d, "wet"));
-	c.rocky = float(r.num(d, "rocky"));
+	c.canopy = r.num(d, "closed_canopy"); c.trees = r.num(d, "trees"); c.emergent = r.num(d, "emergent"); c.shrub = r.num(d, "shrub");
+	c.palm = r.num(d, "palm"); c.cactus = r.num(d, "cactus"); c.grass = r.num(d, "grass"); c.dry = r.num(d, "dry");
+	c.wet = r.num(d, "wet"); c.rocky = r.num(d, "rocky");
 	return c;
 }
 
 // The regional style the landscape reads until the style lives in the CityState.
 const char *const STYLE = "roadcraft";
 
-void load_ecology(DataReader r, const Dictionary &t, DataReader rs, const Dictionary &style, const PaintDef &paint, EcologyDef &c) {
+void load_ecology(const Dictionary &t, const Dictionary &style, const PaintDef &paint, EcologyDef &c, PackedStringArray &e) {
 	static const char *const NAMES[FORMATIONS] = { "gallery", "vereda", "cerradao", "cerrado", "rupestre", "ombrophilous", "high_grassland",
 		"terra_firme", "varzea", "thorn_scrub", "caatinga_river", "campos", "capao", "flooded_field", "cordilheira", "outcrop" };
-	const Dictionary f = r.table(t, "formations");
-	for (int i = 0; i < FORMATIONS; i++) c.formations[size_t(i)] = community(r.in("formations").in(NAMES[i]), r.in("formations").table(f, NAMES[i]));
-	const Dictionary mixes = r.table(t, "mixes");
-#define CITY_MIX_READ(name) c.mix.name = float(r.in("mixes").num(mixes, #name));
+	Read r{ e, "ecology" };
+	Dictionary f = r.dict(t, "formations");
+	for (int i = 0; i < FORMATIONS; i++) c.formations[size_t(i)] = community(r.dict(f, NAMES[i]), r);
+	Dictionary mixes = r.dict(t, "mixes");
+#define CITY_MIX_READ(name) c.mix.name = r.num(mixes, #name);
 	CITY_ECOLOGY_MIX_FIELDS(CITY_MIX_READ)
 #undef CITY_MIX_READ
-	c.grid_m = float(r.num(t, "site_grid_m"));
-	c.patch_m = float(r.num(t, "patch_m"));
-	c.fray_m = float(r.num(t, "fray_m"));
-	c.mean_cells = r.integer(t, "mean_cells");
-	c.low_m = float(r.num(t, "site_low_m"));
-	c.high_m = float(r.num(t, "site_high_m"));
-	c.flat_from_deg = float(r.num(t, "flat_from_deg"));
-	c.flat_to_deg = float(r.num(t, "flat_to_deg"));
-	c.steep_from_deg = float(r.num(t, "steep_from_deg"));
-	c.steep_to_deg = float(r.num(t, "steep_to_deg"));
-	c.riparian_near_m = float(r.num(t, "riparian_near_m"));
-	c.riparian_near_patch_m = float(r.num(t, "riparian_near_patch_m"));
-	c.riparian_far_m = float(r.num(t, "riparian_far_m"));
-	c.riparian_far_patch_m = float(r.num(t, "riparian_far_patch_m"));
-	c.forest_line_from_m = float(r.num(t, "forest_line_from_m"));
-	c.forest_line_to_m = float(r.num(t, "forest_line_to_m"));
-	c.canopy_wood = float(r.num(t, "canopy_wood"));
-	c.trees_wood = float(r.num(t, "trees_wood"));
-	c.emergent_wood = float(r.num(t, "emergent_wood"));
-	const std::string biome = rs.utf8(style, "default_biome");
+	c.grid_m = r.num(t, "site_grid_m"); c.patch_m = r.num(t, "patch_m"); c.fray_m = r.num(t, "fray_m"); c.mean_cells = r.integer(t, "mean_cells");
+	c.low_m = r.num(t, "site_low_m"); c.high_m = r.num(t, "site_high_m");
+	c.flat_from_deg = r.num(t, "flat_from_deg"); c.flat_to_deg = r.num(t, "flat_to_deg");
+	c.steep_from_deg = r.num(t, "steep_from_deg"); c.steep_to_deg = r.num(t, "steep_to_deg");
+	c.riparian_near_m = r.num(t, "riparian_near_m"); c.riparian_near_patch_m = r.num(t, "riparian_near_patch_m");
+	c.riparian_far_m = r.num(t, "riparian_far_m"); c.riparian_far_patch_m = r.num(t, "riparian_far_patch_m");
+	c.forest_line_from_m = r.num(t, "forest_line_from_m"); c.forest_line_to_m = r.num(t, "forest_line_to_m");
+	c.canopy_wood = r.num(t, "canopy_wood"); c.trees_wood = r.num(t, "trees_wood"); c.emergent_wood = r.num(t, "emergent_wood");
+	std::string def = text(style.get("default_biome", ""));
 	c.default_biome = -1;
 	for (const PaintKindDef &k : paint.kinds)
-		if (k.cls == PaintClass::BIOME && k.id == biome) c.default_biome = k.slot;
-	if (c.default_biome < 0) rs.fail(String("default_biome: no biome '") + biome.c_str() + String("' among paint.kinds"));
-	const Dictionary geology = r.table(t, "geology");
-	DataReader rg = r.in("geology");
-	auto surface = [&](const char *rock) {
-		const std::string id = rg.utf8(geology, rock);
-		for (const PaintKindDef &k : paint.kinds)
-			if (k.cls == PaintClass::GROUND && k.id == id) return k.slot + 1; // PaintCell::surface: the ground kind's slot + 1
-		rg.in(rock).fail(String("no ground kind '") + id.c_str() + String("' among paint.kinds"));
-		return 0;
-	};
-	c.sandstone_surface = surface("sandstone");
-	c.basalt_surface = surface("basalt");
+		if (k.cls == PaintClass::BIOME && k.id == def) c.default_biome = k.slot;
+	if (c.default_biome < 0) e.push_back("nature.ecology.default_biome: bioma desconhecido");
 }
 } // namespace
 
 bool load_nature(const Dictionary &t, NatureDef &n, PackedStringArray &errors) {
-	const int64_t before = errors.size();
-	DataReader r{ errors, "nature.json" };
-	load_weather(r.in("weather"), r.table(t, "weather"), n.weather);
-	load_clouds(r.in("clouds"), r.table(t, "clouds"), n.clouds);
-	load_fog(r.in("fog"), r.table(t, "fog"), n.fog);
-	load_paint(r.in("paint"), r.table(t, "paint"), n.paint);
-	load_trees(r.in("trees"), r.table(t, "trees"), n.trees);
-	DataReader rs = r.in("styles").in(STYLE);
-	load_ecology(r.in("ecology"), r.table(t, "ecology"), rs, r.in("styles").table(r.table(t, "styles"), STYLE), n.paint, n.ecology);
-	const Dictionary el = r.table(t, "elements");
-	DataReader re = r.in("elements");
-	n.elements.max_items = re.integer(el, "max_items");
-	n.elements.max_per_dab = re.integer(el, "max_per_dab");
-	const Array kinds = re.list(el, "kinds");
-	n.elements.kinds = int(kinds.size());
-	const String first_effect = re.text(el, "first_effect");
-	n.elements.first_effect = int(kinds.find(first_effect));
-	if (n.elements.first_effect < 0) re.in("first_effect").fail(String("not a kind: '") + first_effect + String("'"));
-	n.elements.area_m2 = float(re.num(el, "area_m2"));
-	n.elements.least_size_m = float(re.num(el, "least_size_m"));
-	return errors.size() == before;
+	Read r{ errors, "" };
+	load_weather(r.dict(t, "weather"), n.weather, errors);
+	load_clouds(r.dict(t, "clouds"), n.clouds, errors);
+	load_fog(r.dict(t, "fog"), n.fog, errors);
+	load_paint(r.dict(t, "paint"), n.paint, errors);
+	load_trees(r.dict(t, "trees"), n.trees, errors);
+	load_ecology(r.dict(t, "ecology"), r.dict(r.dict(t, "styles"), STYLE), n.paint, n.ecology, errors);
+	Dictionary el = r.dict(t, "elements");
+	n.elements.max_items = r.integer(el, "max_items");
+	n.elements.max_per_dab = r.integer(el, "max_per_dab");
+	n.elements.kinds = int(r.arr(el, "kinds").size());
+	n.elements.area_m2 = r.num(el, "area_m2");
+	n.elements.least_size_m = r.num(el, "least_size_m");
+	return errors.is_empty();
 }
 
 } // namespace city

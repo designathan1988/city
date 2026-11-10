@@ -7,6 +7,7 @@ extends Node
 const KEPT_PATH := "user://health.json"
 const STATUS_ORDER := ["ok", "slow", "broken"]
 ## The sections of the core's frame, as render_cost names them.
+const COST_PARTS := ["lock", "stream", "levels", "flush", "roads", "props", "buildings", "trees", "agents"]
 
 var entries: Array[Dictionary] = []
 var changes := 0
@@ -75,7 +76,7 @@ func record(kind: String, severity: String, message: String, detail := "", ms :=
 
 ## ok, slow or broken: the worst of the last status_window_s.
 func status() -> String:
-	var since := Time.get_ticks_msec() - int(_cfg.status_window_s * Units.MS_PER_S)
+	var since := Time.get_ticks_msec() - int(_cfg.status_window_s * MS_PER_S)
 	var worst := 0
 	for e in entries:
 		if e.earlier or e.last_ms < since or e.severity == "warning":
@@ -92,7 +93,7 @@ func _process(delta: float) -> void:
 	_mutex.unlock()
 	for p in taken:
 		record(p.kind, p.severity, p.message, p.detail)
-	var ms := delta * Units.MS_PER_S
+	var ms := delta * MS_PER_S
 	if ms >= _cfg.long_frame_ms and GameFlow.state == GameFlow.State.PLAYING:
 		_slow_frame(ms)
 	_since_save += delta
@@ -108,7 +109,7 @@ func _slow_frame(ms: float) -> void:
 	var top := ""
 	var most := 0.0
 	var steps := PackedStringArray()
-	for part: String in CityStore.constants.frame_sections:
+	for part: String in COST_PARTS:
 		var took := float(cost.get(part, 0.0))
 		if took > most:
 			top = part
@@ -142,3 +143,4 @@ func _restore() -> void:
 			entries.append(e)
 
 
+const MS_PER_S := 1000.0

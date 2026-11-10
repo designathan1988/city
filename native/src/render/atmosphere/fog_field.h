@@ -9,7 +9,6 @@
 #include "render/async_slot.h"
 #include "render/frame_admission.h"
 #include "sim/state/city_state.h"
-#include "sim/terrain/height_patch.h"
 
 #include <godot_cpp/classes/image.hpp>
 #include <godot_cpp/classes/image_texture.hpp>
@@ -44,36 +43,19 @@ private:
 		float low = 0, high = 0, ox = 0, oz = 0, side = 1;
 		bool any = false;
 	};
-	// What one job leaves the next: the dabs of the revision it read and their buckets (indices into `dabs`, ascending: the order
-	// they fold in), and its window's texels (each with the ground and top it gave the slab).
+	// What one job leaves the next: the dabs of the revision it read and their buckets, and its window's texels (each with the
+	// ground and top it gave the slab).
 	struct Scratch {
 		uint64_t revision = ~uint64_t(0);
 		std::vector<FogDab> dabs;
-		std::unordered_map<int64_t, std::vector<int>> buckets;
+		std::unordered_map<int64_t, std::vector<const FogDab *>> buckets;
 		bool held = false; // the texels below are a window's
 		int kx = 0, kz = 0; // that window's first texel, world indices
 		godot::PackedByteArray texels;
 		std::vector<float> ground, top;
 		std::vector<uint8_t> on;
-		// The slab of each row of texels (by its row in `texels`): its lowest ground and highest top under fog, and whether any is.
-		std::vector<float> row_low, row_high;
-		std::vector<uint8_t> row_any;
 	};
 	void work(const CityState &s, float ox, float oz, uint64_t revision, std::vector<Span> terrain, uint64_t generation);
-	// The dabs of the revision taken in: only those past the first changed one leave their buckets and come into them, so each
-	// bucket keeps the order a whole filing gives. `changed`: the texels the changed dabs reach; false when none changed.
-	static bool refile(Scratch &k, const std::vector<FogDab> &now, float texel, Span &changed);
-	// Where the job paints: a window and the ground under it, and the spans of it to paint (each with its ground patch).
-	struct Paint {
-		float ox = 0, oz = 0, half = 0, water = 0;
-		int kx = 0, kz = 0;
-		std::vector<Span> spans;
-		std::vector<HeightPatch> patches;
-	};
-	// The spans' texels painted from the dabs and the ground; false when a reset came on the way (nothing of the window is kept).
-	bool paint(Scratch &k, const Paint &p, const FogDef &def, uint64_t generation) const;
-	// The slab over the window into `r`: each row's (worked out again where a span wrote it), then the rows'.
-	static void slab(Scratch &k, const Paint &p, bool full, float texel, Raster &r);
 	godot::Ref<godot::ImageTexture> texture_;
 	AsyncSlot<Raster, Scratch> slot_;
 	std::vector<Span> terrain_; // the ground touched since the last job asked (world texel indices)

@@ -1,7 +1,8 @@
 ## Captures of the features that used to be "being built", driven like a player (real mouse and key events through
 ## the viewport): undo/redo, save and open, the road tabs Melhorar/Dividir/Rotatória, the Relief brush, a park and a
 ## school drawn from the Build drawer and the map layers. Each step checks the core's numbers and saves a PNG.
-## Run: godot --path project --resolution 1280x720 res://tests/visual/capture_features.tscn -- --no-flow --capture-dir=<folder>
+## Run under xvfb: godot --path project --rendering-driver opengl3 --rendering-method gl_compatibility
+##   --resolution 1280x720 res://tests/visual/capture_features.tscn -- --no-flow --capture-dir=/tmp/x
 extends Node3D
 
 const TOWN_MAP := 0
@@ -11,6 +12,8 @@ const VIEW_AHEAD_M := 120.0
 const ROAD_IN_M := 40.0
 const ROAD_OUT_M := 300.0
 const HOLD_FRAMES := 90
+const MODE_RAISE := 0
+const MODE_MESA := 4
 
 var out_dir := "user://captures"
 var rig: CityCamera
@@ -35,7 +38,8 @@ func _ready() -> void:
 		push_error("boot: %s" % errors)
 		get_tree().quit(1)
 		return
-	CityStore.new_map(TOWN_MAP, SEED, true, true)
+	CityStore.new_map(TOWN_MAP, SEED, true)
+	CityStore.dispatch(&"set_speed", [0])
 	ui = UiDriver.new(rig, get_tree(), out_dir)
 	tools = ToolController.new(rig)
 	add_child(tools)
@@ -131,10 +135,10 @@ func _relief(e: Vector3) -> void:
 	await ui.drawn()
 	hud.open_category("landscape")
 	await ui.frames(4)
-	await ui.press(_land_card(CityStore.code(&"BrushMode", &"MESA")))
+	await ui.press(_land_card(MODE_MESA))
 	var h0 := ui.ground(hill.x, hill.z).y
 	await ui.hold(hill, HOLD_FRAMES)
-	await ui.press(_land_card(CityStore.code(&"BrushMode", &"RAISE")))
+	await ui.press(_land_card(MODE_RAISE))
 	await ui.hold(hill + Vector3(-140, 0, 0), HOLD_FRAMES)
 	await ui.drawn()
 	var h1 := ui.ground(hill.x, hill.z).y
@@ -163,14 +167,11 @@ func _build(a: Vector3, e: Vector3) -> void:
 	await ui.frames(4)
 	await ui.press(hud.drawer._tabs.draw)
 	await ui.frames(2)
-	var cards := {} # the lot cards by the function each lays (the core's BuildingFn)
-	for c: Node in hud.drawer.strip.get_children():
-		if c.has_meta(&"pick"):
-			cards[String(CityStore.code_name(&"BuildingFn", int(c.get_meta(&"pick"))))] = c
+	var cards := hud.drawer.strip.get_children().filter(func(c: Node) -> bool: return c.has_meta(&"pick"))
 	var b0: int = CityStore.snapshot.buildings
-	await ui.press(cards["FN_PARK"])
-	await ui.drag(mid + Vector3(-30, 0, 16), mid + Vector3(30, 0, 56), func() -> void: await ui.shot("feat_build_previa"))
-	await ui.press(cards["FN_SCHOOL"])
+	await ui.press(cards[1]) # parque
+	await ui.drag(mid + Vector3(-30, 0, 16), mid + Vector3(30, 0, 56))
+	await ui.press(cards[2]) # escola
 	await ui.drag(mid + Vector3(-30, 0, -16), mid + Vector3(20, 0, -50))
 	await ui.drawn()
 	_check(CityStore.snapshot.buildings >= b0 + 2, "park and school drawn (%d -> %d)" % [b0, CityStore.snapshot.buildings])
@@ -179,9 +180,9 @@ func _build(a: Vector3, e: Vector3) -> void:
 
 
 func _layers(a: Vector3, e: Vector3) -> void:
-	var zoned: Dictionary = CityStore.dispatch(&"paint_zone", [a.lerp(e, 0.5), 80.0, ZoneTable.code("commercial")])
+	var zoned: Dictionary = CityStore.dispatch(&"paint_zone", [a.lerp(e, 0.5), 80.0, 2])
 	_check(zoned.ok, "zoned the road: %s" % zoned)
-	CityStore.dispatch(&"set_speed", [CityStore.code(&"SimSpeed", &"NORMAL")])
+	CityStore.dispatch(&"set_speed", [1])
 	for i in 120:
 		await get_tree().process_frame
 	rig.jump(a + Vector3(0, 0, 0), 0.0, 60.0, 900.0)

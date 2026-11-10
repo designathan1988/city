@@ -23,13 +23,12 @@ constexpr int64_t BACKLOG_WINDOWS = 4;
 
 bool RenderWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	bool ok = roads_.init(ctx, errors);
-	ok = ok && far_roads_.init(ctx, roads_.look(), roads_.shapes(), errors);
-	ok = ok && seams_.init(ctx, roads_.look(), roads_.shapes(), errors);
-	ok = ok && structures_.init(ctx, roads_.look(), roads_.shapes(), errors);
+	ok = ok && far_roads_.init(ctx, roads_.look(), errors);
+	ok = ok && verges_.init(ctx, roads_.look(), errors);
+	ok = ok && structures_.init(ctx, roads_.look(), errors);
 	ok = ok && props_.init(ctx, roads_.look(), errors);
-	ground_.set_budget(size_t(ctx.catalog->tune.render_ground_cache_mb * BYTES_PER_MIB));
-	ok = ok && trees_.init(ctx, roads_.look(), ground_, errors);
-	ok = ok && cover_.init(ctx, ground_, errors);
+	ok = ok && trees_.init(ctx, roads_.look(), errors);
+	ok = ok && cover_.init(ctx, errors);
 	ok = ok && water_.init(ctx, errors);
 	ok = buildings_.init(ctx, errors) && ok;
 	stage_.use_designs(buildings_.own_designs());
@@ -39,15 +38,12 @@ bool RenderWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	ok = overlays_.init(ctx, errors) && ok;
 	ok = effects_.init(ctx, errors) && ok;
 	effects_.set_people(&agents_.people());
-	effects_.set_ruin_maker([this](const b40::Data &data, const Building &rec, const HeightPatch &ground, const RID &material) {
-		return buildings_.ruin_of(data, rec, ground, material);
-	});
-	effects_.set_tree_finder([this](const CityState &s, float x, float z, float r, int clearing, std::vector<TreeInstance> &out) { trees_.felled(s, x, z, r, clearing, out); });
+	effects_.set_ruin_maker([this](const b40::Data &data, const Building &rec, const HeightPatch &ground) { return buildings_.ruin_of(data, rec, ground); });
 	if (ok) {
-		std::vector<const MeshBuilder *> bodies;
+		std::vector<Ref<Mesh>> bodies;
 		std::vector<Vector3> sizes;
 		for (const AgentWreck &w : agents_.wrecks()) {
-			bodies.push_back(&w.body);
+			bodies.push_back(w.mesh);
 			sizes.push_back(w.size);
 		}
 		effects_.set_wrecks(bodies, sizes);
@@ -63,7 +59,7 @@ void RenderWorld::reset() {
 	wear_.reset();
 	roads_.reset();
 	far_roads_.reset();
-	seams_.reset();
+	verges_.reset();
 	structures_.reset();
 	props_.reset();
 	trees_.reset();
@@ -90,14 +86,11 @@ void RenderWorld::full_rebuild(CityState &s, Object *terrain3d) {
 	fog_.reset();
 	canyon_.reset();
 	shore_.reset();
-	ecology_.reset();
 	water_.mark_wet(s.terrain);
-	for (size_t sid = 0; sid < s.roads.segs.size(); sid++)
-		if (s.roads.segs[sid].alive) // every chunk a road's drawing reaches: its own, and those its ground seams' cells fall in
-			s.roads.for_drawn_chunks(int(sid), [&](int64_t k) { road_stream_.mark(k); });
 	for (const RoadSegment &g : s.roads.segs)
 		if (g.alive) {
 			int64_t k = chunk_of(float((g.q.x0 + g.q.x1) / 2), float((g.q.z0 + g.q.z1) / 2));
+			road_stream_.mark(k);
 			far_roads_.mark(k);
 			if (structure_of(g.flags) != Structure::GROUND) raised_stream_.mark(k);
 			overlays_.mark_dirty(k);
@@ -136,7 +129,6 @@ void RenderWorld::drain_log(CityState &s) {
 // The landscape's changes: the trees and ground cover of the touched chunks are marked, the water's chunks and surface follow.
 void RenderWorld::sync_nature() {
 	ChangeLog::dedup(nature_keys_);
-	ecology_.touch(nature_keys_);
 	for (int64_t k : nature_keys_) {
 		trees_.mark_dirty(k);
 		cover_.mark_dirty(k);
@@ -187,16 +179,16 @@ void RenderWorld::mark_changed(const CityState &s) {
 }
 
 int64_t RenderWorld::baking() const {
-	return roads_.baking() + far_roads_.baking() + seams_.baking() + structures_.baking() + props_.baking() + buildings_.baking() + trees_.baking() +
+	return roads_.baking() + far_roads_.baking() + verges_.baking() + structures_.baking() + props_.baking() + buildings_.baking() + trees_.baking() +
 			water_.baking();
 }
 
 int64_t RenderWorld::waiting() const {
-	return roads_.waiting() + far_roads_.waiting() + seams_.waiting() + structures_.waiting() + props_.waiting() + buildings_.waiting() + trees_.waiting() +
+	return roads_.waiting() + far_roads_.waiting() + verges_.waiting() + structures_.waiting() + props_.waiting() + buildings_.waiting() + trees_.waiting() +
 			water_.waiting();
 }
 
-// The streamed chunks' build units: a road chunk's are its road, ground seam and (unless it stands out from afar) structure jobs, one
+// The streamed chunks' build units: a road chunk's are its road, verge and (unless it stands out from afar) structure jobs, one
 // credit each, asked together; a chunk with a result on its way waits for it, marked.
 void RenderWorld::offer_streams(const CityState &s, const Vector3 &cam, std::vector<FrameAdmission::Unit> &units) {
 	const Tuning &t = s.catalog.tune;
@@ -205,19 +197,19 @@ void RenderWorld::offer_streams(const CityState &s, const Vector3 &cam, std::vec
 	road_stream_.offer(cam.x, cam.z, t.render_road_end_m, STREAM_DROP_K, [&](int64_t k) { return raised_stream_.known.count(k) ? 2 : 3; }, units,
 			[this, &s, &pool](int64_t k, float d) {
 				roads_.submit(s, k, pool, d);
-				seams_.submit(s, k, pool, d);
+				verges_.submit(s, k, pool, d);
 				if (!raised_stream_.known.count(k)) structures_.submit(s, k, pool, d);
 			},
 			[this](int64_t k) {
 				roads_.drop_chunk(k);
-				seams_.drop_chunk(k);
+				verges_.drop_chunk(k);
 				if (!raised_stream_.known.count(k)) structures_.drop_chunk(k);
 			},
-			[this](int64_t k) { return roads_.busy(k) || seams_.busy(k) || (!raised_stream_.known.count(k) && structures_.busy(k)); });
+			[this](int64_t k) { return roads_.busy(k) || verges_.busy(k) || (!raised_stream_.known.count(k) && structures_.busy(k)); });
 	raised_stream_.offer(cam.x, cam.z, buildings_.stream_reach(s, cam), STREAM_DROP_K, one, units,
 			[this, &s, &pool](int64_t k, float d) { structures_.submit(s, k, pool, d); }, [this](int64_t k) { structures_.drop_chunk(k); },
 			[this](int64_t k) { return structures_.busy(k); });
-	far_roads_.offer(s, pool, cam, buildings_.stream_reach(s, cam), STREAM_DROP_K, units); // as far as the buildings: the streets end where they do
+	far_roads_.offer(s, pool, cam, units);
 	props_stream_.offer(cam.x, cam.z, t.render_props_end_m, STREAM_DROP_K, one, units, [this, &s, &pool](int64_t k, float d) { props_.submit(s, k, pool, d); },
 			[this](int64_t k) { props_.drop_chunk(k); }, [this](int64_t k) { return props_.busy(k); });
 	// a building chunk's "build" only registers it (its levels are meshed and admitted by update_view), so no credit is spent
@@ -226,7 +218,7 @@ void RenderWorld::offer_streams(const CityState &s, const Vector3 &cam, std::vec
 			[this](int64_t k) { buildings_.drop_chunk(k); });
 }
 
-void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam, double frame_s) {
+void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 	const Tuning &t = s.catalog.tune;
 	using clock = std::chrono::steady_clock;
 	// One deadline from here: the drain, the fields, the flush of the uploads and every commit are inside it.
@@ -236,18 +228,18 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam, doub
 	const bool uploads_due = ++upload_frame_ >= upload_every_;
 	if (uploads_due) upload_frame_ = 0;
 	if (frame_) upload_debt_ = frame_->upload.debt_after(); // what the last frame (and its overlays) left owing
-	frame_.emplace(until, backlog ? 0 : std::max(1, t.render_max_chunk_rebuilds_per_frame), UploadBudget(uploads_due ? window : 0, baking(), upload_debt_));
+	frame_.emplace(until, backlog ? 0 : std::max(1, int(t.render_max_chunk_rebuilds_per_frame)), UploadBudget(uploads_due ? window : 0, baking(), upload_debt_));
 	FrameAdmission &f = *frame_;
 	f.upload.charge(carried_bytes_); // the wear's tiles sent since the last sync
 	carried_bytes_ = 0;
 	Laps laps;
 	{
 		// Only reads the map: shared, so a frame never waits for the mesh jobs (they read it shared too).
-		MapRead lk(s);
+		std::shared_lock<std::shared_mutex> lk(s.map_mutex);
 		cost_.lock = laps.lap();
 		drain_log(s);
 		effects_.touch_terrain(s, terrain_rects_);
-		effects_.sync(s, f, frame_s);
+		effects_.sync(s, f);
 		const std::vector<int64_t> repaint = effects_.take_repaint();
 		if (!repaint.empty()) {
 			buildings_.set_broken(effects_.broken());
@@ -255,8 +247,6 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam, doub
 		}
 		// The terrain an edit changed is sent this frame (the roads and the shore of the same edit stand on it): paid into the
 		// ledger, into debt if it must, which the deferrable uploads of the next frames repay.
-		// the fine ground reaches as far as the detailed roads that lie on it
-		if (terrain3d) f.upload.charge(terrain_.follow(s.terrain, s.nature.ground, terrain3d, cam.x, cam.z, t.render_road_end_m, t.render_far_land_cells));
 		if (terrain3d && !terrain_rects_.empty()) f.upload.charge(terrain_.push_rects(s.terrain, terrain3d, terrain_rects_));
 		if (terrain3d && !paint_rects_.empty()) f.upload.charge(terrain_.push_paint(s.terrain, s.nature.ground, terrain3d, paint_rects_));
 		paint_rects_.clear();
@@ -265,8 +255,9 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam, doub
 		terrain_rects_.clear();
 		units_.clear();
 		offer_streams(s, cam, units_);
+		roads_.update_view(cam);
 		cost_.stream = laps.lap();
-		transit_.offer(s, cam, units_);
+		transit_.sync(s, f);
 		// The buildings first, with the frame's credits: a chunk they leave for the next frame is a hole in the city (rank 0 of the
 		// frame's order, which update_view keeps in its own); then every other producer's units in one order.
 		buildings_.update_view(cam, f.build);
@@ -283,7 +274,6 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam, doub
 	fog_.sync(s, cam.x, cam.z, f);
 	canyon_.sync(s, cam.x, cam.z, f);
 	shore_.sync(s, f);
-	ecology_.sync(s, f);
 	laps.lap();
 	cost_.flush = f.flush_uploads();
 	laps.lap();
@@ -294,12 +284,11 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam, doub
 	cost_.buildings = laps.lap();
 	cost_.building = buildings_.commit_times();
 	// Every other chunk queue in the frame's one order: the bakes the ledger admits, then the hand-overs while the deadline lasts.
-	enum Hand { ROADS, FAR_ROADS, SEAMS, STRUCTURES, PROPS, TREES_NEAR, TREES_FAR, COVER, WATER, TRANSIT }; // the queues below, in their order
-	f.commit({ &roads_, &far_roads_, &seams_, &structures_, &props_, trees_.near_queue(), trees_.far_queue(), cover_.queue(), &water_, transit_.queue() }, &hand_ms_);
+	f.commit({ &roads_, &far_roads_, &verges_, &structures_, &props_, trees_.near_queue(), trees_.far_queue(), cover_.queue(), &water_ }, &hand_ms_);
 	far_roads_.fold(roads_);
-	cost_.roads = hand_ms_[ROADS] + hand_ms_[FAR_ROADS] + hand_ms_[SEAMS] + hand_ms_[STRUCTURES];
-	cost_.props = hand_ms_[PROPS];
-	cost_.trees = hand_ms_[TREES_NEAR] + hand_ms_[TREES_FAR] + hand_ms_[COVER];
+	cost_.roads = hand_ms_[0] + hand_ms_[1] + hand_ms_[2] + hand_ms_[3];
+	cost_.props = hand_ms_[4];
+	cost_.trees = hand_ms_[5] + hand_ms_[6] + hand_ms_[7];
 	laps.lap();
 	cost_.uploads = double(f.upload.used) / BYTES_PER_MIB;
 }

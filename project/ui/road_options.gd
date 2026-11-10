@@ -12,7 +12,7 @@ signal road_picked(id: String)
 
 @onready var tools: ToolController = get_tree().get_first_node_in_group(&"tools")
 ## The keys' panel: an internal child, made with the options and freed with them; the rows' rebuild (HudWidgets.clear) never reaches it.
-var _keys_panel := RoadKeysPanel.new()
+@onready var _keys_panel := RoadKeysPanel.new()
 
 
 func _ready() -> void:
@@ -56,13 +56,11 @@ func refresh() -> void:
 		_toggle(row, c, snap[key] and live, live, func() -> void:
 			Settings.set_road_snap(key, not snap[key])
 			refresh())
-	var base := _base()
-	var class_card: bool = base.class_card
+	var class_card: bool = _base().class_card
 	if class_card:
-		_class_rows(spec, base)
+		_class_rows(spec)
 	_height_rows()
 	_furniture_row(spec.furniture)
-	_power_row(spec.power)
 	_keys_row()
 	if class_card:
 		_parking_row(spec)
@@ -70,7 +68,7 @@ func refresh() -> void:
 
 ## The base road in hand, as the core describes it.
 func _base() -> Dictionary:
-	return CityStore.cached(&"road_profiles")[_param("profile", CityStore.first_road())]
+	return CityStore.query(&"road_profiles")[_param("profile", CityStore.first_road())]
 
 
 func _param(key: String, fallback: Variant) -> Variant:
@@ -78,7 +76,8 @@ func _param(key: String, fallback: Variant) -> Variant:
 
 
 ## Lanes and width tune a class's own road, and parking (_parking_row); a road of the catalogue carries its own (Roadcraft ui/v2/shell.ts).
-func _class_rows(spec: Dictionary, base: Dictionary) -> void:
+func _class_rows(spec: Dictionary) -> void:
+	var base := _base()
 	var chosen: int = _param("lanes", 0)
 	var row := _row(spec.lanes.label_key)
 	for c in spec.lanes.choices:
@@ -94,7 +93,7 @@ func _class_rows(spec: Dictionary, base: Dictionary) -> void:
 	row = _row(spec.width.label_key)
 	var width: float = _param("width", 0.0)
 	_step(row, "minus", width, -spec.width.step_m, base.width)
-	HudWidgets.label(row, &"BodyLabel", tr("palette.width.auto") if width <= 0 else tr("unit.metre").format({"n": roundi(width)}))
+	HudWidgets.label(row, &"BodyLabel", tr("palette.width.auto") if width <= 0 else "%d m" % roundi(width))
 	_step(row, "plus", width, spec.width.step_m, base.width)
 	if width > 0:
 		var back := HudWidgets.button(&"IconButton", "undo", "", "palette.width.auto", "icon_btn", "icon_btn")
@@ -104,11 +103,13 @@ func _class_rows(spec: Dictionary, base: Dictionary) -> void:
 
 ## How many blocks and how big (shell.ts): columns and rows, the block's side and the grid's turn.
 func _block_rows(spec: Dictionary) -> void:
-	var d: Dictionary = DataTables.ui("hud").tool_options.road_blocks
-	var b := RoadBlocks.settings()
+	var d: Dictionary = DataTables.game("settings").road_blocks
+	var b: Dictionary = Settings.road.blocks
+	if b.cols == 0:
+		b.merge({"cols": int(d.cols), "rows": int(d.rows), "size": float(d.size_m), "turn": 0.0}, true)
 	var row := _row(spec.count_key)
-	_stepper(row, "palette.blocks.cols", Formatters.format_int(b.cols), func(by: int) -> void: b.cols = clampi(b.cols + by, 1, int(d.most)))
-	_stepper(row, "palette.blocks.rows", Formatters.format_int(b.rows), func(by: int) -> void: b.rows = clampi(b.rows + by, 1, int(d.most)))
+	_stepper(row, "palette.blocks.cols", str(b.cols), func(by: int) -> void: b.cols = clampi(b.cols + by, 1, int(d.most)))
+	_stepper(row, "palette.blocks.rows", str(b.rows), func(by: int) -> void: b.rows = clampi(b.rows + by, 1, int(d.most)))
 	row = _row(spec.measure_key)
 	_stepper(row, "palette.blocks.size", Formatters.format_length(b.size), func(by: int) -> void: b.size = clampf(b.size + by * d.step_m, d.least_m, d.widest_m))
 	_stepper(row, "palette.blocks.angle", "%d°" % int(b.turn), func(by: int) -> void: b.turn += by * d.turn_step_deg)
@@ -136,16 +137,14 @@ func _height_rows() -> void:
 	HudWidgets.label(row, &"BodyLabel", Formatters.format_length(metres) if whole else Formatters.format_length_tenths(metres))
 	_height_step(row, "plus", 1)
 	row = _row("cutSides.row")
-	var sides := HudWidgets.choices(row, Settings.road.walls, func(on: bool) -> void:
+	HudWidgets.choices(row, [[false, tr("cutSides.batter")], [true, tr("cutSides.walls")]], Settings.road.walls, func(on: bool) -> void:
 		Settings.set_road_walls(on)
 		CityStore.dispatch(&"set_road_walls", [on]))
-	HudWidgets.choice(sides, false, tr("cutSides.batter"))
-	HudWidgets.choice(sides, true, tr("cutSides.walls"))
 
 
-func _height_step(row: Control, icon: String, dir: int) -> void:
+func _height_step(row: Control, icon: String, metres: int) -> void:
 	var b := HudWidgets.button(&"IconButton", icon, "", "palette.height", "icon_btn", "icon_btn")
-	b.pressed.connect(func() -> void: tools.step_road_height(dir))
+	b.pressed.connect(func() -> void: tools.step_road_height(metres))
 	row.add_child(b)
 
 
@@ -153,24 +152,12 @@ func _height_step(row: Control, icon: String, dir: int) -> void:
 ## parking, as the reference orders the rows.
 func _furniture_row(spec: Dictionary) -> void:
 	var row := _row(spec.label_key)
-	var free_m: float = DataTables.catalog_table("street_furniture").sidewalk.free_width_m
-	row.tooltip_text = tr(spec.tip_key).format({"free_m": Formatters.format_hundredths(free_m)})
-	var levels := HudWidgets.choices(row, CityStore.query(&"road_furniture"), func(level: int) -> void:
-		CityStore.dispatch(&"set_road_furniture", [level]))
-	for c: Dictionary in spec.choices:
-		HudWidgets.choice(levels, c.level, tr(c.label_key))
-
-
-## How new roads are lit (Roadcraft roadTool.ts layPart, powerLine.ts): the power line's poles with their lamps on them, alone on the
-## street, or lighting columns; the player's setting (Settings.road.power), kept between sessions as the cut's walls are.
-func _power_row(spec: Dictionary) -> void:
-	var row := _row(spec.label_key)
 	row.tooltip_text = tr(spec.tip_key)
-	var lit := HudWidgets.choices(row, Settings.road.power, func(on: bool) -> void:
-		Settings.set_road_power(on)
-		CityStore.dispatch(&"set_road_power", [on]))
+	var items := []
 	for c: Dictionary in spec.choices:
-		HudWidgets.choice(lit, c.power, tr(c.label_key))
+		items.push_back([c.level, tr(c.label_key)])
+	HudWidgets.choices(row, items, CityStore.query(&"road_furniture"), func(level: int) -> void:
+		CityStore.dispatch(&"set_road_furniture", [level]))
 
 
 func _parking_row(spec: Dictionary) -> void:
@@ -183,7 +170,7 @@ func _parking_row(spec: Dictionary) -> void:
 ## The tool's keys, and the panel that changes them.
 func _keys_row() -> void:
 	var row := _row("roadKeys.row")
-	var b := HudWidgets.verbatim(HudWidgets.button(&"Choice", "keyboard", "", "roadKeys.title", "icon_btn", "icon_btn"), RoadKeys.summary()) as Button
+	var b := HudWidgets.button(&"Choice", "keyboard", RoadKeys.summary(), "roadKeys.title", "icon_btn", "icon_btn")
 	b.pressed.connect(func() -> void: _open_keys(b))
 	row.add_child(b)
 
@@ -207,15 +194,8 @@ func _row(label_key: String) -> HBoxContainer:
 	return row
 
 
-## The values the option rows' texts take: {grid_m}, the snap grid (v2.snap.grid).
-func _fills() -> Dictionary:
-	return {"grid_m": Formatters.format_measure(DataTables.tuning("road_grid_m"))}
-
-
 func _toggle(row: Control, c: Dictionary, on: bool, enabled: bool, pick: Callable) -> void:
-	var b := HudWidgets.button(&"IconButton", c.icon, "", "", "icon_btn", "icon_btn")
-	if c.get("label_key", "") != "":
-		HudWidgets.tip_for(b, tr(c.label_key).format(_fills()))
+	var b := HudWidgets.button(&"IconButton", c.icon, "", c.get("label_key", ""), "icon_btn", "icon_btn")
 	b.toggle_mode = true
 	b.set_pressed_no_signal(on)
 	b.disabled = not enabled

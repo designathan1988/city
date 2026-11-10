@@ -11,8 +11,6 @@
 #include "sim/traffic/lane_graph_types.h"
 #include "sim/traffic/parking_state.h"
 #include "sim/traffic/ped_state.h"
-#include "sim/traffic/ring_meter.h"
-#include "sim/traffic/route_reach.h"
 #include "sim/traffic/traffic_view.h"
 
 #include <cstdint>
@@ -63,11 +61,7 @@ struct Vehicle {
 	int ds = -1, lane = 0, conn = -1;
 	float s = 0, v = 0, acc = 0, cs = 0; // lane position, speed, acceleration, metres along the connector
 	float vf = 1, drift = 0; // share of the speed limit, phase of the speed drift
-	// A lane change under way (lane_shift.h): the sideways offset still to cover, as it started, the road driven since and the change's length;
-	// the lane it still stands in (its shadow, -1 none) and the offset under which it has left it; the lane it signals for and since when.
-	float lat = 0, lat_start = 0, lat_done = 0, lat_len = 0, lc_cool = 0;
-	int shadow_key = -1, lc_intent = -1;
-	float shadow_clear = 0, lc_intent_t = 0;
+	float lc_off = 0, lc_cool = 0; // lateral offset left after a lane change (decays), cooldown
 	float wait = 0, stuck = 0;
 	float held = 0; // stopped since it last reconsidered the route (Roadcraft micro.ts c.held)
 	int pass = -1; // connector it committed to at its line with the way open (Roadcraft c.pass + exitC)
@@ -76,7 +70,6 @@ struct Vehicle {
 	int bus = -1; // its place in TransitRun::buses
 	float bus_doors = 0; // how far the bus's doors stand open, left here by the transit step
 	float bus_stop_at = -1; // a bus: on its last lane it stops with its front here
-	uint8_t riders = 0; // a bus: who sits behind the driver, drawn at its birth and counted by who gets off and on (bus_calls.cpp)
 	bool off = false; // off the lanes (in or out of a lot): on no lane list, not in the fleet count; `cur` is its pose
 	int car = -1; // its index in ParkingState::cars
 	int lorry = -1; // its index in ParkingState::lorries
@@ -88,7 +81,6 @@ struct Vehicle {
 	uint8_t shots = 0; // rounds taken on the bodywork (the pistol): enough of them and it burns
 	bool stood = false; // stood at the stop line of the lane it is on (traffic_probe: a red entry from a standstill)
 	float goal_s = 0;
-	bool ended = false; // its trip ended where it may be seen (sight.h): it stands short of its lane's end until it is out of sight
 	RouteRef route; // directed segments, in TrafficState::route_pool
 	int ri = 0;
 	Pose cur; // at the last publication
@@ -119,7 +111,6 @@ struct TrafficState {
 	uint64_t volume_base = 0;
 	std::vector<double> green_wanted; // per approach: until when the vehicles over its detector want green
 	std::vector<std::vector<int>> lane_vehicles; // ds * MAX_LANES + lane, sorted by s (back first)
-	std::vector<std::vector<int>> lane_shadows; // the vehicles changing out of each lane that still stand in it (lane_shift.h)
 	// Per lane key: its list was in order of s when the step last moved it (vehicle_motion.cpp). Only that step changes the s of a
 	// vehicle on a list; an insertion keeps a list in order and a removal keeps it so.
 	std::vector<uint8_t> lane_sorted;
@@ -168,9 +159,6 @@ struct TrafficState {
 	// Crosswalk answers per (node, arm) for the current step (ped_crossing.cpp).
 	std::vector<uint32_t> cross_stamp;
 	std::vector<uint8_t> cross_walk, cross_cars;
-	// Per (node, arm) of the cache: when the traffic last held a walker at that crosswalk's kerb, and since when it has (-1: nobody
-	// held now); the walkers' impatience and the vehicles that give way to those waiting read them (ped_crossing.cpp).
-	std::vector<double> cross_held, cross_held_from;
 	// Anti-gridlock bookkeeping (Roadcraft traffic/junctions.ts, micro.ts): who committed to each connector and when,
 	// who holds the next free spot of a full lane (and when it last asked), when each node last let someone in and
 	// when it may release the next vehicle of a jam.
@@ -187,15 +175,11 @@ struct TrafficState {
 	// again when CityState::lane_graph_serial moves (stamped serial + 1): the router relaxes each segment it can reach once (routing.cpp).
 	std::vector<std::vector<int>> route_next;
 	std::vector<uint64_t> route_next_stamp;
-	RouteReach reach; // which segments lead to which, cars and bicycles (route_reach.cpp)
-	RingIndex rings; // the small closed loops of road and what they hold (ring_meter.cpp)
 	float gov = 1, gov_clock = 0; // fleet governor (traffic/regions.ts)
 	int reroutes = 0, released = 0, jams = 0;
 	float red_last[TIMED_STAGES] = {}; // the last red entry: type, speed, ds, time (traffic_probe)
 	int red_entries = 0, red_from_stop = 0; // over the stop line on red (probe): all, and after standing at it (a violation)
-	int vehicle_count = 0, ped_count = 0, arrived = 0, lost = 0, ped_arrived = 0, ped_waiting = 0;
-	// near vehicles and walkers taken away where the player may see them (sight.h: none, but by the player's own hand)
-	int gone_in_sight = 0, ped_gone_in_sight = 0;
+	int vehicle_count = 0, ped_count = 0, arrived = 0, lost = 0, ped_arrived = 0, ped_waiting = 0, stuck_lost = 0;
 	double time = 0; // simulated seconds
 	uint64_t tick = 0;
 	float spawn_credit = 0;
@@ -207,6 +191,9 @@ struct TrafficState {
 	int kerb_planned = 0, kerb_drops = 0, kerb_picks = 0, kerb_deliveries = 0, kerb_abandoned = 0;
 	int bus_boarded = 0, bus_alighted = 0; // who has got on and off the buses
 	std::vector<LaneClosure> closures; // few, and only while a lorry swings across a street
+	// The road segments added, changed or removed by the network changes applied since the transit last read them (lane_graph_edit.cpp
+	// writes, transit_sim.cpp takes): what of its stops and level crossings an edit of the roads alone can reach.
+	std::vector<int> roads_touched;
 	std::vector<float> pub_sum, pub_lim; // publish_poses: per segment, kept between ticks (zero but during a pass)
 	std::vector<int> pub_count;
 	std::vector<int> pub_segs; // the segments the last pass counted vehicles on

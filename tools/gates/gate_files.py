@@ -8,10 +8,8 @@ from source import language_of
 
 
 def check_root(ctx, err):
-    """The root's entries as git lists them (scope.py: tracked plus untracked-not-ignored): what git ignores never enters the
-    repository, so a folder the owner keeps beside it (.git/info/exclude) is not an entry of its root."""
     allowed = set(ctx.rules["root_allowed"])
-    for entry in sorted({p.split("/", 1)[0] for p in ctx.listed}):
+    for entry in sorted(os.listdir(ctx.root)):
         if entry not in allowed and not entry.startswith(".git"):
             err("RAIZ_LIMPA", entry, "entry outside rules.json/root_allowed at the repository root")
 
@@ -26,10 +24,7 @@ def check_single_doc(ctx, src, err):
     rules = ctx.rules
     if os.path.basename(src.path) in set(rules.get("doc_exempt_names", [])):
         return
-    allowed = rules["allowed_docs"]  # a path, or a folder when it ends in "/" (log/: the records)
-    if src.path in allowed or any(a.endswith("/") and src.path.startswith(a) for a in allowed):
-        return
-    if os.path.splitext(src.path)[1].lower() in rules["doc_extensions"]:
+    if os.path.splitext(src.path)[1].lower() in rules["doc_extensions"] and src.path not in set(rules["allowed_docs"]):
         err("DOC_UNICO", src.path, "the project's documents are CLAUDE.md and log/: move the content there")
 
 

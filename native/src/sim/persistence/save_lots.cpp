@@ -12,14 +12,14 @@ constexpr size_t CORNER_BYTES = 2 * sizeof(double);
 } // namespace
 
 bool write_lots_block(ByteWriter &w, const LotBook &book) {
-	if (book.empty()) return false;
+	if (book.lots.empty()) return false;
 	w.put<int32_t>(book.next_id);
-	w.put<uint32_t>(uint32_t(book.all().size()));
-	for (const PlayerLot &l : book.all()) {
+	w.put<uint32_t>(uint32_t(book.lots.size()));
+	for (const PlayerLot &l : book.lots) {
 		w.put<int32_t>(l.id);
 		w.put<int32_t>(l.zone);
 		w.put<uint32_t>(uint32_t(l.corners.size()));
-		for (const XZ &p : l.corners) {
+		for (const LotPoint &p : l.corners) {
 			w.put<double>(p.x);
 			w.put<double>(p.z);
 		}
@@ -32,19 +32,18 @@ bool read_lots_block(ByteReader &r, LotBook &book) {
 	book.next_id = r.get<int32_t>();
 	const uint32_t n = r.get_count(LOT_MIN_BYTES);
 	if (!r.ok) return false;
-	std::vector<PlayerLot> lots(n);
-	for (PlayerLot &l : lots) {
+	book.lots.resize(n);
+	for (PlayerLot &l : book.lots) {
 		l.id = r.get<int32_t>();
 		l.zone = r.get<int32_t>();
 		const uint32_t corners = r.get_count(CORNER_BYTES);
 		if (!r.ok) return false;
 		l.corners.resize(corners);
-		for (XZ &p : l.corners) {
+		for (LotPoint &p : l.corners) {
 			p.x = r.get<double>();
 			p.z = r.get<double>();
 		}
 	}
-	book.assign(std::move(lots));
 	return r.ok;
 }
 

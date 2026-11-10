@@ -5,7 +5,7 @@
 class_name CitySaves
 extends RefCounted
 
-const SAVE_WAIT_MS := 10 # between two looks at whether the save's thread is done
+const SAVE_WAIT_MS := 10
 
 var _store: Node
 var _core: Node3D
@@ -76,19 +76,10 @@ func save_game(slot: String) -> Dictionary:
 	return r
 
 
-## The core reads a city aside on a thread of its own while the frames go on, then takes it in whole (load_poll).
-func _opened(started: Dictionary) -> Dictionary:
-	var r := started
-	while r.get("pending", false):
-		await _store.get_tree().process_frame
-		r = _core.load_poll()
-	return r
-
-
-## Replaces the city with the saved one (the core reads it aside, stops the simulation, takes it in and redraws everything). The
-## city keeps that slot, unless it is a map copy (then its first save gives it one of its own).
+## Replaces the city with the saved one (the core stops the simulation, reads it and redraws everything). The city
+## keeps that slot, unless it is a map copy (then its first save gives it one of its own).
 func load_game(slot: String, paused := false) -> Dictionary:
-	var r: Dictionary = await _opened(_core.load_city(save_path(slot), paused)) # waits for a save in flight first
+	var r: Dictionary = _core.load_city(save_path(slot), paused) # waits for a save in flight first
 	_settle_save()
 	_since_autosave = 0.0
 	if r.get("ok", false):
@@ -106,7 +97,7 @@ func load_last() -> Dictionary:
 	var slot := SaveSlots.last()
 	if slot.is_empty():
 		return {"ok": false, "error": "save.none"}
-	return await load_game(slot)
+	return load_game(slot)
 
 
 func save_path(slot: String) -> String:
@@ -135,7 +126,7 @@ func save_on_hide() -> void:
 ## A city file from anywhere on the disk: opened as a new city, its first save takes a slot of its own. The core keeps the city on
 ## screen when the file is no good, so nothing is lost.
 func open_file(file: String) -> Dictionary:
-	var r: Dictionary = await _opened(_core.load_city(file))
+	var r: Dictionary = _core.load_city(file)
 	_settle_save()
 	_since_autosave = 0.0
 	if r.get("ok", false):

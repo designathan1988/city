@@ -33,7 +33,7 @@ Dictionary CityStreet::preview_item(const Vector3 &p, int kind, float reach) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	Dictionary d;
 	if (!state_->ready || kind < 0 || kind >= ITEM_KINDS) return d;
-	const ItemSnap snap = snap_item(*state_, ItemKind(kind), p.x, p.z, reach, FurnitureRead::KEPT);
+	const ItemSnap snap = snap_item(*state_, ItemKind(kind), p.x, p.z, reach);
 	d["ok"] = snap.ok;
 	d["error"] = String(snap.reason.c_str());
 	d["position"] = on_ground(*state_, snap.x, snap.z);
@@ -102,17 +102,7 @@ Dictionary CityStreet::preview_pole_run(const Vector3 &a, const Vector3 &b, floa
 }
 
 Dictionary CityStreet::build_pole_run(const Vector3 &a, const Vector3 &b, float reach, int lamps, int kind) {
-	PlannedPole last;
-	bool strung = false;
-	Vector3 at;
-	Dictionary d = run_edit(*state_, "cmd.place.poleRun", [&](CityState &s) {
-		EditResult r = city::build_pole_run(s, a.x, a.z, b.x, b.z, reach, LampMode(lamps), PoleKind(kind), &last);
-		strung = r.ok;
-		if (strung) at = on_ground(s, last.x, last.z); // under the edit's lock, as the preview reads the ground
-		return r;
-	});
-	if (strung) d["last"] = at; // the last pole: where the tool goes on from, without planning the run again
-	return d;
+	return run_edit(*state_, "cmd.place.poleRun", [&](CityState &s) { return city::build_pole_run(s, a.x, a.z, b.x, b.z, reach, LampMode(lamps), PoleKind(kind)); });
 }
 
 void CityStreet::show_pole_preview(const Array &poles) {
@@ -133,16 +123,6 @@ void CityStreet::set_road_walls(bool on) {
 bool CityStreet::road_walls() {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	return (state_->new_road_flags & SEG_CUT_WALLS) != 0;
-}
-
-void CityStreet::set_road_power(bool on) {
-	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
-	state_->new_road_flags = uint16_t(on ? state_->new_road_flags & ~SEG_LIT_BY_COLUMNS : state_->new_road_flags | SEG_LIT_BY_COLUMNS);
-}
-
-bool CityStreet::road_power() {
-	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
-	return (state_->new_road_flags & SEG_LIT_BY_COLUMNS) == 0;
 }
 
 void CityStreet::set_road_height(float metres) {
@@ -166,8 +146,6 @@ int CityStreet::road_furniture() {
 }
 
 Array CityStreet::sign_cells() { return render_->take_sign_cells(); }
-
-Array CityStreet::sign_cells_laid() const { return render_->laid_sign_cells(); }
 
 // What stands along the streets, kit and player's alike, for a comparison per kilometre: the pieces of each FurnitureKind (`kinds`,
 // in its order), the street length and the poles that carry a light.
@@ -220,11 +198,10 @@ Dictionary CityStreet::street_counts() {
 	d["instances"] = render_->street_instances();
 	d["sign_generation"] = render_->sign_generation(); // a reset of the sign atlas, seen even when the new city has no plates
 	d["sign_cells"] = render_->sign_cells();
-	d["sign_cells_waiting"] = render_->sign_cells_waiting(); // laid, not yet handed to the painter
 	return d;
 }
 
-// Where each piece of segment `seg`'s furniture stands (tests and the look's queries): its kind, row, side, station, whether a lamp is a lighting column, place in the
+// Where each piece of segment `seg`'s furniture stands (tests and the look's queries): its kind, row, side, station, place in the
 // segment frame (v along, u across) and in the world (sim/street/footway.h footway_point, without the kerb's rise).
 Array CityStreet::furniture_spots(int seg) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
@@ -241,7 +218,6 @@ Array CityStreet::furniture_spots(int seg) {
 		d["row"] = p.row;
 		d["side"] = p.side;
 		d["station"] = p.station;
-		d["column"] = p.column;
 		d["v"] = p.v;
 		d["u"] = p.u;
 		d["position"] = Vector3(float(x), float(y), float(z));
@@ -266,10 +242,7 @@ void CityStreet::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("road_height"), &CityStreet::road_height);
 	ClassDB::bind_method(D_METHOD("set_road_walls", "on"), &CityStreet::set_road_walls);
 	ClassDB::bind_method(D_METHOD("road_walls"), &CityStreet::road_walls);
-	ClassDB::bind_method(D_METHOD("set_road_power", "on"), &CityStreet::set_road_power);
-	ClassDB::bind_method(D_METHOD("road_power"), &CityStreet::road_power);
 	ClassDB::bind_method(D_METHOD("sign_cells"), &CityStreet::sign_cells);
-	ClassDB::bind_method(D_METHOD("sign_cells_laid"), &CityStreet::sign_cells_laid);
 	ClassDB::bind_method(D_METHOD("street_counts"), &CityStreet::street_counts);
 	ClassDB::bind_method(D_METHOD("street_poles"), &CityStreet::street_poles);
 	ClassDB::bind_method(D_METHOD("furniture_census"), &CityStreet::furniture_census);

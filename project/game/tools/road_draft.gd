@@ -2,7 +2,6 @@
 class_name RoadDraft
 extends RefCounted
 
-## A long stroke keeps every sample up to DENSE_SAMPLES, then one each SPARSE_SAMPLE_M, up to MOST_SAMPLES.
 const DENSE_SAMPLES := 256
 const MOST_SAMPLES := 4096
 const SPARSE_SAMPLE_M := 1.0
@@ -29,7 +28,7 @@ static func traveled(d: Dictionary) -> float:
 
 ## The paint the preview draws: none on a road without lines.
 static func paint(profile: int) -> String:
-	var p: Dictionary = CityStore.cached(&"road_profiles")[profile]
+	var p: Dictionary = CityStore.query(&"road_profiles")[profile]
 	if not p.painted:
 		return ""
 	return "yellow" if p.yellow else "white"

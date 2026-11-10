@@ -1,6 +1,5 @@
 // Loads the models of the element brush (see element_models.h).
 #include "render/cover/element_models.h"
-#include "render/surface_data.h"
 
 #include <godot_cpp/classes/base_material3d.hpp>
 #include <godot_cpp/classes/mesh_instance3d.hpp>
@@ -32,8 +31,10 @@ Ref<Mesh> first_mesh(Node *n) {
 	return Ref<Mesh>();
 }
 
-ElementModel fitted(const AABB &box) {
+ElementModel fitted(const Ref<Mesh> &mesh) {
 	ElementModel m;
+	m.mesh = mesh;
+	AABB box = mesh->get_aabb();
 	float across = std::max(box.size.x, box.size.z);
 	m.fit = across > 0 ? 1.f / across : 1.f;
 	m.foot = box.position.y;
@@ -53,12 +54,12 @@ Ref<Mesh> scene_mesh(const String &path, PackedStringArray &errors) {
 	return mesh;
 }
 
-// A quad lying on the ground, wearing the texture with its cover kept at any distance, made whole with its material.
-ElementModel ground_quad(const String &path, PackedStringArray &errors) {
+// A quad lying on the ground, wearing the texture with its cover kept at any distance.
+Ref<Mesh> ground_quad(const String &path, PackedStringArray &errors) {
 	Ref<Texture2D> tex = ResourceLoader::get_singleton()->load(path);
 	if (tex.is_null()) {
-		errors.push_back("cover.json elements: could not open " + path);
-		return ElementModel();
+		errors.push_back("cover.json elements: não abriu " + path);
+		return Ref<Mesh>();
 	}
 	Ref<StandardMaterial3D> mat;
 	mat.instantiate();
@@ -67,41 +68,27 @@ ElementModel ground_quad(const String &path, PackedStringArray &errors) {
 	mat->set_cull_mode(BaseMaterial3D::CULL_DISABLED);
 	Ref<PlaneMesh> plane;
 	plane.instantiate();
-	ElementModel m = fitted(plane->get_aabb());
-	m.made = OwnedMesh::of(mesh_of_arrays(plane->get_mesh_arrays(), mat->get_rid()));
-	m.mesh = m.made.rid;
-	m.keep = mat;
-	return m;
+	plane->set_material(mat);
+	return plane;
 }
 } // namespace
 
-bool ElementModels::load(const DataValue &elements, int laid, PackedStringArray &errors) {
-	const int64_t before = errors.size();
-	const DataValue kinds = elements["props"];
-	if (kinds.size() != laid) kinds.fail(String("a row a kind laid on the ground: ") + String::num_int64(laid) + String(" (nature.json elements before first_effect)"));
+bool ElementModels::load(const Dictionary &elements, PackedStringArray &errors) {
+	Array kinds = elements.get("props", Array());
 	models_.clear();
 	first_.clear();
 	count_.clear();
 	for (int k = 0; k < kinds.size(); k++) {
-		const DataValue files = kinds[k];
+		Array files = kinds[k];
 		first_.push_back(int(models_.size()));
-		count_.push_back(files.size());
+		count_.push_back(int(files.size()));
 		for (int i = 0; i < files.size(); i++) {
-			const String path = files[i].text();
-			if (path.ends_with(".png")) {
-				ElementModel quad = ground_quad(path, errors);
-				if (quad.mesh.is_valid()) models_.push_back(std::move(quad));
-				continue;
-			}
-			const Ref<Mesh> mesh = scene_mesh(path, errors);
-			if (mesh.is_null()) continue;
-			ElementModel m = fitted(mesh->get_aabb());
-			m.mesh = mesh->get_rid();
-			m.keep = mesh;
-			models_.push_back(std::move(m));
+			String path = files[i];
+			Ref<Mesh> mesh = path.ends_with(".png") ? ground_quad(path, errors) : scene_mesh(path, errors);
+			if (mesh.is_valid()) models_.push_back(fitted(mesh));
 		}
 	}
-	return errors.size() == before;
+	return errors.is_empty();
 }
 
 } // namespace city

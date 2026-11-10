@@ -4,10 +4,9 @@
 // world pose of each place and the wires' look. The meshes are render/props/prop_kit.h, the trees render/trees.
 #pragma once
 
-#include "render/data_reader.h"
 #include "render/props/prop_kit.h"
 #include "render/roads/road_look.h"
-#include "sim/state/city_view.h"
+#include "sim/state/city_state.h"
 
 #include <godot_cpp/variant/packed_float32_array.hpp>
 
@@ -33,7 +32,7 @@ struct FurnitureLook {
 	WireLook wire;
 	bool beams = false;
 	float beam_radius = 0, lamp_height = 0, lamp_reach = 0, column_height = 0, column_reach = 0;
-	bool load(const DataValue &t, godot::PackedStringArray &errors);
+	bool load(const godot::Dictionary &t, godot::PackedStringArray &errors);
 };
 
 // A signal post: the approach it shows (directed segment into the junction) and its place (PropKind::SIGNAL).
@@ -57,12 +56,12 @@ struct StreetInstances {
 };
 
 // The height of what stands on the footway at (x, z), or on the ground off it.
-float street_ground(const CityView &s, const StreetLook &L, double x, double z);
+float street_ground(const CityState &s, const StreetLook &L, double x, double z);
 // Props, poles, wires and signal posts of everything owned by chunk `key` (segments by midpoint, nodes and records by place).
-void place_street_props(const CityView &s, const StreetLook &L, const FurnitureLook &F, int64_t key, std::vector<PropPlace> &out, StreetInstances &inst);
+void place_street_props(const CityState &s, const StreetLook &L, const FurnitureLook &F, int64_t key, std::vector<PropPlace> &out, StreetInstances &inst);
 // A planned run (Roadcraft poleLayer.ts buildPolePreview): the new poles and every span, as they will stand.
-void place_pole_preview(const CityView &s, const StreetLook &L, const FurnitureLook &F, const std::vector<PreviewPole> &poles, StreetInstances &inst);
+void place_pole_preview(const CityState &s, const StreetLook &L, const FurnitureLook &F, const std::vector<PreviewPole> &poles, StreetInstances &inst);
 // Street trees on the footways of the segments owned by chunk `key`.
-void place_street_trees(const CityView &s, const StreetLook &L, int64_t key, std::vector<TreeSpot> &out);
+void place_street_trees(const CityState &s, const StreetLook &L, int64_t key, std::vector<TreeSpot> &out);
 
 } // namespace city

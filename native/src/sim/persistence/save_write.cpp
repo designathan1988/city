@@ -130,16 +130,6 @@ void put_building(ByteWriter &w, const Building &b) {
 	w.put<uint16_t>(b.profile);
 	w.put<int16_t>(b.landmark);
 	w.put<double>(b.built);
-	w.put<uint8_t>(b.corner);
-	w.put<uint8_t>(b.site ? 1 : 0);
-	if (!b.site) return;
-	w.put<float>(b.site->floor);
-	for (int16_t g : b.site->ground) w.put<int16_t>(g);
-	w.put<uint32_t>(uint32_t(b.site->ring.size()));
-	for (const V2 &p : b.site->ring) {
-		w.put<float>(p.x);
-		w.put<float>(p.y);
-	}
 }
 
 std::vector<uint8_t> encode_city(const CityState &s, std::vector<SavePart> *parts, size_t expect) {

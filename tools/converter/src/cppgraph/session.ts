@@ -48,22 +48,20 @@ export class ClangdSession {
   }
 
   /**
-   * Copies the compile commands of the files inside `keep` into `cacheDir` and starts clangd on that copy. With `crossFile`, it
-   * waits for its background index (cross-file definitions come from it; an index not finished in `indexTimeoutSeconds` fails
-   * the start); without, no index is built at all: a file's own symbols need only that file's parse.
+   * Copies the compile commands of the files inside `keep` into `cacheDir` and starts clangd on that copy; waits for
+   * its background index (cross-file definitions come from it); an index not finished in `indexTimeoutSeconds` fails the start.
    */
   static async start(clangd: string, compileCommands: string, cacheDir: string, keep: (file: string) => boolean,
-    rootDir: string, extraArgs: readonly string[], indexTimeoutSeconds: number, crossFile = true): Promise<ClangdSession> {
+    rootDir: string, extraArgs: readonly string[], indexTimeoutSeconds: number): Promise<ClangdSession> {
     const all = JSON.parse(fs.readFileSync(compileCommands, 'utf8')) as CompileCommand[];
     const kept = all.filter((c) => keep(normalizePath(path.resolve(c.directory, c.file))));
     if (kept.length === 0) throw new Error(`${compileCommands} has no translation unit inside the analysed scope`);
     fs.mkdirSync(cacheDir, { recursive: true });
     fs.writeFileSync(path.join(cacheDir, 'compile_commands.json'), JSON.stringify(kept));
-    const lsp = new LspClient(clangd, [`--compile-commands-dir=${cacheDir}`, crossFile ? '--background-index' : '--background-index=false', '--log=error',
-      '--header-insertion=never', ...extraArgs]);
+    const lsp = new LspClient(clangd, [`--compile-commands-dir=${cacheDir}`, '--background-index', '--log=error', '--header-insertion=never', ...extraArgs]);
     const session = new ClangdSession(lsp);
     // An index that does not finish in time leaves cross-file definitions out: the graph would be partial, so the run fails.
-    const indexed = !crossFile ? Promise.resolve() : new Promise<void>((resolve, reject) => {
+    const indexed = new Promise<void>((resolve, reject) => {
       let started = false;
       const timeout = setTimeout(() => reject(new Error(`clangd's background index did not finish in ${indexTimeoutSeconds} s: ` +
         'a graph read from a partial index misses cross-file definitions (give --index-timeout the time the project needs)')), indexTimeoutSeconds * MS_PER_SECOND);

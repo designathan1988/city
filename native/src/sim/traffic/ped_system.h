@@ -14,9 +14,7 @@ inline float arc_lo(const RoadSegment &g) { return float(g.retreat_a); } // the 
 inline float arc_hi(const RoadSegment &g) { return float(g.len - g.retreat_b); }
 void aim_line(Pedestrian &w); // a straight line toward ways[wi] from where the walker stands
 void onto_sidewalk(CityState &s, Pedestrian &w); // onto the sidewalk at the same place across as where it stands
-// Takes walker `id` (and whoever walks with it) off the street: `arrived` at its walk's end; `inside` a door or a vehicle, which the player
-// may watch. Any other leaving where the player may see it is counted (TrafficState::ped_gone_in_sight: sight.h says it never happens).
-void despawn(CityState &s, int id, bool arrived, bool inside = false);
+void despawn(TrafficState &t, int id, bool arrived);
 
 // ped_door_walk.cpp: the first and last steps at a lot's door
 void aim_at_door(CityState &s, Pedestrian &w); // on the last street of its route: a door ahead to go in at
@@ -41,9 +39,8 @@ bool held_by_fright(const TrafficState &t, Pedestrian &w); // stopped by what it
 void turn_from_bang(CityState &s, Pedestrian &w); // done with what it heard: if it was heading for the bang, back the other way
 void flee_on(CityState &s, Pedestrian &w, int n); // frightened, at node n: by the street that leads furthest off
 void ease_facing(const TrafficState &t, const TrafficParams &p, Pedestrian &w, float dt); // round to the bang, and back to its way, no faster than a body turns
-// ped_wounds.cpp: how fast it goes against its own pace, running from a bang (`fleeing`) or not, hurrying over a zebra
-// (`crossing`) or not, as its wound lets it.
-float pace_gain(const Catalog &c, const Pedestrian &w, bool fleeing, bool crossing);
+// ped_wounds.cpp: the share of its own pace a hurt walker keeps (1 unhurt).
+float wounded_pace(const BlastParams &b, const Pedestrian &w);
 
 // ped_demand.cpp: how many people the land use puts on its street now, by kind of place
 struct PeopleNow {
@@ -69,9 +66,6 @@ PedAge roll_age_alone(TrafficState &t, const TrafficParams &p);
 void dress_walker(TrafficState &t, const TrafficParams &p, Pedestrian &w, PedAge age, float hp); // a body of that age and its own pace
 int alloc_walker(TrafficState &t);
 bool spawn_walker(CityState &s, const PeopleNow &now, bool from_door);
-// A walk from node `from`: to a street with doors, along it, on the sidewalk they open onto (`side`); with none in reach, to a node of
-// any street; false with no destination in reach.
-bool plan_trip(CityState &s, int from, std::vector<int> &route, int &side);
 
 // walker_cells.cpp: who stands near a point (TrafficState::walker_cells, spawn_cells)
 bool walker_within(CityState &s, float x, float z, float r); // somebody on foot within `r` of the point, as filed this tick
@@ -82,14 +76,6 @@ void walker_born(TrafficState &t, int id);
 bool walker_near(const TrafficState &t, const Pose &at, float r);
 
 // ped_party.cpp
-// A walker's party: its leader, the leader's id, the walker's place behind it (0 the leader), how many walk together and whether a child
-// is among them (the lab's sim/agents/walk.ts startWalk: a pair is a couple, with a child a family).
-struct PedParty {
-	const Pedestrian *leader = nullptr;
-	int id = 0, rank = 0, size = 1;
-	bool child = false;
-};
-PedParty party_of(const TrafficState &t, const Pedestrian &w);
 void add_company(CityState &s, int leader); // somebody at the leader's side
 void follow_leaders(CityState &s, float dt); // after the leaders moved
 void step_act(const TrafficState &t, const TrafficParams &p, Pedestrian &w, float dt); // what it does while it stands
@@ -108,8 +94,8 @@ void free_kerb_place(TrafficState &t, int id);
 bool step_to_nearer_place(CityState &s, int id);
 
 // ped_furniture.cpp: the street furniture (sim/roads/street_furniture.h) as the walkers and the render meet it
-// The pieces of segment `sid` of the kinds in `kinds`, the signal posts where control_of signals its ends, appended to `out`.
-void street_furniture_of(const CityState &s, int sid, uint32_t kinds, std::vector<FurnitureSpot> &out, FurnitureRead read = FurnitureRead::KEPT);
+// The pieces of segment `sid` of the kinds in `kinds`, the signal posts where control_of signals its ends.
+void street_furniture_of(const CityState &s, int sid, uint32_t kinds, std::vector<FurnitureSpot> &out);
 // Where a piece on a sidewalk stands in the world; false for a piece with no sidewalk (it cannot be knocked out).
 bool furniture_xz(const CityState &s, int seg, const FurnitureSpot &f, float &x, float &z);
 const SidewalkFurniture &sidewalk_furniture(CityState &s, int seg); // its footprints as bodies, built once per edit
@@ -119,13 +105,6 @@ float clear_arc(CityState &s, int seg, int side, float at, float u);
 void forget_furniture(CityState &s, int seg); // an edit touched the segment or one of its nodes
 void prune_furniture(CityState &s, float cx, float cz, float radius); // segments the walkers are far from
 int walkers_in_furniture(const CityState &s); // walkers whose body stands in a footprint (traffic_probe)
-// A junction's walking area (SUMO): the footprints of node `n`'s arms built (sidewalk_furniture fills its cache: on one
-// thread, before a step's workers read them), then those on its arms' sidewalks as far from it as its walkers may be and
-// look (crossing.zebra_to_m + ped_look_m + ped_body_m along each arm from its mouth), every arm's or all but arm `skip`'s,
-// in `out` (cleared first); read only, so a step's workers may read them at once.
-constexpr int ALL_ARMS = -1; // junction_pieces' `skip`: no arm left out
-void build_junction_furniture(CityState &s, int n);
-void junction_pieces(const CityState &s, int n, int skip, std::vector<const StreetObstacle *> &out);
 
 // ped_routes.cpp
 bool walkable(const CityState &s, int seg);

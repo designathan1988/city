@@ -20,9 +20,9 @@ using Clipper2Lib::Point64;
 using Clipper2Lib::PolyPath64;
 using Clipper2Lib::PolyTree64;
 
-constexpr double UNITS_PER_M = 1000; // Clipper2 works on integers: plans go to it in millimetres
+constexpr double UNITS_PER_M = 1000;
 constexpr int MOST_SPLITS = 4; // of one piece: past that a hole stays filled, and that is a plan of many holes
-constexpr int64_t PAST_BOX = 1000; // a split's halves reach a metre past the piece's box, so no edge lies on theirs
+constexpr int64_t PAST_BOX = 1000;
 
 Paths64 paths_of(const std::vector<PlanRing> &rings) {
 	Paths64 out;

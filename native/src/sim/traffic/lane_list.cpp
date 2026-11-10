@@ -2,7 +2,6 @@
 // queries the rest of the traffic uses. Only lists with a near vehicle are in active_lanes/active_conns, so a step
 // walks the traffic near the camera, never every lane of the map (Roadcraft traffic.ts micro[]).
 #include "sim/traffic/traffic_system.h"
-#include "sim/traffic/lane_shift.h"
 
 #include <algorithm>
 
@@ -91,8 +90,6 @@ void micro_add(TrafficState &t, int id) {
 void micro_remove(TrafficState &t, int id) {
 	Vehicle &v = t.vehicles[size_t(id)];
 	if (!v.micro) return;
-	shift_end(t, id); // out of the near model (the far one, a lot, the map): no lane change goes on
-
 	v.micro = false;
 	const size_t i = size_t(v.micro_idx);
 	if (i < t.micro_list.size() && t.micro_list[i] == id) {
@@ -140,34 +137,15 @@ int lane_toward(const CityState &s, int ds, int to_ds, int near_lane) {
 	return best;
 }
 
-// A lane's list of connectors holds only its own (from_lane == lane): the one to `next` is conn_toward's.
-int connector_to(const CityState &s, int ds, int lane, int next) {
-	return ds < 0 ? -1 : conn_toward(s, ds, lane, next);
-}
-
-int pick_connector(const CityState &s, const Vehicle &v) {
-	if (v.ds < 0 || v.ri + 1 >= v.route.len) return -1;
-	return connector_to(s, v.ds, v.lane, route_at(s.traffic.route_pool, v.route, v.ri + 1));
-}
-
-int lane_head(const CityState &s, int vid) {
-	const Vehicle &v = s.traffic.vehicles[vid];
-	if (v.ds < 0) return -1;
-	const auto &lane = s.traffic.lane_vehicles[size_t(v.ds) * MAX_LANES + v.lane];
-	return lane.empty() ? -1 : lane.back();
-}
-
 void move_vehicle_lane(CityState &s, int id, int target) {
 	TrafficState &t = s.traffic;
 	Vehicle &v = t.vehicles[size_t(id)];
 	if (v.ds < 0 || target < 0 || target >= t.g.ds[size_t(v.ds)].lanes || target == v.lane) return;
 	const DirSeg &d = t.g.ds[size_t(v.ds)];
-	const int from = v.ds * MAX_LANES + v.lane;
-	lane_del(s, from, id);
-	const float across = d.u[v.lane] - d.u[target]; // where it is, seen from the new lane's middle (left of its way, as lane offsets)
+	lane_del(s, v.ds * MAX_LANES + v.lane, id);
+	v.lc_off += d.u[v.lane] - d.u[target];
 	v.lane = target;
 	lane_add(s, v.ds * MAX_LANES + target, id);
-	shift_start(s, id, from, across); // the change is a path, its body still in the lane it left meanwhile (lane_shift.h)
 }
 
 } // namespace traffic

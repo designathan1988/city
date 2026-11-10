@@ -8,6 +8,16 @@
 class_name ToneMap
 extends RefCounted
 
+const BIAS := 1.8 # tonemap_aces exposure_bias
+const A := 0.0245786
+const B := 0.000090537
+const C := 0.983729
+const D := 0.432951
+const E := 0.238081
+## tonemap_aces rgb_to_rrt and odt_to_rgb, as column bases (the GLSL `color *= m` takes m's vec3s as rows).
+const RRT := Basis(Vector3(0.59719, 0.07600, 0.02840), Vector3(0.35458, 0.90834, 0.13383), Vector3(0.04823, 0.01566, 0.83777))
+const ODT := Basis(Vector3(1.60475, -0.10208, -0.00327), Vector3(-0.53108, 1.10813, -0.07276), Vector3(-0.07367, -0.00605, 1.07602))
+const CURVE_TOP := 0.999 # of the curve's asymptote 1 / C: the highest output the inverse is asked for
 ## Linear sRGB (D65) to CIE XYZ, as column bases, and the D65 white; CIELAB's epsilon and kappa (CIE 15:2004).
 const XYZ := Basis(Vector3(0.4124564, 0.2126729, 0.0193339), Vector3(0.3575761, 0.7151522, 0.1191920),
 		Vector3(0.1804375, 0.0721750, 0.9503041))
@@ -21,25 +31,12 @@ const LAB_AB := Vector2(500.0, 200.0)
 const SEARCH_FIRST := 0.25
 const SEARCH_END := 1e-5
 const SEARCH_MAX_TRIES := 4000
-## The engine's tonemap_aces once for this and tone_inverse.gdshaderinc (tools/build/shader_contracts.json AcesCurve, ACES_RRT_*,
-## ACES_ODT_*: CityStore.constants.shader): its exposure bias, its curve, rgb_to_rrt and odt_to_rgb as column bases (the GLSL
-## `color *= m` takes m's vec3s as rows), the highest share of the curve's asymptote 1 / C the inverse is asked for. Read at first use.
-static var _aces := {}
-
-
-static func _k() -> Dictionary:
-	if _aces.is_empty():
-		var s: Dictionary = CityStore.constants.shader
-		_aces = {bias = s.ACES_BIAS, a = s.ACES_A, b = s.ACES_B, c = s.ACES_C, d = s.ACES_D, e = s.ACES_E, top = s.ACES_TOP,
-				rrt = Basis(s.ACES_RRT_0, s.ACES_RRT_1, s.ACES_RRT_2), odt = Basis(s.ACES_ODT_0, s.ACES_ODT_1, s.ACES_ODT_2)}
-	return _aces
 
 
 ## What the screen shows (linear, 0..1) for scene radiance `s` under Environment `exposure` and `white`.
 static func aces(s: Vector3, exposure: float, white: float) -> Vector3:
-	var k := _k()
-	var x: Vector3 = k.rrt * (s.max(Vector3.ZERO) * exposure * k.bias)
-	var out: Vector3 = k.odt * Vector3(_curve(x.x), _curve(x.y), _curve(x.z)) / _curve(maxf(white, 1.0) * k.bias)
+	var x := RRT * (s.max(Vector3.ZERO) * exposure * BIAS)
+	var out := ODT * Vector3(_curve(x.x), _curve(x.y), _curve(x.z)) / _curve(maxf(white, 1.0) * BIAS)
 	return out.clamp(Vector3.ZERO, Vector3.ONE)
 
 
@@ -48,14 +45,11 @@ static func aces(s: Vector3, exposure: float, white: float) -> Vector3:
 static func radiance(srgb: Color, exposure: float, white: float) -> Vector3:
 	var lin := srgb.srgb_to_linear()
 	var goal := Vector3(lin.r, lin.g, lin.b)
-	var k := _k()
-	var odt: Basis = k.odt
-	var rrt: Basis = k.rrt
-	var y := odt.inverse() * (goal * _curve(maxf(white, 1.0) * k.bias))
-	var top: float = k.top / k.c
+	var y := ODT.inverse() * (goal * _curve(maxf(white, 1.0) * BIAS))
+	var top := CURVE_TOP / C
 	var reachable := y.x >= 0.0 and y.y >= 0.0 and y.z >= 0.0 and maxf(y.x, maxf(y.y, y.z)) <= top
 	y = y.clamp(Vector3.ZERO, Vector3.ONE * top)
-	var s: Vector3 = rrt.inverse() * Vector3(_curve_inverse(y.x), _curve_inverse(y.y), _curve_inverse(y.z)) / (exposure * k.bias)
+	var s := RRT.inverse() * Vector3(_curve_inverse(y.x), _curve_inverse(y.y), _curve_inverse(y.z)) / (exposure * BIAS)
 	if reachable and s.x >= 0.0 and s.y >= 0.0 and s.z >= 0.0:
 		return s
 	return _nearest(s.max(Vector3.ZERO), _lab(goal), exposure, white)
@@ -84,16 +78,14 @@ static func _nearest(s: Vector3, goal: Vector3, exposure: float, white: float) -
 
 
 static func _curve(x: float) -> float:
-	var k := _k()
-	return (x * (x + k.a) - k.b) / (x * (k.c * x + k.d) + k.e)
+	return (x * (x + A) - B) / (x * (C * x + D) + E)
 
 
 ## x >= 0 with _curve(x) = y, 0 <= y < 1 / C: the root of (yC - 1) x^2 + (yD - A) x + (yE + B) = 0.
 static func _curve_inverse(y: float) -> float:
-	var k := _k()
-	var a: float = y * k.c - 1.0
-	var b: float = y * k.d - k.a
-	var c: float = y * k.e + k.b
+	var a := y * C - 1.0
+	var b := y * D - A
+	var c := y * E + B
 	return (-b - sqrt(b * b - 4.0 * a * c)) / (2.0 * a)
 
 

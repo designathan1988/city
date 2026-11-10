@@ -1,11 +1,8 @@
-// Reads data/render/streets.json into StreetLook through the strict reader (render/data_reader.h): every key, type and list
-// length is checked; a marking style takes the base's widths for the keys it leaves out.
+// Reads data/render/streets.json into StreetLook.
 #include "render/roads/road_look.h"
 
 #include "core/color.h"
-#include "render/data_reader.h"
 #include "render/mesh_builder.h"
-#include "render/shape_reader.h"
 
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/string.hpp>
@@ -17,117 +14,112 @@ namespace city {
 namespace {
 constexpr int PALETTE = 4;
 
-Color colour(DataReader &r, const Dictionary &d, const char *key) { return rgba8_to_color(r.colour(d, key)); }
-float num(DataReader &r, const Dictionary &d, const char *key) { return float(r.num(d, key)); }
+Color hexc(const Variant &v) { return rgba8_to_color(parse_hex_color(String(v).utf8().get_data())); }
 
-void palette(DataReader r, const Array &list, Color (&out)[PALETTE]) {
-	for (int i = 0; i < PALETTE && i < list.size(); i++) out[i] = rgba8_to_color(r.colour_at(list, i));
+// A required table: reports the key when it is missing so the caller fails loudly.
+Dictionary sub(const Dictionary &t, const char *key, PackedStringArray &errors) {
+	if (!t.has(key)) errors.push_back(String("streets.json: falta ") + key);
+	return t.get(key, Dictionary());
 }
 
-void load_colors(StreetLook &L, DataReader &r, const Dictionary &t) {
-	palette(r.in("surface_colors"), r.list(t, "surface_colors", PALETTE), L.surface);
-	palette(r.in("paving_colors"), r.list(t, "paving_colors", PALETTE), L.paving);
-	palette(r.in("median_colors"), r.list(t, "median_colors", PALETTE), L.median);
+void load_colors(StreetLook &L, const Dictionary &t, PackedStringArray &errors) {
+	Array sc = t.get("surface_colors", Array()), pc = t.get("paving_colors", Array()), mc = t.get("median_colors", Array());
+	if (sc.size() < PALETTE || pc.size() < PALETTE || mc.size() < PALETTE) {
+		errors.push_back("streets.json: paletas de superfície incompletas");
+		return;
+	}
+	for (int i = 0; i < PALETTE; i++) {
+		L.surface[i] = hexc(sc[i]);
+		L.paving[i] = hexc(pc[i]);
+		L.median[i] = hexc(mc[i]);
+	}
 	static const char *CLASSES[] = { "local", "urban", "avenue", "boulevard", "highway", "ramp", "rail" };
-	const Dictionary ac = r.table(t, "asphalt_by_class");
-	DataReader ra = r.in("asphalt_by_class");
-	for (int i = 0; i < int(RoadClass::COUNT); i++) L.asphalt[i] = colour(ra, ac, CLASSES[i]);
-	const Dictionary c = r.table(t, "strip_colors");
-	DataReader rc = r.in("strip_colors");
-	L.bike = colour(rc, c, "bike");
-	L.shoulder = colour(rc, c, "shoulder");
-	L.curb = colour(rc, c, "curb");
-	L.barrier = colour(rc, c, "barrier");
+	Dictionary ac = sub(t, "asphalt_by_class", errors);
+	for (int i = 0; i < int(RoadClass::COUNT); i++) L.asphalt[i] = hexc(ac[CLASSES[i]]);
+	Dictionary c = sub(t, "strip_colors", errors);
+	L.bike = hexc(c["bike"]);
+	L.shoulder = hexc(c["shoulder"]);
+	L.curb = hexc(c["curb"]);
+	L.barrier = hexc(c["barrier"]);
 }
 
-void load_shape(StreetLook &L, DataReader &r, const Dictionary &t) {
-	const Dictionary h = r.table(t, "heights");
-	DataReader rh = r.in("heights");
-	L.h_curb = num(rh, h, "curb");
-	L.h_curb_median = num(rh, h, "curb_by_median");
-	L.h_median = num(rh, h, "median");
-	L.h_barrier = num(rh, h, "barrier");
-	L.median_nose = num(r, t, "median_nose_m");
-	// (no "verge" table: StreetLook has no band of ground beside the road, the terrain meets the paving itself, ground_seam.h)
-	L.surface_error = num(r, t, "surface_error_m");
-	L.far_surface_error = num(r, t, "far_surface_error_m");
-	if (!(L.surface_error > 0) || !(L.far_surface_error > 0)) r.fail("surface_error_m and far_surface_error_m must be above 0");
-	L.far_pull = num(r, t, "far_pull_m");
-	L.face_eps = num(r, t, "face_eps_m");
-	const Dictionary k = r.table(t, "dropped_kerb");
-	DataReader rk = r.in("dropped_kerb");
-	L.ramp_flare = num(rk, k, "flare_m");
-	L.ramp_low = num(rk, k, "low_m");
-	L.ramp_run = num(rk, k, "run_m");
-	L.ramp_min_walk = num(rk, k, "min_walk_m");
-	const Dictionary j = r.table(t, "junction");
-	DataReader rj = r.in("junction");
-	L.arc_step = num(rj, j, "arc_step_rad");
-	L.bevel_steps = rj.integer(j, "bevel_steps");
-	L.bulb_steps = rj.integer(j, "bulb_steps");
+void load_shape(StreetLook &L, const Dictionary &t, PackedStringArray &errors) {
+	Dictionary h = sub(t, "heights", errors);
+	L.h_curb = float(h["curb"]);
+	L.h_curb_median = float(h["curb_by_median"]);
+	L.h_sidewalk = float(h["sidewalk"]);
+	L.h_median = float(h["median"]);
+	L.h_barrier = float(h["barrier"]);
+	L.skirt = float(h["skirt"]);
+	L.median_nose = float(t["median_nose_m"]);
+	Dictionary v = sub(t, "verge", errors);
+	L.verge_reach = float(v["reach_m"]);
+	L.verge_under = float(v["under_m"]);
+	L.verge_strips = int(v["strips"]);
+	L.step = float(t["sample_step_m"]);
+	L.far_step = float(t["far_step_m"]);
+	L.far_pull = float(t["far_pull_m"]);
+	L.face_eps = float(t["face_eps_m"]);
+	Dictionary r = sub(t, "dropped_kerb", errors);
+	L.ramp_flare = float(r["flare_m"]);
+	L.ramp_low = float(r["low_m"]);
+	L.ramp_run = float(r["run_m"]);
+	L.ramp_min_walk = float(r["min_walk_m"]);
+	Dictionary j = sub(t, "junction", errors);
+	L.arc_step = float(j["arc_step_rad"]);
+	L.bevel_steps = int(j["bevel_steps"]);
+	L.bulb_steps = int(j["bulb_steps"]);
 }
 
-std::vector<float> floats(DataReader r, const Array &a) {
-	std::vector<float> out;
-	for (int i = 0; i < a.size(); i++) out.push_back(float(r.num_at(a, i)));
-	return out;
-}
-
-StreetLook::PaintStyle style_of(DataReader r, const Dictionary &d, DataReader rb, const Dictionary &base) {
-	StreetLook::PaintStyle st;
-	// a style's own width, else the base's
-	auto width = [&](const char *key) { return d.has(key) ? num(r, d, key) : num(rb, base, key); };
-	st.centre_w = width("centre_m");
-	st.lane_w = width("divider_m");
-	st.fast_kmh = width("fast_kmh");
-	st.fast_centre_w = width("fast_centre_m");
-	st.fast_lane_w = width("fast_divider_m");
-	st.exclusive_w = width("exclusive_m");
-	st.double_w = width("double_line_m");
-	st.double_gap = width("double_gap_m");
-	st.zebra_period = width("zebra_period_m");
-	st.zebra_bar = width("zebra_bar_m");
-	st.zebra_edge = width("zebra_edge_m");
-	st.multi_lane_double = d.has("multi_lane_double") ? r.flag(d, "multi_lane_double") : rb.flag(base, "multi_lane_double");
-	st.all_white = r.flag(d, "all_white");
-	st.dash_kmh = floats(r.in("dash_kmh"), r.list(d, "dash_kmh"));
-	st.dash = floats(r.in("dash_m"), r.list(d, "dash_m"));
-	st.gap = floats(r.in("gap_m"), r.list(d, "gap_m"));
-	if (st.dash.empty() || st.dash.size() != st.gap.size() || st.dash.size() != st.dash_kmh.size() + 1)
-		r.fail("dash_m and gap_m need one band more than dash_kmh");
-	return st;
-}
-
-void load_marks(StreetLook &L, DataReader &r, const Dictionary &t) {
-	const Dictionary m = r.table(t, "markings");
-	DataReader rm = r.in("markings");
-	L.white = colour(rm, m, "white");
-	L.yellow = colour(rm, m, "yellow");
-	L.paint_lift = num(rm, m, "lift_m");
-	const Dictionary base = rm.table(m, "base");
-	const Array styles = rm.list(m, "styles");
+void load_marks(StreetLook &L, const Dictionary &t, PackedStringArray &errors) {
+	Dictionary m = sub(t, "markings", errors);
+	L.white = hexc(m["white"]);
+	L.yellow = hexc(m["yellow"]);
+	L.paint_lift = float(m["lift_m"]);
+	Dictionary base = sub(m, "base", errors);
+	Array styles = m["styles"];
 	L.styles.clear();
-	for (int k = 0; k < styles.size(); k++)
-		L.styles.push_back(style_of(rm.in("styles").in(k), rm.in("styles").table_at(styles, k), rm.in("base"), base));
-	L.parking_line_w = num(rm, m, "mer_line_m");
-	L.parking_dash = num(rm, m, "mer_dash_m");
-	L.parking_gap = num(rm, m, "mer_gap_m");
-	L.no_parking_w = num(rm, m, "lpp_line_m");
-	L.no_parking_min = num(rm, m, "lpp_run_min_m");
+	for (int k = 0; k < styles.size(); k++) {
+		Dictionary d = styles[k];
+		StreetLook::PaintStyle st;
+		auto num = [&](const char *key) { return float(d.has(key) ? d[key] : base[key]); }; // a style's own width, else the base's
+		st.centre_w = num("centre_m");
+		st.lane_w = num("divider_m");
+		st.fast_kmh = num("fast_kmh");
+		st.fast_centre_w = num("fast_centre_m");
+		st.fast_lane_w = num("fast_divider_m");
+		st.exclusive_w = num("exclusive_m");
+		st.double_w = num("double_line_m");
+		st.double_gap = num("double_gap_m");
+		st.zebra_period = num("zebra_period_m");
+		st.zebra_bar = num("zebra_bar_m");
+		st.zebra_edge = num("zebra_edge_m");
+		st.multi_lane_double = bool(d.has("multi_lane_double") ? d["multi_lane_double"] : base["multi_lane_double"]);
+		st.all_white = bool(d["all_white"]);
+		auto floats = [&](const char *key, std::vector<float> &out) {
+			Array a = d[key];
+			for (int i = 0; i < a.size(); i++) out.push_back(float(a[i]));
+		};
+		floats("dash_kmh", st.dash_kmh);
+		floats("dash_m", st.dash);
+		floats("gap_m", st.gap);
+		if (st.dash.empty() || st.dash.size() != st.gap.size() || st.dash.size() != st.dash_kmh.size() + 1)
+			errors.push_back("streets.json markings.styles: dash_m e gap_m com uma faixa a mais que dash_kmh");
+		L.styles.push_back(st);
+	}
+	L.parking_line_w = float(m["mer_line_m"]);
+	L.parking_dash = float(m["mer_dash_m"]);
+	L.parking_gap = float(m["mer_gap_m"]);
+	L.no_parking_w = float(m["lpp_line_m"]);
+	L.no_parking_min = float(m["lpp_run_min_m"]);
 }
 } // namespace
 
-// The emitters' sizes: every block of STREET_SHAPE_BLOCKS, each field under its own name (render/shape_reader.h).
-static void street_shapes_of(DataReader r, const Dictionary &t, StreetShapes &out) { STREET_SHAPE_BLOCKS(SHAPE_READ_BLOCK) }
-
 bool StreetLook::load(const Dictionary &t, PackedStringArray &errors) {
-	const int64_t before = errors.size();
-	DataReader r{ errors, "streets.json" };
-	load_colors(*this, r, t);
-	load_shape(*this, r, t);
-	load_marks(*this, r, t);
-	street_shapes_of(r.in("shapes"), r.table(t, "shapes"), shapes);
-	return errors.size() == before;
+	load_colors(*this, t, errors);
+	load_shape(*this, t, errors);
+	load_marks(*this, t, errors);
+	return errors.is_empty();
 }
 
 } // namespace city

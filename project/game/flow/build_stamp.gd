@@ -6,7 +6,7 @@ extends RefCounted
 const STAMP_PATH := "res://build_stamp.cfg"
 const HEAD_PATH := "res://../.git/HEAD"
 const REFS := "ref: refs/heads/"
-const SHORT_HASH := 8 # a commit's short hash, as git abbreviates it
+const SHORT_HASH := 8
 
 
 static func text() -> String:

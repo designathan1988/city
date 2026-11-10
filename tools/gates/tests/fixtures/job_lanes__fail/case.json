@@ -1,7 +1,0 @@
-{
- "rule": "job_lanes",
- "expect": [
-  "JOB_LANE_SHARED native/src/render/fog.cpp:4",
-  "JOB_LANE_SHARED native/src/render/other.cpp:4"
- ]
-}

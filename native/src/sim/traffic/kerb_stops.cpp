@@ -1,8 +1,7 @@
 // Somebody getting out of a car at the kerb or getting in, and a truck's mate away with a delivery. A vehicle with an errand
 // plans a stop on the kerb lane of a street, clear of its ends and of any queue; it pulls up, the door opens when the swing is
 // clear, the person moves between the door and the footway (a walker under the stop's hand, PedMode::KERB) and the door shuts.
-// Set down, they walk on as any walker; picked up, the walker is gone and the car carries one more (Vehicle::aboard). A bus's riders
-// are bus_calls.cpp's.
+// Set down, they walk on as any walker; picked up, the walker is gone and the car carries one more (Vehicle::aboard).
 #include "sim/traffic/kerb_stops.h"
 
 #include "core/random.h"
@@ -15,7 +14,6 @@ namespace city {
 namespace traffic {
 
 namespace {
-// the errand roll's stream of the car's hash (any word), and the 24 bits a float holds exactly, for a share 0..1
 constexpr uint32_t ERRAND_SALT = 0x2545F491u, ERRAND_SPAN = 0xFFFFFFu;
 constexpr float STOPPED_MS = 0.1f; // standing still, for a stop
 constexpr float NEAR_STOP_M = 1.f, PAST_STOP_M = 2.f; // pulled up at it; gone past it
@@ -24,9 +22,9 @@ constexpr float MOVED_MIN_M = 0.05f; // shorter than this a move has no directio
 
 bool is_car(const Vehicle &v) { return v.type <= VehicleType::PICKUP; }
 
-} // namespace
 
 // The walker a stop holds: called to a door within `reach`; set where it is, facing its way; let go to walk on, or gone aboard.
+} // namespace
 
 bool kerb_hail(CityState &s, int ped, const V2 &door, float reach) {
 	TrafficState &t = s.traffic;
@@ -73,9 +71,9 @@ bool has_footway(const CityState &s, const DirSeg &d) {
 	const Profile &p = s.roads.profile_of(d.seg);
 	return kerb_side(d) == RIGHT_SIDE ? p.has_walk_right : p.has_walk_left;
 }
-} // namespace
 
 // Where a kerb-side door opens, and the footway beside it.
+} // namespace
 
 KerbDoors kerb_door_at(const CityState &s, const Vehicle &v, float back_m) {
 	const TrafficParams &p = s.catalog.traffic;
@@ -86,7 +84,7 @@ KerbDoors kerb_door_at(const CityState &s, const Vehicle &v, float back_m) {
 	lane_pose(s, v.ds, v.lane, at, lane);
 	sidewalk_pose(s, d.seg, d.sign > 0 ? RIGHT_SIDE : 1, kerb_arc_of(d, at), 0, foot);
 	const V2 right(-lane.fz, lane.fx); // the world's z runs down the map: the side the kerb is on, -X of the vehicle
-	return { V2(lane.x, lane.z) + right * (c.half_width + p.kerb_door_out_m), V2(foot.x, foot.z), V2(lane.x, lane.z) + right * (c.half_width - p.kerb_door_in_m), lane.y };
+	return { V2(lane.x, lane.z) + right * (c.half_width + p.kerb_door_out_m), V2(foot.x, foot.z) };
 }
 
 namespace {
@@ -145,7 +143,7 @@ void plan(CityState &s, int id) {
 	TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
 	Vehicle &v = t.vehicles[size_t(id)];
-	if (v.conn >= 0 || v.off || v.ds < 0 || v.lane != 0 || v.lat != 0 || v.stop_at >= 0) return;
+	if (v.conn >= 0 || v.off || v.ds < 0 || v.lane != 0 || v.lc_off != 0 || v.stop_at >= 0) return;
 	const DirSeg &d = t.g.ds[size_t(v.ds)];
 	if (!has_footway(s, d) || v.ri + 1 >= v.route.len) return;
 	const float brake = v.v * v.v / (2 * p.classes[int(v.type)].b);
@@ -303,8 +301,7 @@ void step_stop(CityState &s, int id, KerbStop &k, float dt) {
 		case KerbPhase::AWAY:
 			if (k.t >= p.kerb_delivery_s) {
 				k.back = true;
-				const KerbDoors at = door_places(s, v);
-				k.transfer = (at.foot - at.door).len() / p.kerb_pace_ms + p.kerb_seat_s;
+				k.transfer = (door_places(s, v).foot - door_places(s, v).door).len() / p.kerb_pace_ms + p.kerb_seat_s;
 				enter(k, KerbPhase::TRANSFER);
 			}
 			break;
@@ -321,7 +318,6 @@ void assign_errand(const CityState &s, Vehicle &v, int id) {
 	if (is_car(v)) v.errand = roll < p.kerb_drop_share ? Errand::DROP : (roll > 1 - p.kerb_pick_share ? Errand::PICK : Errand::NONE);
 	else if (v.type == VehicleType::TRUCK && roll < p.kerb_delivery_share) v.errand = Errand::DELIVER;
 	if (v.errand == Errand::DROP) v.aboard = ABOARD_TO_SET_DOWN;
-	if (v.type == VehicleType::BUS) bus_riders_born(s, v, id);
 }
 
 float kerb_stop_gap(const TrafficState &t, const Vehicle &v) {

@@ -7,7 +7,7 @@ extends Node3D
 
 const TOWN_MAP := 0
 const SEED := 1
-const BUILD_LIMIT_S := 10.0 # real time the mesh jobs may take (600 frames of the old 60 Hz loop): StateWait
+const BUILD_FRAMES := 600
 const SETTLE_FRAMES := 6
 ## The new road: from this far inside the town's east edge out to this far past it (metres).
 const ROAD_IN_M := 40.0
@@ -41,7 +41,8 @@ func _ready() -> void:
 		push_error("boot: %s" % errors)
 		get_tree().quit(1)
 		return
-	CityStore.new_map(TOWN_MAP, SEED, true, true)
+	CityStore.new_map(TOWN_MAP, SEED, true)
+	CityStore.dispatch(&"set_speed", [0])
 	tools = ToolController.new(rig)
 	add_child(tools)
 	hud = RoadcraftHud.new()
@@ -147,8 +148,11 @@ func _click(p: Vector3) -> void:
 
 
 func _drawn() -> void:
+	var waited := 0
 	await _frames(2)
-	await StateWait.drawn(get_tree(), BUILD_LIMIT_S)
+	while CityStore.query(&"render_pending") > 0 and waited < BUILD_FRAMES:
+		await _frames(1)
+		waited += 1
 
 
 func _shot(name: String) -> void:

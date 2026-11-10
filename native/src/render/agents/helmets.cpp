@@ -1,6 +1,5 @@
 // A motorcyclist's helmet: its mesh, colours and instances (helmets.h).
 #include "render/agents/helmets.h"
-#include "core/shader_contracts/people.h"
 
 #include "core/color.h"
 #include "render/mesh_builder.h"
@@ -16,31 +15,31 @@ namespace city {
 
 namespace {
 constexpr float SHELL_RADIUS = 0.5f; // the fit in people.bin is the shell's whole width
+constexpr int MOST_COLOURS = 8; // people_helmet.gdshader helmet_colours
 }
 
-bool Helmets::init(const RenderContext &ctx, const DataValue &helmet, PackedStringArray &errors) {
+bool Helmets::init(const RenderContext &ctx, const Dictionary &helmet, PackedStringArray &errors) {
 	reset();
 	material_ = ctx.material("people_helmet", errors);
 	if (!errors.is_empty()) return false;
-	const DataValue colours = helmet["colours"];
-	const int count = colours.size();
-	if (count == 0 || count > HELMET_COLOURS) {
-		colours.fail(String("between 1 and ") + String::num_int64(HELMET_COLOURS) + String(" colours, what the shader holds"));
+	const Array colours = helmet["colours"];
+	if (colours.is_empty() || colours.size() > MOST_COLOURS) {
+		errors.push_back("agents.json held.helmet: cores fora do que o shader guarda");
 		return false;
 	}
 	PackedVector3Array linear;
-	linear.resize(HELMET_COLOURS);
-	for (int i = 0; i < count; i++) {
-		const Color c = rgba8_to_color(colours[i].colour()).srgb_to_linear();
+	linear.resize(MOST_COLOURS);
+	for (int i = 0; i < colours.size(); i++) {
+		const Color c = rgba8_to_color(parse_hex_color(String(colours[i]).utf8().get_data())).srgb_to_linear();
 		linear.set(i, Vector3(c.r, c.g, c.b));
 	}
 	RenderingServer *rs = RenderingServer::get_singleton();
 	rs->material_set_param(material_, "helmet_colours", linear);
-	rs->material_set_param(material_, "colour_count", count);
-	rs->material_set_param(material_, "helmet_roughness", helmet["roughness"].f());
+	rs->material_set_param(material_, "colour_count", int(colours.size()));
+	rs->material_set_param(material_, "helmet_roughness", float(helmet["roughness"]));
 	MeshBuilder b;
 	b.blob(Vector3(), Vector3(SHELL_RADIUS, SHELL_RADIUS, SHELL_RADIUS), Color(1, 1, 1));
-	mesh_ = b.bake(material_);
+	mesh_ = b.bake();
 	keeper_.clear();
 	keeper_.draws(1);
 	return true;
@@ -57,7 +56,7 @@ void Helmets::begin() {
 
 void Helmets::draw(const RID &scenario, const AABB &box, RenderLayer layer) {
 	keeper_.sweep([&](int) -> InstanceRows & { return rows_; });
-	draw_.set(scenario, mesh_.rid, rows_, box, true, layer);
+	draw_.set(scenario, mesh_.rid, material_, rows_, box, true, layer);
 }
 
 } // namespace city

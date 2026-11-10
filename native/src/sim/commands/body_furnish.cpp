@@ -17,7 +17,7 @@ using namespace b40;
 
 namespace {
 constexpr const char *NO_PIECE = "tool.failed";
-constexpr float QUARTER = TAU_F / 4.f;
+constexpr float REACH_PAST_M = 0.25f, REACH_UNSIZED_M = 0.6f, QUARTER = TAU_F / 4.f;
 
 int top_of(const Body &b) {
 	int top = 0;
@@ -57,13 +57,12 @@ std::string op_remove_core(Body &b, float x, float y) {
 }
 
 int piece_under(const Data &data, const std::vector<PlacedPiece> &list, float x, float y) {
-	const InteriorShape &K = data.shapes.interior;
 	int best = -1;
 	float nearest = std::numeric_limits<float>::max();
 	for (int i = 0; i < int(list.size()); i++) {
 		const PlacedPiece &p = list[size_t(i)];
 		const float *size = data.interior.size[p.kind];
-		const float widest = std::max(size[0], size[1]), reach = widest > 0 ? widest / 2 + K.reach_past_m : K.reach_unsized_m;
+		const float widest = std::max(size[0], size[1]), reach = widest > 0 ? widest / 2 + REACH_PAST_M : REACH_UNSIZED_M;
 		const float d = std::hypot(p.x - x, p.y - y);
 		if (d < reach && d < nearest) {
 			best = i;

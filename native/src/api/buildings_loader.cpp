@@ -1,14 +1,10 @@
-// Parses data/catalog/buildings.json into the building generator's tables (sim/buildings/b40/data.h) through the strict reader
-// (api/data_reader.h): every key, type, list length and name is checked, and a problem is an error at startup, never a default.
+// Parses data/render/buildings.json into the building generator's tables (sim/buildings/b40/data.h). Every name is
+// checked; an unknown bay, finish or style name is an error at startup, never a silent default.
 #include "api/buildings_loader.h"
-
-#include "api/body_doc.h"
 #include "render/region_table.h"
-#include "render/shape_reader.h"
-#include "sim/buildings/b40/gen.h"
 
-#include <godot_cpp/classes/file_access.hpp>
-#include <godot_cpp/classes/json.hpp>
+#include "core/color.h"
+
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/string.hpp>
 #include <godot_cpp/variant/variant.hpp>
@@ -20,7 +16,6 @@ namespace city {
 using namespace b40;
 
 namespace {
-// A table's colour is 0xRRGGBBAA (core/color.h): the body keeps 0xRRGGBB, the alpha byte shifted off.
 constexpr uint32_t RGB_MASK = 0xffffff;
 constexpr int RGBA_SHIFT = 8;
 const char *const BAY_NAMES[BAY_COUNT] = { "wall", "window", "sash", "french", "bayWindow", "ribbon", "wide", "balcony", "door",
@@ -32,282 +27,168 @@ const char *const STYLE_NAMES[STYLE_COUNT] = { "colonial", "artDeco", "modernist
 const char *const KIND_NAMES[KIND_COUNT] = { "house", "flats", "tower", "shop", "office", "works" };
 const char *const LINE_NAMES[] = { "every", "base", "slab", "none" };
 const char *const CROWN_NAMES[] = { "cornice", "deco", "slab", "attic", "none" };
-const char *const BOUNDARY_NAMES[] = { "wall", "fence", "railing", "hedge" };
-const Element BOUNDARY_KINDS[] = { EL_WALL, EL_FENCE, EL_RAILING, EL_HEDGE };
 // Finish names outside the cooked layers: lawn/hedge ground has no finish, plastic reads as plaster.
 const char *const NO_FINISH = "grass";
 const char *const PLASTIC = "plastic";
 // The note a table carries for its readers (skipped where a table's keys are its rows).
 const char *const DOC_KEY = "_doc";
-constexpr int PAIR = 2; // [finish, colour], [style, weight], [min, max]
 
-int8_t finish_of(const std::string &s, DataReader &r) {
+Variant at(const Dictionary &d, const Variant &k) { return d.get(k, Variant()); }
+std::string str(const Variant &v) { return std::string(String(v).utf8().get_data()); }
+uint32_t hex(const Variant &v) { return (parse_hex_color(str(v)) >> RGBA_SHIFT) & RGB_MASK; }
+
+template <size_t N>
+int index_of(const char *const (&names)[N], const std::string &s, const char *what, PackedStringArray &errors) {
+	for (size_t i = 0; i < N; i++)
+		if (s == names[i]) return int(i);
+	errors.push_back(String("buildings.json: ") + what + " desconhecido: " + s.c_str());
+	return 0;
+}
+
+int8_t finish_of(const std::string &s, PackedStringArray &errors) {
 	if (s == NO_FINISH) return FIN_NONE;
 	if (s == PLASTIC) return FIN_PLASTER;
-	return int8_t(r.index_of(FINISH_NAMES, s, "finish"));
+	return int8_t(index_of(FINISH_NAMES, s, "acabamento", errors));
 }
 
-uint32_t rgb(uint32_t rgba) { return (rgba >> RGBA_SHIFT) & RGB_MASK; }
+Paint paint_of(const Variant &pair, PackedStringArray &errors) {
+	Array a = pair;
+	return Paint{ finish_of(str(a[0]), errors), hex(a[1]) };
+}
 
-// [finish, '#rrggbb'], its length checked by whoever read it.
-Paint paint_of(DataReader r, const Array &pair) { return Paint{ finish_of(r.utf8_at(pair, 0), r), rgb(r.colour_at(pair, 1)) }; }
-
-std::vector<Paint> paints(DataReader r, const Array &a) {
+std::vector<Paint> paints(const Array &a, PackedStringArray &errors) {
 	std::vector<Paint> out;
-	for (int i = 0; i < a.size(); i++) out.push_back(paint_of(r.in(i), r.list_at(a, i, PAIR)));
+	for (int i = 0; i < a.size(); i++) out.push_back(paint_of(a[i], errors));
 	return out;
 }
 
-std::vector<uint32_t> hexes(DataReader r, const Array &a) {
+std::vector<uint32_t> hexes(const Array &a) {
 	std::vector<uint32_t> out;
-	for (int i = 0; i < a.size(); i++) out.push_back(rgb(r.colour_at(a, i)));
+	for (int i = 0; i < a.size(); i++) out.push_back(hex(a[i]));
 	return out;
 }
 
-// An empty name is no bay (a rhythm's gap, a style without a ground fill).
-uint8_t bay_of(const std::string &s, DataReader &r) { return s.empty() ? uint8_t(BAY_NONE) : uint8_t(r.index_of(BAY_NAMES, s, "bay")); }
-
-void skins_of(DataReader r, const Array &skins, StyleDef &s) { // [finish, [colour...]] groups
-	for (int i = 0; i < skins.size(); i++) {
-		const Array group = r.list_at(skins, i, PAIR);
-		DataReader g = r.in(i);
-		const int8_t fin = finish_of(g.utf8_at(group, 0), g);
-		const Array cols = g.list_at(group, 1);
-		for (int k = 0; k < cols.size(); k++) s.skins.push_back(Paint{ fin, rgb(g.colour_at(cols, k)) });
-	}
+uint8_t bay_of(const Variant &v, PackedStringArray &errors) {
+	std::string s = str(v);
+	return s.empty() ? uint8_t(BAY_NONE) : uint8_t(index_of(BAY_NAMES, s, "componente", errors));
 }
 
-StyleDef style_of(DataReader r, const Dictionary &d) {
+StyleDef style_of(const Dictionary &d, PackedStringArray &errors) {
 	StyleDef s;
-	skins_of(r.in("skins"), r.list(d, "skins"), s);
-	s.trims = paints(r.in("trims"), r.list(d, "trims"));
-	const Array rh = r.list(d, "rhythms");
+	Array skins = at(d, "skins");
+	for (int i = 0; i < skins.size(); i++) {
+		Array group = skins[i];
+		Array cols = group[1];
+		int8_t fin = finish_of(str(group[0]), errors);
+		for (int k = 0; k < cols.size(); k++) s.skins.push_back(Paint{ fin, hex(cols[k]) });
+	}
+	s.trims = paints(at(d, "trims"), errors);
+	Array rh = at(d, "rhythms");
 	for (int i = 0; i < rh.size(); i++) {
-		const Array row = r.in("rhythms").list_at(rh, i);
-		DataReader rr = r.in("rhythms").in(i);
-		std::vector<uint8_t> bays;
-		for (int k = 0; k < row.size(); k++) bays.push_back(bay_of(rr.utf8_at(row, k), rr));
-		s.rhythms.push_back(bays);
+		Array r = rh[i];
+		std::vector<uint8_t> row;
+		for (int k = 0; k < r.size(); k++) row.push_back(bay_of(r[k], errors));
+		s.rhythms.push_back(row);
 	}
-	s.side_fill = bay_of(r.utf8(d, "side_fill"), r);
-	s.ground_fill = bay_of(r.utf8(d, "ground_fill"), r);
-	s.top = bay_of(r.utf8(d, "top"), r);
-	s.lines = Lines(r.index_of(LINE_NAMES, r.utf8(d, "lines"), "line"));
-	s.crown = Crown(r.index_of(CROWN_NAMES, r.utf8(d, "crown"), "crown"));
-	enum { WIN_W0, WIN_W1, WIN_H0, WIN_H1, SILL, OPENING_SIZE };
-	const Array o = r.list(d, "opening", OPENING_SIZE);
-	DataReader ro = r.in("opening");
-	s.win_w0 = float(ro.num_at(o, WIN_W0));
-	s.win_w1 = float(ro.num_at(o, WIN_W1));
-	s.win_h0 = float(ro.num_at(o, WIN_H0));
-	s.win_h1 = float(ro.num_at(o, WIN_H1));
-	s.sill = float(ro.num_at(o, SILL));
-	enum { PIER_W, PIER_D, PIER_EVERY, PIERS_SIZE };
-	const Array p = r.list(d, "piers"); // empty: a style without piers
-	if (!p.is_empty()) {
-		DataReader rp = r.in("piers");
-		rp.expect(p, PIERS_SIZE);
+	s.side_fill = bay_of(at(d, "side_fill"), errors);
+	s.ground_fill = bay_of(at(d, "ground_fill"), errors);
+	s.top = bay_of(at(d, "top"), errors);
+	s.lines = Lines(index_of(LINE_NAMES, str(at(d, "lines")), "linha", errors));
+	s.crown = Crown(index_of(CROWN_NAMES, str(at(d, "crown")), "coroa", errors));
+	Array o = at(d, "opening");
+	s.win_w0 = float(o[0]); s.win_w1 = float(o[1]); s.win_h0 = float(o[2]); s.win_h1 = float(o[3]); s.sill = float(o[4]);
+	Array p = at(d, "piers");
+	if (p.size() >= 3) {
 		s.piers = true;
-		s.pier_w = float(rp.num_at(p, PIER_W));
-		s.pier_d = float(rp.num_at(p, PIER_D));
-		s.pier_every = rp.integer_at(p, PIER_EVERY);
+		s.pier_w = float(p[0]); s.pier_d = float(p[1]); s.pier_every = int(p[2]);
 	}
-	s.stone_base = r.flag(d, "stone_base");
-	s.module = float(r.num(d, "module"));
+	s.stone_base = bool(at(d, "stone_base"));
+	s.module = float(at(d, "module"));
 	return s;
 }
 
-void pair_of(DataReader &r, const Dictionary &d, const char *key, float (&out)[PAIR]) {
-	const Array a = r.list(d, key, PAIR);
-	DataReader rk = r.in(key);
-	out[0] = float(rk.num_at(a, 0));
-	out[1] = float(rk.num_at(a, 1));
+const char *const BOUNDARY_NAMES[] = { "wall", "fence", "railing", "hedge" };
+const Element BOUNDARY_KINDS[] = { EL_WALL, EL_FENCE, EL_RAILING, EL_HEDGE };
+
+void pair_of(const Variant &v, float (&out)[2]) {
+	Array a = v;
+	out[0] = float(a[0]);
+	out[1] = float(a[1]);
 }
 
-void boundaries(DataReader r, const Dictionary &b, LotRules &l) { // per kind, rows of [boundary, height, base]
+bool lot_rules(const Dictionary &d, LotRules &l, PackedStringArray &errors) {
+	l.stall_w = float(at(d, "stall_w")); l.stall_d = float(at(d, "stall_d")); l.aisle = float(at(d, "aisle"));
+	l.stall_line = float(at(d, "stall_line")); l.drive_lane = float(at(d, "drive_lane")); l.car_clear_h = float(at(d, "car_clear_h"));
+	pair_of(at(d, "person_gate"), l.person_gate);
+	pair_of(at(d, "party_wall"), l.party_wall);
+	l.front_low = float(at(d, "front_low"));
+	Array pool = at(d, "pool");
+	enum { POOL_W, POOL_D, POOL_DEPTH };
+	l.pool_w = float(pool[POOL_W]); l.pool_d = float(pool[POOL_D]); l.pool_depth = float(pool[POOL_DEPTH]);
+	l.pool_share = float(at(d, "pool_share")); l.terrace = float(at(d, "terrace"));
+	l.garage_back_share = float(at(d, "garage_back_share")); l.garage_closed_share = float(at(d, "garage_closed_share"));
+	l.yard_life_depth = float(at(d, "yard_life_depth")); l.max_elements = int(at(d, "max_elements"));
+	l.lorry_w = float(at(d, "lorry_w")); l.lorry_l = float(at(d, "lorry_l")); l.dock_margin = float(at(d, "dock_margin"));
+	Dictionary b = at(d, "boundary");
 	for (int k = 0; k < KIND_COUNT; k++) {
-		const Array styles = r.list(b, KIND_NAMES[k]);
-		DataReader rk = r.in(KIND_NAMES[k]);
+		Array styles = at(b, KIND_NAMES[k]);
 		for (int i = 0; i < styles.size(); i++) {
-			enum { KIND, HEIGHT, BASE, ROW_SIZE };
-			const Array row = rk.list_at(styles, i, ROW_SIZE);
-			DataReader ri = rk.in(i);
-			const int kind = ri.index_of(BOUNDARY_NAMES, ri.utf8_at(row, KIND), "boundary");
-			l.boundary[k].push_back(BoundaryStyle{ BOUNDARY_KINDS[kind], float(ri.num_at(row, HEIGHT)), float(ri.num_at(row, BASE)) });
+			Array row = styles[i];
+			enum { KIND, HEIGHT, BASE };
+			int kind = index_of(BOUNDARY_NAMES, str(row[KIND]), "divisa", errors);
+			l.boundary[k].push_back(BoundaryStyle{ BOUNDARY_KINDS[kind], float(row[HEIGHT]), float(row[BASE]) });
 		}
-		if (l.boundary[k].empty()) rk.fail("no style");
+		if (l.boundary[k].empty()) errors.push_back(String("buildings.json: lots.boundary sem estilo para ") + KIND_NAMES[k]);
 	}
-}
-
-void lot_rules(DataReader r, const Dictionary &d, LotRules &l) {
-	l.stall_w = float(r.num(d, "stall_w"));
-	l.stall_d = float(r.num(d, "stall_d"));
-	l.aisle = float(r.num(d, "aisle"));
-	l.stall_line = float(r.num(d, "stall_line"));
-	l.drive_lane = float(r.num(d, "drive_lane"));
-	l.car_clear_h = float(r.num(d, "car_clear_h"));
-	pair_of(r, d, "person_gate", l.person_gate);
-	pair_of(r, d, "party_wall", l.party_wall);
-	l.front_low = float(r.num(d, "front_low"));
-	enum { POOL_W, POOL_D, POOL_DEPTH, POOL_SIZE };
-	const Array pool = r.list(d, "pool", POOL_SIZE);
-	DataReader rp = r.in("pool");
-	l.pool_w = float(rp.num_at(pool, POOL_W));
-	l.pool_d = float(rp.num_at(pool, POOL_D));
-	l.pool_depth = float(rp.num_at(pool, POOL_DEPTH));
-	l.pool_share = float(r.num(d, "pool_share"));
-	l.terrace = float(r.num(d, "terrace"));
-	l.garage_back_share = float(r.num(d, "garage_back_share"));
-	l.garage_closed_share = float(r.num(d, "garage_closed_share"));
-	l.yard_life_depth = float(r.num(d, "yard_life_depth"));
-	l.max_elements = r.integer(d, "max_elements");
-	l.lorry_w = float(r.num(d, "lorry_w"));
-	l.lorry_l = float(r.num(d, "lorry_l"));
-	l.dock_margin = float(r.num(d, "dock_margin"));
-	boundaries(r.in("boundary"), r.table(d, "boundary"), l);
-}
-
-// Every block of "shapes": each field of its list read under its own name, of its own type.
-void shapes(DataReader r, const Dictionary &t, Shapes &out) {
-	B40_SHAPES(SHAPE_READ_BLOCK)
-}
-
-void kind_weights(DataReader r, const Dictionary &kw, Data &d) { // per kind, [style, weight] pairs
-	for (int k = 0; k < KIND_COUNT; k++) {
-		const Array list = r.list(kw, KIND_NAMES[k]);
-		DataReader rk = r.in(KIND_NAMES[k]);
-		for (int i = 0; i < list.size(); i++) {
-			const Array pair = rk.list_at(list, i, PAIR);
-			DataReader ri = rk.in(i);
-			d.weights[k].push_back({ ri.index_of(STYLE_NAMES, ri.utf8_at(pair, 0), "style"), float(ri.num_at(pair, 1)) });
-		}
-	}
-}
-
-void palettes(DataReader r, const Dictionary &pal, Data &d) {
-	const auto paint_list = [&](const char *key) { return paints(r.in(key), r.list(pal, key)); };
-	const auto hex_list = [&](const char *key) { return hexes(r.in(key), r.list(pal, key)); };
-	d.bricks = paint_list("bricks");
-	d.hard = paint_list("hard");
-	d.roof_tiles = paint_list("roof_tiles");
-	d.flat_roofs = paint_list("flat_roofs");
-	d.works_roofs = paint_list("works_roofs");
-	d.lot_walls = paint_list("lot_walls");
-	d.awnings = hex_list("awnings");
-	d.shop_awnings = hex_list("shop_awnings");
-	d.tanks = hex_list("tanks");
-	d.warehouse_walls = hex_list("warehouse_walls");
-}
-
-void colors(DataReader r, const Dictionary &cols, Data &d) { // name -> [finish, colour]
-	const Array keys = cols.keys();
-	for (int i = 0; i < keys.size(); i++) {
-		const String key = keys[i];
-		const std::string name(key.utf8().get_data());
-		if (name == DOC_KEY) continue;
-		d.colors[name] = paint_of(r.in(key), r.list(cols, name.c_str(), PAIR));
-	}
-}
-
-void openings(DataReader r, const Dictionary &op, Data &d) { // bay -> [w_in, w_max, sill, head_in, head_max, depth]
-	const Array keys = op.keys();
-	for (int i = 0; i < keys.size(); i++) {
-		const String key = keys[i];
-		const std::string name(key.utf8().get_data());
-		if (name == DOC_KEY) continue;
-		enum { W_IN, W_MAX, SILL, HEAD_IN, HEAD_MAX, DEPTH, ROW_SIZE };
-		const Array row = r.list(op, name.c_str(), ROW_SIZE);
-		DataReader ro = r.in(key);
-		OpeningDef &o = d.openings[ro.index_of(BAY_NAMES, name, "bay")];
-		o = OpeningDef{ true, float(ro.num_at(row, W_IN)), float(ro.num_at(row, W_MAX)), float(ro.num_at(row, SILL)),
-			float(ro.num_at(row, HEAD_IN)), float(ro.num_at(row, HEAD_MAX)), float(ro.num_at(row, DEPTH)) };
-	}
-}
-// The designs of their own a lot grows: each [design, kind, weight], its lot document (folder/<design>.json, the shelf's) read into a
-// body and brought from the documents' unit to metres; the share of each kind's lots that stand one, [kind, share]. A design that
-// cannot be read is an error at startup. How much smaller a design may stand on a smaller lot is not this table's: it is the body
-// rules' least storey, set with the catalogue below (set_zone_kinds: d.grown_least_storey_m = catalog.tune.build_min_storey_m).
-void grown_designs(DataReader r, const Dictionary &g, Data &d) {
-	enum { NAME, KIND, WEIGHT, ROW_SIZE };
-	const String folder = r.text(g, "folder");
-	const float unit = float(r.num(g, "unit"));
-	const Array shares = r.list(g, "shares");
-	for (int i = 0; i < shares.size(); i++) {
-		const Array pair = r.in("shares").list_at(shares, i, PAIR);
-		DataReader rs = r.in("shares").in(i);
-		d.grown_share[rs.index_of(KIND_NAMES, rs.utf8_at(pair, 0), "kind")] = float(rs.num_at(pair, 1));
-	}
-	const Array rows = r.list(g, "designs");
-	for (int i = 0; i < rows.size(); i++) {
-		const Array row = r.in("designs").list_at(rows, i, ROW_SIZE);
-		DataReader ri = r.in("designs").in(i);
-		const String path = folder + ri.text_at(row, NAME) + ".json";
-		const Variant doc = JSON::parse_string(FileAccess::get_file_as_string(path));
-		if (doc.get_type() != Variant::DICTIONARY || !Dictionary(doc).has("body")) {
-			ri.fail(String("design unreadable: ") + path);
-			continue;
-		}
-		auto body = std::make_shared<Body>();
-		float front_x = 0, front_y = 0;
-		int function = 0;
-		if (!body_from_doc(Dictionary(doc)["body"], d, *body, front_x, front_y, function, r.errors)) {
-			ri.fail(String("design refused: ") + path);
-			continue;
-		}
-		scale_body(*body, unit);
-		d.grown_designs.push_back({ Kind(ri.index_of(KIND_NAMES, ri.utf8_at(row, KIND), "kind")), float(ri.num_at(row, WEIGHT)), std::move(body) });
-	}
+	return errors.is_empty();
 }
 } // namespace
 
-uint8_t bay_named(const std::string &s, DataReader &r) { return uint8_t(r.index_of(BAY_NAMES, s, "bay")); }
-Kind kind_named(const std::string &s, DataReader &r) { return Kind(r.index_of(KIND_NAMES, s, "kind")); }
-Paint paint_named(const Variant &pair, DataReader r) {
-	if (pair.get_type() != Variant::ARRAY) {
-		r.fail(String("expected [finish, '#rrggbb'], found ") + Variant::get_type_name(pair.get_type()));
-		return Paint{};
-	}
-	const Array a = pair;
-	r.expect(a, PAIR);
-	return paint_of(r, a);
-}
+uint8_t bay_named(const std::string &s, PackedStringArray &errors) { return uint8_t(index_of(BAY_NAMES, s, "componente", errors)); }
+Kind kind_named(const std::string &s, PackedStringArray &errors) { return Kind(index_of(KIND_NAMES, s, "tipo", errors)); }
+Paint paint_named(const Variant &pair, PackedStringArray &errors) { return paint_of(pair, errors); }
 
 bool load_buildings(const Dictionary &table, Data &d, PackedStringArray &errors) {
 	const Dictionary t = region_table(table);
-	const int64_t before = errors.size();
-	DataReader r{ errors, "buildings.json" };
-	const Array st = r.list(t, "architectures", STYLE_COUNT);
-	for (int i = 0; i < st.size(); i++) d.styles.push_back(style_of(r.in("architectures").in(i), r.in("architectures").table_at(st, i)));
-	kind_weights(r.in("kind_weights"), r.table(t, "kind_weights"), d);
-	const Array ea = r.list(t, "era_affinity", STYLE_COUNT);
+	Array st = at(t, "architectures");
+	for (int i = 0; i < st.size(); i++) d.styles.push_back(style_of(st[i], errors));
+	if (int(d.styles.size()) != STYLE_COUNT) errors.push_back("buildings.json: são 12 estilos");
+	Dictionary kw = at(t, "kind_weights");
+	for (int k = 0; k < KIND_COUNT; k++) {
+		Array list = at(kw, KIND_NAMES[k]);
+		for (int i = 0; i < list.size(); i++) {
+			Array pair = list[i];
+			d.weights[k].push_back({ index_of(STYLE_NAMES, str(pair[0]), "estilo", errors), float(pair[1]) });
+		}
+	}
+	Array ea = at(t, "era_affinity");
 	for (int s = 0; s < STYLE_COUNT && s < ea.size(); s++) {
-		const Array e = r.in("era_affinity").list_at(ea, s, ERAS);
-		DataReader re = r.in("era_affinity").in(s);
-		for (int k = 0; k < ERAS; k++) d.era[s][k] = float(re.num_at(e, k));
+		Array e = ea[s];
+		for (int k = 0; k < 3; k++) d.era[s][k] = float(e[k]);
 	}
-	palettes(r.in("palettes"), r.table(t, "palettes"), d);
-	colors(r.in("colors"), r.table(t, "colors"), d);
-	openings(r.in("openings"), r.table(t, "openings"), d);
-	lot_rules(r.in("lots"), r.table(t, "lots"), d.lots);
-	shapes(r.in("shapes"), r.table(t, "shapes"), d.shapes);
-	if (errors.size() == before) grown_designs(r.in("grown_designs"), r.table(t, "grown_designs"), d); // the documents read with the colours
-	return errors.size() == before;
-}
-
-bool set_zone_kinds(const Catalog &catalog, Data &d, PackedStringArray &errors) {
-	const int64_t before = errors.size();
-	d.grown_least_storey_m = catalog.tune.build_min_storey_m; // the body rules' own least storey (data.h)
-	d.zone_kind.assign(ZONE_CODES, KIND_HOUSE);
-	d.zone_low_shop.assign(ZONE_CODES, false);
-	for (int code = 0; code < ZONE_CODES; code++) {
-		const ZoneDef &z = catalog.zones[code];
-		int kind = 0;
-		while (kind < KIND_COUNT && z.building != KIND_NAMES[kind]) kind++;
-		if (kind == KIND_COUNT) errors.push_back(String("zones.json: zone '") + String(z.id.c_str()) + String("' builds '") + String(z.building.c_str()) + String("', no building kind"));
-		else d.zone_kind[size_t(code)] = Kind(kind);
-		d.zone_low_shop[size_t(code)] = z.base == BASE_COMMERCIAL && z.density == 0;
+	Dictionary pal = at(t, "palettes");
+	d.bricks = paints(at(pal, "bricks"), errors); d.hard = paints(at(pal, "hard"), errors);
+	d.roof_tiles = paints(at(pal, "roof_tiles"), errors); d.flat_roofs = paints(at(pal, "flat_roofs"), errors);
+	d.works_roofs = paints(at(pal, "works_roofs"), errors); d.lot_walls = paints(at(pal, "lot_walls"), errors);
+	d.awnings = hexes(at(pal, "awnings")); d.shop_awnings = hexes(at(pal, "shop_awnings"));
+	d.tanks = hexes(at(pal, "tanks")); d.warehouse_walls = hexes(at(pal, "warehouse_walls"));
+	Dictionary cols = at(t, "colors");
+	Array keys = cols.keys();
+	for (int i = 0; i < keys.size(); i++) d.colors[str(keys[i])] = paint_of(at(cols, keys[i]), errors);
+	Dictionary op = at(t, "openings");
+	Array ok = op.keys();
+	for (int i = 0; i < ok.size(); i++) {
+		if (str(ok[i]) == DOC_KEY) continue;
+		Array r = at(op, ok[i]);
+		OpeningDef &o = d.openings[index_of(BAY_NAMES, str(ok[i]), "abertura", errors)];
+		enum { W_IN, W_MAX, SILL, HEAD_IN, HEAD_MAX, DEPTH };
+		o = OpeningDef{ true, float(r[W_IN]), float(r[W_MAX]), float(r[SILL]), float(r[HEAD_IN]), float(r[HEAD_MAX]), float(r[DEPTH]) };
 	}
-	return errors.size() == before;
+	if (!lot_rules(at(t, "lots"), d.lots, errors)) return false;
+	Dictionary props = at(t, "props");
+	Array lit = at(props, "lit_share");
+	d.lit_share[0] = float(lit[0]); d.lit_share[1] = float(lit[1]);
+	return errors.is_empty();
 }
 
 } // namespace city

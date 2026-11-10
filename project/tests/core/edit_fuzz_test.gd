@@ -1,10 +1,9 @@
 ## Random edits against what must hold for any of them, on the state hash (probes/state_hash: the save's bytes): undoing every step
 ## walks back through the same hashes, redoing walks forward through them, a save opened again is the same city, and the same seed
 ## makes the same city. A failure prints its seed and step; `--seed=N` and `--steps=N` run that one again.
-extends TestCase
+extends Node
 
 const BodyEdits := preload("res://tests/core/fuzz_body_edits.gd")
-const BrushEdits := preload("res://tests/core/fuzz_brush_edits.gd")
 const LOT_M := 30.0
 const MAP := 0
 const CITY_SEED := 7
@@ -16,6 +15,7 @@ const FIELD_OUT := Vector3(1600, 0, 900)
 const PX := 0.25
 const LIFTS := [0.0, 0.0, 0.0, 6.0, 8.0, -4.0, -12.0]
 const ZONE_RADIUS := 30.0
+const ZONE_KIND := 1
 const SLOT := "edit_fuzz"
 const SHOWN_PARTS := 6
 const BRUSH_M := 30.0
@@ -28,24 +28,30 @@ const STRIKE_MAX := 12
 ## The cells waiting to grow are a queue, not an edit: an undone road leaves its cells there, and a cell with no lot leaves it alone.
 const GROWTH_QUEUE := "growth"
 
+var failures := 0
 var drawn := -1
 var rng := RandomNumberGenerator.new()
 var roads: Array[Vector3] = [] # the middles of what was laid, for the edits that need a road
+
+
 var last_kind := 0
-## The edits the fuzz draws from, by what each does (every number below DEMOLISH lays a road: five chances in the draw).
-enum Edit { LAY, DEMOLISH = 5, SPLIT, UPGRADE, ZONE, REVERSE, TERRAIN, ITEM, BARRIER, BUILDING, STOP, BLAST, LOT, LANE_LINK, BEND, NODE_HEIGHT,
-	JOIN, CROSSING, UTURN, BAN_TURN, REMOVE_NODE, PATH }
 
 
 const BEND_M := 30.0
 const BEND_AT_LEAST := 0.2
 const BEND_LIFT_M := 4.0
+const PATH_KIND := 25 # a held brush's pointer move: the dabs of one move as one command
+const PATH_DABS := 3
+const PATH_BRUSHES := 4
+const TREE_LIKE := {"density": 1.0, "height": 1.0, "variation": 0.0, "spacing": 4.0}
+const ELEMENT_LIKE := {"density": 1.0, "size": 1.0, "variation": 0.0, "spacing": 4.0, "strength": 1.0, "intensity": 1.0}
 
 
 func _ready() -> void:
-	if not boot():
-		finish()
-		return
+	var world := CityWorld.new()
+	add_child(world)
+	var errors := CityStore.boot(world.terrain, world.materials())
+	_check(errors.is_empty(), "boot %s" % [errors])
 	var seeds: Array = SEEDS
 	var steps := STEPS
 	for arg in OS.get_cmdline_user_args():
@@ -55,7 +61,8 @@ func _ready() -> void:
 			steps = arg.trim_prefix("--steps=").to_int()
 	for s: int in seeds:
 		await _run(s, steps)
-	finish()
+	print("FAILURES: ", failures)
+	get_tree().quit(1 if failures > 0 else 0)
 
 
 func _hash() -> Dictionary:
@@ -69,7 +76,7 @@ func _same(a: Dictionary, b: Dictionary, what: String, ignoring := "") -> void:
 		if a.parts[part] != b.parts.get(part) and part != ignoring:
 			differ.push_back(part)
 	if not differ.is_empty():
-		check(false, "%s: differs in %s (%d -> %d bytes)" % [what, differ.slice(0, SHOWN_PARTS), a.bytes, b.bytes])
+		_check(false, "%s: differs in %s (%d -> %d bytes)" % [what, differ.slice(0, SHOWN_PARTS), a.bytes, b.bytes])
 
 
 func _run(seed: int, steps: int) -> void:
@@ -87,22 +94,24 @@ func _run(seed: int, steps: int) -> void:
 	_same(trail[last], again[-1], "seed %d the same edits again" % seed)
 	CityStore.query(&"traffic_hashes", [1]) # the graph takes the edits
 	var fault: String = CityStore.query(&"graph_fault")
-	check(fault.is_empty(), "seed %d lane graph: %s" % [seed, fault])
+	_check(fault.is_empty(), "seed %d lane graph: %s" % [seed, fault])
 
 
 func _reopened(seed: int, before: Dictionary) -> void:
 	var slot := "%s_%d" % [SLOT, seed]
-	var saved: Dictionary = await save(slot)
-	check(saved.get("ok", false), "seed %d is written: %s" % [seed, saved])
-	var r: Dictionary = await CityStore.saves.load_game(slot, true)
-	check(r.get("ok", false), "seed %d opens: %s" % [seed, r])
+	CityStore.saves.save_game(slot)
+	while CityStore.saves.save_busy():
+		await get_tree().process_frame
+	var r: Dictionary = CityStore.saves.load_game(slot, true)
+	_check(r.get("ok", false), "seed %d opens: %s" % [seed, r])
+	CityStore.dispatch(&"set_speed", [0])
 	_same(before, _hash(), "seed %d save and open" % seed)
 	DirAccess.remove_absolute(CityStore.saves.save_path(slot))
 
 
 ## A new map and the seed's edits; the hash after each edit that took.
 func _walk(seed: int, steps: int) -> Array:
-	new_map(MAP, CITY_SEED, false)
+	CityStore.new_map(MAP, CITY_SEED, false, true)
 	rng.seed = seed
 	roads.clear()
 	drawn = -1
@@ -114,7 +123,7 @@ func _walk(seed: int, steps: int) -> Array:
 		CityStore.dispatch(&"set_road_height", [0.0])
 		var now := _hash()
 		if int(CityStore.query(&"undo_steps")) != steps_before and now.whole == before:
-			check(false, "seed %d an edit of kind %d left an undo step that changes nothing" % [seed, last_kind])
+			_check(false, "seed %d an edit of kind %d left an undo step that changes nothing" % [seed, last_kind])
 		if now.whole != before:
 			trail.push_back(now)
 	return trail
@@ -125,26 +134,26 @@ func _point() -> Vector3:
 
 
 func _edit() -> void:
-	var kind := rng.randi_range(0, Edit.PATH) # PATH: a held brush's pointer move, the dabs of one move as one command
+	var kind := rng.randi_range(0, PATH_KIND)
 	last_kind = kind
 	var road: Vector3 = roads[rng.randi_range(0, roads.size() - 1)] if not roads.is_empty() else Vector3.ZERO
-	if kind < Edit.DEMOLISH or roads.is_empty():
+	if kind < 5 or roads.is_empty():
 		_lay()
-	elif kind == Edit.PATH:
-		BrushEdits.run(rng, _point(), GRID_M, BRUSH_M, BRUSH_MODES, ZONE_RADIUS, road)
-	elif kind >= Edit.BEND: # what the Inspector does to a road's shape
+	elif kind == PATH_KIND:
+		_brush_path(road)
+	elif kind >= 18:
 		_shape(kind, road)
-	elif kind >= Edit.TERRAIN: # what is not a road
+	elif kind >= 10:
 		_other(kind, road)
-	elif kind == Edit.DEMOLISH:
+	elif kind == 5:
 		CityStore.dispatch(&"demolish", [road])
-	elif kind == Edit.SPLIT:
+	elif kind == 6:
 		CityStore.dispatch(&"split_road", [road])
-	elif kind == Edit.UPGRADE:
+	elif kind == 7:
 		CityStore.dispatch(&"upgrade_road", [road, rng.randi_range(0, 3), false])
-	elif kind == Edit.ZONE:
+	elif kind == 8:
 		CityStore.dispatch(&"begin_stroke", ["cmd.place.zone"])
-		CityStore.dispatch(&"paint_zone", [road, ZONE_RADIUS, ZoneTable.code("residential")])
+		CityStore.dispatch(&"paint_zone", [road, ZONE_RADIUS, ZONE_KIND])
 		CityStore.dispatch(&"end_stroke")
 	else:
 		var seg: Dictionary = CityStore.query(&"segment_at", [road])
@@ -156,21 +165,21 @@ func _edit() -> void:
 func _shape(kind: int, road: Vector3) -> void:
 	var seg: Dictionary = CityStore.query(&"segment_at", [road])
 	var node: int = CityStore.query(&"node_at", [road, PX]).get("node", -1)
-	if kind == Edit.BEND and seg.get("id", -1) >= 0:
+	if kind == 18 and seg.get("id", -1) >= 0:
 		CityStore.dispatch(&"bend_road", [seg.id, rng.randf_range(-BEND_M, BEND_M), rng.randf_range(BEND_AT_LEAST, 1.0 - BEND_AT_LEAST)])
-	elif kind == Edit.NODE_HEIGHT and node >= 0:
+	elif kind == 19 and node >= 0:
 		CityStore.dispatch(&"set_node_height", [node, rng.randf_range(-BEND_LIFT_M, BEND_LIFT_M)])
-	elif kind == Edit.JOIN and node >= 0:
+	elif kind == 20 and node >= 0:
 		CityStore.dispatch(&"join_roads", [node])
-	elif kind == Edit.CROSSING:
-		CityStore.dispatch(&"add_crossing", [road, rng.randi_range(CityStore.code(&"NodeCrossing", &"CROSSING_ZEBRA"), CityStore.code(&"NodeCrossing", &"CROSSING_SIGNAL"))])
-	elif kind == Edit.UTURN:
+	elif kind == 21:
+		CityStore.dispatch(&"add_crossing", [road, rng.randi_range(1, 2)])
+	elif kind == 22:
 		CityStore.dispatch(&"add_uturn", [road, rng.randf() < 0.5])
-	elif kind == Edit.BAN_TURN and node >= 0:
+	elif kind == 23 and node >= 0:
 		var legs: Array = CityStore.query(&"node_legs", [node])
 		if legs.size() >= 2:
 			CityStore.dispatch(&"set_movement_banned", [node, legs[0].seg, legs[1].seg, legs[0].banned.is_empty()])
-	elif kind == Edit.REMOVE_NODE and node >= 0:
+	elif kind == 24 and node >= 0:
 		CityStore.dispatch(&"remove_node", [node])
 
 
@@ -179,24 +188,24 @@ func _other(kind: int, road: Vector3) -> void:
 	var a := _point()
 	var b := a + Vector3(GRID_M, 0, GRID_M)
 	match kind:
-		Edit.TERRAIN:
+		10:
 			CityStore.dispatch(&"begin_stroke", ["cmd.place.terrainBrush"])
 			CityStore.dispatch(&"terrain_brush", [a, BRUSH_M, 1.0, BRUSH_DT, rng.randi_range(0, BRUSH_MODES), 0.5])
 			CityStore.dispatch(&"end_stroke")
-		Edit.ITEM:
+		11:
 			CityStore.dispatch(&"place_item", [road, rng.randi_range(0, ITEM_KINDS), 0, "", REACH_M])
-		Edit.BARRIER:
+		12:
 			CityStore.dispatch(&"build_barrier", [PackedVector3Array([a, b]), rng.randi_range(0, 1)])
-		Edit.BUILDING:
+		13:
 			var box: PackedVector3Array = CityStore.query(&"body_outline", [drawn, 0]) if drawn >= 0 else PackedVector3Array()
 			if not box.is_empty() and rng.randf() < 0.5:
 				BodyEdits.run(rng, drawn, box)
 			else:
-				var r: Dictionary = CityStore.dispatch(&"draw_building", [a, b, 0, ZoneTable.code("residential"), rng.randi_range(0, PLAN_SHAPES)])
+				var r: Dictionary = CityStore.dispatch(&"draw_building", [a, b, 0, ZONE_KIND, rng.randi_range(0, PLAN_SHAPES)])
 				drawn = r.get("placed", -1) if r.get("ok", false) else drawn
-		Edit.STOP:
+		14:
 			CityStore.dispatch(&"transit_stop", [road])
-		Edit.LANE_LINK:
+		17:
 			var junctions: Array = CityStore.query(&"junctions")
 			if not junctions.is_empty():
 				var node: int = junctions[rng.randi_range(0, junctions.size() - 1)].node
@@ -204,20 +213,39 @@ func _other(kind: int, road: Vector3) -> void:
 				if not built.is_empty():
 					var one: Array = built[rng.randi_range(0, built.size() - 1)]
 					CityStore.dispatch(&"toggle_lane_link", [node, one[0], one[1], one[2], one[3]])
-		Edit.LOT:
+		16:
 			var lots: Array = CityStore.query(&"lots")
-			var pick := rng.randf()
-			if lots.is_empty() or pick < 0.4:
+			if lots.is_empty() or rng.randf() < 0.5:
 				CityStore.dispatch(&"lot_add_rect", [a, a + Vector3(LOT_M, 0, LOT_M), 0.0])
-			elif pick < 0.8:
-				CityStore.dispatch(&"lot_zone", [lots[rng.randi_range(0, lots.size() - 1)].id, ZoneTable.code("residential")])
-			else: # the Lots tool's erase stroke: every lot under it with what stands on it
-				CityStore.dispatch(&"lot_erase", [PackedVector3Array([a, b])])
-		_: # Edit.BLAST
+			else:
+				CityStore.dispatch(&"lot_zone", [lots[rng.randi_range(0, lots.size() - 1)].id, ZONE_KIND])
+		_:
 			if rng.randf() < 0.5:
 				CityStore.dispatch(&"strike", [road, rng.randi_range(1, STRIKE_MAX)])
 			else:
 				CityStore.dispatch(&"demolish_box", [a, b])
+
+
+## One pointer move of a held brush (zones on the roads, ground paint, trees, fog, elements), inside its stroke.
+func _brush_path(road: Vector3) -> void:
+	var a := _point()
+	var dabs := PackedVector3Array()
+	for i in PATH_DABS:
+		dabs.append(a + Vector3(GRID_M * 0.5 * i, 0, 0))
+	var which := rng.randi_range(0, PATH_BRUSHES)
+	CityStore.dispatch(&"begin_stroke", ["cmd.place.paint"])
+	match which:
+		0:
+			CityStore.dispatch(&"paint_zone_path", [PackedVector3Array([road, road + Vector3(ZONE_RADIUS, 0, 0)]), ZONE_RADIUS, ZONE_KIND])
+		1:
+			CityStore.dispatch(&"paint_path", [dabs, BRUSH_M, 1.0, 0.5, rng.randi_range(0, BRUSH_MODES)])
+		2:
+			CityStore.dispatch(&"tree_path", [dabs, BRUSH_M, 0, 0, TREE_LIKE])
+		3:
+			CityStore.dispatch(&"fog_path", [dabs, BRUSH_M, 1.0, 10.0, 0.0, false])
+		_:
+			CityStore.dispatch(&"element_path", [dabs, BRUSH_M, 0, ELEMENT_LIKE, false])
+	CityStore.dispatch(&"end_stroke")
 
 
 func _lay() -> void:
@@ -231,3 +259,9 @@ func _lay() -> void:
 	var r: Dictionary = CityStore.dispatch(&"build_road", [a, b, false, Vector3.ZERO, rng.randi_range(0, 3), PX, lift])
 	if r.get("ok", false):
 		roads.push_back((a + b) * 0.5)
+
+
+func _check(ok: bool, what: String) -> void:
+	print(("ok   " if ok else "FAIL ") + what)
+	if not ok:
+		failures += 1

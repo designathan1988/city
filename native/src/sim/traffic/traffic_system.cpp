@@ -4,8 +4,6 @@
 #include "sim/traffic/kerb_stops.h"
 
 #include "sim/traffic/lane_closures.h"
-#include "sim/traffic/lane_shift.h"
-#include "sim/traffic/sight.h"
 
 #include "core/laps.h"
 #include "core/units.h"
@@ -33,13 +31,10 @@ void ends(const CityState &s, const Vehicle &v, float front, float len, Pose &f,
 	lane_pose(s, v.ds, v.lane, front, f);
 	lane_pose(s, v.ds, v.lane, front - len, r);
 	const DirSeg &d = s.traffic.g.ds[v.ds];
-	// a lane change's offset where the front is and where the rear was (lane_shift.h): the body turns along its path
-	const float shift = cycle_shift(s, v, v.ds, front);
-	const float off_f = v.lat + shift, off_r = (v.lat != 0 ? shift_offset(v.lat_start, v.lat_done - len, v.lat_len) : 0.f) + shift;
-	f.x += d.sign * f.fz * off_f; // left of a -> b, as lane offsets
-	f.z += -d.sign * f.fx * off_f;
-	r.x += d.sign * r.fz * off_r;
-	r.z += -d.sign * r.fx * off_r;
+	const float off = v.lc_off + cycle_shift(s, v, v.ds, front);
+	float lx = d.sign * f.fz * off, lz = -d.sign * f.fx * off; // left of a -> b, as lane offsets
+	f.x += lx; f.z += lz;
+	r.x += lx; r.z += lz;
 }
 
 } // namespace
@@ -48,7 +43,6 @@ void despawn_vehicle(CityState &s, int id, bool arrived) {
 	TrafficState &t = s.traffic;
 	Vehicle &v = t.vehicles[size_t(id)];
 	if (!v.alive) return;
-	if (v.micro && !v.off && vehicle_may_show(s, v.cur.x, v.cur.z)) t.gone_in_sight++;
 	transit::bus_gone(s, id);
 	lot_car_forget(s, id);
 	lorry_gone(s, id);
@@ -72,7 +66,6 @@ void reset_traffic(CityState &s) {
 	build_lane_graph(s);
 	reset_pedestrians(s);
 	t.lane_vehicles.assign(t.g.ds.size() * MAX_LANES, {});
-	t.lane_shadows.assign(t.g.ds.size() * MAX_LANES, {});
 	t.lane_sorted.assign(t.g.ds.size() * MAX_LANES, 1);
 	t.lane_active.assign(t.g.ds.size() * MAX_LANES, 0);
 	t.conn_vehicles.assign(t.g.conns.size(), {});
@@ -132,27 +125,6 @@ void speed_shares(TrafficState &t, PoseFrame &f, size_t segs) {
 		mine->segs.assign(t.pub_segs.begin(), t.pub_segs.end());
 	}
 }
-// What the render reads of a walker: its trail, its looks and size, what it does, whom it walks with.
-AgentRecord walker_record(const TrafficState &t, const Pedestrian &w) {
-	AgentRecord rec;
-	for (int i = 0; i < POSE_TRAIL; i++) rec.at[i] = w.trail.at[i];
-	rec.id = uint32_t(&w - t.peds.data());
-	rec.look = w.look;
-	rec.walked = w.walked;
-	rec.rest = w.rest;
-	rec.act = uint8_t(w.act);
-	rec.act_share = w.act_share;
-	rec.act_since = float(t.time - w.act_from);
-	rec.act_left = w.held_until - float(t.time);
-	rec.frightened = t.time < w.panic_until;
-	rec.age = uint8_t(w.age);
-	rec.scale = w.scale;
-	const PedParty party = party_of(t, w);
-	rec.party = party.leader->look;
-	rec.company = uint8_t(party.size < 2 ? PedCompany::SOLO : party.child ? PedCompany::FAMILY : PedCompany::COUPLE);
-	return rec;
-}
-
 } // namespace
 
 void publish_poses(CityState &s, int64_t stamp_ns) {
@@ -163,6 +135,7 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 	t.stamp_ns[POSE_TRAIL - 1] = stamp_ns;
 	Laps lap;
 	const float cx = s.camera_x.load(), cz = s.camera_z.load();
+	const float r2 = p.publish_radius_m * p.publish_radius_m;
 	PoseFrame &f = s.poses.back();
 	f.vehicles.clear();
 	f.people.clear();
@@ -204,20 +177,34 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 				count[seg]++;
 			}
 		}
-		if (!vehicle_may_show(s, v.cur.x, v.cur.z)) continue;
+		const float dx = v.cur.x - cx, dz = v.cur.z - cz;
+		if (dx * dx + dz * dz > r2) continue;
 		AgentRecord rec;
 		for (int i = 0; i < POSE_TRAIL; i++) rec.at[i] = v.trail.at[i];
 		rec.id = uint32_t(&v - s.traffic.vehicles.data());
 		const bool empty = v.off && lot_car_at_rest(s, int(&v - t.vehicles.data())); // nobody in a car standing in its bay
-		rec.look = uint32_t(v.type) | (uint32_t(v.paint) << LOOK_PAINT_SHIFT) | (v.brake ? 1u << LOOK_BRAKE_SHIFT : 0u) | (empty ? 1u << LOOK_EMPTY_SHIFT : 0u) | (uint32_t(v.aboard) << LOOK_ABOARD_SHIFT) | (kerb_door_level(s, v) << LOOK_DOOR_SHIFT) | (riders_level(v) << LOOK_RIDERS_SHIFT);
+		rec.look = uint32_t(v.type) | (uint32_t(v.paint) << LOOK_PAINT_SHIFT) | (v.brake ? 1u << LOOK_BRAKE_SHIFT : 0u) | (empty ? 1u << LOOK_EMPTY_SHIFT : 0u) | (uint32_t(v.aboard) << LOOK_ABOARD_SHIFT) | (kerb_door_level(s, v) << LOOK_DOOR_SHIFT);
 		f.vehicles.push_back(rec);
 	}
 	for (Pedestrian &w : s.traffic.peds) {
 		if (!w.alive) continue;
 		w.trail.push(w.cur, stamp_ns, before);
 		if (s.traffic.time < w.down_until) continue; // on the ground: the effects draw the body, not the walker
-		if (!person_may_show(s, w.cur.x, w.cur.z)) continue;
-		f.people.push_back(walker_record(t, w));
+		const float dx = w.cur.x - cx, dz = w.cur.z - cz;
+		if (dx * dx + dz * dz > r2) continue;
+		AgentRecord rec;
+		for (int i = 0; i < POSE_TRAIL; i++) rec.at[i] = w.trail.at[i];
+		rec.id = uint32_t(&w - s.traffic.peds.data());
+		rec.look = w.look;
+		rec.walked = w.walked;
+		rec.rest = w.rest;
+		rec.act = uint8_t(w.act);
+		rec.act_share = w.act_share;
+		rec.act_since = float(s.traffic.time - w.act_from);
+		rec.act_left = w.held_until - float(s.traffic.time);
+		rec.frightened = s.traffic.time < w.panic_until;
+		rec.age = uint8_t(w.age);
+		f.people.push_back(rec);
 	}
 	speed_shares(t, f, segs);
 	publish_signals(s, cx, cz, p.publish_radius_m, f.signals);
@@ -233,7 +220,6 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 void step(CityState &s, float dt) {
 	TrafficState &t = s.traffic;
 	apply_network_changes(s);
-	refresh_rings(s);
 	route_compact(t);
 	t.time += dt;
 	t.tick++;

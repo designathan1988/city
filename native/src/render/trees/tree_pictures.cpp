@@ -7,7 +7,6 @@
 
 #include "core/math.h"
 #include "core/units.h"
-#include "render/data_reader.h"
 #include "render/trees/tree_kit.h"
 
 #include <godot_cpp/variant/array.hpp>
@@ -23,9 +22,9 @@ namespace city {
 namespace {
 constexpr int RGBA = 4;
 constexpr int FROND_MIP = 4, FROND_TEXEL = 4; // the atlas level a frond is read at, and a texel's bytes
-constexpr float DISPLAY_GAMMA = 2.2f; // a display's gamma, the sRGB curve's approximation
+constexpr float DISPLAY_GAMMA = 2.2f;
 constexpr float FROND_COVER = 0.2f; // the leaflets' cover that still reads as frond
-constexpr float BYTE = 255.f, CENTRE_Y = 0.5f, NORMAL_HALF = 0.5f, ALPHA_CUT = 0.5f; // a byte's top; halves: the picture's middle, a normal's packing, coverage
+constexpr float BYTE = 255.f, CENTRE_Y = 0.5f, NORMAL_HALF = 0.5f, ALPHA_CUT = 0.5f;
 constexpr int CARD_CORNERS = 4, TRI = 3;
 constexpr float CARD_BULGE = 0.6f; // a card leans outwards from its centre, so a tuft reads as a lump and not a disc
 
@@ -77,16 +76,17 @@ struct TreePictures::Frame {
 };
 
 bool TreePictures::begin(const Dictionary &spec, int species, const Ref<Image> &leaves, PackedStringArray &errors) {
-	const int64_t before = errors.size();
-	DataReader r{ errors, "streets.json.trees.pictures" }; // render/data_reader.h
-	px_ = r.integer(spec, "picture_px");
-	share_ = float(r.num(spec, "picture_share"));
-	shade_ = float(r.num(spec, "picture_shade"));
+	if (!spec.has("picture_px") || !spec.has("elevations_deg") || !spec.has("picture_share") || !spec.has("picture_shade")) {
+		errors.push_back("streets.json trees: falta pictures");
+		return false;
+	}
+	px_ = spec["picture_px"];
+	share_ = spec["picture_share"];
+	shade_ = spec["picture_shade"];
 	rows_ = species;
-	const Array e = r.list(spec, "elevations_deg");
+	Array e = spec["elevations_deg"];
 	elevations_.clear();
-	for (int i = 0; i < e.size(); i++) elevations_.push_back(float(r.in("elevations_deg").num_at(e, i)));
-	if (errors.size() != before) return false;
+	for (int i = 0; i < e.size(); i++) elevations_.push_back(float(e[i]));
 	leaves_ = leaves;
 	if (leaves_->is_compressed()) leaves_->decompress();
 	frond_texels_ = leaves_->get_data();

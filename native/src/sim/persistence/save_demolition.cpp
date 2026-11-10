@@ -54,7 +54,7 @@ void put_block(ByteWriter &w, const DamageState &d) {
 	}
 }
 
-bool get_block(ByteReader &r, DamageState &d, uint32_t version) {
+bool get_block(ByteReader &r, DamageState &d) {
 	d.clear();
 	d.strikes = r.get<uint32_t>();
 	d.shots = r.get<uint32_t>();
@@ -73,7 +73,7 @@ bool get_block(ByteReader &r, DamageState &d, uint32_t version) {
 	for (Ruin &u : ruins) {
 		u.x = r.get<float>(); u.z = r.get<float>(); u.w = r.get<float>(); u.d = r.get<float>(); u.rot = r.get<float>();
 		u.seed = r.get<uint32_t>();
-		if (!get_building(r, u.record, version)) return false;
+		if (!get_building(r, u.record)) return false;
 	}
 	n = r.get_count(GONE_BYTES);
 	if (!r.ok) return false;
@@ -120,6 +120,6 @@ bool write_damage_block(ByteWriter &w, const DamageState &d) {
 	return true;
 }
 
-bool read_damage_block(ByteReader &r, DamageState &d, uint32_t version) { return get_block(r, d, version); }
+bool read_damage_block(ByteReader &r, DamageState &d) { return get_block(r, d); }
 
 } // namespace city

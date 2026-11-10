@@ -4,6 +4,7 @@
 #pragma once
 
 #include "render/async_slot.h"
+#include "render/buildings/building_bodies.h"
 #include "render/frame_admission.h"
 #include "sim/state/city_state.h"
 
@@ -33,9 +34,10 @@ private:
 		float ox = 0, oz = 0;
 		bool any = false;
 	};
-	// What a job keeps for the next one: its buffers.
+	// What a job keeps for the next one: its buffers and the bodies it made.
 	struct Scratch {
 		std::vector<float> cells, rows, near, line, pad, ahead, behind;
+		BuildingBodies bodies;
 	};
 	void work(const CityState &s, float ox, float oz, uint64_t generation);
 	bool reads(int64_t chunk, float ox, float oz) const;

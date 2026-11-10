@@ -1,4 +1,4 @@
-// The lot cutter of one cell (internal to sim/citygen): its occupancy grid, the streets' setbacks and the lots
+// The lot cutter of one cell (internal to sim/citygen): its 2 m occupancy grid, the streets' setbacks and the lots
 // placed so far. Methods in lot_gen.cpp (grid, streets, tests) and lot_place.cpp (blocks and street strips).
 #pragma once
 
@@ -11,8 +11,7 @@ namespace city {
 
 class LotStrips {
 public:
-	LotStrips(const GenShapes &s, const LotGraph &g, const std::vector<Profile> &profiles, const GenZones &zones, const GrownPlans &grown,
-		const LotGround &ground, double x0, double z0);
+	LotStrips(const LotGraph &g, const std::vector<Profile> &profiles, const LotGround &ground, double x0, double z0);
 	std::vector<Lot> run();
 
 	// A lot's frame: centre, along-front unit (t), away-from-street unit (l), width and depth.
@@ -21,13 +20,8 @@ public:
 	};
 
 private:
-	const GenShapes &S; // growth.json shapes: the strips' grid and tests (K) and the lots' sizes (P)
-	const StripsShape &K;
-	const LotsShape &P;
 	const LotGraph &g_;
 	const std::vector<Profile> &prof_;
-	const GenZones &zones_; // the catalogue's: works stand on its industrial zone
-	const GrownPlans &grown_; // the designs of their own the lots grow, and which one a lot grows (lot_gen.h)
 	const LotGround &ground_;
 	double cx0_, cz0_, ax_, az_;
 	int W_;
@@ -46,12 +40,6 @@ private:
 	void mark_lot(const Frame &f);
 	bool lot_free(double x, double z) const; // no paving and no lot there
 	void keep(const Frame &f, int zone, int profile);
-	Lot lot_of(const Frame &at_paving, int zone, int profile) const; // the lot of a frame already brought to the paving
-	int grows(const Frame &laid, int zone) const; // the design of its own the lot laid there grows (GrownPlans::pick), or -1
-	double edge_gap(int s, double x, double z) const; // from a point to street s's paving edge on the point's side (< 0: on it)
-	int street_off(double x, double z, double dx, double dz, int skip) const; // the street whose paving lies within reach that way
-	double gap_along(int s, const Frame &f, double side, double along) const;
-	Frame to_paving(const Frame &f) const;
 	void place_blocks();
 	void place_strips();
 	struct Along {
@@ -63,7 +51,6 @@ private:
 		int s;
 		double sign, face, depth, frontage;
 		int zone;
-		bool whole = false; // its lots never cut narrower than frontage (lot_gen::LotSize::whole)
 	};
 	void cut_run(const Strip &strip, double from, double to);
 };

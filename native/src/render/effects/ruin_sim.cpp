@@ -12,8 +12,22 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float FARTHEST_M = 1e30f; // farther than any piece: a search's start
-constexpr float FAR_DOWN_M = -1e9f; // under any ground: the height read off the pile map outside it
+constexpr float RESTING_M = 0.6f; // what starts this close to the ground rests on it (the 4.0): bonded to the world
+constexpr float THROW_BASE_MS = 2.f, THROW_PER_FORCE_MS = 1.1f, THROW_SHARE_LEAST = 0.3f;
+constexpr float BREAK_POWER_MS = 0.6f; // what falls from the break running on: it falls, it is not thrown
+constexpr float THROW_LEAST = 0.5f, THROW_SPAN = 0.6f, THROW_UP = 0.25f;
+constexpr float TURN_RANGE = 3.f, SPIN_BASE = 0.4f, SPIN_PER_POWER = 0.1f;
+constexpr float HOP_S = 0.055f, HOP_LEAST = 0.7f, HOP_SPAN = 0.6f; // the break runs a bond in this long
+constexpr float SUPPORT_EVERY_S = 0.1f;
+constexpr float MOUND_FILL = 0.85f; // of a mound's height where the pieces come to rest: its shader's slumps average under it
+constexpr float MOUND_SPREAD = 1.15f; // effect_ruins.cpp: it slumps past the walls it fell from
+constexpr float LONGEST_FALL_S = 12.f;
+constexpr float LAND_SPEED_MS = 3.f;
+constexpr float FARTHEST_M = 1e30f;
+constexpr float PILE_CELL_M = 0.5f, PILE_OVER = 2.f; // of the lot's reach, what the pile map covers
+constexpr int PILE_MOST_SIDE = 256;
+constexpr float FAR_DOWN_M = -1e9f;
+constexpr int SETTLE_MOST_STEPS = 1200; // twenty seconds
 } // namespace
 
 float RuinSim::Pile::at(float x, float z) const {
@@ -33,7 +47,6 @@ void RuinSim::Pile::lay(const Vector3 &lo, const Vector3 &hi, float height) {
 }
 
 void RuinSim::begin(const std::shared_ptr<RuinMesh> &cut, const Ruin &ruin, float ground, float heap, const EffectParams &law, bool standing) {
-	const RuinSimShape &K = law.shapes.ruin_sim;
 	cut_ = cut;
 	ruin_ = ruin;
 	ground_ = ground;
@@ -42,8 +55,8 @@ void RuinSim::begin(const std::shared_ptr<RuinMesh> &cut, const Ruin &ruin, floa
 	rng_ = Rng(uint64_t(ruin.seed) + 1);
 	cos_ = std::cos(ruin.rot);
 	sin_ = std::sin(ruin.rot);
-	const float reach = std::max(ruin.w, ruin.d) * K.pile_over;
-	pile_.cell = std::max(K.pile_cell_m, 2.f * reach / float(K.pile_most_side));
+	const float reach = std::max(ruin.w, ruin.d) * PILE_OVER;
+	pile_.cell = std::max(PILE_CELL_M, 2.f * reach / float(PILE_MOST_SIDE));
 	pile_.side = int(2.f * reach / pile_.cell) + 1;
 	pile_.from = Vector2(ruin.x - reach, ruin.z - reach);
 	pile_.top.assign(size_t(pile_.side) * size_t(pile_.side), FAR_DOWN_M);
@@ -56,7 +69,7 @@ void RuinSim::begin(const std::shared_ptr<RuinMesh> &cut, const Ruin &ruin, floa
 		p.radius = src.radius;
 		p.first_link = src.first_link;
 		p.links = src.links;
-		p.grounded = src.low <= ground + K.resting_m;
+		p.grounded = src.low <= ground + RESTING_M;
 		p.asleep = true;
 		p.flat = std::min({ src.half.x, src.half.y, src.half.z });
 		p.shape(src.half, 4.f * src.half.length_squared());
@@ -68,9 +81,8 @@ void RuinSim::begin(const std::shared_ptr<RuinMesh> &cut, const Ruin &ruin, floa
 
 // When each piece goes: what the blow reaches at once, thrown, then the break running on by the bonds from there.
 void RuinSim::schedule() {
-	const RuinSimShape &K = law_.shapes.ruin_sim;
 	const Vector3 blow(ruin_.blow_x, ruin_.blow_y, ruin_.blow_z);
-	const float reach = scar_reach_m(ruin_.blow_force), power = K.throw_base_ms + ruin_.blow_force * K.throw_per_force_ms;
+	const float reach = scar_reach_m(ruin_.blow_force), power = THROW_BASE_MS + ruin_.blow_force * THROW_PER_FORCE_MS;
 	stack_.clear();
 	int nearest = 0;
 	float closest = FARTHEST_M;
@@ -89,7 +101,7 @@ void RuinSim::schedule() {
 		}
 		if (d >= reach) continue;
 		p.scheduled = true;
-		p.power = power * std::max(K.throw_share_least, 1.f - d / reach);
+		p.power = power * std::max(THROW_SHARE_LEAST, 1.f - d / reach);
 		stack_.push_back(int(i));
 	}
 	if (stack_.empty()) { // brought down from afar: it goes from the side the blow came from
@@ -103,7 +115,7 @@ void RuinSim::schedule() {
 			Piece &p = pieces_[size_t(next)];
 			if (p.scheduled) continue;
 			p.scheduled = true;
-			p.fall_at = from.fall_at + K.hop_s * (K.hop_least + rng_.f() * K.hop_span);
+			p.fall_at = from.fall_at + HOP_S * (HOP_LEAST + rng_.f() * HOP_SPAN);
 			stack_.push_back(next);
 		}
 	}
@@ -112,7 +124,6 @@ void RuinSim::schedule() {
 
 // The first standing piece at the point takes the blow (destruction.ts `strike`): the wall may stand back from where it was aimed.
 void RuinSim::scar(const Scar &c) {
-	const RuinSimShape &K = law_.shapes.ruin_sim;
 	const Vector3 aimed(c.x, c.y, c.z);
 	const Piece *first = nullptr;
 	float closest = FARTHEST_M;
@@ -127,13 +138,13 @@ void RuinSim::scar(const Scar &c) {
 	ruin_.blow_x = blow.x;
 	ruin_.blow_y = blow.y;
 	ruin_.blow_z = blow.z;
-	const float reach = scar_reach_m(c.force), power = K.throw_base_ms + c.force * K.throw_per_force_ms;
+	const float reach = scar_reach_m(c.force), power = THROW_BASE_MS + c.force * THROW_PER_FORCE_MS;
 	for (Piece &p : pieces_) {
 		const float d = p.home.distance_to(blow) - p.radius * 0.5f;
 		if (p.loose || p.scheduled || d >= reach) continue;
 		p.scheduled = true;
 		p.fall_at = clock_;
-		p.power = power * std::max(K.throw_share_least, 1.f - d / reach);
+		p.power = power * std::max(THROW_SHARE_LEAST, 1.f - d / reach);
 	}
 	support_in_ = 0;
 	left_ = std::max(left_, 1);
@@ -146,22 +157,20 @@ void RuinSim::collapse(const Ruin &ruin, float heap) {
 }
 
 void RuinSim::let_go(Piece &p, const Vector3 &from, float power, std::vector<Note> *notes) {
-	const RuinSimShape &K = law_.shapes.ruin_sim;
 	if (p.loose) return;
 	p.loose = true;
 	p.asleep = false;
 	p.rest = 0;
 	const Vector3 away = (p.p - from).normalized();
-	p.v = away * (power * (K.throw_least + rng_.f() * K.throw_span));
-	p.v.y += power * K.throw_up * rng_.f();
-	const float spin = K.spin_base + power * K.spin_per_power;
-	p.w = Vector3(rng_.f() - 0.5f, rng_.f() - 0.5f, rng_.f() - 0.5f) * (K.turn_range * spin);
+	p.v = away * (power * (THROW_LEAST + rng_.f() * THROW_SPAN));
+	p.v.y += power * THROW_UP * rng_.f();
+	const float spin = SPIN_BASE + power * SPIN_PER_POWER;
+	p.w = Vector3(rng_.f() - 0.5f, rng_.f() - 0.5f, rng_.f() - 0.5f) * (TURN_RANGE * spin);
 	if (notes) notes->push_back(Note{ p.p, p.radius, false });
 }
 
 // Every standing piece no longer joined to the ground through standing pieces falls.
 void RuinSim::drop_unsupported(std::vector<Note> *notes) {
-	const RuinSimShape &K = law_.shapes.ruin_sim;
 	held_.assign(pieces_.size(), 0);
 	stack_.clear();
 	for (size_t i = 0; i < pieces_.size(); i++)
@@ -180,15 +189,14 @@ void RuinSim::drop_unsupported(std::vector<Note> *notes) {
 		}
 	}
 	for (size_t i = 0; i < pieces_.size(); i++)
-		if (!pieces_[i].loose && !held_[i]) let_go(pieces_[i], pieces_[i].p + Vector3(0, 1, 0), K.break_power_ms, notes);
+		if (!pieces_[i].loose && !held_[i]) let_go(pieces_[i], pieces_[i].p + Vector3(0, 1, 0), BREAK_POWER_MS, notes);
 }
 
 // What lies under a point: the ground, the mound as Mounds draws it, and the pieces that came to rest there.
 float RuinSim::top(float x, float z) const {
-	const RuinSimShape &K = law_.shapes.ruin_sim;
 	const float dx = x - ruin_.x, dz = z - ruin_.z;
 	const float u = (dx * cos_ - dz * sin_) / (ruin_.w * MOUND_SPREAD), v = (dx * sin_ + dz * cos_) / (ruin_.d * MOUND_SPREAD);
-	const float mound = std::fabs(u) >= 0.5f || std::fabs(v) >= 0.5f ? ground_ : ground_ + heap_ * K.mound_fill * Mounds::hill_at(law_.shapes.mounds, u, v);
+	const float mound = std::fabs(u) >= 0.5f || std::fabs(v) >= 0.5f ? ground_ : ground_ + heap_ * MOUND_FILL * Mounds::hill_at(u, v);
 	return std::max(mound, pile_.at(x, z));
 }
 
@@ -203,15 +211,14 @@ void RuinSim::rest_on_pile(const Piece &p) {
 }
 
 void RuinSim::step(std::vector<Note> *notes) {
-	const RuinSimShape &K = law_.shapes.ruin_sim;
 	clock_ += RIGID_STEP_S;
 	support_in_ -= RIGID_STEP_S;
 	for (Piece &p : pieces_) {
 		const bool stays = p.grounded && p.power <= 0.f; // what stands on the ground stays, unless the blow itself threw it
-		if (!p.loose && !stays && p.scheduled && clock_ >= p.fall_at) let_go(p, Vector3(ruin_.blow_x, ruin_.blow_y, ruin_.blow_z), p.power > 0.f ? p.power : K.break_power_ms, notes);
+		if (!p.loose && !stays && p.scheduled && clock_ >= p.fall_at) let_go(p, Vector3(ruin_.blow_x, ruin_.blow_y, ruin_.blow_z), p.power > 0.f ? p.power : BREAK_POWER_MS, notes);
 	}
 	if (support_in_ <= 0.f) {
-		support_in_ = K.support_every_s;
+		support_in_ = SUPPORT_EVERY_S;
 		drop_unsupported(notes);
 	}
 	auto ground = [this](float x, float z) { return top(x, z); };
@@ -227,16 +234,15 @@ void RuinSim::step(std::vector<Note> *notes) {
 		const bool slept = rigid_step(p, ground, law_);
 		p.aloft += RIGID_STEP_S;
 		p.moved = true;
-		if (notes && falling < -K.land_speed_ms && p.v.y > falling * 0.5f) notes->push_back(Note{ p.p, p.radius, true });
-		if (!slept && p.aloft <= K.longest_fall_s) continue;
+		if (notes && falling < -LAND_SPEED_MS && p.v.y > falling * 0.5f) notes->push_back(Note{ p.p, p.radius, true });
+		if (!slept && p.aloft <= LONGEST_FALL_S) continue;
 		p.asleep = true; // on a slope a plate rocks for good: the clock ends it
 		rest_on_pile(p);
 	}
 }
 
 void RuinSim::settle() {
-	const RuinSimShape &K = law_.shapes.ruin_sim;
-	for (int i = 0; i < K.settle_most_steps && left_ > 0; i++) step(nullptr);
+	for (int i = 0; i < SETTLE_MOST_STEPS && left_ > 0; i++) step(nullptr);
 }
 
 int RuinSim::flying() const {
@@ -251,7 +257,7 @@ void RuinSim::write(size_t i, float *rows) const {
 	const Piece &p = pieces_[i];
 	const Basis b(p.q);
 	const Vector3 at = p.p - b.xform(p.home);
-	constexpr int LINES = 3, FOUR = 4; // a transform's three basis rows, each four floats wide with its origin
+	constexpr int LINES = 3, FOUR = 4;
 	for (int r = 0; r < LINES; r++) {
 		rows[r * FOUR] = b.rows[r].x;
 		rows[r * FOUR + 1] = b.rows[r].y;

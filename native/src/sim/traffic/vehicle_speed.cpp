@@ -10,6 +10,10 @@
 namespace city {
 namespace traffic {
 
+namespace {
+constexpr float DRIFT_RATE = 0.1f;
+} // namespace
+
 float top_speed(const CityState &s, const Vehicle &v, float limit) {
 	const float own = limit * v.vf;
 	return v.type == VehicleType::BICYCLE ? std::min(own, s.catalog.traffic.bike_speed_kmh / KMH_PER_MS * v.vf) : own;
@@ -27,15 +31,12 @@ float turn_limit(const CityState &s, const Vehicle &v, const Conn &c, float dist
 }
 
 float desired_speed(const CityState &s, const Vehicle &v, int ds) {
-	const TrafficParams &p = s.catalog.traffic;
 	const DirSeg &d = s.traffic.g.ds[ds];
-	float drift = p.speed_drift * std::sin(v.drift + float(s.traffic.time) * p.speed_drift_rate);
+	float drift = s.catalog.traffic.speed_drift * std::sin(v.drift + float(s.traffic.time) * DRIFT_RATE);
 	return top_speed(s, v, d.speed) * (1 + drift);
 }
 
 namespace {
-// the IDM's free-road exponent (Treiber, Hennecke and Helbing 2000: 4, so the code squares twice); the desired speed and the gap
-// are divided by, so neither is taken under these
 constexpr float IDM_DELTA = 4.f, MIN_V0 = 0.5f, MIN_GAP = 0.02f;
 } // namespace
 

@@ -3,7 +3,6 @@
 
 #include "render/render_layers.h"
 
-#include "core/color.h"
 #include "core/math.h"
 #include "core/units.h"
 #include "render/film_grade.h"
@@ -21,8 +20,10 @@ using namespace godot;
 
 namespace city {
 
+static constexpr int HEX_BASE = 16;
+
 namespace {
-constexpr float RAY_MAX_M = 30000.f; // past any map: a ray that meets nothing by here meets nothing
+constexpr float RAY_MAX_M = 30000.f;
 constexpr float RAY_DIR_MIN = 1e-6f; // a ray with a shorter ground direction is vertical
 constexpr float UNSEEN_BOUND = 1e9f; // an empty city_bounds still has finite numbers
 constexpr float HALF = 0.5f;
@@ -38,7 +39,7 @@ Dictionary body_probe(const b40::Body &body) {
 		if (!v.outline.empty()) {
 			float twice = 0;
 			for (size_t i = 0; i < v.outline.size(); i++) {
-				const V2 &a = v.outline[i], &b = v.outline[(i + 1) % v.outline.size()];
+				const b40::Point2 &a = v.outline[i], &b = v.outline[(i + 1) % v.outline.size()];
 				twice += a.x * b.y - b.x * a.y;
 			}
 			share = std::fabs(twice) * HALF;
@@ -60,8 +61,8 @@ Dictionary body_probe(const b40::Body &body) {
 
 // What the lot of a record holds and how its traffic reaches it (tests: every house parks, every bay is reachable).
 Dictionary lot_probe(const CityState &s, const Building &rec) {
-	const std::shared_ptr<const b40::Body> body_held = b40::record_body(s.buildings.designs, rec);
-	const b40::Body &body = *body_held;
+	b40::Body body;
+	b40::record_body(s.buildings.designs, rec, body);
 	LotAccess acc;
 	lot_access(s.buildings.designs, body, b40::lot_frame(rec), car_half_width(s.catalog.traffic), lorry_half_width(s.catalog.traffic), acc);
 	int trees = 0, car_gates = 0, docks = 0, garages = 0;
@@ -89,6 +90,19 @@ Dictionary lot_probe(const CityState &s, const Building &rec) {
 }
 } // namespace
 
+Dictionary CityCore::constants() const {
+	Dictionary d;
+	d["speed_paused"] = int(SimSpeed::PAUSED);
+	d["speed_fastest"] = int(SimSpeed::FASTEST);
+	d["minutes_per_day"] = MINUTES_PER_DAY;
+	d["minutes_per_hour"] = MINUTES_PER_HOUR;
+	d["zone_codes"] = ZONE_CODES;
+	Dictionary layers;
+	for (const RenderLayerName &l : RENDER_LAYERS) layers[l.name] = int64_t(l.bit);
+	d["render_layers"] = layers;
+	return d;
+}
+
 TypedArray<Image> CityCore::film_grade(const Dictionary &grade) const {
 	return film_grade_slices(grade);
 }
@@ -97,14 +111,14 @@ Color CityCore::film_graded(const Dictionary &grade, const Color &colour) const 
 	return city::film_graded(grade, colour);
 }
 
+// Under the map lock shared only: the fleet's numbers are the traffic's last publication (TrafficView) and the panels' levels
+// are atomics, so the frame that reads the snapshot never waits for a traffic step; residents and jobs are the
+// BuildingStore's running totals.
 int64_t CityCore::map_revision() {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	return int64_t(state_->revision);
 }
 
-// Under the map lock shared only: the fleet's numbers are the traffic's last publication (TrafficView) and the panels' levels
-// are atomics, so the frame that reads the snapshot never waits for a traffic step; residents and jobs are the
-// BuildingStore's running totals.
 Dictionary CityCore::snapshot() {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
@@ -119,8 +133,6 @@ Dictionary CityCore::snapshot() {
 	d["segments"] = s.roads.alive_segments();
 	d["marking_style"] = s.marking_style.load();
 	d["edit_revision"] = int64_t(s.edit_revision);
-	d["street_revision"] = int64_t(s.street_revision); // what the kept street furniture is made for (tests)
-	d["profiles_revision"] = int64_t(s.catalog.profiles_stamp()); // the road list (CityStore.cached)
 	d["player_zones"] = s.roads.player_sides;
 	d["style"] = String(s.style.c_str());
 	d["nodes"] = s.roads.alive_nodes();
@@ -155,14 +167,6 @@ float CityCore::height_at(float x, float z) {
 	return state_->ready ? state_->terrain.height_at(x, z) : 0.f;
 }
 
-PackedFloat32Array CityCore::heights_at(const PackedVector2Array &points) {
-	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
-	PackedFloat32Array out;
-	out.resize(points.size());
-	for (int64_t i = 0; i < points.size(); i++) out.set(i, state_->ready ? state_->terrain.height_at(points[i].x, points[i].y) : 0.f);
-	return out;
-}
-
 Dictionary CityCore::raycast(const Vector3 &origin, const Vector3 &dir) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	Dictionary d;
@@ -170,7 +174,7 @@ Dictionary CityCore::raycast(const Vector3 &origin, const Vector3 &dir) {
 	if (!state_->ready) return d;
 	V2 d2(dir.x, dir.z);
 	float l2 = d2.len();
-	if (l2 < RAY_DIR_MIN && dir.y >= 0) return d;
+if (l2 < RAY_DIR_MIN && dir.y >= 0) return d;
 	// What the player sees under the ray (the 4.0's worldAtScreen): the ground, or a road deck the ray meets before it.
 	float hx, hy, hz;
 	const bool ground = state_->terrain.raycast(V2(origin.x, origin.z), origin.y, d2, dir.y, RAY_MAX_M, hx, hy, hz);
@@ -220,29 +224,12 @@ Dictionary CityCore::body_census(int kind) {
 	double foot = 0, lot_w = 0, lot_d = 0, main = 0;
 	std::vector<int> elements(sizeof(ELEMENTS) / sizeof(ELEMENTS[0]));
 	Dictionary covers; // the ground the lot lays, by colour: its area
-	// What tells the bodies apart (the variety the generator gives): how many by style, ground floor, palette and design of
-	// their own, the facade components shown, and the distinct wall and awning paints.
-	Dictionary styles, grounds, palettes, signatures, bays, walls, awnings;
-	auto count = [](Dictionary &d, const Variant &k) { d[k] = int(d.get(k, 0)) + 1; };
-	auto hex = [](uint32_t rgb) { return String::num_int64(int64_t(rgb), HEX_BASE); };
 	for (const Building &rec : s.buildings.items) {
 		if (!rec.alive) continue;
-		const std::shared_ptr<const b40::Body> body_held = b40::record_body(s.buildings.designs, rec);
-		const b40::Body &body = *body_held;
+		b40::Body body;
+		b40::record_body(s.buildings.designs, rec, body);
 		if (int(body.kind) != kind) continue;
 		n++;
-		count(styles, int(body.style));
-		count(grounds, int(body.ground));
-		count(palettes, body.palette);
-		count(signatures, int(body.signature));
-		if (body.wall >= 0) count(walls, hex(body.paints[size_t(body.wall)].rgb));
-		for (const b40::Volume &v : body.volumes) {
-			for (int k = 0; k < v.storeys; k++)
-				for (int side = 0; side < v.sides(); side++) count(bays, int(b40::fill_at(v, k, side)));
-			for (const auto &e : v.bays) count(bays, int(e.second));
-		}
-		for (const b40::LotElement &e : body.elements)
-			if (e.kind == b40::EL_AWNING && e.paint >= 0 && size_t(e.paint) < body.paints.size()) count(awnings, hex(body.paints[size_t(e.paint)].rgb));
 		lot_w += body.plan.W;
 		lot_d += body.plan.D;
 		double largest = 0;
@@ -273,13 +260,6 @@ Dictionary CityCore::body_census(int kind) {
 	for (size_t i = 0; i < elements.size(); i++)
 		if (elements[i] > 0) per[ELEMENTS[i]] = elements[i] * each;
 	d["elements"] = per;
-	d["styles"] = styles;
-	d["grounds"] = grounds;
-	d["palettes"] = palettes;
-	d["signatures"] = signatures;
-	d["bays"] = bays;
-	d["walls"] = walls;
-	d["awnings"] = awnings;
 	return d;
 }
 
@@ -300,8 +280,8 @@ Dictionary CityCore::road_census() {
 	Array open; // what has no building: where, how big, what function, how many trees and surfaces
 	for (const Building &rec : state_->buildings.items) {
 		if (!rec.alive || (rec.fn != FN_SQUARE && rec.fn != FN_PARK)) continue;
-		const std::shared_ptr<const b40::Body> body_held = b40::record_body(state_->buildings.designs, rec);
-		const b40::Body &body = *body_held;
+		b40::Body body;
+		b40::record_body(state_->buildings.designs, rec, body);
 		int trees = 0, covers = 0;
 		for (const b40::LotElement &e : body.elements) {
 			trees += e.kind == b40::EL_TREE ? 1 : 0;

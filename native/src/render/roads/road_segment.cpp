@@ -1,6 +1,5 @@
 // Segment surface: the profile's strips split into pieces (the ramp band of a footway at a dropped kerb), extruded between the two mouths; vertical faces where
-// neighbouring pieces step in height (kerb faces) and end faces of raised strips. Nothing hangs under the outer edges: on the ground
-// the terrain meets the paving's top there (ground_seam.cpp), and a deck's sides are the structure's (road_structures.cpp).
+// neighbouring pieces step in height (kerb faces), skirts down the outer edges and end faces of raised strips.
 #include "render/roads/road_mesh.h"
 #include "render/roads/road_section.h"
 
@@ -15,7 +14,7 @@ namespace {
 
 constexpr double UTURN_NOSES = 3; // the entry side of a U-turn's opening, in median noses
 
-constexpr float BIG_D = 1e9f; // farther than any ramp: none found
+constexpr float BIG_D = 1e9f;
 constexpr float ROAD_MIN_SPAN = 0.05f, ISLAND_MIN_M = 1.f; // shorter than this no island is drawn
 
 // Share of the full kerb height at d metres from a crossing mouth: none over the dropped kerb, rising over its flare.
@@ -41,7 +40,9 @@ struct Sample {
 };
 
 std::vector<Sample> samples(const RoadEmit &e, int sid, double v0, double v1, bool ca, bool cb, double lo, double hi) {
-	std::vector<double> at = segment_stations(e, sid, v0, v1);
+	std::vector<double> at;
+	const int n = surface_steps(e, sid, v0, v1);
+	for (int k = 0; k <= n; k++) at.push_back(v0 + (v1 - v0) * k / n);
 	const float marks[3] = { e.L.ramp_full, e.L.ramp_flat, e.L.ramp_flat + e.L.ramp_flare };
 	for (float m : marks) {
 		if (ca && v0 + m < v1) at.push_back(v0 + m);
@@ -70,7 +71,7 @@ struct Ctx {
 	const std::vector<Sample> &sm;
 	LampRow lamp;
 	Vector2 pool(float u, float at) const {
-		if (!lamp.any) return Vector2(ROAD_POOL_NONE, 0);
+		if (!lamp.any) return Vector2(POOL_NONE, 0);
 		float du, dv;
 		lamp.pool(u, at, du, dv);
 		return Vector2(du, dv);
@@ -126,6 +127,19 @@ void steps(const Ctx &c, const Piece &a, const Piece &b) {
 	}
 }
 
+void skirts(const Ctx &c, const std::vector<Piece> &ps) {
+	const StreetLook &L = c.e.L;
+	for (size_t k = 0; k + 1 < c.sm.size(); k++) {
+		float h0, h1, g0, g1;
+		heights(L, ps.front(), c.sm[k].d, h0, h1);
+		heights(L, ps.front(), c.sm[k + 1].d, g0, g1);
+		wall(c, k, ps.front().u0, -L.skirt, h0, -L.skirt, g0, -1.f, ps.front().face);
+		heights(L, ps.back(), c.sm[k].d, h0, h1);
+		heights(L, ps.back(), c.sm[k + 1].d, g0, g1);
+		wall(c, k, ps.back().u1, -L.skirt, h1, -L.skirt, g1, 1.f, ps.back().face);
+	}
+}
+
 // The raised strips' end faces at sample `end`, looking `along` the road (-1 back, +1 ahead). `island_only` for a nose.
 void end_faces(const Ctx &c, const std::vector<Piece> &ps, size_t end, float along, bool island_only) {
 	const StreetLook &L = c.e.L;
@@ -146,6 +160,7 @@ void span(const Ctx &c, const std::vector<Piece> &ps) {
 		tops(c, ps[i]);
 		if (i + 1 < ps.size()) steps(c, ps[i], ps[i + 1]);
 	}
+	skirts(c, ps);
 }
 
 // From sample `from` to sample `to`, both included.
@@ -193,7 +208,7 @@ void emit_segment(const RoadEmit &e, int sid) {
 		return;
 	}
 	bool ring_or_rail = p.ring || p.rail;
-	bool ca = !ring_or_rail && e.s.roads.crosswalk_on(g.a, sid), cb = !ring_or_rail && e.s.roads.crosswalk_on(g.b, sid); // a crossing between junctions has a stop line on both
+	bool ca = !ring_or_rail && crosswalk_at(e.s, g.a, sid), cb = !ring_or_rail && crosswalk_at(e.s, g.b, sid);
 	float island0, island1;
 	const bool island = island_span(p, island0, island1);
 	const double nose = e.s.catalog.furniture.crossing.zebra_to_m + e.L.median_nose;

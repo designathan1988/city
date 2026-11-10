@@ -1,12 +1,7 @@
 // The body against a yard's field (way_body.h): the search's discs, and the cell-by-cell fit of the ways found.
 #include "sim/traffic/way_body.h"
 
-// The PC build (x86-64-v3, native/CMakeLists.txt) reads the clearance four at a time with a gather (Lanes below). A machine without
-// AVX2 (the Android arm64 build) has no gather: it reads every disc and square one by one in the loops that finish the quads, through
-// Field::clear_at, the same sum, floor and bounds, so the answer and the count of looks are the same bit for bit on both.
-#if defined(__AVX2__)
 #include <immintrin.h>
-#endif
 
 #include <algorithm>
 #include <cmath>
@@ -16,11 +11,10 @@ namespace city {
 namespace traffic {
 
 namespace {
-constexpr double HALF = 0.5, ROOT_HALF = 0.70710678118654752; // the square root of a half: a square's half diagonal per side
+constexpr double HALF = 0.5, ROOT_HALF = 0.70710678118654752;
 constexpr double DISC_STEP = 1, DISC_SPREAD = 1.9; // two discs this far apart, in chord lengths, still cover the side between them
 constexpr double QUARTER_STEP = 0.25; // a corner of the body is tested in squares about this wide: 5 cm past the flank at most
 constexpr double FIT_SQUARE = 0.5; // the squares body_fits reads the clearance in
-constexpr int CORNERS = 4; // Discs::cu, cv, square_u and square_v
 
 // The squares of a corner that reach out of the end disc at `end`: `tip` the body's end there, `side` which flank.
 void corner_squares(Discs &d, double hw, double end, double tip, double side, int corner) {
@@ -58,7 +52,6 @@ Discs discs_of(const Steered &b) {
 	return d;
 }
 
-#if defined(__AVX2__)
 namespace {
 constexpr int LANES = 4;
 const float NOTHING_CLEAR = -std::numeric_limits<float>::infinity();
@@ -87,7 +80,6 @@ int first_under(__m256d value, double least) {
 	return under == 0 ? LANES : __builtin_ctz(unsigned(under));
 }
 } // namespace
-#endif
 
 bool discs_clear(const Field &f, const Discs &d, double x, double z, double c, double s, int64_t *looks) {
 	int64_t read = 0;
@@ -95,13 +87,10 @@ bool discs_clear(const Field &f, const Discs &d, double x, double z, double c, d
 	const double slack = f.cell * ROOT_HALF; // the field holds the distance at a cell's centre
 	read++;
 	if (f.clear_at(x + c * d.centre, z + s * d.centre) - slack >= d.whole) return true;
-#if defined(__AVX2__)
 	const Lanes lanes(f);
 	const __m256d vx = _mm256_set1_pd(x), vz = _mm256_set1_pd(z), vc = _mm256_set1_pd(c), vs = _mm256_set1_pd(s), vslack = _mm256_set1_pd(slack);
-#endif
 	const size_t discs = d.at.size();
 	size_t k = 0;
-#if defined(__AVX2__)
 	for (; k + LANES <= discs; k += LANES) {
 		const __m256d u = _mm256_loadu_pd(d.at.data() + k);
 		const __m256d room = _mm256_sub_pd(lanes.read(_mm256_add_pd(vx, _mm256_mul_pd(vc, u)), _mm256_add_pd(vz, _mm256_mul_pd(vs, u))), vslack);
@@ -109,19 +98,17 @@ bool discs_clear(const Field &f, const Discs &d, double x, double z, double c, d
 		read += std::min(under + 1, LANES);
 		if (under < LANES) return false;
 	}
-#endif
 	for (; k < discs; k++) {
 		const double u = d.at[k];
 		read++;
 		if (f.clear_at(x + c * u, z + s * u) - slack < d.r) return false;
 	}
-	for (int corner = 0; corner < CORNERS; corner++) {
+	for (int corner = 0; corner < LANES; corner++) {
 		read++;
 		if (f.clear_at(x + c * d.cu[corner] - s * d.cv[corner], z + s * d.cu[corner] + c * d.cv[corner]) - slack >= d.corner_r) continue;
 		const std::vector<double> &us = d.square_u[corner], &vs_of = d.square_v[corner];
 		const size_t squares = us.size();
 		size_t q = 0;
-#if defined(__AVX2__)
 		for (; q + LANES <= squares; q += LANES) {
 			const __m256d u = _mm256_loadu_pd(us.data() + q), v = _mm256_loadu_pd(vs_of.data() + q);
 			const __m256d px = _mm256_sub_pd(_mm256_add_pd(vx, _mm256_mul_pd(vc, u)), _mm256_mul_pd(vs, v));
@@ -130,7 +117,6 @@ bool discs_clear(const Field &f, const Discs &d, double x, double z, double c, d
 			read += std::min(under + 1, LANES);
 			if (under < LANES) return false;
 		}
-#endif
 		for (; q < squares; q++) {
 			read++;
 			if (f.clear_at(x + c * us[q] - s * vs_of[q], z + s * us[q] + c * vs_of[q]) - slack < d.square_r) return false;

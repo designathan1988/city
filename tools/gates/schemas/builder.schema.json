@@ -34,9 +34,6 @@
            "label_key": {
             "type": "string"
            },
-           "hint_key": {
-            "type": "string"
-           },
            "rgb": {
             "type": "string"
            },
@@ -60,15 +57,6 @@
            },
            "drop_m": {
             "type": "number"
-           },
-           "piece": {
-            "type": "string"
-           },
-           "top_kind": {
-            "type": "integer"
-           },
-           "top_deg": {
-            "type": "number"
            }
           },
           "required": [
@@ -81,12 +69,8 @@
         "shelf": {
          "type": "string",
          "enum": [
-          "models",
-          "selection"
+          "models"
          ]
-        },
-        "advanced": {
-         "type": "boolean"
         }
        },
        "required": [
@@ -107,171 +91,10 @@
    "items": {
     "type": "string"
    }
-  },
-  "choices": {
-   "type": "array",
-   "items": {
-    "type": "string"
-   }
-  },
-  "fields_doc": {
-   "type": "string"
-  },
-  "fields": {
-   "type": "array",
-   "minItems": 1,
-   "items": {
-    "type": "object",
-    "properties": {
-     "id": {
-      "type": "string"
-     },
-     "of": {
-      "type": "string",
-      "enum": [
-       "building",
-       "block",
-       "offset",
-       "pitched",
-       "bay",
-       "face",
-       "part",
-       "gear",
-       "record",
-       "level"
-      ]
-     },
-     "key": {
-      "type": "string"
-     },
-     "label_key": {
-      "type": "string"
-     },
-     "lo": {
-      "type": [
-       "number",
-       "string"
-      ]
-     },
-     "hi": {
-      "type": [
-       "number",
-       "string"
-      ]
-     },
-     "step": {
-      "type": "number"
-     },
-     "unit": {
-      "type": "string",
-      "enum": [
-       "m",
-       "count",
-       "deg",
-       "share",
-       "choice"
-      ]
-     }
-    },
-    "required": [
-     "id",
-     "of",
-     "key",
-     "label_key",
-     "lo",
-     "hi",
-     "step",
-     "unit"
-    ],
-    "additionalProperties": false
-   }
-  },
-  "roof_choices": {
-   "type": "object",
-   "properties": {
-    "pitch_step_deg": {
-     "type": "number"
-    },
-    "ridge": {
-     "type": "array",
-     "minItems": 1,
-     "items": {
-      "type": "object",
-      "properties": {
-       "value": {
-        "type": "integer"
-       },
-       "label_key": {
-        "type": "string"
-       }
-      },
-      "required": [
-       "value",
-       "label_key"
-      ],
-      "additionalProperties": false
-     }
-    },
-    "fall": {
-     "type": "array",
-     "minItems": 1,
-     "items": {
-      "type": "object",
-      "properties": {
-       "value": {
-        "type": "integer"
-       },
-       "label_key": {
-        "type": "string"
-       }
-      },
-      "required": [
-       "value",
-       "label_key"
-      ],
-      "additionalProperties": false
-     }
-    }
-   },
-   "required": [
-    "pitch_step_deg",
-    "ridge",
-    "fall"
-   ],
-   "additionalProperties": false
-  },
-  "selection_columns": {
-   "type": "integer",
-   "minimum": 1
-  },
-  "functions": {
-   "type": "array",
-   "minItems": 1,
-   "items": {
-    "type": "object",
-    "properties": {
-     "fn": {
-      "type": "string"
-     },
-     "label_key": {
-      "type": "string"
-     }
-    },
-    "required": [
-     "fn",
-     "label_key"
-    ],
-    "additionalProperties": false
-   }
   }
  },
  "required": [
-  "tabs",
-  "choices",
-  "fields",
-  "roof_choices",
-  "selection_columns",
-  "functions"
+  "tabs"
  ],
  "additionalProperties": false
 }

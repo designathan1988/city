@@ -33,43 +33,6 @@ void StreetWorks::clear() {
 	cut_hash_.clear();
 }
 
-StreetWorks StreetWorks::cut(float minx, float minz, float maxx, float maxz) const {
-	constexpr int SPANS_AWAY = 2; // a pole's arms read the poles a span away; a span drawn reads the arms of both its poles
-	StreetWorks c;
-	c.items.items = IdTable<StreetItem>::cut(items.items.size());
-	c.poles.items = IdTable<UtilityPole>::cut(poles.items.size());
-	c.spans.items = IdTable<UtilitySpan>::cut(spans.items.size());
-	c.barriers.items = IdTable<Barrier>::cut(barriers.items.size());
-	c.cuts.items = IdTable<StreetCut>::cut(cuts.items.size());
-	c.item_hash_ = item_hash_.window(minx, minz, maxx, maxz);
-	c.pole_hash_ = pole_hash_.window(minx, minz, maxx, maxz);
-	c.barrier_hash_ = barrier_hash_.window(minx, minz, maxx, maxz);
-	c.cut_hash_ = cut_hash_.window(minx, minz, maxx, maxz);
-	for (int id : c.item_hash_.filed()) c.items.items.put(size_t(id), items.items[size_t(id)]);
-	for (int id : c.barrier_hash_.filed()) c.barriers.items.put(size_t(id), barriers.items[size_t(id)]);
-	for (int id : c.cut_hash_.filed()) c.cuts.items.put(size_t(id), cuts.items[size_t(id)]);
-	std::vector<int> fresh = c.pole_hash_.filed();
-	for (int id : fresh) c.poles.items.put(size_t(id), poles.items[size_t(id)]);
-	for (int ring = 0; ring < SPANS_AWAY; ring++) {
-		std::vector<int> from;
-		from.swap(fresh);
-		for (int id : from)
-			for (int span : poles.items[size_t(id)].spans) {
-				const UtilitySpan &sp = spans.items[size_t(span)];
-				c.spans.items.put(size_t(span), sp);
-				for (int end : { sp.a, sp.b })
-					if (c.poles.items.put(size_t(end), poles.items[size_t(end)])) fresh.push_back(end);
-			}
-	}
-	for_chunks(minx, minz, maxx, maxz, [&](int64_t key) {
-		const auto at = names.by_chunk.find(key);
-		if (at == names.by_chunk.end()) return;
-		c.names.by_chunk.emplace(key, at->second);
-		for (int item : at->second) c.names.by_item.emplace(item, names.by_item.at(item));
-	});
-	return c;
-}
-
 int StreetWorks::add_item(const StreetItem &r) {
 	int id = items.add(r);
 	item_hash_.insert_aabb(id, r.x, r.z, r.x, r.z);

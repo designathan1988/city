@@ -2,13 +2,11 @@
 // part, so whatever a save keeps is covered without a list to keep up, and a difference says which part it is in. `derived` is
 // what a save does not keep because it is made from the rest (final heights, lots, lane graph, solved grades): where an
 // optimisation works, it must leave those equal.
-#include "api/state_locks.h"
 #include "api/city_probes.h"
 
 #include "sim/citygen/lot_gen.h"
 #include "sim/persistence/save_format.h"
 #include "sim/roads/road_grade.h"
-#include "sim/simulation/simulation.h"
 #include "sim/state/city_state.h"
 #include "sim/traffic/traffic_system.h"
 
@@ -38,7 +36,7 @@ String hex_of(const uint8_t *from, const uint8_t *to) {
 }
 
 constexpr uint64_t WORD_MUL = 0xff51afd7ed558ccdull; // eight bytes at a time: a whole map's heights in milliseconds
-constexpr int WORD_SHIFT = 33; // the finaliser's shift (MurmurHash3's fmix64), with WORD_MUL its multiplier
+constexpr int WORD_SHIFT = 33;
 
 uint64_t fold(uint64_t h, const void *data, size_t bytes) {
 	const uint8_t *p = static_cast<const uint8_t *>(data);
@@ -70,14 +68,7 @@ uint64_t fleet_hash(const TrafficState &t) {
 
 Dictionary derived_of(const CityState &s) {
 	Dictionary d;
-	// the land's final heights row by row (a row is a whole number of the fold's words: the same number as the map in one piece)
-	uint64_t heights = FNV_BASIS;
-	std::vector<float> row(size_t(s.terrain.N));
-	for (int z = 0; z < s.terrain.N; z++) {
-		s.terrain.final_row(z, 0, s.terrain.N, row.data());
-		heights = fold(heights, row.data(), row.size() * sizeof(float));
-	}
-	d["heights"] = String::num_uint64(heights, HEX);
+	d["heights"] = String::num_uint64(fold(FNV_BASIS, s.terrain.final_h.data(), s.terrain.final_h.size() * sizeof(float)), HEX);
 	std::vector<int64_t> cells;
 	for (const auto &kv : s.lots.by_cell) cells.push_back(kv.first);
 	std::sort(cells.begin(), cells.end());
@@ -103,20 +94,19 @@ Dictionary derived_of(const CityState &s) {
 }
 } // namespace
 
+// The determinism check of a lockstep game (Factorio's map CRC): two runs from the same map must give the same series, and the
+// first tick that differs says where the cause is. Steps run here, with the simulation thread paused: no clock in the way.
 int CityProbes::undo_steps() {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	return int(state_->history.undo_stack.size());
 }
 
 String CityProbes::graph_fault() {
-	const TrafficRead lk(*state_);
+	std::lock_guard<std::mutex> traffic(state_->traffic_mutex);
 	return String(state_->traffic.graph_fault.c_str());
 }
 
-// The determinism check of a lockstep game (Factorio's map CRC): two runs from the same map must give the same series, and the
-// first tick that differs says where the cause is. Steps run here, only while the clock holds still (Simulation::hold_still).
 PackedStringArray CityProbes::traffic_hashes(int ticks) {
-	if (!sim_->hold_still()) return PackedStringArray(); // beside a running clock its ticks would land among these steps
 	std::shared_lock<std::shared_mutex> map(state_->map_mutex);
 	std::lock_guard<std::mutex> traffic(state_->traffic_mutex);
 	const float dt = float(1.0 / state_->catalog.tune.sim_tick_hz);

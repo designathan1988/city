@@ -10,7 +10,7 @@ import type { FunctionPlan, MemoPlan, TranslateContext, MemberOwner } from './co
 import { holdsTypeParameter, paramType, render, type CppType, target } from './cpptype.ts';
 import { pascal, snake, staticName, upper } from './names.ts';
 import { Emitter } from './statements.ts';
-import { isMathRandom, RANDOM_CONTEXT, resolveConstantReads } from './expressions.ts';
+import { isMathRandom, RANDOM_CONTEXT } from './expressions.ts';
 
 export interface EmittedFunction {
   /** A class's member: its declaration is in the struct. */
@@ -60,22 +60,11 @@ export class Translator extends Emitter {
     }
   }
 
-  /**
-   * A unit the translator itself cannot write refuses that unit, never its module, and leaves nothing of its own behind:
-   * the scopes it opened, the statements it queued (prelude), the function, index or state it was writing.
-   */
+  /** A unit the translator itself cannot write refuses that unit, never its module. */
   #guarded(node: TS.Node, write: () => void): void {
-    const depth = this.scopes.length;
-    const indent = this.indent;
     try {
       write();
     } catch (error) {
-      this.scopes.length = depth;
-      this.indent = indent;
-      this.prelude = [];
-      this.fn = null;
-      this.memo = null;
-      this.state = null;
       const at = (error as Error).stack?.split('\n')[1]?.trim().replace(/^.*[\\/]/, '') ?? '';
       this.fail(node, `the translator stopped at ${at}: ${(error as Error).message.split('\n')[0]}`);
     }
@@ -573,14 +562,8 @@ export class Translator extends Emitter {
 
   readonly #valued: { readonly symbol: TS.Symbol; readonly d: TS.VariableDeclaration; readonly name: string }[] = [];
 
-  /**
-   * Every constant's value, once all the units are planned; one that calls a function, or reads one that does, comes after
-   * the functions. What a value reads is known by symbol as it is written (`constantReads`), and each read is a mark resolved
-   * here once every constant is decided: a value's text is never searched for a name, which would also find an enum member,
-   * a field or a string of that name (`FacadePropKind::POT()` beside a constant `POT`, in the whole lab on 2026-11-08).
-   */
+  /** Every constant's value, once all the units are planned; one that calls a function, or reads one that does, comes after the functions. */
   #constantValues(): void {
-    const reads = new Map<TS.Symbol, ReadonlySet<TS.Symbol>>();
     for (const { symbol, d, name } of this.#valued) {
       if (!d.initializer) continue;
       this.#guarded(d, () => {
@@ -589,34 +572,27 @@ export class Translator extends Emitter {
         this.calledFunction = false;
         const k = this.c.constants.get(symbol)!;
         let value = '{}';
-        const read = new Set<TS.Symbol>();
-        this.constantReads = read;
-        try {
-          const uses = this.#recording(() => { value = this.expr(d.initializer!, k.type); });
-          const scalar = k.type.k === 'int' || k.type.k === 'real' || k.type.k === 'bool';
-          // at namespace scope there is nothing to capture
-          this.c.constants.set(symbol, { ...k, value: value.replaceAll('[&]', '[]'), constexpr: scalar && !this.calledFunction && !/\b(std|js)::/.test(value), calling: this.calledFunction, uses });
-          reads.set(symbol, read);
-        } finally {
-          this.constantReads = null;
-        }
+        const uses = this.#recording(() => { value = this.expr(d.initializer!, k.type); });
+        const scalar = k.type.k === 'int' || k.type.k === 'real' || k.type.k === 'bool';
+        // at namespace scope there is nothing to capture
+        this.c.constants.set(symbol, { ...k, value: value.replaceAll('[&]', '[]'), constexpr: scalar && !this.calledFunction && !/\b(std|js)::/.test(value), calling: this.calledFunction, uses });
       });
     }
     // the order C++ initializes constants of different files in is not the source's (the static initialization order
     // problem): one that calls a function, or reads a constant that is not constexpr, is made on first use, by a function
+    const named = (value: string, cpp: string): boolean => new RegExp(`\\b${cpp}\\b`).test(value);
     for (let changed = true; changed;) {
       changed = false;
+      const dynamic = [...this.c.constants.values()].filter((k) => !k.constexpr);
       for (const [symbol, k] of this.c.constants) {
-        if (k.calling) continue;
-        const dynamic = [...(reads.get(symbol) ?? [])].some((s) => s !== symbol && this.c.constants.get(s)?.constexpr === false);
-        if (!dynamic) continue;
+        if (k.calling || !dynamic.some((d) => d !== k && named(k.value, d.cpp))) continue;
         this.c.constants.set(symbol, { ...k, calling: true, constexpr: false });
         changed = true;
       }
     }
-    const calls = new Set([...this.c.constants.values()].filter((k) => k.calling).map((k) => k.cpp));
+    const made = [...this.c.constants.values()].filter((k) => k.calling).map((k) => k.cpp);
     for (const [symbol, k] of this.c.constants) {
-      const value = resolveConstantReads(k.value, calls);
+      const value = made.reduce((text, cpp) => text.replace(new RegExp(`\\b${cpp}\\b(?!\\()`, 'g'), `${cpp}()`), k.value);
       if (value !== k.value) this.c.constants.set(symbol, { ...k, value });
     }
   }
@@ -715,10 +691,9 @@ export class Translator extends Emitter {
         fallen++;
       }
     }
-    // an index builder the translator cannot write refuses its own unit, as a function does, never the whole translation
     for (const memo of this.c.memos.values()) {
       const from = this.builders.length;
-      const uses = this.#recording(() => this.#guarded(memo.fn, () => this.#emitMemo(memo)));
+      const uses = this.#recording(() => this.#emitMemo(memo));
       for (const b of this.builders.slice(from)) for (const u of uses) b.uses.add(u);
     }
     return fallen;
@@ -944,18 +919,13 @@ export class Translator extends Emitter {
     this.unit = plan.source;
     this.memo = plan;
     this.module = this.c.relative(this.c.file);
-    const depth = this.scopes.length;
     this.scopes.push(new Map());
-    try {
-      const param = plan.fn.parameters[0];
-      if (param) this.bind(this.symbolOf(param.name)!, { cpp: snake(param.name.getText()), type: { k: 'struct', name: this.c.spec.state.target } });
-      const lines = this.functionBody(plan.fn, { k: 'void' });
-      this.builders.push({ plan, lines, uses: new Set() });
-    } finally {
-      // a builder the translator stopped in leaves nothing of its own behind for the next unit
-      this.scopes.length = depth;
-      this.memo = null;
-    }
+    const param = plan.fn.parameters[0];
+    if (param) this.bind(this.symbolOf(param.name)!, { cpp: snake(param.name.getText()), type: { k: 'struct', name: this.c.spec.state.target } });
+    const lines = this.functionBody(plan.fn, { k: 'void' });
+    this.scopes.pop();
+    this.memo = null;
+    this.builders.push({ plan, lines, uses: new Set() });
   }
 }
 

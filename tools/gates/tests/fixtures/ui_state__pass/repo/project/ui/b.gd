@@ -1,13 +1,11 @@
 # Panel.
 extends Control
 @onready var _label: Label = $Label
-var _press := Vector2.ZERO
+@onready var _box := $Box
+@onready var _tw := create_tween()
 var _rows: Array[Label] = []
 @export var width_token := "w"
-@export var rig: Node3D
 var _store = CityStore
 func f():
-	var local: int = CityStore.snapshot.speed
-	_press = Vector2.ONE
-	rig = null
+	var local := 3.0
 	return local

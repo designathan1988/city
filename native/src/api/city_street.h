@@ -1,5 +1,5 @@
 // CityStreet: the Street tab's script API, an area of the core (api/city_core.h): items and rows of them, barriers, pole runs
-// and their preview, what is taken away, the furniture set and the lighting new roads are laid with, the plates to paint and the counts the
+// and their preview, what is taken away, the furniture set new roads are laid with, the plates to paint and the counts the
 // tests read (city_core_street.cpp). Made and freed by CityCore; game/store/city_store.gd reaches it through
 // CityCore.area("street").
 #pragma once
@@ -35,10 +35,7 @@ public:
 	float road_height();
 	void set_road_walls(bool on); // the sides of the cuttings of new roads: retaining walls, or a batter
 	bool road_walls();
-	void set_road_power(bool on); // how new roads are lit: the power line's poles carry the lamps (on), or lighting columns
-	bool road_power();
 	godot::Array sign_cells(); // the plates to paint (project/render/sign_sheet.gd)
-	godot::Array sign_cells_laid() const; // tests: every plate of the city with its cell (SignAtlas::laid)
 	godot::Dictionary street_counts();
 	godot::PackedVector3Array street_poles(); // where the player's poles stand (tests)
 	godot::Dictionary furniture_census();

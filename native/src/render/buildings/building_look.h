@@ -1,11 +1,10 @@
-// How the buildings are drawn, from data/render/building_look.json ("lod", "parts", "lot", "roof"): the distance shares of the
+// How the buildings are drawn, from data/render/buildings.json ("lod", "parts", "lot", "roof"): the distance shares of the
 // detail levels, the part visibility bands, the far switch and rebuild pacing, and the sizes of the thin drawn pieces.
 // The generator's own tables (styles, palettes, openings) are the simulation's (sim/buildings/b40/data.h).
 #pragma once
 
 #include "render/buildings/bay_props.h"
 #include "render/buildings/furniture_look.h"
-#include "render/buildings/look_shapes.h"
 #include "sim/buildings/b40/paint.h"
 
 #include <godot_cpp/variant/dictionary.hpp>
@@ -31,20 +30,16 @@ struct BuildingLook {
 	std::vector<PartBand> part_bands; // near-to-far, last one unbounded (thick_max large)
 	InteriorLook interior; // the furniture models and the paints of a building cut open (furniture.json)
 	std::vector<Lin> finish_far; // each finish from afar, by layer: the far level draws no map
-	float far_fov_deg = 0; // the camera's far lens (data/game/camera.json far_fov_deg): the levels' bands are measured for it
+	float far_fov_deg = 0; // the camera's far lens (mirrors data/game/camera.json far_fov_deg)
 	float cast_props_m = 0; // how far the balcony pieces throw a shadow
 	float hull_error_m = 0; // how far the mid level's shadow hull may stray from its walls
 	float level_fade_m = 0, level_back_m = 0; // the near level's hand-over (building_level.gdshaderinc)
-	float level_fade_s = 0; // how long the hand-over's dissolve lasts once a sub-chunk crosses its switch
 	float far_per_eye = 0; // metres of far reach each metre of eye height adds: the view from up there runs that much further
 	float far_hysteresis = 0; // superchunk far switch band around building_mid_end_m (a share of it)
 	float far_rebuild_delay_s = 0, far_rebuild_interval_s = 0; // deferred far rebuilds
 	BayPropLook bay; // bay_props.json
-	LookShapes shapes; // every render file's sizes, shares and shades (building_look.json "shapes")
 
-	// buildings.json, bay_props.json and furniture.json (the look's own numbers, its bay props, the interior's furniture).
-	bool load(const godot::Dictionary &t, const godot::Dictionary &bay_props, const godot::Dictionary &furniture, const godot::Dictionary &camera,
-			godot::PackedStringArray &errors);
+	bool load(const godot::Dictionary &t, godot::PackedStringArray &errors);
 };
 
 } // namespace city::b40

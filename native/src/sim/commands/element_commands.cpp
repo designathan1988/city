@@ -1,7 +1,6 @@
 // The element brush (see sim/nature/elements.h): a dab scatters instances of a kind over the disc, kept apart by the
 // spacing of the brush, or takes away what stands there; every change goes through the journal, one undo step a stroke.
 #include "core/math.h"
-#include "sim/commands/nature_commands.h"
 #include "core/random.h"
 #include "sim/commands/commands.h"
 #include "sim/commands/edit_journal.h"
@@ -15,7 +14,7 @@
 namespace city {
 
 namespace {
-constexpr uint32_t DAB_SALT = 0xe1e3e47u; // a stream's salt: any fixed odd number apart from the others
+constexpr uint32_t DAB_SALT = 0xe1e3e47u;
 constexpr int DRAWS_A_SPOT = 3; // a spot too near another is drawn again this many times
 const char *const FULL = "hint.element.full";
 

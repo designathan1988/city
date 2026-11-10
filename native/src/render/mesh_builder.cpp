@@ -1,11 +1,9 @@
-// Primitive emitters (MeshBuilder): flat-shaded boxes, quads and prisms; the blob carries its own smooth normals.
+// Primitive emitters. Smooth normals only for blobs; everything else is flat shaded (toon look).
 #include "render/mesh_builder.h"
 
 #include "render/mesh_levels.h"
 
 #include "render/mesh_order.h"
-#include "render/surface_data.h"
-#include "sim/state/map_hold.h"
 
 #include <algorithm>
 
@@ -26,8 +24,7 @@ void ring_dirs(int i, int seg, Vector3 &d0, Vector3 &d1) {
 	d0 = Vector3(std::cos(a0), 0, std::sin(a0));
 	d1 = Vector3(std::cos(a1), 0, std::sin(a1));
 }
-constexpr float DEGENERATE = 1e-12f; // a triangle of less area has no normal
-// RGBA8 packed red first (core/color.h): a channel's byte and its shift; the one place a packed colour is unpacked
+constexpr float DEGENERATE = 1e-12f;
 constexpr float BYTE = 255.f;
 constexpr int R_SHIFT = 24, G_SHIFT = 16, B_SHIFT = 8;
 constexpr uint32_t BYTE_MASK = 0xFF;
@@ -43,7 +40,6 @@ Color rgb8_to_color(uint32_t c) {
 }
 
 int MeshBuilder::add(const Vector3 &p, const Vector3 &nn, const Color &col, const Vector2 &t, const Vector2 &t2) {
-	map_hold::built(); // a vertex taken while the thread holds the map is counted (the tests' DLL)
 	v.push_back(p);
 	n.push_back(nn);
 	c.push_back(col);
@@ -150,6 +146,13 @@ static Array surface_arrays(const MeshBuilder &b) {
 	return arr;
 }
 
+Ref<ArrayMesh> MeshBuilder::commit() const {
+	Ref<ArrayMesh> m;
+	m.instantiate();
+	if (!empty()) m->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, surface_arrays(*this));
+	return m;
+}
+
 int64_t MeshBuilder::bytes() const {
 	return int64_t((v.size() + n.size()) * sizeof(Vector3) + c.size() * sizeof(Color) + (uv.size() + uv2.size()) * sizeof(Vector2) +
 			idx.size() * sizeof(int32_t) + tags.size());
@@ -177,21 +180,20 @@ void MeshBuilder::tag(uint8_t value) {
 	}
 }
 
-OwnedMesh MeshBuilder::bake(const RID &material, bool packed) const {
+OwnedMesh MeshBuilder::bake() const {
 	OwnedMesh m;
 	if (empty()) return m;
-	TypedArray<Dictionary> surfaces;
-	surfaces.push_back(surface(material, packed));
-	m.rid = create_mesh(surfaces);
+	m.rid = RenderingServer::get_singleton()->mesh_create();
+	commit_to(m.rid);
 	return m;
 }
 
-Dictionary MeshBuilder::surface(const RID &material, bool packed) const {
-	if (empty()) return Dictionary();
-	uint64_t format = packed ? uint64_t(RenderingServer::ARRAY_FLAG_COMPRESS_ATTRIBUTES) : 0;
+void MeshBuilder::commit_to(const RID &mesh) const {
+	if (empty()) return;
+	uint64_t format = RenderingServer::ARRAY_FLAG_COMPRESS_ATTRIBUTES;
 	if (!tags.is_empty()) format |= uint64_t(RenderingServer::ARRAY_CUSTOM_RGBA8_UNORM) << RenderingServer::ARRAY_FORMAT_CUSTOM0_SHIFT;
 	const Dictionary lods = levels ? mesh_levels(v, idx, STREET_LEVELS_M) : Dictionary();
-	return surface_data(surface_arrays(*this), lods, format, material);
+	RenderingServer::get_singleton()->mesh_add_surface_from_arrays(mesh, RenderingServer::PRIMITIVE_TRIANGLES, surface_arrays(*this), Array(), lods, format);
 }
 
 } // namespace city

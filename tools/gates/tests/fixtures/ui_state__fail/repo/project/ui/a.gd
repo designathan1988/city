@@ -1,9 +1,9 @@
 # Panel.
 extends Control
-var _speed: int = CityStore.snapshot.speed
-var _rows := []
+@onready var _turn := 0.0
+static var count := 0
+var _rows = []
+@onready var _model := Model.new()
 @export var on := false
-var _seen := 0
 func f():
 	on = true
-	_seen = CityStore.query(&"x").size()

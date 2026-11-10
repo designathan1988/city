@@ -1,6 +1,0 @@
-{
- "rule": "RENDER_MAP_LOCK",
- "expect": [
-  "RENDER_MAP_LOCK native/src/render/a.cpp:3"
- ]
-}

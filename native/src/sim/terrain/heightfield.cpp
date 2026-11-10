@@ -2,7 +2,6 @@
 #include "sim/terrain/heightfield.h"
 
 #include "core/job_pool.h"
-#include "sim/terrain/ground_patch.h"
 #include "sim/terrain/terrain_gen.h"
 
 #include <algorithm>
@@ -12,8 +11,6 @@
 namespace city {
 
 namespace {
-// a ray's march over the ground: its step, and its longer steps while it is high over it (from 40 m up, at most 60 m), then halvings
-// round the crossing
 constexpr float RAY_STEP = 0.75f, RAY_FAST_ABOVE = 40.f, RAY_FAST_MAX = 60.f;
 constexpr int RAY_REFINE = 18;
 } // namespace
@@ -28,7 +25,7 @@ void Heightfield::init(int tiles, float tile_m, float spacing_m, uint32_t p_seed
 	regions = clampi(tiles, 2, TERRAIN_MAX_REGIONS);
 	N = regions * region_size;
 	base_q.assign(size_t(N) * N, quant(0.f));
-	final_h.reset(N);
+	final_h.assign(size_t(N) * N, 0.f);
 	mods.clear();
 	free_mods.clear();
 	mod_hash.clear();
@@ -53,6 +50,7 @@ void Heightfield::fill(TerrainGen &gen, float water_spacing) {
 		for (int ix = 0; ix < N; ix++) {
 			size_t i = iz * N + ix;
 			base_q[i] = quant(float(gen.base_height(x_of(ix), x_of(int(iz)))));
+			final_h[i] = dequant(base_q[i]);
 		}
 	});
 	// water: one sample per water_spacing, the river and lakes of the generator (the lakes made first: then it only reads)
@@ -74,11 +72,11 @@ float Heightfield::water_at(float x, float z) const {
 }
 
 float Heightfield::height_at(float x, float z) const {
-	return grid_sample(x, z, N, spacing, [&](int ix, int iz) { return final_at(ix, iz); });
+	return grid_sample(x, z, N, spacing, [&](size_t i) { return final_h[i]; });
 }
 
 float Heightfield::base_height_at(float x, float z) const {
-	return grid_sample(x, z, N, spacing, [&](int ix, int iz) { return dequant(base_q[size_t(iz) * size_t(N) + size_t(ix)]); });
+	return grid_sample(x, z, N, spacing, [&](size_t i) { return dequant(base_q[i]); });
 }
 
 HeightPatch Heightfield::patch(float minx, float minz, float maxx, float maxz) const {
@@ -93,46 +91,8 @@ HeightPatch Heightfield::patch(float minx, float minz, float maxx, float maxz) c
 	p.w = x1 - p.x0 + 1;
 	p.h = z1 - p.z0 + 1;
 	p.final_h.resize(size_t(p.w) * size_t(p.h));
-	for (int z = 0; z < p.h; z++) final_row(p.z0 + z, p.x0, p.w, p.final_h.data() + size_t(z) * size_t(p.w));
-	return p;
-}
-
-GroundPatch Heightfield::ground_patch(float minx, float minz, float maxx, float maxz, unsigned parts) const {
-	GroundPatch p;
-	p.N = N;
-	p.spacing = spacing;
-	p.water_level = water_level;
-	p.water_n = water_n;
-	p.water_spacing = water_spacing_m;
-	if (N < 2 || final_h.empty()) return p;
-	HeightPatch window = patch(minx, minz, maxx, maxz); // the one owner of the window a box's points sample
-	p.x0 = window.x0;
-	p.z0 = window.z0;
-	p.w = window.w;
-	p.h = window.h;
-	p.final_h = std::move(window.final_h);
-	if (parts & GROUND_BASE) {
-		p.base_q.resize(size_t(p.w) * size_t(p.h));
-		for (int z = 0; z < p.h; z++) {
-			const uint16_t *row = base_q.data() + size_t(p.z0 + z) * size_t(N) + size_t(p.x0);
-			std::copy(row, row + p.w, p.base_q.begin() + std::ptrdiff_t(size_t(z) * size_t(p.w)));
-		}
-	}
-	if ((parts & GROUND_WATER) && water_n > 0) {
-		// water_at reads the nearest sample, a water cell's corner the sample before it: one sample of margin each side
-		const float half = half_size();
-		const auto low = [&](float v) { return clampi(int(std::floor((v + half) / water_spacing_m)) - 1, 0, water_n - 1); };
-		const auto high = [&](float v) { return clampi(int(std::ceil((v + half) / water_spacing_m)) + 1, 0, water_n - 1); };
-		p.wx0 = low(minx);
-		p.wz0 = low(minz);
-		p.ww = high(maxx) - p.wx0 + 1;
-		p.wh = high(maxz) - p.wz0 + 1;
-		p.water.resize(size_t(p.ww) * size_t(p.wh));
-		for (int z = 0; z < p.wh; z++) {
-			const float *row = water.data() + size_t(p.wz0 + z) * size_t(water_n) + size_t(p.wx0);
-			std::copy(row, row + p.ww, p.water.begin() + std::ptrdiff_t(size_t(z) * size_t(p.ww)));
-		}
-	}
+	for (int z = 0; z < p.h; z++)
+		std::copy_n(final_h.begin() + long(size_t(p.z0 + z) * size_t(N) + size_t(p.x0)), p.w, p.final_h.begin() + long(size_t(z) * size_t(p.w)));
 	return p;
 }
 
@@ -249,7 +209,8 @@ void Heightfield::remove_modifier(int id) {
 }
 
 void Heightfield::finish_load() {
-	final_h.reset(N);
+	final_h.resize(base_q.size());
+	for (size_t i = 0; i < base_q.size(); i++) final_h[i] = dequant(base_q[i]);
 	mods.clear();
 	free_mods.clear();
 	mod_hash.clear();

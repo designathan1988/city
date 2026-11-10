@@ -43,8 +43,7 @@
     "rawRead",
     "inherited",
     "sized",
-    "filled",
-    "propPlace"
+    "filled"
   ],
   "pending": [],
   "number": "float",

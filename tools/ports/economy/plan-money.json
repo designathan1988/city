@@ -1,0 +1,291 @@
+{
+ "_doc": "Porte economy: dinheiro, ferramenta em uso, recusa e devolucao, cidade pequena semente 7.",
+ "city": {
+  "size": "small",
+  "seed": 7
+ },
+ "steps": [
+  {
+   "wait": 1500
+  },
+  {
+   "press": "Começar a construir"
+  },
+  {
+   "until": "(() => { const b = [...document.querySelectorAll('button')].find((e) => e.textContent.trim() === 'Começar a construir'); return !b || b.getBoundingClientRect().width === 0 || getComputedStyle(b).visibility === 'hidden'; })()",
+   "name": "menu closed",
+   "timeout": 30000,
+   "polling": 250
+  },
+  {
+   "eval": "window.__roadcraft.sim.setClock(720); window.__roadcraft.scene().setSkyMode('day'); 1"
+  },
+  {
+   "wait": 4000
+  },
+  {
+   "eval": "(()=>{const d=window.__roadcraft.doc;return {balance:d.economy.balance,segments:d.segments.size,zoom:window.__roadcraft.view?JSON.stringify(window.__roadcraft.view()):null}})()"
+  },
+  {
+   "shot": "dinheiro_barra"
+  },
+  {
+   "move": [
+    250,
+    20
+   ]
+  },
+  {
+   "wait": 1500
+  },
+  {
+   "shot": "dinheiro_dica"
+  },
+  {
+   "eval": "(()=>{const r=window.__roadcraft,d=r.doc;let mx=-1e9,my=0;for(const s of d.segments.values()){const n=d.node(s.a);if(n&&n.x>mx){mx=n.x;my=n.y}}\nconst u=0.4;window.__eco={x:mx+500/u,y:my};r.lookAt(window.__eco.x,window.__eco.y,1);return window.__eco})()"
+  },
+  {
+   "wait": 4000
+  },
+  {
+   "press": "Vias"
+  },
+  {
+   "wait": 1500
+  },
+  {
+   "shot": "catalogo"
+  },
+  {
+   "move": [
+    700,
+    540
+   ]
+  },
+  {
+   "click": [
+    700,
+    540
+   ]
+  },
+  {
+   "wait": 300
+  },
+  {
+   "move": [
+    950,
+    540
+   ]
+  },
+  {
+   "wait": 100
+  },
+  {
+   "move": [
+    1200,
+    540
+   ]
+  },
+  {
+   "wait": 1500
+  },
+  {
+   "shot": "via_na_mao"
+  },
+  {
+   "key": "Escape"
+  },
+  {
+   "wait": 300
+  },
+  {
+   "eval": "window.__roadcraft.doc.setBalance(1000,'test'); window.__roadcraft.doc.economy.balance"
+  },
+  {
+   "move": [
+    700,
+    540
+   ]
+  },
+  {
+   "click": [
+    700,
+    540
+   ]
+  },
+  {
+   "wait": 300
+  },
+  {
+   "move": [
+    950,
+    540
+   ]
+  },
+  {
+   "wait": 100
+  },
+  {
+   "move": [
+    1200,
+    540
+   ]
+  },
+  {
+   "wait": 1500
+  },
+  {
+   "shot": "via_sem_dinheiro"
+  },
+  {
+   "click": [
+    1200,
+    540
+   ]
+  },
+  {
+   "wait": 600
+  },
+  {
+   "shot": "recusa_clique"
+  },
+  {
+   "key": "Escape"
+  },
+  {
+   "wait": 300
+  },
+  {
+   "eval": "window.__roadcraft.doc.setBalance(20000000,'test'); (()=>{const d=window.__roadcraft.doc;return {balance:d.economy.balance,segments:d.segments.size,zoom:window.__roadcraft.view?JSON.stringify(window.__roadcraft.view()):null}})()"
+  },
+  {
+   "move": [
+    700,
+    540
+   ]
+  },
+  {
+   "click": [
+    700,
+    540
+   ]
+  },
+  {
+   "wait": 300
+  },
+  {
+   "move": [
+    950,
+    540
+   ]
+  },
+  {
+   "wait": 100
+  },
+  {
+   "move": [
+    1200,
+    540
+   ]
+  },
+  {
+   "wait": 1500
+  },
+  {
+   "click": [
+    1200,
+    540
+   ]
+  },
+  {
+   "wait": 1500
+  },
+  {
+   "key": "Escape"
+  },
+  {
+   "wait": 500
+  },
+  {
+   "eval": "(()=>{const d=window.__roadcraft.doc;return {balance:d.economy.balance,segments:d.segments.size,zoom:window.__roadcraft.view?JSON.stringify(window.__roadcraft.view()):null}})()"
+  },
+  {
+   "shot": "via_paga"
+  },
+  {
+   "key": "b"
+  },
+  {
+   "wait": 800
+  },
+  {
+   "move": [
+    950,
+    540
+   ]
+  },
+  {
+   "wait": 800
+  },
+  {
+   "shot": "demolir_mira"
+  },
+  {
+   "click": [
+    950,
+    540
+   ]
+  },
+  {
+   "wait": 1500
+  },
+  {
+   "eval": "(()=>{const d=window.__roadcraft.doc;return {balance:d.economy.balance,segments:d.segments.size,zoom:window.__roadcraft.view?JSON.stringify(window.__roadcraft.view()):null}})()"
+  },
+  {
+   "shot": "via_demolida"
+  },
+  {
+   "key": "Control+z"
+  },
+  {
+   "wait": 1000
+  },
+  {
+   "eval": "(()=>{const d=window.__roadcraft.doc;return {balance:d.economy.balance,segments:d.segments.size,zoom:window.__roadcraft.view?JSON.stringify(window.__roadcraft.view()):null}})()"
+  },
+  {
+   "eval": "(()=>{const r=window.__roadcraft,d=r.doc;const s=[...d.segments.values()][Math.floor(d.segments.size/2)];const a=d.node(s.a),b=d.node(s.b);window.__seg={id:s.id,type:s.type,lanes:s.lanes,x:(a.x+b.x)/2,y:(a.y+b.y)/2,len:Math.hypot(a.x-b.x,a.y-b.y)};r.lookAt(window.__seg.x,window.__seg.y,4);return {seg:window.__seg,balance:d.economy.balance}})()"
+  },
+  {
+   "wait": 3000
+  },
+  {
+   "move": [
+    960,
+    540
+   ]
+  },
+  {
+   "wait": 800
+  },
+  {
+   "shot": "demolir_gerada_mira"
+  },
+  {
+   "click": [
+    960,
+    540
+   ]
+  },
+  {
+   "wait": 1500
+  },
+  {
+   "eval": "(()=>{const d=window.__roadcraft.doc;return {balance:d.economy.balance,segments:d.segments.size,zoom:window.__roadcraft.view?JSON.stringify(window.__roadcraft.view()):null}})()"
+  },
+  {
+   "shot": "gerada_demolida"
+  }
+ ]
+}

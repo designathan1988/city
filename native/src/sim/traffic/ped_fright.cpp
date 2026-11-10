@@ -14,7 +14,6 @@ namespace traffic {
 
 namespace {
 
-// a stream of the person's hash per roll (any distinct words): one roll does not tell another
 constexpr uint32_t ROLL_SALT = 0x7a11, TRIP_SALT = 0x51, RUN_SALT = 0x2d1, MOURN_SALT = 0x3e1;
 constexpr uint32_t BYTE = 255; // a roll is one byte of a person's hash, what the data's *_roll are out of
 constexpr float RUN_SHORTEST = 0.7f, RUN_SPREAD = 0.6f; // of the fright's seconds, by the person

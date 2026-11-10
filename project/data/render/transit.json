@@ -1,12 +1,11 @@
 {
- "_doc": "Public transport as drawn (render/transit). gauge_m: standard gauge, 1435 mm (Regulation (EU) 1299/2014, INF TSI 4.2.4.1). Everything else is the 4.0's own drawing (render/transit.ts), no source behind it. parts: colour, roughness and metal of each kind of box; `xray` the layer it is drawn in through the ground while the transport tool is on (the metro in its cut), `glass` drawn see-through. A box: `at` [along, out, up] from its frame, `size` [long, high, wide], `tint` in the line's colour. station: along the track, out to the side of the platform. stop and terminal: along the street, out from the kerb to the back of the footway. entrance: the metro's way down, on its own frame; below: the station under it, up from the ground over the station. track layers: `up` over the ground, `over` how much a piece overlaps the next; on a road only the rails, `paved_*` flush with it. car: a train's car [long, high, wide] over the ground by car_up_m. preview: the run of track being laid, drawn see-through over the ground (the lab's render/transit.ts PREVIEW_LAYERS): each surface part named here at its opacity (1 stays opaque), the metro's in its cut as ever; its parts made again only when one of their points moves by preview_step_m (the lab's renderer.ts setTransitPreview, its points to a tenth of a unit).",
+ "_doc": "Public transport as drawn (render/transit). gauge_m: standard gauge, 1435 mm (Regulation (EU) 1299/2014, INF TSI 4.2.4.1). Everything else is the 4.0's own drawing (render/transit.ts), no source behind it. parts: colour, roughness and metal of each kind of box; `xray` the layer it is drawn in through the ground while the transport tool is on (the metro in its cut), `glass` drawn see-through. A box: `at` [along, out, up] from its frame, `size` [long, high, wide], `tint` in the line's colour. station: along the track, out to the side of the platform. stop and terminal: along the street, out from the kerb to the back of the footway. entrance: the metro's way down, on its own frame; below: the station under it, up from the ground over the station. track layers: `up` over the ground, `over` how much a piece overlaps the next; on a road only the rails, `paved_*` flush with it. car: a train's car [long, high, wide] over the ground by car_up_m.",
  "radius_m": 900,
+ "items_per_frame": 8,
  "run_m": 256,
  "default_line": "#2f7de1",
  "car_m": [17.5, 3.6, 2.9],
  "car_up_m": 0.55,
- "preview": { "ballast": 0.9, "sleeper": 0.95, "rail": 1 },
- "preview_step_m": 0.1,
  "parts": {
   "ballast": { "colour": "#7d776e", "roughness": 0.95, "metal": 0 },
   "sleeper": { "colour": "#5b4636", "roughness": 0.9, "metal": 0 },

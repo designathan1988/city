@@ -10,7 +10,6 @@
 
 #include "core/units.h"
 
-#include <algorithm>
 #include <cmath>
 
 namespace city {
@@ -196,8 +195,7 @@ void build_dir(CityState &s, int seg) {
 		d.to = dir == 0 ? sg.b : sg.a;
 		d.lanes = std::min(int(lanes.size()), MAX_LANES);
 		for (int k = 0; k < d.lanes; k++) d.u[k] = lanes[k].u;
-		// a bicycle rides any lane but a bus lane (the lab's laneUsable, world/lanelets.ts): the direction is open to it with one such lane
-		d.bikes = std::any_of(lanes.begin(), lanes.end(), [](const LaneInfo &l) { return !l.bus; });
+		d.bikes = p.walk_left > 0 || p.walk_right > 0;
 		d.cycle_shift = bike_strip_shift(p, d.u[0], dir);
 		if (d.cycle_shift == 0 && d.bikes) d.edge_shift = (dir == 0 ? -1.f : 1.f) * std::max(0.f, lanes[0].w * 0.5f - s.catalog.traffic.bike_edge_m);
 		d.len = len;

@@ -58,7 +58,7 @@
   },
   "registry": {
     "doc": "CLAUDE.md",
-    "mapLine": "- `native/src/sim/transit/**` — public transport (stops, tracks, lines) and the rail network, translated from Roadcraft 4.0 (src/world/transit.ts) by the converter"
+    "mapLine": "- `native/src/sim/transit/**` — transporte público (paradas, trilhos, linhas) e a rede ferroviária, traduzido do Roadcraft 4.0 (src/world/transit.ts) pelo conversor"
   },
   "layer": {
     "rules": "tools/gates/rules.json",

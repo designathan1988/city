@@ -30,11 +30,13 @@ AABB mesh_outline(const MeshBuilder &b) {
 void FleetShadow::init(const RID &scenario, const RID &material, const MeshBuilder &hull, float sector_m, float inset, int models) {
 	free();
 	scenario_ = scenario;
+	material_ = material;
 	sector_m_ = sector_m;
 	inset_ = inset;
 	hull_box_ = mesh_outline(hull);
 	fit_.assign(size_t(models), Fit());
-	hull_ = hull.bake(material); // with its material: the engine has its pipelines before a sector draws it
+	hull_.rid = RenderingServer::get_singleton()->mesh_create();
+	hull.commit_to(hull_.rid);
 }
 
 void FleetShadow::set_model(int model, const MeshBuilder &body) {
@@ -66,7 +68,7 @@ void FleetShadow::draw() {
 		const float x0 = float(key_x(it->first)) * sector_m_ - SECTOR_PAD_M, z0 = float(key_y(it->first)) * sector_m_ - SECTOR_PAD_M;
 		const float side = sector_m_ + SECTOR_PAD_M * 2;
 		s.draw.shadow_only = true;
-		s.draw.set(scenario_, hull_.rid, s.buf, AABB(Vector3(x0, AABB_MIN_Y, z0), Vector3(side, AABB_H, side)), true, LAYER_VEHICLES);
+		s.draw.set(scenario_, hull_.rid, material_, s.buf, AABB(Vector3(x0, AABB_MIN_Y, z0), Vector3(side, AABB_H, side)), true, LAYER_VEHICLES);
 		s.buf.restart();
 		++it;
 	}

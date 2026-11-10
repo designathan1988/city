@@ -2,8 +2,6 @@
 // grime), clockwise winding toward `out` (Godot front faces), the vertex code of each surface kind, and the commit of
 // one surface to a RenderingServer mesh.
 #include "render/buildings/shell.h"
-#include "render/surface_data.h"
-#include "core/shader_contracts/buildings.h"
 
 #include "render/mesh_order.h"
 
@@ -25,20 +23,16 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
-// The baked tone of a wall: a macro noise over MACRO_M metres moves it TONE_SPAN around TONE_BASE, and grime darkens a wall's
-// first GRIME_M over its floor from GRIME_FLOOR (the source game's); a face whose normal leans less than SHELL_WALL_TOP
-// from level is a wall; the display gamma's inverse; a byte's top; a degenerate cross product; farther than anything.
+constexpr float PANE_RECESS_STEP_M = 0.01f; // COLOR.a above the kind: building_glass.gdshader reads the same
+constexpr int PANE_KIND_BITS = 3, PANE_RECESS_MAX = 31;
 constexpr float MACRO_M = 12.f, TONE_BASE = 0.97f, TONE_SPAN = 0.06f, GRIME_M = 1.2f, GRIME_FLOOR = 0.8f, GRIME_SPAN = 0.2f;
 constexpr float SHELL_WALL_TOP = 0.5f, GAMMA_INV = 1.f / 2.2f, BYTE = 255.f, DEGENERATE = 1e-12f, BIG = 1e30f;
-// The lattice hash (MurmurHash3's and xxHash32's multipliers, MurmurHash3's shifts), 2^32, a seed's byte; a box's corners,
-// faces and their indices, the corner bits.
 constexpr uint32_t H1 = 0x27d4eb2d, H2 = 0x165667b1, H3 = 0x3c6ef372, H4 = 0x85ebca6b;
 constexpr int SH1 = 15, SH2 = 13;
 constexpr double U32 = 4294967296.0;
 constexpr uint32_t SEED_BYTE = 0xff;
 constexpr float HALF_STEP = 0.5f;
 constexpr int BYTE_BITS = 8, CORNERS = 8, FACES = 6, QUAD_INDICES = 6, BIT_A = 1, BIT_B = 2, BIT_C = 4;
-constexpr int PANE_RECESS_MAX = (1 << (BYTE_BITS - SURFACE_KIND_BITS)) - 1; // the alpha byte's bits above the kind
 // Box faces as corner quads (corner bit 1 = a1, 2 = b1, 4 = c1), in the order -e2, +e2, -e0, +e0, -e1, +e1.
 constexpr int BOX_QUADS[FACES][4] = { { 0, 1, 3, 2 }, { 4, 5, 7, 6 }, { 0, 2, 6, 4 }, { 1, 3, 7, 5 }, { 0, 1, 5, 4 }, { 2, 3, 7, 6 } };
 constexpr uint8_t BOX_SKIP[FACES] = { SKIP_E2_NEG, SKIP_E2_POS, SKIP_E0_NEG, SKIP_E0_POS, SKIP_E1_NEG, SKIP_E1_POS };
@@ -95,11 +89,10 @@ Color Shell::shaded(const Vector3 &p, const Lin &lin, bool wall, SurfaceKind kin
 	return Color(gamma(lin.r * k), gamma(lin.g * k), gamma(lin.b * k), float(kind) / BYTE);
 }
 
-// The far level draws no map and no stain: each finish's colour from afar, and the wear as a tone.
 Lin Shell::far_tint(const Lin &lin, int8_t fin) const {
-	if (!far_tones) return lin;
-	const Lin k = fin < 0 ? Lin{ 1, 1, 1 } : (*far_tones)[size_t(fin)];
-	return Lin{ lin.r * k.r, lin.g * k.g, lin.b * k.b } * wear_tone;
+	if (!far_tones || fin < 0) return lin;
+	const Lin &k = (*far_tones)[size_t(fin)];
+	return { lin.r * k.r, lin.g * k.g, lin.b * k.b };
 }
 
 void Shell::face(const Vector3 *p, int count, const Vector3 &out, const Lin &lin, int8_t fin, SurfaceKind kind) {
@@ -109,7 +102,7 @@ void Shell::face(const Vector3 *p, int count, const Vector3 &out, const Lin &lin
 	n = n.normalized();
 	if (n.dot(out) < 0) n = -n;
 	bool wall = std::abs(n.y) < SHELL_WALL_TOP;
-	Vector2 t2(float(fin + 1), wear);
+	Vector2 t2(float(fin + 1), 0);
 	int base = int(pos.size());
 	const Lin tint = far_tint(lin, fin);
 	for (int i = 0; i < count; i++) vert(p[i], n, shaded(p[i], tint, wall, kind), Vector2(), t2);
@@ -142,8 +135,6 @@ void Shell::box(const Basis &f, float a0, float a1, float b0, float b1, float c0
 	if (box_sink && !tube(skip)) {
 		box_sink->shade = shade;
 		box_sink->tone = tone;
-		box_sink->wear = wear;
-		box_sink->wear_tone = wear_tone;
 		box_sink->box(f, a0, a1, b0, b1, c0, c1, lin, fin, skip);
 		return;
 	}
@@ -152,9 +143,9 @@ void Shell::box(const Basis &f, float a0, float a1, float b0, float b1, float c0
 		float lo = std::min({ m0, m1, m2 }), hi = std::max({ m0, m1, m2 });
 		Vector3 centre = f.at((a0 + a1) * 0.5f, (b0 + b1) * 0.5f, (c0 + c1) * 0.5f);
 		Vector3 e0 = f.e0 * m0, e1 = f.e1 * m1, e2 = f.e2 * m2;
-		Color c = shaded(centre, lin * wear_tone, false, SK_SHELL); // an instance draws no wear
+		Color c = shaded(centre, lin, false, SK_SHELL);
 		auto byte = [](float v) { return uint32_t(std::clamp(v, 0.f, 1.f) * BYTE + 0.5f); };
-		constexpr int RGBA_R_SHIFT = 24, RGBA_G_SHIFT = 16, RGBA_B_SHIFT = 8; // a packed 0xRRGGBBAA's channels
+		constexpr int RGBA_R_SHIFT = 24, RGBA_G_SHIFT = 16, RGBA_B_SHIFT = 8;
 		BoxInstance inst;
 		const float cols[3][3] = { { e0.x, e0.y, e0.z }, { e1.x, e1.y, e1.z }, { e2.x, e2.y, e2.z } };
 		for (int i = 0; i < 3; i++)
@@ -212,7 +203,7 @@ void Shell::pane(const Basis &f, float a0, float a1, float b0, float b1, float c
 	if (a1 - a0 <= 0 || b1 - b0 <= 0) return;
 	const int recess = std::min(int(std::lround(look.recess / PANE_RECESS_STEP_M)), PANE_RECESS_MAX);
 	Color code(float(look.slot & SEED_BYTE) / BYTE, float((look.slot >> BYTE_BITS) & SEED_BYTE) / BYTE, float(look.bay) / BYTE,
-			float((look.plain ? SK_PANE_CLEAR : look.dark ? SK_PANE_DARK : SK_PANE) | (recess << SURFACE_KIND_BITS)) / BYTE);
+			float((look.plain ? SK_PANE_CLEAR : look.dark ? SK_PANE_DARK : SK_PANE) | (recess << PANE_KIND_BITS)) / BYTE);
 	const int i0 = sheet(f, a0, a1, b0, b1, c, code, Vector2(a1 - a0, b1 - b0)), i1 = i0 + 1, i2 = i0 + 2, i3 = i0 + 3;
 	if (!rooms) return;
 	const PaneRoom &r = look.room;
@@ -230,10 +221,11 @@ void Shell::pane(const Basis &f, float a0, float a1, float b0, float b1, float c
 }
 
 void Shell::bay(const Basis &f, float W, float H, const Lin &wall, int8_t fin, uint32_t seed, const FarWindows &w, float depth) {
-	constexpr int DEPTH_MOST = 15; // a recess's depth in the alpha byte's bits above the kind (PANE_RECESS_MAX)
+	constexpr float DEPTH_STEP_M = 0.04f; // building_bay.gdshaderinc DEPTH_STEP_M
+	constexpr int DEPTH_MOST = 15, FIN_SHIFT = 8, FLAGS_SHIFT = 12, DEPTH_SHIFT = 20;
 	auto byte = [](float v) { return uint32_t(std::clamp(v, 0.f, 1.f) * BYTE + HALF_STEP); };
 	auto three = [&](float r, float g, float b) { return float(byte(r) << (2 * BYTE_BITS) | byte(g) << BYTE_BITS | byte(b)); };
-	const Color tone = shaded(f.at(W / 2, H / 2, 0), far_tint(wall, fin) * wear_tone, true, SK_SHELL); // an instance draws no wear
+	const Color tone = shaded(f.at(W / 2, H / 2, 0), far_tint(wall, fin), true, SK_SHELL);
 	BayInstance b;
 	const Vector3 cols[3] = { f.e0 * W, f.e1 * H, f.e2 };
 	for (int i = 0; i < 3; i++)
@@ -242,8 +234,8 @@ void Shell::bay(const Basis &f, float W, float H, const Lin &wall, int8_t fin, u
 	b.shares = three(w.width, w.sill, w.head);
 	b.wall = three(tone.r, tone.g, tone.b);
 	b.trim = three(gamma(w.trim.r), gamma(w.trim.g), gamma(w.trim.b));
-	const uint32_t steps = uint32_t(std::min(DEPTH_MOST, int(std::lround(depth / BAY_DEPTH_STEP_M))));
-	b.code = float((seed & SEED_BYTE) | uint32_t(fin + 1) << BAY_FIN_SHIFT | uint32_t(w.flags & SEED_BYTE) << BAY_FLAGS_SHIFT | steps << BAY_DEPTH_SHIFT);
+	const uint32_t steps = uint32_t(std::min(DEPTH_MOST, int(std::lround(depth / DEPTH_STEP_M))));
+	b.code = float((seed & SEED_BYTE) | uint32_t(fin + 1) << FIN_SHIFT | uint32_t(w.flags & SEED_BYTE) << FLAGS_SHIFT | steps << DEPTH_SHIFT);
 	bays.push_back(b);
 }
 
@@ -252,8 +244,6 @@ void Shell::far_wall(const Vector3 p[4], const Vector3 &out, const Vector2 cell[
 		glass->grime_floor = grime_floor;
 		glass->shade = shade;
 		glass->tone = tone;
-		glass->wear = wear;
-		glass->wear_tone = wear_tone;
 		glass->far_wall(p, out, cell, lin, fin, seed, w);
 		return;
 	}
@@ -262,7 +252,7 @@ void Shell::far_wall(const Vector3 p[4], const Vector3 &out, const Vector2 cell[
 	if (n.dot(out) < 0) n = -n;
 	int base = int(pos.size());
 	const Lin tint = far_tint(lin, fin);
-	for (int i = 0; i < 4; i++) vert(p[i], n, shaded(p[i], tint, false, SK_FAR_WALL), cell[i], Vector2(fin_seed, wear));
+	for (int i = 0; i < 4; i++) vert(p[i], n, shaded(p[i], tint, false, SK_FAR_WALL), cell[i], Vector2(fin_seed, 0));
 	bool flip = (p[1] - p[0]).cross(p[2] - p[0]).dot(n) > 0;
 	const int i1 = base + 1, i2 = base + 2, i3 = base + 3;
 	const int t[QUAD_INDICES] = { base, flip ? i2 : i1, flip ? i1 : i2, base, flip ? i3 : i2, flip ? i2 : i3 };
@@ -289,8 +279,8 @@ int64_t Shell::bytes(bool with_uv2) const {
 			(rooms ? pos.size() * CUSTOM_ARRAYS * sizeof(uint32_t) : 0));
 }
 
-Dictionary Shell::surface(const RID &material, bool with_uv2, bool blends) const {
-	if (idx.empty()) return Dictionary();
+void Shell::commit_to(const RID &mesh, bool with_uv2, bool blends) const {
+	if (idx.empty()) return;
 	auto copy = [](auto &dst, const auto &src) {
 		dst.resize(int64_t(src.size()));
 		std::memcpy(dst.ptrw(), src.data(), src.size() * sizeof(src[0]));
@@ -325,7 +315,8 @@ Dictionary Shell::surface(const RID &material, bool with_uv2, bool blends) const
 			format |= uint64_t(RenderingServer::ARRAY_CUSTOM_RGBA8_UNORM) << SHIFTS[i];
 		}
 	}
-	return surface_data(arr, Dictionary(), format, material);
+	RenderingServer::get_singleton()->mesh_add_surface_from_arrays(mesh, RenderingServer::PRIMITIVE_TRIANGLES, arr, Array(), Dictionary(),
+			RenderingServer::ArrayFormat(format));
 }
 
 } // namespace city::b40

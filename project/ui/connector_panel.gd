@@ -87,5 +87,5 @@ func _gui_input(event: InputEvent) -> void:
 		var leaving := _nearest(edit.lanes.leaving, b.position)
 		if not leaving.is_empty():
 			CityStore.dispatch(&"toggle_lane_link", [edit.node, edit.picked.seg, edit.picked.lane, leaving.seg, leaving.lane])
-			get_tree().create_timer(float(DataTables.ui("hud").timings.lane_reread_s)).timeout.connect(_read)
+			get_tree().create_timer(HudWidgets.px("cn_reread_s")).timeout.connect(_read)
 	accept_event()

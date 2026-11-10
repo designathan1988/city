@@ -1,20 +1,7 @@
 {
  "type": "object",
- "properties": {
-  "_doc": {
-   "type": "string"
-  }
- },
  "additional": {
   "type": "object",
-  "required": [
-   "_doc"
-  ],
-  "properties": {
-   "_doc": {
-    "type": "string"
-   }
-  },
   "additional": {
    "type": "number"
   }

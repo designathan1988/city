@@ -8,35 +8,18 @@ signal history_pressed(action: String)
 signal impossible_pressed
 
 const SKY := [["sun", "sky.day", "day"], ["moon", "sky.night", "night"], ["cycle", "sky.cycle", "cycle"]]
-## The speeds of the core's SimSpeed, each with the steps a tick its label shows (tuning sim.speed_fast and sim.speed_fastest).
-const SPEEDS := [[&"PAUSED", ""], [&"NORMAL", ""], [&"FAST", "sim_speed_fast"], [&"FASTEST", "sim_speed_fastest"]]
+const SPEEDS := [["", 0], ["1×", 1], ["2×", 2], ["4×", 3]]
 
-var action_buttons: Dictionary = {}
+@onready var action_buttons: Dictionary = {}
 @export var world: CityWorld
-var _clock: Label
-var _money: Label
-var _stats: Label
-var _speed_buttons: Array[Button] = []
-var _sky_buttons: Array[Button] = []
-
-
-## The button that sets the sky to `mode` (SKY: "day", "night", "cycle").
-func sky_button(mode: String) -> Button:
-	for i in SKY.size():
-		if SKY[i][2] == mode:
-			return _sky_buttons[i]
-	return null
-
-
-## The button that sets the speed named `speed` (the core's SimSpeed).
-func speed_button(speed: StringName) -> Button:
-	for i in SPEEDS.size():
-		if SPEEDS[i][0] == speed:
-			return _speed_buttons[i]
-	return null
-var _history_buttons: Dictionary = {}
-var _tipped: Array = [] # [button, tip key]: drawn again when the language changes
-var _warn: Button
+@onready var _clock: Label
+@onready var _money: Label
+@onready var _stats: Label
+@onready var _speed_buttons: Array[Button] = []
+@onready var _sky_buttons: Array[Button] = []
+@onready var _history_buttons: Dictionary = {}
+@onready var _tipped: Array = [] # [button, tip key]: drawn again when the language changes
+@onready var _warn: Button
 
 
 func _ready() -> void:
@@ -68,12 +51,9 @@ func _ready() -> void:
 	_stats.mouse_filter = Control.MOUSE_FILTER_PASS
 	var pill := HudWidgets.hbox(HudWidgets.panel(row, &"Seg"))
 	for s in SPEEDS:
-		var paused: bool = s[0] == &"PAUSED"
-		var label := "" if paused else "%d×" % (int(DataTables.tuning(s[1])) if s[1] != "" else 1)
-		var setting := CityStore.code(&"SimSpeed", s[0])
-		var b := HudWidgets.button(&"SegButton", "pause" if paused else "", label, "sim.speed", "seg_min_w", "seg_h")
+		var b := HudWidgets.button(&"SegButton", "pause" if s[0] == "" else "", s[0], "sim.speed", "seg_min_w", "seg_h")
 		b.toggle_mode = true
-		b.pressed.connect(func() -> void: CityStore.dispatch(&"set_speed", [setting]))
+		b.pressed.connect(func() -> void: CityStore.dispatch(&"set_speed", [s[1]]))
 		pill.add_child(b)
 		_speed_buttons.append(b)
 		_tipped.append([b, "sim.speed"])
@@ -101,7 +81,7 @@ func _ready() -> void:
 func relabel() -> void:
 	for t: Array in _tipped:
 		HudWidgets.tip_for(t[0], tr(t[1]))
-	_money.tooltip_text = tr("ui.money.tip").format({"refund": int(round(DataTables.tuning("economy_refund_share") * Units.PERCENT))})
+	_money.tooltip_text = tr("ui.money.tip").format({"refund": int(round(DataTables.tuning("economy_refund_share") * Formatters.PERCENT))})
 	_on_changed(CityStore.snapshot)
 
 
@@ -116,7 +96,7 @@ func set_sky(mode: String) -> void:
 func _sync_impossible() -> void:
 	var n: int = CityStore.query(&"impossible_nodes").size()
 	_warn.visible = n > 0
-	_warn.text = Formatters.format_int(n)
+	_warn.text = str(n)
 	_warn.tooltip_text = Formatters.count_label("status.impossible", n)
 
 
@@ -132,10 +112,9 @@ func _on_changed(s: Dictionary) -> void:
 		"jobs": Formatters.format_int(s.jobs), "buildings": Formatters.format_int(s.buildings), "speed": "—"})
 	_sync_impossible()
 	for i in SPEEDS.size():
-		_speed_buttons[i].set_pressed_no_signal(CityStore.code(&"SimSpeed", SPEEDS[i][0]) == int(s.speed))
+		_speed_buttons[i].set_pressed_no_signal(SPEEDS[i][1] == int(s.speed))
 	for action in _history_buttons:
 		var b: Button = _history_buttons[action]
 		b.disabled = not s.get("can_" + action, false)
 		var label: String = s.get(action + "_label", "")
-		var named := tr("action." + action)
-		b.tooltip_text = named if label.is_empty() else "%s · %s" % [named, tr(label)]
+		b.tooltip_text = tr("action." + action) + ("" if label.is_empty() else " · " + tr(label))

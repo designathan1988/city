@@ -1,10 +1,7 @@
-// Vehicle motion on the lanes: improved IDM with an emergency cap, a jerk limit and a speed drift (motion_law.h); the head of each lane
-// follows whoever is on its connector or at the tail of the next lane, and stops at the line while the junction does not let it in; every
-// vehicle stops for the lights it sees down its route (Roadcraft 4.0 signals). Vehicles cross nodes on connectors (connector_motion.cpp).
+// Vehicle motion: improved IDM with an emergency cap, a jerk limit and a speed drift; the head of each lane follows whoever is on its connector or at the tail of the
+// next lane, and stops at the line while the junction does not let it in; every vehicle stops for the lights it sees
+// down its route (Roadcraft 4.0 signals). Vehicles cross nodes on connectors.
 #include "sim/traffic/kerb_stops.h"
-#include "sim/traffic/motion_law.h"
-#include "sim/traffic/sight.h"
-#include "sim/traffic/lane_shift.h"
 
 #include "sim/traffic/lane_closures.h"
 
@@ -17,6 +14,50 @@ namespace city {
 namespace traffic {
 
 namespace {
+constexpr float SAFE_PAD_M = 0.3f;
+constexpr float WAIT_SPEED = 0.5f, STUCK_SPEED = 0.3f, LC_DECAY = 1.f;
+constexpr float MOVING_OFF_SHARE = 0.5f; // box_hold: obstacles that leave it this share of its free-road pickup do not hold it
+
+struct Lead {
+	float gap = NO_LEADER, v = 0;
+	void take(float g, float lv) {
+		if (g < gap) { gap = g; v = lv; }
+	}
+};
+
+float body(const CityState &s, const Vehicle &v) { return s.catalog.traffic.classes[int(v.type)].length; }
+
+// Acceleration after the emergency cap and the jerk limit.
+float finish_accel(const CityState &s, const Vehicle &v, float acc, const Lead &l, float dt) {
+	const VehicleClass &c = s.catalog.traffic.classes[int(v.type)];
+	acc = clampf(acc, -c.b_emergency, c.a);
+	// jerk limit from the last acceleration as felt, never harder than an emergency stop: a standing vehicle's is zero,
+	// so it moves off as soon as its way clears (as Roadcraft 4.0 drivers do)
+	const float foot = clampf(v.acc, -c.b_emergency, c.a);
+	if (acc > foot) acc = std::min(acc, foot + s.catalog.traffic.jerk_up * dt);
+	if (l.gap < NO_LEADER) {
+		float be = c.b_emergency, room = std::max(0.f, l.gap - SAFE_PAD_M + (l.v > 0 ? l.v * l.v / (2 * be) : 0.f));
+		float safe = -be * dt + std::sqrt(be * be * dt * dt + 2 * be * room);
+		if (v.v + acc * dt > safe) acc = (safe - v.v) / dt;
+	}
+	return acc;
+}
+
+// Moves `v` by the commanded `acc`; keeps the acceleration that speed change really was (as Roadcraft 4.0 does): a
+// vehicle held at a standstill is not braking, whatever its driver asks for.
+void integrate(const CityState &s, Vehicle &v, float acc, float dt, float &pos) {
+	const TrafficParams &p = s.catalog.traffic;
+	float nv = std::max(0.f, v.v + acc * dt);
+	pos += (v.v + nv) * 0.5f * dt;
+	v.acc = (nv - v.v) / dt;
+	v.v = nv;
+	v.brake = acc < p.brake_light_accel || nv < p.brake_light_speed;
+	v.stuck = nv < STUCK_SPEED ? v.stuck + dt : 0.f;
+	v.wait = nv < WAIT_SPEED ? v.wait + dt : 0.f;
+	v.held = nv < WAIT_SPEED ? v.held + dt : 0.f;
+	v.lc_off *= std::max(0.f, 1.f - dt * LC_DECAY / std::max(p.lc_duration_s, dt));
+	v.lc_cool = std::max(0.f, v.lc_cool - dt);
+}
 
 // What the lane head sees beyond the stop line: the connector's last vehicle or the next lane's tail.
 void lead_beyond(const CityState &s, int ci, float dist, Lead &l) {
@@ -65,7 +106,7 @@ bool gate(CityState &s, int id, int &ci, float dist, bool head, bool held, bool 
 		const bool can_stop = light == Light::AMBER ? stops_at_amber(s, v, v.ds, line - p.stop_margin_m, ci) || v.amber_hold == v.ds
 				: stop_is_comfortable(s, v, line - p.stop_margin_m);
 		const bool stale = held || (can_stop && light != Light::GREEN) ||
-				(!released && v.v < p.vehicle_wait_speed && !is_splice(s, t.g.conns[ci].node) && !has_exit(s, t.g.conns[ci], id));
+				(!released && v.v < WAIT_SPEED && !is_splice(s, t.g.conns[ci].node) && !has_exit(s, t.g.conns[ci], id));
 		if (!stale) return box_clear(s, ci);
 		release(s, id, ci);
 		return false;
@@ -87,25 +128,6 @@ bool gate(CityState &s, int id, int &ci, float dist, bool head, bool held, bool 
 	return true;
 }
 
-// Whether vehicle `id` stays on its lane this step, and what its trip has it stop for there: false when it leaves the lane here (its goal
-// reached, its lane leading nowhere on its way, or its ended trip now out of sight). An ended trip stands short of the lane's end (sight.h).
-bool trip_goes_on(CityState &s, int id, bool through, float L, float line_was, float v0, Lead &l) {
-	const TrafficParams &p = s.catalog.traffic;
-	const Vehicle &v = s.traffic.vehicles[size_t(id)];
-	if (v.ended) {
-		if (!vehicle_may_show(s, v.cur.x, v.cur.z)) return false;
-		l.take(std::max(0.f, L - v.s - p.stop_margin_m), 0.f);
-	} else if (!through) {
-		if (v.s >= v.goal_s) return false;
-		if (v.stop_at >= 0) l.take(std::max(0.f, v.stop_at - v.s + p.classes[int(v.type)].min_gap), 0.f); // the IDM stops s0 short
-	} else {
-		float hold = -1; // its lane does not lead on: worked across to one that does (lane_shift.h), held short of its end
-		if (!way_on(s, id, line_was, v0, hold)) return false;
-		if (hold >= 0) l.take(hold, 0.f);
-	}
-	return true;
-}
-
 // Moves one lane (list sorted by s, back first). Returns ids leaving it: >= 0 onto connectors, -1 - id arrived.
 void step_lane(CityState &s, int ds, int lane, float dt, std::vector<int> &leaving) {
 	TrafficState &t = s.traffic;
@@ -124,25 +146,25 @@ void step_lane(CityState &s, int ds, int lane, float dt, std::vector<int> &leavi
 			const Vehicle &o = t.vehicles[list[size_t(ahead)]];
 			l.take(o.s - body(s, o) - v.s, o.v);
 		}
-		// whoever is changing out of this lane still stands in it till its body has left (lane_shift.h): followed as a leader is
-		for (int o : t.lane_shadows[size_t(ds) * MAX_LANES + lane]) {
-			const Vehicle &sh = t.vehicles[size_t(o)];
-			if (o != id && sh.s > v.s) l.take(sh.s - body(s, sh) - v.s, sh.v);
-		}
 		if (!t.closures.empty()) {
 			const float shut = closure_ahead(t, ds * MAX_LANES + v.lane, v.s);
 			if (shut >= 0) l.take(shut, 0.f);
 		}
 		if (v.kerb >= 0) l.take(kerb_stop_gap(t, v) + p.classes[int(v.type)].min_gap, 0.f); // the IDM stops s0 short
-		const bool through = !v.ended && v.ri + 1 < v.route.len; // it crosses this lane's junction
+		const bool through = v.ri + 1 < v.route.len; // it crosses this lane's junction
 		if (const float hold = transit::hold_ahead(s, v, ds, through, head); hold >= 0) l.take(hold, 0.f);
 		const float line_was = L - v.s - t.g.ds[ds].stop_back;
-		if (!trip_goes_on(s, id, through, L, line_was, v0, l)) {
-			leaving.push_back(-1 - id);
-			continue;
-		}
-		if (through && pick_connector(s, v) >= 0) {
+		if (!through) {
+			if (v.s >= v.goal_s) { leaving.push_back(-1 - id); continue; }
+			if (v.stop_at >= 0) l.take(std::max(0.f, v.stop_at - v.s + p.classes[int(v.type)].min_gap), 0.f); // the IDM stops s0 short
+		} else {
 			int ci = pick_connector(s, v);
+			if (ci < 0) {
+				// the route's turn is not reachable from this lane (a connector went, the lanes were rearranged):
+				// another lane of the segment, else a new route; without a way on it leaves the scene
+				if (!retry_route(s, id)) { leaving.push_back(-1 - id); continue; }
+				return; // retry may have changed the lane: the rest of this one waits for the next tick
+			}
 			float dist = L - v.s;
 			// stopped long in the queue of a full lane: reconsider the route, avoiding what is full
 			if (!head && v.held >= p.reconsider_after_s) {
@@ -171,14 +193,13 @@ void step_lane(CityState &s, int ds, int lane, float dt, std::vector<int> &leavi
 					leaving.push_back(id);
 					continue;
 				}
-				if (v.v < p.vehicle_wait_speed && line >= 0 && line < p.at_line_m) v.stood = true;
+				if (v.v < WAIT_SPEED && line >= 0 && line < p.at_line_m) v.stood = true;
 			}
 		}
 		float acc = finish_accel(s, v, idm_accel(p.classes[int(v.type)], v.v, v0, l.gap, l.v), l, dt);
 		const float was = v.s;
 		integrate(s, v, acc, dt, v.s);
 		v.s = std::min(v.s, L);
-		shift_step(s, id, v.s - was); // a lane change's path goes on with the road driven
 		signal_call(s, ds, was, v.s);
 		// over the stop line on red (probe): from a standstill there, the gate let it run the red
 		if (through && line_was > 0 && L - v.s - t.g.ds[ds].stop_back <= 0 && light_for(s, ds) == Light::RED) {
@@ -201,20 +222,14 @@ void leave_lane(CityState &s, int ds, int lane, std::vector<int> &leaving) {
 		int id = m < 0 ? -1 - m : m;
 		Vehicle &v = t.vehicles[size_t(id)];
 		int ci = m < 0 ? -1 : pick_connector(s, v);
-		if (ci < 0 && !v.ended && drives_on(s, v) && new_trip(s, id, ds)) continue; // somewhere else to go: it stays on its lane till its end
-		if (ci < 0 && !v.ended && v.bus < 0 && vehicle_may_show(s, v.cur.x, v.cur.z)) {
-			trip_ends_here(s, id); // in sight: it stands short of its lane's end until it is out of sight (sight.h)
-			continue;
-		}
 		if (ci < 0) {
-			const bool home = m < 0 && (v.ended || v.ri + 1 >= v.route.len);
+			const bool home = m < 0 && v.ri + 1 >= v.route.len;
 			lane_del(s, key, id);
 			v.ds = -1;
 			despawn_vehicle(s, id, home);
 			continue;
 		}
 		lane_del(s, key, id);
-		shift_end(t, id); // onto the junction: no lane left behind it to stand in
 		v.cs = v.s - t.g.ds[size_t(ds)].len;
 		v.conn = ci;
 		v.stood_at = -1;
@@ -227,7 +242,77 @@ void leave_lane(CityState &s, int ds, int lane, std::vector<int> &leaving) {
 	leaving.clear();
 }
 
+// What the k-th vehicle on connector `ci` drives against, at its top speed `top` there: the one ahead (on the connector
+// or the exit lane's tail) and walkers on the exit crosswalk, a stop at the connector's end (the entry one is behind it).
+void connector_leads(const CityState &s, int ci, size_t k, float top, Lead &car, Lead &walkers) {
+	const TrafficState &t = s.traffic;
+	const auto &list = t.conn_vehicles[ci];
+	const Conn &c = t.g.conns[ci];
+	const Vehicle &v = t.vehicles[list[k]];
+	if (k > 0) {
+		const Vehicle &o = t.vehicles[list[k - 1]];
+		car.take(o.cs - body(s, o) - v.cs, o.v);
+	} else {
+		const auto &lane = t.lane_vehicles[size_t(c.to_ds) * MAX_LANES + c.to_lane];
+		if (!lane.empty()) {
+			const Vehicle &o = t.vehicles[lane.front()];
+			car.take(c.len - v.cs + o.s - body(s, o), o.v);
+		}
+	}
+	if (v.cs < c.len && peds_in_way(s, ci, FRONT_PAST, front_time(s, v, c.len - v.cs, top))) walkers.take(c.len - v.cs, 0.f);
+}
+
+void step_connector(CityState &s, int ci, float dt) {
+	TrafficState &t = s.traffic;
+	const TrafficParams &p = s.catalog.traffic;
+	auto &list = t.conn_vehicles[ci];
+	const Conn &c = t.g.conns[ci];
+	const float vt = conn_speed(s, c);
+	for (size_t k = 0; k < list.size(); k++) {
+		Vehicle &v = t.vehicles[list[k]];
+		Lead l, walkers;
+		const float top = top_speed(s, v, vt);
+		connector_leads(s, ci, k, top, l, walkers);
+		l.take(walkers.gap, walkers.v);
+		const LightStop lights = lights_ahead(s, v, v.ri + 1, c.to_lane, c.len - v.cs);
+		v.amber_hold = lights.amber_hold;
+		l.take(lights.gap, 0.f);
+		float acc = finish_accel(s, v, idm_accel(p.classes[int(v.type)], v.v, top, l.gap, l.v), l, dt);
+		integrate(s, v, acc, dt, v.cs);
+	}
+	while (!list.empty() && t.vehicles[size_t(list.front())].cs >= c.len) {
+		const int id = list.front();
+		conn_pop_front(s, ci);
+		Vehicle &v = t.vehicles[size_t(id)];
+		v.conn = -1;
+		v.ri++;
+		count_entry(t, v.ds = c.to_ds);
+		v.lane = c.to_lane;
+		v.s = v.cs - c.len;
+		lane_add(s, v.ds * MAX_LANES + v.lane, id);
+	}
+}
+
 } // namespace
+
+BoxHold box_hold(const CityState &s, int id) {
+	const TrafficState &t = s.traffic;
+	const Vehicle &v = t.vehicles[size_t(id)];
+	const auto &on = t.conn_vehicles[size_t(v.conn)];
+	const size_t k = size_t(std::find(on.begin(), on.end(), id) - on.begin());
+	if (k >= on.size()) return BoxHold::STARTING;
+	const VehicleClass &vc = s.catalog.traffic.classes[int(v.type)];
+	const Conn &c = t.g.conns[size_t(v.conn)];
+	const float top = top_speed(s, v, conn_speed(s, c));
+	Lead car, walkers;
+	connector_leads(s, v.conn, k, top, car, walkers);
+	const float light = lights_ahead(s, v, v.ri + 1, c.to_lane, c.len - v.cs).gap;
+	// what takes most of its free-road acceleration holds it (creeping up to a standing leader is being held by it)
+	const float by[int(BoxHold::STARTING)] = { idm_accel(vc, v.v, top, car.gap, car.v), idm_accel(vc, v.v, top, walkers.gap, 0.f),
+		idm_accel(vc, v.v, top, light, 0.f) };
+	const int most = int(std::min_element(by, by + int(BoxHold::STARTING)) - by);
+	return by[most] > MOVING_OFF_SHARE * idm_accel(vc, v.v, top, NO_LEADER, 0.f) ? BoxHold::STARTING : BoxHold(most);
+}
 
 void step_vehicles(CityState &s, float dt) {
 	TrafficState &t = s.traffic;
@@ -242,7 +327,16 @@ void step_vehicles(CityState &s, float dt) {
 		const std::vector<int> &list = t.lane_vehicles[size_t(key)];
 		t.lane_sorted[size_t(key)] = std::is_sorted(list.begin(), list.end(), [&](int a, int b) { return t.vehicles[size_t(a)].s < t.vehicles[size_t(b)].s; });
 	}
-	step_connectors(s, dt);
+	t.step_conns = t.active_conns;
+	for (int ci : t.step_conns)
+		if (ci >= 0 && ci < int(t.conn_vehicles.size()) && !t.conn_vehicles[size_t(ci)].empty()) step_connector(s, ci, dt);
+	for (int i = int(t.micro_list.size()) - 1; i >= 0; i--) {
+		const int id = t.micro_list[size_t(i)];
+		if (t.vehicles[size_t(id)].alive && t.vehicles[size_t(id)].stuck > s.catalog.traffic.stuck_despawn_s) {
+			despawn_vehicle(s, id, false);
+			t.stuck_lost++;
+		}
+	}
 }
 
 } // namespace traffic

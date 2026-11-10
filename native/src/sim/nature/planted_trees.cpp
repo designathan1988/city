@@ -11,26 +11,13 @@ namespace city {
 
 namespace {
 constexpr float HASH_CELL_M = 32.f; // about the widest dab the spacing test looks round
-constexpr int STREAMS = 8; // a dab's hash makes room for this many streams of draws
+constexpr int STREAMS = 8;
 
 template <typename T>
-int take_slot(IdTable<T> &list, SlotIds &free) {
+int take_slot(std::vector<T> &list, SlotIds &free) {
 	return free.next(int(list.size()));
 }
 } // namespace
-
-PlantedTrees PlantedTrees::cut(float minx, float minz, float maxx, float maxz) const {
-	PlantedTrees c;
-	c.trees = IdTable<PlantedTree>::cut(trees.size());
-	c.clearings = IdTable<TreeClearing>::cut(clearings.size());
-	c.hash_ = hash_.window(minx, minz, maxx, maxz);
-	c.clear_hash_ = clear_hash_.window(minx, minz, maxx, maxz);
-	for (int id : c.hash_.filed()) c.trees.put(size_t(id), trees[size_t(id)]);
-	for (int id : c.clear_hash_.filed()) c.clearings.put(size_t(id), clearings[size_t(id)]);
-	c.live_trees_ = live_trees_;
-	c.live_clearings_ = live_clearings_;
-	return c;
-}
 
 void PlantedTrees::clear() {
 	trees.clear();
@@ -97,13 +84,11 @@ void PlantedTrees::keep_slots(int tree_slots, int clearing_slots) {
 	if (clearing_slots > int(clearings.size())) clearings.resize(size_t(clearing_slots));
 }
 
-bool PlantedTrees::cleared(float x, float z) const { return cleared(x, z, -1); }
-
-bool PlantedTrees::cleared(float x, float z, int skip) const {
+bool PlantedTrees::cleared(float x, float z) const {
 	bool hit = false;
 	clear_hash_.query(x, z, x, z, [&](int id) {
 		const TreeClearing &c = clearings[size_t(id)];
-		hit = hit || (id != skip && c.alive && (c.x - x) * (c.x - x) + (c.z - z) * (c.z - z) < c.radius * c.radius);
+		hit = hit || (c.alive && (c.x - x) * (c.x - x) + (c.z - z) * (c.z - z) < c.radius * c.radius);
 	});
 	return hit;
 }

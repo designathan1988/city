@@ -44,15 +44,11 @@ struct LotAccess {
 float car_half_width(const TrafficParams &p);
 float lorry_half_width(const TrafficParams &p);
 
-// What keeps bays off each side of street `sid`: the car gates of the lots facing it, grown by kerb_gate_margin_m. `lots`: the
-// records, the live store's or a job's cut of them; `designs`: the generator's tables their elements are made from.
-void street_gates(const RoadNetwork &net, const BuildingRecords &lots, const b40::Data &designs, int sid, std::vector<ArcSpan> gates[2]);
-inline void street_gates(const RoadNetwork &net, const BuildingStore &lots, int sid, std::vector<ArcSpan> gates[2]) {
-	street_gates(net, lots, lots.designs, sid, gates);
-}
+// What keeps bays off each side of street `sid`: the car gates of the lots facing it, grown by kerb_gate_margin_m.
+void street_gates(const RoadNetwork &net, const BuildingStore &lots, int sid, std::vector<ArcSpan> gates[2]);
 
 // The lot's gates and bays alone, without their ways (a few elements read, no grid): what standing cars need.
-void lot_bays(const std::vector<b40::LotElement> &elements, const b40::LotFrame &f, LotAccess &out);
+void lot_bays(const b40::Body &b, const b40::LotFrame &f, LotAccess &out);
 // What is solid in the lot under `headroom`, in the world: volumes and elements, the docks and bays left open.
 // `kinds`, when asked: each ring's element kind, -1 for a volume.
 void lot_solids(const b40::Data &data, const b40::Body &b, const b40::LotFrame &f, float headroom, std::vector<std::vector<V2>> &out, std::vector<int> *kinds = nullptr);

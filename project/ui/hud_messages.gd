@@ -3,18 +3,18 @@
 class_name HudMessages
 extends Node
 
-var _hint: Label
-var _toast: PanelContainer
-var _toast_label: Label
-var _toast_left := 0.0
+@onready var _hint: Label
+@onready var _toast: PanelContainer
+@onready var _toast_label: Label
+@onready var _toast_left := 0.0
 
 
 func _init(root: Control) -> void:
 	var bar := _bar(root, HudWidgets.px("toast_top") + HudWidgets.px("hud_h"))
-	_hint = HudWidgets.translated_label(bar, &"BodyLabel") # the text arrives translated (ToolController.hint)
+	_hint = HudWidgets.label(bar, &"BodyLabel")
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_toast = _bar(root, HudWidgets.px("toast_top"))
-	_toast_label = HudWidgets.translated_label(_toast, &"BodyLabel")
+	_toast_label = HudWidgets.label(_toast, &"BodyLabel")
 
 
 ## A panel hanging from the top edge, centred, hidden until it has something to say.
@@ -46,7 +46,7 @@ func flash(text: String, ok: bool) -> void:
 	_toast.reset_size()
 	_toast.offset_left = -_toast.size.x * 0.5
 	_toast.offset_right = _toast.size.x * 0.5
-	_toast_left = float(DataTables.ui("hud").timings.toast_s)
+	_toast_left = HudWidgets.px("toast_s")
 
 
 func _process(delta: float) -> void:

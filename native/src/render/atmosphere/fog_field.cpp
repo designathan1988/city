@@ -30,13 +30,6 @@ constexpr float EXTENT_WINDOWS = 2.f; // a window's origin stands at most this m
 
 int64_t bucket_of(int i, int j) { return cell_key(i, j); }
 
-// fn(bucket) for every bucket a dab reaches.
-template <typename F>
-void for_buckets(const FogDab &d, F &&fn) {
-	for (int j = int(std::floor((d.z - d.radius) / BUCKET_M)); j <= int(std::floor((d.z + d.radius) / BUCKET_M)); j++)
-		for (int i = int(std::floor((d.x - d.radius) / BUCKET_M)); i <= int(std::floor((d.x + d.radius) / BUCKET_M)); i++) fn(bucket_of(i, j));
-}
-
 // Every window computes a texel's centre as ox + (i + 0.5) t. That is the same float whatever the window when every multiple of
 // t / 2 out to `extent` is exact (t / 2 = odd x 2^e with odd x steps under 2^24): a texel kept from an earlier window is then
 // the one this window would compute. Otherwise each job remakes its whole window.
@@ -106,30 +99,6 @@ void FogField::touch_terrain(const CityState &s, const std::vector<int> &rects) 
 	}
 }
 
-bool FogField::refile(Scratch &k, const std::vector<FogDab> &now, float texel, Span &changed) {
-	bool any = false;
-	size_t first = 0;
-	while (first < now.size() && first < k.dabs.size() && same(now[first], k.dabs[first])) first++;
-	for (size_t i = first; i < std::max(now.size(), k.dabs.size()); i++) {
-		// a texel no changed dab reaches folds the same dabs in the same order (fog_at skips a dab past its rim)
-		const Span sp = dab_span(i < now.size() ? now[i] : k.dabs[i], texel);
-		changed = any ? join(changed, sp) : sp;
-		any = true;
-		if (i < now.size() && i < k.dabs.size()) changed = join(changed, dab_span(k.dabs[i], texel));
-	}
-	// Each leaving dab is the last of each of its buckets' lists (the indices stand ascending, and they leave from the last one).
-	for (size_t i = k.dabs.size(); i-- > first;)
-		for_buckets(k.dabs[i], [&](int64_t b) {
-			auto it = k.buckets.find(b);
-			it->second.pop_back();
-			if (it->second.empty()) k.buckets.erase(it);
-		});
-	k.dabs.resize(first);
-	k.dabs.insert(k.dabs.end(), now.begin() + std::ptrdiff_t(first), now.end());
-	for (size_t i = first; i < k.dabs.size(); i++) for_buckets(k.dabs[i], [&](int64_t b) { k.buckets[b].push_back(int(i)); });
-	return any;
-}
-
 void FogField::work(const CityState &s, float ox, float oz, uint64_t revision, std::vector<Span> terrain, uint64_t generation) {
 	std::unique_ptr<Scratch> k = slot_.scratch(generation);
 	FogDef def;
@@ -138,31 +107,45 @@ void FogField::work(const CityState &s, float ox, float oz, uint64_t revision, s
 	r.oz = oz;
 	r.low = EMPTY_SLAB;
 	r.high = -EMPTY_SLAB;
-	Paint p;
-	p.ox = ox;
-	p.oz = oz;
+	float half = 0, water = 0;
+	std::vector<Span> spans;
+	std::vector<HeightPatch> patches;
 	bool full = true;
+	int kx = 0, kz = 0;
 	{
 		// What the job reads, copied while it holds the map: the dabs (when their revision moved), the ground under the texels
 		// it will make.
-		MapRead map(s);
+		std::shared_lock<std::shared_mutex> map(s.map_mutex);
 		def = s.catalog.nature.fog;
 		const Heightfield &hf = s.terrain;
-		p.half = hf.half_size();
-		p.water = hf.water_level;
+		half = hf.half_size();
+		water = hf.water_level;
 		r.side = def.texel_m * FOG_RES;
-		const int kx = p.kx = int(std::lround(ox / def.texel_m));
-		const int kz = p.kz = int(std::lround(oz / def.texel_m));
+		kx = int(std::lround(ox / def.texel_m));
+		kz = int(std::lround(oz / def.texel_m));
 		Span changed{ 0, 0, 0, 0 };
 		bool dabs_changed = false;
 		if (k->revision != revision) {
-			dabs_changed = refile(*k, s.nature.fog, def.texel_m, changed);
+			const std::vector<FogDab> &now = s.nature.fog;
+			size_t first = 0;
+			while (first < now.size() && first < k->dabs.size() && same(now[first], k->dabs[first])) first++;
+			for (size_t i = first; i < std::max(now.size(), k->dabs.size()); i++) {
+				// a texel no changed dab reaches folds the same dabs in the same order (fog_at skips a dab past its rim)
+				const Span sp = dab_span(i < now.size() ? now[i] : k->dabs[i], def.texel_m);
+				changed = dabs_changed ? join(changed, sp) : sp;
+				dabs_changed = true;
+				if (i < now.size() && i < k->dabs.size()) changed = join(changed, dab_span(k->dabs[i], def.texel_m));
+			}
+			k->dabs = now;
 			k->revision = revision;
+			k->buckets.clear();
+			for (const FogDab &d : k->dabs)
+				for (int j = int(std::floor((d.z - d.radius) / BUCKET_M)); j <= int(std::floor((d.z + d.radius) / BUCKET_M)); j++)
+					for (int i = int(std::floor((d.x - d.radius) / BUCKET_M)); i <= int(std::floor((d.x + d.radius) / BUCKET_M)); i++) k->buckets[bucket_of(i, j)].push_back(&d);
 		}
-		std::vector<Span> &spans = p.spans;
 		if (!k->dabs.empty()) {
 			const Span window{ kx, kz, kx + FOG_RES, kz + FOG_RES };
-			full = !k->held || !exact_lattice(def.texel_m, p.half + r.side * EXTENT_WINDOWS) || std::abs(kx - k->kx) >= FOG_RES || std::abs(kz - k->kz) >= FOG_RES;
+			full = !k->held || !exact_lattice(def.texel_m, half + r.side * EXTENT_WINDOWS) || std::abs(kx - k->kx) >= FOG_RES || std::abs(kz - k->kz) >= FOG_RES;
 			if (full) {
 				spans.push_back(window);
 			} else {
@@ -179,7 +162,7 @@ void FogField::work(const CityState &s, float ox, float oz, uint64_t revision, s
 			for (const Span &sp : spans) {
 				const float x0 = ox + (float(sp.i0 - kx) + 0.5f) * def.texel_m, x1 = ox + (float(sp.i1 - 1 - kx) + 0.5f) * def.texel_m;
 				const float z0 = oz + (float(sp.j0 - kz) + 0.5f) * def.texel_m, z1 = oz + (float(sp.j1 - 1 - kz) + 0.5f) * def.texel_m;
-				p.patches.push_back(hf.patch(x0, z0, x1, z1));
+				patches.push_back(hf.patch(x0, z0, x1, z1));
 			}
 		}
 	}
@@ -194,35 +177,22 @@ void FogField::work(const CityState &s, float ox, float oz, uint64_t revision, s
 		k->ground.assign(texels, 0.f);
 		k->top.assign(texels, 0.f);
 		k->on.assign(texels, 0);
-		k->row_low.assign(FOG_RES, 0.f);
-		k->row_high.assign(FOG_RES, 0.f);
-		k->row_any.assign(FOG_RES, 0);
 	}
-	if (!paint(*k, p, def, generation)) return;
-	slab(*k, p, full, def.texel_m, r);
-	k->held = true;
-	k->kx = p.kx;
-	k->kz = p.kz;
-	r.texels = k->texels; // shared until the next job writes (copy on write)
-	slot_.publish(generation, std::move(r), std::move(k));
-}
-
-bool FogField::paint(Scratch &k, const Paint &p, const FogDef &def, uint64_t generation) const {
-	uint16_t *t = reinterpret_cast<uint16_t *>(k.texels.ptrw());
+	uint16_t *t = reinterpret_cast<uint16_t *>(k->texels.ptrw());
 	FogSample f;
-	for (size_t n = 0; n < p.spans.size(); n++) {
-		if (!slot_.current(generation)) return false;
-		const Span &sp = p.spans[n];
-		const HeightPatch &ground_patch = p.patches[n];
+	for (size_t n = 0; n < spans.size(); n++) {
+		if (!slot_.current(generation)) return; // a reset came: nothing of this window is kept
+		const Span &sp = spans[n];
+		const HeightPatch &ground_patch = patches[n];
 		for (int wj = sp.j0; wj < sp.j1; wj++)
 			for (int wi = sp.i0; wi < sp.i1; wi++) {
-				const int i = wi - p.kx, j = wj - p.kz;
-				float x = p.ox + (i + 0.5f) * def.texel_m, z = p.oz + (j + 0.5f) * def.texel_m;
-				auto it = k.buckets.find(bucket_of(int(std::floor(x / BUCKET_M)), int(std::floor(z / BUCKET_M))));
+				const int i = wi - kx, j = wj - kz;
+				float x = ox + (i + 0.5f) * def.texel_m, z = oz + (j + 0.5f) * def.texel_m;
+				auto it = k->buckets.find(bucket_of(int(std::floor(x / BUCKET_M)), int(std::floor(z / BUCKET_M))));
 				f = FogSample{};
-				if (it != k.buckets.end()) fog_at(k.dabs, it->second, x, z, def, f);
-				const bool inside = x > -p.half && x < p.half && z > -p.half && z < p.half; // Heightfield::in_bounds
-				float ground = inside ? ground_patch.height_at(x, z) : p.water;
+				if (it != k->buckets.end()) fog_at(it->second, x, z, def, f);
+				const bool inside = x > -half && x < half && z > -half && z < half; // Heightfield::in_bounds
+				float ground = inside ? ground_patch.height_at(x, z) : water;
 				const size_t at = slot_of(x, z, def.texel_m);
 				uint16_t *c = t + at * CHANNELS;
 				bool on = f.density > def.min_density;
@@ -230,41 +200,25 @@ bool FogField::paint(Scratch &k, const Paint &p, const FogDef &def, uint64_t gen
 				c[1] = Math::make_half_float(ground);
 				c[2] = Math::make_half_float(on ? f.height : 0.f);
 				c[3] = Math::make_half_float(on ? f.speed : 0.f);
-				k.on[at] = on ? 1 : 0;
-				k.ground[at] = ground;
-				k.top[at] = ground + f.height * SLAB_HEIGHTS;
+				k->on[at] = on ? 1 : 0;
+				k->ground[at] = ground;
+				k->top[at] = ground + f.height * SLAB_HEIGHTS;
 			}
 	}
-	return true;
-}
-
-// A least and a most are the same in any order: the rows no span wrote keep theirs.
-void FogField::slab(Scratch &k, const Paint &p, bool full, float texel, Raster &r) {
-	const auto row_of = [&](int j) { return size_t(slot_of(p.ox + 0.5f * texel, p.oz + (j + 0.5f) * texel, texel) / FOG_RES); }; // its row of `texels`
-	std::vector<uint8_t> rewritten(FOG_RES, full ? 1 : 0);
-	for (const Span &sp : p.spans)
-		for (int wj = sp.j0; wj < sp.j1; wj++) rewritten[row_of(wj - p.kz)] = 1;
-	for (int j = 0; j < FOG_RES; j++) {
-		const size_t row = row_of(j);
-		if (rewritten[row]) {
-			float low = EMPTY_SLAB, high = -EMPTY_SLAB;
-			bool any = false;
-			for (int i = 0; i < FOG_RES; i++) {
-				const size_t at = slot_of(p.ox + (i + 0.5f) * texel, p.oz + (j + 0.5f) * texel, texel);
-				if (!k.on[at]) continue;
-				any = true;
-				low = std::min(low, k.ground[at]);
-				high = std::max(high, k.top[at]);
-			}
-			k.row_low[row] = low;
-			k.row_high[row] = high;
-			k.row_any[row] = any ? 1 : 0;
+	// The slab over the whole window, in the window's order (a scan from its first texel, as the whole raster ran).
+	for (int j = 0; j < FOG_RES; j++)
+		for (int i = 0; i < FOG_RES; i++) {
+			const size_t at = slot_of(ox + (i + 0.5f) * def.texel_m, oz + (j + 0.5f) * def.texel_m, def.texel_m);
+			if (!k->on[at]) continue;
+			r.any = true;
+			r.low = std::min(r.low, k->ground[at]);
+			r.high = std::max(r.high, k->top[at]);
 		}
-		if (!k.row_any[row]) continue;
-		r.any = true;
-		r.low = std::min(r.low, k.row_low[row]);
-		r.high = std::max(r.high, k.row_high[row]);
-	}
+	k->held = true;
+	k->kx = kx;
+	k->kz = kz;
+	r.texels = k->texels; // shared until the next job writes (copy on write)
+	slot_.publish(generation, std::move(r), std::move(k));
 }
 
 void FogField::sync(const CityState &s, float cam_x, float cam_z, FrameAdmission &f) {

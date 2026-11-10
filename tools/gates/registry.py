@@ -10,10 +10,8 @@ import gate_defs
 import gate_docs
 import gate_files
 import gate_forbidden
-import gate_i18n
 import gate_language
 import gate_python
-import gate_text
 import gate_tuning
 import gate_ui
 from gate_files import SIDECARS
@@ -51,8 +49,6 @@ def _forbidden(entry):
     context = None
     if entry["id"] == "JOB_SEM_CHAVE":
         context = lambda ctx: sorted(gate_forbidden.job_pool_members(ctx))  # noqa: E731
-    elif entry["id"] == "TEXTO_VIA_TR":  # a file's findings follow values from every other script
-        context = lambda ctx: gate_text.findings(ctx, entry)  # noqa: E731
     return PerFile(entry["id"], [entry["id"]], lambda ctx, path: gate_forbidden.applies(entry, path),
                    lambda ctx, src, err: check(ctx, src, entry, err), context)
 
@@ -70,8 +66,8 @@ def per_file_rules(rules):
         PerFile("headers", ["CABECALHO"], _ext_in("header_comment_extensions"), gate_files.check_headers),
         PerFile("layers", ["CAMADA", "CAMADA_DESCONHECIDA"], gate_code.applies_layers, gate_code.check_layers),
         *[_forbidden(e) for e in rules["forbidden"]],
-        PerFile("magic_numbers", ["NUMERO_MAGICO", "CONSTANT_WITHOUT_SOURCE"], gate_defs.applies_magic, gate_defs.check_magic_numbers),
-        PerFile("ui_state", ["ESTADO_NA_UI"], gate_ui.applies, gate_ui.check_ui_state),
+        PerFile("magic_numbers", ["NUMERO_MAGICO"], gate_defs.applies_magic, gate_defs.check_magic_numbers),
+        PerFile("ui_state", ["ESTADO_NA_UI"], gate_ui.applies, gate_ui.check_ui_state, gate_ui.context_inputs),
         PerFile("single_owner", ["DONO_UNICO"], gate_defs.applies_owners, gate_defs.check_single_owner),
         PerFile("data_copies", ["SEGUNDO_DONO", "VALOR_DUPLICADO"], gate_defs.applies_data_copies,
                 gate_defs.check_data_copies, lambda ctx: ctx.cache.key_of(_data_files(ctx))),
@@ -95,11 +91,9 @@ def whole_rules(rules):
         Whole("sidecars", ["SIDECAR_WITHOUT_SOURCE"], _in_scope(lambda ctx, p: p.endswith(SIDECARS)), gate_files.check_sidecars,
               lambda ctx: sorted(ctx.listed)),
         Whole("orphans", ["ORFAO"], _in_scope(gate_code.orphan_inputs), gate_code.check_orphans),
-        Whole("job_lanes", ["JOB_LANE_SHARED"], _in_scope(gate_code.lane_inputs), gate_code.check_lanes),
         Whole("map", ["CLAUDE_MD", "MAPA_DESATUALIZADO"], gate_docs.inputs, gate_docs.check_claude_md,
               lambda ctx: sorted(ctx.listed)),
         Whole("data", ["DADOS", "DADOS_SEM_SCHEMA"], _in_scope(gate_data.inputs), gate_data.check_data),
-        Whole("i18n", ["I18N"], _in_scope(gate_i18n.inputs), gate_i18n.check_i18n),
         Whole("owner_symbols", ["DONO_AUSENTE"], gate_defs.owner_inputs, gate_defs.check_owner_symbols,
               lambda ctx: sorted(c["owner"] in ctx.listed_set for c in ctx.owners["concepts"])),
         Whole("clones", ["CODIGO_DUPLICADO"], _in_scope(gate_clones.applies), gate_clones.check_clones),

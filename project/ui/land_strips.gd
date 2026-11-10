@@ -7,7 +7,8 @@ extends RefCounted
 const CARD_ROWS := 2 # a group of cards stands in two rows unless the panel says otherwise
 const MAP_HEAD := "v2.map"
 const CLEAR_ROW := "v2.row.clear"
-const LENGTH_UNIT := "length" # a slider's unit (land_panels.json) shown as the style writes lengths; any other is unit.<id> of i18n
+const METRES := " m"
+const LONG_NAME := " (" # a card or a row keeps the name before this
 
 
 ## Fills `strip` and the options panel with the panel of `tool_name` (drawer: hud_drawer.gd).
@@ -38,6 +39,10 @@ static func _cards(strip: Container, count: int, rows: int) -> GridContainer:
 	return grid
 
 
+static func _short(text: String) -> String:
+	return text.get_slice(LONG_NAME, 0)
+
+
 static func _switch(drawer: HudDrawer, strip: Container, cards: Array, tool_name: String) -> void:
 	var grid := _cards(strip, cards.size(), 1)
 	for c: Dictionary in cards:
@@ -55,6 +60,7 @@ static func _group(drawer: HudDrawer, strip: Container, g: Dictionary, tool_name
 			continue
 		var c: Dictionary = g.cards[i]
 		var b := DrawerStrips.card(c, "value", picked, LandHands.pick.bind(tool_name, g.key, drawer))
+		b.text = _short(b.text)
 		if c.has("swatch"):
 			b.theme_type_variation = &"SwatchCard"
 			b.icon = ThemeBuilder.swatch(c.swatch, int(HudWidgets.px("card_glyph")))
@@ -63,10 +69,11 @@ static func _group(drawer: HudDrawer, strip: Container, g: Dictionary, tool_name
 
 ## What the brush does, in the options panel: an icon each.
 static func _brush(drawer: HudDrawer, g: Dictionary, tool_name: String) -> void:
-	var row := HudWidgets.option_row(drawer.options, TranslationServer.translate("v2.row.brush"))
-	var brushes := HudWidgets.choices(row, drawer.param(tool_name, g.key, g.default), LandHands.pick.bind(tool_name, g.key, drawer))
+	var items := []
 	for c: Dictionary in g.cards:
-		HudWidgets.choice(brushes, c.value, "", c.icon, TranslationServer.translate(c.label_key))
+		items.append([c.value, "", c.icon, TranslationServer.translate(c.label_key)])
+	var row := HudWidgets.option_row(drawer.options, TranslationServer.translate("v2.row.brush"))
+	HudWidgets.choices(row, items, drawer.param(tool_name, g.key, g.default), LandHands.pick.bind(tool_name, g.key, drawer))
 
 
 static func _head(drawer: HudDrawer, key: String) -> void:
@@ -74,27 +81,27 @@ static func _head(drawer: HudDrawer, key: String) -> void:
 	HudWidgets.label(drawer.options, &"TitleLabel", TranslationServer.translate(key).to_upper())
 
 
-## How a slider writes its value: a length as the style writes it, anything else in its unit's pattern (i18n unit.<id>, "{n}").
-## A slider's value in its unit (`unit.<unit>` of the strings, none for ""), whole or to tenths.
-static func _in_unit(v: float, unit: String, whole: bool) -> String:
-	var n := Formatters.format_int(v) if whole else Formatters.format_tenths(v)
-	return TranslationServer.translate("unit." + unit).format({"n": n}) if unit != "" else n
+## How a slider writes its value: a length as the style writes it, anything else with the unit of the table.
+static func _shown(sl: Dictionary) -> Callable:
+	var unit: String = sl.get("unit", "")
+	if unit == METRES:
+		return Formatters.format_length
+	var whole: bool = sl.step >= 1.0
+	return func(v: float) -> String: return (str(int(v)) if whole else Formatters.format_tenths(v)) + unit
 
 
 static func _slider(drawer: HudDrawer, sl: Dictionary, tool_name: String) -> void:
 	if sl.has("head"):
 		_head(drawer, sl.head)
-	var label := TranslationServer.translate(sl.label_key)
-	var unit: String = sl.get("unit", "")
-	var shown: Callable = Formatters.format_length if unit == LENGTH_UNIT else _in_unit.bind(unit, sl.step >= 1.0)
+	var label := _short(TranslationServer.translate(sl.label_key))
 	if sl.has("weather"):
 		var scale: float = sl.get("scale", 1.0)
 		var now: float = CityStore.query(&"landscape").weather[sl.weather] * scale
-		HudWidgets.range_row(drawer.options, label, sl.min, sl.max, sl.step, now, shown, func(v: float) -> void:
+		HudWidgets.range_row(drawer.options, label, sl.min, sl.max, sl.step, now, _shown(sl), func(v: float) -> void:
 			CityStore.dispatch(&"set_weather", [{sl.weather: v / scale}]))
 	else:
 		var now: float = drawer.param(tool_name, sl.key, sl.default)
-		HudWidgets.range_row(drawer.options, label, sl.min, sl.max, sl.step, now, shown, drawer.retool.bind(tool_name, sl.key))
+		HudWidgets.range_row(drawer.options, label, sl.min, sl.max, sl.step, now, _shown(sl), drawer.retool.bind(tool_name, sl.key))
 
 
 ## The map's biome and the actions on the whole map, under their heading.

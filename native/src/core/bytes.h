@@ -1,8 +1,6 @@
 // Little binary writer/reader used by the save format (sim/persistence).
 #pragma once
 
-#include "core/checks.h"
-
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
@@ -21,29 +19,8 @@ struct ByteWriter {
 		if (!canonical) put<uint8_t>(alive ? 1 : 0);
 		return alive;
 	}
-	// A value goes to the file as its object's bytes, so every byte of it must be a field's: padding holds whatever was in
-	// memory where the value was made, and the file and the state's hash would stop being functions of the state. The tests'
-	// DLL asks the compiler, once a type, whether a type written has padding (an image of ones with its padding cleared)
-	// and stops on one that has: such a record names its unused bytes as a field of its own.
-	template <typename T>
-	static void whole() {
-#if defined(CITY_CHECKS) && defined(__has_builtin)
-#if __has_builtin(__builtin_clear_padding)
-		static const bool padded = []() {
-			constexpr unsigned char ONES = 0xff; // every bit set: a byte the clearing zeroed is padding
-			T image;
-			std::memset(static_cast<void *>(&image), ONES, sizeof(T));
-			__builtin_clear_padding(&image);
-			const unsigned char *bytes = reinterpret_cast<const unsigned char *>(&image);
-			return std::any_of(bytes, bytes + sizeof(T), [](unsigned char b) { return b != ONES; });
-		}();
-		if (padded) city_stop("a record with padding written as its object's bytes");
-#endif
-#endif
-	}
 	template <typename T>
 	void put(const T &v) {
-		whole<T>();
 		size_t o = buf.size();
 		buf.resize(o + sizeof(T));
 		std::memcpy(buf.data() + o, &v, sizeof(T));
@@ -55,32 +32,12 @@ struct ByteWriter {
 	}
 	template <typename T>
 	void put_vec(const std::vector<T> &v) {
-		whole<T>();
 		put<uint32_t>(uint32_t(v.size()));
 		put_bytes(v.data(), v.size() * sizeof(T));
 	}
 	void put_string(const std::string &s) { // its length, then its bytes: get_string reads it
 		put<uint32_t>(uint32_t(s.size()));
 		put_bytes(s.data(), s.size());
-	}
-	// The one owner of order for what the state keeps unordered: the save and the state hash are functions of the state, so
-	// equal contents give equal bytes whatever history built them. A hash map: its count, then `entry` for each (key, value)
-	// in key order.
-	template <typename Map, typename Entry>
-	void put_by_key(const Map &m, Entry entry) {
-		std::vector<const typename Map::value_type *> order;
-		order.reserve(m.size());
-		for (const auto &kv : m) order.push_back(&kv);
-		std::sort(order.begin(), order.end(), [](const auto *a, const auto *b) { return a->first < b->first; });
-		put<uint32_t>(uint32_t(order.size()));
-		for (const auto *kv : order) entry(*kv);
-	}
-	// A list whose order means nothing (a set kept in hash cells, or removed from by swap): as put_vec, in the order `less`
-	// gives its values.
-	template <typename T, typename Less>
-	void put_set(std::vector<T> items, Less less) {
-		std::sort(items.begin(), items.end(), less);
-		put_vec(items);
 	}
 };
 

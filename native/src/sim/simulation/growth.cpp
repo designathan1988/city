@@ -5,7 +5,6 @@
 #include "core/seeded.h"
 #include "sim/buildings/b40/record.h"
 #include "sim/citygen/lot_gen.h"
-#include "sim/roads/geometry.h"
 #include "sim/state/city_state.h"
 
 #include <algorithm>
@@ -15,13 +14,12 @@
 namespace city {
 
 namespace {
-// two integer mixes: the civic pick's (Knuth's 2^32 over the golden ratio, xxHash's PRIME32_2, xorshifts of 15 and 13) and the age's
-// (the golden ratio, MurmurHash3's fmix32 multipliers, xorshifts of 13 and 16); a pick's chance in its low ten bits and its row in the
-// rest, out of a thousand; a decay span in tenths
+constexpr float OCCUPIED_SHARE = 0.8f;
 constexpr uint32_t CIVIC_MUL = 2654435761U, CIVIC_MIX = 2246822519U;
 constexpr uint32_t AGE_MIX = 0x9e3779b9U, AGE_MUL1 = 0x85ebca6bU, AGE_MUL2 = 0xc2b2ae35U;
 constexpr uint32_t CIVIC_CHANCE_BITS = 1023, CIVIC_PICK_SHIFT = 10, CIVIC_PICK_STEPS = 1000;
 constexpr double DECAY_TENTHS = 10;
+constexpr uint8_t ZONE_RES_LOW = 5, ZONE_RES_HIGH = 6, ZONE_IND_LOW = 7, ZONE_IND_HIGH = 8;
 constexpr uint32_t HASH_SHIFT_15 = 15, HASH_SHIFT_13 = 13, HASH_SHIFT_16 = 16;
 
 int biggest(const std::vector<Lot> &l) {
@@ -31,6 +29,9 @@ int biggest(const std::vector<Lot> &l) {
 	return int(b);
 }
 } // namespace
+
+int base_zone(int z) { return z == ZONE_RES_LOW || z == ZONE_RES_HIGH ? 1 : z == ZONE_IND_LOW || z == ZONE_IND_HIGH ? 2 : z; }
+int zone_density(int z) { return z == ZONE_RES_LOW || z == ZONE_IND_LOW ? 0 : z == ZONE_RES_HIGH || z == ZONE_IND_HIGH ? 2 : 1; }
 
 MapCell map_cell_of(const CityState &s, double x, double z) {
 	MapCell c;
@@ -42,8 +43,8 @@ MapCell map_cell_of(const CityState &s, double x, double z) {
 }
 
 int body_floors(const b40::Data &data, const Building &rec) {
-	const std::shared_ptr<const b40::Body> body_held = b40::record_body(data, rec);
-	const b40::Body &body = *body_held;
+	b40::Body body;
+	b40::record_body(data, rec, body);
 	int top = 0;
 	for (const b40::Volume &v : body.volumes) top = std::max(top, v.top());
 	return top;
@@ -56,7 +57,7 @@ int civic_for(const GrowthDef &g, int cell_id, int zone, bool is_biggest, float 
 	h *= CIVIC_MIX;
 	h ^= h >> HASH_SHIFT_13;
 	if (double(h & CIVIC_CHANCE_BITS) / (CIVIC_CHANCE_BITS + 1) > g.civic_chance) return FN_NONE;
-	if (zone < 0 || zone >= BASE_COUNT || g.civic_by_zone[zone].empty()) return FN_NONE;
+	if (zone < 0 || zone > 4 || g.civic_by_zone[zone].empty()) return FN_NONE;
 	const auto &list = g.civic_by_zone[zone];
 	int total = 0;
 	for (const auto &e : list) total += e.second;
@@ -77,7 +78,7 @@ bool lot_occupied(const CityState &s, const Lot &l) {
 	bool hit = false;
 	s.buildings.query(float(l.x) - r, float(l.z) - r, float(l.x) + r, float(l.z) + r, [&](int id) {
 		const Building &b = s.buildings.items[id];
-		float reach = (float(std::min(l.w, l.d)) / 2 + std::min(b.w, b.d) / 2) * s.catalog.growth.occupied_share;
+		float reach = (float(std::min(l.w, l.d)) / 2 + std::min(b.w, b.d) / 2) * OCCUPIED_SHARE;
 		if (std::hypot(b.x - float(l.x), b.z - float(l.z)) < reach) hit = true;
 	});
 	// A square stands over many lots, its middle far from theirs.
@@ -89,11 +90,18 @@ bool lot_occupied(const CityState &s, const Lot &l) {
 	return hit;
 }
 
-BodyLook look_of(const CityState &s, const Building &rec) { return *s.buildings.designs.made->look(s.buildings.designs, rec, s.catalog.tune); }
+BodyLook look_of(CityState &s, const Building &rec) {
+	const b40::BodyKey key = b40::body_key(rec);
+	auto it = s.buildings.looks.find(key);
+	if (it != s.buildings.looks.end()) return it->second;
+	b40::Body body;
+	b40::record_body(s.buildings.designs, rec, body);
+	return s.buildings.looks[key] = body_look(body, rec.fn);
+}
 
 namespace {
 // What stands within LOOK_REACH_M of the point, and how far.
-std::vector<NearLook> looks_near(const CityState &s, float x, float z) {
+std::vector<NearLook> looks_near(CityState &s, float x, float z) {
 	std::vector<int> ids;
 	s.buildings.query(x - LOOK_REACH_M, z - LOOK_REACH_M, x + LOOK_REACH_M, z + LOOK_REACH_M, [&](int id) { ids.push_back(id); });
 	std::vector<NearLook> near;
@@ -116,26 +124,26 @@ Candidate draw_candidate(const CityState &s, const Building &lot, uint32_t seed)
 	Building rec = lot;
 	rec.seed = seed;
 	rec.style = uint16_t(seed & BUILDING_AUTO_STYLE_MASK);
-	const std::shared_ptr<const b40::Body> body_held = b40::record_body(s.buildings.designs, rec);
-	const b40::Body &body = *body_held;
+	b40::Body body;
+	b40::record_body(s.buildings.designs, rec, body);
 	Candidate c;
 	c.seed = seed;
-	c.look = body_look(s.catalog.tune, body, rec.fn);
+	c.look = body_look(body, rec.fn);
 	for (const b40::Volume &v : body.volumes) c.storeys = std::max(c.storeys, v.top());
 	return c;
 }
 
 // The lot's body: the first when nothing stands near to look like, else the candidate least like its neighbours. A candidate's seed is
 // the lot's own, then hashes of it, so a city is the same every time.
-Candidate best_candidate(const CityState &s, const Building &lot) {
+Candidate best_candidate(CityState &s, const Building &lot) {
 	const std::vector<NearLook> near = looks_near(s, lot.x, lot.z);
 	if (near.empty()) return draw_candidate(s, lot, lot.seed);
 	std::array<Candidate, LOOK_CANDIDATES> c;
 	s.jobs->parallel_for(c.size(), [&](size_t k) { c[k] = draw_candidate(s, lot, k == 0 ? lot.seed : hash_combine(lot.seed, uint32_t(k))); });
 	size_t best = 0;
-	float score = unlikeness(s.catalog.tune, c[0].look, near);
+	float score = unlikeness(c[0].look, near);
 	for (size_t k = 1; k < c.size(); k++) {
-		const float u = unlikeness(s.catalog.tune, c[k].look, near);
+		const float u = unlikeness(c[k].look, near);
 		if (u > score) {
 			score = u;
 			best = k;
@@ -145,65 +153,11 @@ Candidate best_candidate(const CityState &s, const Building &lot) {
 }
 } // namespace
 
-namespace {
-// Whether a point lies on a street: within corner_margin_m of the paving of a road on the ground.
-bool on_street(const CityState &s, double x, double z) {
-	const double margin = s.catalog.tune.lot_corner_margin_m;
-	bool hit = false;
-	s.roads.for_segments_near(x - margin, z - margin, x + margin, z + margin, [&](int sg) {
-		const RoadSegment &g = s.roads.segs[size_t(sg)];
-		if (hit || structure_of(g.flags) != Structure::GROUND) return;
-		double t = 0, dist = 0;
-		closest_t(g.q, x, z, t, dist);
-		hit = dist < s.roads.profile_of(sg).half() + margin;
-	});
-	return hit;
-}
-} // namespace
-
-// The outline of the player's lot a lot of the growth stands for (lot_cache.cpp with_player_lots gives it the lot's stand): its
-// corners in the world, or none for a lot the streets proposed.
-std::vector<V2> player_ring(const CityState &s, const Lot &l) {
-	std::vector<V2> ring;
-	for (int i : s.lot_book.near(l.x, l.z, l.x, l.z)) {
-		const LotStand &st = s.lot_book.stand(i);
-		const PlayerLot &p = s.lot_book.all()[size_t(i)];
-		if (p.zone == 0 || st.x != l.x || st.z != l.z || st.rot != l.rot) continue;
-		for (const XZ &c : p.corners) ring.push_back(V2(float(c.x), float(c.z)));
-		break;
-	}
-	return ring;
-}
-
-b40::SiteRef site_of(const CityState &s, const Building &b, const Lot &l) {
-	const b40::LotFrame f = b40::lot_frame(b);
-	const b40::LotSlopeShape &K = s.buildings.designs.shapes.slope;
-	return b40::read_site(f.o, f.e0, f.e1, b.w, b.d, [&](float x, float z) { return s.terrain.height_at(x, z); }, K.street_threshold,
-			player_ring(s, l), K.front_points);
-}
-
-uint8_t corner_of(const CityState &s, const Lot &l) {
-	const Tuning &tn = s.catalog.tune;
-	Building rec;
-	rec.x = float(l.x); rec.z = float(l.z); rec.w = float(l.w); rec.d = float(l.d); rec.rot = float(l.rot);
-	const b40::LotFrame f = b40::lot_frame(rec);
-	for (const b40::LotCorner side : { b40::CORNER_LEFT, b40::CORNER_RIGHT }) {
-		const double along = (side == b40::CORNER_LEFT ? -1 : 1) * (l.w / 2 + tn.lot_corner_beyond_m);
-		bool both = true;
-		for (const double k : { tn.lot_corner_near, tn.lot_corner_far }) {
-			const V2 p = f.at(float(along), float(l.d * k));
-			both = both && on_street(s, p.x, p.y);
-		}
-		if (both) return side;
-	}
-	return b40::CORNER_NONE;
-}
-
-Building record_for(const CityState &s, const std::vector<Lot> &cell_lots, int i) {
+Building record_for(CityState &s, const std::vector<Lot> &cell_lots, int i) {
 	const Lot &l = cell_lots[i];
 	const GrowthDef &g = s.catalog.growth;
 	MapCell cell = map_cell_of(s, l.x, l.z);
-	int fn = civic_for(g, cell.id, s.catalog.zone(l.zone).base, biggest(cell_lots) == i, float(l.w * l.d));
+	int fn = civic_for(g, cell.id, base_zone(l.zone), biggest(cell_lots) == i, float(l.w * l.d));
 	if (fn == FN_SQUARE) fn = FN_NONE; // the squares are the plan's (sim/citygen/squares.h)
 	int tallest = -1;
 	const float reach = g.organic_reach_m;
@@ -218,13 +172,12 @@ Building record_for(const CityState &s, const std::vector<Lot> &cell_lots, int i
 	b.seed = l.seed;
 	b.style = uint16_t(l.seed & BUILDING_AUTO_STYLE_MASK);
 	b.profile = uint16_t(l.profile);
-	b.corner = corner_of(s, l); // before the candidates: a corner's plan is its own
-	b.site = site_of(s, b, l); // and the ground and outline each candidate is made on (b40/lot_site.h)
 	b.floors = uint16_t(fn == FN_NONE && tallest >= 0 ? std::max(1, tallest) + g.organic_extra_floors : 0);
 	const Candidate kept = fn == FN_NONE ? best_candidate(s, b) : draw_candidate(s, b, b.seed);
 	b.seed = kept.seed;
 	b.style = uint16_t(kept.seed & BUILDING_AUTO_STYLE_MASK);
 	b.floors = uint16_t(kept.storeys); // the body is the height: a record never says another
+	s.buildings.looks[b40::body_key(b)] = kept.look;
 	return b;
 }
 

@@ -1,6 +1,6 @@
 // Building chunk streaming: the near (+ parts) and mid levels are built lazily, nearest first, when the camera comes
-// within their reach (near end / mid end, plus a pad) and freed beyond 1.25x it. Every dirty chunk marks its superchunk
-// (core/grid.h SUPERCHUNK), whose far/HLOD mesh is built within building_far_end_m (the city never vanishes when zooming out). See
+// within their reach (near end / mid end, plus a pad) and freed beyond 1.25x it. Every dirty chunk marks its 512 m
+// superchunk, whose far/HLOD mesh is built within building_far_end_m (the city never vanishes when zooming out). See
 // building_renderer.h for the switch between a chunk's own detail and the far mesh.
 #include "render/buildings/building_renderer.h"
 
@@ -20,9 +20,9 @@ using namespace godot;
 namespace city {
 
 namespace {
-// A chunk's box is dropped DROP_K of its height below the ground (its plinths and walls go down); a part band's bits.
 constexpr float HALF = 0.5f, DROP_K = 1.25f;
 constexpr int BAND_BIT_NEAR = 2, BAND_BIT_MID = 4;
+constexpr int CHUNKS_PER_SUPER = int(SUPERCHUNK / CHUNK); // per axis
 
 int64_t super_of(const Vector3 &centre) { return chunk_of(centre.x, centre.z, SUPERCHUNK); }
 
@@ -51,27 +51,29 @@ void each_chunk_of(Map &chunks, int64_t super_key, F &&fn) {
 
 bool BuildingRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	scenario_ = ctx.scenario;
-	bodies_.set_budget(size_t(ctx.catalog->tune.render_rooms_cache_mb * BYTES_PER_MIB));
 	signatures_.init(ctx.scenario, LAYER_BUILDING_SHELLS);
 	material_ = ctx.material("building", errors);
+	material_fade_ = ctx.material("building_fade", errors);
 	material_glass_ = ctx.material("building_glass", errors);
+	material_glass_fade_ = ctx.material("building_glass_fade", errors);
+	material_parts_fade_ = ctx.material("building_parts_fade", errors);
 	material_sheer_ = ctx.material("building_sheer", errors);
 	material_card_ = ctx.material("building_card", errors);
 	material_props_ = ctx.material("building_props", errors);
+	material_cast_ = ctx.material("shadow_caster", errors);
 	material_far_ = ctx.material("building_far", errors);
 	material_lawn_ = ctx.material("verge", errors);
 	material_wash_ = ctx.material("building_wash", errors);
 	material_parts_ = ctx.material("building_parts", errors);
-	const Dictionary t = ctx.table("building_look", errors), bay = ctx.table("bay_props", errors), furniture = ctx.table("furniture", errors);
-	if (!errors.is_empty() || !look_.load(t, bay, furniture, ctx.table("camera", errors), errors) || !wear_.load(look_.shapes.wear, ctx.table("materials", errors), errors)) return false;
-	bake_mats_ = LevelMaterials{ material_, material_glass_, material_sheer_, material_card_, material_lawn_, material_wash_, material_far_, ctx.material("shadow_caster", errors) }; // the caster: no vertex() of its own
-	for (int k = 0; k < b40::BAY_PROPS; k++) prop_mesh_[size_t(k)] = look_.bay.models[size_t(k)].bake(material_props_, false);
-	RenderingServer::get_singleton()->material_set_param(material_props_, "ac_case", Vector2(look_.bay.ac_case.x, look_.bay.ac_case.y)); // its front's width and height
+	Dictionary t = ctx.table("buildings", errors);
+	if (!errors.is_empty()) return false;
+	if (!look_.load(t, errors) || !look_.bay.load(ctx.tables.get("bay_props", Dictionary()), errors) || !look_.interior.load(ctx.table("furniture", errors), errors)) return false;
+	for (int k = 0; k < b40::BAY_PROPS; k++) prop_mesh_[size_t(k)] = look_.bay.models[size_t(k)].commit();
 	MeshBuilder unit;
 	unit.box(Vector3(-HALF, -HALF, -HALF), Vector3(HALF, HALF, HALF), Color(1, 1, 1, 1), Vector2(), true);
-	unit_box_ = unit.bake(material_parts_, false);
-	unit_bay_ = b40::bay_mesh().bake(material_, false);
-	unit_flag_ = b40::cloth_mesh().bake(material_parts_, false);
+	unit_box_ = unit.commit();
+	unit_bay_ = b40::bay_mesh();
+	unit_flag_ = b40::cloth_mesh();
 	return true;
 }
 
@@ -88,6 +90,10 @@ void BuildingRenderer::reset() {
 	baking_.clear();
 	super_baking_.clear();
 	waiting_ = super_waiting_ = 0;
+	for (RID &w : fade_warmers_) {
+		if (w.is_valid()) RenderingServer::get_singleton()->free_rid(w);
+		w = RID();
+	}
 	for (auto &kv : chunks_) {
 		drop(kv.second, LEVEL_NEAR);
 		drop(kv.second, LEVEL_MID);
@@ -102,7 +108,8 @@ void BuildingRenderer::reset() {
 // A dirty chunk keeps its meshes on screen until the new ones land: its built levels turn stale and its version moves
 // on, so update_view remeshes it and a job already in flight (it may have read the map before the change) still lands
 // but leaves the chunk stale (commit_one).
-void BuildingRenderer::rebuild_chunk(const CityState &, int64_t key) {
+void BuildingRenderer::rebuild_chunk(const CityState &s, int64_t key) {
+	(void)s;
 	auto [found, fresh] = chunks_.try_emplace(key);
 	Chunk &ch = found->second;
 	ch.centre = Vector3((float(key_x(key)) + HALF) * CHUNK, 0, (float(key_y(key)) + HALF) * CHUNK);
@@ -175,7 +182,8 @@ void BuildingRenderer::drop_bands(Chunk &ch) {
 	ch.flags.free();
 }
 
-void BuildingRenderer::submit(const CityState &s, int64_t key, bool, bool near, bool mid, float priority) {
+void BuildingRenderer::submit(const CityState &s, int64_t key, bool far, bool near, bool mid, float priority) {
+	(void)far;
 	auto ch = chunks_.find(key);
 	if (!s.jobs || ch == chunks_.end()) return;
 	const uint32_t version = ch->second.version;
@@ -190,7 +198,7 @@ void BuildingRenderer::submit(const CityState &s, int64_t key, bool, bool near, 
 	s.jobs->submit(job, priority, [this, &s, key, job, seq, version, near, mid, priority]() {
 		Inputs in;
 		{
-			MapRead map(s); // only while copying: the build reads the copy
+			std::shared_lock<std::shared_mutex> map(s.map_mutex); // only while copying: the build reads the copy
 			in = gather(s, &key, 1);
 		}
 		Built b = build_cpu(in, key, near, mid);
@@ -223,7 +231,7 @@ void BuildingRenderer::submit_super(const CityState &s, int64_t key, float prior
 			for (int i = 0; i < CHUNKS_PER_SUPER; i++) chunks[size_t(j * CHUNKS_PER_SUPER + i)] = cell_key(sx + i, sz + j);
 		Inputs in;
 		{
-			MapRead map(s); // only while copying: the build reads the copy
+			std::shared_lock<std::shared_mutex> map(s.map_mutex); // only while copying: the build reads the copy
 			in = gather(s, chunks.data(), int(chunks.size()));
 		}
 		size_t kept = 0; // the far level has no lots: a building in pieces is not in it at all (kept in order, each moved once)
@@ -306,7 +314,6 @@ void BuildingRenderer::update_view(const Vector3 &cam, BuildBudget &budget) {
 	const float eye = std::max(0.f, cam.y - state_->terrain.height_at(cam.x, cam.z));
 	const float far_reach = far_end_ + eye * look_.far_per_eye; // from up there the ground in view runs on past the data's end
 	const double now = now_s();
-	fade_clock_.tick(now, look_.level_fade_s);
 	std::vector<Want> want, want_super;
 	int waiting = 0; // far meshes to redo, each on its clock
 	for (auto &[key, sp] : supers_) {
@@ -325,7 +332,6 @@ void BuildingRenderer::update_view(const Vector3 &cam, BuildBudget &budget) {
 			}
 		}
 	}
-	wear_on(state_->clock.minutes.load());
 	need_.want = int(want.size() + want_super.size()) + waiting;
 	need_.unmet = need_.want;
 	std::sort(want.begin(), want.end(), [](const Want &a, const Want &b) { return a.d < b.d; });

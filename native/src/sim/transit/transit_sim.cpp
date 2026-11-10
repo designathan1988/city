@@ -49,7 +49,6 @@ int spawn_bus(CityState &s, const TransitLine &l, Bus &b) {
 	const int colour = int(std::find(colours.begin(), colours.end(), l.colour) - colours.begin());
 	const int id = traffic::new_vehicle(s, VehicleType::BUS, uint8_t(LINE_PAINT + (colour < int(colours.size()) ? colour : 0)));
 	Vehicle &v = t.vehicles[size_t(id)];
-	traffic::assign_errand(s, v, id); // its riders, drawn at its birth
 	v.ds = lane.ds;
 	v.lane = lane.lane;
 	v.s = start;

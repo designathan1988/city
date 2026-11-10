@@ -3,6 +3,7 @@
 class_name LabDoctor
 extends RefCounted
 
+const PERCENT := 100.0
 
 
 static func draw(body: Control, run: DoctorRun) -> void:
@@ -38,7 +39,7 @@ static func _stages(body: Control, run: DoctorRun) -> void:
 	HudWidgets.label(body, &"TitleLabel", body.tr("lab.stages").to_upper())
 	for f: Dictionary in run.report.findings:
 		var row := HudWidgets.hbox(body, &"Pad")
-		var text := body.tr("lab.stage.row") % [body.tr("lab.stage." + f.id), _ms(f.ms), _ms(f.tail_ms), int(f.share * Units.PERCENT), body.tr("lab.severity." + f.severity)]
+		var text := body.tr("lab.stage.row") % [body.tr("lab.stage." + f.id), _ms(f.ms), _ms(f.tail_ms), int(f.share * PERCENT), body.tr("lab.severity." + f.severity)]
 		var name := HudWidgets.label(row, &"BodyLabel", text)
 		name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -70,5 +71,5 @@ static func _test(row: Control, run: DoctorRun, key: String) -> void:
 static func _result(body: Control, c: Dictionary) -> void:
 	var line := body.tr("lab.ab") % [_ms(c.gpu_before), _ms(c.gpu_after), _ms(c.noise_gpu), _ms(c.cpu_before), _ms(c.cpu_after), _ms(c.noise_cpu)]
 	if not c.real:
-		line = "%s · %s" % [line, body.tr("lab.ab.noise")]
+		line += " · " + body.tr("lab.ab.noise")
 	HudWidgets.label(body, &"MetaLabel", line).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

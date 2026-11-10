@@ -34,9 +34,7 @@
  },
  "sizes": [
   "town",
-  "metropolis",
-  "sao_paulo"
+  "metropolis"
  ],
- "seed_max": 9999,
- "languages": ["en", "pt_BR"]
+ "seed_max": 9999
 }

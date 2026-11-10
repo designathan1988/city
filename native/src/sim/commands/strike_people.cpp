@@ -12,21 +12,21 @@
 namespace city {
 
 namespace {
-constexpr uint32_t SALT_DEATH = 0x64656174U; // a stream's salt: the word it names, in ASCII
-constexpr uint32_t SALT_EAR = 0x65617273U; // a stream's salt: the word it names, in ASCII
-constexpr uint32_t SALT_LIMBS = 0x6c696d62U; // a stream's salt: the word it names, in ASCII
-constexpr uint32_t SALT_LIE = 0x6c696573U; // a stream's salt: the word it names, in ASCII
-constexpr uint32_t SALT_SEVER = 0x73657665U; // a stream's salt: the word it names, in ASCII
-constexpr uint32_t SALT_MAIM = 0x6d61696dU; // a stream's salt: the word it names, in ASCII
-constexpr uint32_t SALT_BODY = 0x626f6479U; // a stream's salt: the word it names, in ASCII
+constexpr uint32_t SALT_DEATH = 0x64656174U;
+constexpr uint32_t SALT_EAR = 0x65617273U;
+constexpr uint32_t SALT_LIMBS = 0x6c696d62U;
+constexpr uint32_t SALT_LIE = 0x6c696573U;
+constexpr uint32_t SALT_SEVER = 0x73657665U;
+constexpr uint32_t SALT_MAIM = 0x6d61696dU;
+constexpr uint32_t SALT_BODY = 0x626f6479U;
 constexpr int LIMB_KINDS = 5; // head, two arms, two legs
 constexpr float THROW_FLOOR = 0.3f; // the least share of the throw a body at the edge of the blast gets: it still moves a little
 constexpr float DEATH_REACH_SHARE = 1.1f; // vehicles are blown within this share of the range of their limit
 constexpr float FAR_DIE_HEAD = 0.25f; // a killed body further out loses its head with this chance
 constexpr uint32_t TORN_BIT = 1;
 constexpr float TORN_NEAR_SHARE = 0.6f; // the drivers torn apart sit within this share of the range that blows their car
-constexpr int CHANCE_BITS = 8; // a chance drawn as a byte of the hash
-constexpr float BYTE_RANGE = 256.f; // ... over the byte's 256 values
+constexpr int CHANCE_BITS = 8;
+constexpr float BYTE_RANGE = 256.f;
 
 float heading_of(const Pose &p) { return std::atan2(p.fz, p.fx); }
 
@@ -48,7 +48,7 @@ uint32_t severed_limbs(const Blow &b, uint32_t who, bool torn) {
 	return mask;
 }
 
-DamageEvent casualty(const Blow &b, int id, const Pose &at, uint32_t look, int age, float pressure, uint32_t flags, float lie) {
+DamageEvent casualty(const Blow &b, int id, const Pose &at, uint32_t look, float pressure, uint32_t flags, float lie) {
 	DamageEvent e;
 	e.kind = DamageEvent::CASUALTY;
 	e.id = id;
@@ -58,7 +58,7 @@ DamageEvent casualty(const Blow &b, int id, const Pose &at, uint32_t look, int a
 	e.d = std::min(1.f, std::max(THROW_FLOOR, pressure / b.p.torn_kpa));
 	e.dx = lie;
 	e.u = look;
-	e.v = flags | cas_age(age);
+	e.v = flags;
 	return e;
 }
 
@@ -69,12 +69,11 @@ void harm_walker(Blow &b, int id) {
 	const uint32_t who = uint32_t(id);
 	const Pose at = w.cur;
 	const uint32_t look = w.look;
-	const int age = int(w.age);
 	if (b.roll(SALT_DEATH, who) < blast::lethality(b.p, p)) {
 		const bool torn = p >= b.p.torn_kpa;
 		const uint32_t lost = severed_limbs(b, who, torn);
 		const uint32_t flags = (torn ? CAS_TORN : CAS_DEAD) | (lost << CAS_SEVERED_SHIFT) | (lost << CAS_LOST_SHIFT) | CAS_CHARRED;
-		b.emit(casualty(b, id, at, look, age, p, flags, 0.f));
+		b.emit(casualty(b, id, at, look, p, flags, 0.f));
 		traffic::remove_pedestrian(b.s, id);
 		return;
 	}
@@ -86,12 +85,12 @@ void harm_walker(Blow &b, int id) {
 			flags |= (lost << CAS_SEVERED_SHIFT) | (lost << CAS_LOST_SHIFT);
 			if ((lost & (limb_bit(3) | limb_bit(4))) != 0) { // a leg gone: down for good, crawling, and bleeding to death
 				flags |= CAS_CRAWL;
-				b.emit(casualty(b, id, at, look, age, p, flags, 0.f));
+				b.emit(casualty(b, id, at, look, p, flags, 0.f));
 				traffic::remove_pedestrian(b.s, id);
 				return;
 			}
 		}
-		b.emit(casualty(b, id, at, look, age, p, flags, lie));
+		b.emit(casualty(b, id, at, look, p, flags, lie));
 		traffic::down_pedestrian(b.s, id, lie);
 	}
 	traffic::frighten_pedestrian(b.s, id, b.p.panic_s, b.x, b.z, true);
@@ -129,7 +128,7 @@ void strike_traffic(Blow &b) {
 		b.emit(e);
 		const float p = b.pressure(d);
 		const bool torn = b.roll(SALT_BODY, uint32_t(id)) < 0.5f && d < reach * TORN_NEAR_SHARE / DEATH_REACH_SHARE;
-		b.emit(casualty(b, VEHICLE_BODY_ID_BASE + id, v.cur, 0, -1, p, (torn ? CAS_TORN : CAS_DEAD) | CAS_CHARRED, 0.f));
+		b.emit(casualty(b, VEHICLE_BODY_ID_BASE + id, v.cur, 0, p, (torn ? CAS_TORN : CAS_DEAD) | CAS_CHARRED, 0.f));
 		traffic::despawn_vehicle(b.s, id, false);
 	}
 }

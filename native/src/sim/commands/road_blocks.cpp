@@ -13,7 +13,7 @@ constexpr double MEET_PX = 4; // a line's end takes a junction or road this near
 std::vector<BlockLine> block_lines(double x, double z, const BlockGrid &g) {
 	const double step = std::round(g.block_m), w = g.cols * step, h = g.rows * step;
 	const double c = std::cos(g.angle), s = std::sin(g.angle);
-	const auto at = [&](double u, double v) { return XZ{ x + u * c - v * s, z + u * s + v * c }; };
+	const auto at = [&](double u, double v) { return StrokePoint{ x + u * c - v * s, z + u * s + v * c }; };
 	std::vector<BlockLine> out;
 	for (int j = 0; j <= g.rows; j++) out.push_back({ at(-w / 2, -h / 2 + j * step), at(w / 2, -h / 2 + j * step) });
 	for (int i = 0; i <= g.cols; i++) out.push_back({ at(-w / 2 + i * step, -h / 2), at(-w / 2 + i * step, h / 2) });

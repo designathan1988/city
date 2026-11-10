@@ -4,10 +4,12 @@
 class_name HudActions
 extends Node
 
+const TOWN_MAP := 0
+const MS_PER_S := 1000.0
 ## What asks first (Roadcraft window.confirm): the map on screen is saved, then the new one takes its place.
 const CONFIRM := {"new_empty": "confirm.newMap", "new_city": "confirm.newWorld", "new_large": "confirm.newLargeWorld"}
 
-var _failed_at := -INF # when a failed save last said so
+@onready var _failed_at := -INF # when a failed save last said so
 
 ## The HUD this node is a child of.
 func _hud() -> RoadcraftHud:
@@ -27,7 +29,7 @@ func menu(action: String) -> void:
 		"save_map":
 			_refused(CityStore.saves.export_map())
 		"load_last":
-			_loaded(await CityStore.saves.load_last())
+			_loaded(CityStore.saves.load_last())
 		"open":
 			_hud().open_popover("files")
 		"open_file":
@@ -42,19 +44,18 @@ func menu(action: String) -> void:
 
 ## The confirmed new map: what the player had is written first, as the question says.
 func new_city(action: String) -> void:
-	var map := _large_map() if action == "new_large" else DataTables.map_index("town")
-	open_new(map, randi_range(1, int(DataTables.game("start").seed_max)), action != "new_empty")
+	var map := _large_map() if action == "new_large" else TOWN_MAP
+	_open_new(map, randi_range(1, int(DataTables.game("start").seed_max)), action != "new_empty")
 	if action == "new_empty":
 		_hud().flash(tr("hint.newMap"), true)
 
 
 ## The city the title screen's form asks for.
 func new_city_at(map: int, seed: int) -> void:
-	open_new(map, seed, true)
+	_open_new(map, seed, true)
 
 
-## A new city on screen, as the start screen's form opens one: the city standing is saved first.
-func open_new(map: int, seed: int, with_city: bool) -> void:
+func _open_new(map: int, seed: int, with_city: bool) -> void:
 	CityStore.saves.save_on_close()
 	_hud().drawer.close()
 	CityStore.new_map(map, seed, with_city)
@@ -74,7 +75,7 @@ func _large_map() -> int:
 	for id: String in DataTables.ui("drawers").popovers.menu.large_maps:
 		if map_index(id) >= 0:
 			return map_index(id)
-	return DataTables.map_index("town")
+	return TOWN_MAP
 
 
 ## Open a file from anywhere: the system's own dialog.
@@ -93,7 +94,7 @@ func _pick_file() -> void:
 
 ## A city file: opened, or nothing changed and the player told so.
 func open_file(file: String) -> void:
-	var r: Dictionary = await CityStore.saves.open_file(file)
+	var r := CityStore.saves.open_file(file)
 	_hud().drawer.close()
 	_hud().flash(tr("hint.opened") if r.get("ok", false) else tr("hint.openFailed"), r.get("ok", false))
 
@@ -111,7 +112,7 @@ func show_impossible() -> void:
 
 
 func load_slot(slot: String) -> void:
-	_loaded(await CityStore.saves.load_game(slot))
+	_loaded(CityStore.saves.load_game(slot))
 
 
 func _loaded(r: Dictionary) -> void:
@@ -130,7 +131,7 @@ func _on_saved(_slot: String, r: Dictionary) -> void:
 	if r.get("ok", false):
 		_hud().flash(tr("save.auto" if r.get("auto", false) else "save.done"), true)
 		return
-	var now := Time.get_ticks_msec() / Units.MS_PER_S
+	var now := Time.get_ticks_msec() / MS_PER_S
 	if r.get("auto", false) and now - _failed_at < DataTables.game("saves").failed_hint_s:
 		return
 	_failed_at = now
@@ -141,4 +142,4 @@ func _on_saved(_slot: String, r: Dictionary) -> void:
 func history(action: String) -> void:
 	var label: String = CityStore.snapshot.get("undo_label" if action == "undo" else "redo_label", "")
 	if CityStore.dispatch(StringName(action)):
-		_hud().flash("%s · %s" % [tr("v2.do." + action), tr(label)], true)
+		_hud().flash(tr("v2.do." + action) + " · " + tr(label), true)

@@ -2,7 +2,6 @@
 // stroke is one undo step) and a building drawn as a lot rectangle (Roadcraft lotEdit.ts lot "rect", the Build
 // drawer's Draw tab) with the function chosen in the strip: civic buildings, parks and squares.
 #include "sim/commands/commands.h"
-#include "sim/commands/nature_commands.h"
 #include "sim/commands/edit_journal.h"
 #include "sim/commands/road_edit.h"
 
@@ -21,7 +20,7 @@ namespace city {
 namespace {
 constexpr int LOT_SAMPLES = 5; // lot rectangle samples per side tested against the road surfaces
 constexpr double FACE_REACH_M = 80; // a drawn lot faces the nearest road this close
-constexpr uint32_t LOT_SALT = 0x6c6f7421U; // a stream's salt: the word it names, in ASCII
+constexpr uint32_t LOT_SALT = 0x6c6f7421U;
 constexpr double SEED_GRID_M = 4;
 constexpr double HALF = 0.5; // the drawn lot's seed comes from its corner rounded to this grid
 } // namespace
@@ -33,7 +32,6 @@ void landform_rock(CityState &s, double x, double z, double radius, BrushMode mo
 	if (mode < BrushMode::MESA || mode > BrushMode::SUGARLOAF || i >= def.landform_rock.size()) return;
 	PaintDab rock;
 	rock.x = float(x); rock.z = float(z); rock.radius = float(radius) * def.rock_reach; rock.strength = 1.f; rock.kind = def.landform_rock[i];
-	rock.hardness = 1.f - def.rock_rim; // GroundPaint::dab's rim is 1 - hardness: the rock whole to its cliff's foot
 	paint_dab(s, rock);
 }
 
@@ -186,7 +184,8 @@ EditResult edit_building(CityState &s, int id, int fn, int floors) {
 	}
 	if (floors != b.floors && floors > 0) {
 		// Another height is the body's: its tallest block grows or shrinks by the difference.
-		b40::Body body = *b40::record_body(s.buildings.designs, b); // a copy: the new height becomes a version of its own
+		b40::Body body;
+		b40::record_body(s.buildings.designs, b, body);
 		int tallest = -1;
 		for (size_t i = 0; i < body.volumes.size(); i++)
 			if (tallest < 0 || body.volumes[i].top() > body.volumes[size_t(tallest)].top()) tallest = int(i);

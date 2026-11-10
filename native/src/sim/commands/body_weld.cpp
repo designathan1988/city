@@ -1,6 +1,5 @@
 // Two buildings made one (model_ops.h): the blocks of the one absorbed go over to the other's lot frame as they stand, each with the
 // walls and roof it had. A block at another bearing keeps its plan as an outline; parts keep their boxes, turned by quarters.
-#include "core/math.h"
 #include "sim/buildings/b40/plan_area.h"
 #include "sim/commands/model_ops.h"
 
@@ -12,14 +11,14 @@ namespace city {
 using namespace b40;
 
 namespace {
-constexpr float QUARTER_RAD = PI_F / 2, SAME_BEARING_RAD = 1e-3f; // a quarter turn; two bearings this near are one
+constexpr float QUARTER_RAD = 1.5707963f, SAME_BEARING_RAD = 1e-3f;
 constexpr int SIDES = 4;
 
 struct Move {
 	const LotFrame &from, &to;
-	V2 at(float x, float y) const {
+	Point2 at(float x, float y) const {
 		V2 rel = from.at(x, y) - to.o;
-		return V2{ rel.x * to.e0.x + rel.y * to.e0.y, rel.x * to.e1.x + rel.y * to.e1.y };
+		return Point2{ rel.x * to.e0.x + rel.y * to.e0.y, rel.x * to.e1.x + rel.y * to.e1.y };
 	}
 };
 
@@ -39,7 +38,7 @@ struct PaintMap {
 void move_plan(Volume &v, const Move &m, bool same_bearing) {
 	Ring ring = ring_of(v);
 	float x0 = FAR_AWAY, y0 = FAR_AWAY, x1 = -FAR_AWAY, y1 = -FAR_AWAY;
-	for (V2 &p : ring) {
+	for (Point2 &p : ring) {
 		p = m.at(p.x, p.y);
 		x0 = std::min(x0, p.x);
 		y0 = std::min(y0, p.y);
@@ -52,7 +51,7 @@ void move_plan(Volume &v, const Move &m, bool same_bearing) {
 	v.d = y1 - y0;
 	if (same_bearing) return;
 	v.outline.clear();
-	for (const V2 &p : ring) v.outline.push_back(V2{ (p.x - x0) / v.w, (p.y - y0) / v.d });
+	for (const Point2 &p : ring) v.outline.push_back(Point2{ (p.x - x0) / v.w, (p.y - y0) / v.d });
 }
 } // namespace
 
@@ -65,7 +64,7 @@ void weld_body(Body &into, const LotFrame &at, const Body &other, const LotFrame
 	for (Volume v : other.volumes) {
 		const int wall = v.wall >= 0 ? v.wall : other.wall, roof = v.roof_paint >= 0 ? v.roof_paint : other.roof;
 		for (RoofPart &p : v.gear) {
-			V2 q = move.at(p.x, p.y);
+			Point2 q = move.at(p.x, p.y);
 			p.x = q.x;
 			p.y = q.y;
 			p.turn += turn;
@@ -79,7 +78,7 @@ void weld_body(Body &into, const LotFrame &at, const Body &other, const LotFrame
 		into.volumes.push_back(std::move(v));
 	}
 	for (LotElement e : other.elements) {
-		V2 q = move.at(e.x, e.y);
+		Point2 q = move.at(e.x, e.y);
 		e.x = q.x;
 		e.y = q.y;
 		e.paint = paints.of(e.paint);
@@ -88,7 +87,7 @@ void weld_body(Body &into, const LotFrame &at, const Body &other, const LotFrame
 		into.elements.push_back(e);
 	}
 	for (Core c : other.cores) {
-		V2 q = move.at(c.x, c.y);
+		Point2 q = move.at(c.x, c.y);
 		c.x = q.x;
 		c.y = q.y;
 		into.cores.push_back(c);

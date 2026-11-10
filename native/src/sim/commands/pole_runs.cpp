@@ -52,7 +52,7 @@ Snap snap_end(const CityState &s, const RouteGraph &g, double x, double z, doubl
 }
 
 // Indices Ramer-Douglas-Peucker keeps at `tolerance`.
-std::vector<size_t> corners(const std::vector<XZ> &p, double tolerance) {
+std::vector<size_t> corners(const std::vector<RoutePoint> &p, double tolerance) {
 	std::vector<uint8_t> keep(p.size(), 0);
 	keep.front() = keep.back() = 1;
 	std::vector<std::pair<size_t, size_t>> stack{ { 0, p.size() - 1 } };
@@ -81,9 +81,9 @@ std::vector<size_t> corners(const std::vector<XZ> &p, double tolerance) {
 }
 
 struct Route {
-	std::vector<XZ> path;
+	std::vector<RoutePoint> path;
 	std::vector<double> cum;
-	XZ at(double s) const {
+	RoutePoint at(double s) const {
 		size_t i = 1;
 		while (i + 1 < cum.size() && cum[i] < s) i++;
 		const double s0 = cum[i - 1], s1 = cum[i], t = s1 > s0 ? (s - s0) / (s1 - s0) : 0;
@@ -92,7 +92,7 @@ struct Route {
 };
 
 // Stands clear of a landing and on a footway.
-bool clear_place(const CityState &s, const XZ &p) {
+bool clear_place(const CityState &s, const RoutePoint &p) {
 	const PoleDef &d = s.catalog.furniture.poles;
 	const FootwayHit h = footway_at(s.roads, p.x, p.z, s.catalog.furniture.items.stand_reach_m);
 	return h.ok && !on_landing(s.roads, h, s.catalog.furniture.footprint[int(FurnitureKind::POLE)].x_m * 0.5f, d.landing_clear_m);
@@ -195,7 +195,7 @@ PoleRunPlan plan_pole_run(const CityState &s, double ax, double az, double bx, d
 	const std::vector<double> kept = stations(s, r);
 	for (size_t i = 0; i < kept.size(); i++) {
 		const bool first = i == 0, last = i + 1 == kept.size();
-		const XZ p = first ? XZ{ from.x, from.z } : last ? XZ{ to.x, to.z } : r.at(kept[i]);
+		const RoutePoint p = first ? RoutePoint{ from.x, from.z } : last ? RoutePoint{ to.x, to.z } : r.at(kept[i]);
 		const int existing = first && from.pole >= 0 ? from.pole : last && to.pole >= 0 ? to.pole : s.street.pole_near(float(p.x), float(p.z), d.reuse_m);
 		PlannedPole q;
 		q.existing = existing;
@@ -210,13 +210,11 @@ PoleRunPlan plan_pole_run(const CityState &s, double ax, double az, double bx, d
 	return plan;
 }
 
-EditResult build_pole_run(CityState &s, double ax, double az, double bx, double bz, double reach, LampMode lamps, PoleKind kind,
-		PlannedPole *last) {
+EditResult build_pole_run(CityState &s, double ax, double az, double bx, double bz, double reach, LampMode lamps, PoleKind kind) {
 	EditResult r;
 	const PoleRunPlan plan = plan_pole_run(s, ax, az, bx, bz, reach, lamps, kind);
 	r.error = plan.refused;
 	if (!plan.refused.empty() || plan.poles.size() < 2) return r;
-	if (last) *last = plan.poles.back();
 	std::vector<int> ids;
 	for (const PlannedPole &p : plan.poles) {
 		if (p.existing >= 0) {

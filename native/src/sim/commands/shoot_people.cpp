@@ -3,8 +3,7 @@
 // where its owner lies, comes off and costs a good share of the blood; the third round in the trunk opens the belly. Dead:
 // the body falls. Hurt: a light wound in a leg (or the trunk, half the time) knocks them down for a moment, any other light
 // wound only bends them over it; a grave one (half the health gone, or a limb lost) puts them on the ground for good,
-// bleeding until they die. Killed or hurt, their companions go down beside them and the place shocks those who come near.
-// Everyone near a gunshot runs.
+// bleeding until they die. Everyone near a gunshot runs.
 #include "sim/commands/shoot_internal.h"
 
 #include "sim/traffic/traffic_system.h"
@@ -15,14 +14,13 @@
 namespace city {
 
 namespace {
-constexpr uint32_t SALT_OPEN = 0x6f70656eU, SALT_KNOCK = 0x6b6e6f63U, SALT_FALL = 0x66616c6cU; // the streams' salts: the words they name, in ASCII
+constexpr uint32_t SALT_OPEN = 0x6f70656eU, SALT_KNOCK = 0x6b6e6f63U, SALT_FALL = 0x66616c6cU;
 constexpr float OPEN_SECOND_HIT_CHANCE = 0.4f; // the second round in the trunk opens the belly this often (the 4.0: 102 of 256)
 constexpr float KNOCK_TRUNK_CHANCE = 0.5f; // a light round in the trunk throws the walker down this often
 constexpr float PUSH_KILL = 0.25f, PUSH_KNOCK = 0.1f, PUSH_GRAVE = 0.15f, PUSH_SEVER = 0.35f; // how hard the body is pushed (0..1)
 constexpr uint32_t HITS_SALT_SHIFT = 8; // the draw of a hit differs from the same walker's next
 constexpr float LIE_FOR_GOOD_S = 600.f; // down until they bleed out
 constexpr float BULLET_BACK_M = 10.f; // the push comes from this far behind the walker along the round
-// The limb each of a ragdoll's six hit zones takes (the trunk none).
 constexpr uint32_t LIMB_OF[6] = { CAS_LIMB_HEAD, 0, CAS_LIMB_ARM_L, CAS_LIMB_ARM_R, CAS_LIMB_LEG_L, CAS_LIMB_LEG_R };
 constexpr int LIMB_INDEX[6] = { -1, -1, 0, 1, 2, 3 }; // into Pedestrian::hurt_limb
 
@@ -37,7 +35,7 @@ DamageEvent casualty_of(const Round &r, int id, const Pedestrian &w, uint32_t fl
 	e.d = power;
 	e.dx = lie;
 	e.u = w.look;
-	e.v = flags | cas_age(int(w.age));
+	e.v = flags;
 	return e;
 }
 
@@ -89,7 +87,7 @@ void shoot_walker(Round &r, int id, BodyPart part, float hx, float hy, float hz,
 	if (!lying && !grave) {
 		const bool leg = part == BodyPart::LEG_L || part == BodyPart::LEG_R;
 		if (leg || (part == BodyPart::TORSO && r.roll(SALT_KNOCK, uint32_t(id) ^ (uint32_t(w.hits) << HITS_SALT_SHIFT)) < KNOCK_TRUNK_CHANCE)) {
-			const float lie = p.knock_min_s + p.knock_span_s * r.roll(SALT_FALL, uint32_t(id)); // as long down as a blast's (people.knock_*)
+			const float lie = p.shot_knock_min_s + p.shot_knock_span_s * r.roll(SALT_FALL, uint32_t(id));
 			w.down_until = now + lie;
 			r.emit(casualty_of(r, id, w, CAS_KNOCKED | shared, PUSH_KNOCK, lie, hx, hz));
 		} else {
@@ -101,10 +99,6 @@ void shoot_walker(Round &r, int id, BodyPart part, float hx, float hy, float hz,
 		w.bleed = std::max(w.bleed, leg_gone ? p.bleed_leg : severed != 0 ? p.bleed_limb : p.bleed_hurt);
 		r.emit(casualty_of(r, id, w, CAS_KNOCKED | CAS_CRAWL | shared, severed != 0 ? PUSH_SEVER : PUSH_GRAVE, LIE_FOR_GOOD_S, hx, hz));
 	}
-	// Hurt and not killed, as killed: those walking with them go down beside them, and the place is a shock those coming near
-	// run from (the reference game's walk.ts `shot`: mourn and shock on every wound, light or grave).
-	traffic::mourn_pedestrian(r.s, id);
-	traffic::add_shock(r.s, w.cur.x, w.cur.z, r.s.catalog.traffic.ped_body_shock_m);
 }
 
 } // namespace city

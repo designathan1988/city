@@ -3,17 +3,16 @@
 class_name CaptureStreetViews
 extends RefCounted
 
+const RULE_PLATES := 2
 const RULE_GAP := 2.0
-const STREET_FACED := [&"DIRECTION", &"STREET", &"INFO"] # these signs look at the street; the others at the traffic (SignType)
-const RULE_SIGNS := [&"STOP", &"YIELD"] # away from a junction, or they are that leg's rule and no plate of the player's
+const FIRST_STREET_FACED := 7 # direction, street and information look at the street; the others at the traffic
 const FACE_M := 3.2
 const FACE_ROAD_M := 1.6
 const SHEET_FRAMES := 4 # a cell asked for is painted on the next frames
 const INK_NEAR := 0.3 # how near the ink a pixel of the sheet reads as ink
 const INK_LEAST := 0.01 # of a cell, however short its word
-const NAMES_SHEETS := 3 # names until this many layers of the sign sheet are in use
-const NAMES_MOST := 2000 # and never more
-const NAMES_ROUND := 52 # names placed between two looks at the sheet
+const ITEM_NAME := 11
+const NAMES_TRIED := 312 # three times what one sheet of 104 held
 const NAMES_FRAMES := 1200 # a chunk job, then a layer each sheet_round_s
 const LIFT_STEP_M := 10.0 # a view from above rises this much at a time over a building in its way
 
@@ -33,11 +32,12 @@ static func views(cap: Node, a: Vector3, b: Vector3) -> void:
 		await _eye(cap, "rua_13_ao_longo_" + tag, a - dir * cap.ALONG_BACK_M + Vector3.UP * cap.ALONG_UP_M, a + dir * cap.RUN_M)
 		await _eye(cap, "rua_12_alto_" + tag, a + dir * cap.RUN_M * 0.3 + Vector3.UP * cap.TOP_M + side * cap.TOP_M, a + dir * cap.RUN_M * 0.3, true)
 
+
+## Each sign of the dropdown on the footway across the street, with its words where it carries them.
 	await CaptureStreetPairs.run(cap, a, dir)
 	await many_names(cap, (a + cap._across) * 0.5)
 
 
-## Each sign of the dropdown on the footway across the street, with its words where it carries them.
 static func signs(cap: Node, a: Vector3, dir: Vector3) -> void:
 	var side := dir.cross(Vector3.UP)
 	await cap._pick("streetscape.sign")
@@ -61,11 +61,10 @@ static func signs(cap: Node, a: Vector3, dir: Vector3) -> void:
 			field.text = cap.SIGN_WORDS
 			field.text_changed.emit(cap.SIGN_WORDS)
 		var want: Vector3 = across + dir * walked
-		var rule := _is_sign(i, RULE_SIGNS)
-		if rule:
+		if i < RULE_PLATES: # Stop and Give Way away from a junction, or they are that leg's rule and no plate of the player's
 			want = across - dir * cap.SIGN_GAP_M * (i + 1) * RULE_GAP
 		var at: Dictionary = CityStore.query(&"preview_item", [want, cap.ITEM_SIGN, 1.0])
-		while not rule and walked < cap.RUN_M and not at.get("ok", false):
+		while i >= RULE_PLATES and walked < cap.RUN_M and not at.get("ok", false):
 			walked += cap.ITEM_STEP_M
 			at = CityStore.query(&"preview_item", [across + dir * walked, cap.ITEM_SIGN, 1.0])
 		if at.get("ok", false):
@@ -73,7 +72,7 @@ static func signs(cap: Node, a: Vector3, dir: Vector3) -> void:
 			await cap.ui.click(at.position)
 			cap._check(CityStore.query(&"street_counts").items == had + 1, "placa %d colocada" % i)
 			cap.spots["placa_%d" % i] = at.position
-			if not rule:
+			if i >= RULE_PLATES:
 				walked += cap.SIGN_GAP_M
 	await cap.ui.shot("rua_07_placa_opcoes")
 	await cap.ui.frames(SHEET_FRAMES)
@@ -108,7 +107,7 @@ static func _check_ink(cap: Node) -> void:
 		images.append(sheet.layers.get_layer_data(i))
 		images[i].save_png("%s/rua_23_folha_%d.png" % [cap.out_dir, i])
 	var look: Dictionary = DataTables.render().streets.signs
-	for c: Array in CityStore.query(&"sign_cells_laid"):
+	for c: Array in sheet.drawn:
 		var p: Dictionary = look.drawings[c[0]]
 		if not p.has("ink"):
 			continue
@@ -128,30 +127,14 @@ static func _check_ink(cap: Node) -> void:
 static func many_names(cap: Node, road: Vector3) -> void:
 	var sheet: SignSheet = _sheet(cap)
 	var had: int = CityStore.query(&"street_counts").sign_cells
-	var placed := 0
-	var done := false
-	var counts: Dictionary = {}
-	while placed < NAMES_MOST and sheet.layers.get_layers() < NAMES_SHEETS:
-		for i in NAMES_ROUND:
-			CityStore.dispatch(&"place_item", [road, CityStore.code(&"ItemKind", &"STREETNAME"), 0, "Rua Teste %d" % (placed + i), 1.0])
-		placed += NAMES_ROUND
-		done = false
-		for f in NAMES_FRAMES:
-			counts = CityStore.query(&"street_counts")
-			done = counts.sign_cells >= had + placed and counts.sign_cells_waiting == 0 and sheet.idle()
-			if done:
-				break
-			await cap.ui.frames(1)
-		if not done:
+	for i in NAMES_TRIED:
+		CityStore.dispatch(&"place_item", [road, ITEM_NAME, 0, "Rua Teste %d" % i, 1.0])
+	for f in NAMES_FRAMES:
+		if sheet.drawn.size() >= had + NAMES_TRIED:
 			break
-	cap._check(done and sheet.layers.get_layers() >= NAMES_SHEETS, "%d names painted in %d layers" % [counts.get("sign_cells", 0), sheet.layers.get_layers()])
+		await cap.ui.frames(1)
+	cap._check(sheet.drawn.size() >= had + NAMES_TRIED, "%d names painted in %d layers" % [sheet.drawn.size(), sheet.layers.get_layers()])
 	_check_ink(cap)
-
-
-## Whether the street strip's sign `i` (drawers.json street.signs) is one of `kinds` (the core's SignType names).
-static func _is_sign(i: int, kinds: Array) -> bool:
-	var sign: int = DataTables.ui("drawers").street.signs[i].sign
-	return kinds.has(CityStore.code_name(&"SignType", sign))
 
 
 ## Close to each piece and barrier, from the road's side at a person's height, looking at it.
@@ -167,7 +150,7 @@ static func _close_views(cap: Node, dir: Vector3) -> void:
 	for i in DataTables.ui("drawers").street.signs.size():
 		if cap.spots.has("placa_%d" % i):
 			var at: Vector3 = cap.spots["placa_%d" % i]
-			var from: Vector3 = at - side * FACE_M if _is_sign(i, STREET_FACED) else at - dir * FACE_M - side * FACE_ROAD_M
+			var from: Vector3 = at - side * FACE_M if i >= FIRST_STREET_FACED else at - dir * FACE_M - side * FACE_ROAD_M
 			await _look(cap, "rua_22_placa_%d" % i, from, at + Vector3.UP * cap.SIGN_LOOK_M)
 
 

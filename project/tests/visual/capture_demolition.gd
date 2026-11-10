@@ -25,6 +25,7 @@ const HEAD_M := 1.7
 const LEG_M := 0.4
 const GLASS_M := 1.2
 const BURST_SHOTS := 14
+const NORMAL_SPEED := 2 # SimSpeed::NORMAL
 const MOTO := 5
 const FIRST_HEAVY := 6
 const FLOORS_LOW := 2
@@ -56,7 +57,8 @@ func _ready() -> void:
 		push_error("boot: %s" % errors)
 		get_tree().quit(1)
 		return
-	CityStore.new_map(TOWN_MAP, SEED, true, true)
+	CityStore.new_map(TOWN_MAP, SEED, true)
+	CityStore.dispatch(&"set_speed", [0])
 	CityStore.step_ticks(WARM_TICKS)
 	ui = UiDriver.new(rig, get_tree(), out_dir)
 	blast = CaptureBlast.new(rig, ui)
@@ -184,7 +186,7 @@ func _shoot_walker(label: String, first: Dictionary, aim_m: float, moments: Arra
 	await ui.shot("%s_antes" % label)
 	var r := _fire(w.position + Vector3(0, aim_m * w.scale, 0))
 	_check(r.get("hit", 0) == 1, "%s: acertou %s" % [label, r])
-	CityStore.dispatch(&"set_speed", [CityStore.code(&"SimSpeed", &"NORMAL")]) # the clocks of the wound run: the fallen get up, the bleeding bleeds
+	CityStore.dispatch(&"set_speed", [NORMAL_SPEED]) # the clocks of the wound run: the fallen get up, the bleeding bleeds
 	await ui.frames(SETTLE_FRAMES)
 	var elapsed := 0.0
 	for t in moments:
@@ -199,10 +201,7 @@ func _shoot_walker(label: String, first: Dictionary, aim_m: float, moments: Arra
 func _houses(lo: int, hi: int) -> Array:
 	var all := []
 	for id in CityStore.query(&"list_buildings"):
-		var info: Dictionary = CityStore.query(&"probe_building", [id])
-		var body: Dictionary = CityStore.query(&"body_info", [id])
-		info.roof_h = body.ground_h + body.storey_h * (info.floors - 1) # the top of its last storey (the roof the blow lands on)
-		all.append(info)
+		all.append(CityStore.query(&"probe_building", [id]))
 	var tall := all.filter(func(b): return b.floors > hi)
 	var out := []
 	for info in all:
@@ -214,7 +213,7 @@ func _houses(lo: int, hi: int) -> Array:
 				open = false
 				break
 		if open:
-			out.append(info.position + Vector3(0, info.roof_h, 0))
+			out.append(info.position + Vector3(0, 3.0 * info.floors, 0))
 	return out
 
 

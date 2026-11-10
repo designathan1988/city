@@ -4,13 +4,10 @@
 
 #include "sim/buildings/b40/record.h"
 #include "sim/roads/junction.h"
-#include "sim/persistence/save_format.h"
-#include "sim/state/city_state.h"
 #include "sim/state/pose_buffer.h"
 
 #include <atomic>
 #include <cstdint>
-#include <memory>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -32,19 +29,30 @@ struct SaveJob {
 	std::string error; // set by the save thread before the state turns 3, read only then
 };
 
-// A city being opened: the file read and decoded aside on a thread of its own while the open one runs on and the frames go on;
-// the main thread takes it in whole once it is read (CityCore::load_poll).
-struct LoadJob {
-	std::thread thread;
-	std::atomic<int> state{ 0 }; // 0 idle, 1 reading, 2 read (to take in), 3 refused
-	std::unique_ptr<CityState> read; // the city read aside: the thread's until the state turns 2 or 3
-	std::string error; // set by the thread before the state turns 2 or 3, read only then
-	OpenTimes times;
-	bool paused = false;
+// What the Inspect tool and the camera ask for each frame, kept until the network or the city changes (city_core_inspect.cpp).
+// What a building's volumes are made from (city_core_sight.cpp solids_key): its body, by the edited version's stamp or by what a body
+// is made from, and its lot's frame. Equal keys, equal volumes.
+struct SolidsKey {
+	uint64_t stamp = 0;
+	uint32_t seed = 0;
+	float x = 0, z = 0, w = 0, d = 0, rot = 0;
+	uint16_t floors = 0;
+	uint8_t zone = 0, fn = 0;
+	bool operator==(const SolidsKey &o) const {
+		return stamp == o.stamp && seed == o.seed && x == o.x && z == o.z && w == o.w && d == o.d && rot == o.rot && floors == o.floors &&
+				zone == o.zone && fn == o.fn;
+	}
 };
 
-// What the Inspect tool asks for each frame, kept until the network changes (city_core_inspect.cpp).
+// A building's volumes and the key they were made under.
+struct CachedSolids {
+	SolidsKey key;
+	std::vector<Solid> solids;
+	bool made = false;
+};
+
 struct InspectCache {
+	std::unordered_map<int, CachedSolids> solids; // clear_reach, sight_pull, eye_free: each building asked, kept while its key stays
 	std::vector<SharpNode> sharp; // impossible_nodes, for this version of the network
 	int sharp_version = -1;
 };

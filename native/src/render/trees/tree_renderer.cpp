@@ -3,10 +3,6 @@
 // wind response by.
 #include "render/trees/tree_renderer.h"
 
-#include "core/math.h"
-#include "render/owned_segments.h"
-#include "render/roads/road_cut.h"
-
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/variant/packed_float32_array.hpp>
 
@@ -20,6 +16,8 @@ namespace city {
 namespace {
 constexpr float HALF = 0.5f, EVICT_CHUNKS = 2.f;
 constexpr int TIER_NEAR = 0, TIER_FAR = 1;
+constexpr int CHUNKS_PER_SUPER = int(SUPERCHUNK / CHUNK); // per axis
+const float DIAGONAL = std::sqrt(2.f);
 
 AABB box_of(int64_t key, float size) { return AABB(Vector3(key_x(key) * size, AABB_MIN_Y, key_y(key) * size), Vector3(size, AABB_H, size)); }
 
@@ -34,9 +32,8 @@ TreeRenderer::TreeRenderer() {
 	tier_[TIER_FAR].hand_one = [this](Built &b) { commit_far(b); };
 }
 
-bool TreeRenderer::init(const RenderContext &ctx, const StreetLook &look, GroundKept &ground, PackedStringArray &errors) {
+bool TreeRenderer::init(const RenderContext &ctx, const StreetLook &look, PackedStringArray &errors) {
 	scenario_ = ctx.scenario;
-	grounds_ = &ground;
 	body_material_ = ctx.material("vegetation", errors);
 	card_material_ = ctx.material("vegetation_cards", errors);
 	look_ = &look;
@@ -46,7 +43,7 @@ bool TreeRenderer::init(const RenderContext &ctx, const StreetLook &look, Ground
 		errors.push_back("streets.json: falta trees");
 		return false;
 	}
-	if (!kit_.build(t["trees"], body_material_, card_material_, errors) || !trees_.load(t["trees"], kit_, errors)) return false;
+	if (!kit_.build(t["trees"], errors) || !trees_.load(t["trees"], kit_, errors)) return false;
 	set_params(body_material_);
 	set_params(card_material_);
 	return true;
@@ -76,6 +73,7 @@ void TreeRenderer::reset() {
 	near_.clear();
 	far_.clear();
 	pending_ = 0;
+	gardens_.clear();
 }
 
 int TreeRenderer::near_trees() const {
@@ -103,46 +101,10 @@ void TreeRenderer::mark_dirty(int64_t key) {
 	tier_[TIER_FAR].revs.mark(cell_key(int(std::floor(float(key_x(key)) / CHUNKS_PER_SUPER)), int(std::floor(float(key_y(key)) / CHUNKS_PER_SUPER))));
 }
 
-// What a chunk's trees, or a superchunk's cards, read of the city, copied under the map's shared lock: the roads, the lots, the
-// land with its natural ground and its water, the paint, the planted trees and the clearings of the square, of the segments its
-// chunks own (a street's trees stand along the whole segment) and of the lots that stand in it (a garden is planted over the
-// whole lot), as far past them as the ground, the woods and the road pieces read; and the furniture of each owned segment, the
-// one fact a box of records cannot give.
-CityCut TreeRenderer::gather(const CityState &s, int64_t key, bool far) const {
-	const int side = far ? CHUNKS_PER_SUPER : 1;
-	const auto each_chunk = [&](auto &&fn) {
-		for (int j = 0; j < side; j++)
-			for (int i = 0; i < side; i++) fn(cell_key(key_x(key) * side + i, key_y(key) * side + j));
-	};
-	return cut_city(
-			s, CUT_ROADS | CUT_BUILDINGS | CUT_NATURE | CUT_GROUND_BASE | CUT_WATER,
-			[&](const CityState &live) {
-				const float size = float(side) * CHUNK, x0 = float(key_x(key)) * size, z0 = float(key_y(key)) * size;
-				CutBox box{ x0, z0, x0 + size, z0 + size };
-				each_chunk([&](int64_t chunk) {
-					each_owned_segment(live, chunk, [&](int sid) {
-						const RoadSegment &g = live.roads.segs[size_t(sid)];
-						box.take(g.minx, g.minz, g.maxx, g.maxz);
-					});
-					const float cx = float(key_x(chunk)) * CHUNK, cz = float(key_y(chunk)) * CHUNK;
-					live.buildings.query(cx, cz, cx + CHUNK, cz + CHUNK, [&](int id) {
-						const Building &b = live.buildings.items[size_t(id)];
-						if (chunk_of(b.x, b.z) != chunk) return;
-						const float r = std::hypot(b.w, b.d) * HALF; // a lot's corners stand within its half diagonal of its centre
-						box.take(b.x - r, b.z - r, b.x + r, b.z + r);
-					});
-				});
-				return box.grown(std::max({ ground_reach(live.catalog), tree_reach(trees_), road_reach(live.catalog, *look_) }));
-			},
-			[&](CityCut &cut, const CityState &live) {
-				each_chunk([&](int64_t chunk) { each_owned_segment(live, chunk, [&](int sid) { keep_furniture(cut, live, sid); }); });
-			});
-}
-
-std::shared_ptr<TreeRenderer::Built> TreeRenderer::build_near(const CityView &s, int64_t key) const {
+std::shared_ptr<TreeRenderer::Built> TreeRenderer::build_near(const CityState &s, int64_t key) const {
 	auto out = std::make_shared<Built>();
 	std::vector<TreeInstance> trees;
-	place_trees(s, *look_, trees_, kit_, *grounds_->of(s, key), key, trees);
+	place_trees(s, *look_, trees_, kit_, gardens_, key, trees);
 	out->bufs.resize(size_t(kit_.count()));
 	for (const TreeInstance &t : trees) {
 		const float c = std::cos(t.yaw), sn = std::sin(t.yaw), deep = t.depth > 0 ? t.depth : t.width;
@@ -151,29 +113,26 @@ std::shared_ptr<TreeRenderer::Built> TreeRenderer::build_near(const CityView &s,
 	}
 	for (int i = 0; i < kit_.count(); i++) { // commit_near sends a species' buffer to its body, its caster and its cards
 		const bool casts = std::find(trees_.bed_species.begin(), trees_.bed_species.end(), i) == trees_.bed_species.end();
-		const int64_t draws = 1 + (casts ? 1 : 0) + (kit_.species(i).cards.valid() ? 1 : 0);
+		const int64_t draws = 1 + (casts ? 1 : 0) + (kit_.species(i).cards.is_null() ? 0 : 1);
 		out->upload += out->bufs[size_t(i)].size() * int64_t(sizeof(float)) * draws;
 	}
 	return out;
 }
 
-std::shared_ptr<TreeRenderer::Built> TreeRenderer::build_far(const CityView &s, int64_t key) const {
+std::shared_ptr<TreeRenderer::Built> TreeRenderer::build_far(const CityState &s, int64_t key) const {
 	auto out = std::make_shared<Built>();
 	out->far = true;
 	for (int j = 0; j < CHUNKS_PER_SUPER; j++)
-		for (int i = 0; i < CHUNKS_PER_SUPER; i++) {
-			const int64_t chunk = cell_key(key_x(key) * CHUNKS_PER_SUPER + i, key_y(key) * CHUNKS_PER_SUPER + j);
-			place_far(s, *look_, trees_, kit_, *grounds_->of(s, chunk), chunk, out->cards);
-		}
+		for (int i = 0; i < CHUNKS_PER_SUPER; i++)
+			place_far(s, *look_, trees_, kit_, gardens_, cell_key(key_x(key) * CHUNKS_PER_SUPER + i, key_y(key) * CHUNKS_PER_SUPER + j), out->cards);
 	out->centre = FAR_CARD_CENTRE;
 	out->half_tall = kit_.pictures().frame_share() * HALF;
-	out->card_material = card_material_;
 	out->upload = far_cards_bytes(out->cards.size());
 	return out;
 }
 
 void TreeRenderer::Built::bake() {
-	far_mesh = bake_far_cards(cards, centre, half_tall, card_material);
+	far_mesh = bake_far_cards(cards, centre, half_tall);
 	cards = std::vector<FarCard>();
 	baked = true;
 }
@@ -190,20 +149,20 @@ void TreeRenderer::commit_near(Built &b) {
 	for (int species : trees_.flowering_species) ch.plants += int(b.bufs[size_t(species)].size() / MM_STRIDE);
 	for (int species : trees_.bed_species) ch.plants += int(b.bufs[size_t(species)].size() / MM_STRIDE);
 	AABB box = box_of(b.key, CHUNK);
-	float end = trees_.near_m + trees_.fade_m + CHUNK * SQRT2_F * HALF;
+	float end = trees_.near_m + trees_.fade_m + CHUNK * DIAGONAL * HALF;
 	for (int i = 0; i < n; i++) {
 		const TreeSpecies &sp = kit_.species(i);
 		// A flower bed casts nothing: its shadow would not read, and the town's beds cost as much as its buildings'.
 		const bool casts = std::find(trees_.bed_species.begin(), trees_.bed_species.end(), i) == trees_.bed_species.end();
-		ch.body[size_t(i)].set(scenario_, sp.body.rid, b.bufs[size_t(i)], box, false, LAYER_VEGETATION);
+		ch.body[size_t(i)].set(scenario_, sp.body->get_rid(), body_material_, b.bufs[size_t(i)], box, false, LAYER_VEGETATION);
 		ch.body[size_t(i)].range(0, end);
 		if (casts) {
 			ch.cast[size_t(i)].shadow_only = true;
-			ch.cast[size_t(i)].set(scenario_, sp.caster.rid, b.bufs[size_t(i)], box, true, LAYER_VEGETATION);
+			ch.cast[size_t(i)].set(scenario_, sp.caster->get_rid(), body_material_, b.bufs[size_t(i)], box, true, LAYER_VEGETATION);
 			ch.cast[size_t(i)].range(0, end);
 		}
-		if (!sp.cards.valid()) continue;
-		ch.cards[size_t(i)].set(scenario_, sp.cards.rid, b.bufs[size_t(i)], box, sp.cards_cast, LAYER_VEGETATION);
+		if (sp.cards.is_null()) continue;
+		ch.cards[size_t(i)].set(scenario_, sp.cards->get_rid(), card_material_, b.bufs[size_t(i)], box, sp.cards_cast, LAYER_VEGETATION);
 		ch.cards[size_t(i)].range(0, end);
 	}
 }
@@ -217,11 +176,11 @@ void TreeRenderer::FarDraw::free() {
 
 void TreeRenderer::commit_far(Built &b) {
 	FarDraw &d = far_[b.key];
-	swap_base(d.inst, d.mesh, b.far_mesh.release(), scenario_, trees_.far_shadows != 0, LAYER_VEGETATION);
+	swap_base(d.inst, d.mesh, b.far_mesh.release(), scenario_, card_material_, trees_.far_shadows != 0, LAYER_VEGETATION);
 	if (!d.inst.is_valid()) return;
 	RenderingServer *rs = RenderingServer::get_singleton();
 	rs->instance_set_custom_aabb(d.inst, box_of(b.key, SUPERCHUNK));
-	rs->instance_geometry_set_visibility_range(d.inst, 0, trees_.far_m + SUPERCHUNK * SQRT2_F * HALF, 0, 0, RenderingServer::VISIBILITY_RANGE_FADE_DISABLED);
+	rs->instance_geometry_set_visibility_range(d.inst, 0, trees_.far_m + SUPERCHUNK * DIAGONAL * HALF, 0, 0, RenderingServer::VISIBILITY_RANGE_FADE_DISABLED);
 }
 
 void TreeRenderer::submit(const CityState &s, int64_t key, float priority, bool far) {
@@ -231,49 +190,17 @@ void TreeRenderer::submit(const CityState &s, int64_t key, float priority, bool 
 	const uint64_t ticket = t.revs.ask(key);
 	const JobKey job{ far ? JobLane::TREES_FAR : JobLane::TREES_NEAR, key };
 	s.jobs->submit(job, priority, [this, &s, &t, key, job, ticket, priority, far]() {
-		// The job copies what its trees read and places them from the copy, the map let go.
-		const CityCut cut = gather(s, key, far);
-		std::shared_ptr<Built> b = far ? build_far(cut, key) : build_near(cut, key);
+		std::shared_ptr<Built> b;
+		{
+			std::shared_lock<std::shared_mutex> map(s.map_mutex);
+			b = far ? build_far(s, key) : build_near(s, key);
+		}
 		b->key = key;
 		b->job = job;
 		b->ticket = ticket;
 		b->priority = priority;
 		t.push(std::move(b));
 	});
-}
-
-Dictionary TreeRenderer::probe_cut(const CityState &s, float minx, float minz, float maxx, float maxz) const {
-	constexpr int SHOWN = 6; // differing trees described
-	int64_t chunks = 0, trees = 0, differ = 0;
-	PackedStringArray first;
-	for_chunks(minx, minz, maxx, maxz, [&](int64_t key) {
-		std::vector<TreeInstance> live, cut;
-		{
-			MapRead map(s);
-			place_trees(s, *look_, trees_, kit_, chunk_ground(s, key), key, live);
-		}
-		const CityCut c = gather(s, key, false);
-		place_trees(c, *look_, trees_, kit_, chunk_ground(c, key), key, cut);
-		chunks++;
-		trees += int64_t(live.size());
-		const size_t n = std::max(live.size(), cut.size());
-		for (size_t i = 0; i < n; i++) {
-			const bool both = i < live.size() && i < cut.size();
-			const bool same = both && live[i].p == cut[i].p && live[i].height == cut[i].height && live[i].width == cut[i].width && live[i].yaw == cut[i].yaw &&
-					live[i].lean_x == cut[i].lean_x && live[i].lean_z == cut[i].lean_z && live[i].species == cut[i].species && live[i].tint == cut[i].tint && live[i].depth == cut[i].depth;
-			if (same) continue;
-			differ++;
-			if (first.size() >= SHOWN) continue;
-			const auto say = [](const TreeInstance &t) { return String("p ") + String(t.p) + String(" h ") + String::num(t.height, 4) + String(" w ") + String::num(t.width, 4) + String(" lean ") + String::num(t.lean_x, 4) + String(",") + String::num(t.lean_z, 4) + String(" sp ") + String::num_int64(t.species); };
-			first.push_back(String("chunk ") + String::num_int64(key_x(key)) + String(",") + String::num_int64(key_y(key)) + String(" tree ") + String::num_int64(int64_t(i)) + String(" of ") + String::num_int64(int64_t(live.size())) + String("/") + String::num_int64(int64_t(cut.size())) + String(": live ") + (i < live.size() ? say(live[i]) : String("none")) + String(" | cut ") + (i < cut.size() ? say(cut[i]) : String("none")));
-		}
-	});
-	Dictionary d;
-	d["chunks"] = chunks;
-	d["trees"] = trees;
-	d["differ"] = differ;
-	d["first"] = first;
-	return d;
 }
 
 int TreeRenderer::pending() const {
@@ -313,7 +240,7 @@ void TreeRenderer::stream(const CityState &s, const Vector3 &cam, bool far, std:
 		for (int i = cx - r; i <= cx + r; i++) {
 			int64_t k = cell_key(i, j);
 			float d = distance_to(k, size, cam);
-			if (d > reach + size * SQRT2_F * HALF || !s.terrain.in_bounds((i + HALF) * size, (j + HALF) * size, -size * HALF)) continue;
+			if (d > reach + size * DIAGONAL * HALF || !s.terrain.in_bounds((i + HALF) * size, (j + HALF) * size, -size * HALF)) continue;
 			if (!built(k, far) && !t.revs.busy(k)) unit(k, d, 0);
 		}
 	if (far) {

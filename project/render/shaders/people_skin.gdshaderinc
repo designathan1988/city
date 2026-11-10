@@ -2,9 +2,8 @@
 // data, no skeleton is bound), each bone's pose as the three rows of its 3x4 bind -> pose matrix, linear blend of the four.
 // What differs between shaders is only where the rows come from: the walk reads them from the palette (two frames mixed), somebody off
 // their feet from the rows of their ragdoll (people_body.gdshader: one pose, a = b, t = 0).
-#include "res://render/shaders/contracts/people.gdshaderinc"
 
-const int LAST_BONE = PEOPLE_BONES - 1; // of the skeleton the cooked people are skinned to
+const int LAST_BONE = 52; // the Rocketbox skeleton's 53 bones
 
 struct BonePose {
 	vec4 row_x;

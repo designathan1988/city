@@ -2,7 +2,6 @@
 // and laid again through the same steps as a new road, so a crossing makes a junction, an overlap is refused and the
 // whole edit rolls back as one undo step.
 #include "sim/commands/commands.h"
-#include "sim/commands/edit_journal.h"
 #include "sim/commands/street_commands.h"
 #include "sim/commands/road_edit.h"
 
@@ -51,7 +50,7 @@ EditResult move_node(CityState &s, int node, double x, double z) {
 		roads.push_back(g);
 		box.add(g);
 	}
-	Squeezes before = squeezes_in(s, box); // its roads laid again keep their ends, so one already squeezed is judged against itself
+	const std::map<int, double> before = squeezes_in(s, box);
 	std::vector<std::vector<CarriedPiece>> kits; // what the player put on each road, carried along (Roadcraft nodeMover.ts carryStreetKit)
 	for (int sid : was.segs) kits.push_back(street_kit_of(s, sid));
 	for (int sid : was.segs) j_remove_segment(s, sid);
@@ -85,12 +84,10 @@ EditResult move_node(CityState &s, int node, double x, double z) {
 		r.buildings_removed += laid.buildings_removed;
 	}
 	if (end.node != node) {
-		squeezes_moved(before, node, end.node); // its roads end on the node it was dropped on
 		if (!was.plain) j_set_plain(s, end.node, false);
 		j_remove_node_if_orphan(s, node);
 	}
 	settle_network(s); // the mouths squeezed_worse reads
-	clear_bulbs(s);
 	if (squeezed_worse(s, before, box)) {
 		r.error = "hint.rule.squeezed";
 		return r;

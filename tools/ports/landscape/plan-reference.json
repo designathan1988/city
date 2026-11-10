@@ -1,0 +1,29 @@
+{
+  "_doc": "Fotos do 4.0 para o porte landscape, cidade pequena semente 7, nos ângulos de capture_landscape.tscn: campo aberto a 3000 unidades da cidade.",
+  "city": { "size": "small", "seed": 7 },
+  "steps": [
+    { "wait": 1500 },
+    { "press": "Começar a construir" },
+    { "until": "(() => { const b = [...document.querySelectorAll('button')].find((e) => e.textContent.trim() === 'Começar a construir'); return !b || b.getBoundingClientRect().width === 0 || getComputedStyle(b).visibility === 'hidden'; })()", "name": "menu closed", "timeout": 30000, "polling": 250 },
+    { "eval": "window.__roadcraft.sim.setClock(720); window.__roadcraft.scene().setSkyMode('day'); 1" },
+    { "setView": [3000, 0, 30, 45, 4] }, { "wait": 3500 }, { "shot": "campo_perto" },
+    { "setView": [3000, 0, 8, 45, 12] }, { "wait": 3500 }, { "shot": "campo_meio" },
+    { "setView": [3000, 0, 2, 45, 24] }, { "wait": 3500 }, { "shot": "matas_meio" },
+    { "setView": [3000, 0, 0.6, 45, 38] }, { "wait": 3500 }, { "shot": "matas_alto" },
+    { "setView": [3000, 0, 20, 120, 4] }, { "wait": 3500 }, { "shot": "horizonte" },
+    { "eval": "window.__roadcraft.doc.setWeather({ rain: 0.8, wind: 12 }); 1" },
+    { "setView": [3000, 0, 5, 45, 8] }, { "wait": 3500 }, { "shot": "chuva" },
+    { "eval": "window.__roadcraft.doc.setWeather({ rain: 0, wind: 4 }); window.__roadcraft.doc.addClouds([0,1,2,3,4,5,6,7].map((i) => ({ x: 3000 + (i % 4 - 1.5) * 800, y: (i > 3 ? 550 : -550), height: 450, size: 375, density: 0.8, yaw: i }))); 1" },
+    { "setView": [3000, 0, 1.2, 45, 22] }, { "wait": 4000 }, { "shot": "nuvens_sombra" },
+    { "setView": [3000, 0, 2, 60, 4] }, { "wait": 3500 }, { "shot": "nuvens_ceu" },
+    { "eval": "const d = window.__roadcraft.doc; for (const c of [...d.clouds]) d.removeCloud(c.id); for (let i = 0; i < 30; i++) d.addFogDab({ x: 3000 + i * 35 - 500, y: Math.sin(i / 3) * 100, radius: 225, strength: 0.5, height: 45, speed: 10, erase: false }); 1" },
+    { "setView": [3000, 0, 3, 45, 16] }, { "wait": 4000 }, { "shot": "neblina" },
+    { "eval": "const d = window.__roadcraft.doc; d.clearFog(); const kinds = ['sand', 'soil', 'meadow', 'snow', 'gravel', 'asphalt', 'concrete']; kinds.forEach((kind, k) => { for (let n = 0; n < 6; n++) d.addPaintDab({ kind, x: 4500 + (k - 3) * 275, y: 1500, radius: 112, strength: 1 }); }); 1" },
+    { "setView": [4500, 1500, 2.2, 0, 50] }, { "wait": 4000 }, { "shot": "chao_pintado" },
+    { "eval": "const d = window.__roadcraft.doc; for (let i = 0; i < 60; i++) d.addTerrainStamp({ x: 3000 + i * 20 - 600, y: -2250 + Math.sin(i / 12) * 150, radius: 125, strength: 1, mode: 'river', rough: true, level: undefined, ox: 3000, oy: -2250 }); 1" },
+    { "setView": [3000, -2250, 3, 30, 24] }, { "wait": 5000 }, { "shot": "rio" },
+    { "eval": "window.__roadcraft.sim.setClock(1320); window.__roadcraft.scene().setSkyMode('night'); 1" },
+    { "setView": [3000, 0, 2, 45, 24] }, { "wait": 3500 }, { "shot": "noite_campo" },
+    { "setView": [0, 0, 1.2, 30, 26] }, { "wait": 3500 }, { "shot": "noite_cidade" }
+  ]
+}

@@ -4,16 +4,15 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://ctkxkccoau73y"
 path.s3tc="res://.godot/imported/asphalt.normal.png-869714005635aac3c9b626e847bbb269.s3tc.ctex"
-path.etc2="res://.godot/imported/asphalt.normal.png-869714005635aac3c9b626e847bbb269.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"imported_formats": ["s3tc_bptc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/surfaces/asphalt.normal.png"
-dest_files=["res://.godot/imported/asphalt.normal.png-869714005635aac3c9b626e847bbb269.s3tc.ctex", "res://.godot/imported/asphalt.normal.png-869714005635aac3c9b626e847bbb269.etc2.ctex"]
+dest_files=["res://.godot/imported/asphalt.normal.png-869714005635aac3c9b626e847bbb269.s3tc.ctex"]
 
 [params]
 

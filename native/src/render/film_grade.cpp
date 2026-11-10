@@ -1,10 +1,7 @@
 // Builds the film grade's lookup table (see film_grade.h).
 #include "render/film_grade.h"
 
-#include "render/data_reader.h"
-
 #include <godot_cpp/variant/array.hpp>
-#include <godot_cpp/variant/utility_functions.hpp>
 #include <godot_cpp/variant/packed_byte_array.hpp>
 
 #include <algorithm>
@@ -16,7 +13,7 @@ namespace city {
 
 namespace {
 constexpr int CHANNELS = 3, TEXEL_FLOATS = 4;
-constexpr float BYTE_TOP = 255.f; // a byte's largest value
+constexpr float BYTE_TOP = 255.f;
 constexpr float ROUND_UP = 0.5f;
 constexpr float REC709_R = 0.2126f, REC709_G = 0.7152f, REC709_B = 0.0722f; // luma weights, ITU-R BT.709
 
@@ -39,25 +36,15 @@ struct Grade {
 	}
 };
 
-// The grade the script hands in (data/render's film block), through the strict reader (render/data_reader.h): a missing or
-// mistyped key is pushed as an error and the grade refused, never read as 0.
-bool read_grade(const Dictionary &d, Grade &g, int *side) {
-	PackedStringArray errors;
-	DataReader r{ errors, "film grade" };
-	const Array warm = r.list(d, "warm_levels", CHANNELS); // in levels of the 8-bit picture
-	g = Grade{ float(r.num(d, "contrast")), float(r.num(d, "vibrance")), float(r.num(d, "tone_from")), float(r.num(d, "tone_to")),
-		{ float(r.in("warm_levels").num_at(warm, 0)) / BYTE_TOP, float(r.in("warm_levels").num_at(warm, 1)) / BYTE_TOP,
-				float(r.in("warm_levels").num_at(warm, 2)) / BYTE_TOP } };
-	if (side) *side = r.integer(d, "lut_side");
-	for (const String &e : errors) UtilityFunctions::push_error(e);
-	return errors.is_empty();
+Grade read_grade(const Dictionary &d) {
+	Array warm = d["warm_levels"]; // in levels of the 8-bit picture
+	return Grade{ float(d["contrast"]), float(d["vibrance"]), float(d["tone_from"]), float(d["tone_to"]), { float(warm[0]) / BYTE_TOP, float(warm[1]) / BYTE_TOP, float(warm[2]) / BYTE_TOP } };
 }
 } // namespace
 
 TypedArray<Image> film_grade_slices(const Dictionary &d) {
-	Grade g;
-	int side = 0;
-	if (!read_grade(d, g, &side)) return TypedArray<Image>();
+	Grade g = read_grade(d);
+	int side = int(d["lut_side"]);
 	TypedArray<Image> slices;
 	PackedByteArray bytes;
 	bytes.resize(int64_t(side) * side * TEXEL_FLOATS * int64_t(sizeof(float)));
@@ -81,9 +68,7 @@ TypedArray<Image> film_grade_slices(const Dictionary &d) {
 
 Color film_graded(const Dictionary &d, const Color &colour) {
 	float c[CHANNELS] = { colour.r, colour.g, colour.b };
-	Grade g;
-	if (!read_grade(d, g, nullptr)) return colour;
-	g.apply(c);
+	read_grade(d).apply(c);
 	return Color(c[0], c[1], c[2], colour.a);
 }
 

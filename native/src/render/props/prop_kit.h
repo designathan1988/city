@@ -5,8 +5,6 @@
 // (lenses()), every lens drawn once, lit or not, by render/props/signal_lamps.h.
 #pragma once
 
-#include "render/data_reader.h"
-#include "core/shader_contracts/streets.h"
 #include "render/mesh_builder.h"
 
 #include <godot_cpp/variant/basis.hpp>
@@ -15,17 +13,17 @@
 
 namespace city {
 
-// What a vertex is (PropTag, UV2.x) is core/shader_contracts/streets.h's, which props.gdshader reads too.
+enum class PropTag : int { FIXED = 0, TINT = 1, NIGHT_GLOW = 2, LENS, WIRE, WOOD, PLATE, FINISHED, SIGN_POST, PLANK }; // props.gdshader reads them
 enum class PropKind : int { SIGNAL = 0, HYDRANT, BIN, BENCH, POSTBOX, PHONE, DRAIN, TREE_PIT, MEADOW, COUNT };
 // The signal's lenses (streets.json props.signal "lens"): the cars' red, amber and green, the walkers' stop and walk.
 enum class Lens : int { RED = 0, AMBER, GREEN, STOP, WALK, COUNT };
-static_assert(int(Lens::COUNT) == LENS_COUNT, "a lens a radiance of props.gdshader (core/shader_contracts/streets.h)");
 // The parts of the pole mesh (streets.json props.pole "part"): an instance shows those of INSTANCE_CUSTOM.a, its UV2.y bits.
 // ARM and CAN are an urban pole's (the arm over the street with its rack, the transformer away from it); ARM_RURAL and CAN_RURAL
 // a rural pole's (the arm across the crown, the transformer toward the street): streets.json, tools/assets/make_pole_parts.py.
 enum class PolePart : int { MAST = 1, ARM = MAST << 1, CAN = ARM << 1, LAMP = CAN << 1, COLUMN = LAMP << 1, ARM_RURAL = COLUMN << 1, CAN_RURAL = ARM_RURAL << 1 };
-// A secondary wire's mark where a primary wire keeps its seat on a rural pole (UV2.y, WIRE_SECONDARY_MARK: core/shader_contracts/streets.h):
-// props.gdshader draws it only between two urban poles.
+// A secondary wire's mark where a primary wire keeps its seat on a rural pole (UV2.y): props.gdshader draws it only between two
+// urban poles.
+constexpr float WIRE_SECONDARY_MARK = 10000.f;
 
 // A placed prop: which mesh, where, facing.
 struct PropPlace {
@@ -36,8 +34,7 @@ struct PropPlace {
 
 class PropKit {
 public:
-	// streets.json props, wires and barriers.beam_section, through the strict reader's values (render/data_reader.h).
-	bool build(const DataValue &props, const DataValue &wires, const DataValue &beam_section, godot::PackedStringArray &errors);
+	bool build(const godot::Dictionary &props, const godot::Dictionary &wires, const godot::Array &beam_section, godot::PackedStringArray &errors);
 	const MeshBuilder &mesh(PropKind k) const { return meshes_[int(k)]; }
 	// Every lens of the signal, in its space: COLOR the lens unlit (props.lens_dark), UV2 (PropTag::LENS, which
 	// Lens) for render/shaders/props.gdshader.
@@ -51,7 +48,7 @@ public:
 	const MeshBuilder &wire(bool near) const { return near ? wire_near_ : wire_far_; }
 	const MeshBuilder &unit_box() const { return box_; }
 	const MeshBuilder &w_beam() const { return beam_; } // a guardrail's beam, in the unit box
-	// The beam: a unit cone from its foot on the ground (radius 1 at y = 0) to the lens near its apex at y = 1: lamp_glow.gdshader.
+	// The pool of light (a disc of radius 1 at y = 0) and the beam (a cone from there to its apex at y = 1): lamp_glow.gdshader.
 	const MeshBuilder &light() const { return light_; }
 	// The renderer has baked the six above: their vertices need not stay on the CPU.
 	void drop_baked() { pole_ = pole_cast_ = wire_near_ = wire_far_ = box_ = beam_ = light_ = MeshBuilder(); }

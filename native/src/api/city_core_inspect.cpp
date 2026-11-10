@@ -18,6 +18,7 @@ using namespace godot;
 namespace city {
 
 namespace {
+constexpr float INSPECT_RADIUS_M = 30.f;
 constexpr float HALF = 0.5f;
 
 // What the traffic published for a segment or a node (TrafficView): no traffic_mutex, the panel never waits for a step.
@@ -103,7 +104,7 @@ void put_building(const CityState &s, Dictionary &d, int id) {
 	const OccupancyDef &o = s.catalog.occupancy;
 	const float per[4] = { o.m2_per_resident, o.m2_per_job_commercial, o.m2_per_job_industrial, o.m2_per_person_mixed };
 	int residents, jobs;
-	BuildingStore::occupancy(b, s.catalog.zone(b.zone).base, o.floor_share, per, residents, jobs);
+	BuildingStore::occupancy(b, o.floor_share, per, residents, jobs);
 	d["residents"] = residents;
 	d["jobs"] = jobs;
 }
@@ -111,8 +112,8 @@ void put_building(const CityState &s, Dictionary &d, int id) {
 // The building whose lot centre is nearest within reach, or -1.
 int nearest_building(const CityState &s, const Vector3 &p) {
 	int best = -1;
-	float bd = s.catalog.tune.inspect_radius_m;
-	s.buildings.query(p.x - s.catalog.tune.inspect_radius_m, p.z - s.catalog.tune.inspect_radius_m, p.x + s.catalog.tune.inspect_radius_m, p.z + s.catalog.tune.inspect_radius_m, [&](int id) {
+	float bd = INSPECT_RADIUS_M;
+	s.buildings.query(p.x - INSPECT_RADIUS_M, p.z - INSPECT_RADIUS_M, p.x + INSPECT_RADIUS_M, p.z + INSPECT_RADIUS_M, [&](int id) {
 		const Building &b = s.buildings.items[id];
 		float dd = std::hypot(b.x - p.x, b.z - p.z);
 		if (dd < bd) { bd = dd; best = id; }
@@ -136,7 +137,7 @@ Dictionary CityCore::inspect(const Vector3 &p) {
 	const CityState &s = *state_;
 	Dictionary d;
 	double t, dist;
-	const int seg = s.roads.find_segment_near(p.x, p.z, s.catalog.tune.inspect_radius_m, t, dist);
+	const int seg = s.roads.find_segment_near(p.x, p.z, INSPECT_RADIUS_M, t, dist);
 	const bool on_road = seg >= 0 && dist <= (s.roads.profile_of(seg).right + s.roads.profile_of(seg).left) * HALF;
 	if (on_road) {
 		const int node = s.roads.find_node_near(p.x, p.z, s.catalog.tune.road_pick_m);

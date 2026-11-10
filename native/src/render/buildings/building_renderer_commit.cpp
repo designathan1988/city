@@ -4,7 +4,6 @@
 // instances, the chunk is shown or left to the far mesh, and the far mesh gets its mask. No CPU mesh assembly here
 // (building_renderer_build.cpp).
 #include "render/buildings/building_renderer.h"
-#include "render/surface_data.h"
 
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/variant/aabb.hpp>
@@ -17,10 +16,8 @@ using namespace godot;
 namespace city {
 
 namespace {
-// A box padded a metre each way; a packed 0xRRGGBBAA's channels, their mask and top; a basis's three axes.
 constexpr float AABB_PAD = 1.f, BYTE = 255.f;
 constexpr int RGBA_R_SHIFT = 24, RGBA_G_SHIFT = 16, RGBA_B_SHIFT = 8, BASIS = 3;
-constexpr uint32_t CHANNEL_MASK = 0xff;
 const char *const FAR_MASK_PARAM = "chunk_mask"; // building_far.gdshader's instance uniform
 
 // An instance whose basis is three columns in a row.
@@ -35,54 +32,64 @@ void grow(AABB &box, const AABB &more) {
 }
 
 Color unpack(uint32_t c) {
-	return Color(float((c >> RGBA_R_SHIFT) & CHANNEL_MASK) / BYTE, float((c >> RGBA_G_SHIFT) & CHANNEL_MASK) / BYTE, float((c >> RGBA_B_SHIFT) & CHANNEL_MASK) / BYTE,
-			float(c & CHANNEL_MASK) / BYTE);
+	return Color(float((c >> RGBA_R_SHIFT) & 0xff) / BYTE, float((c >> RGBA_G_SHIFT) & 0xff) / BYTE, float((c >> RGBA_B_SHIFT) & 0xff) / BYTE, float(c & 0xff) / BYTE);
 }
 } // namespace
 
 // The job's surface to the draw: the instance shows the new mesh (or is emptied when the shell was empty), drawn when
 // `shown`.
-void BuildingRenderer::put(MeshDraw &d, Surface &sf, const RID &scenario, bool shadows, bool shown, RenderLayer layer) {
+void BuildingRenderer::put(MeshDraw &d, Surface &sf, const RID &scenario, const RID &material, bool shadows, bool shown, RenderLayer layer) {
 	const bool any = sf.mesh.valid();
-	d.adopt(scenario, shadows, sf.mesh.release(), layer);
+	d.adopt(scenario, material, shadows, sf.mesh.release(), layer);
 	if (any) RenderingServer::get_singleton()->instance_set_custom_aabb(d.inst, sf.box);
 	d.visible(any && shown);
 }
 
-// A level's mesh made whole on the job's thread, each surface with its material: the walls (`walls`), the panes or far walls (`glass`), and
-// `m`'s glass guards, railings, lawns and lanterns' washes (surface_data.h: the engine makes their pipelines with the mesh, never on a frame).
-BuildingRenderer::Surface BuildingRenderer::bake(const LevelMaterials &m, const RID &walls, const RID &glass, const b40::Shell &shell, bool with_uv2,
-		const b40::Shell *panes, const b40::Shell *sheer, const b40::Shell *cards, const b40::Shell *lawns, const b40::Shell *washes) {
+// A chunk's level: its walls, panes or far walls, glass guards and railings each with their material, on the mesh's surfaces, so no
+// override on the instance.
+void BuildingRenderer::put_level(MeshDraw &d, Surface &sf, const RID &glass, bool shown, RenderLayer layer, bool shadows) const {
+	if (sf.mesh.valid()) {
+		RenderingServer *rs = RenderingServer::get_singleton();
+		if (sf.glass_at != 0 && sf.sheer_at != 0 && sf.card_at != 0 && sf.lawn_at != 0 && sf.wash_at != 0) rs->mesh_surface_set_material(sf.mesh.rid, 0, material_);
+		if (sf.glass_at >= 0) rs->mesh_surface_set_material(sf.mesh.rid, sf.glass_at, glass);
+		if (sf.sheer_at >= 0) rs->mesh_surface_set_material(sf.mesh.rid, sf.sheer_at, material_sheer_);
+		if (sf.card_at >= 0) rs->mesh_surface_set_material(sf.mesh.rid, sf.card_at, material_card_);
+		if (sf.lawn_at >= 0) rs->mesh_surface_set_material(sf.mesh.rid, sf.lawn_at, material_lawn_);
+		if (sf.wash_at >= 0) rs->mesh_surface_set_material(sf.mesh.rid, sf.wash_at, material_wash_);
+	}
+	put(d, sf, scenario_, RID(), shadows, shown, layer);
+}
+
+BuildingRenderer::Surface BuildingRenderer::bake(const b40::Shell &shell, bool with_uv2, const b40::Shell *glass, const b40::Shell *sheer, const b40::Shell *cards, const b40::Shell *lawns, const b40::Shell *washes) {
 	Surface sf;
-	const bool any_glass = panes && panes->triangles() > 0, any_sheer = sheer && sheer->triangles() > 0, any_cards = cards && cards->triangles() > 0;
+	const bool any_glass = glass && glass->triangles() > 0, any_sheer = sheer && sheer->triangles() > 0, any_cards = cards && cards->triangles() > 0;
 	const bool any_lawns = lawns && lawns->triangles() > 0, any_washes = washes && washes->triangles() > 0;
 	if (shell.triangles() == 0 && !any_glass && !any_sheer && !any_cards && !any_lawns && !any_washes) return sf;
-	TypedArray<Dictionary> surfaces;
-	if (shell.triangles() > 0) surfaces.push_back(shell.surface(walls, with_uv2));
+	sf.mesh.rid = RenderingServer::get_singleton()->mesh_create();
+	shell.commit_to(sf.mesh.rid, with_uv2);
 	if (any_glass) {
-		sf.glass_at = int(surfaces.size());
-		surfaces.push_back(panes->surface(glass, with_uv2));
+		sf.glass_at = shell.triangles() > 0 ? 1 : 0;
+		glass->commit_to(sf.mesh.rid, with_uv2);
 	}
 	if (any_sheer) {
-		sf.sheer_at = int(surfaces.size());
-		surfaces.push_back(sheer->surface(m.sheer, with_uv2, true));
+		sf.sheer_at = (shell.triangles() > 0 ? 1 : 0) + (any_glass ? 1 : 0);
+		sheer->commit_to(sf.mesh.rid, with_uv2, true);
 	}
 	if (any_cards) {
-		sf.card_at = int(surfaces.size());
-		surfaces.push_back(cards->surface(m.card, with_uv2));
+		sf.card_at = (shell.triangles() > 0 ? 1 : 0) + (any_glass ? 1 : 0) + (any_sheer ? 1 : 0);
+		cards->commit_to(sf.mesh.rid, with_uv2);
 	}
 	if (any_lawns) {
-		sf.lawn_at = int(surfaces.size());
-		surfaces.push_back(lawns->surface(m.lawn, with_uv2));
+		sf.lawn_at = (shell.triangles() > 0 ? 1 : 0) + (any_glass ? 1 : 0) + (any_sheer ? 1 : 0) + (any_cards ? 1 : 0);
+		lawns->commit_to(sf.mesh.rid, with_uv2);
 	}
 	if (any_washes) {
-		sf.wash_at = int(surfaces.size());
-		surfaces.push_back(washes->surface(m.wash, with_uv2, true));
+		sf.wash_at = (shell.triangles() > 0 ? 1 : 0) + (any_glass ? 1 : 0) + (any_sheer ? 1 : 0) + (any_cards ? 1 : 0) + (any_lawns ? 1 : 0);
+		washes->commit_to(sf.mesh.rid, with_uv2, true);
 	}
-	sf.mesh.rid = create_mesh(surfaces);
 	Vector3 mn, mx, pad(AABB_PAD, AABB_PAD, AABB_PAD);
 	shell.bounds(mn, mx);
-	for (const b40::Shell *more : { any_glass ? panes : nullptr, any_sheer ? sheer : nullptr, any_cards ? cards : nullptr, any_lawns ? lawns : nullptr, any_washes ? washes : nullptr }) {
+	for (const b40::Shell *more : { any_glass ? glass : nullptr, any_sheer ? sheer : nullptr, any_cards ? cards : nullptr, any_lawns ? lawns : nullptr, any_washes ? washes : nullptr }) {
 		if (!more) continue;
 		Vector3 gn, gx;
 		more->bounds(gn, gx);
@@ -133,7 +140,7 @@ int64_t BuildingRenderer::Built::bytes() const {
 
 void BuildingRenderer::SuperBuilt::bake() {
 	held.add(far_shell, false);
-	far = BuildingRenderer::bake(mats, mats.far, mats.far, far_shell, false);
+	far = BuildingRenderer::bake(far_shell, false);
 	far_shell = b40::Shell();
 	baked = true;
 }
@@ -144,24 +151,29 @@ void BuildingRenderer::commit_one(Built &b) {
 	Chunk &ch = found->second;
 	const bool current = b.version == ch.version; // else the chunk changed after the job read it: stays stale
 	ch.key = b.key;
-	if (current) ch.wear_due = b.wear_due;
 	signatures_.set_chunk(b.key, b.signatures);
 	signatures_.visible(b.key, ch.shown);
 	if (b.has_near) {
 		for (int i = 0; i < SUB_COUNT; i++) {
-			fade_near(ch, size_t(i), false, 1.f); // a new mesh comes up whole
+			fade_near(ch, size_t(i), false, 1.f); // what it wore goes with the old mesh: the surfaces may not be the same
 			fade_parts(ch, size_t(i), false, 1.f);
-			put(ch.near[size_t(i)], b.near[size_t(i)], scenario_, true, ch.shown, LAYER_BUILDING_SHELLS);
-			put(ch.parts[size_t(i)], b.parts[size_t(i)], scenario_, false, ch.shown, LAYER_BUILDING_PARTS);
+			put_level(ch.near[size_t(i)], b.near[size_t(i)], material_glass_, ch.shown, LAYER_BUILDING_SHELLS);
+			put(ch.parts[size_t(i)], b.parts[size_t(i)], scenario_, material_, false, ch.shown, LAYER_BUILDING_PARTS);
+			const Surface &sf = b.near[size_t(i)];
+			ch.glass_at[size_t(i)] = int8_t(sf.glass_at);
+			const bool drawn = ch.near[size_t(i)].mesh.is_valid(); // a chunk of nothing but a building of its own design has no walls here
+			ch.wall_at[size_t(i)] = drawn && sf.glass_at != 0 && sf.sheer_at != 0 && sf.card_at != 0 && sf.lawn_at != 0 && sf.wash_at != 0 ? 0 : -1;
 		}
 		for (size_t i = 0; i < SUB_COUNT; i++)
 			for (size_t band = 0; band < BAND_DRAWS; band++) {
-				ch.bands[i][band].adopt(scenario_, false, b.band_mm[i][band].release(), b.band_count[i][band], b.band_box[i][band], LAYER_BUILDING_DETAILS);
+				const bool prop = band >= BAND_COUNT;
+				ch.bands[i][band].adopt(scenario_, prop ? material_props_ : material_parts_, false, b.band_mm[i][band].release(), b.band_count[i][band], b.band_box[i][band],
+						LAYER_BUILDING_DETAILS);
 				if (const int cast = cast_of(int(band)); cast >= 0)
-					ch.prop_casts[i][size_t(cast)].bind(scenario_, ch.bands[i][band].mm, b.band_box[i][band], LAYER_BUILDING_DETAILS);
+					ch.prop_casts[i][size_t(cast)].bind(scenario_, ch.bands[i][band].mm, material_cast_, b.band_box[i][band], LAYER_BUILDING_DETAILS);
 			}
 		// a cloth throws a shadow; its own layer, as the 4.0's flag layer has its own switch (effects panel bFlags)
-		ch.flags.adopt(scenario_, true, b.flag_mm.release(), b.flag_count, b.flag_box, LAYER_BUILDING_FLAGS);
+		ch.flags.adopt(scenario_, material_parts_, true, b.flag_mm.release(), b.flag_count, b.flag_box, LAYER_BUILDING_FLAGS);
 		ch.occluder.set(scenario_, b.walls);
 		std::copy(b.held.begin(), b.held.begin() + HELD_MID_WALLS, ch.held.begin());
 		ch.instances = b.flag_count;
@@ -174,23 +186,25 @@ void BuildingRenderer::commit_one(Built &b) {
 	}
 	if (b.has_mid) {
 		for (int i = 0; i < SUB_COUNT; i++) {
-			put(ch.mid[size_t(i)], b.mid[size_t(i)], scenario_, false, ch.shown, LAYER_BUILDING_FACADES); // its hull throws the shadow
+			put_level(ch.mid[size_t(i)], b.mid[size_t(i)], material_, ch.shown, LAYER_BUILDING_FACADES, false); // its hull throws the shadow
 			OwnedMesh hull = std::move(b.mid_hull[size_t(i)]);
-			ch.mid_hulls[size_t(i)].bind(scenario_, hull.rid, b.mid[size_t(i)].box, LAYER_BUILDING_FACADES); // made with the caster's material (cast_hull.h)
+			ch.mid_hulls[size_t(i)].bind(scenario_, hull.rid, material_cast_, b.mid[size_t(i)].box, LAYER_BUILDING_FACADES);
 			ch.mid_hull_meshes[size_t(i)] = std::move(hull); // the old one goes after the instance left it
-			put(ch.flat[size_t(i)], b.flat[size_t(i)], scenario_, false, ch.shown, LAYER_BUILDING_FACADES); // the plain side behind throws the shadow
+			put_level(ch.flat[size_t(i)], b.flat[size_t(i)], material_, ch.shown, LAYER_BUILDING_FACADES, false); // the plain side behind throws the shadow
 		}
 		for (size_t i = 0; i < SUB_COUNT; i++)
 			for (size_t k = 0; k < MID_DRAWS; k++) // no shadow of their own: the plain side behind the bays throws it
-				ch.mid_draws[i][k].adopt(scenario_, false, b.mid_mm[i][k].release(), b.mid_count[i][k], b.mid_box[i][k], LAYER_BUILDING_FACADES);
+				ch.mid_draws[i][k].adopt(scenario_, k == MID_BAYS ? material_ : material_parts_, false, b.mid_mm[i][k].release(), b.mid_count[i][k],
+						b.mid_box[i][k], LAYER_BUILDING_FACADES);
 		for (size_t i = 0; i < SUB_COUNT; i++)
-			ch.mid_casts[i].bind(scenario_, ch.mid_draws[i][MID_SOLIDS].mm, b.mid_box[i][MID_SOLIDS], LAYER_BUILDING_FACADES);
+			ch.mid_casts[i].bind(scenario_, ch.mid_draws[i][MID_SOLIDS].mm, material_cast_, b.mid_box[i][MID_SOLIDS], LAYER_BUILDING_FACADES);
 		std::copy(b.held.begin() + HELD_MID_WALLS, b.held.end(), ch.held.begin() + HELD_MID_WALLS);
 		ch.built[LEVEL_MID] = true;
 		ch.stale[LEVEL_MID] = !current;
 	}
 	fit_reach(ch, b);
 	ranges(ch);
+	if (b.has_near) warm_fades(ch);
 	show(ch, ch.shown); // the bands' MultiMeshes come up visible: the chunk's state decides
 }
 
@@ -227,8 +241,7 @@ void BuildingRenderer::commit_super(SuperBuilt &b) {
 	Super &sp = supers_[b.key];
 	sp.has_content = b.far.mesh.valid();
 	sp.held = b.held;
-	sp.wear_due = b.wear_due;
-	put(sp.far, b.far, scenario_, true, true, LAYER_BUILDING_MASSES); // casts: past the mid level it is the only thing that can
+	put(sp.far, b.far, scenario_, material_far_, true, true, LAYER_BUILDING_MASSES); // casts: past the mid level it is the only thing that can
 	sp.built = true;
 	sp.mask_sent = -1; // the mask update_view computed this frame goes to the (maybe new) instance at once
 	send_mask(sp);

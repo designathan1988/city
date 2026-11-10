@@ -7,7 +7,6 @@
 // its model; far away the same trees are one card each.
 #pragma once
 
-#include "render/data_reader.h"
 #include "render/props/street_props.h"
 #include "render/trees/tree_kit.h"
 
@@ -20,35 +19,33 @@ namespace city {
 enum class WoodBand : int { INNER = 0, EDGE = 1, OPEN = 2, COUNT = 3 };
 constexpr int WOOD_BANDS = int(WoodBand::COUNT);
 
-// What a chunk's plants keep clear of and read: its roads and lots, with a margin, and its ecosystem (none on a map with neither a
-// biome nor paint). The roads and lots are filed by cell of a grid over the chunk and its margin, each in every cell its reach can
-// touch, so near_road and in_lot test only those that can answer: the same answer as testing them all. Only read once made, so the
-// jobs of several threads may read one (ground_kept.h).
+// What a chunk's plants keep clear of and read, gathered once per chunk job: its roads and lots, with a margin, and its ecosystem
+// (none on a map with neither a biome nor paint, or when the job does not ask for it). The roads and lots are filed by cell of a
+// grid over the chunk and its margin, each in every cell its reach can touch, so near_road and in_lot test only those that can
+// answer: the same answer as testing them all.
 struct ChunkGround {
 	std::vector<int> segs, lots;
 	EcologyField eco;
 	struct Grid {
 		double x0 = 0, z0 = 0;
-		int n = 0, count = 0; // cells a side; indices filed
+		int n = 0;
 		std::vector<std::vector<int>> cells; // indices into segs (or lots)
+		mutable std::vector<uint32_t> seen; // per index: the query that last tested it
+		mutable uint32_t stamp = 0;
 		void file(int index, double minx, double minz, double maxx, double maxz);
 		template <typename F>
 		bool any(double x, double z, double reach, F &&test) const; // test(index) on each filed index the square x, z +- reach meets
 	} seg_grid, lot_grid;
-	size_t bytes() const; // what it holds, for the memory it is kept by
 };
-ChunkGround chunk_ground(const CityView &s, int64_t key);
-bool near_road(const CityView &s, const ChunkGround &l, float x, float z, float r);
-bool in_lot(const CityView &s, const ChunkGround &l, float margin, float x, float z);
-// How far past its chunk a chunk's ground reads the roads and the lots (ChunkGround's margin), and the land (the ecosystem's
-// margin of corners round the square).
-float ground_reach(const Catalog &catalog);
+ChunkGround chunk_ground(const CityState &s, int64_t key, bool ecology = true);
+bool near_road(const CityState &s, const ChunkGround &l, float x, float z, float r);
+bool in_lot(const CityState &s, const ChunkGround &l, float margin, float x, float z);
 
 struct SpeciesMix {
 	std::vector<int> species;
 	std::vector<float> weight; // cumulative, ending at 1
 	int pick(float r) const;
-	bool load(DataReader r, const godot::Dictionary &mix, const TreeKit &kit); // name -> weight; an unknown name is an error on `r`
+	bool load(const godot::Dictionary &mix, const TreeKit &kit, const godot::String &where, godot::PackedStringArray &errors);
 };
 
 struct BandLook {
@@ -107,17 +104,13 @@ struct FarCard {
 	int species = 0;
 };
 
-// The trees of 256 m chunk `key` on its ground `l` (chunk_ground), near models.
-void place_trees(const CityView &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, const ChunkGround &l, int64_t key,
+class GardenBook; // the plants of the lots' bodies (garden_place.h)
+
+// The trees of 256 m chunk `key`, near models.
+void place_trees(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, GardenBook &book, int64_t key,
 		std::vector<TreeInstance> &out);
-// The far cards of chunk `key` on its ground `l`: the same trees, one card each.
-void place_far(const CityView &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, const ChunkGround &l, int64_t key,
+// The far cards of chunk `key`: the same trees, one card each.
+void place_far(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, GardenBook &book, int64_t key,
 		std::vector<FarCard> &out);
-// How far past its chunk the trees of a chunk read the land: the woods' neighbours and jitter, the grade's probes.
-float tree_reach(const TreeLook &T);
-// The trees of the woods within `radius` of (x, z) that clearing `clearing` took (a blow's: they stood before it, they are gone
-// now): what the effects fell there (render/effects EffectWorld TREES).
-void felled_wild(const CityView &s, const TreeLook &T, const TreeKit &kit, float x, float z, float radius, int clearing,
-		std::vector<TreeInstance> &out);
 
 } // namespace city

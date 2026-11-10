@@ -54,11 +54,7 @@ def call(w, c, stmt, mode=READ):
             for d in found:
                 w.ev("call", c, w.u.target(canon(d)), descs, w.arg(obj) if obj is not None else None, stmt, False)
             if not found:
-                # A name a template leaves open whose every listed declaration is the language's own (a library that brings `memcpy` in by
-                # several `using` declarations) is a call of the language, whichever of them the instantiation takes.
-                listed = _overloads(head)
-                mine = bool(listed) and all(w.u.of_the_language(d) for d in listed)
-                w.ev("call", c, ("lang:" if mine else "dep:") + name, descs, w.arg(obj) if obj is not None else None, stmt, False)
+                w.ev("call", c, "dep:" + name, descs, w.arg(obj) if obj is not None else None, stmt, False)
         for k in kids:
             w.expr(k, READ)
         return
@@ -112,22 +108,6 @@ def _candidates(head, count):
         params = [k for k in d.get_children() if k.kind == K.PARM_DECL]
         if d.kind == K.FUNCTION_TEMPLATE or len(params) >= count:
             out.append(d)
-    return out
-
-
-def _overloads(head):
-    """Every declaration the compiler lists for a name not yet chosen, of any kind: the reference sits on the expression or below it."""
-    if head is None:
-        return []
-    ref = head if head.kind == K.OVERLOADED_DECL_REF else next((k for k in head.walk_preorder() if k.kind == K.OVERLOADED_DECL_REF), None)
-    if ref is None:
-        return []
-    lib = ci.conf.lib
-    out = []
-    for i in range(lib.clang_getNumOverloadedDecls(ref)):
-        d = lib.clang_getOverloadedDecl(ref, i)
-        d._tu = ref._tu
-        out.append(d)
     return out
 
 

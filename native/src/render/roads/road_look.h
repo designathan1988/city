@@ -4,9 +4,7 @@
 // conventions shared with render/shaders/road.gdshader (material id in COLOR.a).
 #pragma once
 
-#include "render/roads/street_shapes.h"
 #include "sim/roads/profiles.h"
-#include "core/shader_contracts/streets.h"
 
 #include <godot_cpp/variant/color.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
@@ -16,32 +14,34 @@
 
 namespace city {
 
-// A road vertex's material (RoadMat) in COLOR.a over ROAD_MAT_SCALE, at its middle; UV2.x of a vertex no lamp pool lights and of a
-// junction plate, lit evenly (ROAD_POOL_NONE, ROAD_POOL_PLATE): core/shader_contracts/streets.h's, which road_body.gdshaderinc reads.
+// Road shader materials (render/shaders/road.gdshader decodes COLOR.a * MAT_SCALE).
+enum class RoadMat : int { ASPHALT = 0, PLATE, FOOTWAY, KERB, GRASS, CONCRETE, LANE, PAINT, PAVERS, STONE, COBBLE,
+	BALLAST, SKIRT, JOIN };
+constexpr float MAT_SCALE = 16.f;
 constexpr float MAT_HALF = 0.5f;
+// UV2.x of a vertex that is not lit by a lamp pool, and of a junction plate (lit evenly).
+constexpr float POOL_NONE = 1000.f, POOL_PLATE = -1000.f;
 
 inline godot::Color road_color(const godot::Color &srgb, RoadMat m) {
-	return godot::Color(srgb.r, srgb.g, srgb.b, (float(int(m)) + MAT_HALF) / ROAD_MAT_SCALE);
+	return godot::Color(srgb.r, srgb.g, srgb.b, (float(int(m)) + MAT_HALF) / MAT_SCALE);
 }
 
 // The wear (road_wear.gdshaderinc) reads how far a vertex is from its surface's two edges in place of a colour: R and G in
-// metres over ROAD_WEAR_SPAN_M, interpolated exactly across a strip because they are linear in it. On a lane, B is the lane's
-// width over ROAD_WEAR_LANE_M, and the class's tone travels in the fraction of the material id.
-constexpr float TONE_SLOTS = float(ROAD_TONE_SLOTS);
+// metres over WEAR_SPAN_M, interpolated exactly across a strip because they are linear in it. On a lane, B is the lane's
+// width over WEAR_LANE_M, and the class's tone travels in the fraction of the material id.
+constexpr float WEAR_SPAN_M = 25.5f, WEAR_LANE_M = 12.75f;
+constexpr float TONE_SLOTS = 8.f;
 inline godot::Color wear_color(float from_a, float from_b, float lane, RoadMat m, int tone) {
-	return godot::Color(from_a / ROAD_WEAR_SPAN_M, from_b / ROAD_WEAR_SPAN_M, lane / ROAD_WEAR_LANE_M, (float(int(m)) + (float(tone) + MAT_HALF) / TONE_SLOTS) / ROAD_MAT_SCALE);
+	return godot::Color(from_a / WEAR_SPAN_M, from_b / WEAR_SPAN_M, lane / WEAR_LANE_M, (float(int(m)) + (float(tone) + MAT_HALF) / TONE_SLOTS) / MAT_SCALE);
 }
 
 struct StreetLook {
-	StreetShapes shapes; // every size the emitters draw with beyond the section (streets.json "shapes")
-	godot::Color surface[4], paving[4], median[4], asphalt[int(RoadClass::COUNT)], bike, shoulder, curb, barrier;
-	// The most a road's mesh may stand off its true surface (plan and height, the section's edges too), in metres: the near
-	// level's and the far level's (segment_stations, road_emit.cpp); how far towards the eye the far level is drawn.
-	float surface_error = 0, far_surface_error = 0, far_pull = 0;
-	float h_curb = 0, h_curb_median = 0, h_sidewalk = 0, h_median = 0, h_barrier = 0, median_nose = 0;
-	// coplanar faces closer than this are one. No band of ground beside the road is the look's: the terrain itself meets the
-	// paving's edge (ground_seam.h), so streets.json holds no verge and nothing reads one (road_verge.cpp, its only reader, is gone).
-	float face_eps = 0;
+	godot::Color surface[4], paving[4], median[4], asphalt[int(RoadClass::COUNT)], bike, shoulder, curb, barrier, plate_concrete;
+	float far_step = 0, far_pull = 0; // the far level: its stretches on a curve; how far towards the eye it is drawn, over the coarser ground out there
+	float h_curb = 0, h_curb_median = 0, h_sidewalk = 0, h_median = 0, h_barrier = 0, step = 1, skirt = 0, median_nose = 0;
+	float face_eps = 0; // coplanar faces closer than this are one
+	float verge_reach = 0, verge_under = 0;
+	int verge_strips = 1;
 	// dropped kerbs at crossings (metres from the mouth) and the ramp band of the footway
 	float ramp_full = 0, ramp_flat = 0, ramp_flare = 0, ramp_low = 0, ramp_run = 0, ramp_min_walk = 0;
 	float arc_step = 0;

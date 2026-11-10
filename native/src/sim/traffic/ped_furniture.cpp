@@ -1,9 +1,7 @@
-// The street furniture of a segment, placed (sim/roads/street_furniture.cpp: the kit and its ends' signal posts where junction
-// control signals them; what the player put up and cut; what a blow left standing) or read kept for the city's revision
-// (sim/street/furniture_kept.h), and as the walkers meet it: bodies standing on their sidewalks, footprints along the arc and
-// across from the sidewalk's middle, and in the world. A segment's bodies are built when a walker first meets it, dropped when
-// an edit touches the segment or one of its nodes (lane_graph_edit.cpp, reset_traffic) and when the walkers are far. A junction's
-// walking area: its arms' pieces near it, which whoever is near it sees (ped_crowd.cpp).
+// The street furniture as the walkers meet it: the pieces sim/roads/street_furniture.cpp places (its ends' signal posts
+// where junction control signals them) become bodies standing on their sidewalks, footprints along the arc and across
+// from the sidewalk's middle, and in the world. A segment's bodies are built when a walker first meets it, dropped when
+// an edit touches the segment or one of its nodes (lane_graph_edit.cpp, reset_traffic) and when the walkers are far.
 #include "sim/street/street_spots.h"
 #include "sim/traffic/traffic_system.h"
 
@@ -79,9 +77,7 @@ bool furniture_xz(const CityState &s, int seg, const FurnitureSpot &f, float &x,
 	return true;
 }
 
-namespace {
-// The segment's furniture placed now, appended to `out`.
-void place_street_furniture(const CityState &s, int sid, uint32_t kinds, std::vector<FurnitureSpot> &out) {
+void street_furniture_of(const CityState &s, int sid, uint32_t kinds, std::vector<FurnitureSpot> &out) {
 	const RoadSegment &g = s.roads.segs[size_t(sid)];
 	if (!g.alive) return;
 	const bool signalled[2] = { control_of(s, g.a) == Control::SIGNAL, control_of(s, g.b) == Control::SIGNAL };
@@ -96,21 +92,6 @@ void place_street_furniture(const CityState &s, int sid, uint32_t kinds, std::ve
 		if (!furniture_xz(s, sid, out[i], x, z) || !s.damage.is_gone(gone_kind(out[i].kind), x, z, GONE_MATCH_M)) out[keep++] = out[i];
 	}
 	out.resize(keep);
-}
-} // namespace
-
-void street_furniture_of(const CityState &s, int sid, uint32_t kinds, std::vector<FurnitureSpot> &out, FurnitureRead read) {
-	if (read == FurnitureRead::PLACED) {
-		place_street_furniture(s, sid, kinds, out);
-		return;
-	}
-	// The kinds only choose among the pieces placed (segment_furniture, merge_street and the knocked-out ones filter each piece
-	// by itself), so the kept placement of every kind, filtered, is the placement of these kinds.
-	const FurnitureKept::Spots all = s.furniture_kept.of(s.street_revision, sid, [&](std::vector<FurnitureSpot> &made) {
-		place_street_furniture(s, sid, FURNITURE_ALL, made);
-	});
-	for (const FurnitureSpot &f : *all)
-		if (kinds & furniture_bit(f.kind)) out.push_back(f);
 }
 
 const SidewalkFurniture &sidewalk_furniture(CityState &s, int seg) {
@@ -142,27 +123,6 @@ float clear_arc(CityState &s, int seg, int side, float at, float u) {
 		}
 	}
 	return at;
-}
-
-void build_junction_furniture(CityState &s, int n) {
-	for (int seg : s.roads.nodes[size_t(n)].segs)
-		if (walkable(s, seg)) sidewalk_furniture(s, seg);
-}
-
-void junction_pieces(const CityState &s, int n, int skip, std::vector<const StreetObstacle *> &out) {
-	out.clear();
-	const float reach = s.catalog.furniture.crossing.zebra_to_m + s.catalog.traffic.ped_look_m + s.catalog.traffic.ped_body_m;
-	for (int seg : s.roads.nodes[size_t(n)].segs) {
-		if (seg == skip || !walkable(s, seg)) continue;
-		const RoadSegment &g = s.roads.segs[size_t(seg)];
-		const SidewalkFurniture &sf = s.traffic.furniture.find(seg)->second; // built: build_junction_furniture
-		const float lo = g.a == n ? -BIG : float(g.len - g.retreat_b) - reach - sf.longest;
-		const float hi = g.a == n ? float(g.retreat_a) + reach : BIG;
-		for (const auto &side : sf.side)
-			for (auto it = std::lower_bound(side.begin(), side.end(), lo, [](const StreetObstacle &o, float v) { return o.s0 < v; });
-					it != side.end() && it->s0 <= hi; ++it)
-				out.push_back(&*it);
-	}
 }
 
 void forget_furniture(CityState &s, int seg) { s.traffic.furniture.erase(seg); }

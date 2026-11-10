@@ -1,13 +1,12 @@
 {
  "rule": "data_copies",
  "expect": [
-  "SEGUNDO_DONO native/src/lanes/a.cpp:2",
-  "SEGUNDO_DONO native/src/lanes/a.cpp:3",
-  "VALOR_DUPLICADO native/src/lanes/a.cpp:4"
+  "SEGUNDO_DONO native/src/a.cpp:2",
+  "VALOR_DUPLICADO native/src/a.cpp:3"
  ],
  "overrides": {
   "schemas": {
-   "project/data/lanes.json": "tools/gates/schemas/x.schema.json"
+   "project/data/x.json": "tools/gates/schemas/x.schema.json"
   }
  }
 }

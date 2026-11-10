@@ -3,11 +3,12 @@
 // repeats its bays by the hundred (the census: 172,508 bays, 256 forms cover 82 %), so geometry reaches every bay of the view.
 #pragma once
 
-
-#include "render/mesh_builder.h"
+#include <godot_cpp/classes/array_mesh.hpp>
 
 namespace city::b40 {
 
-MeshBuilder bay_mesh(); // made a mesh with its material by its owner (surface_data.h)
+constexpr float BAY_MESH_MARK = 2.f; // UV2.y of the bay mesh: building.gdshader's vertex stage places it from the instance
+
+godot::Ref<godot::ArrayMesh> bay_mesh();
 
 } // namespace city::b40

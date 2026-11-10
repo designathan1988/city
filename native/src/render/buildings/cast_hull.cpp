@@ -1,7 +1,6 @@
 // See cast_hull.h. meshoptimizer: https://github.com/zeux/meshoptimizer (MIT), "Simplification" and "Indexing" in its README. The shells keep a vertex per face
 // (each its own normal and colour), which to the simplifier are borders it may not move: they are welded by position first.
 #include "render/buildings/cast_hull.h"
-#include "render/surface_data.h"
 
 #include <meshoptimizer.h>
 
@@ -15,7 +14,7 @@ using namespace godot;
 
 namespace city {
 
-OwnedMesh cast_hull(const b40::Shell &walls, const b40::Shell &panes, float error_m, const RID &material) {
+OwnedMesh cast_hull(const b40::Shell &walls, const b40::Shell &panes, float error_m) {
 	OwnedMesh out;
 	std::vector<Vector3> points;
 	std::vector<unsigned> corners;
@@ -51,7 +50,8 @@ OwnedMesh cast_hull(const b40::Shell &walls, const b40::Shell &panes, float erro
 	arrays.resize(RenderingServer::ARRAY_MAX);
 	arrays[RenderingServer::ARRAY_VERTEX] = vertices;
 	arrays[RenderingServer::ARRAY_INDEX] = indices;
-	out.rid = mesh_of_arrays(arrays, material); // with its material: the engine has its pipelines before it casts (surface_data.h)
+	out.rid = RenderingServer::get_singleton()->mesh_create();
+	RenderingServer::get_singleton()->mesh_add_surface_from_arrays(out.rid, RenderingServer::PRIMITIVE_TRIANGLES, arrays);
 	return out;
 }
 

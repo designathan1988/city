@@ -3,13 +3,14 @@
 ## the next click; with Free the road follows the stroke. Where the pointer lands comes from the core (road_end: the
 ## network, the angles, the grid), and the road in hand from road_pieces; preview and build read the same pieces, so
 ## what shows green is what gets built. Each road laid ends the gesture. V cycles the alignment, Esc or a right click
-## drops it. Its keys are the player's (RoadKeys); by default Page Up and Page Down draw the road a step higher or lower (data/game/tools.json road.height_step_m), landing on whole steps; a road starts at the
+## drops it. Its keys are the player's (RoadKeys); by default Page Up and Page Down draw the road a metre higher or lower, landing on whole metres; a road starts at the
 ## height it was begun at and climbs to the one in hand, and the pointer holds the road at that height, not the ground under it.
 extends ToolBase
 
 enum Alignment { STRAIGHT, CURVE, FREE }
 
-const ON_STEP := 0.000001 # a height this near a whole step (in steps) is on it
+## A long stroke keeps every sample up to DENSE_SAMPLES, then one a metre, up to MOST_SAMPLES.
+const WHOLE_M := 0.000001 # a height this near a whole metre is on it
 
 var alignment: Alignment = Alignment.STRAIGHT
 var profile := 0
@@ -41,7 +42,6 @@ func enter() -> void:
 	alignment = params.get("alignment", Alignment.STRAIGHT)
 	height = CityStore.query(&"road_height")
 	CityStore.dispatch(&"set_road_walls", [Settings.road.walls])
-	CityStore.dispatch(&"set_road_power", [Settings.road.power])
 	ctl.hint.emit("", true)
 
 
@@ -49,10 +49,10 @@ func enter() -> void:
 func _read_cell() -> void:
 	_cell = 0.0
 	_cell_offset = 0.0
-	if not Settings.map.layer_on("grid"):
+	if not Settings.layer_on("grid"):
 		return
 	_cell = DataTables.ui("drawers").road_options.cell_m
-	var width: float = CityStore.cached(&"road_profiles")[drawn].width
+	var width: float = CityStore.query(&"road_profiles")[drawn].width
 	_cell_offset = _cell * 0.5 if maxi(1, roundi(width / _cell)) % 2 == 1 else 0.0
 
 
@@ -154,11 +154,9 @@ func keeps_key(keycode: Key) -> bool:
 	return RoadKeys.action_of(keycode) != ""
 
 
-## The road a step higher (`dir` 1) or lower (-1), landing on whole steps (roadTool.ts stepHeight); the road in hand goes with it.
-func step_height(dir: int) -> void:
-	var step: float = DataTables.game("tools").road.height_step_m
-	var steps := height / step
-	height = ((floorf(steps + ON_STEP) if dir > 0 else ceilf(steps - ON_STEP)) + dir) * step
+## The road a metre higher or lower, landing on whole metres (roadTool.ts stepHeight); the road in hand goes with it.
+func step_height(metres: int) -> void:
+	height = (floorf(height + WHOLE_M) if metres > 0 else ceilf(height - WHOLE_M)) + metres
 	CityStore.dispatch(&"set_road_height", [height])
 	ctl.road_height_changed.emit()
 	if pointer == Vector3.INF:
@@ -217,9 +215,9 @@ func _preview(pieces: PackedVector3Array, from_lift: float) -> void:
 	ctl.preview.show_road(_last_plan, RoadDraft.paint(drawn), ok, ctl.px_at(pieces[0]), ctl.px_at(pieces[-1]))
 	var text := RoadDraft.measure(_last_plan)
 	if not _last_plan.ok:
-		text = "%s · %s" % [text, reason(_last_plan)]
+		text += " · " + reason(_last_plan)
 	elif not _last_plan.affordable:
-		text = "%s · %s" % [text, tr("rule.short.funds")]
+		text += " · " + tr("rule.short.funds")
 	ctl.tagged.emit(text, pieces[-1], ok)
 
 

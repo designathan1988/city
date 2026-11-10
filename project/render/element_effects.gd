@@ -11,7 +11,7 @@ var _puff: Texture2D
 
 
 func _ready() -> void:
-	_d = DataTables.render_table("cover").elements
+	_d = DataTables.render().cover.elements
 	var soft := Gradient.new()
 	soft.set_color(0, Color.WHITE)
 	soft.set_color(1, Color(1, 1, 1, 0))
@@ -30,7 +30,7 @@ func _process(delta: float) -> void:
 		return
 	_wait = _d.read_every_s
 	var at := camera.global_position
-	var near: Array = CityStore.query(&"effects_near", [at, float(_d.reach_m)])
+	var near: Array = CityStore.query(&"effects_near", [at, float(_d.reach_m), int(_d.props.size())])
 	near.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.position.distance_squared_to(at) < b.position.distance_squared_to(at))
 	var used := mini(near.size(), int(_d.max_emitters))
 	while _pool.size() < used:

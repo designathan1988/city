@@ -4,13 +4,13 @@ class_name LabTools
 extends RefCounted
 
 const DRAW_CONSTANT := "DEBUG_DRAW_"
+const PERCENT := 100
 
 
-## A name and its value; the value's label, for one written as given.
-static func _line(body: Control, name_text: String, value := "") -> Label:
+static func _line(body: Control, name_text: String, value: String) -> void:
 	var row := HudWidgets.hbox(body)
 	HudWidgets.label(row, &"MutedLabel", name_text).size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	return HudWidgets.label(row, &"BodyLabel", value)
+	HudWidgets.label(row, &"BodyLabel", value)
 
 
 static func _note(body: Control, text: String) -> void:
@@ -58,16 +58,16 @@ static func capture(body: Control, frame: FrameCapture) -> void:
 
 static func views(body: Control, redraw: Callable) -> void:
 	HudWidgets.label(body, &"TitleLabel", body.tr("lab.gpu.views").to_upper())
+	var items := []
 	var now := body.get_viewport().debug_draw
 	var shown := ""
 	for v: String in DataTables.game("lab").views:
+		items.append([v, body.tr("lab.view." + v)])
 		if ClassDB.class_get_integer_constant(&"Viewport", DRAW_CONSTANT + v) == now:
 			shown = v
-	var row := HudWidgets.choices(body, shown, func(v: String) -> void:
+	HudWidgets.choices(body, items, shown, func(v: String) -> void:
 		set_view(body.get_viewport(), v)
 		redraw.call_deferred())
-	for v: String in DataTables.game("lab").views:
-		HudWidgets.choice(row, v, body.tr("lab.view." + v))
 
 
 ## Where the CPU's frame goes over the window: heaviest first.
@@ -80,7 +80,7 @@ static func cpu(body: Control, watch: CpuWatch) -> void:
 
 static func checks(body: Control, watch: ResourceWatch) -> void:
 	for c: Dictionary in watch.checks():
-		HudWidgets.verbatim(_line(body, body.tr("lab.check." + c.id)), "%s · %s" % [c.value, body.tr("lab.verdict." + c.verdict + ".word")])
+		_line(body, body.tr("lab.check." + c.id), "%s · %s" % [c.value, body.tr("lab.verdict." + c.verdict + ".word")])
 
 
 static func recorder(body: Control, rec: LabRecorder, redraw: Callable) -> void:
@@ -106,8 +106,8 @@ static func tests(body: Control, run: DoctorRun) -> void:
 	rows.sort_custom(func(a: String, b: String) -> bool: return _gain(run.results[a]) > _gain(run.results[b]))
 	for key: String in rows:
 		var c: Dictionary = run.results[key]
-		var value := body.tr("lab.ab.row") % [c.gpu_before if c.gpu_before != null else 0.0, c.gpu_after if c.gpu_after != null else 0.0]
-		_line(body, body.tr("fx." + key), value if c.real else "%s · %s" % [value, body.tr("lab.ab.noise")])
+		var value := "%.2f → %.2f ms" % [c.gpu_before if c.gpu_before != null else 0.0, c.gpu_after if c.gpu_after != null else 0.0]
+		_line(body, body.tr("fx." + key), value if c.real else value + " · " + body.tr("lab.ab.noise"))
 
 
 static func _gain(c: Dictionary) -> float:

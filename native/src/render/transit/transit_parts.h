@@ -3,11 +3,12 @@
 #pragma once
 
 #include "render/mesh_builder.h"
-#include "sim/state/city_cut.h"
+#include "sim/state/city_state.h"
 
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 
+#include <unordered_map>
 #include <vector>
 
 namespace city {
@@ -35,9 +36,7 @@ struct TrackLayer {
 
 struct TransitLook {
 	std::vector<TransitPart> parts;
-	// The parts the code lays by name, resolved when the table is read ([0] at the surface, [1] the metro's).
-	int ballast_part[2] = {}, sleeper_part[2] = {}, rail_part[2] = {};
-	int bore_part = 0, roof_part = 0, car_part = 0;
+	std::unordered_map<std::string, int> part_of;
 	godot::Color default_line;
 	float gauge = 0, piece = 0, sleeper_step = 0, run = 0, rail_paved_up = 0, rail_paved_high = 0;
 	TrackLayer ballast, sleeper, rail;
@@ -48,11 +47,9 @@ struct TransitLook {
 	TransitBoxes station, stop, terminal, entrance, below;
 	godot::Vector3 car;
 	float car_up = 0;
-	std::vector<std::pair<int, float>> preview; // the run being laid: a surface part and its opacity
-	float preview_step = 0; // how far a point of that run moves before its part is made again
 
-	// Every key, type and length checked (render/data_reader.h); a box or a named part that names no part is an error.
 	bool read(const godot::Dictionary &t, godot::PackedStringArray &errors);
+	int part(const char *name) const { return part_of.at(name); }
 };
 
 // One stretch's surfaces: opaque, see-through, and the layers drawn through the ground.
@@ -63,17 +60,8 @@ struct TransitMeshes {
 // Lays a box: `base` the middle of its bottom, `dir` along its length, `tint` when it takes the line's colour.
 void transit_box(TransitMeshes &m, const TransitLook &look, int part, const godot::Vector3 &base, const V2 &dir, const godot::Vector3 &size, const godot::Color *tint = nullptr);
 
-// The geometry reads a CityView: the live city (the run being laid, its caller holding the map) or a job's cut of what it stands on.
-// A track is laid in stretches of look.run metres (a stretch a mesh of its own, so the view can leave the rest out): the box of each
-// stretch's pieces on the map, from its points alone (what a job cuts the city by, grown by how far a piece reads the street).
-std::vector<CutBox> transit_track_stretches(const TransitLook &look, const RailTrack &track);
-// Stretch `stretch` of a track into its meshes.
-void transit_track_stretch(const CityView &s, const TransitLook &look, const RailTrack &track, size_t stretch, TransitMeshes &out);
-// A track whole into one mesh (the run being laid). Its pieces are the same as in stretches: each length of the track lays its own.
-void transit_track_whole(const CityView &s, const TransitLook &look, const RailTrack &track, TransitMeshes &out);
-// A stop's boxes. `track`: the track it stands on (null: none); `tint`: its line's colour (transit_line_colour).
-void transit_stop_parts(const CityView &s, const TransitLook &look, const TransitStop &stop, const RailTrack *track, const godot::Color &tint, TransitMeshes &out);
-// The colour of the first line of the plan that calls at `stop`, or the look's default.
-godot::Color transit_line_colour(const TransitData &plan, const TransitLook &look, int stop);
+// A track in stretches of look.run metres (a stretch a mesh of its own, so the view can leave the rest out).
+void transit_track_parts(const CityState &s, const TransitLook &look, const RailTrack &track, std::vector<TransitMeshes> &out);
+void transit_stop_parts(const CityState &s, const TransitLook &look, const TransitStop &stop, TransitMeshes &out);
 
 } // namespace city

@@ -16,26 +16,21 @@
 //   sway: the turbulent share of the drag (2 I of it) at the natural frequency sway_hz (Jackson et al. 2019; 0.2-0.3 Hz
 //   for trees of this size with leaves).
 // Leaf flutter is not drawn: no measured amplitude for it has been found.
-#include "res://render/shaders/contracts/trees.gdshaderinc"
 
-const float FAR_TINT_SPAN = 1.0 / FAR_TINT_SHARE; // a vertex colour stops at 1: the tint packed at its share, either side of it
+const float PART_CARD = 1.0, PART_FROND = 2.0, PART_FAR = 3.0, PART_BARK = 4.0; // tree_part.h TreePart
+const float FAR_TINT_SPAN = 2.0; // far_cards.cpp: a vertex colour stops at 1, and the tint goes either side of it
 
-uniform float near_m; // set by the tree and cover renderers, as fade_m and the picture's frames
-uniform float fade_m;
+uniform float near_m = 240.0;
+uniform float fade_m = 30.0;
 global uniform float wind_x; // the way the wind blows, x and z of a unit vector (render/sky_view.gd)
 global uniform float wind_z;
 global uniform float wind_ms;
-uniform float sway_per_ms2; // materials.json: the gust set, the sway or stone set, each row's roughness and sheen
-uniform float gust_m;
-uniform float turbulence;
-uniform float sway_hz;
-uniform float roughness;
-uniform float leaf_specular;
-uniform float bend_most; // a point bends by its height up the tree, at most this many tree heights (materials.json gust)
-// Each tree its own switch distance and swing phase: its cell's dot with two irrational-ish steps, scaled off the integers.
-const vec2 SWITCH_STEP = vec2(0.0973, 0.1031), PHASE_STEP = vec2(0.1031, 0.0973);
-const float SWITCH_SCALE = 47.53, PHASE_SCALE = 43.17;
-const float LEAST_ARM = 1e-4; // a point this near the foot is moved, not turned
+uniform float sway_per_ms2 = 0.00016;
+uniform float gust_m = 220.0;
+uniform float turbulence = 0.19;
+uniform float sway_hz = 0.25;
+uniform float roughness = 0.85;
+uniform float leaf_specular = 0.15; // materials.json
 const float SHEEN_WHOLE_FROM = 0.6; // of the cosine of the view on the crown's normal
 
 // A crown's normal is the bulk's, not a leaf's: where the eye grazes it, against the sun, the Fresnel of one smooth surface would
@@ -44,27 +39,29 @@ float leaf_sheen(vec3 n, vec3 view) {
 	return leaf_specular * smoothstep(0.0, SHEEN_WHOLE_FROM, abs(dot(n, view)));
 }
 
-uniform int picture_frames;
-uniform int picture_rows;
-uniform float picture_top_deg;
+uniform int picture_frames = 1;
+uniform int picture_rows = 1;
+uniform float picture_top_deg = 80.0;
 
 varying flat vec3 v_tint;
 varying flat vec2 v_cell; // far: the picture's frame (column, row)
 varying flat float v_part;
 varying vec3 v_model; // the point on the tree, metres from its foot
 
-#include "res://render/shaders/color_space.gdshaderinc"
+vec3 to_linear(vec3 c) {
+	return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
+}
 
 // COLOR as linear albedo: Compatibility (OUTPUT_IS_SRGB) hands it over already decoded (road.gdshader does the same).
 vec3 vertex_albedo(vec3 c, bool srgb_out) {
-	return srgb_out ? c : srgb_to_linear(c);
+	return srgb_out ? c : to_linear(c);
 }
 
 // Whether this level of the tree standing at `root` is drawn at distance `d`: its near level inside its own switch distance,
 // its far card past it. Each tree switches whole at its own distance, spread over fade_m, so a wood changes level tree by tree
 // and a still frame holds no tree between levels.
 bool tree_shown(vec3 root, float d, bool far) {
-	float at = near_m + fade_m * fract(dot(floor(root.xz), SWITCH_STEP) * SWITCH_SCALE);
+	float at = near_m + fade_m * fract(dot(floor(root.xz), vec2(0.0973, 0.1031)) * 47.53);
 	return (d >= at) == far;
 }
 
@@ -72,11 +69,11 @@ bool tree_shown(vec3 root, float d, bool far) {
 // metres tall.
 vec3 wind_offset(vec3 local, vec3 root, float height, float t) {
 	vec2 wind_dir = normalize(vec2(wind_x, wind_z));
-	float h = clamp(local.y, 0.0, bend_most);
+	float h = clamp(local.y, 0.0, 1.4);
 	float bend = sway_per_ms2 * wind_ms * wind_ms * h * h * height;
 	// The gust the tree stands in: a wave of the frozen turbulence moving downwind at the mean speed.
 	float gust = sin(TAU * (dot(root.xz, wind_dir) - wind_ms * t) / gust_m);
-	float phase = TAU * fract(dot(floor(root.xz), PHASE_STEP) * PHASE_SCALE); // each tree its own swing
+	float phase = TAU * fract(dot(floor(root.xz), vec2(0.1031, 0.0973)) * 43.17); // each tree its own swing
 	float sway = sin(TAU * sway_hz * t + phase);
 	return vec3(wind_dir.x, 0.0, wind_dir.y) * bend * (1.0 + 2.0 * turbulence * gust + 2.0 * turbulence * sway);
 }
@@ -85,7 +82,7 @@ vec3 wind_offset(vec3 local, vec3 root, float height, float t) {
 vec3 keep_length(vec3 p, vec3 root, vec3 off) {
 	vec3 a = p - root;
 	float len = length(a);
-	return len > LEAST_ARM ? root + normalize(a + off) * len : p + off;
+	return len > 1e-4 ? root + normalize(a + off) * len : p + off;
 }
 
 // Places one vertex of a tree (see the header): `vertex` and `normal` come in model space and leave in view space;

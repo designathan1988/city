@@ -6,12 +6,7 @@
 // The heap holds only (priority, seq, key); a key's queued work lives in its slot, so a newer submit destroys the older
 // closure at once (outside the pool's lock) instead of keeping it until the heap reaches it. A running job asks current()
 // at its natural boundaries and returns early once a newer job of its key was submitted.
-// Work goes to the worker that worked last: the idle ones wait in a stack, each on a condition of its own, and a submit wakes the
-// top one. A thin stream of jobs therefore stays on one worker, whose heap and caches are warm, and the memory the pool's threads
-// hold follows the work that runs at once, not the machine's core count (every thread has a heap of its own, core/memory.cpp).
 #pragma once
-
-#include "core/random.h"
 
 #include <atomic>
 #include <condition_variable>
@@ -19,7 +14,6 @@
 #include <cstdint>
 #include <deque>
 #include <functional>
-#include <memory>
 #include <mutex>
 #include <queue>
 #include <thread>
@@ -29,8 +23,7 @@
 namespace city {
 
 // One lane for each user of the pool. A new user adds its own: never shares one, never does arithmetic on an id to stay clear of another.
-enum class JobLane : uint8_t { ROADS, ROADS_FAR, SEAMS, STRUCTURES, PROPS, BUILDING, BUILDING_SUPER, TREES_NEAR, TREES_FAR, COVER, ZONES, CONGESTION, TRANSIT, FOG, CANYON, SHORE, ECOLOGY, RUINS, WATER, SIGNATURES, PROBE_HOLD, PROBE_KEY, PROBE_OTHER }; // the PROBE_ lanes: the pool's own probe (city_core_jobs.cpp)
-const char *job_lane_name(JobLane lane); // what the probes call a lane
+enum class JobLane : uint8_t { ROADS, ROADS_FAR, VERGES, STRUCTURES, PROPS, BUILDING, BUILDING_SUPER, TREES_NEAR, TREES_FAR, COVER, ZONES, FOG, CANYON, SHORE, RUINS, WATER, SIGNATURES };
 
 // What a job is the latest of. `baked`: the second job of a result, the upload's conversion of what the first built.
 struct JobKey {
@@ -43,7 +36,7 @@ struct JobKey {
 
 struct JobKeyHash {
 	size_t operator()(const JobKey &k) const {
-		return std::hash<int64_t>()(k.id) ^ (size_t(k.lane) << 1 | size_t(k.baked)) * GOLDEN_GAMMA_64;
+		return std::hash<int64_t>()(k.id) ^ (size_t(k.lane) << 1 | size_t(k.baked)) * 0x9e3779b97f4a7c15ull;
 	}
 };
 
@@ -55,19 +48,12 @@ public:
 	uint64_t submit(JobKey key, float priority, std::function<void()> work);
 	void parallel_for(size_t n, const std::function<void(size_t)> &fn); // blocks until done
 	void wait_idle(); // blocks until the queue is empty and no worker is running
-	// Hands out no more work and returns once none runs, until resume(): what the caller changes then, no job sees half done (the
-	// city taken in whole, catalogue and tables with it, which some jobs read outside the map lock). parallel_for still finishes,
-	// on the caller alone; wait_idle must not be asked in between.
-	void pause();
-	void resume();
 	size_t tracked(); // keys with a job still queued: none once the pool is idle (a key is forgotten when its newest job is taken)
 	uint64_t replaced() const { return replaced_.load(); } // queued jobs a newer one of their key took the place of
 	// The job `seq` of `key` is still the newest submitted for its key (a running job polls it to stop early).
 	bool current(JobKey key, uint64_t seq);
 	// The same for the job running on the calling thread (true outside a keyed job).
 	bool running_current();
-	// The keyed job the calling thread runs, of any pool: false outside one (sim/state/map_hold.h names what a thread built by it).
-	static bool running(JobKey &key);
 
 private:
 	struct Item {
@@ -86,25 +72,14 @@ private:
 		uint64_t seq = 0;
 		std::function<void()> work;
 	};
-	// A worker's own condition: it waits on it while it stands in idle_.
-	struct Worker {
-		std::condition_variable cv;
-	};
-	void loop(Worker &me);
+	void loop();
 	bool idle() const { return q_.empty() && helpers_.empty() && busy_ == 0; }
-	bool ready() const { return stop_ || (!paused_ && (!q_.empty() || !helpers_.empty())); } // a worker has something to take
-	void wake_one(); // the worker that went idle last, if any (m_ held)
-	void wake_all(); // every idle worker looks again (m_ held)
 	std::vector<std::thread> threads_;
-	std::vector<std::unique_ptr<Worker>> workers_;
-	std::vector<Worker *> idle_; // the workers waiting: the last to go idle on top, the ones that never worked at the bottom
 	std::mutex m_;
-	std::condition_variable idle_cv_;
+	std::condition_variable cv_, idle_cv_;
 	std::priority_queue<Item, std::vector<Item>, Later> q_;
 	std::deque<std::function<void()>> helpers_; // parallel_for helpers, taken before any keyed job
 	size_t busy_ = 0;
-	size_t started_ = 0; // workers whose thread reached the stack (the constructor returns when all have)
-	bool paused_ = false;
 	std::unordered_map<JobKey, Slot, JobKeyHash> slots_;
 	// Each key's newest submitted seq while that job is queued or running (current()): gone when it finishes.
 	std::unordered_map<JobKey, uint64_t, JobKeyHash> newest_;

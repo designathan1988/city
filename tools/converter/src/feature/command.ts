@@ -4,7 +4,7 @@
 // interface/ (the shared code it uses, as declarations: interface.ts).
 import fs from 'node:fs';
 import path from 'node:path';
-import { ArgsError, parseFlags, type FlagSpec } from '../common/args.ts';
+import { parseFlags, type FlagSpec } from '../common/args.ts';
 import { programGraph } from '../common/derived.ts';
 import { removeTree } from '../common/files.ts';
 import { machine } from '../common/machine.ts';
@@ -27,8 +27,7 @@ export const FEATURE_FLAGS: readonly FlagSpec[] = [
   { name: 'tsconfig', help: 'tsconfig of the source project (default: <source-root>/tsconfig.json)' },
   { name: 'typescript', help: 'typescript package directory (default: the one the source project resolves)' },
   { name: 'postcss', help: 'postcss package directory, to read style sheets (default: the one the source project resolves)' },
-  { name: 'entry', repeatable: true, help: 'a file of the feature, relative to the source root' },
-  { name: 'entries-from', help: 'a text file naming the feature\'s files, one a line (the whole program passes the command line\'s length)' },
+  { name: 'entry', required: true, repeatable: true, help: 'a file of the feature, relative to the source root' },
   { name: 'root', repeatable: true, help: 'a script the program starts from (default: the module scripts of the root\'s HTML pages)' },
   { name: 'include', repeatable: true, help: 'directory holding the project\'s own code, relative to the source root (default: src)' },
   { name: 'jelly', help: 'the @cs-au-dk/jelly package directory, whose call graph says what each call runs (default: the machine file\'s "jelly")' },
@@ -49,11 +48,7 @@ export function runFeatureCommand(argv: readonly string[]): void {
   const sp = openProgram(ts, sourceRoot, tsconfig);
   const index = new UnitIndex(sp, ir);
   const roots = flags.all('root').length > 0 ? flags.all('root') : htmlRoots(sourceRoot);
-  const listed = flags.one('entries-from');
-  const listedFiles = listed ? fs.readFileSync(listed, 'utf8').split(/[\r\n]+/).map((l) => l.trim()) : [];
-  const named = [...flags.all('entry'), ...listedFiles.filter((l) => l.length > 0)];
-  if (named.length === 0) throw new ArgsError('feature: give --entry or --entries-from');
-  const boundary = featureBoundary(ir, entriesOf(ts, sp, ir, named), roots, holdsFeature(ts, sp.checker, index, ir));
+  const boundary = featureBoundary(ir, entriesOf(ts, sp, ir, flags.all('entry')), roots, holdsFeature(ts, sp.checker, index, ir));
   const slices = sliceShared(ts, sp.checker, index, boundary);
   removeTree(out);
   fs.mkdirSync(out, { recursive: true });

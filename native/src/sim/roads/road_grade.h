@@ -6,8 +6,6 @@
 // The ground is handed in (sim/roads does not include sim/terrain): the natural ground, water standing as a floor.
 #pragma once
 
-#include "core/id_table.h"
-
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -18,7 +16,6 @@ namespace city {
 
 class JobPool;
 class RoadNetwork;
-struct Profile;
 struct Tuning;
 
 // How a segment is built (Roadcraft 4.0 world/structures.ts RoadStructure): saved in its flags.
@@ -44,9 +41,7 @@ using GroundAt = std::function<float(float x, float z)>;
 constexpr float STATION_M = 1.6f; // STATION: the most a profile's stations stand apart
 constexpr int MAX_STATIONS = 400; // MAX_STATIONS: a road of more is read coarser, never longer
 constexpr float PLATE_MARGIN_M = 2.f; // PLATE_MARGIN: a station and 0.4 m past the junction's casing
-constexpr float CASING_BAND_M = 1.f; // the band past the footway the casing holds
-// Half the casing: the road's widest side, footway included, and the casing band past it.
-float casing_half(const Profile &p);
+constexpr float CASING_BAND_M = 1.f; // roadTypes.ts CASING_BAND: the band past the footway the casing holds
 constexpr float FOOTWAY_RISE_M = 0.15f; // roadTypes.ts FOOTWAY_RISE: the kerb a footway stands on
 constexpr float UNDER_DECK_ROOM_M = 0.4f; // solveRaised: nothing comes closer than this under a deck's structure
 
@@ -54,16 +49,11 @@ constexpr float UNDER_DECK_ROOM_M = 0.4f; // solveRaised: nothing comes closer t
 // across the casing, dilated, plus the surface clearance; base: the mean, smoothed and graded, the line it is designed
 // on), and the plates flat at each end.
 constexpr int CURVE_NUMBERS = 6; // what the curve of a segment is: its two ends and its control point
-// How a road's paving ends at a node (render/roads/road_junction.cpp each_shape): met by other roads, cut straight across (a dead
-// end), or round a turning bulb.
-enum class RoadEndKind : uint8_t { JOINT, CUT, BULB };
-
 struct GradeProfile {
 	bool valid = false;
 	Structure structure = Structure::GROUND;
 	bool manual = false; // a node of it has a height of its own (lift): an authored alignment
 	bool walls = false; // its cutting is held by retaining walls
-	RoadEndKind ends[2] = { RoadEndKind::JOINT, RoadEndKind::JOINT }; // how its paving ends at a and at b (the ground's shape reads it)
 	int a = -1, b = -1;
 	float len = 0, step = 0, half = 0, plate_a = 0, plate_b = 0;
 	std::vector<float> h, ceil, base, raw; // raw: the mean ground across the casing, before base is made of it
@@ -84,8 +74,8 @@ struct GradeNode {
 
 class RoadGrade {
 public:
-	IdTable<GradeProfile> prof; // by segment id
-	IdTable<GradeNode> node; // by node id
+	std::vector<GradeProfile> prof; // by segment id
+	std::vector<GradeNode> node; // by node id
 
 	// What changed since the last solve (RoadNetwork calls these on every edit).
 	void seg_changed(int s) { segs_.push_back(s); }

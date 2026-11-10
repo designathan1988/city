@@ -34,13 +34,12 @@ bool lane_beside(const CityState &s, const TransitStop &q, StopLane &out) {
 // A line's buses: those it had stay where they are, more wait at its terminal, up to its number.
 void place_buses(CityState &s, const TransitLine &l, int index, std::vector<Bus> &was, std::vector<Bus> &out) {
 	const TrafficParams &p = s.catalog.traffic;
-	int served = 0, start = -1; // -1: no terminal yet (0 is a terminal at the first stop)
+	int served = 0, start = 0;
 	for (size_t i = 0; i < l.stops.size(); i++) {
 		served += s.transit_run.stop_lanes.count(l.stops[i]) ? 1 : 0;
 		const TransitStop *q = stop_of(s, l.stops[i]);
-		if (q && q->terminal && start < 0) start = int(i);
+		if (q && q->terminal && start == 0) start = int(i);
 	}
-	start = std::max(start, 0); // no terminal: the line's first stop
 	if (served < 2) return;
 	int k = 0;
 	for (Bus &b : was) {
@@ -90,10 +89,7 @@ void place_all_buses(CityState &s, const std::vector<uint8_t> *send) {
 // An edit of the plan: every stop's lane found again, the lines' buses going on from where they are, the loops made again.
 void rebuild(CityState &s) {
 	TransitRun &run = s.transit_run;
-	{
-		std::lock_guard<std::mutex> lk(s.log.mutex); // the step holds the map shared (change_log.h)
-		s.log.transit_segs.clear(); // every stop and crossing is read below
-	}
+	s.traffic.roads_touched.clear(); // every stop and crossing is read below
 	run.stop_index.clear();
 	run.stops_on_seg.clear();
 	run.lines_at_stop.clear();
@@ -130,10 +126,7 @@ bool same_lane(const StopLane &a, const StopLane &b) { return a.ds == b.ds && a.
 void follow_roads(CityState &s) {
 	TransitRun &run = s.transit_run;
 	std::vector<int> segs;
-	{
-		std::lock_guard<std::mutex> lk(s.log.mutex); // the step holds the map shared (change_log.h)
-		segs.swap(s.log.transit_segs);
-	}
+	segs.swap(s.traffic.roads_touched);
 	ChangeLog::dedup(segs);
 	std::vector<uint8_t> send(s.transit.lines.size(), 0);
 	bool moved = false;

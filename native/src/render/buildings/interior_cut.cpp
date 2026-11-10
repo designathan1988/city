@@ -6,7 +6,7 @@
 
 namespace city::b40 {
 
-bool cut_bay(Shell &shell, const Placed &pl, const BayCtx &c, V2 out) {
+bool cut_bay(Shell &shell, const Placed &pl, const BayCtx &c, Point2 out) {
 	const Body &b = *pl.b;
 	const Paint &plaster = pl.look->interior.paint("inner_wall");
 	const Lin inner = paint_lin(plaster);

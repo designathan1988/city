@@ -28,25 +28,19 @@ public:
 	godot::Vector3 body_size(const godot::PackedByteArray &bytes) const; // width, depth, height
 	godot::Dictionary place_fit(const godot::Vector3 &at, const godot::Vector2 &size, double rot) const;
 	godot::String place_check(const godot::PackedByteArray &bytes, double x, double z, double rot) const;
-	// The model in hand at a pointer, under one lock: where it lands (place_fit: x, z, rot, kind), the ground there (y) and why it could
-	// not stand (problem: place_check), the check made again only when the model, the place or the city moved.
-	godot::Dictionary place_hover(const godot::PackedByteArray &bytes, const godot::Vector3 &at, const godot::Vector2 &size, double rot) const;
 	godot::Dictionary place_model(const godot::PackedByteArray &bytes, double x, double z, double rot, int fn, int zone);
 	int stage_show(const godot::PackedByteArray &bytes, const godot::RID &scenario, bool ghost);
 	void stage_move(int handle, const godot::Transform3D &at);
 	void stage_free(int handle);
 	int stage_triangles(int handle) const;
 	godot::PackedVector3Array body_outline(int id, int vol) const;
-	// Tests: the world point of (x, y) in building `id`'s lot frame (b40::lot_frame: across the street front, then inward), at
-	// its floor, so a test never computes the frame again. The origin when there is no such building.
-	godot::Vector3 body_at(int id, float x, float y) const;
 	godot::Dictionary body_storeys(int id, int vol, int count);
 	godot::Dictionary body_insert_storey(int id, int vol, int at, bool above);
 	godot::Dictionary body_resize(int id, int vol, int side, double delta, bool snap);
 	godot::Dictionary body_add_wing(int id, int vol, int side, double depth, double length);
 	godot::Dictionary body_add_setback(int id, int vol, double inset, int storeys);
 	godot::Dictionary body_set_plan(int id, int vol, int shape);
-	godot::Dictionary body_add_mass(int id, int vol, const godot::Vector3 &from, const godot::Vector3 &to, int action, int shape);
+	godot::Dictionary body_add_mass(int id, int vol, const godot::Vector3 &from, const godot::Vector3 &to, int action);
 	godot::Dictionary body_set_block_mode(int id, int vol, int mode);
 	godot::Dictionary build_reference(const godot::PackedVector3Array &triangles, const godot::Array &views, double x, double z, double rot, int replaced);
 	godot::Array body_handles(int id, int vol, bool points, const godot::Vector3 &eye, const godot::Dictionary &pick) const;
@@ -99,35 +93,13 @@ public:
 	godot::Dictionary body_add_part_at(int id, const godot::Vector3 &at, const godot::Dictionary &spec);
 	godot::Dictionary body_remove_part(int id, int part), body_turn_part(int id, int part);
 	godot::Dictionary body_repeat_part(int id, int part, double spacing);
-	// The Selection panel (city_core_fields.cpp): the numbers of a pick, and a typed number's edit.
-	godot::Dictionary body_fields(int id, int vol, int side, int bay, int storey, int part, int gear) const;
-	godot::Dictionary body_block_size(int id, int vol, int axis, double metres);
-	godot::Dictionary body_block_offset(int id, int vol, int axis, double metres);
-	godot::Dictionary body_block_base(int id, int vol, int level);
-	godot::Dictionary body_size_part(int id, int part, int axis, double metres);
-	godot::Dictionary body_size_gear(int id, int vol, int gear, double metres);
-	godot::Dictionary building_duplicate(int id);
-	godot::Dictionary body_mirror(int id), body_union(int id, int vol), body_level_height(int id, int level, double metres);
-	godot::Dictionary body_add_mass_ring(int id, int vol, const godot::PackedVector3Array &points, int action);
-	godot::Dictionary building_turn(int id, double radians), building_function(int id, int fn);
-	godot::Dictionary place_sketch(const godot::PackedVector3Array &points);
 
 protected:
 	static void _bind_methods();
-	static void bind_selection(); // city_core_fields.cpp: the Selection panel's and the whole-building edits' names
 
 private:
 	CityState *state_ = nullptr; // the core's: it outlives this area (CityCore frees its areas first)
 	RenderWorld *render_ = nullptr;
-	// place_hover's last check: what it read (the model's bytes, the place, the city's revision) and what it found. Main thread.
-	struct HoverCheck {
-		godot::PackedByteArray bytes;
-		double x = 0, z = 0, rot = 0;
-		uint64_t revision = 0;
-		bool made = false;
-		godot::String problem;
-	};
-	mutable HoverCheck hover_;
 };
 
 } // namespace city

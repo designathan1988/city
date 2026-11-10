@@ -14,6 +14,7 @@ const TREE_KINDS := 3
 const PILLAR_SIZE := Vector3(6.0, 50.0, 6.0)
 const PILLAR_LIFT_M := 30.0
 const PILLARS: Array[Vector2] = [Vector2(37.0, -20.0), Vector2(17.0, -40.0)]
+const SHADOW_FILTERS: Array[int] = [2, 3, 4, 5]
 const SHADOW_BLURS: Array[float] = [1.0, 0.6]
 const BLUR_TENTHS := 10.0
 const TREE_APART_M := 20.0
@@ -81,7 +82,7 @@ static func weave(on: Node3D, at: Vector3) -> void:
 		node.mesh = box
 		node.position = Vector3(at.x, 0.0 if spot == Vector3.ZERO else PILLAR_LIFT_M, at.z) + spot
 		on.add_child(node)
-	for f in [RenderingServer.SHADOW_QUALITY_SOFT_LOW, RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM, RenderingServer.SHADOW_QUALITY_SOFT_HIGH, RenderingServer.SHADOW_QUALITY_SOFT_ULTRA]:
+	for f in SHADOW_FILTERS:
 		for b in SHADOW_BLURS:
 			RenderingServer.directional_soft_shadow_filter_set_quality(f as RenderingServer.ShadowQuality)
 			on.world.sun.shadow_blur = b
@@ -99,14 +100,14 @@ static func blades(on: Node3D, at: Vector3) -> void:
 	var right := Vector3(cam.global_basis.x.x, 0.0, cam.global_basis.x.z).normalized()
 	var to_sun: Vector3 = sun.global_basis.z
 	var marks: Array[String] = []
-	print("escada vies ", sun.shadow_bias, " normal ", sun.shadow_normal_bias, " fim ", end, " lado ", on.world.daylight.cascades.shadow_side_px, " cortes ", splits)
+	print("escada vies ", sun.shadow_bias, " normal ", sun.shadow_normal_bias, " fim ", end, " lado ", on.world.daylight.shadow_side_px, " cortes ", splits)
 	for j in CASCADES:
 		var depth: float = (splits[j] + splits[j + 1]) * 0.5 * end
 		var spot := _ground_at_depth(cam, at.y, depth)
 		if spot == Vector3.INF:
 			print("escada ", j, " out of the photo, depth ", depth)
 			continue
-		var texel: float = _texel(cam, splits[j] * end, splits[j + 1] * end, on.world.daylight.cascades.shadow_side_px)
+		var texel: float = _texel(cam, splits[j] * end, splits[j + 1] * end, on.world.daylight.shadow_side_px)
 		var side: float = texel * PLATE_TEXELS
 		var long: float = minf(side * cam.global_position.distance_to(spot) / (cam.global_position.y - spot.y), (splits[j + 1] - splits[j]) * end * PLATE_MOST_OF_CASCADE)
 		for k in PLATES:

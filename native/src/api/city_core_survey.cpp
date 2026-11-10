@@ -3,7 +3,6 @@
 #include "api/city_builder.h"
 
 #include "sim/commands/body_survey.h"
-#include "sim/commands/edit_journal.h"
 #include "sim/commands/model_ops.h"
 
 #include <godot_cpp/variant/packed_byte_array.hpp>

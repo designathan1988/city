@@ -28,7 +28,7 @@ void box(PackedFloat32Array &buf, int64_t key, const Piece &p, float y, float le
 }
 
 struct Run {
-	const CityView &s;
+	const CityState &s;
 	const StreetLook &L;
 	const BarrierLook &B;
 	int64_t key;
@@ -105,30 +105,32 @@ void place_run(const Run &r, const Barrier &b) {
 	}
 }
 
-BarrierFinish finish(const DataValue &d, const char *key) {
-	const DataValue f = d[key];
-	return { rgba8_to_color(f["color"].colour()), f["metal"].f(), f["rough"].f() };
+BarrierFinish finish(const Dictionary &d, const char *key) {
+	const Dictionary f = d[key];
+	return { rgba8_to_color(parse_hex_color(String(f["color"]).utf8().get_data())), f["metal"], f["rough"] };
 }
 } // namespace
 
-bool BarrierLook::load(const DataValue &t, PackedStringArray &errors) {
-	const int64_t before = errors.size();
-	const DataValue b = t["barriers"];
-	piece_m = b["piece_m"].f(); sink = b["sink_m"].f(); piece_min_m = b["piece_min_m"].f(); coping_m = b["coping_m"].f(); coping_over = b["coping_over"].f(); hedge_lap = b["hedge_lap"].f();
-	rail_m = b["rail_m"].f(); rail_thick_m = b["rail_thick_m"].f(); fence_step_m = b["fence_step_m"].f(); fence_post_m = b["fence_post_m"].f();
-	guard_step_m = b["guard_step_m"].f(); guard_post_m = b["guard_post_m"].f(); guard_beam_m = b["guard_beam_m"].f(); beam_thick_m = b["beam_thick_m"].f(); beam_foot_m = b["beam_foot_m"].f(); lap_m = b["lap_m"].f();
-	rail_step_m = b["railing_step_m"].f(); rail_post_m = b["railing_post_m"].f(); bar_m = b["bar_m"].f(); bar_low_m = b["bar_low_m"].f(); bar_thin_m = b["bar_thin_m"].f();
-	bar_step_m = b["bar_step_m"].f(); bar_top_m = b["bar_top_m"].f(); bar_foot_m = b["bar_foot_m"].f();
-	const DataValue levels = b["rail_levels"];
-	rail_levels.clear(); // a second read is the table again
-	for (int k = 0; k < levels.size(); k++) rail_levels.push_back(levels[k].f());
-	const DataValue looks = b["finishes"];
+bool BarrierLook::load(const Dictionary &t, PackedStringArray &errors) {
+	if (!t.has("barriers")) {
+		errors.push_back("streets.json: falta barriers");
+		return false;
+	}
+	const Dictionary b = t["barriers"];
+	piece_m = b["piece_m"]; sink = b["sink_m"]; piece_min_m = b["piece_min_m"]; coping_m = b["coping_m"]; coping_over = b["coping_over"]; hedge_lap = b["hedge_lap"];
+	rail_m = b["rail_m"]; rail_thick_m = b["rail_thick_m"]; fence_step_m = b["fence_step_m"]; fence_post_m = b["fence_post_m"];
+	guard_step_m = b["guard_step_m"]; guard_post_m = b["guard_post_m"]; guard_beam_m = b["guard_beam_m"]; beam_thick_m = b["beam_thick_m"]; beam_foot_m = b["beam_foot_m"]; lap_m = b["lap_m"];
+	rail_step_m = b["railing_step_m"]; rail_post_m = b["railing_post_m"]; bar_m = b["bar_m"]; bar_low_m = b["bar_low_m"]; bar_thin_m = b["bar_thin_m"];
+	bar_step_m = b["bar_step_m"]; bar_top_m = b["bar_top_m"]; bar_foot_m = b["bar_foot_m"];
+	const Array levels = b["rail_levels"];
+	for (int k = 0; k < levels.size(); k++) rail_levels.push_back(levels[k]);
+	const Dictionary looks = b["finishes"];
 	wall = finish(looks, "wall"); coping = finish(looks, "coping"); hedge = finish(looks, "hedge"); fence = finish(looks, "fence");
 	beam = finish(looks, "beam"); guard_post = finish(looks, "guard_post"); railing = finish(looks, "railing");
-	return errors.size() == before;
+	return true;
 }
 
-void place_barriers(const CityView &s, const StreetLook &L, const BarrierLook &B, int64_t key, PackedFloat32Array &buf, PackedFloat32Array &beams) {
+void place_barriers(const CityState &s, const StreetLook &L, const BarrierLook &B, int64_t key, PackedFloat32Array &buf, PackedFloat32Array &beams) {
 	const float x0 = key_x(key) * CHUNK, z0 = key_y(key) * CHUNK;
 	const Run run{ s, L, B, key, buf, beams };
 	s.street.barriers_in(x0, z0, x0 + CHUNK, z0 + CHUNK, [&](int id) { place_run(run, s.street.barriers.items[size_t(id)]); });

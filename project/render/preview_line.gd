@@ -6,7 +6,7 @@
 class_name PreviewLine
 extends MeshInstance3D
 
-const DISC_SEGMENTS := 48 # chords of a disc mark
+const DISC_SEGMENTS := 48
 const OUTLINE_SHADER := "res://render/shaders/preview_outline.gdshader"
 
 var _mesh := ImmediateMesh.new()
@@ -21,7 +21,6 @@ var _ring_ok: StandardMaterial3D
 var _ring_bad: StandardMaterial3D
 var _outlines: MeshInstance3D # show_outlines: one surface for every ring
 var _outline_mat: ShaderMaterial
-var _shades: Dictionary = {} # show_ribbons: the materials of the colour tokens the tools asked for, by token
 
 
 func _ready() -> void:
@@ -136,18 +135,11 @@ func show_road(plan: Dictionary, line: String, ok: bool, px_start: float, px_end
 	_ring(points[-1], px_end, ring)
 
 
-## The roads a tool is moving: [{points, half_width}], each in the tool's colour or in its own `token` (data/ui/tokens.json).
+## The roads a tool is moving: [{points, half_width}].
 func show_ribbons(roads: Array) -> void:
 	_mesh.clear_surfaces()
 	for r in roads:
-		_band(r.points, r.half_width, _shade(r.token) if r.has("token") else _ok_mat)
-
-
-## The material of a colour token, made once.
-func _shade(token: String) -> StandardMaterial3D:
-	if not _shades.has(token):
-		_shades[token] = _material(token)
-	return _shades[token]
+		_band(r.points, r.half_width, _ok_mat)
 
 
 ## A node a press would take.

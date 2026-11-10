@@ -1,10 +1,6 @@
 // Builds the street furniture chunk meshes and instances.
 #include "render/props/prop_renderer.h"
 
-#include "render/owned_segments.h"
-#include "render/roads/road_cut.h"
-#include "sim/street/footway.h"
-
 #include <algorithm>
 
 using namespace godot;
@@ -33,22 +29,23 @@ void PropRenderer::Draws::free() {
 bool PropRenderer::init(const RenderContext &ctx, const StreetLook &look, PackedStringArray &errors) {
 	scenario_ = ctx.scenario;
 	material_ = ctx.material("prop", errors);
-	surface_material_ = material_; // every chunk's mesh is made with it (surface_data.h)
 	glow_material_ = ctx.material("lamp_glow", errors);
 	look_ = &look;
-	const Dictionary table = ctx.table("streets", errors);
+	Dictionary t = ctx.table("streets", errors);
 	if (!errors.is_empty()) return false;
-	const DataValue t = DataReader{ errors, "streets.json" }.at(table); // render/data_reader.h
-	if (!furniture_.load(t, errors) || !barriers_.load(t, errors) || !signs_.load(t, errors) || !kit_.build(t["props"], t["wires"], t["barriers"]["beam_section"], errors)) return false;
+	if (!t.has("props")) {
+		errors.push_back("streets.json: falta props");
+		return false;
+	}
+	if (!furniture_.load(t, errors) || !barriers_.load(t, errors) || !signs_.load(t, errors) || !kit_.build(t["props"], t["wires"], Dictionary(t["barriers"])["beam_section"], errors)) return false;
 	atlas_.configure(signs_.sheet_w, signs_.sheet_h, signs_.cell, signs_.blade_w, signs_.blade_h);
-	// each made with the material it is drawn with (surface_data.h: the engine has its pipelines before the first street)
-	pole_mesh_ = kit_.pole_levels().bake(material_);
-	pole_cast_mesh_ = kit_.pole_cast_levels().bake(material_);
-	wire_near_mesh_ = kit_.wire(true).bake(material_);
-	wire_far_mesh_ = kit_.wire(false).bake(material_);
-	box_mesh_ = kit_.unit_box().bake(material_);
-	beam_mesh_ = kit_.w_beam().bake(material_);
-	light_mesh_ = kit_.light().bake(glow_material_);
+	pole_mesh_ = kit_.pole_levels().bake();
+	pole_cast_mesh_ = kit_.pole_cast_levels().bake();
+	wire_near_mesh_ = kit_.wire(true).bake();
+	wire_far_mesh_ = kit_.wire(false).bake();
+	box_mesh_ = kit_.unit_box().bake();
+	beam_mesh_ = kit_.w_beam().bake();
+	light_mesh_ = kit_.light().bake();
 	kit_.drop_baked();
 	lamps_.init(scenario_, material_, kit_);
 	lights_.init(scenario_, ctx.catalog->tune, RenderingServer::get_singleton()->material_get_param(glow_material_, "glow_color"));
@@ -69,7 +66,7 @@ void PropRenderer::reset() {
 }
 
 // The chunk's mesh and, in the same result, its instances (StreetInstances travels with the mesh it was placed with).
-void PropRenderer::build_cpu(const CityView &s, int64_t key, MeshBuilder &mb, StreetInstances &inst) const {
+void PropRenderer::build_cpu(const CityState &s, int64_t key, MeshBuilder &mb, StreetInstances &inst) const {
 	mb.levels = true;
 	std::vector<PropPlace> props;
 	place_street_props(s, *look_, furniture_, key, props, inst);
@@ -83,17 +80,17 @@ void PropRenderer::show(Draws &d, StreetInstances &inst, const AABB &box) {
 	instances_ -= d.count;
 	d.count = int((inst.poles.size() + inst.wires.size() + inst.light.size()) / MM_PLAIN_STRIDE + (inst.boxes.size() + inst.beams.size()) / MM_STRIDE);
 	instances_ += d.count;
-	d.poles.set(scenario_, pole_mesh_.rid, inst.poles, box, false, LAYER_FURNITURE, false);
+	d.poles.set(scenario_, pole_mesh_.rid, material_, inst.poles, box, false, LAYER_FURNITURE, false);
 	d.pole_shadow_near.shadow_only = d.pole_shadow_far.shadow_only = true;
-	d.pole_shadow_near.set(scenario_, pole_mesh_.rid, inst.poles, box, true, LAYER_FURNITURE, false);
-	d.pole_shadow_far.set(scenario_, pole_cast_mesh_.rid, inst.poles, box, true, LAYER_FURNITURE, false);
+	d.pole_shadow_near.set(scenario_, pole_mesh_.rid, material_, inst.poles, box, true, LAYER_FURNITURE, false);
+	d.pole_shadow_far.set(scenario_, pole_cast_mesh_.rid, material_, inst.poles, box, true, LAYER_FURNITURE, false);
 	d.pole_shadow_near.range(NEVER_END, kit_.cast_from());
 	d.pole_shadow_far.range(kit_.cast_from(), shadow_end());
-	d.wires_near.set(scenario_, wire_near_mesh_.rid, inst.wires, box, true, LAYER_FURNITURE, false);
-	d.wires_far.set(scenario_, wire_far_mesh_.rid, inst.wires, box, false, LAYER_FURNITURE, false);
-	d.boxes.set(scenario_, box_mesh_.rid, inst.boxes, box, true, LAYER_FURNITURE);
-	d.beams.set(scenario_, beam_mesh_.rid, inst.beams, box, true, LAYER_FURNITURE);
-	d.light.set(scenario_, light_mesh_.rid, inst.light, box, false, LAYER_FURNITURE, false);
+	d.wires_near.set(scenario_, wire_near_mesh_.rid, material_, inst.wires, box, true, LAYER_FURNITURE, false);
+	d.wires_far.set(scenario_, wire_far_mesh_.rid, material_, inst.wires, box, false, LAYER_FURNITURE, false);
+	d.boxes.set(scenario_, box_mesh_.rid, material_, inst.boxes, box, true, LAYER_FURNITURE);
+	d.beams.set(scenario_, beam_mesh_.rid, material_, inst.beams, box, true, LAYER_FURNITURE);
+	d.light.set(scenario_, light_mesh_.rid, glow_material_, inst.light, box, false, LAYER_FURNITURE, false);
 	d.wires_near.range(NEVER_END, furniture_.wire.near_end);
 	d.wires_far.range(furniture_.wire.near_end, furniture_.wire.far_end);
 }
@@ -111,6 +108,7 @@ void PropRenderer::cast_chunk(Draws &d, const RID &mesh, const AABB &box) {
 	if (!mesh.is_valid()) return;
 	d.cast = rs->instance_create2(mesh, scenario_);
 	rs->instance_set_layer_mask(d.cast, LAYER_FURNITURE);
+	rs->instance_geometry_set_material_override(d.cast, material_);
 	rs->instance_geometry_set_cast_shadows_setting(d.cast, RenderingServer::SHADOW_CASTING_SETTING_SHADOWS_ONLY);
 	rs->instance_set_custom_aabb(d.cast, box);
 	rs->instance_geometry_set_visibility_range(d.cast, 0, shadow_end(), 0, 0, RenderingServer::VISIBILITY_RANGE_FADE_DISABLED);
@@ -120,7 +118,7 @@ void PropRenderer::commit_one(Built &b) {
 	MeshDraw &d = chunks_[b.key];
 	const bool any = b.mesh.valid();
 	cast_chunk(draws_[b.key], RID(), AABB()); // before the mesh it shows goes
-	d.adopt(scenario_, false, b.mesh.release(), LAYER_FURNITURE);
+	d.adopt(scenario_, material_, false, b.mesh.release(), LAYER_FURNITURE);
 	const float pad = furniture_.wire.max_span, x0 = key_x(b.key) * CHUNK - pad, z0 = key_y(b.key) * CHUNK - pad;
 	const AABB box(Vector3(x0, AABB_MIN_Y, z0), Vector3(CHUNK + pad * 2, AABB_H, CHUNK + pad * 2));
 	if (any) RenderingServer::get_singleton()->instance_set_custom_aabb(d.inst, box);
@@ -132,52 +130,8 @@ void PropRenderer::commit_one(Built &b) {
 	lights_.set_chunk(b.key, std::move(inst.lamps));
 }
 
-// What chunk `key`'s furniture reads of the city, copied under the map's shared lock: the roads and the ground of the chunk, of
-// the segments it owns and of the poles a span away from its own (a pole stands by its footway, a span hangs from both its
-// poles' arms), the player's works there, and the facts a box of records cannot give: the furniture of each owned segment and of
-// the segment it runs on into at a joint (their lines share a pole there), the control and the plates of the chunk's nodes.
-CityCut PropRenderer::gather(const CityState &s, int64_t key) const {
-	const float x0 = float(key_x(key)) * CHUNK, z0 = float(key_y(key)) * CHUNK;
-	return cut_city(
-			s, CUT_ROADS | CUT_STREET,
-			[&](const CityState &live) {
-				CutBox box{ x0, z0, x0 + CHUNK, z0 + CHUNK };
-				each_owned_segment(live, key, [&](int sid) {
-					const RoadSegment &g = live.roads.segs[size_t(sid)];
-					box.take(g.minx, g.minz, g.maxx, g.maxz);
-				});
-				live.street.poles_in(x0, z0, x0 + CHUNK, z0 + CHUNK, [&](int id) {
-					for (int span : live.street.poles.items[size_t(id)].spans) {
-						const UtilitySpan &sp = live.street.spans.items[size_t(span)];
-						for (int end : { sp.a, sp.b }) {
-							const UtilityPole &o = live.street.poles.items[size_t(end)];
-							box.take(o.x, o.z, o.x, o.z);
-						}
-					}
-				});
-				// past them: what the road pieces read, a footway looked for round a point, a barrier's piece past its middle
-				const float stand = float(footway_reach(live.roads, live.catalog.furniture.items.stand_reach_m));
-				return box.grown(road_reach(live.catalog, *look_) + stand + barriers_.piece_m);
-			},
-			[&](CityCut &cut, const CityState &live) {
-				each_owned_segment(live, key, [&](int sid) {
-					keep_furniture(cut, live, sid);
-					const RoadSegment &g = live.roads.segs[size_t(sid)];
-					for (int n : { g.a, g.b }) {
-						const int on = live.roads.going_on(n, sid);
-						if (on >= 0) keep_furniture(cut, live, on);
-					}
-				});
-				live.roads.node_hash.query(x0, z0, x0 + CHUNK, z0 + CHUNK, [&](int n) {
-					const RoadNode &nd = live.roads.nodes[size_t(n)];
-					if (nd.alive && chunk_of(float(nd.x), float(nd.z)) == key) keep_node(cut, live, n);
-				});
-			});
-}
-
 void PropRenderer::submit(const CityState &s, int64_t key, JobPool &pool, float priority) {
-	submit_cut(pool, JobKey{ JobLane::PROPS, key }, key, priority, [this, &s, key]() { return gather(s, key); },
-			[this, key](const CityCut &cut, MeshBuilder &mb, StreetInstances &inst) { build_cpu(cut, key, mb, inst); });
+	submit_job(s, pool, JobKey{ JobLane::PROPS, key }, key, priority, [this, &s, key](MeshBuilder &mb, StreetInstances &inst) { build_cpu(s, key, mb, inst); });
 }
 
 void PropRenderer::drop_chunk(int64_t key) {
@@ -194,14 +148,6 @@ void PropRenderer::drop_chunk(int64_t key) {
 	if (it == chunks_.end()) return;
 	it->second.free();
 	chunks_.erase(it);
-}
-
-Dictionary PropRenderer::instance_buffers() const {
-	RenderingServer *rs = RenderingServer::get_singleton();
-	auto buffer_of = [rs](const MultiMeshDraw &d) { return d.mm.is_valid() && d.count > 0 ? rs->multimesh_get_buffer(d.mm) : PackedFloat32Array(); };
-	Dictionary out;
-	for (const auto &[key, d] : draws_) out[key] = Array::make(buffer_of(d.poles), buffer_of(d.wires_near));
-	return out;
 }
 
 void PropRenderer::set_pole_preview(const CityState &s, const std::vector<PreviewPole> &poles) {

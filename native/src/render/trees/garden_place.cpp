@@ -14,7 +14,8 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr uint32_t GARDEN_SALT = 0x6a4dU; // the gardens' stream of a lot's hash (any word)
+constexpr size_t BOOK_MOST = 65536; // bodies kept; a city of more forgets them and reads them again
+constexpr uint32_t GARDEN_SALT = 0x6a4dU;
 constexpr float PLANT_FOOT_BELOW = 0.05f; // a plant's foot under the ground
 // A tree: how wide against its height, and how much deeper than wide.
 constexpr float TREE_SPREAD = 0.82f, TREE_SPREAD_SPAN = 0.3f, TREE_DEEP = 0.9f, TREE_DEEP_SPAN = 0.2f;
@@ -44,7 +45,7 @@ int flowering(const TreeLook &T, Draws &r) { return T.flowering_species[size_t(r
 
 // Where a plant of the garden stands, on the ground under it.
 struct Stand {
-	const CityView &s;
+	const CityState &s;
 	const b40::LotFrame f;
 	std::vector<TreeInstance> &out;
 	Vector3 ground(float x, float y) const {
@@ -53,14 +54,14 @@ struct Stand {
 	}
 };
 
-void plant_tree(const Stand &at, const TreeLook &T, const b40::LotElement &p, Draws &r) {
+void plant_tree(const Stand &at, const TreeLook &T, const LotPlant &p, Draws &r) {
 	const float spread = TREE_SPREAD + r.get() * TREE_SPREAD_SPAN;
 	const int species = T.park.pick(r.get());
 	const float yaw = r.get() * TAU_F, width = p.h * spread, deep = width * (TREE_DEEP + r.get() * TREE_DEEP_SPAN);
 	at.out.push_back({ at.ground(p.x, p.y), p.h, width, yaw, 0, 0, species, foliage_tint(r), deep });
 }
 
-void plant_shrub(const Stand &at, const TreeLook &T, const b40::LotElement &p, Draws &r) {
+void plant_shrub(const Stand &at, const TreeLook &T, const LotPlant &p, Draws &r) {
 	const float across = std::min(p.w, p.d) * SHRUB_FILL / SHRUB_SPAN;
 	const float tall = std::min(p.h, across * SHRUB_TALL), wide = std::max(across, tall / SHRUB_TALL);
 	const int species = r.get() < SHRUB_FLOWERING ? flowering(T, r) : T.shrub_species;
@@ -69,7 +70,7 @@ void plant_shrub(const Stand &at, const TreeLook &T, const b40::LotElement &p, D
 }
 
 // Clipped pieces along the hedge's run, each on the ground under it.
-void plant_hedge(const Stand &at, const TreeLook &T, const b40::LotElement &p, Draws &r) {
+void plant_hedge(const Stand &at, const TreeLook &T, const LotPlant &p, Draws &r) {
 	const bool along_x = p.w >= p.d;
 	const float run = along_x ? p.w : p.d, thick = along_x ? p.d : p.w;
 	const int n = std::max(1, int(std::lround(run / std::max(HEDGE_LEAST_M, p.h * HEDGE_PER_H))));
@@ -85,7 +86,7 @@ void plant_hedge(const Stand &at, const TreeLook &T, const b40::LotElement &p, D
 
 // A flower bed in pieces of about a clump's run, each one instance of a bed's model on the ground under its middle: the 4.0's scatter of
 // clumps, 24 models a bed, threw 3 million triangles of shadow on the town and tripled the frame's GPU time (2026-11-05).
-void plant_bed(const Stand &at, const TreeLook &T, const b40::LotElement &p, Draws &r) {
+void plant_bed(const Stand &at, const TreeLook &T, const LotPlant &p, Draws &r) {
 	const bool along_x = p.w >= p.d;
 	const float run = along_x ? p.w : p.d, thick = along_x ? p.d : p.w;
 	const int n = std::max(1, int(std::ceil(run / BED_PIECE_M)));
@@ -100,16 +101,37 @@ void plant_bed(const Stand &at, const TreeLook &T, const b40::LotElement &p, Dra
 		at.out.push_back({ foot, CLUMP_H_M + r.get() * CLUMP_H_SPAN_M, step * BED_SPREAD, yaw, 0, 0, species, Color(1, 1, 1, 1), thick * BED_SPREAD });
 	}
 }
-
-bool is_plant(b40::Element kind) { return kind == b40::EL_TREE || kind == b40::EL_SHRUB || kind == b40::EL_HEDGE || kind == b40::EL_FLOWERS; }
 } // namespace
 
-void place_garden(const CityView &s, const TreeLook &T, const Building &rec, GardenView view, std::vector<TreeInstance> &out) {
-	const std::shared_ptr<const std::vector<b40::LotElement>> elements = b40::record_elements(s.designs, rec);
+GardenBook::Plants GardenBook::plants(const b40::Data &data, const Building &rec) {
+	const b40::BodyKey key = b40::body_key(rec);
+	{
+		std::lock_guard<std::mutex> lk(mutex_);
+		auto it = book_.find(key);
+		if (it != book_.end()) return it->second;
+	}
+	b40::Body body;
+	b40::record_body(data, rec, body);
+	auto plants = std::make_shared<std::vector<LotPlant>>();
+	for (const b40::LotElement &e : body.elements)
+		if (e.kind == b40::EL_TREE || e.kind == b40::EL_SHRUB || e.kind == b40::EL_HEDGE || e.kind == b40::EL_FLOWERS)
+			plants->push_back({ e.kind, e.x, e.y, e.w, e.d, e.h });
+	std::lock_guard<std::mutex> lk(mutex_);
+	if (book_.size() >= BOOK_MOST) book_.clear();
+	return book_.emplace(key, std::move(plants)).first->second;
+}
+
+void GardenBook::clear() {
+	std::lock_guard<std::mutex> lk(mutex_);
+	book_.clear();
+}
+
+void place_garden(const CityState &s, const TreeLook &T, GardenBook &book, const Building &rec, GardenView view, std::vector<TreeInstance> &out) {
+	const GardenBook::Plants plants = book.plants(s.buildings.designs, rec);
+	if (plants->empty()) return;
 	const Stand at{ s, b40::lot_frame(rec), out };
-	uint32_t k = 0; // the plant's index among the body's plants: its draws
-	for (const b40::LotElement &p : *elements) {
-		if (!is_plant(p.kind)) continue;
+	uint32_t k = 0;
+	for (const LotPlant &p : *plants) {
 		Draws r{ hash_combine(rec.seed, k++ + GARDEN_SALT) };
 		switch (p.kind) {
 			case b40::EL_TREE: plant_tree(at, T, p, r); break;

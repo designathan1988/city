@@ -23,7 +23,7 @@ void CityCore::make_areas() {
 	transit_ = memnew(CityTransit);
 	transit_->attach(state_.get(), &render_);
 	probes_ = memnew(CityProbes);
-	probes_->attach(state_.get(), &render_, &sim_);
+	probes_->attach(state_.get(), &render_);
 	street_ = memnew(CityStreet);
 	street_->attach(state_.get(), &render_);
 	lab_ = memnew(CityLab);

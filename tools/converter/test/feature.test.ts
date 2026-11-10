@@ -22,12 +22,8 @@ import { StringValues } from '../src/feature/values.ts';
 import { buildGraph } from '../src/graph/build.ts';
 import { loadTypeScript, openProgram } from '../src/graph/typescript.ts';
 import { jellyDir, postcssDir, typescriptDir } from './support.ts';
-import { FEATURE_PAGE, FEATURE_STYLE } from './fixtures/feature-page.ts';
 
 const root = path.join(import.meta.dirname, 'fixtures', 'feature');
-// The fixture's page and style sheet, made from their texts before anything reads the fixture (fixtures/feature-page.ts).
-fs.writeFileSync(path.join(root, 'index.html'), FEATURE_PAGE);
-fs.writeFileSync(path.join(root, 'src', 'shared', 'app.css'), FEATURE_STYLE);
 
 describe('feature cut', () => {
   const ir = buildGraph({ sourceRoot: root, typescriptDir: typescriptDir(), entries: [], include: [], exclude: [] });

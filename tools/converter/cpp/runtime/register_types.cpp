@@ -1,4 +1,3 @@
-// The GDExtension entry of the frame-replay port: registers ThreeReplay (three_runtime.h) with Godot.
 #include "three_runtime.h"
 
 #include <gdextension_interface.h>

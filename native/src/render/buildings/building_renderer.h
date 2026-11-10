@@ -4,7 +4,7 @@
 //                                      geometry that is not a box (lamps, AC fans, awnings) in the "building" material
 //   near   0 .. D x near_share         walls with real openings and reveals, panes, sills, bands, roofs, plant, lot
 //   mid    near end ..                 walls with shader-painted windows, the real roofs (parapets, cornices, plant)
-//   far    per SUPERCHUNK (core/grid.h) every building's masses in one mesh (material building_far)
+//   far    per 512 m SUPERCHUNK        every building's masses in one mesh (material building_far)
 // Near and mid switch inside a chunk by RenderingServer visibility ranges. The far mesh of a superchunk stands in for every chunk not drawn in its own detail: a chunk is drawn in detail once its centre comes within mid_end (measured with the eye height, as the visibility ranges measure; it leaves past mid_end x (1 + lod.far_hysteresis)) while its mid level is built, and the far mesh folds that chunk's buildings away (building_far.gdshader chunk_mask) - one switch per chunk, never a hole nor a building drawn twice.
 // The mid level is built within mid_end (+ pad) on the ground, as the chunks are streamed. Large chunks are split into 128 m sub-chunks so every surface keeps 16-bit indices. A chunk lives while RenderWorld streams it (within far_end), a superchunk while one of its chunks does.
 #pragma once
@@ -15,12 +15,9 @@
 #include "core/job_pool.h"
 #include "sim/buildings/b40/data.h"
 #include "render/buildings/building_bodies.h"
-#include "render/buildings/building_job_inputs.h"
-#include "render/buildings/level_fade.h"
 #include "render/buildings/ruin_fracture.h"
 #include "render/buildings/shell.h"
 #include "render/buildings/signature_bodies.h"
-#include "render/buildings/wear.h"
 #include "render/chunk_jobs.h"
 #include "render/chunk_queue.h"
 #include "render/render_context.h"
@@ -50,7 +47,7 @@ public:
 	void reset();
 	void set_broken(const std::unordered_set<uint32_t> &seeds); // the buildings drawn in pieces, by the effects
 	// The walls of a record a blow brings down, broken (ruin_fracture.h), from the bodies the levels draw.
-	std::shared_ptr<RuinMesh> ruin_of(const b40::Data &data, const Building &rec, const HeightPatch &ground, const godot::RID &material) const;
+	std::shared_ptr<RuinMesh> ruin_of(const b40::Data &data, const Building &rec, const HeightPatch &ground) const;
 	void rebuild_chunk(const CityState &s, int64_t key); // a chunk to (re)mesh: its levels turn stale, its superchunk dirty
 	// A chunk whose near level is drawn again with the same buildings (the Interior layer cut some open or closed them): the
 	// far mesh draws them whole either way, so its superchunk stays.
@@ -67,8 +64,8 @@ public:
 	godot::Dictionary bay_census(); // how many bays the city has and how many different ones, at two grains of size
 	int pending() const; // what the view asks and has not got: unasked for want of budget, asked, or done and not yet drawn
 	BuildingViewNeed view_need() const;
-	// The chunk at a point as the frame left it (the tests read it): known, near and mid built, shown, in detail, under a far mesh.
-	godot::Dictionary chunk_view(float x, float z) const;
+	// The chunk at a point as the frame left it (the tests read it): bit 0 near built, 1 mid built, 2 shown, 3 detail, 4 known, 5 far mesh.
+	int chunk_flags(float x, float z) const;
 	int64_t baking() const { return baking_bytes(baking_) + baking_bytes(super_baking_); } // bytes still on a worker
 	int64_t waiting() const { return waiting_ + super_waiting_; } // bytes built and waiting to bake (last commit)
 	// The largest superchunk far mesh built so far, bytes of arrays (render_cost probe: against render.upload_budget_mb).
@@ -81,7 +78,7 @@ public:
 
 private:
 	enum Level { LEVEL_NEAR, LEVEL_MID, LEVELS };
-	static constexpr int SUBS = SUBCHUNKS_PER_CHUNK; // sub-chunks per axis inside a chunk (core/grid.h)
+	static constexpr int SUBS = 2; // CHUNK / SUBCHUNK: sub-chunks per axis inside a 256 m chunk
 	static constexpr int SUB_COUNT = SUBS * SUBS;
 	static constexpr int BAND_COUNT = 5; // of boxes; the kinds of bay_props.h follow them
 	static constexpr int BAND_DRAWS = BAND_COUNT + b40::BAY_PROPS;
@@ -111,12 +108,12 @@ private:
 		int64_t instances = 0, props = 0; // the instanced parts of its bands and flags, and the bay props among them
 		bool built[LEVELS] = {};
 		bool stale[LEVELS] = {}; // built, but the chunk changed since: remeshed when in reach
-		double wear_due = std::numeric_limits<double>::infinity(); // the city minute one of its buildings looks more worn (wear.h): remeshed then
 		uint32_t version = 0; // bumped by every change; a mesh built from an older one leaves the level stale
 		bool detail = false; // within the detail switch (hysteresis)
 		bool shown = false; // its instances are visible (drawn in detail); the far mesh hides it then
 		int64_t key = 0;
-		std::array<SubFade, SUB_COUNT> fade{}; // each sub-chunk's hand-over between its near level and its mid one (level_fade.h)
+		std::array<int8_t, SUB_COUNT> wall_at{}, glass_at{}; // the near level's surfaces that carry a discarding twin; -1 none
+		std::array<bool, SUB_COUNT> fading{}, parts_fading{}; // wearing the twin: in the band of the hand-over
 		bool cut = false; // its near level has a building cut open: drawn whatever the distance, the mid level and the far mesh stand aside
 		godot::Vector3 centre;
 		ChunkOccluder occluder; // the near level's walls (occluders.h)
@@ -130,7 +127,6 @@ private:
 		float priority = 0;
 		uint64_t seq = 0;
 		uint32_t version = 0; // the chunk's version when the job was submitted
-		LevelMaterials mats; // what its surfaces are made with
 		std::array<b40::Shell, SUB_COUNT> near_shell, parts_shell, mid_shell; // one per sub-chunk, until baked
 		std::array<b40::Shell, SUB_COUNT> near_glass, mid_glass; // their panes and far walls: a surface of the same mesh
 		std::array<b40::Shell, SUB_COUNT> near_sheer; // their glass guards: another
@@ -141,7 +137,7 @@ private:
 		std::array<Surface, SUB_COUNT> near, parts, mid, flat;
 		std::array<OwnedMesh, SUB_COUNT> mid_hull;
 		std::vector<SignaturePlace> signatures; // the buildings of the chunk with a design of their own
-		float hull_error_m = 0; double wear_due = std::numeric_limits<double>::infinity(); // the first minute a building of it looks more worn
+		float hull_error_m = 0;
 		std::array<std::array<godot::PackedFloat32Array, BAND_DRAWS>, SUB_COUNT> bands; // the instanced parts, MultiMesh layout (rs_util.h)
 		std::array<std::array<OwnedMesh, BAND_DRAWS>, SUB_COUNT> band_mm; // their MultiMeshes, baked
 		std::array<std::array<int, BAND_DRAWS>, SUB_COUNT> band_count{};
@@ -169,15 +165,22 @@ private:
 		JobKey job;
 		float priority = 0;
 		uint64_t seq = 0;
-		LevelMaterials mats;
 		b40::Shell far_shell;
 		Surface far;
 		Held held;
-		bool baked = false; double wear_due = std::numeric_limits<double>::infinity(); // the first minute a building of it looks more worn
+		bool baked = false;
 		int64_t bytes() const { return far_shell.bytes(false); }
 		void bake();
 	};
-	using Inputs = BuildingJobInputs; // what a job reads from the map (building_job_inputs.h)
+	// What a job reads from the map, copied while it holds the map lock shared for a moment (gather): the records
+	// of its chunks, in query order, and the final ground under their lots. The build itself runs without the lock.
+	struct Inputs {
+		std::vector<Building> records;
+		std::shared_ptr<const std::unordered_set<uint32_t>> broken; // standing in pieces (RuinPieces): only their lots are drawn here
+		std::vector<int> ids; // the id of each record
+		InteriorView view; // the Interior layer as the job started
+		HeightPatch ground;
+	};
 	struct Want {
 		float d;
 		int64_t key;
@@ -190,10 +193,10 @@ private:
 	static void link_shells(Built &out, std::array<b40::Shell, SUB_COUNT> &mid_parts);
 	Built build_cpu(const Inputs &in, int64_t key, bool near, bool mid) const;
 	SuperBuilt build_super_cpu(const Inputs &in, int64_t super_key) const;
-	static Surface bake(const LevelMaterials &m, const godot::RID &walls, const godot::RID &glass, const b40::Shell &shell, bool with_uv2,
-			const b40::Shell *panes = nullptr, const b40::Shell *sheer = nullptr, const b40::Shell *cards = nullptr, const b40::Shell *lawns = nullptr,
-			const b40::Shell *washes = nullptr);
-	static void put(MeshDraw &d, Surface &sf, const godot::RID &scenario, bool shadows, bool shown, RenderLayer layer);
+	static Surface bake(const b40::Shell &shell, bool with_uv2, const b40::Shell *glass = nullptr, const b40::Shell *sheer = nullptr, const b40::Shell *cards = nullptr, const b40::Shell *lawns = nullptr, const b40::Shell *washes = nullptr);
+	static void put(MeshDraw &d, Surface &sf, const godot::RID &scenario, const godot::RID &material, bool shadows, bool shown,
+			RenderLayer layer);
+	void put_level(MeshDraw &d, Surface &sf, const godot::RID &glass, bool shown, RenderLayer layer, bool shadows = true) const;
 	static godot::PackedFloat32Array bake_band(const std::vector<b40::BoxInstance> &boxes);
 	static godot::PackedFloat32Array bake_props(const std::vector<b40::PropInstance> &props);
 	static godot::PackedFloat32Array bake_bays(const std::vector<b40::BayInstance> &bays);
@@ -212,18 +215,18 @@ private:
 	// The generator's tables are the simulation's (read-only after boot); the drawing sizes and level shares are ours.
 	const b40::Data &designs() const { return state_->buildings.designs; }
 	b40::BuildingLook look_;
-	b40::WearRule wear_; // how run down each building is drawn (wear.h)
-	void wear_on(double minutes); // the chunks and far meshes whose buildings look more worn by now drawn again (building_renderer_wear.cpp)
 	mutable BuildingBodies bodies_; // every job's: thread-safe, emptied by reset()
+	godot::RID material_cast_; // shadow_caster: no vertex() of its own
 	void fade_levels(Chunk &ch, const godot::Vector3 &cam); // the sub-chunks in the band of a hand-over (building_renderer_reach.cpp)
-	FadeClock fade_clock_; // how far a dissolve moves between two views (level_fade.h)
-	void fade_near(Chunk &ch, size_t sub, bool on, float keep), fade_parts(Chunk &ch, size_t sub, bool on, float keep);
+	void fade_near(Chunk &ch, size_t sub, bool on, float keep);
+	void fade_parts(Chunk &ch, size_t sub, bool on, float keep);
+	void warm_fades(const Chunk &ch);
+	godot::RID material_fade_, material_glass_fade_, material_parts_fade_;
+	std::array<godot::RID, 3> fade_warmers_; // never drawn: they ask the renderer for the twins' pipelines before the first band needs them
 	godot::RID scenario_, material_, material_glass_, material_sheer_, material_card_, material_props_, material_far_, material_lawn_, material_wash_, material_parts_;
 	BuildingViewNeed need_;
-	// The instanced parts' meshes, each made once with its material (surface_data.h): the bay props, the parts' box, flags' cloth and bay.
-	std::array<OwnedMesh, b40::BAY_PROPS> prop_mesh_;
-	OwnedMesh unit_box_, unit_flag_, unit_bay_;
-	LevelMaterials bake_mats_;
+	std::array<godot::Ref<godot::ArrayMesh>, b40::BAY_PROPS> prop_mesh_; // made once, as the box
+	godot::Ref<godot::ArrayMesh> unit_box_, unit_flag_, unit_bay_; // the instanced parts' box and the flags' cloth (resources: freed with the renderer)
 	const CityState *state_ = nullptr;
 	float parts_end_ = 0, near_end_ = 0, mid_end_ = 0, far_end_ = 0;
 	float bay_end_ = 0; // how far a bay of the mid level is geometry: past it, it is under ~12 pixels and its triangles cost more than they show
@@ -237,7 +240,7 @@ private:
 	int64_t waiting_ = 0, super_waiting_ = 0;
 	std::atomic<int64_t> super_bytes_max_{ 0 }; // written by the superchunk jobs
 	CommitTimes times_; // the last commit's (render_cost probe)
-	std::unordered_map<int64_t, uint8_t> requested_mask_; // BAND_BIT_NEAR, BAND_BIT_MID (the far level is the superchunk's)
+	std::unordered_map<int64_t, uint8_t> requested_mask_; // bit 1 far, 2 near, 4 mid
 	uint64_t seq_ = 0;
 	std::unordered_map<int64_t, Chunk> chunks_;
 	SignatureBodies signatures_;

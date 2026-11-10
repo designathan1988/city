@@ -1,7 +1,6 @@
 // Trains on their loops: out along the stations and back, stopping at each, keeping a headway to the one ahead, the last car leading
 // after a turn at the end of the line. Level crossings: where the loop crosses a lane; closed while a train comes up or is on them.
 #include "sim/transit/rail_run.h"
-#include "core/plane_geometry.h"
 
 #include "sim/state/city_state.h"
 #include "sim/traffic/traffic_system.h"
@@ -19,7 +18,7 @@ constexpr float BRAKE_MARGIN = 1.5f; // braking harder than it plans to, when it
 constexpr float SHORT_LOOP = 0.6f, TRAIN_ROOM_M = 10.f; // the headway on a short line: a share of the loop each train has, at least a train and this
 constexpr float FREE_LINE_M = std::numeric_limits<float>::max();
 constexpr float ROAD_STEP_M = 4.f; // a road's middle line sampled this often for the crossings
-constexpr float CROSS_EPS = 1e-9f; // a cross product this near nought: parallel
+constexpr float CROSS_EPS = 1e-9f;
 
 float mod_loop(float s, float length) {
 	const float m = std::fmod(s, length);
@@ -45,7 +44,11 @@ LoopPoint point_at(const RailLine &r, float s) {
 
 // Where segment a-b crosses p-q: the shares along each; false when they do not.
 bool cross_at(const V2 &a, const V2 &b, const V2 &p, const V2 &q, float &u, float &v) {
-	if (!line_shares(a.x, a.y, b.x, b.y, p.x, p.y, q.x, q.y, CROSS_EPS, u, v)) return false;
+	const V2 r = b - a, s = q - p;
+	const float den = r.x * s.y - r.y * s.x;
+	if (std::fabs(den) < CROSS_EPS) return false;
+	u = ((p.x - a.x) * s.y - (p.y - a.y) * s.x) / den;
+	v = ((p.x - a.x) * r.y - (p.y - a.y) * r.x) / den;
 	return u >= 0 && u <= 1 && v >= 0 && v <= 1;
 }
 

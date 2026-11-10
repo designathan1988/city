@@ -9,6 +9,7 @@
 #include "sim/buildings/building_store.h"
 #include "sim/buildings/interior/view.h"
 #include "sim/catalog/catalog.h"
+#include "sim/commands/edit_journal.h"
 #include "sim/demolition/damage_state.h"
 #include "sim/lots/lot_book.h"
 #include "sim/lots/lot_cache.h"
@@ -17,9 +18,6 @@
 #include "sim/state/pose_buffer.h"
 #include "sim/simulation/city_growth.h"
 #include "sim/state/change_log.h"
-#include "sim/state/edit_history.h"
-#include "sim/state/map_hold.h"
-#include "sim/street/furniture_kept.h"
 #include "sim/street/pole_routes.h"
 #include "sim/street/street_works.h"
 #include "sim/terrain/heightfield.h"
@@ -91,14 +89,7 @@ struct CityData {
 	CarriedAtomic<int> marking_style{ 0 }; // the map's paint standard (data/render/streets.json markings.styles); mesh jobs read it
 	uint64_t edit_revision = 0; // the network as the player shapes it: commands, undo/redo and a new or opened map (found_land)
 	bool edited = false;
-	// Every change to the map but a building that grew: what is made from the streets alone (their furniture: the network, what
-	// the player put up and cut, what a blow knocked out) is kept by it, so the city growing round the streets drops nothing.
-	uint64_t street_revision = 0;
-	void touch() {
-		revision++;
-		street_revision++;
-	}
-	void touch_grown() { revision++; } // a building grew: a change to the map (saved); the streets stand as they stood
+	void touch() { revision++; }
 	bool has_unsaved_work() const { return revision != saved_revision; }
 };
 
@@ -109,7 +100,6 @@ struct CityState : CityData {
 
 	ChangeLog log;
 	InteriorView interior; // the Interior layer: which buildings are drawn cut open (a view, not saved)
-	mutable FurnitureKept furniture_kept; // each segment's street furniture placed once for the streets' revision (furniture_kept.h)
 	TrafficState traffic; // vehicles and pedestrians (sim/traffic)
 	TrafficLevels traffic_levels; // the panels' choices: written by the main thread, read by the traffic (traffic_view.h)
 	uint64_t lane_graph_serial = 0; // moves when the lane graph changes; outlives TrafficState, as the views do
@@ -117,9 +107,7 @@ struct CityState : CityData {
 	TransitRun transit_run; // what runs on it (sim/transit/transit_sim.h)
 	PoseBuffer poses; // published by the simulation, read by the render without a lock
 	std::shared_ptr<JobPool> jobs{ std::make_shared<JobPool>() }; // shared worker pool (lot cells, later mesh jobs)
-	// the camera's eye over the ground, set by the api each frame: where the render measures what it draws from, so the traffic's and walkers'
-	// windows and what may be seen (sim/traffic/sight.h) are measured from it too
-	std::atomic<float> camera_x{ 0 }, camera_z{ 0 };
+	std::atomic<float> camera_x{ 0 }, camera_z{ 0 }; // the ground the player is looking at, set by the api each frame: the traffic's and walkers' windows
 
 	// The data's links to the channels and the catalogue (change log, job pool, tables), set again after the data moved in.
 	void bind();
@@ -130,24 +118,6 @@ struct CityState : CityData {
 	// mutable: const readers (the simulation step and render mesh jobs) take it shared through a const state
 	mutable std::shared_mutex map_mutex;
 	mutable std::mutex traffic_mutex;
-};
-
-// The render's one way to read the map: map_mutex shared for the guard's scope, and how deep its thread holds the map counted
-// (map_hold.h), so what a builder takes under it is seen. `release` lets the map go before the scope ends.
-class MapRead {
-public:
-	explicit MapRead(const CityState &s) : lock_(s.map_mutex) { map_hold::enter(); }
-	~MapRead() { release(); }
-	MapRead(const MapRead &) = delete;
-	MapRead &operator=(const MapRead &) = delete;
-	void release() {
-		if (!lock_.owns_lock()) return;
-		lock_.unlock();
-		map_hold::leave();
-	}
-
-private:
-	std::shared_lock<std::shared_mutex> lock_;
 };
 
 // Takes in the city read aside into `read` (caller holds live.map_mutex exclusively, the simulation stopped): the live state

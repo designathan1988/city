@@ -1,6 +1,5 @@
 ## The road's cross-section in the profile editor (Roadcraft ui/roads/crossSection.ts): its elements side by side at scale. A click picks one, the
-## line between two drags their width, an element dragged goes to another place. Sizes from data/ui/tokens.json: an element shows its
-## width when at least rp_label_least wide; a lane's way mark reaches rp_way_mark from its middle; rp_divider parts two elements.
+## line between two drags their width, an element dragged goes to another place.
 class_name RoadSectionView
 extends Control
 
@@ -8,6 +7,8 @@ signal picked(index: int)
 signal widened(index: int, metres: float)
 signal moved(from: int, to: int)
 
+const LABEL_LEAST_PX := 34.0
+const WAY_MARK_PX := 7.0
 const HALF := 0.5
 
 @export var state := RoadSectionState.new()
@@ -64,21 +65,20 @@ func _draw() -> void:
 		return
 	var font := get_theme_default_font()
 	var font_size := int(HudWidgets.px("rp_font"))
-	var mark := HudWidgets.px("rp_way_mark")
 	for i in state.spec.elements.size():
 		var e: Dictionary = state.spec.elements[i]
 		var box := Rect2(_left_of(i), 0.0, e.width * _scale(), size.y)
 		draw_rect(box, _colour(e))
 		if e.kind == "lane":
-			var tip := box.get_center() + Vector2(0.0, -mark * e.dir)
-			var base := box.get_center() + Vector2(0.0, mark * e.dir)
-			draw_colored_polygon(PackedVector2Array([tip, base + Vector2(mark, 0.0), base - Vector2(mark, 0.0)]), ThemeBuilder.color("rc_white"))
+			var tip := box.get_center() + Vector2(0.0, -WAY_MARK_PX * e.dir)
+			var base := box.get_center() + Vector2(0.0, WAY_MARK_PX * e.dir)
+			draw_colored_polygon(PackedVector2Array([tip, base + Vector2(WAY_MARK_PX, 0.0), base - Vector2(WAY_MARK_PX, 0.0)]), ThemeBuilder.color("rc_white"))
 		if state.flagged.has(i):
 			draw_rect(box, ThemeBuilder.color("rp_flag"), false, HudWidgets.px("rp_line"))
-		if box.size.x >= HudWidgets.px("rp_label_least"):
+		if box.size.x >= LABEL_LEAST_PX:
 			draw_string(font, Vector2(box.position.x, size.y - font_size * HALF), Formatters.format_measure(e.width), HORIZONTAL_ALIGNMENT_CENTER, box.size.x, font_size, ThemeBuilder.color("rc_white"))
 		if i > 0:
-			draw_line(Vector2(box.position.x, 0.0), Vector2(box.position.x, size.y), ThemeBuilder.color("rc_white"), HudWidgets.px("rp_divider"))
+			draw_line(Vector2(box.position.x, 0.0), Vector2(box.position.x, size.y), ThemeBuilder.color("rc_white"), 1.0)
 	if state.selected >= 0 and state.selected < state.spec.elements.size():
 		draw_rect(Rect2(_left_of(state.selected), 0.0, state.spec.elements[state.selected].width * _scale(), size.y), ThemeBuilder.color("rp_pick"), false, HudWidgets.px("rp_line"))
 

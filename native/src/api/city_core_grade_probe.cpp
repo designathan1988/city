@@ -4,13 +4,9 @@
 // is not touched.
 #include "api/city_probes.h"
 
-#include "render/data_reader.h"
-
 #include "sim/roads/junction.h"
 #include "sim/roads/road_network.h"
 #include "sim/state/city_state.h"
-
-#include <godot_cpp/variant/utility_functions.hpp>
 
 #include <cmath>
 #include <shared_mutex>
@@ -24,9 +20,6 @@ namespace {
 constexpr float ROLL_A = 3.f * 0.4f, ROLL_B = 2.f * 0.4f, ROLL_X = 90.f * 0.4f, ROLL_XZ = 37.f * 0.4f; // rolling
 constexpr float HILLY_A = 9.f * 0.4f, HILLY_B = 6.f * 0.4f, HILLY_C = 4.f * 0.4f; // hilly: three waves
 constexpr float HILLY_X = 140.f * 0.4f, HILLY_XZ = 70.f * 0.4f, HILLY_Z = 55.f * 0.4f;
-
-enum { SEG_A, SEG_B, SEG_PROFILE, SEG_STRUCTURE, SEG_ROW }; // a segment of the scene: [a, b, profile id, structure]
-constexpr int NODE_ROW = 2; // a node: [x, z], and a lift after it when it has one
 
 float arg(const Dictionary &d, const char *key, float fallback) { return d.has(key) ? float(d[key]) : fallback; }
 
@@ -59,34 +52,19 @@ Dictionary CityProbes::grade_probe(const Dictionary &scene) {
 	if (cat.profiles.empty()) return Dictionary(); // a refused catalog has no road to lay the scene with
 	RoadNetwork net;
 	net.init(&cat, nullptr);
-	// The scene through the strict reader (render/data_reader.h): a malformed one is pushed as errors and refused, never read past
-	// a list's end or with a node or a profile that is not there.
-	PackedStringArray errors;
-	DataReader in{ errors, "grade_probe scene" };
-	const Array nodes = in.list_or(scene, "nodes"), segs = in.list_or(scene, "segs");
+	const Array nodes = scene.get("nodes", Array()), segs = scene.get("segs", Array());
 	for (int i = 0; i < nodes.size(); i++) {
-		DataReader rn = in.in("nodes").in(i);
-		const Array n = in.in("nodes").list_at(nodes, i);
-		if (n.size() != NODE_ROW && n.size() != NODE_ROW + 1) rn.fail("expected [x, z] or [x, z, lift]");
-		const int id = net.add_node(rn.num_at(n, 0), rn.num_at(n, 1), 0);
-		if (n.size() > NODE_ROW) net.nodes[size_t(id)].lift = float(rn.num_at(n, NODE_ROW));
+		const Array n = nodes[i];
+		const int id = net.add_node(double(n[0]), double(n[1]), 0);
+		if (n.size() > 2) net.nodes[size_t(id)].lift = float(n[2]);
 	}
 	for (int i = 0; i < segs.size(); i++) {
-		DataReader rs = in.in("segs").in(i);
-		const Array g = in.in("segs").list_at(segs, i, SEG_ROW);
-		const int a = rs.integer_at(g, SEG_A), b = rs.integer_at(g, SEG_B);
-		const int profile = cat.profile_id(rs.utf8_at(g, SEG_PROFILE));
-		if (profile < 0) rs.fail(String("unknown profile '") + rs.text_at(g, SEG_PROFILE) + String("'"));
-		const int count = int(net.nodes.size());
-		if (a < 0 || a >= count || b < 0 || b >= count) rs.fail("a node outside the scene's");
-		if (!errors.is_empty()) break;
+		const Array g = segs[i];
+		const int a = g[0], b = g[1];
 		const RoadNode &na = net.nodes[size_t(a)], &nb = net.nodes[size_t(b)];
-		const int s = net.add_segment(a, b, Quad::straight(na.x, na.z, nb.x, nb.z), profile, 0, 0, 0);
-		net.set_structure(s, Structure(rs.integer_at(g, SEG_STRUCTURE)));
-	}
-	if (!errors.is_empty()) {
-		for (const String &e : errors) UtilityFunctions::push_error(e);
-		return Dictionary();
+		const int profile = cat.profile_id(String(g[2]).utf8().get_data());
+		const int s = net.add_segment(a, b, Quad::straight(na.x, na.z, nb.x, nb.z), profile < 0 ? 0 : profile, 0, 0, 0);
+		net.set_structure(s, Structure(int(g[3])));
 	}
 	net.refresh_all();
 	const GroundAt ground = ground_named(scene.get("ground", Dictionary()));

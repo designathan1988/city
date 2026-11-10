@@ -90,8 +90,8 @@ bool read_bay_way(CityState &s, int b) {
 	if (p.bays[size_t(b)].way_read) return p.bays[size_t(b)].reached;
 	const int source = p.bays[size_t(b)].source;
 	const Building &rec = s.buildings.items[size_t(source)];
-	const std::shared_ptr<const b40::Body> body_held = b40::record_body(s.buildings.designs, rec);
-	const b40::Body &body = *body_held;
+	b40::Body body;
+	b40::record_body(s.buildings.designs, rec, body);
 	LotAccess acc;
 	const TrafficParams &tp = s.catalog.traffic;
 	// room to spare along the way: its curves stray from the grid's line and a car's corners swing wider than its sides. Each bay

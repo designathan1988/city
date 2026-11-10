@@ -1,0 +1,665 @@
+{
+ "entries": [
+  "src/editor/bulldozer.ts"
+ ],
+ "roots": [
+  "src/main.ts",
+  "src/peopleLab/main.ts"
+ ],
+ "own": [
+  "src/editor/bulldozer.ts#Bulldozer",
+  "src/editor/bulldozer.ts#Bulldozer.box",
+  "src/editor/bulldozer.ts#Bulldozer.boxed",
+  "src/editor/bulldozer.ts#Bulldozer.boxed.inside",
+  "src/editor/bulldozer.ts#Bulldozer.cancel",
+  "src/editor/bulldozer.ts#Bulldozer.click",
+  "src/editor/bulldozer.ts#Bulldozer.constructor",
+  "src/editor/bulldozer.ts#Bulldozer.down",
+  "src/editor/bulldozer.ts#Bulldozer.drag",
+  "src/editor/bulldozer.ts#Bulldozer.gesture",
+  "src/editor/bulldozer.ts#Bulldozer.inProgress",
+  "src/editor/bulldozer.ts#Bulldozer.move",
+  "src/editor/bulldozer.ts#Bulldozer.up",
+  "src/editor/bulldozer.ts#BulldozerHost",
+  "src/editor/bulldozer.ts#CLICK_PIXELS",
+  "src/editor/bulldozer.ts#removeRoads",
+  "src/editor/roads/streetKit.ts#removeWithStreetKit"
+ ],
+ "uses": [
+  {
+   "unit": "src/core/polyline.ts#Frame",
+   "kind": "read",
+   "by": [
+    "src/editor/bulldozer.ts#Bulldozer.boxed"
+   ]
+  },
+  {
+   "unit": "src/core/polyline.ts#Polyline.length",
+   "kind": "call",
+   "by": [
+    "src/editor/bulldozer.ts#Bulldozer.boxed"
+   ]
+  },
+  {
+   "unit": "src/core/polyline.ts#Polyline.sampleAt",
+   "kind": "call",
+   "by": [
+    "src/editor/bulldozer.ts#Bulldozer.boxed"
+   ]
+  },
+  {
+   "unit": "src/core/vec2.ts#Vec2",
+   "kind": "read",
+   "by": [
+    "src/editor/bulldozer.ts#Bulldozer.box",
+    "src/editor/bulldozer.ts#Bulldozer.boxed",
+    "src/editor/bulldozer.ts#Bulldozer.boxed.inside",
+    "src/editor/bulldozer.ts#Bulldozer.up"
+   ]
+  },
+  {
+   "unit": "src/core/vec2.ts#Vec2",
+   "kind": "typeRef",
+   "by": [
+    "src/editor/bulldozer.ts#Bulldozer.box",
+    "src/editor/bulldozer.ts#Bulldozer.boxed",
+    "src/editor/bulldozer.ts#Bulldozer.boxed.inside",
+    "src/editor/bulldozer.ts#Bulldozer.click",
+    "src/editor/bulldozer.ts#Bulldozer.down",
+    "src/editor/bulldozer.ts#Bulldozer.drag",
+    "src/editor/bulldozer.ts#Bulldozer.move",
+    "src/editor/bulldozer.ts#BulldozerHost"
+   ]
+  },
+  {
+   "unit": "src/editor/roads/economy.ts#roadsBefore",
+   "kind": "call",
+   "by": [
+    "src/editor/bulldozer.ts#removeRoads"
+   ]
+  },
+  {
+   "unit": "src/editor/roads/economy.ts#settleRoadEdit",
+   "kind": "call",
+   "by": [
+    "src/editor/bulldozer.ts#removeRoads"
+   ]
+  },
+  {
+   "unit": "src/editor/roads/streetKit.ts#Kit",
+   "kind": "read",
+   "by": [
+    "src/editor/roads/streetKit.ts#removeWithStreetKit"
+   ]
+  },
+  {
+   "unit": "src/editor/roads/streetKit.ts#kitOf",
+   "kind": "call",
+   "by": [
+    "src/editor/roads/streetKit.ts#removeWithStreetKit"
+   ]
+  },
+  {
+   "unit": "src/editor/snap.ts#Anchor",
+   "kind": "read",
+   "by": [
+    "src/editor/bulldozer.ts#Bulldozer.click"
+   ]
+  },
+  {
+   "unit": "src/editor/snap.ts#Anchor",
+   "kind": "typeRef",
+   "by": [
+    "src/editor/bulldozer.ts#Bulldozer.click",
+    "src/editor/bulldozer.ts#Bulldozer.down",
+    "src/editor/bulldozer.ts#Bulldozer.drag"
+   ]
+  },
+  {
+   "unit": "src/editor/snap.ts#ribbonsNear",
+   "kind": "call",
+   "by": [
+    "src/editor/bulldozer.ts#Bulldozer.boxed"
+   ]
+  },
+  {
+   "unit": "src/main.ts#bulldozer",
+   "kind": "implementation",
+   "by": [
+    "src/editor/bulldozer.ts#Bulldozer.boxed",
+    "src/editor/bulldozer.ts#Bulldozer.click",
+    "src/editor/bulldozer.ts#Bulldozer.move",
+    "src/editor/bulldozer.ts#Bulldozer.up"
+   ]
+  },
+  {
+   "unit": "src/world/barriers.ts#Barrier",
+   "kind": "read",
+   "by": [
+    "src/editor/bulldozer.ts#Bulldozer.boxed"
+   ]
+  },
+  {
+   "unit": "src/world/buildings/store.ts#BuildingStore.near",
+   "kind": "call",
+   "by": [
+    "src/editor/bulldozer.ts#Bulldozer.boxed"
+   ]
+  },
+  {
+   "unit": "src/world/buildings/store.ts#BuildingStore.remove",
+   "kind": "call",
+   "by": [
+    "src/editor/bulldozer.ts#Bulldozer.boxed"
+   ]
+  },
+  {
+   "unit": "src/world/buildings/types.ts#Building",
+   "kind": "read",
+   "by": [
+    "src/editor/bulldozer.ts#Bulldozer.boxed"
+   ]
+  },
+  {
+   "unit": "src/world/carriageway.ts#onCarriageway",
+   "kind": "call",
+   "by": [
+    "src/editor/bulldozer.ts#Bulldozer.click"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc",
+   "kind": "typeRef",
+   "by": [
+    "src/editor/bulldozer.ts#BulldozerHost",
+    "src/editor/bulldozer.ts#removeRoads",
+    "src/editor/roads/streetKit.ts#removeWithStreetKit"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.barriersIn",
+   "kind": "call",
+   "by": [
+    "src/editor/bulldozer.ts#Bulldozer.boxed"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.buildings",
+   "kind": "read",
+   "by": [
+    "src/editor/bulldozer.ts#Bulldozer.boxed"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.landscapeIn",
+   "kind": "call",
+   "by": [
+    "src/editor/bulldozer.ts#Bulldozer.boxed"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.lotsIn",
+   "kind": "call",
+   "by": [
+    "src/editor/bulldozer.ts#Bulldozer.boxed"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.poleNear",
+   "kind": "call",
+   "by": [
+    "src/editor/bulldozer.ts#Bulldozer.click"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.polesIn",
+   "kind": "call",
+   "by": [
+    "src/editor/bulldozer.ts#Bulldozer.boxed"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.pruneOrphanNodes",
+   "kind": "call",
+   "by": [
+    "src/editor/bulldozer.ts#removeRoads"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.removeBarrier",
+   "kind": "call",
+   "by": [
+    "src/editor/bulldozer.ts#Bulldozer.boxed"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.removeLandscape",
+   "kind": "call",
+   "by": [
+    "src/editor/bulldozer.ts#Bulldozer.boxed",
+    "src/editor/bulldozer.ts#Bulldozer.click",
+    "src/editor/roads/streetKit.ts#removeWithStreetKit"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.removePole",
+   "kind": "call",
+   "by": [
+    "src/editor/bulldozer.ts#Bulldozer.boxed",
+    "src/editor/bulldozer.ts#Bulldozer.click",
+    "src/editor/roads/streetKit.ts#removeWithStreetKit"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.removeSegment",
+   "kind": "call",
+   "by": [
+    "src/editor/bulldozer.ts#removeRoads"
+   ]
+  },
+  {
+   "unit": "src/world/ids.ts#SegmentId",
+   "kind": "typeRef",
+   "by": [
+    "src/editor/bulldozer.ts#removeRoads",
+    "src/editor/roads/streetKit.ts#removeWithStreetKit"
+   ]
+  },
+  {
+   "unit": "src/world/landscape.ts#LandscapeItem",
+   "kind": "read",
+   "by": [
+    "src/editor/bulldozer.ts#Bulldozer.boxed",
+    "src/editor/bulldozer.ts#Bulldozer.click"
+   ]
+  },
+  {
+   "unit": "src/world/landscape.ts#landscapeNearIn",
+   "kind": "call",
+   "by": [
+    "src/editor/bulldozer.ts#Bulldozer.click"
+   ]
+  },
+  {
+   "unit": "src/world/lotRecord.ts#Lot",
+   "kind": "read",
+   "by": [
+    "src/editor/bulldozer.ts#Bulldozer.boxed"
+   ]
+  },
+  {
+   "unit": "src/world/lotRings.ts#lotCentre",
+   "kind": "call",
+   "by": [
+    "src/editor/bulldozer.ts#Bulldozer.boxed"
+   ]
+  },
+  {
+   "unit": "src/world/lots.ts#deleteLot",
+   "kind": "call",
+   "by": [
+    "src/editor/bulldozer.ts#Bulldozer.boxed"
+   ]
+  },
+  {
+   "unit": "src/world/network.ts#Network",
+   "kind": "typeRef",
+   "by": [
+    "src/editor/bulldozer.ts#BulldozerHost",
+    "src/editor/bulldozer.ts#removeRoads",
+    "src/editor/roads/streetKit.ts#removeWithStreetKit"
+   ]
+  },
+  {
+   "unit": "src/world/network.ts#Network.rebuild",
+   "kind": "call",
+   "by": [
+    "src/editor/roads/streetKit.ts#removeWithStreetKit"
+   ]
+  },
+  {
+   "unit": "src/world/ribbons.ts#SegmentRibbon",
+   "kind": "read",
+   "by": [
+    "src/editor/bulldozer.ts#Bulldozer.boxed"
+   ]
+  },
+  {
+   "unit": "src/world/utilities.ts#UtilityPole",
+   "kind": "read",
+   "by": [
+    "src/editor/bulldozer.ts#Bulldozer.boxed",
+    "src/editor/bulldozer.ts#Bulldozer.click"
+   ]
+  }
+ ],
+ "hooks": [
+  {
+   "unit": "src/editor/bulldozer.ts#Bulldozer",
+   "kind": "construct",
+   "by": [
+    "src/main.ts#bulldozer"
+   ]
+  },
+  {
+   "unit": "src/editor/bulldozer.ts#Bulldozer.box",
+   "kind": "call",
+   "by": [
+    "src/main.ts#drawOverlayScreen"
+   ]
+  },
+  {
+   "unit": "src/editor/bulldozer.ts#Bulldozer.cancel",
+   "kind": "call",
+   "by": [
+    "src/main.ts#cancelGestures"
+   ]
+  },
+  {
+   "unit": "src/editor/bulldozer.ts#Bulldozer.down",
+   "kind": "call",
+   "by": [
+    "src/main.ts#pointerDown"
+   ]
+  },
+  {
+   "unit": "src/editor/bulldozer.ts#Bulldozer.gesture",
+   "kind": "call",
+   "by": [
+    "src/main.ts#currentGesture"
+   ]
+  },
+  {
+   "unit": "src/editor/bulldozer.ts#Bulldozer.inProgress",
+   "kind": "call",
+   "by": [
+    "src/main.ts#gestureInProgress"
+   ]
+  },
+  {
+   "unit": "src/editor/bulldozer.ts#Bulldozer.move",
+   "kind": "call",
+   "by": [
+    "src/main.ts#pointerMove"
+   ]
+  },
+  {
+   "unit": "src/editor/bulldozer.ts#Bulldozer.up",
+   "kind": "call",
+   "by": [
+    "src/main.ts#endPointer"
+   ]
+  },
+  {
+   "unit": "src/editor/bulldozer.ts#removeRoads",
+   "kind": "call",
+   "by": [
+    "src/main.ts#gameKeys",
+    "src/main.ts#showInspector"
+   ]
+  }
+ ],
+ "external": [
+  {
+   "key": "es:Array.length",
+   "count": 7
+  },
+  {
+   "key": "es:Array.filter",
+   "count": 6
+  },
+  {
+   "key": "es:Array.map",
+   "count": 6
+  },
+  {
+   "key": "es:Math",
+   "count": 6
+  },
+  {
+   "key": "es:Math.hypot",
+   "count": 2
+  },
+  {
+   "key": "es:Math.max",
+   "count": 2
+  },
+  {
+   "key": "es:Math.min",
+   "count": 2
+  },
+  {
+   "key": "es:Array.sort",
+   "count": 1
+  },
+  {
+   "key": "es:ReadonlyArray.some",
+   "count": 1
+  }
+ ],
+ "holders": [
+  "src/main.ts#bulldozer"
+ ],
+ "sliced": [
+  "src/main.ts#bulldozer",
+  "src/main.ts#cancelGestures",
+  "src/main.ts#currentGesture",
+  "src/main.ts#drawOverlayScreen",
+  "src/main.ts#endPointer",
+  "src/main.ts#gameKeys",
+  "src/main.ts#gestureInProgress",
+  "src/main.ts#pointerDown",
+  "src/main.ts#pointerMove",
+  "src/main.ts#showInspector"
+ ],
+ "slices": [
+  {
+   "unit": "src/main.ts#bulldozer",
+   "file": "src/main.ts",
+   "start": 1105,
+   "end": 1114,
+   "lines": [
+    1105,
+    1106,
+    1107,
+    1108,
+    1109,
+    1110,
+    1111,
+    1112,
+    1113,
+    1114
+   ]
+  },
+  {
+   "unit": "src/main.ts#cancelGestures",
+   "file": "src/main.ts",
+   "start": 1041,
+   "end": 1053,
+   "lines": [
+    1041,
+    1047,
+    1053
+   ]
+  },
+  {
+   "unit": "src/main.ts#currentGesture",
+   "file": "src/main.ts",
+   "start": 1056,
+   "end": 1073,
+   "lines": [
+    1056,
+    1068,
+    1069,
+    1073
+   ]
+  },
+  {
+   "unit": "src/main.ts#drawOverlayScreen",
+   "file": "src/main.ts",
+   "start": 2942,
+   "end": 3410,
+   "lines": [
+    2942,
+    3042,
+    3043,
+    3044,
+    3045,
+    3046,
+    3047,
+    3048,
+    3049,
+    3050,
+    3051,
+    3052,
+    3053,
+    3054,
+    3055,
+    3056,
+    3057,
+    3058,
+    3059,
+    3060,
+    3061,
+    3062,
+    3063,
+    3064,
+    3065,
+    3410
+   ]
+  },
+  {
+   "unit": "src/main.ts#endPointer",
+   "file": "src/main.ts",
+   "start": 1484,
+   "end": 1513,
+   "lines": [
+    1484,
+    1497,
+    1513
+   ]
+  },
+  {
+   "unit": "src/main.ts#gameKeys",
+   "file": "src/main.ts",
+   "start": 2479,
+   "end": 2555,
+   "lines": [
+    2479,
+    2513,
+    2517,
+    2518,
+    2555
+   ]
+  },
+  {
+   "unit": "src/main.ts#gestureInProgress",
+   "file": "src/main.ts",
+   "start": 1117,
+   "end": 1119,
+   "lines": [
+    1117,
+    1118,
+    1119
+   ]
+  },
+  {
+   "unit": "src/main.ts#pointerDown",
+   "file": "src/main.ts",
+   "start": 1217,
+   "end": 1396,
+   "lines": [
+    1217,
+    1252,
+    1336,
+    1349,
+    1350,
+    1394,
+    1396
+   ]
+  },
+  {
+   "unit": "src/main.ts#pointerMove",
+   "file": "src/main.ts",
+   "start": 1404,
+   "end": 1475,
+   "lines": [
+    1404,
+    1418,
+    1475
+   ]
+  },
+  {
+   "unit": "src/main.ts#showInspector",
+   "file": "src/main.ts",
+   "start": 3573,
+   "end": 3818,
+   "lines": [
+    3573,
+    3574,
+    3579,
+    3800,
+    3801,
+    3804,
+    3807,
+    3810,
+    3811,
+    3812,
+    3815,
+    3816,
+    3817,
+    3818
+   ]
+  }
+ ],
+ "resources": [
+  {
+   "kind": "entry",
+   "owner": "shared",
+   "file": "src/ui/i18n/en.ts",
+   "line": 40,
+   "key": "hint.lot.deleted",
+   "text": "'hint.lot.deleted': 'Deleted.'"
+  },
+  {
+   "kind": "entry",
+   "owner": "shared",
+   "file": "src/ui/i18n/en.ts",
+   "line": 335,
+   "key": "hint.streetscape.removed",
+   "text": "'hint.streetscape.removed': 'Item removed'"
+  },
+  {
+   "kind": "entry",
+   "owner": "shared",
+   "file": "src/ui/i18n/en.ts",
+   "line": 906,
+   "key": "hint.pole.removed",
+   "text": "'hint.pole.removed': 'Pole removed'"
+  },
+  {
+   "kind": "entry",
+   "owner": "shared",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 40,
+   "key": "hint.lot.deleted",
+   "text": "'hint.lot.deleted': 'Apagado.'"
+  },
+  {
+   "kind": "entry",
+   "owner": "shared",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 333,
+   "key": "hint.streetscape.removed",
+   "text": "'hint.streetscape.removed': 'Item removido'"
+  },
+  {
+   "kind": "entry",
+   "owner": "shared",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 899,
+   "key": "hint.pole.removed",
+   "text": "'hint.pole.removed': 'Poste removido'"
+  }
+ ]
+}

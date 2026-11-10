@@ -3,7 +3,7 @@
 class_name DaylightRig
 extends RefCounted
 
-const RIGHT_ANGLE := 90.0 # degrees
+const RIGHT_ANGLE := 90.0
 
 
 ## A light without shadows.

@@ -1,0 +1,4461 @@
+# Feature: src/render/buildings/layer.ts, src/render/buildings/layerApi.ts, src/render/buildings/layerCells.ts, src/render/buildings/glassRoom.ts, src/render/buildings/roomBehind.ts, src/render/buildings/roomLamps.ts, src/render/roomLamps.ts, src/render/buildings/partyWalls.ts, src/render/interiorSolids.ts, src/world/buildings/interior.ts, src/world/buildings/spaces.ts, src/ui/v2/shell.ts, src/editor/buildingTool.ts, src/buildingsWiring.ts
+
+The program starts from `src/main.ts`, `src/peopleLab/main.ts`. A declaration is the feature's own when the program reaches it only through the feature; in a declaration of the program that names the feature, its statements are a slice (what names it, what depends on that, what that controls).
+
+- Own: 1338 declarations
+- Slices of shared code: 109
+- Code: 19290 lines in 92 files (source/)
+- Resources: 2471 (2189 entry, 282 style, 0 import; 2137 only the feature uses)
+- Uses: 738 shared declarations (interface/: 1307 declarations in 212 files, the types they name included); hooks: 115; external APIs: 554
+
+## Code
+
+- src/buildingsWiring.ts — whole, 1233 lines
+- src/core/derivedCache.ts — part, 20 lines
+- src/editor/blueprintLibrary.ts — part, 29 lines
+- src/editor/buildingFloors.ts — whole, 43 lines
+- src/editor/buildingPlans.ts — whole, 272 lines
+- src/editor/buildingProfile.ts — whole, 108 lines
+- src/editor/buildingRoofs.ts — whole, 44 lines
+- src/editor/buildings.ts — part, 890 lines
+- src/editor/buildingSnap.ts — whole, 226 lines
+- src/editor/buildingTool.ts — whole, 2727 lines
+- src/editor/fromReference.ts — whole, 252 lines
+- src/jobs/jobPool.ts — part, 3 lines
+- src/main.ts — part, 362 lines
+- src/render/buildings/buildingMesh.ts — part, 314 lines
+- src/render/buildings/cellArrays.ts — part, 49 lines
+- src/render/buildings/cellPool.ts — part, 254 lines
+- src/render/buildings/cellRequests.ts — whole, 210 lines
+- src/render/buildings/cellWork.ts — part, 15 lines
+- src/render/buildings/chunk.ts — part, 20 lines
+- src/render/buildings/facadeLevel.ts — part, 35 lines
+- src/render/buildings/farParts.ts — whole, 294 lines
+- src/render/buildings/flagLayer.ts — part, 6 lines
+- src/render/buildings/frameBudget.ts — part, 120 lines
+- src/render/buildings/furnitureKit.ts — part, 275 lines
+- src/render/buildings/glassRoom.ts — whole, 452 lines
+- src/render/buildings/gpuBatchedMesh.ts — part, 1 lines
+- src/render/buildings/kit.ts — part, 38 lines
+- src/render/buildings/layer.ts — whole, 1243 lines
+- src/render/buildings/layerApi.ts — whole, 112 lines
+- src/render/buildings/layerCells.ts — whole, 314 lines
+- src/render/buildings/levelKeys.ts — part, 7 lines
+- src/render/buildings/massCells.ts — part, 1025 lines
+- src/render/buildings/massingMaterial.ts — part, 46 lines
+- src/render/buildings/massLevels.ts — part, 167 lines
+- src/render/buildings/partCells.ts — part, 485 lines
+- src/render/buildings/partFiling.ts — part, 5 lines
+- src/render/buildings/parts.ts — part, 281 lines
+- src/render/buildings/partWarm.ts — part, 8 lines
+- src/render/buildings/partyWalls.ts — whole, 115 lines
+- src/render/buildings/referenceModel.ts — whole, 247 lines
+- src/render/buildings/roomBehind.ts — whole, 183 lines
+- src/render/buildings/roomLamps.ts — whole, 63 lines
+- src/render/buildings/shellBatch.ts — whole, 289 lines
+- src/render/buildings/signature.ts — part, 208 lines
+- src/render/buildings/townColumns.ts — part, 148 lines
+- src/render/buildings/townIndex.ts — whole, 131 lines
+- src/render/buildingSwitches.ts — part, 23 lines
+- src/render/carBody.ts — part, 54 lines
+- src/render/gpuLedger.ts — part, 5 lines
+- src/render/interiorSolids.ts — whole, 71 lines
+- src/render/renderer.ts — part, 300 lines
+- src/render/roomLamps.ts — whole, 46 lines
+- src/render/uploads.ts — part, 13 lines
+- src/render/vehicleModels.ts — part, 59 lines
+- src/ui/builder/workspace.ts — part, 24 lines
+- src/ui/labels.ts — part, 2 lines
+- src/ui/materialSwatch.ts — whole, 212 lines
+- src/ui/overlay/builderGrid.ts — whole, 32 lines
+- src/ui/overlay/buildingOverlay.ts — whole, 317 lines
+- src/ui/planSwatch.ts — whole, 88 lines
+- src/ui/roads/catalogPanel.ts — part, 123 lines
+- src/ui/roads/cutWalls.ts — part, 5 lines
+- src/ui/roads/furnitureChoice.ts — part, 5 lines
+- src/ui/roads/keys.ts — part, 31 lines
+- src/ui/roads/keysPanel.ts — whole, 100 lines
+- src/ui/roads/money.ts — part, 3 lines
+- src/ui/roads/profileEditor.ts — part, 1 lines
+- src/ui/roads/profileSwatch.ts — whole, 137 lines
+- src/ui/toolChoices.ts — part, 57 lines
+- src/ui/v2/shell.ts — whole, 2085 lines
+- src/ui/v2/transitLine.ts — whole, 17 lines
+- src/view/viewport.ts — part, 3 lines
+- src/world/buildings/blueprints.ts — part, 8 lines
+- src/world/buildings/cityBuildings.ts — part, 3 lines
+- src/world/buildings/elements.ts — part, 159 lines
+- src/world/buildings/facadePatterns.ts — whole, 114 lines
+- src/world/buildings/footprints.ts — part, 5 lines
+- src/world/buildings/geometry.ts — part, 29 lines
+- src/world/buildings/handles.ts — whole, 155 lines
+- src/world/buildings/interior.ts — whole, 915 lines
+- src/world/buildings/items.ts — part, 6 lines
+- src/world/buildings/lotLibrary.ts — whole, 32 lines
+- src/world/buildings/lotTemplate.ts — whole, 12 lines
+- src/world/buildings/materials.ts — part, 115 lines
+- src/world/buildings/pick.ts — whole, 227 lines
+- src/world/buildings/reference.ts — whole, 10 lines
+- src/world/buildings/serialize.ts — part, 10 lines
+- src/world/buildings/spaces.ts — whole, 150 lines
+- src/world/buildings/splitLevel.ts — part, 34 lines
+- src/world/buildings/store.ts — part, 7 lines
+- src/world/buildings/types.ts — part, 29 lines
+- src/world/roads/catalog.ts — part, 88 lines
+
+## Slices of shared code
+
+- `src/main.ts#<ExpressionStatement>@3923` — 3 of 8 lines
+- `src/main.ts#<IfStatement>@4036` — 3 of 196 lines
+- `src/main.ts#SLIDERS` — 57 of 57 lines
+- `src/main.ts#actions` — 4 of 16 lines
+- `src/main.ts#afterRestore` — 3 of 11 lines
+- `src/main.ts#brushSlider` — 2 of 2 lines
+- `src/main.ts#buildings` — 47 of 47 lines
+- `src/main.ts#bulldozer` — 3 of 10 lines
+- `src/main.ts#cancelGestures` — 3 of 13 lines
+- `src/main.ts#currentStatus` — 2 of 20 lines
+- `src/main.ts#doubleClick` — 3 of 6 lines
+- `src/main.ts#drawOverlayScreen` — 19 of 469 lines
+- `src/main.ts#endPointer` — 3 of 30 lines
+- `src/main.ts#frame` — 7 of 102 lines
+- `src/main.ts#gameKeys` — 9 of 77 lines
+- `src/main.ts#hintKey` — 3 of 8 lines
+- `src/main.ts#mapSlider` — 2 of 14 lines
+- `src/main.ts#mountInterface` — 71 of 88 lines
+- `src/main.ts#mutateBuilt` — 5 of 36 lines
+- `src/main.ts#pointerDown` — 55 of 180 lines
+- `src/main.ts#pointerMove` — 5 of 72 lines
+- `src/main.ts#roadClasses` — 2 of 9 lines
+- `src/main.ts#setZone` — 13 of 14 lines
+- `src/main.ts#shell` — 1 of 1 lines
+- `src/main.ts#showInspector` — 9 of 246 lines
+- `src/main.ts#showTool` — 3 of 5 lines
+- `src/main.ts#singleClick` — 3 of 4 lines
+- `src/main.ts#snapshotApplied` — 3 of 12 lines
+- `src/main.ts#statusListeners` — 1 of 1 lines
+- `src/main.ts#streetscapeTool` — 5 of 12 lines
+- `src/main.ts#takeTool` — 4 of 12 lines
+- `src/main.ts#weatherSlider` — 2 of 2 lines
+- `src/render/buildingSwitches.ts#ROOT_SWITCH` — 8 of 8 lines
+- `src/render/buildingSwitches.ts#createBuildingSwitcher` — 2 of 60 lines
+- `src/render/buildingSwitches.ts#createBuildingSwitcher.beforeRender` — 6 of 28 lines
+- `src/render/buildingSwitches.ts#createBuildingSwitcher.casters` — 4 of 6 lines
+- `src/render/buildingSwitches.ts#createBuildingSwitcher.giveBackShadow` — 3 of 5 lines
+- `src/render/buildings/buildingMesh.ts#FurnitureSink` — 1 of 1 lines
+- `src/render/buildings/buildingMesh.ts#Grow.copy` — 3 of 3 lines
+- `src/render/buildings/buildingMesh.ts#Grow.room` — 10 of 11 lines
+- `src/render/buildings/buildingMesh.ts#Grow.view` — 3 of 3 lines
+- `src/render/buildings/buildingMesh.ts#PartRows.add` — 17 of 28 lines
+- `src/render/buildings/buildingMesh.ts#PartRows.clear` — 7 of 8 lines
+- `src/render/buildings/buildingMesh.ts#PartRows.constructor` — 3 of 6 lines
+- `src/render/buildings/buildingMesh.ts#PartRows.pane` — 3 of 5 lines
+- `src/render/buildings/buildingMesh.ts#PartRows.paneFrame` — 4 of 5 lines
+- `src/render/buildings/buildingMesh.ts#PartRows.paneRecess` — 3 of 4 lines
+- `src/render/buildings/buildingMesh.ts#Shell.face` — 10 of 72 lines
+- `src/render/buildings/buildingMesh.ts#ShellPart.clear` — 5 of 8 lines
+- `src/render/buildings/buildingMesh.ts#ShellPart.weld` — 8 of 18 lines
+- `src/render/buildings/buildingMesh.ts#ShellWriter.next` — 3 of 6 lines
+- `src/render/buildings/buildingMesh.ts#chunkSummary` — 21 of 26 lines
+- `src/render/buildings/buildingMesh.ts#emitBay` — 10 of 204 lines
+- `src/render/buildings/buildingMesh.ts#emitBuilding` — 25 of 268 lines
+- `src/render/buildings/buildingMesh.ts#emitChunk` — 19 of 44 lines
+- `src/render/buildings/buildingMesh.ts#emitInterior` — 35 of 85 lines
+- `src/render/buildings/buildingMesh.ts#furnitureRows` — 1 of 1 lines
+- `src/render/buildings/buildingMesh.ts#interiorFurniture` — 16 of 22 lines
+- `src/render/buildings/buildingMesh.ts#kitBoxes` — 7 of 18 lines
+- `src/render/buildings/buildingMesh.ts#letGoEmitted` — 3 of 5 lines
+- `src/render/buildings/buildingMesh.ts#meshesOf` — 54 of 203 lines
+- `src/render/buildings/buildingMesh.ts#placeFurniture` — 6 of 6 lines
+- `src/render/buildings/buildingMesh.ts#runChunks` — 5 of 11 lines
+- `src/render/buildings/buildingMesh.ts#shellChunks` — 3 of 5 lines
+- `src/render/buildings/buildingMesh.ts#slotOfBay` — 7 of 12 lines
+- `src/render/buildings/cellArrays.ts#CellArrays` — 3 of 6 lines
+- `src/render/buildings/cellArrays.ts#KitBoxes` — 3 of 6 lines
+- `src/render/buildings/cellArrays.ts#cellArrays` — 14 of 36 lines
+- `src/render/buildings/cellArrays.ts#furniturePoses` — 8 of 11 lines
+- `src/render/buildings/cellArrays.ts#partArrays` — 8 of 24 lines
+- `src/render/buildings/cellPool.ts#CellPool.run` — 6 of 30 lines
+- `src/render/buildings/cellPool.ts#pavingRect` — 3 of 6 lines
+- `src/render/buildings/cellWork.ts#COARSE` — 1 of 1 lines
+- `src/render/buildings/cellWork.ts#DETAIL` — 1 of 1 lines
+- `src/render/buildings/cellWork.ts#runCellJob` — 13 of 109 lines
+- `src/render/buildings/chunk.ts#BuildingChunk` — 3 of 15 lines
+- `src/render/buildings/facadeLevel.ts#facadeFragmentPars` — 35 of 35 lines
+- `src/render/buildings/furnitureKit.ts#build` — 230 of 230 lines
+- `src/render/buildings/furnitureKit.ts#createFurnitureGeometries` — 24 of 24 lines
+- `src/render/buildings/furnitureKit.ts#furnitureTones` — 21 of 21 lines
+- `src/render/buildings/kit.ts#BuildingKit` — 3 of 34 lines
+- `src/render/buildings/kit.ts#createBuildingKit` — 4 of 256 lines
+- `src/render/buildings/massingMaterial.ts#createMassingMaterial` — 46 of 68 lines
+- `src/render/buildings/partWarm.ts#partWarmMeshes` — 8 of 23 lines
+- `src/render/carBody.ts#buildCarModel` — 54 of 577 lines
+- `src/render/renderer.ts#SceneHandle` — 4 of 170 lines
+- `src/render/renderer.ts#createSceneRenderer` — 214 of 3774 lines
+- `src/render/renderer.ts#createSceneRenderer.applyGeometryBudget` — 3 of 8 lines
+- `src/render/renderer.ts#createSceneRenderer.applyQuality` — 3 of 17 lines
+- `src/render/renderer.ts#createSceneRenderer.coverFree` — 1 of 1 lines
+- `src/render/renderer.ts#createSceneRenderer.governGeometry` — 9 of 18 lines
+- `src/render/renderer.ts#createSceneRenderer.loadEffects` — 9 of 18 lines
+- `src/render/renderer.ts#createSceneRenderer.natureOpen` — 3 of 11 lines
+- `src/render/renderer.ts#createSceneRenderer.occluderDrawn` — 7 of 7 lines
+- `src/render/renderer.ts#createSceneRenderer.switchedOff` — 16 of 16 lines
+- `src/render/renderer.ts#createSceneRenderer.warmBlastShaders` — 14 of 34 lines
+- `src/render/renderer.ts#createSceneRenderer.warmPreviewShaders` — 17 of 38 lines
+- `src/render/vehicleModels.ts#VehicleModel` — 3 of 33 lines
+- `src/render/vehicleModels.ts#buildBusModel` — 37 of 284 lines
+- `src/render/vehicleModels.ts#buildTruckModel` — 19 of 176 lines
+- `src/ui/roads/catalogPanel.ts#customButton` — 7 of 20 lines
+- `src/ui/roads/keys.ts#roadKeyAction` — 3 of 4 lines
+- `src/ui/roads/keys.ts#roadKeyParams` — 3 of 4 lines
+- `src/ui/toolChoices.ts#paintKind` — 3 of 3 lines
+- `src/ui/toolChoices.ts#poleLampMode` — 3 of 3 lines
+- `src/ui/toolChoices.ts#roadGridShown` — 1 of 1 lines
+- `src/ui/toolChoices.ts#streetscapeKind` — 3 of 3 lines
+- `src/ui/toolChoices.ts#zoneColoursShown` — 1 of 1 lines
+- `src/world/buildings/serialize.ts#migrateBuilding` — 10 of 91 lines
+
+## Resources
+
+- shared entry `street` — src/core/perfBudget.ts:45: `street: { triangles: 16_000_000, drawCalls: 700 + 300, gpuMs: 12, fps: 60 }`
+- shared entry `district` — src/core/perfBudget.ts:46: `district: { triangles: 16_000_000, drawCalls: 800 + 300, gpuMs: 12, fps: 60 }`
+- shared entry `map` — src/core/perfBudget.ts:47: `map: { triangles: 8_000_000, drawCalls: 300 + 100, gpuMs: 12, fps: 50 }`
+- shared entry `raise` — src/main.ts:384: `raise: 0`
+- shared entry `lower` — src/main.ts:384: `lower: 0`
+- shared entry `mesa` — src/main.ts:384: `mesa: 85`
+- shared entry `canyon` — src/main.ts:384: `canyon: 80`
+- shared entry `escarpment` — src/main.ts:384: `escarpment: 75`
+- feature entry `clearTerrain` — src/main.ts:1799: `clearTerrain: () => wholeMapEdit('confirm.clearTerrain', () => doc.clearTerrain())`
+- feature entry `clearGullies` — src/main.ts:1800: `clearGullies: () => { if (doc.gullyDabs.length > 0) wholeMapEdit('confirm.clearGullies', () => doc.clearGullies()); }`
+- feature entry `clearFog` — src/main.ts:1801: `clearFog: () => { if (doc.fogDabs.length > 0) wholeMapEdit('confirm.clearFog', () => doc.clearFog()); }`
+- feature entry `clearTrees` — src/main.ts:1802: `clearTrees: () => { if (doc.trees.length > 0 || doc.treeClearings.length > 0) wholeMapEdit('confirm.clearTrees', () => doc.clearTrees()); }`
+- feature entry `clearElements` — src/main.ts:1805: `clearElements: () => { if (doc.elements.length > 0) wholeMapEdit('confirm.clearElements', () => doc.clearElements()); }`
+- feature entry `clearClouds` — src/main.ts:1806: `clearClouds: () => { if (doc.clouds.length > 0) wholeMapEdit('confirm.clearClouds', () => { for (const cloud of [...doc.clouds]) doc.removeCloud(cloud.id); }); `
+- feature entry `scatterClouds` — src/main.ts:1810: `scatterClouds: () => wholeMapEdit(null, () => { const brush = cloudBrush(); const laid = scatterClouds(cloudScatter.count, { size: brush.size * UNITS_PER_METER,`
+- feature entry `cell` — src/render/buildings/cellPool.ts:43: `cell: 0`
+- feature entry `facade` — src/render/buildings/cellPool.ts:43: `facade: 1`
+- feature entry `mass` — src/render/buildings/cellPool.ts:43: `mass: 2`
+- feature entry `massTile` — src/render/buildings/cellPool.ts:43: `massTile: 2.5`
+- feature entry `massPlate` — src/render/buildings/cellPool.ts:43: `massPlate: 2.75`
+- feature entry `summary` — src/render/buildings/cellPool.ts:43: `summary: 3`
+- feature entry `massBase` — src/render/buildings/cellPool.ts:43: `massBase: -0.5`
+- feature entry `glass` — src/render/buildings/kit.ts:506: `glass: new MeshStandardMaterial({ color: 0x7c8e98, roughness: 0.06, metalness: 0, envMapIntensity: 1.6, shadowSide: FrontSide })`
+- feature entry `glassDark` — src/render/buildings/kit.ts:519: `glassDark: new MeshStandardMaterial({ color: 0x5d6c74, roughness: 0.08, metalness: 0, envMapIntensity: 1.3, shadowSide: FrontSide })`
+- shared entry `balconyMid` — src/render/buildings/signature.ts:1741: `balconyMid`
+- shared entry `twistGreen` — src/render/buildings/signature.ts:1743: `twistGreen`
+- shared entry `hexTerracotta` — src/render/buildings/signature.ts:1743: `hexTerracotta`
+- shared entry `stepGarden` — src/render/buildings/signature.ts:1743: `stepGarden`
+- shared entry `waveWhite` — src/render/buildings/signature.ts:1743: `waveWhite`
+- shared entry `cubeBalcony` — src/render/buildings/signature.ts:1743: `cubeBalcony`
+- shared entry `twinNavy` — src/render/buildings/signature.ts:1743: `twinNavy`
+- shared entry `octCopper` — src/render/buildings/signature.ts:1743: `octCopper`
+- shared entry `stackedBlocks` — src/render/buildings/signature.ts:1743: `stackedBlocks`
+- shared entry `pinkCorner` — src/render/buildings/signature.ts:1743: `pinkCorner`
+- shared entry `triangleDark` — src/render/buildings/signature.ts:1743: `triangleDark`
+- shared entry `cityHallBrick` — src/render/buildings/signature.ts:1744: `cityHallBrick`
+- shared entry `decoSpire` — src/render/buildings/signature.ts:1744: `decoSpire`
+- shared entry `hospitalA` — src/render/buildings/signature.ts:1744: `hospitalA`
+- shared entry `loftBrick` — src/render/buildings/signature.ts:1744: `loftBrick`
+- shared entry `cityHallWhite` — src/render/buildings/signature.ts:1744: `cityHallWhite`
+- shared entry `forum` — src/render/buildings/signature.ts:1744: `forum`
+- shared entry `church` — src/render/buildings/signature.ts:1744: `church`
+- shared entry `bank` — src/render/buildings/signature.ts:1744: `bank`
+- shared entry `school` — src/render/buildings/signature.ts:1744: `school`
+- shared entry `fireStation` — src/render/buildings/signature.ts:1744: `fireStation`
+- shared entry `police` — src/render/buildings/signature.ts:1744: `police`
+- shared entry `hospitalB` — src/render/buildings/signature.ts:1744: `hospitalB`
+- shared entry `cemetery` — src/render/buildings/signature.ts:1744: `cemetery`
+- feature entry `rect` — src/ui/builder/catalog.ts:126: `rect: 'rectangle'`
+- feature entry `shapeL` — src/ui/builder/catalog.ts:127: `shapeL: 'l'`
+- feature entry `shapeU` — src/ui/builder/catalog.ts:128: `shapeU: 'u'`
+- feature entry `circle` — src/ui/builder/catalog.ts:129: `circle: 'circle'`
+- feature entry `hexagon` — src/ui/builder/catalog.ts:130: `hexagon: 'hexagon'`
+- feature entry `octagon` — src/ui/builder/catalog.ts:131: `octagon: 'octagon'`
+- feature entry `chamfered` — src/ui/builder/catalog.ts:132: `chamfered: 'chamfered'`
+- feature entry `shapeCross` — src/ui/builder/catalog.ts:133: `shapeCross: 'cross'`
+- feature entry `shapeStepped` — src/ui/builder/catalog.ts:134: `shapeStepped: 'stepped'`
+- feature entry `tierRect` — src/ui/builder/catalog.ts:139: `tierRect: 'rectangle'`
+- feature entry `tierChamfered` — src/ui/builder/catalog.ts:140: `tierChamfered: 'chamfered'`
+- feature entry `tierOctagon` — src/ui/builder/catalog.ts:141: `tierOctagon: 'octagon'`
+- feature entry `tierHexagon` — src/ui/builder/catalog.ts:142: `tierHexagon: 'hexagon'`
+- feature entry `tierCircle` — src/ui/builder/catalog.ts:143: `tierCircle: 'circle'`
+- feature entry `tierL` — src/ui/builder/catalog.ts:144: `tierL: 'l'`
+- feature entry `tierU` — src/ui/builder/catalog.ts:145: `tierU: 'u'`
+- feature entry `tierCross` — src/ui/builder/catalog.ts:146: `tierCross: 'cross'`
+- feature entry `tierStepped` — src/ui/builder/catalog.ts:147: `tierStepped: 'stepped'`
+- feature entry `doubleDoor` — src/ui/builder/catalog.ts:152: `doubleDoor: 'doubleDoor'`
+- feature entry `garageDoor` — src/ui/builder/catalog.ts:153: `garageDoor: 'garageDoor'`
+- feature entry `frenchWindow` — src/ui/builder/catalog.ts:154: `frenchWindow: 'frenchWindow'`
+- feature entry `bayWindow` — src/ui/builder/catalog.ts:155: `bayWindow: 'bayWindow'`
+- feature entry `ribbon` — src/ui/builder/catalog.ts:156: `ribbon: 'ribbon'`
+- feature entry `window` — src/ui/builder/catalog.ts:157: `window: 'window'`
+- feature entry `sashWindow` — src/ui/builder/catalog.ts:158: `sashWindow: 'sashWindow'`
+- feature entry `wideWindow` — src/ui/builder/catalog.ts:159: `wideWindow: 'wideWindow'`
+- feature entry `balcony` — src/ui/builder/catalog.ts:160: `balcony: 'balcony'`
+- feature entry `door` — src/ui/builder/catalog.ts:161: `door: 'door'`
+- feature entry `shopfront` — src/ui/builder/catalog.ts:162: `shopfront: 'shopfront'`
+- feature entry `loadingDoor` — src/ui/builder/catalog.ts:163: `loadingDoor: 'loadingDoor'`
+- feature entry `pillarBay` — src/ui/builder/catalog.ts:164: `pillarBay: 'pillar'`
+- feature entry `wallBay` — src/ui/builder/catalog.ts:165: `wallBay: 'wall'`
+- feature entry `interiorView` — src/ui/builder/icons.ts:237: `interiorView: 'interiorView'`
+- feature entry `floorDown` — src/ui/builder/icons.ts:238: `floorDown: 'floorDown'`
+- feature entry `floorUp` — src/ui/builder/icons.ts:239: `floorUp: 'floorUp'`
+- feature entry `coreLift` — src/ui/builder/icons.ts:240: `coreLift: 'coreLift'`
+- feature entry `coreStair` — src/ui/builder/icons.ts:241: `coreStair: 'stair'`
+- feature entry `coreBoth` — src/ui/builder/icons.ts:242: `coreBoth: 'coreLift'`
+- feature entry `coreRemove` — src/ui/builder/icons.ts:243: `coreRemove: 'trash'`
+- feature entry `furn_sofa` — src/ui/builder/icons.ts:244: `furn_sofa: 'furnSofa'`
+- feature entry `furn_armchair` — src/ui/builder/icons.ts:245: `furn_armchair: 'furnSofa'`
+- feature entry `furn_table` — src/ui/builder/icons.ts:246: `furn_table: 'furnTable'`
+- feature entry `furn_chair` — src/ui/builder/icons.ts:247: `furn_chair: 'furnChair'`
+- feature entry `furn_bed` — src/ui/builder/icons.ts:248: `furn_bed: 'furnBed'`
+- feature entry `furn_singleBed` — src/ui/builder/icons.ts:249: `furn_singleBed: 'furnBed'`
+- feature entry `furn_wardrobe` — src/ui/builder/icons.ts:250: `furn_wardrobe: 'furnShelf'`
+- feature entry `furn_tv` — src/ui/builder/icons.ts:251: `furn_tv: 'furnTv'`
+- feature entry `furn_desk` — src/ui/builder/icons.ts:252: `furn_desk: 'furnTable'`
+- feature entry `furn_officeChair` — src/ui/builder/icons.ts:253: `furn_officeChair: 'furnChair'`
+- feature entry `furn_bookshelf` — src/ui/builder/icons.ts:254: `furn_bookshelf: 'furnShelf'`
+- feature entry `furn_shelf` — src/ui/builder/icons.ts:255: `furn_shelf: 'furnShelf'`
+- feature entry `furn_counter` — src/ui/builder/icons.ts:256: `furn_counter: 'furnKitchen'`
+- feature entry `furn_fridge` — src/ui/builder/icons.ts:257: `furn_fridge: 'furnKitchen'`
+- feature entry `furn_stove` — src/ui/builder/icons.ts:258: `furn_stove: 'furnKitchen'`
+- feature entry `furn_sink` — src/ui/builder/icons.ts:259: `furn_sink: 'furnKitchen'`
+- feature entry `furn_bath` — src/ui/builder/icons.ts:260: `furn_bath: 'furnBath'`
+- feature entry `furn_toilet` — src/ui/builder/icons.ts:261: `furn_toilet: 'furnBath'`
+- feature entry `furn_plant` — src/ui/builder/icons.ts:262: `furn_plant: 'furnPlant'`
+- feature entry `furn_ceilingLamp` — src/ui/builder/icons.ts:263: `furn_ceilingLamp: 'furnLamp'`
+- feature entry `furn_floorLamp` — src/ui/builder/icons.ts:264: `furn_floorLamp: 'furnLamp'`
+- feature entry `furn_tableLamp` — src/ui/builder/icons.ts:265: `furn_tableLamp: 'furnLamp'`
+- feature entry `furnMove` — src/ui/builder/icons.ts:266: `furnMove: 'snap'`
+- feature entry `furnTurn` — src/ui/builder/icons.ts:267: `furnTurn: 'redo'`
+- feature entry `furnRemove` — src/ui/builder/icons.ts:268: `furnRemove: 'trash'`
+- feature entry `tierRect` — src/ui/builder/icons.ts:269: `tierRect: 'rect'`
+- feature entry `blockSolid` — src/ui/builder/icons.ts:270: `blockSolid: 'mass'`
+- feature entry `primBox` — src/ui/builder/icons.ts:271: `primBox: 'mass'`
+- feature entry `primCylinder` — src/ui/builder/icons.ts:272: `primCylinder: 'primCylinder'`
+- feature entry `primOctagonal` — src/ui/builder/icons.ts:273: `primOctagonal: 'octagon'`
+- feature entry `primPrism` — src/ui/builder/icons.ts:274: `primPrism: 'roofGable'`
+- feature entry `primWedge` — src/ui/builder/icons.ts:275: `primWedge: 'roofShed'`
+- feature entry `primPyramid` — src/ui/builder/icons.ts:276: `primPyramid: 'primPyramid'`
+- feature entry `primCone` — src/ui/builder/icons.ts:277: `primCone: 'primCone'`
+- feature entry `primCross` — src/ui/builder/icons.ts:278: `primCross: 'shapeCross'`
+- feature entry `extrudeOut` — src/ui/builder/icons.ts:279: `extrudeOut: 'extrudeOut'`
+- feature entry `extrudeIn` — src/ui/builder/icons.ts:280: `extrudeIn: 'extrudeIn'`
+- feature entry `extrudeBlock` — src/ui/builder/icons.ts:281: `extrudeBlock: 'wing'`
+- feature entry `insetFace` — src/ui/builder/icons.ts:282: `insetFace: 'inset'`
+- feature entry `offsetOut` — src/ui/builder/icons.ts:283: `offsetOut: 'offsetOut'`
+- feature entry `offsetIn` — src/ui/builder/icons.ts:284: `offsetIn: 'offsetIn'`
+- feature entry `bevelAll` — src/ui/builder/icons.ts:285: `bevelAll: 'chamfered'`
+- feature entry `pointMode` — src/ui/builder/icons.ts:286: `pointMode: 'pointMode'`
+- feature entry `bevelCorner` — src/ui/builder/icons.ts:287: `bevelCorner: 'bevelCorner'`
+- feature entry `blockVoid` — src/ui/builder/icons.ts:288: `blockVoid: 'blockVoid'`
+- feature entry `blockIntersect` — src/ui/builder/icons.ts:289: `blockIntersect: 'blockIntersect'`
+- feature entry `blockXor` — src/ui/builder/icons.ts:290: `blockXor: 'blockXor'`
+- feature entry `copyBlock` — src/ui/builder/icons.ts:291: `copyBlock: 'duplicate'`
+- feature entry `detachBlock` — src/ui/builder/icons.ts:292: `detachBlock: 'exit'`
+- feature entry `centerBlock` — src/ui/builder/icons.ts:293: `centerBlock: 'snap'`
+- feature entry `turnBlockLeft` — src/ui/builder/icons.ts:294: `turnBlockLeft: 'undo'`
+- feature entry `turnBlockRight` — src/ui/builder/icons.ts:295: `turnBlockRight: 'redo'`
+- feature entry `tierChamfered` — src/ui/builder/icons.ts:296: `tierChamfered: 'chamfered'`
+- feature entry `tierOctagon` — src/ui/builder/icons.ts:297: `tierOctagon: 'octagon'`
+- feature entry `tierHexagon` — src/ui/builder/icons.ts:298: `tierHexagon: 'hexagon'`
+- feature entry `tierCircle` — src/ui/builder/icons.ts:299: `tierCircle: 'circle'`
+- feature entry `tierL` — src/ui/builder/icons.ts:300: `tierL: 'shapeL'`
+- feature entry `tierU` — src/ui/builder/icons.ts:301: `tierU: 'shapeU'`
+- feature entry `tierCross` — src/ui/builder/icons.ts:302: `tierCross: 'shapeCross'`
+- feature entry `tierStepped` — src/ui/builder/icons.ts:303: `tierStepped: 'shapeStepped'`
+- feature entry `tool.zone` — src/ui/i18n/en.ts:5: `'tool.zone': 'Zoning'`
+- feature entry `zone.residential` — src/ui/i18n/en.ts:9: `'zone.residential': 'Residential'`
+- feature entry `zone.commercial` — src/ui/i18n/en.ts:10: `'zone.commercial': 'Commercial'`
+- feature entry `zone.industrial` — src/ui/i18n/en.ts:11: `'zone.industrial': 'Industrial'`
+- feature entry `zone.low` — src/ui/i18n/en.ts:12: `'zone.low': 'Low'`
+- feature entry `zone.medium` — src/ui/i18n/en.ts:13: `'zone.medium': 'Medium'`
+- feature entry `zone.high` — src/ui/i18n/en.ts:14: `'zone.high': 'High'`
+- feature entry `zone.remove` — src/ui/i18n/en.ts:15: `'zone.remove': 'Remove zone'`
+- feature entry `zone.lots` — src/ui/i18n/en.ts:17: `'zone.lots': 'Lots'`
+- feature entry `zone.lots.help` — src/ui/i18n/en.ts:18: `'zone.lots.help': 'Create lots against the footways (rectangle or polygon) and paint the zone over them: the building grows to the size and shape of the lot, fa`
+- feature entry `zone.lot.edit` — src/ui/i18n/en.ts:19: `'zone.lot.edit': 'Move corners'`
+- feature entry `zone.lot.split` — src/ui/i18n/en.ts:20: `'zone.lot.split': 'Split lot'`
+- feature entry `zone.lot.join` — src/ui/i18n/en.ts:21: `'zone.lot.join': 'Join lots'`
+- feature entry `zone.lot.delete` — src/ui/i18n/en.ts:22: `'zone.lot.delete': 'Delete lots and buildings'`
+- feature entry `zone.lot.delete.short` — src/ui/i18n/en.ts:23: `'zone.lot.delete.short': 'Delete lots'`
+- feature entry `zone.lot.front` — src/ui/i18n/en.ts:24: `'zone.lot.front': 'Set front'`
+- feature entry `zone.lot.shape.rect` — src/ui/i18n/en.ts:25: `'zone.lot.shape.rect': 'Rectangle (drag)'`
+- feature entry `zone.lot.shape.polygon` — src/ui/i18n/en.ts:26: `'zone.lot.shape.polygon': 'Polygon (point by point)'`
+- feature entry `v2.zone.paint` — src/ui/i18n/en.ts:27: `'v2.zone.paint': 'Zone'`
+- feature entry `actions.pistol` — src/ui/i18n/en.ts:30: `'actions.pistol': 'Pistol'`
+- feature entry `actions.bomb` — src/ui/i18n/en.ts:32: `'actions.bomb': 'Bomb'`
+- feature entry `v2.grid.toggle` — src/ui/i18n/en.ts:33: `'v2.grid.toggle': 'Grid on the map (show or hide)'`
+- feature entry `zone.lot.curve` — src/ui/i18n/en.ts:41: `'zone.lot.curve': 'Curve a side'`
+- feature entry `zone.split.vertical` — src/ui/i18n/en.ts:42: `'zone.split.vertical': 'Side by side'`
+- feature entry `zone.split.horizontal` — src/ui/i18n/en.ts:43: `'zone.split.horizontal': 'Front and back'`
+- feature entry `zone.split.line` — src/ui/i18n/en.ts:44: `'zone.split.line': 'Along a line'`
+- feature entry `zone.split.into` — src/ui/i18n/en.ts:48: `'zone.split.into': 'Into how many'`
+- feature entry `zone.colours` — src/ui/i18n/en.ts:51: `'zone.colours': 'Zone colours'`
+- shared entry `hint.zone` — src/ui/i18n/en.ts:53: `'hint.zone': 'Paint the cells along the streets; buildings grow on them by themselves · Shift erases'`
+- feature entry `tool.roundabout` — src/ui/i18n/en.ts:60: `'tool.roundabout': 'Roundabout'`
+- shared entry `hint.roundabout` — src/ui/i18n/en.ts:61: `'hint.roundabout': 'Click vacant ground to place a roundabout · Connect its four arms with the road tool'`
+- shared entry `action.newMap` — src/ui/i18n/en.ts:90: `'action.newMap': 'New map'`
+- feature entry `action.newWorld` — src/ui/i18n/en.ts:91: `'action.newWorld': 'New city (10 km × 10 km)'`
+- feature entry `action.newLargeWorld` — src/ui/i18n/en.ts:92: `'action.newLargeWorld': 'New metropolis (large city)'`
+- feature entry `action.saveMap` — src/ui/i18n/en.ts:93: `'action.saveMap': 'Save map'`
+- shared entry `action.openMap` — src/ui/i18n/en.ts:94: `'action.openMap': 'Open map'`
+- feature entry `action.undo` — src/ui/i18n/en.ts:95: `'action.undo': 'Undo (Ctrl+Z)'`
+- feature entry `action.redo` — src/ui/i18n/en.ts:96: `'action.redo': 'Redo (Ctrl+Y)'`
+- feature entry `action.resetView` — src/ui/i18n/en.ts:97: `'action.resetView': 'Frame the camera (Home)'`
+- feature entry `camera.label` — src/ui/i18n/en.ts:98: `'camera.label': 'Camera'`
+- feature entry `camera.zoom` — src/ui/i18n/en.ts:99: `'camera.zoom': 'Zoom'`
+- feature entry `camera.centre` — src/ui/i18n/en.ts:100: `'camera.centre': 'Centre'`
+- feature entry `camera.turnLeft` — src/ui/i18n/en.ts:102: `'camera.turnLeft': 'Turn left (Q) · right-drag turns and tilts freely'`
+- feature entry `camera.turnRight` — src/ui/i18n/en.ts:103: `'camera.turnRight': 'Turn right (E) · right-drag turns and tilts freely'`
+- feature entry `camera.tiltUp` — src/ui/i18n/en.ts:104: `'camera.tiltUp': 'Raise the camera, towards a plan view'`
+- feature entry `camera.perspective` — src/ui/i18n/en.ts:105: `'camera.perspective': 'Perspective camera on or off (off, the view is isometric)'`
+- feature entry `camera.tiltDown` — src/ui/i18n/en.ts:106: `'camera.tiltDown': 'Lower the camera, towards the horizon'`
+- feature entry `camera.north` — src/ui/i18n/en.ts:107: `'camera.north': 'North up, default view (Home frames the map too)'`
+- feature entry `sim.metric.trips` — src/ui/i18n/en.ts:124: `'sim.metric.trips': 'Trips completed'`
+- feature entry `sim.metric.lost` — src/ui/i18n/en.ts:125: `'sim.metric.lost': 'Arrivals turned away'`
+- feature entry `sim.metric.speed` — src/ui/i18n/en.ts:126: `'sim.metric.speed': 'Mean speed'`
+- feature entry `sim.metric.queued` — src/ui/i18n/en.ts:127: `'sim.metric.queued': 'Vehicles queued'`
+- feature entry `sim.metric.network` — src/ui/i18n/en.ts:128: `'sim.metric.network': 'Network'`
+- feature entry `tool.person` — src/ui/i18n/en.ts:129: `'tool.person': 'People'`
+- shared entry `hint.person` — src/ui/i18n/en.ts:130: `'hint.person': 'Make anybody: drag the figure to turn it, wheel to look closer · Save puts them in the city'`
+- feature entry `help.tool.bulldoze` — src/ui/i18n/en.ts:131: `'help.tool.bulldoze': 'Removes what you click: a road, a junction, a pole or a building. Anything removed comes back with Undo.'`
+- feature entry `help.tool.pole` — src/ui/i18n/en.ts:134: `'help.tool.pole': 'Sets wire poles on the footways. Click a footway and keep clicking: the poles follow the footway and turn at the corners.'`
+- feature entry `help.tool.inspect` — src/ui/i18n/en.ts:135: `'help.tool.inspect': 'Shows what a road or a junction is and lets you change it: its class, lanes and height, and a junction\'s signals and allowed movements.'`
+- feature entry `help.section.tool` — src/ui/i18n/en.ts:136: `'help.section.tool': 'This tool'`
+- feature entry `help.section.camera` — src/ui/i18n/en.ts:137: `'help.section.camera': 'Camera'`
+- feature entry `help.tool.barrier` — src/ui/i18n/en.ts:153: `'help.tool.barrier': 'Draws walls, fences and hedges along a path, as roads are drawn. Near a road a point goes onto the back of the pavement, flush with the ho`
+- feature entry `barrier.kind.fence` — src/ui/i18n/en.ts:161: `'barrier.kind.fence': 'Fence'`
+- feature entry `barrier.kind.wall` — src/ui/i18n/en.ts:162: `'barrier.kind.wall': 'Wall'`
+- feature entry `barrier.kind.hedge` — src/ui/i18n/en.ts:163: `'barrier.kind.hedge': 'Hedge'`
+- feature entry `barrier.kind.guardrail` — src/ui/i18n/en.ts:164: `'barrier.kind.guardrail': 'Guardrail'`
+- feature entry `barrier.kind.railing` — src/ui/i18n/en.ts:165: `'barrier.kind.railing': 'Railing'`
+- shared entry `action.about` — src/ui/i18n/en.ts:175: `'action.about': 'About'`
+- feature entry `menu.quality` — src/ui/i18n/en.ts:179: `'menu.quality': 'Graphics'`
+- shared entry `menu.graphicsOptions` — src/ui/i18n/en.ts:180: `'menu.graphicsOptions': 'Graphics options…'`
+- feature entry `menu.effectsPanel` — src/ui/i18n/en.ts:201: `'menu.effectsPanel': 'Effects panel (F7)…'`
+- shared entry `menu.language` — src/ui/i18n/en.ts:292: `'menu.language': 'Language'`
+- feature entry `roadFurniture.row` — src/ui/i18n/en.ts:293: `'roadFurniture.row': 'Furniture'`
+- feature entry `roadFurniture.tip` — src/ui/i18n/en.ts:294: `'roadFurniture.tip': 'What new roads are built with: lamps, bins, hydrants, benches and trees on the footways (clear walk of 1.20 m kept)'`
+- feature entry `roadFurniture.complete` — src/ui/i18n/en.ts:295: `'roadFurniture.complete': 'Complete'`
+- feature entry `roadFurniture.basic` — src/ui/i18n/en.ts:296: `'roadFurniture.basic': 'Basic'`
+- feature entry `roadFurniture.none` — src/ui/i18n/en.ts:297: `'roadFurniture.none': 'None'`
+- feature entry `menu.paint` — src/ui/i18n/en.ts:308: `'menu.paint': 'Paint'`
+- feature entry `paint.br` — src/ui/i18n/en.ts:309: `'paint.br': 'Brazil'`
+- feature entry `paint.us` — src/ui/i18n/en.ts:310: `'paint.us': 'USA'`
+- feature entry `paint.eu` — src/ui/i18n/en.ts:311: `'paint.eu': 'Europe'`
+- feature entry `paint.classic` — src/ui/i18n/en.ts:312: `'paint.classic': 'Classic'`
+- feature entry `tool.road` — src/ui/i18n/en.ts:320: `'tool.road': 'Road'`
+- feature entry `tool.draw` — src/ui/i18n/en.ts:321: `'tool.draw': 'Draw'`
+- feature entry `tool.terrain` — src/ui/i18n/en.ts:322: `'tool.terrain': 'Terrain'`
+- feature entry `tool.upgrade` — src/ui/i18n/en.ts:323: `'tool.upgrade': 'Upgrade'`
+- feature entry `tool.move` — src/ui/i18n/en.ts:324: `'tool.move': 'Move'`
+- feature entry `tool.split` — src/ui/i18n/en.ts:325: `'tool.split': 'Split'`
+- feature entry `tool.bulldoze` — src/ui/i18n/en.ts:326: `'tool.bulldoze': 'Bulldoze'`
+- feature entry `tool.control` — src/ui/i18n/en.ts:327: `'tool.control': 'Control'`
+- feature entry `tool.inspect` — src/ui/i18n/en.ts:328: `'tool.inspect': 'Inspect'`
+- feature entry `tool.streetscape` — src/ui/i18n/en.ts:329: `'tool.streetscape': 'Landscaping'`
+- feature entry `help.tool.streetscape` — src/ui/i18n/en.ts:330: `'help.tool.streetscape': 'Places trees, shrubs, benches, bins, street lights, hydrants and post boxes on the footways. Click a footway to place the chosen item.`
+- shared entry `hint.streetscape` — src/ui/i18n/en.ts:333: `'hint.streetscape': 'Click a footway to place the item · drag along it for a row · Shift+click removes'`
+- feature entry `streetscape.tree` — src/ui/i18n/en.ts:340: `'streetscape.tree': 'Tree'`
+- feature entry `streetscape.shrub` — src/ui/i18n/en.ts:341: `'streetscape.shrub': 'Shrub'`
+- feature entry `streetscape.bench` — src/ui/i18n/en.ts:342: `'streetscape.bench': 'Bench'`
+- feature entry `streetscape.bin` — src/ui/i18n/en.ts:343: `'streetscape.bin': 'Bin'`
+- feature entry `streetscape.lamp` — src/ui/i18n/en.ts:344: `'streetscape.lamp': 'Street light'`
+- feature entry `streetscape.hydrant` — src/ui/i18n/en.ts:345: `'streetscape.hydrant': 'Hydrant'`
+- feature entry `streetscape.postbox` — src/ui/i18n/en.ts:346: `'streetscape.postbox': 'Post box'`
+- feature entry `streetscape.phone` — src/ui/i18n/en.ts:347: `'streetscape.phone': 'Public phone'`
+- feature entry `streetscape.drain` — src/ui/i18n/en.ts:348: `'streetscape.drain': 'Kerb drain'`
+- feature entry `streetscape.meadow` — src/ui/i18n/en.ts:349: `'streetscape.meadow': 'Long grass (on the lawn)'`
+- feature entry `streetscape.sign` — src/ui/i18n/en.ts:350: `'streetscape.sign': 'Sign'`
+- feature entry `streetscape.streetname` — src/ui/i18n/en.ts:351: `'streetscape.streetname': 'Street name'`
+- feature entry `sign.type` — src/ui/i18n/en.ts:352: `'sign.type': 'Sign type'`
+- feature entry `sign.type.stop` — src/ui/i18n/en.ts:353: `'sign.type.stop': 'Stop'`
+- feature entry `sign.type.yield` — src/ui/i18n/en.ts:354: `'sign.type.yield': 'Give way'`
+- feature entry `sign.type.speed` — src/ui/i18n/en.ts:355: `'sign.type.speed': 'Speed limit'`
+- feature entry `sign.type.noParking` — src/ui/i18n/en.ts:356: `'sign.type.noParking': 'No parking'`
+- feature entry `sign.type.noEntry` — src/ui/i18n/en.ts:357: `'sign.type.noEntry': 'No entry'`
+- feature entry `sign.type.pedestrian` — src/ui/i18n/en.ts:358: `'sign.type.pedestrian': 'Pedestrians'`
+- feature entry `sign.type.school` — src/ui/i18n/en.ts:359: `'sign.type.school': 'School'`
+- feature entry `sign.type.direction` — src/ui/i18n/en.ts:360: `'sign.type.direction': 'Direction'`
+- feature entry `sign.type.street` — src/ui/i18n/en.ts:361: `'sign.type.street': 'Street plate'`
+- feature entry `sign.type.info` — src/ui/i18n/en.ts:362: `'sign.type.info': 'Information'`
+- feature entry `sign.text` — src/ui/i18n/en.ts:363: `'sign.text': 'Sign text'`
+- feature entry `sign.text.speed` — src/ui/i18n/en.ts:364: `'sign.text.speed': 'Speed (e.g. 40)'`
+- feature entry `sign.street.placeholder` — src/ui/i18n/en.ts:365: `'sign.street.placeholder': 'Street name, then click the street'`
+- feature entry `pole.lamps` — src/ui/i18n/en.ts:368: `'pole.lamps': 'Lights on the poles'`
+- feature entry `pole.lamps.none` — src/ui/i18n/en.ts:369: `'pole.lamps.none': 'No lights'`
+- feature entry `pole.lamps.alternate` — src/ui/i18n/en.ts:370: `'pole.lamps.alternate': 'A light on every other pole'`
+- feature entry `pole.lamps.all` — src/ui/i18n/en.ts:371: `'pole.lamps.all': 'A light on every pole'`
+- feature entry `pole.mode.build` — src/ui/i18n/en.ts:372: `'pole.mode.build': 'Build line'`
+- feature entry `pole.mode.remove` — src/ui/i18n/en.ts:373: `'pole.mode.remove': 'Remove poles'`
+- feature entry `help.tool.poleRemove` — src/ui/i18n/en.ts:374: `'help.tool.poleRemove': 'Click a pole to remove it, with its wires. Shift+click does the same while building.'`
+- feature entry `tool.pole` — src/ui/i18n/en.ts:375: `'tool.pole': 'Poles'`
+- feature entry `tool.barrier` — src/ui/i18n/en.ts:376: `'tool.barrier': 'Walls'`
+- feature entry `sim.speed` — src/ui/i18n/en.ts:379: `'sim.speed': 'Simulation speed'`
+- feature entry `sim.pause` — src/ui/i18n/en.ts:380: `'sim.pause': 'Pause'`
+- feature entry `sim.congestion` — src/ui/i18n/en.ts:381: `'sim.congestion': 'Colour the roads by congestion'`
+- feature entry `sim.congestionLabel` — src/ui/i18n/en.ts:382: `'sim.congestionLabel': 'Congestion map'`
+- feature entry `sim.traffic` — src/ui/i18n/en.ts:383: `'sim.traffic': 'Traffic (%)'`
+- feature entry `sim.people` — src/ui/i18n/en.ts:384: `'sim.people': 'People (%)'`
+- feature entry `sim.demand` — src/ui/i18n/en.ts:385: `'sim.demand': 'Demand'`
+- feature entry `sim.demand.low` — src/ui/i18n/en.ts:386: `'sim.demand.low': 'Low'`
+- feature entry `sim.demand.normal` — src/ui/i18n/en.ts:387: `'sim.demand.normal': 'Normal'`
+- feature entry `sim.demand.peak` — src/ui/i18n/en.ts:388: `'sim.demand.peak': 'Peak'`
+- feature entry `palette.alignment.straight` — src/ui/i18n/en.ts:391: `'palette.alignment.straight': 'Straight'`
+- feature entry `palette.alignment.curve` — src/ui/i18n/en.ts:392: `'palette.alignment.curve': 'Curve'`
+- feature entry `palette.alignment.free` — src/ui/i18n/en.ts:393: `'palette.alignment.free': 'Free'`
+- feature entry `palette.trace` — src/ui/i18n/en.ts:394: `'palette.trace': 'Alignment'`
+- feature entry `palette.kind` — src/ui/i18n/en.ts:395: `'palette.kind': 'Road type'`
+- feature entry `palette.blocks` — src/ui/i18n/en.ts:396: `'palette.blocks': 'Blocks at once'`
+- feature entry `palette.blocks.cols` — src/ui/i18n/en.ts:397: `'palette.blocks.cols': 'Columns'`
+- feature entry `palette.blocks.rows` — src/ui/i18n/en.ts:398: `'palette.blocks.rows': 'Rows'`
+- feature entry `palette.blocks.size` — src/ui/i18n/en.ts:399: `'palette.blocks.size': 'Block size'`
+- feature entry `palette.blocks.angle` — src/ui/i18n/en.ts:400: `'palette.blocks.angle': 'Turn'`
+- feature entry `hint.blocks.built` — src/ui/i18n/en.ts:401: `'hint.blocks.built': 'Blocks built'`
+- feature entry `palette.width` — src/ui/i18n/en.ts:402: `'palette.width': 'Total width'`
+- feature entry `palette.width.auto` — src/ui/i18n/en.ts:403: `'palette.width.auto': 'Default'`
+- shared entry `palette.lanes.count.one` — src/ui/i18n/en.ts:404: `'palette.lanes.count.one': '{count} lane'`
+- shared entry `palette.lanes.count.other` — src/ui/i18n/en.ts:405: `'palette.lanes.count.other': '{count} lanes'`
+- feature entry `palette.height` — src/ui/i18n/en.ts:407: `'palette.height': 'Road height'`
+- feature entry `palette.height.ground` — src/ui/i18n/en.ts:408: `'palette.height.ground': 'At terrain level'`
+- feature entry `palette.height.above` — src/ui/i18n/en.ts:409: `'palette.height.above': 'Raised: ramp or bridge'`
+- feature entry `palette.height.below` — src/ui/i18n/en.ts:410: `'palette.height.below': 'Lowered: cutting or tunnel'`
+- feature entry `terrain.raise` — src/ui/i18n/en.ts:439: `'terrain.raise': 'Raise'`
+- feature entry `terrain.lower` — src/ui/i18n/en.ts:440: `'terrain.lower': 'Lower'`
+- feature entry `terrain.flatten` — src/ui/i18n/en.ts:441: `'terrain.flatten': 'Level'`
+- feature entry `terrain.river` — src/ui/i18n/en.ts:442: `'terrain.river': 'River'`
+- feature entry `el.plants` — src/ui/i18n/en.ts:445: `'el.plants': 'Plants'`
+- feature entry `el.effects` — src/ui/i18n/en.ts:446: `'el.effects': 'Effects'`
+- feature entry `el.kind.stones` — src/ui/i18n/en.ts:447: `'el.kind.stones': 'Stones'`
+- feature entry `el.kind.pebbles` — src/ui/i18n/en.ts:448: `'el.kind.pebbles': 'Pebbles'`
+- feature entry `el.kind.gravel` — src/ui/i18n/en.ts:449: `'el.kind.gravel': 'Gravel'`
+- feature entry `el.kind.leaves` — src/ui/i18n/en.ts:450: `'el.kind.leaves': 'Fallen leaves'`
+- feature entry `el.kind.grass` — src/ui/i18n/en.ts:451: `'el.kind.grass': 'Grass'`
+- feature entry `el.kind.tallGrass` — src/ui/i18n/en.ts:452: `'el.kind.tallGrass': 'Tall grass'`
+- feature entry `el.kind.scrub` — src/ui/i18n/en.ts:453: `'el.kind.scrub': 'Scrub'`
+- feature entry `el.kind.fern` — src/ui/i18n/en.ts:454: `'el.kind.fern': 'Fern'`
+- feature entry `el.kind.clover` — src/ui/i18n/en.ts:455: `'el.kind.clover': 'Clover'`
+- feature entry `el.kind.flowers` — src/ui/i18n/en.ts:456: `'el.kind.flowers': 'Flowers'`
+- feature entry `el.kind.mushrooms` — src/ui/i18n/en.ts:457: `'el.kind.mushrooms': 'Mushrooms'`
+- feature entry `el.kind.smoke` — src/ui/i18n/en.ts:458: `'el.kind.smoke': 'Smoke'`
+- feature entry `el.kind.fire` — src/ui/i18n/en.ts:459: `'el.kind.fire': 'Fire'`
+- feature entry `el.kind.steam` — src/ui/i18n/en.ts:460: `'el.kind.steam': 'Steam'`
+- feature entry `el.kind.dust` — src/ui/i18n/en.ts:461: `'el.kind.dust': 'Dust'`
+- feature entry `el.kind.soot` — src/ui/i18n/en.ts:462: `'el.kind.soot': 'Soot'`
+- feature entry `el.kind.sparks` — src/ui/i18n/en.ts:463: `'el.kind.sparks': 'Sparks'`
+- feature entry `el.kind.spray` — src/ui/i18n/en.ts:464: `'el.kind.spray': 'Foam and spray'`
+- feature entry `el.mode.lay` — src/ui/i18n/en.ts:465: `'el.mode.lay': 'Lay'`
+- feature entry `el.mode.eraseKind` — src/ui/i18n/en.ts:466: `'el.mode.eraseKind': 'Erase this kind'`
+- feature entry `el.mode.eraseAll` — src/ui/i18n/en.ts:467: `'el.mode.eraseAll': 'Erase all'`
+- feature entry `el.density` — src/ui/i18n/en.ts:468: `'el.density': 'Density (per 100 m²)'`
+- feature entry `el.size` — src/ui/i18n/en.ts:469: `'el.size': 'Size (m)'`
+- feature entry `el.variation` — src/ui/i18n/en.ts:470: `'el.variation': 'Size variation (%)'`
+- feature entry `el.spacing` — src/ui/i18n/en.ts:471: `'el.spacing': 'Least spacing (m)'`
+- feature entry `el.strength` — src/ui/i18n/en.ts:472: `'el.strength': 'Brush strength (%)'`
+- feature entry `el.intensity` — src/ui/i18n/en.ts:473: `'el.intensity': 'Effect intensity (%)'`
+- feature entry `el.clear` — src/ui/i18n/en.ts:474: `'el.clear': 'Remove every element'`
+- feature entry `terrain.weather` — src/ui/i18n/en.ts:476: `'terrain.weather': 'Weather'`
+- feature entry `water.title` — src/ui/i18n/en.ts:477: `'water.title': 'Water of rivers and lakes'`
+- feature entry `water.waves` — src/ui/i18n/en.ts:478: `'water.waves': 'Waves (%)'`
+- feature entry `water.foam` — src/ui/i18n/en.ts:479: `'water.foam': 'Foam (%)'`
+- feature entry `water.current` — src/ui/i18n/en.ts:480: `'water.current': 'Current (m/s)'`
+- feature entry `weather.rain` — src/ui/i18n/en.ts:481: `'weather.rain': 'Rain (%)'`
+- feature entry `weather.wind` — src/ui/i18n/en.ts:482: `'weather.wind': 'Wind (m/s)'`
+- feature entry `weather.windDirection` — src/ui/i18n/en.ts:483: `'weather.windDirection': 'Wind direction (°)'`
+- feature entry `weather.storm` — src/ui/i18n/en.ts:484: `'weather.storm': 'Storm'`
+- feature entry `weather.lightning` — src/ui/i18n/en.ts:485: `'weather.lightning': 'Lightning a minute'`
+- feature entry `weather.thunder` — src/ui/i18n/en.ts:486: `'weather.thunder': 'Thunder volume (%)'`
+- feature entry `tree.kind` — src/ui/i18n/en.ts:489: `'tree.kind': 'Trees'`
+- feature entry `tree.kind.mixed` — src/ui/i18n/en.ts:490: `'tree.kind.mixed': 'Mixed'`
+- feature entry `tree.kind.oak` — src/ui/i18n/en.ts:491: `'tree.kind.oak': 'Oak'`
+- feature entry `tree.kind.cypress` — src/ui/i18n/en.ts:492: `'tree.kind.cypress': 'Cypress'`
+- feature entry `tree.kind.palm` — src/ui/i18n/en.ts:493: `'tree.kind.palm': 'Palm'`
+- feature entry `tree.mode.plant` — src/ui/i18n/en.ts:494: `'tree.mode.plant': 'Plant a stand'`
+- feature entry `tree.mode.one` — src/ui/i18n/en.ts:495: `'tree.mode.one': 'One tree a click'`
+- feature entry `tree.mode.cut` — src/ui/i18n/en.ts:496: `'tree.mode.cut': 'Cut trees'`
+- feature entry `tree.density` — src/ui/i18n/en.ts:497: `'tree.density': 'Trees per hectare'`
+- feature entry `tree.height` — src/ui/i18n/en.ts:498: `'tree.height': 'Height (m)'`
+- feature entry `tree.variation` — src/ui/i18n/en.ts:499: `'tree.variation': 'Variation (%)'`
+- feature entry `tree.spacing` — src/ui/i18n/en.ts:500: `'tree.spacing': 'Spacing (m)'`
+- feature entry `tree.clear` — src/ui/i18n/en.ts:501: `'tree.clear': 'Remove planted trees and clearings'`
+- feature entry `terrain.gully` — src/ui/i18n/en.ts:504: `'terrain.gully': 'Gullies'`
+- feature entry `gully.cut` — src/ui/i18n/en.ts:505: `'gully.cut': 'Cut gullies'`
+- feature entry `gully.erase` — src/ui/i18n/en.ts:506: `'gully.erase': 'Wipe away'`
+- feature entry `gully.strength` — src/ui/i18n/en.ts:507: `'gully.strength': 'Brush strength (%)'`
+- feature entry `gully.auto` — src/ui/i18n/en.ts:508: `'gully.auto': 'Gullies of the land itself (%)'`
+- feature entry `gully.clear` — src/ui/i18n/en.ts:509: `'gully.clear': 'Clear all gully strokes'`
+- feature entry `terrain.cloud` — src/ui/i18n/en.ts:513: `'terrain.cloud': 'Clouds'`
+- feature entry `cloud.add` — src/ui/i18n/en.ts:514: `'cloud.add': 'Add a cloud'`
+- feature entry `cloud.move` — src/ui/i18n/en.ts:515: `'cloud.move': 'Move a cloud'`
+- feature entry `cloud.edit` — src/ui/i18n/en.ts:516: `'cloud.edit': 'Adjust a cloud (applies the values below)'`
+- feature entry `cloud.remove` — src/ui/i18n/en.ts:517: `'cloud.remove': 'Remove a cloud'`
+- feature entry `cloud.size` — src/ui/i18n/en.ts:518: `'cloud.size': 'Size (m)'`
+- feature entry `cloud.height` — src/ui/i18n/en.ts:519: `'cloud.height': 'Base height (m)'`
+- feature entry `cloud.density` — src/ui/i18n/en.ts:520: `'cloud.density': 'Density (%)'`
+- feature entry `cloud.spread` — src/ui/i18n/en.ts:521: `'cloud.spread': 'Spread clouds'`
+- feature entry `cloud.count` — src/ui/i18n/en.ts:522: `'cloud.count': 'How many'`
+- feature entry `cloud.variation` — src/ui/i18n/en.ts:523: `'cloud.variation': 'Variation (%)'`
+- feature entry `cloud.scatter` — src/ui/i18n/en.ts:524: `'cloud.scatter': 'Spread over the sky'`
+- feature entry `cloud.clear` — src/ui/i18n/en.ts:525: `'cloud.clear': 'Remove all clouds'`
+- feature entry `terrain.fog` — src/ui/i18n/en.ts:529: `'terrain.fog': 'Fog'`
+- feature entry `fog.lay` — src/ui/i18n/en.ts:530: `'fog.lay': 'Lay fog'`
+- feature entry `fog.erase` — src/ui/i18n/en.ts:531: `'fog.erase': 'Erase'`
+- feature entry `fog.strength` — src/ui/i18n/en.ts:532: `'fog.strength': 'Brush strength (%)'`
+- feature entry `fog.mapDensity` — src/ui/i18n/en.ts:533: `'fog.mapDensity': 'Overall thickness (%)'`
+- feature entry `fog.height` — src/ui/i18n/en.ts:534: `'fog.height': 'Height (m)'`
+- feature entry `fog.speed` — src/ui/i18n/en.ts:535: `'fog.speed': 'Wind speed (m/s)'`
+- feature entry `fog.clear` — src/ui/i18n/en.ts:536: `'fog.clear': 'Clear all fog'`
+- feature entry `paint.kind` — src/ui/i18n/en.ts:539: `'paint.kind': 'Ground'`
+- feature entry `paint.kind.sand` — src/ui/i18n/en.ts:540: `'paint.kind.sand': 'Sand'`
+- feature entry `paint.kind.soil` — src/ui/i18n/en.ts:541: `'paint.kind.soil': 'Soil'`
+- feature entry `paint.kind.meadow` — src/ui/i18n/en.ts:542: `'paint.kind.meadow': 'Meadow'`
+- feature entry `paint.kind.snow` — src/ui/i18n/en.ts:543: `'paint.kind.snow': 'Snow'`
+- feature entry `paint.kind.gravel` — src/ui/i18n/en.ts:544: `'paint.kind.gravel': 'Gravel'`
+- feature entry `paint.kind.asphalt` — src/ui/i18n/en.ts:545: `'paint.kind.asphalt': 'Asphalt'`
+- feature entry `paint.kind.concrete` — src/ui/i18n/en.ts:546: `'paint.kind.concrete': 'Concrete'`
+- feature entry `paint.kind.grass` — src/ui/i18n/en.ts:547: `'paint.kind.grass': 'Grass (erases)'`
+- feature entry `paint.kind.forest` — src/ui/i18n/en.ts:548: `'paint.kind.forest': 'Forest'`
+- feature entry `terrain.hardness` — src/ui/i18n/en.ts:549: `'terrain.hardness': 'Hardness (cliffs)'`
+- feature entry `terrain.mesa` — src/ui/i18n/en.ts:550: `'terrain.mesa': 'Mesa (sandstone)'`
+- feature entry `terrain.canyon` — src/ui/i18n/en.ts:551: `'terrain.canyon': 'Canyon (sandstone)'`
+- feature entry `terrain.escarpment` — src/ui/i18n/en.ts:552: `'terrain.escarpment': 'Basalt escarpment'`
+- feature entry `terrain.sugarloaf` — src/ui/i18n/en.ts:553: `'terrain.sugarloaf': 'Sugarloaf (granite)'`
+- feature entry `v2.terrain.landforms` — src/ui/i18n/en.ts:554: `'v2.terrain.landforms': 'Landforms'`
+- feature entry `paint.kind.granite` — src/ui/i18n/en.ts:555: `'paint.kind.granite': 'Rock: granite'`
+- feature entry `paint.kind.sandstone` — src/ui/i18n/en.ts:556: `'paint.kind.sandstone': 'Rock: sandstone'`
+- feature entry `paint.kind.basalt` — src/ui/i18n/en.ts:557: `'paint.kind.basalt': 'Rock: basalt'`
+- feature entry `paint.kind.cerrado` — src/ui/i18n/en.ts:558: `'paint.kind.cerrado': 'Cerrado'`
+- feature entry `paint.kind.atlantic` — src/ui/i18n/en.ts:559: `'paint.kind.atlantic': 'Atlantic forest'`
+- feature entry `paint.kind.amazon` — src/ui/i18n/en.ts:560: `'paint.kind.amazon': 'Amazon'`
+- feature entry `paint.kind.caatinga` — src/ui/i18n/en.ts:561: `'paint.kind.caatinga': 'Caatinga'`
+- feature entry `paint.kind.pampa` — src/ui/i18n/en.ts:562: `'paint.kind.pampa': 'Pampa'`
+- feature entry `paint.kind.pantanal` — src/ui/i18n/en.ts:563: `'paint.kind.pantanal': 'Pantanal'`
+- feature entry `paint.biome` — src/ui/i18n/en.ts:564: `'paint.biome': 'Biome'`
+- feature entry `terrain.mapBiome` — src/ui/i18n/en.ts:565: `'terrain.mapBiome': 'Map biome'`
+- feature entry `terrain.mapBiome.none` — src/ui/i18n/en.ts:566: `'terrain.mapBiome.none': 'No ecosystem'`
+- feature entry `atmo.title` — src/ui/i18n/en.ts:567: `'atmo.title': 'Sky and weather'`
+- feature entry `atmo.fog` — src/ui/i18n/en.ts:568: `'atmo.fog': 'Mist (%)'`
+- feature entry `atmo.fogHeight` — src/ui/i18n/en.ts:569: `'atmo.fogHeight': 'Mist height (m)'`
+- feature entry `paint.kind.scrub` — src/ui/i18n/en.ts:574: `'paint.kind.scrub': 'Low scrub'`
+- feature entry `paint.kind.flowers` — src/ui/i18n/en.ts:575: `'paint.kind.flowers': 'Flowers'`
+- feature entry `paint.kind.rocks` — src/ui/i18n/en.ts:576: `'paint.kind.rocks': 'Rocks'`
+- feature entry `terrain.radius` — src/ui/i18n/en.ts:578: `'terrain.radius': 'Radius'`
+- feature entry `terrain.strength` — src/ui/i18n/en.ts:579: `'terrain.strength': 'Strength'`
+- feature entry `terrain.clear` — src/ui/i18n/en.ts:581: `'terrain.clear': 'Flatten the whole map'`
+- shared entry `hint.road` — src/ui/i18n/en.ts:719: `'hint.road': 'Click a start, aim, {heightUp}/{heightDown} for height, then click the end · {alignmentKey}: plan · Esc: cancel'`
+- shared entry `hint.road.invalid` — src/ui/i18n/en.ts:721: `'hint.road.invalid': 'This connection needs more distance or a different endpoint.'`
+- feature entry `cutSides.row` — src/ui/i18n/en.ts:738: `'cutSides.row': 'Cutting'`
+- feature entry `cutSides.batter` — src/ui/i18n/en.ts:739: `'cutSides.batter': 'Slope'`
+- feature entry `cutSides.walls` — src/ui/i18n/en.ts:740: `'cutSides.walls': 'Walls'`
+- feature entry `roadKeys.row` — src/ui/i18n/en.ts:741: `'roadKeys.row': 'Keys'`
+- feature entry `roadKeys.title` — src/ui/i18n/en.ts:742: `'roadKeys.title': 'Road tool keys'`
+- feature entry `roadKeys.heightUp` — src/ui/i18n/en.ts:743: `'roadKeys.heightUp': 'Raise the road 1 m'`
+- feature entry `roadKeys.heightDown` — src/ui/i18n/en.ts:744: `'roadKeys.heightDown': 'Lower the road 1 m'`
+- feature entry `roadKeys.alignment` — src/ui/i18n/en.ts:745: `'roadKeys.alignment': 'Change the plan'`
+- feature entry `roadKeys.press` — src/ui/i18n/en.ts:746: `'roadKeys.press': 'Press a key…'`
+- feature entry `roadKeys.reserved` — src/ui/i18n/en.ts:747: `'roadKeys.reserved': '{key} is already used by the game. Pick another.'`
+- feature entry `roadKeys.reset` — src/ui/i18n/en.ts:748: `'roadKeys.reset': 'Restore defaults'`
+- feature entry `catalog.cat.streets` — src/ui/i18n/en.ts:750: `'catalog.cat.streets': "Streets"`
+- feature entry `catalog.cat.avenues` — src/ui/i18n/en.ts:751: `'catalog.cat.avenues': "Avenues"`
+- feature entry `catalog.cat.highways` — src/ui/i18n/en.ts:752: `'catalog.cat.highways': "Highways"`
+- feature entry `catalog.cat.special` — src/ui/i18n/en.ts:753: `'catalog.cat.special': "Special"`
+- feature entry `catalog.cat.mine` — src/ui/i18n/en.ts:754: `'catalog.cat.mine': "My roads"`
+- feature entry `catalog.empty` — src/ui/i18n/en.ts:755: `'catalog.empty': "Nothing in this category."`
+- feature entry `catalog.mineEmpty` — src/ui/i18n/en.ts:756: `'catalog.mineEmpty': "Your roads appear here: pick a road, click \"Customise…\" and save it as a template."`
+- feature entry `catalog.meta` — src/ui/i18n/en.ts:757: `'catalog.meta': "{width} m · {price}/m"`
+- feature entry `catalog.tip` — src/ui/i18n/en.ts:758: `'catalog.tip': "{name}: {lanes}, {way}, {speed} km/h. Click to draw with it."`
+- feature entry `catalog.oneWay` — src/ui/i18n/en.ts:759: `'catalog.oneWay': "one-way"`
+- feature entry `catalog.twoWay` — src/ui/i18n/en.ts:760: `'catalog.twoWay': "two-way"`
+- shared entry `profileEditor.close` — src/ui/i18n/en.ts:793: `'profileEditor.close': 'Close'`
+- feature entry `economy.balance` — src/ui/i18n/en.ts:889: `'economy.balance': 'Money in hand. Roads cost by width and length; bridges and tunnels more. Demolishing a road gives back {share}% of its price.'`
+- shared entry `hint.upgrade` — src/ui/i18n/en.ts:898: `'hint.upgrade': 'Click a road to upgrade its class'`
+- shared entry `hint.move` — src/ui/i18n/en.ts:899: `'hint.move': 'Drag a node to reposition it'`
+- shared entry `hint.split` — src/ui/i18n/en.ts:900: `'hint.split': 'Click a road to split it'`
+- shared entry `hint.bulldoze` — src/ui/i18n/en.ts:901: `'hint.bulldoze': 'Click a road or a building to demolish it'`
+- shared entry `hint.control` — src/ui/i18n/en.ts:902: `'hint.control': 'Click a junction to change its control · Shift: go back'`
+- shared entry `hint.pole` — src/ui/i18n/en.ts:904: `'hint.pole': 'Drag or click to run a pole line · Click on to keep going · Esc ends it · Shift+click removes'`
+- feature entry `strike.force` — src/ui/i18n/en.ts:907: `'strike.force': 'Force'`
+- feature entry `hint.building.renovated` — src/ui/i18n/en.ts:912: `'hint.building.renovated': 'Building renovated'`
+- shared entry `hint.barrier` — src/ui/i18n/en.ts:913: `'hint.barrier': 'Click to put points down · Double click or Enter builds · Backspace takes a point back · Esc drops it · Shift+click removes'`
+- shared entry `hint.inspect` — src/ui/i18n/en.ts:920: `'hint.inspect': 'Click a road or node to inspect it'`
+- shared entry `hint.transit` — src/ui/i18n/en.ts:921: `'hint.transit': 'Transport: place stops, tracks and stations, and make lines'`
+- feature entry `status.roads.one` — src/ui/i18n/en.ts:944: `'status.roads.one': '1 road'`
+- feature entry `status.roads.other` — src/ui/i18n/en.ts:945: `'status.roads.other': '{count} roads'`
+- feature entry `status.nodes.one` — src/ui/i18n/en.ts:946: `'status.nodes.one': '1 node'`
+- feature entry `status.nodes.other` — src/ui/i18n/en.ts:947: `'status.nodes.other': '{count} nodes'`
+- feature entry `sky.day` — src/ui/i18n/en.ts:952: `'sky.day': '☀ Day'`
+- feature entry `sky.night` — src/ui/i18n/en.ts:953: `'sky.night': '☾ Night'`
+- feature entry `sky.cycle` — src/ui/i18n/en.ts:954: `'sky.cycle': '◐ Day & night'`
+- feature entry `status.impossible.one` — src/ui/i18n/en.ts:1023: `'status.impossible.one': '1 node cannot be built'`
+- feature entry `status.impossible.other` — src/ui/i18n/en.ts:1024: `'status.impossible.other': '{count} nodes cannot be built'`
+- shared entry `quality.auto` — src/ui/i18n/en.ts:1027: `'quality.auto': 'Automatic'`
+- shared entry `quality.low` — src/ui/i18n/en.ts:1028: `'quality.low': 'Low'`
+- shared entry `quality.medium` — src/ui/i18n/en.ts:1029: `'quality.medium': 'Medium'`
+- shared entry `quality.high` — src/ui/i18n/en.ts:1030: `'quality.high': 'High'`
+- shared entry `quality.ultra` — src/ui/i18n/en.ts:1031: `'quality.ultra': 'Ultra'`
+- feature entry `tool.building` — src/ui/i18n/en.ts:1034: `'tool.building': 'Build'`
+- feature entry `building.preset.block` — src/ui/i18n/en.ts:1035: `'building.preset.block': 'Block'`
+- feature entry `building.preset.house` — src/ui/i18n/en.ts:1036: `'building.preset.house': 'House'`
+- feature entry `building.preset.rowhouse` — src/ui/i18n/en.ts:1037: `'building.preset.rowhouse': 'Row house'`
+- feature entry `building.preset.apartments` — src/ui/i18n/en.ts:1038: `'building.preset.apartments': 'Apartments'`
+- feature entry `building.preset.tower` — src/ui/i18n/en.ts:1039: `'building.preset.tower': 'Tower on podium'`
+- feature entry `building.preset.shop` — src/ui/i18n/en.ts:1040: `'building.preset.shop': 'Shop'`
+- feature entry `building.preset.office` — src/ui/i18n/en.ts:1041: `'building.preset.office': 'Office block'`
+- feature entry `building.preset.mixed` — src/ui/i18n/en.ts:1042: `'building.preset.mixed': 'Mixed-use block'`
+- feature entry `building.preset.courtyard` — src/ui/i18n/en.ts:1043: `'building.preset.courtyard': 'Courtyard building'`
+- feature entry `building.preset.warehouse` — src/ui/i18n/en.ts:1044: `'building.preset.warehouse': 'Warehouse'`
+- feature entry `building.preset.factory` — src/ui/i18n/en.ts:1045: `'building.preset.factory': 'Factory'`
+- feature entry `building.element.noRoom` — src/ui/i18n/en.ts:1046: `'building.element.noRoom': 'No room to repeat it along the building'`
+- feature entry `building.relief.pickFace` — src/ui/i18n/en.ts:1047: `'building.relief.pickFace': 'Click a facade (Shift+click or long press for more bays), then pull the yellow arrow'`
+- feature entry `building.style.brick` — src/ui/i18n/en.ts:1048: `'building.style.brick': 'Brick'`
+- feature entry `building.style.modern` — src/ui/i18n/en.ts:1049: `'building.style.modern': 'Modern'`
+- feature entry `building.style.mediterranean` — src/ui/i18n/en.ts:1050: `'building.style.mediterranean': 'Mediterranean'`
+- feature entry `building.style.industrial` — src/ui/i18n/en.ts:1051: `'building.style.industrial': 'Industrial'`
+- feature entry `building.style.timber` — src/ui/i18n/en.ts:1052: `'building.style.timber': 'Timber'`
+- feature entry `building.material.pickFace` — src/ui/i18n/en.ts:1053: `'building.material.pickFace': 'Click a facade to paint that face'`
+- feature entry `building.finish.plaster` — src/ui/i18n/en.ts:1054: `'building.finish.plaster': 'Plaster'`
+- feature entry `building.finish.ceramic` — src/ui/i18n/en.ts:1055: `'building.finish.ceramic': 'Porcelain tile'`
+- feature entry `building.finish.brick` — src/ui/i18n/en.ts:1056: `'building.finish.brick': 'Brick'`
+- feature entry `building.finish.stone` — src/ui/i18n/en.ts:1057: `'building.finish.stone': 'Stone'`
+- feature entry `building.finish.concrete` — src/ui/i18n/en.ts:1058: `'building.finish.concrete': 'Concrete'`
+- feature entry `building.finish.wood` — src/ui/i18n/en.ts:1059: `'building.finish.wood': 'Wood'`
+- feature entry `building.finish.metal` — src/ui/i18n/en.ts:1060: `'building.finish.metal': 'Metal'`
+- feature entry `building.finish.glass` — src/ui/i18n/en.ts:1061: `'building.finish.glass': 'Glass'`
+- feature entry `building.finish.tile` — src/ui/i18n/en.ts:1062: `'building.finish.tile': 'Tiles'`
+- feature entry `building.finish.roofing` — src/ui/i18n/en.ts:1063: `'building.finish.roofing': 'Roofing'`
+- feature entry `building.blueprintName` — src/ui/i18n/en.ts:1064: `'building.blueprintName': 'Name for this blueprint'`
+- feature entry `building.blueprintSaved` — src/ui/i18n/en.ts:1065: `'building.blueprintSaved': 'Blueprint saved'`
+- feature entry `building.blueprintNotSaved` — src/ui/i18n/en.ts:1066: `'building.blueprintNotSaved': 'Blueprint not saved: browser storage is full or blocked'`
+- feature entry `building.blueprintNotRemoved` — src/ui/i18n/en.ts:1067: `'building.blueprintNotRemoved': 'Blueprint not removed: browser storage is full or blocked'`
+- feature entry `building.placed` — src/ui/i18n/en.ts:1068: `'building.placed': 'Building placed: drag the arrows to shape it'`
+- feature entry `building.copied` — src/ui/i18n/en.ts:1069: `'building.copied': 'Building copied: Ctrl+V to place a copy'`
+- feature entry `building.problem.size` — src/ui/i18n/en.ts:1070: `'building.problem.size': 'Size out of range'`
+- feature entry `building.problem.overlap` — src/ui/i18n/en.ts:1071: `'building.problem.overlap': 'Two volumes would overlap'`
+- feature entry `building.problem.support` — src/ui/i18n/en.ts:1072: `'building.problem.support': 'A volume would hang over nothing'`
+- feature entry `building.problem.footprint` — src/ui/i18n/en.ts:1073: `'building.problem.footprint': 'Nothing would stand on the ground'`
+- feature entry `building.problem.bounds` — src/ui/i18n/en.ts:1074: `'building.problem.bounds': 'Outside the map'`
+- feature entry `building.problem.road` — src/ui/i18n/en.ts:1075: `'building.problem.road': 'Overlaps a road'`
+- feature entry `building.problem.building` — src/ui/i18n/en.ts:1076: `'building.problem.building': 'Overlaps another building'`
+- feature entry `building.problem.slope` — src/ui/i18n/en.ts:1077: `'building.problem.slope': 'The ground is too steep here'`
+- feature entry `building.demolished.one` — src/ui/i18n/en.ts:1078: `'building.demolished.one': 'The road demolished 1 building'`
+- feature entry `building.demolished.other` — src/ui/i18n/en.ts:1079: `'building.demolished.other': 'The road demolished {count} buildings'`
+- feature entry `building.floors.one` — src/ui/i18n/en.ts:1080: `'building.floors.one': '{count} floor'`
+- feature entry `building.floors.other` — src/ui/i18n/en.ts:1081: `'building.floors.other': '{count} floors'`
+- feature entry `building.problem.outline` — src/ui/i18n/en.ts:1082: `'building.problem.outline': 'The outline crosses itself or is too small'`
+- feature entry `building.problem.roofSpace` — src/ui/i18n/en.ts:1083: `'building.problem.roofSpace': 'Choose a clear spot fully inside a roof.'`
+- feature entry `building.problem.cut` — src/ui/i18n/en.ts:1084: `'building.problem.cut': 'The cut must open into an exterior edge. Build a closed courtyard from adjacent masses.'`
+- feature entry `building.problem.setback` — src/ui/i18n/en.ts:1085: `'building.problem.setback': 'Not enough room for an automatic setback. Sketch a smaller mass on the roof.'`
+- feature entry `creator.dock.scope.bay` — src/ui/i18n/en.ts:1086: `'creator.dock.scope.bay': 'Bay'`
+- feature entry `creator.dock.scope.column` — src/ui/i18n/en.ts:1087: `'creator.dock.scope.column': 'Vertical column'`
+- feature entry `creator.dock.scope.row` — src/ui/i18n/en.ts:1088: `'creator.dock.scope.row': 'Row of the floor'`
+- feature entry `creator.dock.scope.storey` — src/ui/i18n/en.ts:1089: `'creator.dock.scope.storey': 'Whole floor'`
+- feature entry `creator.dock.scope.side` — src/ui/i18n/en.ts:1090: `'creator.dock.scope.side': 'Whole face'`
+- feature entry `creator.dock.scope.volume` — src/ui/i18n/en.ts:1091: `'creator.dock.scope.volume': 'Whole block'`
+- feature entry `creator.dock.scope.zone` — src/ui/i18n/en.ts:1092: `'creator.dock.scope.zone': 'Zone (drag)'`
+- feature entry `building.reshapeRelief` — src/ui/i18n/en.ts:1094: `'building.reshapeRelief': 'Flatten face reliefs before changing this tier’s outline.'`
+- feature entry `creator.pattern.residential` — src/ui/i18n/en.ts:1095: `'creator.pattern.residential': 'Residential'`
+- feature entry `creator.pattern.storefront` — src/ui/i18n/en.ts:1096: `'creator.pattern.storefront': 'Storefront'`
+- feature entry `creator.pattern.office` — src/ui/i18n/en.ts:1097: `'creator.pattern.office': 'Offices'`
+- feature entry `creator.pattern.industrial` — src/ui/i18n/en.ts:1098: `'creator.pattern.industrial': 'Industrial'`
+- feature entry `creator.pattern.arcade` — src/ui/i18n/en.ts:1099: `'creator.pattern.arcade': 'Arcade'`
+- feature entry `creator.pattern.gallery` — src/ui/i18n/en.ts:1100: `'creator.pattern.gallery': 'Open gallery'`
+- feature entry `creator.pattern.artDeco` — src/ui/i18n/en.ts:1101: `'creator.pattern.artDeco': 'Art Deco'`
+- feature entry `creator.pattern.artDecoCrown` — src/ui/i18n/en.ts:1102: `'creator.pattern.artDecoCrown': 'Deco crown'`
+- feature entry `creator.pattern.observation` — src/ui/i18n/en.ts:1103: `'creator.pattern.observation': 'Glazed lookout'`
+- feature entry `builder.grid` — src/ui/i18n/en.ts:1107: `'builder.grid': 'Grid'`
+- feature entry `builder.view.frame` — src/ui/i18n/en.ts:1108: `'builder.view.frame': 'Frame the selection'`
+- feature entry `builder.hideOthers` — src/ui/i18n/en.ts:1109: `'builder.hideOthers': 'Hide others'`
+- feature entry `builder.help` — src/ui/i18n/en.ts:1110: `'builder.help': 'Help'`
+- feature entry `builder.help.select` — src/ui/i18n/en.ts:1111: `'builder.help.select': 'Selecting'`
+- feature entry `builder.help.select.text` — src/ui/i18n/en.ts:1112: `'builder.help.select.text': 'Click a building, a mass or a face. Shift+click a second bay to widen the pick. Esc steps back; the right button cancels what the t`
+- feature entry `builder.help.gizmo` — src/ui/i18n/en.ts:1113: `'builder.help.gizmo': 'On the object'`
+- feature entry `builder.help.gizmo.text` — src/ui/i18n/en.ts:1114: `'builder.help.gizmo.text': 'The cross moves, the ring turns, the squares on the sides and the chevrons above the roof resize and add floors. Everything happens `
+- feature entry `builder.help.numeric` — src/ui/i18n/en.ts:1115: `'builder.help.numeric': 'Precision'`
+- feature entry `builder.help.numeric.text` — src/ui/i18n/en.ts:1116: `'builder.help.numeric.text': 'The inspector carries the exact numbers: floors, floor height, pitch, bay rhythm, sill, element sizes. Type a value and press Ente`
+- feature entry `builder.help.keys` — src/ui/i18n/en.ts:1117: `'builder.help.keys': 'Keys'`
+- feature entry `builder.help.keys.text` — src/ui/i18n/en.ts:1118: `'builder.help.keys.text': 'R turns 15° (Shift: 90°), PageUp/PageDown add and remove floors, Delete removes, Ctrl+D duplicates, Ctrl+C and Ctrl+V copy and paste,`
+- feature entry `builder.help.cancel` — src/ui/i18n/en.ts:1119: `'builder.help.cancel': 'Cancelling'`
+- feature entry `builder.help.cancel.text` — src/ui/i18n/en.ts:1120: `'builder.help.cancel.text': 'Esc cancels the operation; the right button does the same without leaving the Builder; Alt frees a drag from the grid.'`
+- feature entry `builder.floor.title` — src/ui/i18n/en.ts:1121: `'builder.floor.title': 'Which floor the face tools are working on'`
+- feature entry `builder.snap.label` — src/ui/i18n/en.ts:1122: `'builder.snap.label': 'Snap'`
+- feature entry `builder.snap.auto` — src/ui/i18n/en.ts:1123: `'builder.snap.auto': 'Auto'`
+- feature entry `builder.snap.grid` — src/ui/i18n/en.ts:1124: `'builder.snap.grid': 'Grid'`
+- feature entry `builder.snap.edge` — src/ui/i18n/en.ts:1125: `'builder.snap.edge': 'Edge'`
+- feature entry `builder.snap.face` — src/ui/i18n/en.ts:1126: `'builder.snap.face': 'Face'`
+- feature entry `builder.snap.centre` — src/ui/i18n/en.ts:1127: `'builder.snap.centre': 'Centre'`
+- feature entry `builder.snap.building` — src/ui/i18n/en.ts:1128: `'builder.snap.building': 'Building'`
+- feature entry `builder.snap.road` — src/ui/i18n/en.ts:1129: `'builder.snap.road': 'Road'`
+- feature entry `builder.snap.off` — src/ui/i18n/en.ts:1130: `'builder.snap.off': 'Off'`
+- feature entry `builder.sel.volume` — src/ui/i18n/en.ts:1134: `'builder.sel.volume': 'Mass {n}'`
+- feature entry `builder.sel.building` — src/ui/i18n/en.ts:1135: `'builder.sel.building': 'Building'`
+- feature entry `builder.sel.face` — src/ui/i18n/en.ts:1136: `'builder.sel.face': 'Face'`
+- feature entry `builder.sel.floor` — src/ui/i18n/en.ts:1137: `'builder.sel.floor': 'floor {n}'`
+- feature entry `builder.sel.element` — src/ui/i18n/en.ts:1138: `'builder.sel.element': 'Element'`
+- feature entry `builder.sel.detail` — src/ui/i18n/en.ts:1139: `'builder.sel.detail': 'Roof detail'`
+- shared entry `builder.field.pitch` — src/ui/i18n/en.ts:1144: `'builder.field.pitch': 'Pitch'`
+- feature entry `builder.styleCopied` — src/ui/i18n/en.ts:1198: `'builder.styleCopied': 'Style copied: the brush carries it'`
+- feature entry `builder.roof.ridge.label` — src/ui/i18n/en.ts:1199: `'builder.roof.ridge.label': 'Ridge'`
+- feature entry `builder.roof.side.label` — src/ui/i18n/en.ts:1200: `'builder.roof.side.label': 'Falls to'`
+- feature entry `builder.roof.ridge.x` — src/ui/i18n/en.ts:1201: `'builder.roof.ridge.x': 'Ridge left–right'`
+- feature entry `builder.roof.ridge.y` — src/ui/i18n/en.ts:1202: `'builder.roof.ridge.y': 'Ridge front–back'`
+- feature entry `builder.roof.side.front` — src/ui/i18n/en.ts:1203: `'builder.roof.side.front': 'Falls front'`
+- feature entry `builder.roof.side.right` — src/ui/i18n/en.ts:1204: `'builder.roof.side.right': 'Falls right'`
+- feature entry `builder.roof.side.back` — src/ui/i18n/en.ts:1205: `'builder.roof.side.back': 'Falls back'`
+- feature entry `builder.roof.side.left` — src/ui/i18n/en.ts:1206: `'builder.roof.side.left': 'Falls left'`
+- feature entry `builder.plan.finish` — src/ui/i18n/en.ts:1207: `'builder.plan.finish': 'Finish'`
+- feature entry `builder.plan.back` — src/ui/i18n/en.ts:1208: `'builder.plan.back': 'Step back'`
+- feature entry `builder.plan.cancel` — src/ui/i18n/en.ts:1209: `'builder.plan.cancel': 'Cancel'`
+- feature entry `builder.noGroup` — src/ui/i18n/en.ts:1210: `'builder.noGroup': 'No building close enough to group'`
+- feature entry `builder.grouped` — src/ui/i18n/en.ts:1211: `'builder.grouped': 'Grouped into one building'`
+- feature entry `building.selectFirst` — src/ui/i18n/en.ts:1212: `'building.selectFirst': 'Select a building first'`
+- feature entry `builder.category.draw` — src/ui/i18n/en.ts:1214: `'builder.category.draw': 'Draw'`
+- feature entry `inside.toggle` — src/ui/i18n/en.ts:1215: `'inside.toggle': 'See inside: the building in the middle of the view (or double-click a building)'`
+- feature entry `inside.down` — src/ui/i18n/en.ts:1216: `'inside.down': 'Floor below'`
+- feature entry `inside.up` — src/ui/i18n/en.ts:1217: `'inside.up': 'Floor above'`
+- feature entry `inside.ground` — src/ui/i18n/en.ts:1218: `'inside.ground': 'Ground'`
+- feature entry `hint.inside.none` — src/ui/i18n/en.ts:1219: `'hint.inside.none': 'No building in the middle of the view: point the view at one, or double-click it'`
+- feature entry `inside.floor` — src/ui/i18n/en.ts:1220: `'inside.floor': 'Floor {n}'`
+- shared entry `building.fn.house` — src/ui/i18n/en.ts:1221: `'building.fn.house': 'House'`
+- shared entry `building.fn.townhouse` — src/ui/i18n/en.ts:1222: `'building.fn.townhouse': 'Townhouse'`
+- shared entry `building.fn.apartments` — src/ui/i18n/en.ts:1223: `'building.fn.apartments': 'Apartments'`
+- shared entry `building.fn.residentialTower` — src/ui/i18n/en.ts:1224: `'building.fn.residentialTower': 'Residential tower'`
+- shared entry `building.fn.cityHall` — src/ui/i18n/en.ts:1225: `'building.fn.cityHall': 'City hall'`
+- shared entry `building.fn.council` — src/ui/i18n/en.ts:1226: `'building.fn.council': 'City council'`
+- shared entry `building.fn.courthouse` — src/ui/i18n/en.ts:1227: `'building.fn.courthouse': 'Courthouse'`
+- shared entry `building.fn.postOffice` — src/ui/i18n/en.ts:1228: `'building.fn.postOffice': 'Post office'`
+- shared entry `building.fn.police` — src/ui/i18n/en.ts:1229: `'building.fn.police': 'Police station'`
+- shared entry `building.fn.fireStation` — src/ui/i18n/en.ts:1230: `'building.fn.fireStation': 'Fire station'`
+- shared entry `building.fn.hospital` — src/ui/i18n/en.ts:1231: `'building.fn.hospital': 'Hospital'`
+- shared entry `building.fn.clinic` — src/ui/i18n/en.ts:1232: `'building.fn.clinic': 'Clinic'`
+- shared entry `building.fn.school` — src/ui/i18n/en.ts:1233: `'building.fn.school': 'School'`
+- shared entry `building.fn.university` — src/ui/i18n/en.ts:1234: `'building.fn.university': 'University'`
+- shared entry `building.fn.library` — src/ui/i18n/en.ts:1235: `'building.fn.library': 'Library'`
+- shared entry `building.fn.museum` — src/ui/i18n/en.ts:1236: `'building.fn.museum': 'Museum'`
+- shared entry `building.fn.prison` — src/ui/i18n/en.ts:1237: `'building.fn.prison': 'Prison'`
+- shared entry `building.fn.church` — src/ui/i18n/en.ts:1238: `'building.fn.church': 'Church'`
+- shared entry `building.fn.cemetery` — src/ui/i18n/en.ts:1239: `'building.fn.cemetery': 'Cemetery'`
+- shared entry `building.fn.busStation` — src/ui/i18n/en.ts:1240: `'building.fn.busStation': 'Bus station'`
+- shared entry `building.fn.shop` — src/ui/i18n/en.ts:1241: `'building.fn.shop': 'Shop'`
+- shared entry `building.fn.supermarket` — src/ui/i18n/en.ts:1242: `'building.fn.supermarket': 'Supermarket'`
+- shared entry `building.fn.mall` — src/ui/i18n/en.ts:1243: `'building.fn.mall': 'Shopping centre'`
+- shared entry `building.fn.bank` — src/ui/i18n/en.ts:1244: `'building.fn.bank': 'Bank'`
+- shared entry `building.fn.pharmacy` — src/ui/i18n/en.ts:1245: `'building.fn.pharmacy': 'Pharmacy'`
+- shared entry `building.fn.bakery` — src/ui/i18n/en.ts:1246: `'building.fn.bakery': 'Bakery'`
+- shared entry `building.fn.restaurant` — src/ui/i18n/en.ts:1247: `'building.fn.restaurant': 'Restaurant'`
+- shared entry `building.fn.snackBar` — src/ui/i18n/en.ts:1248: `'building.fn.snackBar': 'Snack bar'`
+- shared entry `building.fn.bar` — src/ui/i18n/en.ts:1249: `'building.fn.bar': 'Bar'`
+- shared entry `building.fn.nightclub` — src/ui/i18n/en.ts:1250: `'building.fn.nightclub': 'Nightclub'`
+- shared entry `building.fn.cinema` — src/ui/i18n/en.ts:1251: `'building.fn.cinema': 'Cinema'`
+- shared entry `building.fn.hotel` — src/ui/i18n/en.ts:1252: `'building.fn.hotel': 'Hotel'`
+- shared entry `building.fn.gym` — src/ui/i18n/en.ts:1253: `'building.fn.gym': 'Gym'`
+- shared entry `building.fn.club` — src/ui/i18n/en.ts:1254: `'building.fn.club': 'Club'`
+- shared entry `building.fn.gasStation` — src/ui/i18n/en.ts:1255: `'building.fn.gasStation': 'Petrol station'`
+- shared entry `building.fn.office` — src/ui/i18n/en.ts:1256: `'building.fn.office': 'Offices'`
+- shared entry `building.fn.factory` — src/ui/i18n/en.ts:1257: `'building.fn.factory': 'Factory'`
+- shared entry `building.fn.warehouse` — src/ui/i18n/en.ts:1258: `'building.fn.warehouse': 'Warehouse'`
+- shared entry `building.fn.park` — src/ui/i18n/en.ts:1259: `'building.fn.park': 'Park'`
+- shared entry `building.fn.square` — src/ui/i18n/en.ts:1260: `'building.fn.square': 'Square'`
+- shared entry `building.fn.playground` — src/ui/i18n/en.ts:1261: `'building.fn.playground': 'Playground'`
+- shared entry `building.fn.sportsCourt` — src/ui/i18n/en.ts:1262: `'building.fn.sportsCourt': 'Sports court'`
+- feature entry `builder.city.homes` — src/ui/i18n/en.ts:1263: `'builder.city.homes': 'Homes'`
+- feature entry `builder.city.public` — src/ui/i18n/en.ts:1264: `'builder.city.public': 'Public services'`
+- feature entry `builder.city.commerce` — src/ui/i18n/en.ts:1265: `'builder.city.commerce': 'Shops and services'`
+- feature entry `builder.city.work` — src/ui/i18n/en.ts:1266: `'builder.city.work': 'Work'`
+- feature entry `builder.city.leisure` — src/ui/i18n/en.ts:1267: `'builder.city.leisure': 'Leisure'`
+- feature entry `builder.city.generic` — src/ui/i18n/en.ts:1268: `'builder.city.generic': 'Plain blocks'`
+- feature entry `builder.city.lots` — src/ui/i18n/en.ts:1269: `'builder.city.lots': 'Lots'`
+- feature entry `builder.lot.balconyMid` — src/ui/i18n/en.ts:1270: `'builder.lot.balconyMid': 'Balconies and timber'`
+- feature entry `builder.lot.glassOffice` — src/ui/i18n/en.ts:1271: `'builder.lot.glassOffice': 'Glass office'`
+- feature entry `builder.lot.glassBalcony` — src/ui/i18n/en.ts:1272: `'builder.lot.glassBalcony': 'Glass with balconies'`
+- feature entry `builder.lot.beigeClassic` — src/ui/i18n/en.ts:1273: `'builder.lot.beigeClassic': 'Classic beige'`
+- feature entry `builder.lot.darkGlass` — src/ui/i18n/en.ts:1274: `'builder.lot.darkGlass': 'Dark glass'`
+- feature entry `builder.lot.whiteBalcony` — src/ui/i18n/en.ts:1275: `'builder.lot.whiteBalcony': 'White with balconies'`
+- feature entry `builder.lot.brickFrame` — src/ui/i18n/en.ts:1276: `'builder.lot.brickFrame': 'Brick and glass'`
+- feature entry `builder.lot.roundGlass` — src/ui/i18n/en.ts:1277: `'builder.lot.roundGlass': 'Round glass'`
+- feature entry `builder.lot.darkGrid` — src/ui/i18n/en.ts:1278: `'builder.lot.darkGrid': 'Dark grid'`
+- feature entry `builder.lot.artDeco` — src/ui/i18n/en.ts:1279: `'builder.lot.artDeco': 'Art deco'`
+- feature entry `builder.lot.twistGreen` — src/ui/i18n/en.ts:1280: `'builder.lot.twistGreen': 'Twisted teal'`
+- feature entry `builder.lot.hexTerracotta` — src/ui/i18n/en.ts:1281: `'builder.lot.hexTerracotta': 'Hexagonal terracotta'`
+- feature entry `builder.lot.stepGarden` — src/ui/i18n/en.ts:1282: `'builder.lot.stepGarden': 'Terrace gardens'`
+- feature entry `builder.lot.waveWhite` — src/ui/i18n/en.ts:1283: `'builder.lot.waveWhite': 'Wave balconies'`
+- feature entry `builder.lot.cubeBalcony` — src/ui/i18n/en.ts:1284: `'builder.lot.cubeBalcony': 'Cube balconies'`
+- feature entry `builder.lot.twinNavy` — src/ui/i18n/en.ts:1285: `'builder.lot.twinNavy': 'Navy twins'`
+- feature entry `builder.lot.octCopper` — src/ui/i18n/en.ts:1286: `'builder.lot.octCopper': 'Octagonal copper'`
+- feature entry `builder.lot.stackedBlocks` — src/ui/i18n/en.ts:1287: `'builder.lot.stackedBlocks': 'Stacked blocks'`
+- feature entry `builder.lot.pinkCorner` — src/ui/i18n/en.ts:1288: `'builder.lot.pinkCorner': 'Pink corner'`
+- feature entry `builder.lot.triangleDark` — src/ui/i18n/en.ts:1289: `'builder.lot.triangleDark': 'Dark triangle'`
+- feature entry `builder.lot.cityHallBrick` — src/ui/i18n/en.ts:1290: `'builder.lot.cityHallBrick': 'Brick town hall'`
+- feature entry `builder.lot.decoSpire` — src/ui/i18n/en.ts:1291: `'builder.lot.decoSpire': 'Deco spire'`
+- feature entry `builder.lot.hospitalA` — src/ui/i18n/en.ts:1292: `'builder.lot.hospitalA': 'Hospital'`
+- feature entry `builder.lot.loftBrick` — src/ui/i18n/en.ts:1293: `'builder.lot.loftBrick': 'Brick lofts'`
+- feature entry `builder.lot.cityHallWhite` — src/ui/i18n/en.ts:1294: `'builder.lot.cityHallWhite': 'White town hall'`
+- feature entry `builder.lot.forum` — src/ui/i18n/en.ts:1295: `'builder.lot.forum': 'Courthouse'`
+- feature entry `builder.lot.church` — src/ui/i18n/en.ts:1296: `'builder.lot.church': 'Church'`
+- feature entry `builder.lot.bank` — src/ui/i18n/en.ts:1297: `'builder.lot.bank': 'Bank'`
+- feature entry `builder.lot.school` — src/ui/i18n/en.ts:1298: `'builder.lot.school': 'School'`
+- feature entry `builder.lot.fireStation` — src/ui/i18n/en.ts:1299: `'builder.lot.fireStation': 'Fire station'`
+- feature entry `builder.lot.police` — src/ui/i18n/en.ts:1300: `'builder.lot.police': 'Police station'`
+- feature entry `builder.lot.hospitalB` — src/ui/i18n/en.ts:1301: `'builder.lot.hospitalB': 'Hospital with a wing'`
+- feature entry `builder.lot.cemetery` — src/ui/i18n/en.ts:1302: `'builder.lot.cemetery': 'Cemetery'`
+- feature entry `builder.lot.beauxArts` — src/ui/i18n/en.ts:1303: `'builder.lot.beauxArts': 'Beaux-Arts hotel'`
+- feature entry `builder.lot.decoTower` — src/ui/i18n/en.ts:1304: `'builder.lot.decoTower': 'Art Deco tower'`
+- feature entry `builder.lot.modernOffice` — src/ui/i18n/en.ts:1305: `'builder.lot.modernOffice': 'Modernist office'`
+- feature entry `builder.lot.residentialTerrace` — src/ui/i18n/en.ts:1306: `'builder.lot.residentialTerrace': 'Terraced flats'`
+- feature entry `builder.lot.glassSpire` — src/ui/i18n/en.ts:1307: `'builder.lot.glassSpire': 'Blue glass tower'`
+- feature entry `builder.city.all` — src/ui/i18n/en.ts:1308: `'builder.city.all': 'All'`
+- feature entry `v2.cat.landscape` — src/ui/i18n/en.ts:1309: `'v2.cat.landscape': 'Landscape'`
+- feature entry `v2.cat.info` — src/ui/i18n/en.ts:1310: `'v2.cat.info': 'Info'`
+- feature entry `v2.dock.roads` — src/ui/i18n/en.ts:1311: `'v2.dock.roads': 'Roads'`
+- feature entry `v2.dock.zones` — src/ui/i18n/en.ts:1312: `'v2.dock.zones': 'Zones'`
+- feature entry `v2.dock.build` — src/ui/i18n/en.ts:1313: `'v2.dock.build': 'Build'`
+- feature entry `v2.dock.landscape` — src/ui/i18n/en.ts:1314: `'v2.dock.landscape': 'Landscape'`
+- feature entry `v2.dock.transit` — src/ui/i18n/en.ts:1315: `'v2.dock.transit': 'Transit'`
+- feature entry `v2.dock.demolish` — src/ui/i18n/en.ts:1316: `'v2.dock.demolish': 'Demolish'`
+- feature entry `v2.dock.info` — src/ui/i18n/en.ts:1317: `'v2.dock.info': 'Info'`
+- feature entry `v2.close` — src/ui/i18n/en.ts:1318: `'v2.close': 'Close'`
+- feature entry `parking.preset.cycle` — src/ui/i18n/en.ts:1324: `'parking.preset.cycle': 'Cycle lanes on both sides'`
+- feature entry `parking.preset.cycleParking` — src/ui/i18n/en.ts:1325: `'parking.preset.cycleParking': 'Cycle lane on the right, parking on the left'`
+- feature entry `parking.preset.none` — src/ui/i18n/en.ts:1326: `'parking.preset.none': 'No parking'`
+- feature entry `parking.preset.parallel` — src/ui/i18n/en.ts:1327: `'parking.preset.parallel': 'Parallel bays on both sides'`
+- feature entry `parking.preset.parallelLeft` — src/ui/i18n/en.ts:1328: `'parking.preset.parallelLeft': 'Parallel bays on the left'`
+- feature entry `parking.preset.parallelRight` — src/ui/i18n/en.ts:1329: `'parking.preset.parallelRight': 'Parallel bays on the right'`
+- feature entry `v2.snap.title` — src/ui/i18n/en.ts:1330: `'v2.snap.title': 'Snapping'`
+- feature entry `v2.blocks.count` — src/ui/i18n/en.ts:1332: `'v2.blocks.count': 'Blocks'`
+- feature entry `v2.blocks.measure` — src/ui/i18n/en.ts:1333: `'v2.blocks.measure': 'Size'`
+- feature entry `v2.row.lanes` — src/ui/i18n/en.ts:1334: `'v2.row.lanes': 'Lanes'`
+- feature entry `v2.row.width` — src/ui/i18n/en.ts:1335: `'v2.row.width': 'Width'`
+- feature entry `v2.row.height` — src/ui/i18n/en.ts:1336: `'v2.row.height': 'Height'`
+- feature entry `v2.row.parking` — src/ui/i18n/en.ts:1337: `'v2.row.parking': 'Parking'`
+- feature entry `v2.roundabout.radius` — src/ui/i18n/en.ts:1338: `'v2.roundabout.radius': 'Radius (m)'`
+- feature entry `v2.row.brush` — src/ui/i18n/en.ts:1339: `'v2.row.brush': 'Brush'`
+- feature entry `v2.row.clear` — src/ui/i18n/en.ts:1340: `'v2.row.clear': 'Clear'`
+- feature entry `v2.row.biome` — src/ui/i18n/en.ts:1341: `'v2.row.biome': 'Biome'`
+- feature entry `v2.row.sky` — src/ui/i18n/en.ts:1342: `'v2.row.sky': 'Sky'`
+- feature entry `v2.row.sign` — src/ui/i18n/en.ts:1343: `'v2.row.sign': 'Sign'`
+- feature entry `v2.row.text` — src/ui/i18n/en.ts:1344: `'v2.row.text': 'Text'`
+- feature entry `v2.row.lights` — src/ui/i18n/en.ts:1345: `'v2.row.lights': 'Lights'`
+- feature entry `v2.row.cut` — src/ui/i18n/en.ts:1346: `'v2.row.cut': 'Cut'`
+- feature entry `v2.row.parts` — src/ui/i18n/en.ts:1347: `'v2.row.parts': 'Parts'`
+- feature entry `v2.map` — src/ui/i18n/en.ts:1348: `'v2.map': 'Whole map'`
+- feature entry `v2.land.relief` — src/ui/i18n/en.ts:1349: `'v2.land.relief': 'Relief'`
+- feature entry `v2.land.ground` — src/ui/i18n/en.ts:1350: `'v2.land.ground': 'Ground'`
+- feature entry `v2.land.nature` — src/ui/i18n/en.ts:1351: `'v2.land.nature': 'Nature'`
+- feature entry `v2.land.sky` — src/ui/i18n/en.ts:1352: `'v2.land.sky': 'Sky and weather'`
+- feature entry `v2.land.street` — src/ui/i18n/en.ts:1353: `'v2.land.street': 'Street'`
+- feature entry `v2.layers` — src/ui/i18n/en.ts:1354: `'v2.layers': 'Map layers'`
+- feature entry `v2.help.global` — src/ui/i18n/en.ts:1355: `'v2.help.global': 'Shortcuts'`
+- feature entry `v2.help.builder` — src/ui/i18n/en.ts:1356: `'v2.help.builder': 'More on the Builder'`
+- feature entry `v2.do.tools` — src/ui/i18n/en.ts:1362: `'v2.do.tools': 'Pick a tool'`
+- feature entry `v2.layer.grid` — src/ui/i18n/en.ts:1366: `'v2.layer.grid': 'Grid'`
+- feature entry `v2.layer.inside` — src/ui/i18n/en.ts:1367: `'v2.layer.inside': 'Inside the buildings'`
+- feature entry `v2.s.variation` — src/ui/i18n/en.ts:1369: `'v2.s.variation': 'Variation'`
+- feature entry `v2.s.spacing` — src/ui/i18n/en.ts:1370: `'v2.s.spacing': 'Spacing'`
+- feature entry `v2.s.effect` — src/ui/i18n/en.ts:1371: `'v2.s.effect': 'Effect'`
+- feature entry `v2.s.wind` — src/ui/i18n/en.ts:1372: `'v2.s.wind': 'Wind'`
+- feature entry `v2.s.fogAll` — src/ui/i18n/en.ts:1373: `'v2.s.fogAll': 'Fog'`
+- feature entry `v2.s.mistHeight` — src/ui/i18n/en.ts:1374: `'v2.s.mistHeight': 'Mist top'`
+- feature entry `v2.s.direction` — src/ui/i18n/en.ts:1375: `'v2.s.direction': 'Direction'`
+- feature entry `v2.s.lightning` — src/ui/i18n/en.ts:1376: `'v2.s.lightning': 'Lightning'`
+- feature entry `v2.s.thunder` — src/ui/i18n/en.ts:1377: `'v2.s.thunder': 'Thunder'`
+- feature entry `v2.s.gullyAuto` — src/ui/i18n/en.ts:1378: `'v2.s.gullyAuto': 'Natural'`
+- feature entry `v2.s.base` — src/ui/i18n/en.ts:1379: `'v2.s.base': 'Base'`
+- feature entry `v2.snap.on` — src/ui/i18n/en.ts:1380: `'v2.snap.on': 'Snapping on'`
+- feature entry `v2.snap.angles` — src/ui/i18n/en.ts:1381: `'v2.snap.angles': 'Angles: 90°, 45°, 15°'`
+- feature entry `v2.snap.grid` — src/ui/i18n/en.ts:1382: `'v2.snap.grid': 'Points on the 1 m grid'`
+- feature entry `v2.land.walls` — src/ui/i18n/en.ts:1383: `'v2.land.walls': 'Walls and fences'`
+- feature entry `v2.zone.use` — src/ui/i18n/en.ts:1384: `'v2.zone.use': 'Land use'`
+- feature entry `v2.zone.density` — src/ui/i18n/en.ts:1385: `'v2.zone.density': 'Density'`
+- feature entry `v2.terrain.brush` — src/ui/i18n/en.ts:1386: `'v2.terrain.brush': 'Terrain brush'`
+- feature entry `v2.build.shape` — src/ui/i18n/en.ts:1387: `'v2.build.shape': 'Shape'`
+- feature entry `v2.build.selectToEdit` — src/ui/i18n/en.ts:1388: `'v2.build.selectToEdit': 'Click a building to edit it'`
+- feature entry `v2.build.floor` — src/ui/i18n/en.ts:1389: `'v2.build.floor': 'Floor'`
+- feature entry `v2.build.plan` — src/ui/i18n/en.ts:1390: `'v2.build.plan': 'Plan'`
+- feature entry `v2.build.material` — src/ui/i18n/en.ts:1391: `'v2.build.material': 'Material'`
+- feature entry `v2.build.colour` — src/ui/i18n/en.ts:1392: `'v2.build.colour': 'Colour'`
+- feature entry `builder.city.mine` — src/ui/i18n/en.ts:1393: `'builder.city.mine': 'Saved by me'`
+- feature entry `builder.search` — src/ui/i18n/en.ts:1394: `'builder.search': 'Search buildings'`
+- feature entry `builder.search.none` — src/ui/i18n/en.ts:1395: `'builder.search.none': 'Nothing by that name.'`
+- feature entry `builder.advanced.off` — src/ui/i18n/en.ts:1396: `'builder.advanced.off': 'Show advanced modelling'`
+- feature entry `builder.advanced.on` — src/ui/i18n/en.ts:1397: `'builder.advanced.on': 'Hide advanced modelling'`
+- feature entry `builder.tool.clock` — src/ui/i18n/en.ts:1400: `'builder.tool.clock': 'Clock'`
+- shared entry `hint.builder.clock` — src/ui/i18n/en.ts:1401: `'hint.builder.clock': 'Click a bay of the facade to hang a clock'`
+- feature entry `builder.category.interior` — src/ui/i18n/en.ts:1402: `'builder.category.interior': 'Inside'`
+- feature entry `builder.section.interiorView` — src/ui/i18n/en.ts:1403: `'builder.section.interiorView': 'Look inside'`
+- feature entry `builder.section.cores` — src/ui/i18n/en.ts:1404: `'builder.section.cores': 'Circulation: stairs and lifts'`
+- feature entry `builder.tool.interiorView` — src/ui/i18n/en.ts:1405: `'builder.tool.interiorView': 'Cut open'`
+- feature entry `builder.tool.floorDown` — src/ui/i18n/en.ts:1406: `'builder.tool.floorDown': 'Floor below'`
+- feature entry `builder.tool.floorUp` — src/ui/i18n/en.ts:1407: `'builder.tool.floorUp': 'Floor above'`
+- feature entry `builder.tool.coreLift` — src/ui/i18n/en.ts:1408: `'builder.tool.coreLift': 'Lift'`
+- feature entry `builder.tool.coreStair` — src/ui/i18n/en.ts:1409: `'builder.tool.coreStair': 'Stair'`
+- feature entry `builder.tool.coreBoth` — src/ui/i18n/en.ts:1410: `'builder.tool.coreBoth': 'Stair + lift'`
+- feature entry `builder.tool.furn_sofa` — src/ui/i18n/en.ts:1411: `'builder.tool.furn_sofa': 'Sofa'`
+- feature entry `hint.builder.furn_sofa` — src/ui/i18n/en.ts:1412: `'hint.builder.furn_sofa': 'Click the floor to put down: sofa (R turns it)'`
+- feature entry `builder.tool.furn_armchair` — src/ui/i18n/en.ts:1413: `'builder.tool.furn_armchair': 'Armchair'`
+- feature entry `hint.builder.furn_armchair` — src/ui/i18n/en.ts:1414: `'hint.builder.furn_armchair': 'Click the floor to put down: armchair (R turns it)'`
+- feature entry `builder.tool.furn_table` — src/ui/i18n/en.ts:1415: `'builder.tool.furn_table': 'Table'`
+- feature entry `hint.builder.furn_table` — src/ui/i18n/en.ts:1416: `'hint.builder.furn_table': 'Click the floor to put down: table (R turns it)'`
+- feature entry `builder.tool.furn_chair` — src/ui/i18n/en.ts:1417: `'builder.tool.furn_chair': 'Chair'`
+- feature entry `hint.builder.furn_chair` — src/ui/i18n/en.ts:1418: `'hint.builder.furn_chair': 'Click the floor to put down: chair (R turns it)'`
+- feature entry `builder.tool.furn_bed` — src/ui/i18n/en.ts:1419: `'builder.tool.furn_bed': 'Double bed'`
+- feature entry `hint.builder.furn_bed` — src/ui/i18n/en.ts:1420: `'hint.builder.furn_bed': 'Click the floor to put down: double bed (R turns it)'`
+- feature entry `builder.tool.furn_singleBed` — src/ui/i18n/en.ts:1421: `'builder.tool.furn_singleBed': 'Single bed'`
+- feature entry `hint.builder.furn_singleBed` — src/ui/i18n/en.ts:1422: `'hint.builder.furn_singleBed': 'Click the floor to put down: single bed (R turns it)'`
+- feature entry `builder.tool.furn_wardrobe` — src/ui/i18n/en.ts:1423: `'builder.tool.furn_wardrobe': 'Wardrobe'`
+- feature entry `hint.builder.furn_wardrobe` — src/ui/i18n/en.ts:1424: `'hint.builder.furn_wardrobe': 'Click the floor to put down: wardrobe (R turns it)'`
+- feature entry `builder.tool.furn_tv` — src/ui/i18n/en.ts:1425: `'builder.tool.furn_tv': 'TV'`
+- feature entry `hint.builder.furn_tv` — src/ui/i18n/en.ts:1426: `'hint.builder.furn_tv': 'Click the floor to put down: tv (R turns it)'`
+- feature entry `builder.tool.furn_desk` — src/ui/i18n/en.ts:1427: `'builder.tool.furn_desk': 'Desk'`
+- feature entry `hint.builder.furn_desk` — src/ui/i18n/en.ts:1428: `'hint.builder.furn_desk': 'Click the floor to put down: desk (R turns it)'`
+- feature entry `builder.tool.furn_officeChair` — src/ui/i18n/en.ts:1429: `'builder.tool.furn_officeChair': 'Office chair'`
+- feature entry `hint.builder.furn_officeChair` — src/ui/i18n/en.ts:1430: `'hint.builder.furn_officeChair': 'Click the floor to put down: office chair (R turns it)'`
+- feature entry `builder.tool.furn_bookshelf` — src/ui/i18n/en.ts:1431: `'builder.tool.furn_bookshelf': 'Bookcase'`
+- feature entry `hint.builder.furn_bookshelf` — src/ui/i18n/en.ts:1432: `'hint.builder.furn_bookshelf': 'Click the floor to put down: bookcase (R turns it)'`
+- feature entry `builder.tool.furn_shelf` — src/ui/i18n/en.ts:1433: `'builder.tool.furn_shelf': 'Shelf'`
+- feature entry `hint.builder.furn_shelf` — src/ui/i18n/en.ts:1434: `'hint.builder.furn_shelf': 'Click the floor to put down: shelf (R turns it)'`
+- feature entry `builder.tool.furn_counter` — src/ui/i18n/en.ts:1435: `'builder.tool.furn_counter': 'Counter'`
+- feature entry `hint.builder.furn_counter` — src/ui/i18n/en.ts:1436: `'hint.builder.furn_counter': 'Click the floor to put down: counter (R turns it)'`
+- feature entry `builder.tool.furn_fridge` — src/ui/i18n/en.ts:1437: `'builder.tool.furn_fridge': 'Fridge'`
+- feature entry `hint.builder.furn_fridge` — src/ui/i18n/en.ts:1438: `'hint.builder.furn_fridge': 'Click the floor to put down: fridge (R turns it)'`
+- feature entry `builder.tool.furn_stove` — src/ui/i18n/en.ts:1439: `'builder.tool.furn_stove': 'Cooker'`
+- feature entry `hint.builder.furn_stove` — src/ui/i18n/en.ts:1440: `'hint.builder.furn_stove': 'Click the floor to put down: cooker (R turns it)'`
+- feature entry `builder.tool.furn_sink` — src/ui/i18n/en.ts:1441: `'builder.tool.furn_sink': 'Sink'`
+- feature entry `hint.builder.furn_sink` — src/ui/i18n/en.ts:1442: `'hint.builder.furn_sink': 'Click the floor to put down: sink (R turns it)'`
+- feature entry `builder.tool.furn_bath` — src/ui/i18n/en.ts:1443: `'builder.tool.furn_bath': 'Bath'`
+- feature entry `hint.builder.furn_bath` — src/ui/i18n/en.ts:1444: `'hint.builder.furn_bath': 'Click the floor to put down: bath (R turns it)'`
+- feature entry `builder.tool.furn_toilet` — src/ui/i18n/en.ts:1445: `'builder.tool.furn_toilet': 'Toilet'`
+- feature entry `hint.builder.furn_toilet` — src/ui/i18n/en.ts:1446: `'hint.builder.furn_toilet': 'Click the floor to put down: toilet (R turns it)'`
+- feature entry `builder.tool.furn_plant` — src/ui/i18n/en.ts:1447: `'builder.tool.furn_plant': 'Plant'`
+- feature entry `hint.builder.furn_plant` — src/ui/i18n/en.ts:1448: `'hint.builder.furn_plant': 'Click the floor to put down: plant (R turns it)'`
+- feature entry `builder.tool.furn_ceilingLamp` — src/ui/i18n/en.ts:1449: `'builder.tool.furn_ceilingLamp': 'Ceiling light'`
+- feature entry `hint.builder.furn_ceilingLamp` — src/ui/i18n/en.ts:1450: `'hint.builder.furn_ceilingLamp': 'Click the floor to put down: ceiling light (R turns it)'`
+- feature entry `builder.tool.furn_floorLamp` — src/ui/i18n/en.ts:1451: `'builder.tool.furn_floorLamp': 'Floor lamp'`
+- feature entry `hint.builder.furn_floorLamp` — src/ui/i18n/en.ts:1452: `'hint.builder.furn_floorLamp': 'Click the floor to put down: floor lamp (R turns it)'`
+- feature entry `builder.tool.furn_tableLamp` — src/ui/i18n/en.ts:1453: `'builder.tool.furn_tableLamp': 'Table lamp'`
+- feature entry `hint.builder.furn_tableLamp` — src/ui/i18n/en.ts:1454: `'hint.builder.furn_tableLamp': 'Click the floor to put down: table lamp (R turns it)'`
+- feature entry `builder.tool.furnMove` — src/ui/i18n/en.ts:1455: `'builder.tool.furnMove': 'Move'`
+- feature entry `hint.builder.furnMove` — src/ui/i18n/en.ts:1456: `'hint.builder.furnMove': 'Click a piece to pick it up, then where it goes (R turns it)'`
+- feature entry `builder.tool.furnTurn` — src/ui/i18n/en.ts:1457: `'builder.tool.furnTurn': 'Turn'`
+- feature entry `hint.builder.furnTurn` — src/ui/i18n/en.ts:1458: `'hint.builder.furnTurn': 'Turns the selected piece of furniture'`
+- feature entry `builder.tool.furnRemove` — src/ui/i18n/en.ts:1459: `'builder.tool.furnRemove': 'Take away'`
+- feature entry `hint.builder.furnRemove` — src/ui/i18n/en.ts:1460: `'hint.builder.furnRemove': 'Click a piece or a light to take it away'`
+- feature entry `builder.section.furnishing` — src/ui/i18n/en.ts:1461: `'builder.section.furnishing': 'Arrange'`
+- feature entry `builder.tool.coreRemove` — src/ui/i18n/en.ts:1462: `'builder.tool.coreRemove': 'Remove'`
+- feature entry `hint.builder.interiorView` — src/ui/i18n/en.ts:1463: `'hint.builder.interiorView': 'The building is drawn cut open at the chosen floor: see the lobby, the stairs, the lifts'`
+- feature entry `hint.builder.floorDown` — src/ui/i18n/en.ts:1464: `'hint.builder.floorDown': 'Shows the floor below'`
+- feature entry `hint.builder.floorUp` — src/ui/i18n/en.ts:1465: `'hint.builder.floorUp': 'Shows the floor above'`
+- feature entry `hint.builder.coreLift` — src/ui/i18n/en.ts:1466: `'hint.builder.coreLift': 'Click the floor: a lift through every floor'`
+- feature entry `hint.builder.coreStair` — src/ui/i18n/en.ts:1467: `'hint.builder.coreStair': 'Click the floor: a stair through every floor'`
+- feature entry `hint.builder.coreBoth` — src/ui/i18n/en.ts:1468: `'hint.builder.coreBoth': 'Click the floor: a stair and a lift together'`
+- feature entry `hint.builder.coreRemove` — src/ui/i18n/en.ts:1469: `'hint.builder.coreRemove': 'Click a stair or a lift to take it out'`
+- feature entry `builder.section.primitives` — src/ui/i18n/en.ts:1470: `'builder.section.primitives': 'Basic shapes: click, then drop on the building'`
+- feature entry `builder.tool.primBox` — src/ui/i18n/en.ts:1471: `'builder.tool.primBox': 'Box'`
+- feature entry `builder.tool.primCylinder` — src/ui/i18n/en.ts:1472: `'builder.tool.primCylinder': 'Cylinder'`
+- feature entry `builder.tool.primOctagonal` — src/ui/i18n/en.ts:1473: `'builder.tool.primOctagonal': 'Octagon'`
+- feature entry `builder.tool.primPrism` — src/ui/i18n/en.ts:1474: `'builder.tool.primPrism': 'Prism'`
+- feature entry `builder.tool.primWedge` — src/ui/i18n/en.ts:1475: `'builder.tool.primWedge': 'Wedge'`
+- feature entry `builder.tool.primPyramid` — src/ui/i18n/en.ts:1476: `'builder.tool.primPyramid': 'Pyramid'`
+- feature entry `builder.tool.primCone` — src/ui/i18n/en.ts:1477: `'builder.tool.primCone': 'Cone'`
+- feature entry `builder.tool.primCross` — src/ui/i18n/en.ts:1478: `'builder.tool.primCross': 'Cross'`
+- feature entry `hint.builder.primBox` — src/ui/i18n/en.ts:1479: `'hint.builder.primBox': 'Click a roof, a wall or the ground to put the shape there · Esc lets go'`
+- feature entry `hint.builder.primCylinder` — src/ui/i18n/en.ts:1480: `'hint.builder.primCylinder': 'Click a roof, a wall or the ground to put the shape there · Esc lets go'`
+- feature entry `hint.builder.primOctagonal` — src/ui/i18n/en.ts:1481: `'hint.builder.primOctagonal': 'Click a roof, a wall or the ground to put the shape there · Esc lets go'`
+- feature entry `hint.builder.primPrism` — src/ui/i18n/en.ts:1482: `'hint.builder.primPrism': 'Click a roof, a wall or the ground to put the shape there · Esc lets go'`
+- feature entry `hint.builder.primWedge` — src/ui/i18n/en.ts:1483: `'hint.builder.primWedge': 'Click a roof, a wall or the ground to put the shape there · Esc lets go'`
+- feature entry `hint.builder.primPyramid` — src/ui/i18n/en.ts:1484: `'hint.builder.primPyramid': 'Click a roof, a wall or the ground to put the shape there · Esc lets go'`
+- feature entry `hint.builder.primCone` — src/ui/i18n/en.ts:1485: `'hint.builder.primCone': 'Click a roof, a wall or the ground to put the shape there · Esc lets go'`
+- feature entry `hint.builder.primCross` — src/ui/i18n/en.ts:1486: `'hint.builder.primCross': 'Click a roof, a wall or the ground to put the shape there · Esc lets go'`
+- feature entry `builder.section.modelling` — src/ui/i18n/en.ts:1487: `'builder.section.modelling': 'Modelling'`
+- feature entry `builder.tool.extrudeOut` — src/ui/i18n/en.ts:1488: `'builder.tool.extrudeOut': 'Extrude +1 m'`
+- feature entry `builder.tool.extrudeIn` — src/ui/i18n/en.ts:1489: `'builder.tool.extrudeIn': 'Extrude −1 m'`
+- feature entry `builder.tool.extrudeBlock` — src/ui/i18n/en.ts:1490: `'builder.tool.extrudeBlock': 'Extrude block'`
+- feature entry `builder.tool.insetFace` — src/ui/i18n/en.ts:1491: `'builder.tool.insetFace': 'Inset'`
+- feature entry `builder.tool.offsetOut` — src/ui/i18n/en.ts:1492: `'builder.tool.offsetOut': 'Offset +1 m'`
+- feature entry `builder.tool.offsetIn` — src/ui/i18n/en.ts:1493: `'builder.tool.offsetIn': 'Offset −1 m'`
+- feature entry `builder.tool.bevelAll` — src/ui/i18n/en.ts:1494: `'builder.tool.bevelAll': 'Bevel corners'`
+- feature entry `builder.tool.pointMode` — src/ui/i18n/en.ts:1495: `'builder.tool.pointMode': 'Points'`
+- feature entry `builder.tool.bevelCorner` — src/ui/i18n/en.ts:1496: `'builder.tool.bevelCorner': 'Bevel point'`
+- feature entry `hint.builder.extrudeOut` — src/ui/i18n/en.ts:1497: `'hint.builder.extrudeOut': 'Pushes the picked face 1 m out'`
+- feature entry `hint.builder.extrudeIn` — src/ui/i18n/en.ts:1498: `'hint.builder.extrudeIn': 'Pulls the picked face 1 m in'`
+- feature entry `hint.builder.extrudeBlock` — src/ui/i18n/en.ts:1499: `'hint.builder.extrudeBlock': 'The picked face makes a new block against it'`
+- feature entry `hint.builder.insetFace` — src/ui/i18n/en.ts:1500: `'hint.builder.insetFace': 'Sets the picked face back inside a frame'`
+- feature entry `hint.builder.offsetOut` — src/ui/i18n/en.ts:1501: `'hint.builder.offsetOut': "The block's plan grows 1 m on every side"`
+- feature entry `hint.builder.offsetIn` — src/ui/i18n/en.ts:1502: `'hint.builder.offsetIn': "The block's plan shrinks 1 m on every side"`
+- feature entry `hint.builder.bevelAll` — src/ui/i18n/en.ts:1503: `'hint.builder.bevelAll': 'Bevels every corner of the block'`
+- feature entry `hint.builder.pointMode` — src/ui/i18n/en.ts:1504: `'hint.builder.pointMode': "Shows the block's points: drag them to shape it"`
+- feature entry `hint.builder.bevelCorner` — src/ui/i18n/en.ts:1505: `'hint.builder.bevelCorner': 'Bevels the picked point'`
+- feature entry `builder.pickFace` — src/ui/i18n/en.ts:1506: `'builder.pickFace': 'Click the block again to pick a face'`
+- feature entry `builder.pickCorner` — src/ui/i18n/en.ts:1507: `'builder.pickCorner': 'Turn on Points and click a point of the block'`
+- feature entry `builder.section.boolean` — src/ui/i18n/en.ts:1508: `'builder.section.boolean': 'Boolean operation'`
+- feature entry `builder.section.block` — src/ui/i18n/en.ts:1509: `'builder.section.block': 'Block'`
+- feature entry `builder.section.drawWhere` — src/ui/i18n/en.ts:1510: `'builder.section.drawWhere': 'The drawn shape makes'`
+- feature entry `builder.section.drawWhere.short` — src/ui/i18n/en.ts:1511: `'builder.section.drawWhere.short': 'Result'`
+- feature entry `builder.section.drawShape` — src/ui/i18n/en.ts:1512: `'builder.section.drawShape': 'Shape'`
+- feature entry `builder.drawAction.new` — src/ui/i18n/en.ts:1513: `'builder.drawAction.new': 'New building'`
+- feature entry `builder.drawAction.ground` — src/ui/i18n/en.ts:1514: `'builder.drawAction.ground': 'Block beside'`
+- feature entry `builder.drawAction.top` — src/ui/i18n/en.ts:1515: `'builder.drawAction.top': 'Block on top'`
+- feature entry `builder.drawAction.cut` — src/ui/i18n/en.ts:1516: `'builder.drawAction.cut': 'Cut'`
+- feature entry `builder.tool.blockSolid` — src/ui/i18n/en.ts:1517: `'builder.tool.blockSolid': 'Union'`
+- feature entry `builder.tool.blockVoid` — src/ui/i18n/en.ts:1518: `'builder.tool.blockVoid': 'Subtract'`
+- feature entry `builder.tool.blockIntersect` — src/ui/i18n/en.ts:1519: `'builder.tool.blockIntersect': 'Intersect'`
+- feature entry `builder.tool.blockXor` — src/ui/i18n/en.ts:1520: `'builder.tool.blockXor': 'Exclude'`
+- feature entry `builder.tool.copyBlock` — src/ui/i18n/en.ts:1521: `'builder.tool.copyBlock': 'Copy block'`
+- feature entry `builder.tool.detachBlock` — src/ui/i18n/en.ts:1522: `'builder.tool.detachBlock': 'Detach'`
+- feature entry `builder.tool.centerBlock` — src/ui/i18n/en.ts:1523: `'builder.tool.centerBlock': 'Centre'`
+- feature entry `builder.tool.turnBlockLeft` — src/ui/i18n/en.ts:1524: `'builder.tool.turnBlockLeft': 'Turn ⟲ 15°'`
+- feature entry `builder.tool.turnBlockRight` — src/ui/i18n/en.ts:1525: `'builder.tool.turnBlockRight': 'Turn ⟳ 15°'`
+- feature entry `hint.builder.blockSolid` — src/ui/i18n/en.ts:1526: `'hint.builder.blockSolid': 'The block adds its space to the building'`
+- feature entry `hint.builder.blockVoid` — src/ui/i18n/en.ts:1527: `'hint.builder.blockVoid': 'The block takes its space out of the others, deleting nothing'`
+- feature entry `hint.builder.blockIntersect` — src/ui/i18n/en.ts:1528: `'hint.builder.blockIntersect': 'Of the other blocks, only what is inside this one stays'`
+- feature entry `hint.builder.blockXor` — src/ui/i18n/en.ts:1529: `'hint.builder.blockXor': 'The block adds where it is alone and removes where it meets another'`
+- feature entry `hint.builder.copyBlock` — src/ui/i18n/en.ts:1530: `'hint.builder.copyBlock': 'A copy of the block beside it'`
+- feature entry `hint.builder.detachBlock` — src/ui/i18n/en.ts:1531: `'hint.builder.detachBlock': 'The block becomes a separate building'`
+- feature entry `hint.builder.centerBlock` — src/ui/i18n/en.ts:1532: `'hint.builder.centerBlock': 'The block is centred on the one below'`
+- feature entry `hint.builder.turnBlockLeft` — src/ui/i18n/en.ts:1533: `'hint.builder.turnBlockLeft': 'Turns the block about its centre'`
+- feature entry `hint.builder.turnBlockRight` — src/ui/i18n/en.ts:1534: `'hint.builder.turnBlockRight': 'Turns the block about its centre'`
+- feature entry `builder.blockMode.solid` — src/ui/i18n/en.ts:1540: `'builder.blockMode.solid': 'Union'`
+- feature entry `builder.blockMode.void` — src/ui/i18n/en.ts:1541: `'builder.blockMode.void': 'Subtract'`
+- feature entry `builder.blockMode.intersect` — src/ui/i18n/en.ts:1542: `'builder.blockMode.intersect': 'Intersect'`
+- feature entry `builder.blockMode.xor` — src/ui/i18n/en.ts:1543: `'builder.blockMode.xor': 'Exclude'`
+- feature entry `builder.tool.shapeCross` — src/ui/i18n/en.ts:1544: `'builder.tool.shapeCross': 'Cross'`
+- feature entry `builder.tool.shapeStepped` — src/ui/i18n/en.ts:1545: `'builder.tool.shapeStepped': 'Stepped cross'`
+- feature entry `builder.tool.tierCross` — src/ui/i18n/en.ts:1546: `'builder.tool.tierCross': 'Cross'`
+- feature entry `builder.tool.tierStepped` — src/ui/i18n/en.ts:1547: `'builder.tool.tierStepped': 'Stepped cross'`
+- feature entry `hint.builder.shapeCross` — src/ui/i18n/en.ts:1548: `'hint.builder.shapeCross': 'Drag on the ground: a cross-shaped plan'`
+- feature entry `hint.builder.shapeStepped` — src/ui/i18n/en.ts:1549: `'hint.builder.shapeStepped': 'Drag on the ground: a cross with stepped corners'`
+- feature entry `hint.builder.tierCross` — src/ui/i18n/en.ts:1550: `'hint.builder.tierCross': 'The selected block becomes a cross'`
+- feature entry `hint.builder.tierStepped` — src/ui/i18n/en.ts:1551: `'hint.builder.tierStepped': 'The selected block becomes a cross with stepped corners'`
+- feature entry `builder.section.blockShape` — src/ui/i18n/en.ts:1552: `'builder.section.blockShape': 'Block shape'`
+- feature entry `builder.tool.tierRect` — src/ui/i18n/en.ts:1553: `'builder.tool.tierRect': 'Rectangle'`
+- feature entry `builder.tool.tierChamfered` — src/ui/i18n/en.ts:1554: `'builder.tool.tierChamfered': 'Chamfered'`
+- feature entry `builder.tool.tierOctagon` — src/ui/i18n/en.ts:1555: `'builder.tool.tierOctagon': 'Octagon'`
+- feature entry `builder.tool.tierHexagon` — src/ui/i18n/en.ts:1556: `'builder.tool.tierHexagon': 'Hexagon'`
+- feature entry `builder.tool.tierCircle` — src/ui/i18n/en.ts:1557: `'builder.tool.tierCircle': 'Cylinder'`
+- feature entry `builder.tool.tierL` — src/ui/i18n/en.ts:1558: `'builder.tool.tierL': 'L-shaped'`
+- feature entry `builder.tool.tierU` — src/ui/i18n/en.ts:1559: `'builder.tool.tierU': 'U-shaped'`
+- feature entry `hint.builder.tierRect` — src/ui/i18n/en.ts:1560: `'hint.builder.tierRect': 'The selected block becomes a rectangle'`
+- feature entry `hint.builder.tierChamfered` — src/ui/i18n/en.ts:1561: `'hint.builder.tierChamfered': 'The selected block gets chamfered corners'`
+- feature entry `hint.builder.tierOctagon` — src/ui/i18n/en.ts:1562: `'hint.builder.tierOctagon': 'The selected block becomes an octagon'`
+- feature entry `hint.builder.tierHexagon` — src/ui/i18n/en.ts:1563: `'hint.builder.tierHexagon': 'The selected block becomes a hexagon'`
+- feature entry `hint.builder.tierCircle` — src/ui/i18n/en.ts:1564: `'hint.builder.tierCircle': 'The selected block becomes a cylinder'`
+- feature entry `hint.builder.tierL` — src/ui/i18n/en.ts:1565: `'hint.builder.tierL': 'The selected block becomes an L'`
+- feature entry `hint.builder.tierU` — src/ui/i18n/en.ts:1566: `'hint.builder.tierU': 'The selected block becomes a U'`
+- feature entry `builder.category.models` — src/ui/i18n/en.ts:1567: `'builder.category.models': 'Models'`
+- feature entry `builder.category.facade` — src/ui/i18n/en.ts:1568: `'builder.category.facade': 'Facade'`
+- feature entry `builder.category.parts` — src/ui/i18n/en.ts:1569: `'builder.category.parts': 'Parts'`
+- feature entry `builder.category.paint` — src/ui/i18n/en.ts:1570: `'builder.category.paint': 'Colours'`
+- feature entry `builder.section.floors` — src/ui/i18n/en.ts:1571: `'builder.section.floors': 'Floors'`
+- feature entry `builder.section.reference` — src/ui/i18n/en.ts:1572: `'builder.section.reference': '3D reference'`
+- feature entry `builder.tool.refLoad` — src/ui/i18n/en.ts:1573: `'builder.tool.refLoad': 'Load model'`
+- feature entry `hint.builder.refLoad` — src/ui/i18n/en.ts:1574: `'hint.builder.refLoad': 'Pick a 3D model (.glb or .gltf) of a real building: it appears translucent over the selected building, to build over it'`
+- feature entry `builder.tool.refAlign` — src/ui/i18n/en.ts:1575: `'builder.tool.refAlign': 'Align to building'`
+- feature entry `hint.builder.refAlign` — src/ui/i18n/en.ts:1576: `'hint.builder.refAlign': 'Puts the reference model on the selected building, its foot on the floor of that building'`
+- feature entry `builder.tool.refTurn` — src/ui/i18n/en.ts:1577: `'builder.tool.refTurn': 'Turn 90°'`
+- feature entry `hint.builder.refTurn` — src/ui/i18n/en.ts:1578: `'hint.builder.refTurn': 'Turns the reference model a quarter turn'`
+- feature entry `builder.tool.refFlip` — src/ui/i18n/en.ts:1579: `'builder.tool.refFlip': 'Mirror'`
+- feature entry `hint.builder.refFlip` — src/ui/i18n/en.ts:1580: `'hint.builder.refFlip': 'Mirrors the reference model front to back'`
+- feature entry `builder.tool.refFainter` — src/ui/i18n/en.ts:1581: `'builder.tool.refFainter': 'More transparent'`
+- feature entry `hint.builder.refFainter` — src/ui/i18n/en.ts:1582: `'hint.builder.refFainter': 'Makes the reference model more transparent'`
+- feature entry `builder.tool.refStronger` — src/ui/i18n/en.ts:1583: `'builder.tool.refStronger': 'Less transparent'`
+- feature entry `hint.builder.refStronger` — src/ui/i18n/en.ts:1584: `'hint.builder.refStronger': 'Makes the reference model more solid'`
+- feature entry `builder.tool.refToggle` — src/ui/i18n/en.ts:1585: `'builder.tool.refToggle': 'Show / hide'`
+- feature entry `hint.builder.refToggle` — src/ui/i18n/en.ts:1586: `'hint.builder.refToggle': 'Shows or hides the reference model'`
+- feature entry `builder.tool.refRemove` — src/ui/i18n/en.ts:1587: `'builder.tool.refRemove': 'Remove reference'`
+- feature entry `hint.builder.refRemove` — src/ui/i18n/en.ts:1588: `'hint.builder.refRemove': 'Takes the reference model out of the scene'`
+- feature entry `hint.reference.loaded` — src/ui/i18n/en.ts:1589: `'hint.reference.loaded': 'Reference loaded: {name} — {w} × {d} m, {h} m tall'`
+- feature entry `hint.reference.failed` — src/ui/i18n/en.ts:1590: `'hint.reference.failed': 'That model could not be opened (use .glb or .gltf)'`
+- feature entry `builder.tool.refBuild` — src/ui/i18n/en.ts:1591: `'builder.tool.refBuild': 'Build from reference'`
+- feature entry `hint.builder.refBuild` — src/ui/i18n/en.ts:1592: `'hint.builder.refBuild': 'Reads the reference model - blocks, plan, colours, windows, stone base and lantern - and builds it of the game\'s own parts, all edita`
+- feature entry `hint.reference.built` — src/ui/i18n/en.ts:1593: `'hint.reference.built': 'Building built from the reference: {volumes} blocks'`
+- feature entry `hint.reference.empty` — src/ui/i18n/en.ts:1594: `'hint.reference.empty': 'No blocks to build were found in that model'`
+- feature entry `hint.reference.none` — src/ui/i18n/en.ts:1595: `'hint.reference.none': 'Load a reference model first'`
+- feature entry `builder.section.volumes` — src/ui/i18n/en.ts:1596: `'builder.section.volumes': 'Blocks'`
+- feature entry `builder.section.plan` — src/ui/i18n/en.ts:1597: `'builder.section.plan': 'Plan corners'`
+- feature entry `builder.section.pattern` — src/ui/i18n/en.ts:1598: `'builder.section.pattern': 'Facade pattern'`
+- feature entry `builder.section.windows` — src/ui/i18n/en.ts:1599: `'builder.section.windows': 'Windows'`
+- feature entry `builder.section.doors` — src/ui/i18n/en.ts:1600: `'builder.section.doors': 'Doors'`
+- feature entry `builder.section.bays` — src/ui/i18n/en.ts:1601: `'builder.section.bays': 'Bays'`
+- feature entry `builder.section.scope` — src/ui/i18n/en.ts:1602: `'builder.section.scope': 'Apply to'`
+- feature entry `builder.section.relief` — src/ui/i18n/en.ts:1603: `'builder.section.relief': 'Bay relief'`
+- feature entry `builder.section.structure` — src/ui/i18n/en.ts:1604: `'builder.section.structure': 'Structure'`
+- feature entry `builder.section.runs` — src/ui/i18n/en.ts:1605: `'builder.section.runs': 'Runs'`
+- feature entry `builder.section.greenery` — src/ui/i18n/en.ts:1606: `'builder.section.greenery': 'Greenery'`
+- feature entry `builder.section.furniture` — src/ui/i18n/en.ts:1607: `'builder.section.furniture': 'Furniture'`
+- feature entry `builder.section.roofGear` — src/ui/i18n/en.ts:1608: `'builder.section.roofGear': 'On the roof'`
+- feature entry `builder.section.roofShape` — src/ui/i18n/en.ts:1609: `'builder.section.roofShape': 'Slope'`
+- feature entry `builder.section.styles` — src/ui/i18n/en.ts:1610: `'builder.section.styles': 'Styles'`
+- feature entry `builder.needsSelection` — src/ui/i18n/en.ts:1611: `'builder.needsSelection': 'Select a building to use this'`
+- feature entry `builder.category.roof` — src/ui/i18n/en.ts:1617: `'builder.category.roof': 'Roof'`
+- feature entry `builder.tool.rect` — src/ui/i18n/en.ts:1621: `'builder.tool.rect': 'Rectangle'`
+- feature entry `builder.tool.shapeL` — src/ui/i18n/en.ts:1622: `'builder.tool.shapeL': 'L'`
+- feature entry `builder.tool.shapeU` — src/ui/i18n/en.ts:1623: `'builder.tool.shapeU': 'U'`
+- feature entry `builder.tool.circle` — src/ui/i18n/en.ts:1624: `'builder.tool.circle': 'Circle'`
+- feature entry `builder.tool.hexagon` — src/ui/i18n/en.ts:1625: `'builder.tool.hexagon': 'Hexagon'`
+- feature entry `builder.tool.octagon` — src/ui/i18n/en.ts:1626: `'builder.tool.octagon': 'Octagon'`
+- feature entry `builder.tool.chamfered` — src/ui/i18n/en.ts:1627: `'builder.tool.chamfered': 'Chamfered'`
+- feature entry `builder.tool.sketch` — src/ui/i18n/en.ts:1628: `'builder.tool.sketch': 'Free plan'`
+- feature entry `builder.tool.storey` — src/ui/i18n/en.ts:1630: `'builder.tool.storey': '+ Floor'`
+- feature entry `builder.tool.storeyDown` — src/ui/i18n/en.ts:1631: `'builder.tool.storeyDown': '− Floor'`
+- feature entry `builder.tool.wing` — src/ui/i18n/en.ts:1632: `'builder.tool.wing': 'Wing'`
+- feature entry `builder.tool.stack` — src/ui/i18n/en.ts:1633: `'builder.tool.stack': 'Stack'`
+- feature entry `builder.tool.cut` — src/ui/i18n/en.ts:1634: `'builder.tool.cut': 'Cut out'`
+- feature entry `builder.tool.split` — src/ui/i18n/en.ts:1635: `'builder.tool.split': 'Split'`
+- feature entry `builder.tool.setback` — src/ui/i18n/en.ts:1636: `'builder.tool.setback': 'Setback'`
+- feature entry `builder.tool.vertexAdd` — src/ui/i18n/en.ts:1637: `'builder.tool.vertexAdd': 'Add point'`
+- feature entry `builder.tool.vertexRemove` — src/ui/i18n/en.ts:1638: `'builder.tool.vertexRemove': 'Remove point'`
+- feature entry `builder.tool.inset` — src/ui/i18n/en.ts:1640: `'builder.tool.inset': 'Inset'`
+- feature entry `builder.tool.outset` — src/ui/i18n/en.ts:1641: `'builder.tool.outset': 'Outset'`
+- feature entry `builder.tool.flush` — src/ui/i18n/en.ts:1642: `'builder.tool.flush': 'Flush'`
+- feature entry `builder.tool.window` — src/ui/i18n/en.ts:1645: `'builder.tool.window': 'Window'`
+- feature entry `builder.tool.sashWindow` — src/ui/i18n/en.ts:1646: `'builder.tool.sashWindow': 'Sash window'`
+- feature entry `builder.tool.wideWindow` — src/ui/i18n/en.ts:1647: `'builder.tool.wideWindow': 'Wide window'`
+- feature entry `builder.tool.frenchWindow` — src/ui/i18n/en.ts:1648: `'builder.tool.frenchWindow': 'French window'`
+- feature entry `builder.tool.bayWindow` — src/ui/i18n/en.ts:1649: `'builder.tool.bayWindow': 'Bay window'`
+- feature entry `builder.tool.ribbon` — src/ui/i18n/en.ts:1650: `'builder.tool.ribbon': 'Ribbon window'`
+- feature entry `builder.tool.balcony` — src/ui/i18n/en.ts:1651: `'builder.tool.balcony': 'Balcony'`
+- feature entry `builder.tool.door` — src/ui/i18n/en.ts:1652: `'builder.tool.door': 'Door'`
+- feature entry `builder.tool.shopfront` — src/ui/i18n/en.ts:1653: `'builder.tool.shopfront': 'Shopfront'`
+- feature entry `builder.tool.loadingDoor` — src/ui/i18n/en.ts:1654: `'builder.tool.loadingDoor': 'Loading door'`
+- feature entry `builder.tool.pillarBay` — src/ui/i18n/en.ts:1655: `'builder.tool.pillarBay': 'Arcade'`
+- feature entry `builder.tool.wallBay` — src/ui/i18n/en.ts:1656: `'builder.tool.wallBay': 'Wall'`
+- feature entry `builder.tool.stair` — src/ui/i18n/en.ts:1657: `'builder.tool.stair': 'Stair'`
+- feature entry `builder.tool.ramp` — src/ui/i18n/en.ts:1658: `'builder.tool.ramp': 'Ramp'`
+- feature entry `builder.tool.pillar` — src/ui/i18n/en.ts:1659: `'builder.tool.pillar': 'Pillar'`
+- feature entry `builder.tool.canopy` — src/ui/i18n/en.ts:1660: `'builder.tool.canopy': 'Canopy'`
+- feature entry `builder.tool.wall` — src/ui/i18n/en.ts:1661: `'builder.tool.wall': 'Wall'`
+- feature entry `builder.tool.slab` — src/ui/i18n/en.ts:1662: `'builder.tool.slab': 'Slab'`
+- feature entry `builder.tool.moveMass` — src/ui/i18n/en.ts:1664: `'builder.tool.moveMass': 'Move block'`
+- feature entry `builder.tool.wallRun` — src/ui/i18n/en.ts:1665: `'builder.tool.wallRun': 'Wall run'`
+- feature entry `builder.tool.fenceRun` — src/ui/i18n/en.ts:1666: `'builder.tool.fenceRun': 'Fence'`
+- feature entry `builder.tool.pavementRun` — src/ui/i18n/en.ts:1667: `'builder.tool.pavementRun': 'Footpath'`
+- feature entry `builder.tool.tree` — src/ui/i18n/en.ts:1668: `'builder.tool.tree': 'Tree'`
+- feature entry `builder.tool.bench` — src/ui/i18n/en.ts:1669: `'builder.tool.bench': 'Bench'`
+- feature entry `builder.tool.planter` — src/ui/i18n/en.ts:1670: `'builder.tool.planter': 'Planter'`
+- feature entry `builder.tool.ac` — src/ui/i18n/en.ts:1671: `'builder.tool.ac': 'Air conditioner'`
+- feature entry `builder.tool.roofFlat` — src/ui/i18n/en.ts:1672: `'builder.tool.roofFlat': 'Flat'`
+- feature entry `builder.tool.roofTerrace` — src/ui/i18n/en.ts:1673: `'builder.tool.roofTerrace': 'Terrace'`
+- feature entry `builder.tool.roofGable` — src/ui/i18n/en.ts:1674: `'builder.tool.roofGable': '2 slopes'`
+- feature entry `builder.tool.roofHip` — src/ui/i18n/en.ts:1675: `'builder.tool.roofHip': '4 slopes'`
+- feature entry `builder.tool.roofShed` — src/ui/i18n/en.ts:1676: `'builder.tool.roofShed': '1 slope'`
+- feature entry `builder.tool.roofSawtooth` — src/ui/i18n/en.ts:1677: `'builder.tool.roofSawtooth': 'Sawtooth'`
+- feature entry `builder.tool.solar` — src/ui/i18n/en.ts:1679: `'builder.tool.solar': 'Solar panels'`
+- feature entry `builder.tool.skylight` — src/ui/i18n/en.ts:1680: `'builder.tool.skylight': 'Skylight'`
+- feature entry `builder.tool.vent` — src/ui/i18n/en.ts:1681: `'builder.tool.vent': 'Vent'`
+- feature entry `builder.tool.chimney` — src/ui/i18n/en.ts:1682: `'builder.tool.chimney': 'Chimney'`
+- feature entry `builder.tool.waterTank` — src/ui/i18n/en.ts:1683: `'builder.tool.waterTank': 'Water tank'`
+- feature entry `builder.tool.spire` — src/ui/i18n/en.ts:1684: `'builder.tool.spire': 'Spire'`
+- feature entry `builder.tool.lantern` — src/ui/i18n/en.ts:1685: `'builder.tool.lantern': 'Lantern'`
+- feature entry `builder.tool.paint` — src/ui/i18n/en.ts:1687: `'builder.tool.paint': 'Paint'`
+- feature entry `builder.tool.copyStyle` — src/ui/i18n/en.ts:1690: `'builder.tool.copyStyle': 'Copy style'`
+- shared entry `hint.builder.select` — src/ui/i18n/en.ts:1691: `'hint.builder.select': 'Click a building: select · again: its face · drag: move'`
+- feature entry `hint.builder.place` — src/ui/i18n/en.ts:1692: `'hint.builder.place': 'Click on the map to place the building · R turns it · Esc puts it down'`
+- shared entry `hint.builder.draw.new` — src/ui/i18n/en.ts:1694: `'hint.builder.draw.new': 'Click each corner · Enter closes the plan'`
+- shared entry `hint.builder.draw.ground` — src/ui/i18n/en.ts:1695: `'hint.builder.draw.ground': 'Click on the ground: a wing grows against the wall it meets'`
+- shared entry `hint.builder.draw.top` — src/ui/i18n/en.ts:1696: `'hint.builder.draw.top': 'Click on the building: a mass stacks on what is under it'`
+- shared entry `hint.builder.draw.cut` — src/ui/i18n/en.ts:1697: `'hint.builder.draw.cut': 'Draw a rectangle over a mass to cut it away'`
+- shared entry `hint.builder.sketch` — src/ui/i18n/en.ts:1698: `'hint.builder.sketch': 'Click each corner · Enter closes the plan'`
+- shared entry `hint.builder.paint` — src/ui/i18n/en.ts:1705: `'hint.builder.paint': 'Click faces to paint them with the brush'`
+- shared entry `hint.builder.stair` — src/ui/i18n/en.ts:1707: `'hint.builder.stair': 'Point at a facade and click: the stair runs down from that floor'`
+- shared entry `hint.builder.ramp` — src/ui/i18n/en.ts:1708: `'hint.builder.ramp': 'Point at a facade and click: the ramp runs down from that floor'`
+- shared entry `hint.builder.pillar` — src/ui/i18n/en.ts:1709: `'hint.builder.pillar': 'Point at a facade and click: the pillar rises between the floors'`
+- shared entry `hint.builder.canopy` — src/ui/i18n/en.ts:1710: `'hint.builder.canopy': 'Point at a facade and click'`
+- shared entry `hint.builder.wall` — src/ui/i18n/en.ts:1711: `'hint.builder.wall': 'Point at a facade or the ground and click'`
+- shared entry `hint.builder.slab` — src/ui/i18n/en.ts:1712: `'hint.builder.slab': 'Point at a facade or the ground and click'`
+- feature entry `hint.builder.moveMass` — src/ui/i18n/en.ts:1714: `'hint.builder.moveMass': 'Drag the selected block: it slides in its own plan, and welds where it lands'`
+- feature entry `builder.runPlaced` — src/ui/i18n/en.ts:1715: `'builder.runPlaced': 'Run laid along the path'`
+- feature entry `builder.welded` — src/ui/i18n/en.ts:1716: `'builder.welded': 'Welded into one building'`
+- feature entry `hint.builder.wallRun` — src/ui/i18n/en.ts:1717: `'hint.builder.wallRun': 'Click each corner of the run · Enter lays the wall along it'`
+- feature entry `hint.builder.fenceRun` — src/ui/i18n/en.ts:1718: `'hint.builder.fenceRun': 'Click each corner of the run · Enter lays the fence along it'`
+- feature entry `hint.builder.pavementRun` — src/ui/i18n/en.ts:1719: `'hint.builder.pavementRun': 'Click each corner · Enter lays the footpath along it'`
+- shared entry `hint.builder.tree` — src/ui/i18n/en.ts:1724: `'hint.builder.tree': 'Click the ground to plant a tree'`
+- shared entry `hint.builder.bench` — src/ui/i18n/en.ts:1725: `'hint.builder.bench': 'Point at a facade and click: the bench sits beside it'`
+- shared entry `hint.builder.planter` — src/ui/i18n/en.ts:1726: `'hint.builder.planter': 'Point at a facade and click'`
+- shared entry `hint.builder.ac` — src/ui/i18n/en.ts:1727: `'hint.builder.ac': 'Point at a facade and click: the unit hangs on the wall'`
+- shared entry `hint.builder.solar` — src/ui/i18n/en.ts:1728: `'hint.builder.solar': 'Click a roof to place the panels'`
+- shared entry `hint.builder.skylight` — src/ui/i18n/en.ts:1729: `'hint.builder.skylight': 'Click a roof to place the skylight'`
+- shared entry `hint.builder.vent` — src/ui/i18n/en.ts:1730: `'hint.builder.vent': 'Click a roof to place the vent'`
+- shared entry `hint.builder.chimney` — src/ui/i18n/en.ts:1731: `'hint.builder.chimney': 'Click a roof to place the chimney'`
+- shared entry `hint.builder.waterTank` — src/ui/i18n/en.ts:1732: `'hint.builder.waterTank': 'Click a roof to place the tank'`
+- shared entry `hint.builder.spire` — src/ui/i18n/en.ts:1733: `'hint.builder.spire': 'Click a roof to raise a spire'`
+- shared entry `hint.builder.lantern` — src/ui/i18n/en.ts:1734: `'hint.builder.lantern': 'Click a tower top to raise a lantern with its mast and flag'`
+- feature entry `hint.builder.storey` — src/ui/i18n/en.ts:1735: `'hint.builder.storey': 'Adds one floor to the selected mass'`
+- feature entry `hint.builder.storeyDown` — src/ui/i18n/en.ts:1736: `'hint.builder.storeyDown': 'Removes one floor from the selected mass'`
+- feature entry `hint.builder.wing` — src/ui/i18n/en.ts:1737: `'hint.builder.wing': 'Drag a rectangle on the ground: a volume grows against the wall it meets'`
+- feature entry `hint.builder.stack` — src/ui/i18n/en.ts:1738: `'hint.builder.stack': 'Drag over the building: a mass stacks on what is under it'`
+- feature entry `hint.builder.cut` — src/ui/i18n/en.ts:1739: `'hint.builder.cut': 'Drag a rectangle over a mass to cut it away'`
+- feature entry `hint.builder.split` — src/ui/i18n/en.ts:1740: `'hint.builder.split': 'Splits the selected mass in two at the floor above'`
+- feature entry `hint.builder.setback` — src/ui/i18n/en.ts:1741: `'hint.builder.setback': 'Stacks an inset mass on the selected one'`
+- feature entry `hint.builder.vertexAdd` — src/ui/i18n/en.ts:1742: `'hint.builder.vertexAdd': 'Click a plan edge to insert a point'`
+- feature entry `hint.builder.vertexRemove` — src/ui/i18n/en.ts:1743: `'hint.builder.vertexRemove': 'Click a plan corner to remove it'`
+- feature entry `hint.builder.inset` — src/ui/i18n/en.ts:1744: `'hint.builder.inset': 'Click a face: its border steps in, framing the middle'`
+- feature entry `hint.builder.outset` — src/ui/i18n/en.ts:1745: `'hint.builder.outset': 'Click a face: the region steps out'`
+- feature entry `hint.builder.flush` — src/ui/i18n/en.ts:1746: `'hint.builder.flush': 'Click a face: the region returns to the wall'`
+- feature entry `hint.builder.copyStyle` — src/ui/i18n/en.ts:1753: `'hint.builder.copyStyle': 'Remembers the material of what is selected, for the brush'`
+- feature entry `hint.builder.window` — src/ui/i18n/en.ts:1755: `'hint.builder.window': 'Click facade bays to punch windows'`
+- feature entry `hint.builder.sashWindow` — src/ui/i18n/en.ts:1756: `'hint.builder.sashWindow': 'Click facade bays for sash windows'`
+- feature entry `hint.builder.wideWindow` — src/ui/i18n/en.ts:1757: `'hint.builder.wideWindow': 'Click facade bays for wide glazing'`
+- feature entry `hint.builder.frenchWindow` — src/ui/i18n/en.ts:1758: `'hint.builder.frenchWindow': 'Click facade bays for floor-height French windows'`
+- feature entry `hint.builder.bayWindow` — src/ui/i18n/en.ts:1759: `'hint.builder.bayWindow': 'Click facade bays for projecting bay windows'`
+- feature entry `hint.builder.ribbon` — src/ui/i18n/en.ts:1760: `'hint.builder.ribbon': 'Click facade bays for a ribbon of glazing'`
+- feature entry `hint.builder.balcony` — src/ui/i18n/en.ts:1761: `'hint.builder.balcony': 'Click facade bays for balconies'`
+- feature entry `hint.builder.door` — src/ui/i18n/en.ts:1762: `'hint.builder.door': 'Click facade bays for doors'`
+- feature entry `hint.builder.shopfront` — src/ui/i18n/en.ts:1763: `'hint.builder.shopfront': 'Click facade bays for shopfronts'`
+- feature entry `hint.builder.loadingDoor` — src/ui/i18n/en.ts:1764: `'hint.builder.loadingDoor': 'Click facade bays for loading doors'`
+- feature entry `hint.builder.pillarBay` — src/ui/i18n/en.ts:1765: `'hint.builder.pillarBay': 'Click facade bays for an open arcade'`
+- feature entry `hint.builder.wallBay` — src/ui/i18n/en.ts:1766: `'hint.builder.wallBay': 'Click facade bays to close them into plain wall'`
+- feature entry `hint.builder.roofFlat` — src/ui/i18n/en.ts:1767: `'hint.builder.roofFlat': 'A flat roof over the selected mass'`
+- feature entry `hint.builder.roofTerrace` — src/ui/i18n/en.ts:1768: `'hint.builder.roofTerrace': 'A terrace roof: flat, with a parapet'`
+- feature entry `hint.builder.roofGable` — src/ui/i18n/en.ts:1769: `'hint.builder.roofGable': 'Two slopes over a ridge'`
+- feature entry `hint.builder.roofHip` — src/ui/i18n/en.ts:1770: `'hint.builder.roofHip': 'Four slopes over a ridge'`
+- feature entry `hint.builder.roofShed` — src/ui/i18n/en.ts:1771: `'hint.builder.roofShed': 'One slope, falling towards the front'`
+- feature entry `hint.builder.roofSawtooth` — src/ui/i18n/en.ts:1772: `'hint.builder.roofSawtooth': 'Sawtooth: north-light workshops'`
+- feature entry `hint.builder.rect` — src/ui/i18n/en.ts:1773: `'hint.builder.rect': 'Drag a rectangle on the ground: the plan takes it'`
+- feature entry `hint.builder.shapeL` — src/ui/i18n/en.ts:1774: `'hint.builder.shapeL': 'Drag a rectangle: the plan takes an L'`
+- feature entry `hint.builder.shapeU` — src/ui/i18n/en.ts:1775: `'hint.builder.shapeU': 'Drag a rectangle: the plan takes a U'`
+- feature entry `hint.builder.circle` — src/ui/i18n/en.ts:1776: `'hint.builder.circle': 'Drag a rectangle: the plan takes a circle'`
+- feature entry `hint.builder.hexagon` — src/ui/i18n/en.ts:1777: `'hint.builder.hexagon': 'Drag a rectangle: the plan takes a hexagon'`
+- feature entry `hint.builder.octagon` — src/ui/i18n/en.ts:1778: `'hint.builder.octagon': 'Drag a rectangle: the plan takes an octagon'`
+- feature entry `hint.builder.chamfered` — src/ui/i18n/en.ts:1779: `'hint.builder.chamfered': 'Drag a rectangle: the plan takes a chamfered box'`
+- feature entry `builder.tool.railing` — src/ui/i18n/en.ts:1780: `'builder.tool.railing': 'Railing'`
+- feature entry `builder.tool.awning` — src/ui/i18n/en.ts:1781: `'builder.tool.awning': 'Awning'`
+- feature entry `builder.tool.flowers` — src/ui/i18n/en.ts:1782: `'builder.tool.flowers': 'Flowers'`
+- feature entry `builder.tool.rocks` — src/ui/i18n/en.ts:1783: `'builder.tool.rocks': 'Rocks'`
+- feature entry `builder.tool.shrub` — src/ui/i18n/en.ts:1784: `'builder.tool.shrub': 'Shrub'`
+- feature entry `builder.tool.hedge` — src/ui/i18n/en.ts:1785: `'builder.tool.hedge': 'Hedge'`
+- feature entry `builder.tool.parking` — src/ui/i18n/en.ts:1786: `'builder.tool.parking': 'Parking'`
+- shared entry `hint.builder.railing` — src/ui/i18n/en.ts:1787: `'hint.builder.railing': 'Point at a facade and click: a railing runs along it'`
+- shared entry `hint.builder.awning` — src/ui/i18n/en.ts:1788: `'hint.builder.awning': 'Point at a facade and click: a canvas spreads over the bay'`
+- shared entry `hint.builder.flowers` — src/ui/i18n/en.ts:1789: `'hint.builder.flowers': 'Click the ground to plant a flower bed'`
+- shared entry `hint.builder.shrub` — src/ui/i18n/en.ts:1790: `'hint.builder.shrub': 'Click the ground to plant a shrub'`
+- shared entry `hint.builder.hedge` — src/ui/i18n/en.ts:1791: `'hint.builder.hedge': 'Point at a facade and click: a hedge runs in front of it'`
+- shared entry `hint.builder.rocks` — src/ui/i18n/en.ts:1792: `'hint.builder.rocks': 'Click the ground to drop a group of boulders'`
+- shared entry `hint.builder.parking` — src/ui/i18n/en.ts:1793: `'hint.builder.parking': 'Point at a facade and click: a parking apron with its stalls'`
+- feature entry `building.finish.stucco` — src/ui/i18n/en.ts:1794: `'building.finish.stucco': 'Stucco'`
+- feature entry `building.finish.panel` — src/ui/i18n/en.ts:1795: `'building.finish.panel': 'Panel cladding'`
+- feature entry `building.finish.slate` — src/ui/i18n/en.ts:1796: `'building.finish.slate': 'Slate'`
+- feature entry `builder.tool.doubleDoor` — src/ui/i18n/en.ts:1797: `'builder.tool.doubleDoor': 'Double door'`
+- feature entry `builder.tool.garageDoor` — src/ui/i18n/en.ts:1798: `'builder.tool.garageDoor': 'Garage door'`
+- feature entry `hint.builder.doubleDoor` — src/ui/i18n/en.ts:1799: `'hint.builder.doubleDoor': 'Click facade bays for a two-leaf entrance'`
+- feature entry `hint.builder.garageDoor` — src/ui/i18n/en.ts:1800: `'hint.builder.garageDoor': 'Click facade bays for a sectional garage door'`
+- feature entry `builder.tool.stairRun` — src/ui/i18n/en.ts:1825: `'builder.tool.stairRun': 'Stair (traced)'`
+- feature entry `hint.builder.stairRun` — src/ui/i18n/en.ts:1826: `'hint.builder.stairRun': 'Click the corners of the climb · Enter lays a flight that turns with the trace and lands on the floor above'`
+- feature entry `builder.menu.simulation` — src/ui/i18n/en.ts:1827: `'builder.menu.simulation': 'Simulation'`
+- feature entry `builder.menu.app` — src/ui/i18n/en.ts:1828: `'builder.menu.app': 'Menu'`
+- feature entry `tool.transit` — src/ui/i18n/en.ts:1829: `'tool.transit': 'Public transport'`
+- feature entry `transit.tool.stop` — src/ui/i18n/en.ts:1830: `'transit.tool.stop': 'Bus stop'`
+- feature entry `transit.tool.terminal` — src/ui/i18n/en.ts:1831: `'transit.tool.terminal': 'Bus terminal'`
+- feature entry `transit.tool.trainTrack` — src/ui/i18n/en.ts:1832: `'transit.tool.trainTrack': 'Train track'`
+- feature entry `transit.tool.trainStation` — src/ui/i18n/en.ts:1833: `'transit.tool.trainStation': 'Train station'`
+- feature entry `transit.tool.metroTrack` — src/ui/i18n/en.ts:1834: `'transit.tool.metroTrack': 'Metro track'`
+- feature entry `transit.tool.metroStation` — src/ui/i18n/en.ts:1835: `'transit.tool.metroStation': 'Metro station'`
+- feature entry `transit.tool.line` — src/ui/i18n/en.ts:1836: `'transit.tool.line': 'Make a line'`
+- feature entry `transit.lines` — src/ui/i18n/en.ts:1837: `'transit.lines': 'Lines'`
+- feature entry `transit.noLines` — src/ui/i18n/en.ts:1838: `'transit.noLines': 'No lines yet: place stops or stations and make a line by clicking them in order.'`
+- feature entry `transit.mode.bus` — src/ui/i18n/en.ts:1839: `'transit.mode.bus': 'Bus'`
+- feature entry `transit.mode.train` — src/ui/i18n/en.ts:1840: `'transit.mode.train': 'Train'`
+- feature entry `transit.mode.metro` — src/ui/i18n/en.ts:1841: `'transit.mode.metro': 'Metro'`
+- feature entry `transit.stops` — src/ui/i18n/en.ts:1842: `'transit.stops': '{n} stops'`
+- feature entry `transit.fewer` — src/ui/i18n/en.ts:1843: `'transit.fewer': 'Fewer vehicles'`
+- feature entry `transit.more` — src/ui/i18n/en.ts:1844: `'transit.more': 'More vehicles'`
+- feature entry `transit.vehicles` — src/ui/i18n/en.ts:1845: `'transit.vehicles': 'Vehicles on the line'`
+- feature entry `transit.remove` — src/ui/i18n/en.ts:1846: `'transit.remove': 'Delete the line'`
+- feature entry `help.transit.stop` — src/ui/i18n/en.ts:1847: `'help.transit.stop': 'Click near a street to put a bus stop on its footway. Shift-click removes.'`
+- feature entry `help.transit.terminal` — src/ui/i18n/en.ts:1848: `'help.transit.terminal': 'Click a bus stop to make it a terminal (buses wait longer and turn there).'`
+- feature entry `help.transit.track` — src/ui/i18n/en.ts:1849: `'help.transit.track': 'Click to put the points of the track down; double-click or Enter ends it, Backspace takes a point back, Esc drops it. An end near another`
+- feature entry `help.transit.station` — src/ui/i18n/en.ts:1850: `'help.transit.station': 'Click on a track to put a station there.'`
+- feature entry `help.transit.line` — src/ui/i18n/en.ts:1851: `'help.transit.line': 'Click the stops or stations in the order of the line; Enter or a double click makes the line.'`
+- feature entry `tool.zone` — src/ui/i18n/pt-BR.ts:5: `'tool.zone': 'Zoneamento'`
+- feature entry `zone.residential` — src/ui/i18n/pt-BR.ts:9: `'zone.residential': 'Residencial'`
+- feature entry `zone.commercial` — src/ui/i18n/pt-BR.ts:10: `'zone.commercial': 'Comercial'`
+- feature entry `zone.industrial` — src/ui/i18n/pt-BR.ts:11: `'zone.industrial': 'Industrial'`
+- feature entry `zone.low` — src/ui/i18n/pt-BR.ts:12: `'zone.low': 'Baixa'`
+- feature entry `zone.medium` — src/ui/i18n/pt-BR.ts:13: `'zone.medium': 'Média'`
+- feature entry `zone.high` — src/ui/i18n/pt-BR.ts:14: `'zone.high': 'Alta'`
+- feature entry `zone.remove` — src/ui/i18n/pt-BR.ts:15: `'zone.remove': 'Tirar zona'`
+- feature entry `zone.lots` — src/ui/i18n/pt-BR.ts:17: `'zone.lots': 'Lotes'`
+- feature entry `zone.lots.help` — src/ui/i18n/pt-BR.ts:18: `'zone.lots.help': 'Crie lotes encostando nas calçadas (retângulo ou polígono) e pinte a zona sobre eles: o prédio cresce do tamanho e formato do lote, virado pa`
+- feature entry `zone.lot.edit` — src/ui/i18n/pt-BR.ts:19: `'zone.lot.edit': 'Mover cantos'`
+- feature entry `zone.lot.split` — src/ui/i18n/pt-BR.ts:20: `'zone.lot.split': 'Dividir lote'`
+- feature entry `zone.lot.join` — src/ui/i18n/pt-BR.ts:21: `'zone.lot.join': 'Juntar lotes'`
+- feature entry `zone.lot.delete` — src/ui/i18n/pt-BR.ts:22: `'zone.lot.delete': 'Apagar lotes e construções'`
+- feature entry `zone.lot.delete.short` — src/ui/i18n/pt-BR.ts:23: `'zone.lot.delete.short': 'Apagar lotes'`
+- feature entry `zone.lot.front` — src/ui/i18n/pt-BR.ts:24: `'zone.lot.front': 'Definir frente'`
+- feature entry `zone.lot.shape.rect` — src/ui/i18n/pt-BR.ts:25: `'zone.lot.shape.rect': 'Retângulo (arrastar)'`
+- feature entry `zone.lot.shape.polygon` — src/ui/i18n/pt-BR.ts:26: `'zone.lot.shape.polygon': 'Polígono (ponto a ponto)'`
+- feature entry `v2.zone.paint` — src/ui/i18n/pt-BR.ts:27: `'v2.zone.paint': 'Zonear'`
+- feature entry `actions.pistol` — src/ui/i18n/pt-BR.ts:30: `'actions.pistol': 'Pistola'`
+- feature entry `actions.bomb` — src/ui/i18n/pt-BR.ts:32: `'actions.bomb': 'Bomba'`
+- feature entry `v2.grid.toggle` — src/ui/i18n/pt-BR.ts:33: `'v2.grid.toggle': 'Grade no mapa (mostrar ou ocultar)'`
+- feature entry `zone.lot.curve` — src/ui/i18n/pt-BR.ts:41: `'zone.lot.curve': 'Curvar lado'`
+- feature entry `zone.split.vertical` — src/ui/i18n/pt-BR.ts:42: `'zone.split.vertical': 'Lado a lado'`
+- feature entry `zone.split.horizontal` — src/ui/i18n/pt-BR.ts:43: `'zone.split.horizontal': 'Frente e fundos'`
+- feature entry `zone.split.line` — src/ui/i18n/pt-BR.ts:44: `'zone.split.line': 'Por linha'`
+- feature entry `zone.split.into` — src/ui/i18n/pt-BR.ts:48: `'zone.split.into': 'Em quantos'`
+- feature entry `zone.colours` — src/ui/i18n/pt-BR.ts:51: `'zone.colours': 'Cores das zonas'`
+- shared entry `hint.zone` — src/ui/i18n/pt-BR.ts:53: `'hint.zone': 'Pinte as células junto às vias; os prédios crescem nelas sozinhos · Shift apaga'`
+- feature entry `tool.roundabout` — src/ui/i18n/pt-BR.ts:60: `'tool.roundabout': 'Rotatória'`
+- shared entry `hint.roundabout` — src/ui/i18n/pt-BR.ts:61: `'hint.roundabout': 'Clique em terreno livre para criar uma rotatória · Ligue os quatro acessos com a ferramenta de via'`
+- shared entry `action.newMap` — src/ui/i18n/pt-BR.ts:89: `'action.newMap': 'Novo mapa'`
+- feature entry `action.newWorld` — src/ui/i18n/pt-BR.ts:90: `'action.newWorld': 'Nova cidade (10 km × 10 km)'`
+- feature entry `action.newLargeWorld` — src/ui/i18n/pt-BR.ts:91: `'action.newLargeWorld': 'Nova metrópole (cidade grande)'`
+- feature entry `action.saveMap` — src/ui/i18n/pt-BR.ts:92: `'action.saveMap': 'Salvar mapa'`
+- shared entry `action.openMap` — src/ui/i18n/pt-BR.ts:93: `'action.openMap': 'Abrir mapa'`
+- feature entry `action.undo` — src/ui/i18n/pt-BR.ts:94: `'action.undo': 'Desfazer (Ctrl+Z)'`
+- feature entry `action.redo` — src/ui/i18n/pt-BR.ts:95: `'action.redo': 'Refazer (Ctrl+Y)'`
+- feature entry `action.resetView` — src/ui/i18n/pt-BR.ts:96: `'action.resetView': 'Enquadrar a câmera (Home)'`
+- feature entry `camera.label` — src/ui/i18n/pt-BR.ts:97: `'camera.label': 'Câmera'`
+- feature entry `camera.zoom` — src/ui/i18n/pt-BR.ts:98: `'camera.zoom': 'Zoom'`
+- feature entry `camera.centre` — src/ui/i18n/pt-BR.ts:99: `'camera.centre': 'Centro'`
+- feature entry `camera.turnLeft` — src/ui/i18n/pt-BR.ts:101: `'camera.turnLeft': 'Girar à esquerda (Q) · arrastar com o botão direito gira e inclina livremente'`
+- feature entry `camera.turnRight` — src/ui/i18n/pt-BR.ts:102: `'camera.turnRight': 'Girar à direita (E) · arrastar com o botão direito gira e inclina livremente'`
+- feature entry `camera.tiltUp` — src/ui/i18n/pt-BR.ts:103: `'camera.tiltUp': 'Erguer a câmera, rumo à vista de cima'`
+- feature entry `camera.perspective` — src/ui/i18n/pt-BR.ts:104: `'camera.perspective': 'Câmera em perspectiva: ligar ou desligar (desligada, a vista é isométrica)'`
+- feature entry `camera.tiltDown` — src/ui/i18n/pt-BR.ts:105: `'camera.tiltDown': 'Baixar a câmera, rumo ao horizonte'`
+- feature entry `camera.north` — src/ui/i18n/pt-BR.ts:106: `'camera.north': 'Norte para cima, vista padrão (Home também enquadra o mapa)'`
+- feature entry `sim.metric.trips` — src/ui/i18n/pt-BR.ts:123: `'sim.metric.trips': 'Viagens concluídas'`
+- feature entry `sim.metric.lost` — src/ui/i18n/pt-BR.ts:124: `'sim.metric.lost': 'Chegadas recusadas'`
+- feature entry `sim.metric.speed` — src/ui/i18n/pt-BR.ts:125: `'sim.metric.speed': 'Velocidade média'`
+- feature entry `sim.metric.queued` — src/ui/i18n/pt-BR.ts:126: `'sim.metric.queued': 'Veículos parados'`
+- feature entry `sim.metric.network` — src/ui/i18n/pt-BR.ts:127: `'sim.metric.network': 'Rede'`
+- feature entry `tool.person` — src/ui/i18n/pt-BR.ts:128: `'tool.person': 'Pessoas'`
+- shared entry `hint.person` — src/ui/i18n/pt-BR.ts:129: `'hint.person': 'Crie qualquer pessoa: arraste a figura para girá-la, roda para ver de perto · Salvar a põe na cidade'`
+- feature entry `help.tool.bulldoze` — src/ui/i18n/pt-BR.ts:130: `'help.tool.bulldoze': 'Remove o que você clicar: uma via, um cruzamento, um poste ou um edifício. Tudo o que for removido volta com Desfazer.'`
+- feature entry `help.tool.pole` — src/ui/i18n/pt-BR.ts:133: `'help.tool.pole': 'Coloca postes com fios nas calçadas. Clique numa calçada e siga clicando: os postes acompanham a calçada e viram nas esquinas.'`
+- feature entry `help.tool.inspect` — src/ui/i18n/pt-BR.ts:134: `'help.tool.inspect': 'Mostra o que é uma via ou um cruzamento e permite mudá-lo: classe, faixas e altura, e os semáforos e movimentos permitidos de um cruzament`
+- feature entry `help.section.tool` — src/ui/i18n/pt-BR.ts:135: `'help.section.tool': 'Esta ferramenta'`
+- feature entry `help.section.camera` — src/ui/i18n/pt-BR.ts:136: `'help.section.camera': 'Câmera'`
+- feature entry `help.tool.barrier` — src/ui/i18n/pt-BR.ts:152: `'help.tool.barrier': 'Desenha muros, cercas e sebes por um caminho, como as estradas. Perto de uma via o ponto vai para as costas da calçada, rente às casas.'`
+- feature entry `barrier.kind.fence` — src/ui/i18n/pt-BR.ts:160: `'barrier.kind.fence': 'Cerca'`
+- feature entry `barrier.kind.wall` — src/ui/i18n/pt-BR.ts:161: `'barrier.kind.wall': 'Muro'`
+- feature entry `barrier.kind.hedge` — src/ui/i18n/pt-BR.ts:162: `'barrier.kind.hedge': 'Sebe'`
+- feature entry `barrier.kind.guardrail` — src/ui/i18n/pt-BR.ts:163: `'barrier.kind.guardrail': 'Defensa (guard-rail)'`
+- feature entry `barrier.kind.railing` — src/ui/i18n/pt-BR.ts:164: `'barrier.kind.railing': 'Gradil urbano'`
+- shared entry `action.about` — src/ui/i18n/pt-BR.ts:174: `'action.about': 'Sobre'`
+- feature entry `menu.quality` — src/ui/i18n/pt-BR.ts:178: `'menu.quality': 'Gráficos'`
+- shared entry `menu.graphicsOptions` — src/ui/i18n/pt-BR.ts:179: `'menu.graphicsOptions': 'Opções gráficas…'`
+- feature entry `menu.effectsPanel` — src/ui/i18n/pt-BR.ts:200: `'menu.effectsPanel': 'Painel de efeitos (F7)…'`
+- shared entry `menu.language` — src/ui/i18n/pt-BR.ts:291: `'menu.language': 'Idioma'`
+- feature entry `roadFurniture.row` — src/ui/i18n/pt-BR.ts:292: `'roadFurniture.row': 'Mobiliário'`
+- feature entry `roadFurniture.tip` — src/ui/i18n/pt-BR.ts:293: `'roadFurniture.tip': 'Com o que as vias novas são construídas: postes, lixeiras, hidrantes, bancos e árvores nas calçadas (faixa livre de 1,20 m mantida)'`
+- feature entry `roadFurniture.complete` — src/ui/i18n/pt-BR.ts:294: `'roadFurniture.complete': 'Completo'`
+- feature entry `roadFurniture.basic` — src/ui/i18n/pt-BR.ts:295: `'roadFurniture.basic': 'Básico'`
+- feature entry `roadFurniture.none` — src/ui/i18n/pt-BR.ts:296: `'roadFurniture.none': 'Nenhum'`
+- feature entry `menu.paint` — src/ui/i18n/pt-BR.ts:307: `'menu.paint': 'Pintura'`
+- feature entry `paint.br` — src/ui/i18n/pt-BR.ts:308: `'paint.br': 'Brasil'`
+- feature entry `paint.us` — src/ui/i18n/pt-BR.ts:309: `'paint.us': 'EUA'`
+- feature entry `paint.eu` — src/ui/i18n/pt-BR.ts:310: `'paint.eu': 'Europa'`
+- feature entry `paint.classic` — src/ui/i18n/pt-BR.ts:311: `'paint.classic': 'Clássica'`
+- feature entry `tool.road` — src/ui/i18n/pt-BR.ts:318: `'tool.road': 'Via'`
+- feature entry `tool.draw` — src/ui/i18n/pt-BR.ts:319: `'tool.draw': 'Desenhar'`
+- feature entry `tool.terrain` — src/ui/i18n/pt-BR.ts:320: `'tool.terrain': 'Terreno'`
+- feature entry `tool.upgrade` — src/ui/i18n/pt-BR.ts:321: `'tool.upgrade': 'Melhorar'`
+- feature entry `tool.move` — src/ui/i18n/pt-BR.ts:322: `'tool.move': 'Mover'`
+- feature entry `tool.split` — src/ui/i18n/pt-BR.ts:323: `'tool.split': 'Dividir'`
+- feature entry `tool.bulldoze` — src/ui/i18n/pt-BR.ts:324: `'tool.bulldoze': 'Demolir'`
+- feature entry `tool.control` — src/ui/i18n/pt-BR.ts:325: `'tool.control': 'Controle'`
+- feature entry `tool.inspect` — src/ui/i18n/pt-BR.ts:326: `'tool.inspect': 'Inspecionar'`
+- feature entry `tool.streetscape` — src/ui/i18n/pt-BR.ts:327: `'tool.streetscape': 'Paisagismo'`
+- feature entry `help.tool.streetscape` — src/ui/i18n/pt-BR.ts:328: `'help.tool.streetscape': 'Coloca árvores, arbustos, bancos, lixeiras, iluminação, hidrantes e caixas de correio nas calçadas. Clique numa calçada para pôr o ite`
+- shared entry `hint.streetscape` — src/ui/i18n/pt-BR.ts:331: `'hint.streetscape': 'Clique numa calçada para pôr o item · arraste ao longo dela para uma fileira · Shift+clique remove'`
+- feature entry `streetscape.tree` — src/ui/i18n/pt-BR.ts:338: `'streetscape.tree': 'Árvore'`
+- feature entry `streetscape.shrub` — src/ui/i18n/pt-BR.ts:339: `'streetscape.shrub': 'Arbusto'`
+- feature entry `streetscape.bench` — src/ui/i18n/pt-BR.ts:340: `'streetscape.bench': 'Banco'`
+- feature entry `streetscape.bin` — src/ui/i18n/pt-BR.ts:341: `'streetscape.bin': 'Lixeira'`
+- feature entry `streetscape.lamp` — src/ui/i18n/pt-BR.ts:342: `'streetscape.lamp': 'Iluminação'`
+- feature entry `streetscape.hydrant` — src/ui/i18n/pt-BR.ts:343: `'streetscape.hydrant': 'Hidrante'`
+- feature entry `streetscape.postbox` — src/ui/i18n/pt-BR.ts:344: `'streetscape.postbox': 'Caixa de correio'`
+- feature entry `streetscape.phone` — src/ui/i18n/pt-BR.ts:345: `'streetscape.phone': 'Orelhão (telefone público)'`
+- feature entry `streetscape.drain` — src/ui/i18n/pt-BR.ts:346: `'streetscape.drain': 'Boca de lobo'`
+- feature entry `streetscape.meadow` — src/ui/i18n/pt-BR.ts:347: `'streetscape.meadow': 'Mato (no gramado)'`
+- feature entry `streetscape.sign` — src/ui/i18n/pt-BR.ts:348: `'streetscape.sign': 'Placa'`
+- feature entry `streetscape.streetname` — src/ui/i18n/pt-BR.ts:349: `'streetscape.streetname': 'Nome da rua'`
+- feature entry `sign.type` — src/ui/i18n/pt-BR.ts:350: `'sign.type': 'Tipo de placa'`
+- feature entry `sign.type.stop` — src/ui/i18n/pt-BR.ts:351: `'sign.type.stop': 'Pare'`
+- feature entry `sign.type.yield` — src/ui/i18n/pt-BR.ts:352: `'sign.type.yield': 'Dê a preferência'`
+- feature entry `sign.type.speed` — src/ui/i18n/pt-BR.ts:353: `'sign.type.speed': 'Velocidade máxima'`
+- feature entry `sign.type.noParking` — src/ui/i18n/pt-BR.ts:354: `'sign.type.noParking': 'Proibido estacionar'`
+- feature entry `sign.type.noEntry` — src/ui/i18n/pt-BR.ts:355: `'sign.type.noEntry': 'Sentido proibido'`
+- feature entry `sign.type.pedestrian` — src/ui/i18n/pt-BR.ts:356: `'sign.type.pedestrian': 'Pedestres'`
+- feature entry `sign.type.school` — src/ui/i18n/pt-BR.ts:357: `'sign.type.school': 'Escola'`
+- feature entry `sign.type.direction` — src/ui/i18n/pt-BR.ts:358: `'sign.type.direction': 'Direção'`
+- feature entry `sign.type.street` — src/ui/i18n/pt-BR.ts:359: `'sign.type.street': 'Placa de rua'`
+- feature entry `sign.type.info` — src/ui/i18n/pt-BR.ts:360: `'sign.type.info': 'Informação'`
+- feature entry `sign.text` — src/ui/i18n/pt-BR.ts:361: `'sign.text': 'Texto da placa'`
+- feature entry `sign.text.speed` — src/ui/i18n/pt-BR.ts:362: `'sign.text.speed': 'Velocidade (ex.: 40)'`
+- feature entry `sign.street.placeholder` — src/ui/i18n/pt-BR.ts:363: `'sign.street.placeholder': 'Nome da rua, depois clique nela'`
+- feature entry `pole.lamps` — src/ui/i18n/pt-BR.ts:366: `'pole.lamps': 'Iluminação nos postes'`
+- feature entry `pole.lamps.none` — src/ui/i18n/pt-BR.ts:367: `'pole.lamps.none': 'Sem luz'`
+- feature entry `pole.lamps.alternate` — src/ui/i18n/pt-BR.ts:368: `'pole.lamps.alternate': 'Luz em postes alternados'`
+- feature entry `pole.lamps.all` — src/ui/i18n/pt-BR.ts:369: `'pole.lamps.all': 'Luz em todos os postes'`
+- feature entry `pole.mode.build` — src/ui/i18n/pt-BR.ts:370: `'pole.mode.build': 'Construir rede'`
+- feature entry `pole.mode.remove` — src/ui/i18n/pt-BR.ts:371: `'pole.mode.remove': 'Remover postes'`
+- feature entry `help.tool.poleRemove` — src/ui/i18n/pt-BR.ts:372: `'help.tool.poleRemove': 'Clique num poste para removê-lo, com os fios. Shift+clique faz o mesmo enquanto constrói.'`
+- feature entry `tool.pole` — src/ui/i18n/pt-BR.ts:373: `'tool.pole': 'Postes'`
+- feature entry `tool.barrier` — src/ui/i18n/pt-BR.ts:374: `'tool.barrier': 'Muros'`
+- feature entry `sim.speed` — src/ui/i18n/pt-BR.ts:376: `'sim.speed': 'Velocidade da simulação'`
+- feature entry `sim.pause` — src/ui/i18n/pt-BR.ts:377: `'sim.pause': 'Pausar'`
+- feature entry `sim.congestion` — src/ui/i18n/pt-BR.ts:378: `'sim.congestion': 'Colorir as vias conforme o congestionamento'`
+- feature entry `sim.congestionLabel` — src/ui/i18n/pt-BR.ts:379: `'sim.congestionLabel': 'Mapa de congestionamento'`
+- feature entry `sim.traffic` — src/ui/i18n/pt-BR.ts:380: `'sim.traffic': 'Tráfego (%)'`
+- feature entry `sim.people` — src/ui/i18n/pt-BR.ts:381: `'sim.people': 'Pessoas (%)'`
+- feature entry `sim.demand` — src/ui/i18n/pt-BR.ts:382: `'sim.demand': 'Demanda'`
+- feature entry `sim.demand.low` — src/ui/i18n/pt-BR.ts:383: `'sim.demand.low': 'Baixa'`
+- feature entry `sim.demand.normal` — src/ui/i18n/pt-BR.ts:384: `'sim.demand.normal': 'Normal'`
+- feature entry `sim.demand.peak` — src/ui/i18n/pt-BR.ts:385: `'sim.demand.peak': 'Pico'`
+- feature entry `palette.alignment.straight` — src/ui/i18n/pt-BR.ts:387: `'palette.alignment.straight': 'Reta'`
+- feature entry `palette.alignment.curve` — src/ui/i18n/pt-BR.ts:388: `'palette.alignment.curve': 'Curva'`
+- feature entry `palette.alignment.free` — src/ui/i18n/pt-BR.ts:389: `'palette.alignment.free': 'Livre'`
+- feature entry `palette.trace` — src/ui/i18n/pt-BR.ts:390: `'palette.trace': 'Traçado'`
+- feature entry `palette.kind` — src/ui/i18n/pt-BR.ts:391: `'palette.kind': 'Tipo de via'`
+- feature entry `palette.blocks` — src/ui/i18n/pt-BR.ts:392: `'palette.blocks': 'Quarteirões de uma vez'`
+- feature entry `palette.blocks.cols` — src/ui/i18n/pt-BR.ts:393: `'palette.blocks.cols': 'Colunas'`
+- feature entry `palette.blocks.rows` — src/ui/i18n/pt-BR.ts:394: `'palette.blocks.rows': 'Linhas'`
+- feature entry `palette.blocks.size` — src/ui/i18n/pt-BR.ts:395: `'palette.blocks.size': 'Quadra'`
+- feature entry `palette.blocks.angle` — src/ui/i18n/pt-BR.ts:396: `'palette.blocks.angle': 'Giro'`
+- feature entry `hint.blocks.built` — src/ui/i18n/pt-BR.ts:397: `'hint.blocks.built': 'Quarteirões construídos'`
+- feature entry `palette.width` — src/ui/i18n/pt-BR.ts:398: `'palette.width': 'Largura total'`
+- feature entry `palette.width.auto` — src/ui/i18n/pt-BR.ts:399: `'palette.width.auto': 'Padrão'`
+- shared entry `palette.lanes.count.one` — src/ui/i18n/pt-BR.ts:400: `'palette.lanes.count.one': '{count} faixa'`
+- shared entry `palette.lanes.count.other` — src/ui/i18n/pt-BR.ts:401: `'palette.lanes.count.other': '{count} faixas'`
+- feature entry `palette.height` — src/ui/i18n/pt-BR.ts:403: `'palette.height': 'Altura da via'`
+- feature entry `palette.height.ground` — src/ui/i18n/pt-BR.ts:404: `'palette.height.ground': 'No nível do terreno'`
+- feature entry `palette.height.above` — src/ui/i18n/pt-BR.ts:405: `'palette.height.above': 'Elevada: rampa ou ponte'`
+- feature entry `palette.height.below` — src/ui/i18n/pt-BR.ts:406: `'palette.height.below': 'Rebaixada: corte ou túnel'`
+- feature entry `terrain.raise` — src/ui/i18n/pt-BR.ts:434: `'terrain.raise': 'Elevar'`
+- feature entry `terrain.lower` — src/ui/i18n/pt-BR.ts:435: `'terrain.lower': 'Rebaixar'`
+- feature entry `terrain.flatten` — src/ui/i18n/pt-BR.ts:436: `'terrain.flatten': 'Nivelar'`
+- feature entry `terrain.river` — src/ui/i18n/pt-BR.ts:437: `'terrain.river': 'Rio'`
+- feature entry `el.plants` — src/ui/i18n/pt-BR.ts:440: `'el.plants': 'Plantas'`
+- feature entry `el.effects` — src/ui/i18n/pt-BR.ts:441: `'el.effects': 'Efeitos'`
+- feature entry `el.kind.stones` — src/ui/i18n/pt-BR.ts:442: `'el.kind.stones': 'Pedras'`
+- feature entry `el.kind.pebbles` — src/ui/i18n/pt-BR.ts:443: `'el.kind.pebbles': 'Seixos'`
+- feature entry `el.kind.gravel` — src/ui/i18n/pt-BR.ts:444: `'el.kind.gravel': 'Cascalho'`
+- feature entry `el.kind.leaves` — src/ui/i18n/pt-BR.ts:445: `'el.kind.leaves': 'Folhas secas'`
+- feature entry `el.kind.grass` — src/ui/i18n/pt-BR.ts:446: `'el.kind.grass': 'Grama'`
+- feature entry `el.kind.tallGrass` — src/ui/i18n/pt-BR.ts:447: `'el.kind.tallGrass': 'Capim alto'`
+- feature entry `el.kind.scrub` — src/ui/i18n/pt-BR.ts:448: `'el.kind.scrub': 'Mato'`
+- feature entry `el.kind.fern` — src/ui/i18n/pt-BR.ts:449: `'el.kind.fern': 'Samambaia'`
+- feature entry `el.kind.clover` — src/ui/i18n/pt-BR.ts:450: `'el.kind.clover': 'Trevo'`
+- feature entry `el.kind.flowers` — src/ui/i18n/pt-BR.ts:451: `'el.kind.flowers': 'Flores'`
+- feature entry `el.kind.mushrooms` — src/ui/i18n/pt-BR.ts:452: `'el.kind.mushrooms': 'Cogumelos'`
+- feature entry `el.kind.smoke` — src/ui/i18n/pt-BR.ts:453: `'el.kind.smoke': 'Fumaça'`
+- feature entry `el.kind.fire` — src/ui/i18n/pt-BR.ts:454: `'el.kind.fire': 'Fogo'`
+- feature entry `el.kind.steam` — src/ui/i18n/pt-BR.ts:455: `'el.kind.steam': 'Vapor'`
+- feature entry `el.kind.dust` — src/ui/i18n/pt-BR.ts:456: `'el.kind.dust': 'Poeira'`
+- feature entry `el.kind.soot` — src/ui/i18n/pt-BR.ts:457: `'el.kind.soot': 'Fuligem'`
+- feature entry `el.kind.sparks` — src/ui/i18n/pt-BR.ts:458: `'el.kind.sparks': 'Faíscas'`
+- feature entry `el.kind.spray` — src/ui/i18n/pt-BR.ts:459: `'el.kind.spray': 'Espuma e borrifo'`
+- feature entry `el.mode.lay` — src/ui/i18n/pt-BR.ts:460: `'el.mode.lay': 'Colocar'`
+- feature entry `el.mode.eraseKind` — src/ui/i18n/pt-BR.ts:461: `'el.mode.eraseKind': 'Apagar este tipo'`
+- feature entry `el.mode.eraseAll` — src/ui/i18n/pt-BR.ts:462: `'el.mode.eraseAll': 'Apagar tudo'`
+- feature entry `el.density` — src/ui/i18n/pt-BR.ts:463: `'el.density': 'Densidade (por 100 m²)'`
+- feature entry `el.size` — src/ui/i18n/pt-BR.ts:464: `'el.size': 'Tamanho (m)'`
+- feature entry `el.variation` — src/ui/i18n/pt-BR.ts:465: `'el.variation': 'Variação de tamanho (%)'`
+- feature entry `el.spacing` — src/ui/i18n/pt-BR.ts:466: `'el.spacing': 'Espaçamento mínimo (m)'`
+- feature entry `el.strength` — src/ui/i18n/pt-BR.ts:467: `'el.strength': 'Força do pincel (%)'`
+- feature entry `el.intensity` — src/ui/i18n/pt-BR.ts:468: `'el.intensity': 'Intensidade do efeito (%)'`
+- feature entry `el.clear` — src/ui/i18n/pt-BR.ts:469: `'el.clear': 'Apagar todos os elementos'`
+- feature entry `terrain.weather` — src/ui/i18n/pt-BR.ts:471: `'terrain.weather': 'Clima'`
+- feature entry `water.title` — src/ui/i18n/pt-BR.ts:472: `'water.title': 'Água dos rios e lagos'`
+- feature entry `water.waves` — src/ui/i18n/pt-BR.ts:473: `'water.waves': 'Ondas (%)'`
+- feature entry `water.foam` — src/ui/i18n/pt-BR.ts:474: `'water.foam': 'Espuma (%)'`
+- feature entry `water.current` — src/ui/i18n/pt-BR.ts:475: `'water.current': 'Correnteza (m/s)'`
+- feature entry `weather.rain` — src/ui/i18n/pt-BR.ts:476: `'weather.rain': 'Chuva (%)'`
+- feature entry `weather.wind` — src/ui/i18n/pt-BR.ts:477: `'weather.wind': 'Vento (m/s)'`
+- feature entry `weather.windDirection` — src/ui/i18n/pt-BR.ts:478: `'weather.windDirection': 'Direção do vento (°)'`
+- feature entry `weather.storm` — src/ui/i18n/pt-BR.ts:479: `'weather.storm': 'Tempestade'`
+- feature entry `weather.lightning` — src/ui/i18n/pt-BR.ts:480: `'weather.lightning': 'Raios por minuto'`
+- feature entry `weather.thunder` — src/ui/i18n/pt-BR.ts:481: `'weather.thunder': 'Volume do trovão (%)'`
+- feature entry `tree.kind` — src/ui/i18n/pt-BR.ts:484: `'tree.kind': 'Árvores'`
+- feature entry `tree.kind.mixed` — src/ui/i18n/pt-BR.ts:485: `'tree.kind.mixed': 'Mistas'`
+- feature entry `tree.kind.oak` — src/ui/i18n/pt-BR.ts:486: `'tree.kind.oak': 'Carvalho'`
+- feature entry `tree.kind.cypress` — src/ui/i18n/pt-BR.ts:487: `'tree.kind.cypress': 'Cipreste'`
+- feature entry `tree.kind.palm` — src/ui/i18n/pt-BR.ts:488: `'tree.kind.palm': 'Palmeira'`
+- feature entry `tree.mode.plant` — src/ui/i18n/pt-BR.ts:489: `'tree.mode.plant': 'Plantar bosque'`
+- feature entry `tree.mode.one` — src/ui/i18n/pt-BR.ts:490: `'tree.mode.one': 'Uma árvore por clique'`
+- feature entry `tree.mode.cut` — src/ui/i18n/pt-BR.ts:491: `'tree.mode.cut': 'Cortar árvores'`
+- feature entry `tree.density` — src/ui/i18n/pt-BR.ts:492: `'tree.density': 'Árvores por hectare'`
+- feature entry `tree.height` — src/ui/i18n/pt-BR.ts:493: `'tree.height': 'Altura (m)'`
+- feature entry `tree.variation` — src/ui/i18n/pt-BR.ts:494: `'tree.variation': 'Variação (%)'`
+- feature entry `tree.spacing` — src/ui/i18n/pt-BR.ts:495: `'tree.spacing': 'Espaçamento (m)'`
+- feature entry `tree.clear` — src/ui/i18n/pt-BR.ts:496: `'tree.clear': 'Apagar árvores plantadas e clareiras'`
+- feature entry `terrain.gully` — src/ui/i18n/pt-BR.ts:499: `'terrain.gully': 'Ravinas'`
+- feature entry `gully.cut` — src/ui/i18n/pt-BR.ts:500: `'gully.cut': 'Abrir ravinas'`
+- feature entry `gully.erase` — src/ui/i18n/pt-BR.ts:501: `'gully.erase': 'Apagar ravinas'`
+- feature entry `gully.strength` — src/ui/i18n/pt-BR.ts:502: `'gully.strength': 'Força do pincel (%)'`
+- feature entry `gully.auto` — src/ui/i18n/pt-BR.ts:503: `'gully.auto': 'Ravinas automáticas (%)'`
+- feature entry `gully.clear` — src/ui/i18n/pt-BR.ts:504: `'gully.clear': 'Apagar todos os traços de ravina'`
+- feature entry `terrain.cloud` — src/ui/i18n/pt-BR.ts:508: `'terrain.cloud': 'Nuvens'`
+- feature entry `cloud.add` — src/ui/i18n/pt-BR.ts:509: `'cloud.add': 'Criar nuvem'`
+- feature entry `cloud.move` — src/ui/i18n/pt-BR.ts:510: `'cloud.move': 'Mover nuvem'`
+- feature entry `cloud.edit` — src/ui/i18n/pt-BR.ts:511: `'cloud.edit': 'Ajustar nuvem (aplica os valores abaixo)'`
+- feature entry `cloud.remove` — src/ui/i18n/pt-BR.ts:512: `'cloud.remove': 'Apagar nuvem'`
+- feature entry `cloud.size` — src/ui/i18n/pt-BR.ts:513: `'cloud.size': 'Tamanho (m)'`
+- feature entry `cloud.height` — src/ui/i18n/pt-BR.ts:514: `'cloud.height': 'Altura da base (m)'`
+- feature entry `cloud.density` — src/ui/i18n/pt-BR.ts:515: `'cloud.density': 'Densidade (%)'`
+- feature entry `cloud.spread` — src/ui/i18n/pt-BR.ts:516: `'cloud.spread': 'Espalhar nuvens'`
+- feature entry `cloud.count` — src/ui/i18n/pt-BR.ts:517: `'cloud.count': 'Quantidade'`
+- feature entry `cloud.variation` — src/ui/i18n/pt-BR.ts:518: `'cloud.variation': 'Variação (%)'`
+- feature entry `cloud.scatter` — src/ui/i18n/pt-BR.ts:519: `'cloud.scatter': 'Espalhar pelo céu'`
+- feature entry `cloud.clear` — src/ui/i18n/pt-BR.ts:520: `'cloud.clear': 'Apagar todas as nuvens'`
+- feature entry `terrain.fog` — src/ui/i18n/pt-BR.ts:524: `'terrain.fog': 'Neblina'`
+- feature entry `fog.lay` — src/ui/i18n/pt-BR.ts:525: `'fog.lay': 'Pôr neblina'`
+- feature entry `fog.erase` — src/ui/i18n/pt-BR.ts:526: `'fog.erase': 'Apagar'`
+- feature entry `fog.strength` — src/ui/i18n/pt-BR.ts:527: `'fog.strength': 'Força do pincel (%)'`
+- feature entry `fog.mapDensity` — src/ui/i18n/pt-BR.ts:528: `'fog.mapDensity': 'Intensidade geral (%)'`
+- feature entry `fog.height` — src/ui/i18n/pt-BR.ts:529: `'fog.height': 'Altura (m)'`
+- feature entry `fog.speed` — src/ui/i18n/pt-BR.ts:530: `'fog.speed': 'Velocidade do vento (m/s)'`
+- feature entry `fog.clear` — src/ui/i18n/pt-BR.ts:531: `'fog.clear': 'Apagar toda a neblina'`
+- feature entry `paint.kind` — src/ui/i18n/pt-BR.ts:534: `'paint.kind': 'Tipo de chão'`
+- feature entry `paint.kind.sand` — src/ui/i18n/pt-BR.ts:535: `'paint.kind.sand': 'Areia'`
+- feature entry `paint.kind.soil` — src/ui/i18n/pt-BR.ts:536: `'paint.kind.soil': 'Terra'`
+- feature entry `paint.kind.meadow` — src/ui/i18n/pt-BR.ts:537: `'paint.kind.meadow': 'Mato'`
+- feature entry `paint.kind.snow` — src/ui/i18n/pt-BR.ts:538: `'paint.kind.snow': 'Neve'`
+- feature entry `paint.kind.gravel` — src/ui/i18n/pt-BR.ts:539: `'paint.kind.gravel': 'Cascalho'`
+- feature entry `paint.kind.asphalt` — src/ui/i18n/pt-BR.ts:540: `'paint.kind.asphalt': 'Asfalto'`
+- feature entry `paint.kind.concrete` — src/ui/i18n/pt-BR.ts:541: `'paint.kind.concrete': 'Concreto'`
+- feature entry `paint.kind.grass` — src/ui/i18n/pt-BR.ts:542: `'paint.kind.grass': 'Grama (apaga)'`
+- feature entry `paint.kind.forest` — src/ui/i18n/pt-BR.ts:543: `'paint.kind.forest': 'Floresta'`
+- feature entry `terrain.hardness` — src/ui/i18n/pt-BR.ts:544: `'terrain.hardness': 'Dureza (paredões)'`
+- feature entry `terrain.mesa` — src/ui/i18n/pt-BR.ts:545: `'terrain.mesa': 'Chapada (arenito)'`
+- feature entry `terrain.canyon` — src/ui/i18n/pt-BR.ts:546: `'terrain.canyon': 'Cânion (arenito)'`
+- feature entry `terrain.escarpment` — src/ui/i18n/pt-BR.ts:547: `'terrain.escarpment': 'Escarpa de basalto'`
+- feature entry `terrain.sugarloaf` — src/ui/i18n/pt-BR.ts:548: `'terrain.sugarloaf': 'Pão de açúcar (granito)'`
+- feature entry `v2.terrain.landforms` — src/ui/i18n/pt-BR.ts:549: `'v2.terrain.landforms': 'Relevos'`
+- feature entry `paint.kind.granite` — src/ui/i18n/pt-BR.ts:550: `'paint.kind.granite': 'Rocha: granito'`
+- feature entry `paint.kind.sandstone` — src/ui/i18n/pt-BR.ts:551: `'paint.kind.sandstone': 'Rocha: arenito'`
+- feature entry `paint.kind.basalt` — src/ui/i18n/pt-BR.ts:552: `'paint.kind.basalt': 'Rocha: basalto'`
+- feature entry `paint.kind.cerrado` — src/ui/i18n/pt-BR.ts:553: `'paint.kind.cerrado': 'Cerrado'`
+- feature entry `paint.kind.atlantic` — src/ui/i18n/pt-BR.ts:554: `'paint.kind.atlantic': 'Mata Atlântica'`
+- feature entry `paint.kind.amazon` — src/ui/i18n/pt-BR.ts:555: `'paint.kind.amazon': 'Amazônia'`
+- feature entry `paint.kind.caatinga` — src/ui/i18n/pt-BR.ts:556: `'paint.kind.caatinga': 'Caatinga'`
+- feature entry `paint.kind.pampa` — src/ui/i18n/pt-BR.ts:557: `'paint.kind.pampa': 'Pampa'`
+- feature entry `paint.kind.pantanal` — src/ui/i18n/pt-BR.ts:558: `'paint.kind.pantanal': 'Pantanal'`
+- feature entry `paint.biome` — src/ui/i18n/pt-BR.ts:559: `'paint.biome': 'Bioma'`
+- feature entry `terrain.mapBiome` — src/ui/i18n/pt-BR.ts:560: `'terrain.mapBiome': 'Bioma do mapa'`
+- feature entry `terrain.mapBiome.none` — src/ui/i18n/pt-BR.ts:561: `'terrain.mapBiome.none': 'Sem ecossistema'`
+- feature entry `atmo.title` — src/ui/i18n/pt-BR.ts:562: `'atmo.title': 'Céu e clima'`
+- feature entry `atmo.fog` — src/ui/i18n/pt-BR.ts:563: `'atmo.fog': 'Névoa (%)'`
+- feature entry `atmo.fogHeight` — src/ui/i18n/pt-BR.ts:564: `'atmo.fogHeight': 'Altura da névoa (m)'`
+- feature entry `paint.kind.scrub` — src/ui/i18n/pt-BR.ts:569: `'paint.kind.scrub': 'Mata baixa'`
+- feature entry `paint.kind.flowers` — src/ui/i18n/pt-BR.ts:570: `'paint.kind.flowers': 'Flores'`
+- feature entry `paint.kind.rocks` — src/ui/i18n/pt-BR.ts:571: `'paint.kind.rocks': 'Pedras'`
+- feature entry `terrain.radius` — src/ui/i18n/pt-BR.ts:573: `'terrain.radius': 'Raio'`
+- feature entry `terrain.strength` — src/ui/i18n/pt-BR.ts:574: `'terrain.strength': 'Força'`
+- feature entry `terrain.clear` — src/ui/i18n/pt-BR.ts:576: `'terrain.clear': 'Aplainar mapa inteiro'`
+- shared entry `hint.road` — src/ui/i18n/pt-BR.ts:712: `'hint.road': 'Clique no início, mire, ajuste {heightUp}/{heightDown} e clique no fim · {alignmentKey}: traçado · Esc: cancelar'`
+- shared entry `hint.road.invalid` — src/ui/i18n/pt-BR.ts:714: `'hint.road.invalid': 'Esta conexão precisa de mais distância ou outro ponto final.'`
+- feature entry `cutSides.row` — src/ui/i18n/pt-BR.ts:731: `'cutSides.row': 'Corte'`
+- feature entry `cutSides.batter` — src/ui/i18n/pt-BR.ts:732: `'cutSides.batter': 'Talude'`
+- feature entry `cutSides.walls` — src/ui/i18n/pt-BR.ts:733: `'cutSides.walls': 'Muro'`
+- feature entry `roadKeys.row` — src/ui/i18n/pt-BR.ts:734: `'roadKeys.row': 'Teclas'`
+- feature entry `roadKeys.title` — src/ui/i18n/pt-BR.ts:735: `'roadKeys.title': 'Teclas da ferramenta de vias'`
+- feature entry `roadKeys.heightUp` — src/ui/i18n/pt-BR.ts:736: `'roadKeys.heightUp': 'Subir a via 1 m'`
+- feature entry `roadKeys.heightDown` — src/ui/i18n/pt-BR.ts:737: `'roadKeys.heightDown': 'Descer a via 1 m'`
+- feature entry `roadKeys.alignment` — src/ui/i18n/pt-BR.ts:738: `'roadKeys.alignment': 'Trocar o traçado'`
+- feature entry `roadKeys.press` — src/ui/i18n/pt-BR.ts:739: `'roadKeys.press': 'Aperte uma tecla…'`
+- feature entry `roadKeys.reserved` — src/ui/i18n/pt-BR.ts:740: `'roadKeys.reserved': '{key} já é usada pelo jogo. Escolha outra.'`
+- feature entry `roadKeys.reset` — src/ui/i18n/pt-BR.ts:741: `'roadKeys.reset': 'Restaurar padrão'`
+- feature entry `catalog.cat.streets` — src/ui/i18n/pt-BR.ts:743: `'catalog.cat.streets': "Ruas"`
+- feature entry `catalog.cat.avenues` — src/ui/i18n/pt-BR.ts:744: `'catalog.cat.avenues': "Avenidas"`
+- feature entry `catalog.cat.highways` — src/ui/i18n/pt-BR.ts:745: `'catalog.cat.highways': "Rodovias"`
+- feature entry `catalog.cat.special` — src/ui/i18n/pt-BR.ts:746: `'catalog.cat.special': "Especiais"`
+- feature entry `catalog.cat.mine` — src/ui/i18n/pt-BR.ts:747: `'catalog.cat.mine': "Meus modelos"`
+- feature entry `catalog.empty` — src/ui/i18n/pt-BR.ts:748: `'catalog.empty': "Nada nesta categoria."`
+- feature entry `catalog.mineEmpty` — src/ui/i18n/pt-BR.ts:749: `'catalog.mineEmpty': "Seus modelos aparecem aqui: escolha uma via, clique em \"Personalizar…\" e salve como modelo."`
+- feature entry `catalog.meta` — src/ui/i18n/pt-BR.ts:750: `'catalog.meta': "{width} m · {price}/m"`
+- feature entry `catalog.tip` — src/ui/i18n/pt-BR.ts:751: `'catalog.tip': "{name}: {lanes}, {way}, {speed} km/h. Clique para desenhar com ela."`
+- feature entry `catalog.oneWay` — src/ui/i18n/pt-BR.ts:752: `'catalog.oneWay': "mão única"`
+- feature entry `catalog.twoWay` — src/ui/i18n/pt-BR.ts:753: `'catalog.twoWay': "mão dupla"`
+- shared entry `profileEditor.close` — src/ui/i18n/pt-BR.ts:786: `'profileEditor.close': 'Fechar'`
+- feature entry `economy.balance` — src/ui/i18n/pt-BR.ts:882: `'economy.balance': 'Dinheiro em caixa. Vias custam pela largura e pelo comprimento; pontes e túneis custam mais. Demolir uma via devolve {share}% do preço dela.`
+- shared entry `hint.upgrade` — src/ui/i18n/pt-BR.ts:891: `'hint.upgrade': 'Clique numa via para melhorar a classe'`
+- shared entry `hint.move` — src/ui/i18n/pt-BR.ts:892: `'hint.move': 'Arraste um nó para reposicionar'`
+- shared entry `hint.split` — src/ui/i18n/pt-BR.ts:893: `'hint.split': 'Clique numa via para dividir'`
+- shared entry `hint.bulldoze` — src/ui/i18n/pt-BR.ts:894: `'hint.bulldoze': 'Clique numa via ou num edifício para demolir'`
+- shared entry `hint.control` — src/ui/i18n/pt-BR.ts:895: `'hint.control': 'Clique num cruzamento para mudar o controle · Shift: voltar'`
+- shared entry `hint.pole` — src/ui/i18n/pt-BR.ts:897: `'hint.pole': 'Arraste ou clique para traçar uma linha de postes · Clique de novo para continuar · Esc encerra · Shift+clique remove'`
+- feature entry `strike.force` — src/ui/i18n/pt-BR.ts:900: `'strike.force': 'Força'`
+- feature entry `hint.building.renovated` — src/ui/i18n/pt-BR.ts:905: `'hint.building.renovated': 'Prédio reformado'`
+- shared entry `hint.barrier` — src/ui/i18n/pt-BR.ts:906: `'hint.barrier': 'Clique para pôr pontos · Duplo clique ou Enter constrói · Backspace desfaz o ponto · Esc descarta · Shift+clique remove'`
+- shared entry `hint.inspect` — src/ui/i18n/pt-BR.ts:913: `'hint.inspect': 'Clique numa via ou num cruzamento para inspecionar'`
+- shared entry `hint.transit` — src/ui/i18n/pt-BR.ts:914: `'hint.transit': 'Transporte: ponha paradas, trilhos e estações, e crie linhas'`
+- feature entry `status.roads.one` — src/ui/i18n/pt-BR.ts:935: `'status.roads.one': '1 via'`
+- feature entry `status.roads.other` — src/ui/i18n/pt-BR.ts:936: `'status.roads.other': '{count} vias'`
+- feature entry `status.nodes.one` — src/ui/i18n/pt-BR.ts:937: `'status.nodes.one': '1 nó'`
+- feature entry `status.nodes.other` — src/ui/i18n/pt-BR.ts:938: `'status.nodes.other': '{count} nós'`
+- feature entry `sky.day` — src/ui/i18n/pt-BR.ts:943: `'sky.day': '☀ Dia'`
+- feature entry `sky.night` — src/ui/i18n/pt-BR.ts:944: `'sky.night': '☾ Noite'`
+- feature entry `sky.cycle` — src/ui/i18n/pt-BR.ts:945: `'sky.cycle': '◐ Dia e noite'`
+- feature entry `status.impossible.one` — src/ui/i18n/pt-BR.ts:1014: `'status.impossible.one': '1 nó impossível de construir'`
+- feature entry `status.impossible.other` — src/ui/i18n/pt-BR.ts:1015: `'status.impossible.other': '{count} nós impossíveis de construir'`
+- shared entry `quality.auto` — src/ui/i18n/pt-BR.ts:1017: `'quality.auto': 'Automática'`
+- shared entry `quality.low` — src/ui/i18n/pt-BR.ts:1018: `'quality.low': 'Baixa'`
+- shared entry `quality.medium` — src/ui/i18n/pt-BR.ts:1019: `'quality.medium': 'Média'`
+- shared entry `quality.high` — src/ui/i18n/pt-BR.ts:1020: `'quality.high': 'Alta'`
+- shared entry `quality.ultra` — src/ui/i18n/pt-BR.ts:1021: `'quality.ultra': 'Ultra'`
+- feature entry `tool.building` — src/ui/i18n/pt-BR.ts:1024: `'tool.building': 'Construção'`
+- feature entry `building.preset.block` — src/ui/i18n/pt-BR.ts:1025: `'building.preset.block': 'Bloco'`
+- feature entry `building.preset.house` — src/ui/i18n/pt-BR.ts:1026: `'building.preset.house': 'Casa'`
+- feature entry `building.preset.rowhouse` — src/ui/i18n/pt-BR.ts:1027: `'building.preset.rowhouse': 'Sobrado geminado'`
+- feature entry `building.preset.apartments` — src/ui/i18n/pt-BR.ts:1028: `'building.preset.apartments': 'Prédio residencial'`
+- feature entry `building.preset.tower` — src/ui/i18n/pt-BR.ts:1029: `'building.preset.tower': 'Torre com embasamento'`
+- feature entry `building.preset.shop` — src/ui/i18n/pt-BR.ts:1030: `'building.preset.shop': 'Loja'`
+- feature entry `building.preset.office` — src/ui/i18n/pt-BR.ts:1031: `'building.preset.office': 'Edifício de escritórios'`
+- feature entry `building.preset.mixed` — src/ui/i18n/pt-BR.ts:1032: `'building.preset.mixed': 'Prédio de uso misto'`
+- feature entry `building.preset.courtyard` — src/ui/i18n/pt-BR.ts:1033: `'building.preset.courtyard': 'Prédio com pátio'`
+- feature entry `building.preset.warehouse` — src/ui/i18n/pt-BR.ts:1034: `'building.preset.warehouse': 'Galpão'`
+- feature entry `building.preset.factory` — src/ui/i18n/pt-BR.ts:1035: `'building.preset.factory': 'Fábrica'`
+- feature entry `building.element.noRoom` — src/ui/i18n/pt-BR.ts:1036: `'building.element.noRoom': 'Sem espaço para repeti-lo ao longo do edifício'`
+- feature entry `building.relief.pickFace` — src/ui/i18n/pt-BR.ts:1037: `'building.relief.pickFace': 'Clique numa fachada (Shift+clique ou toque longo: mais vãos) e puxe a seta amarela'`
+- feature entry `building.style.brick` — src/ui/i18n/pt-BR.ts:1038: `'building.style.brick': 'Tijolo'`
+- feature entry `building.style.modern` — src/ui/i18n/pt-BR.ts:1039: `'building.style.modern': 'Moderno'`
+- feature entry `building.style.mediterranean` — src/ui/i18n/pt-BR.ts:1040: `'building.style.mediterranean': 'Mediterrâneo'`
+- feature entry `building.style.industrial` — src/ui/i18n/pt-BR.ts:1041: `'building.style.industrial': 'Industrial'`
+- feature entry `building.style.timber` — src/ui/i18n/pt-BR.ts:1042: `'building.style.timber': 'Madeira'`
+- feature entry `building.material.pickFace` — src/ui/i18n/pt-BR.ts:1043: `'building.material.pickFace': 'Clique numa fachada para pintar essa face'`
+- feature entry `building.finish.plaster` — src/ui/i18n/pt-BR.ts:1044: `'building.finish.plaster': 'Reboco'`
+- feature entry `building.finish.ceramic` — src/ui/i18n/pt-BR.ts:1045: `'building.finish.ceramic': 'Pastilha de porcelana'`
+- feature entry `building.finish.brick` — src/ui/i18n/pt-BR.ts:1046: `'building.finish.brick': 'Tijolo'`
+- feature entry `building.finish.stone` — src/ui/i18n/pt-BR.ts:1047: `'building.finish.stone': 'Pedra'`
+- feature entry `building.finish.concrete` — src/ui/i18n/pt-BR.ts:1048: `'building.finish.concrete': 'Concreto'`
+- feature entry `building.finish.wood` — src/ui/i18n/pt-BR.ts:1049: `'building.finish.wood': 'Madeira'`
+- feature entry `building.finish.metal` — src/ui/i18n/pt-BR.ts:1050: `'building.finish.metal': 'Metal'`
+- feature entry `building.finish.glass` — src/ui/i18n/pt-BR.ts:1051: `'building.finish.glass': 'Vidro'`
+- feature entry `building.finish.tile` — src/ui/i18n/pt-BR.ts:1052: `'building.finish.tile': 'Telha'`
+- feature entry `building.finish.roofing` — src/ui/i18n/pt-BR.ts:1053: `'building.finish.roofing': 'Manta'`
+- feature entry `building.blueprintName` — src/ui/i18n/pt-BR.ts:1054: `'building.blueprintName': 'Nome deste modelo'`
+- feature entry `building.blueprintSaved` — src/ui/i18n/pt-BR.ts:1055: `'building.blueprintSaved': 'Modelo salvo'`
+- feature entry `building.blueprintNotSaved` — src/ui/i18n/pt-BR.ts:1056: `'building.blueprintNotSaved': 'Modelo não salvo: o armazenamento do navegador está cheio ou bloqueado'`
+- feature entry `building.blueprintNotRemoved` — src/ui/i18n/pt-BR.ts:1057: `'building.blueprintNotRemoved': 'Modelo não removido: o armazenamento do navegador está cheio ou bloqueado'`
+- feature entry `building.placed` — src/ui/i18n/pt-BR.ts:1058: `'building.placed': 'Edifício posicionado: arraste as setas para moldá-lo'`
+- feature entry `building.copied` — src/ui/i18n/pt-BR.ts:1059: `'building.copied': 'Edifício copiado: Ctrl+V para posicionar uma cópia'`
+- feature entry `building.problem.size` — src/ui/i18n/pt-BR.ts:1060: `'building.problem.size': 'Dimensões fora dos limites'`
+- feature entry `building.problem.overlap` — src/ui/i18n/pt-BR.ts:1061: `'building.problem.overlap': 'Dois volumes ficariam sobrepostos'`
+- feature entry `building.problem.support` — src/ui/i18n/pt-BR.ts:1062: `'building.problem.support': 'Um volume ficaria sem apoio'`
+- feature entry `building.problem.footprint` — src/ui/i18n/pt-BR.ts:1063: `'building.problem.footprint': 'Nada ficaria apoiado no chão'`
+- feature entry `building.problem.bounds` — src/ui/i18n/pt-BR.ts:1064: `'building.problem.bounds': 'Fora do mapa'`
+- feature entry `building.problem.road` — src/ui/i18n/pt-BR.ts:1065: `'building.problem.road': 'Sobrepõe uma via'`
+- feature entry `building.problem.building` — src/ui/i18n/pt-BR.ts:1066: `'building.problem.building': 'Sobrepõe outro edifício'`
+- feature entry `building.problem.slope` — src/ui/i18n/pt-BR.ts:1067: `'building.problem.slope': 'O terreno é íngreme demais aqui'`
+- feature entry `building.demolished.one` — src/ui/i18n/pt-BR.ts:1068: `'building.demolished.one': 'A via demoliu 1 edifício'`
+- feature entry `building.demolished.other` — src/ui/i18n/pt-BR.ts:1069: `'building.demolished.other': 'A via demoliu {count} edifícios'`
+- feature entry `building.floors.one` — src/ui/i18n/pt-BR.ts:1070: `'building.floors.one': '{count} pavimento'`
+- feature entry `building.floors.other` — src/ui/i18n/pt-BR.ts:1071: `'building.floors.other': '{count} pavimentos'`
+- feature entry `building.problem.outline` — src/ui/i18n/pt-BR.ts:1072: `'building.problem.outline': 'O contorno se cruza ou é pequeno demais'`
+- feature entry `building.problem.roofSpace` — src/ui/i18n/pt-BR.ts:1073: `'building.problem.roofSpace': 'Escolha uma área livre inteiramente dentro de um telhado.'`
+- feature entry `building.problem.cut` — src/ui/i18n/pt-BR.ts:1074: `'building.problem.cut': 'O recorte deve alcançar uma lateral. Faça pátio fechado com massas encostadas.'`
+- feature entry `building.problem.setback` — src/ui/i18n/pt-BR.ts:1075: `'building.problem.setback': 'Sem espaço para recuo automático. Desenhe uma massa menor sobre o teto.'`
+- feature entry `creator.dock.scope.bay` — src/ui/i18n/pt-BR.ts:1076: `'creator.dock.scope.bay': 'Vão'`
+- feature entry `creator.dock.scope.column` — src/ui/i18n/pt-BR.ts:1077: `'creator.dock.scope.column': 'Coluna vertical'`
+- feature entry `creator.dock.scope.row` — src/ui/i18n/pt-BR.ts:1078: `'creator.dock.scope.row': 'Fileira do andar'`
+- feature entry `creator.dock.scope.storey` — src/ui/i18n/pt-BR.ts:1079: `'creator.dock.scope.storey': 'Andar inteiro'`
+- feature entry `creator.dock.scope.side` — src/ui/i18n/pt-BR.ts:1080: `'creator.dock.scope.side': 'Face inteira'`
+- feature entry `creator.dock.scope.volume` — src/ui/i18n/pt-BR.ts:1081: `'creator.dock.scope.volume': 'Bloco inteiro'`
+- feature entry `creator.dock.scope.zone` — src/ui/i18n/pt-BR.ts:1082: `'creator.dock.scope.zone': 'Zona (arrastar)'`
+- feature entry `building.reshapeRelief` — src/ui/i18n/pt-BR.ts:1084: `'building.reshapeRelief': 'Alinhe os relevos da fachada antes de trocar o contorno desta faixa.'`
+- feature entry `creator.pattern.residential` — src/ui/i18n/pt-BR.ts:1085: `'creator.pattern.residential': 'Residencial'`
+- feature entry `creator.pattern.storefront` — src/ui/i18n/pt-BR.ts:1086: `'creator.pattern.storefront': 'Lojas'`
+- feature entry `creator.pattern.office` — src/ui/i18n/pt-BR.ts:1087: `'creator.pattern.office': 'Escritórios'`
+- feature entry `creator.pattern.industrial` — src/ui/i18n/pt-BR.ts:1088: `'creator.pattern.industrial': 'Industrial'`
+- feature entry `creator.pattern.arcade` — src/ui/i18n/pt-BR.ts:1089: `'creator.pattern.arcade': 'Pilotis'`
+- feature entry `creator.pattern.gallery` — src/ui/i18n/pt-BR.ts:1090: `'creator.pattern.gallery': 'Galeria aberta'`
+- feature entry `creator.pattern.artDeco` — src/ui/i18n/pt-BR.ts:1091: `'creator.pattern.artDeco': 'Art Déco'`
+- feature entry `creator.pattern.artDecoCrown` — src/ui/i18n/pt-BR.ts:1092: `'creator.pattern.artDecoCrown': 'Coroamento Déco'`
+- feature entry `creator.pattern.observation` — src/ui/i18n/pt-BR.ts:1093: `'creator.pattern.observation': 'Mirante envidraçado'`
+- feature entry `builder.grid` — src/ui/i18n/pt-BR.ts:1097: `'builder.grid': 'Grade'`
+- feature entry `builder.view.frame` — src/ui/i18n/pt-BR.ts:1098: `'builder.view.frame': 'Enquadrar a seleção'`
+- feature entry `builder.hideOthers` — src/ui/i18n/pt-BR.ts:1099: `'builder.hideOthers': 'Ocultar outros'`
+- feature entry `builder.help` — src/ui/i18n/pt-BR.ts:1100: `'builder.help': 'Ajuda'`
+- feature entry `builder.help.select` — src/ui/i18n/pt-BR.ts:1101: `'builder.help.select': 'Selecionar'`
+- feature entry `builder.help.select.text` — src/ui/i18n/pt-BR.ts:1102: `'builder.help.select.text': 'Clique num edifício, num volume ou numa face. Shift+clique num segundo vão para ampliar a seleção. Esc volta atrás; o botão direito`
+- feature entry `builder.help.gizmo` — src/ui/i18n/pt-BR.ts:1103: `'builder.help.gizmo': 'No objeto'`
+- feature entry `builder.help.gizmo.text` — src/ui/i18n/pt-BR.ts:1104: `'builder.help.gizmo.text': 'A cruz move, o anel gira, os quadrados nas laterais e os chevrons acima da cobertura redimensionam e somam pavimentos. Tudo acontece`
+- feature entry `builder.help.numeric` — src/ui/i18n/pt-BR.ts:1105: `'builder.help.numeric': 'Precisão'`
+- feature entry `builder.help.numeric.text` — src/ui/i18n/pt-BR.ts:1106: `'builder.help.numeric.text': 'O inspetor traz os números exatos: pavimentos, pé-direito, inclinação, ritmo dos vãos, peitoril, tamanho dos elementos. Digite o v`
+- feature entry `builder.help.keys` — src/ui/i18n/pt-BR.ts:1107: `'builder.help.keys': 'Teclas'`
+- feature entry `builder.help.keys.text` — src/ui/i18n/pt-BR.ts:1108: `'builder.help.keys.text': 'R gira 15° (Shift: 90°), PageUp/PageDown somam e tiram pavimentos, Delete remove, Ctrl+D duplica, Ctrl+C e Ctrl+V copiam e colam, Ctr`
+- feature entry `builder.help.cancel` — src/ui/i18n/pt-BR.ts:1109: `'builder.help.cancel': 'Cancelar'`
+- feature entry `builder.help.cancel.text` — src/ui/i18n/pt-BR.ts:1110: `'builder.help.cancel.text': 'Esc cancela a operação; o botão direito faz o mesmo sem sair do Builder; Alt solta um arraste da grade.'`
+- feature entry `builder.floor.title` — src/ui/i18n/pt-BR.ts:1111: `'builder.floor.title': 'Em qual pavimento as ferramentas de face trabalham'`
+- feature entry `builder.snap.label` — src/ui/i18n/pt-BR.ts:1112: `'builder.snap.label': 'Encaixe'`
+- feature entry `builder.snap.auto` — src/ui/i18n/pt-BR.ts:1113: `'builder.snap.auto': 'Auto'`
+- feature entry `builder.snap.grid` — src/ui/i18n/pt-BR.ts:1114: `'builder.snap.grid': 'Grade'`
+- feature entry `builder.snap.edge` — src/ui/i18n/pt-BR.ts:1115: `'builder.snap.edge': 'Borda'`
+- feature entry `builder.snap.face` — src/ui/i18n/pt-BR.ts:1116: `'builder.snap.face': 'Face'`
+- feature entry `builder.snap.centre` — src/ui/i18n/pt-BR.ts:1117: `'builder.snap.centre': 'Centro'`
+- feature entry `builder.snap.building` — src/ui/i18n/pt-BR.ts:1118: `'builder.snap.building': 'Edifício'`
+- feature entry `builder.snap.road` — src/ui/i18n/pt-BR.ts:1119: `'builder.snap.road': 'Via'`
+- feature entry `builder.snap.off` — src/ui/i18n/pt-BR.ts:1120: `'builder.snap.off': 'Desligado'`
+- feature entry `builder.sel.volume` — src/ui/i18n/pt-BR.ts:1124: `'builder.sel.volume': 'Volume {n}'`
+- feature entry `builder.sel.building` — src/ui/i18n/pt-BR.ts:1125: `'builder.sel.building': 'Edifício'`
+- feature entry `builder.sel.face` — src/ui/i18n/pt-BR.ts:1126: `'builder.sel.face': 'Face'`
+- feature entry `builder.sel.floor` — src/ui/i18n/pt-BR.ts:1127: `'builder.sel.floor': 'pavimento {n}'`
+- feature entry `builder.sel.element` — src/ui/i18n/pt-BR.ts:1128: `'builder.sel.element': 'Elemento'`
+- feature entry `builder.sel.detail` — src/ui/i18n/pt-BR.ts:1129: `'builder.sel.detail': 'Detalhe de cobertura'`
+- shared entry `builder.field.pitch` — src/ui/i18n/pt-BR.ts:1134: `'builder.field.pitch': 'Inclinação'`
+- feature entry `builder.styleCopied` — src/ui/i18n/pt-BR.ts:1188: `'builder.styleCopied': 'Estilo copiado: o pincel o carrega'`
+- feature entry `builder.roof.ridge.label` — src/ui/i18n/pt-BR.ts:1189: `'builder.roof.ridge.label': 'Cumeeira'`
+- feature entry `builder.roof.side.label` — src/ui/i18n/pt-BR.ts:1190: `'builder.roof.side.label': 'Água para'`
+- feature entry `builder.roof.ridge.x` — src/ui/i18n/pt-BR.ts:1191: `'builder.roof.ridge.x': 'Cumeeira esquerda–direita'`
+- feature entry `builder.roof.ridge.y` — src/ui/i18n/pt-BR.ts:1192: `'builder.roof.ridge.y': 'Cumeeira frente–fundos'`
+- feature entry `builder.roof.side.front` — src/ui/i18n/pt-BR.ts:1193: `'builder.roof.side.front': 'Água para a frente'`
+- feature entry `builder.roof.side.right` — src/ui/i18n/pt-BR.ts:1194: `'builder.roof.side.right': 'Água para a direita'`
+- feature entry `builder.roof.side.back` — src/ui/i18n/pt-BR.ts:1195: `'builder.roof.side.back': 'Água para os fundos'`
+- feature entry `builder.roof.side.left` — src/ui/i18n/pt-BR.ts:1196: `'builder.roof.side.left': 'Água para a esquerda'`
+- feature entry `builder.plan.finish` — src/ui/i18n/pt-BR.ts:1197: `'builder.plan.finish': 'Concluir'`
+- feature entry `builder.plan.back` — src/ui/i18n/pt-BR.ts:1198: `'builder.plan.back': 'Voltar ponto'`
+- feature entry `builder.plan.cancel` — src/ui/i18n/pt-BR.ts:1199: `'builder.plan.cancel': 'Cancelar'`
+- feature entry `builder.noGroup` — src/ui/i18n/pt-BR.ts:1200: `'builder.noGroup': 'Nenhum edifício perto o bastante para agrupar'`
+- feature entry `builder.grouped` — src/ui/i18n/pt-BR.ts:1201: `'builder.grouped': 'Agrupado num só edifício'`
+- feature entry `building.selectFirst` — src/ui/i18n/pt-BR.ts:1202: `'building.selectFirst': 'Selecione um edifício primeiro'`
+- feature entry `builder.category.draw` — src/ui/i18n/pt-BR.ts:1204: `'builder.category.draw': 'Desenhar'`
+- feature entry `inside.toggle` — src/ui/i18n/pt-BR.ts:1205: `'inside.toggle': 'Ver por dentro: o prédio no centro da vista (ou dê dois cliques num prédio)'`
+- feature entry `inside.down` — src/ui/i18n/pt-BR.ts:1206: `'inside.down': 'Andar abaixo'`
+- feature entry `inside.up` — src/ui/i18n/pt-BR.ts:1207: `'inside.up': 'Andar acima'`
+- feature entry `inside.ground` — src/ui/i18n/pt-BR.ts:1208: `'inside.ground': 'Térreo'`
+- feature entry `hint.inside.none` — src/ui/i18n/pt-BR.ts:1209: `'hint.inside.none': 'Nenhum prédio no centro da vista: aponte a vista para um, ou dê dois cliques nele'`
+- feature entry `inside.floor` — src/ui/i18n/pt-BR.ts:1210: `'inside.floor': '{n}º andar'`
+- shared entry `building.fn.house` — src/ui/i18n/pt-BR.ts:1211: `'building.fn.house': 'Casa'`
+- shared entry `building.fn.townhouse` — src/ui/i18n/pt-BR.ts:1212: `'building.fn.townhouse': 'Sobrado'`
+- shared entry `building.fn.apartments` — src/ui/i18n/pt-BR.ts:1213: `'building.fn.apartments': 'Prédio residencial'`
+- shared entry `building.fn.residentialTower` — src/ui/i18n/pt-BR.ts:1214: `'building.fn.residentialTower': 'Torre residencial'`
+- shared entry `building.fn.cityHall` — src/ui/i18n/pt-BR.ts:1215: `'building.fn.cityHall': 'Prefeitura'`
+- shared entry `building.fn.council` — src/ui/i18n/pt-BR.ts:1216: `'building.fn.council': 'Câmara de Vereadores'`
+- shared entry `building.fn.courthouse` — src/ui/i18n/pt-BR.ts:1217: `'building.fn.courthouse': 'Fórum'`
+- shared entry `building.fn.postOffice` — src/ui/i18n/pt-BR.ts:1218: `'building.fn.postOffice': 'Correios'`
+- shared entry `building.fn.police` — src/ui/i18n/pt-BR.ts:1219: `'building.fn.police': 'Delegacia'`
+- shared entry `building.fn.fireStation` — src/ui/i18n/pt-BR.ts:1220: `'building.fn.fireStation': 'Bombeiros'`
+- shared entry `building.fn.hospital` — src/ui/i18n/pt-BR.ts:1221: `'building.fn.hospital': 'Hospital'`
+- shared entry `building.fn.clinic` — src/ui/i18n/pt-BR.ts:1222: `'building.fn.clinic': 'Posto de saúde'`
+- shared entry `building.fn.school` — src/ui/i18n/pt-BR.ts:1223: `'building.fn.school': 'Escola'`
+- shared entry `building.fn.university` — src/ui/i18n/pt-BR.ts:1224: `'building.fn.university': 'Faculdade'`
+- shared entry `building.fn.library` — src/ui/i18n/pt-BR.ts:1225: `'building.fn.library': 'Biblioteca'`
+- shared entry `building.fn.museum` — src/ui/i18n/pt-BR.ts:1226: `'building.fn.museum': 'Museu'`
+- shared entry `building.fn.prison` — src/ui/i18n/pt-BR.ts:1227: `'building.fn.prison': 'Presídio'`
+- shared entry `building.fn.church` — src/ui/i18n/pt-BR.ts:1228: `'building.fn.church': 'Igreja'`
+- shared entry `building.fn.cemetery` — src/ui/i18n/pt-BR.ts:1229: `'building.fn.cemetery': 'Cemitério'`
+- shared entry `building.fn.busStation` — src/ui/i18n/pt-BR.ts:1230: `'building.fn.busStation': 'Rodoviária'`
+- shared entry `building.fn.shop` — src/ui/i18n/pt-BR.ts:1231: `'building.fn.shop': 'Loja'`
+- shared entry `building.fn.supermarket` — src/ui/i18n/pt-BR.ts:1232: `'building.fn.supermarket': 'Supermercado'`
+- shared entry `building.fn.mall` — src/ui/i18n/pt-BR.ts:1233: `'building.fn.mall': 'Shopping'`
+- shared entry `building.fn.bank` — src/ui/i18n/pt-BR.ts:1234: `'building.fn.bank': 'Banco'`
+- shared entry `building.fn.pharmacy` — src/ui/i18n/pt-BR.ts:1235: `'building.fn.pharmacy': 'Farmácia'`
+- shared entry `building.fn.bakery` — src/ui/i18n/pt-BR.ts:1236: `'building.fn.bakery': 'Padaria'`
+- shared entry `building.fn.restaurant` — src/ui/i18n/pt-BR.ts:1237: `'building.fn.restaurant': 'Restaurante'`
+- shared entry `building.fn.snackBar` — src/ui/i18n/pt-BR.ts:1238: `'building.fn.snackBar': 'Lanchonete'`
+- shared entry `building.fn.bar` — src/ui/i18n/pt-BR.ts:1239: `'building.fn.bar': 'Bar'`
+- shared entry `building.fn.nightclub` — src/ui/i18n/pt-BR.ts:1240: `'building.fn.nightclub': 'Discoteca'`
+- shared entry `building.fn.cinema` — src/ui/i18n/pt-BR.ts:1241: `'building.fn.cinema': 'Cinema'`
+- shared entry `building.fn.hotel` — src/ui/i18n/pt-BR.ts:1242: `'building.fn.hotel': 'Hotel'`
+- shared entry `building.fn.gym` — src/ui/i18n/pt-BR.ts:1243: `'building.fn.gym': 'Academia'`
+- shared entry `building.fn.club` — src/ui/i18n/pt-BR.ts:1244: `'building.fn.club': 'Clube'`
+- shared entry `building.fn.gasStation` — src/ui/i18n/pt-BR.ts:1245: `'building.fn.gasStation': 'Posto de gasolina'`
+- shared entry `building.fn.office` — src/ui/i18n/pt-BR.ts:1246: `'building.fn.office': 'Escritórios'`
+- shared entry `building.fn.factory` — src/ui/i18n/pt-BR.ts:1247: `'building.fn.factory': 'Fábrica'`
+- shared entry `building.fn.warehouse` — src/ui/i18n/pt-BR.ts:1248: `'building.fn.warehouse': 'Galpão'`
+- shared entry `building.fn.park` — src/ui/i18n/pt-BR.ts:1249: `'building.fn.park': 'Parque'`
+- shared entry `building.fn.square` — src/ui/i18n/pt-BR.ts:1250: `'building.fn.square': 'Praça'`
+- shared entry `building.fn.playground` — src/ui/i18n/pt-BR.ts:1251: `'building.fn.playground': 'Parquinho'`
+- shared entry `building.fn.sportsCourt` — src/ui/i18n/pt-BR.ts:1252: `'building.fn.sportsCourt': 'Quadra'`
+- feature entry `builder.city.homes` — src/ui/i18n/pt-BR.ts:1253: `'builder.city.homes': 'Moradia'`
+- feature entry `builder.city.public` — src/ui/i18n/pt-BR.ts:1254: `'builder.city.public': 'Serviços públicos'`
+- feature entry `builder.city.commerce` — src/ui/i18n/pt-BR.ts:1255: `'builder.city.commerce': 'Comércio e serviços'`
+- feature entry `builder.city.work` — src/ui/i18n/pt-BR.ts:1256: `'builder.city.work': 'Trabalho'`
+- feature entry `builder.city.leisure` — src/ui/i18n/pt-BR.ts:1257: `'builder.city.leisure': 'Lazer'`
+- feature entry `builder.city.generic` — src/ui/i18n/pt-BR.ts:1258: `'builder.city.generic': 'Blocos genéricos'`
+- feature entry `builder.city.lots` — src/ui/i18n/pt-BR.ts:1259: `'builder.city.lots': 'Lotes'`
+- feature entry `builder.lot.balconyMid` — src/ui/i18n/pt-BR.ts:1260: `'builder.lot.balconyMid': 'Varandas e madeira'`
+- feature entry `builder.lot.glassOffice` — src/ui/i18n/pt-BR.ts:1261: `'builder.lot.glassOffice': 'Escritório de vidro'`
+- feature entry `builder.lot.glassBalcony` — src/ui/i18n/pt-BR.ts:1262: `'builder.lot.glassBalcony': 'Vidro com varandas'`
+- feature entry `builder.lot.beigeClassic` — src/ui/i18n/pt-BR.ts:1263: `'builder.lot.beigeClassic': 'Bege clássica'`
+- feature entry `builder.lot.darkGlass` — src/ui/i18n/pt-BR.ts:1264: `'builder.lot.darkGlass': 'Vidro escuro'`
+- feature entry `builder.lot.whiteBalcony` — src/ui/i18n/pt-BR.ts:1265: `'builder.lot.whiteBalcony': 'Branca com varandas'`
+- feature entry `builder.lot.brickFrame` — src/ui/i18n/pt-BR.ts:1266: `'builder.lot.brickFrame': 'Tijolo e vidro'`
+- feature entry `builder.lot.roundGlass` — src/ui/i18n/pt-BR.ts:1267: `'builder.lot.roundGlass': 'Redonda de vidro'`
+- feature entry `builder.lot.darkGrid` — src/ui/i18n/pt-BR.ts:1268: `'builder.lot.darkGrid': 'Grade escura'`
+- feature entry `builder.lot.artDeco` — src/ui/i18n/pt-BR.ts:1269: `'builder.lot.artDeco': 'Art déco'`
+- feature entry `builder.lot.twistGreen` — src/ui/i18n/pt-BR.ts:1270: `'builder.lot.twistGreen': 'Torcida verde-água'`
+- feature entry `builder.lot.hexTerracotta` — src/ui/i18n/pt-BR.ts:1271: `'builder.lot.hexTerracotta': 'Hexagonal de terracota'`
+- feature entry `builder.lot.stepGarden` — src/ui/i18n/pt-BR.ts:1272: `'builder.lot.stepGarden': 'Terraços-jardim'`
+- feature entry `builder.lot.waveWhite` — src/ui/i18n/pt-BR.ts:1273: `'builder.lot.waveWhite': 'Varandas em onda'`
+- feature entry `builder.lot.cubeBalcony` — src/ui/i18n/pt-BR.ts:1274: `'builder.lot.cubeBalcony': 'Varandas em cubo'`
+- feature entry `builder.lot.twinNavy` — src/ui/i18n/pt-BR.ts:1275: `'builder.lot.twinNavy': 'Gêmeas azul-marinho'`
+- feature entry `builder.lot.octCopper` — src/ui/i18n/pt-BR.ts:1276: `'builder.lot.octCopper': 'Octogonal de cobre'`
+- feature entry `builder.lot.stackedBlocks` — src/ui/i18n/pt-BR.ts:1277: `'builder.lot.stackedBlocks': 'Blocos empilhados'`
+- feature entry `builder.lot.pinkCorner` — src/ui/i18n/pt-BR.ts:1278: `'builder.lot.pinkCorner': 'Esquina rosa'`
+- feature entry `builder.lot.triangleDark` — src/ui/i18n/pt-BR.ts:1279: `'builder.lot.triangleDark': 'Triangular escura'`
+- feature entry `builder.lot.cityHallBrick` — src/ui/i18n/pt-BR.ts:1280: `'builder.lot.cityHallBrick': 'Prefeitura de tijolo'`
+- feature entry `builder.lot.decoSpire` — src/ui/i18n/pt-BR.ts:1281: `'builder.lot.decoSpire': 'Art déco com pináculo'`
+- feature entry `builder.lot.hospitalA` — src/ui/i18n/pt-BR.ts:1282: `'builder.lot.hospitalA': 'Hospital'`
+- feature entry `builder.lot.loftBrick` — src/ui/i18n/pt-BR.ts:1283: `'builder.lot.loftBrick': 'Lofts de tijolo'`
+- feature entry `builder.lot.cityHallWhite` — src/ui/i18n/pt-BR.ts:1284: `'builder.lot.cityHallWhite': 'Prefeitura branca'`
+- feature entry `builder.lot.forum` — src/ui/i18n/pt-BR.ts:1285: `'builder.lot.forum': 'Fórum'`
+- feature entry `builder.lot.church` — src/ui/i18n/pt-BR.ts:1286: `'builder.lot.church': 'Igreja'`
+- feature entry `builder.lot.bank` — src/ui/i18n/pt-BR.ts:1287: `'builder.lot.bank': 'Banco'`
+- feature entry `builder.lot.school` — src/ui/i18n/pt-BR.ts:1288: `'builder.lot.school': 'Escola'`
+- feature entry `builder.lot.fireStation` — src/ui/i18n/pt-BR.ts:1289: `'builder.lot.fireStation': 'Bombeiros'`
+- feature entry `builder.lot.police` — src/ui/i18n/pt-BR.ts:1290: `'builder.lot.police': 'Delegacia'`
+- feature entry `builder.lot.hospitalB` — src/ui/i18n/pt-BR.ts:1291: `'builder.lot.hospitalB': 'Hospital com ala'`
+- feature entry `builder.lot.cemetery` — src/ui/i18n/pt-BR.ts:1292: `'builder.lot.cemetery': 'Cemitério'`
+- feature entry `builder.lot.beauxArts` — src/ui/i18n/pt-BR.ts:1293: `'builder.lot.beauxArts': 'Hotel Beaux-Arts'`
+- feature entry `builder.lot.decoTower` — src/ui/i18n/pt-BR.ts:1294: `'builder.lot.decoTower': 'Torre art déco'`
+- feature entry `builder.lot.modernOffice` — src/ui/i18n/pt-BR.ts:1295: `'builder.lot.modernOffice': 'Escritório modernista'`
+- feature entry `builder.lot.residentialTerrace` — src/ui/i18n/pt-BR.ts:1296: `'builder.lot.residentialTerrace': 'Residencial com terraços'`
+- feature entry `builder.lot.glassSpire` — src/ui/i18n/pt-BR.ts:1297: `'builder.lot.glassSpire': 'Torre de vidro azul'`
+- feature entry `builder.city.all` — src/ui/i18n/pt-BR.ts:1298: `'builder.city.all': 'Todos'`
+- feature entry `v2.cat.landscape` — src/ui/i18n/pt-BR.ts:1299: `'v2.cat.landscape': 'Paisagem'`
+- feature entry `v2.cat.info` — src/ui/i18n/pt-BR.ts:1300: `'v2.cat.info': 'Informações'`
+- feature entry `v2.dock.roads` — src/ui/i18n/pt-BR.ts:1301: `'v2.dock.roads': 'Vias'`
+- feature entry `v2.dock.zones` — src/ui/i18n/pt-BR.ts:1302: `'v2.dock.zones': 'Zonas'`
+- feature entry `v2.dock.build` — src/ui/i18n/pt-BR.ts:1303: `'v2.dock.build': 'Construir'`
+- feature entry `v2.dock.landscape` — src/ui/i18n/pt-BR.ts:1304: `'v2.dock.landscape': 'Paisagem'`
+- feature entry `v2.dock.transit` — src/ui/i18n/pt-BR.ts:1305: `'v2.dock.transit': 'Transporte'`
+- feature entry `v2.dock.demolish` — src/ui/i18n/pt-BR.ts:1306: `'v2.dock.demolish': 'Demolir'`
+- feature entry `v2.dock.info` — src/ui/i18n/pt-BR.ts:1307: `'v2.dock.info': 'Informação'`
+- feature entry `v2.close` — src/ui/i18n/pt-BR.ts:1308: `'v2.close': 'Fechar'`
+- feature entry `parking.preset.cycle` — src/ui/i18n/pt-BR.ts:1314: `'parking.preset.cycle': 'Ciclofaixa dos dois lados'`
+- feature entry `parking.preset.cycleParking` — src/ui/i18n/pt-BR.ts:1315: `'parking.preset.cycleParking': 'Ciclofaixa à direita, vagas à esquerda'`
+- feature entry `parking.preset.none` — src/ui/i18n/pt-BR.ts:1316: `'parking.preset.none': 'Sem estacionamento'`
+- feature entry `parking.preset.parallel` — src/ui/i18n/pt-BR.ts:1317: `'parking.preset.parallel': 'Vagas paralelas nos dois lados'`
+- feature entry `parking.preset.parallelLeft` — src/ui/i18n/pt-BR.ts:1318: `'parking.preset.parallelLeft': 'Vagas paralelas à esquerda'`
+- feature entry `parking.preset.parallelRight` — src/ui/i18n/pt-BR.ts:1319: `'parking.preset.parallelRight': 'Vagas paralelas à direita'`
+- feature entry `v2.snap.title` — src/ui/i18n/pt-BR.ts:1320: `'v2.snap.title': 'Encaixe'`
+- feature entry `v2.blocks.count` — src/ui/i18n/pt-BR.ts:1322: `'v2.blocks.count': 'Quadras'`
+- feature entry `v2.blocks.measure` — src/ui/i18n/pt-BR.ts:1323: `'v2.blocks.measure': 'Medidas'`
+- feature entry `v2.row.lanes` — src/ui/i18n/pt-BR.ts:1324: `'v2.row.lanes': 'Faixas'`
+- feature entry `v2.row.width` — src/ui/i18n/pt-BR.ts:1325: `'v2.row.width': 'Largura'`
+- feature entry `v2.row.height` — src/ui/i18n/pt-BR.ts:1326: `'v2.row.height': 'Altura'`
+- feature entry `v2.row.parking` — src/ui/i18n/pt-BR.ts:1327: `'v2.row.parking': 'Vagas'`
+- feature entry `v2.roundabout.radius` — src/ui/i18n/pt-BR.ts:1328: `'v2.roundabout.radius': 'Raio (m)'`
+- feature entry `v2.row.brush` — src/ui/i18n/pt-BR.ts:1329: `'v2.row.brush': 'Pincel'`
+- feature entry `v2.row.clear` — src/ui/i18n/pt-BR.ts:1330: `'v2.row.clear': 'Apagar'`
+- feature entry `v2.row.biome` — src/ui/i18n/pt-BR.ts:1331: `'v2.row.biome': 'Bioma'`
+- feature entry `v2.row.sky` — src/ui/i18n/pt-BR.ts:1332: `'v2.row.sky': 'Céu'`
+- feature entry `v2.row.sign` — src/ui/i18n/pt-BR.ts:1333: `'v2.row.sign': 'Placa'`
+- feature entry `v2.row.text` — src/ui/i18n/pt-BR.ts:1334: `'v2.row.text': 'Texto'`
+- feature entry `v2.row.lights` — src/ui/i18n/pt-BR.ts:1335: `'v2.row.lights': 'Luzes'`
+- feature entry `v2.row.cut` — src/ui/i18n/pt-BR.ts:1336: `'v2.row.cut': 'Corte'`
+- feature entry `v2.row.parts` — src/ui/i18n/pt-BR.ts:1337: `'v2.row.parts': 'Partes'`
+- feature entry `v2.map` — src/ui/i18n/pt-BR.ts:1338: `'v2.map': 'Mapa inteiro'`
+- feature entry `v2.land.relief` — src/ui/i18n/pt-BR.ts:1339: `'v2.land.relief': 'Relevo'`
+- feature entry `v2.land.ground` — src/ui/i18n/pt-BR.ts:1340: `'v2.land.ground': 'Solo'`
+- feature entry `v2.land.nature` — src/ui/i18n/pt-BR.ts:1341: `'v2.land.nature': 'Natureza'`
+- feature entry `v2.land.sky` — src/ui/i18n/pt-BR.ts:1342: `'v2.land.sky': 'Céu e clima'`
+- feature entry `v2.land.street` — src/ui/i18n/pt-BR.ts:1343: `'v2.land.street': 'Rua'`
+- feature entry `v2.layers` — src/ui/i18n/pt-BR.ts:1344: `'v2.layers': 'Camadas do mapa'`
+- feature entry `v2.help.global` — src/ui/i18n/pt-BR.ts:1345: `'v2.help.global': 'Atalhos'`
+- feature entry `v2.help.builder` — src/ui/i18n/pt-BR.ts:1346: `'v2.help.builder': 'Mais sobre o construtor'`
+- feature entry `v2.do.tools` — src/ui/i18n/pt-BR.ts:1352: `'v2.do.tools': 'Escolher a ferramenta'`
+- feature entry `v2.layer.grid` — src/ui/i18n/pt-BR.ts:1356: `'v2.layer.grid': 'Grade'`
+- feature entry `v2.layer.inside` — src/ui/i18n/pt-BR.ts:1357: `'v2.layer.inside': 'Interior dos prédios'`
+- feature entry `v2.s.variation` — src/ui/i18n/pt-BR.ts:1359: `'v2.s.variation': 'Variação'`
+- feature entry `v2.s.spacing` — src/ui/i18n/pt-BR.ts:1360: `'v2.s.spacing': 'Espaço'`
+- feature entry `v2.s.effect` — src/ui/i18n/pt-BR.ts:1361: `'v2.s.effect': 'Efeito'`
+- feature entry `v2.s.wind` — src/ui/i18n/pt-BR.ts:1362: `'v2.s.wind': 'Vento'`
+- feature entry `v2.s.fogAll` — src/ui/i18n/pt-BR.ts:1363: `'v2.s.fogAll': 'Neblina'`
+- feature entry `v2.s.mistHeight` — src/ui/i18n/pt-BR.ts:1364: `'v2.s.mistHeight': 'Alt. névoa'`
+- feature entry `v2.s.direction` — src/ui/i18n/pt-BR.ts:1365: `'v2.s.direction': 'Direção'`
+- feature entry `v2.s.lightning` — src/ui/i18n/pt-BR.ts:1366: `'v2.s.lightning': 'Raios'`
+- feature entry `v2.s.thunder` — src/ui/i18n/pt-BR.ts:1367: `'v2.s.thunder': 'Trovão'`
+- feature entry `v2.s.gullyAuto` — src/ui/i18n/pt-BR.ts:1368: `'v2.s.gullyAuto': 'Naturais'`
+- feature entry `v2.s.base` — src/ui/i18n/pt-BR.ts:1369: `'v2.s.base': 'Base'`
+- feature entry `v2.snap.on` — src/ui/i18n/pt-BR.ts:1370: `'v2.snap.on': 'Encaixe ligado'`
+- feature entry `v2.snap.angles` — src/ui/i18n/pt-BR.ts:1371: `'v2.snap.angles': 'Ângulos: 90°, 45°, 15°'`
+- feature entry `v2.snap.grid` — src/ui/i18n/pt-BR.ts:1372: `'v2.snap.grid': 'Pontos na grade de 1 m'`
+- feature entry `v2.land.walls` — src/ui/i18n/pt-BR.ts:1373: `'v2.land.walls': 'Muros e cercas'`
+- feature entry `v2.zone.use` — src/ui/i18n/pt-BR.ts:1374: `'v2.zone.use': 'Uso do solo'`
+- feature entry `v2.zone.density` — src/ui/i18n/pt-BR.ts:1375: `'v2.zone.density': 'Densidade'`
+- feature entry `v2.terrain.brush` — src/ui/i18n/pt-BR.ts:1376: `'v2.terrain.brush': 'Pincel de terreno'`
+- feature entry `v2.build.shape` — src/ui/i18n/pt-BR.ts:1377: `'v2.build.shape': 'Forma'`
+- feature entry `v2.build.selectToEdit` — src/ui/i18n/pt-BR.ts:1378: `'v2.build.selectToEdit': 'Clique num prédio para editá-lo'`
+- feature entry `v2.build.floor` — src/ui/i18n/pt-BR.ts:1379: `'v2.build.floor': 'Andar'`
+- feature entry `v2.build.plan` — src/ui/i18n/pt-BR.ts:1380: `'v2.build.plan': 'Planta'`
+- feature entry `v2.build.material` — src/ui/i18n/pt-BR.ts:1381: `'v2.build.material': 'Material'`
+- feature entry `v2.build.colour` — src/ui/i18n/pt-BR.ts:1382: `'v2.build.colour': 'Cor'`
+- feature entry `builder.city.mine` — src/ui/i18n/pt-BR.ts:1383: `'builder.city.mine': 'Meus modelos'`
+- feature entry `builder.search` — src/ui/i18n/pt-BR.ts:1384: `'builder.search': 'Buscar prédios'`
+- feature entry `builder.search.none` — src/ui/i18n/pt-BR.ts:1385: `'builder.search.none': 'Nada com esse nome.'`
+- feature entry `builder.advanced.off` — src/ui/i18n/pt-BR.ts:1386: `'builder.advanced.off': 'Mostrar modelagem avançada'`
+- feature entry `builder.advanced.on` — src/ui/i18n/pt-BR.ts:1387: `'builder.advanced.on': 'Ocultar modelagem avançada'`
+- feature entry `builder.tool.clock` — src/ui/i18n/pt-BR.ts:1390: `'builder.tool.clock': 'Relógio'`
+- shared entry `hint.builder.clock` — src/ui/i18n/pt-BR.ts:1391: `'hint.builder.clock': 'Clique num vão da fachada para pendurar um relógio'`
+- feature entry `builder.category.interior` — src/ui/i18n/pt-BR.ts:1392: `'builder.category.interior': 'Interior'`
+- feature entry `builder.section.interiorView` — src/ui/i18n/pt-BR.ts:1393: `'builder.section.interiorView': 'Ver por dentro'`
+- feature entry `builder.section.cores` — src/ui/i18n/pt-BR.ts:1394: `'builder.section.cores': 'Circulação: escadas e elevadores'`
+- feature entry `builder.tool.interiorView` — src/ui/i18n/pt-BR.ts:1395: `'builder.tool.interiorView': 'Cortar e ver'`
+- feature entry `builder.tool.floorDown` — src/ui/i18n/pt-BR.ts:1396: `'builder.tool.floorDown': 'Andar abaixo'`
+- feature entry `builder.tool.floorUp` — src/ui/i18n/pt-BR.ts:1397: `'builder.tool.floorUp': 'Andar acima'`
+- feature entry `builder.tool.coreLift` — src/ui/i18n/pt-BR.ts:1398: `'builder.tool.coreLift': 'Elevador'`
+- feature entry `builder.tool.coreStair` — src/ui/i18n/pt-BR.ts:1399: `'builder.tool.coreStair': 'Escada'`
+- feature entry `builder.tool.coreBoth` — src/ui/i18n/pt-BR.ts:1400: `'builder.tool.coreBoth': 'Escada + elevador'`
+- feature entry `builder.tool.furn_sofa` — src/ui/i18n/pt-BR.ts:1401: `'builder.tool.furn_sofa': 'Sofá'`
+- feature entry `hint.builder.furn_sofa` — src/ui/i18n/pt-BR.ts:1402: `'hint.builder.furn_sofa': 'Clique no piso para pôr: sofá (R gira)'`
+- feature entry `builder.tool.furn_armchair` — src/ui/i18n/pt-BR.ts:1403: `'builder.tool.furn_armchair': 'Poltrona'`
+- feature entry `hint.builder.furn_armchair` — src/ui/i18n/pt-BR.ts:1404: `'hint.builder.furn_armchair': 'Clique no piso para pôr: poltrona (R gira)'`
+- feature entry `builder.tool.furn_table` — src/ui/i18n/pt-BR.ts:1405: `'builder.tool.furn_table': 'Mesa'`
+- feature entry `hint.builder.furn_table` — src/ui/i18n/pt-BR.ts:1406: `'hint.builder.furn_table': 'Clique no piso para pôr: mesa (R gira)'`
+- feature entry `builder.tool.furn_chair` — src/ui/i18n/pt-BR.ts:1407: `'builder.tool.furn_chair': 'Cadeira'`
+- feature entry `hint.builder.furn_chair` — src/ui/i18n/pt-BR.ts:1408: `'hint.builder.furn_chair': 'Clique no piso para pôr: cadeira (R gira)'`
+- feature entry `builder.tool.furn_bed` — src/ui/i18n/pt-BR.ts:1409: `'builder.tool.furn_bed': 'Cama de casal'`
+- feature entry `hint.builder.furn_bed` — src/ui/i18n/pt-BR.ts:1410: `'hint.builder.furn_bed': 'Clique no piso para pôr: cama de casal (R gira)'`
+- feature entry `builder.tool.furn_singleBed` — src/ui/i18n/pt-BR.ts:1411: `'builder.tool.furn_singleBed': 'Cama de solteiro'`
+- feature entry `hint.builder.furn_singleBed` — src/ui/i18n/pt-BR.ts:1412: `'hint.builder.furn_singleBed': 'Clique no piso para pôr: cama de solteiro (R gira)'`
+- feature entry `builder.tool.furn_wardrobe` — src/ui/i18n/pt-BR.ts:1413: `'builder.tool.furn_wardrobe': 'Guarda-roupa'`
+- feature entry `hint.builder.furn_wardrobe` — src/ui/i18n/pt-BR.ts:1414: `'hint.builder.furn_wardrobe': 'Clique no piso para pôr: guarda-roupa (R gira)'`
+- feature entry `builder.tool.furn_tv` — src/ui/i18n/pt-BR.ts:1415: `'builder.tool.furn_tv': 'TV'`
+- feature entry `hint.builder.furn_tv` — src/ui/i18n/pt-BR.ts:1416: `'hint.builder.furn_tv': 'Clique no piso para pôr: tv (R gira)'`
+- feature entry `builder.tool.furn_desk` — src/ui/i18n/pt-BR.ts:1417: `'builder.tool.furn_desk': 'Escrivaninha'`
+- feature entry `hint.builder.furn_desk` — src/ui/i18n/pt-BR.ts:1418: `'hint.builder.furn_desk': 'Clique no piso para pôr: escrivaninha (R gira)'`
+- feature entry `builder.tool.furn_officeChair` — src/ui/i18n/pt-BR.ts:1419: `'builder.tool.furn_officeChair': 'Cadeira de escritório'`
+- feature entry `hint.builder.furn_officeChair` — src/ui/i18n/pt-BR.ts:1420: `'hint.builder.furn_officeChair': 'Clique no piso para pôr: cadeira de escritório (R gira)'`
+- feature entry `builder.tool.furn_bookshelf` — src/ui/i18n/pt-BR.ts:1421: `'builder.tool.furn_bookshelf': 'Estante de livros'`
+- feature entry `hint.builder.furn_bookshelf` — src/ui/i18n/pt-BR.ts:1422: `'hint.builder.furn_bookshelf': 'Clique no piso para pôr: estante de livros (R gira)'`
+- feature entry `builder.tool.furn_shelf` — src/ui/i18n/pt-BR.ts:1423: `'builder.tool.furn_shelf': 'Prateleira'`
+- feature entry `hint.builder.furn_shelf` — src/ui/i18n/pt-BR.ts:1424: `'hint.builder.furn_shelf': 'Clique no piso para pôr: prateleira (R gira)'`
+- feature entry `builder.tool.furn_counter` — src/ui/i18n/pt-BR.ts:1425: `'builder.tool.furn_counter': 'Balcão'`
+- feature entry `hint.builder.furn_counter` — src/ui/i18n/pt-BR.ts:1426: `'hint.builder.furn_counter': 'Clique no piso para pôr: balcão (R gira)'`
+- feature entry `builder.tool.furn_fridge` — src/ui/i18n/pt-BR.ts:1427: `'builder.tool.furn_fridge': 'Geladeira'`
+- feature entry `hint.builder.furn_fridge` — src/ui/i18n/pt-BR.ts:1428: `'hint.builder.furn_fridge': 'Clique no piso para pôr: geladeira (R gira)'`
+- feature entry `builder.tool.furn_stove` — src/ui/i18n/pt-BR.ts:1429: `'builder.tool.furn_stove': 'Fogão'`
+- feature entry `hint.builder.furn_stove` — src/ui/i18n/pt-BR.ts:1430: `'hint.builder.furn_stove': 'Clique no piso para pôr: fogão (R gira)'`
+- feature entry `builder.tool.furn_sink` — src/ui/i18n/pt-BR.ts:1431: `'builder.tool.furn_sink': 'Pia'`
+- feature entry `hint.builder.furn_sink` — src/ui/i18n/pt-BR.ts:1432: `'hint.builder.furn_sink': 'Clique no piso para pôr: pia (R gira)'`
+- feature entry `builder.tool.furn_bath` — src/ui/i18n/pt-BR.ts:1433: `'builder.tool.furn_bath': 'Banheira'`
+- feature entry `hint.builder.furn_bath` — src/ui/i18n/pt-BR.ts:1434: `'hint.builder.furn_bath': 'Clique no piso para pôr: banheira (R gira)'`
+- feature entry `builder.tool.furn_toilet` — src/ui/i18n/pt-BR.ts:1435: `'builder.tool.furn_toilet': 'Vaso sanitário'`
+- feature entry `hint.builder.furn_toilet` — src/ui/i18n/pt-BR.ts:1436: `'hint.builder.furn_toilet': 'Clique no piso para pôr: vaso sanitário (R gira)'`
+- feature entry `builder.tool.furn_plant` — src/ui/i18n/pt-BR.ts:1437: `'builder.tool.furn_plant': 'Planta'`
+- feature entry `hint.builder.furn_plant` — src/ui/i18n/pt-BR.ts:1438: `'hint.builder.furn_plant': 'Clique no piso para pôr: planta (R gira)'`
+- feature entry `builder.tool.furn_ceilingLamp` — src/ui/i18n/pt-BR.ts:1439: `'builder.tool.furn_ceilingLamp': 'Luminária de teto'`
+- feature entry `hint.builder.furn_ceilingLamp` — src/ui/i18n/pt-BR.ts:1440: `'hint.builder.furn_ceilingLamp': 'Clique no piso para pôr: luminária de teto (R gira)'`
+- feature entry `builder.tool.furn_floorLamp` — src/ui/i18n/pt-BR.ts:1441: `'builder.tool.furn_floorLamp': 'Luminária de pé'`
+- feature entry `hint.builder.furn_floorLamp` — src/ui/i18n/pt-BR.ts:1442: `'hint.builder.furn_floorLamp': 'Clique no piso para pôr: luminária de pé (R gira)'`
+- feature entry `builder.tool.furn_tableLamp` — src/ui/i18n/pt-BR.ts:1443: `'builder.tool.furn_tableLamp': 'Abajur'`
+- feature entry `hint.builder.furn_tableLamp` — src/ui/i18n/pt-BR.ts:1444: `'hint.builder.furn_tableLamp': 'Clique no piso para pôr: abajur (R gira)'`
+- feature entry `builder.tool.furnMove` — src/ui/i18n/pt-BR.ts:1445: `'builder.tool.furnMove': 'Mover'`
+- feature entry `hint.builder.furnMove` — src/ui/i18n/pt-BR.ts:1446: `'hint.builder.furnMove': 'Clique num móvel para pegá-lo, e de novo onde ele vai (R gira)'`
+- feature entry `builder.tool.furnTurn` — src/ui/i18n/pt-BR.ts:1447: `'builder.tool.furnTurn': 'Girar'`
+- feature entry `hint.builder.furnTurn` — src/ui/i18n/pt-BR.ts:1448: `'hint.builder.furnTurn': 'Gira o móvel selecionado'`
+- feature entry `builder.tool.furnRemove` — src/ui/i18n/pt-BR.ts:1449: `'builder.tool.furnRemove': 'Tirar'`
+- feature entry `hint.builder.furnRemove` — src/ui/i18n/pt-BR.ts:1450: `'hint.builder.furnRemove': 'Clique num móvel ou luminária para tirá-lo'`
+- feature entry `builder.section.furnishing` — src/ui/i18n/pt-BR.ts:1451: `'builder.section.furnishing': 'Arrumar'`
+- feature entry `builder.tool.coreRemove` — src/ui/i18n/pt-BR.ts:1452: `'builder.tool.coreRemove': 'Remover'`
+- feature entry `hint.builder.interiorView` — src/ui/i18n/pt-BR.ts:1453: `'hint.builder.interiorView': 'O prédio aparece cortado no andar escolhido: veja o saguão, as escadas, os elevadores'`
+- feature entry `hint.builder.floorDown` — src/ui/i18n/pt-BR.ts:1454: `'hint.builder.floorDown': 'Mostra o andar de baixo'`
+- feature entry `hint.builder.floorUp` — src/ui/i18n/pt-BR.ts:1455: `'hint.builder.floorUp': 'Mostra o andar de cima'`
+- feature entry `hint.builder.coreLift` — src/ui/i18n/pt-BR.ts:1456: `'hint.builder.coreLift': 'Clique no piso: um elevador por todos os andares'`
+- feature entry `hint.builder.coreStair` — src/ui/i18n/pt-BR.ts:1457: `'hint.builder.coreStair': 'Clique no piso: uma escada por todos os andares'`
+- feature entry `hint.builder.coreBoth` — src/ui/i18n/pt-BR.ts:1458: `'hint.builder.coreBoth': 'Clique no piso: escada e elevador juntos'`
+- feature entry `hint.builder.coreRemove` — src/ui/i18n/pt-BR.ts:1459: `'hint.builder.coreRemove': 'Clique numa escada ou elevador para tirá-lo'`
+- feature entry `builder.section.primitives` — src/ui/i18n/pt-BR.ts:1460: `'builder.section.primitives': 'Formas básicas: clique e jogue no prédio'`
+- feature entry `builder.tool.primBox` — src/ui/i18n/pt-BR.ts:1461: `'builder.tool.primBox': 'Caixa'`
+- feature entry `builder.tool.primCylinder` — src/ui/i18n/pt-BR.ts:1462: `'builder.tool.primCylinder': 'Cilindro'`
+- feature entry `builder.tool.primOctagonal` — src/ui/i18n/pt-BR.ts:1463: `'builder.tool.primOctagonal': 'Octógono'`
+- feature entry `builder.tool.primPrism` — src/ui/i18n/pt-BR.ts:1464: `'builder.tool.primPrism': 'Prisma'`
+- feature entry `builder.tool.primWedge` — src/ui/i18n/pt-BR.ts:1465: `'builder.tool.primWedge': 'Cunha'`
+- feature entry `builder.tool.primPyramid` — src/ui/i18n/pt-BR.ts:1466: `'builder.tool.primPyramid': 'Pirâmide'`
+- feature entry `builder.tool.primCone` — src/ui/i18n/pt-BR.ts:1467: `'builder.tool.primCone': 'Cone'`
+- feature entry `builder.tool.primCross` — src/ui/i18n/pt-BR.ts:1468: `'builder.tool.primCross': 'Cruz'`
+- feature entry `hint.builder.primBox` — src/ui/i18n/pt-BR.ts:1469: `'hint.builder.primBox': 'Clique num telhado, numa parede ou no chão para pôr a forma · Esc solta'`
+- feature entry `hint.builder.primCylinder` — src/ui/i18n/pt-BR.ts:1470: `'hint.builder.primCylinder': 'Clique num telhado, numa parede ou no chão para pôr a forma · Esc solta'`
+- feature entry `hint.builder.primOctagonal` — src/ui/i18n/pt-BR.ts:1471: `'hint.builder.primOctagonal': 'Clique num telhado, numa parede ou no chão para pôr a forma · Esc solta'`
+- feature entry `hint.builder.primPrism` — src/ui/i18n/pt-BR.ts:1472: `'hint.builder.primPrism': 'Clique num telhado, numa parede ou no chão para pôr a forma · Esc solta'`
+- feature entry `hint.builder.primWedge` — src/ui/i18n/pt-BR.ts:1473: `'hint.builder.primWedge': 'Clique num telhado, numa parede ou no chão para pôr a forma · Esc solta'`
+- feature entry `hint.builder.primPyramid` — src/ui/i18n/pt-BR.ts:1474: `'hint.builder.primPyramid': 'Clique num telhado, numa parede ou no chão para pôr a forma · Esc solta'`
+- feature entry `hint.builder.primCone` — src/ui/i18n/pt-BR.ts:1475: `'hint.builder.primCone': 'Clique num telhado, numa parede ou no chão para pôr a forma · Esc solta'`
+- feature entry `hint.builder.primCross` — src/ui/i18n/pt-BR.ts:1476: `'hint.builder.primCross': 'Clique num telhado, numa parede ou no chão para pôr a forma · Esc solta'`
+- feature entry `builder.section.modelling` — src/ui/i18n/pt-BR.ts:1477: `'builder.section.modelling': 'Modelagem'`
+- feature entry `builder.tool.extrudeOut` — src/ui/i18n/pt-BR.ts:1478: `'builder.tool.extrudeOut': 'Extrudar +1 m'`
+- feature entry `builder.tool.extrudeIn` — src/ui/i18n/pt-BR.ts:1479: `'builder.tool.extrudeIn': 'Extrudar −1 m'`
+- feature entry `builder.tool.extrudeBlock` — src/ui/i18n/pt-BR.ts:1480: `'builder.tool.extrudeBlock': 'Extrudar bloco'`
+- feature entry `builder.tool.insetFace` — src/ui/i18n/pt-BR.ts:1481: `'builder.tool.insetFace': 'Recuar face'`
+- feature entry `builder.tool.offsetOut` — src/ui/i18n/pt-BR.ts:1482: `'builder.tool.offsetOut': 'Expandir +1 m'`
+- feature entry `builder.tool.offsetIn` — src/ui/i18n/pt-BR.ts:1483: `'builder.tool.offsetIn': 'Contrair −1 m'`
+- feature entry `builder.tool.bevelAll` — src/ui/i18n/pt-BR.ts:1484: `'builder.tool.bevelAll': 'Chanfrar cantos'`
+- feature entry `builder.tool.pointMode` — src/ui/i18n/pt-BR.ts:1485: `'builder.tool.pointMode': 'Pontos'`
+- feature entry `builder.tool.bevelCorner` — src/ui/i18n/pt-BR.ts:1486: `'builder.tool.bevelCorner': 'Chanfrar ponto'`
+- feature entry `hint.builder.extrudeOut` — src/ui/i18n/pt-BR.ts:1487: `'hint.builder.extrudeOut': 'Empurra a face escolhida 1 m para fora'`
+- feature entry `hint.builder.extrudeIn` — src/ui/i18n/pt-BR.ts:1488: `'hint.builder.extrudeIn': 'Puxa a face escolhida 1 m para dentro'`
+- feature entry `hint.builder.extrudeBlock` — src/ui/i18n/pt-BR.ts:1489: `'hint.builder.extrudeBlock': 'A face escolhida cria um bloco novo encostado nela'`
+- feature entry `hint.builder.insetFace` — src/ui/i18n/pt-BR.ts:1490: `'hint.builder.insetFace': 'Recua a face escolhida dentro de uma moldura'`
+- feature entry `hint.builder.offsetOut` — src/ui/i18n/pt-BR.ts:1491: `'hint.builder.offsetOut': 'A planta do bloco cresce 1 m por todos os lados'`
+- feature entry `hint.builder.offsetIn` — src/ui/i18n/pt-BR.ts:1492: `'hint.builder.offsetIn': 'A planta do bloco encolhe 1 m por todos os lados'`
+- feature entry `hint.builder.bevelAll` — src/ui/i18n/pt-BR.ts:1493: `'hint.builder.bevelAll': 'Chanfra todos os cantos do bloco'`
+- feature entry `hint.builder.pointMode` — src/ui/i18n/pt-BR.ts:1494: `'hint.builder.pointMode': 'Mostra os pontos do bloco: arraste para modelar'`
+- feature entry `hint.builder.bevelCorner` — src/ui/i18n/pt-BR.ts:1495: `'hint.builder.bevelCorner': 'Chanfra o ponto escolhido'`
+- feature entry `builder.pickFace` — src/ui/i18n/pt-BR.ts:1496: `'builder.pickFace': 'Clique de novo no bloco para escolher a face'`
+- feature entry `builder.pickCorner` — src/ui/i18n/pt-BR.ts:1497: `'builder.pickCorner': 'Ative Pontos e clique num ponto do bloco'`
+- feature entry `builder.section.boolean` — src/ui/i18n/pt-BR.ts:1498: `'builder.section.boolean': 'Operação booleana'`
+- feature entry `builder.section.block` — src/ui/i18n/pt-BR.ts:1499: `'builder.section.block': 'Bloco'`
+- feature entry `builder.section.drawWhere` — src/ui/i18n/pt-BR.ts:1500: `'builder.section.drawWhere': 'A forma desenhada vira'`
+- feature entry `builder.section.drawWhere.short` — src/ui/i18n/pt-BR.ts:1501: `'builder.section.drawWhere.short': 'Resultado'`
+- feature entry `builder.section.drawShape` — src/ui/i18n/pt-BR.ts:1502: `'builder.section.drawShape': 'Forma'`
+- feature entry `builder.drawAction.new` — src/ui/i18n/pt-BR.ts:1503: `'builder.drawAction.new': 'Prédio novo'`
+- feature entry `builder.drawAction.ground` — src/ui/i18n/pt-BR.ts:1504: `'builder.drawAction.ground': 'Bloco ao lado'`
+- feature entry `builder.drawAction.top` — src/ui/i18n/pt-BR.ts:1505: `'builder.drawAction.top': 'Bloco em cima'`
+- feature entry `builder.drawAction.cut` — src/ui/i18n/pt-BR.ts:1506: `'builder.drawAction.cut': 'Recorte'`
+- feature entry `builder.tool.blockSolid` — src/ui/i18n/pt-BR.ts:1507: `'builder.tool.blockSolid': 'União'`
+- feature entry `builder.tool.blockVoid` — src/ui/i18n/pt-BR.ts:1508: `'builder.tool.blockVoid': 'Subtração'`
+- feature entry `builder.tool.blockIntersect` — src/ui/i18n/pt-BR.ts:1509: `'builder.tool.blockIntersect': 'Interseção'`
+- feature entry `builder.tool.blockXor` — src/ui/i18n/pt-BR.ts:1510: `'builder.tool.blockXor': 'Exclusão'`
+- feature entry `builder.tool.copyBlock` — src/ui/i18n/pt-BR.ts:1511: `'builder.tool.copyBlock': 'Copiar bloco'`
+- feature entry `builder.tool.detachBlock` — src/ui/i18n/pt-BR.ts:1512: `'builder.tool.detachBlock': 'Desligar'`
+- feature entry `builder.tool.centerBlock` — src/ui/i18n/pt-BR.ts:1513: `'builder.tool.centerBlock': 'Centralizar'`
+- feature entry `builder.tool.turnBlockLeft` — src/ui/i18n/pt-BR.ts:1514: `'builder.tool.turnBlockLeft': 'Girar ⟲ 15°'`
+- feature entry `builder.tool.turnBlockRight` — src/ui/i18n/pt-BR.ts:1515: `'builder.tool.turnBlockRight': 'Girar ⟳ 15°'`
+- feature entry `hint.builder.blockSolid` — src/ui/i18n/pt-BR.ts:1516: `'hint.builder.blockSolid': 'O bloco soma o seu espaço ao prédio'`
+- feature entry `hint.builder.blockVoid` — src/ui/i18n/pt-BR.ts:1517: `'hint.builder.blockVoid': 'O bloco tira o seu espaço dos outros, sem apagar nada'`
+- feature entry `hint.builder.blockIntersect` — src/ui/i18n/pt-BR.ts:1518: `'hint.builder.blockIntersect': 'Dos outros blocos fica só o que está dentro deste'`
+- feature entry `hint.builder.blockXor` — src/ui/i18n/pt-BR.ts:1519: `'hint.builder.blockXor': 'O bloco soma onde está sozinho e tira onde encontra outro'`
+- feature entry `hint.builder.copyBlock` — src/ui/i18n/pt-BR.ts:1520: `'hint.builder.copyBlock': 'Uma cópia do bloco ao lado dele'`
+- feature entry `hint.builder.detachBlock` — src/ui/i18n/pt-BR.ts:1521: `'hint.builder.detachBlock': 'O bloco vira um prédio separado'`
+- feature entry `hint.builder.centerBlock` — src/ui/i18n/pt-BR.ts:1522: `'hint.builder.centerBlock': 'O bloco fica centrado sobre o de baixo'`
+- feature entry `hint.builder.turnBlockLeft` — src/ui/i18n/pt-BR.ts:1523: `'hint.builder.turnBlockLeft': 'Gira o bloco sobre o seu centro'`
+- feature entry `hint.builder.turnBlockRight` — src/ui/i18n/pt-BR.ts:1524: `'hint.builder.turnBlockRight': 'Gira o bloco sobre o seu centro'`
+- feature entry `builder.blockMode.solid` — src/ui/i18n/pt-BR.ts:1530: `'builder.blockMode.solid': 'União'`
+- feature entry `builder.blockMode.void` — src/ui/i18n/pt-BR.ts:1531: `'builder.blockMode.void': 'Subtração'`
+- feature entry `builder.blockMode.intersect` — src/ui/i18n/pt-BR.ts:1532: `'builder.blockMode.intersect': 'Interseção'`
+- feature entry `builder.blockMode.xor` — src/ui/i18n/pt-BR.ts:1533: `'builder.blockMode.xor': 'Exclusão'`
+- feature entry `builder.tool.shapeCross` — src/ui/i18n/pt-BR.ts:1534: `'builder.tool.shapeCross': 'Cruz'`
+- feature entry `builder.tool.shapeStepped` — src/ui/i18n/pt-BR.ts:1535: `'builder.tool.shapeStepped': 'Cruz escalonada'`
+- feature entry `builder.tool.tierCross` — src/ui/i18n/pt-BR.ts:1536: `'builder.tool.tierCross': 'Cruz'`
+- feature entry `builder.tool.tierStepped` — src/ui/i18n/pt-BR.ts:1537: `'builder.tool.tierStepped': 'Cruz escalonada'`
+- feature entry `hint.builder.shapeCross` — src/ui/i18n/pt-BR.ts:1538: `'hint.builder.shapeCross': 'Arraste no terreno: uma planta em cruz'`
+- feature entry `hint.builder.shapeStepped` — src/ui/i18n/pt-BR.ts:1539: `'hint.builder.shapeStepped': 'Arraste no terreno: uma planta em cruz com cantos escalonados'`
+- feature entry `hint.builder.tierCross` — src/ui/i18n/pt-BR.ts:1540: `'hint.builder.tierCross': 'O bloco selecionado vira uma cruz'`
+- feature entry `hint.builder.tierStepped` — src/ui/i18n/pt-BR.ts:1541: `'hint.builder.tierStepped': 'O bloco selecionado vira uma cruz de cantos escalonados'`
+- feature entry `builder.section.blockShape` — src/ui/i18n/pt-BR.ts:1542: `'builder.section.blockShape': 'Forma do bloco'`
+- feature entry `builder.tool.tierRect` — src/ui/i18n/pt-BR.ts:1543: `'builder.tool.tierRect': 'Retângulo'`
+- feature entry `builder.tool.tierChamfered` — src/ui/i18n/pt-BR.ts:1544: `'builder.tool.tierChamfered': 'Chanfrado'`
+- feature entry `builder.tool.tierOctagon` — src/ui/i18n/pt-BR.ts:1545: `'builder.tool.tierOctagon': 'Octógono'`
+- feature entry `builder.tool.tierHexagon` — src/ui/i18n/pt-BR.ts:1546: `'builder.tool.tierHexagon': 'Hexágono'`
+- feature entry `builder.tool.tierCircle` — src/ui/i18n/pt-BR.ts:1547: `'builder.tool.tierCircle': 'Cilindro'`
+- feature entry `builder.tool.tierL` — src/ui/i18n/pt-BR.ts:1548: `'builder.tool.tierL': 'Em L'`
+- feature entry `builder.tool.tierU` — src/ui/i18n/pt-BR.ts:1549: `'builder.tool.tierU': 'Em U'`
+- feature entry `hint.builder.tierRect` — src/ui/i18n/pt-BR.ts:1550: `'hint.builder.tierRect': 'O bloco selecionado vira um retângulo'`
+- feature entry `hint.builder.tierChamfered` — src/ui/i18n/pt-BR.ts:1551: `'hint.builder.tierChamfered': 'O bloco selecionado ganha cantos chanfrados'`
+- feature entry `hint.builder.tierOctagon` — src/ui/i18n/pt-BR.ts:1552: `'hint.builder.tierOctagon': 'O bloco selecionado vira um octógono'`
+- feature entry `hint.builder.tierHexagon` — src/ui/i18n/pt-BR.ts:1553: `'hint.builder.tierHexagon': 'O bloco selecionado vira um hexágono'`
+- feature entry `hint.builder.tierCircle` — src/ui/i18n/pt-BR.ts:1554: `'hint.builder.tierCircle': 'O bloco selecionado vira um cilindro'`
+- feature entry `hint.builder.tierL` — src/ui/i18n/pt-BR.ts:1555: `'hint.builder.tierL': 'O bloco selecionado vira um L'`
+- feature entry `hint.builder.tierU` — src/ui/i18n/pt-BR.ts:1556: `'hint.builder.tierU': 'O bloco selecionado vira um U'`
+- feature entry `builder.category.models` — src/ui/i18n/pt-BR.ts:1557: `'builder.category.models': 'Modelos'`
+- feature entry `builder.category.facade` — src/ui/i18n/pt-BR.ts:1558: `'builder.category.facade': 'Fachada'`
+- feature entry `builder.category.parts` — src/ui/i18n/pt-BR.ts:1559: `'builder.category.parts': 'Peças'`
+- feature entry `builder.category.paint` — src/ui/i18n/pt-BR.ts:1560: `'builder.category.paint': 'Cores'`
+- feature entry `builder.section.floors` — src/ui/i18n/pt-BR.ts:1561: `'builder.section.floors': 'Pavimentos'`
+- feature entry `builder.section.reference` — src/ui/i18n/pt-BR.ts:1562: `'builder.section.reference': 'Referência 3D'`
+- feature entry `builder.tool.refLoad` — src/ui/i18n/pt-BR.ts:1563: `'builder.tool.refLoad': 'Carregar modelo'`
+- feature entry `hint.builder.refLoad` — src/ui/i18n/pt-BR.ts:1564: `'hint.builder.refLoad': 'Escolha um modelo 3D (.glb ou .gltf) de um prédio real: ele aparece transparente sobre o prédio selecionado, para construir por cima'`
+- feature entry `builder.tool.refAlign` — src/ui/i18n/pt-BR.ts:1565: `'builder.tool.refAlign': 'Alinhar ao prédio'`
+- feature entry `hint.builder.refAlign` — src/ui/i18n/pt-BR.ts:1566: `'hint.builder.refAlign': 'Põe o modelo de referência sobre o prédio selecionado, com o pé no chão dele'`
+- feature entry `builder.tool.refTurn` — src/ui/i18n/pt-BR.ts:1567: `'builder.tool.refTurn': 'Girar 90°'`
+- feature entry `hint.builder.refTurn` — src/ui/i18n/pt-BR.ts:1568: `'hint.builder.refTurn': 'Gira o modelo de referência um quarto de volta'`
+- feature entry `builder.tool.refFlip` — src/ui/i18n/pt-BR.ts:1569: `'builder.tool.refFlip': 'Espelhar'`
+- feature entry `hint.builder.refFlip` — src/ui/i18n/pt-BR.ts:1570: `'hint.builder.refFlip': 'Espelha o modelo de referência de frente para fundos'`
+- feature entry `builder.tool.refFainter` — src/ui/i18n/pt-BR.ts:1571: `'builder.tool.refFainter': 'Mais transparente'`
+- feature entry `hint.builder.refFainter` — src/ui/i18n/pt-BR.ts:1572: `'hint.builder.refFainter': 'Deixa o modelo de referência mais transparente'`
+- feature entry `builder.tool.refStronger` — src/ui/i18n/pt-BR.ts:1573: `'builder.tool.refStronger': 'Menos transparente'`
+- feature entry `hint.builder.refStronger` — src/ui/i18n/pt-BR.ts:1574: `'hint.builder.refStronger': 'Deixa o modelo de referência mais sólido'`
+- feature entry `builder.tool.refToggle` — src/ui/i18n/pt-BR.ts:1575: `'builder.tool.refToggle': 'Mostrar / ocultar'`
+- feature entry `hint.builder.refToggle` — src/ui/i18n/pt-BR.ts:1576: `'hint.builder.refToggle': 'Mostra ou esconde o modelo de referência'`
+- feature entry `builder.tool.refRemove` — src/ui/i18n/pt-BR.ts:1577: `'builder.tool.refRemove': 'Remover referência'`
+- feature entry `hint.builder.refRemove` — src/ui/i18n/pt-BR.ts:1578: `'hint.builder.refRemove': 'Tira o modelo de referência da cena'`
+- feature entry `hint.reference.loaded` — src/ui/i18n/pt-BR.ts:1579: `'hint.reference.loaded': 'Referência carregada: {name} — {w} × {d} m, {h} m de altura'`
+- feature entry `hint.reference.failed` — src/ui/i18n/pt-BR.ts:1580: `'hint.reference.failed': 'Não foi possível abrir esse modelo (use .glb ou .gltf)'`
+- feature entry `builder.tool.refBuild` — src/ui/i18n/pt-BR.ts:1581: `'builder.tool.refBuild': 'Construir a partir da referência'`
+- feature entry `hint.builder.refBuild` — src/ui/i18n/pt-BR.ts:1582: `'hint.builder.refBuild': 'Lê o modelo de referência - blocos, planta, cores, janelas, base de pedra e farol - e constrói o prédio com as peças do jogo, todas ed`
+- feature entry `hint.reference.built` — src/ui/i18n/pt-BR.ts:1583: `'hint.reference.built': 'Prédio construído a partir da referência: {volumes} blocos'`
+- feature entry `hint.reference.empty` — src/ui/i18n/pt-BR.ts:1584: `'hint.reference.empty': 'Não achei blocos para construir nesse modelo'`
+- feature entry `hint.reference.none` — src/ui/i18n/pt-BR.ts:1585: `'hint.reference.none': 'Carregue um modelo de referência primeiro'`
+- feature entry `builder.section.volumes` — src/ui/i18n/pt-BR.ts:1586: `'builder.section.volumes': 'Blocos'`
+- feature entry `builder.section.plan` — src/ui/i18n/pt-BR.ts:1587: `'builder.section.plan': 'Cantos da planta'`
+- feature entry `builder.section.pattern` — src/ui/i18n/pt-BR.ts:1588: `'builder.section.pattern': 'Padrão de fachada'`
+- feature entry `builder.section.windows` — src/ui/i18n/pt-BR.ts:1589: `'builder.section.windows': 'Janelas'`
+- feature entry `builder.section.doors` — src/ui/i18n/pt-BR.ts:1590: `'builder.section.doors': 'Portas'`
+- feature entry `builder.section.bays` — src/ui/i18n/pt-BR.ts:1591: `'builder.section.bays': 'Vãos'`
+- feature entry `builder.section.scope` — src/ui/i18n/pt-BR.ts:1592: `'builder.section.scope': 'Aplicar em'`
+- feature entry `builder.section.relief` — src/ui/i18n/pt-BR.ts:1593: `'builder.section.relief': 'Relevo do vão'`
+- feature entry `builder.section.structure` — src/ui/i18n/pt-BR.ts:1594: `'builder.section.structure': 'Estrutura'`
+- feature entry `builder.section.runs` — src/ui/i18n/pt-BR.ts:1595: `'builder.section.runs': 'Traçados'`
+- feature entry `builder.section.greenery` — src/ui/i18n/pt-BR.ts:1596: `'builder.section.greenery': 'Verde'`
+- feature entry `builder.section.furniture` — src/ui/i18n/pt-BR.ts:1597: `'builder.section.furniture': 'Mobiliário'`
+- feature entry `builder.section.roofGear` — src/ui/i18n/pt-BR.ts:1598: `'builder.section.roofGear': 'No telhado'`
+- feature entry `builder.section.roofShape` — src/ui/i18n/pt-BR.ts:1599: `'builder.section.roofShape': 'Inclinação'`
+- feature entry `builder.section.styles` — src/ui/i18n/pt-BR.ts:1600: `'builder.section.styles': 'Estilos'`
+- feature entry `builder.needsSelection` — src/ui/i18n/pt-BR.ts:1601: `'builder.needsSelection': 'Selecione um edifício para usar'`
+- feature entry `builder.category.roof` — src/ui/i18n/pt-BR.ts:1607: `'builder.category.roof': 'Telhado'`
+- feature entry `builder.tool.rect` — src/ui/i18n/pt-BR.ts:1611: `'builder.tool.rect': 'Retângulo'`
+- feature entry `builder.tool.shapeL` — src/ui/i18n/pt-BR.ts:1612: `'builder.tool.shapeL': 'L'`
+- feature entry `builder.tool.shapeU` — src/ui/i18n/pt-BR.ts:1613: `'builder.tool.shapeU': 'U'`
+- feature entry `builder.tool.circle` — src/ui/i18n/pt-BR.ts:1614: `'builder.tool.circle': 'Círculo'`
+- feature entry `builder.tool.hexagon` — src/ui/i18n/pt-BR.ts:1615: `'builder.tool.hexagon': 'Hexágono'`
+- feature entry `builder.tool.octagon` — src/ui/i18n/pt-BR.ts:1616: `'builder.tool.octagon': 'Octógono'`
+- feature entry `builder.tool.chamfered` — src/ui/i18n/pt-BR.ts:1617: `'builder.tool.chamfered': 'Chanfrado'`
+- feature entry `builder.tool.sketch` — src/ui/i18n/pt-BR.ts:1618: `'builder.tool.sketch': 'Planta livre'`
+- feature entry `builder.tool.storey` — src/ui/i18n/pt-BR.ts:1620: `'builder.tool.storey': '+ Pavimento'`
+- feature entry `builder.tool.storeyDown` — src/ui/i18n/pt-BR.ts:1621: `'builder.tool.storeyDown': '− Pavimento'`
+- feature entry `builder.tool.wing` — src/ui/i18n/pt-BR.ts:1622: `'builder.tool.wing': 'Ala'`
+- feature entry `builder.tool.stack` — src/ui/i18n/pt-BR.ts:1623: `'builder.tool.stack': 'Empilhar'`
+- feature entry `builder.tool.cut` — src/ui/i18n/pt-BR.ts:1624: `'builder.tool.cut': 'Recortar'`
+- feature entry `builder.tool.split` — src/ui/i18n/pt-BR.ts:1625: `'builder.tool.split': 'Dividir'`
+- feature entry `builder.tool.setback` — src/ui/i18n/pt-BR.ts:1626: `'builder.tool.setback': 'Andar recuado'`
+- feature entry `builder.tool.vertexAdd` — src/ui/i18n/pt-BR.ts:1627: `'builder.tool.vertexAdd': 'Inserir ponto'`
+- feature entry `builder.tool.vertexRemove` — src/ui/i18n/pt-BR.ts:1628: `'builder.tool.vertexRemove': 'Remover ponto'`
+- feature entry `builder.tool.inset` — src/ui/i18n/pt-BR.ts:1630: `'builder.tool.inset': 'Recuar'`
+- feature entry `builder.tool.outset` — src/ui/i18n/pt-BR.ts:1631: `'builder.tool.outset': 'Avançar'`
+- feature entry `builder.tool.flush` — src/ui/i18n/pt-BR.ts:1632: `'builder.tool.flush': 'Alinhar'`
+- feature entry `builder.tool.window` — src/ui/i18n/pt-BR.ts:1635: `'builder.tool.window': 'Janela'`
+- feature entry `builder.tool.sashWindow` — src/ui/i18n/pt-BR.ts:1636: `'builder.tool.sashWindow': 'Janela de guilhotina'`
+- feature entry `builder.tool.wideWindow` — src/ui/i18n/pt-BR.ts:1637: `'builder.tool.wideWindow': 'Janela ampla'`
+- feature entry `builder.tool.frenchWindow` — src/ui/i18n/pt-BR.ts:1638: `'builder.tool.frenchWindow': 'Porta-janela'`
+- feature entry `builder.tool.bayWindow` — src/ui/i18n/pt-BR.ts:1639: `'builder.tool.bayWindow': 'Janela saliente'`
+- feature entry `builder.tool.ribbon` — src/ui/i18n/pt-BR.ts:1640: `'builder.tool.ribbon': 'Janela fita'`
+- feature entry `builder.tool.balcony` — src/ui/i18n/pt-BR.ts:1641: `'builder.tool.balcony': 'Varanda'`
+- feature entry `builder.tool.door` — src/ui/i18n/pt-BR.ts:1642: `'builder.tool.door': 'Porta'`
+- feature entry `builder.tool.shopfront` — src/ui/i18n/pt-BR.ts:1643: `'builder.tool.shopfront': 'Vitrine'`
+- feature entry `builder.tool.loadingDoor` — src/ui/i18n/pt-BR.ts:1644: `'builder.tool.loadingDoor': 'Porta de carga'`
+- feature entry `builder.tool.pillarBay` — src/ui/i18n/pt-BR.ts:1645: `'builder.tool.pillarBay': 'Arcada'`
+- feature entry `builder.tool.wallBay` — src/ui/i18n/pt-BR.ts:1646: `'builder.tool.wallBay': 'Parede'`
+- feature entry `builder.tool.stair` — src/ui/i18n/pt-BR.ts:1647: `'builder.tool.stair': 'Escada'`
+- feature entry `builder.tool.ramp` — src/ui/i18n/pt-BR.ts:1648: `'builder.tool.ramp': 'Rampa'`
+- feature entry `builder.tool.pillar` — src/ui/i18n/pt-BR.ts:1649: `'builder.tool.pillar': 'Pilar'`
+- feature entry `builder.tool.canopy` — src/ui/i18n/pt-BR.ts:1650: `'builder.tool.canopy': 'Marquise'`
+- feature entry `builder.tool.wall` — src/ui/i18n/pt-BR.ts:1651: `'builder.tool.wall': 'Muro'`
+- feature entry `builder.tool.slab` — src/ui/i18n/pt-BR.ts:1652: `'builder.tool.slab': 'Laje'`
+- feature entry `builder.tool.moveMass` — src/ui/i18n/pt-BR.ts:1654: `'builder.tool.moveMass': 'Mover volume'`
+- feature entry `builder.tool.wallRun` — src/ui/i18n/pt-BR.ts:1655: `'builder.tool.wallRun': 'Muro (traçado)'`
+- feature entry `builder.tool.fenceRun` — src/ui/i18n/pt-BR.ts:1656: `'builder.tool.fenceRun': 'Cerca'`
+- feature entry `builder.tool.pavementRun` — src/ui/i18n/pt-BR.ts:1657: `'builder.tool.pavementRun': 'Calçada'`
+- feature entry `builder.tool.tree` — src/ui/i18n/pt-BR.ts:1658: `'builder.tool.tree': 'Árvore'`
+- feature entry `builder.tool.bench` — src/ui/i18n/pt-BR.ts:1659: `'builder.tool.bench': 'Banco'`
+- feature entry `builder.tool.planter` — src/ui/i18n/pt-BR.ts:1660: `'builder.tool.planter': 'Jardineira'`
+- feature entry `builder.tool.ac` — src/ui/i18n/pt-BR.ts:1661: `'builder.tool.ac': 'Ar-condicionado'`
+- feature entry `builder.tool.roofFlat` — src/ui/i18n/pt-BR.ts:1662: `'builder.tool.roofFlat': 'Plana'`
+- feature entry `builder.tool.roofTerrace` — src/ui/i18n/pt-BR.ts:1663: `'builder.tool.roofTerrace': 'Terraço'`
+- feature entry `builder.tool.roofGable` — src/ui/i18n/pt-BR.ts:1664: `'builder.tool.roofGable': '2 águas'`
+- feature entry `builder.tool.roofHip` — src/ui/i18n/pt-BR.ts:1665: `'builder.tool.roofHip': '4 águas'`
+- feature entry `builder.tool.roofShed` — src/ui/i18n/pt-BR.ts:1666: `'builder.tool.roofShed': '1 água'`
+- feature entry `builder.tool.roofSawtooth` — src/ui/i18n/pt-BR.ts:1667: `'builder.tool.roofSawtooth': 'Dente de serra'`
+- feature entry `builder.tool.solar` — src/ui/i18n/pt-BR.ts:1669: `'builder.tool.solar': 'Painéis solares'`
+- feature entry `builder.tool.skylight` — src/ui/i18n/pt-BR.ts:1670: `'builder.tool.skylight': 'Clarabóia'`
+- feature entry `builder.tool.vent` — src/ui/i18n/pt-BR.ts:1671: `'builder.tool.vent': 'Ventilação'`
+- feature entry `builder.tool.chimney` — src/ui/i18n/pt-BR.ts:1672: `'builder.tool.chimney': 'Chaminé'`
+- feature entry `builder.tool.waterTank` — src/ui/i18n/pt-BR.ts:1673: `'builder.tool.waterTank': 'Caixa d’água'`
+- feature entry `builder.tool.spire` — src/ui/i18n/pt-BR.ts:1674: `'builder.tool.spire': 'Agulha'`
+- feature entry `builder.tool.lantern` — src/ui/i18n/pt-BR.ts:1675: `'builder.tool.lantern': 'Farol'`
+- feature entry `builder.tool.paint` — src/ui/i18n/pt-BR.ts:1677: `'builder.tool.paint': 'Pintar'`
+- feature entry `builder.tool.copyStyle` — src/ui/i18n/pt-BR.ts:1680: `'builder.tool.copyStyle': 'Copiar estilo'`
+- shared entry `hint.builder.select` — src/ui/i18n/pt-BR.ts:1681: `'hint.builder.select': 'Clique num prédio: seleciona · de novo: a face · arraste: move'`
+- feature entry `hint.builder.place` — src/ui/i18n/pt-BR.ts:1682: `'hint.builder.place': 'Clique no mapa para colocar o prédio · R gira · Esc solta'`
+- shared entry `hint.builder.draw.new` — src/ui/i18n/pt-BR.ts:1684: `'hint.builder.draw.new': 'Clique em cada canto · Enter fecha a planta'`
+- shared entry `hint.builder.draw.ground` — src/ui/i18n/pt-BR.ts:1685: `'hint.builder.draw.ground': 'Clique no terreno: uma ala cresce contra a parede que ela encontra'`
+- shared entry `hint.builder.draw.top` — src/ui/i18n/pt-BR.ts:1686: `'hint.builder.draw.top': 'Clique no edifício: um volume se apoia no que está embaixo'`
+- shared entry `hint.builder.draw.cut` — src/ui/i18n/pt-BR.ts:1687: `'hint.builder.draw.cut': 'Desenhe um retângulo sobre um volume para recortá-lo'`
+- shared entry `hint.builder.sketch` — src/ui/i18n/pt-BR.ts:1688: `'hint.builder.sketch': 'Clique em cada canto · Enter fecha a planta'`
+- shared entry `hint.builder.paint` — src/ui/i18n/pt-BR.ts:1695: `'hint.builder.paint': 'Clique nas faces para pintá-las com o pincel'`
+- shared entry `hint.builder.stair` — src/ui/i18n/pt-BR.ts:1697: `'hint.builder.stair': 'Aponte para uma fachada e clique: a escada desce daquele pavimento'`
+- shared entry `hint.builder.ramp` — src/ui/i18n/pt-BR.ts:1698: `'hint.builder.ramp': 'Aponte para uma fachada e clique: a rampa desce daquele pavimento'`
+- shared entry `hint.builder.pillar` — src/ui/i18n/pt-BR.ts:1699: `'hint.builder.pillar': 'Aponte para uma fachada e clique: o pilar sobe entre os pavimentos'`
+- shared entry `hint.builder.canopy` — src/ui/i18n/pt-BR.ts:1700: `'hint.builder.canopy': 'Aponte para uma fachada e clique'`
+- shared entry `hint.builder.wall` — src/ui/i18n/pt-BR.ts:1701: `'hint.builder.wall': 'Aponte para uma fachada ou o terreno e clique'`
+- shared entry `hint.builder.slab` — src/ui/i18n/pt-BR.ts:1702: `'hint.builder.slab': 'Aponte para uma fachada ou o terreno e clique'`
+- feature entry `hint.builder.moveMass` — src/ui/i18n/pt-BR.ts:1704: `'hint.builder.moveMass': 'Arraste o volume selecionado: ele desliza na própria planta e solda onde parar'`
+- feature entry `builder.runPlaced` — src/ui/i18n/pt-BR.ts:1705: `'builder.runPlaced': 'Trecho lançado ao longo do traçado'`
+- feature entry `builder.welded` — src/ui/i18n/pt-BR.ts:1706: `'builder.welded': 'Soldado num só edifício'`
+- feature entry `hint.builder.wallRun` — src/ui/i18n/pt-BR.ts:1707: `'hint.builder.wallRun': 'Clique em cada canto do traçado · Enter lança o muro ao longo dele'`
+- feature entry `hint.builder.fenceRun` — src/ui/i18n/pt-BR.ts:1708: `'hint.builder.fenceRun': 'Clique em cada canto do traçado · Enter lança a cerca ao longo dele'`
+- feature entry `hint.builder.pavementRun` — src/ui/i18n/pt-BR.ts:1709: `'hint.builder.pavementRun': 'Clique em cada canto · Enter lança a calçada ao longo do traçado'`
+- shared entry `hint.builder.tree` — src/ui/i18n/pt-BR.ts:1714: `'hint.builder.tree': 'Clique no terreno para plantar uma árvore'`
+- shared entry `hint.builder.bench` — src/ui/i18n/pt-BR.ts:1715: `'hint.builder.bench': 'Aponte para uma fachada e clique: o banco fica ao lado'`
+- shared entry `hint.builder.planter` — src/ui/i18n/pt-BR.ts:1716: `'hint.builder.planter': 'Aponte para uma fachada e clique'`
+- shared entry `hint.builder.ac` — src/ui/i18n/pt-BR.ts:1717: `'hint.builder.ac': 'Aponte para uma fachada e clique: o aparelho fica na parede'`
+- shared entry `hint.builder.solar` — src/ui/i18n/pt-BR.ts:1718: `'hint.builder.solar': 'Clique num telhado para colocar os painéis'`
+- shared entry `hint.builder.skylight` — src/ui/i18n/pt-BR.ts:1719: `'hint.builder.skylight': 'Clique num telhado para colocar a clarabóia'`
+- shared entry `hint.builder.vent` — src/ui/i18n/pt-BR.ts:1720: `'hint.builder.vent': 'Clique num telhado para colocar a ventilação'`
+- shared entry `hint.builder.chimney` — src/ui/i18n/pt-BR.ts:1721: `'hint.builder.chimney': 'Clique num telhado para colocar a chaminé'`
+- shared entry `hint.builder.waterTank` — src/ui/i18n/pt-BR.ts:1722: `'hint.builder.waterTank': 'Clique num telhado para colocar a caixa d’água'`
+- shared entry `hint.builder.spire` — src/ui/i18n/pt-BR.ts:1723: `'hint.builder.spire': 'Clique num telhado para erguer uma agulha'`
+- shared entry `hint.builder.lantern` — src/ui/i18n/pt-BR.ts:1724: `'hint.builder.lantern': 'Clique no topo de uma torre para erguer um farol com mastro e bandeira'`
+- feature entry `hint.builder.storey` — src/ui/i18n/pt-BR.ts:1725: `'hint.builder.storey': 'Soma um pavimento ao volume selecionado'`
+- feature entry `hint.builder.storeyDown` — src/ui/i18n/pt-BR.ts:1726: `'hint.builder.storeyDown': 'Tira um pavimento do volume selecionado'`
+- feature entry `hint.builder.wing` — src/ui/i18n/pt-BR.ts:1727: `'hint.builder.wing': 'Arraste um retângulo no terreno: um volume cresce contra a parede que ele encontra'`
+- feature entry `hint.builder.stack` — src/ui/i18n/pt-BR.ts:1728: `'hint.builder.stack': 'Arraste sobre o edifício: um volume se apoia no que está embaixo'`
+- feature entry `hint.builder.cut` — src/ui/i18n/pt-BR.ts:1729: `'hint.builder.cut': 'Arraste um retângulo sobre um volume para recortá-lo'`
+- feature entry `hint.builder.split` — src/ui/i18n/pt-BR.ts:1730: `'hint.builder.split': 'Divide o volume selecionado em dois, no pavimento acima'`
+- feature entry `hint.builder.setback` — src/ui/i18n/pt-BR.ts:1731: `'hint.builder.setback': 'Empilha um volume recuado sobre o selecionado'`
+- feature entry `hint.builder.vertexAdd` — src/ui/i18n/pt-BR.ts:1732: `'hint.builder.vertexAdd': 'Clique numa aresta da planta para inserir um ponto'`
+- feature entry `hint.builder.vertexRemove` — src/ui/i18n/pt-BR.ts:1733: `'hint.builder.vertexRemove': 'Clique num canto da planta para removê-lo'`
+- feature entry `hint.builder.inset` — src/ui/i18n/pt-BR.ts:1734: `'hint.builder.inset': 'Clique numa face: a borda recua e emoldura o meio'`
+- feature entry `hint.builder.outset` — src/ui/i18n/pt-BR.ts:1735: `'hint.builder.outset': 'Clique numa face: a região sai para fora'`
+- feature entry `hint.builder.flush` — src/ui/i18n/pt-BR.ts:1736: `'hint.builder.flush': 'Clique numa face: a região volta para a parede'`
+- feature entry `hint.builder.copyStyle` — src/ui/i18n/pt-BR.ts:1743: `'hint.builder.copyStyle': 'Guarda o material do que está selecionado, para o pincel'`
+- feature entry `hint.builder.window` — src/ui/i18n/pt-BR.ts:1745: `'hint.builder.window': 'Clique nos vãos da fachada para abrir janelas'`
+- feature entry `hint.builder.sashWindow` — src/ui/i18n/pt-BR.ts:1746: `'hint.builder.sashWindow': 'Clique nos vãos para janelas de guilhotina'`
+- feature entry `hint.builder.wideWindow` — src/ui/i18n/pt-BR.ts:1747: `'hint.builder.wideWindow': 'Clique nos vãos para janelas amplas'`
+- feature entry `hint.builder.frenchWindow` — src/ui/i18n/pt-BR.ts:1748: `'hint.builder.frenchWindow': 'Clique nos vãos para portas-janela do piso ao teto'`
+- feature entry `hint.builder.bayWindow` — src/ui/i18n/pt-BR.ts:1749: `'hint.builder.bayWindow': 'Clique nos vãos para janelas salientes'`
+- feature entry `hint.builder.ribbon` — src/ui/i18n/pt-BR.ts:1750: `'hint.builder.ribbon': 'Clique nos vãos para uma fita de vidro contínua'`
+- feature entry `hint.builder.balcony` — src/ui/i18n/pt-BR.ts:1751: `'hint.builder.balcony': 'Clique nos vãos para varandas'`
+- feature entry `hint.builder.door` — src/ui/i18n/pt-BR.ts:1752: `'hint.builder.door': 'Clique nos vãos para portas'`
+- feature entry `hint.builder.shopfront` — src/ui/i18n/pt-BR.ts:1753: `'hint.builder.shopfront': 'Clique nos vãos para vitrines'`
+- feature entry `hint.builder.loadingDoor` — src/ui/i18n/pt-BR.ts:1754: `'hint.builder.loadingDoor': 'Clique nos vãos para portas de carga'`
+- feature entry `hint.builder.pillarBay` — src/ui/i18n/pt-BR.ts:1755: `'hint.builder.pillarBay': 'Clique nos vãos para uma arcada aberta'`
+- feature entry `hint.builder.wallBay` — src/ui/i18n/pt-BR.ts:1756: `'hint.builder.wallBay': 'Clique nos vãos para fechá-los em parede lisa'`
+- feature entry `hint.builder.roofFlat` — src/ui/i18n/pt-BR.ts:1757: `'hint.builder.roofFlat': 'Cobertura plana sobre o volume selecionado'`
+- feature entry `hint.builder.roofTerrace` — src/ui/i18n/pt-BR.ts:1758: `'hint.builder.roofTerrace': 'Terraço: plana, com platibanda'`
+- feature entry `hint.builder.roofGable` — src/ui/i18n/pt-BR.ts:1759: `'hint.builder.roofGable': 'Duas águas sobre uma cumeeira'`
+- feature entry `hint.builder.roofHip` — src/ui/i18n/pt-BR.ts:1760: `'hint.builder.roofHip': 'Quatro águas sobre uma cumeeira'`
+- feature entry `hint.builder.roofShed` — src/ui/i18n/pt-BR.ts:1761: `'hint.builder.roofShed': 'Uma água, caindo para a frente'`
+- feature entry `hint.builder.roofSawtooth` — src/ui/i18n/pt-BR.ts:1762: `'hint.builder.roofSawtooth': 'Dente de serra: galpões com luz norte'`
+- feature entry `hint.builder.rect` — src/ui/i18n/pt-BR.ts:1763: `'hint.builder.rect': 'Arraste um retângulo no terreno: a planta o segue'`
+- feature entry `hint.builder.shapeL` — src/ui/i18n/pt-BR.ts:1764: `'hint.builder.shapeL': 'Arraste um retângulo: a planta vira um L'`
+- feature entry `hint.builder.shapeU` — src/ui/i18n/pt-BR.ts:1765: `'hint.builder.shapeU': 'Arraste um retângulo: a planta vira um U'`
+- feature entry `hint.builder.circle` — src/ui/i18n/pt-BR.ts:1766: `'hint.builder.circle': 'Arraste um retângulo: a planta vira um círculo'`
+- feature entry `hint.builder.hexagon` — src/ui/i18n/pt-BR.ts:1767: `'hint.builder.hexagon': 'Arraste um retângulo: a planta vira um hexágono'`
+- feature entry `hint.builder.octagon` — src/ui/i18n/pt-BR.ts:1768: `'hint.builder.octagon': 'Arraste um retângulo: a planta vira um octógono'`
+- feature entry `hint.builder.chamfered` — src/ui/i18n/pt-BR.ts:1769: `'hint.builder.chamfered': 'Arraste um retângulo: a planta sai chanfrada'`
+- feature entry `builder.tool.railing` — src/ui/i18n/pt-BR.ts:1770: `'builder.tool.railing': 'Corrimão'`
+- feature entry `builder.tool.awning` — src/ui/i18n/pt-BR.ts:1771: `'builder.tool.awning': 'Toldo'`
+- feature entry `builder.tool.flowers` — src/ui/i18n/pt-BR.ts:1772: `'builder.tool.flowers': 'Flores'`
+- feature entry `builder.tool.rocks` — src/ui/i18n/pt-BR.ts:1773: `'builder.tool.rocks': 'Pedras'`
+- feature entry `builder.tool.shrub` — src/ui/i18n/pt-BR.ts:1774: `'builder.tool.shrub': 'Arbusto'`
+- feature entry `builder.tool.hedge` — src/ui/i18n/pt-BR.ts:1775: `'builder.tool.hedge': 'Sebe'`
+- feature entry `builder.tool.parking` — src/ui/i18n/pt-BR.ts:1776: `'builder.tool.parking': 'Estacionamento'`
+- shared entry `hint.builder.railing` — src/ui/i18n/pt-BR.ts:1777: `'hint.builder.railing': 'Aponte para uma fachada e clique: o corrimão corre ao longo dela'`
+- shared entry `hint.builder.awning` — src/ui/i18n/pt-BR.ts:1778: `'hint.builder.awning': 'Aponte para uma fachada e clique: um toldo cobre o vão'`
+- shared entry `hint.builder.flowers` — src/ui/i18n/pt-BR.ts:1779: `'hint.builder.flowers': 'Clique no terreno para plantar um canteiro'`
+- shared entry `hint.builder.shrub` — src/ui/i18n/pt-BR.ts:1780: `'hint.builder.shrub': 'Clique no terreno para plantar um arbusto'`
+- shared entry `hint.builder.hedge` — src/ui/i18n/pt-BR.ts:1781: `'hint.builder.hedge': 'Aponte para uma fachada e clique: uma sebe corre diante dela'`
+- shared entry `hint.builder.rocks` — src/ui/i18n/pt-BR.ts:1782: `'hint.builder.rocks': 'Clique no terreno para formar um grupo de pedras'`
+- shared entry `hint.builder.parking` — src/ui/i18n/pt-BR.ts:1783: `'hint.builder.parking': 'Aponte para uma fachada e clique: um estacionamento com vagas'`
+- feature entry `building.finish.stucco` — src/ui/i18n/pt-BR.ts:1784: `'building.finish.stucco': 'Estuque'`
+- feature entry `building.finish.panel` — src/ui/i18n/pt-BR.ts:1785: `'building.finish.panel': 'Painel'`
+- feature entry `building.finish.slate` — src/ui/i18n/pt-BR.ts:1786: `'building.finish.slate': 'Ardósia'`
+- feature entry `builder.tool.doubleDoor` — src/ui/i18n/pt-BR.ts:1787: `'builder.tool.doubleDoor': 'Porta dupla'`
+- feature entry `builder.tool.garageDoor` — src/ui/i18n/pt-BR.ts:1788: `'builder.tool.garageDoor': 'Porta de garagem'`
+- feature entry `hint.builder.doubleDoor` — src/ui/i18n/pt-BR.ts:1789: `'hint.builder.doubleDoor': 'Clique nos vãos para uma entrada de duas folhas'`
+- feature entry `hint.builder.garageDoor` — src/ui/i18n/pt-BR.ts:1790: `'hint.builder.garageDoor': 'Clique nos vãos para uma porta de garagem seccionada'`
+- feature entry `builder.tool.stairRun` — src/ui/i18n/pt-BR.ts:1815: `'builder.tool.stairRun': 'Escada (traçada)'`
+- feature entry `hint.builder.stairRun` — src/ui/i18n/pt-BR.ts:1816: `'hint.builder.stairRun': 'Clique nos cantos da subida · Enter assenta um lance que vira com o traçado e chega ao pavimento de cima'`
+- feature entry `builder.menu.simulation` — src/ui/i18n/pt-BR.ts:1817: `'builder.menu.simulation': 'Simulação'`
+- feature entry `builder.menu.app` — src/ui/i18n/pt-BR.ts:1818: `'builder.menu.app': 'Menu'`
+- feature entry `tool.transit` — src/ui/i18n/pt-BR.ts:1819: `'tool.transit': 'Transporte público'`
+- feature entry `transit.tool.stop` — src/ui/i18n/pt-BR.ts:1820: `'transit.tool.stop': 'Ponto de ônibus'`
+- feature entry `transit.tool.terminal` — src/ui/i18n/pt-BR.ts:1821: `'transit.tool.terminal': 'Terminal de ônibus'`
+- feature entry `transit.tool.trainTrack` — src/ui/i18n/pt-BR.ts:1822: `'transit.tool.trainTrack': 'Trilho de trem'`
+- feature entry `transit.tool.trainStation` — src/ui/i18n/pt-BR.ts:1823: `'transit.tool.trainStation': 'Estação de trem'`
+- feature entry `transit.tool.metroTrack` — src/ui/i18n/pt-BR.ts:1824: `'transit.tool.metroTrack': 'Trilho de metrô'`
+- feature entry `transit.tool.metroStation` — src/ui/i18n/pt-BR.ts:1825: `'transit.tool.metroStation': 'Estação de metrô'`
+- feature entry `transit.tool.line` — src/ui/i18n/pt-BR.ts:1826: `'transit.tool.line': 'Criar linha'`
+- feature entry `transit.lines` — src/ui/i18n/pt-BR.ts:1827: `'transit.lines': 'Linhas'`
+- feature entry `transit.noLines` — src/ui/i18n/pt-BR.ts:1828: `'transit.noLines': 'Nenhuma linha ainda: ponha paradas ou estações e crie uma linha clicando nelas em ordem.'`
+- feature entry `transit.mode.bus` — src/ui/i18n/pt-BR.ts:1829: `'transit.mode.bus': 'Ônibus'`
+- feature entry `transit.mode.train` — src/ui/i18n/pt-BR.ts:1830: `'transit.mode.train': 'Trem'`
+- feature entry `transit.mode.metro` — src/ui/i18n/pt-BR.ts:1831: `'transit.mode.metro': 'Metrô'`
+- feature entry `transit.stops` — src/ui/i18n/pt-BR.ts:1832: `'transit.stops': '{n} paradas'`
+- feature entry `transit.fewer` — src/ui/i18n/pt-BR.ts:1833: `'transit.fewer': 'Menos veículos'`
+- feature entry `transit.more` — src/ui/i18n/pt-BR.ts:1834: `'transit.more': 'Mais veículos'`
+- feature entry `transit.vehicles` — src/ui/i18n/pt-BR.ts:1835: `'transit.vehicles': 'Veículos na linha'`
+- feature entry `transit.remove` — src/ui/i18n/pt-BR.ts:1836: `'transit.remove': 'Apagar a linha'`
+- feature entry `help.transit.stop` — src/ui/i18n/pt-BR.ts:1837: `'help.transit.stop': 'Clique perto de uma rua para pôr um ponto de ônibus na calçada. Shift+clique remove.'`
+- feature entry `help.transit.terminal` — src/ui/i18n/pt-BR.ts:1838: `'help.transit.terminal': 'Clique num ponto de ônibus para torná-lo terminal (os ônibus esperam mais e dão a volta ali).'`
+- feature entry `help.transit.track` — src/ui/i18n/pt-BR.ts:1839: `'help.transit.track': 'Clique para pôr os pontos do trilho; duplo clique ou Enter termina, Backspace volta um ponto, Esc descarta. Ponta perto de outro trilho s`
+- feature entry `help.transit.station` — src/ui/i18n/pt-BR.ts:1840: `'help.transit.station': 'Clique sobre um trilho para pôr uma estação.'`
+- feature entry `help.transit.line` — src/ui/i18n/pt-BR.ts:1841: `'help.transit.line': 'Clique nas paradas ou estações na ordem da linha; Enter ou duplo clique cria a linha.'`
+- feature entry `stair` — src/world/buildings/elements.ts:37: `stair: [m(1.2), m(3), m(1)]`
+- feature entry `ramp` — src/world/buildings/elements.ts:38: `ramp: [m(1.5), m(6), m(0.5)]`
+- feature entry `pillar` — src/world/buildings/elements.ts:39: `pillar: [m(0.4), m(0.4), m(3)]`
+- feature entry `canopy` — src/world/buildings/elements.ts:40: `canopy: [m(2.4), m(1.2), m(0.15)]`
+- feature entry `wall` — src/world/buildings/elements.ts:41: `wall: [m(4), m(0.25), m(1.8)]`
+- feature entry `slab` — src/world/buildings/elements.ts:42: `slab: [m(4), m(4), m(0.25)]`
+- feature entry `pavement` — src/world/buildings/elements.ts:43: `pavement: [m(4), m(3), m(0.12)]`
+- feature entry `fence` — src/world/buildings/elements.ts:44: `fence: [m(2), m(0.12), m(1.1)]`
+- feature entry `tree` — src/world/buildings/elements.ts:45: `tree: [m(3), m(3), m(5)]`
+- feature entry `bench` — src/world/buildings/elements.ts:46: `bench: [m(1.6), m(0.5), m(0.45)]`
+- feature entry `ac` — src/world/buildings/elements.ts:47: `ac: [m(0.8), m(0.35), m(0.6)]`
+- feature entry `planter` — src/world/buildings/elements.ts:48: `planter: [m(1), m(1), m(0.5)]`
+- feature entry `railing` — src/world/buildings/elements.ts:49: `railing: [m(2), m(0.12), m(1.05)]`
+- feature entry `awning` — src/world/buildings/elements.ts:50: `awning: [m(3), m(1.2), m(0.12)]`
+- feature entry `flowers` — src/world/buildings/elements.ts:51: `flowers: [m(1.4), m(1.4), m(0.4)]`
+- feature entry `rocks` — src/world/buildings/elements.ts:52: `rocks: [m(1.6), m(1.6), m(0.7)]`
+- feature entry `parking` — src/world/buildings/elements.ts:53: `parking: [m(6), m(5), m(0.12)]`
+- feature entry `clock` — src/world/buildings/elements.ts:54: `clock: [m(3), m(0.25), m(3)]`
+- feature entry `hedge` — src/world/buildings/elements.ts:55: `hedge: [m(3), m(0.7), m(1.2)]`
+- feature entry `shrub` — src/world/buildings/elements.ts:56: `shrub: [m(1.4), m(1.4), m(1.2)]`
+- feature entry `gate` — src/world/buildings/elements.ts:57: `gate: [m(3), m(0.12), m(1.8)]`
+- feature entry `bin` — src/world/buildings/elements.ts:58: `bin: [m(1.4), m(0.7), m(1.1)]`
+- feature entry `lamp` — src/world/buildings/elements.ts:59: `lamp: [m(0.3), m(0.3), m(4.5)]`
+- feature entry `bollard` — src/world/buildings/elements.ts:60: `bollard: [m(0.2), m(0.2), m(0.9)]`
+- feature entry `drain` — src/world/buildings/elements.ts:61: `drain: [m(0.5), m(0.5), m(0.1)]`
+- shared entry `gable` — src/world/buildings/geometry.ts:739: `gable: 30`
+- shared entry `hip` — src/world/buildings/geometry.ts:739: `hip: 30`
+- shared entry `shed` — src/world/buildings/geometry.ts:739: `shed: 12`
+- shared entry `sawtooth` — src/world/buildings/geometry.ts:739: `sawtooth: 35`
+- feature entry `plaster` — src/world/buildings/materials.ts:31: `plaster: 0xe6e0d4`
+- feature entry `stucco` — src/world/buildings/materials.ts:32: `stucco: 0xdcd4c4`
+- feature entry `ceramic` — src/world/buildings/materials.ts:33: `ceramic: 0xcfd6da`
+- feature entry `brick` — src/world/buildings/materials.ts:34: `brick: 0xa4563f`
+- feature entry `stone` — src/world/buildings/materials.ts:35: `stone: 0xb7b2a6`
+- feature entry `concrete` — src/world/buildings/materials.ts:36: `concrete: 0xb4b4b0`
+- feature entry `wood` — src/world/buildings/materials.ts:37: `wood: 0x9c6b43`
+- feature entry `metal` — src/world/buildings/materials.ts:38: `metal: 0x9aa3a8`
+- feature entry `glass` — src/world/buildings/materials.ts:39: `glass: 0x9db6c2`
+- feature entry `tile` — src/world/buildings/materials.ts:40: `tile: 0xbd6a52`
+- feature entry `slate` — src/world/buildings/materials.ts:41: `slate: 0x585b5f`
+- feature entry `panel` — src/world/buildings/materials.ts:42: `panel: 0x8f9ba5`
+- feature entry `roofing` — src/world/buildings/materials.ts:43: `roofing: 0x7b4a37`
+- shared style `icon` — src/peopleLab/peopleLab.css:26: `.icon { display: block; flex: none; }`
+- shared style `panel` — src/peopleLab/peopleLab.css:40: `.panel { background: var(--panel); border-right: 1px solid var(--line); overflow-y: auto; padding: 14px 14px 14px; display: flex; flex-direction: column; scroll`
+- shared style `panel` — src/peopleLab/peopleLab.css:41: `.panel h2 { margin: 0 0 10px; font-size: 15px; font-weight: 600; letter-spacing: -.01em; }`
+- shared style `panel` — src/peopleLab/peopleLab.css:42: `.panel h3 { margin: 18px 0 8px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }`
+- shared style `panel` — src/peopleLab/peopleLab.css:43: `.panel h3:first-child { margin-top: 2px; }`
+- shared style `row` — src/peopleLab/peopleLab.css:45: `.row { display: grid; grid-template-columns: 96px 1fr 38px; align-items: center; gap: 8px; min-height: 28px; color: var(--ink-2); }`
+- shared style `row` — src/peopleLab/peopleLab.css:46: `.row output { text-align: right; color: var(--ink-3); font-variant-numeric: tabular-nums; font-size: 11px; }`
+- shared style `grid` — src/peopleLab/peopleLab.css:61: `.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }`
+- shared style `tile` — src/peopleLab/peopleLab.css:62: `.tile { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel-2); padding: 9px 6px; cursor: pointer; display: flex; flex-directio`
+- shared style `tile` — src/peopleLab/peopleLab.css:64: `.tile .glyph { display: none; }`
+- shared style `tile` — src/peopleLab/peopleLab.css:65: `.tile img { width: 56px; height: 56px; object-fit: contain; border-radius: 6px; }`
+- shared style `tile` — src/peopleLab/peopleLab.css:66: `.tile:hover { border-color: #3d434b; color: var(--ink); }`
+- shared style `tile` — src/peopleLab/peopleLab.css:67: `.tile.on { border-color: var(--accent); color: var(--ink); background: var(--accent-soft); }`
+- shared style `tool` — src/peopleLab/peopleLab.css:69: `.tool { border: 1px solid transparent; border-radius: 7px; background: var(--panel-2); height: 52px; cursor: pointer; display: flex; flex-direction: column; ali`
+- shared style `tool` — src/peopleLab/peopleLab.css:70: `.tool:hover { color: var(--ink); background: var(--panel-3); }`
+- shared style `tool` — src/peopleLab/peopleLab.css:71: `.tool.on { color: var(--ink); border-color: var(--accent); background: var(--accent-soft); }`
+- shared style `chips` — src/peopleLab/peopleLab.css:72: `.chips { display: flex; flex-wrap: wrap; gap: 4px; }`
+- shared style `chips` — src/peopleLab/peopleLab.css:73: `.chips button { border: 1px solid var(--line); background: var(--panel-2); border-radius: 6px; padding: 5px 9px; cursor: pointer; font-size: 12px; color: var(--`
+- shared style `chips` — src/peopleLab/peopleLab.css:74: `.chips button:hover { color: var(--ink); }`
+- shared style `chips` — src/peopleLab/peopleLab.css:75: `.chips button.on { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }`
+- shared style `check` — src/peopleLab/peopleLab.css:76: `.check { display: flex; gap: 8px; align-items: center; color: var(--ink-2); margin: 6px 0; cursor: pointer; }`
+- shared style `check` — src/peopleLab/peopleLab.css:77: `.check input { accent-color: var(--accent); }`
+- shared style `panel` — src/peopleLab/peopleLab.css:94: `.panel > * { flex-shrink: 0; }`
+- shared style `panel` — src/peopleLab/peopleLab.css:101: `.panel .bar { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }`
+- shared style `toggle` — src/peopleLab/peopleLab.css:104: `.toggle { width: 32px; height: 30px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 7px; background: var(--panel-2); color: v`
+- shared style `toggle` — src/peopleLab/peopleLab.css:105: `.toggle.on { color: var(--ink); border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }`
+- shared style `stage` — src/peopleLab/peopleLab.css:119: `.stage { position: relative; overflow: hidden; background: radial-gradient(ellipse at 50% 35%, var(--stage-top), var(--stage-bottom) 75%); }`
+- shared style `stage` — src/peopleLab/peopleLab.css:120: `.stage canvas { display: block; width: 100%; height: 100%; }`
+- shared style `top` — src/peopleLab/peopleLab.css:121: `.top { position: absolute; left: 14px; right: 14px; top: 12px; display: flex; align-items: center; gap: 10px; pointer-events: none; }`
+- shared style `top` — src/peopleLab/peopleLab.css:122: `.top > * { pointer-events: auto; }`
+- shared style `title` — src/peopleLab/peopleLab.css:123: `.title { white-space: nowrap; font-weight: 600; font-size: 14px; color: var(--ink); display: flex; align-items: center; gap: 8px; letter-spacing: -.01em; }`
+- shared style `title` — src/peopleLab/peopleLab.css:124: `.title .gem { width: 8px; height: 8px; border-radius: 2px; background: var(--accent); transform: rotate(45deg); }`
+- shared style `tip` — src/peopleLab/peopleLab.css:132: `.tip { position: absolute; pointer-events: none; background: rgba(13, 15, 18, .92); border: 1px solid var(--line); color: var(--ink); font-size: 12px; line-heig`
+- shared style `tip` — src/peopleLab/peopleLab.css:133: `.tip.on { display: block; }`
+- shared style `tip` — src/peopleLab/peopleLab.css:134: `.tip b { font-weight: 600; }`
+- shared style `side` — src/peopleLab/peopleLab.css:142: `.side { background: var(--panel); border-left: 1px solid var(--line); display: flex; flex-direction: column; padding: 14px; gap: 8px; }`
+- shared style `side` — src/peopleLab/peopleLab.css:143: `.side h2 { margin: 0 0 2px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }`
+- shared style `gallery` — src/peopleLab/peopleLab.css:145: `.gallery { flex: 1; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-content: start; margin-top: 4px; }`
+- shared style `card` — src/peopleLab/peopleLab.css:146: `.card { position: relative; border-radius: var(--radius); background: var(--panel-2); border: 1px solid var(--line); cursor: pointer; padding: 3px; text-align: `
+- shared style `card` — src/peopleLab/peopleLab.css:147: `.card img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; background: #2a2f37; display: block; margin-bottom: 3px; }`
+- shared style `card` — src/peopleLab/peopleLab.css:148: `.card.on { border-color: var(--accent); color: var(--ink); }`
+- shared style `card` — src/peopleLab/peopleLab.css:149: `.card .x { position: absolute; top: 5px; right: 5px; width: 18px; height: 18px; border-radius: 4px; border: 0; background: rgba(0,0,0,.55); color: #fff; cursor:`
+- shared style `card` — src/peopleLab/peopleLab.css:150: `.card:hover .x { opacity: 1; }`
+- shared style `gap` — src/peopleLab/peopleLab.css:163: `.gap { height: 12px; }`
+- shared style `panel` — src/peopleLab/peopleLab.css:177: `.panel .chips + .bar { margin-top: 8px; }`
+- shared style `toggle` — src/peopleLab/peopleLab.css:178: `.toggle.wide { width: 100%; height: 40px; }`
+- shared style `glass` — src/ui/app.css:57: `.glass { background: linear-gradient(145deg, var(--ui-hi), transparent 42%), var(--ui-bg); border: 1px solid var(--ui-border); border-radius: 14px; box-shadow: `
+- shared style `collapsed` — src/ui/app.css:95: `.collapsed.glass { width: auto; }`
+- shared style `inspector` — src/ui/app.css:98: `.inspector { position: absolute; right: 18px; top: 372px; width: 244px; padding: 12px; transition: opacity 0.18s, transform 0.18s; }`
+- shared style `collapsed` — src/ui/app.css:192: `@media (max-width: 780px) { .collapsed.glass { padding-top: 8px; padding-bottom: 8px; } }`
+- shared style `inspector` — src/ui/app.css:193: `@media (max-width: 780px) { .inspector { left: 10px; right: 10px; top: 74px; width: auto; max-height: calc(100dvh - 210px); overflow: auto; } }`
+- feature style `v2-shell` — src/ui/builder/workspace.css:84: `:root.v2-shell { --v2-text-s: 13px; --v2-text-m: 14px; --v2-text-l: 16px; --v2-top: 52px; }`
+- feature style `v2-shell` — src/ui/builder/workspace.css:90: `:root.v2-shell #builder { font-size: var(--v2-text-m); }`
+- shared style `rp-title` — src/ui/roads/roads.css:26: `.rp-title { font-size: 15px; font-weight: 650; letter-spacing: 0.01em; }`
+- shared style `rp-icon` — src/ui/roads/roads.css:30: `.rp-icon:hover { background: var(--v-raise-2, rgba(255,255,255,.09)); color: var(--v-text); }`
+- shared style `rp-icon` — src/ui/roads/roads.css:31: `.rp-icon svg, .rp-tool svg, .rp-btn svg, .rp-issue svg, .rp-ok svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-line`
+- shared style `rp-note` — src/ui/roads/roads.css:89: `.rp-note { color: var(--v-muted); font-size: 11.5px; }`
+- shared style `rp-btn` — src/ui/roads/roads.css:119: `.rp-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--v-line); backgro`
+- shared style `rp-btn` — src/ui/roads/roads.css:120: `.rp-btn:hover:not(:disabled) { border-color: var(--v-accent-line); background: var(--v-raise-2); }`
+- shared style `rp-btn` — src/ui/roads/roads.css:123: `.rp-btn.danger { color: var(--v-danger-ink); }`
+- feature style `v2-pill` — src/ui/roads/roads.css:137: `.v2-pill.rp-open { width: auto; max-width: 170px; padding: 0 10px 0 8px; font-size: 12.5px; font-weight: 600; }`
+- feature style `v2-pill` — src/ui/roads/roads.css:138: `.v2-pill.rp-open > span { position: static; width: auto; height: auto; overflow: hidden; clip: auto; text-overflow: ellipsis; white-space: nowrap; }`
+- shared style `rp-keys` — src/ui/roads/roads.css:142: `.rp-keys { position: fixed; left: 330px; bottom: 80px; z-index: 41; width: 264px; display: grid; gap: 8px; padding: 12px; background: rgba(14, 22, 24, 0.97); co`
+- shared style `rp-keys` — src/ui/roads/roads.css:148: `.rp-keys * { box-sizing: border-box; }`
+- shared style `rp-keys` — src/ui/roads/roads.css:149: `.rp-keys button { font: inherit; color: inherit; cursor: pointer; }`
+- shared style `rp-keys-head` — src/ui/roads/roads.css:150: `.rp-keys-head { display: flex; align-items: center; justify-content: space-between; }`
+- shared style `rp-keys` — src/ui/roads/roads.css:151: `.rp-keys .rp-icon { display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 8px; background: none; color: var(--v-muted); }`
+- shared style `rp-keys` — src/ui/roads/roads.css:152: `.rp-keys .rp-icon svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }`
+- shared style `rp-keys-row` — src/ui/roads/roads.css:153: `.rp-keys-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; }`
+- shared style `rp-key` — src/ui/roads/roads.css:154: `.rp-key { min-width: 86px; min-height: 30px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--v-line); border-bottom-width: 3px; background: var(--v`
+- shared style `rp-key` — src/ui/roads/roads.css:155: `.rp-key:hover { border-color: var(--v-accent-line, rgba(79,224,191,.5)); }`
+- shared style `rp-key` — src/ui/roads/roads.css:156: `.rp-key.waiting { border-color: var(--v-accent, #4fe0bf); color: var(--v-accent, #4fe0bf); }`
+- shared style `rp-keys` — src/ui/roads/roads.css:157: `.rp-keys .rp-btn { justify-self: start; display: inline-flex; align-items: center; min-height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid va`
+- shared style `rp-keys` — src/ui/roads/roads.css:158: `.rp-keys .rp-note { color: var(--v-danger-ink, #ffb3aa); font-size: 12px; }`
+- shared style `rp-keys` — src/ui/roads/roads.css:159: `.rp-keys :focus-visible { outline: 2px solid var(--v-accent, #4fe0bf); outline-offset: 1px; }`
+- feature style `v2-seg-b` — src/ui/roads/roads.css:162: `.v2-seg-b.rp-seg-text { width: auto; padding: 0 11px; font-size: 12.5px; font-weight: 600; }`
+- feature style `v2-seg-b` — src/ui/roads/roads.css:163: `.v2-seg-b.rp-seg-text > span { position: static; width: auto; height: auto; overflow: visible; clip: auto; }`
+- shared style `cn-art` — src/ui/roads/roads.css:166: `.cn-art { background: #1d2a2c; }`
+- shared style `cn-art` — src/ui/roads/roads.css:167: `.cn-art svg { cursor: default; }`
+- feature style `cn-stub` — src/ui/roads/roads.css:168: `.cn-stub { stroke: #5b6b6e; stroke-width: 5; stroke-linecap: round; }`
+- feature style `cn-link` — src/ui/roads/roads.css:169: `.cn-link { fill: none; stroke: #cfd8d6; stroke-width: 2; opacity: 0.75; }`
+- feature style `cn-link` — src/ui/roads/roads.css:170: `.cn-link.dim { opacity: 0.18; }`
+- feature style `cn-link` — src/ui/roads/roads.css:171: `.cn-link.on { stroke: var(--v-accent, #4fe0bf); stroke-width: 3; opacity: 1; }`
+- feature style `cn-end` — src/ui/roads/roads.css:172: `.cn-end { stroke: #0d1617; stroke-width: 2; cursor: pointer; }`
+- feature style `cn-end` — src/ui/roads/roads.css:173: `.cn-end.in { fill: #5aa7ff; }`
+- feature style `cn-end` — src/ui/roads/roads.css:175: `.cn-end.on { stroke: #ffffff; stroke-width: 3; }`
+- feature style `cn-end` — src/ui/roads/roads.css:176: `.cn-end:hover { stroke: #ffffff; }`
+- shared style `rc-catalog` — src/ui/roads/roads.css:210: `.rc-catalog { display: grid; gap: 6px; min-width: 0; font: 12px/1.25 Inter, ui-sans-serif, "Segoe UI", Roboto, sans-serif; color: var(--v-text, #eef4f2); }`
+- shared style `rc-catalog` — src/ui/roads/roads.css:211: `.rc-catalog * { box-sizing: border-box; }`
+- shared style `rc-catalog` — src/ui/roads/roads.css:212: `.rc-catalog button { font: inherit; color: inherit; cursor: pointer; }`
+- shared style `rc-tabs` — src/ui/roads/roads.css:213: `.rc-tabs { display: flex; gap: 2px; padding: 2px; border-radius: 9px; background: rgba(0,0,0,.22); justify-self: start; }`
+- shared style `rc-tab` — src/ui/roads/roads.css:214: `.rc-tab { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; padding: 0 10px; border-radius: 7px; border: 0; background: none; font-weight: `
+- shared style `rc-tab` — src/ui/roads/roads.css:215: `.rc-tab em { font-style: normal; font-size: 10.5px; opacity: .7; }`
+- shared style `rc-tab` — src/ui/roads/roads.css:216: `.rc-tab:hover { color: var(--v-text, #eef4f2); background: rgba(255,255,255,.06); }`
+- shared style `rc-tab` — src/ui/roads/roads.css:217: `.rc-tab.on { background: var(--v-raise-2, rgba(255,255,255,.12)); color: var(--v-text, #eef4f2); }`
+- shared style `rc-cards` — src/ui/roads/roads.css:218: `.rc-cards { display: flex; gap: 6px; overflow-x: auto; padding: 2px 2px 6px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.18) transparent; }`
+- shared style `rc-card` — src/ui/roads/roads.css:219: `.rc-card { position: relative; flex: 0 0 124px; border-radius: 9px; }`
+- shared style `rc-card-main` — src/ui/roads/roads.css:220: `.rc-card-main { display: grid; gap: 3px; width: 124px; padding: 0; border: 0; background: none; text-align: left; }`
+- shared style `rc-empty` — src/ui/roads/roads.css:229: `.rc-empty { padding: 10px 4px; color: var(--v-muted, #a3b4b0); max-width: 360px; }`
+- feature style `v2-strip` — src/ui/roads/roads.css:230: `.v2-strip:has(> .rc-catalog) { overflow: hidden; }`
+- feature style `v2-strip` — src/ui/roads/roads.css:231: `.v2-strip > .rc-catalog { flex: 1 1 auto; min-width: 0; }`
+- feature style `v2-drawer` — src/ui/roads/roads.css:232: `.v2-drawer:has(.rc-catalog) { width: min(860px, calc(100vw - 24px)); }`
+- feature style `v2-seg` — src/ui/roads/roads.css:235: `.v2-seg.rp-seg-tight .v2-seg-b { padding: 0 7px; font-size: 13px; }`
+- feature style `v2` — src/ui/v2/shell.css:27: `.v2 { position: absolute; inset: 0; pointer-events: none; z-index: 5; color: var(--v-text); font: 13px/1.3 Inter, ui-sans-serif, "Segoe UI", Roboto, sans-serif;`
+- feature style `v2` — src/ui/v2/shell.css:28: `.v2 * { box-sizing: border-box; }`
+- feature style `v2` — src/ui/v2/shell.css:29: `.v2 button, .v2 select, .v2 input { font: inherit; color: inherit; }`
+- feature style `v2` — src/ui/v2/shell.css:30: `.v2 button { cursor: pointer; }`
+- feature style `v2` — src/ui/v2/shell.css:31: `.v2 button:disabled { opacity: 0.35; cursor: default; }`
+- feature style `v2` — src/ui/v2/shell.css:32: `.v2 [hidden] { display: none !important; }`
+- feature style `v2` — src/ui/v2/shell.css:33: `.v2 :focus-visible { outline: 2px solid var(--v-accent); outline-offset: 1px; }`
+- feature style `v2-hud` — src/ui/v2/shell.css:34: `.v2-hud, .v2-dock, .v2-drawer, .v2-toolopts, .v2-pop, .v2-side, .v2-toast { pointer-events: auto; background: var(--v-bg); border: 1px solid var(--v-line); box-`
+- feature style `v2-pill` — src/ui/v2/shell.css:41: `.v2-icon > span, .v2-pill > span, .v2-seg-b > span, .v2-tabs.compact .v2-tab.icon:not(.on) > span, .v2-tabs.tight .v2-tab.icon > span, .v2-choice.icon > span, .`
+- feature style `v2-hud` — src/ui/v2/shell.css:47: `.v2-hud { position: absolute; top: 12px; left: 12px; right: 12px; height: var(--v-hud-h); display: grid; grid-template-columns: 1fr auto 1fr; align-items: cente`
+- feature style `v2-city` — src/ui/v2/shell.css:52: `.v2-city { display: flex; align-items: center; gap: 12px; min-width: 0; }`
+- feature style `v2-clock` — src/ui/v2/shell.css:53: `.v2-clock { font-size: 17px; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }`
+- feature style `v2-money` — src/ui/v2/shell.css:54: `.v2-money { font-size: 15px; font-variant-numeric: tabular-nums; white-space: nowrap; }`
+- feature style `v2-stats` — src/ui/v2/shell.css:55: `.v2-stats { color: var(--v-muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }`
+- feature style `v2-seg` — src/ui/v2/shell.css:57: `.v2-seg, .v2-speed { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--v-raise); border: 1px solid var(--v-line); }`
+- feature style `v2-seg-b` — src/ui/v2/shell.css:58: `.v2-seg-b, .v2-speed-b { position: relative; display: grid; place-items: center; min-width: 34px; height: 28px; padding: 0 6px; border: 0; border-radius: 999px;`
+- feature style `v2-seg-b` — src/ui/v2/shell.css:62: `.v2-seg-b:hover, .v2-speed-b:hover { color: var(--v-text); }`
+- feature style `v2-seg-b` — src/ui/v2/shell.css:63: `.v2-seg-b.on, .v2-speed-b.on { background: var(--v-accent); color: var(--v-accent-ink); }`
+- feature style `v2-warn` — src/ui/v2/shell.css:65: `.v2-warn { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 9px; border: 1px solid rgba(255, 111, 97, 0.55); border-radius: 999px; `
+- feature style `v2-warn` — src/ui/v2/shell.css:66: `.v2-warn > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }`
+- feature style `v2-warn` — src/ui/v2/shell.css:67: `.v2-warn:hover { border-color: var(--v-danger); }`
+- feature style `v2-actions` — src/ui/v2/shell.css:68: `.v2-actions { display: flex; justify-content: flex-end; align-items: center; gap: 6px; }`
+- feature style `v2-pill` — src/ui/v2/shell.css:69: `.v2-pill, .v2-icon { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 32px; height: 32px; padding: 0; fl`
+- feature style `v2-pill` — src/ui/v2/shell.css:74: `.v2-pill:hover, .v2-icon:hover:not(:disabled) { background: var(--v-raise-2); border-color: var(--v-accent-line); }`
+- feature style `v2-pill` — src/ui/v2/shell.css:75: `.v2-icon.on, .v2-pill.on { color: var(--v-accent); border-color: var(--v-accent); background: var(--v-accent-soft); }`
+- shared style `v2-icon` — src/ui/v2/shell.css:76: `.v2-icon.danger { color: var(--v-danger-ink); }`
+- feature style `v2-inside` — src/ui/v2/shell.css:78: `.v2-inside { display: flex; align-items: center; gap: 2px; padding-right: 4px; border-right: 1px solid var(--v-line); }`
+- feature style `v2-inside-level` — src/ui/v2/shell.css:79: `.v2-inside-level { min-width: 22px; padding: 0 2px; font-size: 12px; font-weight: 700; text-align: center; }`
+- feature style `v2-pop` — src/ui/v2/shell.css:82: `.v2-pop { position: absolute; z-index: 9; min-width: 280px; max-width: min(380px, calc(100vw - 24px)); max-height: calc(100dvh - 100px); overflow: auto; padding`
+- feature style `v2-pop-body` — src/ui/v2/shell.css:83: `.v2-pop-body { display: grid; gap: 2px; }`
+- feature style `v2-pop` — src/ui/v2/shell.css:84: `.v2-pop hr { width: 100%; height: 1px; margin: 4px 0; border: 0; background: var(--v-line); }`
+- feature style `v2-row` — src/ui/v2/shell.css:85: `.v2-row { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; min-height: 38px; padding: 6px 10px; border: 0; border-radius: var(--v`
+- feature style `v2-row` — src/ui/v2/shell.css:86: `.v2-row:hover { background: var(--v-raise-2); }`
+- feature style `v2-row` — src/ui/v2/shell.css:87: `.v2-row svg { flex: none; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; color: var(--v-muted); }`
+- feature style `v2-switch` — src/ui/v2/shell.css:89: `.v2-switch { padding-right: 52px; }`
+- feature style `v2-switch` — src/ui/v2/shell.css:90: `.v2-switch::after { content: ""; position: absolute; right: 10px; top: 50%; width: 30px; height: 16px; margin-top: -8px; border-radius: 999px; background: rgba(`
+- feature style `v2-switch` — src/ui/v2/shell.css:91: `.v2-switch::before { content: ""; position: absolute; right: 26px; top: 50%; z-index: 1; width: 12px; height: 12px; margin-top: -6px; border-radius: 50%; backgr`
+- feature style `v2-switch` — src/ui/v2/shell.css:92: `.v2-switch.on::after { background: rgba(79, 224, 191, 0.45); }`
+- feature style `v2-switch` — src/ui/v2/shell.css:93: `.v2-switch.on::before { transform: translateX(14px); background: var(--v-accent); }`
+- feature style `v2-switch` — src/ui/v2/shell.css:94: `.v2-switch.on svg { color: var(--v-accent); }`
+- feature style `v2-pop` — src/ui/v2/shell.css:95: `.v2-pop .v2-orow { padding: 2px 8px; }`
+- feature style `v2-metrics` — src/ui/v2/shell.css:96: `.v2-metrics { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 4px 0 0; padding: 8px 10px 4px; border-top: 1px solid var(--v-line); font-s`
+- feature style `v2-metrics` — src/ui/v2/shell.css:97: `.v2-metrics dt { color: var(--v-muted); }`
+- feature style `v2-metrics` — src/ui/v2/shell.css:98: `.v2-metrics dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }`
+- feature style `v2-pop-body` — src/ui/v2/shell.css:99: `.v2-pop-body.icons { display: flex; gap: 2px; }`
+- feature style `v2-pop` — src/ui/v2/shell.css:100: `.v2-pop:has(> .v2-pop-body.icons) { min-width: 0; padding: 4px; }`
+- feature style `v2-pop-body` — src/ui/v2/shell.css:101: `.v2-pop-body.icons .v2-icon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; }`
+- feature style `v2-pop-body` — src/ui/v2/shell.css:103: `.v2-pop-body.help { gap: 6px; grid-template-columns: auto 1fr; column-gap: 10px; }`
+- feature style `v2-pop-body` — src/ui/v2/shell.css:104: `.v2-pop-body.help > * { grid-column: 1 / -1; }`
+- feature style `v2-pop-body` — src/ui/v2/shell.css:105: `.v2-pop-body.help > .v2-keys { display: grid; grid-template-columns: subgrid; }`
+- feature style `v2-pop-body` — src/ui/v2/shell.css:106: `.v2-pop-body.help > .v2-keys > .v2-subhead { grid-column: 1 / -1; }`
+- feature style `v2-keys` — src/ui/v2/shell.css:107: `.v2-keys dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; margin: 4px 0 0; padding: 0 8px; align-items: baseline; }`
+- feature style `v2-pop-body` — src/ui/v2/shell.css:108: `.v2-pop-body.help > .v2-keys > dl { grid-column: 1 / -1; grid-template-columns: subgrid; }`
+- feature style `v2-keys` — src/ui/v2/shell.css:109: `.v2-keys dt { margin: 0; }`
+- feature style `v2-keys` — src/ui/v2/shell.css:110: `.v2-keys dd { margin: 0; color: var(--v-muted); font-size: 12.5px; }`
+- feature style `v2-keys` — src/ui/v2/shell.css:111: `.v2-keys kbd { display: inline-block; padding: 2px 6px; border: 1px solid var(--v-line); border-bottom-width: 2px; border-radius: 6px; background: var(--v-raise`
+- feature style `v2-more` — src/ui/v2/shell.css:112: `.v2-more { padding: 0 8px; }`
+- feature style `v2-more` — src/ui/v2/shell.css:113: `.v2-more summary { cursor: pointer; color: var(--v-accent); font-size: 12.5px; padding: 4px 0; }`
+- feature style `v2-help` — src/ui/v2/shell.css:114: `.v2-help { padding: 4px 0; }`
+- feature style `v2-help` — src/ui/v2/shell.css:115: `.v2-help strong { font-size: 13px; }`
+- feature style `v2-help` — src/ui/v2/shell.css:116: `.v2-help p { margin: 2px 0 0; color: var(--v-muted); font-size: 12.5px; line-height: 1.45; }`
+- feature style `v2-dock` — src/ui/v2/shell.css:119: `.v2-dock { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); display: flex; gap: 2px; padding: 4px; border-radius: 14px; max-width: calc`
+- feature style `v2-cat` — src/ui/v2/shell.css:124: `.v2-cat { position: relative; display: grid; grid-template-rows: 24px auto; justify-items: center; align-content: center; gap: 3px; min-width: 66px; height: 52p`
+- feature style `v2-cat` — src/ui/v2/shell.css:129: `.v2-cat:hover { background: var(--v-raise); color: var(--v-text); }`
+- feature style `v2-cat` — src/ui/v2/shell.css:130: `.v2-cat.on { background: var(--v-accent-soft); border-color: var(--v-accent); color: var(--v-accent); }`
+- feature style `v2-cat` — src/ui/v2/shell.css:131: `.v2-cat.danger.on { background: rgba(255, 111, 97, 0.14); border-color: var(--v-danger); color: var(--v-danger); }`
+- feature style `v2-cat` — src/ui/v2/shell.css:132: `.v2-cat svg { width: 22px; height: 22px; }`
+- feature style `v2-cat` — src/ui/v2/shell.css:133: `.v2-cat kbd { display: none; }`
+- feature style `v2-drawer` — src/ui/v2/shell.css:136: `.v2-drawer { position: absolute; left: 50%; bottom: calc(12px + var(--v-dock-h) + 10px); transform: translateX(-50%); width: max-content; min-width: 0; max-widt`
+- feature style `v2-drawer` — src/ui/v2/shell.css:142: `.v2-drawer:has(> .v2-drawer-head > .v2-tabs[hidden]) { grid-template-areas: "body close"; }`
+- feature style `v2-drawer-head` — src/ui/v2/shell.css:143: `.v2-drawer-head { grid-area: head; display: flex; align-items: center; gap: 6px; min-width: 0; padding: 4px 6px; border-bottom: 1px solid var(--v-line); }`
+- feature style `v2-drawer-head` — src/ui/v2/shell.css:144: `.v2-drawer-head > .v2-tabs { min-width: 0; overflow-x: auto; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.18) transparent; }`
+- feature style `v2-drawer-head` — src/ui/v2/shell.css:145: `.v2-drawer-head:has(> .v2-tabs[hidden]) { display: none; }`
+- feature style `v2-drawer` — src/ui/v2/shell.css:146: `.v2-drawer > .v2-icon { grid-area: close; width: 34px; height: auto; align-self: stretch; margin: 0; border: 0; border-bottom: 1px solid var(--v-line); border-r`
+- feature style `v2-drawer` — src/ui/v2/shell.css:147: `.v2-drawer:has(> .v2-drawer-head > .v2-tabs[hidden]) > .v2-icon { align-self: center; width: 26px; height: 26px; margin: 0 6px; border: 1px solid var(--v-line);`
+- feature style `v2-drawer` — src/ui/v2/shell.css:148: `.v2-drawer > .v2-drawer-body { grid-area: body; display: flex; align-items: center; min-width: 0; }`
+- feature style `v2-title` — src/ui/v2/shell.css:149: `.v2-title { display: none; }`
+- feature style `v2-tabs` — src/ui/v2/shell.css:150: `.v2-tabs { display: flex; gap: 2px; align-items: center; }`
+- feature style `v2-tab` — src/ui/v2/shell.css:151: `.v2-tab { height: 30px; padding: 0 10px; border: 1px solid transparent; border-radius: 8px; background: none; color: var(--v-muted); font-size: 12.5px; font-wei`
+- feature style `v2-tab` — src/ui/v2/shell.css:153: `.v2-tab.icon { display: inline-flex; align-items: center; gap: 6px; position: relative; padding: 0 10px 0 8px; }`
+- feature style `v2-tab` — src/ui/v2/shell.css:154: `.v2-tab.icon > svg { flex: none; }`
+- feature style `v2-tabs` — src/ui/v2/shell.css:155: `.v2-tabs.compact .v2-tab.icon:not(.on), .v2-tabs.tight .v2-tab.icon { width: 34px; padding: 0; justify-content: center; }`
+- feature style `v2-tab` — src/ui/v2/shell.css:156: `.v2-tab:hover:not(:disabled) { color: var(--v-text); background: var(--v-raise-2); }`
+- feature style `v2-tab` — src/ui/v2/shell.css:157: `.v2-tab.on { color: var(--v-accent-ink); background: var(--v-accent); border-color: var(--v-accent); }`
+- feature style `v2-hint` — src/ui/v2/shell.css:158: `.v2-hint { display: none !important; }`
+- feature style `v2-strip` — src/ui/v2/shell.css:161: `.v2-strip { flex: 1; min-width: 0; display: flex; gap: 0; padding: 6px 8px; align-items: flex-start; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin`
+- feature style `v2-strip` — src/ui/v2/shell.css:166: `.v2-strip::-webkit-scrollbar { height: 6px; }`
+- feature style `v2-strip` — src/ui/v2/shell.css:167: `.v2-strip::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.18); border-radius: 3px; }`
+- feature style `v2-strip` — src/ui/v2/shell.css:168: `.v2-strip:empty { display: none; }`
+- feature style `v2-drawer` — src/ui/v2/shell.css:170: `.v2-drawer [data-more="right"] { mask-image: linear-gradient(to right, #000 calc(100% - 64px), transparent); }`
+- feature style `v2-drawer` — src/ui/v2/shell.css:171: `.v2-drawer [data-more="left"] { mask-image: linear-gradient(to left, #000 calc(100% - 64px), transparent); }`
+- feature style `v2-drawer` — src/ui/v2/shell.css:172: `.v2-drawer [data-more="both"] { mask-image: linear-gradient(to right, transparent, #000 64px, #000 calc(100% - 64px), transparent); }`
+- feature style `v2-section` — src/ui/v2/shell.css:173: `.v2-section { flex: none; display: grid; }`
+- feature style `v2-section` — src/ui/v2/shell.css:175: `.v2-section + .v2-section { margin-left: 8px; padding-left: 8px; border-left: 1px solid var(--v-line); }`
+- feature style `v2-section` — src/ui/v2/shell.css:176: `.v2-section:has(> .v2-section-items:empty) { display: none; }`
+- feature style `v2-section-title` — src/ui/v2/shell.css:177: `.v2-section-title { display: none; }`
+- feature style `v2-section-items` — src/ui/v2/shell.css:178: `.v2-section-items { display: grid; grid-auto-flow: column; grid-template-rows: auto; gap: 4px; }`
+- feature style `v2-strip` — src/ui/v2/shell.css:180: `.v2-strip.two-rows { --v-card: 40px; }`
+- feature style `v2-strip` — src/ui/v2/shell.css:181: `.v2-strip.two-rows .v2-section-items { grid-template-rows: repeat(2, auto); }`
+- feature style `v2-card` — src/ui/v2/shell.css:184: `.v2-card { position: relative; display: grid; grid-template-rows: var(--v-card) auto; width: var(--v-card-w); padding: 0; overflow: hidden; border: 1px solid va`
+- feature style `v2-card` — src/ui/v2/shell.css:194: `.v2-card:hover:not(:disabled) { border-color: rgba(79, 224, 191, 0.6); background: var(--v-raise-2); }`
+- feature style `v2-card` — src/ui/v2/shell.css:195: `.v2-card.on { border-color: var(--v-accent); box-shadow: 0 0 0 2px var(--v-accent) inset; }`
+- feature style `v2-strip` — src/ui/v2/shell.css:202: `.v2-strip .v2-card.model { --v-card: 54px; --v-card-w: 80px; }`
+- feature style `v2-verb` — src/ui/v2/shell.css:212: `.v2-verb { position: relative; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 1px solid var(--v-line); border-radius: var(--`
+- feature style `v2-verb` — src/ui/v2/shell.css:216: `.v2-verb svg { width: 16px; height: 16px; }`
+- feature style `v2-verb` — src/ui/v2/shell.css:217: `.v2-verb:hover:not(:disabled) { border-color: rgba(79, 224, 191, 0.6); }`
+- feature style `v2-verb` — src/ui/v2/shell.css:218: `.v2-verb.on { border-color: var(--v-accent); color: var(--v-accent); background: var(--v-accent-soft); }`
+- feature style `v2-verb` — src/ui/v2/shell.css:219: `.v2-verb.danger { color: var(--v-danger-ink); }`
+- feature style `v2-muted` — src/ui/v2/shell.css:220: `.v2-muted { margin: 0; color: var(--v-muted); font-size: 11.5px; }`
+- feature style `v2-toolopts` — src/ui/v2/shell.css:223: `.v2-toolopts { position: absolute; left: 12px; bottom: 12px; width: var(--v-opts-w); max-width: calc(100vw - 24px); display: grid; gap: 2px; padding: 6px 8px; b`
+- feature style `v2-options` — src/ui/v2/shell.css:229: `.v2-options { display: grid; gap: 2px; }`
+- feature style `v2-orow` — src/ui/v2/shell.css:231: `.v2-orow { display: grid; grid-template-columns: 66px minmax(0, 1fr); align-items: center; gap: 8px; min-height: 34px; }`
+- feature style `v2-orow-name` — src/ui/v2/shell.css:232: `.v2-orow-name { color: var(--v-muted); font-size: 11.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }`
+- feature style `v2-orow-ctrls` — src/ui/v2/shell.css:233: `.v2-orow-ctrls { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; }`
+- feature style `v2-orow` — src/ui/v2/shell.css:234: `.v2-orow.range .v2-orow-ctrls { flex-wrap: nowrap; }`
+- feature style `v2-range` — src/ui/v2/shell.css:235: `.v2-range { flex: 1; min-width: 0; height: 22px; margin: 0; accent-color: var(--v-accent); }`
+- feature style `v2-range-out` — src/ui/v2/shell.css:236: `.v2-range-out { min-width: 48px; text-align: right; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--v-text); white-space: nowrap; }`
+- feature style `v2-subhead` — src/ui/v2/shell.css:238: `.v2-subhead { margin-top: 4px; padding: 6px 0 2px; border-top: 1px solid var(--v-line); color: var(--v-muted); font-size: 10.5px; font-weight: 700; letter-spaci`
+- feature style `v2-toolopts` — src/ui/v2/shell.css:239: `.v2-toolopts > .v2-head-tools { display: flex; flex-wrap: wrap; gap: 4px; padding-top: 4px; border-top: 1px solid var(--v-line); }`
+- feature style `v2-toolopts` — src/ui/v2/shell.css:240: `.v2-toolopts > .v2-head-tools:empty { display: none; }`
+- feature style `v2-toolopts` — src/ui/v2/shell.css:241: `.v2-toolopts .v2-options[hidden] + .v2-head-tools { border-top: 0; padding-top: 0; }`
+- feature style `v2-choices` — src/ui/v2/shell.css:243: `.v2-choices { display: flex; flex-wrap: wrap; gap: 2px; }`
+- shared style `v2-choice` — src/ui/v2/shell.css:244: `.v2-choice { min-height: 30px; padding: 3px 8px; border: 1px solid var(--v-line); border-radius: var(--v-r-s); background: var(--v-raise); font-size: 12px; line`
+- shared style `v2-choice` — src/ui/v2/shell.css:245: `.v2-choice:hover:not(:disabled) { border-color: var(--v-accent-line); }`
+- shared style `v2-choice` — src/ui/v2/shell.css:246: `.v2-choice.on { color: var(--v-accent-ink); background: var(--v-accent); border-color: var(--v-accent); font-weight: 650; }`
+- shared style `v2-choice` — src/ui/v2/shell.css:247: `.v2-choice.icon { position: relative; display: grid; place-items: center; width: 32px; height: 32px; min-height: 0; padding: 0; border-color: transparent; backg`
+- shared style `v2-choice` — src/ui/v2/shell.css:248: `.v2-choice.icon:hover:not(:disabled) { color: var(--v-text); background: var(--v-raise-2); }`
+- shared style `v2-choice` — src/ui/v2/shell.css:249: `.v2-choice.icon.on { color: var(--v-accent-ink); background: var(--v-accent); border-color: var(--v-accent); }`
+- feature style `v2-stepper` — src/ui/v2/shell.css:251: `.v2-stepper { display: inline-grid; grid-template-columns: 26px minmax(36px, auto) 26px; align-items: center; gap: 2px; }`
+- feature style `v2-stepper` — src/ui/v2/shell.css:252: `.v2-stepper .v2-icon { width: 26px; height: 26px; border-radius: 7px; }`
+- feature style `v2-stepper-value` — src/ui/v2/shell.css:253: `.v2-stepper-value { padding: 0 2px; text-align: center; font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }`
+- feature style `v2-act` — src/ui/v2/shell.css:255: `.v2-act { position: relative; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 1px solid var(--v-line); border-radius: var(--v`
+- feature style `v2-act` — src/ui/v2/shell.css:256: `.v2-act:hover { border-color: var(--v-accent-line); }`
+- feature style `v2-act` — src/ui/v2/shell.css:257: `.v2-act.danger { color: var(--v-danger-ink); }`
+- feature style `v2-act` — src/ui/v2/shell.css:258: `.v2-act.danger:hover { border-color: var(--v-danger); }`
+- feature style `v2-group` — src/ui/v2/shell.css:260: `.v2-group { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 3px 0; }`
+- feature style `v2-group` — src/ui/v2/shell.css:261: `.v2-group + .v2-group { border-top: 1px solid var(--v-line); }`
+- feature style `v2-search` — src/ui/v2/shell.css:262: `.v2-search { width: 100%; min-width: 0; height: 30px; padding: 0 10px; border: 1px solid var(--v-line); border-radius: var(--v-r-s); background: var(--v-bg-soli`
+- feature style `v2-group` — src/ui/v2/shell.css:263: `.v2-group .v2-search { width: 132px; }`
+- feature style `v2-search` — src/ui/v2/shell.css:264: `.v2-search:focus { outline: none; border-color: var(--v-accent); }`
+- feature style `v2-swatches` — src/ui/v2/shell.css:265: `.v2-swatches { display: flex; flex-wrap: wrap; gap: 6px; }`
+- feature style `v2-swatch` — src/ui/v2/shell.css:266: `.v2-swatch { width: 24px; height: 24px; padding: 0; border: 1px solid var(--v-line); border-radius: 7px; background: var(--c); }`
+- feature style `v2-swatch` — src/ui/v2/shell.css:267: `.v2-swatch.on { outline: 2px solid var(--v-accent); outline-offset: 2px; }`
+- feature style `v2-swatch` — src/ui/v2/shell.css:268: `.v2-swatch.custom { background: conic-gradient(#e66, #ec6, #6c6, #6ce, #66e, #c6e, #e66); -webkit-appearance: none; appearance: none; }`
+- feature style `v2-swatch` — src/ui/v2/shell.css:269: `.v2-swatch.custom::-webkit-color-swatch { opacity: 0; }`
+- feature style `v2-transit-line` — src/ui/v2/shell.css:272: `.v2-transit-line { display: flex; align-items: center; gap: 6px; min-width: 260px; padding: 4px 8px; border-radius: 8px; background: var(--v-raise); }`
+- feature style `v2-transit-line` — src/ui/v2/shell.css:273: `.v2-transit-line > i { flex: none; width: 12px; height: 12px; border-radius: 3px; }`
+- feature style `v2-transit-line` — src/ui/v2/shell.css:274: `.v2-transit-line > b { font-weight: 700; }`
+- feature style `v2-transit-line` — src/ui/v2/shell.css:275: `.v2-transit-line > span:not(.v2-transit-count) { flex: 1; font-size: 12px; opacity: 0.75; }`
+- feature style `v2-transit-count` — src/ui/v2/shell.css:276: `.v2-transit-count { min-width: 18px; text-align: center; font-weight: 700; }`
+- feature style `v2-side` — src/ui/v2/shell.css:280: `.v2-side { position: absolute; right: 12px; top: calc(12px + var(--v-hud-h) + 10px); width: 340px; max-height: calc(100dvh - var(--v-hud-h) - var(--v-dock-h) - `
+- feature style `v2-side` — src/ui/v2/shell.css:281: `.v2-side .inspector { position: static !important; display: block; flex: 1 1 auto; min-height: 0; overflow-y: auto; width: 100% !important; max-height: none !im`
+- feature style `v2-side` — src/ui/v2/shell.css:282: `.v2-side .inspector[data-more-y="bottom"] { mask-image: linear-gradient(to bottom, #000 calc(100% - 48px), transparent); }`
+- feature style `v2-side` — src/ui/v2/shell.css:283: `.v2-side .inspector[data-more-y="top"] { mask-image: linear-gradient(to top, #000 calc(100% - 48px), transparent); }`
+- feature style `v2-side` — src/ui/v2/shell.css:284: `.v2-side .inspector[data-more-y="both"] { mask-image: linear-gradient(to bottom, transparent, #000 48px, #000 calc(100% - 48px), transparent); }`
+- feature style `v2-tip` — src/ui/v2/shell.css:307: `.v2-tip { position: fixed; z-index: 20; pointer-events: none; padding: 4px 8px; border: 1px solid var(--v-line); border-radius: 6px; background: var(--v-bg-soli`
+- feature style `v2-toast` — src/ui/v2/shell.css:308: `.v2-toast { position: absolute; left: 50%; top: calc(12px + var(--v-hud-h) + 10px); transform: translateX(-50%); z-index: 10; max-width: min(520px, calc(100vw -`
+- feature style `v2-stats` — src/ui/v2/shell.css:312: `@media (max-width: 1100px) { .v2-stats { display: none; } }`
+- feature style `v2` — src/ui/v2/shell.css:316: `@media (781px <= width < 1160px) { .v2 > .v2-dock { left: calc(24px + var(--v-opts-w)); transform: none; max-width: calc(100vw - var(--v-opts-w) - 36px); } }`
+- feature style `v2-hud` — src/ui/v2/shell.css:322: `@media (max-width: 780px) { .v2-hud { top: 8px; left: 8px; right: 8px; grid-template-columns: 1fr auto; padding: 0 8px; } }`
+- feature style `v2-speed` — src/ui/v2/shell.css:323: `@media (max-width: 780px) { .v2-speed, .v2-stats, .v2-sky { display: none; } }`
+- feature style `v2-dock` — src/ui/v2/shell.css:324: `@media (max-width: 780px) { .v2-dock { left: 8px; right: 8px; bottom: 8px; transform: none; justify-content: space-between; } }`
+- feature style `v2-cat` — src/ui/v2/shell.css:325: `@media (max-width: 780px) { .v2-cat { width: auto; flex: 1 0 52px; height: 58px; } }`
+- feature style `v2-drawer` — src/ui/v2/shell.css:326: `@media (max-width: 780px) { .v2-drawer { left: 8px; right: 8px; width: auto; transform: none; bottom: calc(8px + var(--v-dock-h) + 8px); max-height: 52dvh; } }`
+- feature style `v2-tabs` — src/ui/v2/shell.css:327: `@media (max-width: 780px) { .v2-tabs { flex-wrap: nowrap; overflow-x: auto; } }`
+- feature style `v2-toolopts` — src/ui/v2/shell.css:328: `@media (max-width: 780px) { .v2-toolopts { left: 8px; bottom: calc(8px + var(--v-dock-h) + 8px + 160px); max-height: 30dvh; } }`
+- feature style `v2-side` — src/ui/v2/shell.css:329: `@media (max-width: 780px) { .v2-side, .v2-shell #builder .bw-inspector { right: 8px; width: min(300px, calc(100vw - 16px)); } }`
+- feature style `v2-dd` — src/ui/v2/shell.css:333: `.v2-dd { display: inline-flex; align-items: center; justify-content: space-between; gap: 6px; height: 30px; max-width: 100%; min-width: 0; padding: 0 8px 0 10px`
+- feature style `v2-dd` — src/ui/v2/shell.css:337: `.v2-dd:hover, .v2-dd[aria-expanded="true"] { border-color: var(--v-accent-line); background: var(--v-raise-2); }`
+- feature style `v2-dd-value` — src/ui/v2/shell.css:338: `.v2-dd-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }`
+- feature style `v2-dd` — src/ui/v2/shell.css:339: `.v2-dd > svg { flex: none; color: var(--v-muted); }`
+- feature style `v2-orow` — src/ui/v2/shell.css:340: `.v2-orow .v2-dd { flex: 1; }`
+- feature style `v2-dd-list` — src/ui/v2/shell.css:341: `.v2-dd-list { position: fixed; z-index: 12; pointer-events: auto; display: grid; gap: 1px; max-height: min(320px, 60dvh); overflow-y: auto; padding: 4px; border`
+- feature style `v2-dd-opt` — src/ui/v2/shell.css:346: `.v2-dd-opt { height: 30px; padding: 0 10px; border: 0; border-radius: 6px; background: none; color: var(--v-text); font-size: 12.5px; text-align: left; white-sp`
+- feature style `v2-dd-opt` — src/ui/v2/shell.css:347: `.v2-dd-opt:hover { background: var(--v-raise-2); }`
+- feature style `v2-dd-opt` — src/ui/v2/shell.css:348: `.v2-dd-opt.on { color: var(--v-accent); font-weight: 650; }`
+- feature style `v2-pop-title` — src/ui/v2/shell.css:351: `.v2-pop-title { padding: 6px 10px 4px; color: var(--v-muted); font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }`
+- feature style `v2-note` — src/ui/v2/shell.css:354: `.v2-note { max-width: 520px; margin: 0; padding: 4px 6px; color: var(--v-muted); font-size: 12.5px; line-height: 1.4; white-space: normal; }`
+- feature style `v2` — src/ui/v2/shell.css:360: `.v2 input[type="range"].v2-range { accent-color: var(--v-accent); color-scheme: dark; cursor: pointer; }`
+
+## Where the program plugs the feature in
+
+### src/buildingsWiring.ts
+
+- `src/buildingsWiring.ts#BuildingWiring` (interface, line 49) ← call from `src/main.ts#<ExpressionStatement>@3923`, `src/main.ts#afterRestore`, `src/main.ts#bulldozer`, `src/main.ts#cancelGestures`, …
+- `src/buildingsWiring.ts#BuildingWiring` (interface, line 49) ← read from `src/main.ts#<IfStatement>@4036`, `src/main.ts#actions`, `src/main.ts#mountInterface`, `src/main.ts#pointerDown`, …
+- `src/buildingsWiring.ts#createBuildingWiring` (function, line 81) ← call from `src/main.ts#buildings`
+- `src/buildingsWiring.ts#createBuildingWiring` (function, line 81) ← callbackAssign from `src/world/buildings/validate.ts#siteOf`
+- `src/buildingsWiring.ts#createBuildingWiring` (function, line 81) ← implementation from `src/ui/builder/workspace.ts#initBuilderWorkspace`, `src/ui/builder/workspace.ts#initBuilderWorkspace.refresh`, `src/ui/builder/workspace.ts#initBuilderWorkspace.renderInspector`, `src/world/buildings/validate.ts#siteOf`
+- `src/buildingsWiring.ts#createBuildingWiring.activate` (method, line 1093) ← implementation from `src/main.ts#takeTool`
+- `src/buildingsWiring.ts#createBuildingWiring.afterRoadEdit` (method, line 1191) ← callbackAssign from `src/world/buildings/validate.ts#siteOf`
+- `src/buildingsWiring.ts#createBuildingWiring.afterRoadEdit` (method, line 1191) ← implementation from `src/main.ts#mutateBuilt`, `src/world/buildings/validate.ts#siteOf`
+- `src/buildingsWiring.ts#createBuildingWiring.beforeDraw` (method, line 1120) ← implementation from `src/main.ts#frame`
+- `src/buildingsWiring.ts#createBuildingWiring.bulldozeAt` (method, line 1198) ← implementation from `src/main.ts#bulldozer`
+- `src/buildingsWiring.ts#createBuildingWiring.cancelOperation` (method, line 1065) ← implementation from `src/main.ts#pointerDown`
+- `src/buildingsWiring.ts#createBuildingWiring.deactivate` (method, line 1101) ← implementation from `src/main.ts#takeTool`
+- `src/buildingsWiring.ts#createBuildingWiring.drawOverlay` (method, line 1147) ← implementation from `src/main.ts#drawOverlayScreen`
+- `src/buildingsWiring.ts#createBuildingWiring.hintKey@1206` (method, line 1206) ← implementation from `src/main.ts#hintKey`
+- `src/buildingsWiring.ts#createBuildingWiring.insideClick` (method, line 985) ← implementation from `src/main.ts#doubleClick`, `src/main.ts#singleClick`
+- `src/buildingsWiring.ts#createBuildingWiring.key` (method, line 1076) ← implementation from `src/main.ts#gameKeys`
+- `src/buildingsWiring.ts#createBuildingWiring.languageChanged` (method, line 1209) ← implementation from `src/main.ts#<ExpressionStatement>@3923`
+- `src/buildingsWiring.ts#createBuildingWiring.pointerDown` (method, line 1000) ← implementation from `src/main.ts#pointerDown`
+- `src/buildingsWiring.ts#createBuildingWiring.pointerMove` (method, line 1036) ← implementation from `src/main.ts#pointerMove`
+- `src/buildingsWiring.ts#createBuildingWiring.pointerUp` (method, line 1052) ← implementation from `src/main.ts#cancelGestures`, `src/main.ts#endPointer`
+- `src/buildingsWiring.ts#createBuildingWiring.restored` (method, line 1187) ← implementation from `src/main.ts#afterRestore`, `src/main.ts#snapshotApplied`
+
+### src/editor/buildingTool.ts
+
+- `src/editor/buildingTool.ts#BuildingTool.buildingAt` (method, line 1963) ← call from `src/main.ts#actions`, `src/main.ts#pointerDown`
+
+### src/render/buildings/glassRoom.ts
+
+- `src/render/buildings/glassRoom.ts#roomBehindGlass` (function, line 146) ← call from `src/render/buildings/kit.ts#createBuildingKit`
+
+### src/render/buildings/layer.ts
+
+- `src/render/buildings/layer.ts#createBuildingLayer` (function, line 82) ← call from `src/render/renderer.ts#createSceneRenderer`
+- `src/render/buildings/layer.ts#createBuildingLayer.anyLotHeightAt` (method, line 1175) ← implementation from `src/render/renderer.ts#createSceneRenderer`
+- `src/render/buildings/layer.ts#createBuildingLayer.castInto` (method, line 1101) ← implementation from `src/render/renderer.ts#createSceneRenderer`
+- `src/render/buildings/layer.ts#createBuildingLayer.census` (method, line 1062) ← implementation from `src/render/renderer.ts#createSceneRenderer`
+- `src/render/buildings/layer.ts#createBuildingLayer.chunkOf` (method, line 724) ← implementation from `src/render/renderer.ts#createSceneRenderer.loadEffects`
+- `src/render/buildings/layer.ts#createBuildingLayer.covers` (method, line 1167) ← implementation from `src/render/renderer.ts#createSceneRenderer`, `src/render/renderer.ts#createSceneRenderer.coverFree`, `src/render/renderer.ts#createSceneRenderer.natureOpen`
+- `src/render/buildings/layer.ts#createBuildingLayer.cullDetails` (method, line 1081) ← implementation from `src/render/renderer.ts#createSceneRenderer`
+- `src/render/buildings/layer.ts#createBuildingLayer.dispose` (method, line 1211) ← implementation from `src/render/renderer.ts#createSceneRenderer`
+- `src/render/buildings/layer.ts#createBuildingLayer.hideOccluded` (method, line 1139) ← implementation from `src/render/renderer.ts#createSceneRenderer`
+- `src/render/buildings/layer.ts#createBuildingLayer.levelOfDetail` (method, line 981) ← implementation from `src/render/renderer.ts#createSceneRenderer`
+- `src/render/buildings/layer.ts#createBuildingLayer.levels` (method, line 1066) ← implementation from `src/render/renderer.ts#createSceneRenderer`
+- `src/render/buildings/layer.ts#createBuildingLayer.lotHeightAt` (method, line 1170) ← implementation from `src/render/renderer.ts#createSceneRenderer`, `src/render/renderer.ts#createSceneRenderer.loadEffects`
+- `src/render/buildings/layer.ts#createBuildingLayer.occluderCell` (method, line 1132) ← implementation from `src/render/renderer.ts#createSceneRenderer.occluderDrawn`
+- `src/render/buildings/layer.ts#createBuildingLayer.refill` (method, line 1185) ← implementation from `src/render/renderer.ts#createSceneRenderer`
+- `src/render/buildings/layer.ts#createBuildingLayer.restoreOccluded` (method, line 1156) ← implementation from `src/render/renderer.ts#createSceneRenderer`
+- `src/render/buildings/layer.ts#createBuildingLayer.revealOccluded` (method, line 1153) ← implementation from `src/render/renderer.ts#createSceneRenderer`
+- `src/render/buildings/layer.ts#createBuildingLayer.roots` (method, line 1051) ← implementation from `src/render/buildingSwitches.ts#createBuildingSwitcher.beforeRender`
+- `src/render/buildings/layer.ts#createBuildingLayer.setCutaway` (method, line 1161) ← implementation from `src/render/renderer.ts#createSceneRenderer`
+- `src/render/buildings/layer.ts#createBuildingLayer.setDetailBudget` (method, line 1036) ← implementation from `src/render/renderer.ts#createSceneRenderer`, `src/render/renderer.ts#createSceneRenderer.applyQuality`, `src/render/renderer.ts#createSceneRenderer.governGeometry`
+- `src/render/buildings/layer.ts#createBuildingLayer.setDimmed` (method, line 972) ← implementation from `src/render/renderer.ts#createSceneRenderer`
+- `src/render/buildings/layer.ts#createBuildingLayer.setMassBudget` (method, line 1040) ← implementation from `src/render/renderer.ts#createSceneRenderer.applyGeometryBudget`
+- `src/render/buildings/layer.ts#createBuildingLayer.setNight` (method, line 978) ← implementation from `src/render/renderer.ts#createSceneRenderer`
+- `src/render/buildings/layer.ts#createBuildingLayer.setPreview` (method, line 975) ← implementation from `src/render/renderer.ts#createSceneRenderer`
+- `src/render/buildings/layer.ts#createBuildingLayer.setRuined` (method, line 967) ← implementation from `src/render/renderer.ts#createSceneRenderer.loadEffects`
+- `src/render/buildings/layer.ts#createBuildingLayer.update` (method, line 730) ← callbackAssign from `src/render/buildings/cellPool.ts#CellPool.base`, `src/render/buildings/cellPool.ts#CellPool.learn`, `src/render/buildings/cellPool.ts#CellPool.offPage`, `src/render/buildings/cellPool.ts#CellPool.storedKey`, …
+- `src/render/buildings/layer.ts#createBuildingLayer.update` (method, line 730) ← implementation from `src/render/buildings/cellPool.ts#CellPool.base`, `src/render/buildings/cellPool.ts#CellPool.learn`, `src/render/buildings/cellPool.ts#CellPool.offPage`, `src/render/buildings/cellPool.ts#CellPool.storedKey`, …
+
+### src/render/buildings/layerApi.ts
+
+- `src/render/buildings/layerApi.ts#BuildingLayer` (interface, line 23) ← call from `src/render/buildingSwitches.ts#createBuildingSwitcher.beforeRender`, `src/render/renderer.ts#createSceneRenderer`, `src/render/renderer.ts#createSceneRenderer.applyGeometryBudget`, `src/render/renderer.ts#createSceneRenderer.applyQuality`, …
+- `src/render/buildings/layerApi.ts#BuildingLayer` (interface, line 23) ← read from `src/render/buildingSwitches.ts#createBuildingSwitcher.beforeRender`, `src/render/buildingSwitches.ts#createBuildingSwitcher.casters`, `src/render/buildingSwitches.ts#createBuildingSwitcher.giveBackShadow`, `src/render/renderer.ts#createSceneRenderer`, …
+- `src/render/buildings/layerApi.ts#BuildingLayer` (interface, line 23) ← typeRef from `src/render/buildingSwitches.ts#createBuildingSwitcher`
+- `src/render/buildings/layerApi.ts#BuildingLayer` (interface, line 23) ← write from `src/render/renderer.ts#createSceneRenderer`
+- `src/render/buildings/layerApi.ts#BuildingPreviewInput` (interface, line 11) ← typeRef from `src/render/renderer.ts#SceneHandle`
+- `src/render/buildings/layerApi.ts#BuildingRoot` (type, line 100) ← typeRef from `src/render/buildingSwitches.ts#createBuildingSwitcher.beforeRender`, `src/render/buildingSwitches.ts#ROOT_SWITCH`
+- `src/render/buildings/layerApi.ts#CutawaySpec` (interface, line 102) ← read from `src/render/renderer.ts#createSceneRenderer`
+- `src/render/buildings/layerApi.ts#CutawaySpec` (interface, line 102) ← typeRef from `src/render/renderer.ts#createSceneRenderer`, `src/render/renderer.ts#SceneHandle`
+
+### src/render/buildings/layerCells.ts
+
+- `src/render/buildings/layerCells.ts#BATCH_CELL` (variable, line 43) ← read from `src/render/buildings/cellPool.ts#CellPool.run`, `src/render/buildings/cellPool.ts#pavingRect`, `src/render/renderer.ts#createSceneRenderer.occluderDrawn`
+- `src/render/buildings/layerCells.ts#cellGroup.dispose` (method, line 97) ← implementation from `src/render/renderer.ts#createSceneRenderer.warmPreviewShaders`
+- `src/render/buildings/layerCells.ts#COARSE_PARTS` (variable, line 48) ← read from `src/render/buildings/cellWork.ts#COARSE`
+- `src/render/buildings/layerCells.ts#createCoverIndex` (function, line 206) ← implementation from `src/world/viewCells.ts#ViewCells.make`
+- `src/render/buildings/layerCells.ts#DETAIL_PARTS` (variable, line 50) ← read from `src/render/buildings/cellWork.ts#DETAIL`
+
+### src/render/buildings/partyWalls.ts
+
+- `src/render/buildings/partyWalls.ts#Cover` (interface, line 14) ← typeRef from `src/render/buildings/buildingMesh.ts#emitBuilding`
+- `src/render/buildings/partyWalls.ts#hiddenByCovers` (function, line 100) ← call from `src/render/buildings/buildingMesh.ts#emitBuilding`
+- `src/render/buildings/partyWalls.ts#PartyWalls` (class, line 33) ← construct from `src/render/buildings/cellWork.ts#runCellJob`
+- `src/render/buildings/partyWalls.ts#PartyWalls` (class, line 33) ← typeRef from `src/render/buildings/buildingMesh.ts#chunkSummary`, `src/render/buildings/buildingMesh.ts#emitChunk`
+- `src/render/buildings/partyWalls.ts#PartyWalls.coversNear` (method, line 59) ← call from `src/render/buildings/buildingMesh.ts#emitChunk`
+- `src/render/buildings/partyWalls.ts#PartyWalls.floorOf` (method, line 50) ← call from `src/render/buildings/buildingMesh.ts#chunkSummary`, `src/render/buildings/buildingMesh.ts#emitChunk`
+- `src/render/buildings/partyWalls.ts#PartyWalls.floorsKnown` (method, line 45) ← call from `src/render/buildings/cellWork.ts#runCellJob`
+
+### src/render/buildings/roomBehind.ts
+
+- `src/render/buildings/roomBehind.ts#floorKind` (function, line 56) ← call from `src/render/buildings/buildingMesh.ts#emitInterior`
+- `src/render/buildings/roomBehind.ts#HEAD_SHADE` (variable, line 19) ← read from `src/render/buildings/buildingMesh.ts#emitBay`
+- `src/render/buildings/roomBehind.ts#PANE_FRAME_AT` (variable, line 11) ← read from `src/render/buildings/buildingMesh.ts#meshesOf`, `src/render/buildings/buildingMesh.ts#PartRows.paneFrame`
+- `src/render/buildings/roomBehind.ts#PANE_RECESS_AT` (variable, line 14) ← read from `src/render/buildings/buildingMesh.ts#meshesOf`, `src/render/buildings/buildingMesh.ts#PartRows.paneRecess`
+- `src/render/buildings/roomBehind.ts#REVEAL_SHADE` (variable, line 17) ← read from `src/render/buildings/buildingMesh.ts#emitBay`
+- `src/render/buildings/roomBehind.ts#ROOM_FLOATS` (variable, line 7) ← read from `src/render/buildings/buildingMesh.ts#meshesOf`, `src/render/buildings/buildingMesh.ts#PartRows.add`, `src/render/buildings/buildingMesh.ts#PartRows.constructor`, `src/render/buildings/buildingMesh.ts#PartRows.pane`, …
+- `src/render/buildings/roomBehind.ts#ROOM_OWN` (variable, line 9) ← read from `src/render/buildings/buildingMesh.ts#PartRows.pane`
+- `src/render/buildings/roomBehind.ts#roomsOfStorey` (function, line 129) ← call from `src/render/buildings/buildingMesh.ts#emitBuilding`
+- `src/render/buildings/roomBehind.ts#roomsOfStorey` (function, line 129) ← typeRef from `src/render/buildings/buildingMesh.ts#emitBuilding`
+- `src/render/buildings/roomBehind.ts#SILL_SHADE` (variable, line 18) ← read from `src/render/buildings/buildingMesh.ts#emitBay`
+
+### src/render/buildings/roomLamps.ts
+
+- `src/render/buildings/roomLamps.ts#ROOM_LAMP_GLSL` (variable, line 46) ← read from `src/render/buildings/facadeLevel.ts#facadeFragmentPars`, `src/render/buildings/massingMaterial.ts#createMassingMaterial`
+
+### src/render/interiorSolids.ts
+
+- `src/render/interiorSolids.ts#CabinParts` (class, line 44) ← construct from `src/render/carBody.ts#buildCarModel`, `src/render/vehicleModels.ts#buildBusModel`, `src/render/vehicleModels.ts#buildTruckModel`
+- `src/render/interiorSolids.ts#CabinParts.add` (method, line 49) ← call from `src/render/carBody.ts#buildCarModel`, `src/render/vehicleModels.ts#buildBusModel`, `src/render/vehicleModels.ts#buildTruckModel`
+- `src/render/interiorSolids.ts#CabinParts.geometries` (field, line 45) ← read from `src/render/carBody.ts#buildCarModel`, `src/render/vehicleModels.ts#buildBusModel`, `src/render/vehicleModels.ts#buildTruckModel`
+- `src/render/interiorSolids.ts#CabinParts.solids` (method, line 59) ← call from `src/render/carBody.ts#buildCarModel`, `src/render/vehicleModels.ts#buildBusModel`, `src/render/vehicleModels.ts#buildTruckModel`
+- `src/render/interiorSolids.ts#InteriorSolid` (interface, line 34) ← typeRef from `src/render/vehicleModels.ts#VehicleModel`
+
+### src/render/roomLamps.ts
+
+- `src/render/roomLamps.ts#RoomLamps` (class, line 10) ← construct from `src/render/renderer.ts#createSceneRenderer`
+- `src/render/roomLamps.ts#RoomLamps.lamps` (method, line 14) ← call from `src/render/renderer.ts#createSceneRenderer`
+- `src/render/roomLamps.ts#RoomLamps.lamps` (method, line 14) ← read from `src/render/renderer.ts#createSceneRenderer`
+
+### src/ui/v2/shell.ts
+
+- `src/ui/v2/shell.ts#mountShell` (function, line 446) ← call from `src/main.ts#mountInterface`
+- `src/ui/v2/shell.ts#mountShell.openTool` (method, line 2071) ← implementation from `src/main.ts#showInspector`
+- `src/ui/v2/shell.ts#mountShell.renderRoads` (function, line 1223) ← callbackAssign from `src/ui/roads/catalogPanel.ts#customButton`
+- `src/ui/v2/shell.ts#mountShell.renderRoads` (function, line 1223) ← implementation from `src/ui/roads/catalogPanel.ts#customButton`
+- `src/ui/v2/shell.ts#mountShell.toolKeyed` (method, line 2076) ← implementation from `src/main.ts#gameKeys`
+- `src/ui/v2/shell.ts#ShellHandle` (interface, line 437) ← call from `src/main.ts#gameKeys`, `src/main.ts#showInspector`
+- `src/ui/v2/shell.ts#ShellHandle` (interface, line 437) ← typeRef from `src/main.ts#shell`
+- `src/ui/v2/shell.ts#ShellRoadClass` (interface, line 354) ← typeRef from `src/main.ts#roadClasses`
+- `src/ui/v2/shell.ts#ShellSlider` (interface, line 313) ← typeRef from `src/main.ts#brushSlider`, `src/main.ts#mapSlider`, `src/main.ts#SLIDERS`, `src/main.ts#weatherSlider`
+- `src/ui/v2/shell.ts#ShellStatus` (interface, line 323) ← typeRef from `src/main.ts#currentStatus`, `src/main.ts#statusListeners`
+- `src/ui/v2/shell.ts#ShellZonePatch` (interface, line 345) ← read from `src/main.ts#setZone`
+- `src/ui/v2/shell.ts#ShellZonePatch` (interface, line 345) ← typeRef from `src/main.ts#setZone`
+
+### src/world/buildings/interior.ts
+
+- `src/world/buildings/interior.ts#FloorInterior` (interface, line 42) ← read from `src/render/buildings/buildingMesh.ts#emitBuilding`, `src/render/buildings/buildingMesh.ts#emitInterior`, `src/render/buildings/buildingMesh.ts#interiorFurniture`
+- `src/world/buildings/interior.ts#Furniture` (interface, line 21) ← read from `src/render/buildings/buildingMesh.ts#emitInterior`, `src/render/buildings/buildingMesh.ts#interiorFurniture`, `src/render/buildings/buildingMesh.ts#placeFurniture`
+- `src/world/buildings/interior.ts#Furniture` (interface, line 21) ← typeRef from `src/render/buildings/buildingMesh.ts#emitBuilding`, `src/render/buildings/buildingMesh.ts#placeFurniture`
+- `src/world/buildings/interior.ts#FURNITURE_KINDS` (variable, line 13) ← read from `src/render/buildings/buildingMesh.ts#emitChunk`, `src/render/buildings/buildingMesh.ts#interiorFurniture`, `src/render/buildings/buildingMesh.ts#kitBoxes`, `src/render/buildings/buildingMesh.ts#meshesOf`, …
+- `src/world/buildings/interior.ts#FURNITURE_SIZE` (variable, line 49) ← read from `src/render/buildings/buildingMesh.ts#placeFurniture`, `src/render/buildings/furnitureKit.ts#build`
+- `src/world/buildings/interior.ts#FurnitureKind` (type, line 19) ← typeRef from `src/render/buildings/buildingMesh.ts#emitChunk`, `src/render/buildings/buildingMesh.ts#furnitureRows`, `src/render/buildings/buildingMesh.ts#FurnitureSink`, `src/render/buildings/buildingMesh.ts#interiorFurniture`, …
+- `src/world/buildings/interior.ts#interiorAt` (function, line 194) ← call from `src/render/buildings/buildingMesh.ts#emitBuilding`, `src/render/buildings/buildingMesh.ts#emitInterior`, `src/render/buildings/buildingMesh.ts#interiorFurniture`
+- `src/world/buildings/interior.ts#isFurnitureKind` (function, line 64) ← call from `src/world/buildings/serialize.ts#migrateBuilding`
+- `src/world/buildings/interior.ts#letGoInterior` (function, line 163) ← call from `src/render/buildings/buildingMesh.ts#letGoEmitted`
+- `src/world/buildings/interior.ts#LevelFlight` (interface, line 83) ← read from `src/render/buildings/buildingMesh.ts#emitInterior`
+- `src/world/buildings/interior.ts#levelFlights` (function, line 101) ← call from `src/render/buildings/buildingMesh.ts#emitInterior`
+- `src/world/buildings/interior.ts#Partition` (interface, line 35) ← read from `src/render/buildings/buildingMesh.ts#emitInterior`
+
+### src/world/buildings/spaces.ts
+
+- `src/world/buildings/spaces.ts#deriveSpaces` (function, line 27) ← call from `src/render/buildings/buildingMesh.ts#emitBuilding`
+- `src/world/buildings/spaces.ts#deriveSpaces` (function, line 27) ← typeRef from `src/render/buildings/buildingMesh.ts#slotOfBay`
+- `src/world/buildings/spaces.ts#StoreySpaces` (interface, line 7) ← read from `src/render/buildings/buildingMesh.ts#slotOfBay`
+
+## Shared declarations the feature uses
+
+### src/core/aabb.ts
+
+- `src/core/aabb.ts#Aabb` (interface, line 3) — read by 1: `src/editor/buildings.ts#boxesMeet`
+- `src/core/aabb.ts#Aabb` (interface, line 3) — typeRef by 2: `src/editor/buildings.ts#weldInto`, `src/editor/buildings.ts#boxesMeet`
+
+### src/core/derivedCache.ts
+
+- `src/core/derivedCache.ts#database` (function, line 11) — call by 1: `src/core/derivedCache.ts#readDerivedAll`
+- `src/core/derivedCache.ts#forgetOtherDerived` (function, line 327) — call by 1: `src/render/buildings/parts.ts#createThumbnailStudio.keptPictures`
+- `src/core/derivedCache.ts#prefixRange` (function, line 50) — call by 1: `src/core/derivedCache.ts#readDerivedAll`
+- `src/core/derivedCache.ts#STORE` (variable, line 3) — read by 1: `src/core/derivedCache.ts#readDerivedAll`
+- `src/core/derivedCache.ts#writeDerived` (function, line 250) — call by 1: `src/render/buildings/parts.ts#createThumbnailStudio.shoot`
+
+### src/core/digest.ts
+
+- `src/core/digest.ts#Digest` (class, line 6) — construct by 5: `src/render/buildings/layer.ts#createBuildingLayer.digestOfCell`, `src/render/buildings/layer.ts#createBuildingLayer.entryFor`, `src/render/buildings/layerCells.ts#boxGroundDigest`, `src/render/buildings/townColumns.ts#recordDigests`, …
+- `src/core/digest.ts#Digest.add` (method, line 11) — call by 4: `src/render/buildings/layer.ts#createBuildingLayer.digestOfCell`, `src/render/buildings/layer.ts#createBuildingLayer.entryFor`, `src/render/buildings/layerCells.ts#boxGroundDigest`, `src/render/buildings/townColumns.ts#recordDigests`
+- `src/core/digest.ts#Digest.addPlain` (method, line 31) — call by 2: `src/render/buildings/townColumns.ts#recordDigests`, `src/render/buildings/townColumns.ts#memberDigest`
+- `src/core/digest.ts#Digest.addText` (method, line 25) — call by 1: `src/render/buildings/townColumns.ts#recordDigests`
+- `src/core/digest.ts#Digest.value` (method, line 59) — call by 5: `src/render/buildings/layer.ts#createBuildingLayer.digestOfCell`, `src/render/buildings/layer.ts#createBuildingLayer.entryFor`, `src/render/buildings/layerCells.ts#boxGroundDigest`, `src/render/buildings/townColumns.ts#recordDigests`, …
+
+### src/core/hypot.ts
+
+- `src/core/hypot.ts#hypot2` (function, line 7) — call by 1: `src/world/buildings/interior.ts#roomLights`
+
+### src/core/identityMemo.ts
+
+- `src/core/identityMemo.ts#identityMemo` (function, line 2) — call by 3: `src/world/buildings/interior.ts#furnishedOf`, `src/world/buildings/spaces.ts#spacesOf`, `src/world/buildings/pick.ts#heightOf`
+
+### src/core/idSlots.ts
+
+- `src/core/idSlots.ts#IdSlots.clear` (method, line 97) — call by 1: `src/render/buildings/townColumns.ts#TownColumns.clear`
+- `src/core/idSlots.ts#IdSlots.delete` (method, line 75) — call by 2: `src/render/buildings/townColumns.ts#TownColumns.drop`, `src/render/buildings/cellPool.ts#FloorColumns.retain`
+- `src/core/idSlots.ts#IdSlots.forEach` (method, line 91) — call by 1: `src/render/buildings/cellPool.ts#FloorColumns.retain`
+- `src/core/idSlots.ts#IdSlots.get` (method, line 48) — call by 3: `src/render/buildings/townColumns.ts#TownColumns.drop`, `src/render/buildings/townColumns.ts#TownColumns.slotOf`, `src/render/buildings/townColumns.ts#TownColumns.stale`
+- `src/core/idSlots.ts#IdSlots.size` (getter, line 38) — call by 1: `src/render/buildings/townColumns.ts#TownColumns.size`
+- `src/core/idSlots.ts#IdSlots.take` (method, line 58) — call by 1: `src/render/buildings/townColumns.ts#TownColumns.file`
+
+### src/core/keptList.ts
+
+- `src/core/keptList.ts#KeptList` (class, line 2) — typeRef by 1: `src/editor/blueprintLibrary.ts#BlueprintLibrary.kept`
+- `src/core/keptList.ts#KeptList.read` (method, line 16) — call by 1: `src/editor/blueprintLibrary.ts#BlueprintLibrary.list`
+- `src/core/keptList.ts#KeptList.update` (method, line 45) — call by 2: `src/editor/blueprintLibrary.ts#BlueprintLibrary.remove`, `src/editor/blueprintLibrary.ts#BlueprintLibrary.save`
+
+### src/core/plain.ts
+
+- `src/core/plain.ts#samePlain` (function, line 2) — call by 5: `src/editor/buildingTool.ts#BuildingTool.hoverElement`, `src/editor/buildingTool.ts#BuildingTool.hoverPrimitive`, `src/editor/buildingTool.ts#BuildingTool.pointerUp`, `src/editor/buildingTool.ts#BuildingTool.showDraft`, …
+
+### src/core/polygon.ts
+
+- `src/core/polygon.ts#pointInPolygon` (function, line 40) — call by 2: `src/render/buildings/partyWalls.ts#hiddenByCovers`, `src/world/buildings/interior.ts#Plan.free`
+- `src/core/polygon.ts#signedArea` (function, line 29) — call by 9: `src/editor/buildingTool.ts#BuildingTool.planArea`, `src/buildingsWiring.ts#createBuildingWiring.inspectorFields`, `src/editor/buildingPlans.ts#setVolumePlan`, `src/editor/buildingPlans.ts#movePlanEdge`, …
+
+### src/core/polyline.ts
+
+- `src/core/polyline.ts#Frame` (interface, line 7) — read by 2: `src/editor/buildingSnap.ts#snapToRoad`, `src/editor/buildingSnap.ts#cornerFlush`
+- `src/core/polyline.ts#Polyline.closestPoint` (method, line 330) — call by 2: `src/editor/buildingSnap.ts#snapToRoad`, `src/editor/buildingSnap.ts#cornerFlush`
+- `src/core/polyline.ts#Polyline.closestPoint` (method, line 330) — read by 2: `src/editor/buildingSnap.ts#snapToRoad`, `src/editor/buildingSnap.ts#cornerFlush`
+- `src/core/polyline.ts#Polyline.length` (getter, line 123) — call by 1: `src/editor/buildingSnap.ts#snapToRoad`
+- `src/core/polyline.ts#Polyline.sampleAt` (method, line 152) — call by 2: `src/editor/buildingSnap.ts#snapToRoad`, `src/editor/buildingSnap.ts#cornerFlush`
+
+### src/core/rng.ts
+
+- `src/core/rng.ts#Rng` (class, line 6) — construct by 1: `src/render/buildings/signature.ts#makeMaterials`
+- `src/core/rng.ts#Rng.float` (method, line 57) — call by 5: `src/render/buildings/signature.ts#makeMaterials`, `src/render/buildings/signature.ts#makeMaterials.ashlar`, `src/render/buildings/signature.ts#makeMaterials.courses`, `src/render/buildings/signature.ts#makeMaterials.rusticated`, …
+
+### src/core/scalar.ts
+
+- `src/core/scalar.ts#clamp` (function, line 58) — call by 10: `src/editor/buildings.ts#opUpdateElement.size`, `src/editor/buildings.ts#opSetStoreys`, `src/editor/buildings.ts#opSetRoofShape`, `src/editor/buildings.ts#opSetRelief`, …
+
+### src/core/units.ts
+
+- `src/core/units.ts#m` (function, line 6) — call by 95: `src/render/buildings/layerCells.ts#COVER_CELL`, `src/render/buildings/layerCells.ts#COVER_PAD`, `src/render/buildings/layerCells.ts#COVER_REACH`, `src/render/buildings/layerCells.ts#PLANT_MARGIN`, …
+- `src/core/units.ts#METERS_PER_UNIT` (variable, line 2) — read by 8: `src/editor/buildingTool.ts#BuildingTool.planArea`, `src/editor/buildingTool.ts#BuildingTool.setRoofDetailHeight`, `src/buildingsWiring.ts#createBuildingWiring.drawOverlay`, `src/buildingsWiring.ts#createBuildingWiring.inspectorFields`, …
+- `src/core/units.ts#perM` (function, line 9) — call by 1: `src/editor/buildingPlans.ts#offsetPlan`
+- `src/core/units.ts#stepsIn` (function, line 15) — call by 1: `src/world/buildings/interior.ts#kitchen`
+- `src/core/units.ts#UNITS_PER_METER` (variable, line 3) — read by 3: `src/ui/v2/shell.ts#mountShell.renderRoads`, `src/render/buildings/referenceModel.ts#createReferenceModel.apply`, `src/ui/roads/catalogPanel.ts#catalogStrip`
+
+### src/core/vec2.ts
+
+- `src/core/vec2.ts#Vec2` (interface, line 4) — read by 59: `src/render/buildings/layerCells.ts#coverCell`, `src/render/buildings/roomBehind.ts#roomsOfStorey`, `src/render/roomLamps.ts#RoomLamps.lamps`, `src/render/buildings/partyWalls.ts#PartyWalls.coversOf`, …
+- `src/core/vec2.ts#Vec2` (interface, line 4) — typeRef by 69: `src/render/buildings/layerCells.ts#coverPolygons`, `src/render/buildings/partyWalls.ts#Cover`, `src/world/buildings/interior.ts#LevelFlight`, `src/world/buildings/interior.ts#Plan.ring`, …
+
+### src/editor/blueprintLibrary.ts
+
+- `src/editor/blueprintLibrary.ts#isStored` (function, line 18) — call by 2: `src/editor/blueprintLibrary.ts#BlueprintLibrary.remove`, `src/editor/blueprintLibrary.ts#BlueprintLibrary.save`
+- `src/editor/blueprintLibrary.ts#readEntry` (function, line 52) — reference by 1: `src/editor/blueprintLibrary.ts#BlueprintLibrary.list`
+- `src/editor/blueprintLibrary.ts#StoredBlueprint` (interface, line 10) — read by 2: `src/editor/blueprintLibrary.ts#BlueprintLibrary.remove`, `src/editor/blueprintLibrary.ts#BlueprintLibrary.save`
+- `src/editor/blueprintLibrary.ts#StoredBlueprint` (interface, line 10) — typeRef by 1: `src/editor/blueprintLibrary.ts#BlueprintLibrary.save`
+
+### src/editor/history.ts
+
+- `src/editor/history.ts#History` (class, line 10) — typeRef by 1: `src/buildingsWiring.ts#BuildingWiringDeps`
+- `src/editor/history.ts#History.begin` (method, line 39) — call by 2: `src/buildingsWiring.ts#createBuildingWiring`, `src/main.ts#mapSlider.set`
+- `src/editor/history.ts#History.canRedo` (getter, line 34) — call by 1: `src/buildingsWiring.ts#createBuildingWiring.state`
+- `src/editor/history.ts#History.canUndo` (getter, line 30) — call by 1: `src/buildingsWiring.ts#createBuildingWiring.state`
+- `src/editor/history.ts#History.end` (method, line 46) — call by 2: `src/buildingsWiring.ts#createBuildingWiring`, `src/main.ts#mapSlider.end`
+
+### src/editor/persistence.ts
+
+- `src/editor/persistence.ts#Persistence.saveSessionSoon` (method, line 203) — call by 1: `src/main.ts#mapSlider.set`
+
+### src/editor/snap.ts
+
+- `src/editor/snap.ts#ribbonsNear` (function, line 74) — call by 2: `src/editor/buildingSnap.ts#snapToRoad`, `src/editor/buildingSnap.ts#cornerFlush`
+
+### src/jobs/jobPool.ts
+
+- `src/jobs/jobPool.ts#canQueueJobs` (function, line 534) — call by 1: `src/render/buildings/cellPool.ts#CellPool.warm`
+- `src/jobs/jobPool.ts#grow` (function, line 293) — call by 1: `src/jobs/jobPool.ts#warmJobWorkers`
+- `src/jobs/jobPool.ts#JobSystem.workers` (field, line 231) — read by 1: `src/jobs/jobPool.ts#warmJobWorkers`
+- `src/jobs/jobPool.ts#system` (variable, line 249) — read by 1: `src/jobs/jobPool.ts#warmJobWorkers`
+
+### src/main.ts
+
+- `src/main.ts#brushSlider` (function, line 1670) — implementation by 2: `src/ui/v2/shell.ts#mountShell.range`, `src/ui/v2/shell.ts#mountShell.range.show`
+- `src/main.ts#buildings` (variable, line 760) — implementation by 8: `src/buildingsWiring.ts#createBuildingWiring`, `src/buildingsWiring.ts#createBuildingWiring.beforeDraw`, `src/buildingsWiring.ts#createBuildingWiring.buildReference`, `src/buildingsWiring.ts#createBuildingWiring.insideClick`, …
+- `src/main.ts#doc` (variable, line 189) — read by 2: `src/main.ts#mapSlider.end`, `src/main.ts#mapSlider.set`
+- `src/main.ts#history` (variable, line 201) — read by 2: `src/main.ts#mapSlider.end`, `src/main.ts#mapSlider.set`
+- `src/main.ts#laneChoices` (function, line 1577) — implementation by 1: `src/ui/v2/shell.ts#mountShell.renderRoads`
+- `src/main.ts#mapBiome` (function, line 1774) — implementation by 1: `src/ui/v2/shell.ts#mountShell.renderLandscape`
+- `src/main.ts#mapSlider` (function, line 1655) — call by 1: `src/main.ts#mapSlider.set`
+- `src/main.ts#mapSlider` (function, line 1655) — implementation by 1: `src/ui/v2/shell.ts#mountShell.range.show`
+- `src/main.ts#mapSlider` (function, line 1655) — read by 2: `src/main.ts#mapSlider.end`, `src/main.ts#mapSlider.set`
+- `src/main.ts#mapSlider` (function, line 1655) — write by 2: `src/main.ts#mapSlider.end`, `src/main.ts#mapSlider.set`
+- `src/main.ts#mountInterface` (function, line 1859) — implementation by 10: `src/ui/v2/shell.ts#mountShell`, `src/ui/v2/shell.ts#mountShell.fillPop`, `src/ui/v2/shell.ts#mountShell.mapAction`, `src/ui/v2/shell.ts#mountShell.openTool`, …
+- `src/main.ts#newLargeWorld` (function, line 2035) — implementation by 1: `src/ui/v2/shell.ts#mountShell.popBody`
+- `src/main.ts#newMap` (function, line 2015) — implementation by 1: `src/ui/v2/shell.ts#mountShell.popBody`
+- `src/main.ts#newWorld` (function, line 2029) — implementation by 1: `src/ui/v2/shell.ts#mountShell.popBody`
+- `src/main.ts#persistence` (variable, line 205) — read by 1: `src/main.ts#mapSlider.set`
+- `src/main.ts#redo` (function, line 2344) — implementation by 1: `src/ui/v2/shell.ts#mountShell`
+- `src/main.ts#requestDraw` (function, line 2589) — call by 1: `src/main.ts#mapSlider.set`
+- `src/main.ts#roadClasses` (function, line 1558) — implementation by 1: `src/ui/v2/shell.ts#mountShell.renderRoads`
+- `src/main.ts#saveMap` (function, line 2257) — implementation by 1: `src/ui/v2/shell.ts#mountShell.popBody`
+- `src/main.ts#selectRoadType` (function, line 1596) — implementation by 1: `src/ui/v2/shell.ts#mountShell.renderRoads`
+- `src/main.ts#sessionSettings` (function, line 443) — reference by 1: `src/main.ts#mapSlider.set`
+- `src/main.ts#setDemand` (function, line 1974) — implementation by 1: `src/ui/v2/shell.ts#mountShell.popBody`
+- `src/main.ts#setLanes` (function, line 1586) — implementation by 1: `src/ui/v2/shell.ts#mountShell.renderRoads`
+- `src/main.ts#setMapBiome` (function, line 1777) — implementation by 1: `src/ui/v2/shell.ts#mountShell.renderLandscape.run`
+- `src/main.ts#setMarkingStyle` (function, line 3933) — implementation by 1: `src/ui/v2/shell.ts#mountShell.popBody`
+- `src/main.ts#setQuality` (function, line 3944) — implementation by 1: `src/ui/v2/shell.ts#mountShell.popBody`
+- `src/main.ts#setSky` (function, line 2244) — implementation by 1: `src/ui/v2/shell.ts#mountShell`
+- `src/main.ts#setSpeed` (function, line 1964) — implementation by 1: `src/ui/v2/shell.ts#mountShell`
+- `src/main.ts#setZone` (function, line 1617) — implementation by 1: `src/ui/v2/shell.ts#mountShell.renderZones`
+- `src/main.ts#SLIDERS` (variable, line 1715) — implementation by 2: `src/ui/v2/shell.ts#mountShell.range`, `src/ui/v2/shell.ts#mountShell.range.show`
+- `src/main.ts#toggleCongestion` (function, line 1980) — implementation by 1: `src/ui/v2/shell.ts#mountShell`
+- `src/main.ts#undo` (function, line 2335) — implementation by 1: `src/ui/v2/shell.ts#mountShell`
+- `src/main.ts#updateHistoryButtons` (function, line 2366) — call by 2: `src/main.ts#mapSlider.end`, `src/main.ts#mapSlider.set`
+
+### src/render/buildings/buildingMesh.ts
+
+- `src/render/buildings/buildingMesh.ts#buildBuildingMeshes` (function, line 4158) — call by 2: `src/render/buildings/layer.ts#createBuildingLayer.update`, `src/render/buildings/parts.ts#createThumbnailStudio.shoot`
+- `src/render/buildings/buildingMesh.ts#BuildingMeshes` (interface, line 128) — call by 7: `src/render/buildings/layer.ts#createBuildingLayer.dispose`, `src/render/buildings/layer.ts#createBuildingLayer.present`, `src/render/buildings/layer.ts#createBuildingLayer.refill`, `src/render/buildings/layer.ts#createBuildingLayer.update`, …
+- `src/render/buildings/buildingMesh.ts#BuildingMeshes` (interface, line 128) — read by 16: `src/render/buildings/layer.ts#createBuildingLayer`, `src/render/buildings/layer.ts#createBuildingLayer.castInto`, `src/render/buildings/layer.ts#createBuildingLayer.chosenTriangles`, `src/render/buildings/layer.ts#createBuildingLayer.counted`, …
+- `src/render/buildings/buildingMesh.ts#BuildingMeshes` (interface, line 128) — typeRef by 7: `src/render/buildings/layer.ts#createBuildingLayer`, `src/render/buildings/layerCells.ts#CellBatch`, `src/render/buildings/layerCells.ts#cellGroup`, `src/render/buildings/layerCells.ts#dropCell`, …
+- `src/render/buildings/buildingMesh.ts#BuildingMeshes` (interface, line 128) — write by 5: `src/render/buildings/layer.ts#createBuildingLayer`, `src/render/buildings/layer.ts#createBuildingLayer.refill`, `src/render/buildings/layer.ts#createBuildingLayer.update`, `src/render/buildings/parts.ts#createThumbnailStudio.shoot`, …
+- `src/render/buildings/buildingMesh.ts#emitChunk` (function, line 3735) — call by 2: `src/render/buildings/layer.ts#createBuildingLayer.chunkOf`, `src/render/buildings/parts.ts#createThumbnailStudio.shoot`
+- `src/render/buildings/buildingMesh.ts#FLAT_DEPTH` (variable, line 179) — read by 1: `src/render/buildings/massCells.ts#FACADE_ERROR`
+- `src/render/buildings/buildingMesh.ts#fliesFlag` (function, line 3694) — call by 1: `src/render/buildings/townColumns.ts#TownColumns.file`
+- `src/render/buildings/buildingMesh.ts#kitBoxes` (function, line 3907) — call by 1: `src/render/buildings/layer.ts#createBuildingLayer`
+- `src/render/buildings/buildingMesh.ts#lotGroundAgain` (function, line 2335) — call by 1: `src/render/buildings/layer.ts#createBuildingLayer.lotOf`
+- `src/render/buildings/buildingMesh.ts#lotGroundOf` (function, line 2342) — read by 1: `src/render/buildings/buildingMesh.ts#lotGroundOf.heightAt`
+- `src/render/buildings/buildingMesh.ts#meshesOf` (function, line 3943) — call by 1: `src/render/buildings/cellRequests.ts#CellRequests.land`
+- `src/render/buildings/buildingMesh.ts#meshesOf` (function, line 3943) — read by 1: `src/render/buildings/buildingMesh.ts#meshesOf.setVisible`
+- `src/render/buildings/buildingMesh.ts#meshesOf.dispose` (method, line 4132) — implementation by 6: `src/render/buildings/layer.ts#createBuildingLayer.dispose`, `src/render/buildings/layer.ts#createBuildingLayer.refill`, `src/render/buildings/layer.ts#createBuildingLayer.update`, `src/render/buildings/layerCells.ts#dropCell`, …
+
+### src/render/buildings/cellArrays.ts
+
+- `src/render/buildings/cellArrays.ts#CellArrays` (interface, line 165) — read by 1: `src/render/buildings/cellArrays.ts#cellBytes`
+- `src/render/buildings/cellArrays.ts#CellArrays` (interface, line 165) — typeRef by 1: `src/render/buildings/cellArrays.ts#cellBytes`
+- `src/render/buildings/cellArrays.ts#CellMass` (interface, line 227) — read by 3: `src/render/buildings/massCells.ts#createMassCells.land`, `src/render/buildings/massCells.ts#cellMesh`, `src/render/buildings/massCells.ts#createMassCells.landLevel`
+- `src/render/buildings/cellArrays.ts#CellMass` (interface, line 227) — typeRef by 4: `src/render/buildings/massCells.ts#MassCells`, `src/render/buildings/massLevels.ts#MassLevels.constructor`, `src/render/buildings/cellRequests.ts#CellRequests.mass`, `src/render/buildings/massCells.ts#cellMesh`
+- `src/render/buildings/cellArrays.ts#COLOURED_PARTS` (variable, line 16) — read by 1: `src/render/buildings/farParts.ts#FarPartBatch.constructor`
+- `src/render/buildings/cellArrays.ts#FINISH_ATTRIBUTE` (variable, line 80) — read by 3: `src/render/buildings/partCells.ts#PartCell.make`, `src/render/buildings/partCells.ts#PartCell.makeCaster`, `src/render/buildings/partCells.ts#PartCell.posedLevel`
+- `src/render/buildings/cellArrays.ts#InstanceArrays` (interface, line 152) — read by 1: `src/render/buildings/cellArrays.ts#cellBytes`
+- `src/render/buildings/cellArrays.ts#InstanceArrays` (interface, line 152) — typeRef by 1: `src/render/buildings/cellArrays.ts#cellBytes`
+- `src/render/buildings/cellArrays.ts#MASS_FACADE` (variable, line 325) — read by 1: `src/render/buildings/massCells.ts#cellMesh`
+- `src/render/buildings/cellArrays.ts#MASS_GRID` (variable, line 326) — read by 1: `src/render/buildings/massCells.ts#cellMesh`
+- `src/render/buildings/cellArrays.ts#SHELL_MESH` (variable, line 77) — read by 2: `src/render/buildings/cellRequests.ts#meshesIn`, `src/render/buildings/shellBatch.ts#ShellBatch.add`
+- `src/render/buildings/cellArrays.ts#ShellArrays` (interface, line 135) — read by 1: `src/render/buildings/cellArrays.ts#cellBytes`
+- `src/render/buildings/cellArrays.ts#ShellGrid` (interface, line 38) — read by 1: `src/render/buildings/massCells.ts#cellMesh`
+
+### src/render/buildings/cellPool.ts
+
+- `src/render/buildings/cellPool.ts#CellEnv` (interface, line 34) — read by 1: `src/render/buildings/layer.ts#createBuildingLayer.keep`
+- `src/render/buildings/cellPool.ts#CellEnv` (interface, line 34) — typeRef by 11: `src/render/buildings/layer.ts#createBuildingLayer.askExposed`, `src/render/buildings/layer.ts#createBuildingLayer.keep`, `src/render/buildings/layer.ts#createBuildingLayer.landCells`, `src/render/buildings/layer.ts#createBuildingLayer.update`, …
+- `src/render/buildings/cellPool.ts#CellPool.asked` (field, line 159) — read by 2: `src/render/buildings/cellPool.ts#CellPool.isRunning`, `src/render/buildings/cellPool.ts#CellPool.dispose`
+- `src/render/buildings/cellPool.ts#CellPool.cancel` (method, line 237) — call by 10: `src/render/buildings/cellRequests.ts#CellRequests.drop`, `src/render/buildings/massLevels.ts#MassLevels.flush`, `src/render/buildings/massLevels.ts#MassLevels.ask`, `src/render/buildings/cellRequests.ts#CellRequests.clear`, …
+- `src/render/buildings/cellPool.ts#CellPool.constructor` (constructor, line 187) — read by 1: `src/render/buildings/cellPool.ts#CellPool.warm`
+- `src/render/buildings/cellPool.ts#CellPool.floors` (field, line 161) — read by 1: `src/render/buildings/cellPool.ts#CellPool.forgetFloors`
+- `src/render/buildings/cellPool.ts#CellPool.onPage` (method, line 345) — callbackAssign by 1: `src/render/buildings/layer.ts#createBuildingLayer.keep`
+- `src/render/buildings/cellPool.ts#CellPool.run` (method, line 200) — call by 4: `src/render/buildings/massLevels.ts#MassLevels.ask`, `src/render/buildings/cellRequests.ts#CellRequests.summarize`, `src/render/buildings/cellRequests.ts#CellRequests.want`, `src/render/buildings/cellRequests.ts#CellRequests.mass`
+- `src/render/buildings/cellPool.ts#FloorColumns.cut` (field, line 118) — read by 1: `src/render/buildings/cellPool.ts#FloorColumns.retain`
+- `src/render/buildings/cellPool.ts#FloorColumns.cut` (field, line 118) — write by 1: `src/render/buildings/cellPool.ts#FloorColumns.retain`
+- `src/render/buildings/cellPool.ts#FloorColumns.slots` (field, line 113) — read by 1: `src/render/buildings/cellPool.ts#FloorColumns.retain`
+- `src/render/buildings/cellPool.ts#FloorColumns.slots` (field, line 113) — write by 1: `src/render/buildings/cellPool.ts#FloorColumns.retain`
+
+### src/render/buildings/cellWork.ts
+
+- `src/render/buildings/cellWork.ts#CellResult` (interface, line 59) — read by 5: `src/render/buildings/massLevels.ts#MassLevels.ask`, `src/render/buildings/cellRequests.ts#CellRequests.summarize`, `src/render/buildings/cellRequests.ts#CellRequests.want`, `src/render/buildings/cellRequests.ts#CellRequests.land`, …
+- `src/render/buildings/cellWork.ts#CellResult` (interface, line 59) — typeRef by 1: `src/render/buildings/cellRequests.ts#CellRequests.land`
+- `src/render/buildings/cellWork.ts#ChunkSummary` (interface, line 52) — read by 6: `src/render/buildings/layer.ts#createBuildingLayer.flagsFor`, `src/render/buildings/layer.ts#createBuildingLayer.keep`, `src/render/buildings/layer.ts#createBuildingLayer.lotHeightAt`, `src/render/buildings/layer.ts#createBuildingLayer.lotOf`, …
+- `src/render/buildings/cellWork.ts#ChunkSummary` (interface, line 52) — typeRef by 6: `src/render/buildings/layer.ts#createBuildingLayer.keep`, `src/render/buildings/layer.ts#createBuildingLayer.keptFor`, `src/render/buildings/layer.ts#createBuildingLayer.putKept`, `src/render/buildings/layer.ts#createBuildingLayer.showSignature`, …
+- `src/render/buildings/cellWork.ts#JobKind` (type, line 25) — typeRef by 1: `src/render/buildings/massLevels.ts#KIND`
+
+### src/render/buildings/chunk.ts
+
+- `src/render/buildings/chunk.ts#BuildingChunk` (interface, line 108) — read by 1: `src/render/buildings/parts.ts#createThumbnailStudio.shoot`
+- `src/render/buildings/chunk.ts#BuildingChunk` (interface, line 108) — typeRef by 1: `src/render/buildings/layerApi.ts#BuildingLayer`
+- `src/render/buildings/chunk.ts#CellEntry` (interface, line 35) — read by 5: `src/render/buildings/layer.ts#createBuildingLayer.keep`, `src/render/buildings/layer.ts#createBuildingLayer.refFor`, `src/render/buildings/layer.ts#createBuildingLayer.update`, `src/render/buildings/cellRequests.ts#CellRequests.want`, …
+- `src/render/buildings/chunk.ts#CellEntry` (interface, line 35) — typeRef by 18: `src/render/buildings/layer.ts#createBuildingLayer`, `src/render/buildings/layer.ts#createBuildingLayer.entriesFor`, `src/render/buildings/layer.ts#createBuildingLayer.entriesOf`, `src/render/buildings/layer.ts#createBuildingLayer.entryFor`, …
+- `src/render/buildings/chunk.ts#LotGround` (interface, line 124) — call by 2: `src/render/buildings/layer.ts#createBuildingLayer.anyLotHeightAt`, `src/render/buildings/layer.ts#createBuildingLayer.lotHeightAt`
+- `src/render/buildings/chunk.ts#LotGround` (interface, line 124) — typeRef by 2: `src/render/buildings/layer.ts#createBuildingLayer.lotOf`, `src/render/buildings/layer.ts#Kept`
+- `src/render/buildings/chunk.ts#PartKind` (type, line 8) — typeRef by 5: `src/render/buildings/layerCells.ts#COARSE_PARTS`, `src/render/buildings/layerCells.ts#DETAIL_PARTS`, `src/render/buildings/partCells.ts#Band`, `src/render/buildings/farParts.ts#FarPartBatch.kinds`, …
+
+### src/render/buildings/fade.ts
+
+- `src/render/buildings/fade.ts#fadeMeshes` (function, line 17) — call by 2: `src/render/buildings/layer.ts#createBuildingLayer.show`, `src/render/buildings/layer.ts#createBuildingLayer.update`
+- `src/render/buildings/fade.ts#partLook` (function, line 10) — call by 8: `src/render/buildings/farParts.ts#FarPartBatch.setFaded`, `src/render/buildings/partCells.ts#PartCell.setFaded`, `src/render/buildings/farParts.ts#FarPartBatch.constructor`, `src/render/buildings/partCells.ts#PartCell.make`, …
+- `src/render/buildings/fade.ts#partLook` (function, line 10) — read by 8: `src/render/buildings/farParts.ts#FarPartBatch.setFaded`, `src/render/buildings/partCells.ts#PartCell.setFaded`, `src/render/buildings/farParts.ts#FarPartBatch.constructor`, `src/render/buildings/partCells.ts#PartCell.make`, …
+
+### src/render/buildings/flagLayer.ts
+
+- `src/render/buildings/flagLayer.ts#createFlagLayer` (function, line 103) — call by 2: `src/render/buildings/layer.ts#createBuildingLayer`, `src/render/buildings/flagLayer.ts#createFlagLayer.dispose`
+- `src/render/buildings/flagLayer.ts#createFlagLayer` (function, line 103) — read by 1: `src/render/buildings/flagLayer.ts#createFlagLayer.dispose`
+- `src/render/buildings/flagLayer.ts#createFlagLayer.set` (method, line 117) — implementation by 1: `src/render/buildings/layer.ts#createBuildingLayer.flyFlags`
+- `src/render/buildings/flagLayer.ts#FlagInstance` (interface, line 20) — typeRef by 2: `src/render/buildings/layer.ts#createBuildingLayer`, `src/render/buildings/layer.ts#createBuildingLayer.flyFlags`
+- `src/render/buildings/flagLayer.ts#FlagLayer` (interface, line 29) — call by 2: `src/render/buildings/layer.ts#createBuildingLayer.dispose`, `src/render/buildings/layer.ts#createBuildingLayer.flyFlags`
+- `src/render/buildings/flagLayer.ts#FlagLayer` (interface, line 29) — read by 2: `src/render/buildings/layer.ts#createBuildingLayer`, `src/render/buildings/layer.ts#createBuildingLayer.roots`
+
+### src/render/buildings/frameBudget.ts
+
+- `src/render/buildings/frameBudget.ts#ERROR_STEP` (variable, line 4) — read by 1: `src/render/buildings/frameBudget.ts#fitErrorScale`
+- `src/render/buildings/frameBudget.ts#FrameScale.budget` (field, line 58) — read by 4: `src/render/buildings/layer.ts#createBuildingLayer.capTriangles`, `src/render/buildings/layer.ts#createBuildingLayer.levelOfDetail`, `src/render/buildings/layer.ts#createBuildingLayer.levels`, `src/render/buildings/frameBudget.ts#FrameScale.fit`
+- `src/render/buildings/frameBudget.ts#FrameScale.scale` (field, line 59) — read by 3: `src/render/buildings/layer.ts#createBuildingLayer.levels`, `src/render/buildings/layer.ts#createBuildingLayer.lodChosen`, `src/render/buildings/frameBudget.ts#FrameScale.fit`
+- `src/render/buildings/frameBudget.ts#FrameScale.scale` (field, line 59) — write by 2: `src/render/buildings/layer.ts#createBuildingLayer.levelOfDetail`, `src/render/buildings/frameBudget.ts#FrameScale.fit`
+- `src/render/buildings/frameBudget.ts#MOST_ERROR_SCALE` (variable, line 6) — read by 1: `src/render/buildings/frameBudget.ts#fitErrorScale`
+- `src/render/buildings/frameBudget.ts#SLACK` (variable, line 8) — read by 1: `src/render/buildings/frameBudget.ts#fitErrorScale`
+- `src/render/buildings/frameBudget.ts#TYPICAL_LEVEL_TRIANGLES` (variable, line 67) — read by 1: `src/render/buildings/layer.ts#createBuildingLayer`
+
+### src/render/buildings/gpuBatchedMesh.ts
+
+- `src/render/buildings/gpuBatchedMesh.ts#GpuBatchedMesh` (class, line 69) — construct by 1: `src/render/buildings/shellBatch.ts#ShellBatch.makeBatches.make`
+- `src/render/buildings/gpuBatchedMesh.ts#GpuBatchedMesh` (class, line 69) — typeRef by 2: `src/render/buildings/shellBatch.ts#Batch`, `src/render/buildings/shellBatch.ts#castChanged`
+- `src/render/buildings/gpuBatchedMesh.ts#GpuBatchedMesh.compact` (method, line 292) — call by 2: `src/render/buildings/shellBatch.ts#ShellBatch.squeeze`, `src/render/buildings/shellBatch.ts#ShellBatch.ensure`
+- `src/render/buildings/gpuBatchedMesh.ts#GpuBatchedMesh.deleteGeometry` (method, line 239) — call by 1: `src/render/buildings/shellBatch.ts#ShellBatch.remove`
+- `src/render/buildings/gpuBatchedMesh.ts#GpuBatchedMesh.dispose` (method, line 396) — call by 2: `src/render/buildings/shellBatch.ts#ShellBatch.reset`, `src/render/buildings/shellBatch.ts#ShellBatch.dispose`
+- `src/render/buildings/gpuBatchedMesh.ts#GpuBatchedMesh.setGeometrySize` (method, line 244) — call by 1: `src/render/buildings/shellBatch.ts#ShellBatch.ensure`
+- `src/render/buildings/gpuBatchedMesh.ts#GpuBatchedMesh.usedCounts` (method, line 280) — call by 2: `src/render/buildings/shellBatch.ts#ShellBatch.squeeze`, `src/render/buildings/shellBatch.ts#ShellBatch.ensure`
+- `src/render/buildings/gpuBatchedMesh.ts#GpuBatchedMesh.usedCounts` (method, line 280) — read by 2: `src/render/buildings/shellBatch.ts#ShellBatch.squeeze`, `src/render/buildings/shellBatch.ts#ShellBatch.ensure`
+
+### src/render/buildings/kit.ts
+
+- `src/render/buildings/kit.ts#awakeShare` (function, line 45) — call by 1: `src/render/buildings/kit.ts#createBuildingKit.setNight`
+- `src/render/buildings/kit.ts#Axes` (type, line 124) — typeRef by 5: `src/render/buildings/partCells.ts#middle`, `src/render/buildings/partCells.ts#barsAcross`, `src/render/buildings/partCells.ts#diagonal`, `src/render/buildings/partCells.ts#largest`, …
+- `src/render/buildings/kit.ts#BuildingKit` (interface, line 146) — call by 4: `src/render/buildings/layer.ts#createBuildingLayer.dispose`, `src/render/buildings/layer.ts#createBuildingLayer.setNight`, `src/render/buildings/layer.ts#createBuildingLayer.update`, `src/render/buildings/parts.ts#createThumbnailStudio.release`
+- `src/render/buildings/kit.ts#BuildingKit` (interface, line 146) — read by 13: `src/render/buildings/layer.ts#createBuildingLayer`, `src/render/buildings/partCells.ts#PartCell.setFaded`, `src/render/buildings/shellBatch.ts#ShellBatch.setFaded`, `src/render/buildings/shellBatch.ts#ShellBatch.makeBatches`, …
+- `src/render/buildings/kit.ts#BuildingKit` (interface, line 146) — typeRef by 10: `src/render/buildings/layer.ts#createBuildingLayer`, `src/render/buildings/layerApi.ts#BuildingLayer`, `src/render/buildings/parts.ts#createThumbnailStudio`, `src/render/buildings/shellBatch.ts#ShellBatch.constructor`, …
+- `src/render/buildings/kit.ts#createBuildingKit` (function, line 474) — call by 2: `src/render/buildings/layer.ts#createBuildingLayer`, `src/render/buildings/parts.ts#createThumbnailStudio.setUp`
+- `src/render/buildings/kit.ts#createBuildingKit` (function, line 474) — read by 3: `src/render/buildings/kit.ts#createBuildingKit.dispose`, `src/render/buildings/kit.ts#createBuildingKit.setGhostValid`, `src/render/buildings/kit.ts#createBuildingKit.setNight`
+- `src/render/buildings/kit.ts#createBuildingKit` (function, line 474) — write by 1: `src/render/buildings/kit.ts#createBuildingKit.setNight`
+- `src/render/buildings/kit.ts#outsideLit` (function, line 98) — call by 1: `src/render/buildings/kit.ts#createBuildingKit.setNight`
+- `src/render/buildings/kit.ts#outsideOn` (variable, line 101) — read by 1: `src/render/buildings/kit.ts#createBuildingKit.setNight`
+- `src/render/buildings/kit.ts#outsideOn` (variable, line 101) — write by 1: `src/render/buildings/kit.ts#createBuildingKit.setNight`
+- `src/render/buildings/kit.ts#PART_KINDS` (variable, line 64) — read by 2: `src/render/buildings/layerCells.ts#DETAIL_PARTS`, `src/render/buildings/farParts.ts#FarPartBatch.constructor`
+- `src/render/buildings/kit.ts#PartLevel` (interface, line 127) — read by 10: `src/render/buildings/partCells.ts#PartCell.dispose`, `src/render/buildings/farParts.ts#FarPartBatch.constructor`, `src/render/buildings/partCells.ts#PartCell.make`, `src/render/buildings/partCells.ts#PartCell.triangles`, …
+- `src/render/buildings/kit.ts#PartScreen` (interface, line 137) — read by 13: `src/render/buildings/partCells.ts#PartCell.dispose`, `src/render/buildings/farParts.ts#FarPartBatch.constructor`, `src/render/buildings/partCells.ts#PartCell.make`, `src/render/buildings/partCells.ts#PartCell.triangles`, …
+- `src/render/buildings/kit.ts#PartScreen` (interface, line 137) — typeRef by 1: `src/render/buildings/partCells.ts#Band`
+- `src/render/buildings/kit.ts#PORCH_LIGHT` (variable, line 87) — read by 1: `src/render/buildings/kit.ts#createBuildingKit.setNight`
+- `src/render/buildings/kit.ts#ROOM_DAYLIGHT` (variable, line 55) — read by 1: `src/render/buildings/kit.ts#createBuildingKit.setNight`
+- `src/render/buildings/kit.ts#ROOM_LIT_MEAN` (variable, line 89) — read by 1: `src/render/buildings/kit.ts#createBuildingKit.setNight`
+- `src/render/buildings/kit.ts#roomDaylight` (variable, line 56) — read by 1: `src/render/buildings/kit.ts#createBuildingKit.setNight`
+- `src/render/buildings/kit.ts#roomDaylight` (variable, line 56) — write by 1: `src/render/buildings/kit.ts#createBuildingKit.setNight`
+- `src/render/buildings/kit.ts#roomsAwake` (variable, line 53) — read by 1: `src/render/buildings/kit.ts#createBuildingKit.setNight`
+- `src/render/buildings/kit.ts#roomsAwake` (variable, line 53) — write by 1: `src/render/buildings/kit.ts#createBuildingKit.setNight`
+- `src/render/buildings/kit.ts#tvClock` (variable, line 58) — read by 1: `src/render/buildings/kit.ts#createBuildingKit.setNight`
+- `src/render/buildings/kit.ts#tvClock` (variable, line 58) — write by 1: `src/render/buildings/kit.ts#createBuildingKit.setNight`
+
+### src/render/buildings/levelKeys.ts
+
+- `src/render/buildings/levelKeys.ts#levelCells` (function, line 24) — call by 5: `src/render/buildings/layer.ts#createBuildingLayer`, `src/render/buildings/massLevels.ts#MassLevels.ask`, `src/render/buildings/massLevels.ts#MassLevels.listOf`, `src/render/buildings/massLevels.ts#MassLevels.hasAny`, …
+- `src/render/buildings/levelKeys.ts#levelCells` (function, line 24) — read by 1: `src/render/buildings/massLevels.ts#MassLevels.ask`
+- `src/render/buildings/levelKeys.ts#MassLevel` (type, line 9) — typeRef by 1: `src/render/buildings/massLevels.ts#KIND`
+- `src/render/buildings/levelKeys.ts#PLATE_CELLS` (variable, line 5) — read by 2: `src/render/buildings/levelKeys.ts#plateOf`, `src/render/buildings/levelKeys.ts#baseOf`
+- `src/render/buildings/levelKeys.ts#PLATE_SHIFT` (variable, line 7) — read by 2: `src/render/buildings/levelKeys.ts#plateOf`, `src/render/buildings/levelKeys.ts#baseOf`
+- `src/render/buildings/levelKeys.ts#TILE_CELLS` (variable, line 4) — read by 2: `src/render/buildings/levelKeys.ts#tileOf`, `src/render/buildings/massCells.ts#createMassCells.ensure`
+
+### src/render/buildings/massBase.ts
+
+- `src/render/buildings/massBase.ts#BASE_CELL_STRIDE` (variable, line 42) — read by 3: `src/render/buildings/massCells.ts#createMassCells.syncBases`, `src/render/buildings/massCells.ts#createMassCells.census`, `src/render/buildings/massCells.ts#createMassCells.landBase`
+- `src/render/buildings/massBase.ts#BASE_VERTEX` (variable, line 44) — read by 1: `src/render/buildings/massCells.ts#baseMesh`
+- `src/render/buildings/massBase.ts#BaseMass` (interface, line 35) — read by 1: `src/render/buildings/massCells.ts#createMassCells.landBase`
+- `src/render/buildings/massBase.ts#BaseMass` (interface, line 35) — typeRef by 2: `src/render/buildings/massCells.ts#MassCells`, `src/render/buildings/massLevels.ts#MassLevels.landBase`
+- `src/render/buildings/massBase.ts#BasePiece` (interface, line 25) — read by 2: `src/render/buildings/massCells.ts#createMassCells.landBase`, `src/render/buildings/massCells.ts#baseMesh`
+- `src/render/buildings/massBase.ts#BasePiece` (interface, line 25) — typeRef by 1: `src/render/buildings/massCells.ts#baseMesh`
+
+### src/render/buildings/massing.ts
+
+- `src/render/buildings/massing.ts#MassDetail` (interface, line 35) — read by 1: `src/render/buildings/massCells.ts#createMassCells.ensure`
+- `src/render/buildings/massing.ts#PLATE_DETAIL` (variable, line 45) — read by 1: `src/render/buildings/massCells.ts#createMassCells.ensure`
+- `src/render/buildings/massing.ts#TILE_DETAIL` (variable, line 43) — read by 1: `src/render/buildings/massCells.ts#createMassCells.ensure`
+
+### src/render/buildings/partFiling.ts
+
+- `src/render/buildings/partFiling.ts#DRAW_TRIANGLES` (variable, line 19) — read by 1: `src/render/buildings/partCells.ts#PartCell.runsOf`
+- `src/render/buildings/partFiling.ts#FiledBand` (interface, line 33) — read by 4: `src/render/buildings/partCells.ts#PartCell.constructor`, `src/render/buildings/cellRequests.ts#CellRequests.land`, `src/render/buildings/partFiling.ts#filingBytes`, `src/render/buildings/farParts.ts#FarPartBatch.add`
+- `src/render/buildings/partFiling.ts#LEAVES` (variable, line 17) — read by 11: `src/render/buildings/partCells.ts#PartCell.constructor`, `src/render/buildings/partCells.ts#PartCell.warmMeshes`, `src/render/buildings/partCells.ts#PartCell.bounds`, `src/render/buildings/partCells.ts#PartCell.choose`, …
+- `src/render/buildings/partFiling.ts#PartFiling` (interface, line 49) — read by 4: `src/render/buildings/partCells.ts#PartCell.constructor`, `src/render/buildings/cellRequests.ts#CellRequests.land`, `src/render/buildings/partFiling.ts#filingBytes`, `src/render/buildings/farParts.ts#FarPartBatch.add`
+- `src/render/buildings/partFiling.ts#PartFiling` (interface, line 49) — typeRef by 4: `src/render/buildings/partCells.ts#PartCell.constructor`, `src/render/buildings/partCells.ts#PartCell.filing`, `src/render/buildings/partFiling.ts#filingBytes`, `src/render/buildings/farParts.ts#FarPartBatch.add`
+
+### src/render/buildings/partPose.ts
+
+- `src/render/buildings/partPose.ts#letGoPosed` (function, line 44) — call by 3: `src/render/buildings/partCells.ts#PartCell.dispose`, `src/render/buildings/farParts.ts#FarPartBatch.dispose`, `src/render/buildings/farParts.ts#FarPartBatch.grow`
+- `src/render/buildings/partPose.ts#partPoseDepth` (function, line 95) — call by 5: `src/render/buildings/farParts.ts#FarPartBatch.setFaded`, `src/render/buildings/partCells.ts#PartCell.setFaded`, `src/render/buildings/farParts.ts#FarPartBatch.constructor`, `src/render/buildings/partCells.ts#PartCell.make`, …
+- `src/render/buildings/partPose.ts#POSE_FLOATS` (variable, line 6) — read by 6: `src/render/buildings/partCells.ts#PartCell.constructor`, `src/render/buildings/farParts.ts#FarPartBatch.constructor`, `src/render/buildings/farParts.ts#FarPartBatch.add`, `src/render/buildings/farParts.ts#FarPartBatch.remove`, …
+- `src/render/buildings/partPose.ts#posedCopy` (function, line 29) — call by 5: `src/render/buildings/farParts.ts#FarPartBatch.constructor`, `src/render/buildings/partCells.ts#PartCell.make`, `src/render/buildings/partCells.ts#PartCell.makeCaster`, `src/render/buildings/partCells.ts#PartCell.posedLevel`, …
+
+### src/render/buildings/shellParts.ts
+
+- `src/render/buildings/shellParts.ts#GROUND_ATTRIBUTE` (variable, line 24) — read by 3: `src/render/buildings/partCells.ts#PartCell.make`, `src/render/buildings/partCells.ts#PartCell.makeCaster`, `src/render/buildings/partCells.ts#PartCell.posedLevel`
+- `src/render/buildings/shellParts.ts#LOOK_FLOATS` (variable, line 16) — read by 3: `src/render/buildings/partCells.ts#PartCell.constructor`, `src/render/buildings/partCells.ts#PartCell.make`, `src/render/buildings/partCells.ts#PartCell.posedLevel`
+- `src/render/buildings/shellParts.ts#SHELL_PARTS` (variable, line 13) — read by 5: `src/render/buildings/farParts.ts#FarPartBatch.constructor`, `src/render/buildings/partCells.ts#PartCell.warmMeshes`, `src/render/buildings/cellRequests.ts#CellRequests.land`, `src/render/buildings/partCells.ts#PartCell.choose`, …
+- `src/render/buildings/shellParts.ts#shellPartError` (function, line 19) — call by 1: `src/render/buildings/partCells.ts#PartCell.levelAt`
+
+### src/render/buildings/signature.ts
+
+- `src/render/buildings/signature.ts#canvasTexture` (function, line 187) — call by 8: `src/render/buildings/signature.ts#makeMaterials`, `src/render/buildings/signature.ts#makeMaterials.ashlar`, `src/render/buildings/signature.ts#makeMaterials.chevrons`, `src/render/buildings/signature.ts#makeMaterials.courses`, …
+- `src/render/buildings/signature.ts#DESIGNS` (variable, line 1740) — read by 1: `src/render/buildings/signature.ts#buildSignature`
+- `src/render/buildings/signature.ts#drawsSignature` (function, line 1749) — call by 4: `src/render/buildings/partyWalls.ts#PartyWalls.coversOf`, `src/render/buildings/parts.ts#createThumbnailStudio.shoot`, `src/render/buildings/townColumns.ts#TownColumns.file`, `src/render/buildings/buildingMesh.ts#signatureFloorOf`
+- `src/render/buildings/signature.ts#facades` (variable, line 36) — read by 2: `src/render/buildings/signature.ts#buildSignature`, `src/render/buildings/signature.ts#buildSignature.solid`
+- `src/render/buildings/signature.ts#Mat` (type, line 32) — typeRef by 2: `src/render/buildings/signature.ts#buildSignature.solid`, `src/render/buildings/signature.ts#makeMaterials`
+- `src/render/buildings/signature.ts#materials` (variable, line 34) — read by 2: `src/render/buildings/signature.ts#buildSignature`, `src/render/buildings/signature.ts#buildSignature.solid`
+- `src/render/buildings/signature.ts#materials` (variable, line 34) — write by 1: `src/render/buildings/signature.ts#buildSignature`
+- `src/render/buildings/signature.ts#Parts` (class, line 361) — construct by 1: `src/render/buildings/signature.ts#buildSignature`
+- `src/render/buildings/signature.ts#Parts.byMat` (field, line 362) — read by 1: `src/render/buildings/signature.ts#buildSignature`
+- `src/render/buildings/signature.ts#seedOf` (function, line 42) — call by 1: `src/render/buildings/signature.ts#makeMaterials`
+
+### src/render/buildings/townColumns.ts
+
+- `src/render/buildings/townColumns.ts#FILED` (variable, line 22) — read by 5: `src/render/buildings/townColumns.ts#TownColumns.file`, `src/render/buildings/townIndex.ts#TownIndex.has`, `src/render/buildings/townIndex.ts#TownIndex.reset`, `src/render/buildings/townIndex.ts#TownIndex.take`, …
+- `src/render/buildings/townColumns.ts#FLIES` (variable, line 14) — read by 2: `src/render/buildings/layer.ts#createBuildingLayer.update`, `src/render/buildings/townColumns.ts#TownColumns.file`
+- `src/render/buildings/townColumns.ts#KEPT` (variable, line 20) — read by 4: `src/render/buildings/layer.ts#createBuildingLayer.dropKept`, `src/render/buildings/layer.ts#createBuildingLayer.keptFor`, `src/render/buildings/layer.ts#createBuildingLayer.putKept`, `src/render/buildings/townColumns.ts#TownColumns.file`
+- `src/render/buildings/townColumns.ts#KNOWN` (variable, line 12) — read by 4: `src/render/buildings/layer.ts#createBuildingLayer.slotNow`, `src/render/buildings/layer.ts#createBuildingLayer.update`, `src/render/buildings/townColumns.ts#TownColumns.file`, `src/render/buildings/townColumns.ts#TownColumns.stale`
+- `src/render/buildings/townColumns.ts#SHOWN` (variable, line 18) — read by 3: `src/render/buildings/layer.ts#createBuildingLayer.flagsFor`, `src/render/buildings/layer.ts#createBuildingLayer.update`, `src/render/buildings/townColumns.ts#TownColumns.file`
+- `src/render/buildings/townColumns.ts#SIGNATURE` (variable, line 16) — read by 3: `src/render/buildings/layer.ts#createBuildingLayer.showSignature`, `src/render/buildings/layer.ts#createBuildingLayer.update`, `src/render/buildings/townColumns.ts#TownColumns.file`
+- `src/render/buildings/townColumns.ts#TownColumns.filedI` (field, line 82) — read by 2: `src/render/buildings/townIndex.ts#TownIndex.take`, `src/render/buildings/townIndex.ts#TownIndex.file`
+- `src/render/buildings/townColumns.ts#TownColumns.filedI` (field, line 82) — write by 1: `src/render/buildings/townIndex.ts#TownIndex.file`
+- `src/render/buildings/townColumns.ts#TownColumns.filedJ` (field, line 83) — read by 2: `src/render/buildings/townIndex.ts#TownIndex.take`, `src/render/buildings/townIndex.ts#TownIndex.file`
+- `src/render/buildings/townColumns.ts#TownColumns.filedJ` (field, line 83) — write by 1: `src/render/buildings/townIndex.ts#TownIndex.file`
+- `src/render/buildings/townColumns.ts#TownColumns.flags` (field, line 58) — read by 7: `src/render/buildings/layer.ts#createBuildingLayer.update`, `src/render/buildings/townColumns.ts#TownColumns.drop`, `src/render/buildings/townColumns.ts#TownColumns.file`, `src/render/buildings/townColumns.ts#TownColumns.has`, …
+- `src/render/buildings/townColumns.ts#TownColumns.flags` (field, line 58) — write by 6: `src/render/buildings/layer.ts#createBuildingLayer.update`, `src/render/buildings/townColumns.ts#TownColumns.drop`, `src/render/buildings/townColumns.ts#TownColumns.file`, `src/render/buildings/townColumns.ts#TownColumns.set`, …
+- `src/render/buildings/townColumns.ts#TownColumns.forEach` (method, line 161) — call by 1: `src/render/buildings/layer.ts#createBuildingLayer.update`
+- `src/render/buildings/townColumns.ts#TownColumns.groundMaxX` (field, line 73) — read by 2: `src/render/buildings/layer.ts#createBuildingLayer.digestOfCell`, `src/render/buildings/townColumns.ts#TownColumns.file`
+- `src/render/buildings/townColumns.ts#TownColumns.groundMaxX` (field, line 73) — write by 1: `src/render/buildings/townColumns.ts#TownColumns.file`
+- `src/render/buildings/townColumns.ts#TownColumns.groundMaxY` (field, line 74) — read by 2: `src/render/buildings/layer.ts#createBuildingLayer.digestOfCell`, `src/render/buildings/townColumns.ts#TownColumns.file`
+- `src/render/buildings/townColumns.ts#TownColumns.groundMaxY` (field, line 74) — write by 1: `src/render/buildings/townColumns.ts#TownColumns.file`
+- `src/render/buildings/townColumns.ts#TownColumns.groundMinX` (field, line 71) — read by 2: `src/render/buildings/layer.ts#createBuildingLayer.digestOfCell`, `src/render/buildings/townColumns.ts#TownColumns.file`
+- `src/render/buildings/townColumns.ts#TownColumns.groundMinX` (field, line 71) — write by 1: `src/render/buildings/townColumns.ts#TownColumns.file`
+- `src/render/buildings/townColumns.ts#TownColumns.groundMinY` (field, line 72) — read by 2: `src/render/buildings/layer.ts#createBuildingLayer.digestOfCell`, `src/render/buildings/townColumns.ts#TownColumns.file`
+- `src/render/buildings/townColumns.ts#TownColumns.groundMinY` (field, line 72) — write by 1: `src/render/buildings/townColumns.ts#TownColumns.file`
+- `src/render/buildings/townColumns.ts#TownColumns.height` (field, line 69) — read by 2: `src/render/buildings/layer.ts#createBuildingLayer.askMass`, `src/render/buildings/townColumns.ts#TownColumns.file`
+- `src/render/buildings/townColumns.ts#TownColumns.height` (field, line 69) — write by 1: `src/render/buildings/townColumns.ts#TownColumns.file`
+- `src/render/buildings/townColumns.ts#TownColumns.ids` (field, line 60) — read by 2: `src/render/buildings/townColumns.ts#TownColumns.file`, `src/render/buildings/townColumns.ts#TownColumns.idOf`
+- `src/render/buildings/townColumns.ts#TownColumns.ids` (field, line 60) — write by 1: `src/render/buildings/townColumns.ts#TownColumns.file`
+- `src/render/buildings/townColumns.ts#TownColumns.keptDigest` (field, line 80) — read by 2: `src/render/buildings/layer.ts#createBuildingLayer.keptFor`, `src/render/buildings/layer.ts#createBuildingLayer.putKept`
+- `src/render/buildings/townColumns.ts#TownColumns.keptDigest` (field, line 80) — write by 1: `src/render/buildings/layer.ts#createBuildingLayer.putKept`
+- `src/render/buildings/townColumns.ts#TownColumns.keptSig` (field, line 79) — read by 3: `src/render/buildings/layer.ts#createBuildingLayer.keptFor`, `src/render/buildings/layer.ts#createBuildingLayer.lotOf`, `src/render/buildings/layer.ts#createBuildingLayer.putKept`
+- `src/render/buildings/townColumns.ts#TownColumns.keptSig` (field, line 79) — write by 1: `src/render/buildings/layer.ts#createBuildingLayer.putKept`
+- `src/render/buildings/townColumns.ts#TownColumns.massSig` (field, line 77) — read by 2: `src/render/buildings/layer.ts#createBuildingLayer.askMass`, `src/render/buildings/townColumns.ts#TownColumns.file`
+- `src/render/buildings/townColumns.ts#TownColumns.massSig` (field, line 77) — write by 1: `src/render/buildings/townColumns.ts#TownColumns.file`
+- `src/render/buildings/townColumns.ts#TownColumns.maxX` (field, line 67) — read by 3: `src/render/buildings/layer.ts#createBuildingLayer.near`, `src/render/buildings/layer.ts#createBuildingLayer.putKept`, `src/render/buildings/townColumns.ts#TownColumns.file`
+- `src/render/buildings/townColumns.ts#TownColumns.maxX` (field, line 67) — write by 1: `src/render/buildings/townColumns.ts#TownColumns.file`
+- `src/render/buildings/townColumns.ts#TownColumns.maxY` (field, line 68) — read by 3: `src/render/buildings/layer.ts#createBuildingLayer.near`, `src/render/buildings/layer.ts#createBuildingLayer.putKept`, `src/render/buildings/townColumns.ts#TownColumns.file`
+- `src/render/buildings/townColumns.ts#TownColumns.maxY` (field, line 68) — write by 1: `src/render/buildings/townColumns.ts#TownColumns.file`
+- `src/render/buildings/townColumns.ts#TownColumns.minX` (field, line 65) — read by 3: `src/render/buildings/layer.ts#createBuildingLayer.near`, `src/render/buildings/layer.ts#createBuildingLayer.putKept`, `src/render/buildings/townColumns.ts#TownColumns.file`
+- `src/render/buildings/townColumns.ts#TownColumns.minX` (field, line 65) — write by 1: `src/render/buildings/townColumns.ts#TownColumns.file`
+- `src/render/buildings/townColumns.ts#TownColumns.minY` (field, line 66) — read by 3: `src/render/buildings/layer.ts#createBuildingLayer.near`, `src/render/buildings/layer.ts#createBuildingLayer.putKept`, `src/render/buildings/townColumns.ts#TownColumns.file`
+- `src/render/buildings/townColumns.ts#TownColumns.minY` (field, line 66) — write by 1: `src/render/buildings/townColumns.ts#TownColumns.file`
+- `src/render/buildings/townColumns.ts#TownColumns.sig` (field, line 76) — read by 6: `src/render/buildings/layer.ts#createBuildingLayer.entryFor`, `src/render/buildings/layer.ts#createBuildingLayer.keptFor`, `src/render/buildings/layer.ts#createBuildingLayer.lotOf`, `src/render/buildings/layer.ts#createBuildingLayer.showSignature`, …
+- `src/render/buildings/townColumns.ts#TownColumns.sig` (field, line 76) — write by 1: `src/render/buildings/townColumns.ts#TownColumns.file`
+- `src/render/buildings/townColumns.ts#TownColumns.slots` (field, line 55) — read by 6: `src/render/buildings/townColumns.ts#TownColumns.drop`, `src/render/buildings/townColumns.ts#TownColumns.file`, `src/render/buildings/townColumns.ts#TownColumns.slotOf`, `src/render/buildings/townColumns.ts#TownColumns.stale`, …
+- `src/render/buildings/townColumns.ts#TownColumns.slots` (field, line 55) — write by 2: `src/render/buildings/townColumns.ts#TownColumns.drop`, `src/render/buildings/townColumns.ts#TownColumns.clear`
+- `src/render/buildings/townColumns.ts#TownColumns.x` (field, line 62) — read by 4: `src/render/buildings/layer.ts#createBuildingLayer.askMass`, `src/render/buildings/townColumns.ts#TownColumns.file`, `src/render/buildings/townColumns.ts#TownColumns.cellOf`, `src/render/buildings/townIndex.ts#TownIndex.file`
+- `src/render/buildings/townColumns.ts#TownColumns.x` (field, line 62) — write by 1: `src/render/buildings/townColumns.ts#TownColumns.file`
+- `src/render/buildings/townColumns.ts#TownColumns.y` (field, line 63) — read by 4: `src/render/buildings/layer.ts#createBuildingLayer.askMass`, `src/render/buildings/townColumns.ts#TownColumns.file`, `src/render/buildings/townColumns.ts#TownColumns.cellOf`, `src/render/buildings/townIndex.ts#TownIndex.file`
+- `src/render/buildings/townColumns.ts#TownColumns.y` (field, line 63) — write by 1: `src/render/buildings/townColumns.ts#TownColumns.file`
+
+### src/render/gpuLedger.ts
+
+- `src/render/gpuLedger.ts#geometryCost` (function, line 73) — call by 5: `src/render/buildings/massCells.ts#createMassCells.evictLevels`, `src/render/buildings/massCells.ts#createMassCells.stand`, `src/render/buildings/massCells.ts#createMassCells.massTriangles`, `src/render/buildings/massCells.ts#sendUp`, …
+- `src/render/gpuLedger.ts#geometryCost` (function, line 73) — read by 5: `src/render/buildings/massCells.ts#createMassCells.evictLevels`, `src/render/buildings/massCells.ts#createMassCells.stand`, `src/render/buildings/massCells.ts#createMassCells.massTriangles`, `src/render/buildings/massCells.ts#sendUp`, …
+- `src/render/gpuLedger.ts#GpuClass` (type, line 7) — typeRef by 5: `src/render/buildings/layer.ts#DETAIL_CLASSES`, `src/render/buildings/layer.ts#detailClass`, `src/render/gpuLedger.ts#GpuLedger.roomFor`, `src/render/buildings/massCells.ts#sendUp`, …
+- `src/render/gpuLedger.ts#gpuLedger` (variable, line 70) — read by 8: `src/render/buildings/layer.ts#createBuildingLayer.counted`, `src/render/buildings/layer.ts#createBuildingLayer.room`, `src/render/buildings/massCells.ts#createMassCells.evictLevels`, `src/render/buildings/massCells.ts#createMassCells.dropMesh`, …
+- `src/render/gpuLedger.ts#gpuLedger` (variable, line 70) — write by 3: `src/render/buildings/layer.ts#createBuildingLayer.counted`, `src/render/buildings/massCells.ts#sendUp`, `src/render/buildings/massCells.ts#createMassCells.landBase`
+- `src/render/gpuLedger.ts#GpuLedger.bytes` (method, line 44) — call by 2: `src/render/buildings/massCells.ts#createMassCells.evictLevels`, `src/render/gpuLedger.ts#GpuLedger.roomFor`
+- `src/render/gpuLedger.ts#GpuLedger.cap` (field, line 17) — read by 1: `src/render/gpuLedger.ts#GpuLedger.roomFor`
+- `src/render/gpuLedger.ts#GpuLedger.remove` (method, line 32) — call by 4: `src/render/buildings/layer.ts#createBuildingLayer.counted`, `src/render/buildings/massCells.ts#createMassCells.dropMesh`, `src/render/buildings/massCells.ts#createMassCells.drop`, `src/render/buildings/massCells.ts#createMassCells.dropBase`
+- `src/render/gpuLedger.ts#GpuLedger.set` (method, line 20) — call by 3: `src/render/buildings/layer.ts#createBuildingLayer.counted`, `src/render/buildings/massCells.ts#sendUp`, `src/render/buildings/massCells.ts#createMassCells.landBase`
+- `src/render/gpuLedger.ts#GpuLedger.sum` (field, line 15) — read by 1: `src/render/gpuLedger.ts#GpuLedger.roomFor`
+
+### src/render/isoViewport.ts
+
+- `src/render/isoViewport.ts#createIsoRig` (function, line 78) — implementation by 2: `src/buildingsWiring.ts#createBuildingWiring`, `src/buildingsWiring.ts#createBuildingWiring.beforeDraw`
+
+### src/render/lightLevels.ts
+
+- `src/render/lightLevels.ts#luminanceOf` (function, line 28) — call by 1: `src/render/buildings/kit.ts#createBuildingKit.setNight`
+- `src/render/lightLevels.ts#NIGHT_LUMINANCE` (variable, line 9) — read by 1: `src/render/buildings/kit.ts#createBuildingKit.setNight`
+
+### src/render/mesh/gpuOnly.ts
+
+- `src/render/mesh/gpuOnly.ts#gpuOnly` (function, line 45) — call by 1: `src/render/buildings/massCells.ts#cellMesh`
+- `src/render/mesh/gpuOnly.ts#gpuOnlyAttributes` (function, line 22) — call by 2: `src/render/buildings/partCells.ts#PartCell.constructor`, `src/render/buildings/massCells.ts#baseMesh`
+
+### src/render/mesh/hiddenFaces.ts
+
+- `src/render/mesh/hiddenFaces.ts#dropHiddenFaces` (function, line 22) — call by 1: `src/render/buildings/signature.ts#buildSignature`
+
+### src/render/renderer.ts
+
+- `src/render/renderer.ts#createSceneRenderer` (function, line 432) — callbackAssign by 1: `src/buildingsWiring.ts#createBuildingWiring`
+- `src/render/renderer.ts#createSceneRenderer` (function, line 432) — implementation by 4: `src/buildingsWiring.ts#createBuildingWiring`, `src/buildingsWiring.ts#createBuildingWiring.beforeDraw`, `src/buildingsWiring.ts#createBuildingWiring.deactivate`, `src/buildingsWiring.ts#createBuildingWiring.referenceTarget`
+- `src/render/renderer.ts#SceneHandle` (interface, line 227) — call by 4: `src/buildingsWiring.ts#createBuildingWiring`, `src/buildingsWiring.ts#createBuildingWiring.beforeDraw`, `src/buildingsWiring.ts#createBuildingWiring.deactivate`, `src/buildingsWiring.ts#createBuildingWiring.referenceTarget`
+- `src/render/renderer.ts#SceneHandle` (interface, line 227) — read by 2: `src/buildingsWiring.ts#createBuildingWiring`, `src/buildingsWiring.ts#createBuildingWiring.requestThumbnails`
+- `src/render/renderer.ts#SceneHandle` (interface, line 227) — typeRef by 1: `src/buildingsWiring.ts#BuildingWiringDeps`
+
+### src/render/uploads.ts
+
+- `src/render/uploads.ts#cancelWarm` (function, line 455) — call by 4: `src/render/buildings/massCells.ts#createMassCells.dropMesh`, `src/render/buildings/cellRequests.ts#disposeLanded`, `src/render/buildings/massCells.ts#createMassCells.drop`, `src/render/buildings/massCells.ts#createMassCells.dropBase`
+- `src/render/uploads.ts#gateUntilBuilt` (function, line 564) — call by 1: `src/render/buildings/partCells.ts#PartCell.makeCaster`
+- `src/render/uploads.ts#meshBytes` (function, line 468) — call by 2: `src/render/buildings/massCells.ts#createMassCells.massBytes`, `src/render/buildings/massCells.ts#createMassCells.landBase`
+- `src/render/uploads.ts#queuedBytes` (variable, line 410) — read by 1: `src/render/uploads.ts#warmFull`
+- `src/render/uploads.ts#reservedBytes` (variable, line 422) — read by 2: `src/render/uploads.ts#warmFull`, `src/render/uploads.ts#reserveWarm`
+- `src/render/uploads.ts#reservedBytes` (variable, line 422) — write by 1: `src/render/uploads.ts#reserveWarm`
+- `src/render/uploads.ts#WARM_CEILING` (variable, line 412) — read by 1: `src/render/uploads.ts#warmFull`
+- `src/render/uploads.ts#warmer` (variable, line 439) — read by 1: `src/render/uploads.ts#warmFull`
+- `src/render/uploads.ts#warmLooseAhead` (function, line 445) — call by 3: `src/render/buildings/cellRequests.ts#CellRequests.land`, `src/render/buildings/massCells.ts#sendUp`, `src/render/buildings/massCells.ts#createMassCells.landBase`
+
+### src/ui/builder/catalog.ts
+
+- `src/ui/builder/catalog.ts#BUILDER_CATALOG` (variable, line 118) — read by 1: `src/buildingsWiring.ts#READY`
+- `src/ui/builder/catalog.ts#BUILDER_TAB_SPECS` (variable, line 36) — read by 1: `src/ui/v2/shell.ts#mountShell.renderBuild`
+- `src/ui/builder/catalog.ts#BuilderCategoryId` (type, line 3) — typeRef by 2: `src/ui/v2/shell.ts#mountShell.renderBuild`, `src/buildingsWiring.ts#createBuildingWiring`
+- `src/ui/builder/catalog.ts#BuilderField` (interface, line 175) — typeRef by 1: `src/buildingsWiring.ts#createBuildingWiring.inspectorFields`
+- `src/ui/builder/catalog.ts#BuilderSection` (interface, line 17) — read by 2: `src/ui/v2/shell.ts#mountShell.renderBuild`, `src/ui/v2/shell.ts#mountShell.renderSection`
+- `src/ui/builder/catalog.ts#BuilderSection` (interface, line 17) — typeRef by 1: `src/ui/v2/shell.ts#mountShell.renderSection`
+- `src/ui/builder/catalog.ts#BuilderTabSpec` (interface, line 26) — read by 1: `src/ui/v2/shell.ts#mountShell.renderBuild`
+- `src/ui/builder/catalog.ts#BuilderToolSpec` (interface, line 7) — read by 5: `src/ui/v2/shell.ts#mountShell.renderBuild`, `src/ui/v2/shell.ts#mountShell.renderSection`, `src/ui/v2/shell.ts#mountShell.toolButton`, `src/ui/v2/shell.ts#mountShell.toolButton.run`, …
+- `src/ui/builder/catalog.ts#BuilderToolSpec` (interface, line 7) — typeRef by 1: `src/ui/v2/shell.ts#mountShell.toolButton`
+- `src/ui/builder/catalog.ts#DRAW_ACTIONS` (variable, line 169) — read by 1: `src/ui/v2/shell.ts#mountShell.renderSection`
+- `src/ui/builder/catalog.ts#DRAW_SHAPES` (variable, line 125) — read by 5: `src/ui/v2/shell.ts#mountShell.picture`, `src/ui/v2/shell.ts#mountShell.renderSection`, `src/buildingsWiring.ts#createBuildingWiring`, `src/buildingsWiring.ts#createBuildingWiring.hintKey`, …
+- `src/ui/builder/catalog.ts#FACADE_SCOPES` (variable, line 172) — read by 1: `src/ui/v2/shell.ts#mountShell.renderSection`
+- `src/ui/builder/catalog.ts#OPENING_COMPONENTS` (variable, line 151) — read by 1: `src/buildingsWiring.ts#createBuildingWiring.runTool`
+- `src/ui/builder/catalog.ts#PlanShapeId` (type, line 122) — typeRef by 2: `src/ui/planSwatch.ts#planSwatch`, `src/ui/planSwatch.ts#OUTLINES`
+- `src/ui/builder/catalog.ts#TIER_SHAPES` (variable, line 138) — read by 3: `src/ui/v2/shell.ts#mountShell.picture`, `src/ui/v2/shell.ts#mountShell.renderSection`, `src/buildingsWiring.ts#createBuildingWiring.runTool`
+
+### src/ui/builder/icons.ts
+
+- `src/ui/builder/icons.ts#builderIconSvg` (function, line 313) — call by 6: `src/ui/v2/shell.ts#mountShell`, `src/ui/v2/shell.ts#mountShell.BARRIER_ICON`, `src/ui/v2/shell.ts#mountShell.renderBuild`, `src/ui/v2/shell.ts#mountShell.renderModels.fill`, …
+
+### src/ui/builder/workspace.ts
+
+- `src/ui/builder/workspace.ts#BuilderActions` (interface, line 52) — call by 7: `src/ui/v2/shell.ts#mountShell.ask`, `src/ui/v2/shell.ts#mountShell.renderBuild`, `src/ui/v2/shell.ts#mountShell.renderModels`, `src/ui/v2/shell.ts#mountShell.renderSection`, …
+- `src/ui/builder/workspace.ts#BuilderActions` (interface, line 52) — typeRef by 1: `src/buildingsWiring.ts#createBuildingWiring`
+- `src/ui/builder/workspace.ts#BuilderState` (interface, line 17) — read by 7: `src/ui/v2/shell.ts#mountShell.render`, `src/ui/v2/shell.ts#mountShell.renderBuild`, `src/ui/v2/shell.ts#mountShell.renderModels`, `src/ui/v2/shell.ts#mountShell.renderSection`, …
+- `src/ui/builder/workspace.ts#BuilderState` (interface, line 17) — typeRef by 6: `src/ui/v2/shell.ts#mountShell`, `src/ui/v2/shell.ts#mountShell.renderModels`, `src/ui/v2/shell.ts#mountShell.renderSection`, `src/ui/v2/shell.ts#mountShell.sigOf`, …
+- `src/ui/builder/workspace.ts#BuilderWorkspace` (interface, line 88) — call by 10: `src/ui/v2/shell.ts#mountShell`, `src/ui/v2/shell.ts#mountShell.ask`, `src/ui/v2/shell.ts#mountShell.picture`, `src/ui/v2/shell.ts#mountShell.renderModels.fill`, …
+- `src/ui/builder/workspace.ts#BuilderWorkspace` (interface, line 88) — read by 3: `src/ui/v2/shell.ts#mountShell`, `src/ui/v2/shell.ts#mountShell.syncInside`, `src/ui/builder/workspace.ts#initBuilderWorkspace.showInside`
+- `src/ui/builder/workspace.ts#BuilderWorkspace` (interface, line 88) — typeRef by 1: `src/ui/v2/shell.ts#ShellDeps`
+- `src/ui/builder/workspace.ts#initBuilderWorkspace` (function, line 117) — call by 1: `src/buildingsWiring.ts#createBuildingWiring`
+- `src/ui/builder/workspace.ts#initBuilderWorkspace` (function, line 117) — read by 8: `src/ui/builder/workspace.ts#initBuilderWorkspace.showInside`, `src/ui/builder/workspace.ts#initBuilderWorkspace.setPresetThumbnails`, `src/ui/builder/workspace.ts#initBuilderWorkspace.relabel`, `src/ui/builder/workspace.ts#initBuilderWorkspace.showGallery`, …
+- `src/ui/builder/workspace.ts#initBuilderWorkspace` (function, line 117) — typeRef by 1: `src/buildingsWiring.ts#BuildingWiring`
+- `src/ui/builder/workspace.ts#initBuilderWorkspace` (function, line 117) — write by 4: `src/ui/builder/workspace.ts#initBuilderWorkspace.showInside`, `src/ui/builder/workspace.ts#initBuilderWorkspace.setPresetThumbnails`, `src/ui/builder/workspace.ts#initBuilderWorkspace.onInside`, `src/ui/builder/workspace.ts#initBuilderWorkspace.subscribe`
+- `src/ui/builder/workspace.ts#initBuilderWorkspace.refresh` (function, line 322) — call by 1: `src/ui/builder/workspace.ts#initBuilderWorkspace.relabel`
+- `src/ui/builder/workspace.ts#initBuilderWorkspace.refresh` (function, line 322) — implementation by 1: `src/buildingsWiring.ts#createBuildingWiring.refresh`
+- `src/ui/builder/workspace.ts#SNAP_MODES` (variable, line 108) — read by 1: `src/ui/v2/shell.ts#mountShell.renderBuild`
+
+### src/ui/i18n/index.ts
+
+- `src/ui/i18n/index.ts#formatDecimal` (function, line 79) — call by 6: `src/ui/v2/shell.ts#mountShell.renderRoads`, `src/ui/v2/shell.ts#mountShell.syncReadouts`, `src/buildingsWiring.ts#createBuildingWiring.drawOverlay`, `src/buildingsWiring.ts#createBuildingWiring.inspectorFields`, …
+- `src/ui/i18n/index.ts#language` (function, line 50) — call by 3: `src/ui/v2/shell.ts#mountShell.numberText`, `src/ui/v2/shell.ts#mountShell.popBody`, `src/ui/roads/catalogPanel.ts#catalogStrip`
+- `src/ui/i18n/index.ts#LANGUAGES` (variable, line 14) — read by 1: `src/ui/v2/shell.ts#mountShell.popBody`
+- `src/ui/i18n/index.ts#LanguageSpec` (interface, line 8) — read by 1: `src/ui/v2/shell.ts#mountShell.popBody`
+- `src/ui/i18n/index.ts#onLanguageChange` (function, line 108) — call by 1: `src/ui/v2/shell.ts#mountShell`
+- `src/ui/i18n/index.ts#plural` (function, line 73) — call by 5: `src/ui/v2/shell.ts#mountShell.syncImpossible`, `src/buildingsWiring.ts#createBuildingWiring.drawOverlay`, `src/ui/labels.ts#nodeCountLabel`, `src/ui/labels.ts#roadCountLabel`, …
+- `src/ui/i18n/index.ts#setLanguage` (function, line 95) — call by 1: `src/ui/v2/shell.ts#mountShell.popBody`
+- `src/ui/i18n/index.ts#t` (function, line 55) — call by 33: `src/ui/v2/shell.ts#mountShell`, `src/ui/v2/shell.ts#mountShell.dockName`, `src/ui/v2/shell.ts#mountShell.elementRows`, `src/ui/v2/shell.ts#mountShell.fillPop`, …
+
+### src/ui/overlay/palette.ts
+
+- `src/ui/overlay/palette.ts#HOVER` (variable, line 5) — read by 1: `src/ui/overlay/buildingOverlay.ts#drawBuildingOverlay`
+- `src/ui/overlay/palette.ts#INVALID` (variable, line 6) — read by 1: `src/ui/overlay/buildingOverlay.ts#drawBuildingOverlay`
+- `src/ui/overlay/palette.ts#SELECTION` (variable, line 4) — read by 2: `src/ui/overlay/buildingOverlay.ts#drawBuildingOverlay`, `src/ui/overlay/buildingOverlay.ts#drawHandle`
+
+### src/ui/roads/catalogPanel.ts
+
+- `src/ui/roads/catalogPanel.ts#BuiltStrip` (interface, line 53) — read by 2: `src/ui/roads/catalogPanel.ts#catalogStrip`, `src/ui/roads/catalogPanel.ts#markPicked`
+- `src/ui/roads/catalogPanel.ts#BuiltStrip` (interface, line 53) — typeRef by 2: `src/ui/roads/catalogPanel.ts#catalogStrip`, `src/ui/roads/catalogPanel.ts#markPicked`
+- `src/ui/roads/catalogPanel.ts#BuiltStrip` (interface, line 53) — write by 1: `src/ui/roads/catalogPanel.ts#catalogStrip`
+- `src/ui/roads/catalogPanel.ts#CatalogHost` (interface, line 16) — call by 3: `src/ui/roads/catalogPanel.ts#catalogStrip`, `src/ui/roads/catalogPanel.ts#pickedRoad`, `src/ui/roads/catalogPanel.ts#pickRoad`
+- `src/ui/roads/catalogPanel.ts#CatalogHost` (interface, line 16) — typeRef by 3: `src/ui/roads/catalogPanel.ts#catalogStrip`, `src/ui/roads/catalogPanel.ts#pickedRoad`, `src/ui/roads/catalogPanel.ts#pickRoad`
+- `src/ui/roads/catalogPanel.ts#customButton` (function, line 167) — call by 1: `src/ui/roads/catalogPanel.ts#markPicked`
+- `src/ui/roads/catalogPanel.ts#strip` (variable, line 26) — read by 1: `src/ui/roads/catalogPanel.ts#catalogStrip`
+- `src/ui/roads/catalogPanel.ts#strip` (variable, line 26) — write by 1: `src/ui/roads/catalogPanel.ts#catalogStrip`
+
+### src/ui/roads/crossSection.ts
+
+- `src/ui/roads/crossSection.ts#metresText` (function, line 50) — call by 1: `src/ui/roads/catalogPanel.ts#catalogStrip`
+
+### src/ui/roads/cutWalls.ts
+
+- `src/ui/roads/cutWalls.ts#chosen` (variable, line 3) — read by 1: `src/ui/roads/cutWalls.ts#setCutWalls`
+- `src/ui/roads/cutWalls.ts#chosen` (variable, line 3) — write by 1: `src/ui/roads/cutWalls.ts#setCutWalls`
+- `src/ui/roads/cutWalls.ts#cutWallsChosen` (function, line 9) — call by 1: `src/ui/v2/shell.ts#mountShell.renderRoads`
+- `src/ui/roads/cutWalls.ts#STORAGE_KEY` (variable, line 2) — read by 1: `src/ui/roads/cutWalls.ts#setCutWalls`
+
+### src/ui/roads/drawProfile.ts
+
+- `src/ui/roads/drawProfile.ts#drawProfile` (function, line 12) — call by 3: `src/ui/v2/shell.ts#mountShell.renderRoads`, `src/ui/roads/catalogPanel.ts#catalogStrip`, `src/ui/roads/catalogPanel.ts#pickedRoad`
+- `src/ui/roads/drawProfile.ts#DrawProfile` (interface, line 4) — read by 1: `src/ui/roads/catalogPanel.ts#catalogStrip`
+- `src/ui/roads/drawProfile.ts#DrawProfile` (interface, line 4) — typeRef by 1: `src/ui/roads/catalogPanel.ts#pickRoad`
+- `src/ui/roads/drawProfile.ts#setDrawProfile` (function, line 16) — call by 1: `src/ui/roads/catalogPanel.ts#pickRoad`
+
+### src/ui/roads/furnitureChoice.ts
+
+- `src/ui/roads/furnitureChoice.ts#chosen` (variable, line 5) — read by 1: `src/ui/roads/furnitureChoice.ts#setFurnitureChosen`
+- `src/ui/roads/furnitureChoice.ts#chosen` (variable, line 5) — write by 1: `src/ui/roads/furnitureChoice.ts#setFurnitureChosen`
+- `src/ui/roads/furnitureChoice.ts#furnitureChosen` (function, line 14) — call by 1: `src/ui/v2/shell.ts#mountShell.renderRoads`
+- `src/ui/roads/furnitureChoice.ts#STORAGE_KEY` (variable, line 4) — read by 1: `src/ui/roads/furnitureChoice.ts#setFurnitureChosen`
+
+### src/ui/roads/keys.ts
+
+- `src/ui/roads/keys.ts#bindings` (variable, line 35) — read by 3: `src/ui/roads/keys.ts#roadKey`, `src/ui/roads/keys.ts#save`, `src/ui/roads/keys.ts#setRoadKey`
+- `src/ui/roads/keys.ts#bindings` (variable, line 35) — write by 2: `src/ui/roads/keys.ts#resetRoadKeys`, `src/ui/roads/keys.ts#setRoadKey`
+- `src/ui/roads/keys.ts#DEFAULTS` (variable, line 8) — read by 1: `src/ui/roads/keys.ts#resetRoadKeys`
+- `src/ui/roads/keys.ts#keyLabel` (function, line 97) — call by 3: `src/ui/v2/shell.ts#mountShell.renderRoads`, `src/ui/roads/keysPanel.ts#openRoadKeys.onKey`, `src/ui/roads/keysPanel.ts#openRoadKeys.render`
+- `src/ui/roads/keys.ts#listeners` (variable, line 36) — read by 1: `src/ui/roads/keys.ts#save`
+- `src/ui/roads/keys.ts#normaliseKey` (function, line 31) — call by 2: `src/ui/roads/keys.ts#bindableKey`, `src/ui/roads/keys.ts#setRoadKey`
+- `src/ui/roads/keys.ts#onRoadKeysChange` (function, line 91) — call by 1: `src/ui/v2/shell.ts#mountShell`
+- `src/ui/roads/keys.ts#reserved` (function, line 28) — call by 1: `src/ui/roads/keys.ts#bindableKey`
+- `src/ui/roads/keys.ts#ROAD_KEY_ACTIONS` (variable, line 6) — read by 2: `src/ui/roads/keysPanel.ts#openRoadKeys.render`, `src/ui/roads/keys.ts#setRoadKey`
+- `src/ui/roads/keys.ts#RoadKeyAction` (type, line 5) — typeRef by 3: `src/ui/roads/keys.ts#roadKey`, `src/ui/roads/keysPanel.ts#openRoadKeys`, `src/ui/roads/keys.ts#setRoadKey`
+- `src/ui/roads/keys.ts#STORAGE_KEY` (variable, line 9) — read by 1: `src/ui/roads/keys.ts#save`
+
+### src/ui/roads/money.ts
+
+- `src/ui/roads/money.ts#formatMoney` (function, line 5) — call by 2: `src/ui/v2/shell.ts#mountShell.syncMoney`, `src/ui/roads/catalogPanel.ts#catalogStrip`
+
+### src/ui/roads/profileEditor.ts
+
+- `src/ui/roads/profileEditor.ts#closeProfileEditor` (function, line 151) — call by 1: `src/ui/roads/catalogPanel.ts#catalogStrip`
+- `src/ui/roads/profileEditor.ts#openEditor` (variable, line 148) — read by 1: `src/ui/roads/profileEditor.ts#profileEditorOpen`
+
+### src/ui/roads/templates.ts
+
+- `src/ui/roads/templates.ts#savedTemplates` (function, line 14) — call by 2: `src/ui/roads/catalogPanel.ts#catalogStrip`, `src/ui/roads/catalogPanel.ts#allCatalogRoads`
+
+### src/ui/toolChoices.ts
+
+- `src/ui/toolChoices.ts#blockGridChoice` (variable, line 208) — read by 1: `src/ui/v2/shell.ts#mountShell.renderRoads`
+- `src/ui/toolChoices.ts#blockGridChoice` (variable, line 208) — write by 1: `src/ui/v2/shell.ts#mountShell.renderRoads`
+- `src/ui/toolChoices.ts#CLOUD_MODES` (variable, line 125) — read by 1: `src/ui/v2/shell.ts#mountShell.renderLandscape`
+- `src/ui/toolChoices.ts#CLOUD_MODES` (variable, line 125) — typeRef by 1: `src/ui/v2/shell.ts#mountShell.renderLandscape`
+- `src/ui/toolChoices.ts#cloudMode` (function, line 128) — call by 1: `src/ui/v2/shell.ts#mountShell.renderLandscape`
+- `src/ui/toolChoices.ts#CloudMode` (type, line 126) — typeRef by 1: `src/ui/toolChoices.ts#setCloudMode`
+- `src/ui/toolChoices.ts#cloudModeNow` (variable, line 127) — write by 1: `src/ui/toolChoices.ts#setCloudMode`
+- `src/ui/toolChoices.ts#ElementBrushMode` (type, line 103) — typeRef by 1: `src/ui/toolChoices.ts#setElementMode`
+- `src/ui/toolChoices.ts#elementKind` (function, line 110) — call by 3: `src/ui/v2/shell.ts#mountShell.elementRows`, `src/ui/v2/shell.ts#mountShell.landTabOf`, `src/ui/v2/shell.ts#mountShell.renderLandscape`
+- `src/ui/toolChoices.ts#elementKindNow` (variable, line 104) — write by 1: `src/ui/toolChoices.ts#setElementKind`
+- `src/ui/toolChoices.ts#elementMode` (function, line 111) — call by 1: `src/ui/v2/shell.ts#mountShell.elementRows`
+- `src/ui/toolChoices.ts#elementModeNow` (variable, line 105) — write by 1: `src/ui/toolChoices.ts#setElementMode`
+- `src/ui/toolChoices.ts#fogErase` (function, line 67) — call by 1: `src/ui/v2/shell.ts#mountShell.renderLandscape`
+- `src/ui/toolChoices.ts#fogErasing` (variable, line 66) — write by 1: `src/ui/toolChoices.ts#setFogErase`
+- `src/ui/toolChoices.ts#gridListeners` (variable, line 224) — read by 1: `src/ui/toolChoices.ts#setRoadGridShown`
+- `src/ui/toolChoices.ts#gullyErase` (function, line 95) — call by 1: `src/ui/v2/shell.ts#mountShell.renderLandscape`
+- `src/ui/toolChoices.ts#gullyErasing` (variable, line 94) — write by 1: `src/ui/toolChoices.ts#setGullyErase`
+- `src/ui/toolChoices.ts#kind` (variable, line 28) — write by 1: `src/ui/toolChoices.ts#setStreetscapeKind`
+- `src/ui/toolChoices.ts#KIND_KEY` (variable, line 27) — read by 1: `src/ui/toolChoices.ts#setStreetscapeKind`
+- `src/ui/toolChoices.ts#LAMP_KEY` (variable, line 39) — read by 1: `src/ui/toolChoices.ts#setPoleLampMode`
+- `src/ui/toolChoices.ts#lamps` (variable, line 40) — write by 1: `src/ui/toolChoices.ts#setPoleLampMode`
+- `src/ui/toolChoices.ts#paint` (variable, line 183) — write by 1: `src/ui/toolChoices.ts#setPaintKind`
+- `src/ui/toolChoices.ts#PAINT_KEY` (variable, line 182) — read by 1: `src/ui/toolChoices.ts#setPaintKind`
+- `src/ui/toolChoices.ts#paintKind` (function, line 186) — call by 1: `src/ui/v2/shell.ts#mountShell.renderLandscape`
+- `src/ui/toolChoices.ts#POLE_TOOL_MODES` (variable, line 52) — read by 1: `src/ui/v2/shell.ts#mountShell.renderLandscape`
+- `src/ui/toolChoices.ts#poleLampMode` (function, line 42) — call by 1: `src/ui/v2/shell.ts#mountShell.renderLandscape`
+- `src/ui/toolChoices.ts#poleMode` (variable, line 54) — write by 1: `src/ui/toolChoices.ts#setPoleToolMode`
+- `src/ui/toolChoices.ts#poleToolMode` (function, line 56) — call by 1: `src/ui/v2/shell.ts#mountShell.renderLandscape`
+- `src/ui/toolChoices.ts#PoleToolMode` (type, line 53) — typeRef by 1: `src/ui/toolChoices.ts#setPoleToolMode`
+- `src/ui/toolChoices.ts#ROAD_GRID_KEY` (variable, line 222) — read by 1: `src/ui/toolChoices.ts#setRoadGridShown`
+- `src/ui/toolChoices.ts#ROAD_WIDTH_RANGE` (variable, line 197) — read by 1: `src/ui/toolChoices.ts#setRoadWidth`
+- `src/ui/toolChoices.ts#roadGrid` (variable, line 223) — write by 1: `src/ui/toolChoices.ts#setRoadGridShown`
+- `src/ui/toolChoices.ts#roadGridShown` (function, line 226) — call by 1: `src/ui/v2/shell.ts#mountShell`
+- `src/ui/toolChoices.ts#roadGridShown` (function, line 226) — reference by 1: `src/ui/v2/shell.ts#mountShell`
+- `src/ui/toolChoices.ts#roadWidth` (function, line 199) — call by 1: `src/ui/v2/shell.ts#mountShell.renderRoads`
+- `src/ui/toolChoices.ts#signChoice` (variable, line 211) — read by 1: `src/ui/v2/shell.ts#mountShell.renderLandscape`
+- `src/ui/toolChoices.ts#signChoice` (variable, line 211) — typeRef by 1: `src/ui/v2/shell.ts#mountShell.renderLandscape`
+- `src/ui/toolChoices.ts#signChoice` (variable, line 211) — write by 1: `src/ui/v2/shell.ts#mountShell.renderLandscape`
+- `src/ui/toolChoices.ts#streetscapeKind` (function, line 30) — call by 1: `src/ui/v2/shell.ts#mountShell.renderLandscape`
+- `src/ui/toolChoices.ts#strikeChoice` (variable, line 214) — read by 1: `src/ui/v2/shell.ts#mountShell.renderSimple`
+- `src/ui/toolChoices.ts#strikeChoice` (variable, line 214) — write by 1: `src/ui/v2/shell.ts#mountShell.renderSimple`
+- `src/ui/toolChoices.ts#TREE_MODES` (variable, line 75) — read by 1: `src/ui/v2/shell.ts#mountShell.renderLandscape`
+- `src/ui/toolChoices.ts#TREE_MODES` (variable, line 75) — typeRef by 1: `src/ui/v2/shell.ts#mountShell.renderLandscape`
+- `src/ui/toolChoices.ts#treeKind` (function, line 85) — call by 1: `src/ui/v2/shell.ts#mountShell.renderLandscape`
+- `src/ui/toolChoices.ts#treeKindNow` (variable, line 78) — write by 1: `src/ui/toolChoices.ts#setTreeKind`
+- `src/ui/toolChoices.ts#treeMode` (function, line 83) — call by 1: `src/ui/v2/shell.ts#mountShell.renderLandscape`
+- `src/ui/toolChoices.ts#TreeMode` (type, line 76) — typeRef by 1: `src/ui/toolChoices.ts#setTreeMode`
+- `src/ui/toolChoices.ts#treeModeNow` (variable, line 77) — write by 1: `src/ui/toolChoices.ts#setTreeMode`
+- `src/ui/toolChoices.ts#width` (variable, line 196) — write by 1: `src/ui/toolChoices.ts#setRoadWidth`
+- `src/ui/toolChoices.ts#ZONE_COLOUR_KEY` (variable, line 216) — read by 1: `src/ui/toolChoices.ts#setZoneColoursShown`
+- `src/ui/toolChoices.ts#zoneColours` (variable, line 217) — write by 1: `src/ui/toolChoices.ts#setZoneColoursShown`
+- `src/ui/toolChoices.ts#zoneColoursShown` (function, line 219) — call by 1: `src/ui/v2/shell.ts#mountShell`
+- `src/ui/toolChoices.ts#zoneColoursShown` (function, line 219) — reference by 1: `src/ui/v2/shell.ts#mountShell`
+
+### src/view/viewport.ts
+
+- `src/view/viewport.ts#flatViewport.setOrbit` (method, line 80) — implementation by 1: `src/buildingsWiring.ts#createBuildingWiring`
+- `src/view/viewport.ts#flatViewport.toScreen` (method, line 58) — implementation by 1: `src/buildingsWiring.ts#createBuildingWiring`
+- `src/view/viewport.ts#flatViewport.toWorld` (method, line 55) — implementation by 1: `src/buildingsWiring.ts#createBuildingWiring.beforeDraw`
+- `src/view/viewport.ts#flatViewport.toWorldAt` (method, line 57) — implementation by 1: `src/buildingsWiring.ts#createBuildingWiring`
+- `src/view/viewport.ts#Viewport` (interface, line 8) — call by 2: `src/buildingsWiring.ts#createBuildingWiring`, `src/buildingsWiring.ts#createBuildingWiring.beforeDraw`
+- `src/view/viewport.ts#Viewport` (interface, line 8) — read by 1: `src/buildingsWiring.ts#createBuildingWiring`
+- `src/view/viewport.ts#Viewport` (interface, line 8) — typeRef by 1: `src/buildingsWiring.ts#BuildingWiringDeps`
+
+### src/world/barriers.ts
+
+- `src/world/barriers.ts#BARRIER_KINDS` (variable, line 4) — read by 1: `src/ui/v2/shell.ts#mountShell.renderLandscape`
+
+### src/world/buildings/blocks.ts
+
+- `src/world/buildings/blocks.ts#resolveBlocks` (variable, line 11) — call by 3: `src/render/buildings/partyWalls.ts#PartyWalls.coversOf`, `src/render/buildings/partyWalls.ts#PartyWalls.floorOf`, `src/render/buildings/buildingMesh.ts#signatureFloorOf`
+
+### src/world/buildings/blueprints.ts
+
+- `src/world/buildings/blueprints.ts#Blueprint` (interface, line 23) — read by 10: `src/ui/v2/shell.ts#mountShell.renderBuild`, `src/ui/v2/shell.ts#mountShell.renderModels`, `src/ui/v2/shell.ts#mountShell.sigOf`, `src/editor/buildingTool.ts#BuildingTool.chooseBlueprint`, …
+- `src/world/buildings/blueprints.ts#Blueprint` (interface, line 23) — typeRef by 3: `src/world/buildings/blueprints.ts#blueprintByKey`, `src/editor/blueprintLibrary.ts#BlueprintLibrary.list`, `src/editor/blueprintLibrary.ts#BlueprintLibrary.save`
+- `src/world/buildings/blueprints.ts#BlueprintBody` (type, line 21) — typeRef by 11: `src/editor/buildingTool.ts#BuildingTool.body`, `src/editor/buildingTool.ts#BuildingTool.clipboard`, `src/editor/buildingTool.ts#BuildingTool.planBuilding`, `src/editor/buildingTool.ts#BuildingTool.useBody`, …
+- `src/world/buildings/blueprints.ts#BLUEPRINTS` (variable, line 306) — read by 5: `src/ui/v2/shell.ts#mountShell.renderBuild`, `src/ui/v2/shell.ts#mountShell.renderModels`, `src/editor/buildingTool.ts#BuildingTool.constructor`, `src/render/buildings/parts.ts#MODEL_KEYS`, …
+- `src/world/buildings/blueprints.ts#DEFAULT_STOREY_HEIGHT` (variable, line 49) — read by 1: `src/editor/buildingTool.ts#BuildingTool.params`
+- `src/world/buildings/blueprints.ts#generateBlock` (function, line 172) — call by 3: `src/editor/buildingTool.ts#BuildingTool.constructor`, `src/editor/buildingTool.ts#BuildingTool.generate`, `src/editor/buildingPlans.ts#shapeBody`
+- `src/world/buildings/blueprints.ts#instantiate` (function, line 32) — call by 2: `src/render/buildings/parts.ts#partSample`, `src/render/buildings/parts.ts#blank`
+- `src/world/buildings/blueprints.ts#placeBody` (function, line 37) — call by 2: `src/editor/buildingTool.ts#BuildingTool.ghostAt`, `src/editor/buildingTool.ts#BuildingTool.primitiveDraft`
+- `src/world/buildings/blueprints.ts#upperStoreyFrom` (function, line 150) — call by 2: `src/editor/buildings.ts#storeyTemplate`, `src/editor/buildingPlans.ts#addPlanMass`
+
+### src/world/buildings/cityBuildings.ts
+
+- `src/world/buildings/cityBuildings.ts#CITY_BUILDINGS` (variable, line 197) — read by 3: `src/ui/v2/shell.ts#mountShell.renderBuild`, `src/ui/v2/shell.ts#mountShell.renderModels`, `src/world/buildings/cityBuildings.ts#cityBuilding`
+- `src/world/buildings/cityBuildings.ts#CityBuilding` (interface, line 26) — read by 5: `src/ui/v2/shell.ts#mountShell.renderBuild`, `src/ui/v2/shell.ts#mountShell.renderModels`, `src/editor/buildingTool.ts#BuildingTool.chooseBlueprint`, `src/render/buildings/parts.ts#partSample`, …
+- `src/world/buildings/cityBuildings.ts#CityBuilding` (interface, line 26) — typeRef by 1: `src/world/buildings/cityBuildings.ts#cityBuilding`
+- `src/world/buildings/cityBuildings.ts#mat` (function, line 169) — call by 2: `src/editor/fromReference.ts#buildFromReference`, `src/editor/fromReference.ts#buildFromReference.stoneOf`
+- `src/world/buildings/cityBuildings.ts#Model` (class, line 55) — construct by 1: `src/editor/fromReference.ts#buildFromReference`
+- `src/world/buildings/cityBuildings.ts#Model.block` (method, line 76) — call by 1: `src/editor/fromReference.ts#buildFromReference`
+- `src/world/buildings/cityBuildings.ts#Model.build` (method, line 151) — call by 1: `src/editor/fromReference.ts#buildFromReference`
+- `src/world/buildings/cityBuildings.ts#Model.heights` (method, line 65) — call by 1: `src/editor/fromReference.ts#buildFromReference`
+- `src/world/buildings/cityBuildings.ts#Model.look` (method, line 71) — call by 1: `src/editor/fromReference.ts#buildFromReference`
+
+### src/world/buildings/elements.ts
+
+- `src/world/buildings/elements.ts#ELEMENT_DEFAULTS` (variable, line 36) — read by 4: `src/editor/buildingTool.ts#BuildingTool.finishElementRun`, `src/render/buildings/parts.ts#ELEMENT_PARTS`, `src/world/buildings/elements.ts#elementAt`, `src/world/buildings/elements.ts#elementsAgainstBayAxis`
+- `src/world/buildings/elements.ts#elementClash` (function, line 158) — call by 1: `src/editor/buildings.ts#opRepeatElement`
+- `src/world/buildings/elements.ts#elementRing` (function, line 119) — call by 1: `src/editor/buildings.ts#clearBuildingsOnRoads`
+- `src/world/buildings/elements.ts#FACING_NORMAL` (variable, line 295) — read by 1: `src/world/buildings/elements.ts#elementsAgainstBay`
+- `src/world/buildings/elements.ts#groundElements` (function, line 130) — call by 1: `src/editor/buildings.ts#weldInto`
+- `src/world/buildings/elements.ts#MAX_ELEMENT` (variable, line 33) — read by 1: `src/editor/buildings.ts#opUpdateElement.size`
+- `src/world/buildings/elements.ts#MIN_ELEMENT` (variable, line 32) — read by 1: `src/editor/buildings.ts#opUpdateElement.size`
+- `src/world/buildings/elements.ts#ON_FACADE` (variable, line 65) — read by 2: `src/world/buildings/splitLevel.ts#opSetLift`, `src/world/buildings/elements.ts#elementsAgainstBay`
+- `src/world/buildings/elements.ts#onGround` (function, line 85) — call by 1: `src/editor/buildings.ts#clearBuildingsOnRoads`
+- `src/world/buildings/elements.ts#RAMP_RUN_PER_RISE` (variable, line 31) — read by 1: `src/world/buildings/elements.ts#runFor`
+
+### src/world/buildings/flags.ts
+
+- `src/world/buildings/flags.ts#DEFAULT_FLAG` (variable, line 22) — read by 3: `src/editor/buildingTool.ts#BuildingTool.setRoofDetailFlagDesign`, `src/buildingsWiring.ts#createBuildingWiring.inspectorFields`, `src/editor/buildingRoofs.ts#addRoofDetail`
+- `src/world/buildings/flags.ts#FLAG_COLOURS` (variable, line 17) — read by 2: `src/buildingsWiring.ts#createBuildingWiring.inspectorFields`, `src/buildingsWiring.ts#createBuildingWiring.setField`
+- `src/world/buildings/flags.ts#FLAG_PATTERNS` (variable, line 2) — read by 2: `src/buildingsWiring.ts#createBuildingWiring.inspectorFields`, `src/buildingsWiring.ts#createBuildingWiring.setField`
+- `src/world/buildings/flags.ts#FlagDesign` (interface, line 8) — read by 2: `src/buildingsWiring.ts#createBuildingWiring.inspectorFields`, `src/buildingsWiring.ts#createBuildingWiring.setField`
+- `src/world/buildings/flags.ts#FlagDesign` (interface, line 8) — typeRef by 1: `src/editor/buildingTool.ts#BuildingTool.setRoofDetailFlagDesign`
+
+### src/world/buildings/footprints.ts
+
+- `src/world/buildings/footprints.ts#AREA_EPS` (variable, line 59) — read by 3: `src/editor/buildingPlans.ts#addPlanMass`, `src/world/buildings/footprints.ts#supportedBy`, `src/editor/buildings.ts#opAddSetback`
+- `src/world/buildings/footprints.ts#asPolygon` (function, line 51) — call by 1: `src/editor/buildings.ts#clipRing`
+- `src/world/buildings/footprints.ts#containsPoint` (function, line 144) — call by 1: `src/world/buildings/pick.ts#pickBuilding`
+- `src/world/buildings/footprints.ts#coveredArea` (function, line 107) — call by 1: `src/world/buildings/footprints.ts#supportedBy`
+- `src/world/buildings/footprints.ts#edgeFrame` (function, line 31) — call by 11: `src/editor/buildingTool.ts#BuildingTool.extrudeFaceBlock`, `src/editor/buildingTool.ts#BuildingTool.primitiveDraft`, `src/ui/overlay/buildingOverlay.ts#drawBuildingOverlay`, `src/editor/fromReference.ts#buildFromReference`, …
+- `src/world/buildings/footprints.ts#EdgeFrame` (interface, line 24) — read by 12: `src/editor/buildingTool.ts#BuildingTool.extrudeFaceBlock`, `src/editor/buildingTool.ts#BuildingTool.primitiveDraft`, `src/ui/overlay/buildingOverlay.ts#drawBuildingOverlay`, `src/editor/fromReference.ts#buildFromReference`, …
+- `src/world/buildings/footprints.ts#localFootprint` (function, line 17) — call by 23: `src/render/buildings/roomBehind.ts#roomsOfStorey`, `src/render/buildings/partyWalls.ts#PartyWalls.coversOf`, `src/world/buildings/interior.ts#Plan.constructor`, `src/editor/buildingTool.ts#BuildingTool.detachBlock`, …
+- `src/world/buildings/footprints.ts#offsetRing` (function, line 170) — call by 1: `src/editor/buildings.ts#opAddSetback`
+- `src/world/buildings/footprints.ts#overlapArea` (function, line 63) — call by 6: `src/editor/buildingTool.ts#BuildingTool.detachBlock`, `src/editor/buildingTool.ts#BuildingTool.referenceOf`, `src/world/buildings/geometry.ts#planOverlap`, `src/editor/buildingPlans.ts#addPlanMass`, …
+- `src/world/buildings/footprints.ts#roofDetailRing` (function, line 159) — call by 2: `src/editor/buildingPlans.ts#addPlanMass`, `src/editor/buildings.ts#opAddSetback`
+- `src/world/buildings/footprints.ts#roofPartFits` (function, line 154) — call by 2: `src/editor/buildingRoofs.ts#updateRoofDetail`, `src/editor/buildingRoofs.ts#addRoofDetail`
+- `src/world/buildings/footprints.ts#validOutline` (function, line 10) — call by 1: `src/editor/buildingPlans.ts#setVolumePlan`
+- `src/world/buildings/footprints.ts#volumeSides` (function, line 22) — call by 7: `src/world/buildings/facadePatterns.ts#applyFacadePattern`, `src/ui/overlay/buildingOverlay.ts#drawBuildingOverlay`, `src/world/buildings/pick.ts#pickBuilding`, `src/world/buildings/facadePatterns.ts#updateFacadeGeometry`, …
+
+### src/world/buildings/foundation.ts
+
+- `src/world/buildings/foundation.ts#FLOOR_READ_REACH` (variable, line 34) — read by 1: `src/editor/buildingFloors.ts#BuildingFloors.follow`
+- `src/world/buildings/foundation.ts#floorHeight` (function, line 289) — call by 5: `src/render/roomLamps.ts#RoomLamps.lamps`, `src/render/buildings/partyWalls.ts#PartyWalls.floorOf`, `src/editor/buildingTool.ts#BuildingTool.floorOf`, `src/editor/buildingFloors.ts#BuildingFloors.floorOf`, …
+- `src/world/buildings/foundation.ts#GroundAt` (type, line 20) — typeRef by 10: `src/render/buildings/layer.ts#createBuildingLayer`, `src/render/buildings/layer.ts#createBuildingLayer.askMass`, `src/render/buildings/layer.ts#createBuildingLayer.showSignature`, `src/render/buildings/layerApi.ts#BuildingLayer`, …
+- `src/world/buildings/foundation.ts#PavedAt` (type, line 23) — typeRef by 12: `src/render/buildings/layer.ts#createBuildingLayer`, `src/render/buildings/layer.ts#createBuildingLayer.putKept`, `src/render/buildings/layer.ts#createBuildingLayer.showSignature`, `src/render/buildings/layer.ts#Kept`, …
+- `src/world/buildings/foundation.ts#PLINTH_BURY` (variable, line 12) — read by 1: `src/render/buildings/partyWalls.ts#PartyWalls.coversOf`
+- `src/world/buildings/foundation.ts#STEP_RISE` (variable, line 17) — read by 2: `src/world/buildings/elements.ts#runFor`, `src/world/buildings/elements.ts#elementsAgainstBayAxis`
+- `src/world/buildings/foundation.ts#STEP_RUN` (variable, line 18) — read by 1: `src/world/buildings/elements.ts#runFor`
+
+### src/world/buildings/geometry.ts
+
+- `src/world/buildings/geometry.ts#baysOn` (function, line 315) — call by 13: `src/world/buildings/interior.ts#houseFloor`, `src/world/buildings/spaces.ts#flatPlan`, `src/editor/buildingTool.ts#BuildingTool.faceRegion`, `src/editor/buildingTool.ts#BuildingTool.insetFace`, …
+- `src/world/buildings/geometry.ts#bayWidth` (function, line 319) — call by 5: `src/ui/overlay/buildingOverlay.ts#drawBuildingOverlay`, `src/world/buildings/geometry.ts#bayCentreLocal`, `src/world/buildings/pick.ts#pickBuilding`, `src/world/buildings/elements.ts#elementsAgainstBayAxis`, …
+- `src/world/buildings/geometry.ts#Bounds` (type, line 269) — read by 4: `src/render/buildings/layerCells.ts#groundDigest`, `src/render/buildings/partyWalls.ts#PartyWalls.constructor`, `src/render/buildings/partyWalls.ts#PartyWalls.coversNear`, `src/render/buildings/townColumns.ts#TownColumns.file`
+- `src/world/buildings/geometry.ts#buildingBounds` (function, line 219) — call by 5: `src/buildingsWiring.ts#createBuildingWiring.referenceTarget`, `src/render/buildings/parts.ts#createThumbnailStudio.shoot`, `src/editor/buildings.ts#weldInto`, `src/editor/buildingSnap.ts#flush`, …
+- `src/world/buildings/geometry.ts#buildingBounds` (function, line 219) — read by 5: `src/buildingsWiring.ts#createBuildingWiring.referenceTarget`, `src/render/buildings/parts.ts#createThumbnailStudio.shoot`, `src/editor/buildings.ts#weldInto`, `src/editor/buildingSnap.ts#flush`, …
+- `src/world/buildings/geometry.ts#buildingFrame` (function, line 46) — call by 1: `src/render/buildings/partyWalls.ts#PartyWalls.coversOf`
+- `src/world/buildings/geometry.ts#closedBlocks` (variable, line 565) — call by 2: `src/render/buildings/partyWalls.ts#PartyWalls.coversOf`, `src/render/buildings/partyWalls.ts#PartyWalls.floorOf`
+- `src/world/buildings/geometry.ts#DEFAULT_PITCH` (variable, line 739) — read by 3: `src/buildingsWiring.ts#createBuildingWiring`, `src/buildingsWiring.ts#createBuildingWiring.inspectorFields`, `src/buildingsWiring.ts#createBuildingWiring.state`
+- `src/world/buildings/geometry.ts#elementRect` (function, line 205) — call by 1: `src/world/buildings/pick.ts#pickBuilding`
+- `src/world/buildings/geometry.ts#EPS` (variable, line 27) — read by 3: `src/world/buildings/interior.ts#levelFlights`, `src/world/buildings/geometry.ts#planOverlap`, `src/world/buildings/splitLevel.ts#opSetLift`
+- `src/world/buildings/geometry.ts#footprintBox` (function, line 181) — call by 12: `src/editor/buildingTool.ts#BuildingTool.beginHandleDrag`, `src/editor/buildingTool.ts#BuildingTool.hoverElement`, `src/editor/buildingTool.ts#BuildingTool.pointerMove`, `src/editor/buildingTool.ts#placeAt`, …
+- `src/world/buildings/geometry.ts#footprintBox` (function, line 181) — read by 12: `src/editor/buildingTool.ts#BuildingTool.beginHandleDrag`, `src/editor/buildingTool.ts#BuildingTool.hoverElement`, `src/editor/buildingTool.ts#BuildingTool.pointerMove`, `src/editor/buildingTool.ts#placeAt`, …
+- `src/world/buildings/geometry.ts#footprintRects` (function, line 176) — call by 4: `src/render/buildings/layerCells.ts#coverPolygons`, `src/editor/buildings.ts#clearBuildingsOnRoads`, `src/editor/buildings.ts#weldInto`, `src/editor/buildingSnap.ts#flush`
+- `src/world/buildings/geometry.ts#frameX` (function, line 48) — call by 1: `src/render/buildings/partyWalls.ts#PartyWalls.coversOf`
+- `src/world/buildings/geometry.ts#frameY` (function, line 50) — call by 1: `src/render/buildings/partyWalls.ts#PartyWalls.coversOf`
+- `src/world/buildings/geometry.ts#GRID` (variable, line 23) — read by 14: `src/editor/buildingTool.ts#BuildingTool.editFurniture.snap`, `src/editor/buildingTool.ts#BuildingTool.placeCore`, `src/editor/buildingTool.ts#BuildingTool.pointerMove`, `src/editor/buildingTool.ts#BuildingTool.pointOnPlan`, …
+- `src/world/buildings/geometry.ts#groundProjections` (function, line 471) — call by 1: `src/editor/buildings.ts#weldInto`
+- `src/world/buildings/geometry.ts#isMass` (function, line 168) — call by 5: `src/render/buildings/partyWalls.ts#PartyWalls.coversOf`, `src/world/buildings/interior.ts#levelFlights`, `src/world/buildings/splitLevel.ts#opSetLift`, `src/world/buildings/handles.ts#buildingHandles`, …
+- `src/world/buildings/geometry.ts#isSupported` (function, line 294) — call by 1: `src/editor/buildings.ts#opRemoveVolume`
+- `src/world/buildings/geometry.ts#levelElevation` (function, line 97) — call by 4: `src/render/roomLamps.ts#RoomLamps.lamps`, `src/editor/buildingTool.ts#BuildingTool.finishElementRun`, `src/editor/buildingTool.ts#BuildingTool.onCutFloor`, `src/world/buildings/handles.ts#buildingHandles`
+- `src/world/buildings/geometry.ts#levelHeight` (function, line 90) — call by 8: `src/render/roomLamps.ts#RoomLamps.lamps`, `src/world/buildings/interior.ts#floorType`, `src/world/buildings/interior.ts#levelFlights`, `src/world/buildings/spaces.ts#workOutSpaces`, …
+- `src/world/buildings/geometry.ts#liftAt` (function, line 120) — call by 2: `src/render/roomLamps.ts#RoomLamps.lamps`, `src/editor/buildingTool.ts#BuildingTool.onCutFloor`
+- `src/world/buildings/geometry.ts#localDirToWorld` (function, line 73) — call by 6: `src/editor/buildingTool.ts#BuildingTool.beginHandleDrag`, `src/editor/buildingTool.ts#BuildingTool.pointerMove`, `src/editor/buildingTool.ts#placeAt`, `src/editor/buildings.ts#opRotate`, …
+- `src/world/buildings/geometry.ts#localToWorld` (function, line 32) — call by 7: `src/render/roomLamps.ts#RoomLamps.lamps`, `src/editor/buildingTool.ts#BuildingTool.pointOnPlan`, `src/ui/overlay/buildingOverlay.ts#drawBuildingOverlay`, `src/world/buildings/geometry.ts#footprintCentre`, …
+- `src/world/buildings/geometry.ts#MIN_SIZE` (variable, line 25) — read by 11: `src/editor/buildingTool.ts#BuildingTool.pointerMove`, `src/editor/buildingPlans.ts#setVolumePlan`, `src/editor/buildings.ts#opResize`, `src/editor/buildings.ts#weldInto`, …
+- `src/world/buildings/geometry.ts#Rhythm` (interface, line 542) — typeRef by 2: `src/world/buildings/interior.ts#Furnished`, `src/world/buildings/spaces.ts#spacesOf`
+- `src/world/buildings/geometry.ts#rhythmOf` (function, line 550) — call by 2: `src/world/buildings/interior.ts#furnishedFor`, `src/world/buildings/spaces.ts#deriveSpaces`
+- `src/world/buildings/geometry.ts#ridgeAlongX` (function, line 748) — call by 1: `src/buildingsWiring.ts#createBuildingWiring.state`
+- `src/world/buildings/geometry.ts#roofHeightAt` (function, line 775) — call by 1: `src/world/buildings/pick.ts#pickBuilding`
+- `src/world/buildings/geometry.ts#roofRise` (function, line 757) — call by 4: `src/world/buildings/geometry.ts#buildingHeight`, `src/world/buildings/pick.ts#heightOf`, `src/world/buildings/pick.ts#pickBuilding`, `src/world/buildings/handles.ts#buildingHandles`
+- `src/world/buildings/geometry.ts#sameRhythm` (function, line 554) — call by 2: `src/world/buildings/interior.ts#furnishedFor`, `src/world/buildings/spaces.ts#deriveSpaces`
+- `src/world/buildings/geometry.ts#SIDE_NORMAL` (variable, line 80) — read by 1: `src/editor/buildings.ts#opUpdateElement`
+- `src/world/buildings/geometry.ts#sideStart` (function, line 322) — call by 3: `src/world/buildings/geometry.ts#bayCentreLocal`, `src/world/buildings/elements.ts#elementsAgainstBayAxis`, `src/world/buildings/handles.ts#buildingHandles`
+- `src/world/buildings/geometry.ts#sideStart` (function, line 322) — read by 3: `src/world/buildings/geometry.ts#bayCentreLocal`, `src/world/buildings/elements.ts#elementsAgainstBayAxis.at`, `src/world/buildings/handles.ts#buildingHandles`
+- `src/world/buildings/geometry.ts#solidFootprints` (function, line 171) — call by 1: `src/render/buildings/layerCells.ts#coverPolygons`
+- `src/world/buildings/geometry.ts#storedBounds` (function, line 277) — call by 5: `src/render/buildings/layerCells.ts#groundDigest`, `src/render/buildings/partyWalls.ts#PartyWalls.constructor`, `src/render/buildings/partyWalls.ts#PartyWalls.coversNear`, `src/world/buildings/pick.ts#pickBuilding`, …
+- `src/world/buildings/geometry.ts#topLevel` (function, line 104) — call by 8: `src/editor/buildingTool.ts#BuildingTool.interiorPreview`, `src/editor/buildingTool.ts#BuildingTool.placeCore`, `src/buildingsWiring.ts#createBuildingWiring`, `src/buildingsWiring.ts#createBuildingWiring.drawOverlay`, …
+- `src/world/buildings/geometry.ts#volumeCorners` (function, line 153) — call by 1: `src/ui/overlay/buildingOverlay.ts#drawBuildingOverlay`
+- `src/world/buildings/geometry.ts#volumeElevation` (function, line 117) — call by 11: `src/render/buildings/partyWalls.ts#PartyWalls.coversOf`, `src/world/buildings/interior.ts#levelFlights`, `src/editor/buildingTool.ts#BuildingTool.beginShapeDrag`, `src/editor/buildingTool.ts#BuildingTool.finishElementRun`, …
+- `src/world/buildings/geometry.ts#volumeHeight` (function, line 795) — call by 7: `src/render/buildings/partyWalls.ts#PartyWalls.coversOf`, `src/world/buildings/geometry.ts#buildingHeight`, `src/world/buildings/elements.ts#elementAt`, `src/ui/overlay/buildingOverlay.ts#drawBuildingOverlay`, …
+- `src/world/buildings/geometry.ts#volumeLift` (function, line 114) — call by 6: `src/render/buildings/partyWalls.ts#PartyWalls.coversOf`, `src/editor/buildingTool.ts#BuildingTool.beginHandleDrag`, `src/editor/buildingTool.ts#BuildingTool.blockLift`, `src/editor/buildingTool.ts#BuildingTool.pointerMove`, …
+- `src/world/buildings/geometry.ts#volumeRectLocal` (function, line 148) — call by 1: `src/world/buildings/pick.ts#pickBuilding`
+- `src/world/buildings/geometry.ts#worldToLocal` (function, line 59) — call by 6: `src/editor/buildingTool.ts#BuildingTool.click`, `src/editor/buildingTool.ts#BuildingTool.primitiveDraft`, `src/world/buildings/pick.ts#pickBuilding`, `src/editor/buildings.ts#weldInto`, …
+
+### src/world/buildings/items.ts
+
+- `src/world/buildings/items.ts#BuildingItems` (class, line 6) — reference by 1: `src/world/buildings/store.ts#BuildingStore.tableRef`
+- `src/world/buildings/items.ts#BuildingItems.constructor` (constructor, line 16) — read by 1: `src/world/buildings/items.ts#BuildingItems.tableRef`
+- `src/world/buildings/items.ts#BuildingItems.gone` (field, line 12) — read by 1: `src/world/buildings/items.ts#BuildingItems.tableRef`
+- `src/world/buildings/items.ts#BuildingItems.owns` (method, line 51) — call by 1: `src/world/buildings/items.ts#BuildingItems.tableRef`
+
+### src/world/buildings/lots.ts
+
+- `src/world/buildings/lots.ts#LotSurface` (interface, line 7) — call by 1: `src/render/buildings/buildingMesh.ts#lotGroundOf.heightAt`
+- `src/world/buildings/lots.ts#LotSurface` (interface, line 7) — read by 1: `src/render/buildings/buildingMesh.ts#lotGroundOf.heightAt`
+- `src/world/buildings/lots.ts#lotSurfaces` (function, line 54) — implementation by 1: `src/render/buildings/buildingMesh.ts#lotGroundOf.heightAt`
+
+### src/world/buildings/materials.ts
+
+- `src/world/buildings/materials.ts#BuildingMaterials` (type, line 19) — typeRef by 1: `src/world/buildings/materials.ts#applyMaterial`
+- `src/world/buildings/materials.ts#Finish` (type, line 7) — typeRef by 3: `src/ui/materialSwatch.ts#materialSwatch`, `src/ui/materialSwatch.ts#BASE`, `src/ui/materialSwatch.ts#draw`
+- `src/world/buildings/materials.ts#FINISH_COLOUR` (variable, line 30) — read by 3: `src/editor/buildingTool.ts#BuildingTool.paintBrush`, `src/buildingsWiring.ts#createBuildingWiring`, `src/ui/materialSwatch.ts#BASE`
+- `src/world/buildings/materials.ts#FINISHES` (variable, line 6) — read by 2: `src/ui/v2/shell.ts#mountShell.renderSection`, `src/ui/materialSwatch.ts#BASE`
+- `src/world/buildings/materials.ts#MaterialSlot` (type, line 17) — typeRef by 1: `src/world/buildings/materials.ts#MaterialTarget`
+- `src/world/buildings/materials.ts#MaterialSpec` (interface, line 9) — read by 3: `src/ui/v2/shell.ts#mountShell.renderSection`, `src/buildingsWiring.ts#createBuildingWiring.copyStyle`, `src/buildingsWiring.ts#createBuildingWiring.materialLine`
+- `src/world/buildings/materials.ts#MaterialSpec` (interface, line 9) — typeRef by 6: `src/editor/buildingTool.ts#BuildingTool.currentMaterial`, `src/editor/buildingTool.ts#BuildingTool.paint`, `src/editor/buildingTool.ts#BuildingTool.paintBrush`, `src/editor/buildingTool.ts#BuildingTool.setPaintBrush`, …
+- `src/world/buildings/materials.ts#PaletteMaterials` (interface, line 58) — read by 2: `src/editor/buildings.ts#weldInto`, `src/world/buildings/materials.ts#materialAt`
+- `src/world/buildings/materials.ts#paletteOf` (function, line 81) — call by 2: `src/editor/buildings.ts#weldInto`, `src/world/buildings/materials.ts#materialAt`
+- `src/world/buildings/materials.ts#plinthMaterial` (function, line 115) — call by 1: `src/world/buildings/materials.ts#materialAt`
+- `src/world/buildings/materials.ts#roofMaterial` (function, line 105) — call by 2: `src/editor/buildings.ts#weldInto`, `src/world/buildings/materials.ts#materialAt`
+- `src/world/buildings/materials.ts#STYLES` (variable, line 260) — read by 2: `src/ui/v2/shell.ts#mountShell.renderSection`, `src/world/buildings/materials.ts#applyStyle`
+- `src/world/buildings/materials.ts#trimMaterial` (function, line 114) — call by 1: `src/world/buildings/materials.ts#materialAt`
+- `src/world/buildings/materials.ts#VolumeMaterials` (interface, line 21) — read by 8: `src/editor/fromReference.ts#buildFromReference`, `src/editor/buildingProfile.ts#reshapeTier`, `src/editor/buildings.ts#weldInto`, `src/world/buildings/materials.ts#applyMaterial`, …
+- `src/world/buildings/materials.ts#VolumeMaterials` (interface, line 21) — typeRef by 1: `src/world/buildings/materials.ts#applyMaterial`
+- `src/world/buildings/materials.ts#VolumeMaterials` (interface, line 21) — write by 5: `src/editor/buildingProfile.ts#reshapeTier`, `src/world/buildings/materials.ts#applyMaterial`, `src/world/buildings/materials.ts#applyMaterial.tidyVolume`, `src/editor/buildings.ts#opMirror`, …
+- `src/world/buildings/materials.ts#wallMaterial` (function, line 86) — call by 1: `src/world/buildings/materials.ts#materialAt`
+
+### src/world/buildings/neighbours.ts
+
+- `src/world/buildings/neighbours.ts#Neighbour` (interface, line 17) — read by 1: `src/editor/buildings.ts#weldInto`
+- `src/world/buildings/neighbours.ts#neighbourOf` (variable, line 87) — call by 1: `src/editor/buildings.ts#weldInto`
+- `src/world/buildings/neighbours.ts#Obstacle` (interface, line 12) — read by 1: `src/editor/buildings.ts#weldInto`
+- `src/world/buildings/neighbours.ts#ringBox` (function, line 43) — call by 1: `src/editor/buildings.ts#weldInto`
+
+### src/world/buildings/recordTable.ts
+
+- `src/world/buildings/recordTable.ts#RecordRef` (interface, line 468) — typeRef by 4: `src/render/buildings/layer.ts#createBuildingLayer.refFor`, `src/render/buildings/layerCells.ts#recordRef`, `src/world/buildings/store.ts#BuildingStore.tableRef`, `src/world/buildings/items.ts#BuildingItems.tableRef`
+- `src/world/buildings/recordTable.ts#refOf` (function, line 493) — call by 1: `src/render/buildings/layerCells.ts#recordRef`
+
+### src/world/buildings/splitLevel.ts
+
+- `src/world/buildings/splitLevel.ts#ownerOf` (function, line 84) — call by 1: `src/world/buildings/splitLevel.ts#opSetLift`
+
+### src/world/buildings/store.ts
+
+- `src/world/buildings/store.ts#BuildingStore` (class, line 32) — typeRef by 2: `src/render/buildings/layerCells.ts#coverCell`, `src/render/buildings/layerCells.ts#CoverSource`
+- `src/world/buildings/store.ts#BuildingStore.add` (method, line 156) — call by 1: `src/editor/buildings.ts#addBuildingRecord`
+- `src/world/buildings/store.ts#BuildingStore.all` (method, line 123) — call by 1: `src/render/buildings/layer.ts#createBuildingLayer.update`
+- `src/world/buildings/store.ts#BuildingStore.constructor` (constructor, line 56) — read by 1: `src/world/buildings/store.ts#BuildingStore.wearRevision`
+- `src/world/buildings/store.ts#BuildingStore.get` (method, line 115) — call by 23: `src/render/buildings/layer.ts#createBuildingLayer.cutCellsOf`, `src/render/buildings/layer.ts#createBuildingLayer.forcedCells`, `src/render/buildings/layer.ts#createBuildingLayer.lotOf`, `src/render/buildings/layer.ts#createBuildingLayer.refFor`, …
+- `src/world/buildings/store.ts#BuildingStore.has` (method, line 119) — call by 2: `src/render/buildings/layer.ts#createBuildingLayer.update`, `src/editor/buildings.ts#replaceBuilding`
+- `src/world/buildings/store.ts#BuildingStore.idList` (method, line 128) — call by 1: `src/editor/buildings.ts#everyBuilding`
+- `src/world/buildings/store.ts#BuildingStore.items` (field, line 34) — read by 1: `src/world/buildings/store.ts#BuildingStore.tableRef`
+- `src/world/buildings/store.ts#BuildingStore.near` (method, line 133) — call by 8: `src/render/buildings/layerCells.ts#coverCell`, `src/render/roomLamps.ts#RoomLamps.lamps`, `src/buildingsWiring.ts#createBuildingWiring`, `src/editor/buildings.ts#buildingsIn`, …
+- `src/world/buildings/store.ts#BuildingStore.nextId` (getter, line 148) — call by 1: `src/editor/buildings.ts#addBuildingRecord`
+- `src/world/buildings/store.ts#BuildingStore.put` (method, line 167) — call by 5: `src/editor/buildings.ts#clearBuildingsOnRoads`, `src/editor/buildings.ts#removeVolume`, `src/editor/buildings.ts#replaceBuilding`, `src/editor/buildings.ts#editBuilding`, …
+- `src/world/buildings/store.ts#BuildingStore.remove` (method, line 246) — call by 6: `src/editor/buildingTool.ts#BuildingTool.placeHere`, `src/editor/buildingTool.ts#BuildingTool.pointerUp`, `src/editor/buildings.ts#deleteBuilding`, `src/editor/buildings.ts#clearBuildingsOnRoads`, …
+- `src/world/buildings/store.ts#BuildingStore.revision` (getter, line 64) — call by 5: `src/render/buildings/layer.ts#createBuildingLayer.update`, `src/buildingsWiring.ts#createBuildingWiring`, `src/buildingsWiring.ts#createBuildingWiring.afterGesture`, `src/buildingsWiring.ts#createBuildingWiring.key`, …
+- `src/world/buildings/store.ts#BuildingStore.size` (getter, line 99) — call by 1: `src/editor/buildings.ts#clearBuildingsOnRoads`
+
+### src/world/buildings/tableRows.ts
+
+- `src/world/buildings/tableRows.ts#TableRows.buffer` (getter, line 44) — call by 1: `src/world/buildings/items.ts#BuildingItems.tableRef`
+- `src/world/buildings/tableRows.ts#TableRows.rowOf` (method, line 53) — call by 1: `src/world/buildings/items.ts#BuildingItems.tableRef`
+
+### src/world/buildings/towerKit.ts
+
+- `src/world/buildings/towerKit.ts#signatureKind` (function, line 18) — call by 1: `src/render/buildings/signature.ts#buildSignature`
+
+### src/world/buildings/types.ts
+
+- `src/world/buildings/types.ts#asBuildingId` (function, line 10) — call by 1: `src/editor/buildingTool.ts#PREVIEW_ID`
+- `src/world/buildings/types.ts#BAY_COMPONENTS` (variable, line 19) — read by 1: `src/render/buildings/parts.ts#WALL_PARTS`
+- `src/world/buildings/types.ts#BayComponent` (type, line 40) — typeRef by 9: `src/editor/buildingTool.ts#BuildingTool.applyToSelectedBay`, `src/editor/buildingTool.ts#BuildingTool.armComponent`, `src/editor/buildingTool.ts#BuildingTool.component`, `src/render/buildings/parts.ts#WALL_PARTS`, …
+- `src/world/buildings/types.ts#bayKey` (function, line 360) — call by 8: `src/world/buildings/facadePatterns.ts#applyFacadePattern`, `src/editor/fromReference.ts#buildFromReference`, `src/editor/buildings.ts#shiftBays`, `src/world/buildings/facadePatterns.ts#updateFacadeGeometry`, …
+- `src/world/buildings/types.ts#BlockMode` (type, line 225) — typeRef by 1: `src/editor/buildingTool.ts#BuildingTool.setBlockMode`
+- `src/world/buildings/types.ts#Building` (interface, line 284) — read by 126: `src/render/buildings/layer.ts#createBuildingLayer.cellOf`, `src/render/buildings/layer.ts#createBuildingLayer.cutCellsOf`, `src/render/buildings/layer.ts#createBuildingLayer.sigOf`, `src/render/buildings/layer.ts#createBuildingLayer.update`, …
+- `src/world/buildings/types.ts#Building` (interface, line 284) — typeRef by 136: `src/render/buildings/layer.ts#createBuildingLayer.cellOf`, `src/render/buildings/layer.ts#createBuildingLayer.sigOf`, `src/render/buildings/layer.ts#createBuildingLayer.update`, `src/render/buildings/layerApi.ts#BuildingLayer`, …
+- `src/world/buildings/types.ts#Building` (interface, line 284) — write by 29: `src/editor/buildingTool.ts#BuildingTool.copyBlock`, `src/editor/buildingTool.ts#BuildingTool.detachBlock`, `src/editor/buildingTool.ts#BuildingTool.dropPrimitive`, `src/editor/buildingTool.ts#BuildingTool.editFurniture`, …
+- `src/world/buildings/types.ts#BUILDING_FUNCTIONS` (variable, line 200) — read by 2: `src/buildingsWiring.ts#createBuildingWiring.inspectorFields`, `src/buildingsWiring.ts#createBuildingWiring.setField`
+- `src/world/buildings/types.ts#BuildingElement` (interface, line 259) — read by 18: `src/editor/buildingTool.ts#BuildingTool.placeElement`, `src/editor/buildingTool.ts#BuildingTool.selectedElement`, `src/buildingsWiring.ts#createBuildingWiring`, `src/buildingsWiring.ts#createBuildingWiring.inspectorFields`, …
+- `src/world/buildings/types.ts#BuildingElement` (interface, line 259) — typeRef by 9: `src/editor/buildingTool.ts#BuildingTool.hoverElement`, `src/editor/buildingTool.ts#BuildingTool.selectedElement`, `src/world/buildings/elements.ts#elementAt`, `src/editor/buildings.ts#ElementPatch`, …
+- `src/world/buildings/types.ts#BuildingElement` (interface, line 259) — write by 5: `src/editor/buildings.ts#opUpdateElement`, `src/world/buildings/splitLevel.ts#opSetLift`, `src/editor/buildings.ts#opScalePlan`, `src/editor/buildings.ts#opFuseElement`, …
+- `src/world/buildings/types.ts#BuildingFunction` (type, line 214) — typeRef by 3: `src/world/buildings/interior.ts#defaultFunction`, `src/world/buildings/interior.ts#furnish`, `src/editor/buildingTool.ts#BuildingTool.setFunction`
+- `src/world/buildings/types.ts#BuildingId` (type, line 9) — typeRef by 51: `src/render/buildings/layer.ts#createBuildingLayer`, `src/render/buildings/layer.ts#createBuildingLayer.dropKept`, `src/render/buildings/layer.ts#createBuildingLayer.flagsFor`, `src/render/buildings/layer.ts#createBuildingLayer.keptFor`, …
+- `src/world/buildings/types.ts#BuildingUse` (type, line 16) — typeRef by 4: `src/world/buildings/spaces.ts#KIND`, `src/world/buildings/spaces.ts#spacesOf`, `src/world/buildings/spaces.ts#StoreySpaces`, `src/world/buildings/facadePatterns.ts#USE`
+- `src/world/buildings/types.ts#componentAt` (function, line 363) — call by 2: `src/editor/buildings.ts#opSetComponentZone`, `src/editor/buildings.ts#opSetComponent`
+- `src/world/buildings/types.ts#Core` (interface, line 275) — read by 4: `src/world/buildings/interior.ts#floorType`, `src/world/buildings/interior.ts#Plan.constructor`, `src/editor/buildingTool.ts#BuildingTool.placeCore`, `src/editor/buildings.ts#opMirror`
+- `src/world/buildings/types.ts#Core` (interface, line 275) — write by 1: `src/editor/buildings.ts#opMirror`
+- `src/world/buildings/types.ts#CoreKind` (type, line 80) — typeRef by 2: `src/editor/buildingTool.ts#BuildingTool.armCore`, `src/editor/buildingTool.ts#BuildingTool.coreKind`
+- `src/world/buildings/types.ts#DEFAULT_MODULE` (variable, line 334) — read by 2: `src/editor/buildingTool.ts#BuildingTool.constructor`, `src/editor/buildingTool.ts#BuildingTool.params`
+- `src/world/buildings/types.ts#ElementKind` (type, line 256) — typeRef by 10: `src/editor/buildingTool.ts#BuildingTool.armed`, `src/editor/buildingTool.ts#BuildingTool.armElement`, `src/editor/buildingTool.ts#BuildingTool.pathKind`, `src/editor/buildingTool.ts#BuildingTool.startElementRun`, …
+- `src/world/buildings/types.ts#Facade` (interface, line 86) — read by 12: `src/render/buildings/partyWalls.ts#PartyWalls.coversOf`, `src/world/buildings/interior.ts#houseFloor`, `src/world/buildings/facadePatterns.ts#applyFacadePattern`, `src/editor/fromReference.ts#buildFromReference`, …
+- `src/world/buildings/types.ts#Facade` (interface, line 86) — typeRef by 5: `src/world/buildings/facadePatterns.ts#applyFacadePattern`, `src/editor/buildingProfile.ts#reshapeTier`, `src/editor/buildings.ts#copyStoreys`, `src/editor/buildings.ts#opMirror`, …
+- `src/world/buildings/types.ts#Facade` (interface, line 86) — write by 12: `src/world/buildings/facadePatterns.ts#applyFacadePattern`, `src/editor/fromReference.ts#buildFromReference`, `src/editor/buildings.ts#shiftBays`, `src/world/buildings/facadePatterns.ts#updateFacadeGeometry`, …
+- `src/world/buildings/types.ts#FACADE_PATTERNS` (variable, line 42) — read by 4: `src/ui/v2/shell.ts#mountShell`, `src/ui/v2/shell.ts#mountShell.renderBuild`, `src/ui/v2/shell.ts#mountShell.renderSection`, `src/render/buildings/parts.ts#partSample`
+- `src/world/buildings/types.ts#FacadeGeometry` (interface, line 127) — read by 4: `src/editor/buildingTool.ts#BuildingTool.setFacadeGeometry`, `src/buildingsWiring.ts#createBuildingWiring.inspectorFields`, `src/world/buildings/facadePatterns.ts#updateFacadeGeometry`, `src/editor/buildingProfile.ts#reshapeTier`
+- `src/world/buildings/types.ts#FacadeGeometry` (interface, line 127) — typeRef by 2: `src/editor/buildingTool.ts#BuildingTool.setFacadeGeometry`, `src/world/buildings/facadePatterns.ts#updateFacadeGeometry`
+- `src/world/buildings/types.ts#FacadeGeometry` (interface, line 127) — write by 2: `src/world/buildings/facadePatterns.ts#updateFacadeGeometry`, `src/editor/buildingProfile.ts#reshapeTier`
+- `src/world/buildings/types.ts#FacadePattern` (type, line 43) — typeRef by 4: `src/editor/buildingTool.ts#BuildingTool.applyFacadeGrammar`, `src/render/buildings/parts.ts#partSample`, `src/world/buildings/facadePatterns.ts#applyFacadePattern`, `src/world/buildings/facadePatterns.ts#USE`
+- `src/world/buildings/types.ts#FaceId` (type, line 77) — typeRef by 21: `src/editor/buildingTool.ts#BaySelection`, `src/editor/buildingTool.ts#BuildingTool.addWing`, `src/editor/buildingTool.ts#BuildingTool.zone`, `src/editor/buildingTool.ts#Drag`, …
+- `src/world/buildings/types.ts#isSide` (function, line 355) — call by 2: `src/editor/buildingTool.ts#BuildingTool.extrudeFace`, `src/editor/buildingTool.ts#BuildingTool.pointerMove`
+- `src/world/buildings/types.ts#MAX_GROUND_HEIGHT` (variable, line 337) — read by 2: `src/editor/buildings.ts#opSetParameters`, `src/editor/buildings.ts#opSetLevelHeight`
+- `src/world/buildings/types.ts#MAX_LIFT` (variable, line 193) — read by 2: `src/world/buildings/splitLevel.ts#opSetLift`, `src/world/buildings/splitLevel.ts#snapLift`
+- `src/world/buildings/types.ts#MAX_MODULE` (variable, line 333) — read by 1: `src/editor/buildings.ts#opSetParameters`
+- `src/world/buildings/types.ts#MAX_PITCH` (variable, line 346) — read by 1: `src/editor/buildings.ts#opSetRoofShape`
+- `src/world/buildings/types.ts#MAX_PROJECTION` (variable, line 344) — read by 2: `src/editor/buildings.ts#opSetRelief`, `src/world/buildings/facadePatterns.ts#updateFacadeGeometry`
+- `src/world/buildings/types.ts#MAX_RECESS` (variable, line 343) — read by 1: `src/editor/buildings.ts#opSetRelief`
+- `src/world/buildings/types.ts#MAX_SIZE` (variable, line 340) — read by 3: `src/editor/buildings.ts#opResize`, `src/editor/buildings.ts#opAddWing`, `src/editor/buildings.ts#opScalePlan`
+- `src/world/buildings/types.ts#MAX_STOREY_HEIGHT` (variable, line 336) — read by 3: `src/editor/buildingTool.ts#PICK_TOP`, `src/editor/buildings.ts#opSetParameters`, `src/editor/buildings.ts#opSetLevelHeight`
+- `src/world/buildings/types.ts#MAX_STOREYS` (variable, line 338) — read by 4: `src/editor/buildingTool.ts#PICK_TOP`, `src/editor/buildings.ts#opSetStoreys`, `src/editor/buildings.ts#opSetLevelHeight`, `src/editor/buildings.ts#opAddSetback`
+- `src/world/buildings/types.ts#MAX_VOLUMES` (variable, line 341) — read by 1: `src/editor/buildingProfile.ts#splitVolumeAtFloor`
+- `src/world/buildings/types.ts#MIN_MODULE` (variable, line 332) — read by 1: `src/editor/buildings.ts#opSetParameters`
+- `src/world/buildings/types.ts#MIN_PITCH` (variable, line 345) — read by 1: `src/editor/buildings.ts#opSetRoofShape`
+- `src/world/buildings/types.ts#MIN_STOREY_HEIGHT` (variable, line 335) — read by 2: `src/editor/buildings.ts#opSetParameters`, `src/editor/buildings.ts#opSetLevelHeight`
+- `src/world/buildings/types.ts#PALETTE_COUNT` (variable, line 347) — read by 1: `src/editor/buildings.ts#opSetParameters`
+- `src/world/buildings/types.ts#PlacedFurniture` (interface, line 217) — read by 3: `src/world/buildings/interior.ts#furnishFloor`, `src/world/buildings/interior.ts#placed`, `src/editor/buildingTool.ts#BuildingTool.turnFurniture`
+- `src/world/buildings/types.ts#PlacedFurniture` (interface, line 217) — typeRef by 2: `src/world/buildings/interior.ts#furnishingOf`, `src/world/buildings/interior.ts#placed`
+- `src/world/buildings/types.ts#Relief` (interface, line 117) — read by 11: `src/editor/buildingTool.ts#BuildingTool.beginHandleDrag`, `src/editor/buildingTool.ts#BuildingTool.pointerMove`, `src/editor/buildingTool.ts#BuildingTool.reliefDepth`, `src/ui/overlay/buildingOverlay.ts#drawBuildingOverlay`, …
+- `src/world/buildings/types.ts#Relief` (interface, line 117) — typeRef by 3: `src/world/buildings/geometry.ts#reliefAt`, `src/editor/buildingProfile.ts#splitVolumeAtFloor`, `src/editor/buildings.ts#cutRelief`
+- `src/world/buildings/types.ts#Relief` (interface, line 117) — write by 2: `src/world/buildings/facadePatterns.ts#updateFacadeGeometry`, `src/editor/buildings.ts#opMirror`
+- `src/world/buildings/types.ts#ROOF_KINDS` (variable, line 47) — read by 1: `src/render/buildings/parts.ts#ROOF_PARTS`
+- `src/world/buildings/types.ts#RoofDetail` (interface, line 56) — read by 11: `src/editor/buildingTool.ts#BuildingTool.moveRoofDetail`, `src/editor/buildingTool.ts#BuildingTool.selectRoofDetail`, `src/editor/buildingTool.ts#BuildingTool.setRoofDetailFlagDesign`, `src/editor/buildingTool.ts#BuildingTool.turnRoofDetail`, …
+- `src/world/buildings/types.ts#RoofDetail` (interface, line 56) — typeRef by 2: `src/editor/buildingRoofs.ts#updateRoofDetail`, `src/editor/buildingRoofs.ts#addRoofDetail`
+- `src/world/buildings/types.ts#RoofDetail` (interface, line 56) — write by 4: `src/editor/buildings.ts#opMoveBlock`, `src/editor/buildings.ts#opScalePlan`, `src/editor/buildings.ts#opMirror`, `src/editor/buildingRoofs.ts#addRoofDetail`
+- `src/world/buildings/types.ts#RoofDetailKind` (type, line 53) — typeRef by 4: `src/editor/buildingTool.ts#BuildingTool.armRoofDetail`, `src/editor/buildingTool.ts#BuildingTool.roofDetailKind`, `src/editor/buildingRoofs.ts#SIZE`, `src/editor/buildingRoofs.ts#addRoofDetail`
+- `src/world/buildings/types.ts#RoofKind` (type, line 48) — typeRef by 4: `src/editor/buildingTool.ts#BuildingTool.setRoof`, `src/editor/buildingPlans.ts#PRIMITIVES`, `src/render/buildings/parts.ts#ROOF_PARTS`, `src/editor/buildings.ts#opSetRoof`
+- `src/world/buildings/types.ts#Side` (type, line 74) — typeRef by 11: `src/editor/buildingTool.ts#BuildingTool.hoverElement`, `src/editor/buildingTool.ts#BuildingTool.resize`, `src/editor/buildingTool.ts#BuildingTool.selectFloor`, `src/world/buildings/elements.ts#elementAt`, …
+- `src/world/buildings/types.ts#SIDES` (variable, line 75) — read by 1: `src/editor/buildings.ts#opMirror`
+- `src/world/buildings/types.ts#Space` (interface, line 96) — read by 2: `src/world/buildings/interior.ts#homeUnits`, `src/editor/buildings.ts#opMirror`
+- `src/world/buildings/types.ts#Space` (interface, line 96) — typeRef by 1: `src/world/buildings/spaces.ts#StoreySpaces`
+- `src/world/buildings/types.ts#Space` (interface, line 96) — write by 1: `src/editor/buildings.ts#opMirror`
+- `src/world/buildings/types.ts#SpaceKind` (type, line 83) — typeRef by 1: `src/world/buildings/spaces.ts#KIND`
+- `src/world/buildings/types.ts#Storey` (interface, line 106) — read by 17: `src/render/buildings/partyWalls.ts#PartyWalls.coversOf`, `src/world/buildings/interior.ts#houseFloor`, `src/world/buildings/spaces.ts#workOutSpaces`, `src/world/buildings/facadePatterns.ts#applyFacadePattern`, …
+- `src/world/buildings/types.ts#Storey` (interface, line 106) — typeRef by 3: `src/editor/buildings.ts#storeyTemplate`, `src/editor/buildingProfile.ts#reshapeTier`, `src/editor/buildings.ts#copyStoreys`
+- `src/world/buildings/types.ts#Storey` (interface, line 106) — write by 6: `src/world/buildings/facadePatterns.ts#applyFacadePattern`, `src/editor/buildingProfile.ts#reshapeTier`, `src/editor/buildings.ts#copyStoreys`, `src/world/buildings/materials.ts#applyMaterial`, …
+- `src/world/buildings/types.ts#Volume` (interface, line 150) — read by 100: `src/render/buildings/partyWalls.ts#PartyWalls.coversOf`, `src/world/buildings/interior.ts#cutOpen`, `src/world/buildings/interior.ts#floorType`, `src/world/buildings/interior.ts#furnishFloor`, …
+- `src/world/buildings/types.ts#Volume` (interface, line 150) — typeRef by 32: `src/render/buildings/roomBehind.ts#roomsOfStorey`, `src/world/buildings/interior.ts#furnishedOf`, `src/world/buildings/interior.ts#letGoInterior`, `src/world/buildings/interior.ts#Plan.constructor`, …
+- `src/world/buildings/types.ts#Volume` (interface, line 150) — write by 41: `src/editor/buildingTool.ts#BuildingTool.copyBlock`, `src/editor/buildingTool.ts#BuildingTool.extrudeFaceBlock`, `src/editor/buildingTool.ts#BuildingTool.insertStorey`, `src/editor/buildingTool.ts#BuildingTool.planBuilding`, …
+- `src/world/buildings/types.ts#volumeTop` (function, line 447) — call by 9: `src/world/buildings/interior.ts#cutOpen`, `src/world/buildings/interior.ts#floorType`, `src/world/buildings/interior.ts#furnishFloor`, `src/world/buildings/interior.ts#levelFlights`, …
+
+### src/world/buildings/validate.ts
+
+- `src/world/buildings/validate.ts#BuildingProblem` (type, line 49) — typeRef by 6: `src/editor/buildingTool.ts#BuildingPreview`, `src/editor/buildingTool.ts#BuildingTool.judge`, `src/editor/buildingTool.ts#BuildingTool.judged`, `src/editor/buildingTool.ts#BuildingTool.problem`, …
+- `src/world/buildings/validate.ts#ROAD_CLEARANCE` (variable, line 117) — read by 2: `src/editor/buildingSnap.ts#snapToRoad`, `src/editor/buildingSnap.ts#cornerFlush`
+- `src/world/buildings/validate.ts#SiteContext` (interface, line 63) — read by 24: `src/editor/buildingTool.ts#BuildingTool.click`, `src/editor/buildingTool.ts#BuildingTool.floorOf`, `src/editor/buildingTool.ts#BuildingTool.hoverPlace`, `src/editor/buildingTool.ts#BuildingTool.paintStroke`, …
+- `src/world/buildings/validate.ts#SiteContext` (interface, line 63) — typeRef by 1: `src/editor/buildings.ts#BuildingContext`
+- `src/world/buildings/validate.ts#touchesRoad` (function, line 256) — call by 1: `src/editor/buildings.ts#clearBuildingsOnRoads`
+- `src/world/buildings/validate.ts#validateBuilding` (function, line 198) — call by 11: `src/editor/buildingTool.ts#BuildingTool.finishPlan`, `src/editor/buildingTool.ts#BuildingTool.hoverElement`, `src/editor/buildingTool.ts#BuildingTool.hoverPrimitive`, `src/editor/buildingTool.ts#BuildingTool.judge`, …
+- `src/world/buildings/validate.ts#validateBuilding` (function, line 198) — typeRef by 1: `src/editor/buildingTool.ts#BuildingTool.hoverElement`
+
+### src/world/cells.ts
+
+- `src/world/cells.ts#CELL` (variable, line 9) — read by 3: `src/render/buildings/layerCells.ts#BATCH_CELL`, `src/render/buildings/layerCells.ts#createCoverIndex`, `src/render/buildings/farParts.ts#FarPartBatch.view`
+- `src/world/cells.ts#CellFiling` (class, line 60) — construct by 1: `src/render/buildings/layer.ts#createBuildingLayer`
+- `src/world/cells.ts#CellFiling.file` (method, line 76) — call by 1: `src/render/buildings/layer.ts#createBuildingLayer.putKept`
+- `src/world/cells.ts#CellFiling.idsMeeting` (method, line 131) — call by 1: `src/render/buildings/layer.ts#createBuildingLayer.anyLotHeightAt`
+- `src/world/cells.ts#CellFiling.remove` (method, line 107) — call by 2: `src/render/buildings/layer.ts#createBuildingLayer.dropKept`, `src/render/buildings/layer.ts#createBuildingLayer.putKept`
+
+### src/world/changes.ts
+
+- `src/world/changes.ts#Change` (interface, line 35) — read by 2: `src/render/buildings/layer.ts#createBuildingLayer.update`, `src/editor/buildingFloors.ts#BuildingFloors.follow`
+- `src/world/changes.ts#ChangeJournal` (class, line 156) — typeRef by 1: `src/render/buildings/layerCells.ts#CoverSource`
+- `src/world/changes.ts#ChangeJournal.serialOf` (method, line 203) — call by 1: `src/world/buildings/store.ts#BuildingStore.wearRevision`
+- `src/world/changes.ts#ChangeJournal.since` (method, line 309) — call by 1: `src/render/buildings/layer.ts#createBuildingLayer.update`
+- `src/world/changes.ts#ChangeJournal.version` (getter, line 198) — call by 1: `src/render/buildings/layer.ts#createBuildingLayer.update`
+- `src/world/changes.ts#ChangeKind` (type, line 27) — typeRef by 1: `src/editor/buildingFloors.ts#KINDS`
+- `src/world/changes.ts#ChangeRect` (type, line 4) — typeRef by 3: `src/render/buildings/layerCells.ts#coverCell`, `src/editor/buildings.ts#clearBuildingsOnRoads`, `src/editor/buildings.ts#buildingsIn`
+
+### src/world/derived.ts
+
+- `src/world/derived.ts#JournalCursor` (class, line 6) — construct by 2: `src/editor/buildingTool.ts#BuildingTool.judgedCursor`, `src/editor/buildingFloors.ts#BuildingFloors.cursor`
+- `src/world/derived.ts#JournalCursor.read` (method, line 19) — call by 2: `src/editor/buildingTool.ts#BuildingTool.verdict`, `src/editor/buildingFloors.ts#BuildingFloors.follow`
+
+### src/world/doc.ts
+
+- `src/world/doc.ts#RoadDoc` (class, line 153) — typeRef by 12: `src/render/buildings/layer.ts#createBuildingLayer`, `src/render/buildings/layer.ts#createBuildingLayer.cutCellsOf`, `src/render/buildings/layer.ts#createBuildingLayer.forcedCells`, `src/render/buildings/layer.ts#createBuildingLayer.showSignature`, …
+- `src/world/doc.ts#RoadDoc.buildings` (field, line 289) — read by 38: `src/render/buildings/layer.ts#createBuildingLayer.cutCellsOf`, `src/render/buildings/layer.ts#createBuildingLayer.forcedCells`, `src/render/buildings/layer.ts#createBuildingLayer.lotOf`, `src/render/buildings/layer.ts#createBuildingLayer.refFor`, …
+- `src/world/doc.ts#RoadDoc.buildings` (field, line 289) — write by 1: `src/editor/buildings.ts#addBuildingRecord`
+- `src/world/doc.ts#RoadDoc.changes` (field, line 262) — read by 3: `src/render/buildings/layer.ts#createBuildingLayer.update`, `src/editor/buildingTool.ts#BuildingTool.verdict`, `src/editor/buildingFloors.ts#BuildingFloors.follow`
+- `src/world/doc.ts#RoadDoc.segment` (method, line 420) — call by 2: `src/editor/buildingSnap.ts#snapToRoad`, `src/editor/buildingSnap.ts#cornerFlush`
+- `src/world/doc.ts#RoadSegment` (interface, line 124) — read by 2: `src/editor/buildingSnap.ts#snapToRoad`, `src/editor/buildingSnap.ts#cornerFlush`
+
+### src/world/economy.ts
+
+- `src/world/economy.ts#pricePerUnit` (function, line 37) — call by 1: `src/ui/roads/catalogPanel.ts#catalogStrip`
+
+### src/world/elements.ts
+
+- `src/world/elements.ts#EFFECT_KINDS` (variable, line 4) — read by 2: `src/ui/v2/shell.ts#mountShell.isEffect`, `src/ui/v2/shell.ts#mountShell.renderLandscape`
+- `src/world/elements.ts#ElementKind` (type, line 6) — typeRef by 4: `src/ui/v2/shell.ts#mountShell`, `src/ui/v2/shell.ts#mountShell.openLandTab`, `src/ui/v2/shell.ts#mountShell.useElement`, `src/ui/toolChoices.ts#setElementKind`
+
+### src/world/landscape.ts
+
+- `src/world/landscape.ts#LANDSCAPE_KINDS` (variable, line 13) — read by 1: `src/ui/v2/shell.ts#mountShell.renderLandscape`
+- `src/world/landscape.ts#LandscapeKind` (type, line 14) — typeRef by 1: `src/ui/toolChoices.ts#setStreetscapeKind`
+- `src/world/landscape.ts#SIGN_HAS_TEXT` (variable, line 48) — read by 1: `src/ui/v2/shell.ts#mountShell.renderLandscape`
+- `src/world/landscape.ts#SIGN_TEXT_MAX` (variable, line 50) — read by 1: `src/ui/v2/shell.ts#mountShell.textInput`
+- `src/world/landscape.ts#SIGN_TYPES` (variable, line 42) — read by 1: `src/ui/v2/shell.ts#mountShell.renderLandscape`
+
+### src/world/network.ts
+
+- `src/world/network.ts#Network` (class, line 46) — typeRef by 4: `src/buildingsWiring.ts#BuildingWiringDeps`, `src/editor/buildingSnap.ts#snapPlacement`, `src/editor/buildingSnap.ts#snapToRoad`, `src/editor/buildingSnap.ts#cornerFlush`
+- `src/world/network.ts#Network.changesSince` (method, line 143) — call by 1: `src/editor/buildings.ts#clearBuildingsAfterEdit`
+- `src/world/network.ts#Network.constructor` (constructor, line 100) — read by 2: `src/editor/buildingSnap.ts#snapToRoad`, `src/editor/buildingSnap.ts#cornerFlush`
+
+### src/world/networkDelta.ts
+
+- `src/world/networkDelta.ts#NetworkDelta` (interface, line 5) — read by 1: `src/editor/buildings.ts#clearBuildingsAfterEdit`
+
+### src/world/parking.ts
+
+- `src/world/parking.ts#PARKING_DEPTH` (variable, line 16) — read by 1: `src/world/roads/catalog.ts#shapeProfile.kerb`
+
+### src/world/ribbons.ts
+
+- `src/world/ribbons.ts#SegmentRibbon` (interface, line 25) — read by 2: `src/editor/buildingSnap.ts#snapToRoad`, `src/editor/buildingSnap.ts#cornerFlush`
+
+### src/world/roads/catalog.ts
+
+- `src/world/roads/catalog.ts#CATALOG_CATEGORIES` (variable, line 10) — read by 1: `src/ui/roads/catalogPanel.ts#catalogStrip`
+- `src/world/roads/catalog.ts#CatalogCategory` (type, line 9) — typeRef by 2: `src/world/roads/catalog.ts#catalogRoads.cls`, `src/world/roads/catalog.ts#road`
+- `src/world/roads/catalog.ts#CatalogRoad` (interface, line 12) — read by 1: `src/ui/roads/catalogPanel.ts#catalogStrip`
+- `src/world/roads/catalog.ts#CatalogRoad` (interface, line 12) — typeRef by 5: `src/ui/roads/catalogPanel.ts#allCatalogRoads`, `src/ui/roads/catalogPanel.ts#pickedRoad`, `src/world/roads/catalog.ts#catalogRoads`, `src/world/roads/catalog.ts#catalogRoads.cls`, …
+
+### src/world/roads/furnitureSets.ts
+
+- `src/world/roads/furnitureSets.ts#FURNITURE_SETS` (variable, line 14) — read by 1: `src/ui/v2/shell.ts#mountShell.renderRoads`
+- `src/world/roads/furnitureSets.ts#FurnitureSet` (type, line 13) — typeRef by 1: `src/ui/roads/furnitureChoice.ts#setFurnitureChosen`
+
+### src/world/roads/profile.ts
+
+- `src/world/roads/profile.ts#ProfileElement` (type, line 11) — read by 2: `src/ui/roads/catalogPanel.ts#catalogStrip`, `src/ui/roads/profileSwatch.ts#profileSwatch`
+- `src/world/roads/profile.ts#ProfileElement` (type, line 11) — typeRef by 2: `src/world/roads/catalog.ts#shapeProfile`, `src/world/roads/catalog.ts#Lane`
+- `src/world/roads/profile.ts#profileRoad` (function, line 260) — call by 1: `src/ui/roads/catalogPanel.ts#catalogStrip`
+- `src/world/roads/profile.ts#profileWidth` (function, line 266) — call by 1: `src/ui/roads/catalogPanel.ts#catalogStrip`
+- `src/world/roads/profile.ts#RoadProfileSpec` (interface, line 23) — read by 2: `src/ui/roads/catalogPanel.ts#catalogStrip`, `src/ui/roads/profileSwatch.ts#profileSwatch`
+- `src/world/roads/profile.ts#RoadProfileSpec` (interface, line 23) — typeRef by 3: `src/ui/roads/profileSwatch.ts#profileSwatch`, `src/ui/roads/catalogPanel.ts#sameRoad`, `src/world/roads/catalog.ts#shapeProfile`
+- `src/world/roads/profile.ts#sameProfile` (function, line 177) — call by 1: `src/ui/roads/catalogPanel.ts#sameRoad`
+
+### src/world/roads/templates.ts
+
+- `src/world/roads/templates.ts#classTemplates` (function, line 21) — call by 1: `src/world/roads/catalog.ts#catalogRoads`
+- `src/world/roads/templates.ts#RoadTemplate` (interface, line 7) — read by 5: `src/ui/roads/catalogPanel.ts#catalogStrip`, `src/ui/roads/catalogPanel.ts#nameOf`, `src/ui/roads/catalogPanel.ts#pickedRoad`, `src/ui/roads/catalogPanel.ts#pickRoad`, …
+- `src/world/roads/templates.ts#RoadTemplate` (interface, line 7) — typeRef by 2: `src/ui/roads/catalogPanel.ts#nameOf`, `src/ui/roads/catalogPanel.ts#pickRoad`
+
+### src/world/roads/tuning.ts
+
+- `src/world/roads/tuning.ts#ROAD_TUNING` (variable, line 4) — read by 1: `src/ui/roads/money.ts#balanceTip`
+
+### src/world/roadSection.ts
+
+- `src/world/roadSection.ts#CarriagewayMaterial` (type, line 10) — typeRef by 1: `src/world/roads/catalog.ts#Shape`
+
+### src/world/roadTypes.ts
+
+- `src/world/roadTypes.ts#halfWidth` (function, line 339) — call by 2: `src/editor/buildingSnap.ts#snapToRoad`, `src/editor/buildingSnap.ts#cornerFlush`
+- `src/world/roadTypes.ts#Level` (enum, line 10) — reference by 2: `src/editor/buildingSnap.ts#snapToRoad`, `src/editor/buildingSnap.ts#cornerFlush`
+- `src/world/roadTypes.ts#ROAD_TYPES` (variable, line 97) — read by 1: `src/world/roads/catalog.ts#type`
+- `src/world/roadTypes.ts#RoadType` (interface, line 29) — read by 1: `src/world/roads/catalog.ts#type`
+
+### src/world/terrainPaint.ts
+
+- `src/world/terrainPaint.ts#PAINT_KINDS` (variable, line 4) — read by 1: `src/ui/v2/shell.ts#mountShell.renderLandscape`
+- `src/world/terrainPaint.ts#PaintKind` (type, line 6) — typeRef by 3: `src/ui/v2/shell.ts#mountShell.renderLandscape`, `src/ui/v2/shell.ts#PAINT_SWATCH`, `src/ui/toolChoices.ts#setPaintKind`
+
+### src/world/transit.ts
+
+- `src/world/transit.ts#TransitLine` (interface, line 35) — read by 2: `src/ui/v2/shell.ts#mountShell.renderTransit`, `src/ui/v2/transitLine.ts#transitLineRow`
+- `src/world/transit.ts#TransitLine` (interface, line 35) — typeRef by 2: `src/ui/v2/shell.ts#ShellTransitTool`, `src/ui/v2/transitLine.ts#transitLineRow`
+
+### src/world/trees.ts
+
+- `src/world/trees.ts#TREE_KINDS` (variable, line 4) — read by 1: `src/ui/v2/shell.ts#mountShell.renderLandscape`
+- `src/world/trees.ts#TreeKind` (type, line 5) — typeRef by 1: `src/ui/toolChoices.ts#setTreeKind`
+
+### src/world/utilities.ts
+
+- `src/world/utilities.ts#POLE_LAMP_MODES` (variable, line 72) — read by 1: `src/ui/v2/shell.ts#mountShell.renderLandscape`
+- `src/world/utilities.ts#PoleLampMode` (type, line 73) — typeRef by 1: `src/ui/toolChoices.ts#setPoleLampMode`
+
+### src/world/viewCells.ts
+
+- `src/world/viewCells.ts#ViewCells` (class, line 95) — construct by 1: `src/render/buildings/layerCells.ts#createCoverIndex`
+- `src/world/viewCells.ts#ViewCells` (class, line 95) — typeRef by 1: `src/render/buildings/layerCells.ts#CoverIndex`
+- `src/world/viewCells.ts#ViewCells.cellAt` (method, line 117) — call by 2: `src/render/buildings/layerCells.ts#createCoverIndex.covers`, `src/render/buildings/layerCells.ts#createCoverIndex.look`
+- `src/world/viewCells.ts#ViewCells.clear` (method, line 271) — call by 1: `src/render/buildings/layerCells.ts#createCoverIndex.follow`
+- `src/world/viewCells.ts#ViewCells.ensure` (method, line 161) — call by 1: `src/render/buildings/layerCells.ts#createCoverIndex.covers`
+- `src/world/viewCells.ts#ViewCells.follow` (method, line 279) — call by 1: `src/render/buildings/layerCells.ts#createCoverIndex.follow`
+- `src/world/viewCells.ts#ViewCells.has` (method, line 148) — call by 1: `src/render/buildings/layerCells.ts#createCoverIndex.look`
+- `src/world/viewCells.ts#ViewCells.look` (method, line 186) — call by 1: `src/render/buildings/layerCells.ts#createCoverIndex.look`
+- `src/world/viewCells.ts#ViewCells.pump` (method, line 247) — call by 1: `src/render/buildings/layerCells.ts#createCoverIndex.look`
+- `src/world/viewCells.ts#ViewCells.wantedKeys` (getter, line 242) — call by 1: `src/render/buildings/layerCells.ts#createCoverIndex.look`
+
+### src/world/zones.ts
+
+- `src/world/zones.ts#ZoneDensity` (type, line 5) — typeRef by 1: `src/world/buildings/lotTemplate.ts#LotTemplate`
+- `src/world/zones.ts#ZoneUse` (type, line 4) — typeRef by 1: `src/world/buildings/lotTemplate.ts#LotTemplate`
+
+## External APIs
+
+- `es:Math` × 788
+- `es:Math.max` × 239
+- `es:Array.length` × 213
+- `es:Map.get` × 163
+- `es:Array.push` × 146
+- `es:Math.min` × 142
+- `dom:Node.appendChild` × 106
+- `es:Map` × 95
+- `es:Array.map` × 82
+- `es:Math.abs` × 81
+- `es:Math.round` × 79
+- `dom:CanvasFillStrokeStyles.fillStyle` × 76
+- `es:Math.PI` × 75
+- `es:Number` × 69
+- `es:Map.set` × 68
+- `es:Set` × 65
+- `es:Infinity` × 64
+- `es:Object` × 62
+- `dom:CanvasRect.fillRect` × 61
+- `es:Set.has` × 59
+- `es:Set.add` × 56
+- `es:Map.delete` × 54
+- `es:Record` × 53
+- `es:Math.floor` × 51
+- `dom:ParentNode.append` × 50
+- `three:Object3D.visible` × 50
+- `dom:HTMLElement` × 48
+- `dom:HTMLOrSVGElement.dataset` × 48
+- `es:ReadonlyArray.map` × 48
+- `es:JSON` × 46
+- `es:Map.values` × 43
+- `es:Array.find` × 42
+- `dom:Element.setAttribute` × 41
+- `es:Math.hypot` × 41
+- `es:String` × 41
+- `es:Array.filter` × 40
+- `es:Map.clear` × 40
+- `dom:document` × 39
+- `three:Object3D.add` × 39
+- `dom:Element.textContent` × 38
+- `three:Box3` × 35
+- `es:JSON.stringify` × 34
+- `dom:CanvasPath.lineTo` × 33
+- `dom:CanvasDrawPath.beginPath` × 32
+- `dom:HTMLElement.hidden` × 32
+- `es:ReadonlyArray.length` × 32
+- `three:Object3D.userData` × 31
+- `es:ReadonlySet.has` × 29
+- `es:Map.has` × 28
+- `three:Mesh.geometry` × 28
+- `es:Map.size` × 27
+- `es:Readonly` × 27
+- `dom:Document.createElement` × 26
+- `es:Number.toFixed` × 26
+- `three:Group` × 26
+- `es:NumberConstructor.isFinite` × 25
+- `three:Mesh` × 24
+- `dom:CanvasPath.moveTo` × 23
+- `dom:ElementCSSInlineStyle.style` × 23
+- `es:NaN` × 23
+- `es:ObjectConstructor.keys` × 23
+- `dom:window` × 22
+- `es:Set.delete` × 22
+- `three:Object3D.name` × 22
+- `three:Vector3` × 22
+- `es:Math.sin` × 21
+- `es:String.slice` × 21
+- `three:Vector3.y` × 21
+- `dom:CanvasFillStrokeStyles.strokeStyle` × 20
+- `dom:HTMLElement.title` × 20
+- `three:Object3D.position` × 20
+- `three:Vector3.set` × 20
+- `three:Vector3.z` × 20
+- `dom:CanvasDrawPath.fill` × 19
+- `dom:CanvasDrawPath.stroke` × 19
+- `es:Partial` × 19
+- `three:BufferGeometry.setAttribute` × 19
+- `three:Vector3.x` × 19
+- `es:ReadonlySet` × 18
+- `es:Set.clear` × 18
+- `dom:Element.classList` × 17
+- `dom:Element.className` × 17
+- `es:Float64Array` × 17
+- `es:Math.cos` × 17
+- `es:Float32Array` × 16
+- `es:Map.keys` × 16
+- `es:Math.atan2` × 16
+- `dom:CanvasPathDrawingStyles.lineWidth` × 15
+- `dom:KeyboardEvent.key` × 15
+- `dom:ParentNode.querySelector` × 15
+- `es:Array.sort` × 15
+- `es:String.replace` × 15
+- `three:Box3.max` × 15
+- `three:Object3D.matrixAutoUpdate` × 15
+- `es:String.startsWith` × 14
+- `three:Box3.min` × 14
+- `three:BufferGeometry` × 14
+- `three:Object3D.remove` × 14
+- `dom:HTMLButtonElement` × 13
+- `es:Math.ceil` × 13
+- `es:Set.size` × 13
+- `three:BufferGeometry.dispose` × 13
+- `three:InterleavedBufferAttribute` × 13
+- `dom:Element.innerHTML` × 12
+- `dom:GlobalEventHandlers.onclick` × 12
+- `dom:HTMLButtonElement.type` × 12
+- `es:Array.some` × 12
+- `es:JSON.parse` × 12
+- `es:Uint8Array` × 12
+- `three:BufferAttribute` × 12
+- `three:Object3D.castShadow` × 12
+- `three:Object3D.clear` × 12
+- `three:Object3D.updateMatrix` × 12
+- `dom:CanvasGradient.addColorStop` × 11
+- `es:ObjectConstructor.assign` × 11
+- `es:ObjectConstructor.entries` × 11
+- `es:Omit` × 11
+- `es:ReadonlyArray.filter` × 11
+- `es:ReadonlyArray.find` × 11
+- `es:ReadonlyArray.some` × 11
+- `three:InstancedMesh` × 11
+- `dom:Element.getBoundingClientRect` × 10
+- `dom:HTMLInputElement.value` × 10
+- `es:Float64Array.length` × 10
+- `three:Frustum` × 10
+- `three:InstancedInterleavedBuffer` × 10
+- `three:Sphere.center` × 10
+- `dom:CanvasPath.closePath` × 9
+- `dom:ParentNode.querySelectorAll` × 9
+- `dom:structuredClone` × 9
+- `es:Array.slice` × 9
+- `es:NonNullable` × 9
+- `es:String.split` × 9
+- `three:BufferAttribute.count` × 9
+- `three:DoubleSide` × 9
+- `three:Object3D.scale` × 9
+- `dom:Event.stopPropagation` × 8
+- `es:Array` × 8
+- `es:Array.reduce` × 8
+- `es:Math.random` × 8
+- `es:Promise` × 8
+- `es:Uint32Array` × 8
+- `three:BufferGeometry.boundingBox` × 8
+- `three:InstancedMesh.instanceColor` × 8
+- `three:Object3D.receiveShadow` × 8
+- `dom:DOMRectReadOnly.top` × 7
+- `dom:DOMTokenList.toggle` × 7
+- `dom:Element.clientWidth` × 7
+- `dom:Element.scrollWidth` × 7
+- `dom:performance` × 7
+- `dom:Window.addEventListener` × 7
+- `es:Array.includes` × 7
+- `es:Array.splice` × 7
+- `es:NumberConstructor.NaN` × 7
+- `es:ReadonlyArray.forEach` × 7
+- `es:Uint16Array` × 7
+- `es:WeakMap` × 7
+- `three:Box3.union` × 7
+- `three:BufferAttribute.array` × 7
+- `three:BufferGeometry.boundingSphere` × 7
+- `three:CanvasTexture` × 7
+- `three:InstancedMesh.count` × 7
+- `three:Mesh.isMesh` × 7
+- `three:Mesh.material` × 7
+- `three:Object3D` × 7
+- `dom:CanvasPath.arc` × 6
+- `dom:CanvasRenderingContext2D` × 6
+- `dom:CSSStyleDeclaration.left` × 6
+- `dom:DOMRect.width` × 6
+- `dom:DOMTokenList.add` × 6
+- `dom:Element.scrollLeft` × 6
+- `dom:Event.preventDefault` × 6
+- `dom:HTMLOrSVGElement.focus` × 6
+- `dom:Node.contains` × 6
+- `dom:ParentNode.childElementCount` × 6
+- `dom:Performance.now` × 6
+- `dom:requestAnimationFrame` × 6
+- `es:Array.flatMap` × 6
+- `es:Array.forEach` × 6
+- `es:Array.pop` × 6
+- `es:NumberConstructor.isNaN` × 6
+- `es:ReadonlyArray.includes` × 6
+- `es:String.toLocaleLowerCase` × 6
+- `polygon-clipping:polygon-clipping` × 6
+- `three:InterleavedBuffer.array` × 6
+- `three:MeshStandardMaterial` × 6
+- `three:Object3D.children` × 6
+- `dom:CharacterData.data` × 5
+- `dom:ChildNode.remove` × 5
+- `dom:DOMRectReadOnly.bottom` × 5
+- `dom:Event.target` × 5
+- `dom:HTMLButtonElement.disabled` × 5
+- `dom:HTMLDivElement.addEventListener` × 5
+- `dom:HTMLInputElement.type` × 5
+- `dom:localStorage` × 5
+- `dom:setTimeout` × 5
+- `dom:Storage.setItem` × 5
+- `dom:Window.innerHeight` × 5
+- `dom:Window.innerWidth` × 5
+- `es:Array.every` × 5
+- `es:Array.reverse` × 5
+- `es:ArrayConstructor.from` × 5
+- `es:Float32Array.byteLength` × 5
+- `es:Int32Array.length` × 5
+- `es:Iterable` × 5
+- `es:Number.toString` × 5
+- `es:ObjectConstructor.freeze` × 5
+- `es:ObjectConstructor.values` × 5
+- `es:Promise.then` × 5
+- `es:ReadonlyArray.indexOf` × 5
+- `es:ReadonlyMap` × 5
+- `es:String.length` × 5
+- `three:Box3.setFromObject` × 5
+- `three:BufferGeometry.getAttribute` × 5
+- `three:BufferGeometry.index` × 5
+- `three:Color.b` × 5
+- `three:Color.g` × 5
+- `three:Color.r` × 5
+- `three:InstancedMesh.dispose` × 5
+- `three:Object3D.customDepthMaterial` × 5
+- `three:Object3D.renderOrder` × 5
+- `three:Object3D.traverse` × 5
+- `dom:CanvasFillStrokeStyles.createLinearGradient` × 4
+- `dom:CanvasPathDrawingStyles.setLineDash` × 4
+- `dom:CanvasText.fillText` × 4
+- `dom:CanvasTextDrawingStyles.font` × 4
+- `dom:CanvasTextDrawingStyles.textAlign` × 4
+- `dom:CanvasTextDrawingStyles.textBaseline` × 4
+- `dom:CSSStyleDeclaration.bottom` × 4
+- `dom:CSSStyleDeclaration.top` × 4
+- `dom:DocumentOrShadowRoot.activeElement` × 4
+- `dom:DOMRectReadOnly.left` × 4
+- `dom:HTMLCanvasElement.height` × 4
+- `dom:HTMLCanvasElement.width` × 4
+- `dom:HTMLElement.offsetWidth` × 4
+- `dom:HTMLInputElement` × 4
+- `es:Array.join` × 4
+- `es:Int32Array` × 4
+- `es:Math.imul` × 4
+- `es:ReturnType` × 4
+- `es:String.includes` × 4
+- `es:String.indexOf` × 4
+- `es:String.padStart` × 4
+- `es:String.trim` × 4
+- `es:WeakMap.get` × 4
+- `es:WeakMap.set` × 4
+- `three:Box3.expandByPoint` × 4
+- `three:BufferGeometry.attributes` × 4
+- `three:BufferGeometry.setIndex` × 4
+- `three:Camera` × 4
+- `three:Color.setHex` × 4
+- `three:InstancedBufferAttribute` × 4
+- `three:Material` × 4
+- `three:Scene` × 4
+- `three:Sphere` × 4
+- `three:Sphere.radius` × 4
+- `three:uniforms.__index` × 4
+- `three:WebGLProgramParametersWithUniforms.uniforms` × 4
+- `three:WebGLRenderer` × 4
+- `dom:Blob` × 3
+- `dom:CanvasPath.roundRect` × 3
+- `dom:CanvasText.measureText` × 3
+- `dom:CanvasTransform.scale` × 3
+- `dom:clearTimeout` × 3
+- `dom:Document.createTextNode` × 3
+- `dom:DOMRectReadOnly.right` × 3
+- `dom:DOMTokenList.contains` × 3
+- `dom:GlobalEventHandlers.onchange` × 3
+- `dom:GlobalEventHandlers.oninput` × 3
+- `dom:GlobalEventHandlers.onkeydown` × 3
+- `dom:HTMLCanvasElement.getContext` × 3
+- `dom:HTMLCanvasElement.toDataURL` × 3
+- `dom:Node` × 3
+- `dom:TextMetrics.width` × 3
+- `es:Array.entries` × 3
+- `es:Float32Array.length` × 3
+- `es:Float64Array.set` × 3
+- `es:ObjectConstructor.fromEntries` × 3
+- `es:Parameters` × 3
+- `es:Pick` × 3
+- `es:ReadonlySet.size` × 3
+- `es:Uint16Array.byteLength` × 3
+- `es:Uint32Array.byteLength` × 3
+- `polygon-clipping:intersection` × 3
+- `polygon-clipping:Polygon` × 3
+- `three:Box3.getCenter` × 3
+- `three:Box3.getSize` × 3
+- `three:BufferGeometry.getIndex` × 3
+- `three:Color` × 3
+- `three:Euler.y` × 3
+- `three:Frustum.copy` × 3
+- `three:InstancedMesh.boundingBox` × 3
+- `three:MaterialProperties.transparent` × 3
+- `three:MeshBasicMaterial` × 3
+- `three:Object3D.rotation` × 3
+- `three:Object3D.updateMatrixWorld` × 3
+- `three:OrthographicCamera` × 3
+- `three:Scene.overrideMaterial` × 3
+- `three:WebGLRenderer.render` × 3
+- `dom:AbortController` × 2
+- `dom:CanvasPathDrawingStyles.lineCap` × 2
+- `dom:CanvasRect.strokeRect` × 2
+- `dom:CanvasState.restore` × 2
+- `dom:CanvasState.save` × 2
+- `dom:console` × 2
+- `dom:Console.warn` × 2
+- `dom:CSSStyleDeclaration.minWidth` × 2
+- `dom:CSSStyleDeclaration.right` × 2
+- `dom:CSSStyleDeclaration.setProperty` × 2
+- `dom:Document.addEventListener` × 2
+- `dom:Document.body` × 2
+- `dom:Element.removeAttribute` × 2
+- `dom:Element.scrollTop` × 2
+- `dom:HTMLElement.click` × 2
+- `dom:HTMLElementTagNameMap` × 2
+- `dom:HTMLInputElement.placeholder` × 2
+- `dom:IDBRequest.result` × 2
+- `dom:KeyboardEvent` × 2
+- `dom:KeyboardEvent.altKey` × 2
+- `dom:MutationObserver` × 2
+- `dom:MutationObserver.observe` × 2
+- `dom:Node.isConnected` × 2
+- `dom:ParentNode.replaceChildren` × 2
+- `dom:URL` × 2
+- `dom:URL.createObjectURL` × 2
+- `dom:WheelEvent.deltaY` × 2
+- `dom:WindowLocalStorage.localStorage` × 2
+- `es:Array.flat` × 2
+- `es:Array.indexOf` × 2
+- `es:ArrayConstructor.isArray` × 2
+- `es:Date` × 2
+- `es:DateConstructor.now` × 2
+- `es:Float32Array.set` × 2
+- `es:Float64Array.slice` × 2
+- `es:Generator` × 2
+- `es:Int16Array` × 2
+- `es:Int16Array.byteLength` × 2
+- `es:Int8Array` × 2
+- `es:Intl` × 2
+- `es:Intl.NumberFormat` × 2
+- `es:NumberConstructor.isInteger` × 2
+- `es:parseInt` × 2
+- `es:ReadonlyArray.every` × 2
+- `es:ReadonlyArray.reduce` × 2
+- `es:ReadonlyMap.get` × 2
+- `es:String.toLowerCase` × 2
+- `es:Uint16Array.set` × 2
+- `es:Uint32Array.length` × 2
+- `es:Uint32ArrayConstructor.from` × 2
+- `three:BatchedMesh.setVisibleAt` × 2
+- `three:BatchedMesh.sortObjects` × 2
+- `three:BatchedMesh.unusedIndexCount` × 2
+- `three:BatchedMesh.unusedVertexCount` × 2
+- `three:Box3.clone` × 2
+- `three:Box3.getBoundingSphere` × 2
+- `three:Box3.isEmpty` × 2
+- `three:BufferAttribute.getX` × 2
+- `three:BufferGeometry.computeBoundingBox` × 2
+- `three:BufferGeometry.computeBoundingSphere` × 2
+- `three:BufferGeometry.groups` × 2
+- `three:Color.setRGB` × 2
+- `three:Frustum.intersectsBox` × 2
+- `three:Frustum.planes` × 2
+- `three:GeometryGroup.start` × 2
+- `three:InstancedMesh.boundingSphere` × 2
+- `three:Material.dispose` × 2
+- `three:MaterialProperties.opacity` × 2
+- `three:MeshBasicMaterialProperties.map` × 2
+- `three:MeshStandardMaterialProperties.emissive` × 2
+- `three:MeshStandardMaterialProperties.emissiveIntensity` × 2
+- `three:Object3D.frustumCulled` × 2
+- `three:Object3D.lookAt` × 2
+- `three:Object3D.matrixWorld` × 2
+- `three:Object3D.up` × 2
+- `three:OrthographicCamera.near` × 2
+- `three:PerspectiveCamera` × 2
+- `three:Plane.constant` × 2
+- `three:Plane.normal` × 2
+- `three:Vector3.applyMatrix4` × 2
+- `three:Vector3.setScalar` × 2
+- `three:WebGLProgramParameters.fragmentShader` × 2
+- `three:WebGLProgramParameters.vertexShader` × 2
+- `three:WebGLRenderer.dispose` × 2
+- `three:WebGLRenderer.readRenderTargetPixels` × 2
+- `three:WebGLRenderer.setClearColor` × 2
+- `three:WebGLRenderer.setRenderTarget` × 2
+- `clipper2-ts:EndType` × 1
+- `clipper2-ts:EndType.Polygon` × 1
+- `clipper2-ts:inflatePaths` × 1
+- `clipper2-ts:JoinType` × 1
+- `clipper2-ts:JoinType.Miter` × 1
+- `clipper2-ts:Point64.x` × 1
+- `clipper2-ts:Point64.y` × 1
+- `dom:AbortController.abort` × 1
+- `dom:AbortController.signal` × 1
+- `dom:Blob.arrayBuffer` × 1
+- `dom:CanvasPath.ellipse` × 1
+- `dom:CanvasPathDrawingStyles.lineJoin` × 1
+- `dom:CanvasRect.clearRect` × 1
+- `dom:CSSStyleDeclaration.background` × 1
+- `dom:CSSStyleDeclaration.maxWidth` × 1
+- `dom:CSSStyleDeclaration.width` × 1
+- `dom:Document.documentElement` × 1
+- `dom:Document.getElementById` × 1
+- `dom:DOMRect.height` × 1
+- `dom:DOMTokenList.remove` × 1
+- `dom:Element.clientHeight` × 1
+- `dom:Element.closest` × 1
+- `dom:Element.getAttribute` × 1
+- `dom:Element.id` × 1
+- `dom:Element.insertAdjacentHTML` × 1
+- `dom:Element.scrollHeight` × 1
+- `dom:Element.scrollIntoView` × 1
+- `dom:File` × 1
+- `dom:File.name` × 1
+- `dom:HTMLCanvasElement` × 1
+- `dom:HTMLCanvasElement.toBlob` × 1
+- `dom:HTMLDivElement` × 1
+- `dom:HTMLElement.addEventListener` × 1
+- `dom:HTMLElement.innerText` × 1
+- `dom:HTMLElement.offsetHeight` × 1
+- `dom:HTMLImageElement` × 1
+- `dom:HTMLImageElement.src` × 1
+- `dom:HTMLInputElement.accept` × 1
+- `dom:HTMLInputElement.files` × 1
+- `dom:HTMLInputElement.max` × 1
+- `dom:HTMLInputElement.maxLength` × 1
+- `dom:HTMLInputElement.min` × 1
+- `dom:HTMLInputElement.setSelectionRange` × 1
+- `dom:HTMLInputElement.step` × 1
+- `dom:IDBDatabase.transaction` × 1
+- `dom:IDBObjectStore.getAll` × 1
+- `dom:IDBObjectStore.getAllKeys` × 1
+- `dom:IDBRequest.onerror` × 1
+- `dom:IDBRequest.onsuccess` × 1
+- `dom:IDBTransaction.objectStore` × 1
+- `dom:KeyboardEvent.ctrlKey` × 1
+- `dom:KeyboardEvent.metaKey` × 1
+- `dom:KeyboardEvent.shiftKey` × 1
+- `dom:MouseEvent.relatedTarget` × 1
+- `dom:Node.insertBefore` × 1
+- `dom:Node.parentElement` × 1
+- `dom:NodeList.length` × 1
+- `dom:NodeListOf.forEach` × 1
+- `dom:queueMicrotask` × 1
+- `dom:ResizeObserver` × 1
+- `dom:ResizeObserver.observe` × 1
+- `dom:Storage.getItem` × 1
+- `dom:WheelEvent.deltaX` × 1
+- `dom:Window.prompt` × 1
+- `dom:WindowOrWorkerGlobalScope.clearInterval` × 1
+- `dom:WindowOrWorkerGlobalScope.setInterval` × 1
+- `es:Array.concat` × 1
+- `es:Array.findIndex` × 1
+- `es:Array.shift` × 1
+- `es:Array.unshift` × 1
+- `es:ArrayLike` × 1
+- `es:Boolean` × 1
+- `es:ConstructorParameters` × 1
+- `es:Error` × 1
+- `es:Extract` × 1
+- `es:Float32Array.copyWithin` × 1
+- `es:Float32Array.subarray` × 1
+- `es:Float64Array.buffer` × 1
+- `es:Float64Array.byteLength` × 1
+- `es:Float64Array.every` × 1
+- `es:Float64Array.fill` × 1
+- `es:Float64ArrayConstructor.from` × 1
+- `es:IterableIterator` × 1
+- `es:Math.pow` × 1
+- `es:NumberConstructor.MAX_SAFE_INTEGER` × 1
+- `es:NumberFormat.format` × 1
+- `es:ObjectConstructor.defineProperty` × 1
+- `es:ObjectConstructor.getPrototypeOf` × 1
+- `es:ObjectConstructor.is` × 1
+- `es:ObjectConstructor.prototype` × 1
+- `es:Promise.catch` × 1
+- `es:PromiseConstructor.all` × 1
+- `es:PromiseConstructor.resolve` × 1
+- `es:ReadonlyArray.at` × 1
+- `es:ReadonlyArray.entries` × 1
+- `es:ReadonlyArray.findIndex` × 1
+- `es:ReadonlyArray.flatMap` × 1
+- `es:ReadonlyArray.slice` × 1
+- `es:ReadonlyMap.has` × 1
+- `es:ReadonlyMap.values` × 1
+- `es:RegExp.exec` × 1
+- `es:String.lastIndexOf` × 1
+- `es:String.toUpperCase` × 1
+- `es:Uint16Array.copyWithin` × 1
+- `es:Uint8Array.byteLength` × 1
+- `es:Uint8Array.fill` × 1
+- `three:AmbientLight` × 1
+- `three:BatchedMesh.addGeometry` × 1
+- `three:BatchedMesh.addInstance` × 1
+- `three:BatchedMesh.instanceCount` × 1
+- `three:BatchedMesh.setInstanceCount` × 1
+- `three:BatchedMesh.setMatrixAt` × 1
+- `three:Box3.applyMatrix4` × 1
+- `three:Box3.copy` × 1
+- `three:Box3.expandByObject` × 1
+- `three:BufferAttribute.addUpdateRange` × 1
+- `three:BufferAttribute.getY` × 1
+- `three:BufferAttribute.getZ` × 1
+- `three:BufferAttribute.itemSize` × 1
+- `three:BufferAttribute.needsUpdate` × 1
+- `three:BufferAttribute.normalized` × 1
+- `three:BufferGeometry.clearGroups` × 1
+- `three:BufferGeometry.deleteAttribute` × 1
+- `three:BufferGeometry.hasAttribute` × 1
+- `three:BufferGeometry.scale` × 1
+- `three:Camera.matrixWorldInverse` × 1
+- `three:DirectionalLight` × 1
+- `three:GeometryGroup.count` × 1
+- `three:GLTF.scene` × 1
+- `three:GLTFLoader` × 1
+- `three:GLTFLoader.parseAsync` × 1
+- `three:InterleavedBuffer` × 1
+- `three:InterleavedBuffer.addUpdateRange` × 1
+- `three:InterleavedBuffer.needsUpdate` × 1
+- `three:InterleavedBufferAttribute.data` × 1
+- `three:Material.customProgramCacheKey` × 1
+- `three:Material.needsUpdate` × 1
+- `three:Material.onBeforeCompile` × 1
+- `three:MaterialProperties.alphaTest` × 1
+- `three:MaterialProperties.depthWrite` × 1
+- `three:MaterialProperties.side` × 1
+- `three:MaterialProperties.visible` × 1
+- `three:Matrix4` × 1
+- `three:mergeGeometries` × 1
+- `three:MeshBasicMaterialProperties.color` × 1
+- `three:MeshStandardMaterialProperties.color` × 1
+- `three:Object3D.clone` × 1
+- `three:Object3D.parent` × 1
+- `three:PerspectiveCamera.fov` × 1
+- `three:PerspectiveCamera.updateProjectionMatrix` × 1
+- `three:RenderTarget.dispose` × 1
+- `three:ShaderMaterial` × 1
+- `three:Vector3.addScaledVector` × 1
+- `three:Vector3.clone` × 1
+- `three:Vector3.copy` × 1
+- `three:Vector3.equals` × 1
+- `three:Vector3.fromBufferAttribute` × 1
+- `three:Vector3.length` × 1
+- `three:Vector3.normalize` × 1
+- `three:Vector3.project` × 1
+- `three:WebGLRenderer.domElement` × 1
+- `three:WebGLRenderer.forceContextLoss` × 1
+- `three:WebGLRenderer.setPixelRatio` × 1
+- `three:WebGLRenderer.setSize` × 1
+- `three:WebGLRenderTarget` × 1
+- `vite:ImportMeta.env` × 1
+- `vite:ImportMeta.glob` × 1
+- `vite:ImportMetaEnv.DEV` × 1

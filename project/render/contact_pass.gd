@@ -8,11 +8,6 @@ var _strength := 0.0
 
 func setup() -> void:
 	_material = lay("res://render/shaders/contact.gdshader")
-	var look: Dictionary = DataTables.game("sky").contact_shader
-	var kinds := WorldMaterials.uniform_kinds(_material.shader)
-	for key: String in look:
-		if not key.begins_with("_"):
-			_material.set_shader_parameter(key, WorldMaterials.typed(kinds, key, look[key]))
 
 
 func turn(on: bool) -> void:

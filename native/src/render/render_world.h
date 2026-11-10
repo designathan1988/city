@@ -24,14 +24,13 @@
 #include "render/props/prop_renderer.h"
 #include "render/render_context.h"
 #include "render/roads/far_road_renderer.h"
-#include "render/roads/ground_seam_layer.h"
 #include "render/roads/road_renderer.h"
-#include "render/roads/road_layer.h"
+#include "render/roads/structure_renderer.h"
+#include "render/roads/verge_renderer.h"
 #include "render/terrain_bridge.h"
 #include "render/cover/cover_renderer.h"
 #include "render/trees/tree_renderer.h"
 #include "render/water/shore_field.h"
-#include "render/cover/ecology_raster.h"
 #include "render/water/water_renderer.h"
 
 #include "core/laps.h"
@@ -61,7 +60,7 @@ public:
 		effects_.release();
 	}
 	void full_rebuild(CityState &s, godot::Object *terrain3d); // after a new map / load (caller holds the map shared)
-	void sync(CityState &s, godot::Object *terrain3d, const godot::Vector3 &cam, double frame_s); // frame_s: the frame's own time, what the effects move by
+	void sync(CityState &s, godot::Object *terrain3d, const godot::Vector3 &cam);
 	// The frame's level-of-detail view (render/detail.h), set by CityCore before the frame's updates: every family reads its
 	// levels from it.
 	void set_view(const DetailView &v) { view_ = v; }
@@ -72,7 +71,6 @@ public:
 		transit_.update(f, cam, at);
 	}
 	int drawn_cars() const { return transit_.drawn_cars(); }
-	int transit_drawn() const { return transit_.drawn_items(); }
 	void transit_xray(bool on) { transit_.set_xray(on); }
 	void transit_preview(const CityState &s, const std::vector<V2> &points, TransitMode mode) { transit_.set_preview(s, points, mode); }
 	// What the agents of a fresh publication wear (`ticks_s` simulated seconds since the last one), and the window round the view.
@@ -106,7 +104,6 @@ public:
 	uint32_t ruin_digest(uint32_t seed) const { return effects_.ruin_digest(seed); }
 	int bodies() const { return effects_.bodies(); }
 	int bodies_moving() const { return effects_.bodies_moving(); }
-	godot::Array bodies_falling() const { return effects_.bodies_falling(); }
 	int effect_pieces() const { return effects_.pieces(); }
 	int broken_buildings() const { return int(effects_.broken().size()); }
 	int blood_marks() const { return effects_.blood_marks(); }
@@ -114,10 +111,8 @@ public:
 	int lit_lenses() const { return props_.lit_lenses(); }
 	int street_instances() const { return props_.instances(); }
 	int sign_cells() const { return props_.sign_cells(); }
-	int sign_cells_waiting() const { return props_.sign_cells_waiting(); }
 	int64_t sign_generation() const { return props_.sign_generation(); }
 	godot::Array take_sign_cells() { return props_.take_sign_cells(); }
-	godot::Array laid_sign_cells() const { return props_.laid_sign_cells(); }
 	void set_pole_preview(const CityState &s, const std::vector<PreviewPole> &poles) {
 		props_.set_pole_preview(s, poles);
 	}
@@ -127,7 +122,6 @@ public:
 	int drawn_vehicles() const { return agents_.drawn_vehicles(); }
 	int drawn_people() const { return agents_.drawn_people(); }
 	godot::Array people_clips() const { return agents_.people_clips(); }
-	godot::Dictionary people_card() const { return agents_.people_card(); }
 	bool show_people_clip(const godot::String &name) { return agents_.show_people_clip(name); }
 	godot::Dictionary agent_cost() const {
 		godot::Dictionary d = agents_.cost();
@@ -149,10 +143,8 @@ public:
 	void set_overlay(Overlay o, bool on) { overlays_.set(o, on); }
 	void show_every_zone(bool on) { overlays_.show_every_zone(on); }
 	bool overlay_on(Overlay o) const { return overlays_.is_on(o); }
-	godot::Dictionary overlay_probe() const { return overlays_.probe(); }
-	godot::Dictionary tree_cut_probe(const CityState &s, float minx, float minz, float maxx, float maxz) const { return trees_.probe_cut(s, minx, minz, maxx, maxz); }
 	BuildingInteriorCost interior_cost(const CityState &s, int id, int level, int dir) const { return buildings_.interior_cost(s, id, level, dir); }
-	// After sync, in the same frame's admission (its deadline, credits and ledger). Reads nothing of the map: no lock is held for it.
+	// After sync, in the same frame's admission (its deadline, credits and ledger).
 	void update_overlays(const CityState &s, const PoseFrame &f, double dt) {
 		if (frame_) overlays_.update(s, f, dt, *frame_);
 	}
@@ -161,40 +153,31 @@ public:
 	const FogField &fog() const { return fog_; }
 	const CanyonField &canyon() const { return canyon_; }
 	const ShoreField &shore() const { return shore_; }
-	const EcologyRaster &ecology() const { return ecology_; }
 	BuildingViewNeed building_need() const { return buildings_.view_need(); }
-	godot::Dictionary building_chunk(float x, float z) const { return buildings_.chunk_view(x, z); }
+	int building_chunk(float x, float z) const { return buildings_.chunk_flags(x, z); }
 	RoadChunks::Count road_count() const { return roads_.count(); }
-	const StreetLook &street_look() const { return roads_.look(); } // what the road meshes are drawn by (road_surface_probe)
-	GroundSeamLayer::Count seam_count() const { return seams_.count(); }
-	int far_road_supers() const { return far_roads_.drawn_supers(); } // the far road level's superchunks held now
-	int seam_refused() const { return seams_.refused(); }
-	void draw_seams(bool on) { seams_.draw(on); }
-	// What the ground seam of chunk `key` is (ground_seam.h), built anew from the state (the probe's own reading).
-	SeamProbe probe_seam(const CityState &s, int64_t key) { return probe_ground_seam(s, roads_.look(), roads_.shapes(), key); }
-	godot::Dictionary prop_buffers() const { return props_.instance_buffers(); } // each chunk's poles and wires on the GPU (prop_buffer_probe)
+	RoadChunks::Count verge_count() const { return verges_.count(); }
+	void draw_verges(bool on) { verges_.draw(on); }
 	int64_t wear_bytes() const { return wear_.bytes(); }
 	void wear_paint(float x0, float z0, float x1, float z1, float value) { wear_.paint(x0, z0, x1, z1, value); }
 	int pending() const {
-		return road_stream_.pending + raised_stream_.pending + props_stream_.pending + building_stream_.pending + roads_.pending() + far_roads_.pending() + far_roads_.waiting_supers() + seams_.pending() +
-				structures_.pending() + props_.pending() + buildings_.pending() + trees_.pending() + cover_.pending() + water_.pending() + overlays_.pending() + transit_.pending();
+		return road_stream_.pending + raised_stream_.pending + props_stream_.pending + building_stream_.pending + roads_.pending() + far_roads_.pending() + far_roads_.waiting_supers() + verges_.pending() +
+				structures_.pending() + props_.pending() + buildings_.pending() + trees_.pending() + cover_.pending() + water_.pending();
 	}
 
 private:
 	TerrainBridge terrain_;
 	RoadRenderer roads_;
 	FarRoadRenderer far_roads_;
-	GroundSeamLayer seams_; // the terrain met by the roads at grade (ground_seam.h)
-	RoadLayer structures_{ "transit", true, JobLane::STRUCTURES, emit_structure_chunk };
+	VergeRenderer verges_;
+	StructureRenderer structures_;
 	PropRenderer props_;
-	GroundKept ground_; // the chunks' ground the trees and the cover plant on: before them, so it outlives their jobs
 	TreeRenderer trees_;
 	CoverRenderer cover_;
 	WaterRenderer water_;
 	FogField fog_;
 	CanyonField canyon_;
 	ShoreField shore_;
-	EcologyRaster ecology_;
 	BuildingRenderer buildings_;
 	BodyStage stage_;
 	AgentRenderer agents_;

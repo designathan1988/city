@@ -2,7 +2,7 @@
 class_name ThemeArt
 extends RefCounted
 
-const VIGNETTE_SIDE := 256 # the vignette texture's side: smooth at any window size, stretched
+const VIGNETTE_SIDE := 256
 
 
 ## The slider of the panels: a thin track, the part behind the knob in the accent colour.

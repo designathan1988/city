@@ -1,0 +1,331 @@
+# sim:meso
+
+Grupo: sim. Entrada: subsistema. Gerado de `records/map40/graph.json` (commit do 4.0 22357c928fb9) por `tools/map40/features.cjs`: cada declaração própria abaixo tem arquivo e linhas no 4.0.
+
+- Sementes: `src/sim/meso/demand.ts`, `src/sim/meso/memory.ts`, `src/sim/meso/meso.ts`, `src/sim/meso/model.ts`, `src/sim/meso/slots.ts`, `src/sim/meso/tileLinks.ts`
+- Unidades próprias (só esta funcionalidade alcança): 279 em 6 arquivo(s), 2273 linhas
+- Alcance total: 933 unidades; usa 612 compartilhadas de outras; é dona principal de 42 compartilhadas
+
+## O que o jogador vê e faz
+- Textos da interface (`t()`): -
+- Eventos de entrada: -
+- Chaves de localStorage: -
+
+## Onde o programa a liga (raiz: main.ts e wiring)
+- nenhuma chamada direta da raiz: chega por outra funcionalidade
+
+## Entradas, saídas e interações
+- Mensagens de worker (envia/recebe): -
+- Workers: -
+- Ganchos do three.js: -
+- Timers: 0
+- Usa: `sim:world` (62), `world:lanelets` (39), `world:doc` (21), `editor:barriers` (14), `sim:agents` (13), `render:buildings` (8), `sim:vehicles` (8), `sim:ambient` (7), `world:cells` (6), `worker:conflictTable` (4), `world:changes` (2), `sim:city` (2)
+- É usada por: -
+
+## Estado (campos do documento/estado da simulação)
+- Lê: `LaneletRuntime.ghost`, `LaneletRuntime.order`, `RoadDoc.changes`, `RoadNode.end`, `RoadNode.id`, `RoadNode.x`, `RoadNode.y`, `RoadSegment.a`, `RoadSegment.b`, `RoadSegment.curve`, `RoadSegment.direction`, `SimStreams.meso`, `SimWorld.city`, `SimWorld.clock`, `SimWorld.demandMultiplier`, `SimWorld.focus`, `SimWorld.graph`, `SimWorld.laneReaches`, `SimWorld.occupied`, `SimWorld.populationShare`, `SimWorld.topologyLog`, `SimWorld.trafficIntensity`, `SimWorld.vehicles`, `Vehicle.free`, `Vehicle.lanelet`
+- Escreve: -
+
+## Dados e recursos
+- Recursos (JSON, modelos, texturas, fetch): -
+- Bibliotecas externas: -
+
+## Testes do 4.0 que a exercitam
+- `tests/render/densityCars.spec.ts`, `tests/render/pageGarbage.spec.ts`, `tests/scale/render/cityMemory.spec.ts`, `tests/sim/ambientIndex.spec.ts`, `tests/sim/ambientMeso.spec.ts`, `tests/sim/meso/boundedTick.spec.ts`, `tests/sim/meso/model.spec.ts`, `tests/sim/meso/window.spec.ts`
+
+## Estado no jogo (lido de ports/*/coverage.md)
+- porte `people`: já existia 60
+- porte `traffic`: já existia 8, não se aplica 4
+
+## Código próprio (linhas — declaração — comentário)
+
+### src/sim/meso/demand.ts
+- 11-11 `DEMAND_CELL` (variable): The world's cell (CLAUDE.md, one grid).
+- 13-13 `FULL_CELL` (variable): Buildings in a cell at which its streets carry the ambient's full density (`ambient/demand.ts` CARS); fewer, in proportion.
+- 14-14 `KINDS` (variable)
+- 16-16 `STRIDE` (variable): Numbers a cell keeps: its buildings by kind (home, shop, work, civic), then in all.
+- 24-117 `DemandCells` (class): Each cell's buildings by kind (`kindOf`), kept by the diary. DO NOT ask a Map by a cell's key on the meso's step: a cell gets a dense index once (`cellOf`, when a link is placed or a building filed), and its numbers live in typed arrays by 
+- 26-26 `DemandCells.serial` (field): The diary read by serial, not followed (a reader that stops reading would keep every entry after it).
+- 27-27 `DemandCells.byBuilding` (field)
+- 28-28 `DemandCells.cellAt` (field)
+- 29-29 `DemandCells.kindAt` (field)
+- 31-31 `DemandCells.index` (field): Each cell key's dense index; indexes are never given back (a cell is a 256 m square: a city has a few thousand).
+- 32-32 `DemandCells.counts` (field)
+- 34-34 `DemandCells.now` (field): The cells' busyness of the hour (`busy`), by kind, set by `atHour`.
+- 36-38 `DemandCells.constructor` (method)
+- 41-43 `DemandCells.cells` (method): Cells given an index so far: every index below it is valid.
+- 45-60 `DemandCells.sync` (method)
+- 63-76 `DemandCells.cellOf` (method): The dense index of the cell a point is in (made on first ask).
+- 79-81 `DemandCells.atHour` (method): The hour of the day the next questions are asked at.
+- 84-90 `DemandCells.carsPer100m` (method): Cars per 100 m of street the cell's buildings put on it at the hour, scaled by how built it is (none in an empty cell).
+- 93-96 `DemandCells.weight` (method): How built the cell is, 0 to 1: the share of trips its streets end.
+- 98-107 `DemandCells.file` (method)
+- 109-116 `DemandCells.unfile` (method)
+
+### src/sim/meso/memory.ts
+- 17-17 `MICRO_MIN_RADIUS` (variable): The least the micro window shrinks to round a close view (`Meso.follow`): the street and the next blocks stay micro.
+- 20-27 `followView` (function): DO NOT keep the micro window 750 m wide round a street view (`Meso.step`): 1.35 the view (as `AmbientWorld`'s cars), between `MICRO_MIN_RADIUS` and the page's ask (`most`); moved past a third of it, resized when the view outgrows it or shri
+- 67-69 `MesoDeltaBuilder.size` (method): Links appended since the last take.
+- 72-75 `MesoDeltaBuilder.startWhole` (method): Everything appended dropped: the next take is whole (the page clears its copy).
+- 78-88 `MesoDeltaBuilder.push` (method): Room for one more link: its slot and id noted; the offset of its record in `recordsNow` to write it at.
+- 91-93 `MesoDeltaBuilder.recordsNow` (method): The records' array the offsets of `push` point into (it grows: ask again after each push).
+- 96-99 `MesoDeltaBuilder.end` (method): A publish ended: the step's head.
+
+### src/sim/meso/meso.ts
+- 23-23 `MESO_DT` (variable): Seconds of the city between two steps of the meso model.
+- 25-25 `MESO_WORK_PER_TICK` (variable): Links (and nodes) of meso work a tick: rates, the model's four phases and the publish together, about six units a link a step (measured: under 1 ms a tick at 200,000 links). A step of about 40,000 links keeps up with the clock at 60 ticks a
+- 27-27 `TRIP_LENGTH` (variable): A trip's mean length, for the share of a link's traffic that ends its trip on it and how often its street's lots send one out.
+- 29-29 `ADMIT_PER_TICK` (variable): Most cars made in the window a tick, as the edge entries admit them (`vehicles/spawn.ts` ADMIT_PER_TICK).
+- 31-31 `ENTRY_CLEARANCE` (variable): How far ahead of a link's start a car handed in at its upstream end is made.
+- 33-33 `SHAPE_WRAP` (variable): The serial of a slot's line wraps here: a Float32 holds it whole (`memory.ts` ML.shape).
+- 35-35 `SPEED_STEP` (variable): A link's speed is sent again when it moved by more than this share (the far cars' pace: a few percent is not seen).
+- 37-37 `HANDOFF_TRIES` (variable): Handoff lanes tried for a new car before it goes without a destination (its lookahead drives it, the window's edge takes it back).
+- 39-39 `BULB` (variable): A node's word (`nodes`): a turning circle, then the roads meeting at it counted in steps of `ROAD`.
+- 40-40 `ROAD` (variable)
+- 42-42 `IDLE,RATES,MODEL,PUBLISH` (variable): What a step's work is doing (`job`).
+- 44-44 `SENT` (variable): Numbers kept a slot of what the page was last sent (`sent`): its rounded count and queue, speed, length, lanes, flags.
+- 47-47 `cellOfPoint` (function): The world's 256 m cell holding a point, as `CellFiling` keys it: the window finds its links by it.
+- 50-50 `Meso.model` (field)
+- 51-51 `Meso.demand` (field)
+- 52-52 `Meso.clock` (field)
+- 53-53 `Meso.graphSeen` (field)
+- 55-55 `Meso.index` (field): Each link its dense slot, the slots freed taken again (a link's id is a double).
+- 56-56 `Meso.slotTop` (field)
+- 57-57 `Meso.freeSlots` (field)
+- 59-59 `Meso.cap` (field): Room for slots below it in every table by slot.
+- 61-61 `Meso.linkAt` (field): Each slot's link (NaN: none).
+- 63-63 `Meso.laneSlot` (field): Each link lane's slot, and each live slot's lanes.
+- 64-64 `Meso.laneLists` (field)
+- 66-66 `Meso.mid` (field): Each slot's middle (x, y) and its demand cell (`DemandCells.cellOf`, dense; -1: none).
+- 67-67 `Meso.cellOf` (field)
+- 69-69 `Meso.endFrom` (field): Each slot's road: the nodes it joins and its segment, when `placed`.
+- 70-70 `Meso.endTo` (field)
+- 71-71 `Meso.endSeg` (field)
+- 72-72 `Meso.placed` (field)
+- 74-74 `Meso.cells` (field): The slots by the 256 m cell of their middle (the window's), by the node they leave and the node they reach.
+- 75-75 `Meso.outAt` (field)
+- 76-76 `Meso.inAt` (field)
+- 78-78 `Meso.nodes` (field): Each node's word (`BULB`, `ROAD`s), while a road meets it or it is flagged.
+- 80-80 `Meso.touchedNodes` (field): Nodes whose links came or went since the last `settle`: their links' exits, signals and turns worked out again.
+- 82-82 `Meso.lines` (field): Each slot's line (start, middle, end: x, y), whether its road is one-way, and whether the page has not had its line.
+- 83-83 `Meso.oneWay` (field)
+- 84-84 `Meso.dirty` (field)
+- 85-85 `Meso.shapeSerial` (field)
+- 87-87 `Meso.micro` (field): The micro window: where it stands, and where it was asked to go (`want`).
+- 90-90 `Meso.owned` (field): The vehicles the meso handed to the micro simulation: taken back when they drive out of the window.
+- 92-92 `Meso.inside` (field): The slots inside the window: the handoff lanes are found from them (`handoffLanes`), never from the map's.
+- 94-94 `Meso.pendingSlots` (field): Slots with vehicles to make in the window, and how many of each to spread along it (handed with the window) rather than at its start.
+- 95-95 `Meso.fill` (field)
+- 97-97 `Meso.counted` (field): Slots given a count of the micro vehicles last step.
+- 100-100 `Meso.job` (field): The step's work under way (`IDLE`, `RATES`, `MODEL`, `PUBLISH`) and where it stands; whether a step is owed.
+- 101-101 `Meso.cursor` (field)
+- 102-102 `Meso.owed` (field)
+- 104-104 `Meso.budget` (field): Links of work a tick (`MESO_WORK_PER_TICK`; a test may make it whole).
+- 106-106 `Meso.late` (field): Steps the clock owed while one was under way, let go (the far traffic ran slower than the clock), since the start.
+- 109-109 `Meso.sent` (field)
+- 113-154 `Meso.reset` (method): Everything of the model forgotten (another map, the simulation started over): the window kept (entered again over the new map's links at the next step).
+- 174-176 `Meso.microWindow` (method): The micro window as it stands (null before it stands anywhere).
+- 179-197 `Meso.step` (method): Stage 2 (`pipeline.ts`): the links brought up to the lane graph, cars made in the window, and a share of the step's work.
+- 200-202 `Meso.slotOfLane` (method): The slot of a link lane, if it has one.
+- 205-208 `Meso.slotOfLink` (method): The slot of a link (`tileLinks.ts` linkId), if it is in the model.
+- 211-213 `Meso.linkOfSlot` (method): The link a slot holds (NaN: none).
+- 217-225 `Meso.slotFor` (method): ------------------------------------------------------------ slots
+- 228-245 `Meso.reserve` (method): Room for slots below `n` in every table by slot, doubling.
+- 247-249 `Meso.isLive` (method)
+- 252-254 `Meso.roadsAt` (method): The roads meeting at `node` (distinct segments).
+- 256-258 `Meso.flagged` (method)
+- 260-263 `Meso.flag` (method)
+- 266-270 `Meso.addRoads` (method): A road more or fewer at `node`; with none left, the node's flags go with it.
+- 273-278 `Meso.segmentAt` (method): Whether a placed slot of `segment` leaves or reaches `node`.
+- 281-297 `Meso.placeEnds` (method): A slot's road filed at its nodes (the joins, the turns).
+- 299-309 `Meso.unplaceEnds` (method)
+- 311-315 `Meso.touchEnds` (method)
+- 318-327 `Meso.placeLine` (method): A slot's place: its middle filed for the window, its demand cell, its line (start, middle, end) for the page.
+- 330-344 `Meso.dropSlot` (method): A link gone from the world: what was on it leaves the model, its slot free.
+- 349-388 `Meso.sync` (method): DO NOT read every lane of the map for an edit: only those the topology's log names.
+- 391-417 `Meso.relink` (method): One slot made again from its lanes; with none left, it goes.
+- 422-424 `Meso.edgeAt` (method): A node where the world ends: one road, not a turning circle (`RoadDoc.mapEdge`).
+- 427-446 `Meso.setSpec` (method): A live slot's numbers from its lanes (`lanelets.ts`); its exit over the roads met at its end.
+- 449-452 `Meso.seedNew` (method): A new link starts as a street of its land use stands at this hour (in free flow): the map is full from its first step.
+- 455-455 `Meso.scale` (field): The demand's scale, as the simulation last set it (`step`).
+- 458-466 `Meso.settle` (method): The links whose ends' roads changed: their exits and signals, and their turns, worked out again.
+- 469-491 `Meso.returns` (method): A link's turns: the links its lanes' movements lead onto (weighted by how many); a U-turn only when nothing else.
+- 496-498 `Meso.insideWindow` (method): Whether a point is inside the micro window as it stands (its links' cars are the micro simulation's).
+- 500-503 `Meso.inWindow` (method)
+- 506-517 `Meso.slotsIn` (method): The slots whose middle is in the rectangle, by the cells it covers, added to `out`.
+- 520-534 `Meso.moveWindow` (method): DO NOT look at every link of the map: only those filed where the window was or will be.
+- 537-544 `Meso.enter` (method): A link comes into the window: its cars are to be made along it.
+- 547-563 `Meso.leave` (method): A link leaves the window: the micro simulation's cars on it (those the meso made) taken off and counted on it again.
+- 566-566 `Meso.windowMoves` (field): Window moves and links in or out of it (`handoffLanes` found again after one).
+- 567-567 `Meso.handoffAt` (field)
+- 568-568 `Meso.handoffNodes` (field)
+- 569-569 `Meso.handoff` (field)
+- 576-592 `Meso.handoffLanes` (method): The lanes just outside the window that a road out of it leads onto: where a micro car of the meso is handed back (`takeBack`). Found from the window's own links (those inside, the roads out of their end nodes), never from the map's: the cos
+- 599-609 `Meso.handoffDestination` (field): DO NOT send a car of the meso to a random exit of the whole map (`chooseVehicleDestination`): its trip in the micro simulation ends where it leaves the window, so its goal is a lane just past the window's edge (`handoffLanes`) - its search 
+- 612-640 `Meso.admit` (method): The cars handed to the window made, a few a tick (as the edge entries admit them), up to the fleet the machine carries and the tick's trip searches.
+- 643-656 `Meso.takeBack` (method): The meso's cars that drove out of the window, taken off the micro simulation onto the link they reached.
+- 659-669 `Meso.countMicro` (method): The micro simulation's vehicles on each link inside the window (all of them: buses and the lots' cars take room too).
+- 674-686 `Meso.begin` (method): A step begun: the window's cars counted (bounded by the window), the demand of the hour read once a cell.
+- 689-716 `Meso.work` (method): Up to `budget` links of the step's work: the rates, then the model's phases, then the publish.
+- 719-719 `Meso.slotCars` (field): Each slot's cell demand and trips from off the world, written by `ratesIn` for `MesoModel.setRates`: typed arrays by slot and by dense cell, no Map on the step.
+- 720-720 `Meso.slotWeight` (field)
+- 721-721 `Meso.slotEntry` (field)
+- 722-722 `Meso.cellCars` (field)
+- 723-723 `Meso.cellWeight` (field)
+- 724-724 `Meso.cellsRead` (field)
+- 726-726 `Meso.slotEdge` (field): Each slot's start at the map's edge, and the node map's change it was found at (`nodesChanged`, bumped by every change of `nodes` and every slot placed or let go).
+- 727-727 `Meso.slotEdgeAt` (field)
+- 728-728 `Meso.nodesChanged` (field)
+- 731-751 `Meso.ratesIn` (method): Each link's trips in [`from`, `to`): from off the world at an entry (`vehicles/spawn.ts` ENTRY_RATE a lane), and its street's own by the land use at this hour.
+- 756-756 `Meso.flow` (field): `flowInto`'s numbers.
+- 759-797 `Meso.publishIn` (method): The links in [`from`, `to`) whose drawn numbers changed since they were last sent, appended to the delta (`MesoDelta`).
+
+### src/sim/meso/model.ts
+- 11-11 `WAVE_SPEED` (variable): How fast a queue's tail moves back (the backward wave), 18 km/h: the usual 15 to 20 km/h of measured urban queues.
+- 13-13 `GREEN_SHARE` (variable): Share of the hour a lane into a signal has green, on average.
+- 15-15 `ORIGIN_QUEUE` (variable): Cars queued at an origin (an entry of the map, a street's driveways) per lane before more are lost, as `vehicles/spawn.ts` ENTRY_QUEUE.
+- 16-16 `EPS` (variable)
+- 19-22 `laneCapacity` (function): A lane's capacity, vehicles a second: the triangular diagram's peak, v w k_jam / (v + w) (about 1,900 an hour at 50 km/h).
+- 25-27 `linkCapacity` (function): A link's capacity, vehicles a second: its lanes', times the green's share into a signal or a stop line.
+- 30-43 `MesoLinkSpec` (interface): One directed road: what the model needs of it.
+- 46-628 `MesoModel` (class): The model over links by slot (a slot is a directed road, `meso.ts`), all in typed arrays: no object, list or Map entry a link.
+- 47-47 `MesoModel.size` (field)
+- 48-48 `MesoModel.cap` (field)
+- 49-49 `MesoModel.present` (field)
+- 50-50 `MesoModel.exitOf` (field)
+- 51-51 `MesoModel.insideOf` (field)
+- 53-53 `MesoModel.toOf` (field): Node ids: a tile's pass 2^31 (`tileIdBase`), so doubles.
+- 54-54 `MesoModel.lanesOf` (field)
+- 55-55 `MesoModel.lengthOf` (field)
+- 56-56 `MesoModel.vFreeOf` (field)
+- 57-57 `MesoModel.capOf` (field)
+- 59-59 `MesoModel.sinkOf` (field): Share of what reaches the end of a link that ends its trip there (parks, turns into a lot): set by the owner each tick.
+- 61-61 `MesoModel.genOf` (field): Vehicles a second wanting to start on the link (from off the map, from its street's lots): set by the owner each tick.
+- 62-62 `MesoModel.origin` (field)
+- 64-64 `MesoModel.pendingOf` (field): Vehicles handed to the micro simulation inside its window, not on the road yet.
+- 66-66 `MesoModel.microOf` (field): Vehicles the micro simulation has on a link inside its window (`setMicro`).
+- 67-67 `MesoModel.sending` (field)
+- 68-68 `MesoModel.room` (field)
+- 69-69 `MesoModel.inflow` (field)
+- 70-70 `MesoModel.outflow` (field)
+- 71-71 `MesoModel.left` (field)
+- 72-72 `MesoModel.wanted` (field)
+- 74-74 `MesoModel.exitDemand` (field): A node's round of the node model: the demand on each exit (cleared after each round).
+- 75-75 `MesoModel.live` (field)
+- 77-77 `MesoModel.rings` (field): Cumulative counts at each end, back in time a step a cell (rings): entries upstream, exits downstream; each a block of `rings` (-1: none).
+- 78-78 `MesoModel.upAt` (field)
+- 79-79 `MesoModel.upLen` (field)
+- 80-80 `MesoModel.downAt` (field)
+- 81-81 `MesoModel.downLen` (field)
+- 83-83 `MesoModel.turns` (field): Each link's turns: a block of `turns`, the links it feeds then the share going to each (summing to 1); none when `turnLen` is 0.
+- 84-84 `MesoModel.turnAt` (field)
+- 85-85 `MesoModel.turnLen` (field)
+- 87-87 `MesoModel.into` (field): The links into each node, in the order they came.
+- 88-88 `MesoModel.tick` (field)
+- 91-91 `MesoModel.generated` (field): Since the start: vehicles generated, lost at a full origin, arrived (sunk or off the map), handed in by the micro simulation and out to it.
+- 92-92 `MesoModel.lost` (field)
+- 93-93 `MesoModel.sunk` (field)
+- 94-94 `MesoModel.handedIn` (field)
+- 95-95 `MesoModel.handedOut` (field)
+- 97-97 `MesoModel.constructor` (method)
+- 100-102 `MesoModel.slots` (method): One past the highest slot ever set.
+- 105-107 `MesoModel.bytes` (method): Bytes the model holds: its tables by slot, the rings' and turns' arenas, the nodes' lists.
+- 109-111 `MesoModel.has` (method)
+- 113-115 `MesoModel.isInside` (method)
+- 118-120 `MesoModel.inLinks` (method): The links into `node`, in the order they came.
+- 123-140 `MesoModel.setLink` (method): A link made or changed: its vehicles kept (spread along it again when its length or speed changed).
+- 143-156 `MesoModel.dropLink` (method): A link gone: what was on it and waiting for it leaves the model (counted as arrived); its blocks given back.
+- 159-173 `MesoModel.setTurns` (method): The links `slot` feeds, each with its weight (normalised here); none: everything reaching its end leaves the network.
+- 175-178 `MesoModel.setGeneration` (method)
+- 182-191 `MesoModel.setRates` (method): Every link's generation and sink share from its cell's demand (`meso.ts` rates), read from the arrays here: DO NOT ask a link's length, lanes and speed by calls, each double handed back a new heap number a link a step. `entry`: each slot's
+- 193-196 `MesoModel.setSinkShare` (method)
+- 199-203 `MesoModel.count` (method): Vehicles on the link: on the road (outside the window), or the micro simulation's and those waiting to be made there (inside).
+- 206-211 `MesoModel.queued` (method): Vehicles standing in the link's queue: those that have had the time to reach its end and not left.
+- 214-219 `MesoModel.speed` (method): The link's mean speed: its length over the free run plus the wait in its queue at the discharge rate.
+- 225-241 `MesoModel.flowInto` (method): `count`, `queued` and `speed` of a present link at once, into `out` (the page's buffer, `meso.ts` publish): the same numbers, from three interpolations of the rings, not ten (`queued` counts again, `speed` queues again; SIM-26).
+- 244-249 `MesoModel.seed` (method): `n` vehicles put on a link outside the window, spread along it in free flow (counted as generated).
+- 251-253 `MesoModel.freeSpeedAt` (method)
+- 255-257 `MesoModel.lengthAt` (method)
+- 259-261 `MesoModel.lanesAt` (method)
+- 263-265 `MesoModel.capacityAt` (method)
+- 268-270 `MesoModel.toAt` (method): The node the link runs into (NaN: no link).
+- 273-279 `MesoModel.turnsAt` (method): The links `slot` feeds (`setTurns`).
+- 281-283 `MesoModel.pending` (method)
+- 286-288 `MesoModel.outflowOf` (method): Last step's flow out of the link's end and onto its start, vehicles.
+- 290-292 `MesoModel.inflowOf` (method)
+- 295-302 `MesoModel.vehicles` (method): Every vehicle the model holds: on links outside the window, waiting at origins, and handed to the window not made yet.
+- 305-314 `MesoModel.enterWindow` (method): The link comes into the micro window: its vehicles are handed over (`pending`), its own counts set aside.
+- 317-326 `MesoModel.leaveWindow` (method): The link leaves the micro window with `micro` vehicles of the micro simulation on it (taken off there): they and the pending are the model's again.
+- 329-331 `MesoModel.setMicro` (method): The micro simulation's vehicles on a link inside the window, for its supply.
+- 334-339 `MesoModel.takePending` (method): `k` of the link's pending vehicles made by the micro simulation.
+- 342-348 `MesoModel.microExit` (method): A vehicle of the micro simulation drove out of the window onto `slot`: it enters the link now.
+- 351-351 `MesoModel.handed` (field): The links of the micro window handed a whole vehicle or more by the last step (`pending`): the micro simulation is to make them (`meso.ts` admit).
+- 354-354 `MesoModel.phase` (field): Where the step under way stands (`stepSome`): -1 none; 0 the links' sending and receiving flows; 1 the nodes; 2 the origins; 3 the counts moved on.
+- 355-355 `MesoModel.cursor` (field)
+- 358-360 `MesoModel.stepping` (method): Whether a step is under way (begun by `stepSome`, not finished).
+- 363-365 `MesoModel.step` (method): One whole step of `dt`: origins fed, sending and receiving flows, each node's transfers, the cumulative counts moved on.
+- 373-404 `MesoModel.stepSome` (method): Up to `budget` links and nodes of a step (one begun when none is under way); the budget left (the step is done when `stepping` is false). DO NOT step the whole map in one tick: the step is spread over the ticks of its `dt` (`meso.ts`), each
+- 407-409 `MesoModel.finish` (method): The step under way finished now (a link about to change).
+- 411-417 `MesoModel.beginStep` (method)
+- 420-461 `MesoModel.linkFlows` (method): The sending and receiving flows of the links in [`from`, `to`), and their origins fed.
+- 464-473 `MesoModel.originsIn` (method): Starting from the street (a driveway, the map's edge) gives way to the through traffic: what room is left, for the links in [`from`, `to`).
+- 476-491 `MesoModel.moveCounts` (method): The cumulative counts of the links in [`from`, `to`) moved on by the step's flows; the window's links handed what came in.
+- 494-563 `MesoModel.node` (method): One node (its group of links in): the approaches' sending flows to their turns, by equal-priority movements, up to each exit's room.
+- 566-575 `MesoModel.spread` (method): The link's `n` vehicles laid along it as in free flow: entered evenly over the last free run, none left yet.
+- 577-582 `MesoModel.dropRings` (method)
+- 584-588 `MesoModel.dropTurns` (method)
+- 591-597 `MesoModel.cum` (method): The cumulative count `back` steps ago in the ring at `at` of `h` (fractional: between the two steps either side).
+- 599-599 `MesoModel.tally` (field): What a step's nodes sink, summed in place (`step`).
+- 603-605 `MesoModel.ringAt` (method): A ring of `h`'s cell for `back` steps ago (-1: the next step).
+- 608-627 `MesoModel.reserve` (method): Room for slots below `n`, doubling.
+- 630-630 `NONE` (variable)
+
+### src/sim/meso/slots.ts
+- 5-10 `grown` (function): A typed array of `n` with `a`'s values first, the rest `fill`.
+- 13-17 `roomFor` (function): A block's room for `n` numbers: exact up to 16, then 8 classes an octave (at most 1/8 left unused).
+- 20-48 `BlockArena` (class): Blocks of doubles in one Float64Array, those given back taken again by their size class. DO NOT keep `data` across an `alloc`: it may grow.
+- 21-21 `BlockArena.data` (field)
+- 22-22 `BlockArena.top` (field)
+- 23-23 `BlockArena.free` (field)
+- 26-34 `BlockArena.alloc` (method): The start of a block of `n` (its numbers as left by its last holder).
+- 37-42 `BlockArena.release` (method): The block at `at` of `n` given back.
+- 45-47 `BlockArena.bytes` (method): Bytes it holds (taken and free).
+- 51-107 `SlotIndex` (class): Number keys (a link's id passes 2^31) to slots, open addressing with linear probing (no boxed key, no entry object).
+- 52-52 `SlotIndex.keys` (field)
+- 53-53 `SlotIndex.vals` (field)
+- 55-55 `SlotIndex.state` (field): 0 empty, 1 held, 2 a key taken out (kept for the probes past it).
+- 56-56 `SlotIndex.used` (field)
+- 57-57 `SlotIndex.size` (field)
+- 60-67 `SlotIndex.get` (method): The slot of `key`, -1 when it has none.
+- 69-87 `SlotIndex.set` (method)
+- 89-96 `SlotIndex.delete` (method)
+- 98-106 `SlotIndex.rehash` (method)
+- 110-116 `hash` (function): A double's hash from its two 32-bit halves (an integer key up to 2^53; murmur3's finaliser).
+- 119-226 `Threads` (class): Slots in groups by a number key (a node, a tile, a cell): each slot in one group at most, a group's slots in the order they joined (as a Set's).
+- 121-121 `Threads.groups` (field): Each key's group, in the order the groups were made (as a Map's).
+- 122-122 `Threads.gKey` (field)
+- 123-123 `Threads.gHead` (field)
+- 124-124 `Threads.gTail` (field)
+- 125-125 `Threads.gCount` (field)
+- 126-126 `Threads.gFree` (field)
+- 127-127 `Threads.gTop` (field)
+- 128-128 `Threads.next` (field)
+- 129-129 `Threads.prev` (field)
+- 131-131 `Threads.groupOf` (field): Each slot's group, -1 for none.
+- 134-140 `Threads.reserve` (method): Room for slots below `n`.
+- 143-163 `Threads.add` (method): `slot` put last in `key`'s group (out of the one it was in).
+- 166-175 `Threads.remove` (method): `slot` out of its group; a group left empty goes.
+- 178-181 `Threads.keyOf` (method): The key of `slot`'s group (NaN: none).
+- 184-186 `Threads.group` (method): The group of `key` (-1: none).
+- 189-191 `Threads.allGroups` (method): Every group, in the order they were made.
+- 194-196 `Threads.eachGroup` (method): `visit` called with every group, in the order they were made (`Map.prototype.forEach`): DO NOT walk them with an iterator a step, a result object a group (the meso's step, sim20a).
+- 199-201 `Threads.groupLimit` (method): One past the highest group index ever made: a resumable walk over the groups goes from 0 to it, skipping the empty (`count` 0).
+- 204-206 `Threads.head` (method): A group's first slot (-1: none), the slot after `slot` in its group (-1: the last), how many it holds.
+- 208-210 `Threads.after` (method)
+- 212-214 `Threads.count` (method)
+- 217-221 `Threads.list` (method): The slots of `key`'s group, as a new list.
+- 223-225 `Threads.bytes` (method)
+
+### src/sim/meso/tileLinks.ts
+- 4-4 `linkId` (function): A link's id: its segment and its direction (0 from the segment's `a` to its `b`). Exact while segment ids stay under 2^52.
+- 8-8 `reverseLink` (function): The same road the other way. DO NOT use `^ 1`: ids may pass 2^31.

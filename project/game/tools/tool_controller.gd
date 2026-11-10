@@ -1,7 +1,7 @@
 ## ToolController: the state machine of the tool in hand. Turns clicks on the map
 ## into ground points and hands them to the active tool; tools only dispatch store commands and report hints.
 ## Tool: NONE (camera) → ROAD | ZONE | DEMOLISH | INSPECT | UPGRADE | SPLIT | ROUNDABOUT | TERRAIN | LOT | MOVE | CONTROL | PAINT | TREES |
-## CLOUD | FOG | WEATHER | ELEMENTS | STRIKE | SHOOT | BUILD | TRANSIT | POLE | BARRIER | STREETSCAPE | LOTS; set_tool() is
+## CLOUD | FOG | WEATHER | ELEMENTS | STRIKE | SHOOT | BUILD | TRANSIT | POLE | BARRIER | STREETSCAPE; set_tool() is
 ## the only transition, Esc and a right click that stays a click (CityCamera.right_clicked) cancel; a right or middle
 ## drag is the camera's and never reaches the tool. A held left button sends drag() and, every frame, tick(); release()
 ## ends the stroke.
@@ -18,8 +18,6 @@ signal road_height_changed # the road tool draws at another height
 ## Inspect result (CityStore query "inspect") or {} when the selection is cleared.
 signal inspected(info: Dictionary)
 signal hovered(info: Dictionary)
-## The tool changed what the options panel shows.
-signal options_changed
 
 enum Tool { NONE, ROAD, ZONE, DEMOLISH, INSPECT, UPGRADE, SPLIT, ROUNDABOUT, TERRAIN, LOT, MOVE, CONTROL, PAINT, TREES, CLOUD, FOG, WEATHER, ELEMENTS, STRIKE, SHOOT, BUILD, TRANSIT,
 	POLE, BARRIER, STREETSCAPE, LOTS }
@@ -58,8 +56,7 @@ var preview: PreviewLine
 var flash: RoadFlash
 var tool: Tool = Tool.NONE
 var params: Dictionary = {}
-## The params each tool was last used with: a category reopens with the tool and choice last used (the Landscape brushes' kept
-## keys from the last session too).
+## The params each tool was last used with: a category reopens with the tool and choice last used.
 var remembered: Dictionary = {}
 var active: ToolBase
 var pointer := Vector2.ZERO # where the mouse event being handled happened: the OS's cursor may already be elsewhere
@@ -68,8 +65,6 @@ var _dragging := false
 
 func _init(camera_rig: CityCamera) -> void:
 	rig = camera_rig
-	for tool_name: String in Settings.land.kept: # the Landscape brushes as the last session left them (game/tools/brush_prefs.gd)
-		remembered[Tool[tool_name]] = Settings.land.kept[tool_name].duplicate()
 	add_to_group(&"tools")
 	rig.right_clicked.connect(_right_clicked)
 
@@ -94,7 +89,6 @@ func set_tool(next: Tool, p: Dictionary = {}) -> void:
 	remembered[next] = p
 	preview.clear()
 	active = SCRIPTS[next].new(self, p) if SCRIPTS.has(next) else null
-	Settings.set_land_brush(Tool.find_key(next), p) # after the tool took them up: the element brush files its kind's (element_tool.gd)
 	tool_changed.emit(tool, params)
 
 
@@ -137,10 +131,14 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
-## A step up (`dir` 1) or down (-1) of the height the road tool draws at, from its options.
-func step_road_height(dir: int) -> void:
+## A step of the height the road tool draws at, from its options.
+## The tool changed what the options panel shows.
+signal options_changed
+
+
+func step_road_height(metres: int) -> void:
 	if tool == Tool.ROAD:
-		active.step_height(dir)
+		active.step_height(metres)
 
 
 func _unhandled_input(event: InputEvent) -> void:

@@ -124,7 +124,6 @@ struct Pedestrian {
 	PedDoor door; // the door it goes in at, on the last street of its route
 	int goal_side = -1; // the sidewalk of that street it heads for (-1: either)
 	bool entering = false, company_due = false; // on its way in at a door; its company comes out of the door after it
-	bool done = false; // its walk ended where it may be seen (sight.h): it stands there until it is out of sight
 	int with = -1, mate = -1; // the walker it follows; the walker following it
 	float flank = 1; // the side of its leader it walks on (+u or -u)
 	bool on_way = false; // following on a sidewalk (seg, side, s, u read as a walker's)

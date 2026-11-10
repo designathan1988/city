@@ -10,10 +10,12 @@
 namespace city {
 
 namespace {
+constexpr float RIDER_BACK_M = 4.f; // the rider is thrown from this far behind the round
+constexpr float RIDER_PUSH = 0.15f;
+constexpr float RIDER_HIT_M = 1.2f; // the wound is drawn this high over a two-wheeler's ground
 } // namespace
 
 void shoot_vehicle(Round &r, int id, float up, float hx, float hy, float hz) {
-	const Tuning &tn = r.s.catalog.tune;
 	TrafficState &t = r.s.traffic;
 	Vehicle &v = t.vehicles[size_t(id)];
 	r.out.hit = ShotResult::VEHICLE;
@@ -22,7 +24,7 @@ void shoot_vehicle(Round &r, int id, float up, float hx, float hy, float hz) {
 	if (two_wheeler(v.type)) {
 		DamageEvent wound;
 		wound.kind = DamageEvent::WOUND;
-		wound.x = hx; wound.y = v.cur.y + tn.shoot_rider_hit_m; wound.z = hz;
+		wound.x = hx; wound.y = v.cur.y + RIDER_HIT_M; wound.z = hz;
 		wound.dx = r.dx; wound.dz = r.dz;
 		r.emit(wound);
 		DamageEvent body;
@@ -30,9 +32,9 @@ void shoot_vehicle(Round &r, int id, float up, float hx, float hy, float hz) {
 		body.id = VEHICLE_BODY_ID_BASE + id;
 		body.x = v.cur.x; body.y = v.cur.y; body.z = v.cur.z;
 		body.a = std::atan2(v.cur.fz, v.cur.fx);
-		body.b = hx - r.dx * tn.shoot_rider_back_m;
-		body.c = hz - r.dz * tn.shoot_rider_back_m;
-		body.d = tn.shoot_rider_push;
+		body.b = hx - r.dx * RIDER_BACK_M;
+		body.c = hz - r.dz * RIDER_BACK_M;
+		body.d = RIDER_PUSH;
 		body.v = CAS_DEAD;
 		r.emit(body);
 		DamageEvent drop;

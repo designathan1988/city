@@ -25,6 +25,8 @@ const MINUTES_AN_HOUR := 60.0
 const CLOCK_SHOTS := 4
 const CLOCK_STEP_H := 5
 const CLEAR_DABS := 11
+const NIGHT_HOUR := 22.0
+const ELEMENT_KINDS := 18
 const TREE_CUT := 2
 const RIVER_DABS := 60
 const RIVER_STEP_M := 20.0 # the dabs of a stroke (brush_tool.gd): a share of the radius apart
@@ -60,7 +62,8 @@ func _ready() -> void:
 		push_error("boot: %s" % errors)
 		get_tree().quit(1)
 		return
-	CityStore.new_map(TOWN_MAP, SEED, true, true)
+	CityStore.new_map(TOWN_MAP, SEED, true)
+	CityStore.dispatch(&"set_speed", [0])
 	UiDriver.at_hour(world, hour)
 	if not preset.is_empty():
 		Settings.preset = preset
@@ -118,7 +121,7 @@ func _city_light(field: Vector3) -> void:
 	await shot("luz_parede", mid, 120.0, 14.0, 30.0)
 	await shot("ceu_baixo", field, 45.0, -14.0, 200.0)
 	await shot("ceu_alto", field, 45.0, -30.0, 200.0)
-	UiDriver.at_hour(world, float(DataTables.game("daylight").night_hour))
+	UiDriver.at_hour(world, NIGHT_HOUR)
 	await shot("ceu_noite", field, 45.0, -14.0, 200.0)
 	await shot("noite_campo", field, 45.0, 24.0, 2.0)
 	await shot("noite_cidade", mid, 30.0, 26.0, 6.0)
@@ -203,7 +206,7 @@ func _run() -> void:
 	await shot("cobertura", d + Vector3(-60.0, 0, 0), 90.0, 18.0, 10.0)
 	var e := d + Vector3(0, 0, -300.0)
 	CityStore.dispatch(&"begin_stroke", ["cmd.place.element"])
-	for k in DataTables.catalog_table("nature").elements.kinds.size():
+	for k in ELEMENT_KINDS:
 		var at := e + Vector3((k % 6) * 22.0 - 55.0, 0, (k / 6) * 22.0 - 22.0)
 		CityStore.dispatch(&"element_brush", [at, 9.0, k, {"density": 30.0, "size": 1.0, "variation": 0.4, "spacing": 0.4, "strength": 1.0, "intensity": 0.8}, false])
 	CityStore.dispatch(&"end_stroke")
@@ -216,7 +219,7 @@ func _run() -> void:
 	var r := _ground(RIVER_AT.x, RIVER_AT.y)
 	CityStore.dispatch(&"begin_stroke", ["cmd.place.terrainBrush"])
 	for i in RIVER_DABS:
-		CityStore.dispatch(&"terrain_brush", [r + Vector3(i * RIVER_STEP_M - 600.0, 0, -sin(i / 12.0) * 150.0), 125.0, 1.0, 0.1, CityStore.code(&"BrushMode", &"RIVER"), 0.0])
+		CityStore.dispatch(&"terrain_brush", [r + Vector3(i * RIVER_STEP_M - 600.0, 0, -sin(i / 12.0) * 150.0), 125.0, 1.0, 0.1, 8, 0.0])
 	CityStore.dispatch(&"end_stroke")
 	await shot("rio", r, 30.0, 24.0, 3.0)
 	await shot("mar", SEA_AT, 0.0, 20.0, 2.0)

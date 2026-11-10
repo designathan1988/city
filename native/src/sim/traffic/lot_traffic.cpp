@@ -2,7 +2,6 @@
 // the road, drives in, stands its stay, and when the fleet runs short drives out and joins the traffic again. Who is sent in and
 // out is lot_demand.cpp. Off the lanes a car is a Vehicle
 // with `off` set: on no lane list, out of the fleet count, its pose the manoeuvre's.
-#include "sim/traffic/sight.h"
 #include "sim/traffic/traffic_system.h"
 
 #include "sim/traffic/lane_closures.h"
@@ -164,7 +163,7 @@ void join_lane(CityState &s, LotCar &car) {
 	v.v = p.parker_join_ms;
 	micro_add(t, id);
 	lane_add(s, lane.ds * MAX_LANES + lane.lane, id);
-	if (!new_trip(s, id, lane.ds)) trip_ends_here(s, id); // nowhere to go from its gate (sight.h)
+	if (!new_trip(s, id, lane.ds)) despawn_vehicle(s, id, true);
 }
 
 void leaving(CityState &s, LotCar &car, float dt) {

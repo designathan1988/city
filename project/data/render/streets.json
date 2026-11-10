@@ -1,5 +1,5 @@
 {
- "_doc": "Street look (render/roads): strip colours (sRGB; over the grass map a tint, white for the map as it is); surface_colors[0] is the colour the asphalt texture is authored against, asphalt_by_class the tone over it, heights over the carriageway (m), median_nose_m how far a median stands back of a crossing (no band of ground beside the road: the terrain meets the paving's edge, render/roads/ground_seam.cpp), junction corners, dropped kerbs, markings and how the street furniture looks; where the furniture stands and where the crosswalk and stop line lie is data/catalog/street_furniture.json. markings follow CONTRAN's Manual Brasileiro de Sinalizacao de Transito, vol. IV, Sinalizacao Horizontal (2007): white N 9.5 and yellow 10YR 7.5/14 Munsell, as sRGB through the Munsell renotation data (RIT real.dat; Y by ASTM D1535; illuminant C to D65 by Bradford); longitudinal lines 0.10 m below 80 km/h and 0.15 m from it, an exclusive lane's line 0.25 m (its 0.20 to 0.30 m), double lines 0.10 m apart; dashes by speed, the first pattern its tables give for each band (below 60 km/h 2 m dash, 4 m gap; to 80, 3 and 6; beyond, 3 and 9); zebra bars 0.35 m wide 0.55 m apart, the middle of its 0.30 to 0.40 and 0.30 to 0.80 m, as many as fit across the carriageway and centred on it. Heights: kerb, sidewalk and median 0.15 m over the carriageway (Porto Velho LC 748/2018 and the Sao Paulo standard kerb: 15 cm over the grade; the sidewalk level with the kerb's top), barrier 0.81 m (FHWA: the 32 in New Jersey safety shape). Dropped kerbs (ABNT NBR 9050): no lip at the road (low_m 0), the ramp across the footway and its far wing at most 1:12, 1.80 m for a 0.15 m kerb (run_m, flare_m); the wing on the junction side (full_m), where the ramp starts and ends along the kerb (flat_m) and the narrowest footway that gets one (min_walk_m) are not yet sized from the crosswalk (data/catalog/street_furniture.json crossing): the norm wants 1.20 m left free behind the ramp, else the whole footway lowered with 1:20 ramps along it. surface_error_m and far_surface_error_m: the most a road's mesh stands off its true surface (plan, height and the section's edges), near and far level (render/roads/road_emit.cpp segment_stations). A metre one metre from the eye spans rows / (2 tan(fov / 2)) pixels: 1037 at 1080 rows and camera.json near_fov_deg 55, 1712 at far_fov_deg 35. 0.01 m is then under tuning render.detail_error_px (half a pixel) from 21 m, and paint on the same rule stays within it of the surface, under markings.lift_m (0.02); 0.5 m is under half a pixel from 1.7 km, nearer than tuning render.road_end_m (2200 m), where the far level begins.",
+ "_doc": "Street look (render/roads): plate_blend_m is how far the difference of the distances to two arms runs while they share a plate: 2.26 m lays the passage over the 3.2 m of the 4.0's mesh edge (GROUND_MAX_EDGE) across a right-angled corner. strip colours (sRGB; over the grass map a tint, white for the map as it is); surface_colors[0] is the colour the asphalt texture is authored against, asphalt_by_class the tone over it, heights over the carriageway (m), median_nose_m how far a median stands back of a crossing, verge the ground from a footway's edge down to reach_m out and under_m below the terrain, in that many strips, junction corners, dropped kerbs, markings and how the street furniture looks; where the furniture stands and where the crosswalk and stop line lie is data/catalog/street_furniture.json. markings follow CONTRAN's Manual Brasileiro de Sinalização de Trânsito, vol. IV, Sinalização Horizontal (2007): white N 9.5 and yellow 10YR 7.5/14 Munsell, as sRGB through the Munsell renotation data (RIT real.dat; Y by ASTM D1535; illuminant C to D65 by Bradford); longitudinal lines 0.10 m below 80 km/h and 0.15 m from it, an exclusive lane's line 0.25 m (its 0.20 to 0.30 m), double lines 0.10 m apart; dashes by speed, the first pattern its tables give for each band (below 60 km/h 2 m dash, 4 m gap; to 80, 3 and 6; beyond, 3 and 9); zebra bars 0.35 m wide 0.55 m apart, the middle of its 0.30 to 0.40 and 0.30 to 0.80 m, as many as fit across the carriageway and centred on it. Heights: kerb, sidewalk and median 0.15 m over the carriageway (Porto Velho LC 748/2018 and the São Paulo standard kerb: 15 cm over the grade; the sidewalk level with the kerb's top), barrier 0.81 m (FHWA: the 32 in New Jersey safety shape). Dropped kerbs (ABNT NBR 9050): no lip at the road (low_m 0), the ramp across the footway and its far wing at most 1:12, 1.80 m for a 0.15 m kerb (run_m, flare_m); the wing on the junction side (full_m), where the ramp starts and ends along the kerb (flat_m) and the narrowest footway that gets one (min_walk_m) are not yet sized from the crosswalk (data/catalog/street_furniture.json crossing): the norm wants 1.20 m left free behind the ramp, else the whole footway lowered with 1:20 ramps along it.",
  "surface_colors": ["#3a3d3f", "#8f8d88", "#6a5f52", "#7a746b"],
  "asphalt_by_class": {"local": "#5f6365", "urban": "#3a3d3f", "avenue": "#35383a", "boulevard": "#333638", "highway": "#343638", "ramp": "#3b3d3f", "rail": "#3a3d3f"},
  "strip_colors": {
@@ -13,13 +13,17 @@
  "heights": {
   "curb": 0.15,
   "curb_by_median": 0.15,
+  "sidewalk": 0.15,
   "median": 0.17,
-  "barrier": 0.81
+  "barrier": 0.81,
+  "skirt": 0.7
  },
  "median_nose_m": 0.5,
- "surface_error_m": 0.01,
- "far_surface_error_m": 0.5,
+ "verge": {"reach_m": 1.0, "under_m": 0.08, "strips": 1},
+ "sample_step_m": 3,
+ "far_step_m": 24,
  "far_pull_m": 3,
+ "plate_blend_m": 2.26,
  "face_eps_m": 0.004,
 	"markings": {"white": "#eee8d7", "yellow": "#e1c45a", "lift_m": 0.02, "mer_line_m": 0.1, "mer_dash_m": 1, "mer_gap_m": 1, "lpp_line_m": 0.1, "lpp_run_min_m": 0.5,
   "_doc": "styles: the regional paint standards of Menu > Paint (the order of the choices, the 4.0's ids), each with its dashes by speed and whether every line is white; a style's widths are base's unless it gives its own. br is the 4.0's drawing (markingStyle.ts 'br': dashes 3, 3, 4 m with gaps 6, 9, 12 m by speed, the style every new city of the 4.0 starts with, main.ts) and is the game's default: where the standard and the 4.0 differ in looks the 4.0 is drawn and the standard is a second table. br_norm is that second table, CONTRAN MBST vol. IV section 4.1 (dashes 2/4, 3/6 and 3/9 m, line widths of 0.10 m and 0.15 m from 80 km/h, double line on a road with more than one lane a direction, zebra of 0.35 m bars every 0.9 m); it comes last so the indexes of the other styles do not move. us and eu take the widths of base until their sources are read (MUTCD part 3; Vienna Convention 1968, EN 1436).",
@@ -310,8 +314,11 @@
   "beam_section": [[-0.5, -0.5], [-0.42, -0.32], [-0.22, 0.5], [-0.1, 0.42], [0, 0.1], [0.1, 0.42], [0.22, 0.5], [0.42, -0.32], [0.5, -0.5]]
  },
  "lamp_light": {
-  "_doc": "A lamp's lens and the lit air under it. The light on the ground is render/props/lamp_lights.h, its numbers in tuning.json render.lamp_*. beams: the cone of lit air under each lens is laid (Roadcraft lab scenery.ts beam), seen only at night in rain or storm (render/sky_view.gd sets the lamp_glow haze). beam_radius_m: its radius at the ground. lamp_* and column_*: height and reach of the lens on a utility pole and on a lighting column.",
-  "beams": true,
+  "_doc": "A lamp's lens and the lit air under it. The light on the ground is render/props/lamp_lights.h, its numbers in tuning.json render.lamp_*. pool_along, pool_sides, pool_lift_m: of the discs the pools were, read by nothing now and kept while the schema asks them. beam_radius_m: the lit air under the lens in rain. lamp_* and column_*: height and reach of the lens on a utility pole and on a lighting column.",
+  "pool_along": 1.6,
+  "pool_sides": 8,
+  "pool_lift_m": 0.03,
+  "beams": false,
   "beam_radius_m": 3.68,
   "lamp_height_m": 7.16,
   "lamp_reach_m": 1.6,
@@ -337,30 +344,30 @@
  "styles": {
   "_doc": "What changes with a city's regional style (session-rules.md, section 10), laid over this table by DataTables: a block here replaces the same keys above, a list replaces the list. The drawings are the Roadcraft 4.0 look in both for now.",
   "roadcraft": {
-   "_doc": "What the Roadcraft 4.0 draws (src/render/signs.ts PLATE; src/world/utilities.ts and src/render/utilities.ts placePole: the urban and the rural pole, their parts below the crown as the 4.0's; the pole 12 m over the ground by the owner's order where the 4.0 has 8.5 m, so the crown's parts, the wires' seats (wires.y_m) and the lamp (lamp_light) stand 3.5 m higher). The look of this style, not a norm.",
+   "_doc": "What the Roadcraft 4.0 draws (src/render/signs.ts PLATE; src/world/utilities.ts and src/render/utilities.ts placePole: the urban and the rural pole, 8.5 m, made by tools/assets/make_pole_parts.py). The look of this style, not a norm.",
    "props": {
     "pole_cast": {"_doc": "What a pole casts past from_m: only its parts of least_m or longer, round ones of `segments` sides. Nearer the whole pole casts: an insulator shows there.", "from_m": 140, "least_m": 0.3, "segments": 5},
     "pole": [
-     {"shape": "frustum", "base": [0, 0, 0], "radius": 0.18, "top_radius": 0.11, "height": 12.0, "segments": 12, "color": "#4e3b2a", "part": 1, "wood": true},
-     {"shape": "frustum", "base": [0, 11.99, 0], "radius": 0.1265, "top_radius": 0.044, "height": 0.08, "segments": 10, "color": "#8c9590", "part": 1},
-     {"shape": "box", "min": [-0.05, 11.75, 0.0], "max": [0.05, 11.85, 2.0], "color": "#3a2c20", "wood": true, "part": 2},
-     {"shape": "frustum", "base": [0, 11.85, 0.55], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 2},
-     {"shape": "frustum", "base": [0, 11.85, 1.25], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 2},
-     {"shape": "frustum", "base": [0, 11.85, 1.85], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 2},
-     {"shape": "beam", "from": [0, 11.35, 0.1154], "to": [0, 11.75, 0.45], "width": 0.05, "thick": 0.025, "color": "#8c9590", "part": 2},
-     {"shape": "box", "min": [-0.03, 10.4, 0.1215], "max": [0.03, 10.8, 0.1715], "color": "#8c9590", "part": 2},
-     {"shape": "frustum", "base": [0, 10.66, 0.22], "radius": 0.04, "top_radius": 0.022, "height": 0.08, "segments": 10, "color": "#d8dcd6", "part": 2},
-     {"shape": "frustum", "base": [0, 10.46, 0.22], "radius": 0.04, "top_radius": 0.022, "height": 0.08, "segments": 10, "color": "#d8dcd6", "part": 2},
-     {"shape": "box", "min": [-0.05, 11.75, -1.0], "max": [0.05, 11.85, 1.0], "color": "#3a2c20", "wood": true, "part": 32},
-     {"shape": "frustum", "base": [0, 11.85, -0.95], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 32},
-     {"shape": "frustum", "base": [0, 11.85, 0.35], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 32},
-     {"shape": "frustum", "base": [0, 11.85, 0.95], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 32},
-     {"shape": "beam", "from": [0, 11.35, -0.1154], "to": [0, 11.75, -0.45], "width": 0.05, "thick": 0.025, "color": "#8c9590", "part": 32},
-     {"shape": "cylinder", "base": [0, 10.575, -0.46], "radius": 0.28, "height": 0.95, "segments": 14, "color": "#8c9590", "part": 4},
-     {"shape": "cylinder", "base": [0, 10.575, 0.46], "radius": 0.28, "height": 0.95, "segments": 14, "color": "#8c9590", "part": 64},
-     {"shape": "beam", "from": [0, 9.7751, 0], "to": [0, 10.0, 1.6], "width": 0.08000000000000002, "thick": 0.08000000000000002, "color": "#4a4a46", "part": 8},
-     {"shape": "box", "min": [-0.13, 9.86, 1.35], "max": [0.13, 10.0, 1.85], "color": "#a9b0ad", "part": 8},
-     {"shape": "box", "min": [-0.104, 9.85, 1.4], "max": [0.104, 9.86, 1.8], "color": "#ffdba0", "glow": "night", "part": 8},
+     {"shape": "frustum", "base": [0, 0, 0], "radius": 0.18, "top_radius": 0.11, "height": 8.5, "segments": 12, "color": "#4e3b2a", "part": 1, "wood": true},
+     {"shape": "frustum", "base": [0, 8.49, 0], "radius": 0.1265, "top_radius": 0.044, "height": 0.08, "segments": 10, "color": "#8c9590", "part": 1},
+     {"shape": "box", "min": [-0.05, 8.25, 0.0], "max": [0.05, 8.35, 2.0], "color": "#3a2c20", "wood": true, "part": 2},
+     {"shape": "frustum", "base": [0, 8.35, 0.55], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 2},
+     {"shape": "frustum", "base": [0, 8.35, 1.25], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 2},
+     {"shape": "frustum", "base": [0, 8.35, 1.85], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 2},
+     {"shape": "beam", "from": [0, 7.85, 0.1154], "to": [0, 8.25, 0.45], "width": 0.05, "thick": 0.025, "color": "#8c9590", "part": 2},
+     {"shape": "box", "min": [-0.03, 6.9, 0.1215], "max": [0.03, 7.3, 0.1715], "color": "#8c9590", "part": 2},
+     {"shape": "frustum", "base": [0, 7.16, 0.22], "radius": 0.04, "top_radius": 0.022, "height": 0.08, "segments": 10, "color": "#d8dcd6", "part": 2},
+     {"shape": "frustum", "base": [0, 6.96, 0.22], "radius": 0.04, "top_radius": 0.022, "height": 0.08, "segments": 10, "color": "#d8dcd6", "part": 2},
+     {"shape": "box", "min": [-0.05, 8.25, -1.0], "max": [0.05, 8.35, 1.0], "color": "#3a2c20", "wood": true, "part": 32},
+     {"shape": "frustum", "base": [0, 8.35, -0.95], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 32},
+     {"shape": "frustum", "base": [0, 8.35, 0.35], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 32},
+     {"shape": "frustum", "base": [0, 8.35, 0.95], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 32},
+     {"shape": "beam", "from": [0, 7.85, -0.1154], "to": [0, 8.25, -0.45], "width": 0.05, "thick": 0.025, "color": "#8c9590", "part": 32},
+     {"shape": "cylinder", "base": [0, 7.075, -0.46], "radius": 0.28, "height": 0.95, "segments": 14, "color": "#8c9590", "part": 4},
+     {"shape": "cylinder", "base": [0, 7.075, 0.46], "radius": 0.28, "height": 0.95, "segments": 14, "color": "#8c9590", "part": 64},
+     {"shape": "beam", "from": [0, 6.2751, 0], "to": [0, 6.5, 1.6], "width": 0.08000000000000002, "thick": 0.08000000000000002, "color": "#4a4a46", "part": 8},
+     {"shape": "box", "min": [-0.13, 6.36, 1.35], "max": [0.13, 6.5, 1.85], "color": "#a9b0ad", "part": 8},
+     {"shape": "box", "min": [-0.104, 6.35, 1.4], "max": [0.104, 6.36, 1.8], "color": "#ffdba0", "glow": "night", "part": 8},
      {"shape": "frustum", "base": [0, 0, 0], "radius": 0.19, "top_radius": 0.15, "height": 0.7, "segments": 8, "color": "#5d6461", "part": 16},
      {"shape": "frustum", "base": [0, 0.7, 0], "radius": 0.12, "top_radius": 0.07, "height": 8.3, "segments": 8, "color": "#8a918e", "part": 16},
      {"shape": "beam", "from": [0, 8.88, 0], "to": [0, 9.09, 2.1], "width": 0.08, "thick": 0.08, "color": "#8a918e", "part": 16},
@@ -368,8 +375,8 @@
      {"shape": "box", "min": [-0.14, 9.01, 1.82], "max": [0.14, 9.02, 2.38], "color": "#ffdba0", "glow": "night", "part": 16}
     ]
    },
-   "wires": {"y_m": [12.05, 10.7, 10.5], "rural_z_m": [-0.95, 0.35, 0.95], "secondary_z_m": 0.22},
-   "lamp_light": {"lamp_height_m": 9.86},
+   "wires": {"y_m": [8.55, 7.2, 7.0], "rural_z_m": [-0.95, 0.35, 0.95], "secondary_z_m": 0.22},
+   "lamp_light": {"lamp_height_m": 6.36},
    "signs": {
     "plates": {
      "stop": {"w_m": 0.75, "h_m": 0.75, "z_m": 2.2, "rotation": 0.0625, "outline_points": 8},
@@ -405,30 +412,30 @@
    }
   },
   "brasil": {
-   "_doc": "The pole: Neoenergia DIS-NOR-012 rev. 08, in the catalog's poles; 12 m over the ground by the owner's order, its crown's parts, the wires' seats and the lamp as far under the crown as before. CONTRAN MBST vol. I (2022) 3.7, recommended for town: stop, R-1, side 0.35 m, 0.845 m across, an octagon; yield, R-2, side 0.90 m; round plates 0.50 m. z_m is the plate centre: 3.11 puts the bottom edge 2.0 to 2.5 m up, here 2.1 m.",
+   "_doc": "The pole: Neoenergia DIS-NOR-012 rev. 08, in the catalog's poles. CONTRAN MBST vol. I (2022) 3.7, recommended for town: stop, R-1, side 0.35 m, 0.845 m across, an octagon; yield, R-2, side 0.90 m; round plates 0.50 m. z_m is the plate centre: 3.11 puts the bottom edge 2.0 to 2.5 m up, here 2.1 m.",
    "props": {
     "pole_cast": {"_doc": "What a pole casts past from_m: only its parts of least_m or longer, round ones of `segments` sides. Nearer the whole pole casts: an insulator shows there.", "from_m": 140, "least_m": 0.3, "segments": 5},
     "pole": [
-     {"shape": "frustum", "base": [0, 0, 0], "radius": 0.18, "top_radius": 0.11, "height": 12.0, "segments": 12, "color": "#4e3b2a", "part": 1, "wood": true},
-     {"shape": "frustum", "base": [0, 11.99, 0], "radius": 0.1265, "top_radius": 0.044, "height": 0.08, "segments": 10, "color": "#8c9590", "part": 1},
-     {"shape": "box", "min": [-0.05, 11.75, 0.0], "max": [0.05, 11.85, 2.0], "color": "#3a2c20", "wood": true, "part": 2},
-     {"shape": "frustum", "base": [0, 11.85, 0.55], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 2},
-     {"shape": "frustum", "base": [0, 11.85, 1.25], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 2},
-     {"shape": "frustum", "base": [0, 11.85, 1.85], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 2},
-     {"shape": "beam", "from": [0, 11.35, 0.1145], "to": [0, 11.75, 0.45], "width": 0.05, "thick": 0.025, "color": "#8c9590", "part": 2},
-     {"shape": "box", "min": [-0.03, 10.4, 0.1196], "max": [0.03, 10.8, 0.1696], "color": "#8c9590", "part": 2},
-     {"shape": "frustum", "base": [0, 10.66, 0.22], "radius": 0.04, "top_radius": 0.022, "height": 0.08, "segments": 10, "color": "#d8dcd6", "part": 2},
-     {"shape": "frustum", "base": [0, 10.46, 0.22], "radius": 0.04, "top_radius": 0.022, "height": 0.08, "segments": 10, "color": "#d8dcd6", "part": 2},
-     {"shape": "box", "min": [-0.05, 11.75, -1.0], "max": [0.05, 11.85, 1.0], "color": "#3a2c20", "wood": true, "part": 32},
-     {"shape": "frustum", "base": [0, 11.85, -0.95], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 32},
-     {"shape": "frustum", "base": [0, 11.85, 0.35], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 32},
-     {"shape": "frustum", "base": [0, 11.85, 0.95], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 32},
-     {"shape": "beam", "from": [0, 11.35, -0.1145], "to": [0, 11.75, -0.45], "width": 0.05, "thick": 0.025, "color": "#8c9590", "part": 32},
-     {"shape": "cylinder", "base": [0, 10.575, -0.46], "radius": 0.28, "height": 0.95, "segments": 14, "color": "#8c9590", "part": 4},
-     {"shape": "cylinder", "base": [0, 10.575, 0.46], "radius": 0.28, "height": 0.95, "segments": 14, "color": "#8c9590", "part": 64},
-     {"shape": "beam", "from": [0, 9.7751, 0], "to": [0, 10.0, 1.6], "width": 0.08000000000000002, "thick": 0.08000000000000002, "color": "#4a4a46", "part": 8},
-     {"shape": "box", "min": [-0.13, 9.86, 1.35], "max": [0.13, 10.0, 1.85], "color": "#a9b0ad", "part": 8},
-     {"shape": "box", "min": [-0.104, 9.85, 1.4], "max": [0.104, 9.86, 1.8], "color": "#ffdba0", "glow": "night", "part": 8},
+     {"shape": "frustum", "base": [0, 0, 0], "radius": 0.18, "top_radius": 0.11, "height": 10.2, "segments": 12, "color": "#4e3b2a", "part": 1, "wood": true},
+     {"shape": "frustum", "base": [0, 10.19, 0], "radius": 0.1265, "top_radius": 0.044, "height": 0.08, "segments": 10, "color": "#8c9590", "part": 1},
+     {"shape": "box", "min": [-0.05, 9.95, 0.0], "max": [0.05, 10.05, 2.0], "color": "#3a2c20", "wood": true, "part": 2},
+     {"shape": "frustum", "base": [0, 10.05, 0.55], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 2},
+     {"shape": "frustum", "base": [0, 10.05, 1.25], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 2},
+     {"shape": "frustum", "base": [0, 10.05, 1.85], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 2},
+     {"shape": "beam", "from": [0, 9.55, 0.1145], "to": [0, 9.95, 0.45], "width": 0.05, "thick": 0.025, "color": "#8c9590", "part": 2},
+     {"shape": "box", "min": [-0.03, 8.6, 0.1196], "max": [0.03, 9.0, 0.1696], "color": "#8c9590", "part": 2},
+     {"shape": "frustum", "base": [0, 8.86, 0.22], "radius": 0.04, "top_radius": 0.022, "height": 0.08, "segments": 10, "color": "#d8dcd6", "part": 2},
+     {"shape": "frustum", "base": [0, 8.66, 0.22], "radius": 0.04, "top_radius": 0.022, "height": 0.08, "segments": 10, "color": "#d8dcd6", "part": 2},
+     {"shape": "box", "min": [-0.05, 9.95, -1.0], "max": [0.05, 10.05, 1.0], "color": "#3a2c20", "wood": true, "part": 32},
+     {"shape": "frustum", "base": [0, 10.05, -0.95], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 32},
+     {"shape": "frustum", "base": [0, 10.05, 0.35], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 32},
+     {"shape": "frustum", "base": [0, 10.05, 0.95], "radius": 0.07, "top_radius": 0.0385, "height": 0.2, "segments": 10, "color": "#d8dcd6", "part": 32},
+     {"shape": "beam", "from": [0, 9.55, -0.1145], "to": [0, 9.95, -0.45], "width": 0.05, "thick": 0.025, "color": "#8c9590", "part": 32},
+     {"shape": "cylinder", "base": [0, 8.775, -0.46], "radius": 0.28, "height": 0.95, "segments": 14, "color": "#8c9590", "part": 4},
+     {"shape": "cylinder", "base": [0, 8.775, 0.46], "radius": 0.28, "height": 0.95, "segments": 14, "color": "#8c9590", "part": 64},
+     {"shape": "beam", "from": [0, 7.9751, 0], "to": [0, 8.2, 1.6], "width": 0.08000000000000002, "thick": 0.08000000000000002, "color": "#4a4a46", "part": 8},
+     {"shape": "box", "min": [-0.13, 8.06, 1.35], "max": [0.13, 8.2, 1.85], "color": "#a9b0ad", "part": 8},
+     {"shape": "box", "min": [-0.104, 8.05, 1.4], "max": [0.104, 8.06, 1.8], "color": "#ffdba0", "glow": "night", "part": 8},
      {"shape": "frustum", "base": [0, 0, 0], "radius": 0.19, "top_radius": 0.15, "height": 0.7, "segments": 8, "color": "#5d6461", "part": 16},
      {"shape": "frustum", "base": [0, 0.7, 0], "radius": 0.12, "top_radius": 0.07, "height": 8.3, "segments": 8, "color": "#8a918e", "part": 16},
      {"shape": "beam", "from": [0, 8.88, 0], "to": [0, 9.09, 2.1], "width": 0.08, "thick": 0.08, "color": "#8a918e", "part": 16},
@@ -436,8 +443,8 @@
      {"shape": "box", "min": [-0.14, 9.01, 1.82], "max": [0.14, 9.02, 2.38], "color": "#ffdba0", "glow": "night", "part": 16}
     ]
    },
-   "wires": {"y_m": [12.05, 10.7, 10.5], "rural_z_m": [-0.95, 0.35, 0.95], "secondary_z_m": 0.22},
-   "lamp_light": {"lamp_height_m": 9.86},
+   "wires": {"y_m": [10.25, 8.9, 8.7], "rural_z_m": [-0.95, 0.35, 0.95], "secondary_z_m": 0.22},
+   "lamp_light": {"lamp_height_m": 8.06},
    "signs": {
     "plates": {
      "stop": {"w_m": 0.845, "h_m": 0.845, "z_m": 2.53, "rotation": 0.0625, "outline_points": 8},
@@ -474,13 +481,5 @@
   },
   "eua": {"_doc": "To fill from the MUTCD (FHWA) and the AASHTO Green Book."},
   "europa": {"_doc": "To fill from the Vienna Convention on Road Signs and Signals (1968) and the European norms."}
- },
- "shapes": {
-  "_doc": "Every size a street emitter draws with that is not a road's own section, one block per file (render/roads, render/props), read into StreetLook::shapes (street_shapes.h); a missing key refuses the table.",
-  "road_structures": { "_doc": "Viaducts, bridges and tunnels (road_structures.cpp; the 4.0's structures.ts numbers where named, the rest by eye): the road's own build-up over the deck's structure (soffit_band_m), the structure's top deck_top_under_m under the road's surface; a ramp read every scan_m and a road every scan_road_m for where it leaves the ground; a column's foot pier_flare of its width, sunk foot_sink_m, an abutment abutment_sink_m; the first bent bent_first of a spacing from a road's start and the last bent_last from its end; a parapet deck_clear_in_m in from the casing's edge and its base guard_base_under_m under the deck; a portal's mouth stepped every portal_step_share of the road (between portal_step_least_m and portal_step_most_m), its jambs jamb_m wide, its crown crown_over_m over the clearance, the ground ground_over_m over it, its lintel at least lintel_least_m, its headwall headwall_out_m out and headwall_h_m high, reaching portal_reach_m, its wings wing_over_road_m over the road and at least wing_least_m, its slices lapping slice_lap_m; a portal within near_end_m of a buried junction belongs to the road beyond it; a pier leans at least least_lean_m.", "soffit_band_m": 0.144, "deck_top_under_m": 0.04, "scan_m": 2, "scan_road_m": 1.6, "pier_flare": 1.08, "foot_sink_m": 0.5, "abutment_sink_m": 1, "bent_first": 0.5, "bent_last": 0.35, "deck_clear_in_m": 0.02, "guard_base_under_m": 0.12, "portal_step_most_m": 2.4, "portal_step_least_m": 0.8, "jamb_m": 0.88, "crown_over_m": 0.6, "ground_over_m": 0.8, "lintel_least_m": 0.32, "headwall_out_m": 0.64, "headwall_h_m": 0.36, "portal_reach_m": 2, "wing_over_road_m": 1, "wing_least_m": 0.5, "slice_lap_m": 0.008, "near_end_m": 16, "least_lean_m": 0.04, "portal_step_share": 0.005 },
-  "road_stays": { "_doc": "A cable-stayed span (road_stays.cpp), by eye: a strand strand_m thick, the fan's cables from fan_low to fan_high of the mast, the tower's foot foot_sink_m into the ground, its strut strut_h_m high with legs leg_out_m out, the anchors anchor_in_m in, the strut strut_over_m over the deck.", "strand_m": 0.14, "fan_low": 0.45, "fan_high": 0.55, "foot_sink_m": 1, "strut_h_m": 1.6, "leg_out_m": 1.2, "anchor_in_m": 0.3, "strut_over_m": 7 },
-  "road_shapes": { "_doc": "A junction's outline (road_shapes.cpp): a node is a plate when an end retreats more than plate_min_retreat; a kerb's control point stands between ctrl_min and ctrl_max along its arms from their mouths, or the corner is drawn without it.", "plate_min_retreat": 0.05, "ctrl_max": 0.5, "ctrl_min": -60.0 },
-  "road_section": { "_doc": "A road's section (road_section.cpp): a ramp's band leaves at least walk_keep of the footway's width.", "walk_keep": 0.2 },
-  "street_props": { "_doc": "The street trees and shrubs (street_props.cpp), by eye: a tree's canopy scaled from canopy_scale_min, tree_scale_span more by its hash, a shrub shrub_scale of a tree; a street tree is one of species (indices of trees.species: broadleaf and broadleaf_b), by its hash.", "canopy_scale_min": 0.8, "tree_scale_span": 0.35, "shrub_scale": 0.18, "species": [0, 1] }
  }
 }

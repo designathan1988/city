@@ -3,9 +3,10 @@
 class_name HandleDrag
 extends RefCounted
 
-static var turn_step: float = TAU / DataTables.game("tools").handle.turn_steps # data/game/tools.json
+const TURN_STEP := PI / 12.0
 const ROOF_REACH := 1.0
 
+const CM := 0.01
 const NO_POINT := -1
 
 var marks: HandleMarks
@@ -67,7 +68,7 @@ func act(spec: Dictionary, value: int, picked: Dictionary) -> Dictionary:
 	vertex = NO_POINT
 	if spec.do == "point_remove":
 		return CityStore.dispatch(&"body_change_point", [picked.id, picked.volume, at, true])
-	return CityStore.dispatch(&"body_bevel", [picked.id, picked.volume, value * Units.M_PER_CM, at])
+	return CityStore.dispatch(&"body_bevel", [picked.id, picked.volume, value * CM, at])
 
 
 ## A press on a handle takes hold of it.
@@ -194,7 +195,7 @@ func _edit(shift: bool) -> Dictionary:
 func _measure() -> String:
 	match String(_held.kind):
 		"storeys":
-			return Formatters.format_int(_spec.count)
+			return str(_spec.count)
 		"side", "lift", "relief":
 			return Formatters.format_length_tenths(absf(_spec.along))
 	return ""
@@ -221,7 +222,7 @@ func _turned(free: bool) -> Dictionary:
 	var to := _on_plane(_held.at.y) - centre
 	var angle := atan2(to.x, to.z) - atan2(from.x, from.z)
 	if not free:
-		angle = snappedf(angle, turn_step)
+		angle = snappedf(angle, TURN_STEP)
 	var front := (Vector3(_base.x, centre.y, _base.z) - centre).rotated(Vector3.UP, angle) + centre
 	return {"x": front.x, "z": front.z, "rot": _base.rot + angle}
 

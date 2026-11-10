@@ -521,8 +521,7 @@ fs.writeFileSync(refKeyFile, refKey);
 const anisoMismatch = new Set(draws.filter((d) => new Set(d.samplers.map((sm) => sm.params?.anisotropy ?? 1).filter((a) => a > 1)).size > 1).map((d) => d.index));
 if (anisoMismatch.size) say(`${anisoMismatch.size} draws mix anisotropy levels (flagged)`);
 fs.writeFileSync(path.join(gDir, 'project.godot'), ['config_version=5', '', '[application]', 'config/name="three replay"', '', '[rendering]', 'renderer/rendering_method="forward_plus"', ''].join('\n'));
-// replay.gd and the owners it reads: the captured values (three_values.gd, shared with parity.gd) and the textures (replay_textures.gd)
-for (const script of ['replay.gd', 'three_values.gd', 'replay_textures.gd']) fs.copyFileSync(path.join(here, 'scripts', script), path.join(gDir, script));
+fs.copyFileSync(path.join(here, 'scripts', 'replay.gd'), path.join(gDir, 'replay.gd'));
 // the captured textures linked, not copied (hundreds of MB)
 for (const c of cases) for (const t of c.textures) if (t.capture) for (const l of t.levels) for (const f of l.files) { const to = path.join(gDir, 'data', f); if (!fs.existsSync(to)) { try { fs.linkSync(path.join(capDir, 'blobs', f), to); } catch { fs.copyFileSync(path.join(capDir, 'blobs', f), to); } } }
 const win = path.resolve(gDir);
@@ -534,7 +533,7 @@ fs.rmSync(path.join(gDir, 'live-skip.txt'), { force: true });
 const replayCases = JSON.parse(fs.readFileSync(path.join(gDir, 'cases.json'), 'utf8'));
 const [replayed] = runTasksSync([{ name: 'converter-replay-godot', cwd: win, hidden: true, outputs: [path.join(gDir, 'out')],
   timeoutS: REPLAY_START_TIMEOUT_S + REPLAY_DRAW_TIMEOUT_S * replayCases.length,
-  extra: [keyOf(filesKey([path.join(gDir, 'cases.json'), path.join(gDir, 'replay.gd'), path.join(gDir, 'three_values.gd'), path.join(gDir, 'replay_textures.gd'), path.join(gDir, 'project.godot')]), folderKey(path.join(gDir, 'shaders')),
+  extra: [keyOf(filesKey([path.join(gDir, 'cases.json'), path.join(gDir, 'replay.gd'), path.join(gDir, 'project.godot')]), folderKey(path.join(gDir, 'shaders')),
     ...fs.readdirSync(path.join(gDir, 'data')).sort()), toolKey(godot)],
   argv: [godot, '--path', win, '--script', 'res://replay.gd', '--rendering-driver', 'vulkan'] }]);
 mustRun('Godot\'s replay', replayed);

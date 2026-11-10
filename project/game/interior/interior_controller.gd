@@ -7,7 +7,7 @@
 class_name InteriorController
 extends Node
 
-const STEPS := 8 # the ways a look is snapped to: the eight compass points
+const STEPS := 8
 const STEP_RAD := TAU / float(STEPS)
 ## Looking straight down the horizontal "forward" of the lens is nothing: the screen's up on the ground stands in for it.
 const FLAT_LOOK := 0.2
@@ -50,17 +50,12 @@ func set_enabled(on: bool) -> bool:
 	if id < 0:
 		_say(tr("game.toast.insideNone"))
 		return false
-	open(id, 0)
+	_open(id, 0)
 	return true
 
 
 func is_on() -> bool:
 	return _state.get("on", false)
-
-
-## The floor the layer shows, as the core last told it (refresh).
-func level() -> int:
-	return _state.get("level", 0)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -76,14 +71,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		if id < 0:
 			_send(false, -1, 0)
 		else:
-			open(id, 0)
+			_open(id, 0)
 	elif id >= 0 and id != _state.target:
-		open(id, _state.level)
+		_open(id, _state.level)
 
 
 func _process(_delta: float) -> void:
 	if int(CityStore.query(&"interior_revision")) != _revision:
-		refresh() # a new city or a load closed the layer under us
+		_refresh() # a new city or a load closed the layer under us
 	if not is_on():
 		return
 	var step := _direction_step()
@@ -93,7 +88,7 @@ func _process(_delta: float) -> void:
 
 
 ## Opens building `id` at `level`; the camera stays.
-func open(id: int, level: int) -> void:
+func _open(id: int, level: int) -> void:
 	_send(true, id, level)
 
 
@@ -102,7 +97,7 @@ func see_inside(id: int) -> void:
 	if is_on() and _state.target == id:
 		_send(false, -1, 0)
 	elif id >= 0:
-		open(id, 0)
+		_open(id, 0)
 
 
 func step_floor(delta: int) -> void:
@@ -117,13 +112,13 @@ func _move_floor(delta: int) -> void:
 func _send(on: bool, target: int, level: int, step := -1) -> void:
 	_step = _direction_step() if step < 0 else step
 	CityStore.dispatch(&"set_interior", [on, target, level, _step])
-	refresh()
+	_refresh()
 	if not on:
 		_step = -1
 
 
-## Reads the core's view again: the bar and the lights follow it. Whoever changes the view but this layer calls it.
-func refresh() -> void:
+## Reads the core's view again: the bar and the lights follow it.
+func _refresh() -> void:
 	_state = CityStore.query(&"interior")
 	_revision = _state.revision
 	if _bar.is_inside_tree(): # with no HUD the layer still works: nothing shows its floor

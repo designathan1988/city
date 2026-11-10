@@ -12,10 +12,10 @@
 namespace city {
 
 namespace {
-constexpr uint32_t SHOT_SALT = 0x70697374U; // a stream's salt: the word it names, in ASCII
+constexpr uint32_t SHOT_SALT = 0x70697374U;
 constexpr float LYING_R = 0.3f, LYING_HEIGHT_M = 0.2f; // a body on the ground: a capsule this thick, this high
 constexpr float LYING_HEAD_SHARE = 0.35f, LYING_LEGS_SHARE = -0.1f; // along its length from its middle: the head end, where the legs begin
-constexpr float EPS = 1e-6f; // a direction this short is none
+constexpr float EPS = 1e-6f;
 constexpr float RIDER_HALF_M = 0.35f; // a two-wheeler's box is at least this wide (the rider's shoulders)
 
 struct Found {

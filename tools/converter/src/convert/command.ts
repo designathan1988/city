@@ -303,12 +303,8 @@ export async function runConvertCommand(argv: readonly string[]): Promise<void> 
     const emitted = new Set(outcomes.flatMap((o) => o.emitted));
     const acceptedModules = new Set(outcomes.filter((o) => o.accepted).map((o) => o.module));
     const declared = new Set(outcomes.filter((o) => o.accepted).flatMap((o) => o.declared ?? []));
-    // a field is written with the struct that holds it (`a.ts#Shape.x` with `a.ts#Shape`): in the whole mode the accepted
-    // "module" is the whole program, never a file, so only the declaring struct says it was written
-    const holderOf = (u: LedgerUnit): string => u.id.slice(0, u.id.lastIndexOf('.'));
     const isDone = (u: LedgerUnit): boolean => u.disposition === 'translate'
-      && (WRITTEN_ALONE.has(u.kind) ? emitted.has(u.id) || declared.has(u.id)
-        : declared.has(u.id) || (u.kind === 'field' && declared.has(holderOf(u))) || acceptedModules.has(u.file));
+      && (WRITTEN_ALONE.has(u.kind) ? emitted.has(u.id) || declared.has(u.id) : declared.has(u.id) || acceptedModules.has(u.file));
     const done = new Set(ledger.units.filter(isDone).map((u) => u.id));
     const open = ledger.units.filter((u) => u.disposition !== 'exists' && !done.has(u.id));
     const unsourced = constantsIn(accepted).filter((k) => !known[k]);

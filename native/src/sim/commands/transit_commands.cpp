@@ -192,8 +192,11 @@ bool transit_find_footway(const CityState &s, const V2 &p, float reach, V2 &at, 
 
 V2 transit_snap_track(const CityState &s, const V2 &p, TransitMode mode) {
 	const float reach = s.catalog.traffic.transit_join_m * JOIN_TIMES;
-	V2 point;
-	if (track_point_near(s.transit, p, reach, mode, point)) return point;
+	for (const RailTrack &track : s.transit.tracks) {
+		if (track.mode != mode) continue;
+		for (const V2 &q : track.points)
+			if ((q - p).len() < reach) return q;
+	}
 	const TrackHit on = nearest_track(s.transit, p, reach, mode);
 	return on.track >= 0 ? on.at : p;
 }

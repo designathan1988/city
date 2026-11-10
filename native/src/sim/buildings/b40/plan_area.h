@@ -8,7 +8,7 @@
 
 namespace city::b40 {
 
-using Ring = std::vector<V2>;
+using Ring = std::vector<Point2>;
 
 // The plan of a volume in the lot frame, counter-clockwise.
 Ring ring_of(const Volume &v);
@@ -17,7 +17,7 @@ std::vector<Ring> plan_triangles(const Ring &ring); // a simple ring as triangle
 float overlap_area(const Ring &a, const Ring &b);
 // The share (0..1) of `ring` lying over `supports`; where supports overlap each other their area counts once.
 float support_share(const Ring &ring, const std::vector<Ring> &supports);
-bool contains_point(const Ring &ring, V2 p);
+bool contains_point(const Ring &ring, Point2 p);
 Ring clip_to_convex(const Ring &piece, const Ring &convex); // what of a convex piece lies in a convex counter-clockwise ring
 // A ring moved along its corners' bisectors: out with `distance` > 0 on a counter-clockwise ring. A sharp corner stops at MITRE_FLOOR.
 Ring offset_ring(const Ring &ring, float distance);

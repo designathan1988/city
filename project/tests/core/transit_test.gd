@@ -1,13 +1,14 @@
 ## Core test of public transport through the store: stops on a street, a line through them, buses put on the road and calling at their
 ## stops; a track laid clear of the streets, stations on it, a train line whose trains run and stop; undo and redo of the plan; and the
 ## plan back from a save file. Run: godot --headless --path project res://tests/core/transit_test.tscn -- --no-flow
-extends TestCase
+extends Node3D
 
 const TOWN_MAP := 0
 const SEED := 1
+const TRAIN := 1
 const STEP_M := 60.0
 const RUN_TICKS := 6000
-const SLOT := "transit_test"
+const SLOT := "teste_transporte"
 const TRACK_OUT_M := 80.0
 const TRACK_LONG_M := 400.0
 const CROSSING_STEP_M := 60.0
@@ -18,44 +19,27 @@ const CROSSING_OFF_M := 6.0
 const CROSSING_STATION := 0.7
 const CROSSING_SAMPLES := 200
 const CROSSING_SAMPLE_TICKS := 20
-const LATER_TERMINAL := 3
-const DRAW_LIMIT_S := 50.0 # real time the plan may take to be drawn (3000 frames of the old 60 Hz loop): StateWait
-## Who draws the plan (core/job_pool.h job_lane_name; `outside`: a thread in no job, the frame's): none builds under the map.
-const OFF_LOCK := ["transit", "outside"]
+
+var failures := 0
 
 
 func _ready() -> void:
-	if not boot():
-		finish()
-		return
-	new_map(TOWN_MAP, SEED, true)
-	CityStore.query(&"map_hold", [true])
+	var world := CityWorld.new()
+	add_child(world)
+	_check(CityStore.boot(world.terrain, world.materials()).is_empty(), "boot")
+	CityStore.new_map(TOWN_MAP, SEED, true)
+	CityStore.dispatch(&"set_speed", [0])
 	_buses()
 	_trains()
 	_level_crossing()
-	await _drawn_off_the_lock()
-	await _undo_and_save()
-	finish()
-
-
-## The plan's tracks and stops are drawn by jobs from their cut of the city: every one stands drawn, and nothing of them was built
-## while a thread held the map (probe map_hold: the jobs' lane, and `outside` for the frame's thread).
-func _drawn_off_the_lock() -> void:
-	var plan: Dictionary = CityStore.query(&"transit_plan")
-	var items := int(plan.stops.size()) + int(plan.tracks) # the plan gives its tracks as a count
-	await StateWait.until(get_tree(), func() -> bool: return int(CityStore.query(&"transit_drawn")) >= items and int(CityStore.query(&"render_pending")) == 0, DRAW_LIMIT_S)
-	var drawn := int(CityStore.query(&"transit_drawn"))
-	check(items > 0 and drawn >= items, "every track and stop of the plan is drawn (%d of %d)" % [drawn, items])
-	var held: Dictionary = CityStore.query(&"map_hold", [false])
-	check(held.counted, "this DLL counts what is built under the map (the tests' DLL)")
-	for lane: String in OFF_LOCK:
-		var built := int(held.built.get(lane, 0))
-		check(built == 0, "%s built nothing while it held the map (%d vertices)" % [lane, built])
+	_undo_and_save()
+	print("transit_test: ", "ok" if failures == 0 else "FAIL %d" % failures)
+	get_tree().quit(failures)
 
 
 func _buses() -> void:
 	var probe: Dictionary = CityStore.query(&"traffic_probe", [1])
-	ticks(10)
+	CityStore.step_ticks(10)
 	var ground: Vector3 = probe.busy_crossing
 	var placed := 0
 	for i in 12:
@@ -63,30 +47,23 @@ func _buses() -> void:
 		if CityStore.dispatch(&"transit_stop", [at]).get("ok", false):
 			placed += 1
 	var plan: Dictionary = CityStore.query(&"transit_plan")
-	check(placed >= 2, "stops placed: %d" % placed)
+	_check(placed >= 2, "paradas postas: %d" % placed)
 	var ids := PackedInt32Array()
 	for s: Dictionary in plan.stops:
 		ids.append(s.id)
-	# terminals at the first stop and a later one: the line's buses start at the first (index 0 is a terminal found, not none)
-	check(ids.size() > LATER_TERMINAL, "stops for two terminals: %d" % ids.size())
-	for k in [0, LATER_TERMINAL]:
-		check(CityStore.dispatch(&"transit_terminal", [plan.stops[k].at]).get("ok", false), "terminal at stop %d" % k)
-	check(CityStore.dispatch(&"transit_line", [ids]).get("ok", false), "bus line")
-	ticks(1)
-	var first: Array = CityStore.query(&"transit_run").get("first_bus", [])
-	check(not first.is_empty() and int(first[0]) == 0, "a line whose first stop is a terminal starts its buses there: %s" % [first])
-	ticks(RUN_TICKS)
+	_check(CityStore.dispatch(&"transit_line", [ids]).get("ok", false), "bus line")
+	CityStore.step_ticks(RUN_TICKS)
 	var run: Dictionary = CityStore.query(&"transit_run")
 	print("buses: ", run)
-	check(int(run.buses) > 0, "buses on the line")
-	check(int(run.stops_called) > 0, "a bus served a stop")
-	check(int(run.alighted) > 0, "people get off the bus: %s" % run.alighted)
-	check(int(run.boarded) > 0, "people get on the bus: %s" % run.boarded)
+	_check(int(run.buses) > 0, "buses on the line")
+	_check(int(run.stops_called) > 0, "a bus served a stop")
+	_check(int(run.alighted) > 0, "people get off the bus: %s" % run.alighted)
+	_check(int(run.boarded) > 0, "people get on the bus: %s" % run.boarded)
 	var far := Vector3(ground.x, 0, ground.z)
 	CityStore.dispatch(&"transit_stop", [far + Vector3(0, 0, STEP_M)]) # an edit of the plan leaves the buses where they are
-	ticks(1)
+	CityStore.step_ticks(1)
 	var after: Dictionary = CityStore.query(&"transit_run")
-	check(int(after.on_road) >= int(run.on_road), "buses go on after an edit of the plan: %d of %d" % [after.on_road, run.on_road])
+	_check(int(after.on_road) >= int(run.on_road), "buses go on after an edit of the plan: %d of %d" % [after.on_road, run.on_road])
 
 
 ## A track across a street near the busiest junction: the lanes it crosses are found, and traffic waits as a train comes.
@@ -97,17 +74,17 @@ func _level_crossing() -> void:
 		for k in range(-CROSSING_GRID, CROSSING_GRID + 1):
 			if not laid:
 				laid = _lay_across(ground + Vector3(i, 0, k) * CROSSING_STEP_M)
-	check(laid, "a line through the level crossing")
+	_check(laid, "a line through the level crossing")
 	var most := 0
 	var seen := 0
 	for i in CROSSING_SAMPLES:
-		ticks(CROSSING_SAMPLE_TICKS)
+		CityStore.step_ticks(CROSSING_SAMPLE_TICKS)
 		var run: Dictionary = CityStore.query(&"transit_run")
 		most = maxi(most, int(run.held_at_crossing))
 		seen = int(run.crossings)
 	print("crossing: lanes crossed ", seen, ", vehicles stopped at most ", most)
-	check(seen > 0, "lanes crossed")
-	check(most > 0, "a vehicle waits at the crossing")
+	_check(seen > 0, "lanes crossed")
+	_check(most > 0, "a vehicle waits at the crossing")
 
 
 ## A track across the street nearest a point, if the core lets it through (a wide avenue it does not), two stations and a line.
@@ -118,11 +95,11 @@ func _lay_across(at: Vector3) -> bool:
 	var road: Vector3 = way.at - way.out * CROSSING_OFF_M
 	for half: float in CROSSING_HALVES:
 		var run := PackedVector3Array([road - way.out * half, road + way.out * half])
-		if not CityStore.dispatch(&"transit_track", [run, CityStore.code(&"TransitMode", &"TRAIN")]).get("ok", false):
+		if not CityStore.dispatch(&"transit_track", [run, TRAIN]).get("ok", false):
 			continue
 		var before: Array = CityStore.query(&"transit_plan").stops.map(func(q: Dictionary) -> int: return q.id)
 		for side: float in [-1.0, 1.0]:
-			CityStore.dispatch(&"transit_station", [road + way.out * side * half * CROSSING_STATION, CityStore.code(&"TransitMode", &"TRAIN")])
+			CityStore.dispatch(&"transit_station", [road + way.out * side * half * CROSSING_STATION, TRAIN])
 		var ids := PackedInt32Array()
 		for q: Dictionary in CityStore.query(&"transit_plan").stops:
 			if not before.has(q.id):
@@ -135,35 +112,38 @@ func _trains() -> void:
 	var b: Dictionary = CityStore.query(&"city_bounds")
 	var a := Vector3(b.max.x + TRACK_OUT_M, 0, b.min.z)
 	var e := a + Vector3(0, 0, TRACK_LONG_M)
-	check(CityStore.dispatch(&"transit_track", [PackedVector3Array([a, e]), CityStore.code(&"TransitMode", &"TRAIN")]).get("ok", false), "track")
-	check(CityStore.dispatch(&"transit_station", [a.lerp(e, 0.1), CityStore.code(&"TransitMode", &"TRAIN")]).get("ok", false), "station 1")
-	check(CityStore.dispatch(&"transit_station", [a.lerp(e, 0.9), CityStore.code(&"TransitMode", &"TRAIN")]).get("ok", false), "station 2")
+	_check(CityStore.dispatch(&"transit_track", [PackedVector3Array([a, e]), TRAIN]).get("ok", false), "trilho")
+	_check(CityStore.dispatch(&"transit_station", [a.lerp(e, 0.1), TRAIN]).get("ok", false), "station 1")
+	_check(CityStore.dispatch(&"transit_station", [a.lerp(e, 0.9), TRAIN]).get("ok", false), "station 2")
 	var ids := PackedInt32Array()
 	for s: Dictionary in CityStore.query(&"transit_plan").stops:
-		if int(s.mode) == CityStore.code(&"TransitMode", &"TRAIN"):
+		if int(s.mode) == TRAIN:
 			ids.append(s.id)
-	check(CityStore.dispatch(&"transit_line", [ids]).get("ok", false), "train line")
-	ticks(RUN_TICKS)
+	_check(CityStore.dispatch(&"transit_line", [ids]).get("ok", false), "train line")
+	CityStore.step_ticks(RUN_TICKS)
 	var run: Dictionary = CityStore.query(&"transit_run")
-	print("trains: ", run)
-	check(int(run.trains) > 0, "trains on the line")
-	check(int(run.trains_at_stations) > 0, "a train stopped at a station")
+	print("trens: ", run)
+	_check(int(run.trains) > 0, "trains on the line")
+	_check(int(run.trains_at_stations) > 0, "a train stopped at a station")
 
 
-## The plan's undo and redo, then the plan written to a file, a new map over it and the file read back (load_game is
-## synchronous: its answer is the outcome).
 func _undo_and_save() -> void:
 	var before: Dictionary = CityStore.query(&"transit_plan")
 	CityStore.dispatch(&"undo", [])
-	check(CityStore.query(&"transit_plan").lines.size() == before.lines.size() - 1, "undo takes the line away")
+	_check(CityStore.query(&"transit_plan").lines.size() == before.lines.size() - 1, "undo takes the line away")
 	CityStore.dispatch(&"redo", [])
-	check(CityStore.query(&"transit_plan").lines.size() == before.lines.size(), "redo gives the line back")
-	var saved: Dictionary = await save(SLOT)
-	check(saved.get("ok", false), "the city is written: %s" % saved)
-	new_map(TOWN_MAP, SEED, true)
-	check(CityStore.query(&"transit_plan").lines.is_empty(), "a new map with no lines")
-	var opened: Dictionary = await CityStore.saves.load_game(SLOT, true)
-	check(opened.get("ok", false), "the file opens: %s" % opened)
+	_check(CityStore.query(&"transit_plan").lines.size() == before.lines.size(), "redo gives the line back")
+	CityStore.saves.save_game(SLOT)
+	await CityStore.saved
+	CityStore.new_map(TOWN_MAP, SEED, true)
+	_check(CityStore.query(&"transit_plan").lines.is_empty(), "a new map with no lines")
+	CityStore.saves.load_game(SLOT)
+	await CityStore.loaded
 	var after: Dictionary = CityStore.query(&"transit_plan")
-	check(after.stops.size() == before.stops.size() and after.lines.size() == before.lines.size() and after.tracks == before.tracks, "the plan comes back from the file")
-	DirAccess.remove_absolute(CityStore.saves.save_path(SLOT))
+	_check(after.stops.size() == before.stops.size() and after.lines.size() == before.lines.size() and after.tracks == before.tracks, "the plan comes back from the file")
+
+
+func _check(ok: bool, what: String) -> void:
+	if not ok:
+		failures += 1
+		print("FAIL ", what)

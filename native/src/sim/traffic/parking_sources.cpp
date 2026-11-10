@@ -16,8 +16,9 @@ namespace traffic {
 namespace {
 
 constexpr float ROW_CELL_M = 0.4f; // a bay's seed: where it is in steps of this (the same car whatever the float rounding)
-constexpr uint32_t ROW_SALT = 0x9e3779b9u; // 2^32 / the golden ratio (Knuth's multiplicative hash): spreads a cell's row
+constexpr uint32_t ROW_SALT = 0x9e3779b9u;
 constexpr uint8_t FILED_NONE = 0, FILED_FREE = 1, FILED_ROW = 2;
+constexpr int ZONE_OF_SHOPS = 2, ZONE_OF_WORKS = 3; // ZoneDef::base
 
 int take_bay(ParkingState &p) {
 	int b;
@@ -55,7 +56,7 @@ void stand(CityState &s, int b) {
 PlaceKind place_of(const CityState &s, const Building &rec) {
 	if (rec.fn != FN_NONE) return rec.fn == FN_SUPERMARKET || rec.fn == FN_MALL || rec.fn == FN_GAS_STATION ? PlaceKind::SHOP : PlaceKind::CIVIC;
 	const int base = s.catalog.zone(rec.zone).base;
-	return base == BASE_COMMERCIAL ? PlaceKind::SHOP : base == BASE_INDUSTRIAL ? PlaceKind::WORK : PlaceKind::HOME;
+	return base == ZONE_OF_SHOPS ? PlaceKind::SHOP : base == ZONE_OF_WORKS ? PlaceKind::WORK : PlaceKind::HOME;
 }
 
 void read_lot(CityState &s, int id) {
@@ -63,8 +64,10 @@ void read_lot(CityState &s, int id) {
 	ParkSource &src = p.lots[id];
 	const Building &rec = s.buildings.items[size_t(id)];
 	if (!rec.alive) return;
+	b40::Body body;
+	b40::record_body(s.buildings.designs, rec, body);
 	LotAccess acc;
-	lot_bays(*b40::record_elements(s.buildings.designs, rec), b40::lot_frame(rec), acc);
+	lot_bays(body, b40::lot_frame(rec), acc);
 	const PlaceKind kind = place_of(s, rec);
 	for (const LotBay &lb : acc.bays) {
 		const int b = take_bay(p);
@@ -178,11 +181,12 @@ void look_round(CityState &s, float cx, float cz) {
 
 void read_lots_with_docks(CityState &s) {
 	ParkingState &p = s.traffic.park;
+	b40::Body body;
 	for (int id = 0; id < int(s.buildings.items.size()); id++) {
 		const Building &rec = s.buildings.items[size_t(id)];
 		if (!rec.alive || p.lots.count(id)) continue;
-		const std::shared_ptr<const std::vector<b40::LotElement>> elements = b40::record_elements(s.buildings.designs, rec);
-		for (const b40::LotElement &e : *elements)
+		b40::record_body(s.buildings.designs, rec, body);
+		for (const b40::LotElement &e : body.elements)
 			if (e.kind == b40::EL_DOCK) {
 				read_lot(s, id);
 				break;

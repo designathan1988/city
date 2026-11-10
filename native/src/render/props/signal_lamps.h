@@ -39,7 +39,7 @@ private:
 	};
 	uint8_t showing(const SignalHead &h) const;
 	void write(Chunk &c) const;
-	godot::RID scenario_;
+	godot::RID scenario_, material_;
 	OwnedMesh lenses_;
 	float reach_ = 0; // farthest lens from a post's foot
 	std::unordered_map<int64_t, Chunk> chunks_;

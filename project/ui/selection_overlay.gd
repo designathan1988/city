@@ -3,15 +3,14 @@
 class_name SelectionOverlay
 extends Control
 
-## Chords of a line's round cap, and of a ring.
 const CAP_POINTS := 8
 const RING_POINTS := 32
 
-var _hud: RoadcraftHud
-var _picked := {} # {path, half} of the road picked
-var _hover := {} # the same, of the road under the pointer
-var _hover_id := -1
-var _node := Vector3.INF
+@onready var _hud: RoadcraftHud
+@onready var _picked := {} # {path, half} of the road picked
+@onready var _hover := {} # the same, of the road under the pointer
+@onready var _hover_id := -1
+@onready var _node := Vector3.INF
 
 
 func _init(hud: RoadcraftHud) -> void:

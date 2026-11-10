@@ -2,22 +2,20 @@
 // each in its own tone, bent by the wind and faded against the far cards (vegetation.gdshaderinc).
 shader_type spatial;
 render_mode skip_vertex_transform, cull_back;
-#include "res://render/shaders/contracts/trees.gdshaderinc"
 
 #include "res://render/shaders/vegetation.gdshaderinc"
 #include "res://render/shaders/lattice_noise.gdshaderinc"
 
-uniform float bark_ridges; // furrows round a trunk (materials.json vegetation, as the rest)
-uniform float bark_run_m; // how long a furrow runs
-uniform float bark_deep; // the light left at the bottom of a furrow
-uniform float bark_far_m; // past this a furrow is under a pixel
-uniform vec4 bark_grain; // the furrows' coarse noise's share, the fine one's; a furrow's edges in the noise
+uniform float bark_ridges = 9.0; // furrows round a trunk
+uniform float bark_run_m = 1.1; // how long a furrow runs
+uniform float bark_deep = 0.55; // the light left at the bottom of a furrow
+uniform float bark_far_m = 60.0; // past this a furrow is under a pixel
 
 // The furrows of the bark, long and narrow, broken by a second finer layer: what is left of the light at this point.
 float bark(vec3 p, float dist) {
 	float round_it = atan(p.x, p.z) / TAU * bark_ridges;
-	float n = vnoise(vec2(round_it, p.y / bark_run_m)) * bark_grain.x + vnoise(vec2(round_it * 3.0, p.y / bark_run_m * 3.0)) * bark_grain.y;
-	float furrow = mix(bark_deep, 1.0, smoothstep(bark_grain.z, bark_grain.w, n));
+	float n = vnoise(vec2(round_it, p.y / bark_run_m)) * 0.7 + vnoise(vec2(round_it * 3.0, p.y / bark_run_m * 3.0)) * 0.3;
+	float furrow = mix(bark_deep, 1.0, smoothstep(0.3, 0.62, n));
 	return mix(furrow, (1.0 + bark_deep) * 0.5, smoothstep(bark_far_m * 0.5, bark_far_m, dist));
 }
 

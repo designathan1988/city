@@ -8,6 +8,7 @@ using namespace godot;
 namespace city {
 
 namespace {
+constexpr float WALK_KEEP = 0.2f;
 
 RoadMat paving_mat(Paving p) {
 	switch (p) {
@@ -50,12 +51,11 @@ void carriage_span(const Profile &p, int i, float &edge0, float &edge1) {
 }
 
 void walk(const StreetLook &L, const Profile &p, int i, const Piece &base, std::vector<Piece> &out) {
-	const SectionShape &K = L.shapes.road_section;
 	Piece pc = base;
 	const bool kerb_u1 = outer_kerb(p, i + 1);
 	pc.edge0 = kerb_u1 ? pc.u1 : pc.u0; // from the kerb: the footway's far side is the lot's
 	pc.edge1 = kerb_u1 ? pc.u0 : pc.u1;
-	float w = pc.u1 - pc.u0, band = std::min(L.ramp_run, w - K.walk_keep);
+	float w = pc.u1 - pc.u0, band = std::min(L.ramp_run, w - WALK_KEEP);
 	if (pc.h <= 0 || w < L.ramp_min_walk) {
 		out.push_back(pc);
 		return;

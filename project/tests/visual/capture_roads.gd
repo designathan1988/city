@@ -1,6 +1,7 @@
 ## Captures of the roads up close, on open ground where nothing stands in front of them: the same crossings, T junction,
-## road end and curve the Roadcraft 4.0 photos show, then the road tool in use with real mouse events (CaptureRoadTools).
-## Run: godot --path project --resolution 1600x900 res://tests/visual/capture_roads.tscn -- --no-flow --capture-dir=<folder>
+## road end and curve the Roadcraft 4.0 photos show, then the road tool in use with real mouse events. Works on a build
+## without the road paths too (no px argument, no freehand), so one script takes the "before" and the "after".
+## Run: godot --path project --resolution 1600x900 res://tests/visual/capture_roads.tscn -- --no-flow --capture-dir=/tmp/x
 extends Node3D
 
 const TOWN_MAP := 0
@@ -21,6 +22,8 @@ const STROKE_SWING_M := 34.0
 const POINTER_AIMS := 40
 const POINTER_VIEWS_M: Array[float] = [NEAR_M, CLOSE_M, WIDE_M]
 const WEAR_UPLOAD_S := 3.0
+const FURNITURE_LAMP := 1 # furniture_types.h FurnitureKind
+const FURNITURE_COLUMN := 6
 
 var out_dir := "user://captures"
 var world: CityWorld
@@ -51,7 +54,8 @@ func _ready() -> void:
 		push_error("boot: %s" % errors)
 		get_tree().quit(1)
 		return
-	CityStore.new_map(TOWN_MAP, SEED, true, true)
+	CityStore.new_map(TOWN_MAP, SEED, true)
+	CityStore.dispatch(&"set_speed", [0])
 	ui = UiDriver.new(rig, get_tree(), out_dir)
 	tools = ToolController.new(rig)
 	add_child(tools)
@@ -124,7 +128,9 @@ func at(x: float, z: float) -> Vector3:
 
 
 func _road(a: Vector3, e: Vector3, profile: String, control: Variant = null) -> void:
-	var args := [a, e, control != null, control if control != null else Vector3.ZERO, profiles[profile], PX]
+	var args := [a, e, control != null, control if control != null else Vector3.ZERO, profiles[profile]]
+	if StoreApi.COMMANDS.has(&"build_road_path"):
+		args.push_back(PX)
 	var r: Dictionary = CityStore.dispatch(&"build_road", args)
 	_check(r.get("ok", false), "road %s: %s" % [profile, r])
 
@@ -138,7 +144,7 @@ func _spots(p: Vector3) -> void:
 		return
 	print("poles of road %d (profile %d) at %s:" % [seg.seg, seg.profile, p])
 	for s: Dictionary in CityStore.query(&"furniture_spots", [seg.seg]):
-		if s.kind == CityStore.code(&"FurnitureKind", &"LAMP") or s.kind == CityStore.code(&"FurnitureKind", &"COLUMN"):
+		if s.kind == FURNITURE_LAMP or s.kind == FURNITURE_COLUMN:
 			print("  kind %d row %d side %d station %d v %.1f u %.2f at %s" % [s.kind, s.row, s.side, s.station, s.v, s.u, s.position])
 
 
@@ -190,6 +196,7 @@ func _worn(p: Vector3) -> void:
 	await _pair("worn_low", p, 30.0, 30.0, 30.0)
 
 
+## The tool as the player uses it: the drawer, a stretch held by a click, a curve waiting for its bend, a freehand stroke.
 func _check(ok: bool, what: String) -> void:
 	print(("ok   " if ok else "FAIL ") + what)
 	if not ok:

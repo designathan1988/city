@@ -5,7 +5,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <tuple>
 #include <unordered_map>
 #include <vector>
 
@@ -20,11 +19,6 @@ struct ElementItem {
 	int32_t kind = 0;
 	bool operator==(const ElementItem &o) const {
 		return x == o.x && z == o.z && size == o.size && yaw == o.yaw && seed == o.seed && intensity == o.intensity && kind == o.kind;
-	}
-	// A total order by value: the save writes the items in it (ByteWriter::put_set), so the same items give the same bytes
-	// whichever chunk order and removals they went through.
-	static bool before(const ElementItem &a, const ElementItem &b) {
-		return std::tie(a.x, a.z, a.kind, a.size, a.yaw, a.seed, a.intensity) < std::tie(b.x, b.z, b.kind, b.size, b.yaw, b.seed, b.intensity);
 	}
 };
 
@@ -46,16 +40,11 @@ public:
 		}
 	}
 	std::vector<ElementItem> all() const;
-	// What a reader of the box needs (sim/state/city_cut.h): the items of the chunks the box touches. A chunk asked of the copy
-	// past them stops the tests' DLL.
-	Elements cut(float minx, float minz, float maxx, float maxz) const;
 
 private:
 	std::vector<int64_t> chunks_near(float x, float z, float r) const;
 	std::unordered_map<int64_t, std::vector<ElementItem>> cells_;
 	size_t count_ = 0;
-	bool windowed_ = false; // a cut: the chunks it answers for (their columns and rows)
-	int win_x0_ = 0, win_z0_ = 0, win_x1_ = -1, win_z1_ = -1;
 };
 
 } // namespace city

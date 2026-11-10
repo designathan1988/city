@@ -2,10 +2,8 @@
 #include "api/lab/city_lab.h"
 
 #include "api/lab/diagnosis.h"
-#include "render/data_reader.h"
 
 #include <godot_cpp/core/class_db.hpp>
-#include <godot_cpp/variant/utility_functions.hpp>
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/packed_float64_array.hpp>
 #include <godot_cpp/variant/string.hpp>
@@ -20,7 +18,7 @@ namespace city {
 
 namespace {
 
-constexpr double MS_PER_S = 1000.0; // the millisecond
+constexpr double MS_PER_S = 1000.0;
 
 std::vector<double> samples_of(const Variant &value) {
 	const PackedFloat64Array list = value;
@@ -30,24 +28,18 @@ std::vector<double> samples_of(const Variant &value) {
 	return out;
 }
 
-// The `doctor` rules through the strict reader (render/data_reader.h): a missing or mistyped key is pushed as an error and the
-// diagnosis refused, never read as 0 (a missing budget_fps was a budget of 1000 / 0 ms).
-bool rules_of(const Dictionary &d, lab::Rules &r) {
-	PackedStringArray errors;
-	DataReader in{ errors, "render_switches.json.doctor" };
-	const double fps = in.num(d, "budget_fps");
-	if (d.has("budget_fps") && fps <= 0) in.fail("budget_fps: not above 0");
-	r.budget_ms = fps > 0 ? MS_PER_S / fps : 0;
-	r.bound_share = in.num(d, "bound_share");
-	r.high_ms = in.num(d, "high_ms");
-	r.medium_ms = in.num(d, "medium_ms");
-	r.low_ms = in.num(d, "low_ms");
-	r.stage_min_ms = in.num(d, "stage_min_ms");
-	r.stage_tail = in.num(d, "stage_tail");
-	r.stutter_ms = in.num(d, "stutter_ms");
-	r.many_hitches = in.num(d, "many_hitches");
-	for (const String &e : errors) UtilityFunctions::push_error(e);
-	return errors.is_empty();
+lab::Rules rules_of(const Dictionary &d) {
+	lab::Rules r;
+	r.budget_ms = MS_PER_S / double(d["budget_fps"]);
+	r.bound_share = d["bound_share"];
+	r.high_ms = d["high_ms"];
+	r.medium_ms = d["medium_ms"];
+	r.low_ms = d["low_ms"];
+	r.stage_min_ms = d["stage_min_ms"];
+	r.stage_tail = d["stage_tail"];
+	r.stutter_ms = d["stutter_ms"];
+	r.many_hitches = d["many_hitches"];
+	return r;
 }
 
 std::optional<double> median_of_gpu(const Dictionary &frames) {
@@ -117,8 +109,7 @@ lab::Side side_of(const Dictionary &frames) {
 } // namespace
 
 Dictionary CityLab::diagnose(const Dictionary &frames, const Dictionary &rules) const {
-	lab::Rules r;
-	if (!rules_of(rules, r)) return Dictionary();
+	const lab::Rules r = rules_of(rules);
 	const std::vector<double> intervals = samples_of(frames["interval"]);
 	lab::Times t;
 	t.frame_ms = lab::median(intervals);

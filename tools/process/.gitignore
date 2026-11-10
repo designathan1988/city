@@ -1,0 +1,18 @@
+# Repositórios próprios e clones (cada um com o seu git)
+fonte/
+converter/
+ports/
+# Pastas pesadas ou geradas: arquivo de portes, jogo exportado, worktrees antigos
+ports-arquivo/
+jogo/
+wt-*/
+# Estado de sessão e caches
+tools/estado/
+__pycache__/
+*.pyc
+shot.png
+
+# derivados grandes das ferramentas (regeram-se com os scripts)
+records/map40/grafo.log
+records/reading/*.tmp
+records/process/

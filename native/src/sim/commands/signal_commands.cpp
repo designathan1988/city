@@ -11,10 +11,9 @@
 namespace city {
 
 namespace {
-// Decided from the road network (traffic::control_of), not read from the traffic's junctions: those are rebuilt from the change
-// log later, and right after an edit they still show the junction as it was.
 bool is_signal(const CityState &s, int node) {
-	return node >= 0 && node < int(s.roads.nodes.size()) && s.roads.nodes[size_t(node)].alive && traffic::control_of(s, node) == Control::SIGNAL;
+	const std::vector<Junction> &all = s.traffic.g.junctions;
+	return node >= 0 && node < int(all.size()) && node < int(s.roads.nodes.size()) && s.roads.nodes[size_t(node)].alive && all[size_t(node)].ctl == Control::SIGNAL;
 }
 } // namespace
 

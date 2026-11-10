@@ -1,20 +1,19 @@
+extends SceneTree
 # Godot's side of scripts/frame-replay.mjs: each captured three.js draw alone, with the program translated in
 # "three matrices" mode (three's own matrices as uniforms, its clip position converted), the mesh as the translation
 # placed each attribute, every texture uploaded through the RenderingDevice in the format three's GPU held (sRGB
 # decoded by the format, like WebGL; uint and int as integer formats; arrays; every mip level), every uniform three
 # set. Drawn in a SubViewport with HDR 2D (the values the program wrote, unencoded), read back as RGBA8.
 # Prints REPLAY BEGIN/END <draw> (its log says which draws finished); skips the draws res://live-skip.txt names.
-extends SceneTree
 
-# The captured values as Godot takes them (scripts/three_values.gd, copied beside this script by frame-replay.mjs):
-# Three.value for each uniform and Three.matrix for each instance; parity.gd reads the same owner.
-const Three := preload("res://three_values.gd")
-# The textures uploaded as three's GPU held them, kept by their files and freed at the end (scripts/replay_textures.gd,
-# copied beside this script by frame-replay.mjs); a captured texture whose bytes are not its levels' size is refused, told.
-var textures: RefCounted = preload("res://replay_textures.gd").new()
+var rd: RenderingDevice
+var cache := {}
+# the RenderingDevice textures made here, freed before quitting (after their Texture2DRD wrappers)
+var rids: Array[RID] = []
 
 func _initialize() -> void:
 	print("LIVE PID ", OS.get_process_id())
+	rd = RenderingServer.get_rendering_device()
 	RenderingServer.set_default_clear_color(Color(0, 0, 0, 0))
 	DirAccess.make_dir_recursive_absolute("res://out")
 	var skip := {}
@@ -34,7 +33,10 @@ func _initialize() -> void:
 	# the last viewport is freed at the end of its frame: two more drawn frames, then the textures
 	for i in 2:
 		await RenderingServer.frame_post_draw
-	textures.release()
+	cache.clear()
+	for r in rids:
+		if rd.texture_is_valid(r):
+			rd.free_rid(r)
 	print("REPLAY DONE")
 	quit()
 
@@ -43,6 +45,113 @@ func _floats(name) -> PackedFloat32Array:
 
 func _ints(name) -> PackedInt32Array:
 	return FileAccess.get_file_as_bytes("res://data/" + name).to_int32_array()
+
+func _matrix(m: Array) -> Transform3D:
+	return Transform3D(Basis(Vector3(m[0], m[1], m[2]), Vector3(m[4], m[5], m[6]), Vector3(m[8], m[9], m[10])), Vector3(m[12], m[13], m[14]))
+
+func _value(p: Dictionary) -> Variant:
+	var t: String = p.type
+	var els: Array = p.elements
+	var one := func(e: Array) -> Variant:
+		match t:
+			"float": return float(e[0])
+			"int", "uint": return int(e[0])
+			"bool": return bool(e[0])
+			"vec2": return Vector2(e[0], e[1])
+			"vec3": return Vector3(e[0], e[1], e[2])
+			"vec4": return Vector4(e[0], e[1], e[2], e[3])
+			"ivec2", "uvec2": return Vector2i(int(e[0]), int(e[1]))
+			"ivec3", "uvec3": return Vector3i(int(e[0]), int(e[1]), int(e[2]))
+			"ivec4", "uvec4": return Vector4i(int(e[0]), int(e[1]), int(e[2]), int(e[3]))
+			"bvec2": return [bool(e[0]), bool(e[1])]
+			"mat2": return Transform2D(Vector2(e[0], e[1]), Vector2(e[2], e[3]), Vector2.ZERO)
+			"mat3": return Basis(Vector3(e[0], e[1], e[2]), Vector3(e[3], e[4], e[5]), Vector3(e[6], e[7], e[8]))
+			"mat4": return Projection(Vector4(e[0], e[1], e[2], e[3]), Vector4(e[4], e[5], e[6], e[7]), Vector4(e[8], e[9], e[10], e[11]), Vector4(e[12], e[13], e[14], e[15]))
+		return null
+	if not p.array:
+		return one.call(els[0])
+	match t:
+		"float":
+			var a := PackedFloat32Array()
+			for e in els: a.append(float(e[0]))
+			return a
+		"int", "uint", "bool":
+			var a := PackedInt32Array()
+			for e in els: a.append(int(e[0]))
+			return a
+		"vec2":
+			var a := PackedVector2Array()
+			for e in els: a.append(one.call(e))
+			return a
+		"vec3":
+			var a := PackedVector3Array()
+			for e in els: a.append(one.call(e))
+			return a
+		"vec4":
+			var a := PackedVector4Array()
+			for e in els: a.append(one.call(e))
+			return a
+	var arr := []
+	for e in els: arr.append(one.call(e))
+	return arr
+
+# a texture as three's GPU held it: the RenderingDevice format of the captured kind, every level, every layer
+func _texture(t: Dictionary) -> Texture:
+	var key := JSON.stringify(t.levels)
+	if cache.has(key):
+		return cache[key]
+	var fmt := RDTextureFormat.new()
+	var bpp := 16
+	match t.kind:
+		"unorm":
+			# UNORM storage, shareable as its sRGB view: Godot views a Texture2DRD through its Image format (UNORM),
+			# and samples the sRGB view (decoded by the hardware, like WebGL's SRGB8_ALPHA8) for a source_color uniform
+			fmt.format = RenderingDevice.DATA_FORMAT_R8G8B8A8_UNORM
+			if t.get("srgb", false):
+				fmt.add_shareable_format(RenderingDevice.DATA_FORMAT_R8G8B8A8_UNORM)
+				fmt.add_shareable_format(RenderingDevice.DATA_FORMAT_R8G8B8A8_SRGB)
+			bpp = 4
+		"uint16":
+			# 16-bit uint: the widest integer format Godot 4.7 maps (Image FORMAT_RGBA16I); wider ones come as float bits
+			fmt.format = RenderingDevice.DATA_FORMAT_R16G16B16A16_UINT
+			bpp = 8
+		"uint": fmt.format = RenderingDevice.DATA_FORMAT_R32G32B32A32_UINT
+		"int": fmt.format = RenderingDevice.DATA_FORMAT_R32G32B32A32_SINT
+		_: fmt.format = RenderingDevice.DATA_FORMAT_R32G32B32A32_SFLOAT
+	var levels: Array = t.levels
+	fmt.width = int(levels[0].width)
+	fmt.height = int(levels[0].height)
+	fmt.mipmaps = levels.size()
+	var layers := int(t.get("layers", 1))
+	fmt.array_layers = layers
+	fmt.texture_type = RenderingDevice.TEXTURE_TYPE_2D_ARRAY if t.get("array", false) else RenderingDevice.TEXTURE_TYPE_2D
+	fmt.usage_bits = RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT | RenderingDevice.TEXTURE_USAGE_CAN_UPDATE_BIT
+	var data := []
+	for layer in layers:
+		var bytes := PackedByteArray()
+		for l in levels:
+			var name = l.files[layer] if l.has("files") else l.file
+			var b := FileAccess.get_file_as_bytes("res://data/" + name)
+			var want := int(l.width) * int(l.height) * bpp
+			if b.size() != want:
+				b.resize(want)
+			bytes.append_array(b)
+		data.append(bytes)
+	var rid := rd.texture_create(fmt, RDTextureView.new(), data)
+	if rid.is_valid():
+		rids.append(rid)
+	if not rid.is_valid():
+		push_error("REPLAY texture not created: " + t.uniform)
+		return null
+	var tex: Texture
+	if t.get("array", false):
+		tex = Texture2DArrayRD.new()
+		tex.texture_rd_rid = rid
+	else:
+		tex = Texture2DRD.new()
+		tex.texture_rd_rid = rid
+	cache[key] = tex
+	return tex
 
 func _mesh(c: Dictionary, material: Material) -> ArrayMesh:
 	var arrays := []
@@ -105,8 +214,7 @@ func _mesh(c: Dictionary, material: Material) -> ArrayMesh:
 	mesh.custom_aabb = AABB(Vector3(-1e6, -1e6, -1e6), Vector3(2e6, 2e6, 2e6))
 	return mesh
 
-## The draw's viewport: its size, HDR 2D (the values the program wrote, unencoded), no antialiasing, three's anisotropy.
-func _viewport(c: Dictionary) -> SubViewport:
+func _draw(c: Dictionary) -> void:
 	var vp := SubViewport.new()
 	vp.size = Vector2i(int(c.size[0]), int(c.size[1]))
 	vp.own_world_3d = true
@@ -119,18 +227,26 @@ func _viewport(c: Dictionary) -> SubViewport:
 	vp.anisotropic_filtering_level = int(c.get("anisotropy", 0))
 	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	root.add_child(vp)
-	# the shared stage (Three.stage) on the clear colour; the camera stays where it is: three's matrices are uniforms
-	Three.stage(vp, Environment.BG_CLEAR_COLOR)
-	return vp
-
-
-## The draw's material: the translated shader, every uniform three set, its textures (one per uniform, or an array).
-func _material(c: Dictionary) -> ShaderMaterial:
-	var mat := Three.material(c.shader, c.params) # the translated shader and every uniform three set
+	var env := Environment.new()
+	env.background_mode = Environment.BG_CLEAR_COLOR
+	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_DISABLED
+	var we := WorldEnvironment.new()
+	we.environment = env
+	vp.add_child(we)
+	var cam := Camera3D.new()
+	vp.add_child(cam)
+	cam.make_current()
+	var shader := Shader.new()
+	shader.code = FileAccess.get_file_as_string(c.shader)
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	for p in c.params:
+		mat.set_shader_parameter(p.godot, _value(p))
 	# textures: one per uniform, or an array of them (sampler2D x[n])
 	var groups := {}
 	for t in c.textures:
-		var tex: Texture = textures.texture(t)
+		var tex := _texture(t)
 		if t.has("element"):
 			if not groups.has(t.uniform): groups[t.uniform] = []
 			var g: Array = groups[t.uniform]
@@ -140,22 +256,28 @@ func _material(c: Dictionary) -> ShaderMaterial:
 			mat.set_shader_parameter(t.uniform, tex)
 	for u in groups:
 		mat.set_shader_parameter(u, groups[u])
-	return mat
-
-
-## The node that draws the mesh: a MultiMesh of three's instances (never culled), or the mesh alone.
-func _node(c: Dictionary, mesh: ArrayMesh) -> Node3D:
+	var mesh := _mesh(c, mat)
 	if c.instances != null:
-		return Three.instances(mesh, c.instances) # each with its matrix, colour and custom data, never culled
-	var mi := MeshInstance3D.new()
-	mi.mesh = mesh
-	return mi
-
-
-## One draw rebuilt and read back after three drawn frames: floats for a component pass of a float target, else RGBA8.
-func _draw(c: Dictionary) -> void:
-	var vp := _viewport(c)
-	vp.add_child(_node(c, _mesh(c, _material(c))))
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.use_colors = true
+		mm.use_custom_data = true
+		mm.mesh = mesh
+		mm.instance_count = c.instances.size()
+		for i in c.instances.size():
+			mm.set_instance_transform(i, _matrix(c.instances[i].matrix))
+			var col: Array = c.instances[i].color
+			mm.set_instance_color(i, Color(col[0], col[1], col[2], col[3]))
+			var cd: Array = c.instances[i].custom
+			mm.set_instance_custom_data(i, Color(cd[0], cd[1], cd[2], cd[3]))
+		mm.custom_aabb = AABB(Vector3(-1e6, -1e6, -1e6), Vector3(2e6, 2e6, 2e6))
+		var mmi := MultiMeshInstance3D.new()
+		mmi.multimesh = mm
+		vp.add_child(mmi)
+	else:
+		var mi := MeshInstance3D.new()
+		mi.mesh = mesh
+		vp.add_child(mi)
 	for i in 3:
 		await RenderingServer.frame_post_draw
 	var out := vp.get_texture().get_image()

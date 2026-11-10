@@ -1,6 +1,5 @@
 // The body on its own (body_stage.h): one mesh, facade parts in it as plain boxes, the panes as a second surface.
 #include "render/buildings/body_stage.h"
-#include "render/surface_data.h"
 
 #include "render/buildings/pane_rooms.h"
 #include "sim/buildings/interior/interior.h"
@@ -13,7 +12,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr int AXIS_FLOATS = 3, ALPHA_BITS = 8; // a basis axis's floats in the buffer, the alpha byte's bits
+constexpr int AXIS_FLOATS = 3, ALPHA_BITS = 8;
 
 // A piece of the bays in the body's own mesh: its tones over its colour, no finish.
 void append_prop(b40::Shell &s, const MeshBuilder &model, const b40::PropInstance &p) {
@@ -46,8 +45,8 @@ int BodyStage::show(const b40::Data &data, const b40::BuildingLook &look, const 
 	shell.glass = &glass;
 	shell.sheer = &sheer;
 	shell.cards = &cards;
-	const RID design = designs_ ? (ghost ? designs_->mesh_with(body.signature, ghost_) : designs_->mesh(body.signature)) : RID();
-	if (!design.is_valid()) {
+	const Ref<ArrayMesh> design = designs_ ? designs_->mesh(body.signature) : Ref<ArrayMesh>();
+	if (design.is_null()) {
 		b40::emit_facades(shell, shell, pl);
 		b40::emit_roofs(shell, shell, pl);
 	}
@@ -58,15 +57,9 @@ int BodyStage::show(const b40::Data &data, const b40::BuildingLook &look, const 
 	shell.cards = nullptr;
 	const int handle = next_++;
 	RenderingServer *rs = RenderingServer::get_singleton();
-	// as the city's chunks are drawn, each part with its material, or the ghost's on all (surface_data.h: a mesh carries its materials)
-	TypedArray<Dictionary> surfaces;
-	const RID parts_of[] = { solid_, glass_, sheer_, card_ };
-	int part_at = 0;
-	for (b40::Shell *part : { &shell, &glass, &sheer, &cards }) { // a design of its own leaves the shell with no more than its lot, or nothing
-		if (part->triangles() > 0) surfaces.push_back(part->surface(ghost ? ghost_ : parts_of[part_at], true));
-		part_at++;
-	}
-	const RID mesh = surfaces.is_empty() ? RID() : create_mesh(surfaces);
+	const RID mesh = rs->mesh_create();
+	for (b40::Shell *part : { &shell, &glass, &sheer, &cards }) // a design of its own leaves the shell with no more than its lot, or nothing
+		if (part->triangles() > 0) part->commit_to(mesh, true);
 	Vector3 lo, hi, glass_lo, glass_hi;
 	shell.bounds(lo, hi);
 	for (const b40::Shell *more : { &glass, &sheer, &cards }) {
@@ -76,15 +69,22 @@ int BodyStage::show(const b40::Data &data, const b40::BuildingLook &look, const 
 		hi = hi.max(glass_hi);
 	}
 	MeshDraw &draw = shown_[handle];
-	draw.adopt(scenario, !ghost, mesh, LAYER_BASE);
-	if (draw.inst.is_valid()) rs->instance_set_custom_aabb(draw.inst, AABB(lo, hi - lo));
+	if (!ghost) { // as the city's chunks are drawn: the walls and the panes each with their material
+		int surface = 0;
+		if (shell.triangles() > 0) rs->mesh_surface_set_material(mesh, surface++, solid_);
+		if (glass.triangles() > 0) rs->mesh_surface_set_material(mesh, surface++, glass_);
+		if (sheer.triangles() > 0) rs->mesh_surface_set_material(mesh, surface++, sheer_);
+		if (cards.triangles() > 0) rs->mesh_surface_set_material(mesh, surface, card_);
+	}
+	draw.adopt(scenario, ghost ? ghost_ : RID(), !ghost, mesh, LAYER_BASE);
+	rs->instance_set_custom_aabb(draw.inst, AABB(lo, hi - lo));
 	draw.visible(true);
 	drawn_[handle] = int(shell.triangles() + glass.triangles() + sheer.triangles() + cards.triangles());
 	if (design.is_valid()) { // the lot's frame here is the world's: its y runs along -z, as the design's own
-		const float s = body.signature_scale; // the drawing's unit in metres (types.h)
-		const Design own{ rs->instance_create2(design, scenario), Transform3D(Basis::from_scale(Vector3(s, s, s)), pl.lot.at(-body.signature_x, -body.signature_y, 0)) };
+		const Design own{ rs->instance_create2(design->get_rid(), scenario), Transform3D(Basis(), pl.lot.at(-body.signature_x, -body.signature_y, 0)) };
 		rs->instance_set_layer_mask(own.inst, LAYER_BASE);
 		rs->instance_set_transform(own.inst, own.local);
+		if (ghost) rs->instance_geometry_set_material_override(own.inst, ghost_);
 		own_[handle] = own;
 	}
 	return handle;

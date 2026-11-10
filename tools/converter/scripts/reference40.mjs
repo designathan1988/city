@@ -42,7 +42,7 @@ function forThe40(asked) {
     { eval: `performance.clearMarks(); window.__roadcraft.setTraffic(false); window.__roadcraft.generateCity({ seed: ${Number(seed)}, size: ${JSON.stringify(size)} }); 'started'` },
     { until: "performance.getEntriesByName('city:applied').length > 0 && performance.getEntriesByName('opening:shown').length > 0", name: 'city shown', timeout: 120000, polling: 200 },
     { until: "(() => { const c = document.getElementById('loading-curtain'); return !!c && getComputedStyle(c).display === 'none'; })()", name: 'curtain gone', timeout: 60000, polling: 200 },
-    { press: 'Come\u00e7ar a construir', optional: true },
+    { press: 'Começar a construir', optional: true },
     { press: 'Continuar', optional: true },
   ];
   const steps = (asked.steps ?? []).map((s) => {

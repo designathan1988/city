@@ -12,7 +12,7 @@
 
 namespace city {
 
-constexpr float RIGID_STEP_S = 1.f / 60.f; // the pieces' fixed step: 60 a second
+constexpr float RIGID_STEP_S = 1.f / 60.f;
 constexpr int RIGID_CORNERS = 8; // of a piece's box
 
 struct RigidPiece {
@@ -38,10 +38,10 @@ template <typename F>
 bool rigid_step(RigidPiece &b, F &&ground_of, const EffectParams &law) {
 	constexpr float SPIN_EPS = 1e-6f; // an angular velocity this small turns nothing
 	constexpr float SLOW_BASE_M = 0.15f; // Box2D's rest test: the farthest point moving slower than this plus a share of its reach
-	constexpr float SLOW_REACH = 0.55f; // ... times this share of its reach
+	constexpr float SLOW_REACH = 0.55f;
 	constexpr float LOW_CLEAR_M = 0.05f; // a corner this close over the ground still counts as resting on it
 	constexpr float AIR_DRAG_GROUND = 0.995f; // horizontal speed kept per step while touching
-	constexpr float NOTHING_UNDER = 1e9f; // the ground's height when nothing is under a corner
+	constexpr float NOTHING_UNDER = 1e9f;
 	b.v.y -= law.gravity * RIGID_STEP_S;
 	b.p += b.v * RIGID_STEP_S;
 	const float angle = b.w.length() * RIGID_STEP_S;

@@ -33,7 +33,7 @@ private:
 		InstanceRows buf{ MM_PLAIN_STRIDE };
 		MultiMeshDraw draw;
 	};
-	godot::RID scenario_;
+	godot::RID scenario_, material_;
 	OwnedMesh hull_;
 	godot::AABB hull_box_;
 	float sector_m_ = 0, inset_ = 1;

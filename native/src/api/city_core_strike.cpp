@@ -1,10 +1,8 @@
 // The bomb and its probe as script API (sim/commands/strike_commands.cpp): the blow is one undoable edit; the probe
 // counts what blows have left on the map, so a test can tell the explosion changed the city.
-#include "api/state_locks.h"
 #include "api/city_core.h"
 
 #include "api/edit_result.h"
-#include "render/effects/marks.h"
 
 using namespace godot;
 
@@ -38,7 +36,7 @@ PackedInt64Array CityCore::ruin_seeds() const {
 }
 
 Dictionary CityCore::damage_probe() const {
-	const TrafficRead lk(*state_); // it counts the walkers and vehicles too
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
 	Dictionary d;
 	if (!s.ready) return d;
@@ -64,7 +62,7 @@ Dictionary CityCore::damage_probe() const {
 }
 
 Dictionary CityCore::shot_targets(int limit) const {
-	const TrafficRead lk(*state_);
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const TrafficState &t = state_->traffic;
 	Array walkers, vehicles;
 	for (int id = 0; id < int(t.peds.size()) && int(walkers.size()) < limit; id++) {
@@ -114,8 +112,7 @@ Dictionary CityCore::blast_probe(float strength, float distance) const {
 	d["eardrum"] = blast::eardrum(p, a.pressure_kpa);
 	d["collapse_range_m"] = blast::range_at_pressure(p, kg, p.collapse_kpa);
 	d["light_range_m"] = blast::range_at_pressure(p, kg, p.light_kpa);
-	d["crater_radius_m"] = blast::crater_radius(p, blast::fireball_radius(state_->catalog.tune, strength));
-	d["decal_half_m"] = float(d["crater_radius_m"]) * Marks::CRATER_SCALE; // how far its mark on the ground reaches (render/effects/marks.h)
+	d["crater_radius_m"] = blast::crater_radius(p, kg, blast::Surface::EARTH);
 	return d;
 }
 

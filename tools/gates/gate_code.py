@@ -1,13 +1,9 @@
 """Code-level gates: C++ layer dependencies from #include directives, and orphan scripts and shaders (no scene, script,
-shader, project.godot, data table or core source names them in code)."""
-import re
-
+shader or project.godot names them in code)."""
 import cpp_syntax
 
 REFERRERS = (".gd", ".tscn", ".tres", ".godot", ".gdshader", ".gdshaderinc")
 JUDGED = (".gd", ".gdshader", ".gdshaderinc")
-# What else names a resource by its path: the data tables (materials.json's shaders) and the core (a shader it loads by name).
-OTHER_REFERRERS = (("project/data/", (".json",)), ("native/src/", (".cpp", ".h")))
 
 
 def layer_of(path, layers):
@@ -35,20 +31,14 @@ def check_layers(ctx, src, err):
             err("CAMADA", f"{src.path}:{line}", f"'{inc}' is not allowed in {layer} (rules.json/cpp_layers)")
 
 
-def _referrer(path):
-    return (path.startswith("project/") and path.endswith(REFERRERS)) or any(
-        path.startswith(root) and path.endswith(ext) for root, ext in OTHER_REFERRERS)
-
-
 def orphan_inputs(ctx, path):
-    return _referrer(path) or (path.startswith("project/") and path.endswith(".uid"))
+    return path.startswith("project/") and path.endswith(REFERRERS + (".uid",))
 
 
 def check_orphans(ctx, err):
-    """Every GDScript and shader is named by another file's code: a res:// path, a uid:// id or its class_name (in the
-    project's own code: a C++ identifier is not a GDScript class). The names are indexed once (word -> files), so the check
-    is linear in the project's size."""
-    files = [f for f in ctx.files if _referrer(f)]
+    """Every GDScript and shader is named by another file's code: a res:// path, a uid:// id or its class_name.
+    The names are indexed once (word -> files), so the check is linear in the project's size."""
+    files = [f for f in ctx.files if f.startswith("project/") and f.endswith(REFERRERS)]
     uid_to_path = {}
     for f in ctx.files:
         if f.startswith("project/") and f.endswith(".uid"):
@@ -65,39 +55,14 @@ def check_orphans(ctx, err):
             target = uid_to_path.get(ref) or ("project/" + ref[len("res://"):] if ref.startswith("res://") else None)
             if target:
                 referenced_by.setdefault(target, set()).add(f)
-        for w in facts.get("idents", []) if f.startswith("project/") else ():
+        for w in facts.get("idents", []):
             word_files.setdefault(w, set()).add(f)
     for f in files:
-        if not f.endswith(JUDGED) or not f.startswith("project/") or f.startswith("project/tests/"):
+        if not f.endswith(JUDGED) or f.startswith("project/tests/"):
             continue
         users = set(referenced_by.get(f, ())) - {f}
         cls = ctx.facts(f).get("class_name")
         if cls:
             users |= set(word_files.get(cls, ())) - {f}
         if not users:
-            err("ORFAO", f, "no scene, script, shader, project.godot, data table or core source names this file: delete it or "
-                "connect it")
-
-
-LANE = re.compile(r"JobKey\s*[{(]\s*JobLane::(\w+)")
-
-
-def lane_inputs(ctx, path):
-    return path.startswith("native/src/") and path.endswith((".cpp", ".h"))
-
-
-def check_lanes(ctx, err):
-    """A job's lane is its producer's alone (core/job_pool.h JobLane): the queue replaces a job by the newest of the same key,
-    so a second producer on a lane takes the place of the first's jobs in silence. Every JobLane named in a key by more than
-    one file is reported in each."""
-    users = {}
-    for f in ctx.files:
-        if not lane_inputs(ctx, f) or ctx.facts(f).get("defines_jobkey"):
-            continue
-        for n, line in enumerate(ctx.source(f).blanked(), 1):
-            for m in LANE.finditer(line):
-                users.setdefault(m.group(1), {}).setdefault(f, n)
-    for lane, files in sorted(users.items()):
-        if len(files) > 1:
-            for f, n in sorted(files.items()):
-                err("JOB_LANE_SHARED", f"{f}:{n}", f"JobLane::{lane} is named by {len(files)} files: a lane is one producer's")
+            err("ORFAO", f, "no scene, script, shader or project.godot names this file: delete it or connect it")

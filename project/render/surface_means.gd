@@ -4,6 +4,7 @@ class_name SurfaceMeans
 extends RefCounted
 
 const MEAN_PX := 64 # side of the shrunk copy whose average becomes a surface map's mean colour
+const LANE_TONES := 8 # slots of road_look.h TONE_SLOTS
 const MEAN_MAPS := ["asphalt_map", "footway_map", "kerb_map"] # those road.gdshader tones by their mean; the grass is its map
 
 
@@ -11,14 +12,15 @@ const MEAN_MAPS := ["asphalt_map", "footway_map", "kerb_map"] # those road.gdsha
 static func apply(m: ShaderMaterial, params: Dictionary, load_param: Callable) -> void:
 	for name in MEAN_MAPS:
 		m.set_shader_parameter("mean_" + name.trim_suffix("_map"), mean_color(load_param.call(params[name])))
-	var streets: Dictionary = DataTables.render_table("streets")
+	var streets: Dictionary = DataTables.render().streets
 	m.set_shader_parameter("asphalt_reference", Color.html(streets.surface_colors[0]))
 	var tones := PackedVector3Array()
-	tones.resize(int(CityStore.constants.shader.ROAD_TONE_SLOTS)) # road_body.gdshaderinc lane_tone, by RoadClass
-	for road_class: String in streets.asphalt_by_class:
+	for road_class in streets.asphalt_by_class:
 		var c := Color.html(streets.asphalt_by_class[road_class]).srgb_to_linear()
-		tones[CityStore.code(&"RoadClass", StringName(road_class.to_upper()))] = Vector3(c.r, c.g, c.b)
+		tones.push_back(Vector3(c.r, c.g, c.b))
+	tones.resize(LANE_TONES)
 	m.set_shader_parameter("lane_tone", tones)
+	m.set_shader_parameter("plate_blend", streets.plate_blend_m)
 	var walk := Color.html(streets.paving_colors[0]).srgb_to_linear()
 	m.set_shader_parameter("footway_tone", Vector3(walk.r, walk.g, walk.b))
 

@@ -1,4 +1,4 @@
-// What the interiors are made from, read once from data/catalog/interiors.json (api/interiors_loader.cpp): the size of each
+// What the interiors are made from, read once from data/render/interiors.json (api/interiors_loader.cpp): the size of each
 // piece of furniture, which pieces read as a box through a window, and the plain floors as recipes of steps. The floors
 // with a plan of their own (flats, houses, rooms off a corridor) are interior_homes.cpp's and interior_rooms.cpp's.
 #pragma once

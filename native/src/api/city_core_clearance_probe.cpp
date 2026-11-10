@@ -21,10 +21,10 @@ namespace {
 constexpr float WAY_STEP_M = 0.25f; // poses looked at along a way
 constexpr float LOOK_M = 20.f; // what is solid is read this far round a way's pose
 constexpr float FOOT_NO_ROOF_M = 2.f; // what stands over a car's roof is no obstacle
-constexpr float HALF = 0.5f, FAR_GAP_M = 1e6f; // farther than any obstacle: none
+constexpr float HALF = 0.5f, FAR_GAP_M = 1e6f;
 constexpr float NEAR_BAY_M = 3.f, NEAR_GATE_M = 5.f; // what counts as in its bay and at its gate
 constexpr size_t GATE_POINTS = 4;
-constexpr int CASES = 8; // the probe's cases, below
+constexpr int CASES = 8;
 
 using Ring = std::vector<V2>;
 
@@ -63,9 +63,11 @@ Ring car_box(const OffPose &q, float half_len, float half_w) {
 
 // What is solid to a car near a point: every lot's volumes and walls, its own included.
 void solids_near(const CityState &s, float x, float z, std::vector<Ring> &out, std::vector<int> &kinds) {
+	b40::Body body;
 	s.buildings.query(x - LOOK_M, z - LOOK_M, x + LOOK_M, z + LOOK_M, [&](int id) {
 		const Building &rec = s.buildings.items[size_t(id)];
-		lot_solids(s.buildings.designs, *b40::record_body(s.buildings.designs, rec), b40::lot_frame(rec), FOOT_NO_ROOF_M, out, &kinds);
+		b40::record_body(s.buildings.designs, rec, body);
+		lot_solids(s.buildings.designs, body, b40::lot_frame(rec), FOOT_NO_ROOF_M, out, &kinds);
 	});
 }
 
@@ -183,7 +185,7 @@ Array CityProbes::vehicles_near(const Vector3 &at, float radius) {
 			d["asphalt_right"] = p.asph_right;
 			d["asphalt_left"] = p.asph_left;
 			d["lanes"] = t.g.ds[size_t(v.ds)].lanes;
-			d["lane_change_left_m"] = v.lat; // sideways still to cover of a lane change (lane_shift.h)
+			d["lc_off"] = v.lc_off;
 			d["lateral_m"] = (v.cur.x - c.x) * -c.fz + (v.cur.z - c.z) * c.fx; // of the body's middle from the lane's, to its left
 			d["heading_off_rad"] = std::atan2(v.cur.fx * c.fz - v.cur.fz * c.fx, v.cur.fx * c.fx + v.cur.fz * c.fz);
 			float ahead = FAR_GAP_M;

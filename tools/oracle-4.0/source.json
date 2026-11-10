@@ -1,0 +1,14 @@
+{
+ "_doc": "The Roadcraft 4.0 commit this copy holds (tools/oracle-4.0/rebuild.py); every file but ours is that commit's.",
+ "source": "C:/Users/Jonathan/Documents/Projects/city/roadcraft",
+ "commit": "2921c465a12967562c063dc5e36c999bd103ff49",
+ "excluded": [
+  "reports",
+  ".claude"
+ ],
+ "ours": [
+  "rebuild.py",
+  "source.json",
+  "vite.config.ts"
+ ]
+}

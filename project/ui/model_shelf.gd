@@ -13,7 +13,7 @@ const STUDIO_NAME := &"ModelStudio"
 @onready var _head: HBoxContainer = HudWidgets.hbox(self)
 @onready var _scroll: ScrollContainer = _scroller()
 @onready var _row: GridContainer = _grid()
-var _room := 0.0 # what the drawer leaves, last it said
+@onready var _room := 0.0 # what the drawer leaves, last it said
 @onready var _search: LineEdit = _line("builder.search")
 @onready var _groups: OptionButton = _group_list()
 @onready var _name_box: LineEdit = _line("building.blueprintName")
@@ -132,7 +132,7 @@ func _show_cards() -> void:
 
 
 func _card(entry: Dictionary) -> Control:
-	var b := HudWidgets.verbatim(HudWidgets.button(&"Card", "models", "", "", "card_w", "card_h"), entry.label) as Button
+	var b := HudWidgets.button(&"Card", "models", entry.label, "", "card_w", "card_h")
 	b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
 	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	b.expand_icon = true

@@ -1,4 +1,4 @@
-// Build > Models: a model as data/catalog/models.json puts it together, block by block. Coordinates in metres from the model's own
+// Build > Models: a model as data/render/models.json puts it together, block by block. Coordinates in metres from the model's own
 // front left corner; sim/commands/model_body.cpp turns one into a body in the lot frame. Plain data, filled by api/models_loader.cpp.
 #pragma once
 
@@ -23,7 +23,7 @@ struct ModelBlock {
 	int base = 0, storeys = 1, door_bay = NO_BAY, pattern = NO_PATTERN;
 	Roof roof = ROOF_FLAT;
 	uint8_t fill = BAY_WINDOW, ground = BAY_NONE, door_kind = BAY_DOOR;
-	std::vector<V2> outline;
+	std::vector<Point2> outline;
 	std::vector<ModelDress> dress;
 };
 

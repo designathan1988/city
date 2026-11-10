@@ -1,0 +1,24 @@
+// The roads' structures, chunk by chunk (render/roads/road_mesh.h emit_structures): decks, bents, parapets and portals, on the road
+// chunks' own streaming, in the plain concrete of material "transit", whose vertex colour and UV say its tone and finish.
+#pragma once
+
+#include "core/job_pool.h"
+#include "render/mesh_builder.h"
+#include "render/render_context.h"
+#include "render/roads/road_chunks.h"
+#include "render/roads/road_look.h"
+#include "sim/state/city_state.h"
+
+namespace city {
+
+class StructureRenderer : public RoadChunks {
+public:
+	bool init(const RenderContext &ctx, const StreetLook &look, godot::PackedStringArray &errors);
+	void submit(const CityState &s, int64_t key, JobPool &pool, float priority);
+
+private:
+	void build_cpu(const CityState &s, int64_t key, MeshBuilder &mb) const;
+	const StreetLook *look_ = nullptr;
+};
+
+} // namespace city

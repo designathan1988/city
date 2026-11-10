@@ -4,32 +4,27 @@
 // far away (Golus, "Anti-aliased Alpha Test: The Esoteric Alpha To Coverage", 2017).
 shader_type spatial;
 render_mode skip_vertex_transform, cull_disabled, shadows_disabled, alpha_to_coverage;
-#include "res://render/shaders/contracts/trees.gdshaderinc"
 
 #include "res://render/shaders/vegetation.gdshaderinc"
 
+const float REGION_W = 1.0 / 3.0, LEAF_U = 0.0, FROND_U = 2.0 / 3.0; // leaf_atlas.h ATLAS_REGION_W, LEAF_REGION_U, FROND_REGION_U
 const float CUT = 0.5;
 uniform sampler2D leaf_atlas : source_color, filter_linear_mipmap_anisotropic, repeat_disable;
-uniform float cover_per_mip; // materials.json vegetation_cards, as the next three
-uniform float leaf_edge; // below the cut: the alpha a leaf's rim goes to coverage from, so MSAA smooths what the cut alone leaves in steps
-uniform float leaf_near_m; // the near tuft whole up to here
-uniform float leaf_far_m; // and gone from here
+uniform float cover_per_mip = 0.25;
+uniform float leaf_edge = 0.3; // below the cut: the alpha a leaf's rim goes to coverage from, so MSAA smooths what the cut alone leaves in steps
+uniform float leaf_near_m = 22.0; // the near tuft whole up to here
+uniform float leaf_far_m = 70.0; // and gone from here
 uniform sampler2D tree_albedo : source_color, filter_linear_mipmap, repeat_disable;
 uniform sampler2D tree_normal : hint_normal, filter_linear_mipmap, repeat_disable;
 
 #include "res://render/shaders/color_space.gdshaderinc"
-
-// The mip level the sampler takes for `texel`, the texture coordinate in texels: the log of the longer screen step.
-float texel_mip(vec2 texel) {
-	return max(0.0, 0.5 * log2(max(dot(dFdx(texel), dFdx(texel)), dot(dFdy(texel), dFdy(texel)))));
-}
 
 void fragment() {
 	if (v_part > PART_FAR - 0.5) {
 		vec2 at = (v_cell + vec2(UV.x, 1.0 - UV.y)) / vec2(float(picture_frames), float(picture_rows));
 		vec4 p = texture(tree_albedo, at);
 		vec2 texel = at * vec2(textureSize(tree_albedo, 0));
-		float mip = texel_mip(texel);
+		float mip = max(0.0, 0.5 * log2(max(dot(dFdx(texel), dFdx(texel)), dot(dFdy(texel), dFdy(texel)))));
 		ALPHA = p.a * (1.0 + mip * cover_per_mip);
 		ALPHA_SCISSOR_THRESHOLD = CUT;
 		ALPHA_ANTIALIASING_EDGE = leaf_edge;
@@ -39,22 +34,22 @@ void fragment() {
 		ROUGHNESS = roughness;
 		SPECULAR = leaf_sheen(NORMAL, VIEW);
 	} else {
-		bool frond = v_part > PART_FROND - 0.5 && v_part < PART_FROND + 0.5;
-		vec2 uv = vec2((frond ? FROND_REGION_U : LEAF_REGION_U) + clamp(UV.x, 0.0, 1.0) * ATLAS_REGION_W, UV.y);
-		vec2 dx = dFdx(uv), dy = dFdy(uv);
-		vec4 leaf = textureGrad(leaf_atlas, uv, dx, dy);
-		float close = frond ? 0.0 : 1.0 - smoothstep(leaf_near_m, leaf_far_m, length(VERTEX));
-		if (close > 0.0) {
-			leaf = mix(leaf, textureGrad(leaf_atlas, uv + vec2(ATLAS_REGION_W, 0.0), dx, dy), close);
-		}
-		vec2 texel = uv * vec2(textureSize(leaf_atlas, 0));
-		float mip = texel_mip(texel);
-		ALPHA = leaf.a * (1.0 + mip * cover_per_mip);
-		ALPHA_SCISSOR_THRESHOLD = CUT;
-		ALPHA_ANTIALIASING_EDGE = leaf_edge;
-		ALPHA_TEXTURE_COORDINATE = texel;
-		ALBEDO = vertex_albedo(COLOR.rgb, OUTPUT_IS_SRGB) * v_tint * leaf.r;
-		ROUGHNESS = roughness;
-		SPECULAR = leaf_sheen(NORMAL, VIEW);
+	bool frond = v_part > PART_FROND - 0.5 && v_part < PART_FROND + 0.5;
+	vec2 uv = vec2((frond ? FROND_U : LEAF_U) + clamp(UV.x, 0.0, 1.0) * REGION_W, UV.y);
+	vec2 dx = dFdx(uv), dy = dFdy(uv);
+	vec4 leaf = textureGrad(leaf_atlas, uv, dx, dy);
+	float close = frond ? 0.0 : 1.0 - smoothstep(leaf_near_m, leaf_far_m, length(VERTEX));
+	if (close > 0.0) {
+		leaf = mix(leaf, textureGrad(leaf_atlas, uv + vec2(REGION_W, 0.0), dx, dy), close);
+	}
+	vec2 texel = uv * vec2(textureSize(leaf_atlas, 0));
+	float mip = max(0.0, 0.5 * log2(max(dot(dFdx(texel), dFdx(texel)), dot(dFdy(texel), dFdy(texel)))));
+	ALPHA = leaf.a * (1.0 + mip * cover_per_mip);
+	ALPHA_SCISSOR_THRESHOLD = CUT;
+	ALPHA_ANTIALIASING_EDGE = leaf_edge;
+	ALPHA_TEXTURE_COORDINATE = texel;
+	ALBEDO = vertex_albedo(COLOR.rgb, OUTPUT_IS_SRGB) * v_tint * leaf.r;
+	ROUGHNESS = roughness;
+	SPECULAR = leaf_sheen(NORMAL, VIEW);
 	}
 }

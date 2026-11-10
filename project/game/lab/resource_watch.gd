@@ -3,6 +3,8 @@
 class_name ResourceWatch
 extends RefCounted
 
+const MIB := 1048576.0
+const S_PER_MIN := 60.0
 ## The monitors that must not climb, in MiB.
 const MEMORY := {"static": Performance.MEMORY_STATIC, "video": Performance.RENDER_VIDEO_MEM_USED, "texture": Performance.RENDER_TEXTURE_MEM_USED, "buffer": Performance.RENDER_BUFFER_MEM_USED}
 const COUNTS := {"objects": Performance.OBJECT_COUNT, "nodes": Performance.OBJECT_NODE_COUNT}
@@ -13,7 +15,7 @@ var _points: Array[Dictionary] = []
 func sample(now_s: float) -> void:
 	var p := {"t": now_s, "pipelines": float(FrameMeter.pipelines())}
 	for key: String in MEMORY:
-		p[key] = Performance.get_monitor(MEMORY[key]) / Units.BYTES_PER_MIB
+		p[key] = Performance.get_monitor(MEMORY[key]) / MIB
 	for key: String in COUNTS:
 		p[key] = Performance.get_monitor(COUNTS[key])
 	_points.append(p)
@@ -37,7 +39,7 @@ static func slope(points: Array[Dictionary], key: String) -> float:
 		sxx += p.t * p.t
 		sxy += p.t * p[key]
 	var d := n * sxx - sx * sx
-	return 0.0 if is_zero_approx(d) else (n * sxy - sx * sy) / d * Units.S_PER_MIN
+	return 0.0 if is_zero_approx(d) else (n * sxy - sx * sy) / d * S_PER_MIN
 
 
 func _seen_s() -> float:

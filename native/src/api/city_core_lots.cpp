@@ -1,6 +1,5 @@
 // Zones > Lots as API of script: the lots the player draws, as edits and as outlines on the ground.
 #include "api/city_core.h"
-#include "sim/commands/lot_commands.h"
 #include "api/edit_result.h"
 #include "sim/lots/lot_book.h"
 #include "sim/citygen/lot_land.h"
@@ -15,12 +14,13 @@ namespace city {
 static constexpr double SHORTEST_SIDE2_M2 = 1e-6; // a side this short has no direction
 
 namespace {
+constexpr double LOT_ANGLE_LOOK_M = 80;
 
-XZ point(const Vector3 &v) { return { v.x, v.z }; }
+LotPoint point(const Vector3 &v) { return { v.x, v.z }; }
 
-PackedVector3Array on_ground(const CityState &s, const std::vector<XZ> &ring) {
+PackedVector3Array on_ground(const CityState &s, const std::vector<LotPoint> &ring) {
 	PackedVector3Array out;
-	for (const XZ &p : ring) out.push_back(Vector3(float(p.x), s.terrain.height_at(float(p.x), float(p.z)), float(p.z)));
+	for (const LotPoint &p : ring) out.push_back(Vector3(float(p.x), s.terrain.height_at(float(p.x), float(p.z)), float(p.z)));
 	return out;
 }
 
@@ -39,7 +39,7 @@ Dictionary CityCore::lot_add_rect(const Vector3 &a, const Vector3 &b, double ang
 }
 
 Dictionary CityCore::lot_add_polygon(const PackedVector3Array &points) {
-	std::vector<XZ> ring;
+	std::vector<LotPoint> ring;
 	for (const Vector3 &p : points) ring.push_back(point(p));
 	return run_edit(*state_, "cmd.place.lot", [&](CityState &s) { return add_lot_polygon(s, ring); });
 }
@@ -68,12 +68,6 @@ Dictionary CityCore::lot_delete(int id) {
 	return run_edit(*state_, "cmd.lot.delete", [&](CityState &s) { return delete_lot(s, id); });
 }
 
-Dictionary CityCore::lot_erase(const PackedVector3Array &stroke) {
-	std::vector<XZ> way;
-	for (const Vector3 &p : stroke) way.push_back(point(p));
-	return run_edit(*state_, "cmd.lot.delete", [&](CityState &s) { return erase_lots(s, way); });
-}
-
 Dictionary CityCore::lot_zone(int id, int zone) {
 	return run_edit(*state_, "cmd.place.zone", [&](CityState &s) { return zone_lot(s, id, zone); });
 }
@@ -82,8 +76,8 @@ Dictionary CityCore::lot_zone(int id, int zone) {
 double CityCore::lot_angle_at(const Vector3 &p) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
-	double best = s.catalog.tune.lot_angle_look_m * s.catalog.tune.lot_angle_look_m, angle = 0;
-	s.roads.for_segments_near(p.x - s.catalog.tune.lot_angle_look_m, p.z - s.catalog.tune.lot_angle_look_m, p.x + s.catalog.tune.lot_angle_look_m, p.z + s.catalog.tune.lot_angle_look_m, [&](int seg) {
+	double best = LOT_ANGLE_LOOK_M * LOT_ANGLE_LOOK_M, angle = 0;
+	s.roads.for_segments_near(p.x - LOT_ANGLE_LOOK_M, p.z - LOT_ANGLE_LOOK_M, p.x + LOT_ANGLE_LOOK_M, p.z + LOT_ANGLE_LOOK_M, [&](int seg) {
 		const Quad &q = s.roads.segs[size_t(seg)].q;
 		const double dx = q.x1 - q.x0, dz = q.z1 - q.z0, len2 = std::max(dx * dx + dz * dz, SHORTEST_SIDE2_M2);
 		const double t = std::clamp(((p.x - q.x0) * dx + (p.z - q.z0) * dz) / len2, 0.0, 1.0);
@@ -100,17 +94,17 @@ double CityCore::lot_angle_at(const Vector3 &p) {
 PackedVector3Array CityCore::lot_land(const Vector3 &a, const Vector3 &b, double angle) {
 	PackedVector3Array out;
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
-	const std::vector<XZ> rect = lot_rect(state_->catalog.growth.shapes, { a.x, a.z }, { b.x, b.z }, angle);
+	const std::vector<LotPoint> rect = lot_rect({ a.x, a.z }, { b.x, b.z }, angle);
 	if (rect.empty()) return out;
-	for (const XZ &p : lot_on_land(state_->catalog.growth.shapes, state_->roads, rect)) out.push_back(Vector3(float(p.x), state_->terrain.height_at(float(p.x), float(p.z)), float(p.z)));
+	for (const LotPoint &p : lot_on_land(state_->roads, rect)) out.push_back(Vector3(float(p.x), state_->terrain.height_at(float(p.x), float(p.z)), float(p.z)));
 	return out;
 }
 
 // A lot's point by the streets and the other lots (lotSnapper): `apart`, when finite, the corner being dragged.
 Vector3 CityCore::lot_snap_point(const Vector3 &p, double reach, const Vector3 &apart) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
-	const XZ from = { apart.x, apart.z };
-	const LotSnap hit = lot_snap(state_->catalog.growth.shapes, state_->lot_book, state_->roads, { p.x, p.z }, reach, 0, apart.is_finite() ? &from : nullptr);
+	const LotPoint from = { apart.x, apart.z };
+	const LotSnap hit = lot_snap(state_->lot_book, state_->roads, { p.x, p.z }, reach, 0, apart.is_finite() ? &from : nullptr);
 	return Vector3(float(hit.p.x), state_->terrain.height_at(float(hit.p.x), float(hit.p.z)), float(hit.p.z));
 }
 
@@ -147,7 +141,7 @@ int CityCore::lot_at(const Vector3 &p) {
 Array CityCore::lots() {
 	Array out;
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
-	for (const PlayerLot &l : state_->lot_book.all()) {
+	for (const PlayerLot &l : state_->lot_book.lots) {
 		Dictionary d;
 		d["id"] = l.id;
 		d["zone"] = l.zone;
@@ -161,7 +155,7 @@ Array CityCore::lots() {
 PackedVector3Array CityCore::lot_cut_lines(int id, int kind, int parts, const Vector3 &a, const Vector3 &b) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const PlayerLot *l = state_->lot_book.find(id);
-	return l ? on_ground(*state_, cut_lines(state_->catalog.growth.shapes, l->corners, cut_of(kind, parts, a, b))) : PackedVector3Array();
+	return l ? on_ground(*state_, cut_lines(l->corners, cut_of(kind, parts, a, b))) : PackedVector3Array();
 }
 
 } // namespace city

@@ -3,15 +3,13 @@
 
 #include "core/grid.h"
 #include "render/agents/people_renderer.h"
-#include "render/data_reader.h"
-#include "render/surface_data.h"
 
 #include <godot_cpp/classes/rendering_server.hpp>
 
 #include <algorithm>
 #include <cmath>
 #include <cstring>
-#include <unordered_set>
+#include <limits>
 
 using namespace godot;
 
@@ -19,9 +17,12 @@ namespace city {
 
 namespace {
 constexpr float HALF = 0.5f;
-constexpr int RGB_BITS = 8, RECT_INTS = 4; // a line's colour shifted over its alpha byte; a rectangle's four ints
-constexpr uint32_t OPAQUE = 0xFFu; // that alpha byte
-constexpr uint64_t HASH_START = 14695981039346656037ull, HASH_STEP = 1099511628211ull; // FNV-1a, 64 bits: its offset basis and prime
+constexpr int RGB_BITS = 8, RECT_INTS = 4;
+constexpr uint32_t OPAQUE = 0xFFu;
+constexpr uint64_t HASH_START = 14695981039346656037ull, HASH_STEP = 1099511628211ull;
+
+int64_t track_key(int id) { return int64_t(id) * 2; }
+int64_t stop_key(int id) { return int64_t(id) * 2 + 1; }
 
 template <typename T>
 void mix(uint64_t &h, const T &v) {
@@ -57,22 +58,13 @@ uint64_t signature_of(const CityState &s, const TransitStop &q) {
 	return h;
 }
 
-// `mesh` made again of `surfaces` and shown by `instance` (made the first time); none when there is no surface.
-void remake(OwnedMesh &mesh, RID &instance, const TypedArray<Dictionary> &surfaces, const RID &scenario) {
-	RenderingServer *rs = RenderingServer::get_singleton();
-	OwnedMesh next = OwnedMesh::of(surfaces.is_empty() ? RID() : create_mesh(surfaces));
-	if (next.valid()) {
-		if (instance.is_valid()) rs->instance_set_base(instance, next.rid);
-		else instance = rs->instance_create2(next.rid, scenario);
-	}
-	if (instance.is_valid()) rs->instance_set_visible(instance, next.valid());
-	if (next.valid()) mesh = std::move(next); // the old one goes after the instance left it
+// Each surface's material, in the order they were added.
+void add_surface(RenderingServer *rs, const RID &mesh, const MeshBuilder &mb, const RID &material, int &surface) {
+	if (mb.empty()) return;
+	mb.commit_to(mesh);
+	rs->mesh_surface_set_material(mesh, surface++, material);
 }
 } // namespace
-
-TransitRenderer::TransitRenderer() {
-	queue_.hand_one = [this](Built &b) { hand(b); };
-}
 
 bool TransitRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	reset();
@@ -82,22 +74,16 @@ bool TransitRenderer::init(const RenderContext &ctx, PackedStringArray &errors) 
 	for (int i = 0; i < TRANSIT_XRAY_LAYERS; i++) xray_[i] = ctx.material((std::string("transit_xray_") + std::to_string(i)).c_str(), errors);
 	const Dictionary t = ctx.table("transit", errors);
 	if (!errors.is_empty() || !look_.read(t, errors)) return false;
-	const int64_t before = errors.size();
-	look_.kerb = ctx.catalog->furniture.sidewalk.height_m;
-	const DataValue table = DataReader{ errors, "transit.json" }.at(t);
-	radius_ = table["radius_m"].f();
-	if (errors.size() != before) return false;
-	preview_look_ = look_;
-	for (const auto &[part, opacity] : look_.preview) {
-		preview_look_.parts[size_t(part)].colour.a = opacity;
-		preview_look_.parts[size_t(part)].glass = opacity < 1;
-	}
+	look_.kerb = Dictionary(Dictionary(ctx.table("streets", errors))["heights"])["sidewalk"];
+	radius_ = t["radius_m"];
+	per_frame_ = t["items_per_frame"];
 	TransitMeshes car;
-	transit_box(car, look_, look_.car_part, Vector3(0, look_.car_up, 0), V2(0, 1), look_.car);
-	TypedArray<Dictionary> surfaces;
-	add_surface(surfaces, car.solid, material_);
+	transit_box(car, look_, look_.part("car"), Vector3(0, look_.car_up, 0), V2(0, 1), look_.car);
+	RenderingServer *rs = RenderingServer::get_singleton();
 	car_.reset();
-	if (!surfaces.is_empty()) car_.rid = create_mesh(surfaces);
+	car_.rid = rs->mesh_create();
+	int surface = 0;
+	add_surface(rs, car_.rid, car.solid, material_, surface);
 	return true;
 }
 
@@ -115,28 +101,27 @@ void TransitRenderer::reset() {
 		for (Piece &p : e.second.pieces) drop(p);
 	items_.clear();
 	queue_.clear();
-	drop(laid_.piece);
-	drop(leg_.piece);
-	laid_.key.clear();
-	leg_.key.clear();
+	drop(preview_);
 	cars_.free();
 	plan_seen_ = ~uint64_t(0);
-	pending_ = drawn_cars_ = 0;
+	drawn_cars_ = 0;
+}
+
+void TransitRenderer::want(int64_t key, Item &item) {
+	if (item.waiting) return;
+	item.waiting = true;
+	queue_.push_back(key);
 }
 
 void TransitRenderer::touch(const std::vector<int64_t> &chunks) {
 	if (chunks.empty() || items_.empty()) return;
 	const std::unordered_set<int64_t> changed(chunks.begin(), chunks.end());
 	for (auto &e : items_) {
-		const Item &it = e.second;
-		if (!it.drawn) { // its box is not known yet: a result on its way may be of the city before this change, so it is asked again
-			if (queue_.revs.busy(e.first)) want(e.first);
-			continue;
-		}
+		Item &it = e.second;
 		bool met = false;
 		for (float x = it.x0; x <= it.x1 + CHUNK && !met; x += CHUNK)
 			for (float z = it.z0; z <= it.z1 + CHUNK && !met; z += CHUNK) met = changed.count(chunk_of(std::min(x, it.x1), std::min(z, it.z1))) > 0;
-		if (met) want(e.first);
+		if (met) want(e.first, it);
 	}
 }
 
@@ -157,7 +142,7 @@ void TransitRenderer::see_plan(const CityState &s) {
 		Item &it = items_[key];
 		if (it.signature == signature) return;
 		it.signature = signature;
-		want(key);
+		want(key, it);
 	};
 	for (const RailTrack &t : s.transit.tracks) seen(track_key(t.id), signature_of(t));
 	for (const TransitStop &q : s.transit.stops) seen(stop_key(q.id), signature_of(s, q));
@@ -167,64 +152,78 @@ void TransitRenderer::see_plan(const CityState &s) {
 			continue;
 		}
 		for (Piece &p : e->second.pieces) drop(p);
-		queue_.drop(e->first); // a result on its way is retired when it lands
 		e = items_.erase(e);
 	}
 }
 
-// A baked item shown in place of what stood for it: its pieces' meshes swapped, their instances made, its box known.
-void TransitRenderer::hand(Built &b) {
-	const auto at = items_.find(b.key);
-	if (at == items_.end()) return;
-	Item &item = at->second;
+int64_t TransitRenderer::draw(const TransitMeshes &m, Piece &out) {
 	RenderingServer *rs = RenderingServer::get_singleton();
-	for (size_t i = b.meshes.size(); i < item.pieces.size(); i++) drop(item.pieces[i]);
-	item.pieces.resize(b.meshes.size());
-	for (size_t i = 0; i < b.meshes.size(); i++) {
-		Piece &p = item.pieces[i];
-		drop(p);
-		p.mesh = std::move(b.meshes[i].first);
-		p.cut = std::move(b.meshes[i].second);
-		if (p.mesh.valid()) p.instance = rs->instance_create2(p.mesh.rid, scenario_);
-		if (!p.cut.valid()) continue;
-		p.cut_instance = rs->instance_create2(p.cut.rid, scenario_);
-		rs->instance_geometry_set_cast_shadows_setting(p.cut_instance, RenderingServer::SHADOW_CASTING_SETTING_OFF);
-		rs->instance_set_visible(p.cut_instance, xray_on_);
+	drop(out);
+	int64_t bytes = m.solid.bytes() + m.glass.bytes();
+	for (const MeshBuilder &x : m.xray) bytes += x.bytes();
+	if (!m.solid.empty() || !m.glass.empty()) {
+		out.mesh.rid = rs->mesh_create();
+		int surface = 0;
+		add_surface(rs, out.mesh.rid, m.solid, material_, surface);
+		add_surface(rs, out.mesh.rid, m.glass, glass_, surface);
+		out.instance = rs->instance_create2(out.mesh.rid, scenario_);
 	}
-	item.x0 = b.x0;
-	item.z0 = b.z0;
-	item.x1 = b.x1;
-	item.z1 = b.z1;
-	item.drawn = true;
+	int surface = 0;
+	for (int i = 0; i < TRANSIT_XRAY_LAYERS; i++) {
+		if (m.xray[i].empty()) continue;
+		if (!out.cut.valid()) out.cut.rid = rs->mesh_create();
+		add_surface(rs, out.cut.rid, m.xray[i], xray_[i], surface);
+	}
+	if (!out.cut.valid()) return bytes;
+	out.cut_instance = rs->instance_create2(out.cut.rid, scenario_);
+	rs->instance_geometry_set_cast_shadows_setting(out.cut_instance, RenderingServer::SHADOW_CASTING_SETTING_OFF);
+	rs->instance_set_visible(out.cut_instance, xray_on_);
+	return bytes;
 }
 
-void TransitRenderer::offer(const CityState &s, const Vector3 &cam, std::vector<FrameAdmission::Unit> &out) {
-	pending_ = 0;
-	if (!material_.is_valid() || !s.jobs) return;
+int64_t TransitRenderer::build(const CityState &s, int64_t key, Item &item) {
+	std::vector<TransitMeshes> parts;
+	item.x0 = item.z0 = std::numeric_limits<float>::max();
+	item.x1 = item.z1 = std::numeric_limits<float>::lowest();
+	auto reach = [&](const V2 &p, float pad) {
+		item.x0 = std::min(item.x0, p.x - pad);
+		item.z0 = std::min(item.z0, p.y - pad);
+		item.x1 = std::max(item.x1, p.x + pad);
+		item.z1 = std::max(item.z1, p.y + pad);
+	};
+	const int id = int(key / 2);
+	if (key % 2 == 0) {
+		for (const RailTrack &t : s.transit.tracks) {
+			if (t.id != id) continue;
+			transit_track_parts(s, look_, t, parts);
+			for (const V2 &p : t.points) reach(p, look_.ballast.wide);
+		}
+	} else if (const TransitStop *q = s.transit.stop(id)) {
+		parts.resize(1);
+		transit_stop_parts(s, look_, *q, parts[0]);
+		reach(q->at, CHUNK * HALF);
+	}
+	for (size_t i = parts.size(); i < item.pieces.size(); i++) drop(item.pieces[i]);
+	item.pieces.resize(parts.size());
+	int64_t bytes = 0;
+	for (size_t i = 0; i < parts.size(); i++) bytes += draw(parts[i], item.pieces[i]);
+	return bytes;
+}
+
+void TransitRenderer::sync(const CityState &s, FrameAdmission &f) {
+	if (!material_.is_valid()) return;
 	if (s.transit_revision != plan_seen_) {
 		plan_seen_ = s.transit_revision;
 		see_plan(s);
 	}
-	for (int64_t key : queue_.revs.wanted()) {
-		if (queue_.revs.busy(key)) continue; // asked again when its result lands
-		const auto at = items_.find(key);
-		if (at == items_.end()) continue;
-		const Item &item = at->second;
-		// an item not drawn yet is a hole in the plan (rank 0); one drawn is made again by its distance
-		const float d = item.drawn ? std::hypot((item.x0 + item.x1) * HALF - cam.x, (item.z0 + item.z1) * HALF - cam.z) : 0.f;
-		pending_++;
-		out.push_back(FrameAdmission::Unit{ item.drawn ? 1 : 0, d, 1, [this, &s, key, d]() {
-					   pending_--;
-					   submit(s, key, d);
-				   } });
+	for (int n = 0; n < per_frame_ && !queue_.empty() && f.due(); n++) {
+		const int64_t key = queue_.front();
+		queue_.pop_front();
+		const auto it = items_.find(key);
+		if (it == items_.end()) continue;
+		it->second.waiting = false;
+		f.upload.charge(build(s, key, it->second));
 	}
-}
-
-int TransitRenderer::drawn_items() const {
-	int n = 0;
-	for (const auto &e : items_)
-		n += std::any_of(e.second.pieces.begin(), e.second.pieces.end(), [](const Piece &p) { return p.mesh.valid() || p.cut.valid(); }) ? 1 : 0;
-	return n;
 }
 
 void TransitRenderer::set_xray(bool on) {
@@ -236,42 +235,19 @@ void TransitRenderer::set_xray(bool on) {
 			if (p.cut_instance.is_valid()) rs->instance_set_visible(p.cut_instance, on);
 }
 
-// Into the piece's own meshes and instances: made the first time, cleared and filled again after; an empty one hidden.
-void TransitRenderer::refill(const TransitMeshes &m, Piece &out) {
-	TypedArray<Dictionary> solid, cut;
-	add_surface(solid, m.solid, material_);
-	add_surface(solid, m.glass, glass_);
-	remake(out.mesh, out.instance, solid, scenario_);
-	for (int i = 0; i < TRANSIT_XRAY_LAYERS; i++) add_surface(cut, m.xray[i], xray_[i]);
-	remake(out.cut, out.cut_instance, cut, scenario_); // the run being laid shows its cut: the tool that lays it is on
-	if (out.cut_instance.is_valid()) RenderingServer::get_singleton()->instance_geometry_set_cast_shadows_setting(out.cut_instance, RenderingServer::SHADOW_CASTING_SETTING_OFF);
-}
-
-void TransitRenderer::sketch(const CityState &s, const std::vector<V2> &points, TransitMode mode, Sketch &out) {
-	std::vector<int64_t> key{ int64_t(mode) };
-	for (const V2 &p : points) {
-		key.push_back(int64_t(std::llround(p.x / preview_look_.preview_step)));
-		key.push_back(int64_t(std::llround(p.y / preview_look_.preview_step)));
-	}
-	if (key == out.key) return;
-	out.key = std::move(key);
-	TransitMeshes m;
-	if (points.size() >= 2) {
-		RailTrack run;
-		run.mode = mode;
-		run.points = points;
-		transit_track_whole(s, preview_look_, run, m);
-	}
-	if (points.size() >= 2 || out.piece.mesh.valid()) refill(m, out.piece);
-}
-
-// A track's pieces are each a length's own (transit_track_whole): what is laid and the length to the pointer drawn apart are the run
-// drawn whole, and a move of the pointer writes only the last. The pointer's own picture: drawn here, by the caller that holds the map.
 void TransitRenderer::set_preview(const CityState &s, const std::vector<V2> &points, TransitMode mode) {
-	if (!material_.is_valid()) return;
-	const size_t n = points.size();
-	sketch(s, n >= 2 ? std::vector<V2>(points.begin(), points.end() - 1) : std::vector<V2>(), mode, laid_);
-	sketch(s, n >= 2 ? std::vector<V2>(points.end() - 2, points.end()) : std::vector<V2>(), mode, leg_);
+	drop(preview_);
+	if (points.size() < 2 || !material_.is_valid()) return;
+	RailTrack run;
+	run.mode = mode;
+	run.points = points;
+	std::vector<TransitMeshes> parts;
+	TransitLook one = look_; // the run being laid is one mesh
+	one.run = std::numeric_limits<float>::max();
+	transit_track_parts(s, one, run, parts);
+	if (parts.empty()) return;
+	draw(parts[0], preview_);
+	if (preview_.cut_instance.is_valid()) RenderingServer::get_singleton()->instance_set_visible(preview_.cut_instance, true);
 }
 
 void TransitRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSample &at) {
@@ -289,7 +265,7 @@ void TransitRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseS
 		drawn_cars_++;
 	}
 	const AABB box(Vector3(cam.x - radius_, cam.y - AABB_HALF_H, cam.z - radius_), Vector3(radius_ * 2, AABB_HALF_H * 2, radius_ * 2));
-	cars_.set(scenario_, car_.rid, buf, box, true, LAYER_VEHICLES);
+	cars_.set(scenario_, car_.rid, RID(), buf, box, true, LAYER_VEHICLES);
 }
 
 } // namespace city

@@ -101,17 +101,16 @@ describe('C++ graph', async () => {
       .filter((f) => f.rule === 'scattered-writes').map((f) => f.message).sort();
     const world = 'native/src/sim/state/world.h#World';
     const tree = scattered(world);
-    // each write from outside the owner, on the code that writes (reset_from_panel, in ui), naming the state it writes
     assert.deepEqual(tree, [
-      'reset_from_panel writes Fleet::total (owned by native/src/sim) from native/src/ui; 1 owner(s) outside write it: native/src/ui',
-      'reset_from_panel writes Letter::code (owned by native/src/sim/state) from native/src/ui; 1 owner(s) outside write it: native/src/ui',
-      'reset_from_panel writes World::money (owned by native/src/sim/state) from native/src/ui; 1 owner(s) outside write it: native/src/ui',
+      'Fleet::total (owned by native/src/sim) is written from 1 other owner(s): native/src/ui',
+      'Letter::code (owned by native/src/sim/state) is written from 1 other owner(s): native/src/ui',
+      'World::money (owned by native/src/sim/state) is written from 1 other owner(s): native/src/ui',
     ], 'Counter::n, held by sim but written only by its own Counter::bump (core), is not scattered');
     assert.ok(kinds('native/src/core/counter.h#Counter::bump', 'native/src/core/counter.h#Counter::n').includes('write'));
     const channel = runAudit(ir, { ...options, stateRoot: world, channels: ['native/src/sim/state/world.h#Mailbox'] }).findings
-      .filter((f) => f.rule === 'scattered-writes').map((f) => f.message);
-    assert.ok(channel.length > 0 && !channel.some((m) => m.includes('writes Letter::code')), 'what a channel holds is the channel');
-    assert.ok(scattered(null).some((m) => m.includes('writes Tally::count')), 'without a root, a held value is owned by the folder declaring it');
+      .filter((f) => f.rule === 'scattered-writes').map((f) => f.unit);
+    assert.ok(!channel.includes('native/src/sim/state/world.h#Letter::code'), 'what a channel holds is the channel');
+    assert.ok(scattered(null).some((m) => m.startsWith('Tally::count')), 'without a root, a held value is owned by the folder declaring it');
     const missing = runAudit(ir, { ...options, stateRoot: 'native/src/sim/state/world.h#Nothing' });
     assert.match(missing.rules.find((r) => r.id === 'scattered-writes')!.skipped ?? '', /is not a unit of the graph/);
   });

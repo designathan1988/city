@@ -4,7 +4,6 @@
 #pragma once
 
 #include <godot_cpp/classes/object.hpp>
-#include "sim/commands/nature_commands.h"
 
 namespace city {
 
@@ -36,10 +35,9 @@ public:
 	godot::Dictionary paint_path(const godot::PackedVector3Array &points, float radius, float strength, float hardness, int kind);
 	godot::Dictionary tree_path(const godot::PackedVector3Array &points, float radius, int mode, int kind, const godot::Dictionary &brush);
 	godot::Dictionary element_path(const godot::PackedVector3Array &points, float radius, int kind, const godot::Dictionary &brush, bool erase);
-	godot::Array effects_near(const godot::Vector3 &p, float reach) const;
+	godot::Array effects_near(const godot::Vector3 &p, float reach, int first_effect) const;
 	godot::Dictionary set_biome(int region);
 	godot::Dictionary landscape() const;
-	godot::Dictionary cloud(int id) const; // one cloud as landscape() lists it; empty when there is none by that id
 	int64_t sky_revision() const;
 	// The render's fields as RenderWorld::sync last took them in: read-only, with the revision that says a new one is in.
 	godot::Dictionary fog_field() const;
@@ -47,9 +45,6 @@ public:
 	godot::Dictionary canyon_field() const;
 	int64_t canyon_revision() const;
 	godot::Dictionary shore_field() const;
-	int64_t shore_revision() const;
-	godot::Dictionary ecology_field() const;
-	int64_t ecology_revision() const;
 
 protected:
 	static void _bind_methods();

@@ -1,6 +1,5 @@
 // The fallen, drawn (body_renderer.h).
 #include "render/agents/body_renderer.h"
-#include "render/surface_data.h"
 
 #include <godot_cpp/classes/image.hpp>
 #include <godot_cpp/classes/rendering_server.hpp>
@@ -15,6 +14,8 @@ namespace city {
 namespace {
 constexpr int MOST_BODIES = 64; // past it the oldest goes: a row of the texture each
 constexpr int TEXELS_A_BONE = 3, FLOATS_A_TEXEL = 4, FLOATS_A_BONE = TEXELS_A_BONE * FLOATS_A_TEXEL;
+constexpr float STEP_S = 1.f / 60.f;
+constexpr int STEPS_MOST = 4;
 constexpr float CHARRED_MARK = 1.f;
 constexpr float GET_UP_S = 1.7f, RISE_SHARE_MOST = 0.7f, RISE_TO_CROUCH = 0.45f; // how long getting up takes, at most of the time down; and the blend's part of it
 const Vector3 AXIS_X(1, 0, 0), AXIS_Y(0, 1, 0), AXIS_Z(0, 0, 1);
@@ -26,8 +27,7 @@ Transform3D rows_to_transform(const float *r) {
 }
 } // namespace
 
-bool BodyRenderer::init(const RenderContext &ctx, const PeopleAsset &asset, const RagdollShape &law, PackedStringArray &errors) {
-	law_ = &law;
+bool BodyRenderer::init(const RenderContext &ctx, const PeopleAsset &asset, PackedStringArray &errors) {
 	asset_ = &asset;
 	scenario_ = ctx.scenario;
 	material_ = ctx.material_objects.get("people_body", Variant());
@@ -58,9 +58,7 @@ void BodyRenderer::make_ready() {
 	rs->material_set_param(material_->get_rid(), "alpha_test", asset.variations.front().alpha_test);
 	layers_.resize(asset.variations.size());
 	for (size_t v = 0; v < layers_.size(); v++) {
-		OwnedMesh skin; // the near level made again with this material: a mesh carries its materials (surface_data.h)
-		skin.rid = mesh_of_arrays(asset.variations[v].lods.front(), material_->get_rid());
-		layers_[v].init_owned(scenario_, std::move(skin), MOST_BODIES, true); // the bones place the skin
+		layers_[v].init_owned(scenario_, asset.variations[v].lods.front(), material_->get_rid(), MOST_BODIES, true); // the bones place the skin
 		layers_[v].count(0);
 	}
 }
@@ -79,8 +77,8 @@ void BodyRenderer::release() {
 	texture_ = RID();
 }
 
-uint32_t BodyRenderer::add(const BodySpec &spec) {
-	if (!asset_ || spec.variation >= int(asset_->variations.size())) return 0;
+void BodyRenderer::add(const BodySpec &spec) {
+	if (!asset_ || spec.variation >= int(asset_->variations.size())) return;
 	make_ready();
 	if (free_slots_.empty()) {
 		free_slots_.push_back(bodies_.front().slot);
@@ -94,7 +92,6 @@ uint32_t BodyRenderer::add(const BodySpec &spec) {
 	b.floor = spec.at.y;
 	b.lost = spec.lost;
 	b.charred = spec.charred;
-	b.writhes = spec.writhes;
 	const Vector3 front(std::cos(spec.heading), 0, std::sin(spec.heading));
 	Basis stands_b;
 	stands_b.set_columns(AXIS_Y.cross(front), AXIS_Y, front);
@@ -107,7 +104,7 @@ uint32_t BodyRenderer::add(const BodySpec &spec) {
 	Vector3 joints[RAGDOLL_JOINTS];
 	const float *rest = asset_->variations[size_t(spec.variation)].joints;
 	for (int j = 0; j < RAGDOLL_JOINTS; j++) joints[j] = b.base[size_t(asset_->joint_bone[size_t(j)])].xform(Vector3(rest[j * 3], rest[j * 3 + 1], rest[j * 3 + 2]));
-	b.doll.begin(*law_, joints, spec.velocity, spec.tip, spec.scatter, rng_);
+	b.doll.begin(joints, spec.velocity, spec.tip, spec.scatter, rng_);
 	b.doll.set_walls(spec.walls);
 	b.stands = stands;
 	if (spec.rises) b.rise_s = std::min(GET_UP_S, spec.life_s * RISE_SHARE_MOST);
@@ -115,17 +112,6 @@ uint32_t BodyRenderer::add(const BodySpec &spec) {
 	for (Transform3D &t : b.stood) t = t.affine_inverse();
 	pose(b);
 	layers_dirty_ = true;
-	b.serial = ++next_serial_;
-	return b.serial;
-}
-
-bool BodyRenderer::joint(uint32_t serial, int particle, Vector3 &at) const {
-	for (const Body &b : bodies_)
-		if (b.serial == serial) {
-			at = b.doll.point(particle);
-			return true;
-		}
-	return false;
 }
 
 // The rows of its bones, and its box: a vertex is its bones' bind -> world rows applied to it, weighted to one (people_look.gdshaderinc
@@ -210,26 +196,18 @@ void BodyRenderer::bound_layers() {
 }
 
 void BodyRenderer::update(float dt, const Ragdoll::Ground &ground) {
-	const RagdollShape &K = *law_;
-	clock_ = std::min(clock_ + dt, K.step_s * float(K.steps_most));
-	const int steps = int(clock_ / K.step_s);
-	clock_ -= float(steps) * K.step_s;
+	clock_ = std::min(clock_ + dt, STEP_S * float(STEPS_MOST));
+	const int steps = int(clock_ / STEP_S);
+	clock_ -= float(steps) * STEP_S;
 	for (Body &b : bodies_) {
 		b.left -= dt;
 		if (b.left <= b.rise_s && b.rise_s > 0.f) {
 			rise(b);
 			continue;
 		}
-		if (b.writhes) { // down for good and hurt: once it has come to rest, it writhes where it lies (Ragdoll::writhe)
-			if (b.writhe_t < 0.f && b.doll.asleep()) b.writhe_t = 0.f;
-			if (b.writhe_t >= 0.f) {
-				b.writhe_t += dt;
-				b.doll.writhe(b.writhe_t, dt);
-			}
-		}
 		if (b.doll.asleep() || steps == 0) continue;
 		const float floor = b.floor;
-		for (int k = 0; k < steps; k++) b.doll.step(K.step_s, [&](float x, float z) { return std::max(ground(x, z), floor); });
+		for (int k = 0; k < steps; k++) b.doll.step(STEP_S, [&](float x, float z) { return std::max(ground(x, z), floor); });
 		pose(b);
 	}
 	const auto gone = std::remove_if(bodies_.begin(), bodies_.end(), [this](const Body &b) {
@@ -249,17 +227,8 @@ void BodyRenderer::update(float dt, const Ragdoll::Ground &ground) {
 	rows_dirty_ = false;
 }
 
-// The bodies still falling: not yet come to rest. One that writhes where it lies (hurt and down for good) has landed: it is awake
-// for as long as it writhes, and counted here it kept "no body moving" from ever being true while anybody lay hurt.
 int BodyRenderer::moving() const {
-	return int(std::count_if(bodies_.begin(), bodies_.end(), [](const Body &b) { return !b.doll.asleep() && b.writhe_t < 0.f; }));
-}
-
-Array BodyRenderer::falling() const {
-	Array out;
-	for (const Body &b : bodies_)
-		if (!b.doll.asleep() && b.writhe_t < 0.f) out.push_back(Array::make(b.doll.pelvis(), b.doll.fastest_ms(), b.left));
-	return out;
+	return int(std::count_if(bodies_.begin(), bodies_.end(), [](const Body &b) { return !b.doll.asleep(); }));
 }
 
 } // namespace city

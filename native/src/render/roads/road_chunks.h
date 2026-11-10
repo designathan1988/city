@@ -1,16 +1,10 @@
-// What the road chunks and the road layers share (render/roads/road_renderer.h, road_layer.h, ground_seam_layer.h): one mesh a
-// chunk, its instance and its material; `Extra` what a chunk's result carries besides its surface (mesh_queue.h), handed over with
-// it by `adopt_extra` and let go with the chunk by `drop_extra`.
+// What the road chunks and the verge chunks share (render/roads/road_renderer.h, verge_renderer.h): one mesh a chunk, its
+// instance and its material.
 #pragma once
 
-#include "core/grid.h"
 #include "render/mesh_queue.h"
-#include "render/render_layers.h"
 #include "render/rs_util.h"
 
-#include <godot_cpp/classes/rendering_server.hpp>
-
-#include <algorithm>
 #include <unordered_map>
 
 namespace city {
@@ -19,48 +13,17 @@ namespace city {
 // (a segment is drawn whole by the chunk of its middle, and reaches past it).
 godot::AABB chunk_bounds(int64_t key, float size, const godot::AABB &emitted);
 
-template <typename Extra>
-class RoadChunksOf : public MeshQueueOf<Extra> {
+class RoadChunks : public MeshQueue {
 public:
-	using Built = BuiltMeshOf<Extra>;
 	// Everything drawn: its chunks, one instance and one draw call each, what they hold and the heaviest one's bytes.
 	struct Count {
 		int64_t chunks = 0, largest = 0;
 		MeshCount all;
 	};
-	void reset() {
-		this->clear_queue();
-		for (auto &kv : chunks_) kv.second.surface.free();
-		chunks_.clear();
-		revision_++;
-		forget_extras();
-	}
-	void drop_chunk(int64_t key) {
-		this->forget(key);
-		auto it = chunks_.find(key);
-		if (it == chunks_.end()) return;
-		it->second.surface.free();
-		chunks_.erase(it);
-		revision_++;
-		drop_extra(key);
-	}
-	Count count() const {
-		Count n;
-		for (const auto &kv : chunks_) {
-			const MeshCount &m = kv.second.made;
-			if (m.triangles == 0) continue;
-			n.chunks++;
-			n.all.triangles += m.triangles;
-			n.all.vertices += m.vertices;
-			n.all.bytes += m.bytes;
-			n.largest = std::max(n.largest, m.bytes);
-		}
-		return n;
-	}
-	void draw(bool on) { // for the cost probes: what a frame costs without these chunks
-		drawn_ = on;
-		for (auto &kv : chunks_) kv.second.surface.visible(on && kv.second.made.triangles > 0);
-	}
+	void reset();
+	void drop_chunk(int64_t key);
+	Count count() const;
+	void draw(bool on); // for the cost probes: what a frame costs without these chunks
 	uint64_t revision() const { return revision_; } // moves when a chunk comes or goes
 	template <typename F>
 	void each_standing(F &&fn) const {
@@ -68,22 +31,9 @@ public:
 	}
 
 protected:
-	void commit_one(Built &b) override {
-		Chunk &c = chunks_[b.key];
-		const bool any = b.mesh.valid();
-		c.surface.adopt(scenario_, casts_, b.mesh.release(), LAYER_ROADS); // made with material_ (MeshQueueOf::surface_material_)
-		if (any) godot::RenderingServer::get_singleton()->instance_set_custom_aabb(c.surface.inst, chunk_bounds(b.key, CHUNK, b.bounds));
-		c.surface.visible(any && drawn_);
-		c.made = b.count;
-		revision_++;
-		adopt_extra(b);
-	}
-	// What a layer does with a chunk's extra as its mesh is handed over, as the chunk goes, and when every chunk goes.
-	virtual void adopt_extra(Built &) {}
-	virtual void drop_extra(int64_t) {}
-	virtual void forget_extras() {}
+	void commit_one(BuiltMesh &b) override;
 	godot::RID scenario_, material_;
-	bool casts_ = false; // the road and the ground beside it lie on the ground: only a structure stands to throw a shadow
+	bool casts_ = false; // the road and its verge lie on the ground: only a structure stands to throw a shadow
 
 private:
 	struct Chunk {
@@ -94,7 +44,5 @@ private:
 	bool drawn_ = true;
 	uint64_t revision_ = 1;
 };
-
-using RoadChunks = RoadChunksOf<NoExtra>;
 
 } // namespace city

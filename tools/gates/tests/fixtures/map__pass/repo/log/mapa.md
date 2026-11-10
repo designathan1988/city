@@ -1,4 +1,4 @@
 <!-- MAP:START -->
-`tools/a.py` A, which writes `dist/a.zip`.
+`tools/a.py` A.
 `tools/sub/**` all.
 <!-- MAP:END -->

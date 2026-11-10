@@ -90,8 +90,6 @@ Dictionary who_touches(const TrafficState &t, float touch) {
 
 Array CityProbes::people_clips() const { return render_->people_clips(); }
 
-godot::Dictionary CityProbes::people_card() const { return render_->people_card(); }
-
 bool CityProbes::show_people_clip(const String &name) { return render_->show_people_clip(name); }
 
 // The doors the walkers know, and the sidewalks they stand on.
@@ -118,7 +116,7 @@ static void census_doors(const CityState &s, Dictionary &d) {
 	d["arrived"] = t.ped_arrived;
 }
 
-static constexpr const char *ACT_NAMES[int(PedAct::COUNT)] = { "", "talk", "listen", "look", "phone", "headphones", "bag", "crouch", "photo", "laugh", "angry", "argue" };
+static constexpr const char *ACT_NAMES[int(PedAct::COUNT)] = { "", "talk", "listen", "look", "phone", "headphones", "bag", "crouch", "photo" };
 
 Dictionary CityProbes::people_census(const Vector3 &at, float radius) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
@@ -198,7 +196,8 @@ Dictionary CityProbes::people_census(const Vector3 &at, float radius) {
 
 void CityProbes::set_city_hour(float hour) {
 	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
-	state_->clock.set_hour(double(hour));
+	CityClock &c = state_->clock;
+	c.day_shift = double(hour) * MINUTES_PER_HOUR - c.minutes.load();
 }
 
 } // namespace city

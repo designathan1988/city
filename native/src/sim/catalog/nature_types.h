@@ -56,7 +56,6 @@ struct PaintKindDef {
 struct PaintDef {
 	int max_tiles = 0; // tiles of the map a save may hold
 	float strength_scale = 0, min_strength = 0, land_rim = 0, rock_reach = 0;
-	float rock_rim = 0; // the share of a landform rock's dab its falloff takes: flat to the cliff's foot
 	std::vector<int> landform_rock; // kind index of mesa, canyon, escarpment, sugarloaf
 	std::vector<PaintKindDef> kinds;
 };
@@ -83,7 +82,7 @@ constexpr int BIOMES = int(Biome::COUNT);
 	X(dense_deep_from) X(dense_deep_to) X(dense_deep_share) X(dense_patch_from) X(dense_patch_to) X(dense_patch_share) \
 	X(rupestre_ridge) X(rupestre_sandstone) X(cerrado_floor) X(ridge_altitude_m) X(patch_altitude_m) X(varzea_water_near_m) \
 	X(varzea_water_far_m) X(varzea_valley) X(caatinga_ridge) X(capao_patch_from) X(capao_patch_to) X(capao_deep_from) \
-	X(capao_deep_to) X(capao_riparian) X(pampa_ridge) X(pampa_basalt) X(low_valley_base) X(low_valley) X(low_ridge_from) \
+	X(capao_deep_to) X(capao_riparian) X(pampa_ridge) X(low_valley_base) X(low_valley) X(low_ridge_from) \
 	X(low_ridge_to) X(low_water_near_m) X(low_water_far_m) X(cordilheira_patch_from) X(cordilheira_patch_to) X(cordilheira_low) \
 	X(pantanal_riparian) X(pantanal_rest) X(ragged_base) X(ragged_span) X(shrub_base) X(shrub_span)
 
@@ -103,14 +102,12 @@ struct EcologyDef {
 	int mean_cells = 0;
 	float canopy_wood = 0, trees_wood = 0, emergent_wood = 0; // how each stratum makes a wood (tree_place field)
 	int default_biome = 0;
-	int sandstone_surface = 0, basalt_surface = 0; // the painted ground (PaintCell::surface) that is sandstone, basalt: the site's rock
 };
 
 // The element brush: how many a map keeps, how many a dab lays, the area its density is per, how small one may be and how
 // many kinds there are (nature.json "elements").
 struct ElementDef {
 	int max_items = 0, max_per_dab = 0, kinds = 0;
-	int first_effect = 0; // the kinds before it are things laid on the ground (cover.json elements.props), from it effects (render/element_effects.gd)
 	float area_m2 = 1, least_size_m = 0;
 };
 

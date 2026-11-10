@@ -1,13 +1,8 @@
 // Shared steps of the road commands (Roadcraft construction/execute.ts splitSeg, anchorNode, clearAndConform).
 #include "sim/commands/road_edit.h"
 
-#include "sim/commands/edit_journal.h"
-#include "sim/commands/street_journal.h"
 #include "sim/commands/road_grade_sync.h"
-#include "core/plane_geometry.h"
-#include "sim/roads/junction.h"
 #include "sim/roads/street_furniture.h"
-#include "sim/street/footway.h"
 #include "sim/street/street_names.h"
 #include "sim/state/city_state.h"
 
@@ -21,6 +16,7 @@ namespace {
 constexpr double STILL_THERE_M = 0.5; // execute.ts stillThere: the point is still on the segment, away from its ends
 constexpr double CLEAR_STEP_M = 2; // clearAndConform samples the centreline every 2 m
 constexpr double CLEAR_SLACK_M = 0.3; // the lot rectangle grown by the half width minus this
+constexpr double STREET_MARK_PAD_M = 40; // what the player places stands on a segment within this (the widest street's footway)
 
 bool still_there(const CityState &s, int seg, double x, double z) {
 	const RoadNetwork &net = s.roads;
@@ -118,12 +114,13 @@ void mark_paint(CityState &s, const int rect[4]) {
 void mark_furniture(CityState &s, int seg) {
 	const RoadSegment &g = s.roads.segs[size_t(seg)];
 	s.log.furniture_segs.push_back(seg);
-	for_chunks(g.minx, g.minz, g.maxx, g.maxz, [&](int64_t key) { s.log.road_chunks.push_back(key); });
+	for (int j = int(std::floor(g.minz / CHUNK)); j <= int(std::floor(g.maxz / CHUNK)); j++)
+		for (int i = int(std::floor(g.minx / CHUNK)); i <= int(std::floor(g.maxx / CHUNK)); i++) s.log.road_chunks.push_back(cell_key(i, j));
 }
 
 void mark_street(CityState &s, double x, double z) {
 	s.log.prop_chunks.push_back(chunk_of(float(x), float(z)));
-	const double r = footway_reach(s.roads, s.catalog.furniture.items.stand_reach_m); // the segments whose footway it may stand on
+	const double r = STREET_MARK_PAD_M;
 	s.roads.for_segments_near(x - r, z - r, x + r, z + r, [&](int seg) { s.log.furniture_segs.push_back(seg); });
 }
 
@@ -131,38 +128,6 @@ void settle_network(CityState &s) {
 	s.roads.settle_shapes();
 	sync_grade(s); // the heights of what the edit changed (its plates included), and the ground under them
 	settle_name_plates(s.street, s.roads, s.log); // the streets' names stand on their corners: the shapes and heights above
-}
-
-void clear_bulbs(CityState &s) {
-	const RoadNetwork &net = s.roads;
-	const Tuning &tn = s.catalog.tune;
-	std::vector<int> nodes = s.log.net_nodes;
-	ChangeLog::dedup(nodes);
-	std::vector<int> items, poles;
-	for (int n : nodes) {
-		if (n < 0 || n >= int(net.nodes.size())) continue;
-		const RoadNode &nd = net.nodes[size_t(n)];
-		if (!nd.alive || !nd.bulb || nd.segs.size() != 1) continue;
-		const RoadSegment &g = net.segs[size_t(nd.segs[0])];
-		const Arm a = arm_of(g.q, net.profile_of(nd.segs[0]), g.a == n ? 0 : 1);
-		BulbLine line; // the bulb's carriageway: what stands on its footway stays
-		if (!bulb_line(tn, a.asph_left, a.asph_right, 0, tn.junction_cap_steps, tn.junction_cap_steps / 2, line)) continue;
-		std::vector<XZ> ring;
-		const XZ node{ nd.x, nd.z }, d{ a.dx, a.dz }, left{ a.dz, -a.dx };
-		for (const XZ &p : line.pts) ring.push_back(node + d * p.x + left * p.z);
-		const auto inside = [&](float x, float z) { return inside_ring(ring, double(x), double(z), [](const XZ &p) { return std::make_pair(p.x, p.z); }); };
-		const float reach = float(bulb_reach(tn)), x0 = float(nd.x) - reach, z0 = float(nd.z) - reach, x1 = float(nd.x) + reach, z1 = float(nd.z) + reach;
-		s.street.poles_in(x0, z0, x1, z1, [&](int id) {
-			if (inside(s.street.poles.items[size_t(id)].x, s.street.poles.items[size_t(id)].z)) poles.push_back(id);
-		});
-		s.street.items_in(x0, z0, x1, z1, [&](int id) {
-			if (inside(s.street.items.items[size_t(id)].x, s.street.items.items[size_t(id)].z)) items.push_back(id);
-		});
-	}
-	ChangeLog::dedup(poles);
-	ChangeLog::dedup(items);
-	for (int id : poles) j_remove_pole(s, id);
-	for (int id : items) j_remove_item(s, id);
 }
 
 void finish_command(CityState &s, bool recorded) {

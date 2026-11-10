@@ -9,6 +9,7 @@ const FILTER_LEVELS := [Viewport.ANISOTROPY_DISABLED, Viewport.ANISOTROPY_2X, Vi
 	Viewport.ANISOTROPY_16X]
 ## Screen pixels per inch of a 1:1 display (Windows' 96 DPI): what a device pixel ratio is measured against.
 const BASE_DPI := 96.0
+const MS_PER_S := 1000.0
 ## Four cascades tile an atlas of twice their side (PSSM 4 splits).
 const ATLAS_PER_CASCADE := 2
 const COMPATIBILITY := "gl_compatibility"
@@ -41,11 +42,10 @@ static func level_of(preset: String, hardware: String) -> String:
 static func budget_ms(fps_limit: int) -> float:
 	var hz := DisplayServer.screen_get_refresh_rate()
 	var fps := float(fps_limit) if fps_limit > 0 else (hz if hz > 0.0 else float(DataTables.game("settings").frame_cap.max_fps))
-	return Units.MS_PER_S / fps
+	return MS_PER_S / fps
 
 
-## The tier's fields with the kept choices over them; `shadows` kept 0 is no shadows, ao and smaa force their pass, `temporal`
-## its filter (TEMPORAL_*).
+## The tier's fields with the kept choices over them; `shadows` kept 0 is no shadows, ao and smaa force their pass.
 static func merged(tier: Dictionary, kept: Dictionary) -> Dictionary:
 	var out := tier.duplicate()
 	if kept.has("shadows"):
@@ -56,8 +56,6 @@ static func merged(tier: Dictionary, kept: Dictionary) -> Dictionary:
 		out.ssao = kept.ssao
 	if kept.has("smaa"):
 		out.smaa = kept.smaa
-	if kept.has("temporal"):
-		out.temporal = int(kept.temporal)
 	return out
 
 
@@ -72,7 +70,7 @@ static func resolved(level: String, kept: Dictionary, optimizations: Dictionary)
 	return q
 
 
-## The 3D scale the tier's pixel ratio cap allows on this screen (1 on a display at BASE_DPI).
+## The 3D scale the tier's pixel ratio cap allows on this screen (1 on a display of one pixel per CSS pixel).
 static func cap_scale(pixel_ratio: float) -> float:
 	var dpi := float(DisplayServer.screen_get_dpi())
 	var ratio := maxf(1.0, dpi / BASE_DPI)
@@ -99,13 +97,13 @@ static func cabin_reach(q: Dictionary, height_px: float) -> float:
 ## Everything a tier sets, live.
 static func apply(q: Dictionary, world: CityWorld, viewport: Viewport, dynamic_scale: float) -> void:
 	world.daylight.shadows_on = q.shadows
+	world.daylight.shadow_least_m = q.shadow_least_m
 	RenderingServer.directional_shadow_atlas_set_size(int(q.shadow_px) * ATLAS_PER_CASCADE, true)
 	RenderingServer.directional_soft_shadow_filter_set_quality(int(q.shadow_filter) as RenderingServer.ShadowQuality)
-	world.daylight.cascades.shadow_side_px = float(q.shadow_px)
-	world.daylight.cascades.set_filter(DataTables.game("settings").filter_radius[int(q.shadow_filter)])
+	world.daylight.shadow_side_px = float(q.shadow_px)
+	world.daylight.set_filter(DataTables.game("settings").filter_radius[int(q.shadow_filter)])
+	var smaa: bool = q.smaa and has_smaa()
 	var temporal: int = int(q.temporal) if has_temporal() else TEMPORAL_NONE
-	# one filter resolves the edges: where the frames do (TAA, FSR2), SMAA over them was a second full-screen pass that only softened
-	var smaa: bool = q.smaa and has_smaa() and temporal == TEMPORAL_NONE
 	viewport.msaa_3d = Viewport.MSAA_DISABLED if temporal == TEMPORAL_FSR2 else MSAA_MODES[maxi(int(q.msaa), FALLBACK_AA if q.smaa and not smaa else 0)]
 	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_SMAA if smaa else Viewport.SCREEN_SPACE_AA_DISABLED
 	viewport.anisotropic_filtering_level = FILTER_LEVELS[int(q.anisotropy)]
@@ -116,7 +114,7 @@ static func apply(q: Dictionary, world: CityWorld, viewport: Viewport, dynamic_s
 	viewport.texture_mipmap_bias = float(q.temporal_mip_bias) if temporal != TEMPORAL_NONE else 0.0
 	viewport.scaling_3d_scale = cap_scale(q.pixel_ratio) * dynamic_scale
 	world.occlusion.turn(q.ssao)
-	world.sky.clouds_drawn = q.sky_clouds
+	world.sky.clouds_drawn = q.sky_clouds or q.cloud_shadows
 	world.environment.ssil_enabled = bool(q.ssil) # the light the walls and the street throw back on each other: shade stops being one flat blue
 	CityStore.dispatch(&"set_detail_scale", [sqrt(float(q.triangle_share))])
 	var lamps: bool = world.contact.available() # a mesh takes 8 lights in Compatibility

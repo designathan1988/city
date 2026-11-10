@@ -82,7 +82,8 @@ void Heightfield::recompose(int x0, int z0, int x1, int z1) {
 
 void Heightfield::compose_rect(const SampleRect &r) {
 	const int x0 = r.x0, z0 = r.z0, x1 = r.x1, z1 = r.z1;
-	final_h.to_base(x0, z0, x1, z1, base_q);
+	for (int z = z0; z <= z1; z++)
+		for (int x = x0; x <= x1; x++) final_h[size_t(z) * N + x] = dequant(base_q[size_t(z) * N + x]);
 	std::vector<float> best_w(size_t(x1 - x0 + 1) * (z1 - z0 + 1), 0.f), best_d(best_w.size(), 0.f); // best_d: how far the road that shaped it; 0: none has, a tie stays with what stands
 	float minx = x_of(x0), maxx = x_of(x1), minz = x_of(z0), maxz = x_of(z1);
 	std::vector<int> ids;
@@ -127,8 +128,6 @@ const std::vector<NearSample> &Heightfield::nearest(const std::vector<float> &pt
 		if (d < n.d) {
 			n.d = d;
 			n.surface = lerpf(a[1], b[1], t);
-			// left of a -> b: the frame's left is (dz, -dx) of its way (render/roads seg_frame)
-			n.side = (x_of(x) - a[0]) * (b[2] - a[2]) - (x_of(z) - a[2]) * (b[0] - a[0]) >= 0.f ? 1 : 0;
 		}
 	};
 	// The samples of a convex region: half-planes n.p <= c and, if `disc`, the circle of radius r around `o`.
@@ -206,7 +205,7 @@ void Heightfield::apply_modifier(const TerrainModifier &m, int x0, int z0, int x
 			const size_t li = size_t(z - z0) * W + (x - x0);
 			if (w > best_w[li]) {
 				best_w[li] = w;
-				final_h.put(x, z, lerpf(base, n.surface - tune->terrain_road_sink_m, w), base_q); // terrain sits just under the road surface
+				final_h[gi] = lerpf(base, n.surface - tune->terrain_road_sink_m, w); // terrain sits just under the road surface
 			}
 		}
 }

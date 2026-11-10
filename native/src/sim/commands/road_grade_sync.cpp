@@ -2,7 +2,6 @@
 #include "sim/commands/road_grade_sync.h"
 
 #include "sim/commands/road_edit.h"
-#include "sim/roads/junction.h"
 #include "sim/state/city_state.h"
 #include "sim/terrain/road_shape.h"
 
@@ -23,13 +22,6 @@ GroundAt ground_of(const Heightfield &t) {
 	};
 }
 
-// How high a road's outermost strip stands over its deck: a raised footway or kerb a kerb's rise, anything else (a flush footway,
-// a shoulder, a lane, a barrier's foot) the deck itself.
-float paving_rise(const Strip &s) {
-	const bool raised = (s.kind == StripKind::SIDEWALK || s.kind == StripKind::CURB) && !s.flush;
-	return raised ? FOOTWAY_RISE_M : 0.f;
-}
-
 // The shape the ground takes under segment s: its stations along the curve at their solved heights.
 RoadShape shape_of(const RoadNetwork &net, int s) {
 	const RoadSegment &g = net.segs[size_t(s)];
@@ -37,18 +29,6 @@ RoadShape shape_of(const RoadNetwork &net, int s) {
 	RoadShape r;
 	r.alive = true;
 	r.half = p.half;
-	const Profile &pr = net.profile_of(s);
-	r.edge = pr.half();
-	if (!pr.edges.empty()) {
-		r.rise[0] = paving_rise(pr.edges.front().strip);
-		r.rise[1] = paving_rise(pr.edges.back().strip);
-	}
-	for (int k = 0; k < 2; k++) { // a dead end's paving stops at the node; a bulb's and a junction's cover the node out to its outline
-		r.cut[k] = p.ends[k] == RoadEndKind::CUT;
-		if (r.cut[k]) continue;
-		const std::vector<double> ring = node_outline(net, k == 0 ? g.a : g.b);
-		for (size_t i = 0; i + 1 < ring.size(); i += 2) r.outline[k].push_back(V2(float(ring[i]), float(ring[i + 1])));
-	}
 	r.kind = uint8_t((is_raised(p.structure) ? SHAPE_RAISED : 0) | (is_sunken(p.structure) ? SHAPE_SUNKEN : 0) |
 			(p.manual ? SHAPE_MANUAL : 0) | (p.walls ? SHAPE_WALLS : 0));
 	r.minx = r.minz = BIG;
@@ -60,11 +40,6 @@ RoadShape shape_of(const RoadNetwork &net, int s) {
 		r.minx = std::min(r.minx, float(x)); r.maxx = std::max(r.maxx, float(x));
 		r.minz = std::min(r.minz, float(z)); r.maxz = std::max(r.maxz, float(z));
 	}
-	for (const std::vector<V2> &ring : r.outline) // a corner's point may stand past the road's own strip
-		for (const V2 &v : ring) {
-			r.minx = std::min(r.minx, v.x); r.maxx = std::max(r.maxx, v.x);
-			r.minz = std::min(r.minz, v.y); r.maxz = std::max(r.maxz, v.y);
-		}
 	const float reach = p.half + road_shape_reach();
 	r.minx -= reach; r.minz -= reach; r.maxx += reach; r.maxz += reach;
 	return r;

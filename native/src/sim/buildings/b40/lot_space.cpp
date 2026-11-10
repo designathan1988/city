@@ -8,7 +8,9 @@
 namespace city::b40 {
 
 namespace {
-// A bay key's bytes (types.h), and the side of a volume that faces the back.
+constexpr float LOT_CLEAR_IN = 0.15f; // a part keeps this far inside the lot's edge (the boundary stands on it)
+constexpr float PART_GAP = 0.05f; // two solid parts never touch
+constexpr float COVER_H = 0.06f, COVER_STEP = 0.02f; // ground covers' thickness and the lift of each later layer
 constexpr uint32_t BYTE = 0xff;
 constexpr int STOREY_SHIFT = KEY_STOREY_SHIFT, SIDE_SHIFT = KEY_SIDE_SHIFT, BACK_SIDE = 2;
 constexpr float HALF = 0.5f;
@@ -72,11 +74,9 @@ void LotSpace::add(Element k, const Rect &rc, float h, int p, int facing, float 
 }
 
 void LotSpace::cover(const Rect &rc, const char *name, int layer) {
-	const LotSpaceShape &K = data.shapes.space;
-	const LotPartShape &P = data.shapes.parts;
 	Rect c{ std::max(rc.x0, L), std::max(rc.y0, 0.f), std::min(rc.x1, R), std::min(rc.y1, D) };
 	if (c.empty() || full()) return;
-	add(EL_SURFACE, c, P.cover_h + K.cover_step * float(layer), paint(name), FACE_STREET, 0, 0);
+	add(EL_SURFACE, c, COVER_H + COVER_STEP * float(layer), paint(name), FACE_STREET, 0, 0);
 }
 
 bool LotSpace::on_building(const Rect &rc) const {
@@ -86,12 +86,11 @@ bool LotSpace::on_building(const Rect &rc) const {
 }
 
 bool LotSpace::clear(const Rect &rc) const {
-	const LotSpaceShape &K = data.shapes.space;
-	if (rc.x0 < L + K.lot_clear_in || rc.x1 > R - K.lot_clear_in || rc.y0 < K.lot_clear_in || rc.y1 > D - K.lot_clear_in) return false;
+	if (rc.x0 < L + LOT_CLEAR_IN || rc.x1 > R - LOT_CLEAR_IN || rc.y0 < LOT_CLEAR_IN || rc.y1 > D - LOT_CLEAR_IN) return false;
 	if (on_building(rc)) return false;
 	for (const Rect &w : ways_)
 		if (w.meets(rc)) return false;
-	Rect g = rc.grown(K.part_gap);
+	Rect g = rc.grown(PART_GAP);
 	for (const Rect &s : solid_)
 		if (s.meets(g)) return false;
 	return true;

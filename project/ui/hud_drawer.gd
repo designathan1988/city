@@ -14,19 +14,19 @@ const DENSITY_FIRST := 0
 
 ## The panel at the bottom left that holds the tool's options (the HUD makes it).
 @export var options_panel: PanelContainer
-var options: VBoxContainer
+@onready var options: VBoxContainer
 ## The road tool's options: its rows stand in the options panel while the road tool is in hand.
-var road_options := RoadOptions.new()
-var category: Dictionary = {}
-var catalog: RoadCatalog
-var _editor: RoadProfilePanel
-var _head: HBoxContainer
-var strip: Container
-var _tabs: Dictionary = {}
+@onready var road_options := RoadOptions.new()
+@onready var category: Dictionary = {}
+@onready var catalog: RoadCatalog
+@onready var _editor: RoadProfilePanel
+@onready var _head: HBoxContainer
+@onready var strip: Container
+@onready var _tabs: Dictionary = {}
 @onready var tools: ToolController = get_tree().get_first_node_in_group(&"tools")
-var _profile_ids: Dictionary = {}
-var _tab: Dictionary = {}
-var density := DENSITY_FIRST
+@onready var _profile_ids: Dictionary = {}
+@onready var _tab: Dictionary = {}
+@onready var density := DENSITY_FIRST
 
 
 func _ready() -> void:
@@ -49,7 +49,7 @@ func _ready() -> void:
 	var col := HudWidgets.vbox(self)
 	_head = HudWidgets.hbox(col)
 	strip = HudWidgets.hbox(col, &"Pad")
-	for p in CityStore.cached(&"road_profiles"):
+	for p in CityStore.query(&"road_profiles"):
 		_profile_ids[p.id] = p.index
 	catalog = RoadCatalog.new()
 	catalog.minimum_size_changed.connect(DrawerStrips.fit.bind(self))

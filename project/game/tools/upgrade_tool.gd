@@ -9,7 +9,7 @@ var _half := 0.0
 
 func enter() -> void:
 	profile = params.get("profile", 0)
-	for p in CityStore.cached(&"road_profiles"):
+	for p in CityStore.query(&"road_profiles"):
 		if p.index == profile:
 			_half = p.width * 0.5
 	ctl.hint.emit("", true)
@@ -37,5 +37,5 @@ func click(p: Vector3) -> void:
 		return
 	var text := Formatters.count_label("ui.insp.upgraded", r.segments) # the money joins it with " · ": no full stop
 	if r.money != 0:
-		text = "%s · %s" % [text, Formatters.format_cost(r.money)]
+		text += " · " + Formatters.format_cost(r.money)
 	ctl.hint.emit(text, true)

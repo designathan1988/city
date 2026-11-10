@@ -35,16 +35,16 @@ enum FloorFinish : uint8_t { FLOOR_WOOD, FLOOR_STONE, FLOOR_PORCELAIN };
 float lift_at(const Body &b, int level, float x, float y);
 // A flight between two blocks that meet at floors of their own (a split level), rising along the line they share.
 struct LevelFlight {
-	V2 foot, top;
+	Point2 foot, top;
 	float z0 = 0, z1 = 0, width = 0;
 	int risers = 0;
 };
-std::vector<LevelFlight> level_flights(const Data &data, const Body &b, int level);
+std::vector<LevelFlight> level_flights(const Body &b, int level);
 
 // What the record of function `fn` (BuildingFn) with this body is for; a shop's own trade comes from its seed.
 Purpose purpose_of(const Body &b, int fn, uint32_t seed);
 // A storey's floor: stone where people pass, wood or porcelain at home, one kind for the whole building.
-FloorFinish floor_finish(const Data &data, Purpose p, int level, uint32_t seed);
+FloorFinish floor_finish(Purpose p, int level, uint32_t seed);
 
 class Interior {
 public:

@@ -2,6 +2,7 @@
 class_name BodyEdits
 extends RefCounted
 
+const CM := 0.01
 
 
 static func run(spec: Dictionary, value: int, picked: Dictionary, paint_scope: int) -> Dictionary:
@@ -14,21 +15,21 @@ static func run(spec: Dictionary, value: int, picked: Dictionary, paint_scope: i
 		"split":
 			return CityStore.dispatch(&"body_split", [id, vol, picked.level])
 		"setback":
-			return CityStore.dispatch(&"body_add_setback", [id, vol, CityStore.constants.setback_by_module, value]) # value: its storeys
+			return CityStore.dispatch(&"body_add_setback", [id, vol, -1.0, 2])
 		"plan":
 			return CityStore.dispatch(&"body_set_plan", [id, vol, value])
 		"block_mode":
 			return CityStore.dispatch(&"body_set_block_mode", [id, vol, value])
 		"extrude":
-			return _on_face(&"body_extrude_face", picked, value * Units.M_PER_CM)
+			return _on_face(&"body_extrude_face", picked, value * CM)
 		"extrude_block":
-			return _on_face(&"body_extrude_block", picked, value * Units.M_PER_CM)
+			return _on_face(&"body_extrude_block", picked, value * CM)
 		"inset_face":
-			return _on_face(&"body_inset_face", picked, value * Units.M_PER_CM)
+			return _on_face(&"body_inset_face", picked, value * CM)
 		"offset":
-			return CityStore.dispatch(&"body_offset", [id, vol, value * Units.M_PER_CM])
+			return CityStore.dispatch(&"body_offset", [id, vol, value * CM])
 		"bevel":
-			return CityStore.dispatch(&"body_bevel", [id, vol, value * Units.M_PER_CM, CityStore.constants.every_corner])
+			return CityStore.dispatch(&"body_bevel", [id, vol, value * CM, -1])
 		"copy_block":
 			return CityStore.dispatch(&"body_copy_block", [id, vol])
 		"detach":
@@ -40,16 +41,10 @@ static func run(spec: Dictionary, value: int, picked: Dictionary, paint_scope: i
 		"relief":
 			if picked.side < 0 or picked.bay < 0:
 				return {"ok": false, "error": "building.relief.pickFace"}
-			var region := {"side": picked.side, "bay0": picked.bay, "bay1": picked.bay, "storey0": picked.storey, "storey1": picked.storey, "depth": value * Units.M_PER_CM}
+			var region := {"side": picked.side, "bay0": picked.bay, "bay1": picked.bay, "storey0": picked.storey, "storey1": picked.storey, "depth": value * CM}
 			return CityStore.dispatch(&"body_set_relief", [id, vol, region, true])
 		"remove":
 			return CityStore.dispatch(&"body_remove_volume", [id, vol])
-		"duplicate":
-			return CityStore.dispatch(&"building_duplicate", [id])
-		"mirror":
-			return CityStore.dispatch(&"body_mirror", [id])
-		"union":
-			return CityStore.dispatch(&"body_union", [id, vol])
 		"pattern":
 			return CityStore.dispatch(&"body_set_pattern", [id, vol, -1, -1, value])
 		"roof":

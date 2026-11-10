@@ -17,7 +17,7 @@ namespace city {
 using namespace b40;
 
 namespace {
-constexpr float SIZE_EPS = 1e-3f; // a size this near another is the same
+constexpr float SIZE_EPS = 1e-3f;
 
 // Whether `o` reaches `v`'s floor: by levels at the same height, by metres on a split level.
 bool bears(const Body &b, const Volume &o, const Volume &v) {
@@ -40,17 +40,15 @@ bool within(float x, double lo, double hi) { return x >= float(lo) - SIZE_EPS &&
 
 std::string body_problem(const Tuning &t, const Body &b) {
 	if (b.volumes.empty()) return ""; // an open lot, a square or a park: it has no mass to hold up
-	if (int(b.volumes.size()) > t.build_max_volumes) return "building.problem.size";
+	if (int(b.volumes.size()) > int(t.build_max_volumes)) return "building.problem.size";
 	if (!within(b.ground_h, t.build_min_storey_m, t.build_max_ground_m)) return "building.problem.size";
 	if (!within(b.storey_h, t.build_min_storey_m, t.build_max_storey_m)) return "building.problem.size";
-	for (size_t k = 0; k < b.level_hs.size(); k++) // a level of its own height: within what a ground floor or a storey may be
-		if (b.level_hs[k] > 0 && !within(b.level_hs[k], t.build_min_storey_m, k == 0 ? t.build_max_ground_m : t.build_max_storey_m)) return "building.problem.size";
 	bool on_ground = false;
 	for (const Volume &v : b.volumes) {
 		on_ground = on_ground || v.base == 0;
 		if (!within(v.w, t.build_min_side_m, t.build_max_side_m) || !within(v.d, t.build_min_side_m, t.build_max_side_m))
 			return "building.problem.size";
-		if (v.base < 0 || v.storeys < 1 || v.top() > t.edit_max_floors) return "building.problem.size";
+		if (v.base < 0 || v.storeys < 1 || v.top() > int(t.edit_max_floors)) return "building.problem.size";
 	}
 	if (!on_ground) return "building.problem.footprint";
 	for (const Volume &v : b.volumes)
@@ -70,7 +68,8 @@ EditResult edit_body(CityState &s, int id, const BodyOp &op) {
 		return r;
 	}
 	Building rec = s.buildings.items[id];
-	Body body = *record_body(s.buildings.designs, rec); // a copy: the edit becomes a version of its own
+	Body body;
+	record_body(s.buildings.designs, rec, body);
 	ByteWriter before; // the body's canonical bytes (body_codec.h): an edit that leaves them so changed nothing
 	write_body(before, body);
 	r.error = op(body);

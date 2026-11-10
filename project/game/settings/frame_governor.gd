@@ -57,7 +57,7 @@ class Quality:
 			skip -= 1
 			return ""
 		costs.append(cost_ms)
-		intervals.append(delta_s * Units.MS_PER_S)
+		intervals.append(delta_s * QualityTier.MS_PER_S)
 		if costs.size() < int(cfg.window):
 			return ""
 		var p90 := FrameGovernor._at_percentile(costs, cfg.percentile)

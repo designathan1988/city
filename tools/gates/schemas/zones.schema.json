@@ -11,10 +11,9 @@
      "name_key": { "type": "string" },
      "base": { "type": "integer", "minimum": 0, "maximum": 4 },
      "density": { "type": "integer", "minimum": 0, "maximum": 2 },
-     "building": { "type": "string", "enum": ["house", "flats", "tower", "shop", "office", "works"] },
      "color": { "type": "string", "pattern_prefix": "#" }
     },
-    "required": ["id", "code", "name_key", "base", "density", "building", "color"],
+    "required": ["id", "code", "name_key", "base", "density", "color"],
     "strict": true
    },
    "minItems": 1,

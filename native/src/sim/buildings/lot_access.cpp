@@ -19,6 +19,7 @@ constexpr float OUTSIDE = 2.f; // the grid reaches this far out over the footway
 constexpr float GATE_IN = 2.f; // a gate's way starts this far inside it
 constexpr float LEAD = 1.f; // a bay's way starts this far in front of its open end
 constexpr int FREE_LOOK = 6; // cells looked round a point for a free one
+constexpr float GARAGE_WALL = 0.2f; // a garage's walls (its door side is open)
 constexpr float LOOK_STEP = 0.5f; // cells between two looks along a line of sight
 constexpr float HALF = 0.5f;
 const float NONE = std::numeric_limits<float>::infinity();
@@ -108,9 +109,9 @@ Grid grid_of(const Data &data, const Body &b, float half) {
 	for (const Volume &v : b.volumes) {
 		if (v.base != 0) continue;
 		if (!is_garage(v)) { g.block(v.x - half, v.y - half, v.x + v.w + half, v.y + v.d + half); continue; }
-		g.block(v.x - half, v.y - half, v.x + data.shapes.cars.garage_wall + half, v.y + v.d + half);
-		g.block(v.x + v.w - data.shapes.cars.garage_wall - half, v.y - half, v.x + v.w + half, v.y + v.d + half);
-		g.block(v.x - half, v.y + v.d - data.shapes.cars.garage_wall - half, v.x + v.w + half, v.y + v.d + half);
+		g.block(v.x - half, v.y - half, v.x + GARAGE_WALL + half, v.y + v.d + half);
+		g.block(v.x + v.w - GARAGE_WALL - half, v.y - half, v.x + v.w + half, v.y + v.d + half);
+		g.block(v.x - half, v.y + v.d - GARAGE_WALL - half, v.x + v.w + half, v.y + v.d + half);
 	}
 	for (const LotElement &e : b.elements)
 		if (solid(e, data.lots.car_clear_h)) g.block(e.x - e.w * HALF - half, e.y - e.d * HALF - half, e.x + e.w * HALF + half, e.y + e.d * HALF + half);
@@ -213,16 +214,17 @@ int LotAccess::reached() const {
 	return n;
 }
 
-void street_gates(const RoadNetwork &net, const BuildingRecords &lots, const Data &designs, int sid, std::vector<ArcSpan> gates[2]) {
+void street_gates(const RoadNetwork &net, const BuildingStore &lots, int sid, std::vector<ArcSpan> gates[2]) {
 	const RoadSegment &g = net.segs[size_t(sid)];
 	const TrafficParams &tp = net.cat->traffic;
 	const Profile &p = net.profile_of(sid);
 	const float reach = std::max(p.left, p.right) + tp.kerb_gate_reach_m;
+	Body body;
 	lots.query(g.minx - reach, g.minz - reach, g.maxx + reach, g.maxz + reach, [&](int id) {
 		const Building &rec = lots.items[size_t(id)];
-		const std::shared_ptr<const std::vector<LotElement>> elements = record_elements(designs, rec);
+		record_mass(lots.designs, rec, body);
 		const LotFrame f = lot_frame(rec);
-		for (const LotElement &e : *elements) {
+		for (const LotElement &e : body.elements) {
 			if (e.kind != EL_CAR_GATE) continue;
 			const V2 w = f.at(e.x, e.y);
 			double t, dist, x, z, dx, dz;
@@ -237,9 +239,9 @@ void street_gates(const RoadNetwork &net, const BuildingRecords &lots, const Dat
 	});
 }
 
-void lot_bays(const std::vector<LotElement> &elements, const LotFrame &f, LotAccess &out) {
+void lot_bays(const Body &b, const LotFrame &f, LotAccess &out) {
 	out = LotAccess{};
-	for (const LotElement &e : elements) {
+	for (const LotElement &e : b.elements) {
 		if (e.kind == EL_GATE || e.kind == EL_CAR_GATE) out.gates.push_back({ f.at(e.x, e.y), f.dir(0, 1), e.w, e.kind == EL_CAR_GATE });
 		if (e.kind != EL_STALL && e.kind != EL_DOCK) continue;
 		LotBay bay;
@@ -253,7 +255,7 @@ void lot_bays(const std::vector<LotElement> &elements, const LotFrame &f, LotAcc
 	}
 }
 
-void lot_solids(const Data &data, const Body &b, const LotFrame &f, float headroom, std::vector<std::vector<V2>> &out, std::vector<int> *kinds) {
+void lot_solids(const Data &, const Body &b, const LotFrame &f, float headroom, std::vector<std::vector<V2>> &out, std::vector<int> *kinds) {
 	int kind = -1;
 	auto box = [&](float x0, float y0, float x1, float y1) {
 		out.push_back({ f.at(x0, y0), f.at(x1, y0), f.at(x1, y1), f.at(x0, y1) });
@@ -261,9 +263,9 @@ void lot_solids(const Data &data, const Body &b, const LotFrame &f, float headro
 	};
 	for (const Volume &v : b.volumes) {
 		if (!is_garage(v)) { box(v.x, v.y, v.x + v.w, v.y + v.d); continue; }
-		box(v.x, v.y, v.x + data.shapes.cars.garage_wall, v.y + v.d); // a car drives into a garage: its walls only, the door side open
-		box(v.x + v.w - data.shapes.cars.garage_wall, v.y, v.x + v.w, v.y + v.d);
-		box(v.x, v.y + v.d - data.shapes.cars.garage_wall, v.x + v.w, v.y + v.d);
+		box(v.x, v.y, v.x + GARAGE_WALL, v.y + v.d); // a car drives into a garage: its walls only, the door side open
+		box(v.x + v.w - GARAGE_WALL, v.y, v.x + v.w, v.y + v.d);
+		box(v.x, v.y + v.d - GARAGE_WALL, v.x + v.w, v.y + v.d);
 	}
 	for (const LotElement &e : b.elements) {
 		if (!solid(e, headroom)) continue;
@@ -273,7 +275,7 @@ void lot_solids(const Data &data, const Body &b, const LotFrame &f, float headro
 }
 
 void lot_access(const Data &data, const Body &b, const LotFrame &f, float car_half, float lorry_half, LotAccess &out) {
-	lot_bays(b.elements, f, out);
+	lot_bays(b, f, out);
 	if (out.bays.empty()) return;
 	std::vector<int> of;
 	bool docks = false;

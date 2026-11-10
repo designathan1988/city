@@ -3,7 +3,6 @@
 // The cost still to go is the larger of the paper's two heuristics: round the obstacles for the axle alone, and the Reeds-Shepp
 // length near the goal. Near it a Reeds-Shepp shot is tried, the paper's analytic expansion.
 #include "sim/traffic/way_search.h"
-#include "core/math.h"
 
 #include "sim/traffic/way_body.h"
 #include "sim/traffic/way_space.h"
@@ -23,6 +22,7 @@ namespace city {
 namespace traffic {
 
 namespace {
+constexpr double PI = 3.14159265358979323846, TWO_PI = 2 * PI;
 // The search's two grains (graduated fidelity, way_search.h): its cells this much across and this many headings round, and a step's
 // arc a little longer than a cell's diagonal so a step always leaves its cell. Where the coarse step meets something the fine one is
 // tried (a lorry boxed in by a dock's walls moves on at the fine grain, where the coarse one had stopped).
@@ -34,17 +34,16 @@ struct Grain {
 constexpr int COARSE = WAY_COARSE, FINE = WAY_FINE, GRAIN_COUNT = WAY_GRAINS; // way_space.h
 constexpr int COARSE_HEADINGS = 72; // a heading every 5 degrees
 constexpr int FINE_HEADINGS = 144; // every 2.5
-// each grain's cell (m), headings and step (m): a step of 1.6 cells, over a cell's diagonal, always leaves the cell it starts in
 constexpr Grain GRAINS[GRAIN_COUNT] = { { 0.5, COARSE_HEADINGS, 0.8 }, { 0.25, FINE_HEADINGS, 0.4 } };
 constexpr int COARSE_MOST = 80000, FINE_MOST = 1500000; // the poses a search may expand: at the coarse grain, at any finer
 constexpr int SUBSTEPS = 2; // poses tested along a step
 constexpr double REVERSE_COST = 1.6, SWITCH_COST = 15, STEER_COST = 0.6, STEER_CHANGE_COST = 2; // per metre; a stop and a start; the wheel
 constexpr double H_WEIGHT = 1.4; // a little over one finds a way sooner, a little longer than the shortest
 constexpr double SHOT_REACH = 30, SHOT_NEAR = 8; // shots from every pose this near, from one in SHOT_EVERY as far as the reach
-constexpr int SHOT_EVERY = 8; // one pose in this many tries a shot from beyond SHOT_NEAR
+constexpr int SHOT_EVERY = 8;
 constexpr double SHOT_STEP = 0.25;
 constexpr double CURVATURES[] = { -1, -0.5, 0, 0.5, 1 }; // shares of the tightest
-constexpr double NO_CURVE = 1e-9, HALF = 0.5; // a curvature this near nought is a straight step
+constexpr double NO_CURVE = 1e-9, HALF = 0.5;
 // A pose expanded is charged what it did (units of work, way_search.h), as fitted on every yard and kind of search of the planner's
 // bench (217 of them, the fit's error 8.9 % at the median): 18 for the pose (0.86 µs, its share of the shots with it), one for every
 // LOOKS_PER_WORK cells of clearance its body tests read (0.0065 µs a cell), RS_WORK for every Reeds-Shepp length of its heuristic
@@ -54,9 +53,9 @@ constexpr double NO_CURVE = 1e-9, HALF = 0.5; // a curvature this near nought is
 constexpr int EXPANDED_WORK = 18, LOOKS_PER_WORK = 7, RS_WORK = 35, PAGE_WORK = 37, TABLE_WORK_SHARE = WRITE8_WORK_SHARE / 2;
 
 double wrap(double a) {
-	double r = std::fmod(a, TAU_D);
-	if (r > PI_D) r -= TAU_D;
-	if (r < -PI_D) r += TAU_D;
+	double r = std::fmod(a, TWO_PI);
+	if (r > PI) r -= TWO_PI;
+	if (r < -PI) r += TWO_PI;
 	return r;
 }
 
@@ -111,7 +110,7 @@ bool WaySearch::Run::place_of(const AxlePose &p, int grain, size_t &place) const
 
 int &WaySearch::Run::slot_of(int grain, size_t place, const AxlePose &p) {
 	const int headings = GRAINS[grain].headings;
-	int k = int(std::lround(wrap(p.angle) / TAU_D * headings)) % headings;
+	int k = int(std::lround(wrap(p.angle) / TWO_PI * headings)) % headings;
 	if (k < 0) k += headings;
 	return room_.tables[grain].at(place, k);
 }

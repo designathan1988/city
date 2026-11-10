@@ -32,7 +32,6 @@ struct Placed {
 	Basis lot; // o: middle of the lot front at floor height; e0 lot x, e1 lot y (away from the street), e2 up
 	uint32_t id = 0; // the record seed (bay hashes, roof plant, flat roof pick)
 	float shade = 1; // a building's own shade on its walls
-	float wear = 0; // how run down it looks (wear.h): its streaks and its balconies' things
 	float ground_lo = 0; // lowest ground under the ground volumes, relative to the floor (<= 0)
 	std::function<float(const godot::Vector3 &)> ground; // terrain height under a world point
 	bool coarse = false; // mid level: emit_far draws walls, slabs and parapets; roofs/lot add only the big pieces
@@ -55,12 +54,12 @@ struct Side {
 	Basis f;
 	float length = 0;
 	int side = 0;
-	V2 p0, p1, n;
+	Point2 p0, p1, n;
 };
 
 std::vector<Side> sides_of(const Placed &pl, const Volume &v, float z);
 // True when the plan point (lot frame) lies inside another closed volume standing at `level`.
-bool covered(const Body &b, const Volume &self, int level, V2 p);
+bool covered(const Body &b, const Volume &self, int level, Point2 p);
 Lin wall_lin(const Placed &pl, const Volume &v, int storey, int side);
 Lin trim_lin(const Placed &pl);
 Lin paint_lin(const Paint &p);
@@ -69,7 +68,7 @@ Paint moulding_of(const Placed &pl);
 Paint flat_roof_of(const Placed &pl, const Volume &v); // a flat roof's slab
 // A two-tier band: lower tier 0.45 out from -h/2 to -0.1h, upper tier from -0.1h to +h/2;
 // `flush`: one strip.
-void band(const Placed &pl, Shell &s, const Side &sd, float z, float out, float h, const Lin &lin, int8_t fin, bool flush);
+void band(Shell &s, const Side &sd, float z, float out, float h, const Lin &lin, int8_t fin, bool flush);
 uint32_t bay_hash(int vol, int level, int side, int index, float bx, float by);
 
 // Emitters. `parts` takes the small repeated pieces (frames, railings, louvres, AC units...) drawn only near.
@@ -82,9 +81,9 @@ void emit_roof_plant(Shell &shell, Shell &parts, const Placed &pl, const Volume 
 // A round piece on a roof, standing on (cx, cy) of the frame `b`; `capped`: its top drawn, in `top`.
 void cylinder(Shell &s, const Basis &b, float cx, float cy, float r, float z0, float z1, const Lin &side, const Lin &top, int8_t fin, bool capped = true);
 void emit_lot(Shell &shell, Shell &parts, const Placed &pl);
+// The lot's furniture and ground marks (lot_props.cpp); false for a kind it does not draw. `g`: ground over the floor.
 // A part only the player sets (lot_parts.cpp); false when `e` is not one.
 bool emit_built_part(Shell &shell, const Placed &pl, const LotElement &e, float g, const Lin &lin, int8_t fin);
-// The lot's furniture and ground marks (lot_props.cpp); false for a kind it does not draw. `g`: ground over the floor.
 bool emit_lot_prop(Shell &shell, Shell &parts, const Placed &pl, const LotElement &e, float g, const Lin &lin);
 // A used roof terrace (roof_terrace.cpp) on volume `vol` whose deck is at height z.
 void emit_roof_terrace(Shell &shell, Shell &parts, const Placed &pl, const Volume &v, int vol, float z);

@@ -1,8 +1,7 @@
 // The facade part models, built straight into a mesh in the bay frame: unit models
-// scaled by (sx, sy, sz) along / up / out and centred at (a, h, -depth). Railings with balusters (a balcony's and a roof
-// terrace's), panelled doors, louvred shutters, brise fins, awnings, split AC condensers and porch lamps.
+// scaled by (sx, sy, sz) along / up / out and centred at (a, h, -depth). Railings with balusters, panelled
+// doors, louvred shutters, brise fins, awnings, split AC condensers and porch lamps.
 #include "render/buildings/facade_bay.h"
-#include "core/shader_contracts/buildings.h"
 
 #include "core/math.h"
 
@@ -13,8 +12,15 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
+constexpr float LEAF_Z = -0.2f, LEAF_D = 0.6f, PANEL_W = 0.36f, PANEL_TALL = 0.5f, PANEL_SHORT = 0.3f, PANEL_Y_HI = 0.2f;
+constexpr float PANEL_Y_LO = -0.3f, PANEL_X = 0.24f, PANEL_Z = 0.25f, PANEL_D = 0.35f, HANDLE_X = 0.4f, HANDLE_Y = -0.04f;
+constexpr float DOOR_HANDLE_W = 0.1f, HANDLE_D = 1.6f, HANDLE_Z = 0.9f, PANEL_SHADE = 0.92f;
+constexpr float LOUVRE_T = 0.09f, SLAT_FILL = 0.67f, SLAT_SHADE = 0.85f;
+constexpr int SLATS = 9;
+constexpr int BRISE_FINS = 6;
+constexpr float CANVAS_SLOPE = 0.75f, VALANCE_H = 0.28f, VALANCE_T = 0.025f;
 constexpr float HALF = 0.5f;
-constexpr uint32_t BRASS = 0xb08d57, LAMP_BODY = 0xf1ebdd; // door handles' brass, a wall lamp's body (the source game's)
+constexpr uint32_t BRASS = 0xb08d57, LAMP_BODY = 0xf1ebdd;
 
 Basis centred(const Part &p) { return Basis{ p.f->at(p.a, p.h, -p.depth), p.f->e0, p.f->e1, p.f->e2 }; }
 // Box in unit model coordinates (centre-relative, before scaling).
@@ -27,73 +33,43 @@ void unit_box(Shell &s, const Part &p, float x0, float x1, float y0, float y1, f
 
 void part_box(Shell &s, const Part &p, const Lin &lin, int8_t fin) { unit_box(s, p, -HALF, HALF, -HALF, HALF, -HALF, HALF, lin, fin); }
 
-// Railing: y from 0 to 1 (bottom at the part's h), z from the wall (0) out to 1. Near, its rails and balusters are boxes (the
-// lab's kit.ts railingGeometry: a top rail round three sides, a low rail in front, eleven balusters in front and three a side),
-// each leaving where it is under a pixel (the part bands); from there on, and on the mid level, one card a side whose fragment
-// draws the bars by the share of the pixel they cover (building_card.gdshader). A near card says how far its bars stand from any
-// of its points at most (the railing's diagonal), so the card comes in before the last of them leaves.
-void part_railing(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
+// Railing: y from 0 to 1 (bottom at the part's h), z from the wall (0) out to 1; the bottom rail and the balusters
+// are single front faces (a thin box seen from the street shows only its front).
+void part_railing(Shell &s, const Part &p, const Lin &lin, int8_t) {
 	Basis m{ p.f->at(p.a, p.h, -p.depth), p.f->e0, p.f->e1, p.f->e2 };
 	const float hx = p.sx / 2, z1 = p.sz;
-	const float bars_within = s.veiled ? 0.f : Vector3(p.sx, p.sy, p.sz).length();
-	s.card(m, -hx, hx, 0, p.sy, z1, lin, CARD_RAILING_FRONT, bars_within);
+	s.card(m, -hx, hx, 0, p.sy, z1, lin, CARD_RAILING_FRONT);
 	Basis left{ m.at(-hx, 0, 0), m.e2, m.e1, -m.e0 }, right{ m.at(hx, 0, 0), m.e2, m.e1, m.e0 };
-	s.card(left, 0, z1, 0, p.sy, 0, lin, CARD_RAILING_SIDE, bars_within);
-	s.card(right, 0, z1, 0, p.sy, 0, lin, CARD_RAILING_SIDE, bars_within);
-	if (s.veiled) return;
-	// a box of the unit railing: w, h, d round (x, y, z), x from -0.5 to 0.5, y and z from 0 to 1
-	const auto bar = [&](float w, float h, float d, float x, float y, float z) {
-		s.box(m, (x - w / 2) * p.sx, (x + w / 2) * p.sx, (y - h / 2) * p.sy, (y + h / 2) * p.sy, (z - d / 2) * p.sz, (z + d / 2) * p.sz, lin, fin);
-	};
-	bar(1, RAIL_TOP_H, RAIL_TOP_D, 0, RAIL_TOP_AT, 1);
-	for (const float side : { -HALF, HALF }) bar(RAIL_TOP_D, RAIL_TOP_H, 1, side, RAIL_TOP_AT, HALF);
-	bar(1, RAIL_LOW_H, RAIL_LOW_D, 0, RAIL_LOW_AT, 1);
-	for (int i = 0; i <= RAIL_FRONT_BARS; i++) bar(RAIL_BAR, RAIL_BAR_H, RAIL_BAR, -HALF + float(i) / float(RAIL_FRONT_BARS), HALF, 1);
-	for (int i = 1; i < RAIL_SIDE_BARS; i++)
-		for (const float side : { -HALF, HALF }) bar(RAIL_BAR, RAIL_BAR_H, RAIL_BAR, side, HALF, float(i) / float(RAIL_SIDE_BARS));
+	s.card(left, 0, z1, 0, p.sy, 0, lin, CARD_RAILING_SIDE);
+	s.card(right, 0, z1, 0, p.sy, 0, lin, CARD_RAILING_SIDE);
 }
 
-// A roof terrace's railing along an edge `w` long, `h` high, standing on the plane of `f`: a top rail, a mid rail and posts, as
-// boxes near and one card from where they leave (the same rule as a balcony's).
-void part_roof_railing(Shell &s, const Basis &f, float w, float h, const Lin &lin, int8_t fin) {
-	const float bars_within = s.veiled ? 0.f : Vector2(w, h).length();
-	s.card(f, 0, w, 0, h, 0, lin, CARD_ROOF_RAILING, bars_within);
-	if (s.veiled) return;
-	const float deep = RAIL_TOP_D * HALF; // half a rail's depth each side of the card's plane: a balcony's top rail on a part a metre deep
-	s.box(f, 0, w, (RAIL_TOP_AT - RAIL_TOP_H / 2) * h, (RAIL_TOP_AT + RAIL_TOP_H / 2) * h, -deep, deep, lin, fin);
-	s.box(f, 0, w, (ROOF_RAIL_MID_AT - RAIL_LOW_H / 2) * h, (ROOF_RAIL_MID_AT + RAIL_LOW_H / 2) * h, -deep, deep, lin, fin);
-	for (int i = 0; i * ROOF_RAIL_POSTS < 1; i++) {
-		const float x = (float(i) * ROOF_RAIL_POSTS + ROOF_RAIL_POST_W / 2) * w;
-		s.box(f, x - ROOF_RAIL_POST_W / 2 * w, x + ROOF_RAIL_POST_W / 2 * w, 0, RAIL_TOP_AT * h, -deep, deep, lin, fin);
-	}
-}
-
-void part_door(const PartModelsLook &K, Shell &s, const Part &p, const Lin &lin, int8_t fin) {
+void part_door(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
 	Basis m = centred(p);
 	// the front faces of the leaf and its panel: the handle starts on the leaf's face
-	const float leaf_z = (K.leaf_z + K.leaf_d / 2) * p.sz, panel_z = (K.panel_z + K.panel_d / 2) * p.sz;
+	const float leaf_z = (LEAF_Z + LEAF_D / 2) * p.sz, panel_z = (PANEL_Z + PANEL_D / 2) * p.sz;
 	s.rect(m, -p.sx / 2, p.sx / 2, -p.sy / 2, p.sy / 2, leaf_z, lin, fin);
-	for (float x : { -K.panel_x, K.panel_x }) {
-		s.rect(m, (x - K.panel_w / 2) * p.sx, (x + K.panel_w / 2) * p.sx, (K.panel_y_hi - K.panel_tall / 2) * p.sy, (K.panel_y_hi + K.panel_tall / 2) * p.sy, panel_z, lin * K.panel_shade, fin);
-		s.rect(m, (x - K.panel_w / 2) * p.sx, (x + K.panel_w / 2) * p.sx, (K.panel_y_lo - K.panel_short / 2) * p.sy, (K.panel_y_lo + K.panel_short / 2) * p.sy, panel_z, lin * K.panel_shade, fin);
+	for (float x : { -PANEL_X, PANEL_X }) {
+		s.rect(m, (x - PANEL_W / 2) * p.sx, (x + PANEL_W / 2) * p.sx, (PANEL_Y_HI - PANEL_TALL / 2) * p.sy, (PANEL_Y_HI + PANEL_TALL / 2) * p.sy, panel_z, lin * PANEL_SHADE, fin);
+		s.rect(m, (x - PANEL_W / 2) * p.sx, (x + PANEL_W / 2) * p.sx, (PANEL_Y_LO - PANEL_SHORT / 2) * p.sy, (PANEL_Y_LO + PANEL_SHORT / 2) * p.sy, panel_z, lin * PANEL_SHADE, fin);
 	}
-	unit_box(s, p, K.handle_x - K.door_handle_w / 2, K.handle_x + K.door_handle_w / 2, K.handle_y - p.look->part_handle_h_m / 2, K.handle_y + p.look->part_handle_h_m / 2, K.handle_z - K.handle_d / 2, K.handle_z + K.handle_d / 2, lin_of(BRASS), FIN_METAL);
+	unit_box(s, p, HANDLE_X - DOOR_HANDLE_W / 2, HANDLE_X + DOOR_HANDLE_W / 2, HANDLE_Y - p.look->part_handle_h_m / 2, HANDLE_Y + p.look->part_handle_h_m / 2, HANDLE_Z - HANDLE_D / 2, HANDLE_Z + HANDLE_D / 2, lin_of(BRASS), FIN_METAL);
 }
 
 // Louvred leaf: stiles, rails and nine slats as front faces, slats tilted out at the bottom.
-void part_louvre(const PartModelsLook &K, Shell &s, const Part &p, const Lin &lin, int8_t fin) {
+void part_louvre(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
 	Basis m = centred(p);
-	float hx = p.sx / 2, hy = p.sy / 2, hz = p.sz / 2, t = K.louvre_t * p.sx;
+	float hx = p.sx / 2, hy = p.sy / 2, hz = p.sz / 2, t = LOUVRE_T * p.sx;
 	s.rect(m, -hx, -hx + t, -hy, hy, hz, lin, fin);
 	s.rect(m, hx - t, hx, -hy, hy, hz, lin, fin);
 	s.rect(m, -hx + t, hx - t, -hy, -hy + t, hz, lin, fin);
 	s.rect(m, -hx + t, hx - t, hy - t, hy, hz, lin, fin);
 	s.rect(m, -hx + t, hx - t, -t / 2, t / 2, hz, lin, fin);
-	float step = (p.sy - 2 * t) / float(K.slats), sh = step * K.slat_fill;
-	for (int i = 0; i < K.slats; i++) {
+	float step = (p.sy - 2 * t) / float(SLATS), sh = step * SLAT_FILL;
+	for (int i = 0; i < SLATS; i++) {
 		float y = -hy + t + (float(i) + HALF) * step;
 		Vector3 a = m.at(-hx + t, y - sh / 2, hz), b = m.at(hx - t, y - sh / 2, hz), c = m.at(hx - t, y + sh / 2, 0), d = m.at(-hx + t, y + sh / 2, 0);
-		s.quad(a, b, c, d, (m.e2 + m.e1).normalized(), lin * K.slat_shade, fin);
+		s.quad(a, b, c, d, (m.e2 + m.e1).normalized(), lin * SLAT_SHADE, fin);
 	}
 }
 
@@ -111,14 +87,14 @@ void part_brise(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
 }
 
 // Awning: canvas falling from the wall (y 0) out to z 1 at slope 0.75, valance under its front edge.
-void part_awning(const PartModelsLook &K, Shell &s, const Part &p, const Lin &lin, int8_t fin) {
+void part_awning(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
 	Basis m{ p.f->at(p.a, p.h, -p.depth), p.f->e0, p.f->e1, p.f->e2 };
-	float drop = K.canvas_slope * p.sz;
+	float drop = CANVAS_SLOPE * p.sz;
 	Vector3 a = m.at(-HALF * p.sx, 0, 0), b = m.at(HALF * p.sx, 0, 0), c = m.at(HALF * p.sx, -drop, p.sz), d = m.at(-HALF * p.sx, -drop, p.sz);
 	Vector3 up = (p.f->e1 * p.sz + p.f->e2 * drop).normalized();
 	s.quad(a, b, c, d, up, lin, fin);
 	s.quad(a, b, c, d, -up, lin * HALF, fin);
-	s.box(m, -HALF * p.sx, HALF * p.sx, -drop - K.valance_h * p.sy, -drop, p.sz - K.valance_t, p.sz, lin, fin, SKIP_NONE);
+	s.box(m, -HALF * p.sx, HALF * p.sx, -drop - VALANCE_H * p.sy, -drop, p.sz - VALANCE_T, p.sz, lin, fin, SKIP_NONE);
 }
 
 void part_lamp(Shell &s, const Part &p) {

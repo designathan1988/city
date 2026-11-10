@@ -28,7 +28,7 @@
       "id": "unsaved_changes",
       "owner": "native/src/sim/state/city_state.h",
       "symbol": "revision",
-      "forbidden_elsewhere": ["\\b(is_dirty|has_changes|dirty_flag)\\b", "\\brevision\\s*!=\\s*\\w*saved_revision\\b"],
+      "forbidden_elsewhere": ["\\b(unsaved|is_dirty|has_changes|dirty_flag)\\b"],
       "scope": ["native/src/", "project/game/", "project/ui/"]
     },
     {
@@ -58,7 +58,7 @@
       "id": "money_format",
       "owner": "project/game/store/formatters.gd",
       "symbol": "format_money",
-      "forbidden_elsewhere": ["\"\\$\"\\s*\\+", "R\\$", "\\.currency\\b"],
+      "forbidden_elsewhere": ["\"\\$\"\\s*\\+", "%\\.2f", "R\\$"],
       "scope": ["project/ui/", "project/game/"]
     },
     {
@@ -67,13 +67,6 @@
       "symbol": "snapshot",
       "forbidden_elsewhere": ["\\bvar\\s+(money|population|residents|happiness|demand|game_time|speed)\\b"],
       "scope": ["project/"]
-    },
-    {
-      "id": "verbatim_text",
-      "owner": "project/ui/hud_widgets.gd",
-      "symbol": "verbatim",
-      "forbidden_elsewhere": ["auto_translate_mode", "AUTO_TRANSLATE_MODE_"],
-      "scope": ["project/ui/", "project/game/"]
     }
   ]
 }

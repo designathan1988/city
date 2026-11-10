@@ -3,7 +3,7 @@
 ## PairCamera; its y is the 4.0's, whose map north is our -z). The plan: {"city": {"map": 0, "seed": 1, "generate": true}, "steps": [...]}; `generate` false opens the
 ## bare land of the map, with no town to make and draw.
 ## Steps: {"setView": [x, y, zoom, azimuth, elevation]} (the 4.0's map and degrees), {"shot": name} (after the world is drawn),
-## {"frames": n}, {"hour": h} (light and clock together), {"dispatch": command, "args": [...]},
+## {"wait": ms}, {"frames": n}, {"hour": h} (light and clock together), {"dispatch": command, "args": [...]},
 ## {"query": name, "args": [...]} (its answer printed), {"key": "Escape"}, {"click": [x, z]}, {"tap": [screen x, y]}, {"control": "what it says"}, {"blastShot": name, "at": s}, {"walker": [zoom, azimuth, elevation]}, {"global": [name, value]} (a shader global: an A/B inside one run, so what else loads the GPU falls on both), {"drag": [[x, z], [x, z]]}.
 ## In args, {"at": [x, z]} is the point of the ground there (what the player's pointer would hit), {"profile": id} the index of
 ## that road class, {"v3": [x, y, z]} a vector.
@@ -14,7 +14,10 @@
 ## Run: godot --path project --resolution 1920x1080 res://tests/visual/look.tscn -- --no-flow --plan=<file> --capture-dir=<dir>
 extends Node3D
 
+const FORGET_FRAMES := 96 # the temporal filter forgets on which frame the last mesh came, which the load on the machine decides
+const JITTER_PHASES := 16 # a common multiple of TAA's 16 and FSR2's 8 at full scale (renderer_scene_render_rd)
 const SETTLE_FRAMES := 4
+const MS_PER_S := 1000.0
 const UNTIL_TIMEOUT_MS := 60000.0
 const TIP_SHORTCUT := " · " # a tip says the name, then the key (HudWidgets)
 
@@ -27,7 +30,6 @@ var failures := 0
 var shots := 0
 var measure: LookMeasure
 var recording := ""
-var frozen := false
 
 
 func _ready() -> void:
@@ -36,7 +38,6 @@ func _ready() -> void:
 			out_dir = arg.trim_prefix("--capture-dir=")
 		if arg.begins_with("--plan="):
 			plan_path = arg.trim_prefix("--plan=")
-	frozen = "--frozen" in OS.get_cmdline_user_args()
 	var plan: Variant = JSON.parse_string(FileAccess.get_file_as_string(plan_path)) if plan_path != "" else null
 	if not plan is Dictionary:
 		push_error("unreadable plan: %s" % plan_path)
@@ -45,8 +46,6 @@ func _ready() -> void:
 	DirAccess.make_dir_recursive_absolute(out_dir)
 	world = CityWorld.new()
 	add_child(world)
-	if frozen: # a temporal filter's history is the frames before the photo, which the machine's speed decides: none here
-		Settings.kept = {"temporal": QualityTier.TEMPORAL_NONE}
 	PairCamera.quality(world, get_viewport())
 	rig = CityCamera.new()
 	add_child(rig)
@@ -57,9 +56,10 @@ func _ready() -> void:
 		return
 	var city: Dictionary = plan.get("city", {})
 	var t0 := Time.get_ticks_msec()
-	CityStore.new_map(int(city.get("map", 0)), int(city.get("seed", 1)), bool(city.get("generate", true)), true)
+	CityStore.new_map(int(city.get("map", 0)), int(city.get("seed", 1)), bool(city.get("generate", true)))
+	CityStore.dispatch(&"set_speed", [0])
 	print("city opened in %d ms" % (Time.get_ticks_msec() - t0))
-	if frozen:
+	if "--frozen" in OS.get_cmdline_user_args():
 		Engine.time_scale = 0.0 # the clock and every delta stand: the same plan gives the same picture, by frames alone
 		world.still_dither()
 	ui = UiDriver.new(rig, get_tree(), out_dir)
@@ -83,18 +83,20 @@ func _step(step: Dictionary) -> void:
 		await PairCamera.stand(rig, ui, ui.ground(v[0], -v[1]), v[3], v[4], v[2])
 	elif step.has("shot"):
 		await CaptureWait.until_drawn(self, SETTLE_FRAMES, step.shot)
-		if frozen:
-			if not await CaptureWait.until_steady(self, step.shot):
-				failures += 1
-			await ui.shot("%02d-%s" % [shots, step.shot], 0)
-		else:
-			await ui.shot("%02d-%s" % [shots, step.shot])
+		if "--frozen" in OS.get_cmdline_user_args():
+			for i in FORGET_FRAMES:
+				await get_tree().process_frame
+		while "--frozen" in OS.get_cmdline_user_args() and Engine.get_frames_drawn() % JITTER_PHASES != 0: # the same step of the temporal filter's jitter, however long the jobs took
+			await get_tree().process_frame
+		await ui.shot("%02d-%s" % [shots, step.shot])
 		shots += 1
 	elif step.has("blastShot"): # at that second of the effects' own clock, with no wait for the world to be drawn
 		while CityStore.query(&"effects_since_blast") < float(step.at):
 			await get_tree().process_frame
 		await ui.shot("%02d-%s" % [shots, step.blastShot], 0)
 		shots += 1
+	elif step.has("wait"):
+		await get_tree().create_timer(float(step.wait) / MS_PER_S).timeout
 	elif step.has("frames"):
 		await ui.frames(int(step.frames))
 	elif step.has("hour"):
@@ -120,7 +122,6 @@ func _step(step: Dictionary) -> void:
 	elif not await _pointer_step(step) and not await _measure_step(step):
 		failures += 1
 		print("FAIL unknown step: ", step)
-
 
 
 ## The steps of the pointer. False: not one of them.

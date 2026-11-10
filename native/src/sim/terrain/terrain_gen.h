@@ -1,12 +1,7 @@
-// The generated land of a new map, Roadcraft's src/jobs/terrainGen.ts: broad hills, a straight canal in from the north
-// (+z) edge, lakes filling the basins of a square grid, ranges along the edges, each shaped by tuning's "land" group.
-// Deterministic from the seed. A seed with FLAT_BIT is a level plain (land_plain_m) without water. A scenic map's land
-// is its own, laid out by hand (scenic_land.h): given one, the generator answers with it instead.
+// The generated land of a new map, Roadcraft's src/jobs/terrainGen.ts: broad hills, a straight canal 300 m in from
+// the north (+z) edge, lakes filling the basins of a 2200 m grid, ranges along the edges. Deterministic from the seed
+// (the same map as the TypeScript game). A seed with FLAT_BIT is a level plain at PLAIN_Y without water.
 #pragma once
-
-#include "sim/catalog/catalog.h"
-#include "sim/terrain/scenic_land.h"
-#include "core/shader_contracts/land.h"
 
 #include <cstdint>
 #include <memory>
@@ -19,14 +14,14 @@ class JobPool;
 
 class TerrainGen {
 public:
-	static constexpr uint32_t FLAT_BIT = 0x80000000U; // a seed's top bit: the land is flat
+	static constexpr uint32_t FLAT_BIT = 0x80000000U;
+	static constexpr double PLAIN_Y = 20;
 	static constexpr double OCEAN_Y = 0; // the sea plane; the visual palette reads the same level
+	static constexpr double MIN_Y = -64, MAX_Y = 400;
+	
+	static constexpr float NO_WATER = -1000.f;
 
-	static constexpr float NO_WATER = TERRAIN_NO_WATER;
-
-	// `authored`: a scenic map's land (null: the land drawn from the seed). The land's shape, its height limits and the water
-	// grid's spacing are `tune`'s, kept as they were when the generator was made.
-	TerrainGen(uint32_t seed, double map_half, const Tuning &tune, const ScenicLand *authored = nullptr);
+	TerrainGen(uint32_t seed, double map_half, double water_spacing);
 	bool flat() const { return (seed_ & FLAT_BIT) != 0; }
 	// Ground height at (x, z): the land cut by the canal's bed.
 	double base_height(double x, double z) const;
@@ -48,11 +43,8 @@ private:
 	};
 	uint32_t seed_;
 	double half_, water_spacing_;
-	Tuning tn_;
-	double canal_reach_ = 0, bed_carve_ = 0; // the canal bed's half width and its cut under the land
 	std::vector<double> course_z_, level_, depth_;
 	std::unordered_map<int64_t, std::unique_ptr<Lake>> lakes_; // null entry: the square has no lake; bounded: a generator lives for one fill
-	std::unique_ptr<ScenicLandField> authored_;
 
 	double course_z() const;
 	bool basin_of(int i, int j, double &x, double &z) const;

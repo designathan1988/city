@@ -22,19 +22,6 @@ export const RUNTIME_INCLUDE = 'core/js_runtime.h';
  */
 export const RANDOM_CONTEXT = { type: 'js::Random &', name: 'rng' } as const;
 
-/**
- * A constant read inside another constant's value is written before every constant is known to be a value or a function
- * made on first use (translator.ts #constantValues decides that over all of them): the read is a mark around the constant's
- * C++ name, resolved once that is known. U+0001 never reaches the C++ text otherwise (literals go through JSON.stringify),
- * so a mark is a read and nothing else: never an enum member or a field of the same name.
- */
-const CONSTANT_MARK = '\u0001';
-const MARKED_READ = new RegExp(`${CONSTANT_MARK}(\\w+)${CONSTANT_MARK}`, 'g');
-export const constantRead = (cpp: string): string => `${CONSTANT_MARK}${cpp}${CONSTANT_MARK}`;
-/** Each marked read as the constant is read: `NAME()` when it is made on first use (`calls`), `NAME` otherwise. */
-export const resolveConstantReads = (text: string, calls: ReadonlySet<string>): string =>
-  text.replace(MARKED_READ, (_, cpp: string) => (calls.has(cpp) ? `${cpp}()` : cpp));
-
 /** Whether an expression is a call of the global Math.random. */
 export function isMathRandom(ts: typeof TS, e: TS.Node): boolean {
   return ts.isCallExpression(e) && ts.isPropertyAccessExpression(e.expression) && ts.isIdentifier(e.expression.expression)
@@ -51,12 +38,6 @@ function narrows(from: CppType, to: CppType): boolean {
 export interface Value {
   readonly code: string;
   readonly type: CppType;
-}
-
-/** The enumeration a place asks for, or one it may leave absent (`style?: BodyStyle`: C++ makes the optional from the member). */
-function enumAsked(want: CppType | undefined): Extract<CppType, { k: 'enum' }> | null {
-  if (want?.k === 'enum') return want;
-  return want?.k === 'optional' && want.of.k === 'enum' ? want.of : null;
 }
 
 const INT_MATH = new Set(['floor', 'ceil', 'trunc']);
@@ -108,8 +89,6 @@ export abstract class ExpressionEmitter {
   /** The unit being planned or written (a function, a constant, an index): what an error belongs to. */
   /** Whether what is being written called a function of the program (a constant that does cannot be constexpr). */
   protected calledFunction = false;
-  /** While the constants' values are written: the constants the one being written reads (each read is a mark, `constantRead`). */
-  protected constantReads: Set<TS.Symbol> | null = null;
   #unit: string | null = null;
   protected get unit(): string | null {
     return this.#unit;
@@ -190,11 +169,7 @@ export abstract class ExpressionEmitter {
     if (want.k === 'optional' && v.type.k === 'ptr' && same(want.of, v.type.to)) return `(${v.code} ? std::optional<${render(want.of)}>(*${v.code}) : std::nullopt)`;
     if (want.k === 'string' && v.type.k === 'literal') return `std::string(${v.code})`;
     if (narrows(v.type, want) && !/^-?[\d.]+f?$/.test(v.code)) return `${render(want)}(${v.code})`;
-    const asked = enumAsked(want);
-    if (e && asked) {
-      const text = this.#knownText(e);
-      if (text !== null) return this.#enumLiteral(asked.name, e, text);
-    }
+    if (e && want.k === 'enum' && this.c.ts.isStringLiteral(e)) return this.#enumLiteral(want.name, e);
     const structural = this.#structural(v, want);
     if (structural) return structural;
     // a list of wider elements where a list of narrower ones is asked: each element read through the asked type
@@ -251,22 +226,10 @@ export abstract class ExpressionEmitter {
     return /^[\w.\->[\]]+$/.test(code) ? code : `(${code})`;
   }
 
-  #enumLiteral(name: string, e: TS.Node, text: string): string {
+  #enumLiteral(name: string, e: TS.StringLiteral): string {
     const en = this.c.types.enums.get(name);
-    if (!en || !en.values.includes(text)) return this.fail(e, `'${text}' is not a value of ${name}`).code;
-    return this.c.types.enumValue(en, text);
-  }
-
-  /**
-   * The text an expression is known to be where it is read: a literal written in place, or what TypeScript's type at that
-   * place says (`const K = 'pot'` read as K is "pot"); null when only the running program knows. A value that lands where
-   * an enum is asked is that enum's member of its text.
-   */
-  #knownText(e: TS.Expression): string | null {
-    const ts = this.c.ts;
-    if (ts.isStringLiteralLike(e)) return e.text;
-    const at = this.c.checker.getTypeAtLocation(e);
-    return at.flags & ts.TypeFlags.StringLiteral ? (at as TS.StringLiteralType).value : null;
+    if (!en || !en.values.includes(e.text)) return this.fail(e, `'${e.text}' is not a value of ${name}`).code;
+    return this.c.types.enumValue(en, e.text);
   }
 
   // ---- expressions
@@ -295,8 +258,7 @@ export abstract class ExpressionEmitter {
     }
     if (ts.isNumericLiteral(e)) return this.#number(e);
     if (ts.isStringLiteral(e) || ts.isNoSubstitutionTemplateLiteral(e)) {
-      const asked = enumAsked(want);
-      if (asked) return { code: this.#enumLiteral(asked.name, e, e.text), type: asked };
+      if (want?.k === 'enum') return { code: this.#enumLiteral(want.name, e as TS.StringLiteral), type: want };
       return { code: JSON.stringify(e.text), type: LITERAL };
     }
     if (ts.isTemplateExpression(e)) return this.#template(e);
@@ -436,10 +398,6 @@ export abstract class ExpressionEmitter {
     const constant = this.c.constants.get(symbol);
     if (constant) {
       if (constant.module) this.uses?.add(constant.module);
-      if (this.constantReads) {
-        this.constantReads.add(symbol);
-        return { code: constantRead(constant.cpp), type: constant.type };
-      }
       return { code: constant.calling ? `${constant.cpp}()` : constant.cpp, type: constant.type };
     }
     const fn = this.c.functions.get(symbol);
@@ -1386,7 +1344,7 @@ export abstract class ExpressionEmitter {
     }
     if (op === '=') return { code: `${left.code} = ${this.coerce(right, left.type, e.right)}`, type: left.type };
     if (['==', '!=', '<', '>', '<=', '>=', '&&', '||'].includes(op)) {
-      const leftCode = ts.isStringLiteral(e.left) && right.type.k === 'enum' ? this.#enumLiteral(right.type.name, e.left, e.left.text) : left.code;
+      const leftCode = ts.isStringLiteral(e.left) && right.type.k === 'enum' ? this.#enumLiteral(right.type.name, e.left) : left.code;
       // an optional is absent as nullopt, not as a null pointer
       if (right.type.k === 'null' && left.type.k === 'optional') return { code: `${leftCode} ${op} std::nullopt`, type: BOOL };
       if (left.type.k === 'null' && right.type.k === 'optional') return { code: `${right.code} ${op} std::nullopt`, type: BOOL };

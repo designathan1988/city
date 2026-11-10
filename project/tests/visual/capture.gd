@@ -1,28 +1,31 @@
 ## Visual capture: generates a city through the store (the same path as the start screen), waits until every chunk is
-## drawn and saves screenshots to user://captures (or --capture-dir=PATH): street from above, neighbourhood, whole town
-## (capture_views.gd). --map=N --seed=S choose the city.
+## drawn and saves screenshots to user://captures (or --capture-dir=PATH). Views match the Roadcraft reference shots
+## (docs/referencia-visual: street from above, neighbourhood, whole town). --map=N --seed=S choose the city.
 extends Node3D
 
 const SETTLE_FRAMES := 4
 const JUMP_FRAMES := 30 # after a jump the world has not asked for the new view yet, and nothing pending does not mean all drawn
 const JUMP_M := 60.0
+const CHUNK_NEAR_BUILT := 1 # building_renderer.h chunk_flags
 const NEAR_PER_M := 0.004
 const MIN_NEAR_M := 0.3
 const MAX_NEAR_M := 8.0
 const TRAFFIC_WARMUP_TICKS := 2400 # run before shooting so traffic and pedestrians fill the streets (20 ticks = 1 s)
 ## --soak=N: instead of the warm-up, N simulated minutes, one traffic_probe report per minute (CaptureSoak).
 const TRAFFIC_SAMPLE := 400
+const FASTEST_SPEED := 3
 const JAM_SHOTS := 1
 ## Close view of the vehicle nearest to the centre: camera offset and look-at offset from it.
 ## Offsets in the vehicle frame: x to its left, y up, z ahead.
 ## Close look at the pedestrian nearest to the centre (same frame as the car view) and the height looked at.
 const PERSON_VIEW_FROM := Vector3(1.5, 1.4, 4.5)
 const PERSON_VIEW_AT_Y := 0.95
+const DAY := CaptureViews.DAY
+const NIGHT := CaptureViews.NIGHT
 
 ## Functions shot by _civic_tour (sim/buildings/building_store.h BuildingFn) and the view offset per lot size.
-const CIVIC_SHOTS := {&"FN_SCHOOL": "escola", &"FN_CHURCH": "igreja", &"FN_HOSPITAL": "hospital", &"FN_CLINIC": "clinica", &"FN_SQUARE": "praca",
-	&"FN_PARK": "parque", &"FN_GAS_STATION": "posto", &"FN_SUPERMARKET": "mercado", &"FN_CITY_HALL": "prefeitura", &"FN_POLICE": "policia",
-	&"FN_FIRE_STATION": "bombeiros", &"FN_MALL": "shopping", &"FN_SPORTS_COURT": "quadra"} # by the core's BuildingFn
+const CIVIC_SHOTS := {1: "escola", 2: "igreja", 3: "hospital", 4: "clinica", 5: "praca", 6: "parque", 7: "posto", 8: "mercado",
+	9: "prefeitura", 10: "policia", 11: "bombeiros", 12: "shopping", 13: "quadra"}
 const CIVIC_VIEW := Vector3(0.5, 0.75, 1.1)
 const CIVIC_LOOK_UP_M := 4.0
 
@@ -50,9 +53,9 @@ func _ready() -> void:
 	else:
 		CityStore.step_ticks(120 if measure else TRAFFIC_WARMUP_TICKS)
 	if wear_frames > 0:
-		CityStore.dispatch(&"set_speed", [CityStore.code(&"SimSpeed", &"FASTEST")])
+		CityStore.dispatch(&"set_speed", [FASTEST_SPEED])
 		await _frames(wear_frames)
-		CityStore.dispatch(&"set_speed", [CityStore.code(&"SimSpeed", &"PAUSED")])
+		CityStore.dispatch(&"set_speed", [0])
 		var wear: Dictionary = CityStore.query(&"wear_probe")
 		print("desgaste: ", wear.worn_cells, " cells, ", wear.wear_publications, " published")
 	print("traffic: ", CityStore.snapshot.get("vehicles"), " vehicles, ", CityStore.snapshot.get("people"), " pessoas")
@@ -90,9 +93,10 @@ func _boot_world() -> bool:
 	if not errors.is_empty():
 		push_error("boot: %s" % errors)
 		return false
+	Settings.apply(world, get_viewport()) # as game/play.gd: the picture the player sees (MSAA, shadows, scale)
+	print("qualidade: ", Settings.current(), " msaa_3d ", get_viewport().msaa_3d)
 	add_child(RoadcraftHud.new())
-	Settings.apply(world, get_viewport()) # as game/play.gd: the shots show what the player's preset shows (MSAA, shadows, scale)
-	print("quality: ", Settings.current(), " msaa_3d ", get_viewport().msaa_3d)
+	Settings.apply(world, get_viewport()) # the shots show what the player's preset shows: its antialiasing and shadows
 	var report: Dictionary = CityStore.new_map(map, seed, true, true)
 	print("city: ", report)
 	_memory("city generated")
@@ -110,14 +114,14 @@ func _wait_render() -> void:
 func _capture_all(probe: Dictionary, ground: Vector3) -> void:
 	if await CaptureDirected.run(self, only):
 		return
-	var hour := float(DataTables.game("daylight").day_hour)
+	var hour := DAY
 	await CaptureSignals.at_hour(self, hour)
 	if await CaptureTraffic.directed(self, probe, ground):
 		return
 	for v in CaptureViews.VIEWS:
 		if not only.is_empty() and not only.has(v[0]):
 			continue
-		var h := float(DataTables.game("daylight")[v[3] if v.size() > 3 else &"day_hour"])
+		var h: float = v[3] if v.size() > 3 else DAY
 		if h != hour: # the sky's radiance (ambient and reflections) follows a new hour over several frames
 			hour = h
 			await CaptureSignals.at_hour(self, h)
@@ -131,7 +135,7 @@ func _capture_all(probe: Dictionary, ground: Vector3) -> void:
 		var cross: Vector3 = CityStore.query(&"traffic_probe", [0]).get("busy_crossing", Vector3.ZERO)
 		await CaptureCrossing.views(self, cross)
 		await CaptureKerb.shots(self, CityStore.query(&"traffic_probe", [0]).get("crossing_kerb", []))
-		await CaptureSignals.shots(self, cross, [float(DataTables.game("daylight").day_hour), float(DataTables.game("daylight").night_hour)])
+		await CaptureSignals.shots(self, cross, [DAY, NIGHT])
 		await CaptureCrossing.paint(self, cross)
 	for i in mini(JAM_SHOTS, probe.jams.size()):
 		var j: Vector3 = probe.jams[i]
@@ -197,7 +201,7 @@ func _civic_tour() -> void:
 	var seen := {}
 	for id in CityStore.query(&"list_buildings"):
 		var b: Dictionary = CityStore.query(&"probe_building", [id])
-		var fn := CityStore.code_name(&"BuildingFn", int(b.get("fn", 0)))
+		var fn: int = b.get("fn", 0)
 		if not CIVIC_SHOTS.has(fn) or seen.has(fn):
 			continue
 		seen[fn] = true
@@ -207,9 +211,9 @@ func _civic_tour() -> void:
 		var at: Vector3 = b.position
 		var from := at + out * size * CIVIC_VIEW.z + along * size * CIVIC_VIEW.x + Vector3.UP * size * CIVIC_VIEW.y
 		await _shot("12_%s" % CIVIC_SHOTS[fn], from, at + Vector3.UP * CIVIC_LOOK_UP_M)
-		var chunk: Dictionary = CityStore.query(&"building_chunk", [at.x, at.z])
-		print("chunk of 12_%s: %s" % [CIVIC_SHOTS[fn], chunk])
-		if not chunk.get("near", false):
+		var chunk: int = CityStore.query(&"building_chunk", [at.x, at.z])
+		print("chunk of 12_%s: %d" % [CIVIC_SHOTS[fn], chunk])
+		if chunk & CHUNK_NEAR_BUILT == 0:
 			CaptureWait.mark_incomplete("12_%s came out without the building's near level" % CIVIC_SHOTS[fn])
 
 

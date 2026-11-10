@@ -16,7 +16,7 @@ namespace city {
 namespace {
 constexpr float LOT_REACH_M = 80.f; // the widest lot: a centre this far outside the reach may still have a wall inside it
 constexpr float STANDOFF_DEPTH = 0.5f; // the load on a wall is that at its distance plus half the building's depth
-constexpr uint32_t SALT_FIRE = 0x66697265U; // a stream's salt: the word it names, in ASCII
+constexpr uint32_t SALT_FIRE = 0x66697265U;
 constexpr float SPHERE_VOLUME = 4.18879f; // 4/3 of pi
 
 // What the building feels: the blast at its distance taken to the middle of its depth.
@@ -34,7 +34,7 @@ struct Aim {
 
 Aim aim_at(const Blow &b, const Building &bd, float near) {
 	const Tuning &t = b.s.catalog.tune;
-	const float radius = blast::fireball_radius(t, b.strength);
+	const float radius = t.strike_scar_radius_m + b.strength * t.strike_scar_radius_per_force;
 	const bool landed = b.on_building && near <= 0.f;
 	const float c = std::cos(bd.rot), sn = std::sin(bd.rot), dx = b.x - bd.x, dz = b.z - bd.z;
 	const float u = std::clamp(dx * c - dz * sn, -bd.w * 0.5f, bd.w * 0.5f), v = std::clamp(dx * sn + dz * c, -bd.d * 0.5f, bd.d * 0.5f);
@@ -125,10 +125,10 @@ void strike_buildings(Blow &b) {
 		if (felt < p.light_kpa) continue;
 		const Tuning &t = b.s.catalog.tune;
 		const int at = b.s.damage.hurt_of(bd.seed, bd.x, bd.z);
-		const float limit = bd.floors >= t.strike_frame_floors ? t.strike_frame_collapse_kpa : p.collapse_kpa;
+		const float limit = float(bd.floors) >= t.strike_frame_floors ? t.strike_frame_collapse_kpa : p.collapse_kpa;
 		const float taken = (at >= 0 ? b.s.damage.hurt[size_t(at)].amount : 0.f) + felt / limit;
 		const Aim aim = aim_at(b, bd, lot_distance(bd, b.x, b.z));
-		const bool scarred = aim.breaks && scars_on(b.s, bd) < t.strike_scars_most;
+		const bool scarred = aim.breaks && float(scars_on(b.s, bd)) < t.strike_scars_most;
 		if (scarred) j_add_scar(b.s, Scar{ bd.seed, bd.x, bd.z, aim.x, aim.y, aim.z, aim.force });
 		if (taken >= 1.f || standing_share(b, bd) < t.strike_standing_least) {
 			bring_down(b, id, aim);

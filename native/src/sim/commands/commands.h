@@ -4,7 +4,6 @@
 // lane graph to the traffic, which drains the ChangeLog's net lists. Callers hold map_mutex exclusively.
 #pragma once
 
-#include "core/math.h"
 #include "sim/lots/lot_book.h"
 #include "sim/roads/road_network.h"
 #include "sim/catalog/furniture_types.h"
@@ -78,13 +77,17 @@ struct SnappedEnd {
 // How a road follows the gesture (Roadcraft roadTool.ts alignment).
 enum class RoadAlignment : uint8_t { STRAIGHT, CURVE, FREE };
 
+struct StrokePoint {
+	double x = 0, z = 0;
+};
+
 // A gesture as the tool hands it in: its ends, the bend chosen by a click (has_control), the pointer's samples, and the
 // bend under which a dragged curve stays straight (metres: a few screen pixels).
 struct RoadStroke {
 	RoadAlignment alignment = RoadAlignment::STRAIGHT;
-	XZ start, end, control;
+	StrokePoint start, end, control;
 	bool has_control = false;
-	std::vector<XZ> samples;
+	std::vector<StrokePoint> samples;
 	int profile = 0;
 	double flat_m = 0;
 };
@@ -119,6 +122,19 @@ EditResult toggle_lane_link(CityState &s, int node, const LaneLink &link, const 
 EditResult set_movement_banned(CityState &s, int node, int from, int to, bool banned);
 EditResult remove_node(CityState &s, int node);
 
+// Zones > Lots (lot_commands.cpp): the lots the player draws. Refusals name the hint.
+EditResult add_lot_rect(CityState &s, const LotPoint &a, const LotPoint &b, double angle);
+EditResult add_lot_polygon(CityState &s, const std::vector<LotPoint> &points);
+// A road edit cuts the lots it crosses, in its own step of undo (cutLotsByRoads): each is replaced by the pieces left on land, of its
+// zone where they are big enough, and what stood on it goes.
+void cut_lots_by_roads(CityState &s, double minx, double minz, double maxx, double maxz);
+EditResult move_lot_corner(CityState &s, const LotPoint &from, const LotPoint &to);
+EditResult curve_lot_side(CityState &s, const LotPoint &a, const LotPoint &b, const LotPoint &through);
+EditResult set_lot_front(CityState &s, int id, int side);
+EditResult split_lot(CityState &s, int id, const LotCut &cut);
+EditResult join_lots(CityState &s, int a, int b);
+EditResult delete_lot(CityState &s, int id);
+EditResult zone_lot(CityState &s, int id, int zone);
 // Bulldoze at (x, z) (Roadcraft tool `bulldoze`): the building under the point, else the nearest segment within
 // road_pick_m (loose nodes go with it; refund road_refund_share of its value unless it was free).
 EditResult demolish_at(CityState &s, double x, double z);
@@ -132,15 +148,15 @@ EditResult paint_zone(CityState &s, double x, double z, double radius, int zone)
 // The zone brush's dabs of one pointer move, in order, as one command: a dab on a lot the player drew zones that lot whole
 // (zone_lot), any other paints the road sides (paint_zone). `error`: the last refusal of a road dab that found something
 // other than its zone already there (a lot dab, or a side already of the zone, says nothing).
-EditResult paint_zone_path(CityState &s, const std::vector<XZ> &dabs, double radius, int zone);
+EditResult paint_zone_path(CityState &s, const std::vector<StrokePoint> &dabs, double radius, int zone);
 
 // The dabs a held brush lays along one pointer move, as one command: each laid in order by `dab` (refused dabs change
 // nothing); ok when any was laid, the counts summed, `error` the last refusal. What they derive settles once, when the
 // command ends (EditHistory::end).
 template <typename F>
-EditResult lay_dabs(const std::vector<XZ> &dabs, F &&dab) {
+EditResult lay_dabs(const std::vector<StrokePoint> &dabs, F &&dab) {
 	EditResult all;
-	for (const XZ &p : dabs) {
+	for (const StrokePoint &p : dabs) {
 		const EditResult r = dab(p);
 		if (r.ok) {
 			all.ok = true;
@@ -187,9 +203,9 @@ EditResult set_node_control(CityState &s, int node, int ctl);
 EditResult move_node(CityState &s, int node, double x, double z);
 // The curve of a road with its end `at_a` taken to (x, z), its shape kept (Roadcraft world/doc.ts fitCurve).
 Quad moved_quad(const Quad &q, bool at_a, double x, double z);
-// Why a roundabout cannot go there ("" = it can): on vacant ground only (the lab's editor/roundabout.ts).
-std::string roundabout_refusal(const CityState &s, double cx, double cz, double radius);
-EditResult build_roundabout(CityState &s, double cx, double cz, double radius);
+// Why a roundabout cannot go there ("" = it can); `cut` allows cutting the roads inside the circle.
+std::string roundabout_refusal(const CityState &s, double cx, double cz, double radius, bool cut);
+EditResult build_roundabout(CityState &s, double cx, double cz, double radius, bool cut);
 
 // --- Landscape and Build drawers (land_commands.cpp)
 // One dab of the Relief brush (mode = BrushMode) held for dt seconds; level and landforms use the stroke's first height.
@@ -225,5 +241,31 @@ ShotResult shoot_at(CityState &s, double ox, double oy, double oz, double dx, do
 // Bulldoze everything in the box between two corners: the buildings whose centre is in it, the rubble, the road segments
 // whose middle is in it (their refund added up). One undo step.
 EditResult demolish_box(CityState &s, double ax, double az, double bx, double bz);
+
+// --- Landscape drawer (nature_commands.cpp): the sky, the painted ground, the planted trees, the map's biome
+constexpr int TREE_PLANT = 0, TREE_ONE = 1, TREE_CUT = 2; // what a dab of the tree brush does
+EditResult set_weather(CityState &s, const Weather &next);
+EditResult add_cloud(CityState &s, const PlacedCloud &c);
+EditResult edit_cloud(CityState &s, int id, const PlacedCloud &c);
+EditResult remove_cloud(CityState &s, int id);
+// Up to `count` clouds over the sky, each like `like` varied by `variation` (0..1).
+EditResult scatter_sky(CityState &s, int count, const PlacedCloud &like, float variation);
+EditResult clear_clouds(CityState &s);
+EditResult fog_dab(CityState &s, const FogDab &dab);
+EditResult clear_fog(CityState &s);
+EditResult paint_dab(CityState &s, const PaintDab &dab);
+EditResult clear_gullies(CityState &s);
+EditResult tree_dab(CityState &s, double x, double z, double radius, int mode, int kind, const TreeBrush &brush);
+EditResult clear_trees(CityState &s);
+// One dab of the element brush: its density per ElementDef::area_m2, size and spacing in metres, the rest shares.
+struct ElementBrush {
+	float density = 0, size = 0, variation = 0, spacing = 0, strength = 0, intensity = 0;
+};
+EditResult element_dab(CityState &s, double x, double z, double radius, int kind, const ElementBrush &b, bool erase);
+EditResult clear_elements(CityState &s);
+// The map's ecosystem: a Biome, or Biome::NONE.
+EditResult set_biome(CityState &s, int region);
+// Takes the planted trees in a circle away and leaves a clearing there (the woods' trees go too); false when full.
+bool cut_trees_at(CityState &s, float x, float z, float radius);
 
 } // namespace city

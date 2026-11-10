@@ -1,7 +1,5 @@
 // The wear field: what agents leave on the ground and which tiles go to the GPU (wear_field.h).
 #include "render/wear/wear_field.h"
-#include "core/random.h"
-#include "render/data_reader.h"
 
 #include <godot_cpp/classes/image.hpp>
 #include <godot_cpp/classes/rendering_server.hpp>
@@ -17,9 +15,9 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float BYTE_MAX = 255.f, U32_SCALE = 4294967296.f; // a byte's top; 2^32, a hash's range
-// a byte's top; the window follows the eye once it has moved an eighth of its width from the middle
-constexpr int BYTE_TOP = 255, HOLD_SHARE = 8;
+constexpr float BYTE_MAX = 255.f, U32_SCALE = 4294967296.f;
+constexpr int BYTE_TOP = 255, XORSHIFT_A = 13, XORSHIFT_B = 17, XORSHIFT_C = 5, HOLD_SHARE = 8;
+constexpr uint32_t RNG_START = 0x9e3779b9u;
 const char *const ORIGIN_PARAM = "wear_origin"; // road.gdshader
 const char *const FIELD_PARAM = "wear_field";
 const char *const CELL_PARAM = "wear_cell_m";
@@ -32,17 +30,14 @@ Ref<Image> tile_image(const PackedByteArray &bytes, int size) {
 } // namespace
 
 bool WearField::init(const RenderContext &ctx, PackedStringArray &errors) {
-	const Dictionary streets = ctx.table("streets", errors);
-	if (!errors.is_empty()) return false;
-	const DataValue t = DataReader{ errors, "streets.json" }.at(streets)["wear"]; // render/data_reader.h
-	cell_ = t["field_cell_m"].f();
-	upload_every_ = t["upload_every_s"].f();
-	wheels_ = t["wheels_per_s"].f();
-	feet_ = t["feet_per_s"].f();
-	track_ = t["track_m"].f();
-	most_step_ = t["most_step_s"].f();
-	per_frame_ = t["tiles_per_frame"].whole();
-	if (!errors.is_empty()) return false;
+	const Dictionary t = Dictionary(ctx.table("streets", errors).get("wear", Dictionary()));
+	cell_ = float(t["field_cell_m"]);
+	upload_every_ = float(t["upload_every_s"]);
+	wheels_ = float(t["wheels_per_s"]);
+	feet_ = float(t["feet_per_s"]);
+	track_ = float(t["track_m"]);
+	most_step_ = float(t["most_step_s"]);
+	per_frame_ = int(t["tiles_per_frame"]);
 	hold_ = RES / HOLD_SHARE;
 	material_ = ctx.material("road", errors);
 	if (!material_.is_valid()) return false;
@@ -67,7 +62,7 @@ void WearField::free() {
 
 void WearField::reset() {
 	if (!texture_.is_valid()) return;
-	state_ = GOLDEN_GAMMA_32;
+	state_ = RNG_START;
 	ox_ = oy_ = -RES / 2;
 	pending_.clear();
 	for (size_t i = 0; i < tiles_.size(); i++) {
@@ -82,8 +77,13 @@ void WearField::send_origin() const {
 	RenderingServer::get_singleton()->material_set_param(material_, ORIGIN_PARAM, Vector2(float(ox_), float(oy_)));
 }
 
-// Xorshift32 (core/random.h) for the stochastic rounding of `add`.
-float WearField::random() { return float(xorshift32(state_)) / U32_SCALE; }
+// Xorshift32 (Marsaglia, "Xorshift RNGs", J. Stat. Softw. 2003) for the stochastic rounding of `add`.
+float WearField::random() {
+	state_ ^= state_ << XORSHIFT_A;
+	state_ ^= state_ >> XORSHIFT_B;
+	state_ ^= state_ << XORSHIFT_C;
+	return float(state_) / U32_SCALE;
+}
 
 void WearField::touch(int tile) {
 	if (dirty_[size_t(tile)]) return;

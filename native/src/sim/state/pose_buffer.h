@@ -6,8 +6,6 @@
 // The frame also carries what the signalled approaches near the camera show (their heads' lit lenses).
 #pragma once
 
-#include "core/shader_contracts/agents.h"
-
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
@@ -38,19 +36,13 @@ struct PoseTrail {
 };
 
 // AgentRecord::look of a vehicle: type in the low byte, then its paint, the brake light and whether anybody is in it.
-constexpr uint32_t LOOK_TYPE_MASK = 0xFFu, LOOK_PAINT_SHIFT = 8, LOOK_BRAKE_SHIFT = 16, LOOK_EMPTY_SHIFT = 17, LOOK_ABOARD_SHIFT = 18, LOOK_ABOARD_MASK = 3u, LOOK_DOOR_SHIFT = 20, LOOK_DOOR_MASK = uint32_t(AGENT_DOOR_LEVELS); // how far its kerb door stands open
-// A bus's riders over the door's bits, one more than it carries (Vehicle::riders); 0 leaves who rides to the render's load table.
-constexpr uint32_t LOOK_RIDERS_SHIFT = 25, LOOK_RIDERS_MASK = 0x7Fu;
+constexpr uint32_t LOOK_TYPE_MASK = 0xFFu, LOOK_PAINT_SHIFT = 8, LOOK_BRAKE_SHIFT = 16, LOOK_EMPTY_SHIFT = 17, LOOK_ABOARD_SHIFT = 18, LOOK_ABOARD_MASK = 3u, LOOK_DOOR_SHIFT = 20, LOOK_DOOR_MASK = 31u; // how far its kerb door stands open
 // How old a walker is: its pace and its body.
 enum class PedAge : uint8_t { ADULT = 0, CHILD, ELDER, COUNT };
 constexpr int PED_AGES = int(PedAge::COUNT);
 
-// Whom a walker walks with, as the casting dresses a party (citizenCasting.ts Company: alone, a pair, or a party with a child).
-enum class PedCompany : uint8_t { SOLO = 0, COUPLE, FAMILY, COUNT };
-
 // What somebody standing does with their hands and face, past the idle.
-// A talking party's moods (the lab's citizenGait.ts standingKey): LAUGH and ARGUE speak, ANGRY listens.
-enum class PedAct : uint8_t { NONE = 0, TALK, LISTEN, LOOK, PHONE, HEADPHONES, BAG, CROUCH, PHOTO, LAUGH, ANGRY, ARGUE, COUNT };
+enum class PedAct : uint8_t { NONE = 0, TALK, LISTEN, LOOK, PHONE, HEADPHONES, BAG, CROUCH, PHOTO, COUNT };
 
 struct AgentRecord {
 	Pose at[POSE_TRAIL]; // the agent's PoseTrail
@@ -60,9 +52,6 @@ struct AgentRecord {
 	float rest = 0; // pedestrians: 0 walking .. 1 standing (the idle's share of the pose)
 	float act_share = 0; // pedestrians: how far into `act` they are (0 standing idle .. 1)
 	float act_since = 0, act_left = 0; // pedestrians: seconds since `act` began, and until a fright lets go of it
-	float scale = 1; // pedestrians: the body's size (Pedestrian::scale: what a shot measures it by and what is drawn)
-	uint32_t party = 0; // pedestrians: the look hash of the party's leader (its own when alone): whom it is dressed with
-	uint8_t company = 0; // pedestrians: PedCompany
 	uint8_t age = 0; // pedestrians: PedAge
 	uint8_t act = 0; // pedestrians: PedAct
 	bool frightened = false; // pedestrians: running from a bang

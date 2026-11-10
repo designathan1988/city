@@ -19,8 +19,6 @@ var angle := 0.0
 
 var _ctl: ToolController
 var _carried := NOT_FOUND
-var _floor := {} # the floor's height last read: {id, level, revision (edit_revision), y}
-var _sizes := {} # each piece's size, read once (body_piece_size)
 
 
 func _init(ctl: ToolController) -> void:
@@ -82,9 +80,6 @@ func _open(id: int) -> void:
 	if not armed() or id < 0 or CityStore.query(&"interior").on:
 		return
 	CityStore.dispatch(&"set_interior", [true, id, 0, -1])
-	var view: InteriorController = _ctl.get_tree().get_first_node_in_group(&"interior_controller")
-	if view != null:
-		view.refresh() # the layer's view is the one every move reads the floor from
 
 
 ## Where the piece in hand would stand: its footprint on the floor cut open.
@@ -92,9 +87,7 @@ func hover(picked: Dictionary) -> void:
 	if picked.is_empty() or piece == NONE or piece == MOVE or piece == TAKE:
 		return
 	var at := _on_floor(picked.id)
-	if not _sizes.has(piece):
-		_sizes[piece] = CityStore.query(&"body_piece_size", [piece])
-	var size: Vector3 = _sizes[piece]
+	var size: Vector3 = CityStore.query(&"body_piece_size", [piece])
 	var along := Vector3.RIGHT.rotated(Vector3.UP, -angle) * size.x * 0.5
 	_ctl.preview.show_ribbon(PackedVector3Array([at - along, at + along]), size.y * 0.5, true)
 
@@ -125,19 +118,13 @@ func click(id: int) -> Dictionary:
 	return r
 
 
-## The floor open: the interior layer's, which reads it whenever the view changes; the core's own with no layer (the tests).
 func _level() -> int:
-	var view: InteriorController = _ctl.get_tree().get_first_node_in_group(&"interior_controller")
-	return view.level() if view != null else int(CityStore.query(&"interior").level)
+	return CityStore.query(&"interior").level
 
 
-## Where the pointer's ray meets the floor cut open. Its height is read again only when the building, the floor or the city moved.
+## Where the pointer's ray meets the floor cut open.
 func _on_floor(id: int) -> Vector3:
-	var level := _level()
-	var revision: int = CityStore.snapshot.get("edit_revision", -1)
-	if _floor.get("id", -1) != id or _floor.get("level", -1) != level or _floor.get("revision", -2) != revision:
-		_floor = {"id": id, "level": level, "revision": revision, "y": CityStore.query(&"body_floor_y", [id, level])}
-	var y: float = _floor.y
+	var y: float = CityStore.query(&"body_floor_y", [id, _level()])
 	var cam: Camera3D = _ctl.rig.camera
 	var origin := cam.project_ray_origin(_ctl.pointer)
 	var dir := cam.project_ray_normal(_ctl.pointer)

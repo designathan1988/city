@@ -9,7 +9,6 @@
 // designs are the Roadcraft's fourteen (flags.ts FLAG_PATTERNS, native types.h FlagPattern). One shader for both, as
 // props.gdshader does: each spatial shader's variants cost ~3 MiB.
 render_mode cull_back, skip_vertex_transform;
-#include "res://render/shaders/contracts/buildings.gdshaderinc"
 
 global uniform float night;
 global uniform float wind_x; // the way the wind blows, x and z of a unit vector (render/sky_view.gd)
@@ -18,20 +17,11 @@ global uniform float wind_z;
 uniform sampler2DArray finish_map : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2DArray finish_normal : filter_linear_mipmap, repeat_enable;
 uniform sampler2DArray finish_rough : filter_linear_mipmap, repeat_enable;
-uniform float finish_m[FIN_COUNT];
-uniform float finish_normal_k[FIN_COUNT];
-uniform float finish_metal[FIN_COUNT];
+uniform float finish_m[13];
+uniform float finish_normal_k[13];
+uniform float finish_metal[13];
 uniform float wall_gain = 1.0;
-uniform float cloth_roughness; // the Roadcraft's flag material (flagLayer.ts MeshStandardMaterial; materials.json building_parts)
-// The fourteen designs (native types.h FlagPattern, flags.ts FLAG_PATTERNS): their codes, and their geometry as shares of the
-// cloth: thirds; a cross's bar halves; the Nordic cross's upright; a saltire's half width; a canton's width and height; the
-// stripes' count; a border's widths; a disc's stretch and radius.
-const int FLAG_HALVES_H = 1, FLAG_HALVES_V = 2, FLAG_THIRDS_H = 3, FLAG_THIRDS_V = 4, FLAG_CROSS = 5, FLAG_NORDIC = 6, FLAG_DIAGONAL = 7;
-const int FLAG_SALTIRE = 8, FLAG_CANTON = 9, FLAG_STRIPES = 10, FLAG_BORDER = 11, FLAG_DISC = 12, FLAG_TRIANGLE = 13;
-const float THIRD = 0.333, TWO_THIRDS = 0.667, CROSS_X = 0.09, CROSS_Y = 0.12, NORDIC_AT = 0.36, NORDIC_X = 0.07, NORDIC_Y = 0.1;
-const float SALTIRE_HALF = 0.11, CANTON_W = 0.42, STARS_H = 0.54, STRIPES = 13.0, BORDER_X = 0.1, BORDER_Y = 0.15, BORDER_X_FAR = 0.9, BORDER_Y_FAR = 0.85;
-const vec2 DISC_STRETCH = vec2(1.5, 1.0);
-const float DISC_R = 0.3, LEAST_WIND = 1e-4; // a wind under this has no way: the flag hangs along x
+uniform float cloth_roughness = 0.85; // the Roadcraft's flag material (flagLayer.ts MeshStandardMaterial)
 
 // The Roadcraft's wave (flagLayer.ts): its clock runs WIND_PACE times real time (wind.ts), the two sines travel from the
 // hoist, their swing grows with the width, the fly droops by the square of its reach.
@@ -60,22 +50,22 @@ vec3 unpack_rgb(float packed) {
 // The Roadcraft's designs (flagLayer.ts flagColour): x from the hoist, y from the top; k a FlagPattern.
 vec3 flag_colour(vec2 uv, int k, vec3 c0, vec3 c1, vec3 c2) {
 	float x = uv.x, y = 1.0 - uv.y;
-	if (k == FLAG_HALVES_H) return y < 0.5 ? c0 : c1;
-	if (k == FLAG_HALVES_V) return x < 0.5 ? c0 : c1;
-	if (k == FLAG_THIRDS_H) return y < THIRD ? c0 : (y < TWO_THIRDS ? c1 : c2);
-	if (k == FLAG_THIRDS_V) return x < THIRD ? c0 : (x < TWO_THIRDS ? c1 : c2);
-	if (k == FLAG_CROSS) return (abs(x - 0.5) < CROSS_X || abs(y - 0.5) < CROSS_Y) ? c1 : c0;
-	if (k == FLAG_NORDIC) return (abs(x - NORDIC_AT) < NORDIC_X || abs(y - 0.5) < NORDIC_Y) ? c1 : c0;
-	if (k == FLAG_DIAGONAL) return y < x ? c0 : c1;
-	if (k == FLAG_SALTIRE) return (abs(y - x) < SALTIRE_HALF || abs(y - (1.0 - x)) < SALTIRE_HALF) ? c1 : c0;
-	if (k == FLAG_CANTON) return (x < CANTON_W && y < 0.5) ? c1 : c0;
-	if (k == FLAG_STRIPES) {
-		if (x < CANTON_W && y < STARS_H) return c2;
-		return mod(floor(y * STRIPES), 2.0) < 1.0 ? c0 : c1;
+	if (k == 1) return y < 0.5 ? c0 : c1;
+	if (k == 2) return x < 0.5 ? c0 : c1;
+	if (k == 3) return y < 0.333 ? c0 : (y < 0.667 ? c1 : c2);
+	if (k == 4) return x < 0.333 ? c0 : (x < 0.667 ? c1 : c2);
+	if (k == 5) return (abs(x - 0.5) < 0.09 || abs(y - 0.5) < 0.12) ? c1 : c0;
+	if (k == 6) return (abs(x - 0.36) < 0.07 || abs(y - 0.5) < 0.1) ? c1 : c0;
+	if (k == 7) return y < x ? c0 : c1;
+	if (k == 8) return (abs(y - x) < 0.11 || abs(y - (1.0 - x)) < 0.11) ? c1 : c0;
+	if (k == 9) return (x < 0.42 && y < 0.5) ? c1 : c0;
+	if (k == 10) {
+		if (x < 0.42 && y < 0.54) return c2;
+		return mod(floor(y * 13.0), 2.0) < 1.0 ? c0 : c1;
 	}
-	if (k == FLAG_BORDER) return (x < BORDER_X || x > BORDER_X_FAR || y < BORDER_Y || y > BORDER_Y_FAR) ? c1 : c0;
-	if (k == FLAG_DISC) return length((uv - 0.5) * DISC_STRETCH) < DISC_R ? c1 : c0;
-	if (k == FLAG_TRIANGLE) return x < 0.5 * (1.0 - abs(y - 0.5) * 2.0) ? c1 : c0;
+	if (k == 11) return (x < 0.1 || x > 0.9 || y < 0.15 || y > 0.85) ? c1 : c0;
+	if (k == 12) return length((uv - 0.5) * vec2(1.5, 1.0)) < 0.3 ? c1 : c0;
+	if (k == 13) return x < 0.5 * (1.0 - abs(y - 0.5) * 2.0) ? c1 : c0;
 	return c0;
 }
 
@@ -92,21 +82,13 @@ vec3 cloth_vertex(vec3 p, vec2 uv, vec3 origin, float width, float height, vec3 
 
 #include "res://render/shaders/building_level.gdshaderinc"
 
-// Where the boxes of this band end, metres from the eye, each by its own place (building_renderer_reach.cpp: a band whose boxes are
-// under a pixel before the near level ends); 0: they stand as long as their sub-chunk is drawn.
-#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
-const float part_end = 0.0;
-#else
-instance uniform float part_end : instance_index(2) = 0.0;
-#endif
-
 void vertex() {
 	v_custom = INSTANCE_CUSTOM;
 	v_cloth = UV2.x;
 	v_uv = UV;
 	if (UV2.x > 0.5) {
 		vec2 w = vec2(wind_x, wind_z);
-		w = length(w) > LEAST_WIND ? normalize(w) : vec2(1.0, 0.0);
+		w = length(w) > 1e-4 ? normalize(w) : vec2(1.0, 0.0);
 		vec3 along = vec3(w.x, 0.0, w.y), across = vec3(-w.y, 0.0, w.x);
 		v_world = cloth_vertex(VERTEX, UV, MODEL_MATRIX[3].xyz, length(MODEL_MATRIX[0].xyz), length(MODEL_MATRIX[1].xyz), along, across);
 		v_wn = across * NORMAL.z; // the mesh's two faces, each its own way
@@ -118,24 +100,30 @@ void vertex() {
 		VERTEX = (MODELVIEW_MATRIX * vec4(VERTEX, 1.0)).xyz;
 		NORMAL = normalize((MODELVIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
 		if (level_back > 0.0 && !IN_SHADOW_PASS) VERTEX += normalize(VERTEX) * level_back;
-		// past its band's end a box is under a pixel: every corner on one point, nothing drawn (its shadow as long as its sub-chunk casts)
-		if (part_end > 0.0 && !IN_SHADOW_PASS && length(MODEL_MATRIX[3].xyz - CAMERA_POSITION_WORLD) > part_end) VERTEX = vec3(0.0);
 	}
 }
 
 void fragment() {
-	if (level_keep < 1.0 && !IN_SHADOW_PASS && level_noise(FRAGCOORD.xy) >= level_keep) discard; // the hand-over (building_level.gdshaderinc)
+#ifdef LEVEL_FADE
+	if (!IN_SHADOW_PASS && level_noise(FRAGCOORD.xy) >= level_keep) discard;
+#endif
 	vec3 n = normalize(v_wn);
 	if (v_cloth > 0.5) {
 		vec3 c = flag_colour(v_uv, int(v_custom.a + PACKED_ROUND), unpack_rgb(v_custom.r), unpack_rgb(v_custom.g), unpack_rgb(v_custom.b));
-		ALBEDO = surface_out(srgb_to_linear(c));
+		ALBEDO = surface_out(to_linear(c));
 		ROUGHNESS = cloth_roughness;
 		METALLIC = 0.0;
 		NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
 	} else {
-		vec3 albedo = srgb_to_linear(v_custom.rgb), nn = n;
-		float rough = BUILDING_WALL_ROUGHNESS, metal = 0.0;
-		finish_surface(int(floor(v_custom.a + 0.5)), n, 0.0, albedo, nn, rough, metal); // an instance's colour carries its wear (shell.cpp) // -1: no finish (int() would truncate -0.5 to layer 0)
+		vec3 albedo = to_linear(v_custom.rgb), nn = n;
+		float rough = 0.86, metal = 0.0;
+		int fin = int(floor(v_custom.a + 0.5)); // -1: no finish (int() would truncate -0.5 to layer 0)
+		if (fin >= 0 && fin < 13) {
+			vec3 tone;
+			finish_layer(fin, n, tone, nn, rough, metal);
+			albedo *= tone;
+			if (fin != 8 && fin != 7) albedo *= weather(n);
+		}
 		ALBEDO = surface_out(albedo * wall_gain);
 		ROUGHNESS = rough;
 		METALLIC = metal;

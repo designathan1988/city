@@ -56,13 +56,9 @@ public:
 	bool dab(const PaintDab &d, int rect[4]);
 	const PaintTile *tile(int key) const;
 	void put_tile(int key, const PaintTile *from); // nullptr, or a tile holding no paint: the tile goes
-	const std::unordered_map<int, std::shared_ptr<PaintTile>> &all() const { return tiles_; }
+	const std::unordered_map<int, std::unique_ptr<PaintTile>> &all() const { return tiles_; }
 	// The sample rectangle of tile `key` (undo, load).
 	void tile_rect(int key, int rect[4]) const;
-	// The paint a reader of the box needs (sim/state/city_cut.h): the tiles its samples fall in, shared with this paint, not
-	// copied. A tile another holds is never written: the next edit of it writes a copy of its own (touch, put_tile). A cell
-	// asked of the copy past the box stops the tests' DLL.
-	GroundPaint cut(float minx, float minz, float maxx, float maxz) const;
 
 private:
 	PaintCell &touch(int ix, int iz);
@@ -72,10 +68,8 @@ private:
 	int n_ = 0, across_ = 0;
 	float spacing_ = 1;
 	const PaintDef *def_ = nullptr;
-	std::unordered_map<int, std::shared_ptr<PaintTile>> tiles_;
+	std::unordered_map<int, std::unique_ptr<PaintTile>> tiles_;
 	int biome_cells_ = 0, cover_cells_ = 0;
-	bool windowed_ = false; // a cut: the samples it answers for
-	int win_x0_ = 0, win_z0_ = 0, win_x1_ = -1, win_z1_ = -1;
 };
 
 } // namespace city

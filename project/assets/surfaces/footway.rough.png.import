@@ -4,16 +4,15 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://mi0wa6l1g1rl"
 path.s3tc="res://.godot/imported/footway.rough.png-df14cabd18dc0f3afbe384d907aced77.s3tc.ctex"
-path.etc2="res://.godot/imported/footway.rough.png-df14cabd18dc0f3afbe384d907aced77.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"imported_formats": ["s3tc_bptc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/surfaces/footway.rough.png"
-dest_files=["res://.godot/imported/footway.rough.png-df14cabd18dc0f3afbe384d907aced77.s3tc.ctex", "res://.godot/imported/footway.rough.png-df14cabd18dc0f3afbe384d907aced77.etc2.ctex"]
+dest_files=["res://.godot/imported/footway.rough.png-df14cabd18dc0f3afbe384d907aced77.s3tc.ctex"]
 
 [params]
 

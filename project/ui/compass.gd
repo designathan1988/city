@@ -4,13 +4,13 @@ class_name HudCompass
 extends Button
 
 @export var rig: CityCamera
-var _needle: TextureRect
-var _press := Vector2.ZERO
-var _held := false
-var _moved := false
-var _turn := 0.0
-var _tilt := 0.0
-var _slop := 0.0
+@onready var _needle: TextureRect
+@onready var _press := Vector2.ZERO
+@onready var _held := false
+@onready var _moved := false
+@onready var _turn := 0.0
+@onready var _tilt := 0.0
+@onready var _slop := 0.0
 
 
 func _init(camera_rig: CityCamera) -> void:

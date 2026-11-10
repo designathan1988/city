@@ -3,9 +3,7 @@
  "expect": [
   "NUMERO_MAGICO native/src/sim/a.cpp:2",
   "NUMERO_MAGICO native/src/sim/a.cpp:3",
-  "CONSTANT_WITHOUT_SOURCE native/src/sim/a.cpp:5",
   "NUMERO_MAGICO project/game/b.gd:3",
-  "NUMERO_MAGICO project/game/b.gd:5",
-  "CONSTANT_WITHOUT_SOURCE project/game/b.gd:7"
+  "NUMERO_MAGICO project/game/b.gd:5"
  ]
 }

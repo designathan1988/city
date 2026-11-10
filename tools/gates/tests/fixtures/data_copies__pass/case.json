@@ -3,7 +3,7 @@
  "expect": [],
  "overrides": {
   "schemas": {
-   "project/data/lanes.json": "tools/gates/schemas/x.schema.json"
+   "project/data/x.json": "tools/gates/schemas/x.schema.json"
   }
  }
 }

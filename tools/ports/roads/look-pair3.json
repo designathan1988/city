@@ -1,0 +1,97 @@
+{
+ "_doc": "Terceira sessão: só nós criados aqui (id acima do maior da cidade), ponta em chão aberto, traço ondulado espalhado por quadros.",
+ "viewport": [
+  1600,
+  900
+ ],
+ "city": {
+  "size": "small",
+  "seed": 7
+ },
+ "steps": [
+  {
+   "wait": 1500
+  },
+  {
+   "press": "Começar a construir"
+  },
+  {
+   "until": "(() => !document.querySelector('.v2-start'))()",
+   "name": "title closed",
+   "timeout": 60000,
+   "polling": 250
+  },
+  {
+   "eval": "window.__roadcraft.sim.setClock(720); window.__roadcraft.scene && window.__roadcraft.scene().setSkyMode('day'); const r = window.__roadcraft; const all = [...r.doc.nodes.values()]; const ty = (n) => (n.incident ?? []).map((s) => r.doc.segment(s).type); window.__far = Math.max(...all.map((n) => n.x)) + 260; window.__v = (n, zoom, az, el) => { r.setView({ x: n.x, y: n.y, zoom, azimuth: az * Math.PI / 180, elevation: el * Math.PI / 180 }); return [n.id, n.x, n.y, (n.incident ?? []).length, ty(n)]; }; window.__n0 = Math.max(...all.map((n) => n.id)); window.__mine = () => [...r.doc.nodes.values()].filter((n) => n.id > window.__n0); window.__ty = ty; const loc = all.sort((a, b) => Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y)).find((n) => n.incident.length === 4 && Math.max(...ty(n)) <= 1); window.__loc = loc; loc.id"
+  },
+  {
+   "eval": "document.querySelector('[data-cat=roads]').click(); 1"
+  },
+  {
+   "wait": 900
+  },
+  {
+   "eval": "window.__v({ x: window.__far, y: 0 }, 2.2, 0, 70)"
+  },
+  {
+   "wait": 3500
+  },
+  {
+   "eval": "const c=[...document.querySelectorAll('.rc-card-main')]; const k=[...document.querySelectorAll('.rc-card')].findIndex((e)=>/canteiro/i.test(e.textContent)); (c[k]||c[0]).click(); String(k)"
+  },
+  {
+   "wait": 600
+  },
+  {
+   "click": [
+    420,
+    220
+   ]
+  },
+  {
+   "wait": 300
+  },
+  {
+   "move": [
+    980,
+    220
+   ]
+  },
+  {
+   "wait": 500
+  },
+  {
+   "click": [
+    980,
+    220
+   ]
+  },
+  {
+   "wait": 2200
+  },
+  {
+   "eval": "document.querySelector('[data-cat=roads]').click(); 1"
+  },
+  {
+   "wait": 800
+  },
+  {
+   "eval": "const m=window.__mine(); const a=m[0], b=m[m.length-1]; window.__m={x:(a.x+b.x)/2,y:(a.y+b.y)/2,incident:[]}; window.__v(window.__m,14,20,62); JSON.stringify([m.length,a.x,a.y,b.x,b.y])"
+  },
+  {
+   "wait": 4500
+  },
+  {
+   "shot": "median-top"
+  },
+  {
+   "eval": "window.__v(window.__m,30,30,30)"
+  },
+  {
+   "wait": 3500
+  },
+  {
+   "shot": "median-low"
+  }
+ ]
+}

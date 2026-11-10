@@ -167,26 +167,26 @@
    "type": "object",
    "strict": true,
    "required": [
+    "k_earth",
+    "k_hard",
+    "diameter_to_depth",
     "min_radius_m",
-    "pass_width_m",
-    "fireball_share",
-    "depth_m",
-    "depth_per_force_m"
+    "pass_width_m"
    ],
    "properties": {
+    "k_earth": {
+     "type": "number"
+    },
+    "k_hard": {
+     "type": "number"
+    },
+    "diameter_to_depth": {
+     "type": "number"
+    },
     "min_radius_m": {
      "type": "number"
     },
     "pass_width_m": {
-     "type": "number"
-    },
-    "fireball_share": {
-     "type": "number"
-    },
-    "depth_m": {
-     "type": "number"
-    },
-    "depth_per_force_m": {
      "type": "number"
     }
    }
@@ -340,6 +340,8 @@
     "bleed_limb",
     "bleed_leg",
     "bleed_hurt",
+    "knock_min_s",
+    "knock_span_s",
     "glass_above",
     "two_wheeler_rider_m",
     "open_hits",
@@ -399,6 +401,12 @@
     "bleed_hurt": {
      "type": "number"
     },
+    "knock_min_s": {
+     "type": "number"
+    },
+    "knock_span_s": {
+     "type": "number"
+    },
     "glass_above": {
      "type": "number"
     },
@@ -423,9 +431,7 @@
     "pace_light": {
      "type": "number"
     },
-    "drips_per_s": {
-     "type": "number"
-    },
+    "drips_per_s": {"type": "number"},
     "pace_leg": {
      "type": "number"
     },

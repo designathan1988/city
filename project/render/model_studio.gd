@@ -5,14 +5,14 @@ extends SubViewport
 
 signal pictured(key: String, picture: Texture2D)
 
-static var SHELF_PICTURE_PX: int = int(DataTables.game("tools").model_studio.picture_px) # data/game/tools.json model_studio
+const SHELF_PICTURE_PX := 128
 const VIEW_FROM := Vector3(0.62, 0.5, 0.6) # front right and above: the lot's front looks towards +z
-static var FRAME_MARGIN: float = DataTables.game("tools").model_studio.frame_margin
+const FRAME_MARGIN := 1.12
 const CLOSEST_M := 1.0
-static var LIGHT_ANGLES_DEG := Vector3(DataTables.game("tools").model_studio.light_angles_deg[0], DataTables.game("tools").model_studio.light_angles_deg[1], DataTables.game("tools").model_studio.light_angles_deg[2])
-static var LIGHT_GAIN: float = DataTables.game("tools").model_studio.light_gain
-static var AMBIENT_ENERGY: float = DataTables.game("tools").model_studio.ambient_energy
-static var CAMERA_REACH_M: float = DataTables.game("tools").model_studio.camera_reach_m
+const LIGHT_ANGLES_DEG := Vector3(-48.0, 35.0, 0.0)
+const LIGHT_GAIN := 1.1
+const AMBIENT_ENERGY := 0.55
+const CAMERA_REACH_M := 600.0
 const SETTLE_FRAMES := 3 # a viewport new to the tree draws nothing (measured: empty at once, right after three frames)
 
 static var pictures := {}

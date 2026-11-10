@@ -3,7 +3,6 @@
 #pragma once
 
 #include "core/seeded.h"
-#include "sim/buildings/b40/shapes.h"
 #include "sim/buildings/b40/types.h"
 
 #include <algorithm>
@@ -13,7 +12,6 @@
 namespace city::b40 {
 
 constexpr float SNAP_GRID = 2.f; // snap() = round(2x)/2
-// A packed 0xRRGGBB: the red and green channels' shifts (blue is the low byte), a channel's mask and its top.
 constexpr int CH_R = 16, CH_G = 8;
 constexpr uint32_t CH_MASK = 255;
 constexpr float CH_MAX = 255.f;
@@ -39,21 +37,24 @@ inline float lightness(uint32_t c) {
 	return (std::max({ r, g, b }) + std::min({ r, g, b })) / (2.f * CH_MAX);
 }
 inline bool is_light(uint32_t c) {
-	constexpr float LIGHT_SUM = 600; // of the 765 three full channels sum to: above it a colour reads light (a dark trim suits it)
+	constexpr float LIGHT_SUM = 600;
 	return ch(c, CH_R) + ch(c, CH_G) + ch(c, 0) > LIGHT_SUM;
 }
 
-// The skin's lightness tint: one float, the scale drawn from K's tint range.
-inline uint32_t tint(const PaintShape &K, uint32_t c, Xoshiro128 &r) { return scale_rgb(c, float(K.tint_lo + r.f() * K.tint_span)); }
+// The skin's lightness tint: one float.
+inline uint32_t tint(uint32_t c, Xoshiro128 &r) {
+	constexpr double LO = 0.95, SPAN = 0.1;
+	return scale_rgb(c, float(LO + r.f() * SPAN));
+}
 
-uint32_t nudge(const PaintShape &K, uint32_t c, Xoshiro128 &r, float amount = 1.f); // three floats, steps of `K`
+uint32_t nudge(uint32_t c, Xoshiro128 &r, float amount = 1.f); // three floats
 
 // Linear <-> sRGB per channel (vertex colours are stored sRGB; shading is done on linear values).
 struct Lin {
 	float r = 0, g = 0, b = 0;
 	Lin operator*(float k) const { return { r * k, g * k, b * k }; }
 };
-constexpr float SRGB_KNEE = 0.04045f, SRGB_LINEAR = 12.92f, SRGB_OFF = 0.055f, SRGB_GAMMA = 2.4f; // the sRGB transfer (IEC 61966-2-1)
+constexpr float SRGB_KNEE = 0.04045f, SRGB_LINEAR = 12.92f, SRGB_OFF = 0.055f, SRGB_GAMMA = 2.4f;
 inline float to_lin(float c) { return c <= SRGB_KNEE ? c / SRGB_LINEAR : std::pow((c + SRGB_OFF) / (1 + SRGB_OFF), SRGB_GAMMA); }
 inline Lin lin_of(uint32_t c) { return { to_lin(ch(c, CH_R) / CH_MAX), to_lin(ch(c, CH_G) / CH_MAX), to_lin(ch(c, 0) / CH_MAX) }; }
 

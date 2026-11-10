@@ -7,15 +7,6 @@
   "signal_step_s": {
    "type": "number"
   },
-  "changes_shown": {
-   "type": "integer"
-  },
-  "timings": {
-   "type": "object",
-   "properties": {"tip_wait_s": {"type": "number"}, "lane_reread_s": {"type": "number"}, "toast_s": {"type": "number"}, "inspector_refresh_s": {"type": "number"}, "flash_in_s": {"type": "number"}, "flash_out_s": {"type": "number"}},
-   "required": ["tip_wait_s", "lane_reread_s", "toast_s", "inspector_refresh_s", "flash_in_s", "flash_out_s"],
-   "strict": true
-  },
   "stats": {
    "type": "array",
    "items": {
@@ -89,7 +80,6 @@
   "tool_options": {
    "type": "object",
    "properties": {
-    "road_blocks": {"type": "object", "properties": {"cols": {"type": "number"}, "rows": {"type": "number"}, "size_m": {"type": "number"}, "most": {"type": "number"}, "least_m": {"type": "number"}, "widest_m": {"type": "number"}, "step_m": {"type": "number"}, "turn_step_deg": {"type": "number"}, "preview_step_m": {"type": "number"}, "preview_half_px": {"type": "number"}}, "required": ["cols", "rows", "size_m", "most", "least_m", "widest_m", "step_m", "turn_step_deg", "preview_step_m", "preview_half_px"], "strict": true},
     "zone_radius": {
      "type": "array",
      "items": {
@@ -118,15 +108,13 @@
    "required": [
     "zone_radius",
     "terrain_radius",
-    "terrain_strength",
-    "road_blocks"
+    "terrain_strength"
    ],
    "strict": true
   }
  },
  "required": [
   "_doc",
-  "changes_shown",
   "stats",
   "demand",
   "speeds",

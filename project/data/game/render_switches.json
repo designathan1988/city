@@ -1,5 +1,5 @@
 {
- "_doc": "The Effects panel (F7, ui/effects_panel.gd; game/settings/render_switches.gd). Each item is an effect or layer switched on and off live, to measure what it costs: `layers` are the names of native/src/render/render_layers.h, hidden by the camera's cull mask (no instance touched); `effect` is one thing of the renderer (clouds: the pass of the air, weather: the rain and bolts drawn, both render/sky_view.gd). resolutions: the share of the 3D scale the panel offers.",
+ "_doc": "The Effects panel (F7, ui/effects_panel.gd; game/settings/render_switches.gd). Each item is an effect or layer switched on and off live, to measure what it costs: `layers` are the names of native/src/render/render_layers.h, hidden by the camera's cull mask (no instance touched); `effect` is one thing of the renderer. resolutions: the share of the 3D scale the panel offers. Switches of systems the game does not have yet (clouds, weather, particles, transit) come with the session that ports them.",
  "doctor": {
   "_doc": "The Diagnosis (game/lab/doctor_run.gd, api/lab/diagnosis.h), the 4.0's doctor. budget_fps, bound_share: verdictOf; high_ms, medium_ms, low_ms: severityOf; stage_min_ms: a stage under this is no finding; stutter_ms, many_hitches: the 4.0's hitches; settle_ms, read_ms: quickAb's windows; step_ms, still_ms, most_ms, tail_ms: settled. stages: bands of the frame, each from its stamp to the next: `from` is `begin` (the viewport's own stamp) or a CompositorEffect callback, in the engine's order. The shadows draw after PRE_OPAQUE (render_forward_clustered.cpp, _pre_opaque_render), so no stamp can part them from the opaque pass; `switch` is what tests a band.",
   "budget_fps": 60,
@@ -53,10 +53,6 @@
     {
      "key": "canyonLight",
      "global": "canyon_light"
-    },
-    {
-     "key": "clouds",
-     "effect": "atmosphere"
     }
    ]
   },
@@ -133,10 +129,6 @@
      "layers": [
       "signals"
      ]
-    },
-    {
-     "key": "weather",
-     "effect": "weather"
     }
    ]
   },

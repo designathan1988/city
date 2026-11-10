@@ -12,7 +12,6 @@ import { ExternalNames, moduleOfCpp } from './external.ts';
 import { cppFacts } from './facts.ts';
 import { tokenize, type CppToken } from './lexer.ts';
 import { ClangdSession, type SemanticToken } from './session.ts';
-import { SymbolCache } from './symbol-cache.ts';
 import { FileText, unitsOf, type CppUnit, type LspPosition } from './symbols.ts';
 
 export interface CppGraphOptions {
@@ -27,14 +26,6 @@ export interface CppGraphOptions {
   readonly entries: readonly string[];
   readonly clangdArgs: readonly string[];
   readonly indexTimeoutSeconds: number;
-  /**
-   * The declarations alone: every file's units (one documentSymbol request a file, no index), no edges. What a translation reads of
-   * the target (its types and their fields: translate/target-types.ts) needs nothing more, and the edges cost a definition request
-   * for every name in every file over a whole background index: minutes, against seconds for the declarations.
-   */
-  readonly declarationsOnly?: boolean;
-  /** Where each file's symbols are kept across graphs (symbol-cache.ts), outside the project; absent, every file is parsed. */
-  readonly symbolCacheDir?: string;
 }
 
 const SOURCE = /\.(h|hh|hpp|hxx|inl|c|cc|cpp|cxx)$/;
@@ -78,40 +69,15 @@ export async function buildCppGraph(options: CppGraphOptions): Promise<GraphIR> 
   const include = (options.include.length > 0 ? options.include : ['native/src']).map((d) => normalizePath(path.resolve(root, d)));
   const exclude = options.exclude.map((d) => normalizePath(path.resolve(root, d)));
   const inScope = (file: string): boolean => include.some((d) => isInside(d, file)) && !exclude.some((d) => isInside(d, file));
-  const resolveEdges = !options.declarationsOnly;
-  const session = await ClangdSession.start(options.clangd, options.compileCommands, cacheDir, inScope, root, options.clangdArgs, options.indexTimeoutSeconds, resolveEdges);
+  const session = await ClangdSession.start(options.clangd, options.compileCommands, cacheDir, inScope, root, options.clangdArgs, options.indexTimeoutSeconds);
   try {
     const files = new Map<string, FileData>();
     const ids = new Set<string>();
-    // Each file's symbols need only that file's parse, and the parses are independent: asked in batches, so clangd's worker pool
-    // (one a core) parses them at once instead of one after another; the units are then taken in the files' order, as before.
-    const sources = include.flatMap(listSources).filter(inScope);
-    const texts = new Map(sources.map((file) => [file, new FileText(fs.readFileSync(file, 'utf8'))]));
-    const symbolsOf = new Map<string, Awaited<ReturnType<typeof session.symbols>>>();
-    // A file whose symbols are kept under its exact key (its text, the project headers it reads, the toolchain's context) is not
-    // parsed again; only the rest go to clangd, and what they give is kept for the next graph.
-    const cache = options.symbolCacheDir === undefined ? null : new SymbolCache(options.symbolCacheDir,
-      `${session.version}\0${fs.readFileSync(options.compileCommands, 'utf8')}`, new Map([...texts].map(([f, t]) => [f, t.text])), include);
-    const toParse: string[] = [];
-    for (const file of sources) {
-      const kept = cache?.get(file) ?? null;
-      if (kept) symbolsOf.set(file, kept);
-      else toParse.push(file);
-    }
-    for (let b = 0; b < toParse.length; b += BATCH) {
-      const batch = toParse.slice(b, b + BATCH);
-      const answers = await Promise.all(batch.map((file) => session.symbols(file, texts.get(file)!.text)));
-      batch.forEach((file, i) => {
-        symbolsOf.set(file, answers[i]!);
-        cache?.put(file, answers[i]!);
-      });
-    }
-    console.log(`cppgraph: ${sources.length - toParse.length} files' symbols kept, ${toParse.length} parsed`);
-    for (const file of sources) {
-      const text = texts.get(file)!;
+    for (const file of include.flatMap(listSources).filter(inScope)) {
+      const text = new FileText(fs.readFileSync(file, 'utf8'));
       const tokens = tokenize(text.text);
       const at = new Map(tokens.map((t, i) => [`${t.line}:${t.column}`, i]));
-      const units = unitsOf(text, symbolsOf.get(file)!).map((u) => {
+      const units = unitsOf(text, await session.symbols(file, text.text)).map((u) => {
         let id = `${relativePath(root, file)}#${u.name}`;
         if (ids.has(id)) id = `${id}@${u.range.start.line + 1}`;
         ids.add(id);
@@ -132,10 +98,8 @@ export async function buildCppGraph(options: CppGraphOptions): Promise<GraphIR> 
       }
       return best;
     };
-    // The units whose names are resolved to edges, from the entries or every unit; with the declarations alone (declarationsOnly,
-    // what a translation reads) every unit of every file stands in the graph and none is resolved: the loop below has nothing to do.
-    const queue: string[] = !resolveEdges ? [] : options.entries.length > 0 ? entryKeys(options.entries, root, files) : [...byKey.keys()];
-    const reached = new Set(resolveEdges ? queue : byKey.keys());
+    const queue: string[] = options.entries.length > 0 ? entryKeys(options.entries, root, files) : [...byKey.keys()];
+    const reached = new Set(queue);
     const edges = new Map<string, Map<EdgeKind, number>>();
     const external = new Map<string, Map<string, Map<EdgeKind, number>>>();
     const names = new ExternalNames();

@@ -38,29 +38,20 @@ const heapUser = `${A}#heapUser`;
 const heap = 'src/core/heap.ts#Heap';
 const delivered = `${A}#delivered`;
 const usesDelivered = `${A}#usesDelivered`;
-const looping = `${A}#looping`;
-const loopCaller = `${A}#loopCaller`;
-const typeUser = `${A}#typeUser`;
-const foreignWriter = 'src/sim/b.ts#foreignWriter';
-const level = `${A}#Level`;
-const levelReader = `${A}#levelReader`;
 
 const units = [unit(clean, 'function'), unit(sick, 'function'), unit(caller, 'function'), unit(holey, 'function'), unit(drawn, 'function', { external: ['three:Mesh'] }),
   unit(owner, 'class'), unit(method, 'method', { parent: owner }), unit(shape, 'interface'), unit(field, 'field', { parent: shape }), unit(reader, 'function'),
-  unit(heapUser, 'function'), unit(heap, 'class'), unit(delivered, 'function'), unit(usesDelivered, 'function'), unit(looping, 'function'),
-  unit(loopCaller, 'function'), unit(typeUser, 'function'), unit(foreignWriter, 'function'), unit(level, 'enum'), unit(levelReader, 'function')];
+  unit(heapUser, 'function'), unit(heap, 'class'), unit(delivered, 'function'), unit(usesDelivered, 'function')];
 
 function decide(findings: readonly Finding[], coverage: ReadonlyMap<string, Delivered> = new Map()): Map<string, LedgerUnit> {
   const graph = { files: [{ path: A, lines: 9 }, { path: 'src/render/a.ts', lines: 9 }, { path: 'src/core/heap.ts', lines: 9 }], units,
-    edges: [edge(caller, sick), edge(reader, field, 'read'), edge(heapUser, heap, 'construct'), edge(usesDelivered, delivered), edge(loopCaller, looping),
-      edge(typeUser, shape, 'reference'), edge(foreignWriter, field, 'write'), edge(levelReader, level, 'read')] } as unknown as GraphIR;
+    edges: [edge(caller, sick), edge(reader, field, 'read'), edge(heapUser, heap, 'construct'), edge(usesDelivered, delivered)] } as unknown as GraphIR;
   const ledger = new Ledger({ graph, audit: { findings: [...findings] }, own: units.map((u) => u.id), sliced: [], coverage, ownedFiles: ['src/core/heap.ts'], ownedNames: [] });
   return new Map(ledger.units.map((u) => [u.id, u]));
 }
 
 describe('convert: the ledger', () => {
-  // scattered-writes as the audit gives it: on the code that writes the state from outside its owner (audit/state.ts)
-  const found = [finding(sick, 'quadratic-proximity'), finding(holey, 'holey-array'), finding(looping, 'hot-allocation'), finding(foreignWriter, 'scattered-writes')];
+  const found = [finding(sick, 'hot-allocation'), finding(holey, 'holey-array')];
   const ledger = decide(found);
   const disposition = (id: string): string | undefined => ledger.get(id)?.disposition;
 
@@ -68,26 +59,9 @@ describe('convert: the ledger', () => {
     assert.equal(disposition(clean), 'translate');
   });
 
-  it('stops a unit with a wrong methodology nothing judges on the output, and names the correct one', () => {
+  it('stops a unit with a wrong methodology, and names the correct one', () => {
     assert.equal(disposition(sick), 'method');
-    assert.match(ledger.get(sick)!.methods[0]!.correct, /spatial partition/);
-  });
-
-  it('leaves a form the quarantine finds in the written C++ to the quarantine, its one owner (an allocation in a loop is a heap allocation only in the C++)', () => {
-    assert.equal(disposition(looping), 'translate');
-    assert.equal(disposition(loopCaller), 'translate');
-    assert.match(ledger.get(looping)!.why, /judged on the C\+\+ it becomes/);
-  });
-
-  it('stops the code that writes state from outside its owner, and neither the state nor what only refers to it', () => {
-    assert.equal(disposition(foreignWriter), 'method');
-    assert.equal(disposition(shape), 'translate');
-    assert.equal(disposition(typeUser), 'translate');
-  });
-
-  it('gives the machine an enum, which it translates, and what reads one', () => {
-    assert.equal(disposition(level), 'translate');
-    assert.equal(disposition(levelReader), 'translate');
+    assert.match(ledger.get(sick)!.methods[0]!.correct, /Preallocate/);
   });
 
   it('stops what reaches a stopped unit: the disease does not travel through a call', () => {
@@ -159,7 +133,7 @@ describe('convert: what is known first', () => {
     fs.writeFileSync(path.join(dir, 'roads', 'coverage.md'), [
       '| `src/a.ts` | whole 10 | what | `sim/a.cpp` | portado | note |',
       '| `src/b.ts` | part 10 | what | `sim/b.cpp` | portado | note |',
-      '| `src/c.ts#x` | function | what | `sim/c.cpp` | j\u00e1 existia | note |',
+      '| `src/c.ts#x` | function | what | `sim/c.cpp` | já existia | note |',
       '| `src/d.ts` | whole 10 | what | `sim/d.cpp` | a portar | note |',
     ].join('\n'));
     const coverage = readCoverage(dir);

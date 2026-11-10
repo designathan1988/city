@@ -1,15 +1,14 @@
-// What the tests read of the building levels: what the view still asks, how a chunk stands, and what a building's inside costs.
+// What the tests read of the building levels: what the view still asks and how a chunk stands.
 #include "render/buildings/building_renderer.h"
 
 #include "core/grid.h"
-#include "render/buildings/facade.h"
 #include "render/buildings/facade_bay.h"
-#include "render/buildings/interior_emit.h"
 #include "sim/buildings/b40/civic.h"
 
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <shared_mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -31,24 +30,20 @@ BuildingViewNeed BuildingRenderer::view_need() const {
 	return n;
 }
 
-Dictionary BuildingRenderer::chunk_view(float x, float z) const {
-	Dictionary d;
+int BuildingRenderer::chunk_flags(float x, float z) const {
 	const int64_t key = chunk_of(x, z);
 	auto it = chunks_.find(key);
-	d["known"] = it != chunks_.end();
-	if (it == chunks_.end()) return d;
+	if (it == chunks_.end()) return 0;
 	const Chunk &ch = it->second;
-	d["near"] = ch.built[LEVEL_NEAR];
-	d["mid"] = ch.built[LEVEL_MID];
-	d["shown"] = ch.shown;
-	d["detail"] = ch.detail;
+	constexpr int NEAR_BIT = 1, MID_BIT = 2, SHOWN_BIT = 4, DETAIL_BIT = 8, KNOWN_BIT = 16, FAR_BIT = 32;
+	int flags = KNOWN_BIT | (ch.built[LEVEL_NEAR] ? NEAR_BIT : 0) | (ch.built[LEVEL_MID] ? MID_BIT : 0) | (ch.shown ? SHOWN_BIT : 0) | (ch.detail ? DETAIL_BIT : 0);
 	auto sp = supers_.find(chunk_of(ch.centre.x, ch.centre.z, SUPERCHUNK));
-	d["far"] = sp != supers_.end() && sp->second.far.inst.is_valid();
-	return d;
+	if (sp != supers_.end() && sp->second.far.inst.is_valid()) flags |= FAR_BIT;
+	return flags;
 }
 
 Dictionary BuildingRenderer::bay_census() {
-	constexpr int BAY_KEY_CHARS = 96; // room for a bay's key written out
+	constexpr int BAY_KEY_CHARS = 96;
 	constexpr float FINE = 100.f, COARSE = 4.f; // bays per metre told apart: by the centimetre, by the 25 cm
 	if (!state_) return Dictionary(); // no chunk was asked yet
 	const CityState &s = *state_;
@@ -57,7 +52,7 @@ Dictionary BuildingRenderer::bay_census() {
 	int64_t bays = 0, buildings = 0;
 	std::vector<Building> records;
 	{
-		MapRead lk(s); // for the copy of the records alone
+		std::shared_lock<std::shared_mutex> lk(s.map_mutex);
 		for (const Building &b : s.buildings.items)
 			if (b.alive && !(b.floors == 0 && b.body == 0 && !b40::is_open_lot(b.fn))) records.push_back(b);
 	}
@@ -69,13 +64,7 @@ Dictionary BuildingRenderer::bay_census() {
 	};
 	for (const Building &rec : records) {
 		const float reach = rec.w + rec.d; // past the lot, whatever its turn
-		// The ground under the record copied under a lock of its own, and its body placed with the map let go (the designs are the
-		// session's tables): the census never holds the map while it places.
-		HeightPatch ground;
-		{
-			MapRead lk(s);
-			ground = s.terrain.patch(rec.x - reach, rec.z - reach, rec.x + reach, rec.z + reach);
-		}
+		const HeightPatch ground = s.terrain.patch(rec.x - reach, rec.z - reach, rec.x + reach, rec.z + reach);
 		b40::Placed pl;
 		bodies_.place(designs(), look_, ground, rec, pl);
 		buildings++;
@@ -122,13 +111,9 @@ Dictionary BuildingRenderer::building_cost() const {
 	static const char *const NAMES[HELD_KINDS] = { "near_walls", "near_panes", "near_guards", "near_cards", "near_pieces", "mid_walls", "mid_panes", "mid_cards" };
 	std::array<Held, HELD_KINDS> sum;
 	Held far;
-	int64_t near_chunks = 0, mid_chunks = 0, instances = 0, props = 0, fading = 0, dissolving = 0;
-	const auto between = [](float keep) { return keep > 0.f && keep < 1.f; };
+	int64_t near_chunks = 0, mid_chunks = 0, instances = 0, props = 0, fading = 0;
 	for (const auto &[key, ch] : chunks_) {
-		for (const SubFade &f : ch.fade) {
-			fading += f.near.twin ? 1 : 0;
-			dissolving += (between(f.near.keep) ? 1 : 0) + (between(f.parts.keep) ? 1 : 0);
-		}
+		fading += std::count(ch.fading.begin(), ch.fading.end(), true);
 		near_chunks += ch.built[LEVEL_NEAR] ? 1 : 0;
 		mid_chunks += ch.built[LEVEL_MID] ? 1 : 0;
 		instances += ch.built[LEVEL_NEAR] ? ch.instances : 0;
@@ -153,35 +138,11 @@ Dictionary BuildingRenderer::building_cost() const {
 	for (int k = 0; k < HELD_KINDS; k++) put_held(NAMES[k], sum[size_t(k)]);
 	put_held("far", far);
 	d["near_chunks"] = near_chunks;
-	d["fading"] = fading; // sub-chunks wearing the near level's discarding twin: dissolving, or handed over and still in range
-	d["dissolving"] = dissolving; // levels of sub-chunks part drawn: only while a hand-over runs (fade_levels), none under a still eye
+	d["fading"] = fading; // sub-chunks in the band of the hand-over
 	d["mid_chunks"] = mid_chunks;
 	d["instances"] = instances;
 	d["props"] = props;
 	return d;
-}
-
-BuildingInteriorCost BuildingRenderer::interior_cost(const CityState &s, int id, int level, int dir) const {
-	BuildingInteriorCost out;
-	if (id < 0 || id >= int(s.buildings.items.size()) || !s.buildings.items[size_t(id)].alive) return out;
-	const Building &rec = s.buildings.items[size_t(id)];
-	const float reach = BuildingBodies::ground_reach(rec);
-	const HeightPatch ground = s.terrain.patch(rec.x - reach, rec.z - reach, rec.x + reach, rec.z + reach);
-	b40::Placed pl;
-	const b40::CutView cut{ level, dir };
-	bodies_.place(s.buildings.designs, look_, ground, rec, pl, &cut); // not designs(): state_ is set once the renderer has run a frame
-	b40::Shell shell, parts;
-	parts.instanced = true;
-	b40::emit_facades(shell, parts, pl);
-	b40::emit_roofs(shell, parts, pl);
-	out.shell_triangles = int(shell.triangles());
-	out.shell_boxes = int(parts.boxes.size());
-	const int64_t before = shell.bytes(true) + parts.bytes(true) + int64_t(parts.boxes.size() * sizeof(b40::BoxInstance));
-	b40::emit_interior(shell, parts, pl);
-	out.inside_triangles = int(shell.triangles()) - out.shell_triangles;
-	out.inside_boxes = int(parts.boxes.size()) - out.shell_boxes;
-	out.inside_bytes = shell.bytes(true) + parts.bytes(true) + int64_t(parts.boxes.size() * sizeof(b40::BoxInstance)) - before;
-	return out;
 }
 
 } // namespace city

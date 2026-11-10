@@ -12,7 +12,7 @@ namespace city {
 
 namespace {
 constexpr uint8_t DARK = 0xff; // a post with no published state: every lens unlit
-constexpr int WALKER_SHIFT = 4, CAR_MASK = 0xf; // a post's state byte: the walkers' light over the cars' low four bits
+constexpr int WALKER_SHIFT = 4, CAR_MASK = 0xf;
 constexpr float NONE_LIT = -1.f; // INSTANCE_CUSTOM of a head with neither of its lenses lit (props.gdshader)
 constexpr int LIT_PER_POST = 2; // a published post: its car lens and its walkers' lens
 
@@ -27,10 +27,11 @@ Lens car_lens(uint8_t light) {
 
 void SignalLamps::init(const RID &scenario, const RID &material, const PropKit &kit) {
 	scenario_ = scenario;
+	material_ = material;
 	const MeshBuilder &m = kit.lenses();
 	reach_ = 0;
 	for (int64_t i = 0; i < m.v.size(); i++) reach_ = std::max(reach_, m.v[i].length());
-	lenses_ = m.bake(material); // with its material (surface_data.h)
+	lenses_ = m.bake();
 }
 
 void SignalLamps::reset() {
@@ -60,7 +61,7 @@ void SignalLamps::write(Chunk &c) const {
 				on ? float(code >> WALKER_SHIFT) : NONE_LIT, 0, 0);
 		if (on) c.lit += LIT_PER_POST;
 	}
-	c.draw.set(scenario_, lenses_.rid, buf, c.box, false, LAYER_SIGNALS);
+	c.draw.set(scenario_, lenses_.rid, material_, buf, c.box, false, LAYER_SIGNALS);
 }
 
 void SignalLamps::set_chunk(int64_t key, std::vector<SignalHead> &&heads) {

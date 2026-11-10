@@ -8,30 +8,31 @@ using namespace godot;
 namespace city {
 
 namespace {
+constexpr float STAY_X = 0.06f, FORK_X = 0.05f; // half the width of the rear stays and of the fork at the axle
+constexpr float SADDLE_LONG = 0.26f, SADDLE_HALF_W = 0.08f, SADDLE_TOP = 0.04f, BAR_HALF = 0.28f, THIN = 0.8f;
 } // namespace
 
-int build_bicycle(MeshBuilder &mb, const DataValue &d, int sides, const AgentTrim &trim) {
-	const BicycleShape &K = trim.shapes->bicycle_mesh;
+int build_bicycle(MeshBuilder &mb, const Dictionary &d, int sides, const AgentTrim &trim) {
 	const Vector2 tyre = agent_tyre(d["tyre"]);
-	const float az = d["wheelbase_m"].f() * 0.5f, r = tyre.x, tube = d["tube_m"].f(), saddle = d["saddle_m"].f();
+	const float az = float(d["wheelbase_m"]) * 0.5f, r = tyre.x, tube = float(d["tube_m"]), saddle = float(d["saddle_m"]);
 	const Vector2 bracket = agent_v2(d["bracket"]), head = agent_v2(d["head"]); // [z, y]
-	const Vector3 bb(0, bracket.y, bracket.x), top(0, head.y, head.x), seat(0, saddle - K.saddle_top, bracket.x - d["seat_back_m"].f());
-	const Vector3 low(0, head.y - d["head_tube_m"].f(), head.x + d["head_rake_m"].f());
-	for (float z : { -az, az }) agent_spoked_wheel(mb, Vector3(0, r, z), r, tyre.y, sides, d["spokes"].whole(), trim);
+	const Vector3 bb(0, bracket.y, bracket.x), top(0, head.y, head.x), seat(0, saddle - SADDLE_TOP, bracket.x - float(d["seat_back_m"]));
+	const Vector3 low(0, head.y - float(d["head_tube_m"]), head.x + float(d["head_rake_m"]));
+	for (float z : { -az, az }) agent_spoked_wheel(mb, Vector3(0, r, z), r, tyre.y, sides, int(d["spokes"]), trim);
 	agent_strut(mb, bb, seat, tube, tube, AGENT_WHITE, AgentTag::PAINT);
 	agent_strut(mb, seat, top, tube, tube, AGENT_WHITE, AgentTag::PAINT);
 	agent_strut(mb, bb, low, tube, tube, AGENT_WHITE, AgentTag::PAINT);
 	agent_strut(mb, low, top, tube, tube, AGENT_WHITE, AgentTag::PAINT);
 	for (float side : { -1.f, 1.f }) {
-		const Vector3 rear(side * K.stay_x, r, -az), fork(side * K.fork_x, r, az);
-		agent_strut(mb, bb, rear, tube * K.thin, tube * K.thin, AGENT_WHITE, AgentTag::PAINT);
-		agent_strut(mb, seat, rear, tube * K.thin, tube * K.thin, AGENT_WHITE, AgentTag::PAINT);
-		agent_strut(mb, low, fork, tube * K.thin, tube * K.thin, trim.blackout, AgentTag::FIXED);
+		const Vector3 rear(side * STAY_X, r, -az), fork(side * FORK_X, r, az);
+		agent_strut(mb, bb, rear, tube * THIN, tube * THIN, AGENT_WHITE, AgentTag::PAINT);
+		agent_strut(mb, seat, rear, tube * THIN, tube * THIN, AGENT_WHITE, AgentTag::PAINT);
+		agent_strut(mb, low, fork, tube * THIN, tube * THIN, trim.blackout, AgentTag::FIXED);
 	}
-	agent_box(mb, Vector3(-K.saddle_half_w, saddle - K.saddle_top, seat.z - K.saddle_long * 0.5f), Vector3(K.saddle_half_w, saddle, seat.z + K.saddle_long * 0.5f),
+	agent_box(mb, Vector3(-SADDLE_HALF_W, saddle - SADDLE_TOP, seat.z - SADDLE_LONG * 0.5f), Vector3(SADDLE_HALF_W, saddle, seat.z + SADDLE_LONG * 0.5f),
 			trim.blackout, AgentTag::FIXED);
-	agent_strut(mb, Vector3(-K.bar_half, head.y, head.x), Vector3(K.bar_half, head.y, head.x), tube, tube, trim.blackout, AgentTag::FIXED);
-	const DataValue rack = d["rack"];
+	agent_strut(mb, Vector3(-BAR_HALF, head.y, head.x), Vector3(BAR_HALF, head.y, head.x), tube, tube, trim.blackout, AgentTag::FIXED);
+	const Dictionary rack = d["rack"];
 	const Vector2 at = agent_v2(rack["at"]), lens = agent_v2(rack["lens_m"]);
 	const Vector3 size = agent_v3(rack["size_m"]);
 	agent_box(mb, Vector3(-size.x * 0.5f, at.y, at.x - size.z * 0.5f), Vector3(size.x * 0.5f, at.y + size.y, at.x + size.z * 0.5f), trim.blackout, AgentTag::FIXED);

@@ -15,7 +15,7 @@ namespace city {
 namespace {
 constexpr int CORNERS = 3, AXES = 3;
 constexpr float PIVOTED = 0.5f; // uv2.y above it: uv is a pivot or a seat (agents.gdshader vertex()), the same for all of a part
-constexpr unsigned NO_INDEX = 0xFFFFFFFFu; // a vertex not yet moved: no index has every bit set
+constexpr unsigned NO_INDEX = 0xFFFFFFFFu;
 constexpr int PART_FIELDS = 8; // tag, kind, the pivot's two and the colour's four
 using PartKey = std::array<float, PART_FIELDS>;
 

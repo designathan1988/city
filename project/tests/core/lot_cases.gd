@@ -12,35 +12,35 @@ const ROAD_PX := 0.25
 const SNAP_FROM_M := 9.0
 const SNAP_REACH_M := 6.0
 
-var t: Node # the test (TestCase): its check and ticks
+var _check: Callable
 
 
-func _init(test: Node) -> void:
-	t = test
+func _init(check: Callable) -> void:
+	_check = check
 
 
 func run(at: Vector3) -> void:
 	var before: int = CityStore.query(&"lots").size()
 	var r: Dictionary = CityStore.dispatch(&"lot_add_rect", [at, at + Vector3(SIDE_M, 0, SIDE_M), 0.0])
-	t.check(r.get("ok", false), "lot: drawn (%s)" % r.get("error", ""))
+	_check.call(r.get("ok", false), "lot: drawn (%s)" % r.get("error", ""))
 	var mid := at + Vector3(SIDE_M * 0.5, 0, SIDE_M * 0.5)
 	var id: int = CityStore.query(&"lot_at", [mid])
-	t.check(id != 0, "lot: the point falls in it")
-	t.check(not CityStore.dispatch(&"lot_add_rect", [at, at + Vector3(SIDE_M, 0, SIDE_M), 0.0]).get("ok", false), "lot: refuses another on top")
-	t.check(CityStore.dispatch(&"lot_zone", [id, ZONE]).get("ok", false), "lot: takes a zone")
-	t.check(CityStore.dispatch(&"lot_split", [id, CUT_ACROSS, 2, mid, mid]).get("ok", false), "lot: divided")
+	_check.call(id != 0, "lot: the point falls in it")
+	_check.call(not CityStore.dispatch(&"lot_add_rect", [at, at + Vector3(SIDE_M, 0, SIDE_M), 0.0]).get("ok", false), "lot: refuses another on top")
+	_check.call(CityStore.dispatch(&"lot_zone", [id, ZONE]).get("ok", false), "lot: takes a zone")
+	_check.call(CityStore.dispatch(&"lot_split", [id, CUT_ACROSS, 2, mid, mid]).get("ok", false), "lot: divided")
 	var lots: Array = CityStore.query(&"lots")
-	t.check(lots.size() == before + 2, "lot: two after the cut (%d)" % (lots.size() - before))
-	t.check(int(lots[-1].zone) == ZONE, "lot: the cut keeps the zone")
+	_check.call(lots.size() == before + 2, "lot: two after the cut (%d)" % (lots.size() - before))
+	_check.call(int(lots[-1].zone) == ZONE, "lot: the cut keeps the zone")
 	var r2: Dictionary = CityStore.dispatch(&"lot_join", [lots[-2].id, lots[-1].id])
-	t.check(r2.get("ok", false), "lot: joined (%s)" % r2.get("error", ""))
-	t.check(CityStore.query(&"lots").size() == before + 1, "lot: one after joining")
+	_check.call(r2.get("ok", false), "lot: joined (%s)" % r2.get("error", ""))
+	_check.call(CityStore.query(&"lots").size() == before + 1, "lot: one after joining")
 	CityStore.dispatch(&"undo")
-	t.check(CityStore.query(&"lots").size() == before + 2, "lot: undo brings the cut back")
+	_check.call(CityStore.query(&"lots").size() == before + 2, "lot: undo brings the cut back")
 	CityStore.dispatch(&"undo")
 	CityStore.dispatch(&"undo")
 	CityStore.dispatch(&"undo")
-	t.check(CityStore.query(&"lots").size() == before, "lot: undo takes it all")
+	_check.call(CityStore.query(&"lots").size() == before, "lot: undo takes it all")
 	_against_a_road(at, before)
 
 
@@ -52,30 +52,30 @@ func _against_a_road(at: Vector3, before: int) -> void:
 	CityStore.dispatch(&"lot_add_rect", [at, at + Vector3(SIDE_M, 0, SIDE_M), 0.0])
 	var whole: Array = CityStore.query(&"lots")
 	var r: Dictionary = CityStore.dispatch(&"build_road", [a, b, false, Vector3.ZERO, ROAD_PROFILE, ROAD_PX])
-	t.check(r.get("ok", false), "lot: a road over it (%s)" % r.get("error", ""))
+	_check.call(r.get("ok", false), "lot: a road over it (%s)" % r.get("error", ""))
 	var cut: Array = CityStore.query(&"lots")
-	t.check(cut.size() == before + 2, "lot: the road cuts it in two (%d)" % (cut.size() - before))
+	_check.call(cut.size() == before + 2, "lot: the road cuts it in two (%d)" % (cut.size() - before))
 	var mid := at + Vector3(SIDE_M * 0.5, 0, SIDE_M * 0.5)
-	t.check(int(CityStore.query(&"lot_at", [mid])) == 0, "lot: none on the road")
+	_check.call(int(CityStore.query(&"lot_at", [mid])) == 0, "lot: none on the road")
 	var near: Vector3 = at + Vector3(SIDE_M * 0.5, 0, SIDE_M * 0.5 - SNAP_FROM_M)
 	var snapped: Vector3 = CityStore.query(&"lot_snap_point", [near, SNAP_REACH_M, Vector3.INF])
-	t.check(not snapped.is_equal_approx(near), "lot: the point near the road goes to the pavement (%s)" % snapped)
+	_check.call(not snapped.is_equal_approx(near), "lot: the point near the road goes to the pavement (%s)" % snapped)
 	CityStore.dispatch(&"undo")
-	t.check(CityStore.query(&"lots").size() == whole.size(), "lot: undoing the road brings the whole lot back")
+	_check.call(CityStore.query(&"lots").size() == whole.size(), "lot: undoing the road brings the whole lot back")
 	CityStore.dispatch(&"undo")
-	t.check(CityStore.query(&"lots").size() == before, "lot: undo takes the lot")
+	_check.call(CityStore.query(&"lots").size() == before, "lot: undo takes the lot")
 	CityStore.dispatch(&"build_road", [a, b, false, Vector3.ZERO, ROAD_PROFILE, ROAD_PX])
 	var over: Dictionary = CityStore.dispatch(&"lot_add_rect", [at, at + Vector3(SIDE_M, 0, SIDE_M * 0.45), 0.0])
-	t.check(over.get("ok", false), "lot: drawn up to the road (%s)" % over.get("error", ""))
+	_check.call(over.get("ok", false), "lot: drawn up to the road (%s)" % over.get("error", ""))
 	var drawn: Array = CityStore.query(&"lots")
 	var deepest := -INF
 	for q: Vector3 in drawn[-1].points:
 		deepest = maxf(deepest, q.z)
-	t.check(deepest < at.z + SIDE_M * 0.45, "lot: cut back to the pavement (%.1f)" % deepest)
+	_check.call(deepest < at.z + SIDE_M * 0.45, "lot: cut back to the pavement (%.1f)" % deepest)
 	var offered: Array = CityStore.query(&"lot_proposals", [(a + b) * 0.5])
-	t.check(not offered.is_empty(), "lot: the road proposes lots (%d)" % offered.size())
+	_check.call(not offered.is_empty(), "lot: the road proposes lots (%d)" % offered.size())
 	var taken: Dictionary = CityStore.dispatch(&"lot_add_polygon", [offered[0]])
-	t.check(taken.get("ok", false), "lot: the proposal becomes a lot (%s)" % taken.get("error", ""))
+	_check.call(taken.get("ok", false), "lot: the proposal becomes a lot (%s)" % taken.get("error", ""))
 	CityStore.dispatch(&"undo")
 	CityStore.dispatch(&"undo")
 	CityStore.dispatch(&"undo")

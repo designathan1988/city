@@ -76,9 +76,6 @@ int lane_load(const TrafficState &t, int key); // near + far vehicles on the lan
 bool lane_reaches(const CityState &s, int ds, int lane, int next);
 int conn_toward(const CityState &s, int ds, int lane, int to_ds);
 int lane_toward(const CityState &s, int ds, int to_ds, int near_lane);
-int connector_to(const CityState &s, int ds, int lane, int next_ds); // from lane `lane` of `ds` onto `next_ds`, or -1
-int pick_connector(const CityState &s, const Vehicle &v);
-int lane_head(const CityState &s, int vehicle); // the first vehicle of its lane (itself when it leads), -1 off lanes
 void move_vehicle_lane(CityState &s, int id, int target);
 
 // meso.cpp / window.cpp: the far model and the micro window around the camera.
@@ -97,7 +94,7 @@ void build_junction(CityState &s, int n); // one node's control and stages (incr
 // signal_timing.cpp: node `n` on LaneGraph::signal_nodes when its junction runs a signal plan, off it otherwise; called after every
 // write of a junction.
 void file_signal(LaneGraph &g, int n);
-void replan_signal(CityState &s, int n); // its signal settings changed: the plan again, the stage running going on as it was
+void replan_signal(CityState &s, int n); // its signal settings changed: the plan again, the stage running ending as it began
 // The fixed plans of a green wave along the main road through node `n` (green_wave.cpp): empty with under two signals on it.
 std::vector<std::pair<int, SignalSettings>> green_wave_plans(const CityState &s, int n);
 // The node's control (signals, priority or none), from the road network alone: the only owner of that decision,
@@ -111,18 +108,15 @@ int leg_rule(const RoadNode &node);
 int approach_rule(const CityState &s, int n, int seg);
 // The plates the rules put up at node `n` (street_signs.cpp).
 void junction_signs(const CityState &s, int n, std::vector<SignStand> &out);
-void update_lights(CityState &s); // the walkers' calls, then TrafficState::light_now, once per step
-// signal_demand.cpp: the walkers waiting at the signalled junctions' kerbs call their stages (once per step, before the lights); another
-// stage than the one running at `j` is asked for; the stage that runs after `k` (the asked-for one waiting longest, the overdue and the
-// walkers long at a kerb first, the next in order when nobody asks).
-void call_walkers(CityState &s);
-bool signal_competing(const CityState &s, const Junction &j);
-size_t next_signal_stage(const CityState &s, const Junction &j, size_t k);
+void update_lights(CityState &s); // fills TrafficState::light_now once per step
 Light light_for(const CityState &s, int ds); // the light the approach `ds` shows now
 float amber_left(const CityState &s, int ds); // seconds of amber left on approach `ds`, which shows amber
 double next_green(const CityState &s, int ds, double now); // when that approach next shows green (meso waits)
 bool may_enter(const CityState &s, int vehicle, int conn, float dist_to_line);
+int connector_to(const CityState &s, int ds, int lane, int next_ds); // from lane `lane` of `ds` onto `next_ds`, or -1
+int pick_connector(const CityState &s, const Vehicle &v);
 Hold hold_reason(const CityState &s, int vehicle);
+int lane_head(const CityState &s, int vehicle); // the first vehicle of its lane (itself when it leads), -1 off lanes
 
 // light_rule.cpp: the one rule of the lights, for admission, commitments and the stops ahead. `v` can stop
 // comfortably (its class's b) within `stop_m`; how far it needs to stop as the intergreen is timed (CONTRAN MBST vol. V
@@ -153,10 +147,6 @@ LightStop lights_ahead(const CityState &s, const Vehicle &v, int ri, int lane, f
 // junction_admission.cpp (anti-gridlock)
 bool is_splice(const CityState &s, int node); // a road joint: no junction to block
 bool has_exit(const CityState &s, const Conn &c, int vehicle); // room on the exit lane (exitRoom)
-// ring_meter.cpp: the small loops made again after the lane graph changed (once a step, before the vehicles); whether entering by `c`
-// takes a loop it is not on past ring_meter_share of its storage, `need` metres of it its own.
-void refresh_rings(CityState &s);
-bool ring_full(const CityState &s, const Conn &c, float need);
 int pass_holder(const CityState &s, int conn); // vehicle committed to `conn` and not yet on it, or -1
 bool box_clear(const CityState &s, int conn); // nobody inside (or committed earlier) on a crossing connector
 void commit(CityState &s, int vehicle, int conn);
@@ -175,12 +165,9 @@ void note_search(CityState &s);
 // routing.cpp: directed segments from `from_ds` to `goal_ds` (inclusive), edge times raised by the load (BPR);
 // false when unreachable. `max_expanded` < 0 uses route_max_expanded; `banned_ds` is never entered. Counted on the tick's searches.
 bool find_route(CityState &s, int from_ds, int goal_ds, std::vector<int> &out, int max_expanded = -1, int banned_ds = -1, bool by_bike = false);
-float junction_cost(const CityState &s, const Conn &c);
-// route_reach.cpp: whether directed segment `goal_ds` can be reached from `from_ds` at all (by a bicycle when `by_bike`), from the
-// segment graph's components: no search is needed to say no.
-bool route_reaches(CityState &s, int from_ds, int goal_ds, bool by_bike); // turn + signal time the router adds for a connector
-// The route planned again from the roads the vehicle's lane leads to (the lab's repairRoute): false when none reaches its goal.
-bool route_from_lane(CityState &s, int id);
+float junction_cost(const CityState &s, const Conn &c); // turn + signal time the router adds for a connector
+// The route's next turn is not reachable from this lane: another lane of the segment, else a new route, else false.
+bool retry_route(CityState &s, int id);
 // Another connector of the vehicle's lane (not `blocked`; with room at its exit when `need_room`), the route
 // re-planned from it, rejoining the old route a few segments on. False when there is none.
 bool detour(CityState &s, int vehicle, int blocked, bool need_room);
@@ -210,7 +197,7 @@ float top_speed(const CityState &s, const Vehicle &v, float limit); // the most 
 // lane_change.cpp
 void change_lanes(CityState &s);
 
-// signal_timing.cpp
+// ped_crossing.cpp
 float amber_wanted(const TrafficParams &tp, float v); // the amber a regulated speed `v` asks (m/s), before amber_max_s
 // The intergreen after the green of approach `ds` into node `n` (amber, all-red), `walkers` when it has crosswalks.
 void intergreen(const CityState &s, int n, int ds, bool walkers, float &amber, float &all_red);
@@ -231,10 +218,7 @@ bool cars_on_crossing(CityState &s, int node, int arm_seg); // a vehicle on it o
 // Walkers on the crosswalks connector `conn` drives over (the arm it comes from and the one it leaves by) who are
 // not clear of its lane when its front gets there (`front_in`/`front_out` seconds from now).
 bool peds_in_way(const CityState &s, int conn, float front_in = 0, float front_out = 0);
-constexpr float FRONT_PAST = BIG;
-// Somebody stands held at the kerb of a crosswalk connector `conn` drives over (its arm in or out) within ped_wait_call_s, near enough
-// to its lane to be in its path soon after stepping off (ped_wait_reach_m).
-bool walkers_waiting(const CityState &s, int conn); // peds_in_way front time of a crosswalk the vehicle has already passed
+constexpr float FRONT_PAST = BIG; // peds_in_way front time of a crosswalk the vehicle has already passed
 
 // Seconds for the front of `v` to cover `metres` accelerating at its class's rate from its speed up to `top`: a vehicle
 // starting at its line reaches a crosswalk sooner than its speed now says. Measured on 155 000 commitments (soak, 7

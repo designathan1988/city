@@ -2,7 +2,7 @@
 ## edit_split_min_m of its ends). The marker shows where the cut falls.
 extends ToolBase
 
-static var MARK_SHARE: float = DataTables.game("tools").split.mark_share # data/game/tools.json split
+const MARK_SHARE := 0.6
 
 
 func enter() -> void:

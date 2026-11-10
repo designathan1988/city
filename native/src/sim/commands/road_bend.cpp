@@ -2,7 +2,6 @@
 // the height the player gives a node, within the steepest grade a road may be drawn at; the whole road bent, taken up and laid again
 // through the steps of a new road; and two roads in line made one.
 #include "sim/commands/commands.h"
-#include "sim/commands/edit_journal.h"
 #include "sim/commands/road_edit.h"
 #include "sim/commands/street_commands.h"
 
@@ -94,7 +93,7 @@ EditResult set_road_bend(CityState &s, int seg, double height, double at, double
 	const double cx = line.x0 + dx * at - dz / len * height * BEZIER_MID, cz = line.z0 + dz * at + dx / len * height * BEZIER_MID;
 	box.add(cx, cz);
 	Quad{ line.x0, line.z0, height == 0 ? (line.x0 + line.x1) / 2 : cx, height == 0 ? (line.z0 + line.z1) / 2 : cz, line.x1, line.z1 }.at(0.5, mid_x, mid_z);
-	const Squeezes before = squeezes_in(s, box);
+	const std::map<int, double> before = squeezes_in(s, box);
 	const RoadSegment &first = old.front(), &last = old.back();
 	const bool forward = old.size() == 1 || first.b == last.a || first.b == last.b || first.a != last.a;
 	Anchor a, b;

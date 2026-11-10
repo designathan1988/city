@@ -16,19 +16,19 @@ namespace city {
 
 namespace {
 constexpr double TOLERANCE_GROWTH = 1.5; // the thinning loosens by this until the stroke fits max_controls
-constexpr double SAME_POINT_M = 1e-6; // two points this near are one
+constexpr double SAME_POINT_M = 1e-6;
 constexpr double NODE_FOUND_M = 0.01; // the node a piece just laid ends on
 
-double dist(const XZ &a, const XZ &b) { return std::hypot(a.x - b.x, a.z - b.z); }
+double dist(const StrokePoint &a, const StrokePoint &b) { return std::hypot(a.x - b.x, a.z - b.z); }
 
-double chord_distance(const XZ &p, const XZ &a, const XZ &b) {
+double chord_distance(const StrokePoint &p, const StrokePoint &a, const StrokePoint &b) {
 	double dx = b.x - a.x, dz = b.z - a.z, l2 = dx * dx + dz * dz;
 	if (l2 < SAME_POINT_M * SAME_POINT_M) return dist(p, a);
 	double t = std::clamp(((p.x - a.x) * dx + (p.z - a.z) * dz) / l2, 0.0, 1.0);
 	return std::hypot(p.x - a.x - t * dx, p.z - a.z - t * dz);
 }
 
-std::vector<XZ> thin(const std::vector<XZ> &pts, double tolerance) {
+std::vector<StrokePoint> thin(const std::vector<StrokePoint> &pts, double tolerance) {
 	std::vector<char> keep(pts.size(), 0);
 	keep.front() = keep.back() = 1;
 	std::vector<std::pair<size_t, size_t>> todo{ { 0, pts.size() - 1 } };
@@ -49,21 +49,21 @@ std::vector<XZ> thin(const std::vector<XZ> &pts, double tolerance) {
 		todo.push_back({ from, at });
 		todo.push_back({ at, to });
 	}
-	std::vector<XZ> out;
+	std::vector<StrokePoint> out;
 	for (size_t i = 0; i < pts.size(); i++)
 		if (keep[i]) out.push_back(pts[i]);
 	return out;
 }
 
-std::vector<Quad> free_pieces(const Tuning &tn, const XZ &start, const XZ &end, const std::vector<XZ> &samples) {
+std::vector<Quad> free_pieces(const Tuning &tn, const StrokePoint &start, const StrokePoint &end, const std::vector<StrokePoint> &samples) {
 	double spacing = tn.road_min_len_m; // no piece shorter than the shortest road the plan accepts
-	std::vector<XZ> raw{ start };
-	for (const XZ &p : samples)
+	std::vector<StrokePoint> raw{ start };
+	for (const StrokePoint &p : samples)
 		if (dist(raw.back(), p) >= spacing) raw.push_back(p);
 	if (raw.size() > 1 && dist(raw.back(), end) < spacing) raw.pop_back();
 	raw.push_back(end);
 	double tolerance = tn.road_free_tolerance_m;
-	std::vector<XZ> controls = thin(raw, tolerance);
+	std::vector<StrokePoint> controls = thin(raw, tolerance);
 	while (controls.size() > size_t(tn.road_free_max_controls)) {
 		tolerance *= TOLERANCE_GROWTH;
 		controls = thin(raw, tolerance);
@@ -73,11 +73,11 @@ std::vector<Quad> free_pieces(const Tuning &tn, const XZ &start, const XZ &end, 
 		out.push_back(Quad::straight(start.x, start.z, end.x, end.z));
 		return out;
 	}
-	XZ from = start;
+	StrokePoint from = start;
 	for (size_t i = 1; i + 1 < controls.size(); i++) {
-		const XZ &c = controls[i];
+		const StrokePoint &c = controls[i];
 		bool last = i + 2 == controls.size();
-		XZ to = last ? end : XZ{ (c.x + controls[i + 1].x) / 2, (c.z + controls[i + 1].z) / 2 };
+		StrokePoint to = last ? end : StrokePoint{ (c.x + controls[i + 1].x) / 2, (c.z + controls[i + 1].z) / 2 };
 		if (!last && dist(from, to) < spacing) continue; // its turn goes to the next piece
 		out.push_back({ from.x, from.z, c.x, c.z, to.x, to.z });
 		from = to;
@@ -90,7 +90,7 @@ Quad dragged_curve(const Tuning &tn, const RoadStroke &k) {
 	Quad straight = Quad::straight(k.start.x, k.start.z, k.end.x, k.end.z);
 	double dx = k.end.x - k.start.x, dz = k.end.z - k.start.z, chord = std::hypot(dx, dz);
 	double nx = -dz / chord, nz = dx / chord, mx = (k.start.x + k.end.x) / 2, mz = (k.start.z + k.end.z) / 2, side = 0;
-	for (const XZ &p : k.samples) {
+	for (const StrokePoint &p : k.samples) {
 		double c = (p.x - mx) * nx + (p.z - mz) * nz;
 		if (std::fabs(c) > std::fabs(side)) side = c;
 	}
@@ -130,10 +130,6 @@ RoadPlan plan_path(const CityState &s, const std::vector<Quad> &pieces, const An
 		Anchor from = i == 0 ? a : free_anchor(q.x0, q.z0), to = i + 1 == pieces.size() ? b : free_anchor(q.x1, q.z1);
 		if (i > 0) from.lift = total.lifts.back();
 		RoadPlan p = plan_road(s, from, true, q.cx, q.cz, to, profile);
-		if (p.ok && plan_squeezed(s, p, from, to, profile)) { // the build refuses it once laid (place_road): the preview says so first
-			p.ok = false;
-			p.reason = "hint.rule.squeezed";
-		}
 		if (i == 0) total.lifts.push_back(p.lift_a);
 		total.lifts.push_back(p.lift_b);
 		total.len += p.len;

@@ -8,6 +8,10 @@
 namespace city::b40 {
 
 namespace {
+constexpr float WAY_SIDE = 0.3f; // a car's way is its drive less this each side (a door opened, a wing mirror)
+constexpr float DOOR_WAY_PAD = 0.5f; // the people's way: their gate and this each side
+constexpr float DOOR_WAY_MIN = 1.f; // the people's way reaches at least this far in from the street
+constexpr float EDGE_KEEP = 0.5f; // a loading yard's turning ground stops short of the boundary
 constexpr float HALF = 0.5f;
 
 const char *front_cover(FrontUse u) {
@@ -31,8 +35,6 @@ const char *back_cover(BackUse u) {
 } // namespace
 
 void lay_ground(LotSpace &s) {
-	const LotGroundShape &K = s.data.shapes.ground;
-	const LotPartShape &P = s.data.shapes.parts;
 	const bool house = s.b.kind == KIND_HOUSE;
 	const char *drive = house || s.b.kind == KIND_WORKS ? "concrete" : "asphalt";
 	const char *walk = house ? "path" : "stone_path";
@@ -40,7 +42,7 @@ void lay_ground(LotSpace &s) {
 	for (const Strip &st : s.strips) {
 		if (!st.drive.empty()) {
 			s.cover(st.drive, drive, 1);
-			s.keep_clear({ st.drive.x0 + P.way_side, 0, st.drive.x1 - P.way_side, s.B });
+			s.keep_clear({ st.drive.x0 + WAY_SIDE, 0, st.drive.x1 - WAY_SIDE, s.B });
 		}
 		if (!st.walk.empty()) s.cover(st.walk, walk, 1);
 		if (st.use == SIDE_GARDEN) s.cover(st.r, "lawn");
@@ -50,8 +52,8 @@ void lay_ground(LotSpace &s) {
 	Rect env{ s.plan.x0 + s.L, s.plan.y0, s.plan.x1 + s.L, s.plan.y1 };
 	s.cover(env, house || s.b.kind == KIND_FLATS || s.b.kind == KIND_TOWER ? "lawn" : "paving");
 	if (s.F > 0) {
-		float g = s.rules.person_gate[house ? 0 : 1] * HALF + K.door_way_pad;
-		s.keep_clear({ s.door_x - g, 0, s.door_x + g, std::max(s.F, K.door_way_min) });
+		float g = s.rules.person_gate[house ? 0 : 1] * HALF + DOOR_WAY_PAD;
+		s.keep_clear({ s.door_x - g, 0, s.door_x + g, std::max(s.F, DOOR_WAY_MIN) });
 	}
 	const LotRules &l = s.rules;
 	if (s.plan.back == BACK_PARKING) {
@@ -61,7 +63,7 @@ void lay_ground(LotSpace &s) {
 	if (s.plan.front == FRONT_APRON && s.F >= l.row_depth(1)) s.keep_clear({ s.L, 0, s.R, s.F - l.stall_d });
 	if (s.plan.back == BACK_LOADING) {
 		float docks_end = std::max(s.B, s.loading_y) + std::min(s.D - std::max(s.B, s.loading_y), l.lorry_l + l.dock_margin);
-		s.keep_clear({ s.L + K.edge_keep, docks_end, s.R - K.edge_keep, s.D - K.edge_keep });
+		s.keep_clear({ s.L + EDGE_KEEP, docks_end, s.R - EDGE_KEEP, s.D - EDGE_KEEP });
 	}
 }
 

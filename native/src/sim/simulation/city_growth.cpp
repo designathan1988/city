@@ -1,7 +1,6 @@
-// Growth over time on the queued cells (Roadcraft world/growth.ts step and grow, world/growth/zoning.ts pickLot).
+// Growth over time on the queued cells (Roadcraft world/growth.ts step / nearestFree / grow).
 #include "sim/simulation/city_growth.h"
 
-#include "core/random.h"
 #include "sim/buildings/growth.h"
 #include "sim/state/city_state.h"
 
@@ -18,47 +17,26 @@ struct Pick {
 	double d2 = 0;
 };
 
-// Whether lot `l` is free: nothing stands on it and this step's plan has not taken it.
-bool lot_free(const CityState &s, const GrowthPlan &plan, const Lot &l) {
-	if (lot_occupied(s, l)) return false;
-	return std::none_of(plan.add.begin(), plan.add.end(), [&](const Building &b) { return b.x == float(l.x) && b.z == float(l.z); });
-}
-
-// The free lot the next building grows on (Roadcraft world/growth/zoning.ts pickLot): the one nearest the last that grew, when
-// one lies within sim.grow_on_reach_m (the street the player zoned fills in, house after house); otherwise one drawn at random of
-// all the free lots, by a stream of the city's seed and the count grown, so a city zoned the same way grows the same way. Cells
-// found without a free lot go to the plan's drop list (they leave the queue when it is applied).
-Pick pick_free(const CityState &s, GrowthPlan &plan, bool has_last, double last_x, double last_z, int grown) {
-	const GrowthQueue &g = s.growth;
-	const double reach = s.catalog.tune.sim_grow_on_reach_m;
+// The free lot nearest the last one grown among the queued cells; cells left without a free lot leave the queue.
+Pick nearest_free(CityState &s) {
+	GrowthQueue &g = s.growth;
 	Pick best;
-	best.d2 = reach * reach;
-	int open = 0;
-	auto dropped = [&](int64_t key) { return std::find(plan.drop.begin(), plan.drop.end(), key) != plan.drop.end(); };
-	for (int64_t key : g.cells) {
-		if (dropped(key)) continue;
-		const std::vector<Lot> *lots = s.lots.lots_of(key);
+	for (size_t c = 0; c < g.cells.size();) {
+		const std::vector<Lot> *lots = s.lots.lots_of(g.cells[c]);
 		bool any = false;
 		for (int i = 0; lots && i < int(lots->size()); i++) {
 			const Lot &l = (*lots)[i];
-			if (!lot_free(s, plan, l)) continue;
+			if (lot_occupied(s, l)) continue;
 			any = true;
-			open++;
-			if (!has_last) continue;
-			const double d2 = (l.x - last_x) * (l.x - last_x) + (l.z - last_z) * (l.z - last_z);
-			if (d2 < best.d2) best = { key, i, d2 };
+			double d2 = g.has_last ? (l.x - g.last_x) * (l.x - g.last_x) + (l.z - g.last_z) * (l.z - g.last_z) : 0;
+			if (best.lot < 0 || d2 < best.d2) best = { g.cells[c], i, d2 };
 		}
-		if (!any) plan.drop.push_back(key);
-	}
-	if (best.lot >= 0 || open == 0) return best;
-	// None so near: the lot drawn, counted again over the cells that kept a free lot.
-	int drawn = int(hash_combine(s.seed, uint32_t(grown)) % uint32_t(open));
-	for (int64_t key : g.cells) {
-		if (dropped(key)) continue;
-		const std::vector<Lot> &lots = *s.lots.lots_of(key);
-		for (int i = 0; i < int(lots.size()); i++) {
-			if (!lot_free(s, plan, lots[i])) continue;
-			if (drawn-- == 0) return { key, i, 0 };
+		if (any) {
+			c++;
+		} else {
+			g.members.erase(g.cells[c]);
+			g.cells[c] = g.cells.back();
+			g.cells.pop_back();
 		}
 	}
 	return best;
@@ -75,38 +53,18 @@ void GrowthQueue::assign(std::vector<int64_t> keys) {
 	for (int64_t k : keys) push(k);
 }
 
-GrowthPlan plan_growth(CityState &s, double dt) {
+void grow_step(CityState &s, double dt) {
 	GrowthQueue &g = s.growth;
-	GrowthPlan plan;
-	plan.revision = s.revision;
-	if (g.cells.empty() || s.damage.now < s.damage.growth_hold_until) return plan; // rubble lies: nothing is built over it yet
+	if (g.cells.empty() || s.damage.now < s.damage.growth_hold_until) return; // rubble lies: nothing is built over it yet
 	g.acc = std::min(g.acc + dt * s.catalog.tune.sim_growth_per_s, MAX_OWED);
-	bool has_last = g.has_last;
-	double last_x = g.last_x, last_z = g.last_z, owed = g.acc;
-	for (int tries = s.catalog.tune.sim_growth_tries; owed >= 1 && tries > 0; tries--) {
-		const Pick p = pick_free(s, plan, has_last, last_x, last_z, g.grown + int(plan.add.size()));
+	for (int tries = int(s.catalog.tune.sim_growth_tries); g.acc >= 1 && tries > 0; tries--) {
+		Pick p = nearest_free(s);
 		if (p.lot < 0) {
-			plan.none_free = plan.add.empty();
-			break;
+			g.acc = 0;
+			return;
 		}
-		plan.add.push_back(record_for(s, *s.lots.lots_of(p.key), p.lot));
-		last_x = plan.add.back().x;
-		last_z = plan.add.back().z;
-		has_last = true;
-		owed -= 1;
-	}
-	return plan;
-}
-
-void apply_growth(CityState &s, const GrowthPlan &plan) {
-	GrowthQueue &g = s.growth;
-	if (plan.revision != s.revision) return; // an edit came between: its lots and buildings may not be what the plan read
-	for (int64_t key : plan.drop) {
-		if (!g.members.erase(key)) continue;
-		g.cells.erase(std::find(g.cells.begin(), g.cells.end(), key));
-	}
-	if (plan.none_free) g.acc = 0;
-	for (Building b : plan.add) {
+		const std::vector<Lot> &lots = *s.lots.lots_of(p.key);
+		Building b = record_for(s, lots, p.lot);
 		b.built = s.clock.minutes.load();
 		s.buildings.add(b);
 		g.last_x = b.x;
@@ -114,7 +72,7 @@ void apply_growth(CityState &s, const GrowthPlan &plan) {
 		g.has_last = true;
 		g.grown++;
 		g.acc -= 1;
-		s.touch_grown(); // a new building is a change to the map (saved), not to its streets
+		s.touch(); // a new building is a change to the map (saved)
 	}
 }
 

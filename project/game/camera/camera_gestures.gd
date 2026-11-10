@@ -3,12 +3,12 @@
 ## dragging down lifts towards a plan view); middle drag or Shift + right drag grabs the ground and drags it (the point
 ## under the cursor stays under it; past the hold reach it slides). A turn is spent on a short spring, `orbit_smooth_s`: the mouse gives whole
 ## pixels, unevenly a frame, and a turn about a far point would swing the near view by each of them. A right press that moves less than
-## `click_slop_px` is a click (CityCamera.right_clicked). Let go while moving, the camera coasts and slows down. The hand is timed on
-## the camera's own clock, the frames' deltas summed (`advance`), the one time base its springs and coasts run on: a second clock
-## (the wall's) could call a hand that stood still for a while of frames a moving one, and throw the view.
+## `click_slop_px` is a click (CityCamera.right_clicked). Let go while moving, the camera coasts and slows down.
 class_name CameraGestures
 extends RefCounted
 
+const MS_PER_S := 1000.0
+const US_PER_MS := 1000.0
 const TWIST_SIGN := -1.0 # the map turns with the fingers
 
 var rig: CityCamera
@@ -27,7 +27,6 @@ var coast := {}
 var turn_left := Vector2.ZERO
 var turn_pivot := Vector2.ZERO
 var turn_height := 0.0
-var _clock_ms := 0.0 # the frames' deltas summed (advance)
 
 
 func _init(camera_rig: CityCamera) -> void:
@@ -111,7 +110,7 @@ func release() -> void:
 
 
 func _now() -> float:
-	return _clock_ms
+	return Time.get_ticks_usec() / US_PER_MS
 
 
 func _track(at: Vector2) -> void:
@@ -126,16 +125,10 @@ func _hand_speed() -> Vector2:
 	if samples.size() < 2 or samples[-1].z - samples[0].z < cfg.speed_min_span_ms:
 		return Vector2.ZERO
 	var t0 := samples[0].z
-	var st := 0.0
-	var stt := 0.0
-	var sp := Vector2.ZERO
-	var stp := Vector2.ZERO
+	var st := 0.0; var stt := 0.0; var sp := Vector2.ZERO; var stp := Vector2.ZERO
 	for s in samples:
-		var t := (s.z - t0) / Units.MS_PER_S
-		st += t
-		stt += t * t
-		sp += Vector2(s.x, s.y)
-		stp += Vector2(s.x, s.y) * t
+		var t := (s.z - t0) / MS_PER_S
+		st += t; stt += t * t; sp += Vector2(s.x, s.y); stp += Vector2(s.x, s.y) * t
 	var n := float(samples.size())
 	var den := n * stt - st * st
 	if absf(den) < CityCamera.PARALLEL:
@@ -212,7 +205,6 @@ func _tilt_room(towards: float) -> float:
 
 ## One frame of what the hand left: the turn still to make, then the coast, `dt` seconds.
 func advance(dt: float) -> void:
-	_clock_ms += dt * Units.MS_PER_S
 	if turn_left != Vector2.ZERO:
 		var keep := exp(-dt / cfg.orbit_smooth_s)
 		var spent := turn_left * (1.0 - keep) if turn_left.length() > cfg.coast_min_orbit * dt else turn_left

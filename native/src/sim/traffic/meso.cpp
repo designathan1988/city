@@ -13,7 +13,13 @@ namespace traffic {
 
 namespace {
 
-constexpr size_t EVENT_HEAP_MIN = 64; // the event heap's first room: it doubles from there
+constexpr float HEADWAY_LIGHT_S = 2.f, HEADWAY_LONG_S = 3.6f, HEADWAY_MID_S = 2.6f, HEADWAY_BASE_S = 1.8f;
+constexpr float WAIT_LONG_S = 6.f, WAIT_MID_S = 4.f; // junction wait that slows the queue's headway
+constexpr float MESO_INTERVAL_FLOOR_MS = 1.f, MIN_WAIT_S = 0.2f, QUEUE_RETRY_S = 2.f, WINDOW_RETRY_S = 1.f;
+constexpr float FIT_M = 6.6f; // bumper to bumper: the jammed lane still lets one in every release
+constexpr float MIN_HANDOVER_MS = 2.f, FREE_HANDOVER_MS = 99.f, HANDOVER_SHARE = 0.7f;
+constexpr float HANDOVER_PAD_M = 4.f, HANDOVER_RETRY_S = 0.6f; // a tail still near the lane start blocks the handover
+constexpr size_t EVENT_HEAP_MIN = 64;
 
 void schedule(TrafficState &t, int id, double at) {
 	t.vehicles[size_t(id)].t_exit = at;
@@ -142,7 +148,6 @@ void meso_unlink(CityState &s, int id) {
 }
 
 void meso_enter(CityState &s, int id, int key, bool spawned) {
-	const TrafficParams &p = s.catalog.traffic;
 	TrafficState &t = s.traffic;
 	const int ds = key / MAX_LANES;
 	if (ds < 0 || ds >= int(t.g.ds.size()) || !t.g.ds[size_t(ds)].ok || key % MAX_LANES >= t.g.ds[size_t(ds)].lanes) return;
@@ -170,9 +175,9 @@ void meso_enter(CityState &s, int id, int key, bool spawned) {
 	}
 	if (ci >= 0) wait = junction_cost(s, t.g.conns[size_t(ci)]);
 	const bool lit = d.to >= 0 && d.to < int(t.g.junctions.size()) && t.g.junctions[size_t(d.to)].ctl == Control::SIGNAL;
-	const float headway = lit ? p.meso_headway_light_s : wait >= p.meso_wait_long_s ? p.meso_headway_long_s : wait >= p.meso_wait_mid_s ? p.meso_headway_mid_s : p.meso_headway_base_s;
+	const float headway = lit ? HEADWAY_LIGHT_S : wait >= WAIT_LONG_S ? HEADWAY_LONG_S : wait >= WAIT_MID_S ? HEADWAY_MID_S : HEADWAY_BASE_S;
 	const float occ = std::min(1.f, float(lane_load(t, key)) * s.catalog.traffic.slot_m / (L * lanes));
-	const float run = rest / std::max(d.speed * v.vf, p.meso_speed_floor_ms) * (1 + s.catalog.traffic.meso_crowd * occ * occ) + wait;
+	const float run = rest / std::max(d.speed * v.vf, MESO_INTERVAL_FLOOR_MS) * (1 + s.catalog.traffic.meso_crowd * occ * occ) + wait;
 	const double due = std::max(t.time + double(run * s.catalog.traffic.meso_alpha), t.lane_last_exit[size_t(key)] + double(headway / lanes));
 	t.lane_last_exit[size_t(key)] = due;
 	schedule(t, id, due);
@@ -195,7 +200,6 @@ namespace {
 // End of the lane in meso mode: pick the next lane, wait for a red or a full queue, or hand the vehicle to the near
 // model when the lane it enters is inside the window (Roadcraft meso.ts advance).
 void advance(CityState &s, int id) {
-	const TrafficParams &p = s.catalog.traffic;
 	TrafficState &t = s.traffic;
 	Vehicle &v = t.vehicles[size_t(id)];
 	const LaneGraph &g = t.g;
@@ -206,7 +210,7 @@ void advance(CityState &s, int id) {
 	if (in_window(s, ds) && !t.lane_vehicles[size_t(key)].empty()) { // wait behind the drawn queue, never pass it unseen
 		materialize(s, key);
 		if (!v.alive || v.micro) return;
-		schedule(t, id, t.time + p.meso_window_retry_s);
+		schedule(t, id, t.time + WINDOW_RETRY_S);
 		return;
 	}
 	int next = route_at(t.route_pool, v.route, v.ri + 1);
@@ -221,7 +225,7 @@ void advance(CityState &s, int id) {
 	if (ci < 0) { despawn_vehicle(s, id, false); return; }
 	ds = v.ds;
 	if (light_for(s, ds) != Light::GREEN) { // the far model obeys the lights: wait for its next green
-		schedule(t, id, std::max(t.time + double(p.meso_min_wait_s), next_green(s, ds, t.time)));
+		schedule(t, id, std::max(t.time + double(MIN_WAIT_S), next_green(s, ds, t.time)));
 		return;
 	}
 	signal_call_far(s, ds);
@@ -233,19 +237,19 @@ void advance(CityState &s, int id) {
 	if (to_lane < 0) { despawn_vehicle(s, id, false); return; }
 	const int to_key = to * MAX_LANES + to_lane;
 	const float L = g.ds[size_t(to)].len;
-	const int room = std::max(1, int(L / s.catalog.traffic.slot_m)), fit = std::max(room, int(L / p.meso_fit_m));
+	const int room = std::max(1, int(L / s.catalog.traffic.slot_m)), fit = std::max(room, int(L / FIT_M));
 	const int load = lane_load(t, to_key);
 	if (load >= room) { // a full lane holds the vehicle at the end of its own
-		v.wait += float(p.meso_queue_retry_s);
-		schedule(t, id, t.time + (load >= fit ? double(p.meso_window_retry_s) : double(p.meso_queue_retry_s)));
+		v.wait += float(QUEUE_RETRY_S);
+		schedule(t, id, t.time + (load >= fit ? double(WINDOW_RETRY_S) : double(QUEUE_RETRY_S)));
 		return;
 	}
 	const bool near = in_window(s, to);
 	const int tail = t.lane_vehicles[size_t(to_key)].empty() ? -1 : t.lane_vehicles[size_t(to_key)].back();
 	if (near && tail >= 0) { // behind drawn vehicles: it waits to fit behind them (never passes them unseen)
 		const Vehicle &o = t.vehicles[size_t(tail)];
-		if (o.s < s.catalog.traffic.classes[int(o.type)].length + s.catalog.traffic.meso_s0_m + p.meso_handover_pad_m) {
-			schedule(t, id, t.time + double(p.meso_handover_retry_s));
+		if (o.s < s.catalog.traffic.classes[int(o.type)].length + s.catalog.traffic.meso_s0_m + HANDOVER_PAD_M) {
+			schedule(t, id, t.time + double(HANDOVER_RETRY_S));
 			return;
 		}
 	}
@@ -262,9 +266,9 @@ void advance(CityState &s, int id) {
 		if (tail >= 0) {
 			const Vehicle &o = t.vehicles[size_t(tail)];
 			const float gap = o.s - s.catalog.traffic.classes[int(o.type)].length;
-			speed = std::min(speed, std::max(p.meso_min_handover_ms, gap / s.catalog.traffic.meso_head_s));
+			speed = std::min(speed, std::max(MIN_HANDOVER_MS, gap / s.catalog.traffic.meso_head_s));
 		} else {
-			speed = std::min(speed, p.meso_free_handover_ms) * p.meso_handover_share;
+			speed = std::min(speed, FREE_HANDOVER_MS) * HANDOVER_SHARE;
 		}
 		v.v = speed;
 		micro_add(t, id);

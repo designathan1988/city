@@ -2,7 +2,8 @@
 class_name TransitStrip
 extends RefCounted
 
-const MODE_KEYS := { &"BUS": "transit.mode.bus", &"TRAIN": "transit.mode.train", &"METRO": "transit.mode.metro" } # by the core's TransitMode
+const MODE_KEYS := ["transit.mode.bus", "transit.mode.train", "transit.mode.metro"]
+const RGB_BITS := 8
 
 
 static func build(parent: Control) -> void:
@@ -23,14 +24,14 @@ static func _fill(list: Control) -> void:
 	for line: Dictionary in plan.get("lines", []):
 		var row := HudWidgets.hbox(list)
 		var swatch := ColorRect.new()
-		swatch.color = line.colour
+		swatch.color = Color.hex((int(line.colour) << RGB_BITS) | 0xff)
 		swatch.custom_minimum_size = Vector2.ONE * HudWidgets.px("transit_swatch")
 		row.add_child(swatch)
-		HudWidgets.verbatim(HudWidgets.label(row, &""), line.name) # the core's code for the line
-		var stops := TranslationServer.translate("transit.stops").format({"n": line.stops.size()})
-		HudWidgets.label(row, &"MutedLabel", "%s · %s" % [TranslationServer.translate(MODE_KEYS[CityStore.code_name(&"TransitMode", int(line.mode))]), stops])
+		HudWidgets.label(row, &"", line.name)
+		var stops := TranslationServer.translate("transit.stops").replace("{n}", str(line.stops.size()))
+		HudWidgets.label(row, &"MutedLabel", "%s · %s" % [TranslationServer.translate(MODE_KEYS[int(line.mode)]), stops])
 		_button(row, "minus", "transit.fewer", _change.bind(list, line.id, line.vehicles - 1))
-		HudWidgets.label(row, &"", Formatters.format_int(line.vehicles))
+		HudWidgets.label(row, &"", str(line.vehicles))
 		_button(row, "plus", "transit.more", _change.bind(list, line.id, line.vehicles + 1))
 		_button(row, "demolish", "transit.remove", _drop.bind(list, line.id))
 

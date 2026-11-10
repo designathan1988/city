@@ -7,9 +7,7 @@ import subprocess
 import sys
 
 TOOLS_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-# The tools' test inputs, never the real scope: the gates' own deliberately failing files, and the feature tracer's small
-# foreign tree (other languages, a layout file, prose, a minified library: what it must read is what the rules forbid).
-FIXTURES = ("tools/gates/tests/fixtures/", "tools/analysis/ftrace/tests/fixtures/")
+FIXTURES = "tools/gates/tests/fixtures/"  # the self-test's inputs: deliberately failing files, never the real scope
 _HUNK = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@", re.M)
 
 
@@ -18,13 +16,10 @@ class GitError(Exception):
 
 
 def _git(root, *args):
-    if TOOLS_DIR not in sys.path:
-        sys.path.insert(0, TOOLS_DIR)
-    from tasks.inputs import git  # the one git wrapper of the tools: a deadline, no window
-    try:
-        return git(root, "-c", "core.quotePath=false", *args)
-    except (RuntimeError, subprocess.TimeoutExpired) as e:
-        raise GitError(str(e)) from e
+    proc = subprocess.run(["git", "-c", "core.quotePath=false", "-C", root, *args], capture_output=True)
+    if proc.returncode != 0:
+        raise GitError(f"git {' '.join(args)}: {proc.stderr.decode('utf-8', 'replace').strip()}")
+    return proc.stdout.decode("utf-8", "replace")
 
 
 def _snapshot(root):

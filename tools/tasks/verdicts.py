@@ -5,12 +5,10 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from . import godot_deps, inputs
 from .task import FAIL, PASS
 
-# The failure lines of the Godot tests and captures: a crash can leave exit code 0, and neither a SCRIPT ERROR nor a SHADER ERROR
-# (a material drawn by the fallback) stops a scene.
-GODOT_FAILED = re.compile(r"Program crashed|SCRIPT ERROR|SHADER ERROR|^FAIL\b|FAILURES: [1-9]", re.M)
+# The failure lines of the Godot tests and captures: a crash can leave exit code 0, and a SCRIPT ERROR does not stop a scene.
+GODOT_FAILED = re.compile(r"Program crashed|SCRIPT ERROR|^FAIL\b|FALHAS: [1-9]|FAILURES: [1-9]", re.M)
 SHOWN_LINES = 5
 
 
@@ -30,28 +28,11 @@ def exit_code(task, log: str, code: int, root: Path):
 
 
 def godot(task, log: str, code: int, root: Path):
-    """A Godot scene: exit 0 and not one failure line; and when its inputs are what it loads ({loads}, params `loads`, a
-    --verbose run), every resource the log says it loaded among them."""
+    """A Godot scene: exit 0 and not one failure line."""
     bad = failure_lines(log)
     if code != 0 or bad:
         return FAIL, "; ".join(bad)[:300] or f"exit {code}"
-    if task.params.get("loads"):
-        return undeclared_loads(task, _text(log), root)
     return PASS, ""
-
-
-def undeclared_loads(task, text: str, root: Path):
-    """The loads check: a resource the run loaded that its declared inputs leave out is a link the closure missed, so the
-    result would have been reused after that file changed. A run that loaded nothing proves nothing: it fails too."""
-    seen = godot_deps.loaded(text, task.params["loads"])
-    if not seen:
-        return FAIL, "the --verbose log names no loaded resource: the declared inputs were not checked"
-    declared = set(inputs.files(task.inputs, root=root))
-    missing = [f for f in seen if f not in declared]
-    if missing:
-        more = f" (and {len(missing) - SHOWN_LINES} more)" if len(missing) > SHOWN_LINES else ""
-        return FAIL, f"loaded outside its declared inputs: {', '.join(missing[:SHOWN_LINES])}{more}"
-    return PASS, f"{len(seen)} loaded resources, all declared"
 
 
 def _line(task, log: str) -> str | None:

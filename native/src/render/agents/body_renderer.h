@@ -22,20 +22,17 @@ struct BodySpec {
 	int variation = 0;
 	uint32_t lost = 0; // parts gone, a bit each (ragdoll.h order)
 	bool charred = false;
-	bool writhes = false; // down for good and hurt (damage_event.h CAS_CRAWL): it writhes once it lies still (Ragdoll::writhe)
 };
 
 class BodyRenderer {
 public:
-	bool init(const RenderContext &ctx, const PeopleAsset &asset, const RagdollShape &law, godot::PackedStringArray &errors);
+	bool init(const RenderContext &ctx, const PeopleAsset &asset, godot::PackedStringArray &errors);
 	void reset();
 	void release();
-	uint32_t add(const BodySpec &spec); // its serial, 0 when it could not be laid
-	bool joint(uint32_t serial, int particle, godot::Vector3 &at) const; // a particle of that body now (rag::Joint); false once it is gone
+	void add(const BodySpec &spec);
 	void update(float dt, const Ragdoll::Ground &ground);
 	int count() const { return int(bodies_.size()); }
 	int moving() const;
-	godot::Array falling() const; // each body still falling: [where its pelvis is, its fastest particle m/s, the seconds it has left]
 
 private:
 	struct Body {
@@ -47,10 +44,8 @@ private:
 		godot::Transform3D stands; // where it gets up to
 		std::vector<godot::Transform3D> lying; // each bone when it began to
 		int variation = 0, slot = 0;
-		uint32_t serial = 0; // its name while it lasts (Gore holds bodies by it)
 		uint32_t lost = 0;
-		bool charred = false, writhes = false;
-		float writhe_t = -1.f; // seconds it has writhed, below 0 until it came to rest
+		bool charred = false;
 		godot::AABB box; // where its skin lies now: each bone's place, out by the variation's reach along the bone's axes
 	};
 	void make_ready();
@@ -68,11 +63,8 @@ private:
 	godot::PackedByteArray rows_;
 	std::vector<float> clip_scratch_; // a clip's rows of one body, for a pose being worked out (add, rise)
 	std::vector<godot::Transform3D> bone_scratch_;
-	static constexpr uint64_t BODIES_SEED = 0xb0d1e5ULL; // any fixed seed: the same shot scatters the same bodies
-	Rng rng_{ BODIES_SEED };
-	const RagdollShape *law_ = nullptr; // the ragdolls' (agents.json shapes.ragdoll), from init on
+	Rng rng_{ 0xb0d1e5ULL };
 	float clock_ = 0;
-	uint32_t next_serial_ = 0;
 	int bones_ = 0, idle_clip_ = 0, crouch_clip_ = 0, up_clip_ = 0;
 	bool rows_dirty_ = false, layers_dirty_ = false;
 };

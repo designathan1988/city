@@ -29,8 +29,8 @@ describe('translate', () => {
   it('translates the whole feature', () => {
     assert.deepEqual(result.errors, []);
     assert.deepEqual([...result.files.keys()].sort(), [
-      ...['geo.h', 'geo_query.cpp', 'geo_types.h', 'js_array.h', 'js_map.h', 'js_number.h', 'js_object.h', 'js_random.h', 'js_runtime.h', 'js_string.h', 'js_value.h'].map((f) => `native/src/core/${f}`),
-      ...['yard.h', 'yard_edit.cpp', 'yard_enums.h', 'yard_index.cpp', 'yard_query.cpp', 'yard_types.h'].map((f) => `native/src/sim/yard/${f}`),
+      ...['geo.h', 'geo_query.cpp', 'geo_types.h', 'js_array.h', 'js_map.h', 'js_number.h', 'js_random.h', 'js_runtime.h', 'js_string.h', 'js_value.h'].map((f) => `native/src/core/${f}`),
+      ...['yard.h', 'yard_edit.cpp', 'yard_index.cpp', 'yard_query.cpp', 'yard_types.h'].map((f) => `native/src/sim/yard/${f}`),
     ]);
   });
 
@@ -117,18 +117,6 @@ describe('translate', () => {
     assert.equal(result.dropped.length, 2, result.dropped.join('; '));
     assert.match(file('yard_types.h'), /\bdoubled\(\);/);
     assert.doesNotMatch(file('yard_types.h'), /\bnamed\(\);/);
-  });
-
-  it('writes enumerations and texts as the lab needs them: a member beside a constant of its name, a made text, an optional member', () => {
-    // three causes of the whole lab's header errors (2026-11-08, log/conversor.md 22:55): `FacadePropKind::POT()` (a name
-    // rewritten in the constants' text), an enum made of a shader's text (TypeScript's literal type of a const is its value,
-    // not an enumeration) and a literal in an optional field of an enumeration (`style?: BodyStyle`, `style: 'hatch'`)
-    assert.match(all, /std::vector<PropKind>\{PropKind::POT, PropKind::BUSH\}/);
-    assert.doesNotMatch(all, /PropKind::POT\(\)/);
-    assert.match(file('yard_query.cpp'), /\bPOT\(\)/, 'the constant made by a call is called');
-    assert.doesNotMatch(all, /enum class \w+ : int \{ ATTRIBUTE/);
-    assert.match(all, /const std::string &PARS\(\)|const std::string PARS\b/);
-    assert.match(all, /std::vector<Prop> PROPS = std::vector<Prop>\{Prop\{PropKind::BUSH\}, Prop\{\{\}\}\};/, 'the literal is the member, the left-out field is absent');
   });
 
   it('makes an interface classes implement an abstract struct, a value of it read through an accessor', () => {

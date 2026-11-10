@@ -1,13 +1,13 @@
-## Massa › Ala, Empilhar e Recortar, and Desenhar's targets: a rectangle (or a plan's shape over it, `shape`) dragged against the block picked. A wing is drawn on the ground; a block on the roof and a cut on the block's roof, which
+## Massa › Ala, Empilhar e Recortar: a rectangle dragged against the block picked. A wing is drawn on the ground; a block on the roof and a cut on the block's roof, which
 ## is where the pointer's ray is read, because the ground under the pointer lies far behind a tall building.
 class_name MassDrag
 extends RefCounted
 
-const SLIDE := 3 # the tool's own action, past the core's MassAction (builder.json gives it)
+const WING := 0
+const SLIDE := 3
 const NONE := -1
 
 var action := NONE
-var shape := 0 # the plan laid over the rectangle (body_ops.h PlanShape): the Draw tab's shape card
 
 var _ctl: ToolController
 var _id := -1
@@ -43,22 +43,22 @@ func press(ground: Vector3, picked: Dictionary) -> void:
 	_vol = picked.volume
 	var outline: PackedVector3Array = CityStore.query(&"body_outline", [_id, _vol])
 	_y = outline[outline.size() - 1].y if not outline.is_empty() else ground.y
-	_from = at(ground)
+	_from = _at(ground)
 
 
 func move(ground: Vector3) -> void:
 	if not dragging():
 		return
-	var rect: Dictionary = CityStore.query(&"body_mass_rect", _slid(at(ground)) if action == SLIDE else [_id, _from, at(ground)])
+	var rect: Dictionary = CityStore.query(&"body_mass_rect", _slid(_at(ground)) if action == SLIDE else [_id, _from, _at(ground)])
 	_ctl.preview.show_ribbon(rect.points, rect.half_width, true)
 
 
 func finish(ground: Vector3) -> Dictionary:
 	var r: Dictionary
 	if action == SLIDE:
-		r = CityStore.dispatch(&"body_slide_block", [_id, _vol, _from, at(ground), true])
+		r = CityStore.dispatch(&"body_slide_block", [_id, _vol, _from, _at(ground), true])
 	else:
-		r = CityStore.dispatch(&"body_add_mass", [_id, _vol, _from, at(ground), action, shape])
+		r = CityStore.dispatch(&"body_add_mass", [_id, _vol, _from, _at(ground), action])
 	cancel()
 	return r
 
@@ -76,8 +76,8 @@ func cancel() -> void:
 
 
 ## Where the pointer is: the ground for a wing; else the point of its ray at the height of the roof.
-func at(ground: Vector3) -> Vector3:
-	if action == CityStore.code(&"MassAction", &"MASS_GROUND"): # a wing stands on the ground
+func _at(ground: Vector3) -> Vector3:
+	if action == WING:
 		return ground
 	var cam: Camera3D = _ctl.rig.camera
 	var origin := cam.project_ray_origin(_ctl.pointer)

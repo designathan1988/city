@@ -8,7 +8,7 @@ namespace city {
 void CityState::bind() {
 	roads.cat = &catalog;
 	roads.log = &log;
-	buildings.attach(&log, &catalog);
+	buildings.attach(&log, &catalog.occupancy);
 	terrain.log = &log;
 	terrain.tune = &catalog.tune;
 	terrain.jobs = jobs.get();
@@ -18,7 +18,6 @@ void CityState::bind() {
 void take_city(CityState &live, CityState &read) {
 	// What only rises: decoded in place, each would have gone on from the live city's value by what the reading added.
 	const uint64_t revision = live.revision, edit_revision = live.edit_revision, transit_revision = live.transit_revision;
-	const uint64_t street_revision = live.street_revision;
 	const uint64_t sky_revision = live.nature.sky_revision, fog_revision = live.nature.fog_revision;
 	const int roads_version = live.roads.version;
 	std::swap(static_cast<CityData &>(live), static_cast<CityData &>(read));
@@ -26,7 +25,6 @@ void take_city(CityState &live, CityState &read) {
 	live.revision += revision;
 	live.saved_revision = live.revision; // what was just opened is what the file holds
 	live.edit_revision += edit_revision;
-	live.street_revision += street_revision;
 	live.transit_revision += transit_revision;
 	live.nature.sky_revision += sky_revision;
 	live.nature.fog_revision += fog_revision;

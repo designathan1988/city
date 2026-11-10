@@ -1,0 +1,828 @@
+{
+ "entries": [
+  "src/world/buildings/lotLibrary.ts"
+ ],
+ "roots": [
+  "src/main.ts",
+  "src/peopleLab/main.ts"
+ ],
+ "own": [
+  "src/world/buildings/lotLibrary.ts#LOT_NAMES",
+  "src/world/buildings/lotLibrary.ts#loadLot",
+  "src/world/buildings/lotLibrary.ts#loaded",
+  "src/world/buildings/lotLibrary.ts#loadedLot",
+  "src/world/buildings/lotLibrary.ts#loaders",
+  "src/world/buildings/lotLibrary.ts#lotKey",
+  "src/world/buildings/lotLibrary.ts#nameOf"
+ ],
+ "uses": [
+  {
+   "unit": "src/world/buildings/lotTemplate.ts#LotTemplate",
+   "kind": "typeRef",
+   "by": [
+    "src/world/buildings/lotLibrary.ts#loaded",
+    "src/world/buildings/lotLibrary.ts#loadedLot",
+    "src/world/buildings/lotLibrary.ts#loaders",
+    "src/world/buildings/lotLibrary.ts#loadLot"
+   ]
+  }
+ ],
+ "hooks": [
+  {
+   "unit": "src/world/buildings/lotLibrary.ts#loadedLot",
+   "kind": "call",
+   "by": [
+    "src/render/buildings/parts.ts#partSample"
+   ]
+  },
+  {
+   "unit": "src/world/buildings/lotLibrary.ts#loadLot",
+   "kind": "call",
+   "by": [
+    "src/buildingsWiring.ts#createBuildingWiring",
+    "src/render/buildings/parts.ts#createThumbnailStudio.request"
+   ]
+  },
+  {
+   "unit": "src/world/buildings/lotLibrary.ts#LOT_NAMES",
+   "kind": "read",
+   "by": [
+    "src/ui/v2/shell.ts#mountShell.renderBuild",
+    "src/ui/v2/shell.ts#mountShell.renderModels"
+   ]
+  },
+  {
+   "unit": "src/world/buildings/lotLibrary.ts#lotKey",
+   "kind": "call",
+   "by": [
+    "src/ui/v2/shell.ts#mountShell.renderModels"
+   ]
+  },
+  {
+   "unit": "src/world/buildings/lotLibrary.ts#lotKey",
+   "kind": "read",
+   "by": [
+    "src/ui/v2/shell.ts#mountShell.renderBuild"
+   ]
+  }
+ ],
+ "external": [
+  {
+   "key": "es:Map.get",
+   "count": 2
+  },
+  {
+   "key": "es:Object",
+   "count": 2
+  },
+  {
+   "key": "es:ObjectConstructor.keys",
+   "count": 2
+  },
+  {
+   "key": "es:Array.find",
+   "count": 1
+  },
+  {
+   "key": "es:Array.map",
+   "count": 1
+  },
+  {
+   "key": "es:Array.sort",
+   "count": 1
+  },
+  {
+   "key": "es:Map",
+   "count": 1
+  },
+  {
+   "key": "es:Map.set",
+   "count": 1
+  },
+  {
+   "key": "es:Promise",
+   "count": 1
+  },
+  {
+   "key": "es:String.lastIndexOf",
+   "count": 1
+  },
+  {
+   "key": "es:String.length",
+   "count": 1
+  },
+  {
+   "key": "es:String.slice",
+   "count": 1
+  },
+  {
+   "key": "vite:ImportMeta.glob",
+   "count": 1
+  }
+ ],
+ "holders": [],
+ "sliced": [
+  "src/buildingsWiring.ts#createBuildingWiring",
+  "src/render/buildings/parts.ts#createThumbnailStudio.request",
+  "src/render/buildings/parts.ts#partSample",
+  "src/ui/v2/shell.ts#mountShell.renderBuild",
+  "src/ui/v2/shell.ts#mountShell.renderModels"
+ ],
+ "slices": [
+  {
+   "unit": "src/buildingsWiring.ts#createBuildingWiring",
+   "file": "src/buildingsWiring.ts",
+   "start": 81,
+   "end": 1216,
+   "lines": [
+    81,
+    496,
+    602,
+    607,
+    608,
+    609,
+    610,
+    611,
+    612,
+    614,
+    617,
+    746,
+    1216
+   ]
+  },
+  {
+   "unit": "src/render/buildings/parts.ts#createThumbnailStudio.request",
+   "file": "src/render/buildings/parts.ts",
+   "start": 281,
+   "end": 303,
+   "lines": [
+    281,
+    290,
+    291,
+    292,
+    293,
+    294,
+    295,
+    296,
+    297,
+    298,
+    299,
+    300,
+    301,
+    302,
+    303
+   ]
+  },
+  {
+   "unit": "src/render/buildings/parts.ts#partSample",
+   "file": "src/render/buildings/parts.ts",
+   "start": 64,
+   "end": 120,
+   "lines": [
+    64,
+    66,
+    67,
+    68,
+    69,
+    120
+   ]
+  },
+  {
+   "unit": "src/ui/v2/shell.ts#mountShell.renderBuild",
+   "file": "src/ui/v2/shell.ts",
+   "start": 1674,
+   "end": 1736,
+   "lines": [
+    1674,
+    1719,
+    1721,
+    1723,
+    1736
+   ]
+  },
+  {
+   "unit": "src/ui/v2/shell.ts#mountShell.renderModels",
+   "file": "src/ui/v2/shell.ts",
+   "start": 1809,
+   "end": 1853,
+   "lines": [
+    1809,
+    1839,
+    1840,
+    1841,
+    1842,
+    1853
+   ]
+  }
+ ],
+ "resources": [
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1270,
+   "key": "builder.lot.balconyMid",
+   "text": "'builder.lot.balconyMid': 'Balconies and timber'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1271,
+   "key": "builder.lot.glassOffice",
+   "text": "'builder.lot.glassOffice': 'Glass office'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1272,
+   "key": "builder.lot.glassBalcony",
+   "text": "'builder.lot.glassBalcony': 'Glass with balconies'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1273,
+   "key": "builder.lot.beigeClassic",
+   "text": "'builder.lot.beigeClassic': 'Classic beige'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1274,
+   "key": "builder.lot.darkGlass",
+   "text": "'builder.lot.darkGlass': 'Dark glass'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1275,
+   "key": "builder.lot.whiteBalcony",
+   "text": "'builder.lot.whiteBalcony': 'White with balconies'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1276,
+   "key": "builder.lot.brickFrame",
+   "text": "'builder.lot.brickFrame': 'Brick and glass'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1277,
+   "key": "builder.lot.roundGlass",
+   "text": "'builder.lot.roundGlass': 'Round glass'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1278,
+   "key": "builder.lot.darkGrid",
+   "text": "'builder.lot.darkGrid': 'Dark grid'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1279,
+   "key": "builder.lot.artDeco",
+   "text": "'builder.lot.artDeco': 'Art deco'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1280,
+   "key": "builder.lot.twistGreen",
+   "text": "'builder.lot.twistGreen': 'Twisted teal'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1281,
+   "key": "builder.lot.hexTerracotta",
+   "text": "'builder.lot.hexTerracotta': 'Hexagonal terracotta'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1282,
+   "key": "builder.lot.stepGarden",
+   "text": "'builder.lot.stepGarden': 'Terrace gardens'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1283,
+   "key": "builder.lot.waveWhite",
+   "text": "'builder.lot.waveWhite': 'Wave balconies'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1284,
+   "key": "builder.lot.cubeBalcony",
+   "text": "'builder.lot.cubeBalcony': 'Cube balconies'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1285,
+   "key": "builder.lot.twinNavy",
+   "text": "'builder.lot.twinNavy': 'Navy twins'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1286,
+   "key": "builder.lot.octCopper",
+   "text": "'builder.lot.octCopper': 'Octagonal copper'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1287,
+   "key": "builder.lot.stackedBlocks",
+   "text": "'builder.lot.stackedBlocks': 'Stacked blocks'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1288,
+   "key": "builder.lot.pinkCorner",
+   "text": "'builder.lot.pinkCorner': 'Pink corner'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1289,
+   "key": "builder.lot.triangleDark",
+   "text": "'builder.lot.triangleDark': 'Dark triangle'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1290,
+   "key": "builder.lot.cityHallBrick",
+   "text": "'builder.lot.cityHallBrick': 'Brick town hall'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1291,
+   "key": "builder.lot.decoSpire",
+   "text": "'builder.lot.decoSpire': 'Deco spire'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1292,
+   "key": "builder.lot.hospitalA",
+   "text": "'builder.lot.hospitalA': 'Hospital'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1293,
+   "key": "builder.lot.loftBrick",
+   "text": "'builder.lot.loftBrick': 'Brick lofts'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1294,
+   "key": "builder.lot.cityHallWhite",
+   "text": "'builder.lot.cityHallWhite': 'White town hall'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1295,
+   "key": "builder.lot.forum",
+   "text": "'builder.lot.forum': 'Courthouse'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1296,
+   "key": "builder.lot.church",
+   "text": "'builder.lot.church': 'Church'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1297,
+   "key": "builder.lot.bank",
+   "text": "'builder.lot.bank': 'Bank'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1298,
+   "key": "builder.lot.school",
+   "text": "'builder.lot.school': 'School'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1299,
+   "key": "builder.lot.fireStation",
+   "text": "'builder.lot.fireStation': 'Fire station'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1300,
+   "key": "builder.lot.police",
+   "text": "'builder.lot.police': 'Police station'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1301,
+   "key": "builder.lot.hospitalB",
+   "text": "'builder.lot.hospitalB': 'Hospital with a wing'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1302,
+   "key": "builder.lot.cemetery",
+   "text": "'builder.lot.cemetery': 'Cemetery'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1303,
+   "key": "builder.lot.beauxArts",
+   "text": "'builder.lot.beauxArts': 'Beaux-Arts hotel'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1304,
+   "key": "builder.lot.decoTower",
+   "text": "'builder.lot.decoTower': 'Art Deco tower'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1305,
+   "key": "builder.lot.modernOffice",
+   "text": "'builder.lot.modernOffice': 'Modernist office'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1306,
+   "key": "builder.lot.residentialTerrace",
+   "text": "'builder.lot.residentialTerrace': 'Terraced flats'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1307,
+   "key": "builder.lot.glassSpire",
+   "text": "'builder.lot.glassSpire': 'Blue glass tower'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1260,
+   "key": "builder.lot.balconyMid",
+   "text": "'builder.lot.balconyMid': 'Varandas e madeira'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1261,
+   "key": "builder.lot.glassOffice",
+   "text": "'builder.lot.glassOffice': 'Escritório de vidro'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1262,
+   "key": "builder.lot.glassBalcony",
+   "text": "'builder.lot.glassBalcony': 'Vidro com varandas'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1263,
+   "key": "builder.lot.beigeClassic",
+   "text": "'builder.lot.beigeClassic': 'Bege clássica'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1264,
+   "key": "builder.lot.darkGlass",
+   "text": "'builder.lot.darkGlass': 'Vidro escuro'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1265,
+   "key": "builder.lot.whiteBalcony",
+   "text": "'builder.lot.whiteBalcony': 'Branca com varandas'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1266,
+   "key": "builder.lot.brickFrame",
+   "text": "'builder.lot.brickFrame': 'Tijolo e vidro'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1267,
+   "key": "builder.lot.roundGlass",
+   "text": "'builder.lot.roundGlass': 'Redonda de vidro'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1268,
+   "key": "builder.lot.darkGrid",
+   "text": "'builder.lot.darkGrid': 'Grade escura'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1269,
+   "key": "builder.lot.artDeco",
+   "text": "'builder.lot.artDeco': 'Art déco'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1270,
+   "key": "builder.lot.twistGreen",
+   "text": "'builder.lot.twistGreen': 'Torcida verde-água'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1271,
+   "key": "builder.lot.hexTerracotta",
+   "text": "'builder.lot.hexTerracotta': 'Hexagonal de terracota'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1272,
+   "key": "builder.lot.stepGarden",
+   "text": "'builder.lot.stepGarden': 'Terraços-jardim'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1273,
+   "key": "builder.lot.waveWhite",
+   "text": "'builder.lot.waveWhite': 'Varandas em onda'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1274,
+   "key": "builder.lot.cubeBalcony",
+   "text": "'builder.lot.cubeBalcony': 'Varandas em cubo'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1275,
+   "key": "builder.lot.twinNavy",
+   "text": "'builder.lot.twinNavy': 'Gêmeas azul-marinho'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1276,
+   "key": "builder.lot.octCopper",
+   "text": "'builder.lot.octCopper': 'Octogonal de cobre'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1277,
+   "key": "builder.lot.stackedBlocks",
+   "text": "'builder.lot.stackedBlocks': 'Blocos empilhados'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1278,
+   "key": "builder.lot.pinkCorner",
+   "text": "'builder.lot.pinkCorner': 'Esquina rosa'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1279,
+   "key": "builder.lot.triangleDark",
+   "text": "'builder.lot.triangleDark': 'Triangular escura'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1280,
+   "key": "builder.lot.cityHallBrick",
+   "text": "'builder.lot.cityHallBrick': 'Prefeitura de tijolo'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1281,
+   "key": "builder.lot.decoSpire",
+   "text": "'builder.lot.decoSpire': 'Art déco com pináculo'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1282,
+   "key": "builder.lot.hospitalA",
+   "text": "'builder.lot.hospitalA': 'Hospital'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1283,
+   "key": "builder.lot.loftBrick",
+   "text": "'builder.lot.loftBrick': 'Lofts de tijolo'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1284,
+   "key": "builder.lot.cityHallWhite",
+   "text": "'builder.lot.cityHallWhite': 'Prefeitura branca'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1285,
+   "key": "builder.lot.forum",
+   "text": "'builder.lot.forum': 'Fórum'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1286,
+   "key": "builder.lot.church",
+   "text": "'builder.lot.church': 'Igreja'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1287,
+   "key": "builder.lot.bank",
+   "text": "'builder.lot.bank': 'Banco'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1288,
+   "key": "builder.lot.school",
+   "text": "'builder.lot.school': 'Escola'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1289,
+   "key": "builder.lot.fireStation",
+   "text": "'builder.lot.fireStation': 'Bombeiros'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1290,
+   "key": "builder.lot.police",
+   "text": "'builder.lot.police': 'Delegacia'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1291,
+   "key": "builder.lot.hospitalB",
+   "text": "'builder.lot.hospitalB': 'Hospital com ala'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1292,
+   "key": "builder.lot.cemetery",
+   "text": "'builder.lot.cemetery': 'Cemitério'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1293,
+   "key": "builder.lot.beauxArts",
+   "text": "'builder.lot.beauxArts': 'Hotel Beaux-Arts'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1294,
+   "key": "builder.lot.decoTower",
+   "text": "'builder.lot.decoTower': 'Torre art déco'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1295,
+   "key": "builder.lot.modernOffice",
+   "text": "'builder.lot.modernOffice': 'Escritório modernista'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1296,
+   "key": "builder.lot.residentialTerrace",
+   "text": "'builder.lot.residentialTerrace': 'Residencial com terraços'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1297,
+   "key": "builder.lot.glassSpire",
+   "text": "'builder.lot.glassSpire': 'Torre de vidro azul'"
+  }
+ ]
+}

@@ -356,14 +356,13 @@ fs.writeFileSync(path.join(outDir, 'three.json'), JSON.stringify(threeResults.ma
 
 // ---- Godot: the same scene in a SubViewport, read back
 fs.writeFileSync(path.join(outDir, 'project.godot'), ['config_version=5', '', '[application]', 'config/name="three parity"', '', '[rendering]', 'renderer/rendering_method="forward_plus"', ''].join('\n'));
-// parity.gd and the owner of the captured values it reads (three_values.gd, shared with replay.gd)
-for (const script of ['parity.gd', 'three_values.gd']) fs.writeFileSync(path.join(outDir, script), fs.readFileSync(path.resolve(import.meta.dirname, script), 'utf8'));
+fs.writeFileSync(path.join(outDir, 'parity.gd'), fs.readFileSync(path.resolve(import.meta.dirname, 'parity.gd'), 'utf8'));
 const godot = machine().get('godot');
 const win = path.resolve(outDir);
 // a hidden task (tools/tasks), keyed by what Godot reads: the cases, the shaders, the script; its images restored on a hit
 const parityRun = runTasksSync([{ name: 'converter-parity-godot', cwd: win, hidden: true, timeoutS: PARITY_TIMEOUT_S,
   outputs: godotCases.map((c) => path.join(win, `godot_${c.id}.rgba`)),
-  extra: [keyOf(filesKey(['cases.json', 'parity.gd', 'three_values.gd', 'project.godot'].map((f) => path.join(win, f))), folderKey(path.join(win, 'shaders'))), toolKey(godot)],
+  extra: [keyOf(filesKey(['cases.json', 'parity.gd', 'project.godot'].map((f) => path.join(win, f))), folderKey(path.join(win, 'shaders'))), toolKey(godot)],
   argv: [godot, '--path', win, '--script', 'res://parity.gd', '--rendering-driver', 'vulkan'] }])[0];
 mustRun('Godot\'s parity run', parityRun);
 fs.writeFileSync(path.join(win, 'godot.log'), logOf(parityRun));

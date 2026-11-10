@@ -5,7 +5,6 @@ extends Node3D
 
 ## A bolt's channel: midpoint displacement generations of the main channel and of a branch.
 const MAIN_GENERATIONS := 7
-const STILL_WIND := 1e-6 # a wind this weak has no direction: the rain falls straight
 const BRANCH_GENERATIONS := 5
 const LEVEL_VIEW := 0.0015
 
@@ -35,9 +34,6 @@ func _ready() -> void:
 	_rain_mat = ShaderMaterial.new()
 	_rain_mat.shader = load("res://render/shaders/rain.gdshader")
 	_rain_mat.set_shader_parameter("streak", _d.rain_streak_s)
-	var rain_kinds := WorldMaterials.uniform_kinds(_rain_mat.shader)
-	_rain_mat.set_shader_parameter("colour", WorldMaterials.typed(rain_kinds, "colour", _d.rain_colour))
-	_rain_mat.set_shader_parameter("rain_fade", WorldMaterials.typed(rain_kinds, "rain_fade", _d.rain_fade))
 	_rain = MeshInstance3D.new()
 	_rain.mesh = _rain_mesh()
 	_rain.material_override = _rain_mat
@@ -47,7 +43,6 @@ func _ready() -> void:
 	add_child(_rain)
 	_bolt_mat = ShaderMaterial.new()
 	_bolt_mat.shader = load("res://render/shaders/lightning.gdshader")
-	_bolt_mat.set_shader_parameter("core", WorldMaterials.typed(WorldMaterials.uniform_kinds(_bolt_mat.shader), "core", _d.bolt_core))
 	_thunder = Thunder.new(_d)
 	add_child(_thunder)
 
@@ -85,12 +80,10 @@ func step(dt: float, weather: Dictionary, way: Vector2) -> void:
 			_advance(ground, span, way * float(weather.wind), dt)
 			_rain_mat.set_shader_parameter("drops", roundi(_d.rain_max_drops * minf(1.0, rain)))
 			_rain_mat.set_shader_parameter("opacity", _d.rain_opacity + _d.rain_opacity_full * rain)
-		if rate > 0.0 and _rng.randf() < dt * rate / Units.S_PER_MIN:
+		if rate > 0.0 and _rng.randf() < dt * rate / 60.0:
 			var a := _rng.randf() * TAU
-			var r: float = sqrt(_rng.randf()) * span * _d.strike_reach # evenly over the disc round the view's middle
-			var x := ground.x + cos(a) * r
-			var z := ground.z + sin(a) * r
-			strike(Vector3(x, CityStore.query(&"height_at", [x, z]), z))
+			var r: float = _rng.randf() * span * _d.strike_reach
+			strike(ground + Vector3(cos(a) * r, 0.0, sin(a) * r))
 	_age(dt)
 	_bolt_mat.set_shader_parameter("brightness", flash)
 	_bolt_mat.set_shader_parameter("screen", get_viewport().get_visible_rect().size)
@@ -99,7 +92,7 @@ func step(dt: float, weather: Dictionary, way: Vector2) -> void:
 
 func _ground_under(cam: Camera3D) -> Vector3:
 	var ahead := -cam.global_basis.z
-	var y := CameraQueries.ground_below(cam)
+	var y := CityCamera.ground_below(cam)
 	var t := (y - cam.global_position.y) / ahead.y if ahead.y < -LEVEL_VIEW else float(_d.rain_look_m)
 	return cam.global_position + ahead * minf(t, _d.rain_look_m)
 
@@ -120,7 +113,7 @@ func _advance(ground: Vector3, span: float, wind: Vector2, dt: float) -> void:
 	var scale: float = fall / _d.rain_fall_ms
 	var length := wind.length()
 	var across := minf(_d.rain_slant * fall, length * scale)
-	var k := across / length if length > STILL_WIND else 0.0
+	var k := across / length if length > 1e-6 else 0.0
 	var v := Vector3(wind.x * k, -fall, wind.y * k)
 	o += v * dt
 	_box = Vector3(side, tall, side)
@@ -134,24 +127,21 @@ func _advance(ground: Vector3, span: float, wind: Vector2, dt: float) -> void:
 	_rain_mat.set_shader_parameter("near_m", side * _d.rain_near_share)
 
 
-## A bolt from some way up in the sky to `at`, leaning by a share of that height.
+## A bolt from the cloud base to `at`.
 func strike(at: Vector3) -> void:
 	if _bolts.size() >= int(_d.max_strikes):
 		_end(0)
-	var up: float = _d.bolt_height_least_m + _rng.randf() * _d.bolt_height_more_m
-	var lean: float = up * _d.bolt_lean_share
-	var top: Vector3 = at + Vector3((_rng.randf() - 0.5) * lean, up, (_rng.randf() - 0.5) * lean)
+	var top: Vector3 = at + Vector3(_rng.randf_range(-1.0, 1.0) * _d.bolt_lean_m, _d.bolt_height_m, _rng.randf_range(-1.0, 1.0) * _d.bolt_lean_m)
 	var node := MeshInstance3D.new()
 	node.mesh = _bolt_mesh(top, at)
 	node.material_override = _bolt_mat
 	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	node.extra_cull_margin = up # a bolt reaches as far as it is tall
+	node.extra_cull_margin = _d.bolt_height_m
 	add_child(node)
 	_bolts.append({"age": 0.0, "node": node})
 	var cam := get_viewport().get_camera_3d()
-	if cam: # heard from the ground under the view's middle
-		var heard := _ground_under(cam)
-		_thunder.play(Vector2(at.x - heard.x, at.z - heard.z).length(), _thunder_volume)
+	if cam:
+		_thunder.play(cam.global_position.distance_to(at), _thunder_volume)
 
 
 func _split(a: Vector3, b: Vector3, kick: float, generations: int) -> PackedVector3Array:

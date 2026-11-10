@@ -15,9 +15,8 @@ namespace traffic {
 namespace {
 
 constexpr float ARRIVED_M = 0.02f; // this near its place it stands
-constexpr float MIN_STEP_S = 1e-3f; // a pace divides by the step: a step of no time counts as this
+constexpr float MIN_STEP_S = 1e-3f;
 constexpr float LOOK_STEPS = 3; // it drops behind this many gaps before a piece of furniture, and comes back as far after
-constexpr int LONGEST_PARTY = 8; // the walk along a party's links (add_company) stops at this many, even if one loops
 
 PedAge partner_age(TrafficState &t, const TrafficParams &p, PedAge leader) {
 	if (leader == PedAge::CHILD) return PedAge::ADULT;
@@ -86,23 +85,6 @@ Pose place_by(CityState &s, Pedestrian &w, const Pedestrian &l) {
 }
 
 } // namespace
-
-PedParty party_of(const TrafficState &t, const Pedestrian &w) {
-	PedParty p;
-	p.leader = &w;
-	p.id = int(&w - t.peds.data());
-	while (p.leader->with >= 0 && p.rank < LONGEST_PARTY) {
-		p.id = p.leader->with;
-		p.leader = &t.peds[size_t(p.id)];
-		p.rank++;
-	}
-	p.child = p.leader->age == PedAge::CHILD;
-	for (const Pedestrian *m = p.leader; m->mate >= 0 && p.size < LONGEST_PARTY; m = &t.peds[size_t(m->mate)]) {
-		p.size++;
-		p.child = p.child || t.peds[size_t(m->mate)].age == PedAge::CHILD;
-	}
-	return p;
-}
 
 void add_company(CityState &s, int leader) {
 	TrafficState &t = s.traffic;

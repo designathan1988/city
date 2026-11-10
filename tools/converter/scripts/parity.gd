@@ -1,12 +1,9 @@
+extends SceneTree
 # Godot's side of scripts/parity.mjs: each case's mesh, transform, instances, texture and uniform values (what
 # three.js uploaded) drawn with the translated shader in a 64x64 SubViewport, the same camera as three's
 # (fov 50 vertical, near 0.1, far 100, at z = 3 looking at the origin), linear tone mapping; written as raw RGBA8.
-extends SceneTree
 
 const SIZE := 64
-# The captured values as Godot takes them (scripts/three_values.gd, copied beside this script by parity.mjs): Three.value
-# for each uniform in _material, Three.matrix for each transform in _node; replay.gd reads the same owner.
-const Three := preload("res://three_values.gd")
 
 func _initialize() -> void:
 	var cases: Array = JSON.parse_string(FileAccess.get_file_as_string("res://cases.json"))
@@ -14,6 +11,50 @@ func _initialize() -> void:
 		await _draw(c)
 	print("PARITY DONE")
 	quit()
+
+func _matrix(m: Array) -> Transform3D:
+	return Transform3D(Basis(Vector3(m[0], m[1], m[2]), Vector3(m[4], m[5], m[6]), Vector3(m[8], m[9], m[10])), Vector3(m[12], m[13], m[14]))
+
+func _value(p: Dictionary) -> Variant:
+	var t: String = p.type
+	var els: Array = p.elements
+	var one := func(e: Array) -> Variant:
+		match t:
+			"float": return float(e[0])
+			"int", "uint": return int(e[0])
+			"bool": return bool(e[0])
+			"vec2": return Vector2(e[0], e[1])
+			"vec3": return Vector3(e[0], e[1], e[2])
+			"vec4": return Vector4(e[0], e[1], e[2], e[3])
+			"mat3": return Basis(Vector3(e[0], e[1], e[2]), Vector3(e[3], e[4], e[5]), Vector3(e[6], e[7], e[8]))
+			"mat4": return Projection(Vector4(e[0], e[1], e[2], e[3]), Vector4(e[4], e[5], e[6], e[7]), Vector4(e[8], e[9], e[10], e[11]), Vector4(e[12], e[13], e[14], e[15]))
+		return null
+	if not p.array:
+		return one.call(els[0])
+	match t:
+		"float":
+			var a := PackedFloat32Array()
+			for e in els: a.append(float(e[0]))
+			return a
+		"int", "uint":
+			var a := PackedInt32Array()
+			for e in els: a.append(int(e[0]))
+			return a
+		"vec2":
+			var a := PackedVector2Array()
+			for e in els: a.append(one.call(e))
+			return a
+		"vec3":
+			var a := PackedVector3Array()
+			for e in els: a.append(one.call(e))
+			return a
+		"vec4":
+			var a := PackedVector4Array()
+			for e in els: a.append(one.call(e))
+			return a
+	var arr := []
+	for e in els: arr.append(one.call(e))
+	return arr
 
 func _mesh(m: Dictionary, material: Material) -> ArrayMesh:
 	var arrays := []
@@ -64,8 +105,7 @@ func _mesh(m: Dictionary, material: Material) -> ArrayMesh:
 	mesh.surface_set_material(0, material)
 	return mesh
 
-## The case's viewport: its own world, no antialiasing, a black background, linear tone mapping and three's camera.
-func _viewport() -> SubViewport:
+func _draw(c: Dictionary) -> void:
 	var vp := SubViewport.new()
 	vp.size = Vector2i(SIZE, SIZE)
 	vp.own_world_3d = true
@@ -74,18 +114,27 @@ func _viewport() -> SubViewport:
 	vp.use_taa = false
 	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	root.add_child(vp)
-	# the shared stage (Three.stage: linear, no ambient, a current camera) on Environment's black, the camera as three's
-	var cam := Three.stage(vp, Environment.BG_COLOR)
+	var env := Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color(0, 0, 0)
+	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_DISABLED
+	var we := WorldEnvironment.new()
+	we.environment = env
+	vp.add_child(we)
+	var cam := Camera3D.new()
 	cam.fov = 50.0
 	cam.near = 0.1
 	cam.far = 100.0
 	cam.position = Vector3(0, 0, 3)
-	return vp
-
-
-## The case's material: the translated shader, its uniforms, and every texture three bound, its bytes as uploaded.
-func _material(c: Dictionary) -> ShaderMaterial:
-	var mat := Three.material(c.shader, c.params) # the translated shader and every uniform three set
+	vp.add_child(cam)
+	cam.make_current()
+	var shader := Shader.new()
+	shader.code = FileAccess.get_file_as_string(c.shader)
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	for p in c.params:
+		mat.set_shader_parameter(p.godot, _value(p))
 	# every texture three bound for the program, its bytes as uploaded
 	var formats := { "RGBA8": Image.FORMAT_RGBA8, "RGH": Image.FORMAT_RGH, "RGBAH": Image.FORMAT_RGBAH, "RGF": Image.FORMAT_RGF, "RGBAF": Image.FORMAT_RGBAF, "RF": Image.FORMAT_RF, "RH": Image.FORMAT_RH, "R8": Image.FORMAT_R8 }
 	for tex in c.textures:
@@ -106,25 +155,30 @@ func _material(c: Dictionary) -> ShaderMaterial:
 			continue
 		var img := Image.create_from_data(int(tex.width), int(tex.height), false, formats[tex.format], Marshalls.base64_to_raw(tex.bytes))
 		mat.set_shader_parameter(tex.uniform, ImageTexture.create_from_image(img))
-	return mat
-
-
-## The node that draws the case's mesh: a MultiMesh of its instances, or the mesh alone, at the case's transform.
-func _node(c: Dictionary, mesh: ArrayMesh) -> Node3D:
+	var mesh := _mesh(c.mesh, mat)
 	if c.instances != null:
-		var mmi := Three.instances(mesh, c.instances) # each with its matrix, colour (alpha 1) and custom data
-		mmi.transform = Three.matrix(c.transform)
-		return mmi
-	var mi := MeshInstance3D.new()
-	mi.mesh = mesh
-	mi.transform = Three.matrix(c.transform)
-	return mi
-
-
-## One case drawn and read back: four drawn frames, then the viewport's pixels as raw RGBA8.
-func _draw(c: Dictionary) -> void:
-	var vp := _viewport()
-	vp.add_child(_node(c, _mesh(c.mesh, _material(c))))
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.use_colors = true
+		mm.use_custom_data = true
+		mm.mesh = mesh
+		mm.instance_count = c.instances.size()
+		for i in c.instances.size():
+			mm.set_instance_transform(i, _matrix(c.instances[i].matrix))
+			var col: Array = c.instances[i].color
+			mm.set_instance_color(i, Color(col[0], col[1], col[2], 1.0))
+			if c.instances[i].has("custom"):
+				var cd: Array = c.instances[i].custom
+				mm.set_instance_custom_data(i, Color(cd[0], cd[1], cd[2], cd[3]))
+		var mmi := MultiMeshInstance3D.new()
+		mmi.multimesh = mm
+		mmi.transform = _matrix(c.transform)
+		vp.add_child(mmi)
+	else:
+		var mi := MeshInstance3D.new()
+		mi.mesh = mesh
+		mi.transform = _matrix(c.transform)
+		vp.add_child(mi)
 	for i in 4:
 		await RenderingServer.frame_post_draw
 	var out := vp.get_texture().get_image()

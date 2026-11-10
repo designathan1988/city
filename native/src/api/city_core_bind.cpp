@@ -63,7 +63,6 @@ void CityCore::bind_edits() {
 	ClassDB::bind_method(D_METHOD("split_road", "position"), &CityCore::split_road);
 	ClassDB::bind_method(D_METHOD("body_census", "kind"), &CityCore::body_census);
 	ClassDB::bind_method(D_METHOD("road_census"), &CityCore::road_census);
-	ClassDB::bind_method(D_METHOD("lot_audit"), &CityCore::lot_audit);
 	ClassDB::bind_method(D_METHOD("set_node_height", "node", "metres"), &CityCore::set_node_height);
 	ClassDB::bind_method(D_METHOD("bend_road", "segment", "height", "at"), &CityCore::bend_road);
 	ClassDB::bind_method(D_METHOD("join_roads", "node"), &CityCore::join_roads);
@@ -74,8 +73,8 @@ void CityCore::bind_edits() {
 	ClassDB::bind_method(D_METHOD("remove_node", "node"), &CityCore::remove_node);
 	ClassDB::bind_method(D_METHOD("set_road_end", "node", "bulb"), &CityCore::set_road_end);
 	ClassDB::bind_method(D_METHOD("upgrade_road", "position", "profile", "whole_street"), &CityCore::upgrade_road);
-	ClassDB::bind_method(D_METHOD("roundabout", "position", "radius"), &CityCore::roundabout);
-	ClassDB::bind_method(D_METHOD("preview_roundabout", "position", "radius"), &CityCore::preview_roundabout);
+	ClassDB::bind_method(D_METHOD("roundabout", "position", "radius", "cut"), &CityCore::roundabout);
+	ClassDB::bind_method(D_METHOD("preview_roundabout", "position", "radius", "cut"), &CityCore::preview_roundabout);
 	ClassDB::bind_method(D_METHOD("segment_at", "position"), &CityCore::segment_at);
 	ClassDB::bind_method(D_METHOD("move_node", "node", "position"), &CityCore::move_node);
 	ClassDB::bind_method(D_METHOD("set_node_control", "node", "control"), &CityCore::set_node_control);
@@ -89,7 +88,6 @@ void CityCore::bind_edits() {
 	ClassDB::bind_method(D_METHOD("save_city", "path"), &CityCore::save_city);
 	ClassDB::bind_method(D_METHOD("save_status"), &CityCore::save_status);
 	ClassDB::bind_method(D_METHOD("load_city", "path", "paused"), &CityCore::load_city, DEFVAL(false));
-	ClassDB::bind_method(D_METHOD("load_poll"), &CityCore::load_poll);
 }
 
 // What the UI and the tests read: the snapshot, the ground and its inspector, the traffic, the layers and the render's costs.
@@ -99,7 +97,6 @@ void CityCore::bind_queries() {
 	ClassDB::bind_method(D_METHOD("constants"), &CityCore::constants);
 	ClassDB::bind_method(D_METHOD("raycast", "origin", "direction"), &CityCore::raycast);
 	ClassDB::bind_method(D_METHOD("height_at", "x", "z"), &CityCore::height_at);
-	ClassDB::bind_method(D_METHOD("heights_at", "points"), &CityCore::heights_at);
 	ClassDB::bind_method(D_METHOD("inspect", "position"), &CityCore::inspect);
 	ClassDB::bind_method(D_METHOD("segment_traffic", "segment"), &CityCore::segment_traffic);
 	ClassDB::bind_method(D_METHOD("node_traffic", "node"), &CityCore::node_traffic);
@@ -129,7 +126,6 @@ void CityCore::bind_queries() {
 	ClassDB::bind_method(D_METHOD("lot_split", "id", "kind", "parts", "a", "b"), &CityCore::lot_split);
 	ClassDB::bind_method(D_METHOD("lot_join", "a", "b"), &CityCore::lot_join);
 	ClassDB::bind_method(D_METHOD("lot_delete", "id"), &CityCore::lot_delete);
-	ClassDB::bind_method(D_METHOD("lot_erase", "stroke"), &CityCore::lot_erase);
 	ClassDB::bind_method(D_METHOD("lot_zone", "id", "zone"), &CityCore::lot_zone);
 	ClassDB::bind_method(D_METHOD("lot_at", "point"), &CityCore::lot_at);
 	ClassDB::bind_method(D_METHOD("lot_angle_at", "point"), &CityCore::lot_angle_at);
@@ -160,14 +156,9 @@ void CityCore::bind_queries() {
 	ClassDB::bind_method(D_METHOD("render_cost"), &CityCore::render_cost);
 	ClassDB::bind_method(D_METHOD("wear_probe"), &CityCore::wear_probe);
 	ClassDB::bind_method(D_METHOD("road_mesh_counts"), &CityCore::road_mesh_counts);
-	ClassDB::bind_method(D_METHOD("road_surface_probe"), &CityCore::road_surface_probe);
-	ClassDB::bind_method(D_METHOD("road_seam_probe"), &CityCore::road_seam_probe);
-	ClassDB::bind_method(D_METHOD("draw_seams", "on"), &CityCore::draw_seams);
-	ClassDB::bind_method(D_METHOD("prop_buffer_probe"), &CityCore::prop_buffer_probe);
+	ClassDB::bind_method(D_METHOD("draw_verges", "on"), &CityCore::draw_verges);
 	ClassDB::bind_method(D_METHOD("wear_paint", "x0", "z0", "x1", "z1", "value"), &CityCore::wear_paint);
 	ClassDB::bind_method(D_METHOD("agent_cost"), &CityCore::agent_cost);
-	ClassDB::bind_method(D_METHOD("memory_census"), &CityCore::memory_census);
-	ClassDB::bind_method(D_METHOD("surface_probe", "arrays", "lods", "format"), &CityCore::surface_probe);
 	ClassDB::bind_method(D_METHOD("building_cost"), &CityCore::building_cost);
 	ClassDB::bind_method(D_METHOD("pose_stats"), &CityCore::pose_stats);
 }
@@ -187,7 +178,6 @@ void CityCore::bind_damage() {
 	ClassDB::bind_method(D_METHOD("effects_ruin_digest", "seed"), &CityCore::effects_ruin_digest);
 	ClassDB::bind_method(D_METHOD("effects_bodies"), &CityCore::effects_bodies);
 	ClassDB::bind_method(D_METHOD("effects_bodies_moving"), &CityCore::effects_bodies_moving);
-	ClassDB::bind_method(D_METHOD("effects_bodies_falling"), &CityCore::effects_bodies_falling);
 	ClassDB::bind_method(D_METHOD("blast_probe", "strength", "distance"), &CityCore::blast_probe);
 }
 

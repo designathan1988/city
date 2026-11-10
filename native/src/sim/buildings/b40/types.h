@@ -1,13 +1,8 @@
 // The building body: the vocabulary codes (bays, roofs, dress, finishes), in the order the lists of
-// data/catalog/buildings.json name them, and the
-// plain structures the generator fills (lot plan, volumes with storeys and bay overrides, lot elements, cores; a block's roof
-// gear is roof_gear.h's).
+// data/render/buildings.json name them, and the
+// plain structures the generator fills (lot plan, volumes with storeys and bay overrides, lot elements, cores).
 // Lengths in metres in the lot frame: x along the street front from the lot's middle, y away from the street, z up.
 #pragma once
-
-#include "core/math.h"
-#include "core/shader_contracts/buildings.h"
-#include "sim/buildings/b40/roof_gear.h"
 
 #include <cstdint>
 #include <unordered_map>
@@ -18,9 +13,7 @@
 namespace city::b40 {
 
 constexpr float EPS = 1e-3f, FAR_AWAY = 1e9f; // geometric tolerance; 'no bound yet'
-// The most faces a volume's outline has (a saved body's limit), and a bay key's packing: storey, side and bay in bytes.
 constexpr int MAX_FACES = 24, KEY_STOREY_SHIFT = 16, KEY_SIDE_SHIFT = 8;
-constexpr int ERAS = 3; // the eras a building is drawn from: old, middle, new (buildings.json era_affinity's columns)
 constexpr float RISER_M = 0.17f; // the rise of a step, drawn at entrances and flights (ABNT NBR 9050 6.8: 0.16 to 0.18 m)
 
 // The components a bay of a facade can hold (names in buildings.json "openings" and the styles' rhythms).
@@ -43,7 +36,9 @@ enum Use : uint8_t { USE_RESIDENTIAL, USE_COMMERCIAL, USE_INDUSTRIAL };
 // Architectural styles, in the order of buildings.json "styles" (their indices there).
 enum Style : uint8_t { STYLE_COLONIAL, STYLE_ART_DECO, STYLE_MODERNIST, STYLE_CONTEMPORARY, STYLE_BRICK, STYLE_TROPICAL,
 	STYLE_GLASS, STYLE_INDUSTRIAL, STYLE_COLONIAL_HOUSE, STYLE_BUNGALOW, STYLE_MODERN_HOUSE, STYLE_SOBRADO, STYLE_COUNT };
-// Finishes (Finish, in the cooked texture array's layer order) are core/shader_contracts/buildings.h's: the building shaders read them by layer.
+// Finishes in the COOKED texture-array layer order (project/assets/surfaces/building-finishes.*.png).
+enum Finish : int8_t { FIN_NONE = -1, FIN_PLASTER, FIN_STUCCO, FIN_CERAMIC, FIN_BRICK, FIN_STONE, FIN_CONCRETE, FIN_WOOD,
+	FIN_METAL, FIN_GLASS, FIN_TILE, FIN_SLATE, FIN_PANEL, FIN_ROOFING, FIN_COUNT };
 
 // A material: finish layer + sRGB colour 0xRRGGBB.
 struct Paint {
@@ -60,15 +55,12 @@ struct SidePlan {
 	float width = 0;
 	float walk = 0; // SIDE_DRIVE_PATH: the footpath along the drive, on the building's side
 };
-// A corner lot: the side of it on a second street (Roadcraft lotPlan.ts LotPlan.corner), a front too.
-enum LotCorner : uint8_t { CORNER_NONE, CORNER_LEFT, CORNER_RIGHT };
 struct LotPlan {
 	Kind kind = KIND_HOUSE;
 	float W = 0, D = 0;
 	FrontUse front = FRONT_STREET;
 	float front_depth = 0;
 	SidePlan left, right;
-	LotCorner corner = CORNER_NONE;
 	BackUse back = BACK_NONE;
 	float back_depth = 0;
 	int rows = 0;
@@ -88,6 +80,30 @@ struct Relief {
 	float depth = 0; // > 0 projects out of the wall, < 0 recesses
 };
 
+struct Point2 {
+	float x = 0, y = 0;
+};
+
+// What the player sets on a roof, at a point of the plan; `turn` in radians, `h` what stands up from the roof.
+enum RoofGear : uint8_t { GEAR_SOLAR, GEAR_SKYLIGHT, GEAR_VENT, GEAR_CHIMNEY, GEAR_TANK, GEAR_SPIRE, GEAR_LANTERN, GEAR_COUNT };
+// A flag flown from a mast (a spire, a lantern): one of the Roadcraft's designs (flags.ts FLAG_PATTERNS, drawn by
+// building_parts.gdshader) in three colours, 0xRRGGBB: the field, the second and the third.
+enum FlagPattern : uint8_t {
+	FLAG_SOLID, FLAG_BICOLOUR_H, FLAG_BICOLOUR_V, FLAG_TRICOLOUR_H, FLAG_TRICOLOUR_V, FLAG_CROSS, FLAG_NORDIC,
+	FLAG_DIAGONAL, FLAG_SALTIRE, FLAG_CANTON, FLAG_STRIPES, FLAG_BORDER, FLAG_DISC, FLAG_CHEVRON, FLAG_COUNT
+};
+constexpr int FLAG_COLOURS = 3, FLAG_NONE = -1;
+struct FlagDesign {
+	int8_t pattern = FLAG_NONE; // a FlagPattern; FLAG_NONE: no flag flown
+	uint32_t rgb[FLAG_COLOURS] = { 0x0b5ea8, 0xffffff, 0xc8102e }; // the Roadcraft's default design (flags.ts DEFAULT_FLAG)
+};
+constexpr FlagDesign DEFAULT_FLAG{ FLAG_TRICOLOUR_V }; // what a new lantern flies (buildingRoofs.ts); a spire flies none until set
+struct RoofPart {
+	uint8_t kind = GEAR_VENT;
+	float x = 0, y = 0, w = 1, d = 1, h = 1, turn = 0;
+	FlagDesign flag; // on a spire or a lantern
+};
+
 // How a block counts in the body (blocks.h): a solid one adds its space, a void takes it from the others, an intersect keeps of the others what lies in it, an exclusive
 // one does the first where it stands alone and the second where it meets another.
 enum BlockMode : uint8_t { BLOCK_SOLID, BLOCK_VOID, BLOCK_INTERSECT, BLOCK_XOR };
@@ -98,7 +114,7 @@ struct Volume {
 	Roof roof = ROOF_FLAT;
 	float pitch = -1; // degrees; < 0 = not set yet
 	int ridge = -1, fall = -1;
-	std::vector<V2> outline; // normalised to the rectangle, CCW; empty = rectangle
+	std::vector<Point2> outline; // normalised to the rectangle, CCW; empty = rectangle
 	int wall = -1, roof_paint = -1; // paint indices into Body::paints (-1 = the building's)
 	std::vector<uint8_t> fill; // per storey
 	std::unordered_map<uint32_t, uint8_t> bays; // (storey, side, bay) -> Bay override
@@ -192,7 +208,6 @@ struct Body {
 	uint8_t style = 0;
 	int palette = 0;
 	float ground_h = 3, storey_h = 3;
-	std::vector<float> level_hs; // a level's own height, by level (the Roadcraft's Building.levels); 0 or none: the building's
 	std::vector<Paint> paints;
 	int wall = -1, roof = -1, trim = -1; // building defaults (paint indices)
 	std::vector<Volume> volumes;
@@ -204,27 +219,15 @@ struct Body {
 	// A design of its own (signature_kinds.h): its number, and where the lot's front lay in the design's frame. 0 is the facade kit. An edit gives it back to the kit.
 	uint8_t signature = 0;
 	float signature_x = 0, signature_y = 0;
-	// Metres a unit of the design's drawing stands for: 1 for a body read straight off its document (the shelf), the document's own unit
-	// for a design the growth stands on a lot at its true size (data.h GrownDesign). signature_x and _y are in metres, the body's.
-	float signature_scale = 1;
 	// Drawing only, never stored (interior/cut.h): this body cut open at this floor, for a camera looking along cut_view (lot frame).
 	int cut_level = -1;
-	V2 cut_view;
+	Point2 cut_view;
 	int add_paint(const Paint &p) {
 		paints.push_back(p);
 		return int(paints.size()) - 1;
 	}
-	float level_h(int level) const {
-		const float own = level >= 0 && level < int(level_hs.size()) ? level_hs[size_t(level)] : 0.f;
-		return own > 0 ? own : level == 0 ? ground_h : storey_h;
-	}
-	float level_z(int level) const {
-		if (level <= 0) return 0.f;
-		if (level_hs.empty()) return ground_h + storey_h * float(level - 1); // no level of its own height: the closed form
-		float z = 0;
-		for (int k = 0; k < level; k++) z += level_h(k);
-		return z;
-	}
+	float level_h(int level) const { return level == 0 ? ground_h : storey_h; }
+	float level_z(int level) const { return level <= 0 ? 0.f : ground_h + storey_h * float(level - 1); }
 	float block_z(const Volume &v, int level) const { return v.lift + level_z(level); } // a level of a block, over the building's floor
 	const Paint &wall_of(const Volume &v) const { return paints[v.wall >= 0 ? v.wall : wall]; }
 	const Paint &roof_of(const Volume &v) const { return paints[v.roof_paint >= 0 ? v.roof_paint : roof]; }

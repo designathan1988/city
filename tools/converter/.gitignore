@@ -1,5 +1,2 @@
 /out/
 /node_modules/
-# made by test/feature.test.ts from test/fixtures/feature-page.ts (the gates read no HTML or CSS)
-/test/fixtures/feature/index.html
-/test/fixtures/feature/src/shared/app.css

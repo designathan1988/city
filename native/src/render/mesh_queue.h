@@ -1,11 +1,10 @@
-// The job queue of a renderer whose chunk results are one surface each (roads, seams, structures, far roads, water, furniture): a
-// job copies what it reads of the map and fills the chunk's builder from the copy with no lock held (submit_cut), its bake is
-// admitted by the frame's upload ledger and its hand-over by the frame's deadline, in the frame's one order (chunk_results.h
-// ChunkResults). What a result carries besides its surface (`Extra`: the furniture's instances) travels inside it, so it is
-// drawn with the mesh of the same build or not at all.
+// The job queue of a renderer whose chunk results are one surface each (roads, verges, structures, far roads, furniture): a job
+// fills the chunk's builder while it holds the map shared (submit_job), its bake is admitted by the frame's upload ledger and its
+// hand-over by the frame's deadline, in the frame's one order (chunk_jobs.h ChunkResults). What a result carries besides its
+// surface (`Extra`: the furniture's instances) travels inside it, so it is drawn with the mesh of the same build or not at all.
 #pragma once
 
-#include "render/chunk_results.h"
+#include "render/chunk_jobs.h"
 
 #include <type_traits>
 
@@ -25,7 +24,6 @@ struct BuiltMeshOf {
 	JobKey job;
 	float priority = 0;
 	uint64_t ticket = 0; // the chunk's revision asked (ChunkRevisions)
-	godot::RID material; // what the mesh is made with (surface_data.h), the queue's
 	MeshBuilder mb;
 	OwnedMesh mesh;
 	MeshCount count;
@@ -35,7 +33,7 @@ struct BuiltMeshOf {
 	bool bakes() const { return true; }
 	int64_t bytes() const { return mb.bytes(); }
 	void bake() {
-		mesh = mb.bake(material);
+		mesh = mb.bake();
 		count = { mb.idx.size() / 3, mb.v.size(), mb.bytes() };
 		bounds = mb.bounds();
 		mb = MeshBuilder();
@@ -44,7 +42,7 @@ struct BuiltMeshOf {
 };
 using BuiltMesh = BuiltMeshOf<NoExtra>;
 
-// The queue of such a renderer: it fills a chunk's builder (submit_cut) and hands the baked mesh to its instance (commit_one).
+// The queue of such a renderer: it fills a chunk's builder (submit_job) and hands the baked mesh to its instance (commit_one).
 template <typename Extra>
 class MeshQueueOf : public ChunkResults<BuiltMeshOf<Extra>> {
 public:
@@ -56,26 +54,24 @@ public:
 	MeshQueueOf &operator=(const MeshQueueOf &) = delete;
 
 protected:
-	godot::RID surface_material_; // every chunk's mesh is made with it (set by the renderer at init)
 	virtual ~MeshQueueOf() = default;
 	virtual void commit_one(Built &b) = 0;
-	// A job in two steps: `gather()` copies what the build reads of the map (it takes the map itself, shared, for the copy alone:
-	// sim/state/city_cut.h cut_city) and `build(cut, mb)` (or `build(cut, mb, extra)`) fills the chunk's builder from the copy,
-	// on the same worker, with no lock held.
-	template <typename Gather, typename Build>
-	void submit_cut(JobPool &pool, JobKey job, int64_t key, float priority, Gather &&gather, Build &&build) {
+	// `build(mb)` (or `build(mb, extra)`) fills the chunk's builder; it runs on a worker, the map held shared while it reads.
+	template <typename Build>
+	void submit_job(const CityState &s, JobPool &pool, JobKey job, int64_t key, float priority, Build &&build) {
 		this->set_pool(&pool);
 		const uint64_t ticket = this->revs.ask(key);
-		pool.submit(job, priority, [this, key, job, ticket, priority, gather, build]() {
+		pool.submit(job, priority, [&s, this, key, job, ticket, priority, build]() {
 			auto b = std::make_shared<Built>();
 			b->key = key;
 			b->job = job;
 			b->ticket = ticket;
 			b->priority = priority;
-			b->material = surface_material_;
-			const auto cut = gather();
-			if constexpr (std::is_same_v<Extra, NoExtra>) build(cut, b->mb);
-			else build(cut, b->mb, b->extra);
+			{
+				std::shared_lock<std::shared_mutex> map(s.map_mutex);
+				if constexpr (std::is_same_v<Extra, NoExtra>) build(b->mb);
+				else build(b->mb, b->extra);
+			}
 			this->push(std::move(b));
 		});
 	}

@@ -1,11 +1,12 @@
 ## Relief brush (Landscape › Relief): hold the left button to raise, lower, smooth or level
-## (or lay a landform) under the disc; the core applies one dab per dab_s held, at most one a frame (a slow frame owes no
+## (or lay a landform) under the disc; the core applies one dab per DAB_S held, at most one a frame (a slow frame owes no
 ## dabs to the next: Roadcraft editor/terrainBrush.ts tick, `applied = now`), and the whole stroke is one undo step.
 ## Roads keep their corridors and buildings settle on the new ground.
 extends ToolBase
 
-## One dab per dab_s held keeps each step above the 1 cm height quantum (data/game/tools.json terrain).
-static var dab_s: float = DataTables.game("tools").terrain.dab_s
+## One dab per DAB_S held keeps each step above the 1 cm height quantum.
+const DAB_S := 0.1
+const PERCENT := 100.0
 
 var mode := 0
 var radius := 0.0
@@ -19,8 +20,8 @@ func enter() -> void:
 	var spec: Dictionary = _spec()
 	mode = params.get("mode", 0)
 	radius = params.get("radius", spec.radius.default)
-	strength = params.get("strength", spec.strength.default) / Units.PERCENT
-	hardness = params.get("hardness", spec.hardness.default) / Units.PERCENT
+	strength = params.get("strength", spec.strength.default) / PERCENT
+	hardness = params.get("hardness", spec.hardness.default) / PERCENT
 	ctl.hint.emit("", true)
 
 
@@ -45,7 +46,7 @@ func click(p: Vector3) -> void:
 	_at = p
 	_held = 0.0
 	CityStore.dispatch(&"begin_stroke", ["cmd.place.terrainBrush"])
-	_dab(dab_s)
+	_dab(DAB_S)
 
 
 func drag(p: Vector3) -> void:
@@ -57,9 +58,9 @@ func tick(delta: float) -> void:
 	if _at == Vector3.INF:
 		return
 	_held += delta
-	if _held >= dab_s:
+	if _held >= DAB_S:
 		_held = 0.0
-		_dab(dab_s)
+		_dab(DAB_S)
 
 
 func release(_p: Vector3) -> void:
@@ -70,7 +71,7 @@ func release(_p: Vector3) -> void:
 func _dab(dt: float) -> void:
 	var r: Dictionary
 	if mode < 0: # the gully brush: cut or wipe, on the light the land reads (sim/nature/ground_paint.h)
-		r = CityStore.dispatch(&"paint_brush", [_at, radius, strength * dt / dab_s, 0.0, mode])
+		r = CityStore.dispatch(&"paint_brush", [_at, radius, strength * dt / DAB_S, 0.0, mode])
 	else:
 		r = CityStore.dispatch(&"terrain_brush", [_at, radius, strength, dt, mode, hardness])
 	if not r.get("ok", false):

@@ -7,14 +7,16 @@
 extends Node3D
 
 const SEED := 1
+const MAP_DEFAULT := 5 # metropolis (data/catalog/maps.json): the most traffic of the medium maps
 const BUILD_FRAMES := 1200
 const SETTLE_FRAMES := 30
 const RUN_S := 20.0
 const READS := 300 # calls of each per-frame read timed one after another
+const SPEED_FASTEST := 3
 const US_PER_MS := 1000.0
 const PERCENTILES := [0.5, 0.95, 0.99]
 
-var map := DataTables.map_index("metropolis")
+var map := MAP_DEFAULT
 var seconds := RUN_S
 
 
@@ -44,7 +46,7 @@ func _ready() -> void:
 	while CityStore.query(&"render_pending") > 0 and waited < BUILD_FRAMES:
 		await get_tree().process_frame
 		waited += 1
-	CityStore.dispatch(&"set_speed", [CityStore.code(&"SimSpeed", &"FASTEST")])
+	CityStore.dispatch(&"set_speed", [SPEED_FASTEST])
 	await _snapshot_wait()
 	_reads()
 	var keys: int = await _idle_keys()
@@ -107,12 +109,17 @@ func _locks() -> void:
 
 
 ## Each read a view makes every frame, timed READS times in a row: as the core answers it, and as the store keeps it.
+## (Reads an older core lacks are left out, so the same probe measures both sides of a change.)
 func _reads() -> void:
 	var reads := [&"fog_field", &"fog_revision", &"transit_plan", &"junctions", &"sky_revision", &"landscape"]
+	var fog_args := [] if StoreApi.QUERIES.has(&"fog_revision") else [Vector3.ZERO] # an older fog_field took the camera
 	for name in reads:
-		print("read %s: %s" % [name, _timed(func() -> void: CityStore.query(name))])
-	for name: StringName in CityStore.CACHED_BY:
-		print("read %s through the CityStore cache: %s" % [name, _timed(func() -> void: CityStore.cached(name))])
+		if StoreApi.QUERIES.has(name):
+			var args: Array = fog_args if name == &"fog_field" else []
+			print("leitura %s: %s" % [name, _timed(func() -> void: CityStore.query(name, args))])
+	if CityStore.has_method(&"cached"): # called by name: an older store has neither the method nor its table
+		for name in CityStore.get(&"CACHED_BY"):
+			print("read %s through the CityStore cache: %s" % [name, _timed(func() -> void: CityStore.call(&"cached", name))])
 	print("junctions on the list: %d" % CityStore.query(&"junctions").size())
 
 

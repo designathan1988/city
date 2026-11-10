@@ -1,0 +1,14 @@
+{
+ "sha": "146bbcb25fc69ca4456616729b9f15b1da2d7f9f",
+ "saida": "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\verificacao-146bbcb25fc6",
+ "fotos": 33,
+ "soak": {
+  "trips_arrived": 901,
+  "trips_lost": 0,
+  "lost_stuck": 0,
+  "red_entries": 0,
+  "people_overlaps": null,
+  "box_stops": "0, 0, 0, 0"
+ },
+ "segundos": 100
+}

@@ -22,8 +22,8 @@ std::vector<Vector3> interior_lamps(const CityState &s, int id, int level) {
 	if (id < 0 || id >= int(s.buildings.items.size()) || !s.buildings.items[size_t(id)].alive) return out;
 	const Building &rec = s.buildings.items[size_t(id)];
 	if (rec.floors == 0) return out;
-	const std::shared_ptr<const b40::Body> body_held = b40::record_mass(s.buildings.designs, rec);
-	const b40::Body &body = *body_held;
+	b40::Body body;
+	b40::record_mass(s.buildings.designs, rec, body);
 	level = std::clamp(level, 0, b40::top_level(body));
 	const b40::LotFrame f = b40::lot_frame(rec);
 	const float floor = b40::lot_floor(body, rec, f, [&](float x, float z) { return s.terrain.height_at(x, z); });

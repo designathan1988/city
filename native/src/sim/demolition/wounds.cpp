@@ -31,7 +31,7 @@ void bleed_step(CityState &s, double dt) {
 		e.a = std::atan2(w.cur.fz, w.cur.fx);
 		e.b = w.cur.x; e.c = w.cur.z;
 		e.u = w.look;
-		e.v = CAS_DEAD | CAS_BLED | (uint32_t(w.lost) << CAS_LOST_SHIFT) | cas_age(int(w.age));
+		e.v = CAS_DEAD | CAS_BLED | (uint32_t(w.lost) << CAS_LOST_SHIFT);
 		s.log.damage_events.push_back(e);
 		traffic::add_shock(s, w.cur.x, w.cur.z, s.catalog.traffic.ped_body_shock_m);
 		traffic::remove_pedestrian(s, id);

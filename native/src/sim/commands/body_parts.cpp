@@ -1,6 +1,5 @@
-// The Parts tab's edits: free elements set against a bay or on the ground, sized, turned, repeated and taken away (body_ops.h). How a part
+// The Parts tab's edits: free elements set against a bay or on the ground, changed, repeated and taken away (body_ops.h). How a part
 // fits a wall is data (`PartSpec`, from data/ui/builder.json): a part stands in the lot frame, w across its facing, d along it.
-#include "core/math.h"
 #include "sim/buildings/b40/gen.h"
 #include "sim/buildings/b40/plan_area.h"
 #include "sim/commands/body_ops.h"
@@ -13,20 +12,20 @@ namespace city {
 using namespace b40;
 
 namespace {
-constexpr float QUARTER_TURN = PI_F / 2;
+constexpr float SHORTEST_LEG_M = .4f, LOWEST_FLIGHT_M = .5f, LOWEST_STEP_M = .2f, FLIGHT_WIDTH_M = 1.2f, BAND_WIDTH_M = 1.6f, THINNEST_M = .12f, QUARTER_TURN = 1.57079633f;
 constexpr const char *NO_TARGET = "tool.failed";
-constexpr float AREA_EPS = 1e-3f, TOUCH_EPS = 1e-3f; // an area this small is none; two faces this near touch
-constexpr int MAX_REPEAT = 64; // the most copies a repeat lays (build_max_parts caps the body's parts)
+constexpr float AREA_EPS = 1e-3f, TOUCH_EPS = 1e-3f;
+constexpr int MAX_REPEAT = 64;
 
 // The frame of a side of a block: where its bays start, the way they run, and out of the wall.
 struct WallFrame {
-	V2 start, along, out;
+	Point2 start, along, out;
 	float length = 0;
 };
 
 WallFrame wall_of(const Volume &v, int side) {
 	const Ring ring = ring_of(v);
-	V2 p = ring[size_t(side) % ring.size()], q = ring[size_t(side + 1) % ring.size()];
+	Point2 p = ring[size_t(side) % ring.size()], q = ring[size_t(side + 1) % ring.size()];
 	WallFrame f;
 	f.length = std::hypot(q.x - p.x, q.y - p.y);
 	f.start = p;
@@ -42,7 +41,7 @@ void set_size(LotElement &e, float across, float deep) {
 	e.d = front ? deep : across;
 }
 
-int facing_of(V2 out) {
+int facing_of(Point2 out) {
 	if (std::fabs(out.x) > std::fabs(out.y)) return out.x > 0 ? FACE_RIGHT : FACE_LEFT;
 	return out.y > 0 ? FACE_BACK : FACE_STREET;
 }
@@ -62,21 +61,6 @@ const Volume *clash(const Body &b, const LotElement &e, bool on_wall) {
 bool has(const Body &b, int part) { return part >= 0 && part < int(b.elements.size()); }
 bool hung(const PartSpec &s) { return s.fit == FIT_OVER || s.fit == FIT_UNIT || s.fit == FIT_DIAL; }
 
-// The run of a flight that climbs `rise`: steps of a riser each, or a ramp's slope.
-float flight_run(const Tuning &t, int kind, float rise) {
-	return kind == EL_RAMP ? rise * float(t.build_ramp_run_per_rise) : std::ceil(rise / RISER_M) * float(t.build_step_run_m);
-}
-
-// Out of the wall a part faces: the way its open end looks (types.h Facing).
-V2 facing_out(int facing) {
-	switch (facing) {
-		case FACE_RIGHT: return { 1, 0 };
-		case FACE_BACK: return { 0, 1 };
-		case FACE_LEFT: return { -1, 0 };
-		default: return { 0, -1 };
-	}
-}
-
 void place(LotElement &e, const WallFrame &f, float along, float out) {
 	e.x = f.start.x + f.along.x * along + f.out.x * out;
 	e.y = f.start.y + f.along.y * along + f.out.y * out;
@@ -87,7 +71,7 @@ std::string op_add_part(Body &b, const Tuning &t, int vol, int storey, int side,
 	if (vol < 0 || vol >= int(b.volumes.size())) return NO_TARGET;
 	const Volume &v = b.volumes[size_t(vol)];
 	if (side < 0 || side >= v.sides() || storey < 0 || storey >= v.storeys) return NO_TARGET;
-	if (int(b.elements.size()) >= t.build_max_parts) return "building.problem.size";
+	if (int(b.elements.size()) >= int(t.build_max_parts)) return "building.problem.size";
 	WallFrame f = wall_of(v, side);
 	float width = f.length / float(bays_of(v, side)), along = (float(bay) + 0.5f) * width;
 	float floor = b.level_z(v.base + storey), next = b.level_z(v.base + storey + 1), tall = next - floor;
@@ -128,8 +112,9 @@ std::string op_add_part(Body &b, const Tuning &t, int vol, int storey, int side,
 			break;
 		case FIT_FLIGHT: {
 			float rise = std::max(floor, RISER_M);
-			const bool ramp = s.kind == EL_RAMP;
-			deep = flight_run(t, ramp ? EL_RAMP : EL_STAIR, rise);
+			bool ramp = s.kind == EL_RAMP;
+			float steps = std::ceil(rise / RISER_M);
+			deep = ramp ? rise * float(t.build_ramp_run_per_rise) : steps * float(t.build_step_run_m);
 			out = deep / 2;
 			e.h = rise;
 			break;
@@ -144,7 +129,7 @@ std::string op_add_part(Body &b, const Tuning &t, int vol, int storey, int side,
 }
 
 std::string op_add_part_at(Body &b, const Tuning &t, float x, float y, int facing, const PartSpec &s) {
-	if (int(b.elements.size()) >= t.build_max_parts) return "building.problem.size";
+	if (int(b.elements.size()) >= int(t.build_max_parts)) return "building.problem.size";
 	LotElement e;
 	e.kind = Element(s.kind);
 	e.facing = facing;
@@ -158,17 +143,17 @@ std::string op_add_part_at(Body &b, const Tuning &t, float x, float y, int facin
 	return "";
 }
 
-std::string op_add_run(Body &b, const Tuning &t, const std::vector<V2> &path, int level, const PartSpec &s) {
+std::string op_add_run(Body &b, const Tuning &t, const std::vector<Point2> &path, int level, const PartSpec &s) {
 	float total = 0;
 	for (size_t i = 1; i < path.size(); i++) total += std::hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y);
-	if (total < t.build_shortest_leg_m) return "building.problem.size";
-	const float rise = std::max(t.build_lowest_flight_m, b.level_z(level + 1) - b.level_z(level));
+	if (total < SHORTEST_LEG_M) return "building.problem.size";
+	const float rise = std::max(LOWEST_FLIGHT_M, b.level_z(level + 1) - b.level_z(level));
 	float climbed = b.level_z(level);
 	for (size_t i = 1; i < path.size(); i++) {
-		const V2 p = path[i - 1], q = path[i];
+		const Point2 p = path[i - 1], q = path[i];
 		const float leg = std::hypot(q.x - p.x, q.y - p.y);
-		if (leg < t.build_shortest_leg_m) continue;
-		if (int(b.elements.size()) >= t.build_max_parts) return "building.problem.size";
+		if (leg < SHORTEST_LEG_M) continue;
+		if (int(b.elements.size()) >= int(t.build_max_parts)) return "building.problem.size";
 		LotElement e;
 		e.kind = Element(s.kind);
 		e.x = (p.x + q.x) / 2;
@@ -176,16 +161,16 @@ std::string op_add_run(Body &b, const Tuning &t, const std::vector<V2> &path, in
 		e.angle = std::atan2(q.y - p.y, q.x - p.x);
 		if (e.kind == EL_STAIR) { // a flight runs along its own y
 			const float step = rise * leg / total;
-			e.w = std::max(s.w, t.build_flight_width_m);
+			e.w = std::max(s.w, FLIGHT_WIDTH_M);
 			e.d = leg;
-			e.h = std::max(t.build_lowest_step_m, step);
+			e.h = std::max(LOWEST_STEP_M, step);
 			e.base = climbed;
 			e.angle -= QUARTER_TURN;
 			climbed += step;
 		} else {
 			e.w = leg;
-			e.d = std::max(s.d, e.kind == EL_PAVEMENT ? t.build_band_width_m : t.build_thinnest_m);
-			e.h = std::max(s.h, t.build_thinnest_m);
+			e.d = std::max(s.d, e.kind == EL_PAVEMENT ? BAND_WIDTH_M : THINNEST_M);
+			e.h = std::max(s.h, THINNEST_M);
 		}
 		b.elements.push_back(e);
 	}
@@ -215,13 +200,13 @@ std::string op_repeat_part(Body &b, const Tuning &t, int part, float spacing) {
 	float step = spacing > 0 ? spacing : std::max(across * 2, float(t.build_module_m));
 	float lo = FAR_AWAY, hi = -FAR_AWAY;
 	for (const Volume &v : b.volumes)
-		for (const V2 &p : ring_of(v)) {
+		for (const Point2 &p : ring_of(v)) {
 			lo = std::min(lo, along_x ? p.x : p.y);
 			hi = std::max(hi, along_x ? p.x : p.y);
 		}
 	float start = along_x ? base.x : base.y;
 	for (float dir : { 1.f, -1.f })
-		for (int k = 1; k < MAX_REPEAT && int(b.elements.size()) < t.build_max_parts; k++) {
+		for (int k = 1; k < MAX_REPEAT && int(b.elements.size()) < int(t.build_max_parts); k++) {
 			float at = start + dir * float(k) * step;
 			if (at < lo - EPS || at > hi + EPS) break;
 			LotElement copy = base;
@@ -230,30 +215,6 @@ std::string op_repeat_part(Body &b, const Tuning &t, int part, float spacing) {
 			b.elements.push_back(copy);
 		}
 	return "";
-}
-
-// A typed size, on the build's relief step. A flight set against a wall (unturned) keeps its head at the wall: a new height
-// gives it the run it needs, and its foot moves out or in.
-std::string op_size_part(Body &b, const Tuning &t, int part, int axis, float metres) {
-	if (!has(b, part) || axis < PART_ACROSS || axis > PART_HEIGHT) return NO_TARGET;
-	LotElement &e = b.elements[size_t(part)];
-	const float step = float(t.build_relief_step_m);
-	const float size = std::clamp(std::round(metres / step) * step, float(t.build_thinnest_m), float(t.build_max_side_m));
-	const bool front = e.facing == FACE_STREET || e.facing == FACE_BACK;
-	float &across = front ? e.w : e.d, &along = front ? e.d : e.w;
-	if (axis == PART_ACROSS) across = size;
-	else if (axis == PART_ALONG) along = size;
-	else {
-		e.h = size;
-		if ((e.kind == EL_STAIR || e.kind == EL_RAMP) && e.angle == 0) {
-			const float run = flight_run(t, e.kind, e.h);
-			const V2 out = facing_out(e.facing);
-			e.x += out.x * (run - along) / 2;
-			e.y += out.y * (run - along) / 2;
-			along = run;
-		}
-	}
-	return clash(b, e, false) ? "building.problem.overlap" : "";
 }
 
 } // namespace city

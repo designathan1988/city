@@ -1,15 +1,13 @@
-// Holds the agent meshes (built at boot, agent_looks.cpp) and refills the instance
+// Builds the agent meshes once at both levels, pushes the palettes to the "agent" material and refills the instance
 // buffers every frame: transform from the interpolated pose (+Z forward, +X left), INSTANCE_CUSTOM = (paint index, wheel
-// roll angle in radians + AGENT_BRAKE_FLAG when braking, passengers, 0) for vehicles, all small whole numbers or a few bits of an
+// roll angle in radians + BRAKE_FLAG when braking, passengers, 0) for vehicles, all small whole numbers or a few bits of an
 // angle, since the Compatibility renderer keeps custom data as halfs; the instance colour's alpha a seed of the vehicle. Walkers
 // and whoever rides go to PeopleRenderer.
 #include "render/agents/agent_renderer.h"
-#include "core/shader_contracts/agents.h"
 
 #include "render/agents/agent_lod.h"
 
 #include "render/agents/agent_meshes.h"
-#include "render/surface_data.h"
 
 #include "core/grid.h"
 #include "core/random.h"
@@ -28,9 +26,10 @@ namespace city {
 namespace {
 
 constexpr int WAGON_EVERY = 3; // one sedan in three is an estate, by its paint: a car keeps its shape from the road to its bay
-int model_of(int type, int paint) { return type == int(VehicleType::SEDAN) && paint % WAGON_EVERY == 1 ? WAGON_MODEL : type; }
 constexpr float NOBODY_ABOARD = -1.f; // passengers of a car standing in a bay: not even a driver (agents.gdshader)
-// streams of a vehicle's id (any distinct words; the seats' is 2^32 over the golden ratio), and the byte a load's order is read past
+constexpr uint32_t WRECK_SEED = 2654435761u; // each model buckled its own way
+constexpr float DOOR_FLAG = 16.f; // each step the kerb door stands open, over the brake's flag and the wheel's angle (agent_door.gdshaderinc)
+constexpr float BRAKE_FLAG = 8.f; // added to the roll angle (0..TAU) when the brake light is on; agents.gdshader
 constexpr uint32_t SEED_SALT = 0x5ea7u, LOAD_SALT = 0x10adu, ORDER_SHIFT = 8, SEAT_SALT = 0x9e3779b1u;
 constexpr float ROLL_LEAST_M = 0.002f; // a frame's movement under this is standing
 constexpr int STILL_FRAMES = 12; // so many in a row and a rider puts a foot down
@@ -45,31 +44,80 @@ bool AgentRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	heads_.init(scenario_, ctx.catalog->tune, RenderingServer::get_singleton()->material_get_param(material_, "head_glow"));
 	glass_ = ctx.material("agent_glass", errors);
 	shadow_ = ctx.material("shadow_caster", errors);
-	const Dictionary table = ctx.table("agents", errors);
-	if (!errors.is_empty()) return false;
-	const DataValue t = DataReader{ errors, "agents.json" }.at(table); // render/data_reader.h
-	if (!read_shapes(table, errors)) return false;
-	if (!build_meshes(t, errors)) return false;
-	if (!push_palettes(t, ctx.catalog->traffic.line_colours, errors) || !read_loads(t["occupants"]["load"], errors)) return false;
-	// what is published is what may be drawn (sim/traffic/sight.h): the traffic catalogue owns both radii
-	vehicle_r_ = ctx.catalog->traffic.publish_radius_m;
+	Dictionary t = ctx.table("agents", errors);
+	if (!errors.is_empty() || !build_meshes(t, errors)) return false;
+	if (!push_palettes(t, ctx.catalog->traffic.line_colours, errors) || !read_loads(Dictionary(t["occupants"])["load"], errors)) return false;
+	vehicle_r_ = float(t["vehicle_radius_m"]);
 	if (vehicle_r_ <= 0) { // the cells of the bays' cars are this wide (index_parked)
-		errors.push_back("traffic.json: publish_radius_m must be positive");
+		errors.push_back("agents.json: vehicle_radius_m must be positive");
 		return false;
 	}
-	cabin_r_ = t["cabin_radius_m"].f();
-	far_r_ = t["far_radius_m"].f();
-	level_hold_ = t["lod"]["hold"].f();
-	view_slack_ = t["view_slack"].f();
-	cabin_close_m_ = t["lod"]["cabin_close_m"].f();
-	people_r_ = ctx.catalog->traffic.publish_people_m;
-	jump_m_ = t["wheel_jump_m"].f();
-	if (!errors.is_empty()) return false;
+	cabin_r_ = float(t["cabin_radius_m"]);
+	far_r_ = float(t["far_radius_m"]);
+	level_hold_ = float(Dictionary(t["lod"])["hold"]);
+	view_slack_ = float(t["view_slack"]);
+	cabin_close_m_ = float(Dictionary(t["lod"])["cabin_close_m"]);
+	people_r_ = float(t["people_radius_m"]);
+	jump_m_ = float(t["wheel_jump_m"]);
 	people_.set_level_hold(level_hold_);
-	return people_.init(ctx, t["people"], t["held"], shapes_, errors);
+	return people_.init(ctx, t["people"], t["held"], errors);
+}
+
+bool AgentRenderer::build_meshes(const Dictionary &t, PackedStringArray &errors) {
+	const AgentTrim trim = read_trim(t["trim"]);
+	const Array cars = t["cars"];
+	const Dictionary body = t["car_body"], inside = t["cars_cabin"];
+	if (cars.size() != CAR_MODELS + 1) errors.push_back("agents.json: esperado um carro por estilo");
+	CabinLook look;
+	if (!look.load(t["cabin"])) errors.push_back("agents.json: cabin incompleto");
+	if (!errors.is_empty()) return false;
+	const Array wheel_sides = body["wheel_sides"];
+	for (const char *key : { "wheel_sides", "stations", "arch_steps", "end_steps", "end_roll_steps" }) // one entry per level (agent_meshes.h)
+		if (Array(body[key]).size() != LEVELS + 1) errors.push_back(String("agents.json: car_body.") + key + " precisa de um valor por nível e um para a sombra da frota");
+	if (!errors.is_empty()) return false;
+	const Dictionary far_shadow = t["far_shadow"], lod = t["lod"];
+	const float cabin_error = lod["cabin_error_m"], body_error = lod["body_error_m"], far_error = lod["far_error_m"];
+	MeshBuilder hull;
+	build_car(hull, cars[0], body, inside, nullptr, trim, AGENT_HULL_LEVEL);
+	fleet_shadow_.init(scenario_, shadow_, simplify_parts(hull, far_error), far_shadow["sector_m"], far_shadow["inset"], AGENT_MODELS);
+	for (int i = 0; i < AGENT_MODELS; i++)
+		for (int level = 0; level < LEVELS; level++) {
+			MeshBuilder mb;
+			Dictionary d;
+			const int sides = int(wheel_sides[level]);
+			const CabinLook *l = level == CABIN_LEVEL ? &look : nullptr;
+			look.spots = &seats_[i];
+			int seats = 0;
+			if (i < CAR_MODELS || i == WAGON_MODEL) seats = build_car(mb, d = cars[i == WAGON_MODEL ? CAR_MODELS : i], body, inside, l, trim, level);
+			else if (i == int(VehicleType::MOTO)) seats = build_moto(mb, d = t["moto"], sides, trim);
+			else if (i == int(VehicleType::BICYCLE)) seats = build_bicycle(mb, d = t["bicycle"], sides, trim);
+			else if (i == int(VehicleType::BUS)) seats = build_bus(mb, d = t["bus"], sides, l, trim);
+			else seats = build_truck(mb, d = t["truck"], sides, l, trim);
+			wheel_r_[i] = agent_tyre(d["tyre"]).x; // the motorbike's: its rear wheel
+			if (level == CABIN_LEVEL && (i == int(VehicleType::MOTO) || i == int(VehicleType::BICYCLE))) {
+				astride_[i] = true;
+				seats_[i].push_back({ agent_v3(Dictionary(d["rider"])["hip"]), i == int(VehicleType::MOTO) ? SeatPose::MOTO : SeatPose::BICYCLE, DRIVER_SEAT });
+			}
+			if (level == FAR_LEVEL) fleet_shadow_.set_model(i, mb);
+			if (level == BODY_LEVEL) wrecks_[size_t(i)] = agent_wreck(mb, uint32_t(i + 1) * WRECK_SEED);
+			if (level == CABIN_LEVEL) {
+				const AABB box = mesh_outline(mb);
+				reach_m_[i] = box.position.abs().max(box.get_end().abs()).length();
+			}
+			if (seats < 0) errors.push_back(String("agents.json: o veículo ") + String::num_int64(i) + " tem a cabine invertida (fundo à frente da frente)");
+			if (level == CABIN_LEVEL) {
+				load_[i].seats = seats;
+				commit_mesh(i, MID_DRAW, simplify_parts(mb, cabin_error));
+				commit_mesh(i, level, mb);
+			} else {
+				commit_mesh(i, level, level == BODY_LEVEL ? simplify_parts(mb, body_error) : simplify_whole(mb, far_error)); // far, a shell of few pixels: the parts need not keep their borders
+			}
+		}
+	return errors.is_empty();
 }
 
 void AgentRenderer::commit_mesh(int model, int draw, const MeshBuilder &mb) {
+	RenderingServer *rs = RenderingServer::get_singleton();
 	// with the cabin, the glass is see-through over it; past it, it stays in the body, opaque
 	const bool cabin = draw == CABIN_LEVEL || draw == MID_DRAW;
 	MeshBuilder shell, glass;
@@ -79,12 +127,13 @@ void AgentRenderer::commit_mesh(int model, int draw, const MeshBuilder &mb) {
 	glass_tris_[model][draw] = int(glass.idx.size() / 3);
 	OwnedMesh &m = meshes_[model][draw];
 	m.reset();
-	TypedArray<Dictionary> surfaces;
-	surfaces.push_back(body.surface(material_));
-	if (!glass.empty()) surfaces.push_back(glass.surface(glass_));
-	m.rid = create_mesh(surfaces);
-	// the levels the shadows are cast from (draw_rows), again with the caster's material: a draw is given its materials by its mesh (surface_data.h)
-	if (draw == BODY_LEVEL || draw == FAR_LEVEL) cast_meshes_[model][draw] = body.bake(shadow_);
+	m.rid = rs->mesh_create();
+	body.commit_to(m.rid);
+	rs->mesh_surface_set_material(m.rid, 0, material_);
+	if (!glass.empty()) {
+		glass.commit_to(m.rid);
+		rs->mesh_surface_set_material(m.rid, 1, glass_);
+	}
 }
 
 void AgentRenderer::riders(int type, uint32_t id, float &passengers, float &order) const {
@@ -108,8 +157,6 @@ Dictionary AgentRenderer::cost() const {
 	Dictionary out;
 	out["cabins"] = cabins_drawn();
 	out["people_near"] = people_.shown(0);
-	out["people_cast"] = people_.cast_census();
-	out["people_plays"] = people_.plays_census();
 	out["rows_lost"] = rows_lost_;
 	int draws = 0, tris = 0;
 	for (int i = 0; i < AGENT_MODELS; i++)
@@ -171,38 +218,9 @@ void AgentRenderer::seat_people(uint32_t id, int type, int model, const Pose &p,
 	}
 }
 
-int AgentRenderer::LevelRule::plain_level(float d2) const { return d2 < close2 ? CABIN_LEVEL : (d2 < near2 ? MID_DRAW : (d2 < far2 ? BODY_LEVEL : FAR_LEVEL)); }
-
-int AgentRenderer::LevelRule::rank(int level) { return level == CABIN_LEVEL ? 0 : level == MID_DRAW ? 1 : level == BODY_LEVEL ? 2 : 3; }
-
-AgentRenderer::LevelRule AgentRenderer::level_rule() const {
-	const float reach = cabin_reach_ > 0 ? cabin_reach_ : cabin_r_;
-	const float r2 = vehicle_r_ * vehicle_r_, near2 = cabin_limit2_ > 0 ? std::min(cabin_limit2_, reach * reach) : reach * reach;
-	const float far2 = far_r_ * far_r_;
-	const float people_r2 = people_r_ * people_r_;
-	const float close2 = std::min(cabin_close_m_ * cabin_close_m_, near2);
-	// A vehicle keeps its level until it is past the edge by the hold (agents.ts VEHICLE_HYSTERESIS), or it flickers there.
-	const float hold2 = (1 + level_hold_) * (1 + level_hold_);
-	return LevelRule{ reach, r2, near2, far2, people_r2, close2, hold2 };
-}
-
-int AgentRenderer::level_of(const LevelRule &rule, uint64_t key, float d2) const {
-	const int now = rule.plain_level(d2), place = keeper_.draw_of(key), was = place < 0 ? now : place % DRAWS;
-	if (was == now) return now;
-	return LevelRule::rank(now) > LevelRule::rank(was) ? (LevelRule::rank(rule.plain_level(d2 / rule.hold2)) > LevelRule::rank(was) ? now : was) : (LevelRule::rank(rule.plain_level(d2 * rule.hold2)) < LevelRule::rank(was) ? now : was);
-}
-
-// In the race for the cabins a vehicle that has one stands as near as the hold makes it: the cap counts what the hold keeps, and no more than that stay.
-void AgentRenderer::count_for_cap(const LevelRule &rule, int level, float d2) {
-	if (cabin_cap_ > 0 && d2 <= rule.reach * rule.reach * rule.hold2) near_d2_.push_back(level == CABIN_LEVEL || level == MID_DRAW ? d2 / rule.hold2 : d2);
-}
-
-// Sent to the level's lists: the sun's every time, the camera's only in the view, with room for the frame the camera turned since.
-bool AgentRenderer::in_view(const ViewCull &view, int model, const Pose &p, float d2) const { return view.sees(Vector3(p.x, p.y, p.z), reach_m_[model] + std::sqrt(d2) * view_slack_); }
-
 void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCull &view, const PoseSample &at) {
 	if (!material_.is_valid() || !meshes_[0][CABIN_LEVEL].valid()) return;
-	people_.begin(f);
+	people_.begin();
 	keeper_.begin();
 	auto &bufs = seen_rows_; // what the camera sees
 	auto &casts = cast_rows_; // what the sun sees, out of the view too: a car behind the camera shades what is before it
@@ -211,13 +229,79 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 			bufs[i][level].reopen();
 			casts[i][level].restart();
 		}
-	const LevelRule rule = level_rule();
+	const auto model_of = [](int type, int paint) { return type == int(VehicleType::SEDAN) && paint % WAGON_EVERY == 1 ? WAGON_MODEL : type; };
+	const float reach = cabin_reach_ > 0 ? cabin_reach_ : cabin_r_;
+	const float r2 = vehicle_r_ * vehicle_r_, near2 = cabin_limit2_ > 0 ? std::min(cabin_limit2_, reach * reach) : reach * reach;
+	const float far2 = far_r_ * far_r_;
+	const float people_r2 = people_r_ * people_r_;
+	const float close2 = std::min(cabin_close_m_ * cabin_close_m_, near2);
+	auto plain_level = [&](float d2) { return d2 < close2 ? CABIN_LEVEL : (d2 < near2 ? MID_DRAW : (d2 < far2 ? BODY_LEVEL : FAR_LEVEL)); };
+	// A vehicle keeps its level until it is past the edge by the hold (agents.ts VEHICLE_HYSTERESIS), or it flickers there.
+	const float hold2 = (1 + level_hold_) * (1 + level_hold_);
+	auto rank = [](int level) { return level == CABIN_LEVEL ? 0 : level == MID_DRAW ? 1 : level == BODY_LEVEL ? 2 : 3; };
+	auto level_of = [&](uint64_t key, float d2) {
+		const int now = plain_level(d2), place = keeper_.draw_of(key), was = place < 0 ? now : place % DRAWS;
+		if (was == now) return now;
+		return rank(now) > rank(was) ? (rank(plain_level(d2 / hold2)) > rank(was) ? now : was) : (rank(plain_level(d2 * hold2)) < rank(was) ? now : was);
+	};
+	// In the race for the cabins a vehicle that has one stands as near as the hold makes it: the cap counts what the hold keeps, and no more than that stay.
+	auto count_for_cap = [&](int level, float d2) {
+		if (cabin_cap_ > 0 && d2 <= reach * reach * hold2) near_d2_.push_back(level == CABIN_LEVEL || level == MID_DRAW ? d2 / hold2 : d2);
+	};
 	near_d2_.clear();
 	drawn_vehicles_ = 0;
 	heads_.begin();
 	int placed = 0; // what the camera sees has a row each
-	place_vehicles(f, cam, view, at, rule, placed);
-	place_parked(f, cam, view, rule, placed);
+	// Sent to the level's lists: the sun's every time, the camera's only in the view, with room for the frame the camera turned since.
+	auto seen = [&](int model, const Pose &p, float d2) { return view.sees(Vector3(p.x, p.y, p.z), reach_m_[model] + std::sqrt(d2) * view_slack_); };
+	for (const AgentRecord &rec : f.vehicles) {
+		Pose p = record_pose(rec, at);
+		const int type = int(rec.look & LOOK_TYPE_MASK), paint = int((rec.look >> LOOK_PAINT_SHIFT) & LOOK_TYPE_MASK);
+		const bool brake = (rec.look & (1u << LOOK_BRAKE_SHIFT)) != 0;
+		if (type < 0 || type >= VEHICLE_TYPES) continue;
+		const float door = float((rec.look >> LOOK_DOOR_SHIFT) & LOOK_DOOR_MASK) * DOOR_FLAG;
+		float spin = roll(int(rec.id), p, wheel_r_[type]);
+		const float dx = p.x - cam.x, dy = p.y - cam.y, dz = p.z - cam.z, flat2 = dx * dx + dz * dz;
+		if (flat2 > r2) continue;
+		float passengers, order;
+		riders(type, rec.id, passengers, order);
+		const uint32_t aboard = (rec.look >> LOOK_ABOARD_SHIFT) & LOOK_ABOARD_MASK;
+		if (aboard == ABOARD_TO_SET_DOWN) passengers = std::max(passengers, 1.f);
+		else if (aboard == ABOARD_SET_DOWN) passengers = std::max(passengers, 1.f) - 1;
+		else if (aboard == ABOARD_PICKED_UP) passengers += 1;
+		if ((rec.look & (1u << LOOK_EMPTY_SHIFT)) != 0) passengers = NOBODY_ABOARD;
+		const float d2 = flat2 + dy * dy;
+		const int model = model_of(type, paint);
+		heads_.add(rec.id, p, reach_m_[model], cam, view);
+		const bool shown = seen(model, p, d2);
+		const uint64_t key = rec.id * ROW_KINDS;
+		const int level = level_of(key, d2);
+		if (shown) count_for_cap(level, d2);
+		if (level == FAR_LEVEL) fleet_shadow_.add(model, p);
+		if (!shown && level == FAR_LEVEL) continue;
+		placed += shown ? 1 : 0;
+		agent_row(shown ? keeper_.place(key, model * DRAWS + level, bufs[model][level]) : casts[model][level].add(), p, 1.f, float(paint >= LINE_PAINT ? paints_ + paint - LINE_PAINT : paint % paints_), spin + (brake ? BRAKE_FLAG : 0.f) + door, passengers, 0.f, hash_float(rec.id * SEED_SALT));
+		if (shown && d2 <= people_r2 && (astride_[model] || level == CABIN_LEVEL || level == MID_DRAW)) seat_people(rec.id, type, model, p, std::sqrt(d2), passengers, order, spin);
+		drawn_vehicles_++;
+	}
+	if (f.parked != parked_indexed_) index_parked(f.parked);
+	if (f.parked) for (uint32_t index : parked_near(cam)) {
+		const ParkedRecord &rec = (*f.parked)[index];
+		const int type = int(rec.look & LOOK_TYPE_MASK), paint = int((rec.look >> LOOK_PAINT_SHIFT) & LOOK_TYPE_MASK);
+		const float dx = rec.at.x - cam.x, dy = rec.at.y - cam.y, dz = rec.at.z - cam.z, flat2 = dx * dx + dz * dz;
+		if (flat2 > r2 || type < 0 || type >= VEHICLE_TYPES) continue;
+		const float d2 = flat2 + dy * dy;
+		const int model = model_of(type, paint);
+		const bool shown = seen(model, rec.at, d2);
+		const uint64_t key = uint64_t(rec.id) * ROW_KINDS + PARKED_ROW;
+		const int level = level_of(key, d2);
+		if (shown) count_for_cap(level, d2);
+		if (level == FAR_LEVEL) fleet_shadow_.add(model, rec.at);
+		if (!shown && level == FAR_LEVEL) continue;
+		placed += shown ? 1 : 0;
+		agent_row(shown ? keeper_.place(key, model * DRAWS + level, bufs[model][level]) : casts[model][level].add(), rec.at, 1.f, float(paint % paints_), 0.f, NOBODY_ABOARD, 0.f, hash_float(rec.id * SEED_SALT));
+		drawn_vehicles_++;
+	}
 	keeper_.sweep([&](int d) -> InstanceRows & { return bufs[d / DRAWS][d % DRAWS]; });
 	rows_lost_ = placed;
 	for (int i = 0; i < AGENT_MODELS; i++)
@@ -227,64 +311,33 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 	draw_rows(cam);
 }
 
-void AgentRenderer::place_vehicles(const PoseFrame &f, const Vector3 &cam, const ViewCull &view, const PoseSample &at, const LevelRule &rule, int &placed) {
-	auto &bufs = seen_rows_;
-	auto &casts = cast_rows_;
-	for (const AgentRecord &rec : f.vehicles) {
-		Pose p = record_pose(rec, at);
-		const int type = int(rec.look & LOOK_TYPE_MASK), paint = int((rec.look >> LOOK_PAINT_SHIFT) & LOOK_TYPE_MASK);
-		const bool brake = (rec.look & (1u << LOOK_BRAKE_SHIFT)) != 0;
-		if (type < 0 || type >= VEHICLE_TYPES) continue;
-		const float door = float((rec.look >> LOOK_DOOR_SHIFT) & LOOK_DOOR_MASK) * AGENT_DOOR_STEP;
-		float spin = roll(int(rec.id), p, wheel_r_[type]);
-		const float dx = p.x - cam.x, dy = p.y - cam.y, dz = p.z - cam.z, flat2 = dx * dx + dz * dz;
-		if (flat2 > rule.r2) continue;
-		float passengers, order;
-		riders(type, rec.id, passengers, order);
-		const uint32_t aboard = (rec.look >> LOOK_ABOARD_SHIFT) & LOOK_ABOARD_MASK;
-		if (aboard == ABOARD_TO_SET_DOWN) passengers = std::max(passengers, 1.f);
-		else if (aboard == ABOARD_SET_DOWN) passengers = std::max(passengers, 1.f) - 1;
-		else if (aboard == ABOARD_PICKED_UP) passengers += 1;
-		const uint32_t counted = (rec.look >> LOOK_RIDERS_SHIFT) & LOOK_RIDERS_MASK; // a bus: who got on less who got off, in the seats it has
-		if (counted > 0) passengers = std::min(float(load_[type].seats), float(counted - 1));
-		if ((rec.look & (1u << LOOK_EMPTY_SHIFT)) != 0) passengers = NOBODY_ABOARD;
-		const float d2 = flat2 + dy * dy;
-		const int model = model_of(type, paint);
-		heads_.add(rec.id, p, reach_m_[model], cam, view);
-		const bool shown = in_view(view, model, p, d2);
-		const uint64_t key = rec.id * ROW_KINDS;
-		const int level = level_of(rule, key, d2);
-		if (shown) count_for_cap(rule, level, d2);
-		if (level == FAR_LEVEL) fleet_shadow_.add(model, p);
-		if (!shown && level == FAR_LEVEL) continue;
-		placed += shown ? 1 : 0;
-		agent_row(shown ? keeper_.place(key, model * DRAWS + level, bufs[model][level]) : casts[model][level].add(), p, 1.f, float(paint >= LINE_PAINT ? paints_ + paint - LINE_PAINT : paint % paints_), spin + (brake ? AGENT_BRAKE_FLAG : 0.f) + door, passengers, 0.f, hash_float(rec.id * SEED_SALT));
-		if (shown && d2 <= rule.people_r2 && (astride_[model] || level == CABIN_LEVEL || level == MID_DRAW)) seat_people(rec.id, type, model, p, std::sqrt(d2), passengers, order, spin);
-		drawn_vehicles_++;
+namespace {
+int parked_cell(float v, float cell) { return int(std::floor(v / cell)); }
+} // namespace
+
+void AgentRenderer::index_parked(const std::shared_ptr<const std::vector<ParkedRecord>> &parked) {
+	parked_indexed_ = parked;
+	parked_cells_.clear();
+	if (!parked) return;
+	for (size_t i = 0; i < parked->size(); i++) {
+		const Pose &at = (*parked)[i].at;
+		parked_cells_[cell_key(parked_cell(at.x, vehicle_r_), parked_cell(at.z, vehicle_r_))].push_back(uint32_t(i));
 	}
 }
 
-void AgentRenderer::place_parked(const PoseFrame &f, const Vector3 &cam, const ViewCull &view, const LevelRule &rule, int &placed) {
-	auto &bufs = seen_rows_;
-	auto &casts = cast_rows_;
-	if (f.parked != parked_indexed_) index_parked(f.parked);
-	if (f.parked) for (uint32_t index : parked_near(cam)) {
-		const ParkedRecord &rec = (*f.parked)[index];
-		const int type = int(rec.look & LOOK_TYPE_MASK), paint = int((rec.look >> LOOK_PAINT_SHIFT) & LOOK_TYPE_MASK);
-		const float dx = rec.at.x - cam.x, dy = rec.at.y - cam.y, dz = rec.at.z - cam.z, flat2 = dx * dx + dz * dz;
-		if (flat2 > rule.r2 || type < 0 || type >= VEHICLE_TYPES) continue;
-		const float d2 = flat2 + dy * dy;
-		const int model = model_of(type, paint);
-		const bool shown = in_view(view, model, rec.at, d2);
-		const uint64_t key = uint64_t(rec.id) * ROW_KINDS + PARKED_ROW;
-		const int level = level_of(rule, key, d2);
-		if (shown) count_for_cap(rule, level, d2);
-		if (level == FAR_LEVEL) fleet_shadow_.add(model, rec.at);
-		if (!shown && level == FAR_LEVEL) continue;
-		placed += shown ? 1 : 0;
-		agent_row(shown ? keeper_.place(key, model * DRAWS + level, bufs[model][level]) : casts[model][level].add(), rec.at, 1.f, float(paint % paints_), 0.f, NOBODY_ABOARD, 0.f, hash_float(rec.id * SEED_SALT));
-		drawn_vehicles_++;
-	}
+// Every car within vehicle_r_ of the camera on the ground lies in a cell the square round it touches; a cell more on each side
+// takes in what rounding may put across its edge. The rest are farther: the loop over them would only skip them.
+const std::vector<uint32_t> &AgentRenderer::parked_near(const Vector3 &cam) {
+	parked_near_.clear();
+	const int x0 = parked_cell(cam.x - vehicle_r_, vehicle_r_) - 1, x1 = parked_cell(cam.x + vehicle_r_, vehicle_r_) + 1;
+	const int z0 = parked_cell(cam.z - vehicle_r_, vehicle_r_) - 1, z1 = parked_cell(cam.z + vehicle_r_, vehicle_r_) + 1;
+	for (int j = z0; j <= z1; j++)
+		for (int i = x0; i <= x1; i++) {
+			const auto it = parked_cells_.find(cell_key(i, j));
+			if (it != parked_cells_.end()) parked_near_.insert(parked_near_.end(), it->second.begin(), it->second.end());
+		}
+	std::sort(parked_near_.begin(), parked_near_.end()); // the list's order: the rows are placed as before
+	return parked_near_;
 }
 
 void AgentRenderer::limit_cabins() {
@@ -300,16 +353,16 @@ void AgentRenderer::draw_rows(const Vector3 &cam) {
 	auto &bufs = seen_rows_;
 	auto &casts = cast_rows_;
 	AABB box(Vector3(cam.x - vehicle_r_, cam.y - AABB_HALF_H, cam.z - vehicle_r_), Vector3(vehicle_r_ * 2, AABB_HALF_H * 2, vehicle_r_ * 2));
-	// each surface carries its material (the body and the near level's glass); the room is MultiMeshDraw's
+	// no override: each surface carries its material (the body and the near level's glass); the room is MultiMeshDraw's
 	for (int i = 0; i < AGENT_MODELS; i++)
 		for (int level = 0; level < DRAWS; level++) {
 			MultiMeshDraw &d = draws_[i][level];
-			d.set(scenario_, meshes_[i][level].rid, bufs[i][level], box, false, LAYER_VEHICLES);
+			d.set(scenario_, meshes_[i][level].rid, RID(), bufs[i][level], box, false, LAYER_VEHICLES);
 			shown_[i][level] = d.count;
 			if (level == FAR_LEVEL) continue;
 			casts[i][level].append(bufs[i][level]);
 			shadow_draws_[i][level].shadow_only = true;
-			shadow_draws_[i][level].set(scenario_, cast_meshes_[i][level == BODY_LEVEL ? FAR_LEVEL : BODY_LEVEL].rid, casts[i][level], box, true, LAYER_VEHICLES);
+			shadow_draws_[i][level].set(scenario_, meshes_[i][level == BODY_LEVEL ? FAR_LEVEL : BODY_LEVEL].rid, shadow_, casts[i][level], box, true, LAYER_VEHICLES);
 		}
 	fleet_shadow_.draw();
 }

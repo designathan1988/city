@@ -22,13 +22,8 @@ public:
 	SimSpeed speed() const { return speed_.load(); }
 	uint64_t wakeups() const { return wakeups_.load(); } // turns of the tick thread's loop (probes: a pause turns none)
 	int steps_per_tick(SimSpeed sp) const;
-	// True once no tick of the thread runs or can run until the speed changes: the clock is stopped, or paused with the thread
-	// parked (a tick in flight when the pause came is waited for). False while the clock runs. Whatever steps the city on the
-	// caller's thread (tests, probes) asks this first, so its steps never interleave with the clock's.
-	bool hold_still();
-	// `ticks` ticks on the caller's thread (tests), only when hold_still(); refused (false) while the clock runs. Takes its
-	// own locks: the caller must not hold map_mutex.
-	bool step(CityState &s, int ticks);
+	// One step without the thread (tests). Takes its own locks: the caller must not hold map_mutex.
+	void step(CityState &s);
 	~Simulation() { stop(); }
 
 private:
@@ -41,12 +36,9 @@ private:
 	std::atomic<int64_t> period_ns_{ 0 };
 	std::atomic<uint64_t> wakeups_{ 0 };
 	// Paused, the thread sleeps on wake_ until set_speed() or stop(): they change the state under wake_mutex_ first, so no
-	// change is missed and a stopped clock wakes nothing. parked_ (under wake_mutex_) is true while it sleeps there, and
-	// parked_cv_ tells hold_still() when it gets there.
+	// change is missed and a stopped clock wakes nothing.
 	std::mutex wake_mutex_;
 	std::condition_variable wake_;
-	std::condition_variable parked_cv_;
-	bool parked_ = false;
 	double owed_ = 0; // seconds of the damage clock the map lock was not free for
 };
 

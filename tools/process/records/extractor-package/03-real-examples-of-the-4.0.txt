@@ -1,0 +1,2945 @@
+
+===== ARQUIVO: package.json (101 linhas) =====
+{
+  "name": "roadcraft",
+  "version": "7.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Roadcraft — a 3D isometric road-building and traffic-simulation game for the browser",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5300 --strictPort",
+    "build": "node scripts/run-limited.mjs npm run build:raw",
+    "build:raw": "tsc --noEmit && vite build && vite build -c scripts/vite/desktop-jobs.config.ts",
+    "build:probe": "vite build --mode probe --outDir dist-probe",
+    "preview:probe": "vite preview --outDir dist-probe --host 127.0.0.1 --port 5301 --strictPort",
+    "preview": "vite preview",
+    "typecheck": "tsgo --noEmit -p tsconfig.json",
+    "typecheck:tsc": "tsc --noEmit",
+    "verify": "node scripts/verify.mjs",
+    "diagnose": "node scripts/diagnose/diagnose.mjs",
+    "model-sheet": "node scripts/model-sheet.mjs",
+    "lint": "eslint . --suppressions-location scripts/baselines/eslint-suppressions.json",
+    "test": "node scripts/run-limited.mjs npm run test:raw",
+    "test:raw": "vitest run",
+    "test:watch": "node scripts/run-limited.mjs npm run test:watch:raw",
+    "test:watch:raw": "vitest",
+    "test:coverage": "node scripts/run-limited.mjs npm run test:coverage:raw",
+    "test:coverage:raw": "vitest run --coverage",
+    "check": "node scripts/run-limited.mjs node scripts/check.mjs",
+    "check:all": "node scripts/run-limited.mjs node scripts/check.mjs --all",
+    "cook:people": "node scripts/cook-people.mjs --base=http://127.0.0.1:5300",
+    "cook:cities": "node scripts/cook-cities.mjs",
+    "desktop": "electron desktop/main.cjs",
+    "package:desktop": "npm run build && node scripts/package-desktop.mjs",
+    "test:scale:raw": "vitest run -c vitest.scale.config.ts",
+    "test:scale": "node scripts/run-limited.mjs npm run test:scale:raw",
+    "budgets": "node scripts/run-limited.mjs npm run budgets:raw",
+    "budgets:raw": "vitest run -c vitest.scale.config.ts tests/perf/budgets.spec.ts",
+    "postinstall": "patch-package --patch-dir scripts/patches",
+    "bake:people-pics": "node scripts/bake-people-pics.mjs"
+  },
+  "devDependencies": {
+    "@electron/packager": "^20.3.0",
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.62.1",
+    "@types/node": "^24.13.3",
+    "@types/three": "^0.186.0",
+    "@typescript/native-preview": "^7.0.0-dev.20260707.2",
+    "@vitest/coverage-v8": "^4.1.11",
+    "electron": "^44.6.0",
+    "eslint": "^10.9.0",
+    "happy-dom": "^20.11.6",
+    "knip": "6.38.0",
+    "meshoptimizer": "1.2.0",
+    "patch-package": "^8.0.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.67.0",
+    "vite": "^8.2.2",
+    "vitest": "^4.1.11"
+  },
+  "dependencies": {
+    "clipper2-ts": "^2.0.1-18",
+    "earcut": "^3.2.3",
+    "jolt-physics": "^1.1.0",
+    "polygon-clipping": "0.15.7",
+    "three": "^0.186.0"
+  },
+  "knip": {
+    "entry": [
+      "index.html",
+      "src/main.ts!",
+      "src/sim/sim.worker.ts!",
+      "src/jobs/job.worker.ts!",
+      "src/render/bake/catalogue.ts!",
+      "scripts/**/*.mjs",
+      "desktop/main.cjs",
+      "desktop/preload.cjs",
+      "desktop/saves.cjs",
+      "desktop/jobs.cjs",
+      "src/jobs/nodeJobHost.ts!",
+      "scripts/vite/desktop-jobs.config.ts",
+      "eslint-rules/*.js"
+    ],
+    "project": [
+      "src/**/*.ts!",
+      "tests/**/*.ts",
+      "scripts/**/*.mjs",
+      "eslint-rules/*.js",
+      "*.ts",
+      "desktop/*.cjs",
+      "scripts/**/*.ts"
+    ],
+    "ignoreDependencies": [
+      "electron",
+      "steamworks.js"
+    ],
+    "ignoreBinaries": [
+      "taskkill.exe"
+    ]
+  }
+}
+
+===== ARQUIVO: tsconfig.json (39 linhas) =====
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["vite/client", "vitest/globals", "node"],
+
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "useDefineForClassFields": true,
+
+    "paths": {
+      "@core/*": ["./src/core/*"],
+      "@world/*": ["./src/world/*"],
+      "@sim/*": ["./src/sim/*"],
+      "@render/*": ["./src/render/*"],
+      "@view/*": ["./src/view/*"],
+      "@editor/*": ["./src/editor/*"],
+      "@ui/*": ["./src/ui/*"],
+      "@people/*": ["./src/people/*"],
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src", "tests", "vite.config.ts", "vitest.config.ts", "scripts/vite/*.ts"],
+  "exclude": ["node_modules", "dist", "src/backup", "tests/**/_*", "tests/**/_*/**"]
+}
+
+===== ARQUIVO: vite.config.ts (81 linhas) =====
+import { defineConfig } from 'vite';
+import { createRequire } from 'node:module';
+import { fileURLToPath, URL } from 'node:url';
+import { buildStampPlugin } from './scripts/vite/build-stamp.ts';
+import { cookPlugin } from './scripts/vite/cook-plugin.ts';
+import { labReportsPlugin } from './scripts/vite/labReports.ts';
+import { labSourcePlugin } from './scripts/vite/labSource.ts';
+import { modelUrlsPlugin } from './scripts/vite/model-urls-plugin.ts';
+import { surfaceBakePlugin } from './scripts/vite/surface-bake-plugin.ts';
+
+const r = (p: string) => fileURLToPath(new URL(p, import.meta.url));
+// The page cross-origin isolated: the same headers the desktop's `app://` sends (`desktop/isolation.cjs`; Vite replaces `import.meta.url` in its config with the file's own).
+const ISOLATED = createRequire(import.meta.url)('./desktop/isolation.cjs') as Record<string, string>;
+
+/** The map's tiles each way (`wholeMap.ts` MAP_TILES): 18 (~18.4 km a side: a city of ~200 000 buildings at today's density spans a radius of ~8.85 km, 0.85 of it each way from the centre; the edge must fall on the 2 km terrain plates' edges, so 10, 14, 18... tiles) unless a run asks another (ROADCRAFT_MAP_TILES, even, 2-64). */
+const MAP_TILES = Number(process.env['ROADCRAFT_MAP_TILES'] ?? 18);
+if (!Number.isInteger(MAP_TILES) || MAP_TILES < 2 || MAP_TILES > 64 || MAP_TILES % 2 !== 0) throw new Error(`ROADCRAFT_MAP_TILES must be an even number of tiles from 2 to 64, not ${process.env['ROADCRAFT_MAP_TILES']}`);
+
+export default defineConfig({
+  root: '.',
+  // The map's size and a weaker machine played on this one (`core/weakMachine.ts`), the page and every worker the same.
+  define: { __MAP_TILES__: String(MAP_TILES), __WEAK_MACHINE__: JSON.stringify(process.env['ROADCRAFT_WEAK'] ?? ''), __SLOW_CHECKS__: JSON.stringify(process.env['ROADCRAFT_SLOW_CHECKS'] === '1') },
+  // `modelUrlsPlugin`: the model files' URLs, a module per folder, never inlined (`model-urls-plugin.ts`).
+  // `surfaceBakePlugin`: the procedural surfaces baked at build time into KTX2 (`surface-bake-plugin.ts`); before `cookPlugin`, whose middleware serves them once baked.
+  // `labReportsPlugin`: the lab recorder's reports written into `lab-reports/` (dev server only, `labReports.ts`).
+  // `labSourcePlugin`: the lab inspector's search of where a 3D object's name is made in `src/` (dev server only, `labSource.ts`).
+  plugins: [buildStampPlugin(), surfaceBakePlugin(), cookPlugin(), modelUrlsPlugin(), labReportsPlugin(), labSourcePlugin()],
+  publicDir: false,
+  // The dependencies are found from the game's own pages only.
+  optimizeDeps: { entries: ['*.html'] },
+  resolve: {
+    alias: {
+      '@core': r('./src/core'),
+      '@world': r('./src/world'),
+      '@sim': r('./src/sim'),
+      '@render': r('./src/render'),
+      '@view': r('./src/view'),
+      '@editor': r('./src/editor'),
+      '@ui': r('./src/ui'),
+      '@people': r('./src/people'),
+      '@': r('./src'),
+    },
+  },
+  server: {
+    host: '127.0.0.1',
+    // 5300, this repository's port (CLAUDE.md "Servers"): the old origins
+    port: Number(process.env['PORT'] ?? 5300),
+    strictPort: true,
+    // Lets the page sample its own JavaScript (`new Profiler`), to find what a frame spends its time on in the running game.
+    headers: { 'Document-Policy': 'js-profiling', ...ISOLATED },
+    // Test and coverage artefacts live under the project root.
+    watch: {
+      ignored: [
+        '**/coverage/**',
+        '**/dist/**',
+        '**/playwright-report/**',
+        '**/test-results/**',
+        // Parallel agent worktrees live inside the project folder; an edit there must not reload the game being inspected here.
+        '**/.claude/**',
+      ],
+    },
+  },
+  preview: { headers: ISOLATED },
+  // ES workers: the simulation's worker makes workers of its own and imports its walkers when it starts (Vite, worker.format).
+  // The workers' own bundles take the model URLs too (Vite `worker.plugins`): the people's worker reads the proxies (`people/body/proxy.ts`).
+  worker: { format: 'es', plugins: () => [modelUrlsPlugin()] },
+  build: {
+    target: 'es2022',
+    sourcemap: true,
+    outDir: 'dist',
+    // three.js is most of the bundle and never changes between releases of the game, so it gets its own chunk
+    chunkSizeWarningLimit: 700,
+    rollupOptions: {
+      output: {
+        // Its WebGPU renderer and node materials in a chunk of their own, loaded only with `?gpu=webgpu` or a comparison (`render/gpu/webgpuView.ts`): the WebGL game never downloads them.
+        manualChunks: (id: string) =>
+          /node_modules\/three\/build\/three\.(webgpu|tsl)/.test(id) ? 'three-webgpu' : id.includes('node_modules/three') ? 'three' : undefined,
+      },
+    },
+  },
+});
+
+===== ARQUIVO: index.html (32 linhas) =====
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#152119" />
+  <title data-i18n="app.title">Roadcraft — Road Builder</title>
+  <!-- Inline so the first paint never waits on a request, and so the build has no stray asset to copy. -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23152119'/%3E%3Cpath d='M6 22 16 5l10 17-10 5Z' fill='none' stroke='%237ee0b8' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="/src/ui/app.css" />
+</head>
+<body>
+  <main id="app" data-i18n-label="app.region" aria-label="Roadcraft road builder">
+    <canvas id="game" tabindex="0" role="application" data-i18n-label="app.canvas" aria-label="Interactive city map" aria-describedby="v2Hint"></canvas>
+    <!-- The Builder Workspace (the buildings module&#39;s own interface) is built in TypeScript by src/ui/builder/workspace.ts -->
+    <section id="builder" data-i18n-label="builder.label" aria-label="Builder workspace"></section>
+
+    <section id="inspector" class="inspector glass hidden" aria-hidden="true" aria-labelledby="inspectorTitle" hidden>
+      <div class="panel-title"><span id="inspectorTitle" data-i18n="inspector.title">INSPECT</span><button type="button" id="closeInspector" class="tiny-button" data-i18n-label="inspector.close" aria-label="Close inspector">×</button></div>
+      <div id="inspectorBody"></div>
+    </section>
+
+  </main>
+  <dialog id="aboutDialog" class="about-dialog glass">
+    <h2 data-i18n="about.title">About Roadcraft</h2>
+    <p><strong data-i18n="about.build">Build</strong> <span id="aboutBuild"></span></p>
+    <div id="aboutCredits"></div>
+    <form method="dialog"><button class="about-close" data-i18n="about.close">Close</button></form>
+  </dialog>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
+
+===== ARQUIVO: src/sim/sim.worker.ts (13 linhas) =====
+import { SimHost } from './host/simHost';
+import type { FromSim, ToSim } from './host/protocol';
+
+/** The simulation's worker (`host/simHost.ts`): the page's messages answered in order, one at a time. */
+const scope = self as unknown as { onmessage: ((e: MessageEvent<ToSim>) => void) | null; postMessage(message: FromSim, transfer?: Transferable[]): void };
+const host = new SimHost((message, transfer) => scope.postMessage(message, transfer));
+let queue: Promise<void> = Promise.resolve();
+scope.onmessage = (event) => {
+  queue = queue.then(() => host.handle(event.data)).catch((error: unknown) => {
+    console.error('[sim worker]', error);
+    scope.postMessage({ type: 'failed', message: String((error as Error)?.stack ?? error) });
+  });
+};
+
+===== ARQUIVO: src/sim/host/protocol.ts (188 linhas) =====
+import type { Restoration } from '@world/doc';
+import type { BuildingSent, TrafficMap } from '../agents/trafficBuildings';
+import type { NodeId, SegmentId } from '@world/ids';
+import type { NetworkBake } from '@world/networkBuild';
+import type { BodyPart, PedView, PersonAgeClass } from '../people/view';
+import type { Casualty } from '../people/casualties';
+import type { KerbStop } from '../vehicles/kerbStops';
+import { FLEET_CEILING, PED_CEILING } from '../params';
+import type { SignalState } from '../signals/query';
+import type { MesoDelta } from '../meso/memory';
+
+/** THE SIMULATION'S WORKER AND THE PAGE (`simHost.ts` there, `simClient.ts` here): what goes between them */
+
+/** A vehicle's numbers as the worker writes them each tick (Float64, `VEHICLE_STRIDE` a vehicle). */
+export const V = {
+  id: 0, archetype: 1, free: 2, bx: 3, by: 4, bangle: 5, x: 6, y: 7, angle: 8, yawBefore: 9, yawNow: 10, jump: 11,
+  v: 12, prevV: 13, age: 14, segment: 15, indicator: 16, curvature: 17, odometer: 18, seats: 19, slain: 20, lot: 21, inSegment: 22,
+} as const;
+export const VEHICLE_STRIDE = 23;
+/** A pedestrian's numbers (Float64, `PED_STRIDE` a person). */
+export const P = {
+  id: 0, x: 1, y: 2, heading: 3, px: 4, py: 5, pheading: 6, v: 7, turnV: 8, age: 9, segment: 10, walking: 11, kerbWait: 12, rank: 13,
+} as const;
+export const PED_STRIDE = 14;
+/** The head of a slot: counts and the clock (Float64). */
+export const H = { tick: 0, time: 1, vehicles: 2, peds: 3, alpha: 4, steps: 5, stepMs: 6, minutes: 7 } as const;
+const HEAD = 8;
+
+/** Most vehicles a slot holds: the traffic's ceiling. */
+const VEHICLES = FLEET_CEILING;
+const PEDS = PED_CEILING;
+/** One slot's Float64s: the head, then the vehicles, then the pedestrians. */
+export const SLOT = HEAD + VEHICLES * VEHICLE_STRIDE + PEDS * PED_STRIDE;
+export const vehicleBase = (slot: number): number => slot * SLOT + HEAD;
+export const pedBase = (slot: number): number => slot * SLOT + HEAD + VEHICLES * VEHICLE_STRIDE;
+export const headBase = (slot: number): number => slot * SLOT;
+export const MAX_VEHICLES = VEHICLES;
+export const MAX_PEDS = PEDS;
+
+/** The control words (Int32): the slot written last, the slot the page reads now (Atomics, MDN). */
+export const C = { latest: 0, reading: 1 } as const;
+export const CONTROL_WORDS = 2;
+
+/** The memory both sides hold: three slots (a triple buffer) and the control words. */
+export interface SharedFrames {
+  readonly data: SharedArrayBuffer;
+  readonly control: SharedArrayBuffer;
+}
+
+export function makeSharedFrames(): SharedFrames {
+  return { data: new SharedArrayBuffer(3 * SLOT * 8), control: new SharedArrayBuffer(CONTROL_WORDS * 4) };
+}
+
+/** What a vehicle carries that is not a number of the tick: told when it changes. */
+export interface VehicleRich {
+  readonly color: string;
+  readonly archetype: string;
+  readonly doors: readonly number[];
+  readonly kerbStop: KerbStop | null;
+  readonly people: readonly number[];
+  readonly peopleAge: readonly (PersonAgeClass | undefined)[];
+  /** Off the road: its pose a tick ago and now (the numbers carry them too), its lot. */
+  readonly freeLot: number | null;
+}
+
+/** What a pedestrian carries that is not a number of the tick (`P`): told when it changes. */
+export type PedRich = Omit<PedView, 'id' | 'x' | 'y' | 'heading' | 'prev' | 'v' | 'turnV' | 'age' | 'segment' | 'walking' | 'kerbWait' | 'rank'>;
+
+/** A signalised junction's heads by group (`render/signals.ts`): which roads each group lights. */
+export interface SignalLayout {
+  readonly node: NodeId;
+  readonly groups: readonly { readonly id: number; readonly segments: readonly SegmentId[] }[];
+}
+
+/** A junction's lights now: its stage, and each group's colour. */
+export interface SignalLights {
+  readonly node: NodeId;
+  readonly stage: string;
+  readonly states: readonly (readonly [number, SignalState])[];
+}
+
+/** A train drawn: its line's colour and each car's place. */
+export interface TrainCar { readonly x: number; readonly y: number; readonly heading: number }
+export interface TrainState { readonly colour: string; readonly metro: boolean; readonly cars: readonly TrainCar[] }
+
+/** The page to the worker: never the whole map nor a building's record, only what traffic reads (`agents/trafficBuildings.ts`). */
+export type ToSim =
+  | { readonly type: 'init'; readonly frames: SharedFrames; readonly map: TrafficMap; readonly seed: number; readonly zones: ReadonlyMap<string, Float64Array | null>; readonly zonesPrefix: string | null; readonly ambient: 'view' | 'edges'; readonly bake?: NetworkBake | null }
+  | { readonly type: 'load'; readonly map: TrafficMap; readonly bake?: NetworkBake | null }
+  /** The SAME map sent whole again, when the diary cannot say what changed (its entries let go, a change without ids): the replica brought up to it, the simulation kept running (SIM-18). */
+  | { readonly type: 'resync'; readonly map: TrafficMap }
+  /** The page's job lanes for the lots' bays and the conflict pairs (`jobPool.ts` jobChannel), before `init`: the worker opens no pool of its own. */
+  | { readonly type: 'lanes'; readonly bays: readonly MessagePort[]; readonly conflicts: readonly MessagePort[] }
+  /** The page's worker serving those lanes failed: their pool falls back to working here. */
+  | { readonly type: 'laneLost'; readonly service: 'bays' | 'conflicts'; readonly why: string }
+  /** The roads', lots' and transit's records the diary named (`delta`), and where the buildings it named are read (worked out as traffic reads them in the worker). */
+  | { readonly type: 'delta'; readonly delta: Restoration; readonly buildings: readonly BuildingSent[] }
+  | { readonly type: 'frame'; readonly wall: number; readonly hold: boolean; readonly controls: SimControls }
+  | { readonly type: 'reset' }
+  /** The micro window's centre and radius (`meso/meso.ts`); `whole`: the page's copy of the meso links is new, the next delta carries every link (`meso/memory.ts`). */
+  | { readonly type: 'window'; readonly x: number; readonly y: number; readonly r: number; readonly whole: boolean }
+  | { readonly type: 'act'; readonly id: number; readonly act: SimAct }
+  | { readonly type: 'ask'; readonly id: number; readonly ask: SimAsk }
+  /** The zoning tool's proposed lots planned on the worker's copy of the region (`SimHost.lotPlan`), answered with `answer`: a `LotPlan`, or null when not now. */
+  | { readonly type: 'lotPlan'; readonly id: number };
+
+/** What the player sets of the simulation, sent each frame (a few numbers). */
+export interface SimControls {
+  readonly speed: number;
+  readonly paused: boolean;
+  readonly traffic: boolean;
+  readonly pedestrians: boolean;
+  readonly trafficIntensity: number;
+  readonly pedestrianIntensity: number;
+  readonly demandMultiplier: number;
+  readonly maxShare: number;
+  /** Where the population starts (`populationGovernor.ts` cpuPopulationShare): taken before the first step is measured. */
+  readonly startShare?: number;
+  readonly focus: SimFocus | null;
+  /** The city's time of day set to these minutes after midnight (a saved map reopened), told once. */
+  readonly clock?: number;
+  /** A map opening behind its curtain (`SceneHandle.opening`): its traffic's topology, bays and steps wait for it to be shown (`simHost.ts` frame). */
+  readonly opening?: boolean;
+}
+
+export interface SimFocus {
+  readonly x: number;
+  readonly y: number;
+  readonly r: number;
+  readonly detail: boolean;
+  readonly view: { readonly ex: number; readonly ey: number; readonly dx: number; readonly dy: number; readonly cos: number; readonly far: number } | null;
+}
+
+/** The player's hand on the simulation (the Actions): answered with `acted`. */
+export type SimAct =
+  | { readonly kind: 'shot'; readonly ped: number; readonly part: BodyPart; readonly fromX: number; readonly fromY: number }
+  | { readonly kind: 'impact'; readonly x: number; readonly y: number; readonly kill: number; readonly scare: number }
+  | { readonly kind: 'removeVehicle'; readonly id: number }
+  | { readonly kind: 'strand'; readonly id: number }
+  | { readonly kind: 'removeVehiclesNear'; readonly x: number; readonly y: number; readonly r: number }
+  | { readonly kind: 'getUp'; readonly id: number; readonly x: number; readonly y: number; readonly heading: number; readonly seconds: number; readonly crawl?: boolean };
+
+/** A question the panels ask (the inspector, the junction panel): answered with `answer`. */
+export type SimAsk =
+  | { readonly kind: 'segment'; readonly id: SegmentId }
+  | { readonly kind: 'junction'; readonly node: NodeId }
+  | { readonly kind: 'greenWave'; readonly node: NodeId }
+  | { readonly kind: 'nodeLanes'; readonly node: NodeId };
+
+/** A bullet wound on somebody (`people/casualties.ts` recordWound), told once. */
+export interface Wound { readonly id: number; readonly part: BodyPart; readonly fromX: number; readonly fromY: number }
+
+/** The worker to the page. */
+export type FromSim =
+  | { readonly type: 'ready' }
+  /** A message the worker could not handle: told, so the page reports it and does not wait for a frame never coming. */
+  | { readonly type: 'failed'; readonly message: string }
+  | { readonly type: 'tick'; readonly slot: number; readonly vehicles: readonly (readonly [number, VehicleRich])[]; readonly peds: readonly (readonly [number, PedRich])[];
+      readonly signals: readonly SignalLights[]; readonly layout: { readonly all: boolean; readonly junctions: readonly SignalLayout[] } | null; readonly trains: readonly TrainState[];
+      readonly parked: ParkedChanges | null; readonly stats: SimStats;
+      /** The meso links changed since the last tick (null: none), their buffers handed over (`meso/memory.ts`). */
+      readonly meso?: MesoDelta | null;
+      readonly wounds: readonly Wound[]; readonly casualties: readonly Casualty[] }
+  | { readonly type: 'acted'; readonly id: number; readonly result: unknown }
+  | { readonly type: 'answer'; readonly id: number; readonly answer: unknown };
+
+/** The cars come into a bay or gone from one, `PARKED_STRIDE` numbers each (fields `PK`), in a buffer handed over; `whole`: every car standing, those not in it gone. */
+export interface ParkedChanges { readonly whole: boolean; readonly cars: Float64Array }
+/** A parked car's numbers: its id, gone (1) or standing (0), where, its lot (-1: none), its kind (`ARCHETYPES` index) and its colour (0xrrggbb). */
+export const PK = { id: 0, gone: 1, x: 2, y: 3, angle: 4, lot: 5, archetype: 6, color: 7 } as const;
+export const PARKED_STRIDE = 8;
+
+/** The simulation's own numbers for the status bar, the monitor and the population governor. */
+export interface SimStats {
+  readonly vehicles: number;
+  readonly people: number;
+  readonly completedTrips: number;
+  readonly entryDemandLost: number;
+  readonly controllers: number;
+  readonly lotsMoving: number;
+  /** The topology the worker's simulation stands at (a token, not a product key). */
+  readonly topology: number;
+  readonly issues: readonly { readonly code: string; readonly subject: string; readonly detail: string; readonly tick: number }[];
+  readonly populationShare: number;
+  readonly stepMs: number;
+  /** Left empty: the worker keeps the zones it measured itself (`SimHost.stats`); `main.ts` zonesDue reads it until it goes. */
+  readonly measured: readonly (readonly [string, Float64Array | null])[];
+}
+
+===== ARQUIVO: src/sim/host/simClient.ts (796 linhas) =====
+import type { RoadDoc, Restoration, RecordPart, ValuePart } from '@world/doc';
+import type { Network, NetworkBake } from '@world/network';
+import { type DocChangeKind, type JournalReader } from '@world/changes';
+import type { NodeId, SegmentId } from '@world/ids';
+import type { LotPlan } from '@world/lots';
+import type { BuildingId } from '@world/buildings/types';
+import { buildingChangesOf, trafficMapOf } from '../agents/trafficBuildings';
+import { ARCHETYPES, archetypeById, type Archetype } from '../vehicles/archetypes';
+import type { KerbStop } from '../vehicles/kerbStops';
+import type { PedView, PersonAgeClass } from '../people/view';
+import type { VehicleFrames } from '../pose';
+import type { SignalState } from '../signals/query';
+import type { JunctionAnswer, TrafficCount } from './simAnswers';
+import type { Casualty } from '../people/casualties';
+import { type FleetCell, FleetGrid, type GroundBox } from './fleetGrid';
+import type { MesoDelta } from '../meso/memory';
+import {
+  C, H, P, PARKED_STRIDE, PED_STRIDE, PK, V, VEHICLE_STRIDE, headBase, makeSharedFrames, pedBase, vehicleBase,
+  type FromSim, type ParkedChanges, type SignalLayout, type SimAct, type SimAsk, type SimControls, type SimStats, type ToSim, type TrainState, type Wound,
+} from './protocol';
+
+
+/** Meso deltas kept for the page before they are let go and every link asked for again (`SimClient.keepMeso`): ten seconds of frames. */
+const MESO_KEPT = 600;
+/** THE PAGE'S SIDE OF THE SIMULATION'S WORKER (`simHost.ts`): the map's changes sent, the frame read, the panels' questions asked */
+
+/** A vehicle as the page draws it: its numbers of the last tick and what it carries (`VehicleRich`). */
+export interface VehicleView {
+  readonly id: number;
+  archetype: Archetype;
+  color: string;
+  doors: readonly number[];
+  kerbStop: KerbStop | null;
+  people: readonly number[];
+  peopleAge: readonly (PersonAgeClass | undefined)[];
+  seats: number;
+  slain: boolean;
+  age: number;
+  v: number;
+  readonly prev: { v: number };
+  /** Off the road: its pose a tick ago and now, and the lot it stands on; null on a lane. */
+  free: { px: number; py: number; pangle: number; x: number; y: number; angle: number; lot: number | null } | null;
+  readonly frames: VehicleFrames;
+  /** The road its lane belongs to (undefined on a junction's connector), and the road it came from on one. */
+  segment: SegmentId | undefined;
+  inSegment: SegmentId | undefined;
+  indicator: -1 | 0 | 1;
+  curvature: number;
+  odometer: number;
+  /** The client's own: the tick it was last read in (`readTick`), those not read in a tick being gone. */
+  tickRead: number;
+}
+
+/** A walker's view as the page makes it (`readTick`): the tick it was last read in, as a vehicle's. */
+type PedRead = PedView & { tickRead: number };
+
+/** A junction's signal heads and their lights as the worker last told them (`render/signals.ts`). */
+export interface SignalFeed {
+  /** The junctions whose heads moved since `serial` (null: every junction), and the serial now. */
+  changesSince(serial: number): { readonly serial: number; readonly nodes: readonly NodeId[] | null };
+  layout(node: NodeId): SignalLayout | undefined;
+  /** A group's colour, and the junction's stage key (moves when any of its lights does). */
+  state(node: NodeId, group: number): SignalState;
+  stage(node: NodeId): string;
+  nodes(): Iterable<NodeId>;
+}
+
+/** Wall seconds an answer is kept with nobody asking it again: the panels ask every 0.4 s (`main.ts` panelsDue), five rounds missed. */
+const ANSWER_KEPT = 2;
+
+/** A panel's question as a key: its kind and the one id it names (never its JSON). */
+function askKey(ask: SimAsk): string {
+  return `${ask.kind}:${ask.kind === 'segment' ? ask.id : ask.node}`;
+}
+
+/** The kinds of the diary the worker's copy of the map follows, and what each carries. */
+const RECORD_KINDS: Readonly<Partial<Record<DocChangeKind, readonly RecordPart[]>>> = {
+  roads: ['nodes', 'segments'], traffic: ['nodes', 'segments'], lots: ['lots'],
+};
+const VALUE_KINDS: Readonly<Partial<Record<DocChangeKind, ValuePart>>> = { transit: 'transit' };
+/** DO NOT send a building's record (nor its wear): the worker is sent its traffic record (`agents/trafficBuildings.ts`). */
+const FOLLOWED: readonly DocChangeKind[] = [...Object.keys(RECORD_KINDS), ...Object.keys(VALUE_KINDS), 'lotKeys', 'buildings'] as DocChangeKind[];
+
+export class SimClient implements JournalReader {
+  /** The kinds the worker's copy follows: the diary keeps them until this client has sent them (`changes.follow`). */
+  readonly kinds = FOLLOWED;
+  private worker: Worker | null = null;
+  private readonly frames = makeSharedFrames();
+  private readonly data = new Float64Array(this.frames.data);
+  private readonly control = new Int32Array(this.frames.control);
+  /** The diary read up to (what the worker's copy of the map stands at), in the document it is of. */
+  private seen = -1;
+  private seenDoc: RoadDoc | null = null;
+  /** The lot keys the worker's copy holds, in its order (what was sent): DO NOT send the whole list when some go (a tile let go), only the stretches taken out and the keys put in. */
+  private sentKeys: string[] = [];
+  /** The lot store's `keysRewritten` when the keys were last sent: unchanged, only the keys added since go. */
+  private lotKeysRewritten = -1;
+  /** A frame asked of the worker and not answered: the next waits, its wall time added up meanwhile. */
+  private inFlight = false;
+  /** The worker's last failure (`failed`), null while none. */
+  failure: string | null = null;
+  private wallOwed = 0;
+  private readonly pending = new Map<number, (value: unknown) => void>();
+  private nextAsk = 1;
+  /** The panels' last answers by question (`askKey`), each with the page's clock it was last asked at: dropped once nobody asks (`frame`). */
+  private readonly answers = new Map<string, { value: unknown; asked: number }>();
+  /** Wall seconds of the page's frames (`frame`), for the answers' age. */
+  private askClock = 0;
+  private sweptAt = 0;
+
+  readonly vehicles = new Map<number, VehicleView>();
+  /** The traffic and the cars parked in bays, whole; DO NOT walk them per frame or per query: ask by place (`vehiclesIn`). */
+  readonly traffic: VehicleView[] = [];
+  readonly parked: VehicleView[] = [];
+  private readonly parkedById = new Map<number, VehicleView>();
+  /** Each parked view's place in `parked` (taken out by swapping the last in, not by listing them all again). */
+  private readonly parkedAt = new Map<VehicleView, number>();
+  /** The traffic and the parked cars by 64 m cell, filed as the tick is decoded (`fleetGrid.ts`). */
+  private readonly trafficGrid = new FleetGrid<VehicleView>();
+  private readonly parkedGrid = new FleetGrid<VehicleView>();
+  /** The longest step of the last tick (each axis): a pose drawn between the two ticks stands that far from the one filed at most. */
+  private trafficSlack = 0;
+  private parkedSlack = 0;
+  /** The parked cars whose two poses differ (moved by the slot): settled on the next tick that tells no parked change, as before. */
+  private readonly settling = new Set<VehicleView>();
+  /** The traffic's speeds summed and how many stand (under 0.5), as the last tick's decode found them (the status, `main.ts`). */
+  trafficSpeed = 0;
+  trafficQueued = 0;
+  readonly pedViews: PedView[] = [];
+  /** Told each view let go, traffic or parked, as it goes (the casting forgets its people, `render/agents.ts`): DO NOT make the casting walk every vehicle it cast to find the gone ones. */
+  onVehicleGone: ((view: VehicleView) => void) | null = null;
+  /** Whether a view is one of the cars parked in their bays now. */
+  isParked(view: VehicleView): boolean {
+    return this.parkedById.get(view.id) === view;
+  }
+
+  /** The views that may be drawn in the box this frame, appended to `out` after clearing it: the traffic, then the parked cars (`which` keeps one of them). */
+  vehiclesIn(box: Readonly<GroundBox>, out: VehicleView[], which: 'all' | 'traffic' | 'parked' = 'all'): VehicleView[] {
+    out.length = 0;
+    // Grown by the tick's longest step: the pose drawn lies between the two the frames hold (`framesPoseInto`).
+    if (which !== 'parked') { const s = this.trafficSlack; this.trafficGrid.near(box.x0 - s, box.y0 - s, box.x1 + s, box.y1 + s, out); }
+    if (which !== 'traffic') { const s = this.parkedSlack; this.parkedGrid.near(box.x0 - s, box.y0 - s, box.x1 + s, box.y1 + s, out); }
+    return out;
+  }
+
+  /** The cells of the parked cars the box reaches (grown by the settling cars' step), appended to `out` after clearing it: each with its version, which moves when a parked car comes into it, goes or changes there (`FleetGrid`); DO NOT walk the parked cars of a cell whose version stands. */
+  parkedCellsIn(box: Readonly<GroundBox>, out: FleetCell<VehicleView>[]): FleetCell<VehicleView>[] {
+    out.length = 0;
+    const s = this.parkedSlack;
+    return this.parkedGrid.cellsNear(box.x0 - s, box.y0 - s, box.x1 + s, box.y1 + s, out);
+  }
+
+  private addParked(view: VehicleView): void {
+    this.parkedById.set(view.id, view);
+    this.parkedAt.set(view, this.parked.push(view) - 1);
+  }
+
+  private dropParked(view: VehicleView): void {
+    this.parkedById.delete(view.id);
+    const at = this.parkedAt.get(view);
+    if (at !== undefined) {
+      const last = this.parked.pop()!;
+      if (at < this.parked.length) { this.parked[at] = last; this.parkedAt.set(last, at); }
+      this.parkedAt.delete(view);
+    }
+    this.parkedGrid.remove(view);
+    this.settling.delete(view);
+    this.onVehicleGone?.(view);
+  }
+
+  /** Another map: every parked view let go at once. */
+  private clearParked(): void {
+    const gone = this.onVehicleGone;
+    if (gone) for (const view of this.parked) gone(view);
+    this.parked.length = 0;
+    this.parkedById.clear();
+    this.parkedAt.clear();
+    this.parkedGrid.clear();
+    this.settling.clear();
+    this.parkedSlack = 0;
+  }
+  private readonly pedById = new Map<number, PedRead>();
+  trains: readonly TrainState[] = [];
+  /** The simulation's clock as last told: seconds, the city's minutes, the tick's share gone by (`alpha`). */
+  time = 0;
+  minutes = 0;
+  alpha = 1;
+  lastSteps = 0;
+  lastStepMs = 0;
+  stats: SimStats | null = null;
+  /** The player's settings of the simulation, sent with every frame (`frame`). */
+  readonly clock = { speed: 1, paused: false, client: this as SimClient, get time(): number { return this.client.time; } };
+  trafficIntensity = 1;
+  pedestrianIntensity = 1;
+  demandMultiplier = 1;
+  /** The simulation stopped by the player, as the last frame sent it. */
+  get paused(): boolean { return this.clock.paused; }
+  /** The simulation's own checks told so far (`sim/invariants.ts`), oldest first. */
+  readonly issues: SimStats['issues'][number][] = [];
+  /** The topology the worker's simulation stands at (the network's `trafficRevision` it caught up to). */
+  get topologyRevision(): number { return this.stats?.topology ?? -1; }
+  /** What the simulation must show in full round the view (`render/renderer.ts` sets it each frame; sent with the next frame). */
+  focus: SimControls['focus'] = null;
+  /** Called with each frame read (a tick written), and once the worker stands. */
+  onTick: (() => void) | null = null;
+  private readonly layouts = new Map<NodeId, SignalLayout>();
+  private readonly lights = new Map<NodeId, { stage: string; readonly states: Map<number, SignalState> }>();
+  /** What the vehicles and the people carry as told this tick, by id (`readTick`): one map each, emptied and filled each tick. */
+  private readonly vehicleRich = new Map<number, Extract<FromSim, { type: 'tick' }>['vehicles'][number][1]>();
+  private readonly pedRich = new Map<number, Extract<FromSim, { type: 'tick' }>['peds'][number][1]>();
+  /** Each gesture told, by the age (`PedView.age`) its clock started at. */
+  private readonly gestureFrom = new WeakMap<object, number>();
+  /** A colour as the worker numbers it: the strings kept, one per colour. */
+  private readonly colours = new Map<number, string>();
+
+  private colourOf(n: number): string {
+    let c = this.colours.get(n);
+    if (c === undefined) this.colours.set(n, c = colourString(n));
+    return c;
+  }
+  private readonly signalLog: NodeId[] = [];
+  private signalBase = 0;
+  private signalAll = 0;
+
+  /** The frames read so far (a tick of the worker each). */
+  tick = 0;
+  /** The wounds told since the effects last took them (`takeWounds`), and the casualties of blows, their clocks kept here. */
+  private wounds: Wound[] = [];
+  private casualtyList: Casualty[] = [];
+
+  /** `net`: the page's network of `doc`, whose junctions and ribbons the worker takes as solved (`bake`, SIM-04); none: the worker solves them. */
+  constructor(readonly doc: RoadDoc, private readonly net: Network | null = null) {}
+
+  /** The page's junctions and ribbons of the whole map: the worker's build takes each whose inputs are the same. */
+  private bake(): NetworkBake | null {
+    const net = this.net;
+    if (!net || net.doc !== this.doc) return null;
+    // Brought up to the document first: the rebuild the page's next frame would make (`main.ts`).
+    if (!net.isBuilt()) net.rebuild();
+    return net.exportBake(this.doc.nodes.keys(), this.doc.segments.keys());
+  }
+
+  /** The wounds told since the last call, taken (`render/playEffects.ts`). */
+  takeWounds(): Wound[] {
+    const out = this.wounds;
+    this.wounds = [];
+    return out;
+  }
+
+  /** The casualties of blows, their clocks advanced by `dt`, a minute's worth kept (`people/casualties.ts` impactCasualties). */
+  casualties(dt = 0): readonly Casualty[] {
+    for (const c of this.casualtyList) c.t += dt;
+    if (this.casualtyList.length && this.casualtyList[0]!.t > 60) this.casualtyList = this.casualtyList.filter((c) => c.t <= 60);
+    return this.casualtyList;
+  }
+
+  /** The worker made and given the map; resolved once it stands. */
+  /** `lanes`: the page's job lanes for the worker's bays and conflict pairs (`main.ts`, `jobPool.ts` jobChannel), handed before `init`; none: it opens its own. */
+  start(seed: number, zones: ReadonlyMap<string, Float64Array | null>, zonesPrefix: string | null, ambient: 'view' | 'edges',
+    lanes: { readonly bays: readonly MessagePort[]; readonly conflicts: readonly MessagePort[] } | null = null): Promise<void> {
+    const worker = new Worker(new URL('../sim.worker.ts', import.meta.url), { type: 'module' });
+    this.worker = worker;
+    if (lanes) {
+      const message: ToSim = { type: 'lanes', bays: lanes.bays, conflicts: lanes.conflicts };
+      worker.postMessage(message, [...lanes.bays, ...lanes.conflicts]);
+    }
+    const ready = new Promise<void>((done) => {
+      worker.onmessage = (event: MessageEvent<FromSim>) => {
+        if (event.data.type === 'ready') { worker.onmessage = (e: MessageEvent<FromSim>) => this.receive(e.data); done(); return; }
+        this.receive(event.data);
+        // DO NOT wait for a ready that will never come: the game opens without its traffic, and says so.
+        if (event.data.type === 'failed') done();
+      };
+      // A worker that cannot load or throws, or a message it cannot read: told as a failure, the opening let go (`main.ts` awaits it).
+      const lost = (what: string): void => { this.receive({ type: 'failed', message: what }); done(); };
+      worker.onerror = (event: ErrorEvent) => { event.preventDefault(); lost(`the worker stopped: ${event.message || 'it could not be loaded'}`); };
+      worker.onmessageerror = () => lost('a message from the worker could not be read');
+    });
+    this.markSent();
+    this.send({ type: 'init', frames: this.frames, map: trafficMapOf(this.doc), seed, zones, zonesPrefix, ambient, bake: this.bake() });
+    return ready;
+  }
+
+  /** The page's worker serving the worker's lanes of `service` failed: that pool falls back to working in the worker. */
+  laneLost(service: 'bays' | 'conflicts'): void {
+    this.send({ type: 'laneLost', service, why: `the job worker serving the ${service} lanes failed` });
+  }
+
+  /** Another map (opened, generated, new): the worker's copy made whole again (only what traffic reads), the simulation started over. */
+  load(): void {
+    this.markSent();
+    this.send({ type: 'load', map: trafficMapOf(this.doc), bake: this.bake() });
+    this.clearViews();
+  }
+
+  /** The same map whole again, when the diary cannot say what changed: the worker's copy brought up to it, its traffic and the views kept (SIM-18). */
+  private resync(): void {
+    this.markSent();
+    this.send({ type: 'resync', map: trafficMapOf(this.doc) });
+  }
+
+  /** The simulation started over on the same map. */
+  reset(): void {
+    this.send({ type: 'reset' });
+  }
+
+  /** The micro window round (x, y); `whole`: the page's copy of the meso links is new, every link to be sent (`render/densityCars.ts`). */
+  window(x: number, y: number, r: number, whole = false): void {
+    this.windowAt = { x, y, r };
+    this.send({ type: 'window', x, y, r, whole });
+  }
+
+  /** The meso deltas come since the last take, oldest first (`render/densityCars.ts` applies them). */
+  takeMeso(): readonly MesoDelta[] {
+    if (!this.mesoDeltas.length) return this.noDeltas;
+    const out = this.mesoDeltas;
+    this.mesoDeltas = [];
+    return out;
+  }
+  private readonly noDeltas: readonly MesoDelta[] = [];
+
+  /** The meso deltas not taken yet, and the window last told (asked again whole when the deltas were let go). */
+  private mesoDeltas: MesoDelta[] = [];
+  private windowAt: { x: number; y: number; r: number } | null = null;
+
+  /** A tick's meso delta kept for the page: a whole one lets go of those before it; DO NOT keep them without bound when nobody takes them (the far cars not drawn) - let go, and every link asked for again. */
+  private keepMeso(d: MesoDelta): void {
+    if (d.whole) this.mesoDeltas.length = 0;
+    this.mesoDeltas.push(d);
+    if (this.mesoDeltas.length <= MESO_KEPT) return;
+    this.mesoDeltas.length = 0;
+    if (this.windowAt) this.window(this.windowAt.x, this.windowAt.y, this.windowAt.r, true);
+  }
+
+  /** A frame of the page: the map's changes since the last sent, then the wall time and the controls (one frame asked at a time). */
+  frame(wall: number, hold: boolean, run: { readonly traffic: boolean; readonly pedestrians: boolean; readonly maxShare: number; readonly startShare?: number; readonly opening?: boolean }): void {
+    this.sendChanges();
+    this.wallOwed += wall;
+    this.askClock += wall;
+    if (this.askClock - this.sweptAt >= ANSWER_KEPT) {
+      // DO NOT keep every question ever asked: an answer no panel asked for over `ANSWER_KEPT` is let go.
+      this.sweptAt = this.askClock;
+      for (const [key, answer] of this.answers) if (this.askClock - answer.asked > ANSWER_KEPT) this.answers.delete(key);
+    }
+    if (this.inFlight || !this.worker) return;
+    this.inFlight = true;
+    const controls: SimControls = {
+      speed: this.clock.speed, paused: this.clock.paused, traffic: run.traffic, pedestrians: run.pedestrians,
+      trafficIntensity: this.trafficIntensity, pedestrianIntensity: this.pedestrianIntensity, demandMultiplier: this.demandMultiplier,
+      maxShare: run.maxShare, ...(run.startShare !== undefined ? { startShare: run.startShare } : {}), focus: this.focus,
+      ...(this.clockAsked !== null ? { clock: this.clockAsked } : {}),
+      ...(run.opening ? { opening: true } : {}),
+    };
+    this.clockAsked = null;
+    this.send({ type: 'frame', wall: this.wallOwed, hold, controls });
+    this.wallOwed = 0;
+  }
+
+  /** The city's time of day put at `minutes` after midnight (a saved map reopened): sent with the next frame. */
+  setClock(minutes: number): void {
+    this.clockAsked = minutes;
+    this.minutes = minutes;
+  }
+  private clockAsked: number | null = null;
+
+  /** The player's hand on the simulation, answered when the worker has done it. */
+  act(act: SimAct): Promise<unknown> {
+    const id = this.nextAsk++;
+    return new Promise((done) => { this.pending.set(id, done); this.send({ type: 'act', id, act }); });
+  }
+
+  /** A panel's question: the last answer to it now (null before the first), a fresh one asked for the next refresh. */
+  asked(ask: SimAsk): unknown {
+    const key = askKey(ask);
+    let answer = this.answers.get(key);
+    if (!answer) this.answers.set(key, answer = { value: null, asked: this.askClock });
+    answer.asked = this.askClock;
+    const kept = answer;
+    const id = this.nextAsk++;
+    // An answer to a question let go meanwhile is not kept.
+    this.pending.set(id, (value) => { if (this.answers.get(key) === kept) kept.value = value; });
+    this.send({ type: 'ask', id, ask });
+    return answer.value ?? null;
+  }
+
+  /** The zoning tool's proposed lots, planned in the worker on its copy of the region (`SimHost.lotPlan`): the diary sent first, so it plans the land as the page has it now; null when not now (no worker, a tile's network still read there). */
+  lotPlan(): Promise<LotPlan | null> {
+    if (!this.worker) return Promise.resolve(null);
+    this.sendChanges();
+    const id = this.nextAsk++;
+    return new Promise((done) => { this.pending.set(id, (value) => done((value as LotPlan | null) ?? null)); this.send({ type: 'lotPlan', id }); });
+  }
+
+  /** A question answered when the worker has (the green wave). */
+  ask(ask: SimAsk): Promise<unknown> {
+    const id = this.nextAsk++;
+    return new Promise((done) => { this.pending.set(id, done); this.send({ type: 'ask', id, ask }); });
+  }
+
+  segmentTraffic(id: SegmentId): TrafficCount | null {
+    return this.asked({ kind: 'segment', id }) as TrafficCount | null;
+  }
+
+  junction(node: NodeId): JunctionAnswer | null {
+    return this.asked({ kind: 'junction', node }) as JunctionAnswer | null;
+  }
+
+  /** The signalised junctions as the blows' posts read them (`world/signalPosts.ts`). */
+  readonly signalJunctions = { junctions: new Map<NodeId, { readonly signalised: boolean; readonly groups: SignalLayout['groups'] }>() };
+
+  readonly signals: SignalFeed = {
+    changesSince: (serial) => {
+      const now = this.signalBase + this.signalLog.length;
+      if (serial < this.signalAll || serial < this.signalBase || serial > now) return { serial: now, nodes: null };
+      return { serial: now, nodes: this.signalLog.slice(serial - this.signalBase) };
+    },
+    layout: (node) => this.layouts.get(node),
+    state: (node, group) => this.lights.get(node)?.states.get(group) ?? 'red',
+    stage: (node) => this.lights.get(node)?.stage ?? '',
+    nodes: () => this.layouts.keys(),
+  };
+
+  private send(message: ToSim): void {
+    this.worker?.postMessage(message);
+  }
+
+  /** What the worker's copy has been sent up to (`JournalReader`). */
+  get seenSerial(): number {
+    return this.seen;
+  }
+
+  private markSent(): void {
+    this.seen = this.doc.changes.version;
+    // DO NOT read the diary without following it: past 2 x KEPT entries of a kind it let them go, and the whole map was sent again each frame a city was laid out.
+    if (this.seenDoc !== this.doc) this.doc.changes.follow(this);
+    this.seenDoc = this.doc;
+    this.sentKeys = this.doc.lotStore.keys.slice();
+    this.lotKeysRewritten = this.doc.lotStore.keysRewritten;
+  }
+
+  /** The map's changes the worker's copy follows, since the last sent: by the records the diary names, or the whole map. */
+  private sendChanges(): void {
+    if (!this.worker) return;
+    const changes = this.doc.changes;
+    if (this.seenDoc !== this.doc) { this.load(); return; }
+    if (changes.version === this.seen) return;
+    const entries = changes.since(this.seen, FOLLOWED);
+    // The same map, its entries let go: DO NOT start the simulation over for it.
+    if (entries === null) { this.resync(); return; }
+    this.seen = changes.version;
+    if (!entries.length) return;
+    const named = new Map<RecordPart, Set<number>>();
+    const buildings = new Set<BuildingId>();
+    const values = new Set<ValuePart>();
+    let keys = false;
+    for (const e of entries) {
+      if (e.kind === 'buildings') {
+        // A change of buildings that does not say which: the worker's copy made whole again, its traffic kept.
+        if (!e.ids) { this.resync(); return; }
+        for (const id of e.ids) buildings.add(id as BuildingId);
+        continue;
+      }
+      const parts = RECORD_KINDS[e.kind as DocChangeKind];
+      if (parts) {
+        // A change of records that does not say which: the worker's copy made whole again, its traffic kept.
+        if (!e.ids) { this.resync(); return; }
+        for (const part of parts) {
+          let set = named.get(part);
+          if (!set) named.set(part, set = new Set());
+          for (const id of e.ids) set.add(id);
+        }
+      }
+      const value = VALUE_KINDS[e.kind as DocChangeKind];
+      if (value) values.add(value);
+      if (e.kind === 'lotKeys') keys = true;
+    }
+    const records: Restoration['records'][number][] = [];
+    // The worker's copy holds the active tiles only: a record standing in another tile is not sent (one gone is: harmless); a road sent brings its ends, and a node a held road ends on stays.
+    for (const part of ['segments', 'lots'] as const) {
+      for (const id of named.get(part) ?? []) {
+        const value = recordOf(this.doc, part, id);
+        records.push({ part, id, value });
+      }
+    }
+    for (const id of named.get('nodes') ?? []) {
+      records.push({ part: 'nodes', id, value: this.doc.nodes.get(id as NodeId) });
+    }
+    const buildingList = [...buildings];
+    const lists: Restoration['lists'][number][] = [];
+    if (keys) {
+      const store = this.doc.lotStore, all = store.keys;
+      // DO NOT send every key at each lot laid: the city's layout sent the whole list once per lot (O(lots²) copied).
+      const sent = this.sentKeys;
+      if (store.keysRewritten === this.lotKeysRewritten && all.length >= sent.length) {
+        // Only added at the end since: the new tail.
+        const items = all.slice(sent.length);
+        lists.push({ part: 'lotKeys', start: sent.length, remove: 0, items });
+        for (const key of items) sent.push(key);
+      } else lists.push(...this.keyChanges());
+      this.lotKeysRewritten = store.keysRewritten;
+    }
+    this.send({
+      type: 'delta', delta: { records, lists, values: [...values].map((part) => ({ part, value: this.doc.valueOf(part) })) },
+      buildings: buildingChangesOf(this.doc, buildingList),
+    });
+  }
+
+  /** The worker's keys brought to the store's: each stretch no longer there taken out (from the end, so the places before it hold), then the keys it lacks put at its end. */
+  private keyChanges(): Restoration['lists'][number][] {
+    const store = this.doc.lotStore, sent = this.sentKeys;
+    const out: Restoration['lists'][number][] = [];
+    for (let n = sent.length - 1; n >= 0; n--) {
+      if (store.hasKey(sent[n]!)) continue;
+      let m = n;
+      while (m > 0 && !store.hasKey(sent[m - 1]!)) m--;
+      out.push({ part: 'lotKeys', start: m, remove: n - m + 1, items: [] });
+      n = m;
+    }
+    const kept = sent.filter((key) => store.hasKey(key));
+    const held = new Set(kept);
+    const added = store.keys.filter((key) => !held.has(key));
+    if (added.length) out.push({ part: 'lotKeys', start: kept.length, remove: 0, items: added });
+    this.sentKeys = [...kept, ...added];
+    return out;
+  }
+
+  private receive(message: FromSim): void {
+    switch (message.type) {
+      case 'tick': this.readTick(message); return;
+      case 'acted': case 'answer': {
+        const done = this.pending.get(message.id);
+        this.pending.delete(message.id);
+        done?.(message.type === 'acted' ? message.result : message.answer);
+        return;
+      }
+      case 'ready': return;
+      // DO NOT stay silent: the frame asked of it never comes, and the city would stand still with no word.
+      case 'failed':
+        // Told once (each frame after may fail the same way), the last kept for the probes.
+        if (this.failure === null) console.error("[sim] the simulation's worker failed:", message.message);
+        this.failure = message.message;
+        this.inFlight = false;
+        return;
+    }
+  }
+
+  /** The frame the worker wrote: read from its slot (marked as being read), its rich parts from the message. */
+  private readTick(message: Extract<FromSim, { type: 'tick' }>): void {
+    this.inFlight = false;
+    const slot = Atomics.load(this.control, C.latest);
+    Atomics.store(this.control, C.reading, slot);
+    const data = this.data, h = headBase(slot);
+    this.time = data[h + H.time]!;
+    this.minutes = data[h + H.minutes]!;
+    this.alpha = data[h + H.alpha]!;
+    this.lastSteps = data[h + H.steps]!;
+    this.lastStepMs = data[h + H.stepMs]!;
+    // What the vehicles carry, told for those whose changed: no map made a tick none did.
+    // DO NOT make a map a tick: the tick's own, emptied and filled.
+    const rich = message.vehicles.length ? fillMap(this.vehicleRich, message.vehicles) : null;
+    // This tick's stamp (`tick` once read): a view not stamped by it was not in it (DO NOT gather the tick's ids in a set to find them).
+    const stamp = this.tick + 1;
+    // The cars parked in bays, as told: come, gone, or every one standing, each applied by its id (DO NOT clear them all and make every view again).
+    if (message.meso) this.keepMeso(message.meso);
+    if (message.parked) this.applyParked(message.parked, stamp);
+    else {
+      // The parked cars that moved last tick and not this one stand where they stopped: DO NOT walk every parked car for them.
+      for (const view of this.settling) {
+        const f = view.free;
+        if (f && (f.px !== f.x || f.py !== f.y)) { f.px = f.x; f.py = f.y; f.pangle = f.angle; setFrames(view.frames, f.x, f.y, f.angle, f.x, f.y, f.angle); this.parkedGrid.touch(view); }
+      }
+      this.settling.clear();
+    }
+    const n = data[h + H.vehicles]!;
+    const vb = vehicleBase(slot);
+    this.traffic.length = 0;
+    let read = 0;
+    let speed = 0, queued = 0, slack = 0;
+    for (let k = 0; k < n; k++) {
+      const at = vb + k * VEHICLE_STRIDE;
+      const id = data[at + V.id]!;
+      const parked = data[at + V.free] === 2;
+      let view = parked ? this.parkedById.get(id) : this.vehicles.get(id);
+      const fresh = !view;
+      if (!view) {
+        view = newView(id);
+        if (parked) this.addParked(view); else this.vehicles.set(id, view);
+      }
+      const r = rich?.get(id);
+      if (r) {
+        view.archetype = archetypeById(r.archetype);
+        view.color = r.color;
+        view.doors = r.doors;
+        view.kerbStop = r.kerbStop;
+        view.people = r.people;
+        view.peopleAge = r.peopleAge;
+      }
+      const f = view.frames;
+      const wasX = f.x, wasY = f.y, wasAngle = f.angle, wasBx = f.bx, wasBy = f.by, wasBangle = f.bangle, wasSlain = view.slain, wasSeats = view.seats;
+      setFrames(f, data[at + V.bx]!, data[at + V.by]!, data[at + V.bangle]!, data[at + V.x]!, data[at + V.y]!, data[at + V.angle]!);
+      f.yawBefore = data[at + V.yawBefore]!; f.yawNow = data[at + V.yawNow]!; f.jump = data[at + V.jump] === 1;
+      const lot = data[at + V.lot]!;
+      if (data[at + V.free]! > 0) setFree(view, f.bx, f.by, f.bangle, f.x, f.y, f.angle, lot < 0 ? null : lot);
+      else view.free = null;
+      view.v = data[at + V.v]!; view.prev.v = data[at + V.prevV]!; view.age = data[at + V.age]!;
+      const segment = data[at + V.segment]!, inSegment = data[at + V.inSegment]!;
+      view.segment = segment < 0 ? undefined : segment as SegmentId;
+      view.inSegment = inSegment < 0 ? undefined : inSegment as SegmentId;
+      view.indicator = data[at + V.indicator]! as -1 | 0 | 1;
+      view.curvature = data[at + V.curvature]!;
+      view.odometer = data[at + V.odometer]!;
+      view.seats = data[at + V.seats]!;
+      view.slain = data[at + V.slain] === 1;
+      if (parked) {
+        // Filed again only when it came, moved or changed its look: DO NOT move its cell's version for a car standing as it stood - the
+        // agents' kept parked cells are made again whenever it moves (`agents.ts` cellRecord.version), every tick for every such car.
+        if (fresh || r || f.x !== wasX || f.y !== wasY || f.angle !== wasAngle || f.bx !== wasBx || f.by !== wasBy || f.bangle !== wasBangle || view.slain !== wasSlain || view.seats !== wasSeats) this.parkedGrid.place(view);
+        if (f.bx !== f.x || f.by !== f.y) this.settling.add(view);
+        continue;
+      }
+      this.traffic.push(view);
+      if (view.tickRead !== stamp) { view.tickRead = stamp; read++; }
+      this.trafficGrid.place(view);
+      const step = f.jump ? 0 : Math.max(Math.abs(f.x - f.bx), Math.abs(f.y - f.by));
+      if (step > slack) slack = step;
+      speed += view.v;
+      if (view.v < 0.5) queued++;
+    }
+    // Every traffic view read this tick: none gone, and none walked to find out.
+    if (read !== this.vehicles.size) {
+      for (const [id, view] of this.vehicles) if (view.tickRead !== stamp) { this.vehicles.delete(id); this.trafficGrid.remove(view); this.onVehicleGone?.(view); }
+    }
+    this.trafficSpeed = speed;
+    this.trafficQueued = queued;
+    this.trafficSlack = slack;
+    // The parked cars between two poses are the moved ones, still settling.
+    let parkedSlack = 0;
+    for (const view of this.settling) {
+      const fr = view.frames;
+      if (!fr.jump) parkedSlack = Math.max(parkedSlack, Math.abs(fr.x - fr.bx), Math.abs(fr.y - fr.by));
+    }
+    this.parkedSlack = parkedSlack;
+    // The people: their numbers from the slot, what they carry from the message (kept from the last time it changed).
+    const pedRich = message.peds.length ? fillMap(this.pedRich, message.peds) : null;
+    const m = data[h + H.peds]!;
+    const pb = pedBase(slot);
+    this.pedViews.length = 0;
+    let pedRead = 0;
+    for (let k = 0; k < m; k++) {
+      const at = pb + k * PED_STRIDE;
+      const id = data[at + P.id]!;
+      const r = pedRich?.get(id);
+      let view = this.pedById.get(id);
+      if (!view) {
+        if (!r) continue;
+        // The first view of a walker: its carried look and the numbers below, made once (DO NOT copy it again a tick).
+        view = { ...r, id, x: 0, y: 0, heading: 0, prev: { x: 0, y: 0, heading: 0 }, v: 0, turnV: 0, age: 0, segment: undefined, walking: false, kerbWait: 0, rank: 0, tickRead: -1 } as PedRead;
+        this.pedById.set(id, view);
+      } else if (r) {
+        // What a walker carries changed: written into the view it already has (MDN `Object.assign`), not into a new object a tick.
+        Object.assign(view, r);
+      }
+      const w = view as { -readonly [K in keyof PedView]: PedView[K] };
+      w.x = data[at + P.x]!; w.y = data[at + P.y]!; w.heading = data[at + P.heading]!;
+      const prev = view.prev as { x: number; y: number; heading: number };
+      prev.x = data[at + P.px]!; prev.y = data[at + P.py]!; prev.heading = data[at + P.pheading]!;
+      w.v = data[at + P.v]!; w.turnV = data[at + P.turnV]!; w.age = data[at + P.age]!;
+      const segment = data[at + P.segment]!;
+      w.segment = segment < 0 ? undefined : segment as SegmentId;
+      w.walking = data[at + P.walking] === 1; w.kerbWait = data[at + P.kerbWait]!; w.rank = data[at + P.rank]!;
+      // A gesture is told once, when it starts: its clock (`t`) kept here from the age it started at (DO NOT have it told each tick for its clock).
+      const gesture = view.gesture;
+      if (gesture) {
+        let from = this.gestureFrom.get(gesture);
+        if (from === undefined) this.gestureFrom.set(gesture, from = w.age - gesture.t);
+        gesture.t = w.age - from;
+      }
+      this.pedViews.push(view);
+      if (view.tickRead !== stamp) { view.tickRead = stamp; pedRead++; }
+    }
+    if (pedRead !== this.pedById.size) for (const [id, view] of this.pedById) if (view.tickRead !== stamp) this.pedById.delete(id);
+    Atomics.store(this.control, C.reading, -1);
+    this.trains = message.trains;
+    this.tick++;
+    if (message.wounds.length) this.wounds.push(...message.wounds);
+    if (message.casualties.length) this.casualtyList.push(...message.casualties);
+    this.stats = message.stats;
+    if (message.stats.issues.length) this.issues.push(...message.stats.issues);
+    if (this.issues.length > 512) this.issues.splice(0, this.issues.length - 512);
+    if (message.layout) {
+      if (message.layout.all) { this.layouts.clear(); this.lights.clear(); this.signalJunctions.junctions.clear(); }
+      for (const l of message.layout.junctions) {
+        if (l.groups.length) { this.layouts.set(l.node, l); this.signalJunctions.junctions.set(l.node, { signalised: true, groups: l.groups }); }
+        else { this.layouts.delete(l.node); this.lights.delete(l.node); this.signalJunctions.junctions.delete(l.node); }
+        this.signalLog.push(l.node);
+      }
+      // Every junction told again: a reader of before places them all again (`changesSince` null).
+      if (message.layout.all) this.signalAll = this.signalBase + this.signalLog.length;
+      if (this.signalLog.length > 4096) { this.signalBase += this.signalLog.length; this.signalLog.length = 0; this.signalAll = this.signalBase; }
+    }
+    for (const s of message.signals) {
+      // A junction's lights written into the map it has (DO NOT make one a junction a tick).
+      const lit = this.lights.get(s.node);
+      if (lit) { lit.stage = s.stage; fillMap(lit.states, s.states); } else this.lights.set(s.node, { stage: s.stage, states: new Map(s.states) });
+    }
+    this.onTick?.();
+  }
+
+  /** The parked cars' numbers (`PK`) applied by id: a known view written in place, a new one made, a gone one let go; with `whole`, those not named let go too. */
+  private applyParked(told: ParkedChanges, stamp: number): void {
+    const cars = told.cars;
+    for (let at = 0; at < cars.length; at += PARKED_STRIDE) {
+      const id = cars[at + PK.id]!;
+      const known = this.parkedById.get(id);
+      if (cars[at + PK.gone] === 1) { if (known) this.dropParked(known); continue; }
+      const view = known ?? newView(id);
+      view.archetype = ARCHETYPES[cars[at + PK.archetype]!] ?? archetypeById('');
+      view.color = this.colourOf(cars[at + PK.color]!);
+      const x = cars[at + PK.x]!, y = cars[at + PK.y]!, angle = cars[at + PK.angle]!, lot = cars[at + PK.lot]!;
+      setFree(view, x, y, angle, x, y, angle, lot < 0 ? null : lot);
+      view.v = 0; view.prev.v = 0; view.seats = 0;
+      setFrames(view.frames, x, y, angle, x, y, angle);
+      view.tickRead = stamp;
+      if (!known) this.addParked(view);
+      this.parkedGrid.place(view);
+    }
+    if (!told.whole) return;
+    // Every car standing was named: those not stamped by this tick are gone (one pass over the list, only when the log was let go).
+    for (let k = this.parked.length - 1; k >= 0; k--) {
+      const view = this.parked[k]!;
+      if (view.tickRead !== stamp) this.dropParked(view);
+    }
+  }
+
+  private clearViews(): void {
+    const gone = this.onVehicleGone;
+    if (gone) for (const view of this.vehicles.values()) gone(view);
+    this.vehicles.clear();
+    this.traffic.length = 0;
+    this.trafficGrid.clear();
+    this.trafficSlack = 0;
+    this.trafficSpeed = 0;
+    this.trafficQueued = 0;
+    this.clearParked();
+    this.pedViews.length = 0;
+    this.pedById.clear();
+    this.layouts.clear();
+    this.lights.clear();
+    this.signalJunctions.junctions.clear();
+    // Past every serial a reader of the map before holds (one more than the log's end): DO NOT let it read "nothing changed" (`changesSince` []) - the old map's heads stood on a new empty one; it places every junction again (null).
+    this.signalBase += this.signalLog.length + 1;
+    this.signalLog.length = 0;
+    this.signalAll = this.signalBase;
+  }
+}
+
+/** A map emptied and filled with the pairs. */
+function fillMap<K, V>(map: Map<K, V>, pairs: readonly (readonly [K, V])[]): Map<K, V> {
+  map.clear();
+  for (const [k, v] of pairs) map.set(k, v);
+  return map;
+}
+
+/** The client's own caches: a gesture's clock origin, and a colour as the worker numbers it (0xrrggbb) as its palette writes it. */
+// Kept by the client, not loose in the module (`eslint-rules/no-module-state.js`).
+function colourString(n: number): string {
+  return `#${n.toString(16).padStart(6, '0')}`;
+}
+
+function newView(id: number): VehicleView {
+  return {
+    id, archetype: archetypeById('car'), color: '#888888', doors: [], kerbStop: null, people: [], peopleAge: [], seats: 0, slain: false, age: 0, v: 0, prev: { v: 0 },
+    free: null, frames: { bx: 0, by: 0, bangle: 0, x: 0, y: 0, angle: 0, yawBefore: 0, yawNow: 0, jump: false },
+    segment: undefined, inSegment: undefined, indicator: 0, curvature: 0, odometer: 0, tickRead: -1,
+  };
+}
+
+/** A view off the road: its two poses and its lot, into the pose it already has (DO NOT make one a vehicle a tick). */
+function setFree(view: VehicleView, px: number, py: number, pangle: number, x: number, y: number, angle: number, lot: number | null): void {
+  const free = view.free ?? (view.free = { px, py, pangle, x, y, angle, lot });
+  free.px = px; free.py = py; free.pangle = pangle; free.x = x; free.y = y; free.angle = angle; free.lot = lot;
+}
+
+function setFrames(f: VehicleFrames, bx: number, by: number, bangle: number, x: number, y: number, angle: number): void {
+  f.bx = bx; f.by = by; f.bangle = bangle; f.x = x; f.y = y; f.angle = angle; f.yawBefore = 0; f.yawNow = 0; f.jump = false;
+}
+
+/** A record of the map by its part, for the worker's copy (never a building's: `buildingChangesOf`). */
+function recordOf(doc: RoadDoc, part: RecordPart, id: number): unknown {
+  switch (part) {
+    case 'nodes': return doc.nodes.get(id as NodeId);
+    case 'segments': return doc.segments.get(id as SegmentId);
+    case 'lots': return doc.lotStore.get(id);
+    default: return undefined;
+  }
+}
+
+===== ARQUIVO: src/job.worker.ts (94 linhas) =====
+import { isStoreSetup, takeStoreSetup } from '@editor/workerParts';
+import type { AdoptLane, CloseLane, FromJob, JobScope, JobService, ToJob } from './jobs/jobScope';
+
+/** ONE WORKER OF THE JOB SYSTEM (`jobs/jobPool.ts`): at the root with the other entries, since it puts every service together: every service's ports in it, each service's module loaded on its first message */
+
+type Serve = (scope: JobScope) => void;
+
+const LOADERS: Readonly<Record<JobService, () => Promise<{ serve: Serve }>>> = {
+  growth: () => import('./growth.worker'),
+  bays: () => import('./bays.worker'),
+  conflicts: () => import('./conflictTable.worker'),
+  cells: () => import('./render/buildings/cell.worker'),
+  fracture: () => import('./render/buildings/fracture.worker'),
+  citizenBake: () => import('./render/citizenBake.worker'),
+  ecology: () => import('./render/ecology.worker'),
+  flatGround: () => import('./render/flatGround.worker'),
+  groundShape: () => import('./render/groundShape.worker'),
+  garmentPadding: () => import('./render/people/garmentPadding.worker'),
+  peopleLod: () => import('./render/people/lodWorker'),
+  roadTiles: () => import('./render/roadTile.worker'),
+  // The road blocks' far levels (`roadTilePool.ts` coarsen): the same worker, on the page's own workers.
+  roadCoarse: () => import('./render/roadTile.worker'),
+  roadStations: () => import('./render/roadStations.worker'),
+  // The whole network's far roads at a large city's opening (`render/networkFarRoads.ts`).
+  roadFar: () => import('./render/networkFarRoads.worker'),
+  // The whole finite city built with the game's own generator, off the page (`cityGen.worker.ts`).
+  cityGen: () => import('./cityGen.worker'),
+  // A city's network solved while its curtain is up, taken by the page's build (`networkBake.worker.ts`).
+  networkBake: () => import('./networkBake.worker'),
+  terrainLight: () => import('./render/terrainLight.worker'),
+  // A dab's work on a plate: its levels, its woods, its shore (`render/landStroke.ts`).
+  landStroke: () => import('./render/landStroke.worker'),
+  derivedWriter: () => import('./render/derivedWriter.worker'),
+  save: () => import('./editor/save.worker'),
+};
+
+const host = self as unknown as { onmessage: ((e: MessageEvent<ToJob | AdoptLane | CloseLane>) => void) | null; postMessage(message: FromJob, transfer?: Transferable[]): void };
+
+/** A lane another thread holds the other end of (`jobPool.ts` jobChannel): its service served on the port; a service that cannot load says so on it (`laneFailed`: the pool falls back). */
+function adopt({ adopt: service, port }: AdoptLane): void {
+  const waiting: MessageEvent[] = [];
+  let scope: JobScope | null = null;
+  port.onmessage = (event) => { if (scope) scope.onmessage?.(event); else waiting.push(event); };
+  void LOADERS[service]().then(({ serve }) => {
+    const made: JobScope = { onmessage: null, postMessage: (data, transfer) => port.postMessage(data, transfer ?? []) };
+    serve(made);
+    scope = made;
+    for (const event of waiting.splice(0)) made.onmessage?.(event);
+  }, (error: unknown) => {
+    console.error(`[jobs] the ${service} lane could not load`, error);
+    port.postMessage({ laneFailed: String(error) });
+  });
+}
+/** A port's scope once its service is loaded; the messages that came before, in order; the queued job it is on (`seq`); why its service never loaded. */
+interface Port { scope: JobScope | null; readonly waiting: MessageEvent[]; seq: number | undefined; failed: string | null }
+const ports = new Map<number, Port>();
+/** How many ports this worker holds an entry for (the tests: a lane let go leaves none). */
+export const openPorts = (): number => ports.size;
+
+/** A port's answer, with the queued job it is for: a queue port runs one job at a time (`jobPool.ts` `submitJob`). */
+const answer = (port: number, entry: Port, message: { readonly data?: unknown; readonly error?: string }, transfer: Transferable[] = []): void =>
+  host.postMessage({ port, ...message, ...(entry.seq !== undefined ? { seq: entry.seq } : {}) }, transfer);
+
+host.onmessage = (event) => {
+  // Where this worker's store is, said by the page before any job (`jobPool.ts` `setJobWorkerSetup`, the desktop's saves).
+  if (isStoreSetup(event.data)) { takeStoreSetup(event.data); return; }
+  if ('adopt' in event.data) { adopt(event.data); return; }
+  // DO NOT keep a lane's entry after the page let it go: the tile lanes set aside are made and let go again and again (`tileGenerator.ts`).
+  if ('close' in event.data) { ports.delete(event.data.close); return; }
+  const { port, service, data, seq } = event.data;
+  let entry = ports.get(port);
+  const message = new MessageEvent('message', { data });
+  if (entry) {
+    entry.seq = seq;
+    // DO NOT hold a queued job behind a service that never loaded: the pool would wait for its answer for ever.
+    if (entry.failed !== null) { answer(port, entry, { error: entry.failed }); return; }
+    if (entry.scope) { entry.scope.onmessage?.(message); return; }
+    entry.waiting.push(message);
+    return;
+  }
+  entry = { scope: null, waiting: [message], seq, failed: null };
+  ports.set(port, entry);
+  const made = entry;
+  void LOADERS[service]().then(({ serve }) => {
+    const scope: JobScope = { onmessage: null, postMessage: (data, transfer) => answer(port, made, { data }, transfer ?? []) };
+    serve(scope);
+    made.scope = scope;
+    for (const waiting of made.waiting.splice(0)) scope.onmessage?.(waiting);
+  }, (error: unknown) => {
+    made.failed = String(error);
+    made.waiting.length = 0;
+    answer(port, made, { error: made.failed });
+  });
+};
+
+===== ARQUIVO: src/jobs/jobPool.ts (693 linhas) =====
+import { WEAK_MACHINE } from '@core/weakMachine';
+import type { AdoptLane, CloseLane, FromJob, JobService, ToJob } from './jobScope';
+
+/** THE JOB SYSTEM: one pool of workers (hardwareConcurrency - 2, within the machine's memory) for every kind of work off the page, in place of a pool per kind */
+/** DO NOT make every worker at the start nor give a kind's job to any free worker: each worker is a whole JS heap with the code and state of every service it ran, so 22 of them each running every service took the page's process past 6 GB on a 3 x 3 tile region (2026-10-16, Chrome memory-infra: 2.8 GB of V8 in the workers, out of memory at 8 GB) - workers are made as work waits, and a kind's jobs go first to the workers that already run it */
+
+/** DO NOT size the pool by the machine alone: the page and every worker of its process share ONE V8 heap cage of 4 GB (pointer compression's shared cage, V8 9.2; the V8 sandbox needs it), and a streamed opening died "out of memory" with 3.4 GB of V8 across 24 workers (2026-10-16) - the pool takes a fifth of it, at a busy worker's V8 heap and young generation (~170 MB). */
+const CAGE_BYTES = 4 * 2 ** 30;
+/** Two fifths of the cage for the pool (2026-10-16: the worker that took it down was a Clipper2 union that never ended, fixed in `scripts/patches`; a busy worker holds 100-250 MB): 9 workers at most by the cage, the page's heap and the simulation's keep the rest. */
+const POOL_CAGE_SHARE = 2 / 5;
+/** In a browser every worker is a thread of the page's process, in the page's cage: a fifth of it, 4 workers. DO NOT give it two fifths there: the page alone runs to 2.7 GB of V8 between its collections on the 10 km city (969 MB live after one), and with 9 workers beside it the cage ran out and Chrome killed the page whenever the camera drew back (2026-10-18). */
+const PAGE_POOL_CAGE_SHARE = 1 / 5;
+const WORKER_HEAP_BYTES = 170 * 2 ** 20;
+
+/** Services whose one job runs for seconds: kept on workers of their own, never beside another kind's lane or a queued job (a streamed tile is 2-25 s, `cityTile.worker.ts`: the traffic's conflict pairs waited behind tile after tile and the city's clock stood still). */
+const LONG_RUNNING: readonly JobService[] = ['growth', 'cityGen', 'networkBake'];
+
+/** Services whose worker no queued job runs on (where another worker can take it), all on one worker (never one each: the short side has two, the V8 cage's count, `jobWorkers`): the save's writes are a few short awaits, and each waited for the job running on its worker - under load a write took past a reload, the edit lost (conf15, conf22). */
+const KEPT_CLEAR: readonly JobService[] = ['save'];
+/** Lanes whose messages hold all they read (no shared buffer the job keeps reading: `roadTilePool.ts` hands each share its roads, the ground asked back by `need`), served on the desktop by the long workers of the job processes, outside the page's cage. DO NOT keep the road tiles to the page's short workers there: the lanes were `laneWorkers` of them, ONE on the desktop, and a large city's opening waited 5.6 s on that one worker for its road surfaces while six job processes stood idle (2026-10-21). */
+const PROCESS_LANES: readonly JobService[] = ['roadTiles'];
+/** Whether `service`'s lanes go to the job processes' workers (`PROCESS_LANES`): on the desktop, with a long side of more than one. */
+const inProcesses = (service: JobService): boolean => PROCESS_LANES.includes(service) && system.makeWorker !== null && longWorkers() > 1;
+const keptClear = (host: Host): boolean => KEPT_CLEAR.some((service) => host.services.has(service));
+/** How many kinds a worker hosts lanes of besides the kept-clear ones. */
+const otherKinds = (host: Host): number => { let n = 0; for (const service of host.services.keys()) if (!KEPT_CLEAR.includes(service)) n++; return n; };
+
+/** Workers set apart for the long-running services: the pool less two kept for every other kind, one at least (the desktop's, in job processes outside the page's cage).
+ *  In a browser one: the long-running services have one lane (`growthPool.ts`), and a second long worker of the page's four took no lane, while the traffic's, the roads' and the ground's lanes and the save were crowded on the other two, the save waiting behind a batch of conflicts or bays (JOB-02). */
+export function longWorkers(): number {
+  const n = jobWorkers();
+  if (!system.makeWorker) return 1;
+  return n >= 3 ? n - 2 : 1;
+}
+
+/** Workers for every other kind (the traffic's lanes, the cells, the far levels, the roads, the ground): the rest of the pool, one at least. */
+export const shortWorkers = (): number => Math.max(1, jobWorkers() - longWorkers());
+
+/** A job of the central queue (Cidade's job pool, `submit`): its message written when a worker takes it, answered once. */
+interface JobSpec {
+  readonly service: JobService;
+  /** A newer job with the same key replaces this one: never sent if still waiting, its answer dropped if begun. */
+  readonly key: string | null;
+  /** Lower first: the job's distance to the eye (`focusDistance`), in metres, or below it for what must come first; with `at`, its band (what comes before the distance, the same for a kind of job). */
+  readonly priority: number;
+  /** Where on the map the job's work stands: its rank is `priority` plus its distance to where the view looks NOW, re-ranked as the view moves (`setJobFocus`), not where it looked when the job was asked. */
+  readonly at?: readonly [number, number];
+  /** The message, written only when a worker takes the job (a job waiting its turn holds no copy of it); `to`, the worker taking it. */
+  readonly write: (to: JobTaker) => { readonly data: unknown; readonly transfer: Transferable[] };
+  /** Fit for a worker in a desktop job process (`processWorker.ts`): its message holds only what the job reads (`cellPool.ts` the ground's plates around it), copied there. Without it the job waits for the page's own workers. */
+  readonly crosses?: boolean;
+  readonly done: (answer: unknown) => void;
+  /** Its worker failed, or none can run it: the asker does it another way. */
+  readonly failed: (message: string) => void;
+}
+
+/** The worker a job's message is written for: whether it shares the page's memory (a worker of the page), or every shared buffer of the message is copied to it (a desktop job process's, `processWorker.ts` unshared). */
+export interface JobTaker { readonly sharesMemory: boolean }
+
+/** A job of the queue as its asker holds it. */
+export interface JobTicket {
+  /** Not wanted any more: never sent if waiting, its answer dropped if begun. */
+  cancel(): void;
+  /** Waiting or running, not answered, cancelled nor replaced. */
+  readonly pending: boolean;
+}
+
+/** A job in the queue: waiting, running on a worker, or over (answered, cancelled or replaced by a newer one of its key). */
+interface Queued { readonly seq: number; readonly spec: JobSpec; state: 'waiting' | 'running' | 'over'; rank: number }
+
+/** A job's place in the queue now: its band and its distance to the view's focus (`JobSpec.at`), or its priority alone. */
+const rankOf = (spec: JobSpec): number => (spec.at ? spec.priority + focusDistance(spec.at[0], spec.at[1]) : spec.priority);
+
+/** ONE PRIORITY QUEUE FOR EVERY WORKER: a binary min-heap by (priority, order asked); a job replaced or cancelled is left in it and skipped when popped */
+class JobQueue {
+  private readonly heap: Queued[] = [];
+  /** Each key's newest job, while it is not over. */
+  private readonly newest = new Map<string, Queued>();
+  private seq = 0;
+  private count = 0;
+
+  /** Jobs waiting for a worker. */
+  get waiting(): number {
+    return this.count;
+  }
+
+  /** Jobs ever asked of the queue (read only: the debugging lab). */
+  get submitted(): number {
+    return this.seq;
+  }
+
+  submit(spec: JobSpec): Queued {
+    const job: Queued = { seq: ++this.seq, spec, state: 'waiting', rank: rankOf(spec) };
+    if (spec.key !== null) {
+      const older = this.newest.get(spec.key);
+      if (older) this.end(older);
+      this.newest.set(spec.key, job);
+    }
+    this.count++;
+    this.push(job);
+    // DO NOT let the jobs over (replaced or cancelled) pile up in the heap: they are left in it and skipped when popped, and a camera moving replaces thousands a second (the far nodes and the cells asked again under their keys), each dispatch popping them one by one (500 ms of a 16 s drag, 2026-10-16); compacted once they outnumber the waiting.
+    if (this.heap.length > this.count * 2 + 64) this.compact();
+    return job;
+  }
+
+  /** Every waiting job placed by where the view looks now (`setJobFocus`), the heap made again. */
+  rerank(): void {
+    for (const job of this.heap) if (job.state === 'waiting') job.rank = rankOf(job.spec);
+    this.compact();
+  }
+
+  /** The heap made again of the waiting jobs alone (Floyd's build-heap, O(n)). */
+  private compact(): void {
+    const a = this.heap;
+    let n = 0;
+    for (const job of a) if (job.state === 'waiting') a[n++] = job;
+    a.length = n;
+    for (let i = (n >> 1) - 1; i >= 0; i--) this.sink(i);
+  }
+
+  /** The waiting job that would run next, left waiting; null when none waits. */
+  peek(): Queued | null {
+    while (this.heap.length > 0 && this.heap[0]!.state !== 'waiting') this.pop();
+    return this.heap[0] ?? null;
+  }
+
+  /** The waiting job to run next, marked running; null when none waits. */
+  take(): Queued | null {
+    for (let job = this.pop(); job; job = this.pop()) {
+      if (job.state !== 'waiting') continue;
+      this.count--;
+      job.state = 'running';
+      return job;
+    }
+    return null;
+  }
+
+  cancel(job: Queued): void {
+    this.end(job);
+  }
+
+  /** A running job's answer, handed to its asker if it is still wanted. */
+  answer(job: Queued, data: unknown): void {
+    if (this.end(job) === 'running') job.spec.done(data);
+  }
+
+  /** A running job that failed, said to its asker if it is still wanted. */
+  fail(job: Queued, message: string): void {
+    if (this.end(job) === 'running') job.spec.failed(message);
+  }
+
+  /** Every waiting job failed: no worker can run them. */
+  failAll(message: string): void {
+    for (let job = this.take(); job; job = this.take()) this.fail(job, message);
+  }
+
+  /** The job over; what it was. */
+  private end(job: Queued): Queued['state'] {
+    const was = job.state;
+    if (was === 'waiting') this.count--;
+    job.state = 'over';
+    if (job.spec.key !== null && this.newest.get(job.spec.key) === job) this.newest.delete(job.spec.key);
+    return was;
+  }
+
+  private less(a: Queued, b: Queued): boolean {
+    return a.rank < b.rank || (a.rank === b.rank && a.seq < b.seq);
+  }
+
+  private push(job: Queued): void {
+    const a = this.heap;
+    a.push(job);
+    let i = a.length - 1;
+    while (i > 0) {
+      const up = (i - 1) >> 1;
+      if (!this.less(a[i]!, a[up]!)) break;
+      [a[i], a[up]] = [a[up]!, a[i]!];
+      i = up;
+    }
+  }
+
+  private pop(): Queued | undefined {
+    const a = this.heap;
+    const top = a[0];
+    const last = a.pop();
+    if (top === undefined || last === undefined || a.length === 0) return top;
+    a[0] = last;
+    this.sink(0);
+    return top;
+  }
+
+  /** The job at `i` moved down until both children are after it. */
+  private sink(i: number): void {
+    const a = this.heap;
+    for (;;) {
+      const l = i * 2 + 1, r = l + 1;
+      let m = i;
+      if (l < a.length && this.less(a[l]!, a[m]!)) m = l;
+      if (r < a.length && this.less(a[r]!, a[m]!)) m = r;
+      if (m === i) return;
+      [a[i], a[m]] = [a[m]!, a[i]!];
+      i = m;
+    }
+  }
+}
+
+/** A worker of the pool: the lanes it hosts (`place`), its port per service for queued jobs, the queued job it runs, whether it failed. */
+interface Host {
+  readonly worker: Worker;
+  /** A worker of the long-running services (`longWorkers`) or of every other kind: never both. */
+  readonly long: boolean;
+  /** A thread of the page's own process, in the page's V8 cage (`pageRoomWorkers`); not a desktop job process's. */
+  readonly inPage: boolean;
+  /** Since when it has had nothing on it (`idle`), NaN while it has. */
+  freeSince: number;
+  ports: number;
+  readonly services: Map<JobService, number>;
+  readonly queuePorts: Map<JobService, number>;
+  job: Queued | null;
+  failed: boolean;
+  /** Messages its lanes posted and not yet answered (`JobPort`): a queued job sent there waits behind them. */
+  laneWork: number;
+  /** Of `laneWork`, those of a lane that goes first (`laneFirst`): no queued job is given the worker while it has any. */
+  firstWork: number;
+  /** Told when it fails: the lanes it serves for another thread (`jobChannel`), whose ports say nothing of it. */
+  readonly channelLost: (() => void)[];
+}
+
+/** The pool of this thread: its workers (made as work waits, `grow`), its lanes by port, its queue and the point the view looks at. */
+class JobSystem {
+  readonly workers: Host[] = [];
+  readonly ports = new Map<number, JobPort>();
+  nextPort = 1;
+  readonly queue = new JobQueue();
+  /** The services whose lanes go first (`laneFirst`): their workers are given no queued job while a message of theirs is in flight (`hostFor`). */
+  readonly firstLanes = new Set<JobService>();
+  focusX = 0;
+  focusY = 0;
+  /** Where the waiting jobs were last ranked from (`setJobFocus`). */
+  rankedX = 0;
+  rankedY = 0;
+  /** What each worker is told when it is made, before any job (`setJobWorkerSetup`). */
+  setup: ((worker: Worker) => void) | null = null;
+  /** Where a worker of a side is made instead of a page's Worker (`setJobWorkerMaker`: the desktop's utility process for the long side); null: the page's. */
+  makeWorker: ((long: boolean) => Worker | null) | null = null;
+  /** Tiles of the map waiting for the long side's lanes (`tilesWaiting`): its workers take no queued job meanwhile. */
+  tilesWaiting = false;
+}
+const system = new JobSystem();
+
+/** Where the pool's workers are made, by side (`long`: tiles and growth); null from it: the page's own Worker. On the desktop the long side goes to a utility process outside the renderer's V8 cage (`jobs/processWorker.ts`), whose `terminate` ends that thread; the short side stays the page's own. */
+export function setJobWorkerMaker(make: ((long: boolean) => Worker | null) | null): void {
+  system.makeWorker = make;
+}
+
+/** Told to every worker of the pool, those made and those to come, before its first job: on the desktop, the port it reads and writes the tiles through (`editor/workerParts.ts`). */
+export function setJobWorkerSetup(setup: (worker: Worker) => void): void {
+  system.setup = setup;
+  for (const host of system.workers) setup(host.worker);
+}
+
+/** The most workers the pool holds: the cores less the page's and the simulation's (the city-game's pool), within the V8 cage the page and its workers share (at least one). DO NOT size it by `navigator.deviceMemory`: the browser tells 8 GB at most, 32 GB included, and a 24-thread machine made the map's 100 tiles on 2 workers (2026-10-16). */
+export function jobWorkers(): number {
+  // A weaker machine played on this one (`core/weakMachine.ts`): its threads.
+  const cores = WEAK_MACHINE.threads ?? ((typeof navigator !== 'undefined' ? navigator.hardwareConcurrency : 0) || 2);
+  // Inside the simulation's worker (no document): its own few, for the lots' bays and the junctions' pairs.
+  if (typeof document === 'undefined') return Math.max(1, Math.min(2, cores - 2));
+  const share = system.makeWorker ? POOL_CAGE_SHARE : PAGE_POOL_CAGE_SHARE;
+  const byCage = Math.floor((CAGE_BYTES * share) / WORKER_HEAP_BYTES);
+  return Math.max(1, Math.min(cores - 2, byCage));
+}
+
+/** A worker of the page's own process at its busiest, measured (CDP `Runtime.getHeapUsage` on the 10 km city's generation, 2026-10-18): a tile worker held 450-650 MB of V8 heap, not the ~170 MB `WORKER_HEAP_BYTES` counts. */
+const PAGE_WORKER_PEAK_BYTES = 600 * 2 ** 20;
+/** Of the cage, what the page keeps clear of its own heap and its workers' (the simulation's worker, the thread stacks, the next collection's room). */
+const CAGE_KEPT_BYTES = 600 * 2 ** 20;
+/** How many workers the page's process holds now, by the room its cage has (in a browser every worker is a thread of the page's process): the page's heap as V8 holds it now (`performance.memory.totalJSHeapSize`), each worker at its peak. DO NOT count on the page staying small: with a city open the page's heap ran to 2.7 GB between its collections, and the tile workers made on top of it took the cage past 4 GB - Chrome killed the page (2026-10-18). Two at least (one each side, or no tile is ever made); the next is made only if it fits, and one made while the page was small is let go once idle when the page has grown past room for it (`retireIdle`). */
+function pageRoomWorkers(): number {
+  const page = (performance as { memory?: { totalJSHeapSize: number } }).memory?.totalJSHeapSize;
+  if (page === undefined) return Infinity;
+  return Math.max(2, Math.floor((CAGE_BYTES - CAGE_KEPT_BYTES - page) / PAGE_WORKER_PEAK_BYTES));
+}
+
+/** How many lanes a kind of work may have: never more than the workers its side has (a lane per worker, `jobPort`; the long-running services' are `tileLanes`). */
+/** `service`'s lanes in the job processes (`PROCESS_LANES`): half the long side. DO NOT give them every job process: the building cells of the view run on the idle ones (`hostFor` crosses), and with six tile lanes the surfaces were 1.6 s sooner and the buildings in view 2.7 s later, the opening later by 2.3 s (2026-10-21). */
+export const jobLanes = (most: number, service?: JobService): number =>
+  Math.max(1, Math.min(most, service && inProcesses(service) ? Math.floor(longWorkers() / 2) : laneWorkers()));
+
+/** The short side's workers a kind's lanes may take: all but one while it has more than one, that one left for the kept-clear lanes (the save's writes, `KEPT_CLEAR`) - DO NOT let the traffic's lanes take every worker at the boot: the save made later shared one with them, and waited behind each batch (JOB-02). */
+const laneWorkers = (): number => { const n = shortWorkers(); return n > 1 ? n - 1 : 1; };
+
+/** One more worker of its side (`long`), while the pool and that side have room (`longWorkers`, `shortWorkers`); null when full. */
+function grow(long: boolean): Host | null {
+  const live = system.workers;
+  if (live.length >= jobWorkers()) return null;
+  if (live.filter((h) => h.long === long).length >= (long ? longWorkers() : shortWorkers())) return null;
+  // The guard by where the worker is made: on the desktop the short side is the page's own (`desktopJobs.ts`), in the page's cage.
+  const made = system.makeWorker?.(long) ?? null;
+  if (made === null && pageWorkers() >= pageRoomWorkers()) return null;
+  const worker = made ?? new Worker(new URL('../job.worker.ts', import.meta.url), { type: 'module' });
+  system.setup?.(worker);
+  const host: Host = { worker, long, inPage: made === null, freeSince: NaN, ports: 0, services: new Map(), queuePorts: new Map(), job: null, failed: false, laneWork: 0, firstWork: 0, channelLost: [] };
+  worker.onmessage = (event: MessageEvent<FromJob>) => {
+    const port = system.ports.get(event.data.port);
+    if (port) {
+      // A lane's answer: its worker has one message less before a queued job (a lane posting without answer only ranks its worker lower).
+      // DO NOT count a beat as an answer (`{ beat: true }`, every 500 ms of a long batch: road tiles, conflicts, bays): the first one freed a worker mid-batch, and a cell's job waited behind the batch (JOB-01). The pool's own lane still hears it (its watchdog).
+      const said = event.data.data as { beat?: unknown } | null | undefined;
+      const beat = typeof said === 'object' && said !== null && said.beat === true;
+      if (!beat && port.answered()) dispatch();
+      if (event.data.error !== undefined) port.onerror?.(new ErrorEvent('error', { message: event.data.error }));
+      else port.onmessage?.(new MessageEvent('message', { data: event.data.data }));
+      return;
+    }
+    const job = host.job;
+    // The answer of a job already given up (its worker's error came first) changes nothing.
+    if (!job || event.data.seq !== job.seq) return;
+    host.job = null;
+    if (event.data.error !== undefined) system.queue.fail(job, event.data.error);
+    else system.queue.answer(job, event.data.data);
+    // A whole city's job answered (`RETIRED_AFTER`): its worker let go with all it held, a new one made for the next job.
+    if (RETIRED_AFTER.includes(job.spec.service) && idle(host)) retire(host);
+    dispatch();
+  };
+  worker.onerror = (event) => {
+    for (const port of system.ports.values()) if (port.worker === worker) port.onerror?.(event);
+    for (const lost of host.channelLost.splice(0)) lost();
+    failHost(host, event.message || 'a job worker failed', true);
+  };
+  worker.onmessageerror = () => {
+    for (const port of system.ports.values()) if (port.worker === worker) port.onmessageerror?.(new MessageEvent('messageerror'));
+    failHost(host, 'a job worker\'s answer could not be read', false);
+  };
+  system.workers.push(host);
+  return host;
+}
+
+/** The workers made in the page's own process. */
+function pageWorkers(): number {
+  let n = 0;
+  for (const host of system.workers) if (host.inPage) n++;
+  return n;
+}
+
+/** Services whose one job reads or makes a whole city (its generation, its network solved): the worker let go once it answers, if nothing else is on it. DO NOT keep it idle for the session: its heap stays at the job's peak until a collection the idle worker may never run, in the V8 cage the page and its workers share (`CAGE_BYTES`); the city of 160,000 buildings peaked at 5.6 GB to make (2026-10-22). Rare jobs: a worker made again costs a fraction of a second. */
+const RETIRED_AFTER: readonly JobService[] = ['cityGen', 'networkBake'];
+
+/** A worker let go now: out of the pool, its thread ended. */
+function retire(host: Host): void {
+  const at = system.workers.indexOf(host);
+  if (at >= 0) system.workers.splice(at, 1);
+  host.worker.terminate();
+}
+
+/** How long a worker of the page stands with nothing on it before it may be let go: a burst of jobs keeps its workers. */
+export const RETIRE_IDLE_MS = 10_000;
+let retireTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Nothing on it: no queued job, no lane (each service's own state is kept by its lanes: `classRigs`, the fixed lanes), no message in flight, no other thread's channel, not failed. */
+const idle = (host: Host): boolean =>
+  host.job === null && host.ports === 0 && host.laneWork === 0 && host.services.size === 0 && host.channelLost.length === 0 && !host.failed;
+
+/** The page's workers idle for `RETIRE_IDLE_MS` let go while the page holds more of them than its cage has room for now (`pageRoomWorkers`): DO NOT keep for the session a worker made while the page was small (each holds up to 600 MB of the cage). The next job makes one again (`grow`). */
+function retireIdle(): void {
+  const now = performance.now();
+  let waiting = Infinity;
+  let candidates = 0;
+  for (const host of system.workers) {
+    if (!host.inPage || !idle(host)) { host.freeSince = NaN; continue; }
+    if (Number.isNaN(host.freeSince)) host.freeSince = now;
+    candidates++;
+  }
+  if (candidates === 0) return;
+  let over = pageWorkers() - pageRoomWorkers();
+  for (let i = 0; i < system.workers.length && over > 0; i++) {
+    const host = system.workers[i]!;
+    if (!host.inPage || Number.isNaN(host.freeSince)) continue;
+    const left = host.freeSince + RETIRE_IDLE_MS - now;
+    if (left > 0) { waiting = Math.min(waiting, left); continue; }
+    system.workers.splice(i--, 1);
+    host.worker.terminate();
+    over--;
+  }
+  // The others idle not long enough yet: looked at again when they will have been.
+  if (over > 0 && waiting < Infinity && retireTimer === null) {
+    retireTimer = setTimeout(() => { retireTimer = null; retireIdle(); }, waiting);
+  }
+}
+
+/** A worker's queued job failed with it; a worker that failed whole (`dead`) is given no queued job again. */
+function failHost(host: Host, message: string, dead: boolean): void {
+  if (dead) host.failed = true;
+  const job = host.job;
+  host.job = null;
+  if (job) system.queue.fail(job, message);
+  dispatch();
+}
+
+/** Lane messages in flight on a worker past which no queued job is given it (`hostFor`). */
+const LANE_BACKLOG_MOST = 8;
+
+/** The port a worker runs a service's queued jobs on, one per service and worker. */
+function queuePort(host: Host, service: JobService): number {
+  let port = host.queuePorts.get(service);
+  if (port === undefined) host.queuePorts.set(service, port = system.nextPort++);
+  return port;
+}
+
+/** The worker a queued job of `service` goes to: a free one already running the kind, else a new one while the pool has room, else any free one
+ *  - a long-running service's worker only while its lanes have nothing in flight: a tile asked after it waits one job, never a job behind a tile (only a pool of one worker shares it otherwise).
+ *  - a long worker in a desktop job process (`inPage` false) only for a job fit to cross (`JobSpec.crosses`), and one made for it while the long side keeps room for one more: DO NOT send another there - its message went copied whole, every ground plate of the page's shared memory with it (`processWorker.ts` unshared, ~33 MB a cell job, JOB-03). With the cells kept to the page's two short workers, the large city's first opening waited ~6 s for the buildings in view while six job processes stood idle (2026-10-21).
+ *  - DO NOT give it to a worker whose lanes have messages in flight while one with none is free: it waited behind a tile read or a batch of road tiles (`JobPort` posts straight to its worker); such a worker only when no other is free. */
+function hostFor(service: JobService, crosses: boolean): Host | null {
+  let cold: Host | null = null, idleLong: Host | null = null, warmBusy: Host | null = null, coldBusy: Host | null = null;
+  for (const host of system.workers) {
+    if (host.job || host.failed) continue;
+    if (keptClear(host) && system.workers.length > 1) continue;
+    if (host.long && system.workers.length > 1) {
+      // Of the idle long workers, one already running the kind first.
+      if (host.laneWork === 0 && (host.inPage || crosses) && (idleLong === null || (!idleLong.queuePorts.has(service) && host.queuePorts.has(service)))) idleLong = host;
+      continue;
+    }
+    const warm = host.queuePorts.has(service);
+    // A lane that goes first in flight there (`laneFirst`): DO NOT queue a job behind it - its next message would wait for the whole job.
+    if (host.firstWork > 0) continue;
+    if (host.laneWork > 0) {
+      // DO NOT queue a job behind a backlog of lane messages (`LANE_BACKLOG_MOST`): it waits for a free worker instead. The last mass of a new city stood 3 s behind a lane worker's 344 writes of road tiles while six workers were idle, the curtain waiting for it (2026-10-21).
+      if (host.laneWork <= LANE_BACKLOG_MOST) { if (warm) warmBusy ??= host; else coldBusy ??= host; }
+      continue;
+    }
+    if (warm) return host;
+    cold ??= host;
+  }
+  // A long-running job fit to cross (the city's generation) to a job process first: DO NOT hold a page worker for seconds with it while one stands idle there (the building cells queue on the page's).
+  // DO NOT put it on a worker that hosts lanes (`PROCESS_LANES`, the road tiles): a lane's next message waited behind the whole job there, a city's growth of seconds.
+  if (crosses && system.makeWorker && LONG_RUNNING.includes(service)) {
+    const away = idleLong && !idleLong.inPage && idleLong.services.size === 0 ? idleLong : growSpareLong() ?? laneFreeLong();
+    if (away) return away;
+  }
+  return grow(false) ?? cold ?? idleLong ?? (system.makeWorker ? (crosses ? growSpareLong() : null) : grow(true)) ?? warmBusy ?? coldBusy;
+}
+
+/** A long worker in a job process with no lanes and no job: a long-running job's, when none can be made. */
+function laneFreeLong(): Host | null {
+  return system.workers.find((h) => h.long && !h.inPage && !h.job && !h.failed && h.services.size === 0) ?? null;
+}
+
+/** A long worker made for queued jobs (`hostFor`) while the long side keeps room for one more: a tile's or the growth's lane asked later still gets a worker of its own (`place`). */
+function growSpareLong(): Host | null {
+  if (system.workers.filter((h) => h.long).length >= longWorkers() - 1) return null;
+  return grow(true);
+}
+
+/** Each waiting job, nearest first, to a worker free for it (Cidade's `pump`): one queued job at a time on a worker. */
+function dispatch(): void {
+  for (let job = system.queue.peek(); job; job = system.queue.peek()) {
+    let host: Host | null;
+    try {
+      host = hostFor(job.spec.service, job.spec.crosses === true);
+    } catch (error) {
+      system.queue.failAll(`no job workers: ${String(error)}`);
+      return;
+    }
+    if (!host) {
+      if (system.workers.length > 0 && system.workers.every((h) => h.failed)) system.queue.failAll('every job worker failed');
+      retireIdle();
+      return;
+    }
+    system.queue.take();
+    try {
+      const { data, transfer } = job.spec.write({ sharesMemory: host.inPage });
+      const message: ToJob = { port: queuePort(host, job.spec.service), service: job.spec.service, data, seq: job.seq };
+      host.worker.postMessage(message, transfer);
+      host.job = job;
+    } catch (error) {
+      system.queue.fail(job, String(error));
+    }
+  }
+  retireIdle();
+}
+
+
+/** A job for the queue: run by the first free worker, nearest the eye first (`JobSpec`). */
+export function submitJob(spec: JobSpec): JobTicket {
+  const job = system.queue.submit(spec);
+  dispatch();
+  return {
+    cancel: () => system.queue.cancel(job),
+    get pending() { return job.state !== 'over'; },
+  };
+}
+
+/** One worker of the pool as the debugging lab reads it (`lab/resources`). */
+export interface JobWorkerStats {
+  readonly long: boolean;
+  readonly inPage: boolean;
+  /** The service of the queued job it runs now; null: none. */
+  readonly running: string | null;
+  /** That job's key (`JobSpec.key`): which cell, tile or city it is. */
+  readonly runningKey: string | null;
+  /** The services it hosts lanes of, and how many lanes each. */
+  readonly lanes: readonly (readonly [string, number])[];
+  /** Messages its lanes posted and not yet answered. */
+  readonly laneWork: number;
+  readonly failed: boolean;
+  /** How long it has stood with nothing on it, ms; null while it has work (or was not looked at since). */
+  readonly idleMs: number | null;
+}
+
+/** The pool as it stands, read only: its workers, the queue's waiting jobs, the most it may hold (the debugging lab's consumers; nothing is changed). */
+export function jobPoolStats(): { readonly most: number; readonly longMost: number; readonly shortMost: number; readonly waiting: number; readonly submitted: number; readonly ports: number; readonly workers: readonly JobWorkerStats[] } {
+  const now = performance.now();
+  return {
+    most: jobWorkers(),
+    longMost: longWorkers(),
+    shortMost: shortWorkers(),
+    waiting: system.queue.waiting,
+    submitted: system.queue.submitted,
+    ports: system.ports.size,
+    workers: system.workers.map((h) => ({
+      long: h.long,
+      inPage: h.inPage,
+      running: h.job ? h.job.spec.service : null,
+      runningKey: h.job?.spec.key ?? null,
+      lanes: [...h.services],
+      laneWork: h.laneWork,
+      failed: h.failed,
+      idleMs: Number.isNaN(h.freeSince) ? null : now - h.freeSince,
+    })),
+  };
+}
+
+/** Whether this thread can run queued jobs at all (Node's tests have no `Worker`): the asker does them itself otherwise. */
+export const canQueueJobs = (): boolean => typeof Worker !== 'undefined';
+
+/** A worker of the pool made now, ahead of the first job (its modules load meanwhile); the others as work waits. */
+export function warmJobWorkers(): void {
+  if (system.workers.length === 0) grow(false);
+}
+
+/** The point the view looks at, each frame (`flatAtlas.ts` `focus`): what the queue's jobs are ranked by. */
+export function setJobFocus(x: number, y: number): void {
+  system.focusX = x;
+  system.focusY = y;
+  // DO NOT leave the waiting jobs ranked by where the view was when they were asked: after a move, the cells at the new eye waited behind the old view's (the street view after a reload stood in masses for 14 s, its cell's detail queued behind those of the district view before it, 2026-10-17); Cesium sorts its requests by the current frame's screen error.
+  if (Math.hypot(x - system.rankedX, y - system.rankedY) < RERANK_MOVE) return;
+  system.rankedX = x;
+  system.rankedY = y;
+  system.queue.rerank();
+}
+
+/** How far the view moves before the waiting jobs are ranked again: a fraction of a cell (`BATCH_CELL` 256 m). */
+const RERANK_MOVE = 64;
+
+/** How far a point is from where the view looks (`setJobFocus`): a queued job's priority. */
+export const focusDistance = (x: number, y: number): number => Math.hypot(x - system.focusX, y - system.focusY);
+
+/** DO NOT pin a lane by a hash of its service, nor put a long-running service's lane on a worker of the other kinds (or the other way round): the traffic's conflict pairs waited behind tile after tile and the city's clock stood still (the long lanes were placed last, on the workers the traffic's lanes already held) */
+function place(service: JobService): Host {
+  const long = LONG_RUNNING.includes(service) || inProcesses(service);
+  let best: Host | null = null;
+  let bestScore = Infinity;
+  for (const w of system.workers) {
+    if (w.long !== long) continue;
+    // Lanes of a kind on different workers, then the least loaded; the kept-clear services' worker kept to them, on a worker of their own where there is one.
+    // The kept-clear lanes together on their worker (never a worker each: the pool's workers are the jobs').
+    const clear = KEPT_CLEAR.includes(service);
+    const apart = clear ? (otherKinds(w) > 0 ? 1 : 0) : keptClear(w) ? 1 : 0;
+    const score = apart * 1_000_000 + (clear ? (keptClear(w) ? 0 : 10_000) : (w.services.get(service) ?? 0) * 10_000) + w.ports;
+    if (score < bestScore) { bestScore = score; best = w; }
+  }
+  // A worker with nothing on it scores 0: one is made for the lane while its side has room, as if every worker were there.
+  // A kept-clear lane goes to their own worker once there is one, not to a new worker.
+  const own = best !== null && KEPT_CLEAR.includes(service) && keptClear(best) && otherKinds(best) === 0;
+  const roomForLane = long || KEPT_CLEAR.includes(service) || system.workers.filter((w) => !w.long).length < laneWorkers();
+  if (best === null || (bestScore > 0 && !own && roomForLane)) best = grow(long) ?? best;
+  // A pool of one worker: the two sides share it.
+  if (!best) best = system.workers.reduce<Host | null>((a, w) => (a === null || w.ports < a.ports ? w : a), null);
+  if (!best) throw new Error('no job worker could be made');
+  return best;
+}
+
+/**
+ * `service`'s lanes first, or no longer (`roadTilePool.ts`: behind the opening's curtain). A large city's opening asked the road tiles of
+ * its view on two workers while the queue gave them its cells' jobs between every share (a base, a cell's detail, ~0.2-2 s each): 5 s
+ * of tiles took 10-11 s, the road surfaces the curtain waits for last but for the masses (trace of step-70k, 2026-10-22).
+ */
+export function laneFirst(service: JobService, on: boolean): void {
+  if (on) system.firstLanes.add(service); else system.firstLanes.delete(service);
+}
+
+/** A kind of work's lane in the pool: answers as a `Worker` does (`onmessage`, `onerror`, `postMessage`, `terminate`). */
+export class JobPort {
+  onmessage: ((event: MessageEvent) => void) | null = null;
+  onerror: ((event: ErrorEvent) => void) | null = null;
+  onmessageerror: ((event: MessageEvent) => void) | null = null;
+  readonly worker: Worker;
+  private readonly id = system.nextPort++;
+  private readonly host: Host;
+  /** Messages posted and not yet answered. */
+  private inFlight = 0;
+  /** Of `inFlight`, those posted while the lane went first (`laneFirst`): answered first, in the order posted. */
+  private firstInFlight = 0;
+
+  constructor(private readonly service: JobService) {
+    // The least busy worker; a service's own state is per worker, so a lane stays on the one it was given.
+    this.host = place(service);
+    this.host.ports++;
+    this.host.services.set(service, (this.host.services.get(service) ?? 0) + 1);
+    this.worker = this.host.worker;
+    system.ports.set(this.id, this);
+  }
+
+  postMessage(data: unknown, transfer: Transferable[] = []): void {
+    const message: ToJob = { port: this.id, service: this.service, data };
+    this.worker.postMessage(message, transfer);
+    this.inFlight++;
+    this.host.laneWork++;
+    if (system.firstLanes.has(this.service)) { this.firstInFlight++; this.host.firstWork++; }
+  }
+
+  /** A message that asks for no answer (a lane's setup: `terrainLightPool.ts` grid): never counted in flight, or its worker looked busy for good (JOB-01). */
+  postSetup(data: unknown, transfer: Transferable[] = []): void {
+    const message: ToJob = { port: this.id, service: this.service, data };
+    this.worker.postMessage(message, transfer);
+  }
+
+  /** An answer came on this lane: one message less in flight on its worker; whether that left the worker with none. */
+  answered(): boolean {
+    if (this.inFlight === 0) return false;
+    this.inFlight--;
+    this.host.laneWork--;
+    if (this.firstInFlight > 0) {
+      this.firstInFlight--;
+      this.host.firstWork--;
+      // Its worker given back to the queue once no lane that goes first has anything there.
+      if (this.host.firstWork === 0) return true;
+    }
+    // Free, or back under the backlog a queued job may wait behind (`LANE_BACKLOG_MOST`): the queue is given out again.
+    return this.host.laneWork === 0 || this.host.laneWork === LANE_BACKLOG_MOST;
+  }
+
+  /** The lane let go (its service's state stays in the worker for the next lane of the kind). */
+  terminate(): void {
+    if (!system.ports.delete(this.id)) return;
+    this.worker.postMessage({ close: this.id } satisfies CloseLane);
+    const freed = this.inFlight > 0 && this.host.laneWork === this.inFlight;
+    this.host.laneWork -= this.inFlight;
+    this.host.firstWork -= this.firstInFlight;
+    this.inFlight = 0;
+    this.firstInFlight = 0;
+    this.host.ports--;
+    const left = (this.host.services.get(this.service) ?? 1) - 1;
+    if (left > 0) this.host.services.set(this.service, left); else this.host.services.delete(this.service);
+    // Its worker counted free now, as an answer that empties it does (`answered`): the waiting jobs given out (JOB-16: they waited for another job's answer or a new one).
+    if (freed) dispatch();
+    retireIdle();
+  }
+
+}
+
+/** A lane's setup posted to `worker` (a pool's port, or any worker): on a pool's port, not counted as a message awaiting an answer (`JobPort.postSetup`). */
+export function postSetup(worker: Worker, data: unknown): void {
+  if (worker instanceof JobPort) worker.postSetup(data);
+  else worker.postMessage(data);
+}
+
+/** A port of the pool for one of `service`'s lanes (`jobLanes` lanes at most), typed as the `Worker` its pool was written for. */
+export function jobPort(service: JobService): Worker {
+  return new JobPort(service) as unknown as Worker;
+}
+
+/** A LANE OF THIS PAGE'S POOL HANDED TO ANOTHER THREAD (the simulation's worker): a channel, one end served by a worker of the pool (`job.worker.ts` adopt), the other returned to be transferred; that thread and the worker talk straight. DO NOT let another thread open a pool of its own: its workers were more isolates in the one V8 cage every worker of the page shares. `lost`: told if the serving worker fails (a port says nothing of it). */
+export function jobChannel(service: JobService, lost: () => void): MessagePort {
+  const host = place(service);
+  host.ports++;
+  host.services.set(service, (host.services.get(service) ?? 0) + 1);
+  host.channelLost.push(lost);
+  const channel = new MessageChannel();
+  host.worker.postMessage({ adopt: service, port: channel.port1 } satisfies AdoptLane, [channel.port1]);
+  return channel.port2;
+}
+
+/** A lane's port (`jobChannel`) as the `Worker` a pool was written for: its messages both ways, `terminate` closing it. */
+export function portWorker(port: MessagePort): Worker {
+  return {
+    postMessage: (message: unknown, transfer?: Transferable[]) => port.postMessage(message, transfer ?? []),
+    set onmessage(handler: ((event: MessageEvent) => void) | null) { port.onmessage = handler; },
+    set onmessageerror(handler: ((event: MessageEvent) => void) | null) { port.onmessageerror = handler; },
+    onerror: null,
+    terminate: () => port.close(),
+  } as unknown as Worker;
+}
+
+===== ARQUIVO: src/bays.worker.ts (24 linhas) =====
+import { type BayShare, baysOfShare } from '@sim/agents/lotBays';
+import type { JobScope } from './jobs/jobScope';
+
+/** This service of the job system (`job.worker.ts`): its messages answered on the scope it is given. */
+export function serve(self: JobScope): void {
+  /** The lots' bays off the page's thread (`bayPool.ts`): each lot of a share by `bayRows` itself on what the page sent */
+  const BEAT_MS = 500;
+
+  self.onmessage = (event: MessageEvent<{ id: number; share: BayShare }>) => {
+    const { id, share } = event.data;
+    let spoke = performance.now();
+    const beat = (): void => {
+      const now = performance.now();
+      if (now - spoke >= BEAT_MS) { spoke = now; self.postMessage({ id, beat: true }); }
+    };
+    try {
+      self.postMessage({ id, bays: baysOfShare(share, beat) });
+    } catch (error) {
+      // Reported here and answered: the page works the lots out itself (`parking.ts` `baysNow`).
+      console.error('[parking] a share of lots failed in its worker', error);
+      self.postMessage({ id, error: String(error) });
+    }
+  };
+}
+
+===== ARQUIVO: src/ui/i18n/index.ts (141 linhas) =====
+import { EN } from './en';
+import { PT_BR } from './pt-BR';
+
+/** Interface translation. */
+
+export type LanguageCode = 'en' | 'pt-BR';
+
+export interface LanguageSpec {
+  readonly code: LanguageCode;
+  /** The language's own name, as its speakers write it. */
+  readonly label: string;
+}
+
+export const LANGUAGES: readonly LanguageSpec[] = [
+  { code: 'en', label: 'English' },
+  { code: 'pt-BR', label: 'Português' },
+];
+
+export type Dictionary = Readonly<Record<string, string>>;
+
+const DICTIONARIES: Readonly<Record<LanguageCode, Dictionary>> = {
+  en: EN,
+  'pt-BR': PT_BR,
+};
+
+const STORAGE_KEY = 'roadcraft.language';
+
+const isLanguage = (value: unknown): value is LanguageCode => value === 'en' || value === 'pt-BR';
+
+function detect(): LanguageCode {
+  try {
+    const saved = window.localStorage.getItem(STORAGE_KEY);
+    if (isLanguage(saved)) return saved;
+  } catch {
+    // Private browsing denies storage; the browser's own language still applies.
+  }
+  // An empty list (some embedded browsers) is no choice: the single language then.
+  const preferred = typeof navigator === 'undefined' ? [] : navigator.languages?.length ? navigator.languages : [navigator.language];
+  for (const tag of preferred) {
+    if (typeof tag !== 'string') continue;
+    if (tag.toLowerCase().startsWith('pt')) return 'pt-BR';
+    if (tag.toLowerCase().startsWith('en')) return 'en';
+  }
+  return 'en';
+}
+
+let current: LanguageCode = 'en';
+const listeners = new Set<(language: LanguageCode) => void>();
+
+export function language(): LanguageCode {
+  return current;
+}
+
+/** Looks up a key, substituting `{name}` placeholders from `params`. */
+export function t(key: string, params?: Readonly<Record<string, string | number>>): string {
+  const table = DICTIONARIES[current];
+  const template = table[key] ?? EN[key] ?? key;
+  if (!params && !template.includes('{')) return template;
+  // Placeholders every sentence may use (the road tool's keys), under the call's own.
+  params = { ...globalParams(), ...params };
+  return template.replace(/\{(\w+)\}/g, (match, name: string) =>
+    Object.prototype.hasOwnProperty.call(params, name) ? String(params[name]) : match,
+  );
+}
+
+let globalParams: () => Readonly<Record<string, string | number>> = () => ({});
+/** Placeholders any sentence may use without its caller passing them: the road tool's rebindable keys */
+export function setGlobalParams(provider: () => Readonly<Record<string, string | number>>): void {
+  globalParams = provider;
+}
+
+/** Picks the singular or plural key by `count`, and passes it as `{count}`. */
+export function plural(key: string, count: number): string {
+  return t(count === 1 ? `${key}.one` : `${key}.other`, { count });
+}
+
+const decimalFormats = new Map<string, Intl.NumberFormat>();
+/** A measure with `digits` decimals, in the interface language's notation ("22,0" in Portuguese, "22.0" in English). */
+export function formatDecimal(value: number, digits: number, lang: LanguageCode = current): string {
+  const key = `${lang}:${digits}`;
+  let format = decimalFormats.get(key);
+  if (!format) {
+    format = new Intl.NumberFormat(lang, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+    decimalFormats.set(key, format);
+  }
+  return format.format(value);
+}
+
+/** A number the player typed, with a decimal comma or point: "3,1" and "3.1" are 3.1. */
+export function parseDecimal(text: string): number {
+  const s = text.trim().replace(',', '.');
+  return s === '' || !/^[-+]?(\d+\.?\d*|\.\d+)$/.test(s) ? Number.NaN : Number(s);
+}
+
+export function setLanguage(next: LanguageCode): void {
+  if (next === current) return;
+  current = next;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, next);
+  } catch {
+    // Not being able to remember the choice is not a reason to refuse it.
+  }
+  document.documentElement.lang = next;
+  applyTranslations(document);
+  for (const listener of listeners) listener(next);
+}
+
+export function onLanguageChange(listener: (language: LanguageCode) => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+/** Rewrites every element in `root` that declares a translation key. */
+export function applyTranslations(root: ParentNode = document): void {
+  for (const element of root.querySelectorAll<HTMLElement>('[data-i18n]')) {
+    const key = element.dataset['i18n'];
+    if (key) element.textContent = t(key);
+  }
+  for (const element of root.querySelectorAll<HTMLElement>('[data-i18n-html]')) {
+    const key = element.dataset['i18nHtml'];
+    if (key) element.innerHTML = t(key);
+  }
+  for (const element of root.querySelectorAll<HTMLElement>('[data-i18n-title]')) {
+    const key = element.dataset['i18nTitle'];
+    if (key) element.title = t(key);
+  }
+  for (const element of root.querySelectorAll<HTMLElement>('[data-i18n-label]')) {
+    const key = element.dataset['i18nLabel'];
+    if (key) element.setAttribute('aria-label', t(key));
+  }
+  const title = document.querySelector<HTMLTitleElement>('title[data-i18n]');
+  if (title) document.title = t(title.dataset['i18n'] as string);
+}
+
+/** Resolves the initial language and applies it. Call once, at start-up. */
+export function initLanguage(): LanguageCode {
+  current = detect();
+  document.documentElement.lang = current;
+  applyTranslations(document);
+  return current;
+}
+
+===== ARQUIVO: scripts/look.mjs (685 linhas) =====
+import { execFile } from 'node:child_process';
+// LOOK AT THE GAME AS THE PLAYER SEES IT, at full resolution, without taking anyone's window
+import { spawn } from 'node:child_process';
+import { createWriteStream, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { homedir, tmpdir } from 'node:os';
+import { _electron, chromium } from '@playwright/test';
+
+// `node scripts/look.mjs <script.json> [out folder] [--video] [--url=http://…]`
+// plan "gpu": "webgpu" draws the game with three's WebGPU renderer (`MIGRACAO-WEBGPU.md`): the page's `?gpu=webgpu`, the desktop's `ROADCRAFT_LOOK_GPU`.
+const args = process.argv.slice(2);
+const flags = args.filter((a) => a.startsWith('--'));
+const [file, outArg] = args.filter((a) => !a.startsWith('--'));
+if (!file) {
+  console.error('usage: node scripts/look.mjs <script.json> [out folder] [--video] [--url=http://...]');
+  process.exit(2);
+}
+let plan;
+try {
+  plan = JSON.parse(readFileSync(file, 'utf8'));
+} catch (err) {
+  console.error(`unreadable script (${file}): ${err.message}`);
+  process.exit(2);
+}
+if (flags.includes('--video')) plan.video = true;
+const urlFlag = flags.find((f) => f.startsWith('--url='));
+if (urlFlag) plan.url = urlFlag.slice('--url='.length);
+const out = resolve(outArg ?? plan.out ?? join(tmpdir(), 'roadcraft-look', new Date().toISOString().replace(/[:.]/g, '-')));
+mkdirSync(out, { recursive: true });
+const [width, height] = plan.viewport ?? [1920, 1080];
+/** The dev server reloads the page whenever any session saves a file (Vite) */
+const ATTEMPTS = 3;
+const RELOADED = 'the page reloaded midway (a file was saved and Vite reloaded the game)';
+
+// LOOK_JS_FLAGS: V8 flags for the run's Chrome, as the desktop build passes them (`desktop/main.cjs` js-flags): the dev run measured as the product runs.
+const jsFlags = process.env.LOOK_JS_FLAGS ? [`--js-flags=${process.env.LOOK_JS_FLAGS}`] : [];
+// LOOK_CHROME_ARGS: more of the run's Chrome flags, space-separated (a graphics backend compared: --use-angle=vulkan, gl, d3d11on12).
+const chromeArgs = process.env.LOOK_CHROME_ARGS ? process.env.LOOK_CHROME_ARGS.split(' ').filter(Boolean) : [];
+/** `--electron`: the desktop build as the player runs it (`desktop/main.cjs`, the game from `dist/`: build it first, `--mode development` for the probes the steps call), its window hidden at 1920x1080 (`ROADCRAFT_LOOK`), no Steam. */
+const electron = flags.includes('--electron');
+// ONE TIMED LOOK AT A TIME ON THIS MACHINE: sessions working side by side share the GPU and the CPU, and two cities opened at once made each other's frame times worthless. A run that times anything (record, usage, trace) waits for the one before it (a lock file holding its pid; a dead holder's lock is taken over); a run of shots and counts (memory, draws, the console) goes at once: those do not depend on what else runs. LOOK_NO_LOCK=1 skips it.
+const timed = (steps) => (steps ?? []).some((step) => step.record || step.usage || step.usageStart || step.trace || step.compare || (step.steps && timed(step.steps)));
+const lockFile = join(tmpdir(), 'roadcraft-look.lock');
+if (!process.env.LOOK_NO_LOCK && timed(plan.steps)) {
+  let said = false;
+  for (;;) {
+    try { writeFileSync(lockFile, String(process.pid), { flag: 'wx' }); break; } catch { /* held */ }
+    let holder = NaN;
+    try { holder = Number(readFileSync(lockFile, 'utf8')); } catch { continue; }
+    let alive = false;
+    try { process.kill(holder, 0); alive = true; } catch { /* gone */ }
+    if (!alive) { try { rmSync(lockFile); } catch { /* taken by another */ } continue; }
+    if (!said) { console.log(`waiting for the look run of pid ${holder} to end (one at a time)`); said = true; }
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  process.on('exit', () => { try { if (readFileSync(lockFile, 'utf8') === String(process.pid)) rmSync(lockFile); } catch { /* gone */ } });
+  for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => process.exit(130));
+}
+const browser = electron ? await desktopBrowser() : await chromium.launch({ channel: 'chrome', headless: true, args: ['--enable-gpu', '--ignore-gpu-blocklist', ...jsFlags, ...chromeArgs] });
+
+/** The desktop app as a browser of one page (Playwright `_electron`): its window the page; closing it ends the app. */
+async function desktopBrowser() {
+  const app = await _electron.launch({ args: [join(resolve('.'), 'desktop', 'main.cjs')], env: { ...process.env, ROADCRAFT_LOOK: '1', ROADCRAFT_NO_STEAM: '1', ...(plan.gpu ? { ROADCRAFT_LOOK_GPU: plan.gpu } : {}) } });
+  // The shell's own lines (each process's memory, `main.cjs` LOOK), as they come.
+  app.process().stdout?.on('data', (chunk) => { for (const line of String(chunk).split(/\r?\n/)) if (line.startsWith('[metrics]')) console.log(`${new Date().toISOString().slice(11, 19)} ${line} MB`); });
+  const window = await app.firstWindow();
+  window.desktop = true;
+  // A dialog of the page's (an alert, a confirm): said, then dismissed, never left open under the run.
+  window.on('dialog', (dialog) => { console.log(`dialog (${dialog.type()}): ${dialog.message()}`); void dialog.dismiss().catch(() => {}); });
+  return { newPage: async () => window, close: () => app.close(), startTracing: () => Promise.reject(new Error('no trace in --electron')), stopTracing: () => Promise.resolve() };
+}
+let report;
+try {
+  for (let attempt = 1; ; attempt++) {
+    report = { out, renderer: '', console: [], steps: [] };
+    try {
+      await runOnce(report);
+      break;
+    } catch (err) {
+      if (!String(err.message).includes(RELOADED) || attempt >= ATTEMPTS) throw err;
+      console.log(`${RELOADED}: attempt ${attempt + 1} of ${ATTEMPTS}`);
+    }
+  }
+} finally {
+  writeFileSync(join(out, 'report.json'), JSON.stringify(report, null, 2));
+  await browser.close();
+}
+console.log(`report: ${join(out, 'report.json')}${report.console.length ? ` (${report.console.length} errors/warnings in the console)` : ''}`);
+
+/** One run of the steps on a fresh page; throws `RELOADED` if the page reloads under it. */
+async function runOnce(report) {
+  const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: plan.dpr ?? 1 });
+  // A slower computer: the page's CPU N times slower (DevTools protocol `Emulation.setCPUThrottlingRate`, rate 1 = none).
+  if (plan.cpu && plan.cpu > 1) {
+    const session = await page.context().newCDPSession(page);
+    await session.send('Emulation.setCPUThrottlingRate', { rate: plan.cpu });
+    console.log(`CPU ${plan.cpu}x slower (emulated)`);
+  }
+  // The page's stored values before the game reads any (`plan.storage`, key -> text): a graphics tier pinned ("roadcraft.quality": "ultra"), so the automatic tier does not move under a run's pictures.
+  if (plan.storage && !page.desktop) await page.addInitScript((pairs) => { for (const [k, v] of Object.entries(pairs)) window.localStorage.setItem(k, v); }, plan.storage);
+  try {
+    await steps(page, report);
+  } catch (err) {
+    // A reload mid-call surfaces as "Execution context was destroyed" or a missing `__roadcraft`.
+    if (page.reloads) throw new Error(`${RELOADED} (${String(err.message).split('\n')[0]})`, { cause: err });
+    throw err;
+  } finally {
+    if (!page.desktop) await page.close();
+  }
+}
+
+async function steps(page, report) {
+  page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') report.console.push(`${m.type()}: ${m.text()}`); });
+  // With its stack: the message alone does not say which code threw.
+  page.on('pageerror', (e) => report.console.push(`pageerror: ${e.message}\n${e.stack ?? ''}`));
+  // A confirm or alert of the game's answered as the player would (`plan.dialogs`: "accept", or dismissed), and said.
+  if (!page.desktop) page.on('dialog', (d) => { console.log(`dialog (${d.type()}): ${d.message()}`); void (plan.dialogs === 'accept' ? d.accept() : d.dismiss()).catch(() => {}); });
+  // A file the game offers (a saved map) kept in the run's folder, its path said.
+  page.on('download', (d) => { const path = join(out, d.suggestedFilename()); void d.saveAs(path).then(() => console.log(`download: ${path}`)); });
+  // The file the next file picker gets ("file" step), as the player picks one.
+  page.on('filechooser', (chooser) => { if (page.nextFile) void chooser.setFiles(page.nextFile); page.nextFile = null; });
+  const asked = new URL(plan.url ?? 'http://127.0.0.1:5300/');
+  if (plan.gpu) asked.searchParams.set('gpu', plan.gpu);
+  const url = asked.href;
+  try {
+    // The desktop's window opens its own game (`app://roadcraft/`).
+    if (page.desktop) await page.waitForLoadState('load');
+    else await page.goto(url, { waitUntil: 'load' });
+  } catch (err) {
+    throw new Error(`the game did not answer at ${url} (${err.message.split('\n')[0]}): start the server with \`npm run dev\``, { cause: err });
+  }
+  page.reloads = 0;
+  page.on('load', () => { page.reloads++; });
+  // DO NOT wait on a page that is gone: Playwright's awaits hang, and the run looked like a stall (k20g/i/j/m: the renderer's out-of-memory dump, 0xE0000008, seconds after the last picture). Said and ended.
+  page.on('crash', () => { console.log('PAGE CRASHED (the renderer process died: Crashpad in the profile says why)'); report.console.push('PAGE CRASHED'); process.exitCode = 4; void browser.close().finally(() => process.exit(4)); });
+  const stillThere = () => { if (page.reloads) throw new Error(RELOADED); };
+
+  report.renderer = await page.evaluate(() => {
+    const gl = document.createElement('canvas').getContext('webgl2');
+    const info = gl?.getExtension('WEBGL_debug_renderer_info');
+    return info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) : String(gl?.getParameter(gl.RENDERER) ?? 'no WebGL2');
+  });
+  console.log(`GPU: ${report.renderer}`);
+  if (/swiftshader|software|llvmpipe|basic render/i.test(report.renderer)) throw new Error(`software renderer (${report.renderer}): shots and times do not count`);
+
+  await page.waitForFunction(() => Boolean(window.__roadcraft?.memory), null, { timeout: 120_000 });
+  // Every long frame from now on, kept in the page for "profileEnd".
+  await page.evaluate(() => {
+    window.__longFrames = [];
+    if (!PerformanceObserver.supportedEntryTypes.includes('long-animation-frame')) return;
+    new PerformanceObserver((list) => { for (const e of list.getEntries()) window.__longFrames.push(e.toJSON()); })
+      .observe({ type: 'long-animation-frame', buffered: true });
+  });
+  /** A city generated, and the seconds until it stands. */
+  const city = async (options) => {
+    const t0 = Date.now();
+    // The city's map is made before its opening begins (`main.ts` openCityOffPage: off the page, seconds for a large city), and the opening before that one may show meanwhile: only the marks after the map is in are this city's.
+    await page.evaluate(async (o) => {
+      await window.__roadcraft.generateCity(o === true ? {} : o);
+      performance.clearMarks('opening:shown');
+    }, options);
+    // `?.`: a reload in the wait leaves the page without `__roadcraft` for a moment.
+    // Shown: the opening's own mark (`renderer.ts` reveal), read for nothing; the draw calls only every 10th look (`memory` walks the whole scene: 9 s of an opening's page, 2026-10-16), for a town shown without the mark.
+    await page.waitForFunction(() => {
+      const game = window.__roadcraft;
+      if (!game) return false;
+      if (performance.getEntriesByName('opening:shown').length > 0) return true;
+      window.__lookPolls = (window.__lookPolls ?? 0) + 1;
+      return window.__lookPolls % 10 === 0 && game.memory().drawCalls > 100;
+    }, null, { timeout: 1_800_000, polling: 1000 });
+    stillThere();
+    const value = { seconds: (Date.now() - t0) / 1000 };
+    console.log(`city ready in ${value.seconds.toFixed(1)} s`);
+    return value;
+  };
+  if (plan.city) await city(plan.city);
+  /** The DevTools protocol session, made on the first "profile". */
+  let cdp = null;
+  let profiling = null;
+
+  /** The frames being timed ("record"), the screencast filming them (`plan.video`) and the allocations sampled. */
+  let recording = null;
+  let sampling = null;
+  let tracing = false;
+  let usageWindow = null;
+  /** Every numeric field of every sample: the peak, the mean and the least each reached (not one final reading). */
+  const summarize = (samples) => {
+    const keys = new Set();
+    for (const sample of samples) for (const key of Object.keys(sample)) if (typeof sample[key] === 'number' && Number.isFinite(sample[key])) keys.add(key);
+    const peak = {}, avg = {}, least = {};
+    for (const key of keys) {
+      const values = samples.map((sample) => sample[key]).filter((value) => typeof value === 'number' && Number.isFinite(value));
+      if (!values.length) continue;
+      peak[key] = Math.max(...values).toFixed(2) * 1;
+      least[key] = Math.min(...values).toFixed(2) * 1;
+      avg[key] = Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 100) / 100;
+    }
+    return { peak, avg, min: least };
+  };
+  const session = async () => (cdp ??= await page.context().newCDPSession(page));
+
+  /** Two drawn frames, so a picture shows what the last step did. */
+  const frames = (n = 2) => page.evaluate((count) => new Promise((done) => {
+    window.__roadcraft.redraw();
+    let left = count;
+    const tick = () => (--left <= 0 ? done() : requestAnimationFrame(tick));
+    requestAnimationFrame(tick);
+  }), n);
+
+  // A STEP THAT NEVER ENDS (the page stuck or gone): after LOOK_STALL_MS (60 s by default) with no step ended, 5 s of the page's CPU profile taken on a session of its own, its heap, and the run ended - the stall is the defect, never waited out.
+  // DO NOT judge a step by 60 s when it says how long it may take ("until" with a `timeout`): a 70 000-building city is grown for ~50 s in a worker, the page rightly waiting, and the watchdog closed the run as a stall (2026-10-22).
+  const stall = { at: Date.now(), i: -1, step: '', ms: 0 };
+  const stallMs = Number(process.env.LOOK_STALL_MS ?? 60_000);
+  const watchdog = setInterval(async () => {
+    if (Date.now() - stall.at < Math.max(stallMs, stall.ms)) return;
+    clearInterval(watchdog);
+    console.log(`STALLED at step ${stall.i} (${stall.step}) for ${Math.round((Date.now() - stall.at) / 1000)} s`);
+    // Which of Chrome's processes is working (the page's renderer, the GPU's): CPU seconds of each, twice 5 s apart (Windows), every call bounded.
+    const cpu = () => new Promise((done) => execFile('powershell', ['-NoProfile', '-Command', "Get-CimInstance Win32_Process -Filter \"name='chrome.exe'\" | Where-Object { $_.CommandLine -match 'headless' } | ForEach-Object { $t = if ($_.CommandLine -match '--type=([a-z-]+)') { $matches[1] } else { 'browser' }; '{0} {1} {2:N1}' -f $_.ProcessId, $t, (((Get-Process -Id $_.ProcessId -ErrorAction SilentlyContinue).TotalProcessorTime.TotalSeconds)) }"], { timeout: 20_000 }, (_, text) => done(String(text ?? '').trim())));
+    try { console.log(`  chrome CPU s (pid type cpu):
+${(await cpu()).replace(/^/gm, '    ')}`); await new Promise((r) => setTimeout(r, 5000)); console.log(`  5 s later:
+${(await cpu()).replace(/^/gm, '    ')}`); } catch (error) { console.log(`  no CPU: ${String(error)}`); }
+    const bounded = (p, ms) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error(`no answer in ${ms} ms`)), ms))]);
+    // A profile already running when the page stopped (a "profile" step before the stall): its samples up to the stall, the stall's own frames among them.
+    if (profiling && cdp) {
+      try { const { profile } = await bounded(cdp.send('Profiler.stop'), 30_000); writeFileSync(join(out, `stalled-${profiling.name}.cpuprofile`), JSON.stringify(profile)); console.log(`  running profile kept: stalled-${profiling.name}.cpuprofile`); profiling = null; }
+      catch (error) { console.log(`  running profile not stopped: ${String(error)}`); }
+    }
+    try {
+      const probe = await bounded(page.context().newCDPSession(page), 10_000);
+      const heap = await Promise.race([probe.send('Runtime.getHeapUsage'), new Promise((r) => setTimeout(() => r(null), 5000))]);
+      console.log(`  page heap: ${heap ? `${Math.round(heap.usedSize / 1e6)} MB used of ${Math.round(heap.totalSize / 1e6)} MB` : 'no answer'}`);
+      await bounded(probe.send('Profiler.enable'), 10_000);
+      await bounded(probe.send('Profiler.setSamplingInterval', { interval: 1000 }), 10_000);
+      await bounded(probe.send('Profiler.start'), 10_000);
+      await new Promise((r) => setTimeout(r, 5000));
+      const { profile } = await Promise.race([probe.send('Profiler.stop'), new Promise((_, no) => setTimeout(() => no(new Error('no profile in 30 s')), 30_000))]);
+      writeFileSync(join(out, 'stalled.cpuprofile'), JSON.stringify(profile));
+      console.log(`  profile: ${join(out, 'stalled.cpuprofile')}`);
+    } catch (error) { console.log(`  no profile: ${String(error)}`); }
+    // DO NOT leave the headless Chrome behind (CLAUDE.md): closed, or its processes killed.
+    try { await Promise.race([browser.close(), new Promise((r) => setTimeout(r, 15_000))]); } catch { /* closed by the kill below */ }
+    // DO NOT kill every headless Chrome on the machine: other sessions' runs died with this one. This run's browser only, its process tree.
+    const own = browser.process?.()?.pid;
+    if (own) execFile('taskkill', ['/PID', String(own), '/T', '/F'], () => process.exit(3));
+    else process.exit(3);
+  }, 5000);
+  watchdog.unref?.();
+  for (const [i, step] of plan.steps.entries()) {
+    const line = { i, step: Object.keys(step)[0] };
+    stall.at = Date.now(); stall.i = i; stall.step = JSON.stringify(step).slice(0, 80);
+    // A step's own limit and half a minute more: its own timeout says it is stuck before the watchdog does.
+    stall.ms = typeof step.timeout === 'number' ? step.timeout + 30_000 : 0;
+    if (process.env.LOOK_STEPS) console.log(`step ${i}: ${JSON.stringify(step).slice(0, 120)}`);
+    if (step.lookAt) await page.evaluate(([x, y, zoom]) => window.__roadcraft.lookAt(x, y, zoom), step.lookAt);
+    // An exact view: centre, zoom, bearing and tilt in degrees.
+    else if (step.setView) await page.evaluate(([x, y, zoom, azimuth, elevation]) => window.__roadcraft.setView({ x, y, zoom, azimuth: (azimuth * Math.PI) / 180, elevation: (elevation * Math.PI) / 180 }), step.setView);
+    else if (step.record) {
+      if (recording) throw new Error('"record" while another is open');
+      recording = { name: step.record, since: await page.evaluate(startFrames), film: plan.video ? await film(await session(), width, height) : null };
+    } else if (step.recordEnd) {
+      if (!recording) throw new Error('"recordEnd" with no "record" before it');
+      const times = await page.evaluate(stopFrames);
+      line.value = { name: recording.name, ...frameStats(times), game: await page.evaluate((since) => window.__frames(since), recording.since), gpu: await page.evaluate(() => window.__gpu(true)) };
+      if (recording.film) line.value.video = await recording.film.stop(join(out, `${String(i).padStart(2, '0')}-${recording.name}.webm`));
+      console.log(`frames "${recording.name}": ${line.value.frames} in ${line.value.seconds} s, p50 ${line.value.p50} p95 ${line.value.p95} p99 ${line.value.p99} max ${line.value.max} ms, ${line.value.hitches} over 25 ms, ${line.value.dropped} vsyncs missed; GPU p95 ${line.value.gpu.p95 ?? '—'} ms${line.value.video ? `; video ${line.value.video}` : ''}`);
+      recording = null;
+    } else if (step.usage) {
+      // Every value the process reaches over the window, not a last reading: the game's frame time, its GPU timer, its heap and GPU counts, and the page's own CPU (CDP TaskDuration) each sample.
+      const options = step.usage === true ? {} : step.usage;
+      const seconds = options.seconds ?? 4, every = options.every ?? 250;
+      const c = await session();
+      try { await c.send('Performance.enable'); } catch { /* no metrics: the game's own are kept */ }
+      const metrics = async () => {
+        try { const { metrics: list } = await c.send('Performance.getMetrics'); return Object.fromEntries(list.map((m) => [m.name, m.value])); } catch { return {}; }
+      };
+      let previous = await metrics(), previousAt = Date.now();
+      const samples = [];
+      const started = Date.now();
+      while (Date.now() - started < seconds * 1000) {
+        const sample = await page.evaluate(() => window.__roadcraft?.usage?.() ?? null);
+        if (sample) {
+          const now = Date.now();
+          const m = await metrics();
+          const dt = Math.max(1, now - previousAt);
+          const task = (m.TaskDuration ?? 0) - (previous.TaskDuration ?? 0);
+          samples.push({ ...sample, cpuPct: Math.round((task * 1e5) / dt) / 100, cdpHeapMB: Math.round((m.JSHeapUsedSize ?? 0) / 1e5) / 10 });
+          previous = m;
+          previousAt = now;
+        }
+        await new Promise((done) => setTimeout(done, every));
+      }
+      const summary = summarize(samples);
+      line.value = { seconds: (Date.now() - started) / 1000, count: samples.length, samples, ...summary };
+      console.log(`usage: ${samples.length} samples over ${line.value.seconds.toFixed(1)} s; peak CPU ${summary.peak.cpuPct}% (frame ${summary.peak.cpuMax} ms, p95 ${summary.peak.cpuP95}), GPU ${summary.peak.gpuMax} ms (p95 ${summary.peak.gpuP95}), heap ${summary.peak.heapMB} MB, textures ${summary.peak.textures}, draws ${summary.peak.drawCalls}, triangles ${summary.peak.triangles}`);
+    } else if (step.usageStart) {
+      // The sampling starts now and goes on while the steps run (a city built and opened underneath; `usageEnd` returns every sample).
+      const options = step.usageStart === true ? {} : step.usageStart;
+      await page.evaluate((every) => {
+        window.__usageSamples = [];
+        window.__usageTimer = window.setInterval(() => {
+          const usage = window.__roadcraft?.usage?.();
+          if (usage) window.__usageSamples.push(usage);
+        }, every);
+      }, options.every ?? 250);
+      const c = await session();
+      try { await c.send('Performance.enable'); } catch { /* no metrics */ }
+      let previous = {};
+      try { const { metrics: list } = await c.send('Performance.getMetrics'); previous = Object.fromEntries(list.map((m) => [m.name, m.value])); } catch { /* no metrics */ }
+      usageWindow = { started: Date.now(), previous, session: c };
+    } else if (step.usageEnd) {
+      if (!usageWindow) throw new Error('"usageEnd" with no "usageStart" before it');
+      const samples = await page.evaluate(() => {
+        if (window.__usageTimer) window.clearInterval(window.__usageTimer);
+        window.__usageTimer = null;
+        return window.__usageSamples ?? [];
+      });
+      const seconds = (Date.now() - usageWindow.started) / 1000;
+      let metrics = {};
+      try { const { metrics: list } = await usageWindow.session.send('Performance.getMetrics'); metrics = Object.fromEntries(list.map((m) => [m.name, m.value])); } catch { /* no metrics */ }
+      const task = (metrics.TaskDuration ?? 0) - (usageWindow.previous.TaskDuration ?? 0);
+      const summary = summarize(samples);
+      line.value = { seconds, count: samples.length, samples, ...summary,
+        processCpuPct: seconds > 0 ? Math.round((task / seconds) * 10000) / 100 : null,
+        cdpHeapMB: Math.round((metrics.JSHeapUsedSize ?? 0) / 1e5) / 10 };
+      usageWindow = null;
+      console.log(`usage window: ${samples.length} samples over ${seconds.toFixed(1)} s; process CPU ${line.value.processCpuPct}%; peak CPU frame ${summary.peak.cpuMax} ms (p95 ${summary.peak.cpuP95}), GPU ${summary.peak.gpuMax} ms (p95 ${summary.peak.gpuP95}), heap ${summary.peak.heapMB} MB, textures ${summary.peak.textures}, draws ${summary.peak.drawCalls}, triangles ${summary.peak.triangles}`);
+    } else if (step.allocations) {
+      const c = await session();
+      await c.send('HeapProfiler.enable');
+      // The objects already collected kept in the profile (what was allocated), or with `live` only what survived (CDP HeapProfiler.startSampling).
+      const collected = !step.live;
+      await c.send('HeapProfiler.startSampling', { samplingInterval: 16384, includeObjectsCollectedByMajorGC: collected, includeObjectsCollectedByMinorGC: collected });
+      sampling = { name: step.allocations, t0: Date.now() };
+    } else if (step.allocationsEnd) {
+      if (!sampling) throw new Error('"allocationsEnd" with no "allocations" before it');
+      const { profile } = await cdp.send('HeapProfiler.stopSampling');
+      line.value = { name: sampling.name, ...allocationStats(profile, (Date.now() - sampling.t0) / 1000) };
+      console.log(`allocations "${sampling.name}": ${line.value.mbPerSecond} MB/s over ${line.value.seconds} s\n  ${line.value.top.map(([k, mb]) => `${mb} MB  ${k}`).join('\n  ')}`);
+      console.log(`  by the game's frames:\n  ${line.value.stacks.map(([k, mb]) => `${mb} MB  ${k}`).join('\n  ')}`);
+      console.log(`  by the game's files:\n  ${line.value.files.map(([k, mb]) => `${mb} MB  ${k}`).join('\n  ')}`);
+      sampling = null;
+    } else if (step.trace) {
+      // The Performance panel's trace (open the file in DevTools > Performance).
+      await browser.startTracing(page, { path: join(out, `${String(i).padStart(2, '0')}-${step.trace}.trace.json`), screenshots: true });
+      tracing = true;
+      line.file = step.trace;
+    } else if (step.traceEnd) {
+      if (!tracing) throw new Error('"traceEnd" with no "trace" before it');
+      await browser.stopTracing();
+      tracing = false;
+    } else if (step.until) {
+      // Seconds until a condition holds in the page (the game's own state, not a guess at a wait).
+      const t0 = Date.now();
+      await page.waitForFunction(step.until, null, { timeout: step.timeout ?? 600_000, polling: step.polling ?? 'raf' });
+      line.value = { name: step.name ?? step.until, seconds: (Date.now() - t0) / 1000 };
+      console.log(`until "${line.value.name}": ${line.value.seconds.toFixed(2)} s`);
+    } else if (step.reload) {
+      // The saved map opened again: the page reloaded on purpose, timed until `step.reload` holds.
+      const t0 = Date.now();
+      await page.reload({ waitUntil: 'load' });
+      page.reloads = 0;
+      cdp = null;
+      await page.waitForFunction(step.reload, null, { timeout: step.timeout ?? 600_000, polling: 250 });
+      line.value = { seconds: (Date.now() - t0) / 1000 };
+      console.log(`reopened in ${line.value.seconds.toFixed(1)} s`);
+    } else if (step.gc) {
+      const c = await session();
+      await c.send('HeapProfiler.collectGarbage');
+    } else if (step.snapshot) {
+      // The page's heap written whole (DevTools > Memory reads it), streamed in chunks (CDP HeapProfiler.takeHeapSnapshot).
+      const c = await session();
+      const file = join(out, `${String(i).padStart(2, '0')}-${step.snapshot}.heapsnapshot`);
+      const stream = createWriteStream(file);
+      const write = ({ chunk }) => { stream.write(chunk); };
+      c.on('HeapProfiler.addHeapSnapshotChunk', write);
+      await c.send('HeapProfiler.takeHeapSnapshot', { reportProgress: false, captureNumericValue: false });
+      c.off('HeapProfiler.addHeapSnapshotChunk', write);
+      await new Promise((done) => stream.end(done));
+      line.file = file;
+      console.log(`snapshot: ${file}`);
+    }
+    else if (step.wait !== undefined) await page.waitForTimeout(step.wait);
+    else if (step.frames !== undefined) await frames(step.frames);
+    else if (step.drag) {
+      const [[x0, y0], [x1, y1]] = step.drag;
+      for (const k of step.keys ?? []) await page.keyboard.down(k);
+      await page.mouse.move(x0, y0);
+      await page.mouse.down({ button: step.button ?? 'left' });
+      if (step.ms) {
+        // A hand's pace: the moves spread over `ms` of real time (a mouse reports every few ms), not dispatched at once
+        const n = step.steps ?? 30;
+        const t0 = Date.now();
+        for (let k = 1; k <= n; k++) {
+          await page.mouse.move(x0 + ((x1 - x0) * k) / n, y0 + ((y1 - y0) * k) / n);
+          const due = t0 + (step.ms * k) / n - Date.now();
+          if (due > 0) await page.waitForTimeout(due);
+        }
+      } else await page.mouse.move(x1, y1, { steps: step.steps ?? 30 });
+      // Held still before letting go: no fling.
+      if (step.hold) await page.waitForTimeout(step.hold);
+      await page.mouse.up({ button: step.button ?? 'left' });
+      for (const k of step.keys ?? []) await page.keyboard.up(k);
+    } else if (step.wheel) {
+      if (step.at) await page.mouse.move(step.at[0], step.at[1]);
+      // `count` notches spread over `ms` of real time, as a hand turns the wheel.
+      const n = step.count ?? 1;
+      const t0 = Date.now();
+      for (let k = 1; k <= n; k++) {
+        await page.mouse.wheel(step.wheel[0], step.wheel[1]);
+        const due = t0 + ((step.ms ?? 0) * k) / n - Date.now();
+        if (due > 0) await page.waitForTimeout(due);
+      }
+    } else if (step.move) await page.mouse.move(step.move[0], step.move[1], { steps: step.steps ?? 1 });
+    else if (step.click) await page.mouse.click(step.click[0], step.click[1], { button: step.button ?? 'left', clickCount: step.count ?? 1 });
+    // A control found by what it says (its label, its tooltip or its text, the last match if several), clicked with the mouse where it stands.
+    else if (step.press) {
+      const at = await page.evaluate((name) => {
+        const said = (b) => [b.getAttribute('aria-label'), b.title, b.textContent].map((s) => (s ?? '').trim());
+        const seen = [...document.querySelectorAll('button, [role=button], [role=switch], summary, label')].filter((b) => {
+          const r = b.getBoundingClientRect();
+          return r.width > 0 && r.height > 0 && getComputedStyle(b).visibility !== 'hidden' && said(b).some((s) => s === name || s.startsWith(name));
+        });
+        const exact = seen.filter((b) => said(b).some((s) => s === name));
+        const b = (exact.length ? exact : seen).at(-1);
+        if (!b) return null;
+        const r = b.getBoundingClientRect();
+        return [r.x + r.width / 2, r.y + r.height / 2];
+      }, step.press);
+      // `optional`: a control one build shows and another does not (the start menu's button, absent once the desktop opened a city itself).
+      if (!at && step.optional) console.log(`no control says "${step.press}": skipped (optional)`);
+      else if (!at) throw new Error(`no control says "${step.press}"`);
+      else await page.mouse.click(at[0], at[1], { button: step.button ?? 'left' });
+    }
+    else if (step.key) await page.keyboard.press(step.key);
+    // A key held down for `ms` (WASD panning, a held modifier), as a hand holds it.
+    else if (step.hold) {
+      await page.keyboard.down(step.hold);
+      await page.waitForTimeout(step.ms ?? 1000);
+      await page.keyboard.up(step.hold);
+    }
+    else if (step.type !== undefined) await page.keyboard.type(step.type);
+    else if (step.file) page.nextFile = resolve(step.file.replace('<out>', out));
+    else if (step.eval) line.value = await page.evaluate(step.eval);
+    else if (step.evalFile) {
+      line.value = await page.evaluate(readFileSync(step.evalFile, 'utf8'));
+      console.log(`${step.evalFile}:\n  ${[].concat(line.value).join('\n  ')}`);
+    }
+    else if (step.shot) {
+      await frames();
+      const path = join(out, `${String(i).padStart(2, '0')}-${step.shot}.png`);
+      const [x, y, w, h] = step.clip ?? [];
+      await page.screenshot({ path, ...(step.clip ? { clip: { x, y, width: w, height: h } } : {}) });
+      line.file = path;
+      console.log(`shot: ${path}`);
+    } else if (step.compare) {
+      // THE SAME VIEW IN BOTH RENDERERS (`MIGRACAO-WEBGPU.md`: a material migrated replaces the old one only when this passes): the
+      // simulation's clock held, both pictures drawn in one task of the page (the same instant: the wind's clock moves only between frames),
+      // each into a linear target, through the same film curve (`src/render/gpu/imageCompare.ts`). Writes `<i>-<name>-webgl.png`, `-webgpu.png`
+      // and `-diff.png` (red the larger the difference, white over 8 times the threshold); `threshold` 8-bit steps (8), `timingFrames` the draws
+      // of each timed on the GPU (20), `faithfulOnly` what only a simple twin draws left out of both (the same things drawn the same way).
+      // Run it without the key (`gpu`): under WebGPU the WebGL renderer has drawn nothing of the scene, and layers it never drew are not set up for it.
+      await page.evaluate(() => window.__roadcraft.measure(true));
+      try {
+        await frames(30);
+        const result = await page.evaluate((options) => window.__roadcraft.compare(options), { threshold: step.threshold, timingFrames: step.timingFrames, faithfulOnly: step.faithfulOnly });
+        const files = {};
+        for (const kind of ['webgl', 'webgpu', 'diff']) {
+          files[kind] = join(out, `${String(i).padStart(2, '0')}-${step.compare}-${kind}.png`);
+          writeFileSync(files[kind], Buffer.from(result[kind].slice(result[kind].indexOf(',') + 1), 'base64'));
+        }
+        line.value = { name: step.compare, width: result.width, height: result.height, ...result.difference, gpuMs: result.gpuMs, asIs: result.asIs, twins: result.twins, leftOut: result.leftOut, files };
+        const d = result.difference;
+        console.log(`compare "${step.compare}" ${result.width}x${result.height}: mean ${d.mean.toFixed(3)}, ${d.over.toFixed(3)}% over ${d.threshold}, max ${d.max}; GPU WebGL ${result.gpuMs.webgl ?? '—'} ms, WebGPU ${result.gpuMs.webgpu ?? '—'} ms; as is ${result.asIs.count} (${result.asIs.names.join(', ')}); twins ${Object.entries(result.twins).map(([k, v]) => `${k} ${v}`).join(', ') || 'none'}; left out ${Object.entries(result.leftOut).map(([k, v]) => `${k} ${v}`).join(', ') || 'nothing'}
+  ${files.webgl}
+  ${files.webgpu}
+  ${files.diff}`);
+      } finally {
+        await page.evaluate(() => window.__roadcraft.measure(false));
+      }
+    } else if (step.budget) {
+      await frames(30);
+      line.value = await page.evaluate((view) => window.__roadcraft.budget(view).map((r) => `${r.status} | ${r.item} | ${r.measured} | ${r.budget}${r.times ? ` | ${r.times}×` : ''}`), step.budget);
+      console.log(`budget (${step.budget}):\n  ${line.value.join('\n  ')}`);
+    } else if (step.city) line.value = await city(step.city);
+    else if (step.memory) {
+      line.value = await page.evaluate(() => {
+        const r = window.__roadcraft.memory();
+        const d = window.__roadcraft.doc;
+        return { buildings: d.buildings.size, segments: d.segments.size, lots: d.lots.length, heapMB: r.heapMB, geometryMB: r.geometryMB, geometryCpuMB: r.geometryCpuMB, textureMB: r.textureMB, targetMB: r.targetMB, buildingDetailMB: r.buildingDetailMB, drawCalls: r.drawCalls, builtTriangles: r.builtTriangles, drawnTriangles: r.drawnTriangles, programs: r.programs, cpuByName: r.cpuByName.slice(0, 8), gpuByName: r.gpuByName };
+      });
+      // The heap exact after a collection (CDP Runtime.getHeapUsage), not `performance.memory`'s rounded figure.
+      if (step.memory === 'exact') {
+        const c = await session();
+        await c.send('HeapProfiler.collectGarbage');
+        const { usedSize } = await c.send('Runtime.getHeapUsage');
+        line.value.heapMB = Math.round(usedSize / 1e5) / 10;
+        line.value.heapKBPerBuilding = line.value.buildings ? Math.round(usedSize / 1e3 / line.value.buildings) : null;
+      }
+      console.log(`memory: ${JSON.stringify(line.value)}`);
+    } else if (step.profile) {
+      cdp ??= await page.context().newCDPSession(page);
+      await cdp.send('Profiler.enable');
+      await cdp.send('Profiler.setSamplingInterval', { interval: 500 });
+      await cdp.send('Profiler.start');
+      profiling = { name: step.profile, since: await page.evaluate(() => performance.now()) };
+    } else if (step.profileEnd) {
+      if (!profiling) throw new Error('"profileEnd" with no "profile" before it');
+      const { profile } = await cdp.send('Profiler.stop');
+      const path = join(out, `${String(i).padStart(2, '0')}-${profiling.name}.cpuprofile`);
+      writeFileSync(path, JSON.stringify(profile));
+      const frames = await page.evaluate((since) => window.__longFrames.filter((f) => f.startTime >= since), profiling.since);
+      line.value = { name: profiling.name, cpuprofile: path, ...summarise(profile, frames) };
+      console.log(report1(line.value));
+      profiling = null;
+    } else throw new Error(`unknown step: ${JSON.stringify(step)}`);
+    stillThere();
+    report.steps.push(line);
+  }
+  clearInterval(watchdog);
+}
+
+/** In the page: every animation frame's time kept from now (the game draws on demand; a late frame is a late callback). */
+function startFrames() {
+  const rec = { times: [], on: true };
+  window.__frameRecord = rec;
+  const tick = (t) => { if (!rec.on) return; rec.times.push(t); requestAnimationFrame(tick); };
+  requestAnimationFrame(tick);
+  return performance.now();
+}
+function stopFrames() {
+  const rec = window.__frameRecord;
+  rec.on = false;
+  return rec.times;
+}
+
+/** The frames' intervals in ms: percentiles, the ones a player sees as a hitch and the vsyncs missed.
+ *  The display's period is read off the intervals, not taken as 60 Hz (a 120 or 144 Hz display counted at 60 Hz hid half its missed vsyncs:
+ *  report AST-15): the 10th percentile, since no frame comes faster than the display (DO NOT take the median: a game held at 30 fps on a 60 Hz
+ *  display would read 33 ms and miss nothing). 60 Hz when that is no display's period (under 240 Hz or over 30 Hz). */
+function frameStats(times) {
+  const gaps = times.slice(1).map((t, k) => t - times[k]);
+  const sorted = [...gaps].sort((a, b) => a - b);
+  const fast = sorted.length ? sorted[Math.floor(sorted.length * 0.1)] : 0;
+  const VSYNC = fast >= 1000 / 240 && fast <= 1000 / 30 ? fast : 1000 / 60;
+  const at = (q) => (sorted.length ? Math.round(sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * q) - 1)] * 10) / 10 : null);
+  return {
+    frames: gaps.length, seconds: times.length > 1 ? Math.round(times.at(-1) - times[0]) / 1000 : 0,
+    p50: at(0.5), p95: at(0.95), p99: at(0.99), max: sorted.length ? Math.round(sorted.at(-1)) : null,
+    hitches: gaps.filter((g) => g > 25).length,
+    dropped: gaps.reduce((a, g) => a + Math.max(0, Math.round(g / VSYNC) - 1), 0),
+    vsyncMs: Math.round(VSYNC * 100) / 100,
+    worst: [...gaps.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10).map(([k, g]) => [Math.round(times[k] - times[0]), Math.round(g)]),
+  };
+}
+
+/** The page filmed frame by frame (CDP Page.startScreencast); `stop` writes a 60 fps WebM, each slot showing the frame then on screen. */
+async function film(cdp, width, height) {
+  const shots = [];
+  const take = ({ data, metadata, sessionId }) => {
+    shots.push({ data, t: metadata.timestamp });
+    cdp.send('Page.screencastFrameAck', { sessionId }).catch(() => {});
+  };
+  cdp.on('Page.screencastFrame', take);
+  await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 80, maxWidth: width, maxHeight: height, everyNthFrame: 1 });
+  return {
+    async stop(path) {
+      await cdp.send('Page.stopScreencast');
+      cdp.off('Page.screencastFrame', take);
+      if (shots.length < 2) return null;
+      const ffmpeg = playwrightFfmpeg();
+      if (!ffmpeg) return `no ffmpeg (npx playwright install ffmpeg): ${shots.length} frames not written`;
+      // Playwright's own ffmpeg build: JPEG in through a pipe, VP9 in WebM out.
+      const enc = spawn(ffmpeg, ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-c:v', 'mjpeg', '-framerate', '60', '-i', 'pipe:0',
+        '-c:v', 'libvpx-vp9', '-deadline', 'realtime', '-cpu-used', '8', '-row-mt', '1', '-b:v', '0', '-crf', '30', '-pix_fmt', 'yuv420p', path], { stdio: ['pipe', 'ignore', 'inherit'] });
+      const done = new Promise((ok, fail) => { enc.on('exit', (code) => (code === 0 ? ok() : fail(new Error(`ffmpeg exited ${code}`)))); enc.on('error', fail); });
+      const t0 = shots[0].t, t1 = shots.at(-1).t;
+      let k = 0;
+      for (let slot = 0; t0 + slot / 60 <= t1; slot++) {
+        while (k + 1 < shots.length && shots[k + 1].t <= t0 + slot / 60) k++;
+        if (!enc.stdin.write(Buffer.from(shots[k].data, 'base64'))) await new Promise((ok) => enc.stdin.once('drain', ok));
+      }
+      enc.stdin.end();
+      await done;
+      return path;
+    },
+  };
+}
+
+/** The ffmpeg Playwright installs (`ms-playwright/ffmpeg-*`), or null. */
+function playwrightFfmpeg() {
+  const root = process.env.PLAYWRIGHT_BROWSERS_PATH ?? (process.platform === 'win32' ? join(process.env.LOCALAPPDATA ?? '', 'ms-playwright') : join(homedir(), '.cache', 'ms-playwright'));
+  if (!existsSync(root)) return null;
+  const dir = readdirSync(root).filter((n) => n.startsWith('ffmpeg-')).sort().at(-1);
+  if (!dir) return null;
+  const exe = readdirSync(join(root, dir)).find((n) => n.startsWith('ffmpeg'));
+  return exe ? join(root, dir, exe) : null;
+}
+
+/** A sampled allocation profile summed: MB allocated a second and the functions that allocated most (self, MB). */
+function allocationStats(profile, seconds) {
+  const self = new Map();
+  const stacks = new Map();
+  const files = new Map();
+  let bytes = 0;
+  // Also by the nearest three of the game's own frames (`src/`): which part of the game holds it, not only who allocated.
+  const walk = (node, ours) => {
+    bytes += node.selfSize;
+    const k = where(node.callFrame.functionName, node.callFrame.url, node.callFrame.lineNumber);
+    self.set(k, (self.get(k) ?? 0) + node.selfSize);
+    const mine = String(node.callFrame.url).includes('/src/') ? [...ours, k.replace(' @ src/', '@')].slice(-3) : ours;
+    if (node.selfSize) { const key = mine.join(' < ') || '(none of ours)'; stacks.set(key, (stacks.get(key) ?? 0) + node.selfSize); }
+    if (node.selfSize) { const file = (mine[mine.length - 1] ?? '(none of ours)').replace(/^[^@]*@/, '').replace(/:\d+$/, ''); files.set(file, (files.get(file) ?? 0) + node.selfSize); }
+    for (const c of node.children ?? []) walk(c, mine);
+  };
+  walk(profile.head, []);
+  return {
+    seconds: Math.round(seconds * 10) / 10, mb: Math.round(bytes / 1e5) / 10, mbPerSecond: Math.round(bytes / 1e5 / seconds) / 10,
+    top: [...self].sort((a, b) => b[1] - a[1]).slice(0, 15).map(([k, b]) => [k, Math.round(b / 1e5) / 10]),
+    stacks: [...stacks].sort((a, b) => b[1] - a[1]).slice(0, 30).map(([k, b]) => [k, Math.round(b / 1e5) / 10]),
+    files: [...files].sort((a, b) => b[1] - a[1]).slice(0, 30).map(([k, b]) => [k, Math.round(b / 1e5) / 10]),
+  };
+}
+
+/** A script's place, short: the function, the file under `src/` (no origin, no Vite query) and the line. */
+// A declaration, not a `const`: the steps above run
+function where(fn, url, line) {
+  const file = String(url ?? '').replace(/^https?:\/\/[^/]+\//, '').replace(/\?.*$/, '') || '(native)';
+  return `${fn || '(anonymous)'} @ ${file}${line >= 0 ? `:${line + 1}` : ''}`;
+}
+
+/** What a profile and the long frames say, in milliseconds: each function's own time */
+function summarise(profile, frames) {
+  const byId = new Map(profile.nodes.map((n) => [n.id, n]));
+  const parent = new Map();
+  for (const n of profile.nodes) for (const c of n.children ?? []) parent.set(c, n.id);
+  const self = new Map(), total = new Map();
+  const keyOf = (n) => where(n.callFrame.functionName, n.callFrame.url, n.callFrame.lineNumber);
+  let ms = 0;
+  for (let s = 0; s < profile.samples.length; s++) {
+    const dt = (profile.timeDeltas[s] ?? 0) / 1000;
+    ms += dt;
+    let id = profile.samples[s];
+    const top = byId.get(id);
+    if (!top) continue;
+    const k = keyOf(top);
+    self.set(k, (self.get(k) ?? 0) + dt);
+    const seen = new Set();
+    while (id !== undefined) {
+      const n = byId.get(id);
+      const key = keyOf(n);
+      if (!seen.has(key)) { seen.add(key); total.set(key, (total.get(key) ?? 0) + dt); }
+      id = parent.get(id);
+    }
+  }
+  const idle = /^\((idle|program|garbage collector|root)\)/;
+  const rank = (m) => [...m].filter(([k]) => !idle.test(k)).sort((a, b) => b[1] - a[1]).slice(0, 25).map(([k, v]) => [k, Math.round(v)]);
+  const gc = [...self].filter(([k]) => k.startsWith('(garbage collector)')).reduce((a, [, v]) => a + v, 0);
+  const held = new Map();
+  for (const f of frames) for (const sc of f.scripts ?? []) {
+    const k = where(sc.sourceFunctionName, sc.sourceURL, -1) + (sc.invoker ? ` ← ${sc.invoker}` : '');
+    const was = held.get(k) ?? { ms: 0, count: 0, worst: 0 };
+    held.set(k, { ms: was.ms + sc.duration, count: was.count + 1, worst: Math.max(was.worst, sc.duration) });
+  }
+  return {
+    profiledMs: Math.round(ms), garbageMs: Math.round(gc),
+    longFrames: frames.length,
+    longFramesMs: Math.round(frames.reduce((a, f) => a + f.duration, 0)),
+    worstFrameMs: Math.round(frames.reduce((a, f) => Math.max(a, f.duration), 0)),
+    blockingMs: Math.round(frames.reduce((a, f) => a + (f.blockingDuration ?? 0), 0)),
+    heldBy: [...held].sort((a, b) => b[1].ms - a[1].ms).slice(0, 15).map(([k, v]) => [k, Math.round(v.ms), v.count, Math.round(v.worst)]),
+    selfMs: rank(self), totalMs: rank(total),
+  };
+}
+
+/** The summary as lines for the console. */
+function report1(v) {
+  return [
+    `profile "${v.name}": ${v.profiledMs} ms measured, garbage collection ${v.garbageMs} ms; ${v.longFrames} frames > 50 ms (${v.longFramesMs} ms, worst ${v.worstFrameMs} ms, blocking ${v.blockingMs} ms)`,
+    '  long frames, by function (ms, times, worst):', ...v.heldBy.map(([k, ms, n, w]) => `    ${ms} ms  ×${n}  worst ${w}  ${k}`),
+    '  self time (ms):', ...v.selfMs.slice(0, 15).map(([k, ms]) => `    ${ms}  ${k}`),
+    '  total time, with callees (ms):', ...v.totalMs.slice(0, 15).map(([k, ms]) => `    ${ms}  ${k}`),
+    `  profile: ${v.cpuprofile}`,
+  ].join('\n');
+}
+
+===== ARQUIVO: scripts/cook-cities.mjs (32 linhas) =====
+// THE CITIES SHIPPED WITH THE GAME (`src/editor/cookedCities.ts`): each size's first city grown here by the game's own generator, prepared as the city's worker prepares it (`cityGen.worker.ts`: `prepareCity`), and written gzipped with the generator's fingerprint (`__CITY_GEN_HASH__`, `scripts/vite/cook-plugin.ts`). Run after a change to the generator: `npm run cook:cities`.
+import { createServer } from 'vite';
+import { gzipSync } from 'node:zlib';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+const root = process.cwd();
+const server = await createServer({ root, configFile: join(root, 'vite.config.ts'), server: { middlewareMode: true, hmr: false }, appType: 'custom', logLevel: 'error' });
+try {
+  const { COOKED_CITY_SEEDS, COOKED_CITIES_DIR } = await server.ssrLoadModule('/src/editor/cookedCities.ts');
+  const { buildLargeCityMap, buildSmallCityMap } = await server.ssrLoadModule('/src/editor/smallCityMap.ts');
+  const { prepareCity } = await server.ssrLoadModule('/src/editor/preparedCity.ts');
+  const { tableBytes } = await server.ssrLoadModule('/src/world/buildings/recordTable.ts');
+  const { cityGenHash } = await server.ssrLoadModule('/scripts/vite/cook-plugin.ts');
+  const hash = cityGenHash(root);
+  const dir = join(root, 'cooked', COOKED_CITIES_DIR);
+  mkdirSync(dir, { recursive: true });
+  const cities = {};
+  for (const [kind, seed] of Object.entries(COOKED_CITY_SEEDS)) {
+    const started = Date.now();
+    const made = prepareCity(kind === 'large' ? buildLargeCityMap(seed) : buildSmallCityMap(seed));
+    const data = `${kind}-${seed}.json.gz`, table = `${kind}-${seed}.table.gz`;
+    writeFileSync(join(dir, data), gzipSync(JSON.stringify(made.data), { level: 9 }));
+    writeFileSync(join(dir, table), gzipSync(new Uint8Array(tableBytes(made.buildings)), { level: 9 }));
+    cities[kind] = { seed, data, table };
+    console.log(`${kind} city of seed ${seed}: grown and prepared in ${((Date.now() - started) / 1000).toFixed(1)} s`);
+  }
+  writeFileSync(join(dir, 'manifest.json'), JSON.stringify({ hash, cities }, null, 2));
+  console.log(`cooked/${COOKED_CITIES_DIR} written for the generator ${hash}`);
+} finally {
+  await server.close();
+}

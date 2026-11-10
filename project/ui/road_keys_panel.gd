@@ -5,7 +5,7 @@ extends PopupPanel
 
 signal keys_changed
 
-var _rows := VBoxContainer.new()
+@onready var _rows := VBoxContainer.new()
 
 
 func _ready() -> void:
@@ -17,13 +17,12 @@ func _ready() -> void:
 func refresh() -> void:
 	HudWidgets.clear(_rows)
 	HudWidgets.label(_rows, &"BodyLabel", tr("roadKeys.title"))
-	var step := Formatters.format_measure(DataTables.game("tools").road.height_step_m)
 	for action in RoadKeys.ACTIONS:
 		var row := HudWidgets.hbox(_rows, &"Pad")
-		var name := HudWidgets.label(row, &"MutedLabel", tr(RoadKeys.LABEL_KEYS[action]).format({"step_m": step}))
+		var name := HudWidgets.label(row, &"MutedLabel", tr(RoadKeys.LABEL_KEYS[action]))
 		name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var text := tr("roadKeys.press") if RoadKeys.waiting == action else RoadKeys.label(RoadKeys.key_of(action))
-		var chip := HudWidgets.verbatim(HudWidgets.button(&"Choice", "", "", "", "icon_btn", "icon_btn"), text) as Button
+		var chip := HudWidgets.button(&"Choice", "", text, "", "icon_btn", "icon_btn")
 		chip.toggle_mode = true
 		chip.set_pressed_no_signal(RoadKeys.waiting == action)
 		chip.pressed.connect(func() -> void:

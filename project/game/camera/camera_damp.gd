@@ -4,7 +4,7 @@
 class_name CameraDamp
 extends RefCounted
 
-const SHORTEST_S := 1e-4 # a frame's time divides: never under this
+const SHORTEST_S := 1e-4
 const HALF := 0.5
 
 var x := 0.0

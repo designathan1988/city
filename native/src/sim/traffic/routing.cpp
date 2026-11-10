@@ -86,7 +86,6 @@ bool find_route(CityState &s, int from_ds, int goal_ds, std::vector<int> &out, i
 	const TrafficParams &tp = s.catalog.traffic;
 	out.clear();
 	if (from_ds < 0 || goal_ds < 0 || !g.ds[from_ds].ok || !g.ds[goal_ds].ok) return false;
-	if (!route_reaches(s, from_ds, goal_ds, by_bike)) return false; // the components say no before a search walks the map
 	note_search(s);
 	V2 goal;
 	end_point(s, goal_ds, goal);
@@ -155,28 +154,25 @@ bool reconsider(CityState &s, int id) {
 
 // The route says a turn the vehicle's lane cannot make (a connector was removed or the lanes were rearranged): try
 // another lane of the same segment that does, then plan again from where it is. False when it has no way on.
-bool route_from_lane(CityState &s, int id) {
+bool retry_route(CityState &s, int id) {
 	TrafficState &t = s.traffic;
 	Vehicle &v = t.vehicles[size_t(id)];
-	if (v.ds < 0 || v.ds >= int(t.g.ds.size()) || v.route.len == 0) return false;
-	const int goal = route_at(t.route_pool, v.route, v.route.len - 1);
-	if (goal < 0) return false;
-	const size_t key = size_t(v.ds) * MAX_LANES + size_t(v.lane);
-	std::vector<int> path, best;
-	float best_m = 0;
-	for (int ci = key < t.g.lane_conn.size() ? t.g.lane_conn[key] : -1; ci >= 0; ci = t.g.conns[size_t(ci)].next_from) {
-		const Conn &c = t.g.conns[size_t(ci)];
-		if (!c.alive || !find_route(s, c.to_ds, goal, path, -1, -1, v.type == VehicleType::BICYCLE) || path.empty()) continue;
-		float m = 0;
-		for (int d : path) m += t.g.ds[size_t(d)].len;
-		if (best.empty() || m < best_m) {
-			best = path;
-			best_m = m;
-		}
+	if (v.ds < 0 || v.ds >= int(t.g.ds.size()) || v.ri + 1 >= v.route.len) return false;
+	const int next = route_at(t.route_pool, v.route, v.ri + 1);
+	int alt = -1, bd = MAX_LANES + 1;
+	for (int lane = 0; lane < t.g.ds[size_t(v.ds)].lanes; lane++) {
+		if (lane == v.lane || !lane_reaches(s, v.ds, lane, next)) continue;
+		const int d = std::abs(lane - v.lane);
+		if (d < bd) { bd = d; alt = lane; }
 	}
-	if (best.empty()) return false;
-	best.insert(best.begin(), v.ds); // from the lane it is on: its next road one this lane leads to
-	route_set(t.route_pool, v.route, t.route_waste, best.data(), int(best.size()));
+	if (alt >= 0) {
+		move_vehicle_lane(s, id, alt);
+		return true;
+	}
+	const int goal = route_at(t.route_pool, v.route, v.route.len - 1);
+	std::vector<int> path;
+	if (goal < 0 || !find_route(s, v.ds, goal, path) || path.empty()) return false;
+	route_set(t.route_pool, v.route, t.route_waste, path.data(), int(path.size()));
 	v.ri = 0;
 	t.reroutes++;
 	return true;

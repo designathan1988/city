@@ -55,8 +55,8 @@ int Simulation::steps_per_tick(SimSpeed sp) const {
 	if (!s_) return 0;
 	switch (sp) {
 		case SimSpeed::NORMAL: return 1;
-		case SimSpeed::FAST: return s_->catalog.tune.sim_speed_fast;
-		case SimSpeed::FASTEST: return s_->catalog.tune.sim_speed_fastest;
+		case SimSpeed::FAST: return int(s_->catalog.tune.sim_speed_fast);
+		case SimSpeed::FASTEST: return int(s_->catalog.tune.sim_speed_fastest);
 		default: return 0;
 	}
 }
@@ -72,20 +72,15 @@ void Simulation::tick(CityState &s, int steps, int64_t stamp_ns) {
 			growing = s.traffic_levels.growth_on && !s.growth.cells.empty();
 			chosen = !s.traffic.flow_control.changed.empty();
 		}
-		GrowthPlan grown;
-		if (growing) { // decided reading the map, beside the mesh jobs and the frame (city_growth.h)
-			std::shared_lock<std::shared_mutex> map(s.map_mutex);
-			grown = plan_growth(s, dt);
-		}
 		if (chosen) { // rare: the mesh jobs read the control off the network, so it changes under the exclusive lock
 			std::unique_lock<std::shared_mutex> map(s.map_mutex);
 			std::lock_guard<std::mutex> tr(s.traffic_mutex);
 			traffic::apply_flow_control(s);
 		}
 		s.clock.minutes.store(s.clock.minutes.load() + dt * s.catalog.tune.sim_minutes_per_second);
-		if (grown.changes()) { // waits its turn: a mesh job's hold must not decide on which tick a building grows
+		if (growing) { // waits its turn: a mesh job's short hold must not decide on which tick a building grows
 			std::unique_lock<std::shared_mutex> map(s.map_mutex);
-			apply_growth(s, grown);
+			grow_step(s, dt);
 		}
 		{
 			std::unique_lock<std::shared_mutex> map(s.map_mutex, std::try_to_lock); // mesh jobs may hold it shared: the damage clock is owed what it missed
@@ -102,20 +97,8 @@ void Simulation::tick(CityState &s, int steps, int64_t stamp_ns) {
 	}
 }
 
-bool Simulation::hold_still() {
-	std::unique_lock<std::mutex> lk(wake_mutex_);
-	const SimSpeed sp = speed_.load();
-	if (sp == SimSpeed::STOPPED) return true; // no thread
-	if (sp != SimSpeed::PAUSED) return false;
-	// set_speed(PAUSED) returns while the thread may still be inside a tick: its steps would land among the caller's.
-	parked_cv_.wait(lk, [this]() { return parked_ || !running_; });
-	return true;
-}
-
-bool Simulation::step(CityState &s, int ticks) {
-	if (!hold_still()) return false;
-	for (int k = 0; k < ticks; k++) tick(s, 1, now_ns());
-	return true;
+void Simulation::step(CityState &s) {
+	tick(s, 1, now_ns());
 }
 
 void Simulation::run() {
@@ -125,10 +108,7 @@ void Simulation::run() {
 		wakeups_++;
 		if (speed_.load() == SimSpeed::PAUSED) { // nothing to step: wait for the speed or stop(), not for the clock
 			std::unique_lock<std::mutex> lk(wake_mutex_);
-			parked_ = true;
-			parked_cv_.notify_all();
 			wake_.wait(lk, [this]() { return !running_ || speed_.load() != SimSpeed::PAUSED; });
-			parked_ = false;
 			deadline = now_ns(); // the clock goes on from now, not from where it stopped
 			continue;
 		}

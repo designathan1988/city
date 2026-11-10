@@ -1,5 +1,4 @@
-// What a lit window is, for every level of the buildings: the glass, the lamp of a room, who is awake behind it and the filtered
-// window grid.
+// What a lit window is, for every level of the buildings: the lamp of a room and the filtered window grid.
 //
 // A black body's colour at a temperature, linear and of luminance 1: M. Charity's sRGB table of the Planckian locus,
 // checked against Kang et al. 2002 (within 4 of 255 on every channel). Homes mix warm 2700-3500 K lamps with cool white
@@ -14,76 +13,17 @@ const vec3 LAMP_9000 = vec3(0.8745, 1.0013, 1.3569);
 const vec3 LAMP_HOME_MEAN = vec3(1.6241, 0.8671, 0.4790);
 const vec3 LAMP_OFFICE_MEAN = vec3(1.3902, 0.9254, 0.5895);
 
-global uniform float rooms_awake; // the share of people awake at this hour (daylight.gd)
-global uniform float rooms_in_use; // of those awake, the share whose room has the lamp on (daylight.json, daylight.gd)
-global uniform float building_night_windows; // the Effects panel: 0 puts the lit rooms out
-
-const vec3 PANE_ALBEDO = vec3(0.0075, 0.0096, 0.0115); // glass scatters next to nothing
-const vec3 PANE_ALBEDO_DARK = vec3(0.0047, 0.0061, 0.0074); // a dark pane's
-
-// The mixes the means above are worked out from, as the lots under which each lamp is picked: offices half 4000 K, 35 % 5000 K,
-// the rest 3500 K; homes 36 % 2700 K, 24 % 3000 K, 10 % 3500 K, the rest 6500 K.
-const float OFFICE_UNTIL_4000 = 0.5, OFFICE_UNTIL_5000 = 0.85;
-const float HOME_UNTIL_2700 = 0.36, HOME_UNTIL_3000 = 0.6, HOME_UNTIL_3500 = 0.7;
-// A room's independent picks from its lot: fract(lot * k), each k far from a simple ratio of the others.
-const float LOT_LAMP = 17.31, LOT_LEVEL_A = 7.13, LOT_LEVEL_B = 2.17, LOT_LEVEL_B_SHIFT = 0.4, LOT_CUT = 37.0, LOT_FLICKER = 40.0;
-const float LEVEL_LEAST = 0.3, LEVEL_SPAN = 0.85; // a lamp's level runs 0.3 to 1.15 over its two lots' product
-const float LOT_PRODUCT_MEAN = 0.25; // the mean of the product of two independent uniform lots: 1/2 x 1/2
-const float LEVEL_MEAN = LEVEL_LEAST + LEVEL_SPAN * LOT_PRODUCT_MEAN; // room_level over many rooms
-// A room's pick of the far levels holds while its cell spans 2 pixels or more (a pick a cell has detail at the cell's own frequency,
-// which the pixels carry down to 2 a cell: Nyquist) and is the mean of the picks at 1 pixel a cell, where pulse's grid turns to its mean.
-const float PICK_WHOLE = 0.5, PICK_MEAN = 1.0;
-// Offices are lit a stretch of floor at a time (a floor in use, its cleaners, an open plan), homes a room at a time: an office's room is
-// lit when its stretch and the room itself are picked, each with the square root of the share, so the share of lit rooms stays the
-// homes'. A stretch is this many bays (about 24 m of a floor at 3 m a bay; a modelling choice by eye on photos of office towers at night).
-const float OFFICE_RUN_BAYS = 8.0;
-// The far rooms' cell hash: each cell index offset to stay positive (more than a building's bays), times a prime.
-const float CELL_SHIFT = 512.0;
-const uint CELL_PRIME_X = 131u, CELL_PRIME_Y = 7177u;
-// A television: about one cut every 1.7 s (0.6 a second), each cut's level from 0.45 to 0.9, a flicker of 8 % at 11 rad/s;
-// its seed by Knuth's multiplicative hash (hash.gdshaderinc) and the lot's 13 bits.
-const float TV_CUTS_HZ = 0.6, TV_CUT_LEAST = 0.45, TV_CUT_SPAN = 0.45, TV_FLICKER_FLOOR = 0.92, TV_FLICKER = 0.08, TV_FLICKER_RAD_S = 11.0;
-const float LOT_BITS_TOP = 8191.0;
-const float BOX_UNDER = 0.05; // a pulse narrower than this many periods a pixel is box-filtered (the tent's second integral loses precision)
-const float LEAST_FOOT = 1e-4; // a grid footprint never under this
-// The outside lamps switched on by 10 m cells, each its own pick: its column and row times two primes, offset to stay positive.
-const float LAMP_CELL_PER_M = 0.1, LAMP_CELL_X = 31.0, LAMP_CELL_Z = 977.0, LAMP_CELL_SHIFT = 65536.0;
-
-// Whether the outside lamp at `at` (metres, x and z) is on, `on` the share of them lit at this hour.
-float outside_lamp(vec2 at, float on) {
-	return step(h01(uint(floor(at.x * LAMP_CELL_PER_M) * LAMP_CELL_X + floor(at.y * LAMP_CELL_PER_M) * LAMP_CELL_Z + LAMP_CELL_SHIFT)), on);
-}
-
-// The lamp of a room by its lot `room`: the colour takes a lot of its own from it.
-vec3 room_lamp(float room, float office) {
-	float lot = fract(room * LOT_LAMP);
-	if (office > 0.5) return lot < OFFICE_UNTIL_4000 ? LAMP_4000 : lot < OFFICE_UNTIL_5000 ? LAMP_5000 : LAMP_3500;
-	return lot < HOME_UNTIL_2700 ? LAMP_2700 : lot < HOME_UNTIL_3000 ? LAMP_3000 : lot < HOME_UNTIL_3500 ? LAMP_3500 : LAMP_6500;
+vec3 room_lamp(float lot, float office) {
+	if (office > 0.5) return lot < 0.5 ? LAMP_4000 : lot < 0.85 ? LAMP_5000 : LAMP_3500;
+	return lot < 0.36 ? LAMP_2700 : lot < 0.6 ? LAMP_3000 : lot < 0.7 ? LAMP_3500 : LAMP_6500;
 }
 vec3 room_lamp_mean(float office) { return office > 0.5 ? LAMP_OFFICE_MEAN : LAMP_HOME_MEAN; }
-// How bright a room's lamp is, 0.3 to 1.15, by two lots of its own.
-float room_level(float lot) { return LEVEL_LEAST + LEVEL_SPAN * fract(lot * LOT_LEVEL_A) * fract(lot * LOT_LEVEL_B + LOT_LEVEL_B_SHIFT); }
-
-// A room of the far levels (building_far.gdshader, building_far_window.gdshaderinc), its cell `cell` of the bay grid (`salt` the
-// building's, 0 where the grid's x already runs on per building): its own lot `lot`, its lamp, whether it is lit and how brightly while
-// the cell spans pixels enough, and the share of lit rooms at the mean level with the mean lamp as `sub` (far_pick_sub) goes to 1. Lit as
-// the near level's rooms are (building_pane.gdshaderinc pane_lamp): of those awake, the share in use, each lamp at its own level.
-uint room_cell(vec2 cell) { return uint(cell.x + CELL_SHIFT) * CELL_PRIME_X + uint(cell.y + CELL_SHIFT) * CELL_PRIME_Y; }
-float far_pick_sub(vec2 foot) { return smoothstep(PICK_WHOLE, PICK_MEAN, max(foot.x, foot.y)); }
-float far_room_lit(float lot, vec2 cell, uint salt, float office, float sub) {
-	float share = rooms_awake * rooms_in_use;
-	float each = office > 0.5 ? sqrt(share) : share;
-	float stretch = h01(pcg(salt + room_cell(vec2(floor(cell.x / OFFICE_RUN_BAYS), cell.y))));
-	float picked = step(1.0 - each, lot) * (office > 0.5 ? step(1.0 - each, stretch) : 1.0);
-	return mix(picked * room_level(lot), share * LEVEL_MEAN, sub) * building_night_windows;
-}
-vec3 far_room_lamp(float lot, float office, float sub) { return mix(room_lamp(lot, office), room_lamp_mean(office), sub); }
 
 // A television alone in the room: the cuts of a picture, about one every 1.7 s, and the small flicker over them.
 vec3 tv_light(float clock, float lot) {
-	float cut = h01(uint(clock * TV_CUTS_HZ + lot * LOT_CUT) * KNUTH_HASH + uint(lot * LOT_BITS_TOP));
-	float shimmer = TV_FLICKER_FLOOR + TV_FLICKER * sin(clock * TV_FLICKER_RAD_S + lot * LOT_FLICKER);
-	return LAMP_9000 * (TV_CUT_LEAST + TV_CUT_SPAN * cut) * shimmer;
+	float cut = h01(uint(clock * 0.6 + lot * 37.0) * 2654435761u + uint(lot * 8191.0));
+	float shimmer = 0.92 + 0.08 * sin(clock * 11.0 + lot * 40.0);
+	return LAMP_9000 * (0.45 + 0.45 * cut) * shimmer;
 }
 
 // A pulse [a0, a1) repeated every 1, seen through a pixel w periods wide (Heckbert's summed-area idea applied to an analytic
@@ -103,12 +43,12 @@ float pulse(float x, float w, float a0, float a1) {
 	float fade = smoothstep(0.5, 1.0, w);
 	if (fade >= 1.0) return mean;
 	float c = fract(x);
-	float filtered = w < BOX_UNDER ? (pulse_first(c + 0.5 * w, a0, a1) - pulse_first(c - 0.5 * w, a0, a1)) / w
+	float filtered = w < 0.05 ? (pulse_first(c + 0.5 * w, a0, a1) - pulse_first(c - 0.5 * w, a0, a1)) / w
 			: (pulse_second(c + w, a0, a1) - 2.0 * pulse_second(c, a0, a1) + pulse_second(c - w, a0, a1)) / (w * w);
 	return mix(filtered, mean, fade);
 }
 // The footprint as the gradient's length per axis: fwidth's |dx| + |dy| is up to 1.41 times it in an oblique view.
 vec2 grid_footprint(vec2 cell) {
 	vec2 dx = dFdx(cell), dy = dFdy(cell);
-	return max(sqrt(dx * dx + dy * dy), vec2(LEAST_FOOT));
+	return max(sqrt(dx * dx + dy * dy), vec2(1e-4));
 }

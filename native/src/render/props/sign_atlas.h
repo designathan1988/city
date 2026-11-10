@@ -30,13 +30,7 @@ public:
 	// The cells to paint since the last call, each [type, text, rectangle in pixels, layer, generation]. Main thread. A cell of a
 	// newer generation than the sheets painted so far: they hold another city's plates, cleared before it is painted.
 	godot::Array take_pending();
-	// Every cell of this city, each [type, text, rectangle in pixels, layer] (tests: what the sheets must hold painted).
-	godot::Array laid() const;
 	int cells_used() const { return used_; }
-	int waiting() const { // cells laid and not yet handed to the painter (take_pending)
-		std::lock_guard<std::mutex> lk(mutex_);
-		return int(pending_.size());
-	}
 	int64_t generation() const {
 		std::lock_guard<std::mutex> lk(mutex_);
 		return generation_;

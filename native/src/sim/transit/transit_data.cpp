@@ -1,5 +1,4 @@
-// The plan's edits, its cells and its rail network (transit_data.h): nodes joined by a grid of the joining reach, Dijkstra over a heap;
-// the picks over the cells round the point only.
+// The plan's edits and its rail network (transit_data.h): nodes joined by a grid of the joining reach, Dijkstra over a heap.
 #include "sim/transit/transit_data.h"
 
 #include <algorithm>
@@ -13,24 +12,9 @@ namespace {
 constexpr float NO_DISTANCE = std::numeric_limits<float>::max();
 constexpr int MIN_LINE_STOPS = 2;
 
-constexpr int CELL_ROW_BITS = 32; // a cell's key: its row over the column's 32 bits
+constexpr int CELL_ROW_BITS = 32;
 
 int64_t cell_key(int i, int j) { return (int64_t(i) << CELL_ROW_BITS) ^ uint32_t(j); }
-
-constexpr float TRANSIT_CELL_M = 25.f; // the side of a cell the stops and stretches are filed in (the lab's world/transit.ts STOP_CELL, TRACK_CELL)
-
-int cell_of(float v) { return int(std::floor(v / TRANSIT_CELL_M)); }
-
-// Every cell within `reach` of `p`, each once.
-template <typename Visit>
-void cells_round(const V2 &p, float reach, Visit visit) {
-	for (int i = cell_of(p.x - reach); i <= cell_of(p.x + reach); i++)
-		for (int j = cell_of(p.y - reach); j <= cell_of(p.y + reach); j++) visit(cell_key(i, j));
-}
-
-// Nearer, or as near and earlier in the lists' order: what a walk of the lists in order keeps with a strict comparison.
-bool before(float d, int64_t order, float best_d, int64_t best_order, bool found) { return d < best_d || (found && d == best_d && order < best_order); }
-int64_t stretch_order(int track, int point) { return (int64_t(track) << CELL_ROW_BITS) | uint32_t(point); }
 
 struct OnStretch {
 	int edge = -1;
@@ -62,29 +46,9 @@ OnStretch on_graph(const RailGraph &g, const V2 &p) {
 } // namespace
 
 const TransitStop *TransitData::stop(int id) const {
-	const auto it = cells.stop_at.find(id);
-	if (it != cells.stop_at.end() && size_t(it->second) < stops.size() && stops[size_t(it->second)].id == id) return &stops[size_t(it->second)];
-	for (const TransitStop &s : stops) // a copy being edited, its cells not made again yet
+	for (const TransitStop &s : stops)
 		if (s.id == id) return &s;
 	return nullptr;
-}
-
-void transit_index(TransitData &t) {
-	TransitCells &c = t.cells;
-	c = TransitCells();
-	for (size_t i = 0; i < t.stops.size(); i++) {
-		const TransitStop &q = t.stops[i];
-		c.stop_at.emplace(q.id, int(i));
-		c.stops[cell_key(cell_of(q.at.x), cell_of(q.at.y))].push_back(int(i));
-	}
-	for (size_t k = 0; k < t.tracks.size(); k++) {
-		const std::vector<V2> &pts = t.tracks[k].points;
-		for (size_t i = 1; i < pts.size(); i++) {
-			const V2 &a = pts[i - 1], &b = pts[i];
-			for (int x = cell_of(std::min(a.x, b.x)); x <= cell_of(std::max(a.x, b.x)); x++)
-				for (int y = cell_of(std::min(a.y, b.y)); y <= cell_of(std::max(a.y, b.y)); y++) c.stretches[cell_key(x, y)].push_back({ int(k), int(i) });
-		}
-	}
 }
 
 const TransitLine *TransitData::line(int id) const {
@@ -144,7 +108,6 @@ void transit_normalize(TransitData &t) {
 	const auto known = [](TransitMode m) { return m == TransitMode::BUS || m == TransitMode::TRAIN || m == TransitMode::METRO; };
 	t.stops.erase(std::remove_if(t.stops.begin(), t.stops.end(), [&](const TransitStop &s) { return !known(s.mode); }), t.stops.end());
 	t.tracks.erase(std::remove_if(t.tracks.begin(), t.tracks.end(), [&](const RailTrack &k) { return !known(k.mode) || k.mode == TransitMode::BUS || int(k.points.size()) < MIN_LINE_STOPS; }), t.tracks.end());
-	transit_index(t); // the lines' stops below are looked up by it
 	for (TransitLine &l : t.lines)
 		l.stops.erase(std::remove_if(l.stops.begin(), l.stops.end(), [&](int id) {
 			const TransitStop *s = t.stop(id);
@@ -257,61 +220,29 @@ std::vector<V2> rail_path(const RailGraph &g, const V2 &from, const V2 &to, Rail
 TrackHit nearest_track(const TransitData &t, const V2 &p, float reach, TransitMode mode) {
 	TrackHit best;
 	best.d = reach;
-	int64_t best_order = 0;
-	cells_round(p, reach, [&](int64_t key) {
-		const auto it = t.cells.stretches.find(key);
-		if (it == t.cells.stretches.end()) return;
-		for (const auto &[k, i] : it->second) {
-			const RailTrack &track = t.tracks[size_t(k)];
-			if (mode != TransitMode::BUS && track.mode != mode) continue;
+	for (const RailTrack &track : t.tracks) {
+		if (mode != TransitMode::BUS && track.mode != mode) continue;
+		for (size_t i = 1; i < track.points.size(); i++) {
 			float share = 0;
-			const V2 q = on_segment(p, track.points[size_t(i) - 1], track.points[size_t(i)], share);
+			const V2 q = on_segment(p, track.points[i - 1], track.points[i], share);
 			const float d = (p - q).len();
-			const int64_t order = stretch_order(k, i);
-			if (!before(d, order, best.d, best_order, best.track >= 0)) continue;
-			best = { track.id, q, d };
-			best_order = order;
+			if (d < best.d) best = { track.id, q, d };
 		}
-	});
+	}
 	return best;
-}
-
-bool track_point_near(const TransitData &t, const V2 &p, float reach, TransitMode mode, V2 &out) {
-	int64_t best = -1;
-	cells_round(p, reach, [&](int64_t key) {
-		const auto it = t.cells.stretches.find(key);
-		if (it == t.cells.stretches.end()) return;
-		for (const auto &[k, i] : it->second) {
-			const RailTrack &track = t.tracks[size_t(k)];
-			if (track.mode != mode) continue;
-			for (int at : { i - 1, i }) {
-				const int64_t order = stretch_order(k, at);
-				if ((track.points[size_t(at)] - p).len() >= reach || (best >= 0 && order >= best)) continue;
-				best = order;
-				out = track.points[size_t(at)];
-			}
-		}
-	});
-	return best >= 0;
 }
 
 const TransitStop *stop_near(const TransitData &t, const V2 &p, float reach, TransitMode mode, bool any) {
 	const TransitStop *best = nullptr;
 	float dist = reach;
-	int best_at = 0;
-	cells_round(p, reach, [&](int64_t key) {
-		const auto it = t.cells.stops.find(key);
-		if (it == t.cells.stops.end()) return;
-		for (int i : it->second) {
-			const TransitStop &s = t.stops[size_t(i)];
-			if (!any && s.mode != mode) continue;
-			const float d = (s.at - p).len();
-			if (!before(d, i, dist, best_at, best != nullptr)) continue;
+	for (const TransitStop &s : t.stops) {
+		if (!any && s.mode != mode) continue;
+		const float d = (s.at - p).len();
+		if (d < dist) {
 			dist = d;
 			best = &s;
-			best_at = i;
 		}
-	});
+	}
 	return best;
 }
 

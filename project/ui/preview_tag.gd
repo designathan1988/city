@@ -3,8 +3,8 @@
 class_name PreviewTag
 extends PanelContainer
 
-var _label: Label
-var _at := Vector3.ZERO
+@onready var _label: Label
+@onready var _at := Vector3.ZERO
 
 
 func _ready() -> void:

@@ -3,7 +3,6 @@
 // z out of it.
 #pragma once
 
-#include "render/data_reader.h"
 #include "render/mesh_builder.h"
 
 #include <godot_cpp/variant/dictionary.hpp>
@@ -37,9 +36,8 @@ struct BayPropLook {
 	std::vector<uint32_t> ac_cases, pots, greens, plastic, fine, loungers, bikes;
 	uint32_t ac_old = 0, dish = 0, airer = 0;
 	BayPropShares share;
-	godot::Vector3 ac_case; // the condenser's case, its box marked front: facade_props.cpp places by it, building_props.gdshader draws its front
 
-	bool load(const DataValue &t, godot::PackedStringArray &errors); // bay_props.json, through the strict reader's values
+	bool load(const godot::Dictionary &t, godot::PackedStringArray &errors);
 };
 
 } // namespace city::b40

@@ -7,30 +7,20 @@
 // its colour lit by the scene, its surface polished polycarbonate (lens_roughness, lens_ior). One shader for all of
 // them: each spatial shader's variants cost ~3 MiB.
 shader_type spatial;
-#include "res://render/shaders/contracts/streets.gdshaderinc"
 
 global uniform float night;
 uniform vec3 glow_color : source_color;
-uniform float glow_gain; // materials.json prop, as every uniform below with no value of its own
-uniform float roughness;
-uniform vec3 lit_radiance[LENS_COUNT]; // per lens
-uniform vec3 dark_radiance[LENS_COUNT]; // an unlit lens's faint glow (render/lamp_radiance.gd)
+uniform float glow_gain = 6.0;
+uniform float roughness = 0.85;
+uniform vec3 lit_radiance[5]; // per Lens (prop_kit.h Lens::COUNT)
+uniform vec3 dark_radiance[5]; // an unlit lens's faint glow (render/lamp_radiance.gd)
 uniform float lens_roughness = 0.0;
 uniform float lens_ior = 1.5;
-uniform float wire_min_px; // a wire never narrower than this on the screen
-uniform float wire_sway_m; // how far a wire swings at mid-span in a full gust
-uniform vec3 wire_gust; // its swing: from and over the gust's sine, the sine's rate (rad/s)
-uniform vec2 wear_mix; // the wear's blotch: its noise's share and its smudge's
-uniform vec4 plank_look; // a plank's tone: from and to by its rings, from and over its fibre
-uniform vec2 plank_rough; // its roughness, from and over its fibre
-uniform vec2 plank_wave_noise; // the rings' wave: its noise along and across (a metre's share)
-uniform float plank_fade; // the rings fade as their pitch nears a pixel, by this share
-uniform float pole_grain_per_m; // a wooden pole's grain up it
-const float LEAST_DEPTH_M = 0.01, LEAST_RADIUS = 1e-4, LEAST_ROUGH = 0.05; // guards: a wire's depth, its radius; the least roughness wear leaves
-const float GODOT_F0_PER_SPECULAR2 = 0.16; // Godot's F0 = 0.16 SPECULAR^2 (scene_forward_lights_inc.glsl F0())
+uniform float wire_min_px = 0.7; // a wire never narrower than this on the screen
+uniform float wire_sway_m = 0.35; // how far a wire swings at mid-span in a full gust
 uniform float wood_grain = 0.5;
-uniform float post_metal; // a sign post, galvanised
-uniform float post_roughness;
+uniform float post_metal = 0.6; // a sign post, galvanised
+uniform float post_roughness = 0.45;
 uniform sampler2DArray sign_atlas : source_color, filter_linear;
 
 varying flat float v_tag;
@@ -46,8 +36,10 @@ varying vec3 v_faces;
 #include "res://render/shaders/color_space.gdshaderinc"
 #include "res://render/shaders/lattice_noise.gdshaderinc"
 
-// A span's phase and its poles' kinds share INSTANCE_CUSTOM.y (street_props.cpp push_span): phase + PROP_SPAN_KIND_STRIDE (kind_a +
-// 2 kind_b), a kind 0 urban, 1 rural. A secondary wire carries WIRE_SECONDARY_MARK in its rural seat.
+// A span's phase and its poles' kinds share INSTANCE_CUSTOM.y (street_props.cpp push_span): phase + KIND_STRIDE (kind_a + 2 kind_b),
+// a kind 0 urban, 1 rural. A secondary wire carries SECONDARY_MARK in its rural seat (prop_kit.h WIRE_SECONDARY_MARK).
+const float KIND_STRIDE = 8.0;
+const float SECONDARY_MARK = 10000.0;
 
 // A wire's vertex: VERTEX.x is t along the span's chord (the instance's x axis), y and z its ring, UV its height up the poles
 // and its seat along an urban pole's arm, `rural` its seat along a rural pole's; the arms (turned toward the street) have the
@@ -55,10 +47,10 @@ varying vec3 v_faces;
 // goes into the instance's axes by parts. The wire hangs in a parabola of depth INSTANCE_CUSTOM.x, swings across in the wind by
 // its phase, and keeps wire_min_px on the screen. A secondary wire with a rural pole at either end is not strung: nothing.
 vec3 wire_vertex(vec3 v, vec2 place, float rural, vec2 headings, mat4 model, mat4 model_view, mat4 projection, vec2 viewport, float sag, float phase_kinds, float time, bool shadow) {
-	float kinds = floor(phase_kinds / PROP_SPAN_KIND_STRIDE);
-	float phase = phase_kinds - kinds * PROP_SPAN_KIND_STRIDE;
+	float kinds = floor(phase_kinds / KIND_STRIDE);
+	float phase = phase_kinds - kinds * KIND_STRIDE;
 	bool rural_a = mod(kinds, 2.0) > 0.5, rural_b = kinds > 1.5;
-	if (rural > 0.5 * WIRE_SECONDARY_MARK && (rural_a || rural_b)) {
+	if (rural > 0.5 * SECONDARY_MARK && (rural_a || rural_b)) {
 		return vec3(0.0);
 	}
 	float seat_a = rural_a ? rural : place.y, seat_b = rural_b ? rural : place.y;
@@ -67,14 +59,14 @@ vec3 wire_vertex(vec3 v, vec2 place, float rural, vec2 headings, mat4 model, mat
 	vec2 arm = mix(vec2(cos(headings.x), sin(headings.x)) * seat_a, vec2(cos(headings.y), sin(headings.y)) * seat_b, t);
 	float ahead = dot(arm, chord.xz) / dot(chord.xz, chord.xz);
 	vec3 hung = vec3(t + ahead, place.x - ahead * chord.y, dot(arm, model[2].xz));
-	float depth = max(-(model_view * vec4(hung, 1.0)).z, LEAST_DEPTH_M);
+	float depth = max(-(model_view * vec4(hung, 1.0)).z, 0.01);
 	float pixel = depth / (projection[1][1] * viewport.y * 0.5);
-	float radius = max(length(v.yz), LEAST_RADIUS);
+	float radius = max(length(v.yz), 1e-4);
 	// In the shadow pass the wire is at rest, at its own width: the sun's projection is no screen, and read as one it swelled the wires
 	// into shadows tens of metres wide along every line (the 4.0: wireMaterials, the depth material).
 	float keep = shadow ? 1.0 : max(1.0, wire_min_px * pixel * 0.5 / radius);
 	vec2 ring = v.yz * keep;
-	float swing = shadow ? 0.0 : 4.0 * t * (1.0 - t) * wire_sway_m * (wire_gust.x + wire_gust.y * sin(time * wire_gust.z + phase)) * 0.5;
+	float swing = shadow ? 0.0 : 4.0 * t * (1.0 - t) * wire_sway_m * (0.55 + 0.45 * sin(time * 1.9 + phase)) * 0.5;
 	return hung + vec3(0.0, ring.x - sag * (1.0 - u * u), ring.y + swing);
 }
 
@@ -94,21 +86,21 @@ vec2 on_face(vec3 p, vec3 n) {
 
 void weather(vec3 p, vec3 n, float high, float near, inout vec3 c, inout float rough) {
 	vec2 at = on_face(p, n);
-	float blotch = vnoise(at * WEAR_BLOTCH) * wear_mix.x + vnoise(at * WEAR_SMUDGE) * wear_mix.y, grain = vnoise(at * WEAR_GRAIN);
+	float blotch = vnoise(at * WEAR_BLOTCH) * 0.6 + vnoise(at * WEAR_SMUDGE) * 0.4, grain = vnoise(at * WEAR_GRAIN);
 	vec3 worn = c * mix(WEAR_LOW, WEAR_HIGH, blotch) * mix(GRIME, vec3(1.0), smoothstep(0.0, GRIME_REACH_M, high));
 	c = mix(c, worn, near);
-	rough = clamp(rough + near * ((blotch - 0.5) * ROUGH_BLOTCH + (grain - 0.5) * ROUGH_GRAIN), LEAST_ROUGH, 1.0);
+	rough = clamp(rough + near * ((blotch - 0.5) * ROUGH_BLOTCH + (grain - 0.5) * ROUGH_GRAIN), 0.05, 1.0);
 }
 
 // A plank: `along` its length, `across` it (Modo's wood: rings distorted by waves, and a layer of noise for the grain), the rings fading before they alias.
 const float PLANK_RINGS = 26.0, PLANK_WAVE = 7.0, PLANK_FIBRE = 110.0;
 void plank(float along, float across, float width, inout vec3 c, inout float rough) {
-	float wave = vnoise(vec2(along * plank_wave_noise.x, across * plank_wave_noise.y));
+	float wave = vnoise(vec2(along * 0.8, across * 5.0));
 	float rings = 0.5 + 0.5 * sin(across * PLANK_RINGS + wave * PLANK_WAVE);
 	float fibre = vnoise(vec2(along * 4.0, across * PLANK_FIBRE));
-	float keep = clamp(1.0 - width * PLANK_RINGS * plank_fade, 0.0, 1.0);
-	c *= mix(1.0, mix(plank_look.x, plank_look.y, rings) * (plank_look.z + plank_look.w * fibre), keep);
-	rough = mix(rough, plank_rough.x + plank_rough.y * fibre, keep);
+	float keep = clamp(1.0 - width * PLANK_RINGS * 0.3, 0.0, 1.0);
+	c *= mix(1.0, mix(0.7, 1.12, rings) * (0.86 + 0.28 * fibre), keep);
+	rough = mix(rough, 0.5 + 0.3 * fibre, keep);
 }
 
 void vertex() {
@@ -119,60 +111,60 @@ void vertex() {
 	v_finish = INSTANCE_CUSTOM.ba;
 	v_layer = UV2.y;
 	v_local = VERTEX;
-	if (abs(v_tag - PROP_WIRE) < 0.5) {
+	if (abs(v_tag - 4.0) < 0.5) {
 		VERTEX = wire_vertex(VERTEX, UV, UV2.y, INSTANCE_CUSTOM.zw, MODEL_MATRIX, MODELVIEW_MATRIX, PROJECTION_MATRIX, VIEWPORT_SIZE, INSTANCE_CUSTOM.x, INSTANCE_CUSTOM.y, TIME, IN_SHADOW_PASS);
-	} else if (INSTANCE_CUSTOM.a > 0.5 && UV2.y > 0.5 && abs(v_tag - PROP_LENS) > 0.5) {
+	} else if (INSTANCE_CUSTOM.a > 0.5 && UV2.y > 0.5 && abs(v_tag - 3.0) > 0.5) {
 		if ((int(INSTANCE_CUSTOM.a + 0.5) & int(UV2.y + 0.5)) == 0) {
 			VERTEX = vec3(0.0); // a part this pole does not have
 		}
 	}
 	v_seen = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	v_faces = (MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz;
-	if (abs(v_tag - PROP_LENS) < 0.5) {
+	if (abs(v_tag - 3.0) < 0.5) {
 		float lens = UV2.y;
 		v_lit = abs(lens - INSTANCE_CUSTOM.r) < 0.5 || abs(lens - INSTANCE_CUSTOM.g) < 0.5 ? 1.0 : 0.0;
-		int which = clamp(int(lens + 0.5), 0, LENS_COUNT - 1);
+		int which = clamp(int(lens + 0.5), 0, 4);
 		v_light = mix(dark_radiance[which], lit_radiance[which], v_lit);
 	}
 }
 
 void fragment() {
 	vec3 c = srgb_to_linear(COLOR.rgb); // COLOR is sRGB on both renderers
-	if (abs(v_tag - PROP_TINT) < 0.5) {
+	if (v_tag > 0.5 && v_tag < 1.5) {
 		c *= v_tint;
 	}
-	if (abs(v_tag - PROP_WOOD) < 0.5) {
+	if (abs(v_tag - 5.0) < 0.5) {
 		float around = atan(v_local.z, v_local.x) * 3.0;
-		c *= 1.0 - wood_grain + 2.0 * wood_grain * vnoise(vec2(around, v_local.y * pole_grain_per_m));
+		c *= 1.0 - wood_grain + 2.0 * wood_grain * vnoise(vec2(around, v_local.y * 0.7));
 	}
-	if (abs(v_tag - PROP_PLATE) < 0.5) {
+	if (abs(v_tag - 6.0) < 0.5) {
 		c = source_linear(texture(sign_atlas, vec3(UV, v_layer)).rgb);
 	}
 	float rough = roughness;
-	if (abs(v_tag - PROP_FINISHED) < 0.5) {
+	if (abs(v_tag - 7.0) < 0.5) {
 		METALLIC = v_finish.x;
 		rough = v_finish.y;
 	}
-	if (abs(v_tag - PROP_SIGN_POST) < 0.5) {
+	if (abs(v_tag - 8.0) < 0.5) {
 		METALLIC = post_metal;
 		rough = post_roughness;
 	}
 	float near = 1.0 - smoothstep(SURFACE_END_M * SURFACE_FROM, SURFACE_END_M, length(VERTEX));
 	if (near > 0.0) {
-		if (abs(v_tag - PROP_PLANK) < 0.5) {
+		if (abs(v_tag - 9.0) < 0.5) {
 			plank(UV.x, UV.y, fwidth(UV.y), c, rough);
-		} else if (abs(v_tag - PROP_FIXED) < 0.5 || abs(v_tag - PROP_WOOD) < 0.5 || abs(v_tag - PROP_FINISHED) < 0.5 || abs(v_tag - PROP_SIGN_POST) < 0.5) {
-			weather(v_seen, v_faces, abs(v_tag - PROP_FINISHED) < 0.5 ? 1.0 : UV.y, near, c, rough);
+		} else if (v_tag < 0.5 || abs(v_tag - 5.0) < 0.5 || abs(v_tag - 7.0) < 0.5 || abs(v_tag - 8.0) < 0.5) {
+			weather(v_seen, v_faces, abs(v_tag - 7.0) < 0.5 ? 1.0 : UV.y, near, c, rough);
 		}
 	}
 	ALBEDO = linear_out(c);
 	ROUGHNESS = rough;
-	if (abs(v_tag - PROP_LENS) < 0.5) {
+	if (abs(v_tag - 3.0) < 0.5) {
 		ALBEDO = linear_out(c * (1.0 - v_lit));
 		ROUGHNESS = lens_roughness;
 		// Godot's dielectric reflectance at normal incidence is 0.16 SPECULAR^2 (scene_forward_lights_inc.glsl F0);
 		// Fresnel's ((n - 1) / (n + 1))^2 for the lens's index of refraction. A lit lens reflects nothing.
-		SPECULAR = sqrt(pow((lens_ior - 1.0) / (lens_ior + 1.0), 2.0) / GODOT_F0_PER_SPECULAR2) * (1.0 - v_lit);
+		SPECULAR = sqrt(pow((lens_ior - 1.0) / (lens_ior + 1.0), 2.0) / 0.16) * (1.0 - v_lit);
 		EMISSION = linear_out(v_light);
 	} else if (abs(v_tag - 2.0) < 0.5) {
 		EMISSION = linear_out(source_linear(glow_color) * c * night * glow_gain);

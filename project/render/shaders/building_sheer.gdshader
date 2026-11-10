@@ -3,16 +3,16 @@
 shader_type spatial;
 render_mode blend_mix, cull_back, depth_draw_never;
 
-uniform float opacity; // materials.json building_sheer, as the next two
-uniform float roughness;
-uniform float metalness;
+uniform float opacity = 0.42;
+uniform float roughness = 0.05;
+uniform float metalness = 0.2;
 
 #include "res://render/shaders/building_colour.gdshaderinc"
 
 #include "res://render/shaders/building_level.gdshaderinc"
 
 void fragment() {
-	ALBEDO = surface_out(srgb_to_linear(COLOR.rgb));
+	ALBEDO = surface_out(to_linear(COLOR.rgb));
 	ALPHA = opacity * level_keep;
 	ROUGHNESS = roughness;
 	METALLIC = metalness;

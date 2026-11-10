@@ -1,8 +1,6 @@
-// Strict Dictionary -> BlastParams conversion for project/data/catalog/blast.json through the strict reader
-// (api/data_reader.h): a missing or mistyped key or a list of the wrong length is reported and loading fails, so no default value
-// can silently replace the data.
+// Strict Dictionary -> BlastParams conversion for project/data/catalog/blast.json: a missing or mistyped key is
+// reported and loading fails, so no default value can silently replace the data.
 #include "api/catalog_loader.h"
-#include "render/data_reader.h"
 
 #include "sim/demolition/blast_model.h"
 
@@ -15,106 +13,124 @@ namespace city {
 
 namespace {
 
-// Bands of a scaled distance, in order: [{z0, z1, c: [BLAST_COEFFS]}...].
-void curves(DataReader r, const Array &rows, std::vector<BlastCurve> &out) {
+float number(const Dictionary &d, const char *group, const char *key, PackedStringArray &errors) {
+	if (!d.has(key)) {
+		errors.push_back(String("blast.") + group + ": falta '" + key + "'");
+		return 0.f;
+	}
+	return float(double(d[key]));
+}
+
+Dictionary group(const Dictionary &t, const char *key, PackedStringArray &errors) {
+	if (!t.has(key)) {
+		errors.push_back(String("blast: falta '") + key + "'");
+		return Dictionary();
+	}
+	return t[key];
+}
+
+void curves(const Dictionary &t, const char *key, std::vector<BlastCurve> &out, PackedStringArray &errors) {
+	Array rows = t.has(key) ? Array(t[key]) : Array();
 	for (int i = 0; i < rows.size(); i++) {
-		DataReader rb = r.in(i);
-		const Dictionary row = r.table_at(rows, i);
+		Dictionary row = rows[i];
 		BlastCurve c;
-		c.z0 = float(rb.num(row, "z0"));
-		c.z1 = float(rb.num(row, "z1"));
-		const Array coeffs = rb.list(row, "c", BLAST_COEFFS);
-		for (int k = 0; k < BLAST_COEFFS && k < coeffs.size(); k++) c.c[k] = float(rb.in("c").num_at(coeffs, k));
-		if (!out.empty() && c.z0 < out.back().z1) rb.fail("bands out of order");
+		c.z0 = number(row, key, "z0", errors);
+		c.z1 = number(row, key, "z1", errors);
+		Array coeffs = row.has("c") ? Array(row["c"]) : Array();
+		if (coeffs.size() != BLAST_COEFFS) errors.push_back(String("blast.") + key + ": esperado 7 coeficientes");
+		for (int k = 0; k < BLAST_COEFFS && k < coeffs.size(); k++) c.c[k] = float(double(coeffs[k]));
+		if (!out.empty() && c.z0 < out.back().z1) errors.push_back(String("blast.") + key + ": faixas fora de ordem");
 		out.push_back(c);
 	}
-	if (out.empty()) r.fail("no band");
+	if (out.empty()) errors.push_back(String("blast.") + key + ": nenhuma faixa");
 }
 
 } // namespace
 
 bool load_blast_params(const Dictionary &t, BlastParams &p, PackedStringArray &errors) {
-	const int64_t before = errors.size();
-	DataReader r{ errors, "blast.json" };
-	p.charge_kg_per_s2 = float(r.num(t, "charge_kg_per_s2"));
-	p.strength_min = r.integer(t, "strength_min");
-	p.strength_max = r.integer(t, "strength_max");
-	p.atmosphere_kpa = float(r.num(t, "atmosphere_kpa"));
-	curves(r.in("pressure_curves"), r.list(t, "pressure_curves"), p.pressure);
-	curves(r.in("impulse_curves"), r.list(t, "impulse_curves"), p.impulse);
-	curves(r.in("duration_curves"), r.list(t, "duration_curves"), p.duration);
-	p.response_ms = float(r.in("structure").num(r.table(t, "structure"), "response_ms"));
-	const Dictionary lim = r.table(t, "limits_kpa");
-	p.light_kpa = float(r.in("limits_kpa").num(lim, "light"));
-	p.structural_kpa = float(r.in("limits_kpa").num(lim, "structural"));
-	p.collapse_kpa = float(r.in("limits_kpa").num(lim, "collapse"));
-	p.vehicle_kpa = float(r.in("limits_kpa").num(lim, "vehicle"));
-	p.pole_kpa = float(r.in("limits_kpa").num(lim, "pole"));
-	const Dictionary lethal = r.table(t, "lethality");
-	p.lethal_threshold_kpa = float(r.in("lethality").num(lethal, "threshold_kpa"));
-	p.lethal_half_kpa = float(r.in("lethality").num(lethal, "half_kpa"));
-	p.lethal_threshold_prob = float(r.in("lethality").num(lethal, "threshold_probability"));
-	const Dictionary ear = r.table(t, "eardrum");
-	p.ear_threshold_kpa = float(r.in("eardrum").num(ear, "threshold_kpa"));
-	p.ear_half_kpa = float(r.in("eardrum").num(ear, "half_kpa"));
-	p.ear_threshold_prob = float(r.in("eardrum").num(ear, "threshold_probability"));
+	const int before = int(errors.size());
+	p.charge_kg_per_s2 = number(t, "root", "charge_kg_per_s2", errors);
+	p.strength_min = int(number(t, "root", "strength_min", errors));
+	p.strength_max = int(number(t, "root", "strength_max", errors));
+	p.atmosphere_kpa = number(t, "root", "atmosphere_kpa", errors);
+	curves(t, "pressure_curves", p.pressure, errors);
+	curves(t, "impulse_curves", p.impulse, errors);
+	curves(t, "duration_curves", p.duration, errors);
+	p.response_ms = number(group(t, "structure", errors), "structure", "response_ms", errors);
+	Dictionary lim = group(t, "limits_kpa", errors);
+	p.light_kpa = number(lim, "limits_kpa", "light", errors);
+	p.structural_kpa = number(lim, "limits_kpa", "structural", errors);
+	p.collapse_kpa = number(lim, "limits_kpa", "collapse", errors);
+	p.vehicle_kpa = number(lim, "limits_kpa", "vehicle", errors);
+	p.pole_kpa = number(lim, "limits_kpa", "pole", errors);
+	Dictionary lethal = group(t, "lethality", errors);
+	p.lethal_threshold_kpa = number(lethal, "lethality", "threshold_kpa", errors);
+	p.lethal_half_kpa = number(lethal, "lethality", "half_kpa", errors);
+	p.lethal_threshold_prob = number(lethal, "lethality", "threshold_probability", errors);
+	Dictionary ear = group(t, "eardrum", errors);
+	p.ear_threshold_kpa = number(ear, "eardrum", "threshold_kpa", errors);
+	p.ear_half_kpa = number(ear, "eardrum", "half_kpa", errors);
+	p.ear_threshold_prob = number(ear, "eardrum", "threshold_probability", errors);
 	p.lethal_sigma = blast::probit_sigma(p.lethal_threshold_kpa, p.lethal_half_kpa, p.lethal_threshold_prob);
 	p.ear_sigma = blast::probit_sigma(p.ear_threshold_kpa, p.ear_half_kpa, p.ear_threshold_prob);
-	const Dictionary noise = r.table(t, "noise");
-	p.startle_pa = float(r.in("noise").num(noise, "startle_pa"));
-	p.reference_pa = float(r.in("noise").num(noise, "reference_pa"));
-	p.startle_cap_m = float(r.in("noise").num(noise, "startle_cap_m"));
-	const Dictionary people = r.table(t, "people");
-	p.knock_min_s = float(r.in("people").num(people, "knock_min_s"));
-	p.knock_span_s = float(r.in("people").num(people, "knock_span_s"));
-	p.panic_s = float(r.in("people").num(people, "panic_s"));
-	p.panic_gain = float(r.in("people").num(people, "panic_gain"));
-	p.torn_kpa = float(r.in("people").num(people, "torn_kpa"));
-	p.sever_chance = float(r.in("people").num(people, "sever_chance"));
-	p.maim_chance = float(r.in("people").num(people, "maim_chance"));
-	const Dictionary strike = r.table(t, "strike");
-	p.hold_growth_s = float(r.in("strike").num(strike, "hold_growth_s"));
-	p.fire_max = r.in("strike").integer(strike, "fire_max");
-	p.fire_min_s = float(r.in("strike").num(strike, "fire_min_s"));
-	p.fire_span_s = float(r.in("strike").num(strike, "fire_span_s"));
-	p.wear_gain = float(r.in("strike").num(strike, "wear_gain"));
-	const Dictionary shot = r.table(t, "shot");
-	p.walker_hp = float(r.in("shot").num(shot, "walker_hp"));
-	p.damage_head = float(r.in("shot").num(shot, "damage_head"));
-	p.damage_torso = float(r.in("shot").num(shot, "damage_torso"));
-	p.damage_limb = float(r.in("shot").num(shot, "damage_limb"));
-	p.sever_hits_hp = float(r.in("shot").num(shot, "sever_hits_hp"));
-	p.sever_hp_cost = float(r.in("shot").num(shot, "sever_hp_cost"));
-	p.body_reach_m = float(r.in("shot").num(shot, "body_reach_m"));
-	p.body_height_m = float(r.in("shot").num(shot, "body_height_m"));
-	p.head_above_m = float(r.in("shot").num(shot, "head_above_m"));
-	p.torso_above_m = float(r.in("shot").num(shot, "torso_above_m"));
-	p.arm_aside_m = float(r.in("shot").num(shot, "arm_aside_m"));
-	p.grave_hp = float(r.in("shot").num(shot, "grave_hp"));
-	p.bleed_limb = float(r.in("shot").num(shot, "bleed_limb"));
-	p.bleed_leg = float(r.in("shot").num(shot, "bleed_leg"));
-	p.bleed_hurt = float(r.in("shot").num(shot, "bleed_hurt"));
-	p.glass_above = float(r.in("shot").num(shot, "glass_above"));
-	p.two_wheeler_rider_m = float(r.in("shot").num(shot, "two_wheeler_rider_m"));
-	p.flinch_s = float(r.in("shot").num(shot, "flinch_s"));
-	p.startle_m = float(r.in("shot").num(shot, "startle_m"));
-	p.pace_light = float(r.in("shot").num(shot, "pace_light"));
-	p.pace_leg = float(r.in("shot").num(shot, "pace_leg"));
-	p.drips_per_s = float(r.in("shot").num(shot, "drips_per_s"));
-	p.pace_grave = float(r.in("shot").num(shot, "pace_grave"));
-	p.max_range_m = float(r.in("shot").num(shot, "max_range_m"));
-	const Array boxes = r.in("shot").list(shot, "vehicle_box_m", VEHICLE_TYPES); // one height per vehicle type
-	for (int k = 0; k < int(boxes.size()) && k < VEHICLE_TYPES; k++) p.vehicle_box_m[k] = float(r.in("shot").in("vehicle_box_m").num_at(boxes, k));
-	p.open_hits = r.in("shot").integer(shot, "open_hits");
-	p.vehicle_shots_to_burst = r.in("shot").integer(shot, "vehicle_shots_to_burst");
-	p.burst_force = r.in("shot").integer(shot, "burst_force");
-	const Dictionary crater = r.table(t, "crater");
-	p.crater_share = float(r.in("crater").num(crater, "fireball_share"));
-	p.crater_depth_m = float(r.in("crater").num(crater, "depth_m"));
-	p.crater_depth_per_force_m = float(r.in("crater").num(crater, "depth_per_force_m"));
-	p.pass_width_m = float(r.in("crater").num(crater, "pass_width_m"));
-	p.crater_min_m = float(r.in("crater").num(crater, "min_radius_m"));
-	return errors.size() == before;
+	Dictionary noise = group(t, "noise", errors);
+	p.startle_pa = number(noise, "noise", "startle_pa", errors);
+	p.reference_pa = number(noise, "noise", "reference_pa", errors);
+	p.startle_cap_m = number(noise, "noise", "startle_cap_m", errors);
+	Dictionary people = group(t, "people", errors);
+	p.knock_min_s = number(people, "people", "knock_min_s", errors);
+	p.knock_span_s = number(people, "people", "knock_span_s", errors);
+	p.panic_s = number(people, "people", "panic_s", errors);
+	p.panic_gain = number(people, "people", "panic_gain", errors);
+	p.torn_kpa = number(people, "people", "torn_kpa", errors);
+	p.sever_chance = number(people, "people", "sever_chance", errors);
+	p.maim_chance = number(people, "people", "maim_chance", errors);
+	Dictionary strike = group(t, "strike", errors);
+	p.hold_growth_s = number(strike, "strike", "hold_growth_s", errors);
+	p.fire_max = int(number(strike, "strike", "fire_max", errors));
+	p.fire_min_s = number(strike, "strike", "fire_min_s", errors);
+	p.fire_span_s = number(strike, "strike", "fire_span_s", errors);
+	p.wear_gain = number(strike, "strike", "wear_gain", errors);
+	Dictionary shot = group(t, "shot", errors);
+	p.walker_hp = number(shot, "shot", "walker_hp", errors);
+	p.damage_head = number(shot, "shot", "damage_head", errors);
+	p.damage_torso = number(shot, "shot", "damage_torso", errors);
+	p.damage_limb = number(shot, "shot", "damage_limb", errors);
+	p.sever_hits_hp = number(shot, "shot", "sever_hits_hp", errors);
+	p.sever_hp_cost = number(shot, "shot", "sever_hp_cost", errors);
+	p.body_reach_m = number(shot, "shot", "body_reach_m", errors);
+	p.body_height_m = number(shot, "shot", "body_height_m", errors);
+	p.head_above_m = number(shot, "shot", "head_above_m", errors);
+	p.torso_above_m = number(shot, "shot", "torso_above_m", errors);
+	p.arm_aside_m = number(shot, "shot", "arm_aside_m", errors);
+	p.grave_hp = number(shot, "shot", "grave_hp", errors);
+	p.bleed_limb = number(shot, "shot", "bleed_limb", errors);
+	p.bleed_leg = number(shot, "shot", "bleed_leg", errors);
+	p.bleed_hurt = number(shot, "shot", "bleed_hurt", errors);
+	p.shot_knock_min_s = number(shot, "shot", "knock_min_s", errors);
+	p.shot_knock_span_s = number(shot, "shot", "knock_span_s", errors);
+	p.glass_above = number(shot, "shot", "glass_above", errors);
+	p.two_wheeler_rider_m = number(shot, "shot", "two_wheeler_rider_m", errors);
+	p.flinch_s = number(shot, "shot", "flinch_s", errors);
+	p.startle_m = number(shot, "shot", "startle_m", errors);
+	p.pace_light = number(shot, "shot", "pace_light", errors);
+	p.pace_leg = number(shot, "shot", "pace_leg", errors);
+	p.drips_per_s = number(shot, "shot", "drips_per_s", errors);
+	p.pace_grave = number(shot, "shot", "pace_grave", errors);
+	p.max_range_m = number(shot, "shot", "max_range_m", errors);
+	Array boxes = shot.has("vehicle_box_m") ? Array(shot["vehicle_box_m"]) : Array();
+	if (boxes.size() != VEHICLE_TYPES) errors.push_back("blast.shot.vehicle_box_m: one height per vehicle type");
+	for (int k = 0; k < int(boxes.size()) && k < VEHICLE_TYPES; k++) p.vehicle_box_m[k] = float(double(boxes[k]));
+	p.open_hits = int(number(shot, "shot", "open_hits", errors));
+	p.vehicle_shots_to_burst = int(number(shot, "shot", "vehicle_shots_to_burst", errors));
+	p.burst_force = int(number(shot, "shot", "burst_force", errors));
+	Dictionary crater = group(t, "crater", errors);
+	p.crater_k_earth = number(crater, "crater", "k_earth", errors);
+	p.crater_k_hard = number(crater, "crater", "k_hard", errors);
+	p.crater_ratio = number(crater, "crater", "diameter_to_depth", errors);
+	p.pass_width_m = number(crater, "crater", "pass_width_m", errors);
+	p.crater_min_m = number(crater, "crater", "min_radius_m", errors);
+	return int(errors.size()) == before;
 }
 
 } // namespace city

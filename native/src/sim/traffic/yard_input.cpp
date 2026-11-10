@@ -104,11 +104,11 @@ bool yard_input(const CityState &s, int building, YardInput &out) {
 	const TrafficParams &p = s.catalog.traffic;
 	const Building &rec = s.buildings.items[size_t(building)];
 	if (!rec.alive) return false;
-	const std::shared_ptr<const b40::Body> body_held = b40::record_body(s.buildings.designs, rec);
-	const b40::Body &body = *body_held;
+	b40::Body body;
+	b40::record_body(s.buildings.designs, rec, body);
 	const b40::LotFrame f = b40::lot_frame(rec);
 	LotAccess acc;
-	lot_bays(body.elements, f, acc);
+	lot_bays(body, f, acc);
 	out.body = { p.classes[int(VehicleType::TRUCK)].length, p.classes[int(VehicleType::TRUCK)].half_width * 2, p.lorry_rear_m, p.lorry_radius_m, p.lorry_margin_m };
 	out.lot = rect_ring(f, -rec.w * HALF, 0, rec.w * HALF, rec.d);
 	float lo_x = UNBOUNDED, lo_z = UNBOUNDED, hi_x = -UNBOUNDED, hi_z = -UNBOUNDED;
@@ -137,7 +137,7 @@ bool yard_input(const CityState &s, int building, YardInput &out) {
 	s.buildings.query(float(out.x0), float(out.z0), float(out.x0 + out.nx * out.cell), float(out.z0 + out.nz * out.cell), [&](int id) {
 		if (id == building) return;
 		const Building &o = s.buildings.items[size_t(id)];
-		out.fenced.push_back(rect_ring(b40::lot_frame(o), -o.w * HALF, 0, o.w * HALF, o.d));
+		out.shut.push_back(rect_ring(b40::lot_frame(o), -o.w * HALF, 0, o.w * HALF, o.d));
 	});
 	lot_solids(s.buildings.designs, body, f, p.lorry_clear_h_m, out.shut);
 	std::sort(out.reads.segs.begin(), out.reads.segs.end());

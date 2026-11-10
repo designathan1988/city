@@ -3,16 +3,19 @@
 class_name ZoneStrip
 extends RefCounted
 
+const DENSITIES := [[0, "zone.low", "low"], [1, "zone.medium", "medium"], [2, "zone.high", "high"]]
+
+
 static func build(drawer: HudDrawer) -> void:
 	for c: Dictionary in drawer.category.cards:
 		drawer.strip.add_child(_card(drawer, c))
+	var items := []
+	for d: Array in DENSITIES:
+		items.append([d[0], "", d[2], "%s: %s" % [TranslationServer.translate("v2.zone.density"), TranslationServer.translate(d[1])]])
 	var row := HudWidgets.option_row(drawer.options, TranslationServer.translate("v2.zone.density"))
-	var densities := HudWidgets.choices(row, drawer.density, func(v: int) -> void:
+	HudWidgets.choices(row, items, drawer.density, func(v: int) -> void:
 		drawer.density = v
 		pick(drawer, DrawerStrips.use_of(drawer.zone())))
-	for d: Dictionary in DataTables.ui("drawers").zone_densities: # zones.json's densities, as the row shows them
-		var tip := "%s: %s" % [TranslationServer.translate("v2.zone.density"), TranslationServer.translate(d.label_key)]
-		HudWidgets.choice(densities, int(d.density), "", d.icon, tip)
 
 
 ## The card of this use lit and the tool asked for the zone of that use at the density chosen.

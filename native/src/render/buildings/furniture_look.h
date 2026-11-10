@@ -3,7 +3,6 @@
 // in interiors.json and scaled to the piece placed (render/buildings/furniture_emit.cpp).
 #pragma once
 
-#include "render/data_reader.h"
 #include "sim/buildings/b40/types.h"
 #include "sim/buildings/interior/tables.h"
 
@@ -35,7 +34,7 @@ struct InteriorLook {
 
 	// A named paint of the palette (magenta when missing: `load` refuses a table without the names the drawing asks for).
 	const Paint &paint(const char *name) const;
-	bool load(const DataValue &table, godot::PackedStringArray &errors);
+	bool load(const godot::Dictionary &table, godot::PackedStringArray &errors);
 };
 
 } // namespace city::b40

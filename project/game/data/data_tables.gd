@@ -12,19 +12,24 @@ const CATALOG := {
 	"street_furniture": "res://data/catalog/street_furniture.json",
 	"blast": "res://data/catalog/blast.json",
 	"nature": "res://data/catalog/nature.json",
-	"scenic": "res://data/catalog/scenic.json",
-	"buildings": "res://data/catalog/buildings.json",
-	"models": "res://data/catalog/models.json",
-	"interiors": "res://data/catalog/interiors.json",
+}
+## Tables split only to keep each file small; merged under the same key they extend.
+const CATALOG_FRAGMENTS := {
+	"road_profiles": [
+		"res://data/catalog/road_profiles_a.json",
+		"res://data/catalog/road_profiles_b.json",
+	],
 }
 static var _catalog_cache := {}
 const RENDER_TABLES := {
 	"palette": "res://data/render/palette.json",
 	"streets": "res://data/render/streets.json",
 	"cover": "res://data/render/cover.json",
-	"building_look": "res://data/render/building_look.json",
+	"buildings": "res://data/render/buildings.json",
 	"bay_props": "res://data/render/bay_props.json",
+	"interiors": "res://data/render/interiors.json",
 	"furniture": "res://data/render/furniture.json",
+	"models": "res://data/render/models.json",
 	"materials": "res://data/render/materials.json",
 	"agents": "res://data/render/agents.json",
 	"overlays": "res://data/render/overlays.json",
@@ -34,6 +39,8 @@ const RENDER_TABLES := {
 const UI := {
 	"tokens": "res://data/ui/tokens.json",
 	"land_panels": "res://data/ui/land_panels.json",
+	"land_elements": "res://data/ui/land_elements.json",
+	"toolbar": "res://data/ui/toolbar.json",
 	"hud": "res://data/ui/hud.json",
 	"drawers": "res://data/ui/drawers.json",
 	"keys": "res://data/ui/keys.json",
@@ -52,7 +59,6 @@ const GAME := {
 	"optimizations": "res://data/game/optimizations.json",
 	"health": "res://data/game/health.json",
 	"start": "res://data/game/start.json",
-	"tools": "res://data/game/tools.json",
 }
 ## The regional style a city's tables read (session-rules.md, section 10): this one until a city carries its own. The tables that
 ## keep what changes with it under `styles.<id>`, laid over the table when it is read.
@@ -60,7 +66,14 @@ const REGIONAL_STYLE := "roadcraft"
 const LOT_PROJECTS := "res://assets/lots"
 const LOT_EXT := "json"
 const STYLED := ["res://data/catalog/street_furniture.json", "res://data/render/streets.json"]
-const STRINGS := ["res://data/i18n/strings.csv"]
+const STRINGS := [
+	"res://data/i18n/strings.csv",
+	"res://data/i18n/strings_b.csv",
+	"res://data/i18n/strings_c.csv",
+	"res://data/i18n/strings_ui.csv",
+	"res://data/i18n/strings_d.csv",
+	"res://data/i18n/strings_e.csv",
+]
 
 static var _cache: Dictionary = {}
 
@@ -123,7 +136,13 @@ static func catalog_table(key: String) -> Dictionary:
 
 
 static func catalog() -> Dictionary:
-	return _group(CATALOG)
+	var out := _group(CATALOG)
+	for key in CATALOG_FRAGMENTS:
+		var list: Array = out[key].get("profiles", [])
+		for path in CATALOG_FRAGMENTS[key]:
+			list.append_array(_read(path).get("profiles", []))
+		out[key]["profiles"] = list
+	return out
 
 
 ## The maps of the catalogue, in the order the core numbers them.
@@ -131,17 +150,16 @@ static func maps() -> Array:
 	return _read(CATALOG.maps).maps
 
 
-## The index the core numbers map `id` by (maps.json), -1 when there is none.
-static func map_index(id: String) -> int:
-	var list := maps()
-	for i in list.size():
-		if list[i].id == id:
-			return i
-	return -1
-
-
 static func render() -> Dictionary:
 	return _group(RENDER_TABLES)
+
+
+## The profiles as written, read anew: only the road catalog's strips want them once the core has its own.
+static func road_profiles() -> Array:
+	var list: Array = _parse(CATALOG.road_profiles).get("profiles", [])
+	for path: String in CATALOG_FRAGMENTS.road_profiles:
+		list.append_array(_parse(path).get("profiles", []))
+	return list
 
 
 ## The core holds its own copy of the catalog and of the render tables once it has booted: they need not stay here too.
@@ -152,10 +170,16 @@ static func release_boot_tables() -> void:
 			if path != CATALOG.tuning:
 				_cache.erase(path)
 	_catalog_cache.clear() # catalog_table's own copies: read anew too
+	for paths: Array in CATALOG_FRAGMENTS.values():
+		for path: String in paths:
+			_cache.erase(path)
 
 
 static func ui(name: String) -> Dictionary:
-	return _read(UI[name])
+	var table: Dictionary = _read(UI[name])
+	if name == "land_panels" and not table.has("ELEMENTS"):
+		table.merge(_read(UI.land_elements)) # one panel, kept apart for the size of the file
+	return table
 
 
 ## The lots of the lot lab: each document with `key`, its file's name (LotProjects).
@@ -178,7 +202,8 @@ static func tuning(key: String) -> float:
 	return float(_read(CATALOG.tuning)[parts[0]][parts[1]])
 
 
-## Registers data/i18n/strings.csv (key, then one column per language) as translations.
+## Registers data/i18n/strings*.csv (key, pt_BR, en) as translations. The catalog is split only to keep
+## each file small; every part repeats the header.
 static func load_translations() -> void:
 	var first := FileAccess.open(STRINGS[0], FileAccess.READ)
 	if first == null:

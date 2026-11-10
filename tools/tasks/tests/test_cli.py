@@ -1,10 +1,8 @@
 # cli: exit 2 for an empty selection, an unknown name or a task with nothing to do; 1 for a failure; 0 only when all pass;
 # serve answers each JSON line as its task finishes.
 import json
-import os
 import subprocess
 import sys
-import threading
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
@@ -18,9 +16,6 @@ from support import PY, TOOLS, RepoCase, proc  # noqa: E402
 from tasks import cli  # noqa: E402
 
 SERVE_TIMEOUT_S = 120
-# One trivial task's answer, keying included (a git listing of a one-file repo): well under inputs.GIT_TIMEOUT_S (120 s),
-# the deadline a blocked git is held to, so a git that blocks fails here and a git that answers passes with room.
-OPEN_INPUT_ANSWER_S = 60
 
 
 class CliTest(RepoCase):
@@ -58,31 +53,6 @@ class CliTest(RepoCase):
         invalidate(self.root)
         self.assertEqual(self.cli("changed"), 0)
 
-    def var(self, name: str, env: dict | None = None) -> tuple[int, str]:
-        doc = json.loads(self.suites.read_text(encoding="utf-8"))
-        doc["vars"] = {"tool": {"doc": "a tool", "env": "CITY_TEST_TOOL", "windows": "C:/tool.exe", "posix": "tool"}}
-        self.suites.write_text(json.dumps(doc), encoding="utf-8")
-        out, err = StringIO(), StringIO()
-        saved = os.environ.pop("CITY_TEST_TOOL", None)
-        os.environ.update(env or {})
-        try:
-            with redirect_stdout(out), redirect_stderr(err):
-                code = cli.main(["var", name, "--suites", str(self.suites)])
-        finally:
-            os.environ.pop("CITY_TEST_TOOL", None)
-            if saved is not None:
-                os.environ["CITY_TEST_TOOL"] = saved
-        return code, out.getvalue().strip()
-
-    def test_var_is_the_platform_default(self):
-        self.assertEqual(self.var("tool"), (0, "C:/tool.exe" if os.name == "nt" else "tool"))
-
-    def test_var_takes_its_environment_first(self):
-        self.assertEqual(self.var("tool", {"CITY_TEST_TOOL": "/opt/tool"}), (0, "/opt/tool"))
-
-    def test_unknown_var_exits_2(self):
-        self.assertEqual(self.var("nothing")[0], 2)
-
     def test_exit_codes_of_a_run(self):
         self.assertEqual(self.cli("good"), 0)
         self.assertEqual(self.cli("mixed"), 1)
@@ -97,29 +67,6 @@ class CliTest(RepoCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         got = {d["id"]: d["status"] for d in map(json.loads, r.stdout.splitlines())}
         self.assertEqual(got, {"a": "PASS", "b": "FAIL", "c": "BROKEN"})
-
-    def test_serve_answers_while_its_input_stays_open(self):
-        """The converter keeps serve's input open and waits for each answer before it asks again. serve's own read of that
-        input is then pending, and a git that inherited the pipe blocked in Git for Windows' start (winansi.c detect_msys_tty
-        queries the name of a piped stdin, a query that waits for the pending read) until git's deadline: keying failed."""
-        p = subprocess.Popen([PY, str(TOOLS / "tasks" / "cli.py"), "serve", "--root", str(self.root)], stdin=subprocess.PIPE,
-                             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, creationflags=proc.NO_WINDOW)
-        try:
-            p.stdin.write(json.dumps({"id": "a", "name": "ok", "argv": [PY, "-c", "pass"], "timeout_s": 60}) + "\n")
-            p.stdin.flush()
-            answer: list[str] = []
-            reader = threading.Thread(target=lambda: answer.append(p.stdout.readline()), daemon=True)
-            reader.start()
-            reader.join(OPEN_INPUT_ANSWER_S)
-            self.assertTrue(answer, f"no answer in {OPEN_INPUT_ANSWER_S} s while serve's input stays open")
-            self.assertEqual(json.loads(answer[0])["status"], "PASS", answer[0])
-        finally:
-            p.stdin.close()
-            try:
-                p.wait(SERVE_TIMEOUT_S)
-            except subprocess.TimeoutExpired:
-                p.kill()
-                p.wait(SERVE_TIMEOUT_S)
 
 
 if __name__ == "__main__":

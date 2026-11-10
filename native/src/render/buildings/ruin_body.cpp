@@ -4,7 +4,7 @@
 
 namespace city {
 
-std::shared_ptr<RuinMesh> ruin_of(BuildingBodies &bodies, const b40::Data &data, const b40::BuildingLook &look, const Building &rec, const HeightPatch &ground, const godot::RID &material) {
+std::shared_ptr<RuinMesh> ruin_of(BuildingBodies &bodies, const b40::Data &data, const b40::BuildingLook &look, const Building &rec, const HeightPatch &ground) {
 	b40::Placed pl;
 	bodies.place(data, look, ground, rec, pl);
 	b40::Shell shell, glass, aside; // railings, lanterns and lawns do not come down as walls
@@ -23,7 +23,7 @@ std::shared_ptr<RuinMesh> ruin_of(BuildingBodies &bodies, const b40::Data &data,
 			for (const b40::Side &sd : b40::sides_of(pl, v, pl.b->block_z(v, level))) ring.push_back(sd.f.o);
 			slabs.push_back(std::move(ring));
 		}
-	return fracture_shell(shell, glass, slabs, rec.seed, material);
+	return fracture_shell(shell, glass, slabs, rec.seed);
 }
 
 } // namespace city

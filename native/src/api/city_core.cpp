@@ -5,7 +5,6 @@
 #include "api/interiors_loader.h"
 #include "api/models_loader.h"
 #include "api/catalog_loader.h"
-#include "core/units.h"
 #include "sim/citygen/city_gen.h"
 #include "sim/traffic/traffic_system.h"
 
@@ -31,10 +30,24 @@ const char *const OVERLAY_NAMES[int(Overlay::COUNT)] = { "zones", "congestion" }
 
 CityCore::CityCore() : state_(std::make_unique<CityState>()) { make_areas(); }
 
+namespace {
+
+// Below this the camera looks almost level: the line of sight reaches the ground too far off to mean anything.
+constexpr float LEVEL_VIEW = 0.05f;
+
+// Where the player is looking: the line of sight down to the ground. The windows of traffic and walkers stand there (the
+// 4.0's focus, the camera's target), not under an eye that from high up stands past the edge of the city it shows.
+Vector3 ground_seen(const Camera3D &cam) {
+	const Transform3D t = cam.get_global_transform();
+	const Vector3 ahead = -t.basis.get_column(2);
+	return ahead.y < -LEVEL_VIEW ? t.origin + ahead * (t.origin.y / -ahead.y) : t.origin;
+}
+
+} // namespace
+
 CityCore::~CityCore() {
 	free_areas(); // first: they point at the state and the render
 	join_save();
-	join_load();
 	sim_.stop();
 	if (state_ && state_->jobs) state_->jobs->wait_idle();
 	render_.reset();
@@ -49,21 +62,7 @@ Object *CityCore::terrain3d() const {
 PackedStringArray CityCore::load_catalog(const Dictionary &tables) {
 	PackedStringArray errors;
 	sim_.stop();
-	// Read aside and taken in whole: a refused table leaves the core as it was, never a catalogue without its building tables.
-	// The building generator's tables belong to the simulation (lots are world data): read before any body is made.
-	Catalog catalog;
-	b40::Data designs;
-	bool ok = CatalogLoader::load(tables, catalog, errors);
-	if (ok) {
-		designs.made->set_budget(size_t(catalog.tune.sim_body_cache_mb * BYTES_PER_MIB));
-		ok = load_buildings(tables.get("buildings", Dictionary()), designs, errors) && set_zone_kinds(catalog, designs, errors) &&
-				load_models(tables.get("models", Dictionary()), designs, errors) && load_interiors(tables.get("interiors", Dictionary()), designs.interior, errors);
-	}
-	if (ok) {
-		state_->catalog = std::move(catalog);
-		state_->buildings.designs = std::move(designs);
-	}
-	catalog_ok_ = ok;
+	catalog_ok_ = CatalogLoader::load(tables, state_->catalog, errors);
 	return errors;
 }
 
@@ -77,6 +76,11 @@ PackedStringArray CityCore::setup_render(const Dictionary &tables, const Diction
 		errors.push_back("render antes do catalogo");
 		return errors;
 	}
+	// The building generator's tables belong to the simulation (lots are world data): read before any body is made.
+	state_->buildings.designs = b40::Data{};
+	if (!load_buildings(tables.get("buildings", Dictionary()), state_->buildings.designs, errors)) return errors;
+	if (!load_models(tables.get("models", Dictionary()), state_->buildings.designs, errors)) return errors;
+	if (!load_interiors(tables.get("interiors", Dictionary()), state_->buildings.designs.interior, errors)) return errors;
 	RenderContext ctx;
 	ctx.scenario = get_world_3d()->get_scenario();
 	materials_ = materials;
@@ -97,7 +101,6 @@ Dictionary CityCore::new_map(int map, int seed, bool with_city, bool paused) {
 	d["ok"] = false;
 	if (!catalog_ok_) return d;
 	join_save();
-	join_load();
 	sim_.stop();
 	CityGenReport r;
 	{
@@ -115,8 +118,6 @@ Dictionary CityCore::new_map(int map, int seed, bool with_city, bool paused) {
 	d["lots"] = r.lots;
 	d["buildings"] = r.buildings;
 	d["squares"] = r.squares;
-	d["trees"] = r.trees;
-	d["named"] = r.named;
 	d["seconds"] = r.seconds;
 	return d;
 }
@@ -165,8 +166,9 @@ void CityCore::_process(double delta) {
 	Laps total, laps;
 	Camera3D *cam = get_viewport() ? get_viewport()->get_camera_3d() : nullptr;
 	if (cam) cam_ = cam->get_global_position();
-	state_->camera_x.store(cam_.x); // the eye: the render's distances below are measured from it
-	state_->camera_z.store(cam_.z);
+	const Vector3 look = cam ? ground_seen(*cam) : cam_;
+	state_->camera_x.store(look.x);
+	state_->camera_z.store(look.z);
 	bool fresh = false;
 	const PoseFrame &poses = state_->poses.acquire(fresh);
 	const int64_t now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
@@ -189,9 +191,12 @@ void CityCore::_process(double delta) {
 		render_.full_rebuild(*state_, terrain3d());
 		need_full_rebuild_ = false;
 	}
-	render_.sync(*state_, terrain3d(), cam_, delta); // takes the map shared (never exclusive: render_world.h)
+	render_.sync(*state_, terrain3d(), cam_); // takes the map shared (never exclusive: render_world.h)
 	laps.lap();
-	render_.update_overlays(*state_, poses, delta); // no map lock: the layers' jobs copy what they lay (overlay_renderer.h)
+	{
+		std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+		render_.update_overlays(*state_, poses, delta);
+	}
 	overlays_ms_ = laps.lap();
 	process_ms_ = total.lap();
 }
@@ -242,8 +247,8 @@ Dictionary CityCore::overlays() const {
 	return d;
 }
 
-bool CityCore::step_ticks(int ticks) {
-	return sim_.step(*state_, ticks);
+void CityCore::step_ticks(int ticks) {
+	for (int i = 0; i < ticks; i++) sim_.step(*state_);
 }
 
 } // namespace city

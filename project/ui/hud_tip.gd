@@ -3,9 +3,9 @@
 class_name HudTip
 extends PanelContainer
 
-var _label: Label
-var _over: Control
-var _rested := 0.0
+@onready var _label: Label
+@onready var _over: Control
+@onready var _rested := 0.0
 
 
 func _ready() -> void:
@@ -24,7 +24,7 @@ func _process(delta: float) -> void:
 		hide()
 		return
 	_rested += delta
-	if visible or _over == null or _over.tooltip_text == "" or _rested < float(DataTables.ui("hud").timings.tip_wait_s):
+	if visible or _over == null or _over.tooltip_text == "" or _rested < HudWidgets.px("tip_wait_ms") / HudWidgets.MS_PER_S:
 		return
 	_label.text = _over.tooltip_text
 	show()

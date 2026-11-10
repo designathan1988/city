@@ -8,6 +8,7 @@ signal right_clicked
 
 ## Below this the ray runs along the plane and meets it nowhere.
 const PARALLEL := 1e-6
+const CM := 0.01
 const EARLIEST := -100
 
 var cfg: Dictionary
@@ -48,13 +49,13 @@ func _ready() -> void:
 	yaw = deg_to_rad(cfg.start_yaw)
 	far_tilt = deg_to_rad(cfg.start_pitch)
 	half = cfg.start_view_half
-	apply()
+	_apply()
 	process_priority = EARLIEST # the view of this frame, before anything reads it
 
 
 func look_at_ground(p: Vector3) -> void:
 	focus = p
-	settle(0.0)
+	_settle(0.0)
 
 
 ## Camera popover: a step of turn (eased, the way Q/E turn) or tilt.
@@ -77,8 +78,8 @@ func jump(p: Vector3, yaw_deg: float, pitch_deg: float, dist: float) -> void:
 	yaw = deg_to_rad(yaw_deg)
 	half = CameraProfile.half_for_distance(cfg, dist)
 	_ask_tilt(deg_to_rad(pitch_deg))
-	apply()
-	settle(0.0)
+	_apply()
+	_settle(0.0)
 
 
 ## Home: the start bearing, tilt and zoom over the same point.
@@ -87,8 +88,8 @@ func reset_view() -> void:
 	yaw = deg_to_rad(cfg.start_yaw)
 	half = cfg.start_view_half
 	_ask_tilt(deg_to_rad(cfg.start_pitch))
-	apply()
-	settle(0.0)
+	_apply()
+	_settle(0.0)
 
 
 ## Everything moving stops at once (a jump, the window losing focus).
@@ -100,7 +101,7 @@ func stop() -> void:
 func _process(dt: float) -> void:
 	motion.step(dt)
 	gestures.advance(dt)
-	settle(dt)
+	_settle(dt)
 
 
 ## A drag in progress owns the pointer, over the interface too.
@@ -170,7 +171,7 @@ func orbit(d_yaw: float, d_tilt: float, pivot: Variant = null, h := 0.0) -> void
 		_ask_tilt(pitch + d_tilt)
 	if pivot == null:
 		change.call()
-		apply()
+		_apply()
 	else:
 		keeping(pivot, change, h)
 
@@ -180,7 +181,7 @@ func slide(right: float, forward: float) -> void:
 	var fwd := Vector3(-sin(yaw), 0.0, -cos(yaw))
 	var side := Vector3(cos(yaw), 0.0, -sin(yaw))
 	focus += side * right + fwd * forward
-	apply()
+	_apply()
 
 
 ## Applies `change` and brings the ground point that was under `screen` back under it.
@@ -190,7 +191,7 @@ func keeping(screen: Vector2, change: Callable, h: float, grabbed: Variant = nul
 	var from := camera.project_ray_origin(screen)
 	var along := camera.project_ray_normal(screen)
 	change.call()
-	apply()
+	_apply()
 	if before == null:
 		return
 	var reach := from.distance_to(before)
@@ -203,13 +204,21 @@ func _ask_tilt(next: float) -> void:
 	far_tilt = now - CameraProfile.profile_tilt(cfg, half) + deg_to_rad(cfg.far_tilt_deg)
 
 
-## What each of the rig's springs holds now, metres and shares: a view that jumps names the spring that moved it.
-func springs() -> Dictionary:
-	return {"ground": _ground.x, "rise": _rise.x, "over": ahead.over.x, "out": ahead.out.x, "pull": pull.shown(), "floor": _eye_ground}
+## What the player sees at (x, z), the plane the eye stays above and the focus rests on: a road deck where one is, the
+## ground elsewhere (the pointer's rule, the 4.0's sceneHeightAt); the terrain where the ray finds nothing (off the map). Asked
+## during a settle (`queries`).
+func seen_height(x: float, z: float) -> float:
+	var hit: Dictionary = queries.ask(&"raycast", [Vector3(x, cfg.ray_top, z), Vector3.DOWN])
+	return hit.position.y if hit.get("hit", false) else queries.ask(&"height_at", [x, z])
+
+
+## The terrain's height under a camera's eye: the one reading of it the daylight's shadows and the weather's rain take.
+static func ground_below(cam: Camera3D) -> float:
+	return CityStore.query(&"height_at", [cam.global_position.x, cam.global_position.z])
 
 
 ## The view from what the player asks and what the settled heights say: arithmetic alone, so a gesture may place it many times a frame.
-func apply() -> void:
+func _apply() -> void:
 	var profile: float = CameraProfile.profile_tilt(cfg, half)
 	pitch = clampf(profile + far_tilt - deg_to_rad(cfg.far_tilt_deg), CameraProfile.min_tilt(cfg, half),
 			deg_to_rad(cfg.max_tilt_deg))
@@ -218,7 +227,7 @@ func apply() -> void:
 	_ground_y = _ground.x
 	focus.y = _ground.x + CameraProfile.eye_lift(cfg, half) + ahead.over.x
 	var basis := Basis.from_euler(Vector3(-pitch, yaw, 0.0))
-	var orbit_eye := focus.lerp(focus + basis.z * distance, pull.left_with(ahead.out.x))
+	var orbit_eye := focus.lerp(focus + basis.z * distance, 1.0 - maxf(pull.shown(), ahead.out.x))
 	var pos := orbit_eye
 	pos.y = maxf(pos.y + _rise.x, _eye_ground + cfg.ground_touch_m)
 	if pos.y != orbit_eye.y: # raised over the ground, still looking at the same point
@@ -229,9 +238,9 @@ func apply() -> void:
 
 ## Once a frame: what stands under and in front of the view, each height and share moved towards it on its own spring. Nothing the terrain,
 ## a road's edge, a roof or a wall asks of the view reaches the screen as a step. `dt` 0 takes it all at once (a jump).
-func settle(dt: float) -> void:
+func _settle(dt: float) -> void:
 	queries.next_settle()
-	_ground.to(queries.seen_height(cfg.ray_top, focus.x, focus.z), dt, cfg.ground_smooth_s) if dt > 0.0 else _ground.snap(queries.seen_height(cfg.ray_top, focus.x, focus.z))
+	_ground.to(seen_height(focus.x, focus.z), dt, cfg.ground_smooth_s) if dt > 0.0 else _ground.snap(seen_height(focus.x, focus.z))
 	var base := Vector3(focus.x, _ground.x + CameraProfile.eye_lift(cfg, half), focus.z)
 	var far_eye := base + Basis.from_euler(Vector3(-pitch, yaw, 0.0)).z * distance
 	pull.ask(base, far_eye, half)
@@ -240,11 +249,11 @@ func settle(dt: float) -> void:
 	else:
 		pull.snap()
 	var eye := far_eye.lerp(base, pull.shown())
-	_eye_ground = queries.seen_height(cfg.ray_top, eye.x, eye.z)
+	_eye_ground = seen_height(eye.x, eye.z)
 	var rise := maxf(0.0, _eye_ground + cfg.ground_clearance - eye.y)
 	ahead.settle(dt, base, eye + Vector3.UP * rise, far_eye.distance_to(base))
 	if dt > 0.0:
 		_rise.to(rise, dt, cfg.eye_rise_s if rise > _rise.x else cfg.eye_fall_s)
 	else:
 		_rise.snap(rise)
-	apply()
+	_apply()

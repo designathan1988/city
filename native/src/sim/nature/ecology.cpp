@@ -16,10 +16,10 @@ namespace city {
 
 namespace {
 constexpr uint32_t SEED_MOD = 997u; // a seed moves the patches by up to this many cells
-constexpr float SHIFT_X = 1.731f, SHIFT_Z = 2.113f; // cells a seed's step moves the patches, apart so the axes do not repeat together
+constexpr float SHIFT_X = 1.731f, SHIFT_Z = 2.113f;
 constexpr int STRATA_MIX = 6; // the most communities one biome mixes
-constexpr float NO_WEIGHT = 1e-6f, MIN_WEIGHT = 0.01f, BYTE_MAX = 255.f; // a sum of nothing; a paint under a hundredth counts for none; a byte's top
-constexpr float UNREACHED_M = 1e9f; // farther than any cell: not reached yet
+constexpr float NO_WEIGHT = 1e-6f, MIN_WEIGHT = 0.01f, BYTE_MAX = 255.f;
+constexpr float UNREACHED_M = 1e9f;
 constexpr int CHAMFER_STRAIGHT = 3, CHAMFER_DIAGONAL = 4; // two-pass chamfer distance (Borgefors 1986)
 
 float smooth(float a, float b, float x) { return smooth01((x - a) / (b - a)); }
@@ -97,7 +97,7 @@ Community biome_community(Biome b, const Site &s, const EcologyDef &d) {
 			m.add(riparian * open * x.capao_riparian, Formation::CAPAO);
 			m.add(capao * (1.f - riparian) * open, Formation::CAPAO);
 			m.add((1.f - capao) * (1.f - riparian) * open, Formation::CAMPOS);
-			m.add(cliff + s.ridge * x.pampa_ridge + s.basalt * x.pampa_basalt, Formation::OUTCROP);
+			m.add(cliff + s.ridge * x.pampa_ridge + s.basalt * x.pampa_ridge, Formation::OUTCROP);
 			break;
 		}
 		case Biome::PANTANAL: {
@@ -173,7 +173,7 @@ float wood_share(const Community &c, const EcologyDef &d) {
 	return std::min(1.f, c.canopy * d.canopy_wood + c.trees * d.trees_wood + c.emergent * d.emergent_wood);
 }
 
-EcologyField compute_ecology(const GroundRead &hf, const GroundPaint &paint, const NatureSettings &nature, const EcologyDef &d, float x0, float z0, float span) {
+EcologyField compute_ecology(const Heightfield &hf, const GroundPaint &paint, const NatureSettings &nature, const EcologyDef &d, float x0, float z0, float span) {
 	EcologyField f;
 	f.cell = d.grid_m;
 	int inner = int(std::ceil(span / d.grid_m)) + 1, m = d.mean_cells + 1, side = inner + 2 * m;
@@ -183,7 +183,7 @@ EcologyField compute_ecology(const GroundRead &hf, const GroundPaint &paint, con
 	for (int y = 0; y < side; y++)
 		for (int x = 0; x < side; x++) {
 			float wx = gx + float(x) * d.grid_m, wz = gz + float(y) * d.grid_m;
-			h[size_t(y) * side + x] = hf.in_bounds(wx, wz) ? hf.base_height_at(wx, wz) : hf.water_level();
+			h[size_t(y) * side + x] = hf.in_bounds(wx, wz) ? hf.base_height_at(wx, wz) : hf.water_level;
 			wet[size_t(y) * side + x] = hf.in_bounds(wx, wz) && hf.is_water(wx, wz, 0.f) ? 1 : 0;
 		}
 	water_distance(wet, side, d.grid_m, dist);
@@ -206,14 +206,11 @@ EcologyField compute_ecology(const GroundRead &hf, const GroundPaint &paint, con
 			s.ridge = smooth(d.low_m, d.high_m, relative);
 			s.flat = 1.f - smooth(d.flat_from_deg, d.flat_to_deg, slope);
 			s.steep = smooth(d.steep_from_deg, d.steep_to_deg, slope);
-			s.altitude = h[k] - hf.water_level();
+			s.altitude = h[k] - hf.water_level;
 			s.patch = float(woods_noise(wx / d.patch_m + sx, sz - wz / d.patch_m, 1.0, 0)); // the map's north is -z
 			s.fray = float(woods_noise(wx / d.fray_m + sz, -wz / d.fray_m - sx, 1.0, 0));
 			int ix = hf.ix_of(wx), iz = hf.ix_of(wz);
 			const PaintCell &pc = paint.cell(ix, iz);
-			const float rock = pc.amount / BYTE_MAX; // the rock the land is made of: the painted geology, granite where none was
-			s.sandstone = pc.surface == d.sandstone_surface ? rock : 0.f;
-			s.basalt = pc.surface == d.basalt_surface ? rock : 0.f;
 			float painted = pc.biome ? pc.biome_amount / BYTE_MAX : 0.f, own = 1.f - painted;
 			Community total;
 			float sum = 0;

@@ -3,7 +3,7 @@
 class_name ApproachPanel
 extends RefCounted
 
-const RULES := [["junction.rule.priority", &"RULE_NONE"], ["junction.rule.yield", &"RULE_YIELD"], ["junction.rule.stop", &"RULE_STOP"]] # the core's SegRule
+const RULES := [["junction.rule.priority", 0], ["junction.rule.yield", 2], ["junction.rule.stop", 1]] # road_network.h SegRule
 const SCREEN_DIRS := ["up", "upRight", "right", "downRight", "down", "downLeft", "left", "upLeft"]
 const EIGHTH := PI / 4.0
 
@@ -26,11 +26,12 @@ static func fill(col: Control, node: int, redraw: Callable) -> void:
 	HudWidgets.label(col, &"TitleLabel", col.tr("junction.legs"))
 	for leg: Dictionary in legs:
 		var row := HudWidgets.option_row(col, _named(col, leg))
-		var rules := HudWidgets.choices(row, leg.rule, func(rule: int) -> void:
+		var items := []
+		for r: Array in RULES:
+			items.push_back([r[1], col.tr(r[0])])
+		HudWidgets.choices(row, items, leg.rule, func(rule: int) -> void:
 			CityStore.dispatch(&"set_approach_rule", [node, leg.seg, rule])
 			redraw.call())
-		for r: Array in RULES:
-			HudWidgets.choice(rules, CityStore.code(&"SegRule", r[1]), col.tr(r[0]))
 	_movements(col, node, legs, redraw)
 
 

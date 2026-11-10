@@ -1,0 +1,1464 @@
+{
+ "entries": [
+  "src/view/camera.ts",
+  "src/view/cameraGestures.ts",
+  "src/view/cameraMotion.ts",
+  "src/view/cameraProfile.ts"
+ ],
+ "roots": [
+  "src/main.ts",
+  "src/peopleLab/main.ts"
+ ],
+ "own": [
+  "src/view/camera.ts#Camera",
+  "src/view/camera.ts#Camera.fit",
+  "src/view/camera.ts#Camera.matrix",
+  "src/view/camera.ts#Camera.px",
+  "src/view/camera.ts#Camera.screenToWorld",
+  "src/view/camera.ts#Camera.viewBounds",
+  "src/view/camera.ts#Camera.worldToScreen",
+  "src/view/camera.ts#Camera.x",
+  "src/view/camera.ts#Camera.y",
+  "src/view/camera.ts#Camera.zoom",
+  "src/view/camera.ts#Camera.zoomAt",
+  "src/view/camera.ts#MAX_ZOOM",
+  "src/view/camera.ts#MIN_ZOOM",
+  "src/view/cameraGestures.ts#CLICK_SLOP",
+  "src/view/cameraGestures.ts#COAST_DECAY_S",
+  "src/view/cameraGestures.ts#COAST_MAX_STEP_S",
+  "src/view/cameraGestures.ts#COAST_MIN_ORBIT",
+  "src/view/cameraGestures.ts#COAST_MIN_PAN",
+  "src/view/cameraGestures.ts#CameraGestures",
+  "src/view/cameraGestures.ts#CameraGestures.active",
+  "src/view/cameraGestures.ts#CameraGestures.advance",
+  "src/view/cameraGestures.ts#CameraGestures.anchor",
+  "src/view/cameraGestures.ts#CameraGestures.cancel",
+  "src/view/cameraGestures.ts#CameraGestures.coast",
+  "src/view/cameraGestures.ts#CameraGestures.coasting",
+  "src/view/cameraGestures.ts#CameraGestures.constructor",
+  "src/view/cameraGestures.ts#CameraGestures.gesture",
+  "src/view/cameraGestures.ts#CameraGestures.handSpeed",
+  "src/view/cameraGestures.ts#CameraGestures.has",
+  "src/view/cameraGestures.ts#CameraGestures.move",
+  "src/view/cameraGestures.ts#CameraGestures.orbit",
+  "src/view/cameraGestures.ts#CameraGestures.pan",
+  "src/view/cameraGestures.ts#CameraGestures.pinch",
+  "src/view/cameraGestures.ts#CameraGestures.pinching",
+  "src/view/cameraGestures.ts#CameraGestures.pointers",
+  "src/view/cameraGestures.ts#CameraGestures.press",
+  "src/view/cameraGestures.ts#CameraGestures.pressedAt",
+  "src/view/cameraGestures.ts#CameraGestures.release",
+  "src/view/cameraGestures.ts#CameraGestures.releaseAll",
+  "src/view/cameraGestures.ts#CameraGestures.samples",
+  "src/view/cameraGestures.ts#CameraGestures.startOrbit",
+  "src/view/cameraGestures.ts#CameraGestures.startPan",
+  "src/view/cameraGestures.ts#CameraGestures.startPinch",
+  "src/view/cameraGestures.ts#CameraGestures.startTrack",
+  "src/view/cameraGestures.ts#CameraGestures.throwCoast",
+  "src/view/cameraGestures.ts#CameraGestures.touches",
+  "src/view/cameraGestures.ts#CameraGestures.track",
+  "src/view/cameraGestures.ts#CameraGesturesHost",
+  "src/view/cameraGestures.ts#Coast",
+  "src/view/cameraGestures.ts#MAX_FLING_PX_S",
+  "src/view/cameraGestures.ts#ORBIT_PER_PX",
+  "src/view/cameraGestures.ts#PointerSample",
+  "src/view/cameraGestures.ts#SPEED_HORIZON_MS",
+  "src/view/cameraGestures.ts#SPEED_STOPPED_MS",
+  "src/view/cameraGestures.ts#TWIST_MIN_SPREAD",
+  "src/view/cameraGestures.ts#TWIST_SIGN",
+  "src/view/cameraMotion.ts#AIM_CLOSE",
+  "src/view/cameraMotion.ts#AIM_MAX_S",
+  "src/view/cameraMotion.ts#AIM_SNAP",
+  "src/view/cameraMotion.ts#AXES",
+  "src/view/cameraMotion.ts#Axis",
+  "src/view/cameraMotion.ts#CameraMotion",
+  "src/view/cameraMotion.ts#CameraMotion.aim",
+  "src/view/cameraMotion.ts#CameraMotion.aimedFor",
+  "src/view/cameraMotion.ts#CameraMotion.aiming",
+  "src/view/cameraMotion.ts#CameraMotion.at",
+  "src/view/cameraMotion.ts#CameraMotion.constructor",
+  "src/view/cameraMotion.ts#CameraMotion.held",
+  "src/view/cameraMotion.ts#CameraMotion.moving",
+  "src/view/cameraMotion.ts#CameraMotion.owns",
+  "src/view/cameraMotion.ts#CameraMotion.pendingTurn",
+  "src/view/cameraMotion.ts#CameraMotion.pendingZoom",
+  "src/view/cameraMotion.ts#CameraMotion.press",
+  "src/view/cameraMotion.ts#CameraMotion.release",
+  "src/view/cameraMotion.ts#CameraMotion.releaseAll",
+  "src/view/cameraMotion.ts#CameraMotion.shift",
+  "src/view/cameraMotion.ts#CameraMotion.step",
+  "src/view/cameraMotion.ts#CameraMotion.stop",
+  "src/view/cameraMotion.ts#CameraMotion.turn",
+  "src/view/cameraMotion.ts#CameraMotion.velocity",
+  "src/view/cameraMotion.ts#CameraMotion.wake",
+  "src/view/cameraMotion.ts#CameraMotion.wheel",
+  "src/view/cameraMotion.ts#CameraMotion.zoomAt",
+  "src/view/cameraMotion.ts#EASE_S",
+  "src/view/cameraMotion.ts#KEYS",
+  "src/view/cameraMotion.ts#MAX_STEP_S",
+  "src/view/cameraMotion.ts#MotionHost",
+  "src/view/cameraMotion.ts#PAN_PX_PER_S",
+  "src/view/cameraMotion.ts#SHIFT",
+  "src/view/cameraMotion.ts#TILT_PER_S",
+  "src/view/cameraMotion.ts#TURN_EASE_S",
+  "src/view/cameraMotion.ts#TURN_PER_S",
+  "src/view/cameraMotion.ts#ZOOM_EASE_S",
+  "src/view/cameraMotion.ts#ZOOM_PER_S",
+  "src/view/cameraProfile.ts#EYE_HEIGHT",
+  "src/view/cameraProfile.ts#FAR_FOV",
+  "src/view/cameraProfile.ts#FAR_MIN_TILT",
+  "src/view/cameraProfile.ts#FAR_TILT",
+  "src/view/cameraProfile.ts#NEAR_FOV",
+  "src/view/cameraProfile.ts#NEAR_HALF",
+  "src/view/cameraProfile.ts#NEAR_MIN_TILT",
+  "src/view/cameraProfile.ts#NEAR_TILT",
+  "src/view/cameraProfile.ts#blend",
+  "src/view/cameraProfile.ts#eyeLift",
+  "src/view/cameraProfile.ts#fieldOfView",
+  "src/view/cameraProfile.ts#lerp",
+  "src/view/cameraProfile.ts#minTilt",
+  "src/view/cameraProfile.ts#profileTilt",
+  "src/view/cameraProfile.ts#pullWeight",
+  "src/view/cameraProfile.ts#viewDistance",
+  "src/view/viewport.ts#flatViewport.holds",
+  "src/view/viewport.ts#flatViewport.slide"
+ ],
+ "uses": [
+  {
+   "unit": "src/core/aabb.ts#Aabb",
+   "kind": "read",
+   "by": [
+    "src/view/camera.ts#Camera.fit"
+   ]
+  },
+  {
+   "unit": "src/core/aabb.ts#Aabb",
+   "kind": "typeRef",
+   "by": [
+    "src/view/camera.ts#Camera.fit",
+    "src/view/camera.ts#Camera.viewBounds"
+   ]
+  },
+  {
+   "unit": "src/core/scalar.ts#clamp",
+   "kind": "call",
+   "by": [
+    "src/view/camera.ts#Camera.fit",
+    "src/view/camera.ts#Camera.zoomAt",
+    "src/view/cameraGestures.ts#CameraGestures.move",
+    "src/view/cameraProfile.ts#blend"
+   ]
+  },
+  {
+   "unit": "src/core/units.ts#m",
+   "kind": "call",
+   "by": [
+    "src/view/cameraProfile.ts#EYE_HEIGHT",
+    "src/view/cameraProfile.ts#eyeLift",
+    "src/view/cameraProfile.ts#fieldOfView",
+    "src/view/cameraProfile.ts#minTilt",
+    "src/view/cameraProfile.ts#NEAR_HALF",
+    "src/view/cameraProfile.ts#profileTilt"
+   ]
+  },
+  {
+   "unit": "src/core/units.ts#perM",
+   "kind": "call",
+   "by": [
+    "src/view/camera.ts#Camera.fit",
+    "src/view/camera.ts#Camera.zoom",
+    "src/view/camera.ts#MAX_ZOOM",
+    "src/view/camera.ts#MIN_ZOOM"
+   ]
+  },
+  {
+   "unit": "src/core/vec2.ts#Vec2",
+   "kind": "read",
+   "by": [
+    "src/view/camera.ts#Camera.worldToScreen",
+    "src/view/camera.ts#Camera.zoomAt",
+    "src/view/cameraGestures.ts#CameraGestures.advance",
+    "src/view/cameraGestures.ts#CameraGestures.move",
+    "src/view/cameraGestures.ts#CameraGestures.startPan",
+    "src/view/cameraGestures.ts#CameraGestures.startPinch",
+    "src/view/cameraGestures.ts#CameraGestures.startTrack",
+    "src/view/cameraGestures.ts#CameraGestures.throwCoast"
+   ]
+  },
+  {
+   "unit": "src/core/vec2.ts#Vec2",
+   "kind": "typeRef",
+   "by": [
+    "src/view/camera.ts#Camera.screenToWorld",
+    "src/view/camera.ts#Camera.worldToScreen",
+    "src/view/cameraGestures.ts#CameraGestures.anchor",
+    "src/view/cameraGestures.ts#CameraGestures.move",
+    "src/view/cameraGestures.ts#CameraGestures.orbit",
+    "src/view/cameraGestures.ts#CameraGestures.pan",
+    "src/view/cameraGestures.ts#CameraGestures.pinch",
+    "src/view/cameraGestures.ts#CameraGestures.pointers",
+    "src/view/cameraGestures.ts#CameraGestures.press",
+    "src/view/cameraGestures.ts#CameraGestures.startOrbit",
+    "src/view/cameraGestures.ts#CameraGestures.startPan",
+    "src/view/cameraGestures.ts#CameraGestures.startPinch",
+    "src/view/cameraGestures.ts#CameraGestures.startTrack",
+    "src/view/cameraGestures.ts#CameraGesturesHost",
+    "src/view/cameraMotion.ts#CameraMotion.zoomAt"
+   ]
+  },
+  {
+   "unit": "src/main.ts#cameraHand",
+   "kind": "implementation",
+   "by": [
+    "src/view/cameraGestures.ts#CameraGestures.advance",
+    "src/view/cameraGestures.ts#CameraGestures.anchor",
+    "src/view/cameraGestures.ts#CameraGestures.move",
+    "src/view/cameraGestures.ts#CameraGestures.startPan",
+    "src/view/cameraGestures.ts#CameraGestures.startPinch",
+    "src/view/cameraGestures.ts#CameraGestures.throwCoast"
+   ]
+  },
+  {
+   "unit": "src/main.ts#cameraMotion",
+   "kind": "implementation",
+   "by": [
+    "src/view/cameraMotion.ts#CameraMotion.step",
+    "src/view/cameraMotion.ts#CameraMotion.wheel"
+   ]
+  },
+  {
+   "unit": "src/render/isoViewport.ts#createIsoRig",
+   "kind": "implementation",
+   "by": [
+    "src/view/cameraGestures.ts#CameraGestures.advance",
+    "src/view/cameraGestures.ts#CameraGestures.anchor",
+    "src/view/cameraGestures.ts#CameraGestures.move",
+    "src/view/cameraGestures.ts#CameraGestures.startPan",
+    "src/view/cameraGestures.ts#CameraGestures.throwCoast",
+    "src/view/cameraMotion.ts#CameraMotion.step",
+    "src/view/cameraMotion.ts#CameraMotion.wheel"
+   ]
+  },
+  {
+   "unit": "src/view/viewport.ts#flatViewport",
+   "kind": "read",
+   "by": [
+    "src/view/viewport.ts#flatViewport.slide"
+   ]
+  },
+  {
+   "unit": "src/view/viewport.ts#flatViewport.moveTo",
+   "kind": "implementation",
+   "by": [
+    "src/view/cameraGestures.ts#CameraGestures.advance"
+   ]
+  },
+  {
+   "unit": "src/view/viewport.ts#flatViewport.orbit",
+   "kind": "implementation",
+   "by": [
+    "src/view/cameraGestures.ts#CameraGestures.advance",
+    "src/view/cameraGestures.ts#CameraGestures.move",
+    "src/view/cameraMotion.ts#CameraMotion.step"
+   ]
+  },
+  {
+   "unit": "src/view/viewport.ts#flatViewport.panTo",
+   "kind": "implementation",
+   "by": [
+    "src/view/cameraGestures.ts#CameraGestures.move"
+   ]
+  },
+  {
+   "unit": "src/view/viewport.ts#flatViewport.toWorldAt",
+   "kind": "implementation",
+   "by": [
+    "src/view/cameraGestures.ts#CameraGestures.anchor",
+    "src/view/cameraGestures.ts#CameraGestures.throwCoast"
+   ]
+  },
+  {
+   "unit": "src/view/viewport.ts#flatViewport.zoomAt",
+   "kind": "implementation",
+   "by": [
+    "src/view/cameraGestures.ts#CameraGestures.move",
+    "src/view/cameraMotion.ts#CameraMotion.step"
+   ]
+  },
+  {
+   "unit": "src/view/viewport.ts#Viewport",
+   "kind": "call",
+   "by": [
+    "src/view/cameraGestures.ts#CameraGestures.advance",
+    "src/view/cameraGestures.ts#CameraGestures.anchor",
+    "src/view/cameraGestures.ts#CameraGestures.move",
+    "src/view/cameraGestures.ts#CameraGestures.startPan",
+    "src/view/cameraGestures.ts#CameraGestures.throwCoast",
+    "src/view/cameraMotion.ts#CameraMotion.step",
+    "src/view/cameraMotion.ts#CameraMotion.wheel"
+   ]
+  },
+  {
+   "unit": "src/view/viewport.ts#Viewport",
+   "kind": "read",
+   "by": [
+    "src/view/cameraGestures.ts#CameraGestures.advance",
+    "src/view/cameraGestures.ts#CameraGestures.move",
+    "src/view/cameraGestures.ts#CameraGestures.startPinch",
+    "src/view/cameraMotion.ts#CameraMotion.step",
+    "src/view/cameraMotion.ts#CameraMotion.wheel"
+   ]
+  },
+  {
+   "unit": "src/view/viewport.ts#Viewport",
+   "kind": "typeRef",
+   "by": [
+    "src/view/cameraGestures.ts#CameraGesturesHost",
+    "src/view/cameraMotion.ts#MotionHost"
+   ]
+  }
+ ],
+ "hooks": [
+  {
+   "unit": "src/view/camera.ts#Camera",
+   "kind": "construct",
+   "by": [
+    "src/main.ts#camera"
+   ]
+  },
+  {
+   "unit": "src/view/camera.ts#Camera",
+   "kind": "typeRef",
+   "by": [
+    "src/view/viewport.ts#flatViewport"
+   ]
+  },
+  {
+   "unit": "src/view/camera.ts#Camera.fit",
+   "kind": "call",
+   "by": [
+    "src/main.ts#<IfStatement>@320",
+    "src/main.ts#fitOpeningView",
+    "src/main.ts#fitView"
+   ]
+  },
+  {
+   "unit": "src/view/camera.ts#Camera.px",
+   "kind": "call",
+   "by": [
+    "src/main.ts#roadTool"
+   ]
+  },
+  {
+   "unit": "src/view/camera.ts#Camera.screenToWorld",
+   "kind": "call",
+   "by": [
+    "src/view/viewport.ts#flatViewport.panTo",
+    "src/view/viewport.ts#flatViewport.toWorld",
+    "src/view/viewport.ts#flatViewport.toWorldAt"
+   ]
+  },
+  {
+   "unit": "src/view/camera.ts#Camera.worldToScreen",
+   "kind": "call",
+   "by": [
+    "src/view/viewport.ts#flatViewport.toScreen"
+   ]
+  },
+  {
+   "unit": "src/view/camera.ts#Camera.x",
+   "kind": "read",
+   "by": [
+    "src/main.ts#scene",
+    "src/main.ts#syncViewFromFlatCamera",
+    "src/view/viewport.ts#flatViewport",
+    "src/view/viewport.ts#flatViewport.panTo"
+   ]
+  },
+  {
+   "unit": "src/view/camera.ts#Camera.x",
+   "kind": "write",
+   "by": [
+    "src/main.ts#<IfStatement>@320",
+    "src/main.ts#<IfStatement>@4036",
+    "src/main.ts#restoreSettings",
+    "src/main.ts#syncFlatCameraFromView",
+    "src/view/viewport.ts#flatViewport.moveTo",
+    "src/view/viewport.ts#flatViewport.panTo"
+   ]
+  },
+  {
+   "unit": "src/view/camera.ts#Camera.y",
+   "kind": "read",
+   "by": [
+    "src/main.ts#scene",
+    "src/main.ts#syncViewFromFlatCamera",
+    "src/view/viewport.ts#flatViewport",
+    "src/view/viewport.ts#flatViewport.panTo"
+   ]
+  },
+  {
+   "unit": "src/view/camera.ts#Camera.y",
+   "kind": "write",
+   "by": [
+    "src/main.ts#<IfStatement>@320",
+    "src/main.ts#<IfStatement>@4036",
+    "src/main.ts#restoreSettings",
+    "src/main.ts#syncFlatCameraFromView",
+    "src/view/viewport.ts#flatViewport.moveTo",
+    "src/view/viewport.ts#flatViewport.panTo"
+   ]
+  },
+  {
+   "unit": "src/view/camera.ts#Camera.zoom",
+   "kind": "read",
+   "by": [
+    "src/main.ts#<IfStatement>@4036",
+    "src/main.ts#scene",
+    "src/main.ts#syncViewFromFlatCamera",
+    "src/view/viewport.ts#flatViewport"
+   ]
+  },
+  {
+   "unit": "src/view/camera.ts#Camera.zoom",
+   "kind": "write",
+   "by": [
+    "src/main.ts#<IfStatement>@320",
+    "src/main.ts#<IfStatement>@4036",
+    "src/main.ts#restoreSettings",
+    "src/main.ts#syncFlatCameraFromView"
+   ]
+  },
+  {
+   "unit": "src/view/camera.ts#Camera.zoomAt",
+   "kind": "call",
+   "by": [
+    "src/view/viewport.ts#flatViewport.zoomAt"
+   ]
+  },
+  {
+   "unit": "src/view/camera.ts#MAX_ZOOM",
+   "kind": "read",
+   "by": [
+    "src/view/viewport.ts#flatViewport"
+   ]
+  },
+  {
+   "unit": "src/view/camera.ts#MIN_ZOOM",
+   "kind": "read",
+   "by": [
+    "src/view/viewport.ts#flatViewport"
+   ]
+  },
+  {
+   "unit": "src/view/cameraGestures.ts#CameraGestures",
+   "kind": "construct",
+   "by": [
+    "src/main.ts#cameraHand"
+   ]
+  },
+  {
+   "unit": "src/view/cameraGestures.ts#CameraGestures.active",
+   "kind": "call",
+   "by": [
+    "src/main.ts#frame",
+    "src/main.ts#pointerMove"
+   ]
+  },
+  {
+   "unit": "src/view/cameraGestures.ts#CameraGestures.advance",
+   "kind": "call",
+   "by": [
+    "src/main.ts#frame"
+   ]
+  },
+  {
+   "unit": "src/view/cameraGestures.ts#CameraGestures.cancel",
+   "kind": "call",
+   "by": [
+    "src/main.ts#cancelGestures"
+   ]
+  },
+  {
+   "unit": "src/view/cameraGestures.ts#CameraGestures.coasting",
+   "kind": "call",
+   "by": [
+    "src/main.ts#frame"
+   ]
+  },
+  {
+   "unit": "src/view/cameraGestures.ts#CameraGestures.gesture",
+   "kind": "call",
+   "by": [
+    "src/main.ts#currentGesture"
+   ]
+  },
+  {
+   "unit": "src/view/cameraGestures.ts#CameraGestures.has",
+   "kind": "call",
+   "by": [
+    "src/main.ts#captureLost"
+   ]
+  },
+  {
+   "unit": "src/view/cameraGestures.ts#CameraGestures.move",
+   "kind": "call",
+   "by": [
+    "src/main.ts#pointerMove"
+   ]
+  },
+  {
+   "unit": "src/view/cameraGestures.ts#CameraGestures.press",
+   "kind": "call",
+   "by": [
+    "src/main.ts#pointerDown"
+   ]
+  },
+  {
+   "unit": "src/view/cameraGestures.ts#CameraGestures.release",
+   "kind": "call",
+   "by": [
+    "src/main.ts#endPointer"
+   ]
+  },
+  {
+   "unit": "src/view/cameraGestures.ts#CameraGestures.releaseAll",
+   "kind": "call",
+   "by": [
+    "src/main.ts#releaseHeld"
+   ]
+  },
+  {
+   "unit": "src/view/cameraGestures.ts#CameraGestures.startOrbit",
+   "kind": "call",
+   "by": [
+    "src/main.ts#pointerDown"
+   ]
+  },
+  {
+   "unit": "src/view/cameraGestures.ts#CameraGestures.startPan",
+   "kind": "call",
+   "by": [
+    "src/main.ts#pointerDown"
+   ]
+  },
+  {
+   "unit": "src/view/cameraGestures.ts#CameraGestures.startPinch",
+   "kind": "call",
+   "by": [
+    "src/main.ts#pointerDown"
+   ]
+  },
+  {
+   "unit": "src/view/cameraGestures.ts#CameraGestures.touches",
+   "kind": "call",
+   "by": [
+    "src/main.ts#pointerDown"
+   ]
+  },
+  {
+   "unit": "src/view/cameraGestures.ts#PointerSample",
+   "kind": "typeRef",
+   "by": [
+    "src/main.ts#CanvasInput",
+    "src/main.ts#coalescedPath",
+    "src/main.ts#pointerMove"
+   ]
+  },
+  {
+   "unit": "src/view/cameraMotion.ts#CameraMotion",
+   "kind": "construct",
+   "by": [
+    "src/main.ts#cameraMotion"
+   ]
+  },
+  {
+   "unit": "src/view/cameraMotion.ts#CameraMotion",
+   "kind": "reference",
+   "by": [
+    "src/ui/roads/keys.ts#cameraKey"
+   ]
+  },
+  {
+   "unit": "src/view/cameraMotion.ts#CameraMotion.aim",
+   "kind": "call",
+   "by": [
+    "src/main.ts#mountInterface"
+   ]
+  },
+  {
+   "unit": "src/view/cameraMotion.ts#CameraMotion.moving",
+   "kind": "call",
+   "by": [
+    "src/main.ts#frame"
+   ]
+  },
+  {
+   "unit": "src/view/cameraMotion.ts#CameraMotion.owns",
+   "kind": "call",
+   "by": [
+    "src/ui/roads/keys.ts#cameraKey"
+   ]
+  },
+  {
+   "unit": "src/view/cameraMotion.ts#CameraMotion.press",
+   "kind": "call",
+   "by": [
+    "src/main.ts#gameKeys"
+   ]
+  },
+  {
+   "unit": "src/view/cameraMotion.ts#CameraMotion.release",
+   "kind": "call",
+   "by": [
+    "src/main.ts#<ExpressionStatement>@2564"
+   ]
+  },
+  {
+   "unit": "src/view/cameraMotion.ts#CameraMotion.releaseAll",
+   "kind": "call",
+   "by": [
+    "src/main.ts#<ExpressionStatement>@2566"
+   ]
+  },
+  {
+   "unit": "src/view/cameraMotion.ts#CameraMotion.step",
+   "kind": "call",
+   "by": [
+    "src/main.ts#frame"
+   ]
+  },
+  {
+   "unit": "src/view/cameraMotion.ts#CameraMotion.turn",
+   "kind": "call",
+   "by": [
+    "src/main.ts#gameKeys"
+   ]
+  },
+  {
+   "unit": "src/view/cameraMotion.ts#CameraMotion.wheel",
+   "kind": "call",
+   "by": [
+    "src/main.ts#wheel"
+   ]
+  },
+  {
+   "unit": "src/view/cameraProfile.ts#eyeLift",
+   "kind": "call",
+   "by": [
+    "src/render/isoViewport.ts#createIsoRig.apply"
+   ]
+  },
+  {
+   "unit": "src/view/cameraProfile.ts#FAR_TILT",
+   "kind": "read",
+   "by": [
+    "src/render/isoViewport.ts#createIsoRig.askTilt",
+    "src/render/isoViewport.ts#createIsoRig.tiltNow"
+   ]
+  },
+  {
+   "unit": "src/view/cameraProfile.ts#fieldOfView",
+   "kind": "call",
+   "by": [
+    "src/render/isoViewport.ts#createIsoRig.apply"
+   ]
+  },
+  {
+   "unit": "src/view/cameraProfile.ts#minTilt",
+   "kind": "call",
+   "by": [
+    "src/render/isoViewport.ts#createIsoRig.askTilt",
+    "src/render/isoViewport.ts#createIsoRig.tiltNow"
+   ]
+  },
+  {
+   "unit": "src/view/cameraProfile.ts#profileTilt",
+   "kind": "call",
+   "by": [
+    "src/render/isoViewport.ts#createIsoRig.askTilt",
+    "src/render/isoViewport.ts#createIsoRig.tiltNow"
+   ]
+  },
+  {
+   "unit": "src/view/cameraProfile.ts#pullWeight",
+   "kind": "call",
+   "by": [
+    "src/render/isoViewport.ts#createIsoRig.apply"
+   ]
+  },
+  {
+   "unit": "src/view/cameraProfile.ts#viewDistance",
+   "kind": "call",
+   "by": [
+    "src/render/isoViewport.ts#createIsoRig.apply"
+   ]
+  }
+ ],
+ "external": [
+  {
+   "key": "es:Math",
+   "count": 52
+  },
+  {
+   "key": "es:Math.max",
+   "count": 14
+  },
+  {
+   "key": "es:Math.exp",
+   "count": 8
+  },
+  {
+   "key": "dom:performance",
+   "count": 7
+  },
+  {
+   "key": "dom:Performance.now",
+   "count": 7
+  },
+  {
+   "key": "es:Array.length",
+   "count": 7
+  },
+  {
+   "key": "es:Math.abs",
+   "count": 6
+  },
+  {
+   "key": "es:Math.hypot",
+   "count": 5
+  },
+  {
+   "key": "es:Math.min",
+   "count": 5
+  },
+  {
+   "key": "es:Math.PI",
+   "count": 5
+  },
+  {
+   "key": "es:Map.size",
+   "count": 4
+  },
+  {
+   "key": "es:Record",
+   "count": 4
+  },
+  {
+   "key": "es:Map.clear",
+   "count": 3
+  },
+  {
+   "key": "es:Map.set",
+   "count": 3
+  },
+  {
+   "key": "es:Map.values",
+   "count": 3
+  },
+  {
+   "key": "es:Math.atan2",
+   "count": 3
+  },
+  {
+   "key": "es:Math.log",
+   "count": 3
+  },
+  {
+   "key": "es:Number",
+   "count": 3
+  },
+  {
+   "key": "es:NumberConstructor.isFinite",
+   "count": 3
+  },
+  {
+   "key": "es:Array.push",
+   "count": 2
+  },
+  {
+   "key": "es:Map",
+   "count": 2
+  },
+  {
+   "key": "es:Map.delete",
+   "count": 2
+  },
+  {
+   "key": "es:Map.has",
+   "count": 2
+  },
+  {
+   "key": "dom:DOMMatrix2DInit",
+   "count": 1
+  },
+  {
+   "key": "es:Array.shift",
+   "count": 1
+  },
+  {
+   "key": "es:Math.cos",
+   "count": 1
+  },
+  {
+   "key": "es:Math.sin",
+   "count": 1
+  },
+  {
+   "key": "es:Math.tan",
+   "count": 1
+  },
+  {
+   "key": "es:Readonly",
+   "count": 1
+  },
+  {
+   "key": "es:ReadonlyArray.length",
+   "count": 1
+  },
+  {
+   "key": "es:ReadonlyArray.some",
+   "count": 1
+  }
+ ],
+ "holders": [
+  "src/main.ts#camera",
+  "src/main.ts#cameraHand",
+  "src/main.ts#cameraMotion"
+ ],
+ "sliced": [
+  "src/main.ts#<ExpressionStatement>@2564",
+  "src/main.ts#<ExpressionStatement>@2566",
+  "src/main.ts#<IfStatement>@320",
+  "src/main.ts#<IfStatement>@4036",
+  "src/main.ts#CanvasInput",
+  "src/main.ts#camera",
+  "src/main.ts#cameraHand",
+  "src/main.ts#cameraMotion",
+  "src/main.ts#cancelGestures",
+  "src/main.ts#captureLost",
+  "src/main.ts#coalescedPath",
+  "src/main.ts#currentGesture",
+  "src/main.ts#endPointer",
+  "src/main.ts#fitOpeningView",
+  "src/main.ts#fitView",
+  "src/main.ts#frame",
+  "src/main.ts#gameKeys",
+  "src/main.ts#mountInterface",
+  "src/main.ts#pointerDown",
+  "src/main.ts#pointerMove",
+  "src/main.ts#releaseHeld",
+  "src/main.ts#restoreSettings",
+  "src/main.ts#roadTool",
+  "src/main.ts#scene",
+  "src/main.ts#syncFlatCameraFromView",
+  "src/main.ts#syncViewFromFlatCamera",
+  "src/main.ts#view",
+  "src/main.ts#wheel",
+  "src/render/isoViewport.ts#createIsoRig.apply",
+  "src/render/isoViewport.ts#createIsoRig.askTilt",
+  "src/render/isoViewport.ts#createIsoRig.tiltNow",
+  "src/ui/roads/keys.ts#cameraKey",
+  "src/view/viewport.ts#flatViewport",
+  "src/view/viewport.ts#flatViewport.moveTo",
+  "src/view/viewport.ts#flatViewport.panTo",
+  "src/view/viewport.ts#flatViewport.toScreen",
+  "src/view/viewport.ts#flatViewport.toWorld",
+  "src/view/viewport.ts#flatViewport.toWorldAt",
+  "src/view/viewport.ts#flatViewport.zoomAt"
+ ],
+ "slices": [
+  {
+   "unit": "src/main.ts#<ExpressionStatement>@2564",
+   "file": "src/main.ts",
+   "start": 2564,
+   "end": 2564,
+   "lines": [
+    2564
+   ]
+  },
+  {
+   "unit": "src/main.ts#<ExpressionStatement>@2566",
+   "file": "src/main.ts",
+   "start": 2566,
+   "end": 2566,
+   "lines": [
+    2566
+   ]
+  },
+  {
+   "unit": "src/main.ts#<IfStatement>@320",
+   "file": "src/main.ts",
+   "start": 320,
+   "end": 328,
+   "lines": [
+    320,
+    321,
+    322,
+    325,
+    326,
+    327,
+    328
+   ]
+  },
+  {
+   "unit": "src/main.ts#<IfStatement>@4036",
+   "file": "src/main.ts",
+   "start": 4036,
+   "end": 4231,
+   "lines": [
+    4036,
+    4054,
+    4099,
+    4100,
+    4101,
+    4102,
+    4103,
+    4104,
+    4105,
+    4115,
+    4116,
+    4117,
+    4118,
+    4123,
+    4231
+   ]
+  },
+  {
+   "unit": "src/main.ts#CanvasInput",
+   "file": "src/main.ts",
+   "start": 1166,
+   "end": 1170,
+   "lines": [
+    1166,
+    1167,
+    1168,
+    1169,
+    1170
+   ]
+  },
+  {
+   "unit": "src/main.ts#camera",
+   "file": "src/main.ts",
+   "start": 197,
+   "end": 197,
+   "lines": [
+    197
+   ]
+  },
+  {
+   "unit": "src/main.ts#cameraHand",
+   "file": "src/main.ts",
+   "start": 553,
+   "end": 559,
+   "lines": [
+    553,
+    554,
+    555,
+    556,
+    557,
+    558,
+    559
+   ]
+  },
+  {
+   "unit": "src/main.ts#cameraMotion",
+   "file": "src/main.ts",
+   "start": 563,
+   "end": 567,
+   "lines": [
+    563,
+    564,
+    565,
+    566,
+    567
+   ]
+  },
+  {
+   "unit": "src/main.ts#cancelGestures",
+   "file": "src/main.ts",
+   "start": 1041,
+   "end": 1053,
+   "lines": [
+    1041,
+    1050,
+    1053
+   ]
+  },
+  {
+   "unit": "src/main.ts#captureLost",
+   "file": "src/main.ts",
+   "start": 1399,
+   "end": 1402,
+   "lines": [
+    1399,
+    1401,
+    1402
+   ]
+  },
+  {
+   "unit": "src/main.ts#coalescedPath",
+   "file": "src/main.ts",
+   "start": 1034,
+   "end": 1037,
+   "lines": [
+    1034,
+    1037
+   ]
+  },
+  {
+   "unit": "src/main.ts#currentGesture",
+   "file": "src/main.ts",
+   "start": 1056,
+   "end": 1073,
+   "lines": [
+    1056,
+    1057,
+    1058,
+    1073
+   ]
+  },
+  {
+   "unit": "src/main.ts#endPointer",
+   "file": "src/main.ts",
+   "start": 1484,
+   "end": 1513,
+   "lines": [
+    1484,
+    1486,
+    1488,
+    1489,
+    1490,
+    1491,
+    1496,
+    1497,
+    1498,
+    1500,
+    1502,
+    1504,
+    1505,
+    1506,
+    1507,
+    1510,
+    1513
+   ]
+  },
+  {
+   "unit": "src/main.ts#fitOpeningView",
+   "file": "src/main.ts",
+   "start": 2230,
+   "end": 2240,
+   "lines": [
+    2230,
+    2236,
+    2240
+   ]
+  },
+  {
+   "unit": "src/main.ts#fitView",
+   "file": "src/main.ts",
+   "start": 823,
+   "end": 826,
+   "lines": [
+    823,
+    824,
+    826
+   ]
+  },
+  {
+   "unit": "src/main.ts#frame",
+   "file": "src/main.ts",
+   "start": 2644,
+   "end": 2745,
+   "lines": [
+    2644,
+    2657,
+    2659,
+    2742,
+    2743,
+    2744,
+    2745
+   ]
+  },
+  {
+   "unit": "src/main.ts#gameKeys",
+   "file": "src/main.ts",
+   "start": 2479,
+   "end": 2555,
+   "lines": [
+    2479,
+    2500,
+    2501,
+    2502,
+    2504,
+    2555
+   ]
+  },
+  {
+   "unit": "src/main.ts#mountInterface",
+   "file": "src/main.ts",
+   "start": 1859,
+   "end": 1946,
+   "lines": [
+    1859,
+    1933,
+    1934,
+    1935,
+    1936,
+    1938,
+    1944,
+    1945,
+    1946
+   ]
+  },
+  {
+   "unit": "src/main.ts#pointerDown",
+   "file": "src/main.ts",
+   "start": 1217,
+   "end": 1396,
+   "lines": [
+    1217,
+    1219,
+    1222,
+    1223,
+    1224,
+    1225,
+    1226,
+    1229,
+    1236,
+    1238,
+    1240,
+    1242,
+    1244,
+    1252,
+    1310,
+    1311,
+    1313,
+    1314,
+    1315,
+    1316,
+    1394,
+    1396
+   ]
+  },
+  {
+   "unit": "src/main.ts#pointerMove",
+   "file": "src/main.ts",
+   "start": 1404,
+   "end": 1475,
+   "lines": [
+    1404,
+    1410,
+    1411,
+    1413,
+    1475
+   ]
+  },
+  {
+   "unit": "src/main.ts#releaseHeld",
+   "file": "src/main.ts",
+   "start": 1122,
+   "end": 1126,
+   "lines": [
+    1122,
+    1125,
+    1126
+   ]
+  },
+  {
+   "unit": "src/main.ts#restoreSettings",
+   "file": "src/main.ts",
+   "start": 2372,
+   "end": 2391,
+   "lines": [
+    2372,
+    2373,
+    2374,
+    2377,
+    2391
+   ]
+  },
+  {
+   "unit": "src/main.ts#roadTool",
+   "file": "src/main.ts",
+   "start": 458,
+   "end": 486,
+   "lines": [
+    458,
+    462,
+    486
+   ]
+  },
+  {
+   "unit": "src/main.ts#scene",
+   "file": "src/main.ts",
+   "start": 671,
+   "end": 671,
+   "lines": [
+    671
+   ]
+  },
+  {
+   "unit": "src/main.ts#syncFlatCameraFromView",
+   "file": "src/main.ts",
+   "start": 828,
+   "end": 834,
+   "lines": [
+    828,
+    831,
+    832,
+    833,
+    834
+   ]
+  },
+  {
+   "unit": "src/main.ts#syncViewFromFlatCamera",
+   "file": "src/main.ts",
+   "start": 812,
+   "end": 821,
+   "lines": [
+    812,
+    813,
+    814,
+    815,
+    816,
+    817,
+    818,
+    819,
+    820,
+    821
+   ]
+  },
+  {
+   "unit": "src/main.ts#view",
+   "file": "src/main.ts",
+   "start": 608,
+   "end": 608,
+   "lines": [
+    608
+   ]
+  },
+  {
+   "unit": "src/main.ts#wheel",
+   "file": "src/main.ts",
+   "start": 1535,
+   "end": 1550,
+   "lines": [
+    1535,
+    1536,
+    1547,
+    1549,
+    1550
+   ]
+  },
+  {
+   "unit": "src/render/isoViewport.ts#createIsoRig.apply",
+   "file": "src/render/isoViewport.ts",
+   "start": 112,
+   "end": 245,
+   "lines": [
+    112,
+    120,
+    127,
+    128,
+    129,
+    131,
+    132,
+    134,
+    135,
+    136,
+    139,
+    140,
+    141,
+    142,
+    143,
+    144,
+    145,
+    149,
+    151,
+    152,
+    153,
+    154,
+    155,
+    156,
+    157,
+    158,
+    159,
+    160,
+    161,
+    162,
+    163,
+    164,
+    165,
+    166,
+    167,
+    168,
+    173,
+    186,
+    188,
+    189,
+    190,
+    191,
+    192,
+    218,
+    228,
+    232,
+    245
+   ]
+  },
+  {
+   "unit": "src/render/isoViewport.ts#createIsoRig.askTilt",
+   "file": "src/render/isoViewport.ts",
+   "start": 104,
+   "end": 109,
+   "lines": [
+    104,
+    105,
+    106,
+    107,
+    108,
+    109
+   ]
+  },
+  {
+   "unit": "src/render/isoViewport.ts#createIsoRig.tiltNow",
+   "file": "src/render/isoViewport.ts",
+   "start": 100,
+   "end": 102,
+   "lines": [
+    100,
+    101,
+    102
+   ]
+  },
+  {
+   "unit": "src/ui/roads/keys.ts#cameraKey",
+   "file": "src/ui/roads/keys.ts",
+   "start": 25,
+   "end": 27,
+   "lines": [
+    25,
+    26,
+    27
+   ]
+  },
+  {
+   "unit": "src/view/viewport.ts#flatViewport",
+   "file": "src/view/viewport.ts",
+   "start": 52,
+   "end": 104,
+   "lines": [
+    52,
+    53,
+    87,
+    88,
+    89,
+    94,
+    95,
+    96,
+    100,
+    101,
+    102,
+    103,
+    104
+   ]
+  },
+  {
+   "unit": "src/view/viewport.ts#flatViewport.moveTo",
+   "file": "src/view/viewport.ts",
+   "start": 90,
+   "end": 93,
+   "lines": [
+    90,
+    91,
+    92,
+    93
+   ]
+  },
+  {
+   "unit": "src/view/viewport.ts#flatViewport.panTo",
+   "file": "src/view/viewport.ts",
+   "start": 60,
+   "end": 64,
+   "lines": [
+    60,
+    61,
+    62,
+    63,
+    64
+   ]
+  },
+  {
+   "unit": "src/view/viewport.ts#flatViewport.toScreen",
+   "file": "src/view/viewport.ts",
+   "start": 58,
+   "end": 58,
+   "lines": [
+    58
+   ]
+  },
+  {
+   "unit": "src/view/viewport.ts#flatViewport.toWorld",
+   "file": "src/view/viewport.ts",
+   "start": 55,
+   "end": 55,
+   "lines": [
+    55
+   ]
+  },
+  {
+   "unit": "src/view/viewport.ts#flatViewport.toWorldAt",
+   "file": "src/view/viewport.ts",
+   "start": 57,
+   "end": 57,
+   "lines": [
+    57
+   ]
+  },
+  {
+   "unit": "src/view/viewport.ts#flatViewport.zoomAt",
+   "file": "src/view/viewport.ts",
+   "start": 65,
+   "end": 67,
+   "lines": [
+    65,
+    66,
+    67
+   ]
+  }
+ ],
+ "resources": [
+  {
+   "kind": "entry",
+   "owner": "shared",
+   "file": "src/render/quality.ts",
+   "line": 123,
+   "key": "low",
+   "text": "low: {\n    pixelRatio: 1,\n    shadows: false,\n    shadowMapSize: 1024,\n    postProcessing: false,\n    ambientOcclusion: false,\n    smaa: false,\n    msaa: 0,\n    aoFull: false,\n    sharpen: 0,\n    anisotropy: 2,\n    detailProps: false,\n    vegetation: 0,\n    grassBlades: 0,\n    surfaceDetail: false,\n    detailCutoffZoom: perM(1.25),\n    pedestrianDetail: 0,\n    occupantZoom: perM(7.5),\n    // The weak machine's integrated GPU: parts a pixel off, fewer whole vehicles, strands on the two nearest (the other tiers draw as they always did).\n    vehicleErrorPixels: 1,\n    vehicleWholeCap: 60,\n    hairStrandPeople: 2,\n    cloudShadows: false,\n    vegetationDistance: m(180),\n    impostors: true,\n    birds: 0,\n    rain: false,\n    skyClouds: false,\n    mist: false,\n    waterfalls: false,\n    triangleScale: 0.35,\n    detailMemoryMB: 256,\n  }"
+  },
+  {
+   "kind": "entry",
+   "owner": "shared",
+   "file": "src/render/quality.ts",
+   "line": 156,
+   "key": "medium",
+   "text": "medium: {\n    pixelRatio: 1.25,\n    shadows: true,\n    shadowMapSize: 1024,\n    postProcessing: false,\n    ambientOcclusion: false,\n    smaa: false,\n    msaa: 0,\n    aoFull: false,\n    sharpen: 0,\n    anisotropy: 4,\n    detailProps: true,\n    vegetation: 600,\n    grassBlades: 30_000,\n    surfaceDetail: true,\n    detailCutoffZoom: perM(0.85),\n    pedestrianDetail: 1,\n    occupantZoom: perM(5.5),\n    vehicleErrorPixels: VEHICLE_ERROR_PIXELS,\n    vehicleWholeCap: VEHICLE_WHOLE_CAP,\n    hairStrandPeople: HAIR_STRAND_PEOPLE,\n    cloudShadows: false,\n    vegetationDistance: m(300),\n    impostors: true,\n    birds: 150,\n    rain: true,\n    skyClouds: true,\n    mist: false,\n    waterfalls: true,\n    triangleScale: 0.6,\n    detailMemoryMB: 448,\n  }"
+  },
+  {
+   "kind": "entry",
+   "owner": "shared",
+   "file": "src/render/quality.ts",
+   "line": 188,
+   "key": "high",
+   "text": "high: {\n    pixelRatio: 1.5,\n    shadows: true,\n    // Three cascades of 2048: the nearest a few centimetres a texel round the street looked at\n    shadowMapSize: 2048,\n    postProcessing: true,\n    ambientOcclusion: true,\n    smaa: true,\n    // SMAA smooths every edge on its own: the scene's MSAA samples cost 2.2 ms of the 2560-wide frame for edges SMAA draws as well.\n    msaa: 0,\n    aoFull: false,\n    // No sharpening at the display's own size: see ultra.\n    sharpen: 0,\n    anisotropy: 8,\n    detailProps: true,\n    vegetation: 1_400,\n    grassBlades: 60_000,\n    surfaceDetail: true,\n    detailCutoffZoom: perM(0.65),\n    pedestrianDetail: 2,\n    occupantZoom: perM(4),\n    vehicleErrorPixels: VEHICLE_ERROR_PIXELS,\n    vehicleWholeCap: VEHICLE_WHOLE_CAP,\n    hairStrandPeople: HAIR_STRAND_PEOPLE,\n    cloudShadows: true,\n    vegetationDistance: m(440),\n    impostors: true,\n    birds: 400,\n    rain: true,\n    skyClouds: true,\n    mist: true,\n    waterfalls: true,\n    triangleScale: 1,\n    detailMemoryMB: 768,\n  }"
+  },
+  {
+   "kind": "entry",
+   "owner": "shared",
+   "file": "src/render/quality.ts",
+   "line": 223,
+   "key": "ultra",
+   "text": "ultra: {\n    pixelRatio: 2,\n    shadows: true,\n    // DO NOT raise it to 3072 with MSAA 4x and full-resolution GTAO (80074433): the picture came out washed out, 18 % of the district's pixels changed against the approved look (bisected, 2026-10-22).\n    shadowMapSize: 2048,\n    postProcessing: true,\n    ambientOcclusion: true,\n    // Kept over the MSAA: it smooths what multisampling cannot (the shading's own edges - window grids, specular glints, cut-out leaves).\n    smaa: true,\n    // DO NOT turn on 4x here for the district's sparkle: measured alone it cost ~4 ms of GPU there (p95 13 -> 17 ms) and left 32 % of its\n    // pixels off a supersampled frame against 34 % (`npm run diagnose`, 2026-10-22): the sparkle is the shading's, not the edges'.\n    msaa: 0,\n    // At the frame's own size, alone (not with the 3072 shadow nor the MSAA of 80074433): at half size the occlusion made the district's\n    // frame differ from a supersampled one in 34 % of its pixels, 27 % without it (`npm run diagnose`, 2026-10-22, per-pass ablation).\n    // Its GPU paid back by the parts' coarser levels (`partCells.ts` PART_ERROR_PX).\n    aoFull: true,\n    // DO NOT sharpen the picture drawn at the display's own size after SMAA: CAS is for what a temporal filter or an upscale softened; here it lifted the\n    // textures' grain into a 1-pixel checker and put back the steps SMAA smoothed, 42 % of a street view's pixel-level energy (the player, 2026-10-23: \"pixelizado\").\n    sharpen: 0,\n    anisotropy: 16,\n    detailProps: true,\n    vegetation: 2_600,\n    grassBlades: 90_000,\n    surfaceDetail: true,\n    detailCutoffZoom: perM(0.5),\n    pedestrianDetail: 2,\n    occupantZoom: perM(3.25),\n    vehicleErrorPixels: VEHICLE_ERROR_PIXELS,\n    vehicleWholeCap: VEHICLE_WHOLE_CAP,\n    hairStrandPeople: HAIR_STRAND_PEOPLE,\n    cloudShadows: true,\n    vegetationDistance: m(640),\n    impostors: true,\n    birds: 600,\n    rain: true,\n    skyClouds: true,\n    mist: true,\n    waterfalls: true,\n    triangleScale: 1,\n    detailMemoryMB: 1024,\n  }"
+  }
+ ]
+}

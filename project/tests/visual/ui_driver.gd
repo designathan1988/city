@@ -1,12 +1,11 @@
 ## Real input for the visual captures: mouse moves, clicks, holds and drags over ground points or controls, Ctrl keys,
-## waiting until the render has caught up (CaptureWait, the one wait of the captures) and saving the viewport. Events go
-## through Input like a player's. Each step is written to the log as it starts ("step: ..."), so a capture that crashes or
-## hangs shows the step it was on.
+## waiting until the render has caught up and saving the viewport. Events go through Input like a player's. Each step is
+## written to the log as it starts ("passo: ..."), so a capture that crashes or hangs shows the step it was on.
 class_name UiDriver
 extends RefCounted
 
+const BUILD_FRAMES := 600
 const SETTLE_FRAMES := 8
-const DRAWN_SETTLE := 2 # the frames the world takes to ask for what a move showed
 
 var rig: CityCamera
 var tree: SceneTree
@@ -66,7 +65,7 @@ func button(at: Vector2, pressed: bool) -> void:
 
 
 func click(p: Vector3) -> void:
-	step("click at %s" % p)
+	step("clique em %s" % p)
 	await hover(p)
 	var at := rig.camera.unproject_position(ground(p.x, p.z))
 	await button(at, true)
@@ -86,7 +85,7 @@ func press(b: Control) -> void:
 
 
 func hold(p: Vector3, frames: int) -> void:
-	step("hold at %s" % p)
+	step("segura em %s" % p)
 	await hover(p)
 	var at := rig.camera.unproject_position(ground(p.x, p.z))
 	await button(at, true)
@@ -94,21 +93,18 @@ func hold(p: Vector3, frames: int) -> void:
 	await button(at, false)
 
 
-## A held drag from `p0` to `p1` over the ground. `held`, when given, runs at the end with the button still down, before the
-## release (a capture of the gesture's preview).
-func drag(p0: Vector3, p1: Vector3, held: Callable = Callable()) -> void:
-	step("drag from %s to %s" % [p0, p1])
+func drag(p0: Vector3, p1: Vector3) -> void:
+	step("arrasta de %s a %s" % [p0, p1])
 	await hover(p0)
 	await button(rig.camera.unproject_position(ground(p0.x, p0.z)), true)
 	await hover(p0.lerp(p1, 0.5))
 	await hover(p1)
-	if held.is_valid():
-		await held.call()
+	await shot("feat_build_previa")
 	await button(rig.camera.unproject_position(ground(p1.x, p1.z)), false)
 
 
 func key(code: Key, ctrl: bool, shift: bool = false) -> void:
-	step("key %s%s%s" % ["Ctrl+" if ctrl else "", "Shift+" if shift else "", OS.get_keycode_string(code)])
+	step("tecla %s%s%s" % ["Ctrl+" if ctrl else "", "Shift+" if shift else "", OS.get_keycode_string(code)])
 	for pressed in [true, false]:
 		var k := InputEventKey.new()
 		k.keycode = code
@@ -128,17 +124,20 @@ func modifier(code: Key, pressed: bool) -> void:
 	await frames(2)
 
 
-## Until the world has drawn all it was asked to: CaptureWait's rule, which counts a photo that leaves with drawing pending.
 func drawn() -> void:
-	step("waits for the render")
-	await CaptureWait.until_drawn(rig, DRAWN_SETTLE, "ui")
+	step("espera o render")
+	var waited := 0
+	await frames(2)
+	while CityStore.query(&"render_pending") > 0 and waited < BUILD_FRAMES:
+		await frames(1)
+		waited += 1
 
 
 func shot(name: String, settle: int = SETTLE_FRAMES) -> void:
 	await frames(settle)
 	var path := "%s/%s.png" % [out_dir, name]
 	tree.root.get_texture().get_image().save_png(path)
-	print("capture: ", path)
+	print("captura: ", path)
 
 
 ## A shot's hour, the light and the city's clock together: in play the sky follows the clock (the top bar's hour), and what
@@ -150,7 +149,7 @@ static func at_hour(world: CityWorld, hour: float) -> void:
 
 ## The step that starts now, in the log.
 func step(what: String) -> void:
-	print("step: ", what)
+	print("passo: ", what)
 
 
 func frames(n: int) -> void:

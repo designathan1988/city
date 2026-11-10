@@ -10,10 +10,10 @@
 
 #include "render/rs_util.h"
 
+#include <godot_cpp/classes/mesh.hpp>
 
 #include <algorithm>
 #include <cmath>
-#include <utility>
 
 namespace city {
 
@@ -36,7 +36,7 @@ enum class LayerBounds { FIXED, SHAPED, OWNED };
 
 struct MmLayer {
 	godot::RID mm, inst;
-	OwnedMesh mesh; // held: the MultiMesh draws it; made with its material (surface_data.h)
+	godot::Ref<godot::Mesh> mesh; // held: the MultiMesh draws its RID
 	int capacity = 0;
 	godot::PackedFloat32Array buf;
 	LayerBounds bounds_kind = LayerBounds::FIXED;
@@ -46,20 +46,22 @@ struct MmLayer {
 	bool boxed = false;
 
 	// A FIXED layer: `bounds` is the box of the MultiMesh (so uploads never walk the instances, rs_util.h MultiMeshDraw) and of the instance.
-	void init(const godot::RID &scenario, OwnedMesh &&shape, int count, bool shadows, const godot::AABB &bounds) {
-		create(scenario, std::move(shape), count, shadows, bounds);
+	void init(const godot::RID &scenario, const godot::Ref<godot::Mesh> &shape, const godot::RID &material, int count, bool shadows,
+			const godot::AABB &bounds) {
+		create(scenario, shape, material, count, shadows, bounds);
 		bounds_kind = LayerBounds::FIXED;
 	}
 	// A SHAPED layer: its box follows what put() writes (`local`: the shape's box as the shader may stretch it; `margin`: what it may move past it).
-	void init_shaped(const godot::RID &scenario, OwnedMesh &&shape, int count, bool shadows, const godot::AABB &local, float margin) {
-		create(scenario, std::move(shape), count, shadows, world_box());
+	void init_shaped(const godot::RID &scenario, const godot::Ref<godot::Mesh> &shape, const godot::RID &material, int count, bool shadows,
+			const godot::AABB &local, float margin) {
+		create(scenario, shape, material, count, shadows, world_box());
 		bounds_kind = LayerBounds::SHAPED;
 		shape_box = local;
 		reach = margin;
 	}
 	// An OWNED layer: its box is what the owner sets.
-	void init_owned(const godot::RID &scenario, OwnedMesh &&shape, int count, bool shadows) {
-		create(scenario, std::move(shape), count, shadows, world_box());
+	void init_owned(const godot::RID &scenario, const godot::Ref<godot::Mesh> &shape, const godot::RID &material, int count, bool shadows) {
+		create(scenario, shape, material, count, shadows, world_box());
 		bounds_kind = LayerBounds::OWNED;
 	}
 	// Room for `count` instances: a layer holds what its owner draws, so it grows (doubling) when that passes it. The owner writes
@@ -80,17 +82,6 @@ struct MmLayer {
 		const float v[MM_STRIDE] = { x.x, y.x, z.x, o.x, x.y, y.y, z.y, o.y, x.z, y.z, z.z, o.z, 1, 1, 1, 1, c0, c1, c2, c3 };
 		for (int k = 0; k < MM_STRIDE; k++) w[k] = v[k];
 		if (bounds_kind == LayerBounds::SHAPED) grow(moved_box(shape_box, x, y, z, o).grow(reach));
-	}
-	// Instance `i` laid from `a` to `b` (a unit shape along its y, `thick` across it on x and z): a gut, a bone, a wire's link.
-	void put_link(int i, const godot::Vector3 &a, const godot::Vector3 &b, float thick, float c0, float c1, float c2, float c3) {
-		constexpr float NOTHING_M = 1e-6f; // a length this short has no direction
-		constexpr float NEAR_UPRIGHT = 0.9f; // a link this close to vertical (cosine) takes x, not up, to find its side: any axis well off it
-		godot::Vector3 along = b - a;
-		const float len = std::max(along.length(), NOTHING_M);
-		along /= len;
-		const godot::Vector3 helper = std::fabs(along.y) < NEAR_UPRIGHT ? godot::Vector3(0, 1, 0) : godot::Vector3(1, 0, 0);
-		const godot::Vector3 side = helper.cross(along).normalized(), front = along.cross(side);
-		put(i, side * thick, along * len, front * thick, (a + b) * 0.5f, c0, c1, c2, c3);
 	}
 	void clear_bounds() { boxed = false; }
 	void grow(const godot::AABB &b) {
@@ -119,21 +110,22 @@ struct MmLayer {
 		if (mm.is_valid()) rs->free_rid(mm);
 		inst = godot::RID();
 		mm = godot::RID();
-		mesh.reset();
+		mesh.unref();
 	}
 
 private:
-	void create(const godot::RID &scenario, OwnedMesh &&shape, int count, bool shadows, const godot::AABB &bounds) {
+	void create(const godot::RID &scenario, const godot::Ref<godot::Mesh> &shape, const godot::RID &material, int count, bool shadows, const godot::AABB &bounds) {
 		godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
-		mesh = std::move(shape);
+		mesh = shape;
 		capacity = count;
 		mm = rs->multimesh_create();
 		rs->multimesh_allocate_data(mm, count, godot::RenderingServer::MULTIMESH_TRANSFORM_3D, true, true);
-		rs->multimesh_set_mesh(mm, mesh.rid);
+		rs->multimesh_set_mesh(mm, mesh->get_rid());
 		rs->multimesh_set_custom_aabb(mm, bounds);
 		inst = rs->instance_create2(mm, scenario);
 		rs->instance_geometry_set_cast_shadows_setting(
 				inst, shadows ? godot::RenderingServer::SHADOW_CASTING_SETTING_ON : godot::RenderingServer::SHADOW_CASTING_SETTING_OFF);
+		rs->instance_geometry_set_material_override(inst, material);
 		rs->instance_set_custom_aabb(inst, bounds);
 		sent = bounds;
 		boxed = false;

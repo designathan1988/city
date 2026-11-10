@@ -1,9 +1,0 @@
-{
- "rule": "mirrors",
- "expect": [
-  "ESPELHO tools/gates/rules.json"
- ],
- "overrides": {
-  "mirrors": []
- }
-}

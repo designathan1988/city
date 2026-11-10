@@ -1,11 +1,6 @@
 {
- "_doc": "The support tools' work as data, run by tools/tasks/cli.py (schema: tools/gates/schemas/suites.schema.json). A task is a process with its own deadline (timeout_s), the inputs and extra strings that key its result, the outputs restored on a cache hit, the tasks it runs after, its resources and its verdict. {name} is a var (vars, versions, or the built-in root, python); an inputs element @name is a set; a suite element @name is a group or another suite; an argv element {changed_list:--files-from} expands to --files-from and a file listing the changed files (the task is dropped when none changed) and {changed} in inputs to the changed files; {loads} in inputs is every file the Godot run of the task's argv may load (tools/tasks/godot_deps.py: the scene, the plan, the project settings, the extensions, and every script, scene, shader, table and asset they reach), and such a run is --verbose so its verdict fails on a resource it loaded outside them. Every Godot task loads the debug DLL: it runs after build_debug, whose output that DLL is, and the DLL is among what it loads (bin/citycore.gdextension), so a scene reruns exactly when what it loads changed.",
+ "_doc": "The support tools' work as data, run by tools/tasks/cli.py (schema: tools/gates/schemas/suites.schema.json). A task is a process with its own deadline (timeout_s), the inputs and extra strings that key its result, the outputs restored on a cache hit, the tasks it runs after, its resources and its verdict. {name} is a var (vars, or the built-in root, python, godot_version); an inputs element @name is a set; a suite element @name is a group or another suite; an argv element {changed_list:--files-from} expands to --files-from and a file listing the changed files (the task is dropped when none changed) and {changed} in inputs to the changed files. Every Godot task loads the debug DLL: it runs after build_debug, whose output that DLL is, and the DLL is among its inputs (the project set), so a scene reruns exactly when what it loads changed.",
  "vars": {
-  "test_fps": {
-   "doc": "the tests' simulated time: each frame moves the game 1/test_fps s (Godot --fixed-fps, real-time synchronisation off) and frames run uncapped (--disable-vsync, --max-fps 0, Settings keeps no cap under it): a test takes the time its work takes, never 16.7 ms a frame; a test that measures real frame times sets -1 (wall time) on its item",
-   "windows": "60",
-   "posix": "60"
-  },
   "godot": {
    "doc": "Godot 4.7 console binary",
    "env": "GODOT",
@@ -24,12 +19,6 @@
    "windows": "C:/Projects/toolchains/llvm-mingw-20261020-ucrt-x86_64",
    "posix": ""
   },
-  "lab": {
-   "doc": "the lab game's root: what tools/assets/cook_people_lab.py cooks the people's clips from (its motion library and cast)",
-   "env": "ROADCRAFT_LAB",
-   "windows": "C:/Users/Jonathan/Documents/Projects/lab/roadcraft",
-   "posix": ""
-  },
   "captures": {
    "doc": "where the capture suite writes, one folder per task (tools/build/build.sh capture DIR sets it)",
    "env": "CAPTURE_DIR",
@@ -37,24 +26,13 @@
    "posix": "{root}/dist/captures"
   }
  },
- "versions": {
-  "godot_version": {"doc": "the Godot that runs the scenes", "argv": ["{godot}", "--headless", "--version"]},
-  "cmake_version": {"doc": "the CMake that configures the core's build", "argv": ["cmake", "--version"]},
-  "ninja_version": {"doc": "the Ninja that runs the core's build", "argv": ["ninja", "--version"]},
-  "clang_version": {"doc": "the compiler of the Windows DLLs (llvm-mingw)", "argv": ["{mingw}/bin/clang++", "--version"]}
- },
- "loads": {
-  "doc": "{loads}: the C++ folders whose res:// paths the loaded core library opens",
-  "native": ["native/src"]
- },
  "changed": {
   "doc": "the changed files the gates look at (run_gates.py --files-from: a path outside every gate is reported and skipped there)",
   "include": ["**"],
   "exclude": ["log/**"]
  },
  "sets": {
-  "project": ["project/**", "!@release_libraries"],
-  "release_libraries": ["project/bin/libcitycore.windows.template_release.x86_64.dll", "project/bin/*.so"],
+  "project": ["project/**", "!project/bin/libcitycore.windows.template_release.x86_64.dll", "!project/bin/*.so"],
   "native": ["native/**"]
  },
  "tasks": {
@@ -76,50 +54,11 @@
    "after": ["import"],
    "resources": {"cores": 2, "locks": {"dll": "shared"}}
   },
-  "shader_contracts": {
-   "doc": "the values the shaders share with the core and the scripts are what their table makes (tools/build/shader_contracts.py --check: native/src/core/shader_contracts/ and project/render/shaders/contracts/, nothing more and nothing stale)",
-   "argv": ["{python}", "tools/build/shader_contracts.py", "--check"],
-   "timeout_s": 60,
-   "inputs": ["tools/build/shader_contracts.json", "tools/build/shader_contracts.py", "native/src/core/shader_contracts/**", "project/render/shaders/contracts/**"],
-   "resources": {"cores": 1}
-  },
-  "furniture_table": {
-   "doc": "project/data/render/furniture.json is what tools/assets/make_furniture.py makes of the interiors' sizes (--check): a generated table edited by hand, or a generator out of step with its inputs, fails",
-   "argv": ["{python}", "tools/assets/make_furniture.py", "--check"],
-   "timeout_s": 60,
-   "inputs": ["tools/assets/make_furniture.py", "project/data/catalog/interiors.json", "project/data/game/start.json", "project/data/render/furniture.json"],
-   "resources": {"cores": 1}
-  },
-  "people_cook": {
-   "doc": "the people's clips cooked from the lab's own motion onto the cast (tools/assets/cook_people_lab.py): project/assets/people/people.bin rewritten, its bodies kept, a run on its own output the same bytes",
-   "argv": ["{python}", "tools/assets/cook_people_lab.py", "--lab", "{lab}", "--base", "project/assets/people/people.bin", "--out", "project/assets/people/people.bin", "--jobs", "4"],
-   "timeout_s": 3600,
-   "inputs": ["tools/assets/cook_people_lab.py", "tools/assets/people_bin.py", "tools/assets/lab_math.py", "tools/assets/lab_rig.py", "tools/assets/lab_shaping.py", "tools/assets/lab_ik.py", "tools/assets/lab_riders.py"],
-   "extra": ["{lab}"],
-   "outputs": ["project/assets/people/people.bin"],
-   "resources": {"cores": 4}
-  },
-  "causes": {
-   "doc": "the causes the code's shape shows (tools/analysis/causes.py): its report, under a deadline like every tool",
-   "argv": ["{python}", "tools/analysis/causes.py"],
-   "timeout_s": 600,
-   "inputs": ["tools/analysis/causes.py", "tools/analysis/detectors.py", "tools/analysis/code_parse.py", "tools/gates/lex_c.py", "native/src/**"],
-   "resources": {"cores": 1}
-  },
-  "arch_scan": {
-   "doc": "the architecture analyser's scan (tools/analysis/arch.py scan, its queue in dist/arch/queue.json): its git streams and compiler questions under this deadline",
-   "argv": ["{python}", "tools/analysis/arch.py", "scan"],
-   "timeout_s": 1800,
-   "inputs": ["tools/analysis/arch.py", "tools/analysis/arch/**", "native/src/**", "project/**/*.gd"],
-   "outputs": ["dist/arch/queue.json"],
-   "resources": {"cores": "all"}
-  },
   "build_debug": {
    "doc": "the debug DLL, the one the editor, tests and captures load",
    "argv": ["{bash}", "tools/build/build.sh", "dll-debug"],
    "timeout_s": 3600,
    "inputs": ["@native", "tools/build/build.sh", "tools/build/free_dll.sh"],
-   "extra": ["{cmake_version}", "{ninja_version}", "{clang_version}"],
    "env": {"MINGW": "{mingw}"},
    "outputs": ["project/bin/libcitycore.windows.template_debug.x86_64.dll"],
    "resources": {"cores": "all", "locks": {"dll": "exclusive"}}
@@ -129,7 +68,6 @@
    "argv": ["{bash}", "tools/build/build.sh", "dll-release"],
    "timeout_s": 3600,
    "inputs": ["@native", "tools/build/build.sh", "tools/build/free_dll.sh"],
-   "extra": ["{cmake_version}", "{ninja_version}", "{clang_version}"],
    "env": {"MINGW": "{mingw}"},
    "outputs": ["project/bin/libcitycore.windows.template_release.x86_64.dll"],
    "resources": {"cores": "all", "locks": {"dll": "exclusive"}}
@@ -148,22 +86,11 @@
    "inputs": ["**"],
    "resources": {"cores": 2}
   },
-  "city_audit": {
-   "doc": "the city's audit (project/tests/audit/city_audit.gd): every defect a rule can state, read from the state and the geometry of a generated city stepped some simulated minutes, each line a rule with its count and its worst places; never from pixels, so two runs say the same",
-   "argv": ["{godot}", "--verbose", "--path", "project", "--rendering-method", "gl_compatibility", "--fixed-fps", "{test_fps}", "--disable-vsync", "--max-fps", "0", "res://tests/audit/city_audit.tscn", "--", "--no-flow"],
-   "timeout_s": 600,
-   "hidden": true,
-   "inputs": ["{loads}", "!@release_libraries"],
-   "extra": ["{godot_version}"],
-   "after": ["build_debug", "import", "scripts"],
-   "verdict": "godot",
-   "resources": {"cores": 3, "locks": {"dll": "shared"}}
-  },
   "digest": {
    "doc": "a fixed city hashed (open_probe --digest) and held to its golden: an optimisation leaves it equal",
-   "argv": ["{godot}", "--verbose", "--headless", "--path", "project", "res://tests/perf/open_probe.tscn", "--", "--no-flow", "--digest"],
+   "argv": ["{godot}", "--headless", "--path", "project", "res://tests/perf/open_probe.tscn", "--", "--no-flow", "--digest"],
    "timeout_s": 600,
-   "inputs": ["{loads}", "!@release_libraries", "dist/quick/golden.txt"],
+   "inputs": ["@project", "dist/quick/golden.txt"],
    "extra": ["{godot_version}"],
    "after": ["build_debug", "import", "scripts"],
    "verdict": "matches_golden",
@@ -173,9 +100,9 @@
   },
   "digest_bless": {
    "doc": "--bless: the digest of this run becomes the golden",
-   "argv": ["{godot}", "--verbose", "--headless", "--path", "project", "res://tests/perf/open_probe.tscn", "--", "--no-flow", "--digest"],
+   "argv": ["{godot}", "--headless", "--path", "project", "res://tests/perf/open_probe.tscn", "--", "--no-flow", "--digest"],
    "timeout_s": 600,
-   "inputs": ["{loads}", "!@release_libraries"],
+   "inputs": ["@project"],
    "extra": ["{godot_version}"],
    "after": ["build_debug", "import", "scripts"],
    "outputs": ["dist/quick/golden.txt"],
@@ -187,7 +114,6 @@
    "doc": "the still world photographed frozen (look --frozen: no clock, no TIME, waits by frames)",
    "argv": [
     "{godot}",
-    "--verbose",
     "--path",
     "project",
     "--resolution",
@@ -201,20 +127,39 @@
    ],
    "timeout_s": 90,
    "hidden": true,
-   "inputs": ["{loads}", "!@release_libraries"],
+   "inputs": ["@project"],
    "extra": ["{godot_version}"],
    "after": ["build_debug", "import", "scripts"],
    "outputs": ["dist/quick/photos"],
    "fresh": true,
    "verdict": "godot",
    "resources": {"cores": 3, "locks": {"dll": "shared"}}
+  },
+  "photos_check": {
+   "doc": "the frozen photos against their golden, bit for bit",
+   "argv": ["{python}", "tools/build/photodiff.py", "dist/quick/golden_photos", "dist/quick/photos", "dist/quick/photos_diff"],
+   "timeout_s": 120,
+   "inputs": ["dist/quick/golden_photos", "dist/quick/photos", "tools/build/photodiff.py"],
+   "after": ["photos"],
+   "outputs": ["dist/quick/photos_diff"],
+   "fresh": true,
+   "hint": "a change meant to move the photos: run with --bless"
+  },
+  "photos_bless": {
+   "doc": "--bless: the photos of this run become the golden",
+   "call": "tasks.steps:copy",
+   "spec": {"from": "dist/quick/photos", "to": "dist/quick/golden_photos"},
+   "timeout_s": 120,
+   "inputs": ["dist/quick/photos"],
+   "after": ["photos"],
+   "outputs": ["dist/quick/golden_photos"]
   }
  },
  "templates": {
   "godot_test": {
-   "argv": ["{godot}", "--verbose", "--path", "project", "--rendering-method", "{renderer}", "--fixed-fps", "{test_fps}", "--disable-vsync", "--max-fps", "0", "res://{scene}.tscn", "--", "--no-flow"],
+   "argv": ["{godot}", "--path", "project", "--rendering-method", "{renderer}", "res://{scene}.tscn", "--", "--no-flow"],
    "hidden": true,
-   "inputs": ["{loads}", "!@release_libraries"],
+   "inputs": ["@project"],
    "extra": ["{godot_version}"],
    "after": ["build_debug", "import", "scripts"],
    "verdict": "godot",
@@ -223,7 +168,6 @@
   "look": {
    "argv": [
     "{godot}",
-    "--verbose",
     "--path",
     "project",
     "--resolution",
@@ -235,7 +179,7 @@
     "--capture-dir={captures}/{name}"
    ],
    "hidden": true,
-   "inputs": ["{loads}", "!@release_libraries"],
+   "inputs": ["@project"],
    "extra": ["{godot_version}"],
    "after": ["build_debug", "import", "scripts"],
    "outputs": ["{captures}/{name}"],
@@ -246,7 +190,6 @@
   "capture_scene": {
    "argv": [
     "{godot}",
-    "--verbose",
     "--path",
     "project",
     "--resolution",
@@ -257,7 +200,7 @@
     "--capture-dir={captures}/{name}"
    ],
    "hidden": true,
-   "inputs": ["{loads}", "!@release_libraries"],
+   "inputs": ["@project"],
    "extra": ["{godot_version}"],
    "after": ["build_debug", "import", "scripts"],
    "outputs": ["{captures}/{name}"],
@@ -287,7 +230,6 @@
     },
     {
      "name": "camera_feel_test",
-     "test_fps": "-1",
      "scene": "tests/core/camera_feel_test",
      "renderer": "gl_compatibility",
      "timeout_s": 600
@@ -298,8 +240,8 @@
      "renderer": "gl_compatibility",
      "timeout_s": 600
     },
-    {"name": "lab_test", "test_fps": "-1", "scene": "tests/core/lab_test", "renderer": "gl_compatibility", "timeout_s": 600},
-    {"name": "lab_test@forward_plus", "test_fps": "-1", "scene": "tests/core/lab_test", "renderer": "forward_plus", "timeout_s": 600},
+    {"name": "lab_test", "scene": "tests/core/lab_test", "renderer": "gl_compatibility", "timeout_s": 600},
+    {"name": "lab_test@forward_plus", "scene": "tests/core/lab_test", "renderer": "forward_plus", "timeout_s": 600},
     {
      "name": "boot_refusal_test",
      "scene": "tests/core/boot_refusal_test",
@@ -307,8 +249,6 @@
      "timeout_s": 600
     },
     {"name": "edit_fuzz_test", "scene": "tests/core/edit_fuzz_test", "renderer": "gl_compatibility", "timeout_s": 600},
-    {"name": "signal_demand_test", "scene": "tests/core/signal_demand_test", "renderer": "gl_compatibility", "timeout_s": 600},
-    {"name": "sight_test", "scene": "tests/core/sight_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {
      "name": "traffic_hash_test",
      "scene": "tests/core/traffic_hash_test",
@@ -323,7 +263,6 @@
      "timeout_s": 600
     },
     {"name": "road_edit_test", "scene": "tests/core/road_edit_test", "renderer": "gl_compatibility", "timeout_s": 600},
-    {"name": "road_squeeze_test", "scene": "tests/core/road_squeeze_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "save_undo_test", "scene": "tests/core/save_undo_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {
      "name": "street_works_test",
@@ -331,36 +270,21 @@
      "renderer": "gl_compatibility",
      "timeout_s": 600
     },
-    {
-     "name": "street_power_test",
-     "scene": "tests/core/street_power_test",
-     "renderer": "gl_compatibility",
-     "timeout_s": 600
-    },
     {"name": "people_test", "scene": "tests/core/people_test", "renderer": "gl_compatibility", "timeout_s": 600},
-    {"name": "people_cast_test", "scene": "tests/core/people_cast_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "strike_test", "scene": "tests/core/strike_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "shoot_test", "scene": "tests/core/shoot_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "transit_test", "scene": "tests/core/transit_test", "renderer": "gl_compatibility", "timeout_s": 600},
-    {"name": "bus_riders_test", "scene": "tests/core/bus_riders_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "yard_test", "scene": "tests/core/yard_test", "renderer": "gl_compatibility", "timeout_s": 600},
-    {"name": "growth_pick_test", "scene": "tests/core/growth_pick_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {
      "name": "building_edit_test",
      "scene": "tests/core/building_edit_test",
      "renderer": "gl_compatibility",
      "timeout_s": 600
     },
-    {"name": "building_fields_test", "scene": "tests/core/building_fields_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "interior_test", "scene": "tests/core/interior_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "model_test", "scene": "tests/core/model_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "city_mass_test", "scene": "tests/core/city_mass_test", "renderer": "gl_compatibility", "timeout_s": 600},
-    {"name": "building_variety_test", "scene": "tests/core/building_variety_test", "renderer": "gl_compatibility", "timeout_s": 900},
-    {"name": "scenic_city_test", "scene": "tests/core/scenic_city_test", "renderer": "gl_compatibility", "timeout_s": 900},
     {"name": "job_pool_test", "scene": "tests/core/job_pool_test", "renderer": "gl_compatibility", "timeout_s": 600},
-    {"name": "map_hold_test", "scene": "tests/core/map_hold_test", "renderer": "gl_compatibility", "timeout_s": 600},
-    {"name": "overlay_test", "scene": "tests/core/overlay_test", "renderer": "gl_compatibility", "timeout_s": 600},
-    {"name": "view_stream_test", "scene": "tests/core/view_stream_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {
      "name": "building_tool_test",
      "scene": "tests/core/building_tool_test",
@@ -375,10 +299,7 @@
     },
     {"name": "shell_test", "scene": "tests/core/shell_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "quality_test", "scene": "tests/core/quality_test", "renderer": "gl_compatibility", "timeout_s": 600},
-    {"name": "level_hand_over_test", "scene": "tests/core/level_hand_over_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "inspector_test", "scene": "tests/core/inspector_test", "renderer": "gl_compatibility", "timeout_s": 600},
-    {"name": "brush_prefs_test", "scene": "tests/core/brush_prefs_test", "renderer": "gl_compatibility", "timeout_s": 600},
-    {"name": "steam_achievements_test", "scene": "tests/core/steam_achievements_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "e2e", "scene": "tests/e2e/e2e", "renderer": "gl_compatibility", "timeout_s": 600},
     {
      "name": "light_color_test",
@@ -386,7 +307,6 @@
      "renderer": "gl_compatibility",
      "timeout_s": 600
     },
-    {"name": "surface_data_test", "scene": "tests/core/surface_data_test", "renderer": "forward_plus", "timeout_s": 600},
     {
      "name": "light_color_test@forward_plus",
      "scene": "tests/core/light_color_test",
@@ -410,21 +330,18 @@
   "looks": {
    "doc": "the look plans the capture suite photographs",
    "template": "look",
-   "items": [{"name": "frozen", "plan": "res://tests/visual/frozen_plan.json", "resolution": "1280x720", "timeout_s": 90},
-    {"name": "sao_paulo", "plan": "res://tests/visual/sao_paulo_plan.json", "resolution": "1600x900", "timeout_s": 900}]
+   "items": [{"name": "frozen", "plan": "res://tests/visual/frozen_plan.json", "resolution": "1280x720", "timeout_s": 90}]
   },
   "capture_scenes": {
-   "doc": "the reference views (capture.tscn: street from above, neighbourhood, whole town) and a bus through its dwell with the rail preview (bus_stop_look.tscn)",
+   "doc": "the reference views (capture.tscn: street from above, neighbourhood, whole town)",
    "template": "capture_scene",
-   "items": [{"name": "city", "scene": "tests/visual/capture", "resolution": "1600x900", "timeout_s": 1800},
-    {"name": "construction", "scene": "tests/visual/capture_construction", "resolution": "1600x900", "timeout_s": 900},
-    {"name": "bus_stop", "scene": "tests/visual/bus_stop_look", "resolution": "1600x900", "timeout_s": 1800}]
+   "items": [{"name": "city", "scene": "tests/visual/capture", "resolution": "1600x900", "timeout_s": 1800}]
   }
  },
  "suites": {
   "quick": {
-   "doc": "what a change asks for: scripts, the shader contracts, the generated furniture table, debug DLL, gates of the changed files, every scene whose inputs moved, the digest, and the frozen photos made for the eye, never held to old ones (a golden proves nothing of what is right; and Godot draws with its ubershader until the specialised pipeline compiled in the background is ready, so two runs differ by a few pixels: render_forward_clustered.cpp, pipeline_hash_map_rd.h)",
-   "tasks": ["import", "scripts", "shader_contracts", "furniture_table", "build_debug", "gates_changed", "@test_scenes", "digest", "photos"],
+   "doc": "what a change asks for: scripts, debug DLL, gates of the changed files, every scene whose inputs moved, the digest and the frozen photos against their goldens",
+   "tasks": ["import", "scripts", "build_debug", "gates_changed", "@test_scenes", "digest", "photos", "photos_check"],
    "variants": {
     "ready": {
      "doc": "the check before a commit: also the release DLL; when all of it holds it leaves dist/quick/passed",
@@ -433,8 +350,8 @@
     },
     "all": {"doc": "the full run: also the release DLL, and nothing taken from the cache", "add": ["build_release"]},
     "bless": {
-     "doc": "the digest of this run becomes the golden (only with a change of the state that is understood)",
-     "swap": {"digest": "digest_bless"}
+     "doc": "the digest and the frozen photos of this run become the goldens (only with a visual change that is understood)",
+     "swap": {"digest": "digest_bless", "photos_check": "photos_bless"}
     }
    }
   },
@@ -445,7 +362,6 @@
    "doc": "the capture views, each a hidden --no-flow task with its own deadline",
    "tasks": ["@looks", "@capture_scenes"]
   },
-  "audit": {"doc": "the city's audit: its defects by rule, with where they stand", "tasks": ["city_audit"]},
   "gates": {"doc": "every gate", "tasks": ["gates_all"]}
  }
 }

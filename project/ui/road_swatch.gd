@@ -1,7 +1,6 @@
 ## The road catalogue card picture: the cross-section seen
 ## from above, strips top to bottom over grass, filling rc_fill + rc_fill_extra × (width / widest) of the height;
-## a yellow centre line between opposite lanes, white dashes between lanes of one direction, rails on tracks. A painted line or a
-## rail is rc_line thick, a solid centre line rc_solid; a double one is two lines rc_double_gap apart (data/ui/tokens.json).
+## a yellow centre line between opposite lanes, white dashes between lanes of one direction, rails on tracks.
 class_name RoadSwatch
 extends RefCounted
 
@@ -49,27 +48,23 @@ static func _colour(s: Dictionary) -> Color:
 
 static func _line(img: Image, y: int, opposite: bool, centre: String) -> void:
 	var w := img.get_width()
-	var line := int(ThemeBuilder.size("rc_line"))
 	if opposite and centre == "none":
 		return
 	if opposite and centre == "double":
-		var half_gap := int(ThemeBuilder.size("rc_double_gap") * 0.5)
-		img.fill_rect(Rect2i(0, y - half_gap - line, w, line), ThemeBuilder.color("rc_yellow"))
-		img.fill_rect(Rect2i(0, y + half_gap, w, line), ThemeBuilder.color("rc_yellow"))
+		img.fill_rect(Rect2i(0, y - 2, w, 1), ThemeBuilder.color("rc_yellow"))
+		img.fill_rect(Rect2i(0, y + 1, w, 1), ThemeBuilder.color("rc_yellow"))
 		return
 	if opposite and centre != "dashed":
-		var solid := ThemeBuilder.size("rc_solid")
-		img.fill_rect(Rect2i(0, y - int(solid * 0.5), w, int(solid)), ThemeBuilder.color("rc_yellow"))
+		img.fill_rect(Rect2i(0, y - 1, w, 2), ThemeBuilder.color("rc_yellow"))
 		return
 	var dash := int(ThemeBuilder.size("rc_dash"))
 	var gap := int(ThemeBuilder.size("rc_gap"))
 	var paint := ThemeBuilder.color("rc_yellow" if opposite else "rc_white")
 	for x in range(0, w, dash + gap):
-		img.fill_rect(Rect2i(x, y, dash, line), paint)
+		img.fill_rect(Rect2i(x, y, dash, 1), paint)
 
 
 static func _rails(img: Image, y: float, sh: float) -> void:
 	var g := sh * ThemeBuilder.size("rc_rail_gauge")
-	var line := int(ThemeBuilder.size("rc_line"))
 	for ry in [y + sh * 0.5 - g, y + sh * 0.5 + g]:
-		img.fill_rect(Rect2i(0, int(ry), img.get_width(), line), ThemeBuilder.color("rc_rail"))
+		img.fill_rect(Rect2i(0, int(ry), img.get_width(), 1), ThemeBuilder.color("rc_rail"))

@@ -1,12 +1,15 @@
-// The control a junction left on automatic gets from the flows measured at it: the vehicles entering are counted
-// (flow_measure.h), the junctions counted at are looked at every flow.look_every_s, and what their flows warrant (flow_warrants.h)
-// reaches the network. The count and the choice are the traffic's, under its mutex; what the network shows comes from
-// RoadNode::auto_signal, written under the map's exclusive lock, because the mesh jobs read control_of and never the traffic.
+// The control a junction left on automatic gets from the flows measured at it: the game's side of sim/roads/flow_stats and
+// sim/roads/control_advisor, both translated from the Roadcraft 4.0 (its SimWorld.stepControlAdvisor). The count and the choice are
+// the traffic's, under its mutex; what the network shows comes from RoadNode::auto_signal, written under the map's exclusive lock,
+// because the mesh jobs read control_of and never the traffic.
 #pragma once
 
-#include "sim/traffic/flow_measure.h"
-#include "sim/traffic/flow_warrants.h"
+#include "core/js_runtime.h"
+#include "sim/roads/control_advisor.h"
+#include "sim/roads/flow_stats.h"
 
+#include <cstdint>
+#include <memory>
 #include <vector>
 
 namespace city {
@@ -14,9 +17,9 @@ namespace city {
 struct CityState;
 
 struct FlowControl {
-	FlowMeasure flow;
-	FlowWarrants warrants;
-	std::vector<int> advised; // the junctions whose control the flows can still change, in the order they were first counted
+	std::shared_ptr<FlowStats> flow = std::make_shared<FlowStats>();
+	std::shared_ptr<ControlAdvisor> advisor = std::make_shared<ControlAdvisor>();
+	js::Set<int64_t> advised; // the junctions whose control the flows can still change
 	std::vector<int> changed; // chosen anew, waiting for the map's exclusive lock
 };
 

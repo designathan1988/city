@@ -1,6 +1,6 @@
-// Converts the parsed data tables (project/data/catalog/*.json, read once by game/data/data_tables.gd) into the C++ Catalog,
-// through the strict reader (render/data_reader.h): a missing or mistyped key, a list of the wrong length or an unknown name is
-// reported and loading fails; only the keys a table's format leaves out take the value the format gives them.
+// Converts the parsed data tables (project/data/catalog/*.json, read once by game/data/data_tables.gd)
+// into the C++ Catalog. Every key is required: a missing or mistyped key is reported and loading fails,
+// so no default value can silently replace the data.
 #pragma once
 
 #include "sim/catalog/catalog.h"
@@ -12,8 +12,9 @@ namespace city {
 
 class CatalogLoader {
 public:
-	// tables: { "tuning", "maps", "road_profiles", "zones", "growth", "traffic", "street_furniture", "blast", "nature", "scenic" } (parsed JSON)
+	// tables: { "tuning", "maps", "road_profiles", "zones", "growth", "traffic", "street_furniture" } (parsed JSON)
 	static bool load(const godot::Dictionary &tables, Catalog &out, godot::PackedStringArray &errors);
+	static uint32_t parse_color(const godot::String &hex); // "#RRGGBB" or "#RRGGBBAA" -> RGBA8
 };
 
 // data/catalog/traffic.json (api/traffic_loader.cpp).
@@ -26,9 +27,5 @@ bool load_street_furniture(const godot::Dictionary &t, StreetFurnitureDef &d, go
 bool load_blast_params(const godot::Dictionary &t, BlastParams &p, godot::PackedStringArray &errors);
 // data/catalog/nature.json (api/nature_loader.cpp).
 bool load_nature(const godot::Dictionary &t, NatureDef &n, godot::PackedStringArray &errors);
-// data/catalog/scenic.json (api/scenic_loader.cpp), read after the profiles and the nature tables; then each map that names a
-// scenic city (`names`, by map, empty for none) takes its index.
-bool load_scenic(const godot::Dictionary &t, Catalog &c, godot::PackedStringArray &errors);
-bool link_scenic_maps(const std::vector<std::string> &names, Catalog &c, godot::PackedStringArray &errors);
 
 } // namespace city

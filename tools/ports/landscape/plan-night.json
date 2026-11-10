@@ -1,0 +1,96 @@
+{
+ "_doc": "Cubo cinza a noite (22h) e palmeira plantada de perto, 16h.",
+ "city": {
+  "size": "small",
+  "seed": 7
+ },
+ "steps": [
+  {
+   "wait": 1500
+  },
+  {
+   "press": "Começar a construir"
+  },
+  {
+   "until": "(() => { const b = [...document.querySelectorAll('button')].find((e) => e.textContent.trim() === 'Começar a construir'); return !b || b.getBoundingClientRect().width === 0 || getComputedStyle(b).visibility === 'hidden'; })()",
+   "name": "menu closed",
+   "timeout": 30000,
+   "polling": 250
+  },
+  {
+   "eval": "JSON.stringify({probe:Object.keys(window.__roadcraft).slice(0,60), doc:Object.keys(window.__roadcraft.doc||{}).slice(0,40)})"
+  },
+  {
+   "eval": "window.__roadcraft.sim.setClock(1320); window.__roadcraft.scene().setSkyMode('night'); 1"
+  },
+  {
+   "eval": "(async()=>{const T=await import('/node_modules/three/build/three.module.js');const s=window.__scene;const m=new T.Mesh(new T.BoxGeometry(40,120,40),new T.MeshStandardMaterial({color:new T.Color().setRGB(0.216,0.216,0.216),roughness:1,metalness:0}));m.position.set(3000,0,0);m.castShadow=true;m.receiveShadow=true;m.frustumCulled=false;s.add(m);return s.children.length})()"
+  },
+  {
+   "setView": [
+    3000,
+    0,
+    3,
+    45,
+    35
+   ]
+  },
+  {
+   "wait": 5000
+  },
+  {
+   "shot": "cubo_noite_a"
+  },
+  {
+   "setView": [
+    3000,
+    0,
+    3,
+    225,
+    35
+   ]
+  },
+  {
+   "wait": 5000
+  },
+  {
+   "shot": "cubo_noite_b"
+  },
+  {
+   "eval": "window.__roadcraft.sim.setClock(960); window.__roadcraft.scene().setSkyMode('day'); 1"
+  },
+  {
+   "eval": "(()=>{const d=window.__roadcraft.doc;const H=14;return d.plantTrees([{x:3020,y:0,height:H,yaw:0,seed:0.75}])})()"
+  },
+  {
+   "setView": [
+    3020,
+    0,
+    25,
+    45,
+    12
+   ]
+  },
+  {
+   "wait": 6000
+  },
+  {
+   "shot": "arv_palma"
+  },
+  {
+   "setView": [
+    3020,
+    0,
+    50,
+    45,
+    8
+   ]
+  },
+  {
+   "wait": 4000
+  },
+  {
+   "shot": "arv_palma2"
+  }
+ ]
+}

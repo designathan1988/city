@@ -29,16 +29,3 @@ func ask(name: StringName, args: Array) -> Variant:
 	var answer: Variant = _last[key] if _last.has(key) else CityStore.query(name, args)
 	_now[key] = answer
 	return answer
-
-
-## What the player sees at (x, z), the plane the eye stays above and the focus rests on: a road deck where one is, the
-## ground elsewhere (the pointer's rule, the 4.0's sceneHeightAt); the terrain where the ray finds nothing (off the map). The ray
-## comes down from `top` (the camera's ray_top).
-func seen_height(top: float, x: float, z: float) -> float:
-	var hit: Dictionary = ask(&"raycast", [Vector3(x, top, z), Vector3.DOWN])
-	return hit.position.y if hit.get("hit", false) else ask(&"height_at", [x, z])
-
-
-## The terrain's height under a camera's eye: the one reading of it the daylight's shadows and the weather's rain take.
-static func ground_below(cam: Camera3D) -> float:
-	return CityStore.query(&"height_at", [cam.global_position.x, cam.global_position.z])

@@ -1,6 +1,5 @@
 // park_sample: where the capture looks at the parked side of the traffic, clear of tall buildings so a camera high over it
 // stands in nothing (project/tests/visual/capture_traffic.gd); camera_clear: whether a capture may stand at a point.
-#include "api/state_locks.h"
 #include "api/city_probes.h"
 
 #include "sim/buildings/b40/record.h"
@@ -34,8 +33,8 @@ bool clear_of_towers(const CityState &s, float x, float z) {
 // Nothing of the lot reaches `up` metres over the ground within `radius` of the point: a volume with its roof, an element, a tree. A
 // lawn under the camera is no wall.
 bool clear_of_lot(const CityState &s, const Building &rec, const V2 &p, float radius, float up) {
-	const std::shared_ptr<const b40::Body> body_held = b40::record_body(s.buildings.designs, rec);
-	const b40::Body &body = *body_held;
+	b40::Body body;
+	b40::record_body(s.buildings.designs, rec, body);
 	const b40::LotFrame f = b40::lot_frame(rec);
 	const V2 d = p - f.o;
 	const float x = d.dot(f.e0), y = d.dot(f.e1);
@@ -264,7 +263,7 @@ Dictionary CityProbes::look_twins(float reach_m, float alike) {
 		});
 		if (nearest < 0) continue;
 		pairs++;
-		twins += look_distance(s.catalog.tune, look_of(s, b), look_of(s, s.buildings.items[size_t(nearest)])) < alike ? 1 : 0;
+		twins += look_distance(look_of(s, b), look_of(s, s.buildings.items[size_t(nearest)])) < alike ? 1 : 0;
 	}
 	Dictionary d;
 	d["pairs"] = pairs;
@@ -276,15 +275,17 @@ int CityProbes::dock_count() {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
 	int docks = 0;
+	b40::Body body;
 	for (const Building &rec : s.buildings.items) {
 		if (!rec.alive) continue;
-		for (const b40::LotElement &e : b40::record_body(s.buildings.designs, rec)->elements) docks += e.kind == b40::EL_DOCK ? 1 : 0;
+		b40::record_body(s.buildings.designs, rec, body);
+		for (const b40::LotElement &e : body.elements) docks += e.kind == b40::EL_DOCK ? 1 : 0;
 	}
 	return docks;
 }
 
 Variant CityProbes::kerb_busy() {
-	const TrafficRead lk(*state_);
+	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
 	const TrafficState &t = state_->traffic;
 	for (const KerbStop &k : t.kerb_stops)
 		if (k.vehicle >= 0 && k.phase == KerbPhase::TRANSFER && k.ped >= 0) {

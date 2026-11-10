@@ -5,33 +5,61 @@
 #pragma once
 
 #include "core/grid.h"
-#include "core/id_table.h"
 #include "core/slot_ids.h"
 #include "sim/catalog/catalog.h"
 #include "sim/roads/geometry.h"
-#include "sim/roads/junction.h"
 #include "sim/roads/road_grade.h"
-#include "sim/roads/segment_flags.h"
 #include "sim/state/change_log.h"
 
-#include <algorithm>
 #include <functional>
 #include <vector>
 
 namespace city {
 
+// Segment flags (Roadcraft roads/flags.ts and network.ts).
+enum SegFlag : uint16_t {
+	SEG_FURNITURE_MASK = 0x06, // bits 1-2: 0 full street furniture, 1 basic, 2 none
+	SEG_GENERATED = 0x80, // laid by the city generator: its footways carry the generated city's kit (the 4.0 plants no street
+	// trees there). Money does not read it: a generated road is worth its price, as in the 4.0 (saves before the economy
+	// carry this bit as SEG_FREE, with the same meaning)
+	SEG_ZONED_LEFT = 0x100, // the player zoned this side (what the Zones layer shows)
+	SEG_ZONED_RIGHT = 0x200,
+	SEG_CUT_WALLS = 0x40, // its cutting is held by retaining walls (Roadcraft 4.0 RoadSegment.cutWalls)
+	SEG_RUNS_ON_A = 0x08, SEG_RUNS_ON_B = 0x10, // the road goes on past this end: a cut of the laying, no node the player made
+	SEG_RULE_A_MASK = 0x0C00, // bits 10-11, 12-13: the plate the player put on its a and b approach (SegRule)
+	SEG_RULE_B_MASK = 0x3000,
+	SEG_STRUCTURE_MASK = 0xC000, // bits 14-15: how it is built (Structure: ground, elevated, bridge, tunnel)
+};
+constexpr int SEG_FURNITURE_SHIFT = 1, SEG_STRUCTURE_SHIFT = 14;
 // ray_deck: a ray is marched over a deck in steps of this, horizontal metres, then the crossing bisected this many times.
 constexpr double DECK_RAY_STEP_M = 0.5;
 constexpr int DECK_RAY_REFINE = 16;
 constexpr double RAY_PARALLEL_EPS = 1e-12; // a ray this near parallel to a slab never crosses it
 constexpr double RAY_RUN_EPS = 1e-9; // a ray whose ground run is shorter is vertical
+constexpr Structure structure_of(uint16_t flags) { return Structure((flags & SEG_STRUCTURE_MASK) >> SEG_STRUCTURE_SHIFT); }
+constexpr uint16_t with_structure(uint16_t flags, Structure s) {
+	return uint16_t((flags & ~SEG_STRUCTURE_MASK) | (uint16_t(s) << SEG_STRUCTURE_SHIFT));
+}
+constexpr int SEG_RULE_A_SHIFT = 10, SEG_RULE_B_SHIFT = 12;
+enum SegRule : uint16_t { RULE_NONE = 0, RULE_STOP = 1, RULE_YIELD = 2 };
 constexpr int8_t AUTO_SIGNAL = 1, AUTO_ALL_STOP = 2;
+constexpr uint16_t seg_rule_mask(int end) { return end == 0 ? SEG_RULE_A_MASK : SEG_RULE_B_MASK; }
+constexpr int seg_rule_shift(int end) { return end == 0 ? SEG_RULE_A_SHIFT : SEG_RULE_B_SHIFT; }
+// The flags of a segment laid the other way round: what was on its left is on its right, its a end is its b end.
+constexpr uint16_t flags_reversed(uint16_t f) {
+	const uint16_t keep = uint16_t(f & ~(SEG_ZONED_LEFT | SEG_ZONED_RIGHT | SEG_RULE_A_MASK | SEG_RULE_B_MASK | SEG_RUNS_ON_A | SEG_RUNS_ON_B));
+	const uint16_t sides = uint16_t(((f & SEG_ZONED_LEFT) ? SEG_ZONED_RIGHT : 0) | ((f & SEG_ZONED_RIGHT) ? SEG_ZONED_LEFT : 0));
+	const uint16_t rules = uint16_t((((f & SEG_RULE_A_MASK) >> SEG_RULE_A_SHIFT) << SEG_RULE_B_SHIFT) | (((f & SEG_RULE_B_MASK) >> SEG_RULE_B_SHIFT) << SEG_RULE_A_SHIFT));
+	const uint16_t runs = uint16_t(((f & SEG_RUNS_ON_A) ? SEG_RUNS_ON_B : 0) | ((f & SEG_RUNS_ON_B) ? SEG_RUNS_ON_A : 0));
+	return uint16_t(keep | sides | rules | runs);
+}
+
+// What the player set a junction to (Roadcraft 4.0 JunctionControl); the order the Controle tab cycles it in.
 // A crossing on a road between junctions (Roadcraft editor/streetObjects.ts commitPedestrianCrossing): a node of two arms with a crosswalk over one of them.
 enum NodeCrossing : uint8_t { CROSSING_NONE, CROSSING_ZEBRA, CROSSING_SIGNAL };
 // A U-turn through the median (Roadcraft commitUturn), for the traffic arriving by the node's arm of lower id or of higher.
 enum NodeUturn : uint8_t { UTURN_NONE, UTURN_FROM_LOW, UTURN_FROM_HIGH };
 constexpr int LINK_BANNED = -1;
-// What the player set a junction to (Roadcraft 4.0 JunctionControl); the order the Controle tab cycles it in.
 enum NodeControl : uint8_t { CTL_AUTO, CTL_SIGNAL, CTL_PRIORITY, CTL_STOP, CTL_YIELD, CTL_NONE, CTL_MINI, CTL_COUNT };
 // What the player sets on a junction's signal (the plan itself is the traffic's: junction_control.cpp). Fixed time: every
 // stage its own green in order, every cycle, `offset` seconds after the common clock's zero (CONTRAN MBST vol. V).
@@ -74,32 +102,26 @@ struct RoadSegment {
 	uint16_t flags = 0;
 	std::vector<double> table; // arc length at t = i / ARC_STEPS
 	double len = 0;
-	double retreat_a = 0, retreat_b = 0, want_a = 0, want_b = 0; // the mouths, metres before each node (clamp_segment_trims); what each asks
+	double retreat_a = 0, retreat_b = 0; // the mouths: metres before each node
 	float minx = 0, minz = 0, maxx = 0, maxz = 0;
 };
 
 // The street a segment is drawn along (its texture's V, a bridge's piers and towers): the run of segments through joints
 // (two arms in line), each laid on from the one before (its a node the other's b). `start`: the arc from the run's first
 // segment to this one's a node; `total`: the run's length. In a ring every segment starts where the ring comes back to it.
-// `face`: the face (0 right, 1 left of a -> b) the segment's main lamp row takes when both faces have a sidewalk
-// (sim/roads/street_furniture.h row_face): its chain's through every node of two arms (RoadNetwork::going_on), whichever way each
-// piece was drawn, the east or south face of the chain's lowest-numbered segment. Settled with the runs, so no reader of a segment
-// walks its street.
 struct StreetRun {
 	int run = -1; // the run's first segment (in a ring, the lowest id)
 	double start = 0, total = 0;
-	int8_t face = 0;
 };
 
-constexpr int ROAD_ARC_STEPS = 48; // chords a road's arc table holds
-constexpr int STREET_JOINT_ARMS = 2; // a node where a street goes on: only its two segments meet there
+constexpr int ROAD_ARC_STEPS = 48;
 constexpr int CROSSWALK_ARMS = 3; // crosswalks are painted at nodes of this many arms or more
-constexpr float ROAD_HASH_CELL = 64.f; // the cells roads are filed in, for the queries near a point
+constexpr float ROAD_HASH_CELL = 64.f;
 
 class RoadNetwork {
 public:
-	IdTable<RoadNode> nodes;
-	IdTable<RoadSegment> segs;
+	std::vector<RoadNode> nodes;
+	std::vector<RoadSegment> segs;
 	SlotIds free_nodes, free_segs;
 	SpatialHash seg_hash, node_hash;
 	int version = 0; // bumps on every topology change
@@ -158,22 +180,6 @@ public:
 	// Every node refreshed (a load, a new city): nothing is left to settle.
 	void refresh_all();
 	void mark_segment(int s); // its road chunks and lot cells
-	// The chunks segment s's drawing reaches: its box, a terrain cell round it (a cut cell is drawn by the chunk of its middle:
-	// render/roads/ground_seam.h) and a turning bulb's disc round either node, whether it has one now or had one.
-	template <typename F>
-	void for_drawn_chunks(int s, F &&fn) const {
-		const RoadSegment &g = segs[size_t(s)];
-		const double cell = cat->tune.world_height_spacing_m, disc = bulb_reach(cat->tune) + cell;
-		std::vector<int64_t> keys;
-		for_chunks(g.minx - cell, g.minz - cell, g.maxx + cell, g.maxz + cell, [&](int64_t k) { keys.push_back(k); });
-		for (const int n : { g.a, g.b }) {
-			const RoadNode &nd = nodes[size_t(n)];
-			for_chunks(nd.x - disc, nd.z - disc, nd.x + disc, nd.z + disc, [&](int64_t k) { keys.push_back(k); });
-		}
-		std::sort(keys.begin(), keys.end());
-		keys.erase(std::unique(keys.begin(), keys.end()), keys.end());
-		for (const int64_t k : keys) fn(k);
-	}
 	// What changed on the roads since the last take_edits, for what is derived from them later in the settle (the streets'
 	// name plates): the segments whose curve, casing, mouths or heights changed, and the boxes of the roads that came, went
 	// or changed casing.
@@ -188,14 +194,6 @@ public:
 	}
 	// The street of segment s (StreetRun), as the last settle left it.
 	const StreetRun &street_run(int s) const { return runs_[size_t(s)]; }
-	// The piece going on from segment `from` through node `n` when only the two meet there (alive, not a loop on one node), else -1:
-	// the chain a street's lamp row and power line follow.
-	int going_on(int n, int from) const;
-	// What a reader of the box needs of the network, copied under its own ids (sim/state/city_cut.h): every segment and node the
-	// hashes file in the cells the box touches (the copy's hashes answer for the box alone), then twice the arms of the nodes of
-	// what was taken and their far nodes (a node's shape, its crossings and a joint's shared pole read every arm; an arm stands
-	// between its nodes), each segment with its street and the heights of its solved profile.
-	RoadNetwork cut(float minx, float minz, float maxx, float maxz) const;
 	int alive_segments() const { return live_segs_; }
 	int alive_nodes() const { return live_nodes_; }
 	int zoned_sides() const { return zoned_sides_; } // sides of live roads with a zone
@@ -217,16 +215,15 @@ private:
 	std::vector<ChangedBox> shape_boxes_;
 	std::vector<int> edited_segs_;
 	std::vector<ChangedBox> edited_boxes_;
-	IdTable<StreetRun> runs_; // by segment
+	std::vector<StreetRun> runs_; // by segment
 	std::vector<int> run_dirty_; // segments whose run may have changed: an arm of a node whose arms or joint changed
 	void settle_runs();
-	void settle_faces(const std::vector<int> &dirty); // StreetRun::face of every chain a dirty segment is on
 	int live_segs_ = 0, live_nodes_ = 0, zoned_sides_ = 0;
 
 	void update_bounds(int s);
 	void shape_changed(int s); // segment s's box and its two nodes
 	template <typename T>
-	static void take_id(IdTable<T> &items, SlotIds &free_list, int id);
+	static void take_id(std::vector<T> &items, SlotIds &free_list, int id);
 	bool bulb_clear(int n) const;
 };
 

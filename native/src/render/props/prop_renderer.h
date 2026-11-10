@@ -16,7 +16,6 @@
 #include "render/props/street_signs.h"
 #include "render/render_context.h"
 #include "render/rs_util.h"
-#include "sim/state/city_cut.h"
 
 #include <chrono>
 #include <mutex>
@@ -41,14 +40,9 @@ public:
 	// The run under the pointer, drawn as it will stand; empty lists take it away. Main thread, map held.
 	void set_pole_preview(const CityState &s, const std::vector<PreviewPole> &poles);
 	godot::Array take_sign_cells() { return atlas_.take_pending(); }
-	godot::Array laid_sign_cells() const { return atlas_.laid(); }
 	int64_t sign_generation() const { return atlas_.generation(); } // moves when the sheets start empty again (a new city)
 	int instances() const { return instances_; } // poles, wires, boxes and lights drawn (render_cost probe)
-	// Each chunk's pole and wire instances as the GPU holds them (read back from the RenderingServer): chunk key -> [poles, wires],
-	// for the probe that compares what two runs drew (CityCore::prop_buffer_probe). A readback per buffer: never per frame.
-	godot::Dictionary instance_buffers() const;
 	int sign_cells() const { return atlas_.cells_used(); }
-	int sign_cells_waiting() const { return atlas_.waiting(); }
 
 private:
 	// What a chunk draws as instances.
@@ -59,8 +53,7 @@ private:
 		int count = 0;
 		void free();
 	};
-	CityCut gather(const CityState &s, int64_t key) const;
-	void build_cpu(const CityView &s, int64_t key, MeshBuilder &mb, StreetInstances &inst) const;
+	void build_cpu(const CityState &s, int64_t key, MeshBuilder &mb, StreetInstances &inst) const;
 	void commit_one(Built &b) override;
 	void show(Draws &d, StreetInstances &inst, const godot::AABB &box);
 	void cast_chunk(Draws &d, const godot::RID &mesh, const godot::AABB &box);

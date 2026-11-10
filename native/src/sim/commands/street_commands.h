@@ -1,10 +1,8 @@
 // The Street tab's commands (street_snap.cpp, street_commands.cpp, pole_runs.cpp): where an item or a barrier may stand, placing
-// and taking away, the kit a road carries through an edit, and the pole runs. The commands' callers hold map_mutex exclusively;
-// snap_item is also the preview's, under the shared lock (its FurnitureRead says which it is).
+// and taking away, the kit a road carries through an edit, and the pole runs. Callers hold map_mutex exclusively.
 #pragma once
 
 #include "sim/commands/commands.h"
-#include "sim/street/furniture_kept.h"
 
 #include <cstdint>
 #include <functional>
@@ -19,7 +17,7 @@ struct ItemSnap {
 	double x = 0, z = 0;
 };
 // Where an item of `kind` put at (x, z) would stand, or why it cannot (Roadcraft landscape.ts snapLandscape).
-ItemSnap snap_item(const CityState &s, ItemKind kind, double x, double z, double reach, FurnitureRead read);
+ItemSnap snap_item(const CityState &s, ItemKind kind, double x, double z, double reach);
 // A point of a barrier run on the footway's back, or at the kerb for a guardrail and a railing.
 void snap_barrier_point(const CityState &s, BarrierKind kind, double &x, double &z);
 // Why a run cannot be built: "" or a strings.csv key.
@@ -67,8 +65,6 @@ struct PoleRunPlan {
 	double from_x = 0, from_z = 0, to_x = 0, to_z = 0;
 };
 PoleRunPlan plan_pole_run(const CityState &s, double ax, double az, double bx, double bz, double reach, LampMode lamps, PoleKind kind);
-// The run planned and strung; `last`, when given, takes the place of its last pole (where the next run goes on from).
-EditResult build_pole_run(CityState &s, double ax, double az, double bx, double bz, double reach, LampMode lamps, PoleKind kind,
-		PlannedPole *last = nullptr);
+EditResult build_pole_run(CityState &s, double ax, double az, double bx, double bz, double reach, LampMode lamps, PoleKind kind);
 
 } // namespace city

@@ -5,8 +5,6 @@
 #include <godot_cpp/variant/packed_float32_array.hpp>
 #include <godot_cpp/variant/vector3.hpp>
 
-#include "sim/state/map_hold.h"
-
 #include <algorithm>
 #include <cstring>
 
@@ -30,7 +28,6 @@ inline void mm_row(float *w, const godot::Vector3 &x, const godot::Vector3 &y, c
 // Appended to a buffer.
 inline void mm_push(godot::PackedFloat32Array &buf, const godot::Vector3 &x, const godot::Vector3 &y, const godot::Vector3 &z,
 		const godot::Vector3 &o, const godot::Color &col, float c0, float c1, float c2, float c3) {
-	map_hold::built(); // an instance placed while the thread holds the map is counted (the tests' DLL)
 	int64_t at = buf.size();
 	buf.resize(at + MM_STRIDE);
 	mm_row(buf.ptrw() + at, x, y, z, o, col, c0, c1, c2, c3);
@@ -45,7 +42,6 @@ inline void mm_row_plain(float *w, const godot::Vector3 &x, const godot::Vector3
 // The same without the colour, for a material that reads only INSTANCE_CUSTOM.
 inline void mm_push_plain(godot::PackedFloat32Array &buf, const godot::Vector3 &x, const godot::Vector3 &y, const godot::Vector3 &z,
 		const godot::Vector3 &o, float c0, float c1, float c2, float c3) {
-	map_hold::built();
 	int64_t at = buf.size();
 	buf.resize(at + MM_PLAIN_STRIDE);
 	mm_row_plain(buf.ptrw() + at, x, y, z, o, c0, c1, c2, c3);

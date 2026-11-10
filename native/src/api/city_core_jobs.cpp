@@ -10,26 +10,24 @@
 
 #include <atomic>
 #include <mutex>
-#include <set>
-#include <thread>
 
 using namespace godot;
 
 namespace city {
 
+// The pool's rule on a pool of one worker, held busy while the jobs queue: a key's newest job replaces a queued one, and only that.
 Dictionary CityProbes::bay_census() { return render_->bay_census(); }
 
-// The pool's rule on a pool of one worker, held busy while the jobs queue: a key's newest job replaces a queued one, and only that.
 Dictionary CityProbes::job_pool_probe() const {
-	constexpr int64_t CHUNK_ID = 7; // any chunk's id: the probe's two jobs share it
+	constexpr int64_t CHUNK_ID = 7;
 	std::mutex gate;
 	std::atomic<int> older{ 0 }, newer{ 0 }, other_lane{ 0 };
 	JobPool pool(1);
 	gate.lock();
-	pool.submit(JobKey{ JobLane::PROBE_HOLD, 0 }, 0.f, [&gate]() { std::lock_guard<std::mutex> hold(gate); });
-	pool.submit(JobKey{ JobLane::PROBE_KEY, CHUNK_ID }, 1.f, [&older]() { older++; });
-	pool.submit(JobKey{ JobLane::PROBE_OTHER, CHUNK_ID }, 1.f, [&other_lane]() { other_lane++; });
-	pool.submit(JobKey{ JobLane::PROBE_KEY, CHUNK_ID }, 1.f, [&newer]() { newer++; });
+	pool.submit(JobKey{ JobLane::FOG, 0 }, 0.f, [&gate]() { std::lock_guard<std::mutex> hold(gate); });
+	pool.submit(JobKey{ JobLane::BUILDING, CHUNK_ID }, 1.f, [&older]() { older++; });
+	pool.submit(JobKey{ JobLane::COVER, CHUNK_ID }, 1.f, [&other_lane]() { other_lane++; });
+	pool.submit(JobKey{ JobLane::BUILDING, CHUNK_ID }, 1.f, [&newer]() { newer++; });
 	gate.unlock();
 	pool.wait_idle();
 	Dictionary d;
@@ -39,46 +37,10 @@ Dictionary CityProbes::job_pool_probe() const {
 	d["replaced"] = int64_t(pool.replaced());
 	d["keys_left"] = int64_t(pool.tracked()); // forgotten once run: the bookkeeping does not grow with the map
 	d["game_keys"] = int64_t(state_->jobs->tracked()); // the game's pool now: keys with a job queued
-	// Jobs that come one after the other stay on one worker of several: the one that worked last is woken first.
-	constexpr unsigned SERIAL_WORKERS = 4; // more than one, so a job has other workers it could go to
-	constexpr int SERIAL_JOBS = 12; // enough turns for a rotation among the workers to show
-	std::mutex ids_lock;
-	std::set<std::thread::id> ids;
-	JobPool several(SERIAL_WORKERS);
-	for (int i = 0; i < SERIAL_JOBS; i++) {
-		several.submit(JobKey{ JobLane::PROBE_KEY, i }, 0.f, [&]() {
-			std::lock_guard<std::mutex> lk(ids_lock);
-			ids.insert(std::this_thread::get_id());
-		});
-		several.wait_idle();
-	}
-	d["serial_threads"] = int64_t(ids.size());
 	return d;
-}
-
-Dictionary CityProbes::map_hold(bool reset) {
-	Dictionary built;
-	for (const auto &[who, count] : map_hold::tally()) built[String(who.c_str())] = count;
-	if (reset) map_hold::clear();
-	Dictionary d;
-	d["counted"] = CHECKS;
-	d["built"] = built;
-	return d;
-}
-
-Dictionary CityProbes::overlay_probe() { return render_->overlay_probe(); }
-
-int CityProbes::transit_drawn() { return render_->transit_drawn(); }
-
-Dictionary CityProbes::tree_cut_probe(const Vector3 &at, float radius) {
-	return render_->tree_cut_probe(*state_, at.x - radius, at.z - radius, at.x + radius, at.z + radius);
 }
 
 void CityProbes::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("map_hold", "reset"), &CityProbes::map_hold);
-	ClassDB::bind_method(D_METHOD("overlay_probe"), &CityProbes::overlay_probe);
-	ClassDB::bind_method(D_METHOD("transit_drawn"), &CityProbes::transit_drawn);
-	ClassDB::bind_method(D_METHOD("tree_cut_probe", "at", "radius"), &CityProbes::tree_cut_probe);
 	ClassDB::bind_method(D_METHOD("park_sample"), &CityProbes::park_sample);
 	ClassDB::bind_method(D_METHOD("plan_all_yards"), &CityProbes::plan_all_yards);
 	ClassDB::bind_method(D_METHOD("camera_clear", "at", "radius", "vehicles"), &CityProbes::camera_clear, DEFVAL(true));
@@ -90,13 +52,11 @@ void CityProbes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("people_census", "at", "radius"), &CityProbes::people_census);
 	ClassDB::bind_method(D_METHOD("set_city_hour", "hour"), &CityProbes::set_city_hour);
 	ClassDB::bind_method(D_METHOD("people_clips"), &CityProbes::people_clips);
-	ClassDB::bind_method(D_METHOD("people_card"), &CityProbes::people_card);
 	ClassDB::bind_method(D_METHOD("show_people_clip", "name"), &CityProbes::show_people_clip);
 	ClassDB::bind_method(D_METHOD("amber_stops", "v", "stop_m", "top", "left", "type"), &CityProbes::amber_stops);
 	ClassDB::bind_method(D_METHOD("amber_wanted", "kmh"), &CityProbes::amber_wanted);
 	ClassDB::bind_method(D_METHOD("job_pool_probe"), &CityProbes::job_pool_probe);
 	ClassDB::bind_method(D_METHOD("flow_replay"), &CityProbes::flow_replay);
-	ClassDB::bind_method(D_METHOD("flow_warrant", "major", "minor_max", "minor_total", "current"), &CityProbes::flow_warrant);
 	ClassDB::bind_method(D_METHOD("flow_junction"), &CityProbes::flow_junction);
 	ClassDB::bind_method(D_METHOD("flow_push", "n", "seconds"), &CityProbes::flow_push);
 	ClassDB::bind_method(D_METHOD("flow_state", "n"), &CityProbes::flow_state);

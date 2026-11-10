@@ -1,5 +1,5 @@
 // What a port's coverage claims, checked against the game instead of believed. A row says the game has a unit
-// (in the port records' own words: "ported", "already existed") and where (`sim/commands/pole_runs.cpp`, `render/props/street_props.cpp + demolish_at`).
+// ("portado", "já existia") and where (`sim/commands/pole_runs.cpp`, `render/props/street_props.cpp + demolish_at`).
 // The claim stands only when the game shows it: every owner file the row names exists in the game, and the owners'
 // text cites the unit, by its own name or the game's form of it (closestInto, closest_into), or, for a whole file,
 // by the 4.0 file it came from (the game's own provenance comments: "Roadcraft 4.0 editor/poles.ts"). A claim the

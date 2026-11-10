@@ -14,19 +14,24 @@ namespace city {
 
 namespace {
 
-constexpr float ROW_EPS_M = 0.01f; // two seats this near along are one row (float rounding of a pitch's steps)
+constexpr int RIM_SIDES = 16;          // segments of a steering wheel's rim
+constexpr float SPOKE_ANGLES[3] = { 1.82f, -1.82f, 3.14159f }; // its spokes from the rim's top, radians
+constexpr float SPOKE_W_M = 0.04f, SPOKE_T_M = 0.018f, BOSS_W_M = 0.13f, BOSS_L_M = 0.05f;
+constexpr float SEAT_NOSE_M = 0.04f, SEAT_NOSE_DROP_M = 0.05f, SEAT_LIP_M = 0.03f, SEAT_CREASE_M = 0.05f, SEAT_LAP_M = 0.06f; // a cushion's front, a backrest's foot
+constexpr float BACK_TOP_ROUND_M = 0.02f, BACK_TOP_IN_M = 0.01f;
+constexpr float REST_DEPTH_M = 0.1f, HEADREST_ROD_M = 0.015f, HEADREST_ROD_SHARE = 0.25f;
+constexpr float DASH_LIP_M = 0.02f, DASH_FOOT_M = 0.12f, DASH_WAIST = 0.5f;
+constexpr float ROW_EPS_M = 0.01f;
 constexpr int WHEEL_KEYS = 5; // agents.json cabin.seats.*.wheel
 
-bool load_style(const DataValue &d, SeatStyle &s) {
-	s.hip_m = d["hip_m"].f(); s.cushion_m = d["cushion_m"].f(); s.width_m = d["cushion_w_m"].f(); s.depth_m = d["cushion_d_m"].f(); s.back_h_m = d["back_h_m"].f();
-	s.back_d_m = d["back_d_m"].f(); s.base_share = d["base_share"].f();
-	s.recline = d["recline"].f();
+bool load_style(const Dictionary &d, SeatStyle &s) {
+	s.hip_m = d["hip_m"]; s.cushion_m = d["cushion_m"]; s.width_m = d["cushion_w_m"]; s.depth_m = d["cushion_d_m"]; s.back_h_m = d["back_h_m"];
+	s.back_d_m = d["back_d_m"]; s.base_share = d["base_share"];
+	s.recline = d["recline"];
 	s.headrest = agent_v3(d["headrest_m"]); s.handle = agent_v2(d["handle_m"]); s.handle_colour = agent_hex(d["handle"]);
-	const DataValue w = d["wheel"];
-	const bool wheel = w.list(WHEEL_KEYS).size() == WHEEL_KEYS;
-	if (wheel) { s.wheel_fwd_m = w[0].f(); s.wheel_up_m = w[1].f(); s.wheel_tilt = w[2].f(); s.wheel_r_m = w[3].f(); s.column_m = w[4].f(); }
-	if (s.hip_m <= 0 || s.width_m <= 0) d.fail("a seat with no hip or no width");
-	return s.hip_m > 0 && s.width_m > 0 && wheel;
+	Array w = d["wheel"];
+	if (w.size() == WHEEL_KEYS) { s.wheel_fwd_m = w[0]; s.wheel_up_m = w[1]; s.wheel_tilt = w[2]; s.wheel_r_m = w[3]; s.column_m = w[4]; }
+	return s.hip_m > 0 && s.width_m > 0 && w.size() == WHEEL_KEYS;
 }
 
 void wall(MeshBuilder &mb, const Vector3 &a, const Vector3 &b, const Vector3 &c, const Vector3 &d, const Vector3 &in, const Color &col) {
@@ -36,7 +41,6 @@ void wall(MeshBuilder &mb, const Vector3 &a, const Vector3 &b, const Vector3 &c,
 // The walls stand lining_inset_m in from the shell on every side (never in the plane of a panel's inner face, which
 // would fight it for the depth); the floor and the liner run out to the shell, under and over the gap.
 void lining(MeshBuilder &mb, const Cabin &c, const CabinLook &l) {
-	const CabinShape &K = l.shapes->agent_cabin;
 	const float in = l.lining_inset_m, w = c.half_w - in, zf = c.z_front - in, zb = c.z_back + in, y0 = c.floor, yr = c.roof - l.liner_drop_m;
 	const Color &col = c.paint.lining;
 	for (int side : { -1, 1 }) {
@@ -52,31 +56,30 @@ void lining(MeshBuilder &mb, const Cabin &c, const CabinLook &l) {
 	wall(mb, Vector3(-w, yr, z0), Vector3(w, yr, z0), Vector3(w, yr, z1), Vector3(-w, yr, z1), Vector3(0, -1, 0), col);
 	if (c.dash_d > 0) { // from the shell back by its depth, over the front wall: its top, the lip over the driver's knees, the foot well
 		const float top = c.front_top, low = top - c.dash_h, rear = z1 - c.dash_d;
-		agent_extrude(mb, { Vector2(z1, top), Vector2(rear + K.dash_lip_m, top), Vector2(rear, top - K.dash_lip_m), Vector2(rear + K.dash_lip_m, top - c.dash_h * K.dash_waist),
-							  Vector2(rear + K.dash_foot_m, low), Vector2(z1, low) },
+		agent_extrude(mb, { Vector2(z1, top), Vector2(rear + DASH_LIP_M, top), Vector2(rear, top - DASH_LIP_M), Vector2(rear + DASH_LIP_M, top - c.dash_h * DASH_WAIST),
+							  Vector2(rear + DASH_FOOT_M, low), Vector2(z1, low) },
 				std::max(-w, w - c.dash_w), w, c.paint.dash, AgentTag::FIXED);
-		if (c.console.x > 0) agent_box(mb, Vector3(-c.console.x * 0.5f, y0, c.console_back), Vector3(c.console.x * 0.5f, y0 + c.console.y, rear + K.dash_foot_m), c.paint.dash, AgentTag::FIXED);
+		if (c.console.x > 0) agent_box(mb, Vector3(-c.console.x * 0.5f, y0, c.console_back), Vector3(c.console.x * 0.5f, y0 + c.console.y, rear + DASH_FOOT_M), c.paint.dash, AgentTag::FIXED);
 	}
 }
 
 // A car's or a cab's seat: the cushion's side profile and the backrest's leaning back from it, run across; the headrest on its rods.
 void reclined_seat(MeshBuilder &mb, const Seat &s, const CabinLook &l, const CabinPaint &p) {
-	const CabinShape &K = l.shapes->agent_cabin;
 	const SeatStyle &st = *s.style;
 	const float hip = s.floor + st.hip_m, hw = st.width_m * 0.5f, zf = s.z + st.depth_m * 0.5f, low = hip - st.cushion_m;
 	const float back = s.z - l.person.torso.z * 0.5f, sn = std::sin(st.recline), cs = std::cos(st.recline), foot = back - st.back_d_m * cs;
 	const float top_z = back - st.back_h_m * sn, top_y = hip + st.back_h_m * cs;
-	agent_extrude(mb, { Vector2(zf - K.seat_nose_m, hip - K.seat_lip_m), Vector2(zf, hip - K.seat_nose_drop_m), Vector2(zf - K.seat_nose_m, low), Vector2(foot, low), Vector2(back, hip), Vector2(back + K.seat_lap_m, hip) },
+	agent_extrude(mb, { Vector2(zf - SEAT_NOSE_M, hip - SEAT_LIP_M), Vector2(zf, hip - SEAT_NOSE_DROP_M), Vector2(zf - SEAT_NOSE_M, low), Vector2(foot, low), Vector2(back, hip), Vector2(back + SEAT_LAP_M, hip) },
 			s.x - hw, s.x + hw, p.seat, AgentTag::FIXED);
-	agent_extrude(mb, { Vector2(foot, low), Vector2(foot - st.back_h_m * sn, top_y - K.back_top_round_m), Vector2(top_z + K.back_top_in_m, top_y), Vector2(back, hip + K.seat_crease_m), Vector2(back, hip) },
+	agent_extrude(mb, { Vector2(foot, low), Vector2(foot - st.back_h_m * sn, top_y - BACK_TOP_ROUND_M), Vector2(top_z + BACK_TOP_IN_M, top_y), Vector2(back, hip + SEAT_CREASE_M), Vector2(back, hip) },
 			s.x - hw, s.x + hw, p.seat, AgentTag::FIXED);
-	if (st.base_share > 0) agent_box(mb, Vector3(s.x - hw * st.base_share, s.floor, zf - st.depth_m), Vector3(s.x + hw * st.base_share, low, zf - K.seat_nose_m), p.seat, AgentTag::FIXED);
+	if (st.base_share > 0) agent_box(mb, Vector3(s.x - hw * st.base_share, s.floor, zf - st.depth_m), Vector3(s.x + hw * st.base_share, low, zf - SEAT_NOSE_M), p.seat, AgentTag::FIXED);
 	const Vector3 &h = st.headrest;
 	if (h.y <= 0) return;
-	const float gap = h.z, hy = top_y + gap * cs, hz = top_z - gap * sn - st.back_d_m * cs * 0.5f, rod = h.x * K.headrest_rod_share;
-	agent_box(mb, Vector3(s.x - h.x * 0.5f, hy, hz - K.rest_depth_m * 0.5f), Vector3(s.x + h.x * 0.5f, hy + h.y, hz + K.rest_depth_m * 0.5f), p.seat, AgentTag::FIXED);
+	const float gap = h.z, hy = top_y + gap * cs, hz = top_z - gap * sn - st.back_d_m * cs * 0.5f, rod = h.x * HEADREST_ROD_SHARE;
+	agent_box(mb, Vector3(s.x - h.x * 0.5f, hy + rod * 0, hz - REST_DEPTH_M * 0.5f), Vector3(s.x + h.x * 0.5f, hy + h.y, hz + REST_DEPTH_M * 0.5f), p.seat, AgentTag::FIXED);
 	for (int side : { -1, 1 })
-		agent_box(mb, Vector3(s.x + side * rod - K.headrest_rod_m * 0.5f, top_y - K.back_top_round_m, hz - K.headrest_rod_m * 0.5f), Vector3(s.x + side * rod + K.headrest_rod_m * 0.5f, hy, hz + K.headrest_rod_m * 0.5f),
+		agent_box(mb, Vector3(s.x + side * rod - HEADREST_ROD_M * 0.5f, top_y - BACK_TOP_ROUND_M, hz - HEADREST_ROD_M * 0.5f), Vector3(s.x + side * rod + HEADREST_ROD_M * 0.5f, hy, hz + HEADREST_ROD_M * 0.5f),
 				p.dash, AgentTag::FIXED);
 }
 
@@ -124,12 +127,11 @@ Wheel wheel_of(const Seat &s, const CabinLook &l) {
 }
 
 void steering(MeshBuilder &mb, const Wheel &w, const CabinLook &l, const CabinPaint &p) {
-	const CabinShape &K = l.shapes->agent_cabin;
-	for (int i = 0; i < K.rim_sides; i++)
-		agent_strut(mb, w.rim(TAU_F * i / K.rim_sides), w.rim(TAU_F * (i + 1) / K.rim_sides), l.rim_m, l.rim_m, p.dash, AgentTag::FIXED);
-	for (float a : K.spoke_angles) agent_strut(mb, w.hub, w.rim(a), K.spoke_w_m, K.spoke_t_m, p.dash, AgentTag::FIXED);
+	for (int i = 0; i < RIM_SIDES; i++)
+		agent_strut(mb, w.rim(TAU_F * i / RIM_SIDES), w.rim(TAU_F * (i + 1) / RIM_SIDES), l.rim_m, l.rim_m, p.dash, AgentTag::FIXED);
+	for (float a : SPOKE_ANGLES) agent_strut(mb, w.hub, w.rim(a), SPOKE_W_M, SPOKE_T_M, p.dash, AgentTag::FIXED);
 	agent_strut(mb, w.hub, w.column, l.rim_m, l.rim_m, p.dash, AgentTag::FIXED);
-	agent_strut(mb, w.hub, w.hub + (w.column - w.hub).normalized() * K.boss_l_m, K.boss_w_m, K.boss_w_m, p.dash, AgentTag::FIXED);
+	agent_strut(mb, w.hub, w.hub + (w.column - w.hub).normalized() * BOSS_L_M, BOSS_W_M, BOSS_W_M, p.dash, AgentTag::FIXED);
 }
 
 // How somebody sits in `s`: by the kind of seat, whether they drive and, in a car, whether they are in the row of the driver.
@@ -153,11 +155,11 @@ void dash_for(Cabin &c, const Seat &driver, const CabinLook &l, float width) {
 	c.dash_w = width;
 }
 
-bool CabinLook::load(const DataValue &d) {
-	lining_inset_m = d["lining_inset_m"].f(); liner_drop_m = d["liner_drop_m"].f(); rim_m = d["steering_rim_m"].f();
-	const DataValue p = d["person"], seats = d["seats"];
+bool CabinLook::load(const Dictionary &d) {
+	lining_inset_m = d["lining_inset_m"]; liner_drop_m = d["liner_drop_m"]; rim_m = d["steering_rim_m"];
+	const Dictionary p = d["person"], seats = d["seats"];
 	person.torso = agent_v3(p["torso_m"]); person.thigh = agent_v3(p["thigh_m"]); person.foot = agent_v3(p["foot_m"]);
-	person.shin_w = p["shin_w_m"].f();
+	person.shin_w = p["shin_w_m"];
 	const bool styles = load_style(seats["car"], car) && load_style(seats["cab"], cab) && load_style(seats["chair"], chair);
 	return styles && person.torso.y > 0 && person.thigh.z > 0 && rim_m > 0;
 }

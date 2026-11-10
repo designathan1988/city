@@ -115,7 +115,6 @@ void graph_grow(CityState &s, int segs, int nodes) {
 	if (g.junctions.size() < nn) g.junctions.resize(nn);
 	if (g.signal_at.size() < nn) g.signal_at.resize(nn, 0);
 	if (t.lane_vehicles.size() < lanes) t.lane_vehicles.resize(lanes);
-	if (t.lane_shadows.size() < lanes) t.lane_shadows.resize(lanes);
 	if (t.lane_sorted.size() < lanes) t.lane_sorted.resize(lanes, 1);
 	if (t.lane_active.size() < lanes) t.lane_active.resize(lanes, 0);
 	if (t.meso_head.size() < lanes) t.meso_head.resize(lanes, -1);
@@ -183,6 +182,8 @@ void apply_network_changes(CityState &s) {
 	ChangeLog::dedup(changed);
 	ChangeLog::dedup(nodes);
 	forget_yards_near(s, removed, changed); // their ways cross the streets: those of the streets that changed are planned again
+	t.roads_touched.insert(t.roads_touched.end(), removed.begin(), removed.end());
+	t.roads_touched.insert(t.roads_touched.end(), changed.begin(), changed.end());
 	for (int seg : removed) drop_segment(s, seg);
 	for (int seg : removed)
 		if (size_t(seg) < t.seg_volume.size()) t.seg_volume[size_t(seg)] = 0;

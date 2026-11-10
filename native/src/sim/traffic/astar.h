@@ -27,7 +27,7 @@ struct AStarScratch {
 // states from `from` to `goal` into `out` and returns true when found within `limit` expansions.
 template <typename H, typename Expand>
 bool astar(AStarScratch &sc, size_t n, int from, int goal, int limit, H h, Expand expand, std::vector<int> &out) {
-	constexpr float STALE_EPS = 1e-3f; // a heap entry dearer than its state's best by more than float rounding is stale
+	constexpr float STALE_EPS = 1e-3f;
 	out.clear();
 	if (sc.g.size() < n) {
 		sc.g.assign(n, 0);

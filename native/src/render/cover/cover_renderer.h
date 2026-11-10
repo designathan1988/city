@@ -7,16 +7,15 @@
 #pragma once
 
 #include "core/job_pool.h"
+#include "render/chunk_jobs.h"
 #include "render/chunk_queue.h"
-#include "render/chunk_results.h"
 #include "render/cover/cover_kit.h"
 #include "render/cover/element_models.h"
 #include "render/cover/shore_stones.h"
 #include "render/render_context.h"
 #include "render/rs_util.h"
-#include "render/trees/ground_kept.h"
 #include "render/trees/tree_place.h"
-#include "sim/state/city_cut.h"
+#include "sim/state/city_state.h"
 
 #include <array>
 #include <memory>
@@ -29,7 +28,7 @@ namespace city {
 class CoverRenderer {
 public:
 	CoverRenderer();
-	bool init(const RenderContext &ctx, GroundKept &ground, godot::PackedStringArray &errors); // `ground`: shared with the trees
+	bool init(const RenderContext &ctx, godot::PackedStringArray &errors);
 	void reset();
 	void mark_dirty(int64_t key) {
 		queue_.revs.mark(key);
@@ -57,11 +56,10 @@ private:
 		}
 		void bake() {}
 	};
-	std::shared_ptr<Built> build(const CityView &s, int64_t key) const;
-	GroundKept *grounds_ = nullptr; // each chunk's ground, gathered once for the trees and the cover
-	void place(const CityView &s, int64_t key, const ChunkGround &l, Built &out) const;
-	void place_elements(const CityView &s, int64_t key, Built &out) const;
-	void place_shore(const CityView &s, int64_t key, const ChunkGround &l, Built &out) const;
+	std::shared_ptr<Built> build(const CityState &s, int64_t key) const;
+	void place(const CityState &s, int64_t key, const ChunkGround &l, Built &out) const;
+	void place_elements(const CityState &s, int64_t key, Built &out) const;
+	void place_shore(const CityState &s, int64_t key, const ChunkGround &l, Built &out) const;
 	float reach_of(const CityState &s, int64_t key);
 	void commit_one(Built &b);
 	void submit(const CityState &s, int64_t key, float priority);
@@ -71,8 +69,6 @@ private:
 	ShoreLook shore_;
 	int draws_ = 0;
 	std::array<int, COVER_PIECES> first_{}; // each kind's first draw
-	std::array<std::vector<OwnedMesh>, COVER_PIECES> piece_meshes_; // each kind's variants with their material
-	std::vector<OwnedMesh> shore_meshes_; // the rocks with the shore's
 	std::unordered_map<int64_t, std::vector<MultiMeshDraw>> chunks_;
 	std::unordered_map<int64_t, bool> wet_; // which chunks have water by them: they stream as far as the shore
 	ChunkResults<Built> queue_;

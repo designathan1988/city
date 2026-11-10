@@ -8,12 +8,14 @@ const HITCH_MS := 25.0
 ## The display's period is read off the intervals: their 10th percentile (no frame comes faster than the display), kept
 ## between these periods (past a 250 Hz panel, and a 30 Hz one); a 60 Hz panel's otherwise.
 const SHORTEST_PERIOD_MS := 4.0
-const LONGEST_PERIOD_MS := Units.MS_PER_S / 30.0
-const USUAL_PERIOD_MS := Units.MS_PER_S / 60.0
+const LONGEST_PERIOD_MS := MS_PER_S / 30.0
+const USUAL_PERIOD_MS := MS_PER_S / 60.0
 const FAST_SHARE := 0.1
 const US_PER_MS := 1000.0
 const NS_PER_MS := 1000000.0 # the device gives the GPU's stamps in nanoseconds, the CPU's in microseconds
+const MS_PER_S := 1000.0
 const PERCENTILES := [0.5, 0.95, 0.99]
+const PERCENT := 100
 ## What a report keeps of a time: hundredths of a millisecond, thousandths for a single stamp.
 const SHOWN_MS := 0.01
 const STAMP_SHOWN_MS := 0.001
@@ -162,7 +164,7 @@ func passes() -> Array[Dictionary]:
 ## thread are outside it. Performance.TIME_PROCESS will not do: it is the worst frame of the second (main/main.cpp process_max), so
 ## a single slow frame reads as the cost of all of them.
 static func render_cpu_ms(viewport: RID) -> float:
-	return float(CityStore.frame_render_cost().get("process", 0.0)) + RenderingServer.viewport_get_measured_render_time_cpu(viewport) \
+	return float(CityStore.query(&"render_cost").get("process", 0.0)) + RenderingServer.viewport_get_measured_render_time_cpu(viewport) \
 			+ RenderingServer.get_frame_setup_time_cpu()
 
 
@@ -185,6 +187,6 @@ static func _spread(name: String, sorted: PackedFloat64Array) -> Dictionary:
 	if sorted.is_empty():
 		return out
 	for p: float in PERCENTILES:
-		out["%s_p%d" % [name, roundi(p * Units.PERCENT)]] = snappedf(sorted[mini(sorted.size() - 1, ceili(sorted.size() * p) - 1)], SHOWN_MS)
+		out["%s_p%d" % [name, roundi(p * PERCENT)]] = snappedf(sorted[mini(sorted.size() - 1, ceili(sorted.size() * p) - 1)], SHOWN_MS)
 	out["%s_max" % name] = snappedf(sorted[-1], SHOWN_MS)
 	return out

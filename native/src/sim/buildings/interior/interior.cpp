@@ -10,10 +10,11 @@
 namespace city::b40 {
 
 namespace {
-// Tolerances: two ends this near meet; a riser count may round this far; a split's share this near a whole is one.
-constexpr float MEET_M = 1e-3f, RISER_SLACK = 1e-3f;
-constexpr float SPLIT_EPS = 1e-6f;
-// A pick from a seed: Knuth's multiplicative hash, its high half; a shop of this many floors or fewer is a street shop.
+constexpr float FLIGHT_LEAST_M = .3f, FLIGHT_OVER_M = .05f, FLIGHT_LINE_M = 1.2f, MEET_M = 1e-3f, FLIGHT_RISE_M = .18f, RISER_SLACK = 1e-3f, FLIGHT_ROOM_M = .6f;
+constexpr float FLIGHT_TREAD_M = .28f, FLIGHT_TREAD_MIN_M = .24f, FLIGHT_WIDTH_M = 1.f, FLIGHT_SIDE_M = .4f, FLIGHT_CLEAR_M = .2f;
+constexpr float ROOM_REACH = 4.5f, UNIT_MODULES = 4.f, SPLIT_EPS = 1e-6f;
+constexpr int OFFICE_ROOM_BAYS = 2, CLASS_ROOM_BAYS = 3, HOTEL_ROOM_BAYS = 1, WARD_ROOM_BAYS = 2, LIGHT_SHARE = 10, WOOD_SHARE = 3;
+constexpr float WARD_FROM_GROUND = 10.f;
 constexpr uint32_t PICK_SALT = 0x9e3779b1u, LOW_SHOP_MAX_FLOORS = 3;
 constexpr int PICK_SHIFT = 16;
 // A street shop's trade (the low and the taller shop), eight picks each.
@@ -46,10 +47,9 @@ void run_recipe(Plan &p, const std::vector<Step> &steps) {
 }
 
 // The homes, shops or offices of one block's floor.
-void spaces_of(const Data &data, const Body &b, const Volume &v, int vol, int level, float module, bool residential, std::vector<Space> &out) {
-	const InteriorShape &K = data.shapes.interior;
+void spaces_of(const Body &b, const Volume &v, int vol, int level, float module, bool residential, std::vector<Space> &out) {
 	if (residential && !(level == 0 && b.ground == GROUND_SHOP)) {
-		const FlatPlan plan = flat_plan(data, v, 2);
+		const FlatPlan plan = flat_plan(v, 2);
 		if (plan.flats.size() > 1 || plan.corridor) {
 			for (const FlatCell &f : plan.flats) out.push_back({ vol, f.x, f.y, f.w, f.d });
 			return;
@@ -57,7 +57,7 @@ void spaces_of(const Data &data, const Body &b, const Volume &v, int vol, int le
 	}
 	const bool along_x = v.w >= v.d;
 	const float length = along_x ? v.w : v.d;
-	const int split = residential ? std::max(1, int(std::ceil(length / (K.unit_modules * module) - SPLIT_EPS))) : 1;
+	const int split = residential ? std::max(1, int(std::ceil(length / (UNIT_MODULES * module) - SPLIT_EPS))) : 1;
 	for (int n = 0; n < split; n++) {
 		const float s0 = length * float(n) / float(split), size = length / float(split);
 		out.push_back(along_x ? Space{ vol, v.x + s0, v.y, size, v.d } : Space{ vol, v.x, v.y + s0, v.w, size });
@@ -65,7 +65,6 @@ void spaces_of(const Data &data, const Body &b, const Volume &v, int vol, int le
 }
 
 void furnish(Plan &p, Purpose fn, const std::vector<Space> &spaces) {
-	const InteriorShape &K = p.data.shapes.interior;
 	const auto &recipes = p.data.interior.recipes;
 	const float from = p.y_start();
 	run_recipe(p, recipes[fn]);
@@ -76,17 +75,17 @@ void furnish(Plan &p, Purpose fn, const std::vector<Space> &spaces) {
 			else if (!flat_floor(p)) home_units(p, spaces, false);
 			break;
 		case PU_HOTEL:
-			if (p.level == 0 || !rooms_floor(p, K.hotel_room_bays, hotel_room)) home_units(p, spaces, true);
+			if (p.level == 0 || !rooms_floor(p, HOTEL_ROOM_BAYS, hotel_room)) home_units(p, spaces, true);
 			break;
 		case PU_OFFICE: case PU_CITY_HALL: case PU_POLICE: case PU_COURTHOUSE: case PU_POST_OFFICE:
-			if (p.level > 0 && !rooms_floor(p, K.office_room_bays, office_room)) office_desks(p);
+			if (p.level > 0 && !rooms_floor(p, OFFICE_ROOM_BAYS, office_room)) office_desks(p);
 			break;
 		case PU_HOSPITAL:
-			if (p.level == 0) wards(p, p.y0 + K.ward_from_ground);
-			else if (!rooms_floor(p, K.ward_room_bays, ward_room)) wards(p, p.y0);
+			if (p.level == 0) wards(p, p.y0 + WARD_FROM_GROUND);
+			else if (!rooms_floor(p, WARD_ROOM_BAYS, ward_room)) wards(p, p.y0);
 			break;
 		case PU_SCHOOL:
-			if (!rooms_floor(p, K.class_room_bays, class_room)) classrooms(p, from);
+			if (!rooms_floor(p, CLASS_ROOM_BAYS, class_room)) classrooms(p, from);
 			break;
 		case PU_PRISON: cells(p, from); break;
 		case PU_SHOP:
@@ -105,11 +104,10 @@ void furnish(Plan &p, Purpose fn, const std::vector<Space> &spaces) {
 
 // A ceiling light over each group of furniture: a room's worth.
 void room_lights(const Data &data, std::vector<Furniture> &items) {
-	const InteriorShape &K = data.shapes.interior;
 	struct Room { float x, y; int n; };
 	std::vector<Room> rooms;
 	for (const Furniture &f : items) {
-		auto near = std::find_if(rooms.begin(), rooms.end(), [&](const Room &r) { return std::hypot(r.x / float(r.n) - f.x, r.y / float(r.n) - f.y) < K.room_reach; });
+		auto near = std::find_if(rooms.begin(), rooms.end(), [&](const Room &r) { return std::hypot(r.x / float(r.n) - f.x, r.y / float(r.n) - f.y) < ROOM_REACH; });
 		if (near != rooms.end()) { near->x += f.x; near->y += f.y; near->n++; }
 		else rooms.push_back({ f.x, f.y, 1 });
 	}
@@ -164,11 +162,10 @@ Purpose purpose_of(const Body &b, int fn, uint32_t seed) {
 	return uint32_t(top) <= LOW_SHOP_MAX_FLOORS ? LOW_SHOPS[pick] : TALL_SHOPS[pick];
 }
 
-FloorFinish floor_finish(const Data &data, Purpose p, int level, uint32_t seed) {
-	const InteriorShape &K = data.shapes.interior;
+FloorFinish floor_finish(Purpose p, int level, uint32_t seed) {
 	const bool homely = p == PU_HOUSE || p == PU_FLATS || p == PU_HOTEL;
 	if (!(homely && (level > 0 || p == PU_HOUSE))) return FLOOR_STONE;
-	return int((seed * PICK_SALT >> PICK_SHIFT) % K.light_share) < K.wood_share ? FLOOR_WOOD : FLOOR_PORCELAIN;
+	return int((seed * PICK_SALT >> PICK_SHIFT) % LIGHT_SHARE) < WOOD_SHARE ? FLOOR_WOOD : FLOOR_PORCELAIN;
 }
 
 float lift_at(const Body &b, int level, float x, float y) {
@@ -180,8 +177,7 @@ float lift_at(const Body &b, int level, float x, float y) {
 	return best != nullptr ? best->lift : 0;
 }
 
-std::vector<LevelFlight> level_flights(const Data &data, const Body &b, int level) {
-	const InteriorShape &K = data.shapes.interior;
+std::vector<LevelFlight> level_flights(const Body &b, int level) {
 	std::vector<LevelFlight> out;
 	std::vector<const Volume *> blocks;
 	for (const Volume &v : b.volumes)
@@ -189,27 +185,27 @@ std::vector<LevelFlight> level_flights(const Data &data, const Body &b, int leve
 	for (size_t i = 0; i < blocks.size(); i++)
 		for (size_t k = i + 1; k < blocks.size(); k++) {
 			const float zp = b.block_z(*blocks[i], level), zq = b.block_z(*blocks[k], level), rise = std::fabs(zq - zp);
-			if (rise < K.flight_least_m || rise > b.level_h(level) + K.flight_over_m) continue;
+			if (rise < FLIGHT_LEAST_M || rise > b.level_h(level) + FLIGHT_OVER_M) continue;
 			const Volume &low = zp < zq ? *blocks[i] : *blocks[k], &high = zp < zq ? *blocks[k] : *blocks[i];
 			// The line they meet along: a side of the lower block against a side of the higher.
 			const float ox0 = std::max(low.x, high.x), ox1 = std::min(low.x + low.w, high.x + high.w), oy0 = std::max(low.y, high.y), oy1 = std::min(low.y + low.d, high.y + high.d);
 			float a = 0, c = 0, at = 0, inward = 0;
 			bool along_x = false;
-			if (ox1 - ox0 > K.flight_line_m && std::fabs(low.y + low.d - high.y) < MEET_M) { a = ox0; c = ox1; at = low.y + low.d; inward = -1; along_x = true; }
-			else if (ox1 - ox0 > K.flight_line_m && std::fabs(high.y + high.d - low.y) < MEET_M) { a = ox0; c = ox1; at = low.y; inward = 1; along_x = true; }
-			else if (oy1 - oy0 > K.flight_line_m && std::fabs(low.x + low.w - high.x) < MEET_M) { a = oy0; c = oy1; at = low.x + low.w; inward = -1; }
-			else if (oy1 - oy0 > K.flight_line_m && std::fabs(high.x + high.w - low.x) < MEET_M) { a = oy0; c = oy1; at = low.x; inward = 1; }
+			if (ox1 - ox0 > FLIGHT_LINE_M && std::fabs(low.y + low.d - high.y) < MEET_M) { a = ox0; c = ox1; at = low.y + low.d; inward = -1; along_x = true; }
+			else if (ox1 - ox0 > FLIGHT_LINE_M && std::fabs(high.y + high.d - low.y) < MEET_M) { a = ox0; c = ox1; at = low.y; inward = 1; along_x = true; }
+			else if (oy1 - oy0 > FLIGHT_LINE_M && std::fabs(low.x + low.w - high.x) < MEET_M) { a = oy0; c = oy1; at = low.x + low.w; inward = -1; }
+			else if (oy1 - oy0 > FLIGHT_LINE_M && std::fabs(high.x + high.w - low.x) < MEET_M) { a = oy0; c = oy1; at = low.x; inward = 1; }
 			else continue;
-			const int risers = int(std::ceil(rise / K.flight_rise_m - RISER_SLACK));
-			const float room = (along_x ? low.d : low.w) - K.flight_room_m, tread = std::min(K.flight_tread_m, room / float(risers));
-			if (tread < K.flight_tread_min_m) continue;
+			const int risers = int(std::ceil(rise / FLIGHT_RISE_M - RISER_SLACK));
+			const float room = (along_x ? low.d : low.w) - FLIGHT_ROOM_M, tread = std::min(FLIGHT_TREAD_M, room / float(risers));
+			if (tread < FLIGHT_TREAD_MIN_M) continue;
 			const float run = tread * float(risers), mid = (a + c) / 2;
 			LevelFlight f;
-			f.top = along_x ? V2{ mid, at } : V2{ at, mid };
-			f.foot = along_x ? V2{ mid, at + inward * run } : V2{ at + inward * run, mid };
+			f.top = along_x ? Point2{ mid, at } : Point2{ at, mid };
+			f.foot = along_x ? Point2{ mid, at + inward * run } : Point2{ at + inward * run, mid };
 			f.z0 = std::min(zp, zq);
 			f.z1 = std::max(zp, zq);
-			f.width = std::min(K.flight_width_m, c - a - K.flight_side_m);
+			f.width = std::min(FLIGHT_WIDTH_M, c - a - FLIGHT_SIDE_M);
 			f.risers = risers;
 			out.push_back(f);
 		}
@@ -232,7 +228,6 @@ std::string Interior::type_of(int level) const {
 }
 
 const FloorInterior &Interior::at(int level) {
-	const InteriorShape &K = data_.shapes.interior;
 	auto known = levels_.find(level);
 	if (known != levels_.end()) return *known->second;
 	const std::string type = type_of(level);
@@ -246,7 +241,7 @@ const FloorInterior &Interior::at(int level) {
 			const Volume &v = body_.volumes[i];
 			if (level < v.base || level >= v.top()) continue;
 			std::vector<Space> spaces;
-			spaces_of(data_, body_, v, int(i), level, module, residential, spaces);
+			spaces_of(body_, v, int(i), level, module, residential, spaces);
 			Plan plan(data_, body_, v, level, module);
 			plan.walls_only = stored != body_.furnishing.end();
 			furnish(plan, purpose_, spaces);
@@ -255,9 +250,9 @@ const FloorInterior &Interior::at(int level) {
 			floor->spaces.insert(floor->spaces.end(), spaces.begin(), spaces.end());
 		}
 		// Nothing made for the floor stands on the flight between its levels.
-		for (const LevelFlight &f : level_flights(data_, body_, level)) {
-			const float x0 = std::min(f.foot.x, f.top.x) - f.width / 2 - K.flight_clear_m, x1 = std::max(f.foot.x, f.top.x) + f.width / 2 + K.flight_clear_m;
-			const float y0 = std::min(f.foot.y, f.top.y) - f.width / 2 - K.flight_clear_m, y1 = std::max(f.foot.y, f.top.y) + f.width / 2 + K.flight_clear_m;
+		for (const LevelFlight &f : level_flights(body_, level)) {
+			const float x0 = std::min(f.foot.x, f.top.x) - f.width / 2 - FLIGHT_CLEAR_M, x1 = std::max(f.foot.x, f.top.x) + f.width / 2 + FLIGHT_CLEAR_M;
+			const float y0 = std::min(f.foot.y, f.top.y) - f.width / 2 - FLIGHT_CLEAR_M, y1 = std::max(f.foot.y, f.top.y) + f.width / 2 + FLIGHT_CLEAR_M;
 			auto on_it = [&](const Furniture &p) { return p.x + p.w / 2 > x0 && p.x - p.w / 2 < x1 && p.y + p.d / 2 > y0 && p.y - p.d / 2 < y1; };
 			floor->furniture.erase(std::remove_if(floor->furniture.begin(), floor->furniture.end(), on_it), floor->furniture.end());
 		}

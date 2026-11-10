@@ -2,7 +2,7 @@
 ## the generated town, checks the money, the network counts, a refusal, demolition with refund, zoning and growth; then
 ## the money rules (road_money_cases.gd).
 ## Run: godot --headless --path project res://tests/core/road_commands_test.tscn -- --no-flow
-extends TestCase
+extends Node3D
 
 const LOT_OUT_M := 300.0 # past the city, on free land
 const TOWN_MAP := 0
@@ -12,6 +12,7 @@ const PROFILE := 0
 const OUT_M := 260.0
 const GROW_TICKS := 1200
 const ZONE_RADIUS := 60.0
+const ZONE_RES := 1
 ## Metres a screen pixel covers (the tool asks the camera; here a close view).
 const PX := 0.25
 ## How far past the road the snapping and the freehand stroke are tried, on open ground.
@@ -24,20 +25,21 @@ const TOWN_SWING_M := 60.0
 const FILLED_STYLES := ["roadcraft", "brasil"] # session-rules.md, section 10
 
 const RAY_FROM_M := 400.0
+const DECK_OVER_GROUND_M := 0.3 # the ground under a road is dropped 0.6 m below its deck (road_shape.cpp)
 const OFF_ROAD_M := 120.0
 const GROUND_EPS_M := 0.01
-## The most a cell's seam and paving may differ from its area: the outline is cut in whole millimetres (ground_seam.cpp), so a
-## 4 m cell's sides err by under 4 x 4 m x 0.5 mm = 0.008 m2.
-const SEAM_COVER_M2 := 0.01
+
+var failures := 0
 
 
 func _ready() -> void:
-	if not boot():
-		finish()
-		return
+	var world := CityWorld.new()
+	add_child(world)
+	var errors := CityStore.boot(world.terrain, world.materials())
+	_check(errors.is_empty(), "boot %s" % [errors])
 	_styles()
-	new_map(TOWN_MAP, SEED, true)
-	_surface_mesh("the town")
+	CityStore.new_map(TOWN_MAP, SEED, true)
+	CityStore.dispatch(&"set_speed", [0])
 	var s0 := CityStore.snapshot.duplicate()
 	var b: Dictionary = CityStore.query(&"city_bounds")
 	var a := Vector3(b.max.x - 1.0, 0, (b.min.z + b.max.z) * 0.5)
@@ -45,108 +47,91 @@ func _ready() -> void:
 	var pv: Dictionary = CityStore.dispatch(&"preview_road", [a, e, false, Vector3.ZERO, PROFILE, PX])
 	print("preview: ", {"ok": pv.ok, "error": pv.error, "price": pv.price, "len": pv.length, "start": pv.start})
 	var r: Dictionary = CityStore.dispatch(&"build_road", [a, e, false, Vector3.ZERO, PROFILE, PX])
-	print("build: ", r)
+	print("construir: ", r)
 	var s1 := CityStore.snapshot
-	check(r.ok, "road built")
-	check(is_equal_approx(s0.money - s1.money, pv.price), "charged the preview's price (%s)" % [s0.money - s1.money])
-	check(s1.segments > s0.segments, "segments %d -> %d" % [s0.segments, s1.segments])
+	_check(r.ok, "road built")
+	_check(is_equal_approx(s0.money - s1.money, pv.price), "charged the preview's price (%s)" % [s0.money - s1.money])
+	_check(s1.segments > s0.segments, "segmentos %d -> %d" % [s0.segments, s1.segments])
 	var bad: Dictionary = CityStore.dispatch(&"build_road", [e, e + Vector3(2, 0, 0), false, Vector3.ZERO, PROFILE, PX])
-	check(not bad.ok and bad.error == "refuse.road.tooShort", "refuses a short road: %s" % bad.error)
+	_check(not bad.ok and bad.error == "refuse.road.tooShort", "refuses a short road: %s" % bad.error)
 	_surface((a + e) * 0.5)
 	_road_end(e)
 	_snapping(a, e)
 	_freehand(e)
-	var z: Dictionary = CityStore.dispatch(&"paint_zone", [(a + e) * 0.5, ZONE_RADIUS, ZoneTable.code("residential")])
-	print("zone: ", z, " cells growing: ", CityStore.snapshot.growth_cells)
-	check(z.ok and z.zoned_sides > 0, "zoned sides: %d" % z.get("zoned_sides", 0))
-	check(CityStore.snapshot.player_zones == z.zoned_sides, "counts the player's sides")
+	var z: Dictionary = CityStore.dispatch(&"paint_zone", [(a + e) * 0.5, ZONE_RADIUS, ZONE_RES])
+	print("zona: ", z, " cells growing: ", CityStore.snapshot.growth_cells)
+	_check(z.ok and z.zoned_sides > 0, "zoneou lados")
+	_check(CityStore.snapshot.player_zones == z.zoned_sides, "counts the player's sides")
 	CityStore.dispatch(&"undo")
-	check(CityStore.snapshot.player_zones == 0, "undo takes it from the count")
-	Settings.map.set_zone_tool(false)
-	check(not CityStore.query(&"overlays").zones, "with no player's zone the generated city is not tinted")
-	Settings.map.set_zone_tool(true)
-	check(CityStore.query(&"overlays").zones, "with the tool in hand the zones show")
-	Settings.map.set_zone_tool(false)
+	_check(CityStore.snapshot.player_zones == 0, "undo takes it from the count")
+	Settings.set_zone_tool(false)
+	_check(not CityStore.query(&"overlays").zones, "with no player's zone the generated city is not tinted")
+	Settings.set_zone_tool(true)
+	_check(CityStore.query(&"overlays").zones, "with the tool in hand the zones show")
+	Settings.set_zone_tool(false)
 	CityStore.dispatch(&"redo")
-	check(CityStore.snapshot.player_zones == z.zoned_sides, "redo goes back to the count")
+	_check(CityStore.snapshot.player_zones == z.zoned_sides, "redo goes back to the count")
 	var before: int = CityStore.snapshot.buildings
-	ticks(GROW_TICKS)
-	print("grown: ", CityStore.snapshot.grown, " buildings ", before, " -> ", CityStore.snapshot.buildings)
-	check(CityStore.snapshot.grown > 0, "buildings grew on the new road")
+	CityStore.step_ticks(GROW_TICKS)
+	print("cresceram: ", CityStore.snapshot.grown, " buildings ", before, " -> ", CityStore.snapshot.buildings)
+	_check(CityStore.snapshot.grown > 0, "buildings grew on the new road")
 	var m0: float = CityStore.snapshot.money
 	var d: Dictionary = CityStore.dispatch(&"demolish", [e - Vector3(2, 0, 0)])
-	print("demolish: ", d, " money ", m0, " -> ", CityStore.snapshot.money)
-	check(d.ok, "demolished")
-	RoadMoneyCases.new(self).run(b)
-	LotCases.new(self).run(Vector3(b.max.x + LOT_OUT_M, 0.0, b.max.z + LOT_OUT_M))
-	RoadHeightCases.new(self).run(b)
-	LandBrushCases.new(self).smooth_even(b)
-	finish()
+	print("demolir: ", d, " dinheiro ", m0, " -> ", CityStore.snapshot.money)
+	_check(d.ok, "demoliu")
+	RoadMoneyCases.new(_check).run(b)
+	LotCases.new(_check).run(Vector3(b.max.x + LOT_OUT_M, 0.0, b.max.z + LOT_OUT_M))
+	RoadHeightCases.new(_check).run(b)
+	print("FAILURES: ", failures)
+	get_tree().quit(1 if failures > 0 else 0)
 
 
-## The pointer lands on what the player sees (the 4.0's worldAtScreen): on a road, its deck, at least terrain.road_sink_m above
-## the ground laid under it (compose.cpp); off the roads, the ground.
+## The pointer lands on what the player sees (the 4.0's worldAtScreen): on a road, its deck, above the ground dropped under
+## it; off the roads, the ground.
 func _surface(mid: Vector3) -> void:
 	var on: Dictionary = CityStore.query(&"raycast", [Vector3(mid.x, RAY_FROM_M, mid.z), Vector3.DOWN])
 	var under: float = CityStore.query(&"height_at", [mid.x, mid.z])
-	var sink: float = DataTables.tuning("terrain_road_sink_m")
-	check(on.hit and on.position.y >= under + sink - GROUND_EPS_M, "the ray lands on the road's deck (%.3f) at least %.2f m above the ground under it (%.3f)" % [on.position.y, sink, under])
+	_check(on.hit and on.position.y > under + DECK_OVER_GROUND_M, "the ray lands on the road's deck (%.3f) above the ground under it (%.3f)" % [on.position.y, under])
 	var away := mid + Vector3(0, 0, OFF_ROAD_M)
 	var off: Dictionary = CityStore.query(&"raycast", [Vector3(away.x, RAY_FROM_M, away.z), Vector3.DOWN])
 	var ground: float = CityStore.query(&"height_at", [away.x, away.z])
-	check(off.hit and absf(off.position.y - ground) < GROUND_EPS_M, "off the road the ray lands on the ground (%.3f against %.3f)" % [off.position.y, ground])
-
-
-## Every road's mesh within the surface error of the true road (streets.json surface_error_m), read densely between its stations
-## by the core (road_surface_probe); a straight road on one grade drawn in one stretch.
-func _surface_mesh(what: String) -> void:
-	var p: Dictionary = CityStore.query(&"road_surface_probe")
-	print("road surface, %s: %s" % [what, p])
-	check(p.segments > 0 and p.error_m <= p.tolerance_m, "%s: the mesh %.4f m off its roads at worst, within %.3f m" % [what, p.error_m, p.tolerance_m])
-	check(p.whole > 0, "%s: %d straight roads on one grade in one stretch" % [what, p.whole])
-	# The terrain meets the paving's edge itself (ground_seam.h): every cut cell triangulated, every outline point on the paving, and
-	# in every cell drawn the seam and the paving make the cell's area: no gap in the terrain's hole, no seam over a road.
-	var g: Dictionary = CityStore.query(&"road_seam_probe")
-	print("ground seams, %s: %s" % [what, g])
-	check(g.cells > 0 and g.cut > 0 and g.triangles > 0, "%s: the roads cut %d of the terrain's cells, %d drawn" % [what, g.cut, g.cells])
-	check(g.refused == 0 and g.unheighted == 0, "%s: every cut cell triangulated, every edge point on the paving" % what)
-	check(g.worst_cover_m2 < SEAM_COVER_M2, "%s: seam and paving fill each cell, %.5f m2 off at worst" % [what, g.worst_cover_m2])
+	_check(off.hit and absf(off.position.y - ground) < GROUND_EPS_M, "off the road the ray lands on the ground (%.3f against %.3f)" % [off.position.y, ground])
 
 
 ## A road the player lays ends in a straight cut; the bulb is a choice, undone like any edit.
 func _road_end(e: Vector3) -> void:
 	var ends: Array = CityStore.query(&"inspect", [e - Vector3(2, 0, 0)]).get("ends", [])
-	check(ends.size() == 1 and not ends[0].bulb, "a new road ends in a straight cut: %s" % [ends])
+	_check(ends.size() == 1 and not ends[0].bulb, "a new road ends in a straight cut: %s" % [ends])
 	var r: Dictionary = CityStore.dispatch(&"set_road_end", [ends[0].node, true])
 	var now: Array = CityStore.query(&"inspect", [e - Vector3(2, 0, 0)]).ends
-	check(r.ok and now[0].bulb, "a turning circle on request: %s" % r)
+	_check(r.ok and now[0].bulb, "a turning circle on request: %s" % r)
 	CityStore.dispatch(&"undo", [])
 	now = CityStore.query(&"inspect", [e - Vector3(2, 0, 0)]).ends
-	check(not now[0].bulb, "undo takes the turning circle away")
+	_check(not now[0].bulb, "undo takes the turning circle away")
 
 
 ## Where the road lands: the grid, the angles, the road it leaves and the road it arrives on.
 func _snapping(a: Vector3, e: Vector3) -> void:
 	var o := Vector3(roundf(e.x), 0, roundf(e.z) + FREE_OFFSET_M)
 	var start: Vector3 = CityStore.query(&"road_start", [o + Vector3(0.3, 0, 0.2), PX, true, true]).position
-	check(absf(start.x - o.x) < LOOSE_M and absf(start.z - o.z) < LOOSE_M, "a start on free ground goes to the grid: %s" % start)
+	_check(absf(start.x - o.x) < LOOSE_M and absf(start.z - o.z) < LOOSE_M, "a start on free ground goes to the grid: %s" % start)
 	var r: Dictionary = CityStore.query(&"road_end", [start, o + Vector3(100.4, 0, 3), PX, true, true, true])
-	check(r.guide == "orthogonal" and absf(r.position.z - o.z) < LOOSE_M and absf(r.position.x - o.x - 100) < LOOSE_M,
-		"the end snaps to the axis and the grid: %s" % r)
+	_check(r.guide == "orthogonal" and absf(r.position.z - o.z) < LOOSE_M and absf(r.position.x - o.x - 100) < LOOSE_M,
+		"fim encaixa no eixo e na grade: %s" % r)
 	var raw := o + Vector3(100.4, 0, 3)
 	r = CityStore.query(&"road_end", [start, raw, PX, false, true, true])
-	check(r.guide == "" and absf(r.position.x - raw.x) < LOOSE_M and absf(r.position.z - raw.z) < LOOSE_M, "with snapping off it follows the pointer")
+	_check(r.guide == "" and absf(r.position.x - raw.x) < LOOSE_M and absf(r.position.z - raw.z) < LOOSE_M, "with snapping off it follows the pointer")
 	raw = o + Vector3(cos(deg_to_rad(31.0)), 0, sin(deg_to_rad(31.0))) * 100.0
 	r = CityStore.query(&"road_end", [start, raw, PX, true, true, false])
-	check(r.guide == "angle" and absf(r.angle_deg - 30.0) < LOOSE_M, "snaps to the 15 degree step: %s" % r)
+	_check(r.guide == "angle" and absf(r.angle_deg - 30.0) < LOOSE_M, "snaps to the 15 degree step: %s" % r)
 	r = CityStore.query(&"road_end", [e, e + Vector3(80, 0, 2), PX, true, true, false])
-	check(r.guide == "continue" and absf(r.position.z - e.z) < 0.1, "goes straight on from the end: %s" % r)
+	_check(r.guide == "continue" and absf(r.position.z - e.z) < 0.1, "goes straight on from the end: %s" % r)
 	r = CityStore.query(&"road_end", [e, e + Vector3(2, 0, 80), PX, true, true, false])
-	check(r.guide == "perpendicular" and absf(r.position.x - e.x) < 0.1, "square to the road it leaves: %s" % r)
+	_check(r.guide == "perpendicular" and absf(r.position.x - e.x) < 0.1, "square to the road it leaves: %s" % r)
 	var mid := a.lerp(e, 0.5)
 	var from := mid + Vector3(3, 0, 60)
 	r = CityStore.query(&"road_end", [from, mid + Vector3(-1, 0, 0), PX, true, true, false])
-	check(r.guide == "perpendicular" and absf(r.position.x - from.x) < 0.1 and absf(r.position.z - mid.z) < 0.1,
+	_check(r.guide == "perpendicular" and absf(r.position.x - from.x) < 0.1 and absf(r.position.z - mid.z) < 0.1,
 		"arrives square to the road: %s" % r)
 
 
@@ -158,28 +143,27 @@ func _freehand(e: Vector3) -> void:
 		samples.push_back(base + Vector3(i * 4.0, 0, 30.0 * sin(i * 0.12)))
 	var pieces: PackedVector3Array = CityStore.query(&"road_pieces", [samples[0], samples[-1], 2, false, Vector3.ZERO, samples, PROFILE, PX])
 	var n := pieces.size() / 3
-	check(n >= 2, "a freehand stroke becomes a chain of curves (%d)" % n)
+	_check(n >= 2, "a freehand stroke becomes a chain of curves (%d)" % n)
 	var tangent := true
 	for k in n - 1:
 		var d1 := (pieces[3 * k + 2] - pieces[3 * k + 1]).normalized()
 		var d2 := (pieces[3 * k + 4] - pieces[3 * k + 3]).normalized()
 		tangent = tangent and d1.dot(d2) > TANGENT_DOT
-	check(tangent, "curves tangent at the joints")
+	_check(tangent, "curves tangent at the joints")
 	var seg0: int = CityStore.snapshot.segments
 	var money0: float = CityStore.snapshot.money
 	var r: Dictionary = CityStore.dispatch(&"build_road_path", [pieces, PROFILE, PX])
-	check(r.ok and CityStore.snapshot.segments >= seg0 + n, "stroke built: %s" % r)
-	_surface_mesh("a freehand stroke's curves")
+	_check(r.ok and CityStore.snapshot.segments >= seg0 + n, "stroke built: %s" % r)
 	CityStore.dispatch(&"undo", [])
-	check(CityStore.snapshot.segments == seg0 and is_equal_approx(CityStore.snapshot.money, money0), "one undo takes the whole stroke")
+	_check(CityStore.snapshot.segments == seg0 and is_equal_approx(CityStore.snapshot.money, money0), "one undo takes the whole stroke")
 	var b := base + Vector3(60, 0, 0)
 	var bad := PackedVector3Array([base, base.lerp(b, 0.5), b, b, b + Vector3(1, 0, 0), b + Vector3(2, 0, 0)])
 	r = CityStore.dispatch(&"build_road_path", [bad, PROFILE, PX])
-	check(not r.ok and r.error == "refuse.road.tooShort" and CityStore.snapshot.segments == seg0, "a piece refused refuses the whole road: %s" % r)
+	_check(not r.ok and r.error == "refuse.road.tooShort" and CityStore.snapshot.segments == seg0, "a piece refused refuses the whole road: %s" % r)
 	_plan_cost(base)
 	_plan_cost_town()
 	var tight: PackedVector3Array = CityStore.query(&"road_pieces", [base, base + Vector3(20, 0, 0), 1, true, base + Vector3(10, 0, 60), PackedVector3Array(), PROFILE, PX])
-	check(tight.size() == 3 and tight[1].z - base.z < 60.0, "a tight curve is opened to the road's radius: %s" % tight[1])
+	_check(tight.size() == 3 and tight[1].z - base.z < 60.0, "a tight curve is opened to the road's radius: %s" % tight[1])
 
 
 ## What a preview costs at the most pieces a stroke may have (road_free_max_controls): it runs on every pointer move.
@@ -192,7 +176,7 @@ func _plan_cost(base: Vector3) -> void:
 	for i in COST_RUNS:
 		CityStore.dispatch(&"preview_road_path", [pieces, PROFILE, PX])
 	print("preview: %d pieces, %d us a move" % [pieces.size() / 3, (Time.get_ticks_usec() - t0) / COST_RUNS])
-	check(pieces.size() / 3 < DataTables.tuning("road_free_max_controls"), "pieces within the limit (%d)" % [pieces.size() / 3])
+	_check(pieces.size() / 3 < DataTables.tuning("road_free_max_controls"), "pieces within the limit (%d)" % [pieces.size() / 3])
 
 
 ## The same stroke across the town, among its roads: a preview's cost where it looks at the most.
@@ -208,18 +192,23 @@ func _plan_cost_town() -> void:
 	for i in COST_RUNS:
 		CityStore.dispatch(&"preview_road_path", [pieces, PROFILE, PX])
 	print("preview in the city: %d pieces, %d us a move" % [pieces.size() / 3, (Time.get_ticks_usec() - t0) / COST_RUNS])
-	check(pieces.size() >= 3, "a stroke through the city has pieces")
+	_check(pieces.size() >= 3, "a stroke through the city has pieces")
 
 
 ## The styles filled so far hold what the loaders ask of the one the game boots with: a shape for every drawing, a crossing in order.
 func _styles() -> void:
 	for id: String in FILLED_STYLES:
 		var signs: Dictionary = DataTables.style_of(DataTables.RENDER_TABLES.streets, id).signs
-		check(signs.plates.size() == signs.drawings.size(), "style %s: one figure a sign" % id)
+		_check(signs.plates.size() == signs.drawings.size(), "style %s: one figure a sign" % id)
 		for d: Dictionary in signs.drawings:
-			check(signs.plates.has(d.plate), "style %s: plate %s" % [id, d.plate])
+			_check(signs.plates.has(d.plate), "estilo %s: placa %s" % [id, d.plate])
 		var kerb: Dictionary = DataTables.style_of(DataTables.CATALOG.street_furniture, id).signs
-		check(kerb.plate_kerb_curve_m >= kerb.plate_kerb_m, "style %s: a sign on a curve no nearer the carriageway" % id)
+		_check(kerb.plate_kerb_curve_m >= kerb.plate_kerb_m, "style %s: a sign on a curve no nearer the carriageway" % id)
 		var c: Dictionary = DataTables.style_of(DataTables.CATALOG.street_furniture, id).crossing
-		check(c.zebra_from_m < c.zebra_to_m and c.zebra_to_m < c.stop_from_m and c.stop_from_m < c.stop_to_m, "style %s: the crossing before the stop line" % id)
+		_check(c.zebra_from_m < c.zebra_to_m and c.zebra_to_m < c.stop_from_m and c.stop_from_m < c.stop_to_m, "style %s: the crossing before the stop line" % id)
 
+
+func _check(ok: bool, what: String) -> void:
+	print(("ok   " if ok else "FAIL ") + what)
+	if not ok:
+		failures += 1

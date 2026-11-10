@@ -6,7 +6,6 @@
 // hard between regions. Fine (the cabin level) or coarse (fewer stations and rows, no seams, no frames, no mirrors nor
 // handles). The ends, parts and cabin: car_parts.cpp.
 #include "render/agents/car_shape.h"
-#include "core/shader_contracts/agents.h"
 
 #include <godot_cpp/variant/array.hpp>
 
@@ -21,8 +20,10 @@ namespace city {
 namespace {
 
 constexpr float DEGENERATE_AREA = 1e-10f; // a band with no area: not drawn
+constexpr float BED_LIP_M = 0.04f; // a pick-up's bed cover stops this short of the cab
+constexpr float PANEL_IN_M = 0.03f; // a door's card, this far inside its skin
+constexpr float SILL_SPAN_M = 4.f; // a pane's colour: its sill's height over this (agent_door.gdshaderinc)
 constexpr int KERB_SIDE = -1; // the door that opens at the kerb: the front one on the -X side, the driver's on +X (kerb_stops.cpp door_places)
-// the ring's rows each level keeps: fine all of them, coarse the ones that carry a line (the sill, the belt, the panes' top, the roof)
 constexpr int FINE_ROWS[RING] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
 constexpr int COARSE_ROWS[] = { 0, 1, 3, 4, RING_BELT, RING_PANE_TOP, 12, RING_ROOF, RING - 1 };
 // One band per region (region_of): underneath, the flank, the side glass, the roof's edge, the top.
@@ -76,12 +77,11 @@ Region side_region(const Loft &lf, int k, float xm) {
 
 // The top of the section: the screens in their frames, the roof, the bonnet, the boot, the bed's cover.
 Region top_region(const Loft &lf, int k, float xm) {
-	const CarBodyShape &K = lf.s->shapes->car_body;
 	const CarStyle &s = *lf.s;
 	const bool edge_row = k == RING_ROOF;
 	if (on_screen(s, xm)) return lf.fine && (xm > s.screen[0] - lf.frame || xm < s.screen[1] + lf.frame || edge_row) ? Region::FRAME : Region::GLASS;
 	if (on_rear(s, xm)) return lf.fine && (xm > s.rear[0] - lf.frame || xm < s.rear[1] + lf.frame || edge_row) ? Region::FRAME : Region::GLASS;
-	if (xm < s.bed_from - K.bed_lip_m / s.L) return Region::FRAME;
+	if (xm < s.bed_from - BED_LIP_M / s.L) return Region::FRAME;
 	return on_roof(s, xm) ? Region::ROOF : Region::PAINT;
 }
 
@@ -122,23 +122,22 @@ bool same_surface(Region a, Region b) {
 	return a == b || (painted(a) && painted(b));
 }
 
-std::vector<float> stations(const Loft &lf, const DataValue &body) {
-	const CarBodyShape &K = lf.s->shapes->car_body;
+std::vector<float> stations(const Loft &lf, const Dictionary &body) {
 	const CarStyle &s = *lf.s;
-	const int k = lf.level, uniform = body["stations"][k].whole(), arch = body["arch_steps"][k].whole();
-	const int ends = body["end_steps"][k].whole(), rolls = body["end_roll_steps"][k].whole();
+	const int k = lf.level, uniform = int(Array(body["stations"])[k]), arch = int(Array(body["arch_steps"])[k]);
+	const int ends = int(Array(body["end_steps"])[k]), rolls = int(Array(body["end_roll_steps"])[k]);
 	std::vector<float> xs;
 	for (int i = 0; i <= uniform; i++) xs.push_back(-0.5f + float(i) / uniform);
 	for (float f : { s.screen[0], s.screen[1], s.glass_front, s.glass_back }) xs.push_back(f);
 	for (float f : s.rear)
 		if (s.rear_glass) xs.push_back(f);
-	if (s.bed_from > -0.5f) xs.insert(xs.end(), { s.bed_from, s.bed_from - K.bed_lip_m / s.L });
+	if (s.bed_from > -0.5f) xs.insert(xs.end(), { s.bed_from, s.bed_from - BED_LIP_M / s.L });
 	if (lf.fine) {
 		for (float e : s.doors) xs.insert(xs.end(), { e - lf.seam * 0.5f, e + lf.seam * 0.5f, e - lf.pillar * 0.5f, e + lf.pillar * 0.5f });
 		xs.insert(xs.end(), { s.screen[0] - lf.frame, s.screen[1] + lf.frame, s.glass_front - lf.frame, s.glass_back + lf.frame, s.screen[0] + s.pillar_foot / s.L });
 		if (s.rear_glass) xs.insert(xs.end(), { s.rear[0] - lf.frame, s.rear[1] + lf.frame });
 	}
-	const float ar = (s.r + s.shapes->agent_parts.arch_pad_m) / s.L;
+	const float ar = (s.r + CAR_ARCH_PAD_M) / s.L;
 	for (float a : s.axles)
 		for (int j = -arch; j <= arch; j++) xs.push_back(a + ar * j / arch);
 	for (int j = 1; j <= ends; j++) { // the plan's rounding at each end
@@ -150,7 +149,7 @@ std::vector<float> stations(const Loft &lf, const DataValue &body) {
 		xs.push_back(-0.5f + s.roll[0] / s.L * j / rolls);
 	}
 	std::sort(xs.begin(), xs.end());
-	const float eps = body["station_eps_m"].f() / s.L;
+	const float eps = float(body["station_eps_m"]) / s.L;
 	std::vector<float> out;
 	for (float x : xs)
 		if (x >= -0.5f && x <= 0.5f && (out.empty() || x - out.back() > eps)) out.push_back(x);
@@ -166,7 +165,6 @@ struct Rows {
 // inside the band's surface) and the tangent along the length (one station each way).
 template <typename At>
 void gap(MeshBuilder &mb, const Loft &lf, const Rows &rows, const std::vector<float> &xs, size_t i, const At &at, const AgentTrim &trim) {
-	const CarBodyShape &K = trim.shapes->car_body;
 	const size_t n = xs.size();
 	const float xm = (xs[i] + xs[i + 1]) * 0.5f;
 	Region reg[RING];
@@ -188,7 +186,7 @@ void gap(MeshBuilder &mb, const Loft &lf, const Rows &rows, const std::vector<fl
 		}
 		const bool door = on_kerb_door(lf, xm, k, k1);
 		// the front door's window goes down to its sill in the glass's shader: its colour is not drawn, so it says where the sill is
-		const Color col = door && reg[r] == Region::GLASS ? Color(at(i, RING_BELT).y / AGENT_SILL_SPAN_M, 1, 0) : colour_of(reg[r], trim);
+		const Color col = door && reg[r] == Region::GLASS ? Color(at(i, RING_BELT).y / SILL_SPAN_M, 1, 0) : colour_of(reg[r], trim);
 		const Vector2 t2 = agent_tag(tag_of(reg[r]));
 		const Vector2 hinge(KERB_SIDE * car_half_w(*lf.s, lf.s->doors[0]), lf.s->doors[0] * lf.s->L), door_t2 = agent_tag(tag_of(reg[r]), Limb::DOOR);
 		for (int side : { -1, 1 }) {
@@ -201,7 +199,7 @@ void gap(MeshBuilder &mb, const Loft &lf, const Rows &rows, const std::vector<fl
 			if (!swings || reg[r] == Region::GLASS) continue;
 			// Its inside: what an open door shows, facing the cabin.
 			const Vector2 card = agent_tag(AgentTag::FIXED, Limb::DOOR);
-			for (int c = 0; c < 4; c++) v[c] = mb.add((pos[c] - nrm[c] * K.panel_in_m) * mirror, -nrm[c] * mirror, trim.blackout, hinge, card);
+			for (int c = 0; c < 4; c++) v[c] = mb.add((pos[c] - nrm[c] * PANEL_IN_M) * mirror, -nrm[c] * mirror, trim.blackout, hinge, card);
 			mb.tri(v[0], v[2], v[1], -face * mirror);
 			mb.tri(v[0], v[3], v[2], -face * mirror);
 		}
@@ -222,16 +220,16 @@ void loft(MeshBuilder &mb, const Loft &lf, const std::vector<float> &xs, const A
 
 } // namespace
 
-int build_car(MeshBuilder &mb, const DataValue &car, const DataValue &body, const DataValue &inside, const CabinLook *look, const AgentTrim &trim,
+int build_car(MeshBuilder &mb, const Dictionary &car, const Dictionary &body, const Dictionary &inside, const CabinLook *look, const AgentTrim &trim,
 		int level) {
-	const CarStyle s = read_car_style(car, body, *trim.shapes);
+	const CarStyle s = read_car_style(car, body);
 	const int passengers = look ? car_cabin(mb, s, inside, *look) : 0;
 	Loft lf;
 	lf.s = &s;
 	lf.level = level;
 	lf.fine = level == AGENT_CABIN_LEVEL; // every detail
-	lf.seam = body["door_seam_m"].f() / s.L;
-	lf.pillar = body["b_pillar_m"].f() / s.L;
+	lf.seam = float(body["door_seam_m"]) / s.L;
+	lf.pillar = float(body["b_pillar_m"]) / s.L;
 	lf.frame = s.frame / s.L;
 	const std::vector<float> xs = stations(lf, body);
 	loft(mb, lf, xs, trim);
@@ -239,7 +237,7 @@ int build_car(MeshBuilder &mb, const DataValue &car, const DataValue &body, cons
 	car_cap(mb, s, xs.front(), -1.f, trim);
 	if (level < AGENT_FAR_LEVEL) car_details(mb, s, body, lf.fine, trim); // far, none of them is a pixel
 	if (level == AGENT_HULL_LEVEL) return passengers;
-	const int sides = body["wheel_sides"][level].whole();
+	const int sides = int(Array(body["wheel_sides"])[level]);
 	for (int k = 0; k < 2; k++)
 		for (int side : { -1, 1 }) {
 			const Vector3 hub(side * s.track[k] * 0.5f, s.r, s.axles[k] * s.L);

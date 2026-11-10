@@ -6,11 +6,8 @@
 // angle + 8 when braking, passengers, 0); COLOR.a is the vehicle's seed. The Compatibility renderer stores instance custom data as half
 // floats: whole numbers below 2048 exactly. Who rides is drawn by PeopleRenderer.
 shader_type spatial;
-#include "res://render/shaders/contracts/agents.gdshaderinc"
 
 #include "res://render/shaders/color_space.gdshaderinc"
-#include "res://render/shaders/fresnel.gdshaderinc"
-#include "res://render/shaders/hash.gdshaderinc"
 
 global uniform float night;
 uniform vec3 head_glow : source_color;
@@ -33,19 +30,16 @@ uniform float sheen_power;
 uniform float lens_roughness;
 uniform float trim_roughness;
 
+const float BRAKE_FLAG = 8.0;
 #include "res://render/shaders/agent_door.gdshaderinc"
 // the paints as numbers (vec3, not colours): used as they are, like the parts' own vertex colours; the riders' helmets too
-uniform vec3 paints[AGENT_PAINTS + AGENT_LINE_PAINTS]; // the paints, then the colours of the transport lines
+uniform vec3 paints[24]; // the paints, then the colours of the transport lines
 varying flat float v_tag;
 varying flat vec4 v_custom;
 varying flat float v_seed;
 // A number in [0, 1) from the vehicle's seed, a seat and a purpose.
-const float SEED_SPREAD = 251.0; // a vehicle's seed spread off the sin hash's period
-const float PICK_ROOF = 9.0; // the roof's purpose among a vehicle's picks
-uniform vec2 sheen_lift; // the sky in the coat brighter looking up: from and over the reflection's rise
-uniform vec2 sheen_horizon; // the street gives way to the sky in the coat between these rises
 float pick(float seed, float seat, float what) {
-	return fract(sin(dot(vec3(seed * SEED_SPREAD, seat, what), SIN_HASH)) * SIN_HASH_SCALE);
+	return fract(sin(dot(vec3(seed * 251.0, seat, what), vec3(12.9898, 78.233, 37.719))) * 43758.5453);
 }
 
 void vertex() {
@@ -54,8 +48,8 @@ void vertex() {
 	v_seed = COLOR.a;
 	if (UV2.y > DOOR_MARK) {
 		door_swing(VERTEX, NORMAL, UV, INSTANCE_CUSTOM.g, UV2.y);
-	} else if (UV2.y > LIMB_WHEEL - 0.5) {
-		float a = mod(INSTANCE_CUSTOM.g, AGENT_BRAKE_FLAG);
+	} else if (UV2.y > 0.5) {
+		float a = mod(INSTANCE_CUSTOM.g, BRAKE_FLAG);
 		vec2 d = VERTEX.yz - UV;
 		vec2 nd = NORMAL.yz;
 		float c = cos(a), s = sin(a);
@@ -68,8 +62,8 @@ void vertex() {
 // running along the doors and the sky growing on the roof at a glancing view is what reads as car paint.
 vec3 sheen(vec3 n, vec3 v) {
 	vec3 r = reflect(-v, n);
-	float f = schlick(clamp(dot(n, v), 0.0, 1.0));
-	vec3 world = mix(source_linear(sheen_ground), source_linear(sheen_sky) * (sheen_lift.x + sheen_lift.y * clamp(r.y, 0.0, 1.0)), smoothstep(sheen_horizon.x, sheen_horizon.y, r.y));
+	float f = 0.04 + 0.96 * pow(1.0 - clamp(dot(n, v), 0.0, 1.0), 5.0);
+	vec3 world = mix(source_linear(sheen_ground), source_linear(sheen_sky) * (0.7 + 0.5 * clamp(r.y, 0.0, 1.0)), smoothstep(-0.04, 0.06, r.y));
 	return world * f * sheen_power * (1.0 - night);
 }
 
@@ -79,31 +73,31 @@ void fragment() {
 	float rough = trim_roughness;
 	vec3 emit = vec3(0.0);
 	vec3 coat = sheen(mat3(INV_VIEW_MATRIX) * NORMAL, mat3(INV_VIEW_MATRIX) * VIEW);
-	if (tag == TAG_PAINT) {
+	if (tag == 1) {
 		c = srgb_to_linear(paints[int(v_custom.r + 0.5)]);
 		rough = paint_roughness;
 		emit = coat;
-	} else if (tag == TAG_ROOF) {
-		c = pick(v_seed, 0.0, PICK_ROOF) < black_roof_share ? source_linear(black_roof) : srgb_to_linear(paints[int(v_custom.r + 0.5)]);
+	} else if (tag == 6) {
+		c = pick(v_seed, 0.0, 9.0) < black_roof_share ? source_linear(black_roof) : srgb_to_linear(paints[int(v_custom.r + 0.5)]);
 		rough = paint_roughness;
 		emit = coat;
-	} else if (tag == TAG_GLOSS) {
+	} else if (tag == 7) {
 		rough = paint_roughness;
 		emit = coat;
-	} else if (tag == TAG_HEAD) {
+	} else if (tag == 2) {
 		bool on = v_custom.b > -0.5;
 		emit = on ? head_lit + source_linear(head_glow) * night * head_power : vec3(0.0);
 		c = on ? vec3(0.0) : c;
 		rough = lens_roughness;
-	} else if (tag == TAG_TAIL) {
+	} else if (tag == 3) {
 		bool on = v_custom.b > -0.5;
-		bool braking = mod(v_custom.g, AGENT_DOOR_STEP) >= AGENT_BRAKE_FLAG; // by day each shows as its colour: more red than that, and ACES turns it cream
+		bool braking = mod(v_custom.g, DOOR_FLAG) >= BRAKE_FLAG; // by day each shows as its colour: more red than that, and ACES turns it cream
 		emit = on ? (braking ? brake_lit : tail_lit) + source_linear(tail_glow) * tail_power * night * (braking ? brake_ratio : 1.0) : vec3(0.0);
 		c = on ? vec3(0.0) : c;
 		rough = lens_roughness;
-	} else if (tag == TAG_GLASS) {
+	} else if (tag == 4) {
 		rough = lens_roughness;
-	} else if (tag == TAG_SIGN) {
+	} else if (tag == 5) {
 		emit = source_linear(sign_glow) * sign_power;
 		rough = lens_roughness;
 	}

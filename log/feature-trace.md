@@ -104,31 +104,5 @@ graph 5.3 s, trace and checks 0.9 s): 0 property violations; no name edge crosse
 Tests: 59, in `feature-trace/tests` (each cause above has its own).
 
 
-## 2026-11-09 23:55: the tracer brought into the repository (`tools/analysis/ftrace.py`, `tools/analysis/ftrace/`)
-**Problem:** the generic tracer lived only in `C:\Users\Jonathan\Desktop\feature-trace`, with no version control and no line in
-CLAUDE.md, so no session knew it existed while `tools/analysis/arch` (HEAD only, no query) was the only tracer in reach.
-**What came in:** its own code and tests (the `ftrace` package, the entry, `check_repo.py`, five test modules and the polyglot
-fixture `tests/fixtures/notes_app`). **What stayed outside**, and why: `eval/subjects/npm` (17 MB, a copy of npm's source), `vendor/`
-(367 MB, the third-party `codebase-memory-mcp` binary and its documents), the caches (364 MB), and with them the code that cannot
-run without them: `cbmtrace/` (the variant built on that binary), `eval/npm_eval.py`, `eval/cbm_eval.py`, `eval/v8_oracle.py`,
-`eval/stats.py`, `tests/test_cbmtrace.py`. The README's content is this record (the repository keeps prose in `log/`).
-**Changes made to fit the repository's rules, each by its cause:**
-- `extract.py` (630 lines) and `graph.py` (607) held several responsibilities each. Split by responsibility, not by size:
-  `extract.py` (the walk) with `nodes.py` (a node's bytes, lines, literals), `definitions.py` (what a node declares) and `roles.py`
-  (what each name does); `graph.py` (the data and its queries) with `declarations.py`, `scopes.py` (where a type's members are),
-  `lookup.py` (the one plain-name lookup) and `resolve.py` (references into edges): objects that work on the graph, not one class
-  spread over files. `_identifiers` (defined, never called) was dropped; `index.py` lost an unused import.
-- Proof the split changed nothing: the whole graph of the game (24,435 nodes, 137,619 edges, `via`, unresolved names, the mutating
-  set) and three traces (`--query "build road"`, `--seed RenderWorld::sync`, `--seed Simulation::tick`) written as one JSON by the
-  original and by the split code at the same moment are byte-identical (sha1 `24c022d0`). Tests: 54 pass.
-- The cache moved from beside the sources to `dist/cache/ftrace` (outputs live under `dist/`).
-- The tests say where the package is (`sys.path` to `tools/analysis`), so each runs alone and the import gate follows them.
-- `tools/gates/scope.py`: the rule "a tool's test inputs are never the real scope" named only the gates' own fixtures; it now
-  names the tracer's fixture too (a deliberately foreign tree: other languages, a layout file, prose, a minified library).
-**Use:** `python tools/analysis/ftrace.py <tree> --query "words"` or `--seed Class::method | path/file | file:line` (`--json OUT`,
-`--top N`); `python tools/analysis/ftrace/check_repo.py <repo> --include project --include native/src --query "words"`;
-tests `python -m unittest discover -s tools/analysis/ftrace/tests -t tools/analysis`. It needs `tree_sitter` and the grammars
-installed for `tools/analysis/arch`. Known limit, unchanged: resolution is by name (no types), so `obj.get()` is ambiguous.
-
 `log/mapa.md` brought up to date in the same change (the `MAPA_DESATUALIZADO` gate failed on 59 entries left by earlier
 commits: files added without a line, lines naming deleted files).

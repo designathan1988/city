@@ -1,7 +1,6 @@
 // A crossing on a road between junctions (Roadcraft editor/streetObjects.ts commitPedestrianCrossing): a node where the walkers cross, a zebra the cars give way at or
 // a signal with a stage of its own. Room is kept on both sides for the cars that stop there.
 #include "sim/commands/commands.h"
-#include "sim/commands/edit_journal.h"
 #include "sim/commands/road_edit.h"
 
 #include "sim/state/city_state.h"

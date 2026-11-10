@@ -1,7 +1,6 @@
 // The Landscape drawer as script API: the sky, the painted ground, the planted trees, the map's biome and the relief's
 // map actions. Commands hold map_mutex exclusively (run_edit); `landscape` is what the sky's view and the panels read.
 #include "api/city_landscape.h"
-#include "sim/commands/nature_commands.h"
 
 #include "api/edit_result.h"
 #include "sim/state/city_state.h"
@@ -78,8 +77,8 @@ int CityLandscape::cloud_at(const Vector3 &origin, const Vector3 &direction, flo
 
 namespace {
 // The points of a brush path as the commands take them.
-std::vector<XZ> stroke_points(const PackedVector3Array &points) {
-	std::vector<XZ> dabs;
+std::vector<StrokePoint> stroke_points(const PackedVector3Array &points) {
+	std::vector<StrokePoint> dabs;
 	dabs.reserve(size_t(points.size()));
 	for (int i = 0; i < points.size(); i++) dabs.push_back({ points[i].x, points[i].z });
 	return dabs;
@@ -124,9 +123,9 @@ Dictionary CityLandscape::fog_brush(const Vector3 &p, float radius, float streng
 }
 
 Dictionary CityLandscape::fog_path(const PackedVector3Array &points, float radius, float strength, float height, float speed, bool erase) {
-	const std::vector<XZ> dabs = stroke_points(points);
+	const std::vector<StrokePoint> dabs = stroke_points(points);
 	return run_edit(*state_, "cmd.fog", [&](CityState &s) {
-		return lay_dabs(dabs, [&](const XZ &p) {
+		return lay_dabs(dabs, [&](const StrokePoint &p) {
 			return fog_dab(s, fog_at(float(p.x), float(p.z), radius, strength, height, speed, erase));
 		});
 	});
@@ -141,9 +140,9 @@ Dictionary CityLandscape::paint_brush(const Vector3 &p, float radius, float stre
 }
 
 Dictionary CityLandscape::paint_path(const PackedVector3Array &points, float radius, float strength, float hardness, int kind) {
-	const std::vector<XZ> dabs = stroke_points(points);
+	const std::vector<StrokePoint> dabs = stroke_points(points);
 	return run_edit(*state_, "cmd.place.paintGround", [&](CityState &s) {
-		return lay_dabs(dabs, [&](const XZ &p) {
+		return lay_dabs(dabs, [&](const StrokePoint &p) {
 			return paint_dab(s, paint_at(float(p.x), float(p.z), radius, strength, hardness, kind));
 		});
 	});
@@ -159,10 +158,10 @@ Dictionary CityLandscape::tree_brush(const Vector3 &p, float radius, int mode, i
 }
 
 Dictionary CityLandscape::tree_path(const PackedVector3Array &points, float radius, int mode, int kind, const Dictionary &brush) {
-	const std::vector<XZ> dabs = stroke_points(points);
+	const std::vector<StrokePoint> dabs = stroke_points(points);
 	const TreeBrush b = tree_brush_of(brush);
 	return run_edit(*state_, "cmd.place.tree", [&](CityState &s) {
-		return lay_dabs(dabs, [&](const XZ &p) { return tree_dab(s, float(p.x), float(p.z), radius, mode, kind, b); });
+		return lay_dabs(dabs, [&](const StrokePoint &p) { return tree_dab(s, float(p.x), float(p.z), radius, mode, kind, b); });
 	});
 }
 
@@ -172,10 +171,10 @@ Dictionary CityLandscape::element_brush(const Vector3 &p, float radius, int kind
 }
 
 Dictionary CityLandscape::element_path(const PackedVector3Array &points, float radius, int kind, const Dictionary &brush, bool erase) {
-	const std::vector<XZ> dabs = stroke_points(points);
+	const std::vector<StrokePoint> dabs = stroke_points(points);
 	const ElementBrush b = element_brush_of(brush);
 	return run_edit(*state_, "cmd.place.element", [&](CityState &s) {
-		return lay_dabs(dabs, [&](const XZ &p) { return element_dab(s, float(p.x), float(p.z), radius, kind, b, erase); });
+		return lay_dabs(dabs, [&](const StrokePoint &p) { return element_dab(s, float(p.x), float(p.z), radius, kind, b, erase); });
 	});
 }
 
@@ -184,10 +183,9 @@ Dictionary CityLandscape::clear_elements() {
 }
 
 // The effects standing within `reach`, for render/element_effects.gd: kind, place, spread and how much each gives off.
-Array CityLandscape::effects_near(const Vector3 &p, float reach) const {
+Array CityLandscape::effects_near(const Vector3 &p, float reach, int first_effect) const {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	Array out;
-	const int first_effect = state_->catalog.nature.elements.first_effect; // the kinds from it are effects, numbered from 0 here
 	state_->nature.elements.for_near(p.x, p.z, reach, [&](const ElementItem &e) {
 		if (e.kind < first_effect) return;
 		Dictionary d;
@@ -210,13 +208,6 @@ Dictionary CityLandscape::set_biome(int region) {
 
 Dictionary CityLandscape::clear_relief() {
 	return run_edit(*state_, "cmd.place.flattenMap", [](CityState &s) { return city::clear_relief(s); });
-}
-
-Dictionary CityLandscape::cloud(int id) const {
-	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
-	for (const PlacedCloud &c : state_->nature.clouds)
-		if (c.id == id) return cloud_dict(c);
-	return Dictionary();
 }
 
 Dictionary CityLandscape::landscape() const {
@@ -248,9 +239,6 @@ int64_t CityLandscape::fog_revision() const { return int64_t(render_->fog().view
 Dictionary CityLandscape::canyon_field() const { return render_->canyon().view(); }
 int64_t CityLandscape::canyon_revision() const { return int64_t(render_->canyon().view_revision()); }
 Dictionary CityLandscape::shore_field() const { return render_->shore().view(); }
-int64_t CityLandscape::shore_revision() const { return int64_t(render_->shore().view_revision()); }
-Dictionary CityLandscape::ecology_field() const { return render_->ecology().view(); }
-int64_t CityLandscape::ecology_revision() const { return int64_t(render_->ecology().view_revision()); }
 
 void CityLandscape::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_weather", "change"), &CityLandscape::set_weather);
@@ -272,20 +260,16 @@ void CityLandscape::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("tree_path", "points", "radius", "mode", "kind", "brush"), &CityLandscape::tree_path);
 	ClassDB::bind_method(D_METHOD("element_path", "points", "radius", "kind", "brush", "erase"), &CityLandscape::element_path);
 	ClassDB::bind_method(D_METHOD("clear_elements"), &CityLandscape::clear_elements);
-	ClassDB::bind_method(D_METHOD("effects_near", "position", "reach"), &CityLandscape::effects_near);
+	ClassDB::bind_method(D_METHOD("effects_near", "position", "reach", "first_effect"), &CityLandscape::effects_near);
 	ClassDB::bind_method(D_METHOD("set_biome", "region"), &CityLandscape::set_biome);
 	ClassDB::bind_method(D_METHOD("clear_relief"), &CityLandscape::clear_relief);
 	ClassDB::bind_method(D_METHOD("landscape"), &CityLandscape::landscape);
-	ClassDB::bind_method(D_METHOD("cloud", "id"), &CityLandscape::cloud);
 	ClassDB::bind_method(D_METHOD("sky_revision"), &CityLandscape::sky_revision);
 	ClassDB::bind_method(D_METHOD("fog_field"), &CityLandscape::fog_field);
 	ClassDB::bind_method(D_METHOD("fog_revision"), &CityLandscape::fog_revision);
 	ClassDB::bind_method(D_METHOD("canyon_revision"), &CityLandscape::canyon_revision);
 	ClassDB::bind_method(D_METHOD("canyon_field"), &CityLandscape::canyon_field);
 	ClassDB::bind_method(D_METHOD("shore_field"), &CityLandscape::shore_field);
-	ClassDB::bind_method(D_METHOD("shore_revision"), &CityLandscape::shore_revision);
-	ClassDB::bind_method(D_METHOD("ecology_field"), &CityLandscape::ecology_field);
-	ClassDB::bind_method(D_METHOD("ecology_revision"), &CityLandscape::ecology_revision);
 }
 
 } // namespace city

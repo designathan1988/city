@@ -1,0 +1,97 @@
+{
+ "_doc": "Pessoas no 4.0, relógio 16:00, de perto.",
+ "city": {
+  "size": "small",
+  "seed": 7
+ },
+ "viewport": [
+  1600,
+  900
+ ],
+ "steps": [
+  {
+   "wait": 1500
+  },
+  {
+   "press": "Começar a construir"
+  },
+  {
+   "until": "(() => !document.querySelector('.v2-start'))()",
+   "name": "title closed",
+   "timeout": 60000,
+   "polling": 250
+  },
+  {
+   "eval": "window.__roadcraft.sim.setClock(960); window.__roadcraft.scene().setSkyMode('day'); Object.keys(window.__roadcraft).join(',') + ' | ' + Object.keys(window.__roadcraft.sim).join(',')"
+  },
+  {
+   "wait": 30000
+  },
+  {
+   "eval": "(() => { const s = window.__roadcraft.sim; const c = {}; const vs = s.vehicles; const list = vs.values ? [...vs.values()] : vs; for (const v of list) { const k = (v.archetype && (v.archetype.shape || v.archetype.id)) || v.shape || v.kind || 'x'; c[k] = (c[k] ?? 0) + 1; } return JSON.stringify({ n: list.length, c, sample: Object.keys(list[0] || {}).slice(0, 24) }); })()"
+  },
+  {
+   "eval": "(() => { const r = window.__roadcraft; const L = [...r.sim.pedViews.values ? r.sim.pedViews.values() : r.sim.pedViews]; const p = (L.find((p) => p.party && p.party.archetype === 'couple' && p.walking && p.ground === 'footway')); if (!p) return 'nenhum casal'; r.setView({ x: p.x, y: p.y, zoom: 70, azimuth: p.heading + 2.2, elevation: 9 * Math.PI / 180 }); return JSON.stringify({ n: 'casal', g: p.ground, age: p.ageClass, party: p.party, hand: p.hand, wait: p.kerbWait, v: p.v }); })()"
+  },
+  {
+   "wait": 1200
+  },
+  {
+   "shot": "casal"
+  },
+  {
+   "eval": "(() => { const r = window.__roadcraft; const L = [...r.sim.pedViews.values ? r.sim.pedViews.values() : r.sim.pedViews]; const p = (L.find((p) => p.party && p.party.archetype === 'family' && p.walking)); if (!p) return 'nenhum familia'; r.setView({ x: p.x, y: p.y, zoom: 70, azimuth: p.heading + 2.2, elevation: 9 * Math.PI / 180 }); return JSON.stringify({ n: 'familia', g: p.ground, age: p.ageClass, party: p.party, hand: p.hand, wait: p.kerbWait, v: p.v }); })()"
+  },
+  {
+   "wait": 1200
+  },
+  {
+   "shot": "familia"
+  },
+  {
+   "eval": "(() => { const r = window.__roadcraft; const L = [...r.sim.pedViews.values ? r.sim.pedViews.values() : r.sim.pedViews]; const p = (L.find((p) => p.ageClass === 'child' && p.walking)); if (!p) return 'nenhum crianca'; r.setView({ x: p.x, y: p.y, zoom: 90, azimuth: p.heading + 2.2, elevation: 9 * Math.PI / 180 }); return JSON.stringify({ n: 'crianca', g: p.ground, age: p.ageClass, party: p.party, hand: p.hand, wait: p.kerbWait, v: p.v }); })()"
+  },
+  {
+   "wait": 1200
+  },
+  {
+   "shot": "crianca"
+  },
+  {
+   "eval": "(() => { const r = window.__roadcraft; const L = [...r.sim.pedViews.values ? r.sim.pedViews.values() : r.sim.pedViews]; const p = (L.find((p) => p.ageClass === 'elder' && p.walking)); if (!p) return 'nenhum idoso'; r.setView({ x: p.x, y: p.y, zoom: 90, azimuth: p.heading + 2.2, elevation: 9 * Math.PI / 180 }); return JSON.stringify({ n: 'idoso', g: p.ground, age: p.ageClass, party: p.party, hand: p.hand, wait: p.kerbWait, v: p.v }); })()"
+  },
+  {
+   "wait": 1200
+  },
+  {
+   "shot": "idoso"
+  },
+  {
+   "eval": "(() => { const r = window.__roadcraft; const L = [...r.sim.pedViews.values ? r.sim.pedViews.values() : r.sim.pedViews]; const p = (L.find((p) => p.kerbWait > 0)); if (!p) return 'nenhum espera'; r.setView({ x: p.x, y: p.y, zoom: 70, azimuth: p.heading + 2.2, elevation: 9 * Math.PI / 180 }); return JSON.stringify({ n: 'espera', g: p.ground, age: p.ageClass, party: p.party, hand: p.hand, wait: p.kerbWait, v: p.v }); })()"
+  },
+  {
+   "wait": 1200
+  },
+  {
+   "shot": "espera"
+  },
+  {
+   "eval": "(() => { const r = window.__roadcraft; const L = [...r.sim.pedViews.values ? r.sim.pedViews.values() : r.sim.pedViews]; const p = (L.find((p) => p.ground === 'open')); if (!p) return 'nenhum lote'; r.setView({ x: p.x, y: p.y, zoom: 70, azimuth: p.heading + 2.2, elevation: 9 * Math.PI / 180 }); return JSON.stringify({ n: 'lote', g: p.ground, age: p.ageClass, party: p.party, hand: p.hand, wait: p.kerbWait, v: p.v }); })()"
+  },
+  {
+   "wait": 1200
+  },
+  {
+   "shot": "lote"
+  },
+  {
+   "eval": "(() => { const r = window.__roadcraft; const L = [...r.sim.pedViews.values ? r.sim.pedViews.values() : r.sim.pedViews]; const p = (L.filter((p) => p.ground === 'open')[3]); if (!p) return 'nenhum lote2'; r.setView({ x: p.x, y: p.y, zoom: 45, azimuth: p.heading + 2.2, elevation: 18 * Math.PI / 180 }); return JSON.stringify({ n: 'lote2', g: p.ground, age: p.ageClass, party: p.party, hand: p.hand, wait: p.kerbWait, v: p.v }); })()"
+  },
+  {
+   "wait": 1200
+  },
+  {
+   "shot": "lote2"
+  }
+ ]
+}

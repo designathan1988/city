@@ -16,7 +16,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr int SEG_PREVIEW_STEPS = 24; // chords a segment's preview line is drawn with
+constexpr int SEG_PREVIEW_STEPS = 24;
 constexpr size_t JUNCTION_MARK_ARMS = 3;
 } // namespace
 
@@ -193,24 +193,29 @@ Dictionary CityCore::upgrade_road(const Vector3 &p, int profile, bool whole_stre
 	return run_edit(*state_, label, [&](CityState &s) { return change_profile_at(s, p.x, p.z, profile, whole_street); });
 }
 
-Dictionary CityCore::roundabout(const Vector3 &p, float radius) {
-	return run_edit(*state_, "cmd.build.roundabout", [&](CityState &s) { return build_roundabout(s, p.x, p.z, radius); });
+Dictionary CityCore::roundabout(const Vector3 &p, float radius, bool cut) {
+	return run_edit(*state_, "cmd.build.roundabout", [&](CityState &s) {
+		double r = s.catalog.tune.road_snap_m;
+		Anchor a = snap_point(s, p.x, p.z, r);
+		return build_roundabout(s, a.x, a.z, radius, cut || a.node >= 0);
+	});
 }
 
-Dictionary CityCore::preview_roundabout(const Vector3 &p, float radius) {
-	std::shared_lock<std::shared_mutex> lk(state_->map_mutex); // it reads: a pointer move must not wait for every mesh job
+Dictionary CityCore::preview_roundabout(const Vector3 &p, float radius, bool cut) {
+	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
 	Dictionary d;
 	if (!s.ready) return d;
-	std::string why = roundabout_refusal(s, p.x, p.z, radius);
+	Anchor a = snap_point(s, p.x, p.z, s.catalog.tune.road_snap_m);
+	std::string why = roundabout_refusal(s, a.x, a.z, radius, cut || a.node >= 0);
 	d["ok"] = why.empty();
 	d["error"] = String(why.c_str());
-	d["centre"] = Vector3(p.x, s.terrain.height_at(p.x, p.z), p.z);
+	d["centre"] = Vector3(float(a.x), s.terrain.height_at(float(a.x), float(a.z)), float(a.z));
 	return d;
 }
 
 Dictionary CityCore::segment_at(const Vector3 &p) {
-	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
 	Dictionary d;
 	if (!s.ready) return d;
@@ -238,7 +243,7 @@ Dictionary CityCore::segment_at(const Vector3 &p) {
 }
 
 Dictionary CityCore::paint_zone_path(const PackedVector3Array &points, float radius, int zone) {
-	std::vector<XZ> dabs;
+	std::vector<StrokePoint> dabs;
 	for (int i = 0; i < points.size(); i++) dabs.push_back({ points[i].x, points[i].z });
 	return run_edit(*state_, "cmd.place.zone", [&](CityState &s) { return city::paint_zone_path(s, dabs, radius, zone); });
 }
@@ -258,7 +263,7 @@ Dictionary CityCore::draw_building(const Vector3 &a, const Vector3 &b, int fn, i
 }
 
 Dictionary CityCore::preview_lot(const Vector3 &a, const Vector3 &b) {
-	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
 	Dictionary d;
 	if (!s.ready) return d;

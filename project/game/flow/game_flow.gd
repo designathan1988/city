@@ -20,15 +20,6 @@ const FALLBACK_LOCALE := "en"
 var state: State = State.BOOT
 ## Tests and captures drive the store directly (-- --no-flow): no menu flow, and their saves stay apart (SaveSlots).
 var tests_drive := OS.get_cmdline_user_args().has("--no-flow")
-## A test run in simulated time (--fixed-fps over 0, tools/tasks/suites.json test_fps): each frame is 1/fps s of the game whatever
-## it takes, so nothing may hold a frame back to the wall clock.
-var simulated_time := tests_drive and _fixed_fps() > 0
-
-
-static func _fixed_fps() -> int:
-	var args := OS.get_cmdline_args()
-	var at := args.find("--fixed-fps")
-	return int(args[at + 1]) if at >= 0 and at + 1 < args.size() else 0
 
 
 func _ready() -> void:

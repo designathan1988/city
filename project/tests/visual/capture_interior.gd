@@ -1,23 +1,21 @@
 ## Captures of the Interior layer, driven as the player does it (the layer's switch through the interior controller, the floor
-## buttons' own command): each shot names a kind of building of the town (found by what it is, never by a generated id), the floor,
-## the way the camera looks relative to the lot's front and the scale on the ground; the picture is saved when the chunks the cut asked for have landed.
+## buttons' own command): each shot names a building of the game's town map (map 0, seed 7: its own ids; the 4.0's city is another one), the floor, the way the
+## camera looks relative to the lot's front and the scale on the ground; the picture is saved when the chunks the cut asked for have landed.
 ## Run: godot --path project --resolution 1600x900 res://tests/visual/capture_interior.tscn -- --no-flow --capture-dir=<folder>
 extends Node3D
 
 const TOWN_MAP := 0
 const SEED := 7
-## Kind of building (KINDS), floor, turn from the lot's front (degrees), pixels a metre at the focus, tilt (degrees), hour, name, and
-## "toggle" for the layer's switch (the building in the middle of the view) in place of the floor buttons' command.
+## Building id, floor, turn from the lot's front (degrees), pixels a metre at the focus, tilt (degrees), hour, name, and "toggle" for
+## the layer's switch (the building in the middle of the view) in place of the floor buttons' command.
 const SHOTS := [
-	["house", 0, 0.0, 38.0, 75.0, 12.0, "house-ground"],
-	["house", 1, 90.0, 38.0, 75.0, 12.0, "house-floor1-turn90"],
-	["tower", 10, 0.0, 20.0, 65.0, 12.0, "tower-floor10"],
-	["shop", 1, 0.0, 30.0, 70.0, 12.0, "commercial-floor1"],
-	["house", 0, 0.0, 38.0, 75.0, 22.0, "house-night-ground"],
-	["house", 0, 0.0, 8.0, 60.0, 12.0, "city-layer-house", "toggle"],
+	[146, 0, 0.0, 38.0, 75.0, 12.0, "casa146-terreo"],
+	[146, 1, 90.0, 38.0, 75.0, 12.0, "casa146-andar1-giro90"],
+	[695, 10, 0.0, 20.0, 65.0, 12.0, "torre695-andar10"],
+	[1090, 1, 0.0, 30.0, 70.0, 12.0, "comercial1090-andar1"],
+	[146, 0, 0.0, 38.0, 75.0, 22.0, "casa146-noite-terreo"],
+	[146, 0, 0.0, 8.0, 60.0, 12.0, "cidade-camada-146", "toggle"],
 ]
-## What each kind is, read off the town as generated: its zone (data/catalog/zones.json, by name) and its floors.
-const KINDS := {"house": ["residential", 2, 3], "tower": ["residential", 11, 1000], "shop": ["commercial", 2, 1000]}
 const SETTLE_FRAMES := 60
 const WAIT_LIMIT_S := 60.0
 const CENTRE_PIXELS := 450.0
@@ -40,16 +38,16 @@ func _ready() -> void:
 	if not CityStore.boot(world.terrain, world.materials()).is_empty():
 		get_tree().quit(1)
 		return
-	CityStore.new_map(TOWN_MAP, SEED, true, true)
+	CityStore.new_map(TOWN_MAP, SEED, true)
+	CityStore.dispatch(&"set_speed", [0])
 	add_child(ToolController.new(rig))
 	var hud := RoadcraftHud.new()
 	add_child(hud)
 	var layer := InteriorController.new()
 	add_child(layer)
 	await _frames(SETTLE_FRAMES)
-	var found := _kinds()
 	for s in SHOTS:
-		await _shot(layer, [found.get(s[0], -1)] + s.slice(1))
+		await _shot(layer, s)
 	print("FAILURES: ", failures)
 	get_tree().quit(CaptureWait.exit_code(failures))
 
@@ -71,7 +69,7 @@ func _shot(layer: InteriorController, s: Array) -> void:
 			print("FAIL: the switch found no building in the middle of the view for ", s[6])
 		rig.jump(info.focus, yaw, s[4], _distance_for(info.focus, yaw, s[4], s[3])) # the switch frames the building: this shot is the city
 	else:
-		layer.open(s[0], s[1])
+		layer.call("_send", true, s[0], s[1])
 		_aim_at_floor(info.focus, yaw, s[4], s[3])
 	await _settled()
 	get_viewport().get_texture().get_image().save_png("%s/%s.png" % [out_dir, s[6]])
@@ -109,17 +107,3 @@ func _settled() -> void:
 func _frames(n: int) -> void:
 	for i in n:
 		await get_tree().process_frame
-
-
-## The first building of each kind in the town, or -1 (its shots then fail by name).
-func _kinds() -> Dictionary:
-	var zones: Array = DataTables.catalog_table("zones").zones.map(func(z: Dictionary) -> String: return z.id)
-	var found := {}
-	for id: int in CityStore.query(&"list_buildings"):
-		var info: Dictionary = CityStore.query(&"probe_building", [id])
-		for kind: String in KINDS:
-			var want: Array = KINDS[kind]
-			if not found.has(kind) and info.zone == zones.find(want[0]) and info.floors >= want[1] and info.floors <= want[2]:
-				found[kind] = id
-	print("buildings by kind: ", found)
-	return found

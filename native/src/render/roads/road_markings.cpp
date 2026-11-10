@@ -22,17 +22,18 @@ struct Painter {
 	LampRow lamp;
 
 	Vector2 pool(float u, float at) const {
-		if (!lamp.any) return Vector2(ROAD_POOL_NONE, 0);
+		if (!lamp.any) return Vector2(POOL_NONE, 0);
 		float du, dv;
 		lamp.pool(u, at, du, dv);
 		return Vector2(du, dv);
 	}
-	// A rectangle u0..u1 across, va..vb metres along from node a, on the stations that keep it on the road's surface.
+	// A rectangle u0..u1 across, va..vb metres along from node a, in pieces of at most one sample step.
 	void rect(float u0, float u1, double va, double vb, const Color &c) const {
-		const std::vector<double> at = segment_stations(e, sid, va, vb);
+		bool straight = e.s.roads.segs[sid].q.is_straight(STRAIGHT_TOL);
+		int n = straight ? 1 : std::max(1, int(std::ceil((vb - va) / e.L.step)));
 		Color col = road_color(c, RoadMat::PAINT);
-		for (size_t k = 0; k + 1 < at.size(); k++) {
-			const double a = at[k], b = at[k + 1];
+		for (int k = 0; k < n; k++) {
+			double a = va + (vb - va) * k / n, b = va + (vb - va) * (k + 1) / n;
 			SegFrame fa = seg_frame(e.s, sid, a), fb = seg_frame(e.s, sid, b);
 			Vector3 lift(0, e.L.paint_lift, 0);
 			const Vector3 p[4] = { fa.c + fa.left * u0 + lift, fa.c + fa.left * u1 + lift, fb.c + fb.left * u1 + lift, fb.c + fb.left * u0 + lift };
@@ -121,7 +122,7 @@ void parking_paint(const Painter &pt) {
 	const StreetLook &L = pt.e.L;
 	if (!parks_along(pt.e.s.roads, pt.sid)) return;
 	std::vector<ArcSpan> gates[2];
-	street_gates(pt.e.s.roads, pt.e.s.buildings, pt.e.s.designs, pt.sid, gates);
+	street_gates(pt.e.s.roads, pt.e.s.buildings, pt.sid, gates);
 	KerbLayout k;
 	kerb_layout(pt.e.s.roads, pt.sid, gates, k);
 	for (const KerbStretch &b : k.bays) bay_line(pt, b, b.v0);
@@ -143,10 +144,10 @@ void emit_markings(const RoadEmit &e, int sid) {
 	const Profile &p = e.s.catalog.profile(g.profile);
 	if (p.rail) return;
 	double v0 = g.retreat_a, v1 = g.len - g.retreat_b;
-	bool ca = !p.ring && e.s.roads.has_crosswalks(g.a), cb = !p.ring && e.s.roads.has_crosswalks(g.b);
+	bool ca = !p.ring && crossing_node(e.s, g.a), cb = !p.ring && crossing_node(e.s, g.b);
 	Painter pt{ e, sid, lamp_row(e.s.roads, sid) };
 	const double clear = e.s.catalog.furniture.crossing.stop_to_m; // the lines end at the stop line
-	crossings(pt, p, v0, v1, ca, cb, e.s.roads.crosswalk_on(g.a, sid), e.s.roads.crosswalk_on(g.b, sid));
+	crossings(pt, p, v0, v1, ca, cb, crosswalk_at(e.s, g.a, sid), crosswalk_at(e.s, g.b, sid));
 	if (e.far) return; // the lane lines are filtered by the road's shader there
 	lines(pt, p, v0 + (ca ? clear : 0), v1 - (cb ? clear : 0));
 	parking_paint(pt);

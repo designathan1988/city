@@ -62,7 +62,7 @@ void sidewalk_pose(const CityState &s, int seg, int side, float arc, float track
 	float u = (side == 0 ? p.walk_right : p.walk_left) + track_u;
 	o.x = float(x + dz * u);
 	o.z = float(z - dx * u);
-	o.y = y + s.catalog.furniture.sidewalk.height_m;
+	o.y = y + s.catalog.traffic.curb_m;
 	o.fx = float(dx);
 	o.fz = float(dz);
 }

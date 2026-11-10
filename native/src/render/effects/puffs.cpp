@@ -1,6 +1,5 @@
 // The puff pool (puffs.h).
 #include "render/effects/puffs.h"
-#include "render/surface_data.h"
 
 #include "core/math.h"
 
@@ -15,16 +14,19 @@ namespace city {
 
 namespace {
 constexpr float NEVER = -1e6f; // a slot's birth until it is written: long dead
+constexpr float SIZE_MIN = 0.6f, SIZE_SPAN = 0.8f; // each puff's size and life vary by these shares
+constexpr float LIFE_LOW = 0.7f, LIFE_SPAN = 0.6f;
+constexpr float SPREAD_FLATTEN = 0.4f; // the vertical share of a burst's spread
+constexpr float SPREAD_FLOOR = 0.3f; // puffs sit this much of the spread under and over the burst's height
 } // namespace
 
-void Puffs::init(const RID &scenario, const RID &material, const EffectParams &params) {
-	params_ = params;
-	pool_ = params.pool;
+void Puffs::init(const RID &scenario, const RID &material, int pool) {
+	pool_ = pool;
 	material_ = material;
 	Ref<QuadMesh> quad;
 	quad.instantiate();
 	quad->set_size(Vector2(1, 1));
-	layer_.init(scenario, OwnedMesh::of(mesh_of_arrays(quad->get_mesh_arrays(), material)), pool_, false, AABB(Vector3(-WORLD_HALF_M, -WORLD_UP_M, -WORLD_HALF_M), Vector3(2 * WORLD_HALF_M, 2 * WORLD_UP_M, 2 * WORLD_HALF_M)));
+	layer_.init(scenario, quad, material, pool, false, AABB(Vector3(-WORLD_HALF_M, -WORLD_UP_M, -WORLD_HALF_M), Vector3(2 * WORLD_HALF_M, 2 * WORLD_UP_M, 2 * WORLD_HALF_M)));
 	reset();
 }
 
@@ -38,11 +40,10 @@ void Puffs::reset() {
 void Puffs::release() { layer_.release(); }
 
 void Puffs::burst(float x, float y, float z, int count, int kind, float spread, float size, float life) {
-	const PuffsShape &K = params_.shapes.puffs;
 	for (int n = 0; n < count; n++) {
 		const float a = rng_.f() * TAU_F, r = std::sqrt(rng_.f()) * spread;
-		const float s = size * (K.size_min + K.size_span * rng_.f()), l = life * (K.life_low + K.life_span * rng_.f());
-		const Vector3 at(x + std::cos(a) * r, y + (rng_.f() - K.spread_floor) * spread * K.spread_flatten, z + std::sin(a) * r);
+		const float s = size * (SIZE_MIN + SIZE_SPAN * rng_.f()), l = life * (LIFE_LOW + LIFE_SPAN * rng_.f());
+		const Vector3 at(x + std::cos(a) * r, y + (rng_.f() - SPREAD_FLOOR) * spread * SPREAD_FLATTEN, z + std::sin(a) * r);
 		layer_.put(next_, Vector3(s, 0, 0), Vector3(0, s, 0), Vector3(0, 0, s), at, float(now_), float(kind), rng_.f(), l);
 		next_ = (next_ + 1) % pool_;
 		last_death_ = std::max(last_death_, now_ + double(l));
@@ -52,6 +53,9 @@ void Puffs::burst(float x, float y, float z, int count, int kind, float spread, 
 
 void Puffs::stamp(double now) {
 	now_ = now;
+	RenderingServer *rs = RenderingServer::get_singleton();
+	rs->material_set_param(material_, "now", float(now));
+	rs->material_set_param(material_, "wind_dir", wind_);
 }
 
 void Puffs::flush() {
@@ -60,11 +64,6 @@ void Puffs::flush() {
 		dirty_ = false;
 	}
 	const bool live = active(now_);
-	if (live) { // the shader ages the puffs by `now`: told while one lives (the layer is hidden when none does), after this frame's bursts
-		RenderingServer *rs = RenderingServer::get_singleton();
-		rs->material_set_param(material_, "now", float(now_));
-		rs->material_set_param(material_, "wind_dir", wind_);
-	}
 	if (live == shown_) return;
 	layer_.shown(live);
 	shown_ = live;

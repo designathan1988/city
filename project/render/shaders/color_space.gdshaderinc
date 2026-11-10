@@ -9,15 +9,13 @@
 #ifndef COLOR_SPACE_INC
 #define COLOR_SPACE_INC
 
-// IEC 61966-2-1 (sRGB), both ways: the linear toe's slope and its ends, the curve's offset, scale and power.
-const float SRGB_TOE = 12.92, SRGB_TOE_IN = 0.04045, SRGB_TOE_OUT = 0.0031308, SRGB_OFFSET = 0.055, SRGB_SCALE = 1.055, SRGB_GAMMA = 2.4;
-
+// IEC 61966-2-1 (sRGB), both ways.
 vec3 srgb_to_linear(vec3 c) {
-	return mix(c / SRGB_TOE, pow((c + SRGB_OFFSET) / SRGB_SCALE, vec3(SRGB_GAMMA)), step(SRGB_TOE_IN, c));
+	return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
 }
 
 vec3 linear_to_srgb(vec3 c) {
-	return mix(c * SRGB_TOE, SRGB_SCALE * pow(c, vec3(1.0 / SRGB_GAMMA)) - SRGB_OFFSET, step(SRGB_TOE_OUT, c));
+	return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c));
 }
 
 // Compatibility's decoding: c (c (0.305306011 c + 0.682171111) + 0.012522878) (tonemap_inc.glsl srgb_to_linear).
@@ -40,11 +38,11 @@ vec3 gles_encode(vec3 l) {
 
 // Compatibility's encoding of its output, the sRGB power segment (tonemap_inc.glsl linear_to_srgb), and its inverse.
 vec3 gles_output(vec3 l) {
-	return max(SRGB_SCALE * pow(max(l, vec3(0.0)), vec3(1.0 / SRGB_GAMMA)) - SRGB_OFFSET, vec3(0.0));
+	return max(1.055 * pow(max(l, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, vec3(0.0));
 }
 
 vec3 gles_output_inverse(vec3 e) {
-	return pow((max(e, vec3(0.0)) + SRGB_OFFSET) / SRGB_SCALE, vec3(SRGB_GAMMA));
+	return pow((max(e, vec3(0.0)) + 0.055) / 1.055, vec3(2.4));
 }
 
 // A source_color texture sample or a colour uniform, in linear. (The renderer test is the preprocessor's, the same as

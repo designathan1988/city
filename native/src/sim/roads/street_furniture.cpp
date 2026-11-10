@@ -12,8 +12,10 @@ namespace city {
 using namespace furniture;
 
 namespace {
+constexpr int FURN_FULL = 0, FURN_NONE = 2; // RoadSegment furniture level (SEG_FURNITURE_MASK)
+constexpr int BASE_RESIDENTIAL = 1, BASE_INDUSTRIAL = 3; // ZoneDef::base
 constexpr int MAX_BESIDE = 16; // pieces a passage check looks at across one cross-section
-constexpr double SQRT2 = 1.4142135623730951; // the square root of two: a square's diagonal per side
+constexpr double SQRT2 = 1.4142135623730951;
 constexpr int SLOT_TRIES = 64; // a piece is moved along past at most this many others before it gives up
 // Two places closer than what they need by under this are apart: a piece moved to just touch another must not find it
 // in the way again through the rounding of the sum it was moved by.
@@ -96,23 +98,19 @@ FurnitureSpot column(const Placer &c, const LampRow &row, double v, int station)
 	FurnitureSpot s = spot(c.net, FurnitureKind::LAMP, c.sid, c.p, v, row.pole_u2, toward_road(1 - row.side), 0.f);
 	s.row = 1;
 	s.station = station;
-	s.column = true;
 	return s;
 }
 
-// Lamps: spread evenly at most span_m apart between a pole just past each crosswalk (and the signal post's place): the
-// power line's poles, their lamps on them (lamps.pole_lit_every), or lighting columns. The columns of the other face keep
-// to the stations, staggered, or to a beat of their own (column_every_m).
+// Lamps: spread evenly at most span_m apart between a pole just past each crosswalk (and the signal post's place). The
+// lighting columns of the other face keep to the stations, staggered, or to a beat of their own (column_every_m).
 void lamps(Placer &c) {
 	const LampRow row = lamp_row(c.net, c.sid);
 	const LampDef &d = defs(c.net).lamps;
 	for (int k = 0; k < row.stations; k++) {
-		if ((k == 0 && row.skip[0]) || (k + 1 == row.stations && row.skip[1])) continue; // one pole at a joint: the other segment's
 		const double v = row.origin + row.spacing * k;
 		FurnitureSpot main_pole = spot(c.net, FurnitureKind::LAMP, c.sid, c.p, v, row.pole_u, toward_road(row.side), 0.f);
 		main_pole.station = k;
-		main_pole.column = !row.line;
-		main_pole.lit = !row.line || k % int(d.pole_lit_every) == 0;
+		main_pole.lit = !row.twin || k % int(d.pole_lit_every) == 0;
 		c.all.push_back(main_pole);
 		const bool one = row.stations == 1; // a short block's only station has the other face's lamp beside it
 		if (!row.twin || d.column_every_m > 0.f || (!one && k + 1 == row.stations)) continue;

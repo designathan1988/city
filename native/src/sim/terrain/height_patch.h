@@ -12,13 +12,14 @@
 namespace city {
 
 // Bilinear sample of an N x N per-vertex grid at world (x, z) (world x = (ix - N/2) * spacing, clamped to the grid);
-// value(ix, iz) gives the stored sample of column ix, row iz, in metres (the caller has both: no index is turned back into them).
+// value(i) gives the stored sample i (index iz * N + ix) in metres.
 template <typename F>
 float grid_sample(float x, float z, int N, float spacing, F &&value) {
 	float fx = x / spacing + N * 0.5f, fz = z / spacing + N * 0.5f;
 	int ix = clampi(int(std::floor(fx)), 0, N - 2), iz = clampi(int(std::floor(fz)), 0, N - 2);
 	float tx = clampf(fx - ix, 0, 1), tz = clampf(fz - iz, 0, 1);
-	return lerpf(lerpf(value(ix, iz), value(ix + 1, iz), tx), lerpf(value(ix, iz + 1), value(ix + 1, iz + 1), tx), tz);
+	size_t i0 = size_t(iz) * N + ix, i1 = i0 + N;
+	return lerpf(lerpf(value(i0), value(i0 + 1), tx), lerpf(value(i1), value(i1 + 1), tx), tz);
 }
 
 struct HeightPatch {
@@ -30,8 +31,9 @@ struct HeightPatch {
 	// The same value as Heightfield::height_at for every point whose four grid nodes lie in the window.
 	float height_at(float x, float z) const {
 		if (final_h.empty()) return 0.f;
-		return grid_sample(x, z, N, spacing, [&](int ix, int iz) {
-			return final_h[size_t(clampi(iz - z0, 0, h - 1)) * size_t(w) + size_t(clampi(ix - x0, 0, w - 1))];
+		return grid_sample(x, z, N, spacing, [&](size_t i) {
+			const int gx = clampi(int(i % size_t(N)) - x0, 0, w - 1), gz = clampi(int(i / size_t(N)) - z0, 0, h - 1);
+			return final_h[size_t(gz) * size_t(w) + size_t(gx)];
 		});
 	}
 };

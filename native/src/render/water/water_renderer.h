@@ -8,7 +8,7 @@
 #include "render/mesh_queue.h"
 #include "render/render_context.h"
 #include "render/rs_util.h"
-#include "sim/terrain/ground_patch.h"
+#include "sim/terrain/heightfield.h"
 
 #include <cstdint>
 #include <unordered_map>
@@ -34,7 +34,7 @@ private:
 	struct Draw {
 		godot::RID inst, mesh;
 	};
-	static void build(const GroundRead &ground, int64_t key, MeshBuilder &mb);
+	static void build(const Heightfield &hf, int64_t key, MeshBuilder &mb);
 	godot::RID scenario_, material_;
 	std::unordered_set<int64_t> dirty_;
 	std::unordered_map<int64_t, Draw> chunks_;

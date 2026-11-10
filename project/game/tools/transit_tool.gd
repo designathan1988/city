@@ -4,9 +4,11 @@
 ## hint keys.
 extends ToolBase
 
+const MODE_BUS := 0
+const MODE_TRAIN := 1
 
 var kind := "stop"
-var mode := CityStore.code(&"TransitMode", &"TRAIN")
+var mode := MODE_TRAIN
 var points := PackedVector3Array()
 var stops := PackedInt32Array()
 var cursor := Vector3.INF
@@ -15,7 +17,7 @@ var _overlay: TransitOverlay
 
 func enter() -> void:
 	kind = params.get("kind", "stop")
-	mode = params.get("mode", CityStore.code(&"TransitMode", &"TRAIN"))
+	mode = params.get("mode", MODE_TRAIN)
 	ctl.hint.emit(tr("game.hint.transit"), true)
 	CityStore.query(&"transit_xray", [true])
 	_overlay = TransitOverlay.new()
@@ -55,7 +57,7 @@ func click(p: Vector3) -> void:
 ## The stop under a click joins the line being made: of the first one's mode, once it has one.
 func _pick(p: Vector3) -> void:
 	var first := _first_mode()
-	var stop: int = CityStore.query(&"transit_pick", [p, maxi(first, CityStore.code(&"TransitMode", &"BUS")), first < 0])
+	var stop: int = CityStore.query(&"transit_pick", [p, maxi(first, MODE_BUS), first < 0])
 	if stop < 0:
 		ctl.hint.emit(tr("hint.transit.lineShort" if ctl.double_press else "hint.transit.noStop"), false)
 	elif stops.is_empty() or stops[stops.size() - 1] != stop:

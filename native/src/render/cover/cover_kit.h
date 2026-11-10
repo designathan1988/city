@@ -4,9 +4,6 @@
 // it. A kind says how far apart its plants may stand and how big they grow; where they stand is cover_renderer.cpp's.
 #pragma once
 
-#include "render/data_reader.h"
-#include "render/mesh_builder.h"
-
 #include <godot_cpp/classes/array_mesh.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
@@ -22,12 +19,12 @@ constexpr int COVER_PIECES = int(CoverPiece::COUNT);
 struct CoverLook {
 	float spacing_m = 1, least = 0, size0 = 0, size1 = 0, tall = 1, sink = 0, tint_vary = 0, road_margin_m = 0;
 	bool casts = false, sways = false;
-	std::vector<MeshBuilder> variants; // each one's shape: the renderer makes it a mesh with the material it is drawn with (surface_data.h)
+	std::vector<godot::Ref<godot::ArrayMesh>> variants;
 };
 
 class CoverKit {
 public:
-	bool build(const DataValue &table, godot::PackedStringArray &errors); // cover.json, through the strict reader's values
+	bool build(const godot::Dictionary &table, godot::PackedStringArray &errors);
 	const CoverLook &look(CoverPiece p) const { return looks_[size_t(p)]; }
 	float reach_m = 0, fade_m = 0, tuft_share = 0;
 

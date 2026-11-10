@@ -34,69 +34,6 @@ int straight_on(const RoadNetwork &net, int n, int approach) {
 	return best;
 }
 
-// The face segment `seg`'s power line stands on, or -1 when it has none (lit by columns, no sidewalk, rails, a ring).
-int line_face(const RoadNetwork &net, int seg) {
-	const RoadSegment &g = net.segs[size_t(seg)];
-	const Profile &p = net.profile_of(seg);
-	if (p.edges.empty() || p.rail || p.ring || !g.alive || (g.flags & SEG_LIT_BY_COLUMNS)) return -1;
-	const bool right = walk_on(p, 0), left = walk_on(p, 1);
-	if (!right && !left) return -1;
-	return right && left ? row_face(net, seg) : (right ? 0 : 1);
-}
-
-// Whether the end of segment `sid` at node `n` is a joint its power line goes on through, straight on or round a bend, on the
-// same face of the street and with no crosswalk over it: one pole stands there for both segments (Roadcraft powerLine.ts: the
-// line coming in carries on from its last pole, not two poles a few metres apart), `other` the segment it goes on into and
-// `other_face` the face its line takes.
-bool line_joint(const RoadNetwork &net, int sid, int n, int face, int &other, int &other_face) {
-	other = net.going_on(n, sid);
-	if (other < 0 || net.nodes[size_t(n)].crossing != CROSSING_NONE) return false;
-	const bool same_way = (net.segs[size_t(sid)].b == n) == (net.segs[size_t(other)].a == n); // the faces keep their names
-	other_face = line_face(net, other);
-	return other_face == (same_way ? face : 1 - face);
-}
-
-// The arc on `sid` of the pole a joint at node `n` shares (line_joint): where its pole line (at offset `u`) and `other`'s (at
-// `other_u`) cross, each run on along its tangent at its mouth, so a bend's pole stands at the corner both lines turn at and its
-// wires keep to the footways (Roadcraft poles.ts: a corner of the route gets a pole); the mouth when the two run straight on
-// (poles.same_arm_sin, two lines through each other). Its footprint stays on its own footway, between the mouths, as every
-// piece's does (street_furniture.cpp Placer::slot): the walkers know a piece by its own segment's sidewalk, along its arc
-// (sim/traffic/ped_furniture.cpp), and a pole over a mouth would stand half on the next segment's sidewalk, where they walk on
-// as if it were not there. And clear of the walkers stepping on and off the footway at the mouth: one coming over the node
-// steps on wherever it walked across (traffic at_node: its line ends at the same u), and the company of one stepping off
-// keeps a step behind it there, on the line between them (traffic ped_party.cpp place_by), so a pole at the mouth takes them in.
-double joint_v(const RoadNetwork &net, int sid, int n, float u, int other, float other_u) {
-	const RoadSegment &g = net.segs[size_t(sid)];
-	const TrafficParams &tp = net.cat->traffic;
-	// a pole's half_v (furniture::spot, facing the road), a walker's body (ped_body_m, as leaves_way keeps it) and the step its
-	// company keeps behind it (ped_party.cpp company_gap: two bodies and ped_gap_m)
-	const double clear = defs(net).footprint[int(FurnitureKind::LAMP)].x_m * 0.5 + tp.ped_body_m + 2 * tp.ped_body_m + tp.ped_gap_m;
-	const double lo = g.retreat_a + clear, hi = std::max(lo, g.len - g.retreat_b - clear);
-	// A segment's pole line at its mouth on node `n`: the point at offset u (+u on the left of a -> b) and the way into the node.
-	const auto mouth_line = [&](int seg, float off, double &v, double &px, double &pz, double &dx, double &dz) {
-		const RoadSegment &q = net.segs[size_t(seg)];
-		const bool at_b = q.b == n;
-		v = at_b ? q.len - q.retreat_b : q.retreat_a;
-		const double t = t_at_length(q.table, v);
-		q.q.at(t, px, pz);
-		q.q.deriv(t, dx, dz);
-		const double l = std::hypot(dx, dz) > 0 ? std::hypot(dx, dz) : 1;
-		dx /= l;
-		dz /= l;
-		px += dz * off; // the left of (dx, dz) is (dz, -dx), as in sim/roads/geometry.h
-		pz -= dx * off;
-		if (!at_b) {
-			dx = -dx;
-			dz = -dz;
-		}
-	};
-	double v, ov, ax, az, adx, adz, bx, bz, bdx, bdz;
-	mouth_line(sid, u, v, ax, az, adx, adz);
-	mouth_line(other, other_u, ov, bx, bz, bdx, bdz);
-	double along = 0, theirs = 0;
-	if (std::fabs(adx * bdz - adz * bdx) < defs(net).poles.same_arm_sin || !line_line(ax, az, adx, adz, bx, bz, bdx, bdz, along, theirs)) return std::clamp(v, lo, hi);
-	return std::clamp(g.b == n ? v + along : v - along, lo, hi);
-}
 } // namespace
 
 LampRow lamp_row(const RoadNetwork &net, int sid) {
@@ -108,10 +45,11 @@ LampRow lamp_row(const RoadNetwork &net, int sid) {
 	if (!right && !left) return r;
 	const StreetFurnitureDef &d = defs(net);
 	r.any = true;
-	// The power line alone, its poles carrying the lamps; or lighting columns, on both faces when both have a sidewalk.
-	r.line = (g.flags & SEG_LIT_BY_COLUMNS) == 0;
-	r.twin = !r.line && right && left;
-	r.side = right && left ? row_face(net, sid) : (right ? 0 : 1);
+	// the wires on one face, a lighting column on the other when there is one (the Roadcraft 4.0 street); the line on the east or south face
+	r.twin = right && left;
+	const RoadNode &a = net.nodes[size_t(g.a)], &b = net.nodes[size_t(g.b)];
+	const double dx = b.x - a.x, dz = b.z - a.z; // the right face looks to (-dz, dx): east is +x, south +z
+	r.side = right && left ? (r.twin || dx - dz >= 0 ? 0 : 1) : (right ? 0 : 1);
 	const float pole = d.sidewalk.kerb_clear_m + d.footprint[int(FurnitureKind::LAMP)].z_m * 0.5f;
 	r.pole_u = kerb_in(p, r.side, pole);
 	r.head_u = r.pole_u + toward_road(r.side) * d.lamps.reach_m;
@@ -121,24 +59,14 @@ LampRow lamp_row(const RoadNetwork &net, int sid) {
 	r.across = std::max(d.lamps.pool_least_m, (hi - lo) * d.lamps.pool_share + d.lamps.pool_margin_m);
 	r.centre = r.pole_u + toward_road(r.side) * std::max(d.lamps.reach_m, r.across - d.lamps.pool_back_m);
 	if (r.twin) {
-		r.pole_u2 = kerb_in(p, 1 - r.side, pole);
-		r.head_u2 = r.pole_u2 + toward_road(1 - r.side) * d.lamps.reach_m;
+		r.pole_u2 = kerb_in(p, 1, pole);
+		r.head_u2 = r.pole_u2 + toward_road(1) * d.lamps.reach_m;
 		r.centre = (r.head_u + r.head_u2) * 0.5f;
 	}
-	// a pole just past each crosswalk, after the place a signal post may take, and evenly at most span_m apart between; at a
-	// joint the line goes on through, one pole where the two lines meet, the lower-numbered segment's
+	// a pole just past each crosswalk, after the place a signal post may take, and evenly at most span_m apart between
 	const double past = d.crossing.zebra_to_m + d.footprint[int(FurnitureKind::SIGNAL)].z_m + d.footprint[int(FurnitureKind::LAMP)].x_m * 0.5;
-	const double v0 = g.retreat_a, v1 = g.len - g.retreat_b;
+	const double v0 = g.retreat_a, v1 = g.len - g.retreat_b, from = v0 + past, to = v1 - past;
 	if (v1 <= v0) return r;
-	int other[2] = { -1, -1 }, other_face[2] = { -1, -1 };
-	bool joint[2] = { false, false };
-	double ends[2] = { v0 + past, v1 - past };
-	for (int end = 0; end < 2 && r.line; end++) {
-		const int n = end == 0 ? g.a : g.b;
-		joint[end] = line_joint(net, sid, n, r.side, other[end], other_face[end]);
-		if (joint[end]) ends[end] = joint_v(net, sid, n, r.pole_u, other[end], kerb_in(net.profile_of(other[end]), other_face[end], pole));
-	}
-	const double from = ends[0], to = ends[1];
 	r.spacing = r.span = d.lamps.span_m;
 	if (to <= from) { // a short block: one pole in its middle
 		r.origin = (v0 + v1) / 2;
@@ -149,7 +77,6 @@ LampRow lamp_row(const RoadNetwork &net, int sid) {
 	r.origin = from;
 	r.spacing = (to - from) / spans;
 	r.stations = spans + 1;
-	for (int end = 0; end < 2; end++) r.skip[end] = joint[end] && other[end] < sid;
 	return r;
 }
 

@@ -80,24 +80,6 @@ Array crossing_kerb(const CityState &s, int n) {
 // Walkers whose body overlaps another's (centres closer than `touch`): [walking, waiting at a kerb].
 // Two bodies side by side (their centres two radii apart, to the rounding of the sum) touch; they do not overlap.
 constexpr float TOUCH_EPS_M = 1e-3f;
-constexpr int OVERLAP_PAIRS_SHOWN = 16; // the pairs listed for the audit
-// The same, each overlapping pair said once: [the modes of the two (PedMode), where the first stands, whether they walk together (a
-// party)], the first `most` of them: what the audit reads a cause from.
-Array people_overlap_pairs(const TrafficState &t, float touch, int most) {
-	Array out;
-	for (size_t i = 0; i < t.peds.size() && out.size() < most; i++) {
-		const Pedestrian &a = t.peds[i];
-		if (!a.alive) continue;
-		for (size_t j = i + 1; j < t.peds.size() && out.size() < most; j++) {
-			const Pedestrian &b = t.peds[j];
-			const float dx = a.cur.x - b.cur.x, dz = a.cur.z - b.cur.z;
-			if (!b.alive || dx * dx + dz * dz >= touch * touch) continue;
-			out.push_back(Array::make(int(a.mode), int(b.mode), Vector3(a.cur.x, a.cur.y, a.cur.z), a.mate == int(j) || b.mate == int(i) || a.with == int(j) || b.with == int(i)));
-		}
-	}
-	return out;
-}
-
 Array people_overlaps(const TrafficState &t, float touch) {
 	std::vector<int> alive;
 	for (int i = 0; i < int(t.peds.size()); i++)
@@ -173,15 +155,6 @@ String jam_detail(const CityState &s, int id, const Vehicle &v, int r) {
 
 namespace {
 // The parked side of the traffic: bays and sources read, scenery cars, the lots' cars.
-// What the sight rule (sim/traffic/sight.h) holds: the longest a near vehicle has stood (nothing takes a standing vehicle away, so a
-// gridlock shows here), and the vehicles and walkers taken away where they may be seen.
-void sight_probe(const TrafficState &t, Dictionary &d) {
-	float stuck_longest = 0;
-	for (int id : t.micro_list) stuck_longest = std::max(stuck_longest, t.vehicles[size_t(id)].stuck);
-	d["stuck_longest_s"] = stuck_longest;
-	d["gone_in_sight"] = Array::make(t.gone_in_sight, t.ped_gone_in_sight);
-}
-
 void park_probe(const TrafficState &t, Dictionary &d) {
 	const ParkingState &p = t.park;
 	Array ms;
@@ -221,12 +194,11 @@ Dictionary CityCore::traffic_probe(int sample) {
 	d["people"] = t.ped_count;
 	d["trips_arrived"] = t.arrived;
 	d["trips_lost"] = t.lost;
-	sight_probe(t, d);
+	d["lost_stuck"] = t.stuck_lost; // of which: removed after standing stuck_despawn_s
 	d["kerb"] = Array::make(t.kerb_planned, t.kerb_drops, t.kerb_picks, t.kerb_deliveries, t.kerb_abandoned); // at the kerb: stops planned; set down, picked up, delivered; given up
 	d["people_arrived"] = t.ped_arrived;
 	d["people_waiting"] = t.ped_waiting; // at a kerb for the walk phase or a gap
 	d["people_overlaps"] = people_overlaps(t, 2 * state_->catalog.traffic.ped_body_m - TOUCH_EPS_M); // walkers inside another's body: walking, waiting
-	if (sample > 0) d["people_overlap_pairs"] = people_overlap_pairs(t, 2 * state_->catalog.traffic.ped_body_m - TOUCH_EPS_M, OVERLAP_PAIRS_SHOWN);
 	d["people_in_furniture"] = traffic::walkers_in_furniture(*state_); // walkers whose body stands in a street piece
 	// pieces of the map by kind (signal, lamp, hydrant, bin, bench, tree): every segment placed again, so only with a sample
 	if (sample > 0) d["street_furniture"] = furniture_counts(*state_);

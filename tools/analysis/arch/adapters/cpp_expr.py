@@ -4,7 +4,7 @@ import re
 from clang import cindex as ci
 
 K = ci.CursorKind
-READ, WRITE, MUTATE, PART = 0, 1, 2, 3  # PART: the object is written in one of its parts (`v.cur.x = 1` for `cur`)
+READ, WRITE, MUTATE = 0, 1, 2
 WRAPPERS = {K.UNEXPOSED_EXPR, K.PAREN_EXPR, K.CSTYLE_CAST_EXPR, K.CXX_FUNCTIONAL_CAST_EXPR, K.CXX_STATIC_CAST_EXPR, K.CXX_REINTERPRET_CAST_EXPR,
             K.CXX_CONST_CAST_EXPR}
 CALLABLE_DECLS = {K.FUNCTION_DECL, K.CXX_METHOD, K.FUNCTION_TEMPLATE, K.CONSTRUCTOR, K.CONVERSION_FUNCTION}
@@ -204,16 +204,13 @@ class Expressions:
             ref = c.referenced
             if ref is not None:
                 if self.is_state(ref):
-                    self.ev("wp" if mode == PART else "w" if mode != READ else "r", c, self.u.target(ref))
+                    self.ev("w" if mode != READ else "r", c, self.u.target(ref))
                 elif ref.kind == K.PARM_DECL:
                     found = self.params.get(ref.get_usr())
                     if found is not None and found[0] != self.s["id"]:
                         self.ev("opr", c, found[0], found[1])
             for k in c.get_children():
-                # A part written is its whole written in part: `v.cur.x = 1` writes `x` and, in part, `cur` (its own event, so what is known field
-                # by field stays so). Through a pointer the part is another object: the pointer is read.
-                through_pointer = k.type.get_canonical().kind == ci.TypeKind.POINTER
-                self.expr(k, PART if kind == K.MEMBER_REF_EXPR and mode != READ and not through_pointer else READ)
+                self.expr(k, READ)
         elif kind == K.ARRAY_SUBSCRIPT_EXPR:
             kids = list(c.get_children())
             if kids:
