@@ -39,6 +39,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 
 **Núcleo — native/src/core**
 - `native/src/core/bytes.h` — leitor/escritor binário do formato de save
+- `native/src/core/checks.h` · `native/src/core/id_table.h` — whether this build counts and checks (the tests' DLL); a table addressed by id whose slots a cut of the city copies (brought back from the work before the return, for the cut of C9)
 - `native/src/core/color.h` — "#RRGGBB"/"#RRGGBBAA" → RGBA8 empacotado (único parser de cor)
 - `native/src/core/grid.h` — chunks, chaves de célula, hash espacial e orçamento de build
 - `native/src/core/job_pool.cpp` · `native/src/core/job_pool.h` — pool de jobs por prioridade e `parallel_for`; a chave do job é tipada (`JobKey`: uma `JobLane` por usuário e um id), então dois usuários não se substituem na fila
@@ -167,6 +168,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/sim/state/change_log.h` — canal único de mudanças (campos líquidos e sujos)
 - `native/src/sim/state/city_state.h` — fonte única da verdade, travas, poses, jobs e revisões
 - `native/src/sim/state/city_take.cpp` — a city read aside taken into the live state (`take_city`) and the data's links to the channels (`CityState::bind`)
+- `native/src/sim/state/map_hold.cpp` · `native/src/sim/state/map_hold.h` — what a thread builds while it holds the map, counted by the lane of its job in the tests' DLL: which producer still builds under the lock
 - `native/src/sim/state/pose_buffer.h` — buffer triplo sem trava das poses (PoseFrame)
 - `native/src/sim/terrain/compose.cpp` — as alturas finais compostas (base, modificadores e chão das vias): a composição segurada de uma edição em massa (blocos fundidos, cada um composto uma vez) e o ponto mais perto de uma polilinha por regiões (faixa, cunha e pontas de cada peça)
 - `native/src/sim/terrain/final_heights.h` — the land's final heights kept by tile: the natural ground but where a road, a pad or the ground shaped to a road changed it; asked by column and row; the 16-bit form a height is stored in

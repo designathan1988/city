@@ -92,6 +92,35 @@ bool JobPool::running_current() {
 	return current(running_key, running_seq);
 }
 
+bool JobPool::running(JobKey &key) {
+	if (!running_pool) return false;
+	key = running_key;
+	return true;
+}
+
+const char *job_lane_name(JobLane lane) {
+	switch (lane) {
+		case JobLane::ROADS: return "roads";
+		case JobLane::ROADS_FAR: return "roads_far";
+		case JobLane::VERGES: return "verges";
+		case JobLane::STRUCTURES: return "structures";
+		case JobLane::PROPS: return "props";
+		case JobLane::BUILDING: return "building";
+		case JobLane::BUILDING_SUPER: return "building_super";
+		case JobLane::TREES_NEAR: return "trees_near";
+		case JobLane::TREES_FAR: return "trees_far";
+		case JobLane::COVER: return "cover";
+		case JobLane::ZONES: return "zones";
+		case JobLane::FOG: return "fog";
+		case JobLane::CANYON: return "canyon";
+		case JobLane::SHORE: return "shore";
+		case JobLane::RUINS: return "ruins";
+		case JobLane::WATER: return "water";
+		case JobLane::SIGNATURES: return "signatures";
+	}
+	return "";
+}
+
 void JobPool::parallel_for(size_t n, const std::function<void(size_t)> &fn) {
 	if (n == 0) return;
 	if (n == 1 || in_pool || workers_.empty()) {
