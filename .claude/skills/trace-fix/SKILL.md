@@ -155,6 +155,13 @@ change, no special case, no swallowed error, no `--bless` to pass, no moved cost
 For each cause: the test that fails before and passes after, the change, the check of what the change reaches
 (CLAUDE.md verification table, the fastest test that proves it), then
 
+**A fix that can reach the screen is proven by photos, every time.** When the change touches render, terrain, shaders,
+meshes, light, the camera or the data that feeds them (`project/data/render`, `project/data/game`), whatever its purpose
+(a performance fix on the land's heights can still move the land): photos of the element before the change and after it,
+from near and from several angles, by day and by night where light is involved, into `dist/review-c<n>/before` and
+`/after`; compare them (`tools/build/photodiff.py`), look at each picture yourself and explain every difference by its
+cause. A difference with no cause is a defect: back to the reading. No photos, no `fix`.
+
 `$L fix C<n> --how "what changed, why it cannot return" --commit <sha>` and commit and push by theme. A fix goes by
 cause: it closes every problem under that cause, so before it check each of them in the changed code. A problem the
 correction did not reach belongs to another cause: `$L cause link` it there first.
