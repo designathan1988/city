@@ -100,6 +100,7 @@ private:
 	std::priority_queue<Item, std::vector<Item>, Later> q_;
 	std::deque<std::function<void()>> helpers_; // parallel_for helpers, taken before any keyed job
 	size_t busy_ = 0;
+	size_t started_ = 0; // workers whose thread reached the stack (the constructor returns when all have)
 	bool paused_ = false;
 	std::unordered_map<JobKey, Slot, JobKeyHash> slots_;
 	// Each key's newest submitted seq while that job is queued or running (current()): gone when it finishes.

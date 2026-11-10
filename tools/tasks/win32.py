@@ -1,6 +1,7 @@
 # The Windows side of proc: a process tree in a Job Object (KILL_ON_JOB_CLOSE; created suspended, assigned, then resumed, so
 # not one grandchild escapes the job), its standard handles on a log, and the private desktop WinSta0\roadcraft_tests whose
-# windows never reach the user's screen. Imported only on Windows.
+# windows never reach the user's screen. The job carries the tree's processors (JOB_OBJECT_LIMIT_AFFINITY): what the scheduler
+# granted a task is what its processes can run on, whatever thread pools they start. Imported only on Windows.
 from __future__ import annotations
 
 import atexit
@@ -57,7 +58,7 @@ JobObjectBasicProcessIdList, JobObjectExtendedLimitInformation = 3, 9
 JOB_PID_ROOM = 64  # process ids asked for at first; the list grows when the job holds more
 ERROR_MORE_DATA = 234
 SYNCHRONIZE, PROCESS_QUERY_LIMITED_INFORMATION = 0x00100000, 0x1000
-JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x2000
+JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, JOB_OBJECT_LIMIT_AFFINITY = 0x2000, 0x10
 CREATE_SUSPENDED, CREATE_UNICODE_ENVIRONMENT = 0x4, 0x400
 EXTENDED_STARTUPINFO_PRESENT, CREATE_NO_WINDOW = 0x80000, 0x08000000
 STARTF_USESTDHANDLES = 0x100
@@ -85,6 +86,8 @@ k32.WaitForSingleObject.argtypes = [W.HANDLE, W.DWORD]
 k32.WaitForSingleObject.restype = W.DWORD
 k32.GetExitCodeProcess.argtypes = [W.HANDLE, C.POINTER(W.DWORD)]
 k32.CloseHandle.argtypes = [W.HANDLE]
+k32.GetCurrentProcess.restype = W.HANDLE
+k32.GetProcessAffinityMask.argtypes = [W.HANDLE, C.POINTER(C.c_size_t), C.POINTER(C.c_size_t)]
 k32.InitializeProcThreadAttributeList.argtypes = [C.c_void_p, W.DWORD, W.DWORD, C.POINTER(C.c_size_t)]
 k32.UpdateProcThreadAttribute.argtypes = [C.c_void_p, W.DWORD, C.c_size_t, C.c_void_p, C.c_size_t, C.c_void_p, C.c_void_p]
 k32.DeleteProcThreadAttributeList.argtypes = [C.c_void_p]
@@ -135,14 +138,24 @@ def command_line(argv: list[str] | str, env: dict | None) -> tuple[str | None, s
     return exe, line
 
 
-class JobTree:
-    """One process and everything it starts, in a job of their own."""
+def usable_cores() -> list[int]:
+    """The logical processors this process may run on (its affinity, of its processor group)."""
+    mine, system = C.c_size_t(), C.c_size_t()
+    _check(k32.GetProcessAffinityMask(k32.GetCurrentProcess(), C.byref(mine), C.byref(system)), "GetProcessAffinityMask")
+    return [n for n in range(C.sizeof(C.c_size_t) * 8) if mine.value >> n & 1]
 
-    def __init__(self, argv, cwd, env, log_file, hidden: bool):
+
+class JobTree:
+    """One process and everything it starts, in a job of their own, on `cores` only when given."""
+
+    def __init__(self, argv, cwd, env, log_file, hidden: bool, cores: list[int] | None = None):
         exe, line = command_line(argv, env)
         self.job = _check(k32.CreateJobObjectW(None, None), "CreateJobObject")
         limits = JOBOBJECT_EXTENDED_LIMIT_INFORMATION()
         limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+        if cores:
+            limits.BasicLimitInformation.LimitFlags |= JOB_OBJECT_LIMIT_AFFINITY
+            limits.BasicLimitInformation.Affinity = sum(1 << n for n in set(cores))
         try:
             _check(k32.SetInformationJobObject(self.job, JobObjectExtendedLimitInformation, C.byref(limits),
                                                C.sizeof(limits)), "SetInformationJobObject")

@@ -24,17 +24,18 @@ class Process:
     """A started process tree. `deadline_s` arms a watchdog that kills the tree when it passes, whoever waits."""
 
     def __init__(self, argv: list[str] | str, *, cwd: str | Path | None = None, env: dict | None = None,
-                 log: str | Path | None = None, hidden: bool = False, deadline_s: float | None = None):
+                 log: str | Path | None = None, hidden: bool = False, deadline_s: float | None = None,
+                 cores: list[int] | None = None):
         self.started = time.monotonic()
         self._done = False
         self._timer = None
         log_file = open(log, "wb") if log else open(os.devnull, "wb")
         try:
             if os.name == "nt":
-                self._tree = win32.JobTree(argv, cwd, env, log_file, hidden)
+                self._tree = win32.JobTree(argv, cwd, env, log_file, hidden, cores)
                 self.pid = self._tree.pid
             else:
-                self._start_posix(argv, cwd, env, hidden, log_file)
+                self._start_posix(argv, cwd, env, hidden, log_file, cores)
         finally:
             log_file.close()  # the child has its own handle
         if deadline_s is not None:
@@ -42,14 +43,15 @@ class Process:
             self._timer.daemon = True
             self._timer.start()
 
-    def _start_posix(self, argv, cwd, env, hidden, log_file):
+    def _start_posix(self, argv, cwd, env, hidden, log_file, cores):
         args = shlex.split(argv) if isinstance(argv, str) else list(argv)
         if hidden and shutil.which("xvfb-run"):
             args = ["xvfb-run", "-a"] + args
         merged = dict(os.environ)
         merged.update({k: str(v) for k, v in (env or {}).items()})
+        pin = (lambda: os.sched_setaffinity(0, cores)) if cores and hasattr(os, "sched_setaffinity") else None
         self._p = subprocess.Popen(args, cwd=cwd, env=merged, stdin=subprocess.DEVNULL, stdout=log_file,
-                                   stderr=subprocess.STDOUT, start_new_session=True)
+                                   stderr=subprocess.STDOUT, start_new_session=True, preexec_fn=pin)
         self.pid = self._p.pid
 
     def wait(self, timeout_s: float | None) -> int | None:
@@ -94,12 +96,22 @@ class Process:
         self.close()
 
 
-def run(argv: list[str] | str, timeout_s: float, *, cwd=None, env=None, log=None, hidden=False) -> tuple[int | None, bool]:
+def run(argv: list[str] | str, timeout_s: float, *, cwd=None, env=None, log=None, hidden=False,
+        cores: list[int] | None = None) -> tuple[int | None, bool]:
     """(exit code, timed out). On the deadline the whole tree is killed; after a normal exit, what the process left
-    running is killed too (a task ends with its tree)."""
-    with Process(argv, cwd=cwd, env=env, log=log, hidden=hidden) as p:
+    running is killed too (a task ends with its tree). `cores`: the logical processors the tree may run on."""
+    with Process(argv, cwd=cwd, env=env, log=log, hidden=hidden, cores=cores) as p:
         code = p.wait(timeout_s)
         return code, code is None
+
+
+def usable_cores() -> list[int]:
+    """The logical processors this process may run on: what a run has to hand out."""
+    if os.name == "nt":
+        return win32.usable_cores()
+    if hasattr(os, "sched_getaffinity"):
+        return sorted(os.sched_getaffinity(0))
+    return list(range(os.cpu_count() or 1))
 
 
 def alive(pid: int) -> bool:

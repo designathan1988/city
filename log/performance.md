@@ -312,3 +312,17 @@ sky POSITION 022b734d; atmosphere 1c604b47; occlusion c978aeeb; lot_access e7346
   band between `low_from_m` and `low_to_m` (100 to 260 m); a still light sets nothing.
 - Check: scripts and gates OK; the sky photographed hidden and frozen before and after from the street (16 h and 22 h), mid and
   high: at most 934 of 921,600 pixels differ, on leaf and wire edges (two runs differ so: suites.json, `quick`).
+
+### C2, first part (P65): a task runs on the cores the run gave it
+- Cause: a Godot task was counted as three cores by `tools/tasks/pool.py` while its process sized the core's `JobPool` (and the
+  engine its own pool) by the machine's processors: eight tests at once started some two hundred workers on 24 threads.
+- Change: the scheduler hands out processors, not a count: `Pool.free_cores`, a task's share goes to `proc.run(cores=)` and
+  becomes the affinity of its Job Object (`win32.JobTree`, `JOB_OBJECT_LIMIT_AFFINITY`; `sched_setaffinity` elsewhere). A task
+  also takes the cores no waiting task will ask for (`Pool._spare`): one test alone has the machine. The core's pool is sized by
+  the process's affinity (`job_pool.cpp usable_processors`), so a confined process starts workers for its cores only.
+  `JobPool`'s constructor returns once every worker waits on the stack (a starting thread no longer finds a queued job).
+- Cannot return: what a process tree can run on is set by the kernel from what the scheduler counted; no pool inside it can
+  take more, whatever it starts.
+- Check: `tools/tasks/tests` (42 pass; the new one reads each task's affinity: 2 of 4 while another waits, 4 alone),
+  `job_pool_test` three runs, `traffic_hash_test`, `digest` equal to the golden on a share of cores and on all of them.
+- Open under C2 (P64): a core test still boots the whole game on a whole map.

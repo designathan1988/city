@@ -8,9 +8,31 @@
 #include <chrono>
 #include <memory>
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+#else
+#include <sched.h>
+#endif
+
 namespace city {
 
 namespace {
+// The logical processors this process may run on: its affinity, not the machine's count. A process confined to a few (a test
+// under the orchestrator, tools/tasks/pool.py) starts workers for those, never one a core of the machine.
+unsigned usable_processors() {
+#ifdef _WIN32
+	DWORD_PTR mine = 0, system = 0;
+	if (GetProcessAffinityMask(GetCurrentProcess(), &mine, &system) && mine) return unsigned(__builtin_popcountll(mine));
+#else
+	cpu_set_t set;
+	CPU_ZERO(&set);
+	if (sched_getaffinity(0, sizeof(set), &set) == 0 && CPU_COUNT(&set) > 0) return unsigned(CPU_COUNT(&set));
+#endif
+	return std::thread::hardware_concurrency();
+}
+
 thread_local bool in_pool = false;
 // The keyed job running on this thread (running_current).
 thread_local JobPool *running_pool = nullptr;
@@ -19,13 +41,17 @@ thread_local uint64_t running_seq = 0;
 } // namespace
 
 JobPool::JobPool(unsigned threads) {
-	const unsigned hw = std::thread::hardware_concurrency();
+	const unsigned hw = usable_processors();
 	const unsigned n = threads ? threads : std::max(2u, hw > 1 ? hw - 1 : 2u);
 	threads_.reserve(n);
 	workers_.reserve(n);
 	idle_.reserve(n);
 	for (unsigned i = 0; i < n; i++) workers_.push_back(std::make_unique<Worker>());
 	for (unsigned i = 0; i < n; i++) threads_.emplace_back([this, i]() { loop(*workers_[i]); });
+	// Every worker waits on the stack before the pool takes work: a job is never found by a thread that is only starting, so it
+	// goes to the worker a submit woke or to one that has just finished.
+	std::unique_lock<std::mutex> lk(m_);
+	idle_cv_.wait(lk, [&]() { return started_ == n; });
 }
 
 void JobPool::wake_one() {
@@ -155,6 +181,8 @@ void JobPool::loop(Worker &me) {
 	bool worked = false;
 	const auto delay = std::chrono::milliseconds(std::max(1L, freed_memory_wait_ms()));
 	std::unique_lock<std::mutex> lk(m_); // held but while a job runs or memory is given back: a worker that finishes is on the idle stack before anybody can submit again
+	++started_; // it waits on the stack before this lock is let go (nothing is queued yet: the constructor has not returned)
+	idle_cv_.notify_all();
 	for (;;) {
 		while (!ready()) {
 			if (worked) idle_.push_back(&me);

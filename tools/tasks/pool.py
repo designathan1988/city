@@ -1,6 +1,9 @@
 # The scheduler: tasks run in parallel within their resources (cores, any counted resource, OS locks such as the dll
 # readers/writer lock) and their dependencies. A failed or hung task only SKIPs its dependents; every task has its own
-# deadline; recorded times order the queue (longest path first) and never stop anything.
+# deadline; recorded times order the queue (longest path first) and never stop anything. The cores a task is counted for are
+# the processors its process tree runs on (an affinity, proc.run): a process that sizes its thread pools by the machine cannot
+# take what the run gave to others. A task also gets the cores nobody that still waits will ask for, so one test alone has the
+# machine and a suite's tests have their share.
 from __future__ import annotations
 
 import json
@@ -33,9 +36,12 @@ class Pool:
                  on_result: Callable[[Result], None] | None = None, use_cache: bool = True, label: str = "run",
                  on_finish: Callable[[str, Result], None] | None = None):
         self.root = Path(root or ROOT).resolve()
-        self.capacity = {"cores": jobs or os.cpu_count() or 1}
+        usable = proc.usable_cores()
+        self.capacity = {"cores": jobs or len(usable)}
         self.capacity.update({k: v for k, v in (capacity or {}).items() if k != "cores"})
         self.used = {k: 0 for k in self.capacity}
+        self.free_cores = [usable[n % len(usable)] for n in range(self.capacity["cores"])]  # the processors not handed out
+        self.granted: dict[str, tuple[dict, list[int]]] = {}  # a running task's counted resources and its processors
         self.on_result = on_result
         self.on_finish = on_finish  # (ident, result): for callers that submit under idents of their own
         self.use_cache = use_cache
@@ -144,8 +150,10 @@ class Pool:
                 blocked_locks |= set(locks)
                 self._waiting_on_locks = True
                 continue
+            need["cores"] += self._spare(i, need["cores"])
             for k, v in need.items():
                 self.used[k] += v
+            self.granted[i] = (need, [self.free_cores.pop() for _ in range(need["cores"])])
             self.held[i] = got
             self.state[i] = "running"
             threading.Thread(target=self._execute, args=(i,), name=f"run {i}", daemon=True).start()
@@ -163,6 +171,12 @@ class Pool:
             n = self.capacity[k] if v == "all" else int(v)
             need[k] = min(n, self.capacity[k])  # a task asking more than the machine has runs alone, not never
         return need
+
+    def _spare(self, i: str, asked: int) -> int:
+        """The free cores no task that still waits will ask for: they go to the task that starts."""
+        waiting = sum(self._needs(self.tasks[j])["cores"] for j in self.order
+                      if j != i and self.state[j] in ("waiting", "keying", "ready"))
+        return max(0, self.capacity["cores"] - self.used["cores"] - asked - waiting)
 
     def _take_locks(self, t: Task) -> list[FileLock] | None:
         got = []
@@ -214,7 +228,8 @@ class Pool:
                 for out in t.outputs:
                     remove(self.cache.output_path(out))
             cwd = t.cwd if t.cwd is None or os.path.isabs(t.cwd) else str(self.root / t.cwd)
-            code, timed_out = proc.run(t.argv, t.timeout_s, cwd=cwd or str(self.root), env=t.env, log=log, hidden=t.hidden)
+            code, timed_out = proc.run(t.argv, t.timeout_s, cwd=cwd or str(self.root), env=t.env, log=log, hidden=t.hidden,
+                                        cores=self.granted[i][1])
             seconds = time.monotonic() - t0
             if timed_out:
                 status, message = TIMEOUT, f"killed at its deadline of {t.timeout_s:g} s"
@@ -238,8 +253,10 @@ class Pool:
         if status != BROKEN:
             self.record.took(t.name, seconds)
         with self.cond:
-            for k, v in self._needs(t).items():
+            need, cores = self.granted.pop(i)
+            for k, v in need.items():
                 self.used[k] -= v
+            self.free_cores.extend(cores)
             for lock in self.held.pop(i, []):
                 lock.release()
             self._finish(i, result, wrote=True)
