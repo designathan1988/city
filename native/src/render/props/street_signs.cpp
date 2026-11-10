@@ -4,8 +4,9 @@
 #include "core/color.h"
 #include "core/units.h"
 #include "render/props/prop_kit.h"
+#include "sim/state/city_cut.h"
 #include "sim/street/street_names.h"
-#include "sim/traffic/traffic_system.h"
+#include "sim/street/street_spots.h"
 
 #include <cmath>
 
@@ -88,12 +89,12 @@ bool SignLook::load(const Dictionary &t, PackedStringArray &errors) {
 	return errors.is_empty();
 }
 
-void place_signs(const CityState &s, const StreetLook &L, const SignLook &K, SignAtlas &atlas, int64_t key, MeshBuilder &mb) {
+void place_signs(const CityView &s, const StreetLook &L, const SignLook &K, SignAtlas &atlas, int64_t key, MeshBuilder &mb) {
 	std::vector<SignStand> stands;
 	const float x0 = key_x(key) * CHUNK, z0 = key_y(key) * CHUNK;
 	s.roads.node_hash.query(x0, z0, x0 + CHUNK, z0 + CHUNK, [&](int n) {
 		const RoadNode &nd = s.roads.nodes[size_t(n)];
-		if (nd.alive && chunk_of(float(nd.x), float(nd.z)) == key) traffic::junction_signs(s, n, stands);
+		if (nd.alive && chunk_of(float(nd.x), float(nd.z)) == key) node_signs(s, n, stands);
 	});
 	s.street.items_in(x0, z0, x0 + CHUNK, z0 + CHUNK, [&](int id) {
 		const StreetItem &it = s.street.items.items[size_t(id)];

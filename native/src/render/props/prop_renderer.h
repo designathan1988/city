@@ -16,6 +16,7 @@
 #include "render/props/street_signs.h"
 #include "render/render_context.h"
 #include "render/rs_util.h"
+#include "sim/state/city_cut.h"
 
 #include <chrono>
 #include <mutex>
@@ -53,7 +54,8 @@ private:
 		int count = 0;
 		void free();
 	};
-	void build_cpu(const CityState &s, int64_t key, MeshBuilder &mb, StreetInstances &inst) const;
+	CityCut gather(const CityState &s, int64_t key) const;
+	void build_cpu(const CityView &s, int64_t key, MeshBuilder &mb, StreetInstances &inst) const;
 	void commit_one(Built &b) override;
 	void show(Draws &d, StreetInstances &inst, const godot::AABB &box);
 	void cast_chunk(Draws &d, const godot::RID &mesh, const godot::AABB &box);

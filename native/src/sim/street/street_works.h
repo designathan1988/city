@@ -5,6 +5,7 @@
 #pragma once
 
 #include "core/grid.h"
+#include "core/id_table.h"
 #include "core/slot_ids.h"
 #include "sim/catalog/furniture_types.h"
 
@@ -99,7 +100,7 @@ struct StreetCut {
 // Records under stable ids: a freed id is used again, and `put` brings a record back under its own.
 template <typename T>
 struct StreetTable {
-	std::vector<T> items;
+	IdTable<T> items;
 	SlotIds free_ids;
 	int alive = 0;
 
@@ -137,6 +138,11 @@ public:
 
 	void clear();
 	bool empty() const { return items.alive + poles.alive + barriers.alive + cuts.alive == 0; }
+	// What a reader of the box needs of the works, copied under their own ids (sim/state/city_cut.h): the items, poles, barriers
+	// and cuts filed in the cells the box touches (the copy's hashes answer for the box alone), the poles up to two spans from
+	// those poles with the spans between (a pole's arms read the poles a span away, and a span drawn reads both its poles'
+	// arms), and the name plates of the chunks the box touches.
+	StreetWorks cut(float minx, float minz, float maxx, float maxz) const;
 
 	int add_item(const StreetItem &r);
 	void put_item(int id, const StreetItem &r);

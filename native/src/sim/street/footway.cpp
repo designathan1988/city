@@ -78,10 +78,12 @@ void segment_place(const RoadNetwork &net, int seg, double x, double z, double &
 	past = float(std::fabs((x - cx) * fx + (z - cz) * fz));
 }
 
+double footway_reach(double reach) { return reach + BROADEST_M; }
+
 FootwayHit footway_at(const RoadNetwork &net, double x, double z, double reach) {
 	FootwayHit best;
 	best.away = std::numeric_limits<float>::max();
-	const double r = reach + BROADEST_M;
+	const double r = footway_reach(reach);
 	net.for_segments_near(x - r, z - r, x + r, z + r, [&](int sid) {
 		const RoadSegment &g = net.segs[size_t(sid)];
 		const Profile &p = net.profile_of(sid);

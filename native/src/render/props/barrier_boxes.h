@@ -23,7 +23,7 @@ struct BarrierLook {
 	bool load(const godot::Dictionary &t, godot::PackedStringArray &errors);
 };
 
-void place_barriers(const CityState &s, const StreetLook &L, const BarrierLook &B, int64_t key, godot::PackedFloat32Array &buf,
+void place_barriers(const CityView &s, const StreetLook &L, const BarrierLook &B, int64_t key, godot::PackedFloat32Array &buf,
 		godot::PackedFloat32Array &beams);
 
 } // namespace city

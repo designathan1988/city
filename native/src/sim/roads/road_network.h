@@ -116,6 +116,7 @@ struct StreetRun {
 };
 
 constexpr int ROAD_ARC_STEPS = 48;
+constexpr int STREET_JOINT_ARMS = 2; // a node where a street goes on: only its two segments meet there
 constexpr int CROSSWALK_ARMS = 3; // crosswalks are painted at nodes of this many arms or more
 constexpr float ROAD_HASH_CELL = 64.f;
 
@@ -195,6 +196,15 @@ public:
 	}
 	// The street of segment s (StreetRun), as the last settle left it.
 	const StreetRun &street_run(int s) const { return runs_[size_t(s)]; }
+	// The piece going on from segment `from` through node `n` when only the two meet there (alive, not a loop on one node), else -1:
+	// the chain a street's lamp row and power line follow.
+	int going_on(int n, int from) const {
+		const std::vector<int> &arms = nodes[size_t(n)].segs;
+		if (int(arms.size()) != STREET_JOINT_ARMS) return -1;
+		const int next = arms[0] == from ? arms[1] : arms[0];
+		const RoadSegment &g = segs[size_t(next)];
+		return next != from && g.alive && g.a != g.b ? next : -1;
+	}
 	// What a reader of the box needs of the network, copied under its own ids (sim/state/city_cut.h): every segment and node the
 	// hashes file in the cells the box touches (the copy's hashes answer for the box alone), then twice the arms of the nodes of
 	// what was taken and their far nodes (a node's shape, its crossings and a joint's shared pole read every arm; an arm stands

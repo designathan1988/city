@@ -8,6 +8,8 @@
 #include "core/color.h"
 #include "core/random.h"
 #include "render/roads/road_mesh.h"
+#include "sim/state/city_cut.h"
+#include "sim/street/footway.h"
 #include "sim/street/pole_arms.h"
 #include "sim/traffic/traffic_system.h"
 
@@ -30,10 +32,9 @@ constexpr float PHASE_STEP = 2.399f; // the golden angle: neighbouring spans swi
 // kind_a + 2 kind_b, which props.gdshader takes apart to pick each end's seats.
 constexpr float KIND_STRIDE = 8.f;
 constexpr int KIND_B_WEIGHT = 2;
-constexpr int JOINT_ARMS = 2; // a street going on through a node
 const Vector3 UP(0, 1, 0);
 
-Vector3 world_of(const CityState &s, const StreetLook &L, const FurnitureSpot &p, Basis *basis) {
+Vector3 world_of(const CityView &s,const StreetLook &L, const FurnitureSpot &p, Basis *basis) {
 	const SegFrame f = seg_frame(s, p.seg, p.v);
 	if (basis) *basis = PropKit::facing(f.left * p.face_left + f.fwd * p.face_fwd);
 	return f.c + f.left * p.u + UP * L.h_sidewalk;
@@ -83,7 +84,7 @@ struct PoleFrame {
 	double v = 0;
 };
 
-PoleFrame frame_of(const CityState &s, const StreetLook &L, int id) {
+PoleFrame frame_of(const CityView &s,const StreetLook &L, int id) {
 	const UtilityPole &p = s.street.poles.items[size_t(id)];
 	const FootwayHit h = footway_at(s.roads, p.x, p.z, s.catalog.furniture.items.stand_reach_m);
 	PoleFrame f;
@@ -100,7 +101,7 @@ PoleFrame frame_of(const CityState &s, const StreetLook &L, int id) {
 }
 
 // A pole the player built, with its arms, and the spans it starts.
-void place_pole(const CityState &s, const StreetLook &L, const FurnitureLook &F, int id, StreetInstances &inst) {
+void place_pole(const CityView &s,const StreetLook &L, const FurnitureLook &F, int id, StreetInstances &inst) {
 	const UtilityPole &p = s.street.poles.items[size_t(id)];
 	const PoleFrame f = frame_of(s, L, id);
 	const bool rural = p.kind == PoleKind::RURAL;
@@ -123,11 +124,11 @@ void place_pole(const CityState &s, const StreetLook &L, const FurnitureLook &F,
 }
 
 // The first or last pole of `seg`'s main row at node `n`, when it stands on `side`.
-bool row_end(const CityState &s, const StreetLook &L, int seg, int n, int side, PropPlace &out) {
+bool row_end(const CityView &s,const StreetLook &L, int seg, int n, int side, PropPlace &out) {
 	const LampRow row = lamp_row(s.roads, seg);
 	if (!row.any || row.stations == 0 || row.side != side) return false;
 	std::vector<FurnitureSpot> spots;
-	traffic::street_furniture_of(s, seg, furniture_bit(FurnitureKind::LAMP), spots);
+	furniture_of(s, seg, furniture_bit(FurnitureKind::LAMP), spots);
 	const int station = s.roads.segs[size_t(seg)].a == n ? 0 : row.stations - 1;
 	for (const FurnitureSpot &p : spots) {
 		if (p.row != 0 || p.station != station) continue;
@@ -139,13 +140,11 @@ bool row_end(const CityState &s, const StreetLook &L, int seg, int n, int side, 
 
 // A street going on through its node keeps its line: the last pole of `sid` strung to the first of the next (Roadcraft
 // powerLine.ts join), by the lower segment of the two. Both poles' arms reach over the same street, as the wires' seats want.
-void join_rows(const CityState &s, const StreetLook &L, const FurnitureLook &F, int sid, int row_side, StreetInstances &inst) {
+void join_rows(const CityView &s, const StreetLook &L, const FurnitureLook &F, int sid, int row_side, StreetInstances &inst) {
 	const RoadSegment &g = s.roads.segs[size_t(sid)];
 	for (int n : { g.a, g.b }) {
-		const std::vector<int> &arms = s.roads.nodes[size_t(n)].segs;
-		if (int(arms.size()) != JOINT_ARMS) continue;
-		const int other = arms[0] == sid ? arms[1] : arms[0];
-		if (other <= sid) continue;
+		const int other = s.roads.going_on(n, sid);
+		if (other <= sid) continue; // none (-1), or the lower segment of the two strings them
 		const bool same_way = (g.b == n) == (s.roads.segs[size_t(other)].a == n); // the sides keep their names through the node
 		PropPlace a, b;
 		if (!row_end(s, L, sid, n, row_side, a) || !row_end(s, L, other, n, same_way ? row_side : 1 - row_side, b)) continue;
@@ -176,9 +175,9 @@ PropKind prop_kind(FurnitureKind k) {
 	}
 }
 
-void place_segment(const CityState &s, const StreetLook &L, const FurnitureLook &F, int sid, std::vector<PropPlace> &out, StreetInstances &inst) {
+void place_segment(const CityView &s,const StreetLook &L, const FurnitureLook &F, int sid, std::vector<PropPlace> &out, StreetInstances &inst) {
 	std::vector<FurnitureSpot> spots;
-	traffic::street_furniture_of(s, sid, PROP_KINDS, spots);
+	furniture_of(s, sid, PROP_KINDS, spots);
 	bool wired = false;
 	PropPlace last;
 	int last_station = -1, row_side = 0;
@@ -205,7 +204,7 @@ void place_segment(const CityState &s, const StreetLook &L, const FurnitureLook 
 }
 } // namespace
 
-float street_ground(const CityState &s, const StreetLook &L, double x, double z) {
+float street_ground(const CityView &s,const StreetLook &L, double x, double z) {
 	const FootwayHit h = footway_at(s.roads, x, z, s.catalog.furniture.items.stand_reach_m);
 	if (!h.ok) return s.terrain.height_at(float(x), float(z));
 	double px, pz, y;
@@ -213,7 +212,7 @@ float street_ground(const CityState &s, const StreetLook &L, double x, double z)
 	return float(y) + L.h_sidewalk;
 }
 
-void place_street_props(const CityState &s, const StreetLook &L, const FurnitureLook &F, int64_t key, std::vector<PropPlace> &out, StreetInstances &inst) {
+void place_street_props(const CityView &s,const StreetLook &L, const FurnitureLook &F, int64_t key, std::vector<PropPlace> &out, StreetInstances &inst) {
 	each_owned_segment(s, key, [&](int sid) { place_segment(s, L, F, sid, out, inst); });
 	const float x0 = key_x(key) * CHUNK, z0 = key_y(key) * CHUNK;
 	s.street.poles_in(x0, z0, x0 + CHUNK, z0 + CHUNK, [&](int id) {
@@ -231,7 +230,7 @@ void place_street_props(const CityState &s, const StreetLook &L, const Furniture
 	});
 	s.roads.node_hash.query(x0, z0, x0 + CHUNK, z0 + CHUNK, [&](int n) {
 		const RoadNode &nd = s.roads.nodes[n];
-		if (!nd.alive || chunk_of(float(nd.x), float(nd.z)) != key || traffic::control_of(s, n) != Control::SIGNAL) return;
+		if (!nd.alive || chunk_of(float(nd.x), float(nd.z)) != key || !node_signalled(s, n)) return;
 		FurnitureSpot post;
 		for (int sid : nd.segs) {
 			if (!signal_post(s.roads, n, sid, post)) continue;
@@ -243,7 +242,7 @@ void place_street_props(const CityState &s, const StreetLook &L, const Furniture
 	});
 }
 
-void place_pole_preview(const CityState &s, const StreetLook &L, const FurnitureLook &F, const std::vector<PreviewPole> &poles, StreetInstances &inst) {
+void place_pole_preview(const CityView &s,const StreetLook &L, const FurnitureLook &F, const std::vector<PreviewPole> &poles, StreetInstances &inst) {
 	const float reach = s.catalog.furniture.items.stand_reach_m;
 	std::vector<Vector3> foot(poles.size()), arm(poles.size());
 	for (size_t i = 0; i < poles.size(); i++) {
@@ -264,11 +263,11 @@ void place_pole_preview(const CityState &s, const StreetLook &L, const Furniture
 	for (size_t i = 0; i + 1 < poles.size(); i++) push_span(inst, F.wire, foot[i], arm[i], foot[i + 1], arm[i + 1], 0, poles[i].kind, poles[i + 1].kind);
 }
 
-void place_street_trees(const CityState &s, const StreetLook &L, int64_t key, std::vector<TreeSpot> &out) {
+void place_street_trees(const CityView &s, const StreetLook &L, int64_t key, std::vector<TreeSpot> &out) {
 	std::vector<FurnitureSpot> spots;
 	each_owned_segment(s, key, [&](int sid) {
 		spots.clear();
-		traffic::street_furniture_of(s, sid, furniture_bit(FurnitureKind::TREE) | furniture_bit(FurnitureKind::SHRUB), spots);
+		furniture_of(s, sid, furniture_bit(FurnitureKind::TREE) | furniture_bit(FurnitureKind::SHRUB), spots);
 		for (const FurnitureSpot &p : spots) {
 			uint32_t h = hash_combine(uint32_t(sid) * TREE_SALT, uint32_t(p.v * p.side + p.v));
 			const float scale = (CANOPY_SCALE_MIN + TREE_SCALE_SPAN * hash_float(h)) * (p.kind == FurnitureKind::SHRUB ? SHRUB_SCALE : 1.f);
