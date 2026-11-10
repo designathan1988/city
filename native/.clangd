@@ -1,2 +1,11 @@
+# clangd for the core: each file's real flags from the release build folder, and the background index kept to the core's own
+# sources. The libraries the build fetches or carries (godot-cpp with its generated bindings, mimalloc, meshoptimizer, Clipper2)
+# are over a thousand translation units: indexed in the background they took the language server to 9 GB of memory in use
+# (24 GB committed) in one session. They are still parsed when a core file includes them; only their own index is skipped.
 CompileFlags:
   CompilationDatabase: build-win
+---
+If:
+  PathMatch: [godot-cpp/.*, build[^/]*/.*]
+Index:
+  Background: Skip
