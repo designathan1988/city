@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 
 using namespace godot;
 
@@ -222,10 +223,38 @@ float PeopleAsset::curve(int variation, int clip_index, int frame) const {
 	return pv.curves[size_t(pv.curve_at[size_t(clip_index)] + std::clamp(frame, 0, c.frames))];
 }
 
+// The clips the CPU poses a body from, and whether only the first frame is read (a body that just stands in it).
+struct PosedClip {
+	const char *name;
+	bool first_frame_only;
+};
+constexpr PosedClip POSED_CLIPS[] = { { "idle", true }, { "crouchIdle", true }, { "crouchUp", false } }; // body_renderer.cpp add and rise
+
+void PeopleAsset::keep_posed(const uint8_t *palette) {
+	const size_t line = bone_part.size() * PEOPLE_BONE_TEXELS * PEOPLE_PALETTE_TEXELS * RGBA, bodies = variations.size();
+	posed_at.assign(clips.size(), -1);
+	posed_frames.assign(clips.size(), 0);
+	int frames = 0;
+	for (const PosedClip &p : POSED_CLIPS) {
+		const int c = clip(p.name);
+		if (c < 0) continue; // the file has no such clip: clip_rows says so when it is asked for
+		posed_at[size_t(c)] = frames;
+		posed_frames[size_t(c)] = p.first_frame_only ? 1 : clips[size_t(c)].frames;
+		frames += posed_frames[size_t(c)];
+	}
+	posed_bytes.resize(size_t(frames) * bodies * line);
+	for (size_t c = 0; c < clips.size(); c++)
+		for (int f = 0; f < posed_frames[c]; f++)
+			for (size_t v = 0; v < bodies; v++) {
+				const size_t row = (v / size_t(columns)) * size_t(block_rows) + size_t(clips[c].row + f);
+				std::memcpy(posed_bytes.data() + (size_t(posed_at[c] + f) * bodies + v) * line, palette + row * line * size_t(columns) + (v % size_t(columns)) * line, line);
+			}
+}
+
 void PeopleAsset::clip_rows(int variation, int clip_index, int frame, float *rows) const {
-	const size_t row = size_t(variation / columns) * size_t(block_rows) + size_t(clips[size_t(clip_index)].row + frame);
 	const size_t values = bone_part.size() * PEOPLE_BONE_TEXELS, line = values * PEOPLE_PALETTE_TEXELS * RGBA;
-	const uint8_t *from = palette_bytes.ptr() + row * line * size_t(columns) + size_t(variation % columns) * line;
+	ERR_FAIL_COND_MSG(frame < 0 || frame >= posed_frames[size_t(clip_index)], "people: a clip's frame asked on the CPU that the asset does not keep (POSED_CLIPS)");
+	const uint8_t *from = posed_bytes.data() + (size_t(posed_at[size_t(clip_index)] + frame) * variations.size() + size_t(variation)) * line;
 	for (size_t t = 0; t < values; t++)
 		for (size_t c = 0; c < RGBA; c++) { // cook_people.py fixed_point: high bytes in a texel, low bytes in the next
 			const float fixed = float(from[t * PEOPLE_PALETTE_TEXELS * RGBA + c]) * BYTE_STEPS + float(from[(t * PEOPLE_PALETTE_TEXELS + 1) * RGBA + c]);
@@ -299,7 +328,7 @@ bool PeopleAsset::load(const String &path, const String &atlas_path, PackedStrin
 		errors.push_back("pessoas: arquivo truncado ou com sobra: " + path);
 		return false;
 	}
-	palette_bytes = texels;
+	keep_posed(texels.ptr());
 	palette = ImageTexture::create_from_image(Image::create_from_data(int(pal_texels), int(pal_h), false, Image::FORMAT_RGBA8, texels));
 	faces = ImageTexture::create_from_image(Image::create_from_data(int(FACE_TEXELS), int(face_lines), false, Image::FORMAT_RGBAH, face_bytes));
 	card = card_mesh();

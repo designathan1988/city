@@ -73,9 +73,13 @@ struct PeopleAsset {
 	int block_rows = 0, hand_bone = 0, head_bone = 0; // each variation's rows of the palette; the bone of the hand that holds things; the head's
 	int columns = 1; // the bodies' blocks side by side in the palette: body v in column v % columns, row block v / columns
 	std::vector<uint8_t> bone_part, joint_bone; // the ragdoll: which part each bone follows, which bone each joint sits on
-	godot::PackedByteArray palette_bytes; // the palette as the file has it
-	// A body's bones in a frame of a clip, bind -> pose rows, twelve floats a bone.
+	// The frames a struck-down body is posed from on the CPU (body_renderer.cpp), cut from the palette at load: a line a body a
+	// frame, as the file has them. The palette itself lives on the GPU alone (55 MiB of it stood here for these few frames).
+	std::vector<uint8_t> posed_bytes;
+	std::vector<int> posed_at, posed_frames; // by clip: its first kept frame in posed_bytes (-1: not kept), and the frames kept
+	// A body's bones in a frame of a posed clip, bind -> pose rows, twelve floats a bone.
 	void clip_rows(int variation, int clip_index, int frame, float *rows) const;
+	void keep_posed(const uint8_t *palette); // fills posed_bytes from the palette's bytes
 	bool read_clips(ByteReader &r, uint32_t count); // the clip table: false when a clip runs past the block or names no kind
 	void read_curves(ByteReader &r); // each body's clips' curves
 	void read_card(ByteReader &r);

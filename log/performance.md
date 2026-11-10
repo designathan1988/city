@@ -326,3 +326,13 @@ sky POSITION 022b734d; atmosphere 1c604b47; occlusion c978aeeb; lot_access e7346
 - Check: `tools/tasks/tests` (42 pass; the new one reads each task's affinity: 2 of 4 while another waits, 4 alone),
   `job_pool_test` three runs, `traffic_hash_test`, `digest` equal to the golden on a share of cores and on all of them.
 - Open under C2 (P64): a core test still boots the whole game on a whole map.
+
+### P1 (C4): the people's clip palette is no longer kept on the CPU
+- Cause: `PeopleAsset` kept "the palette as the file has it" (`palette_bytes`, 55.3 MiB) for `clip_rows`, whose only callers
+  (`BodyRenderer::add` and `::rise`) read frame 0 of `idle` and `crouchIdle` and the frames of `crouchUp`.
+- Change: `people_asset.cpp keep_posed` cuts those frames from the palette at load (`POSED_CLIPS`, a line a body a frame) into
+  `posed_bytes`; the palette's bytes go to the texture and are dropped. `clip_rows` reads the kept frames and fails loudly on
+  a frame the asset does not keep.
+- Cannot return: the asset has no member holding the palette; a new CPU reader must name its clip in `POSED_CLIPS`.
+- Check: `strike_test` (bodies struck down are posed from it) and `people_test` pass, gates OK. The palette's 55 MiB of video
+  memory stand (every body has its own block of every clip): open under C4/C16.
