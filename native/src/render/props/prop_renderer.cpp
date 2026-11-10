@@ -158,7 +158,7 @@ CityCut PropRenderer::gather(const CityState &s, int64_t key) const {
 					}
 				});
 				// past them: what the road pieces read, a footway looked for round a point, a barrier's piece past its middle
-				const float stand = float(footway_reach(live.catalog.furniture.items.stand_reach_m));
+				const float stand = float(footway_reach(live.roads, live.catalog.furniture.items.stand_reach_m));
 				return box.grown(road_reach(live.catalog, *look_) + stand + barriers_.piece_m);
 			},
 			[&](CityCut &cut, const CityState &live) {

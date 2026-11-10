@@ -23,9 +23,11 @@ func drag(p: Vector3) -> void:
 	if _corner == Vector3.INF or _corner.distance_to(p) <= DRAG_MIN_M:
 		ctl.preview.clear()
 		return
+	var corners := PackedVector2Array([Vector2(_corner.x, _corner.z), Vector2(p.x, _corner.z), Vector2(p.x, p.z), Vector2(_corner.x, p.z), Vector2(_corner.x, _corner.z)])
+	var heights: PackedFloat32Array = CityStore.query(&"heights_at", [corners]) # one lock for the five
 	var ring := PackedVector3Array()
-	for at: Vector2 in [Vector2(_corner.x, _corner.z), Vector2(p.x, _corner.z), Vector2(p.x, p.z), Vector2(_corner.x, p.z), Vector2(_corner.x, _corner.z)]:
-		ring.push_back(Vector3(at.x, CityStore.query(&"height_at", [at.x, at.y]), at.y))
+	for i in corners.size():
+		ring.push_back(Vector3(corners[i].x, heights[i], corners[i].y))
 	ctl.preview.show_ribbons([{"points": ring, "half_width": ctl.px_at(p) * DRAWN_PX}])
 
 

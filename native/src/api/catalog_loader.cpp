@@ -61,9 +61,8 @@ void load_tuning(const Dictionary &t, Tuning &tn, PackedStringArray &errors) {
 }
 
 StripKind strip_kind(const String &k, Reader &r) {
-	static const char *NAMES[] = { "sidewalk", "curb", "parking", "bike", "lane", "median", "shoulder", "barrier" };
 	for (int i = 0; i < int(StripKind::COUNT); i++)
-		if (k == NAMES[i]) return StripKind(i);
+		if (k == STRIP_KIND_NAMES[i]) return StripKind(i);
 	r.errors.push_back(r.where + ": faixa desconhecida '" + k + "'");
 	return StripKind::LANE;
 }
@@ -119,7 +118,7 @@ void load_profiles(const Dictionary &t, Catalog &c, PackedStringArray &errors) {
 		}
 		if (p.strips.empty()) errors.push_back(r.where + ": perfil sem faixas");
 		else derive_profile(p, c.prices);
-		c.profiles.push_back(p);
+		c.add_profile(std::move(p));
 	}
 }
 

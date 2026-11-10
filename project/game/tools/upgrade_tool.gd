@@ -9,7 +9,7 @@ var _half := 0.0
 
 func enter() -> void:
 	profile = params.get("profile", 0)
-	for p in CityStore.query(&"road_profiles"):
+	for p in CityStore.cached(&"road_profiles"):
 		if p.index == profile:
 			_half = p.width * 0.5
 	ctl.hint.emit("", true)

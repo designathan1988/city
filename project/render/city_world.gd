@@ -46,7 +46,7 @@ var sky_mode: String:
 
 func _ready() -> void:
 	add_to_group(&"world")
-	var palette: Dictionary = DataTables.render().palette
+	var palette: Dictionary = DataTables.render_table("palette")
 	_build_environment(palette)
 	_build_terrain(palette)
 	water = CityWater.new(palette)
@@ -60,7 +60,7 @@ func _ready() -> void:
 ## The materials of data/render/materials.json, by name (textures loaded from their res:// paths).
 func materials() -> Dictionary:
 	if _materials.is_empty():
-		var table: Dictionary = DataTables.render().materials
+		var table: Dictionary = DataTables.render_table("materials")
 		for key in table:
 			if key.begins_with("_"):
 				continue
@@ -89,14 +89,14 @@ func materials() -> Dictionary:
 				var over: ShaderMaterial = m.duplicate()
 				over.render_priority = layer
 				_materials["%s_%d" % [key, layer]] = over
-		add_child(SignSheet.new(DataTables.render().streets.signs, _materials.prop))
+		add_child(SignSheet.new(DataTables.render_table("streets").signs, _materials.prop))
 		_materials["water"] = water.own # the lakes and rivers of the core (render/water) wear the sea's material
 	return _materials
 
 
 ## The verge wears the terrain's grass: the same table, the same values.
 func _set_ground(m: ShaderMaterial) -> void:
-	var ground: Dictionary = DataTables.render().palette.terrain
+	var ground: Dictionary = DataTables.render_table("palette").terrain
 	for key in ground:
 		if not key.begins_with("_"):
 			m.set_shader_parameter(key, shader_value(ground[key]))

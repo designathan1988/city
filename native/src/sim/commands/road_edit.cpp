@@ -3,6 +3,7 @@
 
 #include "sim/commands/road_grade_sync.h"
 #include "sim/roads/street_furniture.h"
+#include "sim/street/footway.h"
 #include "sim/street/street_names.h"
 #include "sim/state/city_state.h"
 
@@ -16,7 +17,6 @@ namespace {
 constexpr double STILL_THERE_M = 0.5; // execute.ts stillThere: the point is still on the segment, away from its ends
 constexpr double CLEAR_STEP_M = 2; // clearAndConform samples the centreline every 2 m
 constexpr double CLEAR_SLACK_M = 0.3; // the lot rectangle grown by the half width minus this
-constexpr double STREET_MARK_PAD_M = 40; // what the player places stands on a segment within this (the widest street's footway)
 
 bool still_there(const CityState &s, int seg, double x, double z) {
 	const RoadNetwork &net = s.roads;
@@ -120,7 +120,7 @@ void mark_furniture(CityState &s, int seg) {
 
 void mark_street(CityState &s, double x, double z) {
 	s.log.prop_chunks.push_back(chunk_of(float(x), float(z)));
-	const double r = STREET_MARK_PAD_M;
+	const double r = footway_reach(s.roads, s.catalog.furniture.items.stand_reach_m); // the segments whose footway it may stand on
 	s.roads.for_segments_near(x - r, z - r, x + r, z + r, [&](int seg) { s.log.furniture_segs.push_back(seg); });
 }
 

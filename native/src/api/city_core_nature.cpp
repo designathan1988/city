@@ -210,6 +210,13 @@ Dictionary CityLandscape::clear_relief() {
 	return run_edit(*state_, "cmd.place.flattenMap", [](CityState &s) { return city::clear_relief(s); });
 }
 
+Dictionary CityLandscape::cloud(int id) const {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	for (const PlacedCloud &c : state_->nature.clouds)
+		if (c.id == id) return cloud_dict(c);
+	return Dictionary();
+}
+
 Dictionary CityLandscape::landscape() const {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const NatureState &n = state_->nature;
@@ -265,6 +272,7 @@ void CityLandscape::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_biome", "region"), &CityLandscape::set_biome);
 	ClassDB::bind_method(D_METHOD("clear_relief"), &CityLandscape::clear_relief);
 	ClassDB::bind_method(D_METHOD("landscape"), &CityLandscape::landscape);
+	ClassDB::bind_method(D_METHOD("cloud", "id"), &CityLandscape::cloud);
 	ClassDB::bind_method(D_METHOD("sky_revision"), &CityLandscape::sky_revision);
 	ClassDB::bind_method(D_METHOD("fog_field"), &CityLandscape::fog_field);
 	ClassDB::bind_method(D_METHOD("fog_revision"), &CityLandscape::fog_revision);

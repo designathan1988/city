@@ -97,6 +97,7 @@ void CityCore::bind_queries() {
 	ClassDB::bind_method(D_METHOD("constants"), &CityCore::constants);
 	ClassDB::bind_method(D_METHOD("raycast", "origin", "direction"), &CityCore::raycast);
 	ClassDB::bind_method(D_METHOD("height_at", "x", "z"), &CityCore::height_at);
+	ClassDB::bind_method(D_METHOD("heights_at", "points"), &CityCore::heights_at);
 	ClassDB::bind_method(D_METHOD("inspect", "position"), &CityCore::inspect);
 	ClassDB::bind_method(D_METHOD("segment_traffic", "segment"), &CityCore::segment_traffic);
 	ClassDB::bind_method(D_METHOD("node_traffic", "node"), &CityCore::node_traffic);

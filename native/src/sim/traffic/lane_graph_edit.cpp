@@ -182,8 +182,6 @@ void apply_network_changes(CityState &s) {
 	ChangeLog::dedup(changed);
 	ChangeLog::dedup(nodes);
 	forget_yards_near(s, removed, changed); // their ways cross the streets: those of the streets that changed are planned again
-	t.roads_touched.insert(t.roads_touched.end(), removed.begin(), removed.end());
-	t.roads_touched.insert(t.roads_touched.end(), changed.begin(), changed.end());
 	for (int seg : removed) drop_segment(s, seg);
 	for (int seg : removed)
 		if (size_t(seg) < t.seg_volume.size()) t.seg_volume[size_t(seg)] = 0;

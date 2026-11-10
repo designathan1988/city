@@ -244,6 +244,17 @@ Array CityCore::road_profiles() const {
 		d["speed"] = p.speed;
 		d["ring"] = p.ring;
 		d["rail"] = p.rail;
+		Array strips; // as the catalogue writes them, for the road's picture
+		for (const Strip &st : p.strips) {
+			Dictionary sd;
+			sd["kind"] = STRIP_KIND_NAMES[int(st.kind)];
+			sd["width"] = st.width;
+			sd["dir"] = st.dir;
+			sd["bus"] = st.bus;
+			sd["rail"] = st.rail;
+			strips.push_back(sd);
+		}
+		d["strips"] = strips;
 		out.push_back(d);
 	}
 	return out;

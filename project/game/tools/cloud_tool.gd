@@ -51,10 +51,7 @@ func _drift() -> Vector2:
 
 
 func _cloud(id: int) -> Dictionary:
-	for c in CityStore.query(&"landscape").clouds:
-		if c.id == id:
-			return c
-	return {}
+	return CityStore.query(&"cloud", [id])
 
 
 func _like(x: float, z: float, yaw: float) -> Dictionary:

@@ -89,7 +89,10 @@ void place_all_buses(CityState &s, const std::vector<uint8_t> *send) {
 // An edit of the plan: every stop's lane found again, the lines' buses going on from where they are, the loops made again.
 void rebuild(CityState &s) {
 	TransitRun &run = s.transit_run;
-	s.traffic.roads_touched.clear(); // every stop and crossing is read below
+	{
+		std::lock_guard<std::mutex> lk(s.log.mutex); // the step holds the map shared (change_log.h)
+		s.log.transit_segs.clear(); // every stop and crossing is read below
+	}
 	run.stop_index.clear();
 	run.stops_on_seg.clear();
 	run.lines_at_stop.clear();
@@ -126,7 +129,10 @@ bool same_lane(const StopLane &a, const StopLane &b) { return a.ds == b.ds && a.
 void follow_roads(CityState &s) {
 	TransitRun &run = s.transit_run;
 	std::vector<int> segs;
-	segs.swap(s.traffic.roads_touched);
+	{
+		std::lock_guard<std::mutex> lk(s.log.mutex); // the step holds the map shared (change_log.h)
+		segs.swap(s.log.transit_segs);
+	}
 	ChangeLog::dedup(segs);
 	std::vector<uint8_t> send(s.transit.lines.size(), 0);
 	bool moved = false;

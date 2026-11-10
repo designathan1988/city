@@ -10,7 +10,6 @@ namespace city {
 
 namespace {
 constexpr float HALF = 0.5f, NO_DISTANCE = std::numeric_limits<float>::max();
-constexpr float WIDEST_STREET = 4.f; // of the longest run on a road: a whole street's width round a point
 } // namespace
 
 bool transit_on_road(const CityState &s, const V2 &p) {
@@ -22,7 +21,7 @@ bool transit_on_road(const CityState &s, const V2 &p) {
 bool transit_paved(const CityState &s, const V2 &p, float kerb, float &y, bool &carriageway) {
 	bool paved = false;
 	carriageway = false;
-	const float reach = s.catalog.traffic.transit_along_road_m * WIDEST_STREET;
+	const float reach = s.catalog.widest_half(); // a segment counts only when the point is within its profile's half
 	s.roads.for_segments_near(p.x - reach, p.y - reach, p.x + reach, p.y + reach, [&](int seg) {
 		const RoadSegment &g = s.roads.segs[size_t(seg)];
 		double t, d;

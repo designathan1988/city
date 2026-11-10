@@ -1,6 +1,7 @@
-// The street furniture as the walkers meet it: the pieces sim/roads/street_furniture.cpp places (its ends' signal posts
-// where junction control signals them) become bodies standing on their sidewalks, footprints along the arc and across
-// from the sidewalk's middle, and in the world. A segment's bodies are built when a walker first meets it, dropped when
+// The street furniture of a segment, placed (sim/roads/street_furniture.cpp: the kit and its ends' signal posts where junction
+// control signals them; what the player put up and cut; what a blow left standing) or read kept for the streets' revision
+// (sim/street/furniture_kept.h), and as the walkers meet it: bodies standing on their sidewalks, footprints along the arc and
+// across from the sidewalk's middle, and in the world. A segment's bodies are built when a walker first meets it, dropped when
 // an edit touches the segment or one of its nodes (lane_graph_edit.cpp, reset_traffic) and when the walkers are far.
 #include "sim/street/street_spots.h"
 #include "sim/traffic/traffic_system.h"
@@ -77,7 +78,9 @@ bool furniture_xz(const CityState &s, int seg, const FurnitureSpot &f, float &x,
 	return true;
 }
 
-void street_furniture_of(const CityState &s, int sid, uint32_t kinds, std::vector<FurnitureSpot> &out) {
+namespace {
+// The segment's furniture placed now, appended to `out`.
+void place_street_furniture(const CityState &s, int sid, uint32_t kinds, std::vector<FurnitureSpot> &out) {
 	const RoadSegment &g = s.roads.segs[size_t(sid)];
 	if (!g.alive) return;
 	const bool signalled[2] = { control_of(s, g.a) == Control::SIGNAL, control_of(s, g.b) == Control::SIGNAL };
@@ -92,6 +95,21 @@ void street_furniture_of(const CityState &s, int sid, uint32_t kinds, std::vecto
 		if (!furniture_xz(s, sid, out[i], x, z) || !s.damage.is_gone(gone_kind(out[i].kind), x, z, GONE_MATCH_M)) out[keep++] = out[i];
 	}
 	out.resize(keep);
+}
+} // namespace
+
+void street_furniture_of(const CityState &s, int sid, uint32_t kinds, std::vector<FurnitureSpot> &out, FurnitureRead read) {
+	if (read == FurnitureRead::PLACED) {
+		place_street_furniture(s, sid, kinds, out);
+		return;
+	}
+	// The kinds only choose among the pieces placed (segment_furniture, merge_street and the knocked-out ones filter each piece
+	// by itself), so the kept placement of every kind, filtered, is the placement of these kinds.
+	const FurnitureKept::Spots all = s.furniture_kept.of(s.street_revision, sid, [&](std::vector<FurnitureSpot> &made) {
+		place_street_furniture(s, sid, FURNITURE_ALL, made);
+	});
+	for (const FurnitureSpot &f : *all)
+		if (kinds & furniture_bit(f.kind)) out.push_back(f);
 }
 
 const SidewalkFurniture &sidewalk_furniture(CityState &s, int seg) {

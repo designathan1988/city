@@ -158,6 +158,7 @@ public:
 	godot::Dictionary constants() const;
 	godot::Dictionary raycast(const godot::Vector3 &origin, const godot::Vector3 &dir);
 	float height_at(float x, float z); // terrain height without a ray march (camera, ground queries)
+	godot::PackedFloat32Array heights_at(const godot::PackedVector2Array &points); // the same at each point (x, z), under one lock
 	godot::Dictionary inspect(const godot::Vector3 &p);
 	godot::PackedVector3Array segment_path(int seg); // the road's line in the world, for what the Information tool draws
 	godot::Dictionary segment_traffic(int seg), node_traffic(int node); // the Inspect tool's live numbers (city_core_inspect.cpp)

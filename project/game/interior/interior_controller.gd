@@ -58,6 +58,11 @@ func is_on() -> bool:
 	return _state.get("on", false)
 
 
+## The floor the layer shows, as the core last told it (refresh).
+func level() -> int:
+	return _state.get("level", 0)
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventMouseButton) or not event.pressed or event.button_index != MOUSE_BUTTON_LEFT:
 		return
@@ -78,7 +83,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _process(_delta: float) -> void:
 	if int(CityStore.query(&"interior_revision")) != _revision:
-		_refresh() # a new city or a load closed the layer under us
+		refresh() # a new city or a load closed the layer under us
 	if not is_on():
 		return
 	var step := _direction_step()
@@ -112,13 +117,13 @@ func _move_floor(delta: int) -> void:
 func _send(on: bool, target: int, level: int, step := -1) -> void:
 	_step = _direction_step() if step < 0 else step
 	CityStore.dispatch(&"set_interior", [on, target, level, _step])
-	_refresh()
+	refresh()
 	if not on:
 		_step = -1
 
 
-## Reads the core's view again: the bar and the lights follow it.
-func _refresh() -> void:
+## Reads the core's view again: the bar and the lights follow it. Whoever changes the view but this layer calls it.
+func refresh() -> void:
 	_state = CityStore.query(&"interior")
 	_revision = _state.revision
 	if _bar.is_inside_tree(): # with no HUD the layer still works: nothing shows its floor

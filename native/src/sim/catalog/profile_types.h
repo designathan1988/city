@@ -9,6 +9,9 @@
 namespace city {
 
 enum class StripKind : uint8_t { SIDEWALK, CURB, PARKING, BIKE, LANE, MEDIAN, SHOULDER, BARRIER, COUNT };
+// Each kind's name in road_profiles.json, in the order above: what the loader reads and the script API gives back.
+constexpr const char *STRIP_KIND_NAMES[] = { "sidewalk", "curb", "parking", "bike", "lane", "median", "shoulder", "barrier" };
+static_assert(sizeof(STRIP_KIND_NAMES) / sizeof(STRIP_KIND_NAMES[0]) == size_t(StripKind::COUNT), "a name for every strip kind");
 enum class Surface : uint8_t { ASPHALT = 0, CONCRETE = 1, COBBLE = 2, BALLAST = 3 };
 enum class Paving : uint8_t { CONCRETE = 0, PAVERS = 1, STONE = 2, GRASS = 3 };
 // The class a road is laid with (Roadcraft 4.0 ROAD_TYPES): the asphalt's tone and the rung of the upgrade ladder.

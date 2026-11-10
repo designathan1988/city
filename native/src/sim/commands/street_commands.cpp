@@ -82,7 +82,7 @@ EditResult set_approach_rule(CityState &s, int node, int seg, int rule) {
 
 EditResult place_item(CityState &s, ItemKind kind, SignType sign, const std::string &text, double x, double z, double reach) {
 	EditResult r;
-	const ItemSnap snap = snap_item(s, kind, x, z, reach);
+	const ItemSnap snap = snap_item(s, kind, x, z, reach, FurnitureRead::PLACED);
 	if (!snap.ok) {
 		r.error = snap.reason;
 		return r;
@@ -115,7 +115,7 @@ EditResult place_item_row(CityState &s, ItemKind kind, double ax, double az, dou
 	int placed = 0;
 	for (double at = 0; at <= len + ROW_STEP_EPS_M; at += std::max(every_m, ROW_STEP_EPS_M)) {
 		const double t = len > 0 ? at / len : 0;
-		const ItemSnap snap = snap_item(s, kind, ax + (bx - ax) * t, az + (bz - az) * t, reach);
+		const ItemSnap snap = snap_item(s, kind, ax + (bx - ax) * t, az + (bz - az) * t, reach, FurnitureRead::PLACED); // each placed one counts for the next
 		if (!snap.ok) {
 			if (r.error.empty()) r.error = snap.reason;
 			continue;
@@ -168,7 +168,7 @@ bool remove_street_at(CityState &s, double x, double z, double reach) {
 	const FootwayHit h = footway_at(s.roads, x, z, reach);
 	if (!h.ok) return false;
 	std::vector<FurnitureSpot> spots;
-	traffic::street_furniture_of(s, h.seg, FURNITURE_ALL & ~furniture_bit(FurnitureKind::SIGNAL), spots);
+	traffic::street_furniture_of(s, h.seg, FURNITURE_ALL & ~furniture_bit(FurnitureKind::SIGNAL), spots, FurnitureRead::PLACED);
 	double best = reach;
 	bool found = false;
 	double cx = 0, cz = 0;

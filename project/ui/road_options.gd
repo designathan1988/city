@@ -68,7 +68,7 @@ func refresh() -> void:
 
 ## The base road in hand, as the core describes it.
 func _base() -> Dictionary:
-	return CityStore.query(&"road_profiles")[_param("profile", CityStore.first_road())]
+	return CityStore.cached(&"road_profiles")[_param("profile", CityStore.first_road())]
 
 
 func _param(key: String, fallback: Variant) -> Variant:

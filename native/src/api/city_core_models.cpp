@@ -122,6 +122,31 @@ String CityBuilder::place_check(const PackedByteArray &bytes, double x, double z
 	return String(place_problem(*state_, b, x, z, rot).c_str());
 }
 
+Dictionary CityBuilder::place_hover(const PackedByteArray &bytes, const Vector3 &at, const Vector2 &size, double rot) const {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	const CityState &s = *state_;
+	const PlaceSnap p = snap_place(s, size.x, size.y, at.x, at.z, rot);
+	Dictionary d;
+	d["x"] = p.x;
+	d["z"] = p.z;
+	d["rot"] = p.rot;
+	d["kind"] = p.kind;
+	d["y"] = s.ready ? s.terrain.height_at(float(p.x), float(p.z)) : 0.f;
+	HoverCheck &h = hover_;
+	if (!h.made || h.x != p.x || h.z != p.z || h.rot != p.rot || h.revision != s.revision || h.bytes != bytes) {
+		b40::Body b;
+		h.problem = body_of(bytes, b) ? String(place_problem(s, b, p.x, p.z, p.rot).c_str()) : String("tool.failed");
+		h.bytes = bytes;
+		h.x = p.x;
+		h.z = p.z;
+		h.rot = p.rot;
+		h.revision = s.revision;
+		h.made = true;
+	}
+	d["problem"] = h.problem;
+	return d;
+}
+
 Dictionary CityBuilder::place_model(const PackedByteArray &bytes, double x, double z, double rot, int fn, int zone) {
 	b40::Body b;
 	if (!body_of(bytes, b)) return Dictionary();
@@ -146,6 +171,7 @@ void CityBuilder::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("place_fit", "at", "size", "rot"), &CityBuilder::place_fit);
 	ClassDB::bind_method(D_METHOD("doc_body", "doc"), &CityBuilder::doc_body);
 	ClassDB::bind_method(D_METHOD("place_check", "bytes", "x", "z", "rot"), &CityBuilder::place_check);
+	ClassDB::bind_method(D_METHOD("place_hover", "bytes", "at", "size", "rot"), &CityBuilder::place_hover);
 	ClassDB::bind_method(D_METHOD("place_model", "bytes", "x", "z", "rot", "function", "zone"), &CityBuilder::place_model);
 	ClassDB::bind_method(D_METHOD("stage_show", "bytes", "scenario", "ghost"), &CityBuilder::stage_show);
 	ClassDB::bind_method(D_METHOD("stage_move", "handle", "at"), &CityBuilder::stage_move);

@@ -49,7 +49,7 @@ func _ready() -> void:
 	var col := HudWidgets.vbox(self)
 	_head = HudWidgets.hbox(col)
 	strip = HudWidgets.hbox(col, &"Pad")
-	for p in CityStore.query(&"road_profiles"):
+	for p in CityStore.cached(&"road_profiles"):
 		_profile_ids[p.id] = p.index
 	catalog = RoadCatalog.new()
 	catalog.minimum_size_changed.connect(DrawerStrips.fit.bind(self))

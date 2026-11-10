@@ -54,15 +54,7 @@ struct SidewalkEnds {
 };
 
 // The widest room either side of a sidewalk's middle among the catalog's profiles (a corner line's room is at most this).
-float widest_walk_half(const CityState &s) {
-	float widest = 0;
-	for (const Profile &pf : s.catalog.profiles) {
-		if (pf.edges.empty()) continue;
-		for (const StripEdge *e : { &pf.edges.front(), &pf.edges.back() })
-			if (e->strip.kind == StripKind::SIDEWALK) widest = std::max(widest, (e->u1 - e->u0) * 0.5f - s.catalog.traffic.ped_margin_m);
-	}
-	return widest;
-}
+float widest_walk_half(const CityState &s) { return std::max(0.f, s.catalog.widest_sidewalk_half() - s.catalog.traffic.ped_margin_m); }
 
 // Round a corner or at a kerb: its junction and the next one over each short arm.
 int junctions_round(const CityState &s, int node, int *out) {

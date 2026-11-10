@@ -12,7 +12,7 @@ const MEAN_MAPS := ["asphalt_map", "footway_map", "kerb_map"] # those road.gdsha
 static func apply(m: ShaderMaterial, params: Dictionary, load_param: Callable) -> void:
 	for name in MEAN_MAPS:
 		m.set_shader_parameter("mean_" + name.trim_suffix("_map"), mean_color(load_param.call(params[name])))
-	var streets: Dictionary = DataTables.render().streets
+	var streets: Dictionary = DataTables.render_table("streets")
 	m.set_shader_parameter("asphalt_reference", Color.html(streets.surface_colors[0]))
 	var tones := PackedVector3Array()
 	for road_class in streets.asphalt_by_class:

@@ -133,9 +133,8 @@ Anchor find_anchor(const CityState &s, double x, double z, double px, std::optio
 		return a;
 	}
 	// A road is picked anywhere on its surface, however small the pointer's own radius is at this zoom.
-	double pick = tn.road_snap_pick_px * px, widest = 0, best = std::numeric_limits<double>::max(), best_t = 0;
-	for (const Profile &p : s.catalog.profiles) widest = std::max(widest, double(p.half()));
-	double reach = std::max(pick, widest);
+	double pick = tn.road_snap_pick_px * px, best = std::numeric_limits<double>::max(), best_t = 0;
+	double reach = std::max(pick, double(s.catalog.widest_half()));
 	int seg = -1;
 	net.for_segments_near(x - reach, z - reach, x + reach, z + reach, [&](int id) {
 		double t, d;

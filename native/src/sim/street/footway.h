@@ -24,11 +24,12 @@ void segment_frame(const RoadNetwork &net, int seg, double v, double &fx, double
 // The arc and offset of a point on a segment, and how far it lies past the segment's ends along the tangent (0 beside it): a
 // point ahead of an end has that end as its closest place, and only `past` tells it from one beside the road.
 void segment_place(const RoadNetwork &net, int seg, double x, double z, double &v, float &u, float &past);
-// How far from a point footway_at looks for a segment whose sidewalk may be within `reach` of it: what a reader of a box of
-// the roads (a job's cut) must hold round the points it asks.
-double footway_reach(double reach);
 // The sidewalk under (x, z), or within `reach` of its band, between the segment's mouths.
 FootwayHit footway_at(const RoadNetwork &net, double x, double z, double reach);
+// The farthest a point may stand from a segment's centre line and still find that segment's sidewalk within `reach`
+// (footway_at): the widest profile's half and `reach` across it, `reach` along it. What asks which segments a point's footway
+// may be on pads its search by this, and a reader of a box of the roads (a job's cut) holds this much round the points it asks.
+double footway_reach(const RoadNetwork &net, double reach);
 // The median under (x, z) within `reach` of its centre line (side -1): a plant may stand there.
 FootwayHit median_at(const RoadNetwork &net, double x, double z, double reach);
 bool on_road(const RoadNetwork &net, double x, double z); // on any segment's surface, sidewalks included

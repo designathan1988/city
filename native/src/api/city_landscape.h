@@ -38,6 +38,7 @@ public:
 	godot::Array effects_near(const godot::Vector3 &p, float reach, int first_effect) const;
 	godot::Dictionary set_biome(int region);
 	godot::Dictionary landscape() const;
+	godot::Dictionary cloud(int id) const; // one cloud as landscape() lists it; empty when there is none by that id
 	int64_t sky_revision() const;
 	// The render's fields as RenderWorld::sync last took them in: read-only, with the revision that says a new one is in.
 	godot::Dictionary fog_field() const;
