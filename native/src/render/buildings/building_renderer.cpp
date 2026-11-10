@@ -97,7 +97,7 @@ void BuildingRenderer::reset() {
 		drop_bands(kv.second);
 	}
 	chunks_.clear();
-	for (auto &kv : supers_) kv.second.far.free();
+	for (auto &kv : supers_) kv.second.free();
 	supers_.clear();
 	bodies_.clear();
 }
@@ -123,7 +123,7 @@ void BuildingRenderer::drop_far(int64_t key, Super &sp) {
 		std::lock_guard<std::mutex> lk(queue_mutex_);
 		super_requested_.erase(key);
 	}
-	sp.far.free();
+	sp.free();
 	sp.built = sp.has_content = false;
 	sp.dirty = true;
 	sp.mask_sent = -1;

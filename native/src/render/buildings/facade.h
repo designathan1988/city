@@ -77,6 +77,7 @@ void emit_roofs(Shell &shell, Shell &parts, const Placed &pl);
 // What the player set on a block's roof (roof_gear.cpp).
 void emit_roof_gear(Shell &shell, const Placed &pl, const Volume &v, float eaves);
 void emit_pitched(Shell &shell, const Placed &pl, const Volume &v, float eaves);
+void top_face(Shell &s, const Placed &pl, const Volume &v, float z, const Lin &lin, int8_t fin); // a block's flat top at `z`: a fan over its plan
 void emit_roof_plant(Shell &shell, Shell &parts, const Placed &pl, const Volume &v, int vol, float roof_z);
 // A round piece on a roof, standing on (cx, cy) of the frame `b`; `capped`: its top drawn, in `top`.
 void cylinder(Shell &s, const Basis &b, float cx, float cy, float r, float z0, float z1, const Lin &side, const Lin &top, int8_t fin, bool capped = true);
@@ -89,6 +90,8 @@ bool emit_lot_prop(Shell &shell, Shell &parts, const Placed &pl, const LotElemen
 void emit_roof_terrace(Shell &shell, Shell &parts, const Placed &pl, const Volume &v, int vol, float z);
 // Far walls with painted windows; `roofs`: also slabs, parapets and machine rooms (the mid level lays emit_roofs).
 void emit_far(Shell &shell, const Placed &pl, bool roofs);
+// What a body throws in the sun from afar (far_casts.h): each block's sides as one face from its foot to its parapet, and its roof.
+void emit_cast(Shell &shell, const Placed &pl);
 // The mid level's openings alone, as emit_far lays them into a shell that keeps them (Shell::keep_bays): a level with its own reach.
 void emit_mid_bays(Shell &shell, const Placed &pl);
 // The mid level's relief, from the same bays the near level draws (facade_emit.cpp).

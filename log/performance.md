@@ -245,7 +245,8 @@ Measured once, at `4c1d932d`, the same plan (`info` and 5 s of `usage` at each v
   shaders, `building_level.gdshaderinc`, the instance uniforms `level_keep` and `level_back` (the mid level stood 0.6 m
   back along the eye's ray for it; it stands in its true place), `lod.level_fade_m` and `level_back_m`. The glass's and the
   parts' bodies went back into their one shader each.
-- Measured once at the close, the batch's plan, release DLL (`info` and 5 s of `usage` once `render_pending` is 0):
+- Measured once at the close, the batch's plan (`info` and 5 s of `usage` once `render_pending` is 0; the tests' DLL, as
+  every measure of this record):
 
 | 24 km city | 9 km out, base | the batch | now | Centre, base | the batch | now |
 |---|---|---|---|---|---|---|
@@ -303,5 +304,37 @@ Measured once, at `4c1d932d`, the same plan (`info` and 5 s of `usage` at each v
   with no fade line; with the horizon in the picture they fade out far away as before; on the street and on a roof from
   near they are whole and attached.
 - Left of the shadows' cost (the older trace's C17): past the mid level the far mesh is its own caster, with its own
-  `vertex()` in every cascade that takes its superchunk whole; the agents' casting rows are one camera-wide MultiMesh a
-  model and level.
+  `vertex()` in every cascade that takes its superchunk whole (P38, below); the agents' casting rows are one camera-wide
+  MultiMesh a model and level.
+
+## P38 (2026-11-10, afternoon): the far level throws a caster of its own
+
+- Problem: past the mid level the far mesh was its own shadow caster. Every cascade whose box touched a superchunk drew
+  that superchunk's whole far mesh, a square kilometre of buildings at about 34 triangles each, through
+  `building_far.gdshader`'s `vertex()`, the buildings of the chunks drawn in their own detail included (their vertices
+  fold to a point only after the vertex stage ran). The mid level already threw a hull (`cast_hull.h`); the far level
+  had none.
+- Fix: `render/buildings/far_casts.h`: the far level throws a caster a chunk of the superchunk: each block's sides as
+  one face from its foot to its parapet and its roof (`far_mass.cpp` `emit_cast`), positions alone, welded and
+  simplified to the far level's own error, made in the shadow material by the superchunk's bake job. A caster has its
+  chunk's box, so a cascade draws the chunks it covers, and is shown only while its chunk is not drawn in detail (the
+  far mesh's mask, `send_mask`). The far mesh casts nothing.
+- Test: `far_level_test` (the casters hold their blocks' sides and roofs alone: 36,194 triangles laid for the town's
+  95,070 drawn), `pipeline_test` (their meshes are made in the shadow material: no pipeline on the frame),
+  `shadow_reach_test`, `building_light_test`, `e2e`.
+- Measured, the same plan:
+
+| 24 km city | 9 km out, before | after | Centre, before | after |
+|---|---|---|---|---|
+| Shadow primitives a frame | 3.55 M | 0.81 M | 5.59 M | 2.03 M |
+| Shadow draws a frame | 204 | 435 | 207 | 474 |
+| GPU a frame (mean of 5 s) | 11.95 ms | 10.84 ms | 13.30 ms | 11.72 ms |
+| CPU a frame (mean of 5 s) | 1.00 ms | 1.03 ms | 1.08 ms | 1.15 ms |
+| Video memory | 1,795 MiB | 1,824 MiB | 3,166 MiB | 3,227 MiB |
+| Godot static memory | 393 MiB | 402 MiB | 593 MiB | 608 MiB |
+| The casters hold | | 2.14 M triangles | | 4.39 M triangles |
+
+- The casters cost 29 and 61 MiB of video memory and 9 and 15 MiB of static memory, and take 1.1 and 1.6 ms off the GPU
+  frame; every number stays under the base (centre: 5,454 MiB, 1,351 MiB, 16.2 ms). Photos 00 to 09 of this run, read
+  in `analysis.md`: the far towers shaded on one side and the streets and parks between them in their shade across
+  the whole picture, from 1.2 km and from 2.6 km; no patch without shadows, none doubled where chunks stand in detail.

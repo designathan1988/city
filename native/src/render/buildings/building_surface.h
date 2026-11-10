@@ -1,6 +1,7 @@
 // What a level of the building stream holds: a surface a job made, and the triangles and bytes each kind of surface keeps.
 #pragma once
 
+#include "render/buildings/far_casts.h"
 #include "render/buildings/shell.h"
 #include "render/rs_util.h"
 
@@ -46,9 +47,14 @@ struct ChunkMaterials {
 	godot::RID parts, cast;
 };
 
-// A superchunk's far mesh, and when it is made again.
+// A superchunk's far mesh with what it throws in the sun (far_casts.h), and when it is made again.
 struct FarDraw {
 	MeshDraw far;
+	FarCasts casts;
+	void free() {
+		far.free();
+		casts.free();
+	}
 	HeldCost held;
 	bool dirty = false;
 	bool built = false; // the far mesh of the current content is committed

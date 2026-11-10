@@ -27,4 +27,7 @@ func _ready() -> void:
 		% [far.get("part_least_m", 0.0), far.get("roof_boxes", 0), far.get("boxes_left", 0)])
 	check(int(far.get("bytes", 0)) == int(far.get("sent_bytes", -1)),
 		"its arrays are counted as they are sent: %d bytes counted, %d sent" % [far.get("bytes", 0), far.get("sent_bytes", -1)])
+	var cast := int(far.get("cast_triangles", 0))
+	check(cast > 0 and cast < int(far.get("triangles", 0)),
+		"what it throws in the sun is its blocks' sides and roofs alone, fewer triangles than it draws: %d of %d" % [cast, far.get("triangles", 0)])
 	finish()

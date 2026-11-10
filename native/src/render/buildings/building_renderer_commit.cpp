@@ -116,6 +116,7 @@ int64_t BuildingRenderer::Built::bytes() const {
 void BuildingRenderer::SuperBuilt::bake() {
 	held.add(far_shell, false);
 	far = BuildingRenderer::bake(far_shell, false, LevelMaterials::of_walls(far_material));
+	casts.bake();
 	far_shell = b40::Shell();
 	baked = true;
 }
@@ -212,7 +213,8 @@ void BuildingRenderer::commit_super(SuperBuilt &b) {
 	Super &sp = supers_[b.key];
 	sp.has_content = b.far.mesh.valid();
 	sp.held = b.held;
-	put(sp.far, b.far, scenario_, true, true, LAYER_BUILDING_MASSES); // casts: past the mid level it is the only thing that can
+	put(sp.far, b.far, scenario_, false, true, LAYER_BUILDING_MASSES); // it throws nothing itself: its chunks' casters do (far_casts.h)
+	sp.casts.commit(b.casts, scenario_, LAYER_BUILDING_MASSES);
 	sp.built = true;
 	sp.mask_sent = -1; // the mask update_view computed this frame goes to the (maybe new) instance at once
 	send_mask(sp);
@@ -249,6 +251,7 @@ void BuildingRenderer::show(Chunk &ch, bool on) {
 void BuildingRenderer::send_mask(Super &sp) {
 	if (!sp.far.inst.is_valid() || sp.mask == sp.mask_sent) return;
 	RenderingServer::get_singleton()->instance_geometry_set_shader_parameter(sp.far.inst, FAR_MASK_PARAM, sp.mask);
+	sp.casts.show(sp.mask); // a chunk drawn in its own detail throws its own hulls
 	sp.mask_sent = sp.mask;
 }
 

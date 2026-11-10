@@ -121,7 +121,7 @@ Dictionary BuildingRenderer::far_form() const {
 			if (b.alive) supers.insert(chunk_of(b.x, b.z, SUPERCHUNK));
 	}
 	const float error = far_error_m();
-	int64_t buildings = 0, triangles = 0, bytes = 0, sent = 0, thin_quads = 0, down_faces = 0, roof_boxes = 0, boxes_left = 0;
+	int64_t buildings = 0, triangles = 0, bytes = 0, sent = 0, thin_quads = 0, down_faces = 0, roof_boxes = 0, boxes_left = 0, cast_triangles = 0;
 	for (const int64_t key : supers) {
 		const SuperChunks chunks = chunks_of(key);
 		Inputs in;
@@ -135,6 +135,7 @@ Dictionary BuildingRenderer::far_form() const {
 		triangles += int64_t(m.triangles());
 		bytes += built.bytes();
 		sent += int64_t(m.pos.size() * (2 * sizeof(Vector3) + sizeof(Color) + sizeof(Vector2) + size_t(m.custom_used) * sizeof(uint32_t)) + m.idx.size() * sizeof(int32_t));
+		sent += built.casts.bytes(); // the casters' positions and indices, as laid
 		for (size_t i = 0; i + FACE3 <= m.idx.size();) {
 			const size_t first = size_t(m.idx[i]);
 			const bool quad = i + FACE4 <= m.idx.size() && size_t(m.idx[i + FACE3]) == first;
@@ -144,6 +145,7 @@ Dictionary BuildingRenderer::far_form() const {
 		}
 		roof_boxes += m.boxes_kept;
 		boxes_left += m.boxes_left;
+		cast_triangles += built.casts.emitted();
 	}
 	Dictionary d;
 	d["buildings"] = buildings;
@@ -156,6 +158,7 @@ Dictionary BuildingRenderer::far_form() const {
 	d["part_least_m"] = far_part_least();
 	d["roof_boxes"] = roof_boxes; // what stands on the roofs, a box each, that the far level's distance shows
 	d["boxes_left"] = boxes_left; // and what it does not show, left out
+	d["cast_triangles"] = cast_triangles; // what it throws in the sun, as laid (far_casts.h): the blocks' sides and roofs alone
 	return d;
 }
 
@@ -163,6 +166,7 @@ Dictionary BuildingRenderer::building_cost() const {
 	static const char *const NAMES[HELD_KINDS] = { "near_walls", "near_panes", "near_guards", "near_cards", "near_pieces", "mid_walls", "mid_panes", "mid_cards" };
 	std::array<Held, HELD_KINDS> sum;
 	Held far;
+	int64_t far_cast_triangles = 0;
 	int64_t near_chunks = 0, mid_chunks = 0, bay_chunks = 0, bay_rows = 0, mid_rows = 0, instances = 0, props = 0;
 	for (const auto &[key, ch] : chunks_) {
 		bay_chunks += ch.built[LEVEL_BAYS] ? 1 : 0;
@@ -183,6 +187,7 @@ Dictionary BuildingRenderer::building_cost() const {
 	for (const auto &[key, sp] : supers_) {
 		far.triangles += sp.held.triangles;
 		far.bytes += sp.held.bytes;
+		far_cast_triangles += sp.casts.triangles;
 	}
 	Dictionary d;
 	auto put_held = [&d](const char *name, const Held &h) {
@@ -193,6 +198,7 @@ Dictionary BuildingRenderer::building_cost() const {
 	};
 	for (int k = 0; k < HELD_KINDS; k++) put_held(NAMES[k], sum[size_t(k)]);
 	put_held("far", far);
+	d["far_cast_triangles"] = far_cast_triangles; // what the far level's casters hold, welded and simplified
 	d["near_chunks"] = near_chunks;
 	d["mid_chunks"] = mid_chunks;
 	d["bay_chunks"] = bay_chunks; // chunks whose openings stand as instances (within their own reach)

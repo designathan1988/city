@@ -260,6 +260,7 @@ BuildingRenderer::SuperBuilt BuildingRenderer::build_super_cpu(const Inputs &in,
 	SuperBuilt out;
 	out.key = super_key;
 	out.far_material = material_far_;
+	out.casts.made_with(far_error_m(), material_cast_);
 	b40::Shell &far = out.far_shell;
 	far.far_tones = &look_.finish_far;
 	far.rooms = true; // each side's windows, as the other levels code them
@@ -276,6 +277,7 @@ BuildingRenderer::SuperBuilt BuildingRenderer::build_super_cpu(const Inputs &in,
 		// the building's chunk in the superchunk above the kind bits of COLOR.a (building_far.gdshader chunk_mask)
 		const int64_t ck = chunk_of(rec.x, rec.z, CHUNK);
 		const int chunk = (key_y(ck) - sz) * CHUNKS_PER_SUPER_AXIS + (key_x(ck) - sx);
+		out.casts.add(chunk, pl);
 		for (size_t v = first; v < far.col.size(); v++) {
 			const int kind = int(std::lround(far.col[v].a * BYTE_MAX)) & FAR_KIND_MASK;
 			far.col[v].a = float(kind | (chunk << FAR_KIND_BITS) | (pl.b->use == b40::USE_COMMERCIAL ? FAR_OFFICE_BIT : 0)) / BYTE_MAX;

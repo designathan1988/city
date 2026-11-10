@@ -16,7 +16,7 @@ using namespace godot;
 
 namespace city {
 
-OwnedMesh cast_hull(const b40::Shell &walls, const b40::Shell &panes, float error_m, const RID &material) {
+OwnedMesh cast_hull(const b40::Shell &walls, const b40::Shell &panes, float error_m, const RID &material, int64_t *triangles) {
 	OwnedMesh out;
 	std::vector<Vector3> points;
 	std::vector<unsigned> corners;
@@ -36,6 +36,7 @@ OwnedMesh cast_hull(const b40::Shell &walls, const b40::Shell &panes, float erro
 	std::vector<unsigned> kept(corners.size());
 	kept.resize(meshopt_simplify(kept.data(), corners.data(), corners.size(), &unique[0].x, welded, sizeof(Vector3), 0, error_m, meshopt_SimplifyErrorAbsolute, nullptr));
 	if (kept.empty()) return out;
+	if (triangles) *triangles += int64_t(kept.size() / 3);
 	std::vector<unsigned> moved(welded, ~0u);
 	PackedVector3Array vertices;
 	PackedInt32Array indices;

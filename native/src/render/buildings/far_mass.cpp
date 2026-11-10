@@ -175,11 +175,17 @@ void lean_walls(Shell &s, const Placed &pl, const Volume &v, const Side &sd, int
 			[&](int k, int i, int k1, int i1) { wall_rect(s, pl, v, sd, W, fin, k, i, k1, i1, 0, Vector2(c0, float(k)), side_comp(v, k, sd.side)); });
 }
 
+// How far a flat roof's parapet stands over its eaves; 0 where the block has none (a pitched roof, a terrace, a block under another).
+float parapet_h(const Body &b, const Volume &v) {
+	if (!roof_flat(v.roof) || v.roof == ROOF_TERRACE || covered_by_above(b, v)) return 0;
+	return v.crown == CROWN_ATTIC ? ATTIC_H : ROOF_EDGE_H;
+}
+
 void walls(Shell &s, const Placed &pl, const Volume &v, bool roofs) {
 	const Body &b = *pl.b;
 	float z0 = b.level_z(v.base);
-	bool parapet = roofs && roof_flat(v.roof) && v.roof != ROOF_TERRACE && !covered_by_above(b, v);
-	float ph = v.crown == CROWN_ATTIC ? ATTIC_H : ROOF_EDGE_H;
+	const float ph = parapet_h(b, v);
+	bool parapet = roofs && ph > 0;
 	Paint mp = moulding_of(pl);
 	for (const Side &sd : sides_of(pl, v, 0)) {
 		Point2 mid{ (sd.p0.x + sd.p1.x) / 2 + sd.n.x * TEST_OUT, (sd.p0.y + sd.p1.y) / 2 + sd.n.y * TEST_OUT };
@@ -208,14 +214,8 @@ void roof(Shell &s, const Placed &pl, const Volume &v, int vol) {
 	float eaves = b.level_z(v.top());
 	if (!roof_flat(v.roof)) { emit_pitched(s, pl, v, eaves); return; }
 	Paint rp = v.roof == ROOF_TERRACE || covered_by_above(b, v) ? pl.data->color("terrace") : flat_roof_of(pl, v);
-	Lin lin = paint_lin(rp);
-	std::vector<Vector3> p;
-	if (v.outline.empty()) p = { pl.lot.at(v.x, v.y, eaves), pl.lot.at(v.x + v.w, v.y, eaves), pl.lot.at(v.x + v.w, v.y + v.d, eaves), pl.lot.at(v.x, v.y + v.d, eaves) };
-	else
-		for (const Point2 &q : v.outline) p.push_back(pl.lot.at(v.x + q.x * v.w, v.y + q.y * v.d, eaves + SLAB_LIFT));
-	Vector3 c = pl.lot.at(v.x + v.w / 2, v.y + v.d / 2, eaves + SLAB_LIFT);
 	s.grime_floor = -FAR_AWAY;
-	for (size_t i = 0; i < p.size(); i++) s.tri(c, p[i], p[(i + 1) % p.size()], pl.lot.e2, lin, rp.finish);
+	top_face(s, pl, v, eaves + SLAB_LIFT, paint_lin(rp), rp.finish);
 	for (const Core &cr : b.cores) {
 		float cx = cr.x + MODULE / 2, cy = cr.y + MODULE / 2;
 		if (!(cx > v.x && cx < v.x + v.w && cy > v.y && cy < v.y + v.d) || covered_by_above(b, v)) continue;
@@ -237,6 +237,19 @@ void emit_mid_bays(Shell &shell, const Placed &whole) {
 			const int n = bays_of(v, sd.side);
 			side_bays(shell, pl, v, sd, n, sd.length / float(n), whole.b->wall_of(v).finish, nullptr);
 		}
+	}
+}
+
+void emit_cast(Shell &shell, const Placed &whole) {
+	const Lin none{};
+	for (const Volume &v : whole.b->volumes) {
+		Placed raised;
+		const Placed &pl = block_frame(whole, v, raised);
+		const Body &b = *pl.b;
+		const float eaves = b.level_z(v.top());
+		for (const Side &sd : sides_of(pl, v, 0)) shell.rect(sd.f, 0, sd.length, b.level_z(v.base), eaves + parapet_h(b, v), 0, none, FIN_NONE);
+		if (roof_flat(v.roof)) top_face(shell, pl, v, eaves, none, FIN_NONE);
+		else emit_pitched(shell, pl, v, eaves);
 	}
 }
 

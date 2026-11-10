@@ -28,7 +28,6 @@
 #include <array>
 #include <atomic>
 #include <chrono>
-#include <limits>
 #include <mutex>
 #include <unordered_map>
 #include <unordered_set>
@@ -167,11 +166,12 @@ private:
 		float priority = 0;
 		uint64_t seq = 0;
 		godot::RID far_material; // what the far mesh is made with
+		FarCastsBuilt casts; // what its chunks throw in the sun
 		b40::Shell far_shell;
 		Surface far;
 		Held held;
 		bool baked = false;
-		int64_t bytes() const { return far_shell.bytes(false); }
+		int64_t bytes() const { return far_shell.bytes(false) + casts.bytes(); }
 		void bake();
 	};
 	// What a job reads from the map, copied while it holds the map lock shared for a moment (gather): the records

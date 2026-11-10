@@ -26,16 +26,6 @@ bool roof_covered(const Body &b, const Volume &v, Point2 p) {
 	return false;
 }
 
-void top_face(Shell &s, const Placed &pl, const Volume &v, float z, const Lin &lin, int8_t fin) {
-	std::vector<Vector3> p;
-	if (v.outline.empty()) p = { pl.lot.at(v.x, v.y, z), pl.lot.at(v.x + v.w, v.y, z), pl.lot.at(v.x + v.w, v.y + v.d, z), pl.lot.at(v.x, v.y + v.d, z) };
-	else
-		for (const Point2 &q : v.outline) p.push_back(pl.lot.at(v.x + q.x * v.w, v.y + q.y * v.d, z));
-	Vector3 c = pl.lot.at(v.x + v.w / 2, v.y + v.d / 2, z);
-	for (size_t i = 0; i < p.size(); i++) s.tri(c, p[i], p[(i + 1) % p.size()], pl.lot.e2, lin, fin);
-}
-
-
 struct RoofEmit {
 	Shell &shell, &parts;
 	const Placed &pl;
@@ -104,6 +94,15 @@ void RoofEmit::machine_rooms() {
 	}
 }
 } // namespace
+
+void top_face(Shell &s, const Placed &pl, const Volume &v, float z, const Lin &lin, int8_t fin) {
+	std::vector<Vector3> p;
+	if (v.outline.empty()) p = { pl.lot.at(v.x, v.y, z), pl.lot.at(v.x + v.w, v.y, z), pl.lot.at(v.x + v.w, v.y + v.d, z), pl.lot.at(v.x, v.y + v.d, z) };
+	else
+		for (const Point2 &q : v.outline) p.push_back(pl.lot.at(v.x + q.x * v.w, v.y + q.y * v.d, z));
+	Vector3 c = pl.lot.at(v.x + v.w / 2, v.y + v.d / 2, z);
+	for (size_t i = 0; i < p.size(); i++) s.tri(c, p[i], p[(i + 1) % p.size()], pl.lot.e2, lin, fin);
+}
 
 void emit_roofs(Shell &shell, Shell &parts, const Placed &whole) {
 	const Body &b = *whole.b;
