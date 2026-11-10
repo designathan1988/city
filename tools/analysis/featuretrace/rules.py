@@ -16,6 +16,8 @@ class_callable), and GDExtension bindings: ClassDB::bind_method(D_METHOD), ADD_S
 """
 from __future__ import annotations
 
+from .rule_table import CPP_RULES, GD_RULES, RULE_IDS  # noqa: F401  (the construct table)
+
 GDSCRIPT_KEYWORDS = {
     "if": "branch", "elif": "branch", "else": "branch", "match": "branch", "when": "branch",
     "for": "loop", "while": "loop", "in": "loop",

@@ -159,7 +159,7 @@ await yield breakpoint` JUMP; `class class_name extends signal func static const
 | break_statement, continue_statement, goto_statement, labeled_statement, statement_identifier | jumps and labels | JUMP |
 | try_statement, catch_clause, throw_statement, seh_try_statement, seh_except_clause, seh_finally_clause, seh_leave_statement | exceptions (a `throw` reaches the matching `catch`) | BRANCH, JUMP |
 | co_yield_statement, co_await_expression | coroutines | JUMP, EXPR |
-| attributed_statement | a statement with attributes | the statement's rule |
+| attributed_statement | a statement with attributes (`[[likely]] if ...`) | VALUE (the inner statement by its own row; the attributes NONE) |
 | identifier, field_identifier, qualified_identifier | names (`A::b` qualified) | LOOK, EXPR |
 | this | the enclosing object | EXPR |
 | call_expression, argument_list | calls | CALL, EXPR |
