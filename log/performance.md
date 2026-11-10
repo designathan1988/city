@@ -432,3 +432,13 @@ sky POSITION 022b734d; atmosphere 1c604b47; occlusion c978aeeb; lot_access e7346
   the shock ring, the thrown rocks and their shadows at 0.1 s, the fire and dust at 1.2 s, the crater's mark and rocks at rest at
   16 s; by night the flames and the ring. Seen and not from this change (the same on the tree before it): the flash lights
   nothing round it at night, and the crater's mark stays bright in the dark; both recorded in the ledger.
+
+### P20 (C12): a MultiMesh draw tells the engine its count, box and visibility when they change
+- Cause: `MultiMeshDraw::show` made four server calls at every `set` (the MultiMesh's and the instance's box, the visible
+  count, the instance's visibility), for every per-frame draw (vehicles, people, lenses, trains), changed or not.
+- Change: `rs_util.h`: the draw keeps what it told last (`box_`, `told_`, `drawn_`) and tells the difference; a new
+  allocation or an adopted MultiMesh forgets it. A per-frame draw costs its buffer; one that stays empty, nothing.
+- Check: `digest`, `people_cast_test`, `street_crossing_test` pass; gates OK. Photos of the town running (dist/review-c12c,
+  16 h and 22 h, near, street, mid, far): vehicles on the lanes with their lamps at night, walkers on the footways and the
+  crossings, trees, wires and posts drawn; footways meet the lot fronts in paving. Seen, not from this change: no pool of
+  light under the street lamps at night (recorded in the ledger).
