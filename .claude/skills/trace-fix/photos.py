@@ -8,6 +8,7 @@ files to look at with the Read tool.
 """
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -17,6 +18,7 @@ from store import fail
 
 LOOK = "res://tests/visual/look.tscn"  # the scene that looks at the game by a plan (CLAUDE.md, the commands table)
 CLI = os.path.join("tools", "tasks", "cli.py")  # the one orchestration owner (CLAUDE.md, tools/tasks)
+SUITES = os.path.join("tools", "tasks", "suites.json")  # its table: the vars of this machine (godot among them)
 RESOLUTION = "1920x1080"  # the resolution CLAUDE.md gives for looking at the game by a plan
 # The crops: an image is shown to the model at about 1568 px on its long edge (Anthropic's vision guide: larger ones are
 # scaled down), so a 1920x1080 frame is cut in 3x2 tiles, each widened by a tenth so a body on a cut is whole in one
@@ -99,6 +101,30 @@ def cmd_crops(args):
     show(photos_in(where))
 
 
+def godot_of():
+    """This machine's Godot binary, or '': asked of the orchestrator (`cli.py var godot`) where it has that command, else read
+    from the orchestrator's own table (tools/tasks/suites.json, vars.godot: the environment variable it names first, then this
+    platform's value), else found on the PATH. A tree whose orchestrator is older than `var` still takes its photos."""
+    try:
+        said = subprocess.run([sys.executable, CLI, "var", "godot"], cwd=store.ROOT, capture_output=True, text=True, timeout=60)
+        if said.returncode == 0 and said.stdout.strip():
+            return said.stdout.strip()
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    try:
+        with open(os.path.join(store.ROOT, SUITES), encoding="utf-8") as f:
+            var = json.load(f).get("vars", {}).get("godot", {})
+    except (OSError, ValueError):
+        var = {}
+    named = os.environ.get(var.get("env", "") or "GODOT", "")
+    if named:
+        return named
+    listed = var.get("windows" if os.name == "nt" else "posix", "")
+    if listed and (os.path.isfile(listed) or shutil.which(listed)):
+        return listed
+    return shutil.which("godot") or shutil.which("godot_console") or ""
+
+
 def cmd_photos(args):
     """Runs the look scene on a plan, hidden and under a deadline, and crops what it shot."""
     state = store.load()
@@ -108,9 +134,10 @@ def cmd_photos(args):
     out = os.path.abspath(args.out or os.path.join(store.trace_folder(state["slug"]), "photos"))
     os.makedirs(out, exist_ok=True)
     began = time.time()
-    godot = subprocess.run([sys.executable, CLI, "var", "godot"], cwd=store.ROOT, capture_output=True, text=True, timeout=60).stdout.strip()
+    godot = godot_of()
     if not godot:
-        fail("the orchestrator does not know this machine's Godot (`python tools/tasks/cli.py var godot`)")
+        fail("this machine's Godot was not found: the orchestrator's `var godot`, the `godot` var of tools/tasks/suites.json "
+             "(its env name first) and the PATH were asked")
     request = {"id": 1, "name": "look_" + state["slug"], "hidden": True, "timeout_s": args.timeout,
                "extra": [str(time.time_ns())],  # never an earlier run's answer: the photo is of the game as it is now
                "argv": [godot, "--path", "project", "--resolution", args.resolution, LOOK, "--", "--no-flow",

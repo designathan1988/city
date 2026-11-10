@@ -6,6 +6,8 @@ CompileFlags:
   CompilationDatabase: build-win
 ---
 If:
-  PathMatch: [godot-cpp/.*, build[^/]*/.*]
+  PathMatch:
+    - 'godot-cpp/.*'
+    - 'build[^/]*/.*'
 Index:
   Background: Skip
