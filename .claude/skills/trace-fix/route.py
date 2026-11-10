@@ -1,11 +1,14 @@
 """The flow of a problem found by script, for the trace-fix skill: the repository's feature tracer (tools/analysis/ftrace)
 is asked what triggers a seed, what it runs and writes and who reads that, and the answer becomes the flow of the open
 trace: every file involved, once, in the order the code runs, each with why it is there and the functions of it that
-are on the flow. The tracer reads the tree on disk and resolves by name: the route is where to start reading, in
-order, not a verdict; what the reading finds beyond it is added with `flow`, as before.
+are on the flow. Where a seed is C or C++, what it runs comes from the architecture analyser (tools/analysis/arch), which reads the
+compiler's own tree of the code on disk: calls through base classes, templates, lambdas and jobs are on the route.
 """
+import json
 import os
+import subprocess
 import sys
+import tempfile
 from collections import OrderedDict
 
 import store
@@ -19,6 +22,38 @@ INCLUDE = ("project/game", "project/ui", "project/render", "project/data", "nati
 # Entry chains shown and followed: the shortest ones say how the seed is reached; the rest repeat them through other callers.
 ENTRY_CHAINS = 12
 UNITS_KEPT = 40  # functions of one file remembered for the reading batches
+NATIVE = "native/src"  # the code the compiler reads (CLAUDE.md, the project's structure)
+SCAN_TIMEOUT_S = 1200  # one scan of the working tree by the architecture analyser; its own task has 1800
+
+
+def compiler_route(graph, seeds):
+    """For the seeds the compiler knows (C and C++), what each runs, in program order, as the architecture analyser reads it from the compiler's own
+    tree: calls through base classes, templates, lambdas and jobs included, which no lookup by name can promise. The analyser's scan of the working
+    tree is made again when a source is newer than it. Returns [(path, [(line, last line, name)])], or [] where there is no analyser or no such seed."""
+    arch = os.path.join(store.ROOT, "tools", "analysis", "arch.py")
+    native = [s for s in seeds if graph.nodes[s].path.startswith(NATIVE + "/") and graph.nodes[s].kind == "callable"]
+    if not native or not os.path.isfile(arch):
+        return []
+    slices = os.path.join(store.ROOT, "dist", "arch", "worktree", "slices.json")
+    newest = max((os.path.getmtime(os.path.join(base, n)) for base, _, names in os.walk(os.path.join(store.ROOT, NATIVE)) for n in names), default=0.0)
+    if not os.path.isfile(slices) or os.path.getmtime(slices) < newest:
+        done = subprocess.run([sys.executable, arch, "scan", "--worktree"], cwd=store.ROOT, capture_output=True, timeout=SCAN_TIMEOUT_S)
+        if done.returncode != 0:
+            raise Refused("the architecture analyser could not scan the working tree: " + done.stderr.decode("utf-8", "replace")[-600:])
+    files = OrderedDict()
+    for seed in native:
+        node = graph.nodes[seed]
+        out = os.path.join(tempfile.gettempdir(), f"trace_fix_route_{os.getpid()}.json")
+        done = subprocess.run([sys.executable, arch, "trace", f"{node.path}:{node.start}", "--worktree", "--json", out], cwd=store.ROOT,
+                              capture_output=True, timeout=SCAN_TIMEOUT_S)
+        if done.returncode != 0 or not os.path.isfile(out):
+            continue  # a function the compiler's tree does not hold as the tracer names it (a declaration, a macro): the tracer's own route stands
+        with open(out, encoding="utf-8") as f:
+            route = json.load(f)
+        os.remove(out)
+        for group in route.get("below", []):
+            files.setdefault(group["file"], []).extend((fn[1], fn[2], fn[0]) for fn in group["functions"])
+    return list(files.items())
 
 
 def run_tracer(query, seeds, include):
@@ -92,12 +127,22 @@ def cmd_trace(args):
     except Refused as refusal:
         fail(str(refusal))
     found = steps(graph, result, args.deep)
-    files = files_of(graph, found)
+    first = next((i for i, step in enumerate(found) if step[1] == "seed"), len(found))
+    files = files_of(graph, found[:first])  # what leads to the seeds, then what the compiler says they run, then the rest of the tracer's answer
+    try:
+        compiled = compiler_route(graph, result.seeds) if not args.include else []
+    except Refused as refusal:
+        fail(str(refusal))
+    for path, functions in compiled:
+        files.setdefault(path, []).extend((line, end, name, "runs (the compiler's route)", "") for line, end, name in functions)
+    for path, units in files_of(graph, found[first:]).items():
+        files.setdefault(path, []).extend(units)
     out = views.Out()
     out.add(f"ROUTE of {'seeds ' + ', '.join(args.seed) if args.seed else 'query ' + repr(args.query)}: "
             f"{len(result.seeds)} seed(s), {len(result.entries)} entry point(s), {len(result.feature)} unit(s) it runs, "
             f"{len(result.shared)} of infrastructure, {len(result.mutated)} state written, {len(result.consumers)} consumer(s), "
-            f"{len(result.executed)} more inside its calls{'' if args.deep else ' (not on the route: --deep adds them)'}.")
+            f"{len(result.executed)} more inside its calls by name{'' if args.deep else ' (--deep adds them)'}; "
+            f"the compiler's route of the C++ seeds adds {len(compiled)} file(s) in program order.")
     out.add("SEEDS: " + "; ".join(graph.label(s) for s in result.seeds[:8]) + (" ..." if len(result.seeds) > 8 else ""))
     added = shown = 0
     for path, units in files.items():

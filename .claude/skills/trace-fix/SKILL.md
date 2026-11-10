@@ -51,8 +51,10 @@ frame sync, the load).
 in the order the code runs, every file involved: the entries that trigger it, the seeds, what they run, the
 infrastructure they use, the state they write and who reads that state later, each file with why it is there. `next`
 then gives the reading batches along that route and names, per chunk, the functions of it that are on the route.
-The tracer resolves by name and leaves out what only runs inside the calls (`--deep` adds it) and the tests
-(`--include project/tests`): the route is where to start, in order, not the whole truth. Complete it as you read.
+What a C or C++ seed runs comes from the architecture analyser, which reads the compiler's own tree of the code on disk:
+calls through base classes, templates, lambdas and jobs are on the route, in program order (the first trace after a C++
+change waits for its scan, a few minutes). Scripts, scenes and data come from the tracer by name. The tests are left out
+(`--include project/tests` brings them in). What the reading still shows beyond the route goes on with `flow`.
 
 **Locate what the route misses with the code's own index, not by guessing.** In the C++ core use the LSP tool (clangd; `native/.clangd` names
 the compilation database it indexes): go to definition, find references, incoming and outgoing calls.
