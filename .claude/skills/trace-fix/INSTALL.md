@@ -1,8 +1,8 @@
 # Installing trace-fix
 
 1. Copy this folder to `<project>/.claude/skills/trace-fix/` (`SKILL.md`, `ledger.py`, `commands.py`, `operations.py`,
-   `route.py`, `card.py`, `writers.py`, `photos.py`, `rules.json`, `store.py`, `proof.py`, `views.py`, `read_guard.py`,
-   `selftest.py`). The skill is then listed in every session of the project and is invoked by `/trace-fix` or by itself
+   `route.py`, `card.py`, `writers.py`, `photos.py`, `rules.json`, `store.py`, `proof.py`, `views.py`, `read_guard.py`, `references.json`,
+   `selftest.py`, `selftest_guard.py`). The skill is then listed in every session of the project and is invoked by `/trace-fix` or by itself
    when a problem is reported.
 2. Required: the hooks, all one script (`read_guard.py`, told apart by the event it is given). In the user's
    `~/.claude/settings.json` (it reaches sessions already running) or in `<project>/.claude/settings.json`, with the
