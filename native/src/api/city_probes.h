@@ -62,6 +62,7 @@ public:
 	godot::Dictionary bay_census(); // how many bays the city has and how many different ones (building_renderer_probe.cpp)
 	godot::Dictionary far_form() const; // tests: the buildings' far level built on the spot, and what of it its nearest distance cannot show
 	godot::Dictionary ground_drawn(const godot::Vector3 &at) const; // tests: the ground's height as the terrain's shader reads it there (render/terrain_bridge.h drawn)
+	godot::Dictionary surface_probe(const godot::Array &arrays, const godot::Dictionary &lods, int64_t format) const; // tests: render/surface_data.h's surface of these arrays
 
 protected:
 	static void _bind_methods();

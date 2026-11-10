@@ -323,6 +323,7 @@
     {"name": "map_hold_test", "scene": "tests/core/map_hold_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "memory_test", "scene": "tests/core/memory_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "far_level_test", "scene": "tests/core/far_level_test", "renderer": "gl_compatibility", "timeout_s": 600},
+    {"name": "surface_data_test", "scene": "tests/core/surface_data_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {
      "name": "building_tool_test",
      "scene": "tests/core/building_tool_test",
