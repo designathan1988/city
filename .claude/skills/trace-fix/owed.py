@@ -1,15 +1,17 @@
 """What a session owes before it changes a file, for the trace-fix skill: read by the edit hook (read_guard.py), which refuses
 the edit while anything is owed, and shown by `status` and `resume` (resume.py).
 
-A session that works on a trace (it opened it, switched to it or ran a command on it) is held to that trace's record:
+A session is held to the record of the trace it works on now (the last it opened, switched to or ran a command on); a trace
+it left asks nothing more of it:
 - RECORD: every line of the flow it read since its last compaction has a note it wrote itself (saw, called_by, state). A
   note an earlier session wrote does not count: what this session understood is lost at its next compaction otherwise.
-- FLOW: every code file it read (the repository's or a reference tree's) is on the flow of one of its traces, or taken off
-  one with why (`off`): a reading on no flow is a reading nobody will find again.
+- FLOW: every code file it read (the repository's or a reference tree's) is on the flow of that trace, or taken off it with
+  why (`off`): a reading on no flow is a reading nobody will find again.
 - PLAN: an open problem recorded in the file it changes has its fix planned.
 - DOCS: a file that calls the engine (a script, a shader, a scene, C++ that includes godot-cpp or Terrain3D) is changed only
-  after the official documentation was looked up since its last compaction: context7's query-docs (the hook keeps each
-  lookup), or the engine's own vendored source read with the Read tool.
+  after the session looked the official documentation up: context7's query-docs (the hook keeps each lookup, and a
+  compaction does not take it away: what it said is in the record's `docs`), or the engine's own vendored source read with
+  the Read tool since the last compaction.
 A session that works on no trace owes nothing here.
 """
 import os
@@ -43,12 +45,12 @@ def record_lookup(reader, tool_input):
 
 
 def looked_up(reader, rows):
-    """Whether this reader read the engine's documentation since its last compaction."""
+    """Whether this reader read the engine's documentation: a lookup it made, whenever (its answer is in the record), or the
+    vendored source among what it read since its last compaction."""
     if any(r["path"].startswith(VENDORED) for r in rows if r.get("by") != proof.EDIT):
         return True
-    folder, since = proof.reader_folder(reader), proof.since_of(reader)
-    return os.path.isdir(folder) and any(n.startswith(LOOKUP) and n.endswith(".json") and int(n[1:].split("-")[0]) > since
-                                         for n in os.listdir(folder))
+    folder = proof.reader_folder(reader)
+    return os.path.isdir(folder) and any(n.startswith(LOOKUP) and n.endswith(".json") for n in os.listdir(folder))
 
 
 def calls_engine(path, content=b""):
@@ -70,7 +72,8 @@ def is_code(path):
 def owed(reader, relative=None, content=b""):
     """What this reader must do before an edit of `relative` (None: before any edit): lines to show, empty when nothing is owed."""
     session = session_of(reader)
-    traces = sessions.open_traces(session)
+    now = sessions.session_slug(session)
+    traces = [(slug, state) for slug, state in sessions.open_traces(session) if slug == now]  # the one it works on now
     if not traces:
         return []
     rows = proof.rows_of(reader)
@@ -95,7 +98,7 @@ def owed(reader, relative=None, content=b""):
                 standing = [[a, min(b, last)] for a, b in ranges if a <= last]
             out += [f"  RECORD {path} lines {a}-{b} (trace {slug}): read, with no note of yours" for a, b in store.unnoted(standing, notes)]
         elif is_code(path) and path not in taken_off:
-            out.append(f"  FLOW   {path}: code you read, on no flow of your traces: `flow` it (who calls it) and record it, or `off` "
+            out.append(f"  FLOW   {path}: code you read, not on your trace's flow: `flow` it (who calls it) and record it, or `off` "
                        "it with why")
     if relative:
         for slug, state in traces:

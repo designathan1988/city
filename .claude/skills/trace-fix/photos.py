@@ -58,21 +58,20 @@ def photos_in(where):
 
 
 def not_looked_at(state):
-    """What a trace still lacks to close: photos of the game, every photo and crop opened with the Read tool (the mark
-    read_guard.py leaves beside each, in .seen), and every photo named in photos/analysis.md. '' when nothing is missing."""
+    """What a trace still lacks to close: photos of the game, every photo opened with the Read tool (the mark read_guard.py
+    leaves beside each, in .seen), and every photo named in photos/analysis.md. The crops are there to judge what the change
+    reaches (a body a few pixels wide): which to open is the reader's call. '' when nothing is missing."""
     shots = os.path.join(store.trace_folder(state["slug"]), "photos")
     names = [os.path.basename(p) for p in photos_in(shots)] if os.path.isdir(shots) else []
     if not names:
         return ("a trace closes with the game photographed as it is now and every photo analysed: no photo was taken. Write a look "
                 "plan and run `photos <plan.json>`. Only a change that cannot reach the screen (a tool, a document) closes with "
                 "`close --no-photos \"why\"`.")
-    crops = os.path.join(shots, "crops")
-    pictures = [os.path.join(shots, n) for n in names] + (photos_in(crops) if os.path.isdir(crops) else [])
-    unopened = [os.path.relpath(p, shots).replace("\\", "/") for p in pictures
-                if not os.path.exists(os.path.join(os.path.dirname(p), ".seen", os.path.basename(p)))]
+    unopened = [n for n in names if not os.path.exists(os.path.join(shots, ".seen", n))]
     if unopened:
-        return (f"{len(unopened)} photo(s) and crop(s) of this trace were never opened with the Read tool ({', '.join(unopened[:8])}"
-                + (", ..." if len(unopened) > 8 else "") + "): look at every one, then write what each shows in photos/analysis.md.")
+        return (f"{len(unopened)} photo(s) of this trace were never opened with the Read tool ({', '.join(unopened[:8])}"
+                + (", ..." if len(unopened) > 8 else "") + "): look at every one, and at the crops of what the change reaches, "
+                "then write what each shows in photos/analysis.md.")
     analysis = os.path.join(shots, "analysis.md")
     text = open(analysis, encoding="utf-8").read() if os.path.exists(analysis) else ""
     unseen = [n for n in names if os.path.splitext(n)[0] not in text]
@@ -90,8 +89,9 @@ def show(photos):
         print(photo.replace("\\", "/"))
         for crop in crops_of(photo):
             print("  " + crop.replace("\\", "/"))
-    print(f"{len(photos)} photo(s), {len(photos) * COLUMNS * ROWS} crop(s). Read every one with the Read tool (photos and crops, in "
-          "parallel) and write, for each, what every rule of `rules` shows there; every defect seen is a `problem`.")
+    print(f"{len(photos)} photo(s), {len(photos) * COLUMNS * ROWS} crop(s). Read every photo with the Read tool, in parallel, and "
+          "the crops of the places the change reaches (a vehicle, a person, a kerb is judged in its crop); write, for each photo, "
+          "what every rule of `rules` shows there; every defect seen is a `problem`.")
 
 
 def cmd_crops(args):

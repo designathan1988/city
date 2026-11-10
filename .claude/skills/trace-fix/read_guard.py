@@ -3,15 +3,16 @@
 PostToolUse Read: every Read of a file of this repository or of a reference tree becomes one record (path, first and last
   line returned, the content's hash and line count, the session), the proof of a reading (proof.py); a photo of a trace
   that is opened leaves a mark beside it, which the trace's close asks for (photos.py).
-PostToolUse Edit, Write: the file the session has just changed itself stays known to it, whole.
+PostToolUse Edit, Write: the file the session has just changed itself stays known to it.
 PostToolUse of context7's query-docs: the lookup is kept, the proof the documentation was read (owed.py).
 SessionStart, source compact: what the session read before the compaction left its context and no longer counts.
 PreToolUse Edit, Write: REFUSED (exit 2, the reason goes to Claude) unless
-  1. the file to change, when it exists, was read whole by this session since its last compaction, as it is now;
-  2. no file it opened (of the repository or a reference tree) is left read in part; and
-  3. it owes nothing to the traces it works on (owed.py: its readings recorded by itself, the code it read on a flow, the
+  1. the lines the edit replaces (where its old text stands in the file, as it is now) were read by this session since its
+     last compaction; a file written over whole, when it exists, was read whole; and
+  2. it owes nothing to the trace it works on (owed.py: its readings recorded by itself, the code it read on a flow, the
      plan of the problems in the file, the documentation of a file that calls the engine).
-  The refusal lists everything missing at once. The trace folder (records, analysis) is always writable.
+  A file opened in part stops nothing: what was understood of it is in the trace's notes, and only what is changed is read
+  again. The refusal lists everything missing at once. The trace folder (records, analysis) is always writable.
 
 Only the PreToolUse answer can stop a tool; a failure of the hook itself never does (it is kept in
 read_guard_errors.txt beside this file). A session of another project is left alone.
@@ -31,7 +32,7 @@ EDITS = ("Edit", "Write", "MultiEdit")  # the tools that change a file by its pa
 REFUSED = 2  # Claude Code's hooks reference: exit code 2 of a PreToolUse hook blocks the call and gives stderr to Claude
 # How much of a file is looked at to tell text from binary. Source: git's own rule (a NUL in the first 8000 bytes).
 BINARY_PROBE = 8000
-SEEN = ".seen"  # beside a trace's photos: one empty file for each photo or crop the Read tool opened (photos.not_looked_at)
+SEEN = ".seen"  # beside a trace's photos: one empty file for each photo the Read tool opened (photos.not_looked_at)
 DOCS_TOOLS = ("query-docs", "get-library-docs")  # context7's tool that returns documentation (its MCP server's names)
 
 
@@ -91,7 +92,7 @@ def log_photo(asked):
 
 
 def log_edit(event, proof, store):
-    """The session's own change: it wrote these lines on a file it held whole, so it still holds the file whole."""
+    """The session's own change: the file as it left it stays known to it (an edit names the exact text it replaces)."""
     path, relative = target(event, store)
     if not path or not os.path.isfile(path):
         return
@@ -104,53 +105,45 @@ def log_edit(event, proof, store):
                           "ns": time.time_ns(), "by": proof.EDIT})
 
 
-def unread_now(relative, seen, store):
-    """The line ranges of a file, as it is now, that this reader does not hold."""
+def replaced_lines(data, tool_input):
+    """The line ranges of a file an edit replaces: where each text it names stands (every place of it when it replaces all).
+    None for a call that names no text to replace (a Write over the file): the whole of it. A text the file does not hold
+    asks for nothing here: the Edit tool itself refuses it."""
+    edits = tool_input.get("edits") or [tool_input]
+    if not all(isinstance(e, dict) and isinstance(e.get("old_string"), str) and e["old_string"] for e in edits):
+        return None
+    text = data.decode("utf-8", "replace").replace("\r\n", "\n")
+    out = []
+    for e in edits:
+        old = e["old_string"].replace("\r\n", "\n")
+        at = text.find(old)
+        while at >= 0:
+            first = text.count("\n", 0, at) + 1
+            out.append([first, first + old.count("\n") - (1 if old.endswith("\n") else 0)])
+            at = text.find(old, at + len(old)) if e.get("replace_all") else -1
+    return out
+
+
+def unread_calls(relative, path, tool_input, seen, store):
+    """The Read calls this reader still has to make before this edit: the lines it replaces, of the file as it is now (the
+    whole file when it is written over)."""
+    if not path or not os.path.isfile(path):
+        return []
     data = store.file_bytes(relative)
     if b"\0" in data[:BINARY_PROBE]:
         return []  # not text: the Read tool gives no lines of it
     held = seen.get(relative, {}).get(hashlib.sha1(data).hexdigest(), [0, []])[1]
-    return store.gaps({"ranges": held, "lines": lines_of(data)})
-
-
-def left_in_part(versions, store):
-    """A file is finished once some content of it this reader saw was read from its first line to its last."""
-    return all(store.gaps({"ranges": ranges, "lines": total}) for total, ranges in versions.values())
-
-
-def ignored_by_git(paths, store):
-    """The ones of these paths git ignores (builds, fetched dependencies, outputs): not the repository's own files."""
-    import subprocess
-    # bytes in and out: a text pipe on Windows ends every path with a carriage return, and git then matches none
-    done = subprocess.run(["git", "-c", "core.quotepath=off", "check-ignore", "--stdin"], input="\n".join(paths).encode("utf-8"),
-                          cwd=store.ROOT, capture_output=True, timeout=20)
-    return set(done.stdout.decode("utf-8", "replace").splitlines())
-
-
-def unread_calls(relative, path, seen, store):
-    """The Read calls this reader still has to make: the file to change whole, and every file it opened to its end."""
-    missing = []
-    if path and os.path.isfile(path):
-        gaps = unread_now(relative, seen, store)
-        if gaps:
-            missing.append((relative, gaps, "the file to change"))
-    # outputs, builds and vendored code are looked up, not studied: only the repository's own files are read to the end
-    opened = [other for other in sorted(seen)
-              if other != relative and not set(other.split("/")[:-1]) & store.SKIP_DIRS
-              and os.path.isfile(os.path.join(store.ROOT, other)) and left_in_part(seen[other], store)]
-    mine = [other for other in opened if not os.path.isabs(other)]  # a reference tree's files are not this repository's to ask git of
-    ignored = ignored_by_git(mine, store) if mine else set()
-    for other in opened:
-        gaps = [] if other in ignored else unread_now(other, seen, store)
-        if gaps:
-            missing.append((other, gaps, "opened and left in part"))
+    unheld = store.gaps({"ranges": held, "lines": lines_of(data)})
+    asked = replaced_lines(data, tool_input)
+    why = "the file to change" if asked is None else "the lines this edit replaces"
+    if asked is not None:  # of what it does not hold, only what stands in the lines it replaces
+        unheld = store.merged([[max(a, c), min(b, d)] for a, b in unheld for c, d in asked if max(a, c) <= min(b, d)])
+    where = os.path.join(store.ROOT, relative).replace("\\", "/")
+    cut = [piece for gap in unheld for piece in store.pieces(relative, gap[0], gap[1])]
     calls = []
-    for file, gaps, why in missing:
-        where = os.path.join(store.ROOT, file).replace("\\", "/")
-        cut = [piece for gap in gaps for piece in store.pieces(file, gap[0], gap[1])]
-        for a, b in cut:  # a file that fits one call whole is asked for by its path alone
-            alone = len(cut) == 1 and a == 1 and b == store.line_count(file)
-            calls.append(f"  {where}" + ("" if alone else f" offset={a} limit={b - a + 1}") + f"   ({why})")
+    for a, b in cut:  # a file that fits one call whole is asked for by its path alone
+        alone = len(cut) == 1 and a == 1 and b == store.line_count(relative)
+        calls.append(f"  {where}" + ("" if alone else f" offset={a} limit={b - a + 1}") + f"   ({why})")
     return calls
 
 
@@ -161,15 +154,15 @@ def guard(event, proof, store, owed):
         return 0  # the trace folder is the memory of the work (a record, an analysis): writing it is never held back
     reader = reader_of(event)
     path, relative = target(event, store)
-    calls = unread_calls(relative, path, proof.seen_by(reader), store)
+    calls = unread_calls(relative, path, tool_input, proof.seen_by(reader), store)
     content = str(tool_input.get("content") or tool_input.get("new_string") or "").encode("utf-8")
     debts = owed.owed(reader, relative, content)
     if not calls and not debts:
         return 0
     text = ["trace-fix: this edit is refused. Do all of this first, then send the same edit again."]
     if calls:
-        text.append("READ, one Read call each, all in one message (a file is read whole before it is changed, and every file opened "
-                    "is read to its end; what was read before a compaction no longer counts):")
+        text.append("READ, one Read call each, all in one message (the lines an edit replaces are read before it, as the file is "
+                    "now; a file written over is read whole; what was read before a compaction no longer counts):")
         text += calls[:store.BATCH_CHUNKS] + ([f"  ... and {len(calls) - store.BATCH_CHUNKS} more call(s): the next refusal lists them."]
                                               if len(calls) > store.BATCH_CHUNKS else [])
     if debts:
