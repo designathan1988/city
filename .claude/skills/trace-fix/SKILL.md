@@ -130,7 +130,7 @@ the flow is read before the change.
    (`python tools/tasks/cli.py run audit`), a probe of the core. If none fails, write it first and see it fail.
 2. Change the decision that produces the symptom, in its one owner. If the right fix is a rewrite, rewrite. Never: a
    threshold, timeout, tolerance or thread count moved until the symptom hides; a special case; an error swallowed; a
-   reference re-blessed to pass; the cost moved elsewhere.
+   test's expected value rewritten to pass (a photo is no such value: step 5); the cost moved elsewhere.
 3. Go through every caller and reader the record names, against the change.
 4. Build the debug DLL (`tools/build/build.sh dll-debug`) and run that check: `python tools/tasks/cli.py run fast <scene>`.
    When it does not pass, do not try another change: read again until you know why, record what the reading showed.
@@ -157,8 +157,15 @@ When every problem of this trace is fixed:
 
    `$L photos <plan.json>` runs it hidden, under a deadline, and prints every photo and its six enlarged crops
    (`$L crops <folder>` for photos taken another way). What you judge must be in the picture: movers need the clock
-   running before the shot, and the HUD's own counters say whether there is any. No older photo decides anything: it
-   may be broken.
+   running before the shot, and the HUD's own counters say whether there is any.
+
+   **A photo is judged on its own, never against another photo.** Do not compare it pixel for pixel with an earlier
+   run, an older commit or a kept reference (a golden), do not list the pixels that moved, and do not photograph an
+   older commit as a "before": the game was broken there, and wind, noise and the machine move pixels between two runs
+   of the same code. Equal bytes prove nothing about what is drawn, and a difference between two photos is not a
+   finding. The only finding is what is wrong in this run's photo: something broken, out of shape, in another body,
+   floating, missing or behaving wrongly. A check that asks for equal photos and fails is answered the same way: open
+   this run's photos, judge them as in step 3, and when they are sound write its reference again and go on.
 3. **Analyse every photo, for real.** Read every photo and every crop, in parallel: a vehicle, a person, a kerb is a
    few pixels of the whole frame and is judged in the crop. Write `dist/trace/<slug>/photos/analysis.md`: for each
    photo, the rules of `$L rules` one by one, and for each rule what you looked at and what is there (bodies in one
@@ -187,6 +194,7 @@ When every problem of this trace is fixed:
 | Reading the code again after a compaction | `resume`, then `notes.md` and `report.md` |
 | Re-reading files another session noted, writing nothing | Your own note: the hook counts only yours |
 | Photos looked at whole and called fine | Every crop, rule by rule, written in `analysis.md` |
+| Hunting the pixels that differ from an older photo or a golden | This run's photo on its own: is anything broken, out of shape, overlapping or missing? Only that is a finding |
 
 ## Commands
 

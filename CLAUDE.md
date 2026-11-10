@@ -20,8 +20,8 @@ measured (memory, CPU, GPU, frame) and photographed in the 24 km city (map `km24
 3. **Compreenda:** ligue problema, causa e solução pelo código e, quando houve, pela pesquisa.
 4. **Planeje** a correção da causa, com dono único. O esforço não entra na decisão, nem para menos nem para mais.
 5. **Codifique** sem tentativa e erro: se não deu certo, volte à leitura até entender.
-6. **Verifique o que a mudança alcança**, uma vez (tabela em "Execução e verificação"). Fotos: `photodiff.py` diz onde olhar,
-   cada mudança é explicada pela causa, sem perda visual.
+6. **Verify what the change reaches**, once (the table under "Execução e verificação"). A photo is judged on its own (nothing broken,
+   out of shape, overlapping or missing), never made equal pixel for pixel to another run, an older commit or a kept reference.
 7. **Pare e confira:** passou ou deu erro? Se deu erro, volte ao passo 1 com o que o erro mostrou.
 
 Ao fechar o tema, o registro da linha recebe os problemas, as fontes, o raciocínio, o plano e os arquivos criados, alterados
@@ -108,7 +108,7 @@ A reported problem is solved with the `trace-fix` skill (`python .claude/skills/
 |---|---|
 | Rodar o jogo | `godot --path project` (sem Vulkan: `--rendering-method gl_compatibility`) |
 | Compilar as duas DLLs | `MINGW=... tools/build/build.sh core-windows` (Linux: `core`) |
-| Check a change | `tools/build/quick.sh [task,task]` (= `python tools/tasks/cli.py run quick`: only the tasks whose inputs changed; `--ready` at a theme's close, `--all` nothing from the cache, `--bless` only for an understood visual change) |
+| Check a change | `tools/build/quick.sh [task,task]` (= `python tools/tasks/cli.py run quick`: only the tasks whose inputs changed; `--ready` at a theme's close, `--all` nothing from the cache, `--bless` the city's digest written again, only for a change meant to move it; its frozen photos are for looking, compared with nothing) |
 | Run one test | `python tools/tasks/cli.py run fast <scene>` |
 | Suite in parallel | `python tools/tasks/cli.py run tests` (logs in `dist/tasks/<run>`, `cli.py status`; every task has its own deadline and is killed by PID) |
 | Gates | `python tools/gates/run_gates.py` (`--file X`, `--files-from F`, `--summary`, `--selftest`); changed files only: `python tools/tasks/cli.py run gates_changed` |
@@ -117,7 +117,7 @@ A reported problem is solved with the `trace-fix` skill (`python .claude/skills/
 | Exportar e empacotar | `tools/build/build.sh export && tools/build/build.sh package` |
 | Captures | `tools/build/build.sh capture [folder]` (= `cli.py run capture`, hidden, one task per plan) |
 | Olhar o jogo por um plano | `godot --path project --resolution 1920x1080 res://tests/visual/look.tscn -- --no-flow --plan=<json> --capture-dir=<pasta>` |
-| Photo difference | `python tools/build/photodiff.py <before> <after> <out>` (a missing side, an empty set or any changed pixel fails) |
+| Where two photo sets differ | `python tools/build/photodiff.py <a> <b> <out>` (a help to find where to look, never a verdict: two runs of the same code differ in pixels) |
 | Onde cada thread gasta | `python tools/analysis/sampler.py --hidden --cmd "<godot> --path project <cena>" --seconds 30 --symbolizer <llvm-symbolizer>` |
 | Causas pela forma do código | `python tools/analysis/causes.py` |
 | Causas pela arquitetura | `python tools/analysis/arch.py scan`, `status`, `next`, `explain <id>`, `predict <id>`, `done <id>`, `selfcheck` (`--only x` refaz só o que falhou; fila em `dist/arch/queue.json`) |

@@ -153,17 +153,17 @@
    "resources": {"cores": 3, "godot": 1, "locks": {"dll": "shared"}}
   },
   "photos_check": {
-   "doc": "the frozen photos against their golden, bit for bit",
+   "doc": "where the frozen photos differ from a kept set (photos_bless), run by name only: a help to find where to look, never a verdict on the game and in no suite (a photo is judged on its own; two runs of the same code differ in pixels)",
    "argv": ["{python}", "tools/build/photodiff.py", "dist/quick/golden_photos", "dist/quick/photos", "dist/quick/photos_diff"],
    "timeout_s": 120,
    "inputs": ["dist/quick/golden_photos", "dist/quick/photos", "tools/build/photodiff.py"],
    "after": ["photos"],
    "outputs": ["dist/quick/photos_diff"],
    "fresh": true,
-   "hint": "a change meant to move the photos: run with --bless"
+   "hint": "look at this run's photos (dist/quick/photos): only what is wrong in them is a finding"
   },
   "photos_bless": {
-   "doc": "--bless: the photos of this run become the golden",
+   "doc": "the photos of this run kept as the set photos_check compares with, run by name only",
    "call": "tasks.steps:copy",
    "spec": {"from": "dist/quick/photos", "to": "dist/quick/golden_photos"},
    "timeout_s": 120,
@@ -378,8 +378,8 @@
  },
  "suites": {
   "quick": {
-   "doc": "what a change asks for: scripts, debug DLL, gates of the changed files, every scene whose inputs moved, the digest and the frozen photos against their goldens",
-   "tasks": ["import", "scripts", "build_debug", "gates_changed", "@test_scenes", "digest", "photos", "photos_check"],
+   "doc": "what a change asks for: scripts, debug DLL, gates of the changed files, every scene whose inputs moved, the digest against its golden, and the frozen photos taken for whoever made the change to look at (a photo is judged on its own: nothing here compares it with another)",
+   "tasks": ["import", "scripts", "build_debug", "gates_changed", "@test_scenes", "digest", "photos"],
    "variants": {
     "ready": {
      "doc": "the check before a commit: also the release DLL; when all of it holds it leaves dist/quick/passed",
@@ -388,8 +388,8 @@
     },
     "all": {"doc": "the full run: also the release DLL, and nothing taken from the cache", "add": ["build_release"]},
     "bless": {
-     "doc": "the digest and the frozen photos of this run become the goldens (only with a visual change that is understood)",
-     "swap": {"digest": "digest_bless", "photos_check": "photos_bless"}
+     "doc": "the digest of this run becomes the golden (only with a change meant to move the city)",
+     "swap": {"digest": "digest_bless"}
     }
    }
   },

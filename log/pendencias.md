@@ -90,3 +90,6 @@ O que falta fazer, por área.
   - The city opens in 23.6 s in the batch's measure (16.6 s before): not yet read for its cause.
   - Defects seen in the photos and still open: the far walls at night (one tan glow with black squares), sheds standing
     in one another on industrial lots, a dark blotch over a pale cross street.
+  - Railings and brise veils with no filter over the frames (the low tier, Mobile and Compatibility): the card's coverage
+    is a screen noise a temporal filter resolves (`building_card.gdshader`), so there every roof edge and balcony front is
+    a dotted line (trace P33): the tier with no such filter needs the coverage blended.
