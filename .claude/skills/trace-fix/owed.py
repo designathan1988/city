@@ -87,7 +87,13 @@ def owed(reader, relative=None, content=b""):
     for path, ranges in sorted(read.items()):
         if path in flows:
             slug, notes = flows[path]
-            out += [f"  RECORD {path} lines {a}-{b} (trace {slug}): read, with no note of yours" for a, b in store.unnoted(ranges, notes)]
+            # a file may have lost lines since they were read (the tree taken back to an older commit): what is no longer there
+            # can be given no note (`record` refuses a range past the file's end), so only the lines that stand are owed
+            standing = ranges
+            if os.path.isfile(os.path.join(store.ROOT, path)):
+                last = store.line_count(path)
+                standing = [[a, min(b, last)] for a, b in ranges if a <= last]
+            out += [f"  RECORD {path} lines {a}-{b} (trace {slug}): read, with no note of yours" for a, b in store.unnoted(standing, notes)]
         elif is_code(path) and path not in taken_off:
             out.append(f"  FLOW   {path}: code you read, on no flow of your traces: `flow` it (who calls it) and record it, or `off` "
                        "it with why")

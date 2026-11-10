@@ -8,6 +8,10 @@ O detalhe fica em `log/`: `mapa.md` (arquivo por arquivo), `ferramentas.md` (o q
 `feature-trace.md` (the road flow traced by hand and the generic feature tracer's causes).
 Antes de começar, leia o registro da sua linha. Ao fechar o tema, atualize-o com hora e commit, no mesmo commit.
 
+**Where the tree stands (2026-11-10).** `native/`, `project/`, `tools/` and `log/` were taken back to `a1a771c4` (2026-11-07 20:29) by the owner's order: the city generated there is whole, and the lab ports made from 2026-11-08 21:30 on broke it.
+Main as it stood is the tag `antes-da-volta-2026-11-10`: read it for WHAT was built and found, never to copy code back. Each performance fix and each feature is made again one at a time, designed for this architecture,
+measured (memory, CPU, GPU, frame) and photographed in the 24 km city (map `km24`) before and after. Code translated from the 4.0 still stands here (the translated runtime in `core/`, `flow_control`): it is redone the same way, not regenerated.
+
 ## Metodologia de trabalho (toda tarefa, nesta ordem; trabalho direto)
 1. **Identifique:** leia o código envolvido e pergunte "por quê" até chegar à decisão de projeto que produz o sintoma.
    Liste todos os problemas.
@@ -22,6 +26,7 @@ Antes de começar, leia o registro da sua linha. Ao fechar o tema, atualize-o co
 
 Ao fechar o tema, o registro da linha recebe os problemas, as fontes, o raciocínio, o plano e os arquivos criados, alterados
 e apagados.
+A reported problem is solved with the `trace-fix` skill (`python .claude/skills/trace-fix/ledger.py resume` first): the flow traced end to end, read whole with the Read tool, recorded on disk, fixed at the cause, tested and photographed; its hooks refuse an edit of a file not read whole.
 
 ## Correção de causa
 - A correção muda a decisão de projeto que produz o sintoma. Se a correção certa exige reescrever, reescreva.
@@ -40,9 +45,13 @@ e apagados.
 - Toda mudança no jogo é entregue, ao fechar o tema, com um executável novo: o usuário abre `dist/windows/Roadcraft.exe`.
 - Trabalho direto na `main`, em `C:\Users\Jonathan\Desktop\city`, sem worktree.
   Commit por tema e push em `origin/main` (`https://github.com/designathan1988/city`).
+- **The lab is a reference, never code to copy.** `C:\Users\Jonathan\Documents\Projects\lab\roadcraft` is the game with everything working. Read it only to write down WHAT the game must do: the behaviour, the rules, the cases, the values, what the player sees.
+  Never copy its code, translate it line by line or reproduce its structure (it is a browser's, on one thread): the code is designed for this game's architecture and checked against that behaviour in tests and photos. `roadcraft-4.0-main` is old and no reference.
+- A launched process runs in the foreground or under a monitor, with a short deadline and its lines shown as they come: never in the background unwatched.
+- A photo is taken only when the view is drawn (`{"until": "render_pending", "equals": 0}` before each `shot`) and is shown with its commit and date written on it.
 
 ## Execução e verificação
-- Investigar é ler código. Sem medições, perfis nem testes longos e pesados para investigar.
+- Investigating is reading code: no measurements, profiles or long, heavy tests to investigate. A measurement only checks the effect of a change its cause already explains; every port and performance fix is measured in the 24 km city before and after.
 - Verifica-se só o que a mudança alcança:
 
 | Mudou | Verifique |
