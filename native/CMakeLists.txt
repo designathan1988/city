@@ -51,6 +51,16 @@ set(MI_BUILD_OBJECT OFF CACHE BOOL "" FORCE)
 set(MI_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(MI_OVERRIDE OFF CACHE BOOL "" FORCE)
 set(MI_WIN_REDIRECT OFF CACHE BOOL "" FORCE)
+# How the allocator learns that the library was loaded and that a thread ended. As a static library it registers both through
+# MSVC pragmas (src/prim/windows/prim.c: const_seg ".CRT$XLB", linker /INCLUDE), which clang for MinGW ignores: its callbacks
+# landed in .rdata and never ran. It then stayed in its loading state for good, where freed memory is only marked reusable
+# (MEM_RESET, src/os.c _mi_os_purge_ex) and never given back, and the heap of a thread that ended was never freed: a thread that
+# freed 240 of 256 MiB still held all of them, and every save and restart of the simulation left its thread's heap behind.
+# MI_WIN_USE_FLS is the allocator's own path outside MSVC: a constructor runs its start (src/prim/prim.c), a fiber-local callback
+# each thread's end. tests/core/memory_test holds it.
+if(WIN32)
+    set(MI_WIN_USE_FLS ON CACHE BOOL "" FORCE)
+endif()
 FetchContent_Declare(mimalloc GIT_REPOSITORY https://github.com/microsoft/mimalloc.git GIT_TAG v2.2.4 GIT_SHALLOW TRUE SYSTEM)
 FetchContent_MakeAvailable(mimalloc)
 set_target_properties(mimalloc-static PROPERTIES POSITION_INDEPENDENT_CODE ON)

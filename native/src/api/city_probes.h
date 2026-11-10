@@ -36,6 +36,10 @@ public:
 	bool amber_stops(float v, float stop_m, float top, float left, int type) const;
 	float amber_wanted(float kmh) const;
 	godot::Dictionary job_pool_probe() const;
+	// Tests: a thread of its own takes `mib` MiB of the core's allocator, frees all but one block in `keep_one_in`, gives back,
+	// frees the rest and ends: what the allocator held before, at the most, thinned and after (MiB), and its threads.
+	godot::Dictionary memory_churn(int mib, int keep_one_in) const;
+	godot::Dictionary allocator_probe() const; // what the core's allocator holds of the system now: committed MiB and threads with a heap
 	godot::Dictionary flow_replay(); // tests: the translated flow classes alone through a fixed script (city_core_flow_probe.cpp)
 	int flow_junction(); // tests: a three-arm junction on automatic with no signal, or -1
 	godot::Dictionary flow_push(int n, int seconds); // tests: that much traffic through it, the choice applied

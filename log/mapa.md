@@ -44,7 +44,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/core/job_pool.cpp` · `native/src/core/job_pool.h` — pool de jobs por prioridade e `parallel_for`; a chave do job é tipada (`JobKey`: uma `JobLane` por usuário e um id), então dois usuários não se substituem na fila
 - `native/src/core/js_array.h` · `native/src/core/js_map.h` · `native/src/core/js_number.h` · `native/src/core/js_runtime.h` · `native/src/core/js_string.h` · `native/src/core/js_value.h` — what the translated code calls: the built-ins with ECMAScript semantics (runtime of `tools/converter/cpp/js`; not edited here)
 - `native/src/core/math.h` — vetores 2D no plano XZ
-- `native/src/core/memory.cpp` — `new` e `delete` do núcleo no mimalloc: um heap por thread, sem a trava do runtime de C
+- `native/src/core/memory.cpp` · `native/src/core/memory.h` — the core's `new` and `delete` on mimalloc (a heap a thread, without the C runtime's lock); what the allocator holds of the system and a thread giving back what it freed
 - `native/src/core/polygon_ops.cpp` · `native/src/core/polygon_ops.h` — booleanas de plantas em milímetros inteiros (Clipper2): o que cai dentro e o que sobra, em anéis simples
 - `native/src/core/random.h` — hash, RNG e ruído determinísticos
 - `native/src/core/seeded.h` — seeded random number generators
@@ -407,6 +407,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `project/tests/core/edit_fuzz_test.gd` · `project/tests/core/edit_fuzz_test.tscn` · `project/tests/core/fuzz_body_edits.gd` — edições sorteadas contra o hash do estado: desfazer e refazer passam pelos mesmos hashes, salvar e abrir é a mesma cidade, a mesma semente faz a mesma cidade (`--seed=N`, `--steps=N` repetem uma falha)
 - `project/tests/core/traffic_hash_test.gd` · `project/tests/core/traffic_hash_test.tscn` — o tráfego é determinístico: o mesmo mapa, passo a passo duas vezes, dá o mesmo hash da frota em todo tick, e o primeiro que diverge é nomeado
 - `project/tests/core/job_pool_test.gd` · `project/tests/core/job_pool_test.tscn` — a regra da fila de jobs: chaves de usuários diferentes convivem, a mais nova substitui a mesma
+- `project/tests/core/memory_test.gd` · `project/tests/core/memory_test.tscn` — the core's allocator gives back what its threads free: held past the live blocks at most one segment, and a thread that ended leaves no heap
 - `project/tests/core/flow_control_test.gd` · `project/tests/core/flow_control_test.tscn` — control by flow: the translation against its expected numbers, real vehicles counted and a crossing that becomes a signal
 - `project/tests/core/lab_test.gd` · `project/tests/core/lab_test.tscn` — the Diagnostics: expected verdicts, the A/B arithmetic and a city measurement from the panel button
 - `project/tests/core/model_test.gd` · `project/tests/core/model_test.tscn` — Modelos pelo store e pela ferramenta: catálogo, encaixe, recusas, desfazer, fusão, biblioteca e foto
