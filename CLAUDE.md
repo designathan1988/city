@@ -1,11 +1,11 @@
 # Cidade: city builder em Godot 4.7 com núcleo C++ (GDExtension)
 
-Regras, métodos e estrutura do projeto. Atualize este arquivo na mesma mudança que altera o que ele descreve.
-Arquivo criado ou apagado entra em `log/mapa.md` no mesmo commit: o gate `MAPA_DESATUALIZADO` confere.
+The project's rules, methods and structure. Update this file in the same change that alters what it describes. A file created or deleted goes into `log/mapa.md` in the same commit: the gate `MAPA_DESATUALIZADO` checks it.
 O detalhe fica em `log/`: `mapa.md` (arquivo por arquivo), `ferramentas.md` (o que cada uma ensinou), `pendencias.md`
 (o que falta). Registros de cada linha: `work-log.md` (porte e gráficos), `conversor.md`, `causa-raiz.md`, `lab.md`, `base.md`,
-`arquitetura.md` (o analisador de causas), `review.md` (the full reading: findings, problems, process errors),
-`feature-trace.md` (the road flow traced by hand and the generic feature tracer's causes).
+`arquitetura.md` (o analisador de causas), `review.md` (the full reading: findings, problems, process errors), `performance.md`
+(where the game spends, commit by commit and finding by finding), `owner-review.md` (the owner's review of the game: defects,
+causes, fixes), `feature-trace.md` (the road flow traced by hand and the generic feature tracer's causes).
 Antes de começar, leia o registro da sua linha. Ao fechar o tema, atualize-o com hora e commit, no mesmo commit.
 
 ## Metodologia de trabalho (toda tarefa, nesta ordem; trabalho direto)
@@ -20,8 +20,8 @@ Antes de começar, leia o registro da sua linha. Ao fechar o tema, atualize-o co
    by its cause, with no visual loss.
 7. **Pare e confira:** passou ou deu erro? Se deu erro, volte ao passo 1 com o que o erro mostrou.
 
-Ao fechar o tema, o registro da linha recebe os problemas, as fontes, o plano e os arquivos criados, alterados
-e apagados.
+Ao fechar o tema, o registro da linha recebe os problemas, as fontes, o plano e os arquivos criados, alterados e apagados.
+A reported problem is solved with the `trace-fix` skill (`python .claude/skills/trace-fix/ledger.py resume` first): the flow traced end to end, read whole, recorded on disk, fixed at the cause, tested and photographed at the end. Everything is read whole, with the Read tool: its hooks refuse an edit of a file this session has not read from its first line to its last, and every edit while a file it opened is left in part.
 
 ## Correção de causa
 - A correção muda a decisão de projeto que produz o sintoma. Se a correção certa exige reescrever, reescreva.
@@ -38,8 +38,9 @@ e apagados.
 - Nunca feche o jogo aberto na tela do usuário: `tools/build/free_dll.sh` libera a DLL.
 - Tests and captures never open a window on the user's screen (`tools/tasks` runs them `hidden`, on a private desktop).
 - Toda mudança no jogo é entregue, ao fechar o tema, com um executável novo: o usuário abre `dist/windows/Roadcraft.exe`.
-- Trabalho direto na `main`, em `C:\Users\Jonathan\Desktop\city`, sem worktree.
-  Commit por tema e push em `origin/main` (`https://github.com/designathan1988/city`).
+- Trabalho direto na `main`, em `C:\Users\Jonathan\Desktop\city`, sem worktree. Commit por tema e push em `origin/main` (`https://github.com/designathan1988/city`).
+- **The lab is a reference, never code to copy.** `C:\Users\Jonathan\Documents\Projects\lab\roadcraft` is the game with everything working. Read it only to write down WHAT the game must do: the behaviour, the rules, the cases, the values, what the player sees.
+  Never copy its code, translate it line by line or reproduce its structure (it is a browser's, on one thread): the code is designed for this game's architecture (the rules below) and checked against that behaviour in tests and photos. `roadcraft-4.0-main` is an old version and no reference at all.
 
 ## Execução e verificação
 - Investigating is reading code: no measurements, profiles or long, heavy tests to investigate. A measurement only checks the
@@ -133,7 +134,7 @@ the same sources give the same bytes, so a rebuild of unchanged sources leaves t
 `C:\Users\Jonathan\Desktop\city` é o projeto inteiro. O detalhe arquivo por arquivo está em `log/mapa.md`.
 
 **`native/src`: núcleo C++**
-- `core/`: bytes, cor, grade, pool de jobs, matemática, memória, polígonos, aleatório, unidades e o runtime do código traduzido.
+- `core/`: bytes, colour, grid, job pool, maths, memory, polygons, random, units, small caches and the shader contracts.
 - `sim/state/`: `CityState`, `ChangeLog` (canal único de "sujo"), `PoseBuffer`.
 - `sim/catalog/`: tipos do catálogo, sem valores.
 - `sim/commands/`: comandos do jogador, diário de edições, desfazer e refazer.
@@ -158,7 +159,7 @@ the same sources give the same bytes, so a rebuild of unchanged sources leaves t
 - `ui/`: HUD, painéis e gavetas; `ui/theme/`: estilos; `ui/icons/`: ícones.
 - `data/`: `catalog/` (regras e tuning), `game/` (câmera, luz, opções), `render/` (aparência), `ui/` (interface), `i18n/` (textos).
 - `assets/`: texturas, pessoas cozidas, lotes e modelos. `addons/terrain_3d/`: Terrain3D. `bin/`: as DLLs do núcleo.
-- `tests/`: `core/` (testes), `e2e/`, `perf/` (sondas), `visual/` (capturas, `look.gd`, `ui_driver.gd`).
+- `tests/`: `core/` (tests), `e2e/`, `perf/` (probes), `audit/` (the city's defects by rule), `visual/` (captures, `look.gd`, `ui_driver.gd`).
 
 **`tools`**
 - `gates/`: regras verificadas, `rules.json`, `owners.json`, `schemas/`.
@@ -169,10 +170,9 @@ the same sources give the same bytes, so a rebuild of unchanged sources leaves t
 - `analysis/`: `sampler.py` with `sampler_report.py`, `unwind.py` and `win_process.py`, `causes.py` with `detectors.py` and `code_parse.py`,
   `arch.py` and `arch/` (the architecture analyser), `arch_eval/` (answer keys only its selfcheck reads), `ftrace.py` and `ftrace/` (the feature tracer).
 - `assets/`: what makes this game's assets: noise tiles, furniture parts, flag icons, texture fixes.
-- `converter/`: the port tool, pointed at the lab (`Documents/Projects/lab/roadcraft`); record and use in `log/conversor.md`.
-  The 4.0 source copies and the old porting records (`oracle-4.0`, `converter-slice`, `ports`, `process`) left
-  the repository (B1 of log/review.md §6) and are kept outside it, in `C:\Users\Jonathan\Desktop\city-archive`. Nothing they
-  translated from the 4.0 is left in the repository (B4 replaced the junction control and the `js_*.h` runtime).
+- `converter/`: reads the lab and writes down what it does (its program, its ledger, candidate code: `log/conversor.md`). A reading aid only: no code it translates goes into the game (the lab rule above).
+  The 4.0 source copies and the old porting records (`oracle-4.0`, `converter-slice`, `ports`, `process`) are outside the repository,
+  in `C:\Users\Jonathan\Desktop\city-archive`; nothing translated from the 4.0 is left in it (B1 and B4 of log/review.md §6).
 
 **Outros:** `dist/` (builds, capturas e logs, fora do git) e `log/` (registros).
 
