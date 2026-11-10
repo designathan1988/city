@@ -35,9 +35,15 @@ def label(ix, gid: int) -> str:
     return f"{class_label(ix, unit.owner)}.{unit.name}"
 
 
+def same_file(read: str, given: str) -> bool:
+    """A file given from any folder names the file read when one path ends with the other, whole folder names."""
+    read = "/" + read.replace("\\", "/").lstrip("/")
+    given = "/" + given.replace("\\", "/").removeprefix("./").lstrip("/")
+    return read.endswith(given) or given.endswith(read)
+
+
 def at_line(ix, file: str, line: int) -> list[int]:
-    wanted = file.replace("\\", "/")
-    inside = [u for u in ix.units if u.file.endswith(wanted) and u.line <= line <= u.end_line and u.kind != "class"]
+    inside = [u for u in ix.units if same_file(u.file, file) and u.line <= line <= u.end_line and u.kind != "class"]
     if not inside:
         return []
     functions = [u for u in inside if u.kind in FUNCTION_KINDS] or inside

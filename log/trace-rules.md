@@ -209,3 +209,20 @@ ifdef ifndef elif elifdef elifndef else endif` BRANCH, `line error warning pragm
    lookup (C++); "found nowhere in the program" is the engine's, by the definition of the global scope (G3, C6).
 4. Coverage is enforced: a test lists every named kind of both grammars and fails when a kind has no row here, and when a
    row's rule has no handler in the code.
+
+## Solving the flows at scale (research, 2026-11-10)
+The value flows (FLOW) form an inclusion-based (Andersen-style) analysis. The demand-driven recursive evaluation with
+re-evaluation at cycles does not scale: on 25.7k definitions its second link pass took 346 s and the third did not end.
+The standard solver, from the literature:
+- S1 constraint graph: one node per place that holds values (local, parameter, field, return, container element), one
+  subset edge per flow (assignment, argument -> parameter, return -> call result, put -> element); a node's set is the
+  union of its predecessors' (Pearce, Kelly, Hankin, SCAM 2003; the worklist algorithm).
+- S2 worklist with difference propagation: a node whose set changed pushes only the new values to its successors,
+  until no set changes (Pearce et al.).
+- S3 complex constraints: an edge that depends on values (`x.f()`: which f depends on x's classes; a parameter's
+  callers) is added when the values arrive, and its endpoints are queued (Andersen; Hardekopf and Lin).
+- S4 cycles: the nodes of a cycle of subset edges end with the same set; online cycle detection collapses them into one
+  node (Hardekopf and Lin, PLDI 2007, lazy and hybrid cycle detection; Pereira and Berlin, CGO 2009, wave propagation in
+  topological order).
+Sources: whileydave.com/publications/PKH03_SCAM_preprint.pdf; cs.utexas.edu/~lin/cs380c/handout14.pdf;
+cse.iitm.ac.in/~rupesh/teaching/pa/jan17/scribes/6.pdf; arxiv.org/pdf/2602.01720 (Phoenix); PUS, ICSE 2022.

@@ -135,6 +135,11 @@ class Trace(unittest.TestCase):
         self.assertIn("fx::reader", outside["fx::Log::road_chunks"])
 
     # ---- the starting point and the command ---------------------------------------------------------------------
+    def test_seed_file_given_from_another_folder(self):
+        # the same file named relative to the root read, or from a folder above it
+        self.assertEqual(seeds.find(self.ix, "fixture/project/road_tool.gd:11"), seeds.find(self.ix, "RoadTool._lay"))
+        self.assertEqual(seeds.find(self.ix, "other/road_tool.gd:11"), [])
+
     def test_seed_forms(self):
         self.assertEqual(seeds.find(self.ix, "project/road_tool.gd:11"), seeds.find(self.ix, "RoadTool._lay"))
         self.assertEqual(seeds.find(self.ix, "fx::Core::build_road"), seeds.find(self.ix, "Core.build_road"))
