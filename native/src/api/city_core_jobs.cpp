@@ -37,6 +37,7 @@ constexpr auto GIVE_BACK_LOOK = std::chrono::milliseconds(5); // between two loo
 // The pool's rule on a pool of one worker, held busy while the jobs queue: a key's newest job replaces a queued one, and only that.
 Dictionary CityProbes::bay_census() { return render_->bay_census(); }
 Dictionary CityProbes::far_form() const { return render_->far_form(); }
+Dictionary CityProbes::ground_drawn(const Vector3 &at) const { return render_->ground_drawn(*state_, at.x, at.z); }
 
 Dictionary CityProbes::job_pool_probe() const {
 	constexpr int64_t CHUNK_ID = 7;
@@ -179,6 +180,7 @@ void CityProbes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("state_hash"), &CityProbes::state_hash);
 	ClassDB::bind_method(D_METHOD("bay_census"), &CityProbes::bay_census);
 	ClassDB::bind_method(D_METHOD("far_form"), &CityProbes::far_form);
+	ClassDB::bind_method(D_METHOD("ground_drawn", "at"), &CityProbes::ground_drawn);
 	ClassDB::bind_method(D_METHOD("traffic_hashes", "ticks"), &CityProbes::traffic_hashes);
 	ClassDB::bind_method(D_METHOD("graph_fault"), &CityProbes::graph_fault);
 	ClassDB::bind_method(D_METHOD("undo_steps"), &CityProbes::undo_steps);

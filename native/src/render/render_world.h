@@ -163,8 +163,10 @@ public:
 	void wear_paint(float x0, float z0, float x1, float z1, float value) { wear_.paint(x0, z0, x1, z1, value); }
 	int pending() const {
 		return road_stream_.pending + raised_stream_.pending + props_stream_.pending + building_stream_.pending + roads_.pending() + far_roads_.pending() + far_roads_.waiting_supers() + verges_.pending() +
-				structures_.pending() + props_.pending() + buildings_.pending() + trees_.pending() + cover_.pending() + water_.pending();
+				structures_.pending() + props_.pending() + buildings_.pending() + trees_.pending() + cover_.pending() + water_.pending() + terrain_.pending();
 	}
+	// Tests: the ground's height as the terrain's shader reads it at a world point (terrain_bridge.h drawn).
+	godot::Dictionary ground_drawn(const CityState &s, float x, float z) const { return terrain_.drawn(s.terrain, x, z); }
 
 private:
 	TerrainBridge terrain_;

@@ -149,9 +149,9 @@ func _relief(e: Vector3) -> void:
 	await ui.key(KEY_Z, true) # the mesa: two strokes, two undo steps
 	await ui.drawn()
 	var back := ui.ground(hill.x, hill.z).y
-	var drawn: float = hud.world.terrain.data.get_height(Vector3(hill.x, 0.0, hill.z))
+	var drawn: Dictionary = CityStore.query(&"ground_drawn", [hill]) # what the terrain's shader reads there, back from the GPU
 	_check(absf(back - h0) < 0.1, "relief undone in the core: %.1f m (was %.1f)" % [back, h0])
-	_check(absf(drawn - h0) < 0.5, "relief undone in Terrain3D: %.1f m (was %.1f)" % [drawn, h0])
+	_check(drawn.get("fine", false) and absf(drawn.height - h0) < 0.5, "relief undone in the ground drawn: %s (was %.1f)" % [drawn, h0])
 	await ui.shot("feat_terrain_2_desfeito")
 	await ui.key(KEY_Z, true, true)
 	await ui.key(KEY_Z, true, true)

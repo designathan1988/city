@@ -82,9 +82,8 @@ GroundPaint GroundPaint::cut(float minx, float minz, float maxx, float maxz) con
 const PaintCell &GroundPaint::cell(int ix, int iz) const {
 	if (ix < 0 || iz < 0 || ix >= n_ || iz >= n_) return EMPTY_CELL;
 	if (CHECKS && windowed_ && (ix < win_x0_ || iz < win_z0_ || ix > win_x1_ || iz > win_z1_)) city_stop("a painted cell past the box of the map a job copied");
-	auto it = tiles_.find((iz / PAINT_TILE) * across_ + ix / PAINT_TILE);
-	if (it == tiles_.end()) return EMPTY_CELL;
-	return (*it->second)[size_t((iz % PAINT_TILE) * PAINT_TILE + ix % PAINT_TILE)];
+	const PaintTile *t = tile_at(ix, iz);
+	return t ? (*t)[within(ix, iz)] : EMPTY_CELL;
 }
 
 float GroundPaint::cover_at(CoverKind kind, float x, float z) const {
@@ -105,10 +104,10 @@ void GroundPaint::tiles_under(float x, float z, float radius, std::vector<int> &
 // The cell to write: its tile made when it has none, and copied first when a cut still holds it (a job reads that one off the
 // map lock: it is never written). A writer holds the map exclusively, so nobody can take a tile while it looks.
 PaintCell &GroundPaint::touch(int ix, int iz) {
-	std::shared_ptr<PaintTile> &t = tiles_[(iz / PAINT_TILE) * across_ + ix / PAINT_TILE];
+	std::shared_ptr<PaintTile> &t = tiles_[tile_key(ix, iz)];
 	if (!t) t = std::make_shared<PaintTile>();
 	else if (t.use_count() > 1) t = std::make_shared<PaintTile>(*t);
-	return (*t)[size_t((iz % PAINT_TILE) * PAINT_TILE + ix % PAINT_TILE)];
+	return (*t)[within(ix, iz)];
 }
 
 void GroundPaint::paint_cell(PaintCell &c, const PaintDab &d, float w) const {
@@ -171,7 +170,7 @@ bool GroundPaint::dab(const PaintDab &d, int rect[4]) {
 			count(c, -1);
 			c = now;
 			count(c, 1);
-			if (same(c, EMPTY_CELL)) wiped.push_back((iz / PAINT_TILE) * across_ + ix / PAINT_TILE);
+			if (same(c, EMPTY_CELL)) wiped.push_back(tile_key(ix, iz));
 			cx0 = std::min(cx0, ix); cx1 = std::max(cx1, ix);
 			cz0 = std::min(cz0, iz); cz1 = std::max(cz1, iz);
 		}

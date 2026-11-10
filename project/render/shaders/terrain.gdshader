@@ -3,9 +3,6 @@
 shader_type spatial;
 render_mode blend_mix,depth_draw_opaque,cull_back,skip_vertex_transform;
 
-// Defined Constants
-#define MAX_REGIONS 1024 // Match Terrain3DMaterial.max_regions. Set to 64-256 for mobile
-
 // Inline Functions
 #if CURRENT_RENDERER == RENDERER_COMPATIBILITY
     #define fma(a, b, c) ((a) * (b) + (c))
@@ -13,22 +10,32 @@ render_mode blend_mix,depth_draw_opaque,cull_back,skip_vertex_transform;
     #define dFdyCoarse(a) dFdy(a)
 #endif
 
-// Private uniforms
-// Commented uniforms aren't needed for this shader, but are available for your own needs.
+// Private uniforms: what Terrain3D sets on its material for the clipmap's meshes (it keeps no region: the land's maps are below).
 group_uniforms private;
 uniform vec3 _target_pos = vec3(0.f);
 uniform float _mesh_size = 48.f;
 uniform float _subdiv = 1.f;
-uniform uint _background_mode = 1u; // NONE = 0, FLAT = 1, NOISE = 2
-uniform uint _mouse_layer = 0x80000000u; // Layer 32
 uniform float _vertex_spacing = 1.0;
 uniform float _vertex_density = 1.0; // = 1./_vertex_spacing
-uniform float _region_size = 1024.0;
-uniform float _region_texel_size = 0.0009765625; // = 1./region_size
-uniform int _region_map_size = 32;
-uniform int _region_map[1024];
-uniform highp sampler2DArray _height_maps : repeat_disable;
-uniform highp sampler2DArray _control_maps : repeat_disable;
+group_uniforms;
+
+// The land's maps (native/src/render/terrain_bridge.h sets them). The fine ground: a layer a region of `land_region` samples a
+// side, for the regions round the view; a region's layer is its place modulo `fine_side`, and fine_held says which region each
+// layer holds (its index + 1, 0 none). The far ground: the whole map every `far_cells` samples, in `far_tiles` x `far_tiles`
+// tiles of `far_tile` samples a side, read wherever no fine region stands.
+#define FINE_LAYERS 64 // terrain_bridge.cpp FINE_SIDE_MOST, squared
+group_uniforms land;
+uniform highp sampler2DArray fine_heights : repeat_disable, filter_nearest;
+uniform highp sampler2DArray fine_controls : repeat_disable, filter_nearest;
+uniform highp sampler2DArray far_heights : repeat_disable, filter_nearest;
+uniform highp sampler2DArray far_controls : repeat_disable, filter_nearest;
+uniform int fine_held[FINE_LAYERS];
+uniform int fine_side = 1;
+uniform int land_side = 0; // the land's samples a side; 0 while no land stands: every point is past it
+uniform int land_region = 256;
+uniform int far_cells = 8;
+uniform int far_tiles = 1;
+uniform int far_tile = 128;
 group_uniforms;
 
 #include "res://render/shaders/terrain_uniforms.gdshaderinc"
@@ -45,53 +52,72 @@ varying vec3 v_camera_pos;
 // Vertex
 ////////////////////////
 
-// Takes in world space XZ (UV) coordinates
-// Returns ivec3 with:
-// XY: (0 to _region_size - 1) coordinates within a region
-// Z: layer index used for texturearrays, -1 if not in a region
-ivec3 get_index_coord(const vec2 uv) {
-	vec2 r_uv = round(uv);
-	ivec2 pos = ivec2(floor(r_uv * _region_texel_size)) + (_region_map_size / 2);
-	int bounds = int(uint(pos.x | pos.y) < uint(_region_map_size));
-	int map_val = _region_map[pos.y * _region_map_size + pos.x];
-	int raw_index = map_val - 1;
-	// Real regions limited by max_regions
-	int is_region = bounds * int(raw_index >= 0) * int(raw_index < MAX_REGIONS);
-	// Editor dummies are negative; keep them != -1 so the shader still sees a region
-	int is_dummy = bounds * int(map_val < 0);
-	int layer_index = is_region * raw_index
-	               + is_dummy * (map_val - 1)
-	               - (1 - is_region - is_dummy);
-	return ivec3(ivec2(mod(r_uv, _region_size)), layer_index);
+// A grid point (vertices from the map's middle, as UV) as the land's sample nearest it, counted from the map's corner.
+ivec2 land_sample(vec2 grid) {
+	return ivec2(round(grid)) + land_side / 2;
 }
 
-// Takes in world space XZ (UV) and returns if the coordinate should be part of the NONE background.
-bool is_none_bg(const vec2 uv) {
-	ivec4 regions = ivec4(
-		get_index_coord(uv - vec2(0.5, 0.0)).z,
-		get_index_coord(uv - vec2(0.0, 0.5)).z,
-		get_index_coord(uv + vec2(1.0, 0.0)).z,
-		get_index_coord(uv + vec2(0.0, 1.0)).z);
-	return any(equal(regions, ivec4(-1)));
+// Whether a sample lies past the land: it ends there (the wall, and the sea's floor beyond).
+bool past_map(ivec2 s) {
+	return any(lessThan(s, ivec2(0))) || any(greaterThanEqual(s, ivec2(land_side)));
 }
 
+// The same sample held inside the land.
+ivec2 land_sample_in(vec2 grid) {
+	return clamp(land_sample(grid), ivec2(0), ivec2(max(land_side - 1, 0)));
+}
+
+// A sample of the land in the fine maps: its texel and its layer, the layer -1 where no fine region stands.
+ivec3 fine_texel(ivec2 s) {
+	ivec2 r = s / land_region;
+	ivec2 slot = r - (r / fine_side) * fine_side;
+	int layer = slot.y * fine_side + slot.x;
+	return ivec3(s - r * land_region, fine_held[layer] == r.y * (land_side / land_region) + r.x + 1 ? layer : -1);
+}
+
+// A far sample (the whole map's, counted from its corner) in the far maps: its tile's texel and layer.
+ivec3 far_texel(ivec2 t) {
+	t = clamp(t, ivec2(0), ivec2(max(land_side / far_cells - 1, 0)));
+	ivec2 tile = t / far_tile;
+	return ivec3(t - tile * far_tile, tile.y * far_tiles + tile.x);
+}
+
+// The land's height at a grid point: its fine region's sample, or between the far ground's four round it (the clipmap's far
+// levels stand on the far samples themselves: the same heights either way).
+float ground_height(vec2 grid) {
+	ivec2 s = land_sample_in(grid);
+	ivec3 at = fine_texel(s);
+	if (at.z >= 0) return texelFetch(fine_heights, at, 0).r;
+	ivec2 a = s / far_cells;
+	vec2 f = vec2(s - a * far_cells) / float(far_cells);
+	float low = mix(texelFetch(far_heights, far_texel(a), 0).r, texelFetch(far_heights, far_texel(a + ivec2(1, 0)), 0).r, f.x);
+	float high = mix(texelFetch(far_heights, far_texel(a + ivec2(0, 1)), 0).r, texelFetch(far_heights, far_texel(a + ivec2(1, 1)), 0).r, f.x);
+	return mix(low, high, f.y);
+}
+
+// The land's painted ground at a grid point, a control word (ground_paint.gdshaderinc): its fine region's, or the far ground's
+// nearest.
+uint ground_control(vec2 grid) {
+	ivec2 s = land_sample_in(grid);
+	ivec3 at = fine_texel(s);
+	if (at.z >= 0) return floatBitsToUint(texelFetch(fine_controls, at, 0).r);
+	return floatBitsToUint(texelFetch(far_controls, far_texel((s + far_cells / 2) / far_cells), 0).r);
+}
+
+// The land's height between the grid's points (the nearest level's sub-texel vertices).
 float interpolated_height(vec2 pos) {
-	const vec2 offsets = vec2(0, 1);
-	vec2 index_id = floor(pos);
-	ivec3 index[4];
-	index[0] = get_index_coord(index_id + offsets.xy);
-	index[1] = get_index_coord(index_id + offsets.yy);
-	index[2] = get_index_coord(index_id + offsets.yx);
-	index[3] = get_index_coord(index_id + offsets.xx);
-	float h0 = texelFetch(_height_maps, index[0], 0).r;
-	float h1 = texelFetch(_height_maps, index[1], 0).r;
-	float h2 = texelFetch(_height_maps, index[2], 0).r;
-	float h3 = texelFetch(_height_maps, index[3], 0).r;
-	vec2 f = fract(pos);
-	vec2 i = 1.0 - f;
-	vec4 w = vec4(i.x * f.y, f.x * f.y, f.x * i.y, i.x * i.y);
-	float h = h0 * w[0] + h1 * w[1] + h2 * w[2] + h3 * w[3];
-	return h;
+	vec2 at = floor(pos), f = fract(pos);
+	float low = mix(ground_height(at), ground_height(at + vec2(1.0, 0.0)), f.x);
+	float high = mix(ground_height(at + vec2(0.0, 1.0)), ground_height(at + vec2(1.0, 1.0)), f.x);
+	return mix(low, high, f.y);
+}
+
+// The ground's normal at grid corner `at`, from its four neighbours `cells` apart; level where one of them lies past the land.
+vec3 ground_normal_at(vec2 at, float cells) {
+	ivec2 s = land_sample(at);
+	if (past_map(s - int(cells)) || past_map(s + int(cells))) return vec3(0.0, 1.0, 0.0);
+	return vec3(ground_height(at - vec2(cells, 0.0)) - ground_height(at + vec2(cells, 0.0)), 2.0 * cells * _vertex_spacing,
+			ground_height(at - vec2(0.0, cells)) - ground_height(at + vec2(0.0, cells)));
 }
 
 void vertex() {
@@ -122,44 +148,23 @@ void vertex() {
 	vec2 end_pos = (v_vertex.xz - shift * scale) * _vertex_density;
 	v_vertex.xz -= shift * scale * vertex_lerp;
 
-	// UV coordinates in region space. 0-1 covers 1 region, 1-2 is the next region, etc.
+	// The grid's coordinates: a unit a vertex of the land, from the map's middle.
 	UV = v_vertex.xz * _vertex_density;
 
-	// UV coordinates in region space + texel offset. Values are 0 to 1 within regions
-	UV2 = fma(UV, vec2(_region_texel_size), vec2(0.5 * _region_texel_size));
-
-	// Discard vertices for Holes. 1 lookup
-	ivec3 v_region = get_index_coord(start_pos);
-	uint control = floatBitsToUint(texelFetch(_control_maps, v_region, 0)).r;
-	bool hole = bool(control >>2u & 0x1u);
-
-	// Show holes to all cameras except mouse camera (on exactly 1 layer)
-	if ( !(CAMERA_VISIBLE_LAYERS == _mouse_layer) &&
-			(hole || (_background_mode == 0u && is_none_bg(UV)))) {
-		v_vertex.x = 0. / 0.;
+	// The vertex's height. The game holes nothing in the ground (the roads' seams lie over it), so every vertex is drawn.
+	bool past = past_map(land_sample(start_pos));
+	float h;
+	// This branch is static for each of the clipmap segments
+	// Interpolated reads only occur where sub-texel values are required.
+	if (scale < _vertex_spacing) {
+		h = interpolated_height(UV);
 	} else {
-		// Set final vertex height.
-		float h;
-		// This branch is static for each of the clipmap segments
-		// Interpolated reads only occur where sub-texel values are required.
-		if (scale < _vertex_spacing) {
-			h = interpolated_height(UV);
-		} else {
-			ivec3 coord_a = get_index_coord(start_pos);
-			ivec3 coord_b = get_index_coord(end_pos);
-			h = mix(texelFetch(_height_maps, coord_a, 0).r,texelFetch(_height_maps, coord_b, 0).r,vertex_lerp);
-		}
-		v_vertex.y = v_region.z < 0 ? past_map_y_m : h;
-		// past the map a vertex stands at its end: the clipmap follows the camera, and the wall it makes must not
-		if (v_region.z < 0) v_vertex.xz = clamp(v_vertex.xz, vec2(-map_half), vec2(map_half));
-		float cells = max(1.0, scale * _vertex_density);
-		vec2 at = round(UV);
-		ivec3 left = get_index_coord(at - vec2(cells, 0.0)), right = get_index_coord(at + vec2(cells, 0.0));
-		ivec3 back = get_index_coord(at - vec2(0.0, cells)), ahead = get_index_coord(at + vec2(0.0, cells));
-		v_ground_n = min(min(left.z, right.z), min(back.z, ahead.z)) < 0 ? vec3(0.0, 1.0, 0.0)
-				: vec3(texelFetch(_height_maps, left, 0).r - texelFetch(_height_maps, right, 0).r, 2.0 * cells * _vertex_spacing,
-				texelFetch(_height_maps, back, 0).r - texelFetch(_height_maps, ahead, 0).r);
+		h = mix(ground_height(start_pos), ground_height(end_pos), vertex_lerp);
 	}
+	v_vertex.y = past ? past_map_y_m : h;
+	// past the map a vertex stands at its end: the clipmap follows the camera, and the wall it makes must not
+	if (past) v_vertex.xz = clamp(v_vertex.xz, vec2(-map_half), vec2(map_half));
+	v_ground_n = ground_normal_at(round(UV), max(1.0, scale * _vertex_density));
 
 	// Convert model space to view space w/ skip_vertex_transform render mode
 	VERTEX = (VIEW_MATRIX * vec4(v_vertex, 1.0)).xyz;
@@ -179,18 +184,17 @@ global uniform float rain_wet;
 
 void fragment() {
 	vec2 uv = UV; // Terrain3D injects editor overlays that read `uv`
-	vec2 index_id = floor(uv);
-	ivec3 i0 = get_index_coord(index_id + vec2(0, 1));
-	ivec3 i2 = get_index_coord(index_id + vec2(1, 0));
-	ivec3 i3 = get_index_coord(index_id);
 	vec3 w_normal = normalize(v_ground_n);
 	vec2 past = abs(v_vertex.xz);
 	if (max(past.x, past.y) >= map_half - 0.5) { // the wall at the end of the map: rock on its own plane
 		w_normal = past.x > past.y ? vec3(sign(v_vertex.x), 0.0, 0.0) : vec3(0.0, 0.0, sign(v_vertex.z));
 	}
-	ivec3 i1 = get_index_coord(index_id + vec2(1, 1));
-	vec2 fc = fract(uv);
-	PaintCorner p00 = read_paint(i3), p10 = read_paint(i2), p01 = read_paint(i0), p11 = read_paint(i1);
+	// The painted ground's cell here, its four corners mixed by distance: the grid's where a fine region stands, the far ground's
+	// (far_cells of the grid a side) anywhere else.
+	float cell = fine_texel(land_sample_in(floor(uv))).z >= 0 ? 1.0 : float(far_cells);
+	vec2 corner = floor(uv / cell) * cell;
+	vec2 fc = (uv - corner) / cell;
+	PaintCorner p00 = read_paint(corner), p10 = read_paint(corner + vec2(cell, 0.0)), p01 = read_paint(corner + vec2(0.0, cell)), p11 = read_paint(corner + vec2(cell));
 	vec4 cw = vec4((1.0 - fc.x) * (1.0 - fc.y), fc.x * (1.0 - fc.y), (1.0 - fc.x) * fc.y, fc.x * fc.y);
 	float slope = 1.0 - w_normal.y;
 	float gully = gully_weight(dot(cw, vec4(p00.gully, p10.gully, p01.gully, p11.gully)), dot(cw, vec4(p00.wipe, p10.wipe, p01.wipe, p11.wipe)), slope);

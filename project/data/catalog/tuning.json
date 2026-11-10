@@ -22,6 +22,7 @@
  "render": {
   "occluder_min_storeys": 2,
   "road_end_m": 2200,
+  "far_land_cells": 8,
   "props_end_m": 900,
   "lamp_energy": 6,
   "lamp_range_m": 26,

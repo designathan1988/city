@@ -55,6 +55,10 @@ public:
 	// none changed. A tile is made only for a cell that takes paint, and goes when its last painted cell is wiped.
 	bool dab(const PaintDab &d, int rect[4]);
 	const PaintTile *tile(int key) const;
+	// For a reader of many cells in a row (a map of the painted ground): the tile a sample falls in, nullptr where nothing of it
+	// is painted, and the sample's place in that tile, so a tile is looked up once for the run of cells in it.
+	const PaintTile *tile_at(int ix, int iz) const { return tile(tile_key(ix, iz)); }
+	static size_t within(int ix, int iz) { return size_t((iz % PAINT_TILE) * PAINT_TILE + ix % PAINT_TILE); }
 	void put_tile(int key, const PaintTile *from); // nullptr, or a tile holding no paint: the tile goes
 	const std::unordered_map<int, std::shared_ptr<PaintTile>> &all() const { return tiles_; }
 	// The sample rectangle of tile `key` (undo, load).
@@ -65,6 +69,7 @@ public:
 	GroundPaint cut(float minx, float minz, float maxx, float maxz) const;
 
 private:
+	int tile_key(int ix, int iz) const { return (iz / PAINT_TILE) * across_ + ix / PAINT_TILE; }
 	PaintCell &touch(int ix, int iz);
 	void paint_cell(PaintCell &c, const PaintDab &d, float w) const;
 	void count(const PaintCell &c, int sign); // the cells holding a biome or a cover

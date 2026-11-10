@@ -79,10 +79,7 @@ void RenderWorld::reset() {
 
 void RenderWorld::full_rebuild(CityState &s, Object *terrain3d) {
 	reset();
-	if (terrain3d) {
-		terrain_.push_all(s.terrain, terrain3d);
-		terrain_.push_all_paint(s.terrain, s.nature.ground, terrain3d);
-	}
+	terrain_.new_land(s.terrain, terrain3d); // its maps are made by the next sync, round the view
 	fog_.reset();
 	canyon_.reset();
 	shore_.reset();
@@ -247,8 +244,12 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam, doub
 		}
 		// The terrain an edit changed is sent this frame (the roads and the shore of the same edit stand on it): paid into the
 		// ledger, into debt if it must, which the deferrable uploads of the next frames repay.
-		if (terrain3d && !terrain_rects_.empty()) f.upload.charge(terrain_.push_rects(s.terrain, terrain3d, terrain_rects_));
-		if (terrain3d && !paint_rects_.empty()) f.upload.charge(terrain_.push_paint(s.terrain, s.nature.ground, terrain3d, paint_rects_));
+		if (terrain3d) {
+			f.upload.charge(terrain_.push_rects(s.terrain, terrain_rects_));
+			f.upload.charge(terrain_.push_paint(s.terrain, s.nature.ground, paint_rects_));
+			// the fine ground follows the view as far as the detailed roads that lie on it, within what is left of the frame's uploads
+			f.upload.charge(terrain_.follow(s.terrain, s.nature.ground, terrain3d, cam.x, cam.z, t.render_road_end_m, int(t.render_far_land_cells), std::max<int64_t>(0, f.upload.left)));
+		}
 		paint_rects_.clear();
 		sync_nature();
 		mark_changed(s);

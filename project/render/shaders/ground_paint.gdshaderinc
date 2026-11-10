@@ -1,8 +1,8 @@
-// The painted ground for terrain.gdshader, read from Terrain3D's control map (native/src/render/terrain_bridge.cpp packs
-// it; https://terrain3d.readthedocs.io controlmap_format): base id the surface, blend how much of it; overlay id the
-// biome and the uv bits how much of it; the reserved bits the gullies. Each corner of the height grid holds one of each,
-// read at the four corners and mixed by distance (ids cannot be filtered).
-// Needs: _control_maps, get_index_coord, land_triplanar, the uniforms below.
+// The painted ground for terrain.gdshader, read from the land's control words (native/src/render/terrain_bridge.cpp packs
+// them, laid out as Terrain3D's control map: https://terrain3d.readthedocs.io controlmap_format): base id the surface, blend
+// how much of it; overlay id the biome and the uv bits how much of it; the reserved bits the gullies. Each corner of the
+// painted ground's cell holds one of each, read at the four corners and mixed by distance (ids cannot be filtered).
+// Needs: ground_control (terrain.gdshader), land_triplanar, the uniforms below.
 
 uniform vec3 biome_tint[7] : source_color; // none, then the biomes of data/catalog/nature.json
 uniform int map_biome = 0; // 0 none, else the biome's index + 1
@@ -27,8 +27,8 @@ struct PaintCorner {
 	float wipe;
 };
 
-PaintCorner read_paint(ivec3 at) {
-	uint c = floatBitsToUint(texelFetch(_control_maps, at, 0)).r;
+PaintCorner read_paint(vec2 grid) {
+	uint c = ground_control(grid);
 	PaintCorner p;
 	p.surface = int(c >> 27u & 0x1Fu);
 	p.biome = int(c >> 22u & 0x1Fu);
