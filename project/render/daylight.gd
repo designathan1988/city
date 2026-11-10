@@ -4,9 +4,6 @@
 class_name Daylight
 extends RefCounted
 
-const BIAS_PERCENT := 100.0 # the engine reads the bias in hundredths
-const HALF := 0.5
-const MARGIN_TEXELS := 2.0
 const LEAST_LIGHT := 0.001 # a share of no light at all stays a number
 
 var _d: Dictionary
@@ -20,26 +17,19 @@ var shadows_on := true: # what the graphics tier asks of the sun; the moon's sha
 	set(on):
 		shadows_on = on
 		_cast()
-var shadow_side_px := 2048.0 # a cascade's side: game/settings/settings.gd
-var shadow_filter_radius := 1.0 # the engine's radius for the filter in use
+var cascades: SunCascades # the sun's shadow cascades, fitted to the view; the graphics tier sets their side, filter and least reach
 var direct_share := 0.0 # the sun's or moon's share of the light on level ground
 var mode := "day"
-var shadow_least_m := 0.0 # the quality's own reach (game/settings/settings.gd)
-var _first_m := 0.0 # where the first cascade ends
 var _clock_shown := -1.0
 var _hour := 0.0
 var _overcast := 0.0
 var _dark := 0.0
 var _flash := 0.0
-## What the cascades were last fitted to: the eye, its tilt, the ground under it, the lens, the screen and the shadow settings. The fit
-## is a function of these and of its own last result, which it reproduces when they repeat: a view at rest is not fitted again.
-var _fitted_for := []
 ## The values last given to the engine (it keeps them in single precision, so its own copy does not compare): each is set only
 ## when it moves.
 var _air_density := NAN
 var _sky_sent: SentParams # the sky's values go through it: a value set remakes the sky's radiance map, so only the ones that moved are
 var horizon_linear := Color.BLACK # the sky's colour at the horizon now, in linear light: what the air takes (sky_view.gd)
-var _splits := PackedFloat64Array([NAN, NAN, NAN])
 ## The Effects panel's switches: bloom and the ambient light drawn or not.
 var glow_on := true
 var ambient_on := true
@@ -53,6 +43,7 @@ func _init(day: Dictionary, sun: DirectionalLight3D, fill: DirectionalLight3D, t
 	_under = under
 	_env = env
 	_sky_sent = SentParams.new(sky)
+	cascades = SunCascades.new(day, sun)
 
 
 func _c(key: String) -> Color:
@@ -152,7 +143,7 @@ func _awake_share(hour: float) -> float:
 	return lerpf(table[i], table[(i + 1) % table.size()], h - float(i))
 
 
-## The cascades reach past the point looked at, so a far view keeps its shadows: only when that changes by a step.
+## What follows the eye: the sky's deep band and the air by its height, and the sun's cascades by what it shows (sun_cascades.gd).
 func follow_view(camera: Camera3D) -> void:
 	if camera == null:
 		return
@@ -166,63 +157,7 @@ func follow_view(camera: Camera3D) -> void:
 	if density != _air_density:
 		_air_density = density
 		_env.fog_density = density
-	var ground := CityCamera.ground_below(camera)
-	var view := [camera.global_position, camera.global_basis.z.y, ground, camera.near, camera.far, camera.fov,
-			camera.get_viewport().get_visible_rect().size, shadow_side_px, shadow_filter_radius, _sun.shadow_blur, shadow_least_m]
-	if view != _fitted_for:
-		_fitted_for = view
-		_fit_cascades(camera, ground)
-
-
-## The filter in use: its radius is the engine's, and the blur follows it so a soft edge keeps its width whatever the filter
-## (shadow_blur at shadow_blur_radius). What a filter changes is its samples: 32 at Soft Ultra, 16 at Soft High, per pixel
-## (renderer_scene_render_rd.cpp); at the same width the picture holds to 16 and shows its grain at 8.
-func set_filter(radius: float) -> void:
-	shadow_filter_radius = radius
-	_sun.shadow_blur = _d.shadow_blur * _d.shadow_blur_radius / radius
-
-
-## The sun's cascades fitted to the view (Engel, ShaderX5, as the 4.0's sunCascades.ts): the first ends just past the
-## point looked at, the others in ratio to the far end. A fixed share leaves a texel wider than a sign post up close.
-func _fit_cascades(camera: Camera3D, ground: float) -> void:
-	var eye := camera.global_position
-	var above: float = maxf(eye.y - ground, 0.0)
-	var look: float = above / maxf(_d.shadow_view_least_dip, camera.global_basis.z.y)
-	var depth: float = clampf(maxf(look + _d.shadow_reach_m, look * _d.shadow_past_look), shadow_least_m, _d.shadow_depth_max_m)
-	if absf(depth - _sun.directional_shadow_max_distance) > depth * _d.shadow_reach_step:
-		_sun.directional_shadow_max_distance = depth
-	var end: float = _sun.directional_shadow_max_distance
-	var fitted: float = minf(maxf(look * _d.shadow_first_past_look, _d.shadow_first_least_m), end * _d.shadow_first_share)
-	# by steps, as the far end: a slice that changes size with every metre of the ground under the eye changes the width of the
-	# cascade's texels with it, and every edge of every shadow crawls while the camera moves
-	if absf(fitted - _first_m) > fitted * _d.shadow_reach_step or _first_m > end * _d.shadow_first_share:
-		_first_m = fitted
-	var first: float = _first_m
-	var second: float = sqrt(first * end)
-	_set_split(0, &"directional_shadow_split_1", first / end)
-	_set_split(1, &"directional_shadow_split_2", second / end)
-	_set_split(2, &"directional_shadow_split_3", sqrt(second * end) / end)
-	var bias: float = _d.shadow_bias_m * BIAS_PERCENT / (_first_depth(camera, end) * _sun.shadow_blur * shadow_filter_radius)
-	if absf(bias - _sun.shadow_bias) > bias * _d.shadow_reach_step:
-		_sun.shadow_bias = bias
-
-
-## A split of the sun's cascades, given to the light only when it moved.
-func _set_split(i: int, property: StringName, share: float) -> void:
-	if share != _splits[i]:
-		_splits[i] = share
-		_sun.set(property, share)
-
-
-## The first cascade's depth as the engine takes it (renderer_scene_cull.cpp, 4.7.2): the sphere round the slice of the view, a texel
-## of margin on each side, and the pancake. The bias of the others grows with theirs, and so stays the same in texels.
-func _first_depth(camera: Camera3D, end: float) -> float:
-	var near := camera.near
-	var far: float = near + _sun.directional_shadow_split_1 * (minf(end, camera.far) - near)
-	var screen := camera.get_viewport().get_visible_rect().size
-	var across: float = far * tan(deg_to_rad(camera.fov) * HALF) * Vector2(screen.x / screen.y, 1.0).length()
-	var radius: float = Vector2(across, (far - near) * HALF).length() * shadow_side_px / (shadow_side_px - MARGIN_TEXELS)
-	return 2.0 * radius + _d.shadow_pancake_m
+	cascades.fit(camera)
 
 
 ## The fill: a light round from the sun and lower, that keeps the side away from it readable, never more than a share of

@@ -100,14 +100,14 @@ static func blades(on: Node3D, at: Vector3) -> void:
 	var right := Vector3(cam.global_basis.x.x, 0.0, cam.global_basis.x.z).normalized()
 	var to_sun: Vector3 = sun.global_basis.z
 	var marks: Array[String] = []
-	print("escada vies ", sun.shadow_bias, " normal ", sun.shadow_normal_bias, " fim ", end, " lado ", on.world.daylight.shadow_side_px, " cortes ", splits)
+	print("escada vies ", sun.shadow_bias, " normal ", sun.shadow_normal_bias, " fim ", end, " lado ", on.world.daylight.cascades.side_px, " cortes ", splits)
 	for j in CASCADES:
 		var depth: float = (splits[j] + splits[j + 1]) * 0.5 * end
 		var spot := _ground_at_depth(cam, at.y, depth)
 		if spot == Vector3.INF:
 			print("escada ", j, " out of the photo, depth ", depth)
 			continue
-		var texel: float = _texel(cam, splits[j] * end, splits[j + 1] * end, on.world.daylight.shadow_side_px)
+		var texel: float = _texel(cam, splits[j] * end, splits[j + 1] * end, on.world.daylight.cascades.side_px)
 		var side: float = texel * PLATE_TEXELS
 		var long: float = minf(side * cam.global_position.distance_to(spot) / (cam.global_position.y - spot.y), (splits[j + 1] - splits[j]) * end * PLATE_MOST_OF_CASCADE)
 		for k in PLATES:

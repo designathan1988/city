@@ -272,3 +272,36 @@ Measured once, at `4c1d932d`, the same plan (`info` and 5 s of `usage` at each v
   so theirs are made on the first frame; a ghost of a signature design overrides its material (`body_stage.cpp`); a fallen
   building's pieces, a burnt vehicle and the rubble mounds are still filled after creation (`ruin_fracture.cpp`,
   `agent_wreck.cpp`, `mounds.cpp`): each compiles on the frame it first appears, once a kind.
+
+## P37 (2026-11-10, afternoon): the sun's cascades reach what the view shows
+
+- Problem: the cascades reached three times the distance to the point looked at, whatever the view showed
+  (`render/daylight.gd` `_fit_cascades`, the 4.0's numbers). Looking down on the city from 1,200 m (the centre view: the
+  eye 770 m up, 40 degrees down, a 35 degree lens) the farthest ground in the picture is 1,922 m deep along the view, where
+  its top edge meets the ground, and the reach was 3,600 m: the last cascade and part of the third covered depths that are
+  under the ground for that view and drew the far level of every superchunk their boxes touched. The first cascade ended
+  at 791 m, short of the nearest ground the picture shows (872 m): it held air.
+- Test first: `tests/core/shadow_reach_test` works the view's nearest and farthest ground out from the camera's own rays.
+  Before: reach 3,600 m, 1.87 of the view's end. After: 2,326 m (1.21: a step for the stepping, one for the fade), no
+  fade inside the picture (it starts at 2,115 m), the first cascade to 1,115 m; from a street, with the horizon in the
+  picture, the tier's reach and the data's fade as before.
+- Fix: where the picture's top edge meets the ground before the reach of the rule, the reach is that depth, two steps
+  past, and the fade starts one step before the end (Godot docs: a max distance that covers what is seen needs no fade);
+  the first cascade's cap is never short of the nearest ground shown, one cascade of the four, in ratio, into it. The
+  tier's `shadow_least_m` no longer holds a reach past a view that ends before it.
+- Measured, the same plan and build as the section above:
+
+| 24 km city | 9 km out, before | after | Centre, before | after |
+|---|---|---|---|---|
+| Shadow primitives a frame | 5.86 M | 3.55 M | 8.61 M | 5.59 M |
+| Shadow draws a frame | 217 | 204 | 219 | 207 |
+| GPU a frame (mean of 5 s) | 12.25 ms | 11.95 ms | 13.93 ms | 13.30 ms |
+| CPU a frame (mean of 5 s) | 0.94 ms | 1.00 ms | 1.01 ms | 1.08 ms |
+
+- Video and static memory as before (1,795 and 3,166 MiB; 393 and 593 MiB). Photos 00 to 09 of this run
+  (`dist/trace/port-from-nov7/photos`), read in `analysis.md`: from above the shadows stand to the picture's top edge
+  with no fade line; with the horizon in the picture they fade out far away as before; on the street and on a roof from
+  near they are whole and attached.
+- Left of the shadows' cost (the older trace's C17): past the mid level the far mesh is its own caster, with its own
+  `vertex()` in every cascade that takes its superchunk whole; the agents' casting rows are one camera-wide MultiMesh a
+  model and level.
