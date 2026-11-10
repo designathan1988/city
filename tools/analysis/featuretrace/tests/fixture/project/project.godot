@@ -1,0 +1,10 @@
+; Fixture project for the feature tracer's tests.
+config_version=5
+
+[application]
+
+run/main_scene="res://main.tscn"
+
+[autoload]
+
+Store="*res://store.gd"

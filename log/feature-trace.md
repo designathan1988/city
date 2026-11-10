@@ -106,3 +106,42 @@ Tests: 59, in `feature-trace/tests` (each cause above has its own).
 
 `log/mapa.md` brought up to date in the same change (the `MAPA_DESATUALIZADO` gate failed on 59 entries left by earlier
 commits: files added without a line, lines naming deleted files).
+
+## Feature tracer by the languages' rules (`tools/analysis/trace_feature.py`), 2026-11-10 15:55
+Owner's request: a script that traces any feature of this game (GDScript and C++ GDExtension) by the rules discussed:
+know every reserved word that defines, imports, branches, loops and returns, resolve each name used to its definition,
+enter it, follow every branch, come back through each return; no path guessing. A new tool; the existing ones untouched.
+
+**Sources (read through context7 before the rules were fixed):** GDScript reference, Keywords table and Inheritance
+(`extends "file.gd".Inner`), `is`, `as`, `when` (docs.godotengine.org/en/4.7 gdscript_basics); Signal.connect, Object.connect,
+Callable(object, "method"), Object.call/call_deferred (class_signal, class_callable, class_object); GDExtension
+`ClassDB::bind_method(D_METHOD)`, `ADD_SIGNAL(MethodInfo)`, `ADD_PROPERTY(PropertyInfo, set, get)` (object_class,
+gdextension_cpp_example); C++ keywords, identifiers with special meaning and preprocessor tokens (cppreference keyword,
+preprocessor); unqualified lookup order (block, class and bases, enclosing namespaces, global) and qualified lookup
+through using-directives (cppreference unqualified_lookup, qualified_lookup).
+
+**Design.** `featuretrace/rules.py` is the one table: every reserved word of both languages with its role in a trace
+(define, import, branch, loop, jump, scope, type, value) and the engine's call-by-name mechanisms. The grammar (tree-sitter
+cpp 0.23.4, gdscript 6.1.0) gives each construct; readers record definitions and references per construct; the index and
+`resolve` apply the lookup rules; `typer` finds the class behind a receiver from what the code declares; `walk` goes forward
+(calls, values, names, emits and their handlers, lambdas, constructors, overrides, threads) and back to the entry points.
+
+**Process error, recorded so it is not repeated:** the first version was built before the documentation was read, and
+its gaps were found by running it on the city and patching case by case (engine-typed receivers, `->` on library types,
+range-for with a declared type, structured bindings, casts, overloads by arity). The owner stopped this. The rules were
+then read from the sources above, the table written, and the remaining documented constructs (`is` narrowing, `as`
+casts, `when` guards and match bindings, `extends "file".Inner`, a member typed by what is assigned to it) implemented
+from the documentation, each with a test.
+
+**Result on the road (`trace_feature.py project/game/tools/road_tool.gd:229`, 4.4 s, 1123 files, 25.5k definitions):**
+back to `ToolController._unhandled_input` (engine callback) through `click`/`release` and the override from `ToolBase`;
+forward `CityStore.dispatch` -> by name `CityCore::build_road_path` -> `run_edit` -> `lay_road`, `plan_road`, `build_value`,
+`j_add_segment`, `settle_road_edit` (overload by arity), `finish_command`, `sync_grade`, `LotCache::process_dirty`; state
+written read outside the trace by `RenderWorld::drain_log` (road_chunks), `traffic::apply_network_changes` (net_segs_*),
+`CityCore::snapshot` (edit_revision): every link of the hand-traced chain above. 20 links remain on receivers no code
+types (flagged `candidates`; `--exact` leaves them out).
+
+**Files created:** `tools/analysis/trace_feature.py`; `tools/analysis/featuretrace/` (`rules`, `model`, `source`, `gd_read`,
+`gd_body`, `gd_calls`, `cpp_read`, `cpp_body`, `cpp_expr`, `cpp_names`, `engine_read`, `index`, `typer`, `resolve`, `link`,
+`program`, `seeds`, `walk`, `report`); tests `tools/analysis/featuretrace/tests/test_trace.py` (18, one per rule) on
+`tests/fixture`. **Changed:** `log/mapa.md`, this log. Tests: `python -m unittest discover -s tools/analysis/featuretrace/tests -t tools/analysis`.
