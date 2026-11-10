@@ -103,8 +103,9 @@ static func apply(q: Dictionary, world: CityWorld, viewport: Viewport, dynamic_s
 	RenderingServer.directional_soft_shadow_filter_set_quality(int(q.shadow_filter) as RenderingServer.ShadowQuality)
 	world.daylight.cascades.shadow_side_px = float(q.shadow_px)
 	world.daylight.cascades.set_filter(DataTables.game("settings").filter_radius[int(q.shadow_filter)])
-	var smaa: bool = q.smaa and has_smaa()
 	var temporal: int = int(q.temporal) if has_temporal() else TEMPORAL_NONE
+	# one filter resolves the edges: where the frames do (TAA, FSR2), SMAA over them was a second full-screen pass that only softened
+	var smaa: bool = q.smaa and has_smaa() and temporal == TEMPORAL_NONE
 	viewport.msaa_3d = Viewport.MSAA_DISABLED if temporal == TEMPORAL_FSR2 else MSAA_MODES[maxi(int(q.msaa), FALLBACK_AA if q.smaa and not smaa else 0)]
 	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_SMAA if smaa else Viewport.SCREEN_SPACE_AA_DISABLED
 	viewport.anisotropic_filtering_level = FILTER_LEVELS[int(q.anisotropy)]

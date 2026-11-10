@@ -249,7 +249,7 @@ BuildingRenderer::SuperBuilt BuildingRenderer::build_super_cpu(const Inputs &in,
 	const int sx = key_x(super_key) * CHUNKS_PER_SUPER, sz = key_y(super_key) * CHUNKS_PER_SUPER;
 	for (const Building &rec : in.records) {
 		b40::Placed pl;
-		bodies.place(designs(), look_, in.ground, rec, pl);
+		bodies.place(designs(), look_, in.ground, rec, pl, nullptr, false); // the far level lays no pane: no rooms
 		pl.lean = true;
 		far.wear = pl.wear = wear_.share(rec.built, in.now_min, in.wear_span_min, out.wear_due);
 		far.wear_tone = wear_.tone(pl.wear);

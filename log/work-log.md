@@ -1242,3 +1242,23 @@ deterministic, its own cause to fix); gates of the changed files OK; surface_dat
 - Files: `native/src/render/terrain_bridge.{h,cpp}`, `native/src/render/render_world.cpp`, `native/src/sim/catalog/tuning_fields.h`,
   `project/data/catalog/tuning.json`, `project/render/shaders/{terrain.gdshader,terrain_common.gdshaderinc,terrain_seam.gdshader,
   terrain_ground.gdshaderinc,ground_paint.gdshaderinc}`.
+
+## 2026-11-09 23:50: causes read in the commit of the +625 MiB step (0f4b04af); compiled only, by the owner's order (no test run)
+- The workers kept the memory their jobs had used. `0f4b04af` put the core's new and delete on mimalloc, a heap a thread, and the pool
+  has one thread a core less one (23 here). mimalloc gives freed pages back only on that heap's own activity (its docs, Context7
+  /microsoft/mimalloc: the purge "is triggered ... on allocation/free activity, not a background thread"; `mi_collect` is for "a
+  long running thread [that] allocates a lot of blocks that are freed by other threads"): a mesh is built on a worker and freed by
+  the frame's thread after its upload, and the worker sleeps on the pool's condition with every page still committed (the census
+  read 897 MiB committed in the core for the town). Fix: `JobPool::loop` waits for work no longer than the allocator's own purge
+  delay, then gives the thread's freed memory back (`core/memory.h release_freed_memory`) and sleeps.
+- Two antialiasing filters at once: the tiers with a temporal filter (TAA on medium, FSR2 on high and ultra, from the same commit)
+  kept SMAA on over it, a second full-screen pass (`quality.gd apply`). SMAA runs only where no temporal filter does.
+- The far level of the buildings derived the rooms behind the panes of every building within 4.5 km and never read them (BLDG-10):
+  `BuildingBodies::place` takes `with_rooms`, false for `build_super_cpu`.
+- Read and left as it is: `settings.json gpu_rules` sends an RTX 3060 to `ultra`; `shell_test` holds that on purpose (the owner's
+  card), so the tier is the product's decision, not a defect to change here.
+- Not verified: no test, probe or photo was run after these three (the owner's order of 23:40). To check at the next round:
+  the working set after a minute of play, `shell_test`, `quality_test`.
+- Files: created `native/src/core/memory.h`; changed `native/src/core/{memory.cpp,job_pool.cpp}`, `native/src/render/buildings/
+  {building_bodies.h,building_bodies.cpp,building_renderer_build.cpp}`, `project/game/settings/quality.gd`,
+  `project/tests/core/shell_test.gd`, `log/mapa.md`, both DLLs.

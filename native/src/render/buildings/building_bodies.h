@@ -25,9 +25,11 @@ public:
 	BuildingBodies();
 	// Fills `pl` for the record; pl.hold keeps its bodies and rooms alive while it is used. `ground` is the job's copy of the
 	// terrain under its lots (pl.ground samples it: it must outlive pl). `cut`: the building cut open at a floor (the Interior
-	// layer): its body is the cut one and its panes show no room behind them.
+	// layer): its body is the cut one and its panes show no room behind them. `with_rooms` false for a level that lays no pane (the
+	// far one): the rooms behind the panes are not derived for it (each kept its body alive and filled the rooms' cache with
+	// buildings kilometres off, which threw the near ones' out).
 	void place(const b40::Data &data, const b40::BuildingLook &look, const HeightPatch &ground, const Building &rec, b40::Placed &pl,
-			const b40::CutView *cut = nullptr);
+			const b40::CutView *cut = nullptr, bool with_rooms = true);
 	void clear();
 	// How far round a record's middle the ground place() samples reaches: its lot whatever its turn, and GROUND_PAD_M past the corners.
 	static float ground_reach(const Building &rec) { return HALF * std::hypot(rec.w, rec.d) + GROUND_PAD_M; }

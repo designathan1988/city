@@ -58,7 +58,7 @@ std::shared_ptr<const b40::Body> BuildingBodies::cut_body(const Key &k, const b4
 }
 
 void BuildingBodies::place(const b40::Data &data, const b40::BuildingLook &look, const HeightPatch &ground, const Building &rec, b40::Placed &pl,
-		const b40::CutView *cut) {
+		const b40::CutView *cut, bool with_rooms) {
 	const b40::BuildingBodiesLook &K = look.shapes.building_bodies;
 	const b40::LotFrame f = b40::lot_frame(rec);
 	const Key k = key_of(data, rec);
@@ -77,7 +77,7 @@ void BuildingBodies::place(const b40::Data &data, const b40::BuildingLook &look,
 	pl.whole = &whole;
 	pl.fn = rec.fn;
 	pl.rooms = nullptr; // a cut building shows its real inside, not a room behind its panes
-	if (!cut) {
+	if (!cut && with_rooms) {
 		pl.hold.rooms = rooms(data, k, pl.hold.whole, rec);
 		pl.rooms = pl.hold.rooms.get();
 	}

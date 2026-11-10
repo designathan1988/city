@@ -1,8 +1,11 @@
 // Priority job pool: see core/job_pool.h.
 #include "core/job_pool.h"
 
+#include "core/memory.h"
+
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <memory>
 
 namespace city {
@@ -137,7 +140,15 @@ void JobPool::loop() {
 		uint64_t seq = 0;
 		{
 			std::unique_lock<std::mutex> lk(m_);
-			cv_.wait(lk, [&]() { return stop_ || (!paused_ && (!q_.empty() || !helpers_.empty())); });
+			const auto ready = [&]() { return stop_ || (!paused_ && (!q_.empty() || !helpers_.empty())); };
+			// With nothing to do for longer than the allocator keeps freed memory, the worker gives its own back before it sleeps for
+			// good (core/memory.h): what its jobs built was freed by the frame's thread, and nobody else can return it.
+			if (!cv_.wait_for(lk, std::chrono::milliseconds(std::max(1L, freed_memory_wait_ms())), ready)) {
+				lk.unlock();
+				release_freed_memory();
+				lk.lock();
+				cv_.wait(lk, ready);
+			}
 			if (stop_ && q_.empty() && helpers_.empty()) return;
 			if (!helpers_.empty()) {
 				work = std::move(helpers_.front());
